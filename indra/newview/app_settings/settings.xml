@@ -269,6 +269,13 @@
       <key>Type</key><string>F32</string>
       <key>Value</key><real>0.4</real>
     </map>
+    <key>CineOutlineSubjectSource</key>
+    <map>
+      <key>Comment</key><string>[TronA0] Modes 1/2/3 subject mask source: 0 boxes (depth slab / shapes) / 1 per-pixel avatar tag / 2 tag AND boxes / 3 tag OR boxes. Needs RenderGBufferAvatarTag + HDR; falls back to 0 otherwise</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>S32</string>
+      <key>Value</key><integer>0</integer>
+    </map>
     <key>CineOutlineInkColorMode</key>
     <map>
       <key>Comment</key><string>[RotoInk] 0 fixed colour / 1 match light (brightest scene colour just outside the edge, hue only)</string>
@@ -27513,6 +27520,17 @@
     <string>Enable GLTF support.  Set to true by simulator if the simulator you are connected to supports GLTF Asset upload.  WARNING: Manually setting this to true will enable buttons that can drain your L$ balance by implicitly uploading textures without asking.</string>
     <key>Persist</key>
     <integer>0</integer>
+    <key>Type</key>
+    <string>Boolean</string>
+    <key>Value</key>
+    <integer>0</integer>
+  </map>
+  <key>RenderGBufferAvatarTag</key>
+  <map>
+    <key>Comment</key>
+    <string>[TronA0] Tag avatar pixels (system mesh, rigged mesh, eyes, impostors) in the G-buffer normal .w so Roto Ink / Tron masks can be pixel-exact. HDR only (RGBA16 normals); toggling reloads shaders. Requires a ReShade add-on .fx that decodes flag encoding 2.</string>
+    <key>Persist</key>
+    <integer>1</integer>
     <key>Type</key>
     <string>Boolean</string>
     <key>Value</key>

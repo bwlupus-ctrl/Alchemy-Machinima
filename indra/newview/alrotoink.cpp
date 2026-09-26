@@ -179,6 +179,8 @@ const char* const kAllSettings[] = {
     "CineOutlineSubjectScreenCY",
     "CineOutlineSubjectScreenRX",
     "CineOutlineSubjectScreenRY",
+    // [TronA0] Subject mask source (never written by a preset).
+    "CineOutlineSubjectSource",
     // [RotoInk] Colour
     "CineOutlineInkColorMode",
     "CineOutlineMatchReach",

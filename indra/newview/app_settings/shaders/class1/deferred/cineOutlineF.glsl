@@ -117,7 +117,11 @@ uniform vec4 roto_subject;
 // screen shape in modes 7/8): x,y centre (uv), z,w radii (uv).
 uniform vec4 roto_subject2;
 // x = ellipse amount 0..1 (0 = depth slab only), y = shape feather (fraction of
-// the radius), z = 1 when the ellipse is valid this frame (subject on screen), w reserved.
+// the radius), z = 1 when the ellipse is valid this frame (subject on screen),
+// w = [TronA0] subject mask source for modes 1/2/3 (CineOutlineSubjectSource):
+//     0 boxes (depth slab / shapes, today's mask), 1 per-pixel avatar tag,
+//     2 tag AND boxes, 3 tag OR boxes. The host uploads 0 whenever the
+//     G-buffer avatar tag is not compiled in (GBUFFER_AVATAR_TAG absent).
 uniform vec4 roto_subject3;
 // [RotoInk Anim] x = target shape (0 ellipse, 1 box, 2 capsule), y = invert
 // (modes 3..9 only), z = per-target palette colour (mode 3 only), w = target count (0..16).
@@ -1028,6 +1032,42 @@ float rotoDepthSlab(float z_c, float fz, float half_d, float feather)
     return 1.0 - smoothstep(half_d, half_d + feather, abs(z_c - fz));
 }
 
+// [TronA0] Per-pixel avatar tag read from the RAW G-buffer normal .w. Only
+// meaningful when the preamble emitted GBUFFER_AVATAR_TAG (HDR / RGBA16
+// normals with RenderGBufferAvatarTag on); otherwise the macro does not exist
+// and this is a literal 0.0 -- the host also uploads source 0 in that case.
+float rotoAvatarTag(vec2 uv)
+{
+#ifdef GBUFFER_AVATAR_TAG
+    return GBUFFER_AVATAR_TAG_OF(getNormRaw(uv).w) ? 1.0 : 0.0;
+#else
+    return 0.0;
+#endif
+}
+
+// [TronA0] Combine the geometric ("boxes": depth slab / ellipse / target
+// shapes) subject mask with the per-pixel avatar tag per
+// CineOutlineSubjectSource (roto_subject3.w). Source 0 returns the box mask
+// untouched, so the default path is exactly today's mask.
+float rotoApplySubjectSource(float m_box, vec2 uv)
+{
+    int source = int(roto_subject3.w + 0.5);
+    if (source <= 0)
+    {
+        return m_box;
+    }
+    float tag = rotoAvatarTag(uv);
+    if (source == 1)        // tag only: every tagged avatar pixel
+    {
+        return tag;
+    }
+    if (source == 2)        // tag AND boxes: which avatar, pixel-exact
+    {
+        return tag * m_box;
+    }
+    return max(tag, m_box); // 3 tag OR boxes: re-admits alpha clothing via the box
+}
+
 float rotoSubjectMask(vec2 uv, float z_c)
 {
     int mode = int(roto_subject.x + 0.5);
@@ -1055,6 +1095,7 @@ float rotoSubjectMask(vec2 uv, float z_c)
             float gate   = 1.0 - smoothstep(1.0 - fe, 1.0 + fe, rr);
             m *= mix(1.0, gate, amount);
         }
+        m = rotoApplySubjectSource(m, uv);   // [TronA0] identity when source 0
         return (mode == 2) ? 1.0 - m : m;
     }
 
@@ -1088,6 +1129,7 @@ float rotoSubjectMask(vec2 uv, float z_c)
                 }
             }
         }
+        m = rotoApplySubjectSource(m, uv);   // [TronA0] identity when source 0
     }
     else if (mode == 4)     // manual depth band: y = near, z = far (m)
     {

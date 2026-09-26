@@ -37,6 +37,7 @@ in vec3 vary_position;
 
 void mirrorClip(vec3 pos);
 vec4 encodeNormal(vec3 n, float env, float gbuffer_flag);
+float gbufferAvatarFlag(float flag);   // [TronA0] globalF.glsl
 vec3 srgb_to_linear(vec3 c);
 vec3 linear_to_srgb(vec3 c);
 #ifdef HAS_ACTOR_FX
@@ -84,7 +85,8 @@ void main()
 #endif
     frag_data[0] = vec4(diff.rgb, 0.0);
     frag_data[1] = vec4(0,0,0,0);
-    frag_data[2] = encodeNormal(nvn.xyz, 0, GBUFFER_FLAG_HAS_ATMOS);
+    // [TronA0] system avatar mesh: always avatar geometry -> tagged flag
+    frag_data[2] = encodeNormal(nvn.xyz, 0, gbufferAvatarFlag(GBUFFER_FLAG_HAS_ATMOS));
 
 #if defined(HAS_EMISSIVE)
     frag_data[3] = vec4(0);

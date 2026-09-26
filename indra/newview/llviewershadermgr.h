@@ -62,6 +62,15 @@ public:
     void unloadShaders();
     S32  getShaderLevel(S32 type);
 
+    // [TronA0] Per-pixel avatar tag in the G-buffer normal .w.
+    // gbufferAvatarTagWanted(): the settings predicate (RenderGBufferAvatarTag
+    // && the GL_RGBA16 normal-format predicate of addDeferredAttachments).
+    // gbufferAvatarTagActive(): what the CURRENTLY LOADED shaders were built
+    // with (the hash-token global define) -- uploaders and the ReShade bridge
+    // must key on this one, never on the raw setting.
+    static bool gbufferAvatarTagWanted();
+    static bool gbufferAvatarTagActive();
+
     // loadBasicShaders in case of a failure returns
     // name of a file error happened at, otherwise
     // returns an empty string

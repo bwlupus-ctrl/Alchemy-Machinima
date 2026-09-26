@@ -157,6 +157,10 @@ uniform uint SL_TailValid      < source = "sl_tail_valid"; >;        // 1 = v1.1
 #define SL_CONFIG_SNAPSHOT            0x04u
 #define SL_CONFIG_FORCE_10BIT         0x08u
 #define SL_CONFIG_PROVIDER_OWNED      0x10u
+// [TronA0] normals .w uses G-buffer flag ENCODING 2: odd 1/6 codes are avatar
+// pixels (see SLRESHADE_GBUFFER_FLAG_ENCODING_* in llreshadebridgeabi.h).
+// Decoders MUST untag before bucket compares; sl_flag_untag() does that.
+#define SL_CONFIG_AVATAR_TAG          0x20u
 
 bool SL_SemValid(uint bit)   { return (SL_SemanticValid & bit) != 0u; }
 bool SL_HistoryResetAny()    { return SL_ResetFlags != 0u; }

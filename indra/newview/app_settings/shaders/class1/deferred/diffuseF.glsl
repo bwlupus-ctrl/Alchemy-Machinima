@@ -36,6 +36,7 @@ in vec3 vary_position;
 
 void mirrorClip(vec3 pos);
 vec4 encodeNormal(vec3 n, float env, float gbuffer_flag);
+float gbufferAvatarFlag(float flag);   // [TronA0] globalF.glsl
 vec3 srgb_to_linear(vec3 c);
 vec3 linear_to_srgb(vec3 c);
 #ifdef HAS_ACTOR_FX
@@ -85,9 +86,16 @@ void main()
 #endif
     frag_data[0] = vec4(col, 0.0);
     frag_data[1] = vertex_color.aaaa * actor_fx_material_response; // spec/gloss
+#if defined(HAS_SKIN) || defined(AVATAR_GEOMETRY)
+    // [TronA0] rigged mesh / avatar eyes: avatar geometry -> tagged flag
+    frag_data[2] = encodeNormal(nvn.xyz,
+                                vertex_color.a * actor_fx_material_response,
+                                gbufferAvatarFlag(GBUFFER_FLAG_HAS_ATMOS));
+#else
     frag_data[2] = encodeNormal(nvn.xyz,
                                 vertex_color.a * actor_fx_material_response,
                                 GBUFFER_FLAG_HAS_ATMOS);
+#endif
 
 #if defined(HAS_EMISSIVE)
     frag_data[3] = vec4(0, 0, 0, 0);

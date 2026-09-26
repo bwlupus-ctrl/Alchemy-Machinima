@@ -25,6 +25,7 @@
 #include "pipeline.h"          // gPipeline, RenderTargetPack, LLRenderTarget, mVelocityMap
 #include "llviewercamera.h"    // LLViewerCamera (matrices, near/far/fov, world frame)
 #include "llviewercontrol.h"   // gSavedSettings / LLCachedControl (sidecar gate)
+#include "llviewershadermgr.h" // [TronA0] gbufferAvatarTagActive (normals .w flag encoding)
 
 extern bool gSnapshot;         // llviewerdisplay.cpp
 
@@ -287,6 +288,14 @@ void LLReShadeBridge::gatherFrame()
         {
             f.flags |= SLRESHADE_FLAG_HDR;
         }
+        // [TronA0] Normals .w carries flag ENCODING 2 (odd 1/6 codes = avatar
+        // pixels) exactly when the loaded shaders were built with the tag.
+        // Keyed on the compiled define, never the raw setting, so the bit and
+        // the bytes in the texture can never disagree across a shader reload.
+        if (LLViewerShaderMgr::gbufferAvatarTagActive())
+        {
+            f.flags |= SLRESHADE_FLAG_AVATAR_TAG;
+        }
         if (gSnapshot)
         {
             f.flags |= SLRESHADE_FLAG_SNAPSHOT;
@@ -425,6 +434,9 @@ void LLReShadeBridge::gatherFrame()
     if (hdr)                       tail.effective_config_flags |= SLRESHADE_CONFIG_HDR_ENABLED;
     if (snapshot)                  tail.effective_config_flags |= SLRESHADE_CONFIG_SNAPSHOT;
     if (LLRender::s10bitBackBuffer) tail.effective_config_flags |= SLRESHADE_CONFIG_FORCE_10BIT;
+    // [TronA0] Mirror the avatar-tag frame flag into the tail so the .fx sees
+    // it through the EXISTING sl_config_flags uniform (no add-on C++ change).
+    if ((f.flags & SLRESHADE_FLAG_AVATAR_TAG) != 0) tail.effective_config_flags |= SLRESHADE_CONFIG_AVATAR_TAG;
     // PROVIDER_OWNED is an add-on policy and is not observable by the viewer.
     // Tail word 16 is a modulo-2^32 reset-event counter. Unlike the transient
     // flags, a sampling reader detects any event by comparing counter values.

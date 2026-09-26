@@ -60,6 +60,23 @@ vec4 encodeNormal(vec3 n, float env, float gbuffer_flag)
     return vec4(n.xy, env, gbuffer_flag);
 }
 
+// [TronA0] Per-pixel avatar tag: avatar-family G-buffer writers route their
+// flag through this before encodeNormal(). With GBUFFER_AVATAR_TAG emitted by
+// the preamble (llshadermgr.cpp, HDR/RGBA16 normals only) an even 1/6 code
+// becomes the odd code just below it ("avatar + this flag"): HAS_ATMOS 0.34 ->
+// 0.1733 (code 1), HAS_PBR 0.67 -> 0.5033 (code 3). Never for SKIP_ATMOS
+// (0.0 would go negative) -- avatars never write SKIP_ATMOS anyway. Without
+// the define this is the exact identity, so the tag-off path compiles to
+// today's behaviour.
+float gbufferAvatarFlag(float flag)
+{
+#ifdef GBUFFER_AVATAR_TAG
+    return flag > 0.1 ? flag - (1.0/6.0) : flag;
+#else
+    return flag;
+#endif
+}
+
 vec4 decodeNormal(vec4 norm)
 {
     vec2 f = norm.xy;

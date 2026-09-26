@@ -690,7 +690,32 @@ GLuint LLShaderMgr::loadShaderFile(const std::string& filename, S32 & shader_lev
     extra_code_text[extra_code_count++] = strdup("#define GBUFFER_FLAG_HAS_ATMOS    0.34\n"); // bit 0
     extra_code_text[extra_code_count++] = strdup("#define GBUFFER_FLAG_HAS_PBR      0.67\n"); // bit 1
     extra_code_text[extra_code_count++] = strdup("#define GBUFFER_FLAG_HAS_HDRI      1.0\n");  // bit 2
-    extra_code_text[extra_code_count++] = strdup("#define GET_GBUFFER_FLAG(data, flag)    (abs(data-flag)< 0.1)\n");
+    // [TronA0] Per-pixel avatar tag in the flag channel. The preamble TEXT is
+    // chosen here from the HASH-TOKEN global define GBUFFER_AVATAR_TAG_ENABLED
+    // (set by LLViewerShaderMgr::setShaders under exactly the RGBA16-normals
+    // predicate, and part of the binary-cache key) so that every compile unit
+    // of every program -- utility files included -- sees ONE definition of
+    // GBUFFER_AVATAR_TAG. The utility files' own `defines` loop below emits
+    // GBUFFER_AVATAR_TAG_ENABLED (a different token), never a duplicate.
+    // Encoding 2: .w is a 7-level code at multiples of 1/6. Even codes are the
+    // existing flags (0 SKIP_ATMOS, 2 HAS_ATMOS, 4 HAS_PBR, 6 HAS_HDRI -- all
+    // inside the 0.1 window of the constants above); odd codes are
+    // "avatar + next even flag" (1 = 0.1667, 3 = 0.5, 5 = 0.8333). UNTAG
+    // rounds an odd code up to its even neighbour so every existing reader
+    // keeps seeing the flag it always saw. With the tag off, today's exact
+    // text is emitted (byte-identical preamble by construction).
+    const bool avatar_tag = LLGLSLShader::sGlobalDefines.count("GBUFFER_AVATAR_TAG_ENABLED") > 0;
+    if (!avatar_tag)
+    {
+        extra_code_text[extra_code_count++] = strdup("#define GET_GBUFFER_FLAG(data, flag)    (abs(data-flag)< 0.1)\n");
+    }
+    else
+    {
+        extra_code_text[extra_code_count++] = strdup("#define GBUFFER_AVATAR_TAG 1\n");
+        extra_code_text[extra_code_count++] = strdup("#define GBUFFER_UNTAG(d) ((floor((d)*6.0+0.5) + mod(floor((d)*6.0+0.5), 2.0)) / 6.0)\n");
+        extra_code_text[extra_code_count++] = strdup("#define GBUFFER_AVATAR_TAG_OF(d) (mod(floor((d)*6.0+0.5), 2.0) > 0.5)\n");
+        extra_code_text[extra_code_count++] = strdup("#define GET_GBUFFER_FLAG(data, flag)    (abs(GBUFFER_UNTAG(data)-(flag)) < 0.1)\n");
+    }
 
     if (defines)
     {

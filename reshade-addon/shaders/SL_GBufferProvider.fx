@@ -449,14 +449,42 @@ uniform float SL_VISDIFF_K_THRESHOLD <
 #define SL_ALBEDO_FLAG_COVERAGE_GATE 1
 #endif
 
+// [TronA0] G-buffer flag decoding. With SL_CONFIG_AVATAR_TAG set the viewer
+// writes flag ENCODING 2 into normals .w: a 7-level code at multiples of 1/6
+// where even codes are the legacy buckets (0 SKIP_ATMOS, 2 HAS_ATMOS 0.34,
+// 4 HAS_PBR 0.67, 6 HAS_HDRI 1.0) and odd codes are "avatar + next even
+// bucket". sl_flag_untag() rounds odd codes up to their bucket so every
+// bucket compare keeps working; without the bit it is the identity (legacy
+// encoding, no avatar information). Mirrors GBUFFER_UNTAG /
+// GBUFFER_AVATAR_TAG_OF in the viewer's shader preamble (llshadermgr.cpp).
+float sl_flag_untag(float w)
+{
+    if ((SL_ConfigFlags & SL_CONFIG_AVATAR_TAG) == 0u)
+        return w;
+    float code = floor(w * 6.0 + 0.5);
+    return (code + fmod(code, 2.0)) / 6.0;
+}
+
+// True on pixels the viewer tagged as avatar geometry (system mesh, rigged
+// mesh, eyes, impostors). Always false without SL_CONFIG_AVATAR_TAG.
+// POINT-sampled for the same reason as sl_flag_covered().
+bool sl_flag_avatar(float2 uv)
+{
+    if ((SL_ConfigFlags & SL_CONFIG_AVATAR_TAG) == 0u)
+        return false;
+    float w = tex2Dlod(SL_sNormalsPoint, float4(SL_UV(uv), 0, 0)).w;
+    return fmod(floor(w * 6.0 + 0.5), 2.0) > 0.5;
+}
+
 #if SL_ALBEDO_FLAG_COVERAGE_GATE
 // True where the flag channel says a deferred surface was written this frame
 // (HAS_ATMOS or HAS_PBR bucket). POINT-sampled: linear filtering across a
 // flag boundary would blend buckets into meaningless in-between values, same
-// reason the normal samplers are POINT.
+// reason the normal samplers are POINT. Untagged first so tagged avatars
+// (odd codes 0.1667 / 0.5) still land in their bucket.
 bool sl_flag_covered(float2 uv)
 {
-    float w = tex2Dlod(SL_sNormalsPoint, float4(SL_UV(uv), 0, 0)).w;
+    float w = sl_flag_untag(tex2Dlod(SL_sNormalsPoint, float4(SL_UV(uv), 0, 0)).w);
     return abs(w - 0.34) < 0.1 || abs(w - 0.67) < 0.1;
 }
 #endif

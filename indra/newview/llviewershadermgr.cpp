@@ -793,6 +793,27 @@ S32 LLViewerShaderMgr::getShaderLevel(S32 type)
     return mShaderLevel[type];
 }
 
+// [TronA0] Settings predicate for the per-pixel avatar tag. MUST stay equal to
+// the GL_RGBA16 vs GL_RGB10_A2 normal-format predicate in
+// addDeferredAttachments (pipeline.cpp: RenderHDREnabled && mGLVersion > 4.05)
+// AND the tag setting: odd 1/6 codes need 16-bit alpha. RenderHDREnabled and
+// RenderGBufferAvatarTag both reload shaders (llviewercontrol.cpp), so the
+// define always follows the attachment format.
+//static
+bool LLViewerShaderMgr::gbufferAvatarTagWanted()
+{
+    static LLCachedControl<bool> tag_setting(gSavedSettings, "RenderGBufferAvatarTag", false);
+    static LLCachedControl<bool> has_hdr(gSavedSettings, "RenderHDREnabled", true);
+    const bool hdr = has_hdr() && gGLManager.mGLVersion > 4.05f;
+    return tag_setting() && hdr;
+}
+
+//static
+bool LLViewerShaderMgr::gbufferAvatarTagActive()
+{
+    return LLGLSLShader::sGlobalDefines.count("GBUFFER_AVATAR_TAG_ENABLED") > 0;
+}
+
 //============================================================================
 // Shader Management
 
@@ -1231,6 +1252,21 @@ std::string LLViewerShaderMgr::loadBasicShaders()
         S32 detail = gSavedSettings.getS32("RenderTerrainPBRDetail");
         detail = llclamp(detail, TERRAIN_PBR_DETAIL_MIN, TERRAIN_PBR_DETAIL_MAX);
         attribs["TERRAIN_PBR_DETAIL"] = llformat("%d", detail);
+    }
+
+    // [TronA0] Per-pixel avatar tag in the G-buffer normal .w. HASH-TOKEN
+    // global define: LLShaderMgr::loadShaderFile keys the flag-decoder
+    // preamble text on it (and emits the real GBUFFER_AVATAR_TAG there), the
+    // binary-cache hash covers it (llglslshader.cpp), and the utility files'
+    // defines loop emits only this token -- so no compile unit ever sees a
+    // duplicate GBUFFER_AVATAR_TAG. Predicate == the GL_RGBA16 vs GL_RGB10_A2
+    // normal-format choice in addDeferredAttachments (pipeline.cpp), so odd
+    // codes are never written into a 2-bit alpha. Off (default): no token,
+    // nothing emitted, preprocessed sources byte-identical to today.
+    if (gbufferAvatarTagWanted())
+    {
+        attribs["GBUFFER_AVATAR_TAG_ENABLED"] = "1";
+        attribs["GBUFFER_FLAG_ENCODING"] = "2";   // hash-only: no shader reads it
     }
 
     LLGLSLShader::sGlobalDefines = attribs;
@@ -2881,6 +2917,9 @@ bool LLViewerShaderMgr::loadShadersDeferred()
         gDeferredAvatarEyesProgram.mShaderFiles.push_back(make_pair("deferred/diffuseF.glsl", GL_FRAGMENT_SHADER));
         gDeferredAvatarEyesProgram.mShaderLevel = mShaderLevel[SHADER_DEFERRED];
         gDeferredAvatarEyesProgram.addPermutation("HAS_ACTOR_FX", "1");
+        // [TronA0] Eyes link diffuseF.glsl (a world shader) without HAS_SKIN;
+        // this permutation lets diffuseF tag the pixel as avatar geometry.
+        gDeferredAvatarEyesProgram.addPermutation("AVATAR_GEOMETRY", "1");
 
         add_common_permutations(&gDeferredAvatarEyesProgram);
 

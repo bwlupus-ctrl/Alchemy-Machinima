@@ -16396,6 +16396,7 @@ void LLPipeline::renderCineOutline(LLRenderTarget* dst, const F32* camera_modelv
     // [RotoInk Anim] Subject isolation extras (target set / shape / invert /
     // manual depth band / screen rect-ellipse). Never written by a preset.
     static LLCachedControl<S32>  subject_target_set_setting(gSavedSettings, "CineOutlineSubjectTargetSet", 0);
+    static LLCachedControl<S32>  subject_source_setting(gSavedSettings, "CineOutlineSubjectSource", 0);   // [TronA0]
     static LLCachedControl<S32>  subject_max_targets_setting(gSavedSettings, "CineOutlineSubjectMaxTargets", 8);
     static LLCachedControl<S32>  subject_shape_setting(gSavedSettings, "CineOutlineSubjectShape", 0);
     static LLCachedControl<bool> subject_invert_setting(gSavedSettings, "CineOutlineSubjectInvert", false);
@@ -16441,6 +16442,13 @@ void LLPipeline::renderCineOutline(LLRenderTarget* dst, const F32* camera_modelv
     const S32  subject_target_set      = std::clamp((S32)subject_target_set_setting(), 0, 7);
     const S32  subject_max_targets     = std::clamp((S32)subject_max_targets_setting(), 1, 16);
     const S32  subject_shape           = std::clamp((S32)subject_shape_setting(), 0, 2);
+    // [TronA0] Subject mask source for modes 1/2/3: 0 boxes (today), 1 avatar
+    // tag, 2 tag AND boxes, 3 tag OR boxes. Graceful fallback to 0 whenever
+    // the loaded shaders were not built with the G-buffer avatar tag (setting
+    // off, HDR off, or GL < 4.05) -- keyed on the compiled define, not the raw
+    // setting, so uploader and shader can never disagree.
+    const S32  subject_source          = LLViewerShaderMgr::gbufferAvatarTagActive()
+                                       ? std::clamp((S32)subject_source_setting(), 0, 3) : 0;
     const bool subject_invert          = subject_invert_setting();
     const bool subject_target_color    = subject_target_color_setting();
     // Not "near"/"far": Windows headers #define near/far (see the build-
@@ -16863,7 +16871,8 @@ void LLPipeline::renderCineOutline(LLRenderTarget* dst, const F32* camera_modelv
     }
     gCineOutlineProgram.uniform4f(LLShaderMgr::ROTO_SUBJECT, (F32)subject_mode, roto_subject_y, roto_subject_z, subject_depth_feather);
     gCineOutlineProgram.uniform4f(LLShaderMgr::ROTO_SUBJECT2, upload_cx, upload_cy, upload_rx, upload_ry);
-    gCineOutlineProgram.uniform4f(LLShaderMgr::ROTO_SUBJECT3, subject_ellipse_amount, subject_ellipse_feather, upload_ellipse_valid ? 1.f : 0.f, 0.f);
+    // [TronA0] .w = subject mask source (0 with the tag unavailable == today's upload).
+    gCineOutlineProgram.uniform4f(LLShaderMgr::ROTO_SUBJECT3, subject_ellipse_amount, subject_ellipse_feather, upload_ellipse_valid ? 1.f : 0.f, (F32)subject_source);
 
     // roto_subject4.y (invert) and .z (per-target colour) are only read
     // inside the shader's mode>=3 branch, so uploading them unconditionally

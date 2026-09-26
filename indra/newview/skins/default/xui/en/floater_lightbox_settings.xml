@@ -4823,7 +4823,7 @@
 		<panel follows="all" label="Roto Ink" layout="topleft" name="rotoink_settings" can_resize="false">
 			<scroll_container follows="all" height="806" layout="topleft" left="0"
 			 name="rotoink_settings_scroll" opaque="false" reserve_scroll_corner="false" top="0" width="420">
-				<panel background_visible="false" follows="left|top|right" height="2492" layout="topleft" left="0"
+				<panel background_visible="false" follows="left|top|right" height="2520" layout="topleft" left="0"
 				 name="rotoink_settings_scroll_content" top="0" width="400">
 			<text follows="left|top" height="15" left="8" top_pad="12" width="384" layout="topleft" font="SansSerifBold" value="Rotoscope Ink (native deferred ink-line pass)" />
 			<check_box follows="left|top" height="16" left="12" top_pad="6" width="360" layout="topleft" label="Enable Rotoscope Ink" name="ri_enable" control_name="CineOutlineEnabled" tool_tip="Native ink line pass on depth/normal edges, before AA. Off is a complete no-op." />
@@ -4952,6 +4952,13 @@
 				<combo_box.item label="Screen rectangle" name="ri_subj_rect" value="7" />
 				<combo_box.item label="Screen ellipse" name="ri_subj_ellipsemode" value="8" />
 				<combo_box.item label="Focus point (DoF)" name="ri_subj_focus" value="9" />
+			</combo_box>
+			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" name="CineOutlineSubjectSource_row_label" value="Mask source:" />
+			<combo_box follows="left|top" layout="topleft" height="20" top_pad="-17" left="136" width="188" allow_text_entry="false" name="ri_subject_source_combo" control_name="CineOutlineSubjectSource" enabled_control="CineOutlineEnabled" tool_tip="Modes 1-3 only: where the subject mask comes from. Boxes = the depth slab / shapes (today). Avatar tag = the per-pixel G-buffer avatar tag (pixel-exact on opaque avatar surfaces; needs 'Avatar tag in G-buffer' (RenderGBufferAvatarTag) and HDR -- falls back to Boxes when unavailable). Tag AND boxes picks WHICH avatar; Tag OR boxes re-admits alpha-blended clothing through the box.">
+				<combo_box.item label="Boxes (depth slab / shapes)" name="ri_src_boxes" value="0" />
+				<combo_box.item label="Avatar tag (HDR only)" name="ri_src_tag" value="1" />
+				<combo_box.item label="Tag AND boxes (HDR only)" name="ri_src_tag_and" value="2" />
+				<combo_box.item label="Tag OR boxes (HDR only)" name="ri_src_tag_or" value="3" />
 			</combo_box>
 			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" name="CineOutlineSubjectTargetSet_row_label" value="Target set:" />
 			<combo_box follows="left|top" layout="topleft" height="20" top_pad="-17" left="136" width="188" allow_text_entry="false" name="ri_subject_targetset_combo" control_name="CineOutlineSubjectTargetSet" enabled_control="CineOutlineEnabled" tool_tip="Mode 3 (Target set) only: which candidates feed the target list. Director subject uses the single Target below; the others gather up to Max targets, nearest first.">

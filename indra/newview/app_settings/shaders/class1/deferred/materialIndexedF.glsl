@@ -217,6 +217,7 @@ vec4 sample_spec(vec2 uv)
 
 void mirrorClip(vec3 pos);
 vec4 encodeNormal(vec3 n, float env, float gbuffer_flag);
+float gbufferAvatarFlag(float flag);   // [TronA0] globalF.glsl
 vec3 srgb_to_linear(vec3 cs);
 vec3 linear_to_srgb(vec3 cl);
 #ifdef HAS_ACTOR_FX
@@ -348,6 +349,9 @@ void main()
     float emissive = getEmissive(mi, diffcol);
 
     float flag = GBUFFER_FLAG_HAS_ATMOS;
+#ifdef HAS_SKIN
+    flag = gbufferAvatarFlag(flag);   // [TronA0] rigged mesh: avatar geometry -> tagged flag
+#endif
 
     frag_data[0] = max(vec4(diffcol.rgb, emissive), vec4(0)); // gbuffer is sRGB for legacy materials
     frag_data[1] = max(vec4(spec.rgb, glossiness), vec4(0));  // XYZ = Specular color. W = Specular exponent.

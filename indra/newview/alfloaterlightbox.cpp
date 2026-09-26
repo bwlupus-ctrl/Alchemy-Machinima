@@ -554,6 +554,8 @@ void ALFloaterLightBox::updateRotoInkAnimVisibility()
     // Existing Target / manual-depth / range / feather / ellipse controls
     // are left alone -- they stay visible in every mode (A.8).
     const bool mode3 = (subject_mode == 3);
+    // [TronA0] Mask source applies to the single-subject modes and the target set.
+    set_row("CineOutlineSubjectSource", "ri_subject_source_combo", subject_mode >= 1 && subject_mode <= 3);
     set_row("CineOutlineSubjectTargetSet", "ri_subject_targetset_combo", mode3);
     set_row("CineOutlineSubjectMaxTargets", "ri_subject_max_spinner", mode3);
     set_row("CineOutlineSubjectShape", "ri_subject_shape_combo", mode3);
