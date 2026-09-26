@@ -1299,7 +1299,13 @@ bool LLPipeline::allocateScreenBufferInternal(U32 resX, U32 resY)
             // SMAA benefits from a stencil buffer shared across its passes so the
             // blend-weights pass can skip non-edge pixels marked during edge detect.
             bool smaa_stencil = (RenderFSAAType == 2) && gSavedSettings.getBOOL("RenderSMAAUseStencil");
-            if (!mFXAAMap.allocate(resX, resY, post_color_fmt, smaa_stencil, smaa_stencil)) return false;
+            // FXAA packs luma into ALPHA (glowcombineFXAAF -> fxaaF with
+            // FXAA_GREEN_AS_LUMA 0 reads rgba.w). RGB10_A2 has a 2-bit alpha,
+            // quantising luma to 4 levels and crippling edge detection, so the
+            // FXAA prep target alone gets 16-bit unorm (same 0..1 clamp, finer
+            // RGB, 16-bit luma). SMAA, fp16 and 8-bit paths are unchanged.
+            const U32 fxaa_color_fmt = (RenderFSAAType == 1 && post_color_fmt == GL_RGB10_A2) ? GL_RGBA16 : post_color_fmt;
+            if (!mFXAAMap.allocate(resX, resY, fxaa_color_fmt, smaa_stencil, smaa_stencil)) return false;
             if (RenderFSAAType == 2)
             {
                 if (!mSMAABlendBuffer.allocate(resX, resY, post_color_fmt, false)) return false;
