@@ -33,6 +33,7 @@
 #include "alscrollfocus.h"
 #include "alprojectorshaftpresets.h"
 #include "alcinehaze.h"
+#include "alrotoink.h"
 
 #include "bdmergemeshpool.h"
 #include "bdmergetexpool.h"
@@ -76,12 +77,15 @@ ALFloaterLightBox::ALFloaterLightBox(const LLSD& key)
     // [Cine Haze] Depth Haze tab actions (value controls are XML-bound).
     mCommitCallbackRegistrar.add("LightBox.CineHazePreset", std::bind(&ALFloaterLightBox::onCineHazePreset, this, std::placeholders::_2));
     mCommitCallbackRegistrar.add("LightBox.CineHazeRefFromCamera", std::bind(&ALFloaterLightBox::onCineHazeRefFromCamera, this));
+    // [RotoInk] Roto Ink tab actions (value controls are XML-bound).
+    mCommitCallbackRegistrar.add("LightBox.RotoInkPreset", std::bind(&ALFloaterLightBox::onRotoInkPreset, this, std::placeholders::_2));
 }
 
 ALFloaterLightBox::~ALFloaterLightBox()
 {
     mTonemapConnection.disconnect();
     mCASConnection.disconnect();
+    mRotoInkDepthModeConnection.disconnect();
 }
 
 bool ALFloaterLightBox::postBuild()
@@ -91,6 +95,7 @@ bool ALFloaterLightBox::postBuild()
     ALScrollFocus::install(this, "froxel_settings_scroll", "froxel_settings_scroll_content");
     ALScrollFocus::install(this, "weather_settings_scroll", "weather_settings_scroll_content");
     ALScrollFocus::install(this, "cinehaze_settings_scroll", "cinehaze_settings_scroll_content");
+    ALScrollFocus::install(this, "rotoink_settings_scroll", "rotoink_settings_scroll_content");
 
     getChild<LLComboBox>("ps_preset")->setCommitCallback(
         [](LLUICtrl* control, const LLSD&)
@@ -110,12 +115,28 @@ bool ALFloaterLightBox::postBuild()
             control->setValue(LLSD("custom"));
         });
 
+    // [RotoInk] Same action-combo idiom as ch_preset_combo above.
+    getChild<LLComboBox>("ri_preset_combo")->setCommitCallback(
+        [](LLUICtrl* control, const LLSD&)
+        {
+            const std::string preset = control->getValue().asString();
+            if (!preset.empty() && preset != "custom")
+            {
+                ALRotoInk::applyPreset(preset);
+            }
+            control->setValue(LLSD("custom"));
+        });
+
     populateLUTCombo();
     updateTonemapper();
     updateCAS();
 
     mTonemapConnection = gSavedSettings.getControl("AlchemyRenderTonemapType")->getSignal()->connect([&](LLControlVariable* control, const LLSD&, const LLSD&) { updateTonemapper(); });
     //mCASConnection = gSavedSettings.getControl("RenderSharpenMethod")->getSignal()->connect([&](LLControlVariable* control, const LLSD&, const LLSD&) { updateCAS(); });
+
+    // [RotoInk]
+    updateRotoInkDepthMode();
+    mRotoInkDepthModeConnection = gSavedSettings.getControl("CineOutlineDepthMode")->getSignal()->connect([&](LLControlVariable*, const LLSD&, const LLSD&) { updateRotoInkDepthMode(); });
 
     return LLFloater::postBuild();
 }
@@ -344,6 +365,47 @@ void ALFloaterLightBox::onCineHazePreset(const LLSD& userdata)
 void ALFloaterLightBox::onCineHazeRefFromCamera()
 {
     ALCineHaze::setReferenceHeightFromCamera();
+}
+
+// [RotoInk] Roto Ink tab: "reset" (all controls to default) or an
+// ALRotoInk preset key (the combo itself is wired directly in postBuild;
+// this registrar entry only ever receives "reset" from ri_reset_all today,
+// mirroring onCineHazePreset's shape for consistency).
+void ALFloaterLightBox::onRotoInkPreset(const LLSD& userdata)
+{
+    const std::string& preset = userdata.asString();
+    if (preset == "reset")
+    {
+        ALRotoInk::resetToDefaults();
+    }
+    else
+    {
+        ALRotoInk::applyPreset(preset);
+    }
+}
+
+// [RotoInk] Silhouette threshold only means anything in Relative depth mode
+// (dz/z) and Metric threshold only in Metric mode (metres); show only the
+// row that matches CineOutlineDepthMode, same findChild+setVisible idiom as
+// updateTonemapper()'s AMD/Khronos/S-Log3 widget groups above.
+void ALFloaterLightBox::updateRotoInkDepthMode()
+{
+    const bool metric = (gSavedSettings.getS32("CineOutlineDepthMode") == 1);
+
+    static const std::string relative_widgets[] = {
+        "ri_sil_thr_label", "ri_sil_thr_slider", "ri_reset_CineOutlineSilhouetteThreshold",
+    };
+    static const std::string metric_widgets[] = {
+        "ri_metric_thr_label", "ri_metric_thr_slider", "ri_reset_CineOutlineMetricThreshold",
+    };
+    for (const std::string& name : relative_widgets)
+    {
+        if (LLView* v = findChild<LLView>(name)) v->setVisible(!metric);
+    }
+    for (const std::string& name : metric_widgets)
+    {
+        if (LLView* v = findChild<LLView>(name)) v->setVisible(metric);
+    }
 }
 
 void ALFloaterLightBox::populateLUTCombo()

@@ -21,6 +21,7 @@
 #include "alpanelpatheditor.h"      // embedded shared Actor Pathing editor
 #include "alprojectorshaftpresets.h"
 #include "alcinelightrigmanager.h"
+#include "alrotoink.h"
 #include "aldirectorswitcher.h"
 #include "llactormover.h"
 #include "llagent.h"                   // stable self id while avatar rebuilds
@@ -962,7 +963,18 @@ const std::vector<std::string>& LLFloaterDirector::sceneSettingsList()
         "CineRigRimBgWrap",
         "CineRigRimBgBackBias",
     };
-    return settings;
+    // [RotoInk] Append every CineOutline* key (Enabled + all [RotoInk]
+    // settings) from ALRotoInk::settings() -- the single source of truth
+    // shared with the Lightbox tab's preset/reset code -- rather than
+    // duplicating the list here where it could drift.
+    static const std::vector<std::string> settings_with_roto = []
+    {
+        std::vector<std::string> v = settings;
+        const std::vector<std::string>& roto = ALRotoInk::settings();
+        v.insert(v.end(), roto.begin(), roto.end());
+        return v;
+    }();
+    return settings_with_roto;
 }
 
 void LLFloaterDirector::refreshSceneList(const std::string& select_name)
@@ -1263,6 +1275,25 @@ void LLFloaterDirector::loadScene(const std::string& name)
         for (const std::string& setting : sceneSettingsList())
         {
             if (setting.rfind("CineRigRim", 0) == 0)
+            {
+                if (LLControlVariable* ctrl = gSavedSettings.getControl(setting))
+                {
+                    ctrl->resetToDefault(true);
+                }
+            }
+        }
+    }
+
+    // [RotoInk] Same old-scene fix as the CineRigRim block above: a scene
+    // saved before Rotoscope Ink existed has no "CineOutlineEnabled" key, so
+    // reset every CineOutline* control to its default rather than let a
+    // previously loaded scene's ink state leak into this one.
+    if (!scene["settings"].isMap() ||
+        !scene["settings"].has("CineOutlineEnabled"))
+    {
+        for (const std::string& setting : sceneSettingsList())
+        {
+            if (setting.rfind("CineOutline", 0) == 0)
             {
                 if (LLControlVariable* ctrl = gSavedSettings.getControl(setting))
                 {

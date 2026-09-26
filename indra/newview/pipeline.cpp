@@ -76,6 +76,7 @@
 #include "lltexturefetch.h"
 #include "llimageworker.h"
 #include "lldirectorcast.h"     // [Night Mask] Self/Subject A-D target resolution
+#include "aldirectorswitcher.h" // [RotoInk] cutSerial() -- snap subject smoothing on a hard program cut
 #include "lldrawable.h"
 #include "lldrawpoolalpha.h"
 #include "lldrawpoolavatar.h"
@@ -7414,12 +7415,58 @@ void LLPipeline::renderGeomPostDeferred(LLCamera& camera)
     done_atmospherics = done_atmospherics || low_detail_probe;
     done_water_haze   = done_water_haze || low_detail_probe;
 
+    // [RotoInk Round-3] ROTOINK_LAYER_SCENE call site. water_haze_pass
+    // (POOL_ALPHA_PRE_WATER) is always the smallest of the three thresholds
+    // checked below (PRE_WATER < WATER < POST_WATER, lldrawpool.h), so gating
+    // on it and checking BEFORE the water-exclusion/atmospherics/water-haze
+    // block guarantees the ink draws before fog, water, atmospherics and
+    // alpha/glass -- exactly once, on the same pool iteration those first run.
+    bool done_roto_ink_scene = false;
 
     while ( iter1 != mPools.end() )
     {
         LLDrawPool *poolp = *iter1;
 
         cur_type = poolp->getType();
+
+        if (cur_type >= water_haze_pass && !done_roto_ink_scene)
+        {
+            done_roto_ink_scene = true;
+            // Guard against renderGeomPostDeferred's other callers (impostors,
+            // reflection/hero probes, HUDs) -- this call site must only ever
+            // fire for the main view's own screen target, matching the
+            // predicate renderGeomPostDeferred already uses for the
+            // visible-diffuse sidecar just above (S1-style: stated
+            // explicitly, not inferred from an allocation detail elsewhere).
+            if (mRT == &mMainRT && !gCubeSnapshot && !LLPipeline::sRenderingHUDs &&
+                !sImpostorRender && !sPrismLensRender &&
+                shouldRunRotoInkAt(ROTOINK_LAYER_SCENE))
+            {
+                // renderGeomPostDeferred runs with setColorMask(true,false)
+                // (above) for the whole pool loop. The ink pass's OWN draw
+                // into mWaterDis needs the alpha channel writable too, or
+                // mWaterDis's stale alpha (never cleared for this scratch
+                // target) is what the final copyColorToAttachment0 blit
+                // copies into mRT->screen's alpha/glow channel. Restore the
+                // pool loop's mask immediately after.
+                //
+                // [RotoInk Round-4, Codex+Opus P1] This call site runs BEFORE
+                // the end-of-3D-scene snapshot (pipeline.cpp ~22270-22273)
+                // that copies gGLModelView/gGLProjection into gGLLast{Model
+                // View,Projection} for this frame -- gGLLast* here would
+                // still be the PREVIOUS frame's camera. Pass the LIVE
+                // gGLModelView/gGLProjection explicitly instead: the pool
+                // loop above reloads gGLModelView as the current camera's
+                // view matrix before every pass, so it reliably holds THIS
+                // frame's main-view matrices at this point. This does not
+                // change when/how gGLLast{ModelView,Projection} themselves
+                // get updated -- velocity rendering still depends on that
+                // timing untouched.
+                gGL.setColorMask(true, true);
+                renderCineOutline(&mRT->screen, gGLModelView, gGLProjection);
+                gGL.setColorMask(true, false);
+            }
+        }
 
         if (cur_type >= water_exclusion_pass && !done_water_exclusion)
         { // do water exclusion against depth buffer before rendering alpha
@@ -11596,6 +11643,35 @@ namespace
     }
 }
 
+// [RotoInk Round-3, Codex P1] See pipeline.h. colorCorrect() selects one of
+// its gCG* shader variants below; only the "Tonemap"-named variants define
+// TONEMAP (colorCorrectF.glsl ~137) and therefore read RenderExposure at all
+// (colorCorrectF.glsl ~421, applyExposure()). That happens precisely when
+// apply_tonemap is true AND no_post is false -- legacy_gamma is folded INTO
+// no_post below (not a separate gate), so a legacy-ambiance sky always forces
+// the gamma-only variant regardless of apply_tonemap. This function is the
+// single source of truth for that predicate so renderCineOutline's EXPOSURE
+// upload can never disagree with what colorCorrect actually does this frame.
+bool LLPipeline::colorCorrectWillApplyExposure(bool apply_tonemap, bool* out_legacy_gamma, bool* out_no_post) const
+{
+    static LLCachedControl<bool> should_auto_adjust(gSavedSettings, "RenderSkyAutoAdjustLegacy", false);
+    static LLCachedControl<bool> buildNoPost(gSavedSettings, "RenderDisablePostProcessing", false);
+
+    LLSettingsSky::ptr_t psky = LLEnvironment::instance().getCurrentSky();
+    const bool legacy_gamma = psky && psky->getReflectionProbeAmbiance(should_auto_adjust) == 0.f;
+    const bool no_post = gSnapshotNoPost || legacy_gamma || (buildNoPost && gFloaterTools && gFloaterTools->isAvailable());
+
+    if (out_legacy_gamma)
+    {
+        *out_legacy_gamma = legacy_gamma;
+    }
+    if (out_no_post)
+    {
+        *out_no_post = no_post;
+    }
+    return apply_tonemap && !no_post;
+}
+
 void LLPipeline::colorCorrect(LLRenderTarget* src, LLRenderTarget* dst, bool apply_tonemap, bool apply_color_grade)
 {
     LL_PROFILE_GPU_ZONE("colorcorrect");
@@ -11607,13 +11683,17 @@ void LLPipeline::colorCorrect(LLRenderTarget* src, LLRenderTarget* dst, bool app
         // Apply gamma correction to the frame here.
         static LLCachedControl<bool> color_grade_cc(gSavedSettings, "RenderColorGrade", false);
         static LLCachedControl<bool> should_auto_adjust(gSavedSettings, "RenderSkyAutoAdjustLegacy", false);
-        static LLCachedControl<bool> buildNoPost(gSavedSettings, "RenderDisablePostProcessing", false);
 
         LLSettingsSky::ptr_t psky = LLEnvironment::instance().getCurrentSky();
 
         bool color_grade = apply_color_grade && color_grade_cc;
-        bool legacy_gamma = psky->getReflectionProbeAmbiance(should_auto_adjust) == 0.f;
-        bool no_post = gSnapshotNoPost || legacy_gamma || (buildNoPost && gFloaterTools && gFloaterTools->isAvailable());
+        // [RotoInk Round-3, Codex P1] legacy_gamma/no_post now resolved by the
+        // shared colorCorrectWillApplyExposure() predicate (see its header
+        // comment) so renderCineOutline's EXPOSURE upload can never drift
+        // from what this function actually selects below.
+        bool legacy_gamma = false;
+        bool no_post = false;
+        colorCorrectWillApplyExposure(apply_tonemap, &legacy_gamma, &no_post);
         LLGLSLShader* shader = nullptr;
         if (apply_tonemap)
         {
@@ -12822,18 +12902,32 @@ void LLPipeline::updateNightMaskAnchor()
 // — see the M8 ordering note further down for how its ReShade raw-scene
 // capture ordering differs from GradND/Polarizer's.
 //
-// M2: three later passes deliberately BYPASS Night Mask and are not expected
-// to change for v1 — a shaft or outline punching through the darkened region
-// is the intended look, not a bug:
-//   - renderCineOutline(&mRT->screen)   (called right after this, in the
-//     `if (hdr)` block of renderFinalize) — the outline is a director-facing
-//     overlay, not scene light; it should read on top of the mask.
+// M2: two later passes deliberately BYPASS Night Mask and are not expected to
+// change for v1 — a shaft punching through the darkened region, or a lens
+// artifact ignoring it entirely, is the intended look, not a bug:
 //   - the legacy sun godray pass (renderFinalize, display-stage placement,
 //     "[BDMerge G3.2] volumetric lighting / godrays") — an atmospheric shaft
 //     is meant to visibly punch through a darkened background.
 //   - lens flare, composited inside colorCorrectF (computeLensFlare) — a lens
 //     artifact belongs to the CAMERA, not the scene, so it sits entirely
 //     outside the world-lighting fake Night Mask represents.
+//
+// [RotoInk] renderCineOutline's relationship to Night Mask is no longer fixed
+// — it now depends on CineOutlineLayer (LLPipeline::resolveRotoInkLayer),
+// which the Lightbox "Ink layer" combo controls:
+//   - Scene (0, inside renderGeomPostDeferred) and Camera (1, the default —
+//     right after generateExposure, BEFORE this function) both run before
+//     Night Mask, so it (and GradND/Polarizer/the ReShade raw capture) darkens
+//     and tints the ink along with the rest of the scene, as if it had been
+//     captured with it.
+//   - Over atmosphere (2, after feedProjectorVolumetricBloom) runs after this
+//     function has finished, so it keeps the OLD bypass behaviour — the ink
+//     reads on top of Night Mask, a director-facing overlay rather than scene
+//     light — while still compositing under bloom feed and pre-tonemap grade.
+//   - Overlay (3, HDR path only, post colorCorrect) is fully outside this
+//     function's reach either way: flat, display-referred lines with no
+//     grade/bloom, forced back to Camera whenever tonemap type 8 (S-Log3) is
+//     active (writing display values into a log image would corrupt it).
 void LLPipeline::applyOnLensFilters(LLRenderTarget* screen)
 {
     if (!gOnLensFiltersProgram.isComplete())
@@ -13127,6 +13221,14 @@ void LLPipeline::applyOnLensFilters(LLRenderTarget* screen)
         // copyRenderTarget, whose shader samples deferredScreen's depth (which
         // `screen` shares), reintroducing the depth feedback loop. A blit samples no
         // textures, so it is feedback-free. GL_COLOR_BUFFER_BIT leaves depth alone.
+        // TODO(RotoInk round-2 review, pre-existing hazard, not fixed here): a
+        // plain copyContents() blit writes colour into EVERY draw buffer
+        // currently bound on `screen`'s FBO, not just attachment 0 -- when
+        // RenderVisibleDiffuseSidecar is on, `screen`'s visible-diffuse
+        // (SRGB8_ALPHA8) and coverage (RG8) sidecar attachments also receive
+        // this filtered beauty colour. See LLPipeline::renderCineOutline and
+        // LLRenderTarget::copyColorToAttachment0 for the fix applied there;
+        // left unchanged here per review scope (out of scope for this pass).
         screen->copyContents(mWaterDis,
                              0, 0, mWaterDis.getWidth(), mWaterDis.getHeight(),
                              0, 0, screen->getWidth(), screen->getHeight(),
@@ -15587,56 +15689,520 @@ void LLPipeline::copyRenderTarget(LLRenderTarget* src, LLRenderTarget* dst)
     dst->flush();
 }
 
-// [Cine Outline Phase 1] native deferred normal/depth silhouette pass. It is
-// additive in place so the disabled path can be a true no-op without ping-pong.
-void LLPipeline::renderCineOutline(LLRenderTarget* dst)
+// [RotoInk] Rotoscope Ink: reads `dst` as a plain texture and draws into the
+// mWaterDis scratch (blend off), then blits the result's COLOUR ONLY back
+// into `dst` (successor of the Cine Outline Phase-1 additive Sobel pass).
+// Fixed/match-light ink colour, the three blend modes and the legacy alpha
+// glow feed are all resolved in-shader instead of via GL blending.
+// Off (CineOutlineEnabled false) remains a complete no-op: no scratch draw,
+// no blit.
+//
+// [Round-1 review fix, Opus P2-8] This mirrors applyOnLensFilters exactly
+// (pipeline.cpp ~13056-13060/~13125-13133) instead of drawing directly into
+// `dst`: `dst` (mRT->screen or mRT->postPingMap) shares mRT->deferredScreen's
+// depth attachment (mRT->deferredScreen.shareDepthBuffer(...), pipeline.cpp
+// ~1211/~1280), which bindDeferredShader() samples as DEFERRED_DEPTH -- so
+// drawing directly into `dst` while sampling that same depth attachment is a
+// feedback loop, and when RenderVisibleDiffuseSidecar adds mRT->screen's two
+// extra colour attachments (pipeline.cpp ~1204-1205), a shader that only
+// writes `frag_color` would leave them undefined for the frame. Rendering
+// into mWaterDis (its own independent depth buffer, single colour
+// attachment) and blitting GL_COLOR_BUFFER_BIT back avoids both hazards; a
+// blit samples no textures, so it is feedback-free and never touches
+// anything but colour.
+//
+// mWaterDis safety ([RotoInk Round-3] now FOUR possible call sites -- see
+// LLPipeline::ERotoInkLayer / shouldRunRotoInkAt -- plus the always-on
+// non-HDR call): it is allocated at screen resolution in the same format as
+// the call site's dst (screenFormat tracks the same hdr flag
+// mRT->screen/mRT->postPingMap use -- see allocateScreenBuffer), so the blit
+// is always same-size/same-format. It is also transient within THIS call
+// only -- every read/write of it happens strictly inside a single pass's own
+// bind/draw/flush, so nothing here can read stale data from, or leave data
+// behind for, another pass, REGARDLESS of call order:
+//   - ROTOINK_LAYER_SCENE (renderGeomPostDeferred) runs long before any other
+//     mWaterDis consumer this frame.
+//   - ROTOINK_LAYER_CAMERA (the default) now runs BEFORE applyOnLensFilters
+//     (moved there by the round-3 pass-order review), i.e. before applyOn-
+//     LensFilters' own mWaterDis use rather than after it as in earlier
+//     revisions of this comment -- still safe, since applyOnLensFilters
+//     starts its own bind/draw/flush cycle fresh regardless of what ran
+//     before it.
+//   - ROTOINK_LAYER_ATMOSPHERE (after feedProjectorVolumetricBloom) runs
+//     after BOTH applyOnLensFilters and renderVirtualCinemaRimGlow have
+//     fully consumed and released their own mWaterDis use earlier this frame.
+//   - ROTOINK_LAYER_OVERLAY and the non-HDR call (post colorCorrect) run
+//     after every other consumer above; renderVirtualCinemaRimGlow does not
+//     touch mWaterDis again until next frame.
+void LLPipeline::renderCineOutline(LLRenderTarget* dst, const F32* camera_modelview, const F32* camera_projection)
 {
+    // [Round-1 review fix, Opus P2-7] The legacy shader's silhouette test read
+    // getNorm().w, which decodeNormal() in globalF.glsl never wrote -- so the
+    // Phase-1 pass was silently drawing nothing (sil term always zero) for
+    // every viewer that ever shipped it. A user who already had
+    // CineOutlineEnabled=true will see actual outlines appear for the first
+    // time after this upgrade; that is the bug fix, not a regression.
     static LLCachedControl<bool> enabled(gSavedSettings, "CineOutlineEnabled", false);
 
-    if (!enabled() || gCubeSnapshot || gSnapshotNoPost ||
-        !gCineOutlineProgram.isComplete())
+    if (!enabled() || gCubeSnapshot || gSnapshotNoPost || !dst ||
+        !gCineOutlineProgram.isComplete() || !mWaterDis.isComplete())
     {
         return;
     }
 
-    static LLCachedControl<LLColor3> color(
-        gSavedSettings, "CineOutlineColor", LLColor3(1.0f, 0.04f, 0.04f));
-    static LLCachedControl<F32> intensity(
-        gSavedSettings, "CineOutlineIntensity", 8.0f);
-    static LLCachedControl<F32> glow(
-        gSavedSettings, "CineOutlineGlow", 1.0f);
+    // [RotoInk Round-4, Codex+Opus P1] An explicit camera_modelview is passed
+    // ONLY by the ROTOINK_LAYER_SCENE call site (renderGeomPostDeferred),
+    // which is the one call site that runs before gGLLast{ModelView,
+    // Projection} are updated for this frame (see the header comment). It
+    // therefore also identifies "this is the Scene layer" for the exposure
+    // decision below (Fix 2): Scene ink is painted directly into the world
+    // buffer, so it should be exposed like any other surface rather than
+    // inverse-compensated against the tonemapper's exposure.
+    const bool is_scene_layer = (camera_modelview != nullptr);
+    const F32* subject_modelview_src  = camera_modelview  ? camera_modelview  : gGLLastModelView;
+    const F32* subject_projection_src = camera_projection ? camera_projection : gGLLastProjection;
+
+    // --- settings (every CineOutline* key) ----------------------------------
+    static LLCachedControl<LLColor3> color(gSavedSettings, "CineOutlineColor", LLColor3(1.0f, 0.04f, 0.04f));
+    static LLCachedControl<F32> intensity_setting(gSavedSettings, "CineOutlineIntensity", 8.0f);
+    static LLCachedControl<F32> glow_setting(gSavedSettings, "CineOutlineGlow", 1.0f);
+
+    static LLCachedControl<bool> sil_enabled_setting(gSavedSettings, "CineOutlineSilhouetteEnabled", true);
+    static LLCachedControl<F32>  sil_thr_setting(gSavedSettings, "CineOutlineSilhouetteThreshold", 0.02f);
+    static LLCachedControl<F32>  sil_weight_setting(gSavedSettings, "CineOutlineSilhouetteWeight", 1.0f);
+    static LLCachedControl<bool> crease_enabled_setting(gSavedSettings, "CineOutlineCreaseEnabled", true);
+    static LLCachedControl<F32>  crease_angle_setting(gSavedSettings, "CineOutlineCreaseAngle", 30.f);
+    static LLCachedControl<F32>  crease_weight_setting(gSavedSettings, "CineOutlineCreaseWeight", 1.0f);
+    static LLCachedControl<S32>  depth_mode_setting(gSavedSettings, "CineOutlineDepthMode", 0);
+    static LLCachedControl<F32>  metric_thr_setting(gSavedSettings, "CineOutlineMetricThreshold", 0.10f);
+    static LLCachedControl<F32>  width_setting(gSavedSettings, "CineOutlineWidth", 1.5f);
+    static LLCachedControl<F32>  softness_setting(gSavedSettings, "CineOutlineSoftness", 0.5f);
+    static LLCachedControl<F32>  far_cutoff_setting(gSavedSettings, "CineOutlineFarCutoff", 0.f);
+
+    static LLCachedControl<S32>  subject_mode_setting(gSavedSettings, "CineOutlineSubjectMode", 0);
+    static LLCachedControl<S32>  subject_target_setting(gSavedSettings, "CineOutlineSubjectTarget", 0);
+    static LLCachedControl<F32>  subject_manual_depth_setting(gSavedSettings, "CineOutlineSubjectManualDepth", 4.f);
+    static LLCachedControl<F32>  subject_depth_range_setting(gSavedSettings, "CineOutlineSubjectDepthRange", 1.5f);
+    static LLCachedControl<F32>  subject_depth_feather_setting(gSavedSettings, "CineOutlineSubjectDepthFeather", 0.75f);
+    static LLCachedControl<F32>  subject_ellipse_setting(gSavedSettings, "CineOutlineSubjectEllipse", 0.6f);
+    static LLCachedControl<F32>  subject_ellipse_scale_setting(gSavedSettings, "CineOutlineSubjectEllipseScale", 1.3f);
+    static LLCachedControl<F32>  subject_ellipse_feather_setting(gSavedSettings, "CineOutlineSubjectEllipseFeather", 0.25f);
+
+    static LLCachedControl<S32>  ink_mode_setting(gSavedSettings, "CineOutlineInkColorMode", 0);
+    static LLCachedControl<F32>  match_reach_setting(gSavedSettings, "CineOutlineMatchReach", 6.f);
+    static LLCachedControl<F32>  opacity_setting(gSavedSettings, "CineOutlineOpacity", 1.0f);
+    static LLCachedControl<S32>  blend_mode_setting(gSavedSettings, "CineOutlineBlendMode", 2);
+
+    static LLCachedControl<bool> sketch_enabled_setting(gSavedSettings, "CineOutlineSketchEnabled", false);
+    static LLCachedControl<F32>  sketch_amount_setting(gSavedSettings, "CineOutlineSketchAmount", 2.0f);
+    static LLCachedControl<F32>  sketch_detail_setting(gSavedSettings, "CineOutlineSketchDetail", 0.45f);
+    static LLCachedControl<F32>  sketch_fps_setting(gSavedSettings, "CineOutlineSketchFPS", 12.f);
+    static LLCachedControl<S32>  sketch_strokes_setting(gSavedSettings, "CineOutlineSketchStrokes", 2);
+    static LLCachedControl<F32>  sketch_roughness_setting(gSavedSettings, "CineOutlineSketchRoughness", 0.3f);
+    static LLCachedControl<F32>  sketch_seed_setting(gSavedSettings, "CineOutlineSketchSeed", 0.f);
+
+    static LLCachedControl<S32>  motion_style_setting(gSavedSettings, "CineOutlineMotionStyle", 0);
+    static LLCachedControl<F32>  motion_speed_setting(gSavedSettings, "CineOutlineMotionSpeed", 0.5f);
+    static LLCachedControl<F32>  motion_amount_setting(gSavedSettings, "CineOutlineMotionAmount", 0.5f);
+    static LLCachedControl<F32>  motion_scale_setting(gSavedSettings, "CineOutlineMotionScale", 0.3f);
+    static LLCachedControl<F32>  motion_angle_setting(gSavedSettings, "CineOutlineMotionAngle", 90.f);
+
+    // m-a: sanitize every scalar with a finite check (non-finite -> the
+    // setting's own default) BEFORE clamping (pattern: updateNightMaskAnchor's
+    // finite_or, pipeline.cpp ~12636) -- a corrupted settings file must
+    // degrade to the default look, never propagate NaN into a shader uniform.
+    const auto finite_or = [](F32 v, F32 fallback)
+    { return std::isfinite(v) ? v : fallback; };
+
+    const F32  intensity        = llclamp(finite_or((F32)intensity_setting(), 8.0f), 0.f, 64.f);
+    const F32  glow             = llclamp(finite_or((F32)glow_setting(), 1.0f), 0.f, 1.f);
+    const bool sil_enabled      = sil_enabled_setting();
+    const F32  sil_thr          = llclamp(finite_or((F32)sil_thr_setting(), 0.02f), 1.0e-4f, 1.0f);
+    const F32  sil_weight       = llclamp(finite_or((F32)sil_weight_setting(), 1.0f), 0.f, 1.f);
+    const bool crease_enabled   = crease_enabled_setting();
+    const F32  crease_angle     = llclamp(finite_or((F32)crease_angle_setting(), 30.f), 1.f, 90.f);
+    const F32  crease_weight    = llclamp(finite_or((F32)crease_weight_setting(), 1.0f), 0.f, 1.f);
+    const S32  depth_mode       = std::clamp((S32)depth_mode_setting(), 0, 1);
+    const F32  metric_thr       = llclamp(finite_or((F32)metric_thr_setting(), 0.10f), 1.0e-4f, 5.f);
+    const F32  width            = llclamp(finite_or((F32)width_setting(), 1.5f), 0.f, 12.f);
+    const F32  softness         = llclamp(finite_or((F32)softness_setting(), 0.5f), 0.f, 1.f);
+    const F32  far_cutoff       = llclamp(finite_or((F32)far_cutoff_setting(), 0.f), 0.f, 512.f);
+
+    const S32  subject_mode            = std::clamp((S32)subject_mode_setting(), 0, 2);
+    const S32  subject_target          = std::clamp((S32)subject_target_setting(), 0, 4);
+    const F32  subject_manual_depth    = llclamp(finite_or((F32)subject_manual_depth_setting(), 4.f), 0.1f, 256.f);
+    const F32  subject_depth_range     = llclamp(finite_or((F32)subject_depth_range_setting(), 1.5f), 0.f, 32.f);
+    const F32  subject_depth_feather   = llclamp(finite_or((F32)subject_depth_feather_setting(), 0.75f), 0.01f, 16.f);
+    const F32  subject_ellipse_amount  = llclamp(finite_or((F32)subject_ellipse_setting(), 0.6f), 0.f, 1.f);
+    const F32  subject_ellipse_scale   = llclamp(finite_or((F32)subject_ellipse_scale_setting(), 1.3f), 0.5f, 3.f);
+    const F32  subject_ellipse_feather = llclamp(finite_or((F32)subject_ellipse_feather_setting(), 0.25f), 0.01f, 0.75f);
+
+    const S32  ink_mode         = std::clamp((S32)ink_mode_setting(), 0, 1);
+    const F32  match_reach      = llclamp(finite_or((F32)match_reach_setting(), 6.f), 1.f, 32.f);
+    const F32  opacity          = llclamp(finite_or((F32)opacity_setting(), 1.0f), 0.f, 1.f);
+    const S32  blend_mode       = std::clamp((S32)blend_mode_setting(), 0, 2);
+
+    const bool sketch_enabled   = sketch_enabled_setting();
+    const F32  sketch_amount    = llclamp(finite_or((F32)sketch_amount_setting(), 2.0f), 0.f, 8.f);
+    const F32  sketch_detail    = llclamp(finite_or((F32)sketch_detail_setting(), 0.45f), 0.f, 1.f);
+    const F32  sketch_fps       = llclamp(finite_or((F32)sketch_fps_setting(), 12.f), 0.5f, 60.f);
+    const S32  sketch_strokes   = std::clamp((S32)sketch_strokes_setting(), 1, 4);
+    const F32  sketch_roughness = llclamp(finite_or((F32)sketch_roughness_setting(), 0.3f), 0.f, 1.f);
+    const F32  sketch_seed      = llclamp(finite_or((F32)sketch_seed_setting(), 0.f), 0.f, 100.f);
+
+    const S32  motion_style     = std::clamp((S32)motion_style_setting(), 0, 5);
+    const F32  motion_speed     = llclamp(finite_or((F32)motion_speed_setting(), 0.5f), 0.05f, 5.f);
+    const F32  motion_amount    = llclamp(finite_or((F32)motion_amount_setting(), 0.5f), 0.f, 1.f);
+    const F32  motion_scale     = llclamp(finite_or((F32)motion_scale_setting(), 0.3f), 0.02f, 1.f);
+    const F32  motion_angle     = llclamp(finite_or((F32)motion_angle_setting(), 90.f), 0.f, 360.f);
 
     LL_PROFILE_GPU_ZONE("renderCineOutline");
 
-    LLGLDepthTest depth(GL_FALSE);
-    LLGLEnable blend(GL_BLEND);
-    LLGLDisable cull(GL_CULL_FACE);
-    gGL.setSceneBlendType(LLRender::BT_ADD);
+    const F32 w = (F32)dst->getWidth(), h = (F32)dst->getHeight();
+    const F32 px_scale = h / 1080.f;               // "px at 1080p" -> px at this res
 
-    dst->bindTarget();
+    // --- subject resolve -----------------------------------------------
+    // [Round-1 review fix, Codex P1 / Opus P2-4] The smoother lives entirely
+    // in AGENT (world) space: it tracks the resolved subject's animated AABB
+    // centre + half-extents, NOT a view-space depth or a screen-space
+    // ellipse. Only the subject's own motion is smoothed (critically-damped
+    // exponential, same idiom as RimGlow's focus smoothing / Night Mask's
+    // anchor smoothing); the camera never enters the smoother at all. Every
+    // single call below re-projects the CURRENT smoothed world-space box
+    // with THIS render's own camera (subject_modelview_src/
+    // subject_projection_src -- gGLLast{ModelView,Projection} for every call
+    // site except ROTOINK_LAYER_SCENE, which passes the live gGLModelView/
+    // gGLProjection instead; see the function's camera_modelview parameter
+    // comment) to get focusZ and the screen ellipse fresh -- so a camera cut on the same
+    // actor, a camera move while world time is paused (alpha would be ~0,
+    // but the projection itself never depended on alpha), and a multi-
+    // direction capture (360/cubemap, each face its own current-camera call)
+    // are all geometrically exact by construction, never interpolated from a
+    // previous shot's stale camera-space values.
+    F32  focusZ = subject_manual_depth;
+    F32  cx = 0.5f, cy = 0.5f, rx = 0.2f, ry = 0.35f;
+    bool ellipse_valid = false;
+    if (subject_mode != 0)
+    {
+        LLDirectorCast& cast = LLDirectorCast::instance();
+        LLVOAvatar* avatar = nullptr;
+        switch (subject_target)
+        {
+            case 1: avatar = cast.resolveSubjectA(); break;
+            case 2: avatar = cast.resolveSubjectB(); break;
+            case 3: avatar = cast.resolveSubjectC(); break;
+            case 4: avatar = cast.resolveSubjectD(); break;
+            case 0: default: avatar = cast.resolve(LLUUID::null); break;
+        }
+
+        if (avatar && !avatar->isDead())
+        {
+            // Agent-space AABB (attachments included), already region-shift
+            // compensated by LLVOAvatar itself (see mLastAnimExtents update
+            // sites) -- exactly the center/half-extents idiom llvoavatar.cpp
+            // already uses (~3118-3119).
+            const LLVector3* ext = avatar->getLastAnimExtents();
+            const LLVector3 raw_center = (ext[0] + ext[1]) * 0.5f;
+            const LLVector3 raw_half   = (ext[1] - ext[0]) * 0.5f;
+
+            if (raw_center.isFinite() && raw_half.isFinite())
+            {
+                LLViewerRegion* region = gAgent.getRegion();
+                const U64 region_handle = region ? region->getHandle() : 0;
+                const F64 now = LLPresentationTime::currentFrame().presentation_time;
+                const bool now_finite = std::isfinite(now);
+                // [Round-1 review fix, Opus P2-4] Cheap Director switcher cut
+                // hook: a hard program cut also snaps the world-space
+                // smoother (even on the SAME actor/region), so a scene cut
+                // never carries the previous shot's in-flight subject-motion
+                // smoothing across the edit. Camera cuts alone need no such
+                // hook -- they are exact by construction via the fresh
+                // re-projection below.
+                const U64 cut_serial = ALDirectorSwitcher::instance().cutSerial();
+
+                RotoInkSubjectState& st = mRotoInkSubject;
+                const bool snap = !st.mHaveSmoothed || avatar->getID() != st.mLastTargetId ||
+                    region_handle != st.mLastRegionHandle ||
+                    st.mLastTime < 0.0 || (now_finite && now < st.mLastTime) ||
+                    cut_serial != st.mLastCutSerial;
+
+                if (snap)
+                {
+                    st.mCenter = raw_center;
+                    st.mHalfExtents = raw_half;
+                }
+                else if (now_finite)
+                {
+                    constexpr F32 ROTOINK_SUBJECT_DAMPING_SEC = 0.15f;
+                    const F64 dt_s = llmax(now - st.mLastTime, 0.0);
+                    const F32 alpha = 1.f - expf(-(F32)dt_s / ROTOINK_SUBJECT_DAMPING_SEC);
+                    st.mCenter += (raw_center - st.mCenter) * alpha;
+                    st.mHalfExtents += (raw_half - st.mHalfExtents) * alpha;
+                }
+                st.mHaveSmoothed = true;
+                st.mLastTargetId = avatar->getID();
+                st.mLastRegionHandle = region_handle;
+                st.mLastCutSerial = cut_serial;
+                if (now_finite) st.mLastTime = now;
+
+                // Re-project the smoothed WORLD-space box with the CURRENT
+                // camera (subject_modelview_src/subject_projection_src --
+                // [RotoInk Round-4] gGLLast{ModelView,Projection} normally,
+                // but the LIVE gGLModelView/gGLProjection for
+                // ROTOINK_LAYER_SCENE, whose call site runs before this
+                // frame's gGLLast* snapshot -- see the function header
+                // comment) every call -- never cached, never smoothed itself,
+                // so it is correct for whatever camera/capture-direction is
+                // active THIS render.
+                const glm::mat4 modelview = glm::make_mat4(subject_modelview_src);
+                const glm::vec4 view4 = modelview * glm::vec4(
+                    st.mCenter.mV[VX], st.mCenter.mV[VY], st.mCenter.mV[VZ], 1.f);
+                focusZ = llmax(-view4.z, 0.f); // metric view depth, metres
+
+                const glm::mat4 projection = glm::make_mat4(subject_projection_src);
+                // [Round-2 review fix, Opus P2] A corner between the camera
+                // and the near plane has a small positive clip.w -- the
+                // perspective divide below still "succeeds" but blows the
+                // projected uv out to a huge, wrong value (ballooning the
+                // ellipse) instead of failing the clip.w epsilon check.
+                // Reject on VIEW-SPACE depth against the actual near clip
+                // first, before the perspective divide ever runs.
+                const F32 near_clip = LLViewerCamera::getInstance()->getNear();
+                F32 lo_x = 1.0e6f, hi_x = -1.0e6f, lo_y = 1.0e6f, hi_y = -1.0e6f;
+                bool corners_valid = true;
+                for (S32 i = 0; i < 8 && corners_valid; ++i)
+                {
+                    const LLVector3 corner(
+                        st.mCenter.mV[VX] + ((i & 1) ? st.mHalfExtents.mV[VX] : -st.mHalfExtents.mV[VX]),
+                        st.mCenter.mV[VY] + ((i & 2) ? st.mHalfExtents.mV[VY] : -st.mHalfExtents.mV[VY]),
+                        st.mCenter.mV[VZ] + ((i & 4) ? st.mHalfExtents.mV[VZ] : -st.mHalfExtents.mV[VZ]));
+                    const glm::vec4 corner_view = modelview * glm::vec4(corner.mV[VX], corner.mV[VY], corner.mV[VZ], 1.f);
+                    if (-corner_view.z < near_clip)
+                    {
+                        corners_valid = false; // corner at/behind the near plane -> keep the slab
+                        break;
+                    }
+                    const glm::vec4 clip = projection * corner_view;
+                    if (clip.w <= 1.0e-4f)
+                    {
+                        corners_valid = false; // box not fully in front of the camera -> keep the slab
+                        break;
+                    }
+                    const F32 ux = (clip.x / clip.w) * 0.5f + 0.5f;
+                    const F32 uy = (clip.y / clip.w) * 0.5f + 0.5f;
+                    lo_x = llmin(lo_x, ux); hi_x = llmax(hi_x, ux);
+                    lo_y = llmin(lo_y, uy); hi_y = llmax(hi_y, uy);
+                }
+
+                if (corners_valid)
+                {
+                    cx = 0.5f * (lo_x + hi_x);
+                    cy = 0.5f * (lo_y + hi_y);
+                    rx = llmax(0.5f * (hi_x - lo_x) * subject_ellipse_scale, 0.02f);
+                    ry = llmax(0.5f * (hi_y - lo_y) * subject_ellipse_scale, 0.02f);
+                }
+                ellipse_valid = corners_valid;
+            }
+            else
+            {
+                mRotoInkSubject.mHaveSmoothed = false; // non-finite extents -> resnap when they recover
+            }
+        }
+        else
+        {
+            mRotoInkSubject.mHaveSmoothed = false; // missing target -> fallback manual depth, resnap when it returns
+        }
+    }
+
+    // [Round-2 review fix, Codex P1] Manual exposure knob -- EXPOSURE is now a
+    // SIGNED selector (Fable's round-2 shader contract addendum, verified
+    // against tonemapUtilF.glsl:421-428 applyExposure()):
+    //   +RenderExposure : every tonemapper except type 8 -- the ink's
+    //                     match-light sampling reads HDR scene colour, so it
+    //                     must agree with the SAME auto-exposure-scaled value
+    //                     the tonemap will apply downstream (shader does
+    //                     exposureMap(0.5).r * exposure, same as
+    //                     applyOnLensFilters's EXPOSURE upload).
+    //   -RenderExposure : tonemap_type == 8 (S-Log3 capture). That tonemapper
+    //                     forces exp_scale = 1 and returns color * exposure --
+    //                     manual iris only, auto-exposure adaptation ignored
+    //                     so a fixed transfer sees a fixed, stable input
+    //                     (same idiom as RimGlow's rim_exposure_lock). The
+    //                     shader reads the sign, not this uniform's own
+    //                     clamp range, so -RenderExposure is unambiguous
+    //                     (RenderExposure is clamped to [0.5,4], never 0).
+    //   0.0             : non-HDR call site (dst == &mRT->postPingMap),
+    //                     already post-tonemap -- the shader takes its
+    //                     scale-1 path; ALSO forced whenever colorCorrect
+    //                     will bypass its TONEMAP shader variant entirely
+    //                     this frame even on the HDR path (round-3 fix
+    //                     below); ALSO forced for ROTOINK_LAYER_SCENE
+    //                     (round-4 fix below) regardless of hdr_path.
+    // EXPOSURE_MAP itself needs no explicit bind here: bindDeferredShader()
+    // below already binds it unconditionally (pipeline.cpp ~20605-20609)
+    // whenever the linked program declares the sampler; the shader simply
+    // doesn't sample it when exposure <= 0.
+    static LLCachedControl<F32> render_exposure(gSavedSettings, "RenderExposure", 1.f);
+    static LLCachedControl<S32> exposure_tonemap_type(gSavedSettings, "AlchemyRenderTonemapType", 0);
+    // [Round-3 review fix, Opus P2] encode_slog_family (tonemapUtilF.glsl
+    // ~397-406) applies its OWN exp2(AlchemyToneMapSLogEV) multiply on top of
+    // applyExposure()'s manual-only exposure for tonemap type 8. Fold the
+    // same factor into the locked exposure here so the ink's manual-iris
+    // input matches what actually reaches the log curve, not just the iris.
+    static LLCachedControl<F32> exposure_slog_ev(gSavedSettings, "AlchemyToneMapSLogEV", 0.f);
+    const bool hdr_path = (dst == &mRT->screen);
+    const F32  clamped_exposure = llclamp(finite_or((F32)render_exposure(), 1.f), 0.5f, 4.f);
+    const bool slog3_exposure_lock = hdr_path && (exposure_tonemap_type() == 8);
+    const F32  slog3_ev_scale = exp2f(llclamp(finite_or((F32)exposure_slog_ev(), 0.f), -8.f, 8.f));
+    // [Round-3 review fix, Codex P1] Even on the HDR path, colorCorrect may
+    // still bypass its TONEMAP shader variant entirely this frame (legacy-
+    // gamma sky, RenderDisablePostProcessing with Build open, or a "no post"
+    // snapshot) -- go through the SAME shared predicate colorCorrect itself
+    // uses (colorCorrectWillApplyExposure) rather than assuming hdr_path
+    // alone implies exposure will be applied downstream. apply_tonemap=true
+    // is correct here: hdr_path is only ever true when this frame's
+    // renderFinalize `hdr` local is also true (every screen-dst call site is
+    // gated on `if (hdr)`), which is the exact apply_tonemap colorCorrect
+    // will use later this same frame.
+    // [Round-4 review fix, Codex P1] ROTOINK_LAYER_SCENE (design decision):
+    // this ink is painted directly into the world buffer -- well before this
+    // frame's own exposure map even exists (generateExposure runs later in
+    // renderFinalize; the Scene call site only ever sees LAST frame's
+    // mExposureMap) and it is itself part of what current-frame auto-
+    // exposure will meter. Rather than inverse-compensate with a stale,
+    // self-referential exposure value, treat it like real paint on a
+    // surface: force EXPOSURE=0 (shader E=1) so tonemapping exposes the ink
+    // exactly like any other scene pixel -- black ink stays black regardless
+    // of exposure; grey/coloured ink brightens or darkens with the scene the
+    // way real pigment would (documented in the ri_ink_layer_combo tooltip).
+    const bool exposure_applies = !is_scene_layer && hdr_path && colorCorrectWillApplyExposure(/*apply_tonemap=*/true);
+    const F32  roto_exposure = !exposure_applies ? 0.f
+        : (slog3_exposure_lock ? -(clamped_exposure * slog3_ev_scale) : clamped_exposure);
+
+    // [Round-1 review fix, Opus P2-8] Draw into the mWaterDis scratch (own
+    // depth, single colour attachment) reading `dst` directly as a plain
+    // texture -- see the function-header comment for why NOT drawing
+    // directly into `dst`. No initial snapshot copy is needed: `dst` is
+    // never bound as a draw target during this pass, so sampling it here is
+    // safe regardless of what it shares attachments with.
+    mWaterDis.bindTarget();
+
+    LLGLDepthTest depth(GL_FALSE);
+    LLGLDisable   blend(GL_BLEND);                 // was LLGLEnable + BT_ADD: additive blend removed
+    LLGLDisable   cull(GL_CULL_FACE);
+
     bindDeferredShader(gCineOutlineProgram);
 
-    gCineOutlineProgram.uniform2f(
-        LLShaderMgr::DEFERRED_SCREEN_RES,
-        (GLfloat)dst->getWidth(), (GLfloat)dst->getHeight());
+    S32 sch = gCineOutlineProgram.enableTexture(LLShaderMgr::ROTO_SCENE);
+    if (sch > -1)
+    {
+        dst->bindTexture(0, sch, LLTexUnit::TFO_POINT);
+        gGL.getTexUnit(sch)->setTextureAddressMode(LLTexUnit::TAM_CLAMP);
+    }
 
     const LLColor3& outline_color = color();
-    gCineOutlineProgram.uniform3f(
-        LLShaderMgr::OUTLINE_COLOR,
+    gCineOutlineProgram.uniform2f(LLShaderMgr::DEFERRED_SCREEN_RES, w, h);
+    gCineOutlineProgram.uniform3f(LLShaderMgr::OUTLINE_COLOR,
         outline_color.mV[0], outline_color.mV[1], outline_color.mV[2]);
-    gCineOutlineProgram.uniform4f(
-        LLShaderMgr::OUTLINE_PARAMS,
-        1.5f, 1.0f, 1.0f, llclamp((F32)intensity(), 0.0f, 64.0f));
-    gCineOutlineProgram.uniform4f(
-        LLShaderMgr::OUTLINE_PARAMS2,
-        llclamp((F32)glow(), 0.0f, 1.0f), 0.0f, 0.0f, 0.0f);
+    gCineOutlineProgram.uniform4f(LLShaderMgr::OUTLINE_PARAMS,
+        llclamp(width * px_scale, 0.f, 24.f), softness, far_cutoff, intensity);
+    gCineOutlineProgram.uniform4f(LLShaderMgr::OUTLINE_PARAMS2,
+        glow, (F32)depth_mode, (F32)ink_mode, (F32)blend_mode);
+    gCineOutlineProgram.uniform4f(LLShaderMgr::ROTO_LINE,
+        depth_mode == 1 ? metric_thr : sil_thr,
+        1.f - cosf(crease_angle * DEG_TO_RAD),
+        sil_enabled ? sil_weight : 0.f, crease_enabled ? crease_weight : 0.f);
+    // [RotoInk Round-4, Opus P2] roto_ink.z: 1.0 when dst is a DISPLAY-
+    // encoded buffer (ROTOINK_LAYER_OVERLAY and the non-HDR call, both
+    // &mRT->postPingMap, taken AFTER colorCorrect), 0.0 when dst is the
+    // linear HDR scene (&mRT->screen -- Scene/Camera/Atmosphere). hdr_path
+    // already distinguishes these two destinations exactly. See Fable's
+    // round-4 shader contract addendum (scratchpad/roto_rimpreset_contract.md).
+    gCineOutlineProgram.uniform4f(LLShaderMgr::ROTO_INK, opacity, match_reach * px_scale, hdr_path ? 0.f : 1.f, 0.f);
+    gCineOutlineProgram.uniform4f(LLShaderMgr::ROTO_SUBJECT, (F32)subject_mode, focusZ, subject_depth_range, subject_depth_feather);
+    gCineOutlineProgram.uniform4f(LLShaderMgr::ROTO_SUBJECT2, cx, cy, rx, ry);
+    gCineOutlineProgram.uniform4f(LLShaderMgr::ROTO_SUBJECT3, subject_ellipse_amount, subject_ellipse_feather, ellipse_valid ? 1.f : 0.f, 0.f);
+    gCineOutlineProgram.uniform4f(LLShaderMgr::ROTO_SKETCH, sketch_enabled ? 1.f : 0.f, sketch_amount * px_scale, sketch_detail, sketch_fps);
+    gCineOutlineProgram.uniform4f(LLShaderMgr::ROTO_SKETCH2, (F32)sketch_strokes, sketch_roughness, sketch_seed, 0.f);
+    gCineOutlineProgram.uniform4f(LLShaderMgr::ROTO_MOTION, (F32)motion_style, motion_speed, motion_amount, motion_scale);
+    gCineOutlineProgram.uniform4f(LLShaderMgr::ROTO_MOTION2, motion_angle * DEG_TO_RAD,
+        (F32)std::fmod(LLPresentationTime::currentFrame().presentation_time, 3600.0), 0.f, 0.f);
+    gCineOutlineProgram.uniform1f(LLShaderMgr::EXPOSURE, roto_exposure);
 
     mScreenTriangleVB->setBuffer();
     mScreenTriangleVB->drawArrays(LLRender::TRIANGLES, 0, 3);
 
+    if (sch > -1)
+    {
+        gCineOutlineProgram.disableTexture(LLShaderMgr::ROTO_SCENE);
+    }
     unbindDeferredShader(gCineOutlineProgram);
-    dst->flush();
-    gGL.setSceneBlendType(LLRender::BT_ALPHA);
+    mWaterDis.flush();
+
+    // [Round-2 review fix, Codex P1 / Opus P2] Colour-only blit back into dst,
+    // restricted to dst's attachment 0. GL_COLOR_BUFFER_BIT never touches
+    // dst's DEPTH, but a plain copyContents() blit still writes colour into
+    // EVERY draw buffer currently enabled on dst's FBO (glBlitFramebuffer
+    // follows the destination's glDrawBuffers() list) -- when
+    // RenderVisibleDiffuseSidecar is on, mRT->screen has two extra sidecar
+    // attachments (pipeline.cpp ~1204-1205, visible-diffuse SRGB8_ALPHA8 +
+    // coverage RG8, read later by the ReShade bridge) that a naive blit would
+    // stomp with this beauty-pass colour. copyColorToAttachment0() narrows
+    // the write to attachment 0 only, then restores dst's normal (possibly
+    // multi-attachment) draw-buffer list -- see LLRenderTarget:: header
+    // comment. No dst->bindTarget()/flush() needed either way: the helper
+    // binds/restores the FBOs itself, same as copyContents().
+    dst->copyColorToAttachment0(mWaterDis, 0, 0, mWaterDis.getWidth(), mWaterDis.getHeight(),
+                                 0, 0, dst->getWidth(), dst->getHeight(),
+                                 GL_NEAREST);
+    // no gGL.setSceneBlendType(BT_ALPHA) restore needed any more (blend was never changed)
+}
+
+// [RotoInk Round-3] See pipeline.h (ERotoInkLayer). Overlay draws flat,
+// display-referred lines directly into the working buffer -- fine for every
+// tonemapper, but a log-encoded (S-Log3) image is NOT display-referred, so
+// writing display-linear ink values into it would corrupt the log transfer
+// function the capture depends on. Silently degrade to Camera (the default)
+// in that case rather than let the ink desync from the log curve; the
+// Lightbox combo's tooltip documents this.
+S32 LLPipeline::resolveRotoInkLayer() const
+{
+    static LLCachedControl<S32> layer_setting(gSavedSettings, "CineOutlineLayer", ROTOINK_LAYER_CAMERA);
+    static LLCachedControl<S32> tonemap_type(gSavedSettings, "AlchemyRenderTonemapType", 0);
+
+    S32 layer = std::clamp((S32)layer_setting(), (S32)ROTOINK_LAYER_SCENE, (S32)ROTOINK_LAYER_OVERLAY);
+    if (layer == ROTOINK_LAYER_OVERLAY && tonemap_type() == 8)
+    {
+        layer = ROTOINK_LAYER_CAMERA;
+    }
+    return layer;
+}
+
+// [RotoInk Round-3] Single dispatch predicate shared by every HDR-path call
+// site so exactly one of them fires per frame (see pipeline.h). The layer
+// concept only exists in the HDR post chain -- the non-HDR pipeline always
+// runs its single post-colorCorrect ink call regardless of this setting, so
+// this predicate mirrors renderFinalize's own `hdr` gate rather than
+// requiring callers to thread that local through.
+bool LLPipeline::shouldRunRotoInkAt(S32 layer) const
+{
+    static LLCachedControl<bool> enabled(gSavedSettings, "CineOutlineEnabled", false);
+    static LLCachedControl<bool> has_hdr(gSavedSettings, "RenderHDREnabled", true);
+
+    if (!enabled() || gCubeSnapshot || gSnapshotNoPost)
+    {
+        return false;
+    }
+    // Mirrors renderFinalize()'s `bool hdr = gGLManager.mGLVersion > 4.05f &&
+    // has_hdr();` exactly -- both are pure functions of stable per-session/
+    // cached-setting state, so recomputing it here always agrees with the
+    // `hdr` local this frame's renderFinalize() call already resolved.
+    const bool hdr_this_frame = gGLManager.mGLVersion > 4.05f && has_hdr();
+    if (!hdr_this_frame)
+    {
+        return false;
+    }
+    return resolveRotoInkLayer() == layer;
 }
 
 namespace
@@ -16132,6 +16698,11 @@ void LLPipeline::renderVirtualCinemaRimGlow(LLRenderTarget* dst)
         // above) and written in the same draw, so the composited result is
         // blitted back COLOR-ONLY (identical idiom to applyOnLensFilters'
         // draw_on_lens_pass, pipeline.cpp).
+        // TODO(RotoInk round-2 review, pre-existing hazard, not fixed here):
+        // same multi-draw-buffer blit hazard as applyOnLensFilters above --
+        // with RenderVisibleDiffuseSidecar on, dst's sidecar/coverage
+        // attachments also receive this composited colour. See
+        // LLPipeline::renderCineOutline / LLRenderTarget::copyColorToAttachment0.
         dst->copyContents(mWaterDis,
                            0, 0, mWaterDis.getWidth(), mWaterDis.getHeight(),
                            0, 0, dst->getWidth(), dst->getHeight(),
@@ -19791,6 +20362,21 @@ void LLPipeline::renderFinalize()
 
         generateExposure(&mLuminanceMap, &mExposureMap);
 
+        // [RotoInk Round-3] ROTOINK_LAYER_CAMERA call site (the default).
+        // Moved HERE -- right after exposure metering, BEFORE applyOnLens-
+        // Filters -- by the round-3 pass-order review, so Night Mask,
+        // Graduated ND / Polarizer and the ReShade raw-scene capture (taken
+        // inside applyOnLensFilters) all include the ink, the way a real
+        // on-lens/captured element would. Metering itself stays ink-free
+        // (generateExposure already ran above). hdr_path resolves true for
+        // this dst (&mRT->screen) regardless of which layer call site fires,
+        // so renderCineOutline's own EXPOSURE selection is unaffected by the
+        // move.
+        if (shouldRunRotoInkAt(ROTOINK_LAYER_CAMERA))
+        {
+            renderCineOutline(&mRT->screen);
+        }
+
         // On-lens filters (Graduated ND + Polarizer) run HERE — after exposure is
         // metered from the clean scene, but before bloom/flare are generated — so
         // those optics respect the filtered scene like a real on-lens filter.
@@ -19803,7 +20389,6 @@ void LLPipeline::renderFinalize()
         // fullscreen pass over the scene buffer. The legacy alpha-tagged prim-glow
         // signal is carried into the extract pass, so prim glow survives the
         // migration. compositeBloomHDR is preserved for standalone use cases.
-        renderCineOutline(&mRT->screen);
         generateBloomHDR(&mRT->screen);
     }
 
@@ -19843,6 +20428,17 @@ void LLPipeline::renderFinalize()
     {
         feedProjectorVolumetricBloom();
 
+        // [RotoInk Round-3] ROTOINK_LAYER_ATMOSPHERE call site: after fog/
+        // light shafts and the bloom feed above, but still pre-tonemap. Both
+        // applyOnLensFilters and renderVirtualCinemaRimGlow are done with
+        // mWaterDis by this point (see the mWaterDis safety comment on
+        // renderCineOutline), and bloom has already been extracted, so this
+        // layer's ink neither feeds nor suppresses bloom.
+        if (shouldRunRotoInkAt(ROTOINK_LAYER_ATMOSPHERE))
+        {
+            renderCineOutline(&mRT->screen);
+        }
+
         // Bloom has already sampled the clean scene. Keep guides in the HDR
         // color/AA/lens chain, but exclude them from bloom extraction.
         render_actor_path_guides(&mRT->screen);
@@ -19859,12 +20455,29 @@ void LLPipeline::renderFinalize()
     // bloom process and composited back in after tonemapping.
     if (!hdr)
     {
+        // [RotoInk] Non-HDR pipeline has no separate exposure/bloom/tonemap
+        // chain to place a layer within, so this is its one and only ink
+        // call site -- it always runs when CineOutlineEnabled, regardless of
+        // CineOutlineLayer (shouldRunRotoInkAt/resolveRotoInkLayer are an
+        // HDR-path-only concept; renderCineOutline's own hdr_path check
+        // resolves EXPOSURE to 0 for this postPingMap dst either way).
         renderCineOutline(&mRT->postPingMap);
         generateGlow(&mRT->postPingMap);
 
         // Legacy glow likewise samples first; draw into the depth-sharing post
         // target afterward so guide pixels cannot seed its blur pyramid.
         render_actor_path_guides(&mRT->postPingMap);
+    }
+    else if (shouldRunRotoInkAt(ROTOINK_LAYER_OVERLAY))
+    {
+        // [RotoInk Round-3] ROTOINK_LAYER_OVERLAY call site: same position as
+        // the non-HDR call above, on the just-colorCorrect'd postPingMap --
+        // flat, display-referred ink with no bloom/grade. dst != &mRT->screen
+        // here, so renderCineOutline's own hdr_path check already resolves
+        // EXPOSURE to 0 (E=1); resolveRotoInkLayer() also never returns this
+        // layer while AlchemyRenderTonemapType==8 (S-Log3), so this branch
+        // can't run against a log-encoded image.
+        renderCineOutline(&mRT->postPingMap);
     }
 
     LLRenderTarget* sourceBuffer = &mRT->postPingMap;

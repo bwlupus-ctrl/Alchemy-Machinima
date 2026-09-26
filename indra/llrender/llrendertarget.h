@@ -195,6 +195,23 @@ public:
                                     S32 dstX0, S32 dstY0, S32 dstX1, S32 dstY1,
                                     U32 mask, U32 filter);
 
+    // [RotoInk] Like copyContents() with GL_COLOR_BUFFER_BIT, but restricts the
+    // WRITE side to this target's attachment 0 only. glBlitFramebuffer writes
+    // colour into every draw buffer currently bound on the destination FBO
+    // (the full glDrawBuffers() list bindTarget() sets up), so a plain
+    // copyContents() blit into a multi-attachment target (e.g. mRT->screen
+    // with RenderVisibleDiffuseSidecar's extra visible-diffuse/coverage
+    // attachments) stomps every one of them with the same beauty colour, not
+    // just attachment 0. This narrows glDrawBuffer to GL_COLOR_ATTACHMENT0 for
+    // the blit only, then restores this target's normal draw-buffer list
+    // exactly as bindTarget() would set it (sequential COLOR_ATTACHMENTs up to
+    // getNumTextures(), or NONE) so a later flush()/bindTarget() on this
+    // target sees the convention it expects.
+    void copyColorToAttachment0(LLRenderTarget& source,
+                                S32 srcX0, S32 srcY0, S32 srcX1, S32 srcY1,
+                                S32 dstX0, S32 dstY0, S32 dstX1, S32 dstY1,
+                                U32 filter);
+
     static void copyContentsToFramebuffer(LLRenderTarget& source, S32 srcX0, S32 srcY0, S32 srcX1, S32 srcY1, S32 dstX0, S32 dstY0,
                                           S32 dstX1, S32 dstY1, U32 mask, U32 filter);
 

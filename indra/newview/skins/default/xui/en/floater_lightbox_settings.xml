@@ -4820,6 +4820,187 @@
 				</panel>
 			</scroll_container>
 		</panel>
+		<panel follows="all" label="Roto Ink" layout="topleft" name="rotoink_settings" can_resize="false">
+			<scroll_container follows="all" height="806" layout="topleft" left="0"
+			 name="rotoink_settings_scroll" opaque="false" reserve_scroll_corner="false" top="0" width="420">
+				<panel background_visible="false" follows="left|top|right" height="1350" layout="topleft" left="0"
+				 name="rotoink_settings_scroll_content" top="0" width="400">
+			<text follows="left|top" height="15" left="8" top_pad="12" width="384" layout="topleft" font="SansSerifBold" value="Rotoscope Ink (native deferred ink-line pass)" />
+			<check_box follows="left|top" height="16" left="12" top_pad="6" width="360" layout="topleft" label="Enable Rotoscope Ink" name="ri_enable" control_name="CineOutlineEnabled" tool_tip="Native ink line pass on depth/normal edges, before AA. Off is a complete no-op." />
+			<combo_box follows="left|top" layout="topleft" height="22" left="12" top_pad="8" width="170" name="ri_preset_combo" tool_tip="Apply a full ink look (line, colour, sketch, motion) -- writes the values immediately even while Enable above is off (Enable and Subject isolation are never touched by a preset). Turn Enable on to see it.">
+				<combo_box.item label="Preset..." name="custom" value="custom" />
+				<combo_box.item label="Comic Ink" name="comic" value="comic" />
+				<combo_box.item label="Bold Comic" name="bold" value="bold" />
+				<combo_box.item label="Manga Fine Line" name="manga" value="manga" />
+				<combo_box.item label="Anime Cel Line" name="anime" value="anime" />
+				<combo_box.item label="Pencil Sketch" name="pencil" value="pencil" />
+				<combo_box.item label="Charcoal" name="charcoal" value="charcoal" />
+				<combo_box.item label="Rotoscope Boil" name="boil" value="boil" />
+				<combo_box.item label="Storyboard" name="storyboard" value="storyboard" />
+				<combo_box.item label="Chalk on Dark" name="chalk" value="chalk" />
+				<combo_box.item label="Neon Line" name="neon" value="neon" />
+				<combo_box.item label="Tron Glow" name="tron" value="tron" />
+				<combo_box.item label="Ink Wash" name="inkwash" value="inkwash" />
+				<combo_box.item label="Blueprint" name="blueprint" value="blueprint" />
+				<combo_box.item label="Stained Glass" name="stainedglass" value="stainedglass" />
+				<combo_box.item label="Hologram Scan" name="holoscan" value="holoscan" />
+				<combo_box.item label="Chase Light" name="chase" value="chase" />
+				<combo_box.item label="Light-Matched Glow" name="matchglow" value="matchglow" />
+				<combo_box.item label="Wire Shimmer" name="wireshimmer" value="wireshimmer" />
+				<combo_box.item label="Woodcut" name="woodcut" value="woodcut" />
+				<combo_box.item label="Ballpoint Doodle" name="ballpoint" value="ballpoint" />
+			</combo_box>
+			<button follows="left|top" layout="topleft" height="22" left="192" top_pad="-22" width="120" label="Reset all" name="ri_reset_all" tool_tip="Reset every Rotoscope Ink setting to its default (ink off)."><button.commit_callback function="LightBox.RotoInkPreset" parameter="reset" /></button>
+			<text follows="left|top" height="15" left="8" top_pad="12" width="384" layout="topleft" font="SansSerifBold" value="Line" />
+			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" value="Ink layer:" />
+			<combo_box follows="left|top" layout="topleft" height="20" top_pad="-17" left="136" width="188" allow_text_entry="false" name="ri_ink_layer_combo" control_name="CineOutlineLayer" enabled_control="CineOutlineEnabled" tool_tip="Where in the post pipeline the ink line pass runs. Scene: drawn directly into the world before fog, water, haze and glass, so they cover the ink like they would any other surface -- it is exposed physically rather than exposure-compensated (black ink stays black; coloured ink brightens or darkens with the scene like real pigment), and it also shows up in screen-space reflections (glossy floors/water reflect it) and is counted by auto-exposure metering. Camera (default): drawn before Night Mask, Graduated ND/Polarizer and bloom, so those and the glow apply to the ink too, like a captured element. Over atmosphere: drawn after fog and light shafts for a crisp line, still ahead of tonemapping and bloom composite. Overlay: flat, display-referred lines drawn after tonemapping, with no bloom or colour grade -- not available with the S-Log3 capture tonemapper (falls back to Camera).">
+				<combo_box.item label="Scene" name="ri_layer_scene" value="0" />
+				<combo_box.item label="Camera (default)" name="ri_layer_camera" value="1" />
+				<combo_box.item label="Over atmosphere" name="ri_layer_atmosphere" value="2" />
+				<combo_box.item label="Overlay (flat, no bloom/grade)" name="ri_layer_overlay" value="3" />
+			</combo_box>
+			<check_box follows="left|top" height="16" left="12" top_pad="8" width="360" layout="topleft" label="Silhouette" name="ri_sil_enable" control_name="CineOutlineSilhouetteEnabled" enabled_control="CineOutlineEnabled" tool_tip="Draw the outer silhouette line (a depth discontinuity between the subject and whatever is behind it)." />
+			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" name="ri_sil_thr_label" value="Silhouette threshold:" />
+			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="0.002" max_val="0.3" increment="0.001" decimal_digits="3" show_text="true" can_edit_text="true" name="ri_sil_thr_slider" control_name="CineOutlineSilhouetteThreshold" enabled_control="CineOutlineEnabled" tool_tip="How big a relative depth step counts as a silhouette. Only shown/used in Relative depth mode." />
+			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="ri_reset_CineOutlineSilhouetteThreshold"><button.commit_callback function="LightBox.ResetControlDefault" parameter="CineOutlineSilhouetteThreshold" /></button>
+			<!-- [Round-2 review fix, Opus nit] Metric threshold lives in this SAME
+			     row (top_pad below cancels out to the Silhouette threshold row's
+			     own top; see updateRotoInkDepthMode()): the two are mutually
+			     exclusive by depth mode, so overlapping them here means exactly
+			     one is ever visible and no blank row is left behind either way. -->
+			<text follows="left|top" height="15" left="10" top_pad="-19" width="124" layout="topleft" name="ri_metric_thr_label" value="Metric threshold m:" />
+			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="0.01" max_val="5" increment="0.01" decimal_digits="2" show_text="true" can_edit_text="true" name="ri_metric_thr_slider" control_name="CineOutlineMetricThreshold" enabled_control="CineOutlineEnabled" tool_tip="Depth step in metres that counts as a silhouette. Only shown/used in Metric depth mode." />
+			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="ri_reset_CineOutlineMetricThreshold"><button.commit_callback function="LightBox.ResetControlDefault" parameter="CineOutlineMetricThreshold" /></button>
+			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" value="Silhouette weight:" />
+			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="0" max_val="1" increment="0.01" decimal_digits="2" show_text="true" can_edit_text="true" name="ri_sil_weight_slider" control_name="CineOutlineSilhouetteWeight" enabled_control="CineOutlineEnabled" tool_tip="Strength of the silhouette line." />
+			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="ri_reset_CineOutlineSilhouetteWeight"><button.commit_callback function="LightBox.ResetControlDefault" parameter="CineOutlineSilhouetteWeight" /></button>
+			<check_box follows="left|top" height="16" left="12" top_pad="8" width="360" layout="topleft" label="Creases" name="ri_crease_enable" control_name="CineOutlineCreaseEnabled" enabled_control="CineOutlineEnabled" tool_tip="Draw inner crease lines: a normal-angle discontinuity on an otherwise continuous surface (panel lines, folds, hard edges)." />
+			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" value="Crease angle deg:" />
+			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="5" max_val="90" increment="1" decimal_digits="0" show_text="true" can_edit_text="true" name="ri_crease_angle_slider" control_name="CineOutlineCreaseAngle" enabled_control="CineOutlineEnabled" tool_tip="Normal angle in degrees that counts as a crease. Lower catches every fold; higher keeps only hard corners." />
+			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="ri_reset_CineOutlineCreaseAngle"><button.commit_callback function="LightBox.ResetControlDefault" parameter="CineOutlineCreaseAngle" /></button>
+			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" value="Crease weight:" />
+			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="0" max_val="1" increment="0.01" decimal_digits="2" show_text="true" can_edit_text="true" name="ri_crease_weight_slider" control_name="CineOutlineCreaseWeight" enabled_control="CineOutlineEnabled" tool_tip="Strength of the crease lines." />
+			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="ri_reset_CineOutlineCreaseWeight"><button.commit_callback function="LightBox.ResetControlDefault" parameter="CineOutlineCreaseWeight" /></button>
+			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" value="Depth mode:" />
+			<combo_box follows="left|top" layout="topleft" height="20" top_pad="-17" left="136" width="188" allow_text_entry="false" name="ri_depth_mode_combo" control_name="CineOutlineDepthMode" enabled_control="CineOutlineEnabled" tool_tip="Relative compares the depth step to the distance, so the same threshold works both near and far. Metric uses metres, so it needs re-tuning per scene scale.">
+				<combo_box.item label="Relative (scale-free)" name="ri_depth_relative" value="0" />
+				<combo_box.item label="Metric (metres)" name="ri_depth_metric" value="1" />
+			</combo_box>
+			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" value="Width px @1080p:" />
+			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="0.5" max_val="12" increment="0.1" decimal_digits="1" show_text="true" can_edit_text="true" name="ri_width_slider" control_name="CineOutlineWidth" enabled_control="CineOutlineEnabled" tool_tip="Line width in pixels at 1080p, scaled to the current render resolution. Fractional widths are anti-aliased." />
+			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="ri_reset_CineOutlineWidth"><button.commit_callback function="LightBox.ResetControlDefault" parameter="CineOutlineWidth" /></button>
+			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" value="Softness:" />
+			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="0" max_val="1" increment="0.01" decimal_digits="2" show_text="true" can_edit_text="true" name="ri_softness_slider" control_name="CineOutlineSoftness" enabled_control="CineOutlineEnabled" tool_tip="Threshold feather: 0 is a hard binary line, 1 is a gradual fade on shallow steps and gentle creases." />
+			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="ri_reset_CineOutlineSoftness"><button.commit_callback function="LightBox.ResetControlDefault" parameter="CineOutlineSoftness" /></button>
+			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" value="Far cutoff m:" />
+			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="0" max_val="512" increment="1" decimal_digits="0" show_text="true" can_edit_text="true" name="ri_far_cutoff_slider" control_name="CineOutlineFarCutoff" enabled_control="CineOutlineEnabled" tool_tip="Lines fade out approaching this view distance in metres. 0 = never fade." />
+			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="ri_reset_CineOutlineFarCutoff"><button.commit_callback function="LightBox.ResetControlDefault" parameter="CineOutlineFarCutoff" /></button>
+			<text follows="left|top" height="15" left="8" top_pad="12" width="384" layout="topleft" font="SansSerifBold" value="Subject isolation" />
+			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" value="Mode:" />
+			<combo_box follows="left|top" layout="topleft" height="20" top_pad="-17" left="136" width="188" allow_text_entry="false" name="ri_subject_mode_combo" control_name="CineOutlineSubjectMode" enabled_control="CineOutlineEnabled" tool_tip="Subject = a depth slab around the target, optionally tightened to a screen ellipse around its projected bounds. An object touching the subject at the same depth shares its lines (and the reverse, in 'except' mode).">
+				<combo_box.item label="Everything" name="ri_subj_all" value="0" />
+				<combo_box.item label="Subject only" name="ri_subj_only" value="1" />
+				<combo_box.item label="Everything except subject" name="ri_subj_except" value="2" />
+			</combo_box>
+			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" value="Target:" />
+			<combo_box follows="left|top" layout="topleft" height="20" top_pad="-17" left="136" width="188" allow_text_entry="false" name="ri_subject_target_combo" control_name="CineOutlineSubjectTarget" enabled_control="CineOutlineEnabled" tool_tip="Which Director Cast subject to isolate (same convention as the Rim Glow focus target).">
+				<combo_box.item label="Self" name="ri_subj_self" value="0" />
+				<combo_box.item label="Subject A" name="ri_subj_a" value="1" />
+				<combo_box.item label="Subject B" name="ri_subj_b" value="2" />
+				<combo_box.item label="Subject C" name="ri_subj_c" value="3" />
+				<combo_box.item label="Subject D" name="ri_subj_d" value="4" />
+			</combo_box>
+			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" value="Fallback depth m:" />
+			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="0.1" max_val="256" increment="0.1" decimal_digits="1" show_text="true" can_edit_text="true" name="ri_subject_manual_depth_slider" control_name="CineOutlineSubjectManualDepth" enabled_control="CineOutlineEnabled" tool_tip="Subject view depth used when the target is not in world." />
+			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="ri_reset_CineOutlineSubjectManualDepth"><button.commit_callback function="LightBox.ResetControlDefault" parameter="CineOutlineSubjectManualDepth" /></button>
+			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" value="Depth range m:" />
+			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="0" max_val="32" increment="0.1" decimal_digits="2" show_text="true" can_edit_text="true" name="ri_subject_range_slider" control_name="CineOutlineSubjectDepthRange" enabled_control="CineOutlineEnabled" tool_tip="Half depth of the subject slab, in metres, around the subject." />
+			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="ri_reset_CineOutlineSubjectDepthRange"><button.commit_callback function="LightBox.ResetControlDefault" parameter="CineOutlineSubjectDepthRange" /></button>
+			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" value="Depth feather m:" />
+			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="0.01" max_val="16" increment="0.05" decimal_digits="2" show_text="true" can_edit_text="true" name="ri_subject_feather_slider" control_name="CineOutlineSubjectDepthFeather" enabled_control="CineOutlineEnabled" tool_tip="Feather distance beyond the slab, in metres." />
+			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="ri_reset_CineOutlineSubjectDepthFeather"><button.commit_callback function="LightBox.ResetControlDefault" parameter="CineOutlineSubjectDepthFeather" /></button>
+			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" value="Screen ellipse:" />
+			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="0" max_val="1" increment="0.01" decimal_digits="2" show_text="true" can_edit_text="true" name="ri_subject_ellipse_slider" control_name="CineOutlineSubjectEllipse" enabled_control="CineOutlineEnabled" tool_tip="How much a screen ellipse around the subject's projected bounds restricts the slab. 0 = depth only, 1 = fully." />
+			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="ri_reset_CineOutlineSubjectEllipse"><button.commit_callback function="LightBox.ResetControlDefault" parameter="CineOutlineSubjectEllipse" /></button>
+			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" value="Ellipse size:" />
+			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="0.5" max_val="3" increment="0.01" decimal_digits="2" show_text="true" can_edit_text="true" name="ri_subject_ellipse_scale_slider" control_name="CineOutlineSubjectEllipseScale" enabled_control="CineOutlineEnabled" tool_tip="Ellipse radius as a multiple of the subject's projected half extents." />
+			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="ri_reset_CineOutlineSubjectEllipseScale"><button.commit_callback function="LightBox.ResetControlDefault" parameter="CineOutlineSubjectEllipseScale" /></button>
+			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" value="Ellipse feather:" />
+			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="0.01" max_val="0.75" increment="0.01" decimal_digits="2" show_text="true" can_edit_text="true" name="ri_subject_ellipse_feather_slider" control_name="CineOutlineSubjectEllipseFeather" enabled_control="CineOutlineEnabled" tool_tip="Ellipse edge softness, as a fraction of the radius." />
+			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="ri_reset_CineOutlineSubjectEllipseFeather"><button.commit_callback function="LightBox.ResetControlDefault" parameter="CineOutlineSubjectEllipseFeather" /></button>
+			<text follows="left|top" height="15" left="8" top_pad="12" width="384" layout="topleft" font="SansSerifBold" value="Colour" />
+			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" value="Ink colour:" />
+			<combo_box follows="left|top" layout="topleft" height="20" top_pad="-17" left="136" width="188" allow_text_entry="false" name="ri_ink_mode_combo" control_name="CineOutlineInkColorMode" enabled_control="CineOutlineEnabled" tool_tip="Fixed uses the swatch below. Match samples the brightest scene colour just outside the edge and keeps only its hue.">
+				<combo_box.item label="Fixed colour" name="ri_ink_fixed" value="0" />
+				<combo_box.item label="Match nearby light" name="ri_ink_match" value="1" />
+			</combo_box>
+			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" value="Colour:" />
+			<color_swatch follows="left|top" height="22" left="136" top_pad="-17" width="44" layout="topleft" can_apply_immediately="true" name="ri_color_swatch" control_name="CineOutlineColor" enabled_control="CineOutlineEnabled" tool_tip="Ink colour (stored linear). Black for classic ink, white for chalk, saturated for neon." />
+			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="ri_reset_CineOutlineColor"><button.commit_callback function="LightBox.ResetControlDefault" parameter="CineOutlineColor" /></button>
+			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" value="Match reach px:" />
+			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="1" max_val="32" increment="1" decimal_digits="0" show_text="true" can_edit_text="true" name="ri_match_reach_slider" control_name="CineOutlineMatchReach" enabled_control="CineOutlineEnabled" tool_tip="Match-light sampling reach outside the edge, in pixels at 1080p. Only used when Ink colour is Match nearby light." />
+			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="ri_reset_CineOutlineMatchReach"><button.commit_callback function="LightBox.ResetControlDefault" parameter="CineOutlineMatchReach" /></button>
+			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" value="HDR intensity:" />
+			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="0" max_val="64" increment="0.1" decimal_digits="1" show_text="true" can_edit_text="true" name="ri_intensity_slider" control_name="CineOutlineIntensity" enabled_control="CineOutlineEnabled" tool_tip="Multiplies the ink colour. Use 1 for classic ink/multiply looks; 4-16 for neon/glow (HDR only; the non-HDR path clips above 1)." />
+			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="ri_reset_CineOutlineIntensity"><button.commit_callback function="LightBox.ResetControlDefault" parameter="CineOutlineIntensity" /></button>
+			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" value="Opacity:" />
+			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="0" max_val="1" increment="0.01" decimal_digits="2" show_text="true" can_edit_text="true" name="ri_opacity_slider" control_name="CineOutlineOpacity" enabled_control="CineOutlineEnabled" tool_tip="Ink opacity." />
+			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="ri_reset_CineOutlineOpacity"><button.commit_callback function="LightBox.ResetControlDefault" parameter="CineOutlineOpacity" /></button>
+			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" value="Blend mode:" />
+			<combo_box follows="left|top" layout="topleft" height="20" top_pad="-17" left="136" width="188" allow_text_entry="false" name="ri_blend_mode_combo" control_name="CineOutlineBlendMode" enabled_control="CineOutlineEnabled" tool_tip="Normal paints the ink over the scene. Multiply only darkens. Add is an HDR glow (the legacy Phase-1 look).">
+				<combo_box.item label="Normal (ink over)" name="ri_blend_normal" value="0" />
+				<combo_box.item label="Multiply (darken)" name="ri_blend_multiply" value="1" />
+				<combo_box.item label="Add (glow)" name="ri_blend_add" value="2" />
+			</combo_box>
+			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" value="Bloom feed:" />
+			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="0" max_val="1" increment="0.01" decimal_digits="2" show_text="true" can_edit_text="true" name="ri_glow_slider" control_name="CineOutlineGlow" enabled_control="CineOutlineEnabled" tool_tip="Feeds the line into legacy glow / HDR bloom, independent of the blend mode above." />
+			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="ri_reset_CineOutlineGlow"><button.commit_callback function="LightBox.ResetControlDefault" parameter="CineOutlineGlow" /></button>
+			<text follows="left|top" height="15" left="8" top_pad="12" width="384" layout="topleft" font="SansSerifBold" value="Sketch / Boil" />
+			<check_box follows="left|top" height="16" left="12" top_pad="8" width="360" layout="topleft" label="Hand-drawn boil" name="ri_sketch_enable" control_name="CineOutlineSketchEnabled" enabled_control="CineOutlineEnabled" tool_tip="The line wobbles and is redrawn a few times per second, like a hand-inked animation frame." />
+			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" value="Boil amount px:" />
+			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="0" max_val="8" increment="0.1" decimal_digits="1" show_text="true" can_edit_text="true" name="ri_sketch_amount_slider" control_name="CineOutlineSketchAmount" enabled_control="CineOutlineEnabled" tool_tip="Boil wobble amount, in pixels at 1080p." />
+			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="ri_reset_CineOutlineSketchAmount"><button.commit_callback function="LightBox.ResetControlDefault" parameter="CineOutlineSketchAmount" /></button>
+			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" value="Wobble detail:" />
+			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="0" max_val="1" increment="0.01" decimal_digits="2" show_text="true" can_edit_text="true" name="ri_sketch_detail_slider" control_name="CineOutlineSketchDetail" enabled_control="CineOutlineEnabled" tool_tip="0 gives big lazy undulations, 1 gives tight chatter." />
+			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="ri_reset_CineOutlineSketchDetail"><button.commit_callback function="LightBox.ResetControlDefault" parameter="CineOutlineSketchDetail" /></button>
+			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" value="Redraw fps:" />
+			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="2" max_val="24" increment="1" decimal_digits="0" show_text="true" can_edit_text="true" name="ri_sketch_fps_slider" control_name="CineOutlineSketchFPS" enabled_control="CineOutlineEnabled" tool_tip="Redraw rate in frames per second (12 = on twos, 8 = on threes). Frame-rate independent." />
+			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="ri_reset_CineOutlineSketchFPS"><button.commit_callback function="LightBox.ResetControlDefault" parameter="CineOutlineSketchFPS" /></button>
+			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" value="Strokes:" />
+			<spinner follows="left|top" layout="topleft" height="20" top_pad="-17" left="136" width="80" min_val="1" max_val="4" increment="1" decimal_digits="0" name="ri_sketch_strokes_spinner" control_name="CineOutlineSketchStrokes" enabled_control="CineOutlineEnabled" tool_tip="How many times the line is drawn (2-4 gives a nervous sketched bundle). Each extra stroke re-evaluates the full line (32 depth/normal taps); 4 strokes at 4K is the heaviest configuration." />
+			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-20" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="ri_reset_CineOutlineSketchStrokes"><button.commit_callback function="LightBox.ResetControlDefault" parameter="CineOutlineSketchStrokes" /></button>
+			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" value="Roughness:" />
+			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="0" max_val="1" increment="0.01" decimal_digits="2" show_text="true" can_edit_text="true" name="ri_sketch_roughness_slider" control_name="CineOutlineSketchRoughness" enabled_control="CineOutlineEnabled" tool_tip="Grain that breaks the line for a dry pencil feel." />
+			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="ri_reset_CineOutlineSketchRoughness"><button.commit_callback function="LightBox.ResetControlDefault" parameter="CineOutlineSketchRoughness" /></button>
+			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" value="Seed:" />
+			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="0" max_val="100" increment="1" decimal_digits="0" show_text="true" can_edit_text="true" name="ri_sketch_seed_slider" control_name="CineOutlineSketchSeed" enabled_control="CineOutlineEnabled" tool_tip="Reshuffles the wobble / grain pattern." />
+			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="ri_reset_CineOutlineSketchSeed"><button.commit_callback function="LightBox.ResetControlDefault" parameter="CineOutlineSketchSeed" /></button>
+			<text follows="left|top" height="15" left="8" top_pad="12" width="384" layout="topleft" font="SansSerifBold" value="Motion" />
+			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" value="Style:" />
+			<combo_box follows="left|top" layout="topleft" height="20" top_pad="-17" left="136" width="188" allow_text_entry="false" name="ri_motion_style_combo" control_name="CineOutlineMotionStyle" enabled_control="CineOutlineEnabled" tool_tip="Animates the line's coverage. None leaves the line static.">
+				<combo_box.item label="None" name="ri_mo_none" value="0" />
+				<combo_box.item label="Pulse" name="ri_mo_pulse" value="1" />
+				<combo_box.item label="Chase (draw-around)" name="ri_mo_chase" value="2" />
+				<combo_box.item label="Scan (sweep bar)" name="ri_mo_scan" value="3" />
+				<combo_box.item label="Wave (segments)" name="ri_mo_wave" value="4" />
+				<combo_box.item label="Shimmer (twinkle)" name="ri_mo_shimmer" value="5" />
+			</combo_box>
+			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" value="Speed:" />
+			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="0.05" max_val="5" increment="0.05" decimal_digits="2" show_text="true" can_edit_text="true" name="ri_motion_speed_slider" control_name="CineOutlineMotionSpeed" enabled_control="CineOutlineEnabled" tool_tip="Motion speed, in cycles per second." />
+			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="ri_reset_CineOutlineMotionSpeed"><button.commit_callback function="LightBox.ResetControlDefault" parameter="CineOutlineMotionSpeed" /></button>
+			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" value="Amount:" />
+			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="0" max_val="1" increment="0.01" decimal_digits="2" show_text="true" can_edit_text="true" name="ri_motion_amount_slider" control_name="CineOutlineMotionAmount" enabled_control="CineOutlineEnabled" tool_tip="Motion depth. 0 leaves the line static regardless of style." />
+			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="ri_reset_CineOutlineMotionAmount"><button.commit_callback function="LightBox.ResetControlDefault" parameter="CineOutlineMotionAmount" /></button>
+			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" value="Scale:" />
+			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="0.02" max_val="1" increment="0.01" decimal_digits="2" show_text="true" can_edit_text="true" name="ri_motion_scale_slider" control_name="CineOutlineMotionScale" enabled_control="CineOutlineEnabled" tool_tip="Per-style scale: Chase tail length, Scan bar width, Wave segment count, Shimmer cell density." />
+			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="ri_reset_CineOutlineMotionScale"><button.commit_callback function="LightBox.ResetControlDefault" parameter="CineOutlineMotionScale" /></button>
+			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" value="Scan angle deg:" />
+			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="0" max_val="360" increment="1" decimal_digits="0" show_text="true" can_edit_text="true" name="ri_motion_angle_slider" control_name="CineOutlineMotionAngle" enabled_control="CineOutlineEnabled" tool_tip="Scan sweep direction in degrees. Only used by the Scan motion style." />
+			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="ri_reset_CineOutlineMotionAngle"><button.commit_callback function="LightBox.ResetControlDefault" parameter="CineOutlineMotionAngle" /></button>
+			<text follows="left|top" height="60" left="10" top_pad="12" width="380" layout="topleft" word_wrap="true" value="Notes: subject isolation is a depth slab, not a true per-actor mask -- another object at the same depth inside the ellipse (a chair the actor sits on) shares its lines, and Everything-except-subject leaks the same way in reverse. HDR intensity above 1 only matters with HDR rendering; the non-HDR path clips it." />
+			</panel>
+			</scroll_container>
+		</panel>
 		<!-- [BDMerge G3.3 Batch 3] Selected Light quick panel: live per-projector
 		     controls that follow the currently-selected object. Controls enable
 		     only when a spotlight projector is selected; state is driven from

@@ -31,6 +31,258 @@
       <key>Type</key><string>F32</string>
       <key>Value</key><real>1.0</real>
     </map>
+    <key>CineOutlineLayer</key>
+    <map>
+      <key>Comment</key><string>[RotoInk] Where in the post pipeline the ink pass runs: 0 Scene (before water/haze/atmospherics) / 1 Camera (default, before Night Mask/on-lens filters/bloom) / 2 Over atmosphere (after fog and light shafts) / 3 Overlay (flat post-tonemap lines, HDR only, forced to 1 for S-Log3)</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>S32</string>
+      <key>Value</key><integer>1</integer>
+    </map>
+    <key>CineOutlineSilhouetteEnabled</key>
+    <map>
+      <key>Comment</key><string>[RotoInk] Draw the outer silhouette line (depth discontinuity)</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>Boolean</string>
+      <key>Value</key><integer>1</integer>
+    </map>
+    <key>CineOutlineSilhouetteThreshold</key>
+    <map>
+      <key>Comment</key><string>[RotoInk] Relative depth step (dz / z) that counts as a silhouette (relative depth mode)</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.02</real>
+    </map>
+    <key>CineOutlineSilhouetteWeight</key>
+    <map>
+      <key>Comment</key><string>[RotoInk] Strength of the silhouette line</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>1.0</real>
+    </map>
+    <key>CineOutlineCreaseEnabled</key>
+    <map>
+      <key>Comment</key><string>[RotoInk] Draw inner crease lines (G-buffer normal discontinuity on a continuous surface)</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>Boolean</string>
+      <key>Value</key><integer>1</integer>
+    </map>
+    <key>CineOutlineCreaseAngle</key>
+    <map>
+      <key>Comment</key><string>[RotoInk] Normal angle in degrees that counts as a crease</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>30.0</real>
+    </map>
+    <key>CineOutlineCreaseWeight</key>
+    <map>
+      <key>Comment</key><string>[RotoInk] Strength of the crease lines</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>1.0</real>
+    </map>
+    <key>CineOutlineDepthMode</key>
+    <map>
+      <key>Comment</key><string>[RotoInk] 0 relative (dz / z, scale-free) / 1 metric (metres)</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>S32</string>
+      <key>Value</key><integer>0</integer>
+    </map>
+    <key>CineOutlineMetricThreshold</key>
+    <map>
+      <key>Comment</key><string>[RotoInk] Depth step in metres that counts as a silhouette (metric depth mode)</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.10</real>
+    </map>
+    <key>CineOutlineWidth</key>
+    <map>
+      <key>Comment</key><string>[RotoInk] Line width in pixels at 1080p (scaled to the render resolution; fractional widths are anti-aliased)</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>1.5</real>
+    </map>
+    <key>CineOutlineSoftness</key>
+    <map>
+      <key>Comment</key><string>[RotoInk] Threshold feather: 0 hard binary line, 1 gradual (softer on shallow steps and gentle creases)</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.5</real>
+    </map>
+    <key>CineOutlineFarCutoff</key>
+    <map>
+      <key>Comment</key><string>[RotoInk] Lines fade out approaching this view distance in metres (0 = never)</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.0</real>
+    </map>
+    <key>CineOutlineSubjectMode</key>
+    <map>
+      <key>Comment</key><string>[RotoInk] 0 all / 1 subject only / 2 everything except subject</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>S32</string>
+      <key>Value</key><integer>0</integer>
+    </map>
+    <key>CineOutlineSubjectTarget</key>
+    <map>
+      <key>Comment</key><string>[RotoInk] Subject: 0 Self, 1-4 Director Cast Subject A-D (same convention as CineRimGlowFocusTarget)</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>S32</string>
+      <key>Value</key><integer>0</integer>
+    </map>
+    <key>CineOutlineSubjectManualDepth</key>
+    <map>
+      <key>Comment</key><string>[RotoInk] Fallback subject view depth (m) when the target is not in world</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>4.0</real>
+    </map>
+    <key>CineOutlineSubjectDepthRange</key>
+    <map>
+      <key>Comment</key><string>[RotoInk] Half depth of the subject slab (m) around the subject</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>1.5</real>
+    </map>
+    <key>CineOutlineSubjectDepthFeather</key>
+    <map>
+      <key>Comment</key><string>[RotoInk] Feather beyond the slab (m)</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.75</real>
+    </map>
+    <key>CineOutlineSubjectEllipse</key>
+    <map>
+      <key>Comment</key><string>[RotoInk] How much a screen ellipse around the subject's projected bounds restricts the slab (0 depth only, 1 fully)</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.6</real>
+    </map>
+    <key>CineOutlineSubjectEllipseScale</key>
+    <map>
+      <key>Comment</key><string>[RotoInk] Ellipse radius as a multiple of the subject's projected half extents</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>1.3</real>
+    </map>
+    <key>CineOutlineSubjectEllipseFeather</key>
+    <map>
+      <key>Comment</key><string>[RotoInk] Ellipse edge softness (fraction of the radius)</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.25</real>
+    </map>
+    <key>CineOutlineInkColorMode</key>
+    <map>
+      <key>Comment</key><string>[RotoInk] 0 fixed colour / 1 match light (brightest scene colour just outside the edge, hue only)</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>S32</string>
+      <key>Value</key><integer>0</integer>
+    </map>
+    <key>CineOutlineMatchReach</key>
+    <map>
+      <key>Comment</key><string>[RotoInk] Match-light sampling reach outside the edge, px at 1080p</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>6.0</real>
+    </map>
+    <key>CineOutlineOpacity</key>
+    <map>
+      <key>Comment</key><string>[RotoInk] Ink opacity</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>1.0</real>
+    </map>
+    <key>CineOutlineBlendMode</key>
+    <map>
+      <key>Comment</key><string>[RotoInk] 0 normal (ink over scene) / 1 multiply (darkens) / 2 add (HDR glow; legacy Phase-1 behaviour)</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>S32</string>
+      <key>Value</key><integer>2</integer>
+    </map>
+    <key>CineOutlineSketchEnabled</key>
+    <map>
+      <key>Comment</key><string>[RotoInk] Hand-drawn boil: the line wobbles and is redrawn a few times per second</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>Boolean</string>
+      <key>Value</key><integer>0</integer>
+    </map>
+    <key>CineOutlineSketchAmount</key>
+    <map>
+      <key>Comment</key><string>[RotoInk] Boil wobble amount, px at 1080p</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>2.0</real>
+    </map>
+    <key>CineOutlineSketchDetail</key>
+    <map>
+      <key>Comment</key><string>[RotoInk] Wobble size: 0 big lazy undulations, 1 tight chatter</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.45</real>
+    </map>
+    <key>CineOutlineSketchFPS</key>
+    <map>
+      <key>Comment</key><string>[RotoInk] Redraw rate in frames/s (12 = on twos, 8 = on threes); frame-rate independent</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>12.0</real>
+    </map>
+    <key>CineOutlineSketchStrokes</key>
+    <map>
+      <key>Comment</key><string>[RotoInk] How many times the line is drawn (2-4 = nervous sketched bundle)</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>S32</string>
+      <key>Value</key><integer>2</integer>
+    </map>
+    <key>CineOutlineSketchRoughness</key>
+    <map>
+      <key>Comment</key><string>[RotoInk] Grain breaks the line for a dry pencil feel</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.3</real>
+    </map>
+    <key>CineOutlineSketchSeed</key>
+    <map>
+      <key>Comment</key><string>[RotoInk] Reshuffles the wobble / grain pattern</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.0</real>
+    </map>
+    <key>CineOutlineMotionStyle</key>
+    <map>
+      <key>Comment</key><string>[RotoInk] 0 none / 1 pulse / 2 chase (draw-around) / 3 scan (sweep bar) / 4 wave (segments) / 5 shimmer (twinkle)</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>S32</string>
+      <key>Value</key><integer>0</integer>
+    </map>
+    <key>CineOutlineMotionSpeed</key>
+    <map>
+      <key>Comment</key><string>[RotoInk] Motion speed, cycles per second</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.5</real>
+    </map>
+    <key>CineOutlineMotionAmount</key>
+    <map>
+      <key>Comment</key><string>[RotoInk] Motion depth (0 = static line)</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.5</real>
+    </map>
+    <key>CineOutlineMotionScale</key>
+    <map>
+      <key>Comment</key><string>[RotoInk] Per-style scale: chase tail, scan bar width, wave segment count, shimmer density</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.3</real>
+    </map>
+    <key>CineOutlineMotionAngle</key>
+    <map>
+      <key>Comment</key><string>[RotoInk] Scan sweep direction in degrees (scan only)</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>90.0</real>
+    </map>
     <key>CineFisheyeEnabled</key>
     <map>
       <key>Comment</key><string>Enable the late Pedro Cam fisheye and circular peephole post pass</string>

@@ -879,7 +879,7 @@
          background_visible="false"
          border="true"
          follows="left|top"
-         height="330"
+         height="356"
          layout="topleft"
          left="0"
          name="cine_rig_rim_card"
@@ -896,107 +896,112 @@
         <!-- [RigRim] P2-6: own full-width row so the caption never clips. -->
         <text follows="left|top" height="15" layout="topleft" left="8" top="24"
          value="Lighting term, not an outline" width="324" />
-        <text follows="left|top" height="15" layout="topleft" left="8" top="44" value="Master" width="42" />
+        <!-- [RigRimPreset] -->
+        <text follows="left|top" height="15" layout="topleft" left="8" top="44" value="Preset" width="42" />
+        <combo_box follows="left|top" height="20" layout="topleft" left="52" name="cine_rig_rim_preset"
+         top="40" width="266"
+         tool_tip="Applies a full rim look (master, softening, back ramp, tint, shadow, alpha/bounce inclusion and every per-light rim value) and snaps back. Enable, Rim only, Probes and the rig's light colours/positions are never touched." />
+        <text follows="left|top" height="15" layout="topleft" left="8" top="70" value="Master" width="42" />
         <slider can_edit_text="true" control_name="CineRigRimMasterGain" decimal_digits="2"
          follows="left|top" height="20" increment="0.05" layout="topleft" left="52"
-         max_val="4" min_val="0" name="cine_rig_rim_master_gain" show_text="true" top="40"
+         max_val="4" min_val="0" name="cine_rig_rim_master_gain" show_text="true" top="66"
          tool_tip="Overall rim strength. Multiplies every fixture's own amount below; zero matches Enable off." width="266" wheel_adjust="true" />
-        <button follows="left|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_rig_rim_master_gain_reset" top="41" tool_tip="Reset to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineRigRimMasterGain" />
-        <text follows="left|top" height="15" layout="topleft" left="8" top="70" value="Soften" width="42" />
+        <button follows="left|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_rig_rim_master_gain_reset" top="67" tool_tip="Reset to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineRigRimMasterGain" />
+        <text follows="left|top" height="15" layout="topleft" left="8" top="96" value="Soften" width="42" />
         <slider can_edit_text="true" control_name="CineRigRimRoughnessSoften" decimal_digits="2"
          follows="left|top" height="20" increment="0.01" layout="topleft" left="52"
-         max_val="1" min_val="0" name="cine_rig_rim_roughness_soften" show_text="true" top="66"
+         max_val="1" min_val="0" name="cine_rig_rim_roughness_soften" show_text="true" top="92"
          tool_tip="Rough surfaces get a wider, softer rim band." width="266" wheel_adjust="true" />
-        <button follows="left|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_rig_rim_roughness_soften_reset" top="67" tool_tip="Reset to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineRigRimRoughnessSoften" />
-        <text follows="left|top" height="15" layout="topleft" left="8" top="96" value="Back" width="42" />
+        <button follows="left|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_rig_rim_roughness_soften_reset" top="93" tool_tip="Reset to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineRigRimRoughnessSoften" />
+        <text follows="left|top" height="15" layout="topleft" left="8" top="122" value="Back" width="42" />
         <slider can_edit_text="true" control_name="CineRigRimBackSoftness" decimal_digits="2"
          follows="left|top" height="20" increment="0.01" layout="topleft" left="52"
-         max_val="2" min_val="0.01" name="cine_rig_rim_back_softness" show_text="true" top="92"
+         max_val="2" min_val="0.01" name="cine_rig_rim_back_softness" show_text="true" top="118"
          tool_tip="Softness of the back-light ramp: how gradually a light counts as 'behind' the subject." width="266" wheel_adjust="true" />
-        <button follows="left|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_rig_rim_back_softness_reset" top="93" tool_tip="Reset to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineRigRimBackSoftness" />
-        <text follows="left|top" height="15" layout="topleft" left="8" top="122" value="Tint" width="42" />
+        <button follows="left|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_rig_rim_back_softness_reset" top="119" tool_tip="Reset to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineRigRimBackSoftness" />
+        <text follows="left|top" height="15" layout="topleft" left="8" top="148" value="Tint" width="42" />
         <slider can_edit_text="true" control_name="CineRigRimTint" decimal_digits="2"
          follows="left|top" height="20" increment="0.01" layout="topleft" left="52"
-         max_val="1" min_val="0" name="cine_rig_rim_tint" show_text="true" top="118"
+         max_val="1" min_val="0" name="cine_rig_rim_tint" show_text="true" top="144"
          tool_tip="0 = pure light colour, 1 = rim takes the surface colour." width="266" wheel_adjust="true" />
-        <button follows="left|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_rig_rim_tint_reset" top="119" tool_tip="Reset to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineRigRimTint" />
+        <button follows="left|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_rig_rim_tint_reset" top="145" tool_tip="Reset to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineRigRimTint" />
         <!-- [RigRim] Rim shadow -->
-        <text follows="left|top" height="15" layout="topleft" left="8" top="148" value="Shadow" width="42" />
+        <text follows="left|top" height="15" layout="topleft" left="8" top="174" value="Shadow" width="42" />
         <slider can_edit_text="true" control_name="CineRigRimShadow" decimal_digits="2"
          follows="left|top" height="20" increment="0.01" layout="topleft" left="52"
-         max_val="1" min_val="0" name="cine_rig_rim_shadow" show_text="true" top="144"
+         max_val="1" min_val="0" name="cine_rig_rim_shadow" show_text="true" top="170"
          tool_tip="How much the light's shadow darkens its rim. 1 = shadowed exactly like the light (default). Lower it if a light directly behind the subject gives little or no rim. Caution: low values also let the rim show through walls or people standing in front of the subject." width="266" wheel_adjust="true" />
-        <button follows="left|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_rig_rim_shadow_reset" top="145" tool_tip="Reset to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineRigRimShadow" />
+        <button follows="left|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_rig_rim_shadow_reset" top="171" tool_tip="Reset to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineRigRimShadow" />
         <check_box control_name="CineRigRimIncludeAlpha" follows="left|top" height="18"
-         label="Alpha surfaces" layout="topleft" left="8" name="cine_rig_rim_include_alpha" top="174"
+         label="Alpha surfaces" layout="topleft" left="8" name="cine_rig_rim_include_alpha" top="200"
          tool_tip="Rim on transparent / alpha-blended surfaces such as hair." width="110" />
         <check_box control_name="CineRigRimIncludeProbes" follows="left|top" height="18"
-         label="Probes" layout="topleft" left="124" name="cine_rig_rim_include_probes" top="174"
+         label="Probes" layout="topleft" left="124" name="cine_rig_rim_include_probes" top="200"
          tool_tip="Also render rim into reflection-probe captures." width="70" />
         <check_box control_name="CineRigRimIncludeBounce" follows="left|top" height="18"
-         label="Bounce fills" layout="topleft" left="200" name="cine_rig_rim_include_bounce" top="174"
+         label="Bounce fills" layout="topleft" left="200" name="cine_rig_rim_include_bounce" top="200"
          tool_tip="The rig's synthetic bounce fills carry their light's rim." width="110" />
-        <text follows="left|top" height="15" layout="topleft" left="52" top="200" value="Amount" width="62" />
-        <text follows="left|top" height="15" layout="topleft" left="122" top="200" value="Sharp" width="62" />
-        <text follows="left|top" height="15" layout="topleft" left="192" top="200" value="Wrap" width="62" />
-        <text follows="left|top" height="15" layout="topleft" left="262" top="200" value="Back" width="52" />
-        <button follows="left|top" height="18" layout="topleft" left="316" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_rig_rim_table_reset" top="197" tool_tip="Reset all per-light rim values" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineRigRimKeyGain,CineRigRimKeySharpness,CineRigRimKeyWrap,CineRigRimKeyBackBias,CineRigRimFillGain,CineRigRimFillSharpness,CineRigRimFillWrap,CineRigRimFillBackBias,CineRigRimRimGain,CineRigRimRimSharpness,CineRigRimRimWrap,CineRigRimRimBackBias,CineRigRimBgGain,CineRigRimBgSharpness,CineRigRimBgWrap,CineRigRimBgBackBias" />
+        <text follows="left|top" height="15" layout="topleft" left="52" top="226" value="Amount" width="62" />
+        <text follows="left|top" height="15" layout="topleft" left="122" top="226" value="Sharp" width="62" />
+        <text follows="left|top" height="15" layout="topleft" left="192" top="226" value="Wrap" width="62" />
+        <text follows="left|top" height="15" layout="topleft" left="262" top="226" value="Back" width="52" />
+        <button follows="left|top" height="18" layout="topleft" left="316" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_rig_rim_table_reset" top="223" tool_tip="Reset all per-light rim values" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineRigRimKeyGain,CineRigRimKeySharpness,CineRigRimKeyWrap,CineRigRimKeyBackBias,CineRigRimFillGain,CineRigRimFillSharpness,CineRigRimFillWrap,CineRigRimFillBackBias,CineRigRimRimGain,CineRigRimRimSharpness,CineRigRimRimWrap,CineRigRimRimBackBias,CineRigRimBgGain,CineRigRimBgSharpness,CineRigRimBgWrap,CineRigRimBgBackBias" />
         <text follows="left|top" font="SansSerifBold" height="15" layout="topleft"
-         left="8" name="cine_rig_rim_key_label" text_color="1 0.4 0.4 1" top="218" value="KEY" width="40" />
+         left="8" name="cine_rig_rim_key_label" text_color="1 0.4 0.4 1" top="244" value="KEY" width="40" />
         <spinner control_name="CineRigRimKeyGain" decimal_digits="2" follows="left|top" height="20"
          increment="0.1" layout="topleft" left="52" max_val="4" min_val="0" name="cine_rig_rim_key_gain"
-         tool_tip="Rim strength from this fixture (0 = none)." top="216" width="62" />
+         tool_tip="Rim strength from this fixture (0 = none)." top="242" width="62" />
         <spinner control_name="CineRigRimKeySharpness" decimal_digits="2" follows="left|top" height="20"
          increment="0.25" layout="topleft" left="122" max_val="8" min_val="0.25" name="cine_rig_rim_key_sharpness"
-         tool_tip="Grazing-angle exponent: higher = thinner edge band." top="216" width="62" />
+         tool_tip="Grazing-angle exponent: higher = thinner edge band." top="242" width="62" />
         <spinner control_name="CineRigRimKeyWrap" decimal_digits="2" follows="left|top" height="20"
          increment="0.05" layout="topleft" left="192" max_val="1" min_val="0" name="cine_rig_rim_key_wrap"
-         tool_tip="Continue the rim past the light's terminator." top="216" width="62" />
+         tool_tip="Continue the rim past the light's terminator." top="242" width="62" />
         <spinner control_name="CineRigRimKeyBackBias" decimal_digits="2" follows="left|top" height="20"
          increment="0.05" layout="topleft" left="262" max_val="1" min_val="-1" name="cine_rig_rim_key_back_bias"
-         tool_tip="How far behind the subject the light must sit (-1 = any angle, 1 = directly behind)." top="216" width="62" />
-        <text follows="left|top" font="SansSerifBold" height="15" layout="topleft"
-         left="8" name="cine_rig_rim_fill_label" text_color="0.4 1 0.4 1" top="244" value="FILL" width="40" />
-        <spinner control_name="CineRigRimFillGain" decimal_digits="2" follows="left|top" height="20"
-         increment="0.1" layout="topleft" left="52" max_val="4" min_val="0" name="cine_rig_rim_fill_gain"
-         tool_tip="Rim strength from this fixture (0 = none)." top="242" width="62" />
-        <spinner control_name="CineRigRimFillSharpness" decimal_digits="2" follows="left|top" height="20"
-         increment="0.25" layout="topleft" left="122" max_val="8" min_val="0.25" name="cine_rig_rim_fill_sharpness"
-         tool_tip="Grazing-angle exponent: higher = thinner edge band." top="242" width="62" />
-        <spinner control_name="CineRigRimFillWrap" decimal_digits="2" follows="left|top" height="20"
-         increment="0.05" layout="topleft" left="192" max_val="1" min_val="0" name="cine_rig_rim_fill_wrap"
-         tool_tip="Continue the rim past the light's terminator." top="242" width="62" />
-        <spinner control_name="CineRigRimFillBackBias" decimal_digits="2" follows="left|top" height="20"
-         increment="0.05" layout="topleft" left="262" max_val="1" min_val="-1" name="cine_rig_rim_fill_back_bias"
          tool_tip="How far behind the subject the light must sit (-1 = any angle, 1 = directly behind)." top="242" width="62" />
         <text follows="left|top" font="SansSerifBold" height="15" layout="topleft"
-         left="8" name="cine_rig_rim_rim_label" text_color="0.4 0.7 1 1" top="270" value="RIM" width="40" />
-        <spinner control_name="CineRigRimRimGain" decimal_digits="2" follows="left|top" height="20"
-         increment="0.1" layout="topleft" left="52" max_val="4" min_val="0" name="cine_rig_rim_rim_gain"
+         left="8" name="cine_rig_rim_fill_label" text_color="0.4 1 0.4 1" top="270" value="FILL" width="40" />
+        <spinner control_name="CineRigRimFillGain" decimal_digits="2" follows="left|top" height="20"
+         increment="0.1" layout="topleft" left="52" max_val="4" min_val="0" name="cine_rig_rim_fill_gain"
          tool_tip="Rim strength from this fixture (0 = none)." top="268" width="62" />
-        <spinner control_name="CineRigRimRimSharpness" decimal_digits="2" follows="left|top" height="20"
-         increment="0.25" layout="topleft" left="122" max_val="8" min_val="0.25" name="cine_rig_rim_rim_sharpness"
+        <spinner control_name="CineRigRimFillSharpness" decimal_digits="2" follows="left|top" height="20"
+         increment="0.25" layout="topleft" left="122" max_val="8" min_val="0.25" name="cine_rig_rim_fill_sharpness"
          tool_tip="Grazing-angle exponent: higher = thinner edge band." top="268" width="62" />
-        <spinner control_name="CineRigRimRimWrap" decimal_digits="2" follows="left|top" height="20"
-         increment="0.05" layout="topleft" left="192" max_val="1" min_val="0" name="cine_rig_rim_rim_wrap"
+        <spinner control_name="CineRigRimFillWrap" decimal_digits="2" follows="left|top" height="20"
+         increment="0.05" layout="topleft" left="192" max_val="1" min_val="0" name="cine_rig_rim_fill_wrap"
          tool_tip="Continue the rim past the light's terminator." top="268" width="62" />
-        <spinner control_name="CineRigRimRimBackBias" decimal_digits="2" follows="left|top" height="20"
-         increment="0.05" layout="topleft" left="262" max_val="1" min_val="-1" name="cine_rig_rim_rim_back_bias"
+        <spinner control_name="CineRigRimFillBackBias" decimal_digits="2" follows="left|top" height="20"
+         increment="0.05" layout="topleft" left="262" max_val="1" min_val="-1" name="cine_rig_rim_fill_back_bias"
          tool_tip="How far behind the subject the light must sit (-1 = any angle, 1 = directly behind)." top="268" width="62" />
         <text follows="left|top" font="SansSerifBold" height="15" layout="topleft"
-         left="8" name="cine_rig_rim_bg_label" text_color="1 1 0.4 1" top="296" value="BG" width="40" />
+         left="8" name="cine_rig_rim_rim_label" text_color="0.4 0.7 1 1" top="296" value="RIM" width="40" />
+        <spinner control_name="CineRigRimRimGain" decimal_digits="2" follows="left|top" height="20"
+         increment="0.1" layout="topleft" left="52" max_val="4" min_val="0" name="cine_rig_rim_rim_gain"
+         tool_tip="Rim strength from this fixture (0 = none)." top="294" width="62" />
+        <spinner control_name="CineRigRimRimSharpness" decimal_digits="2" follows="left|top" height="20"
+         increment="0.25" layout="topleft" left="122" max_val="8" min_val="0.25" name="cine_rig_rim_rim_sharpness"
+         tool_tip="Grazing-angle exponent: higher = thinner edge band." top="294" width="62" />
+        <spinner control_name="CineRigRimRimWrap" decimal_digits="2" follows="left|top" height="20"
+         increment="0.05" layout="topleft" left="192" max_val="1" min_val="0" name="cine_rig_rim_rim_wrap"
+         tool_tip="Continue the rim past the light's terminator." top="294" width="62" />
+        <spinner control_name="CineRigRimRimBackBias" decimal_digits="2" follows="left|top" height="20"
+         increment="0.05" layout="topleft" left="262" max_val="1" min_val="-1" name="cine_rig_rim_rim_back_bias"
+         tool_tip="How far behind the subject the light must sit (-1 = any angle, 1 = directly behind)." top="294" width="62" />
+        <text follows="left|top" font="SansSerifBold" height="15" layout="topleft"
+         left="8" name="cine_rig_rim_bg_label" text_color="1 1 0.4 1" top="322" value="BG" width="40" />
         <spinner control_name="CineRigRimBgGain" decimal_digits="2" follows="left|top" height="20"
          increment="0.1" layout="topleft" left="52" max_val="4" min_val="0" name="cine_rig_rim_bg_gain"
-         tool_tip="Rim strength from this fixture (0 = none)." top="294" width="62" />
+         tool_tip="Rim strength from this fixture (0 = none)." top="320" width="62" />
         <spinner control_name="CineRigRimBgSharpness" decimal_digits="2" follows="left|top" height="20"
          increment="0.25" layout="topleft" left="122" max_val="8" min_val="0.25" name="cine_rig_rim_bg_sharpness"
-         tool_tip="Grazing-angle exponent: higher = thinner edge band." top="294" width="62" />
+         tool_tip="Grazing-angle exponent: higher = thinner edge band." top="320" width="62" />
         <spinner control_name="CineRigRimBgWrap" decimal_digits="2" follows="left|top" height="20"
          increment="0.05" layout="topleft" left="192" max_val="1" min_val="0" name="cine_rig_rim_bg_wrap"
-         tool_tip="Continue the rim past the light's terminator." top="294" width="62" />
+         tool_tip="Continue the rim past the light's terminator." top="320" width="62" />
         <spinner control_name="CineRigRimBgBackBias" decimal_digits="2" follows="left|top" height="20"
          increment="0.05" layout="topleft" left="262" max_val="1" min_val="-1" name="cine_rig_rim_bg_back_bias"
-         tool_tip="How far behind the subject the light must sit (-1 = any angle, 1 = directly behind)." top="294" width="62" />
+         tool_tip="How far behind the subject the light must sit (-1 = any angle, 1 = directly behind)." top="320" width="62" />
         </panel>
     </flow_grid>
 </panel>

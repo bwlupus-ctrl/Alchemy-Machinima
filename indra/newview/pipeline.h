@@ -243,8 +243,73 @@ public:
     static void materializeKaleidoPreset(U32 preset_id, const std::string& edited_control);
     // [BDMerge G3.2] volumetric lighting (donor: Black Dragon)
     void renderVolumetric(LLRenderTarget* src, LLRenderTarget* dst);
-    // [Cine Outline Phase 1] additive deferred edge pass feeding bloom/glow.
-    void renderCineOutline(LLRenderTarget* dst);
+    // [RotoInk] Rotoscope Ink: read-scratch (mWaterDis) / write-all-pixels
+    // deferred ink-line pass (successor of the Cine Outline Phase-1 additive
+    // Sobel pass). Blend is OFF -- the shader reads a copy of dst (rotoScene)
+    // and writes every pixel back, so fixed/match-light ink colour, the
+    // three blend modes and the legacy alpha glow feed are all resolved
+    // in-shader. Off (CineOutlineEnabled false) is a true no-op: no copy, no
+    // draw. See LLPipeline::renderCineOutline for the mWaterDis scratch
+    // idiom and the CPU subject-isolation resolve (mRotoInkSubject).
+    //
+    // [RotoInk Round-4, Codex+Opus P1] camera_modelview/camera_projection:
+    // the 16-F32 GL matrix arrays the subject re-projection (mRotoInkSubject)
+    // should use, e.g. gGLModelView/gGLProjection or gGLLastModelView/
+    // gGLLastProjection. Default nullptr means "use gGLLast{ModelView,
+    // Projection}" (the renderFinalize call sites: gGLLast* already holds
+    // THIS frame's just-finished camera by the time renderFinalize runs).
+    // ROTOINK_LAYER_SCENE is the one call site that must NOT default this way
+    // -- it runs from inside renderGeomPostDeferred, which is BEFORE the
+    // end-of-3D-scene snapshot that copies gGLModelView/gGLProjection into
+    // gGLLast{ModelView,Projection} (renderFinalize's caller does that
+    // snapshot, not renderGeomPostDeferred itself) -- so gGLLast* there still
+    // holds the PREVIOUS frame's camera. That call site passes the live
+    // gGLModelView/gGLProjection explicitly instead (the pool loop reloads
+    // gGLModelView as the current camera's view matrix before every pass, so
+    // it is reliably THIS frame's matrix at that point). This never changes
+    // WHEN or HOW gGLLast{ModelView,Projection} themselves get updated --
+    // velocity rendering depends on that timing untouched.
+    void renderCineOutline(LLRenderTarget* dst, const F32* camera_modelview = nullptr, const F32* camera_projection = nullptr);
+    // [RotoInk] CineOutlineLayer: which point in the HDR post chain the ink
+    // pass runs at. Exactly one of these fires per frame (see
+    // shouldRunRotoInkAt). The non-HDR pipeline has no such chain to place a
+    // layer within -- it always runs its own single post-colorCorrect ink
+    // call (at the same buffer position as ROTOINK_LAYER_OVERLAY) regardless
+    // of this setting; see the non-HDR branch in renderFinalize.
+    enum ERotoInkLayer : S32
+    {
+        ROTOINK_LAYER_SCENE      = 0, // renderGeomPostDeferred, before water/haze/atmospherics/glass
+        ROTOINK_LAYER_CAMERA     = 1, // after generateExposure, before applyOnLensFilters (default)
+        ROTOINK_LAYER_ATMOSPHERE = 2, // after feedProjectorVolumetricBloom, before actor-path guides
+        ROTOINK_LAYER_OVERLAY    = 3, // post-colorCorrect, HDR path only (mirrors the non-HDR call)
+    };
+    // Resolves CineOutlineLayer (clamped 0..3), with the S-Log3 override:
+    // Overlay draws flat, display-referred lines directly into the working
+    // buffer, which would corrupt a log-encoded (AlchemyRenderTonemapType==8)
+    // image, so it silently degrades to Camera whenever that tonemapper is
+    // active.
+    S32 resolveRotoInkLayer() const;
+    // True exactly when Rotoscope Ink should draw at the given ERotoInkLayer
+    // site THIS frame -- the single dispatch point that keeps exactly one
+    // HDR-path call site active. Folds in CineOutlineEnabled, gCubeSnapshot,
+    // gSnapshotNoPost, and whether the HDR post chain is even running this
+    // frame (mirrors renderFinalize's own `hdr` predicate); callers still add
+    // any render-context gates specific to their call site (see the
+    // ROTOINK_LAYER_SCENE call in renderGeomPostDeferred).
+    bool shouldRunRotoInkAt(S32 layer) const;
+    // [RotoInk Round-3, Codex P1] Shared with colorCorrect() so the two can
+    // never drift on whether the colorCorrect shader variant that will
+    // actually run this frame applies RenderExposure / the active tonemap
+    // operator at all (colorCorrectF.glsl's TONEMAP permutation guard).
+    // `apply_tonemap` must be the same value the matching colorCorrect() call
+    // this frame will use (renderFinalize's `hdr` local). Returns false
+    // whenever a legacy-gamma sky, RenderDisablePostProcessing with Build
+    // open, or a "no post" snapshot will force colorCorrect onto its
+    // gamma-only (non-TONEMAP) shader variant regardless of apply_tonemap.
+    // Optionally reports the legacy-gamma and no-post sub-conditions for
+    // callers (like colorCorrect itself) that also need them for shader
+    // selection.
+    bool colorCorrectWillApplyExposure(bool apply_tonemap, bool* out_legacy_gamma = nullptr, bool* out_no_post = nullptr) const;
     // [RimGlow Phase 1] depth-gated Auto Rim for the in-focus subject: MRT
     // mask/subj/radHist/dir gather (reads dst + G-buffer normal/depth +
     // mRimGlowRadHist[prev]) -> wrap blur chain (Two-Color reserved, no-op
@@ -1421,6 +1486,35 @@ public:
         F64     mLastTime = -1.0;
     };
     RimGlowFocusState           mRimGlowFocus;
+
+    // [RotoInk] CPU-resolved subject isolation for Rotoscope Ink: metric
+    // depth slab + optional screen-space ellipse around the resolved
+    // subject's projected animated AABB. Smoothed with its own independent
+    // state (never shares mRimGlowFocus) exactly like RimGlowFocusState,
+    // since the two features can target different Director Cast subjects
+    // and must not double-step or cross-contaminate each other's smoothing.
+    //
+    // [Round-1 review fix] The smoother stores the subject's AABB centre and
+    // half-extents in AGENT (world) space, NOT view space / screen UV. Only
+    // the subject's own motion is smoothed here; every render re-projects
+    // the smoothed world-space box with THAT render's own current camera
+    // (gGLLastModelView/Projection) to get focus depth and the screen
+    // ellipse. This makes a camera cut, a paused-time camera move, or a
+    // multi-direction capture (360/cubemap) exact by construction -- there
+    // is no stale camera-space history to interpolate from or reuse, since
+    // no camera-derived value is ever stored across frames.
+    // See LLPipeline::renderCineOutline.
+    struct RotoInkSubjectState
+    {
+        bool      mHaveSmoothed = false;
+        LLVector3 mCenter{0.f, 0.f, 0.f};        // agent-space AABB centre, smoothed
+        LLVector3 mHalfExtents{0.5f, 0.5f, 1.f}; // agent-space AABB half-extents, smoothed
+        LLUUID    mLastTargetId;
+        U64       mLastRegionHandle = 0;
+        F64       mLastTime = -1.0;
+        U64       mLastCutSerial = 0;            // ALDirectorSwitcher::cutSerial() at last resolve
+    };
+    RotoInkSubjectState         mRotoInkSubject;
 
     // Night Mask: per-frame resolved state, shared verbatim between
     // generateLuminance() (B1 bloom-metering fix) and applyOnLensFilters()

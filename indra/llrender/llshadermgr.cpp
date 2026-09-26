@@ -2038,6 +2038,19 @@ void LLShaderMgr::initAttribsAndUniforms()
     mReservedUniforms.push_back("rig_rim_lights");
     mReservedUniforms.push_back("rig_rim_shadow"); // [RigRim] Rim shadow
 
+    // [RotoInk] Rotoscope Ink post pass (cineOutlineF.glsl); lockstep with
+    // the ROTO_* block at the end of the enum in llshadermgr.h.
+    mReservedUniforms.push_back("rotoScene");
+    mReservedUniforms.push_back("roto_line");
+    mReservedUniforms.push_back("roto_ink");
+    mReservedUniforms.push_back("roto_subject");
+    mReservedUniforms.push_back("roto_subject2");
+    mReservedUniforms.push_back("roto_subject3");
+    mReservedUniforms.push_back("roto_sketch");
+    mReservedUniforms.push_back("roto_sketch2");
+    mReservedUniforms.push_back("roto_motion");
+    mReservedUniforms.push_back("roto_motion2");
+
     llassert(mReservedUniforms.size() == END_RESERVED_UNIFORMS);
 
     std::set<std::string> dupe_check;

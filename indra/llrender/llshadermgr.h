@@ -837,6 +837,21 @@ public:
         RIG_RIM_LIGHTS,                    //  "rig_rim_lights"        vec4[] batched: multiPointLightF[LIGHT_COUNT], forward alpha[LL_NUM_LIGHT_UNITS]
         RIG_RIM_SHADOW,                    //  "rig_rim_shadow"        float 0 rim ignores the projector shadow .. 1 fully shadowed (spotLightF)
 
+        // [RotoInk] Rotoscope Ink (cineOutlineF.glsl), uploaded by
+        // LLPipeline::renderCineOutline(). OUTLINE_COLOR/PARAMS/PARAMS2 above
+        // are reused (see the shader header for their new packing). Appended
+        // in lockstep with the matching push_back block in llshadermgr.cpp.
+        ROTO_SCENE,                        //  "rotoScene"             sampler2D copy of the destination (mWaterDis scratch)
+        ROTO_LINE,                         //  "roto_line"             vec4 sil threshold, crease threshold (1-cos), sil weight, crease weight
+        ROTO_INK,                          //  "roto_ink"              vec4 opacity, match-light reach px, reserved, reserved
+        ROTO_SUBJECT,                      //  "roto_subject"          vec4 mode, subject depth m, slab half depth m, slab feather m
+        ROTO_SUBJECT2,                     //  "roto_subject2"         vec4 ellipse centre uv, ellipse radii uv
+        ROTO_SUBJECT3,                     //  "roto_subject3"         vec4 ellipse amount, ellipse feather, ellipse valid, reserved
+        ROTO_SKETCH,                       //  "roto_sketch"           vec4 enable, boil px, detail, redraw fps
+        ROTO_SKETCH2,                      //  "roto_sketch2"          vec4 strokes, roughness, seed, reserved
+        ROTO_MOTION,                       //  "roto_motion"           vec4 style, speed, amount, scale
+        ROTO_MOTION2,                      //  "roto_motion2"          vec4 scan angle rad, time s, reserved, reserved
+
         END_RESERVED_UNIFORMS
     } eGLSLReservedUniforms;
     // clang-format on

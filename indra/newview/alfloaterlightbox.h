@@ -64,8 +64,16 @@ public:
     void onCineHazePreset(const LLSD& userdata);
     void onCineHazeRefFromCamera();
 
+    // [RotoInk] Roto Ink tab: "reset" (all controls to default) or an
+    // ALRotoInk preset key.
+    void onRotoInkPreset(const LLSD& userdata);
+    // [RotoInk] Shows the Silhouette/Metric threshold row matching
+    // CineOutlineDepthMode and hides the other (pattern: updateTonemapper()).
+    void updateRotoInkDepthMode();
+
     boost::signals2::scoped_connection mTonemapConnection;
     boost::signals2::scoped_connection mCASConnection;
+    boost::signals2::scoped_connection mRotoInkDepthModeConnection;
 };
 
 #endif // AL_FLOATERLIGHTBOX_H
