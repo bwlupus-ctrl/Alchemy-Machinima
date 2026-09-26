@@ -141,6 +141,11 @@ const char* const kAllSettings[] = {
     // [RotoInk Round-3] Ink layer (never written by a preset -- like
     // Subject*, this is which-pass-timing, not part of a look).
     "CineOutlineLayer",
+    // [RotoInk Speed] Master animation speed/pause/Director-follow (never
+    // written by a preset -- rate control, not part of a look).
+    "CineOutlineAnimSpeed",
+    "CineOutlineAnimPause",
+    "CineOutlineAnimFollowDirector",
     // [RotoInk] Line
     "CineOutlineSilhouetteEnabled",
     "CineOutlineSilhouetteThreshold",

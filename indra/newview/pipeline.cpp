@@ -16873,7 +16873,65 @@ void LLPipeline::renderCineOutline(LLRenderTarget* dst, const F32* camera_modelv
     gCineOutlineProgram.uniform4f(LLShaderMgr::ROTO_SKETCH, sketch_enabled ? 1.f : 0.f, sketch_amount * px_scale, sketch_detail, sketch_fps);
     gCineOutlineProgram.uniform4f(LLShaderMgr::ROTO_SKETCH2, (F32)sketch_strokes, sketch_roughness, sketch_seed, 0.f);
     gCineOutlineProgram.uniform4f(LLShaderMgr::ROTO_MOTION, (F32)motion_style, motion_speed, motion_amount, motion_scale);
-    const F32 roto_time_s = (F32)std::fmod(LLPresentationTime::currentFrame().presentation_time, 3600.0);
+    // [RotoInk Speed] Accumulate mRotoAnimClock instead of uploading the raw
+    // presentation-time clock directly, so CineOutlineAnimSpeed / -AnimPause
+    // (see pipeline.h mRotoAnimClock) can scale or freeze every Roto Ink
+    // animation term (both motion layers, sketch boil, pattern drift, colour
+    // cycling all read ROTO_MOTION2.y only) without ever jumping: changing
+    // either setting only changes the rate the clock advances at from here
+    // on, never its current value.
+    const F64 roto_now_raw = LLPresentationTime::currentFrame().presentation_time;
+    // [RotoInk Speed] Never seed or advance from a non-finite timestamp
+    // (would poison the accumulated clock permanently).
+    const bool roto_now_ok = llfinite(roto_now_raw);
+    const F64 roto_now = roto_now_ok ? roto_now_raw : mRotoAnimLastTime;
+    if (!mRotoAnimClockValid && roto_now_ok)
+    {
+        // First use: seed both clocks so that at speed 1, unpaused, the very
+        // first upload matches the old unscaled behaviour exactly.
+        mRotoAnimClock = roto_now;
+        mRotoAnimLastTime = roto_now;
+        mRotoAnimClockValid = true;
+    }
+    F64 roto_dt = mRotoAnimClockValid ? (roto_now - mRotoAnimLastTime) : 0.0;
+    if (!llfinite(roto_dt) || roto_dt < 0.0 || roto_dt > 10.0)
+    {
+        // Time reversal (e.g. presentation clock reset) or a long stall
+        // (e.g. a loading screen): don't let the ink animation jump. A
+        // second renderCineOutline call within the same frame (capture
+        // views) naturally lands here too with dt == 0, adding nothing.
+        roto_dt = 0.0;
+    }
+    // Slow frames (heavy capture / hi-res renders below 1 fps) still advance,
+    // capped per frame so a single hitch can't leap the animation forward.
+    roto_dt = llmin(roto_dt, 1.0);
+    if (roto_now_ok)
+    {
+        mRotoAnimLastTime = roto_now;
+    }
+    static LLCachedControl<bool> roto_anim_pause_ctrl(gSavedSettings, "CineOutlineAnimPause", false);
+    static LLCachedControl<F32>  roto_anim_speed_ctrl(gSavedSettings, "CineOutlineAnimSpeed", 1.f);
+    static LLCachedControl<bool> roto_anim_follow_ctrl(gSavedSettings, "CineOutlineAnimFollowDirector", false);
+    const bool roto_anim_pause = roto_anim_pause_ctrl;
+    const F32  roto_anim_speed_raw = roto_anim_speed_ctrl;
+    const F32  roto_anim_speed = llclamp(llfinite(roto_anim_speed_raw) ? roto_anim_speed_raw : 1.f, 0.f, 8.f);
+    // [RotoInk Speed] Optional link to the Director console's global camera-
+    // operator time speed (llcameraoperator.cpp's own timeSpeed cached
+    // control -- same key, same 1.f fallback default so a missing/unset key
+    // behaves as authored speed). Folding it into the same accumulated-clock
+    // rate (rather than, say, applying it separately) means toggling Follow
+    // Director or the operator's own Time speed slider only ever changes the
+    // rate from here on, never causes a jump, exactly like AnimSpeed/Pause.
+    F32 roto_anim_rate = roto_anim_pause ? 0.f : roto_anim_speed;
+    if (roto_anim_follow_ctrl)
+    {
+        static LLCachedControl<F32> director_time_speed(gSavedSettings, "FlycamOperatorTimeSpeed", 1.f);
+        const F32 director_speed_raw = (F32)director_time_speed;
+        const F32 director_speed = llclamp(llfinite(director_speed_raw) ? director_speed_raw : 1.f, 0.f, 8.f);
+        roto_anim_rate *= director_speed;
+    }
+    mRotoAnimClock += roto_dt * (F64)roto_anim_rate;
+    const F32 roto_time_s = (F32)std::fmod(mRotoAnimClock, 3600.0);
     gCineOutlineProgram.uniform4f(LLShaderMgr::ROTO_MOTION2, motion_angle * DEG_TO_RAD, roto_time_s, 0.f, 0.f);
     // [RotoInk Anim] Layer-1 shape/seed/step-fps/tempo (A.1 ROTO_MOTION3).
     gCineOutlineProgram.uniform4f(LLShaderMgr::ROTO_MOTION3, motion_shape, motion_seed, motion_step_fps, motion_tempo_bps);

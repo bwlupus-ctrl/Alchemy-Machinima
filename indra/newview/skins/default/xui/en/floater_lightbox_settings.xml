@@ -4823,7 +4823,7 @@
 		<panel follows="all" label="Roto Ink" layout="topleft" name="rotoink_settings" can_resize="false">
 			<scroll_container follows="all" height="806" layout="topleft" left="0"
 			 name="rotoink_settings_scroll" opaque="false" reserve_scroll_corner="false" top="0" width="420">
-				<panel background_visible="false" follows="left|top|right" height="2382" layout="topleft" left="0"
+				<panel background_visible="false" follows="left|top|right" height="2492" layout="topleft" left="0"
 				 name="rotoink_settings_scroll_content" top="0" width="400">
 			<text follows="left|top" height="15" left="8" top_pad="12" width="384" layout="topleft" font="SansSerifBold" value="Rotoscope Ink (native deferred ink-line pass)" />
 			<check_box follows="left|top" height="16" left="12" top_pad="6" width="360" layout="topleft" label="Enable Rotoscope Ink" name="ri_enable" control_name="CineOutlineEnabled" tool_tip="Native ink line pass on depth/normal edges, before AA. Off is a complete no-op." />
@@ -5007,28 +5007,36 @@
 			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" value="Ellipse feather:" />
 			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="0.01" max_val="0.75" increment="0.01" decimal_digits="2" show_text="true" can_edit_text="true" name="ri_subject_ellipse_feather_slider" control_name="CineOutlineSubjectEllipseFeather" enabled_control="CineOutlineEnabled" tool_tip="Ellipse edge softness, as a fraction of the radius." />
 			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="ri_reset_CineOutlineSubjectEllipseFeather"><button.commit_callback function="LightBox.ResetControlDefault" parameter="CineOutlineSubjectEllipseFeather" /></button>
-			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" name="CineOutlineSubjectScreenCX_row_label" value="Screen rect/ellipse X:" />
+			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" name="CineOutlineSubjectScreenCX_row_label" value="Screen shape X:" />
 			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="0" max_val="1" increment="0.01" decimal_digits="2" show_text="true" can_edit_text="true" name="ri_subject_screen_cx_slider" control_name="CineOutlineSubjectScreenCX" enabled_control="CineOutlineEnabled" tool_tip="Modes 7/8 (Screen rectangle/ellipse) only: shape centre X, in screen uv (0 = left edge, 1 = right edge)." />
 			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="ri_reset_CineOutlineSubjectScreenCX"><button.commit_callback function="LightBox.ResetControlDefault" parameter="CineOutlineSubjectScreenCX" /></button>
-			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" name="CineOutlineSubjectScreenCY_row_label" value="Screen rect/ellipse Y:" />
+			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" name="CineOutlineSubjectScreenCY_row_label" value="Screen shape Y:" />
 			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="0" max_val="1" increment="0.01" decimal_digits="2" show_text="true" can_edit_text="true" name="ri_subject_screen_cy_slider" control_name="CineOutlineSubjectScreenCY" enabled_control="CineOutlineEnabled" tool_tip="Modes 7/8 only: shape centre Y, in screen uv (0 = bottom edge, 1 = top edge)." />
 			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="ri_reset_CineOutlineSubjectScreenCY"><button.commit_callback function="LightBox.ResetControlDefault" parameter="CineOutlineSubjectScreenCY" /></button>
-			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" name="CineOutlineSubjectScreenRX_row_label" value="Screen rect/ellipse half-W:" />
+			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" name="CineOutlineSubjectScreenRX_row_label" value="Screen shape half-W:" />
 			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="0.01" max_val="1" increment="0.01" decimal_digits="2" show_text="true" can_edit_text="true" name="ri_subject_screen_rx_slider" control_name="CineOutlineSubjectScreenRX" enabled_control="CineOutlineEnabled" tool_tip="Modes 7/8 only: shape half-width, in screen uv." />
 			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="ri_reset_CineOutlineSubjectScreenRX"><button.commit_callback function="LightBox.ResetControlDefault" parameter="CineOutlineSubjectScreenRX" /></button>
-			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" name="CineOutlineSubjectScreenRY_row_label" value="Screen rect/ellipse half-H:" />
+			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" name="CineOutlineSubjectScreenRY_row_label" value="Screen shape half-H:" />
 			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="0.01" max_val="1" increment="0.01" decimal_digits="2" show_text="true" can_edit_text="true" name="ri_subject_screen_ry_slider" control_name="CineOutlineSubjectScreenRY" enabled_control="CineOutlineEnabled" tool_tip="Modes 7/8 only: shape half-height, in screen uv." />
 			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="ri_reset_CineOutlineSubjectScreenRY"><button.commit_callback function="LightBox.ResetControlDefault" parameter="CineOutlineSubjectScreenRY" /></button>
-			<text follows="left|top" height="15" left="8" top_pad="12" width="384" layout="topleft" font="SansSerifBold" value="Colour" />
+			<text follows="left|top" height="15" left="8" top_pad="12" width="384" layout="topleft" font="SansSerifBold" value="Ink" />
 			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" value="Ink colour:" />
 			<combo_box follows="left|top" layout="topleft" height="20" top_pad="-17" left="136" width="188" allow_text_entry="false" name="ri_ink_mode_combo" control_name="CineOutlineInkColorMode" enabled_control="CineOutlineEnabled" tool_tip="Fixed uses the swatch below. Match samples the brightest scene colour just outside the edge and keeps only its hue.">
 				<combo_box.item label="Fixed colour" name="ri_ink_fixed" value="0" />
 				<combo_box.item label="Match nearby light" name="ri_ink_match" value="1" />
 			</combo_box>
-			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" value="Colour:" />
-			<color_swatch follows="left|top" height="22" left="136" top_pad="-17" width="44" layout="topleft" can_apply_immediately="true" name="ri_color_swatch" control_name="CineOutlineColor" enabled_control="CineOutlineEnabled" tool_tip="Ink colour (stored linear). Black for classic ink, white for chalk, saturated for neon." />
+			<!-- [RotoInk UI] Colour swatch: label_height="0" gives the whole
+			     control rect to the colour box (the default color_swatch
+			     widget otherwise reserves BTN_HEIGHT_SMALL=23px at the bottom
+			     for its own caption label, which left almost nothing visible
+			     at the old height=22; see llcolorswatch.cpp draw()/mLabelHeight.
+			     We already have the "Colour:" text label to the left, so the
+			     built-in caption is redundant. Only shown for Fixed colour
+			     (CineOutlineInkColorMode 0); see updateRotoInkAnimVisibility(). -->
+			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" name="CineOutlineColor_row_label" value="Colour:" />
+			<color_swatch follows="left|top" height="26" left="136" top_pad="-17" width="100" label_height="0" layout="topleft" can_apply_immediately="true" name="ri_color_swatch" control_name="CineOutlineColor" enabled_control="CineOutlineEnabled" tool_tip="Ink colour (stored linear). Black for classic ink, white for chalk, saturated for neon. In Match nearby light mode (Normal/Multiply blend) this is the fallback ink used where the surroundings are too dark to match." />
 			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="ri_reset_CineOutlineColor"><button.commit_callback function="LightBox.ResetControlDefault" parameter="CineOutlineColor" /></button>
-			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" value="Match reach px:" />
+			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" name="CineOutlineMatchReach_row_label" value="Match reach px:" />
 			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="1" max_val="32" increment="1" decimal_digits="0" show_text="true" can_edit_text="true" name="ri_match_reach_slider" control_name="CineOutlineMatchReach" enabled_control="CineOutlineEnabled" tool_tip="Match-light sampling reach outside the edge, in pixels at 1080p. Only used when Ink colour is Match nearby light." />
 			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="ri_reset_CineOutlineMatchReach"><button.commit_callback function="LightBox.ResetControlDefault" parameter="CineOutlineMatchReach" /></button>
 			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" value="HDR intensity:" />
@@ -5046,9 +5054,7 @@
 			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" value="Bloom feed:" />
 			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="0" max_val="1" increment="0.01" decimal_digits="2" show_text="true" can_edit_text="true" name="ri_glow_slider" control_name="CineOutlineGlow" enabled_control="CineOutlineEnabled" tool_tip="Feeds the line into legacy glow / HDR bloom, independent of the blend mode above." />
 			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="ri_reset_CineOutlineGlow"><button.commit_callback function="LightBox.ResetControlDefault" parameter="CineOutlineGlow" /></button>
-			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" value="Secondary colour:" />
-			<color_swatch follows="left|top" height="22" left="136" top_pad="-17" width="44" layout="topleft" can_apply_immediately="true" name="ri_color2_swatch" control_name="CineOutlineColor2" enabled_control="CineOutlineEnabled" tool_tip="Secondary ink colour (stored linear), used by the colour modes below." />
-			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="ri_reset_CineOutlineColor2"><button.commit_callback function="LightBox.ResetControlDefault" parameter="CineOutlineColor2" /></button>
+			<text follows="left|top" height="15" left="8" top_pad="12" width="384" layout="topleft" font="SansSerifBold" value="Colour effects" />
 			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" value="Colour mode:" />
 			<combo_box follows="left|top" layout="topleft" height="20" top_pad="-17" left="136" width="188" allow_text_entry="false" name="ri_color2_mode_combo" control_name="CineOutlineColor2Mode" enabled_control="CineOutlineEnabled" tool_tip="Blends in the secondary colour. Two-tone/Rainbow cycle along the edge and/or over time; Highlight tints wherever the motion style spikes; Heat tints wherever the style's own heat field (fire, electric sparks, glitch bands) is hot.">
 				<combo_box.item label="Off" name="ri_c2_off" value="0" />
@@ -5057,10 +5063,20 @@
 				<combo_box.item label="Highlight (motion peaks)" name="ri_c2_highlight" value="3" />
 				<combo_box.item label="Heat (motion field)" name="ri_c2_heat" value="4" />
 			</combo_box>
-			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" name="CineOutlineColor2Speed_row_label" value="Colour cycle speed:" />
+			<!-- [RotoInk UI] Secondary colour swatch: same label_height="0" fix
+			     as the primary swatch above. Only shown for the modes that
+			     actually read roto_color2.xyz: Two-tone, Highlight and Heat.
+			     Rainbow cycle computes a pure hue from time/position alone and
+			     never reads the secondary colour at all (cineOutlineF.glsl
+			     cmode==2 branch), so it's hidden there too even though it's
+			     also a "cycling" mode for the Speed/Length rows below. -->
+			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" name="CineOutlineColor2_row_label" value="Secondary colour:" />
+			<color_swatch follows="left|top" height="26" left="136" top_pad="-17" width="100" label_height="0" layout="topleft" can_apply_immediately="true" name="ri_color2_swatch" control_name="CineOutlineColor2" enabled_control="CineOutlineEnabled" tool_tip="Secondary ink colour (stored linear), used by the colour modes below." />
+			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="ri_reset_CineOutlineColor2"><button.commit_callback function="LightBox.ResetControlDefault" parameter="CineOutlineColor2" /></button>
+			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" name="CineOutlineColor2Speed_row_label" value="Cycle speed:" />
 			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="0" max_val="5" increment="0.05" decimal_digits="2" show_text="true" can_edit_text="true" name="ri_color2_speed_slider" control_name="CineOutlineColor2Speed" enabled_control="CineOutlineEnabled" tool_tip="Two-tone/Rainbow only: colour cycle speed, cycles per second." />
 			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="ri_reset_CineOutlineColor2Speed"><button.commit_callback function="LightBox.ResetControlDefault" parameter="CineOutlineColor2Speed" /></button>
-			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" name="CineOutlineColor2Length_row_label" value="Colour cycle length px:" />
+			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" name="CineOutlineColor2Length_row_label" value="Cycle length px:" />
 			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="0" max_val="1024" increment="1" decimal_digits="0" show_text="true" can_edit_text="true" name="ri_color2_length_slider" control_name="CineOutlineColor2Length" enabled_control="CineOutlineEnabled" tool_tip="Two-tone/Rainbow only: cycle length along the edge, in pixels at 1080p (0 = cycle over time only, ignoring position)." />
 			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="ri_reset_CineOutlineColor2Length"><button.commit_callback function="LightBox.ResetControlDefault" parameter="CineOutlineColor2Length" /></button>
 			<text follows="left|top" height="15" left="8" top_pad="12" width="384" layout="topleft" font="SansSerifBold" value="Sketch / Boil" />
@@ -5105,7 +5121,7 @@
 			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" name="CineOutlineHatchAngle_row_label" value="Hatch angle deg:" />
 			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="0" max_val="180" increment="1" decimal_digits="0" show_text="true" can_edit_text="true" name="ri_hatch_angle_slider" control_name="CineOutlineHatchAngle" enabled_control="CineOutlineEnabled" tool_tip="Hatch only: stripe angle in degrees." />
 			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="ri_reset_CineOutlineHatchAngle"><button.commit_callback function="LightBox.ResetControlDefault" parameter="CineOutlineHatchAngle" /></button>
-			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" name="CineOutlineHatchReach_row_label" value="Hatch shading reach px:" />
+			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" name="CineOutlineHatchReach_row_label" value="Shading reach px:" />
 			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="0" max_val="48" increment="1" decimal_digits="0" show_text="true" can_edit_text="true" name="ri_hatch_reach_slider" control_name="CineOutlineHatchReach" enabled_control="CineOutlineEnabled" tool_tip="Hatch only: 0 hatches the line itself; more adds a hatched shading zone inside the silhouette, at the cost of one extra line evaluation." />
 			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="ri_reset_CineOutlineHatchReach"><button.commit_callback function="LightBox.ResetControlDefault" parameter="CineOutlineHatchReach" /></button>
 			<check_box follows="left|top" height="16" left="12" top_pad="8" width="360" layout="topleft" label="Cross-hatch" name="ri_hatch_cross_check" control_name="CineOutlineHatchCross" enabled_control="CineOutlineEnabled" tool_tip="Hatch only: also draws the perpendicular stripe set." />
@@ -5225,6 +5241,18 @@
 			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="ri_reset_CineOutlineMotion2Angle"><button.commit_callback function="LightBox.ResetControlDefault" parameter="CineOutlineMotion2Angle" /></button>
 			<text follows="left|top" height="15" left="10" top_pad="8" width="300" layout="topleft" name="ri_motion2_anchor_hint" font="SansSerifSmall" value="This style radiates from the subject target (or the frame centre if none is set), even while Subject isolation above is off." />
 			<text follows="left|top" height="15" left="8" top_pad="12" width="384" layout="topleft" font="SansSerifBold" value="Timing" />
+			<!-- [RotoInk Speed] Master speed/pause/Director-follow, at the top of
+			     Timing: every animated term in the shader (both motion layers,
+			     sketch boil redraw, pattern drift, colour cycling) reads the
+			     same accumulated clock (LLPipeline::mRotoAnimClock), so these
+			     three controls scale or freeze all of it at once, and apply to
+			     the Hand-drawn boil above too even though that's a different
+			     bold-header group. -->
+			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" value="Animation speed:" />
+			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="0" max_val="4" increment="0.05" decimal_digits="2" show_text="true" can_edit_text="true" name="ri_anim_speed_slider" control_name="CineOutlineAnimSpeed" enabled_control="CineOutlineEnabled" tool_tip="Scales every Roto Ink animation at once -- both motion layers, sketch boil, dash/pattern drift and colour cycling. 1 = as designed. Changes apply smoothly without jumping." />
+			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="ri_reset_CineOutlineAnimSpeed"><button.commit_callback function="LightBox.ResetControlDefault" parameter="CineOutlineAnimSpeed" /></button>
+			<check_box follows="left|top" height="16" left="12" top_pad="8" width="360" layout="topleft" label="Pause" name="ri_anim_pause_check" control_name="CineOutlineAnimPause" enabled_control="CineOutlineEnabled" tool_tip="Freezes all Roto Ink animation on the current frame; untick to resume from the same point." />
+			<check_box follows="left|top" height="16" left="12" top_pad="8" width="360" layout="topleft" label="Follow Director time speed" name="ri_anim_follow_director_check" control_name="CineOutlineAnimFollowDirector" enabled_control="CineOutlineEnabled" tool_tip="Also scales Roto Ink animation by the Director console's Camera Operator 'Time speed', so slow-motion or fast-motion shots slow or speed the ink too. Off = independent." />
 			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" value="Tempo BPM:" />
 			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="0" max_val="300" increment="1" decimal_digits="0" show_text="true" can_edit_text="true" name="ri_motion_tempo_slider" control_name="CineOutlineMotionTempo" enabled_control="CineOutlineEnabled" tool_tip="0 = motion speeds are plain cycles per second. Above 0, every motion speed becomes cycles PER BEAT and locks to this tempo -- handy for syncing to music." />
 			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="ri_reset_CineOutlineMotionTempo"><button.commit_callback function="LightBox.ResetControlDefault" parameter="CineOutlineMotionTempo" /></button>

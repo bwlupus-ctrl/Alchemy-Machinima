@@ -95,6 +95,8 @@ ALFloaterLightBox::~ALFloaterLightBox()
     mRotoInkColor2ModeConnection.disconnect();
     mRotoInkSubjectModeConnection.disconnect();
     mRotoInkSubjectTargetSetConnection.disconnect();
+    mRotoInkInkColorModeConnection.disconnect();
+    mRotoInkBlendModeConnection.disconnect();
 }
 
 bool ALFloaterLightBox::postBuild()
@@ -158,6 +160,8 @@ bool ALFloaterLightBox::postBuild()
     mRotoInkColor2ModeConnection = gSavedSettings.getControl("CineOutlineColor2Mode")->getSignal()->connect([&](LLControlVariable*, const LLSD&, const LLSD&) { updateRotoInkAnimVisibility(); });
     mRotoInkSubjectModeConnection = gSavedSettings.getControl("CineOutlineSubjectMode")->getSignal()->connect([&](LLControlVariable*, const LLSD&, const LLSD&) { updateRotoInkAnimVisibility(); });
     mRotoInkSubjectTargetSetConnection = gSavedSettings.getControl("CineOutlineSubjectTargetSet")->getSignal()->connect([&](LLControlVariable*, const LLSD&, const LLSD&) { updateRotoInkAnimVisibility(); });
+    mRotoInkInkColorModeConnection = gSavedSettings.getControl("CineOutlineInkColorMode")->getSignal()->connect([&](LLControlVariable*, const LLSD&, const LLSD&) { updateRotoInkAnimVisibility(); });
+    mRotoInkBlendModeConnection = gSavedSettings.getControl("CineOutlineBlendMode")->getSignal()->connect([&](LLControlVariable*, const LLSD&, const LLSD&) { updateRotoInkAnimVisibility(); });
 
     return LLFloater::postBuild();
 }
@@ -432,16 +436,18 @@ void ALFloaterLightBox::updateRotoInkDepthMode()
 // [RotoInk Anim] Contract A.8. Same findChild+setVisible idiom as
 // updateRotoInkDepthMode()/updateTonemapper(); one pass covers every rule
 // (layer 1/2 motion Shape/Angle/anchor-hint per style, the Tempo Phase row,
-// the Pattern group's per-type rows plus the Ratio label wording, the
-// secondary-colour Speed/Length rows per colour mode, and the Subject
-// "extras" per CineOutlineSubjectMode). Re-run whenever any of the six
-// driving settings changes (wired in postBuild).
+// the Pattern group's per-type rows plus the Ratio label wording, the Ink
+// group's Colour-swatch/Match-reach rows per ink colour mode, the Colour
+// effects group's secondary-colour swatch and Speed/Length rows per colour
+// mode, and the Subject "extras" per CineOutlineSubjectMode). Re-run
+// whenever any of the seven driving settings changes (wired in postBuild).
 void ALFloaterLightBox::updateRotoInkAnimVisibility()
 {
     const S32 motion_style  = gSavedSettings.getS32("CineOutlineMotionStyle");
     const S32 motion2_style = gSavedSettings.getS32("CineOutlineMotion2Style");
     const F32 motion_tempo  = gSavedSettings.getF32("CineOutlineMotionTempo");
     const S32 pattern_type  = gSavedSettings.getS32("CineOutlinePatternType");
+    const S32 ink_mode      = gSavedSettings.getS32("CineOutlineInkColorMode");
     const S32 color2_mode   = gSavedSettings.getS32("CineOutlineColor2Mode");
     const S32 subject_mode  = gSavedSettings.getS32("CineOutlineSubjectMode");
 
@@ -515,8 +521,30 @@ void ALFloaterLightBox::updateRotoInkAnimVisibility()
     set_row("CineOutlineHatchReach", "ri_hatch_reach_slider", hatch_active);
     if (LLView* v = findChild<LLView>("ri_hatch_cross_check")) v->setVisible(hatch_active);
 
-    // Secondary colour: Speed/Length only matter for the two cycling modes
-    // (Two-tone, Rainbow); Highlight/Heat are purely spatial.
+    // [RotoInk UI] Ink group: the Colour swatch is the ink colour for Fixed
+    // colour. In Match nearby light with Normal/Multiply blend the shader
+    // still reads it as the dark-area FALLBACK (rotoMatchLight fades toward
+    // outline_color when the surroundings are dark, and uses it when there
+    // is no peak); with Add blend the fallback is black, so it's unused.
+    // Match reach only matters for Match nearby light.
+    const S32 blend_mode = gSavedSettings.getS32("CineOutlineBlendMode");
+    const bool color_used = (ink_mode == 0) || (ink_mode == 1 && blend_mode != 2);
+    set_row("CineOutlineColor", "ri_color_swatch", color_used);
+    if (LLTextBox* color_label = findChild<LLTextBox>("CineOutlineColor_row_label"))
+    {
+        color_label->setText(ink_mode == 1 ? std::string("Fallback colour:") : std::string("Colour:"));
+    }
+    set_row("CineOutlineMatchReach", "ri_match_reach_slider", ink_mode == 1);
+
+    // [RotoInk UI] Colour effects group. Secondary colour swatch: cmode 1
+    // (two-tone) and 3/4 (highlight/heat) read roto_color2.xyz directly;
+    // cmode 2 (rainbow cycle) computes a pure hue from time/position alone
+    // and never reads col2 at all (see cineOutlineF.glsl's cmode==2 branch),
+    // so the swatch is hidden there even though it's a "cycling" mode.
+    // Speed/Length only matter for the two cycling modes (Two-tone, Rainbow);
+    // Highlight/Heat are purely spatial.
+    set_row("CineOutlineColor2", "ri_color2_swatch",
+            color2_mode == 1 || color2_mode == 3 || color2_mode == 4);
     const bool color2_cycling = (color2_mode == 1 || color2_mode == 2);
     set_row("CineOutlineColor2Speed", "ri_color2_speed_slider", color2_cycling);
     set_row("CineOutlineColor2Length", "ri_color2_length_slider", color2_cycling);

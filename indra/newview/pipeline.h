@@ -1450,6 +1450,21 @@ public:
     };
     RotoInkSubjectState         mRotoInkSubject;
 
+    // [RotoInk Speed] Accumulated Rotoscope Ink animation clock (seconds),
+    // driving ROTO_MOTION2.y instead of the raw presentation-time clock so
+    // CineOutlineAnimSpeed / CineOutlineAnimPause / CineOutlineAnimFollow-
+    // Director can change the rate live without ever causing a visual jump.
+    // Advances by dt * rate each renderCineOutline call, where rate is 0
+    // while CineOutlineAnimPause is set, else clamp(CineOutlineAnimSpeed, 0,
+    // 8) optionally further multiplied by clamp(FlycamOperatorTimeSpeed, 0,
+    // 8) when CineOutlineAnimFollowDirector is on, and dt is the
+    // presentation-time delta since the last call, clamped to [0, 1] s (0 on
+    // time reversal or a long stall, and naturally 0 on a second call within
+    // the same frame, e.g. a capture view). See LLPipeline::renderCineOutline.
+    F64                         mRotoAnimClock = 0.0;
+    F64                         mRotoAnimLastTime = 0.0;
+    bool                        mRotoAnimClockValid = false;
+
     // [RotoInk Anim] Per-target world-space smoother for subject mode 3
     // (target set), keyed by target UUID (avatar id or object id -- both are
     // LLUUID, no collision risk). Same critically-damped exponential as

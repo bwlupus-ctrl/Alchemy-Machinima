@@ -83,7 +83,7 @@ public:
     boost::signals2::scoped_connection mTonemapConnection;
     boost::signals2::scoped_connection mCASConnection;
     boost::signals2::scoped_connection mRotoInkDepthModeConnection;
-    // [RotoInk Anim] All six drive the same updateRotoInkAnimVisibility().
+    // [RotoInk Anim] All seven drive the same updateRotoInkAnimVisibility().
     boost::signals2::scoped_connection mRotoInkMotionStyleConnection;
     boost::signals2::scoped_connection mRotoInkMotion2StyleConnection;
     boost::signals2::scoped_connection mRotoInkMotionTempoConnection;
@@ -91,6 +91,10 @@ public:
     boost::signals2::scoped_connection mRotoInkColor2ModeConnection;
     boost::signals2::scoped_connection mRotoInkSubjectModeConnection;
     boost::signals2::scoped_connection mRotoInkSubjectTargetSetConnection;
+    // [RotoInk UI] Gates the Ink group's Colour swatch (Fixed only) / Match
+    // reach (Match only) rows -- see updateRotoInkAnimVisibility().
+    boost::signals2::scoped_connection mRotoInkInkColorModeConnection;
+    boost::signals2::scoped_connection mRotoInkBlendModeConnection; // [RotoInk UI] fallback-colour row
 };
 
 #endif // AL_FLOATERLIGHTBOX_H

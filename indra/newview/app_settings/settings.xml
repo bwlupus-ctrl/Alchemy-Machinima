@@ -38,6 +38,27 @@
       <key>Type</key><string>S32</string>
       <key>Value</key><integer>1</integer>
     </map>
+    <key>CineOutlineAnimSpeed</key>
+    <map>
+      <key>Comment</key><string>[RotoInk Speed] Master speed multiplier for all Rotoscope Ink animation (both motion layers, sketch boil, pattern drift, colour cycling). 1 = authored speed, 0.5 = half, 2 = double.</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>1.0</real>
+    </map>
+    <key>CineOutlineAnimPause</key>
+    <map>
+      <key>Comment</key><string>[RotoInk Speed] Freeze all Rotoscope Ink animation on the current frame.</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>Boolean</string>
+      <key>Value</key><integer>0</integer>
+    </map>
+    <key>CineOutlineAnimFollowDirector</key>
+    <map>
+      <key>Comment</key><string>[RotoInk Speed] When on, Rotoscope Ink animation speed is also multiplied by the Director camera operator's global Time speed (FlycamOperatorTimeSpeed), so slow-motion/fast-motion shots scale the ink animation too.</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>Boolean</string>
+      <key>Value</key><integer>0</integer>
+    </map>
     <key>CineOutlineSilhouetteEnabled</key>
     <map>
       <key>Comment</key><string>[RotoInk] Draw the outer silhouette line (depth discontinuity)</string>
