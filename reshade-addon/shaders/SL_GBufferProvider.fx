@@ -462,7 +462,9 @@ float sl_flag_untag(float w)
     if ((SL_ConfigFlags & SL_CONFIG_AVATAR_TAG) == 0u)
         return w;
     float code = floor(w * 6.0 + 0.5);
-    return (code + fmod(code, 2.0)) / 6.0;
+    // ReShade FX has no fmod(); codes are non-negative integers, so parity
+    // = code - 2*floor(code/2) is exact.
+    return (code + (code - 2.0 * floor(code * 0.5))) / 6.0;
 }
 
 // True on pixels the viewer tagged as avatar geometry (system mesh, rigged
@@ -473,7 +475,8 @@ bool sl_flag_avatar(float2 uv)
     if ((SL_ConfigFlags & SL_CONFIG_AVATAR_TAG) == 0u)
         return false;
     float w = tex2Dlod(SL_sNormalsPoint, float4(SL_UV(uv), 0, 0)).w;
-    return fmod(floor(w * 6.0 + 0.5), 2.0) > 0.5;
+    float code = floor(w * 6.0 + 0.5);
+    return (code - 2.0 * floor(code * 0.5)) > 0.5;
 }
 
 #if SL_ALBEDO_FLAG_COVERAGE_GATE
