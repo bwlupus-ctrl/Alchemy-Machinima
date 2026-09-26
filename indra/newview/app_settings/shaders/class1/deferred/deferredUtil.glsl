@@ -800,8 +800,8 @@ void pbrPunctual(vec3 diffuseColor, vec3 specularColor,
 // Because it is a lighting term (no neighbour taps, no edge mask, no history)
 // it can never draw an outline - it only brightens grazing, back-lit pixels the
 // light already reaches.  This is the "fix by construction" for the screen-space
-// rim-glow outline complaint; the Phase-1 screen-space Rim Glow (rimGlow*F.glsl,
-// CineRimGlow*) is a separate, untouched feature.
+// rim-glow outline complaint. (The old Phase-1 screen-space Rim Glow post
+// pass was a separate feature and has been removed.)
 //
 // Math (all vectors eye space, unit length; v = surface->camera, l = surface->light):
 //   NoV   = |n.v|

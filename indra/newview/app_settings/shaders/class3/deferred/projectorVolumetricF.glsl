@@ -792,7 +792,7 @@ void main()
                 vec3  cookie_s = projGoboTexture(l_dist_s, ptc_s.xy);
                 vec3  E        = cookie_s * atten_s * shadow_s;
 
-                // Brightness gate (RimGlow's "ignore light dimmer than"): keep the rim on
+                // Brightness gate ("ignore light dimmer than"): keep the rim on
                 // meaningfully lit surfaces so faint spill can't paint a grey outline.
                 float lum  = dot(E, vec3(0.2126, 0.7152, 0.0722));
                 float gate = (projvol_rim_threshold > 0.0)

@@ -790,27 +790,6 @@ public:
         KAL_CELL,                          //  "kal_cell"           cellSizeVar, cellBreathe, cellSubdiv, cellMerge
         KAL_CELL2,                         //  "kal_cell2"          cellTint, reserved, reserved, reserved
 
-        // [RimGlow Phase 1] cross-pass scratch-texture samplers only. Every
-        // scalar RimGlow parameter (gather/fresnel/lobe/shoulder/edge/focus/
-        // blur-control uniforms) is set BY NAME via the LLStaticHashedString
-        // uniform*() overloads instead — no enum needed for those. These
-        // texture samplers DO need reserved slots because
-        // LLGLSLShader::bindTexture()/enableTexture() only accept the S32
-        // reserved-uniform index, not an arbitrary name. Names here are the
-        // EXACT sampler names the shader side declares (rimglow_native_plan.md
-        // seam reconciliation) — appended at the end in lockstep with the
-        // matching push_back block in llshadermgr.cpp.
-        RIMGLOW_RAD_HIST,                  //  "rimRadHist"   (Mask input: mRimGlowRadHist[prev])
-        RIMGLOW_DS_SRC,                    //  "dsSrc"        (Downsample input: mRimGlowWork attachment 0, mask)
-        RIMGLOW_DS_SRC_DIR,                //  "dsSrcDir"     (Downsample input: mRimGlowWork attachment 3, dir)
-        RIMGLOW_BLUR_SRC,                  //  "blurSrc"      (Blur input, reused per invocation: mask/color chain)
-        RIMGLOW_BLUR_SRC_DIR,              //  "blurSrcDir"   (Blur input, reused per invocation: dir/aux chain)
-        RIMGLOW_MASK,                      //  "rimMask"      (Composite input: mRimGlowWork attachment 0)
-        RIMGLOW_SUBJ,                      //  "rimSubj"      (Composite input: mRimGlowWork attachment 1)
-        RIMGLOW_WRAP,                      //  "rimWrap"      (Composite input: WrapV final output)
-        RIMGLOW_GLOW,                      //  "rimGlow"      (Composite input: glow chain final, LINEAR filter)
-        RIMGLOW_GLOW_DIR,                  //  "rimGlowDir"   (Composite input: dir chain final, LINEAR filter)
-
         // [Cine Haze] Cinematic Depth Atmosphere (windlight/cineHazeF.glsl),
         // uploaded by ALCineHaze::bind() from LLPipeline::bindDeferredShader()
         // and the alpha pool's prepare_alpha_shader().  Appended at the end in

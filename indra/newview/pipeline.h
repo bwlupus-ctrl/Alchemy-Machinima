@@ -310,14 +310,6 @@ public:
     // callers (like colorCorrect itself) that also need them for shader
     // selection.
     bool colorCorrectWillApplyExposure(bool apply_tonemap, bool* out_legacy_gamma = nullptr, bool* out_no_post = nullptr) const;
-    // [RimGlow Phase 1] depth-gated Auto Rim for the in-focus subject: MRT
-    // mask/subj/radHist/dir gather (reads dst + G-buffer normal/depth +
-    // mRimGlowRadHist[prev]) -> wrap blur chain (Two-Color reserved, no-op
-    // this phase) -> half-res downsample -> glow/dir blur chain -> composite,
-    // written back into dst via the mWaterDis read-scratch-blit idiom (same
-    // pattern as applyOnLensFilters). Auto Rim only; CPU-resolved
-    // manual/object focus (LLDirectorCast), no GPU autofocus pass this phase.
-    void renderVirtualCinemaRimGlow(LLRenderTarget* dst);
     // [BDMerge G3.3] per-projector volumetric light cones: additive pass, one
     // fullscreen cone per shadow-casting projector slot, in place on target.
     // [Prism camera feed] aux_direct=true is the Prism auxiliary (VCam) capture
@@ -1428,71 +1420,13 @@ public:
     // triggers realloc) so the effect holds zero VRAM when off.
     LLRenderTarget              mDiopterMap;
 
-    // [RimGlow Phase 1] Allocated ONLY while CineRimGlowEnabled is set
-    // (settings listener triggers realloc, mirrors mDiopterMap) so the
-    // effect holds zero VRAM when off. Fail-closed: any allocation failure
-    // releases every RimGlow target and disables the effect for the session.
-    //
-    // ONE single-buffered working FBO, full-res, recomputed fresh every
-    // frame (never itself ping-ponged): attachment 0 = mask (RGBA16F),
-    // attachment 1 = subj (R16F), attachment 2 = radHist_out (RGBA16F, this
-    // frame's blended captured-light, read immediately by the Composite
-    // pass), attachment 3 = dir (RG16F). Exactly 4 attachments = the
-    // LLRenderTarget::addColorAttachment() cap (llrendertarget.cpp).
-    LLRenderTarget              mRimGlowWork;
-
-    // Standalone 2-element ping-pong pair holding ONLY the temporal
-    // radiance-accumulation history -- the one piece of Mask-pass state that
-    // must survive across frames. Kept separate from mRimGlowWork rather
-    // than duplicating the whole 4-attachment bundle: mask/subj/dir are
-    // fully recomputed every frame and need no history, so duplicating them
-    // would waste VRAM for nothing. Propagated each frame via
-    // mRimGlowWork.copyContentsFromAttachment(source_attachment=2, ...).
-    LLRenderTarget              mRimGlowRadHist[2];
-    U32                         mRimGlowHistoryIdx = 0;
-    // False on (re)allocation, on allocation failure, and every frame the
-    // master enable is off (mirrors mProjVolHistoryValid) -- true only after
-    // a fully successful Mask-pass write + history propagation this frame.
-    bool                        mRimGlowHistoryValid = false;
-
-    // Wrap blur chain (Two-Color rim; reserved, a no-op pass in Phase 1
-    // since Mode is fixed to Auto Rim). Full-res RGBA16F.
-    LLRenderTarget              mRimGlowTmp;
-    LLRenderTarget              mRimGlowWrap;
-
-    // Half-res glow blur chain: EACH of these is a 2-attachment MRT target
-    // (attachment 0 = color RGBA16F, attachment 1 = paired directional-
-    // coherence buffer RG16F), downsampled from mRimGlowWork attachments 0
-    // and 3. Fused into one object per stage (rather than 4 independent
-    // single-attachment targets) because the shared blurHasDir=1 "glow
-    // chain" invocation blurs color and direction together in one draw --
-    // see LLPipeline::renderVirtualCinemaRimGlow for the read/write ping-
-    // pong (Downsample -> GlowTmp; GlowH: GlowTmp -> Glow; GlowV: Glow ->
-    // GlowTmp (final); Composite reads GlowTmp's two attachments).
-    LLRenderTarget              mRimGlowGlowTmp;   // attach0=color, attach1=dir
-    LLRenderTarget              mRimGlowGlow;      // attach0=color, attach1=dir
-
-    // [RimGlow Phase 1] CPU-resolved manual/object focus depth -- no GPU
-    // autofocus pass this phase (see LLPipeline::renderVirtualCinemaRimGlow).
-    // Exponentially smoothed exactly like NightMaskFrameState::mSmoothedPosAgent
-    // (updateNightMaskAnchor()); reset (snap) on target change/teleport/
-    // region change/time reversal, identically to Night Mask.
-    struct RimGlowFocusState
-    {
-        bool    mHaveSmoothed = false;
-        F32     mSmoothedFocusZ = 0.f;     // view-space Z, smoothed
-        LLUUID  mLastTargetId;
-        U64     mLastRegionHandle = 0;
-        F64     mLastTime = -1.0;
-    };
-    RimGlowFocusState           mRimGlowFocus;
-
     // [RotoInk] CPU-resolved subject isolation for Rotoscope Ink: metric
     // depth slab + optional screen-space ellipse around the resolved
     // subject's projected animated AABB. Smoothed with its own independent
-    // state (never shares mRimGlowFocus) exactly like RimGlowFocusState,
-    // since the two features can target different Director Cast subjects
-    // and must not double-step or cross-contaminate each other's smoothing.
+    // state, exponentially smoothed exactly like
+    // NightMaskFrameState::mSmoothedPosAgent (updateNightMaskAnchor()); reset
+    // (snap) on target change/teleport/region change/time reversal,
+    // identically to Night Mask.
     //
     // [Round-1 review fix] The smoother stores the subject's AABB centre and
     // half-extents in AGENT (world) space, NOT view space / screen UV. Only

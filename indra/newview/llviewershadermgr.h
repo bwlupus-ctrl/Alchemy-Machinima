@@ -304,13 +304,6 @@ extern LLGLSLShader         gUltimateKaleidoProgram;
 extern LLGLSLShader         gVolumetricLightProgram;
 // [Cine Outline Phase 1] deferred normal/depth outline post pass
 extern LLGLSLShader         gCineOutlineProgram;
-// [RimGlow Phase 1] depth-gated Auto Rim: MRT mask/subj/radHist/dir gather,
-// wrap blur chain (Two-Color reserved, no-op in Phase 1), half-res
-// downsample + glow/dir blur chain, composite.
-extern LLGLSLShader         gRimGlowMaskProgram;
-extern LLGLSLShader         gRimGlowDownsampleProgram;
-extern LLGLSLShader         gRimGlowBlurProgram;
-extern LLGLSLShader         gRimGlowCompositeProgram;
 // [BDMerge G3.3] per-projector volumetric light cones (visible spotlight shafts)
 extern LLGLSLShader         gDeferredProjectorVolumetricProgram;
 extern LLGLSLShader         gDeferredProjectorVolumetricUpsampleProgram; // [BDMerge G3.3 P1 item 3]

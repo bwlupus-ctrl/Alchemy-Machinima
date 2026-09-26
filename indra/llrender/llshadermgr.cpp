@@ -2006,18 +2006,6 @@ void LLShaderMgr::initAttribsAndUniforms()
     mReservedUniforms.push_back("kal_cell");
     mReservedUniforms.push_back("kal_cell2");
 
-    // [RimGlow Phase 1] cross-pass scratch-texture samplers (see llshadermgr.h)
-    mReservedUniforms.push_back("rimRadHist");
-    mReservedUniforms.push_back("dsSrc");
-    mReservedUniforms.push_back("dsSrcDir");
-    mReservedUniforms.push_back("blurSrc");
-    mReservedUniforms.push_back("blurSrcDir");
-    mReservedUniforms.push_back("rimMask");
-    mReservedUniforms.push_back("rimSubj");
-    mReservedUniforms.push_back("rimWrap");
-    mReservedUniforms.push_back("rimGlow");
-    mReservedUniforms.push_back("rimGlowDir");
-
     // [Cine Haze] Cinematic Depth Atmosphere (lockstep with the enum block
     // appended in llshadermgr.h)
     mReservedUniforms.push_back("cine_haze_active");

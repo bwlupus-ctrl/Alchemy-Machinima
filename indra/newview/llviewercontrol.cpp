@@ -1130,9 +1130,6 @@ void settings_setup_listeners()
     setting_setup_signal_listener(gSavedSettings, "BDMergeVelocityBuffer", handleReleaseGLBufferChanged);
     // [Ultimate Diopter] toggling the effect allocates/frees mDiopterMap
     setting_setup_signal_listener(gSavedSettings, "CineDiopterEnabled", handleReleaseGLBufferChanged);
-    // [RimGlow Phase 1] toggling the effect allocates/frees mRimGlowWork /
-    // mRimGlowRadHist[] / mRimGlowTmp / mRimGlowWrap / mRimGlowGlowTmp / mRimGlowGlow
-    setting_setup_signal_listener(gSavedSettings, "CineRimGlowEnabled", handleReleaseGLBufferChanged);
     setting_setup_signal_listener(gSavedSettings, "BDMergeMotionBlur", handleReleaseGLBufferChanged); // [BDMerge A5.4-3] realloc velocity RT
     setting_setup_signal_listener(gSavedSettings, "RenderSMAAUseStencil", handleReleaseGLBufferChanged);
     setting_setup_signal_listener(gSavedSettings, "RenderSMAAPredication", handleSetShaderChanged);
