@@ -2051,6 +2051,19 @@ void LLShaderMgr::initAttribsAndUniforms()
     mReservedUniforms.push_back("roto_motion");
     mReservedUniforms.push_back("roto_motion2");
 
+    // [RotoInk Anim] animated patterns + extended subject isolation;
+    // lockstep with the ROTO_MOTION3.. block at the end of the enum.
+    mReservedUniforms.push_back("roto_motion3");
+    mReservedUniforms.push_back("roto_motion4");
+    mReservedUniforms.push_back("roto_motion5");
+    mReservedUniforms.push_back("roto_pattern");
+    mReservedUniforms.push_back("roto_pattern2");
+    mReservedUniforms.push_back("roto_color2");
+    mReservedUniforms.push_back("roto_color2b");
+    mReservedUniforms.push_back("roto_subject4");
+    mReservedUniforms.push_back("roto_targets");
+    mReservedUniforms.push_back("roto_targets2");
+
     llassert(mReservedUniforms.size() == END_RESERVED_UNIFORMS);
 
     std::set<std::string> dupe_check;

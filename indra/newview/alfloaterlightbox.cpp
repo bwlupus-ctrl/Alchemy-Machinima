@@ -53,6 +53,7 @@
 #include "llselectmgr.h"
 #include "llvovolume.h"
 #include "pipeline.h"
+#include <algorithm> // [RotoInk Anim] std::clamp (updateRotoInkAnimVisibility)
 
 ALFloaterLightBox::ALFloaterLightBox(const LLSD& key)
 :   LLFloater(key)
@@ -86,6 +87,14 @@ ALFloaterLightBox::~ALFloaterLightBox()
     mTonemapConnection.disconnect();
     mCASConnection.disconnect();
     mRotoInkDepthModeConnection.disconnect();
+    // [RotoInk Anim]
+    mRotoInkMotionStyleConnection.disconnect();
+    mRotoInkMotion2StyleConnection.disconnect();
+    mRotoInkMotionTempoConnection.disconnect();
+    mRotoInkPatternTypeConnection.disconnect();
+    mRotoInkColor2ModeConnection.disconnect();
+    mRotoInkSubjectModeConnection.disconnect();
+    mRotoInkSubjectTargetSetConnection.disconnect();
 }
 
 bool ALFloaterLightBox::postBuild()
@@ -137,6 +146,18 @@ bool ALFloaterLightBox::postBuild()
     // [RotoInk]
     updateRotoInkDepthMode();
     mRotoInkDepthModeConnection = gSavedSettings.getControl("CineOutlineDepthMode")->getSignal()->connect([&](LLControlVariable*, const LLSD&, const LLSD&) { updateRotoInkDepthMode(); });
+
+    // [RotoInk Anim] One show/hide pass, re-run whenever any of the six
+    // driving settings changes (style/mode combos and the tempo/target-set
+    // gates -- see updateRotoInkAnimVisibility()'s own header comment).
+    updateRotoInkAnimVisibility();
+    mRotoInkMotionStyleConnection = gSavedSettings.getControl("CineOutlineMotionStyle")->getSignal()->connect([&](LLControlVariable*, const LLSD&, const LLSD&) { updateRotoInkAnimVisibility(); });
+    mRotoInkMotion2StyleConnection = gSavedSettings.getControl("CineOutlineMotion2Style")->getSignal()->connect([&](LLControlVariable*, const LLSD&, const LLSD&) { updateRotoInkAnimVisibility(); });
+    mRotoInkMotionTempoConnection = gSavedSettings.getControl("CineOutlineMotionTempo")->getSignal()->connect([&](LLControlVariable*, const LLSD&, const LLSD&) { updateRotoInkAnimVisibility(); });
+    mRotoInkPatternTypeConnection = gSavedSettings.getControl("CineOutlinePatternType")->getSignal()->connect([&](LLControlVariable*, const LLSD&, const LLSD&) { updateRotoInkAnimVisibility(); });
+    mRotoInkColor2ModeConnection = gSavedSettings.getControl("CineOutlineColor2Mode")->getSignal()->connect([&](LLControlVariable*, const LLSD&, const LLSD&) { updateRotoInkAnimVisibility(); });
+    mRotoInkSubjectModeConnection = gSavedSettings.getControl("CineOutlineSubjectMode")->getSignal()->connect([&](LLControlVariable*, const LLSD&, const LLSD&) { updateRotoInkAnimVisibility(); });
+    mRotoInkSubjectTargetSetConnection = gSavedSettings.getControl("CineOutlineSubjectTargetSet")->getSignal()->connect([&](LLControlVariable*, const LLSD&, const LLSD&) { updateRotoInkAnimVisibility(); });
 
     return LLFloater::postBuild();
 }
@@ -406,6 +427,124 @@ void ALFloaterLightBox::updateRotoInkDepthMode()
     {
         if (LLView* v = findChild<LLView>(name)) v->setVisible(metric);
     }
+}
+
+// [RotoInk Anim] Contract A.8. Same findChild+setVisible idiom as
+// updateRotoInkDepthMode()/updateTonemapper(); one pass covers every rule
+// (layer 1/2 motion Shape/Angle/anchor-hint per style, the Tempo Phase row,
+// the Pattern group's per-type rows plus the Ratio label wording, the
+// secondary-colour Speed/Length rows per colour mode, and the Subject
+// "extras" per CineOutlineSubjectMode). Re-run whenever any of the six
+// driving settings changes (wired in postBuild).
+void ALFloaterLightBox::updateRotoInkAnimVisibility()
+{
+    const S32 motion_style  = gSavedSettings.getS32("CineOutlineMotionStyle");
+    const S32 motion2_style = gSavedSettings.getS32("CineOutlineMotion2Style");
+    const F32 motion_tempo  = gSavedSettings.getF32("CineOutlineMotionTempo");
+    const S32 pattern_type  = gSavedSettings.getS32("CineOutlinePatternType");
+    const S32 color2_mode   = gSavedSettings.getS32("CineOutlineColor2Mode");
+    const S32 subject_mode  = gSavedSettings.getS32("CineOutlineSubjectMode");
+
+    // A "row" = its label (name "<key>_row_label", tagged by the round-A XUI
+    // generator), the control itself, and its reset button ("ri_reset_<key>")
+    // when it has one -- findChild returns null for widgets that don't
+    // (combos/checkboxes/spinners), which the existing idiom already no-ops on.
+    auto set_row = [this](const char* key, const char* widget_name, bool visible)
+    {
+        if (LLView* v = findChild<LLView>(widget_name)) v->setVisible(visible);
+        if (LLView* v = findChild<LLView>(std::string(key) + "_row_label")) v->setVisible(visible);
+        if (LLView* v = findChild<LLView>(std::string("ri_reset_") + key)) v->setVisible(visible);
+    };
+
+    // A.3: styles with no per-style Shape / no Angle meaning / anchor-based.
+    auto needs_shape = [](S32 style)
+    {
+        switch (style)
+        {
+            case 0: case 1: case 2: case 3: case 4: case 5: case 21: case 32: case 33:
+                return false;
+            default:
+                return true;
+        }
+    };
+    auto needs_angle = [](S32 style)
+    {
+        return style == 3 || style == 10 || style == 17 || style == 31 || style == 34;
+    };
+    auto needs_anchor_hint = [](S32 style)
+    {
+        return style == 9 || style == 10 || style == 23 || style == 24 || style == 35;
+    };
+
+    // Motion layer 1.
+    set_row("CineOutlineMotionShape", "ri_motion_shape_slider", needs_shape(motion_style));
+    set_row("CineOutlineMotionAngle", "ri_motion_angle_slider", needs_angle(motion_style));
+    if (LLView* v = findChild<LLView>("ri_motion_anchor_hint")) v->setVisible(needs_anchor_hint(motion_style));
+
+    // Motion layer 2 -- Speed/Amount/Scale stay unconditional (same as layer
+    // 1's own Speed/Amount/Scale); only Shape/Angle/the anchor hint depend on
+    // ITS OWN style value.
+    set_row("CineOutlineMotion2Shape", "ri_motion2_shape_slider", needs_shape(motion2_style));
+    set_row("CineOutlineMotion2Angle", "ri_motion2_angle_slider", needs_angle(motion2_style));
+    if (LLView* v = findChild<LLView>("ri_motion2_anchor_hint")) v->setVisible(needs_anchor_hint(motion2_style));
+
+    // Timing: Phase only means anything once Tempo has locked every speed to
+    // the beat.
+    set_row("CineOutlineMotionPhase", "ri_motion_phase_slider", motion_tempo > 0.f);
+
+    // Pattern group: size/ratio hidden for None; drift only for Dashed/
+    // Dotted; the hatch trio only for Hatch. The Ratio slider's label wording
+    // changes per type (A.8's "label per type").
+    const bool pattern_active = (pattern_type != 0);
+    if (LLView* v = findChild<LLView>("ri_pattern_size_slider")) v->setVisible(pattern_active);
+    if (LLView* v = findChild<LLView>("CineOutlinePatternSize_row_label")) v->setVisible(pattern_active);
+    if (LLView* v = findChild<LLView>("ri_reset_CineOutlinePatternSize")) v->setVisible(pattern_active);
+    if (LLView* v = findChild<LLView>("ri_pattern_ratio_slider")) v->setVisible(pattern_active);
+    if (LLView* v = findChild<LLView>("ri_pattern_ratio_label")) v->setVisible(pattern_active);
+    if (LLView* v = findChild<LLView>("ri_reset_CineOutlinePatternRatio")) v->setVisible(pattern_active);
+    if (LLTextBox* label = findChild<LLTextBox>("ri_pattern_ratio_label"))
+    {
+        static const char* const kRatioLabels[6] = {
+            "Ratio:", "Dash fill:", "Dot size:", "Stroke fraction:", "Hatch fill:", "Min width:"
+        };
+        label->setValue(kRatioLabels[std::clamp(pattern_type, 0, 5)]);
+    }
+    set_row("CineOutlinePatternDrift", "ri_pattern_drift_slider", pattern_active && (pattern_type == 1 || pattern_type == 2));
+    const bool hatch_active = (pattern_type == 4);
+    set_row("CineOutlineHatchAngle", "ri_hatch_angle_slider", hatch_active);
+    set_row("CineOutlineHatchReach", "ri_hatch_reach_slider", hatch_active);
+    if (LLView* v = findChild<LLView>("ri_hatch_cross_check")) v->setVisible(hatch_active);
+
+    // Secondary colour: Speed/Length only matter for the two cycling modes
+    // (Two-tone, Rainbow); Highlight/Heat are purely spatial.
+    const bool color2_cycling = (color2_mode == 1 || color2_mode == 2);
+    set_row("CineOutlineColor2Speed", "ri_color2_speed_slider", color2_cycling);
+    set_row("CineOutlineColor2Length", "ri_color2_length_slider", color2_cycling);
+
+    // Subject: mode-3 target-set controls, invert (modes 3-9), the manual
+    // depth band (mode 4) and the screen rectangle/ellipse (modes 7/8).
+    // Existing Target / manual-depth / range / feather / ellipse controls
+    // are left alone -- they stay visible in every mode (A.8).
+    const bool mode3 = (subject_mode == 3);
+    set_row("CineOutlineSubjectTargetSet", "ri_subject_targetset_combo", mode3);
+    set_row("CineOutlineSubjectMaxTargets", "ri_subject_max_spinner", mode3);
+    set_row("CineOutlineSubjectShape", "ri_subject_shape_combo", mode3);
+    if (LLView* v = findChild<LLView>("ri_subject_target_color_check")) v->setVisible(mode3);
+
+    if (LLView* v = findChild<LLView>("ri_subject_invert_check"))
+    {
+        v->setVisible(subject_mode >= 3 && subject_mode <= 9);
+    }
+
+    const bool mode4 = (subject_mode == 4);
+    set_row("CineOutlineSubjectDepthNear", "ri_subject_near_slider", mode4);
+    set_row("CineOutlineSubjectDepthFar", "ri_subject_far_slider", mode4);
+
+    const bool mode78 = (subject_mode == 7 || subject_mode == 8);
+    set_row("CineOutlineSubjectScreenCX", "ri_subject_screen_cx_slider", mode78);
+    set_row("CineOutlineSubjectScreenCY", "ri_subject_screen_cy_slider", mode78);
+    set_row("CineOutlineSubjectScreenRX", "ri_subject_screen_rx_slider", mode78);
+    set_row("CineOutlineSubjectScreenRY", "ri_subject_screen_ry_slider", mode78);
 }
 
 void ALFloaterLightBox::populateLUTCombo()

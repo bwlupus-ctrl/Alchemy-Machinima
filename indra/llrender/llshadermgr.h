@@ -850,7 +850,21 @@ public:
         ROTO_SKETCH,                       //  "roto_sketch"           vec4 enable, boil px, detail, redraw fps
         ROTO_SKETCH2,                      //  "roto_sketch2"          vec4 strokes, roughness, seed, reserved
         ROTO_MOTION,                       //  "roto_motion"           vec4 style, speed, amount, scale
-        ROTO_MOTION2,                      //  "roto_motion2"          vec4 scan angle rad, time s, reserved, reserved
+        ROTO_MOTION2,                      //  "roto_motion2"          vec4 layer-1 angle rad, time s, reserved, reserved
+
+        // [RotoInk Anim] animated patterns (round A) + extended subject
+        // isolation. Lockstep with the matching push_back block in
+        // llshadermgr.cpp. Off values (all 0) reproduce the pre-Anim output.
+        ROTO_MOTION3,                      //  "roto_motion3"          vec4 layer-1 shape, motion seed, hold-frame fps (0 off), tempo beats/s (0 off)
+        ROTO_MOTION4,                      //  "roto_motion4"          vec4 layer-2 style, speed, amount, scale
+        ROTO_MOTION5,                      //  "roto_motion5"          vec4 layer-2 shape, layer-2 angle rad, tempo phase beats, reserved
+        ROTO_PATTERN,                      //  "roto_pattern"          vec4 type, size px, ratio, drift px/s
+        ROTO_PATTERN2,                     //  "roto_pattern2"         vec4 hatch angle rad, hatch reach px, seed, cross 0/1
+        ROTO_COLOR2,                       //  "roto_color2"           vec4 secondary colour rgb (linear), colour mode
+        ROTO_COLOR2B,                      //  "roto_color2b"          vec4 colour speed, colour length px, reserved, reserved
+        ROTO_SUBJECT4,                     //  "roto_subject4"         vec4 target shape, invert, per-target palette, target count
+        ROTO_TARGETS,                      //  "roto_targets"          vec4[16] per target: centre uv, half extents uv
+        ROTO_TARGETS2,                     //  "roto_targets2"         vec4[16] per target: view depth m, slab half depth m, palette index, valid
 
         END_RESERVED_UNIFORMS
     } eGLSLReservedUniforms;

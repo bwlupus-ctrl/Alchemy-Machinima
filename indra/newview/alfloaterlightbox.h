@@ -70,10 +70,27 @@ public:
     // [RotoInk] Shows the Silhouette/Metric threshold row matching
     // CineOutlineDepthMode and hides the other (pattern: updateTonemapper()).
     void updateRotoInkDepthMode();
+    // [RotoInk Anim] Single show/hide pass over every round-A control whose
+    // visibility depends on another control's value (A.8): layer 1/2 motion
+    // Shape/Angle/anchor-hint per style, the Tempo Phase row, the Pattern
+    // group's per-type rows (and the Ratio label text), the secondary-colour
+    // Speed/Length rows per colour mode, and the whole Subject "extras" set
+    // per CineOutlineSubjectMode/TargetSet. Re-run on any of the six driving
+    // settings changing (see the connections below) -- same
+    // findChild+setVisible idiom as updateRotoInkDepthMode()/updateTonemapper().
+    void updateRotoInkAnimVisibility();
 
     boost::signals2::scoped_connection mTonemapConnection;
     boost::signals2::scoped_connection mCASConnection;
     boost::signals2::scoped_connection mRotoInkDepthModeConnection;
+    // [RotoInk Anim] All six drive the same updateRotoInkAnimVisibility().
+    boost::signals2::scoped_connection mRotoInkMotionStyleConnection;
+    boost::signals2::scoped_connection mRotoInkMotion2StyleConnection;
+    boost::signals2::scoped_connection mRotoInkMotionTempoConnection;
+    boost::signals2::scoped_connection mRotoInkPatternTypeConnection;
+    boost::signals2::scoped_connection mRotoInkColor2ModeConnection;
+    boost::signals2::scoped_connection mRotoInkSubjectModeConnection;
+    boost::signals2::scoped_connection mRotoInkSubjectTargetSetConnection;
 };
 
 #endif // AL_FLOATERLIGHTBOX_H

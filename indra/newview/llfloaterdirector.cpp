@@ -1302,6 +1302,28 @@ void LLFloaterDirector::loadScene(const std::string& name)
             }
         }
     }
+    else
+    {
+        // [RotoInk Anim Round-A review fix, P2 Opus] The scene HAS
+        // CineOutlineEnabled (saved before Round-A's 23 look / 11 subject
+        // keys existed, or otherwise just missing a few), so the all-reset
+        // above did not fire -- but the per-key loop further up only ever
+        // SETS a key the scene actually carries, leaving any key it lacks at
+        // whatever the live session (or a previously loaded scene) left it
+        // at. Reset to default every CineOutline* key this SPECIFIC scene
+        // lacks; keys it does carry were already applied above and must
+        // stay untouched.
+        for (const std::string& setting : sceneSettingsList())
+        {
+            if (setting.rfind("CineOutline", 0) == 0 && !scene["settings"].has(setting))
+            {
+                if (LLControlVariable* ctrl = gSavedSettings.getControl(setting))
+                {
+                    ctrl->resetToDefault(true);
+                }
+            }
+        }
+    }
 
     // Structured state carries the session-only anchor and the deterministic
     // FX phase, plus a denormalized base setup for self-contained scenes.

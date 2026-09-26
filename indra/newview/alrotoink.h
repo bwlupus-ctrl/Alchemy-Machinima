@@ -15,6 +15,14 @@
  *
  * Default OFF (CineOutlineEnabled = false). When disabled the pass does not
  * run at all (no scratch copy, no draw) -- see LLPipeline::renderCineOutline.
+ *
+ * [RotoInk Anim] Round-A animated patterns + extended subject isolation adds
+ * 23 "look" keys (motion layer 2, tempo/step/seed, line pattern, secondary
+ * colour -- all written by presets) and 11 "subject" keys (target-set gather,
+ * shape, invert, per-target colour, manual depth band, screen rect/ellipse --
+ * never written by presets, same as the original CineOutlineSubject* keys).
+ * 58 presets total (20 original looks + 38 new animated ones); every preset
+ * writes the full 53-key look set (30 original + 23 Anim).
  */
 
 #pragma once

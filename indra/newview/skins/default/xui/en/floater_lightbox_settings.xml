@@ -4823,12 +4823,13 @@
 		<panel follows="all" label="Roto Ink" layout="topleft" name="rotoink_settings" can_resize="false">
 			<scroll_container follows="all" height="806" layout="topleft" left="0"
 			 name="rotoink_settings_scroll" opaque="false" reserve_scroll_corner="false" top="0" width="420">
-				<panel background_visible="false" follows="left|top|right" height="1350" layout="topleft" left="0"
+				<panel background_visible="false" follows="left|top|right" height="2382" layout="topleft" left="0"
 				 name="rotoink_settings_scroll_content" top="0" width="400">
 			<text follows="left|top" height="15" left="8" top_pad="12" width="384" layout="topleft" font="SansSerifBold" value="Rotoscope Ink (native deferred ink-line pass)" />
 			<check_box follows="left|top" height="16" left="12" top_pad="6" width="360" layout="topleft" label="Enable Rotoscope Ink" name="ri_enable" control_name="CineOutlineEnabled" tool_tip="Native ink line pass on depth/normal edges, before AA. Off is a complete no-op." />
 			<combo_box follows="left|top" layout="topleft" height="22" left="12" top_pad="8" width="170" name="ri_preset_combo" tool_tip="Apply a full ink look (line, colour, sketch, motion) -- writes the values immediately even while Enable above is off (Enable and Subject isolation are never touched by a preset). Turn Enable on to see it.">
 				<combo_box.item label="Preset..." name="custom" value="custom" />
+				<combo_box.item enabled="false" label="-- Classic looks --" name="ri_preset_sep_classic" value="-1" />
 				<combo_box.item label="Comic Ink" name="comic" value="comic" />
 				<combo_box.item label="Bold Comic" name="bold" value="bold" />
 				<combo_box.item label="Manga Fine Line" name="manga" value="manga" />
@@ -4849,6 +4850,49 @@
 				<combo_box.item label="Wire Shimmer" name="wireshimmer" value="wireshimmer" />
 				<combo_box.item label="Woodcut" name="woodcut" value="woodcut" />
 				<combo_box.item label="Ballpoint Doodle" name="ballpoint" value="ballpoint" />
+				<combo_box.item enabled="false" label="-- Line &amp; Pattern --" name="ri_preset_sep_line_pattern" value="-1" />
+				<combo_box.item label="Marching Ants" name="ants" value="ants" />
+				<combo_box.item label="Dashed Blueprint" name="dashblue" value="dashblue" />
+				<combo_box.item label="Double-Line Cartoon" name="doubleline" value="doubleline" />
+				<combo_box.item label="Cross-hatch Engraving" name="engraving" value="engraving" />
+				<combo_box.item label="Dotted Pointillist" name="pointillist" value="pointillist" />
+				<combo_box.item label="Two-Tone Candy" name="candy" value="candy" />
+				<combo_box.item label="Breathing Brush" name="brush" value="brush" />
+				<combo_box.item label="Comic Speed Lines" name="speedlines" value="speedlines" />
+				<combo_box.item enabled="false" label="-- Pulse &amp; Reveal --" name="ri_preset_sep_pulse_reveal" value="-1" />
+				<combo_box.item label="Neon Heartbeat" name="heartbeat" value="heartbeat" />
+				<combo_box.item label="Ink Write-On" name="writeon" value="writeon" />
+				<combo_box.item label="Ripple Pulse" name="ripple" value="ripple" />
+				<combo_box.item label="Shockwave" name="shockwave" value="shockwave" />
+				<combo_box.item label="Paint-On Bottom-Up" name="painton" value="painton" />
+				<combo_box.item label="Radial Reveal" name="radial" value="radial" />
+				<combo_box.item label="Tempo Pulse 120" name="tempo120" value="tempo120" />
+				<combo_box.item enabled="false" label="-- Energy &amp; Glitch --" name="ri_preset_sep_energy_glitch" value="-1" />
+				<combo_box.item label="Electric Arc" name="electric" value="electric" />
+				<combo_box.item label="Glitch Line" name="glitch" value="glitch" />
+				<combo_box.item label="Strobe Poster" name="strobe" value="strobe" />
+				<combo_box.item label="Neon Tube Buzz" name="neonbuzz" value="neonbuzz" />
+				<combo_box.item label="Barber Pole" name="barber" value="barber" />
+				<combo_box.item label="Lightning Storm" name="lightning" value="lightning" />
+				<combo_box.item label="Old Film Jitter" name="oldfilm" value="oldfilm" />
+				<combo_box.item label="8-bit Pixel" name="pixel8" value="pixel8" />
+				<combo_box.item label="Morse Code" name="morse" value="morse" />
+				<combo_box.item label="Dissolve Sketch" name="dissolve" value="dissolve" />
+				<combo_box.item enabled="false" label="-- Elemental --" name="ri_preset_sep_elemental" value="-1" />
+				<combo_box.item label="Fire Lick" name="fire" value="fire" />
+				<combo_box.item label="Smoke Wisps" name="smoke" value="smoke" />
+				<combo_box.item label="Ink Drip" name="drip" value="drip" />
+				<combo_box.item label="Heat Shimmer" name="heatshimmer" value="heatshimmer" />
+				<combo_box.item label="Jelly Wobble" name="jelly" value="jelly" />
+				<combo_box.item label="Splatter Pop" name="splatter" value="splatter" />
+				<combo_box.item enabled="false" label="-- Sparkle &amp; Glow --" name="ri_preset_sep_sparkle_glow" value="-1" />
+				<combo_box.item label="Sparkle Trail" name="sparkle" value="sparkle" />
+				<combo_box.item label="Orbit Fireflies" name="fireflies" value="fireflies" />
+				<combo_box.item label="Constellation" name="constellation" value="constellation" />
+				<combo_box.item label="Rainbow Cycle" name="rainbow" value="rainbow" />
+				<combo_box.item label="Hologram Flicker" name="holoflicker" value="holoflicker" />
+				<combo_box.item label="Villain Aura" name="villain" value="villain" />
+				<combo_box.item label="Wave Runner" name="waverunner" value="waverunner" />
 			</combo_box>
 			<button follows="left|top" layout="topleft" height="22" left="192" top_pad="-22" width="120" label="Reset all" name="ri_reset_all" tool_tip="Reset every Rotoscope Ink setting to its default (ink off)."><button.commit_callback function="LightBox.RotoInkPreset" parameter="reset" /></button>
 			<text follows="left|top" height="15" left="8" top_pad="12" width="384" layout="topleft" font="SansSerifBold" value="Line" />
@@ -4901,7 +4945,36 @@
 				<combo_box.item label="Everything" name="ri_subj_all" value="0" />
 				<combo_box.item label="Subject only" name="ri_subj_only" value="1" />
 				<combo_box.item label="Everything except subject" name="ri_subj_except" value="2" />
+				<combo_box.item label="Target set" name="ri_subj_targetset" value="3" />
+				<combo_box.item label="Depth band" name="ri_subj_depthband" value="4" />
+				<combo_box.item label="Foreground of subject" name="ri_subj_fg" value="5" />
+				<combo_box.item label="Background of subject" name="ri_subj_bg" value="6" />
+				<combo_box.item label="Screen rectangle" name="ri_subj_rect" value="7" />
+				<combo_box.item label="Screen ellipse" name="ri_subj_ellipsemode" value="8" />
+				<combo_box.item label="Focus point (DoF)" name="ri_subj_focus" value="9" />
 			</combo_box>
+			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" name="CineOutlineSubjectTargetSet_row_label" value="Target set:" />
+			<combo_box follows="left|top" layout="topleft" height="20" top_pad="-17" left="136" width="188" allow_text_entry="false" name="ri_subject_targetset_combo" control_name="CineOutlineSubjectTargetSet" enabled_control="CineOutlineEnabled" tool_tip="Mode 3 (Target set) only: which candidates feed the target list. Director subject uses the single Target below; the others gather up to Max targets, nearest first.">
+				<combo_box.item label="Director subject" name="ri_ts_director" value="0" />
+				<combo_box.item label="All cast" name="ri_ts_cast" value="1" />
+				<combo_box.item label="All avatars in view" name="ri_ts_allview" value="2" />
+				<combo_box.item label="Only me" name="ri_ts_me" value="3" />
+				<combo_box.item label="All except me" name="ri_ts_notme" value="4" />
+				<combo_box.item label="Nearest N avatars" name="ri_ts_nearest" value="5" />
+				<combo_box.item label="Selected objects" name="ri_ts_selected" value="6" />
+				<combo_box.item label="Animesh only" name="ri_ts_animesh" value="7" />
+			</combo_box>
+			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" name="CineOutlineSubjectMaxTargets_row_label" value="Max targets:" />
+			<spinner follows="left|top" layout="topleft" height="20" top_pad="-17" left="136" width="80" min_val="1" max_val="16" increment="1" decimal_digits="0" name="ri_subject_max_spinner" control_name="CineOutlineSubjectMaxTargets" enabled_control="CineOutlineEnabled" tool_tip="Mode 3 only: cap on how many targets are isolated at once (nearest first), 1-16." />
+			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-20" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="ri_reset_CineOutlineSubjectMaxTargets"><button.commit_callback function="LightBox.ResetControlDefault" parameter="CineOutlineSubjectMaxTargets" /></button>
+			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" name="CineOutlineSubjectShape_row_label" value="Target shape:" />
+			<combo_box follows="left|top" layout="topleft" height="20" top_pad="-17" left="136" width="188" allow_text_entry="false" name="ri_subject_shape_combo" control_name="CineOutlineSubjectShape" enabled_control="CineOutlineEnabled" tool_tip="Mode 3 only: per-target isolation shape drawn around each target's projected bounds.">
+				<combo_box.item label="Ellipse" name="ri_shape_ellipse" value="0" />
+				<combo_box.item label="Box" name="ri_shape_box" value="1" />
+				<combo_box.item label="Capsule" name="ri_shape_capsule" value="2" />
+			</combo_box>
+			<check_box follows="left|top" height="16" left="12" top_pad="8" width="360" layout="topleft" label="Colour per target" name="ri_subject_target_color_check" control_name="CineOutlineSubjectTargetColor" enabled_control="CineOutlineEnabled" tool_tip="Mode 3 only: ink each target with its own palette colour (cycling through 8 colours) instead of the ink colour above." />
+			<check_box follows="left|top" height="16" left="12" top_pad="8" width="360" layout="topleft" label="Invert" name="ri_subject_invert_check" control_name="CineOutlineSubjectInvert" enabled_control="CineOutlineEnabled" tool_tip="Modes 3-9 only: draw the ink everywhere EXCEPT the isolated region instead of only within it." />
 			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" value="Target:" />
 			<combo_box follows="left|top" layout="topleft" height="20" top_pad="-17" left="136" width="188" allow_text_entry="false" name="ri_subject_target_combo" control_name="CineOutlineSubjectTarget" enabled_control="CineOutlineEnabled" tool_tip="Which Director Cast subject to isolate (same convention as the Rim Glow focus target).">
 				<combo_box.item label="Self" name="ri_subj_self" value="0" />
@@ -4919,6 +4992,12 @@
 			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" value="Depth feather m:" />
 			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="0.01" max_val="16" increment="0.05" decimal_digits="2" show_text="true" can_edit_text="true" name="ri_subject_feather_slider" control_name="CineOutlineSubjectDepthFeather" enabled_control="CineOutlineEnabled" tool_tip="Feather distance beyond the slab, in metres." />
 			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="ri_reset_CineOutlineSubjectDepthFeather"><button.commit_callback function="LightBox.ResetControlDefault" parameter="CineOutlineSubjectDepthFeather" /></button>
+			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" name="CineOutlineSubjectDepthNear_row_label" value="Depth band near m:" />
+			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="0" max_val="256" increment="0.1" decimal_digits="1" show_text="true" can_edit_text="true" name="ri_subject_near_slider" control_name="CineOutlineSubjectDepthNear" enabled_control="CineOutlineEnabled" tool_tip="Mode 4 (Depth band) only: near edge of the isolated depth band, in metres." />
+			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="ri_reset_CineOutlineSubjectDepthNear"><button.commit_callback function="LightBox.ResetControlDefault" parameter="CineOutlineSubjectDepthNear" /></button>
+			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" name="CineOutlineSubjectDepthFar_row_label" value="Depth band far m:" />
+			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="0" max_val="256" increment="0.1" decimal_digits="1" show_text="true" can_edit_text="true" name="ri_subject_far_slider" control_name="CineOutlineSubjectDepthFar" enabled_control="CineOutlineEnabled" tool_tip="Mode 4 (Depth band) only: far edge of the isolated depth band, in metres." />
+			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="ri_reset_CineOutlineSubjectDepthFar"><button.commit_callback function="LightBox.ResetControlDefault" parameter="CineOutlineSubjectDepthFar" /></button>
 			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" value="Screen ellipse:" />
 			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="0" max_val="1" increment="0.01" decimal_digits="2" show_text="true" can_edit_text="true" name="ri_subject_ellipse_slider" control_name="CineOutlineSubjectEllipse" enabled_control="CineOutlineEnabled" tool_tip="How much a screen ellipse around the subject's projected bounds restricts the slab. 0 = depth only, 1 = fully." />
 			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="ri_reset_CineOutlineSubjectEllipse"><button.commit_callback function="LightBox.ResetControlDefault" parameter="CineOutlineSubjectEllipse" /></button>
@@ -4928,6 +5007,18 @@
 			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" value="Ellipse feather:" />
 			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="0.01" max_val="0.75" increment="0.01" decimal_digits="2" show_text="true" can_edit_text="true" name="ri_subject_ellipse_feather_slider" control_name="CineOutlineSubjectEllipseFeather" enabled_control="CineOutlineEnabled" tool_tip="Ellipse edge softness, as a fraction of the radius." />
 			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="ri_reset_CineOutlineSubjectEllipseFeather"><button.commit_callback function="LightBox.ResetControlDefault" parameter="CineOutlineSubjectEllipseFeather" /></button>
+			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" name="CineOutlineSubjectScreenCX_row_label" value="Screen rect/ellipse X:" />
+			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="0" max_val="1" increment="0.01" decimal_digits="2" show_text="true" can_edit_text="true" name="ri_subject_screen_cx_slider" control_name="CineOutlineSubjectScreenCX" enabled_control="CineOutlineEnabled" tool_tip="Modes 7/8 (Screen rectangle/ellipse) only: shape centre X, in screen uv (0 = left edge, 1 = right edge)." />
+			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="ri_reset_CineOutlineSubjectScreenCX"><button.commit_callback function="LightBox.ResetControlDefault" parameter="CineOutlineSubjectScreenCX" /></button>
+			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" name="CineOutlineSubjectScreenCY_row_label" value="Screen rect/ellipse Y:" />
+			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="0" max_val="1" increment="0.01" decimal_digits="2" show_text="true" can_edit_text="true" name="ri_subject_screen_cy_slider" control_name="CineOutlineSubjectScreenCY" enabled_control="CineOutlineEnabled" tool_tip="Modes 7/8 only: shape centre Y, in screen uv (0 = bottom edge, 1 = top edge)." />
+			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="ri_reset_CineOutlineSubjectScreenCY"><button.commit_callback function="LightBox.ResetControlDefault" parameter="CineOutlineSubjectScreenCY" /></button>
+			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" name="CineOutlineSubjectScreenRX_row_label" value="Screen rect/ellipse half-W:" />
+			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="0.01" max_val="1" increment="0.01" decimal_digits="2" show_text="true" can_edit_text="true" name="ri_subject_screen_rx_slider" control_name="CineOutlineSubjectScreenRX" enabled_control="CineOutlineEnabled" tool_tip="Modes 7/8 only: shape half-width, in screen uv." />
+			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="ri_reset_CineOutlineSubjectScreenRX"><button.commit_callback function="LightBox.ResetControlDefault" parameter="CineOutlineSubjectScreenRX" /></button>
+			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" name="CineOutlineSubjectScreenRY_row_label" value="Screen rect/ellipse half-H:" />
+			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="0.01" max_val="1" increment="0.01" decimal_digits="2" show_text="true" can_edit_text="true" name="ri_subject_screen_ry_slider" control_name="CineOutlineSubjectScreenRY" enabled_control="CineOutlineEnabled" tool_tip="Modes 7/8 only: shape half-height, in screen uv." />
+			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="ri_reset_CineOutlineSubjectScreenRY"><button.commit_callback function="LightBox.ResetControlDefault" parameter="CineOutlineSubjectScreenRY" /></button>
 			<text follows="left|top" height="15" left="8" top_pad="12" width="384" layout="topleft" font="SansSerifBold" value="Colour" />
 			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" value="Ink colour:" />
 			<combo_box follows="left|top" layout="topleft" height="20" top_pad="-17" left="136" width="188" allow_text_entry="false" name="ri_ink_mode_combo" control_name="CineOutlineInkColorMode" enabled_control="CineOutlineEnabled" tool_tip="Fixed uses the swatch below. Match samples the brightest scene colour just outside the edge and keeps only its hue.">
@@ -4955,6 +5046,23 @@
 			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" value="Bloom feed:" />
 			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="0" max_val="1" increment="0.01" decimal_digits="2" show_text="true" can_edit_text="true" name="ri_glow_slider" control_name="CineOutlineGlow" enabled_control="CineOutlineEnabled" tool_tip="Feeds the line into legacy glow / HDR bloom, independent of the blend mode above." />
 			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="ri_reset_CineOutlineGlow"><button.commit_callback function="LightBox.ResetControlDefault" parameter="CineOutlineGlow" /></button>
+			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" value="Secondary colour:" />
+			<color_swatch follows="left|top" height="22" left="136" top_pad="-17" width="44" layout="topleft" can_apply_immediately="true" name="ri_color2_swatch" control_name="CineOutlineColor2" enabled_control="CineOutlineEnabled" tool_tip="Secondary ink colour (stored linear), used by the colour modes below." />
+			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="ri_reset_CineOutlineColor2"><button.commit_callback function="LightBox.ResetControlDefault" parameter="CineOutlineColor2" /></button>
+			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" value="Colour mode:" />
+			<combo_box follows="left|top" layout="topleft" height="20" top_pad="-17" left="136" width="188" allow_text_entry="false" name="ri_color2_mode_combo" control_name="CineOutlineColor2Mode" enabled_control="CineOutlineEnabled" tool_tip="Blends in the secondary colour. Two-tone/Rainbow cycle along the edge and/or over time; Highlight tints wherever the motion style spikes; Heat tints wherever the style's own heat field (fire, electric sparks, glitch bands) is hot.">
+				<combo_box.item label="Off" name="ri_c2_off" value="0" />
+				<combo_box.item label="Two-tone along edge" name="ri_c2_twotone" value="1" />
+				<combo_box.item label="Rainbow cycle" name="ri_c2_rainbow" value="2" />
+				<combo_box.item label="Highlight (motion peaks)" name="ri_c2_highlight" value="3" />
+				<combo_box.item label="Heat (motion field)" name="ri_c2_heat" value="4" />
+			</combo_box>
+			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" name="CineOutlineColor2Speed_row_label" value="Colour cycle speed:" />
+			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="0" max_val="5" increment="0.05" decimal_digits="2" show_text="true" can_edit_text="true" name="ri_color2_speed_slider" control_name="CineOutlineColor2Speed" enabled_control="CineOutlineEnabled" tool_tip="Two-tone/Rainbow only: colour cycle speed, cycles per second." />
+			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="ri_reset_CineOutlineColor2Speed"><button.commit_callback function="LightBox.ResetControlDefault" parameter="CineOutlineColor2Speed" /></button>
+			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" name="CineOutlineColor2Length_row_label" value="Colour cycle length px:" />
+			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="0" max_val="1024" increment="1" decimal_digits="0" show_text="true" can_edit_text="true" name="ri_color2_length_slider" control_name="CineOutlineColor2Length" enabled_control="CineOutlineEnabled" tool_tip="Two-tone/Rainbow only: cycle length along the edge, in pixels at 1080p (0 = cycle over time only, ignoring position)." />
+			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="ri_reset_CineOutlineColor2Length"><button.commit_callback function="LightBox.ResetControlDefault" parameter="CineOutlineColor2Length" /></button>
 			<text follows="left|top" height="15" left="8" top_pad="12" width="384" layout="topleft" font="SansSerifBold" value="Sketch / Boil" />
 			<check_box follows="left|top" height="16" left="12" top_pad="8" width="360" layout="topleft" label="Hand-drawn boil" name="ri_sketch_enable" control_name="CineOutlineSketchEnabled" enabled_control="CineOutlineEnabled" tool_tip="The line wobbles and is redrawn a few times per second, like a hand-inked animation frame." />
 			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" value="Boil amount px:" />
@@ -4975,6 +5083,35 @@
 			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" value="Seed:" />
 			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="0" max_val="100" increment="1" decimal_digits="0" show_text="true" can_edit_text="true" name="ri_sketch_seed_slider" control_name="CineOutlineSketchSeed" enabled_control="CineOutlineEnabled" tool_tip="Reshuffles the wobble / grain pattern." />
 			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="ri_reset_CineOutlineSketchSeed"><button.commit_callback function="LightBox.ResetControlDefault" parameter="CineOutlineSketchSeed" /></button>
+			<text follows="left|top" height="15" left="8" top_pad="12" width="384" layout="topleft" font="SansSerifBold" value="Pattern" />
+			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" value="Type:" />
+			<combo_box follows="left|top" layout="topleft" height="20" top_pad="-17" left="136" width="188" allow_text_entry="false" name="ri_pattern_type_combo" control_name="CineOutlinePatternType" enabled_control="CineOutlineEnabled" tool_tip="Overlays a repeating pattern on the line itself, independent of the boil/sketch wobble above.">
+				<combo_box.item label="None" name="ri_pt_none" value="0" />
+				<combo_box.item label="Dashed" name="ri_pt_dashed" value="1" />
+				<combo_box.item label="Dotted" name="ri_pt_dotted" value="2" />
+				<combo_box.item label="Double line" name="ri_pt_double" value="3" />
+				<combo_box.item label="Hatch" name="ri_pt_hatch" value="4" />
+				<combo_box.item label="Taper" name="ri_pt_taper" value="5" />
+			</combo_box>
+			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" name="CineOutlinePatternSize_row_label" value="Size px:" />
+			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="2" max_val="64" increment="1" decimal_digits="0" show_text="true" can_edit_text="true" name="ri_pattern_size_slider" control_name="CineOutlinePatternSize" enabled_control="CineOutlineEnabled" tool_tip="Pattern size in pixels at 1080p: dash period, dot spacing, hatch stripe spacing, or taper noise size." />
+			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="ri_reset_CineOutlinePatternSize"><button.commit_callback function="LightBox.ResetControlDefault" parameter="CineOutlinePatternSize" /></button>
+			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" name="ri_pattern_ratio_label" value="Ratio:" />
+			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="0.05" max_val="0.95" increment="0.01" decimal_digits="2" show_text="true" can_edit_text="true" name="ri_pattern_ratio_slider" control_name="CineOutlinePatternRatio" enabled_control="CineOutlineEnabled" tool_tip="Per type: Dashed = dash fill fraction, Dotted = dot size over spacing, Double line = stroke fraction, Hatch = stripe fill, Taper = minimum width fraction." />
+			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="ri_reset_CineOutlinePatternRatio"><button.commit_callback function="LightBox.ResetControlDefault" parameter="CineOutlinePatternRatio" /></button>
+			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" name="CineOutlinePatternDrift_row_label" value="Drift px/s:" />
+			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="-200" max_val="200" increment="1" decimal_digits="0" show_text="true" can_edit_text="true" name="ri_pattern_drift_slider" control_name="CineOutlinePatternDrift" enabled_control="CineOutlineEnabled" tool_tip="Dashed/Dotted only: scrolls the pattern along the edge, in pixels per second." />
+			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="ri_reset_CineOutlinePatternDrift"><button.commit_callback function="LightBox.ResetControlDefault" parameter="CineOutlinePatternDrift" /></button>
+			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" name="CineOutlineHatchAngle_row_label" value="Hatch angle deg:" />
+			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="0" max_val="180" increment="1" decimal_digits="0" show_text="true" can_edit_text="true" name="ri_hatch_angle_slider" control_name="CineOutlineHatchAngle" enabled_control="CineOutlineEnabled" tool_tip="Hatch only: stripe angle in degrees." />
+			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="ri_reset_CineOutlineHatchAngle"><button.commit_callback function="LightBox.ResetControlDefault" parameter="CineOutlineHatchAngle" /></button>
+			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" name="CineOutlineHatchReach_row_label" value="Hatch shading reach px:" />
+			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="0" max_val="48" increment="1" decimal_digits="0" show_text="true" can_edit_text="true" name="ri_hatch_reach_slider" control_name="CineOutlineHatchReach" enabled_control="CineOutlineEnabled" tool_tip="Hatch only: 0 hatches the line itself; more adds a hatched shading zone inside the silhouette, at the cost of one extra line evaluation." />
+			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="ri_reset_CineOutlineHatchReach"><button.commit_callback function="LightBox.ResetControlDefault" parameter="CineOutlineHatchReach" /></button>
+			<check_box follows="left|top" height="16" left="12" top_pad="8" width="360" layout="topleft" label="Cross-hatch" name="ri_hatch_cross_check" control_name="CineOutlineHatchCross" enabled_control="CineOutlineEnabled" tool_tip="Hatch only: also draws the perpendicular stripe set." />
+			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" value="Pattern seed:" />
+			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="0" max_val="100" increment="1" decimal_digits="0" show_text="true" can_edit_text="true" name="ri_pattern_seed_slider" control_name="CineOutlinePatternSeed" enabled_control="CineOutlineEnabled" tool_tip="Reshuffles the taper noise pattern." />
+			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="ri_reset_CineOutlinePatternSeed"><button.commit_callback function="LightBox.ResetControlDefault" parameter="CineOutlinePatternSeed" /></button>
 			<text follows="left|top" height="15" left="8" top_pad="12" width="384" layout="topleft" font="SansSerifBold" value="Motion" />
 			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" value="Style:" />
 			<combo_box follows="left|top" layout="topleft" height="20" top_pad="-17" left="136" width="188" allow_text_entry="false" name="ri_motion_style_combo" control_name="CineOutlineMotionStyle" enabled_control="CineOutlineEnabled" tool_tip="Animates the line's coverage. None leaves the line static.">
@@ -4984,7 +5121,41 @@
 				<combo_box.item label="Scan (sweep bar)" name="ri_mo_scan" value="3" />
 				<combo_box.item label="Wave (segments)" name="ri_mo_wave" value="4" />
 				<combo_box.item label="Shimmer (twinkle)" name="ri_mo_shimmer" value="5" />
+				<combo_box.item label="Marching Ants" name="ri_mo_ants" value="6" />
+				<combo_box.item label="Heartbeat" name="ri_mo_heartbeat" value="7" />
+				<combo_box.item label="Strobe" name="ri_mo_strobe" value="8" />
+				<combo_box.item label="Ripple" name="ri_mo_ripple" value="9" />
+				<combo_box.item label="Write-On (angular)" name="ri_mo_writeon" value="10" />
+				<combo_box.item label="Dissolve" name="ri_mo_dissolve" value="11" />
+				<combo_box.item label="Electric" name="ri_mo_electric" value="12" />
+				<combo_box.item label="Glitch" name="ri_mo_glitch" value="13" />
+				<combo_box.item label="Breathe" name="ri_mo_breathe" value="14" />
+				<combo_box.item label="Sparkle Comets" name="ri_mo_sparkle" value="15" />
+				<combo_box.item label="Travelling Wave" name="ri_mo_travelwave" value="16" />
+				<combo_box.item label="Barber Pole" name="ri_mo_barber" value="17" />
+				<combo_box.item label="Neon Buzz" name="ri_mo_neonbuzz" value="18" />
+				<combo_box.item label="Morse Blink" name="ri_mo_morse" value="19" />
+				<combo_box.item label="Film Jitter" name="ri_mo_filmjitter" value="20" />
+				<combo_box.item label="8-bit Stepped" name="ri_mo_8bit" value="21" />
+				<combo_box.item label="Echo Aura" name="ri_mo_echo" value="22" />
+				<combo_box.item label="Shockwave" name="ri_mo_shockwave" value="23" />
+				<combo_box.item label="Orbit Dots" name="ri_mo_orbit" value="24" />
+				<combo_box.item label="Constellation" name="ri_mo_constellation" value="25" />
+				<combo_box.item label="Fire Lick" name="ri_mo_fire" value="26" />
+				<combo_box.item label="Smoke Wisps" name="ri_mo_smoke" value="27" />
+				<combo_box.item label="Ink Drip" name="ri_mo_drip" value="28" />
+				<combo_box.item label="Splatter" name="ri_mo_splatter" value="29" />
+				<combo_box.item label="Lightning Arcs" name="ri_mo_lightning" value="30" />
+				<combo_box.item label="Laser Scan" name="ri_mo_laser" value="31" />
+				<combo_box.item label="Heat Shimmer" name="ri_mo_heatshimmer" value="32" />
+				<combo_box.item label="Jelly Wobble" name="ri_mo_jelly" value="33" />
+				<combo_box.item label="Paint-On (directional)" name="ri_mo_painton" value="34" />
+				<combo_box.item label="Radial Reveal" name="ri_mo_radial" value="35" />
 			</combo_box>
+			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" name="CineOutlineMotionShape_row_label" value="Shape:" />
+			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="0" max_val="1" increment="0.01" decimal_digits="2" show_text="true" can_edit_text="true" name="ri_motion_shape_slider" control_name="CineOutlineMotionShape" enabled_control="CineOutlineEnabled" tool_tip="Per-style secondary parameter -- see the Style tooltip above for what it controls (duty cycle, reveal mode, noise size, and so on). Not used by every style." />
+			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="ri_reset_CineOutlineMotionShape"><button.commit_callback function="LightBox.ResetControlDefault" parameter="CineOutlineMotionShape" /></button>
+			<text follows="left|top" height="15" left="10" top_pad="8" width="300" layout="topleft" name="ri_motion_anchor_hint" font="SansSerifSmall" value="This style radiates from the subject target (or the frame centre if none is set), even while Subject isolation above is off." />
 			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" value="Speed:" />
 			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="0.05" max_val="5" increment="0.05" decimal_digits="2" show_text="true" can_edit_text="true" name="ri_motion_speed_slider" control_name="CineOutlineMotionSpeed" enabled_control="CineOutlineEnabled" tool_tip="Motion speed, in cycles per second." />
 			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="ri_reset_CineOutlineMotionSpeed"><button.commit_callback function="LightBox.ResetControlDefault" parameter="CineOutlineMotionSpeed" /></button>
@@ -4994,9 +5165,82 @@
 			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" value="Scale:" />
 			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="0.02" max_val="1" increment="0.01" decimal_digits="2" show_text="true" can_edit_text="true" name="ri_motion_scale_slider" control_name="CineOutlineMotionScale" enabled_control="CineOutlineEnabled" tool_tip="Per-style scale: Chase tail length, Scan bar width, Wave segment count, Shimmer cell density." />
 			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="ri_reset_CineOutlineMotionScale"><button.commit_callback function="LightBox.ResetControlDefault" parameter="CineOutlineMotionScale" /></button>
-			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" value="Scan angle deg:" />
-			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="0" max_val="360" increment="1" decimal_digits="0" show_text="true" can_edit_text="true" name="ri_motion_angle_slider" control_name="CineOutlineMotionAngle" enabled_control="CineOutlineEnabled" tool_tip="Scan sweep direction in degrees. Only used by the Scan motion style." />
+			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" name="CineOutlineMotionAngle_row_label" value="Angle deg:" />
+			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="0" max_val="360" increment="1" decimal_digits="0" show_text="true" can_edit_text="true" name="ri_motion_angle_slider" control_name="CineOutlineMotionAngle" enabled_control="CineOutlineEnabled" tool_tip="Sweep/reveal/diagonal direction in degrees, for the styles that use an angle (Scan, Barber Pole, Laser Scan, Paint-On, Write-On)." />
 			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="ri_reset_CineOutlineMotionAngle"><button.commit_callback function="LightBox.ResetControlDefault" parameter="CineOutlineMotionAngle" /></button>
+			<text follows="left|top" height="15" left="8" top_pad="12" width="384" layout="topleft" font="SansSerifBold" value="Motion 2" />
+			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" value="Second motion:" />
+			<combo_box follows="left|top" layout="topleft" height="20" top_pad="-17" left="136" width="188" allow_text_entry="false" name="ri_motion2_style_combo" control_name="CineOutlineMotion2Style" enabled_control="CineOutlineEnabled" tool_tip="A second animation multiplied onto the first. Copy-type styles (Echo Aura, Smoke Wisps, Ink Drip, Splatter, Lightning Arcs) only ever run from ONE layer -- the first one wins if both layers pick a copy style.">
+				<combo_box.item label="None" name="ri_mo2_none" value="0" />
+				<combo_box.item label="Pulse" name="ri_mo2_pulse" value="1" />
+				<combo_box.item label="Chase (draw-around)" name="ri_mo2_chase" value="2" />
+				<combo_box.item label="Scan (sweep bar)" name="ri_mo2_scan" value="3" />
+				<combo_box.item label="Wave (segments)" name="ri_mo2_wave" value="4" />
+				<combo_box.item label="Shimmer (twinkle)" name="ri_mo2_shimmer" value="5" />
+				<combo_box.item label="Marching Ants" name="ri_mo2_ants" value="6" />
+				<combo_box.item label="Heartbeat" name="ri_mo2_heartbeat" value="7" />
+				<combo_box.item label="Strobe" name="ri_mo2_strobe" value="8" />
+				<combo_box.item label="Ripple" name="ri_mo2_ripple" value="9" />
+				<combo_box.item label="Write-On (angular)" name="ri_mo2_writeon" value="10" />
+				<combo_box.item label="Dissolve" name="ri_mo2_dissolve" value="11" />
+				<combo_box.item label="Electric" name="ri_mo2_electric" value="12" />
+				<combo_box.item label="Glitch" name="ri_mo2_glitch" value="13" />
+				<combo_box.item label="Breathe" name="ri_mo2_breathe" value="14" />
+				<combo_box.item label="Sparkle Comets" name="ri_mo2_sparkle" value="15" />
+				<combo_box.item label="Travelling Wave" name="ri_mo2_travelwave" value="16" />
+				<combo_box.item label="Barber Pole" name="ri_mo2_barber" value="17" />
+				<combo_box.item label="Neon Buzz" name="ri_mo2_neonbuzz" value="18" />
+				<combo_box.item label="Morse Blink" name="ri_mo2_morse" value="19" />
+				<combo_box.item label="Film Jitter" name="ri_mo2_filmjitter" value="20" />
+				<combo_box.item label="8-bit Stepped" name="ri_mo2_8bit" value="21" />
+				<combo_box.item label="Echo Aura" name="ri_mo2_echo" value="22" />
+				<combo_box.item label="Shockwave" name="ri_mo2_shockwave" value="23" />
+				<combo_box.item label="Orbit Dots" name="ri_mo2_orbit" value="24" />
+				<combo_box.item label="Constellation" name="ri_mo2_constellation" value="25" />
+				<combo_box.item label="Fire Lick" name="ri_mo2_fire" value="26" />
+				<combo_box.item label="Smoke Wisps" name="ri_mo2_smoke" value="27" />
+				<combo_box.item label="Ink Drip" name="ri_mo2_drip" value="28" />
+				<combo_box.item label="Splatter" name="ri_mo2_splatter" value="29" />
+				<combo_box.item label="Lightning Arcs" name="ri_mo2_lightning" value="30" />
+				<combo_box.item label="Laser Scan" name="ri_mo2_laser" value="31" />
+				<combo_box.item label="Heat Shimmer" name="ri_mo2_heatshimmer" value="32" />
+				<combo_box.item label="Jelly Wobble" name="ri_mo2_jelly" value="33" />
+				<combo_box.item label="Paint-On (directional)" name="ri_mo2_painton" value="34" />
+				<combo_box.item label="Radial Reveal" name="ri_mo2_radial" value="35" />
+			</combo_box>
+			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" name="CineOutlineMotion2Speed_row_label" value="Speed:" />
+			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="0.05" max_val="5" increment="0.05" decimal_digits="2" show_text="true" can_edit_text="true" name="ri_motion2_speed_slider" control_name="CineOutlineMotion2Speed" enabled_control="CineOutlineEnabled" tool_tip="Second motion layer speed, in cycles per second (or cycles per beat under Tempo)." />
+			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="ri_reset_CineOutlineMotion2Speed"><button.commit_callback function="LightBox.ResetControlDefault" parameter="CineOutlineMotion2Speed" /></button>
+			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" name="CineOutlineMotion2Amount_row_label" value="Amount:" />
+			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="0" max_val="1" increment="0.01" decimal_digits="2" show_text="true" can_edit_text="true" name="ri_motion2_amount_slider" control_name="CineOutlineMotion2Amount" enabled_control="CineOutlineEnabled" tool_tip="Second motion layer depth. 0 leaves it static regardless of style." />
+			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="ri_reset_CineOutlineMotion2Amount"><button.commit_callback function="LightBox.ResetControlDefault" parameter="CineOutlineMotion2Amount" /></button>
+			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" name="CineOutlineMotion2Scale_row_label" value="Scale:" />
+			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="0.02" max_val="1" increment="0.01" decimal_digits="2" show_text="true" can_edit_text="true" name="ri_motion2_scale_slider" control_name="CineOutlineMotion2Scale" enabled_control="CineOutlineEnabled" tool_tip="Second motion layer per-style scale (same meaning as the first layer's Scale, for the style chosen above)." />
+			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="ri_reset_CineOutlineMotion2Scale"><button.commit_callback function="LightBox.ResetControlDefault" parameter="CineOutlineMotion2Scale" /></button>
+			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" name="CineOutlineMotion2Shape_row_label" value="Shape:" />
+			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="0" max_val="1" increment="0.01" decimal_digits="2" show_text="true" can_edit_text="true" name="ri_motion2_shape_slider" control_name="CineOutlineMotion2Shape" enabled_control="CineOutlineEnabled" tool_tip="Second motion layer per-style secondary parameter (same meaning as the first layer's Shape)." />
+			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="ri_reset_CineOutlineMotion2Shape"><button.commit_callback function="LightBox.ResetControlDefault" parameter="CineOutlineMotion2Shape" /></button>
+			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" name="CineOutlineMotion2Angle_row_label" value="Angle deg:" />
+			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="0" max_val="360" increment="1" decimal_digits="0" show_text="true" can_edit_text="true" name="ri_motion2_angle_slider" control_name="CineOutlineMotion2Angle" enabled_control="CineOutlineEnabled" tool_tip="Second motion layer sweep/reveal/diagonal direction, for the styles that use an angle (Scan, Laser Scan, Barber Pole, Paint-On, Write-On)." />
+			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="ri_reset_CineOutlineMotion2Angle"><button.commit_callback function="LightBox.ResetControlDefault" parameter="CineOutlineMotion2Angle" /></button>
+			<text follows="left|top" height="15" left="10" top_pad="8" width="300" layout="topleft" name="ri_motion2_anchor_hint" font="SansSerifSmall" value="This style radiates from the subject target (or the frame centre if none is set), even while Subject isolation above is off." />
+			<text follows="left|top" height="15" left="8" top_pad="12" width="384" layout="topleft" font="SansSerifBold" value="Timing" />
+			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" value="Tempo BPM:" />
+			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="0" max_val="300" increment="1" decimal_digits="0" show_text="true" can_edit_text="true" name="ri_motion_tempo_slider" control_name="CineOutlineMotionTempo" enabled_control="CineOutlineEnabled" tool_tip="0 = motion speeds are plain cycles per second. Above 0, every motion speed becomes cycles PER BEAT and locks to this tempo -- handy for syncing to music." />
+			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="ri_reset_CineOutlineMotionTempo"><button.commit_callback function="LightBox.ResetControlDefault" parameter="CineOutlineMotionTempo" /></button>
+			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" name="CineOutlineMotionPhase_row_label" value="Phase beats:" />
+			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="0" max_val="4" increment="0.05" decimal_digits="2" show_text="true" can_edit_text="true" name="ri_motion_phase_slider" control_name="CineOutlineMotionPhase" enabled_control="CineOutlineEnabled" tool_tip="Only used when Tempo is above 0: offsets the beat clock, in beats, so multiple ink layers or props can be put on or off the beat relative to each other." />
+			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="ri_reset_CineOutlineMotionPhase"><button.commit_callback function="LightBox.ResetControlDefault" parameter="CineOutlineMotionPhase" /></button>
+			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" value="Hold frames:" />
+			<combo_box follows="left|top" layout="topleft" height="20" top_pad="-17" left="136" width="188" allow_text_entry="false" name="ri_motion_step_combo" control_name="CineOutlineMotionStep" enabled_control="CineOutlineEnabled" tool_tip="Holds the motion clock to a stepped frame rate for a hand-animated feel, independent of the boil/sketch redraw rate above.">
+				<combo_box.item label="Smooth" name="ri_step_smooth" value="0" />
+				<combo_box.item label="On twos (12 fps)" name="ri_step_twos" value="1" />
+				<combo_box.item label="On threes (8 fps)" name="ri_step_threes" value="2" />
+				<combo_box.item label="On fours (6 fps)" name="ri_step_fours" value="3" />
+			</combo_box>
+			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" value="Motion seed:" />
+			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="0" max_val="100" increment="1" decimal_digits="0" show_text="true" can_edit_text="true" name="ri_motion_seed_slider" control_name="CineOutlineMotionSeed" enabled_control="CineOutlineEnabled" tool_tip="Reshuffles the hashed-frame motion styles (Strobe, Electric, Neon Buzz, Morse Blink, Film Jitter, Splatter, Lightning Arcs)." />
+			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="ri_reset_CineOutlineMotionSeed"><button.commit_callback function="LightBox.ResetControlDefault" parameter="CineOutlineMotionSeed" /></button>
 			<text follows="left|top" height="60" left="10" top_pad="12" width="380" layout="topleft" word_wrap="true" value="Notes: subject isolation is a depth slab, not a true per-actor mask -- another object at the same depth inside the ellipse (a chair the actor sits on) shares its lines, and Everything-except-subject leaks the same way in reverse. HDR intensity above 1 only matters with HDR rendering; the non-HDR path clips it." />
 			</panel>
 			</scroll_container>

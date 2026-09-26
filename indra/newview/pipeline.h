@@ -1516,6 +1516,48 @@ public:
     };
     RotoInkSubjectState         mRotoInkSubject;
 
+    // [RotoInk Anim] Per-target world-space smoother for subject mode 3
+    // (target set), keyed by target UUID (avatar id or object id -- both are
+    // LLUUID, no collision risk). Same critically-damped exponential as
+    // RotoInkSubjectState (0.15 s), but keyed PER target instead of a single
+    // active target: an entry snaps on first sight / region change / time
+    // reversal exactly like RotoInkSubjectState, and is pruned (erased)
+    // once mLastSeenTime falls more than 1 s behind the current gather --
+    // see LLPipeline::gatherRotoInkTargets.
+    struct RotoInkTargetSmoothState
+    {
+        bool      mHaveSmoothed = false;
+        LLVector3 mCenter{0.f, 0.f, 0.f};
+        LLVector3 mHalfExtents{0.5f, 0.5f, 1.f};
+        U64       mLastRegionHandle = 0;
+        F64       mLastTime = -1.0;       // last smoothing update (drives the damping dt)
+        F64       mLastSeenTime = -1.0;   // last time this target appeared in a gather (pruning)
+        // [RotoInk Anim Round-A review fix, P2 both] ALDirectorSwitcher::
+        // cutSerial() at the last smoothing update -- a hard program cut
+        // also snaps every retained target (same rule as RotoInkSubjectState
+        // mLastCutSerial), so a scene cut never carries a target's in-flight
+        // motion smoothing across the edit.
+        U64       mLastCutSerial = 0;
+    };
+    std::map<LLUUID, RotoInkTargetSmoothState> mRotoInkTargetSmoothers;
+
+    // [RotoInk Anim] Subject mode 3 (target set) gather: builds up to 16
+    // world-space targets per CineOutlineSubjectTargetSet (see A.7 of the
+    // contract), smooths each via mRotoInkTargetSmoothers, frustum-culls,
+    // sorts by view depth and caps at max_targets (<=16). Re-projects with
+    // the SAME camera matrices the caller resolved for the single-subject
+    // path (mv/proj -- gGLLast{ModelView,Projection} normally, the live
+    // gGLModelView/gGLProjection for ROTOINK_LAYER_SCENE), so target
+    // isolation stays correct for whichever call site is active this frame.
+    // Writes up to 16 entries into out_targets (LLShaderMgr::ROTO_TARGETS
+    // packing: xy centre uv, zw half-extents uv * ellipse_scale) and
+    // out_targets2 (LLShaderMgr::ROTO_TARGETS2 packing: x view depth m, y
+    // slab half depth m, z palette index 0..7, w 1 valid) and returns the
+    // count actually written (0..16, 0 on no candidates/all culled).
+    S32 gatherRotoInkTargets(S32 target_set, S32 max_targets, F32 ellipse_scale,
+                              F32 depth_range, const F32* mv, const F32* proj,
+                              LLVector4* out_targets, LLVector4* out_targets2);
+
     // Night Mask: per-frame resolved state, shared verbatim between
     // generateLuminance() (B1 bloom-metering fix) and applyOnLensFilters()
     // (the actual darkening pass) so both consume the SAME single enable

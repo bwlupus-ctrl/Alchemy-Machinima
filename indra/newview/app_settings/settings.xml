@@ -117,7 +117,7 @@
     </map>
     <key>CineOutlineSubjectMode</key>
     <map>
-      <key>Comment</key><string>[RotoInk] 0 all / 1 subject only / 2 everything except subject</string>
+      <key>Comment</key><string>[RotoInk Anim] 0 all / 1 subject only / 2 everything except subject / 3 target set / 4 depth band / 5 foreground of subject / 6 background of subject / 7 screen rectangle / 8 screen ellipse / 9 focus point (DoF)</string>
       <key>Persist</key><integer>1</integer>
       <key>Type</key><string>S32</string>
       <key>Value</key><integer>0</integer>
@@ -170,6 +170,83 @@
       <key>Persist</key><integer>1</integer>
       <key>Type</key><string>F32</string>
       <key>Value</key><real>0.25</real>
+    </map>
+    <key>CineOutlineSubjectTargetSet</key>
+    <map>
+      <key>Comment</key><string>[RotoInk Anim] Mode 3 target source: 0 Director subject / 1 all cast / 2 all avatars in view / 3 only my avatar / 4 all avatars except me / 5 nearest N avatars / 6 selected objects / 7 animesh only</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>S32</string>
+      <key>Value</key><integer>0</integer>
+    </map>
+    <key>CineOutlineSubjectMaxTargets</key>
+    <map>
+      <key>Comment</key><string>[RotoInk Anim] Mode 3: max targets, nearest-first (N for nearest-N, cap for the others), 1..16</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>S32</string>
+      <key>Value</key><integer>8</integer>
+    </map>
+    <key>CineOutlineSubjectShape</key>
+    <map>
+      <key>Comment</key><string>[RotoInk Anim] Mode 3 per-target shape: 0 ellipse / 1 box / 2 capsule</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>S32</string>
+      <key>Value</key><integer>0</integer>
+    </map>
+    <key>CineOutlineSubjectInvert</key>
+    <map>
+      <key>Comment</key><string>[RotoInk Anim] Invert the isolation mask, modes 3..9</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>Boolean</string>
+      <key>Value</key><integer>0</integer>
+    </map>
+    <key>CineOutlineSubjectTargetColor</key>
+    <map>
+      <key>Comment</key><string>[RotoInk Anim] Mode 3: ink each target with its palette colour instead of the ink colour</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>Boolean</string>
+      <key>Value</key><integer>0</integer>
+    </map>
+    <key>CineOutlineSubjectDepthNear</key>
+    <map>
+      <key>Comment</key><string>[RotoInk Anim] Mode 4 depth band near edge, metres</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>1.0</real>
+    </map>
+    <key>CineOutlineSubjectDepthFar</key>
+    <map>
+      <key>Comment</key><string>[RotoInk Anim] Mode 4 depth band far edge, metres</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>10.0</real>
+    </map>
+    <key>CineOutlineSubjectScreenCX</key>
+    <map>
+      <key>Comment</key><string>[RotoInk Anim] Modes 7/8 screen shape centre X, uv</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.5</real>
+    </map>
+    <key>CineOutlineSubjectScreenCY</key>
+    <map>
+      <key>Comment</key><string>[RotoInk Anim] Modes 7/8 screen shape centre Y, uv</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.5</real>
+    </map>
+    <key>CineOutlineSubjectScreenRX</key>
+    <map>
+      <key>Comment</key><string>[RotoInk Anim] Modes 7/8 screen shape half width, uv</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.3</real>
+    </map>
+    <key>CineOutlineSubjectScreenRY</key>
+    <map>
+      <key>Comment</key><string>[RotoInk Anim] Modes 7/8 screen shape half height, uv</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.4</real>
     </map>
     <key>CineOutlineInkColorMode</key>
     <map>
@@ -282,6 +359,167 @@
       <key>Persist</key><integer>1</integer>
       <key>Type</key><string>F32</string>
       <key>Value</key><real>90.0</real>
+    </map>
+    <key>CineOutlineMotionShape</key>
+    <map>
+      <key>Comment</key><string>[RotoInk Anim] Layer-1 motion shape 0..1 (per-style meaning; see the Style tooltip)</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.5</real>
+    </map>
+    <key>CineOutlineMotionTempo</key>
+    <map>
+      <key>Comment</key><string>[RotoInk Anim] Tempo in BPM; 0 = off (speeds are cycles/s), otherwise speeds are cycles per beat and every motion locks to the tempo</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.0</real>
+    </map>
+    <key>CineOutlineMotionPhase</key>
+    <map>
+      <key>Comment</key><string>[RotoInk Anim] Tempo phase offset, in beats (only used when Tempo > 0)</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.0</real>
+    </map>
+    <key>CineOutlineMotionStep</key>
+    <map>
+      <key>Comment</key><string>[RotoInk Anim] Holds the motion clock: 0 smooth / 1 on twos (12 fps) / 2 on threes (8 fps) / 3 on fours (6 fps)</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>S32</string>
+      <key>Value</key><integer>0</integer>
+    </map>
+    <key>CineOutlineMotionSeed</key>
+    <map>
+      <key>Comment</key><string>[RotoInk Anim] Reshuffles hashed-frame motion styles</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.0</real>
+    </map>
+    <key>CineOutlineMotion2Style</key>
+    <map>
+      <key>Comment</key><string>[RotoInk Anim] Second motion layer style (same list as layer 1, id order)</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>S32</string>
+      <key>Value</key><integer>0</integer>
+    </map>
+    <key>CineOutlineMotion2Speed</key>
+    <map>
+      <key>Comment</key><string>[RotoInk Anim] Second motion layer speed, cycles/s (or cycles/beat under tempo)</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.5</real>
+    </map>
+    <key>CineOutlineMotion2Amount</key>
+    <map>
+      <key>Comment</key><string>[RotoInk Anim] Second motion layer depth 0..1</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.5</real>
+    </map>
+    <key>CineOutlineMotion2Scale</key>
+    <map>
+      <key>Comment</key><string>[RotoInk Anim] Second motion layer per-style scale</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.3</real>
+    </map>
+    <key>CineOutlineMotion2Shape</key>
+    <map>
+      <key>Comment</key><string>[RotoInk Anim] Second motion layer shape 0..1 (per-style meaning)</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.5</real>
+    </map>
+    <key>CineOutlineMotion2Angle</key>
+    <map>
+      <key>Comment</key><string>[RotoInk Anim] Second motion layer angle, degrees (Scan/Laser/Barber Pole/Paint-On/Write-On)</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>90.0</real>
+    </map>
+    <key>CineOutlinePatternType</key>
+    <map>
+      <key>Comment</key><string>[RotoInk Anim] Line pattern: 0 none / 1 dashed / 2 dotted / 3 double line / 4 hatch / 5 taper</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>S32</string>
+      <key>Value</key><integer>0</integer>
+    </map>
+    <key>CineOutlinePatternSize</key>
+    <map>
+      <key>Comment</key><string>[RotoInk Anim] Pattern size, px at 1080p (dash period / dot spacing / hatch spacing / taper noise size)</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>12.0</real>
+    </map>
+    <key>CineOutlinePatternRatio</key>
+    <map>
+      <key>Comment</key><string>[RotoInk Anim] Pattern ratio 0.05..0.95 (dash fill / dot size / double stroke fraction / hatch fill / taper minimum width)</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.5</real>
+    </map>
+    <key>CineOutlinePatternDrift</key>
+    <map>
+      <key>Comment</key><string>[RotoInk Anim] Pattern drift along the edge, px/s at 1080p (dashed/dotted only), -200..200</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.0</real>
+    </map>
+    <key>CineOutlineHatchAngle</key>
+    <map>
+      <key>Comment</key><string>[RotoInk Anim] Hatch stripe angle, degrees</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>45.0</real>
+    </map>
+    <key>CineOutlineHatchReach</key>
+    <map>
+      <key>Comment</key><string>[RotoInk Anim] Hatch shading-zone reach beyond the line, px at 1080p (0 = hatch the line itself)</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.0</real>
+    </map>
+    <key>CineOutlineHatchCross</key>
+    <map>
+      <key>Comment</key><string>[RotoInk Anim] Hatch: also draw the perpendicular stripe set</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>Boolean</string>
+      <key>Value</key><integer>0</integer>
+    </map>
+    <key>CineOutlinePatternSeed</key>
+    <map>
+      <key>Comment</key><string>[RotoInk Anim] Reshuffles the taper noise pattern</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.0</real>
+    </map>
+    <key>CineOutlineColor2</key>
+    <map>
+      <key>Comment</key><string>[RotoInk Anim] Secondary ink colour, linear RGB</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>Color3</string>
+      <key>Value</key><array><real>1.0</real><real>1.0</real><real>1.0</real></array>
+    </map>
+    <key>CineOutlineColor2Mode</key>
+    <map>
+      <key>Comment</key><string>[RotoInk Anim] 0 off / 1 two-tone along edge / 2 rainbow cycle / 3 highlight (secondary where motion intensity spikes) / 4 heat (secondary where the style's heat field is hot)</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>S32</string>
+      <key>Value</key><integer>0</integer>
+    </map>
+    <key>CineOutlineColor2Speed</key>
+    <map>
+      <key>Comment</key><string>[RotoInk Anim] Secondary colour cycle speed, cycles/s</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.25</real>
+    </map>
+    <key>CineOutlineColor2Length</key>
+    <map>
+      <key>Comment</key><string>[RotoInk Anim] Secondary colour cycle length along the edge, px at 1080p (0 = time only)</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.0</real>
     </map>
     <key>CineFisheyeEnabled</key>
     <map>

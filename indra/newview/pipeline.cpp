@@ -113,6 +113,7 @@
 #include "llviewerwindow.h" // For getSpinAxis
 #include "llvoavatarself.h"
 #include "llcontrolavatar.h"
+#include "llcharacter.h" // [RotoInk Anim] LLCharacter::sInstances (subject target-set gather)
 #include "llviewerjointattachment.h"
 #include "llvocache.h"
 #include "llvosky.h"
@@ -15689,6 +15690,630 @@ void LLPipeline::copyRenderTarget(LLRenderTarget* src, LLRenderTarget* dst)
     dst->flush();
 }
 
+// [RotoInk Anim] Subject mode 3 (target set) gather -- see the pipeline.h
+// declaration comment and contract A.7 for the full behavioural spec. Not
+// const: mutates mRotoInkTargetSmoothers (per-UUID smoothing state).
+S32 LLPipeline::gatherRotoInkTargets(S32 target_set, S32 max_targets, F32 ellipse_scale,
+                                      F32 depth_range, const F32* mv, const F32* proj,
+                                      LLVector4* out_targets, LLVector4* out_targets2)
+{
+    struct Candidate
+    {
+        LLUUID    mId;
+        LLVector3 mCenter;      // agent-space AABB centre
+        LLVector3 mHalfExtents; // agent-space AABB half-extents
+        S32       mPaletteIdx;
+    };
+    std::vector<Candidate> candidates;
+
+    LLDirectorCast& cast = LLDirectorCast::instance();
+
+    auto add_avatar = [&candidates](LLVOAvatar* avatar, S32 palette_idx)
+    {
+        if (!avatar || avatar->isDead())
+        {
+            return;
+        }
+        const LLVector3* ext = avatar->getLastAnimExtents();
+        const LLVector3 center = (ext[0] + ext[1]) * 0.5f;
+        const LLVector3 half   = (ext[1] - ext[0]) * 0.5f;
+        if (!center.isFinite() || !half.isFinite())
+        {
+            return;
+        }
+        candidates.push_back({ avatar->getID(), center, half, palette_idx });
+    };
+
+    // [RotoInk Anim Round-A review fix, P2 Opus] Sets 2/4/5/6/7 have no cast
+    // slot to key the palette off, and LLCharacter::sInstances/LLSelectMgr
+    // iteration order is not stable frame-to-frame -- hashing the target's
+    // OWN UUID gives every target the SAME palette colour for as long as it
+    // stays in the gather, instead of colours reshuffling as other targets
+    // enter/leave the list. Unsigned modulo so the result is always 0..7
+    // (a negative index would be an out-of-bounds ROTO_PALETTE[8] read).
+    const auto stable_palette_idx = [](const LLUUID& id) -> S32
+    {
+        return (S32)(id.getCRC32() % 8u);
+    };
+
+    switch (target_set)
+    {
+        case 0: // single Director subject (as today, CineOutlineSubjectTarget)
+        {
+            static LLCachedControl<S32> subject_target_setting(gSavedSettings, "CineOutlineSubjectTarget", 0);
+            LLVOAvatar* avatar = nullptr;
+            switch (subject_target_setting())
+            {
+                case 1: avatar = cast.resolveSubjectA(); break;
+                case 2: avatar = cast.resolveSubjectB(); break;
+                case 3: avatar = cast.resolveSubjectC(); break;
+                case 4: avatar = cast.resolveSubjectD(); break;
+                case 0: default: avatar = cast.resolve(LLUUID::null); break;
+            }
+            S32 palette_idx = 0;
+            if (avatar)
+            {
+                const uuid_vec_t& ids = cast.getIds();
+                auto it = std::find(ids.begin(), ids.end(), avatar->getID());
+                if (it != ids.end())
+                {
+                    palette_idx = (S32)std::distance(ids.begin(), it);
+                }
+            }
+            add_avatar(avatar, palette_idx);
+            break;
+        }
+        case 1: // all Director cast members
+        {
+            const uuid_vec_t& ids = cast.getIds();
+            for (size_t i = 0; i < ids.size(); ++i)
+            {
+                add_avatar(cast.resolve(ids[i]), (S32)i);
+            }
+            break;
+        }
+        case 2: // all avatars in view
+        case 4: // all avatars except me
+        case 5: // nearest N avatars -- same candidate set as "all avatars in
+                // view"; the shared depth-sort + cap below is what actually
+                // implements "nearest N" for every target set uniformly.
+        {
+            for (LLCharacter* character : LLCharacter::sInstances)
+            {
+                LLVOAvatar* avatar = dynamic_cast<LLVOAvatar*>(character);
+                if (!avatar || avatar->isDead() || avatar->isControlAvatar())
+                {
+                    continue; // animesh is its own target set (7)
+                }
+                if (target_set == 4 && gAgentAvatarp && avatar->getID() == gAgentAvatarp->getID())
+                {
+                    continue; // "except me"
+                }
+                add_avatar(avatar, stable_palette_idx(avatar->getID()));
+            }
+            break;
+        }
+        case 3: // only my avatar
+        {
+            add_avatar(gAgentAvatarp.get(), 0);
+            break;
+        }
+        case 6: // selected objects (root + linkset children, transformed to
+                // agent space; HUD attachments and seated avatars excluded)
+        {
+            // [RotoInk Anim Round-B review fix, Opus P2] The previous
+            // getSpatialExtents()*getRenderMatrix() approach double-applied
+            // the spatial-bridge transform for an ACTIVE drawable (moving
+            // linkset, attachment, or anything seated): getSpatialExtents()
+            // for an active drawable is already expressed in the bridge's
+            // own local frame, so multiplying by getRenderMatrix() (which
+            // maps that same local frame to agent space) a second time
+            // compounded the offset. root->getChildren() can also hand back
+            // a seated AVATAR, whose extents are agent-space outright, not a
+            // linkset-local offset -- feeding it through either path
+            // produced a wildly oversized box.
+            // LLViewerObject::getBoundingBoxAgent() (llviewerobject.cpp
+            // ~6122) sidesteps all of that: it builds each object's box
+            // directly from that object's OWN agent-space position/
+            // rotation/scale (chaining through a seat parent's world xform
+            // for a seated attachment), never touching a drawable spatial-
+            // bridge frame. getAxisAligned() (llbbox.h/.cpp) then
+            // re-expresses that box -- possibly rotated -- as a true
+            // agent-space AABB before its corners are read via
+            // getMinAgent()/getMaxAgent() (llbbox.h:54/58; llbbox.cpp:
+            // 163-171 -- both are plain localToAgent() calls, which only
+            // give the true AABB once the rotation is identity, i.e. after
+            // getAxisAligned()).
+            LLObjectSelectionHandle selection = LLSelectMgr::getInstance()->getSelection();
+            for (LLObjectSelection::valid_root_iterator it = selection->valid_root_begin();
+                 it != selection->valid_root_end(); ++it)
+            {
+                LLSelectNode* node = *it;
+                LLViewerObject* root = node ? node->getObject() : nullptr;
+                if (!root || root->isHUDAttachment())
+                {
+                    continue;
+                }
+
+                LLVector3 agent_lo(1.0e6f, 1.0e6f, 1.0e6f), agent_hi(-1.0e6f, -1.0e6f, -1.0e6f);
+                bool any_extent = false;
+                auto accumulate_agent_extents = [&agent_lo, &agent_hi, &any_extent](LLViewerObject* obj)
+                {
+                    // Skip seated avatars (their own bounding box is already
+                    // agent-space, not an offset within this linkset) and
+                    // HUD attachments (screen-space extents, not world).
+                    if (!obj || obj->isAvatar() || obj->isHUDAttachment())
+                    {
+                        return;
+                    }
+                    const LLBBox agent_bbox = obj->getBoundingBoxAgent().getAxisAligned();
+                    const LLVector3 obj_lo = agent_bbox.getMinAgent();
+                    const LLVector3 obj_hi = agent_bbox.getMaxAgent();
+                    agent_lo.mV[VX] = llmin(agent_lo.mV[VX], obj_lo.mV[VX]);
+                    agent_lo.mV[VY] = llmin(agent_lo.mV[VY], obj_lo.mV[VY]);
+                    agent_lo.mV[VZ] = llmin(agent_lo.mV[VZ], obj_lo.mV[VZ]);
+                    agent_hi.mV[VX] = llmax(agent_hi.mV[VX], obj_hi.mV[VX]);
+                    agent_hi.mV[VY] = llmax(agent_hi.mV[VY], obj_hi.mV[VY]);
+                    agent_hi.mV[VZ] = llmax(agent_hi.mV[VZ], obj_hi.mV[VZ]);
+                    any_extent = true;
+                };
+
+                accumulate_agent_extents(root);
+                for (LLViewerObject* child : root->getChildren())
+                {
+                    accumulate_agent_extents(child);
+                }
+                if (!any_extent)
+                {
+                    continue;
+                }
+
+                const LLVector3 center = (agent_lo + agent_hi) * 0.5f;
+                const LLVector3 half   = (agent_hi - agent_lo) * 0.5f;
+                if (!center.isFinite() || !half.isFinite())
+                {
+                    continue;
+                }
+                candidates.push_back({ root->getID(), center, half, stable_palette_idx(root->getID()) });
+            }
+            break;
+        }
+        case 7: // animesh only
+        {
+            for (LLCharacter* character : LLCharacter::sInstances)
+            {
+                LLVOAvatar* avatar = dynamic_cast<LLVOAvatar*>(character);
+                if (!avatar || avatar->isDead() || !avatar->isControlAvatar())
+                {
+                    continue;
+                }
+                add_avatar(avatar, stable_palette_idx(avatar->getID()));
+            }
+            break;
+        }
+        default:
+            break;
+    }
+
+    if (candidates.empty())
+    {
+        return 0;
+    }
+
+    const glm::mat4 modelview  = glm::make_mat4(mv);
+    const glm::mat4 projection = glm::make_mat4(proj);
+    const F32 near_clip = LLViewerCamera::getInstance()->getNear();
+
+    // [RotoInk Anim Round-B review fix, P1 both] Per-corner classification
+    // shared by the cull pass below and the final re-project further down:
+    // a box's 8 corners can be ALL in front of the near clip (ordinary
+    // case), ALL behind it (the box is nowhere on screen -- e.g. an avatar
+    // entirely behind the camera), or STRADDLING (camera inside or grazing
+    // the box, some corners each way). Only the straddling case gets the
+    // "full-screen, slab-only" fallback; all-behind must be rejected
+    // outright, or it would sort first (bogus depth 0) and consume a cap
+    // slot ahead of targets that are actually visible. mZLo/mZHi are the
+    // raw view-space depths (-corner_view.z) of ALL 8 corners regardless of
+    // classification -- valid without a perspective divide, so callers can
+    // still recover a real depth interval for a straddling box, they just
+    // can't trust mLoX/mHiX/mLoY/mHiY (left at their empty sentinel values)
+    // for one.
+    struct BoxProjection
+    {
+        bool mAnyFront = false;
+        bool mAnyBehind = false;
+        F32  mLoX = 1.0e6f, mHiX = -1.0e6f, mLoY = 1.0e6f, mHiY = -1.0e6f;
+        F32  mZLo = 1.0e6f, mZHi = -1.0e6f;
+    };
+    const auto project_box = [&modelview, &projection, near_clip](const LLVector3& center,
+        const LLVector3& half_extents, bool normalize_uv) -> BoxProjection
+    {
+        BoxProjection bp;
+        for (S32 i = 0; i < 8; ++i)
+        {
+            const LLVector3 corner(
+                center.mV[VX] + ((i & 1) ? half_extents.mV[VX] : -half_extents.mV[VX]),
+                center.mV[VY] + ((i & 2) ? half_extents.mV[VY] : -half_extents.mV[VY]),
+                center.mV[VZ] + ((i & 4) ? half_extents.mV[VZ] : -half_extents.mV[VZ]));
+            const glm::vec4 corner_view = modelview * glm::vec4(corner.mV[VX], corner.mV[VY], corner.mV[VZ], 1.f);
+            const F32 view_depth = -corner_view.z;
+            bp.mZLo = llmin(bp.mZLo, view_depth);
+            bp.mZHi = llmax(bp.mZHi, view_depth);
+
+            if (view_depth < near_clip)
+            {
+                bp.mAnyBehind = true;
+                continue;
+            }
+            const glm::vec4 clip = projection * corner_view;
+            if (clip.w <= 1.0e-4f)
+            {
+                bp.mAnyBehind = true;
+                continue;
+            }
+            bp.mAnyFront = true;
+            const F32 ux = normalize_uv ? (clip.x / clip.w) * 0.5f + 0.5f : (clip.x / clip.w);
+            const F32 uy = normalize_uv ? (clip.y / clip.w) * 0.5f + 0.5f : (clip.y / clip.w);
+            bp.mLoX = llmin(bp.mLoX, ux); bp.mHiX = llmax(bp.mHiX, ux);
+            bp.mLoY = llmin(bp.mLoY, uy); bp.mHiY = llmax(bp.mHiY, uy);
+        }
+        return bp;
+    };
+
+    // [RotoInk Anim Round-C review fix, P1 Opus] mAnyBehind alone (used by
+    // the round-B fix above) only tells us the box straddles the camera's
+    // infinite DEPTH plane -- not that the camera is actually inside or
+    // grazing the box's volume. An avatar standing well off to the side of
+    // the camera, at roughly the camera's own depth, straddles that plane
+    // too (half its box is behind, half in front, purely because it's
+    // alongside the lens) even though it is nowhere near the frustum
+    // laterally. Feeding THAT case the "full-screen, slab-only" fallback is
+    // exactly the bug reported here: an off-screen side avatar would skip
+    // the NDC frustum test entirely, sort at/near depth 0, and starve the
+    // cap ahead of targets that are genuinely on screen.
+    //
+    // camera_inside_box is the real test: is the CURRENT render's camera
+    // origin actually within (a slightly grown) box. It works in agent
+    // space so it doesn't need any of the corner projections above. The
+    // camera position is recovered from the inverse of THIS call's own
+    // modelview -- consistent with the rest of the function using the
+    // explicit mv/proj passed in rather than global camera state (see the
+    // header comment on the single-subject resolve about
+    // gGLLast{ModelView,Projection} vs the live matrices) -- rather than
+    // LLViewerCamera::getInstance()->getOrigin(), which may be a different
+    // camera during a multi-direction (360/cubemap) capture.
+    const glm::vec4 camera_agent_glm = glm::inverse(modelview) * glm::vec4(0.f, 0.f, 0.f, 1.f);
+    const LLVector3 camera_agent(camera_agent_glm.x, camera_agent_glm.y, camera_agent_glm.z);
+    const auto camera_inside_box = [&camera_agent, near_clip](const LLVector3& center, const LLVector3& half_extents) -> bool
+    {
+        // Grown by ~2x the near clip plus a small constant margin, so a box
+        // the camera is only grazing the edge of still counts as "inside"
+        // (and gets the full-screen fallback) rather than falling through
+        // to the near-plane clip path below for a box the camera is
+        // practically touching.
+        const F32 margin = 2.f * near_clip + 0.05f;
+        return std::fabs(camera_agent.mV[VX] - center.mV[VX]) <= half_extents.mV[VX] + margin
+            && std::fabs(camera_agent.mV[VY] - center.mV[VY]) <= half_extents.mV[VY] + margin
+            && std::fabs(camera_agent.mV[VZ] - center.mV[VZ]) <= half_extents.mV[VZ] + margin;
+    };
+
+    // [RotoInk Anim Round-C review fix, P1 Opus] For a straddling box the
+    // camera is NOT inside/grazing: clip it to the near plane instead of
+    // falling back to full-screen, so an off-to-the-side target is judged
+    // by its true (clipped) screen footprint and can still fail the normal
+    // NDC frustum test below. Every FRONT corner contributes its own
+    // projected point; every EDGE that crosses the near plane (one behind
+    // endpoint, one front) contributes the exact near-plane intersection
+    // point -- found by linearly interpolating the edge's two ALREADY
+    // view-space-transformed endpoints, valid because the modelview
+    // transform is affine (interpolating post-transform is identical to
+    // transforming the interpolated agent-space point). Corners are indexed
+    // exactly like project_box's loop (bit i&1/2/4 selects +/- half-extent
+    // on X/Y/Z), so the 12 box edges are every (i, i|bit) pair with bit in
+    // {1,2,4} and i not already having that bit set.
+    struct NearClipBounds
+    {
+        bool mValid = false;
+        F32  mLoX = 1.0e6f, mHiX = -1.0e6f, mLoY = 1.0e6f, mHiY = -1.0e6f;
+    };
+    const auto clip_box_near_plane = [&modelview, &projection, near_clip](const LLVector3& center,
+        const LLVector3& half_extents, bool normalize_uv) -> NearClipBounds
+    {
+        glm::vec4 corner_view[8];
+        F32       corner_depth[8];
+        for (S32 i = 0; i < 8; ++i)
+        {
+            const LLVector3 corner(
+                center.mV[VX] + ((i & 1) ? half_extents.mV[VX] : -half_extents.mV[VX]),
+                center.mV[VY] + ((i & 2) ? half_extents.mV[VY] : -half_extents.mV[VY]),
+                center.mV[VZ] + ((i & 4) ? half_extents.mV[VZ] : -half_extents.mV[VZ]));
+            corner_view[i]  = modelview * glm::vec4(corner.mV[VX], corner.mV[VY], corner.mV[VZ], 1.f);
+            corner_depth[i] = -corner_view[i].z;
+        }
+
+        NearClipBounds ncb;
+        const auto add_point = [&ncb, &projection, normalize_uv](const glm::vec4& p)
+        {
+            const glm::vec4 clip = projection * p;
+            if (clip.w <= 1.0e-4f)
+            {
+                return; // defensive only: a point at/after the near clip shouldn't hit this
+            }
+            const F32 ux = normalize_uv ? (clip.x / clip.w) * 0.5f + 0.5f : (clip.x / clip.w);
+            const F32 uy = normalize_uv ? (clip.y / clip.w) * 0.5f + 0.5f : (clip.y / clip.w);
+            ncb.mLoX = llmin(ncb.mLoX, ux); ncb.mHiX = llmax(ncb.mHiX, ux);
+            ncb.mLoY = llmin(ncb.mLoY, uy); ncb.mHiY = llmax(ncb.mHiY, uy);
+            ncb.mValid = true;
+        };
+
+        for (S32 i = 0; i < 8; ++i)
+        {
+            if (corner_depth[i] >= near_clip)
+            {
+                add_point(corner_view[i]);
+            }
+        }
+        for (S32 i = 0; i < 8; ++i)
+        {
+            for (S32 bit = 1; bit <= 4; bit <<= 1)
+            {
+                if (i & bit)
+                {
+                    continue; // covered from this edge's other endpoint
+                }
+                const S32 j = i | bit;
+                if ((corner_depth[i] >= near_clip) == (corner_depth[j] >= near_clip))
+                {
+                    continue; // edge doesn't cross the near plane
+                }
+                const F32 t = (near_clip - corner_depth[i]) / (corner_depth[j] - corner_depth[i]);
+                add_point(corner_view[i] + (corner_view[j] - corner_view[i]) * t);
+            }
+        }
+        return ncb;
+    };
+
+    // Frustum cull (A.7). [RotoInk Anim Round-B review fix, P1 both] A box
+    // with ALL 8 corners behind the near clip is REJECTED here -- it is
+    // nowhere on screen, and letting it through with a bogus depth-0 sort
+    // key (as the round-A fallback used to) let it starve the cap ahead of,
+    // and outrank, targets that are genuinely visible. A STRADDLING box
+    // (camera inside or grazing it -- some corners each way) is kept: an
+    // extreme close-up would otherwise vanish from the ranking entirely
+    // every frame it's that close, which either erases its ink completely
+    // or, in Invert mode, floods the WHOLE frame with ink once no target
+    // remains to exclude. Its final shape is resolved as "full-screen /
+    // slab-only" below (applied again after smoothing).
+    struct Culled
+    {
+        LLUUID    mId;
+        LLVector3 mCenter;
+        LLVector3 mHalfExtents;
+        S32       mPaletteIdx;
+        F32       mViewDepth;
+    };
+    std::vector<Culled> culled;
+    culled.reserve(candidates.size());
+
+    for (const Candidate& c : candidates)
+    {
+        const BoxProjection bp = project_box(c.mCenter, c.mHalfExtents, /*normalize_uv=*/false);
+        if (!bp.mAnyFront)
+        {
+            continue; // every corner behind the camera/near clip: not visible at all
+        }
+
+        const bool straddling = bp.mAnyBehind;
+        // [RotoInk Anim Round-C review fix, P1 Opus] Straddling no longer
+        // means "keep unconditionally": only a box the camera is actually
+        // inside/grazing gets the full-screen fallback (and skips the NDC
+        // test below, same as before). A box that merely straddles the
+        // camera's depth PLANE while sitting off to the side gets clipped
+        // to the near plane instead, and its clipped screen bounds go
+        // through the SAME ±1.2 NDC test as an ordinary in-front box -- so
+        // it's rejected here, like anything else fully outside the frame,
+        // instead of surviving to starve the cap.
+        const bool camera_inside = straddling && camera_inside_box(c.mCenter, c.mHalfExtents);
+        F32 lo_x = bp.mLoX, hi_x = bp.mHiX, lo_y = bp.mLoY, hi_y = bp.mHiY;
+        if (straddling && !camera_inside)
+        {
+            const NearClipBounds ncb = clip_box_near_plane(c.mCenter, c.mHalfExtents, /*normalize_uv=*/false);
+            if (!ncb.mValid)
+            {
+                continue; // degenerate (shouldn't happen given mAnyFront): nothing survived clipping
+            }
+            lo_x = ncb.mLoX; hi_x = ncb.mHiX; lo_y = ncb.mLoY; hi_y = ncb.mHiY;
+        }
+        if (!camera_inside && (hi_x < -1.2f || lo_x > 1.2f || hi_y < -1.2f || lo_y > 1.2f))
+        {
+            continue; // genuinely, reliably fully outside the frame
+        }
+
+        // [RotoInk Anim Round-B/C review fix, P1 both] Sort/cap key: a box
+        // the camera is inside/grazing has a raw centre view-depth that can
+        // be tiny or negative, which would otherwise sort it first and let
+        // it starve the cap ahead of fully-visible targets -- clamp to the
+        // near clip, never 0. A straddling-but-clipped box (camera not
+        // inside) sorts by its nearest visible depth, i.e. the near clip
+        // itself (every such box has at least one near-plane crossing edge,
+        // by definition), same "nearest first" idiom as any other target.
+        const glm::vec4 center_view = modelview * glm::vec4(c.mCenter.mV[VX], c.mCenter.mV[VY], c.mCenter.mV[VZ], 1.f);
+        F32 view_depth;
+        if (camera_inside)
+        {
+            view_depth = llmax(-center_view.z, near_clip);
+        }
+        else if (straddling)
+        {
+            view_depth = llmax(bp.mZLo, near_clip);
+        }
+        else
+        {
+            view_depth = llmax(-center_view.z, 0.f);
+        }
+        culled.push_back({ c.mId, c.mCenter, c.mHalfExtents, c.mPaletteIdx, view_depth });
+    }
+
+    if (culled.empty())
+    {
+        return 0;
+    }
+
+    std::sort(culled.begin(), culled.end(),
+              [](const Culled& a, const Culled& b) { return a.mViewDepth < b.mViewDepth; });
+
+    const S32 cap = std::clamp(max_targets, 1, 16);
+    if ((S32)culled.size() > cap)
+    {
+        culled.resize(cap);
+    }
+
+    // Smooth (own per-UUID state, 0.15 s critically-damped, same idiom as
+    // mRotoInkSubject) + final re-project, exactly mirroring the single-
+    // subject resolve: the SMOOTHED world-space box is re-projected fresh
+    // with THIS render's camera (mv/proj) every call.
+    LLViewerRegion* region = gAgent.getRegion();
+    const U64 region_handle = region ? region->getHandle() : 0;
+    const F64 now = LLPresentationTime::currentFrame().presentation_time;
+    const bool now_finite = std::isfinite(now);
+    // [RotoInk Anim Round-A review fix, P2 both] Same cut hook as
+    // RotoInkSubjectState: a hard program cut snaps every RETAINED target's
+    // smoother too (even one whose world position hasn't moved), so a scene
+    // cut never carries in-flight target motion smoothing across the edit.
+    const U64 cut_serial = ALDirectorSwitcher::instance().cutSerial();
+
+    S32 count = 0;
+    for (const Culled& c : culled)
+    {
+        RotoInkTargetSmoothState& st = mRotoInkTargetSmoothers[c.mId];
+        const bool snap = !st.mHaveSmoothed || region_handle != st.mLastRegionHandle ||
+            st.mLastTime < 0.0 || (now_finite && now < st.mLastTime) ||
+            cut_serial != st.mLastCutSerial;
+
+        if (snap)
+        {
+            st.mCenter = c.mCenter;
+            st.mHalfExtents = c.mHalfExtents;
+        }
+        else if (now_finite)
+        {
+            constexpr F32 ROTOINK_TARGET_DAMPING_SEC = 0.15f;
+            const F64 dt_s = llmax(now - st.mLastTime, 0.0);
+            const F32 alpha = 1.f - expf(-(F32)dt_s / ROTOINK_TARGET_DAMPING_SEC);
+            st.mCenter += (c.mCenter - st.mCenter) * alpha;
+            st.mHalfExtents += (c.mHalfExtents - st.mHalfExtents) * alpha;
+        }
+        st.mHaveSmoothed = true;
+        st.mLastRegionHandle = region_handle;
+        st.mLastCutSerial = cut_serial;
+        if (now_finite)
+        {
+            st.mLastTime = now;
+        }
+        st.mLastSeenTime = now_finite ? now : st.mLastSeenTime; // mark "seen" before any re-project fallback below
+
+        // [RotoInk Anim Round-B review fix, P1 both] Re-classify the
+        // SMOOTHED box (it can drift slightly from the unsmoothed candidate
+        // the cull pass above judged, e.g. right at the near clip during
+        // fast motion). All-behind here means this target isn't visible
+        // THIS frame either -- drop it rather than emit a bogus full-screen
+        // slab that would still occupy one of the 16 output slots (its
+        // smoother state above is already updated either way, so it keeps
+        // smoothing and can reappear next frame without a re-snap).
+        const BoxProjection bp = project_box(st.mCenter, st.mHalfExtents, /*normalize_uv=*/true);
+        if (!bp.mAnyFront)
+        {
+            continue;
+        }
+        const bool straddling = bp.mAnyBehind;
+
+        const glm::vec4 center_view = modelview * glm::vec4(st.mCenter.mV[VX], st.mCenter.mV[VY], st.mCenter.mV[VZ], 1.f);
+
+        F32 z, cx, cy, rx, ry, slab_half;
+        if (straddling)
+        {
+            // [RotoInk Anim Round-C review fix, P1 Opus] Re-check "camera
+            // actually inside/grazing" on the SMOOTHED box, same distinction
+            // as the cull pass above: only that case gets the full-screen
+            // fallback. A straddling-but-off-to-the-side box is clipped to
+            // the near plane instead, so its screen shape reflects its true
+            // (small, clipped) on-screen footprint rather than flooding the
+            // whole frame with a full-screen shape it was never entitled to.
+            if (camera_inside_box(st.mCenter, st.mHalfExtents))
+            {
+                cx = 0.5f; cy = 0.5f; rx = 8.f; ry = 8.f;
+            }
+            else
+            {
+                const NearClipBounds ncb = clip_box_near_plane(st.mCenter, st.mHalfExtents, /*normalize_uv=*/true);
+                if (ncb.mValid)
+                {
+                    cx = 0.5f * (ncb.mLoX + ncb.mHiX);
+                    cy = 0.5f * (ncb.mLoY + ncb.mHiY);
+                    rx = llmax(0.5f * (ncb.mHiX - ncb.mLoX) * ellipse_scale, 0.02f);
+                    ry = llmax(0.5f * (ncb.mHiY - ncb.mLoY) * ellipse_scale, 0.02f);
+                }
+                else
+                {
+                    // Degenerate (shouldn't happen given mAnyFront): fall
+                    // back to full-screen rather than an empty/inverted box.
+                    cx = 0.5f; cy = 0.5f; rx = 8.f; ry = 8.f;
+                }
+            }
+            // [RotoInk Anim Round-C review fix, P2 Codex+Opus] Symmetric
+            // depth interval, not a bogus centre: the round-B fix set
+            // z = max(centre_depth, near) with the half-width taken from the
+            // REAL [min, max] corner-depth interval -- e.g. corner depths
+            // spanning -0.5..2.5 m with a 0.1 m near clip clamp to
+            // z_lo=0.1/z_hi=2.5, half=1.2, but z = max(centre_depth, 0.1)
+            // could be anything (the true box centre depth needn't sit at
+            // the interval's midpoint, especially once clamped), uploading
+            // a slab that doesn't actually straddle [z_lo, z_hi]. Centre the
+            // slab on the clamped interval itself instead.
+            const F32 z_lo = llmax(bp.mZLo, near_clip);
+            const F32 z_hi = llmax(bp.mZHi, z_lo);
+            z = 0.5f * (z_lo + z_hi);
+            slab_half = 0.5f * (z_hi - z_lo) + llmax(depth_range, 0.f);
+        }
+        else
+        {
+            cx = 0.5f * (bp.mLoX + bp.mHiX);
+            cy = 0.5f * (bp.mLoY + bp.mHiY);
+            rx = llmax(0.5f * (bp.mHiX - bp.mLoX) * ellipse_scale, 0.02f);
+            ry = llmax(0.5f * (bp.mHiY - bp.mLoY) * ellipse_scale, 0.02f);
+            z = llmax(-center_view.z, 0.f);
+            // A.7: slab half depth = 0.5*(zmax - zmin of the 8 corners) + DepthRange.
+            slab_half = llmax(0.5f * (bp.mZHi - bp.mZLo), 0.f) + llmax(depth_range, 0.f);
+        }
+
+        out_targets[count]  = LLVector4(cx, cy, rx, ry);
+        out_targets2[count] = LLVector4(z, slab_half, (F32)(c.mPaletteIdx % 8), 1.f);
+        ++count;
+        if (count >= 16)
+        {
+            break;
+        }
+    }
+
+    // Prune smoothers not seen in over 1 s -- targets that left the gather
+    // (culled, dead/gone, or the feature switched away from mode 3 a while).
+    for (auto it = mRotoInkTargetSmoothers.begin(); it != mRotoInkTargetSmoothers.end(); )
+    {
+        const bool stale = it->second.mLastSeenTime < 0.0 ||
+            (now_finite && (now - it->second.mLastSeenTime) > 1.0);
+        if (stale)
+        {
+            it = mRotoInkTargetSmoothers.erase(it);
+        }
+        else
+        {
+            ++it;
+        }
+    }
+
+    return count;
+}
+
 // [RotoInk] Rotoscope Ink: reads `dst` as a plain texture and draws into the
 // mWaterDis scratch (blend off), then blits the result's COLOUR ONLY back
 // into `dst` (successor of the Cine Outline Phase-1 additive Sobel pass).
@@ -15807,6 +16432,51 @@ void LLPipeline::renderCineOutline(LLRenderTarget* dst, const F32* camera_modelv
     static LLCachedControl<F32>  motion_scale_setting(gSavedSettings, "CineOutlineMotionScale", 0.3f);
     static LLCachedControl<F32>  motion_angle_setting(gSavedSettings, "CineOutlineMotionAngle", 90.f);
 
+    // [RotoInk Anim] Motion layer 1 extras + timing.
+    static LLCachedControl<F32>  motion_shape_setting(gSavedSettings, "CineOutlineMotionShape", 0.5f);
+    static LLCachedControl<F32>  motion_tempo_setting(gSavedSettings, "CineOutlineMotionTempo", 0.f);
+    static LLCachedControl<F32>  motion_phase_setting(gSavedSettings, "CineOutlineMotionPhase", 0.f);
+    static LLCachedControl<S32>  motion_step_setting(gSavedSettings, "CineOutlineMotionStep", 0);
+    static LLCachedControl<F32>  motion_seed_setting(gSavedSettings, "CineOutlineMotionSeed", 0.f);
+
+    // [RotoInk Anim] Motion layer 2.
+    static LLCachedControl<S32>  motion2_style_setting(gSavedSettings, "CineOutlineMotion2Style", 0);
+    static LLCachedControl<F32>  motion2_speed_setting(gSavedSettings, "CineOutlineMotion2Speed", 0.5f);
+    static LLCachedControl<F32>  motion2_amount_setting(gSavedSettings, "CineOutlineMotion2Amount", 0.5f);
+    static LLCachedControl<F32>  motion2_scale_setting(gSavedSettings, "CineOutlineMotion2Scale", 0.3f);
+    static LLCachedControl<F32>  motion2_shape_setting(gSavedSettings, "CineOutlineMotion2Shape", 0.5f);
+    static LLCachedControl<F32>  motion2_angle_setting(gSavedSettings, "CineOutlineMotion2Angle", 90.f);
+
+    // [RotoInk Anim] Line pattern.
+    static LLCachedControl<S32>  pattern_type_setting(gSavedSettings, "CineOutlinePatternType", 0);
+    static LLCachedControl<F32>  pattern_size_setting(gSavedSettings, "CineOutlinePatternSize", 12.f);
+    static LLCachedControl<F32>  pattern_ratio_setting(gSavedSettings, "CineOutlinePatternRatio", 0.5f);
+    static LLCachedControl<F32>  pattern_drift_setting(gSavedSettings, "CineOutlinePatternDrift", 0.f);
+    static LLCachedControl<F32>  hatch_angle_setting(gSavedSettings, "CineOutlineHatchAngle", 45.f);
+    static LLCachedControl<F32>  hatch_reach_setting(gSavedSettings, "CineOutlineHatchReach", 0.f);
+    static LLCachedControl<bool> hatch_cross_setting(gSavedSettings, "CineOutlineHatchCross", false);
+    static LLCachedControl<F32>  pattern_seed_setting(gSavedSettings, "CineOutlinePatternSeed", 0.f);
+
+    // [RotoInk Anim] Secondary colour.
+    static LLCachedControl<LLColor3> color2_setting(gSavedSettings, "CineOutlineColor2", LLColor3(1.f, 1.f, 1.f));
+    static LLCachedControl<S32>  color2_mode_setting(gSavedSettings, "CineOutlineColor2Mode", 0);
+    static LLCachedControl<F32>  color2_speed_setting(gSavedSettings, "CineOutlineColor2Speed", 0.25f);
+    static LLCachedControl<F32>  color2_length_setting(gSavedSettings, "CineOutlineColor2Length", 0.f);
+
+    // [RotoInk Anim] Subject isolation extras (target set / shape / invert /
+    // manual depth band / screen rect-ellipse). Never written by a preset.
+    static LLCachedControl<S32>  subject_target_set_setting(gSavedSettings, "CineOutlineSubjectTargetSet", 0);
+    static LLCachedControl<S32>  subject_max_targets_setting(gSavedSettings, "CineOutlineSubjectMaxTargets", 8);
+    static LLCachedControl<S32>  subject_shape_setting(gSavedSettings, "CineOutlineSubjectShape", 0);
+    static LLCachedControl<bool> subject_invert_setting(gSavedSettings, "CineOutlineSubjectInvert", false);
+    static LLCachedControl<bool> subject_target_color_setting(gSavedSettings, "CineOutlineSubjectTargetColor", false);
+    static LLCachedControl<F32>  subject_depth_near_setting(gSavedSettings, "CineOutlineSubjectDepthNear", 1.f);
+    static LLCachedControl<F32>  subject_depth_far_setting(gSavedSettings, "CineOutlineSubjectDepthFar", 10.f);
+    static LLCachedControl<F32>  subject_screen_cx_setting(gSavedSettings, "CineOutlineSubjectScreenCX", 0.5f);
+    static LLCachedControl<F32>  subject_screen_cy_setting(gSavedSettings, "CineOutlineSubjectScreenCY", 0.5f);
+    static LLCachedControl<F32>  subject_screen_rx_setting(gSavedSettings, "CineOutlineSubjectScreenRX", 0.3f);
+    static LLCachedControl<F32>  subject_screen_ry_setting(gSavedSettings, "CineOutlineSubjectScreenRY", 0.4f);
+
     // m-a: sanitize every scalar with a finite check (non-finite -> the
     // setting's own default) BEFORE clamping (pattern: updateNightMaskAnchor's
     // finite_or, pipeline.cpp ~12636) -- a corrupted settings file must
@@ -15828,7 +16498,7 @@ void LLPipeline::renderCineOutline(LLRenderTarget* dst, const F32* camera_modelv
     const F32  softness         = llclamp(finite_or((F32)softness_setting(), 0.5f), 0.f, 1.f);
     const F32  far_cutoff       = llclamp(finite_or((F32)far_cutoff_setting(), 0.f), 0.f, 512.f);
 
-    const S32  subject_mode            = std::clamp((S32)subject_mode_setting(), 0, 2);
+    const S32  subject_mode            = std::clamp((S32)subject_mode_setting(), 0, 9);
     const S32  subject_target          = std::clamp((S32)subject_target_setting(), 0, 4);
     const F32  subject_manual_depth    = llclamp(finite_or((F32)subject_manual_depth_setting(), 4.f), 0.1f, 256.f);
     const F32  subject_depth_range     = llclamp(finite_or((F32)subject_depth_range_setting(), 1.5f), 0.f, 32.f);
@@ -15836,6 +16506,21 @@ void LLPipeline::renderCineOutline(LLRenderTarget* dst, const F32* camera_modelv
     const F32  subject_ellipse_amount  = llclamp(finite_or((F32)subject_ellipse_setting(), 0.6f), 0.f, 1.f);
     const F32  subject_ellipse_scale   = llclamp(finite_or((F32)subject_ellipse_scale_setting(), 1.3f), 0.5f, 3.f);
     const F32  subject_ellipse_feather = llclamp(finite_or((F32)subject_ellipse_feather_setting(), 0.25f), 0.01f, 0.75f);
+
+    // [RotoInk Anim] Subject isolation extras.
+    const S32  subject_target_set      = std::clamp((S32)subject_target_set_setting(), 0, 7);
+    const S32  subject_max_targets     = std::clamp((S32)subject_max_targets_setting(), 1, 16);
+    const S32  subject_shape           = std::clamp((S32)subject_shape_setting(), 0, 2);
+    const bool subject_invert          = subject_invert_setting();
+    const bool subject_target_color    = subject_target_color_setting();
+    // Not "near"/"far": Windows headers #define near/far (see the build-
+    // gotcha note on renderCineOutline's camera_modelview parameter).
+    const F32  subject_depth_band_near = llclamp(finite_or((F32)subject_depth_near_setting(), 1.f), 0.f, 256.f);
+    const F32  subject_depth_band_far  = llmax(llclamp(finite_or((F32)subject_depth_far_setting(), 10.f), 0.f, 256.f), subject_depth_band_near);
+    const F32  subject_screen_cx       = llclamp(finite_or((F32)subject_screen_cx_setting(), 0.5f), 0.f, 1.f);
+    const F32  subject_screen_cy       = llclamp(finite_or((F32)subject_screen_cy_setting(), 0.5f), 0.f, 1.f);
+    const F32  subject_screen_rx       = llmax(finite_or((F32)subject_screen_rx_setting(), 0.3f), 0.01f);
+    const F32  subject_screen_ry       = llmax(finite_or((F32)subject_screen_ry_setting(), 0.4f), 0.01f);
 
     const S32  ink_mode         = std::clamp((S32)ink_mode_setting(), 0, 1);
     const F32  match_reach      = llclamp(finite_or((F32)match_reach_setting(), 6.f), 1.f, 32.f);
@@ -15850,11 +16535,46 @@ void LLPipeline::renderCineOutline(LLRenderTarget* dst, const F32* camera_modelv
     const F32  sketch_roughness = llclamp(finite_or((F32)sketch_roughness_setting(), 0.3f), 0.f, 1.f);
     const F32  sketch_seed      = llclamp(finite_or((F32)sketch_seed_setting(), 0.f), 0.f, 100.f);
 
-    const S32  motion_style     = std::clamp((S32)motion_style_setting(), 0, 5);
+    const S32  motion_style     = std::clamp((S32)motion_style_setting(), 0, 35);
     const F32  motion_speed     = llclamp(finite_or((F32)motion_speed_setting(), 0.5f), 0.05f, 5.f);
     const F32  motion_amount    = llclamp(finite_or((F32)motion_amount_setting(), 0.5f), 0.f, 1.f);
     const F32  motion_scale     = llclamp(finite_or((F32)motion_scale_setting(), 0.3f), 0.02f, 1.f);
     const F32  motion_angle     = llclamp(finite_or((F32)motion_angle_setting(), 90.f), 0.f, 360.f);
+
+    // [RotoInk Anim] Motion layer 1 extras + timing.
+    const F32  motion_shape     = llclamp(finite_or((F32)motion_shape_setting(), 0.5f), 0.f, 1.f);
+    const F32  motion_tempo     = llclamp(finite_or((F32)motion_tempo_setting(), 0.f), 0.f, 300.f);
+    const F32  motion_phase     = llclamp(finite_or((F32)motion_phase_setting(), 0.f), 0.f, 4.f);
+    const S32  motion_step      = std::clamp((S32)motion_step_setting(), 0, 3);
+    const F32  motion_seed      = llclamp(finite_or((F32)motion_seed_setting(), 0.f), 0.f, 100.f);
+    // A.1: 0 -> 0 (off/smooth), 1 -> 12 fps, 2 -> 8 fps, 3 -> 6 fps.
+    static const F32 kRotoInkMotionStepFps[4] = { 0.f, 12.f, 8.f, 6.f };
+    const F32  motion_step_fps  = kRotoInkMotionStepFps[motion_step];
+    const F32  motion_tempo_bps = motion_tempo > 0.f ? motion_tempo / 60.f : 0.f; // beats/s, 0 = off
+
+    // [RotoInk Anim] Motion layer 2.
+    const S32  motion2_style    = std::clamp((S32)motion2_style_setting(), 0, 35);
+    const F32  motion2_speed    = llclamp(finite_or((F32)motion2_speed_setting(), 0.5f), 0.05f, 5.f);
+    const F32  motion2_amount   = llclamp(finite_or((F32)motion2_amount_setting(), 0.5f), 0.f, 1.f);
+    const F32  motion2_scale    = llclamp(finite_or((F32)motion2_scale_setting(), 0.3f), 0.02f, 1.f);
+    const F32  motion2_shape    = llclamp(finite_or((F32)motion2_shape_setting(), 0.5f), 0.f, 1.f);
+    const F32  motion2_angle    = llclamp(finite_or((F32)motion2_angle_setting(), 90.f), 0.f, 360.f);
+
+    // [RotoInk Anim] Line pattern.
+    const S32  pattern_type     = std::clamp((S32)pattern_type_setting(), 0, 5);
+    const F32  pattern_size     = llclamp(finite_or((F32)pattern_size_setting(), 12.f), 2.f, 64.f);
+    const F32  pattern_ratio    = llclamp(finite_or((F32)pattern_ratio_setting(), 0.5f), 0.05f, 0.95f);
+    const F32  pattern_drift    = llclamp(finite_or((F32)pattern_drift_setting(), 0.f), -200.f, 200.f);
+    const F32  hatch_angle      = llclamp(finite_or((F32)hatch_angle_setting(), 45.f), 0.f, 180.f);
+    const F32  hatch_reach      = llclamp(finite_or((F32)hatch_reach_setting(), 0.f), 0.f, 48.f);
+    const bool hatch_cross      = hatch_cross_setting();
+    const F32  pattern_seed     = llclamp(finite_or((F32)pattern_seed_setting(), 0.f), 0.f, 100.f);
+
+    // [RotoInk Anim] Secondary colour.
+    const LLColor3& color2      = color2_setting();
+    const S32  color2_mode      = std::clamp((S32)color2_mode_setting(), 0, 4);
+    const F32  color2_speed     = llclamp(finite_or((F32)color2_speed_setting(), 0.25f), 0.f, 5.f);
+    const F32  color2_length    = llclamp(finite_or((F32)color2_length_setting(), 0.f), 0.f, 1024.f);
 
     LL_PROFILE_GPU_ZONE("renderCineOutline");
 
@@ -15879,10 +16599,22 @@ void LLPipeline::renderCineOutline(LLRenderTarget* dst, const F32* camera_modelv
     // direction capture (360/cubemap, each face its own current-camera call)
     // are all geometrically exact by construction, never interpolated from a
     // previous shot's stale camera-space values.
+    // [RotoInk Anim Round-A review fix, Fable shader contract] Resolved
+    // UNCONDITIONALLY now (one avatar resolve + 8 projections per frame),
+    // not just in subject mode != 0 or for an anchor-based motion style: the
+    // shader's rotoEdgeCoord() (dashes/ants/waves/sparks/morse/
+    // constellation/neon-buzz/colour two-tone/rainbow length) also uses the
+    // resolved anchor ellipse as its along-edge contour parameter whenever
+    // it is valid, for EVERY style/pattern, not only the anchor styles.
+    // subject_mode itself is untouched (still uploaded as-is below), so this
+    // never turns isolation ON: rotoSubjectMask() returns 1.0 immediately
+    // for mode <= 0 before ever reading roto_subject2/3, and every style/
+    // pattern that would otherwise read the ellipse defaults to "off" (style
+    // 0 / pattern 0 / colour mode 0), so resolving it changes nothing the
+    // default path actually reads -- output stays byte-identical.
     F32  focusZ = subject_manual_depth;
     F32  cx = 0.5f, cy = 0.5f, rx = 0.2f, ry = 0.35f;
     bool ellipse_valid = false;
-    if (subject_mode != 0)
     {
         LLDirectorCast& cast = LLDirectorCast::instance();
         LLVOAvatar* avatar = nullptr;
@@ -16119,14 +16851,120 @@ void LLPipeline::renderCineOutline(LLRenderTarget* dst, const F32* camera_modelv
     // already distinguishes these two destinations exactly. See Fable's
     // round-4 shader contract addendum (scratchpad/roto_rimpreset_contract.md).
     gCineOutlineProgram.uniform4f(LLShaderMgr::ROTO_INK, opacity, match_reach * px_scale, hdr_path ? 0.f : 1.f, 0.f);
-    gCineOutlineProgram.uniform4f(LLShaderMgr::ROTO_SUBJECT, (F32)subject_mode, focusZ, subject_depth_range, subject_depth_feather);
-    gCineOutlineProgram.uniform4f(LLShaderMgr::ROTO_SUBJECT2, cx, cy, rx, ry);
-    gCineOutlineProgram.uniform4f(LLShaderMgr::ROTO_SUBJECT3, subject_ellipse_amount, subject_ellipse_feather, ellipse_valid ? 1.f : 0.f, 0.f);
+
+    // [RotoInk Anim Round-A review fix, P2 both] Mode 3 (target set): gather
+    // up to 16 targets FIRST -- BEFORE resolving the anchor ellipse below --
+    // so that when subject mode is 3, ROTO_SUBJECT2/3 can be populated from
+    // target 0 per A.1 ("for mode 3 use target 0") rather than the single
+    // Director-subject ellipse resolved above. Off (count 0) for every other
+    // mode -- matches the A.1 "off value", and the shader's mode==3 branch
+    // is the only reader of roto_targets/roto_targets2/roto_subject4.w, so
+    // leaving them zeroed elsewhere is safe.
+    LLVector4 roto_target_cells[16];
+    LLVector4 roto_target_cells2[16];
+    S32 target_count = 0;
+    if (subject_mode == 3)
+    {
+        target_count = gatherRotoInkTargets(subject_target_set, subject_max_targets,
+                                             subject_ellipse_scale, subject_depth_range,
+                                             subject_modelview_src, subject_projection_src,
+                                             roto_target_cells, roto_target_cells2);
+    }
+
+    // [RotoInk Anim] Mode-dependent ROTO_SUBJECT.y/z + ROTO_SUBJECT2/3
+    // override (A.1/A.7): modes 0-2/5/6 keep the primary-subject slab
+    // (y=focusZ, z=DepthRange) already resolved above; mode 3 anchors on
+    // target 0 of the gather just above (falling back to the primary-
+    // subject ellipse when the gather found nothing); mode 4 is an explicit
+    // near/far metres band; mode 9 recentres on the DoF focus point instead
+    // of the Director subject. Modes 7/8 replace the screen ellipse with the
+    // manual screen rectangle/ellipse settings and force it valid.
+    F32  roto_subject_y = focusZ;
+    F32  roto_subject_z = subject_depth_range;
+    F32  upload_cx = cx, upload_cy = cy, upload_rx = rx, upload_ry = ry;
+    bool upload_ellipse_valid = ellipse_valid;
+    if (subject_mode == 3)
+    {
+        if (target_count > 0)
+        {
+            upload_cx = roto_target_cells[0].mV[0];
+            upload_cy = roto_target_cells[0].mV[1];
+            upload_rx = roto_target_cells[0].mV[2];
+            upload_ry = roto_target_cells[0].mV[3];
+            upload_ellipse_valid = true;
+        }
+        // else: no targets this frame -- keep the primary-subject fallback
+        // already in cx/cy/rx/ry/ellipse_valid above.
+    }
+    else if (subject_mode == 4)
+    {
+        // Not "near"/"far": Windows headers #define near/far.
+        roto_subject_y = subject_depth_band_near;
+        roto_subject_z = subject_depth_band_far;
+    }
+    else if (subject_mode == 9)
+    {
+        // [RotoInk Anim] DoF focus point (A.7, pipeline.h:sLastFocusPoint).
+        // sLastFocusPoint is agent-space and only updated by renderDoF(),
+        // which runs much later in the post chain than every
+        // renderCineOutline call site -- like the exposure map, this is
+        // necessarily LAST frame's focus point (same accepted one-frame-lag
+        // idiom already used for the Scene layer's exposureMap read).
+        // Falls back to the manual depth when DoF is off or has no focus.
+        if (sDoFEnabled && !sLastFocusPoint.isExactlyZero())
+        {
+            const glm::mat4 dof_modelview = glm::make_mat4(subject_modelview_src);
+            const glm::vec4 focus_view = dof_modelview * glm::vec4(
+                sLastFocusPoint.mV[VX], sLastFocusPoint.mV[VY], sLastFocusPoint.mV[VZ], 1.f);
+            roto_subject_y = llmax(-focus_view.z, 0.f);
+        }
+        else
+        {
+            roto_subject_y = subject_manual_depth;
+        }
+        roto_subject_z = subject_depth_range;
+    }
+    else if (subject_mode == 7 || subject_mode == 8)
+    {
+        upload_cx = subject_screen_cx;
+        upload_cy = subject_screen_cy;
+        upload_rx = subject_screen_rx;
+        upload_ry = subject_screen_ry;
+        upload_ellipse_valid = true;
+    }
+    gCineOutlineProgram.uniform4f(LLShaderMgr::ROTO_SUBJECT, (F32)subject_mode, roto_subject_y, roto_subject_z, subject_depth_feather);
+    gCineOutlineProgram.uniform4f(LLShaderMgr::ROTO_SUBJECT2, upload_cx, upload_cy, upload_rx, upload_ry);
+    gCineOutlineProgram.uniform4f(LLShaderMgr::ROTO_SUBJECT3, subject_ellipse_amount, subject_ellipse_feather, upload_ellipse_valid ? 1.f : 0.f, 0.f);
+
+    // roto_subject4.y (invert) and .z (per-target colour) are only read
+    // inside the shader's mode>=3 branch, so uploading them unconditionally
+    // is safe and avoids yet another mode check here.
+    gCineOutlineProgram.uniform4f(LLShaderMgr::ROTO_SUBJECT4,
+        (F32)subject_shape, subject_invert ? 1.f : 0.f, subject_target_color ? 1.f : 0.f, (F32)target_count);
+    if (target_count > 0)
+    {
+        gCineOutlineProgram.uniform4fv(LLShaderMgr::ROTO_TARGETS, target_count, roto_target_cells[0].mV);
+        gCineOutlineProgram.uniform4fv(LLShaderMgr::ROTO_TARGETS2, target_count, roto_target_cells2[0].mV);
+    }
+
     gCineOutlineProgram.uniform4f(LLShaderMgr::ROTO_SKETCH, sketch_enabled ? 1.f : 0.f, sketch_amount * px_scale, sketch_detail, sketch_fps);
     gCineOutlineProgram.uniform4f(LLShaderMgr::ROTO_SKETCH2, (F32)sketch_strokes, sketch_roughness, sketch_seed, 0.f);
     gCineOutlineProgram.uniform4f(LLShaderMgr::ROTO_MOTION, (F32)motion_style, motion_speed, motion_amount, motion_scale);
-    gCineOutlineProgram.uniform4f(LLShaderMgr::ROTO_MOTION2, motion_angle * DEG_TO_RAD,
-        (F32)std::fmod(LLPresentationTime::currentFrame().presentation_time, 3600.0), 0.f, 0.f);
+    const F32 roto_time_s = (F32)std::fmod(LLPresentationTime::currentFrame().presentation_time, 3600.0);
+    gCineOutlineProgram.uniform4f(LLShaderMgr::ROTO_MOTION2, motion_angle * DEG_TO_RAD, roto_time_s, 0.f, 0.f);
+    // [RotoInk Anim] Layer-1 shape/seed/step-fps/tempo (A.1 ROTO_MOTION3).
+    gCineOutlineProgram.uniform4f(LLShaderMgr::ROTO_MOTION3, motion_shape, motion_seed, motion_step_fps, motion_tempo_bps);
+    // [RotoInk Anim] Layer 2 (A.1 ROTO_MOTION4/5).
+    gCineOutlineProgram.uniform4f(LLShaderMgr::ROTO_MOTION4, (F32)motion2_style, motion2_speed, motion2_amount, motion2_scale);
+    gCineOutlineProgram.uniform4f(LLShaderMgr::ROTO_MOTION5, motion2_shape, motion2_angle * DEG_TO_RAD, motion_phase, 0.f);
+    // [RotoInk Anim] Line pattern (A.1/A.4 ROTO_PATTERN/2).
+    gCineOutlineProgram.uniform4f(LLShaderMgr::ROTO_PATTERN,
+        (F32)pattern_type, pattern_size * px_scale, pattern_ratio, pattern_drift * px_scale);
+    gCineOutlineProgram.uniform4f(LLShaderMgr::ROTO_PATTERN2,
+        hatch_angle * DEG_TO_RAD, hatch_reach * px_scale, pattern_seed, hatch_cross ? 1.f : 0.f);
+    // [RotoInk Anim] Secondary colour (A.1/A.5 ROTO_COLOR2/2B).
+    gCineOutlineProgram.uniform4f(LLShaderMgr::ROTO_COLOR2, color2.mV[0], color2.mV[1], color2.mV[2], (F32)color2_mode);
+    gCineOutlineProgram.uniform4f(LLShaderMgr::ROTO_COLOR2B, color2_speed, color2_length * px_scale, 0.f, 0.f);
     gCineOutlineProgram.uniform1f(LLShaderMgr::EXPOSURE, roto_exposure);
 
     mScreenTriangleVB->setBuffer();
