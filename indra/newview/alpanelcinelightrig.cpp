@@ -2165,7 +2165,9 @@ void ALPanelCineLightRig::updateDerivedStatus()
             shaft_on_dark_light = true;
         }
     }
-    const S32 slots = gSavedSettings.getS32("BDMergeMaxSpotShadows");
+    // BDMergeMaxSpotShadows is a U32 setting; getS32 on it failed conversion
+    // every panel update (log flood) and returned the wrong value.
+    const S32 slots = (S32)gSavedSettings.getU32("BDMergeMaxSpotShadows");
     const S32 hint_state = requested > slots ? 1
         : shaft_suppressed ? 2
         : shaft_on_dark_light ? 3 : 0;
