@@ -22,6 +22,7 @@
 #include "alprojectorshaftpresets.h"
 #include "alcinelightrigmanager.h"
 #include "alrotoink.h"
+#include "altron.h"
 #include "aldirectorswitcher.h"
 #include "llactormover.h"
 #include "llagent.h"                   // stable self id while avatar rebuilds
@@ -967,11 +968,14 @@ const std::vector<std::string>& LLFloaterDirector::sceneSettingsList()
     // settings) from ALRotoInk::settings() -- the single source of truth
     // shared with the Lightbox tab's preset/reset code -- rather than
     // duplicating the list here where it could drift.
+    // [TronT0] Same pattern for every Tron* key, from ALTron::settings().
     static const std::vector<std::string> settings_with_roto = []
     {
         std::vector<std::string> v = settings;
         const std::vector<std::string>& roto = ALRotoInk::settings();
         v.insert(v.end(), roto.begin(), roto.end());
+        const std::vector<std::string>& tron = ALTron::settings();
+        v.insert(v.end(), tron.begin(), tron.end());
         return v;
     }();
     return settings_with_roto;
@@ -1316,6 +1320,42 @@ void LLFloaterDirector::loadScene(const std::string& name)
         for (const std::string& setting : sceneSettingsList())
         {
             if (setting.rfind("CineOutline", 0) == 0 && !scene["settings"].has(setting))
+            {
+                if (LLControlVariable* ctrl = gSavedSettings.getControl(setting))
+                {
+                    ctrl->resetToDefault(true);
+                }
+            }
+        }
+    }
+
+    // [TronT0] Same old-scene fix as the CineOutline block above: a scene
+    // saved before the Tron effects package existed has no "TronEnabled"
+    // key, so reset every Tron* control to its default rather than let a
+    // previously loaded scene's Tron state leak into this one.
+    if (!scene["settings"].isMap() ||
+        !scene["settings"].has("TronEnabled"))
+    {
+        for (const std::string& setting : sceneSettingsList())
+        {
+            if (setting.rfind("Tron", 0) == 0)
+            {
+                if (LLControlVariable* ctrl = gSavedSettings.getControl(setting))
+                {
+                    ctrl->resetToDefault(true);
+                }
+            }
+        }
+    }
+    else
+    {
+        // Scene HAS TronEnabled but may predate a later Tron key (grade/
+        // grid/trace/rim/trail keys land in T1-T3): reset to default every
+        // Tron* key this SPECIFIC scene lacks; keys it does carry were
+        // already applied above and must stay untouched.
+        for (const std::string& setting : sceneSettingsList())
+        {
+            if (setting.rfind("Tron", 0) == 0 && !scene["settings"].has(setting))
             {
                 if (LLControlVariable* ctrl = gSavedSettings.getControl(setting))
                 {

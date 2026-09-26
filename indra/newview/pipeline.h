@@ -310,6 +310,14 @@ public:
     // callers (like colorCorrect itself) that also need them for shader
     // selection.
     bool colorCorrectWillApplyExposure(bool apply_tonemap, bool* out_legacy_gamma = nullptr, bool* out_no_post = nullptr) const;
+    // [TronT0] Pure-move refactor: the signed EXPOSURE selector renderCineOutline
+    // used to compute inline (RenderExposure / -(RenderExposure * SLog3 EV
+    // scale) / 0, see the call site for the full contract), now shared so the
+    // Tron World pass (T1) can reuse the identical derivation. `is_scene_layer`
+    // is ROTOINK_LAYER_SCENE's `camera_modelview != nullptr` test; `hdr_path`
+    // is `dst == &mRT->screen`. Returns byte-identical values to the block it
+    // replaced -- verified by diffing the moved code.
+    F32 inkExposureSelector(bool is_scene_layer, bool hdr_path) const;
     // [BDMerge G3.3] per-projector volumetric light cones: additive pass, one
     // fullscreen cone per shadow-casting projector slot, in place on target.
     // [Prism camera feed] aux_direct=true is the Prism auxiliary (VCam) capture
@@ -1489,6 +1497,31 @@ public:
         U64       mLastCutSerial = 0;
     };
     std::map<LLUUID, RotoInkTargetSmoothState> mRotoInkTargetSmoothers;
+
+    // [TronT0] Pure-move refactor: was a function-local struct inside
+    // gatherRotoInkTargets, hoisted here so collectRotoInkCandidates() (below)
+    // can be called from outside that function too (Tron trail sampling, T3).
+    // Same three fields, same meaning, unchanged: agent-space AABB centre /
+    // half-extents plus the target's stable ROTO_PALETTE index.
+    struct RotoInkCandidate
+    {
+        LLUUID    mId;
+        LLVector3 mCenter;      // agent-space AABB centre
+        LLVector3 mHalfExtents; // agent-space AABB half-extents
+        S32       mPaletteIdx;
+    };
+
+    // [TronT0] Pure-move refactor: the target_set switch that used to open
+    // gatherRotoInkTargets() (the `Candidate` collection, now
+    // RotoInkCandidate), split out verbatim so it can be reused without the
+    // frustum-cull / smoothing / re-projection that follows it in
+    // gatherRotoInkTargets. `subject_target_setting` is target_set==0's
+    // single-subject selector (CineOutlineSubjectTarget's value for the Roto
+    // Ink caller); passed in rather than read from gSavedSettings internally
+    // so a future caller (Tron, T3) can pass its own equivalent setting
+    // without this function needing to know which setting name it is.
+    void collectRotoInkCandidates(S32 target_set, S32 subject_target_setting,
+                                   std::vector<RotoInkCandidate>& out_candidates);
 
     // [RotoInk Anim] Subject mode 3 (target set) gather: builds up to 16
     // world-space targets per CineOutlineSubjectTargetSet (see A.7 of the

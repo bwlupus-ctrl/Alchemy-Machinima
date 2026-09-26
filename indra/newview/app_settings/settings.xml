@@ -28317,5 +28317,100 @@
     <key>Value</key><real>30.0</real>
   </map>
   <!-- </FSPoser> -->
+  <!-- [TronT0] Tron effects package foundation: master enable, shared palette,
+       shared clock and world-grid lattice origin. Off by default; every
+       later Tron phase (T1 world grade/grid, T2 traces/rim/Actor FX, T3
+       trails) adds its own keys here as it lands. -->
+  <key>TronEnabled</key>
+  <map>
+    <key>Comment</key><string>[Tron] Master enable for the Tron effects package (world grade, grid, circuit traces, neon rim, light-cycle trails). Off by default; disabled it is a true no-op (only a CPU clock latch runs each frame)</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>Boolean</string>
+    <key>Value</key><integer>0</integer>
+  </map>
+  <key>TronPalette</key>
+  <map>
+    <key>Comment</key><string>[Tron] Named colour palette id: 0 Custom / 1 Legacy Cyan / 2 Ares Red / 3 Classic 1982 / 4 Recognizer Orange / 5 Uprising White / 6 Rinzler / 7 Siren White / 8 Quorra / 9 Clu Gold / 10 Grid Blue. Selecting a named palette writes TronColorPrimary/Secondary/Accent/Pulse; Custom leaves them as authored</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>S32</string>
+    <key>Value</key><integer>1</integer>
+  </map>
+  <key>TronColorPrimary</key>
+  <map>
+    <key>Comment</key><string>[Tron] Linear RGB primary palette colour (grid/trace/rim/trail default colour)</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>Color3</string>
+    <key>Value</key><array><real>0.15</real><real>0.9</real><real>1.0</real></array>
+  </map>
+  <key>TronColorSecondary</key>
+  <map>
+    <key>Comment</key><string>[Tron] Linear RGB secondary palette colour</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>Color3</string>
+    <key>Value</key><array><real>1.0</real><real>0.45</real><real>0.05</real></array>
+  </map>
+  <key>TronColorAccent</key>
+  <map>
+    <key>Comment</key><string>[Tron] Linear RGB accent palette colour</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>Color3</string>
+    <key>Value</key><array><real>1.0</real><real>1.0</real><real>1.0</real></array>
+  </map>
+  <key>TronColorPulse</key>
+  <map>
+    <key>Comment</key><string>[Tron] Linear RGB pulse-highlight palette colour</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>Color3</string>
+    <key>Value</key><array><real>0.6</real><real>1.0</real><real>1.0</real></array>
+  </map>
+  <key>TronAnimSpeed</key>
+  <map>
+    <key>Comment</key><string>[Tron] Shared Tron clock rate multiplier (0..8); 1 = real time</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>F32</string>
+    <key>Value</key><real>1.0</real>
+  </map>
+  <key>TronAnimPause</key>
+  <map>
+    <key>Comment</key><string>[Tron] Freeze the shared Tron clock (grid/trace/rim/trail pulses and phases stop advancing)</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>Boolean</string>
+    <key>Value</key><integer>0</integer>
+  </map>
+  <key>TronAnimFollowDirector</key>
+  <map>
+    <key>Comment</key><string>[Tron] Multiply the shared Tron clock rate by FlycamOperatorTimeSpeed, so the Director camera operator's slow-motion/fast-motion also scales Tron's animation</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>Boolean</string>
+    <key>Value</key><integer>0</integer>
+  </map>
+  <key>TronPulseRate</key>
+  <map>
+    <key>Comment</key><string>[Tron] Shared pulse waveform frequency in Hz (0.05..8); drives the Rig Rim tint, Actor FX Tron Suit and neon rim pulse accumulator</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>F32</string>
+    <key>Value</key><real>0.8</real>
+  </map>
+  <key>TronPulseShape</key>
+  <map>
+    <key>Comment</key><string>[Tron] Shared pulse waveform shape: 0 sine / 1 saw / 2 heartbeat / 3 square</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>S32</string>
+    <key>Value</key><integer>0</integer>
+  </map>
+  <key>TronPulseAmount</key>
+  <map>
+    <key>Comment</key><string>[Tron] Shared pulse depth (0..1) consumed by the Rig Rim tint, Actor FX Tron Suit look and the neon rim pulse term</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>F32</string>
+    <key>Value</key><real>0.35</real>
+  </map>
+  <key>TronGridOriginGlobal</key>
+  <map>
+    <key>Comment</key><string>[Tron] World grid/trace lattice origin, in global (region-independent) coordinates. The lattice's zero line passes through this point; (0,0,0) means no shot-specific origin has been set</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>Vector3D</string>
+    <key>Value</key><array><real>0.0</real><real>0.0</real><real>0.0</real></array>
+  </map>
 </map>
 </llsd>

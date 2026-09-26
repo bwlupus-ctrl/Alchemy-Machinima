@@ -74,6 +74,7 @@
 #include "alcinelightrigmanager.h"  // client-only cinematic lights
 #include "alvcambonepov.h"          // skeleton-attached prim-free cameras
 #include "aldirectorswitcher.h" // presentation-time camera switch schedule
+#include "altron.h"             // [TronT0] shared clock latch (idle tick)
 #include "llcinematiccamera.h"
 #include "llflycamrecorder.h"
 #include "llpathcamera.h"    // per-node path camera source (authored actor+camera TAKE)
@@ -5090,6 +5091,11 @@ void LLAppViewer::idle()
     // idle() or in the following display(). Wall/network time is untouched.
     // See doc/TEMPORAL_CAPTURE_WORLD_TIME_SCALE_BRIEF.md.
     LLPresentationTime::instance().tick();
+    // [TronT0] Latch the shared Tron clock immediately after the
+    // presentation clock ticks, before any consumer runs later this
+    // iteration -- see altron.h. Cheap no-op work while TronEnabled is off
+    // (a handful of cached-setting reads and a fmod).
+    ALTron::latchFrame();
     LLEventTimer::updateClass();
     LLPerfStats::updateClass();
 

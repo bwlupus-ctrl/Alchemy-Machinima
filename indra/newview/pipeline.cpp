@@ -15624,22 +15624,23 @@ void LLPipeline::copyRenderTarget(LLRenderTarget* src, LLRenderTarget* dst)
 // [RotoInk Anim] Subject mode 3 (target set) gather -- see the pipeline.h
 // declaration comment and contract A.7 for the full behavioural spec. Not
 // const: mutates mRotoInkTargetSmoothers (per-UUID smoothing state).
-S32 LLPipeline::gatherRotoInkTargets(S32 target_set, S32 max_targets, F32 ellipse_scale,
-                                      F32 depth_range, const F32* mv, const F32* proj,
-                                      LLVector4* out_targets, LLVector4* out_targets2)
+// [TronT0] Pure-move refactor: this was the opening block of
+// gatherRotoInkTargets (the `Candidate` struct + the target_set switch that
+// filled a local `candidates` vector), extracted verbatim so it can be
+// called on its own (Tron trail sampling, T3) without the frustum-cull /
+// smoothing / re-projection that follows it below. `Candidate` is now the
+// pipeline.h `RotoInkCandidate` struct; `candidates.push_back` is now
+// `out_candidates.push_back`; the CineOutlineSubjectTarget read for
+// target_set==0 is now the `subject_target_setting` parameter instead of a
+// LLCachedControl read inside this function -- gatherRotoInkTargets (below)
+// still reads that same setting and passes its value through unchanged, so
+// Roto Ink's own behaviour is byte-identical.
+void LLPipeline::collectRotoInkCandidates(S32 target_set, S32 subject_target_setting,
+                                           std::vector<RotoInkCandidate>& out_candidates)
 {
-    struct Candidate
-    {
-        LLUUID    mId;
-        LLVector3 mCenter;      // agent-space AABB centre
-        LLVector3 mHalfExtents; // agent-space AABB half-extents
-        S32       mPaletteIdx;
-    };
-    std::vector<Candidate> candidates;
-
     LLDirectorCast& cast = LLDirectorCast::instance();
 
-    auto add_avatar = [&candidates](LLVOAvatar* avatar, S32 palette_idx)
+    auto add_avatar = [&out_candidates](LLVOAvatar* avatar, S32 palette_idx)
     {
         if (!avatar || avatar->isDead())
         {
@@ -15652,7 +15653,7 @@ S32 LLPipeline::gatherRotoInkTargets(S32 target_set, S32 max_targets, F32 ellips
         {
             return;
         }
-        candidates.push_back({ avatar->getID(), center, half, palette_idx });
+        out_candidates.push_back({ avatar->getID(), center, half, palette_idx });
     };
 
     // [RotoInk Anim Round-A review fix, P2 Opus] Sets 2/4/5/6/7 have no cast
@@ -15671,9 +15672,8 @@ S32 LLPipeline::gatherRotoInkTargets(S32 target_set, S32 max_targets, F32 ellips
     {
         case 0: // single Director subject (as today, CineOutlineSubjectTarget)
         {
-            static LLCachedControl<S32> subject_target_setting(gSavedSettings, "CineOutlineSubjectTarget", 0);
             LLVOAvatar* avatar = nullptr;
-            switch (subject_target_setting())
+            switch (subject_target_setting)
             {
                 case 1: avatar = cast.resolveSubjectA(); break;
                 case 2: avatar = cast.resolveSubjectB(); break;
@@ -15805,7 +15805,7 @@ S32 LLPipeline::gatherRotoInkTargets(S32 target_set, S32 max_targets, F32 ellips
                 {
                     continue;
                 }
-                candidates.push_back({ root->getID(), center, half, stable_palette_idx(root->getID()) });
+                out_candidates.push_back({ root->getID(), center, half, stable_palette_idx(root->getID()) });
             }
             break;
         }
@@ -15825,6 +15825,20 @@ S32 LLPipeline::gatherRotoInkTargets(S32 target_set, S32 max_targets, F32 ellips
         default:
             break;
     }
+}
+
+S32 LLPipeline::gatherRotoInkTargets(S32 target_set, S32 max_targets, F32 ellipse_scale,
+                                      F32 depth_range, const F32* mv, const F32* proj,
+                                      LLVector4* out_targets, LLVector4* out_targets2)
+{
+    // [TronT0] Pure-move refactor: candidate collection now lives in
+    // collectRotoInkCandidates() (above); this reads the exact same
+    // CineOutlineSubjectTarget setting the inlined switch used to read for
+    // target_set==0 and passes it through, so target_set==0's resolved
+    // avatar/palette index is unchanged.
+    static LLCachedControl<S32> subject_target_setting(gSavedSettings, "CineOutlineSubjectTarget", 0);
+    std::vector<RotoInkCandidate> candidates;
+    collectRotoInkCandidates(target_set, subject_target_setting(), candidates);
 
     if (candidates.empty())
     {
@@ -16026,7 +16040,7 @@ S32 LLPipeline::gatherRotoInkTargets(S32 target_set, S32 max_targets, F32 ellips
     std::vector<Culled> culled;
     culled.reserve(candidates.size());
 
-    for (const Candidate& c : candidates)
+    for (const RotoInkCandidate& c : candidates)
     {
         const BoxProjection bp = project_box(c.mCenter, c.mHalfExtents, /*normalize_uv=*/false);
         if (!bp.mAnyFront)
@@ -16243,6 +16257,84 @@ S32 LLPipeline::gatherRotoInkTargets(S32 target_set, S32 max_targets, F32 ellips
     }
 
     return count;
+}
+
+// [TronT0] Pure-move refactor: this was computed inline at the top of
+// renderCineOutline (the `roto_exposure` local); extracted verbatim so the
+// Tron World pass (T1) can reuse the identical derivation. Every comment and
+// every line of logic below is unchanged from the block it replaced --
+// `is_scene_layer` is renderCineOutline's `camera_modelview != nullptr` test
+// and `hdr_path` is its `dst == &mRT->screen` test; the caller still computes
+// and owns both (hdr_path is also used elsewhere in renderCineOutline).
+//
+// [Round-2 review fix, Codex P1] Manual exposure knob -- EXPOSURE is now a
+// SIGNED selector (Fable's round-2 shader contract addendum, verified
+// against tonemapUtilF.glsl:421-428 applyExposure()):
+//   +RenderExposure : every tonemapper except type 8 -- the ink's
+//                     match-light sampling reads HDR scene colour, so it
+//                     must agree with the SAME auto-exposure-scaled value
+//                     the tonemap will apply downstream (shader does
+//                     exposureMap(0.5).r * exposure, same as
+//                     applyOnLensFilters's EXPOSURE upload).
+//   -RenderExposure : tonemap_type == 8 (S-Log3 capture). That tonemapper
+//                     forces exp_scale = 1 and returns color * exposure --
+//                     manual iris only, auto-exposure adaptation ignored
+//                     so a fixed transfer sees a fixed, stable input.
+//                     The shader reads the sign, not this uniform's own
+//                     clamp range, so -RenderExposure is unambiguous
+//                     (RenderExposure is clamped to [0.5,4], never 0).
+//   0.0             : non-HDR call site (dst == &mRT->postPingMap),
+//                     already post-tonemap -- the shader takes its
+//                     scale-1 path; ALSO forced whenever colorCorrect
+//                     will bypass its TONEMAP shader variant entirely
+//                     this frame even on the HDR path (round-3 fix
+//                     below); ALSO forced for ROTOINK_LAYER_SCENE
+//                     (round-4 fix below) regardless of hdr_path.
+// EXPOSURE_MAP itself needs no explicit bind here: bindDeferredShader()
+// below already binds it unconditionally (pipeline.cpp ~20605-20609)
+// whenever the linked program declares the sampler; the shader simply
+// doesn't sample it when exposure <= 0.
+F32 LLPipeline::inkExposureSelector(bool is_scene_layer, bool hdr_path) const
+{
+    static LLCachedControl<F32> render_exposure(gSavedSettings, "RenderExposure", 1.f);
+    static LLCachedControl<S32> exposure_tonemap_type(gSavedSettings, "AlchemyRenderTonemapType", 0);
+    // [Round-3 review fix, Opus P2] encode_slog_family (tonemapUtilF.glsl
+    // ~397-406) applies its OWN exp2(AlchemyToneMapSLogEV) multiply on top of
+    // applyExposure()'s manual-only exposure for tonemap type 8. Fold the
+    // same factor into the locked exposure here so the ink's manual-iris
+    // input matches what actually reaches the log curve, not just the iris.
+    static LLCachedControl<F32> exposure_slog_ev(gSavedSettings, "AlchemyToneMapSLogEV", 0.f);
+    const auto finite_or = [](F32 v, F32 fallback)
+    {
+        return std::isfinite(v) ? v : fallback;
+    };
+    const F32  clamped_exposure = llclamp(finite_or((F32)render_exposure(), 1.f), 0.5f, 4.f);
+    const bool slog3_exposure_lock = hdr_path && (exposure_tonemap_type() == 8);
+    const F32  slog3_ev_scale = exp2f(llclamp(finite_or((F32)exposure_slog_ev(), 0.f), -8.f, 8.f));
+    // [Round-3 review fix, Codex P1] Even on the HDR path, colorCorrect may
+    // still bypass its TONEMAP shader variant entirely this frame (legacy-
+    // gamma sky, RenderDisablePostProcessing with Build open, or a "no post"
+    // snapshot) -- go through the SAME shared predicate colorCorrect itself
+    // uses (colorCorrectWillApplyExposure) rather than assuming hdr_path
+    // alone implies exposure will be applied downstream. apply_tonemap=true
+    // is correct here: hdr_path is only ever true when this frame's
+    // renderFinalize `hdr` local is also true (every screen-dst call site is
+    // gated on `if (hdr)`), which is the exact apply_tonemap colorCorrect
+    // will use later this same frame.
+    // [Round-4 review fix, Codex P1] ROTOINK_LAYER_SCENE (design decision):
+    // this ink is painted directly into the world buffer -- well before this
+    // frame's own exposure map even exists (generateExposure runs later in
+    // renderFinalize; the Scene call site only ever sees LAST frame's
+    // mExposureMap) and it is itself part of what current-frame auto-
+    // exposure will meter. Rather than inverse-compensate with a stale,
+    // self-referential exposure value, treat it like real paint on a
+    // surface: force EXPOSURE=0 (shader E=1) so tonemapping exposes the ink
+    // exactly like any other scene pixel -- black ink stays black regardless
+    // of exposure; grey/coloured ink brightens or darkens with the scene the
+    // way real pigment would (documented in the ri_ink_layer_combo tooltip).
+    const bool exposure_applies = !is_scene_layer && hdr_path && colorCorrectWillApplyExposure(/*apply_tonemap=*/true);
+    return !exposure_applies ? 0.f
+        : (slog3_exposure_lock ? -(clamped_exposure * slog3_ev_scale) : clamped_exposure);
 }
 
 // [RotoInk] Rotoscope Ink: reads `dst` as a plain texture and draws into the
@@ -16684,69 +16776,12 @@ void LLPipeline::renderCineOutline(LLRenderTarget* dst, const F32* camera_modelv
         }
     }
 
-    // [Round-2 review fix, Codex P1] Manual exposure knob -- EXPOSURE is now a
-    // SIGNED selector (Fable's round-2 shader contract addendum, verified
-    // against tonemapUtilF.glsl:421-428 applyExposure()):
-    //   +RenderExposure : every tonemapper except type 8 -- the ink's
-    //                     match-light sampling reads HDR scene colour, so it
-    //                     must agree with the SAME auto-exposure-scaled value
-    //                     the tonemap will apply downstream (shader does
-    //                     exposureMap(0.5).r * exposure, same as
-    //                     applyOnLensFilters's EXPOSURE upload).
-    //   -RenderExposure : tonemap_type == 8 (S-Log3 capture). That tonemapper
-    //                     forces exp_scale = 1 and returns color * exposure --
-    //                     manual iris only, auto-exposure adaptation ignored
-    //                     so a fixed transfer sees a fixed, stable input.
-    //                     The shader reads the sign, not this uniform's own
-    //                     clamp range, so -RenderExposure is unambiguous
-    //                     (RenderExposure is clamped to [0.5,4], never 0).
-    //   0.0             : non-HDR call site (dst == &mRT->postPingMap),
-    //                     already post-tonemap -- the shader takes its
-    //                     scale-1 path; ALSO forced whenever colorCorrect
-    //                     will bypass its TONEMAP shader variant entirely
-    //                     this frame even on the HDR path (round-3 fix
-    //                     below); ALSO forced for ROTOINK_LAYER_SCENE
-    //                     (round-4 fix below) regardless of hdr_path.
-    // EXPOSURE_MAP itself needs no explicit bind here: bindDeferredShader()
-    // below already binds it unconditionally (pipeline.cpp ~20605-20609)
-    // whenever the linked program declares the sampler; the shader simply
-    // doesn't sample it when exposure <= 0.
-    static LLCachedControl<F32> render_exposure(gSavedSettings, "RenderExposure", 1.f);
-    static LLCachedControl<S32> exposure_tonemap_type(gSavedSettings, "AlchemyRenderTonemapType", 0);
-    // [Round-3 review fix, Opus P2] encode_slog_family (tonemapUtilF.glsl
-    // ~397-406) applies its OWN exp2(AlchemyToneMapSLogEV) multiply on top of
-    // applyExposure()'s manual-only exposure for tonemap type 8. Fold the
-    // same factor into the locked exposure here so the ink's manual-iris
-    // input matches what actually reaches the log curve, not just the iris.
-    static LLCachedControl<F32> exposure_slog_ev(gSavedSettings, "AlchemyToneMapSLogEV", 0.f);
+    // [TronT0] Pure-move refactor: the signed EXPOSURE selector used to be
+    // computed inline here; see LLPipeline::inkExposureSelector for the full
+    // contract comment (unchanged). hdr_path stays a local here (also used
+    // below, at the ROTO_INK upload).
     const bool hdr_path = (dst == &mRT->screen);
-    const F32  clamped_exposure = llclamp(finite_or((F32)render_exposure(), 1.f), 0.5f, 4.f);
-    const bool slog3_exposure_lock = hdr_path && (exposure_tonemap_type() == 8);
-    const F32  slog3_ev_scale = exp2f(llclamp(finite_or((F32)exposure_slog_ev(), 0.f), -8.f, 8.f));
-    // [Round-3 review fix, Codex P1] Even on the HDR path, colorCorrect may
-    // still bypass its TONEMAP shader variant entirely this frame (legacy-
-    // gamma sky, RenderDisablePostProcessing with Build open, or a "no post"
-    // snapshot) -- go through the SAME shared predicate colorCorrect itself
-    // uses (colorCorrectWillApplyExposure) rather than assuming hdr_path
-    // alone implies exposure will be applied downstream. apply_tonemap=true
-    // is correct here: hdr_path is only ever true when this frame's
-    // renderFinalize `hdr` local is also true (every screen-dst call site is
-    // gated on `if (hdr)`), which is the exact apply_tonemap colorCorrect
-    // will use later this same frame.
-    // [Round-4 review fix, Codex P1] ROTOINK_LAYER_SCENE (design decision):
-    // this ink is painted directly into the world buffer -- well before this
-    // frame's own exposure map even exists (generateExposure runs later in
-    // renderFinalize; the Scene call site only ever sees LAST frame's
-    // mExposureMap) and it is itself part of what current-frame auto-
-    // exposure will meter. Rather than inverse-compensate with a stale,
-    // self-referential exposure value, treat it like real paint on a
-    // surface: force EXPOSURE=0 (shader E=1) so tonemapping exposes the ink
-    // exactly like any other scene pixel -- black ink stays black regardless
-    // of exposure; grey/coloured ink brightens or darkens with the scene the
-    // way real pigment would (documented in the ri_ink_layer_combo tooltip).
-    const bool exposure_applies = !is_scene_layer && hdr_path && colorCorrectWillApplyExposure(/*apply_tonemap=*/true);
-    const F32  roto_exposure = !exposure_applies ? 0.f
-        : (slog3_exposure_lock ? -(clamped_exposure * slog3_ev_scale) : clamped_exposure);
+    const F32  roto_exposure = inkExposureSelector(is_scene_layer, hdr_path);
 
     // [Round-1 review fix, Opus P2-8] Draw into the mWaterDis scratch (own
     // depth, single colour attachment) reading `dst` directly as a plain
