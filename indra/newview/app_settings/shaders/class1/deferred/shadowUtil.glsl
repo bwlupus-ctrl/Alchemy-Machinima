@@ -52,6 +52,12 @@ uniform vec2 shadow_res;
 uniform vec2 proj_shadow_res;
 uniform mat4 shadow_matrix[14]; // [BDMerge NSpot] 4 sun + up to 10 spot
 uniform vec4 shadow_clip;
+// [ShadowDist P1] Control A: cascade blend width as a fraction of each split
+// (stock 0.25 -> bands 0.75x .. 1.25x). Uploaded from the sampled pack's
+// ShadowMeta (LLPipeline::uploadShadowUniforms); the initialiser keeps any
+// program that never receives it stock. 1.0 - 0.25 and 1.0 + 0.25 are exact,
+// so the default multiplies see the same operands as the old literals.
+uniform float shadow_split_blend = 0.25;
 uniform float shadow_bias;
 uniform float shadow_offset;
 uniform float spot_shadow_bias;
@@ -327,8 +333,8 @@ float sampleDirectionalShadow(vec3 pos, vec3 norm, vec2 pos_screen)
     if (spos.z > -shadow_clip.w)
     {
         vec4 lpos;
-        vec4 near_split = shadow_clip*-0.75;
-        vec4 far_split = shadow_clip*-1.25;
+        vec4 near_split = shadow_clip * -(1.0 - shadow_split_blend); // [ShadowDist P1] was *-0.75
+        vec4 far_split = shadow_clip * -(1.0 + shadow_split_blend);  // [ShadowDist P1] was *-1.25
         vec4 transition_domain = near_split-far_split;
         float weight = 0.0;
 
@@ -419,8 +425,8 @@ float sampleSpotShadow(vec3 pos, vec3 norm, int index, vec2 pos_screen)
     {
         vec4 lpos;
 
-        vec4 near_split = shadow_clip*-0.75;
-        vec4 far_split = shadow_clip*-1.25;
+        vec4 near_split = shadow_clip * -(1.0 - shadow_split_blend); // [ShadowDist P1] was *-0.75
+        vec4 far_split = shadow_clip * -(1.0 + shadow_split_blend);  // [ShadowDist P1] was *-1.25
         vec4 transition_domain = near_split-far_split;
         float weight = 0.0;
 
@@ -656,8 +662,8 @@ float nonpcfShadowAtPos(vec4 pos_world, vec2 pos_screen)
     // BD: no shadow_clip.w early-out - volumetrics must not fade where the
     // shadow maps end or the effect becomes draw-distance dependent
     {
-        vec4 near_split = shadow_clip*-0.75;
-        vec4 far_split = shadow_clip*-1.25;
+        vec4 near_split = shadow_clip * -(1.0 - shadow_split_blend); // [ShadowDist P1] was *-0.75
+        vec4 far_split = shadow_clip * -(1.0 + shadow_split_blend);  // [ShadowDist P1] was *-1.25
 
         if (pos_world.z < near_split.z)
         {

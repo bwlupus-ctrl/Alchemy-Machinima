@@ -17518,6 +17518,28 @@
       <real>2.0</real>
     </array>
   </map>
+  <key>RenderShadowNearSplitMeters</key>
+  <map>
+    <key>Comment</key>
+    <string>[ShadowDist P1] Sharp shadow range (m): camera distance fully covered by the sharpest sun-shadow cascade before it blends into the next. 0 = automatic (stock RenderShadowSplitExponent). Larger = sharp further out but coarser (texel size and bias grow with range). Also moves where projector shadows fade with distance. Clamped to the live far clip in small skyboxes.</string>
+    <key>Persist</key>
+    <integer>1</integer>
+    <key>Type</key>
+    <string>F32</string>
+    <key>Value</key>
+    <real>0</real>
+  </map>
+  <key>RenderShadowSplitBlend</key>
+  <map>
+    <key>Comment</key>
+    <string>[ShadowDist P1] Blend width between sun-shadow cascades as a fraction of each split distance. Stock 0.25 (bands 0.75x to 1.25x). Smaller keeps each cascade at full sharpness closer to its edge; below ~0.08 the seam shows. Clamped to 0.08-0.25. Also moves the projector-shadow fade band (sampleSpotShadow) and, once any shadow control is engaged, sun cascades are re-composed for the current view on every deferred bind (Prism aux feed, impostors, GLTF preview).</string>
+    <key>Persist</key>
+    <integer>1</integer>
+    <key>Type</key>
+    <string>F32</string>
+    <key>Value</key>
+    <real>0.25</real>
+  </map>
   <key>RenderShadowProjOffset</key>
   <map>
     <key>Comment</key>
@@ -19578,6 +19600,39 @@
     <string>F32</string>
     <key>Value</key>
     <real>0</real>
+  </map>
+  <key>RenderShadowSoftenMode</key>
+  <map>
+    <key>Comment</key>
+    <string>[ShadowDist P1] Sun-shadow softening in the SSAO soften pass (only runs while RenderDeferredSSAO is on). 0 = stock (shadow shares the SSAO blur). 1 = shadow blur sigma in pixels (RenderShadowSoftenPx). 2 = shadow blur sigma in world mm (RenderShadowSoftenMM; shrinks with distance so fine shadows survive). 3 = no shadow blur (SSAO still blurred). Modes 1 and 3 may show shadow-map grain the stock blur hid.</string>
+    <key>Persist</key>
+    <integer>1</integer>
+    <key>Type</key>
+    <string>S32</string>
+    <key>Value</key>
+    <integer>0</integer>
+  </map>
+  <key>RenderShadowSoftenPx</key>
+  <map>
+    <key>Comment</key>
+    <string>[ShadowDist P1] RenderShadowSoftenMode 1: Gaussian sigma in pixels for the sun-shadow channel (floored at 0.5 px in the shader).</string>
+    <key>Persist</key>
+    <integer>1</integer>
+    <key>Type</key>
+    <string>F32</string>
+    <key>Value</key>
+    <real>1.0</real>
+  </map>
+  <key>RenderShadowSoftenMM</key>
+  <map>
+    <key>Comment</key>
+    <string>[ShadowDist P1] RenderShadowSoftenMode 2: Gaussian sigma in world millimetres for the sun-shadow channel, converted per pixel from depth (2.5 mm = ~2.3 px at 1 m, ~0.8 px at 3 m at 1080p). Shadows closer than ~1 m soften noticeably; fine lines thinner than the radius fade there by design.</string>
+    <key>Persist</key>
+    <integer>1</integer>
+    <key>Type</key>
+    <string>F32</string>
+    <key>Value</key>
+    <real>2.5</real>
   </map>
 
   <key>RenderDynamicLOD</key>

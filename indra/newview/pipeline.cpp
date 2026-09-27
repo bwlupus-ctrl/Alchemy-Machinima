@@ -310,6 +310,12 @@ bool LLPipeline::RenderDeferredAtmospheric;
 F32 LLPipeline::RenderHighlightFadeTime;
 F32 LLPipeline::RenderFarClip;
 LLVector3 LLPipeline::RenderShadowSplitExponent;
+// [ShadowDist P1]
+F32 LLPipeline::RenderShadowNearSplitMeters;
+F32 LLPipeline::RenderShadowSplitBlend;
+S32 LLPipeline::RenderShadowSoftenMode;
+F32 LLPipeline::RenderShadowSoftenPx;
+F32 LLPipeline::RenderShadowSoftenMM;
 F32 LLPipeline::RenderShadowErrorCutoff;
 F32 LLPipeline::RenderShadowFOVCutoff;
 bool LLPipeline::CameraOffset;
@@ -459,6 +465,13 @@ static LLStaticHashedString sDistFactor("dist_factor");
 static LLStaticHashedString sKern("kern");
 static LLStaticHashedString sKernScale("kern_scale");
 static LLStaticHashedString sSmaaRTMetrics("SMAA_RT_METRICS");
+// [ShadowDist P1] shadowUtil.glsl / blurLightF.glsl uniforms (hashed-string
+// uploads; every one carries a GLSL initialiser equal to its stock value so a
+// program that never receives it stays stock).
+static LLStaticHashedString sShadowSplitBlend("shadow_split_blend");
+static LLStaticHashedString sShadowSoftenMode("shadow_soften_mode");
+static LLStaticHashedString sShadowSoftenSigma("shadow_soften_sigma");
+static LLStaticHashedString sShadowPxPerM("shadow_px_per_m");
 
 //----------------------------------------
 
@@ -788,6 +801,12 @@ void LLPipeline::init()
     connectRefreshCachedSettingsSafe("RenderHighlightFadeTime");
     connectRefreshCachedSettingsSafe("RenderFarClip");
     connectRefreshCachedSettingsSafe("RenderShadowSplitExponent");
+    // [ShadowDist P1]
+    connectRefreshCachedSettingsSafe("RenderShadowNearSplitMeters");
+    connectRefreshCachedSettingsSafe("RenderShadowSplitBlend");
+    connectRefreshCachedSettingsSafe("RenderShadowSoftenMode");
+    connectRefreshCachedSettingsSafe("RenderShadowSoftenPx");
+    connectRefreshCachedSettingsSafe("RenderShadowSoftenMM");
     connectRefreshCachedSettingsSafe("RenderShadowErrorCutoff");
     connectRefreshCachedSettingsSafe("RenderShadowFOVCutoff");
     connectRefreshCachedSettingsSafe("CameraOffset");
@@ -1672,6 +1691,15 @@ bool LLPipeline::allocateShadowBuffer(U32 resX, U32 resY)
     U32 sun_shadow_map_width = BlurHappySize(resX, scale);
     U32 sun_shadow_map_height = BlurHappySize(resY, scale);
 
+    // [ShadowDist P1] ShadowMeta site 6: the maps of this pack are being
+    // (re)allocated or released -> their interpretation is void until the next
+    // generation writes it.
+    mRT->shadowMeta.reset();
+    if (mRT == &mMainRT)
+    {
+        updateShadowEngaged();
+    }
+
     if (shadow_detail > 0)
     { //allocate 4 sun shadow maps
         for (U32 i = 0; i < 4; i++)
@@ -1873,6 +1901,14 @@ void LLPipeline::refreshCachedSettings()
     RenderHighlightFadeTime = gSavedSettings.getF32("RenderHighlightFadeTime");
     RenderFarClip = gSavedSettings.getF32("RenderFarClip");
     RenderShadowSplitExponent = gSavedSettings.getVector3("RenderShadowSplitExponent");
+    // [ShadowDist P1] Controls A + D; the engaged flag follows the A settings
+    // immediately (design v6 s1.4: "re-evaluated whenever ... a listener fires").
+    RenderShadowNearSplitMeters = gSavedSettings.getF32("RenderShadowNearSplitMeters");
+    RenderShadowSplitBlend = gSavedSettings.getF32("RenderShadowSplitBlend");
+    RenderShadowSoftenMode = gSavedSettings.getS32("RenderShadowSoftenMode");
+    RenderShadowSoftenPx = gSavedSettings.getF32("RenderShadowSoftenPx");
+    RenderShadowSoftenMM = gSavedSettings.getF32("RenderShadowSoftenMM");
+    updateShadowEngaged();
     RenderShadowErrorCutoff = gSavedSettings.getF32("RenderShadowErrorCutoff");
     RenderShadowFOVCutoff = gSavedSettings.getF32("RenderShadowFOVCutoff");
     CameraOffset = gSavedSettings.getBOOL("CameraOffset");
@@ -2131,10 +2167,12 @@ void LLPipeline::releaseShadowBuffers()
         {
             rt.shadow[i].release();
         }
+        rt.shadowMeta.reset(); // [ShadowDist P1] ShadowMeta site 6
     };
     release_sun_shadows(mMainRT);
     release_sun_shadows(mAuxillaryRT);
     release_sun_shadows(mHeroProbeRT);
+    updateShadowEngaged(); // [ShadowDist P1] main meta is legacy again
 
     releaseSpotShadowTargets();
 }
@@ -2166,6 +2204,13 @@ void LLPipeline::releaseSunShadowTarget(U32 index)
 {
     llassert(index < 4);
     mRT->shadow[index].release();
+    // [ShadowDist P1] ShadowMeta site 6: a released map has no interpretation;
+    // the whole pack meta goes back to legacy defaults (serial bumped).
+    mRT->shadowMeta.reset();
+    if (mRT == &mMainRT)
+    {
+        updateShadowEngaged();
+    }
 }
 
 void LLPipeline::releaseSunShadowTargets()
@@ -21822,6 +21867,101 @@ void LLPipeline::clearPrismLensDirtyScreenShaderTracking()
     mPrismLensDirtyScreenShaders.clear();
 }
 
+// [ShadowDist P1] ---------------------------------------------------------
+// Sun/moon shadow distance controls: shared upload / state helpers.
+// Design: scratchpad shadow_distance_design.md .. _v6.md (v6 s1 governs).
+
+// static
+F32 LLPipeline::effectiveShadowSplitBlend()
+{
+    F32 b = llclamp(RenderShadowSplitBlend, 0.08f, 0.25f);
+    if (fabsf(b - 0.25f) < 1e-4f)
+    {
+        b = 0.25f; // exact default: 1.f - 0.25f == 0.75f and 1.f + 0.25f == 1.25f bit-exactly
+    }
+    return b;
+}
+
+void LLPipeline::updateShadowEngaged()
+{
+    const bool a_active = (RenderShadowNearSplitMeters > 0.f) || (effectiveShadowSplitBlend() != 0.25f);
+    const bool engaged  = !mMainRT.shadowMeta.legacy || a_active;
+    if (mShadowEngaged && !engaged)
+    {
+        // engaged -> disengaged edge (design v6 s1.4): programs that stayed
+        // fast-bound while engaged received their shadow_matrix / shadow_clip
+        // from uploadShadowUniforms; once it stops uploading they must take one
+        // slow bind so the stock uploads in bindDeferredShader resume.
+        for (LLGLSLShader* shader : LLGLSLShader::sInstances)
+        {
+            if (shader)
+            {
+                shader->mCanBindFast = false;
+            }
+        }
+    }
+    mShadowEngaged = engaged;
+}
+
+void LLPipeline::clearShadowUniformStamps()
+{
+    mShadowStampByShader.clear();
+}
+
+void LLPipeline::uploadShadowUniforms(LLGLSLShader& shader)
+{
+    // The pack whose maps bindShadowMaps() just bound: main, a probe pack, or
+    // (under Prism) the main pack sampled from the aux camera.
+    const RenderTargetPack& pack = sPrismLensRender ? mMainRT : *mRT;
+    const RenderTargetPack::ShadowMeta& meta = pack.shadowMeta;
+
+    ShadowUniformStamp& stamp = mShadowStampByShader[&shader];
+    const bool changed = (stamp.pack != &pack) || (stamp.serial != meta.serial);
+    if (changed)
+    {
+        // Interpretation scalars come from the META ONLY (stock values while
+        // the maps were generated legacy). Repeats are free (LLGLSLShader's
+        // mValue cache); programs without the uniform early-out (location < 0).
+        shader.uniform1f(sShadowSplitBlend, meta.legacy ? 0.25f : meta.blend);
+        // [P2 slot] shadow_units_mode / shadow_units_scope / shadow_cascade_coef / shadow_res_cascade
+        // [P3 slot] shadow_subject (active, feather_uv, depth_feather_uv, 0)
+        stamp.pack   = &pack;
+        stamp.serial = meta.serial;
+    }
+
+    if (!mShadowEngaged || meta.validCascades == 0)
+    {
+        // OFF path: the slow path's stock DEFERRED_SHADOW_MATRIX / _CLIP uploads
+        // stand and the fast path uploads nothing (pre-existing behaviour). A
+        // meta that no generation has written yet (validCascades == 0) has no
+        // matrices to offer either.
+        return;
+    }
+
+    // Engaged: everything view-dependent, per bind, from the SAME pack's meta
+    // composed with the CURRENT inverse view (aux under Prism, probe view during
+    // a probe render, main otherwise) in double.
+    const glm::dmat4 inv_view = glm::inverse(glm::dmat4(get_current_modelview()));
+    F32 sun_mats[16 * 4];
+    for (U32 j = 0; j < 4; ++j)
+    {
+        // Cascades this generation did not fit (probe renders fit only 0-1)
+        // keep exactly what the stock path uploads for them.
+        const glm::mat4 mj = (j < meta.validCascades) ? glm::mat4(meta.sunVP[j] * inv_view) : mSunShadowMatrix[j];
+        const F32* src = glm::value_ptr(mj);
+        for (U32 i = 0; i < 16; ++i)
+        {
+            sun_mats[j * 16 + i] = src[i];
+        }
+    }
+    // count 4 -> elements 0..3 of shadow_matrix[14]; the spot slots 4..13 stay slow-path.
+    shader.uniformMatrix4fv(LLShaderMgr::DEFERRED_SHADOW_MATRIX, 4, GL_FALSE, sun_mats);
+    shader.uniform4fv(LLShaderMgr::DEFERRED_SHADOW_CLIP, 1, meta.clip.mV);
+    // [P3 slot] shadow_subject_matrix = mat4(meta.columnVP * inv_view) when meta.subject
+    // [P2 slot] live tunables (bias mm, offset texels, soft mm, slope texels)
+}
+// [/ShadowDist P1] --------------------------------------------------------
+
 void LLPipeline::bindDeferredShaderFast(LLGLSLShader& shader)
 {
     if (shader.mCanBindFast)
@@ -21835,6 +21975,10 @@ void LLPipeline::bindDeferredShaderFast(LLGLSLShader& shader)
         ALCineRigRim::bindAnimated(shader);
         bindLightFunc(shader);
         bindShadowMaps(shader);
+        // [ShadowDist P1] same slot as bindAnimated: keep a long-lived
+        // fast-bound program's sun-shadow state coherent with the maps it
+        // samples (design v6 s1.2). Nothing is uploaded on the OFF path.
+        uploadShadowUniforms(shader);
         bindReflectionProbes(shader);
 
         auto dirty_it = mPrismLensDirtyScreenShaders.end();
@@ -22024,6 +22168,9 @@ void LLPipeline::bindDeferredShader(LLGLSLShader& shader, LLRenderTarget* light_
     {
         shader.uniform4fv(LLShaderMgr::DEFERRED_SHADOW_CLIP, 1, mSunClipPlanes.mV);
     }
+    // [ShadowDist P1] after the stock matrix/clip uploads above so the
+    // meta-derived values win when the controls are engaged (design v4 s1.2).
+    uploadShadowUniforms(shader);
     shader.uniform1f(LLShaderMgr::DEFERRED_SUN_WASH, RenderDeferredSunWash);
     shader.uniform1f(LLShaderMgr::DEFERRED_SHADOW_NOISE, RenderShadowNoise);
     shader.uniform1f(LLShaderMgr::DEFERRED_BLUR_SIZE, RenderShadowBlurSize);
@@ -22369,6 +22516,32 @@ void LLPipeline::renderDeferredLighting()
             gDeferredBlurLightProgram.uniform1f(sDistFactor, dist_factor);
             gDeferredBlurLightProgram.uniform3fv(sKern, kern_length, gauss[0].mV);
             gDeferredBlurLightProgram.uniform1f(sKernScale, blur_size * (kern_length / 2.f - 0.5f));
+
+            // [ShadowDist P1] Control D: sun-shadow channel softening split from
+            // the SSAO blur (design v2 s5, v3 s6, v4 s4, v5 s4). Mode 0 = stock
+            // (the shader's original path runs untouched). Uniforms persist in
+            // the program across the second (vertical) bind below.
+            {
+                const S32 soften_mode = llclamp(RenderShadowSoftenMode, 0, 3);
+                F32 soften_sigma = 1.f;
+                if (soften_mode == 1)
+                {
+                    // reference-pixel sigma: scaled like blur_size for hi-res snapshots (v4 s4.1)
+                    soften_sigma = llmax(RenderShadowSoftenPx, 0.25f) * bdmerge_snapshot_autoscale_multiplier();
+                }
+                else if (soften_mode == 2)
+                {
+                    // world sigma in METRES; NOT autoscaled -- H * P11 / 2 below already
+                    // measures the true pixels per metre of the target being shaded
+                    soften_sigma = llmax(RenderShadowSoftenMM, 0.f) * 0.001f;
+                }
+                // pixels per metre at 1 m depth for the bound light target (live projection:
+                // tiled snapshots scale P11, hi-res targets raise the height)
+                const F32 px_per_m = static_cast<F32>(deferred_light_target->getHeight()) * gGLProjection[5] * 0.5f;
+                gDeferredBlurLightProgram.uniform1i(sShadowSoftenMode, soften_mode);
+                gDeferredBlurLightProgram.uniform1f(sShadowSoftenSigma, soften_sigma);
+                gDeferredBlurLightProgram.uniform1f(sShadowPxPerM, px_per_m);
+            }
 
             {
                 LLGLDisable   blend(GL_BLEND);
@@ -25048,6 +25221,12 @@ void LLPipeline::generateSunShadow(LLCamera& camera)
     LLVector3 lightDir = -caster_dir;
     lightDir.normVec();
 
+    // [ShadowDist P1] Control A: cascade blend width this generation's frusta
+    // (and, through the meta, the shader) use. Probe renders always keep the
+    // stock 0.25. At default 1.f - 0.25f == 0.75f and 1.f + 0.25f == 1.25f
+    // exactly, so the stock constants below are reproduced exactly (<= 1 ulp under /fp:fast or driver folding).
+    const F32 shadow_blend_eff = gCubeSnapshot ? 0.25f : effectiveShadowSplitBlend();
+
     //create light space camera matrix
     LLVector3 at = lightDir;
 
@@ -25139,6 +25318,25 @@ void LLPipeline::generateSunShadow(LLCamera& camera)
         }
 
         mSunClipPlanes.mV[0] *= 1.25f; //bump back first split for transition padding
+
+        // [ShadowDist P1] Control A: "Sharp shadow range (m)" (design v2 s2.2).
+        // The user value is the camera distance covered EXCLUSIVELY by cascade 0,
+        // i.e. (1 - blend) * clip0; cascades 1..3 then split the remainder
+        // geometrically so their texel-density ratio is uniform. Bypasses the
+        // split-exponent angle lerp -> splits are stable under camera/sun
+        // rotation. Skipped entirely (stock statements above stand) when 0.
+        if (!gCubeSnapshot && RenderShadowNearSplitMeters > 0.f)
+        {
+            const F32 b = shadow_blend_eff;
+            F32 clip0 = llclamp(RenderShadowNearSplitMeters / (1.f - b), near_clip + 0.5f, far_clip - 1.5f);
+            F32 r = powf(far_clip / clip0, 1.f / 3.f);
+            if (r < 1.05f)
+            {   // tiny skyboxes: far_clip = clamp(2 * farthest visible, 16, 512) can sit close to clip0
+                r = 1.05f;
+                clip0 = far_clip / (r * r * r);
+            }
+            mSunClipPlanes.set(clip0, clip0 * r, clip0 * r * r, far_clip);
+        }
     }
 
     if (gCubeSnapshot)
@@ -25148,6 +25346,27 @@ void LLPipeline::generateSunShadow(LLCamera& camera)
         mSunClipPlanes.mV[3] *= 1.5f;
     }
 
+
+    // [ShadowDist P1] ShadowMeta site 1 (design v6 s1.1 / v5 s5): written after
+    // Control A's override and the cube-snapshot stretch, i.e. these are the
+    // planes and blend the frusta below are actually built from. Probe
+    // generations are legacy by construction and fit only cascades 0-1.
+    {
+        RenderTargetPack::ShadowMeta& meta = mRT->shadowMeta;
+        const bool a_active = !gCubeSnapshot && ((RenderShadowNearSplitMeters > 0.f) || (shadow_blend_eff != 0.25f));
+        meta.legacy  = !a_active;      // [P2/P3] && units == 0 && !subject
+        meta.subject = false;          // [P3] set true by the subject fit
+        meta.units   = 0;              // [P2]
+        meta.scope   = 0;              // [P2]
+        meta.blend   = shadow_blend_eff;
+        meta.clip    = mSunClipPlanes;
+        meta.validCascades = gCubeSnapshot ? 2u : 4u;
+        ++meta.serial;
+        if (mRT == &mMainRT)
+        {
+            updateShadowEngaged();
+        }
+    }
 
     // convenience array of 4 near clip plane distances
     F32 dist[] = { near_clip, mSunClipPlanes.mV[0], mSunClipPlanes.mV[1], mSunClipPlanes.mV[2], mSunClipPlanes.mV[3] };
@@ -25189,8 +25408,9 @@ void LLPipeline::generateSunShadow(LLCamera& camera)
                 delta += (ufrust[i+4]-ufrust[(i+2)%4+4])*0.05f;
                 delta.normVec();
                 F32 dp = delta*upn;
-                ufrust[i]   = ueye + (delta*dist[0]*0.75f)/dp;
-                ufrust[i+4] = ueye + (delta*dist[4]*1.25f)/dp;
+                // [ShadowDist P1] (1 -/+ blend) == 0.75f / 1.25f exactly at default
+                ufrust[i]   = ueye + (delta*dist[0]*(1.f - shadow_blend_eff))/dp;
+                ufrust[i+4] = ueye + (delta*dist[4]*(1.f + shadow_blend_eff))/dp;
             }
 
             {
@@ -25295,8 +25515,9 @@ void LLPipeline::generateSunShadow(LLCamera& camera)
                 delta += (frust[i+4]-frust[(i+2)%4+4])*0.05f;
                 delta.normVec();
                 F32 dp = delta*pn;
-                frust[i] = eye + (delta*dist[j]*0.75f)/dp;
-                frust[i+4] = eye + (delta*dist[j+1]*1.25f)/dp;
+                // [ShadowDist P1] (1 -/+ blend) == 0.75f / 1.25f exactly at default
+                frust[i] = eye + (delta*dist[j]*(1.f - shadow_blend_eff))/dp;
+                frust[i+4] = eye + (delta*dist[j+1]*(1.f + shadow_blend_eff))/dp;
             }
 
             shadow_cam.calcAgentFrustumPlanes(frust);
@@ -25327,6 +25548,19 @@ void LLPipeline::generateSunShadow(LLCamera& camera)
                     mRT->shadow[j].clear();
                 }
                 mRT->shadow[j].flush();
+
+                // [ShadowDist P1] ShadowMeta site 4: a cleared map samples as lit
+                // whatever its matrix says, so sunVP[j] is left as is (exactly
+                // as the legacy code leaves mSunShadowMatrix[j]).
+                {
+                    RenderTargetPack::ShadowMeta& meta = mRT->shadowMeta;
+                    meta.coef[j] = LLVector4(1.f, 1.f, 1.f, 0.f); // [P2] default coefficients
+                    if (j == 0)
+                    {
+                        meta.subject = false; // [P3] cascade 0 no longer holds a column
+                    }
+                    ++meta.serial;
+                }
 
                 mShadowError.mV[j] = 0.f;
                 mShadowFOV.mV[j] = 0.f;
@@ -25608,6 +25842,20 @@ void LLPipeline::generateSunShadow(LLCamera& camera)
             mShadowModelview[j] = view[j];
             mShadowProjection[j] = proj[j];
             mSunShadowMatrix[j] = trans*proj[j]*view[j]*inv_view;
+
+            // [ShadowDist P1] ShadowMeta site 2: this cascade's view-independent
+            // trans*proj*view in double; uploadShadowUniforms composes it with
+            // the CURRENT inverse view at bind time when the controls are engaged.
+            {
+                RenderTargetPack::ShadowMeta& meta = mRT->shadowMeta;
+                meta.sunVP[j] = glm::dmat4(trans) * glm::dmat4(proj[j]) * glm::dmat4(view[j]);
+                meta.coef[j]  = LLVector4(1.f, 1.f, 1.f, 0.f); // [P2] Control C per-cascade coefficients go here
+                if (j == 0)
+                {
+                    meta.subject = false; // [P3] legacy fit of cascade 0
+                }
+                ++meta.serial;
+            }
 
             stop_glerror();
 
@@ -27090,6 +27338,11 @@ void LLPipeline::skipRenderingShadows()
         mRT->shadow[j].clear();
         mRT->shadow[j].flush();
     }
+
+    // [ShadowDist P1] ShadowMeta site 5: all four maps cleared -> lit; the
+    // matrices are irrelevant, only the (future) subject flag must drop.
+    mRT->shadowMeta.subject = false; // [P3]
+    ++mRT->shadowMeta.serial;
 }
 
 void LLPipeline::handleShadowDetailChanged()

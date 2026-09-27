@@ -1149,6 +1149,9 @@ void LLViewerShaderMgr::unloadShaders()
     // restore main-view screen uniforms on their next bind. Program unload
     // makes that tracking obsolete; clear it before variant storage changes.
     gPipeline.clearPrismLensDirtyScreenShaderTracking();
+    // [ShadowDist P1] per-program shadow-uniform stamps are keyed by program
+    // address; every program relinks from here, so forget them all.
+    gPipeline.clearShadowUniformStamps();
 
     while (!LLGLSLShader::sInstances.empty())
     {

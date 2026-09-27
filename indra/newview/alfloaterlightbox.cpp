@@ -274,6 +274,26 @@ void ALFloaterLightBox::draw()
             origin_status->setValue(llformat("Origin: (%.1f, %.1f, %.1f)",
                 origin.mdV[VX], origin.mdV[VY], origin.mdV[VZ]));
         }
+
+        // [ShadowDist P1] Read-only effective sun-cascade split distances (the
+        // planes the main maps were actually built from, after the Sharp
+        // shadow range override and the far-clip clamp) -- design v2 s2.2.
+        // Same 1 s throttle; findChild-guarded.
+        if (LLTextBox* splits_status = findChild<LLTextBox>("sd_effective_splits"))
+        {
+            // [ShadowDist P1 fix] no fitted maps yet (reset, sun shadows off)
+            // -> the meta holds placeholder planes; don't present them as real.
+            if (gPipeline.mMainRT.shadowMeta.validCascades == 0)
+            {
+                splits_status->setValue(std::string("Effective cascade splits: -"));
+            }
+            else
+            {
+                const LLVector4& c = gPipeline.mMainRT.shadowMeta.clip;
+                splits_status->setValue(llformat("Effective cascade splits: %.1f / %.1f / %.1f / %.1f m",
+                    c.mV[0], c.mV[1], c.mV[2], c.mV[3]));
+            }
+        }
     }
     // [BDMerge G3.3 Batch 3] Reflect the live selection in the Selected Light tab.
     updateSelectedLightPanel();

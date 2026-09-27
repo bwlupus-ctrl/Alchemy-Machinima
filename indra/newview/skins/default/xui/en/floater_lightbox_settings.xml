@@ -2939,6 +2939,216 @@
 				increment="256"
 				decimal_digits="0"
 				name="bd_shadow_res3" />
+			<!-- [ShadowDist P1] Shadow softening (Control D): sun-shadow channel split from the SSAO soften blur -->
+			<text
+				follows="left|top"
+				height="15"
+				left="5"
+				top_pad="8"
+				width="180"
+				layout="topleft"
+				tool_tip="How the SSAO soften pass blurs the sun/moon shadow channel. Only applies while SSAO is on (that pass does not run otherwise, and shadows are then unblurred anyway)."
+				value="Shadow softening:" />
+			<combo_box
+				allow_text_entry="false"
+				control_name="RenderShadowSoftenMode"
+				follows="left|top"
+				layout="topleft"
+				height="18"
+				top_pad="-17"
+				left="190"
+				max_chars="128"
+				name="sd_soften_mode_combo"
+				width="168"
+				tool_tip="Stock: the shadow shares the SSAO blur (~23 px box - fine contact shadows vanish a metre or two from the camera). Pixels: Gaussian sigma in pixels. World mm: Gaussian sigma in world millimetres, converted per pixel from depth - shadows closer than ~1 m soften noticeably, fine lines thinner than the radius fade there by design, and further out shadows stay crisp. None: no shadow blur (SSAO still blurred). Pixels and None may show shadow-map grain the stock blur hid - raise the radius or use World mm.">
+				<combo_box.item
+					label="Stock (shares SSAO blur)"
+					name="sd_soften_stock"
+					value="0" />
+				<combo_box.item
+					label="Pixels"
+					name="sd_soften_px"
+					value="1" />
+				<combo_box.item
+					label="World mm"
+					name="sd_soften_mm"
+					value="2" />
+				<combo_box.item
+					label="None"
+					name="sd_soften_none"
+					value="3" />
+			</combo_box>
+			<text
+				follows="left|top"
+				height="15"
+				left="5"
+				top_pad="6"
+				width="180"
+				layout="topleft"
+				tool_tip="Pixels mode: Gaussian sigma of the sun-shadow blur in screen pixels (floored at 0.5 px). 1 px = near pass-through with mild anti-aliasing; 2 px = gentle 5 px soften."
+				value="Soften radius (px):" />
+			<slider
+				control_name="RenderShadowSoftenPx"
+				follows="left|top"
+				layout="topleft"
+				height="20"
+				top_pad="-16"
+				left="190"
+				width="168"
+				min_val="0.5"
+				max_val="6"
+				increment="0.05"
+				decimal_digits="2"
+				show_text="true"
+				name="sd_soften_px_slider"
+				tool_tip="Pixels mode: Gaussian sigma of the sun-shadow blur in screen pixels (floored at 0.5 px). 1 px = near pass-through with mild anti-aliasing; 2 px = gentle 5 px soften." />
+			<button
+				name="reset_RenderShadowSoftenPx"
+				follows="left|top"
+				layout="topleft"
+				height="22"
+				left="360"
+				top_pad="-22"
+				width="18"
+				scale_image="true"
+				image_overlay="Refresh_Off"
+				image_overlay_alignment="center"
+				tool_tip="Reset to default value">
+				<button.commit_callback
+					function="LightBox.ResetControlDefault"
+					parameter="RenderShadowSoftenPx" />
+			</button>
+			<text
+				follows="left|top"
+				height="15"
+				left="5"
+				top_pad="6"
+				width="180"
+				layout="topleft"
+				tool_tip="World mm mode: Gaussian sigma of the sun-shadow blur in world millimetres, converted per pixel from depth. 2.5 mm = ~2.3 px at 1 m and ~0.8 px at 3 m (1080p): a 3 mm chain shadow keeps ~30% contrast at 1-3 m instead of under 10% with the stock kernel."
+				value="Soften radius (mm):" />
+			<slider
+				control_name="RenderShadowSoftenMM"
+				follows="left|top"
+				layout="topleft"
+				height="20"
+				top_pad="-16"
+				left="190"
+				width="168"
+				min_val="1"
+				max_val="100"
+				increment="0.5"
+				decimal_digits="1"
+				show_text="true"
+				name="sd_soften_mm_slider"
+				tool_tip="World mm mode: Gaussian sigma of the sun-shadow blur in world millimetres, converted per pixel from depth. 2.5 mm = ~2.3 px at 1 m and ~0.8 px at 3 m (1080p): a 3 mm chain shadow keeps ~30% contrast at 1-3 m instead of under 10% with the stock kernel." />
+			<button
+				name="reset_RenderShadowSoftenMM"
+				follows="left|top"
+				layout="topleft"
+				height="22"
+				left="360"
+				top_pad="-22"
+				width="18"
+				scale_image="true"
+				image_overlay="Refresh_Off"
+				image_overlay_alignment="center"
+				tool_tip="Reset to default value">
+				<button.commit_callback
+					function="LightBox.ResetControlDefault"
+					parameter="RenderShadowSoftenMM" />
+			</button>
+			<!-- [ShadowDist P1] Shadow distance (Control A): sharp-shadow range in metres -->
+			<text
+				follows="left|top"
+				height="15"
+				left="5"
+				top_pad="8"
+				width="180"
+				layout="topleft"
+				tool_tip="Camera distance fully covered by the sharpest sun-shadow cascade before it blends into the next. 0 = automatic (stock split exponent). Larger = sharp further out but coarser: texel size and depth bias grow with the range (an 8192 map is ~1 mm/texel at 2 m, ~2 mm at 4 m, ~5 mm at 10 m). Also sets where projector shadows fade with distance. Clamped to the live far clip in small skyboxes - see the effective splits below."
+				value="Sharp shadow range (m):" />
+			<slider
+				control_name="RenderShadowNearSplitMeters"
+				follows="left|top"
+				layout="topleft"
+				height="20"
+				top_pad="-16"
+				left="190"
+				width="168"
+				min_val="0"
+				max_val="60"
+				increment="0.5"
+				decimal_digits="1"
+				show_text="true"
+				name="sd_near_split_slider"
+				tool_tip="Camera distance fully covered by the sharpest sun-shadow cascade before it blends into the next. 0 = automatic (stock split exponent). Larger = sharp further out but coarser: texel size and depth bias grow with the range (an 8192 map is ~1 mm/texel at 2 m, ~2 mm at 4 m, ~5 mm at 10 m). Also sets where projector shadows fade with distance. Clamped to the live far clip in small skyboxes - see the effective splits below." />
+			<button
+				name="reset_RenderShadowNearSplitMeters"
+				follows="left|top"
+				layout="topleft"
+				height="22"
+				left="360"
+				top_pad="-22"
+				width="18"
+				scale_image="true"
+				image_overlay="Refresh_Off"
+				image_overlay_alignment="center"
+				tool_tip="Reset to default value">
+				<button.commit_callback
+					function="LightBox.ResetControlDefault"
+					parameter="RenderShadowNearSplitMeters" />
+			</button>
+			<text
+				follows="left|top"
+				height="15"
+				left="5"
+				top_pad="6"
+				width="180"
+				layout="topleft"
+				tool_tip="Blend width between cascades as a fraction of each split distance. Stock 0.25 blends from 0.75x to 1.25x the split, so a cascade starts fading at 60% of its map's reach. Smaller keeps each cascade at full sharpness closer to its edge; below ~0.08 the seam shows."
+				value="Cascade blend:" />
+			<slider
+				control_name="RenderShadowSplitBlend"
+				follows="left|top"
+				layout="topleft"
+				height="20"
+				top_pad="-16"
+				left="190"
+				width="168"
+				min_val="0.08"
+				max_val="0.25"
+				increment="0.01"
+				decimal_digits="2"
+				show_text="true"
+				name="sd_split_blend_slider"
+				tool_tip="Blend width between cascades as a fraction of each split distance. Stock 0.25 blends from 0.75x to 1.25x the split, so a cascade starts fading at 60% of its map's reach. Smaller keeps each cascade at full sharpness closer to its edge; below ~0.08 the seam shows." />
+			<button
+				name="reset_RenderShadowSplitBlend"
+				follows="left|top"
+				layout="topleft"
+				height="22"
+				left="360"
+				top_pad="-22"
+				width="18"
+				scale_image="true"
+				image_overlay="Refresh_Off"
+				image_overlay_alignment="center"
+				tool_tip="Reset to default value">
+				<button.commit_callback
+					function="LightBox.ResetControlDefault"
+					parameter="RenderShadowSplitBlend" />
+			</button>
+			<text
+				follows="left|top"
+				height="15"
+				left="5"
+				top_pad="6"
+				width="370"
+				layout="topleft"
+				name="sd_effective_splits"
+				tool_tip="Far distance of sun-shadow cascades 0 / 1 / 2 / 3 as actually generated (refreshed once a second; after the Sharp shadow range override and the far-clip clamp). Cascade 0 is exclusive out to (1 - blend) x its split."
+				value="Effective cascade splits: -" />
 			<text
 				follows="left|top"
 				height="15"

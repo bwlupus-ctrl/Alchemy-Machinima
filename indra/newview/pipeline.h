@@ -53,6 +53,7 @@
 #include <stack>
 #include <set>
 #include <map>                      // [GhostDeferred] per-frame instance->coverage map
+#include <unordered_map>            // [ShadowDist P1] per-program shadow-uniform stamps
 
 class LLViewerTexture;
 class LLFace;
@@ -635,6 +636,25 @@ public:
     void clearPrismLensDirtyScreenShaderTracking();
     void bindDeferredShaderFast(LLGLSLShader& shader);
     void bindDeferredShader(LLGLSLShader& shader, LLRenderTarget* light_target = nullptr, LLRenderTarget* depth_target = nullptr);
+    // [ShadowDist P1] Meta-derived sun-shadow uniform upload (design v6 s1.2).
+    // Called from BOTH bind paths right after the shadow maps are bound. The
+    // interpretation of the sampled pack's four maps (split blend; later units /
+    // subject / coefficients) comes ONLY from that pack's ShadowMeta, never from
+    // live settings, so maps and shader can never disagree. When the controls
+    // are all at default (mShadowEngaged == false) it uploads nothing beyond a
+    // one-time stock scalar per program -> the OFF path is unchanged.
+    void uploadShadowUniforms(LLGLSLShader& shader);
+    // Re-evaluates mShadowEngaged from the main pack's meta + the A settings;
+    // on the engaged -> disengaged edge it forces one slow bind everywhere so
+    // the stock shadow_matrix / shadow_clip uploads resume for programs that
+    // were fast-bound while engaged.
+    void updateShadowEngaged();
+    // Forget every per-program stamp (programs are being relinked / unloaded).
+    void clearShadowUniformStamps();
+    // Effective Control A split blend: RenderShadowSplitBlend clamped to its
+    // range, snapped to exactly 0.25 when within float noise of the default so
+    // the stock frusta / shader arithmetic stay bit-identical.
+    static F32 effectiveShadowSplitBlend();
     void setupSpotLight(LLGLSLShader& shader, LLDrawable* drawablep);
     // [BDMerge G3.3] side-effect-free variant of setupSpotLight for the
     // finalize-stage volumetric pass: uploads only geometry + cookie (NO
@@ -1156,6 +1176,40 @@ public:
         //sun shadow map
         LLRenderTarget          shadow[4];
 
+        // [ShadowDist P1] Interpretation of the four sun maps above (design v6
+        // s1.1). INVARIANT: every statement that writes, clears, fits or
+        // (re)allocates any shadow[j] of this pack writes this meta in the same
+        // block and bumps `serial`. uploadShadowUniforms() derives everything
+        // the sun-shadow shaders need to read THESE maps from here at bind time
+        // -- settings only change what the NEXT generation writes.
+        // Fields marked [P2]/[P3] are laid out now for Controls C (world units)
+        // and B (subject cascade); phase 1 writes their defaults.
+        struct ShadowMeta
+        {
+            bool       legacy   = true;     // generated with every control at default -> stock shader path
+            bool       subject  = false;    // [P3] shadow[0] holds the subject column
+            S32        units    = 0;        // [P2] 0 legacy / 1 world units, as REQUIRED by these maps
+            S32        scope    = 0;        // [P2] RenderShadowUnitsScope captured at generation
+            F32        blend    = 0.25f;    // split blend the frusta were built with
+            U32        validCascades = 0;   // sunVP[j] describes shadow[j] for j < validCascades (probe renders fit only cascades 0-1)
+            LLVector4  clip     = LLVector4(1.f, 64.f, 128.f, 256.f);   // mSunClipPlanes these maps were built from
+            glm::dmat4 sunVP[4] = { glm::dmat4(1.0), glm::dmat4(1.0), glm::dmat4(1.0), glm::dmat4(1.0) }; // trans*proj*view per cascade (no inverse view), double
+            glm::dmat4 columnVP = glm::dmat4(1.0);                      // [P3] trans*proj0*view0 (no inverse view), valid iff subject
+            LLVector4  coef[4]  = { LLVector4(1.f, 1.f, 1.f, 0.f), LLVector4(1.f, 1.f, 1.f, 0.f),
+                                    LLVector4(1.f, 1.f, 1.f, 0.f), LLVector4(1.f, 1.f, 1.f, 0.f) }; // [P2] (k_depth, texel_x, texel_y, is_persp)
+            U32        serial   = 0;        // bumped at every write site of THIS pack
+
+            // Back to "never generated" defaults; the serial keeps counting so
+            // every program's stamp mismatches on its next bind.
+            void reset()
+            {
+                const U32 s = serial;
+                *this = ShadowMeta();
+                serial = s + 1;
+            }
+        };
+        ShadowMeta              shadowMeta;
+
         // HDR bloom pyramid (RGB = bloom, A = halation intensity).
         // mBloomMip[0] is full-res extract; subsequent levels are halved.
         LLRenderTarget              bloomMip[BLOOM_MAX_MIPS];
@@ -1205,6 +1259,21 @@ public:
 
     // currently used render target pack
     RenderTargetPack* mRT;
+
+    // [ShadowDist P1] Per-program record of which pack / meta serial the
+    // shadow interpretation scalars were last uploaded for (design v6 s1.3).
+    // Keyed per pack so probe-pack writes never invalidate main-view stamps.
+    // {nullptr, 0} = never uploaded -> always mismatches on a first bind.
+    struct ShadowUniformStamp
+    {
+        const RenderTargetPack* pack   = nullptr;
+        U32                     serial = 0;
+    };
+    std::unordered_map<const LLGLSLShader*, ShadowUniformStamp> mShadowStampByShader;
+    // true while the main maps were generated with a non-default control or
+    // any A control is non-default (design v6 s1.4). false = byte-identical
+    // OFF path (no per-bind matrix / clip uploads from the meta).
+    bool mShadowEngaged = false;
 
     // [BDMerge NSpot] compile-time ceiling for projector shadows; runtime
     // count is BDMergeMaxSpotShadows (2 = stock)
@@ -2002,6 +2071,12 @@ public:
     static F32 RenderHighlightFadeTime;
     static F32 RenderFarClip;
     static LLVector3 RenderShadowSplitExponent;
+    // [ShadowDist P1] Control A (sharp-shadow range) + Control D (soften split)
+    static F32 RenderShadowNearSplitMeters;
+    static F32 RenderShadowSplitBlend;
+    static S32 RenderShadowSoftenMode;
+    static F32 RenderShadowSoftenPx;
+    static F32 RenderShadowSoftenMM;
     static F32 RenderShadowErrorCutoff;
     static F32 RenderShadowFOVCutoff;
     static bool CameraOffset;
