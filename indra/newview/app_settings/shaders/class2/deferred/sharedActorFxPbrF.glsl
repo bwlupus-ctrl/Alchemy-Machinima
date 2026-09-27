@@ -138,6 +138,7 @@ void calcHalfVectors(vec3 lv, vec3 n, vec3 v, out vec3 h, out vec3 l,
                      out float lightDist);
 float calcLegacyDistanceAttenuation(float distance, float falloff);
 float sampleDirectionalShadow(vec3 pos, vec3 norm, vec2 pos_screen);
+vec3 applyShadowLift(vec3 irradiance, vec3 norm, vec3 light_dir, float scol); // [EnvIntensity v2] deferredUtil.glsl
 void sampleReflectionProbes(inout vec3 ambenv, inout vec3 glossenv,
                             vec2 tc, vec3 pos, vec3 norm,
                             float glossiness, bool transparent,
@@ -535,6 +536,8 @@ void main()
     sampleReflectionProbes(irradiance, radiance,
                            vary_position.xy * 0.5 + 0.5,
                            pos, norm, gloss, shared_actor_transparent, amblit);
+    // [EnvIntensity v2] no SSAO here; last irradiance-side op before pbrBaseLight
+    irradiance = applyShadowLift(irradiance, norm, light_dir, scol);
 
     vec3 diffuseColor = vec3(0.0);
     vec3 specularColor = vec3(0.0);

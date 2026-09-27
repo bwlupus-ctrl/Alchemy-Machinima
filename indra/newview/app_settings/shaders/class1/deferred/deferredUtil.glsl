@@ -1009,6 +1009,29 @@ void calcDiffuseSpecular(vec3 baseColor, float metallic, inout vec3 diffuseColor
     specularColor = mix(f0, baseColor, metallic);
 }
 
+// [EnvIntensity v2] Shadow lift: raises the diffuse ambient / irradiance term
+// where the sun (or moon) does not reach. shadow_lift_gain = 2^EV - 1 (0 = off;
+// 0 in classic mode and in every probe capture; uploaded via SG_ANY from
+// LLSettingsVOSky::applySpecial). Weight has a knee: any pixel with
+// NdotL * scol >= SHADOW_LIFT_KNEE is EXACTLY unchanged, full shadow (scol 0
+// or NdotL <= 0) gets the full gain, the terminator ramps over 0..knee.
+// Callers apply it AFTER adjustIrradiance (SSAO ceiling) and BEFORE the sun
+// term / pbrBaseLight, so material AO still multiplies the lifted value and
+// occluded corners lift by the same relative factor as open shadow.
+uniform float shadow_lift_gain;
+const float SHADOW_LIFT_KNEE = 0.25;
+
+vec3 applyShadowLift(vec3 irradiance, vec3 norm, vec3 light_dir, float scol)
+{
+    if (shadow_lift_gain <= 0.0)
+    {
+        return irradiance; // off path untouched
+    }
+    float sun_vis = clamp(dot(norm, light_dir), 0.0, 1.0) * scol; // 1 = fully lit
+    float w = 1.0 - smoothstep(0.0, SHADOW_LIFT_KNEE, sun_vis);   // 0 for sun_vis >= knee
+    return irradiance * (1.0 + shadow_lift_gain * w);
+}
+
 vec3 pbrBaseLight(vec3 diffuseColor, vec3 specularColor, float metallic, vec3 v, vec3 norm, float perceptualRoughness, vec3 light_dir, vec3 sunlit, float scol, vec3 radiance, vec3 irradiance, vec3 colorEmissive, float ao, vec3 additive, vec3 atten)
 {
     perceptualRoughness = max(perceptualRoughness, MIN_PBR_ROUGHNESS);

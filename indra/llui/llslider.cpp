@@ -33,6 +33,7 @@
 #include "llui.h"
 
 #include "llgl.h"
+#include "llmath.h"             // [EnvIntensity v2] ll_round(val, nearest)
 #include "llwindow.h"
 #include "llfocusmgr.h"
 #include "llkeyboard.h"         // for the MASK constants
@@ -56,7 +57,8 @@ LLSlider::Params::Params()
     track_highlight_vertical_image("track_highlight_vertical_image"),
     mouse_down_callback("mouse_down_callback"),
     mouse_up_callback("mouse_up_callback"),
-    wheel_adjust("wheel_adjust", false)
+    wheel_adjust("wheel_adjust", false),
+    wheel_fine_div("wheel_fine_div", 0.f) // [EnvIntensity v2]
 {}
 
 LLSlider::LLSlider(const LLSlider::Params& p)
@@ -64,6 +66,7 @@ LLSlider::LLSlider(const LLSlider::Params& p)
     mMouseOffset( 0 ),
     mOrientation ((p.orientation() == "horizontal") ? HORIZONTAL : VERTICAL),
     mWheelAdjust(p.wheel_adjust),
+    mWheelFineDiv(llmax(0.f, (F32)p.wheel_fine_div)), // [EnvIntensity v2]
     mThumbOutlineColor(p.thumb_outline_color()),
     mThumbCenterColor(p.thumb_center_color()),
     mThumbImage(p.thumb_image),
@@ -80,7 +83,16 @@ LLSlider::LLSlider(const LLSlider::Params& p)
     updateThumbRect();
     mDragStartThumbRect = mThumbRect;
     setControlName(p.control_name, NULL);
-    setValue(getValueF32());
+    // [EnvIntensity v2] fine-step sliders keep a saved fine value (e.g. 0.01 EV):
+    // the coarse snap below would otherwise round it and write it back.
+    if (mWheelFineDiv > 0.f)
+    {
+        setValue(snapToFineGrid(getValueF32()), false, /*precision_override*/ true);
+    }
+    else
+    {
+        setValue(getValueF32());
+    }
 
     if (p.mouse_down_callback.isProvided())
     {
@@ -154,6 +166,47 @@ void LLSlider::updateThumbRect()
     }
 }
 
+
+// [EnvIntensity v2] Fine-grid snap for wheel_fine_div sliders: clamp, snap to
+// mMinValue + n * (increment / div), and pin the ends exactly (a 0.002 grid
+// would otherwise land on 0.99999994 instead of the 1.0 maximum). Only the
+// Shift-wheel path and incoming LLSD values (control-variable init / change
+// notifications / Debug Settings) use this; drag and arrow keys keep the plain
+// increment feel through setValue(F32).
+F32 LLSlider::snapToFineGrid(F32 value) const
+{
+    value = llclamp(value, mMinValue, mMaxValue);
+    if (mWheelFineDiv > 0.f && mIncrement > 0.f)
+    {
+        const F32 fine = mIncrement / mWheelFineDiv;
+        value = mMinValue + ll_round(value - mMinValue, fine);
+        if (value >= mMaxValue - fine * 0.5f)
+        {
+            value = mMaxValue;
+        }
+        else if (value <= mMinValue + fine * 0.5f)
+        {
+            value = mMinValue;
+        }
+    }
+    return value;
+}
+
+// [EnvIntensity v2] LLSD path = control-variable sync (lluictrl.cpp
+// setControlVariable / controlListener). Sliders with wheel_fine_div keep a
+// saved fine value (0.01 on a 0.05 slider) instead of coarse-snapping it;
+// every other slider takes the exact shipping path.
+void LLSlider::setValue(const LLSD& value)
+{
+    if (mWheelFineDiv > 0.f)
+    {
+        setValue(snapToFineGrid((F32)value.asReal()), true, /*precision_override*/ true);
+    }
+    else
+    {
+        setValue((F32)value.asReal(), true);
+    }
+}
 
 void LLSlider::setValueAndCommit(F32 value)
 {
@@ -293,6 +346,36 @@ bool LLSlider::handleScrollWheel(S32 x, S32 y, LLScrollDelta delta)
     // increment (wheel up = increase), giving precision control without dragging.
     if ( mOrientation == VERTICAL || (mWheelAdjust && mOrientation == HORIZONTAL) )
     {
+        // [EnvIntensity v2] Opt-in fine stepping (wheel_fine_div > 0): Shift =
+        // increment / div, Ctrl or Alt = x10 (shipping convention), plain =
+        // increment. Shift wins over Ctrl/Alt. The result is snapped to the
+        // FINE grid on every wheel event so plain notches stay an exact
+        // increment apart after a fine adjustment (setValue's coarse bias would
+        // otherwise re-snap 0.03 -> 0.10 on a 0.05 slider); drag and arrow keys
+        // are untouched (plain increment grid). Sliders without the param run
+        // the shipping code below verbatim.
+        if (mWheelFineDiv > 0.f)
+        {
+            const F32 inc  = getIncrement();
+            F32 step = inc;
+            if (gKeyboard && gKeyboard->getKeyDown(KEY_SHIFT))
+            {
+                step = inc / mWheelFineDiv;
+            }
+            else if (gKeyboard && (gKeyboard->getKeyDown(KEY_CONTROL) || gKeyboard->getKeyDown(KEY_ALT)))
+            {
+                step = inc * 10.f;
+            }
+            const F32 old_value = getValueF32();
+            const F32 new_val = snapToFineGrid(old_value - delta.mClicks * step);
+            setValue(new_val, false, /*precision_override*/ true);
+            if (getValueF32() != old_value)
+            {
+                onCommit();
+            }
+            return true;
+        }
+
         // [Ultimate Diopter] design doc §4.3 -- Ctrl OR Alt held = a x10
         // coarse step (matching LLSpinCtrl's own Ctrl/Alt/Shift modifier
         // convention, llspinctrl.cpp:176-190, which uses Alt for its x10

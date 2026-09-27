@@ -44,10 +44,17 @@ uniform float sky_ambient_scale;
 uniform int classic_mode;
 // [EnvIntensity] viewer-side Light Intensity EV factors (2^EV), kept separate
 // from the pre-PBR compatibility scales above so those keep their stock
-// semantics. Both are exactly 1.0 at 0 EV, 1.0 in classic mode, and
-// sky_gi_scale is 1.0 during every probe capture (see applySpecial).
+// semantics. All exactly 1.0 at 0 EV and 1.0 in classic mode.
+// [EnvIntensity v2] sky_amb_scale (sky ambient) replaces sky_gi_scale here
+// (sky_gi_scale now scales probe irradiance only; both equal the old GI factor
+// at the v2 defaults). sky_amb_scale is 1.0 during every probe capture. The
+// tints are luminance-normalised (Y == 1) multipliers, exactly vec3(1) when
+// off, and are applied in uniform-gated branches so the off path is the
+// unmodified expression.
 uniform float sky_sun_ev_scale;
-uniform float sky_gi_scale;
+uniform float sky_amb_scale;
+uniform vec3  sky_sun_tint;
+uniform vec3  sky_amb_tint;
 
 float getAmbientClamp() { return 1.0f; }
 
@@ -219,6 +226,17 @@ void calcAtmosphericVarsLinear(vec3 inPositionEye, vec3 norm, vec3 light_dir, ou
     if (classic_mode < 1)
     {
         sunlit *= sky_sun_ev_scale;
-        amblit *= sky_gi_scale;
+        // [EnvIntensity v2] sunlit is the sun OR the moon (sun_up_factor); the
+        // C++ side chose the matching EV and tint. amblit is grey luminance
+        // here, so the ambient tint colours it fully.
+        if (sky_sun_tint != vec3(1.0))
+        {
+            sunlit *= sky_sun_tint;
+        }
+        amblit *= sky_amb_scale;
+        if (sky_amb_tint != vec3(1.0))
+        {
+            amblit *= sky_amb_tint;
+        }
     }
 }

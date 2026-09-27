@@ -31,6 +31,7 @@
 
 #include "alcinehaze.h"
 #include "alcinerigrim.h" // [RigRim]
+#include "alenvintensity.h" // [EnvIntensity v2] local lights EV, SSAO ceiling factor
 #include "altron.h" // [TronT1]
 
 #include "pipeline.h"
@@ -9580,8 +9581,9 @@ void LLPipeline::calcNearbyLights(LLCamera& camera)
             }
 
             const F32 light_radius = light->getLightRadius() * 1.5f;
-            const LLColor3 light_color =
-                light->getLightLinearColor() * (F32)cine_light_scale;
+            // [EnvIntensity v2] per-emitter Local lights EV folded into the scale once
+            const F32 ls = (F32)cine_light_scale * ALEnvIntensity::localLightEVScale(light);
+            const LLColor3 light_color = light->getLightLinearColor() * ls;
             if (light_radius <= 0.001f ||
                 light_color.magVecSquared() < 0.001f)
             {
@@ -9664,8 +9666,9 @@ void LLPipeline::calcNearbyLights(LLCamera& camera)
             }
 
             const F32 light_radius = light->getLightRadius() * 1.5f;
-            const LLColor3 light_color =
-                light->getLightLinearColor() * (F32)prism_light_scale;
+            // [EnvIntensity v2] per-emitter Local lights EV folded into the scale once
+            const F32 ls = (F32)prism_light_scale * ALEnvIntensity::localLightEVScale(light);
+            const LLColor3 light_color = light->getLightLinearColor() * ls;
             if (light_radius <= 0.001f ||
                 light_color.magVecSquared() < 0.001f)
             {
@@ -10297,7 +10300,10 @@ void LLPipeline::setupHWLights()
             }
 
             //send linear light color to shader
-            LLColor4  light_color = light->getLightLinearColor() * light_scale;
+            // [EnvIntensity v2] per-emitter Local lights EV folded into the scale once
+            // (multiplies both the capture mLightScale and AlchemyGlobalLightScale branches)
+            const F32 ls = light_scale * ALEnvIntensity::localLightEVScale(light);
+            LLColor4  light_color = light->getLightLinearColor() * ls;
             light_color.mV[3] = 0.0f;
 
             F32 fade = iter->fade;
@@ -19420,11 +19426,14 @@ void LLPipeline::renderFroxelVolumetrics(LLRenderTarget* target)
                 "projvol_max_distance");
             gFroxelInjectProgram.uniform1f(
                 sFroxelProjVolMaxDistance, llclamp(e_max_dist, 0.f, 64.f));
-            LLColor3 col = volume->getLightLinearColor() * light_scale;
+            // [EnvIntensity v2] per-emitter Local lights EV folded into ONE scale used
+            // for both the light colour and the shaft-tint term (exactly once).
+            const F32 ls = light_scale * ALEnvIntensity::localLightEVScale(volume);
+            LLColor3 col = volume->getLightLinearColor() * ls;
             if (e_tintStr > 0.f) // shaft tint lerp (no-op at TintStrength 0), same as per-cone
             {
                 const F32 t = llclamp(e_tintStr, 0.f, 1.f);
-                col = col * (1.f - t) + e_tint * (light_scale * t);
+                col = col * (1.f - t) + e_tint * (ls * t);
             }
             glm::vec3 c(drawablep->getPositionAgent());
             c = mul_mat4_vec3(mat, c); // agent -> view space
@@ -20274,7 +20283,10 @@ void LLPipeline::renderProjectorVolumetric(LLRenderTarget* target, bool aux_dire
         gDeferredProjectorVolumetricProgram.uniform1f(LLShaderMgr::PROJVOL_RIM_WRAP, llclamp(e_rimWrap, 0.f, 1.f));
         gDeferredProjectorVolumetricProgram.uniform1f(LLShaderMgr::PROJVOL_RIM_SOFTNESS, llclamp(e_rimSoftness, 0.f, 1.f));
 
-        LLColor3  col = volume->getLightLinearColor() * light_scale;
+        // [EnvIntensity v2] per-emitter Local lights EV folded into ONE scale used
+        // for both the light colour and the shaft-tint term (exactly once).
+        const F32 ls = light_scale * ALEnvIntensity::localLightEVScale(volume);
+        LLColor3  col = volume->getLightLinearColor() * ls;
         // [Phase 2 item 2 / Batch 1 C] Shaft tint (global or per-projector override):
         // pull the shaft color toward the art-direction tint so it can differ from
         // the light's own color. At TintStrength 0 (default) this is a no-op and
@@ -20282,7 +20294,7 @@ void LLPipeline::renderProjectorVolumetric(LLRenderTarget* target, bool aux_dire
         if (e_tintStr > 0.f)
         {
             const F32 t = llclamp(e_tintStr, 0.f, 1.f);
-            col = col * (1.f - t) + e_tint * (light_scale * t);
+            col = col * (1.f - t) + e_tint * (ls * t);
         }
         glm::vec3 c(drawablep->getPositionAgent());
         c = mul_mat4_vec3(mat, c); // agent -> view space
@@ -22957,16 +22969,17 @@ void LLPipeline::renderDeferredLighting()
             static LLStaticHashedString ssao_scale_str("ssao_irradiance_scale");
             static LLStaticHashedString ssao_max_str("ssao_irradiance_max");
             // [EnvIntensity] ssao_irradiance_max is an ABSOLUTE clamp on the
-            // occluded irradiance; scale it with the Sky/GI multiplier so raising
+            // occluded irradiance; scale it with the probe-diffuse multiplier
+            // (GI master + probe diffuse offset, [EnvIntensity v2]) so raising
             // GI does not darken occluded corners relative to open ones.
             // exp2f(0) == 1.0 exactly -> 0 EV is bit-identical. No capture-pass
             // gating is needed here: SSAO is disabled while gCubeSnapshot is set
             // (RenderDeferredSSAO && !gCubeSnapshot gates above), so this clamp
             // never reaches the probe irradiance/radiance captures.
             // Inactive (1.0) in classic mode, mirroring LLSettingsVOSky::applySpecial
-            // (LLRender::sClassicMode is set there each frame).
-            static LLCachedControl<F32> env_gi_ev(gSavedSettings, "AlchemyEnvSkyGIEV", 0.f);
-            const F32 env_gi_mul = LLRender::sClassicMode ? 1.f : exp2f(llclamp((F32)env_gi_ev, -4.f, 4.f));
+            // (LLRender::sClassicMode is set there each frame). The ceiling's
+            // ambient TINT is applied shader-side (softenLightF adjustIrradiance).
+            const F32 env_gi_mul = ALEnvIntensity::ssaoCeilingScale();
 
             soften_shader.uniform1f(ssao_scale_str, ssao_scale);
             soften_shader.uniform1f(ssao_max_str, ssao_max * env_gi_mul);
@@ -23096,7 +23109,11 @@ void LLPipeline::renderDeferredLighting()
                     F32        s = volume->getLightRadius() * 1.5f;
 
                     // send light color to shader in linear space
-                    LLColor3 col = volume->getLightLinearColor() * light_scale;
+                    // [EnvIntensity v2] per-emitter Local lights EV folded in once here;
+                    // light_colors.push_back below carries this already-scaled colour and
+                    // the fullscreen packing copy (col[count] = light_colors[i]) is untouched.
+                    const F32 ls = light_scale * ALEnvIntensity::localLightEVScale(volume);
+                    LLColor3 col = volume->getLightLinearColor() * ls;
 
                     if (col.magVecSquared() < 0.001f)
                     {
@@ -23208,7 +23225,8 @@ void LLPipeline::renderDeferredLighting()
                     setupSpotLight(gDeferredSpotLightProgram, drawablep);
 
                     // send light color to shader in linear space
-                    LLColor3 col = volume->getLightLinearColor() * light_scale;
+                    const F32 ls = light_scale * ALEnvIntensity::localLightEVScale(volume); // [EnvIntensity v2]
+                    LLColor3 col = volume->getLightLinearColor() * ls;
 
                     gDeferredSpotLightProgram.uniform3fv(LLShaderMgr::LIGHT_CENTER, 1, c);
                     gDeferredSpotLightProgram.uniform1f(LLShaderMgr::LIGHT_SIZE, s);
@@ -23309,7 +23327,8 @@ void LLPipeline::renderDeferredLighting()
                     setupSpotLight(gDeferredMultiSpotLightProgram, drawablep);
 
                     // send light color to shader in linear space
-                    LLColor3 col = volume->getLightLinearColor() * light_scale;
+                    const F32 ls = light_scale * ALEnvIntensity::localLightEVScale(volume); // [EnvIntensity v2]
+                    LLColor3 col = volume->getLightLinearColor() * ls;
 
                     gDeferredMultiSpotLightProgram.uniform3fv(LLShaderMgr::LIGHT_CENTER, 1, glm::value_ptr(tc));
                     gDeferredMultiSpotLightProgram.uniform1f(LLShaderMgr::LIGHT_SIZE, light_size_final);
@@ -26855,8 +26874,9 @@ void LLPipeline::generatePrismSpotShadows(LLCamera& camera)
                 continue;
             }
             const F32 light_radius = light->getLightRadius() * 1.5f;
-            const LLColor3 light_color =
-                light->getLightLinearColor() * (F32)prism_light_scale;
+            // [EnvIntensity v2] per-emitter Local lights EV folded into the scale once
+            const F32 ls = (F32)prism_light_scale * ALEnvIntensity::localLightEVScale(light);
+            const LLColor3 light_color = light->getLightLinearColor() * ls;
             if (light_radius <= 0.001f ||
                 light_color.magVecSquared() < 0.001f)
             {

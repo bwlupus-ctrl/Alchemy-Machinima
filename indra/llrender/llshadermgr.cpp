@@ -2127,6 +2127,14 @@ void LLShaderMgr::initAttribsAndUniforms()
     mReservedUniforms.push_back("tron_trail_params2");
     mReservedUniforms.push_back("tron_trail_params3");
 
+    // [EnvIntensity v2] exposure strip uniforms; lockstep with
+    // SKY_AMB_SCALE..SHADOW_LIFT_GAIN in llshadermgr.h (same order).
+    mReservedUniforms.push_back("sky_amb_scale");       // SKY_AMB_SCALE
+    mReservedUniforms.push_back("sky_probe_rad_scale"); // SKY_PROBE_RAD_SCALE
+    mReservedUniforms.push_back("sky_sun_tint");        // SKY_SUN_TINT
+    mReservedUniforms.push_back("sky_amb_tint");        // SKY_AMB_TINT
+    mReservedUniforms.push_back("shadow_lift_gain");    // SHADOW_LIFT_GAIN
+
     llassert(mReservedUniforms.size() == END_RESERVED_UNIFORMS);
 
     std::set<std::string> dupe_check;

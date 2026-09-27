@@ -92,6 +92,7 @@ layout(location = 2) out vec2 surface_coverage;
 float sampleDirectionalShadow(vec3 pos, vec3 norm, vec2 pos_screen);
 #endif
 
+vec3 applyShadowLift(vec3 irradiance, vec3 norm, vec3 light_dir, float scol); // [EnvIntensity v2] deferredUtil.glsl
 void sampleReflectionProbesLegacy(inout vec3 ambenv, inout vec3 glossenv, inout vec3 legacyenv,
         vec2 tc, vec3 pos, vec3 norm, float glossiness, float envIntensity, bool transparent, vec3 amblit_linear);
 void applyGlossEnv(inout vec3 color, vec3 glossenv, vec4 spec, vec3 pos, vec3 norm);
@@ -452,6 +453,7 @@ void main()
     vec3 glossenv = vec3(0.0);
     vec3 legacyenv = vec3(0.0);
     sampleReflectionProbesLegacy(ambenv, glossenv, legacyenv, pos.xy*0.5+0.5, pos.xyz, norm.xyz, glossiness, env, true, amblit_linear);
+    ambenv = applyShadowLift(ambenv, norm.xyz, light_dir, shadow); // [EnvIntensity v2] no SSAO here; last irradiance-side op
 
     color = ambenv;
 

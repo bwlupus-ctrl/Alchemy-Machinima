@@ -106,6 +106,7 @@ vec2 actorFxRgbSplitUv(vec2 transformed_uv, float direction);
 void calcHalfVectors(vec3 lv, vec3 n, vec3 v, out vec3 h, out vec3 l, out float nh, out float nl, out float nv, out float vh, out float lightDist);
 float calcLegacyDistanceAttenuation(float distance, float falloff);
 float sampleDirectionalShadow(vec3 pos, vec3 norm, vec2 pos_screen);
+vec3 applyShadowLift(vec3 irradiance, vec3 norm, vec3 light_dir, float scol); // [EnvIntensity v2] deferredUtil.glsl
 void sampleReflectionProbes(inout vec3 ambenv, inout vec3 glossenv,
         vec2 tc, vec3 pos, vec3 norm, float glossiness, bool transparent, vec3 amblit_linear);
 
@@ -288,6 +289,7 @@ void main()
     vec3  irradiance = amblit;
     vec3  radiance  = vec3(0);
     sampleReflectionProbes(irradiance, radiance, vary_position.xy*0.5+0.5, pos.xyz, norm.xyz, gloss, true, amblit);
+    irradiance = applyShadowLift(irradiance, norm.xyz, light_dir, scol); // [EnvIntensity v2] no SSAO here; last irradiance-side op
 
     vec3 diffuseColor = vec3(0.0);
     vec3 specularColor = vec3(0.0);

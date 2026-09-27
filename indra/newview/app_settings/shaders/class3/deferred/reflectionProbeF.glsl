@@ -43,6 +43,13 @@ uniform float max_probe_lod;
 // probe IRRADIANCE sample only; the amblit/probe blend weight is untouched.
 // Uploaded from LLSettingsVOSky::applySpecial; 1.0 is bit-identical to stock.
 uniform float sky_gi_scale;
+// [EnvIntensity v2] probe reflections EV factor (2^AlchemyEnvGIProbeSpecEV;
+// 1.0 = stock, 1.0 in captures) applied to the probe RADIANCE sample before
+// the SSR mix and before tapHeroProbe, so screen-space and mirror reflections
+// are never scaled. sky_amb_tint: luminance-normalised ambient tint on the
+// irradiance sample (vec3(1) = off). Both in uniform-gated branches.
+uniform float sky_probe_rad_scale;
+uniform vec3  sky_amb_tint;
 
 uniform bool transparent_surface;
 
@@ -583,6 +590,10 @@ vec3 tapIrradianceMap(vec3 pos, vec3 dir, out float w, out float dw, vec3 c, int
     // [EnvIntensity] sky_gi_scale multiplies the irradiance term only; the mix
     // weight below stays min(refParams.x, 1) so the ambiance blend is unchanged.
     vec3 col = textureLod(irradianceProbes, vec4(v.xyz, refIndex[i].x), 0).rgb * refParams[i].x * sky_gi_scale;
+    if (sky_amb_tint != vec3(1.0)) // [EnvIntensity v2] probe diffuse is part of the tinted fill (amblit is already tinted)
+    {
+        col *= sky_amb_tint;
+    }
 
     col = mix(amblit, col, min(refParams[i].x, 1.0));
 
@@ -764,6 +775,10 @@ void doProbeSample(inout vec3 ambenv, inout vec3 glossenv,
 
     float lod = (1.0-glossiness)*reflection_lods;
     glossenv = sampleProbes(pos, normalize(refnormpersp), lod);
+    if (sky_probe_rad_scale != 1.0) // [EnvIntensity v2] probe radiance only (before SSR / hero)
+    {
+        glossenv *= sky_probe_rad_scale;
+    }
 
 #if defined(SSR)
     if (prism_auxiliary == 0 && cube_snapshot != 1 && glossiness >= 0.9)
@@ -878,12 +893,19 @@ void sampleReflectionProbesLegacy(inout vec3 ambenv, inout vec3 glossenv, inout 
     {
         float lod = (1.0-glossiness)*reflection_lods;
         glossenv = sampleProbes(pos, normalize(refnormpersp), lod);
-
+        if (sky_probe_rad_scale != 1.0) // [EnvIntensity v2] probe radiance only (before SSR / hero)
+        {
+            glossenv *= sky_probe_rad_scale;
+        }
     }
 
     if (envIntensity > 0.0)
     {
         legacyenv = sampleProbes(pos, normalize(refnormpersp), 0.0);
+        if (sky_probe_rad_scale != 1.0) // [EnvIntensity v2] linear here (class3 decodes in sampleProbes)
+        {
+            legacyenv *= sky_probe_rad_scale;
+        }
     }
 
 #if defined(SSR)

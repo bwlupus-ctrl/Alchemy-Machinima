@@ -68,6 +68,13 @@ public:
         // the container. Vertical sliders already take the vertical wheel.
         Optional<bool>                  wheel_adjust;
 
+        // [EnvIntensity v2] Opt-in fine wheel step: with wheel_fine_div > 0 (and
+        // wheel_adjust on) Shift+wheel steps by increment / wheel_fine_div, and
+        // the slider's snapping grid becomes that fine step (so a saved fine
+        // value survives control-variable sync). Ctrl/Alt keep the shipping x10.
+        // 0 (default) = the existing wheel_adjust code path, untouched.
+        Optional<F32>                   wheel_fine_div;
+
         Params();
     };
 protected:
@@ -78,7 +85,9 @@ public:
     // [BDMerge C8] precision_override skips increment-rounding below; see donor note above.
     void            setValue( F32 value, bool from_event = false, bool precision_override = false );
     // overrides for LLF32UICtrl methods
-    virtual void    setValue(const LLSD& value )    { setValue((F32)value.asReal(), true); }
+    // [EnvIntensity v2] out of line: wheel_fine_div sliders keep incoming fine
+    // values (control sync); others are exactly setValue((F32)v, true).
+    virtual void    setValue(const LLSD& value );
 
     virtual void    setMinValue(const LLSD& min_value) { setMinValue((F32)min_value.asReal()); }
     virtual void    setMaxValue(const LLSD& max_value) { setMaxValue((F32)max_value.asReal()); }
@@ -96,9 +105,14 @@ public:
     virtual bool    handleScrollHWheel(S32 x, S32 y, LLScrollDelta delta);
     virtual void    draw();
 
+    // [EnvIntensity v2] accessors for LLSliderCtrl's gated wheel forwarding
+    bool            getWheelAdjust() const  { return mWheelAdjust; }
+    F32             getWheelFineDiv() const { return mWheelFineDiv; }
+
 private:
     void            setValueAndCommit(F32 value);
     void            updateThumbRect();
+    F32             snapToFineGrid(F32 value) const; // [EnvIntensity v2] wheel_fine_div grid, ends pinned exactly
 
     bool            mVolumeSlider;
     S32             mMouseOffset;
@@ -114,6 +128,7 @@ private:
 
     const EOrientation  mOrientation;
     const bool          mWheelAdjust; // [AL] hovered vertical wheel steps a horizontal slider
+    const F32           mWheelFineDiv; // [EnvIntensity v2] Shift fine divisor (0 = off)
 
     LLRect      mThumbRect;
     LLUIColor   mThumbOutlineColor;

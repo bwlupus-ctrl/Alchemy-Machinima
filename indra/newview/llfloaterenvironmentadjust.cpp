@@ -29,6 +29,7 @@
 #include "llfloaterenvironmentadjust.h"
 
 #include "llnotificationsutil.h"
+#include "llbutton.h" // [EnvIntensity v2] Advanced toggle label
 #include "llslider.h"
 #include "llsliderctrl.h"
 #include "llcolorswatch.h"
@@ -106,6 +107,64 @@ namespace
     //const F32 SLIDER_SCALE_DENSITY_MULTIPLIER(0.001f);
 
     const S32 FLOATER_ENVIRONMENT_UPDATE(-2);
+
+    // [EnvIntensity v2] Advanced exposure panel (lp_env_intensity_adv). Height
+    // mirrors the XML; the outer layout stack charges its 3 px panel spacing
+    // for every visible panel that is not the literal last one, so showing the
+    // panel costs height + spacing (335 -> 448 collapsed -> expanded).
+    const std::string PANEL_ENV_INTENSITY_ADV("lp_env_intensity_adv");
+    const S32 ENV_INTENSITY_ADV_PANEL_HEIGHT(110);
+    const S32 ENV_INTENSITY_PANEL_SPACING(3);
+
+    // [EnvIntensity v2] every Advanced-panel key: "Reset advanced" restores
+    // these (never the two masters AlchemyEnvSunEV / AlchemyEnvSkyGIEV, never
+    // the panel-state key) and then explicitly re-links the moon.
+    const char* const ENV_INTENSITY_ADV_KEYS[] =
+    {
+        "AlchemyEnvMoonEV",
+        "AlchemyEnvGIAmbientEV",
+        "AlchemyEnvGIProbeDiffuseEV",
+        "AlchemyEnvGIProbeSpecEV",
+        "AlchemyEnvLocalLightEV",
+        "AlchemyEnvLocalLightIncludeRig",
+        "AlchemyEnvSunKelvin",
+        "AlchemyEnvSunTintColor",
+        "AlchemyEnvSunTintStrength",
+        "AlchemyEnvMoonTintColor",
+        "AlchemyEnvMoonTintStrength",
+        "AlchemyEnvAmbientTintColor",
+        "AlchemyEnvAmbientTintStrength",
+        "AlchemyEnvShadowLiftEV",
+    };
+
+    // [EnvIntensity v2] per-cell reset buttons -> setting(s) restored to default
+    struct EnvIntensityResetBinding
+    {
+        const char* mButton;
+        const char* mSetting;
+        const char* mSetting2; // tint cells reset swatch + strength together
+    };
+    const EnvIntensityResetBinding ENV_INTENSITY_RESETS[] =
+    {
+        { "env_moon_ev_reset",       "AlchemyEnvMoonEV",           nullptr },
+        { "env_local_ev_reset",      "AlchemyEnvLocalLightEV",     nullptr },
+        { "env_probe_diff_ev_reset", "AlchemyEnvGIProbeDiffuseEV", nullptr },
+        { "env_probe_spec_ev_reset", "AlchemyEnvGIProbeSpecEV",    nullptr },
+        { "env_amb_ev_reset",        "AlchemyEnvGIAmbientEV",      nullptr },
+        { "env_shadow_lift_reset",   "AlchemyEnvShadowLiftEV",     nullptr },
+        { "env_sun_kelvin_reset",    "AlchemyEnvSunKelvin",        nullptr },
+        { "env_sun_tint_reset",      "AlchemyEnvSunTintColor",     "AlchemyEnvSunTintStrength" },
+        { "env_moon_tint_reset",     "AlchemyEnvMoonTintColor",    "AlchemyEnvMoonTintStrength" },
+        { "env_amb_tint_reset",      "AlchemyEnvAmbientTintColor", "AlchemyEnvAmbientTintStrength" },
+    };
+
+    void env_intensity_reset_setting(const std::string& name)
+    {
+        if (auto ctrl = gSavedSettings.getControl(name))
+        {
+            ctrl->resetToDefault(true);
+        }
+    }
 }
 
 //=========================================================================
@@ -185,6 +244,61 @@ bool LLFloaterEnvironmentAdjust::postBuild()
         mEnvIntensityAutoAdjustConn = auto_adjust_ctrl->getSignal()->connect(
             [this](LLControlVariable*, const LLSD&, const LLSD&) { updateGammaLabel(); });
     }
+
+    // [EnvIntensity v2] Advanced exposure panel. Every slider / swatch / check
+    // box binds through control_name; code wires only the reset buttons, the
+    // Advanced show/hide toggle and the Sun/Moon link label. Nothing here
+    // touches mLiveSky.
+    for (const EnvIntensityResetBinding& rb : ENV_INTENSITY_RESETS)
+    {
+        if (LLUICtrl* btn = findChild<LLUICtrl>(rb.mButton))
+        {
+            const std::string setting(rb.mSetting);
+            const std::string setting2(rb.mSetting2 ? rb.mSetting2 : "");
+            btn->setCommitCallback([setting, setting2](LLUICtrl*, const LLSD&)
+            {
+                env_intensity_reset_setting(setting);
+                if (!setting2.empty())
+                {
+                    env_intensity_reset_setting(setting2);
+                }
+            });
+        }
+    }
+    if (LLUICtrl* reset_all = findChild<LLUICtrl>("env_adv_reset_all"))
+    {
+        reset_all->setCommitCallback([](LLUICtrl*, const LLSD&)
+        {
+            for (const char* key : ENV_INTENSITY_ADV_KEYS)
+            {
+                env_intensity_reset_setting(key);
+            }
+            // explicit: the moon follows the Sun slider again
+            gSavedSettings.setBOOL("AlchemyEnvMoonLinked", true);
+        });
+    }
+    if (LLUICtrl* toggle = findChild<LLUICtrl>("env_adv_toggle"))
+    {
+        toggle->setCommitCallback([](LLUICtrl*, const LLSD&)
+        {
+            gSavedSettings.setBOOL("AlchemyEnvIntensityAdvanced",
+                                   !gSavedSettings.getBOOL("AlchemyEnvIntensityAdvanced"));
+        });
+    }
+    // Panel state and the moon link are settings, so Debug Settings edits (and
+    // the toggle / check box above) all flow through one listener each.
+    if (auto adv_ctrl = gSavedSettings.getControl("AlchemyEnvIntensityAdvanced"))
+    {
+        mEnvIntensityAdvancedConn = adv_ctrl->getSignal()->connect(
+            [this](LLControlVariable*, const LLSD&, const LLSD&) { applyEnvIntensityAdvanced(); });
+    }
+    if (auto moon_linked_ctrl = gSavedSettings.getControl("AlchemyEnvMoonLinked"))
+    {
+        mEnvIntensityMoonLinkedConn = moon_linked_ctrl->getSignal()->connect(
+            [this](LLControlVariable*, const LLSD&, const LLSD&) { updateEnvIntensityMoonLink(); });
+    }
+    applyEnvIntensityAdvanced();
+    updateEnvIntensityMoonLink();
 
     // [BDMerge B13] BD - Windlight Stuff: preset combo, save/delete/import,
     // cloud scroll locks. All the widgets live in a hidden bottom strip
@@ -657,6 +771,73 @@ void LLFloaterEnvironmentAdjust::updateGammaLabel()
             note->setToolTip(getString("env_intensity_legacy_tooltip"));
         }
         note->setVisible(classic_sky || legacy_gamma);
+    }
+}
+
+// [EnvIntensity v2] Show / hide the Advanced panel per AlchemyEnvIntensityAdvanced
+// and grow / shrink the floater by the panel's height plus the layout stack's
+// panel spacing (mirrors the BDMerge strip pattern in postBuild), so the stock
+// env_controls panel keeps its size. Idempotent: called from postBuild and from
+// the setting's change signal.
+void LLFloaterEnvironmentAdjust::applyEnvIntensityAdvanced()
+{
+    LLPanel* adv = findChild<LLPanel>(PANEL_ENV_INTENSITY_ADV);
+    if (!adv)
+    {
+        return;
+    }
+    const bool show = gSavedSettings.getBOOL("AlchemyEnvIntensityAdvanced");
+
+    if (LLButton* toggle = findChild<LLButton>("env_adv_toggle"))
+    {
+        toggle->setLabel(getString(show ? "env_intensity_adv_hide" : "env_intensity_adv_show"));
+    }
+
+    if (adv->getVisible() == show)
+    {
+        return;
+    }
+    const S32 delta = (ENV_INTENSITY_ADV_PANEL_HEIGHT + ENV_INTENSITY_PANEL_SPACING) * (show ? 1 : -1);
+
+    if (isMinimized())
+    {
+        // Minimised: the floater is a title bar and reshape() would fight the
+        // minimise rect. Adjust the remembered expanded size instead (kept
+        // top-anchored) so the restore lands at the right height.
+        LLRect expanded = getExpandedRect();
+        const S32 new_height = llmax(expanded.getHeight() + delta, getMinHeight());
+        expanded.mBottom = expanded.mTop - new_height;
+        setExpandedRect(expanded);
+        adv->setVisible(show);
+        return;
+    }
+
+    adv->setVisible(show);
+    // Never below min_height (the layout stack then keeps the stock panels intact).
+    const S32 new_height = llmax(getRect().getHeight() + delta, getMinHeight());
+    if (new_height != getRect().getHeight())
+    {
+        reshape(getRect().getWidth(), new_height);
+    }
+}
+
+// [EnvIntensity v2] Linked (default): the Sun slider drives both bodies and its
+// label reads "Sun / Moon (EV)"; the Moon slider is disabled. Unlinked: "Sun
+// (EV)" and the Moon slider + its reset are live.
+void LLFloaterEnvironmentAdjust::updateEnvIntensityMoonLink()
+{
+    const bool linked = gSavedSettings.getBOOL("AlchemyEnvMoonLinked");
+    if (LLUICtrl* label = findChild<LLUICtrl>("env_sun_ev_label"))
+    {
+        label->setValue(getString(linked ? "env_intensity_sun_moon_label" : "env_intensity_sun_label"));
+    }
+    static const char* const moon_widgets[] = { "env_moon_ev", "env_moon_ev_unit", "env_moon_ev_reset" };
+    for (const char* name : moon_widgets)
+    {
+        if (LLView* view = findChild<LLView>(name))
+        {
+            view->setEnabled(!linked);
+        }
     }
 }
 

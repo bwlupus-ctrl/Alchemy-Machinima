@@ -4078,7 +4078,7 @@
         <key>AlchemyEnvSunEV</key>
         <map>
             <key>Comment</key>
-            <string>Sun / Moon light intensity offset in stops (EV) applied on top of the current sky. 0 = stock look. Scales direct sun/moon light on surfaces only (not the sky dome, clouds or volumetric shafts). Capped at 0 on legacy (non-HDR) skies, which cannot tonemap; inactive on classic skies (legacy sky with RenderSkyAutoAdjustLegacy off). UI range -2..+3.</string>
+            <string>Sun light intensity offset in stops (EV) applied on top of the current sky (also the Moon while AlchemyEnvMoonLinked is on). 0 = stock look. Scales direct sun/moon light on surfaces only (not the sky dome, clouds or volumetric shafts). Capped at 0 on legacy (non-HDR) skies, which cannot tonemap; inactive on classic skies (legacy sky with RenderSkyAutoAdjustLegacy off). UI range -4..+6; clamped to +-6 (v2: was +-4, so Debug-Settings-only values in (4,6] / [-6,-4) now render at their nominal stop). Above about +3 EV the tonemapper pushes lit surfaces to white.</string>
             <key>Persist</key>
             <integer>1</integer>
             <key>Type</key>
@@ -4089,13 +4089,207 @@
         <key>AlchemyEnvSkyGIEV</key>
         <map>
             <key>Comment</key>
-            <string>Sky light / GI intensity offset in stops (EV) applied on top of the current sky. 0 = stock look. Scales reflection-probe irradiance, the EEP ambient fallback and the SSAO irradiance clamp together at display time only (held at 1.0 during probe captures, so glossy reflections of indirect-lit surfaces show the stock level). Inactive on classic skies (legacy sky with RenderSkyAutoAdjustLegacy off). UI range -2..+2.</string>
+            <string>Sky light / GI master intensity offset in stops (EV) applied on top of the current sky. 0 = stock look. Scales sky ambient (plus AlchemyEnvGIAmbientEV) and reflection-probe irradiance / the probes-off fallback / the SSAO irradiance clamp (plus AlchemyEnvGIProbeDiffuseEV) together at display time only (held at 1.0 during probe captures; hero mirrors show the display look). Probe reflections are independent (AlchemyEnvGIProbeSpecEV). Inactive on classic skies (legacy sky with RenderSkyAutoAdjustLegacy off). UI range -4..+4; each sum clamped to +-6 (v2: was +-4).</string>
             <key>Persist</key>
             <integer>1</integer>
             <key>Type</key>
             <string>F32</string>
             <key>Value</key>
             <real>0.0</real>
+        </map>
+        <!-- [EnvIntensity v2] exposure strip upgrade: moon split, GI split, probe
+             reflections, local lights EV, Kelvin / tints, shadow lift, Advanced
+             panel state. All defaults are exact identity (stock render). -->
+        <key>AlchemyEnvMoonLinked</key>
+        <map>
+            <key>Comment</key>
+            <string>Link the Moon light intensity to AlchemyEnvSunEV (on = the Sun slider drives both sun and moon, the original behaviour). Off = AlchemyEnvMoonEV applies while the moon is the primary light.</string>
+            <key>Persist</key>
+            <integer>1</integer>
+            <key>Type</key>
+            <string>Boolean</string>
+            <key>Value</key>
+            <integer>1</integer>
+        </map>
+        <key>AlchemyEnvMoonEV</key>
+        <map>
+            <key>Comment</key>
+            <string>Moon light intensity offset in stops (EV) on surfaces, used only while AlchemyEnvMoonLinked is off and the moon is up. 0 = stock. Same rules as AlchemyEnvSunEV (legacy cap, classic inactive). UI range -4..+6; clamped to +-6.</string>
+            <key>Persist</key>
+            <integer>1</integer>
+            <key>Type</key>
+            <string>F32</string>
+            <key>Value</key>
+            <real>0.0</real>
+        </map>
+        <key>AlchemyEnvGIAmbientEV</key>
+        <map>
+            <key>Comment</key>
+            <string>Sky ambient (EEP ambient / amblit) intensity offset in stops (EV), added to the GI master AlchemyEnvSkyGIEV. 0 = stock. Held at 1.0 during probe captures. UI range -3..+3; the sum is clamped to +-6.</string>
+            <key>Persist</key>
+            <integer>1</integer>
+            <key>Type</key>
+            <string>F32</string>
+            <key>Value</key>
+            <real>0.0</real>
+        </map>
+        <key>AlchemyEnvGIProbeDiffuseEV</key>
+        <map>
+            <key>Comment</key>
+            <string>Reflection-probe irradiance (probe diffuse) and probes-off fallback intensity offset in stops (EV), added to the GI master AlchemyEnvSkyGIEV; also scales the SSAO irradiance clamp. 0 = stock. Held at 1.0 during probe captures. UI range -3..+3; the sum is clamped to +-6.</string>
+            <key>Persist</key>
+            <integer>1</integer>
+            <key>Type</key>
+            <string>F32</string>
+            <key>Value</key>
+            <real>0.0</real>
+        </map>
+        <key>AlchemyEnvGIProbeSpecEV</key>
+        <map>
+            <key>Comment</key>
+            <string>Reflection-probe radiance (glossy / metal / water / legacy shiny and env-mapped reflections) intensity offset in stops (EV). Independent of the GI master. Applied before the SSR mix and before hero mirrors, so screen-space and mirror reflections keep the stock level. 0 = stock; 1.0 during probe captures. UI range -3..+3; clamped to +-6.</string>
+            <key>Persist</key>
+            <integer>1</integer>
+            <key>Type</key>
+            <string>F32</string>
+            <key>Value</key>
+            <real>0.0</real>
+        </map>
+        <key>AlchemyEnvLocalLightEV</key>
+        <map>
+            <key>Comment</key>
+            <string>Local (point / spot / projector) light intensity offset in stops (EV): scales the light colour once per emitter at every site (deferred, forward, froxel and projector shafts, cine live probe, Prism), on top of AlchemyGlobalLightScale. Active in probe captures (source light). Also active on classic skies. Cine Light Rig emitters are excluded unless AlchemyEnvLocalLightIncludeRig is on. UI range -4..+4; clamped to +-6.</string>
+            <key>Persist</key>
+            <integer>1</integer>
+            <key>Type</key>
+            <string>F32</string>
+            <key>Value</key>
+            <real>0.0</real>
+        </map>
+        <key>AlchemyEnvLocalLightIncludeRig</key>
+        <map>
+            <key>Comment</key>
+            <string>Apply AlchemyEnvLocalLightEV to Cine Light Rig emitters too. Off = rig lights keep their own controls and are not scaled.</string>
+            <key>Persist</key>
+            <integer>1</integer>
+            <key>Type</key>
+            <string>Boolean</string>
+            <key>Value</key>
+            <integer>0</integer>
+        </map>
+        <key>AlchemyEnvSunKelvin</key>
+        <map>
+            <key>Comment</key>
+            <string>Sun colour temperature in Kelvin applied to direct sun light on surfaces (Planckian locus, linear light, luminance-preserving). 6500 = exact identity (no change). Below 6500 warms, above cools. Does not affect the sun disc, sky dome, clouds, moon light or local lights. UI range 2000..12000.</string>
+            <key>Persist</key>
+            <integer>1</integer>
+            <key>Type</key>
+            <string>F32</string>
+            <key>Value</key>
+            <real>6500.0</real>
+        </map>
+        <key>AlchemyEnvSunTintColor</key>
+        <map>
+            <key>Comment</key>
+            <string>Sun tint swatch (sRGB picker). Multiplies direct sun light on surfaces after Kelvin, luminance-normalised so a neutral light keeps its brightness (max channel limited to 4x). White = no tint. Strength: AlchemyEnvSunTintStrength.</string>
+            <key>Persist</key>
+            <integer>1</integer>
+            <key>Type</key>
+            <string>Color4</string>
+            <key>Value</key>
+            <array>
+                <real>1.0</real>
+                <real>1.0</real>
+                <real>1.0</real>
+                <real>1.0</real>
+            </array>
+        </map>
+        <key>AlchemyEnvSunTintStrength</key>
+        <map>
+            <key>Comment</key>
+            <string>Sun tint swatch strength 0..1 (scales only the swatch term, not Kelvin). 0 or a white swatch = no swatch tint.</string>
+            <key>Persist</key>
+            <integer>1</integer>
+            <key>Type</key>
+            <string>F32</string>
+            <key>Value</key>
+            <real>1.0</real>
+        </map>
+        <key>AlchemyEnvMoonTintColor</key>
+        <map>
+            <key>Comment</key>
+            <string>Moon tint swatch (sRGB picker). Multiplies direct moon light on surfaces at night, luminance-normalised (max channel limited to 4x). White = no tint. Strength: AlchemyEnvMoonTintStrength.</string>
+            <key>Persist</key>
+            <integer>1</integer>
+            <key>Type</key>
+            <string>Color4</string>
+            <key>Value</key>
+            <array>
+                <real>1.0</real>
+                <real>1.0</real>
+                <real>1.0</real>
+                <real>1.0</real>
+            </array>
+        </map>
+        <key>AlchemyEnvMoonTintStrength</key>
+        <map>
+            <key>Comment</key>
+            <string>Moon tint swatch strength 0..1. 0 or a white swatch = no tint.</string>
+            <key>Persist</key>
+            <integer>1</integer>
+            <key>Type</key>
+            <string>F32</string>
+            <key>Value</key>
+            <real>1.0</real>
+        </map>
+        <key>AlchemyEnvAmbientTintColor</key>
+        <map>
+            <key>Comment</key>
+            <string>Ambient tint swatch (sRGB picker). Multiplies sky ambient, reflection-probe irradiance, the probes-off fallback and the SSAO irradiance ceiling (shadow side, interiors, corners), luminance-normalised (max channel limited to 4x). Not the sky dome, specular / reflections, local lights or emissive. White = no tint; 1.0 during probe captures. Strength: AlchemyEnvAmbientTintStrength.</string>
+            <key>Persist</key>
+            <integer>1</integer>
+            <key>Type</key>
+            <string>Color4</string>
+            <key>Value</key>
+            <array>
+                <real>1.0</real>
+                <real>1.0</real>
+                <real>1.0</real>
+                <real>1.0</real>
+            </array>
+        </map>
+        <key>AlchemyEnvAmbientTintStrength</key>
+        <map>
+            <key>Comment</key>
+            <string>Ambient tint swatch strength 0..1. 0 or a white swatch = no tint.</string>
+            <key>Persist</key>
+            <integer>1</integer>
+            <key>Type</key>
+            <string>F32</string>
+            <key>Value</key>
+            <real>1.0</real>
+        </map>
+        <key>AlchemyEnvShadowLiftEV</key>
+        <map>
+            <key>Comment</key>
+            <string>Shadow lift in stops (EV): raises the diffuse ambient / irradiance term where the sun or moon does not reach (NdotL x shadow below 0.25; pixels at or above that are exactly unchanged), applied after the SSAO ceiling so occluded corners lift by the same ratio. +1 = full-shadow ambient x2. 0 = off; 0 in classic mode and in probe captures. UI range 0..+2.</string>
+            <key>Persist</key>
+            <integer>1</integer>
+            <key>Type</key>
+            <string>F32</string>
+            <key>Value</key>
+            <real>0.0</real>
+        </map>
+        <key>AlchemyEnvIntensityAdvanced</key>
+        <map>
+            <key>Comment</key>
+            <string>Personal Lighting: show the Advanced exposure panel (UI state).</string>
+            <key>Persist</key>
+            <integer>1</integer>
+            <key>Type</key>
+            <string>Boolean</string>
+            <key>Value</key>
+            <integer>0</integer>
         </map>
         <!-- [EnvIntensity] previously read via LLCachedControl with hard-coded
              defaults but never declared; declared here with those same defaults. -->

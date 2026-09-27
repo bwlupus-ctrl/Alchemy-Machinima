@@ -98,6 +98,8 @@ float getAmbientClamp();
 
 void mirrorClip(vec3 pos);
 
+vec3 applyShadowLift(vec3 irradiance, vec3 norm, vec3 light_dir, float scol); // [EnvIntensity v2] deferredUtil.glsl
+
 void sampleReflectionProbesLegacy(inout vec3 ambenv, inout vec3 glossenv, inout vec3 legacyenv,
         vec2 tc, vec3 pos, vec3 norm, float glossiness, float envIntensity, bool transparent, vec3 amblit_linear);
 
@@ -333,7 +335,7 @@ void main()
     vec3 glossenv = vec3(0.0);
     vec3 legacyenv = vec3(0.0);
     sampleReflectionProbesLegacy(irradiance, glossenv, legacyenv, frag, pos.xyz, norm.xyz, 0.0, 0.0, true, amblit_linear);
-
+    irradiance = applyShadowLift(irradiance, norm.xyz, light_dir, shadow); // [EnvIntensity v2] no SSAO here; last irradiance-side op
 
     float da = dot(norm.xyz, light_dir.xyz);
           da = clamp(da, -1.0, 1.0);

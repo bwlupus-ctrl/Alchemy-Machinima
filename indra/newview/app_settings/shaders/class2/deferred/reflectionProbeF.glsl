@@ -30,6 +30,11 @@ uniform float reflection_probe_ambiance;
 // [EnvIntensity] viewer-side Sky/GI intensity (2^AlchemyEnvSkyGIEV); mirrors the
 // class3 probe-irradiance multiplier so probes-off behaves consistently.
 uniform float sky_gi_scale;
+// [EnvIntensity v2] probe reflections EV factor (1.0 = stock, 1.0 in captures)
+// and the luminance-normalised ambient tint (vec3(1) = off). Both applied in
+// uniform-gated branches so the off path is the unmodified expression.
+uniform float sky_probe_rad_scale;
+uniform vec3  sky_amb_tint;
 
 uniform samplerCube environmentMap;
 
@@ -41,11 +46,20 @@ vec3 linear_to_srgb(vec3 c);
 void sampleReflectionProbes(inout vec3 ambenv, inout vec3 glossenv,
         vec2 tc, vec3 pos, vec3 norm, float glossiness, bool transparent, vec3 amblit_linear)
 {
-    ambenv = mix(ambenv, vec3(reflection_probe_ambiance * 0.25 * sky_gi_scale), reflection_probe_ambiance); // [EnvIntensity]
+    vec3 probe_amb = vec3(reflection_probe_ambiance * 0.25 * sky_gi_scale); // [EnvIntensity]
+    if (sky_amb_tint != vec3(1.0)) // [EnvIntensity v2] tinted fill
+    {
+        probe_amb *= sky_amb_tint;
+    }
+    ambenv = mix(ambenv, probe_amb, reflection_probe_ambiance);
 
     vec3 refnormpersp = normalize(reflect(pos.xyz, norm.xyz));
     vec3 env_vec = env_mat * refnormpersp;
     glossenv = srgb_to_linear(texture(environmentMap, env_vec).rgb);
+    if (sky_probe_rad_scale != 1.0) // [EnvIntensity v2] decoded (linear) here
+    {
+        glossenv *= sky_probe_rad_scale;
+    }
 }
 
 void sampleReflectionProbesWater(inout vec3 ambenv, inout vec3 glossenv,
@@ -63,12 +77,25 @@ vec4 sampleReflectionProbesDebug(vec3 pos)
 void sampleReflectionProbesLegacy(inout vec3 ambenv, inout vec3 glossenv, inout vec3 legacyenv,
         vec2 tc, vec3 pos, vec3 norm, float glossiness, float envIntensity, bool transparent, vec3 amblit_linear)
 {
-    ambenv = mix(ambenv, vec3(reflection_probe_ambiance * 0.25 * sky_gi_scale), reflection_probe_ambiance); // [EnvIntensity]
+    vec3 probe_amb = vec3(reflection_probe_ambiance * 0.25 * sky_gi_scale); // [EnvIntensity]
+    if (sky_amb_tint != vec3(1.0)) // [EnvIntensity v2] tinted fill
+    {
+        probe_amb *= sky_amb_tint;
+    }
+    ambenv = mix(ambenv, probe_amb, reflection_probe_ambiance);
 
     vec3 refnormpersp = normalize(reflect(pos.xyz, norm.xyz));
     vec3 env_vec = env_mat * refnormpersp;
 
     legacyenv = texture(environmentMap, env_vec).rgb;
+
+    // [EnvIntensity v2] legacyenv stays sRGB-ENCODED here (applyLegacyEnv mixes
+    // encoded values), so the EV factor is applied in linear light with a
+    // bypass: the off path never round-trips the encoded value.
+    if (sky_probe_rad_scale != 1.0)
+    {
+        legacyenv = linear_to_srgb(srgb_to_linear(legacyenv) * sky_probe_rad_scale);
+    }
 
     glossenv = legacyenv;
 }

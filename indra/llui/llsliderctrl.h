@@ -56,6 +56,9 @@ public:
         // [AL] passthrough to LLSlider::Params::wheel_adjust (hover wheel steps
         // a horizontal slider by its increment); off by default.
         Optional<bool>          wheel_adjust;
+        // [EnvIntensity v2] passthrough to LLSlider::Params::wheel_fine_div
+        // (Shift = increment / div; fine snapping grid); 0 = off.
+        Optional<F32>           wheel_fine_div;
 
         Optional<LLUIColor>     text_color,
                                 text_disabled_color;
@@ -76,6 +79,7 @@ public:
             is_volume_slider("volume"),
             decimal_digits("decimal_digits", 3),
             wheel_adjust("wheel_adjust", false),
+            wheel_fine_div("wheel_fine_div", 0.f),
             text_color("text_color"),
             text_disabled_color("text_disabled_color"),
             slider_bar("slider_bar"),
@@ -97,7 +101,9 @@ public:
     // [BDMerge C8] precision_override forwarded to LLSlider::setValue(); see donor note above.
     void            setValue(F32 v, bool from_event = false, bool precision_override = false);
 
-    /*virtual*/ void    setValue(const LLSD& value) { setValue((F32)value.asReal(), true); }
+    // [EnvIntensity v2] out of line: routes through LLSlider::setValue(const LLSD&)
+    // so wheel_fine_div sliders keep incoming fine values; others unchanged.
+    /*virtual*/ void    setValue(const LLSD& value);
     /*virtual*/ LLSD    getValue() const            { return LLSD(getValueF32()); }
     /*virtual*/ bool    setLabelArg( const std::string& key, const LLStringExplicit& text );
 
@@ -138,6 +144,11 @@ public:
 
     /*virtual*/ void    setRect(const LLRect& rect);
     /*virtual*/ void    reshape(S32 width, S32 height, bool called_from_parent = true);
+
+    // [EnvIntensity v2] Only for sliders with wheel_adjust + wheel_fine_div:
+    // forwards the wheel from anywhere over the control (label / value text)
+    // to the slider bar. Every other slider takes the base-class path.
+    /*virtual*/ bool    handleScrollWheel(S32 x, S32 y, LLScrollDelta delta);
 
     static void     onSliderCommit(LLUICtrl* caller, const LLSD& userdata);
 

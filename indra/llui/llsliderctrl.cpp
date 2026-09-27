@@ -149,6 +149,10 @@ LLSliderCtrl::LLSliderCtrl(const LLSliderCtrl::Params& p)
     {
         slider_p.wheel_adjust = p.wheel_adjust; // [AL] hover-wheel precision opt-in
     }
+    if (!slider_p.wheel_fine_div.isProvided())
+    {
+        slider_p.wheel_fine_div = p.wheel_fine_div; // [EnvIntensity v2] Shift fine step opt-in
+    }
 
     slider_p.commit_callback.function = &LLSliderCtrl::onSliderCommit;
     slider_p.control_name = p.control_name;
@@ -223,6 +227,27 @@ void LLSliderCtrl::setValue(F32 v, bool from_event, bool precision_override)
     mSlider->setValue( v, from_event, precision_override );
     mValue = mSlider->getValueF32();
     updateText();
+}
+
+// [EnvIntensity v2] Control-variable sync path. For a slider without
+// wheel_fine_div this is exactly the old inline body (mSlider->setValue(v,
+// true, false)); with it, LLSlider keeps the incoming fine value.
+void LLSliderCtrl::setValue(const LLSD& value)
+{
+    mSlider->setValue(value);
+    mValue = mSlider->getValueF32();
+    updateText();
+}
+
+// [EnvIntensity v2] Gated on wheel_fine_div so the shipping wheel_adjust
+// floaters keep their current hit area (slider bar only).
+bool LLSliderCtrl::handleScrollWheel(S32 x, S32 y, LLScrollDelta delta)
+{
+    if (mSlider && mSlider->getWheelAdjust() && mSlider->getWheelFineDiv() > 0.f)
+    {
+        return mSlider->handleScrollWheel(x, y, delta);
+    }
+    return LLF32UICtrl::handleScrollWheel(x, y, delta);
 }
 
 bool LLSliderCtrl::setLabelArg( const std::string& key, const LLStringExplicit& text )

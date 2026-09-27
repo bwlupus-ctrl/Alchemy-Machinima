@@ -29,6 +29,7 @@
 #include "llviewercontrol.h"
 #include "llsettingsvo.h"
 
+#include "alenvintensity.h" // [EnvIntensity v2]
 #include "pipeline.h"
 
 #include <algorithm>
@@ -927,10 +928,6 @@ void LLSettingsVOSky::applySpecial(void *ptarget, bool force)
     static LLCachedControl<F32> sunlight_hdr_scale(gSavedSettings, "RenderHDRSkySunlightScale", 1.0f);
     static LLCachedControl<F32> ambient_scale(gSavedSettings, "RenderSkyAmbientScale", 1.0f);
     static LLCachedControl<F32> tonemap_mix_setting(gSavedSettings, "RenderTonemapMix", 1.f);
-    // [EnvIntensity] viewer-side Light Intensity (Personal Lighting floater).
-    // Stops, 0 = stock. Never written into the sky asset.
-    static LLCachedControl<F32> env_sun_ev(gSavedSettings, "AlchemyEnvSunEV", 0.f);
-    static LLCachedControl<F32> env_gi_ev(gSavedSettings, "AlchemyEnvSkyGIEV", 0.f);
 
     // sky is a "classic" sky following pre SL 7.0 shading
     bool classic_mode = psky->canAutoAdjust() && !should_auto_adjust();
@@ -940,52 +937,46 @@ void LLSettingsVOSky::applySpecial(void *ptarget, bool force)
         psky->setTonemapMix(tonemap_mix_setting);
     }
 
-    // [EnvIntensity] Light Intensity EV factors. exp2f(0) == 1.0 exactly, so
-    // 0 EV is bit-identical to stock. They are uploaded as their OWN uniforms
-    // (sky_sun_ev_scale / sky_gi_scale) and applied in linear light by
-    // atmosphericsFuncs.glsl (calcAtmosphericVarsLinear), so the pre-PBR
-    // compatibility scales below keep their stock semantics. SUNLIGHT_COLOR is
-    // deliberately NOT scaled (sky dome / clouds / volumetrics keep stock
-    // levels and atmosphericsFuncs would otherwise apply the boost twice).
-    F32 env_sun_mul = exp2f(llclamp((F32)env_sun_ev, -4.f, 4.f));
-    F32 env_gi_mul  = exp2f(llclamp((F32)env_gi_ev, -4.f, 4.f));
-    // Classic skies (pre-PBR shading; only when RenderSkyAutoAdjustLegacy is
-    // off on a legacy sky) keep sunlit/amblit sRGB-encoded and every classic
-    // consumer (softenLightF / alphaF / materialF legacy branches, pbrBaseLight
-    // classic) sums sun and ambient in encoded space BEFORE decoding, so a
-    // linear EV factor cannot be applied correctly without rewriting the
-    // classic combination itself. The factors are therefore INACTIVE (1.0) in
-    // classic mode -- correct by construction -- and the Personal Lighting
-    // floater's note says so.
-    if (classic_mode)
-    {
-        env_sun_mul = 1.f;
-        env_gi_mul  = 1.f;
-    }
-    // Legacy-gamma skies (probe ambiance == 0) skip the tonemapper, so any sun
-    // boost above stock would hard-clip in legacyGamma(); allow darkening only.
-    if (psky->getReflectionProbeAmbiance(should_auto_adjust) == 0.f)
-    {
-        env_sun_mul = llmin(env_sun_mul, 1.f);
-    }
-    // Probe captures: the GI factor must be 1.0 for EVERY gCubeSnapshot pass,
-    // not just the irradiance pass. The irradiance pass bakes amblit into the
-    // irradiance maps; the radiance pass (ambscale 1) bakes GI-lit geometry
-    // into the radiance maps, which the irradiance pass then samples through
-    // reflective geometry (radscale 0.5, glossenv -> iblSpec) and convolves.
-    // Display-time tapIrradianceMap multiplies by sky_gi_scale on top, so any
-    // GI factor inside a capture is applied twice. Holding it at 1.0 for all
-    // captures applies it exactly once, at display. Accepted consequence:
-    // glossy reflections of indirect-lit geometry show stock GI. The sun
-    // factor stays active in captures: it scales the SOURCE light once, the
-    // bounce it produces is what the probes hold, and display time scales only
-    // the direct term, so no path applies it twice.
-    const F32 env_gi_mul_capture_safe = gCubeSnapshot ? 1.f : env_gi_mul;
+    // [EnvIntensity v2] Personal Lighting exposure strip. The effective factors
+    // come from ALEnvIntensity::compute() (alenvintensity.cpp) and are uploaded
+    // as their OWN uniforms, applied in linear light by atmosphericsFuncs.glsl
+    // (calcAtmosphericVarsLinear), reflectionProbeF.glsl and deferredUtil.glsl,
+    // so the pre-PBR compatibility scales below keep their stock semantics.
+    // SUNLIGHT_COLOR is deliberately NOT scaled (sky dome / clouds / volumetrics
+    // keep stock levels and atmosphericsFuncs would otherwise apply it twice).
+    // Predicates:
+    //  - classic_mode: every sky-side factor identity (classic consumers sum
+    //    sun and ambient in encoded space before decoding; a linear factor
+    //    cannot be applied correctly there) -- the floater's note says so;
+    //  - legacy-gamma (probe ambiance == 0, no tonemapper): sun boost capped at
+    //    0 EV, tints normalised to a max channel of 1 (nothing new clips);
+    //  - capture (gCubeSnapshot that is NOT a hero mirror pass): the sampling-
+    //    time terms (amb/diff/spec scales, ambient tint, shadow lift) are
+    //    identity for EVERY probe pass -- the irradiance pass bakes amblit, the
+    //    radiance pass bakes GI-lit geometry that the irradiance pass re-samples
+    //    through reflective surfaces -- so display-time sampling applies them
+    //    exactly once. Source-light terms (sun/moon EV + tint, local lights)
+    //    stay active in captures: they scale the light once and the bounce is
+    //    what the probes hold. Hero mirror passes render the display look.
+    //  - sun_up: same predicate as SUN_UP_FACTOR below, so the shader's
+    //    sunlit (sun OR moon) meets the matching EV / tint.
+    // exp2f(0) == 1.0 exactly and the tints are exactly (1,1,1) at their
+    // defaults, so 0 EV / no tint is bit-identical to stock.
+    const bool env_legacy_gamma = (psky->getReflectionProbeAmbiance(should_auto_adjust) == 0.f);
+    const ALEnvIntensity::Factors env = ALEnvIntensity::compute(classic_mode,
+                                                                env_legacy_gamma,
+                                                                ALEnvIntensity::isSamplingCapture(),
+                                                                getIsSunUp());
 
     shader->uniform1f(LLShaderMgr::SKY_SUNLIGHT_SCALE, hdr ? sunlight_hdr_scale : sunlight_scale); // compat only (stock)
     shader->uniform1f(LLShaderMgr::SKY_AMBIENT_SCALE, ambient_scale);                                // compat only (stock)
-    shader->uniform1f(LLShaderMgr::SKY_SUN_EV_SCALE, env_sun_mul);                                   // [EnvIntensity]
-    shader->uniform1f(LLShaderMgr::SKY_GI_SCALE, env_gi_mul_capture_safe);                           // [EnvIntensity]
+    shader->uniform1f(LLShaderMgr::SKY_SUN_EV_SCALE, env.mSunMul);                                   // [EnvIntensity v2] sun or moon
+    shader->uniform1f(LLShaderMgr::SKY_GI_SCALE, env.mDiffMul);                                      // [EnvIntensity v2] probe diffuse
+    shader->uniform1f(LLShaderMgr::SKY_AMB_SCALE, env.mAmbMul);                                      // [EnvIntensity v2] sky ambient
+    shader->uniform1f(LLShaderMgr::SKY_PROBE_RAD_SCALE, env.mSpecMul);                               // [EnvIntensity v2] probe reflections
+    shader->uniform3fv(LLShaderMgr::SKY_SUN_TINT, env.mSunTint.mV);                                  // [EnvIntensity v2]
+    shader->uniform3fv(LLShaderMgr::SKY_AMB_TINT, env.mAmbTint.mV);                                  // [EnvIntensity v2]
+    shader->uniform1f(LLShaderMgr::SHADOW_LIFT_GAIN, env.mLiftGain);                                 // [EnvIntensity v2]
     shader->uniform1i(LLShaderMgr::CLASSIC_MODE, classic_mode);
 
     LLRender::sClassicMode = classic_mode;

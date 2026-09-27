@@ -89,6 +89,11 @@ private:
     void                        updateGammaLabel();
     void                        onButtonReset();
 
+    // [EnvIntensity v2] Advanced exposure panel show/hide (AlchemyEnvIntensityAdvanced)
+    // and the Sun/Moon link label + Moon slider enable (AlchemyEnvMoonLinked).
+    void                        applyEnvIntensityAdvanced();
+    void                        updateEnvIntensityMoonLink();
+
     void                        onEnvironmentUpdated(LLEnvironment::EnvSelection_t env, S32 version);
 
     // [BDMerge B13] BD - Windlight Stuff (gated by BDMergeEnvLocalPresets;
@@ -122,6 +127,9 @@ private:
     // so the Light Intensity classic/legacy note never goes stale. Scoped:
     // disconnects automatically when the floater is destroyed.
     boost::signals2::scoped_connection mEnvIntensityAutoAdjustConn;
+    // [EnvIntensity v2] setting listeners (Debug Settings edits show live)
+    boost::signals2::scoped_connection mEnvIntensityAdvancedConn;
+    boost::signals2::scoped_connection mEnvIntensityMoonLinkedConn;
 };
 
 #endif // LL_FLOATERFIXEDENVIRONMENT_H

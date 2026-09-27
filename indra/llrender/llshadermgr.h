@@ -901,6 +901,18 @@ public:
         TRON_TRAIL_PARAMS2,                //  "tron_trail_params2"    vec4 intensity, style 0/1/2, no-post scale, clamp-display flag
         TRON_TRAIL_PARAMS3,                //  "tron_trail_params3"    vec4 fog mode, fog density 1/m, reserved, reserved
 
+        // [EnvIntensity v2] Personal Lighting exposure strip, uploaded from
+        // LLSettingsVOSky::applySpecial (SG_ANY) via ALEnvIntensity::compute().
+        // Every one of these is exactly identity (1.0 / vec3(1) / 0.0) at the
+        // default settings, in classic mode, and (sampling-time terms) during
+        // reflection-probe captures. Keep in LOCKSTEP with the push_back list
+        // in llshadermgr.cpp (llassert there is compiled out in Release).
+        SKY_AMB_SCALE,                     //  "sky_amb_scale"         float 2^(GI master + GI ambient offset): amblit in calcAtmosphericVarsLinear
+        SKY_PROBE_RAD_SCALE,               //  "sky_probe_rad_scale"   float 2^(probe reflections EV): probe radiance (glossenv/legacyenv), before SSR + hero
+        SKY_SUN_TINT,                      //  "sky_sun_tint"          vec3 luminance-normalised Kelvin x swatch tint on sunlit (sun) / swatch tint (moon)
+        SKY_AMB_TINT,                      //  "sky_amb_tint"          vec3 luminance-normalised swatch tint on amblit / probe irradiance / SSAO ceiling
+        SHADOW_LIFT_GAIN,                  //  "shadow_lift_gain"      float 2^(shadow lift EV) - 1; 0 = off (deferredUtil.glsl applyShadowLift)
+
         END_RESERVED_UNIFORMS
     } eGLSLReservedUniforms;
     // clang-format on

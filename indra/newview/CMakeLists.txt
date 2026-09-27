@@ -286,6 +286,7 @@ set(viewer_SOURCE_FILES
     alcinelightrigmanager.cpp
     alcinehaze.cpp
     alcinerigrim.cpp
+    alenvintensity.cpp
     alrotoink.cpp
     altron.cpp
     alcinelightrigmodel.cpp
@@ -1188,6 +1189,7 @@ set(viewer_HEADER_FILES
     alpanelatmosphericvolumes.h
     alcinehaze.h
     alcinerigrim.h
+    alenvintensity.h
     alrotoink.h
     altron.h
     alpanelcinelightrig.h
