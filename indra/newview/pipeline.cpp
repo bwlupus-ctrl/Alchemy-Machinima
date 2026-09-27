@@ -316,6 +316,13 @@ F32 LLPipeline::RenderShadowSplitBlend;
 S32 LLPipeline::RenderShadowSoftenMode;
 F32 LLPipeline::RenderShadowSoftenPx;
 F32 LLPipeline::RenderShadowSoftenMM;
+// [ShadowDist P2]
+S32 LLPipeline::RenderShadowUnitsMode;
+S32 LLPipeline::RenderShadowUnitsScope;
+F32 LLPipeline::RenderShadowBiasMM;
+F32 LLPipeline::RenderShadowOffsetTexels;
+F32 LLPipeline::RenderShadowSoftWorldMM;
+F32 LLPipeline::RenderShadowSlopeScale;
 F32 LLPipeline::RenderShadowErrorCutoff;
 F32 LLPipeline::RenderShadowFOVCutoff;
 bool LLPipeline::CameraOffset;
@@ -472,6 +479,48 @@ static LLStaticHashedString sShadowSplitBlend("shadow_split_blend");
 static LLStaticHashedString sShadowSoftenMode("shadow_soften_mode");
 static LLStaticHashedString sShadowSoftenSigma("shadow_soften_sigma");
 static LLStaticHashedString sShadowPxPerM("shadow_px_per_m");
+// [ShadowDist P2] Control C uniforms (shadowUtil.glsl)
+static LLStaticHashedString sShadowUnitsMode("shadow_units_mode");
+static LLStaticHashedString sShadowUnitsScope("shadow_units_scope");
+static LLStaticHashedString sShadowCascadeCoef("shadow_cascade_coef");
+static LLStaticHashedString sShadowResCascade("shadow_res_cascade");
+static LLStaticHashedString sShadowResCascadeH("shadow_res_cascade_h"); // [ShadowDist P2 fix] per-axis (non-square maps)
+static LLStaticHashedString sShadowBiasMM("shadow_bias_mm");
+static LLStaticHashedString sShadowOffsetTexels("shadow_offset_texels");
+static LLStaticHashedString sShadowSoftWorldMM("shadow_soft_world_mm");
+static LLStaticHashedString sShadowSlopeScale("shadow_slope_scale");
+// [P3] shadow_subject: declared in shadowUtil.glsl now so the three-way structure is complete; always 0 until Control B
+static LLStaticHashedString sShadowSubject("shadow_subject");
+
+// [ShadowDist P2] Control C per-cascade coefficients (design v2 s4.2, v3 s5.3):
+// (k_depth, texel_x_coef, texel_y_coef, is_persp). The shader converts a world
+// distance d (metres) to normalised depth as d*k (ortho) or d*k/w (perspective),
+// and texel sizes in metres are texel_x_coef (*w) / texel_y_coef (*w*w).
+static LLVector4 shadow_dist_ortho_coef(const LLVector3& mn, const LLVector3& mx, const LLRenderTarget& rt)
+{
+    // proj = glm::ortho(mn.x, mx.x, mn.y, mx.y, -mx.z, -mn.z): depth range mx.z - mn.z
+    const F32 res_x = llmax(static_cast<F32>(rt.getWidth()), 1.f);
+    const F32 res_y = llmax(static_cast<F32>(rt.getHeight()), 1.f);
+    const F32 depth = llmax(mx.mV[2] - mn.mV[2], 1e-4f);
+    return LLVector4(1.f / depth,
+                     llmax(mx.mV[0] - mn.mV[0], 1e-6f) / res_x,
+                     llmax(mx.mV[1] - mn.mV[1], 1e-6f) / res_y,
+                     0.f);
+}
+
+static LLVector4 shadow_dist_persp_coef(F32 fx, F32 fz, F32 ynear, F32 yfar, const LLRenderTarget& rt)
+{
+    // proj columns: (-fx,0,0,0) (0,(yf+yn)/(yn-yf),0,-1) (0,0,-fz,0) (0,2*yf*yn/(yn-yf),0,0)
+    // -> w = -y; stc.z = 0.5*(-fz*z/w)+0.5 (k = 0.5*fz, /w in shader);
+    //    stc.x = 0.5*(-fx*x/w)+0.5 -> texel_x = 2*w/(fx*res_x);
+    //    stc.y = 0.5*(A + B/w)+0.5, |B| = 2*yf*yn/(yf-yn) -> texel_y = w*w*(yf-yn)/(res_y*yf*yn) (first order)
+    const F32 res_x = llmax(static_cast<F32>(rt.getWidth()), 1.f);
+    const F32 res_y = llmax(static_cast<F32>(rt.getHeight()), 1.f);
+    return LLVector4(0.5f * fz,
+                     2.f / (llmax(fx, 1e-6f) * res_x),
+                     llmax(yfar - ynear, 1e-6f) / (res_y * llmax(yfar * ynear, 1e-6f)),
+                     1.f);
+}
 
 //----------------------------------------
 
@@ -807,6 +856,13 @@ void LLPipeline::init()
     connectRefreshCachedSettingsSafe("RenderShadowSoftenMode");
     connectRefreshCachedSettingsSafe("RenderShadowSoftenPx");
     connectRefreshCachedSettingsSafe("RenderShadowSoftenMM");
+    // [ShadowDist P2]
+    connectRefreshCachedSettingsSafe("RenderShadowUnitsMode");
+    connectRefreshCachedSettingsSafe("RenderShadowUnitsScope");
+    connectRefreshCachedSettingsSafe("RenderShadowBiasMM");
+    connectRefreshCachedSettingsSafe("RenderShadowOffsetTexels");
+    connectRefreshCachedSettingsSafe("RenderShadowSoftWorldMM");
+    connectRefreshCachedSettingsSafe("RenderShadowSlopeScale");
     connectRefreshCachedSettingsSafe("RenderShadowErrorCutoff");
     connectRefreshCachedSettingsSafe("RenderShadowFOVCutoff");
     connectRefreshCachedSettingsSafe("CameraOffset");
@@ -1772,13 +1828,21 @@ bool LLPipeline::allocateShadowBuffer(U32 resX, U32 resY)
     // set up shadow map filtering and compare modes
     if (shadow_detail > 0)
     {
+        // [ShadowDist P2 fix4] world-units kernel needs a strict 4-neighbour bilinear
+        // compare (see mShadowUnitsFilterApplied); probe packs stay stock (units 0).
+        const bool units_filter = !gCubeSnapshot && (RenderShadowUnitsMode != 0);
+        const LLTexUnit::eTextureFilterOptions sun_filter = units_filter ? LLTexUnit::TFO_BILINEAR : LLTexUnit::TFO_ANISOTROPIC;
+        if (!gCubeSnapshot)
+        {
+            mShadowUnitsFilterApplied = units_filter ? 1 : 0;
+        }
         for (U32 i = 0; i < 4; i++)
         {
             LLRenderTarget* shadow_target = getSunShadowTarget(i);
             if (shadow_target)
             {
                 gGL.getTexUnit(0)->bind(getSunShadowTarget(i), true);
-                gGL.getTexUnit(0)->setTextureFilteringOption(LLTexUnit::TFO_ANISOTROPIC);
+                gGL.getTexUnit(0)->setTextureFilteringOption(sun_filter);
                 gGL.getTexUnit(0)->setTextureAddressMode(LLTexUnit::TAM_CLAMP);
 
                 glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE, GL_COMPARE_REF_TO_TEXTURE);
@@ -1908,7 +1972,14 @@ void LLPipeline::refreshCachedSettings()
     RenderShadowSoftenMode = gSavedSettings.getS32("RenderShadowSoftenMode");
     RenderShadowSoftenPx = gSavedSettings.getF32("RenderShadowSoftenPx");
     RenderShadowSoftenMM = gSavedSettings.getF32("RenderShadowSoftenMM");
-    updateShadowEngaged();
+    // [ShadowDist P2] Control C
+    RenderShadowUnitsMode = gSavedSettings.getS32("RenderShadowUnitsMode");
+    RenderShadowUnitsScope = gSavedSettings.getS32("RenderShadowUnitsScope");
+    RenderShadowBiasMM = gSavedSettings.getF32("RenderShadowBiasMM");
+    RenderShadowOffsetTexels = gSavedSettings.getF32("RenderShadowOffsetTexels");
+    RenderShadowSoftWorldMM = gSavedSettings.getF32("RenderShadowSoftWorldMM");
+    RenderShadowSlopeScale = gSavedSettings.getF32("RenderShadowSlopeScale");
+    gPipeline.updateShadowEngaged(); // [ShadowDist] refreshCachedSettings() is static
     RenderShadowErrorCutoff = gSavedSettings.getF32("RenderShadowErrorCutoff");
     RenderShadowFOVCutoff = gSavedSettings.getF32("RenderShadowFOVCutoff");
     CameraOffset = gSavedSettings.getBOOL("CameraOffset");
@@ -21885,7 +21956,8 @@ F32 LLPipeline::effectiveShadowSplitBlend()
 void LLPipeline::updateShadowEngaged()
 {
     const bool a_active = (RenderShadowNearSplitMeters > 0.f) || (effectiveShadowSplitBlend() != 0.25f);
-    const bool engaged  = !mMainRT.shadowMeta.legacy || a_active;
+    const bool c_active = (RenderShadowUnitsMode != 0); // [ShadowDist P2]
+    const bool engaged  = !mMainRT.shadowMeta.legacy || a_active || c_active;
     if (mShadowEngaged && !engaged)
     {
         // engaged -> disengaged edge (design v6 s1.4): programs that stayed
@@ -21901,6 +21973,40 @@ void LLPipeline::updateShadowEngaged()
         }
     }
     mShadowEngaged = engaged;
+    applyShadowUnitsFiltering(); // [ShadowDist P2 fix4]
+}
+
+// [ShadowDist P2 fix4] Re-apply the main sun maps' filtering when RenderShadowUnitsMode
+// changes between allocations. Same bind idiom as allocateShadowBuffer; unit 0 is left
+// unbound afterwards so no caller inherits a stray depth texture. No-op until the maps
+// exist (allocateShadowBuffer then applies the state itself) and when nothing changed.
+void LLPipeline::applyShadowUnitsFiltering()
+{
+    if (mShadowUnitsFilterApplied < 0 || !gGLManager.mInited)
+    {
+        return;
+    }
+    const S32 wanted = (RenderShadowUnitsMode != 0) ? 1 : 0;
+    if (wanted == mShadowUnitsFilterApplied)
+    {
+        return;
+    }
+    const LLTexUnit::eTextureFilterOptions sun_filter = wanted ? LLTexUnit::TFO_BILINEAR : LLTexUnit::TFO_ANISOTROPIC;
+    bool applied_any = false;
+    for (U32 i = 0; i < 4; i++)
+    {
+        if (mMainRT.shadow[i].isComplete())
+        {
+            gGL.getTexUnit(0)->bind(&mMainRT.shadow[i], true);
+            gGL.getTexUnit(0)->setTextureFilteringOption(sun_filter);
+            applied_any = true;
+        }
+    }
+    if (applied_any)
+    {
+        gGL.getTexUnit(0)->unbind(LLTexUnit::TT_TEXTURE);
+        mShadowUnitsFilterApplied = wanted;
+    }
 }
 
 void LLPipeline::clearShadowUniformStamps()
@@ -21923,8 +22029,35 @@ void LLPipeline::uploadShadowUniforms(LLGLSLShader& shader)
         // the maps were generated legacy). Repeats are free (LLGLSLShader's
         // mValue cache); programs without the uniform early-out (location < 0).
         shader.uniform1f(sShadowSplitBlend, meta.legacy ? 0.25f : meta.blend);
-        // [P2 slot] shadow_units_mode / shadow_units_scope / shadow_cascade_coef / shadow_res_cascade
-        // [P3 slot] shadow_subject (active, feather_uv, depth_feather_uv, 0)
+        // [ShadowDist P2] Control C interpretation: units/scope as REQUIRED by
+        // these maps, the per-cascade coefficients (default for unfitted /
+        // cleared cascades -- site 4 writes the default) and the real map sizes.
+        const S32 units_eff = meta.legacy ? 0 : meta.units;
+        shader.uniform1i(sShadowUnitsMode, units_eff);
+        shader.uniform1i(sShadowUnitsScope, meta.legacy ? 0 : meta.scope);
+        if (units_eff != 0)
+        {
+            // [ShadowDist P2 fix, Opus P2-3] count-4 / vec4 uploads bypass the
+            // mValue cache, so only send them when the shader will read them
+            // (units mode). Stale values in a program are inert while units == 0
+            // and are refreshed by the stamp change that turns units back on.
+            static_assert(sizeof(LLVector4) == 4 * sizeof(F32), "shadow_cascade_coef upload assumes LLVector4 is 4 contiguous floats");
+            shader.uniform4fv(sShadowCascadeCoef, 4, meta.coef[0].mV);
+            // [ShadowDist P2 fix, Opus P2-1] per-axis sizes: with BDMergeShadowResolution* = 0
+            // the maps are BlurHappySize(resX) x BlurHappySize(resY), i.e. screen aspect.
+            shader.uniform4f(sShadowResCascade,
+                             llmax(static_cast<F32>(pack.shadow[0].getWidth()), 1.f),
+                             llmax(static_cast<F32>(pack.shadow[1].getWidth()), 1.f),
+                             llmax(static_cast<F32>(pack.shadow[2].getWidth()), 1.f),
+                             llmax(static_cast<F32>(pack.shadow[3].getWidth()), 1.f));
+            shader.uniform4f(sShadowResCascadeH,
+                             llmax(static_cast<F32>(pack.shadow[0].getHeight()), 1.f),
+                             llmax(static_cast<F32>(pack.shadow[1].getHeight()), 1.f),
+                             llmax(static_cast<F32>(pack.shadow[2].getHeight()), 1.f),
+                             llmax(static_cast<F32>(pack.shadow[3].getHeight()), 1.f));
+        }
+        // [P3] subject column flag (active, feather_uv, depth_feather_uv, 0): always inactive until Control B
+        shader.uniform4f(sShadowSubject, (!meta.legacy && meta.subject) ? 1.f : 0.f, 0.f, 0.f, 0.f);
         stamp.pack   = &pack;
         stamp.serial = meta.serial;
     }
@@ -21945,9 +22078,13 @@ void LLPipeline::uploadShadowUniforms(LLGLSLShader& shader)
     F32 sun_mats[16 * 4];
     for (U32 j = 0; j < 4; ++j)
     {
-        // Cascades this generation did not fit (probe renders fit only 0-1)
-        // keep exactly what the stock path uploads for them.
-        const glm::mat4 mj = (j < meta.validCascades) ? glm::mat4(meta.sunVP[j] * inv_view) : mSunShadowMatrix[j];
+        // Cascades this generation did not iterate (probe renders fit only 0-1)
+        // or did not fit (cleared: no receivers / j > RenderShadowSplits, so
+        // sunVP[j] is stale or identity -- [ShadowDist P2] fitted[] flag) keep
+        // exactly what the stock path uploads for them; a cleared map samples
+        // lit whatever its matrix says.
+        const bool use_meta = (j < meta.validCascades) && meta.fitted[j];
+        const glm::mat4 mj = use_meta ? glm::mat4(meta.sunVP[j] * inv_view) : mSunShadowMatrix[j];
         const F32* src = glm::value_ptr(mj);
         for (U32 i = 0; i < 16; ++i)
         {
@@ -21958,7 +22095,15 @@ void LLPipeline::uploadShadowUniforms(LLGLSLShader& shader)
     shader.uniformMatrix4fv(LLShaderMgr::DEFERRED_SHADOW_MATRIX, 4, GL_FALSE, sun_mats);
     shader.uniform4fv(LLShaderMgr::DEFERRED_SHADOW_CLIP, 1, meta.clip.mV);
     // [P3 slot] shadow_subject_matrix = mat4(meta.columnVP * inv_view) when meta.subject
-    // [P2 slot] live tunables (bias mm, offset texels, soft mm, slope texels)
+
+    // [ShadowDist P2] live tunables: plain per-bind uploads (mValue cache makes
+    // repeats free); the shader ignores them unless the meta-derived units mode
+    // enabled them. Ranges mirror settings.xml; the altitude term
+    // (RenderShadowBiasError) is deliberately NOT folded in -- bias_mm is absolute.
+    shader.uniform1f(sShadowBiasMM,       llclamp(RenderShadowBiasMM, 0.2f, 50.f));
+    shader.uniform1f(sShadowOffsetTexels, llclamp(RenderShadowOffsetTexels, 0.f, 4.f));
+    shader.uniform1f(sShadowSoftWorldMM,  llclamp(RenderShadowSoftWorldMM, 0.f, 200.f));
+    shader.uniform1f(sShadowSlopeScale,  llclamp(RenderShadowSlopeScale, 0.f, 3.f));
 }
 // [/ShadowDist P1] --------------------------------------------------------
 
@@ -25354,13 +25499,19 @@ void LLPipeline::generateSunShadow(LLCamera& camera)
     {
         RenderTargetPack::ShadowMeta& meta = mRT->shadowMeta;
         const bool a_active = !gCubeSnapshot && ((RenderShadowNearSplitMeters > 0.f) || (shadow_blend_eff != 0.25f));
-        meta.legacy  = !a_active;      // [P2/P3] && units == 0 && !subject
+        // [ShadowDist P2] Control C: world units as REQUIRED by these maps
+        // ([P3]: forced to 1 while the subject column is active). Probes: 0.
+        meta.units   = (!gCubeSnapshot && RenderShadowUnitsMode != 0) ? 1 : 0;
+        meta.scope   = gCubeSnapshot ? 0 : llclamp(RenderShadowUnitsScope, 0, 1);
+        meta.legacy  = !(a_active || meta.units != 0);   // [P3] && !subject
         meta.subject = false;          // [P3] set true by the subject fit
-        meta.units   = 0;              // [P2]
-        meta.scope   = 0;              // [P2]
         meta.blend   = shadow_blend_eff;
         meta.clip    = mSunClipPlanes;
         meta.validCascades = gCubeSnapshot ? 2u : 4u;
+        for (U32 f = 0; f < 4; ++f)
+        {
+            meta.fitted[f] = false;    // [ShadowDist P2] set true per cascade at site 2 below
+        }
         ++meta.serial;
         if (mRT == &mMainRT)
         {
@@ -25554,7 +25705,8 @@ void LLPipeline::generateSunShadow(LLCamera& camera)
                 // as the legacy code leaves mSunShadowMatrix[j]).
                 {
                     RenderTargetPack::ShadowMeta& meta = mRT->shadowMeta;
-                    meta.coef[j] = LLVector4(1.f, 1.f, 1.f, 0.f); // [P2] default coefficients
+                    meta.coef[j]   = LLVector4(1.f, 1.f, 1.f, 0.f); // [ShadowDist P2] default coefficients
+                    meta.fitted[j] = false;                          // [ShadowDist P2] cleared, not fitted
                     if (j == 0)
                     {
                         meta.subject = false; // [P3] cascade 0 no longer holds a column
@@ -25578,6 +25730,11 @@ void LLPipeline::generateSunShadow(LLCamera& camera)
 
             //find a good origin for shadow projection
             LLVector3 origin;
+
+            // [ShadowDist P2] Control C coefficients for THIS cascade's projection,
+            // written by whichever of the three proj[j] branches below runs and
+            // stored in the meta at site 2.
+            LLVector4 cascade_coef(1.f, 1.f, 1.f, 0.f);
 
             //get a temporary view projection
             view[j] = look(camera.getOrigin(), lightDir, -up);
@@ -25691,6 +25848,7 @@ void LLPipeline::generateSunShadow(LLCamera& camera)
                     proj[j] = glm::ortho(min.mV[0], max.mV[0],
                                         min.mV[1], max.mV[1],
                                         -max.mV[2], -min.mV[2]);
+                    cascade_coef = shadow_dist_ortho_coef(min, max, mRT->shadow[j]); // [ShadowDist P2]
                 }
                 else
                 {
@@ -25782,6 +25940,7 @@ void LLPipeline::generateSunShadow(LLCamera& camera)
                         proj[j] = glm::ortho(min.mV[0], max.mV[0],
                                 min.mV[1], max.mV[1],
                                 -max.mV[2], -min.mV[2]);
+                        cascade_coef = shadow_dist_ortho_coef(min, max, mRT->shadow[j]); // [ShadowDist P2]
                     }
                     else
                     {
@@ -25810,6 +25969,7 @@ void LLPipeline::generateSunShadow(LLCamera& camera)
                             0, (yfar + ynear) / (ynear - yfar), 0, -1.0f,
                             0, 0, -fz, 0,
                             0, (2.f * yfar * ynear) / (ynear - yfar), 0, 0);
+                        cascade_coef = shadow_dist_persp_coef(fx, fz, ynear, yfar, mRT->shadow[j]); // [ShadowDist P2]
                     }
                 }
             }
@@ -25848,8 +26008,9 @@ void LLPipeline::generateSunShadow(LLCamera& camera)
             // the CURRENT inverse view at bind time when the controls are engaged.
             {
                 RenderTargetPack::ShadowMeta& meta = mRT->shadowMeta;
-                meta.sunVP[j] = glm::dmat4(trans) * glm::dmat4(proj[j]) * glm::dmat4(view[j]);
-                meta.coef[j]  = LLVector4(1.f, 1.f, 1.f, 0.f); // [P2] Control C per-cascade coefficients go here
+                meta.sunVP[j]  = glm::dmat4(trans) * glm::dmat4(proj[j]) * glm::dmat4(view[j]);
+                meta.coef[j]   = cascade_coef; // [ShadowDist P2] Control C per-cascade coefficients
+                meta.fitted[j] = true;         // [ShadowDist P2]
                 if (j == 0)
                 {
                     meta.subject = false; // [P3] legacy fit of cascade 0
@@ -27342,6 +27503,10 @@ void LLPipeline::skipRenderingShadows()
     // [ShadowDist P1] ShadowMeta site 5: all four maps cleared -> lit; the
     // matrices are irrelevant, only the (future) subject flag must drop.
     mRT->shadowMeta.subject = false; // [P3]
+    for (U32 f = 0; f < 4; ++f)
+    {
+        mRT->shadowMeta.fitted[f] = false; // [ShadowDist P2] cleared maps are not fitted
+    }
     ++mRT->shadowMeta.serial;
 }
 

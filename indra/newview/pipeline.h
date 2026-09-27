@@ -1191,7 +1191,11 @@ public:
             S32        units    = 0;        // [P2] 0 legacy / 1 world units, as REQUIRED by these maps
             S32        scope    = 0;        // [P2] RenderShadowUnitsScope captured at generation
             F32        blend    = 0.25f;    // split blend the frusta were built with
-            U32        validCascades = 0;   // sunVP[j] describes shadow[j] for j < validCascades (probe renders fit only cascades 0-1)
+            U32        validCascades = 0;   // cascades this generation ITERATED (2 for probe renders, 4 main); 0 = never generated
+            // [ShadowDist P2] per-cascade: shadow[j] holds a fitted depth map whose sunVP[j] / coef[j]
+            // describe it. false = cleared (no receivers, j > RenderShadowSplits, sun black) or never
+            // fitted -> identity sunVP, default coef; consumers must not upload/interpret those.
+            bool       fitted[4] = { false, false, false, false };
             LLVector4  clip     = LLVector4(1.f, 64.f, 128.f, 256.f);   // mSunClipPlanes these maps were built from
             glm::dmat4 sunVP[4] = { glm::dmat4(1.0), glm::dmat4(1.0), glm::dmat4(1.0), glm::dmat4(1.0) }; // trans*proj*view per cascade (no inverse view), double
             glm::dmat4 columnVP = glm::dmat4(1.0);                      // [P3] trans*proj0*view0 (no inverse view), valid iff subject
@@ -1274,6 +1278,14 @@ public:
     // any A control is non-default (design v6 s1.4). false = byte-identical
     // OFF path (no per-bind matrix / clip uploads from the meta).
     bool mShadowEngaged = false;
+    // [ShadowDist P2 fix4] Sun shadow maps are TFO_ANISOTROPIC stock; anisotropic
+    // depth compares can read beyond the 4 bilinear neighbours, which would void the
+    // one-texel receiver-plane allowance of the world-units kernel. While units are
+    // on for the MAIN pack the maps are bound TFO_BILINEAR (MAX_ANISOTROPY 1) and
+    // restored to TFO_ANISOTROPIC when units go off. -1 = not applied yet (no maps),
+    // else the last state applied (0 stock / 1 bilinear) so we only rebind on change.
+    S32  mShadowUnitsFilterApplied = -1;
+    void applyShadowUnitsFiltering();
 
     // [BDMerge NSpot] compile-time ceiling for projector shadows; runtime
     // count is BDMergeMaxSpotShadows (2 = stock)
@@ -2077,6 +2089,13 @@ public:
     static S32 RenderShadowSoftenMode;
     static F32 RenderShadowSoftenPx;
     static F32 RenderShadowSoftenMM;
+    // [ShadowDist P2] Control C (world-unit bias / offset / soft kernel)
+    static S32 RenderShadowUnitsMode;
+    static S32 RenderShadowUnitsScope;
+    static F32 RenderShadowBiasMM;
+    static F32 RenderShadowOffsetTexels;
+    static F32 RenderShadowSoftWorldMM;
+    static F32 RenderShadowSlopeScale;
     static F32 RenderShadowErrorCutoff;
     static F32 RenderShadowFOVCutoff;
     static bool CameraOffset;

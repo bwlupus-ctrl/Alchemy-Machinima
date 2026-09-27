@@ -58,6 +58,25 @@ uniform vec4 shadow_clip;
 // program that never receives it stock. 1.0 - 0.25 and 1.0 + 0.25 are exact,
 // so the default multiplies see the same operands as the old literals.
 uniform float shadow_split_blend = 0.25;
+// [ShadowDist P2] Control C: world-unit sun-shadow bias / receiver offset / soft
+// kernel (design v2 s4, v3 s5, v4 s2.3+s5). shadow_units_mode comes from the
+// sampled pack's ShadowMeta (0 = legacy fractions, 1 = world units), never from
+// live settings; the tunables below are ignored unless it is 1. Initialisers =
+// stock values, so a program never bound through bindDeferredShader stays stock.
+uniform int   shadow_units_mode = 0;
+uniform int   shadow_units_scope = 0;       // 0 = all cascades in world units, 1 = cascade 0 only (1-3 legacy)
+uniform float shadow_bias_mm = 2.5;         // depth bias, millimetres (absolute; no altitude term)
+uniform float shadow_offset_texels = 1.5;   // receiver offset along N, in this cascade's texels (x sin a)
+uniform float shadow_soft_world_mm = 0.0;   // soft sun penumbra radius in mm; 0 = legacy texel-based kernel
+uniform float shadow_slope_scale = 1.0;     // receiver-plane slope bias scale (1 = cover the sampled footprint exactly)
+// per cascade: (k_depth, texel_x_coef, texel_y_coef, is_persp) -- ortho: d*k, texel = coef;
+// perspective: d*k/w, texel_x = coef.y*w, texel_y = coef.z*w*w (first order). Uploaded on a
+// stamp change whenever the maps were generated in units mode; only read when shadow_units_mode != 0.
+uniform vec4  shadow_cascade_coef[4];
+uniform vec4  shadow_res_cascade   = vec4(2048.0); // REAL width  of shadowMap0..3 (fixes shadow_res = cascade 0 for all)
+uniform vec4  shadow_res_cascade_h = vec4(2048.0); // REAL height of shadowMap0..3 ([ShadowDist P2 fix] non-square maps)
+// [P3] Control B: (active, feather_uv, depth_feather_uv, 0). Always 0 until the subject cascade lands.
+uniform vec4  shadow_subject = vec4(0.0);
 uniform float shadow_bias;
 uniform float shadow_offset;
 uniform float spot_shadow_bias;
@@ -226,6 +245,191 @@ float pcfShadow(sampler2DShadow shadowMap, vec3 norm, vec4 stc, float bias_mul, 
 #endif
 }
 
+// [ShadowDist P2] Control C sun kernel: same tap patterns as pcfShadow (classic
+// 5-tap / Poisson / Vogel, same fill guard) but
+//  - depth bias in world metres, converted per cascade and (perspective) per
+//    receiver: stc.z -= bias * k [/ w], slope-scaled by the kernel radius
+//    actually sampled so coarse cascades stay acne-free (v4 s5.1),
+//  - separate X/Y texel sizes in metres at this receiver (v3 s5.3),
+//  - soft penumbra optionally in world mm (same softness in every cascade),
+//  - snap / offsets / jitter with THIS cascade's real resolution (v2 s4.5).
+// No shadow_bias, no altitude term. Legacy pcfShadow above is untouched.
+// plane_dd = (|dd/du|, |dd/dv|): the receiver plane's depth slope in MAP space (stc.z
+// per stc.x / stc.y), and cover_stc = how far (in stc.z) the normal-offset sample point
+// already sits toward the light off that plane -- both from sunBandC. res = (w, h) of
+// THIS map. [ShadowDist P2 fix2] everything here is in map units: no metre conversion
+// and no ortho / perspective special case in the bias itself.
+float pcfShadowC(sampler2DShadow shadowMap, vec4 stc, vec4 coef, vec2 res, vec2 plane_dd, float cover_stc, vec2 pos_screen)
+{
+#if defined(SUN_SHADOW)
+    float w = max(stc.w, 1e-4);
+    stc.xyz /= w;
+    bool  persp   = coef.w > 0.5;
+    vec2  texel_m = persp ? vec2(coef.y * w, coef.z * w * w) : coef.yz;   // metres per texel (x, y), for the world-mm penumbra
+    texel_m = max(texel_m, vec2(1e-6));
+
+    bool  soft = (soft_shadow_enable != 0 && soft_shadow_sun != 0);
+    float cap  = max(soft_shadow_max, 1.0);
+    vec2  pr   = vec2(1.0);
+    if (soft)
+    {
+        pr = (shadow_soft_world_mm > 0.0)
+           ? clamp(vec2(0.001 * shadow_soft_world_mm) / texel_m, vec2(1.0), vec2(cap))
+           : vec2(clamp(1.0 + soft_shadow_scale * clamp(stc.z, 0.0, 1.0), 1.0, cap));
+    }
+
+    // [ShadowDist P2 fix3, Codex r3] PER-TAP receiver-plane depth. plane_dd is the SIGNED
+    // map-space slope of the receiver plane (stc.z per stc.x / stc.y, from sunBandC); every
+    // tap at uv offset o compares against z_ref = stc.z + dot(plane_dd, o), i.e. the sample
+    // depth follows the receiver's own plane across the kernel, so the bias no longer has
+    // to span the footprint. What remains to cover is the hardware bilinear compare, which
+    // reads texel CENTRES up to one full texel from the lookup (floor(coord - 0.5)
+    // neighbour selection): one texel of slope per axis, times RenderShadowSlopeScale,
+    // minus the normal-offset credit, floored by the mm bias. A light-facing receiver on a
+    // perspective map (dd != 0 although its physical slope is 0) thus pays one texel of
+    // map-depth slope instead of the whole footprint -- thin contact shadows survive.
+    float allow_stc = shadow_slope_scale * (abs(plane_dd.x) / res.x + abs(plane_dd.y) / res.y);
+    float floor_stc = persp ? (0.001 * shadow_bias_mm * coef.x / w) : (0.001 * shadow_bias_mm * coef.x);   // mm -> stc.z
+    float bias_stc  = max(floor_stc, allow_stc - cover_stc);
+    stc.z -= bias_stc;   // toward the light (legacy sign convention); per-tap slope added below
+
+    if (soft)
+    {
+        vec2 texel = pr / res;
+        float shadow = 0.0;
+        if (soft_shadow_vogel != 0)
+        {
+            int taps = clamp(soft_shadow_taps, 1, SOFT_SHADOW_VOGEL_MAX);
+            float inv_n = 1.0 / float(taps);
+            float phi = 6.2831853 * fract(52.9829189 *
+                        fract(dot(gl_FragCoord.xy, vec2(0.06711056, 0.00583715))));
+            for (int i = 0; i < SOFT_SHADOW_VOGEL_MAX; ++i)
+            {
+                if (i >= taps) break;
+                float r = sqrt((float(i) + 0.5) * inv_n);
+                float theta = float(i) * SOFT_SHADOW_GOLDEN_ANGLE + phi;
+                vec2 o = r * vec2(cos(theta), sin(theta)) * texel;
+                shadow += texture(shadowMap, vec3(stc.xy + o, stc.z + dot(plane_dd, o)));
+            }
+            shadow *= inv_n;
+        }
+        else
+        {
+            float jit = fract(pos_screen.y * res.y);
+            for (int i = 0; i < 12; ++i)
+            {
+                vec2 o = SOFT_SHADOW_DISK[i] * texel;
+                o.x += (jit - 0.5) * texel.x;   // the jitter is part of this tap's offset, so it is tracked too
+                shadow += texture(shadowMap, vec3(stc.xy + o, stc.z + dot(plane_dd, o)));
+            }
+            shadow /= 12.0;
+        }
+        if (soft_shadow_fill > 0.0 && shadow > 0.0)
+            shadow = mix(soft_shadow_fill, 1.0, shadow);
+        return clamp(shadow, 0.0, 1.0);
+    }
+
+    // [ShadowDist P2 fix2, Opus] UNSNAPPED 5-tap kernel in units mode: the legacy
+    // floor(stc.x*res + jitter) x-snap disguises its own quantisation but costs a whole
+    // texel of extra receiver-plane bias; bilinear compares at the exact position are
+    // smooth on their own. [fix3] each tap follows the receiver plane.
+    vec2 o1 = vec2( 1.5 / res.x,  0.5 / res.y);
+    vec2 o2 = vec2( 0.5 / res.x, -1.5 / res.y);
+    vec2 o3 = vec2(-1.5 / res.x, -0.5 / res.y);
+    vec2 o4 = vec2(-0.5 / res.x,  1.5 / res.y);
+    float shadow = texture(shadowMap, stc.xyz) * 4.0;
+    shadow += texture(shadowMap, vec3(stc.xy + o1, stc.z + dot(plane_dd, o1)));
+    shadow += texture(shadowMap, vec3(stc.xy + o2, stc.z + dot(plane_dd, o2)));
+    shadow += texture(shadowMap, vec3(stc.xy + o3, stc.z + dot(plane_dd, o3)));
+    shadow += texture(shadowMap, vec3(stc.xy + o4, stc.z + dot(plane_dd, o4)));
+    return clamp(shadow * 0.125, 0.0, 1.0);
+#else
+    return 1.0;
+#endif
+}
+
+// [ShadowDist P2] One sun cascade band in the units/subject path (v4 s2.3).
+// units == false (RenderShadowUnitsScope == 1, cascades 1-3): the exact legacy
+// result -- world-metre L offset + pcfShadow (normalised bias incl. altitude,
+// shadow_res snap); the caller also selected/weighted that band with the legacy
+// (offset) receiver z. units == true: normal offset in THIS cascade's texels,
+// scaled by sin(a) (v3 s5.2), then the receiver plane is carried into MAP space
+// for the slope bias ([ShadowDist P2 fix2], see below) and pcfShadowC samples.
+float sunBandC(sampler2DShadow shadowMap, mat4 smat, vec4 coef, vec2 res, bool units,
+               vec3 pos, vec3 norm, float NdotL, float sin_a, vec2 pos_screen, vec3 L)
+{
+#if defined(SUN_SHADOW)
+    if (!units)
+    {
+        vec3 p = pos + L * (1.0 - NdotL) * shadow_offset * 2.0;
+        return pcfShadow(shadowMap, norm, smat * vec4(p, 1.0), 1.0, pos_screen, L);
+    }
+    vec4  lp0 = smat * vec4(pos, 1.0);                 // un-offset projection
+    // [ShadowDist P2 fix3] w <= 0 (receiver behind a perspective map's projection origin)
+    // is OUTSIDE the map: lit, per the existing outside-the-map convention -- never
+    // clamped into a bogus projection. Ortho maps have w == 1 and never take this exit.
+    if (lp0.w <= 1e-4)
+    {
+        return 1.0;
+    }
+    float w0  = lp0.w;
+    vec3  st0 = lp0.xyz / w0;
+    vec2  tm  = (coef.w > 0.5) ? vec2(coef.y * w0, coef.z * w0 * w0) : coef.yz;
+    vec4  lp  = smat * vec4(pos + norm * (shadow_offset_texels * max(tm.x, tm.y) * sin_a), 1.0);
+    if (lp.w <= 1e-4)
+    {
+        return 1.0;
+    }
+    vec3  st1 = lp.xyz / lp.w;
+
+    // [ShadowDist P2 fix2, Codex P1 / Opus] Receiver plane in MAP space. With
+    // stc = (ru.p, rv.p, rz.p) / (rw.p) (+ constants; smat is column-major, row r of the
+    // linear part is (smat[0][r], smat[1][r], smat[2][r])), the Jacobian d(stc)/dp at the
+    // receiver has rows g_u = (ru - u*rw)/w, g_v = (rv - v*rw)/w, g_d = (rz - d*rw)/w.
+    // The map-space TANGENTS (camera-space step that moves exactly one unit of u, v or d
+    // and nothing else) are the columns of its inverse, t_u = cross(g_v, g_d)/det (cyclic).
+    // det cancels in every ratio below, so it is never divided by: np = det * n' with
+    // n' = (N.t_u, N.t_v, N.t_d), and the plane N.dp = 0 becomes n'_u du + n'_v dv + n'_d dd = 0
+    // -> dd/du = -n'_u/n'_d, dd/dv = -n'_v/n'_d. Exact for ortho AND perspective maps (this
+    // is the true inverse map, not the gradient direction), first order only in the
+    // linearisation at the receiver. For an ortho map rw = 0 and it reduces to the
+    // light-space normal decomposition.
+    vec3 ru = vec3(smat[0][0], smat[1][0], smat[2][0]);
+    vec3 rv = vec3(smat[0][1], smat[1][1], smat[2][1]);
+    vec3 rz = vec3(smat[0][2], smat[1][2], smat[2][2]);
+    vec3 rw = vec3(smat[0][3], smat[1][3], smat[2][3]);
+    vec3 gu = (ru - st0.x * rw) / w0;
+    vec3 gv = (rv - st0.y * rw) / w0;
+    vec3 gd = (rz - st0.z * rw) / w0;
+    vec3 np = vec3(dot(norm, cross(gv, gd)), dot(norm, cross(gd, gu)), dot(norm, cross(gu, gv)));
+    // [fix3] SIGNED slopes dd/du = -n'_u/n'_d, dd/dv = -n'_v/n'_d so pcfShadowC can follow
+    // the plane per tap. Grazing cap: |n'_d| >= 1/8 |n'| bounds the slope magnitudes at 8
+    // (the plane is then >= 83 deg from the light) while keeping the sign. Above that,
+    // normal-mapped pixels with N.L ~ 0 inside a shadow would otherwise receive tens of
+    // texels of bias and read lit; the direct light term there is < 12%, so the residual
+    // acne risk is the lesser evil. A degenerate Jacobian (np == 0) yields no slope term:
+    // the mm floor alone applies.
+    float npz   = np.z;
+    bool  np_ok = abs(npz) > 1e-20;
+    float npz_c = max(abs(npz), 0.125 * length(np)) * (npz < 0.0 ? -1.0 : 1.0);
+    vec2  plane_dd = np_ok ? (-np.xy / npz_c) : vec2(0.0);
+    // How far the normal-offset point already sits toward the light off the receiver
+    // plane, in stc.z: the plane through the receiver, evaluated at the offset sample's
+    // (u, v), minus the offset sample's own d. Measured in map space, so it is exact for
+    // both projections; clamped at 0 (an offset that lands deeper never adds margin).
+    float cover_stc = np_ok ? max(-dot(np, st1 - st0) / npz, 0.0) : 0.0;
+    return pcfShadowC(shadowMap, lp, coef, res, plane_dd, cover_stc, pos_screen);
+#else
+    return 1.0;
+#endif
+}
+
+// [ShadowDist P2] world units for cascade i? (scope 1 keeps cascades 1-3 legacy)
+bool sunUnitsCascade(int i)
+{
+    return (shadow_units_mode != 0) && ((shadow_units_scope == 0) || (i == 0));
+}
+
 float pcfSpotShadow(sampler2DShadow shadowMap, vec4 stc, float bias_scale, vec2 pos_screen, float projector_softness)
 {
 #if defined(SPOT_SHADOW)
@@ -316,6 +520,14 @@ float pcfSpotShadow(sampler2DShadow shadowMap, vec4 stc, float bias_scale, vec2 
 float sampleDirectionalShadow(vec3 pos, vec3 norm, vec2 pos_screen)
 {
 #if defined(SUN_SHADOW)
+    // [ShadowDist P2] three-way structure (design v3 s5.4 / v4 s2.2):
+    //   LEGACY  -- the original function body, verbatim (only the P1 blend
+    //              substitution), when the maps were generated in legacy units
+    //              and no subject column is active;
+    //   UNITS   -- Control C world-unit path below (4-cascade layout);
+    //   SUBJECT -- [P3] same path with the three-cascade layout + column.
+    if (shadow_units_mode == 0 && shadow_subject.x < 0.5)
+    {
     float shadow = 0.0f;
     vec3 light_dir = normalize((sun_up_factor == 1) ? sun_dir : moon_dir);
 
@@ -408,6 +620,82 @@ float sampleDirectionalShadow(vec3 pos, vec3 norm, vec2 pos_screen)
         return 1.0f; // lit beyond the far split...
     }
     //shadow = min(dp_directional_light,shadow);
+    return shadow;
+    } // ===== end LEGACY =====
+
+    // ===== [ShadowDist P2] UNITS (and [P3] SUBJECT) path =====
+    vec3  L     = normalize((sun_up_factor == 1) ? sun_dir : moon_dir);
+    float NdotL = clamp(dot(norm, L), 0.0, 1.0);
+    float sin_a = sqrt(max(1.0 - NdotL * NdotL, 0.0));
+
+    // [ShadowDist P2 fix, Codex P2] selection coordinates: world-unit cascades select
+    // and weight bands with the UN-offset receiver; cascades left on the legacy
+    // kernel (RenderShadowUnitsScope == 1 -> cascades 1-3) keep the legacy
+    // coordinate, i.e. the receiver offset along L, so their bands, weights and the
+    // far guard are exactly the legacy ones.
+    bool  u123    = (shadow_units_scope == 0);
+    vec3  pos_leg = pos + L * (1.0 - NdotL) * shadow_offset * 2.0;
+    float z123    = u123 ? pos.z : pos_leg.z;
+    float z0      = pos.z;                          // cascade 0 is always world units here
+    if (z123 <= -shadow_clip.w)
+    {
+        return 1.0; // lit beyond the far split (outer guard kept)
+    }
+
+    vec4 near_split = shadow_clip * -(1.0 - shadow_split_blend);
+    vec4 far_split  = shadow_clip * -(1.0 + shadow_split_blend);
+    vec4 transition_domain = near_split - far_split;
+
+    float shadow = 0.0;
+    float weight = 0.0;
+    vec2  res1 = vec2(shadow_res_cascade.y, shadow_res_cascade_h.y);
+    vec2  res2 = vec2(shadow_res_cascade.z, shadow_res_cascade_h.z);
+    vec2  res3 = vec2(shadow_res_cascade.w, shadow_res_cascade_h.w);
+
+    if (z123 < near_split.z)
+    {
+        float w = 1.0 - max(z123 - far_split.z, 0.0) / transition_domain.z;
+        shadow += sunBandC(shadowMap3, shadow_matrix[3], shadow_cascade_coef[3], res3, u123,
+                           pos, norm, NdotL, sin_a, pos_screen, L) * w;
+        weight += w;
+        shadow += max((pos.z + shadow_clip.z) / (shadow_clip.z - shadow_clip.w) * 2.0 - 1.0, 0.0); // legacy uses pos.z here too
+    }
+    if (z123 < near_split.y && z123 > far_split.z)
+    {
+        float w = 1.0 - max(z123 - far_split.y, 0.0) / transition_domain.y
+                      - max(near_split.z - z123, 0.0) / transition_domain.z;
+        shadow += sunBandC(shadowMap2, shadow_matrix[2], shadow_cascade_coef[2], res2, u123,
+                           pos, norm, NdotL, sin_a, pos_screen, L) * w;
+        weight += w;
+    }
+    // [P3 slot] subject mode: the cascade-1 band becomes `z123 > far_split.y` with only the
+    // y-side transition and the cascade-0 band is skipped (three-cascade layout, v3 s5.4);
+    // kept out of phase 2 so the inert variant does not double the inlined band code.
+    // [ShadowDist P2 fix2, Opus] the cascade-1 band's cascade-0 side is selected and
+    // weighted with z0 (the coordinate cascade 0 uses) so scope 1 can never open a gap
+    // between the two coordinates when RenderShadowOffset is large and the sharp range
+    // small; the y side keeps its own coordinate. Identical when scope == 0 (z0 == z123).
+    if (z0 < near_split.x && z123 > far_split.y)
+    {
+        float w = 1.0 - max(z0 - far_split.x, 0.0) / transition_domain.x
+                      - max(near_split.y - z123, 0.0) / transition_domain.y;
+        shadow += sunBandC(shadowMap1, shadow_matrix[1], shadow_cascade_coef[1], res1, u123,
+                           pos, norm, NdotL, sin_a, pos_screen, L) * w;
+        weight += w;
+    }
+    if (z0 > far_split.x)
+    {
+        float w = 1.0 - max(near_split.x - z0, 0.0) / transition_domain.x;
+        shadow += sunBandC(shadowMap0, shadow_matrix[0], shadow_cascade_coef[0],
+                           vec2(shadow_res_cascade.x, shadow_res_cascade_h.x), true,
+                           pos, norm, NdotL, sin_a, pos_screen, L) * w;
+        weight += w;
+    }
+    shadow = (weight > 0.0) ? shadow / weight : 1.0;
+
+    // [P3 slot] subject column: lp = shadow_subject_matrix * (pos + N offset), feathered
+    //           XY/depth test, shadow = mix(shadow, pcfShadowC(shadowMap0, ...), sw)
+
     return shadow;
 #else
     return 1.0;
@@ -656,6 +944,34 @@ float nonpcfShadow(sampler2DShadow shadowMap, vec4 stc, vec2 pos_screen, float s
 #endif
 }
 
+// [ShadowDist P2] world-unit twin of nonpcfShadow for the volumetric raymarch
+// (v3 s5.5): bias in metres converted once per cascade (no slope term -- an
+// airborne sample has no receiver normal; applied ONCE like the legacy single
+// `stc.z += bias`), and the snap uses THIS cascade's real resolution.
+float nonpcfShadowC(sampler2DShadow shadowMap, vec4 stc, vec2 pos_screen, vec4 coef, float res)
+{
+#if defined(SUN_SHADOW)
+    // [ShadowDist P2 fix4] w <= 0 = behind a perspective map's origin = outside the map:
+    // lit (the in-band "lit" value of this sampler is cs * 4.0), consistent with sunBandC;
+    // never clamped into a bogus projection.
+    if (stc.w <= 1e-4)
+    {
+        return 4.0;
+    }
+    float w = stc.w;
+    stc.xyz /= w;
+    float bias_m = 0.001 * shadow_bias_mm;
+    stc.z -= (coef.w > 0.5) ? (bias_m * coef.x / w) : (bias_m * coef.x);
+
+    stc.x = floor(stc.x * res + fract(pos_screen.y)) / res;
+
+    float cs = texture(shadowMap, stc.xyz);
+    return cs * 4.0;
+#else
+    return 0.0;
+#endif
+}
+
 float nonpcfShadowAtPos(vec4 pos_world, vec2 pos_screen)
 {
 #if defined(SUN_SHADOW)
@@ -665,24 +981,31 @@ float nonpcfShadowAtPos(vec4 pos_world, vec2 pos_screen)
         vec4 near_split = shadow_clip * -(1.0 - shadow_split_blend); // [ShadowDist P1] was *-0.75
         vec4 far_split = shadow_clip * -(1.0 + shadow_split_blend);  // [ShadowDist P1] was *-1.25
 
+        // [ShadowDist P2] per cascade: world-unit bias/res when sunUnitsCascade(i),
+        // else the legacy statement verbatim. [P3] subject mode merges the two
+        // innermost branches onto cascade 1.
         if (pos_world.z < near_split.z)
         {
             pos_world = shadow_matrix[3]*pos_world;
+            if (sunUnitsCascade(3)) return nonpcfShadowC(shadowMap3, pos_world, pos_screen, shadow_cascade_coef[3], shadow_res_cascade.w);
             return nonpcfShadow(shadowMap3, pos_world, pos_screen, shadow_res.x, shadow_bias);
         }
         else if (pos_world.z < near_split.y)
         {
             pos_world = shadow_matrix[2]*pos_world;
+            if (sunUnitsCascade(2)) return nonpcfShadowC(shadowMap2, pos_world, pos_screen, shadow_cascade_coef[2], shadow_res_cascade.z);
             return nonpcfShadow(shadowMap2, pos_world, pos_screen, shadow_res.x, shadow_bias);
         }
         else if (pos_world.z < near_split.x)
         {
             pos_world = shadow_matrix[1]*pos_world;
+            if (sunUnitsCascade(1)) return nonpcfShadowC(shadowMap1, pos_world, pos_screen, shadow_cascade_coef[1], shadow_res_cascade.y);
             return nonpcfShadow(shadowMap1, pos_world, pos_screen, shadow_res.x, shadow_bias);
         }
         else if (pos_world.z > far_split.x)
         {
             pos_world = shadow_matrix[0]*pos_world;
+            if (sunUnitsCascade(0)) return nonpcfShadowC(shadowMap0, pos_world, pos_screen, shadow_cascade_coef[0], shadow_res_cascade.x);
             return nonpcfShadow(shadowMap0, pos_world, pos_screen, shadow_res.x, shadow_bias);
         }
     }

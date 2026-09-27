@@ -17540,6 +17540,72 @@
     <key>Value</key>
     <real>0.25</real>
   </map>
+  <key>RenderShadowUnitsMode</key>
+  <map>
+    <key>Comment</key>
+    <string>[ShadowDist P2] Sun-shadow units. 0 = legacy (RenderShadowBias / RenderShadowOffset as fractions of each cascade's depth range / world metres, altitude-scaled). 1 = world units: bias in mm (RenderShadowBiasMM, absolute, no altitude term), receiver offset along the normal in texels (RenderShadowOffsetTexels), soft penumbra in mm (RenderShadowSoftWorldMM), slope bias (RenderShadowSlopeScale), and each cascade's REAL map size for its kernel. Recommended for skyboxes / high altitude: the legacy bias grows with RenderShadowBiasError * |camera z| / 3000 (about 3.5x at 1 km, 4.7x at 4 km), world units are absolute at any height. Residual: on a perspective-fitted cascade a light-facing receiver still pays about one map texel of depth slope (~48 mm at 10 m on a 1024 map), which can soften very close contact shadows there; RenderShadowUnitsScope = 1 and/or a small RenderShadowNearSplitMeters keep the close-up cascade tight. Sun maps are bound bilinear (no anisotropy) while world units are on. Takes effect at the next shadow generation.</string>
+    <key>Persist</key>
+    <integer>1</integer>
+    <key>Type</key>
+    <string>S32</string>
+    <key>Value</key>
+    <integer>0</integer>
+  </map>
+  <key>RenderShadowUnitsScope</key>
+  <map>
+    <key>Comment</key>
+    <string>[ShadowDist P2] World-units scope when RenderShadowUnitsMode = 1. 0 = all four cascades. 1 = cascade 0 only; cascades 1-3 keep the legacy bias/offset (escape hatch if distant terrain shows acne).</string>
+    <key>Persist</key>
+    <integer>1</integer>
+    <key>Type</key>
+    <string>S32</string>
+    <key>Value</key>
+    <integer>0</integer>
+  </map>
+  <key>RenderShadowBiasMM</key>
+  <map>
+    <key>Comment</key>
+    <string>[ShadowDist P2] World-units depth bias in millimetres, the same in every cascade (floor; the slope term may raise it on coarse cascades). Occluders closer than this to their receiver do not shadow it. 2.5 mm ~ a well-tuned legacy -0.0006 in cascade 0. Range 0.2-50.</string>
+    <key>Persist</key>
+    <integer>1</integer>
+    <key>Type</key>
+    <string>F32</string>
+    <key>Value</key>
+    <real>2.5</real>
+  </map>
+  <key>RenderShadowOffsetTexels</key>
+  <map>
+    <key>Comment</key>
+    <string>[ShadowDist P2] World-units receiver offset along the surface normal, in shadow-map texels of the cascade being sampled (scaled by sin of the light angle). 1-2 is standard; 0 disables. Range 0-4.</string>
+    <key>Persist</key>
+    <integer>1</integer>
+    <key>Type</key>
+    <string>F32</string>
+    <key>Value</key>
+    <real>1.5</real>
+  </map>
+  <key>RenderShadowSoftWorldMM</key>
+  <map>
+    <key>Comment</key>
+    <string>[ShadowDist P2] World-units sun soft-shadow penumbra radius in millimetres (same softness in every cascade) instead of the texel-based kernel. 0 = keep the texel-based kernel. Only used while soft shadows are on for the sun: BOTH BDMergeSoftProjectorShadows (the soft-shadow master, soft_shadow_enable) AND BDMergeSoftShadowSun. Floored at 1 texel, capped at BDMergeSoftShadowMax texels. Range 0-200.</string>
+    <key>Persist</key>
+    <integer>1</integer>
+    <key>Type</key>
+    <string>F32</string>
+    <key>Value</key>
+    <real>0</real>
+  </map>
+  <key>RenderShadowSlopeScale</key>
+  <map>
+    <key>Comment</key>
+    <string>[ShadowDist P2] World-units receiver-plane slope bias scale. Per cascade the bias is raised to cover the depth variation of a flat receiver across the kernel's actual footprint (per map axis, from the surface normal decomposed onto the map's u/v axes; hard 5-tap incl. x-snap and bilinear compare, or the soft disk incl. jitter), minus what the normal offset already supplies, plus half a texel. 1 = exact cover; below 1 risks acne on slanted receivers in coarse cascades, above 1 Peter-pans thin attachments. Range 0-3.</string>
+    <key>Persist</key>
+    <integer>1</integer>
+    <key>Type</key>
+    <string>F32</string>
+    <key>Value</key>
+    <real>1.0</real>
+  </map>
   <key>RenderShadowProjOffset</key>
   <map>
     <key>Comment</key>
