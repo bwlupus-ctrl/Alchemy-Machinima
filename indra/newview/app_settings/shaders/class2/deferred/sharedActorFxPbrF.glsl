@@ -116,6 +116,7 @@ vec4 applySkyAndWaterFog(vec3 pos, vec3 additive, vec3 atten, vec4 color);
 
 #ifdef HAS_ACTOR_FX
 vec3 actorFxPbrPreLight(vec3 source);
+void actorFxTronPrime(); // [TronT2 fix] seam footprint, uniform flow
 vec3 actorFxPbrPostLight(vec3 lit_color, vec3 authored_source,
                          vec3 geometry_normal_eye, vec3 position_eye,
                          vec2 authored_uv, float dissolve_coverage,
@@ -340,6 +341,9 @@ float shared_minimum_alpha() { return minimum_alpha; }
 
 void main()
 {
+#ifdef HAS_ACTOR_FX
+    actorFxTronPrime(); // [TronT2 fix] before any discard/return
+#endif
     mirrorClip(vary_position);
     vec3 pos = vary_position;
     waterClip(pos);

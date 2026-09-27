@@ -11,6 +11,13 @@
  * 22, 23, 24, 26, and 27. The other looks are intentionally static in Ghost
  * Studio too; the shared shimmer, glitch, and distortion controls can animate
  * any look without changing that preset contract.
+ *
+ * [TronT2] Look 36 "Tron Suit" is the one look NOT on actorFxTime: its pulse
+ * comes from the shared Tron clock's pulse accumulator (actorFxTronParams.w /
+ * actorFxTronColor.w, uploaded every frame regardless of TronEnabled), so the
+ * suit, the Tron World grid pulses, the Rig Rim Tron tint and the post neon
+ * rim breathe together. It is therefore excluded from the "Tron off =>
+ * byte-identical" assertion by design (design v3 section 6.5).
  */
 
 uniform int actorFxEnabled;
@@ -28,6 +35,27 @@ uniform vec4 actorFxParams1;
 // w=render semantics supplied by the caller
 //   0=Layer, 1=Cover material/backing, 2=exact topology line pass
 uniform vec4 actorFxParams2;
+
+// [TronT2] Live look 36 "Tron Suit" -- uploaded by upload_actor_fx_style ONLY
+// when the effective style is look 36 ([TronT2 fix]: the three settings reads
+// + palette query are skipped for every other look). Nothing outside the
+// `actorFxLook == 36` branches reads them, so their value while another look
+// is bound is irrelevant. The shared Tron clock's pulse accumulator feeds them
+// regardless of TronEnabled (design v3 section 6.5); the master only decides
+// the palette override.
+//   x = upload state: 0 = never uploaded (built-in defaults, actor hue),
+//       1 = uploaded, actor hue, 2 = uploaded, Tron palette primary colour
+//   y = seam cell size (m, bind space; default 0.12)
+//   z = seam width (m, FULL width; the shader halves it; default 0.012)
+//   w = shared pulse01 waveform 0..1 (ALTron::pulse01(); default 0.5)
+uniform vec4 actorFxTronParams;
+//   x = seam density 0..1 (fraction of cells carrying a trace; default 0.55)
+//   y = seam gain x (default 1), z = rim gain x (default 1)
+//   w = pulse depth 0..1 (TronPulseAmount; default 0.35)
+uniform vec4 actorFxTronParams2;
+//   rgb = Tron palette primary (LINEAR), w = pulse PHASE 0..1 (monotonic,
+//   ALTron::clock().mPulsePhase01) driving the travelling seam pulses
+uniform vec4 actorFxTronColor;
 
 // Shared with shadow and glow programs; implemented by actorFxDissolveF.glsl.
 float actorFxDissolveCoverage(vec3 object_position);
@@ -187,6 +215,266 @@ float actorFxPossessedHeartbeat()
     return max(first, second);
 }
 
+// -------------------------------------------------------------------------
+// [TronT2] Tron Suit (look 36) helpers
+// -------------------------------------------------------------------------
+// Bind-space frame: vary_actor_fx_position is the raw `position` attribute of
+// every HAS_ACTOR_FX vertex shader -- for the system avatar the morphed bind
+// pose, for rigged mesh the bind-shape-applied bind pose, for non-rigged
+// attachment prims the linkset's own scaled local frame. Seams evaluated
+// there stick to the body under any animation and camera. The geometric
+// normal is cross(dFdx(P), dFdy(P)): both derivatives lie in the triangle's
+// bind-space plane, so the cross product is the face normal regardless of
+// pose. No normal-matrix inversion, no eye-space normal for the traces.
+bool actorFxTronUploaded()
+{
+    return actorFxTronParams.x > 0.5;
+}
+
+bool actorFxTronUsePalette()
+{
+    return actorFxTronParams.x > 1.5;
+}
+
+float actorFxTronSeamCell()
+{
+    return actorFxTronUploaded() ? clamp(actorFxTronParams.y, 0.01, 4.0) : 0.12;
+}
+
+float actorFxTronSeamHalfWidth()
+{
+    return 0.5 * (actorFxTronUploaded() ? clamp(actorFxTronParams.z, 0.001, 1.0) : 0.012);
+}
+
+float actorFxTronSeamDensity()
+{
+    return actorFxTronUploaded() ? clamp(actorFxTronParams2.x, 0.0, 1.0) : 0.55;
+}
+
+float actorFxTronSeamGain()
+{
+    return actorFxTronUploaded() ? max(actorFxTronParams2.y, 0.0) : 1.0;
+}
+
+float actorFxTronRimGain()
+{
+    return actorFxTronUploaded() ? max(actorFxTronParams2.z, 0.0) : 1.0;
+}
+
+// Seam brightness law shared by every path: 1.4 + 1.6 * pulse, where the
+// pulse is the CPU waveform pulled toward its mid-point by (1 - depth) so a
+// zero depth is a steady 2.2 and a full depth swings 1.4..3.0.
+float actorFxTronSeamPulse()
+{
+    float pulse01 = actorFxTronUploaded() ? clamp(actorFxTronParams.w, 0.0, 1.0) : 0.5;
+    float depth   = actorFxTronUploaded() ? clamp(actorFxTronParams2.w, 0.0, 1.0) : 0.35;
+    return 1.4 + 1.6 * mix(0.5, pulse01, depth);
+}
+
+// Legacy/forward beauty convention (looks 28-35): the raw actorFxTint is used
+// as-is against the linear source. The Tron palette is already linear.
+vec3 actorFxTronTintLegacy()
+{
+    return actorFxTronUsePalette() ? max(actorFxTronColor.rgb, vec3(0.0)) : actorFxTint;
+}
+
+// PBR convention: callers pass the sRGB-decoded actorFxTint.
+vec3 actorFxTronTintPbr(vec3 decoded_tint)
+{
+    return actorFxTronUsePalette() ? max(actorFxTronColor.rgb, vec3(0.0)) : decoded_tint;
+}
+
+// PCG integer hash (same construction as tronWorldF.glsl / cineOutlineF.glsl).
+uint actorFxTronPcg(uint v)
+{
+    uint s = v * 747796405u + 2891336453u;
+    uint w = ((s >> ((s >> 28u) + 4u)) ^ s) * 277803737u;
+    return (w >> 22u) ^ w;
+}
+
+float actorFxTronSegDist(vec2 p, vec2 a, vec2 b, out float t)
+{
+    vec2 ab = b - a;
+    vec2 ap = p - a;
+    t = clamp(dot(ap, ab) / max(dot(ab, ab), 1.0e-8), 0.0, 1.0);
+    return length(ap - ab * t);
+}
+
+// One bind-space plane of Manhattan traces: the Tron World trace cell decoder
+// (tronWorldF.glsl tronTracePlane) without the global lattice -- bind space is
+// already an absolute, animation-stable frame, so cells hash from
+// floor(p / cell) offset into the positive range. Returns vec2(trace, pulse).
+vec2 actorFxTronTraceCell(vec2 p2, vec2 fw2, float cell, float hw,
+                          float density, float phase, uint salt)
+{
+    vec2  q   = p2 / cell;
+    vec2  cf  = floor(q);
+    vec2  f   = q - cf;
+    uvec2 cid = uvec2(ivec2(cf) + ivec2(32768));
+    uint  hu  = actorFxTronPcg(cid.x ^ actorFxTronPcg(cid.y ^ actorFxTronPcg(salt + 0x9E3779B9u)));
+    float gate = float(hu & 0xFFFFu) * (1.0 / 65536.0);
+    if (gate >= density)
+    {
+        return vec2(0.0);
+    }
+    uint  hv   = actorFxTronPcg(hu ^ 0x85EBCA6Bu);
+    // 1 horizontal, 2 vertical, 3 L (left -> up), 4 L (down -> right), 5 diagonal
+    int   kind  = int((hv >> 16u) % 5u) + 1;
+    float h_dg = float((hv >> 8u) & 0xFFu) * (1.0 / 256.0);
+    bool  bwd  = ((hv >> 4u) & 1u) == 1u;
+    bool  anti = ((hv >> 5u) & 1u) == 1u;
+    float h_ph = float((hv >> 24u) & 0xFFu) * (1.0 / 256.0);
+    if (kind == 5 && h_dg >= 0.25)                          // fixed 25% diagonal chance
+    {
+        kind = anti ? 1 : 2;
+    }
+
+    float t = 0.0;
+    float d = 1.0e9;
+    if (kind == 1)
+    {
+        d = actorFxTronSegDist(f, vec2(0.0, 0.5), vec2(1.0, 0.5), t);
+    }
+    else if (kind == 2)
+    {
+        d = actorFxTronSegDist(f, vec2(0.5, 0.0), vec2(0.5, 1.0), t);
+    }
+    else if (kind == 3)
+    {
+        float tA, tB;
+        float dA = actorFxTronSegDist(f, vec2(0.0, 0.5), vec2(0.5, 0.5), tA);
+        float dB = actorFxTronSegDist(f, vec2(0.5, 0.5), vec2(0.5, 1.0), tB);
+        if (dA <= dB) { d = dA; t = tA * 0.5; } else { d = dB; t = 0.5 + tB * 0.5; }
+    }
+    else if (kind == 4)
+    {
+        float tA, tB;
+        float dA = actorFxTronSegDist(f, vec2(0.5, 0.0), vec2(0.5, 0.5), tA);
+        float dB = actorFxTronSegDist(f, vec2(0.5, 0.5), vec2(1.0, 0.5), tB);
+        if (dA <= dB) { d = dA; t = tA * 0.5; } else { d = dB; t = 0.5 + tB * 0.5; }
+    }
+    else
+    {
+        d = anti ? actorFxTronSegDist(f, vec2(0.0, 1.0), vec2(1.0, 0.0), t)
+                 : actorFxTronSegDist(f, vec2(0.0, 0.0), vec2(1.0, 1.0), t);
+    }
+
+    float fw    = max(fw2.x, fw2.y) + 1.0e-7;             // bind-space metres per pixel
+    float hw_px = max(hw, fw * 0.6);                      // never thinner than ~1.2 px
+    float trace = 1.0 - smoothstep(hw_px - fw, hw_px + fw, d * cell);
+    // pads (vias) at bends, radius 2.5x the half width
+    if (kind == 3 || kind == 4)
+    {
+        float rp = hw_px * 2.5;
+        trace = max(trace, 1.0 - smoothstep(rp - fw, rp + fw, length(f - vec2(0.5)) * cell));
+    }
+    float guard = smoothstep(3.0, 6.0, cell / max(fw, 1.0e-6));   // moire guard
+    // travelling head + tail pulse along the trace (see tronWorldF.glsl)
+    float arg = (bwd ? -t : t) - phase + h_ph;
+    float w   = smoothstep(0.70, 1.0, fract(arg));
+    float pulse = trace * w * w;
+    return vec2(trace, pulse) * guard;
+}
+
+// Triplanar seam field in bind space: vec2(seam coverage, seam pulse
+// coverage), each 0..1. A degenerate footprint (edge-on triangle, eye-plane
+// vertex) yields no seams instead of NaNs.
+//
+// [TronT2 fix] Evaluated ONCE per fragment: the beauty (actorFxApply /
+// actorFxPbrPostLight), synthetic-emission (actorFxPbrSyntheticEmission) and
+// legacy-emissive (actorFxEmissiveImpl) entry points all run in the same
+// invocation for a look-36 fragment, so the three PCG cell decodes are cached
+// in module scope and every later call returns the cached field.
+//
+// [TronT2 fix] Seam footprint priming. GLSL 1.40 section 8.8 leaves dFdx /
+// dFdy undefined in non-uniform control flow, and every program that links
+// this module reaches the Actor FX entry points only after its own
+// alpha-mask `discard` / early `return`. So the footprint is taken HERE, by
+// actorFxTronPrime(), which every such program calls as the FIRST statement
+// of its main() (before any pixel-dependent exit; identity no-op in
+// actorFxFallbackF.glsl keeps linking valid). The gate is uniform
+// (actorFxEnabled / actorFxLook), so off paths execute nothing. A program
+// that does not prime leaves both derivatives zero -> the footprint is
+// degenerate -> actorFxTronSeams() returns no seams (never NaNs). The ghost
+// twin (actorghostF.glsl) owns its main() and hoists the same way.
+bool actorFxTronPrimed = false;
+vec3 actorFxTronDpx    = vec3(0.0);
+vec3 actorFxTronDpy    = vec3(0.0);
+bool actorFxTronSeamsCached = false;
+vec2 actorFxTronSeamsCache  = vec2(0.0);
+// [ActorFX33-35Fix] / [TronT2 fix] Localized live emission recorded by the
+// legacy beauty branches (33 Seraph halo, 35 Wraith spectral edge, 36 Tron
+// Suit rim core) for actorFxEmissiveImpl, which has no normal/edge of its
+// own. Same shapes as actorFxPbrSyntheticEmission and the ghost
+// worldBloomRadiance; zero when no beauty evaluation preceded the emissive
+// call (emissive-only faces).
+vec3 actorFxLiveEmission = vec3(0.0);
+
+void actorFxTronPrime()
+{
+    // [TronT2 fix] Explicit per-fragment reset of the module memo state
+    // BEFORE the uniform gate, so correctness does not rest solely on
+    // global initialisers of a separately compiled object on older drivers.
+    actorFxTronPrimed      = false;
+    actorFxTronDpx         = vec3(0.0);
+    actorFxTronDpy         = vec3(0.0);
+    actorFxTronSeamsCached = false;
+    actorFxTronSeamsCache  = vec2(0.0);
+    actorFxLiveEmission    = vec3(0.0);
+    if (actorFxEnabled != 0 && actorFxLook == 36)
+    {
+        actorFxTronDpx    = dFdx(vary_actor_fx_position);
+        actorFxTronDpy    = dFdy(vary_actor_fx_position);
+        actorFxTronPrimed = true;
+    }
+}
+
+vec2 actorFxTronSeams()
+{
+    if (actorFxTronSeamsCached)
+    {
+        return actorFxTronSeamsCache;
+    }
+    actorFxTronSeamsCached = true;
+
+    vec3  P   = vary_actor_fx_position;
+    // [TronT2 fix] Footprint from actorFxTronPrime() (uniform control flow);
+    // no derivative is taken here. Unprimed -> zero -> degenerate -> no seams.
+    vec3  dPx = actorFxTronPrimed ? actorFxTronDpx : vec3(0.0);
+    vec3  dPy = actorFxTronPrimed ? actorFxTronDpy : vec3(0.0);
+    vec3  fwP = abs(dPx) + abs(dPy) + vec3(1.0e-6);
+    vec3  cr  = cross(dPx, dPy);
+    float crl = dot(cr, cr);
+    vec2  s   = vec2(0.0);
+    if (crl > 1.0e-10 * dot(dPx, dPx) * dot(dPy, dPy))
+    {
+        vec3 n_b = abs(cr * inversesqrt(crl));            // bind-space geometric normal
+        vec3 w   = pow(max(n_b, vec3(1.0e-4)), vec3(6.0));
+        w /= max(w.x + w.y + w.z, 1.0e-30);
+
+        float cell  = actorFxTronSeamCell();
+        float hw    = actorFxTronSeamHalfWidth();
+        float dens  = actorFxTronSeamDensity();
+        float phase = actorFxTronUploaded() ? fract(max(actorFxTronColor.w, 0.0)) : 0.0;
+
+        if (w.x > 1.0e-3)
+        {
+            s += w.x * actorFxTronTraceCell(P.yz, fwP.yz, cell, hw, dens, phase, 1u);
+        }
+        if (w.y > 1.0e-3)
+        {
+            s += w.y * actorFxTronTraceCell(P.xz, fwP.xz, cell, hw, dens, phase, 2u);
+        }
+        if (w.z > 1.0e-3)
+        {
+            s += w.z * actorFxTronTraceCell(P.xy, fwP.xy, cell, hw, dens, phase, 3u);
+        }
+        s = min(s, vec2(1.0));
+    }
+    actorFxTronSeamsCache = s;
+    return s;
+}
+
 bool actorFxCoverMode()
 {
     return actorFxParams2.w > 0.5;
@@ -257,9 +545,13 @@ float actorFxAuthoredMaterialResponse()
         return 1.0;
     }
 
+    // [TronT2 fix] 36 (Tron Suit) owns the surface in Cover (near-black suit
+    // body): fade authored normal/spec/env/emissive response by strength on
+    // legacy materials, matching actorFxPbrAuthoredEmissiveResponse's Cover
+    // law for the shared PBR path (Layer never reaches this point).
     bool style_owns_material = actorFxFlatSensorLook() ||
                                actorFxLook == 9 || actorFxLook == 12 ||
-                               actorFxLook == 16;
+                               actorFxLook == 16 || actorFxLook == 36;
     return style_owns_material
         ? 1.0 - clamp(actorFxParams0.x, 0.0, 1.0)
         : 1.0;
@@ -775,6 +1067,28 @@ vec3 actorFxApply(vec3 source, vec3 normal_eye, vec3 position_eye, vec2 authored
         fx = body + spectral * flick
            * (0.22 * rim_wide + 0.95 * rim_core + 0.10 * crawl * rim_wide);
     }
+    else if (actorFxLook == 36) // [TronT2] Live: Tron Suit
+    {
+        // Neon suit: Fresnel rim + bind-space body seams, both in the Tron
+        // palette colour (or the actor hue), on the authored material in
+        // Layer or on a near-black suit body in Cover.
+        float rim_wide = smoothstep(0.05, 0.72, edge);
+        float rim_core = smoothstep(0.48, 0.92, edge);
+        vec2  seams    = actorFxTronSeams();
+        vec3  tron     = actorFxTronTintLegacy();
+        vec3  body     = actorFxCoverMode()
+            ? mix(vec3(lum) * 0.08, source * 0.22, 0.5)
+            : source;
+        fx = body + tron * (actorFxTronRimGain() * (0.20 * rim_wide + 1.20 * rim_core)
+                          + actorFxTronSeamGain() * (seams.x * actorFxTronSeamPulse()
+                                                     + seams.y * 1.6));
+        // [TronT2 fix] Localized rim-core emission for actorFxEmissiveImpl
+        // (same subset actorFxPbrSyntheticEmission / the ghost bloom emit:
+        // rimGain * 0.30 * rim_core); the seams add their own term there.
+        // Mode-independent: Layer and Cover share the neon, only the
+        // authored base differs.
+        actorFxLiveEmission = tron * actorFxTronRimGain() * 0.30 * rim_core;
+    }
 
     // Ghost Studio adds restrained cues after the style so flat-tint looks
     // still reveal the selected distortion. Native textured looks keep their
@@ -880,6 +1194,12 @@ float actorFxPbrAuthoredEmissiveResponse()
     {
         return 1.0;
     }
+    // [TronT2] Tron Suit owns the emission only when it owns the surface
+    // (Cover); Layer keeps LEDs / emissive maps and adds the neon on top.
+    if (actorFxLook == 36)
+    {
+        return actorFxCoverMode() ? 1.0 - actorFxPbrStrength() : 1.0;
+    }
 
     // Every replacement treatment owns its emission signal.  Apply the same
     // gain in beauty and glow, and in both Layer and Cover, so LEDs and emissive
@@ -952,11 +1272,14 @@ vec3 actorFxPbrSyntheticEmission(vec3 authored_source,
                                  vec3 position_eye, vec2 authored_uv,
                                  float dissolve_coverage)
 {
+    // [TronT2] 36 (Tron Suit) has its own branch below -- it must never fall
+    // into the trailing `else`, which is look 30.
     if (!actorFxActive() ||
         !(actorFxLook == 2 || actorFxLook == 6 || actorFxLook == 10 ||
           actorFxLook == 14 || actorFxLook == 15 || actorFxLook == 17 ||
           actorFxLook == 19 || actorFxLook == 26 || actorFxLook == 27 ||
-          actorFxLook == 30))
+          actorFxLook == 30 ||
+          actorFxLook == 36))                          // [TronT2]
     {
         return vec3(0.0);
     }
@@ -1065,6 +1388,15 @@ vec3 actorFxPbrSyntheticEmission(vec3 authored_source,
         float flick = 0.70 + 0.30 * sin(actorFxTime * 6.0 + position_eye.y * 3.0);
         vec3 spectral = actor_fx_pbr_palette(mix(vec3(0.15, 1.00, 0.55), actorFxTint, 0.15));
         emission = spectral * edge * 0.40 * flick * emission_scale;
+    }
+    else if (actorFxLook == 36) // [TronT2] Live: Tron Suit -- seams + rim core bloom
+    {
+        float rim_core = smoothstep(0.48, 0.92, edge);
+        vec2  seams    = actorFxTronSeams();
+        vec3  tron     = actorFxTronTintPbr(tint);
+        emission = tron * (actorFxTronSeamGain() * (seams.x * (0.25 * actorFxTronSeamPulse())
+                                                    + seams.y * 0.60)
+                         + actorFxTronRimGain() * 0.30 * rim_core) * emission_scale;
     }
     else // 30: Live Bass Sweep
     {
@@ -1521,6 +1853,20 @@ vec3 actorFxPbrPostLight(vec3 lit_color, vec3 authored_source,
         fx = body + spectral * hdr_scale * flick
            * (0.22 * rim_wide + 0.95 * rim_core + 0.10 * crawl * rim_wide);
     }
+    else if (actorFxLook == 36) // [TronT2] Live: Tron Suit
+    {
+        // Layer: the normally lit HDR material plus neon. Cover: near-black
+        // suit body (perceptual luma floor) plus neon. Seams live in bind
+        // space, the rim on the smooth geometry normal like every live look.
+        vec2 seams = actorFxTronSeams();
+        vec3 tron  = actorFxTronTintPbr(tint);
+        vec3 body  = actorFxCoverMode()
+            ? mix(actor_fx_pbr_palette(vec3(lum)) * hdr_scale * 0.08, source * 0.22, 0.5)
+            : source;
+        fx = body + tron * hdr_scale
+           * (actorFxTronRimGain() * (0.20 * rim_wide + 1.20 * rim_core)
+              + actorFxTronSeamGain() * (seams.x * actorFxTronSeamPulse() + seams.y * 1.6));
+    }
 
     // UV displacement and RGB side taps were already applied to the authored
     // source samples. These restrained post cues keep flat graphic looks from
@@ -1621,9 +1967,12 @@ vec3 actorFxEmissiveImpl(vec3 authored_emissive, vec3 styled_color,
         return authored_emissive;
     }
     float strength = clamp(actorFxParams0.x, 0.0, 1.0);
+    // [TronT2 fix] 36 (Tron Suit) Cover owns the emission like the shared PBR
+    // path (actorFxPbrAuthoredEmissiveResponse: Cover = 1 - strength); Layer
+    // keeps LEDs / emissive maps because actorFxCoverMode() is false there.
     bool style_owns_material = actorFxFlatSensorLook() ||
                                actorFxLook == 9 || actorFxLook == 12 ||
-                               actorFxLook == 16;
+                               actorFxLook == 16 || actorFxLook == 36;
     vec3 base_emissive = authored_emissive;
     if (actorFxCoverMode() && style_owns_material)
     {
@@ -1706,7 +2055,29 @@ vec3 actorFxEmissiveImpl(vec3 authored_emissive, vec3 styled_color,
     {
         glow = 0.08;
     }
+    // [TronT2 fix] 36 (Tron Suit) deliberately has NO styled-colour glow:
+    // that multiplied the whole body (0.30 * source in Layer) into emissive
+    // RGB + bloom, unlike the ghost / shared-PBR paths. Its emission is the
+    // localized rim-core + seam subset added below.
     vec3 style_emissive = styled_color * glow;
+    if (actorFxLook == 36)
+    {
+        // [TronT2] Seams bloom on their own (like the Dissolve edge below):
+        // the legacy/system-avatar path routes emissive through here
+        // (avatarF.glsl frag_data[3]), so this is the body traces' only
+        // bloom feed on classic materials.
+        // [TronT2 fix] Director Brightness (actorFxParams1.z) applies exactly
+        // once here, as actorFxPbrSyntheticEmission and the ghost replay
+        // (ghostFx.w) do. The rim-core subset recorded by the beauty branch
+        // (actorFxLiveEmission, zero face-on and on emissive-only faces)
+        // replaces the former body-wide glow; Layer keeps the authored
+        // emissive above, Cover fades it by strength (style_owns_material).
+        vec2 seams = actorFxTronSeams();
+        style_emissive += (actorFxLiveEmission
+                           + actorFxTronTintLegacy() * actorFxTronSeamGain()
+                             * (seams.x * 0.90 + seams.y * 0.60))
+                        * actorFxSignalPulse() * max(actorFxParams1.z, 0.0);
+    }
     if (actorFxLook == 10)
     {
         // Use the exact beauty/shadow coverage field for the incandescent

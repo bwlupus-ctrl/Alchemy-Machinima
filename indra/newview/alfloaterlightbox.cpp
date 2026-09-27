@@ -120,6 +120,11 @@ ALFloaterLightBox::~ALFloaterLightBox()
     mTronGridSubjectRadiusConnection.disconnect();
     mTronGradeKeepSubjectConnection.disconnect();
     mTronSubjectTargetSetConnection.disconnect();
+    // [TronT2]
+    mTronTraceEnabledConnection.disconnect();
+    mTronTracePulseAmountConnection.disconnect();
+    mTronRimEnabledConnection.disconnect();
+    mTronRimScanAmountConnection.disconnect();
 }
 
 bool ALFloaterLightBox::postBuild()
@@ -210,6 +215,11 @@ bool ALFloaterLightBox::postBuild()
     mTronGridSubjectRadiusConnection = gSavedSettings.getControl("TronGridSubjectRadius")->getSignal()->connect([&](LLControlVariable*, const LLSD&, const LLSD&) { updateTronVisibility(); });
     mTronGradeKeepSubjectConnection = gSavedSettings.getControl("TronGradeKeepSubject")->getSignal()->connect([&](LLControlVariable*, const LLSD&, const LLSD&) { updateTronVisibility(); });
     mTronSubjectTargetSetConnection = gSavedSettings.getControl("TronSubjectTargetSet")->getSignal()->connect([&](LLControlVariable*, const LLSD&, const LLSD&) { updateTronVisibility(); });
+    // [TronT2]
+    mTronTraceEnabledConnection = gSavedSettings.getControl("TronTraceEnabled")->getSignal()->connect([&](LLControlVariable*, const LLSD&, const LLSD&) { updateTronVisibility(); });
+    mTronTracePulseAmountConnection = gSavedSettings.getControl("TronTracePulseAmount")->getSignal()->connect([&](LLControlVariable*, const LLSD&, const LLSD&) { updateTronVisibility(); });
+    mTronRimEnabledConnection = gSavedSettings.getControl("TronRimEnabled")->getSignal()->connect([&](LLControlVariable*, const LLSD&, const LLSD&) { updateTronVisibility(); });
+    mTronRimScanAmountConnection = gSavedSettings.getControl("TronRimScanAmount")->getSignal()->connect([&](LLControlVariable*, const LLSD&, const LLSD&) { updateTronVisibility(); });
 
     return LLFloater::postBuild();
 }
@@ -719,9 +729,16 @@ void ALFloaterLightBox::updateTronVisibility()
     const bool grade_on      = gSavedSettings.getF32("TronGradeStrength") > 0.f;
     const bool grid_on       = gSavedSettings.getBOOL("TronGridEnabled");
     const bool pulses_on     = gSavedSettings.getF32("TronPulseGridAmount") > 0.f;
+    const bool trace_on      = gSavedSettings.getBOOL("TronTraceEnabled");
+    const bool trace_pulses_on = gSavedSettings.getF32("TronTracePulseAmount") > 0.f;
+    const bool rim_on        = gSavedSettings.getBOOL("TronRimEnabled");
+    const bool rim_scan_on   = gSavedSettings.getF32("TronRimScanAmount") > 0.f;
+    // [TronT2] Subject group now also gates on the neon rim (it reads the
+    // subject mask -- contract section 7.1).
     const bool subject_group = gSavedSettings.getF32("TronGridSubjectExclude") > 0.f ||
                                 gSavedSettings.getF32("TronGridSubjectRadius") > 0.f ||
-                                gSavedSettings.getF32("TronGradeKeepSubject") > 0.f;
+                                gSavedSettings.getF32("TronGradeKeepSubject") > 0.f ||
+                                rim_on;
     const bool single_subject = (gSavedSettings.getS32("TronSubjectTargetSet") == 0);
     const bool tag_active     = LLViewerShaderMgr::gbufferAvatarTagActive();
 
@@ -787,6 +804,64 @@ void ALFloaterLightBox::updateTronVisibility()
     if (LLView* v = findChild<LLView>("tr_pulse_grid_amount_label")) v->setVisible(grid_on);
     if (LLView* v = findChild<LLView>("tr_pulse_grid_amount_slider")) v->setVisible(grid_on);
     if (LLView* v = findChild<LLView>("tr_reset_TronPulseGridAmount")) v->setVisible(grid_on);
+
+    // [TronT2] Circuit traces: every row but the enable is hidden when
+    // TronTraceEnabled is off; the three pulse rows are also hidden when
+    // TronTracePulseAmount == 0 (contract section 7.1).
+    static const std::string trace_widgets[] = {
+        "tr_trace_intensity_label", "tr_trace_intensity_slider", "tr_reset_TronTraceIntensity",
+        "tr_trace_cell_label", "tr_trace_cell_slider", "tr_reset_TronTraceCell",
+        "tr_trace_width_label", "tr_trace_width_slider", "tr_reset_TronTraceWidth",
+        "tr_trace_density_label", "tr_trace_density_slider", "tr_reset_TronTraceDensity",
+        "tr_trace_pad_radius_label", "tr_trace_pad_radius_slider", "tr_reset_TronTracePadRadius",
+        "tr_trace_diagonal_label", "tr_trace_diagonal_slider", "tr_reset_TronTraceDiagonal",
+        "tr_trace_walls_label", "tr_trace_walls_slider", "tr_reset_TronTraceWalls",
+        "tr_trace_floors_label", "tr_trace_floors_slider", "tr_reset_TronTraceFloors",
+    };
+    for (const std::string& name : trace_widgets)
+    {
+        if (LLView* v = findChild<LLView>(name)) v->setVisible(trace_on);
+    }
+    static const std::string trace_pulse_widgets[] = {
+        "tr_trace_pulse_speed_label", "tr_trace_pulse_speed_slider", "tr_reset_TronTracePulseSpeed",
+        "tr_trace_pulse_length_label", "tr_trace_pulse_length_slider", "tr_reset_TronTracePulseLength",
+        "tr_trace_seed_label", "tr_trace_seed_slider", "tr_reset_TronTraceSeed",
+    };
+    const bool trace_pulse_rows_visible = trace_on && trace_pulses_on;
+    for (const std::string& name : trace_pulse_widgets)
+    {
+        if (LLView* v = findChild<LLView>(name)) v->setVisible(trace_pulse_rows_visible);
+    }
+    if (LLView* v = findChild<LLView>("tr_trace_pulse_amount_label")) v->setVisible(trace_on);
+    if (LLView* v = findChild<LLView>("tr_trace_pulse_amount_slider")) v->setVisible(trace_on);
+    if (LLView* v = findChild<LLView>("tr_reset_TronTracePulseAmount")) v->setVisible(trace_on);
+
+    // [TronT2] Neon rim: every row but the enable is hidden when
+    // TronRimEnabled is off; scan speed/width are also hidden when
+    // TronRimScanAmount == 0.
+    static const std::string rim_widgets[] = {
+        "tr_rim_gain_label", "tr_rim_gain_slider", "tr_reset_TronRimGain",
+        "tr_rim_exponent_label", "tr_rim_exponent_slider", "tr_reset_TronRimExponent",
+        "tr_rim_silhouette_gain_label", "tr_rim_silhouette_gain_slider", "tr_reset_TronRimSilhouetteGain",
+        "tr_rim_silhouette_threshold_label", "tr_rim_silhouette_threshold_slider", "tr_reset_TronRimSilhouetteThreshold",
+        "tr_rim_pulse_amount_label", "tr_rim_pulse_amount_slider", "tr_reset_TronRimPulseAmount",
+        "tr_rim_scan_amount_label", "tr_rim_scan_amount_slider", "tr_reset_TronRimScanAmount",
+        "tr_rim_color_mode_label", "tr_rim_color_mode_combo",
+        "tr_rim_reject_floors_check",
+    };
+    for (const std::string& name : rim_widgets)
+    {
+        if (LLView* v = findChild<LLView>(name)) v->setVisible(rim_on);
+    }
+    static const std::string rim_scan_widgets[] = {
+        "tr_rim_scan_speed_label", "tr_rim_scan_speed_slider", "tr_reset_TronRimScanSpeed",
+        "tr_rim_scan_width_label", "tr_rim_scan_width_slider", "tr_reset_TronRimScanWidth",
+    };
+    const bool rim_scan_rows_visible = rim_on && rim_scan_on;
+    for (const std::string& name : rim_scan_widgets)
+    {
+        if (LLView* v = findChild<LLView>(name)) v->setVisible(rim_scan_rows_visible);
+    }
 
     static const std::string subject_widgets[] = {
         "tr_subject_header",

@@ -147,7 +147,11 @@ public:
         ACTOR_LOOK_SERAPH           = 33,
         ACTOR_LOOK_INTERROGATION    = 34,
         ACTOR_LOOK_WRAITH           = 35,
-        ACTOR_LOOK_MAX              = ACTOR_LOOK_WRAITH
+        // [TronT2] Actor FX "Tron Suit" -- Layer keeps authored/lit material
+        // and adds neon rim + bind-space seams; Cover shows the near-black
+        // suit body plus rim + seams (design v2 section 6.2).
+        ACTOR_LOOK_TRON_SUIT        = 36,
+        ACTOR_LOOK_MAX              = ACTOR_LOOK_TRON_SUIT
     };
 
     static bool isActorStyleLook(S32 look)

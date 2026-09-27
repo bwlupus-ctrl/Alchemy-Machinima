@@ -75,6 +75,7 @@ vec3 srgb_to_linear(vec3 c);
 vec3 actorFxApply(vec3 source, vec3 normal_eye, vec3 position_eye, vec2 authored_uv);
 vec3 actorFxEmissive(vec3 authored_emissive, vec3 styled_color);
 bool actorFxActive();
+void actorFxTronPrime(); // [TronT2 fix] seam footprint, uniform flow
 float actorFxAuthoredMaterialResponse();
 bool actorFxUvTransformEnabled();
 bool actorFxRgbSplitEnabled();
@@ -138,6 +139,9 @@ vec3 sample_emissive(vec2 uv)
 
 void main()
 {
+#ifdef HAS_ACTOR_FX
+    actorFxTronPrime(); // [TronT2 fix] before any discard/return
+#endif
     int mi = vary_material_index;
 
     vec4 basecolor = sample_basecolor(base_color_texcoord.xy).rgba;

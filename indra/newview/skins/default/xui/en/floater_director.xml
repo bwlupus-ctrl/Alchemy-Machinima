@@ -1888,7 +1888,7 @@
                      left="100"
                      name="actor_style_mode"
                      right="-10"
-                     tool_tip="Layer blends the effect over the authored actor material. Cover fully owns the actor's visible material response while preserving authored alpha coverage, shadows, and motion."
+                     tool_tip="Layer blends the effect over the authored actor material. Cover fully owns the actor's visible material response while preserving authored alpha coverage, shadows, and motion. Tron Suit: Layer = clothing + seams, Cover = black suit."
                      top="128">
                         <combo_box.item label="Layer" name="actor_style_layer" value="0" />
                         <combo_box.item label="Cover" name="actor_style_replace" value="1" />
@@ -1942,6 +1942,7 @@
                         <combo_box.item label="Seraph" name="actor_st_seraph" value="33" />
                         <combo_box.item label="Interrogation" name="actor_st_interrogation" value="34" />
                         <combo_box.item label="Wraith" name="actor_st_wraith" value="35" />
+                        <combo_box.item label="Tron Suit" name="actor_st_tron_suit" value="36" />
                     </combo_box>
                     <check_box
                      follows="left|top"

@@ -32,6 +32,9 @@
 #include "llviewercontrol.h"
 #include "llagentdata.h"
 #include "llframetimer.h"
+#include "altron.h" // [TronT2] Actor FX "Tron Suit" (look 36) params
+
+#include <cmath> // [TronT2] std::isfinite for the Tron Suit uniform sanitisers
 
 #include "lldrawable.h"
 #include "lldrawpoolalpha.h"
@@ -439,6 +442,10 @@ const LLStaticHashedString sActorFxParams2("actorFxParams2");
 const LLStaticHashedString sActorFxScreenSize("actorFxScreenSize");
 const LLStaticHashedString sActorFxDissolveProgress("actorFxDissolveProgress");
 const LLStaticHashedString sActorFxUseCoverageAlpha("actorFxUseCoverageAlpha");
+// [TronT2] Look 36 "Tron Suit" -- actorFxF.glsl.
+const LLStaticHashedString sActorFxTronParams("actorFxTronParams");
+const LLStaticHashedString sActorFxTronParams2("actorFxTronParams2");
+const LLStaticHashedString sActorFxTronColor("actorFxTronColor");
 
 LLGLSLShader* get_actor_fx_shader()
 {
@@ -481,6 +488,9 @@ bool LLRenderPass::actorFxLookNeedsSyntheticBloom(S32 look)
         case 26: // Sonar reveal
         case 27: // Hologram interference
         case LLDirectorCast::ACTOR_LOOK_BASS_SWEEP:
+        // [TronT2] Tron Suit: seams + rim core emit, so zero-authored-
+        // emissive alpha faces need the second glow draw too.
+        case LLDirectorCast::ACTOR_LOOK_TRON_SUIT:
             return true;
         default:
             return false;
@@ -615,10 +625,11 @@ bool upload_actor_fx_style(const LLUUID& style_id,
         static_cast<F32>(stable_id.mData[0] | (stable_id.mData[1] << 8))
         * (F_TWO_PI / 65536.f);
 
-    shader->uniform1i(sActorFxLook, llclamp(
+    const S32 look = llclamp(
         style.mStyle,
         static_cast<S32>(LLDirectorCast::ACTOR_LOOK_DEFAULT),
-        static_cast<S32>(LLDirectorCast::ACTOR_LOOK_MAX)));
+        static_cast<S32>(LLDirectorCast::ACTOR_LOOK_MAX));
+    shader->uniform1i(sActorFxLook, look);
     shader->uniform1f(sActorFxTime, effect_time);
     shader->uniform3f(sActorFxTint,
                       tint.mV[VX], tint.mV[VY], tint.mV[VZ]);
@@ -647,6 +658,47 @@ bool upload_actor_fx_style(const LLUUID& style_id,
                       llclamp(style.mShimmerSpeed, 0.f, 20.f),
                       frag_offset.mV[VX], frag_offset.mV[VY],
                       render_semantics);
+
+    // [TronT2] Actor FX "Tron Suit" (look 36): x = upload state (1 actor hue,
+    // 2 Tron palette) tells the shader the sliders are live; the pulse
+    // accumulator is latched every frame regardless of TronEnabled (design v3
+    // section 6.5), never gated on it.
+    // [TronT2 fix] Uploaded only when the effective look IS 36: actorFxF.glsl
+    // reads actorFxTronParams/2/Color exclusively inside its
+    // `actorFxLook == 36` branches, so the three hashed uniform lookups, the
+    // settings reads and the ALTron::palette() query are dead work for every
+    // other style. The look uniform above is written from the same clamped
+    // value, so the shader can never see look 36 without a fresh upload.
+    if (look == LLDirectorCast::ACTOR_LOOK_TRON_SUIT)
+    {
+        static LLCachedControl<bool> suit_use_palette(gSavedSettings, "TronSuitUsePalette", true);
+        static LLCachedControl<F32>  suit_seam_cell(gSavedSettings, "TronSuitSeamCell", 0.12f);
+        static LLCachedControl<F32>  suit_seam_width(gSavedSettings, "TronSuitSeamWidth", 0.012f);
+        static LLCachedControl<F32>  suit_seam_density(gSavedSettings, "TronSuitSeamDensity", 0.55f);
+        static LLCachedControl<F32>  suit_seam_gain(gSavedSettings, "TronSuitSeamGain", 1.0f);
+        static LLCachedControl<F32>  suit_rim_gain(gSavedSettings, "TronSuitRimGain", 1.0f);
+        static LLCachedControl<F32>  tron_pulse_amount(gSavedSettings, "TronPulseAmount", 0.35f);
+
+        const auto finite_or = [](F32 v, F32 fallback)
+        { return std::isfinite(v) ? v : fallback; };
+        const F32 tron_state = (ALTron::isEnabledMaster() && suit_use_palette()) ? 2.f : 1.f;
+        const ALTron::Palette tron_palette = ALTron::palette();
+
+        shader->uniform4f(sActorFxTronParams,
+                          tron_state,
+                          llclamp(finite_or((F32)suit_seam_cell(), 0.12f), 0.02f, 1.f),
+                          llclamp(finite_or((F32)suit_seam_width(), 0.012f), 0.002f, 0.1f),
+                          ALTron::pulse01());
+        shader->uniform4f(sActorFxTronParams2,
+                          llclamp(finite_or((F32)suit_seam_density(), 0.55f), 0.f, 1.f),
+                          llclamp(finite_or((F32)suit_seam_gain(), 1.f), 0.f, 4.f),
+                          llclamp(finite_or((F32)suit_rim_gain(), 1.f), 0.f, 4.f),
+                          llclamp(finite_or((F32)tron_pulse_amount(), 0.35f), 0.f, 1.f));
+        shader->uniform4f(sActorFxTronColor,
+                          tron_palette.mPrimary.mV[0], tron_palette.mPrimary.mV[1],
+                          tron_palette.mPrimary.mV[2], ALTron::clock().mPulsePhase01);
+    }
+
     shader->uniform2fv(sActorFxScreenSize, 1, screen_size.mV);
     shader->uniform1f(sActorFxDissolveProgress,
                       llclamp(style.mDissolveProgress, 0.f, 1.f));

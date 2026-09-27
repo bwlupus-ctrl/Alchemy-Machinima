@@ -82,6 +82,7 @@ vec4 applySkyAndWaterFog(vec3 pos, vec3 additive, vec3 atten, vec4 color);
 #ifdef HAS_ACTOR_FX
 vec3 actorFxApply(vec3 source, vec3 normal_eye, vec3 position_eye, vec2 authored_uv);
 vec3 actorFxEmissive(vec3 authored_emissive, vec3 styled_color);
+void actorFxTronPrime(); // [TronT2 fix] seam footprint, uniform flow
 bool actorFxUvTransformEnabled();
 bool actorFxRgbSplitEnabled();
 vec2 actorFxUv(vec2 authored_uv, vec3 position_eye);
@@ -205,6 +206,9 @@ vec3 calcPointLightOrSpotLight(vec3 light_col, vec3 diffuse, vec3 v, vec3 n, vec
 
 void main()
 {
+#ifdef HAS_ACTOR_FX
+    actorFxTronPrime(); // [TronT2 fix] before any discard/return
+#endif
     mirrorClip(vary_position);
 
     vec2 frag = vary_fragcoord.xy/vary_fragcoord.z*0.5+0.5;

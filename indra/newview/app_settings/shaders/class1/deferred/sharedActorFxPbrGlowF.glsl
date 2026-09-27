@@ -81,6 +81,7 @@ vec3 actorFxPbrSyntheticEmission(vec3 authored_source,
                                  vec3 position_eye, vec2 authored_uv,
                                  float dissolve_coverage);
 bool actorFxActive();
+void actorFxTronPrime(); // [TronT2 fix] seam footprint, uniform flow
 float actorFxPbrDissolveCoverage();
 float actorFxPbrDissolveAlpha(float coverage);
 float actorFxPbrAuthoredEmissiveResponse();
@@ -207,6 +208,9 @@ float shared_glow_minimum_alpha() { return minimum_alpha; }
 
 void main()
 {
+#ifdef HAS_ACTOR_FX
+    actorFxTronPrime(); // [TronT2 fix] before any discard/return
+#endif
     vec4 basecolor = shared_glow_sample_basecolor(base_color_texcoord);
     float authored_alpha = basecolor.a * vertex_color.a;
 

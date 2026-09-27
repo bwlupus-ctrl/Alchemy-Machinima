@@ -159,6 +159,40 @@ const char* const kAllSettings[] = {
     // [TronT1] Advanced (shot keys).
     "TronNoPostScale",
     "TronBloomMeterScale",
+    // [TronT2] Circuit traces (look keys).
+    "TronTraceEnabled",
+    "TronTraceIntensity",
+    "TronTraceCell",
+    "TronTraceWidth",
+    "TronTraceDensity",
+    "TronTracePadRadius",
+    "TronTraceDiagonal",
+    "TronTraceWalls",
+    "TronTraceFloors",
+    "TronTracePulseAmount",
+    "TronTracePulseSpeed",
+    "TronTracePulseLength",
+    "TronTraceSeed",
+    // [TronT2] Post neon rim (look keys).
+    "TronRimEnabled",
+    "TronRimGain",
+    "TronRimExponent",
+    "TronRimSilhouetteGain",
+    "TronRimSilhouetteThreshold",
+    "TronRimPulseAmount",
+    "TronRimScanAmount",
+    "TronRimScanSpeed",
+    "TronRimScanWidth",
+    "TronRimColorMode",
+    "TronRimRejectFloors",
+    // [TronT2] Actor FX "Tron Suit" (shot keys -- per cast member styling,
+    // never written by a Tron look preset).
+    "TronSuitUsePalette",
+    "TronSuitSeamCell",
+    "TronSuitSeamWidth",
+    "TronSuitSeamDensity",
+    "TronSuitSeamGain",
+    "TronSuitRimGain",
     // [TronT1 P2-10] Rig Rim Tron tint (look keys, written only by Tron
     // presets) and the Roto Ink / Tron clock sync flag. These are NOT
     // ALCineRigRim's / ALRotoInk's own settings -- they live on those other
@@ -208,28 +242,130 @@ struct LookPreset
     F32   mTintR, mTintG, mTintB, mTintAmount;
     F32   mSpacing, mWidth, mMinWidthPx;
     S32   mMajorEvery;
+    // [TronT2] Moved out of applyPreset()'s common column into per-row fields
+    // -- the new looks need their own grade strength / grid on-off / wall
+    // and ceiling weights / water mode (contract section 8.1).
+    F32   mGradeStrength;
+    bool  mGridEnabled;
+    F32   mGridWall, mGridCeiling;
+    S32   mWaterMode;
     F32   mPulseGridAmount;
     F32   mPulseSpeed, mPulseWavelength, mPulseDensity;
     S32   mPulseDirection, mPulseColorMode;
     S32   mPulseShape;
     F32   mPulseRate;
+    // [TronT2] Circuit traces.
+    bool  mTraceEnabled;
+    F32   mTraceIntensity, mTraceCell, mTraceWidth, mTraceDensity;
+    F32   mTraceWalls, mTraceFloors;
+    F32   mTracePulseSpeed;
+    // [TronT2] Post neon rim.
+    bool  mRimEnabled;
+    F32   mRimGain, mRimExponent;
+    F32   mRimPulseAmount, mRimScanAmount;
+    S32   mRimColorMode;
     const char* mRotoKey;
     const char* mRigRimLabel;
     S32   mRigRimTronMode;
 };
 
-// id/key mirrors kPalettes; see the T1 contract section 8 for the source
-// table (common column + this per-row override table).
+// id/key mirrors kPalettes; see the T1 contract section 8 / T2 contract
+// section 8 for the source tables (common column + this per-row override
+// table). Field order matches the LookPreset struct declaration above:
+// key, pal, EV, Desat, TintR/G/B, TintAmt, Spacing, Width, MinPx, MajorEvery,
+// GradeStrength, GridEnabled, GridWall, GridCeiling, WaterMode,
+// PulseGridAmount, PulseSpeed, PulseWavelength, PulseDensity, PulseDirection,
+// PulseColorMode, PulseShape, PulseRate,
+// TraceEnabled, TraceIntensity, TraceCell, TraceWidth, TraceDensity,
+// TraceWalls, TraceFloors, TracePulseSpeed,
+// RimEnabled, RimGain, RimExponent, RimPulseAmount, RimScanAmount,
+// RimColorMode, RotoKey, RigRimLabel, RigRimTronMode.
 const LookPreset kLookPresets[] = {
-    // key           pal  EV    Desat  TintR  TintG  TintB  TintAmt  Sp    W      MinPx  Maj  PulseAmt  Speed  Wave  Dens  Dir Col  Shape Rate  RotoKey          RigRimLabel                     Mode
-    { "legacy",       1, 3.0f, 0.6f,  0.55f, 0.75f, 1.00f, 0.30f,  2.0f, 0.020f, 1.2f,  4,   1.5f,     6.0f, 24.0f, 0.35f, 3,  0,  0,  0.8f, "tron_legacy",      "Tron Suit Kick",              2 },
-    { "ares",         2, 3.5f, 0.7f,  1.00f, 0.55f, 0.45f, 0.25f,  3.0f, 0.030f, 1.2f,  3,   1.5f,    10.0f, 24.0f, 0.40f, 1,  0,  2,  1.2f, "tron_ares",        "Ares Red Backlight",          2 },
-    { "classic82",    3, 4.0f, 0.9f,  1.00f, 1.00f, 1.00f, 0.00f,  4.0f, 0.040f, 1.2f,  0,   1.5f,     3.0f, 32.0f, 0.30f, 0,  1,  3,  0.5f, "tron_1982",        "Sci-Fi Hologram",             1 },
-    { "recognizer",   4, 3.0f, 0.5f,  1.00f, 0.80f, 0.60f, 0.20f,  8.0f, 0.050f, 1.2f,  2,   1.5f,    12.0f, 48.0f, 0.70f, 3,  0,  0,  0.8f, "tron_recognizer",  "Strong Backlight",            1 },
-    { "uprising",     5, 2.5f, 0.4f,  0.70f, 0.85f, 1.00f, 0.20f,  1.0f, 0.012f, 1.2f,  8,   1.5f,     4.0f, 16.0f, 0.15f, 3,  0,  0,  0.8f, "tron_uprising",    "Silhouette Glow (any angle)", 1 },
-    { "rinzler",      6, 3.5f, 0.7f,  1.00f, 1.00f, 1.00f, 0.00f,  2.0f, 0.020f, 1.2f,  4,   1.5f,     6.0f, 24.0f, 0.35f, 3,  0,  0,  0.8f, "tron_recognizer",  "Noir Kicker",                 2 },
-    { "siren",        7, 2.0f, 0.3f,  0.75f, 0.85f, 1.00f, 0.35f,  0.5f, 0.008f, 1.0f,  4,   0.0f,     6.0f, 24.0f, 0.35f, 3,  0,  0,  0.8f, "tron_uprising",    "Dreamy Halo",                 1 },
-    { "quorra",       8, 3.0f, 0.5f,  0.55f, 0.75f, 1.00f, 0.30f,  2.0f, 0.020f, 1.2f,  4,   1.5f,     6.0f, 24.0f, 0.35f, 3,  1,  0,  0.8f, "tron_legacy",      "Fashion Edge",                2 },
+    { "legacy", 1, 3.0f, 0.6f, 0.55f, 0.75f, 1.00f, 0.30f, 2.0f, 0.020f, 1.2f, 4,
+      0.85f, true, 0.6f, 0.3f, 0,
+      1.5f, 6.0f, 24.0f, 0.35f, 3, 0, 0, 0.8f,
+      false, 4.0f, 0.5f, 0.015f, 0.45f, 1.0f, 0.0f, 2.0f,
+      true, 6.0f, 3.0f, 0.3f, 0.0f, 0,
+      "tron_legacy", "Tron Suit Kick", 2 },
+    { "ares", 2, 3.5f, 0.7f, 1.00f, 0.55f, 0.45f, 0.25f, 3.0f, 0.030f, 1.2f, 3,
+      0.85f, true, 0.6f, 0.3f, 0,
+      1.5f, 10.0f, 24.0f, 0.40f, 1, 0, 2, 1.2f,
+      true, 4.0f, 0.5f, 0.015f, 0.45f, 0.35f, 0.0f, 2.0f,
+      true, 8.0f, 3.0f, 0.3f, 0.0f, 0,
+      "tron_ares", "Ares Red Backlight", 2 },
+    { "classic82", 3, 4.0f, 0.9f, 1.00f, 1.00f, 1.00f, 0.00f, 4.0f, 0.040f, 1.2f, 0,
+      0.85f, true, 0.6f, 0.3f, 0,
+      1.5f, 3.0f, 32.0f, 0.30f, 0, 1, 3, 0.5f,
+      false, 4.0f, 0.5f, 0.015f, 0.45f, 1.0f, 0.0f, 2.0f,
+      true, 4.0f, 2.0f, 0.3f, 0.0f, 0,
+      "tron_1982", "Sci-Fi Hologram", 1 },
+    { "recognizer", 4, 3.0f, 0.5f, 1.00f, 0.80f, 0.60f, 0.20f, 8.0f, 0.050f, 1.2f, 2,
+      0.85f, true, 0.6f, 0.3f, 0,
+      1.5f, 12.0f, 48.0f, 0.70f, 3, 0, 0, 0.8f,
+      true, 4.0f, 0.5f, 0.015f, 0.45f, 0.6f, 0.0f, 2.0f,
+      true, 5.0f, 3.0f, 0.3f, 0.0f, 0,
+      "tron_recognizer", "Strong Backlight", 1 },
+    { "uprising", 5, 2.5f, 0.4f, 0.70f, 0.85f, 1.00f, 0.20f, 1.0f, 0.012f, 1.2f, 8,
+      0.85f, true, 0.6f, 0.3f, 0,
+      1.5f, 4.0f, 16.0f, 0.15f, 3, 0, 0, 0.8f,
+      false, 4.0f, 0.5f, 0.015f, 0.45f, 1.0f, 0.0f, 2.0f,
+      true, 4.0f, 3.0f, 0.3f, 0.8f, 0,
+      "tron_uprising", "Silhouette Glow (any angle)", 1 },
+    { "rinzler", 6, 3.5f, 0.7f, 1.00f, 1.00f, 1.00f, 0.00f, 2.0f, 0.020f, 1.2f, 4,
+      0.85f, true, 0.6f, 0.3f, 0,
+      1.5f, 6.0f, 24.0f, 0.35f, 3, 0, 0, 0.8f,
+      true, 4.0f, 0.5f, 0.015f, 0.45f, 0.3f, 0.0f, 2.0f,
+      true, 7.0f, 4.0f, 0.3f, 0.0f, 0,
+      "tron_recognizer", "Noir Kicker", 2 },
+    { "siren", 7, 2.0f, 0.3f, 0.75f, 0.85f, 1.00f, 0.35f, 0.5f, 0.008f, 1.0f, 4,
+      0.85f, true, 0.6f, 0.3f, 0,
+      0.0f, 6.0f, 24.0f, 0.35f, 3, 0, 0, 0.8f,
+      false, 4.0f, 0.5f, 0.015f, 0.45f, 1.0f, 0.0f, 2.0f,
+      true, 3.0f, 1.5f, 0.3f, 0.5f, 0,
+      "tron_uprising", "Dreamy Halo", 1 },
+    { "quorra", 8, 3.0f, 0.5f, 0.55f, 0.75f, 1.00f, 0.30f, 2.0f, 0.020f, 1.2f, 4,
+      0.85f, true, 0.6f, 0.3f, 0,
+      1.5f, 6.0f, 24.0f, 0.35f, 3, 1, 0, 0.8f,
+      false, 4.0f, 0.5f, 0.015f, 0.45f, 1.0f, 0.0f, 2.0f,
+      true, 5.0f, 3.0f, 0.3f, 0.0f, 1,
+      "tron_legacy", "Fashion Edge", 2 },
+    // [TronT2] Six new looks (design v1 section 10; T2 contract section 8.3).
+    { "clugold", 9, 3.5f, 0.6f, 1.00f, 0.85f, 0.60f, 0.30f, 4.0f, 0.030f, 1.2f, 2,
+      0.85f, true, 0.6f, 0.3f, 0,
+      1.5f, 8.0f, 24.0f, 0.35f, 3, 0, 0, 0.8f,
+      true, 4.0f, 0.5f, 0.015f, 0.45f, 0.5f, 0.0f, 2.0f,
+      true, 6.0f, 3.0f, 0.3f, 0.0f, 0,
+      "tron_recognizer", "Two-Sided Kick", 1 },
+    { "seaofsim", 10, 3.0f, 0.6f, 0.55f, 0.75f, 1.00f, 0.40f, 1.0f, 0.015f, 1.2f, 8,
+      0.85f, true, 0.6f, 0.3f, 1,
+      1.5f, 4.0f, 48.0f, 0.35f, 3, 0, 0, 0.8f,
+      false, 4.0f, 0.5f, 0.015f, 0.45f, 1.0f, 0.0f, 2.0f,
+      true, 4.0f, 3.0f, 0.3f, 0.0f, 0,
+      "tron_legacy", "Moonlit Rim", 1 },
+    { "circuit", 1, 3.0f, 0.7f, 1.00f, 1.00f, 1.00f, 0.00f, 4.0f, 0.020f, 1.2f, 4,
+      0.85f, true, 0.0f, 0.0f, 0,
+      1.5f, 6.0f, 24.0f, 0.15f, 3, 0, 0, 0.8f,
+      true, 5.0f, 0.3f, 0.015f, 0.6f, 1.0f, 0.0f, 4.0f,
+      true, 5.0f, 3.0f, 0.3f, 0.0f, 0,
+      "tron_legacy", "Neon / Stage", 1 },
+    { "arena", 5, 2.5f, 0.5f, 0.70f, 0.85f, 1.00f, 0.20f, 1.0f, 0.020f, 1.2f, 2,
+      0.85f, true, 0.6f, 0.3f, 0,
+      1.5f, 14.0f, 16.0f, 0.80f, 3, 0, 0, 0.8f,
+      false, 4.0f, 0.5f, 0.015f, 0.45f, 1.0f, 0.0f, 2.0f,
+      true, 8.0f, 3.0f, 0.3f, 1.0f, 0,
+      "tron_uprising", "Silhouette Glow (any angle)", 2 },
+    { "gridonly", 1, 3.0f, 0.6f, 0.55f, 0.75f, 1.00f, 0.30f, 2.0f, 0.020f, 1.2f, 4,
+      0.0f, true, 0.6f, 0.3f, 0,
+      1.5f, 6.0f, 24.0f, 0.35f, 3, 0, 0, 0.8f,
+      false, 4.0f, 0.5f, 0.015f, 0.45f, 1.0f, 0.0f, 2.0f,
+      false, 6.0f, 3.0f, 0.3f, 0.0f, 0,
+      "", "", 0 },
+    { "neonsuit", 1, 3.0f, 0.6f, 0.55f, 0.75f, 1.00f, 0.30f, 2.0f, 0.020f, 1.2f, 4,
+      0.0f, false, 0.6f, 0.3f, 0,
+      1.5f, 6.0f, 24.0f, 0.35f, 3, 0, 0, 0.8f,
+      false, 4.0f, 0.5f, 0.015f, 0.45f, 1.0f, 0.0f, 2.0f,
+      true, 8.0f, 3.0f, 0.4f, 0.0f, 0,
+      "tron_legacy", "Tron Suit Kick", 2 },
 };
 
 std::string sLastPresetRotoKey;
@@ -290,7 +426,12 @@ bool ALTron::isEnabled()
     }
     static LLCachedControl<F32>  grade_strength(gSavedSettings, "TronGradeStrength", 0.85f);
     static LLCachedControl<bool> grid_enabled(gSavedSettings, "TronGridEnabled", true);
-    return finite_or((F32)grade_strength(), 0.85f) > 0.f || grid_enabled();
+    // [TronT2] OR in the traces/rim enable flags -- the Tron World pass has
+    // something to draw whenever any of the four is on, not just grade/grid.
+    static LLCachedControl<bool> trace_enabled(gSavedSettings, "TronTraceEnabled", false);
+    static LLCachedControl<bool> rim_enabled(gSavedSettings, "TronRimEnabled", false);
+    return finite_or((F32)grade_strength(), 0.85f) > 0.f || grid_enabled() ||
+        trace_enabled() || rim_enabled();
 }
 
 // [TronT0]
@@ -529,25 +670,23 @@ void ALTron::applyPreset(const std::string& key)
         return; // unknown preset key: leave settings untouched
     }
 
-    // Common column (T1 contract section 8).
-    gSavedSettings.setF32("TronGradeStrength", 0.85f);
+    // Common column (T1 contract section 8; T2 contract section 8.1 moves
+    // TronGradeStrength/TronGridEnabled/TronGridWall/TronGridCeiling/
+    // TronGridWaterMode out of this common column and into per-row fields --
+    // see the per-row overrides below).
     gSavedSettings.setF32("TronGradeCrush", 0.05f);
     gSavedSettings.setF32("TronGradeKeepBrightLo", 0.8f);
     gSavedSettings.setF32("TronGradeKeepBrightHi", 2.5f);
     gSavedSettings.setF32("TronGradeKeepSubject", 0.5f);
     gSavedSettings.setF32("TronGradeSkyDarken", 0.f);
-    gSavedSettings.setBOOL("TronGridEnabled", true);
     gSavedSettings.setF32("TronGridIntensity", 6.f);
     gSavedSettings.setF32("TronGridMajorWidth", 2.f);
     gSavedSettings.setF32("TronGridMajorIntensity", 1.5f);
     gSavedSettings.setF32("TronGridFarFade", 120.f);
     gSavedSettings.setF32("TronGridFloor", 1.f);
-    gSavedSettings.setF32("TronGridWall", 0.6f);
-    gSavedSettings.setF32("TronGridCeiling", 0.3f);
     gSavedSettings.setF32("TronGridSharpness", 8.f);
     gSavedSettings.setS32("TronGridNormalSource", 1);
     gSavedSettings.setF32("TronGridGlow", 1.f);
-    gSavedSettings.setS32("TronGridWaterMode", 0);
     gSavedSettings.setF32("TronGridWaterTolerance", 0.03f);
     gSavedSettings.setF32("TronPulseGridLength", 0.25f);
     // [TronT1 P2-5 fix] Contract section 8 common column -- was missing
@@ -559,6 +698,17 @@ void ALTron::applyPreset(const std::string& key)
     gSavedSettings.setF32("TronPulseRate", 0.8f);
     gSavedSettings.setF32("CineRigRimTronMix", 1.f);
     gSavedSettings.setS32("CineRigRimTronColorSource", 0);
+    // [TronT2] Common column additions (contract section 8.1).
+    gSavedSettings.setF32("TronTracePadRadius", 0.03f);
+    gSavedSettings.setF32("TronTraceDiagonal", 0.25f);
+    gSavedSettings.setF32("TronTracePulseAmount", 1.0f);
+    gSavedSettings.setF32("TronTracePulseLength", 0.3f);
+    gSavedSettings.setF32("TronTraceSeed", 0.f);
+    gSavedSettings.setF32("TronRimSilhouetteGain", 1.0f);
+    gSavedSettings.setF32("TronRimSilhouetteThreshold", 0.03f);
+    gSavedSettings.setF32("TronRimScanSpeed", 0.5f);
+    gSavedSettings.setF32("TronRimScanWidth", 0.08f);
+    gSavedSettings.setBOOL("TronRimRejectFloors", true);
 
     // Per-row overrides.
     gSavedSettings.setF32("TronGradeDarkenEV", row->mDarkenEV);
@@ -570,6 +720,12 @@ void ALTron::applyPreset(const std::string& key)
     gSavedSettings.setF32("TronGridWidth", row->mWidth);
     gSavedSettings.setF32("TronGridMinWidthPx", row->mMinWidthPx);
     gSavedSettings.setS32("TronGridMajorEvery", row->mMajorEvery);
+    // [TronT2] Now per-row (contract section 8.1).
+    gSavedSettings.setF32("TronGradeStrength", row->mGradeStrength);
+    gSavedSettings.setBOOL("TronGridEnabled", row->mGridEnabled);
+    gSavedSettings.setF32("TronGridWall", row->mGridWall);
+    gSavedSettings.setF32("TronGridCeiling", row->mGridCeiling);
+    gSavedSettings.setS32("TronGridWaterMode", row->mWaterMode);
     gSavedSettings.setF32("TronPulseGridAmount", row->mPulseGridAmount);
     gSavedSettings.setF32("TronPulseGridSpeed", row->mPulseSpeed);
     gSavedSettings.setF32("TronPulseGridWavelength", row->mPulseWavelength);
@@ -578,6 +734,22 @@ void ALTron::applyPreset(const std::string& key)
     gSavedSettings.setS32("TronPulseGridColorMode", row->mPulseColorMode);
     gSavedSettings.setS32("TronPulseShape", row->mPulseShape);
     gSavedSettings.setF32("TronPulseRate", row->mPulseRate);
+    // [TronT2] Circuit traces.
+    gSavedSettings.setBOOL("TronTraceEnabled", row->mTraceEnabled);
+    gSavedSettings.setF32("TronTraceIntensity", row->mTraceIntensity);
+    gSavedSettings.setF32("TronTraceCell", row->mTraceCell);
+    gSavedSettings.setF32("TronTraceWidth", row->mTraceWidth);
+    gSavedSettings.setF32("TronTraceDensity", row->mTraceDensity);
+    gSavedSettings.setF32("TronTraceWalls", row->mTraceWalls);
+    gSavedSettings.setF32("TronTraceFloors", row->mTraceFloors);
+    gSavedSettings.setF32("TronTracePulseSpeed", row->mTracePulseSpeed);
+    // [TronT2] Post neon rim.
+    gSavedSettings.setBOOL("TronRimEnabled", row->mRimEnabled);
+    gSavedSettings.setF32("TronRimGain", row->mRimGain);
+    gSavedSettings.setF32("TronRimExponent", row->mRimExponent);
+    gSavedSettings.setF32("TronRimPulseAmount", row->mRimPulseAmount);
+    gSavedSettings.setF32("TronRimScanAmount", row->mRimScanAmount);
+    gSavedSettings.setS32("TronRimColorMode", row->mRimColorMode);
 
     // [TronT1 P2-5 fix] applyPalettePreset() only writes the four colour
     // swatches, never TronPalette itself -- without this, the palette combo

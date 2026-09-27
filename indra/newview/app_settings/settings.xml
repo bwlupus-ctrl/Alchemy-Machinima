@@ -28745,7 +28745,7 @@
   </map>
   <key>TronSubjectSourceRim</key>
   <map>
-    <key>Comment</key><string>[Tron] Subject mask source for the T2 neon rim term (reserved; not yet consumed by any shader). Shot key, never written by a look preset</string>
+    <key>Comment</key><string>[Tron] Subject mask source for the post neon rim term: 0 boxes / 1 per-pixel avatar tag / 2 tag AND boxes / 3 tag OR boxes. Forced to 0 whenever RenderGBufferAvatarTag or HDR is off. Shot key, never written by a look preset</string>
     <key>Persist</key><integer>1</integer>
     <key>Type</key><string>S32</string>
     <key>Value</key><integer>2</integer>
@@ -28814,6 +28814,222 @@
     <key>Persist</key><integer>1</integer>
     <key>Type</key><string>Boolean</string>
     <key>Value</key><integer>1</integer>
+  </map>
+  <!-- [TronT2] Circuit traces: per-plane world-lattice traces on walls (and
+       optionally floors), sharing the grid's lattice/fade/glow machinery. -->
+  <key>TronTraceEnabled</key>
+  <map>
+    <key>Comment</key><string>[Tron] Circuit-board traces on walls (and optionally floors), on the same world lattice as the grid. Look key, written by a preset</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>Boolean</string>
+    <key>Value</key><integer>0</integer>
+  </map>
+  <key>TronTraceIntensity</key>
+  <map>
+    <key>Comment</key><string>[Tron] Circuit trace intensity (0..64), display-intent linear, exposure independent. Look key, written by a preset</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>F32</string>
+    <key>Value</key><real>4.0</real>
+  </map>
+  <key>TronTraceCell</key>
+  <map>
+    <key>Comment</key><string>[Tron] Circuit trace cell size in metres (0.05..8); each cell carries one hashed trace variant. Look key, written by a preset</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>F32</string>
+    <key>Value</key><real>0.5</real>
+  </map>
+  <key>TronTraceWidth</key>
+  <map>
+    <key>Comment</key><string>[Tron] Circuit trace full width in metres (0.002..0.5); uploaded as half. Never thinner than the grid's Min width (px). Look key, written by a preset</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>F32</string>
+    <key>Value</key><real>0.015</real>
+  </map>
+  <key>TronTraceDensity</key>
+  <map>
+    <key>Comment</key><string>[Tron] Fraction of cells carrying a circuit trace (0..1). Look key, written by a preset</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>F32</string>
+    <key>Value</key><real>0.45</real>
+  </map>
+  <key>TronTracePadRadius</key>
+  <map>
+    <key>Comment</key><string>[Tron] Via/pad radius at bends and pad-only cells, in metres (0..0.5); 0 = none. Pads mix toward the accent colour. Look key, written by a preset</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>F32</string>
+    <key>Value</key><real>0.03</real>
+  </map>
+  <key>TronTraceDiagonal</key>
+  <map>
+    <key>Comment</key><string>[Tron] Chance a diagonal cell survives (else demoted to straight) (0..1). Look key, written by a preset</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>F32</string>
+    <key>Value</key><real>0.25</real>
+  </map>
+  <key>TronTraceWalls</key>
+  <map>
+    <key>Comment</key><string>[Tron] Circuit trace weight on wall-facing surfaces (0..1). Look key, written by a preset</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>F32</string>
+    <key>Value</key><real>1.0</real>
+  </map>
+  <key>TronTraceFloors</key>
+  <map>
+    <key>Comment</key><string>[Tron] Circuit trace weight on flat surfaces (floors, ceilings, water in Sea/Floor water modes) (0..1). Default 0 so the grid owns the floor. Look key, written by a preset</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>F32</string>
+    <key>Value</key><real>0.0</real>
+  </map>
+  <key>TronTracePulseAmount</key>
+  <map>
+    <key>Comment</key><string>[Tron] Circuit trace travelling pulse brightness, a multiple of the trace intensity (0..4); 0 = off. Uses the grid pulse colour mode. Look key, written by a preset</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>F32</string>
+    <key>Value</key><real>1.0</real>
+  </map>
+  <key>TronTracePulseSpeed</key>
+  <map>
+    <key>Comment</key><string>[Tron] Circuit trace travelling pulse speed in cells/s (-20..20); negative reverses every trace. Look key, written by a preset</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>F32</string>
+    <key>Value</key><real>2.0</real>
+  </map>
+  <key>TronTracePulseLength</key>
+  <map>
+    <key>Comment</key><string>[Tron] Circuit trace travelling pulse tail length, a fraction of a cell (0.05..1). Look key, written by a preset</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>F32</string>
+    <key>Value</key><real>0.3</real>
+  </map>
+  <key>TronTraceSeed</key>
+  <map>
+    <key>Comment</key><string>[Tron] Circuit trace hash seed (0..100, integer steps); reshuffles which cells carry a trace. Look key, written by a preset</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>F32</string>
+    <key>Value</key><real>0.0</real>
+  </map>
+  <!-- [TronT2] Post-pass neon rim on the subject mask (mask-based; see
+       TronSubjectSourceRim above). -->
+  <key>TronRimEnabled</key>
+  <map>
+    <key>Comment</key><string>[Tron] Post-pass neon rim on the subject mask (Lightbox -> Tron -> Subject; Mask source (rim)). Mask-based: some leakage onto a wall directly behind the actor -- use the Actor FX "Tron Suit" look for hero shots. Look key, written by a preset</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>Boolean</string>
+    <key>Value</key><integer>0</integer>
+  </map>
+  <key>TronRimGain</key>
+  <map>
+    <key>Comment</key><string>[Tron] Neon rim gain (0..32), display-intent linear, exposure independent. Look key, written by a preset</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>F32</string>
+    <key>Value</key><real>6.0</real>
+  </map>
+  <key>TronRimExponent</key>
+  <map>
+    <key>Comment</key><string>[Tron] Neon rim Fresnel exponent (0.5..8); lower = wider rim. Look key, written by a preset</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>F32</string>
+    <key>Value</key><real>3.0</real>
+  </map>
+  <key>TronRimSilhouetteGain</key>
+  <map>
+    <key>Comment</key><string>[Tron] Depth-step outline gain where the Fresnel term is weak on camera-facing surfaces (0..2). Look key, written by a preset</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>F32</string>
+    <key>Value</key><real>1.0</real>
+  </map>
+  <key>TronRimSilhouetteThreshold</key>
+  <map>
+    <key>Comment</key><string>[Tron] Relative depth step (dz/z) that counts as a silhouette (0.005..0.5). Look key, written by a preset</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>F32</string>
+    <key>Value</key><real>0.03</real>
+  </map>
+  <key>TronRimPulseAmount</key>
+  <map>
+    <key>Comment</key><string>[Tron] Depth of the shared pulse applied to the neon rim (0..1; Pulse rate / shape on the Master group). Look key, written by a preset</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>F32</string>
+    <key>Value</key><real>0.3</real>
+  </map>
+  <key>TronRimScanAmount</key>
+  <map>
+    <key>Comment</key><string>[Tron] Vertical scan band sweeping the target's screen box (0..4); 0 = off. Look key, written by a preset</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>F32</string>
+    <key>Value</key><real>0.0</real>
+  </map>
+  <key>TronRimScanSpeed</key>
+  <map>
+    <key>Comment</key><string>[Tron] Neon rim scan band speed in sweeps/s (0..4). Look key, written by a preset</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>F32</string>
+    <key>Value</key><real>0.5</real>
+  </map>
+  <key>TronRimScanWidth</key>
+  <map>
+    <key>Comment</key><string>[Tron] Neon rim scan band width, a fraction of the target's screen height (0.02..0.5). Look key, written by a preset</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>F32</string>
+    <key>Value</key><real>0.08</real>
+  </map>
+  <key>TronRimColorMode</key>
+  <map>
+    <key>Comment</key><string>[Tron] Neon rim colour mode: 0 primary / 1 per-target (cycles primary/secondary/accent/pulse by the target's stable palette index) / 2 secondary. Look key, written by a preset</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>S32</string>
+    <key>Value</key><integer>0</integer>
+  </map>
+  <key>TronRimRejectFloors</key>
+  <map>
+    <key>Comment</key><string>[Tron] Don't paint horizontal surfaces (the floor inside the target box) with the neon rim. Look key, written by a preset</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>Boolean</string>
+    <key>Value</key><integer>1</integer>
+  </map>
+  <!-- [TronT2] Actor FX "Tron Suit" (look 36): per cast member styling.
+       Shot keys: never written by a Tron look preset. -->
+  <key>TronSuitUsePalette</key>
+  <map>
+    <key>Comment</key><string>[Tron] Actor FX "Tron Suit": use the Tron palette primary while Tron is enabled; off (or Tron disabled) uses the cast member's own hue. Shot key, never written by a look preset</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>Boolean</string>
+    <key>Value</key><integer>1</integer>
+  </map>
+  <key>TronSuitSeamCell</key>
+  <map>
+    <key>Comment</key><string>[Tron] Tron Suit body seam cell size in the avatar's bind frame, in metres (0.02..1). Shot key, never written by a look preset</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>F32</string>
+    <key>Value</key><real>0.12</real>
+  </map>
+  <key>TronSuitSeamWidth</key>
+  <map>
+    <key>Comment</key><string>[Tron] Tron Suit seam full width in metres (0.002..0.1). Shot key, never written by a look preset</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>F32</string>
+    <key>Value</key><real>0.012</real>
+  </map>
+  <key>TronSuitSeamDensity</key>
+  <map>
+    <key>Comment</key><string>[Tron] Fraction of Tron Suit body cells carrying a seam (0..1). Shot key, never written by a look preset</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>F32</string>
+    <key>Value</key><real>0.55</real>
+  </map>
+  <key>TronSuitSeamGain</key>
+  <map>
+    <key>Comment</key><string>[Tron] Tron Suit seam brightness multiplier (0..4); 0 = rim only. Shot key, never written by a look preset</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>F32</string>
+    <key>Value</key><real>1.0</real>
+  </map>
+  <key>TronSuitRimGain</key>
+  <map>
+    <key>Comment</key><string>[Tron] Tron Suit rim brightness multiplier (0..4); 0 = seams only. Shot key, never written by a look preset</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>F32</string>
+    <key>Value</key><real>1.0</real>
   </map>
 </map>
 </llsd>

@@ -15,6 +15,7 @@ vec3 srgb_to_linear(vec3 c);
 vec3 actorFxApply(vec3 source, vec3 normal_eye, vec3 position_eye, vec2 authored_uv);
 vec3 actorFxEmissive(vec3 authored_emissive, vec3 styled_color);
 bool actorFxActive();
+void actorFxTronPrime(); // [TronT2 fix] seam footprint, uniform flow
 bool actorFxUvTransformEnabled();
 bool actorFxRgbSplitEnabled();
 vec2 actorFxUv(vec2 authored_uv, vec3 position_eye);
@@ -22,6 +23,7 @@ vec2 actorFxRgbSplitUv(vec2 transformed_uv, float direction);
 
 void main()
 {
+    actorFxTronPrime(); // [TronT2 fix] before any discard/return
     vec4 authored = texture(diffuseMap, base_color_texcoord);
     float authored_alpha = authored.a * vertex_color.a;
 

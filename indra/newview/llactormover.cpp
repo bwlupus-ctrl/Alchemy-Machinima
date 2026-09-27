@@ -13,6 +13,7 @@
 #include "llactormover.h"
 #include "algazemath.h"
 #include "algazemotor.h"           // coordinated gaze motor program assembly (spec 6A)
+#include "altron.h"                // [TronT2] ghostTronParams/2/Color (look 36 "Tron Suit")
 
 #include <algorithm>                // std::reverse (path reverse op)
 #include <cmath>                    // std::isfinite
@@ -11239,6 +11240,56 @@ static LLStaticHashedString sGhostSystemColor("ghostSystemColor");
 // OPAQUE PBR materials deliberately upload (0, 1): their base-colour alpha is
 // not opacity and can contain arbitrary/packed data.
 static LLStaticHashedString sGhostAlpha("ghostAlpha");
+// [TronT2] Look 36 "Tron Suit" -- actorghostF.glsl GHOST_WORLD_PASS. Optional
+// uniforms (see the T2 contract section 1.3): NOT added to the shared-replay
+// required[] list below -- a driver stripping them from a program that never
+// reaches look 36 must not fail the whole shared replay.
+static LLStaticHashedString sGhostTronParams("ghostTronParams");
+static LLStaticHashedString sGhostTronParams2("ghostTronParams2");
+static LLStaticHashedString sGhostTronColor("ghostTronColor");
+
+// [TronT2] Shared by both ghost uniform sets (the apply_program lambda's
+// world-linear branch and renderSystemActorGhost's upload lambda) -- packing
+// identical to actorFxTronParams/2/Color (T2 contract sections 1.2/1.3)
+// except for the mode flag below. Upload state 1/2 always (never 0), and
+// never gate on TronEnabled: look 36 always uses the live Tron pulse
+// accumulator (design v3 section 6.5). Callers invoke this only while the
+// replayed look is ACTOR_LOOK_TRON_SUIT ([TronT2 fix]: the shader reads these
+// uniforms under ghostLook == 36 only, so the settings/palette reads are
+// skipped for every other look).
+// [TronT2 fix] cover_mode: the replay has no actorFxParams2.w, so the cast
+// member's Suit mode rides in ghostTronParams.x as +4 (Layer keeps the
+// authored replay body and adds the neon; Cover darkens it to the suit).
+static void upload_ghost_tron_params(LLGLSLShader& shader, bool cover_mode)
+{
+    static LLCachedControl<bool> suit_use_palette(gSavedSettings, "TronSuitUsePalette", true);
+    static LLCachedControl<F32>  suit_seam_cell(gSavedSettings, "TronSuitSeamCell", 0.12f);
+    static LLCachedControl<F32>  suit_seam_width(gSavedSettings, "TronSuitSeamWidth", 0.012f);
+    static LLCachedControl<F32>  suit_seam_density(gSavedSettings, "TronSuitSeamDensity", 0.55f);
+    static LLCachedControl<F32>  suit_seam_gain(gSavedSettings, "TronSuitSeamGain", 1.0f);
+    static LLCachedControl<F32>  suit_rim_gain(gSavedSettings, "TronSuitRimGain", 1.0f);
+    static LLCachedControl<F32>  tron_pulse_amount(gSavedSettings, "TronPulseAmount", 0.35f);
+
+    const auto finite_or = [](F32 v, F32 fallback)
+    { return std::isfinite(v) ? v : fallback; };
+    const F32 tron_state = ((ALTron::isEnabledMaster() && suit_use_palette()) ? 2.f : 1.f)
+                         + (cover_mode ? 4.f : 0.f);
+    const ALTron::Palette tron_palette = ALTron::palette();
+
+    shader.uniform4f(sGhostTronParams,
+                      tron_state,
+                      llclamp(finite_or((F32)suit_seam_cell(), 0.12f), 0.02f, 1.f),
+                      llclamp(finite_or((F32)suit_seam_width(), 0.012f), 0.002f, 0.1f),
+                      ALTron::pulse01());
+    shader.uniform4f(sGhostTronParams2,
+                      llclamp(finite_or((F32)suit_seam_density(), 0.55f), 0.f, 1.f),
+                      llclamp(finite_or((F32)suit_seam_gain(), 1.f), 0.f, 4.f),
+                      llclamp(finite_or((F32)suit_rim_gain(), 1.f), 0.f, 4.f),
+                      llclamp(finite_or((F32)tron_pulse_amount(), 0.35f), 0.f, 1.f));
+    shader.uniform4f(sGhostTronColor,
+                      tron_palette.mPrimary.mV[0], tron_palette.mPrimary.mV[1],
+                      tron_palette.mPrimary.mV[2], ALTron::clock().mPulsePhase01);
+}
 
 // Legacy per-vertex glow is a duplicate sidecar, like GLTF glow, but it is not
 // part of Ghost Studio's historical SWEEP_GLOW contract. Keep the predicate
@@ -11844,6 +11895,15 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
                 sh->uniform2fv(sGhostScreenSize, 1, ghost_screen_size.mV);
                 sh->uniform1f(sGhostCoverageLayerStrength,
                               gp.mCoverageLayerStrength);
+                // [TronT2] Look 36 "Tron Suit" -- world-linear (GHOST_WORLD_PASS)
+                // only; the interface program does not declare these uniforms
+                // and uniform4f on a -1 location is a no-op. [TronT2 fix]
+                // Only for look 36 (the shader never reads them otherwise);
+                // gp.mCoverMode is the cast member's Cover/Layer mode.
+                if (style == LLDirectorCast::ACTOR_LOOK_TRON_SUIT)
+                {
+                    upload_ghost_tron_params(*sh, gp.mCoverMode);
+                }
             }
             sh->uniform1f(sGhostDissolveProgress,
                           llclamp(gp.mDissolveProgress, 0.f, 1.f));
@@ -12860,13 +12920,34 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
     case LLDirectorCast::ACTOR_LOOK_BASS_SWEEP:
     case LLDirectorCast::ACTOR_LOOK_MOONLIT:
     case LLDirectorCast::ACTOR_LOOK_POSSESSED:
+    // [TronT2] Tron Suit: same textured front-surface sweep; the actual
+    // seams/rim/tint are supplied by the shared actorghostF.glsl look-36
+    // branch reading ghostTronParams/2/Color (uploaded below).
+    case LLDirectorCast::ACTOR_LOOK_TRON_SUIT:
     {
         // Toolkit looks share one shader and one clean front-surface sweep.
         // This prevents cosmetic/alpha layers from double-blending while still
         // resolving every indexed material slot for texture-driven looks.
         LLGLDepthTest depth(GL_TRUE, GL_FALSE, GL_LEQUAL);
         LLGLEnable blend(GL_BLEND);
-        set_alpha_beauty_blend();
+        if (gp.mWorldLinear
+            && style == LLDirectorCast::ACTOR_LOOK_TRON_SUIT
+            && !gp.mCoverMode)
+        {
+            // [TronT2 fix] Layer-mode Tron Suit: the actorghostF look-36
+            // branch publishes ONLY the neon (body = 0, haze-free fog), so
+            // ADD it over the retained native lit beauty instead of
+            // alpha-compositing an unlit texture over it. Colour: src *
+            // coverage(strength) + dst; HDR alpha (bloom) untouched -- the
+            // glow_only replay below owns the suit's bloom. Cover and every
+            // other look keep set_alpha_beauty_blend() byte-identical.
+            gGL.blendFunc(LLRender::BF_SOURCE_ALPHA, LLRender::BF_ONE,
+                          LLRender::BF_ZERO, LLRender::BF_ONE);
+        }
+        else
+        {
+            set_alpha_beauty_blend();
+        }
         gGL.setColorMask(true, true);
         const bool coverage_layer = gp.mWorldLinear
             && style == GHOST_STYLE_DISSOLVE
@@ -14924,6 +15005,14 @@ bool LLActorMover::renderSystemActorGhost(LLVOAvatar* avatar,
         shader.uniform1f(sGhostCoverageLayerStrength,
                          coverage_replacement ? treatment_strength : -1.f);
         shader.uniform4fv(sGhostSystemColor, 1, style_color.mV);
+        // [TronT2] Look 36 "Tron Suit" -- this system-avatar replay path is
+        // always world-linear (gp.mWorldLinear is forced true above).
+        // [TronT2 fix] Only for look 36, with the cast member's Suit mode.
+        if (look == LLDirectorCast::ACTOR_LOOK_TRON_SUIT)
+        {
+            upload_ghost_tron_params(
+                shader, style.mMode == LLDirectorCast::ACTOR_STYLE_REPLACE);
+        }
     };
 
     LLGLSLShader* saved_shader = LLGLSLShader::sCurBoundShaderPtr;
@@ -14964,6 +15053,20 @@ bool LLActorMover::renderSystemActorGhost(LLVOAvatar* avatar,
     {
         gGL.blendFunc(LLRender::BF_ONE, LLRender::BF_ZERO,
                       LLRender::BF_ZERO, LLRender::BF_ZERO);
+    }
+    if (!depth_only
+        && look == LLDirectorCast::ACTOR_LOOK_TRON_SUIT
+        && style.mMode != LLDirectorCast::ACTOR_STYLE_REPLACE)
+    {
+        // [TronT2 fix] Layer-mode Tron Suit: the actorghostF look-36 branch
+        // publishes ONLY the neon (body = 0, haze-free fog), so ADD it over
+        // the retained native lit beauty instead of alpha-compositing an
+        // unlit texture over it. Colour: src * coverage(strength) + dst; HDR
+        // alpha (bloom) untouched -- the glow_only replay below owns the
+        // suit's bloom and the trailing restores put the split blend back.
+        // Cover and every other look keep the blend state above.
+        gGL.blendFunc(LLRender::BF_SOURCE_ALPHA, LLRender::BF_ONE,
+                      LLRender::BF_ZERO, LLRender::BF_ONE);
     }
     gGL.setColorMask(!depth_only, !depth_only);
 

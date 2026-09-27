@@ -124,6 +124,11 @@ public:
     boost::signals2::scoped_connection mTronGridSubjectRadiusConnection;
     boost::signals2::scoped_connection mTronGradeKeepSubjectConnection;
     boost::signals2::scoped_connection mTronSubjectTargetSetConnection;
+    // [TronT2] Circuit traces / neon rim drivers of updateTronVisibility().
+    boost::signals2::scoped_connection mTronTraceEnabledConnection;
+    boost::signals2::scoped_connection mTronTracePulseAmountConnection;
+    boost::signals2::scoped_connection mTronRimEnabledConnection;
+    boost::signals2::scoped_connection mTronRimScanAmountConnection;
     // [RotoInk Anim] All seven drive the same updateRotoInkAnimVisibility().
     boost::signals2::scoped_connection mRotoInkMotionStyleConnection;
     boost::signals2::scoped_connection mRotoInkMotion2StyleConnection;

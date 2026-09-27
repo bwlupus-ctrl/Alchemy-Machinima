@@ -40,6 +40,7 @@ flat in int vary_material_index;
 uniform sampler2D diffuse0;
 #ifdef HAS_ACTOR_FX
 vec3 actorFxEmissive(vec3 authored_emissive, vec3 styled_color);
+void actorFxTronPrime(); // [TronT2 fix] seam footprint, uniform flow
 float actorFxAuthoredMaterialResponse();
 bool actorFxDissolveEnabled();
 float actorFxBeautyDissolveCoverage();
@@ -132,6 +133,9 @@ float shared_minimum_alpha()
 
 void main()
 {
+#ifdef HAS_ACTOR_FX
+    actorFxTronPrime(); // [TronT2 fix] before any discard/return
+#endif
 #ifdef HAS_ACTOR_FX
     if (actorFxDissolveEnabled() && actorFxBeautyDissolveCoverage() < 0.0)
     {

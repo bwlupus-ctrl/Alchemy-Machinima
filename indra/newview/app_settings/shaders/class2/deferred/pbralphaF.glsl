@@ -95,6 +95,7 @@ vec4 applySkyAndWaterFog(vec3 pos, vec3 additive, vec3 atten, vec4 color);
 vec3 actorFxApply(vec3 source, vec3 normal_eye, vec3 position_eye, vec2 authored_uv);
 vec2 actorFxPbrMaterial(vec2 roughness_metallic);
 vec3 actorFxEmissive(vec3 authored_emissive, vec3 styled_color);
+void actorFxTronPrime(); // [TronT2 fix] seam footprint, uniform flow
 float actorFxAuthoredMaterialResponse();
 bool actorFxUvTransformEnabled();
 bool actorFxRgbSplitEnabled();
@@ -155,6 +156,9 @@ vec3 pbrCalcPointLightOrSpotLightRim(vec3 diffuseColor, vec3 specularColor,
 
 void main()
 {
+#ifdef HAS_ACTOR_FX
+    actorFxTronPrime(); // [TronT2 fix] before any discard/return
+#endif
     mirrorClip(vary_position);
 
     vec3 color = vec3(0,0,0);

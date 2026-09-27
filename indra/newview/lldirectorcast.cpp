@@ -45,6 +45,7 @@ const char* actorStyleLookKey(S32 look)
         case LLDirectorCast::ACTOR_LOOK_SERAPH:        return "live.seraph";
         case LLDirectorCast::ACTOR_LOOK_INTERROGATION: return "live.interrogation";
         case LLDirectorCast::ACTOR_LOOK_WRAITH:        return "live.wraith";
+        case LLDirectorCast::ACTOR_LOOK_TRON_SUIT:     return "live.tron_suit";
         default:                                       return nullptr;
     }
 }
@@ -82,6 +83,10 @@ bool actorStyleLookFromKey(const std::string& key, S32& look)
     else if (key == "live.wraith")
     {
         look = LLDirectorCast::ACTOR_LOOK_WRAITH;
+    }
+    else if (key == "live.tron_suit")
+    {
+        look = LLDirectorCast::ACTOR_LOOK_TRON_SUIT;
     }
     else
     {

@@ -17182,6 +17182,34 @@ void LLPipeline::renderTronWorld(LLRenderTarget* dst, ETronDraw mode, bool is_sc
     static LLCachedControl<F32>  pulse_seed_setting(gSavedSettings, "TronPulseSeed", 0.0f);
     static LLCachedControl<F32>  pulse_amount_setting(gSavedSettings, "TronPulseAmount", 0.35f);
 
+    // [TronT2] Circuit traces.
+    static LLCachedControl<bool> trace_enabled_setting(gSavedSettings, "TronTraceEnabled", false);
+    static LLCachedControl<F32>  trace_intensity_setting(gSavedSettings, "TronTraceIntensity", 4.0f);
+    static LLCachedControl<F32>  trace_cell_setting(gSavedSettings, "TronTraceCell", 0.5f);
+    static LLCachedControl<F32>  trace_width_setting(gSavedSettings, "TronTraceWidth", 0.015f);
+    static LLCachedControl<F32>  trace_density_setting(gSavedSettings, "TronTraceDensity", 0.45f);
+    static LLCachedControl<F32>  trace_pad_radius_setting(gSavedSettings, "TronTracePadRadius", 0.03f);
+    static LLCachedControl<F32>  trace_diagonal_setting(gSavedSettings, "TronTraceDiagonal", 0.25f);
+    static LLCachedControl<F32>  trace_walls_setting(gSavedSettings, "TronTraceWalls", 1.0f);
+    static LLCachedControl<F32>  trace_floors_setting(gSavedSettings, "TronTraceFloors", 0.0f);
+    static LLCachedControl<F32>  trace_pulse_amount_setting(gSavedSettings, "TronTracePulseAmount", 1.0f);
+    static LLCachedControl<F32>  trace_pulse_speed_setting(gSavedSettings, "TronTracePulseSpeed", 2.0f);
+    static LLCachedControl<F32>  trace_pulse_length_setting(gSavedSettings, "TronTracePulseLength", 0.3f);
+    static LLCachedControl<F32>  trace_seed_setting(gSavedSettings, "TronTraceSeed", 0.0f);
+
+    // [TronT2] Post neon rim.
+    static LLCachedControl<bool> rim_enabled_setting(gSavedSettings, "TronRimEnabled", false);
+    static LLCachedControl<F32>  rim_gain_setting(gSavedSettings, "TronRimGain", 6.0f);
+    static LLCachedControl<F32>  rim_exponent_setting(gSavedSettings, "TronRimExponent", 3.0f);
+    static LLCachedControl<F32>  rim_silhouette_gain_setting(gSavedSettings, "TronRimSilhouetteGain", 1.0f);
+    static LLCachedControl<F32>  rim_silhouette_threshold_setting(gSavedSettings, "TronRimSilhouetteThreshold", 0.03f);
+    static LLCachedControl<F32>  rim_pulse_amount_setting(gSavedSettings, "TronRimPulseAmount", 0.3f);
+    static LLCachedControl<F32>  rim_scan_amount_setting(gSavedSettings, "TronRimScanAmount", 0.0f);
+    static LLCachedControl<F32>  rim_scan_speed_setting(gSavedSettings, "TronRimScanSpeed", 0.5f);
+    static LLCachedControl<F32>  rim_scan_width_setting(gSavedSettings, "TronRimScanWidth", 0.08f);
+    static LLCachedControl<S32>  rim_color_mode_setting(gSavedSettings, "TronRimColorMode", 0);
+    static LLCachedControl<bool> rim_reject_floors_setting(gSavedSettings, "TronRimRejectFloors", true);
+
     static LLCachedControl<S32>  subject_target_setting(gSavedSettings, "TronSubjectTarget", 0);
     static LLCachedControl<S32>  subject_target_set_setting(gSavedSettings, "TronSubjectTargetSet", 2);
     static LLCachedControl<S32>  subject_max_targets_setting(gSavedSettings, "TronSubjectMaxTargets", 8);
@@ -17251,6 +17279,36 @@ void LLPipeline::renderTronWorld(LLRenderTarget* dst, ETronDraw mode, bool is_sc
     const F32  pulse_seed        = llclamp(finite_or((F32)pulse_seed_setting(), 0.f), 0.f, 100.f);
     const F32  pulse_amount      = llclamp(finite_or((F32)pulse_amount_setting(), 0.35f), 0.f, 1.f);
 
+    // [TronT2] Circuit traces.
+    const bool trace_enabled      = trace_enabled_setting();
+    const F32  trace_intensity    = llclamp(finite_or((F32)trace_intensity_setting(), 4.f), 0.f, 64.f);
+    const F32  trace_cell         = llclamp(finite_or((F32)trace_cell_setting(), 0.5f), 0.05f, 8.f);
+    const F32  trace_width        = llclamp(finite_or((F32)trace_width_setting(), 0.015f), 0.002f, 0.5f);
+    const F32  trace_density      = llclamp(finite_or((F32)trace_density_setting(), 0.45f), 0.f, 1.f);
+    const F32  trace_pad_radius   = llclamp(finite_or((F32)trace_pad_radius_setting(), 0.03f), 0.f, 0.5f);
+    const F32  trace_diagonal     = llclamp(finite_or((F32)trace_diagonal_setting(), 0.25f), 0.f, 1.f);
+    const F32  trace_walls        = llclamp(finite_or((F32)trace_walls_setting(), 1.f), 0.f, 1.f);
+    const F32  trace_floors       = llclamp(finite_or((F32)trace_floors_setting(), 0.f), 0.f, 1.f);
+    const F32  trace_pulse_amount = llclamp(finite_or((F32)trace_pulse_amount_setting(), 1.f), 0.f, 4.f);
+    const F32  trace_pulse_speed  = llclamp(finite_or((F32)trace_pulse_speed_setting(), 2.f), -20.f, 20.f);
+    const F32  trace_pulse_length = llclamp(finite_or((F32)trace_pulse_length_setting(), 0.3f), 0.05f, 1.f);
+    const F32  trace_seed         = llclamp(finite_or((F32)trace_seed_setting(), 0.f), 0.f, 100.f);
+    const bool trace_on = trace_enabled && trace_intensity > 0.f;
+
+    // [TronT2] Post neon rim.
+    const bool rim_enabled        = rim_enabled_setting();
+    const F32  rim_gain           = llclamp(finite_or((F32)rim_gain_setting(), 6.f), 0.f, 32.f);
+    const F32  rim_exponent       = llclamp(finite_or((F32)rim_exponent_setting(), 3.f), 0.5f, 8.f);
+    const F32  rim_sil_gain       = llclamp(finite_or((F32)rim_silhouette_gain_setting(), 1.f), 0.f, 2.f);
+    const F32  rim_sil_threshold  = llclamp(finite_or((F32)rim_silhouette_threshold_setting(), 0.03f), 0.005f, 0.5f);
+    const F32  rim_pulse_amount   = llclamp(finite_or((F32)rim_pulse_amount_setting(), 0.3f), 0.f, 1.f);
+    const F32  rim_scan_amount    = llclamp(finite_or((F32)rim_scan_amount_setting(), 0.f), 0.f, 4.f);
+    const F32  rim_scan_speed     = llclamp(finite_or((F32)rim_scan_speed_setting(), 0.5f), 0.f, 4.f);
+    const F32  rim_scan_width     = llclamp(finite_or((F32)rim_scan_width_setting(), 0.08f), 0.02f, 0.5f);
+    const S32  rim_color_mode     = std::clamp((S32)rim_color_mode_setting(), 0, 2);
+    const bool rim_reject_floors  = rim_reject_floors_setting();
+    const bool rim_on = rim_enabled && rim_gain > 0.f;
+
     const S32  subject_target      = std::clamp((S32)subject_target_setting(), 0, 4);
     const S32  subject_target_set  = std::clamp((S32)subject_target_set_setting(), 0, 7);
     const S32  subject_max_targets = std::clamp((S32)subject_max_targets_setting(), 1, 16);
@@ -17273,7 +17331,7 @@ void LLPipeline::renderTronWorld(LLRenderTarget* dst, ETronDraw mode, bool is_sc
 
     const F32  no_post_scale = llclamp(finite_or((F32)no_post_scale_setting(), 0.35f), 0.f, 1.f);
 
-    if (grade_strength <= 0.f && !grid_on)
+    if (grade_strength <= 0.f && !grid_on && !trace_on && !rim_on)
     {
         return; // nothing to draw -- cheap CPU early-out
     }
@@ -17308,12 +17366,12 @@ void LLPipeline::renderTronWorld(LLRenderTarget* dst, ETronDraw mode, bool is_sc
     const ALTron::LatticeFrame lattice_grid  = ALTron::computeLattice(grid_spacing, anchor_global);
     const ALTron::LatticeFrame lattice_major = ALTron::computeLattice(major_spacing, anchor_global);
     const ALTron::LatticeFrame lattice_wave  = ALTron::computeLattice(pulse_grid_wavelength, anchor_global);
-    // [T2 reserved] trace-cell lattice: no trace setting exists yet, so this
-    // is a scale-1 placeholder frame purely so tron_lattice_r[3]/k[3] are
-    // never left holding a stale/uninitialised value.
-    const ALTron::LatticeFrame lattice_trace = ALTron::computeLattice(1.0, anchor_global);
+    // [TronT2] trace-cell lattice: the real per-cell frame, so circuit traces
+    // are world-stable across anchor re-snaps and region crossings exactly
+    // like the grid/major/wavelength frames above.
+    const ALTron::LatticeFrame lattice_trace = ALTron::computeLattice((F64)trace_cell, anchor_global);
 
-    // --- CPU phases (F64, T1 contract section 3.4) --------------------------
+    // --- CPU phases (F64, T1 contract section 3.4 / T2 contract section 2.2) -
     const auto wrap01 = [](F64 x) -> F64
     {
         x -= std::floor(x);
@@ -17321,6 +17379,10 @@ void LLPipeline::renderTronWorld(LLRenderTarget* dst, ETronDraw mode, bool is_sc
     };
     const F64 clock_seconds = ALTron::clock().mClockSeconds;
     const F32  ph_grid = (F32)wrap01(clock_seconds * (F64)pulse_grid_speed / (F64)llmax(pulse_grid_wavelength, 0.01f));
+    // [TronT2] cells/s -> per-cell phase; negative speed reverses every trace.
+    const F32  ph_trace = (F32)wrap01(clock_seconds * (F64)trace_pulse_speed);
+    // [TronT2] sweeps/s across the target box.
+    const F32  ph_scan  = (F32)wrap01(clock_seconds * (F64)rim_scan_speed);
     const F32  pulse01 = ALTron::pulse01();
 
     // --- exposure / no-post rule ---------------------------------------------
@@ -17344,7 +17406,7 @@ void LLPipeline::renderTronWorld(LLRenderTarget* dst, ETronDraw mode, bool is_sc
     LLVector4 anchor_cells[16];
     S32 target_count = 0;
     S32 anchor_count = 0;
-    if (grid_subject_exclude > 0.f || grid_subject_radius > 0.f || grade_keep_subject > 0.f)
+    if (grid_subject_exclude > 0.f || grid_subject_radius > 0.f || grade_keep_subject > 0.f || rim_on)
     {
         // [TronT1 P1 fix] Pass Tron's OWN single-subject selector
         // (subject_target, from TronSubjectTarget) rather than letting
@@ -17451,6 +17513,21 @@ void LLPipeline::renderTronWorld(LLRenderTarget* dst, ETronDraw mode, bool is_sc
         (F32)target_count, (F32)subject_shape, subject_feather, subject_depth_feather);
     gTronWorldProgram.uniform4f(LLShaderMgr::TRON_SUBJECT2,
         (F32)subject_source_grid, (F32)subject_source_rim, subject_invert ? 1.f : 0.f, 0.f);
+
+    // [TronT2] Circuit traces + post neon rim (T2 contract section 2.5).
+    gTronWorldProgram.uniform4f(LLShaderMgr::TRON_TRACE,
+        trace_on ? trace_intensity : 0.f, trace_cell, trace_width * 0.5f, trace_density);
+    gTronWorldProgram.uniform4f(LLShaderMgr::TRON_TRACE2,
+        trace_pad_radius, trace_diagonal, trace_walls, trace_floors);
+    gTronWorldProgram.uniform4f(LLShaderMgr::TRON_TRACE3,
+        trace_pulse_amount, ph_trace, trace_pulse_length, trace_seed);
+    gTronWorldProgram.uniform4f(LLShaderMgr::TRON_RIM,
+        rim_on ? rim_gain : 0.f, rim_exponent, rim_sil_gain, rim_sil_threshold);
+    gTronWorldProgram.uniform4f(LLShaderMgr::TRON_RIM2,
+        rim_pulse_amount, rim_scan_amount, ph_scan, rim_scan_width);
+    gTronWorldProgram.uniform4f(LLShaderMgr::TRON_RIM3,
+        (F32)rim_color_mode, rim_reject_floors ? 1.f : 0.f, 0.f, 0.f);
+
     if (target_count > 0)
     {
         gTronWorldProgram.uniform4fv(LLShaderMgr::TRON_TARGETS, target_count, target_cells[0].mV);
@@ -17467,7 +17544,7 @@ void LLPipeline::renderTronWorld(LLRenderTarget* dst, ETronDraw mode, bool is_sc
         lattice_r[0] = LLVector4(lattice_grid.mR.mV[VX], lattice_grid.mR.mV[VY], lattice_grid.mR.mV[VZ], grid_spacing);
         lattice_r[1] = LLVector4(lattice_major.mR.mV[VX], lattice_major.mR.mV[VY], lattice_major.mR.mV[VZ], major_spacing);
         lattice_r[2] = LLVector4(lattice_wave.mR.mV[VX], lattice_wave.mR.mV[VY], lattice_wave.mR.mV[VZ], pulse_grid_wavelength);
-        lattice_r[3] = LLVector4(lattice_trace.mR.mV[VX], lattice_trace.mR.mV[VY], lattice_trace.mR.mV[VZ], 1.f);
+        lattice_r[3] = LLVector4(lattice_trace.mR.mV[VX], lattice_trace.mR.mV[VY], lattice_trace.mR.mV[VZ], trace_cell);
         gTronWorldProgram.uniform4fv(LLShaderMgr::TRON_LATTICE_R, 4, lattice_r[0].mV);
 
         const U32 lattice_k[16] = {

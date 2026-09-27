@@ -11,6 +11,12 @@ bool actorFxActive()
     return false;
 }
 
+// [TronT2 fix] Seam-footprint priming entry (see actorFxF.glsl
+// actorFxTronPrime); every Actor FX program calls it first in main().
+void actorFxTronPrime()
+{
+}
+
 float actorFxAuthoredMaterialResponse()
 {
     return 1.0;

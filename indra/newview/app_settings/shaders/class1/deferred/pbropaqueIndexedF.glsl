@@ -88,6 +88,7 @@ float gbufferAvatarFlag(float flag);   // [TronA0] globalF.glsl
 vec3 actorFxApply(vec3 source, vec3 normal_eye, vec3 position_eye, vec2 authored_uv);
 vec2 actorFxPbrMaterial(vec2 roughness_metallic);
 vec3 actorFxEmissive(vec3 authored_emissive, vec3 styled_color);
+void actorFxTronPrime(); // [TronT2 fix] seam footprint, uniform flow
 float actorFxAuthoredMaterialResponse();
 bool actorFxUvTransformEnabled();
 bool actorFxRgbSplitEnabled();
@@ -205,6 +206,9 @@ vec3 sample_emissive(vec2 uv)
 
 void main()
 {
+#ifdef HAS_ACTOR_FX
+    actorFxTronPrime(); // [TronT2 fix] before any discard/return
+#endif
     mirrorClip(vary_position);
 
     int mi = vary_material_index;

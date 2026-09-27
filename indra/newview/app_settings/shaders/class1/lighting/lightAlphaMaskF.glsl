@@ -40,6 +40,7 @@ in vec3 vary_actor_fx_eye_position;
 vec3 actorFxApply(vec3 source, vec3 normal_eye, vec3 position_eye, vec2 authored_uv);
 vec3 actorFxEmissive(vec3 authored_emissive, vec3 styled_color);
 bool actorFxActive();
+void actorFxTronPrime(); // [TronT2 fix] seam footprint, uniform flow
 bool actorFxUvTransformEnabled();
 bool actorFxRgbSplitEnabled();
 vec2 actorFxUv(vec2 authored_uv, vec3 position_eye);
@@ -48,6 +49,11 @@ vec2 actorFxRgbSplitUv(vec2 transformed_uv, float direction);
 
 void default_lighting()
 {
+#ifdef HAS_ACTOR_FX
+    // [TronT2 fix] first statement of the calling main() (avatar/eyeball/
+    // simple F are `void main() { default_lighting(); }`), before the cutout.
+    actorFxTronPrime();
+#endif
     vec4 color = diffuseLookup(vary_texcoord0.xy);
 
     if (color.a < minimum_alpha)

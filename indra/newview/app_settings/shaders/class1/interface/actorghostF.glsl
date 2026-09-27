@@ -130,6 +130,21 @@ uniform vec2 ghostScreenSize;
 // strength. Negative means Cover/full treatment. This is deliberately separate
 // from ghostParams.x, whose historical meaning is scanline amount.
 uniform float ghostCoverageLayerStrength;
+// [TronT2] Live look 36 "Tron Suit" (same packing as actorFxTronParams /
+// actorFxTronParams2 / actorFxTronColor in actorFxF.glsl except for the mode
+// flag in .x; uploaded by both ghost uniform sets in llactormover.cpp, only
+// while the replayed look is 36, NOT part of the required[] list):
+//   ghostTronParams  x upload state (0 defaults + actor hue, 1 actor hue,
+//                    2 Tron palette) + 4 when the cast member's Suit mode is
+//                    Cover ([TronT2 fix]: native Actor FX reads the mode from
+//                    actorFxParams2.w, the replay has no such channel, so
+//                    x in {1,2} = Layer, {5,6} = Cover; 0 = Layer defaults),
+//                    y seam cell m, z seam width m (full), w shared pulse01
+//   ghostTronParams2 x seam density, y seam gain, z rim gain, w pulse depth
+//   ghostTronColor   rgb Tron palette primary (LINEAR), w pulse phase 0..1
+uniform vec4 ghostTronParams;
+uniform vec4 ghostTronParams2;
+uniform vec4 ghostTronColor;
 #endif
 #ifdef GHOST_SHARED_DISSOLVE
 // Classic Actor FX uses the same authored progress and the same raw/rest-space
@@ -233,10 +248,202 @@ vec3 ghost_rainbow(float h)
     return clamp(p - 1.0, 0.0, 1.0);
 }
 
+#ifdef GHOST_WORLD_PASS
+// -------------------------------------------------------------------------
+// [TronT2] Tron Suit (look 36) helpers -- shared-world replay twin of the
+// actorFxF.glsl helpers (separate program, so duplicated, not linked).
+// -------------------------------------------------------------------------
+bool ghostTronUploaded()   { return ghostTronParams.x > 0.5; }
+// [TronT2 fix] .x carries state (1/2) + 4 for Cover; mod() strips the flag.
+bool ghostTronUsePalette() { return mod(ghostTronParams.x, 4.0) > 1.5; }
+bool ghostTronCoverMode()  { return ghostTronParams.x > 3.5; }
+float ghostTronSeamGain()  { return ghostTronUploaded() ? max(ghostTronParams2.y, 0.0) : 1.0; }
+float ghostTronRimGain()   { return ghostTronUploaded() ? max(ghostTronParams2.z, 0.0) : 1.0; }
+
+float ghostTronSeamPulse()
+{
+    float pulse01 = ghostTronUploaded() ? clamp(ghostTronParams.w, 0.0, 1.0) : 0.5;
+    float depth   = ghostTronUploaded() ? clamp(ghostTronParams2.w, 0.0, 1.0) : 0.35;
+    return 1.4 + 1.6 * mix(0.5, pulse01, depth);
+}
+
+// ghostWorldRadiance() expects a DISPLAY-encoded palette (it decodes when
+// ghostWorldLinear is set); the Tron palette is linear, so encode it once.
+float ghostTronLinearToSrgbChannel(float c)
+{
+    c = max(c, 0.0);
+    return c <= 0.0031308 ? c * 12.92 : 1.055 * pow(c, 1.0 / 2.4) - 0.055;
+}
+
+vec3 ghostTronDisplayColor()
+{
+    if (!ghostTronUsePalette())
+    {
+        return color.rgb;                      // actor hue, as every live look
+    }
+    vec3 lin = max(ghostTronColor.rgb, vec3(0.0));
+    // Ghost Studio's non-linear permutation never sets ghostWorldLinear; the
+    // world pass always does, so the encoded value is what gets decoded back.
+    if (ghostWorldLinear == 0)
+    {
+        return lin;
+    }
+    // [TronT2 fix] The palette sanitiser admits channels up to 16, but the
+    // sRGB curve is only the inverse of ghostWorldRadiance()'s decode on
+    // 0..1. Split the intensity (peak component) from the chroma, encode the
+    // chroma alone and re-apply the peak in display space: ghostWorldRadiance
+    // then extracts exactly that peak as its palette_scale, decodes the
+    // chroma back to `lin / peak`, and the product round-trips to `lin`
+    // for every peak (>= 1 or not) instead of shifting hue and intensity.
+    float peak   = max(max(lin.r, lin.g), lin.b);
+    float scale  = max(peak, 1.0);
+    vec3  chroma = lin / scale;                            // max component <= 1
+    vec3  enc    = vec3(ghostTronLinearToSrgbChannel(chroma.r),
+                        ghostTronLinearToSrgbChannel(chroma.g),
+                        ghostTronLinearToSrgbChannel(chroma.b));
+    return enc * scale;
+}
+
+#ifdef GHOST_SHARED_DISSOLVE
+uint ghostTronPcg(uint v)
+{
+    uint s = v * 747796405u + 2891336453u;
+    uint w = ((s >> ((s >> 28u) + 4u)) ^ s) * 277803737u;
+    return (w >> 22u) ^ w;
+}
+
+float ghostTronSegDist(vec2 p, vec2 a, vec2 b, out float t)
+{
+    vec2 ab = b - a;
+    vec2 ap = p - a;
+    t = clamp(dot(ap, ab) / max(dot(ab, ab), 1.0e-8), 0.0, 1.0);
+    return length(ap - ab * t);
+}
+
+vec2 ghostTronTraceCell(vec2 p2, vec2 fw2, float cell, float hw,
+                        float density, float phase, uint salt)
+{
+    vec2  q   = p2 / cell;
+    vec2  cf  = floor(q);
+    vec2  f   = q - cf;
+    uvec2 cid = uvec2(ivec2(cf) + ivec2(32768));
+    uint  hu  = ghostTronPcg(cid.x ^ ghostTronPcg(cid.y ^ ghostTronPcg(salt + 0x9E3779B9u)));
+    float gate = float(hu & 0xFFFFu) * (1.0 / 65536.0);
+    if (gate >= density)
+    {
+        return vec2(0.0);
+    }
+    uint  hv   = ghostTronPcg(hu ^ 0x85EBCA6Bu);
+    int   kind  = int((hv >> 16u) % 5u) + 1;
+    float h_dg = float((hv >> 8u) & 0xFFu) * (1.0 / 256.0);
+    bool  bwd  = ((hv >> 4u) & 1u) == 1u;
+    bool  anti = ((hv >> 5u) & 1u) == 1u;
+    float h_ph = float((hv >> 24u) & 0xFFu) * (1.0 / 256.0);
+    if (kind == 5 && h_dg >= 0.25)
+    {
+        kind = anti ? 1 : 2;
+    }
+    float t = 0.0;
+    float d = 1.0e9;
+    if (kind == 1)
+    {
+        d = ghostTronSegDist(f, vec2(0.0, 0.5), vec2(1.0, 0.5), t);
+    }
+    else if (kind == 2)
+    {
+        d = ghostTronSegDist(f, vec2(0.5, 0.0), vec2(0.5, 1.0), t);
+    }
+    else if (kind == 3)
+    {
+        float tA, tB;
+        float dA = ghostTronSegDist(f, vec2(0.0, 0.5), vec2(0.5, 0.5), tA);
+        float dB = ghostTronSegDist(f, vec2(0.5, 0.5), vec2(0.5, 1.0), tB);
+        if (dA <= dB) { d = dA; t = tA * 0.5; } else { d = dB; t = 0.5 + tB * 0.5; }
+    }
+    else if (kind == 4)
+    {
+        float tA, tB;
+        float dA = ghostTronSegDist(f, vec2(0.5, 0.0), vec2(0.5, 0.5), tA);
+        float dB = ghostTronSegDist(f, vec2(0.5, 0.5), vec2(1.0, 0.5), tB);
+        if (dA <= dB) { d = dA; t = tA * 0.5; } else { d = dB; t = 0.5 + tB * 0.5; }
+    }
+    else
+    {
+        d = anti ? ghostTronSegDist(f, vec2(0.0, 1.0), vec2(1.0, 0.0), t)
+                 : ghostTronSegDist(f, vec2(0.0, 0.0), vec2(1.0, 1.0), t);
+    }
+    float fw    = max(fw2.x, fw2.y) + 1.0e-7;
+    float hw_px = max(hw, fw * 0.6);
+    float trace = 1.0 - smoothstep(hw_px - fw, hw_px + fw, d * cell);
+    if (kind == 3 || kind == 4)
+    {
+        float rp = hw_px * 2.5;
+        trace = max(trace, 1.0 - smoothstep(rp - fw, rp + fw, length(f - vec2(0.5)) * cell));
+    }
+    float guard = smoothstep(3.0, 6.0, cell / max(fw, 1.0e-6));
+    float arg = (bwd ? -t : t) - phase + h_ph;
+    float w   = smoothstep(0.70, 1.0, fract(arg));
+    return vec2(trace, trace * w * w) * guard;
+}
+
+// Bind-space seams from vary_object_position (the ghost vertex shaders' raw
+// `position`, the same rest space native Actor FX dissolve uses).
+// [TronT2 fix] The screen-space footprint (dPx/dPy = dFdx/dFdy of
+// vary_object_position) is taken by main() in uniform control flow, before
+// the slot / alpha-cutoff / Dissolve discards, and passed in; this helper
+// itself takes no derivatives.
+vec2 ghostTronSeams(vec3 dPx, vec3 dPy)
+{
+    vec3  P   = vary_object_position;
+    vec3  fwP = abs(dPx) + abs(dPy) + vec3(1.0e-6);
+    vec3  cr  = cross(dPx, dPy);
+    float crl = dot(cr, cr);
+    if (!(crl > 1.0e-10 * dot(dPx, dPx) * dot(dPy, dPy)))
+    {
+        return vec2(0.0);
+    }
+    vec3 n_b = abs(cr * inversesqrt(crl));
+    vec3 w   = pow(max(n_b, vec3(1.0e-4)), vec3(6.0));
+    w /= max(w.x + w.y + w.z, 1.0e-30);
+    float cell  = ghostTronUploaded() ? clamp(ghostTronParams.y, 0.01, 4.0) : 0.12;
+    float hw    = 0.5 * (ghostTronUploaded() ? clamp(ghostTronParams.z, 0.001, 1.0) : 0.012);
+    float dens  = ghostTronUploaded() ? clamp(ghostTronParams2.x, 0.0, 1.0) : 0.55;
+    float phase = ghostTronUploaded() ? fract(max(ghostTronColor.w, 0.0)) : 0.0;
+    vec2 s = vec2(0.0);
+    if (w.x > 1.0e-3)
+    {
+        s += w.x * ghostTronTraceCell(P.yz, fwP.yz, cell, hw, dens, phase, 1u);
+    }
+    if (w.y > 1.0e-3)
+    {
+        s += w.y * ghostTronTraceCell(P.xz, fwP.xz, cell, hw, dens, phase, 2u);
+    }
+    if (w.z > 1.0e-3)
+    {
+        s += w.z * ghostTronTraceCell(P.xy, fwP.xy, cell, hw, dens, phase, 3u);
+    }
+    return min(s, vec2(1.0));
+}
+#endif // GHOST_SHARED_DISSOLVE
+#endif // GHOST_WORLD_PASS
+
 void main()
 {
     vec2 fragCoord = gl_FragCoord.xy + ghostFragOffset;
     float ghostDissolveEdge = 0.0;
+#ifdef GHOST_SHARED_DISSOLVE
+    // [TronT2 fix] Tron Suit seam footprint, taken here in uniform control
+    // flow (ghostLook is a uniform) BEFORE the slot / alpha-cutoff / Dissolve
+    // discards below make derivatives undefined. Consumed by the look-36
+    // branch only; zero for every other look.
+    vec3 tronSeamDpx = vec3(0.0);
+    vec3 tronSeamDpy = vec3(0.0);
+    if (ghostLook == 36)
+    {
+        tronSeamDpx = dFdx(vary_object_position);
+        tronSeamDpy = dFdy(vary_object_position);
+    }
+#endif
 #ifdef GHOST_INDEXED_WORLD
     if (vary_texture_index < 0 || vary_texture_index >= GHOST_INDEXED_CHANNELS)
     {
@@ -1074,6 +1281,39 @@ void main()
                                + 0.10 * crawl * worldRimWide));
         alpha = color.a * tex.a;
     }
+    else if (ghostLook == 36) // [TronT2] Live Actor: Tron Suit
+    {
+        // The rim and the bind-space seams are localized radiance and the
+        // seam / rim-core subset is bloom -- the same shape Bass Sweep (30)
+        // uses, in the Tron palette or the actor hue.
+        // [TronT2 fix] The body follows the cast member's Suit mode, carried
+        // in ghostTronParams.x. Layer (the default) publishes NO body at all:
+        // the replay's texture sample is unlit, so any body here would swap
+        // the native lit/shadowed beauty for it. Instead llactormover.cpp
+        // composites a Layer suit ADDITIVELY (SRC_ALPHA, ONE; HDR alpha kept)
+        // over the retained native beauty, and this fragment carries only the
+        // neon (worldRadiance, fogged haze-free at the tail) -- exactly what
+        // native Layer does: lit material + rim + seams. Cover replaces the
+        // surface with the near-black suit and keeps the ordinary
+        // source-alpha replay composite.
+        vec2 seams = vec2(0.0);
+#ifdef GHOST_SHARED_DISSOLVE
+        seams = ghostTronSeams(tronSeamDpx, tronSeamDpy);
+#endif
+        vec3  suit  = ghostTronDisplayColor();
+        float sgain = ghostTronSeamGain();
+        float rgain = ghostTronRimGain();
+        rgb = ghostTronCoverMode()
+            ? mix(vec3(lum) * 0.08, tex.rgb * 0.22, 0.5)
+            : vec3(0.0);
+        worldRadiance = ghostWorldRadiance(
+            suit, rgain * (0.20 * worldRimWide + 1.20 * worldRimCore)
+                  + sgain * (seams.x * ghostTronSeamPulse() + seams.y * 1.6));
+        worldBloomRadiance = ghostWorldRadiance(
+            suit, rgain * 0.30 * worldRimCore
+                  + sgain * (seams.x * 0.90 + seams.y * 0.60));
+        alpha = color.a * tex.a;
+    }
 #endif
     if (ghostLook >= 5)
     {
@@ -1265,8 +1505,26 @@ void main()
     // Match ordinary forward world alpha, including both sky atmosphere and
     // the underwater fog law. Ghost Studio's late display-space program never
     // compiles this branch.
-    rgb = applySkyAndWaterFog(vary_position, getAdditiveColor(),
-                              getAtmosAttenuation(), vec4(rgb, alpha)).rgb;
+    if (ghostLook == 36 && !ghostTronCoverMode())
+    {
+        // [TronT2 fix] Layer-mode Tron Suit is pure additive neon composited
+        // SRC_ALPHA, ONE over the retained native beauty (llactormover.cpp).
+        // Additive emission takes the fog transmittance but must not carry
+        // the haze in-scatter (the native beauty underneath already does) --
+        // the same law the glow-only pass above uses.
+        vec3 foggedNeon = applySkyAndWaterFog(
+            vary_position, getAdditiveColor(), getAtmosAttenuation(),
+            vec4(rgb, alpha)).rgb;
+        vec3 foggedNone = applySkyAndWaterFog(
+            vary_position, getAdditiveColor(), getAtmosAttenuation(),
+            vec4(vec3(0.0), alpha)).rgb;
+        rgb = max(foggedNeon - foggedNone, vec3(0.0));
+    }
+    else
+    {
+        rgb = applySkyAndWaterFog(vary_position, getAdditiveColor(),
+                                  getAtmosAttenuation(), vec4(rgb, alpha)).rgb;
+    }
 #endif
     frag_color = max(vec4(rgb, alpha), vec4(0));
 }

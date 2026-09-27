@@ -44,6 +44,7 @@ uniform int actorFxSharedAlphaCutoffMode;
 #endif
 #ifdef HAS_ACTOR_FX
 vec3 actorFxEmissive(vec3 authored_emissive, vec3 styled_color);
+void actorFxTronPrime(); // [TronT2 fix] seam footprint, uniform flow
 float actorFxAuthoredMaterialResponse();
 bool actorFxDissolveEnabled();
 float actorFxBeautyDissolveCoverage();
@@ -51,6 +52,9 @@ float actorFxBeautyDissolveCoverage();
 
 void main()
 {
+#ifdef HAS_ACTOR_FX
+    actorFxTronPrime(); // [TronT2 fix] before any discard/return
+#endif
 #ifdef HAS_ACTOR_FX
     if (actorFxDissolveEnabled() && actorFxBeautyDissolveCoverage() < 0.0)
     {

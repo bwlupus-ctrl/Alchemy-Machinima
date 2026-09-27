@@ -52,9 +52,32 @@
  *                 effective exposure E (Roto rule) and added to the graded
  *                 scene. alpha = scene.a + coverage x glow (legacy bloom feed).
  *
- * T2 (circuit traces, post neon rim) and T3 (light-cycle trails) are NOT in
- * this file yet; their reserved uniforms exist in llshadermgr.h so the enum
- * never reshuffles.
+ * [TronT2] adds, on top of the T1 pass above:
+ *   traces        circuit-board traces on the same triplanar planes and the
+ *                 same GLOBAL lattice machinery (lattice slot [3] = trace
+ *                 cell): per cell a PCG-hashed variant (horizontal / vertical /
+ *                 two L bends / diagonal / pad only), Manhattan segments with
+ *                 anti-aliased half width (never thinner than the grid's
+ *                 min-px), vias (pads) at bends, travelling head+tail pulses
+ *                 along each trace (CPU phase in tron_trace3.y, cells/s), their
+ *                 own wall / flat weights, and the grid's far fade / subject
+ *                 exclusion / subject radius / water policy.
+ *   neon rim      post-pass subject-masked rim: Fresnel on the G-buffer normal
+ *                 (view space), a 4-tap relative depth-step silhouette term for
+ *                 camera-facing surfaces, floor rejection, shared pulse01
+ *                 (tron_master.y) depth, a vertical scan band across the
+ *                 winning target's screen box (or the whole frame in tag-only
+ *                 mode), colour by mode (primary / per-target palette /
+ *                 secondary). Mask source is TronSubjectSourceRim
+ *                 (tron_subject2.y): boxes / avatar tag / tag AND boxes / tag
+ *                 OR boxes -- the per-pixel avatar tag when the preamble emits
+ *                 GBUFFER_AVATAR_TAG, boxes otherwise.
+ *   Both terms feed the same compose rule (display-intent -> no-post scale ->
+ *   clamp -> /E) and the same alpha glow feed as the grid. With
+ *   tron_trace.x == 0 and tron_rim.x == 0 (the GL default for never-uploaded
+ *   uniforms) the new blocks are untaken and the T1 output is unchanged.
+ *
+ * T3 (light-cycle trails) is NOT in this file.
  *
  * Portability: #version 140 compatible (uint / uvec hashing only, no bitfield
  * builtins), derivatives only in uniform control flow, no pow() of a negative
@@ -155,11 +178,47 @@ uniform vec4  tron_lattice_r[4];
 // xyz = integer lattice index k_s of the anchor (mod 2^32), w unused.
 uniform uvec4 tron_lattice_k[4];
 
+// [TronT2] circuit traces
+// x = intensity (0 = off; display-intent linear, /E), y = cell size m,
+// z = trace HALF width m (host uploads TronTraceWidth * 0.5, like tron_grid.z),
+// w = density 0..1 (fraction of cells carrying a trace)
+uniform vec4 tron_trace;
+// x = pad (via) radius m at bends / pad-only cells (0 = none), y = diagonal
+// chance 0..1, z = walls weight 0..1, w = flat (floor + ceiling) weight 0..1
+uniform vec4 tron_trace2;
+// x = pulse amount (multiple of the trace intensity, 0 = off), y = CPU phase
+// 0..1 = fract(clock * TronTracePulseSpeed) (cells/s -> per-cell phase),
+// z = pulse length (fraction of a cell, 0.05..1), w = seed (integer valued)
+uniform vec4 tron_trace3;
+// [TronT2] post neon rim
+// x = gain (0 = off; display-intent linear, /E), y = Fresnel exponent k,
+// z = silhouette gain, w = silhouette threshold (relative depth step dz / z)
+uniform vec4 tron_rim;
+// x = pulse depth 0..1 (uses tron_master.y = shared pulse01), y = scan amount
+// (0 = off), z = scan CPU phase 0..1 = fract(clock * TronRimScanSpeed),
+// w = scan band width (fraction of the target's screen height)
+uniform vec4 tron_rim2;
+// x = colour mode (0 primary, 1 per-target palette index mod 4, 2 secondary),
+// y = reject floors 0/1, z reserved, w reserved (shape / feather come from
+// tron_subject.yz, shared with the grid mask)
+uniform vec4 tron_rim3;
+
 // deferredUtil/gbufferUtil are linked in as separate compile units, so their
 // functions must be forward-declared here.
 float getDepth(vec2 pos_screen);
 vec4  getNorm(vec2 screenpos);
 vec4  getNormRaw(vec2 screenpos);
+
+// [TronT2 fix] The neon rim's four neighbour depth taps run inside the
+// divergent `M_rim > 0` branch, where implicit-LOD texture() is undefined.
+// depthMap is the sampler deferredUtil.glsl's getDepth() reads (a uniform may
+// be redeclared across linked compile units -- screen_res already is); the
+// depth target has no mip chain, so LOD 0 is the exact same texel.
+uniform sampler2D depthMap;
+float tronDepthLod0(vec2 pos_screen)
+{
+    return textureLod(depthMap, pos_screen, 0.0).r;
+}
 
 const vec3 TRON_LUM = vec3(0.2126, 0.7152, 0.0722);
 
@@ -175,10 +234,16 @@ uint tronPcg(uint v)
     return (w >> 22u) ^ w;
 }
 
+// [TronT2] raw uint variant: the trace cell decoder slices bit fields off one
+// hash instead of paying three PCG chains per cell.
+uint tronHashU3u(uvec3 c)
+{
+    return tronPcg(c.x ^ tronPcg(c.y ^ tronPcg(c.z + 0x9E3779B9u)));
+}
+
 float tronHashU3(uvec3 c)
 {
-    uint h = tronPcg(c.x ^ tronPcg(c.y ^ tronPcg(c.z + 0x9E3779B9u)));
-    return float(h) * (1.0 / 4294967296.0);
+    return float(tronHashU3u(c)) * (1.0 / 4294967296.0);
 }
 
 // -------------------------------------------------------- reconstruction ---
@@ -256,6 +321,64 @@ float tronBoxMask(vec2 uv, float z_c)
         m = max(m, w);
     }
     return m;
+}
+
+// [TronT2] Same union as tronBoxMask, but also reports the WINNING target's
+// screen box (centre uv, half extents uv; for the rim scan band) and its
+// palette index (rim colour mode 1). best_pal < 0 when no target won -- the
+// box / palette are then unusable and the callers fall back to whole-frame /
+// primary. Captured inside the constant-bound loop so no uniform array is
+// ever indexed with a runtime value outside it.
+float tronRimBoxMask(vec2 uv, float z_c, out vec4 best_box, out float best_pal)
+{
+    best_box = vec4(0.5, 0.5, 0.5, 0.5);
+    best_pal = -1.0;
+    int   count   = int(tron_subject.x + 0.5);
+    int   shape   = int(tron_subject.y + 0.5);
+    float fe      = max(tron_subject.z, 0.01);
+    float feather = max(tron_subject.w, 1.0e-3);
+    float m = 0.0;
+    for (int i = 0; i < 16; ++i)
+    {
+        if (i >= count)
+        {
+            break;
+        }
+        vec4 t2 = tron_targets2[i];
+        if (t2.w < 0.5)
+        {
+            continue;
+        }
+        float w = tronDepthSlab(z_c, t2.x, max(t2.y, 0.0), feather);
+        w *= tronTargetShape(uv, tron_targets[i], shape, fe);
+        if (w > m)
+        {
+            m        = w;
+            best_box = tron_targets[i];
+            best_pal = t2.z;
+        }
+    }
+    return m;
+}
+
+// [TronT2] Tron palette colour by (integer-valued) index mod 4:
+// 0 primary, 1 secondary, 2 accent, 3 pulse.
+vec3 tronPaletteByIndex(float idx)
+{
+    int k = int(mod(max(idx, 0.0), 4.0) + 0.5);
+    if (k == 1)
+    {
+        return tron_palette1.rgb;
+    }
+    if (k == 2)
+    {
+        return tron_palette2.rgb;
+    }
+    if (k == 3)
+    {
+        return tron_palette3.rgb;
+    }
+    return tron_palette0.rgb;
 }
 
 // 0 boxes, 1 tag, 2 tag AND boxes, 3 tag OR boxes.
@@ -423,6 +546,155 @@ vec3 tronGridPlane(vec2 p2, vec2 fw2, vec2 rg, uvec2 kg, vec2 rM, uvec2 kM, vec2
     return vec3(minor, major, min(pulse, 1.0));
 }
 
+// ------------------------------------------------------- [TronT2] traces ---
+// Distance from p to the segment ab (cell units); t receives the normalised
+// along-segment parameter 0..1 of the closest point.
+float tronSegDist(vec2 p, vec2 a, vec2 b, out float t)
+{
+    vec2 ab = b - a;
+    vec2 ap = p - a;
+    t = clamp(dot(ap, ab) / max(dot(ab, ab), 1.0e-8), 0.0, 1.0);
+    return length(ap - ab * t);
+}
+
+// Circuit traces of one cell lattice on one plane. Returns
+// vec3(trace coverage, pad coverage, pulse coverage), each 0..1, unweighted.
+//   p2  plane coordinates (m), fw2 per-axis metres per pixel,
+//   rT / kT the TRACE lattice (slot [3]) remainder / cell index for these
+//   two axes, salt: 0 flat (xy), 1 wall +/-X (yz), 2 wall +/-Y (xz).
+// Every cell hashes ONE PCG value (gate) plus one derived value (variant,
+// diagonal roll, pulse direction, anti-diagonal flag, pulse phase offset) from
+// its GLOBAL cell id, so the board is identical across region crossings,
+// anchor re-snaps and sessions (same guarantee as the grid lines).
+vec3 tronTracePlane(vec2 p2, vec2 fw2, vec2 rT, uvec2 kT, uint salt)
+{
+    float c   = max(tron_trace.y, 0.01);
+    vec2  q   = (p2 + rT) / c;
+    vec2  cf  = floor(q);
+    vec2  f   = q - cf;                                   // 0..1 inside the cell
+    uvec2 cid = uvec2(ivec2(cf)) + kT;                    // global cell id (wraps mod 2^32)
+    uint  seed = uint(clamp(tron_trace3.w, 0.0, 65535.0) + 0.5);
+    uint  hu  = tronHashU3u(uvec3(cid.x, cid.y, salt * 40503u + seed));
+    float gate = float(hu & 0xFFFFu) * (1.0 / 65536.0);
+    if (gate >= clamp(tron_trace.w, 0.0, 1.0))           // fraction `density` of the cells carry a trace
+    {
+        return vec3(0.0);
+    }
+    uint  hv    = tronPcg(hu ^ 0x85EBCA6Bu);
+    // variant: 1 horizontal, 2 vertical, 3 L (left edge -> centre -> top edge),
+    // 4 L (bottom edge -> centre -> right edge), 5 diagonal, 6 pad only
+    int   kind   = int((hv >> 16u) % 6u) + 1;
+    float h_dg  = float((hv >> 8u) & 0xFFu) * (1.0 / 256.0);
+    bool  bwd   = ((hv >> 4u) & 1u) == 1u;
+    bool  anti  = ((hv >> 5u) & 1u) == 1u;
+    float h_ph  = float((hv >> 24u) & 0xFFu) * (1.0 / 256.0);
+    if (kind == 5 && h_dg >= clamp(tron_trace2.y, 0.0, 1.0))
+    {
+        kind = anti ? 1 : 2;                               // demoted diagonal -> straight
+    }
+
+    float t = 0.0;                                        // 0..1 along the cell's trace (pulses)
+    float d = 1.0e9;                                      // cell units to the centreline
+    if (kind == 1)
+    {
+        d = tronSegDist(f, vec2(0.0, 0.5), vec2(1.0, 0.5), t);
+    }
+    else if (kind == 2)
+    {
+        d = tronSegDist(f, vec2(0.5, 0.0), vec2(0.5, 1.0), t);
+    }
+    else if (kind == 3)
+    {
+        float tA, tB;
+        float dA = tronSegDist(f, vec2(0.0, 0.5), vec2(0.5, 0.5), tA);
+        float dB = tronSegDist(f, vec2(0.5, 0.5), vec2(0.5, 1.0), tB);
+        if (dA <= dB) { d = dA; t = tA * 0.5; } else { d = dB; t = 0.5 + tB * 0.5; }
+    }
+    else if (kind == 4)
+    {
+        float tA, tB;
+        float dA = tronSegDist(f, vec2(0.5, 0.0), vec2(0.5, 0.5), tA);
+        float dB = tronSegDist(f, vec2(0.5, 0.5), vec2(1.0, 0.5), tB);
+        if (dA <= dB) { d = dA; t = tA * 0.5; } else { d = dB; t = 0.5 + tB * 0.5; }
+    }
+    else if (kind == 5)
+    {
+        d = anti ? tronSegDist(f, vec2(0.0, 1.0), vec2(1.0, 0.0), t)
+                 : tronSegDist(f, vec2(0.0, 0.0), vec2(1.0, 1.0), t);
+    }
+
+    float fw = max(fw2.x, fw2.y) + 1.0e-7;                // metres per pixel on this plane
+    float hw = max(tron_trace.z, fw * 0.5 * max(tron_grid.w, 0.0));   // never thinner than the grid's min-px
+    float dm = d * c;                                     // metres to the centreline
+    float trace = (kind == 6) ? 0.0 : 1.0 - smoothstep(hw - fw, hw + fw, dm);   // edge0 < edge1 (fw > 0)
+
+    float pad = 0.0;
+    float rp  = tron_trace2.x;
+    if (rp > 0.0 && (kind == 3 || kind == 4 || kind == 6)) // vias at bends (3/4) and pad-only cells (6); [TronT2 fix] never on a surviving diagonal (5)
+    {
+        pad = 1.0 - smoothstep(rp - fw, rp + fw, length(f - vec2(0.5)) * c);
+    }
+
+    // moire guard: fade out where a cell covers fewer than ~6 px (also kills
+    // traces across depth discontinuities, where fw explodes)
+    float cell_px = c / max(fw, 1.0e-6);
+    float guard   = smoothstep(4.0, 8.0, cell_px);
+
+    float pulse = 0.0;
+    if (tron_trace3.x > 0.0 && kind != 6 && trace > 1.0e-3)
+    {
+        // Same head-locus reasoning as tronLinePulse: forward = along - phase,
+        // backward = -along - phase, so the head travels with +time in the
+        // hashed direction. Phase offset per cell decorrelates neighbours.
+        float len = clamp(tron_trace3.z, 0.02, 1.0);
+        float arg = (bwd ? -t : t) - tron_trace3.y + h_ph;
+        pulse = trace * tronPulseWave(fract(arg), len);
+    }
+    return vec3(trace, pad, pulse) * guard;
+}
+
+// ------------------------------------------------- shared surface helpers ---
+// Triplanar weights from a world normal (SL agent space is Z-up); abs() keeps
+// the pow base >= 0. `a` sums to 1; .x -> wall facing +/-X (plane y,z),
+// .y -> wall facing +/-Y (plane x,z), .z -> flat (plane x,y).
+vec3 tronTriplanar(vec3 n_w)
+{
+    float k = clamp(tron_grid3.w, 1.0, 32.0);
+    vec3  a = pow(max(abs(n_w), vec3(1.0e-4)), vec3(k));
+    // [TronT1 P2-11 fix] a.x+a.y+a.z can only be exactly 0 if abs(n_w)
+    // were 0 on every axis, which the max(abs(n_w), 1.0e-4) floor above
+    // already rules out -- so this divisor floor exists purely to stop a
+    // divide-BY-a-tiny-but-nonzero-number blow-up, not a divide-by-true-
+    // zero. 1.0e-6 was itself reachable: at k = 32 (the slider's own
+    // max), (1.0e-4)^32 underflows to 0 in fp32 well before the sum
+    // does, so a legitimately tiny (not degenerate) triplanar sum could
+    // still get clamped up to 1.0e-6, inflating `a` far past 1 and
+    // blowing out the neon. 1.0e-30 is still comfortably above fp32's
+    // ~1.0e-38 denormal floor (so the divide itself stays finite) while
+    // never being hit by any in-range k/normal combination.
+    return a / max(a.x + a.y + a.z, 1.0e-30);
+}
+
+// Far fade (depth quantisation shimmer), subject exclusion, "grid only near
+// subject" radius -- shared by the grid and the traces.
+float tronSurfaceFade(float z_c, float M, vec3 p_w)
+{
+    float fade = 1.0;
+    float F = tron_grid2.w;
+    if (F > 0.0)
+    {
+        fade = 1.0 - smoothstep(0.7 * F, F, z_c);
+    }
+    fade *= 1.0 - clamp(tron_grid4.z, 0.0, 1.0) * M;
+    if (tron_grid5.x > 0.0)
+    {
+        float r = tron_grid5.x;
+        float f = max(tron_grid5.y, 1.0e-3);
+        fade *= 1.0 - smoothstep(r, r + f, tronAnchorDistance(p_w));   // no anchors -> 1e9 -> 0
+    }
+    return fade;
+}
+
 void main()
 {
     vec2 uv    = vary_fragcoord;
@@ -528,13 +800,23 @@ void main()
         }
     }
 
-    // ---- world grid + pulses --------------------------------------------
+    // ---- world grid + pulses, circuit traces ------------------------------
     vec3  neon = vec3(0.0);
     float cov  = 0.0;
     float grid_int   = max(tron_grid.x, 0.0);
+    float trace_int  = max(tron_trace.x, 0.0);           // [TronT2]
     int   water_mode = int(tron_grid5.z + 0.5);
-    bool  draw_grid  = grid_int > 0.0 && !sky && !(is_water && water_mode == 0);
-    if (draw_grid)
+    bool  surf_ok    = !sky && !(is_water && water_mode == 0);
+    bool  draw_grid  = grid_int > 0.0 && surf_ok;
+    bool  draw_trace = trace_int > 0.0 && surf_ok;       // [TronT2]
+
+    // shared pulse colour (grid pulses and trace pulses)
+    int  pmode = int(tron_pulse2.w + 0.5);
+    vec3 pulse_col = (pmode == 1) ? tron_palette1.rgb
+                   : (pmode == 2) ? vec3(1.0)
+                                  : tron_palette3.rgb;
+
+    if (draw_grid || draw_trace)
     {
         vec3 n_w      = (tron_grid4.x > 0.5) ? n_geo : n_gb;   // geometric option avoids normal-map speckle
         vec3 line_col = tron_palette0.rgb;
@@ -548,73 +830,168 @@ void main()
         }
         vec3 major_col = mix(line_col, tron_palette2.rgb, 0.5);
 
-        // triplanar weights (SL agent space is Z-up); abs() keeps the pow base >= 0
-        float k = clamp(tron_grid3.w, 1.0, 32.0);
-        vec3  a = pow(max(abs(n_w), vec3(1.0e-4)), vec3(k));
-        // [TronT1 P2-11 fix] a.x+a.y+a.z can only be exactly 0 if abs(n_w)
-        // were 0 on every axis, which the max(abs(n_w), 1.0e-4) floor above
-        // already rules out -- so this divisor floor exists purely to stop a
-        // divide-BY-a-tiny-but-nonzero-number blow-up, not a divide-by-true-
-        // zero. 1.0e-6 was itself reachable: at k = 32 (the slider's own
-        // max), (1.0e-4)^32 underflows to 0 in fp32 well before the sum
-        // does, so a legitimately tiny (not degenerate) triplanar sum could
-        // still get clamped up to 1.0e-6, inflating `a` far past 1 and
-        // blowing out the neon. 1.0e-30 is still comfortably above fp32's
-        // ~1.0e-38 denormal floor (so the divide itself stays finite) while
-        // never being hit by any in-range k/normal combination.
-        a /= max(a.x + a.y + a.z, 1.0e-30);
-        float w_flat = a.z * ((n_w.z >= 0.0) ? clamp(tron_grid3.x, 0.0, 1.0)      // floor
-                                             : clamp(tron_grid3.z, 0.0, 1.0));     // ceiling
-        float w_wx   = a.x * clamp(tron_grid3.y, 0.0, 1.0);    // wall facing +/-X -> plane (y, z)
-        float w_wy   = a.y * clamp(tron_grid3.y, 0.0, 1.0);    // wall facing +/-Y -> plane (x, z)
+        // triplanar weights (SL agent space is Z-up) and the shared fade
+        vec3  a    = tronTriplanar(n_w);
+        bool  up   = n_w.z >= 0.0;
+        float fade = tronSurfaceFade(z_c, M, p_w);
 
-        vec3  rg = tron_lattice_r[0].xyz;  uvec3 kg = tron_lattice_k[0].xyz;
-        vec3  rM = tron_lattice_r[1].xyz;  uvec3 kM = tron_lattice_k[1].xyz;
-        vec3  rL = tron_lattice_r[2].xyz;
-
-        vec3 acc = vec3(0.0);   // weighted (minor, major, pulse)
-        if (w_flat > 1.0e-3)
+        if (draw_grid)
         {
-            acc += w_flat * tronGridPlane(p_w.xy, fw3.xy, rg.xy, kg.xy, rM.xy, kM.xy, rL.xy, 0u);
-        }
-        if (w_wx > 1.0e-3)
-        {
-            acc += w_wx * tronGridPlane(p_w.yz, fw3.yz, rg.yz, kg.yz, rM.yz, kM.yz, rL.yz, 1u);
-        }
-        if (w_wy > 1.0e-3)
-        {
-            acc += w_wy * tronGridPlane(p_w.xz, fw3.xz, rg.xz, kg.xz, rM.xz, kM.xz, rL.xz, 2u);
+            float w_flat = a.z * (up ? clamp(tron_grid3.x, 0.0, 1.0)      // floor
+                                     : clamp(tron_grid3.z, 0.0, 1.0));    // ceiling
+            float w_wx   = a.x * clamp(tron_grid3.y, 0.0, 1.0);    // wall facing +/-X -> plane (y, z)
+            float w_wy   = a.y * clamp(tron_grid3.y, 0.0, 1.0);    // wall facing +/-Y -> plane (x, z)
+
+            vec3  rg = tron_lattice_r[0].xyz;  uvec3 kg = tron_lattice_k[0].xyz;
+            vec3  rM = tron_lattice_r[1].xyz;  uvec3 kM = tron_lattice_k[1].xyz;
+            vec3  rL = tron_lattice_r[2].xyz;
+
+            vec3 acc = vec3(0.0);   // weighted (minor, major, pulse)
+            if (w_flat > 1.0e-3)
+            {
+                acc += w_flat * tronGridPlane(p_w.xy, fw3.xy, rg.xy, kg.xy, rM.xy, kM.xy, rL.xy, 0u);
+            }
+            if (w_wx > 1.0e-3)
+            {
+                acc += w_wx * tronGridPlane(p_w.yz, fw3.yz, rg.yz, kg.yz, rM.yz, kM.yz, rL.yz, 1u);
+            }
+            if (w_wy > 1.0e-3)
+            {
+                acc += w_wy * tronGridPlane(p_w.xz, fw3.xz, rg.xz, kg.xz, rM.xz, kM.xz, rL.xz, 2u);
+            }
+            acc *= fade;
+
+            float minor = min(acc.x, 1.0);
+            float major = min(acc.y, 1.0);
+            float pulse = min(acc.z, 1.0);
+
+            neon += grid_int * (line_col  * minor * (1.0 - major)
+                              + major_col * major * max(tron_grid2.z, 0.0)
+                              + pulse_col * pulse * max(tron_pulse.x, 0.0));
+            cov = clamp(max(max(minor, major), pulse), 0.0, 1.0);
         }
 
-        // far fade (depth quantisation shimmer), subject exclusion, subject radius
-        float fade = 1.0;
-        float F = tron_grid2.w;
-        if (F > 0.0)
+        // [TronT2] circuit traces: walls by default (tron_trace2.z), flats
+        // (floor + ceiling, water in modes 1/2) by tron_trace2.w; the grid
+        // stays on floors so the two rarely fight. Pads mix toward the accent
+        // like the major lines; pulses use the shared pulse colour.
+        if (draw_trace)
         {
-            fade = 1.0 - smoothstep(0.7 * F, F, z_c);
+            float w_flat_t = a.z * clamp(tron_trace2.w, 0.0, 1.0);
+            float w_wx_t   = a.x * clamp(tron_trace2.z, 0.0, 1.0);
+            float w_wy_t   = a.y * clamp(tron_trace2.z, 0.0, 1.0);
+
+            vec3  rT = tron_lattice_r[3].xyz;  uvec3 kT = tron_lattice_k[3].xyz;
+
+            vec3 acc_t = vec3(0.0);   // weighted (trace, pad, pulse)
+            if (w_flat_t > 1.0e-3)
+            {
+                acc_t += w_flat_t * tronTracePlane(p_w.xy, fw3.xy, rT.xy, kT.xy, 0u);
+            }
+            if (w_wx_t > 1.0e-3)
+            {
+                acc_t += w_wx_t * tronTracePlane(p_w.yz, fw3.yz, rT.yz, kT.yz, 1u);
+            }
+            if (w_wy_t > 1.0e-3)
+            {
+                acc_t += w_wy_t * tronTracePlane(p_w.xz, fw3.xz, rT.xz, kT.xz, 2u);
+            }
+            acc_t *= fade;
+
+            float trace = min(acc_t.x, 1.0);
+            float pad   = min(acc_t.y, 1.0);
+            float tpul  = min(acc_t.z, 1.0);
+            vec3  pad_col = mix(line_col, tron_palette2.rgb, 0.5);
+
+            neon += trace_int * (line_col  * trace * (1.0 - pad)
+                               + pad_col   * pad
+                               + pulse_col * tpul * max(tron_trace3.x, 0.0));
+            cov = clamp(max(cov, max(max(trace, pad), tpul)), 0.0, 1.0);
         }
-        fade *= 1.0 - clamp(tron_grid4.z, 0.0, 1.0) * M;
-        if (tron_grid5.x > 0.0)
+    }
+
+    // ---- [TronT2] post neon rim (subject-masked) ---------------------------
+    // Fresnel on the G-buffer normal + a relative depth-step silhouette for
+    // camera-facing surfaces, floor rejection, shared pulse, scan band. Only
+    // inside the rim's own subject mask (TronSubjectSourceRim). Sky pixels
+    // never carry a subject (alpha hair over sky follows the sky rule --
+    // documented limitation of the Camera layer).
+    float rim_gain = max(tron_rim.x, 0.0);
+    if (rim_gain > 0.0 && !sky)
+    {
+        vec4  best_box;
+        float best_pal;
+        float m_box_rim = tronRimBoxMask(uv, z_c, best_box, best_pal);
+        float M_rim     = tronApplySource(int(tron_subject2.y + 0.5), m_box_rim, tag);
+        if (tron_subject2.z > 0.5)
         {
-            float r = tron_grid5.x;
-            float f = max(tron_grid5.y, 1.0e-3);
-            fade *= 1.0 - smoothstep(r, r + f, tronAnchorDistance(p_w));   // no anchors -> 1e9 -> 0
+            M_rim = 1.0 - M_rim;
         }
-        acc *= fade;
+        if (M_rim > 1.0e-4)
+        {
+            // view-space normal / view vector for the Fresnel term
+            vec3  n_v = (ngl > 1.0e-8) ? ngb_v * inversesqrt(ngl) : vec3(0.0, 0.0, 1.0);
+            float pl  = dot(p_v, p_v);
+            vec3  v   = (pl > 1.0e-12) ? -p_v * inversesqrt(pl) : vec3(0.0, 0.0, 1.0);
+            float NoV = clamp(abs(dot(n_v, v)), 0.0, 1.0);
+            float g   = pow(1.0 - NoV, max(tron_rim.y, 0.1));        // base in [0,1], exponent > 0
 
-        float minor = min(acc.x, 1.0);
-        float major = min(acc.y, 1.0);
-        float pulse = min(acc.z, 1.0);
+            // crisp outline where Fresnel is weak: 4-tap relative depth step
+            // (positive when the neighbour is farther -> we are the foreground
+            // edge). Cleared neighbours count as infinitely far.
+            float sil = 0.0;
+            if (tron_rim.z > 0.0)
+            {
+                vec2 px = 1.0 / max(screen_res, vec2(1.0));
+                for (int i = 0; i < 4; ++i)
+                {
+                    vec2 o = (i == 0) ? vec2( px.x, 0.0)
+                           : (i == 1) ? vec2(-px.x, 0.0)
+                           : (i == 2) ? vec2(0.0,  px.y)
+                                      : vec2(0.0, -px.y);
+                    vec2  uv2 = clamp(uv + o, vec2(0.0), vec2(1.0));
+                    float d2  = tronDepthLod0(uv2);          // [TronT2 fix] explicit LOD in divergent flow
+                    float z2  = (d2 >= 1.0) ? 1.0e6 : max(-tronViewPos(uv2, d2).z, 1.0e-3);
+                    sil = max(sil, (z2 - z_c) / z_c);
+                }
+                float thr = max(tron_rim.w, 1.0e-3);
+                sil = smoothstep(thr, 2.0 * thr, sil) * tron_rim.z;
+            }
 
-        int  pmode = int(tron_pulse2.w + 0.5);
-        vec3 pulse_col = (pmode == 1) ? tron_palette1.rgb
-                       : (pmode == 2) ? vec3(1.0)
-                                      : tron_palette3.rgb;
+            // don't paint the floor inside the target box (horizontal G-buffer normal)
+            float floor_rej = (tron_rim3.y > 0.5) ? 1.0 - smoothstep(0.6, 0.85, abs(n_gb.z)) : 1.0;
 
-        neon += grid_int * (line_col  * minor * (1.0 - major)
-                          + major_col * major * max(tron_grid2.z, 0.0)
-                          + pulse_col * pulse * max(tron_pulse.x, 0.0));
-        cov = clamp(max(max(minor, major), pulse), 0.0, 1.0);
+            // shared pulse (tron_master.y = CPU waveform 0..1) at this effect's depth
+            float pmul = 1.0 + clamp(tron_rim2.x, 0.0, 1.0) * (clamp(tron_master.y, 0.0, 1.0) - 0.5) * 2.0;
+
+            // vertical scan band sweeping the winning target's screen box
+            // (or the whole frame when only the tag defines the subject)
+            float scan = 0.0;
+            if (tron_rim2.y > 0.0)
+            {
+                float y_lo = 0.0;
+                float y_hi = 1.0;
+                if (best_pal >= 0.0)
+                {
+                    y_lo = best_box.y - best_box.w;
+                    y_hi = best_box.y + best_box.w;
+                }
+                float span = max(y_hi - y_lo, 1.0e-3);
+                float y0   = y_lo + span * fract(tron_rim2.z);
+                float bw   = max(tron_rim2.w, 0.005) * span;
+                scan = tron_rim2.y * (1.0 - smoothstep(0.0, bw, abs(uv.y - y0)));
+            }
+
+            float rim = clamp(max(g, sil) * floor_rej, 0.0, 1.0) * M_rim * (pmul + scan);
+
+            int  cmode = int(tron_rim3.x + 0.5);
+            vec3 rim_col = (cmode == 1) ? ((best_pal >= 0.0) ? tronPaletteByIndex(best_pal) : tron_palette0.rgb)
+                         : (cmode == 2) ? tron_palette1.rgb
+                                        : tron_palette0.rgb;
+
+            neon += rim_gain * rim * rim_col;
+            cov = clamp(max(cov, rim), 0.0, 1.0);
+        }
     }
 
     // ---- compose: ONE exposure rule ---------------------------------------
