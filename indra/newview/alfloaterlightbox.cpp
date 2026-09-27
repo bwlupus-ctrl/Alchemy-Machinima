@@ -290,8 +290,16 @@ void ALFloaterLightBox::draw()
             else
             {
                 const LLVector4& c = gPipeline.mMainRT.shadowMeta.clip;
-                splits_status->setValue(llformat("Effective cascade splits: %.1f / %.1f / %.1f / %.1f m",
-                    c.mV[0], c.mV[1], c.mV[2], c.mV[3]));
+                if (gPipeline.mMainRT.shadowMeta.subject)
+                {   // [ShadowDist P3 fix] cascade 0 is the subject column, not a camera slice
+                    splits_status->setValue(llformat("Effective cascade splits: column / %.1f / %.1f / %.1f m",
+                        c.mV[1], c.mV[2], c.mV[3]));
+                }
+                else
+                {
+                    splits_status->setValue(llformat("Effective cascade splits: %.1f / %.1f / %.1f / %.1f m",
+                        c.mV[0], c.mV[1], c.mV[2], c.mV[3]));
+                }
             }
         }
     }

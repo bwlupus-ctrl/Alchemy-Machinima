@@ -7481,6 +7481,34 @@ void renderAuxiliaryView()
         // saved by beginPrismAuxiliaryState (via ScopedPrismRenderState) and is
         // restored by endPrismAuxiliaryState before the frame's main stateSort,
         // keeping the main view byte-identical.
+        // [ShadowDist P3] Sun cascades exist from RenderShadowDetail >= 1 (not only with
+        // projector shadows), so their aux re-expression sits OUTSIDE the projector gate
+        // (design v3 s3 / Codex P1-3). Same idea as Stage 1 below: the map content is
+        // camera-independent, only the eye's inverse view in the sampling matrix is not.
+        // Saved / restored by begin/endPrismAuxiliaryState (mPrismSavedSunCascadeMatrix).
+        // Precedence: while any shadow control is engaged, LLPipeline::uploadShadowUniforms
+        // re-composes cascades 0-3 from the main pack's meta with the current inverse view
+        // on every bind and supersedes this; this block is the standalone fix for the
+        // controls-OFF path and is bisectable through PrismSunCascadeReexpress.
+        // [ShadowDist P3 fix, Opus P2-2] the switch defaults OFF (default aux feed byte-identical)
+        // and the block is skipped while the controls are engaged (superseded there). Note: the
+        // LEGACY shader path has no uv-bounds guard, so with this switch forced on, aux pixels
+        // beyond the main-fitted cascades sample clamp-to-edge; the units path guards them.
+        if (LLPipeline::sRenderDeferred && LLPipeline::RenderShadowDetail > 0 &&
+            LLPipeline::PrismSunCascadeReexpress && !gPipeline.mShadowEngaged)
+        {
+            const glm::mat4 inv_view_aux_sun = glm::inverse(get_current_modelview());
+            const glm::mat4 shadow_bias_sun(0.5f, 0.0f, 0.0f, 0.0f,
+                                            0.0f, 0.5f, 0.0f, 0.0f,
+                                            0.0f, 0.0f, 0.5f, 0.0f,
+                                            0.5f, 0.5f, 0.5f, 1.0f);
+            for (U32 i = 0; i < 4; ++i)
+            {
+                gPipeline.mSunShadowMatrix[i] =
+                    shadow_bias_sun * gPipeline.mShadowProjection[i] *
+                    gPipeline.mShadowModelview[i] * inv_view_aux_sun;
+            }
+        }
         if (LLPipeline::sRenderDeferred && LLPipeline::RenderShadowDetail > 1)
         {
             // --- [Prism spot shadows Stage 1] re-express resident MAIN-view

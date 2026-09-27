@@ -75,8 +75,12 @@ uniform float shadow_slope_scale = 1.0;     // receiver-plane slope bias scale (
 uniform vec4  shadow_cascade_coef[4];
 uniform vec4  shadow_res_cascade   = vec4(2048.0); // REAL width  of shadowMap0..3 (fixes shadow_res = cascade 0 for all)
 uniform vec4  shadow_res_cascade_h = vec4(2048.0); // REAL height of shadowMap0..3 ([ShadowDist P2 fix] non-square maps)
-// [P3] Control B: (active, feather_uv, depth_feather_uv, 0). Always 0 until the subject cascade lands.
+// [ShadowDist P3] Control B "Follow subject": (active, feather_uv, depth_feather_uv, 0) from the
+// sampled pack's ShadowMeta (1 exactly while shadowMap0 holds the subject column), and the
+// column's own sampling matrix composed at bind (camera-independent; never shadow_matrix[0]).
+// The initialiser keeps every program stock until a column is generated.
 uniform vec4  shadow_subject = vec4(0.0);
+uniform mat4  shadow_subject_matrix;
 uniform float shadow_bias;
 uniform float shadow_offset;
 uniform float spot_shadow_bias;
@@ -381,6 +385,13 @@ float sunBandC(sampler2DShadow shadowMap, mat4 smat, vec4 coef, vec2 res, bool u
         return 1.0;
     }
     vec3  st1 = lp.xyz / lp.w;
+    // [ShadowDist P3 fix, Opus P2-2] uv-bounds guard: a receiver outside this map's footprint
+    // (e.g. a Prism aux pixel beyond the main-fitted cascades once the cascades are re-expressed
+    // for the aux camera) is lit per the outside-the-map convention instead of clamp-to-edge.
+    if (st1.x < 0.0 || st1.x > 1.0 || st1.y < 0.0 || st1.y > 1.0)
+    {
+        return 1.0;
+    }
 
     // [ShadowDist P2 fix2, Codex P1 / Opus] Receiver plane in MAP space. With
     // stc = (ru.p, rv.p, rz.p) / (rw.p) (+ constants; smat is column-major, row r of the
@@ -668,33 +679,77 @@ float sampleDirectionalShadow(vec3 pos, vec3 norm, vec2 pos_screen)
                            pos, norm, NdotL, sin_a, pos_screen, L) * w;
         weight += w;
     }
-    // [P3 slot] subject mode: the cascade-1 band becomes `z123 > far_split.y` with only the
-    // y-side transition and the cascade-0 band is skipped (three-cascade layout, v3 s5.4);
-    // kept out of phase 2 so the inert variant does not double the inlined band code.
-    // [ShadowDist P2 fix2, Opus] the cascade-1 band's cascade-0 side is selected and
-    // weighted with z0 (the coordinate cascade 0 uses) so scope 1 can never open a gap
-    // between the two coordinates when RenderShadowOffset is large and the sharp range
-    // small; the y side keeps its own coordinate. Identical when scope == 0 (z0 == z123).
-    if (z0 < near_split.x && z123 > far_split.y)
+    bool subject_mode = shadow_subject.x > 0.5;   // [ShadowDist P3] shadowMap0 holds the subject column
+    if (subject_mode)
     {
-        float w = 1.0 - max(z0 - far_split.x, 0.0) / transition_domain.x
-                      - max(near_split.y - z123, 0.0) / transition_domain.y;
-        shadow += sunBandC(shadowMap1, shadow_matrix[1], shadow_cascade_coef[1], res1, u123,
-                           pos, norm, NdotL, sin_a, pos_screen, L) * w;
-        weight += w;
+        // [ShadowDist P3] three-cascade layout (v3 s5.4): cascade 1 owns the whole near band
+        // with only its y-side transition; the cascade-0 band does not exist.
+        if (z123 > far_split.y)
+        {
+            float w = 1.0 - max(near_split.y - z123, 0.0) / transition_domain.y;
+            shadow += sunBandC(shadowMap1, shadow_matrix[1], shadow_cascade_coef[1], res1, u123,
+                               pos, norm, NdotL, sin_a, pos_screen, L) * w;
+            weight += w;
+        }
     }
-    if (z0 > far_split.x)
+    else
     {
-        float w = 1.0 - max(near_split.x - z0, 0.0) / transition_domain.x;
-        shadow += sunBandC(shadowMap0, shadow_matrix[0], shadow_cascade_coef[0],
-                           vec2(shadow_res_cascade.x, shadow_res_cascade_h.x), true,
-                           pos, norm, NdotL, sin_a, pos_screen, L) * w;
-        weight += w;
+        // [ShadowDist P2 fix2, Opus] the cascade-1 band's cascade-0 side is selected and
+        // weighted with z0 (the coordinate cascade 0 uses) so scope 1 can never open a gap
+        // between the two coordinates when RenderShadowOffset is large and the sharp range
+        // small; the y side keeps its own coordinate. Identical when scope == 0 (z0 == z123).
+        if (z0 < near_split.x && z123 > far_split.y)
+        {
+            float w = 1.0 - max(z0 - far_split.x, 0.0) / transition_domain.x
+                          - max(near_split.y - z123, 0.0) / transition_domain.y;
+            shadow += sunBandC(shadowMap1, shadow_matrix[1], shadow_cascade_coef[1], res1, u123,
+                               pos, norm, NdotL, sin_a, pos_screen, L) * w;
+            weight += w;
+        }
+        if (z0 > far_split.x)
+        {
+            float w = 1.0 - max(near_split.x - z0, 0.0) / transition_domain.x;
+            shadow += sunBandC(shadowMap0, shadow_matrix[0], shadow_cascade_coef[0],
+                               vec2(shadow_res_cascade.x, shadow_res_cascade_h.x), true,
+                               pos, norm, NdotL, sin_a, pos_screen, L) * w;
+            weight += w;
+        }
     }
     shadow = (weight > 0.0) ? shadow / weight : 1.0;
 
-    // [P3 slot] subject column: lp = shadow_subject_matrix * (pos + N offset), feathered
-    //           XY/depth test, shadow = mix(shadow, pcfShadowC(shadowMap0, ...), sw)
+    if (subject_mode)
+    {
+        // [ShadowDist P3] the subject column (v3 s5.4 + v2 s3.6): any receiver whose
+        // light-space projection lands inside the column (feathered edge, inset by the
+        // kernel footprint so every tap stays inside the map) and within its depth range
+        // (feathered toward the far plane = Reach, counted once) samples the dense map
+        // through the phase-2 per-tap receiver-plane path (units are forced on for these
+        // maps). The subject's own cast shadow lies inside the column by construction.
+        vec4  c0   = shadow_cascade_coef[0];                       // ortho column: w == 1
+        vec2  res0 = vec2(shadow_res_cascade.x, shadow_res_cascade_h.x);
+        float tm0  = max(c0.y, c0.z);
+        vec4  lp   = shadow_subject_matrix * vec4(pos + norm * (shadow_offset_texels * tm0 * sin_a), 1.0);
+        // [ShadowDist P3 fix, Codex P2 / Opus P2-4] inset by the phase-2 kernel footprint per axis
+        // (Poisson: pr*(0.933+0.5 jitter)+0.5 bilinear / pr*0.942+0.5; Vogel: pr+0.5; hard: 2.0),
+        // with the soft radius at its cap, so every tap of every kernel stays inside the map.
+        bool  col_soft = (soft_shadow_enable != 0 && soft_shadow_sun != 0);
+        float col_cap  = max(soft_shadow_max, 1.0);
+        vec2  pad_tex  = col_soft ? ((soft_shadow_vogel != 0) ? vec2(col_cap + 0.5)
+                                                              : vec2(col_cap * 1.45 + 0.5, col_cap * 0.95 + 0.5))
+                                  : vec2(2.0, 2.0);
+        vec2  pad_uv   = pad_tex / res0;
+        vec2  e2   = min(lp.xy, 1.0 - lp.xy) - pad_uv;
+        float wxy  = smoothstep(0.0, max(shadow_subject.y, 1e-3), min(e2.x, e2.y));
+        float fz   = max(shadow_subject.z, 1e-3);
+        float wz   = (1.0 - smoothstep(1.0 - fz, 1.0, lp.z)) * step(-0.02, lp.z);
+        float sw   = wxy * wz;
+        if (sw > 0.0)
+        {
+            float column = sunBandC(shadowMap0, shadow_subject_matrix, c0, res0, true,
+                                    pos, norm, NdotL, sin_a, pos_screen, L);
+            shadow = mix(shadow, column, sw);
+        }
+    }
 
     return shadow;
 #else
@@ -996,7 +1051,7 @@ float nonpcfShadowAtPos(vec4 pos_world, vec2 pos_screen)
             if (sunUnitsCascade(2)) return nonpcfShadowC(shadowMap2, pos_world, pos_screen, shadow_cascade_coef[2], shadow_res_cascade.z);
             return nonpcfShadow(shadowMap2, pos_world, pos_screen, shadow_res.x, shadow_bias);
         }
-        else if (pos_world.z < near_split.x)
+        else if (pos_world.z < near_split.x || shadow_subject.x > 0.5)   // [ShadowDist P3] subject mode: cascade 1 owns the near band too
         {
             pos_world = shadow_matrix[1]*pos_world;
             if (sunUnitsCascade(1)) return nonpcfShadowC(shadowMap1, pos_world, pos_screen, shadow_cascade_coef[1], shadow_res_cascade.y);

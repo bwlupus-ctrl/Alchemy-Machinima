@@ -323,6 +323,18 @@ F32 LLPipeline::RenderShadowBiasMM;
 F32 LLPipeline::RenderShadowOffsetTexels;
 F32 LLPipeline::RenderShadowSoftWorldMM;
 F32 LLPipeline::RenderShadowSlopeScale;
+// [ShadowDist P3]
+bool LLPipeline::RenderShadowSubjectCascade;
+S32  LLPipeline::RenderShadowSubjectTarget;
+F32  LLPipeline::RenderShadowSubjectMargin;
+F32  LLPipeline::RenderShadowSubjectReach;
+F32  LLPipeline::RenderShadowSubjectReachMax;
+F32  LLPipeline::RenderShadowSubjectMaxDistance;
+F32  LLPipeline::RenderShadowSubjectFeather;
+bool LLPipeline::RenderShadowSubjectSnap;
+S32  LLPipeline::RenderShadowAlphaMode;
+F32  LLPipeline::RenderShadowAlphaCutoff;
+bool LLPipeline::PrismSunCascadeReexpress;
 F32 LLPipeline::RenderShadowErrorCutoff;
 F32 LLPipeline::RenderShadowFOVCutoff;
 bool LLPipeline::CameraOffset;
@@ -489,8 +501,13 @@ static LLStaticHashedString sShadowBiasMM("shadow_bias_mm");
 static LLStaticHashedString sShadowOffsetTexels("shadow_offset_texels");
 static LLStaticHashedString sShadowSoftWorldMM("shadow_soft_world_mm");
 static LLStaticHashedString sShadowSlopeScale("shadow_slope_scale");
-// [P3] shadow_subject: declared in shadowUtil.glsl now so the three-way structure is complete; always 0 until Control B
+// [ShadowDist P3] Control B column flag/feather + its own sampling matrix (composed at bind, never shadow_matrix[0])
 static LLStaticHashedString sShadowSubject("shadow_subject");
+static LLStaticHashedString sShadowSubjectMatrix("shadow_subject_matrix");
+// [ShadowDist P3] shadow-pass alpha policy (shadowAlphaMaskF / pbrShadowAlphaBlendF)
+static LLStaticHashedString sShadowAlphaMode("shadow_alpha_mode");
+static LLStaticHashedString sShadowAlphaCutoff("shadow_alpha_cutoff");
+static LLStaticHashedString sShadowAlphaPass("shadow_alpha_pass");
 
 // [ShadowDist P2] Control C per-cascade coefficients (design v2 s4.2, v3 s5.3):
 // (k_depth, texel_x_coef, texel_y_coef, is_persp). The shader converts a world
@@ -863,6 +880,18 @@ void LLPipeline::init()
     connectRefreshCachedSettingsSafe("RenderShadowOffsetTexels");
     connectRefreshCachedSettingsSafe("RenderShadowSoftWorldMM");
     connectRefreshCachedSettingsSafe("RenderShadowSlopeScale");
+    // [ShadowDist P3]
+    connectRefreshCachedSettingsSafe("RenderShadowSubjectCascade");
+    connectRefreshCachedSettingsSafe("RenderShadowSubjectTarget");
+    connectRefreshCachedSettingsSafe("RenderShadowSubjectMargin");
+    connectRefreshCachedSettingsSafe("RenderShadowSubjectReach");
+    connectRefreshCachedSettingsSafe("RenderShadowSubjectReachMax");
+    connectRefreshCachedSettingsSafe("RenderShadowSubjectMaxDistance");
+    connectRefreshCachedSettingsSafe("RenderShadowSubjectFeather");
+    connectRefreshCachedSettingsSafe("RenderShadowSubjectSnap");
+    connectRefreshCachedSettingsSafe("RenderShadowAlphaMode");
+    connectRefreshCachedSettingsSafe("RenderShadowAlphaCutoff");
+    connectRefreshCachedSettingsSafe("PrismSunCascadeReexpress");
     connectRefreshCachedSettingsSafe("RenderShadowErrorCutoff");
     connectRefreshCachedSettingsSafe("RenderShadowFOVCutoff");
     connectRefreshCachedSettingsSafe("CameraOffset");
@@ -1830,7 +1859,7 @@ bool LLPipeline::allocateShadowBuffer(U32 resX, U32 resY)
     {
         // [ShadowDist P2 fix4] world-units kernel needs a strict 4-neighbour bilinear
         // compare (see mShadowUnitsFilterApplied); probe packs stay stock (units 0).
-        const bool units_filter = !gCubeSnapshot && (RenderShadowUnitsMode != 0);
+        const bool units_filter = !gCubeSnapshot && shadowUnitsFilterWanted(); // [ShadowDist P3 fix] incl. Follow subject
         const LLTexUnit::eTextureFilterOptions sun_filter = units_filter ? LLTexUnit::TFO_BILINEAR : LLTexUnit::TFO_ANISOTROPIC;
         if (!gCubeSnapshot)
         {
@@ -1979,6 +2008,18 @@ void LLPipeline::refreshCachedSettings()
     RenderShadowOffsetTexels = gSavedSettings.getF32("RenderShadowOffsetTexels");
     RenderShadowSoftWorldMM = gSavedSettings.getF32("RenderShadowSoftWorldMM");
     RenderShadowSlopeScale = gSavedSettings.getF32("RenderShadowSlopeScale");
+    // [ShadowDist P3] Control B + alpha fix + Prism
+    RenderShadowSubjectCascade = gSavedSettings.getBOOL("RenderShadowSubjectCascade");
+    RenderShadowSubjectTarget = gSavedSettings.getS32("RenderShadowSubjectTarget");
+    RenderShadowSubjectMargin = gSavedSettings.getF32("RenderShadowSubjectMargin");
+    RenderShadowSubjectReach = gSavedSettings.getF32("RenderShadowSubjectReach");
+    RenderShadowSubjectReachMax = gSavedSettings.getF32("RenderShadowSubjectReachMax");
+    RenderShadowSubjectMaxDistance = gSavedSettings.getF32("RenderShadowSubjectMaxDistance");
+    RenderShadowSubjectFeather = gSavedSettings.getF32("RenderShadowSubjectFeather");
+    RenderShadowSubjectSnap = gSavedSettings.getBOOL("RenderShadowSubjectSnap");
+    RenderShadowAlphaMode = gSavedSettings.getS32("RenderShadowAlphaMode");
+    RenderShadowAlphaCutoff = gSavedSettings.getF32("RenderShadowAlphaCutoff");
+    PrismSunCascadeReexpress = gSavedSettings.getBOOL("PrismSunCascadeReexpress");
     gPipeline.updateShadowEngaged(); // [ShadowDist] refreshCachedSettings() is static
     RenderShadowErrorCutoff = gSavedSettings.getF32("RenderShadowErrorCutoff");
     RenderShadowFOVCutoff = gSavedSettings.getF32("RenderShadowFOVCutoff");
@@ -4422,6 +4463,14 @@ void LLPipeline::shiftObjects(const LLVector3 &offset)
 
     glClear(GL_DEPTH_BUFFER_BIT);
     gDepthDirty = true;
+
+    // [ShadowDist P3 fix2] the Follow-subject light-basis anchor lives in agent space like the
+    // drawables it follows: shift it with them so the column stays continuous across a region
+    // crossing instead of re-anchoring (the snapped grid moves by rot*offset mod texel, once).
+    if (mShadowSubjectAnchorValid)
+    {
+        mShadowSubjectAnchor += offset;
+    }
 
     LLVector4a offseta;
     offseta.load3(offset.mV);
@@ -9857,6 +9906,11 @@ bool LLPipeline::beginPrismAuxiliaryState()
         mPrismSavedShadowModelview[i] = mShadowModelview[map_index];
         mPrismSavedShadowProjection[i] = mShadowProjection[map_index];
     }
+    // [ShadowDist P3] the aux pass may re-express the SUN cascades 0-3 for its camera too
+    for (U32 i = 0; i < 4; ++i)
+    {
+        mPrismSavedSunCascadeMatrix[i] = mSunShadowMatrix[i];
+    }
 
     // Probe selection is camera-space state. Build the UBO once from the main
     // eye if it has not been initialized yet, then stage an auxiliary view that
@@ -10006,6 +10060,11 @@ void LLPipeline::endPrismAuxiliaryState()
         // view/projection matrices likewise
         mShadowModelview[map_index] = mPrismSavedShadowModelview[i];
         mShadowProjection[map_index] = mPrismSavedShadowProjection[i];
+    }
+    // [ShadowDist P3] restore the main-view sun cascade sampling matrices
+    for (U32 i = 0; i < 4; ++i)
+    {
+        mSunShadowMatrix[i] = mPrismSavedSunCascadeMatrix[i];
     }
     mPoissonOffset = mPrismSavedPoissonOffset;
 
@@ -11271,6 +11330,7 @@ void LLPipeline::renderAlphaObjects(bool rigged)
                 gDeferredShadowGLTFAlphaBlendProgram.bind(rigged);
                 LLGLSLShader::sCurBoundShaderPtr->uniform1i(LLShaderMgr::SUN_UP_FACTOR, sun_up);
                 LLGLSLShader::sCurBoundShaderPtr->uniform1f(LLShaderMgr::DEFERRED_SHADOW_TARGET_WIDTH, (float)target_width);
+                uploadShadowAlphaMode(1); // [ShadowDist P3] blended-alpha shadow pass
                 LLGLSLShader::sCurBoundShaderPtr->setMinimumAlpha(ALPHA_BLEND_CUTOFF);
                 LLRenderPass::pushRiggedGLTFBatch(*pparams, lastAvatarGLTF, lastMeshIdGLTF, skipLastSkinGLTF, lastMatGLTF, lastTexGLTF);
             }
@@ -11279,6 +11339,7 @@ void LLPipeline::renderAlphaObjects(bool rigged)
                 gDeferredShadowAlphaMaskProgram.bind(rigged);
                 LLGLSLShader::sCurBoundShaderPtr->uniform1i(LLShaderMgr::SUN_UP_FACTOR, sun_up);
                 LLGLSLShader::sCurBoundShaderPtr->uniform1f(LLShaderMgr::DEFERRED_SHADOW_TARGET_WIDTH, (float)target_width);
+                uploadShadowAlphaMode(1); // [ShadowDist P3] blended-alpha shadow pass
                 LLGLSLShader::sCurBoundShaderPtr->setMinimumAlpha(ALPHA_BLEND_CUTOFF);
                 lastMatGLTF = nullptr; // pushBatch clobbers texture units
                 lastTexGLTF = nullptr;
@@ -11295,6 +11356,7 @@ void LLPipeline::renderAlphaObjects(bool rigged)
                 gDeferredShadowGLTFAlphaBlendProgram.bind(rigged);
                 LLGLSLShader::sCurBoundShaderPtr->uniform1i(LLShaderMgr::SUN_UP_FACTOR, sun_up);
                 LLGLSLShader::sCurBoundShaderPtr->uniform1f(LLShaderMgr::DEFERRED_SHADOW_TARGET_WIDTH, (float)target_width);
+                uploadShadowAlphaMode(1); // [ShadowDist P3] blended-alpha shadow pass
                 LLGLSLShader::sCurBoundShaderPtr->setMinimumAlpha(ALPHA_BLEND_CUTOFF);
                 LLRenderPass::pushGLTFBatch(*pparams, lastMatGLTF, lastTexGLTF);
             }
@@ -11303,6 +11365,7 @@ void LLPipeline::renderAlphaObjects(bool rigged)
                 gDeferredShadowAlphaMaskProgram.bind(rigged);
                 LLGLSLShader::sCurBoundShaderPtr->uniform1i(LLShaderMgr::SUN_UP_FACTOR, sun_up);
                 LLGLSLShader::sCurBoundShaderPtr->uniform1f(LLShaderMgr::DEFERRED_SHADOW_TARGET_WIDTH, (float)target_width);
+                uploadShadowAlphaMode(1); // [ShadowDist P3] blended-alpha shadow pass
                 LLGLSLShader::sCurBoundShaderPtr->setMinimumAlpha(ALPHA_BLEND_CUTOFF);
                 lastMatGLTF = nullptr; // pushBatch clobbers texture units
                 lastTexGLTF = nullptr;
@@ -21957,7 +22020,8 @@ void LLPipeline::updateShadowEngaged()
 {
     const bool a_active = (RenderShadowNearSplitMeters > 0.f) || (effectiveShadowSplitBlend() != 0.25f);
     const bool c_active = (RenderShadowUnitsMode != 0); // [ShadowDist P2]
-    const bool engaged  = !mMainRT.shadowMeta.legacy || a_active || c_active;
+    const bool b_active = RenderShadowSubjectCascade;   // [ShadowDist P3] (forces units at generation)
+    const bool engaged  = !mMainRT.shadowMeta.legacy || a_active || c_active || b_active;
     if (mShadowEngaged && !engaged)
     {
         // engaged -> disengaged edge (design v6 s1.4): programs that stayed
@@ -21980,13 +22044,22 @@ void LLPipeline::updateShadowEngaged()
 // changes between allocations. Same bind idiom as allocateShadowBuffer; unit 0 is left
 // unbound afterwards so no caller inherits a stray depth texture. No-op until the maps
 // exist (allocateShadowBuffer then applies the state itself) and when nothing changed.
+bool LLPipeline::shadowUnitsFilterWanted() const
+{
+    // [ShadowDist P3 fix, Codex P1] the column forces world units at generation even with
+    // RenderShadowUnitsMode == 0, and maps retained across skipped generations keep the
+    // units they were built with -> key the strict-bilinear binding on all three.
+    const RenderTargetPack::ShadowMeta& meta = mMainRT.shadowMeta;
+    return (RenderShadowUnitsMode != 0) || RenderShadowSubjectCascade || (!meta.legacy && meta.units != 0);
+}
+
 void LLPipeline::applyShadowUnitsFiltering()
 {
     if (mShadowUnitsFilterApplied < 0 || !gGLManager.mInited)
     {
         return;
     }
-    const S32 wanted = (RenderShadowUnitsMode != 0) ? 1 : 0;
+    const S32 wanted = shadowUnitsFilterWanted() ? 1 : 0;
     if (wanted == mShadowUnitsFilterApplied)
     {
         return;
@@ -22056,8 +22129,10 @@ void LLPipeline::uploadShadowUniforms(LLGLSLShader& shader)
                              llmax(static_cast<F32>(pack.shadow[2].getHeight()), 1.f),
                              llmax(static_cast<F32>(pack.shadow[3].getHeight()), 1.f));
         }
-        // [P3] subject column flag (active, feather_uv, depth_feather_uv, 0): always inactive until Control B
-        shader.uniform4f(sShadowSubject, (!meta.legacy && meta.subject) ? 1.f : 0.f, 0.f, 0.f, 0.f);
+        // [ShadowDist P3] subject column flag (active, feather_uv, depth_feather_uv, 0) -- from the META
+        // only, so it is 1 exactly while shadow[0] of THIS pack holds the column (v6 s1.2 / v2 Opus P1-A).
+        const bool subject_on = (!meta.legacy && meta.subject);
+        shader.uniform4f(sShadowSubject, subject_on ? 1.f : 0.f, meta.subjectFeather, meta.subjectFeather, 0.f);
         stamp.pack   = &pack;
         stamp.serial = meta.serial;
     }
@@ -22094,7 +22169,13 @@ void LLPipeline::uploadShadowUniforms(LLGLSLShader& shader)
     // count 4 -> elements 0..3 of shadow_matrix[14]; the spot slots 4..13 stay slow-path.
     shader.uniformMatrix4fv(LLShaderMgr::DEFERRED_SHADOW_MATRIX, 4, GL_FALSE, sun_mats);
     shader.uniform4fv(LLShaderMgr::DEFERRED_SHADOW_CLIP, 1, meta.clip.mV);
-    // [P3 slot] shadow_subject_matrix = mat4(meta.columnVP * inv_view) when meta.subject
+    // [ShadowDist P3] the column's own sampling matrix, composed with the current inverse view in
+    // double (camera-independent: Prism aux / probe / main all get the same light-space uv/depth).
+    if (!meta.legacy && meta.subject)
+    {
+        const glm::mat4 column_mat = glm::mat4(meta.columnVP * inv_view);
+        shader.uniformMatrix4fv(sShadowSubjectMatrix, 1, GL_FALSE, glm::value_ptr(column_mat));
+    }
 
     // [ShadowDist P2] live tunables: plain per-bind uploads (mValue cache makes
     // repeats free); the shader ignores them unless the meta-derived units mode
@@ -22102,9 +22183,84 @@ void LLPipeline::uploadShadowUniforms(LLGLSLShader& shader)
     // (RenderShadowBiasError) is deliberately NOT folded in -- bias_mm is absolute.
     shader.uniform1f(sShadowBiasMM,       llclamp(RenderShadowBiasMM, 0.2f, 50.f));
     shader.uniform1f(sShadowOffsetTexels, llclamp(RenderShadowOffsetTexels, 0.f, 4.f));
-    shader.uniform1f(sShadowSoftWorldMM,  llclamp(RenderShadowSoftWorldMM, 0.f, 200.f));
+    // [ShadowDist P3] column-edge soft seam (design v3 s4.4): with soft sun shadows on and no
+    // world-mm radius set, the column (0.9 mm texels) and cascade 1 would use different
+    // texel-based penumbrae at the seam -> force an automatic 6 mm world radius (uploaded only,
+    // the setting is untouched). Nothing changes while the column is inactive.
+    F32 soft_world_mm = llclamp(RenderShadowSoftWorldMM, 0.f, 200.f);
+    if (!meta.legacy && meta.subject && soft_world_mm <= 0.f)
+    {
+        static LLCachedControl<bool> soft_master(gSavedSettings, "BDMergeSoftProjectorShadows", false);
+        static LLCachedControl<bool> soft_sun(gSavedSettings, "BDMergeSoftShadowSun", false);
+        if (soft_master && soft_sun)
+        {
+            soft_world_mm = 6.f;
+        }
+    }
+    shader.uniform1f(sShadowSoftWorldMM,  soft_world_mm);
     shader.uniform1f(sShadowSlopeScale,  llclamp(RenderShadowSlopeScale, 0.f, 3.f));
 }
+
+// [ShadowDist P3] ---------------------------------------------------------
+// Control B helpers.
+
+bool LLPipeline::resolveShadowSubject(S32 target, LLVOAvatar*& av, LLVector3& center, LLVector3& half)
+{
+    av = nullptr;
+    if (target == 5)
+    {   // "same as Roto Ink": read CineOutlineSubjectTarget and clamp it to 0-4 -- no recursion (v3 s4.3)
+        static LLCachedControl<S32> roto_target(gSavedSettings, "CineOutlineSubjectTarget", 0);
+        target = llclamp(static_cast<S32>(roto_target), 0, 4);
+    }
+    LLDirectorCast& cast = LLDirectorCast::instance();
+    switch (target)
+    {
+        case 1: av = cast.resolveSubjectA(); break;
+        case 2: av = cast.resolveSubjectB(); break;
+        case 3: av = cast.resolveSubjectC(); break;
+        case 4: av = cast.resolveSubjectD(); break;
+        case 0:
+        default: av = cast.resolve(LLUUID::null); break;   // null id == Self (lldirectorcast.cpp)
+    }
+    // Jellydolled / impostored subjects report box_detail 1 extents (no attachments) -> unsupported.
+    // [ShadowDist P3 fix, Codex P2] rank/count impostors pass AOA_NORMAL but are skipped by the
+    // avatar pool in shadow passes -> the column would be wasted on an avatar that casts nothing.
+    if (!av || av->isDead() || av->getOverallAppearance() != LLVOAvatar::AOA_NORMAL || av->isImpostor())
+    {
+        av = nullptr;
+        return false;
+    }
+    // FRESH extents every frame for this one avatar (getLastAnimExtents is recomputed only every
+    // upd_freq frames and pelvis-shifted in between -- v2 Opus P1-9); includes rigged attachments.
+    LLVector4a mn4, mx4;
+    av->calculateSpatialExtents(mn4, mx4);
+    const LLVector3 mn(mn4);
+    const LLVector3 mx(mx4);
+    if (!mn.isFinite() || !mx.isFinite())
+    {
+        av = nullptr;
+        return false;
+    }
+    const F32 margin = llclamp(RenderShadowSubjectMargin, 0.1f, 1.5f);
+    center = (mn + mx) * 0.5f;
+    half   = (mx - mn) * 0.5f + LLVector3(margin, margin, margin);
+    return true;
+}
+
+void LLPipeline::uploadShadowAlphaMode(S32 blended_pass)
+{
+    LLGLSLShader* shader = LLGLSLShader::sCurBoundShaderPtr;
+    if (!shader)
+    {
+        return;
+    }
+    // Stock values (mode 0) leave the shaders on their verbatim legacy branch; programs without
+    // the uniforms early-out (location < 0), and repeats are free (mValue cache).
+    shader->uniform1i(sShadowAlphaMode,   llclamp(RenderShadowAlphaMode, 0, 1));
+    shader->uniform1f(sShadowAlphaCutoff, llclamp(RenderShadowAlphaCutoff, 0.05f, 0.5f));
+    shader->uniform1i(sShadowAlphaPass,   blended_pass ? 1 : 0);
+}
+// [/ShadowDist P3] --------------------------------------------------------
 // [/ShadowDist P1] --------------------------------------------------------
 
 void LLPipeline::bindDeferredShaderFast(LLGLSLShader& shader)
@@ -24846,6 +25002,7 @@ void LLPipeline::renderShadow(const glm::mat4& view, const glm::mat4& proj,
                 gDeferredShadowAlphaMaskProgram.bind(rigged);
                 LLGLSLShader::sCurBoundShaderPtr->uniform1i(LLShaderMgr::SUN_UP_FACTOR, sun_up);
                 LLGLSLShader::sCurBoundShaderPtr->uniform1f(LLShaderMgr::DEFERRED_SHADOW_TARGET_WIDTH, (float)target_width);
+                uploadShadowAlphaMode(0); // [ShadowDist P3]
                 renderMaskedObjects(LLRenderPass::PASS_ALPHA_MASK, true, true, rigged);
             }
 
@@ -24862,6 +25019,7 @@ void LLPipeline::renderShadow(const glm::mat4& view, const glm::mat4& proj,
                 gDeferredShadowFullbrightAlphaMaskProgram.bind(rigged);
                 LLGLSLShader::sCurBoundShaderPtr->uniform1i(LLShaderMgr::SUN_UP_FACTOR, sun_up);
                 LLGLSLShader::sCurBoundShaderPtr->uniform1f(LLShaderMgr::DEFERRED_SHADOW_TARGET_WIDTH, (float)target_width);
+                uploadShadowAlphaMode(0); // [ShadowDist P3]
                 renderFullbrightMaskedObjects(LLRenderPass::PASS_FULLBRIGHT_ALPHA_MASK, true, true, rigged);
             }
 
@@ -24889,6 +25047,7 @@ void LLPipeline::renderShadow(const glm::mat4& view, const glm::mat4& proj,
                     {
                         gDeferredShadowMaterialIndexedProgram.bind(rigged);
                         LLGLSLShader::sCurBoundShaderPtr->uniform1f(LLShaderMgr::DEFERRED_SHADOW_TARGET_WIDTH, (float)target_width);
+                        uploadShadowAlphaMode(0); // [ShadowDist P3]
                         U32 off = rigged ? 1 : 0;
                         mAlphaMaskPool->pushMaskBatchesIndexed(LLRenderPass::PASS_NORMSPEC_MASK + off, rigged);
                         mAlphaMaskPool->pushMaskBatchesIndexed(LLRenderPass::PASS_MATERIAL_ALPHA_MASK + off, rigged);
@@ -24905,6 +25064,7 @@ void LLPipeline::renderShadow(const glm::mat4& view, const glm::mat4& proj,
             gDeferredShadowGLTFAlphaMaskProgram.bind(rigged);
             LLGLSLShader::sCurBoundShaderPtr->uniform1i(LLShaderMgr::SUN_UP_FACTOR, sun_up);
             LLGLSLShader::sCurBoundShaderPtr->uniform1f(LLShaderMgr::DEFERRED_SHADOW_TARGET_WIDTH, (float)target_width);
+            uploadShadowAlphaMode(0); // [ShadowDist P3] (GLTF MASK programs keep their material cutoff; pass 0)
 
             gGL.loadMatrix(gGLModelView);
             gGLLastMatrix = NULL;
@@ -24924,6 +25084,7 @@ void LLPipeline::renderShadow(const glm::mat4& view, const glm::mat4& proj,
                     gDeferredShadowGLTFAlphaMaskIndexedProgram.bind(true);
                     LLGLSLShader::sCurBoundShaderPtr->uniform1i(LLShaderMgr::SUN_UP_FACTOR, sun_up);
                     LLGLSLShader::sCurBoundShaderPtr->uniform1f(LLShaderMgr::DEFERRED_SHADOW_TARGET_WIDTH, (float)target_width);
+                    uploadShadowAlphaMode(0); // [ShadowDist P3]
                     mAlphaMaskPool->pushRiggedGLTFBatchesIndexed(type + 1, LLRenderPass::GLTF_MAPS_BASE_COLOR); // shadow samples base color only
                 }
                 else
@@ -24940,6 +25101,7 @@ void LLPipeline::renderShadow(const glm::mat4& view, const glm::mat4& proj,
                     gDeferredShadowGLTFAlphaMaskIndexedProgram.bind();
                     LLGLSLShader::sCurBoundShaderPtr->uniform1i(LLShaderMgr::SUN_UP_FACTOR, sun_up);
                     LLGLSLShader::sCurBoundShaderPtr->uniform1f(LLShaderMgr::DEFERRED_SHADOW_TARGET_WIDTH, (float)target_width);
+                    uploadShadowAlphaMode(0); // [ShadowDist P3]
                     mAlphaMaskPool->pushGLTFBatchesIndexed(type, LLRenderPass::GLTF_MAPS_BASE_COLOR); // shadow samples base color only
                 }
                 else
@@ -25372,6 +25534,35 @@ void LLPipeline::generateSunShadow(LLCamera& camera)
     // exactly, so the stock constants below are reproduced exactly (<= 1 ulp under /fp:fast or driver folding).
     const F32 shadow_blend_eff = gCubeSnapshot ? 0.25f : effectiveShadowSplitBlend();
 
+    // [ShadowDist P3] Control B gate (design v2 s3.4 + v3 s4): active this frame iff the
+    // setting is on, this is the main view, all four cascades render (RenderShadowSplits
+    // >= 3), the target resolves to a normally-drawn avatar, and it is within MaxDistance
+    // (x1.1 while already active -- hysteresis against flicker at the boundary).
+    bool      subject_active = false;
+    LLVector3 subject_center;
+    LLVector3 subject_half;
+    if (RenderShadowSubjectCascade && !gCubeSnapshot && RenderShadowSplits >= 3)
+    {
+        LLVOAvatar* subject_av = nullptr;
+        if (resolveShadowSubject(RenderShadowSubjectTarget, subject_av, subject_center, subject_half))
+        {
+            const F32 subject_dist = (subject_center - camera.getOrigin()).magVec();
+            const F32 max_dist = llclamp(RenderShadowSubjectMaxDistance, 5.f, 256.f) * (mShadowSubjectWasActive ? 1.1f : 1.f);
+            subject_active = (subject_dist <= max_dist);
+            if (subject_active && subject_av->getID() != mShadowSubjectLastId)
+            {   // new target: forget the size hysteresis (no cut hook -- there is no smoothing to snap)
+                mShadowSubjectLastId      = subject_av->getID();
+                mShadowSubjectHq          = LLVector2(0.f, 0.f);
+                mShadowSubjectShrinkStart = -1.f;
+                mShadowSubjectAnchorValid = false; // [ShadowDist P3 fix] re-anchor the basis on the new subject
+            }
+        }
+    }
+    if (!gCubeSnapshot)
+    {
+        mShadowSubjectWasActive = subject_active;
+    }
+
     //create light space camera matrix
     LLVector3 at = lightDir;
 
@@ -25482,6 +25673,35 @@ void LLPipeline::generateSunShadow(LLCamera& camera)
             }
             mSunClipPlanes.set(clip0, clip0 * r, clip0 * r * r, far_clip);
         }
+
+        // [ShadowDist P3] Control B: cascade 0 becomes the subject column, so cascades 1-3
+        // re-split to cover the whole camera range with the 3-band exponent formula
+        // x = ((i+1)/3)^sxp (design v2 s3.2); Control A's sharp range then applies to
+        // cascade 1. mSunClipPlanes[0] = near_clip: the shader's subject layout never
+        // reads the cascade-0 split (cascade 1 owns the near band).
+        if (subject_active)
+        {
+            for (U32 i = 0; i < 3; ++i)
+            {
+                const F32 x = powf((F32)(i + 1) / 3.f, sxp);
+                mSunClipPlanes.mV[i + 1] = near_clip + range * x;
+            }
+            if (RenderShadowNearSplitMeters > 0.f)
+            {
+                const F32 b = shadow_blend_eff;
+                F32 clip1 = llclamp(RenderShadowNearSplitMeters / (1.f - b), near_clip + 0.5f, far_clip - 1.5f);
+                F32 r = powf(far_clip / clip1, 0.5f);
+                if (r < 1.05f)
+                {
+                    r = 1.05f;
+                    clip1 = far_clip / (r * r);
+                }
+                mSunClipPlanes.mV[1] = clip1;
+                mSunClipPlanes.mV[2] = clip1 * r;
+                mSunClipPlanes.mV[3] = far_clip;
+            }
+            mSunClipPlanes.mV[0] = near_clip;
+        }
     }
 
     if (gCubeSnapshot)
@@ -25501,10 +25721,13 @@ void LLPipeline::generateSunShadow(LLCamera& camera)
         const bool a_active = !gCubeSnapshot && ((RenderShadowNearSplitMeters > 0.f) || (shadow_blend_eff != 0.25f));
         // [ShadowDist P2] Control C: world units as REQUIRED by these maps
         // ([P3]: forced to 1 while the subject column is active). Probes: 0.
-        meta.units   = (!gCubeSnapshot && RenderShadowUnitsMode != 0) ? 1 : 0;
+        // [ShadowDist P3] the subject column REQUIRES world units (v2 s3.10): forced on for
+        // these maps while it is active, regardless of the stored RenderShadowUnitsMode.
+        meta.units   = (!gCubeSnapshot && (RenderShadowUnitsMode != 0 || subject_active)) ? 1 : 0;
         meta.scope   = gCubeSnapshot ? 0 : llclamp(RenderShadowUnitsScope, 0, 1);
-        meta.legacy  = !(a_active || meta.units != 0);   // [P3] && !subject
-        meta.subject = false;          // [P3] set true by the subject fit
+        meta.legacy  = !(a_active || meta.units != 0);   // subject_active implies units != 0
+        meta.subject = false;          // [ShadowDist P3] set true by the column fit (site 3) only
+        meta.subjectFeather = llclamp(RenderShadowSubjectFeather, 0.02f, 0.3f);
         meta.blend   = shadow_blend_eff;
         meta.clip    = mSunClipPlanes;
         meta.validCascades = gCubeSnapshot ? 2u : 4u;
@@ -25640,6 +25863,237 @@ void LLPipeline::generateSunShadow(LLCamera& camera)
             //restore render matrices
             set_current_modelview(saved_view);
             set_current_projection(saved_proj);
+
+            // [ShadowDist P3] Control B: cascade 0 = light-space orthographic COLUMN around
+            // the subject (design v2 s3.4, v3 s4, v4 s5). Self-contained: fits, records,
+            // culls, renders, writes ShadowMeta site 3 and `continue`s, so the legacy slice
+            // fit below stays byte-identical when the column is inactive.
+            if (j == 0 && subject_active)
+            {
+                // --- fixed light basis with hysteresis (no camera term -> the texel grid
+                //     does not rotate with the camera); origin at the AGENT origin, so the
+                //     grid is anchored in the agent frame and re-anchors on a region shift
+                //     exactly when the avatar extents do.
+                const F32 lz = fabsf(lightDir.mV[VZ]);
+                if (mShadowSubjectUpX)
+                {
+                    if (lz < 0.70f) mShadowSubjectUpX = false;
+                }
+                else if (lz > 0.80f)
+                {
+                    mShadowSubjectUpX = true;
+                }
+                const LLVector3 up_l = mShadowSubjectUpX ? LLVector3::x_axis : LLVector3::z_axis;
+                // [ShadowDist P3 fix, Opus P2-1] basis origin = a subject-near point on a 32 m cell
+                // grid, re-anchored only when the subject leaves 1.5 cells of it: at a 4 km skybox
+                // an agent-origin anchor puts ~4000 m into F32 light-space coordinates (ulp ~0.5 mm
+                // = one column texel -> moving subjects step) and sun motion would rotate the grid
+                // about a far origin (~20 texels/s crawl). shiftObjects() carries the anchor across
+                // a region shift.
+                // [ShadowDist P3 fix2, Codex] the FIT runs on anchor-RELATIVE float coordinates
+                // (<= ~48 m, F32 error ~1e-5 m) through a pure rotation; the anchor translation is
+                // only ever applied in double (view0_d below), never as F32 dot products of km operands.
+                const F32 anchor_cell = 32.f;
+                if (!mShadowSubjectAnchorValid || (subject_center - mShadowSubjectAnchor).magVec() > 1.5f * anchor_cell)
+                {
+                    mShadowSubjectAnchor.set(floorf(subject_center.mV[VX] / anchor_cell + 0.5f) * anchor_cell,
+                                             floorf(subject_center.mV[VY] / anchor_cell + 0.5f) * anchor_cell,
+                                             floorf(subject_center.mV[VZ] / anchor_cell + 0.5f) * anchor_cell);
+                    mShadowSubjectAnchorValid = true;
+                }
+                const glm::mat4 rot0 = look(LLVector3::zero, lightDir, -up_l);   // zero origin -> pure rotation, no translation
+                glm::dmat4 t_anchor_d(1.0);
+                t_anchor_d[3] = glm::dvec4(-static_cast<F64>(mShadowSubjectAnchor.mV[VX]),
+                                           -static_cast<F64>(mShadowSubjectAnchor.mV[VY]),
+                                           -static_cast<F64>(mShadowSubjectAnchor.mV[VZ]), 1.0);
+                const glm::dmat4 view0_d = glm::dmat4(rot0) * t_anchor_d;   // rotation * translate(-anchor), double
+                const glm::mat4  view0   = glm::mat4(view0_d);              // correctly rounded once, for the GPU pass
+                const LLVector3  rel_center = subject_center - mShadowSubjectAnchor;
+
+                // --- subject box -> light-space AABB (anchor-relative)
+                LLVector3 mn_l;
+                LLVector3 mx_l;
+                for (U32 c = 0; c < 8; ++c)
+                {
+                    const LLVector3 corner(rel_center.mV[VX] + ((c & 1) ? subject_half.mV[VX] : -subject_half.mV[VX]),
+                                           rel_center.mV[VY] + ((c & 2) ? subject_half.mV[VY] : -subject_half.mV[VY]),
+                                           rel_center.mV[VZ] + ((c & 4) ? subject_half.mV[VZ] : -subject_half.mV[VZ]));
+                    const LLVector3 pl(mul_mat4_vec3(rot0, glm::vec3(corner)));
+                    if (c == 0)
+                    {
+                        mn_l = pl;
+                        mx_l = pl;
+                    }
+                    else
+                    {
+                        update_min_max(mn_l, mx_l, pl);
+                    }
+                }
+                const F32 res_x = llmax(static_cast<F32>(mRT->shadow[0].getWidth()), 1.f);
+                const F32 res_y = llmax(static_cast<F32>(mRT->shadow[0].getHeight()), 1.f);
+                LLVector2 c2((mn_l.mV[VX] + mx_l.mV[VX]) * 0.5f, (mn_l.mV[VY] + mx_l.mV[VY]) * 0.5f);
+                const LLVector2 h2(llmax((mx_l.mV[VX] - mn_l.mV[VX]) * 0.5f, 0.05f), llmax((mx_l.mV[VY] - mn_l.mV[VY]) * 0.5f, 0.05f));
+                LLVector2 hq = h2;
+                if (RenderShadowSubjectSnap)
+                {
+                    // --- padded, quantised extent FIRST, then the final pitch, then snap the
+                    //     centre on that grid (v3 s4.2 / v4 s5.3): grow immediately, shrink only
+                    //     after the smaller size has sufficed for 1 s.
+                    const LLVector2 tex0(2.f * h2.mV[0] / res_x, 2.f * h2.mV[1] / res_y);
+                    const LLVector2 want(ceilf((h2.mV[0] + tex0.mV[0]) / 0.25f) * 0.25f,
+                                         ceilf((h2.mV[1] + tex0.mV[1]) / 0.25f) * 0.25f);
+                    bool grew = false;
+                    for (U32 a = 0; a < 2; ++a)
+                    {
+                        if (want.mV[a] > mShadowSubjectHq.mV[a])
+                        {
+                            mShadowSubjectHq.mV[a] = want.mV[a];
+                            grew = true;
+                        }
+                    }
+                    if (grew || (want.mV[0] >= mShadowSubjectHq.mV[0] && want.mV[1] >= mShadowSubjectHq.mV[1]))
+                    {
+                        mShadowSubjectShrinkStart = -1.f;
+                    }
+                    else if (mShadowSubjectShrinkStart < 0.f)
+                    {
+                        mShadowSubjectShrinkStart = gFrameTimeSeconds;
+                    }
+                    else if (gFrameTimeSeconds - mShadowSubjectShrinkStart > 1.f)
+                    {
+                        mShadowSubjectHq          = want;
+                        mShadowSubjectShrinkStart = -1.f;
+                    }
+                    hq = mShadowSubjectHq;
+                    const LLVector2 texel(2.f * hq.mV[0] / res_x, 2.f * hq.mV[1] / res_y);
+                    // [ShadowDist P3 fix2, Codex] phase-continuous snap: the grid is defined on the
+                    // ABSOLUTE light-space plane. Project the anchor in double, keep its sub-texel
+                    // residual, and snap the anchor-relative centre so that centre + anchor lands on
+                    // whole texels -> a re-anchor at the same pitch moves the grid by exactly zero.
+                    // (A change of the quantised extent changes the pitch and thus the phase; a region
+                    // shift moves the grid by rot0*offset mod texel once -- both acceptable.)
+                    const glm::dvec4 a_l = glm::dmat4(rot0) * glm::dvec4(static_cast<F64>(mShadowSubjectAnchor.mV[VX]),
+                                                                         static_cast<F64>(mShadowSubjectAnchor.mV[VY]),
+                                                                         static_cast<F64>(mShadowSubjectAnchor.mV[VZ]), 0.0);   // w = 0: rotation only
+                    for (U32 a = 0; a < 2; ++a)
+                    {
+                        const F64 tp    = static_cast<F64>(texel.mV[a]);
+                        const F64 phase = a_l[a] - floor(a_l[a] / tp + 0.5) * tp;   // anchor's sub-texel residual
+                        c2.mV[a] = static_cast<F32>(floor((static_cast<F64>(c2.mV[a]) + phase) / tp + 0.5) * tp - phase);
+                    }
+                    // containment: |snapped - centre| <= texel/2 and hq >= h + tex0 >= h + texel/2
+                    llassert(hq.mV[0] * (1.f - 1.f / res_x) >= h2.mV[0] - 1e-4f && hq.mV[1] * (1.f - 1.f / res_y) >= h2.mV[1] - 1e-4f);
+                }
+
+                // --- Reach (v3 s4.1 / v4 s5.4): along-light distance from the top of the box to
+                //     its ground shadow, from the elevation of caster_dir (TOWARD the light);
+                //     horizon clamp 5 deg; counted ONCE, in the ortho far plane only.
+                const F32 sin_el = llclamp(caster_dir.mV[VZ], 0.f, 1.f);
+                const F32 el     = llmax(asinf(sin_el), 5.f * DEG_TO_RAD);
+                const F32 box_h  = 2.f * subject_half.mV[VZ];
+                const F32 reach_max = llclamp(RenderShadowSubjectReachMax, 2.f, 30.f);
+                const F32 reach  = (RenderShadowSubjectReach > 0.f)
+                                 ? llclamp(RenderShadowSubjectReach, 1.f, 30.f)
+                                 : llclamp(box_h * cosf(el) * cosf(el) / sinf(el) + 0.5f, 1.f, reach_max);
+                const F32 znear0 = -mx_l.mV[VZ] - 0.5f;        // tight toward the light (depth clamp + shadow_near_clip handle nearer casters)
+                const F32 zfar0  = -mn_l.mV[VZ] + reach;
+                const glm::mat4 proj0 = glm::ortho(c2.mV[0] - hq.mV[0], c2.mV[0] + hq.mV[0],
+                                                   c2.mV[1] - hq.mV[1], c2.mV[1] + hq.mV[1],
+                                                   znear0, zfar0);
+                view[0] = view0;
+                proj[0] = proj0;
+                // Control C coefficients of the column (ortho, exact): k = 1/depth range, texel = extent/res
+                const LLVector4 column_coef(1.f / llmax(zfar0 - znear0, 1e-4f), 2.f * hq.mV[0] / res_x, 2.f * hq.mV[1] / res_y, 0.f);
+
+                // --- debug records (Develop > Render Metadata > Shadow Frusta): agent-space column corners
+                mShadowFOV.mV[0]   = -1.f;
+                mShadowError.mV[0] = -1.f;
+                if (!hasRenderDebugMask(RENDER_DEBUG_SHADOW_FRUSTA) && !gCubeSnapshot)
+                {
+                    const glm::mat4 inv_view0 = glm::inverse(view0);
+                    LLVector3 amn;
+                    LLVector3 amx;
+                    mShadowFrustPoints[0].clear();
+                    for (U32 c = 0; c < 8; ++c)
+                    {
+                        const glm::vec3 lc(c2.mV[0] + ((c & 1) ? hq.mV[0] : -hq.mV[0]),
+                                           c2.mV[1] + ((c & 2) ? hq.mV[1] : -hq.mV[1]),
+                                           (c & 4) ? -zfar0 : -znear0);
+                        const LLVector3 ac(mul_mat4_vec3(inv_view0, lc));
+                        if (c == 0)
+                        {
+                            amn = ac;
+                            amx = ac;
+                        }
+                        else
+                        {
+                            update_min_max(amn, amx, ac);
+                        }
+                        mShadowFrustPoints[0].push_back(ac);
+                    }
+                    mShadowExtents[0][0] = amn;
+                    mShadowExtents[0][1] = amx;
+                    mShadowFrustOrigin[0] = mShadowSubjectAnchor;
+                }
+
+                // --- cull camera from the column matrices (union-cull pattern); ALWAYS its own
+                //     cull: the view-derived union frustum may not contain an edge / off-screen
+                //     subject or the reach column, and getVisiblePointCloud would drop an
+                //     off-screen subject whose shadow is on screen.
+                LLCamera column_cam = camera;
+                // [ShadowDist P3 fix, Opus P2-3] look ALONG the light from the anchor (never degenerate:
+                // |L . up_l| <= 0.8 by the basis hysteresis), not at the subject centre.
+                column_cam.setOriginAndLookAt(mShadowSubjectAnchor, up_l, mShadowSubjectAnchor + lightDir);
+                column_cam.setOrigin(0, 0, 0);
+                if (!hasRenderDebugMask(RENDER_DEBUG_SHADOW_FRUSTA) && !gCubeSnapshot)
+                {
+                    mShadowCamera[0] = column_cam;
+                }
+                set_current_modelview(view0);
+                set_current_projection(proj0);
+                LLViewerCamera::updateFrustumPlanes(column_cam, false, false, true);
+                column_cam.getAgentPlane(LLCamera::AGENT_PLANE_NEAR).set(shadow_near_clip);
+
+                const glm::mat4 trans0(0.5f, 0.0f, 0.0f, 0.0f,
+                                       0.0f, 0.5f, 0.0f, 0.0f,
+                                       0.0f, 0.0f, 0.5f, 0.0f,
+                                       0.5f, 0.5f, 0.5f, 1.0f);
+                set_last_modelview(mShadowModelview[0]);
+                set_last_projection(mShadowProjection[0]);
+                mShadowModelview[0]  = view0;
+                mShadowProjection[0] = proj0;
+                mSunShadowMatrix[0]  = trans0 * proj0 * view0 * inv_view;
+
+                // --- ShadowMeta site 3: the column, composed in double with inverse(view) at bind.
+                //     [ShadowDist P3 fix3] Built from glm::dmat4(view0) -- the exact F32 view the
+                //     map was RENDERED with -- so sampling and rendering agree to the bit (using the
+                //     unrounded view0_d would omit the render-side translation rounding and shimmer).
+                {
+                    RenderTargetPack::ShadowMeta& meta = mRT->shadowMeta;
+                    meta.columnVP  = glm::dmat4(trans0) * glm::dmat4(proj0) * glm::dmat4(view0);
+                    meta.sunVP[0]  = meta.columnVP;
+                    meta.coef[0]   = column_coef;
+                    meta.fitted[0] = true;
+                    meta.subject   = true;
+                    ++meta.serial;
+                }
+
+                stop_glerror();
+                mRT->shadow[0].bindTarget();
+                mRT->shadow[0].getViewport(gGLViewport);
+                mRT->shadow[0].clear();
+                {
+                    static LLCullResult column_result;
+                    renderShadow(view0, proj0, column_cam, column_result, true, true);
+                }
+                mRT->shadow[0].flush();
+
+                if (!hasRenderDebugMask(RENDER_DEBUG_SHADOW_FRUSTA) && !gCubeSnapshot)
+                {
+                    mShadowCamera[4] = column_cam;
+                }
+                continue;
+            }
 
             LLVector3 eye = camera.getOrigin();
             llassert(eye.isFinite());

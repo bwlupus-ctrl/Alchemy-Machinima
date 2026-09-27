@@ -34,6 +34,13 @@ in vec2 vary_texcoord0;
 in vec3 vary_actor_fx_position;
 uniform float minimum_alpha;
 
+// [ShadowDist P3] shadow-pass alpha policy (design v5 s2): this program is always the
+// blended pass and has no minimum_alpha discard, so mode 1 applies the blended cutoff
+// directly with no column dither. Mode 0 = stock branch verbatim.
+uniform int   shadow_alpha_mode = 0;
+uniform float shadow_alpha_cutoff = 0.25;
+uniform int   shadow_alpha_pass = 0;     // unused here (always blended); uploaded for uniformity
+
 bool actorFxDissolveDiscard(vec3 object_position);
 
 void main()
@@ -42,16 +49,26 @@ void main()
 
     alpha *= vertex_color.a;
 
-    if (alpha < 0.05) // treat as totally transparent
+    if (shadow_alpha_mode == 1)
     {
-        discard;
-    }
-
-    if (alpha < 0.88) // treat as semi-transparent
-    {
-        if (fract(0.5*floor(target_pos_x / post_pos.w )) < 0.25)
+        if (alpha < max(0.05, min(shadow_alpha_cutoff, 0.88))) // no dither
         {
             discard;
+        }
+    }
+    else
+    {
+        if (alpha < 0.05) // treat as totally transparent
+        {
+            discard;
+        }
+
+        if (alpha < 0.88) // treat as semi-transparent
+        {
+            if (fract(0.5*floor(target_pos_x / post_pos.w )) < 0.25)
+            {
+                discard;
+            }
         }
     }
 

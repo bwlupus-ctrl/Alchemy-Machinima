@@ -1191,6 +1191,7 @@ public:
             S32        units    = 0;        // [P2] 0 legacy / 1 world units, as REQUIRED by these maps
             S32        scope    = 0;        // [P2] RenderShadowUnitsScope captured at generation
             F32        blend    = 0.25f;    // split blend the frusta were built with
+            F32        subjectFeather = 0.12f; // [P3] column edge feather (fraction of the column, uv and depth)
             U32        validCascades = 0;   // cascades this generation ITERATED (2 for probe renders, 4 main); 0 = never generated
             // [ShadowDist P2] per-cascade: shadow[j] holds a fitted depth map whose sunVP[j] / coef[j]
             // describe it. false = cleared (no receivers, j > RenderShadowSplits, sun black) or never
@@ -1286,6 +1287,30 @@ public:
     // else the last state applied (0 stock / 1 bilinear) so we only rebind on change.
     S32  mShadowUnitsFilterApplied = -1;
     void applyShadowUnitsFiltering();
+
+    // [ShadowDist P3] Control B -- subject-fitted cascade 0 ("Follow subject").
+    // Per-frame state that must persist across generations for stability:
+    bool      mShadowSubjectWasActive   = false;   // MaxDistance hysteresis (x1.0 engage / x1.1 release)
+    bool      mShadowSubjectUpX         = false;   // light-basis up: world Z (false) or world X (true); |L.Z| 0.80 / 0.70 hysteresis
+    LLUUID    mShadowSubjectLastId;                // size hysteresis is reset only when the target id changes
+    LLVector2 mShadowSubjectHq          = LLVector2(0.f, 0.f);   // quantised light-space half extents in force
+    F32       mShadowSubjectShrinkStart = -1.f;    // wall time since a smaller size has sufficed; < 0 = not shrinking
+    // [ShadowDist P3 fix, Opus P2-1] light-basis anchor: a subject-near point on a coarse 32 m
+    // cell grid, re-anchored with hysteresis, so light-space coordinates stay small at any
+    // altitude (F32 exact) and sun motion rotates the basis about a nearby origin (no crawl).
+    LLVector3 mShadowSubjectAnchor;
+    bool      mShadowSubjectAnchorValid  = false;
+    // [ShadowDist P3 fix, Codex P1] EFFECTIVE world-units requirement of the resident main
+    // maps: units mode, Follow subject, or retained maps generated in units mode.
+    bool shadowUnitsFilterWanted() const;
+    // Resolve the Follow-subject target (0 Self, 1-4 Director Subject A-D, 5 = CineOutlineSubjectTarget
+    // clamped 0-4) to a normally-drawn avatar and its FRESH spatial extents (+ margin); false = inactive.
+    bool resolveShadowSubject(S32 target, LLVOAvatar*& av, LLVector3& center, LLVector3& half);
+    // [ShadowDist P3] alpha fix: shadow-pass alpha policy for the currently bound shadow program
+    // (blended_pass = 1 for renderAlphaObjects, 0 for the alpha-mask passes of renderShadow).
+    void uploadShadowAlphaMode(S32 blended_pass);
+    // [ShadowDist P3] Prism aux re-expression of the sun cascades: saved / restored around the aux scope
+    glm::mat4 mPrismSavedSunCascadeMatrix[4];
 
     // [BDMerge NSpot] compile-time ceiling for projector shadows; runtime
     // count is BDMergeMaxSpotShadows (2 = stock)
@@ -2096,6 +2121,18 @@ public:
     static F32 RenderShadowOffsetTexels;
     static F32 RenderShadowSoftWorldMM;
     static F32 RenderShadowSlopeScale;
+    // [ShadowDist P3] Control B (Follow subject) + alpha fix + Prism sun re-expression
+    static bool RenderShadowSubjectCascade;
+    static S32  RenderShadowSubjectTarget;
+    static F32  RenderShadowSubjectMargin;
+    static F32  RenderShadowSubjectReach;
+    static F32  RenderShadowSubjectReachMax;
+    static F32  RenderShadowSubjectMaxDistance;
+    static F32  RenderShadowSubjectFeather;
+    static bool RenderShadowSubjectSnap;
+    static S32  RenderShadowAlphaMode;
+    static F32  RenderShadowAlphaCutoff;
+    static bool PrismSunCascadeReexpress;
     static F32 RenderShadowErrorCutoff;
     static F32 RenderShadowFOVCutoff;
     static bool CameraOffset;

@@ -2173,12 +2173,12 @@
 				<panel
 					background_visible="false"
 					follows="left|top|right"
-					height="790"
+					height="1100"
 					layout="topleft"
 					left="0"
 					name="shadow_settings_scroll_content"
 					top="0"
-					width="400">
+					width="400"><!-- [ShadowDist P3] height raised for the Follow-subject / Shadow alpha rows -->
 			<!--TODO: Display a warning message and disable this panel if Advanced Lighting Model is disabled?-->
 			<!--Shadow Detail-->
 			<!--TODO: Disable sliders if set to None?-->
@@ -3179,7 +3179,7 @@
 				top_pad="8"
 				width="180"
 				layout="topleft"
-				tool_tip="Legacy: Shadow Bias / Offset above are fractions of each cascade's depth range (so the same setting is ~2 cm in cascade 0 but 10-20 cm in cascade 1) and grow with camera altitude. World: bias in mm, offset in texels, soft penumbra in mm, the same in every cascade, and each cascade's real map size for its kernel. Recommended for skyboxes / high altitude: the legacy bias also scales with camera height (about 3.5x at 1 km, 4.7x at 4 km), world units are absolute at any height. Residual: on a perspective-fitted cascade a light-facing receiver still pays about one map texel of depth slope (~48 mm at 10 m on a 1024 map), which can soften very close contact shadows there - Units scope = Cascade 0 only and/or a small Sharp shadow range keep the close-up cascade tight. Sun maps are bound bilinear (no anisotropy) while World is on. Takes effect at the next shadow generation (a frame)."
+				tool_tip="Legacy: Shadow Bias / Offset above are fractions of each cascade's depth range (so the same setting is ~2 cm in cascade 0 but 10-20 cm in cascade 1) and grow with camera altitude. World: bias in mm, offset in texels, soft penumbra in mm, the same in every cascade, and each cascade's real map size for its kernel. Recommended for skyboxes / high altitude: the legacy bias also scales with camera height (about 3.5x at 1 km, 4.7x at 4 km), world units are absolute at any height. Residual: on a perspective-fitted cascade a light-facing receiver still pays about one map texel of depth slope (~48 mm at 10 m on a 1024 map), which can soften very close contact shadows there - Units scope = Cascade 0 only and/or a small Sharp shadow range keep the close-up cascade tight. Sun maps are bound bilinear (no anisotropy) while World is on. Follow subject forces World for its maps regardless of this setting: always for the column, and for cascades 1-3 unless Units scope = Cascade 0 only (then they stay legacy). Takes effect at the next shadow generation (a frame)."
 				value="Shadow units:" />
 			<combo_box
 				allow_text_entry="false"
@@ -3192,7 +3192,7 @@
 				max_chars="128"
 				name="sd_units_mode_combo"
 				width="168"
-				tool_tip="Legacy: Shadow Bias / Offset above are fractions of each cascade's depth range (so the same setting is ~2 cm in cascade 0 but 10-20 cm in cascade 1) and grow with camera altitude. World: bias in mm, offset in texels, soft penumbra in mm, the same in every cascade, and each cascade's real map size for its kernel. Recommended for skyboxes / high altitude: the legacy bias also scales with camera height (about 3.5x at 1 km, 4.7x at 4 km), world units are absolute at any height. Residual: on a perspective-fitted cascade a light-facing receiver still pays about one map texel of depth slope (~48 mm at 10 m on a 1024 map), which can soften very close contact shadows there - Units scope = Cascade 0 only and/or a small Sharp shadow range keep the close-up cascade tight. Sun maps are bound bilinear (no anisotropy) while World is on. Takes effect at the next shadow generation (a frame).">
+				tool_tip="Legacy: Shadow Bias / Offset above are fractions of each cascade's depth range (so the same setting is ~2 cm in cascade 0 but 10-20 cm in cascade 1) and grow with camera altitude. World: bias in mm, offset in texels, soft penumbra in mm, the same in every cascade, and each cascade's real map size for its kernel. Recommended for skyboxes / high altitude: the legacy bias also scales with camera height (about 3.5x at 1 km, 4.7x at 4 km), world units are absolute at any height. Residual: on a perspective-fitted cascade a light-facing receiver still pays about one map texel of depth slope (~48 mm at 10 m on a 1024 map), which can soften very close contact shadows there - Units scope = Cascade 0 only and/or a small Sharp shadow range keep the close-up cascade tight. Sun maps are bound bilinear (no anisotropy) while World is on. Follow subject forces World for its maps regardless of this setting: always for the column, and for cascades 1-3 unless Units scope = Cascade 0 only (then they stay legacy). Takes effect at the next shadow generation (a frame).">
 				<combo_box.item
 					label="Legacy (fractions)"
 					name="sd_units_legacy"
@@ -3402,6 +3402,247 @@
 				layout="topleft"
 				name="sd_units_hint"
 				value="World units ignore the Shadow Bias / Offset sliders above (except cascades 1-3 with scope = Cascade 0 only)." />
+			<!-- [ShadowDist P3] Follow subject (Control B): subject-fitted sun-shadow column -->
+			<check_box
+				follows="left|top"
+				height="16"
+				left="5"
+				top_pad="8"
+				width="360"
+				layout="topleft"
+				label="Follow subject (sharp cascade on the subject)"
+				control_name="RenderShadowSubjectCascade"
+				name="sd_subject_cascade_check"
+				tool_tip="Dedicate the sharpest sun-shadow cascade to a light-space column fitted around the subject, so its contact shadows (jewelry, hair, attachments) stay crisp at ANY camera distance; cascades 1-3 cover the rest of the scene. Forces World shadow units while on. Cascade 0 at 4096 is ~0.9 mm/texel on a standing avatar; 8192 is rarely needed. Needs a normally drawn subject (not jellydolled / impostored) and all 4 cascades." />
+			<text
+				follows="left|top"
+				height="15"
+				left="5"
+				top_pad="6"
+				width="180"
+				layout="topleft"
+				value="Subject:" />
+			<combo_box
+				allow_text_entry="false"
+				control_name="RenderShadowSubjectTarget"
+				enabled_control="RenderShadowSubjectCascade"
+				follows="left|top"
+				layout="topleft"
+				height="18"
+				top_pad="-17"
+				left="190"
+				max_chars="128"
+				name="sd_subject_target_combo"
+				width="168"
+				tool_tip="Which avatar the shadow column follows: yourself, a Director Cast subject, or the same target as Roto Ink.">
+				<combo_box.item
+					label="Self"
+					name="sd_subject_self"
+					value="0" />
+				<combo_box.item
+					label="Subject A"
+					name="sd_subject_a"
+					value="1" />
+				<combo_box.item
+					label="Subject B"
+					name="sd_subject_b"
+					value="2" />
+				<combo_box.item
+					label="Subject C"
+					name="sd_subject_c"
+					value="3" />
+				<combo_box.item
+					label="Subject D"
+					name="sd_subject_d"
+					value="4" />
+				<combo_box.item
+					label="Same as Roto Ink"
+					name="sd_subject_roto"
+					value="5" />
+			</combo_box>
+			<text
+				follows="left|top"
+				height="15"
+				left="5"
+				top_pad="6"
+				width="180"
+				layout="topleft"
+				tool_tip="Metres added around the subject's bounds (covers fast attachments / hair)."
+				value="Margin (m):" />
+			<spinner
+				control_name="RenderShadowSubjectMargin"
+				enabled_control="RenderShadowSubjectCascade"
+				follows="left|top"
+				layout="topleft"
+				height="20"
+				top_pad="-18"
+				left="190"
+				width="88"
+				label=""
+				min_val="0.1"
+				max_val="1.5"
+				increment="0.05"
+				decimal_digits="2"
+				name="sd_subject_margin"
+				tool_tip="Metres added around the subject's bounds (covers fast attachments / hair)." />
+			<text
+				follows="left|top"
+				height="15"
+				left="5"
+				top_pad="6"
+				width="180"
+				layout="topleft"
+				tool_tip="How far behind the subject (away from the light) the dense column still covers receivers, so the subject's cast shadow on the ground / walls stays sharp. 0 = automatic from the light elevation (long enough for the ground shadow, capped by Reach max)."
+				value="Shadow reach (m, 0 = auto):" />
+			<spinner
+				control_name="RenderShadowSubjectReach"
+				enabled_control="RenderShadowSubjectCascade"
+				follows="left|top"
+				layout="topleft"
+				height="20"
+				top_pad="-18"
+				left="190"
+				width="88"
+				label=""
+				min_val="0"
+				max_val="30"
+				increment="0.5"
+				decimal_digits="1"
+				name="sd_subject_reach"
+				tool_tip="How far behind the subject (away from the light) the dense column still covers receivers, so the subject's cast shadow on the ground / walls stays sharp. 0 = automatic from the light elevation (long enough for the ground shadow, capped by Reach max)." />
+			<spinner
+				control_name="RenderShadowSubjectReachMax"
+				enabled_control="RenderShadowSubjectCascade"
+				follows="left|top"
+				layout="topleft"
+				height="20"
+				top_pad="-20"
+				left="286"
+				width="88"
+				label=""
+				min_val="2"
+				max_val="30"
+				increment="1"
+				decimal_digits="0"
+				name="sd_subject_reach_max"
+				tool_tip="Cap for the automatic Reach (m). A 2 m avatar at a 10 deg sun casts an 11.5 m shadow." />
+			<text
+				follows="left|top"
+				height="15"
+				left="5"
+				top_pad="6"
+				width="180"
+				layout="topleft"
+				tool_tip="Beyond this camera-to-subject distance the column falls back to the normal cascades (10% hysteresis)."
+				value="Max distance (m):" />
+			<spinner
+				control_name="RenderShadowSubjectMaxDistance"
+				enabled_control="RenderShadowSubjectCascade"
+				follows="left|top"
+				layout="topleft"
+				height="20"
+				top_pad="-18"
+				left="190"
+				width="88"
+				label=""
+				min_val="5"
+				max_val="256"
+				increment="5"
+				decimal_digits="0"
+				name="sd_subject_max_distance"
+				tool_tip="Beyond this camera-to-subject distance the column falls back to the normal cascades (10% hysteresis)." />
+			<spinner
+				control_name="RenderShadowSubjectFeather"
+				enabled_control="RenderShadowSubjectCascade"
+				follows="left|top"
+				layout="topleft"
+				height="20"
+				top_pad="-20"
+				left="286"
+				width="88"
+				label=""
+				min_val="0.02"
+				max_val="0.3"
+				increment="0.01"
+				decimal_digits="2"
+				name="sd_subject_feather"
+				tool_tip="Feather: blend width at the column edge and toward its far plane, as a fraction of the column." />
+			<check_box
+				follows="left|top"
+				height="16"
+				left="5"
+				top_pad="6"
+				width="360"
+				layout="topleft"
+				label="Snap column to its texel grid (stops shimmer)"
+				control_name="RenderShadowSubjectSnap"
+				enabled_control="RenderShadowSubjectCascade"
+				name="sd_subject_snap_check"
+				tool_tip="Snap the column to a world-anchored texel grid and quantise its size (0.25 m steps; grows immediately, shrinks after 1 s) so the shadow does not shimmer as the subject moves." />
+			<text
+				follows="left|top"
+				height="15"
+				left="5"
+				top_pad="4"
+				width="370"
+				layout="topleft"
+				name="sd_subject_hint"
+				value="Follow subject forces World units; with soft sun shadows the seam uses an automatic 6 mm radius unless Soft penumbra (mm) is set." />
+			<!-- [ShadowDist P3] shadow-pass alpha policy (alpha-textured jewelry / chains) -->
+			<text
+				follows="left|top"
+				height="15"
+				left="5"
+				top_pad="8"
+				width="180"
+				layout="topleft"
+				tool_tip="How alpha-textured surfaces cast into the shadow maps. Stock: alpha below 0.88 casts 50% column-dithered shadows and blended surfaces need alpha >= 0.6 - thin chains / hair whose texture mips average low lose their shadow with distance. Low cutoff: one cutoff, no dither, continuous shadows above it; blended surfaces cast from the cutoff up (semi-transparent glass then casts a full shadow). Alpha-mask materials keep their own cutoff."
+				value="Shadow alpha:" />
+			<combo_box
+				allow_text_entry="false"
+				control_name="RenderShadowAlphaMode"
+				follows="left|top"
+				layout="topleft"
+				height="18"
+				top_pad="-17"
+				left="190"
+				max_chars="128"
+				name="sd_alpha_mode_combo"
+				width="168"
+				tool_tip="How alpha-textured surfaces cast into the shadow maps. Stock: alpha below 0.88 casts 50% column-dithered shadows and blended surfaces need alpha >= 0.6 - thin chains / hair whose texture mips average low lose their shadow with distance. Low cutoff: one cutoff, no dither, continuous shadows above it; blended surfaces cast from the cutoff up (semi-transparent glass then casts a full shadow). Alpha-mask materials keep their own cutoff.">
+				<combo_box.item
+					label="Stock (dither below 0.88)"
+					name="sd_alpha_stock"
+					value="0" />
+				<combo_box.item
+					label="Low cutoff, no dither"
+					name="sd_alpha_lowcut"
+					value="1" />
+			</combo_box>
+			<text
+				follows="left|top"
+				height="15"
+				left="5"
+				top_pad="6"
+				width="180"
+				layout="topleft"
+				tool_tip="Low cutoff mode: blended surfaces cast shadows from this alpha upward (stock needs 0.6). Lower keeps thinner chains; too low makes faint glass cast."
+				value="Alpha cutoff:" />
+			<spinner
+				control_name="RenderShadowAlphaCutoff"
+				follows="left|top"
+				layout="topleft"
+				height="20"
+				top_pad="-18"
+				left="190"
+				width="88"
+				label=""
+				min_val="0.05"
+				max_val="0.5"
+				increment="0.01"
+				decimal_digits="2"
+				name="sd_alpha_cutoff"
+				tool_tip="Low cutoff mode: blended surfaces cast shadows from this alpha upward (stock needs 0.6). Lower keeps thinner chains; too low makes faint glass cast." />
 			<text
 				follows="left|top"
 				height="15"
