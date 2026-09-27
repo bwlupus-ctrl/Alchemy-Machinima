@@ -1047,6 +1047,8 @@ vec3 actorFxApply(vec3 source, vec3 normal_eye, vec3 position_eye, vec2 authored
         vec3 halo = mix(vec3(1.00, 0.86, 0.55), actorFxTint, 0.20);
         fx = source * (0.72 + 0.10 * top)
            + halo * (0.35 * rim_wide + 1.20 * rim_core * (0.5 + 0.5 * top));
+        // [ActorFX33-35Fix] halo subset only (PBR: (edge*0.90+0.35)*top*0.22)
+        actorFxLiveEmission = halo * (edge * 0.90 + 0.35) * top * 0.22;
     }
     else if (actorFxLook == 34) // Live: Interrogation
     {
@@ -1066,6 +1068,8 @@ vec3 actorFxApply(vec3 source, vec3 normal_eye, vec3 position_eye, vec2 authored
         vec3 body = mix(vec3(lum) * vec3(0.20, 0.42, 0.28), source, 0.22) * 0.5;
         fx = body + spectral * flick
            * (0.22 * rim_wide + 0.95 * rim_core + 0.10 * crawl * rim_wide);
+        // [ActorFX33-35Fix] spectral edge subset only (PBR: edge*0.40*flick)
+        actorFxLiveEmission = spectral * edge * 0.40 * flick;
     }
     else if (actorFxLook == 36) // [TronT2] Live: Tron Suit
     {
@@ -1189,8 +1193,11 @@ float actorFxPbrNormalAoResponse()
 
 float actorFxPbrAuthoredEmissiveResponse()
 {
+    // [ActorFX33-35Fix] Seraph / Interrogation / Wraith (33-35) are live looks
+    // that layer over the authored material like 28-32; they never owned the
+    // authored emission, so the range now covers every live look up to 35.
     if (!actorFxActive() || actorFxLook == 1 || actorFxLook == 10 ||
-        actorFxLook == 21 || (actorFxLook >= 28 && actorFxLook <= 32))
+        actorFxLook == 21 || (actorFxLook >= 28 && actorFxLook <= 35))
     {
         return 1.0;
     }
@@ -1272,6 +1279,9 @@ vec3 actorFxPbrSyntheticEmission(vec3 authored_source,
                                  vec3 position_eye, vec2 authored_uv,
                                  float dissolve_coverage)
 {
+    // [ActorFX33-35Fix] 33 (Seraph) and 35 (Wraith) have emission branches
+    // below that were unreachable because this gate never admitted them; 34
+    // (Interrogation) is intentionally emission-free and stays out.
     // [TronT2] 36 (Tron Suit) has its own branch below -- it must never fall
     // into the trailing `else`, which is look 30.
     if (!actorFxActive() ||
@@ -1279,6 +1289,7 @@ vec3 actorFxPbrSyntheticEmission(vec3 authored_source,
           actorFxLook == 14 || actorFxLook == 15 || actorFxLook == 17 ||
           actorFxLook == 19 || actorFxLook == 26 || actorFxLook == 27 ||
           actorFxLook == 30 ||
+          actorFxLook == 33 || actorFxLook == 35 ||   // [ActorFX33-35Fix]
           actorFxLook == 36))                          // [TronT2]
     {
         return vec3(0.0);
@@ -2060,6 +2071,19 @@ vec3 actorFxEmissiveImpl(vec3 authored_emissive, vec3 styled_color,
     // RGB + bloom, unlike the ghost / shared-PBR paths. Its emission is the
     // localized rim-core + seam subset added below.
     vec3 style_emissive = styled_color * glow;
+    if (actorFxLook == 33 || actorFxLook == 35)
+    {
+        // [ActorFX33-35Fix] Seraph / Wraith are synthetic-bloom looks
+        // (actorFxLookNeedsSyntheticBloom, actorFxPbrSyntheticEmission), so
+        // the legacy/system-avatar emissive path needs a feed too or their
+        // newly scheduled glow draws publish nothing. Emit ONLY the halo /
+        // spectral-edge subset the beauty branch recorded (zero face-on, like
+        // the PBR and ghost paths) -- never the whole styled body. Signal and
+        // Director Brightness apply once here; strength at the return. 34
+        // stays emission-free.
+        style_emissive += actorFxLiveEmission * actorFxSignalPulse()
+                        * max(actorFxParams1.z, 0.0);
+    }
     if (actorFxLook == 36)
     {
         // [TronT2] Seams bloom on their own (like the Dissolve edge below):

@@ -12920,6 +12920,12 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
     case LLDirectorCast::ACTOR_LOOK_BASS_SWEEP:
     case LLDirectorCast::ACTOR_LOOK_MOONLIT:
     case LLDirectorCast::ACTOR_LOOK_POSSESSED:
+    // [ActorFX33-35Fix] Seraph/Interrogation/Wraith fell through to
+    // default: (untextured classic Ghost sweep) -- route them through the
+    // shared textured front-surface sweep like every other toolkit look.
+    case LLDirectorCast::ACTOR_LOOK_SERAPH:
+    case LLDirectorCast::ACTOR_LOOK_INTERROGATION:
+    case LLDirectorCast::ACTOR_LOOK_WRAITH:
     // [TronT2] Tron Suit: same textured front-surface sweep; the actual
     // seams/rim/tint are supplied by the shared actorghostF.glsl look-36
     // branch reading ghostTronParams/2/Color (uploaded below).

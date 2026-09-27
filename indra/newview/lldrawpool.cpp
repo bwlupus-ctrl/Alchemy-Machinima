@@ -488,6 +488,11 @@ bool LLRenderPass::actorFxLookNeedsSyntheticBloom(S32 look)
         case 26: // Sonar reveal
         case 27: // Hologram interference
         case LLDirectorCast::ACTOR_LOOK_BASS_SWEEP:
+        // [ActorFX33-35Fix] Seraph and Wraith now emit (rim/seam bloom on
+        // zero-authored-emissive alpha faces); Interrogation stays out, it
+        // is emission-free by design.
+        case LLDirectorCast::ACTOR_LOOK_SERAPH:
+        case LLDirectorCast::ACTOR_LOOK_WRAITH:
         // [TronT2] Tron Suit: seams + rim core emit, so zero-authored-
         // emissive alpha faces need the second glow draw too.
         case LLDirectorCast::ACTOR_LOOK_TRON_SUIT:

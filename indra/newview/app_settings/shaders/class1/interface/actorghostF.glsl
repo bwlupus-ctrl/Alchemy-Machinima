@@ -1259,6 +1259,11 @@ void main()
         rgb = tex.rgb * (0.72 + 0.10 * top);
         worldRadiance = ghostWorldRadiance(
             halo, 0.35 * worldRimWide + 1.20 * worldRimCore * (0.5 + 0.5 * top));
+        // [ActorFX33-35Fix] Seraph is now scheduled for the synthetic bloom
+        // replay; publish the same halo subset the PBR evaluator emits
+        // (actorFxPbrSyntheticEmission: (edge * 0.90 + 0.35) * top * 0.22).
+        worldBloomRadiance = ghostWorldRadiance(
+            halo, (edge * 0.90 + 0.35) * top * 0.22);
         alpha = color.a * tex.a;
     }
     else if (ghostLook == 34) // Live Actor: Interrogation
@@ -1279,6 +1284,11 @@ void main()
         worldRadiance = ghostWorldRadiance(
             spectral, flick * (0.22 * worldRimWide + 0.95 * worldRimCore
                                + 0.10 * crawl * worldRimWide));
+        // [ActorFX33-35Fix] Wraith is now scheduled for the synthetic bloom
+        // replay; same spectral edge subset as the PBR evaluator
+        // (actorFxPbrSyntheticEmission: edge * 0.40 * flick).
+        worldBloomRadiance = ghostWorldRadiance(
+            spectral, edge * 0.40 * flick);
         alpha = color.a * tex.a;
     }
     else if (ghostLook == 36) // [TronT2] Live Actor: Tron Suit
