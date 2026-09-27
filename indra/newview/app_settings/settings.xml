@@ -29031,5 +29031,187 @@
     <key>Type</key><string>F32</string>
     <key>Value</key><real>1.0</real>
   </map>
+  <key>TronTrailEnabled</key>
+  <map>
+    <key>Comment</key><string>[Tron] Light-cycle trails behind moving actors (drawn at the Camera layer, depth-tested against the scene, not graded, blooms). Look key, written by a preset</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>Boolean</string>
+    <key>Value</key><integer>0</integer>
+  </map>
+  <key>TronTrailStyle</key>
+  <map>
+    <key>Comment</key><string>[Tron] 0 vertical light wall (jetwall), 1 flat ground streak, 2 camera-facing ribbon at mid-body height. Look key, written by a preset</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>S32</string>
+    <key>Value</key><integer>0</integer>
+  </map>
+  <key>TronTrailTargetSet</key>
+  <map>
+    <key>Comment</key><string>[Tron] Which actors lay trails; same list as Subject "Target set" (1 = all Director cast). Un-culled: off-screen actors keep laying trail. Shot key, never written by a look preset</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>S32</string>
+    <key>Value</key><integer>1</integer>
+  </map>
+  <key>TronTrailTarget</key>
+  <map>
+    <key>Comment</key><string>[Tron] Single-subject selector when Target set == 0 (same list as TronSubjectTarget). Shot key, never written by a look preset</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>S32</string>
+    <key>Value</key><integer>0</integer>
+  </map>
+  <key>TronTrailMaxActors</key>
+  <map>
+    <key>Comment</key><string>[Tron] Nearest N candidates sample (1..16); others' trails age out. Shot key, never written by a look preset</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>S32</string>
+    <key>Value</key><integer>8</integer>
+  </map>
+  <key>TronTrailIntensity</key>
+  <map>
+    <key>Comment</key><string>[Tron] Light-cycle trail brightness (0..64), HDR, exposure-independent (/E). Look key, written by a preset</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>F32</string>
+    <key>Value</key><real>8.0</real>
+  </map>
+  <key>TronTrailColorMode</key>
+  <map>
+    <key>Comment</key><string>[Tron] 0 primary / 1 per-actor / 2 secondary. Per-actor cycles primary/secondary/accent/pulse by the actor's stable palette index (same as Neon rim colour mode 1). Look key, written by a preset</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>S32</string>
+    <key>Value</key><integer>1</integer>
+  </map>
+  <key>TronTrailHeight</key>
+  <map>
+    <key>Comment</key><string>[Tron] Wall height / camera-ribbon centre height in metres (0.1..8), x actor scale. Look key, written by a preset</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>F32</string>
+    <key>Value</key><real>1.2</real>
+  </map>
+  <key>TronTrailWidth</key>
+  <map>
+    <key>Comment</key><string>[Tron] Ground streak / camera ribbon width in metres (0.05..4), x actor scale. Look key, written by a preset</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>F32</string>
+    <key>Value</key><real>0.6</real>
+  </map>
+  <key>TronTrailScaleToAvatar</key>
+  <map>
+    <key>Comment</key><string>[Tron] Scale height/width by the actor's bounding height / 1.9 m. Look key, written by a preset</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>Boolean</string>
+    <key>Value</key><integer>1</integer>
+  </map>
+  <key>TronTrailLift</key>
+  <map>
+    <key>Comment</key><string>[Tron] Base lift above the feet AABB in metres (-0.5..1); avoids floor z-fight (additive blend). Shot key, never written by a look preset</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>F32</string>
+    <key>Value</key><real>0.03</real>
+  </map>
+  <key>TronTrailFadeTime</key>
+  <map>
+    <key>Comment</key><string>[Tron] Age in seconds at which a point is gone (0.2..60; Tron clock seconds: pause freezes, Director speed scales). Look key, written by a preset</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>F32</string>
+    <key>Value</key><real>4.0</real>
+  </map>
+  <key>TronTrailFadeCurve</key>
+  <map>
+    <key>Comment</key><string>[Tron] Fade exponent (0.25..4); > 1 = long dim tail. Look key, written by a preset</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>F32</string>
+    <key>Value</key><real>1.5</real>
+  </map>
+  <key>TronTrailEdge</key>
+  <map>
+    <key>Comment</key><string>[Tron] Width of the bright top cap (wall) / core line (ground, camera), fraction of the ribbon (0.02..0.5). Look key, written by a preset</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>F32</string>
+    <key>Value</key><real>0.12</real>
+  </map>
+  <key>TronTrailEdgeGain</key>
+  <map>
+    <key>Comment</key><string>[Tron] Cap / core brightness multiple (0..8). Look key, written by a preset</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>F32</string>
+    <key>Value</key><real>3.0</real>
+  </map>
+  <key>TronTrailBodyGain</key>
+  <map>
+    <key>Comment</key><string>[Tron] Translucent body brightness multiple (0..2). Look key, written by a preset</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>F32</string>
+    <key>Value</key><real>0.35</real>
+  </map>
+  <key>TronTrailGlow</key>
+  <map>
+    <key>Comment</key><string>[Tron] Alpha glow-tag feed (0..1), exposure-stable bloom. Look key, written by a preset</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>F32</string>
+    <key>Value</key><real>1.0</real>
+  </map>
+  <key>TronTrailFog</key>
+  <map>
+    <key>Comment</key><string>[Tron] 0 none / 1 analytic. Analytic distance fade toward black (WindLight fog = later). Look key, written by a preset</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>S32</string>
+    <key>Value</key><integer>1</integer>
+  </map>
+  <key>TronTrailFogDensity</key>
+  <map>
+    <key>Comment</key><string>[Tron] Analytic trail fog density per metre (0..0.2). Look key, written by a preset</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>F32</string>
+    <key>Value</key><real>0.01</real>
+  </map>
+  <key>TronTrailSpacing</key>
+  <map>
+    <key>Comment</key><string>[Tron] Minimum distance in metres between stored points (0.05..2). Shot key, never written by a look preset</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>F32</string>
+    <key>Value</key><real>0.15</real>
+  </map>
+  <key>TronTrailMinSpeed</key>
+  <map>
+    <key>Comment</key><string>[Tron] Minimum speed in m/s (0..10); below this no points are laid, above Idle break seconds the trail is split. Shot key, never written by a look preset</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>F32</string>
+    <key>Value</key><real>0.4</real>
+  </map>
+  <key>TronTrailIdleBreak</key>
+  <map>
+    <key>Comment</key><string>[Tron] Seconds below Min speed before a trail segment breaks (0..10). Shot key, never written by a look preset</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>F32</string>
+    <key>Value</key><real>0.6</real>
+  </map>
+  <key>TronTrailBreakDistance</key>
+  <map>
+    <key>Comment</key><string>[Tron] Jump distance in metres (1..64) larger than this (teleport) starts a new segment; half of it after a clock pause. Shot key, never written by a look preset</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>F32</string>
+    <key>Value</key><real>3.0</real>
+  </map>
+  <key>TronTrailMaxPoints</key>
+  <map>
+    <key>Comment</key><string>[Tron] Maximum stored points per actor (16..1024); oldest segment trimmed first. Shot key, never written by a look preset</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>S32</string>
+    <key>Value</key><integer>256</integer>
+  </map>
+  <key>TronTrailMaxSegments</key>
+  <map>
+    <key>Comment</key><string>[Tron] Maximum stored segments per actor (1..16). Shot key, never written by a look preset</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>S32</string>
+    <key>Value</key><integer>6</integer>
+  </map>
+  <key>TronTrailClearOnCut</key>
+  <map>
+    <key>Comment</key><string>[Tron] Clear all trails on every Director cut (note: eased transitions, rewind and resume also count as cuts). Shot key, never written by a look preset</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>Boolean</string>
+    <key>Value</key><integer>0</integer>
+  </map>
 </map>
 </llsd>

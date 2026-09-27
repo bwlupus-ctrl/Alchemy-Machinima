@@ -7392,7 +7392,16 @@ void LLPipeline::renderGeomPostDeferred(LLCamera& camera)
                 // reflection/hero probes) -- that's what mRT == &mMainRT
                 // above actually guards against (same framing as the Camera-
                 // layer S3 call site's own mRT == &mMainRT comment).
-                const bool tron_scene = ALTron::isActiveForCurrentPass() && ALTron::layer() == ALTron::LAYER_SCENE;
+                // [TronT3 O-P2] worldHasWork() is now MANDATORY here: with only
+                // trails enabled, isActiveForCurrentPass() is true even though
+                // the world pass itself has nothing to draw, and the Scene
+                // pseudo-slot never draws trails (renderTronWorld's own
+                // trails_wanted forces false whenever is_scene_layer) -- without
+                // this AND, that would flip setColorMask and enter
+                // renderTronWorld (which would still bail out on GL work, but
+                // the whole settings block would run) every frame for nothing.
+                const bool tron_scene = ALTron::isActiveForCurrentPass() &&
+                    ALTron::layer() == ALTron::LAYER_SCENE && ALTron::worldHasWork();
                 const bool roto_scene = shouldRunRotoInkAt(ROTOINK_LAYER_SCENE);
                 if (tron_scene || roto_scene)
                 {
@@ -17126,14 +17135,12 @@ S32 LLPipeline::resolveRotoInkLayer() const
 void LLPipeline::renderTronWorld(LLRenderTarget* dst, ETronDraw mode, bool is_scene_layer,
                                   const F32* mv, const F32* proj)
 {
-    if (!ALTron::isActiveForCurrentPass() || !dst ||
-        !gTronWorldProgram.isComplete() || !mWaterDis.isComplete())
+    // [TronT3] Entry gate: the world-program-complete check moves into
+    // world_wanted below (a trails-only call must not bail out just because
+    // the world shader failed to link) -- see the T3 contract section 4.1.
+    if (!ALTron::isActiveForCurrentPass() || !dst || !mWaterDis.isComplete())
     {
         return;
-    }
-    if (mode == TRON_DRAW_TRAILS_ONLY)
-    {
-        return; // T3
     }
 
     const auto finite_or = [](F32 v, F32 fallback)
@@ -17331,9 +17338,20 @@ void LLPipeline::renderTronWorld(LLRenderTarget* dst, ETronDraw mode, bool is_sc
 
     const F32  no_post_scale = llclamp(finite_or((F32)no_post_scale_setting(), 0.35f), 0.f, 1.f);
 
-    if (grade_strength <= 0.f && !grid_on && !trace_on && !rim_on)
+    // [TronT3] world_local is the T1/T2 early-out's negation, computed from
+    // the LOCAL sanitised values above -- NEVER ALTron::worldHasWork() alone
+    // -- so "trace enabled at intensity 0 + grade 0 + grid off" still skips
+    // the world draw exactly as T2 did (O-P1-2). world_wanted additionally
+    // requires the world shader to have linked; trails_wanted never fires at
+    // the Scene pseudo-slot (is_scene_layer) or for a WORLD_ONLY call, and
+    // needs both ALTron's own cheap pre-gate and a linked trail program.
+    const bool world_local   = grade_strength > 0.f || grid_on || trace_on || rim_on;
+    const bool world_wanted  = (mode != TRON_DRAW_TRAILS_ONLY) && world_local && gTronWorldProgram.isComplete();
+    const bool trails_wanted = !is_scene_layer && (mode != TRON_DRAW_WORLD_ONLY) &&
+        ALTron::trailsWanted() && gTronTrailProgram.isComplete();
+    if (!world_wanted && !trails_wanted)
     {
-        return; // nothing to draw -- cheap CPU early-out
+        return; // nothing to draw -- cheap CPU early-out (replaces the T1/T2 early-out)
     }
 
     LL_PROFILE_GPU_ZONE("renderTronWorld");
@@ -17406,7 +17424,10 @@ void LLPipeline::renderTronWorld(LLRenderTarget* dst, ETronDraw mode, bool is_sc
     LLVector4 anchor_cells[16];
     S32 target_count = 0;
     S32 anchor_count = 0;
-    if (grid_subject_exclude > 0.f || grid_subject_radius > 0.f || grade_keep_subject > 0.f || rim_on)
+    // [TronT3] Gated by world_wanted (O-P2): a TRAILS_ONLY call never re-steps
+    // mRotoInkTargetSmoothers (gatherRotoInkTargets smooths per call) --
+    // trails do not use the target/anchor arrays at all.
+    if (world_wanted && (grid_subject_exclude > 0.f || grid_subject_radius > 0.f || grade_keep_subject > 0.f || rim_on))
     {
         // [TronT1 P1 fix] Pass Tron's OWN single-subject selector
         // (subject_target, from TronSubjectTarget) rather than letting
@@ -17448,122 +17469,160 @@ void LLPipeline::renderTronWorld(LLRenderTarget* dst, ETronDraw mode, bool is_sc
     // --- draw: mWaterDis scratch (own depth, single colour attachment), read
     // `dst` directly as a plain texture -- see renderCineOutline's header
     // comment for why not drawing directly into `dst`. ------------------------
+    // [TronT3] trails_wanted needs the scene DEPTH in mWaterDis to depth-test
+    // against (dst shares deferredScreen's depth with mRT->screen, exactly
+    // the doAtmospherics idiom); a TRAILS_ONLY call additionally needs the
+    // current COLOUR copied through since the world body below never runs to
+    // seed it. No dst->flush()/bindTarget(): copyContents binds/restores its
+    // own FBOs (T3 contract section 4.2 step 1).
+    if (trails_wanted)
+    {
+        mWaterDis.copyContents(*dst, 0, 0, dst->getWidth(), dst->getHeight(),
+                                0, 0, mWaterDis.getWidth(), mWaterDis.getHeight(),
+                                GL_DEPTH_BUFFER_BIT | (world_wanted ? 0 : GL_COLOR_BUFFER_BIT), GL_NEAREST);
+    }
+
     mWaterDis.bindTarget();
 
-    LLGLDepthTest depth(GL_FALSE);
-    LLGLDisable   blend(GL_BLEND);
-    LLGLDisable   cull(GL_CULL_FACE);
-
-    bindDeferredShader(gTronWorldProgram);
-
-    S32 sch = gTronWorldProgram.enableTexture(LLShaderMgr::TRON_SCENE);
-    if (sch > -1)
+    if (world_wanted)
     {
-        dst->bindTexture(0, sch, LLTexUnit::TFO_POINT);
-        gGL.getTexUnit(sch)->setTextureAddressMode(LLTexUnit::TAM_CLAMP);
+        // [TronT3] Scoped so these three GL states are restored (destructors
+        // run) BEFORE the trail draw below, which needs depth test ON and
+        // blend ON -- the exact opposite of this block's states.
+        LLGLDepthTest depth(GL_FALSE);
+        LLGLDisable   blend(GL_BLEND);
+        LLGLDisable   cull(GL_CULL_FACE);
+
+        bindDeferredShader(gTronWorldProgram);
+
+        S32 sch = gTronWorldProgram.enableTexture(LLShaderMgr::TRON_SCENE);
+        if (sch > -1)
+        {
+            dst->bindTexture(0, sch, LLTexUnit::TFO_POINT);
+            gGL.getTexUnit(sch)->setTextureAddressMode(LLTexUnit::TAM_CLAMP);
+        }
+
+        gTronWorldProgram.uniform2f(LLShaderMgr::DEFERRED_SCREEN_RES, w, h);
+        gTronWorldProgram.uniform1f(LLShaderMgr::EXPOSURE, exposure);
+
+        gTronWorldProgram.uniformMatrix4fv(LLShaderMgr::TRON_INV_PROJ, 1, GL_FALSE, glm::value_ptr(inv_projection));
+        gTronWorldProgram.uniformMatrix4fv(LLShaderMgr::TRON_INV_MODELVIEW, 1, GL_FALSE, glm::value_ptr(inv_modelview));
+
+        gTronWorldProgram.uniform4f(LLShaderMgr::TRON_CAM_REL,
+            cam_rel.mV[VX], cam_rel.mV[VY], cam_rel.mV[VZ], cam_agent.mV[VZ]);
+
+        gTronWorldProgram.uniform4f(LLShaderMgr::TRON_MASTER,
+            (F32)ALTron::layer(), pulse01, 0.f, will_expose ? 1.f : no_post_scale);
+
+        const ALTron::Palette tron_palette = ALTron::palette();
+        gTronWorldProgram.uniform4f(LLShaderMgr::TRON_PALETTE0,
+            tron_palette.mPrimary.mV[0], tron_palette.mPrimary.mV[1], tron_palette.mPrimary.mV[2], pulse_amount);
+        gTronWorldProgram.uniform4f(LLShaderMgr::TRON_PALETTE1,
+            tron_palette.mSecondary.mV[0], tron_palette.mSecondary.mV[1], tron_palette.mSecondary.mV[2],
+            will_expose ? 0.f : 1.f);
+        gTronWorldProgram.uniform4f(LLShaderMgr::TRON_PALETTE2,
+            tron_palette.mAccent.mV[0], tron_palette.mAccent.mV[1], tron_palette.mAccent.mV[2], 0.f);
+        gTronWorldProgram.uniform4f(LLShaderMgr::TRON_PALETTE3,
+            tron_palette.mPulse.mV[0], tron_palette.mPulse.mV[1], tron_palette.mPulse.mV[2], 0.f);
+
+        gTronWorldProgram.uniform4f(LLShaderMgr::TRON_GRADE, grade_strength, grade_darken_ev, grade_desaturate, grade_crush);
+        // [TronT1] tint rgb max-normalised (divide by the max component when >0).
+        const F32 tint_max = llmax(llmax(grade_tint_raw.mV[0], grade_tint_raw.mV[1]), grade_tint_raw.mV[2]);
+        const LLColor3 tint_norm = (tint_max > 0.f)
+            ? LLColor3(grade_tint_raw.mV[0] / tint_max, grade_tint_raw.mV[1] / tint_max, grade_tint_raw.mV[2] / tint_max)
+            : LLColor3(0.f, 0.f, 0.f);
+        gTronWorldProgram.uniform4f(LLShaderMgr::TRON_GRADE2, tint_norm.mV[0], tint_norm.mV[1], tint_norm.mV[2], grade_tint_amount);
+        gTronWorldProgram.uniform4f(LLShaderMgr::TRON_GRADE3, grade_keep_bright_lo, grade_keep_bright_hi, grade_keep_subject, grade_sky_darken);
+
+        gTronWorldProgram.uniform4f(LLShaderMgr::TRON_GRID,
+            grid_on ? grid_intensity : 0.f, grid_spacing, grid_width * 0.5f, grid_min_width_px * px_scale);
+        gTronWorldProgram.uniform4f(LLShaderMgr::TRON_GRID2, (F32)grid_major_every, grid_major_width, grid_major_intensity, grid_far_fade);
+        gTronWorldProgram.uniform4f(LLShaderMgr::TRON_GRID3, grid_floor, grid_wall, grid_ceiling, grid_sharpness);
+        gTronWorldProgram.uniform4f(LLShaderMgr::TRON_GRID4, (F32)grid_normal_source, grid_glow, grid_subject_exclude, 0.f);
+        gTronWorldProgram.uniform4f(LLShaderMgr::TRON_GRID5,
+            grid_subject_radius, grid_subject_radius_feather, (F32)grid_water_mode, grid_water_tolerance);
+
+        gTronWorldProgram.uniform4f(LLShaderMgr::TRON_WATER, water_height, water_underwater, water_detect_on, 0.f);
+
+        gTronWorldProgram.uniform4f(LLShaderMgr::TRON_PULSE, pulse_grid_amount, ph_grid, pulse_grid_length, pulse_grid_wavelength);
+        gTronWorldProgram.uniform4f(LLShaderMgr::TRON_PULSE2,
+            pulse_grid_density, (F32)pulse_grid_direction, pulse_seed, (F32)pulse_grid_color_mode);
+
+        gTronWorldProgram.uniform4f(LLShaderMgr::TRON_SUBJECT,
+            (F32)target_count, (F32)subject_shape, subject_feather, subject_depth_feather);
+        gTronWorldProgram.uniform4f(LLShaderMgr::TRON_SUBJECT2,
+            (F32)subject_source_grid, (F32)subject_source_rim, subject_invert ? 1.f : 0.f, 0.f);
+
+        // [TronT2] Circuit traces + post neon rim (T2 contract section 2.5).
+        gTronWorldProgram.uniform4f(LLShaderMgr::TRON_TRACE,
+            trace_on ? trace_intensity : 0.f, trace_cell, trace_width * 0.5f, trace_density);
+        gTronWorldProgram.uniform4f(LLShaderMgr::TRON_TRACE2,
+            trace_pad_radius, trace_diagonal, trace_walls, trace_floors);
+        gTronWorldProgram.uniform4f(LLShaderMgr::TRON_TRACE3,
+            trace_pulse_amount, ph_trace, trace_pulse_length, trace_seed);
+        gTronWorldProgram.uniform4f(LLShaderMgr::TRON_RIM,
+            rim_on ? rim_gain : 0.f, rim_exponent, rim_sil_gain, rim_sil_threshold);
+        gTronWorldProgram.uniform4f(LLShaderMgr::TRON_RIM2,
+            rim_pulse_amount, rim_scan_amount, ph_scan, rim_scan_width);
+        gTronWorldProgram.uniform4f(LLShaderMgr::TRON_RIM3,
+            (F32)rim_color_mode, rim_reject_floors ? 1.f : 0.f, 0.f, 0.f);
+
+        if (target_count > 0)
+        {
+            gTronWorldProgram.uniform4fv(LLShaderMgr::TRON_TARGETS, target_count, target_cells[0].mV);
+            gTronWorldProgram.uniform4fv(LLShaderMgr::TRON_TARGETS2, target_count, target_cells2[0].mV);
+        }
+        if (anchor_count > 0)
+        {
+            gTronWorldProgram.uniform4fv(LLShaderMgr::TRON_ANCHORS, anchor_count, anchor_cells[0].mV);
+        }
+        gTronWorldProgram.uniform1i(LLShaderMgr::TRON_ANCHOR_COUNT, anchor_count);
+
+        {
+            LLVector4 lattice_r[4];
+            lattice_r[0] = LLVector4(lattice_grid.mR.mV[VX], lattice_grid.mR.mV[VY], lattice_grid.mR.mV[VZ], grid_spacing);
+            lattice_r[1] = LLVector4(lattice_major.mR.mV[VX], lattice_major.mR.mV[VY], lattice_major.mR.mV[VZ], major_spacing);
+            lattice_r[2] = LLVector4(lattice_wave.mR.mV[VX], lattice_wave.mR.mV[VY], lattice_wave.mR.mV[VZ], pulse_grid_wavelength);
+            lattice_r[3] = LLVector4(lattice_trace.mR.mV[VX], lattice_trace.mR.mV[VY], lattice_trace.mR.mV[VZ], trace_cell);
+            gTronWorldProgram.uniform4fv(LLShaderMgr::TRON_LATTICE_R, 4, lattice_r[0].mV);
+
+            const U32 lattice_k[16] = {
+                lattice_grid.mK[0],  lattice_grid.mK[1],  lattice_grid.mK[2],  0,
+                lattice_major.mK[0], lattice_major.mK[1], lattice_major.mK[2], 0,
+                lattice_wave.mK[0],  lattice_wave.mK[1],  lattice_wave.mK[2],  0,
+                lattice_trace.mK[0], lattice_trace.mK[1], lattice_trace.mK[2], 0,
+            };
+            gTronWorldProgram.uniform4uiv(LLShaderMgr::TRON_LATTICE_K, 4, lattice_k);
+        }
+
+        mScreenTriangleVB->setBuffer();
+        mScreenTriangleVB->drawArrays(LLRender::TRIANGLES, 0, 3);
+
+        if (sch > -1)
+        {
+            gTronWorldProgram.disableTexture(LLShaderMgr::TRON_SCENE);
+        }
+        unbindDeferredShader(gTronWorldProgram);
+    } // [TronT3] end if (world_wanted) -- depth(GL_FALSE)/blend/cull destructors run here
+
+    if (trails_wanted)
+    {
+        // [TronT3] Trail draw needs depth test ON / blend ON -- see
+        // ALTron::renderTrails's own GL-state block (T3 contract section
+        // 4.4). exposure/will_expose/no_post_scale are the SAME values
+        // already resolved above for the world pass (section 4.3): trails
+        // never run at the Scene layer, so `exposure` here is always the S3
+        // selector.
+        ALTron::TrailDrawParams trail_params;
+        trail_params.mCamGlobal        = cam_global;
+        trail_params.mModelview        = mv;
+        trail_params.mProjection       = proj;
+        trail_params.mExposureSelector = exposure;
+        trail_params.mWillExpose       = will_expose;
+        trail_params.mNoPostScale      = no_post_scale;
+        ALTron::renderTrails(trail_params);
     }
 
-    gTronWorldProgram.uniform2f(LLShaderMgr::DEFERRED_SCREEN_RES, w, h);
-    gTronWorldProgram.uniform1f(LLShaderMgr::EXPOSURE, exposure);
-
-    gTronWorldProgram.uniformMatrix4fv(LLShaderMgr::TRON_INV_PROJ, 1, GL_FALSE, glm::value_ptr(inv_projection));
-    gTronWorldProgram.uniformMatrix4fv(LLShaderMgr::TRON_INV_MODELVIEW, 1, GL_FALSE, glm::value_ptr(inv_modelview));
-
-    gTronWorldProgram.uniform4f(LLShaderMgr::TRON_CAM_REL,
-        cam_rel.mV[VX], cam_rel.mV[VY], cam_rel.mV[VZ], cam_agent.mV[VZ]);
-
-    gTronWorldProgram.uniform4f(LLShaderMgr::TRON_MASTER,
-        (F32)ALTron::layer(), pulse01, 0.f, will_expose ? 1.f : no_post_scale);
-
-    const ALTron::Palette tron_palette = ALTron::palette();
-    gTronWorldProgram.uniform4f(LLShaderMgr::TRON_PALETTE0,
-        tron_palette.mPrimary.mV[0], tron_palette.mPrimary.mV[1], tron_palette.mPrimary.mV[2], pulse_amount);
-    gTronWorldProgram.uniform4f(LLShaderMgr::TRON_PALETTE1,
-        tron_palette.mSecondary.mV[0], tron_palette.mSecondary.mV[1], tron_palette.mSecondary.mV[2],
-        will_expose ? 0.f : 1.f);
-    gTronWorldProgram.uniform4f(LLShaderMgr::TRON_PALETTE2,
-        tron_palette.mAccent.mV[0], tron_palette.mAccent.mV[1], tron_palette.mAccent.mV[2], 0.f);
-    gTronWorldProgram.uniform4f(LLShaderMgr::TRON_PALETTE3,
-        tron_palette.mPulse.mV[0], tron_palette.mPulse.mV[1], tron_palette.mPulse.mV[2], 0.f);
-
-    gTronWorldProgram.uniform4f(LLShaderMgr::TRON_GRADE, grade_strength, grade_darken_ev, grade_desaturate, grade_crush);
-    // [TronT1] tint rgb max-normalised (divide by the max component when >0).
-    const F32 tint_max = llmax(llmax(grade_tint_raw.mV[0], grade_tint_raw.mV[1]), grade_tint_raw.mV[2]);
-    const LLColor3 tint_norm = (tint_max > 0.f)
-        ? LLColor3(grade_tint_raw.mV[0] / tint_max, grade_tint_raw.mV[1] / tint_max, grade_tint_raw.mV[2] / tint_max)
-        : LLColor3(0.f, 0.f, 0.f);
-    gTronWorldProgram.uniform4f(LLShaderMgr::TRON_GRADE2, tint_norm.mV[0], tint_norm.mV[1], tint_norm.mV[2], grade_tint_amount);
-    gTronWorldProgram.uniform4f(LLShaderMgr::TRON_GRADE3, grade_keep_bright_lo, grade_keep_bright_hi, grade_keep_subject, grade_sky_darken);
-
-    gTronWorldProgram.uniform4f(LLShaderMgr::TRON_GRID,
-        grid_on ? grid_intensity : 0.f, grid_spacing, grid_width * 0.5f, grid_min_width_px * px_scale);
-    gTronWorldProgram.uniform4f(LLShaderMgr::TRON_GRID2, (F32)grid_major_every, grid_major_width, grid_major_intensity, grid_far_fade);
-    gTronWorldProgram.uniform4f(LLShaderMgr::TRON_GRID3, grid_floor, grid_wall, grid_ceiling, grid_sharpness);
-    gTronWorldProgram.uniform4f(LLShaderMgr::TRON_GRID4, (F32)grid_normal_source, grid_glow, grid_subject_exclude, 0.f);
-    gTronWorldProgram.uniform4f(LLShaderMgr::TRON_GRID5,
-        grid_subject_radius, grid_subject_radius_feather, (F32)grid_water_mode, grid_water_tolerance);
-
-    gTronWorldProgram.uniform4f(LLShaderMgr::TRON_WATER, water_height, water_underwater, water_detect_on, 0.f);
-
-    gTronWorldProgram.uniform4f(LLShaderMgr::TRON_PULSE, pulse_grid_amount, ph_grid, pulse_grid_length, pulse_grid_wavelength);
-    gTronWorldProgram.uniform4f(LLShaderMgr::TRON_PULSE2,
-        pulse_grid_density, (F32)pulse_grid_direction, pulse_seed, (F32)pulse_grid_color_mode);
-
-    gTronWorldProgram.uniform4f(LLShaderMgr::TRON_SUBJECT,
-        (F32)target_count, (F32)subject_shape, subject_feather, subject_depth_feather);
-    gTronWorldProgram.uniform4f(LLShaderMgr::TRON_SUBJECT2,
-        (F32)subject_source_grid, (F32)subject_source_rim, subject_invert ? 1.f : 0.f, 0.f);
-
-    // [TronT2] Circuit traces + post neon rim (T2 contract section 2.5).
-    gTronWorldProgram.uniform4f(LLShaderMgr::TRON_TRACE,
-        trace_on ? trace_intensity : 0.f, trace_cell, trace_width * 0.5f, trace_density);
-    gTronWorldProgram.uniform4f(LLShaderMgr::TRON_TRACE2,
-        trace_pad_radius, trace_diagonal, trace_walls, trace_floors);
-    gTronWorldProgram.uniform4f(LLShaderMgr::TRON_TRACE3,
-        trace_pulse_amount, ph_trace, trace_pulse_length, trace_seed);
-    gTronWorldProgram.uniform4f(LLShaderMgr::TRON_RIM,
-        rim_on ? rim_gain : 0.f, rim_exponent, rim_sil_gain, rim_sil_threshold);
-    gTronWorldProgram.uniform4f(LLShaderMgr::TRON_RIM2,
-        rim_pulse_amount, rim_scan_amount, ph_scan, rim_scan_width);
-    gTronWorldProgram.uniform4f(LLShaderMgr::TRON_RIM3,
-        (F32)rim_color_mode, rim_reject_floors ? 1.f : 0.f, 0.f, 0.f);
-
-    if (target_count > 0)
-    {
-        gTronWorldProgram.uniform4fv(LLShaderMgr::TRON_TARGETS, target_count, target_cells[0].mV);
-        gTronWorldProgram.uniform4fv(LLShaderMgr::TRON_TARGETS2, target_count, target_cells2[0].mV);
-    }
-    if (anchor_count > 0)
-    {
-        gTronWorldProgram.uniform4fv(LLShaderMgr::TRON_ANCHORS, anchor_count, anchor_cells[0].mV);
-    }
-    gTronWorldProgram.uniform1i(LLShaderMgr::TRON_ANCHOR_COUNT, anchor_count);
-
-    {
-        LLVector4 lattice_r[4];
-        lattice_r[0] = LLVector4(lattice_grid.mR.mV[VX], lattice_grid.mR.mV[VY], lattice_grid.mR.mV[VZ], grid_spacing);
-        lattice_r[1] = LLVector4(lattice_major.mR.mV[VX], lattice_major.mR.mV[VY], lattice_major.mR.mV[VZ], major_spacing);
-        lattice_r[2] = LLVector4(lattice_wave.mR.mV[VX], lattice_wave.mR.mV[VY], lattice_wave.mR.mV[VZ], pulse_grid_wavelength);
-        lattice_r[3] = LLVector4(lattice_trace.mR.mV[VX], lattice_trace.mR.mV[VY], lattice_trace.mR.mV[VZ], trace_cell);
-        gTronWorldProgram.uniform4fv(LLShaderMgr::TRON_LATTICE_R, 4, lattice_r[0].mV);
-
-        const U32 lattice_k[16] = {
-            lattice_grid.mK[0],  lattice_grid.mK[1],  lattice_grid.mK[2],  0,
-            lattice_major.mK[0], lattice_major.mK[1], lattice_major.mK[2], 0,
-            lattice_wave.mK[0],  lattice_wave.mK[1],  lattice_wave.mK[2],  0,
-            lattice_trace.mK[0], lattice_trace.mK[1], lattice_trace.mK[2], 0,
-        };
-        gTronWorldProgram.uniform4uiv(LLShaderMgr::TRON_LATTICE_K, 4, lattice_k);
-    }
-
-    mScreenTriangleVB->setBuffer();
-    mScreenTriangleVB->drawArrays(LLRender::TRIANGLES, 0, 3);
-
-    if (sch > -1)
-    {
-        gTronWorldProgram.disableTexture(LLShaderMgr::TRON_SCENE);
-    }
-    unbindDeferredShader(gTronWorldProgram);
     mWaterDis.flush();
 
     // Colour-only blit back into dst, attachment 0 only -- see
@@ -21237,6 +21296,11 @@ void LLPipeline::renderFinalize()
         // resolve rather than each independently re-deriving it.
         updateNightMaskAnchor();
 
+        // [TronT3] Samples/ages/prunes light-cycle trails ONCE this frame,
+        // before resolveFrame() consumes hasTrailGeometry() for its will_run
+        // predicate -- trails are HDR-only, just like the world pass.
+        ALTron::updateTrails();
+
         // [TronT1] Resolves ALTron::frame() (bloom-metering ramp) ONCE this
         // frame, before generateLuminance() consumes it -- same B1 idiom and
         // placement as updateNightMaskAnchor() just above.
@@ -21253,10 +21317,20 @@ void LLPipeline::renderFinalize()
         // against renderFinalize's other callers (impostors, reflection/hero
         // probes, HUDs) -- isActiveForCurrentPass() alone does not check the
         // render target, only the render CONTEXT.
-        if (mRT == &mMainRT && ALTron::isActiveForCurrentPass() && ALTron::layer() == ALTron::LAYER_CAMERA)
+        // [TronT3] Trails ALWAYS draw here, even when TronLayer == Scene (the
+        // Scene pseudo-slot never draws them -- section 4.6); world_camera
+        // uses worldHasWork() rather than isActiveForCurrentPass() alone so a
+        // trails-only session (world pass off) still reaches this block.
+        if (mRT == &mMainRT && ALTron::isActiveForCurrentPass())
         {
-            renderTronWorld(&mRT->screen, TRON_DRAW_WORLD_ONLY, /*is_scene_layer=*/false,
-                             gGLLastModelView, gGLLastProjection);
+            const bool world_camera = ALTron::layer() == ALTron::LAYER_CAMERA && ALTron::worldHasWork();
+            const bool trails       = ALTron::trailsWanted();
+            if (world_camera || trails)
+            {
+                renderTronWorld(&mRT->screen,
+                                 world_camera ? (trails ? TRON_DRAW_WORLD_AND_TRAILS : TRON_DRAW_WORLD_ONLY) : TRON_DRAW_TRAILS_ONLY,
+                                 /*is_scene_layer=*/false, gGLLastModelView, gGLLastProjection);
+            }
         }
 
         // [RotoInk Round-3] ROTOINK_LAYER_CAMERA call site (the default).

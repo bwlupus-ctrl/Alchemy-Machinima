@@ -12,6 +12,7 @@
 
 #include "altron.h"
 
+#include "aldirectorswitcher.h" // [TronT3] ALDirectorSwitcher::instance().cutSerial()
 #include "alpanelcinelightrig.h"
 #include "alrotoink.h"
 #include "llagent.h"
@@ -19,10 +20,17 @@
 #include "llpresentationtime.h"
 #include "llviewercamera.h"
 #include "llviewercontrol.h"
+#include "llviewerobject.h"     // [TronT3] LLViewerObject::asAvatar()
+#include "llviewerobjectlist.h" // [TronT3] gObjectList.findObject()
 #include "llviewershadermgr.h" // [TronT1] gTronWorldProgram (resolveFrame() draw-eligibility check)
-#include "pipeline.h"
+                                // [TronT3] gTronTrailProgram (trailsWanted()/resolveFrame()/renderTrails())
+#include "llvoavatar.h"         // [TronT3] getRenderPosition()/getLastAnimExtents()
+#include "pipeline.h"           // LLPipeline::RotoInkCandidate, collectRotoInkCandidates, mExposureMap, mRT/mMainRT
 
+#include <algorithm>
 #include <cmath>
+#include <map>
+#include <set>
 
 extern bool gCubeSnapshot;
 extern bool gSnapshotNoPost;
@@ -193,6 +201,35 @@ const char* const kAllSettings[] = {
     "TronSuitSeamDensity",
     "TronSuitSeamGain",
     "TronSuitRimGain",
+    // [TronT3] Light-cycle trails. "L" (look) keys are written by a Tron look
+    // preset (T3 contract section 7); "S" (shot) keys never are -- see the
+    // per-key table in the T3 contract section 5.
+    "TronTrailEnabled",           // L
+    "TronTrailStyle",             // L
+    "TronTrailTargetSet",         // S
+    "TronTrailTarget",            // S
+    "TronTrailMaxActors",         // S
+    "TronTrailIntensity",         // L
+    "TronTrailColorMode",         // L
+    "TronTrailHeight",            // L
+    "TronTrailWidth",             // L
+    "TronTrailScaleToAvatar",     // L
+    "TronTrailLift",              // S
+    "TronTrailFadeTime",          // L
+    "TronTrailFadeCurve",         // L
+    "TronTrailEdge",              // L
+    "TronTrailEdgeGain",          // L
+    "TronTrailBodyGain",          // L
+    "TronTrailGlow",              // L
+    "TronTrailFog",               // L
+    "TronTrailFogDensity",        // L
+    "TronTrailSpacing",           // S
+    "TronTrailMinSpeed",          // S
+    "TronTrailIdleBreak",         // S
+    "TronTrailBreakDistance",     // S
+    "TronTrailMaxPoints",         // S
+    "TronTrailMaxSegments",       // S
+    "TronTrailClearOnCut",        // S
     // [TronT1 P2-10] Rig Rim Tron tint (look keys, written only by Tron
     // presets) and the Roto Ink / Tron clock sync flag. These are NOT
     // ALCineRigRim's / ALRotoInk's own settings -- they live on those other
@@ -267,6 +304,13 @@ struct LookPreset
     const char* mRotoKey;
     const char* mRigRimLabel;
     S32   mRigRimTronMode;
+    // [TronT3] Appended at the end (T3 contract section 7.1) so the 14
+    // existing rows only gain a trailing line, never a mid-row shift.
+    F32   mFarFade;                       // was the common column's TronGridFarFade 120 -- lightcycle needs 400
+    bool  mTrailEnabled;
+    S32   mTrailStyle;                    // 0 wall / 1 ground / 2 camera
+    F32   mTrailIntensity, mTrailHeight, mTrailWidth, mTrailFadeTime, mTrailBodyGain;
+    S32   mTrailColorMode;
 };
 
 // id/key mirrors kPalettes; see the T1 contract section 8 / T2 contract
@@ -279,93 +323,119 @@ struct LookPreset
 // TraceEnabled, TraceIntensity, TraceCell, TraceWidth, TraceDensity,
 // TraceWalls, TraceFloors, TracePulseSpeed,
 // RimEnabled, RimGain, RimExponent, RimPulseAmount, RimScanAmount,
-// RimColorMode, RotoKey, RigRimLabel, RigRimTronMode.
+// RimColorMode, RotoKey, RigRimLabel, RigRimTronMode,
+// [TronT3] FarFade, TrailEnabled, TrailStyle, TrailIntensity, TrailHeight,
+// TrailWidth, TrailFadeTime, TrailBodyGain, TrailColorMode.
 const LookPreset kLookPresets[] = {
     { "legacy", 1, 3.0f, 0.6f, 0.55f, 0.75f, 1.00f, 0.30f, 2.0f, 0.020f, 1.2f, 4,
       0.85f, true, 0.6f, 0.3f, 0,
       1.5f, 6.0f, 24.0f, 0.35f, 3, 0, 0, 0.8f,
       false, 4.0f, 0.5f, 0.015f, 0.45f, 1.0f, 0.0f, 2.0f,
       true, 6.0f, 3.0f, 0.3f, 0.0f, 0,
-      "tron_legacy", "Tron Suit Kick", 2 },
+      "tron_legacy", "Tron Suit Kick", 2,
+      120.f, true, 0, 8.f, 1.2f, 0.6f, 4.f, 0.35f, 1 },
     { "ares", 2, 3.5f, 0.7f, 1.00f, 0.55f, 0.45f, 0.25f, 3.0f, 0.030f, 1.2f, 3,
       0.85f, true, 0.6f, 0.3f, 0,
       1.5f, 10.0f, 24.0f, 0.40f, 1, 0, 2, 1.2f,
       true, 4.0f, 0.5f, 0.015f, 0.45f, 0.35f, 0.0f, 2.0f,
       true, 8.0f, 3.0f, 0.3f, 0.0f, 0,
-      "tron_ares", "Ares Red Backlight", 2 },
+      "tron_ares", "Ares Red Backlight", 2,
+      120.f, true, 0, 9.f, 1.5f, 0.6f, 3.f, 0.35f, 0 },
     { "classic82", 3, 4.0f, 0.9f, 1.00f, 1.00f, 1.00f, 0.00f, 4.0f, 0.040f, 1.2f, 0,
       0.85f, true, 0.6f, 0.3f, 0,
       1.5f, 3.0f, 32.0f, 0.30f, 0, 1, 3, 0.5f,
       false, 4.0f, 0.5f, 0.015f, 0.45f, 1.0f, 0.0f, 2.0f,
       true, 4.0f, 2.0f, 0.3f, 0.0f, 0,
-      "tron_1982", "Sci-Fi Hologram", 1 },
+      "tron_1982", "Sci-Fi Hologram", 1,
+      120.f, false, 0, 8.f, 2.0f, 0.6f, 6.f, 0.35f, 0 },
     { "recognizer", 4, 3.0f, 0.5f, 1.00f, 0.80f, 0.60f, 0.20f, 8.0f, 0.050f, 1.2f, 2,
       0.85f, true, 0.6f, 0.3f, 0,
       1.5f, 12.0f, 48.0f, 0.70f, 3, 0, 0, 0.8f,
       true, 4.0f, 0.5f, 0.015f, 0.45f, 0.6f, 0.0f, 2.0f,
       true, 5.0f, 3.0f, 0.3f, 0.0f, 0,
-      "tron_recognizer", "Strong Backlight", 1 },
+      "tron_recognizer", "Strong Backlight", 1,
+      120.f, false, 0, 8.f, 1.2f, 0.6f, 4.f, 0.35f, 0 },
     { "uprising", 5, 2.5f, 0.4f, 0.70f, 0.85f, 1.00f, 0.20f, 1.0f, 0.012f, 1.2f, 8,
       0.85f, true, 0.6f, 0.3f, 0,
       1.5f, 4.0f, 16.0f, 0.15f, 3, 0, 0, 0.8f,
       false, 4.0f, 0.5f, 0.015f, 0.45f, 1.0f, 0.0f, 2.0f,
       true, 4.0f, 3.0f, 0.3f, 0.8f, 0,
-      "tron_uprising", "Silhouette Glow (any angle)", 1 },
+      "tron_uprising", "Silhouette Glow (any angle)", 1,
+      120.f, true, 2, 6.f, 1.0f, 0.35f, 2.5f, 0.35f, 0 },
     { "rinzler", 6, 3.5f, 0.7f, 1.00f, 1.00f, 1.00f, 0.00f, 2.0f, 0.020f, 1.2f, 4,
       0.85f, true, 0.6f, 0.3f, 0,
       1.5f, 6.0f, 24.0f, 0.35f, 3, 0, 0, 0.8f,
       true, 4.0f, 0.5f, 0.015f, 0.45f, 0.3f, 0.0f, 2.0f,
       true, 7.0f, 4.0f, 0.3f, 0.0f, 0,
-      "tron_recognizer", "Noir Kicker", 2 },
+      "tron_recognizer", "Noir Kicker", 2,
+      120.f, true, 0, 8.f, 1.2f, 0.6f, 4.f, 0.35f, 0 },
     { "siren", 7, 2.0f, 0.3f, 0.75f, 0.85f, 1.00f, 0.35f, 0.5f, 0.008f, 1.0f, 4,
       0.85f, true, 0.6f, 0.3f, 0,
       0.0f, 6.0f, 24.0f, 0.35f, 3, 0, 0, 0.8f,
       false, 4.0f, 0.5f, 0.015f, 0.45f, 1.0f, 0.0f, 2.0f,
       true, 3.0f, 1.5f, 0.3f, 0.5f, 0,
-      "tron_uprising", "Dreamy Halo", 1 },
+      "tron_uprising", "Dreamy Halo", 1,
+      120.f, false, 0, 8.f, 1.2f, 0.6f, 4.f, 0.35f, 0 },
     { "quorra", 8, 3.0f, 0.5f, 0.55f, 0.75f, 1.00f, 0.30f, 2.0f, 0.020f, 1.2f, 4,
       0.85f, true, 0.6f, 0.3f, 0,
       1.5f, 6.0f, 24.0f, 0.35f, 3, 1, 0, 0.8f,
       false, 4.0f, 0.5f, 0.015f, 0.45f, 1.0f, 0.0f, 2.0f,
       true, 5.0f, 3.0f, 0.3f, 0.0f, 1,
-      "tron_legacy", "Fashion Edge", 2 },
+      "tron_legacy", "Fashion Edge", 2,
+      120.f, true, 0, 8.f, 1.2f, 0.6f, 4.f, 0.35f, 1 },
     // [TronT2] Six new looks (design v1 section 10; T2 contract section 8.3).
     { "clugold", 9, 3.5f, 0.6f, 1.00f, 0.85f, 0.60f, 0.30f, 4.0f, 0.030f, 1.2f, 2,
       0.85f, true, 0.6f, 0.3f, 0,
       1.5f, 8.0f, 24.0f, 0.35f, 3, 0, 0, 0.8f,
       true, 4.0f, 0.5f, 0.015f, 0.45f, 0.5f, 0.0f, 2.0f,
       true, 6.0f, 3.0f, 0.3f, 0.0f, 0,
-      "tron_recognizer", "Two-Sided Kick", 1 },
+      "tron_recognizer", "Two-Sided Kick", 1,
+      120.f, true, 0, 8.f, 1.2f, 0.6f, 4.f, 0.35f, 0 },
     { "seaofsim", 10, 3.0f, 0.6f, 0.55f, 0.75f, 1.00f, 0.40f, 1.0f, 0.015f, 1.2f, 8,
       0.85f, true, 0.6f, 0.3f, 1,
       1.5f, 4.0f, 48.0f, 0.35f, 3, 0, 0, 0.8f,
       false, 4.0f, 0.5f, 0.015f, 0.45f, 1.0f, 0.0f, 2.0f,
       true, 4.0f, 3.0f, 0.3f, 0.0f, 0,
-      "tron_legacy", "Moonlit Rim", 1 },
+      "tron_legacy", "Moonlit Rim", 1,
+      120.f, true, 1, 6.f, 1.2f, 0.8f, 5.f, 0.5f, 0 },
     { "circuit", 1, 3.0f, 0.7f, 1.00f, 1.00f, 1.00f, 0.00f, 4.0f, 0.020f, 1.2f, 4,
       0.85f, true, 0.0f, 0.0f, 0,
       1.5f, 6.0f, 24.0f, 0.15f, 3, 0, 0, 0.8f,
       true, 5.0f, 0.3f, 0.015f, 0.6f, 1.0f, 0.0f, 4.0f,
       true, 5.0f, 3.0f, 0.3f, 0.0f, 0,
-      "tron_legacy", "Neon / Stage", 1 },
+      "tron_legacy", "Neon / Stage", 1,
+      120.f, false, 0, 8.f, 1.2f, 0.6f, 4.f, 0.35f, 0 },
     { "arena", 5, 2.5f, 0.5f, 0.70f, 0.85f, 1.00f, 0.20f, 1.0f, 0.020f, 1.2f, 2,
       0.85f, true, 0.6f, 0.3f, 0,
       1.5f, 14.0f, 16.0f, 0.80f, 3, 0, 0, 0.8f,
       false, 4.0f, 0.5f, 0.015f, 0.45f, 1.0f, 0.0f, 2.0f,
       true, 8.0f, 3.0f, 0.3f, 1.0f, 0,
-      "tron_uprising", "Silhouette Glow (any angle)", 2 },
+      "tron_uprising", "Silhouette Glow (any angle)", 2,
+      120.f, true, 1, 8.f, 1.2f, 0.5f, 3.f, 0.5f, 1 },
     { "gridonly", 1, 3.0f, 0.6f, 0.55f, 0.75f, 1.00f, 0.30f, 2.0f, 0.020f, 1.2f, 4,
       0.0f, true, 0.6f, 0.3f, 0,
       1.5f, 6.0f, 24.0f, 0.35f, 3, 0, 0, 0.8f,
       false, 4.0f, 0.5f, 0.015f, 0.45f, 1.0f, 0.0f, 2.0f,
       false, 6.0f, 3.0f, 0.3f, 0.0f, 0,
-      "", "", 0 },
+      "", "", 0,
+      120.f, false, 0, 8.f, 1.2f, 0.6f, 4.f, 0.35f, 1 },
     { "neonsuit", 1, 3.0f, 0.6f, 0.55f, 0.75f, 1.00f, 0.30f, 2.0f, 0.020f, 1.2f, 4,
       0.0f, false, 0.6f, 0.3f, 0,
       1.5f, 6.0f, 24.0f, 0.35f, 3, 0, 0, 0.8f,
       false, 4.0f, 0.5f, 0.015f, 0.45f, 1.0f, 0.0f, 2.0f,
       true, 8.0f, 3.0f, 0.4f, 0.0f, 0,
-      "tron_legacy", "Tron Suit Kick", 2 },
+      "tron_legacy", "Tron Suit Kick", 2,
+      120.f, false, 0, 8.f, 1.2f, 0.6f, 4.f, 0.35f, 1 },
+    // [TronT3] New look (design v1 section 10; T3 contract section 7.3):
+    // very sparse pulses, traces off, rim on low, tall long-lived light
+    // walls behind the cast.
+    { "lightcycle", 1, 4.0f, 0.8f, 0.55f, 0.75f, 1.00f, 0.20f, 8.0f, 0.040f, 1.2f, 4,
+      0.85f, true, 0.6f, 0.3f, 0,
+      1.5f, 6.0f, 24.0f, 0.10f, 3, 0, 0, 0.8f,
+      false, 4.0f, 0.5f, 0.015f, 0.45f, 1.0f, 0.0f, 2.0f,
+      true, 3.0f, 3.0f, 0.3f, 0.0f, 0,
+      "tron_legacy", "Subtle Edge", 1,
+      400.f, true, 0, 8.0f, 2.5f, 0.6f, 8.0f, 0.5f, 1 },
 };
 
 std::string sLastPresetRotoKey;
@@ -374,6 +444,93 @@ S32         sLastPresetRigRimTronMode = 0;
 
 ALTron::FrameClock sClock;
 ALTron::Anchor     sAnchor;
+
+// [TronT3] Light-cycle trail storage (T3 contract section 3.2). Positions are
+// GLOBAL so an agent-origin shift on region crossing changes nothing; the
+// region handle itself is never tracked. std::vector, NOT std::deque, for
+// mPts -- see the storage-budget note in the contract (MSVC deque per-block
+// overhead on 40 B elements is ~2.5x; a front-erase on a <=1024-element
+// vector is a <=40 KB memmove, negligible).
+struct TrailPoint
+{
+    LLVector3d mGlobal;
+    F64        mEmitClock;
+    F32        mSize; // cached actor scale (2*hz/1.9 or 1), captured at emission
+                       // so a laid trail keeps its shape if the actor rescales later
+};
+struct TrailSegment
+{
+    std::vector<TrailPoint> mPts; // oldest first
+};
+struct Trail
+{
+    S32  mPalette = 0;                 // RotoInkCandidate::mPaletteIdx (refreshed every sample)
+    std::vector<TrailSegment> mSegs;   // oldest first
+    LLVector3d mLastGlobal;            // last EMITTED point (spacing + resume rule ONLY)
+    LLVector3d mPrevGlobal;            // previous SAMPLED position (speed + teleport, P1-2)
+    bool mHaveLast = false;            // mLastGlobal valid (first point emitted)
+    bool mPrevValid = false;           // mPrevGlobal valid
+    bool mNeedBreak = true;            // next emitted point starts a new segment
+    bool mResumePending = false;       // set for every trail on a sampling false->true transition
+    F32  mSpeedEma = 0.f;              // m/s, EMA of consecutive-sample speed (tau 0.15 s)
+    F32  mFootOffset = 0.f;            // ext[0].z - renderPos.z, cached (P2-4); avatars only
+    F32  mSize = 1.f;                  // cached actor scale (2*hz/1.9 or 1)
+    F64  mIdleAccum = 0.0;             // sampled-frame wall seconds below TronTrailMinSpeed
+    F64  mUnseenAccum = 0.0;           // sampled-frame wall seconds not in the candidate set
+    F64  mLastActivityClock = 0.0;     // clock of the last emitted point (eviction key, P1-1)
+};
+// HARD CAP: size() <= TronTrailMaxActors after every updateTrails() call.
+std::map<LLUUID, Trail> sTrails;
+bool sHasGeometry = false;
+bool sWasSampling = false;
+U64  sLastCutSerial = 0;  bool sCutSerialInit = false;
+U64  sLastGeneration = 0; bool sGenerationInit = false; // LLPresentationTime generation (P1-3)
+
+// [TronT3] Sum of every point currently stored across every segment of `t`.
+S32 trail_total_points(const Trail& t)
+{
+    S32 total = 0;
+    for (const TrailSegment& seg : t.mSegs)
+    {
+        total += (S32)seg.mPts.size();
+    }
+    return total;
+}
+
+// [TronT3] Enforces the per-trail MaxSegments/MaxPoints caps by trimming the
+// OLDEST material first (front segment, then that segment's front point).
+// Shared between the per-frame age/prune pass and emit()'s post-push call.
+void trail_cap(Trail& t, S32 max_segments, S32 max_points)
+{
+    while ((S32)t.mSegs.size() > max_segments)
+    {
+        t.mSegs.erase(t.mSegs.begin());
+    }
+    while (trail_total_points(t) > max_points)
+    {
+        for (TrailSegment& seg : t.mSegs)
+        {
+            if (!seg.mPts.empty())
+            {
+                seg.mPts.erase(seg.mPts.begin());
+                break;
+            }
+        }
+        t.mSegs.erase(std::remove_if(t.mSegs.begin(), t.mSegs.end(),
+            [](const TrailSegment& seg) { return seg.mPts.empty(); }), t.mSegs.end());
+    }
+}
+
+// [TronT3 P2-5] Every `normalize` in the trail vertex builder goes through
+// this helper instead of an unchecked normalize() -- a length-squared test
+// BEFORE any division, so a degenerate input (e.g. a camera-ribbon point
+// sitting exactly at the camera) yields the deterministic fallback, never a
+// NaN or a vanishing strip.
+LLVector3 trail_safe_unit(const LLVector3& v, const LLVector3& fallback)
+{
+    const F32 l2 = v.lengthSquared();
+    return (l2 > 1.0e-8f) ? (v * (1.f / std::sqrt(l2))) : fallback;
+}
 
 // [TronT0] Re-snap the world anchor to the 1024 m global lattice cell
 // containing the camera (design v3/v4 section 2.3). Recomputed every latch
@@ -414,24 +571,52 @@ bool ALTron::isEnabledMaster()
     return enabled();
 }
 
+// [TronT3] EXACTLY renderTronWorld's own local early-out predicate (O-P1-2):
+// TronGradeStrength > 0 || TronGridEnabled || (TronTraceEnabled &&
+// TronTraceIntensity > 0) || (TronRimEnabled && TronRimGain > 0), finite_or'd.
+// Split out of isEnabled() so the trail-only case is distinguishable -- see
+// the header comment. This is a PRE-GATE only: renderTronWorld always
+// re-evaluates its own local copy from its own sanitised locals, so the two
+// can never disagree about whether the world pass actually draws.
+bool ALTron::worldHasWork()
+{
+    static LLCachedControl<F32>  grade_strength(gSavedSettings, "TronGradeStrength", 0.85f);
+    static LLCachedControl<bool> grid_enabled(gSavedSettings, "TronGridEnabled", true);
+    static LLCachedControl<bool> trace_enabled(gSavedSettings, "TronTraceEnabled", false);
+    static LLCachedControl<F32>  trace_intensity(gSavedSettings, "TronTraceIntensity", 4.0f);
+    static LLCachedControl<bool> rim_enabled(gSavedSettings, "TronRimEnabled", false);
+    static LLCachedControl<F32>  rim_gain(gSavedSettings, "TronRimGain", 6.0f);
+
+    const bool trace_on = trace_enabled() && finite_or((F32)trace_intensity(), 4.0f) > 0.f;
+    const bool rim_on   = rim_enabled() && finite_or((F32)rim_gain(), 6.0f) > 0.f;
+    return finite_or((F32)grade_strength(), 0.85f) > 0.f || grid_enabled() || trace_on || rim_on;
+}
+
 // [TronT1] T0's isEnabled() was the raw master read; T1 extends it with the
 // grade/grid OR (design section 4) so isActiveForCurrentPass() -- and every
 // caller that gates real render work on it -- returns false whenever there
 // is nothing to draw, without needing its own redundant grade/grid check.
+// [TronT3] Now isEnabledMaster() && (worldHasWork() || TronTrailEnabled):
+// trails alone (world pass fully off) still count as "Tron has something to
+// draw" -- see the T3 contract section O-P1-2.
 bool ALTron::isEnabled()
 {
     if (!isEnabledMaster())
     {
         return false;
     }
+    // [TronT3 fix] Keep T2's flag-only world predicate here (NOT
+    // worldHasWork(), which also requires intensity/gain > 0): isEnabled()
+    // feeds isActiveForCurrentPass() and the bloom-metering ramp, and with
+    // trails off both must stay exactly as in T2. worldHasWork() remains the
+    // tighter pre-gate for actually issuing the world pass.
     static LLCachedControl<F32>  grade_strength(gSavedSettings, "TronGradeStrength", 0.85f);
     static LLCachedControl<bool> grid_enabled(gSavedSettings, "TronGridEnabled", true);
-    // [TronT2] OR in the traces/rim enable flags -- the Tron World pass has
-    // something to draw whenever any of the four is on, not just grade/grid.
     static LLCachedControl<bool> trace_enabled(gSavedSettings, "TronTraceEnabled", false);
     static LLCachedControl<bool> rim_enabled(gSavedSettings, "TronRimEnabled", false);
+    static LLCachedControl<bool> trail_enabled(gSavedSettings, "TronTrailEnabled", false);
     return finite_or((F32)grade_strength(), 0.85f) > 0.f || grid_enabled() ||
-        trace_enabled() || rim_enabled();
+        trace_enabled() || rim_enabled() || trail_enabled();
 }
 
 // [TronT0]
@@ -583,8 +768,14 @@ void ALTron::resolveFrame()
     //    renderTronWorld() binds must exist.
     // (gPipeline.mRT == &gPipeline.mMainRT is already guaranteed by the
     // early return above, so it is not repeated in this condition.)
-    const bool will_run = isActiveForCurrentPass() && layer() == LAYER_CAMERA &&
-        gTronWorldProgram.isComplete() && gPipeline.mWaterDis.isComplete();
+    // [TronT3] Mirrors the S3 predicate exactly (T3 contract section 4.5):
+    // the S3 pass is what blooms, and a trails-only S3 frame must engage the
+    // ramp too, not just a Camera-layer world frame.
+    const bool will_run = isActiveForCurrentPass() && gPipeline.mWaterDis.isComplete() &&
+        // [TronT3 fix] world term exactly as T2 (no worldHasWork()) so the
+        // trails-off metering ramp is T2-identical.
+        ((layer() == LAYER_CAMERA && gTronWorldProgram.isComplete()) ||
+         (trailsWanted() && gTronTrailProgram.isComplete()));
     const F32  target = will_run ? llclamp(finite_or((F32)bloom_meter_scale(), 0.f), 0.f, 1.f) : 1.f;
 
     const F64 now = LLPresentationTime::currentFrame().presentation_time;
@@ -647,6 +838,669 @@ const ALTron::Frame& ALTron::frame()
     return sFrame;
 }
 
+// [TronT3] Light-cycle trails: sample emitters, age/prune, enforce every
+// storage cap, handle clears -- T3 contract section 3.3. Exactly once per
+// main-loop iteration: guarded on LLPresentationTime::currentFrame().
+// generation (NOT gFrameCount -- tiles / 360 faces call display() repeatedly
+// within one tick, P1-3), and rejects every auxiliary render target (Prism
+// aux, reflection/hero probes, impostors, GLTF preview) BEFORE that guard is
+// even consulted, so an aux call can never consume the main view's sampling
+// slot for the frame.
+void ALTron::updateTrails()
+{
+    if (gPipeline.mRT != &gPipeline.mMainRT)
+    {
+        return; // aux-target rejection FIRST -- never consumes the generation guard
+    }
+
+    const U64 gen = LLPresentationTime::currentFrame().generation;
+    if (sGenerationInit && gen == sLastGeneration)
+    {
+        return; // already sampled this tick
+    }
+    sLastGeneration = gen;
+    sGenerationInit = true;
+
+    static LLCachedControl<bool> trail_enabled_ctrl(gSavedSettings, "TronTrailEnabled", false);
+    const bool enabled = isEnabledMaster() && trail_enabled_ctrl();
+    if (!enabled)
+    {
+        // Master-off / trails-off: history cleared (T3 contract section 1 --
+        // TronTrailEnabled off has no stale points reappear on re-enable).
+        if (!sTrails.empty())
+        {
+            clearTrails();
+        }
+        sHasGeometry = false;
+        sWasSampling = false;
+        sLastCutSerial = ALDirectorSwitcher::instance().cutSerial();
+        sCutSerialInit = true;
+        return;
+    }
+
+    // [TronT3] Cut-serial tracked even when TronTrailClearOnCut is off, so
+    // flipping the option on later does not immediately fire on a stale cut.
+    static LLCachedControl<bool> clear_on_cut_ctrl(gSavedSettings, "TronTrailClearOnCut", false);
+    const U64 cut = ALDirectorSwitcher::instance().cutSerial();
+    if (!sCutSerialInit)
+    {
+        sLastCutSerial = cut;
+        sCutSerialInit = true;
+    }
+    if (clear_on_cut_ctrl() && cut != sLastCutSerial)
+    {
+        clearTrails();
+    }
+    sLastCutSerial = cut;
+
+    // --- settings (LLCachedControl + finite_or + clamp) ---------------------
+    static LLCachedControl<F32>  fade_time_ctrl(gSavedSettings, "TronTrailFadeTime", 4.f);
+    static LLCachedControl<F32>  spacing_ctrl(gSavedSettings, "TronTrailSpacing", 0.15f);
+    static LLCachedControl<F32>  min_speed_ctrl(gSavedSettings, "TronTrailMinSpeed", 0.4f);
+    static LLCachedControl<F32>  idle_break_ctrl(gSavedSettings, "TronTrailIdleBreak", 0.6f);
+    static LLCachedControl<F32>  break_distance_ctrl(gSavedSettings, "TronTrailBreakDistance", 3.f);
+    static LLCachedControl<S32>  max_points_ctrl(gSavedSettings, "TronTrailMaxPoints", 256);
+    static LLCachedControl<S32>  max_segments_ctrl(gSavedSettings, "TronTrailMaxSegments", 6);
+    static LLCachedControl<S32>  max_actors_ctrl(gSavedSettings, "TronTrailMaxActors", 8);
+    static LLCachedControl<S32>  target_set_ctrl(gSavedSettings, "TronTrailTargetSet", 1);
+    static LLCachedControl<S32>  target_ctrl(gSavedSettings, "TronTrailTarget", 0);
+    static LLCachedControl<bool> scale_to_avatar_ctrl(gSavedSettings, "TronTrailScaleToAvatar", true);
+
+    const F32 fade_time      = llclamp(finite_or((F32)fade_time_ctrl(), 4.f), 0.2f, 60.f);
+    const F32 spacing        = llclamp(finite_or((F32)spacing_ctrl(), 0.15f), 0.05f, 2.f);
+    const F32 min_speed      = llclamp(finite_or((F32)min_speed_ctrl(), 0.4f), 0.f, 10.f);
+    const F32 idle_break     = llclamp(finite_or((F32)idle_break_ctrl(), 0.6f), 0.f, 10.f);
+    const F32 break_distance = llclamp(finite_or((F32)break_distance_ctrl(), 3.f), 1.f, 64.f);
+    const S32 max_points     = std::clamp((S32)max_points_ctrl(), 16, 1024);
+    const S32 max_segments   = std::clamp((S32)max_segments_ctrl(), 1, 16);
+    const S32 max_actors     = std::clamp((S32)max_actors_ctrl(), 1, 16);
+    const S32 target_set     = std::clamp((S32)target_set_ctrl(), 0, 7);
+    const S32 target         = std::clamp((S32)target_ctrl(), 0, 4);
+    const bool scale_to_avatar = scale_to_avatar_ctrl();
+
+    const ALTron::FrameClock& c = clock();
+    const F64 now  = c.mClockSeconds;
+    const F64 wall = llclamp(finite_or(c.mWallDelta, 0.0), 0.0, 1.0);
+
+    // --- 4a: age / prune / CAPS -- ALWAYS, emission or not (P1-1) -----------
+    for (auto& kv : sTrails)
+    {
+        Trail& t = kv.second;
+        for (TrailSegment& seg : t.mSegs)
+        {
+            size_t n = 0;
+            while (n < seg.mPts.size() && (now - seg.mPts[n].mEmitClock) > ((F64)fade_time + 0.25))
+            {
+                ++n;
+            }
+            if (n > 0)
+            {
+                seg.mPts.erase(seg.mPts.begin(), seg.mPts.begin() + n);
+            }
+        }
+        t.mSegs.erase(std::remove_if(t.mSegs.begin(), t.mSegs.end(),
+            [](const TrailSegment& seg) { return seg.mPts.empty(); }), t.mSegs.end());
+        trail_cap(t, max_segments, max_points);
+    }
+    // capMap: covers a LOWERED TronTrailMaxActors/MaxPoints/MaxSegments at any
+    // time, not only on emission.
+    while ((S32)sTrails.size() > max_actors)
+    {
+        auto victim = sTrails.end();
+        for (auto it = sTrails.begin(); it != sTrails.end(); ++it)
+        {
+            if (victim == sTrails.end() ||
+                it->second.mLastActivityClock < victim->second.mLastActivityClock ||
+                (it->second.mLastActivityClock == victim->second.mLastActivityClock && it->first < victim->first))
+            {
+                victim = it;
+            }
+        }
+        if (victim == sTrails.end())
+        {
+            break;
+        }
+        sTrails.erase(victim);
+    }
+
+    // --- 4b: sampling gate (v4 section 7.2) ---------------------------------
+    const bool sampling = c.mClockDelta > 0.0;
+    if (sampling && !sWasSampling)
+    {
+        for (auto& kv : sTrails)
+        {
+            kv.second.mResumePending = true; // resume-after-pause rule
+        }
+    }
+    sWasSampling = sampling;
+    if (!sampling)
+    {
+        sHasGeometry = false;
+        for (const auto& kv : sTrails)
+        {
+            for (const TrailSegment& seg : kv.second.mSegs)
+            {
+                if (seg.mPts.size() >= 2)
+                {
+                    sHasGeometry = true;
+                    break;
+                }
+            }
+            if (sHasGeometry)
+            {
+                break;
+            }
+        }
+        return; // no emission -- idle/unseen accumulators + mPrevGlobal frozen too
+    }
+
+    // --- 5: candidates -------------------------------------------------------
+    std::vector<LLPipeline::RotoInkCandidate> cands;
+    gPipeline.collectRotoInkCandidates(target_set, target, cands); // UN-culled
+    cands.erase(std::remove_if(cands.begin(), cands.end(),
+        [](const LLPipeline::RotoInkCandidate& cand)
+        { return !cand.mCenter.isFinite() || !cand.mHalfExtents.isFinite(); }), cands.end());
+    LLViewerCamera* camera = LLViewerCamera::getInstance();
+    const LLVector3 cam_origin = camera ? camera->getOrigin() : LLVector3::zero;
+    std::sort(cands.begin(), cands.end(),
+        [&cam_origin](const LLPipeline::RotoInkCandidate& a, const LLPipeline::RotoInkCandidate& b)
+        {
+            const F32 da = (a.mCenter - cam_origin).lengthSquared();
+            const F32 db = (b.mCenter - cam_origin).lengthSquared();
+            return (da != db) ? (da < db) : (a.mId < b.mId);
+        });
+    if ((S32)cands.size() > max_actors)
+    {
+        cands.resize(max_actors); // truncate ONLY, never grow
+    }
+    std::set<LLUUID> inset;
+    for (const auto& cand : cands)
+    {
+        inset.insert(cand.mId);
+    }
+
+    // Motion-domain dt (O-P1-1): == wall in Live; wall x World Time Scale
+    // under Temporal; > 0 whenever mClockDelta > 0 (clockDelta = presentation_
+    // delta x rate) -- speed/teleport measured here, NEVER on `wall` alone, so
+    // slow-mo keeps true metres/second.
+    const F64 pdt = llclamp(finite_or(LLPresentationTime::currentFrame().presentation_delta, 0.0), 0.0, 1.0);
+
+    // --- 5b: eviction BEFORE insertion (P1-1) -------------------------------
+    {
+        S32 need = 0;
+        for (const auto& cand : cands)
+        {
+            if (sTrails.find(cand.mId) == sTrails.end())
+            {
+                ++need;
+            }
+        }
+        const S32 room = max_actors - (S32)sTrails.size();
+        if (need > room)
+        {
+            std::vector<std::map<LLUUID, Trail>::iterator> not_in_set;
+            for (auto it = sTrails.begin(); it != sTrails.end(); ++it)
+            {
+                if (inset.find(it->first) == inset.end())
+                {
+                    not_in_set.push_back(it);
+                }
+            }
+            std::sort(not_in_set.begin(), not_in_set.end(),
+                [](const std::map<LLUUID, Trail>::iterator& a, const std::map<LLUUID, Trail>::iterator& b)
+                {
+                    return (a->second.mLastActivityClock != b->second.mLastActivityClock)
+                        ? (a->second.mLastActivityClock < b->second.mLastActivityClock)
+                        : (a->first < b->first);
+                });
+            const S32 to_evict = llmin(need - room, (S32)not_in_set.size());
+            for (S32 i = 0; i < to_evict; ++i)
+            {
+                sTrails.erase(not_in_set[i]);
+            }
+        }
+        // Invariant: |inset| <= max_actors, so after evicting every
+        // not-in-set trail the set still fits.
+    }
+
+    // --- 6: per-candidate sample/emit ----------------------------------------
+    for (const auto& cand : cands)
+    {
+        LLViewerObject* obj = gObjectList.findObject(cand.mId);
+        LLVOAvatar*     av  = obj ? obj->asAvatar() : nullptr;
+        const bool avatar_ok = av && !av->isDead();
+        const F32  hz = cand.mHalfExtents.mV[VZ];
+
+        Trail& t = sTrails[cand.mId]; // new entry: mNeedBreak = true (default member init)
+        t.mPalette = cand.mPaletteIdx;
+        t.mUnseenAccum = 0.0;
+        const bool fresh = !t.mHaveLast;
+
+        // [TronT3 P2-4 / O-P2] Pose-dependent offsets cached at creation and
+        // (only) whenever emit() opens a new segment -- never mid-segment, so
+        // a pose/attachment change never translates the emitter mid-stroke.
+        const auto recache = [&](Trail& tr)
+        {
+            tr.mSize = scale_to_avatar ? llclamp(2.f * hz / 1.9f, 0.25f, 4.f) : 1.f;
+            if (avatar_ok)
+            {
+                const LLVector3  rp  = av->getRenderPosition();
+                const LLVector3* ext = av->getLastAnimExtents();
+                // [TronT3 fix] Stale / zero animation extents (not yet
+                // animated, off-screen) put ext[0] far from the avatar and the
+                // offset would silently pin at the -3 m clamp. Out of range ->
+                // fall back to the candidate AABB bottom, then 0.
+                F32 off = (rp.isFinite() && ext[0].isFinite())
+                    ? ext[0].mV[VZ] - rp.mV[VZ] : -100.f;
+                if (!(off >= -3.f && off <= 1.f) && rp.isFinite())
+                {
+                    off = (cand.mCenter.mV[VZ] - hz) - rp.mV[VZ];
+                }
+                tr.mFootOffset = (off >= -3.f && off <= 1.f) ? off : 0.f;
+            }
+        };
+        const auto base_pos = [&](const Trail& tr) -> LLVector3
+        {
+            // Avatar: stable render position + cached feet. Non-avatar (set 6
+            // selected objects only): AABB bottom -- documented fallback, the
+            // emitter then follows the animated extents.
+            return avatar_ok
+                ? av->getRenderPosition() + LLVector3(0.f, 0.f, tr.mFootOffset)
+                : LLVector3(cand.mCenter.mV[VX], cand.mCenter.mV[VY], cand.mCenter.mV[VZ] - hz);
+        };
+        const auto emit = [&](Trail& tr)
+        {
+            if (tr.mNeedBreak || tr.mSegs.empty())
+            {
+                tr.mSegs.emplace_back();
+                tr.mNeedBreak = false;
+                recache(tr); // O-P2: recache ONLY when a segment opens
+            }
+            const LLVector3d pt_global = gAgent.getPosGlobalFromAgent(base_pos(tr));
+            if (!pt_global.isFinite())
+            {
+                return;
+            }
+            tr.mSegs.back().mPts.push_back({ pt_global, now, tr.mSize });
+            tr.mLastGlobal = pt_global;
+            tr.mLastActivityClock = now;
+            trail_cap(tr, max_segments, max_points);
+        };
+
+        if (fresh)
+        {
+            recache(t);
+        }
+
+        // Kinematics (step / dist_emit / speed) are always measured with the
+        // PRE-recache offset; only the stored point (inside emit()) takes the
+        // possibly-fresh one.
+        const LLVector3 base_agent = base_pos(t);
+        if (!base_agent.isFinite())
+        {
+            continue;
+        }
+        const LLVector3d g = gAgent.getPosGlobalFromAgent(base_agent);
+
+        if (fresh)
+        {
+            t.mHaveLast  = true;
+            t.mLastGlobal = g;
+            t.mPrevGlobal = g;
+            t.mPrevValid  = true;
+            t.mSpeedEma   = 0.f;
+            emit(t); // first point immediately (a 1-pt segment; drawn once a 2nd arrives)
+            continue;
+        }
+
+        // ---- consecutive-sample kinematics (P1-2): speed + teleport from
+        // the PREVIOUS SAMPLE, never from the last emission ----
+        const F64 step  = t.mPrevValid ? (g - t.mPrevGlobal).length() : 0.0;
+        const F32 speed = (F32)(step / llmax(pdt, 1.0e-3));
+        const F32 ema_a = 1.f - expf(-(F32)pdt / 0.15f); // EMA, tau 0.15 s of presentation time
+
+        if (step > (F64)break_distance)
+        {
+            t.mNeedBreak = true; // teleport (consecutive)
+            // [TronT3 fix] a teleport jump is not motion: keep the spike
+            // (e.g. 6000 m/s) out of the EMA so an actor standing still after
+            // it starts idling immediately.
+            t.mSpeedEma = 0.f;
+        }
+        else
+        {
+            t.mSpeedEma = t.mPrevValid ? (t.mSpeedEma + (speed - t.mSpeedEma) * ema_a) : speed;
+        }
+
+        // Spacing + resume use the last EMITTED point only.
+        const F64 dist_emit = (g - t.mLastGlobal).length();
+        if (t.mResumePending)
+        {
+            if (dist_emit > 0.5 * (F64)break_distance)
+            {
+                t.mNeedBreak = true;
+            }
+            t.mResumePending = false;
+        }
+
+        if (t.mSpeedEma < min_speed)
+        {
+            t.mIdleAccum += wall;
+            if (t.mIdleAccum > (F64)idle_break)
+            {
+                t.mNeedBreak = true;
+            }
+        }
+        else
+        {
+            t.mIdleAccum = 0.0;
+        }
+
+        if (dist_emit >= (F64)spacing && t.mSpeedEma >= min_speed)
+        {
+            emit(t); // emit() sets mLastGlobal
+        }
+
+        t.mPrevGlobal = g;
+        t.mPrevValid  = true; // advance the consecutive-sample state every sampled frame
+    }
+
+    // --- 7: unseen aging / drop ----------------------------------------------
+    for (auto it = sTrails.begin(); it != sTrails.end(); )
+    {
+        if (inset.find(it->first) == inset.end())
+        {
+            Trail& t = it->second;
+            t.mUnseenAccum += wall;
+            if (t.mUnseenAccum > 1.0)
+            {
+                t.mNeedBreak = true;
+            }
+            if (t.mUnseenAccum > 5.0 && t.mSegs.empty())
+            {
+                it = sTrails.erase(it);
+                continue;
+            }
+        }
+        ++it;
+    }
+
+    // --- 8 --------------------------------------------------------------------
+    sHasGeometry = false;
+    for (const auto& kv : sTrails)
+    {
+        for (const TrailSegment& seg : kv.second.mSegs)
+        {
+            if (seg.mPts.size() >= 2)
+            {
+                sHasGeometry = true;
+                break;
+            }
+        }
+        if (sHasGeometry)
+        {
+            break;
+        }
+    }
+    llassert((S32)sTrails.size() <= max_actors);
+}
+
+// [TronT3] TronTrailEnabled && hasTrailGeometry(). Pure/cheap; callers AND it
+// with isActiveForCurrentPass().
+bool ALTron::trailsWanted()
+{
+    static LLCachedControl<bool> trail_enabled_ctrl(gSavedSettings, "TronTrailEnabled", false);
+    return trail_enabled_ctrl() && hasTrailGeometry();
+}
+
+// [TronT3] At least one segment with >= 2 points after this frame's
+// updateTrails().
+bool ALTron::hasTrailGeometry()
+{
+    return sHasGeometry;
+}
+
+// [TronT3] Drops every stored point (button, scene load, master-off
+// transition, TronTrailEnabled off, cut). Deliberately resets nothing else --
+// the cut serial and sampling flags persist (T3 contract section 3.4).
+void ALTron::clearTrails()
+{
+    sTrails.clear();
+    sHasGeometry = false;
+}
+
+// [TronT3] Draws every trail into the CURRENTLY BOUND target (mWaterDis) --
+// T3 contract section 4.4. Vertices are uploaded CAMERA-RELATIVE (double
+// subtraction on the CPU) under a rotation-only modelview, exactly like
+// renderTronWorld's own cam_rel idiom, so a multi-thousand-metre global
+// coordinate never reaches float32 math directly.
+void ALTron::renderTrails(const ALTron::TrailDrawParams& p)
+{
+    if (!gTronTrailProgram.isComplete() || !sHasGeometry)
+    {
+        return;
+    }
+
+    // --- matrices (O-P2: push/pop on BOTH stacks -- exact restore) ----------
+    glm::mat4 mv_rot = glm::make_mat4(p.mModelview);
+    mv_rot[3] = glm::vec4(0.f, 0.f, 0.f, 1.f); // translation column zeroed -> camera at the origin
+    gGL.matrixMode(LLRender::MM_PROJECTION);
+    gGL.pushMatrix();
+    gGL.loadMatrix(p.mProjection);
+    gGL.matrixMode(LLRender::MM_MODELVIEW);
+    gGL.pushMatrix();
+    gGL.loadMatrix(glm::value_ptr(mv_rot));
+
+    // --- GL state contract (T3 contract section 1.3) ------------------------
+    LLGLDepthTest depth(GL_TRUE, GL_FALSE, GL_LEQUAL);
+    LLGLEnable    blend(GL_BLEND);
+    LLGLDisable   cull(GL_CULL_FACE);
+    gGL.blendFunc(LLRender::BF_ONE, LLRender::BF_ONE, LLRender::BF_ONE, LLRender::BF_ONE_MINUS_SOURCE_ALPHA);
+
+    gTronTrailProgram.bind();
+    const S32 ech = gTronTrailProgram.enableTexture(LLShaderMgr::EXPOSURE_MAP);
+    if (ech > -1)
+    {
+        gPipeline.mExposureMap.bindTexture(0, ech);
+    }
+    gTronTrailProgram.uniform1f(LLShaderMgr::EXPOSURE, p.mExposureSelector);
+
+    // --- per-pass settings ---------------------------------------------------
+    static LLCachedControl<S32> style_ctrl(gSavedSettings, "TronTrailStyle", 0);
+    static LLCachedControl<F32> intensity_ctrl(gSavedSettings, "TronTrailIntensity", 8.f);
+    static LLCachedControl<F32> height_ctrl(gSavedSettings, "TronTrailHeight", 1.2f);
+    static LLCachedControl<F32> width_ctrl(gSavedSettings, "TronTrailWidth", 0.6f);
+    static LLCachedControl<F32> lift_ctrl(gSavedSettings, "TronTrailLift", 0.03f);
+    static LLCachedControl<F32> fade_time_ctrl(gSavedSettings, "TronTrailFadeTime", 4.f);
+    static LLCachedControl<F32> fade_curve_ctrl(gSavedSettings, "TronTrailFadeCurve", 1.5f);
+    static LLCachedControl<F32> edge_ctrl(gSavedSettings, "TronTrailEdge", 0.12f);
+    static LLCachedControl<F32> edge_gain_ctrl(gSavedSettings, "TronTrailEdgeGain", 3.f);
+    static LLCachedControl<F32> body_gain_ctrl(gSavedSettings, "TronTrailBodyGain", 0.35f);
+    static LLCachedControl<F32> glow_ctrl(gSavedSettings, "TronTrailGlow", 1.f);
+    static LLCachedControl<S32> color_mode_ctrl(gSavedSettings, "TronTrailColorMode", 1);
+    static LLCachedControl<S32> fog_mode_ctrl(gSavedSettings, "TronTrailFog", 1);
+    static LLCachedControl<F32> fog_density_ctrl(gSavedSettings, "TronTrailFogDensity", 0.01f);
+
+    const S32 style       = std::clamp((S32)style_ctrl(), 0, 2);
+    const F32 intensity   = llclamp(finite_or((F32)intensity_ctrl(), 8.f), 0.f, 64.f);
+    const F32 height      = llclamp(finite_or((F32)height_ctrl(), 1.2f), 0.1f, 8.f);
+    const F32 width       = llclamp(finite_or((F32)width_ctrl(), 0.6f), 0.05f, 4.f);
+    const F32 lift        = llclamp(finite_or((F32)lift_ctrl(), 0.03f), -0.5f, 1.f);
+    const F32 fade_time   = llclamp(finite_or((F32)fade_time_ctrl(), 4.f), 0.2f, 60.f);
+    const F32 fade_curve  = llclamp(finite_or((F32)fade_curve_ctrl(), 1.5f), 0.25f, 4.f);
+    const F32 edge        = llclamp(finite_or((F32)edge_ctrl(), 0.12f), 0.02f, 0.5f);
+    const F32 edge_gain   = llclamp(finite_or((F32)edge_gain_ctrl(), 3.f), 0.f, 8.f);
+    const F32 body_gain   = llclamp(finite_or((F32)body_gain_ctrl(), 0.35f), 0.f, 2.f);
+    const F32 glow        = llclamp(finite_or((F32)glow_ctrl(), 1.f), 0.f, 1.f);
+    const S32 color_mode  = std::clamp((S32)color_mode_ctrl(), 0, 2);
+    const S32 fog_mode    = std::clamp((S32)fog_mode_ctrl(), 0, 1);
+    const F32 fog_density = llclamp(finite_or((F32)fog_density_ctrl(), 0.01f), 0.f, 0.2f);
+
+    gTronTrailProgram.uniform4f(LLShaderMgr::TRON_TRAIL_PARAMS, edge, edge_gain, body_gain, fade_curve);
+    gTronTrailProgram.uniform4f(LLShaderMgr::TRON_TRAIL_PARAMS2, intensity, (F32)style,
+        p.mWillExpose ? 1.f : p.mNoPostScale, p.mWillExpose ? 0.f : 1.f);
+    gTronTrailProgram.uniform4f(LLShaderMgr::TRON_TRAIL_PARAMS3, (F32)fog_mode, fog_density, 0.f, 0.f);
+
+    const ALTron::Palette pal = palette();
+    const LLVector3 up(0.f, 0.f, 1.f);
+    const F64 now = clock().mClockSeconds;
+
+    for (const auto& kv : sTrails)
+    {
+        const Trail& t = kv.second;
+
+        // --- colour (T3 contract section 3.5) -------------------------------
+        LLColor3 rgb = pal.mPrimary;
+        if (color_mode == 1)
+        {
+            switch (t.mPalette % 4)
+            {
+                case 1:  rgb = pal.mSecondary; break;
+                case 2:  rgb = pal.mAccent;    break;
+                case 3:  rgb = pal.mPulse;     break;
+                default: rgb = pal.mPrimary;   break;
+            }
+        }
+        else if (color_mode == 2)
+        {
+            rgb = pal.mSecondary;
+        }
+        gTronTrailProgram.uniform4f(LLShaderMgr::TRON_TRAIL_COLOR, rgb.mV[0], rgb.mV[1], rgb.mV[2], glow);
+
+        for (const TrailSegment& seg : t.mSegs)
+        {
+            const size_t n = seg.mPts.size();
+            if (n < 2)
+            {
+                continue; // never drawn until a 2nd point arrives
+            }
+
+            const auto rel_at = [&](size_t i) -> LLVector3
+            {
+                const LLVector3d& g = seg.mPts[i].mGlobal;
+                return LLVector3(
+                    (F32)(g.mdV[VX] - p.mCamGlobal.mdV[VX]),
+                    (F32)(g.mdV[VY] - p.mCamGlobal.mdV[VY]),
+                    (F32)(g.mdV[VZ] - p.mCamGlobal.mdV[VZ]));
+            };
+
+            LLVector3 prev_tangent(1.f, 0.f, 0.f);
+            LLVector3 prev_side(1.f, 0.f, 0.f);
+            bool have_side = false;
+
+            size_t idx = 0;
+            while (idx < n - 1)
+            {
+                const size_t chunk_last = llmin(idx + 999, n - 1); // <=1000 pts/chunk (2000 verts < the 4094 limit)
+                bool strip_open = false;
+
+                for (size_t i = idx; i <= chunk_last; ++i)
+                {
+                    LLVector3 tangent;
+                    if (i == 0)
+                    {
+                        tangent = trail_safe_unit(rel_at(1) - rel_at(0), prev_tangent);
+                    }
+                    else if (i == n - 1)
+                    {
+                        tangent = trail_safe_unit(rel_at(i) - rel_at(i - 1), prev_tangent);
+                    }
+                    else
+                    {
+                        tangent = trail_safe_unit(rel_at(i + 1) - rel_at(i - 1), prev_tangent);
+                    }
+                    prev_tangent = tangent;
+
+                    LLVector3 side_fallback = prev_side;
+                    if (!have_side)
+                    {
+                        side_fallback = trail_safe_unit(tangent % LLVector3(0.f, 1.f, 0.f), LLVector3(1.f, 0.f, 0.f));
+                        have_side = true;
+                    }
+                    const LLVector3 ground_side = trail_safe_unit(tangent % up, side_fallback);
+                    prev_side = ground_side;
+
+                    const LLVector3 rel = rel_at(i);
+                    const F32 pt_size = seg.mPts[i].mSize;
+                    const F32 h = height * pt_size;
+                    const F32 w = width * pt_size;
+
+                    LLVector3 a, b;
+                    if (style == 0) // wall
+                    {
+                        a = rel + up * lift;
+                        b = a + up * h;
+                    }
+                    else if (style == 1) // ground streak
+                    {
+                        const LLVector3 base = rel + up * lift;
+                        a = base - ground_side * (w * 0.5f);
+                        b = base + ground_side * (w * 0.5f);
+                    }
+                    else // 2: camera-facing ribbon
+                    {
+                        const LLVector3 cc = rel + up * (lift + 0.5f * h);
+                        const LLVector3 view = trail_safe_unit(-cc, LLVector3(0.f, 0.f, -1.f));
+                        const LLVector3 side = trail_safe_unit(tangent % view, ground_side);
+                        a = cc - side * (w * 0.5f);
+                        b = cc + side * (w * 0.5f);
+                    }
+
+                    if (!a.isFinite() || !b.isFinite())
+                    {
+                        if (strip_open)
+                        {
+                            gGL.end();
+                            strip_open = false;
+                        }
+                        continue; // strip ends; a new begin starts at the next finite pair
+                    }
+                    if (!strip_open)
+                    {
+                        gGL.begin(LLRender::TRIANGLE_STRIP);
+                        strip_open = true;
+                    }
+
+                    const F32 fade01 = (F32)llclamp(
+                        1.0 - (now - seg.mPts[i].mEmitClock) / (F64)fade_time,
+                        0.0, 1.0);
+                    gGL.texCoord2f(fade01, 0.f);
+                    gGL.vertex3fv(a.mV);
+                    gGL.texCoord2f(fade01, 1.f);
+                    gGL.vertex3fv(b.mV);
+                }
+
+                if (strip_open)
+                {
+                    gGL.end();
+                }
+                if (chunk_last >= n - 1)
+                {
+                    break;
+                }
+                idx = chunk_last; // next chunk starts at the last point of this chunk (repeats its vertex pair)
+            }
+        }
+    }
+
+    if (ech > -1)
+    {
+        gTronTrailProgram.disableTexture(LLShaderMgr::EXPOSURE_MAP);
+    }
+    LLGLSLShader::unbind();
+
+    gGL.matrixMode(LLRender::MM_MODELVIEW);
+    gGL.popMatrix();
+    gGL.matrixMode(LLRender::MM_PROJECTION);
+    gGL.popMatrix();
+    // [TronT3 fix] leave MODELVIEW selected (section 4.4): later callers such
+    // as renderFocusPoint() push/translate without selecting a mode.
+    gGL.matrixMode(LLRender::MM_MODELVIEW);
+    // [TronT3] CANONICAL reassert (path-guides idiom), NOT a restore of the
+    // incoming blend func -- renderFinalize's later consumers set their own.
+    gGL.setSceneBlendType(LLRender::BT_ALPHA);
+}
+
 // [TronT1] Applies one of the 8 T1 look presets -- see kLookPresets above
 // and the T1 contract section 8. Common column first, then the row's own
 // overrides, then the shared palette, then (only when the matching
@@ -682,7 +1536,9 @@ void ALTron::applyPreset(const std::string& key)
     gSavedSettings.setF32("TronGridIntensity", 6.f);
     gSavedSettings.setF32("TronGridMajorWidth", 2.f);
     gSavedSettings.setF32("TronGridMajorIntensity", 1.5f);
-    gSavedSettings.setF32("TronGridFarFade", 120.f);
+    // [TronT3] TronGridFarFade moves out of this common column and into a
+    // per-row field (row->mFarFade) -- the lightcycle look needs 400 m
+    // instead of the shared 120 m (contract section 7.1).
     gSavedSettings.setF32("TronGridFloor", 1.f);
     gSavedSettings.setF32("TronGridSharpness", 8.f);
     gSavedSettings.setS32("TronGridNormalSource", 1);
@@ -709,6 +1565,14 @@ void ALTron::applyPreset(const std::string& key)
     gSavedSettings.setF32("TronRimScanSpeed", 0.5f);
     gSavedSettings.setF32("TronRimScanWidth", 0.08f);
     gSavedSettings.setBOOL("TronRimRejectFloors", true);
+    // [TronT3] Common column additions (contract section 7.1).
+    gSavedSettings.setBOOL("TronTrailScaleToAvatar", true);
+    gSavedSettings.setF32("TronTrailFadeCurve", 1.5f);
+    gSavedSettings.setF32("TronTrailEdge", 0.12f);
+    gSavedSettings.setF32("TronTrailEdgeGain", 3.f);
+    gSavedSettings.setF32("TronTrailGlow", 1.f);
+    gSavedSettings.setS32("TronTrailFog", 1);
+    gSavedSettings.setF32("TronTrailFogDensity", 0.01f);
 
     // Per-row overrides.
     gSavedSettings.setF32("TronGradeDarkenEV", row->mDarkenEV);
@@ -750,6 +1614,18 @@ void ALTron::applyPreset(const std::string& key)
     gSavedSettings.setF32("TronRimPulseAmount", row->mRimPulseAmount);
     gSavedSettings.setF32("TronRimScanAmount", row->mRimScanAmount);
     gSavedSettings.setS32("TronRimColorMode", row->mRimColorMode);
+    // [TronT3] Now per-row (contract section 7.1: was the common column's
+    // static 120.f write above).
+    gSavedSettings.setF32("TronGridFarFade", row->mFarFade);
+    // [TronT3] Light-cycle trails.
+    gSavedSettings.setBOOL("TronTrailEnabled", row->mTrailEnabled);
+    gSavedSettings.setS32("TronTrailStyle", row->mTrailStyle);
+    gSavedSettings.setF32("TronTrailIntensity", row->mTrailIntensity);
+    gSavedSettings.setF32("TronTrailHeight", row->mTrailHeight);
+    gSavedSettings.setF32("TronTrailWidth", row->mTrailWidth);
+    gSavedSettings.setF32("TronTrailFadeTime", row->mTrailFadeTime);
+    gSavedSettings.setF32("TronTrailBodyGain", row->mTrailBodyGain);
+    gSavedSettings.setS32("TronTrailColorMode", row->mTrailColorMode);
 
     // [TronT1 P2-5 fix] applyPalettePreset() only writes the four colour
     // swatches, never TronPalette itself -- without this, the palette combo

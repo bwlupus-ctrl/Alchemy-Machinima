@@ -893,6 +893,14 @@ public:
         RIG_RIM_TRON,                      //  "rig_rim_tron"          vec4 mode (0 off, 1 tint, 2 tint+pulse), mix 0..1, pulse multiplier, reserved
         RIG_RIM_TRON_COLOR,                //  "rig_rim_tron_color"    vec4 palette colour rgb (linear), reserved
 
+        // [TronT3] Light-cycle trail ribbons (deferred/tronTrailF.glsl),
+        // uploaded by ALTron::renderTrails() on every draw (the program is
+        // never bound with stale uniforms; "off" == never bound).
+        TRON_TRAIL_COLOR,                  //  "tron_trail_color"      vec4 palette rgb (linear), glow feed 0..1
+        TRON_TRAIL_PARAMS,                 //  "tron_trail_params"     vec4 edge/core width (fraction), edge gain, body gain, fade exponent
+        TRON_TRAIL_PARAMS2,                //  "tron_trail_params2"    vec4 intensity, style 0/1/2, no-post scale, clamp-display flag
+        TRON_TRAIL_PARAMS3,                //  "tron_trail_params3"    vec4 fog mode, fog density 1/m, reserved, reserved
+
         END_RESERVED_UNIFORMS
     } eGLSLReservedUniforms;
     // clang-format on

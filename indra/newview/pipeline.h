@@ -323,11 +323,19 @@ public:
     // `dst` into mWaterDis, draw every pixel back, blit colour-only back into
     // `dst`). See LLPipeline::renderTronWorld's .cpp header comment and
     // scratchpad/tron_t1_contract.md section 3 for the full contract.
+    // [TronT3] Also draws the light-cycle trail ribbons (ALTron::renderTrails)
+    // into the same mWaterDis round-trip -- see scratchpad/tron_t3_contract.md
+    // section 4 for the mode-driven world/trails split.
+    // [TronT3] All three modes are live: WORLD_AND_TRAILS draws the fullscreen
+    // grade/grid/trace/rim pass AND the light-cycle trail ribbons in the same
+    // mWaterDis scratch round-trip; WORLD_ONLY / TRAILS_ONLY draw just the one
+    // (see the T3 contract section 4 for the mode -> world_wanted/
+    // trails_wanted derivation).
     enum ETronDraw : S32
     {
-        TRON_DRAW_WORLD_AND_TRAILS = 0, // T1 behaves as TRON_DRAW_WORLD_ONLY
+        TRON_DRAW_WORLD_AND_TRAILS = 0,
         TRON_DRAW_WORLD_ONLY       = 1,
-        TRON_DRAW_TRAILS_ONLY      = 2, // T3: returns immediately until then
+        TRON_DRAW_TRAILS_ONLY      = 2,
     };
     // is_scene_layer selects the Scene-layer exposure/water-detection rules
     // (see inkExposureSelector) and forces the camera/anchor/lattice re-

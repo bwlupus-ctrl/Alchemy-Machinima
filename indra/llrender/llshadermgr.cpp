@@ -2120,6 +2120,13 @@ void LLShaderMgr::initAttribsAndUniforms()
     mReservedUniforms.push_back("rig_rim_tron");
     mReservedUniforms.push_back("rig_rim_tron_color");
 
+    // [TronT3] Light-cycle trail ribbons (deferred/tronTrailF.glsl);
+    // lockstep with TRON_TRAIL_COLOR..TRON_TRAIL_PARAMS3 in llshadermgr.h.
+    mReservedUniforms.push_back("tron_trail_color");
+    mReservedUniforms.push_back("tron_trail_params");
+    mReservedUniforms.push_back("tron_trail_params2");
+    mReservedUniforms.push_back("tron_trail_params3");
+
     llassert(mReservedUniforms.size() == END_RESERVED_UNIFORMS);
 
     std::set<std::string> dupe_check;

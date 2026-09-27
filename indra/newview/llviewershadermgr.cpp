@@ -245,6 +245,8 @@ LLGLSLShader            gVolumetricLightProgram;
 LLGLSLShader            gCineOutlineProgram;
 // [TronT1] Tron World post pass (dark grade + world grid + pulses)
 LLGLSLShader            gTronWorldProgram;
+// [TronT3] Tron light-cycle trail ribbons (immediate-mode strips drawn inside renderTronWorld)
+LLGLSLShader            gTronTrailProgram;
 // [BDMerge G3.3] per-projector volumetric light cones (visible spotlight shafts)
 LLGLSLShader            gDeferredProjectorVolumetricProgram;
 LLGLSLShader            gDeferredProjectorVolumetricUpsampleProgram; // [BDMerge G3.3 P1 item 3]
@@ -640,6 +642,7 @@ void LLViewerShaderMgr::finalizeShaderList()
     mShaderList.push_back(&gVolumetricLightProgram);
     mShaderList.push_back(&gCineOutlineProgram);
     mShaderList.push_back(&gTronWorldProgram); // [TronT1]
+    mShaderList.push_back(&gTronTrailProgram); // [TronT3]
     mShaderList.push_back(&gCineFisheyeProgram);
     // [Ultimate Diopter]
     for (U32 i = 0; i < 4; ++i)
@@ -1676,6 +1679,7 @@ bool LLViewerShaderMgr::loadShadersDeferred()
         gVolumetricLightProgram.unload();
         gCineOutlineProgram.unload();
         gTronWorldProgram.unload(); // [TronT1]
+        gTronTrailProgram.unload(); // [TronT3]
         gDeferredProjectorVolumetricProgram.unload(); // [BDMerge G3.3]
         gDeferredProjectorVolumetricUpsampleProgram.unload(); // [BDMerge G3.3 P1 item 3]
         gDeferredProjectorVolumetricTemporalProgram.unload(); // [BDMerge G3.3 Batch 1 A]
@@ -3911,6 +3915,29 @@ bool LLViewerShaderMgr::loadShadersDeferred()
         if (!success)
         {
             LL_WARNS() << "Failed to create shader '" << gTronWorldProgram.mName << "', disabling!" << LL_ENDL;
+            success = true;
+        }
+    }
+
+    // [TronT3] Light-cycle trail ribbons: a PLAIN program (no deferred
+    // features -- it reads no G-buffer; depth testing is fixed-function
+    // against the scene depth the host blits into mWaterDis), fed by LLRender
+    // immediate mode (position + texcoord0) from ALTron::renderTrails(). Its
+    // matrices come from LLRender::syncMatrices(), the exposure map is bound
+    // by the host on the EXPOSURE_MAP channel. Same soft fail as the Tron
+    // World program: the call site gates on gTronTrailProgram.isComplete().
+    if (success)
+    {
+        gTronTrailProgram.mName = "Tron Trail Shader";
+        gTronTrailProgram.mShaderFiles.clear();
+        gTronTrailProgram.clearPermutations();
+        gTronTrailProgram.mShaderFiles.push_back(make_pair("deferred/tronTrailV.glsl", GL_VERTEX_SHADER));
+        gTronTrailProgram.mShaderFiles.push_back(make_pair("deferred/tronTrailF.glsl", GL_FRAGMENT_SHADER));
+        gTronTrailProgram.mShaderLevel = mShaderLevel[SHADER_DEFERRED];
+        success = gTronTrailProgram.createShader();
+        if (!success)
+        {
+            LL_WARNS() << "Failed to create shader '" << gTronTrailProgram.mName << "', disabling!" << LL_ENDL;
             success = true;
         }
     }

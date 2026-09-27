@@ -54,12 +54,24 @@ namespace ALTron
     // switched off (grade and grid both at 0).
     bool isEnabledMaster();
 
+    // [TronT3] TronGradeStrength > 0 || TronGridEnabled || (TronTraceEnabled &&
+    // TronTraceIntensity > 0) || (TronRimEnabled && TronRimGain > 0), finite_or'd
+    // -- EXACTLY renderTronWorld's own local early-out predicate (O-P1-2), i.e.
+    // "the Tron World fullscreen pass has something to draw". Split out of
+    // isEnabled() so the trail-only case is distinguishable (trails draw at S3
+    // even when the world pass has nothing to do or runs at Scene). Pre-gate
+    // only: renderTronWorld re-evaluates its own local copy.
+    bool worldHasWork();
+
     // [TronT1] isEnabledMaster() && (TronGradeStrength > 0 || TronGridEnabled)
     // -- the master gate every render-affecting consumer (isActiveForCurrent-
     // Pass(), the Lightbox tab's group visibility) should use: TronEnabled
     // alone with both the grade and the grid off has nothing to draw, so the
     // Tron World pass should not even attempt its own per-frame settings
-    // read/gather. T2/T3 OR their own enable flags into this in later phases.
+    // read/gather.
+    // [TronT3] Now isEnabledMaster() && (worldHasWork() || TronTrailEnabled):
+    // trails alone (world pass fully off) still count as "Tron has something
+    // to draw".
     bool isEnabled();
 
     // isEnabled() && the current render context is one Tron may draw into:
@@ -188,6 +200,37 @@ namespace ALTron
 
     // The frame state resolved by the most recent resolveFrame() call.
     const Frame& frame();
+
+    // [TronT3] Light-cycle trails. updateTrails(): once per main-loop iteration
+    // (guard = LLPresentationTime::currentFrame().generation, NOT gFrameCount --
+    // tiles / 360 faces call display() repeatedly within one tick; main RT
+    // only), in renderFinalize's HDR prologue BEFORE resolveFrame(). Samples
+    // emitters, ages/prunes, enforces every storage cap, handles clears.
+    void updateTrails();
+    // TronTrailEnabled && hasTrailGeometry(). Pure/cheap; callers AND it with
+    // isActiveForCurrentPass().
+    bool trailsWanted();
+    // At least one segment with >= 2 points after this frame's updateTrails().
+    bool hasTrailGeometry();
+    // Drops every stored point (button, scene load, master-off transition,
+    // TronTrailEnabled off, cut).
+    void clearTrails();
+
+    // [TronT3] Parameters LLPipeline::renderTronWorld hands to renderTrails()
+    // (the T3 contract section 3.1 / 4.4).
+    struct TrailDrawParams
+    {
+        LLVector3d mCamGlobal;     // pass camera origin, global (renderTronWorld's cam_global)
+        const F32* mModelview;     // pass mv (F32[16]); ALTron zeroes the translation column itself
+        const F32* mProjection;    // pass proj
+        F32  mExposureSelector;    // inkExposureSelector(false, hdr_path)
+        bool mWillExpose;          // colorCorrectWillApplyExposure(true)
+        F32  mNoPostScale;         // sanitised TronNoPostScale
+    };
+    // Draws every trail into the CURRENTLY BOUND target (mWaterDis) -- see the
+    // T3 contract section 4.4. Requires gTronTrailProgram.isComplete() (checked
+    // by the caller AND re-checked inside).
+    void renderTrails(const TrailDrawParams& params);
 
     // [TronT1] Applies one of the 8 T1 look presets (section 8 of the T1
     // contract): writes every "L" key (grade/grid/pulse/Rig-Rim-Tron look

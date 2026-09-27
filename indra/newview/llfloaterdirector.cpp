@@ -1365,6 +1365,10 @@ void LLFloaterDirector::loadScene(const std::string& name)
         }
     }
 
+    // [TronT3] A scene load is a hard edit: light-cycle trails laid under the
+    // previous scene's cast/set have no business surviving into this one.
+    ALTron::clearTrails();
+
     // Structured state carries the session-only anchor and the deterministic
     // FX phase, plus a denormalized base setup for self-contained scenes.
     ALCineLightRigManager::instance().applySceneData(scene["light_rig"]);

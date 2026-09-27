@@ -101,6 +101,9 @@ public:
     // 0) when Grid Enable is off, the single-subject target row per Target
     // set, the whole Subject group per the grid-exclude/radius/keep-subject
     // OR, and the tag-unavailable hint under the mask-source combos.
+    // [TronT3] Also every tr_trail_* row but the header/enable when trails
+    // are off, plus the Height/Width/Fog-density/Single-subject rows' own
+    // Style/Fog/Target-set conditions.
     void updateTronVisibility();
     // [RotoInk Anim] Single show/hide pass over every round-A control whose
     // visibility depends on another control's value (A.8): layer 1/2 motion
@@ -129,6 +132,11 @@ public:
     boost::signals2::scoped_connection mTronTracePulseAmountConnection;
     boost::signals2::scoped_connection mTronRimEnabledConnection;
     boost::signals2::scoped_connection mTronRimScanAmountConnection;
+    // [TronT3] Light-cycle trail drivers of updateTronVisibility().
+    boost::signals2::scoped_connection mTronTrailEnabledConnection;
+    boost::signals2::scoped_connection mTronTrailStyleConnection;
+    boost::signals2::scoped_connection mTronTrailFogConnection;
+    boost::signals2::scoped_connection mTronTrailTargetSetConnection;
     // [RotoInk Anim] All seven drive the same updateRotoInkAnimVisibility().
     boost::signals2::scoped_connection mRotoInkMotionStyleConnection;
     boost::signals2::scoped_connection mRotoInkMotion2StyleConnection;

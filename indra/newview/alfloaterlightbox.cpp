@@ -94,6 +94,9 @@ ALFloaterLightBox::ALFloaterLightBox(const LLSD& key)
     mCommitCallbackRegistrar.add("LightBox.TronGridOriginClear", std::bind(&ALFloaterLightBox::onTronGridOriginClear, this));
     mCommitCallbackRegistrar.add("LightBox.TronApplyRotoPreset", std::bind(&ALFloaterLightBox::onTronApplyRotoPreset, this));
     mCommitCallbackRegistrar.add("LightBox.TronApplyRigRimPreset", std::bind(&ALFloaterLightBox::onTronApplyRigRimPreset, this));
+    // [TronT3] "Clear trails" button -- works even while Tron/trails are
+    // disabled (the button has no enabled_control).
+    mCommitCallbackRegistrar.add("LightBox.TronClearTrails", [](LLUICtrl*, const LLSD&) { ALTron::clearTrails(); });
 }
 
 ALFloaterLightBox::~ALFloaterLightBox()
@@ -125,6 +128,11 @@ ALFloaterLightBox::~ALFloaterLightBox()
     mTronTracePulseAmountConnection.disconnect();
     mTronRimEnabledConnection.disconnect();
     mTronRimScanAmountConnection.disconnect();
+    // [TronT3]
+    mTronTrailEnabledConnection.disconnect();
+    mTronTrailStyleConnection.disconnect();
+    mTronTrailFogConnection.disconnect();
+    mTronTrailTargetSetConnection.disconnect();
 }
 
 bool ALFloaterLightBox::postBuild()
@@ -220,6 +228,11 @@ bool ALFloaterLightBox::postBuild()
     mTronTracePulseAmountConnection = gSavedSettings.getControl("TronTracePulseAmount")->getSignal()->connect([&](LLControlVariable*, const LLSD&, const LLSD&) { updateTronVisibility(); });
     mTronRimEnabledConnection = gSavedSettings.getControl("TronRimEnabled")->getSignal()->connect([&](LLControlVariable*, const LLSD&, const LLSD&) { updateTronVisibility(); });
     mTronRimScanAmountConnection = gSavedSettings.getControl("TronRimScanAmount")->getSignal()->connect([&](LLControlVariable*, const LLSD&, const LLSD&) { updateTronVisibility(); });
+    // [TronT3] Light-cycle trails.
+    mTronTrailEnabledConnection = gSavedSettings.getControl("TronTrailEnabled")->getSignal()->connect([&](LLControlVariable*, const LLSD&, const LLSD&) { updateTronVisibility(); });
+    mTronTrailStyleConnection = gSavedSettings.getControl("TronTrailStyle")->getSignal()->connect([&](LLControlVariable*, const LLSD&, const LLSD&) { updateTronVisibility(); });
+    mTronTrailFogConnection = gSavedSettings.getControl("TronTrailFog")->getSignal()->connect([&](LLControlVariable*, const LLSD&, const LLSD&) { updateTronVisibility(); });
+    mTronTrailTargetSetConnection = gSavedSettings.getControl("TronTrailTargetSet")->getSignal()->connect([&](LLControlVariable*, const LLSD&, const LLSD&) { updateTronVisibility(); });
 
     return LLFloater::postBuild();
 }
@@ -886,6 +899,69 @@ void ALFloaterLightBox::updateTronVisibility()
     if (LLView* v = findChild<LLView>("tr_subject_target_label")) v->setVisible(subject_group && single_subject);
     if (LLView* v = findChild<LLView>("tr_subject_target_combo")) v->setVisible(subject_group && single_subject);
     if (LLView* v = findChild<LLView>("tr_subject_source_hint")) v->setVisible(subject_group && !tag_active);
+
+    // [TronT3] Light-cycle trails: every row but the header/enable is hidden
+    // when TronTrailEnabled is off; Height/Width/Fog density/Single subject
+    // additionally depend on Style/Fog mode/Target set (T3 contract section 6).
+    const bool trail_on    = gSavedSettings.getBOOL("TronTrailEnabled");
+    const S32  trail_style = gSavedSettings.getS32("TronTrailStyle");
+    const S32  trail_fog   = gSavedSettings.getS32("TronTrailFog");
+    const S32  trail_set   = gSavedSettings.getS32("TronTrailTargetSet");
+    static const std::string trail_widgets[] = {
+        "tr_trail_style_label", "tr_trail_style_combo",
+        "tr_trail_target_set_label", "tr_trail_target_set_combo",
+        "tr_trail_max_actors_label", "tr_trail_max_actors_spinner",
+        "tr_trail_intensity_label", "tr_trail_intensity_slider", "tr_reset_TronTrailIntensity",
+        "tr_trail_color_mode_label", "tr_trail_color_mode_combo",
+        "tr_trail_scale_check",
+        "tr_trail_lift_label", "tr_trail_lift_slider", "tr_reset_TronTrailLift",
+        "tr_trail_fade_time_label", "tr_trail_fade_time_slider", "tr_reset_TronTrailFadeTime",
+        "tr_trail_fade_curve_label", "tr_trail_fade_curve_slider", "tr_reset_TronTrailFadeCurve",
+        "tr_trail_edge_label", "tr_trail_edge_slider", "tr_reset_TronTrailEdge",
+        "tr_trail_edge_gain_label", "tr_trail_edge_gain_slider", "tr_reset_TronTrailEdgeGain",
+        "tr_trail_body_gain_label", "tr_trail_body_gain_slider", "tr_reset_TronTrailBodyGain",
+        "tr_trail_glow_label", "tr_trail_glow_slider", "tr_reset_TronTrailGlow",
+        "tr_trail_fog_label", "tr_trail_fog_combo",
+        "tr_trail_spacing_label", "tr_trail_spacing_slider", "tr_reset_TronTrailSpacing",
+        "tr_trail_min_speed_label", "tr_trail_min_speed_slider", "tr_reset_TronTrailMinSpeed",
+        "tr_trail_idle_break_label", "tr_trail_idle_break_slider", "tr_reset_TronTrailIdleBreak",
+        "tr_trail_break_distance_label", "tr_trail_break_distance_slider", "tr_reset_TronTrailBreakDistance",
+        "tr_trail_max_points_label", "tr_trail_max_points_spinner",
+        "tr_trail_max_segments_label", "tr_trail_max_segments_spinner",
+        "tr_trail_clear_on_cut_check",
+        "tr_trail_clear_btn",
+    };
+    for (const std::string& name : trail_widgets)
+    {
+        if (LLView* v = findChild<LLView>(name)) v->setVisible(trail_on);
+    }
+    static const std::string trail_height_widgets[] = {
+        "tr_trail_height_label", "tr_trail_height_slider", "tr_reset_TronTrailHeight",
+    };
+    const bool trail_height_visible = trail_on && (trail_style != 1);
+    for (const std::string& name : trail_height_widgets)
+    {
+        if (LLView* v = findChild<LLView>(name)) v->setVisible(trail_height_visible);
+    }
+    static const std::string trail_width_widgets[] = {
+        "tr_trail_width_label", "tr_trail_width_slider", "tr_reset_TronTrailWidth",
+    };
+    const bool trail_width_visible = trail_on && (trail_style != 0);
+    for (const std::string& name : trail_width_widgets)
+    {
+        if (LLView* v = findChild<LLView>(name)) v->setVisible(trail_width_visible);
+    }
+    static const std::string trail_fog_density_widgets[] = {
+        "tr_trail_fog_density_label", "tr_trail_fog_density_slider", "tr_reset_TronTrailFogDensity",
+    };
+    const bool trail_fog_density_visible = trail_on && (trail_fog != 0);
+    for (const std::string& name : trail_fog_density_widgets)
+    {
+        if (LLView* v = findChild<LLView>(name)) v->setVisible(trail_fog_density_visible);
+    }
+    const bool trail_single_target_visible = trail_on && (trail_set == 0);
+    if (LLView* v = findChild<LLView>("tr_trail_target_label")) v->setVisible(trail_single_target_visible);
+    if (LLView* v = findChild<LLView>("tr_trail_target_combo")) v->setVisible(trail_single_target_visible);
 }
 
 void ALFloaterLightBox::populateLUTCombo()

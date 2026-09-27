@@ -5296,7 +5296,7 @@
 		<panel follows="all" label="Tron" layout="topleft" name="tron_settings" can_resize="false">
 			<scroll_container follows="all" height="806" layout="topleft" left="0"
 			 name="tron_settings_scroll" opaque="false" reserve_scroll_corner="false" top="0" width="420">
-				<panel background_visible="false" follows="left|top|right" height="3300" layout="topleft" left="0"
+				<panel background_visible="false" follows="left|top|right" height="4100" layout="topleft" left="0"
 				 name="tron_settings_scroll_content" top="0" width="400">
 			<text follows="left|top" height="15" left="8" top_pad="12" width="384" layout="topleft" font="SansSerifBold" value="Tron (world grade + neon grid)" />
 			<check_box follows="left|top" height="16" left="12" top_pad="6" width="360" layout="topleft" label="Enable Tron World" name="tr_enable" control_name="TronEnabled" tool_tip="HDR only. Off is byte-identical to the current frame: the World pass never draws or uploads its own uniforms. (The Rig Rim card's own Tron tint still uploads its off value, mode 0, on every bind -- an exact no-op, not a visible difference.)" />
@@ -5323,6 +5323,7 @@
 				<combo_box.item label="Disc Arena" name="arena" value="arena" />
 				<combo_box.item label="Grid Only (no grade)" name="gridonly" value="gridonly" />
 				<combo_box.item label="Neon Suit Only" name="neonsuit" value="neonsuit" />
+				<combo_box.item label="Light-Cycle Run" name="lightcycle" value="lightcycle" />
 			</combo_box>
 			<check_box follows="left|top" height="16" left="208" top_pad="-19" width="90" layout="topleft" label="+ Roto Ink" name="tr_also_roto" control_name="TronPresetAlsoRoto" tool_tip="A Tron preset also applies its linked Roto Ink preset (Lightbox -> Roto Ink)." />
 			<check_box follows="left|top" height="16" left="304" top_pad="0" width="90" layout="topleft" label="+ Rig Rim" name="tr_also_rigrim" control_name="TronPresetAlsoRigRim" tool_tip="A Tron preset also applies its linked Rig Rim preset (Lightbox -> Rig Rim card on the Cine Light Rig panel)." />
@@ -5590,6 +5591,99 @@
 			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" name="tr_suit_rim_gain_label" value="Rim gain:" />
 			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="0" max_val="4" increment="0.05" decimal_digits="2" show_text="true" can_edit_text="true" name="tr_suit_rim_gain_slider" control_name="TronSuitRimGain" tool_tip="Suit rim brightness multiplier; 0 = seams only." />
 			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="tr_reset_TronSuitRimGain"><button.commit_callback function="LightBox.ResetControlDefault" parameter="TronSuitRimGain" /></button>
+
+			<text follows="left|top" height="15" left="8" top_pad="14" width="384" layout="topleft" font="SansSerifBold" name="tr_trail_header" value="Light-cycle trails" />
+			<check_box follows="left|top" height="16" left="12" top_pad="6" width="360" layout="topleft" label="Enable trails" name="tr_trail_enable" control_name="TronTrailEnabled" enabled_control="TronEnabled" tool_tip="Light-cycle trails behind moving actors. Drawn at the Camera slot even when Layer = Scene; not graded; shows through glass in front." />
+			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" name="tr_trail_style_label" value="Style:" />
+			<combo_box follows="left|top" layout="topleft" height="20" top_pad="-17" left="136" width="188" allow_text_entry="false" name="tr_trail_style_combo" control_name="TronTrailStyle" enabled_control="TronEnabled" tool_tip="0 vertical light wall, 1 flat ground streak, 2 camera-facing ribbon at mid-body height.">
+				<combo_box.item label="Light wall" name="tr_trail_style_wall" value="0" />
+				<combo_box.item label="Ground streak" name="tr_trail_style_ground" value="1" />
+				<combo_box.item label="Camera ribbon" name="tr_trail_style_camera" value="2" />
+			</combo_box>
+			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" name="tr_trail_target_set_label" value="Target set:" />
+			<combo_box follows="left|top" layout="topleft" height="20" top_pad="-17" left="136" width="188" allow_text_entry="false" name="tr_trail_target_set_combo" control_name="TronTrailTargetSet" enabled_control="TronEnabled" tool_tip="Which actors lay trails (same list as Subject Target set). Un-culled: off-screen actors keep laying trail.">
+				<combo_box.item label="Single Director subject" name="tr_tt_single" value="0" />
+				<combo_box.item label="All Director cast" name="tr_tt_cast" value="1" />
+				<combo_box.item label="All avatars in view" name="tr_tt_allav" value="2" />
+				<combo_box.item label="Only my avatar" name="tr_tt_self" value="3" />
+				<combo_box.item label="All avatars except me" name="tr_tt_exceptme" value="4" />
+				<combo_box.item label="Nearest N avatars" name="tr_tt_nearest" value="5" />
+				<combo_box.item label="Selected objects" name="tr_tt_selected" value="6" />
+				<combo_box.item label="Animesh only" name="tr_tt_animesh" value="7" />
+			</combo_box>
+			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" name="tr_trail_target_label" value="Single subject:" />
+			<combo_box follows="left|top" layout="topleft" height="20" top_pad="-17" left="136" width="188" allow_text_entry="false" name="tr_trail_target_combo" control_name="TronTrailTarget" enabled_control="TronEnabled" tool_tip="Only used when Target set is Single Director subject.">
+				<combo_box.item label="Self" name="tr_tt_st_director" value="0" />
+				<combo_box.item label="Subject A" name="tr_tt_st_a" value="1" />
+				<combo_box.item label="Subject B" name="tr_tt_st_b" value="2" />
+				<combo_box.item label="Subject C" name="tr_tt_st_c" value="3" />
+				<combo_box.item label="Subject D" name="tr_tt_st_d" value="4" />
+			</combo_box>
+			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" name="tr_trail_max_actors_label" value="Max actors:" />
+			<spinner follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="80" min_val="1" max_val="16" increment="1" decimal_digits="0" name="tr_trail_max_actors_spinner" control_name="TronTrailMaxActors" enabled_control="TronEnabled" tool_tip="Nearest N candidates sample; others' trails age out." />
+			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" name="tr_trail_intensity_label" value="Intensity:" />
+			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="0" max_val="64" increment="0.25" decimal_digits="2" show_text="true" can_edit_text="true" name="tr_trail_intensity_slider" control_name="TronTrailIntensity" enabled_control="TronEnabled" tool_tip="Trail brightness, display-intent linear, exposure independent." />
+			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="tr_reset_TronTrailIntensity"><button.commit_callback function="LightBox.ResetControlDefault" parameter="TronTrailIntensity" /></button>
+			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" name="tr_trail_color_mode_label" value="Colour mode:" />
+			<combo_box follows="left|top" layout="topleft" height="20" top_pad="-17" left="136" width="188" allow_text_entry="false" name="tr_trail_color_mode_combo" control_name="TronTrailColorMode" enabled_control="TronEnabled" tool_tip="Per-actor cycles primary/secondary/accent/pulse by the actor's stable palette index (same as Neon rim colour mode 1).">
+				<combo_box.item label="Primary" name="tr_trail_cm_primary" value="0" />
+				<combo_box.item label="Per-actor palette" name="tr_trail_cm_peractor" value="1" />
+				<combo_box.item label="Secondary" name="tr_trail_cm_secondary" value="2" />
+			</combo_box>
+			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" name="tr_trail_height_label" value="Height m:" />
+			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="0.1" max_val="8" increment="0.05" decimal_digits="2" show_text="true" can_edit_text="true" name="tr_trail_height_slider" control_name="TronTrailHeight" enabled_control="TronEnabled" tool_tip="Wall height / camera-ribbon centre height (x actor scale)." />
+			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="tr_reset_TronTrailHeight"><button.commit_callback function="LightBox.ResetControlDefault" parameter="TronTrailHeight" /></button>
+			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" name="tr_trail_width_label" value="Width m:" />
+			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="0.05" max_val="4" increment="0.05" decimal_digits="2" show_text="true" can_edit_text="true" name="tr_trail_width_slider" control_name="TronTrailWidth" enabled_control="TronEnabled" tool_tip="Ground streak / camera ribbon width (x actor scale)." />
+			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="tr_reset_TronTrailWidth"><button.commit_callback function="LightBox.ResetControlDefault" parameter="TronTrailWidth" /></button>
+			<check_box follows="left|top" height="16" left="12" top_pad="6" width="360" layout="topleft" label="Scale to avatar" name="tr_trail_scale_check" control_name="TronTrailScaleToAvatar" enabled_control="TronEnabled" tool_tip="Scale height/width by the actor's bounding height / 1.9 m." />
+			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" name="tr_trail_lift_label" value="Lift m:" />
+			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="-0.5" max_val="1" increment="0.01" decimal_digits="2" show_text="true" can_edit_text="true" name="tr_trail_lift_slider" control_name="TronTrailLift" enabled_control="TronEnabled" tool_tip="Base lift above the feet AABB (avoids floor z-fight; additive blend)." />
+			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="tr_reset_TronTrailLift"><button.commit_callback function="LightBox.ResetControlDefault" parameter="TronTrailLift" /></button>
+			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" name="tr_trail_fade_time_label" value="Fade time s:" />
+			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="0.2" max_val="60" increment="0.1" decimal_digits="1" show_text="true" can_edit_text="true" name="tr_trail_fade_time_slider" control_name="TronTrailFadeTime" enabled_control="TronEnabled" tool_tip="Age at which a point is gone (Tron clock seconds: pause freezes, Director speed scales)." />
+			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="tr_reset_TronTrailFadeTime"><button.commit_callback function="LightBox.ResetControlDefault" parameter="TronTrailFadeTime" /></button>
+			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" name="tr_trail_fade_curve_label" value="Fade curve:" />
+			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="0.25" max_val="4" increment="0.05" decimal_digits="2" show_text="true" can_edit_text="true" name="tr_trail_fade_curve_slider" control_name="TronTrailFadeCurve" enabled_control="TronEnabled" tool_tip="Fade exponent; > 1 = long dim tail." />
+			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="tr_reset_TronTrailFadeCurve"><button.commit_callback function="LightBox.ResetControlDefault" parameter="TronTrailFadeCurve" /></button>
+			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" name="tr_trail_edge_label" value="Edge / core:" />
+			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="0.02" max_val="0.5" increment="0.01" decimal_digits="2" show_text="true" can_edit_text="true" name="tr_trail_edge_slider" control_name="TronTrailEdge" enabled_control="TronEnabled" tool_tip="Width of the bright top cap (wall) / core line (ground, camera), fraction of the ribbon." />
+			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="tr_reset_TronTrailEdge"><button.commit_callback function="LightBox.ResetControlDefault" parameter="TronTrailEdge" /></button>
+			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" name="tr_trail_edge_gain_label" value="Edge gain:" />
+			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="0" max_val="8" increment="0.1" decimal_digits="1" show_text="true" can_edit_text="true" name="tr_trail_edge_gain_slider" control_name="TronTrailEdgeGain" enabled_control="TronEnabled" tool_tip="Cap / core brightness multiple." />
+			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="tr_reset_TronTrailEdgeGain"><button.commit_callback function="LightBox.ResetControlDefault" parameter="TronTrailEdgeGain" /></button>
+			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" name="tr_trail_body_gain_label" value="Body gain:" />
+			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="0" max_val="2" increment="0.05" decimal_digits="2" show_text="true" can_edit_text="true" name="tr_trail_body_gain_slider" control_name="TronTrailBodyGain" enabled_control="TronEnabled" tool_tip="Translucent body brightness multiple." />
+			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="tr_reset_TronTrailBodyGain"><button.commit_callback function="LightBox.ResetControlDefault" parameter="TronTrailBodyGain" /></button>
+			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" name="tr_trail_glow_label" value="Glow:" />
+			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="0" max_val="1" increment="0.01" decimal_digits="2" show_text="true" can_edit_text="true" name="tr_trail_glow_slider" control_name="TronTrailGlow" enabled_control="TronEnabled" tool_tip="Alpha glow-tag feed (exposure-stable bloom)." />
+			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="tr_reset_TronTrailGlow"><button.commit_callback function="LightBox.ResetControlDefault" parameter="TronTrailGlow" /></button>
+			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" name="tr_trail_fog_label" value="Fog:" />
+			<combo_box follows="left|top" layout="topleft" height="20" top_pad="-17" left="136" width="188" allow_text_entry="false" name="tr_trail_fog_combo" control_name="TronTrailFog" enabled_control="TronEnabled" tool_tip="Analytic distance fade toward black (WindLight fog is a later phase).">
+				<combo_box.item label="Off" name="tr_trail_fog_off" value="0" />
+				<combo_box.item label="Analytic" name="tr_trail_fog_analytic" value="1" />
+			</combo_box>
+			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" name="tr_trail_fog_density_label" value="Fog density:" />
+			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="0" max_val="0.2" increment="0.001" decimal_digits="3" show_text="true" can_edit_text="true" name="tr_trail_fog_density_slider" control_name="TronTrailFogDensity" enabled_control="TronEnabled" tool_tip="Analytic trail fog density, per metre." />
+			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="tr_reset_TronTrailFogDensity"><button.commit_callback function="LightBox.ResetControlDefault" parameter="TronTrailFogDensity" /></button>
+			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" name="tr_trail_spacing_label" value="Spacing m:" />
+			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="0.05" max_val="2" increment="0.01" decimal_digits="2" show_text="true" can_edit_text="true" name="tr_trail_spacing_slider" control_name="TronTrailSpacing" enabled_control="TronEnabled" tool_tip="Minimum distance between stored points." />
+			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="tr_reset_TronTrailSpacing"><button.commit_callback function="LightBox.ResetControlDefault" parameter="TronTrailSpacing" /></button>
+			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" name="tr_trail_min_speed_label" value="Min speed m/s:" />
+			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="0" max_val="10" increment="0.1" decimal_digits="1" show_text="true" can_edit_text="true" name="tr_trail_min_speed_slider" control_name="TronTrailMinSpeed" enabled_control="TronEnabled" tool_tip="Below this no points are laid; above Idle break seconds the trail is split." />
+			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="tr_reset_TronTrailMinSpeed"><button.commit_callback function="LightBox.ResetControlDefault" parameter="TronTrailMinSpeed" /></button>
+			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" name="tr_trail_idle_break_label" value="Idle break s:" />
+			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="0" max_val="10" increment="0.1" decimal_digits="1" show_text="true" can_edit_text="true" name="tr_trail_idle_break_slider" control_name="TronTrailIdleBreak" enabled_control="TronEnabled" tool_tip="Seconds below Min speed before a trail segment breaks." />
+			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="tr_reset_TronTrailIdleBreak"><button.commit_callback function="LightBox.ResetControlDefault" parameter="TronTrailIdleBreak" /></button>
+			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" name="tr_trail_break_distance_label" value="Break dist. m:" />
+			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="1" max_val="64" increment="0.5" decimal_digits="1" show_text="true" can_edit_text="true" name="tr_trail_break_distance_slider" control_name="TronTrailBreakDistance" enabled_control="TronEnabled" tool_tip="Jump larger than this (teleport) starts a new segment; half of it after a clock pause." />
+			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="tr_reset_TronTrailBreakDistance"><button.commit_callback function="LightBox.ResetControlDefault" parameter="TronTrailBreakDistance" /></button>
+			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" name="tr_trail_max_points_label" value="Max points:" />
+			<spinner follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="80" min_val="16" max_val="1024" increment="16" decimal_digits="0" name="tr_trail_max_points_spinner" control_name="TronTrailMaxPoints" enabled_control="TronEnabled" tool_tip="Per actor (oldest segment trimmed first)." />
+			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" name="tr_trail_max_segments_label" value="Max segments:" />
+			<spinner follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="80" min_val="1" max_val="16" increment="1" decimal_digits="0" name="tr_trail_max_segments_spinner" control_name="TronTrailMaxSegments" enabled_control="TronEnabled" tool_tip="Per actor." />
+			<check_box follows="left|top" height="16" left="12" top_pad="6" width="360" layout="topleft" label="Clear on Director cut" name="tr_trail_clear_on_cut_check" control_name="TronTrailClearOnCut" enabled_control="TronEnabled" tool_tip="Clear all trails on every Director cut (note: eased transitions, rewind and resume also count as cuts)." />
+			<button follows="left|top" layout="topleft" height="22" left="12" top_pad="10" width="120" name="tr_trail_clear_btn" label="Clear trails" tool_tip="Drops every stored trail point now."><button.commit_callback function="LightBox.TronClearTrails" /></button>
 
 			<text follows="left|top" height="15" left="8" top_pad="14" width="384" layout="topleft" font="SansSerifBold" name="tr_subject_header" value="Subject / targets" />
 			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" name="tr_subject_target_set_label" value="Target set:" />
