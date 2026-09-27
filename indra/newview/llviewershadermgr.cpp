@@ -243,6 +243,8 @@ LLGLSLShader            gUltimateKaleidoProgram;
 LLGLSLShader            gVolumetricLightProgram;
 // [Cine Outline Phase 1] deferred normal/depth outline post pass
 LLGLSLShader            gCineOutlineProgram;
+// [TronT1] Tron World post pass (dark grade + world grid + pulses)
+LLGLSLShader            gTronWorldProgram;
 // [BDMerge G3.3] per-projector volumetric light cones (visible spotlight shafts)
 LLGLSLShader            gDeferredProjectorVolumetricProgram;
 LLGLSLShader            gDeferredProjectorVolumetricUpsampleProgram; // [BDMerge G3.3 P1 item 3]
@@ -637,6 +639,7 @@ void LLViewerShaderMgr::finalizeShaderList()
     // haze_density/(blue_density+haze_density) = 0/0 = NaN and blacks the frame
     mShaderList.push_back(&gVolumetricLightProgram);
     mShaderList.push_back(&gCineOutlineProgram);
+    mShaderList.push_back(&gTronWorldProgram); // [TronT1]
     mShaderList.push_back(&gCineFisheyeProgram);
     // [Ultimate Diopter]
     for (U32 i = 0; i < 4; ++i)
@@ -1672,6 +1675,7 @@ bool LLViewerShaderMgr::loadShadersDeferred()
         gUltimateKaleidoProgram.unload();
         gVolumetricLightProgram.unload();
         gCineOutlineProgram.unload();
+        gTronWorldProgram.unload(); // [TronT1]
         gDeferredProjectorVolumetricProgram.unload(); // [BDMerge G3.3]
         gDeferredProjectorVolumetricUpsampleProgram.unload(); // [BDMerge G3.3 P1 item 3]
         gDeferredProjectorVolumetricTemporalProgram.unload(); // [BDMerge G3.3 Batch 1 A]
@@ -3882,6 +3886,31 @@ bool LLViewerShaderMgr::loadShadersDeferred()
         if (!success)
         {
             LL_WARNS() << "Failed to create shader '" << gCineOutlineProgram.mName << "', disabling!" << LL_ENDL;
+            success = true;
+        }
+    }
+
+    // [TronT1] Tron World post pass. Same shape as the Cine Outline program:
+    // isDeferred attaches deferredUtil.glsl (getDepth/getNorm/getNormRaw and
+    // the depthMap/normalMap/exposureMap samplers bound by
+    // bindDeferredShader), hasFullGBuffer attaches gbufferUtil.glsl
+    // (GET_GBUFFER_FLAG / GBUFFER_AVATAR_TAG_OF preamble consumers). Soft
+    // fail: a compile error only disables the pass (the call site gates on
+    // gTronWorldProgram.isComplete()), it never fails the whole shader load.
+    if (success)
+    {
+        gTronWorldProgram.mName = "Tron World Shader";
+        gTronWorldProgram.mFeatures.isDeferred = true;
+        gTronWorldProgram.mFeatures.hasFullGBuffer = true;
+        gTronWorldProgram.mShaderFiles.clear();
+        gTronWorldProgram.clearPermutations();
+        gTronWorldProgram.mShaderFiles.push_back(make_pair("deferred/postDeferredNoTCV.glsl", GL_VERTEX_SHADER));
+        gTronWorldProgram.mShaderFiles.push_back(make_pair("deferred/tronWorldF.glsl", GL_FRAGMENT_SHADER));
+        gTronWorldProgram.mShaderLevel = mShaderLevel[SHADER_DEFERRED];
+        success = gTronWorldProgram.createShader();
+        if (!success)
+        {
+            LL_WARNS() << "Failed to create shader '" << gTronWorldProgram.mName << "', disabling!" << LL_ENDL;
             success = true;
         }
     }

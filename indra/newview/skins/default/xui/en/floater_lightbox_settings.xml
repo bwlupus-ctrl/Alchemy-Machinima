@@ -4893,6 +4893,12 @@
 				<combo_box.item label="Hologram Flicker" name="holoflicker" value="holoflicker" />
 				<combo_box.item label="Villain Aura" name="villain" value="villain" />
 				<combo_box.item label="Wave Runner" name="waverunner" value="waverunner" />
+				<combo_box.item enabled="false" label="-- Tron --" name="ri_preset_sep_tron" value="-1" />
+				<combo_box.item label="Tron Legacy Ink" name="tron_legacy" value="tron_legacy" />
+				<combo_box.item label="Tron Ares Ink" name="tron_ares" value="tron_ares" />
+				<combo_box.item label="Classic 1982 Ink" name="tron_1982" value="tron_1982" />
+				<combo_box.item label="Recognizer Ink" name="tron_recognizer" value="tron_recognizer" />
+				<combo_box.item label="Uprising White Ink" name="tron_uprising" value="tron_uprising" />
 			</combo_box>
 			<button follows="left|top" layout="topleft" height="22" left="192" top_pad="-22" width="120" label="Reset all" name="ri_reset_all" tool_tip="Reset every Rotoscope Ink setting to its default (ink off)."><button.commit_callback function="LightBox.RotoInkPreset" parameter="reset" /></button>
 			<text follows="left|top" height="15" left="8" top_pad="12" width="384" layout="topleft" font="SansSerifBold" value="Line" />
@@ -5260,6 +5266,8 @@
 			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="ri_reset_CineOutlineAnimSpeed"><button.commit_callback function="LightBox.ResetControlDefault" parameter="CineOutlineAnimSpeed" /></button>
 			<check_box follows="left|top" height="16" left="12" top_pad="8" width="360" layout="topleft" label="Pause" name="ri_anim_pause_check" control_name="CineOutlineAnimPause" enabled_control="CineOutlineEnabled" tool_tip="Freezes all Roto Ink animation on the current frame; untick to resume from the same point." />
 			<check_box follows="left|top" height="16" left="12" top_pad="8" width="360" layout="topleft" label="Follow Director time speed" name="ri_anim_follow_director_check" control_name="CineOutlineAnimFollowDirector" enabled_control="CineOutlineEnabled" tool_tip="Also scales Roto Ink animation by the Director console's Camera Operator 'Time speed', so slow-motion or fast-motion shots slow or speed the ink too. Off = independent." />
+			<!-- [TronT1] Mirrored on the Tron tab (tr_sync_roto_check); both edit the same setting. -->
+			<check_box follows="left|top" height="16" left="12" top_pad="8" width="360" layout="topleft" label="Sync to Tron clock" name="ri_sync_tron_check" control_name="CineOutlineAnimUseTronClock" enabled_control="CineOutlineEnabled" tool_tip="Drives Roto Ink's animation phase from the shared Tron clock (Lightbox -> Tron) instead of its own Animation speed/Pause/Follow Director above. Causes at most one phase jump when toggled; both clocks keep running regardless." />
 			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" value="Tempo BPM:" />
 			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="0" max_val="300" increment="1" decimal_digits="0" show_text="true" can_edit_text="true" name="ri_motion_tempo_slider" control_name="CineOutlineMotionTempo" enabled_control="CineOutlineEnabled" tool_tip="0 = motion speeds are plain cycles per second. Above 0, every motion speed becomes cycles PER BEAT and locks to this tempo -- handy for syncing to music." />
 			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="ri_reset_CineOutlineMotionTempo"><button.commit_callback function="LightBox.ResetControlDefault" parameter="CineOutlineMotionTempo" /></button>
@@ -5278,6 +5286,304 @@
 			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="ri_reset_CineOutlineMotionSeed"><button.commit_callback function="LightBox.ResetControlDefault" parameter="CineOutlineMotionSeed" /></button>
 			<text follows="left|top" height="60" left="10" top_pad="12" width="380" layout="topleft" word_wrap="true" value="Notes: subject isolation is a depth slab, not a true per-actor mask -- another object at the same depth inside the ellipse (a chair the actor sits on) shares its lines, and Everything-except-subject leaks the same way in reverse. HDR intensity above 1 only matters with HDR rendering; the non-HDR path clips it." />
 			</panel>
+			</scroll_container>
+		</panel>
+		<!-- [TronT1] Tron World: dark grade + world-space neon grid with travelling
+		     pulses. See LLPipeline::renderTronWorld / ALTron (altron.h/.cpp) /
+		     scratchpad/tron_t1_contract.md. Off by default; a true no-op when
+		     TronEnabled is off (only ALTron::latchFrame()'s cheap per-frame CPU
+		     bookkeeping runs). -->
+		<panel follows="all" label="Tron" layout="topleft" name="tron_settings" can_resize="false">
+			<scroll_container follows="all" height="806" layout="topleft" left="0"
+			 name="tron_settings_scroll" opaque="false" reserve_scroll_corner="false" top="0" width="420">
+				<panel background_visible="false" follows="left|top|right" height="2320" layout="topleft" left="0"
+				 name="tron_settings_scroll_content" top="0" width="400">
+			<text follows="left|top" height="15" left="8" top_pad="12" width="384" layout="topleft" font="SansSerifBold" value="Tron (world grade + neon grid)" />
+			<check_box follows="left|top" height="16" left="12" top_pad="6" width="360" layout="topleft" label="Enable Tron World" name="tr_enable" control_name="TronEnabled" tool_tip="HDR only. Off is byte-identical to the current frame: the World pass never draws or uploads its own uniforms. (The Rig Rim card's own Tron tint still uploads its off value, mode 0, on every bind -- an exact no-op, not a visible difference.)" />
+			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" value="Layer:" />
+			<combo_box follows="left|top" layout="topleft" height="20" top_pad="-17" left="136" width="188" allow_text_entry="false" name="tr_layer_combo" control_name="TronLayer" enabled_control="TronEnabled" tool_tip="Camera (default): after exposure metering, before bloom/on-lens/ReShade capture -- the grade sticks under auto-exposure and the neon is never hazed. Scene: before fog/water/alpha -- hazed and metered, and auto-exposure fights the grade unless RenderExposure is locked.">
+				<combo_box.item label="Scene" name="tr_layer_scene" value="0" />
+				<combo_box.item label="Camera (default)" name="tr_layer_camera" value="1" />
+			</combo_box>
+			<text follows="left|top" height="15" left="10" top_pad="4" width="380" layout="topleft" name="tr_layer_hint" font="SansSerifSmall" value="Scene layer: auto-exposure will brighten the grade -- lock RenderExposure for a stable look." />
+			<text follows="left|top" height="15" left="8" top_pad="12" width="384" layout="topleft" font="SansSerifBold" value="Presets" />
+			<combo_box follows="left|top" layout="topleft" height="22" left="12" top_pad="8" width="188" name="tr_preset_combo" tool_tip="Apply a full Tron look (palette, grade, grid, pulses, and -- per the checkboxes below -- the linked Roto Ink / Rig Rim preset). Never touches Enable, Layer or Subject / targets.">
+				<combo_box.item label="Preset..." name="custom" value="custom" />
+				<combo_box.item label="Tron Legacy Cyan" name="legacy" value="legacy" />
+				<combo_box.item label="Tron Ares Red" name="ares" value="ares" />
+				<combo_box.item label="Classic 1982" name="classic82" value="classic82" />
+				<combo_box.item label="Recognizer Orange" name="recognizer" value="recognizer" />
+				<combo_box.item label="Uprising White" name="uprising" value="uprising" />
+				<combo_box.item label="Rinzler" name="rinzler" value="rinzler" />
+				<combo_box.item label="Siren White" name="siren" value="siren" />
+				<combo_box.item label="Quorra" name="quorra" value="quorra" />
+			</combo_box>
+			<check_box follows="left|top" height="16" left="208" top_pad="-19" width="90" layout="topleft" label="+ Roto Ink" name="tr_also_roto" control_name="TronPresetAlsoRoto" tool_tip="A Tron preset also applies its linked Roto Ink preset (Lightbox -> Roto Ink)." />
+			<check_box follows="left|top" height="16" left="304" top_pad="0" width="90" layout="topleft" label="+ Rig Rim" name="tr_also_rigrim" control_name="TronPresetAlsoRigRim" tool_tip="A Tron preset also applies its linked Rig Rim preset (Lightbox -> Rig Rim card on the Cine Light Rig panel)." />
+			<text follows="left|top" height="15" left="10" top_pad="10" width="124" layout="topleft" value="Palette:" />
+			<combo_box follows="left|top" layout="topleft" height="20" top_pad="-17" left="136" width="188" allow_text_entry="false" name="tr_palette_combo" control_name="TronPalette" enabled_control="TronEnabled" tool_tip="Named colour palette. Selecting one writes the four swatches below; Custom leaves them as authored (editing any swatch below sets this back to Custom).">
+				<combo_box.item label="Custom" name="tr_pal_custom" value="0" />
+				<combo_box.item label="Legacy Cyan" name="tr_pal_legacy" value="1" />
+				<combo_box.item label="Ares Red" name="tr_pal_ares" value="2" />
+				<combo_box.item label="Classic 1982" name="tr_pal_1982" value="3" />
+				<combo_box.item label="Recognizer Orange" name="tr_pal_recognizer" value="4" />
+				<combo_box.item label="Uprising White" name="tr_pal_uprising" value="5" />
+				<combo_box.item label="Rinzler" name="tr_pal_rinzler" value="6" />
+				<combo_box.item label="Siren White" name="tr_pal_siren" value="7" />
+				<combo_box.item label="Quorra" name="tr_pal_quorra" value="8" />
+				<combo_box.item label="Clu Gold" name="tr_pal_clu" value="9" />
+				<combo_box.item label="Grid Blue" name="tr_pal_gridblue" value="10" />
+				<combo_box.commit_callback function="LightBox.TronPaletteSelected" />
+			</combo_box>
+			<text follows="left|top" height="15" left="10" top_pad="10" width="60" layout="topleft" value="Colours:" />
+			<color_swatch follows="left|top" height="26" left="72" top_pad="-19" width="72" label_height="0" layout="topleft" can_apply_immediately="true" name="tr_color_primary" control_name="TronColorPrimary" enabled_control="TronEnabled" tool_tip="Primary palette colour (linear). Editing this sets Palette to Custom.">
+				<color_swatch.commit_callback function="LightBox.TronColorEdited" />
+			</color_swatch>
+			<color_swatch follows="left|top" height="26" left="148" top_pad="0" width="72" label_height="0" layout="topleft" can_apply_immediately="true" name="tr_color_secondary" control_name="TronColorSecondary" enabled_control="TronEnabled" tool_tip="Secondary palette colour (linear). Editing this sets Palette to Custom.">
+				<color_swatch.commit_callback function="LightBox.TronColorEdited" />
+			</color_swatch>
+			<color_swatch follows="left|top" height="26" left="224" top_pad="0" width="72" label_height="0" layout="topleft" can_apply_immediately="true" name="tr_color_accent" control_name="TronColorAccent" enabled_control="TronEnabled" tool_tip="Accent palette colour (linear): major grid lines mix toward this, and it is a Rig Rim Tron colour source. Editing this sets Palette to Custom.">
+				<color_swatch.commit_callback function="LightBox.TronColorEdited" />
+			</color_swatch>
+			<color_swatch follows="left|top" height="26" left="300" top_pad="0" width="72" label_height="0" layout="topleft" can_apply_immediately="true" name="tr_color_pulse" control_name="TronColorPulse" enabled_control="TronEnabled" tool_tip="Pulse palette colour (linear): travelling grid pulses in colour mode 0. Editing this sets Palette to Custom.">
+				<color_swatch.commit_callback function="LightBox.TronColorEdited" />
+			</color_swatch>
+			<text follows="left|top" height="15" left="8" top_pad="12" width="384" layout="topleft" font="SansSerifBold" value="Clock" />
+			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" value="Speed:" />
+			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="0" max_val="8" increment="0.05" decimal_digits="2" show_text="true" can_edit_text="true" name="tr_anim_speed_slider" control_name="TronAnimSpeed" enabled_control="TronEnabled" tool_tip="Shared Tron clock rate multiplier; 1 = real time." />
+			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="tr_reset_TronAnimSpeed"><button.commit_callback function="LightBox.ResetControlDefault" parameter="TronAnimSpeed" /></button>
+			<check_box follows="left|top" height="16" left="12" top_pad="8" width="180" layout="topleft" label="Pause" name="tr_anim_pause_check" control_name="TronAnimPause" enabled_control="TronEnabled" tool_tip="Freezes the shared Tron clock (grid/pulse phases stop advancing)." />
+			<check_box follows="left|top" height="16" left="200" top_pad="0" width="196" layout="topleft" label="Follow Director time speed" name="tr_anim_follow_check" control_name="TronAnimFollowDirector" enabled_control="TronEnabled" tool_tip="Also scales the Tron clock by the Director console's Camera Operator 'Time speed'." />
+			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" value="Pulse rate Hz:" />
+			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="0.05" max_val="8" increment="0.05" decimal_digits="2" show_text="true" can_edit_text="true" name="tr_pulse_rate_slider" control_name="TronPulseRate" enabled_control="TronEnabled" tool_tip="Shared pulse waveform frequency (Rig Rim tint, grid pulses share this phase)." />
+			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="tr_reset_TronPulseRate"><button.commit_callback function="LightBox.ResetControlDefault" parameter="TronPulseRate" /></button>
+			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" value="Pulse shape:" />
+			<combo_box follows="left|top" layout="topleft" height="20" top_pad="-17" left="136" width="188" allow_text_entry="false" name="tr_pulse_shape_combo" control_name="TronPulseShape" enabled_control="TronEnabled" tool_tip="Shared pulse waveform shape.">
+				<combo_box.item label="Sine" name="tr_pulse_shape_sine" value="0" />
+				<combo_box.item label="Saw" name="tr_pulse_shape_saw" value="1" />
+				<combo_box.item label="Heartbeat" name="tr_pulse_shape_heartbeat" value="2" />
+				<combo_box.item label="Square" name="tr_pulse_shape_square" value="3" />
+			</combo_box>
+			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" value="Pulse amount:" />
+			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="0" max_val="1" increment="0.01" decimal_digits="2" show_text="true" can_edit_text="true" name="tr_pulse_amount_slider" control_name="TronPulseAmount" enabled_control="TronEnabled" tool_tip="Shared pulse depth (Rig Rim tint mode 2, neon rim T2)." />
+			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="tr_reset_TronPulseAmount"><button.commit_callback function="LightBox.ResetControlDefault" parameter="TronPulseAmount" /></button>
+			<check_box follows="left|top" height="16" left="12" top_pad="8" width="360" layout="topleft" label="Sync Roto Ink to Tron clock" name="tr_sync_roto_check" control_name="CineOutlineAnimUseTronClock" tool_tip="Mirrors the Roto Ink tab's own 'Sync to Tron clock' checkbox; both edit the same setting." />
+			<button follows="left|top" layout="topleft" height="22" left="12" top_pad="10" width="120" label="Reset all" name="tr_reset_all" tool_tip="Reset every Tron setting to its default (Tron off)."><button.commit_callback function="LightBox.TronPreset" parameter="reset" /></button>
+
+			<text follows="left|top" height="15" left="8" top_pad="14" width="384" layout="topleft" font="SansSerifBold" value="Grade" />
+			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" value="Strength:" />
+			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="0" max_val="1" increment="0.01" decimal_digits="2" show_text="true" can_edit_text="true" name="tr_grade_strength_slider" control_name="TronGradeStrength" enabled_control="TronEnabled" tool_tip="Dark grade strength; 0 = grade off." />
+			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="tr_reset_TronGradeStrength"><button.commit_callback function="LightBox.ResetControlDefault" parameter="TronGradeStrength" /></button>
+			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" name="tr_grade_darken_ev_label" value="Darken EV:" />
+			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="0" max_val="8" increment="0.1" decimal_digits="1" show_text="true" can_edit_text="true" name="tr_grade_darken_ev_slider" control_name="TronGradeDarkenEV" enabled_control="TronEnabled" tool_tip="Dark grade darken amount, in stops." />
+			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="tr_reset_TronGradeDarkenEV"><button.commit_callback function="LightBox.ResetControlDefault" parameter="TronGradeDarkenEV" /></button>
+			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" name="tr_grade_desaturate_label" value="Desaturate:" />
+			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="0" max_val="1" increment="0.01" decimal_digits="2" show_text="true" can_edit_text="true" name="tr_grade_desaturate_slider" control_name="TronGradeDesaturate" enabled_control="TronEnabled" tool_tip="Dark grade desaturation." />
+			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="tr_reset_TronGradeDesaturate"><button.commit_callback function="LightBox.ResetControlDefault" parameter="TronGradeDesaturate" /></button>
+			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" name="tr_grade_crush_label" value="Crush:" />
+			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="0" max_val="0.5" increment="0.005" decimal_digits="3" show_text="true" can_edit_text="true" name="tr_grade_crush_slider" control_name="TronGradeCrush" enabled_control="TronEnabled" tool_tip="Dark grade black lift, in exposed units." />
+			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="tr_reset_TronGradeCrush"><button.commit_callback function="LightBox.ResetControlDefault" parameter="TronGradeCrush" /></button>
+			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" name="tr_grade_tint_label" value="Tint:" />
+			<color_swatch follows="left|top" height="26" left="136" top_pad="-17" width="100" label_height="0" layout="topleft" can_apply_immediately="true" name="tr_grade_tint_swatch" control_name="TronGradeTint" enabled_control="TronEnabled" tool_tip="Dark grade tint colour (linear, max-normalised before use)." />
+			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="tr_reset_TronGradeTint"><button.commit_callback function="LightBox.ResetControlDefault" parameter="TronGradeTint" /></button>
+			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" name="tr_grade_tint_amount_label" value="Tint amount:" />
+			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="0" max_val="1" increment="0.01" decimal_digits="2" show_text="true" can_edit_text="true" name="tr_grade_tint_amount_slider" control_name="TronGradeTintAmount" enabled_control="TronEnabled" tool_tip="Dark grade tint amount." />
+			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="tr_reset_TronGradeTintAmount"><button.commit_callback function="LightBox.ResetControlDefault" parameter="TronGradeTintAmount" /></button>
+			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" name="tr_grade_keep_bright_lo_label" value="Keep bright lo:" />
+			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="0" max_val="16" increment="0.05" decimal_digits="2" show_text="true" can_edit_text="true" name="tr_grade_keep_bright_lo_slider" control_name="TronGradeKeepBrightLo" enabled_control="TronEnabled" tool_tip="Dark grade keep-bright range low edge, in exposed luminance; emissive/neon above this survives the grade." />
+			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="tr_reset_TronGradeKeepBrightLo"><button.commit_callback function="LightBox.ResetControlDefault" parameter="TronGradeKeepBrightLo" /></button>
+			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" name="tr_grade_keep_bright_hi_label" value="Keep bright hi:" />
+			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="0" max_val="16" increment="0.05" decimal_digits="2" show_text="true" can_edit_text="true" name="tr_grade_keep_bright_hi_slider" control_name="TronGradeKeepBrightHi" enabled_control="TronEnabled" tool_tip="Dark grade keep-bright range high edge, in exposed luminance." />
+			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="tr_reset_TronGradeKeepBrightHi"><button.commit_callback function="LightBox.ResetControlDefault" parameter="TronGradeKeepBrightHi" /></button>
+			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" name="tr_grade_keep_subject_label" value="Keep subject:" />
+			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="0" max_val="1" increment="0.01" decimal_digits="2" show_text="true" can_edit_text="true" name="tr_grade_keep_subject_slider" control_name="TronGradeKeepSubject" enabled_control="TronEnabled" tool_tip="How much the isolated subject (Subject group) is spared from the grade." />
+			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="tr_reset_TronGradeKeepSubject"><button.commit_callback function="LightBox.ResetControlDefault" parameter="TronGradeKeepSubject" /></button>
+			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" name="tr_grade_sky_darken_label" value="Sky darken:" />
+			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="0" max_val="1" increment="0.01" decimal_digits="2" show_text="true" can_edit_text="true" name="tr_grade_sky_darken_slider" control_name="TronGradeSkyDarken" enabled_control="TronEnabled" tool_tip="0 = black sky at full grade strength, 1 = sky untouched." />
+			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="tr_reset_TronGradeSkyDarken"><button.commit_callback function="LightBox.ResetControlDefault" parameter="TronGradeSkyDarken" /></button>
+
+			<text follows="left|top" height="15" left="8" top_pad="14" width="384" layout="topleft" font="SansSerifBold" value="Grid" />
+			<check_box follows="left|top" height="16" left="12" top_pad="6" width="360" layout="topleft" label="Enable grid" name="tr_grid_enable_check" control_name="TronGridEnabled" enabled_control="TronEnabled" tool_tip="World-space neon grid." />
+			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" name="tr_grid_intensity_label" value="Intensity:" />
+			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="0" max_val="64" increment="0.25" decimal_digits="2" show_text="true" can_edit_text="true" name="tr_grid_intensity_slider" control_name="TronGridIntensity" enabled_control="TronEnabled" tool_tip="Grid line intensity, display-intent linear, exposure independent." />
+			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="tr_reset_TronGridIntensity"><button.commit_callback function="LightBox.ResetControlDefault" parameter="TronGridIntensity" /></button>
+			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" name="tr_grid_spacing_label" value="Spacing m:" />
+			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="0.125" max_val="64" increment="0.125" decimal_digits="3" show_text="true" can_edit_text="true" name="tr_grid_spacing_slider" control_name="TronGridSpacing" enabled_control="TronEnabled" tool_tip="Grid line spacing, in metres." />
+			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="tr_reset_TronGridSpacing"><button.commit_callback function="LightBox.ResetControlDefault" parameter="TronGridSpacing" /></button>
+			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" name="tr_grid_width_label" value="Width m:" />
+			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="0" max_val="0.5" increment="0.005" decimal_digits="3" show_text="true" can_edit_text="true" name="tr_grid_width_slider" control_name="TronGridWidth" enabled_control="TronEnabled" tool_tip="Grid line full width, in metres." />
+			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="tr_reset_TronGridWidth"><button.commit_callback function="LightBox.ResetControlDefault" parameter="TronGridWidth" /></button>
+			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" name="tr_grid_min_width_px_label" value="Min width px:" />
+			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="0" max_val="6" increment="0.1" decimal_digits="1" show_text="true" can_edit_text="true" name="tr_grid_min_width_px_slider" control_name="TronGridMinWidthPx" enabled_control="TronEnabled" tool_tip="Minimum on-screen line width in pixels at 1080p." />
+			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="tr_reset_TronGridMinWidthPx"><button.commit_callback function="LightBox.ResetControlDefault" parameter="TronGridMinWidthPx" /></button>
+			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" name="tr_grid_major_every_label" value="Major every:" />
+			<spinner follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="80" min_val="0" max_val="32" increment="1" decimal_digits="0" name="tr_grid_major_every_spinner" control_name="TronGridMajorEvery" enabled_control="TronEnabled" tool_tip="Draw a major line every N minor lines; 0 or 1 = no major lines." />
+			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" name="tr_grid_major_width_label" value="Major width x:" />
+			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="1" max_val="6" increment="0.1" decimal_digits="1" show_text="true" can_edit_text="true" name="tr_grid_major_width_slider" control_name="TronGridMajorWidth" enabled_control="TronEnabled" tool_tip="Major line width multiplier." />
+			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="tr_reset_TronGridMajorWidth"><button.commit_callback function="LightBox.ResetControlDefault" parameter="TronGridMajorWidth" /></button>
+			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" name="tr_grid_major_intensity_label" value="Major intensity x:" />
+			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="0" max_val="4" increment="0.05" decimal_digits="2" show_text="true" can_edit_text="true" name="tr_grid_major_intensity_slider" control_name="TronGridMajorIntensity" enabled_control="TronEnabled" tool_tip="Major line intensity multiplier." />
+			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="tr_reset_TronGridMajorIntensity"><button.commit_callback function="LightBox.ResetControlDefault" parameter="TronGridMajorIntensity" /></button>
+			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" name="tr_grid_floor_label" value="Floor:" />
+			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="0" max_val="1" increment="0.01" decimal_digits="2" show_text="true" can_edit_text="true" name="tr_grid_floor_slider" control_name="TronGridFloor" enabled_control="TronEnabled" tool_tip="Grid weight on floor-facing surfaces." />
+			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="tr_reset_TronGridFloor"><button.commit_callback function="LightBox.ResetControlDefault" parameter="TronGridFloor" /></button>
+			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" name="tr_grid_wall_label" value="Wall:" />
+			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="0" max_val="1" increment="0.01" decimal_digits="2" show_text="true" can_edit_text="true" name="tr_grid_wall_slider" control_name="TronGridWall" enabled_control="TronEnabled" tool_tip="Grid weight on wall-facing surfaces." />
+			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="tr_reset_TronGridWall"><button.commit_callback function="LightBox.ResetControlDefault" parameter="TronGridWall" /></button>
+			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" name="tr_grid_ceiling_label" value="Ceiling:" />
+			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="0" max_val="1" increment="0.01" decimal_digits="2" show_text="true" can_edit_text="true" name="tr_grid_ceiling_slider" control_name="TronGridCeiling" enabled_control="TronEnabled" tool_tip="Grid weight on ceiling-facing surfaces." />
+			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="tr_reset_TronGridCeiling"><button.commit_callback function="LightBox.ResetControlDefault" parameter="TronGridCeiling" /></button>
+			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" name="tr_grid_sharpness_label" value="Sharpness:" />
+			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="2" max_val="16" increment="0.25" decimal_digits="2" show_text="true" can_edit_text="true" name="tr_grid_sharpness_slider" control_name="TronGridSharpness" enabled_control="TronEnabled" tool_tip="Triplanar blend sharpness." />
+			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="tr_reset_TronGridSharpness"><button.commit_callback function="LightBox.ResetControlDefault" parameter="TronGridSharpness" /></button>
+			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" name="tr_grid_normal_source_label" value="Normal source:" />
+			<combo_box follows="left|top" layout="topleft" height="20" top_pad="-17" left="136" width="188" allow_text_entry="false" name="tr_grid_normal_source_combo" control_name="TronGridNormalSource" enabled_control="TronEnabled" tool_tip="Geometric avoids normal-map speckle in the grid lines.">
+				<combo_box.item label="G-buffer" name="tr_normal_gbuffer" value="0" />
+				<combo_box.item label="Geometric (default)" name="tr_normal_geometric" value="1" />
+			</combo_box>
+			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" name="tr_grid_far_fade_label" value="Far fade m:" />
+			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="0" max_val="1024" increment="4" decimal_digits="0" show_text="true" can_edit_text="true" name="tr_grid_far_fade_slider" control_name="TronGridFarFade" enabled_control="TronEnabled" tool_tip="Grid far fade distance, in metres; 0 = no fade." />
+			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="tr_reset_TronGridFarFade"><button.commit_callback function="LightBox.ResetControlDefault" parameter="TronGridFarFade" /></button>
+			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" name="tr_grid_water_mode_label" value="Water mode:" />
+			<combo_box follows="left|top" layout="topleft" height="20" top_pad="-17" left="136" width="188" allow_text_entry="false" name="tr_grid_water_mode_combo" control_name="TronGridWaterMode" enabled_control="TronEnabled" tool_tip="Grid behaviour at the water surface. Inert at the Scene layer (water has not been drawn yet).">
+				<combo_box.item label="Skip" name="tr_water_skip" value="0" />
+				<combo_box.item label="Sea of Simulation (secondary colour)" name="tr_water_sea" value="1" />
+				<combo_box.item label="Floor" name="tr_water_floor" value="2" />
+			</combo_box>
+			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" name="tr_grid_water_tolerance_label" value="Water tolerance m:" />
+			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="0.005" max_val="0.5" increment="0.005" decimal_digits="3" show_text="true" can_edit_text="true" name="tr_grid_water_tolerance_slider" control_name="TronGridWaterTolerance" enabled_control="TronEnabled" tool_tip="Water-surface height detection tolerance, in metres." />
+			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="tr_reset_TronGridWaterTolerance"><button.commit_callback function="LightBox.ResetControlDefault" parameter="TronGridWaterTolerance" /></button>
+			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" name="tr_grid_glow_label" value="Glow feed:" />
+			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="0" max_val="1" increment="0.01" decimal_digits="2" show_text="true" can_edit_text="true" name="tr_grid_glow_slider" control_name="TronGridGlow" enabled_control="TronEnabled" tool_tip="Grid/pulse alpha glow feed -- the primary bloom control, exposure-stable unlike threshold bloom on the neon itself." />
+			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="tr_reset_TronGridGlow"><button.commit_callback function="LightBox.ResetControlDefault" parameter="TronGridGlow" /></button>
+			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" name="tr_grid_origin_label" value="Origin:" />
+			<button follows="left|top" layout="topleft" height="22" left="136" top_pad="-19" width="150" label="Snap to camera" name="tr_grid_origin_snap_btn" tool_tip="Sets the grid/pulse lattice origin to the camera's current position."><button.commit_callback function="LightBox.TronGridOriginSnap" /></button>
+			<button follows="left|top" layout="topleft" height="22" left="290" top_pad="0" width="90" label="Clear" name="tr_grid_origin_clear_btn" tool_tip="Clears the lattice origin back to (0,0,0)."><button.commit_callback function="LightBox.TronGridOriginClear" /></button>
+			<text follows="left|top" height="15" left="10" top_pad="6" width="380" layout="topleft" name="tr_grid_origin_status" font="SansSerifSmall" value="Origin: (0, 0, 0)" />
+			<text follows="left|top" height="15" left="8" top_pad="14" width="384" layout="topleft" font="SansSerifBold" name="tr_pulse_header" value="Pulses" />
+			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" name="tr_pulse_grid_amount_label" value="Amount:" />
+			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="0" max_val="4" increment="0.05" decimal_digits="2" show_text="true" can_edit_text="true" name="tr_pulse_grid_amount_slider" control_name="TronPulseGridAmount" enabled_control="TronEnabled" tool_tip="Travelling grid pulse brightness, a multiple of the grid intensity; 0 = pulses off." />
+			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="tr_reset_TronPulseGridAmount"><button.commit_callback function="LightBox.ResetControlDefault" parameter="TronPulseGridAmount" /></button>
+			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" name="tr_pulse_grid_speed_label" value="Speed m/s:" />
+			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="-50" max_val="50" increment="0.5" decimal_digits="1" show_text="true" can_edit_text="true" name="tr_pulse_grid_speed_slider" control_name="TronPulseGridSpeed" enabled_control="TronEnabled" tool_tip="Travelling grid pulse speed; negative reverses travel for every direction mode." />
+			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="tr_reset_TronPulseGridSpeed"><button.commit_callback function="LightBox.ResetControlDefault" parameter="TronPulseGridSpeed" /></button>
+			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" name="tr_pulse_grid_length_label" value="Length:" />
+			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="0.05" max_val="1" increment="0.01" decimal_digits="2" show_text="true" can_edit_text="true" name="tr_pulse_grid_length_slider" control_name="TronPulseGridLength" enabled_control="TronEnabled" tool_tip="Travelling grid pulse length, a fraction of the wavelength." />
+			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="tr_reset_TronPulseGridLength"><button.commit_callback function="LightBox.ResetControlDefault" parameter="TronPulseGridLength" /></button>
+			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" name="tr_pulse_grid_wavelength_label" value="Wavelength m:" />
+			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="1" max_val="256" increment="1" decimal_digits="0" show_text="true" can_edit_text="true" name="tr_pulse_grid_wavelength_slider" control_name="TronPulseGridWavelength" enabled_control="TronEnabled" tool_tip="Travelling grid pulse wavelength, in metres." />
+			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="tr_reset_TronPulseGridWavelength"><button.commit_callback function="LightBox.ResetControlDefault" parameter="TronPulseGridWavelength" /></button>
+			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" name="tr_pulse_grid_density_label" value="Density:" />
+			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="0" max_val="1" increment="0.01" decimal_digits="2" show_text="true" can_edit_text="true" name="tr_pulse_grid_density_slider" control_name="TronPulseGridDensity" enabled_control="TronEnabled" tool_tip="Fraction of grid lines that carry a travelling pulse." />
+			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="tr_reset_TronPulseGridDensity"><button.commit_callback function="LightBox.ResetControlDefault" parameter="TronPulseGridDensity" /></button>
+			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" name="tr_pulse_grid_direction_label" value="Direction:" />
+			<combo_box follows="left|top" layout="topleft" height="20" top_pad="-17" left="136" width="188" allow_text_entry="false" name="tr_pulse_grid_direction_combo" control_name="TronPulseGridDirection" enabled_control="TronEnabled" tool_tip="Travelling grid pulse direction.">
+				<combo_box.item label="Both ways" name="tr_pulse_dir_both" value="0" />
+				<combo_box.item label="+ axis" name="tr_pulse_dir_plus" value="1" />
+				<combo_box.item label="- axis" name="tr_pulse_dir_minus" value="2" />
+				<combo_box.item label="Hashed per line" name="tr_pulse_dir_hashed" value="3" />
+			</combo_box>
+			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" name="tr_pulse_grid_color_mode_label" value="Colour:" />
+			<combo_box follows="left|top" layout="topleft" height="20" top_pad="-17" left="136" width="188" allow_text_entry="false" name="tr_pulse_grid_color_mode_combo" control_name="TronPulseGridColorMode" enabled_control="TronEnabled" tool_tip="Travelling grid pulse colour.">
+				<combo_box.item label="Palette pulse" name="tr_pulse_col_pulse" value="0" />
+				<combo_box.item label="Secondary" name="tr_pulse_col_secondary" value="1" />
+				<combo_box.item label="White" name="tr_pulse_col_white" value="2" />
+			</combo_box>
+			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" name="tr_pulse_seed_label" value="Seed:" />
+			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="0" max_val="100" increment="1" decimal_digits="0" show_text="true" can_edit_text="true" name="tr_pulse_seed_slider" control_name="TronPulseSeed" enabled_control="TronEnabled" tool_tip="Travelling grid pulse hash seed; reshuffles which lines pulse." />
+			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="tr_reset_TronPulseSeed"><button.commit_callback function="LightBox.ResetControlDefault" parameter="TronPulseSeed" /></button>
+
+			<text follows="left|top" height="15" left="8" top_pad="14" width="384" layout="topleft" font="SansSerifBold" name="tr_subject_header" value="Subject / targets" />
+			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" name="tr_subject_target_set_label" value="Target set:" />
+			<combo_box follows="left|top" layout="topleft" height="20" top_pad="-17" left="136" width="188" allow_text_entry="false" name="tr_subject_target_set_combo" control_name="TronSubjectTargetSet" enabled_control="TronEnabled" tool_tip="Which actors/objects feed the subject mask and the 'grid only near subject' anchors (same list as Roto Ink's Target set).">
+				<combo_box.item label="Single Director subject" name="tr_ts_single" value="0" />
+				<combo_box.item label="All Director cast" name="tr_ts_cast" value="1" />
+				<combo_box.item label="All avatars in view" name="tr_ts_allav" value="2" />
+				<combo_box.item label="Only my avatar" name="tr_ts_self" value="3" />
+				<combo_box.item label="All avatars except me" name="tr_ts_exceptme" value="4" />
+				<combo_box.item label="Nearest N avatars" name="tr_ts_nearest" value="5" />
+				<combo_box.item label="Selected objects" name="tr_ts_selected" value="6" />
+				<combo_box.item label="Animesh only" name="tr_ts_animesh" value="7" />
+			</combo_box>
+			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" name="tr_subject_target_label" value="Single subject:" />
+			<combo_box follows="left|top" layout="topleft" height="20" top_pad="-17" left="136" width="188" allow_text_entry="false" name="tr_subject_target_combo" control_name="TronSubjectTarget" enabled_control="TronEnabled" tool_tip="Only used when Target set is Single Director subject.">
+				<combo_box.item label="Self" name="tr_st_director" value="0" />
+				<combo_box.item label="Subject A" name="tr_st_a" value="1" />
+				<combo_box.item label="Subject B" name="tr_st_b" value="2" />
+				<combo_box.item label="Subject C" name="tr_st_c" value="3" />
+				<combo_box.item label="Subject D" name="tr_st_d" value="4" />
+			</combo_box>
+			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" name="tr_subject_max_targets_label" value="Max targets:" />
+			<spinner follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="80" min_val="1" max_val="16" increment="1" decimal_digits="0" name="tr_subject_max_targets_spinner" control_name="TronSubjectMaxTargets" enabled_control="TronEnabled" tool_tip="Maximum number of subject targets gathered." />
+			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" name="tr_subject_shape_label" value="Shape:" />
+			<combo_box follows="left|top" layout="topleft" height="20" top_pad="-17" left="136" width="188" allow_text_entry="false" name="tr_subject_shape_combo" control_name="TronSubjectShape" enabled_control="TronEnabled" tool_tip="Subject mask box shape.">
+				<combo_box.item label="Ellipse" name="tr_shape_ellipse" value="0" />
+				<combo_box.item label="Box" name="tr_shape_box" value="1" />
+				<combo_box.item label="Capsule" name="tr_shape_capsule" value="2" />
+			</combo_box>
+			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" name="tr_subject_feather_label" value="Feather:" />
+			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="0.01" max_val="0.75" increment="0.01" decimal_digits="2" show_text="true" can_edit_text="true" name="tr_subject_feather_slider" control_name="TronSubjectFeather" enabled_control="TronEnabled" tool_tip="Subject mask box edge feather, a fraction of the box radius." />
+			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="tr_reset_TronSubjectFeather"><button.commit_callback function="LightBox.ResetControlDefault" parameter="TronSubjectFeather" /></button>
+			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" name="tr_subject_depth_range_label" value="Depth range m:" />
+			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="0" max_val="8" increment="0.05" decimal_digits="2" show_text="true" can_edit_text="true" name="tr_subject_depth_range_slider" control_name="TronSubjectDepthRange" enabled_control="TronEnabled" tool_tip="Subject mask depth slab pad, in metres; also sets the slab feather (half this value, floored at 0.05m)." />
+			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="tr_reset_TronSubjectDepthRange"><button.commit_callback function="LightBox.ResetControlDefault" parameter="TronSubjectDepthRange" /></button>
+			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" name="tr_subject_ellipse_scale_label" value="Box scale:" />
+			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="0.5" max_val="3" increment="0.05" decimal_digits="2" show_text="true" can_edit_text="true" name="tr_subject_ellipse_scale_slider" control_name="TronSubjectEllipseScale" enabled_control="TronEnabled" tool_tip="Subject mask box scale multiplier." />
+			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="tr_reset_TronSubjectEllipseScale"><button.commit_callback function="LightBox.ResetControlDefault" parameter="TronSubjectEllipseScale" /></button>
+			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" name="tr_subject_source_grid_label" value="Mask source (grid):" />
+			<combo_box follows="left|top" layout="topleft" height="20" top_pad="-17" left="136" width="188" allow_text_entry="false" name="tr_subject_source_grid_combo" control_name="TronSubjectSourceGrid" enabled_control="TronEnabled" tool_tip="Subject mask source for the grid exclusion/keep-subject terms. Needs RenderGBufferAvatarTag + HDR for the tag-based modes; forced to Boxes otherwise.">
+				<combo_box.item label="Boxes" name="tr_src_boxes" value="0" />
+				<combo_box.item label="Avatar tag" name="tr_src_tag" value="1" />
+				<combo_box.item label="Tag AND boxes" name="tr_src_tagandbox" value="2" />
+				<combo_box.item label="Tag OR boxes" name="tr_src_tagorbox" value="3" />
+			</combo_box>
+			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" name="tr_subject_source_rim_label" value="Mask source (rim):" />
+			<combo_box follows="left|top" layout="topleft" height="20" top_pad="-17" left="136" width="188" allow_text_entry="false" name="tr_subject_source_rim_combo" control_name="TronSubjectSourceRim" enabled_control="TronEnabled" tool_tip="Reserved for the T2 neon rim term (not yet consumed by any shader).">
+				<combo_box.item label="Boxes" name="tr_srcrim_boxes" value="0" />
+				<combo_box.item label="Avatar tag" name="tr_srcrim_tag" value="1" />
+				<combo_box.item label="Tag AND boxes" name="tr_srcrim_tagandbox" value="2" />
+				<combo_box.item label="Tag OR boxes" name="tr_srcrim_tagorbox" value="3" />
+			</combo_box>
+			<text follows="left|top" height="15" left="10" top_pad="6" width="380" layout="topleft" name="tr_subject_source_hint" font="SansSerifSmall" value="(tag unavailable: enable RenderGBufferAvatarTag + HDR)" />
+			<check_box follows="left|top" height="16" left="12" top_pad="8" width="360" layout="topleft" label="Invert" name="tr_subject_invert_check" control_name="TronSubjectInvert" enabled_control="TronEnabled" tool_tip="Inverts the subject mask." />
+			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" name="tr_grid_subject_exclude_label" value="Subject exclude:" />
+			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="0" max_val="1" increment="0.01" decimal_digits="2" show_text="true" can_edit_text="true" name="tr_grid_subject_exclude_slider" control_name="TronGridSubjectExclude" enabled_control="TronEnabled" tool_tip="How much the isolated subject excludes the grid." />
+			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="tr_reset_TronGridSubjectExclude"><button.commit_callback function="LightBox.ResetControlDefault" parameter="TronGridSubjectExclude" /></button>
+			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" name="tr_grid_subject_radius_label" value="Subject radius m:" />
+			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="0" max_val="256" increment="1" decimal_digits="0" show_text="true" can_edit_text="true" name="tr_grid_subject_radius_slider" control_name="TronGridSubjectRadius" enabled_control="TronEnabled" tool_tip="Draw the grid only within this many metres of a subject anchor; 0 = whole world. Above 0 with no resolved target draws nothing." />
+			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="tr_reset_TronGridSubjectRadius"><button.commit_callback function="LightBox.ResetControlDefault" parameter="TronGridSubjectRadius" /></button>
+			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" name="tr_grid_subject_radius_feather_label" value="Radius feather m:" />
+			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="0.1" max_val="64" increment="0.5" decimal_digits="1" show_text="true" can_edit_text="true" name="tr_grid_subject_radius_feather_slider" control_name="TronGridSubjectRadiusFeather" enabled_control="TronEnabled" tool_tip="Feather of the subject-radius falloff, in metres." />
+			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="tr_reset_TronGridSubjectRadiusFeather"><button.commit_callback function="LightBox.ResetControlDefault" parameter="TronGridSubjectRadiusFeather" /></button>
+
+			<text follows="left|top" height="15" left="8" top_pad="14" width="384" layout="topleft" font="SansSerifBold" value="Advanced" />
+			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" value="No-post scale:" />
+			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="0" max_val="1" increment="0.01" decimal_digits="2" show_text="true" can_edit_text="true" name="tr_no_post_scale_slider" control_name="TronNoPostScale" enabled_control="TronEnabled" tool_tip="Neon scale on frames colorCorrect will not expose/tonemap this frame (e.g. a 'no post' snapshot)." />
+			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="tr_reset_TronNoPostScale"><button.commit_callback function="LightBox.ResetControlDefault" parameter="TronNoPostScale" /></button>
+			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" value="Bloom meter scale:" />
+			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="0" max_val="1" increment="0.01" decimal_digits="2" show_text="true" can_edit_text="true" name="tr_bloom_meter_scale_slider" control_name="TronBloomMeterScale" enabled_control="TronEnabled" tool_tip="Bloom-metering feedback scale while the Tron World pass runs at the Camera layer (Night Mask's own anti-feedback pattern)." />
+			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="tr_reset_TronBloomMeterScale"><button.commit_callback function="LightBox.ResetControlDefault" parameter="TronBloomMeterScale" /></button>
+
+			<text follows="left|top" height="15" left="8" top_pad="14" width="384" layout="topleft" font="SansSerifBold" value="Integration" />
+			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" value="Rig Rim tint:" />
+			<combo_box follows="left|top" layout="topleft" height="20" top_pad="-17" left="136" width="188" allow_text_entry="false" name="tr_rigrim_tron_mode_combo" control_name="CineRigRimTronMode" tool_tip="Recolours the Cine Light Rig's rim light toward the Tron palette above. Needs Tron enabled and Rig Rim enabled (Cine Light Rig panel).">
+				<combo_box.item label="Off" name="tr_rigrim_off" value="0" />
+				<combo_box.item label="Palette tint" name="tr_rigrim_palette" value="1" />
+				<combo_box.item label="Tint + pulse" name="tr_rigrim_pulse" value="2" />
+			</combo_box>
+			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" value="Mix:" />
+			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="0" max_val="1" increment="0.01" decimal_digits="2" show_text="true" can_edit_text="true" name="tr_rigrim_tron_mix_slider" control_name="CineRigRimTronMix" tool_tip="Mirrors the Cine Light Rig panel's own Rig Rim Tron tint Mix slider." />
+			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="tr_reset_CineRigRimTronMix"><button.commit_callback function="LightBox.ResetControlDefault" parameter="CineRigRimTronMix" /></button>
+			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" value="Colour source:" />
+			<combo_box follows="left|top" layout="topleft" height="20" top_pad="-17" left="136" width="188" allow_text_entry="false" name="tr_rigrim_tron_color_combo" control_name="CineRigRimTronColorSource" tool_tip="Mirrors the Cine Light Rig panel's own Rig Rim Tron tint Colour combo.">
+				<combo_box.item label="Primary" name="tr_rigrim_color_primary" value="0" />
+				<combo_box.item label="Secondary" name="tr_rigrim_color_secondary" value="1" />
+				<combo_box.item label="Accent" name="tr_rigrim_color_accent" value="2" />
+			</combo_box>
+			<button follows="left|top" layout="topleft" height="22" left="12" top_pad="10" width="176" label="Apply Tron Roto preset" name="tr_apply_roto_preset_btn" tool_tip="Applies the Roto Ink preset linked to the most recently applied Tron look preset, even if '+ Roto Ink' above was unticked at the time."><button.commit_callback function="LightBox.TronApplyRotoPreset" /></button>
+			<button follows="left|top" layout="topleft" height="22" left="196" top_pad="0" width="188" label="Apply Tron Rig Rim preset" name="tr_apply_rigrim_preset_btn" tool_tip="Applies the Rig Rim preset linked to the most recently applied Tron look preset, even if '+ Rig Rim' above was unticked at the time."><button.commit_callback function="LightBox.TronApplyRigRimPreset" /></button>
+			<text follows="left|top" height="45" left="10" top_pad="12" width="380" layout="topleft" word_wrap="true" value="Notes: T2 (circuit traces, post neon rim) and T3 (light-cycle trails) are not implemented yet -- their settings/uniforms are reserved so this tab and the shader enum never reshuffle. The Rim mask-source combo above has no consumer until T2." />
+				</panel>
 			</scroll_container>
 		</panel>
 		<!-- [BDMerge G3.3 Batch 3] Selected Light quick panel: live per-projector

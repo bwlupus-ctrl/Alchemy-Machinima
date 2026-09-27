@@ -879,7 +879,7 @@
          background_visible="false"
          border="true"
          follows="left|top"
-         height="356"
+         height="432"
          layout="topleft"
          left="0"
          name="cine_rig_rim_card"
@@ -1002,6 +1002,35 @@
         <spinner control_name="CineRigRimBgBackBias" decimal_digits="2" follows="left|top" height="20"
          increment="0.05" layout="topleft" left="262" max_val="1" min_val="-1" name="cine_rig_rim_bg_back_bias"
          tool_tip="How far behind the subject the light must sit (-1 = any angle, 1 = directly behind)." top="320" width="62" />
+        <!-- [TronT1] Rig Rim "Tron" palette tint: recolours the rim light's own
+             colour toward the shared Tron palette (Lightbox -> Tron), keeping its
+             luminance. Rows only shown once Rig Rim itself is enabled (see
+             ALPanelCineLightRig::updateDerivedStatus). -->
+        <text follows="left|top" font="SansSerifBold" height="15" layout="topleft"
+         left="8" name="cine_rig_rim_tron_label" top="348" value="Tron tint" width="60" />
+        <combo_box follows="left|top" height="20" layout="topleft" left="68" name="cine_rig_rim_tron_mode"
+         control_name="CineRigRimTronMode" top="344" width="252" allow_text_entry="false"
+         tool_tip="Recolours the rig's rim light toward the Tron palette (Lightbox -> Tron). Needs Tron enabled.">
+            <combo_box.item label="Off" name="tron_tint_off" value="0" />
+            <combo_box.item label="Palette tint" name="tron_tint_palette" value="1" />
+            <combo_box.item label="Tint + pulse" name="tron_tint_pulse" value="2" />
+        </combo_box>
+        <text follows="left|top" height="15" layout="topleft" left="8" name="cine_rig_rim_tron_mix_label"
+         top="374" value="Mix" width="42" />
+        <slider can_edit_text="true" control_name="CineRigRimTronMix" decimal_digits="2"
+         follows="left|top" height="20" increment="0.01" layout="topleft" left="52"
+         max_val="1" min_val="0" name="cine_rig_rim_tron_mix" show_text="true" top="370"
+         tool_tip="Recolours the rig's rim light toward the Tron palette (Lightbox -> Tron). Needs Tron enabled." width="266" wheel_adjust="true" />
+        <button follows="left|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_rig_rim_tron_mix_reset" top="371" tool_tip="Reset to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineRigRimTronMix" />
+        <text follows="left|top" height="15" layout="topleft" left="8" name="cine_rig_rim_tron_color_label"
+         top="400" value="Colour" width="42" />
+        <combo_box follows="left|top" height="20" layout="topleft" left="52" name="cine_rig_rim_tron_color"
+         control_name="CineRigRimTronColorSource" top="396" width="266" allow_text_entry="false"
+         tool_tip="Which Tron palette colour (Lightbox -> Tron) the tint pulls toward.">
+            <combo_box.item label="Primary" name="tron_tint_primary" value="0" />
+            <combo_box.item label="Secondary" name="tron_tint_secondary" value="1" />
+            <combo_box.item label="Accent" name="tron_tint_accent" value="2" />
+        </combo_box>
         </panel>
     </flow_grid>
 </panel>

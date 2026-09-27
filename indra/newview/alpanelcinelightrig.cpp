@@ -276,7 +276,7 @@ struct RigRimPresetRow
     F32 mBg[4];
 };
 
-const RigRimPresetRow RIG_RIM_PRESETS[18] = {
+const RigRimPresetRow RIG_RIM_PRESETS[20] = {
     // name                       Mast Sft  BSft Tint  Shdw  A  B   KEY g/k/wrap/b0                FILL                            RIM                             BG
     { "Subtle Edge",              0.6f,0.5f,0.5f,0.25f,1.0f, true, false, {0.f,3.f,0.35f,0.f},     {0.f,3.f,0.35f,0.f},            {1.0f,4.0f,0.25f,0.10f},        {0.f,3.f,0.35f,0.f} },
     { "Soft Portrait Wrap",       1.0f,1.0f,0.8f,0.40f,0.8f, true, true,  {0.30f,1.5f,0.60f,-0.50f},{0.25f,1.5f,0.70f,-0.50f},     {0.90f,2.0f,0.50f,-0.20f},      {0.f,3.f,0.35f,0.f} },
@@ -296,6 +296,12 @@ const RigRimPresetRow RIG_RIM_PRESETS[18] = {
     { "Horror Edge",              1.8f,0.2f,0.15f,0.05f,0.3f,true, false, {0.f,3.f,0.35f,0.f},    {0.f,3.f,0.35f,0.f},            {1.5f,6.0f,0.10f,0.35f},        {2.5f,6.0f,0.10f,0.35f} },
     { "Moonlit Rim",              1.1f,0.5f,0.5f,0.20f,0.85f,true,false, {0.f,3.f,0.35f,0.f},    {0.f,3.f,0.35f,0.f},            {1.6f,3.5f,0.30f,0.30f},        {0.5f,3.5f,0.30f,0.30f} },
     { "Glass Shell",              1.6f,0.0f,0.01f,0.00f,0.1f,true, false, {1.2f,8.0f,1.0f,-1.f},  {1.2f,8.0f,1.0f,-1.f},          {1.2f,8.0f,1.0f,-1.f},          {1.2f,8.0f,1.0f,-1.f} },
+    // [TronT1] T1 contract section 5 -- linked from the Tron Legacy Cyan /
+    // Ares Red look presets (ALTron::applyPreset). Never write
+    // CineRigRimTronMode themselves: a Rig Rim preset is a lighting term,
+    // the Tron look preset is what turns the tint on.
+    { "Tron Suit Kick",           2.2f,0.5f,0.5f,0.00f,0.4f,true, false, {0.6f,5.0f,0.20f,-0.60f},{0.f,3.f,0.35f,0.f},           {3.0f,5.0f,0.30f,0.10f},        {0.f,3.f,0.35f,0.f} },
+    { "Ares Red Backlight",       2.0f,0.5f,0.5f,0.00f,0.5f,true, false, {0.f,3.f,0.35f,0.f},     {0.f,3.f,0.35f,0.f},            {2.8f,4.0f,0.35f,0.20f},        {1.6f,4.0f,0.30f,0.20f} },
 };
 
 void applyRigRimPreset(const RigRimPresetRow& row)
@@ -539,6 +545,10 @@ const std::vector<std::string>& ALPanelCineLightRig::settings()
         "CineRigRimBgSharpness",
         "CineRigRimBgWrap",
         "CineRigRimBgBackBias",
+        // [TronT1] Rig Rim "Tron" palette tint row on this same card.
+        "CineRigRimTronMode",
+        "CineRigRimTronMix",
+        "CineRigRimTronColorSource",
     };
     return names;
 }
@@ -1529,6 +1539,20 @@ void ALPanelCineLightRig::onRigRimPresetSelected()
     mRigRimPreset->setValue(0);
 }
 
+// [TronT1] See the header comment.
+bool ALPanelCineLightRig::applyRigRimPresetByName(const std::string& name)
+{
+    for (const RigRimPresetRow& row : RIG_RIM_PRESETS)
+    {
+        if (name == row.mName)
+        {
+            applyRigRimPreset(row);
+            return true;
+        }
+    }
+    return false;
+}
+
 void ALPanelCineLightRig::saveSetup()
 {
     std::string name = mSetupCombo ? mSetupCombo->getSimple() : std::string();
@@ -2308,6 +2332,26 @@ void ALPanelCineLightRig::updateDerivedStatus()
     mSetupDelete->setEnabled(!selected.empty() &&
                              !ALCineLightRig::isMasterSetup(selected) &&
                              !ALCineLightRig::isSetupDecorationName(selected));
+
+    // [TronT1] Tron tint row (Rig Rim card): only meaningful once Rig Rim
+    // itself is enabled. findChild every draw (cheap, same idiom as the
+    // clip/shaft/hero status loop above) rather than a dedicated settings
+    // signal connection for three rows.
+    {
+        const bool rig_rim_enabled = gSavedSettings.getBOOL("CineRigRimEnabled");
+        static const char* const tron_tint_widgets[] = {
+            "cine_rig_rim_tron_label", "cine_rig_rim_tron_mode",
+            "cine_rig_rim_tron_mix_label", "cine_rig_rim_tron_mix", "cine_rig_rim_tron_mix_reset",
+            "cine_rig_rim_tron_color_label", "cine_rig_rim_tron_color",
+        };
+        for (const char* widget_name : tron_tint_widgets)
+        {
+            if (LLView* v = findChild<LLView>(widget_name))
+            {
+                v->setVisible(rig_rim_enabled);
+            }
+        }
+    }
 }
 
 void ALPanelCineLightRig::reshape(S32 width, S32 height, bool called_from_parent)

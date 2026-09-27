@@ -845,6 +845,54 @@ public:
         ROTO_TARGETS,                      //  "roto_targets"          vec4[16] per target: centre uv, half extents uv
         ROTO_TARGETS2,                     //  "roto_targets2"         vec4[16] per target: view depth m, slab half depth m, palette index, valid
 
+        // [TronT1] Tron World post pass (tronWorldF.glsl), uploaded by
+        // LLPipeline::renderTronWorld(). Appended in lockstep with the
+        // matching push_back block in llshadermgr.cpp. Every "off" value is
+        // 0. TRON_TRACE*/TRON_RIM* are reserved for T2 (circuit traces /
+        // post neon rim) so the enum never reshuffles; the T1 shader does not
+        // declare them.
+        TRON_SCENE,                        //  "tronScene"             sampler2D copy of the destination (mWaterDis scratch)
+        TRON_INV_PROJ,                     //  "tron_inv_proj"         mat4 inverse of the pass's own projection (gGLLast* / live)
+        TRON_INV_MODELVIEW,                //  "tron_inv_modelview"    mat4 inverse of the pass's own modelview
+        TRON_CAM_REL,                      //  "tron_cam_rel"          vec4 camera - anchor (m), camera agent z
+        TRON_MASTER,                       //  "tron_master"           vec4 layer, pulse01, reserved, no-post neon scale
+        TRON_PALETTE0,                     //  "tron_palette0"         vec4 primary rgb, pulse amount
+        TRON_PALETTE1,                     //  "tron_palette1"         vec4 secondary rgb, clamp-display flag
+        TRON_PALETTE2,                     //  "tron_palette2"         vec4 accent rgb, reserved
+        TRON_PALETTE3,                     //  "tron_palette3"         vec4 pulse rgb, reserved
+        TRON_GRADE,                        //  "tron_grade"            vec4 strength, darken EV, desaturate, crush
+        TRON_GRADE2,                       //  "tron_grade2"           vec4 tint rgb, tint amount
+        TRON_GRADE3,                       //  "tron_grade3"           vec4 keep-bright lo, hi, keep subject, sky darken
+        TRON_GRID,                         //  "tron_grid"             vec4 intensity, spacing m, half width m, min width px
+        TRON_GRID2,                        //  "tron_grid2"            vec4 major every N, major width x, major intensity x, far fade m
+        TRON_GRID3,                        //  "tron_grid3"            vec4 floor w, wall w, ceiling w, triplanar sharpness
+        TRON_GRID4,                        //  "tron_grid4"            vec4 normal source, glow alpha feed, subject exclude, reserved
+        TRON_GRID5,                        //  "tron_grid5"            vec4 subject radius m, radius feather m, water mode, water tolerance m
+        TRON_WATER,                        //  "tron_water"            vec4 agent water height, camera underwater, detection on, reserved
+        TRON_PULSE,                        //  "tron_pulse"            vec4 amount, CPU phase 0..1, length, wavelength m
+        TRON_PULSE2,                       //  "tron_pulse2"           vec4 density, direction mode, seed, colour mode
+        TRON_SUBJECT,                      //  "tron_subject"          vec4 target count, shape, shape feather, slab feather m
+        TRON_SUBJECT2,                     //  "tron_subject2"         vec4 grid mask source, rim mask source, invert, reserved
+        TRON_TARGETS,                      //  "tron_targets"          vec4[16] culled: centre uv, half extents uv
+        TRON_TARGETS2,                     //  "tron_targets2"         vec4[16] culled: view depth m, slab half depth m, palette idx, valid
+        TRON_ANCHORS,                      //  "tron_anchors"          vec4[16] un-culled: centre xyz (anchor frame), radius m
+        TRON_ANCHOR_COUNT,                 //  "tron_anchor_count"     int  number of valid tron_anchors
+        TRON_LATTICE_R,                    //  "tron_lattice_r"        vec4[4] lattice remainder xyz (m), scale (grid / major / wavelength / trace cell)
+        TRON_LATTICE_K,                    //  "tron_lattice_k"        uvec4[4] lattice cell index xyz (mod 2^32), 0
+        TRON_TRACE,                        //  "tron_trace"            [T2 reserved] vec4 intensity, cell m, width m, density
+        TRON_TRACE2,                       //  "tron_trace2"           [T2 reserved] vec4 pad radius m, diagonal chance, walls w, floors w
+        TRON_TRACE3,                       //  "tron_trace3"           [T2 reserved] vec4 pulse amount, CPU phase, length, seed
+        TRON_RIM,                          //  "tron_rim"              [T2 reserved] vec4 gain, exponent, silhouette gain, silhouette thr
+        TRON_RIM2,                         //  "tron_rim2"             [T2 reserved] vec4 pulse amount, scan amount, scan CPU phase, scan width
+        TRON_RIM3,                         //  "tron_rim3"             [T2 reserved] vec4 colour mode, reject floors, shape, feather
+
+        // [TronT1] Rig Rim "Tron" palette tint (deferredUtil.glsl rigRimTerm()),
+        // uploaded by ALCineRigRim::bindGlobals() (slow path) and
+        // ALCineRigRim::bindAnimated() (bindDeferredShaderFast fast path).
+        // rig_rim_tron.x == 0 is the bit-exact no-op (branch untaken).
+        RIG_RIM_TRON,                      //  "rig_rim_tron"          vec4 mode (0 off, 1 tint, 2 tint+pulse), mix 0..1, pulse multiplier, reserved
+        RIG_RIM_TRON_COLOR,                //  "rig_rim_tron_color"    vec4 palette colour rgb (linear), reserved
+
         END_RESERVED_UNIFORMS
     } eGLSLReservedUniforms;
     // clang-format on

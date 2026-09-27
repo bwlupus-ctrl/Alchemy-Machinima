@@ -12,17 +12,24 @@
 
 #include "altron.h"
 
+#include "alpanelcinelightrig.h"
+#include "alrotoink.h"
 #include "llagent.h"
 #include "llgl.h"
 #include "llpresentationtime.h"
 #include "llviewercamera.h"
 #include "llviewercontrol.h"
+#include "llviewershadermgr.h" // [TronT1] gTronWorldProgram (resolveFrame() draw-eligibility check)
 #include "pipeline.h"
 
 #include <cmath>
 
 extern bool gCubeSnapshot;
 extern bool gSnapshotNoPost;
+// [TronT1] Same re-declaration idiom already used for gFrameCount by
+// lldrawpoolavatar.h / llperfstats.h / llvoavatar.h -- avoids pulling in
+// llappviewer.h just for one counter.
+extern U32 gFrameCount;
 
 namespace
 {
@@ -47,12 +54,13 @@ LLColor3 sanitize_color(const LLColor3& c, const LLColor3& fallback)
         llclamp(finite_or(c.mV[2], fallback.mV[2]), 0.f, 16.f));
 }
 
-// [TronT0] Named palette table (TronPalette combo ids 1..10, design v1
-// section 8). Primary/secondary pairs come straight from the design's
-// palette list; accent/pulse are not separately specified per named palette
-// beyond id 1 there, so this table uses a white accent and a
-// secondary-tinted pulse as a reasonable placeholder for the other nine --
-// revisit when the palette swatches land on the Tron tab (T1).
+// [TronT1] Named palette table (TronPalette combo ids 1..10, design v1
+// section 8, review fold-in (c) / T1 contract section 10). accent = the
+// look's "second neon" (1982 red MCP lines, Uprising blue, Rinzler deep
+// orange) -- major grid lines mix(primary, accent, 0.5) and it is Rig Rim
+// Tron colour source 2; pulse = a hotter/brighter tint of the primary so
+// travelling grid pulses and Rig Rim mode-2 pulses read as energy on the
+// line, not just a colour swap.
 struct NamedPalette
 {
     S32 mId;
@@ -63,17 +71,17 @@ struct NamedPalette
 };
 
 const NamedPalette kPalettes[] = {
-    // id  primary                secondary              accent      pulse
-    {  1, 0.15f,0.90f,1.00f,      1.00f,0.45f,0.05f,      1,1,1,      0.60f,1.00f,1.00f }, // Legacy Cyan
-    {  2, 1.00f,0.08f,0.06f,      1.00f,1.00f,1.00f,      1,1,1,      1.00f,0.60f,0.50f }, // Ares Red
-    {  3, 0.55f,0.85f,1.00f,      1.00f,0.90f,0.50f,      1,1,1,      1.00f,0.90f,0.60f }, // Classic 1982
-    {  4, 1.00f,0.55f,0.05f,      1.00f,0.08f,0.06f,      1,1,1,      1.00f,0.60f,0.20f }, // Recognizer Orange
-    {  5, 1.00f,1.00f,1.00f,      0.15f,0.90f,1.00f,      1,1,1,      0.20f,0.90f,1.00f }, // Uprising White
-    {  6, 1.00f,0.55f,0.05f,      1.00f,0.90f,0.50f,      1,1,1,      1.00f,0.70f,0.30f }, // Rinzler
-    {  7, 1.00f,1.00f,1.00f,      1.00f,1.00f,1.00f,      1,1,1,      0.80f,0.90f,1.00f }, // Siren White
-    {  8, 1.00f,1.00f,1.00f,      0.15f,0.90f,1.00f,      1,1,1,      0.60f,1.00f,1.00f }, // Quorra
-    {  9, 1.00f,0.75f,0.20f,      1.00f,0.45f,0.05f,      1,1,1,      1.00f,0.80f,0.40f }, // Clu Gold
-    { 10, 0.15f,0.90f,1.00f,      0.10f,0.30f,1.00f,      1,1,1,      0.30f,0.70f,1.00f }, // Grid Blue
+    // id  primary                secondary              accent                 pulse
+    {  1, 0.15f,0.90f,1.00f,      1.00f,0.45f,0.05f,      1.00f,1.00f,1.00f,     0.60f,1.00f,1.00f }, // Legacy Cyan
+    {  2, 1.00f,0.08f,0.06f,      1.00f,1.00f,1.00f,      1.00f,0.90f,0.85f,     1.00f,0.50f,0.40f }, // Ares Red
+    {  3, 0.55f,0.85f,1.00f,      1.00f,0.90f,0.50f,      1.00f,0.35f,0.30f,     0.90f,0.97f,1.00f }, // Classic 1982
+    {  4, 1.00f,0.55f,0.05f,      1.00f,0.08f,0.06f,      1.00f,0.85f,0.55f,     1.00f,0.75f,0.30f }, // Recognizer Orange
+    {  5, 1.00f,1.00f,1.00f,      0.15f,0.90f,1.00f,      0.35f,0.55f,1.00f,     0.70f,0.95f,1.00f }, // Uprising White
+    {  6, 1.00f,0.55f,0.05f,      1.00f,0.90f,0.50f,      1.00f,0.25f,0.05f,     1.00f,0.80f,0.45f }, // Rinzler
+    {  7, 1.00f,1.00f,1.00f,      1.00f,1.00f,1.00f,      0.85f,0.92f,1.00f,     0.90f,0.95f,1.00f }, // Siren White
+    {  8, 1.00f,1.00f,1.00f,      0.15f,0.90f,1.00f,      0.60f,0.75f,1.00f,     0.75f,1.00f,1.00f }, // Quorra
+    {  9, 1.00f,0.75f,0.20f,      1.00f,0.45f,0.05f,      1.00f,0.95f,0.70f,     1.00f,0.90f,0.55f }, // Clu Gold
+    { 10, 0.15f,0.90f,1.00f,      0.10f,0.30f,1.00f,      0.55f,0.75f,1.00f,     0.40f,0.80f,1.00f }, // Grid Blue
 };
 
 // [TronT0] Every Tron* setting introduced by this phase. Later phases
@@ -93,7 +101,140 @@ const char* const kAllSettings[] = {
     "TronPulseShape",
     "TronPulseAmount",
     "TronGridOriginGlobal",
+    // [TronT1] Layer (shot key, never written by a preset).
+    "TronLayer",
+    // [TronT1] Grade.
+    "TronGradeStrength",
+    "TronGradeDarkenEV",
+    "TronGradeDesaturate",
+    "TronGradeCrush",
+    "TronGradeTint",
+    "TronGradeTintAmount",
+    "TronGradeKeepBrightLo",
+    "TronGradeKeepBrightHi",
+    "TronGradeKeepSubject",
+    "TronGradeSkyDarken",
+    // [TronT1] Grid.
+    "TronGridEnabled",
+    "TronGridIntensity",
+    "TronGridSpacing",
+    "TronGridWidth",
+    "TronGridMinWidthPx",
+    "TronGridMajorEvery",
+    "TronGridMajorWidth",
+    "TronGridMajorIntensity",
+    "TronGridFarFade",
+    "TronGridFloor",
+    "TronGridWall",
+    "TronGridCeiling",
+    "TronGridSharpness",
+    "TronGridNormalSource",
+    "TronGridGlow",
+    // [TronT1] Grid / subject (shot keys, never written by a preset).
+    "TronGridSubjectExclude",
+    "TronGridSubjectRadius",
+    "TronGridSubjectRadiusFeather",
+    "TronGridWaterMode",
+    "TronGridWaterTolerance",
+    // [TronT1] Pulses.
+    "TronPulseGridAmount",
+    "TronPulseGridSpeed",
+    "TronPulseGridLength",
+    "TronPulseGridWavelength",
+    "TronPulseGridDensity",
+    "TronPulseGridDirection",
+    "TronPulseGridColorMode",
+    "TronPulseSeed",
+    // [TronT1] Subject / targets (shot keys, never written by a preset).
+    "TronSubjectTarget",
+    "TronSubjectTargetSet",
+    "TronSubjectMaxTargets",
+    "TronSubjectShape",
+    "TronSubjectFeather",
+    "TronSubjectDepthRange",
+    "TronSubjectEllipseScale",
+    "TronSubjectSourceGrid",
+    "TronSubjectSourceRim",
+    "TronSubjectInvert",
+    // [TronT1] Advanced (shot keys).
+    "TronNoPostScale",
+    "TronBloomMeterScale",
+    // [TronT1 P2-10] Rig Rim Tron tint (look keys, written only by Tron
+    // presets) and the Roto Ink / Tron clock sync flag. These are NOT
+    // ALCineRigRim's / ALRotoInk's own settings -- they live on those other
+    // panels' UI but are semantically part of the Tron *integration*
+    // surface (the "Tron tint" row on the Rig Rim card; "Sync Roto Ink to
+    // Tron clock" on both the Roto Ink and Tron tabs) -- deliberately
+    // included here so the Tron tab's "Reset all" puts the WHOLE Tron
+    // feature (including how it reaches into Rig Rim / Roto Ink) back to
+    // its defaults in one action, same as ALPanelCineLightRig::settings()
+    // and ALRotoInk's own kAllSettings independently include their own
+    // copies of these same three/one key(s) for their OWN "reset" buttons.
+    // This is intentional cross-ownership, not a leak: each feature's reset
+    // touches the shared integration keys it introduces.
+    "CineRigRimTronMode",
+    "CineRigRimTronMix",
+    "CineRigRimTronColorSource",
+    "CineOutlineAnimUseTronClock",
+    // [TronT1] UI behaviour only (shot keys) -- deliberately kept in
+    // kAllSettings (and therefore in resetToDefaults()) so "Reset all"
+    // restores these two checkboxes too, but excluded from ALTron::
+    // settings()'s Director scene list below: they are pure Lightbox UI
+    // state (whether applying a look preset also cascades into a linked
+    // Roto Ink / Rig Rim preset), not part of a shot or a look, and a scene
+    // save/load has no business silently flipping a UI checkbox.
+    "TronPresetAlsoRoto",
+    "TronPresetAlsoRigRim",
 };
+
+// [TronT1 P2-10] Keys that belong in kAllSettings (and therefore in
+// resetToDefaults()) but must NOT appear in the Director scene list --
+// see the comment on TronPresetAlsoRoto/TronPresetAlsoRigRim above.
+const char* const kDirectorExcluded[] = {
+    "TronPresetAlsoRoto",
+    "TronPresetAlsoRigRim",
+};
+
+// [TronT1] One T1 "look" preset (section 8 of the T1 contract). Every row
+// writes the full common column plus its own overrides; PulseGridAmount and
+// GridMinWidthPx are still per-row fields even though only "siren" departs
+// from the shared 1.5 / 1.2 defaults, so a future look preset can silence
+// the pulses or tighten the line without adding a special case here.
+struct LookPreset
+{
+    const char* mKey;
+    S32   mPaletteId;
+    F32   mDarkenEV, mDesaturate;
+    F32   mTintR, mTintG, mTintB, mTintAmount;
+    F32   mSpacing, mWidth, mMinWidthPx;
+    S32   mMajorEvery;
+    F32   mPulseGridAmount;
+    F32   mPulseSpeed, mPulseWavelength, mPulseDensity;
+    S32   mPulseDirection, mPulseColorMode;
+    S32   mPulseShape;
+    F32   mPulseRate;
+    const char* mRotoKey;
+    const char* mRigRimLabel;
+    S32   mRigRimTronMode;
+};
+
+// id/key mirrors kPalettes; see the T1 contract section 8 for the source
+// table (common column + this per-row override table).
+const LookPreset kLookPresets[] = {
+    // key           pal  EV    Desat  TintR  TintG  TintB  TintAmt  Sp    W      MinPx  Maj  PulseAmt  Speed  Wave  Dens  Dir Col  Shape Rate  RotoKey          RigRimLabel                     Mode
+    { "legacy",       1, 3.0f, 0.6f,  0.55f, 0.75f, 1.00f, 0.30f,  2.0f, 0.020f, 1.2f,  4,   1.5f,     6.0f, 24.0f, 0.35f, 3,  0,  0,  0.8f, "tron_legacy",      "Tron Suit Kick",              2 },
+    { "ares",         2, 3.5f, 0.7f,  1.00f, 0.55f, 0.45f, 0.25f,  3.0f, 0.030f, 1.2f,  3,   1.5f,    10.0f, 24.0f, 0.40f, 1,  0,  2,  1.2f, "tron_ares",        "Ares Red Backlight",          2 },
+    { "classic82",    3, 4.0f, 0.9f,  1.00f, 1.00f, 1.00f, 0.00f,  4.0f, 0.040f, 1.2f,  0,   1.5f,     3.0f, 32.0f, 0.30f, 0,  1,  3,  0.5f, "tron_1982",        "Sci-Fi Hologram",             1 },
+    { "recognizer",   4, 3.0f, 0.5f,  1.00f, 0.80f, 0.60f, 0.20f,  8.0f, 0.050f, 1.2f,  2,   1.5f,    12.0f, 48.0f, 0.70f, 3,  0,  0,  0.8f, "tron_recognizer",  "Strong Backlight",            1 },
+    { "uprising",     5, 2.5f, 0.4f,  0.70f, 0.85f, 1.00f, 0.20f,  1.0f, 0.012f, 1.2f,  8,   1.5f,     4.0f, 16.0f, 0.15f, 3,  0,  0,  0.8f, "tron_uprising",    "Silhouette Glow (any angle)", 1 },
+    { "rinzler",      6, 3.5f, 0.7f,  1.00f, 1.00f, 1.00f, 0.00f,  2.0f, 0.020f, 1.2f,  4,   1.5f,     6.0f, 24.0f, 0.35f, 3,  0,  0,  0.8f, "tron_recognizer",  "Noir Kicker",                 2 },
+    { "siren",        7, 2.0f, 0.3f,  0.75f, 0.85f, 1.00f, 0.35f,  0.5f, 0.008f, 1.0f,  4,   0.0f,     6.0f, 24.0f, 0.35f, 3,  0,  0,  0.8f, "tron_uprising",    "Dreamy Halo",                 1 },
+    { "quorra",       8, 3.0f, 0.5f,  0.55f, 0.75f, 1.00f, 0.30f,  2.0f, 0.020f, 1.2f,  4,   1.5f,     6.0f, 24.0f, 0.35f, 3,  1,  0,  0.8f, "tron_legacy",      "Fashion Edge",                2 },
+};
+
+std::string sLastPresetRotoKey;
+std::string sLastPresetRigRimLabel;
+S32         sLastPresetRigRimTronMode = 0;
 
 ALTron::FrameClock sClock;
 ALTron::Anchor     sAnchor;
@@ -130,11 +271,26 @@ void update_anchor()
 }
 } // namespace
 
-// [TronT0]
-bool ALTron::isEnabled()
+// [TronT1]
+bool ALTron::isEnabledMaster()
 {
     static LLCachedControl<bool> enabled(gSavedSettings, "TronEnabled", false);
     return enabled();
+}
+
+// [TronT1] T0's isEnabled() was the raw master read; T1 extends it with the
+// grade/grid OR (design section 4) so isActiveForCurrentPass() -- and every
+// caller that gates real render work on it -- returns false whenever there
+// is nothing to draw, without needing its own redundant grade/grid check.
+bool ALTron::isEnabled()
+{
+    if (!isEnabledMaster())
+    {
+        return false;
+    }
+    static LLCachedControl<F32>  grade_strength(gSavedSettings, "TronGradeStrength", 0.85f);
+    static LLCachedControl<bool> grid_enabled(gSavedSettings, "TronGridEnabled", true);
+    return finite_or((F32)grade_strength(), 0.85f) > 0.f || grid_enabled();
 }
 
 // [TronT0]
@@ -197,6 +353,279 @@ void ALTron::applyPalettePreset(S32 id)
     // id 0 (Custom) or an unknown id: leave the colour settings untouched.
 }
 
+// [TronT1]
+F32 ALTron::pulse01()
+{
+    static LLCachedControl<S32> shape_ctrl(gSavedSettings, "TronPulseShape", 0);
+    const S32 shape = std::clamp((S32)shape_ctrl(), 0, 3);
+    const F32 ph = clock().mPulsePhase01;
+
+    switch (shape)
+    {
+        case 1: // saw
+            return llclamp(ph, 0.f, 1.f);
+        case 2: // heartbeat: two bumps, the first wrapped across the 0/1 seam
+        {
+            const auto bump = [](F32 x, F32 c, F32 w) -> F32
+            {
+                const F32 t = (x - c) / w;
+                return std::exp(-(t * t));
+            };
+            const F32 b1 = llmax(llmax(bump(ph, 0.f, 0.10f), bump(ph - 1.f, 0.f, 0.10f)),
+                                  bump(ph + 1.f, 0.f, 0.10f));
+            const F32 b2 = 0.55f * bump(ph, 0.28f, 0.10f);
+            return llclamp(llmax(b1, b2), 0.f, 1.f);
+        }
+        case 3: // square
+            return (ph < 0.5f) ? 1.f : 0.f;
+        default: // sine
+            return 0.5f - 0.5f * std::cos(F_TWO_PI * ph);
+    }
+}
+
+// [TronT1]
+F32 ALTron::pulseMul()
+{
+    static LLCachedControl<F32> amount_ctrl(gSavedSettings, "TronPulseAmount", 0.35f);
+    const F32 amount = llclamp(finite_or((F32)amount_ctrl(), 0.35f), 0.f, 1.f);
+    return llmax(1.f + amount * (pulse01() - 0.5f) * 2.f, 0.f);
+}
+
+static ALTron::Frame sFrame;
+
+// [TronT1] B1-style bloom-metering ramp, mirroring LLPipeline::
+// updateNightMaskAnchor()'s own ramp_bloom_scale idiom exactly (same 0.4 s
+// time constant) so a Tron toggle can pump exposure no more than a Night
+// Mask toggle can. Called once per frame from renderFinalize's prologue,
+// right next to updateNightMaskAnchor() itself.
+void ALTron::resolveFrame()
+{
+    // [TronT1 P2-2 fix] renderFinalize() runs once per VIEW, not once per
+    // frame: auxiliary render targets (reflection probes, mirrors, snapshot-
+    // with-post) invoke it too, with gPipeline.mRT pointed at their own
+    // target rather than &gPipeline.mMainRT. An auxiliary call must be a
+    // COMPLETE no-op here -- not merely "skip updating the ramp" -- because
+    // if it instead consumed the once-per-frame guard below, an aux call
+    // that happens to run BEFORE the main view's own call this frame would
+    // "win" the guard using the wrong context (an aux target's mRT can never
+    // equal &mMainRT, so will_run would read false there even on a frame
+    // where the main view is about to actually draw Tron World), silently
+    // starving the real update. Bailing out here, before either the guard or
+    // the ramp math, guarantees an auxiliary renderFinalize can never
+    // double-step (or pre-empt) the ramp.
+    if (gPipeline.mRT != &gPipeline.mMainRT)
+    {
+        return;
+    }
+
+    // Once-per-frame re-entrancy guard for the main view's own call (this
+    // call site -- pipeline.cpp renderFinalize()'s HDR prologue -- only runs
+    // once per main-view frame today; this makes that an enforced invariant
+    // rather than an assumption a future call site could quietly violate).
+    // Mirrors the mWeatherRainOcclusionFrame == gFrameCount idiom used
+    // elsewhere in pipeline.cpp for the same "already ran this frame" gate.
+    static U32 sLastFrame = ~0u;
+    if (sLastFrame == gFrameCount)
+    {
+        return;
+    }
+    sLastFrame = gFrameCount;
+
+    static LLCachedControl<F32> bloom_meter_scale(gSavedSettings, "TronBloomMeterScale", 0.f);
+    // [TronT1 P2-2 fix] will_run must mirror the ACTUAL draw-eligibility
+    // predicate renderTronWorld() itself gates on (T1 contract section 3.2
+    // line 0), not just isActiveForCurrentPass() && layer()==CAMERA:
+    //  - gTronWorldProgram.isComplete(): the shader must have actually
+    //    linked -- llviewershadermgr's soft-fail leaves it incomplete
+    //    without throwing, and an incomplete program never draws.
+    //  - gPipeline.mWaterDis.isComplete(): the scratch target
+    //    renderTronWorld() binds must exist.
+    // (gPipeline.mRT == &gPipeline.mMainRT is already guaranteed by the
+    // early return above, so it is not repeated in this condition.)
+    const bool will_run = isActiveForCurrentPass() && layer() == LAYER_CAMERA &&
+        gTronWorldProgram.isComplete() && gPipeline.mWaterDis.isComplete();
+    const F32  target = will_run ? llclamp(finite_or((F32)bloom_meter_scale(), 0.f), 0.f, 1.f) : 1.f;
+
+    const F64 now = LLPresentationTime::currentFrame().presentation_time;
+    static F64 sBloomScaleTime = -1.0;
+    // [TronT1 P2] remember whether the clock advanced this frame (see the
+    // frozen-clock bypass at the end).
+    const bool bloom_clock_frozen = (sBloomScaleTime >= 0.0 && now == sBloomScaleTime);
+    if (!std::isfinite(now))
+    {
+        sFrame.mBloomScale = target;
+        return;
+    }
+    constexpr F32 BLOOM_SCALE_TAU_SEC = 0.4f;
+    if (sBloomScaleTime < 0.0 || now < sBloomScaleTime)
+    {
+        sFrame.mBloomScale = target;
+    }
+    else
+    {
+        const F64 dt = now - sBloomScaleTime;
+        const F32 alpha = 1.f - expf(-(F32)dt / BLOOM_SCALE_TAU_SEC);
+        sFrame.mBloomScale += (target - sFrame.mBloomScale) * alpha;
+        // [TronT1 P2-3 fix] The exponential step above only ever
+        // asymptotically APPROACHES target, never reaches it exactly -- snap
+        // once within float noise so the ramp actually converges (needed for
+        // generateLuminance()'s night_mask_bloom_scale multiplier,
+        // pipeline.cpp ~11405, to ever settle on a stable value instead of
+        // drifting by a diminishing epsilon every frame forever).
+        if (std::fabs(target - sFrame.mBloomScale) < 1.0e-5f)
+        {
+            sFrame.mBloomScale = target;
+        }
+    }
+    sBloomScaleTime = now;
+
+    // [TronT1 P2-3 fix] Explicit off-path bypass: while !will_run, target is
+    // always exactly 1.f, but the ramp above only asymptotically approaches
+    // it and makes ZERO progress on a frozen clock (dt == 0 -> alpha == 0,
+    // e.g. a snapshot/capture path that does not advance presentation time).
+    // generateLuminance() multiplies this value straight into the exposure
+    // metering (pipeline.cpp ~11405), and the T1 "Tron off: byte-identical
+    // captures" checklist item (contract section 12.2) requires that
+    // multiplier to be the bit-exact pre-Tron value whenever Tron is not
+    // running -- not merely close to it, and not contingent on the
+    // presentation clock having advanced enough real time to ramp there.
+    // [TronT1 P2] Normally let the ramp ease back to 1.0 (the epsilon snap
+    // above makes it land exactly), so switching Tron off / changing layer
+    // does not jump the exposure metering in one frame. Only on a frozen
+    // presentation clock (no progress possible) force the exact pre-Tron
+    // value immediately.
+    if (!will_run && bloom_clock_frozen)
+    {
+        sFrame.mBloomScale = 1.f;
+    }
+}
+
+// [TronT1]
+const ALTron::Frame& ALTron::frame()
+{
+    return sFrame;
+}
+
+// [TronT1] Applies one of the 8 T1 look presets -- see kLookPresets above
+// and the T1 contract section 8. Common column first, then the row's own
+// overrides, then the shared palette, then (only when the matching
+// TronPresetAlso* flag is on) the linked Roto Ink / Rig Rim preset -- but
+// the linked key/label/mode is ALWAYS remembered (lastPresetRotoKey() etc.)
+// so the Lightbox Integration group's buttons can apply it later even if
+// the flag was off at the time.
+void ALTron::applyPreset(const std::string& key)
+{
+    const LookPreset* row = nullptr;
+    for (const LookPreset& p : kLookPresets)
+    {
+        if (key == p.mKey)
+        {
+            row = &p;
+            break;
+        }
+    }
+    if (!row)
+    {
+        return; // unknown preset key: leave settings untouched
+    }
+
+    // Common column (T1 contract section 8).
+    gSavedSettings.setF32("TronGradeStrength", 0.85f);
+    gSavedSettings.setF32("TronGradeCrush", 0.05f);
+    gSavedSettings.setF32("TronGradeKeepBrightLo", 0.8f);
+    gSavedSettings.setF32("TronGradeKeepBrightHi", 2.5f);
+    gSavedSettings.setF32("TronGradeKeepSubject", 0.5f);
+    gSavedSettings.setF32("TronGradeSkyDarken", 0.f);
+    gSavedSettings.setBOOL("TronGridEnabled", true);
+    gSavedSettings.setF32("TronGridIntensity", 6.f);
+    gSavedSettings.setF32("TronGridMajorWidth", 2.f);
+    gSavedSettings.setF32("TronGridMajorIntensity", 1.5f);
+    gSavedSettings.setF32("TronGridFarFade", 120.f);
+    gSavedSettings.setF32("TronGridFloor", 1.f);
+    gSavedSettings.setF32("TronGridWall", 0.6f);
+    gSavedSettings.setF32("TronGridCeiling", 0.3f);
+    gSavedSettings.setF32("TronGridSharpness", 8.f);
+    gSavedSettings.setS32("TronGridNormalSource", 1);
+    gSavedSettings.setF32("TronGridGlow", 1.f);
+    gSavedSettings.setS32("TronGridWaterMode", 0);
+    gSavedSettings.setF32("TronGridWaterTolerance", 0.03f);
+    gSavedSettings.setF32("TronPulseGridLength", 0.25f);
+    // [TronT1 P2-5 fix] Contract section 8 common column -- was missing
+    // entirely, so a look preset never reset a previously hand-tuned seed
+    // back to the documented default.
+    gSavedSettings.setF32("TronPulseSeed", 0.f);
+    gSavedSettings.setF32("TronPulseAmount", 0.35f);
+    gSavedSettings.setS32("TronPulseShape", 0);
+    gSavedSettings.setF32("TronPulseRate", 0.8f);
+    gSavedSettings.setF32("CineRigRimTronMix", 1.f);
+    gSavedSettings.setS32("CineRigRimTronColorSource", 0);
+
+    // Per-row overrides.
+    gSavedSettings.setF32("TronGradeDarkenEV", row->mDarkenEV);
+    gSavedSettings.setF32("TronGradeDesaturate", row->mDesaturate);
+    gSavedSettings.setUntypedValue("TronGradeTint",
+        LLColor3(row->mTintR, row->mTintG, row->mTintB).getValue());
+    gSavedSettings.setF32("TronGradeTintAmount", row->mTintAmount);
+    gSavedSettings.setF32("TronGridSpacing", row->mSpacing);
+    gSavedSettings.setF32("TronGridWidth", row->mWidth);
+    gSavedSettings.setF32("TronGridMinWidthPx", row->mMinWidthPx);
+    gSavedSettings.setS32("TronGridMajorEvery", row->mMajorEvery);
+    gSavedSettings.setF32("TronPulseGridAmount", row->mPulseGridAmount);
+    gSavedSettings.setF32("TronPulseGridSpeed", row->mPulseSpeed);
+    gSavedSettings.setF32("TronPulseGridWavelength", row->mPulseWavelength);
+    gSavedSettings.setF32("TronPulseGridDensity", row->mPulseDensity);
+    gSavedSettings.setS32("TronPulseGridDirection", row->mPulseDirection);
+    gSavedSettings.setS32("TronPulseGridColorMode", row->mPulseColorMode);
+    gSavedSettings.setS32("TronPulseShape", row->mPulseShape);
+    gSavedSettings.setF32("TronPulseRate", row->mPulseRate);
+
+    // [TronT1 P2-5 fix] applyPalettePreset() only writes the four colour
+    // swatches, never TronPalette itself -- without this, the palette combo
+    // would keep showing whatever it last displayed (often "Custom") even
+    // though the swatches now match a named palette exactly.
+    gSavedSettings.setS32("TronPalette", row->mPaletteId);
+    applyPalettePreset(row->mPaletteId);
+
+    sLastPresetRotoKey = row->mRotoKey;
+    sLastPresetRigRimLabel = row->mRigRimLabel;
+    sLastPresetRigRimTronMode = row->mRigRimTronMode;
+
+    // CineRigRimTronMode is a LOOK key (written only by a Tron preset, never
+    // by a Rig Rim preset) -- write it now regardless of TronPresetAlsoRigRim
+    // (which only gates whether the Rig Rim *preset row* itself -- master/
+    // soften/per-light gains -- is also applied).
+    gSavedSettings.setS32("CineRigRimTronMode", row->mRigRimTronMode);
+
+    static LLCachedControl<bool> also_roto(gSavedSettings, "TronPresetAlsoRoto", true);
+    if (also_roto())
+    {
+        ALRotoInk::applyPreset(row->mRotoKey);
+    }
+    static LLCachedControl<bool> also_rigrim(gSavedSettings, "TronPresetAlsoRigRim", true);
+    if (also_rigrim())
+    {
+        ALPanelCineLightRig::applyRigRimPresetByName(row->mRigRimLabel);
+    }
+}
+
+// [TronT1]
+const std::string& ALTron::lastPresetRotoKey()
+{
+    return sLastPresetRotoKey;
+}
+
+// [TronT1]
+const std::string& ALTron::lastPresetRigRimLabel()
+{
+    return sLastPresetRigRimLabel;
+}
+
+// [TronT1]
+S32 ALTron::lastPresetRigRimTronMode()
+{
+    return sLastPresetRigRimTronMode;
+}
+
 // [TronT0]
 void ALTron::latchFrame()
 {
@@ -256,8 +685,26 @@ const ALTron::Anchor& ALTron::anchor()
     return sAnchor;
 }
 
+// [TronT1]
+ALTron::ELayer ALTron::layer()
+{
+    static LLCachedControl<S32> layer_ctrl(gSavedSettings, "TronLayer", (S32)LAYER_CAMERA);
+    return std::clamp((S32)layer_ctrl(), (S32)LAYER_SCENE, (S32)LAYER_CAMERA) == LAYER_SCENE
+        ? LAYER_SCENE : LAYER_CAMERA;
+}
+
 // [TronT0]
 ALTron::LatticeFrame ALTron::computeLattice(F64 scale)
+{
+    return computeLattice(scale, sAnchor.mAnchorGlobal);
+}
+
+// [TronT1] Same body as the T0 single-argument overload, but the anchor is
+// now a parameter (see the header comment / T1 contract section 3.3):
+// renderTronWorld derives its OWN anchor from the pass's live camera matrix
+// and must fold that exact anchor into every lattice frame it asks for,
+// never the idle()-latched sAnchor (which lags the camera by one frame).
+ALTron::LatticeFrame ALTron::computeLattice(F64 scale, const LLVector3d& anchor_global)
 {
     LatticeFrame out;
     out.mR = LLVector3(0.f, 0.f, 0.f);
@@ -278,9 +725,10 @@ ALTron::LatticeFrame ALTron::computeLattice(F64 scale)
         }
     }
 
-    const F64 base_x = sAnchor.mAnchorGlobal.mdV[VX] - origin.mdV[VX];
-    const F64 base_y = sAnchor.mAnchorGlobal.mdV[VY] - origin.mdV[VY];
-    const F64 base_z = sAnchor.mAnchorGlobal.mdV[VZ] - origin.mdV[VZ];
+    const LLVector3d anchor = anchor_global.isFinite() ? anchor_global : LLVector3d::zero;
+    const F64 base_x = anchor.mdV[VX] - origin.mdV[VX];
+    const F64 base_y = anchor.mdV[VY] - origin.mdV[VY];
+    const F64 base_z = anchor.mdV[VZ] - origin.mdV[VZ];
 
     // [TronT0] k = floor((A - O) / s), r = (A - O) - k * s -- subtraction,
     // never fmod (fmod goes negative for a negative dividend, which would
@@ -313,10 +761,30 @@ ALTron::LatticeFrame ALTron::computeLattice(F64 scale)
 }
 
 // [TronT0]
+// [TronT1 P2-10 fix] Was a straight copy of kAllSettings, which meant the
+// Director scene list carried TronPresetAlsoRoto/TronPresetAlsoRigRim too --
+// pure Lightbox UI checkbox state, not a shot or a look setting -- so
+// loading a scene could silently flip either checkbox. Filters those two
+// out; resetToDefaults() below still walks the full kAllSettings, so
+// "Reset all" is unaffected.
 const std::vector<std::string>& ALTron::settings()
 {
-    static const std::vector<std::string> s_settings(
-        std::begin(kAllSettings), std::end(kAllSettings));
+    static const std::vector<std::string> s_settings = []
+    {
+        std::vector<std::string> v(std::begin(kAllSettings), std::end(kAllSettings));
+        v.erase(std::remove_if(v.begin(), v.end(), [](const std::string& name)
+            {
+                for (const char* excluded : kDirectorExcluded)
+                {
+                    if (name == excluded)
+                    {
+                        return true;
+                    }
+                }
+                return false;
+            }), v.end());
+        return v;
+    }();
     return s_settings;
 }
 

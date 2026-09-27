@@ -35,6 +35,14 @@ public:
     bool postBuild() override;
     void draw() override;
     void onVisibilityChange(bool new_visibility) override;
+    // [TronT1] Applies a named Rig Rim preset row (RIG_RIM_PRESETS, defined
+    // in alpanelcinelightrig.cpp) by label match -- lets ALTron::applyPreset
+    // (the Tron look presets) and the Lightbox "Tron" tab's Integration
+    // group ("Apply Tron Rig Rim preset" button) stamp the same look without
+    // duplicating its values. Returns false (no-op) when no row matches.
+    // CineRigRimEnabled/DebugRimOnly/IncludeProbes are never touched, same
+    // as onRigRimPresetSelected().
+    static bool applyRigRimPresetByName(const std::string& name);
     // Keeps this wrapper's own rect in sync with the flow_grid card layout
     // it hosts. flow_grid self-sizes to its packed card content whenever it
     // reshapes (see ALFlowGrid::reshape), but that only updates flow_grid's

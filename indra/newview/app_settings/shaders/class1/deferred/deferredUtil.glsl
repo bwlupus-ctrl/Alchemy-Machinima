@@ -833,12 +833,55 @@ void pbrPunctual(vec3 diffuseColor, vec3 specularColor,
 //                           w surface tint amount 0..1
 //   per-light vec4    x gain, y grazing exponent k, z wrap 0..1, w back bias b0
 //                     (single light: rig_rim_light; batched: rig_rim_lights[])
+//   [TronT1] rig_rim_tron        vec4  x mode (0 off | 1 palette tint | 2 tint + pulse),
+//                                      y tint mix 0..1, z CPU pulse multiplier (>= 0,
+//                                      1 + amount * (pulse01 - 0.5) * 2), w reserved
+//            rig_rim_tron_color  vec4  rgb Tron palette colour (linear), w reserved
+//            Uploaded by ALCineRigRim::bindGlobals() (slow bind) AND
+//            ALCineRigRim::bindAnimated() (bindDeferredShaderFast fast path,
+//            so the per-frame pulse reaches programs that stay fast-bound).
+//            Off path: rig_rim_tron.x == 0 (also the GL default for a
+//            never-uploaded uniform) -> the branch in rigRimTerm() is not
+//            taken and c_l is untouched: bit-exact no-op.
 uniform int  rig_rim_mode;
 uniform vec4 rig_rim_globals;
+uniform vec4 rig_rim_tron;
+uniform vec4 rig_rim_tron_color;
 
 int rigRimMode()
 {
     return rig_rim_mode;
+}
+
+// [TronT1] Recolour a rim light's colour toward the Tron palette: keep the
+// light's own luminance (attenuation / cone / gobo / shadow weighting stays
+// physical) and swap the hue by `mix`; mode 2 additionally scales by the CPU
+// pulse multiplier from the shared Tron clock.
+vec3 tronRimTint(vec3 c_l)
+{
+    float cl = dot(c_l, vec3(0.2126, 0.7152, 0.0722));
+    // [TronT1 P2-6 fix] rig_rim_tron_color is the raw palette colour (e.g.
+    // Ares Red ~= (1.00, 0.08, 0.06), luminance ~0.27), not a hue-only unit
+    // vector -- multiplying cl by it unnormalised made the result's
+    // luminance cl * lum(tint) instead of cl, silently darkening the tint
+    // (Ares Red down to ~27% of the light's real brightness) even though
+    // this function's whole contract is "keep the light's own luminance,
+    // swap the hue". Normalise by the tint's own luminance (guarded against
+    // a black/near-black palette colour) so cl * tint_norm has luminance
+    // cl again, matching the documented behaviour.
+    vec3  tint     = max(rig_rim_tron_color.rgb, vec3(0.0));
+    float tint_lum = max(dot(tint, vec3(0.2126, 0.7152, 0.0722)), 1.0e-4);
+    // [TronT1 P2] Pure luminance normalisation over-drives saturated palettes
+    // (pure blue x14); pure peak normalisation darkens them. Use the geometric
+    // mean of luminance and peak: blue x3.7, Ares red keeps ~52% luminance.
+    float tint_max = max(max(tint.r, tint.g), max(tint.b, 1.0e-4));
+    float tint_den = sqrt(tint_lum * tint_max);
+    c_l = mix(c_l, cl * (tint / tint_den), clamp(rig_rim_tron.y, 0.0, 1.0));
+    if (rig_rim_tron.x > 1.5)
+    {
+        c_l *= max(rig_rim_tron.z, 0.0);
+    }
+    return c_l;
 }
 
 vec3 rigRimTerm(vec3 n,            // surface normal (eye space)
@@ -853,6 +896,12 @@ vec3 rigRimTerm(vec3 n,            // surface normal (eye space)
     if (gain <= 0.0)
     {
         return vec3(0.0);
+    }
+
+    // [TronT1] Tron palette tint of the rim light colour only (mode 0 = untaken).
+    if (rig_rim_tron.x > 0.5)
+    {
+        c_l = tronRimTint(c_l);
     }
 
     float NoV    = abs(dot(n, v));

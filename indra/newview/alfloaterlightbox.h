@@ -70,6 +70,38 @@ public:
     // [RotoInk] Shows the Silhouette/Metric threshold row matching
     // CineOutlineDepthMode and hides the other (pattern: updateTonemapper()).
     void updateRotoInkDepthMode();
+
+    // [TronT1] Tron tab: "reset" (all controls to default) or an ALTron
+    // look-preset key (tr_preset_combo is wired directly in postBuild, same
+    // action-combo idiom as ri_preset_combo; this registrar entry only ever
+    // receives "reset" from tr_reset_all).
+    void onTronPreset(const LLSD& userdata);
+    // [TronT1] tr_palette_combo commit: writes the four colour swatches for
+    // the selected named palette (id 0 Custom is a no-op, matching
+    // ALTron::applyPalettePreset's own contract).
+    void onTronPaletteSelected();
+    // [TronT1] Any of the four tr_color_* swatches: sets TronPalette back to
+    // 0 (Custom) so the palette combo doesn't silently disagree with a
+    // hand-edited swatch.
+    void onTronColorEdited();
+    // [TronT1] tr_grid_origin_snap_btn / tr_grid_origin_clear_btn.
+    void onTronGridOriginSnap();
+    void onTronGridOriginClear();
+    // [TronT1] Integration group buttons: apply the Roto Ink / Rig Rim
+    // preset linked to the most recently applied Tron look preset (see
+    // ALTron::lastPresetRotoKey()/lastPresetRigRimLabel()), even if the
+    // matching "+ Roto Ink"/"+ Rig Rim" checkbox was off when it was applied.
+    void onTronApplyRotoPreset();
+    void onTronApplyRigRimPreset();
+    // [TronT1] Single show/hide pass over every Tron tab control whose
+    // visibility depends on another control's value (mirrors
+    // updateRotoInkAnimVisibility()'s shape): the Scene-layer hint under the
+    // Layer combo, every Grade row but Strength when Strength == 0, every
+    // Grid row (incl. the Pulses sub-rows, further gated on Pulse amount ==
+    // 0) when Grid Enable is off, the single-subject target row per Target
+    // set, the whole Subject group per the grid-exclude/radius/keep-subject
+    // OR, and the tag-unavailable hint under the mask-source combos.
+    void updateTronVisibility();
     // [RotoInk Anim] Single show/hide pass over every round-A control whose
     // visibility depends on another control's value (A.8): layer 1/2 motion
     // Shape/Angle/anchor-hint per style, the Tempo Phase row, the Pattern
@@ -83,6 +115,15 @@ public:
     boost::signals2::scoped_connection mTonemapConnection;
     boost::signals2::scoped_connection mCASConnection;
     boost::signals2::scoped_connection mRotoInkDepthModeConnection;
+    // [TronT1] Every driver of updateTronVisibility().
+    boost::signals2::scoped_connection mTronLayerConnection;
+    boost::signals2::scoped_connection mTronGradeStrengthConnection;
+    boost::signals2::scoped_connection mTronGridEnabledConnection;
+    boost::signals2::scoped_connection mTronPulseGridAmountConnection;
+    boost::signals2::scoped_connection mTronGridSubjectExcludeConnection;
+    boost::signals2::scoped_connection mTronGridSubjectRadiusConnection;
+    boost::signals2::scoped_connection mTronGradeKeepSubjectConnection;
+    boost::signals2::scoped_connection mTronSubjectTargetSetConnection;
     // [RotoInk Anim] All seven drive the same updateRotoInkAnimVisibility().
     boost::signals2::scoped_connection mRotoInkMotionStyleConnection;
     boost::signals2::scoped_connection mRotoInkMotion2StyleConnection;

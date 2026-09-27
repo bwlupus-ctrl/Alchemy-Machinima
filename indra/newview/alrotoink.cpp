@@ -63,6 +63,38 @@ struct Preset
     F32  c2Speed, c2Len;
 };
 
+// [TronT1] Builder for a Tron look's linked ink preset (T1 contract section
+// 9's common column: silOn true/silThr 0.02/silW 1.0, crOn true/crAngle 30/
+// crW 0.7, depthMode 0/metricThr 0.1, inkMode 0/reach 6/opacity 1/blend 2,
+// sketch off, layer-2 off, no pattern unless overridden, glow 1). Every
+// field is still written (Preset's own header comment rule), just from a
+// named/positional argument list instead of a 59-field literal row.
+Preset make_tron_ink_preset(const char* key, const char* label,
+                             F32 r, F32 g, F32 b, F32 intensity, F32 width, F32 soft,
+                             S32 moStyle, F32 moSpeed, F32 moAmt, F32 moScale, F32 moShape,
+                             S32 ptType, F32 ptSize, F32 ptRatio, F32 ptDrift,
+                             F32 c2r, F32 c2g, F32 c2b, S32 c2Mode, F32 c2Speed, F32 c2Len)
+{
+    Preset p{};
+    p.mKey = key;
+    p.mLabel = label;
+    p.r = r; p.g = g; p.b = b;
+    p.intensity = intensity;
+    p.glow = 1.0f;
+    p.silOn = true; p.silThr = 0.02f; p.silW = 1.0f;
+    p.crOn = true; p.crAngle = 30.0f; p.crW = 0.7f;
+    p.depthMode = 0; p.metricThr = 0.1f; p.width = width; p.soft = soft; p.farCutoff = 0.0f;
+    p.inkMode = 0; p.reach = 6.0f; p.opacity = 1.0f; p.blend = 2;
+    p.skOn = false; p.skAmt = 2.0f; p.skDet = 0.45f; p.skFps = 12.0f; p.skStrokes = 2; p.skRough = 0.3f; p.skSeed = 0.0f;
+    p.moStyle = moStyle; p.moSpeed = moSpeed; p.moAmt = moAmt; p.moScale = moScale; p.moAngle = 90.0f;
+    p.moShape = moShape; p.moTempo = 0.0f; p.moPhase = 0.0f; p.moStep = 0; p.moSeed = 0.0f;
+    p.m2Style = 0; p.m2Speed = 0.5f; p.m2Amt = 0.5f; p.m2Scale = 0.3f; p.m2Shape = 0.5f; p.m2Angle = 90.0f;
+    p.ptType = ptType; p.ptSize = ptSize; p.ptRatio = ptRatio; p.ptDrift = ptDrift;
+    p.hAngle = 45.0f; p.hReach = 0.0f; p.hCross = false; p.ptSeed = 0.0f;
+    p.c2r = c2r; p.c2g = c2g; p.c2b = c2b; p.c2Mode = c2Mode; p.c2Speed = c2Speed; p.c2Len = c2Len;
+    return p;
+}
+
 // Common column (section 5): DM 0 / MT 0.10 / F 0 / IM 0 / R 6 / sketch off
 // (2.0/0.45/12/2/0.30/0) / motion none (0.5/0.5/0.3/90). Rows override only
 // what differs from the common column.
@@ -127,6 +159,28 @@ const Preset kPresets[] = {
     { "tempo120", "Tempo Pulse 120", 1,0.2f,0.6f,6.0f,1.0f,true,0.02f,1.0f,true,35.0f,0.4f,0,0.1f,2.0f,0.5f,0.0f,0,6.0f,1.0f,2,false,2.0f,0.45f,12.0f,2,0.3f,0.0f,7,1.0f,0.9f,0.6f,90.0f,0.3f,120.0f,0.0f,0,0.0f,0,0.5f,0.5f,0.3f,0.5f,90.0f,0,12.0f,0.5f,0.0f,45.0f,0.0f,false,0.0f,1,1,1,3,0.25f,0.0f },
     { "candy", "Two-Tone Candy", 1,0.2f,0.4f,1.0f,0.0f,true,0.02f,1.0f,true,30.0f,0.7f,0,0.1f,3.0f,0.4f,0.0f,0,6.0f,1.0f,0,false,2.0f,0.45f,12.0f,2,0.3f,0.0f,0,0.5f,0.5f,0.3f,90.0f,0.5f,0.0f,0.0f,0,0.0f,0,0.5f,0.5f,0.3f,0.5f,90.0f,1,14,0.5f,30,45.0f,0.0f,false,0.0f,0.2f,0.6f,1,1,0.3f,60 },
     { "waverunner", "Wave Runner", 0.2f,0.9f,1,5.0f,1.0f,true,0.02f,1.0f,true,35.0f,0.4f,0,0.1f,2.0f,0.5f,0.0f,0,6.0f,1.0f,2,false,2.0f,0.45f,12.0f,2,0.3f,0.0f,16,1.0f,1.0f,0.3f,90.0f,0.7f,0.0f,0.0f,0,0.0f,0,0.5f,0.5f,0.3f,0.5f,90.0f,0,12.0f,0.5f,0.0f,45.0f,0.0f,false,0.0f,1.0f,1.0f,1.0f,0,0.25f,0.0f },
+    // -- [TronT1] Tron look presets (ALTron::applyPreset) -- built via
+    // make_tron_ink_preset() below instead of 59-field positional rows.
+    make_tron_ink_preset("tron_legacy",     "Tron Legacy Ink",  0.15f,0.90f,1.00f, 8.0f, 1.5f, 0.4f,
+                         1, 0.5f, 0.25f, 0.3f, 0.5f,
+                         0, 12.0f, 0.5f, 0.0f,
+                         1.0f,1.0f,1.0f, 3, 0.25f, 0.0f),
+    make_tron_ink_preset("tron_ares",       "Tron Ares Ink",    1.00f,0.08f,0.06f, 9.0f, 2.0f, 0.4f,
+                         7, 1.2f, 0.9f, 0.5f, 0.35f,
+                         0, 12.0f, 0.5f, 0.0f,
+                         1.0f,0.6f,0.5f, 4, 0.25f, 0.0f),
+    make_tron_ink_preset("tron_1982",       "Classic 1982 Ink", 0.55f,0.85f,1.00f, 5.0f, 1.0f, 0.4f,
+                         0, 0.5f, 0.5f,  0.3f, 0.5f,
+                         1, 10.0f, 0.6f, 20.0f,
+                         1.0f,0.9f,0.6f, 1, 0.25f, 300.0f),
+    make_tron_ink_preset("tron_recognizer", "Recognizer Ink",   1.00f,0.45f,0.05f, 8.0f, 2.5f, 0.4f,
+                         2, 0.6f, 1.0f,  0.35f, 0.5f,
+                         0, 12.0f, 0.5f, 0.0f,
+                         1.0f,1.0f,1.0f, 0, 0.25f, 0.0f),
+    make_tron_ink_preset("tron_uprising",   "Uprising White Ink", 1.0f,1.0f,1.0f, 4.0f, 1.2f, 0.4f,
+                         3, 0.35f, 0.85f, 0.12f, 0.5f,
+                         0, 12.0f, 0.5f, 0.0f,
+                         0.2f,0.9f,1.0f, 3, 0.25f, 0.0f),
 };
 
 // Every CineOutline* setting that ships with the viewer (settings.xml), used
@@ -146,6 +200,13 @@ const char* const kAllSettings[] = {
     "CineOutlineAnimSpeed",
     "CineOutlineAnimPause",
     "CineOutlineAnimFollowDirector",
+    // [TronT1 P2-4 fix] Was missing from this list entirely, so neither
+    // ALRotoInk::resetToDefaults() nor the Director/Lightbox key list
+    // (settings(), below) ever touched it. Rate control, not part of a
+    // look -- ALRotoInk::applyPreset() never writes it, same as the three
+    // Anim keys above, so adding it here does not change applyPreset()'s
+    // write count.
+    "CineOutlineAnimUseTronClock",
     // [RotoInk] Line
     "CineOutlineSilhouetteEnabled",
     "CineOutlineSilhouetteThreshold",

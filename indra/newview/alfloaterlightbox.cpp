@@ -34,6 +34,11 @@
 #include "alprojectorshaftpresets.h"
 #include "alcinehaze.h"
 #include "alrotoink.h"
+#include "alpanelcinelightrig.h" // [TronT1] applyRigRimPresetByName
+#include "altron.h" // [TronT1]
+
+#include "llagent.h" // [TronT1] gAgent.getPosGlobalFromAgent (grid origin snap)
+#include "llviewercamera.h" // [TronT1]
 
 #include "bdmergemeshpool.h"
 #include "bdmergetexpool.h"
@@ -53,6 +58,7 @@
 #include "llselectmgr.h"
 #include "llvovolume.h"
 #include "pipeline.h"
+#include "llviewershadermgr.h" // [TronT1] LLViewerShaderMgr::gbufferAvatarTagActive()
 #include <algorithm> // [RotoInk Anim] std::clamp (updateRotoInkAnimVisibility)
 
 ALFloaterLightBox::ALFloaterLightBox(const LLSD& key)
@@ -80,6 +86,14 @@ ALFloaterLightBox::ALFloaterLightBox(const LLSD& key)
     mCommitCallbackRegistrar.add("LightBox.CineHazeRefFromCamera", std::bind(&ALFloaterLightBox::onCineHazeRefFromCamera, this));
     // [RotoInk] Roto Ink tab actions (value controls are XML-bound).
     mCommitCallbackRegistrar.add("LightBox.RotoInkPreset", std::bind(&ALFloaterLightBox::onRotoInkPreset, this, std::placeholders::_2));
+    // [TronT1] Tron tab actions (value controls are XML-bound).
+    mCommitCallbackRegistrar.add("LightBox.TronPreset", std::bind(&ALFloaterLightBox::onTronPreset, this, std::placeholders::_2));
+    mCommitCallbackRegistrar.add("LightBox.TronPaletteSelected", std::bind(&ALFloaterLightBox::onTronPaletteSelected, this));
+    mCommitCallbackRegistrar.add("LightBox.TronColorEdited", std::bind(&ALFloaterLightBox::onTronColorEdited, this));
+    mCommitCallbackRegistrar.add("LightBox.TronGridOriginSnap", std::bind(&ALFloaterLightBox::onTronGridOriginSnap, this));
+    mCommitCallbackRegistrar.add("LightBox.TronGridOriginClear", std::bind(&ALFloaterLightBox::onTronGridOriginClear, this));
+    mCommitCallbackRegistrar.add("LightBox.TronApplyRotoPreset", std::bind(&ALFloaterLightBox::onTronApplyRotoPreset, this));
+    mCommitCallbackRegistrar.add("LightBox.TronApplyRigRimPreset", std::bind(&ALFloaterLightBox::onTronApplyRigRimPreset, this));
 }
 
 ALFloaterLightBox::~ALFloaterLightBox()
@@ -97,6 +111,15 @@ ALFloaterLightBox::~ALFloaterLightBox()
     mRotoInkSubjectTargetSetConnection.disconnect();
     mRotoInkInkColorModeConnection.disconnect();
     mRotoInkBlendModeConnection.disconnect();
+    // [TronT1]
+    mTronLayerConnection.disconnect();
+    mTronGradeStrengthConnection.disconnect();
+    mTronGridEnabledConnection.disconnect();
+    mTronPulseGridAmountConnection.disconnect();
+    mTronGridSubjectExcludeConnection.disconnect();
+    mTronGridSubjectRadiusConnection.disconnect();
+    mTronGradeKeepSubjectConnection.disconnect();
+    mTronSubjectTargetSetConnection.disconnect();
 }
 
 bool ALFloaterLightBox::postBuild()
@@ -107,6 +130,7 @@ bool ALFloaterLightBox::postBuild()
     ALScrollFocus::install(this, "weather_settings_scroll", "weather_settings_scroll_content");
     ALScrollFocus::install(this, "cinehaze_settings_scroll", "cinehaze_settings_scroll_content");
     ALScrollFocus::install(this, "rotoink_settings_scroll", "rotoink_settings_scroll_content");
+    ALScrollFocus::install(this, "tron_settings_scroll", "tron_settings_scroll_content");
 
     getChild<LLComboBox>("ps_preset")->setCommitCallback(
         [](LLUICtrl* control, const LLSD&)
@@ -138,6 +162,18 @@ bool ALFloaterLightBox::postBuild()
             control->setValue(LLSD("custom"));
         });
 
+    // [TronT1] Same action-combo idiom as ri_preset_combo above.
+    getChild<LLComboBox>("tr_preset_combo")->setCommitCallback(
+        [](LLUICtrl* control, const LLSD&)
+        {
+            const std::string preset = control->getValue().asString();
+            if (!preset.empty() && preset != "custom")
+            {
+                ALTron::applyPreset(preset);
+            }
+            control->setValue(LLSD("custom"));
+        });
+
     populateLUTCombo();
     updateTonemapper();
     updateCAS();
@@ -162,6 +198,18 @@ bool ALFloaterLightBox::postBuild()
     mRotoInkSubjectTargetSetConnection = gSavedSettings.getControl("CineOutlineSubjectTargetSet")->getSignal()->connect([&](LLControlVariable*, const LLSD&, const LLSD&) { updateRotoInkAnimVisibility(); });
     mRotoInkInkColorModeConnection = gSavedSettings.getControl("CineOutlineInkColorMode")->getSignal()->connect([&](LLControlVariable*, const LLSD&, const LLSD&) { updateRotoInkAnimVisibility(); });
     mRotoInkBlendModeConnection = gSavedSettings.getControl("CineOutlineBlendMode")->getSignal()->connect([&](LLControlVariable*, const LLSD&, const LLSD&) { updateRotoInkAnimVisibility(); });
+
+    // [TronT1] One show/hide pass, re-run whenever any of the eight driving
+    // settings changes -- see updateTronVisibility()'s own header comment.
+    updateTronVisibility();
+    mTronLayerConnection = gSavedSettings.getControl("TronLayer")->getSignal()->connect([&](LLControlVariable*, const LLSD&, const LLSD&) { updateTronVisibility(); });
+    mTronGradeStrengthConnection = gSavedSettings.getControl("TronGradeStrength")->getSignal()->connect([&](LLControlVariable*, const LLSD&, const LLSD&) { updateTronVisibility(); });
+    mTronGridEnabledConnection = gSavedSettings.getControl("TronGridEnabled")->getSignal()->connect([&](LLControlVariable*, const LLSD&, const LLSD&) { updateTronVisibility(); });
+    mTronPulseGridAmountConnection = gSavedSettings.getControl("TronPulseGridAmount")->getSignal()->connect([&](LLControlVariable*, const LLSD&, const LLSD&) { updateTronVisibility(); });
+    mTronGridSubjectExcludeConnection = gSavedSettings.getControl("TronGridSubjectExclude")->getSignal()->connect([&](LLControlVariable*, const LLSD&, const LLSD&) { updateTronVisibility(); });
+    mTronGridSubjectRadiusConnection = gSavedSettings.getControl("TronGridSubjectRadius")->getSignal()->connect([&](LLControlVariable*, const LLSD&, const LLSD&) { updateTronVisibility(); });
+    mTronGradeKeepSubjectConnection = gSavedSettings.getControl("TronGradeKeepSubject")->getSignal()->connect([&](LLControlVariable*, const LLSD&, const LLSD&) { updateTronVisibility(); });
+    mTronSubjectTargetSetConnection = gSavedSettings.getControl("TronSubjectTargetSet")->getSignal()->connect([&](LLControlVariable*, const LLSD&, const LLSD&) { updateTronVisibility(); });
 
     return LLFloater::postBuild();
 }
@@ -193,6 +241,16 @@ void ALFloaterLightBox::draw()
         }
         getChild<LLTextBox>("bd_texpool_stats")->setValue("Textures: " + BDMergeTexPool::shortStatus());
         getChild<LLTextBox>("bd_meshpool_stats")->setValue("Meshes: " + BDMergeMeshPool::shortStatus());
+
+        // [TronT1] Read-only origin readout (TronGridOriginGlobal); throttled
+        // on the same 1 s timer as the pool stats above, findChild-guarded so
+        // it's a no-op before the Tron tab's widgets are ever built.
+        if (LLTextBox* origin_status = findChild<LLTextBox>("tr_grid_origin_status"))
+        {
+            const LLVector3d origin = gSavedSettings.getVector3d("TronGridOriginGlobal");
+            origin_status->setValue(llformat("Origin: (%.1f, %.1f, %.1f)",
+                origin.mdV[VX], origin.mdV[VY], origin.mdV[VZ]));
+        }
     }
     // [BDMerge G3.3 Batch 3] Reflect the live selection in the Selected Light tab.
     updateSelectedLightPanel();
@@ -575,6 +633,184 @@ void ALFloaterLightBox::updateRotoInkAnimVisibility()
     set_row("CineOutlineSubjectScreenCY", "ri_subject_screen_cy_slider", mode78);
     set_row("CineOutlineSubjectScreenRX", "ri_subject_screen_rx_slider", mode78);
     set_row("CineOutlineSubjectScreenRY", "ri_subject_screen_ry_slider", mode78);
+}
+
+// [TronT1] Tron tab: "reset" (all controls to default) or an ALTron look-
+// preset key. tr_preset_combo is wired directly in postBuild (see the
+// ri_preset_combo idiom above); this registrar entry only ever receives
+// "reset" from tr_reset_all today.
+void ALFloaterLightBox::onTronPreset(const LLSD& userdata)
+{
+    const std::string& preset = userdata.asString();
+    if (preset == "reset")
+    {
+        ALTron::resetToDefaults();
+    }
+    else
+    {
+        ALTron::applyPreset(preset);
+    }
+}
+
+// [TronT1] tr_palette_combo already persisted TronPalette via its own
+// control_name binding by the time this fires; apply the matching swatch
+// values (id 0 Custom is a no-op, per ALTron::applyPalettePreset's contract).
+void ALFloaterLightBox::onTronPaletteSelected()
+{
+    if (LLComboBox* combo = findChild<LLComboBox>("tr_palette_combo"))
+    {
+        ALTron::applyPalettePreset(combo->getValue().asInteger());
+    }
+}
+
+// [TronT1] Any of the four tr_color_* swatches: a hand-edited swatch no
+// longer matches a named palette, so fall back to Custom rather than let the
+// palette combo silently disagree with the actual colours.
+void ALFloaterLightBox::onTronColorEdited()
+{
+    gSavedSettings.setS32("TronPalette", 0);
+}
+
+// [TronT1] Sets the grid/pulse lattice origin to the camera's current agent
+// position (converted to global coordinates, same idiom ALTron::
+// computeLattice's own TronGridOriginGlobal read expects).
+void ALFloaterLightBox::onTronGridOriginSnap()
+{
+    if (LLViewerCamera* camera = LLViewerCamera::getInstance())
+    {
+        gSavedSettings.setVector3d("TronGridOriginGlobal",
+            gAgent.getPosGlobalFromAgent(camera->getOrigin()));
+    }
+}
+
+void ALFloaterLightBox::onTronGridOriginClear()
+{
+    gSavedSettings.setVector3d("TronGridOriginGlobal", LLVector3d::zero);
+}
+
+// [TronT1] Integration group: apply the Roto Ink / Rig Rim preset linked to
+// the most recently applied Tron look preset even if the matching
+// "+ Roto Ink"/"+ Rig Rim" checkbox was off when it was applied.
+void ALFloaterLightBox::onTronApplyRotoPreset()
+{
+    const std::string& key = ALTron::lastPresetRotoKey();
+    if (!key.empty())
+    {
+        ALRotoInk::applyPreset(key);
+    }
+}
+
+void ALFloaterLightBox::onTronApplyRigRimPreset()
+{
+    const std::string& label = ALTron::lastPresetRigRimLabel();
+    if (!label.empty() && ALPanelCineLightRig::applyRigRimPresetByName(label))
+    {
+        gSavedSettings.setS32("CineRigRimTronMode", ALTron::lastPresetRigRimTronMode());
+    }
+}
+
+// [TronT1] Contract section 7. Same findChild+setVisible idiom as
+// updateRotoInkAnimVisibility()/updateRotoInkDepthMode(); hidden rows leave
+// blank space in the scroll area rather than reflowing what follows (same
+// as every other mode-dependent group on the Roto Ink tab above).
+void ALFloaterLightBox::updateTronVisibility()
+{
+    const bool scene_layer   = (gSavedSettings.getS32("TronLayer") == 0);
+    const bool grade_on      = gSavedSettings.getF32("TronGradeStrength") > 0.f;
+    const bool grid_on       = gSavedSettings.getBOOL("TronGridEnabled");
+    const bool pulses_on     = gSavedSettings.getF32("TronPulseGridAmount") > 0.f;
+    const bool subject_group = gSavedSettings.getF32("TronGridSubjectExclude") > 0.f ||
+                                gSavedSettings.getF32("TronGridSubjectRadius") > 0.f ||
+                                gSavedSettings.getF32("TronGradeKeepSubject") > 0.f;
+    const bool single_subject = (gSavedSettings.getS32("TronSubjectTargetSet") == 0);
+    const bool tag_active     = LLViewerShaderMgr::gbufferAvatarTagActive();
+
+    if (LLView* v = findChild<LLView>("tr_layer_hint")) v->setVisible(scene_layer);
+
+    static const std::string grade_widgets[] = {
+        "tr_grade_darken_ev_label", "tr_grade_darken_ev_slider", "tr_reset_TronGradeDarkenEV",
+        "tr_grade_desaturate_label", "tr_grade_desaturate_slider", "tr_reset_TronGradeDesaturate",
+        "tr_grade_crush_label", "tr_grade_crush_slider", "tr_reset_TronGradeCrush",
+        "tr_grade_tint_label", "tr_grade_tint_swatch", "tr_reset_TronGradeTint",
+        "tr_grade_tint_amount_label", "tr_grade_tint_amount_slider", "tr_reset_TronGradeTintAmount",
+        "tr_grade_keep_bright_lo_label", "tr_grade_keep_bright_lo_slider", "tr_reset_TronGradeKeepBrightLo",
+        "tr_grade_keep_bright_hi_label", "tr_grade_keep_bright_hi_slider", "tr_reset_TronGradeKeepBrightHi",
+        "tr_grade_keep_subject_label", "tr_grade_keep_subject_slider", "tr_reset_TronGradeKeepSubject",
+        "tr_grade_sky_darken_label", "tr_grade_sky_darken_slider", "tr_reset_TronGradeSkyDarken",
+    };
+    for (const std::string& name : grade_widgets)
+    {
+        if (LLView* v = findChild<LLView>(name)) v->setVisible(grade_on);
+    }
+
+    static const std::string grid_widgets[] = {
+        "tr_grid_intensity_label", "tr_grid_intensity_slider", "tr_reset_TronGridIntensity",
+        "tr_grid_spacing_label", "tr_grid_spacing_slider", "tr_reset_TronGridSpacing",
+        "tr_grid_width_label", "tr_grid_width_slider", "tr_reset_TronGridWidth",
+        "tr_grid_min_width_px_label", "tr_grid_min_width_px_slider", "tr_reset_TronGridMinWidthPx",
+        "tr_grid_major_every_label", "tr_grid_major_every_spinner",
+        "tr_grid_major_width_label", "tr_grid_major_width_slider", "tr_reset_TronGridMajorWidth",
+        "tr_grid_major_intensity_label", "tr_grid_major_intensity_slider", "tr_reset_TronGridMajorIntensity",
+        "tr_grid_floor_label", "tr_grid_floor_slider", "tr_reset_TronGridFloor",
+        "tr_grid_wall_label", "tr_grid_wall_slider", "tr_reset_TronGridWall",
+        "tr_grid_ceiling_label", "tr_grid_ceiling_slider", "tr_reset_TronGridCeiling",
+        "tr_grid_sharpness_label", "tr_grid_sharpness_slider", "tr_reset_TronGridSharpness",
+        "tr_grid_normal_source_label", "tr_grid_normal_source_combo",
+        "tr_grid_far_fade_label", "tr_grid_far_fade_slider", "tr_reset_TronGridFarFade",
+        "tr_grid_water_mode_label", "tr_grid_water_mode_combo",
+        "tr_grid_water_tolerance_label", "tr_grid_water_tolerance_slider", "tr_reset_TronGridWaterTolerance",
+        "tr_grid_glow_label", "tr_grid_glow_slider", "tr_reset_TronGridGlow",
+        "tr_grid_origin_label", "tr_grid_origin_snap_btn", "tr_grid_origin_clear_btn", "tr_grid_origin_status",
+        "tr_pulse_header",
+    };
+    for (const std::string& name : grid_widgets)
+    {
+        if (LLView* v = findChild<LLView>(name)) v->setVisible(grid_on);
+    }
+
+    static const std::string pulse_widgets[] = {
+        "tr_pulse_grid_speed_label", "tr_pulse_grid_speed_slider", "tr_reset_TronPulseGridSpeed",
+        "tr_pulse_grid_length_label", "tr_pulse_grid_length_slider", "tr_reset_TronPulseGridLength",
+        "tr_pulse_grid_wavelength_label", "tr_pulse_grid_wavelength_slider", "tr_reset_TronPulseGridWavelength",
+        "tr_pulse_grid_density_label", "tr_pulse_grid_density_slider", "tr_reset_TronPulseGridDensity",
+        "tr_pulse_grid_direction_label", "tr_pulse_grid_direction_combo",
+        "tr_pulse_grid_color_mode_label", "tr_pulse_grid_color_mode_combo",
+        "tr_pulse_seed_label", "tr_pulse_seed_slider", "tr_reset_TronPulseSeed",
+    };
+    const bool pulse_rows_visible = grid_on && pulses_on;
+    for (const std::string& name : pulse_widgets)
+    {
+        if (LLView* v = findChild<LLView>(name)) v->setVisible(pulse_rows_visible);
+    }
+    // tr_pulse_grid_amount_slider itself stays visible whenever the grid does
+    // (it is the row that turns the rest of the sub-group on).
+    if (LLView* v = findChild<LLView>("tr_pulse_grid_amount_label")) v->setVisible(grid_on);
+    if (LLView* v = findChild<LLView>("tr_pulse_grid_amount_slider")) v->setVisible(grid_on);
+    if (LLView* v = findChild<LLView>("tr_reset_TronPulseGridAmount")) v->setVisible(grid_on);
+
+    static const std::string subject_widgets[] = {
+        "tr_subject_header",
+        "tr_subject_target_set_label", "tr_subject_target_set_combo",
+        "tr_subject_max_targets_label", "tr_subject_max_targets_spinner",
+        "tr_subject_shape_label", "tr_subject_shape_combo",
+        "tr_subject_feather_label", "tr_subject_feather_slider", "tr_reset_TronSubjectFeather",
+        "tr_subject_depth_range_label", "tr_subject_depth_range_slider", "tr_reset_TronSubjectDepthRange",
+        "tr_subject_ellipse_scale_label", "tr_subject_ellipse_scale_slider", "tr_reset_TronSubjectEllipseScale",
+        "tr_subject_source_grid_label", "tr_subject_source_grid_combo",
+        "tr_subject_source_rim_label", "tr_subject_source_rim_combo",
+        "tr_subject_source_hint",
+        "tr_subject_invert_check",
+        "tr_grid_subject_exclude_label", "tr_grid_subject_exclude_slider", "tr_reset_TronGridSubjectExclude",
+        "tr_grid_subject_radius_label", "tr_grid_subject_radius_slider", "tr_reset_TronGridSubjectRadius",
+        "tr_grid_subject_radius_feather_label", "tr_grid_subject_radius_feather_slider", "tr_reset_TronGridSubjectRadiusFeather",
+    };
+    for (const std::string& name : subject_widgets)
+    {
+        if (LLView* v = findChild<LLView>(name)) v->setVisible(subject_group);
+    }
+    if (LLView* v = findChild<LLView>("tr_subject_target_label")) v->setVisible(subject_group && single_subject);
+    if (LLView* v = findChild<LLView>("tr_subject_target_combo")) v->setVisible(subject_group && single_subject);
+    if (LLView* v = findChild<LLView>("tr_subject_source_hint")) v->setVisible(subject_group && !tag_active);
 }
 
 void ALFloaterLightBox::populateLUTCombo()

@@ -31,6 +31,7 @@
 
 #include "alcinehaze.h"
 #include "alcinerigrim.h" // [RigRim]
+#include "altron.h" // [TronT1]
 
 #include "pipeline.h"
 #include "alcinelightrig.h"
@@ -7371,32 +7372,62 @@ void LLPipeline::renderGeomPostDeferred(LLCamera& camera)
             // visible-diffuse sidecar just above (S1-style: stated
             // explicitly, not inferred from an allocation detail elsewhere).
             if (mRT == &mMainRT && !gCubeSnapshot && !LLPipeline::sRenderingHUDs &&
-                !sImpostorRender && !sPrismLensRender &&
-                shouldRunRotoInkAt(ROTOINK_LAYER_SCENE))
+                !sImpostorRender && !sPrismLensRender)
             {
-                // renderGeomPostDeferred runs with setColorMask(true,false)
-                // (above) for the whole pool loop. The ink pass's OWN draw
-                // into mWaterDis needs the alpha channel writable too, or
-                // mWaterDis's stale alpha (never cleared for this scratch
-                // target) is what the final copyColorToAttachment0 blit
-                // copies into mRT->screen's alpha/glow channel. Restore the
-                // pool loop's mask immediately after.
-                //
-                // [RotoInk Round-4, Codex+Opus P1] This call site runs BEFORE
-                // the end-of-3D-scene snapshot (pipeline.cpp ~22270-22273)
-                // that copies gGLModelView/gGLProjection into gGLLast{Model
-                // View,Projection} for this frame -- gGLLast* here would
-                // still be the PREVIOUS frame's camera. Pass the LIVE
-                // gGLModelView/gGLProjection explicitly instead: the pool
-                // loop above reloads gGLModelView as the current camera's
-                // view matrix before every pass, so it reliably holds THIS
-                // frame's main-view matrices at this point. This does not
-                // change when/how gGLLast{ModelView,Projection} themselves
-                // get updated -- velocity rendering still depends on that
-                // timing untouched.
-                gGL.setColorMask(true, true);
-                renderCineOutline(&mRT->screen, gGLModelView, gGLProjection);
-                gGL.setColorMask(true, false);
+                // [TronT1 P2-10 fix] Tron World's own Scene-layer pseudo-slot,
+                // sharing this same guarded predicate and colour-mask wrap
+                // with Roto Ink Scene (see the "renderGeomPostDeferred runs
+                // with setColorMask(true,false)" comment below -- it applies
+                // to both passes' mWaterDis draw identically). The previous
+                // wording here claimed ALTron::isActiveForCurrentPass() does
+                // not check HUD/impostor/Prism state -- it does (gCubeSnapshot,
+                // sRenderingHUDs, sImpostorRender and sPrismLensRender are all
+                // checked inside isActiveForCurrentPass() itself, altron.cpp);
+                // re-checking them here is a harmless, deliberate belt-and-
+                // braces duplication of that render-CONTEXT gate, not the
+                // reason the outer guard exists. What isActiveForCurrentPass()
+                // genuinely cannot check is the render TARGET: it has no way
+                // to know whether THIS call is for the main view or one of
+                // renderGeomPostDeferred's other callers (impostors,
+                // reflection/hero probes) -- that's what mRT == &mMainRT
+                // above actually guards against (same framing as the Camera-
+                // layer S3 call site's own mRT == &mMainRT comment).
+                const bool tron_scene = ALTron::isActiveForCurrentPass() && ALTron::layer() == ALTron::LAYER_SCENE;
+                const bool roto_scene = shouldRunRotoInkAt(ROTOINK_LAYER_SCENE);
+                if (tron_scene || roto_scene)
+                {
+                    // renderGeomPostDeferred runs with setColorMask(true,false)
+                    // (above) for the whole pool loop. Each pass's OWN draw
+                    // into mWaterDis needs the alpha channel writable too, or
+                    // mWaterDis's stale alpha (never cleared for this scratch
+                    // target) is what the final copyColorToAttachment0 blit
+                    // copies into mRT->screen's alpha/glow channel. Restore the
+                    // pool loop's mask immediately after both.
+                    //
+                    // [RotoInk Round-4, Codex+Opus P1] This call site runs BEFORE
+                    // the end-of-3D-scene snapshot (pipeline.cpp ~22270-22273)
+                    // that copies gGLModelView/gGLProjection into gGLLast{Model
+                    // View,Projection} for this frame -- gGLLast* here would
+                    // still be the PREVIOUS frame's camera. Pass the LIVE
+                    // gGLModelView/gGLProjection explicitly instead: the pool
+                    // loop above reloads gGLModelView as the current camera's
+                    // view matrix before every pass, so it reliably holds THIS
+                    // frame's main-view matrices at this point. This does not
+                    // change when/how gGLLast{ModelView,Projection} themselves
+                    // get updated -- velocity rendering still depends on that
+                    // timing untouched.
+                    gGL.setColorMask(true, true);
+                    if (tron_scene)
+                    {
+                        renderTronWorld(&mRT->screen, TRON_DRAW_WORLD_ONLY, /*is_scene_layer=*/true,
+                                         gGLModelView, gGLProjection);
+                    }
+                    if (roto_scene)
+                    {
+                        renderCineOutline(&mRT->screen, gGLModelView, gGLProjection);
+                    }
+                    gGL.setColorMask(true, false);
+                }
             }
         }
 
@@ -11374,9 +11405,20 @@ void LLPipeline::generateLuminance(LLRenderTarget* src, LLRenderTarget* dst)
         // this can never disagree with whether the mask actually ran). B1(b):
         // ramped rather than snapped so a Night Mask toggle can't pump
         // exposure in a single frame.
+        // [TronT1] Folds ALTron::frame().mBloomScale (resolveFrame()'s own
+        // B1-style ramp, same 0.4 s time constant) into the SAME uniform --
+        // the Tron World pass runs at the Camera layer AFTER this luminance
+        // pass sampled last frame's bloom, so it has exactly the same
+        // feedback-loop hazard Night Mask does, and the two ramps are
+        // independent (neither is gated on the other being active).
         static LLStaticHashedString night_mask_bloom_scale_s("night_mask_bloom_scale");
+        // [TronT1 P2] Tron only ever draws into the main view, so its
+        // metering scale must not leak into other luminance passes (e.g. the
+        // GLTF material preview renders its own `screen` through here).
+        const F32 tron_bloom_scale =
+            (mRT == &mMainRT && src == &mRT->screen) ? ALTron::frame().mBloomScale : 1.f;
         gLuminanceProgram.uniform1f(night_mask_bloom_scale_s,
-            mNightMaskFrame.mBloomScale);
+            mNightMaskFrame.mBloomScale * tron_bloom_scale);
 
         mScreenTriangleVB->setBuffer();
         mScreenTriangleVB->drawArrays(LLRender::TRIANGLES, 0, 3);
@@ -15632,9 +15674,15 @@ void LLPipeline::copyRenderTarget(LLRenderTarget* src, LLRenderTarget* dst)
 // pipeline.h `RotoInkCandidate` struct; `candidates.push_back` is now
 // `out_candidates.push_back`; the CineOutlineSubjectTarget read for
 // target_set==0 is now the `subject_target_setting` parameter instead of a
-// LLCachedControl read inside this function -- gatherRotoInkTargets (below)
-// still reads that same setting and passes its value through unchanged, so
-// Roto Ink's own behaviour is byte-identical.
+// LLCachedControl read inside this function.
+// [TronT1 P1 fix] gatherRotoInkTargets() (below) USED to read
+// CineOutlineSubjectTarget internally and forward it here unconditionally,
+// which made every caller's target_set==0 mask follow Roto Ink's own
+// single-subject choice -- including Tron's. gatherRotoInkTargets() now also
+// takes `subject_target_setting` as a parameter instead, so each caller
+// passes its OWN cached control (Roto Ink still passes
+// CineOutlineSubjectTarget, byte-identical to before; Tron passes
+// TronSubjectTarget).
 void LLPipeline::collectRotoInkCandidates(S32 target_set, S32 subject_target_setting,
                                            std::vector<RotoInkCandidate>& out_candidates)
 {
@@ -15828,17 +15876,21 @@ void LLPipeline::collectRotoInkCandidates(S32 target_set, S32 subject_target_set
 }
 
 S32 LLPipeline::gatherRotoInkTargets(S32 target_set, S32 max_targets, F32 ellipse_scale,
-                                      F32 depth_range, const F32* mv, const F32* proj,
+                                      F32 depth_range, S32 subject_target_setting,
+                                      const F32* mv, const F32* proj,
                                       LLVector4* out_targets, LLVector4* out_targets2)
 {
     // [TronT0] Pure-move refactor: candidate collection now lives in
-    // collectRotoInkCandidates() (above); this reads the exact same
-    // CineOutlineSubjectTarget setting the inlined switch used to read for
-    // target_set==0 and passes it through, so target_set==0's resolved
-    // avatar/palette index is unchanged.
-    static LLCachedControl<S32> subject_target_setting(gSavedSettings, "CineOutlineSubjectTarget", 0);
+    // collectRotoInkCandidates() (above).
+    // [TronT1 P1 fix] `subject_target_setting` used to be read internally
+    // from CineOutlineSubjectTarget unconditionally, which made every caller
+    // -- including Tron -- follow Roto Ink's single-subject selection
+    // instead of its own. It is now the caller's own cached control value,
+    // forwarded through unchanged (Roto Ink still passes
+    // CineOutlineSubjectTarget, so target_set==0's resolved avatar/palette
+    // index for that caller is unchanged).
     std::vector<RotoInkCandidate> candidates;
-    collectRotoInkCandidates(target_set, subject_target_setting(), candidates);
+    collectRotoInkCandidates(target_set, subject_target_setting, candidates);
 
     if (candidates.empty())
     {
@@ -16839,6 +16891,7 @@ void LLPipeline::renderCineOutline(LLRenderTarget* dst, const F32* camera_modelv
     {
         target_count = gatherRotoInkTargets(subject_target_set, subject_max_targets,
                                              subject_ellipse_scale, subject_depth_range,
+                                             subject_target_setting(),
                                              subject_modelview_src, subject_projection_src,
                                              roto_target_cells, roto_target_cells2);
     }
@@ -16981,7 +17034,16 @@ void LLPipeline::renderCineOutline(LLRenderTarget* dst, const F32* camera_modelv
         roto_anim_rate *= director_speed;
     }
     mRotoAnimClock += roto_dt * (F64)roto_anim_rate;
-    const F32 roto_time_s = (F32)std::fmod(mRotoAnimClock, 3600.0);
+    // [TronT1] CineOutlineAnimUseTronClock: swap the UPLOADED phase for the
+    // shared Tron clock (ALTron::latchFrame() advances it independently, in
+    // llappviewer.cpp) without disturbing mRotoAnimClock's own accumulator --
+    // both keep running regardless of this setting, so toggling it back
+    // resumes Roto Ink's own clock from wherever it would have been, and a
+    // toggle causes at most one phase jump, never a stall.
+    static LLCachedControl<bool> use_tron_clock_setting(gSavedSettings, "CineOutlineAnimUseTronClock", false);
+    const F32 roto_time_s = use_tron_clock_setting()
+        ? (F32)std::fmod(ALTron::clock().mClockSeconds, 3600.0)
+        : (F32)std::fmod(mRotoAnimClock, 3600.0);
     gCineOutlineProgram.uniform4f(LLShaderMgr::ROTO_MOTION2, motion_angle * DEG_TO_RAD, roto_time_s, 0.f, 0.f);
     // [RotoInk Anim] Layer-1 shape/seed/step-fps/tempo (A.1 ROTO_MOTION3).
     gCineOutlineProgram.uniform4f(LLShaderMgr::ROTO_MOTION3, motion_shape, motion_seed, motion_step_fps, motion_tempo_bps);
@@ -17045,6 +17107,394 @@ S32 LLPipeline::resolveRotoInkLayer() const
         layer = ROTOINK_LAYER_CAMERA;
     }
     return layer;
+}
+
+// [TronT1] Tron World: dark grade + world-space neon grid with travelling
+// pulses. Same read-scratch/write-all-pixels/blit-back shape as Rotoscope
+// Ink (see LLPipeline::renderCineOutline's header comment for the mWaterDis
+// idiom -- it applies here verbatim, this pass is just another mWaterDis
+// consumer with the same atomic bind/draw/flush/blit lifetime). Off
+// (!ALTron::isActiveForCurrentPass()) is a true no-op: no scratch draw, no
+// blit, no uniform upload that could perturb any other program (the shader
+// side's rig_rim_tron/. off path is independent of this function entirely).
+//
+// Camera/anchor/lattice (T1 contract section 3.3): derived HERE, from the
+// pass's OWN camera matrices (mv/proj), every call -- never from the
+// idle()-latched ALTron::anchor(), which lags the camera by up to one
+// frame. This is what keeps the grid pop-free across a fast pan through a
+// 1024 m anchor-cell edge (fold-in (a)).
+void LLPipeline::renderTronWorld(LLRenderTarget* dst, ETronDraw mode, bool is_scene_layer,
+                                  const F32* mv, const F32* proj)
+{
+    if (!ALTron::isActiveForCurrentPass() || !dst ||
+        !gTronWorldProgram.isComplete() || !mWaterDis.isComplete())
+    {
+        return;
+    }
+    if (mode == TRON_DRAW_TRAILS_ONLY)
+    {
+        return; // T3
+    }
+
+    const auto finite_or = [](F32 v, F32 fallback)
+    { return std::isfinite(v) ? v : fallback; };
+
+    // --- settings (every Tron* key T1 reads) --------------------------------
+    static LLCachedControl<F32>  grade_strength_setting(gSavedSettings, "TronGradeStrength", 0.85f);
+    static LLCachedControl<F32>  grade_darken_ev_setting(gSavedSettings, "TronGradeDarkenEV", 3.0f);
+    static LLCachedControl<F32>  grade_desaturate_setting(gSavedSettings, "TronGradeDesaturate", 0.6f);
+    static LLCachedControl<F32>  grade_crush_setting(gSavedSettings, "TronGradeCrush", 0.05f);
+    static LLCachedControl<LLColor3> grade_tint_setting(gSavedSettings, "TronGradeTint", LLColor3(0.55f, 0.75f, 1.0f));
+    static LLCachedControl<F32>  grade_tint_amount_setting(gSavedSettings, "TronGradeTintAmount", 0.3f);
+    static LLCachedControl<F32>  grade_keep_bright_lo_setting(gSavedSettings, "TronGradeKeepBrightLo", 0.8f);
+    static LLCachedControl<F32>  grade_keep_bright_hi_setting(gSavedSettings, "TronGradeKeepBrightHi", 2.5f);
+    static LLCachedControl<F32>  grade_keep_subject_setting(gSavedSettings, "TronGradeKeepSubject", 0.5f);
+    static LLCachedControl<F32>  grade_sky_darken_setting(gSavedSettings, "TronGradeSkyDarken", 0.0f);
+
+    static LLCachedControl<bool> grid_enabled_setting(gSavedSettings, "TronGridEnabled", true);
+    static LLCachedControl<F32>  grid_intensity_setting(gSavedSettings, "TronGridIntensity", 6.0f);
+    static LLCachedControl<F32>  grid_spacing_setting(gSavedSettings, "TronGridSpacing", 2.0f);
+    static LLCachedControl<F32>  grid_width_setting(gSavedSettings, "TronGridWidth", 0.02f);
+    static LLCachedControl<F32>  grid_min_width_px_setting(gSavedSettings, "TronGridMinWidthPx", 1.2f);
+    static LLCachedControl<S32>  grid_major_every_setting(gSavedSettings, "TronGridMajorEvery", 4);
+    static LLCachedControl<F32>  grid_major_width_setting(gSavedSettings, "TronGridMajorWidth", 2.0f);
+    static LLCachedControl<F32>  grid_major_intensity_setting(gSavedSettings, "TronGridMajorIntensity", 1.5f);
+    static LLCachedControl<F32>  grid_far_fade_setting(gSavedSettings, "TronGridFarFade", 120.0f);
+    static LLCachedControl<F32>  grid_floor_setting(gSavedSettings, "TronGridFloor", 1.0f);
+    static LLCachedControl<F32>  grid_wall_setting(gSavedSettings, "TronGridWall", 0.6f);
+    static LLCachedControl<F32>  grid_ceiling_setting(gSavedSettings, "TronGridCeiling", 0.3f);
+    static LLCachedControl<F32>  grid_sharpness_setting(gSavedSettings, "TronGridSharpness", 8.0f);
+    static LLCachedControl<S32>  grid_normal_source_setting(gSavedSettings, "TronGridNormalSource", 1);
+    static LLCachedControl<F32>  grid_glow_setting(gSavedSettings, "TronGridGlow", 1.0f);
+    static LLCachedControl<F32>  grid_subject_exclude_setting(gSavedSettings, "TronGridSubjectExclude", 1.0f);
+    static LLCachedControl<F32>  grid_subject_radius_setting(gSavedSettings, "TronGridSubjectRadius", 0.0f);
+    static LLCachedControl<F32>  grid_subject_radius_feather_setting(gSavedSettings, "TronGridSubjectRadiusFeather", 4.0f);
+    static LLCachedControl<S32>  grid_water_mode_setting(gSavedSettings, "TronGridWaterMode", 0);
+    static LLCachedControl<F32>  grid_water_tolerance_setting(gSavedSettings, "TronGridWaterTolerance", 0.03f);
+
+    static LLCachedControl<F32>  pulse_grid_amount_setting(gSavedSettings, "TronPulseGridAmount", 1.5f);
+    static LLCachedControl<F32>  pulse_grid_speed_setting(gSavedSettings, "TronPulseGridSpeed", 6.0f);
+    static LLCachedControl<F32>  pulse_grid_length_setting(gSavedSettings, "TronPulseGridLength", 0.25f);
+    static LLCachedControl<F32>  pulse_grid_wavelength_setting(gSavedSettings, "TronPulseGridWavelength", 24.0f);
+    static LLCachedControl<F32>  pulse_grid_density_setting(gSavedSettings, "TronPulseGridDensity", 0.35f);
+    static LLCachedControl<S32>  pulse_grid_direction_setting(gSavedSettings, "TronPulseGridDirection", 3);
+    static LLCachedControl<S32>  pulse_grid_color_mode_setting(gSavedSettings, "TronPulseGridColorMode", 0);
+    static LLCachedControl<F32>  pulse_seed_setting(gSavedSettings, "TronPulseSeed", 0.0f);
+    static LLCachedControl<F32>  pulse_amount_setting(gSavedSettings, "TronPulseAmount", 0.35f);
+
+    static LLCachedControl<S32>  subject_target_setting(gSavedSettings, "TronSubjectTarget", 0);
+    static LLCachedControl<S32>  subject_target_set_setting(gSavedSettings, "TronSubjectTargetSet", 2);
+    static LLCachedControl<S32>  subject_max_targets_setting(gSavedSettings, "TronSubjectMaxTargets", 8);
+    static LLCachedControl<S32>  subject_shape_setting(gSavedSettings, "TronSubjectShape", 2);
+    static LLCachedControl<F32>  subject_feather_setting(gSavedSettings, "TronSubjectFeather", 0.2f);
+    static LLCachedControl<F32>  subject_depth_range_setting(gSavedSettings, "TronSubjectDepthRange", 0.4f);
+    static LLCachedControl<F32>  subject_ellipse_scale_setting(gSavedSettings, "TronSubjectEllipseScale", 1.15f);
+    static LLCachedControl<S32>  subject_source_grid_setting(gSavedSettings, "TronSubjectSourceGrid", 3);
+    static LLCachedControl<S32>  subject_source_rim_setting(gSavedSettings, "TronSubjectSourceRim", 2);
+    static LLCachedControl<bool> subject_invert_setting(gSavedSettings, "TronSubjectInvert", false);
+
+    static LLCachedControl<F32>  no_post_scale_setting(gSavedSettings, "TronNoPostScale", 0.35f);
+
+    // --- sanitize (finite_or + clamp, pipeline.cpp updateNightMaskAnchor /
+    // renderCineOutline pattern) ---------------------------------------------
+    const F32  grade_strength   = llclamp(finite_or((F32)grade_strength_setting(), 0.85f), 0.f, 1.f);
+    const F32  grade_darken_ev  = llclamp(finite_or((F32)grade_darken_ev_setting(), 3.f), 0.f, 8.f);
+    const F32  grade_desaturate = llclamp(finite_or((F32)grade_desaturate_setting(), 0.6f), 0.f, 1.f);
+    const F32  grade_crush      = llclamp(finite_or((F32)grade_crush_setting(), 0.05f), 0.f, 0.5f);
+    // [TronT1 P2-7 fix] Was read straight through with no sanitisation at
+    // all -- every other Tron* setting on this path is finite_or+clamp'd
+    // (ALTron::sanitize_color() does the same for the palette colours in
+    // altron.cpp), but an LLColor3 saved-settings value with a NaN/inf or
+    // negative component would reach the tint_max/tint_norm math below
+    // unfiltered: llmax() on a NaN input is undefined by comparison (NaN
+    // compares false against everything), and a negative component would
+    // survive the max-component normalisation and reach TRON_GRADE2.
+    const LLColor3 grade_tint_input = grade_tint_setting();
+    const LLColor3 grade_tint_raw(
+        llclamp(finite_or(grade_tint_input.mV[0], 0.55f), 0.f, 16.f),
+        llclamp(finite_or(grade_tint_input.mV[1], 0.75f), 0.f, 16.f),
+        llclamp(finite_or(grade_tint_input.mV[2], 1.00f), 0.f, 16.f));
+    const F32  grade_tint_amount = llclamp(finite_or((F32)grade_tint_amount_setting(), 0.3f), 0.f, 1.f);
+    const F32  grade_keep_bright_lo = llmax(finite_or((F32)grade_keep_bright_lo_setting(), 0.8f), 0.f);
+    const F32  grade_keep_bright_hi = llmax(finite_or((F32)grade_keep_bright_hi_setting(), 2.5f), grade_keep_bright_lo + 0.01f);
+    const F32  grade_keep_subject = llclamp(finite_or((F32)grade_keep_subject_setting(), 0.5f), 0.f, 1.f);
+    const F32  grade_sky_darken  = llclamp(finite_or((F32)grade_sky_darken_setting(), 0.f), 0.f, 1.f);
+
+    const bool grid_on          = grid_enabled_setting();
+    const F32  grid_intensity   = llclamp(finite_or((F32)grid_intensity_setting(), 6.f), 0.f, 64.f);
+    const F32  grid_spacing     = llclamp(finite_or((F32)grid_spacing_setting(), 2.f), 0.125f, 64.f);
+    const F32  grid_width       = llclamp(finite_or((F32)grid_width_setting(), 0.02f), 0.f, 0.5f);
+    const F32  grid_min_width_px = llclamp(finite_or((F32)grid_min_width_px_setting(), 1.2f), 0.f, 6.f);
+    const S32  grid_major_every = std::clamp((S32)grid_major_every_setting(), 0, 32);
+    const F32  grid_major_width = llclamp(finite_or((F32)grid_major_width_setting(), 2.f), 1.f, 6.f);
+    const F32  grid_major_intensity = llclamp(finite_or((F32)grid_major_intensity_setting(), 1.5f), 0.f, 4.f);
+    const F32  grid_far_fade    = llclamp(finite_or((F32)grid_far_fade_setting(), 120.f), 0.f, 1024.f);
+    const F32  grid_floor       = llclamp(finite_or((F32)grid_floor_setting(), 1.f), 0.f, 1.f);
+    const F32  grid_wall        = llclamp(finite_or((F32)grid_wall_setting(), 0.6f), 0.f, 1.f);
+    const F32  grid_ceiling     = llclamp(finite_or((F32)grid_ceiling_setting(), 0.3f), 0.f, 1.f);
+    const F32  grid_sharpness   = llclamp(finite_or((F32)grid_sharpness_setting(), 8.f), 2.f, 16.f);
+    const S32  grid_normal_source = std::clamp((S32)grid_normal_source_setting(), 0, 1);
+    const F32  grid_glow        = llclamp(finite_or((F32)grid_glow_setting(), 1.f), 0.f, 1.f);
+    const F32  grid_subject_exclude = llclamp(finite_or((F32)grid_subject_exclude_setting(), 1.f), 0.f, 1.f);
+    const F32  grid_subject_radius = llclamp(finite_or((F32)grid_subject_radius_setting(), 0.f), 0.f, 256.f);
+    const F32  grid_subject_radius_feather = llclamp(finite_or((F32)grid_subject_radius_feather_setting(), 4.f), 0.1f, 64.f);
+    const S32  grid_water_mode  = std::clamp((S32)grid_water_mode_setting(), 0, 2);
+    const F32  grid_water_tolerance = llclamp(finite_or((F32)grid_water_tolerance_setting(), 0.03f), 0.005f, 0.5f);
+
+    const F32  pulse_grid_amount = llclamp(finite_or((F32)pulse_grid_amount_setting(), 1.5f), 0.f, 4.f);
+    const F32  pulse_grid_speed  = llclamp(finite_or((F32)pulse_grid_speed_setting(), 6.f), -50.f, 50.f);
+    const F32  pulse_grid_length = llclamp(finite_or((F32)pulse_grid_length_setting(), 0.25f), 0.05f, 1.f);
+    const F32  pulse_grid_wavelength = llclamp(finite_or((F32)pulse_grid_wavelength_setting(), 24.f), 1.f, 256.f);
+    const F32  pulse_grid_density = llclamp(finite_or((F32)pulse_grid_density_setting(), 0.35f), 0.f, 1.f);
+    const S32  pulse_grid_direction = std::clamp((S32)pulse_grid_direction_setting(), 0, 3);
+    const S32  pulse_grid_color_mode = std::clamp((S32)pulse_grid_color_mode_setting(), 0, 2);
+    const F32  pulse_seed        = llclamp(finite_or((F32)pulse_seed_setting(), 0.f), 0.f, 100.f);
+    const F32  pulse_amount      = llclamp(finite_or((F32)pulse_amount_setting(), 0.35f), 0.f, 1.f);
+
+    const S32  subject_target      = std::clamp((S32)subject_target_setting(), 0, 4);
+    const S32  subject_target_set  = std::clamp((S32)subject_target_set_setting(), 0, 7);
+    const S32  subject_max_targets = std::clamp((S32)subject_max_targets_setting(), 1, 16);
+    const S32  subject_shape       = std::clamp((S32)subject_shape_setting(), 0, 2);
+    const F32  subject_feather     = llclamp(finite_or((F32)subject_feather_setting(), 0.2f), 0.01f, 0.75f);
+    const F32  subject_depth_range = llclamp(finite_or((F32)subject_depth_range_setting(), 0.4f), 0.f, 8.f);
+    // [TronT1] No dedicated TronSubjectDepthFeather key (contract section 6
+    // leaves this a "vs." choice) -- derive the slab feather from the depth
+    // range, same as the shader's own tron_subject.w consumer expects.
+    const F32  subject_depth_feather = llmax(0.5f * subject_depth_range, 0.05f);
+    const F32  subject_ellipse_scale = llclamp(finite_or((F32)subject_ellipse_scale_setting(), 1.15f), 0.5f, 3.f);
+    // [TronT1] Forced to 0 whenever the compiled shaders do not carry the
+    // G-buffer avatar tag (tag off / non-HDR / GL < 4.05) -- same rule the
+    // Roto Ink CineOutlineSubjectSource uploader applies, so the uploader
+    // and the shader's `#ifdef GBUFFER_AVATAR_TAG` path can never disagree.
+    const bool tag_active = LLViewerShaderMgr::gbufferAvatarTagActive();
+    const S32  subject_source_grid = tag_active ? std::clamp((S32)subject_source_grid_setting(), 0, 3) : 0;
+    const S32  subject_source_rim  = tag_active ? std::clamp((S32)subject_source_rim_setting(), 0, 3) : 0;
+    const bool subject_invert      = subject_invert_setting();
+
+    const F32  no_post_scale = llclamp(finite_or((F32)no_post_scale_setting(), 0.35f), 0.f, 1.f);
+
+    if (grade_strength <= 0.f && !grid_on)
+    {
+        return; // nothing to draw -- cheap CPU early-out
+    }
+
+    LL_PROFILE_GPU_ZONE("renderTronWorld");
+
+    const F32 w = (F32)dst->getWidth(), h = (F32)dst->getHeight();
+    const F32 px_scale = h / 1080.f;
+
+    // --- camera / anchor / cam_rel / lattice (T1 contract section 3.3) ------
+    const glm::mat4 modelview      = glm::make_mat4(mv);
+    const glm::mat4 projection     = glm::make_mat4(proj);
+    const glm::mat4 inv_modelview  = glm::inverse(modelview);
+    const glm::mat4 inv_projection = glm::inverse(projection);
+    const glm::vec4 cam4 = inv_modelview * glm::vec4(0.f, 0.f, 0.f, 1.f);
+    LLVector3 cam_agent(cam4.x, cam4.y, cam4.z);
+    if (!cam_agent.isFinite())
+    {
+        cam_agent = LLViewerCamera::getInstance()->getOrigin();
+    }
+    const LLVector3d cam_global = gAgent.getPosGlobalFromAgent(cam_agent);
+    const LLVector3d anchor_global(
+        std::floor(cam_global.mdV[VX] / 1024.0) * 1024.0,
+        std::floor(cam_global.mdV[VY] / 1024.0) * 1024.0,
+        std::floor(cam_global.mdV[VZ] / 1024.0) * 1024.0);
+    const LLVector3 cam_rel(
+        (F32)(cam_global.mdV[VX] - anchor_global.mdV[VX]),
+        (F32)(cam_global.mdV[VY] - anchor_global.mdV[VY]),
+        (F32)(cam_global.mdV[VZ] - anchor_global.mdV[VZ]));
+
+    const F32 major_spacing = grid_spacing * (F32)llmax(grid_major_every, 1);
+    const ALTron::LatticeFrame lattice_grid  = ALTron::computeLattice(grid_spacing, anchor_global);
+    const ALTron::LatticeFrame lattice_major = ALTron::computeLattice(major_spacing, anchor_global);
+    const ALTron::LatticeFrame lattice_wave  = ALTron::computeLattice(pulse_grid_wavelength, anchor_global);
+    // [T2 reserved] trace-cell lattice: no trace setting exists yet, so this
+    // is a scale-1 placeholder frame purely so tron_lattice_r[3]/k[3] are
+    // never left holding a stale/uninitialised value.
+    const ALTron::LatticeFrame lattice_trace = ALTron::computeLattice(1.0, anchor_global);
+
+    // --- CPU phases (F64, T1 contract section 3.4) --------------------------
+    const auto wrap01 = [](F64 x) -> F64
+    {
+        x -= std::floor(x);
+        return (x >= 1.0 || !(x >= 0.0)) ? 0.0 : x; // negative or NaN -> 0
+    };
+    const F64 clock_seconds = ALTron::clock().mClockSeconds;
+    const F32  ph_grid = (F32)wrap01(clock_seconds * (F64)pulse_grid_speed / (F64)llmax(pulse_grid_wavelength, 0.01f));
+    const F32  pulse01 = ALTron::pulse01();
+
+    // --- exposure / no-post rule ---------------------------------------------
+    const bool hdr_path    = (dst == &mRT->screen);
+    const F32  exposure    = inkExposureSelector(is_scene_layer, hdr_path);
+    const bool will_expose = colorCorrectWillApplyExposure(/*apply_tonemap=*/true);
+
+    // --- subject: culled targets (screen-projected) + un-culled anchors -----
+    // [TronT1 P2-9 fix] Both gathers below are pure CPU work (frustum culling
+    // + box projection for the targets, a full candidate walk + sort for the
+    // anchors) that exists solely to feed the shader's subject mask M and
+    // tronAnchorDistance(). The shader only ever reads M via
+    // TronGridSubjectExclude (tron_grid4.z) and TronGradeKeepSubject
+    // (tron_grade3.z), and only ever reads the anchors via
+    // TronGridSubjectRadius (tron_grid5.x) -- see tronWorldF.glsl ~511/585/
+    // 586. When all three are 0 the shader can never consume either result
+    // (tron_subject.x / tron_anchor_count both upload as 0, which is already
+    // each array's own "off" value), so gathering is pure waste every frame.
+    LLVector4 target_cells[16];
+    LLVector4 target_cells2[16];
+    LLVector4 anchor_cells[16];
+    S32 target_count = 0;
+    S32 anchor_count = 0;
+    if (grid_subject_exclude > 0.f || grid_subject_radius > 0.f || grade_keep_subject > 0.f)
+    {
+        // [TronT1 P1 fix] Pass Tron's OWN single-subject selector
+        // (subject_target, from TronSubjectTarget) rather than letting
+        // gatherRotoInkTargets() read CineOutlineSubjectTarget internally --
+        // otherwise Tron's target_set==0 mask would silently follow Roto
+        // Ink's subject choice.
+        target_count = gatherRotoInkTargets(subject_target_set, subject_max_targets,
+                                             subject_ellipse_scale, subject_depth_range,
+                                             subject_target,
+                                             mv, proj, target_cells, target_cells2);
+
+        std::vector<RotoInkCandidate> candidates;
+        collectRotoInkCandidates(subject_target_set, subject_target, candidates);
+        std::sort(candidates.begin(), candidates.end(),
+            [&cam_agent](const RotoInkCandidate& a, const RotoInkCandidate& b)
+            {
+                return (a.mCenter - cam_agent).lengthSquared() < (b.mCenter - cam_agent).lengthSquared();
+            });
+        anchor_count = llmin((S32)candidates.size(), 16);
+        for (S32 i = 0; i < anchor_count; ++i)
+        {
+            // [TronT1] anchor_pw = candidate_agent_center - cam_agent +
+            // cam_rel (all F32): equals what the shader computes for p_w at
+            // that point, up to float rounding of cam_agent (T1 contract
+            // section 3.3).
+            const LLVector3 anchor_pw = candidates[i].mCenter - cam_agent + cam_rel;
+            anchor_cells[i] = LLVector4(anchor_pw.mV[VX], anchor_pw.mV[VY], anchor_pw.mV[VZ],
+                                        candidates[i].mHalfExtents.length());
+        }
+    }
+
+    // --- water ---------------------------------------------------------------
+    const F32 water_height     = getRenderWaterHeight();
+    const F32 water_underwater = sUnderWaterRender ? 1.f : 0.f;
+    // [TronT1] Scene layer runs before the water pool this frame: force
+    // detection off rather than test against stale/undrawn water.
+    const F32 water_detect_on  = is_scene_layer ? 0.f : 1.f;
+
+    // --- draw: mWaterDis scratch (own depth, single colour attachment), read
+    // `dst` directly as a plain texture -- see renderCineOutline's header
+    // comment for why not drawing directly into `dst`. ------------------------
+    mWaterDis.bindTarget();
+
+    LLGLDepthTest depth(GL_FALSE);
+    LLGLDisable   blend(GL_BLEND);
+    LLGLDisable   cull(GL_CULL_FACE);
+
+    bindDeferredShader(gTronWorldProgram);
+
+    S32 sch = gTronWorldProgram.enableTexture(LLShaderMgr::TRON_SCENE);
+    if (sch > -1)
+    {
+        dst->bindTexture(0, sch, LLTexUnit::TFO_POINT);
+        gGL.getTexUnit(sch)->setTextureAddressMode(LLTexUnit::TAM_CLAMP);
+    }
+
+    gTronWorldProgram.uniform2f(LLShaderMgr::DEFERRED_SCREEN_RES, w, h);
+    gTronWorldProgram.uniform1f(LLShaderMgr::EXPOSURE, exposure);
+
+    gTronWorldProgram.uniformMatrix4fv(LLShaderMgr::TRON_INV_PROJ, 1, GL_FALSE, glm::value_ptr(inv_projection));
+    gTronWorldProgram.uniformMatrix4fv(LLShaderMgr::TRON_INV_MODELVIEW, 1, GL_FALSE, glm::value_ptr(inv_modelview));
+
+    gTronWorldProgram.uniform4f(LLShaderMgr::TRON_CAM_REL,
+        cam_rel.mV[VX], cam_rel.mV[VY], cam_rel.mV[VZ], cam_agent.mV[VZ]);
+
+    gTronWorldProgram.uniform4f(LLShaderMgr::TRON_MASTER,
+        (F32)ALTron::layer(), pulse01, 0.f, will_expose ? 1.f : no_post_scale);
+
+    const ALTron::Palette tron_palette = ALTron::palette();
+    gTronWorldProgram.uniform4f(LLShaderMgr::TRON_PALETTE0,
+        tron_palette.mPrimary.mV[0], tron_palette.mPrimary.mV[1], tron_palette.mPrimary.mV[2], pulse_amount);
+    gTronWorldProgram.uniform4f(LLShaderMgr::TRON_PALETTE1,
+        tron_palette.mSecondary.mV[0], tron_palette.mSecondary.mV[1], tron_palette.mSecondary.mV[2],
+        will_expose ? 0.f : 1.f);
+    gTronWorldProgram.uniform4f(LLShaderMgr::TRON_PALETTE2,
+        tron_palette.mAccent.mV[0], tron_palette.mAccent.mV[1], tron_palette.mAccent.mV[2], 0.f);
+    gTronWorldProgram.uniform4f(LLShaderMgr::TRON_PALETTE3,
+        tron_palette.mPulse.mV[0], tron_palette.mPulse.mV[1], tron_palette.mPulse.mV[2], 0.f);
+
+    gTronWorldProgram.uniform4f(LLShaderMgr::TRON_GRADE, grade_strength, grade_darken_ev, grade_desaturate, grade_crush);
+    // [TronT1] tint rgb max-normalised (divide by the max component when >0).
+    const F32 tint_max = llmax(llmax(grade_tint_raw.mV[0], grade_tint_raw.mV[1]), grade_tint_raw.mV[2]);
+    const LLColor3 tint_norm = (tint_max > 0.f)
+        ? LLColor3(grade_tint_raw.mV[0] / tint_max, grade_tint_raw.mV[1] / tint_max, grade_tint_raw.mV[2] / tint_max)
+        : LLColor3(0.f, 0.f, 0.f);
+    gTronWorldProgram.uniform4f(LLShaderMgr::TRON_GRADE2, tint_norm.mV[0], tint_norm.mV[1], tint_norm.mV[2], grade_tint_amount);
+    gTronWorldProgram.uniform4f(LLShaderMgr::TRON_GRADE3, grade_keep_bright_lo, grade_keep_bright_hi, grade_keep_subject, grade_sky_darken);
+
+    gTronWorldProgram.uniform4f(LLShaderMgr::TRON_GRID,
+        grid_on ? grid_intensity : 0.f, grid_spacing, grid_width * 0.5f, grid_min_width_px * px_scale);
+    gTronWorldProgram.uniform4f(LLShaderMgr::TRON_GRID2, (F32)grid_major_every, grid_major_width, grid_major_intensity, grid_far_fade);
+    gTronWorldProgram.uniform4f(LLShaderMgr::TRON_GRID3, grid_floor, grid_wall, grid_ceiling, grid_sharpness);
+    gTronWorldProgram.uniform4f(LLShaderMgr::TRON_GRID4, (F32)grid_normal_source, grid_glow, grid_subject_exclude, 0.f);
+    gTronWorldProgram.uniform4f(LLShaderMgr::TRON_GRID5,
+        grid_subject_radius, grid_subject_radius_feather, (F32)grid_water_mode, grid_water_tolerance);
+
+    gTronWorldProgram.uniform4f(LLShaderMgr::TRON_WATER, water_height, water_underwater, water_detect_on, 0.f);
+
+    gTronWorldProgram.uniform4f(LLShaderMgr::TRON_PULSE, pulse_grid_amount, ph_grid, pulse_grid_length, pulse_grid_wavelength);
+    gTronWorldProgram.uniform4f(LLShaderMgr::TRON_PULSE2,
+        pulse_grid_density, (F32)pulse_grid_direction, pulse_seed, (F32)pulse_grid_color_mode);
+
+    gTronWorldProgram.uniform4f(LLShaderMgr::TRON_SUBJECT,
+        (F32)target_count, (F32)subject_shape, subject_feather, subject_depth_feather);
+    gTronWorldProgram.uniform4f(LLShaderMgr::TRON_SUBJECT2,
+        (F32)subject_source_grid, (F32)subject_source_rim, subject_invert ? 1.f : 0.f, 0.f);
+    if (target_count > 0)
+    {
+        gTronWorldProgram.uniform4fv(LLShaderMgr::TRON_TARGETS, target_count, target_cells[0].mV);
+        gTronWorldProgram.uniform4fv(LLShaderMgr::TRON_TARGETS2, target_count, target_cells2[0].mV);
+    }
+    if (anchor_count > 0)
+    {
+        gTronWorldProgram.uniform4fv(LLShaderMgr::TRON_ANCHORS, anchor_count, anchor_cells[0].mV);
+    }
+    gTronWorldProgram.uniform1i(LLShaderMgr::TRON_ANCHOR_COUNT, anchor_count);
+
+    {
+        LLVector4 lattice_r[4];
+        lattice_r[0] = LLVector4(lattice_grid.mR.mV[VX], lattice_grid.mR.mV[VY], lattice_grid.mR.mV[VZ], grid_spacing);
+        lattice_r[1] = LLVector4(lattice_major.mR.mV[VX], lattice_major.mR.mV[VY], lattice_major.mR.mV[VZ], major_spacing);
+        lattice_r[2] = LLVector4(lattice_wave.mR.mV[VX], lattice_wave.mR.mV[VY], lattice_wave.mR.mV[VZ], pulse_grid_wavelength);
+        lattice_r[3] = LLVector4(lattice_trace.mR.mV[VX], lattice_trace.mR.mV[VY], lattice_trace.mR.mV[VZ], 1.f);
+        gTronWorldProgram.uniform4fv(LLShaderMgr::TRON_LATTICE_R, 4, lattice_r[0].mV);
+
+        const U32 lattice_k[16] = {
+            lattice_grid.mK[0],  lattice_grid.mK[1],  lattice_grid.mK[2],  0,
+            lattice_major.mK[0], lattice_major.mK[1], lattice_major.mK[2], 0,
+            lattice_wave.mK[0],  lattice_wave.mK[1],  lattice_wave.mK[2],  0,
+            lattice_trace.mK[0], lattice_trace.mK[1], lattice_trace.mK[2], 0,
+        };
+        gTronWorldProgram.uniform4uiv(LLShaderMgr::TRON_LATTICE_K, 4, lattice_k);
+    }
+
+    mScreenTriangleVB->setBuffer();
+    mScreenTriangleVB->drawArrays(LLRender::TRIANGLES, 0, 3);
+
+    if (sch > -1)
+    {
+        gTronWorldProgram.disableTexture(LLShaderMgr::TRON_SCENE);
+    }
+    unbindDeferredShader(gTronWorldProgram);
+    mWaterDis.flush();
+
+    // Colour-only blit back into dst, attachment 0 only -- see
+    // renderCineOutline's copyColorToAttachment0 comment for why (sidecar
+    // attachment safety).
+    dst->copyColorToAttachment0(mWaterDis, 0, 0, mWaterDis.getWidth(), mWaterDis.getHeight(),
+                                 0, 0, dst->getWidth(), dst->getHeight(),
+                                 GL_NEAREST);
 }
 
 // [RotoInk Round-3] Single dispatch predicate shared by every HDR-path call
@@ -20710,9 +21160,27 @@ void LLPipeline::renderFinalize()
         // resolve rather than each independently re-deriving it.
         updateNightMaskAnchor();
 
+        // [TronT1] Resolves ALTron::frame() (bloom-metering ramp) ONCE this
+        // frame, before generateLuminance() consumes it -- same B1 idiom and
+        // placement as updateNightMaskAnchor() just above.
+        ALTron::resolveFrame();
+
         generateLuminance(&mRT->screen, &mLuminanceMap);
 
         generateExposure(&mLuminanceMap, &mExposureMap);
+
+        // [TronT1] S3 "HDR lens / pre-bloom" -- Tron World runs first in this
+        // section, before Roto Ink Camera, so Roto Ink's own EXPOSURE
+        // selection and match-light sampling see the graded/gridded scene
+        // (matches a real world-space set element). mRT == &mMainRT guards
+        // against renderFinalize's other callers (impostors, reflection/hero
+        // probes, HUDs) -- isActiveForCurrentPass() alone does not check the
+        // render target, only the render CONTEXT.
+        if (mRT == &mMainRT && ALTron::isActiveForCurrentPass() && ALTron::layer() == ALTron::LAYER_CAMERA)
+        {
+            renderTronWorld(&mRT->screen, TRON_DRAW_WORLD_ONLY, /*is_scene_layer=*/false,
+                             gGLLastModelView, gGLLastProjection);
+        }
 
         // [RotoInk Round-3] ROTOINK_LAYER_CAMERA call site (the default).
         // Moved HERE -- right after exposure metering, BEFORE applyOnLens-
@@ -21208,6 +21676,12 @@ void LLPipeline::bindDeferredShaderFast(LLGLSLShader& shader)
     if (shader.mCanBindFast)
     { // was previously fully bound, use fast path
         shader.bind();
+        // [TronT1] Cheap (one or two uniform4f) per-frame refresh of the Rig
+        // Rim Tron tint's CPU pulse multiplier for a program that stays
+        // fast-bound across many frames -- see ALCineRigRim::bindAnimated's
+        // header comment. No-op for programs that do not link
+        // deferredUtil.glsl (location < 0 early-out).
+        ALCineRigRim::bindAnimated(shader);
         bindLightFunc(shader);
         bindShadowMaps(shader);
         bindReflectionProbes(shader);

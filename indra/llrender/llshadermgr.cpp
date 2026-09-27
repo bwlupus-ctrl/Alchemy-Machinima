@@ -2077,6 +2077,49 @@ void LLShaderMgr::initAttribsAndUniforms()
     mReservedUniforms.push_back("roto_targets");
     mReservedUniforms.push_back("roto_targets2");
 
+    // [TronT1] Tron World post pass (tronWorldF.glsl); lockstep with the
+    // TRON_* block at the end of the enum in llshadermgr.h. TRON_TRACE* /
+    // TRON_RIM* are T2 reservations.
+    mReservedUniforms.push_back("tronScene");
+    mReservedUniforms.push_back("tron_inv_proj");
+    mReservedUniforms.push_back("tron_inv_modelview");
+    mReservedUniforms.push_back("tron_cam_rel");
+    mReservedUniforms.push_back("tron_master");
+    mReservedUniforms.push_back("tron_palette0");
+    mReservedUniforms.push_back("tron_palette1");
+    mReservedUniforms.push_back("tron_palette2");
+    mReservedUniforms.push_back("tron_palette3");
+    mReservedUniforms.push_back("tron_grade");
+    mReservedUniforms.push_back("tron_grade2");
+    mReservedUniforms.push_back("tron_grade3");
+    mReservedUniforms.push_back("tron_grid");
+    mReservedUniforms.push_back("tron_grid2");
+    mReservedUniforms.push_back("tron_grid3");
+    mReservedUniforms.push_back("tron_grid4");
+    mReservedUniforms.push_back("tron_grid5");
+    mReservedUniforms.push_back("tron_water");
+    mReservedUniforms.push_back("tron_pulse");
+    mReservedUniforms.push_back("tron_pulse2");
+    mReservedUniforms.push_back("tron_subject");
+    mReservedUniforms.push_back("tron_subject2");
+    mReservedUniforms.push_back("tron_targets");
+    mReservedUniforms.push_back("tron_targets2");
+    mReservedUniforms.push_back("tron_anchors");
+    mReservedUniforms.push_back("tron_anchor_count");
+    mReservedUniforms.push_back("tron_lattice_r");
+    mReservedUniforms.push_back("tron_lattice_k");
+    mReservedUniforms.push_back("tron_trace");   // [T2 reserved]
+    mReservedUniforms.push_back("tron_trace2");  // [T2 reserved]
+    mReservedUniforms.push_back("tron_trace3");  // [T2 reserved]
+    mReservedUniforms.push_back("tron_rim");     // [T2 reserved]
+    mReservedUniforms.push_back("tron_rim2");    // [T2 reserved]
+    mReservedUniforms.push_back("tron_rim3");    // [T2 reserved]
+
+    // [TronT1] Rig Rim "Tron" palette tint (deferredUtil.glsl rigRimTerm());
+    // lockstep with RIG_RIM_TRON / RIG_RIM_TRON_COLOR in llshadermgr.h.
+    mReservedUniforms.push_back("rig_rim_tron");
+    mReservedUniforms.push_back("rig_rim_tron_color");
+
     llassert(mReservedUniforms.size() == END_RESERVED_UNIFORMS);
 
     std::set<std::string> dupe_check;

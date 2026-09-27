@@ -46,9 +46,20 @@
 
 namespace ALTron
 {
-    // Master gate: TronEnabled, a pure settings read (no GL). T0 wires only
-    // the master switch; every sub-effect that will later OR into this check
-    // (grade/grid/traces/rim/trails) lands in T1-T3.
+    // [TronT1] Raw TronEnabled read, no other gating. Used where a consumer
+    // specifically wants "the Tron master switch is on" regardless of
+    // whether grade/grid are individually enabled -- e.g. the Rig Rim Tron
+    // tint (ALCineRigRim::bindAnimated), which is a stand-alone use of the
+    // shared clock/palette and should work even with the world pass itself
+    // switched off (grade and grid both at 0).
+    bool isEnabledMaster();
+
+    // [TronT1] isEnabledMaster() && (TronGradeStrength > 0 || TronGridEnabled)
+    // -- the master gate every render-affecting consumer (isActiveForCurrent-
+    // Pass(), the Lightbox tab's group visibility) should use: TronEnabled
+    // alone with both the grade and the grid off has nothing to draw, so the
+    // Tron World pass should not even attempt its own per-frame settings
+    // read/gather. T2/T3 OR their own enable flags into this in later phases.
     bool isEnabled();
 
     // isEnabled() && the current render context is one Tron may draw into:
@@ -69,6 +80,13 @@ namespace ALTron
         LLColor3 mPulse;
     };
     Palette palette();
+
+    // [TronT1] Which point in the HDR post chain the Tron World pass runs at
+    // (TronLayer, clamped). Mirrors LLPipeline::ERotoInkLayer's Scene/Camera
+    // split for Roto Ink, but Tron only ever has these two slots (no
+    // Atmosphere/Overlay -- see the T1 contract section 3.6).
+    enum ELayer { LAYER_SCENE = 0, LAYER_CAMERA = 1 };
+    ELayer layer();
 
     // Writes TronColorPrimary/Secondary/Accent/Pulse for one of the named
     // palettes (TronPalette combo ids 1..10, e.g. 1 = Legacy Cyan). Id 0
@@ -132,6 +150,64 @@ namespace ALTron
         U32       mK[3] = { 0, 0, 0 };
     };
     LatticeFrame computeLattice(F64 scale);
+
+    // [TronT1] Same computation, but with the anchor passed in explicitly
+    // instead of read from the idle()-latched anchor() -- see the T1
+    // contract section 3.3: LLPipeline::renderTronWorld derives its own
+    // anchor from the pass's OWN camera matrix (never the one-frame-lagged
+    // idle anchor) and must fold that SAME anchor into every lattice frame
+    // it asks for. computeLattice(scale) above is now a thin wrapper that
+    // forwards to this overload with anchor().mAnchorGlobal.
+    LatticeFrame computeLattice(F64 scale, const LLVector3d& anchor_global);
+
+    // [TronT1] Shared pulse waveform, sampled from the shared clock's own
+    // phase accumulator (clock().mPulsePhase01) so every consumer (Rig Rim
+    // tint, the Tron World pass's tron_master.y, later Actor FX Tron Suit)
+    // agrees on "now". Shape from TronPulseShape: 0 sine, 1 saw, 2
+    // heartbeat (double-bump), 3 square. Pure function, result in [0,1].
+    F32 pulse01();
+
+    // [TronT1] Rig Rim mode-2 ("tint + pulse") multiplier:
+    // max(1 + TronPulseAmount * (pulse01() - 0.5) * 2, 0).
+    F32 pulseMul();
+
+    // [TronT1] Per-frame resolved state shared between resolveFrame() and
+    // its consumers within the same frame -- mirrors LLPipeline's
+    // NightMaskFrameState/updateNightMaskAnchor() B1 idiom exactly, so a
+    // Tron toggle can't pump exposure any more than a Night Mask toggle can.
+    struct Frame
+    {
+        F32 mBloomScale = 1.f; // ramped toward (willRun ? TronBloomMeterScale : 1)
+    };
+
+    // [TronT1] Ramps Frame::mBloomScale toward TronBloomMeterScale while the
+    // Tron World pass will actually render at the Camera layer this frame,
+    // else toward 1. Call exactly once per frame, in renderFinalize's
+    // prologue next to updateNightMaskAnchor() (before generateLuminance()).
+    void resolveFrame();
+
+    // The frame state resolved by the most recent resolveFrame() call.
+    const Frame& frame();
+
+    // [TronT1] Applies one of the 8 T1 look presets (section 8 of the T1
+    // contract): writes every "L" key (grade/grid/pulse/Rig-Rim-Tron look
+    // values) and the shared palette (via applyPalettePreset), then --
+    // ONLY when the matching TronPresetAlso* flag is on -- the linked Roto
+    // Ink / Rig Rim preset. Regardless of those flags, remembers the linked
+    // preset's key/label/mode so the Lightbox Integration group's "Apply
+    // Tron Roto/Rig Rim preset" buttons can apply it later on demand (see
+    // lastPresetRotoKey()/lastPresetRigRimLabel()/lastPresetRigRimTronMode()).
+    // Never touches TronEnabled, TronLayer, TronSubject*,
+    // TronGridOriginGlobal or TronGridSubject* (shot-specific, not a look).
+    // Unknown key: no-op.
+    void applyPreset(const std::string& key);
+
+    // Roto Ink preset key / Rig Rim preset label / Rig Rim Tron mode tied to
+    // the most recently applied look preset (applyPreset()); empty/0 until
+    // the first call.
+    const std::string& lastPresetRotoKey();
+    const std::string& lastPresetRigRimLabel();
+    S32 lastPresetRigRimTronMode();
 
     // Every Tron* setting key introduced so far -- the single source of
     // truth for LLFloaterDirector::sceneSettingsList() and the Lightbox

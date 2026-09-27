@@ -28412,5 +28412,408 @@
     <key>Type</key><string>Vector3D</string>
     <key>Value</key><array><real>0.0</real><real>0.0</real><real>0.0</real></array>
   </map>
+  <!-- [TronT1] Tron World: dark grade + world-space neon grid with travelling
+       pulses. See LLPipeline::renderTronWorld / scratchpad/tron_t1_contract.md. -->
+  <key>TronLayer</key>
+  <map>
+    <key>Comment</key><string>[Tron] Which point in the HDR post chain the Tron World pass runs at: Scene (0, before fog/water/alpha; hazed and metered -- auto-exposure fights the grade, lock RenderExposure) or Camera (1, default; after exposure metering, before bloom/on-lens/ReShade capture; grade sticks under auto-exposure, neon not hazed)</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>S32</string>
+    <key>Value</key><integer>1</integer>
+  </map>
+  <key>TronGradeStrength</key>
+  <map>
+    <key>Comment</key><string>[Tron] Dark grade strength (0..1); 0 = grade off</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>F32</string>
+    <key>Value</key><real>0.85</real>
+  </map>
+  <key>TronGradeDarkenEV</key>
+  <map>
+    <key>Comment</key><string>[Tron] Dark grade darken amount, in stops (0..8)</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>F32</string>
+    <key>Value</key><real>3.0</real>
+  </map>
+  <key>TronGradeDesaturate</key>
+  <map>
+    <key>Comment</key><string>[Tron] Dark grade desaturation (0..1)</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>F32</string>
+    <key>Value</key><real>0.6</real>
+  </map>
+  <key>TronGradeCrush</key>
+  <map>
+    <key>Comment</key><string>[Tron] Dark grade black lift, in exposed units (0..0.5)</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>F32</string>
+    <key>Value</key><real>0.05</real>
+  </map>
+  <key>TronGradeTint</key>
+  <map>
+    <key>Comment</key><string>[Tron] Dark grade tint colour (linear RGB, max-normalised before use)</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>Color3</string>
+    <key>Value</key><array><real>0.55</real><real>0.75</real><real>1.0</real></array>
+  </map>
+  <key>TronGradeTintAmount</key>
+  <map>
+    <key>Comment</key><string>[Tron] Dark grade tint amount (0..1)</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>F32</string>
+    <key>Value</key><real>0.3</real>
+  </map>
+  <key>TronGradeKeepBrightLo</key>
+  <map>
+    <key>Comment</key><string>[Tron] Dark grade keep-bright range low edge, in exposed luminance. Authored emissive/neon above this survives the grade</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>F32</string>
+    <key>Value</key><real>0.8</real>
+  </map>
+  <key>TronGradeKeepBrightHi</key>
+  <map>
+    <key>Comment</key><string>[Tron] Dark grade keep-bright range high edge, in exposed luminance</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>F32</string>
+    <key>Value</key><real>2.5</real>
+  </map>
+  <key>TronGradeKeepSubject</key>
+  <map>
+    <key>Comment</key><string>[Tron] Dark grade subject protection (0..1): how much the isolated subject (Subject group) is spared from the grade</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>F32</string>
+    <key>Value</key><real>0.5</real>
+  </map>
+  <key>TronGradeSkyDarken</key>
+  <map>
+    <key>Comment</key><string>[Tron] Sky darken amount at full grade strength (0 = black sky, 1 = sky untouched)</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>F32</string>
+    <key>Value</key><real>0.0</real>
+  </map>
+  <key>TronGridEnabled</key>
+  <map>
+    <key>Comment</key><string>[Tron] Enables the world-space neon grid</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>Boolean</string>
+    <key>Value</key><integer>1</integer>
+  </map>
+  <key>TronGridIntensity</key>
+  <map>
+    <key>Comment</key><string>[Tron] Grid line intensity (0..64), display-intent linear, exposure independent</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>F32</string>
+    <key>Value</key><real>6.0</real>
+  </map>
+  <key>TronGridSpacing</key>
+  <map>
+    <key>Comment</key><string>[Tron] Grid line spacing in metres (0.125..64)</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>F32</string>
+    <key>Value</key><real>2.0</real>
+  </map>
+  <key>TronGridWidth</key>
+  <map>
+    <key>Comment</key><string>[Tron] Grid line full width in metres (0..0.5)</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>F32</string>
+    <key>Value</key><real>0.02</real>
+  </map>
+  <key>TronGridMinWidthPx</key>
+  <map>
+    <key>Comment</key><string>[Tron] Minimum on-screen grid line width in pixels at 1080p (0..6)</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>F32</string>
+    <key>Value</key><real>1.2</real>
+  </map>
+  <key>TronGridMajorEvery</key>
+  <map>
+    <key>Comment</key><string>[Tron] Draw a major line every N minor lines (0..32); 0 or 1 = no major lines</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>S32</string>
+    <key>Value</key><integer>4</integer>
+  </map>
+  <key>TronGridMajorWidth</key>
+  <map>
+    <key>Comment</key><string>[Tron] Major line width multiplier (1..6)</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>F32</string>
+    <key>Value</key><real>2.0</real>
+  </map>
+  <key>TronGridMajorIntensity</key>
+  <map>
+    <key>Comment</key><string>[Tron] Major line intensity multiplier (0..4)</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>F32</string>
+    <key>Value</key><real>1.5</real>
+  </map>
+  <key>TronGridFarFade</key>
+  <map>
+    <key>Comment</key><string>[Tron] Grid far fade distance in metres (0..1024); 0 = no fade</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>F32</string>
+    <key>Value</key><real>120.0</real>
+  </map>
+  <key>TronGridFloor</key>
+  <map>
+    <key>Comment</key><string>[Tron] Grid weight on floor-facing surfaces (0..1)</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>F32</string>
+    <key>Value</key><real>1.0</real>
+  </map>
+  <key>TronGridWall</key>
+  <map>
+    <key>Comment</key><string>[Tron] Grid weight on wall-facing surfaces (0..1)</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>F32</string>
+    <key>Value</key><real>0.6</real>
+  </map>
+  <key>TronGridCeiling</key>
+  <map>
+    <key>Comment</key><string>[Tron] Grid weight on ceiling-facing surfaces (0..1)</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>F32</string>
+    <key>Value</key><real>0.3</real>
+  </map>
+  <key>TronGridSharpness</key>
+  <map>
+    <key>Comment</key><string>[Tron] Triplanar blend sharpness (2..16)</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>F32</string>
+    <key>Value</key><real>8.0</real>
+  </map>
+  <key>TronGridNormalSource</key>
+  <map>
+    <key>Comment</key><string>[Tron] Grid triplanar normal source: 0 G-buffer / 1 geometric (avoids normal-map speckle)</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>S32</string>
+    <key>Value</key><integer>1</integer>
+  </map>
+  <key>TronGridGlow</key>
+  <map>
+    <key>Comment</key><string>[Tron] Grid/pulse alpha glow feed (0..1); the primary bloom control, exposure-stable unlike threshold bloom on the neon itself</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>F32</string>
+    <key>Value</key><real>1.0</real>
+  </map>
+  <key>TronGridSubjectExclude</key>
+  <map>
+    <key>Comment</key><string>[Tron] How much the isolated subject excludes the grid (0..1). Shot key, never written by a look preset</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>F32</string>
+    <key>Value</key><real>1.0</real>
+  </map>
+  <key>TronGridSubjectRadius</key>
+  <map>
+    <key>Comment</key><string>[Tron] Draw the grid only within this many metres of a subject anchor (0..256); 0 = whole world. A radius above 0 with no resolved target draws nothing. Shot key, never written by a look preset</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>F32</string>
+    <key>Value</key><real>0.0</real>
+  </map>
+  <key>TronGridSubjectRadiusFeather</key>
+  <map>
+    <key>Comment</key><string>[Tron] Feather of the subject-radius falloff, in metres (0.1..64). Shot key, never written by a look preset</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>F32</string>
+    <key>Value</key><real>4.0</real>
+  </map>
+  <key>TronGridWaterMode</key>
+  <map>
+    <key>Comment</key><string>[Tron] Grid behaviour at the water surface: 0 skip / 1 sea (floor grid in the secondary colour) / 2 floor. Inert at the Scene layer (water has not been drawn yet)</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>S32</string>
+    <key>Value</key><integer>0</integer>
+  </map>
+  <key>TronGridWaterTolerance</key>
+  <map>
+    <key>Comment</key><string>[Tron] Water-surface height detection tolerance in metres (0.005..0.5)</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>F32</string>
+    <key>Value</key><real>0.03</real>
+  </map>
+  <key>TronPulseGridAmount</key>
+  <map>
+    <key>Comment</key><string>[Tron] Travelling grid pulse brightness, a multiple of the grid intensity (0..4); 0 = pulses off</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>F32</string>
+    <key>Value</key><real>1.5</real>
+  </map>
+  <key>TronPulseGridSpeed</key>
+  <map>
+    <key>Comment</key><string>[Tron] Travelling grid pulse speed in m/s (-50..50); negative reverses travel for every direction mode</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>F32</string>
+    <key>Value</key><real>6.0</real>
+  </map>
+  <key>TronPulseGridLength</key>
+  <map>
+    <key>Comment</key><string>[Tron] Travelling grid pulse length, a fraction of the wavelength (0.05..1)</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>F32</string>
+    <key>Value</key><real>0.25</real>
+  </map>
+  <key>TronPulseGridWavelength</key>
+  <map>
+    <key>Comment</key><string>[Tron] Travelling grid pulse wavelength in metres (1..256)</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>F32</string>
+    <key>Value</key><real>24.0</real>
+  </map>
+  <key>TronPulseGridDensity</key>
+  <map>
+    <key>Comment</key><string>[Tron] Fraction of grid lines that carry a travelling pulse (0..1)</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>F32</string>
+    <key>Value</key><real>0.35</real>
+  </map>
+  <key>TronPulseGridDirection</key>
+  <map>
+    <key>Comment</key><string>[Tron] Travelling grid pulse direction: 0 both ways / 1 + axis / 2 - axis / 3 hashed per line</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>S32</string>
+    <key>Value</key><integer>3</integer>
+  </map>
+  <key>TronPulseGridColorMode</key>
+  <map>
+    <key>Comment</key><string>[Tron] Travelling grid pulse colour: 0 palette pulse colour / 1 secondary / 2 white</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>S32</string>
+    <key>Value</key><integer>0</integer>
+  </map>
+  <key>TronPulseSeed</key>
+  <map>
+    <key>Comment</key><string>[Tron] Travelling grid pulse hash seed, integer-valued (0..100); reshuffles which lines pulse</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>F32</string>
+    <key>Value</key><real>0.0</real>
+  </map>
+  <key>TronSubjectTarget</key>
+  <map>
+    <key>Comment</key><string>[Tron] Single-subject target for target set 0 (0 Director subject / 1-4 Subject A-D). Shot key, never written by a look preset</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>S32</string>
+    <key>Value</key><integer>0</integer>
+  </map>
+  <key>TronSubjectTargetSet</key>
+  <map>
+    <key>Comment</key><string>[Tron] Which actors/objects feed the subject mask and the "grid only near subject" anchors (same list as CineOutlineSubjectTargetSet; 2 = all avatars in view). Shot key, never written by a look preset</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>S32</string>
+    <key>Value</key><integer>2</integer>
+  </map>
+  <key>TronSubjectMaxTargets</key>
+  <map>
+    <key>Comment</key><string>[Tron] Maximum number of subject targets gathered (1..16). Shot key, never written by a look preset</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>S32</string>
+    <key>Value</key><integer>8</integer>
+  </map>
+  <key>TronSubjectShape</key>
+  <map>
+    <key>Comment</key><string>[Tron] Subject mask box shape: 0 ellipse / 1 box / 2 capsule. Shot key, never written by a look preset</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>S32</string>
+    <key>Value</key><integer>2</integer>
+  </map>
+  <key>TronSubjectFeather</key>
+  <map>
+    <key>Comment</key><string>[Tron] Subject mask box edge feather, a fraction of the box radius (0.01..0.75). Shot key, never written by a look preset</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>F32</string>
+    <key>Value</key><real>0.2</real>
+  </map>
+  <key>TronSubjectDepthRange</key>
+  <map>
+    <key>Comment</key><string>[Tron] Subject mask depth slab pad in metres (0..8). Shot key, never written by a look preset</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>F32</string>
+    <key>Value</key><real>0.4</real>
+  </map>
+  <key>TronSubjectEllipseScale</key>
+  <map>
+    <key>Comment</key><string>[Tron] Subject mask box scale multiplier (0.5..3). Shot key, never written by a look preset</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>F32</string>
+    <key>Value</key><real>1.15</real>
+  </map>
+  <key>TronSubjectSourceGrid</key>
+  <map>
+    <key>Comment</key><string>[Tron] Subject mask source for the grid exclusion/keep-subject terms: 0 boxes / 1 per-pixel avatar tag / 2 tag AND boxes / 3 tag OR boxes. Forced to 0 whenever RenderGBufferAvatarTag or HDR is off. Shot key, never written by a look preset</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>S32</string>
+    <key>Value</key><integer>3</integer>
+  </map>
+  <key>TronSubjectSourceRim</key>
+  <map>
+    <key>Comment</key><string>[Tron] Subject mask source for the T2 neon rim term (reserved; not yet consumed by any shader). Shot key, never written by a look preset</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>S32</string>
+    <key>Value</key><integer>2</integer>
+  </map>
+  <key>TronSubjectInvert</key>
+  <map>
+    <key>Comment</key><string>[Tron] Inverts the subject mask. Shot key, never written by a look preset</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>Boolean</string>
+    <key>Value</key><integer>0</integer>
+  </map>
+  <key>TronNoPostScale</key>
+  <map>
+    <key>Comment</key><string>[Tron] Neon scale on frames colorCorrect will not expose/tonemap this frame (0..1). Shot key, never written by a look preset</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>F32</string>
+    <key>Value</key><real>0.35</real>
+  </map>
+  <key>TronBloomMeterScale</key>
+  <map>
+    <key>Comment</key><string>[Tron] Bloom-metering feedback scale while the Tron World pass runs at the Camera layer (0..1), same Night Mask B1 anti-feedback pattern. Shot key, never written by a look preset</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>F32</string>
+    <key>Value</key><real>0.0</real>
+  </map>
+  <!-- [TronT1] Rig Rim "Tron" palette tint (deferredUtil.glsl rigRimTerm() /
+       ALCineRigRim::bindAnimated). Written only by the Tron look presets. -->
+  <key>CineRigRimTronMode</key>
+  <map>
+    <key>Comment</key><string>[Tron] Rig Rim Tron tint mode: 0 off / 1 palette tint / 2 tint + pulse. Written only by a Tron look preset, never by a Rig Rim preset</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>S32</string>
+    <key>Value</key><integer>0</integer>
+  </map>
+  <key>CineRigRimTronMix</key>
+  <map>
+    <key>Comment</key><string>[Tron] Rig Rim Tron tint mix (0..1): how far the rim light's own colour is pulled toward the Tron palette colour</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>F32</string>
+    <key>Value</key><real>1.0</real>
+  </map>
+  <key>CineRigRimTronColorSource</key>
+  <map>
+    <key>Comment</key><string>[Tron] Which Tron palette colour the Rig Rim tint pulls toward: 0 primary / 1 secondary / 2 accent</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>S32</string>
+    <key>Value</key><integer>0</integer>
+  </map>
+  <key>CineOutlineAnimUseTronClock</key>
+  <map>
+    <key>Comment</key><string>[Tron] Drives Rotoscope Ink's animation phase from the shared Tron clock instead of Roto Ink's own accumulator (both keep running regardless); handy for syncing ink motion to Tron grid pulses</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>Boolean</string>
+    <key>Value</key><integer>0</integer>
+  </map>
+  <key>TronPresetAlsoRoto</key>
+  <map>
+    <key>Comment</key><string>[Tron] UI behaviour only: whether picking a Tron look preset also applies its linked Roto Ink preset</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>Boolean</string>
+    <key>Value</key><integer>1</integer>
+  </map>
+  <key>TronPresetAlsoRigRim</key>
+  <map>
+    <key>Comment</key><string>[Tron] UI behaviour only: whether picking a Tron look preset also applies its linked Rig Rim preset</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>Boolean</string>
+    <key>Value</key><integer>1</integer>
+  </map>
 </map>
 </llsd>

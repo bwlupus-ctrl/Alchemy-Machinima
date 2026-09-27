@@ -318,6 +318,27 @@ public:
     // is `dst == &mRT->screen`. Returns byte-identical values to the block it
     // replaced -- verified by diffing the moved code.
     F32 inkExposureSelector(bool is_scene_layer, bool hdr_path) const;
+    // [TronT1] Tron World: dark grade + world-space neon grid with travelling
+    // pulses, composited in place exactly like Rotoscope Ink (read a copy of
+    // `dst` into mWaterDis, draw every pixel back, blit colour-only back into
+    // `dst`). See LLPipeline::renderTronWorld's .cpp header comment and
+    // scratchpad/tron_t1_contract.md section 3 for the full contract.
+    enum ETronDraw : S32
+    {
+        TRON_DRAW_WORLD_AND_TRAILS = 0, // T1 behaves as TRON_DRAW_WORLD_ONLY
+        TRON_DRAW_WORLD_ONLY       = 1,
+        TRON_DRAW_TRAILS_ONLY      = 2, // T3: returns immediately until then
+    };
+    // is_scene_layer selects the Scene-layer exposure/water-detection rules
+    // (see inkExposureSelector) and forces the camera/anchor/lattice re-
+    // derivation to use the LIVE mv/proj rather than gGLLast*; mv/proj are
+    // the pass's OWN camera matrices (gGLLastModelView/Projection at the
+    // Camera layer, the live gGLModelView/gGLProjection at the Scene layer),
+    // used to derive a fresh anchor/cam_rel/lattice every call -- see the
+    // T1 contract section 3.3 (never mixed with the idle()-latched
+    // ALTron::anchor()).
+    void renderTronWorld(LLRenderTarget* dst, ETronDraw mode, bool is_scene_layer,
+                          const F32* mv, const F32* proj);
     // [BDMerge G3.3] per-projector volumetric light cones: additive pass, one
     // fullscreen cone per shadow-casting projector slot, in place on target.
     // [Prism camera feed] aux_direct=true is the Prism auxiliary (VCam) capture
@@ -1536,8 +1557,16 @@ public:
     // out_targets2 (LLShaderMgr::ROTO_TARGETS2 packing: x view depth m, y
     // slab half depth m, z palette index 0..7, w 1 valid) and returns the
     // count actually written (0..16, 0 on no candidates/all culled).
+    // [TronT1 P1 fix] `subject_target_setting` is target_set==0's
+    // single-subject selector, forwarded verbatim to
+    // collectRotoInkCandidates() -- the caller passes its OWN cached control
+    // (CineOutlineSubjectTarget for Roto Ink, TronSubjectTarget for Tron)
+    // instead of this function reading CineOutlineSubjectTarget internally,
+    // so a Tron call no longer silently follows Roto's single-subject
+    // selection.
     S32 gatherRotoInkTargets(S32 target_set, S32 max_targets, F32 ellipse_scale,
-                              F32 depth_range, const F32* mv, const F32* proj,
+                              F32 depth_range, S32 subject_target_setting,
+                              const F32* mv, const F32* proj,
                               LLVector4* out_targets, LLVector4* out_targets2);
 
     // Night Mask: per-frame resolved state, shared verbatim between
