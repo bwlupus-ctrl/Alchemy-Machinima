@@ -1,4 +1,4 @@
-# Ghost Learned Performance — design brief (for adversarial review)
+# Ghost AutoAnimate (learned performance) — design brief (for adversarial review)
 
 **Date:** 2026-09-28
 **Status:** DESIGN ONLY. Nothing implemented, nothing built. Per `CLAUDE.md`: Codex implements from
@@ -15,7 +15,7 @@ preset/reset wiring, in one delivery.
 > be versatile to handle bento attachments and animesh ones."
 
 So:
-- A per-clone **toggle** ("Learn & Continue"). While it is on and the clone is in Mirror drive, the
+- A per-clone **toggle** ("AutoAnimate"). While it is on and the clone is in Mirror drive, the
   clone passively **learns** the source's performance.
 - When the source goes away (or the user presses **Detach**), the clone keeps performing on its own
   from what it learned — the AO keeps cycling stands, face/hand anims keep firing — with **no
@@ -59,27 +59,27 @@ it from the cache without a network fetch, and that a cache miss simply triggers
 
 ### 3.1 States — one toggle, one new drive mode
 
-- New per-instance bool **`mLearnEnabled`** on the Ghost Studio instance (the toggle). Default from
-  new setting `GhostLearnDefault` (false).
-- New drive mode **`DRIVE_LEARNED = 3`**, appended after FROZEN (never renumber existing values —
+- New per-instance bool **`mAutoAnimate`** on the Ghost Studio instance (the toggle). Default from
+  new setting `GhostAutoAnimateDefault` (false).
+- New drive mode **`DRIVE_AUTO = 3`**, appended after FROZEN (never renumber existing values —
   they are combo `value`s and chat-command arguments).
 - Transitions:
 
 | From | Trigger | To |
 |---|---|---|
-| MIRROR (+learn on) | source lost (§3.4) | LEARNED (automatic) |
-| MIRROR (+learn on) | **Detach** button / command | LEARNED (manual) |
-| LEARNED | source present again AND `GhostLearnRecouple` on | MIRROR (learning resumes, pool kept) |
-| LEARNED | Pause | FROZEN, `mResumeDriveMode = LEARNED` |
-| FROZEN | Resume with resume mode LEARNED | LEARNED (pool and schedule intact) |
-| any | learn toggled OFF | pool discarded; if in LEARNED → FROZEN on the current pose (never "snap to T-pose") |
+| MIRROR (+AutoAnimate on) | source lost (§3.4) | AUTO (automatic) |
+| MIRROR (+AutoAnimate on) | **Detach** button / command | AUTO (manual) |
+| AUTO | source present again AND `GhostAutoAnimateRecouple` on | MIRROR (learning resumes, pool kept) |
+| AUTO | Pause | FROZEN, `mResumeDriveMode = AUTO` |
+| FROZEN | Resume with resume mode AUTO | AUTO (pool and schedule intact) |
+| any | AutoAnimate toggled OFF | pool discarded; if in AUTO → FROZEN on the current pose (never "snap to T-pose") |
 
 - **Entity clones only.** Overlay clones have no skeleton or motion controller of their own — they
   re-draw the live source (drive modes are already "ignored for overlay instances",
   `alghoststudio.h:95-99`) — so with the source gone there is nothing to keep playing.
-  **Overlay UX:** the toggle stays visible on overlays but reads *Learn & Continue (entity only)*;
-  turning it on offers **Convert to entity & learn**. Never a silent no-op. When the selection
-  contains more than `GhostLearnConvertWarnCount` (default 10) overlays, the offer shows the count and
+  **Overlay UX:** the toggle stays visible on overlays but reads *AutoAnimate (entity only)*;
+  turning it on offers **Convert to entity & AutoAnimate**. Never a silent no-op. When the selection
+  contains more than `GhostAutoAnimateConvertWarnCount` (default 10) overlays, the offer shows the count and
   warns that entity clones cost more than overlays before converting. Declining leaves the overlays
   untouched and the toggle off.
 - **Retargeting / outfit change:** if an entity's source changes (re-sourced to a different avatar)
@@ -87,10 +87,10 @@ it from the cache without a network fetch, and that a cache miss simply triggers
   animation sets. A sealed pool is kept, and handed off from normally, until the user presses
   **Relearn**.
 
-### 3.2 The recorder (runs only while MIRROR + learn on, and only inside the learn window)
+### 3.2 The recorder (runs only while MIRROR + AutoAnimate on, and only inside the learn window)
 
-**Learning is time-capped, not indefinite.** Toggling Learn on opens a **learn window** of
-`GhostLearnDuration` seconds (default **120**, range 15-600) of *source-present* time. When it
+**Learning is time-capped, not indefinite.** Toggling AutoAnimate on opens a **learn window** of
+`GhostAutoAnimateDuration` seconds (default **120**, range 15-600) of *source-present* time. When it
 expires the pool is **sealed**: the recorder stops, costs nothing further, and the clone keeps
 mirroring live with a finished pool ready for handoff. Status shows `Learning 1:24 / 2:00`, then
 `Learned ✓`.
@@ -120,11 +120,11 @@ Each event is folded **immediately** into the pool (no event log is kept — see
 - **Mutual exclusion groups** — loop entries never observed simultaneously are treated as
   alternatives (this is how "the AO's stand set" is discovered without knowing it is an AO).
 
-Caps: pool entries capped (`GhostLearnMaxAnims`, default 64 per channel); timing samples per entry
+Caps: pool entries capped (`GhostAutoAnimateMaxAnims`, default 64 per channel); timing samples per entry
 capped at 16 (reservoir). Excluded: ground-sit (matches Mirror), and any anim already filtered by
 Mirror today.
 
-### 3.3 Autonomous playback (DRIVE_LEARNED)
+### 3.3 Autonomous playback (DRIVE_AUTO)
 
 Per channel, a small scheduler produces a desired set each frame and hands it to the **existing**
 sync paths — `synchronizeCloneAnimations()` for the body, the `LLObjectSignaledAnimationMap` +
@@ -136,21 +136,21 @@ sync paths — `synchronizeCloneAnimations()` for the body, the `LLObjectSignale
 - **One-shots:** Poisson-style firing from the observed inter-arrival samples, only while a
   co-occurring loop is active (or unconditionally if no co-occurrence was observed).
 - **Randomness is seeded per clone instance id** (same pattern as Chaos, `seeded_unit`), so a take is
-  repeatable; a `GhostLearnReseed` action gives a new variation.
+  repeatable; a `GhostAutoAnimateReseed` action gives a new variation.
 - **Anything unloaded** (motion not yet resident) is skipped for this pick, not blocked on.
 
 ### 3.4 The handoff — the part that must be seamless
 
-1. **Do NOT route MIRROR→LEARNED through the existing `setEntityDriveMode` body.** It calls
+1. **Do NOT route MIRROR→AUTO through the existing `setEntityDriveMode` body.** It calls
    `synchronizeCloneAnimations(empty)` on leaving MIRROR (`:548-552`), which would stop everything —
-   the exact pop this feature exists to prevent. Add an explicit MIRROR→LEARNED (and LEARNED→MIRROR)
+   the exact pop this feature exists to prevent. Add an explicit MIRROR→AUTO (and AUTO→MIRROR)
    branch that **leaves `mClonePlayingAnimations` and the clone's object-anim entries untouched**.
 2. The scheduler **adopts** the currently playing set as its initial state: currently running loops
    get a fresh dwell starting now; nothing is restarted.
-3. "Source lost" = source avatar null/dead for `GhostLearnLossGrace` seconds (default 1.5) — reuses
+3. "Source lost" = source avatar null/dead for `GhostAutoAnimateLossGrace` seconds (default 1.5) — reuses
    the same grace idea as hold-on-source-change so a brief de-rez does not trigger a handoff. For
    animesh, per linkset: source root missing for the grace period.
-4. LEARNED→MIRROR (recouple) goes through the normal mirror diff on the next frame, which is already
+4. AUTO→MIRROR (recouple) goes through the normal mirror diff on the next frame, which is already
    hitch-free for anims both sets share.
 
 ### 3.5 Channel independence
@@ -187,35 +187,35 @@ Target: **no measurable frame cost** with learn off, and negligible with it on, 
   exactly what that clone saw during its own window. This is affordable because the recorder is
   event-driven (a few updates/second while learning, zero after sealing) and bounded (~13 KB per
   channel), so N clones cost N × tiny, and nothing runs once their windows close.
-- **Scheduler cost in Learned:** per channel per frame, one comparison of `now` against the next
+- **Scheduler cost in Auto:** per channel per frame, one comparison of `now` against the next
   scheduled event time. It only builds a new desired set and calls the existing sync when an event
   is due.
 - **Sealed = zero.** After the learn window closes the recorder is detached from the hook entirely.
 - **Measured, not assumed:** the log reports recorder and scheduler time per second
-  (`LEARNED-COST rec=…µs sched=…µs clones=N`) once a minute while active, so overhead is a number
+  (`AUTOANIM-COST rec=…µs sched=…µs clones=N`) once a minute while active, so overhead is a number
   the user can read, not a claim.
 
 ---
 
 ## 4. Surfaces (all in one delivery)
 
-- **Settings** (`settings_alchemy.xml`): `GhostLearnDefault`, `GhostLearnDuration` (120 s),
-  `GhostLearnRecouple` (true), `GhostLearnLossGrace` (1.5), `GhostLearnMaxAnims` (64),
-  `GhostLearnConvertWarnCount` (10).
+- **Settings** (`settings_alchemy.xml`): `GhostAutoAnimateDefault`, `GhostAutoAnimateDuration` (120 s),
+  `GhostAutoAnimateRecouple` (true), `GhostAutoAnimateLossGrace` (1.5), `GhostAutoAnimateMaxAnims` (64),
+  `GhostAutoAnimateConvertWarnCount` (10).
 - **Ghost Studio, Pose & Animation section** (`panel_ghost_studio.xml:205+`):
-  - check box **Learn & Continue** (per selected clone);
-  - drive combo gains **Learned** (`value="3"`);
-  - button **Detach** (enabled when Mirror + learn on);
+  - check box **AutoAnimate** (per selected clone);
+  - drive combo gains **Auto** (`value="3"`);
+  - button **Detach** (enabled when Mirror + AutoAnimate on);
   - learn-window spinner (seconds) + **Stop now** / **Relearn**;
   - status line: `Learning 1:24 / 2:00` then `Learned ✓ 3 loops · 9 one-shots · 2 animesh` (per
     channel on hover);
   - **Save…** / **Load…** / **Reseed**.
-- Existing controls: Pause/Resume must round-trip LEARNED; "Follow live" must mean MIRROR (keeps
+- Existing controls: Pause/Resume must round-trip AUTO; "Follow live" must mean MIRROR (keeps
   pool). Presets/reset: the toggle and new settings register with Studio reset.
-- **Chat command:** extend `/ghostanim` (`alchatcommand.cpp:777`) with `learn on|off`, `detach`,
-  `learned`, keeping `[all|selected]`.
+- **Chat command:** extend `/ghostanim` (`alchatcommand.cpp:777`) with `auto on|off`, `detach`,
+  `autoanim`, keeping `[all|selected]`.
 - **Director reachability** (backlog rule: anything controllable in Studio must be reachable from the
-  Director): add **Learn & Continue** and **Detach performance** to the Director cast menu
+  Director): add **AutoAnimate** and **Detach performance** to the Director cast menu
   (`menu_director_cast.xml`).
 
 ---
@@ -223,14 +223,14 @@ Target: **no measurable frame cost** with learn off, and negligible with it on, 
 ## 5. Instrumentation — the log states a verdict
 
 On each handoff, per channel, one line:
-- `LEARNED-HANDOFF ok` — N anims carried over unchanged, 0 stopped.
-- `LEARNED-HANDOFF POP` — any anim in the playing set was stopped during the handoff frame. **This is
+- `AUTOANIM-HANDOFF ok` — N anims carried over unchanged, 0 stopped.
+- `AUTOANIM-HANDOFF POP` — any anim in the playing set was stopped during the handoff frame. **This is
   the seamlessness test**; it must never fire.
-- `LEARNED-POOL THIN` — fewer than 2 loop alternatives or < 30 s observed (warn, still runs).
-- `LEARNED-SKIP <uuid> unloaded` — scheduler skipped a non-resident motion (rate-limited).
+- `AUTOANIM-POOL THIN` — fewer than 2 loop alternatives or < 30 s observed (warn, still runs).
+- `AUTOANIM-SKIP <uuid> unloaded` — scheduler skipped a non-resident motion (rate-limited).
 
 Separate outcome for untrustworthy measurement: if the source was never observed (learn toggled on
-after the source was already gone), log `LEARNED-NODATA`, not a pool verdict.
+after the source was already gone), log `AUTOANIM-NODATA`, not a pool verdict.
 
 ---
 
@@ -267,16 +267,16 @@ With the toggle **off** (the default), the code must be provably identical to to
 
 ## 8. In-world test (one pass, outcomes stated in advance)
 
-1. Spawn a clone of yourself, Mirror, **Learn & Continue** on (default 2:00 window). Wear an AO with
+1. Spawn a clone of yourself, Mirror, **AutoAnimate** on (default 2:00 window). Wear an AO with
    ≥3 stands and a face HUD that uses animations. Wait for the window to close.
    *Expect:* status counts down, then `Learned ✓` with ≥3 loops and several one-shots;
-   `LEARNED-COST` shows the recorder stopped (rec=0) after sealing.
-2. Press **Detach**. *Expect:* `LEARNED-HANDOFF ok`, no visible pop; the clone keeps the current stand.
+   `AUTOANIM-COST` shows the recorder stopped (rec=0) after sealing.
+2. Press **Detach**. *Expect:* `AUTOANIM-HANDOFF ok`, no visible pop; the clone keeps the current stand.
 3. Take your AO off. *Expect:* the clone is unaffected and cycles to other stands within their
    observed dwell; face keeps moving.
 4. Wear an animesh attachment that animates; clone; learn; then detach the attachment from yourself.
    *Expect:* that linkset alone logs a handoff and keeps animating.
-5. Pause → Resume. *Expect:* returns to Learned, same pool.
+5. Pause → Resume. *Expect:* returns to Auto, same pool.
 6. Save, despawn, respawn, Load. *Expect:* same behaviour.
 
 If step 2 logs `POP`, the feature is broken regardless of how it looks.
