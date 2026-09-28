@@ -105,11 +105,11 @@ template<> template<> void alghostautoanimmodel_object::test<8>()
     auto p = pairPool(); p.entries.push_back(entry(c)); p.edges.push_back({1, 2, 3, 0}); p.finalize();
     auto choices = [&](const LLUUID& id)
     {
-        ChannelScheduler s; s.bind(p, id, 42, "body"); s.adopt({}, 0.0, unknown);
+        ChannelScheduler s; s.bind(p, id, 42, "body"); s.adopt({}, 0.0, alghostautoanimmodel_data::unknown);
         std::vector<LLUUID> sequence, removed;
         for (S32 i = 0; i < 40; ++i)
         {
-            s.tick(static_cast<F64>(i) * 3.0, resident, removed);
+            s.tick(static_cast<F64>(i) * 3.0, alghostautoanimmodel_data::resident, removed);
             const U64 mask = s.activeStateMask();
             for (size_t j = 0; j < p.entries.size(); ++j) if (mask & (U64(1) << j)) sequence.push_back(p.entries[j].id);
         }
@@ -120,11 +120,11 @@ template<> template<> void alghostautoanimmodel_object::test<8>()
 template<> template<> void alghostautoanimmodel_object::test<9>()
 {
     auto p = pairPool(); ChannelScheduler s; s.bind(p, c, 0, "body");
-    const AnimMap adopted{{a, 41}, {d, 99}}; s.adopt(adopted, 0.0, unknown);
+    const AnimMap adopted{{a, 41}, {d, 99}}; s.adopt(adopted, 0.0, alghostautoanimmodel_data::unknown);
     std::vector<LLUUID> removed;
-    ensure("first tick untouched", !s.tick(0.0, resident, removed)); ensure("exact adoption", s.desired() == adopted);
-    s.tick(1.99, resident, removed); ensure("minimum first dwell", s.desired() == adopted);
-    s.tick(2.0, resident, removed); s.tick(3.0, resident, removed);
+    ensure("first tick untouched", !s.tick(0.0, alghostautoanimmodel_data::resident, removed)); ensure("exact adoption", s.desired() == adopted);
+    s.tick(1.99, alghostautoanimmodel_data::resident, removed); ensure("minimum first dwell", s.desired() == adopted);
+    s.tick(2.0, alghostautoanimmodel_data::resident, removed); s.tick(3.0, alghostautoanimmodel_data::resident, removed);
     ensure_equals("foreign seq preserved", s.desired().at(d), 99);
     ensure("foreign never removed", std::find(removed.begin(), removed.end(), d) == removed.end());
 }
@@ -191,10 +191,10 @@ template<> template<> void alghostautoanimmodel_object::test<14>()
 {
     auto record = [&](bool other, bool same, F64 gap)
     {
-        ChannelRecorder r; r.onStart(a, facts(), 0.0); r.onStop(a, 10.0);
-        if (other) r.onStart(c, facts(true, LAYER_FACE), 10.5);
-        if (same) r.onStart(d, facts(), 10.7);
-        r.onStart(b, facts(), 10.0 + gap); return r.snapshot(15.0);
+        ChannelRecorder r; r.onStart(a, alghostautoanimmodel_data::facts(), 0.0); r.onStop(a, 10.0);
+        if (other) r.onStart(c, alghostautoanimmodel_data::facts(true, LAYER_FACE), 10.5);
+        if (same) r.onStart(d, alghostautoanimmodel_data::facts(), 10.7);
+        r.onStart(b, alghostautoanimmodel_data::facts(), 10.0 + gap); return r.snapshot(15.0);
     };
     ensure_equals("gap edge", replacement(record(false, false, 1.5), a, b), U32(1));
     ensure_equals("other layer does not consume gap", replacement(record(true, false, 1.5), a, b), U32(1));
