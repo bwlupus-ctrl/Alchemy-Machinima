@@ -683,6 +683,40 @@
                   name="env_intensity_hint"
                   tool_tip="Auto exposure adapts to scene brightness (about 2 stops of range) and so partially compensates the sliders; turn it off for exact control. Every control on this strip is a viewer-side multiplier: not saved into the sky, and the sun disc / sky dome do not change with them. Hover a slider and scroll: one increment per notch, Shift for a fine step, Ctrl or Alt for x10."
                   width="620">Auto exposure partially compensates (~2 stops): turn it off for exact control. Viewer-side only, not saved into the sky.</text>
+            <!-- [EnvIntensity presets] Quick Presets combo. Geometry: this
+                 strip's only free rectangle that does not grow the floater
+                 (width stays 845) is x 616 (env_gi_ev_reset right edge) .. 750
+                 (env_adv_toggle left edge), y 16 (slider-row top, clear of
+                 env_legacy_sun_note at top 5 / height 10) .. 38 (env_intensity_hint
+                 top). left 636 + width 108 -> right edge 744, 6 px clear of the
+                 toggle at 750. onEnvIntensityPresetSelected() applies the
+                 selection; refreshEnvIntensityPresetCombo() (llfloaterenvironmentadjust.cpp)
+                 selects "Custom" the moment any tracked value stops matching. -->
+            <combo_box follows="left|top"
+                       layout="topleft"
+                       left="636"
+                       top="16"
+                       height="18"
+                       width="108"
+                       name="env_intensity_preset"
+                       initial_value="stock"
+                       tool_tip="Quick Presets: apply a named Light Intensity look (writes the Sun/Moon/GI/local-light EV, Kelvin, tints and shadow lift sliders in one step). Viewer-side only, never written into the sky; changing any slider afterward switches this back to Custom.">
+                <combo_box.item label="Stock" name="preset_stock" value="stock"/>
+                <combo_box.item label="Golden Hour" name="preset_golden_hour" value="golden_hour"/>
+                <combo_box.item label="Blue Hour" name="preset_blue_hour" value="blue_hour"/>
+                <combo_box.item label="Overcast Soft" name="preset_overcast_soft" value="overcast_soft"/>
+                <combo_box.item label="Noon Punch" name="preset_noon_punch" value="noon_punch"/>
+                <combo_box.item label="High-Key Studio" name="preset_high_key_studio" value="high_key_studio"/>
+                <combo_box.item label="Low-Key Noir" name="preset_low_key_noir" value="low_key_noir"/>
+                <combo_box.item label="Moonlit Night" name="preset_moonlit_night" value="moonlit_night"/>
+                <combo_box.item label="Neon Night" name="preset_neon_night" value="neon_night"/>
+                <combo_box.item label="Candlelit Interior" name="preset_candlelit_interior" value="candlelit_interior"/>
+                <combo_box.item label="Desert Heat" name="preset_desert_heat" value="desert_heat"/>
+                <combo_box.item label="Arctic Cold" name="preset_arctic_cold" value="arctic_cold"/>
+                <combo_box.item label="Soft Fill" name="preset_soft_fill" value="soft_fill"/>
+                <combo_box.item label="Reflections Pop" name="preset_reflections_pop" value="reflections_pop"/>
+                <combo_box.item label="Custom" name="preset_custom" value="custom"/>
+            </combo_box>
             <!-- [EnvIntensity v2] Advanced panel toggle; label set from
                  env_intensity_adv_show / _hide in applyEnvIntensityAdvanced(). -->
             <button follows="left|top"

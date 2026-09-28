@@ -165,6 +165,94 @@ namespace
             ctrl->resetToDefault(true);
         }
     }
+
+    // [EnvIntensity presets] "Quick Presets" combo (env_intensity_preset) on the
+    // Light Intensity strip. Every row writes the FULL set of fields below
+    // (unlisted in the design -> the Stock/default value, taken from
+    // settings_alchemy.xml), so applying a preset is deterministic no matter
+    // what was set before. Never includes AlchemyEnvIntensityAdvanced,
+    // AlchemyEnvLocalLightIncludeRig or RenderDynamicExposureEnabled (auto
+    // exposure): those stay exactly as the user left them.
+    struct EnvIntensityPreset
+    {
+        const char* mKey; // combo_box.item value; matches an XUI entry
+        F32         mSunEV;
+        F32         mSkyGIEV;
+        bool        mMoonLinked;
+        F32         mMoonEV;
+        F32         mGIAmbientEV;
+        F32         mGIProbeDiffuseEV;
+        F32         mGIProbeSpecEV;
+        F32         mLocalLightEV;
+        F32         mSunKelvin;
+        LLColor4    mSunTintColor;
+        F32         mSunTintStrength;
+        LLColor4    mMoonTintColor;
+        F32         mMoonTintStrength;
+        LLColor4    mAmbientTintColor;
+        F32         mAmbientTintStrength;
+        F32         mShadowLiftEV;
+    };
+
+    const LLColor4 ENV_TINT_WHITE(1.f, 1.f, 1.f, 1.f);
+
+    const EnvIntensityPreset ENV_INTENSITY_PRESETS[] =
+    {
+        // key                    sunEV  skyGIEV moonLinked moonEV giAmbEV giDiffEV giSpecEV localEV kelvin   sunTint                             sunStr moonTint                            moonStr ambTint                             ambStr liftEV
+        { "stock",                 0.00f, 0.00f, true,       0.00f, 0.00f,  0.00f,   0.00f,   0.00f, 6500.f, ENV_TINT_WHITE,                     1.00f, ENV_TINT_WHITE,                     1.00f, ENV_TINT_WHITE,                     1.00f, 0.00f },
+        { "golden_hour",           0.50f, 0.00f, true,       0.00f, 0.00f,  0.00f,   0.00f,   0.00f, 3600.f, ENV_TINT_WHITE,                     1.00f, ENV_TINT_WHITE,                     1.00f, LLColor4(1.00f, 0.85f, 0.70f, 1.f), 0.35f, 0.25f },
+        { "blue_hour",            -1.00f, 0.30f, true,       0.00f, 0.00f,  0.00f,   0.00f,   0.00f, 9000.f, ENV_TINT_WHITE,                     1.00f, ENV_TINT_WHITE,                     1.00f, LLColor4(0.70f, 0.80f, 1.00f, 1.f), 0.50f, 0.30f },
+        { "overcast_soft",        -1.00f, 0.70f, true,       0.00f, 0.00f,  0.00f,  -0.30f,   0.00f, 7000.f, ENV_TINT_WHITE,                     1.00f, ENV_TINT_WHITE,                     1.00f, ENV_TINT_WHITE,                     1.00f, 0.60f },
+        { "noon_punch",            1.00f,-0.30f, true,       0.00f, 0.00f,  0.00f,   0.30f,   0.00f, 5800.f, ENV_TINT_WHITE,                     1.00f, ENV_TINT_WHITE,                     1.00f, ENV_TINT_WHITE,                     1.00f, 0.00f },
+        { "high_key_studio",       0.30f, 0.80f, true,       0.00f, 0.00f,  0.00f,   0.00f,   0.00f, 6500.f, ENV_TINT_WHITE,                     1.00f, ENV_TINT_WHITE,                     1.00f, ENV_TINT_WHITE,                     1.00f, 1.00f },
+        { "low_key_noir",          0.50f,-1.50f, true,       0.00f,-0.50f,  0.00f,   0.50f,   0.50f, 5000.f, ENV_TINT_WHITE,                     1.00f, ENV_TINT_WHITE,                     1.00f, ENV_TINT_WHITE,                     1.00f, 0.00f },
+        { "moonlit_night",         0.00f,-0.50f, false,      1.50f, 0.00f,  0.00f,   0.00f,   0.00f, 6500.f, ENV_TINT_WHITE,                     1.00f, LLColor4(0.75f, 0.85f, 1.00f, 1.f),0.60f, ENV_TINT_WHITE,                     1.00f, 0.20f },
+        { "neon_night",           -1.00f,-1.00f, true,       0.00f, 0.00f,  0.00f,   0.70f,   1.50f, 6500.f, ENV_TINT_WHITE,                     1.00f, ENV_TINT_WHITE,                     1.00f, LLColor4(0.55f, 0.80f, 1.00f, 1.f), 0.40f, 0.20f },
+        { "candlelit_interior",   -2.00f,-1.00f, true,       0.00f, 0.00f,  0.00f,   0.00f,   2.00f, 6500.f, ENV_TINT_WHITE,                     1.00f, ENV_TINT_WHITE,                     1.00f, LLColor4(1.00f, 0.75f, 0.50f, 1.f), 0.40f, 0.30f },
+        { "desert_heat",           1.20f, 0.00f, true,       0.00f, 0.00f,  0.00f,   0.20f,   0.00f, 5200.f, ENV_TINT_WHITE,                     1.00f, ENV_TINT_WHITE,                     1.00f, LLColor4(1.00f, 0.90f, 0.75f, 1.f), 0.30f, 0.40f },
+        { "arctic_cold",           0.50f, 0.30f, true,       0.00f, 0.00f,  0.00f,   0.00f,   0.00f, 8500.f, ENV_TINT_WHITE,                     1.00f, ENV_TINT_WHITE,                     1.00f, LLColor4(0.80f, 0.90f, 1.00f, 1.f), 0.40f, 0.40f },
+        { "soft_fill",             0.00f, 0.00f, true,       0.00f, 0.00f,  0.00f,   0.00f,   0.00f, 6500.f, ENV_TINT_WHITE,                     1.00f, ENV_TINT_WHITE,                     1.00f, ENV_TINT_WHITE,                     1.00f, 0.80f },
+        { "reflections_pop",       0.00f, 0.00f, true,       0.00f, 0.00f,  0.00f,   1.00f,   0.00f, 6500.f, ENV_TINT_WHITE,                     1.00f, ENV_TINT_WHITE,                     1.00f, ENV_TINT_WHITE,                     1.00f, 0.00f },
+    };
+
+    // [EnvIntensity presets] Custom-detection: every setting a preset can
+    // touch gets a signal listener (connected in postBuild) that calls
+    // refreshEnvIntensityPresetCombo(). Cheap: only fires on an actual change,
+    // never per frame.
+    const char* const ENV_INTENSITY_PRESET_WATCHED_KEYS[] =
+    {
+        "AlchemyEnvSunEV",
+        "AlchemyEnvSkyGIEV",
+        "AlchemyEnvMoonLinked",
+        "AlchemyEnvMoonEV",
+        "AlchemyEnvGIAmbientEV",
+        "AlchemyEnvGIProbeDiffuseEV",
+        "AlchemyEnvGIProbeSpecEV",
+        "AlchemyEnvLocalLightEV",
+        "AlchemyEnvSunKelvin",
+        "AlchemyEnvSunTintColor",
+        "AlchemyEnvSunTintStrength",
+        "AlchemyEnvMoonTintColor",
+        "AlchemyEnvMoonTintStrength",
+        "AlchemyEnvAmbientTintColor",
+        "AlchemyEnvAmbientTintStrength",
+        "AlchemyEnvShadowLiftEV",
+    };
+
+    const F32 ENV_INTENSITY_PRESET_EPS(1.e-4f);
+
+    inline bool env_intensity_nearly_equal(F32 a, F32 b)
+    {
+        return fabsf(a - b) < ENV_INTENSITY_PRESET_EPS;
+    }
+
+    inline bool env_intensity_color_nearly_equal(const LLColor4& a, const LLColor4& b)
+    {
+        return env_intensity_nearly_equal(a.mV[0], b.mV[0])
+            && env_intensity_nearly_equal(a.mV[1], b.mV[1])
+            && env_intensity_nearly_equal(a.mV[2], b.mV[2])
+            && env_intensity_nearly_equal(a.mV[3], b.mV[3]);
+    }
 }
 
 //=========================================================================
@@ -299,6 +387,26 @@ bool LLFloaterEnvironmentAdjust::postBuild()
     }
     applyEnvIntensityAdvanced();
     updateEnvIntensityMoonLink();
+
+    // [EnvIntensity presets] Quick Presets combo: apply-on-select, plus a
+    // listener per watched key so a manual slider / swatch / Debug Settings
+    // edit drops the combo to "Custom". refreshEnvIntensityPresetCombo() at
+    // the end picks the entry (Stock, on a fresh viewer) that matches the
+    // settings as postBuild found them.
+    if (LLComboBox* preset_combo = findChild<LLComboBox>("env_intensity_preset"))
+    {
+        preset_combo->setCommitCallback([this](LLUICtrl*, const LLSD&) { onEnvIntensityPresetSelected(); });
+
+        for (const char* name : ENV_INTENSITY_PRESET_WATCHED_KEYS)
+        {
+            if (auto ctrl = gSavedSettings.getControl(name))
+            {
+                mEnvIntensityPresetConns.emplace_back(ctrl->getSignal()->connect(
+                    [this](LLControlVariable*, const LLSD&, const LLSD&) { refreshEnvIntensityPresetCombo(); }));
+            }
+        }
+        refreshEnvIntensityPresetCombo();
+    }
 
     // [BDMerge B13] BD - Windlight Stuff: preset combo, save/delete/import,
     // cloud scroll locks. All the widgets live in a hidden bottom strip
@@ -839,6 +947,135 @@ void LLFloaterEnvironmentAdjust::updateEnvIntensityMoonLink()
             view->setEnabled(!linked);
         }
     }
+}
+
+// [EnvIntensity presets] env_intensity_preset commit: "Custom" (no matching
+// preset, the combo's own placeholder) is not a preset to apply, so selecting
+// it is a no-op; any real key looks up and applies ENV_INTENSITY_PRESETS.
+void LLFloaterEnvironmentAdjust::onEnvIntensityPresetSelected()
+{
+    LLComboBox* combo = findChild<LLComboBox>("env_intensity_preset");
+    if (!combo)
+    {
+        return;
+    }
+    const std::string key = combo->getValue().asString();
+    if (key == "custom")
+    {
+        // Picking "Custom" changes nothing; re-derive the label so an exact
+        // preset match is not left showing "Custom".
+        refreshEnvIntensityPresetCombo();
+        return;
+    }
+    applyEnvIntensityPreset(key);
+}
+
+// [EnvIntensity presets] Writes the full deterministic set of AlchemyEnv*
+// keys for `key` (see ENV_INTENSITY_PRESETS). mApplyingEnvIntensityPreset
+// suppresses refreshEnvIntensityPresetCombo() for the duration so the 16
+// individual setting-change signals fired below do not flash "Custom" mid-
+// write; the explicit call at the end re-derives the combo from the values
+// just written (always an exact match).
+void LLFloaterEnvironmentAdjust::applyEnvIntensityPreset(const std::string& key)
+{
+    const EnvIntensityPreset* preset = nullptr;
+    for (const EnvIntensityPreset& p : ENV_INTENSITY_PRESETS)
+    {
+        if (key == p.mKey)
+        {
+            preset = &p;
+            break;
+        }
+    }
+    if (!preset)
+    {
+        return;
+    }
+
+    mApplyingEnvIntensityPreset = true;
+
+    gSavedSettings.setF32("AlchemyEnvSunEV", preset->mSunEV);
+    gSavedSettings.setF32("AlchemyEnvSkyGIEV", preset->mSkyGIEV);
+    gSavedSettings.setBOOL("AlchemyEnvMoonLinked", preset->mMoonLinked);
+    gSavedSettings.setF32("AlchemyEnvMoonEV", preset->mMoonEV);
+    gSavedSettings.setF32("AlchemyEnvGIAmbientEV", preset->mGIAmbientEV);
+    gSavedSettings.setF32("AlchemyEnvGIProbeDiffuseEV", preset->mGIProbeDiffuseEV);
+    gSavedSettings.setF32("AlchemyEnvGIProbeSpecEV", preset->mGIProbeSpecEV);
+    gSavedSettings.setF32("AlchemyEnvLocalLightEV", preset->mLocalLightEV);
+    gSavedSettings.setF32("AlchemyEnvSunKelvin", preset->mSunKelvin);
+    gSavedSettings.setColor4("AlchemyEnvSunTintColor", preset->mSunTintColor);
+    gSavedSettings.setF32("AlchemyEnvSunTintStrength", preset->mSunTintStrength);
+    gSavedSettings.setColor4("AlchemyEnvMoonTintColor", preset->mMoonTintColor);
+    gSavedSettings.setF32("AlchemyEnvMoonTintStrength", preset->mMoonTintStrength);
+    gSavedSettings.setColor4("AlchemyEnvAmbientTintColor", preset->mAmbientTintColor);
+    gSavedSettings.setF32("AlchemyEnvAmbientTintStrength", preset->mAmbientTintStrength);
+    gSavedSettings.setF32("AlchemyEnvShadowLiftEV", preset->mShadowLiftEV);
+
+    mApplyingEnvIntensityPreset = false;
+
+    refreshEnvIntensityPresetCombo();
+}
+
+// [EnvIntensity presets] Re-derives the combo's selection from the live
+// AlchemyEnv* settings: an exact match (within ENV_INTENSITY_PRESET_EPS, to
+// absorb F32 round-trip through LLSD) selects that preset, otherwise the
+// combo falls back to its "Custom" placeholder item. Called once from
+// postBuild and from every watched setting's change signal; a no-op while
+// applyEnvIntensityPreset() is writing (mApplyingEnvIntensityPreset).
+void LLFloaterEnvironmentAdjust::refreshEnvIntensityPresetCombo()
+{
+    if (mApplyingEnvIntensityPreset)
+    {
+        return;
+    }
+    LLComboBox* combo = findChild<LLComboBox>("env_intensity_preset");
+    if (!combo)
+    {
+        return;
+    }
+
+    const F32 sun_ev        = gSavedSettings.getF32("AlchemyEnvSunEV");
+    const F32 sky_gi_ev     = gSavedSettings.getF32("AlchemyEnvSkyGIEV");
+    const bool moon_linked  = gSavedSettings.getBOOL("AlchemyEnvMoonLinked");
+    const F32 moon_ev       = gSavedSettings.getF32("AlchemyEnvMoonEV");
+    const F32 gi_ambient_ev = gSavedSettings.getF32("AlchemyEnvGIAmbientEV");
+    const F32 gi_diffuse_ev = gSavedSettings.getF32("AlchemyEnvGIProbeDiffuseEV");
+    const F32 gi_spec_ev    = gSavedSettings.getF32("AlchemyEnvGIProbeSpecEV");
+    const F32 local_ev      = gSavedSettings.getF32("AlchemyEnvLocalLightEV");
+    const F32 sun_kelvin    = gSavedSettings.getF32("AlchemyEnvSunKelvin");
+    const LLColor4 sun_tint = gSavedSettings.getColor4("AlchemyEnvSunTintColor");
+    const F32 sun_tint_str  = gSavedSettings.getF32("AlchemyEnvSunTintStrength");
+    const LLColor4 moon_tint = gSavedSettings.getColor4("AlchemyEnvMoonTintColor");
+    const F32 moon_tint_str  = gSavedSettings.getF32("AlchemyEnvMoonTintStrength");
+    const LLColor4 amb_tint = gSavedSettings.getColor4("AlchemyEnvAmbientTintColor");
+    const F32 amb_tint_str  = gSavedSettings.getF32("AlchemyEnvAmbientTintStrength");
+    const F32 lift_ev       = gSavedSettings.getF32("AlchemyEnvShadowLiftEV");
+
+    std::string matched_key("custom");
+    for (const EnvIntensityPreset& p : ENV_INTENSITY_PRESETS)
+    {
+        if (env_intensity_nearly_equal(sun_ev, p.mSunEV)
+            && env_intensity_nearly_equal(sky_gi_ev, p.mSkyGIEV)
+            && moon_linked == p.mMoonLinked
+            && env_intensity_nearly_equal(moon_ev, p.mMoonEV)
+            && env_intensity_nearly_equal(gi_ambient_ev, p.mGIAmbientEV)
+            && env_intensity_nearly_equal(gi_diffuse_ev, p.mGIProbeDiffuseEV)
+            && env_intensity_nearly_equal(gi_spec_ev, p.mGIProbeSpecEV)
+            && env_intensity_nearly_equal(local_ev, p.mLocalLightEV)
+            && env_intensity_nearly_equal(sun_kelvin, p.mSunKelvin)
+            && env_intensity_color_nearly_equal(sun_tint, p.mSunTintColor)
+            && env_intensity_nearly_equal(sun_tint_str, p.mSunTintStrength)
+            && env_intensity_color_nearly_equal(moon_tint, p.mMoonTintColor)
+            && env_intensity_nearly_equal(moon_tint_str, p.mMoonTintStrength)
+            && env_intensity_color_nearly_equal(amb_tint, p.mAmbientTintColor)
+            && env_intensity_nearly_equal(amb_tint_str, p.mAmbientTintStrength)
+            && env_intensity_nearly_equal(lift_ev, p.mShadowLiftEV))
+        {
+            matched_key = p.mKey;
+            break;
+        }
+    }
+    combo->setValue(LLSD(matched_key));
 }
 
 void LLFloaterEnvironmentAdjust::onEnvironmentUpdated(LLEnvironment::EnvSelection_t env, S32 version)

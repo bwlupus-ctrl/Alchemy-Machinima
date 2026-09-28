@@ -32,6 +32,9 @@
 #include "llsettingssky.h"
 #include "llenvironment.h"
 
+#include <string>
+#include <vector>
+
 #include "boost/signals2.hpp"
 
 class LLButton;
@@ -94,6 +97,20 @@ private:
     void                        applyEnvIntensityAdvanced();
     void                        updateEnvIntensityMoonLink();
 
+    // [EnvIntensity presets] Quick Preset combo (env_intensity_preset) on the
+    // Light Intensity strip. Applying a preset writes the full deterministic
+    // set of AlchemyEnv* keys in the ENV_INTENSITY_PRESETS table (llfloaterenvironmentadjust.cpp;
+    // never the Advanced-panel toggle, never AlchemyEnvLocalLightIncludeRig,
+    // never auto-exposure); mApplyingEnvIntensityPreset suppresses the per-
+    // setting listeners below while that write happens. refreshEnvIntensityPresetCombo
+    // re-derives the combo's selection from the live settings (exact match ->
+    // that preset; otherwise the "Custom" placeholder) and is the handler for
+    // every tracked setting's signal, so a manual slider/swatch/Debug Settings
+    // edit always falls back to Custom.
+    void                        onEnvIntensityPresetSelected();
+    void                        applyEnvIntensityPreset(const std::string& key);
+    void                        refreshEnvIntensityPresetCombo();
+
     void                        onEnvironmentUpdated(LLEnvironment::EnvSelection_t env, S32 version);
 
     // [BDMerge B13] BD - Windlight Stuff (gated by BDMergeEnvLocalPresets;
@@ -130,6 +147,13 @@ private:
     // [EnvIntensity v2] setting listeners (Debug Settings edits show live)
     boost::signals2::scoped_connection mEnvIntensityAdvancedConn;
     boost::signals2::scoped_connection mEnvIntensityMoonLinkedConn;
+
+    // [EnvIntensity presets] one scoped connection per tracked AlchemyEnv* key
+    // (see alEnvIntensityPresets()), all routed to refreshEnvIntensityPresetCombo();
+    // true while applyEnvIntensityPreset() is writing settings, so that fan-out
+    // does not fight the write or flash "Custom" mid-apply.
+    std::vector<boost::signals2::scoped_connection> mEnvIntensityPresetConns;
+    bool                                mApplyingEnvIntensityPreset = false;
 };
 
 #endif // LL_FLOATERFIXEDENVIRONMENT_H
