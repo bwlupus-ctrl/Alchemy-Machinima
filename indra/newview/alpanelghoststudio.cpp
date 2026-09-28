@@ -10,6 +10,8 @@
 #include "llviewerprecompiledheaders.h"
 
 #include "alpanelghoststudio.h"
+#include "llviewermenufile.h" // [AutoAnimate]
+#include "llfilepicker.h" // [AutoAnimate]
 #include "alscrollfocus.h"
 
 #include "alcompassdial.h"          // live direct-manipulation heading control
@@ -279,6 +281,19 @@ bool ALPanelGhostStudio::postBuild()
     mChaosCheck = getChild<LLCheckBoxCtrl>("chaos_check");
     mChaosSlider = getChild<LLSliderCtrl>("chaos_slider");
     mAnimSpeedSpin = getChild<LLSpinCtrl>("anim_speed_spinner");
+    // [AutoAnimate]
+    mAutoAnimCheck = getChild<LLCheckBoxCtrl>("autoanim_check");
+    mAutoAnimWindow = getChild<LLSpinCtrl>("autoanim_window_spinner");
+    mAutoAnimStatus = getChild<LLTextBox>("autoanim_status");
+    mAutoAnimFollow = getChild<LLButton>("btn_autoanim_follow");
+    mAutoAnimGo = getChild<LLButton>("btn_autoanim_go");
+    mAutoAnimLoad = getChild<LLButton>("btn_autoanim_load");
+    mAutoAnimRelearn = getChild<LLButton>("btn_autoanim_relearn");
+    mAutoAnimReseed = getChild<LLButton>("btn_autoanim_reseed");
+    mAutoAnimReset = getChild<LLButton>("reset_autoanim_window");
+    mAutoAnimSave = getChild<LLButton>("btn_autoanim_save");
+    mAutoAnimStop = getChild<LLButton>("btn_autoanim_stop");
+    mAutoAnimGo->setToolTip(std::string("Keep the current performance. True mirror switches to Mirror with a COLD body start (not seamless)."));
     mPhysicsCheck = getChild<LLCheckBoxCtrl>("physics_check");
     mAnimPauseBtn = getChild<LLButton>("btn_anim_pause");
     mAnimResumeBtn = getChild<LLButton>("btn_anim_resume");
@@ -433,6 +448,16 @@ bool ALPanelGhostStudio::postBuild()
     mChaosCheck->setCommitCallback([this](LLUICtrl*, const LLSD&) { onChaosCommit(); });
     mChaosSlider->setCommitCallback([this](LLUICtrl*, const LLSD&) { onChaosCommit(); });
     mAnimSpeedSpin->setCommitCallback([this](LLUICtrl*, const LLSD&) { onAnimSpeedCommit(); });
+    // [AutoAnimate] New handlers expand selected groups just like drive-mode edits.
+    mAutoAnimCheck->setCommitCallback([this](LLUICtrl*, const LLSD&) { onAutoAnimToggle(); });
+    mAutoAnimWindow->setCommitCallback([this](LLUICtrl*, const LLSD&) { onAutoAnimWindow(); });
+    mAutoAnimStop->setCommitCallback([this](LLUICtrl*, const LLSD&) { onAutoAnimAction(ALGhostAutoAnim::Action::StopLearning); });
+    mAutoAnimRelearn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onAutoAnimAction(ALGhostAutoAnim::Action::Relearn); });
+    mAutoAnimReseed->setCommitCallback([this](LLUICtrl*, const LLSD&) { onAutoAnimAction(ALGhostAutoAnim::Action::Reseed); });
+    mAutoAnimGo->setCommitCallback([this](LLUICtrl*, const LLSD&) { onAutoAnimAction(ALGhostAutoAnim::Action::GoAutonomous); });
+    mAutoAnimFollow->setCommitCallback([this](LLUICtrl*, const LLSD&) { onAutoAnimAction(ALGhostAutoAnim::Action::FollowSource); });
+    mAutoAnimSave->setCommitCallback([this](LLUICtrl*, const LLSD&) { onAutoAnimFile(true); });
+    mAutoAnimLoad->setCommitCallback([this](LLUICtrl*, const LLSD&) { onAutoAnimFile(false); });
     mPhysicsCheck->setCommitCallback([this](LLUICtrl*, const LLSD&) { onPhysicsCommit(); });
     mAnimPauseBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickAnimPause(); });
     mAnimResumeBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickAnimResume(); });
@@ -599,6 +624,7 @@ bool ALPanelGhostStudio::postBuild()
         { "reset_scale", "scale_spinner" },
         { "reset_effect_fps", "effect_fps_spinner" },
         { "reset_anim_speed", "anim_speed_spinner" },
+        { "reset_autoanim_window", "autoanim_window_spinner" }, // [AutoAnimate]
         { "reset_array_count", "array_count_spinner" },
         { "reset_array_spacing", "array_spacing_spinner" },
         { "reset_strip_count", "strip_count_spinner" },
@@ -1217,6 +1243,7 @@ void ALPanelGhostStudio::refreshDetail()
     mChaosSlider->setEnabled(
         entity && inst->mChaosEnabled && !any_group_selected);
     mAnimSpeedSpin->setEnabled(entity);
+    refreshAutoAnimate(inst); // [AutoAnimate]
     mPhysicsCheck->setEnabled(entity);
     mAnimPauseBtn->setEnabled(entity);
     mAnimResumeBtn->setEnabled(entity);
@@ -2113,6 +2140,106 @@ void ALPanelGhostStudio::onDriveModeCommit()
             studio.setInstanceDriveMode(id, mode, anim);
         }
     }
+}
+
+// [AutoAnimate] All picker replies capture ids only; the panel may have closed.
+void ALPanelGhostStudio::autoAnimFileReply(const std::vector<LLUUID>& ids, bool save,
+                                         const std::vector<std::string>& filenames)
+{
+    if (filenames.empty()) return;
+    ALGhostStudio& studio = ALGhostStudio::instance();
+    U32 index = 0;
+    for (const LLUUID& id : ids)
+    {
+        const auto* inst = studio.getInstance(id);
+        if (!inst || inst->mKind != ALGhostStudio::BACKING_ENTITY_CLONE) continue;
+        std::string path = filenames.front();
+        // A multi-selection saves one file per entity instead of overwriting the first.
+        if (save && index != 0)
+        {
+            const size_t dot = path.find_last_of('.');
+            path.insert(dot == std::string::npos ? path.size() : dot, "_" + id.asString().substr(0, 8));
+        }
+        if (save) studio.saveAutoAnimate(id, path); else studio.loadAutoAnimate(id, path);
+        ++index;
+    }
+}
+void ALPanelGhostStudio::onAutoAnimFile(bool save)
+{
+    const auto ids = selectedInstances();
+    const auto callback = [ids, save](const std::vector<std::string>& files, LLFilePicker::ELoadFilter, LLFilePicker::ESaveFilter)
+    { ALPanelGhostStudio::autoAnimFileReply(ids, save, files); };
+    if (save) LLFilePickerReplyThread::startPicker(callback, LLFilePicker::FFSAVE_XML, "ghost_performance.xml");
+    else LLFilePickerReplyThread::startPicker(callback, LLFilePicker::FFLOAD_XML, false);
+}
+void ALPanelGhostStudio::onAutoAnimToggle()
+{
+    for (const LLUUID& id : selectedInstances()) ALGhostStudio::instance().setInstanceAutoAnimate(id, mAutoAnimCheck->get());
+}
+void ALPanelGhostStudio::onAutoAnimWindow()
+{
+    for (const LLUUID& id : selectedInstances()) ALGhostStudio::instance().setInstanceAutoAnimWindow(id, mAutoAnimWindow->getValueF32());
+}
+void ALPanelGhostStudio::onAutoAnimAction(ALGhostAutoAnim::Action action)
+{
+    for (const LLUUID& id : selectedInstances()) ALGhostStudio::instance().autoAnimateAction(id, action);
+}
+void ALPanelGhostStudio::refreshAutoAnimate(const ALGhostStudio::Instance* inst)
+{
+    const bool entity = inst && inst->mKind == ALGhostStudio::BACKING_ENTITY_CLONE;
+    ALGhostAutoAnim::LearnStatus status;
+    if (entity) ALGhostStudio::instance().getAutoAnimateStatus(inst->mId, status);
+    if (!mAutoAnimDisplayValid || mAutoAnimCheck->getEnabled() != entity)
+        mAutoAnimCheck->setToolTip(std::string(entity ? "Learn the source's idle performance, then continue independently" :
+            "AutoAnimate needs an entity clone (overlays redraw the live source)"));
+    mAutoAnimCheck->setEnabled(entity); mAutoAnimCheck->set(entity && inst->mAutoAnimate);
+    mAutoAnimWindow->setEnabled(entity);
+    if (!mAutoAnimWindow->hasFocus()) mAutoAnimWindow->setValue(status.mWindow);
+    mAutoAnimReset->setEnabled(entity);
+    mAutoAnimStop->setEnabled(entity && status.mLearning);
+    mAutoAnimRelearn->setEnabled(entity);
+    mAutoAnimReseed->setEnabled(entity && status.mOn);
+    bool entries = status.mLiveEntries != 0;
+    if (entity && inst->mAutoAnimPool)
+    {
+        entries = entries || !inst->mAutoAnimPool->mBody.entries.empty();
+        for (const auto& channel : inst->mAutoAnimPool->mAnimesh) entries = entries || !channel.second.entries.empty();
+    }
+    mAutoAnimGo->setEnabled(entity && status.mOn && entries &&
+        (inst->mDriveMode == ALGhostStudio::DRIVE_MIRROR || inst->mDriveMode == ALGhostStudio::DRIVE_TRUE_MIRROR));
+    mAutoAnimFollow->setEnabled(entity && (status.mBodyAutonomous || status.mAnimeshAutonomous));
+    mAutoAnimSave->setEnabled(entity && bool(inst->mAutoAnimPool));
+    mAutoAnimLoad->setEnabled(entity);
+    // [AutoAnimate] Fractional observed time does not change the visible clock.
+    const S32 mode = entity ? static_cast<S32>(inst->mDriveMode) : -1;
+    const auto& previous = mAutoAnimDisplay;
+    if (mAutoAnimDisplayValid && mode == mAutoAnimDisplayMode &&
+        status.mOn == previous.mOn && status.mLearning == previous.mLearning && status.mGated == previous.mGated &&
+        static_cast<S32>(status.mObserved) == static_cast<S32>(previous.mObserved) &&
+        static_cast<S32>(status.mWindow) == static_cast<S32>(previous.mWindow) &&
+        status.mBodyStates == previous.mBodyStates && status.mBodyOneShots == previous.mBodyOneShots &&
+        status.mAnimeshChannels == previous.mAnimeshChannels && status.mAnimeshAutonomous == previous.mAnimeshAutonomous &&
+        status.mBodyAutonomous == previous.mBodyAutonomous && status.mManual == previous.mManual &&
+        status.mDetail == previous.mDetail) return;
+    mAutoAnimDisplay = status; mAutoAnimDisplayMode = mode; mAutoAnimDisplayValid = true;
+    std::string text = "AutoAnimate off";
+    if (status.mOn)
+    {
+        if (status.mBodyAutonomous || status.mAnimeshAutonomous)
+            text = std::string("Autonomous (") + (status.mManual ? "manual" : "automatic") + ") - " +
+                (status.mBodyAutonomous ? "body + " : "") + std::to_string(status.mAnimeshAutonomous) + " animesh";
+        else if (status.mGated) text = "Paused: source " + std::string(status.mDetail.find("source sit") != std::string::npos ? "sitting" : "moving / airborne");
+        else if (status.mLearning)
+        {
+            const S32 elapsed = static_cast<S32>(status.mObserved), window = static_cast<S32>(status.mWindow);
+            text = llformat("Learning %d:%02d / %d:%02d", elapsed / 60, elapsed % 60, window / 60, window % 60);
+        }
+        else text = llformat("Learned: body %u stands / %u one-shots - %u animesh", status.mBodyStates, status.mBodyOneShots, status.mAnimeshChannels);
+        if (inst->mDriveMode == ALGhostStudio::DRIVE_DIRECTED) text += " (dormant: Directed)";
+        else if (inst->mDriveMode == ALGhostStudio::DRIVE_FROZEN) text += " (dormant: Frozen)";
+    }
+    if (mAutoAnimStatus->getText() != text) mAutoAnimStatus->setText(text);
+    if (mAutoAnimStatus->getToolTip() != status.mDetail) mAutoAnimStatus->setToolTip(status.mDetail);
 }
 
 void ALPanelGhostStudio::onDirectedAnimCommit()

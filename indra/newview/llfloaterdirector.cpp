@@ -10,6 +10,7 @@
 #include "llviewerprecompiledheaders.h"
 
 #include "llfloaterdirector.h"
+#include "alghoststudio.h" // [AutoAnimate]
 #include "alscrollfocus.h"
 
 #include "indra_constants.h"        // KEY_ESCAPE / MASK_NONE, MASK_ALT
@@ -356,6 +357,12 @@ bool LLFloaterDirector::postBuild()
     {
         // same LLContextMenu idiom as the Animation Explorer's list menu
         LLUICtrl::CommitCallbackRegistry::ScopedRegistrar registrar;
+        // [AutoAnimate] Keep enable registration alive through menu construction.
+        LLUICtrl::EnableCallbackRegistry::ScopedRegistrar autoanim_enables;
+        autoanim_enables.add("Director.CastHasGhostEntity", [this](LLUICtrl*, const LLSD&) { return castHasGhostEntity(); });
+        registrar.add("Director.AutoAnimToggle", [this](LLUICtrl*, const LLSD&) { onCastAutoAnim(0); });
+        registrar.add("Director.AutoAnimGo", [this](LLUICtrl*, const LLSD&) { onCastAutoAnim(1); });
+        registrar.add("Director.AutoAnimFollow", [this](LLUICtrl*, const LLSD&) { onCastAutoAnim(2); });
         registrar.add("Director.SetSubjectA", [this](LLUICtrl*, const LLSD&) { onCastSetSubject(SUBJECT_A); });
         registrar.add("Director.SetSubjectB", [this](LLUICtrl*, const LLSD&) { onCastSetSubject(SUBJECT_B); });
         registrar.add("Director.SetSubjectC", [this](LLUICtrl*, const LLSD&) { onCastSetSubject(SUBJECT_C); });
@@ -1722,6 +1729,28 @@ void LLFloaterDirector::onCastClearLocoAnim()
             m->mLocoAnim.setNull();
             m->mLocomotionSet.mRoles.erase(LLDirectorCast::LOCO_WALK_FORWARD);
         }
+    }
+}
+
+// [AutoAnimate] Do not mutate the cast model or rely on the Studio list selection.
+bool LLFloaterDirector::castHasGhostEntity() const
+{
+    const ALGhostStudio& studio = ALGhostStudio::instance();
+    for (const LLUUID& runtime : selectedCastIds()) if (studio.findInstanceByRuntime(runtime)) return true;
+    return false;
+}
+void LLFloaterDirector::onCastAutoAnim(S32 operation)
+{
+    ALGhostStudio& studio = ALGhostStudio::instance();
+    std::vector<LLUUID> instances;
+    bool enable = false;
+    for (const LLUUID& runtime : selectedCastIds())
+        if (const auto* inst = studio.findInstanceByRuntime(runtime))
+        { instances.push_back(inst->mId); enable = enable || !inst->mAutoAnimate; }
+    for (const LLUUID& id : instances)
+    {
+        if (operation == 0) studio.setInstanceAutoAnimate(id, enable);
+        else studio.autoAnimateAction(id, operation == 1 ? ALGhostAutoAnim::Action::GoAutonomous : ALGhostAutoAnim::Action::FollowSource);
     }
 }
 

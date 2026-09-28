@@ -302,6 +302,7 @@ set(viewer_SOURCE_FILES
     alghostplacementadapter.cpp
     alghostmanipproxy.cpp
     alghostnameplates.cpp
+    alghostautoanimmodel.cpp # [AutoAnimate]
     alghoststudio.cpp
     alghostanimassetindex.cpp
     alworldoverlayviz.cpp
@@ -1161,6 +1162,7 @@ set(viewer_HEADER_FILES
     alghostplacementadapter.h
     alghostmanipproxy.h
     alghostnameplates.h
+    alghostautoanimmodel.h # [AutoAnimate]
     alghoststudio.h
     alghostanimassetindex.h
     alworldoverlayviz.h
@@ -2605,6 +2607,7 @@ if (BUILD_TESTING)
   # This creates a separate test project per file listed.
 
   SET(viewer_TEST_SOURCE_FILES
+    alghostautoanimmodel.cpp # [AutoAnimate]
     alformationsolver.cpp
     alcinelightrigmodel.cpp
     aldirectorswitchermodel.cpp

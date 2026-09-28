@@ -12,6 +12,11 @@
 
 #include "alghoststudio.h"
 
+// [AutoAnimate] Bounded LLSD XML persistence.
+#include "llsdserialize.h"
+#include "llfile.h"
+#include <sstream>
+
 #include "alghostnameplates.h"
 #include "alghostspawnengine.h"
 #include "alworldoverlayviz.h"
@@ -52,6 +57,23 @@ ALGhostStudio& ALGhostStudio::instance()
 namespace
 {
 constexpr S32 ENTITY_PHYSICS_CROWD_THRESHOLD = 20;
+
+// [AutoAnimate] Zero is an instance sentinel, never a runtime window.
+F32 autoanim_window(const ALGhostStudio::Instance& inst)
+{
+    static LLCachedControl<F32> default_window(gSavedSettings, "GhostAutoAnimateWindow", 120.f);
+    const F32 window = inst.mAutoAnimWindow == 0.f ? static_cast<F32>(default_window) : inst.mAutoAnimWindow;
+    return std::isfinite(window) ? llclamp(window, 15.f, 600.f) : 120.f;
+}
+ALGhostAutoAnim::Config autoanim_config(const ALGhostStudio::Instance& inst)
+{
+    ALGhostAutoAnim::Config config;
+    config.mEnabled = inst.mAutoAnimate; config.mInstanceId = inst.mId;
+    config.mSeedSalt = inst.mAutoAnimSeedSalt; config.mPool = inst.mAutoAnimPool; config.mManual = inst.mAutoAnimManual;
+    // No settings lookup/cache initialization on the disabled runtime path.
+    if (inst.mAutoAnimate) config.mWindowSeconds = autoanim_window(inst);
+    return config;
+}
 
 S32 entity_clone_count(const std::vector<ALGhostStudio::Instance>& instances)
 {
@@ -401,6 +423,8 @@ void ALGhostStudio::applyEntityRuntimeState(Instance& inst,
         ghost->setEntityDriveMode(inst.mDriveMode, inst.mDirectedAnim);
         inst.mPendingFreezeFrames = 0;
     }
+    // [AutoAnimate] The disabled path does not allocate runtime state.
+    ghost->setEntityAutoAnimate(autoanim_config(inst));
 }
 
 void ALGhostStudio::onEntityRuntimeReplaced(Instance& inst,
@@ -414,6 +438,15 @@ void ALGhostStudio::onEntityRuntimeReplaced(Instance& inst,
     const LLUUID stable_id = inst.mId;
     const std::string stable_name = inst.mName;
     const LLUUID old_runtime = inst.mEntityId;
+    // [AutoAnimate] Transfer the old runtime's latest progress before applying the new one.
+    if (inst.mAutoAnimate)
+    {
+        if (LLGhostAvatar* old = resolveEntityClone(stable_id))
+        {
+            auto progress = old->exportAutoAnimProgress();
+            if (progress) inst.mAutoAnimPool = std::move(progress);
+        }
+    }
     if (new_ghost)
     {
         applyEntityRuntimeState(inst, new_ghost);
@@ -442,6 +475,159 @@ void ALGhostStudio::onEntityRuntimeReplaced(Instance& inst,
             member->mLastName = stable_name;
         }
     }
+}
+
+// [AutoAnimate] Studio owns published pools; runtime owns all active decisions.
+const ALGhostStudio::Instance* ALGhostStudio::findInstanceByRuntime(const LLUUID& runtime) const
+{
+    if (runtime.isNull()) return nullptr;
+    for (const Instance& inst : mInstances)
+        if (inst.mKind == BACKING_ENTITY_CLONE && inst.mEntityId == runtime) return &inst;
+    return nullptr;
+}
+bool ALGhostStudio::setInstanceAutoAnimate(const LLUUID& id, bool enabled)
+{
+    Instance* inst = getInstance(id);
+    if (!inst || inst->mKind != BACKING_ENTITY_CLONE) return false;
+    // Preserve a just-published seal even if OFF arrives before the next Studio frame.
+    if (!enabled)
+        if (LLGhostAvatar* ghost = resolveEntityClone(id)) ghost->takeAutoAnimPublishedPool(inst->mAutoAnimPool);
+    inst->mAutoAnimate = enabled;
+    if (!enabled) inst->mAutoAnimManual = false;
+    if (LLGhostAvatar* ghost = resolveEntityClone(id)) ghost->setEntityAutoAnimate(autoanim_config(*inst));
+    return true;
+}
+bool ALGhostStudio::setInstanceAutoAnimWindow(const LLUUID& id, F32 seconds)
+{
+    Instance* inst = getInstance(id);
+    if (!inst || inst->mKind != BACKING_ENTITY_CLONE || !std::isfinite(seconds)) return false;
+    inst->mAutoAnimWindow = seconds == 0.f ? 0.f : llclamp(seconds, 15.f, 600.f);
+    if (LLGhostAvatar* ghost = resolveEntityClone(id)) ghost->setEntityAutoAnimate(autoanim_config(*inst));
+    return true;
+}
+bool ALGhostStudio::autoAnimateAction(const LLUUID& id, ALGhostAutoAnim::Action action)
+{
+    using ALGhostAutoAnim::Action;
+    bool cold = false; // [AutoAnimate] Only an explicit manual TRUE_MIRROR handoff is COLD.
+    Instance* inst = getInstance(id);
+    if (!inst || inst->mKind != BACKING_ENTITY_CLONE) return false;
+    if (action == Action::GoAutonomous)
+    {
+        ALGhostAutoAnim::LearnStatus status; getAutoAnimateStatus(id, status);
+        bool entries = status.mLiveEntries != 0;
+        if (inst->mAutoAnimPool)
+        {
+            entries = entries || !inst->mAutoAnimPool->mBody.entries.empty();
+            for (const auto& channel : inst->mAutoAnimPool->mAnimesh) entries = entries || !channel.second.entries.empty();
+        }
+        if (!inst->mAutoAnimate || !entries || (inst->mDriveMode != DRIVE_MIRROR && inst->mDriveMode != DRIVE_TRUE_MIRROR)) return false;
+        if (inst->mDriveMode == DRIVE_TRUE_MIRROR)
+        {
+            cold = true;
+            setInstanceDriveMode(id, DRIVE_MIRROR);
+            inst = getInstance(id); if (!inst) return false;
+        }
+        inst->mAutoAnimManual = true;
+    }
+    else if (action == Action::FollowSource || action == Action::Relearn) inst->mAutoAnimManual = false;
+    if (action == Action::Relearn) { inst->mAutoAnimPool.reset(); inst->mAutoAnimate = true; }
+    if (action == Action::Reseed) ++inst->mAutoAnimSeedSalt;
+    if (!inst->mAutoAnimate) return false;
+    if (LLGhostAvatar* ghost = resolveEntityClone(id))
+    {
+        ghost->setEntityAutoAnimate(autoanim_config(*inst));
+        ghost->requestAutoAnimAction(action, cold);
+    }
+    return true;
+}
+bool ALGhostStudio::saveAutoAnimate(const LLUUID& id, const std::string& path)
+{
+    Instance* inst = getInstance(id);
+    if (!inst || inst->mKind != BACKING_ENTITY_CLONE) return false;
+    if (LLGhostAvatar* ghost = resolveEntityClone(id))
+    {
+        auto progress = ghost->exportAutoAnimProgress();
+        if (progress) inst->mAutoAnimPool = std::move(progress);
+    }
+    if (!inst->mAutoAnimPool) return false;
+    std::ostringstream encoded;
+    LLSDSerialize::toPrettyXML(ALGhostAutoAnim::toLLSD(*inst->mAutoAnimPool), encoded);
+    const std::string bytes = encoded.str();
+    if (bytes.size() > 1024U * 1024U)
+    {
+        LL_WARNS("GhostStudio") << "AUTOANIM-SAVE reject reason=pool exceeds 1 MB file limit" << LL_ENDL;
+        return false;
+    }
+    llofstream output(path.c_str());
+    if (!output.is_open()) return false;
+    output.write(bytes.data(), static_cast<std::streamsize>(bytes.size()));
+    output.close(); return !output.fail();
+}
+bool ALGhostStudio::loadAutoAnimate(const LLUUID& id, const std::string& path)
+{
+    Instance* inst = getInstance(id);
+    if (!inst || inst->mKind != BACKING_ENTITY_CLONE) return false;
+    llifstream input(path.c_str(), std::ios::binary | std::ios::ate);
+    const auto size = input.is_open() ? input.tellg() : std::streampos(-1);
+    std::string reason;
+    ALGhostAutoAnim::Pool candidate;
+    bool valid = false;
+    if (size <= std::streampos(0) || size > std::streampos(1024 * 1024)) reason = "file missing/empty or exceeds 1 MB";
+    else
+    {
+        input.seekg(0, std::ios::beg);
+        // Read only the measured bytes, even if another process grows the file.
+        std::string bytes(static_cast<size_t>(static_cast<std::streamoff>(size)), '\0');
+        input.read(&bytes[0], static_cast<std::streamsize>(bytes.size()));
+        std::istringstream bounded(bytes); LLSD data;
+        if (input.fail() || LLSDSerialize::fromXML(data, bounded) == LLSDParser::PARSE_FAILURE) reason = "invalid XML";
+        else valid = ALGhostAutoAnim::fromLLSD(data, candidate, reason);
+    }
+    if (!valid)
+    {
+        LL_WARNS("GhostStudio") << "AUTOANIM-LOAD reject reason=" << reason << LL_ENDL; return false;
+    }
+    inst->mAutoAnimPool = std::make_shared<const ALGhostAutoAnim::Pool>(std::move(candidate));
+    inst->mAutoAnimate = true;
+    if (LLGhostAvatar* ghost = resolveEntityClone(id)) ghost->setEntityAutoAnimate(autoanim_config(*inst));
+    LL_INFOS("GhostStudio") << "AUTOANIM-LOAD ok inst=" << id << LL_ENDL; return true;
+}
+void ALGhostStudio::getAutoAnimateStatus(const LLUUID& id, ALGhostAutoAnim::LearnStatus& status) const
+{
+    status = ALGhostAutoAnim::LearnStatus();
+    const Instance* inst = getInstance(id);
+    if (!inst || inst->mKind != BACKING_ENTITY_CLONE) return;
+    if (LLGhostAvatar* ghost = resolveEntityClone(id)) ghost->getAutoAnimStatus(status);
+    status.mOn = inst->mAutoAnimate;
+    status.mWindow = autoanim_window(*inst);
+    if (!status.mLearning && inst->mAutoAnimPool)
+    {
+        status.mObserved = inst->mAutoAnimPool->mObservedSeconds;
+        status.mBodyStates = 0; status.mBodyOneShots = 0;
+        for (const auto& entry : inst->mAutoAnimPool->mBody.entries)
+            if (entry.state) ++status.mBodyStates; else ++status.mBodyOneShots;
+        status.mAnimeshChannels = static_cast<U32>(inst->mAutoAnimPool->mAnimesh.size());
+    }
+}
+void ALGhostStudio::updateAutoAnimate()
+{
+    U32 learners = 0, players = 0;
+    bool active = false;
+    for (Instance& inst : mInstances)
+    {
+        if (!inst.mAutoAnimate || inst.mKind != BACKING_ENTITY_CLONE) continue;
+        active = true;
+        if (LLGhostAvatar* ghost = resolveEntityClone(inst.mId))
+        {
+            ghost->takeAutoAnimPublishedPool(inst.mAutoAnimPool);
+            // [AutoAnimate] For an enabled instance using the default window, this also self-heals
+            // a missing AutoAnimate runtime: getAutoAnimWindow() returns 0 and the setter recreates it.
+            if (inst.mAutoAnimWindow == 0.f && ghost->getAutoAnimWindow() != autoanim_window(inst))
+                ghost->setEntityAutoAnimate(autoanim_config(inst)); // [AutoAnimate] Only propagate a changed default.
+            ghost->countAutoAnimActivity(learners, players);
+        }
+    }
+    if (active) LLGhostAvatar::logAutoAnimCost(learners, players);
 }
 
 void ALGhostStudio::finishPendingRuntimeFreezes()
@@ -794,6 +980,8 @@ ALGhostStudio::Instance* ALGhostStudio::duplicateInstanceSnapshotInPlace(
     copy->mWasCinematicFollow = false;
     copy->setTransform(proto.mFootGlobal, proto.mRotation);
     copy->setScale(proto.mScale);
+    // [AutoAnimate] Copies share only sealed pools, before any runtime configuration.
+    if (copy->mAutoAnimPool && !copy->mAutoAnimPool->mSealed) copy->mAutoAnimPool.reset();
     if (LLGhostAvatar* ghost = resolveEntityClone(copy->mId))
     {
         applyEntityRuntimeState(*copy, ghost);
@@ -1209,7 +1397,7 @@ bool ALGhostStudio::restartInstanceAnimation(const LLUUID& id)
     {
         return false;
     }
-    ghost->restartEntityAnimation();
+    ghost->restartEntityAnimationAudited(); // [AutoAnimate] Audit stops without changing restart semantics.
     return true;
 }
 
@@ -1726,6 +1914,7 @@ void ALGhostStudio::updatePerFrame()
     assert_main_thread();
     refreshLifecycleStates();
     finishPendingRuntimeFreezes();
+    updateAutoAnimate(); // [AutoAnimate]
     updateNameplates();
     const F64 facing_now = LLTimer::getTotalSeconds();
     std::set<LLUUID> dynamic_facing_groups;
@@ -3388,6 +3577,12 @@ void ALGhostStudio::updateFreezeStrips(F64 now)
             continue;
         }
         const LLUUID snap_id = snap->mId;
+        // [AutoAnimate] Strips retain HEAD's live-source snapshot semantics.
+        snap->mAutoAnimManual = false;
+        snap->mAutoAnimPool.reset();
+        setInstanceAutoAnimate(snap_id, false);
+        snap = getInstance(snap_id);
+        if (!snap) { ++it; continue; }
         snap->setFootGlobal(formationSlot(proto, job.mCaptured, job.mCount,
             job.mSpacing, job.mFormation, job.mParameter));
         renameInstance(snap_id, llformat("Strip %u \xC2\xB7 %d/%d",

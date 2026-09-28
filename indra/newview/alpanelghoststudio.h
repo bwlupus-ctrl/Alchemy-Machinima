@@ -59,6 +59,29 @@ private:
     void refreshLookTargetCombo();  // camera/me + cast + other ghosts
     void refreshList();             // instance rows (rebuilt on composed-sig change)
     void refreshDetail();           // selected-instance widgets + enables
+    // [AutoAnimate]
+    void refreshAutoAnimate(const ALGhostStudio::Instance* inst);
+    void onAutoAnimToggle();
+    void onAutoAnimWindow();
+    void onAutoAnimAction(ALGhostAutoAnim::Action action);
+    void onAutoAnimFile(bool save);
+    static void autoAnimFileReply(const std::vector<LLUUID>& ids, bool save,
+                                 const std::vector<std::string>& filenames);
+    LLCheckBoxCtrl* mAutoAnimCheck = nullptr;
+    LLSpinCtrl* mAutoAnimWindow = nullptr;
+    LLTextBox* mAutoAnimStatus = nullptr;
+    // [AutoAnimate] Resolve controls once, and cache the displayed status inputs.
+    LLButton* mAutoAnimReset = nullptr;
+    LLButton* mAutoAnimStop = nullptr;
+    LLButton* mAutoAnimRelearn = nullptr;
+    LLButton* mAutoAnimReseed = nullptr;
+    LLButton* mAutoAnimGo = nullptr;
+    LLButton* mAutoAnimFollow = nullptr;
+    LLButton* mAutoAnimSave = nullptr;
+    LLButton* mAutoAnimLoad = nullptr;
+    ALGhostAutoAnim::LearnStatus mAutoAnimDisplay;
+    S32 mAutoAnimDisplayMode = -1;
+    bool mAutoAnimDisplayValid = false;
     void refreshAnimationLibrary();
     void populateAnimationLibrary();   // explicit inventory re-scan (Refresh)
     void refreshStatus();           // bottom status line

@@ -201,10 +201,10 @@
 
           <panel border="false" follows="all" height="490" label="Pose" layout="topleft" name="pose_tab" width="500">
             <scroll_container follows="all" height="490" layout="topleft" left="0" name="pose_scroll" reserve_scroll_corner="false" top="0" width="500">
-              <panel background_visible="false" follows="left|top" height="700" layout="topleft" left="0" name="pose_scroll_body" top="0" width="484">
+              <panel background_visible="false" follows="left|top" height="790" layout="topleft" left="0" name="pose_scroll_body" top="0" width="484">
 
         <!-- Pose and animation -->
-        <panel follows="left|top" height="700" layout="topleft" left="0" name="pose_section" top="0" width="484">
+        <panel follows="left|top" height="790" layout="topleft" left="0" name="pose_section" top="0" width="484">
           <text follows="left|top|right" font="SansSerifSmallBold" height="16" layout="topleft" left="8" name="pose_lbl" right="-8" top="8" width="358">Pose &amp; Animation</text>
           <button follows="left|top" height="22" label="Grab pose now" layout="topleft" left="8" name="btn_freeze" top="28"
            tool_tip="FREEZE: snapshot the source's current pose into this ghost (worn mesh + attachment placement). The ghost holds it while the live body keeps animating. Known limits: flexi tails/skirts keep their live physics motion, and legacy system-mesh eyeballs are not part of the ghost" width="126" />
@@ -259,35 +259,48 @@
           <line_editor follows="left|top|right" height="22" label="Animation UUID" layout="topleft" left="8" max_length_bytes="36" name="directed_anim_editor" right="-8" top="190" visible="false"
            tool_tip="Animation asset UUID played only on the selected entity clone; direct UUID paste remains supported" width="358" />
           <text follows="left|top|right" height="34" layout="topleft" left="8" name="anim_metadata_text" right="-8" text_color="LtGray_50" top="216" visible="false" width="358">Metadata pending...</text>
-          <text follows="left|top|right" font="SansSerifSmallBold" height="16" layout="topleft" left="8" name="lens_gaze_label" right="-8" top="252" width="358">Actor Gaze</text>
-          <check_box follows="left|top" height="18" label="This actor" layout="topleft" left="8" name="lens_gaze_check" top="276"
+          <!-- [AutoAnimate] Learned performance; entity clones only. -->
+          <text follows="left|top" font="SansSerifSmallBold" height="16" layout="topleft" left="8" name="autoanim_label" top="252" width="468">AutoAnimate (learned performance)</text>
+          <check_box follows="left|top" height="18" label="AutoAnimate" layout="topleft" left="8" name="autoanim_check" top="272" width="100" />
+          <spinner decimal_digits="0" follows="left|top" height="22" increment="15" initial_value="120" label="Learn s" label_width="45" layout="topleft" left="112" max_val="600" min_val="15" name="autoanim_window_spinner" top="272" width="110" />
+          <button follows="left|top" height="18" label="&#x21BA;" layout="topleft" left="224" name="reset_autoanim_window" top="272" tool_tip="Reset learning window to 120 seconds" width="18" />
+          <button follows="left|top" height="22" label="Stop now" layout="topleft" left="248" name="btn_autoanim_stop" top="272" width="70" />
+          <button follows="left|top" height="22" label="Relearn" layout="topleft" left="322" name="btn_autoanim_relearn" top="272" width="66" />
+          <button follows="left|top" height="22" label="Reseed" layout="topleft" left="392" name="btn_autoanim_reseed" top="272" width="60" />
+          <button follows="left|top" height="22" label="Go autonomous" layout="topleft" left="8" name="btn_autoanim_go" top="298" width="110" />
+          <button follows="left|top" height="22" label="Follow source" layout="topleft" left="122" name="btn_autoanim_follow" top="298" width="100" />
+          <button follows="left|top" height="22" label="Save..." layout="topleft" left="226" name="btn_autoanim_save" top="298" width="60" />
+          <button follows="left|top" height="22" label="Load..." layout="topleft" left="290" name="btn_autoanim_load" top="298" width="60" />
+          <text follows="left|top" height="16" layout="topleft" left="8" name="autoanim_status" top="324" width="468">AutoAnimate off</text>
+          <text follows="left|top|right" font="SansSerifSmallBold" height="16" layout="topleft" left="8" name="lens_gaze_label" right="-8" top="342" width="358">Actor Gaze</text>
+          <check_box follows="left|top" height="18" label="This actor" layout="topleft" left="8" name="lens_gaze_check" top="366"
            tool_tip="Client-only post-blend head, neck and eye tracking toward the render camera. Continues while the clone animation is frozen; camera-on-head feedback interlocks suppress it" width="116" />
-          <button follows="left|top" height="22" label="Enable selected" layout="topleft" left="134" name="btn_lens_gaze_selection" top="272"
+          <button follows="left|top" height="22" label="Enable selected" layout="topleft" left="134" name="btn_lens_gaze_selection" top="362"
            tool_tip="Enable camera gaze for every selected entity clone; overlay ghosts are ignored" width="116" />
-          <slider decimal_digits="2" follows="left|top|right" height="18" increment="0.05" initial_value="0.25" label="Torso" label_width="74" layout="topleft" left="8" max_val="1" min_val="0" name="lens_gaze_torso" right="-32" top="300"
+          <slider decimal_digits="2" follows="left|top|right" height="18" increment="0.05" initial_value="0.25" label="Torso" label_width="74" layout="topleft" left="8" max_val="1" min_val="0" name="lens_gaze_torso" right="-32" top="390"
            tool_tip="Torso share for selected entity clones. 0 keeps the chest still; 1 lets the torso take the full gaze turn" width="358" />
-          <button follows="top|right" height="18" label="↺" layout="topleft" name="reset_lens_gaze_torso" right="-8" top="300" tool_tip="Reset torso gaze to default" width="18" />
-          <combo_box follows="left|top" height="22" layout="topleft" left="8" name="lens_gaze_target_mode" top="324"
+          <button follows="top|right" height="18" label="↺" layout="topleft" name="reset_lens_gaze_torso" right="-8" top="390" tool_tip="Reset torso gaze to default" width="18" />
+          <combo_box follows="left|top" height="22" layout="topleft" left="8" name="lens_gaze_target_mode" top="414"
            tool_tip="Per-clone gaze target: travel tangent, render camera, a Director cast member, or the stored world point" width="142">
             <combo_box.item label="Travel tangent" name="gaze_tangent" value="0" />
             <combo_box.item label="Camera" name="gaze_camera" value="1" />
             <combo_box.item label="Cast target" name="gaze_cast" value="2" />
             <combo_box.item label="World point" name="gaze_point" value="3" />
           </combo_box>
-          <combo_box follows="left|top|right" height="22" layout="topleft" left="158" name="lens_gaze_cast_target" right="-8" top="324"
+          <combo_box follows="left|top|right" height="22" layout="topleft" left="158" name="lens_gaze_cast_target" right="-8" top="414"
            tool_tip="Director cast member used by Cast target mode" width="318" />
-          <slider decimal_digits="2" follows="left|top|right" height="18" increment="0.05" initial_value="0.65" label="Head / eyes" label_width="74" layout="topleft" left="8" max_val="1" min_val="0" name="lens_gaze_head_eye" right="-32" top="352"
+          <slider decimal_digits="2" follows="left|top|right" height="18" increment="0.05" initial_value="0.65" label="Head / eyes" label_width="74" layout="topleft" left="8" max_val="1" min_val="0" name="lens_gaze_head_eye" right="-32" top="442"
            tool_tip="0 uses eyes only; 1 gives the head and neck their full share" width="468" />
-          <button follows="top|right" height="18" label="↺" layout="topleft" name="reset_lens_gaze_head_eye" right="-8" top="352" tool_tip="Reset head and eye gaze to default" width="18" />
-          <slider decimal_digits="2" follows="left|top|right" height="18" increment="0.05" initial_value="1" label="Intensity" label_width="74" layout="topleft" left="8" max_val="1" min_val="0" name="lens_gaze_intensity" right="-32" top="374"
+          <button follows="top|right" height="18" label="↺" layout="topleft" name="reset_lens_gaze_head_eye" right="-8" top="442" tool_tip="Reset head and eye gaze to default" width="18" />
+          <slider decimal_digits="2" follows="left|top|right" height="18" increment="0.05" initial_value="1" label="Intensity" label_width="74" layout="topleft" left="8" max_val="1" min_val="0" name="lens_gaze_intensity" right="-32" top="464"
            tool_tip="Overall gaze strength" width="468" />
-          <button follows="top|right" height="18" label="↺" layout="topleft" name="reset_lens_gaze_intensity" right="-8" top="374" tool_tip="Reset gaze intensity to default" width="18" />
-          <slider decimal_digits="2" follows="left|top|right" height="18" increment="0.05" initial_value="0.5" label="Smoothing" label_width="74" layout="topleft" left="8" max_val="1" min_val="0" name="lens_gaze_smoothing" right="-32" top="396"
+          <button follows="top|right" height="18" label="↺" layout="topleft" name="reset_lens_gaze_intensity" right="-8" top="464" tool_tip="Reset gaze intensity to default" width="18" />
+          <slider decimal_digits="2" follows="left|top|right" height="18" increment="0.05" initial_value="0.5" label="Smoothing" label_width="74" layout="topleft" left="8" max_val="1" min_val="0" name="lens_gaze_smoothing" right="-32" top="486"
            tool_tip="0 is snappy; 1 is very smooth" width="468" />
-          <button follows="top|right" height="18" label="↺" layout="topleft" name="reset_lens_gaze_smoothing" right="-8" top="396" tool_tip="Reset gaze smoothing to default" width="18" />
-          <text follows="left|top|right" height="34" layout="topleft" left="8" name="lens_gaze_status" right="-8" text_color="LtGray_50" top="420" width="468">Gaze off</text>
-          <text follows="left|top|right" font="SansSerifSmallBold" height="16" layout="topleft" left="8" name="rig_diagnostics_label" right="-8" top="458" width="468">Entity clone rig + texture diagnostics</text>
-          <text_editor follows="left|top|right" font="Monospace" height="210" layout="topleft" left="8" max_length="1048576" name="rig_diagnostics" read_only="true" right="-8" top="480" width="468" word_wrap="false">Select an entity clone to inspect rig and per-face texture state.</text_editor>
+          <button follows="top|right" height="18" label="↺" layout="topleft" name="reset_lens_gaze_smoothing" right="-8" top="486" tool_tip="Reset gaze smoothing to default" width="18" />
+          <text follows="left|top|right" height="34" layout="topleft" left="8" name="lens_gaze_status" right="-8" text_color="LtGray_50" top="510" width="468">Gaze off</text>
+          <text follows="left|top|right" font="SansSerifSmallBold" height="16" layout="topleft" left="8" name="rig_diagnostics_label" right="-8" top="548" width="468">Entity clone rig + texture diagnostics</text>
+          <text_editor follows="left|top|right" font="Monospace" height="210" layout="topleft" left="8" max_length="1048576" name="rig_diagnostics" read_only="true" right="-8" top="570" width="468" word_wrap="false">Select an entity clone to inspect rig and per-face texture state.</text_editor>
         </panel>
               </panel>
             </scroll_container>

@@ -28,6 +28,8 @@
 #define LL_LLGHOSTAVATAR_H
 
 #include "llvoavatar.h"
+#include "alghostautoanimmodel.h" // [AutoAnimate]
+#include <memory> // [AutoAnimate]
 
 #include <set>
 
@@ -124,6 +126,17 @@ public:
     void setEntityAnimTimeFactor(F32 factor);
     void restartEntityAnimation();
     void setEntityLook(S32 look, F32 alpha);
+
+    // [AutoAnimate] Actions are consumed by idleUpdate, never by UI callbacks.
+    void setEntityAutoAnimate(const ALGhostAutoAnim::Config& config);
+    void requestAutoAnimAction(ALGhostAutoAnim::Action action, bool cold = false);
+    F32 getAutoAnimWindow() const; // [AutoAnimate] Compare before re-sending default-window config.
+    void restartEntityAnimationAudited(); // [AutoAnimate] Wrap the protected restart path.
+    bool takeAutoAnimPublishedPool(std::shared_ptr<const ALGhostAutoAnim::Pool>& pool);
+    std::shared_ptr<const ALGhostAutoAnim::Pool> exportAutoAnimProgress();
+    void getAutoAnimStatus(ALGhostAutoAnim::LearnStatus& status) const;
+    static void logAutoAnimCost(U32 learners, U32 players);
+    void countAutoAnimActivity(U32& learners, U32& players) const; // [AutoAnimate] No status-string allocation.
 
     // [TrueMirror] DRIVE_TRUE_MIRROR support.
     //
@@ -252,6 +265,10 @@ private:
     // still report PASS on a degraded clone.
     struct ClonedLinkset
     {
+        // [AutoAnimate] Persistent attachment identity and per-channel latch.
+        S32 mAttachPoint = 0;
+        LLUUID mSourceItemId;
+        U8 mAutonomy = 0;
         LLUUID              mRoot;
         std::vector<LLUUID> mChildren;
         // Simulator-known source ids corresponding one-for-one to the clone
@@ -283,6 +300,19 @@ private:
         std::map<LLUUID, RepeatState> mRepeatStates;
     };
     std::vector<ClonedLinkset> mClonedLinksets;
+    // [AutoAnimate] Allocated only while the instance toggle is on.
+    struct AutoAnimRuntime;
+    std::unique_ptr<AutoAnimRuntime> mAutoAnim;
+    void autoAnimRecordTick();
+    void autoAnimBodyPresence(LLVOAvatar* source);
+    void autoAnimBodyStep();
+    bool autoAnimLinksetStep(ClonedLinkset& linkset);
+    void autoAnimOnDriveModeChanged(S32 old_mode, S32 mode);
+    void autoAnimRebindLinksets();
+    void autoAnimSyncBody(const ALGhostAutoAnim::AnimMap& desired);
+    void autoAnimAuditBodyStop(const LLUUID& id);
+    void autoAnimAuditLinksetSync(const ClonedLinkset& linkset, bool clearing = false);
+    void applyAnimeshDesired(const ClonedLinkset& linkset, const ALGhostAutoAnim::AnimMap& desired);
     std::set<LLUUID> mRigHealedLogged;
 
     // [AnimeshRepeat] Opt-in (GhostMirrorRepeatHeldAnimesh) replay of a HELD

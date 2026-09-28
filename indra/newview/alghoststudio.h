@@ -39,6 +39,7 @@
 #include "alghostplacementresolver.h"
 #include "alformationsolver.h"
 #include "lluuid.h"
+#include "alghostautoanimmodel.h" // [AutoAnimate] llcommon-only API, no avatar include.
 #include "v3math.h"
 #include "v3dmath.h"
 #include "m4math.h"         // frozen attachment matrices
@@ -363,6 +364,12 @@ public:
 
         // ---- entity-clone animation drive (Track B; ignored for overlays) ----
         EDriveMode  mDriveMode = DRIVE_MIRROR;
+        // [AutoAnimate] Shared sealed performance; independent runtime recorder and seed.
+        bool mAutoAnimate = false;
+        F32 mAutoAnimWindow = 0.f;
+        bool mAutoAnimManual = false;
+        U32 mAutoAnimSeedSalt = 0;
+        std::shared_ptr<const ALGhostAutoAnim::Pool> mAutoAnimPool;
         LLUUID      mDirectedAnim;       // anim asset played in DRIVE_DIRECTED
         F32         mAnimSpeed = 1.f;    // per-clone multiplier, before Chaos
         bool        mPhysicsEnabled = true;
@@ -599,6 +606,14 @@ public:
     bool      setInstanceChaos(const LLUUID& id, F32 amount);
     bool      setInstanceLook(const LLUUID& id, EGhostLook look);
     LLGhostAvatar* resolveEntityClone(const LLUUID& id) const;
+    // [AutoAnimate]
+    bool setInstanceAutoAnimate(const LLUUID& id, bool enabled);
+    bool setInstanceAutoAnimWindow(const LLUUID& id, F32 seconds);
+    bool autoAnimateAction(const LLUUID& id, ALGhostAutoAnim::Action action);
+    bool saveAutoAnimate(const LLUUID& id, const std::string& path);
+    bool loadAutoAnimate(const LLUUID& id, const std::string& path);
+    void getAutoAnimateStatus(const LLUUID& id, ALGhostAutoAnim::LearnStatus& status) const;
+    const Instance* findInstanceByRuntime(const LLUUID& runtime) const;
     bool      setInstanceDriveMode(const LLUUID& id, EDriveMode mode,
                                    const LLUUID& directed_anim = LLUUID::null);
     void      refreshLifecycleStates();
@@ -797,6 +812,7 @@ private:
                                  LLGhostAvatar* new_ghost = nullptr,
                                  bool removing_instance = false);
     void finishPendingRuntimeFreezes();
+    void updateAutoAnimate(); // [AutoAnimate]
     bool applyGroupTransforms(
         const LLUUID& group_id,
         const ALGhostGroupModel::Group* rollback_model = nullptr);

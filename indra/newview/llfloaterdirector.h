@@ -99,6 +99,9 @@ private:
     void onCastSetMarkHere();
     void onCastResetToMark();
     void onCastClearLocoAnim();
+    // [AutoAnimate] Runtime cast ids are resolved to stable Studio instance ids.
+    bool castHasGhostEntity() const;
+    void onCastAutoAnim(S32 operation);
     void onCastCopyUUID();
     void onCastRemove();
     // ---- groups ----

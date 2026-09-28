@@ -7115,6 +7115,62 @@
       <key>Value</key>
       <integer>0</integer>
     </map>
+    <!-- [AutoAnimate] Learned performance settings. -->
+    <key>GhostAutoAnimateWindow</key>
+    <map>
+      <key>Comment</key>
+      <string>[GhostStudio] Default observed learning window in seconds (15-600).</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>120</real>
+    </map>
+    <key>GhostAutoAnimateLossGrace</key>
+    <map>
+      <key>Comment</key>
+      <string>[GhostStudio] Continuous source absence before automatic handoff (0.25-10 seconds).</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>1.5</real>
+    </map>
+    <key>GhostAutoAnimateRecouple</key>
+    <map>
+      <key>Comment</key>
+      <string>[GhostStudio] Recouple automatic loss after a stable returning source. Manual autonomy is never recoupled.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>Boolean</string>
+      <key>Value</key>
+      <integer>1</integer>
+    </map>
+    <key>GhostAutoAnimateMaxAnims</key>
+    <map>
+      <key>Comment</key>
+      <string>[GhostStudio] Maximum learned animations per channel (8-64).</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>S32</string>
+      <key>Value</key>
+      <integer>64</integer>
+    </map>
+    <key>GhostAutoAnimateCostLog</key>
+    <map>
+      <key>Comment</key>
+      <string>[GhostStudio] Log measured recorder and scheduler microseconds per second every 60 seconds while active.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>Boolean</string>
+      <key>Value</key>
+      <integer>1</integer>
+    </map>
     <!-- [TrueMirror] begin: DRIVE_TRUE_MIRROR settings -->
     <key>GhostTrueMirrorCopyFacing</key>
     <map>
