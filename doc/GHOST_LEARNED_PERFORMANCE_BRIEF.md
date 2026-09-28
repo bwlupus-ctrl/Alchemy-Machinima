@@ -74,7 +74,18 @@ it from the cache without a network fetch, and that a cache miss simply triggers
 | FROZEN | Resume with resume mode LEARNED | LEARNED (pool and schedule intact) |
 | any | learn toggled OFF | pool discarded; if in LEARNED → FROZEN on the current pose (never "snap to T-pose") |
 
-- The toggle is only meaningful for entity clones (overlays already ignore drive modes).
+- **Entity clones only.** Overlay clones have no skeleton or motion controller of their own — they
+  re-draw the live source (drive modes are already "ignored for overlay instances",
+  `alghoststudio.h:95-99`) — so with the source gone there is nothing to keep playing.
+  **Overlay UX:** the toggle stays visible on overlays but reads *Learn & Continue (entity only)*;
+  turning it on offers **Convert to entity & learn**. Never a silent no-op. When the selection
+  contains more than `GhostLearnConvertWarnCount` (default 10) overlays, the offer shows the count and
+  warns that entity clones cost more than overlays before converting. Declining leaves the overlays
+  untouched and the toggle off.
+- **Retargeting / outfit change:** if an entity's source changes (re-sourced to a different avatar)
+  while learning, the window restarts and the pool is discarded — it would otherwise mix two
+  animation sets. A sealed pool is kept, and handed off from normally, until the user presses
+  **Relearn**.
 
 ### 3.2 The recorder (runs only while MIRROR + learn on, and only inside the learn window)
 
@@ -169,10 +180,13 @@ Target: **no measurable frame cost** with learn off, and negligible with it on, 
   Worst case per channel: 64 entries × ~200 bytes ≈ 13 KB.
 - **No per-frame allocation** in recorder or scheduler. Pool containers are reserved when the
   window opens.
-- **One recorder per SOURCE, not per clone.** A crowd of 50 clones mirroring the same avatar sees
-  identical data; they share one recorder keyed by source id (and by linkset index for animesh).
-  On handoff each clone copies the sealed pool (or holds a shared read-only reference) and gets its
-  own seeded scheduler, so crowd members still vary.
+- **One recorder per ENTITY, never shared (user decision 2026-09-28).** Each entity clone owns its
+  own recorder, learn window and pool. Reason: the same source can be on a different avatar/outfit
+  with an entirely different AO and animation set by the time the next clone learns (or mid-take),
+  so a pool keyed by source id would mix two performances. Per-entity keeps each clone's pool
+  exactly what that clone saw during its own window. This is affordable because the recorder is
+  event-driven (a few updates/second while learning, zero after sealing) and bounded (~13 KB per
+  channel), so N clones cost N × tiny, and nothing runs once their windows close.
 - **Scheduler cost in Learned:** per channel per frame, one comparison of `now` against the next
   scheduled event time. It only builds a new desired set and calls the existing sync when an event
   is due.
@@ -186,7 +200,8 @@ Target: **no measurable frame cost** with learn off, and negligible with it on, 
 ## 4. Surfaces (all in one delivery)
 
 - **Settings** (`settings_alchemy.xml`): `GhostLearnDefault`, `GhostLearnDuration` (120 s),
-  `GhostLearnRecouple` (true), `GhostLearnLossGrace` (1.5), `GhostLearnMaxAnims` (64).
+  `GhostLearnRecouple` (true), `GhostLearnLossGrace` (1.5), `GhostLearnMaxAnims` (64),
+  `GhostLearnConvertWarnCount` (10).
 - **Ghost Studio, Pose & Animation section** (`panel_ghost_studio.xml:205+`):
   - check box **Learn & Continue** (per selected clone);
   - drive combo gains **Learned** (`value="3"`);
@@ -242,9 +257,9 @@ With the toggle **off** (the default), the code must be provably identical to to
    priority anims resolve differently and produce a visibly different pose?
 5. Clamp/enum widening: every `switch`/comparison on `EDriveMode` in `alpanelghoststudio.cpp`,
    `aldirectoranimswitcher.cpp`, `alchatcommand.cpp` — list the ones that silently mis-handle 3.
-6. Shared per-source recorder (§3.7): find the case where two clones of one source must NOT share
-   (different Studio anim speed → different motion-controller time base? clone-of-clone is already
-   rejected).
+6. Per-entity recorders (§3.7): confirm the learning cost for a large crowd all learning at once
+   (e.g. 50 entities in one window) stays inside the logged budget, and that pool memory is released
+   on despawn / Relearn.
 7. Is the approach wrong? In particular: should the recorder observe the **source** signaled maps
    directly rather than the clone's desired diff (the hold-on-source-change filter sits between them)?
 
