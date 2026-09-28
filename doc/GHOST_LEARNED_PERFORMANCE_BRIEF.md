@@ -160,7 +160,7 @@ button detaches all channels at once.
 Target: **no measurable frame cost** with learn off, and negligible with it on, even for crowds.
 
 - **Event-driven, not per-frame work.** Mirror already computes the desired-vs-previous comparison
-  every frame (`llghostavatar.cpp:2008`). The recorder hooks only the branch where that comparison
+  every frame (`llghostavatar.cpp:2009`). The recorder hooks only the branch where that comparison
   found a change — a few times per second at most for a busy AO + face HUD. Zero work on frames
   where nothing changed.
 - **Animesh:** same — hook only the `changed == true` branch of the existing per-linkset mirror.
