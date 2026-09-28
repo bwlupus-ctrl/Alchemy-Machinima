@@ -76,19 +76,29 @@ it from the cache without a network fetch, and that a cache miss simply triggers
 
 - The toggle is only meaningful for entity clones (overlays already ignore drive modes).
 
-### 3.2 The recorder (runs only while MIRROR + learn on)
+### 3.2 The recorder (runs only while MIRROR + learn on, and only inside the learn window)
+
+**Learning is time-capped, not indefinite.** Toggling Learn on opens a **learn window** of
+`GhostLearnDuration` seconds (default **120**, range 15-600) of *source-present* time. When it
+expires the pool is **sealed**: the recorder stops, costs nothing further, and the clone keeps
+mirroring live with a finished pool ready for handoff. Status shows `Learning 1:24 / 2:00`, then
+`Learned ✓`.
+- **Relearn** button: discards the pool and opens a fresh window.
+- **Stop now** button: seals early (e.g. once you've seen the AO cycle through its stands).
+- Source absent time does not count toward the window (a de-rez doesn't eat the budget).
+- Handoff before the window ends uses whatever was learned so far (and logs `POOL THIN` if small).
 
 Two independent channels, same data model:
 
 - **Body channel:** observe the diff that `synchronizeCloneAnimations()` is about to apply (the
-  desired set vs the previous desired set). Log `start(anim, t)` / `stop(anim, t)`.
+  desired set vs the previous desired set). Record `start(anim, t)` / `stop(anim, t)`.
 - **Animesh channel:** one recorder **per cloned linkset index** (index into `mClonedLinksets`, NOT the
-  source UUID — source UUIDs change on re-rez, the clone linkset does not). Log per clone prim id.
+  source UUID — source UUIDs change on re-rez, the clone linkset does not). Record per clone prim id.
 
 Timestamps use the clone's motion-controller time, so Studio anim speed and bullet-time scale the
 learned timing consistently.
 
-Each channel folds its event log into a **pool**:
+Each event is folded **immediately** into the pool (no event log is kept — see §3.7):
 - **Loop entries** — anims whose motion reports `getLoop()==true` (or, until loaded, that stayed
   playing longer than their duration). Stored with observed *dwell* samples (how long the source kept
   it before switching). These are the AO stands / idle loops.
@@ -99,9 +109,9 @@ Each channel folds its event log into a **pool**:
 - **Mutual exclusion groups** — loop entries never observed simultaneously are treated as
   alternatives (this is how "the AO's stand set" is discovered without knowing it is an AO).
 
-Caps: ring-buffered event log (`GhostLearnMaxEvents`, default 4096 per channel); pool entries capped
-(`GhostLearnMaxAnims`, default 64 per channel). Excluded: ground-sit (matches Mirror), and any anim
-already filtered by Mirror today.
+Caps: pool entries capped (`GhostLearnMaxAnims`, default 64 per channel); timing samples per entry
+capped at 16 (reservoir). Excluded: ground-sit (matches Mirror), and any anim already filtered by
+Mirror today.
 
 ### 3.3 Autonomous playback (DRIVE_LEARNED)
 
@@ -145,17 +155,45 @@ button detaches all channels at once.
 - Loading onto a clone of a **different** outfit: body pool always applies; animesh pools apply by
   linkset index only when the count matches, otherwise skipped with a logged reason.
 
+### 3.7 Overhead budget (user priority: low overhead)
+
+Target: **no measurable frame cost** with learn off, and negligible with it on, even for crowds.
+
+- **Event-driven, not per-frame work.** Mirror already computes the desired-vs-previous comparison
+  every frame (`llghostavatar.cpp:2008`). The recorder hooks only the branch where that comparison
+  found a change — a few times per second at most for a busy AO + face HUD. Zero work on frames
+  where nothing changed.
+- **Animesh:** same — hook only the `changed == true` branch of the existing per-linkset mirror.
+- **Incremental fold, no event log.** Each start/stop updates fixed-size per-anim stats (count,
+  running sums, 16-sample reservoir). No growth over time, no end-of-window batch processing.
+  Worst case per channel: 64 entries × ~200 bytes ≈ 13 KB.
+- **No per-frame allocation** in recorder or scheduler. Pool containers are reserved when the
+  window opens.
+- **One recorder per SOURCE, not per clone.** A crowd of 50 clones mirroring the same avatar sees
+  identical data; they share one recorder keyed by source id (and by linkset index for animesh).
+  On handoff each clone copies the sealed pool (or holds a shared read-only reference) and gets its
+  own seeded scheduler, so crowd members still vary.
+- **Scheduler cost in Learned:** per channel per frame, one comparison of `now` against the next
+  scheduled event time. It only builds a new desired set and calls the existing sync when an event
+  is due.
+- **Sealed = zero.** After the learn window closes the recorder is detached from the hook entirely.
+- **Measured, not assumed:** the log reports recorder and scheduler time per second
+  (`LEARNED-COST rec=…µs sched=…µs clones=N`) once a minute while active, so overhead is a number
+  the user can read, not a claim.
+
 ---
 
 ## 4. Surfaces (all in one delivery)
 
-- **Settings** (`settings_alchemy.xml`): `GhostLearnDefault`, `GhostLearnRecouple` (true),
-  `GhostLearnLossGrace` (1.5), `GhostLearnMaxEvents` (4096), `GhostLearnMaxAnims` (64).
+- **Settings** (`settings_alchemy.xml`): `GhostLearnDefault`, `GhostLearnDuration` (120 s),
+  `GhostLearnRecouple` (true), `GhostLearnLossGrace` (1.5), `GhostLearnMaxAnims` (64).
 - **Ghost Studio, Pose & Animation section** (`panel_ghost_studio.xml:205+`):
   - check box **Learn & Continue** (per selected clone);
   - drive combo gains **Learned** (`value="3"`);
   - button **Detach** (enabled when Mirror + learn on);
-  - status line: `Learned: 3 loops · 9 one-shots · 2 animesh · 2m10s` (per channel on hover);
+  - learn-window spinner (seconds) + **Stop now** / **Relearn**;
+  - status line: `Learning 1:24 / 2:00` then `Learned ✓ 3 loops · 9 one-shots · 2 animesh` (per
+    channel on hover);
   - **Save…** / **Load…** / **Reseed**.
 - Existing controls: Pause/Resume must round-trip LEARNED; "Follow live" must mean MIRROR (keeps
   pool). Presets/reset: the toggle and new settings register with Studio reset.
@@ -204,16 +242,20 @@ With the toggle **off** (the default), the code must be provably identical to to
    priority anims resolve differently and produce a visibly different pose?
 5. Clamp/enum widening: every `switch`/comparison on `EDriveMode` in `alpanelghoststudio.cpp`,
    `aldirectoranimswitcher.cpp`, `alchatcommand.cpp` — list the ones that silently mis-handle 3.
-6. Is the approach wrong? In particular: should the recorder observe the **source** signaled maps
+6. Shared per-source recorder (§3.7): find the case where two clones of one source must NOT share
+   (different Studio anim speed → different motion-controller time base? clone-of-clone is already
+   rejected).
+7. Is the approach wrong? In particular: should the recorder observe the **source** signaled maps
    directly rather than the clone's desired diff (the hold-on-source-change filter sits between them)?
 
 ---
 
 ## 8. In-world test (one pass, outcomes stated in advance)
 
-1. Spawn a clone of yourself, Mirror, **Learn & Continue** on. Wear an AO with ≥3 stands and a face
-   HUD that uses animations. Wait 2 min.
-   *Expect:* status shows ≥3 loops, several one-shots.
+1. Spawn a clone of yourself, Mirror, **Learn & Continue** on (default 2:00 window). Wear an AO with
+   ≥3 stands and a face HUD that uses animations. Wait for the window to close.
+   *Expect:* status counts down, then `Learned ✓` with ≥3 loops and several one-shots;
+   `LEARNED-COST` shows the recorder stopped (rec=0) after sealing.
 2. Press **Detach**. *Expect:* `LEARNED-HANDOFF ok`, no visible pop; the clone keeps the current stand.
 3. Take your AO off. *Expect:* the clone is unaffected and cycles to other stands within their
    observed dwell; face keeps moving.
