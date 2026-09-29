@@ -332,6 +332,13 @@ bool LLFloaterEnvironmentAdjust::postBuild()
         mEnvIntensityAutoAdjustConn = auto_adjust_ctrl->getSignal()->connect(
             [this](LLControlVariable*, const LLSD&, const LLSD&) { updateGammaLabel(); });
     }
+    // [TonemapLegacySky] Refresh the note live; retain the listener in the
+    // existing scoped-connection collection so floater destruction disconnects it.
+    if (auto tonemap_legacy_ctrl = gSavedSettings.getControl("AlchemyTonemapLegacyGammaSkies"))
+    {
+        mEnvIntensityPresetConns.emplace_back(tonemap_legacy_ctrl->getSignal()->connect(
+            [this](LLControlVariable*, const LLSD&, const LLSD&) { updateGammaLabel(); }));
+    }
 
     // [EnvIntensity v2] Advanced exposure panel. Every slider / swatch / check
     // box binds through control_name; code wires only the reset buttons, the
@@ -859,11 +866,11 @@ void LLFloaterEnvironmentAdjust::updateGammaLabel()
     // inert, mirroring LLSettingsVOSky::applySpecial:
     //  - classic sky (pre-PBR shading: a legacy sky with RenderSkyAutoAdjustLegacy
     //    off): both EV factors are inactive (1.0);
-    //  - legacy-gamma sky (probe ambiance == 0, no tonemapper): the Sun / Moon
-    //    boost is capped at 0 EV.
+    //  - legacy-gamma sky (probe ambiance == 0): the Sun / Moon boost is capped
+    //    at 0 EV, even with the [TonemapLegacySky] opt-in enabled.
     // Surface that instead of leaving dead sliders. Runs from refresh() (open +
     // every environment update), from the probe-ambiance slider, and from the
-    // RenderSkyAutoAdjustLegacy change signal connected in postBuild.
+    // RenderSkyAutoAdjustLegacy / AlchemyTonemapLegacyGammaSkies change signals.
     if (LLUICtrl* note = findChild<LLUICtrl>("env_legacy_sun_note"))
     {
         const bool classic_sky  = mLiveSky->canAutoAdjust() && !should_auto_adjust();
@@ -875,8 +882,12 @@ void LLFloaterEnvironmentAdjust::updateGammaLabel()
         }
         else if (legacy_gamma)
         {
+            // [TonemapLegacySky] The cap remains, but the opt-in enables tonemapping.
+            static LLCachedControl<bool> tonemap_legacy_skies(gSavedSettings, "AlchemyTonemapLegacyGammaSkies", false);
             note->setValue(getString("env_intensity_legacy_note"));
-            note->setToolTip(getString("env_intensity_legacy_tooltip"));
+            note->setToolTip(tonemap_legacy_skies()
+                ? "Tonemapping is enabled for this Reflection Probe Ambiance 0 sky. Sun / Moon boosts remain capped at 0 EV; negative values still work. Set Reflection Probe Ambiance above 0 to enable boosts."
+                : getString("env_intensity_legacy_tooltip"));
         }
         note->setVisible(classic_sky || legacy_gamma);
     }

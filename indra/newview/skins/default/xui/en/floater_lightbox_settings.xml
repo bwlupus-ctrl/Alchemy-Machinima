@@ -367,6 +367,18 @@
 					function="LightBox.ResetGroupDefault"
 					parameter="tonemap" />
 			</button>
+			<!-- [TonemapLegacySky] Always available, independent of tonemap type. -->
+			<check_box
+				follows="left|top"
+				height="15"
+				left="10"
+				top_pad="5"
+				width="300"
+				layout="topleft"
+				name="tonemap_legacy_gamma_skies"
+				control_name="AlchemyTonemapLegacyGammaSkies"
+				label="Tonemap legacy-gamma skies"
+				tool_tip="Reflection Probe Ambiance 0 skies normally skip the whole post chain. ON enables the selected tonemapper, exposure/auto-exposure adaptation, bloom/halation, on-lens filters (Graduated ND/Polarizer), Night Mask, Roto Ink/Tron exposure and ReShade raw capture. Display tonemappers keep the sky's legacy gamma; S-Log/log (type 8) outputs a clean log curve without it and uses manual exposure only. Legacy lighting uses SKY_HDR_SCALE 1, so log reads darker; compensate with EV. Viewer-side only." />
 			<text
 				follows="left|top"
 				height="15"

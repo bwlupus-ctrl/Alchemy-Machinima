@@ -1283,6 +1283,18 @@
             <key>Value</key>
             <integer>7</integer>
         </map>
+        <!-- [TonemapLegacySky] Viewer-side opt-in; preserve the sky's legacy gamma. -->
+        <key>AlchemyTonemapLegacyGammaSkies</key>
+        <map>
+            <key>Comment</key>
+            <string>Keep tonemapping and exposure active on skies with Reflection Probe Ambiance 0, while preserving their legacy gamma curve. Viewer-side only; may look more contrasty.</string>
+            <key>Persist</key>
+            <integer>1</integer>
+            <key>Type</key>
+            <string>Boolean</string>
+            <key>Value</key>
+            <integer>0</integer>
+        </map>
         <key>AlchemyToneMapSLogCurve</key>
         <map>
             <key>Comment</key>

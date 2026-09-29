@@ -304,9 +304,10 @@ public:
     // operator at all (colorCorrectF.glsl's TONEMAP permutation guard).
     // `apply_tonemap` must be the same value the matching colorCorrect() call
     // this frame will use (renderFinalize's `hdr` local). Returns false
-    // whenever a legacy-gamma sky, RenderDisablePostProcessing with Build
-    // open, or a "no post" snapshot will force colorCorrect onto its
-    // gamma-only (non-TONEMAP) shader variant regardless of apply_tonemap.
+    // whenever a legacy-gamma sky without the [TonemapLegacySky] opt-in,
+    // RenderDisablePostProcessing with Build open, or a "no post" snapshot forces
+    // colorCorrect onto its gamma-only (non-TONEMAP) shader variant regardless
+    // of apply_tonemap.
     // Optionally reports the legacy-gamma and no-post sub-conditions for
     // callers (like colorCorrect itself) that also need them for shader
     // selection.

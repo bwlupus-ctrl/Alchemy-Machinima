@@ -11625,6 +11625,10 @@ void LLPipeline::generateLuminance(LLRenderTarget* src, LLRenderTarget* dst)
 }
 
 void LLPipeline::generateExposure(LLRenderTarget* src, LLRenderTarget* dst, bool use_history) {
+    // [TonemapLegacySky] Match colorCorrect's opt-in for adaptive bounds.
+    bool legacy_gamma = false;
+    const bool tonemap_legacy_gamma = colorCorrectWillApplyExposure(true, &legacy_gamma) && legacy_gamma;
+
     // exposure sample
     {
         LL_PROFILE_GPU_ZONE("exposure sample");
@@ -11702,7 +11706,8 @@ void LLPipeline::generateExposure(LLRenderTarget* src, LLRenderTarget* dst, bool
         }
         else if (dynamic_exposure_enabled)
         {
-            if (probe_ambiance > 0.f)
+            // [TonemapLegacySky] Zero-ambiance skies can now use auto-exposure.
+            if (probe_ambiance > 0.f || tonemap_legacy_gamma)
             {
                 F32 hdr_scale = sqrtf(LLEnvironment::instance().getCurrentSky()->getGamma()) * 2.f;
 
@@ -11815,19 +11820,21 @@ namespace
 // its gCG* shader variants below; only the "Tonemap"-named variants define
 // TONEMAP (colorCorrectF.glsl ~137) and therefore read RenderExposure at all
 // (colorCorrectF.glsl ~421, applyExposure()). That happens precisely when
-// apply_tonemap is true AND no_post is false -- legacy_gamma is folded INTO
-// no_post below (not a separate gate), so a legacy-ambiance sky always forces
-// the gamma-only variant regardless of apply_tonemap. This function is the
-// single source of truth for that predicate so renderCineOutline's EXPOSURE
+// apply_tonemap is true AND no_post is false. [TonemapLegacySky] Legacy gamma
+// forces no_post only when the opt-in is off; display tonemappers keep its curve.
+// This function is the single source of truth so renderCineOutline's EXPOSURE
 // upload can never disagree with what colorCorrect actually does this frame.
 bool LLPipeline::colorCorrectWillApplyExposure(bool apply_tonemap, bool* out_legacy_gamma, bool* out_no_post) const
 {
     static LLCachedControl<bool> should_auto_adjust(gSavedSettings, "RenderSkyAutoAdjustLegacy", false);
     static LLCachedControl<bool> buildNoPost(gSavedSettings, "RenderDisablePostProcessing", false);
+    // [TonemapLegacySky] Cached controls update live; keep this override here only.
+    static LLCachedControl<bool> tonemap_legacy_skies(gSavedSettings, "AlchemyTonemapLegacyGammaSkies", false);
 
     LLSettingsSky::ptr_t psky = LLEnvironment::instance().getCurrentSky();
     const bool legacy_gamma = psky && psky->getReflectionProbeAmbiance(should_auto_adjust) == 0.f;
-    const bool no_post = gSnapshotNoPost || legacy_gamma || (buildNoPost && gFloaterTools && gFloaterTools->isAvailable());
+    const bool no_post = gSnapshotNoPost || (legacy_gamma && !tonemap_legacy_skies()) ||
+        (buildNoPost && gFloaterTools && gFloaterTools->isAvailable());
 
     if (out_legacy_gamma)
     {
@@ -11862,10 +11869,14 @@ void LLPipeline::colorCorrect(LLRenderTarget* src, LLRenderTarget* dst, bool app
         bool legacy_gamma = false;
         bool no_post = false;
         colorCorrectWillApplyExposure(apply_tonemap, &legacy_gamma, &no_post);
+        // [TonemapLegacySky] Log output must preserve its encoded values; the
+        // display-referred legacy curve would corrupt the log transfer function.
+        static LLCachedControl<S32> tonemap_type(gSavedSettings, "AlchemyRenderTonemapType", 0);
+        const bool legacy_curve = legacy_gamma && !(apply_tonemap && !no_post && tonemap_type() == 8);
         LLGLSLShader* shader = nullptr;
         if (apply_tonemap)
         {
-            if (legacy_gamma)
+            if (legacy_curve)
             {
                 shader = no_post       ? color_grade ? &gCGColorgradeLegacyGammaProgram : &gCGLegacyGammaProgram
                          : color_grade ? &gCGTonemapColorgradeLegacyGammaProgram
@@ -11880,7 +11891,7 @@ void LLPipeline::colorCorrect(LLRenderTarget* src, LLRenderTarget* dst, bool app
         }
         else
         {
-            shader = legacy_gamma ? &gCGLegacyGammaProgram : &gCGGammaProgram;
+            shader = legacy_curve ? &gCGLegacyGammaProgram : &gCGGammaProgram;
         }
 
         shader->bind();
@@ -12433,7 +12444,11 @@ void LLPipeline::colorCorrect(LLRenderTarget* src, LLRenderTarget* dst, bool app
             // Tonemap type and parameters
             static LLCachedControl<S32> tonemap_type_setting(gSavedSettings, "AlchemyRenderTonemapType", 0U);
             shader->uniform1i(LLShaderMgr::TONEMAP_TYPE, tonemap_type_setting);
-            shader->uniform1f(LLShaderMgr::TONEMAP_MIX, psky->getTonemapMix(should_auto_adjust()));
+            // [TonemapLegacySky] Classic skies otherwise force the mix to zero,
+            // silently bypassing types 0-7 even with a TONEMAP shader selected.
+            static LLCachedControl<F32> tonemap_mix_setting(gSavedSettings, "RenderTonemapMix", 1.f);
+            shader->uniform1f(LLShaderMgr::TONEMAP_MIX, legacy_gamma && !no_post
+                ? tonemap_mix_setting() : psky->getTonemapMix(should_auto_adjust()));
 
             // Shared post-tonemap saturation/contrast grade, applied after every
             // operator (all tonemap_type values). Defaults (1.0, 1.0) are a no-op.
@@ -12854,18 +12869,9 @@ void LLPipeline::updateNightMaskAnchor()
     // Without this, generateLuminance() (called right after this in
     // renderFinalize) could zero bloom metering for a frame where
     // applyOnLensFilters then skips the mask draw entirely via one of these
-    // exact gates, permanently biasing exposure upward. Duplicated (not
-    // shared via a helper) because both call sites run synchronously within
-    // the same renderFinalize() with no yield in between, so the values
-    // cannot drift between them.
-    static LLCachedControl<bool> should_auto_adjust(gSavedSettings, "RenderSkyAutoAdjustLegacy", false);
-    static LLCachedControl<bool> buildNoPost(gSavedSettings, "RenderDisablePostProcessing", false);
-    LLSettingsSky::ptr_t night_mask_psky = LLEnvironment::instance().getCurrentSky();
-    const bool night_mask_legacy_gamma = night_mask_psky &&
-        night_mask_psky->getReflectionProbeAmbiance(should_auto_adjust) == 0.f;
-    const bool night_mask_no_post = gSnapshotNoPost || night_mask_legacy_gamma ||
-        (buildNoPost && gFloaterTools && gFloaterTools->isAvailable());
-    const bool will_render = gOnLensFiltersProgram.isComplete() && !night_mask_no_post;
+    // exact gates, permanently biasing exposure upward.
+    // [TonemapLegacySky] Share the final post gate with applyOnLensFilters.
+    const bool will_render = gOnLensFiltersProgram.isComplete() && colorCorrectWillApplyExposure(true);
 
     static LLCachedControl<S32>  target_setting(gSavedSettings, "CineLightRigNightMaskTarget", 0);
     static LLCachedControl<S32>  shape_setting(gSavedSettings, "CineLightRigNightMaskShape", 1);
@@ -13126,11 +13132,8 @@ void LLPipeline::applyOnLensFilters(LLRenderTarget* screen)
         return;
 
     // "No post-processing" snapshots must stay filter-free.
-    static LLCachedControl<bool> should_auto_adjust(gSavedSettings, "RenderSkyAutoAdjustLegacy", false);
-    static LLCachedControl<bool> buildNoPost(gSavedSettings, "RenderDisablePostProcessing", false);
-    LLSettingsSky::ptr_t psky = LLEnvironment::instance().getCurrentSky();
-    bool legacy_gamma = psky && psky->getReflectionProbeAmbiance(should_auto_adjust) == 0.f;
-    bool no_post = gSnapshotNoPost || legacy_gamma || (buildNoPost && gFloaterTools && gFloaterTools->isAvailable());
+    // [TonemapLegacySky] Match colorCorrect and Night Mask's metering gate.
+    const bool no_post = !colorCorrectWillApplyExposure(true);
     if (no_post)
         return;
 
@@ -13565,11 +13568,8 @@ void LLPipeline::generateBloomHDR(LLRenderTarget* src)
     static LLCachedControl<F32> bloom_scatter(gSavedSettings, "RenderBloomScatter", 0.7f);
     static LLCachedControl<F32> alpha_glow_boost(gSavedSettings, "RenderBloomAlphaGlowBoost", 2.0f);
 
-    static LLCachedControl<bool> should_auto_adjust(gSavedSettings, "RenderSkyAutoAdjustLegacy", false);
-    static LLCachedControl<bool> buildNoPost(gSavedSettings, "RenderDisablePostProcessing", false);
-    LLSettingsSky::ptr_t psky = LLEnvironment::instance().getCurrentSky();
-    bool legacy_gamma = psky->getReflectionProbeAmbiance(should_auto_adjust) == 0.f;
-    bool no_post = gSnapshotNoPost || legacy_gamma || (buildNoPost && gFloaterTools && gFloaterTools->isAvailable());
+    // [TonemapLegacySky] Bloom extraction must match the final tonemap gate.
+    const bool no_post = !colorCorrectWillApplyExposure(true);
 
     LLGLDepthTest depth(GL_FALSE);
     LLGLDisable cull(GL_CULL_FACE);
