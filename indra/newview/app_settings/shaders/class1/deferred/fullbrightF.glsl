@@ -52,6 +52,8 @@ bool actorFxUvTransformEnabled();
 bool actorFxRgbSplitEnabled();
 vec2 actorFxUv(vec2 authored_uv, vec3 position_eye);
 vec2 actorFxRgbSplitUv(vec2 transformed_uv, float direction);
+vec3 alrPresentedLinear(vec3 c);
+bool alrDebug();
 #endif
 
 #ifdef HAS_ALPHA_MASK
@@ -153,6 +155,9 @@ void main()
 #endif
     }
 #endif
+#ifdef HAS_ACTOR_FX
+    color.rgb = alrPresentedLinear(color.rgb); // [AvatarLightResponse] presented (unlit) colour
+#endif
     visible_diffuse_color = color.rgb;
 #ifdef IS_ALPHA
 
@@ -168,6 +173,11 @@ void main()
 
 #endif
 
+#ifdef HAS_ACTOR_FX
+#ifndef IS_HUD
+    if (alrDebug()) color.rgb = vec3(1.0, 0.0, 1.0); // [AvatarLightResponse] debug override
+#endif
+#endif
     frag_color = max(color, vec4(0));
 #ifdef HAS_VISIBLE_DIFFUSE
     // A legacy fullbright surface has NO diffuse-lighting response. Its colour

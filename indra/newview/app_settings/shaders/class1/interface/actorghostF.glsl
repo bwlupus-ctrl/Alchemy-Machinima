@@ -112,6 +112,11 @@ uniform vec4 ghostDistortParams;
 // Native live Actor wire is submitted to the linear HDR world buffer. Ghost
 // Studio overlays remain post-tonemap/display-space and leave this disabled.
 uniform int ghostWorldLinear;
+// [AvatarLightResponse] Ghost Studio CLONE draws only: the CPU uploads a non-zero alrEnabled for those
+// draws and leaves the GL link default (0 = identity) for everything else. These programs do
+// not link avatarLightResponseF.glsl, so the uniforms are declared locally.
+uniform int alrEnabled;   // 0 identity; 1 active; 3 active + debug override
+uniform vec4 alrParams;   // z = Brightness gain k (beauty sweeps) or Glow gain g (SWEEP_GLOW sweep)
 #ifdef GHOST_WORLD_PASS
 // Shared live Actor FX reuses the exact animated beauty program for its bloom
 // replay.  This mode preserves every alpha/mask/dissolve decision above, emits
@@ -168,6 +173,13 @@ float ghostSrgbChannelToLinear(float channel)
     return c <= 0.04045
         ? c / 12.92
         : pow((c + 0.055) / 1.055, 2.4);
+}
+
+// [AvatarLightResponse] inverse of ghostSrgbChannelToLinear (display-space overlay Brightness)
+float alr_ghost_l2s(float channel)
+{
+    float c = max(channel, 0.0);
+    return c <= 0.0031308 ? c * 12.92 : 1.055 * pow(c, 1.0 / 2.4) - 0.055;
 }
 #ifdef GHOST_WORLD_PASS
 // Localized world radiance is authored as a display-space palette plus an HDR
@@ -1469,6 +1481,18 @@ void main()
             ghostSrgbChannelToLinear(worldDissolveSource.b));
 #endif
     }
+    // [AvatarLightResponse] Brightness (beauty sweeps) / Glow (SWEEP_GLOW) trim for a Ghost Studio CLONE.
+    if (alrEnabled == 1 && ghostLook == 1)          // GHOST_STYLE_CLONE
+    {
+        if (alrParams.z != 1.0)
+        {
+            rgb = ghostWorldLinear != 0
+                ? rgb * alrParams.z                 // scene-linear
+                : vec3(alr_ghost_l2s(ghostSrgbChannelToLinear(rgb.r) * alrParams.z),
+                       alr_ghost_l2s(ghostSrgbChannelToLinear(rgb.g) * alrParams.z),
+                       alr_ghost_l2s(ghostSrgbChannelToLinear(rgb.b) * alrParams.z)); // display-space overlay: scale light, not code values
+        }
+    }
 #ifdef GHOST_WORLD_PASS
     // Apply animation, user brightness, and scalar distortion once in scene
     // linear space. Additive lens/chromatic cues participate in the same
@@ -1536,5 +1560,10 @@ void main()
                                   getAtmosAttenuation(), vec4(rgb, alpha)).rgb;
     }
 #endif
+    // [AvatarLightResponse] debug override, final: after signal modulation, additive radiance and fog.
+    if (alrEnabled == 3 && ghostLook == 1)
+    {
+        rgb = vec3(1.0, 0.0, 1.0);
+    }
     frag_color = max(vec4(rgb, alpha), vec4(0));
 }

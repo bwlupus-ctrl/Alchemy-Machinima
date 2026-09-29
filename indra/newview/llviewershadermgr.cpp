@@ -989,6 +989,9 @@ void LLViewerShaderMgr::setShaders()
         gViewerWindow->setCursor(UI_CURSOR_WAIT);
     }
 
+    // [AvatarLightResponse] count the programs that attach avatarLightResponseF.glsl during this load
+    LLShaderMgr::sAvatarLightResponseAttachCount = 0;
+
     // Shaders
     LL_INFOS("ShaderLoading") << "\n~~~~~~~~~~~~~~~~~~\n Loading Shaders:\n~~~~~~~~~~~~~~~~~~" << LL_ENDL;
     LL_INFOS("ShaderLoading") << llformat("Using GLSL %d.%d", gGLManager.mGLSLVersionMajor, gGLManager.mGLSLVersionMinor) << LL_ENDL;
@@ -1139,6 +1142,10 @@ void LLViewerShaderMgr::setShaders()
     gPipeline.createGLBuffers();
 
     finalizeShaderList();
+
+    // [AvatarLightResponse]
+    LL_INFOS("AvatarLightResponse") << "[ALR] module attached to " << LLShaderMgr::sAvatarLightResponseAttachCount
+                                    << " programs" << LL_ENDL;
 
     reentrance = false;
 }
@@ -1326,6 +1333,7 @@ std::string LLViewerShaderMgr::loadBasicShaders()
     index_channels.push_back(-1);    shaders.push_back( make_pair( "alchemy/actorFxFallbackF.glsl",                 1) );
     index_channels.push_back(-1);    shaders.push_back( make_pair( "alchemy/actorFxDissolveF.glsl",                 1) );
     index_channels.push_back(-1);    shaders.push_back( make_pair( "alchemy/actorFxF.glsl",                         1) );
+    index_channels.push_back(-1);    shaders.push_back( make_pair( "alchemy/avatarLightResponseF.glsl",             1) ); // [AvatarLightResponse]
     index_channels.push_back(-1);    shaders.push_back( make_pair( "deferred/reflectionProbeF.glsl",                has_reflection_probes ? 3 : 2) );
     index_channels.push_back(-1);    shaders.push_back( make_pair( "deferred/screenSpaceReflUtil.glsl",             ssr ? 3 : 1) );
     index_channels.push_back(-1);    shaders.push_back( make_pair( "lighting/lightNonIndexedF.glsl",                    mShaderLevel[SHADER_LIGHTING] ) );

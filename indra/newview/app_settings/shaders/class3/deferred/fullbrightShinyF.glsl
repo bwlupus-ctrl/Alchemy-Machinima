@@ -52,6 +52,7 @@ void sampleReflectionProbesLegacy(inout vec3 ambenv, inout vec3 glossenv, inout 
         vec2 tc, vec3 pos, vec3 norm, float glossiness, float envIntensity, bool transparent, vec3 amblit_linear);
 
 void applyLegacyEnv(inout vec3 color, vec3 legacyenv, vec4 spec, vec3 pos, vec3 norm, float envIntensity);
+void applyLegacyEnvKeep(inout vec3 color, vec3 legacyenv, vec4 spec, vec3 pos, vec3 norm, float envIntensity, float keep); // [AvatarLightResponse]
 #ifdef HAS_ACTOR_FX
 vec3 actorFxApply(vec3 source, vec3 normal_eye, vec3 position_eye, vec2 authored_uv);
 vec3 actorFxEmissive(vec3 authored_emissive, vec3 styled_color);
@@ -62,6 +63,9 @@ bool actorFxUvTransformEnabled();
 bool actorFxRgbSplitEnabled();
 vec2 actorFxUv(vec2 authored_uv, vec3 position_eye);
 vec2 actorFxRgbSplitUv(vec2 transformed_uv, float direction);
+vec3 alrPresentedLinear(vec3 c);
+float alrSpecKeep();
+bool alrDebug();
 #endif
 
 void mirrorClip(vec3 pos);
@@ -142,7 +146,12 @@ void main()
         ? actorFxEmissive(vec3(0.0), color.rgb) : vec3(0.0);
 #endif
 
-    applyLegacyEnv(color.rgb, legacyenv, spec, pos, norm, env_intensity);
+    float alr_keep = 1.0; // [AvatarLightResponse] Tame: reflection addend only, mixing weight untouched
+#ifdef HAS_ACTOR_FX
+    color.rgb = alrPresentedLinear(color.rgb); // presented (unlit) colour
+    alr_keep = alrSpecKeep();
+#endif
+    applyLegacyEnvKeep(color.rgb, legacyenv, spec, pos, norm, env_intensity, alr_keep);
 #endif
 
     color.a = 1.0;
@@ -157,5 +166,8 @@ void main()
     }
 #endif
 
+#ifdef HAS_ACTOR_FX
+    if (alrDebug()) color.rgb = vec3(1.0, 0.0, 1.0); // [AvatarLightResponse] debug override
+#endif
     frag_color = max(color, vec4(0));
 }

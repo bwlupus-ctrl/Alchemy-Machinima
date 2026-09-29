@@ -29511,5 +29511,34 @@
     <key>Type</key><string>Boolean</string>
     <key>Value</key><integer>0</integer>
   </map>
+  <!-- [AvatarLightResponse] per-avatar light-independent Diffuse / Tame reflections / Brightness / Glow trim -->
+  <key>AvatarLightResponseEnabled</key>
+  <map>
+    <key>Comment</key><string>[AvatarLightResponse] Master switch for per-avatar Light Response trims. An empty table is already inert.</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>Boolean</string>
+    <key>Value</key><integer>1</integer>
+  </map>
+  <key>AvatarLightResponsePersist</key>
+  <map>
+    <key>Comment</key><string>[AvatarLightResponse] Save each avatar's Light Response per account (avatar_light_response.xml).</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>Boolean</string>
+    <key>Value</key><integer>1</integer>
+  </map>
+  <key>AvatarLightResponseDebugLog</key>
+  <map>
+    <key>Comment</key><string>[AvatarLightResponse] Log a 1 Hz [ALR] instrument line per adjusted target (UPLOADED / FAIL-NOT-UPLOADED / EXPECTED-MUTED / INCONCLUSIVE).</string>
+    <key>Persist</key><integer>0</integer>
+    <key>Type</key><string>Boolean</string>
+    <key>Value</key><integer>0</integer>
+  </map>
+  <key>AvatarLightResponseDebugTint</key>
+  <map>
+    <key>Comment</key><string>[AvatarLightResponse] Debug override: paint every adjusted avatar solid magenta to reveal uncovered shader paths.</string>
+    <key>Persist</key><integer>0</integer>
+    <key>Type</key><string>Boolean</string>
+    <key>Value</key><integer>0</integer>
+  </map>
 </map>
 </llsd>

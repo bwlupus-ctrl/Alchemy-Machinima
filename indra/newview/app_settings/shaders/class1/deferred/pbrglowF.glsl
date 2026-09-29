@@ -56,6 +56,7 @@ bool actorFxUvTransformEnabled();
 bool actorFxRgbSplitEnabled();
 vec2 actorFxUv(vec2 authored_uv, vec3 position_eye);
 vec2 actorFxRgbSplitUv(vec2 transformed_uv, float direction);
+vec3 alrEmissive(vec3 e); // [AvatarLightResponse]
 #endif
 
 void main()
@@ -113,6 +114,9 @@ void main()
     emissive *= srgb_to_linear(texture(emissiveMap, emissive_texcoord.xy).rgb);
 #endif
 
+#ifdef HAS_ACTOR_FX
+    emissive = alrEmissive(emissive); // [AvatarLightResponse] authored glow
+#endif
     float lum = max(max(emissive.r, emissive.g), emissive.b);
     lum *= vertex_emissive.a;
 #ifdef HAS_ACTOR_FX

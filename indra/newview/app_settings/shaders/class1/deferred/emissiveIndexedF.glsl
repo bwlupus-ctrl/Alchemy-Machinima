@@ -44,6 +44,7 @@ void actorFxTronPrime(); // [TronT2 fix] seam footprint, uniform flow
 float actorFxAuthoredMaterialResponse();
 bool actorFxDissolveEnabled();
 float actorFxBeautyDissolveCoverage();
+float alrEmissiveGain(); // [AvatarLightResponse]
 uniform int actorFxSharedAuthoredOnly;
 uniform int actorFxUseCoverageAlpha;
 uniform float actorFxSharedGlowAttenuation;
@@ -157,6 +158,9 @@ void main()
     }
 #endif
     float a = diffuse_alpha * vertex_color.a;
+#ifdef HAS_ACTOR_FX
+    a *= alrEmissiveGain(); // [AvatarLightResponse] authored glow, before the synthetic add
+#endif
 #ifdef HAS_ACTOR_FX
     // See the scalar variant: only shared authored replay of a BLEND base range
     // needs the extra diffuse vertex-alpha coverage term.

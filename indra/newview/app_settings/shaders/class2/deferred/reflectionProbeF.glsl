@@ -105,8 +105,17 @@ void applyGlossEnv(inout vec3 color, vec3 glossenv, vec4 spec, vec3 pos, vec3 no
 
 }
 
+// [AvatarLightResponse] keep scales ONLY the (encoded) reflection addend; the mixing weight is
+// untouched and keep == 1.0 is bit-exact. The old name forwards 1.0.
+// This probes-off path mixes in ENCODED (sRGB) space, so the reflection addend is scaled in encoded
+// space too: monotonic in keep (0 => none), not linear-light exact.
+void applyLegacyEnvKeep(inout vec3 color, vec3 legacyenv, vec4 spec, vec3 pos, vec3 norm, float envIntensity, float keep)
+{
+    color = srgb_to_linear(mix(linear_to_srgb(color.rgb), legacyenv*2.0*keep, envIntensity));
+}
+
 void applyLegacyEnv(inout vec3 color, vec3 legacyenv, vec4 spec, vec3 pos, vec3 norm, float envIntensity)
 {
-    color = srgb_to_linear(mix(linear_to_srgb(color.rgb), legacyenv*2.0, envIntensity));
+    applyLegacyEnvKeep(color, legacyenv, spec, pos, norm, envIntensity, 1.0);
 }
 

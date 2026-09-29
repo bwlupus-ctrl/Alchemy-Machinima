@@ -43,6 +43,7 @@
 #include "alchatbar.h"
 // [SL:KB] - Patch: World-Derender | Checked: Catznip-3.2
 #include "alfloaterblocked.h"
+#include "alfloateravatarlightresponse.h" // [AvatarLightResponse]
 #include "alfloatercinelightcues.h"
 // [/SL:KB]
 #include "alfloaterdirectory.h"
@@ -777,6 +778,8 @@ void LLViewerFloaterReg::registerFloaters()
     // ghost_studio is a thin shell around panel_ghost_studio.xml
     // (ALPanelGhostStudio), shared with the Director Console Ghosts tab
     LLFloaterReg::add("ghost_studio", "floater_ghost_studio.xml", &LLFloaterReg::build<LLFloater>);
+    // [AvatarLightResponse] per-avatar Diffuse / Tame reflections / Brightness / Glow trim
+    LLFloaterReg::add("avatar_light_response", "floater_avatar_light_response.xml", (LLFloaterBuildFunc)&LLFloaterReg::build<ALFloaterAvatarLightResponse>);
     // prop_mover is the same idiom: a thin shell around panel_prop_mover.xml
     // (ALPanelPropMover), shared with the Director Console Props tab
     LLFloaterReg::add("prop_mover", "floater_prop_mover.xml", &LLFloaterReg::build<LLFloater>);

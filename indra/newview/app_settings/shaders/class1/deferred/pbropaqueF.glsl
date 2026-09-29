@@ -73,6 +73,11 @@ bool actorFxUvTransformEnabled();
 bool actorFxRgbSplitEnabled();
 vec2 actorFxUv(vec2 authored_uv, vec3 position_eye);
 vec2 actorFxRgbSplitUv(vec2 transformed_uv, float direction);
+vec3 alrEmissive(vec3 e);
+vec3 alrAlbedoLinear(vec3 c);
+float alrRoughness(float r);
+float alrPbrCarrier();
+vec3 alrDebugEmission(vec3 e);
 #endif
 
 uniform mat3 normal_matrix;
@@ -183,11 +188,13 @@ void main()
     tnorm *= gl_FrontFacing ? 1.0 : -1.0;
 
 #ifdef HAS_ACTOR_FX
+    emissive = alrEmissive(emissive); // [AvatarLightResponse] authored glow, before the look emissive
     col = actorFxApply(col, tnorm, vary_position, base_color_texcoord.xy);
     vec2 fx_rm = actorFxPbrMaterial(vec2(spec.g, spec.b));
     spec.g = fx_rm.x;
     spec.b = fx_rm.y;
     emissive = actorFxEmissive(emissive, col);
+    col = alrAlbedoLinear(col); spec.g = alrRoughness(spec.g); // [AvatarLightResponse] presented surface
 #endif
 
     //spec.rgb = vec3(1,1,0);
@@ -196,18 +203,25 @@ void main()
     //emissive = vec3(sign*0.5+0.5);
     //emissive = vNt * 0.5 + 0.5;
     //emissive = tnorm*0.5+0.5;
+    float alr_env_carrier = 0.0; // [AvatarLightResponse] PBR pixels carry Tame in normal.b (legacy-only field)
+#ifdef HAS_ACTOR_FX
+    alr_env_carrier = alrPbrCarrier();
+#endif
     // See: C++: addDeferredAttachments(), GLSL: softenLightF
     frag_data[0] = max(vec4(col, 0.0), vec4(0));                                                   // Diffuse
     frag_data[1] = max(vec4(spec.rgb,0.0), vec4(0));                                    // PBR linear packed Occlusion, Roughness, Metal.
 #ifdef HAS_SKIN
     // [TronA0] rigged mesh: avatar geometry -> tagged flag
-    frag_data[2] = encodeNormal(tnorm, 0, gbufferAvatarFlag(GBUFFER_FLAG_HAS_PBR)); // normal, environment intensity, flags
+    frag_data[2] = encodeNormal(tnorm, alr_env_carrier, gbufferAvatarFlag(GBUFFER_FLAG_HAS_PBR)); // normal, environment intensity, flags
 #else
-    frag_data[2] = encodeNormal(tnorm, 0, GBUFFER_FLAG_HAS_PBR); // normal, environment intensity, flags
+    frag_data[2] = encodeNormal(tnorm, alr_env_carrier, GBUFFER_FLAG_HAS_PBR); // normal, environment intensity, flags
 #endif
 
 #if defined(HAS_EMISSIVE)
     frag_data[3] = max(vec4(emissive,0), vec4(0));                                                // PBR sRGB Emissive
+#ifdef HAS_ACTOR_FX
+    frag_data[3].rgb = alrDebugEmission(frag_data[3].rgb); // [AvatarLightResponse] debug REPLACES emission
+#endif
 #endif
 }
 

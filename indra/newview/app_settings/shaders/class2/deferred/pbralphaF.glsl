@@ -155,6 +155,25 @@ vec3 pbrCalcPointLightOrSpotLightRim(vec3 diffuseColor, vec3 specularColor,
                     float lightSize, float falloff, float is_pointlight, float ambiance,
                     vec4 rim);
 
+// [AvatarLightResponse] spec_keep variants (deferredUtil.glsl); alr* from avatarLightResponseF.glsl
+vec3 pbrBaseLightKeep(vec3 diffuseColor, vec3 specularColor, float metallic, vec3 pos, vec3 norm,
+                      float perceptualRoughness, vec3 light_dir, vec3 sunlit, float scol,
+                      vec3 radiance, vec3 irradiance, vec3 colorEmissive, float ao,
+                      vec3 additive, vec3 atten, float spec_keep);
+vec3 pbrCalcPointLightOrSpotLightRimKeep(vec3 diffuseColor, vec3 specularColor,
+                    float perceptualRoughness,
+                    float metallic,
+                    vec3 n, vec3 p, vec3 v, vec3 lp, vec3 ld, vec3 lightColor,
+                    float lightSize, float falloff, float is_pointlight, float ambiance,
+                    vec4 rim, float spec_keep);
+#ifdef HAS_ACTOR_FX
+vec3 alrEmissive(vec3 e);
+vec3 alrAlbedoLinear(vec3 c);
+float alrRoughness(float r);
+float alrSpecKeep();
+bool alrDebug();
+#endif
+
 void main()
 {
 #ifdef HAS_ACTOR_FX
@@ -277,11 +296,13 @@ void main()
 #endif
 
 #ifdef HAS_ACTOR_FX
+    colorEmissive = alrEmissive(colorEmissive); // [AvatarLightResponse] authored glow, before the look emissive
     col = actorFxApply(col, norm, vary_position, base_color_texcoord.xy);
     vec2 fx_rm = actorFxPbrMaterial(vec2(perceptualRoughness, metallic));
     perceptualRoughness = fx_rm.x;
     metallic = fx_rm.y;
     colorEmissive = actorFxEmissive(colorEmissive, col);
+    col = alrAlbedoLinear(col); perceptualRoughness = alrRoughness(perceptualRoughness); // [AvatarLightResponse] presented surface
 #endif
 
     // PBR IBL
@@ -297,14 +318,18 @@ void main()
 
     vec3 v = -normalize(pos.xyz);
 
-    color = pbrBaseLight(diffuseColor, specularColor, metallic, v, norm.xyz, perceptualRoughness, light_dir, sunlit_linear, scol, radiance, irradiance, colorEmissive, ao, additive, atten);
+    float alr_keep = 1.0; // [AvatarLightResponse] Tame: scales evaluated specular only
+#ifdef HAS_ACTOR_FX
+    alr_keep = alrSpecKeep();
+#endif
+    color = pbrBaseLightKeep(diffuseColor, specularColor, metallic, v, norm.xyz, perceptualRoughness, light_dir, sunlit_linear, scol, radiance, irradiance, colorEmissive, ao, additive, atten, alr_keep);
 
     vec3 light = vec3(0);
 
     // Punctual lights
     // [RigRim] ...Rim variant carries rig_rim_lights[i]; identical result when
     // the rim params are zero / rig_rim_mode is 0.
-#define LIGHT_LOOP(i) light += pbrCalcPointLightOrSpotLightRim(diffuseColor, specularColor, perceptualRoughness, metallic, norm.xyz, pos.xyz, v, light_position[i].xyz, light_direction[i].xyz, light_diffuse[i].rgb, light_deferred_attenuation[i].x, light_deferred_attenuation[i].y, light_attenuation[i].z, light_attenuation[i].w, rig_rim_lights[i]);
+#define LIGHT_LOOP(i) light += pbrCalcPointLightOrSpotLightRimKeep(diffuseColor, specularColor, perceptualRoughness, metallic, norm.xyz, pos.xyz, v, light_position[i].xyz, light_direction[i].xyz, light_diffuse[i].rgb, light_deferred_attenuation[i].x, light_deferred_attenuation[i].y, light_attenuation[i].z, light_attenuation[i].w, rig_rim_lights[i], alr_keep);
 
     LIGHT_LOOP(1)
     LIGHT_LOOP(2)
@@ -322,6 +347,9 @@ void main()
     float final_scale = 1;
     if (classic_mode > 0)
         final_scale = 1.1;
+#ifdef HAS_ACTOR_FX
+    if (alrDebug()) color.rgb = vec3(1.0, 0.0, 1.0); // [AvatarLightResponse] debug override
+#endif
     frag_color = max(vec4(color.rgb * final_scale,a), vec4(0));
 #ifdef HAS_VISIBLE_DIFFUSE
     visible_diffuse = vec4(max(diffuseColor, vec3(0)), a);

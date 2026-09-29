@@ -127,6 +127,7 @@ void main()
                 vec3 diff = vec3(0);
                 vec3 specPunc = vec3(0);
                 pbrPunctual(diffuseColor, specularColor, perceptualRoughness, metallic, n.xyz, v, lv, nl, diff, specPunc);
+                specPunc *= 1.0 - gb.envIntensity; // [AvatarLightResponse] Tame carrier (0 for every non-avatar PBR pixel)
                 final_color += intensity * clamp(nl * (diff + specPunc), vec3(0), vec3(10));
 
                 // [RigRim] PBR branch (omni: no cone, no per-light shadow)

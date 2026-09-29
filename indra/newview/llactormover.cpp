@@ -12042,6 +12042,19 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
                 tex_mat_on = false;
             }
 
+            // [AvatarLightResponse] light response goes to the program that is BOUND for this draw (batch_shader
+            // == active_shader here), on every batch of every style so identity always resets; only
+            // a Studio CLONE draw carries a non-zero response. GLOW slot: the additive authored-
+            // emissive sweep receives Glow (z := g) and never Brightness.
+            {
+                const bool alr_on = style == GHOST_STYLE_CLONE && gp.mLightResponseKey.notNull();
+                LLRenderPass::uploadAvatarLightResponseTo(*batch_shader,
+                    alr_on ? gp.mLightResponseKey : LLUUID::null,
+                    alr_on ? di->mActorFxOwner : LLUUID::null,
+                    alr_on ? di->mActorFxFallbackOwner : LLUUID::null,
+                    subset == SWEEP_GLOW ? LLRenderPass::ALR_SLOT_GLOW : LLRenderPass::ALR_SLOT_BEAUTY);
+            }
+
             // matrix palette: a FROZEN studio instance uploads the snapshot
             // captured at freeze time (per drawing-avatar + skin hash, so the
             // count matches this batch's skin by construction); a hash miss
@@ -12653,6 +12666,18 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
                 gGL.multMatrix((GLfloat*)face->getRenderMatrix().mMatrix);
             }
             gGL.syncMatrices();
+
+            // [AvatarLightResponse] static faces draw through static_shader (the program bound by apply_program above);
+            // same rule as the rigged sweep -- every face, identity for non-CLONE styles.
+            {
+                const LLDrawInfo* alr_di = face->mDrawInfo;
+                const bool alr_on = style == GHOST_STYLE_CLONE && gp.mLightResponseKey.notNull();
+                LLRenderPass::uploadAvatarLightResponseTo(*static_shader,
+                    alr_on ? gp.mLightResponseKey : LLUUID::null,
+                    alr_on && alr_di ? alr_di->mActorFxOwner : LLUUID::null,
+                    alr_on && alr_di ? alr_di->mActorFxFallbackOwner : LLUUID::null,
+                    LLRenderPass::ALR_SLOT_BEAUTY);   // static faces never run SWEEP_GLOW
+            }
 
             vb->setBuffer();
             vb->drawRange(LLRender::TRIANGLES, face->getGeomIndex(),
@@ -14766,6 +14791,7 @@ void LLActorMover::renderStudioGhosts()
         // [GhostDeferred] hand the coverage picture to the draw (clone-only)
         gp.mDeferredCoverage = coverage;
         gp.mPresentCoverage  = item.mPresent;
+        gp.mLightResponseKey = inst.mId; // [AvatarLightResponse]
 
         drawGeometryGhost(item.mAv, *item.mBatches, item.mFootAgent, tint,
                           llclamp(inst.mAlpha, 0.f, 1.f), inst.mStyle, gp,
@@ -17018,6 +17044,21 @@ void LLActorMover::renderSharedActorStyleDepthPrepass()
     }
 }
 
+// [AvatarLightResponse] Shared Actor FX replay: the style is the proxy's (uploadActorFxStyleOnly), but the light
+// response belongs to the command's OWN draw-info owners -- a shared command list also carries
+// worn animesh, so proxy.mStyleId would name the wrong avatar. Null owner_info => proxy identity.
+static void upload_shared_replay_light_response(const LLDrawInfo* owner_info, const LLUUID& style_id)
+{
+    if (owner_info)
+    {
+        LLRenderPass::uploadAvatarLightResponse(owner_info->mActorFxOwner, owner_info->mActorFxFallbackOwner);
+    }
+    else
+    {
+        LLRenderPass::uploadAvatarLightResponse(style_id.isNull() ? gAgentID : style_id);
+    }
+}
+
 bool LLActorMover::renderSharedActorPBRCommands(
     const SharedActorStyleProxy& proxy, bool depth_only)
 {
@@ -17184,7 +17225,8 @@ bool LLActorMover::renderSharedActorPBRCommands(
             texture_matrix = face->mTextureMatrix;
         }
 
-        LLRenderPass::uploadActorFx(proxy.mStyleId, topology_wire, true);
+        LLRenderPass::uploadActorFxStyleOnly(proxy.mStyleId, topology_wire, true);
+        upload_shared_replay_light_response(policy_info, proxy.mStyleId); // [AvatarLightResponse]
 
         if (command.mRigged
             && !LLRenderPass::uploadMatrixPalette(
@@ -17484,7 +17526,8 @@ bool LLActorMover::renderSharedActorLegacyGlowCommands(
         LLRenderPass::setupGLTFTextureMatrix(
             indexed || info->mTextureList.size() > 1
                 ? nullptr : info->mTextureMatrix);
-        LLRenderPass::uploadActorFx(proxy.mStyleId, false, true);
+        LLRenderPass::uploadActorFxStyleOnly(proxy.mStyleId, false, true);
+        upload_shared_replay_light_response(info, proxy.mStyleId); // [AvatarLightResponse]
         const bool palette_ok = !rigged || LLRenderPass::uploadMatrixPalette(
             info->mAvatar, info->mSkinInfo);
         if (palette_ok)
@@ -17578,7 +17621,8 @@ bool LLActorMover::renderSharedActorLegacyGlowCommands(
         LLRenderPass::applyModelMatrix(&face->getRenderMatrix());
         LLRenderPass::setupGLTFTextureMatrix(
             indexed ? nullptr : face->mTextureMatrix);
-        LLRenderPass::uploadActorFx(proxy.mStyleId, false, true);
+        LLRenderPass::uploadActorFxStyleOnly(proxy.mStyleId, false, true);
+        upload_shared_replay_light_response(info, proxy.mStyleId); // [AvatarLightResponse]
         LLGLDisable no_cull(source.mDoubleSided ? GL_CULL_FACE : 0);
         vb->setBuffer();
         vb->drawRange(LLRender::TRIANGLES, face->getGeomIndex(),

@@ -49,6 +49,8 @@ bool actorFxUvTransformEnabled();
 bool actorFxRgbSplitEnabled();
 vec2 actorFxUv(vec2 authored_uv, vec3 position_eye);
 vec2 actorFxRgbSplitUv(vec2 transformed_uv, float direction);
+vec3 alrAlbedoSrgb(vec3 c);
+vec3 alrDebugEmission(vec3 e);
 #endif
 
 void main()
@@ -87,6 +89,9 @@ void main()
         col.rgb = linear_to_srgb(actor_fx_styled_linear);
     }
 #endif
+#ifdef HAS_ACTOR_FX
+    col.rgb = alrAlbedoSrgb(col.rgb); // [AvatarLightResponse] presented surface
+#endif
     frag_data[0] = vec4(col.rgb, 0.0);
     frag_data[1] = vec4(0,0,0,0);
 #ifdef HAS_SKIN
@@ -103,6 +108,7 @@ void main()
     {
         frag_data[3].rgb = actorFxEmissive(vec3(0.0), actor_fx_styled_linear);
     }
+    frag_data[3].rgb = alrDebugEmission(frag_data[3].rgb); // [AvatarLightResponse] debug REPLACES emission
 #endif
 #endif
 }

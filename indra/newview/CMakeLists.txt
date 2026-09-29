@@ -290,6 +290,9 @@ set(viewer_SOURCE_FILES
     alrotoink.cpp
     altron.cpp
     alcinelightrigmodel.cpp
+    alavatarlightresponse.cpp # [AvatarLightResponse]
+    alavatarlightresponsemodel.cpp # [AvatarLightResponse]
+    alfloateravatarlightresponse.cpp # [AvatarLightResponse]
     aldiopterpresetbank.cpp
     aldiopterrelevance.cpp
     alfloatercinelightcues.cpp
@@ -1149,6 +1152,9 @@ set(viewer_HEADER_FILES
     alcinelightrig.h
     alcinelightrigmanager.h
     alcinelightrigmodel.h
+    alavatarlightresponse.h # [AvatarLightResponse]
+    alavatarlightresponsemodel.h # [AvatarLightResponse]
+    alfloateravatarlightresponse.h # [AvatarLightResponse]
     aldiopterpresetbank.h
     aldiopterrelevance.h
     alfloatercinelightcues.h
@@ -2610,6 +2616,7 @@ if (BUILD_TESTING)
     alghostautoanimmodel.cpp # [AutoAnimate]
     alformationsolver.cpp
     alcinelightrigmodel.cpp
+    alavatarlightresponsemodel.cpp # [AvatarLightResponse]
     aldirectorswitchermodel.cpp
     alweathermodel.cpp
     alghostgroupmodel.cpp

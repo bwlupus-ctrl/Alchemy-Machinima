@@ -13,6 +13,7 @@
 
 #include "aldirectorswitcher.h"
 #include "alghoststudio.h"
+#include "alavatarlightresponse.h" // [AvatarLightResponse]
 #include "llagentdata.h"             // gAgentID (stable even while self avatar is unavailable)
 #include "llghostavatar.h"          // LLGhostAvatar complete type for resolveEntityClone() upcast
 #include "llactormover.h"           // startAll/stopAll/placeAt (ACTION, marks)
@@ -2157,6 +2158,15 @@ LLSD LLDirectorCast::sceneData() const
         }
     }
     data["group_delays"] = delays;
+
+    // [AvatarLightResponse] each cast member's light response rides with the scene (a null id would mean You)
+    std::vector<LLUUID> light_response_ids;
+    light_response_ids.reserve(mCast.size());
+    for (const CastMember& m : mCast)
+    {
+        light_response_ids.push_back(m.mId);
+    }
+    data["light_response"] = ALAvatarLightResponse::instance().exportFor(light_response_ids);
     return data;
 }
 
@@ -2401,6 +2411,15 @@ void LLDirectorCast::applySceneData(const LLSD& data)
             {
                 setGroupDelay(it->first, (F32)it->second.asReal());
             }
+        }
+    }
+
+    // [AvatarLightResponse] merge (never replace) the scene's stored light responses
+    if (data.has("light_response"))
+    {
+        if (ALAvatarLightResponse::instance().importMerge(data["light_response"]))
+        {
+            ALAvatarLightResponse::instance().saveIfPersist();
         }
     }
 }

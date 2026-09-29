@@ -146,6 +146,13 @@
          parameter="ghost_studio" />
       </menu_item_call>
       <menu_item_call
+       label="Avatar Light Response..."
+       name="avatar_light_response_item_call">
+        <menu_item_call.on_click
+         function="Floater.Toggle"
+         parameter="avatar_light_response" />
+      </menu_item_call>
+      <menu_item_call
        label="Prop Mover..."
        name="prop_mover_item_call">
         <menu_item_call.on_click

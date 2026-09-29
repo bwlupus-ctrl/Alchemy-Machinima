@@ -925,7 +925,9 @@ vec3 rigRimTerm(vec3 n,            // surface normal (eye space)
 // [RigRim] Forward-alpha punctual light WITH the rim term.  The rim-less
 // pbrCalcPointLightOrSpotLight() below forwards here with rim = 0, which the
 // helper early-outs on, so every existing caller keeps its exact result.
-vec3 pbrCalcPointLightOrSpotLightRim(vec3 diffuseColor, vec3 specularColor,
+// [AvatarLightResponse] spec_keep scales ONLY the evaluated specular term
+// (specPunc) after the BRDF; the old name forwards 1.0 (x * 1.0 is exact).
+vec3 pbrCalcPointLightOrSpotLightRimKeep(vec3 diffuseColor, vec3 specularColor,
                     float perceptualRoughness,
                     float metallic,
                     vec3 n, // normal
@@ -935,7 +937,8 @@ vec3 pbrCalcPointLightOrSpotLightRim(vec3 diffuseColor, vec3 specularColor,
                     vec3 ld, // light direction (for spotlights)
                     vec3 lightColor,
                     float lightSize, float falloff, float is_pointlight, float ambiance,
-                    vec4 rim) // [RigRim] per-light rim params (rig_rim_lights[i])
+                    vec4 rim, // [RigRim] per-light rim params (rig_rim_lights[i])
+                    float spec_keep) // [AvatarLightResponse] 1.0 = untouched
 {
     vec3 color = vec3(0,0,0);
 
@@ -962,6 +965,7 @@ vec3 pbrCalcPointLightOrSpotLightRim(vec3 diffuseColor, vec3 specularColor,
         vec3 specPunc = vec3(0);
 
         pbrPunctual(diffuseColor, specularColor, perceptualRoughness, metallic, n.xyz, v, lv, nl, diffPunc, specPunc);
+        specPunc *= spec_keep; // [AvatarLightResponse]
         color = intensity * clamp(nl * (diffPunc + specPunc), vec3(0), vec3(10));
 
         // [RigRim] additive rim from this forward light (cone + attenuation
@@ -981,6 +985,24 @@ vec3 pbrCalcPointLightOrSpotLightRim(vec3 diffuseColor, vec3 specularColor,
     if (classic_mode > 0)
         final_scale = 0.9;
     return color * final_scale;
+}
+
+// [AvatarLightResponse] old name: forwards spec_keep = 1.0.
+vec3 pbrCalcPointLightOrSpotLightRim(vec3 diffuseColor, vec3 specularColor,
+                    float perceptualRoughness,
+                    float metallic,
+                    vec3 n, // normal
+                    vec3 p, // pixel position
+                    vec3 v, // view vector (negative normalized pixel position)
+                    vec3 lp, // light position
+                    vec3 ld, // light direction (for spotlights)
+                    vec3 lightColor,
+                    float lightSize, float falloff, float is_pointlight, float ambiance,
+                    vec4 rim) // [RigRim] per-light rim params (rig_rim_lights[i])
+{
+    return pbrCalcPointLightOrSpotLightRimKeep(diffuseColor, specularColor, perceptualRoughness, metallic,
+                                               n, p, v, lp, ld, lightColor, lightSize, falloff,
+                                               is_pointlight, ambiance, rim, 1.0);
 }
 
 vec3 pbrCalcPointLightOrSpotLight(vec3 diffuseColor, vec3 specularColor,
@@ -1032,7 +1054,10 @@ vec3 applyShadowLift(vec3 irradiance, vec3 norm, vec3 light_dir, float scol)
     return irradiance * (1.0 + shadow_lift_gain * w);
 }
 
-vec3 pbrBaseLight(vec3 diffuseColor, vec3 specularColor, float metallic, vec3 v, vec3 norm, float perceptualRoughness, vec3 light_dir, vec3 sunlit, float scol, vec3 radiance, vec3 irradiance, vec3 colorEmissive, float ao, vec3 additive, vec3 atten)
+// [AvatarLightResponse] spec_keep scales ONLY the evaluated specular terms after the BRDF
+// (IBL specular and the sun's punctual specular); F0, specularColor, radiance and every
+// diffuse term are untouched. The old name below forwards 1.0 (x * 1.0 is exact).
+vec3 pbrBaseLightKeep(vec3 diffuseColor, vec3 specularColor, float metallic, vec3 v, vec3 norm, float perceptualRoughness, vec3 light_dir, vec3 sunlit, float scol, vec3 radiance, vec3 irradiance, vec3 colorEmissive, float ao, vec3 additive, vec3 atten, float spec_keep)
 {
     perceptualRoughness = max(perceptualRoughness, MIN_PBR_ROUGHNESS);
     vec3 color = vec3(0);
@@ -1041,6 +1066,7 @@ vec3 pbrBaseLight(vec3 diffuseColor, vec3 specularColor, float metallic, vec3 v,
     vec3 iblDiff = vec3(0);
     vec3 iblSpec = vec3(0);
     pbrIbl(diffuseColor, specularColor, radiance, irradiance, ao, NdotV, perceptualRoughness, iblDiff, iblSpec);
+    iblSpec *= spec_keep; // [AvatarLightResponse]
 
     color += iblDiff;
 
@@ -1049,6 +1075,7 @@ vec3 pbrBaseLight(vec3 diffuseColor, vec3 specularColor, float metallic, vec3 v,
     vec3 diffPunc = vec3(0);
     vec3 specPunc = vec3(0);
     pbrPunctual(diffuseColor, specularColor, perceptualRoughness, metallic, norm, v, normalize(light_dir), nl, diffPunc, specPunc);
+    specPunc *= spec_keep; // [AvatarLightResponse]
 
     // Depending on the sky, we combine these differently.
     if (classic_mode > 0)
@@ -1083,6 +1110,12 @@ vec3 pbrBaseLight(vec3 diffuseColor, vec3 specularColor, float metallic, vec3 v,
     color += colorEmissive;
 
     return color;
+}
+
+// [AvatarLightResponse] old name: forwards spec_keep = 1.0.
+vec3 pbrBaseLight(vec3 diffuseColor, vec3 specularColor, float metallic, vec3 v, vec3 norm, float perceptualRoughness, vec3 light_dir, vec3 sunlit, float scol, vec3 radiance, vec3 irradiance, vec3 colorEmissive, float ao, vec3 additive, vec3 atten)
+{
+    return pbrBaseLightKeep(diffuseColor, specularColor, metallic, v, norm, perceptualRoughness, light_dir, sunlit, scol, radiance, irradiance, colorEmissive, ao, additive, atten, 1.0);
 }
 
 uniform vec4 waterPlane;

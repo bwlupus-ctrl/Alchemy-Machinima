@@ -1009,6 +1009,9 @@ public:
         F32        mDistortAmount = 0.5f;    // 0..1 selected distortion strength
         F32        mPhase = 0.f;            // per-instance phase so FX don't sync up
         F32        mEffectFps = 0.f;        // 0 smooth; 1..30 quantized ghostTime
+        // [AvatarLightResponse] Ghost Studio instance id for a Studio CLONE draw (light-response key);
+        // null for path ghosts and shared Actor FX live replays => identity.
+        LLUUID     mLightResponseKey;
         F32        mDissolveProgress = 0.5f; // shared beauty/shadow coverage 0..1
         // actorghostF historically composites after tone mapping and therefore
         // authors its output in display/sRGB space.  The native live Wire pass

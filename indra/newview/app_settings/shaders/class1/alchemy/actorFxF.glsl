@@ -515,6 +515,15 @@ bool actorFxActive()
     return actorFxEnabled != 0 && actorFxParams0.x > 0.001;
 }
 
+// [AvatarLightResponse] sigma of the graphic-Cover mix at the end of
+// actorFxPbrPostLight (mix(layer_source, fx, strength)); 0 when not graphic Cover.
+// Predicate identical to the graphic_cover classifier in actorFxPbrPostLight.
+float actorFxGraphicCoverStrength()
+{
+    return (actorFxActive() && actorFxCoverMode() && (actorFxFlatSensorLook() || actorFxLook == 11))
+        ? actorFxPbrStrength() : 0.0;
+}
+
 // Physical Layer is an input-space transition through the one normal PBR
 // evaluation.  It therefore reaches the identical Cover material at strength
 // one without evaluating a second BRDF.

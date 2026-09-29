@@ -371,6 +371,16 @@ bool LLFloaterDirector::postBuild()
         registrar.add("Director.ResetToMark", [this](LLUICtrl*, const LLSD&) { onCastResetToMark(); });
         registrar.add("Director.ClearLocoAnim", [this](LLUICtrl*, const LLSD&) { onCastClearLocoAnim(); });
         registrar.add("Director.CopyUUID", [this](LLUICtrl*, const LLSD&) { onCastCopyUUID(); });
+        // [AvatarLightResponse] cast row > Light Response...: null cast id means You
+        registrar.add("Director.LightResponse", [this](LLUICtrl*, const LLSD&)
+        {
+            LLUUID id = firstSelectedCastId();
+            if (id.isNull())
+            {
+                id = gAgentID;
+            }
+            LLFloaterReg::showInstance("avatar_light_response", LLSD(id));
+        });
         registrar.add("Director.RemoveFromCast", [this](LLUICtrl*, const LLSD&) { onCastRemove(); });
         // Animate tab's list menu shares the registrar scope
         registrar.add("Director.AnimCopyUUID", [this](LLUICtrl*, const LLSD&) { onAnimCopyUUID(); });

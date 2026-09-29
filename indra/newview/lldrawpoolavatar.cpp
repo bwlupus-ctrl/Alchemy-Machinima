@@ -1098,6 +1098,7 @@ void LLDrawPoolAvatar::renderAvatars(LLVOAvatar* single_avatar, S32 pass)
         if (shared_replay)
         {
             LLRenderPass::uploadActorFxDisabled();
+            LLRenderPass::uploadAvatarLightResponse(actor_fx_id); // [AvatarLightResponse] owned body keeps its trim
         }
         else
         {
@@ -1141,6 +1142,7 @@ void LLDrawPoolAvatar::renderAvatars(LLVOAvatar* single_avatar, S32 pass)
     if (shared_replay)
     {
         LLRenderPass::uploadActorFxDisabled();
+        LLRenderPass::uploadAvatarLightResponse(actor_fx_id); // [AvatarLightResponse] owned body keeps its trim
     }
     else
     {

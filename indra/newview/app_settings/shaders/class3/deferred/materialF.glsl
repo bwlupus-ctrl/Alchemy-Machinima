@@ -62,6 +62,10 @@ bool actorFxUvTransformEnabled();
 bool actorFxRgbSplitEnabled();
 vec2 actorFxUv(vec2 authored_uv, vec3 position_eye);
 vec2 actorFxRgbSplitUv(vec2 transformed_uv, float direction);
+vec3 alrAlbedoSrgb(vec3 c);
+void alrLegacySpec(inout vec3 spec_srgb, inout float gloss, inout float env);
+vec3 alrDebugEmission(vec3 e);
+bool alrDebug();
 #endif
 vec4 encodeNormal(vec3 n, float env, float gbuffer_flag);
 float gbufferAvatarFlag(float flag);   // [TronA0] globalF.glsl
@@ -97,6 +101,10 @@ void sampleReflectionProbesLegacy(inout vec3 ambenv, inout vec3 glossenv, inout 
         vec2 tc, vec3 pos, vec3 norm, float glossiness, float envIntensity, bool transparent, vec3 amblit_linear);
 void applyGlossEnv(inout vec3 color, vec3 glossenv, vec4 spec, vec3 pos, vec3 norm);
 void applyLegacyEnv(inout vec3 color, vec3 legacyenv, vec4 spec, vec3 pos, vec3 norm, float envIntensity);
+void applyLegacyEnvKeep(inout vec3 color, vec3 legacyenv, vec4 spec, vec3 pos, vec3 norm, float envIntensity, float keep); // [AvatarLightResponse]
+#ifdef HAS_ACTOR_FX
+float alrSpecKeep();
+#endif
 
 uniform samplerCube environmentMap;
 uniform sampler2D     lightFunc;
@@ -420,6 +428,11 @@ void main()
     }
 #endif
 
+#ifdef HAS_ACTOR_FX
+    diffcol.rgb = alrAlbedoSrgb(diffcol.rgb); // [AvatarLightResponse] presented legacy surface
+    alrLegacySpec(spec.rgb, glossiness, env);
+#endif
+
     float emissive = getEmissive(diffcol);
 
 #if (DIFFUSE_ALPHA_MODE == DIFFUSE_ALPHA_MODE_BLEND)
@@ -507,11 +520,15 @@ void main()
 
     if (env > 0.0)
     {  // add environmentmap
-        applyLegacyEnv(color, legacyenv, spec, pos.xyz, norm.xyz, env);
+        float alr_keep = 1.0; // [AvatarLightResponse] Tame: reflection addend only, mixing weight untouched
+#ifdef HAS_ACTOR_FX
+        alr_keep = alrSpecKeep();
+#endif
+        applyLegacyEnvKeep(color, legacyenv, spec, pos.xyz, norm.xyz, env, alr_keep);
 
         float cur_glare = max(max(legacyenv.r, legacyenv.g), legacyenv.b);
         cur_glare = clamp(cur_glare, 0, 1);
-        cur_glare *= env;
+        cur_glare *= env * alr_keep;
         glare += cur_glare;
     }
 
@@ -549,6 +566,9 @@ void main()
     float final_scale = 1;
     if (classic_mode > 0)
         final_scale = 1.1;
+#ifdef HAS_ACTOR_FX
+    if (alrDebug()) color = vec3(1.0, 0.0, 1.0); // [AvatarLightResponse] debug override
+#endif
     frag_color = max(vec4(color * final_scale, al), vec4(0));
 
 #ifdef HAS_VISIBLE_DIFFUSE
@@ -587,6 +607,7 @@ void main()
     {
         frag_data[3].rgb = actorFxEmissive(vec3(0.0), actor_fx_styled_linear);
     }
+    frag_data[3].rgb = alrDebugEmission(frag_data[3].rgb); // [AvatarLightResponse] debug REPLACES emission
 #endif
 #endif
 

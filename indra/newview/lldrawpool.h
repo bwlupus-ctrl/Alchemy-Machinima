@@ -381,6 +381,24 @@ public:
     static bool uploadActorFx(const LLDrawInfo& params,
                               bool force_native = false);
     static void uploadActorFxDisabled();
+    // [AvatarLightResponse] Per-avatar Diffuse / Tame / Brightness / Glow trim
+    // (doc/AVATAR_LIGHT_RESPONSE_DESIGN.md section 5).  uploadActorFxStyleOnly
+    // is the style upload WITHOUT the response upload (shared-replay sites that
+    // upload the response from the command's own draw info instead).
+    // uploadAvatarLightResponse*: first non-null key with a stored entry wins;
+    // an explicit identity/bypass entry terminates the chain; no entry = identity.
+    // GLOW slot packs z := g (actorghost SWEEP_GLOW only).
+    enum EAlrSlot { ALR_SLOT_BEAUTY = 0, ALR_SLOT_GLOW = 1 };
+    static bool uploadActorFxStyleOnly(const LLUUID& actor_id,
+                                       bool allow_native_wire = false,
+                                       bool force_native = false);
+    static void uploadAvatarLightResponse(const LLUUID& k1,
+                                          const LLUUID& k2 = LLUUID::null,
+                                          const LLUUID& k3 = LLUUID::null);
+    static void uploadAvatarLightResponseTo(LLGLSLShader& shader,
+                                            const LLUUID& k1, const LLUUID& k2, const LLUUID& k3,
+                                            EAlrSlot slot = ALR_SLOT_BEAUTY);
+    static void uploadAvatarLightResponseDisabled();
     static bool actorFxLookNeedsSyntheticBloom(S32 look);
     // One frame-coherent clock and whole-frame device-coordinate contract for
     // every shared Actor FX shader family.  The clock freezes across an entire

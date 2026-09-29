@@ -49,6 +49,8 @@ bool actorFxUvTransformEnabled();
 bool actorFxRgbSplitEnabled();
 vec2 actorFxUv(vec2 authored_uv, vec3 position_eye);
 vec2 actorFxRgbSplitUv(vec2 transformed_uv, float direction);
+vec3 alrAlbedoSrgb(vec3 c);
+vec3 alrDebugEmission(vec3 e);
 #endif
 
 void main()
@@ -87,6 +89,9 @@ void main()
         diff.rgb = linear_to_srgb(actor_fx_styled_linear);
     }
 #endif
+#ifdef HAS_ACTOR_FX
+    diff.rgb = alrAlbedoSrgb(diff.rgb); // [AvatarLightResponse] presented surface
+#endif
     frag_data[0] = vec4(diff.rgb, 0.0);
     frag_data[1] = vec4(0,0,0,0);
     // [TronA0] system avatar mesh: always avatar geometry -> tagged flag
@@ -99,6 +104,7 @@ void main()
     {
         frag_data[3].rgb = actorFxEmissive(vec3(0.0), actor_fx_styled_linear);
     }
+    frag_data[3].rgb = alrDebugEmission(frag_data[3].rgb); // [AvatarLightResponse] debug REPLACES emission
 #endif
 #endif
 }

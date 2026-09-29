@@ -103,6 +103,24 @@ vec3 pbrBaseLight(vec3 diffuseColor,
                   vec3 additive,
                   vec3 atten);
 
+// [AvatarLightResponse] spec_keep variant (deferredUtil.glsl): PBR pixels carry Tame in normal.b (envIntensity)
+vec3 pbrBaseLightKeep(vec3 diffuseColor,
+                      vec3 specularColor,
+                      float metallic,
+                      vec3 pos,
+                      vec3 norm,
+                      float perceptualRoughness,
+                      vec3 light_dir,
+                      vec3 sunlit,
+                      float scol,
+                      vec3 radiance,
+                      vec3 irradiance,
+                      vec3 colorEmissive,
+                      float ao,
+                      vec3 additive,
+                      vec3 atten,
+                      float spec_keep);
+
 GBufferInfo getGBuffer(vec2 screenpos);
 vec3 clampHDRRange(vec3 color);
 
@@ -198,7 +216,7 @@ void main()
         calcDiffuseSpecular(baseColor.rgb, metallic, diffuseColor, specularColor);
 
         vec3 v = -normalize(pos.xyz);
-        color = pbrBaseLight(diffuseColor, specularColor, metallic, v, gb.normal, perceptualRoughness, light_dir, sunlit_linear, scol, radiance, irradiance, colorEmissive, ao, additive, atten);
+        color = pbrBaseLightKeep(diffuseColor, specularColor, metallic, v, gb.normal, perceptualRoughness, light_dir, sunlit_linear, scol, radiance, irradiance, colorEmissive, ao, additive, atten, 1.0 - gb.envIntensity); // [AvatarLightResponse] Tame carrier
     }
     else if (GET_GBUFFER_FLAG(gb.gbufferFlag, GBUFFER_FLAG_HAS_HDRI))
     {

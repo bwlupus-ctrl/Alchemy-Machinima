@@ -90,6 +90,7 @@ bool actorFxUvTransformEnabled();
 bool actorFxRgbSplitEnabled();
 vec2 actorFxUv(vec2 authored_uv, vec3 position_eye);
 vec2 actorFxRgbSplitUv(vec2 transformed_uv, float direction);
+float alrEmissiveGain(); // [AvatarLightResponse]
 #endif
 
 void calcAtmosphericVarsLinear(vec3 inPositionEye, vec3 norm,
@@ -296,6 +297,9 @@ void main()
 
     float authored_lum = max(max(covered_authored.r, covered_authored.g),
                              covered_authored.b) * vertex_emissive.a;
+#ifdef HAS_ACTOR_FX
+    authored_lum *= alrEmissiveGain(); // [AvatarLightResponse] authored glow only; synthetic_lum is look-only
+#endif
     float synthetic_lum = max(max(synthetic_emissive.r,
                                   synthetic_emissive.g),
                               synthetic_emissive.b);

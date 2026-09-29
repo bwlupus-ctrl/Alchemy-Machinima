@@ -77,6 +77,13 @@
     <menu_item_call.on_click
      function="Director.CopyUUID" />
   </menu_item_call>
+  <menu_item_call
+   label="Light Response..."
+   layout="topleft"
+   name="light_response">
+    <menu_item_call.on_click
+     function="Director.LightResponse" />
+  </menu_item_call>
   <menu_item_separator layout="topleft" />
   <menu_item_call
    label="Remove from Cast"

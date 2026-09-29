@@ -127,6 +127,13 @@ float actorFxPbrDissolveAlpha(float coverage);
 float actorFxPbrNormalAoResponse();
 float actorFxPbrAuthoredEmissiveResponse();
 vec3 actorFxPbrVhsColor(vec3 source);
+float actorFxGraphicCoverStrength(); // [AvatarLightResponse]
+vec3 alrEmissive(vec3 e);
+vec3 alrAlbedoLinear(vec3 c);
+float alrRoughness(float r);
+float alrSpecKeep();
+vec3 alrGraphicCover(vec3 c, vec3 lit_pre, float sigma);
+bool alrDebug();
 bool actorFxUvTransformEnabled();
 bool actorFxRgbSplitEnabled();
 vec2 actorFxUv(vec2 authored_uv, vec3 position_eye);
@@ -196,6 +203,18 @@ vec3 pbrCalcPointLightOrSpotLightRim(vec3 diffuseColor,
                                      float is_pointlight,
                                      float ambiance,
                                      vec4 rim);
+
+// [AvatarLightResponse] spec_keep variants (deferredUtil.glsl)
+vec3 pbrBaseLightKeep(vec3 diffuseColor, vec3 specularColor, float metallic, vec3 pos, vec3 norm,
+                      float perceptualRoughness, vec3 light_dir, vec3 sunlit, float scol,
+                      vec3 radiance, vec3 irradiance, vec3 colorEmissive, float ao,
+                      vec3 additive, vec3 atten, float spec_keep);
+vec3 pbrCalcPointLightOrSpotLightRimKeep(vec3 diffuseColor, vec3 specularColor,
+                                         float perceptualRoughness, float metallic,
+                                         vec3 n, vec3 p, vec3 v, vec3 lp, vec3 ld,
+                                         vec3 lightColor, float lightSize, float falloff,
+                                         float is_pointlight, float ambiance,
+                                         vec4 rim, float spec_keep);
 
 #ifdef SHARED_ACTOR_FX_SLOT_FILTER
 vec4 shared_sample_basecolor(vec2 uv)
@@ -513,6 +532,7 @@ void main()
 #ifdef HAS_ACTOR_FX
     // Only physical replacement materials touch the inputs to the single PBR
     // evaluation. Graphic/sensor looks are applied to lit HDR below.
+    colorEmissive = alrEmissive(colorEmissive); // [AvatarLightResponse] authored glow
     col = actorFxPbrPreLight(col);
     vec2 fx_rm = actorFxPbrMaterial(
         vec2(perceptualRoughness, metallic));
@@ -520,6 +540,7 @@ void main()
     metallic = fx_rm.y;
     vec3 actor_fx_authored_emission = colorEmissive
         * actorFxPbrAuthoredEmissiveResponse();
+    col = alrAlbedoLinear(col); perceptualRoughness = alrRoughness(perceptualRoughness); // [AvatarLightResponse] presented surface
 #endif
 
     float gloss = 1.0 - perceptualRoughness;
@@ -554,20 +575,25 @@ void main()
 #else
     vec3 pbr_authored_emission = colorEmissive;
 #endif
-    vec3 color = pbrBaseLight(diffuseColor, specularColor, metallic,
+    float alr_keep = 1.0; // [AvatarLightResponse] Tame: scales evaluated specular only
+#ifdef HAS_ACTOR_FX
+    alr_keep = alrSpecKeep();
+#endif
+    vec3 color = pbrBaseLightKeep(diffuseColor, specularColor, metallic,
                               v, norm, perceptualRoughness, light_dir,
                               sunlit_linear, scol, radiance, irradiance,
-                              pbr_authored_emission, ao, additive, atten);
+                              pbr_authored_emission, ao, additive, atten,
+                              alr_keep);
 
     vec3 light = vec3(0.0);
     // [RigRim] ...Rim variant carries rig_rim_lights[i]; identical result when
     // the rim params are zero / rig_rim_mode is 0.
-#define LIGHT_LOOP(i) light += pbrCalcPointLightOrSpotLightRim(              \
+#define LIGHT_LOOP(i) light += pbrCalcPointLightOrSpotLightRimKeep(          \
         diffuseColor, specularColor, perceptualRoughness, metallic,          \
         norm, pos, v, light_position[i].xyz, light_direction[i].xyz,         \
         light_diffuse[i].rgb, light_deferred_attenuation[i].x,               \
         light_deferred_attenuation[i].y, light_attenuation[i].z,             \
-        light_attenuation[i].w, rig_rim_lights[i]);
+        light_attenuation[i].w, rig_rim_lights[i], alr_keep);
 
     LIGHT_LOOP(1)
     LIGHT_LOOP(2)
@@ -581,11 +607,14 @@ void main()
     color += light;
 #ifdef HAS_ACTOR_FX
     vec3 actor_fx_synthetic_emission;
+    vec3 alr_lit_pre = color; // [AvatarLightResponse] the lit colour before the post-light mix
     color = actorFxPbrPostLight(color, actor_fx_authored_source,
                                 actor_fx_geometry_normal, vary_position,
                                 base_color_texcoord,
                                 actor_fx_dissolve_coverage,
                                 actor_fx_synthetic_emission);
+    // [AvatarLightResponse] Brightness on the graphic-Cover term only (algebraic, division-free).
+    color = alrGraphicCover(color, alr_lit_pre, actorFxGraphicCoverStrength());
     // Authored and style emission are now independent and each is added once.
     // Both remain inside the normal atmosphere/fog operation below.
     color += actor_fx_authored_emission + actor_fx_synthetic_emission;
@@ -602,5 +631,8 @@ void main()
 #endif
 
     float final_scale = classic_mode > 0 ? 1.1 : 1.0;
+#ifdef HAS_ACTOR_FX
+    if (alrDebug()) color = vec3(1.0, 0.0, 1.0); // [AvatarLightResponse] debug override
+#endif
     frag_color = max(vec4(color * final_scale, output_alpha), vec4(0.0));
 }

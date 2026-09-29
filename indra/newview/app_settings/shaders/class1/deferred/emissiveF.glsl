@@ -48,6 +48,7 @@ void actorFxTronPrime(); // [TronT2 fix] seam footprint, uniform flow
 float actorFxAuthoredMaterialResponse();
 bool actorFxDissolveEnabled();
 float actorFxBeautyDissolveCoverage();
+float alrEmissiveGain(); // [AvatarLightResponse]
 #endif
 
 void main()
@@ -76,6 +77,9 @@ void main()
     }
 #endif
     float a = diffuse_alpha * vertex_color.a;
+#ifdef HAS_ACTOR_FX
+    a *= alrEmissiveGain(); // [AvatarLightResponse] authored glow, before the synthetic add
+#endif
 #ifdef HAS_ACTOR_FX
     // PASS_ALPHA has no duplicate glow DrawInfo. Shared Cover therefore replays
     // its base range through this authored-only path, where native BLEND

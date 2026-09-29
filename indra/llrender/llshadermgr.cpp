@@ -46,6 +46,7 @@ using std::make_pair;
 using std::string;
 
 LLShaderMgr * LLShaderMgr::sInstance = NULL;
+U32 LLShaderMgr::sAvatarLightResponseAttachCount = 0; // [AvatarLightResponse]
 
 LLShaderMgr::LLShaderMgr()
 {
@@ -224,6 +225,13 @@ bool LLShaderMgr::attachShaderFeatures(LLGLSLShader * shader)
             {
                 return false;
             }
+
+            // [AvatarLightResponse] per-avatar response trim; identity while alrEnabled == 0.
+            if (!shader->attachFragmentObject("alchemy/avatarLightResponseF.glsl"))
+            {
+                return false;
+            }
+            ++sAvatarLightResponseAttachCount;
         }
     }
 

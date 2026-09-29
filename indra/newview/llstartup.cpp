@@ -42,6 +42,7 @@
 #include <memory>                   // std::unique_ptr
 
 #include "llviewermedia_streamingaudio.h"
+#include "alavatarlightresponse.h" // [AvatarLightResponse]
 #include "llaudioengine.h"
 // [SL:KB] - Patch: Control-TextParser | Checked: 2012-07-17 (Catznip-3.3)
 #include "lltextparser.h"
@@ -1471,6 +1472,10 @@ bool idle_startup()
                 LLVoiceClient::getInstance()->userAuthorized(gUserCredential->userID(), gAgentID);
                 // create the default proximal channel
                 LLVoiceChannel::initClass();
+                // [AvatarLightResponse] per-account light-response entries. Loaded here, not in STATE_LOGIN_CLEANUP:
+                // the saved "self" entry resolves through gAgentID, which process_login_success_response()
+                // has only just set.
+                ALAvatarLightResponse::instance().loadFromFile();
                 LLStartUp::setStartupState( STATE_WORLD_INIT);
                 LLTrace::get_frame_recording().reset();
             }

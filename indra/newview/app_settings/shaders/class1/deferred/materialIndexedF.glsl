@@ -230,6 +230,9 @@ bool actorFxUvTransformEnabled();
 bool actorFxRgbSplitEnabled();
 vec2 actorFxUv(vec2 authored_uv, vec3 position_eye);
 vec2 actorFxRgbSplitUv(vec2 transformed_uv, float direction);
+vec3 alrAlbedoSrgb(vec3 c);
+void alrLegacySpec(inout vec3 spec_srgb, inout float gloss, inout float env);
+vec3 alrDebugEmission(vec3 e);
 #endif
 
 vec3 getNormal(int mi, inout float glossiness, vec2 normal_uv)
@@ -350,6 +353,11 @@ void main()
     }
 #endif
 
+#ifdef HAS_ACTOR_FX
+    diffcol.rgb = alrAlbedoSrgb(diffcol.rgb); // [AvatarLightResponse] presented legacy surface
+    alrLegacySpec(spec.rgb, glossiness, env);
+#endif
+
     float emissive = getEmissive(mi, diffcol);
 
     float flag = GBUFFER_FLAG_HAS_ATMOS;
@@ -368,6 +376,7 @@ void main()
     {
         frag_data[3].rgb = actorFxEmissive(vec3(0.0), actor_fx_styled_linear);
     }
+    frag_data[3].rgb = alrDebugEmission(frag_data[3].rgb); // [AvatarLightResponse] debug REPLACES emission
 #endif
 #endif
 }

@@ -27,6 +27,7 @@
 #include "llviewerprecompiledheaders.h"
 
 #include "llappviewer.h"
+#include "alavatarlightresponse.h" // [AvatarLightResponse]
 
 // Viewer includes
 #include "llversioninfo.h"
@@ -5414,6 +5415,8 @@ void LLAppViewer::idle()
             // avatar's updateCharacter() has run above. Must stay immediately
             // after gObjectList.update() and before any render-side consumer.
             ALGhostStudio::instance().updatePostObjectList();
+            // [AvatarLightResponse] per-frame table rebuild / counter roll / 1 Hz debug log
+            ALAvatarLightResponse::tick();
         }
     }
 

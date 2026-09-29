@@ -39,6 +39,9 @@ public:
     LLShaderMgr();
     virtual ~LLShaderMgr();
 
+    // [AvatarLightResponse] programs that attached alchemy/avatarLightResponseF.glsl since the last reset.
+    static U32 sAvatarLightResponseAttachCount;
+
     // Note: although you can use statically hashed strings to just bind a random uniform, it's generally preferably that you use this.
     // Always document what the actual shader uniform is next to the shader uniform in this struct.
     // clang-format off

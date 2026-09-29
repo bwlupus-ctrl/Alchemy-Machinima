@@ -49,6 +49,9 @@ bool actorFxUvTransformEnabled();
 bool actorFxRgbSplitEnabled();
 vec2 actorFxUv(vec2 authored_uv, vec3 position_eye);
 vec2 actorFxRgbSplitUv(vec2 transformed_uv, float direction);
+vec3 alrAlbedoSrgb(vec3 c);
+void alrLegacySpec(inout vec3 spec_srgb, inout float gloss, inout float env);
+vec3 alrDebugEmission(vec3 e);
 #endif
 
 void main()
@@ -88,16 +91,22 @@ void main()
 #ifdef HAS_ACTOR_FX
     actor_fx_material_response = actorFxAuthoredMaterialResponse();
 #endif
+    vec4 alr_spec = vertex_color.aaaa * actor_fx_material_response; // spec/gloss // [AvatarLightResponse]
+    float alr_env = vertex_color.a * actor_fx_material_response;
+#ifdef HAS_ACTOR_FX
+    col = alrAlbedoSrgb(col);
+    alrLegacySpec(alr_spec.rgb, alr_spec.a, alr_env);
+#endif
     frag_data[0] = vec4(col, 0.0);
-    frag_data[1] = vertex_color.aaaa * actor_fx_material_response; // spec/gloss
+    frag_data[1] = alr_spec; // spec/gloss
 #if defined(HAS_SKIN) || defined(AVATAR_GEOMETRY)
     // [TronA0] rigged mesh / avatar eyes: avatar geometry -> tagged flag
     frag_data[2] = encodeNormal(nvn.xyz,
-                                vertex_color.a * actor_fx_material_response,
+                                alr_env,
                                 gbufferAvatarFlag(GBUFFER_FLAG_HAS_ATMOS));
 #else
     frag_data[2] = encodeNormal(nvn.xyz,
-                                vertex_color.a * actor_fx_material_response,
+                                alr_env,
                                 GBUFFER_FLAG_HAS_ATMOS);
 #endif
 
@@ -108,6 +117,7 @@ void main()
     {
         frag_data[3].rgb = actorFxEmissive(vec3(0.0), actor_fx_styled_linear);
     }
+    frag_data[3].rgb = alrDebugEmission(frag_data[3].rgb); // [AvatarLightResponse] debug REPLACES emission
 #endif
 #endif
 }

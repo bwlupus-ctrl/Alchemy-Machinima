@@ -948,7 +948,10 @@ void applyGlossEnv(inout vec3 color, vec3 glossenv, vec4 spec, vec3 pos, vec3 no
     color.rgb += glossenv*0.5;
 }
 
- void applyLegacyEnv(inout vec3 color, vec3 legacyenv, vec4 spec, vec3 pos, vec3 norm, float envIntensity)
+ // [AvatarLightResponse] keep scales ONLY the evaluated reflection addend; the mixing weight
+ // (1 - envIntensity) on the existing colour and the Fresnel are authored and untouched.
+ // keep == 1.0 is bit-exact (x * 1.0). The old name forwards 1.0.
+ void applyLegacyEnvKeep(inout vec3 color, vec3 legacyenv, vec4 spec, vec3 pos, vec3 norm, float envIntensity, float keep)
  {
     vec3 reflected_color = legacyenv;
     vec3 lookAt = normalize(pos);
@@ -956,5 +959,10 @@ void applyGlossEnv(inout vec3 color, vec3 glossenv, vec4 spec, vec3 pos, vec3 no
     fresnel *= fresnel;
     fresnel = min(fresnel+envIntensity, 1.0);
     reflected_color *= (envIntensity*fresnel);
-    color = mix(color.rgb, reflected_color*0.5, envIntensity);
+    color = mix(color.rgb, reflected_color*0.5*keep, envIntensity);
+ }
+
+ void applyLegacyEnv(inout vec3 color, vec3 legacyenv, vec4 spec, vec3 pos, vec3 norm, float envIntensity)
+ {
+    applyLegacyEnvKeep(color, legacyenv, spec, pos, norm, envIntensity, 1.0);
  }

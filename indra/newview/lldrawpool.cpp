@@ -33,6 +33,7 @@
 #include "llagentdata.h"
 #include "llframetimer.h"
 #include "altron.h" // [TronT2] Actor FX "Tron Suit" (look 36) params
+#include "alavatarlightresponse.h" // [AvatarLightResponse]
 
 #include <cmath> // [TronT2] std::isfinite for the Tron Suit uniform sanitisers
 
@@ -446,6 +447,37 @@ const LLStaticHashedString sActorFxUseCoverageAlpha("actorFxUseCoverageAlpha");
 const LLStaticHashedString sActorFxTronParams("actorFxTronParams");
 const LLStaticHashedString sActorFxTronParams2("actorFxTronParams2");
 const LLStaticHashedString sActorFxTronColor("actorFxTronColor");
+// [AvatarLightResponse] per-avatar light response uniforms -- avatarLightResponseF.glsl / actorghostF.glsl
+const LLStaticHashedString sAlrEnabled("alrEnabled");
+const LLStaticHashedString sAlrParams("alrParams");
+
+// Uploads one draw's response to `shader`, which MUST be the program that is
+// currently bound (uniform4fv resolves location/cache from the object it is
+// called on while glUniform* writes the bound program).
+void upload_alr(LLGLSLShader& shader, const LLUUID& k1, const LLUUID& k2, const LLUUID& k3,
+                LLRenderPass::EAlrSlot slot)
+{
+    static LLCachedControl<bool> debug_tint(gSavedSettings, "AvatarLightResponseDebugTint", false);
+    LLUUID hit;
+    const LLVector4* p = (LLPipeline::sImpostorRender || (k1.isNull() && k2.isNull() && k3.isNull()))
+        ? nullptr : ALAvatarLightResponse::instance().lookup(k1, k2, k3, &hit);
+    if (!p)
+    {
+        shader.uniform1i(sAlrEnabled, 0);
+        return;
+    }
+    LLVector4 v = *p;
+    if (slot == LLRenderPass::ALR_SLOT_GLOW)
+    {
+        v.mV[VZ] = v.mV[VW];
+    }
+    shader.uniform4fv(sAlrParams, 1, v.mV);
+    shader.uniform1i(sAlrEnabled, debug_tint() ? 3 : 1);
+    if (shader.getUniformLocation(sAlrParams) >= 0)   // count only real consumers
+    {
+        ALAvatarLightResponse::instance().noteUpload(hit);
+    }
+}
 
 LLGLSLShader* get_actor_fx_shader()
 {
@@ -465,6 +497,47 @@ void LLRenderPass::uploadActorFxDisabled()
         // Actor-FX uniforms are program state and otherwise leak from the last
         // styled attachment into unrelated world geometry using that program.
         shader->uniform1i(sActorFxEnabled, 0);
+    }
+    // [AvatarLightResponse] an unowned/disabled draw must also reset the response so it
+    // cannot leak from the last adjusted avatar drawn with this program.
+    uploadAvatarLightResponseDisabled();
+}
+
+// static
+void LLRenderPass::uploadAvatarLightResponse(const LLUUID& k1, const LLUUID& k2, const LLUUID& k3)
+{
+    if (!ALAvatarLightResponse::sEverActive)
+    {
+        return;   // fresh session: zero added GL calls
+    }
+    LLGLSLShader* shader = LLGLSLShader::sCurBoundShaderPtr;
+    if (shader && shader->mFeatures.hasActorFx)
+    {
+        upload_alr(*shader, k1, k2, k3, ALR_SLOT_BEAUTY);
+    }
+}
+
+// static
+void LLRenderPass::uploadAvatarLightResponseTo(LLGLSLShader& shader, const LLUUID& k1, const LLUUID& k2,
+                                               const LLUUID& k3, EAlrSlot slot)
+{
+    if (ALAvatarLightResponse::sEverActive)
+    {
+        upload_alr(shader, k1, k2, k3, slot);
+    }
+}
+
+// static
+void LLRenderPass::uploadAvatarLightResponseDisabled()
+{
+    if (!ALAvatarLightResponse::sEverActive)
+    {
+        return;
+    }
+    LLGLSLShader* shader = LLGLSLShader::sCurBoundShaderPtr;
+    if (shader && shader->mFeatures.hasActorFx)
+    {
+        shader->uniform1i(sAlrEnabled, 0);
     }
 }
 
@@ -725,6 +798,18 @@ bool LLRenderPass::uploadActorFx(const LLUUID& actor_id,
                                   bool allow_native_wire,
                                   bool force_native)
 {
+    const bool result = uploadActorFxStyleOnly(actor_id, allow_native_wire, force_native);
+    // [AvatarLightResponse] uploaded LAST so an internal "disabled" reset above cannot clobber it.
+    // Director identity rules: a null actor id means You.
+    uploadAvatarLightResponse(actor_id.isNull() ? gAgentID : actor_id);
+    return result;
+}
+
+// static
+bool LLRenderPass::uploadActorFxStyleOnly(const LLUUID& actor_id,
+                                           bool allow_native_wire,
+                                           bool force_native)
+{
     if (!force_native && shared_actor_fx_replay_active(actor_id))
     {
         // Layer keeps the authored material as its base, but the treatment is
@@ -744,24 +829,31 @@ bool LLRenderPass::uploadActorFx(const LLUUID& actor_id,
 // static
 bool LLRenderPass::uploadActorFx(const LLDrawInfo& params, bool force_native)
 {
+    bool result = false;
     // Draw-info null is intentionally *not* Director's null-is-You identity.
     // It denotes world geometry with no stable actor owner.
     if (params.mActorFxOwner.isNull())
     {
         uploadActorFxDisabled();
-        return false;
     }
-
-    LLUUID owner;
-    const LLDirectorCast::ActorStyle& style =
-        LLDirectorCast::instance().resolveStoredActorStyle(
-            params.mActorFxOwner, params.mActorFxFallbackOwner, owner);
-    if (!force_native && shared_actor_fx_replay_active(owner))
+    else
     {
-        uploadActorFxDisabled();
-        return false;
+        LLUUID owner;
+        const LLDirectorCast::ActorStyle& style =
+            LLDirectorCast::instance().resolveStoredActorStyle(
+                params.mActorFxOwner, params.mActorFxFallbackOwner, owner);
+        if (!force_native && shared_actor_fx_replay_active(owner))
+        {
+            uploadActorFxDisabled();
+        }
+        else
+        {
+            result = upload_actor_fx_style(owner, style, false);
+        }
     }
-    return upload_actor_fx_style(owner, style, false);
+    // [AvatarLightResponse] uploaded LAST (null owners => identity reset).
+    uploadAvatarLightResponse(params.mActorFxOwner, params.mActorFxFallbackOwner);
+    return result;
 }
 
 namespace

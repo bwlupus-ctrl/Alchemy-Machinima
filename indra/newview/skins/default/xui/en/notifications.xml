@@ -6481,6 +6481,31 @@ You cannot undo this action.
 
   <notification
    icon="alertmodal.tga"
+   name="AvatarLightResponseCapReached"
+   type="alertmodal">
+    <unique/>
+Avatar Light Response is full ([MAX] saved avatars). Use Inherit or Reset all to free entries before adjusting another avatar.
+    <usetemplate
+     name="okbutton"
+     yestext="OK"/>
+  </notification>
+
+  <notification
+   icon="alertmodal.tga"
+   name="AvatarLightResponseResetAll"
+   type="alertmodal">
+    <unique/>
+Remove the light response of every avatar?
+
+Diffuse, Tame reflections, Brightness and Glow return to normal for everyone.
+    <usetemplate
+     name="okcancelbuttons"
+     notext="Cancel"
+     yestext="OK"/>
+  </notification>
+
+  <notification
+   icon="alertmodal.tga"
    name="ConfirmClearAllToybox"
    type="alertmodal">
     <unique/>

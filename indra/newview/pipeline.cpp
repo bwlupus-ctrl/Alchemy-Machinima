@@ -5489,6 +5489,11 @@ U32 LLPipeline::sCurRenderPoolType = 0 ;
 // ===========================================================================
 namespace
 {
+// [AvatarLightResponse] Ghost Studio instance whose deferred/forward proxy is being submitted: ScopedGhostTransform
+// (below) sets it for the lifetime of each proxy's draw loop, so the pushGhost* helpers can key the
+// light response as (instance id, batch owner, batch fallback owner). Null outside a proxy loop.
+LLUUID sGhostAlrInstance;
+
 void setup_ghost_texture_matrix(LLDrawInfo& params)
 {
     if (params.mTextureMatrix)
@@ -5560,6 +5565,7 @@ bool pushGhostBatch(LLDrawInfo& params, bool batch_textures)
     // clear a styled source actor that may have used this program immediately
     // before the custom clone submission.
     LLRenderPass::uploadActorFxDisabled();
+    LLRenderPass::uploadAvatarLightResponse(sGhostAlrInstance, params.mActorFxOwner, params.mActorFxFallbackOwner); // [AvatarLightResponse]
     // Deliberately no LLRenderPass::applyModelMatrix(params).
     params.mVertexBuffer->setBuffer();
     params.mVertexBuffer->drawRange(LLRender::TRIANGLES, params.mStart,
@@ -5606,6 +5612,7 @@ bool pushGhostGLTFBatch(LLDrawInfo& params, LLFetchedGLTFMaterial*& last_mat,
     setup_ghost_texture_matrix(params);
 
     LLRenderPass::uploadActorFxDisabled();
+    LLRenderPass::uploadAvatarLightResponse(sGhostAlrInstance, params.mActorFxOwner, params.mActorFxFallbackOwner); // [AvatarLightResponse]
     // Deliberately no LLRenderPass::applyModelMatrix(params).
     params.mVertexBuffer->setBuffer();
     params.mVertexBuffer->drawRange(LLRender::TRIANGLES, params.mStart,
@@ -5694,6 +5701,7 @@ bool pushGhostMaterialBatch(LLDrawInfo& params, LLGLSLShader& shader,
     setup_ghost_texture_matrix(params);
 
     LLRenderPass::uploadActorFxDisabled();
+    LLRenderPass::uploadAvatarLightResponse(sGhostAlrInstance, params.mActorFxOwner, params.mActorFxFallbackOwner); // [AvatarLightResponse]
     // Deliberately no LLRenderPass::applyModelMatrix(params).
     params.mVertexBuffer->setBuffer();
     params.mVertexBuffer->drawRange(LLRender::TRIANGLES, params.mStart,
@@ -5817,6 +5825,7 @@ bool pushGhostGLTFBatchIndexed(LLDrawInfo& params, LLRenderPass::eGLTFIndexedMap
     LLGLDisable cull_face(double_sided ? GL_CULL_FACE : 0);
 
     LLRenderPass::uploadActorFxDisabled();
+    LLRenderPass::uploadAvatarLightResponse(sGhostAlrInstance, params.mActorFxOwner, params.mActorFxFallbackOwner); // [AvatarLightResponse]
     // Deliberately no LLRenderPass::applyModelMatrix(params).
     params.mVertexBuffer->setBuffer();
     params.mVertexBuffer->drawRange(LLRender::TRIANGLES, params.mStart, params.mEnd, params.mCount, params.mOffset);
@@ -5830,7 +5839,9 @@ class ScopedGhostTransform
 {
 public:
     explicit ScopedGhostTransform(const LLActorMover::GhostProxy& proxy)
+        : mPreviousAlrInstance(sGhostAlrInstance)
     {
+        sGhostAlrInstance = proxy.mInstanceId; // [AvatarLightResponse]
         gGL.matrixMode(LLRender::MM_MODELVIEW);
         gGL.pushMatrix();
 
@@ -5857,6 +5868,7 @@ public:
 
     ~ScopedGhostTransform()
     {
+        sGhostAlrInstance = mPreviousAlrInstance; // [AvatarLightResponse]
         gGL.matrixMode(LLRender::MM_MODELVIEW);
         gGL.popMatrix();
         gGLLastMatrix = nullptr;
@@ -5865,6 +5877,9 @@ public:
 
     ScopedGhostTransform(const ScopedGhostTransform&) = delete;
     ScopedGhostTransform& operator=(const ScopedGhostTransform&) = delete;
+
+private:
+    LLUUID mPreviousAlrInstance; // [AvatarLightResponse]
 };
 
 // [GhostDeferred] SINGLE execution-domain classifier for a harvested rigged
@@ -5950,6 +5965,7 @@ bool pushGhostBumpBatch(LLDrawInfo& params, S32 diffuse_channel)
     }
 
     LLRenderPass::uploadActorFxDisabled();
+    LLRenderPass::uploadAvatarLightResponse(sGhostAlrInstance, params.mActorFxOwner, params.mActorFxFallbackOwner); // [AvatarLightResponse]
     // Deliberately no LLRenderPass::applyModelMatrix(params).
     params.mVertexBuffer->setBuffer();
     params.mVertexBuffer->drawRange(LLRender::TRIANGLES, params.mStart,
@@ -6018,6 +6034,7 @@ bool pushGhostFullbrightShinyBatch(LLDrawInfo& params, S32 diffuse_channel, bool
     }
 
     LLRenderPass::uploadActorFxDisabled();
+    LLRenderPass::uploadAvatarLightResponse(sGhostAlrInstance, params.mActorFxOwner, params.mActorFxFallbackOwner); // [AvatarLightResponse]
     // Deliberately no LLRenderPass::applyModelMatrix(params).
     params.mVertexBuffer->setBuffer();
     params.mVertexBuffer->drawRange(LLRender::TRIANGLES, params.mStart,
