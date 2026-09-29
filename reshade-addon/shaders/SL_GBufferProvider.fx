@@ -125,6 +125,34 @@ void SL_FullscreenVS(in uint id : SV_VertexID,
 #define SL_ALBEDO_TO_LINEAR 0
 #endif
 
+// [AlbedoSpace] iMMERSE does its GI maths in a chroma-compressed working space:
+// RTGI's unpack_hdr() and Launchpad's albedo estimate (sdr_to_hdr ->
+// unpack_hdr_rtgi) both run colour through cone_overlap(), which pulls the
+// three channels ~98% of the way to their mean, and RTGI's final pack_hdr()
+// applies cone_overlap_inv(), which re-expands chroma ~50x. Deferred::AlbedoTex
+// is therefore expected in that compressed space. The viewer's albedo is plain
+// linear RGB, so written unconverted its chroma is expanded ~50x inside
+// `rtgi * albedo` -> saturated red skin/wood in-world (2026-09-29, confirmed:
+// red with SL albedo, none with Launchpad's). Apply the same cone_overlap
+// (k = 0.99 * 0.33, grey axis preserved) to everything written to AlbedoTex.
+// 1 = convert (correct for iMMERSE RTGI), 0 = legacy raw linear write.
+#ifndef SL_ALBEDO_RTGI_SPACE
+#define SL_ALBEDO_RTGI_SPACE 1
+#endif
+
+float3 SL_AlbedoToRtgiSpace(float3 c)
+{
+#if SL_ALBEDO_RTGI_SPACE
+    // Identical to cone_overlap() in iMMERSE_RTGI*.fx / MartysMods_LAUNCHPAD.fx.
+    float k = 0.99 * 0.33;
+    float2 f = float2(1 - 2 * k, k);
+    float3x3 m = float3x3(f.xyy, f.yxy, f.yyx);
+    return mul(c, m);
+#else
+    return c;
+#endif
+}
+
 // GL eye-space (SL, right-handed, camera looks down -Z) → iMMERSE/D3D view-space
 // (left-handed, camera looks down +Z) is a Z negate. This is the one piece that
 // warrants in-world confirmation: if RTGI lighting/AO looks inverted (light from
@@ -548,7 +576,7 @@ void PS_ProvideAlbedo(in float4 vpos : SV_Position, in float2 uv : TEXCOORD,
             // is not a guarantee, because the value is loaded from disk. (FX2)
             if (vd.a >= max(SL_VISDIFF_K_THRESHOLD, SL_VISDIFF_K_MIN))
             {
-                o = vd.rgb;
+                o = SL_AlbedoToRtgiSpace(vd.rgb);   // [AlbedoSpace]
                 return;
             }
 
@@ -605,7 +633,7 @@ void PS_ProvideAlbedo(in float4 vpos : SV_Position, in float2 uv : TEXCOORD,
 #if SL_ALBEDO_TO_LINEAR
     a = pow(a, 2.2);   // sRGB -> approx linear (MUST STAY OFF — double decode)
 #endif
-    o = a;
+    o = SL_AlbedoToRtgiSpace(a);   // [AlbedoSpace]
 }
 #endif
 
