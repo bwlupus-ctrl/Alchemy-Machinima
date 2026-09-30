@@ -1289,6 +1289,21 @@ void display_cube_face()
 
     display_update_camera();
 
+    // [LiveProbeFaceLights] The cinematic live probe empties mNearbyLights in
+    // beginCinematicProbeCapture(), and the only other calcNearbyLights() call
+    // (renderGeomPostDeferred) runs at the TAIL of renderDeferredLighting(),
+    // after the deferred local-light loop has already consumed the list. Without
+    // this, the first face after begin (every face under a 1-face budget) is lit
+    // with an empty list. The camera now sits at the probe origin with this
+    // face's orientation and frustum (cubeSnapshot lookDir + setup3DRender), so
+    // build the transient probe-centric list here. Gate is identical to the one
+    // calcNearbyLights uses for its transient cube-eye branch; ordinary probes
+    // and the main eye never enter it.
+    if (gCubeSnapshot && gPipeline.mReflectionMapManager.isCinematicLiveProbeCapture())
+    {
+        gPipeline.calcNearbyLights(*LLViewerCamera::getInstance());
+    }
+
     {
         LL_PROFILE_ZONE_NAMED_CATEGORY_DISPLAY("Env Update");
         // update all the sky/atmospheric/water settings
