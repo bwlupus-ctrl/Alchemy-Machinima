@@ -105,6 +105,13 @@ private:
     void onSetupSelected();
     void onFlarePresetSelected(LLComboBox* source);
     void onNightMaskPresetSelected(LLComboBox* source);
+    // [NightMaskPercent] The Night Mask Darkness sliders show
+    // round((1 - floor) * 100) while CineLightRigNightMaskDarkness stays the
+    // 0..1 brightness floor. Commit maps percent -> floor; the setting-signal
+    // listener maps floor -> percent onto BOTH sliders (setValue never commits,
+    // so there is no feedback loop).
+    void onNightMaskDarknessCommit(LLUICtrl* source);
+    void syncNightMaskDarknessSliders();
     // [RigRimPreset] Applies a full Rig Rim look (master/soften/back-softness/
     // tint/shadow/alpha/bounce + every per-light gain/sharpness/wrap/back-bias)
     // and snaps the combo back to the sentinel. Never touches
@@ -133,6 +140,9 @@ private:
     LLComboBox* mNightMaskPreset = nullptr;
     LLComboBox* mEasyNightMaskPreset = nullptr;
     LLComboBox* mRigRimPreset = nullptr; // [RigRimPreset]
+    LLUICtrl* mNightMaskDarkness = nullptr; // [NightMaskPercent]
+    LLUICtrl* mEasyNightMaskDarkness = nullptr; // [NightMaskPercent]
+    boost::signals2::scoped_connection mNightMaskDarknessConnection; // [NightMaskPercent]
     LLTextBox* mNightMaskStatus = nullptr;
     LLComboBox* mFXCombo = nullptr;
     LLLineEditor* mSeedEditor = nullptr;

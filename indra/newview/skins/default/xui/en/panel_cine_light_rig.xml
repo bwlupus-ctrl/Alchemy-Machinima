@@ -181,7 +181,8 @@
             <combo_list mouse_wheel_opaque="true" page_lines="8" />
         </combo_box>
         <text follows="left|top" height="15" layout="topleft" left="8" top="322" value="Darkness" width="56" />
-        <slider can_edit_text="true" control_name="CineLightRigNightMaskDarkness" decimal_digits="2" follows="left|top" height="20" increment="0.01" layout="topleft" left="66" max_val="1" min_val="0" name="cine_easy_night_mask_darkness" show_text="true" top="318" tool_tip="Night Mask brightness floor beyond the feather band: 0 is pitch black, 1 is no darkening." width="238" wheel_adjust="true" />
+        <slider can_edit_text="true" decimal_digits="0" follows="left|top" height="20" increment="1" layout="topleft" left="66" max_val="100" min_val="0" name="cine_easy_night_mask_darkness" show_text="true" top="318" tool_tip="How much darker everything beyond the feather band gets. 0% = no darkening, 100% = pitch black. Example: 89% leaves 11% of the light. Hover and scroll the mouse wheel for 1% steps." width="238" wheel_adjust="true" />
+        <text follows="left|top" height="15" layout="topleft" left="306" top="322" value="%" width="14" />
         <button follows="left|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_easy_night_mask_darkness_reset" top="319" tool_tip="Reset darkness" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigNightMaskDarkness" />
         </panel>
         <panel
@@ -845,10 +846,12 @@
          commit_callback.parameter="CineLightRigNightMaskFeather" />
         <text follows="left|top" height="15" layout="topleft" left="8" top="166"
          value="Darkness" width="62" />
-        <slider can_edit_text="true" control_name="CineLightRigNightMaskDarkness"
-         decimal_digits="2" follows="left|top" height="20" increment="0.01"
-         layout="topleft" left="70" max_val="1" min_val="0" name="cine_night_mask_darkness"
-         show_text="true" top="162" tool_tip="Brightness floor beyond the feather band: 0 is pitch black, 1 is no darkening." width="234" wheel_adjust="true" />
+        <slider can_edit_text="true"
+         decimal_digits="0" follows="left|top" height="20" increment="1"
+         layout="topleft" left="70" max_val="100" min_val="0" name="cine_night_mask_darkness"
+         show_text="true" top="162" tool_tip="How much darker everything beyond the feather band gets. 0% = no darkening, 100% = pitch black. Example: 89% leaves 11% of the light. Hover and scroll the mouse wheel for 1% steps." width="234" wheel_adjust="true" />
+        <text follows="left|top" height="15" layout="topleft" left="306" top="166"
+         value="%" width="14" />
         <button follows="left|top" height="18" layout="topleft" left="322" width="18"
          image_overlay="Refresh_Off" image_top_pad="0" name="cine_night_mask_darkness_reset"
          top="163" tool_tip="Reset darkness" commit_callback.function="CineLightRig.ResetControl"

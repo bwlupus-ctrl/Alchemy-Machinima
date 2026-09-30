@@ -659,6 +659,8 @@ bool ALPanelCineLightRig::postBuild()
     mNightMaskPreset = getChild<LLComboBox>("cine_night_mask_preset");
     mEasyNightMaskPreset = getChild<LLComboBox>("cine_easy_night_mask_preset");
     mRigRimPreset = getChild<LLComboBox>("cine_rig_rim_preset"); // [RigRimPreset]
+    mNightMaskDarkness = getChild<LLUICtrl>("cine_night_mask_darkness"); // [NightMaskPercent]
+    mEasyNightMaskDarkness = getChild<LLUICtrl>("cine_easy_night_mask_darkness"); // [NightMaskPercent]
     mNightMaskStatus = getChild<LLTextBox>("night_mask_status");
     const char* const advanced_driven_names[] = {
         "cine_master_ev", "cine_master_ev_reset",
@@ -810,6 +812,22 @@ bool ALPanelCineLightRig::postBuild()
             });
     }
 
+    // [NightMaskPercent] Percent sliders over the 0..1 brightness-floor setting.
+    mNightMaskDarkness->setCommitCallback(
+        [this](LLUICtrl* control, const LLSD&) { onNightMaskDarknessCommit(control); });
+    mEasyNightMaskDarkness->setCommitCallback(
+        [this](LLUICtrl* control, const LLSD&) { onNightMaskDarknessCommit(control); });
+    if (LLControlVariable* darkness_control =
+            gSavedSettings.getControl("CineLightRigNightMaskDarkness"))
+    {
+        mNightMaskDarknessConnection = darkness_control->getSignal()->connect(
+            [this](LLControlVariable*, const LLSD&, const LLSD&)
+            {
+                syncNightMaskDarknessSliders();
+            });
+    }
+    syncNightMaskDarknessSliders();
+
     syncSeedEditor();
     syncObjectTargetControls(true);
     syncGroupControls();
@@ -817,6 +835,41 @@ bool ALPanelCineLightRig::postBuild()
     syncGoboLibrary(true);
     updateDerivedStatus();
     return true;
+}
+
+// [NightMaskPercent] slider percent -> brightness floor (the setting keeps its
+// 0..1 semantics: 0 = pitch black, 1 = no darkening).
+void ALPanelCineLightRig::onNightMaskDarknessCommit(LLUICtrl* source)
+{
+    if (!source)
+    {
+        return;
+    }
+    // Round first so a typed fractional entry (e.g. 89.4) stores exactly the
+    // whole percent the slider then displays.
+    const F32 percent = static_cast<F32>(std::lround(
+        llclamp(static_cast<F32>(source->getValue().asReal()), 0.f, 100.f)));
+    const F32 floor_value = llclamp(1.f - percent / 100.f, 0.f, 1.f);
+    // The setting-signal listener refreshes both sliders from the new value.
+    gSavedSettings.setF32("CineLightRigNightMaskDarkness", floor_value);
+    // A same-value write fires no signal; re-sync so a typed/fractional entry
+    // still snaps to a whole percent.
+    syncNightMaskDarknessSliders();
+}
+
+void ALPanelCineLightRig::syncNightMaskDarknessSliders()
+{
+    const F32 floor_value = llclamp(
+        gSavedSettings.getF32("CineLightRigNightMaskDarkness"), 0.f, 1.f);
+    const F32 percent = static_cast<F32>(std::lround((1.f - floor_value) * 100.f));
+    if (mNightMaskDarkness)
+    {
+        mNightMaskDarkness->setValue(percent);
+    }
+    if (mEasyNightMaskDarkness)
+    {
+        mEasyNightMaskDarkness->setValue(percent);
+    }
 }
 
 void ALPanelCineLightRig::populateStaticCombos()
