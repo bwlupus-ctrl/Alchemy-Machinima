@@ -20,6 +20,9 @@
        (applyEnvIntensityAdvanced / updateEnvIntensityMoonLink). -->
   <string name="env_intensity_adv_show">Advanced +</string>
   <string name="env_intensity_adv_hide">Advanced -</string>
+  <!-- [EnvIntensity userpresets] header row of the user-preset section of the
+       env_intensity_preset combo (rebuildEnvIntensityUserPresets). -->
+  <string name="env_intensity_my_presets">-- My presets --</string>
   <string name="env_intensity_sun_moon_label">Sun / Moon (EV):</string>
   <string name="env_intensity_sun_label">Sun (EV):</string>
   <string name="env_intensity_legacy_note">Legacy sky: Sun boost above 0 EV has no effect</string>
@@ -717,6 +720,21 @@
                 <combo_box.item label="Reflections Pop" name="preset_reflections_pop" value="reflections_pop"/>
                 <combo_box.item label="Custom" name="preset_custom" value="custom"/>
             </combo_box>
+            <!-- [EnvIntensity userpresets] "Presets..." opens the Save / Load /
+                 Delete floater (env_intensity_presets). Placed in the free
+                 rectangle x 750..840 (env_adv_toggle's column), y 16..34: above
+                 env_adv_toggle (top 34), below env_legacy_sun_note (top 5 +
+                 height 10 = 15), right of the preset combo (right edge 744);
+                 the strip and floater do not grow. -->
+            <button follows="left|top"
+                    height="16"
+                    label="Presets..."
+                    layout="topleft"
+                    left="750"
+                    top="16"
+                    name="env_intensity_presets_btn"
+                    tool_tip="Save the current Light Intensity settings as a named preset, or load / delete your saved presets. Saved presets also appear in the Quick Presets list under -- My presets --."
+                    width="90"/>
             <!-- [EnvIntensity v2] Advanced panel toggle; label set from
                  env_intensity_adv_show / _hide in applyEnvIntensityAdvanced(). -->
             <button follows="left|top"

@@ -13720,4 +13720,67 @@ This cannot be undone.
     Couldn't mark your Custom diopter bank unsafe on disk. To protect your settings, restoring it has been disabled for the rest of this session.
     <tag>fail</tag>
   </notification>
+
+  <!-- [EnvIntensity userpresets] Personal Lighting Light Intensity user presets. -->
+  <notification
+   icon="alertmodal.tga"
+   name="EnvIntensityPresetOverwrite"
+   type="alertmodal">
+    <unique/>
+    A Light Intensity preset named &quot;[NAME]&quot; already exists. Replace it with the current settings?
+    <tag>confirm</tag>
+    <usetemplate
+     name="okcancelbuttons"
+     notext="Cancel"
+     yestext="Overwrite"/>
+  </notification>
+
+  <notification
+   icon="alertmodal.tga"
+   name="EnvIntensityPresetConfirmDelete"
+   type="alertmodal">
+    <unique/>
+    Delete the Light Intensity preset &quot;[NAME]&quot;?
+    <tag>confirm</tag>
+    <usetemplate
+     name="okcancelbuttons"
+     notext="Cancel"
+     yestext="Delete"/>
+  </notification>
+
+  <notification
+   icon="alertmodal.tga"
+   name="EnvIntensityPresetInvalidName"
+   type="alertmodal">
+    <unique/>
+    A preset name must be 1 to 64 characters long and can't contain control characters.
+    <tag>fail</tag>
+  </notification>
+
+  <notification
+   icon="alertmodal.tga"
+   name="EnvIntensityPresetReservedName"
+   type="alertmodal">
+    <unique/>
+    &quot;[NAME]&quot; is the name of a built-in Quick Preset. Please choose a different name.
+    <tag>fail</tag>
+  </notification>
+
+  <notification
+   icon="alertmodal.tga"
+   name="EnvIntensityPresetLimit"
+   type="alertmodal">
+    <unique/>
+    You can keep up to 200 Light Intensity presets. Delete one, or overwrite an existing preset, to save this one.
+    <tag>fail</tag>
+  </notification>
+
+  <notification
+   icon="alertmodal.tga"
+   name="EnvIntensityPresetSaveFailed"
+   type="alertmodal">
+    <unique/>
+    Couldn't write your Light Intensity presets file, so the change was not saved. Your current settings are unchanged.
+    <tag>fail</tag>
+  </notification>
 </notifications>

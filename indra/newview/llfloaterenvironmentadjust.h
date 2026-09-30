@@ -101,7 +101,7 @@ private:
     // Light Intensity strip. Applying a preset writes the full deterministic
     // set of AlchemyEnv* keys in the ENV_INTENSITY_PRESETS table (llfloaterenvironmentadjust.cpp;
     // never the Advanced-panel toggle, never AlchemyEnvLocalLightIncludeRig,
-    // never auto-exposure); mApplyingEnvIntensityPreset suppresses the per-
+    // never auto-exposure); ALEnvIntensityPresets::isApplying() suppresses the per-
     // setting listeners below while that write happens. refreshEnvIntensityPresetCombo
     // re-derives the combo's selection from the live settings (exact match ->
     // that preset; otherwise the "Custom" placeholder) and is the handler for
@@ -110,6 +110,10 @@ private:
     void                        onEnvIntensityPresetSelected();
     void                        applyEnvIntensityPreset(const std::string& key);
     void                        refreshEnvIntensityPresetCombo();
+    // [EnvIntensity userpresets] "-- My presets --" section of the same combo
+    // (items "user:<name>", after the static XUI items); rebuilt whenever
+    // ALEnvIntensityPresets saves / deletes a preset.
+    void                        rebuildEnvIntensityUserPresets();
 
     void                        onEnvironmentUpdated(LLEnvironment::EnvSelection_t env, S32 version);
 
@@ -149,11 +153,18 @@ private:
     boost::signals2::scoped_connection mEnvIntensityMoonLinkedConn;
 
     // [EnvIntensity presets] one scoped connection per tracked AlchemyEnv* key
-    // (see alEnvIntensityPresets()), all routed to refreshEnvIntensityPresetCombo();
-    // true while applyEnvIntensityPreset() is writing settings, so that fan-out
-    // does not fight the write or flash "Custom" mid-apply.
+    // (see ENV_INTENSITY_PRESET_WATCHED_KEYS), all routed to
+    // refreshEnvIntensityPresetCombo(). The "applying" suppression flag now lives
+    // in ALEnvIntensityPresets::isApplying() (apply() is shared with the user
+    // presets floater), so that fan-out does not fight the write or flash
+    // "Custom" mid-apply; the explicit refresh comes from the "applied" signal.
     std::vector<boost::signals2::scoped_connection> mEnvIntensityPresetConns;
-    bool                                mApplyingEnvIntensityPreset = false;
+
+    // [EnvIntensity userpresets] number of static (XUI) combo items; everything
+    // after that index is the dynamic user-preset section.
+    S32                                 mEnvIntensityPresetStaticCount = 0;
+    boost::signals2::scoped_connection  mEnvIntensityUserListConn;
+    boost::signals2::scoped_connection  mEnvIntensityUserAppliedConn;
 };
 
 #endif // LL_FLOATERFIXEDENVIRONMENT_H

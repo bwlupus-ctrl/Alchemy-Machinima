@@ -44,7 +44,9 @@
 #include "llagent.h"
 #include "llcombobox.h"
 #include "llfilepicker.h"
+#include "llfloaterreg.h"       // [EnvIntensity userpresets] Presets... button
 #include "llflyoutcombobtn.h"
+#include "alenvintensitypresets.h" // [EnvIntensity userpresets]
 #include "llinventorymodel.h"
 #include "lllocalbitmaps.h"
 #include "llpanel.h"
@@ -239,19 +241,34 @@ namespace
         "AlchemyEnvShadowLiftEV",
     };
 
-    const F32 ENV_INTENSITY_PRESET_EPS(1.e-4f);
+    // [EnvIntensity userpresets] Combo value prefix of the user-preset items
+    // ("user:<name>"), and the section header item's value. The epsilon compare
+    // moved to ALEnvIntensityPresets::nearlyEqual (same 1e-4 epsilon).
+    const std::string ENV_INTENSITY_USER_PREFIX("user:");
+    const std::string ENV_INTENSITY_USER_HEADER_VALUE("user_header");
 
-    inline bool env_intensity_nearly_equal(F32 a, F32 b)
+    // [EnvIntensity userpresets] built-in table row -> the shared 16-value struct
+    // (the table itself is untouched; the field order there is positional).
+    ALEnvIntensityPresets::Values env_intensity_builtin_values(const EnvIntensityPreset& p)
     {
-        return fabsf(a - b) < ENV_INTENSITY_PRESET_EPS;
-    }
-
-    inline bool env_intensity_color_nearly_equal(const LLColor4& a, const LLColor4& b)
-    {
-        return env_intensity_nearly_equal(a.mV[0], b.mV[0])
-            && env_intensity_nearly_equal(a.mV[1], b.mV[1])
-            && env_intensity_nearly_equal(a.mV[2], b.mV[2])
-            && env_intensity_nearly_equal(a.mV[3], b.mV[3]);
+        ALEnvIntensityPresets::Values v;
+        v.mSunEV               = p.mSunEV;
+        v.mSkyGIEV             = p.mSkyGIEV;
+        v.mMoonLinked          = p.mMoonLinked;
+        v.mMoonEV              = p.mMoonEV;
+        v.mGIAmbientEV         = p.mGIAmbientEV;
+        v.mGIProbeDiffuseEV    = p.mGIProbeDiffuseEV;
+        v.mGIProbeSpecEV       = p.mGIProbeSpecEV;
+        v.mLocalLightEV        = p.mLocalLightEV;
+        v.mSunKelvin           = p.mSunKelvin;
+        v.mSunTintColor        = p.mSunTintColor;
+        v.mSunTintStrength     = p.mSunTintStrength;
+        v.mMoonTintColor       = p.mMoonTintColor;
+        v.mMoonTintStrength    = p.mMoonTintStrength;
+        v.mAmbientTintColor    = p.mAmbientTintColor;
+        v.mAmbientTintStrength = p.mAmbientTintStrength;
+        v.mShadowLiftEV        = p.mShadowLiftEV;
+        return v;
     }
 }
 
@@ -412,7 +429,29 @@ bool LLFloaterEnvironmentAdjust::postBuild()
                     [this](LLControlVariable*, const LLSD&, const LLSD&) { refreshEnvIntensityPresetCombo(); }));
             }
         }
+
+        // [EnvIntensity userpresets] user presets: "-- My presets --" section
+        // after the static items, rebuilt on save / delete; an apply() from the
+        // Presets floater (or from this combo) triggers one refresh when the 16
+        // writes are done. Scoped connections: disconnected with the floater.
+        mEnvIntensityPresetStaticCount = preset_combo->getItemCount();
+        mEnvIntensityUserListConn = ALEnvIntensityPresets::connectListChanged(
+            [this]()
+            {
+                rebuildEnvIntensityUserPresets();
+                refreshEnvIntensityPresetCombo();
+            });
+        mEnvIntensityUserAppliedConn = ALEnvIntensityPresets::connectApplied(
+            [this]() { refreshEnvIntensityPresetCombo(); });
+        rebuildEnvIntensityUserPresets();
         refreshEnvIntensityPresetCombo();
+    }
+    if (LLUICtrl* presets_btn = findChild<LLUICtrl>("env_intensity_presets_btn"))
+    {
+        presets_btn->setCommitCallback([](LLUICtrl*, const LLSD&)
+        {
+            LLFloaterReg::showInstance("env_intensity_presets");
+        });
     }
 
     // [BDMerge B13] BD - Windlight Stuff: preset combo, save/delete/import,
@@ -971,22 +1010,36 @@ void LLFloaterEnvironmentAdjust::onEnvIntensityPresetSelected()
         return;
     }
     const std::string key = combo->getValue().asString();
-    if (key == "custom")
+    if (key == "custom" || key.empty() || key == ENV_INTENSITY_USER_HEADER_VALUE)
     {
         // Picking "Custom" changes nothing; re-derive the label so an exact
-        // preset match is not left showing "Custom".
+        // preset match is not left showing "Custom". (An empty value / the
+        // "-- My presets --" header are disabled rows; treated the same way in
+        // case keyboard navigation lands on one.)
         refreshEnvIntensityPresetCombo();
+        return;
+    }
+    // [EnvIntensity userpresets] "user:<name>" -> saved user preset
+    if (key.compare(0, ENV_INTENSITY_USER_PREFIX.size(), ENV_INTENSITY_USER_PREFIX) == 0)
+    {
+        if (!ALEnvIntensityPresets::applyNamed(key.substr(ENV_INTENSITY_USER_PREFIX.size())))
+        {
+            // deleted behind the combo's back: resync the list and selection
+            rebuildEnvIntensityUserPresets();
+            refreshEnvIntensityPresetCombo();
+        }
         return;
     }
     applyEnvIntensityPreset(key);
 }
 
 // [EnvIntensity presets] Writes the full deterministic set of AlchemyEnv*
-// keys for `key` (see ENV_INTENSITY_PRESETS). mApplyingEnvIntensityPreset
-// suppresses refreshEnvIntensityPresetCombo() for the duration so the 16
-// individual setting-change signals fired below do not flash "Custom" mid-
-// write; the explicit call at the end re-derives the combo from the values
-// just written (always an exact match).
+// keys for `key` (see ENV_INTENSITY_PRESETS). The write itself is the shared
+// ALEnvIntensityPresets::apply(): while it runs isApplying() suppresses
+// refreshEnvIntensityPresetCombo() so the 16 individual setting-change signals
+// do not flash "Custom" mid-write; when it finishes the "applied" signal calls
+// refreshEnvIntensityPresetCombo() once (connected in postBuild), which
+// re-derives the combo from the values just written (always an exact match).
 void LLFloaterEnvironmentAdjust::applyEnvIntensityPreset(const std::string& key)
 {
     const EnvIntensityPreset* preset = nullptr;
@@ -1003,39 +1056,56 @@ void LLFloaterEnvironmentAdjust::applyEnvIntensityPreset(const std::string& key)
         return;
     }
 
-    mApplyingEnvIntensityPreset = true;
+    ALEnvIntensityPresets::apply(env_intensity_builtin_values(*preset));
+}
 
-    gSavedSettings.setF32("AlchemyEnvSunEV", preset->mSunEV);
-    gSavedSettings.setF32("AlchemyEnvSkyGIEV", preset->mSkyGIEV);
-    gSavedSettings.setBOOL("AlchemyEnvMoonLinked", preset->mMoonLinked);
-    gSavedSettings.setF32("AlchemyEnvMoonEV", preset->mMoonEV);
-    gSavedSettings.setF32("AlchemyEnvGIAmbientEV", preset->mGIAmbientEV);
-    gSavedSettings.setF32("AlchemyEnvGIProbeDiffuseEV", preset->mGIProbeDiffuseEV);
-    gSavedSettings.setF32("AlchemyEnvGIProbeSpecEV", preset->mGIProbeSpecEV);
-    gSavedSettings.setF32("AlchemyEnvLocalLightEV", preset->mLocalLightEV);
-    gSavedSettings.setF32("AlchemyEnvSunKelvin", preset->mSunKelvin);
-    gSavedSettings.setColor4("AlchemyEnvSunTintColor", preset->mSunTintColor);
-    gSavedSettings.setF32("AlchemyEnvSunTintStrength", preset->mSunTintStrength);
-    gSavedSettings.setColor4("AlchemyEnvMoonTintColor", preset->mMoonTintColor);
-    gSavedSettings.setF32("AlchemyEnvMoonTintStrength", preset->mMoonTintStrength);
-    gSavedSettings.setColor4("AlchemyEnvAmbientTintColor", preset->mAmbientTintColor);
-    gSavedSettings.setF32("AlchemyEnvAmbientTintStrength", preset->mAmbientTintStrength);
-    gSavedSettings.setF32("AlchemyEnvShadowLiftEV", preset->mShadowLiftEV);
+// [EnvIntensity userpresets] Rebuilds the dynamic tail of the Quick Presets
+// combo: [static XUI items][separator][-- My presets --][user presets, sorted].
+// Nothing is added while there are no user presets. The selection is NOT
+// restored here (add() may move it); callers follow with
+// refreshEnvIntensityPresetCombo().
+void LLFloaterEnvironmentAdjust::rebuildEnvIntensityUserPresets()
+{
+    LLComboBox* combo = findChild<LLComboBox>("env_intensity_preset");
+    if (!combo || mEnvIntensityPresetStaticCount <= 0)
+    {
+        return;
+    }
 
-    mApplyingEnvIntensityPreset = false;
+    while (combo->getItemCount() > mEnvIntensityPresetStaticCount)
+    {
+        if (!combo->remove(combo->getItemCount() - 1))
+        {
+            break;
+        }
+    }
 
-    refreshEnvIntensityPresetCombo();
+    const std::vector<std::string> names = ALEnvIntensityPresets::listNames();
+    if (names.empty())
+    {
+        return;
+    }
+    combo->addSeparator();
+    // (translated skins that predate the string fall back to the English header)
+    const std::string header = hasString("env_intensity_my_presets")
+        ? getString("env_intensity_my_presets") : std::string("-- My presets --");
+    combo->add(header, LLSD(ENV_INTENSITY_USER_HEADER_VALUE), ADD_BOTTOM, false);
+    for (const std::string& name : names)
+    {
+        combo->add(name, LLSD(ENV_INTENSITY_USER_PREFIX + name));
+    }
 }
 
 // [EnvIntensity presets] Re-derives the combo's selection from the live
-// AlchemyEnv* settings: an exact match (within ENV_INTENSITY_PRESET_EPS, to
+// AlchemyEnv* settings: an exact match (within the shared 1e-4 epsilon, to
 // absorb F32 round-trip through LLSD) selects that preset, otherwise the
-// combo falls back to its "Custom" placeholder item. Called once from
+// combo falls back to its "Custom" placeholder item. Built-in presets win
+// ties over user presets (same values under two names). Called once from
 // postBuild and from every watched setting's change signal; a no-op while
-// applyEnvIntensityPreset() is writing (mApplyingEnvIntensityPreset).
+// ALEnvIntensityPresets::apply() is writing.
 void LLFloaterEnvironmentAdjust::refreshEnvIntensityPresetCombo()
 {
-    if (mApplyingEnvIntensityPreset)
+    if (ALEnvIntensityPresets::isApplying())
     {
         return;
     }
@@ -1045,45 +1115,25 @@ void LLFloaterEnvironmentAdjust::refreshEnvIntensityPresetCombo()
         return;
     }
 
-    const F32 sun_ev        = gSavedSettings.getF32("AlchemyEnvSunEV");
-    const F32 sky_gi_ev     = gSavedSettings.getF32("AlchemyEnvSkyGIEV");
-    const bool moon_linked  = gSavedSettings.getBOOL("AlchemyEnvMoonLinked");
-    const F32 moon_ev       = gSavedSettings.getF32("AlchemyEnvMoonEV");
-    const F32 gi_ambient_ev = gSavedSettings.getF32("AlchemyEnvGIAmbientEV");
-    const F32 gi_diffuse_ev = gSavedSettings.getF32("AlchemyEnvGIProbeDiffuseEV");
-    const F32 gi_spec_ev    = gSavedSettings.getF32("AlchemyEnvGIProbeSpecEV");
-    const F32 local_ev      = gSavedSettings.getF32("AlchemyEnvLocalLightEV");
-    const F32 sun_kelvin    = gSavedSettings.getF32("AlchemyEnvSunKelvin");
-    const LLColor4 sun_tint = gSavedSettings.getColor4("AlchemyEnvSunTintColor");
-    const F32 sun_tint_str  = gSavedSettings.getF32("AlchemyEnvSunTintStrength");
-    const LLColor4 moon_tint = gSavedSettings.getColor4("AlchemyEnvMoonTintColor");
-    const F32 moon_tint_str  = gSavedSettings.getF32("AlchemyEnvMoonTintStrength");
-    const LLColor4 amb_tint = gSavedSettings.getColor4("AlchemyEnvAmbientTintColor");
-    const F32 amb_tint_str  = gSavedSettings.getF32("AlchemyEnvAmbientTintStrength");
-    const F32 lift_ev       = gSavedSettings.getF32("AlchemyEnvShadowLiftEV");
+    const ALEnvIntensityPresets::Values live = ALEnvIntensityPresets::currentValues();
 
     std::string matched_key("custom");
+    bool found = false;
     for (const EnvIntensityPreset& p : ENV_INTENSITY_PRESETS)
     {
-        if (env_intensity_nearly_equal(sun_ev, p.mSunEV)
-            && env_intensity_nearly_equal(sky_gi_ev, p.mSkyGIEV)
-            && moon_linked == p.mMoonLinked
-            && env_intensity_nearly_equal(moon_ev, p.mMoonEV)
-            && env_intensity_nearly_equal(gi_ambient_ev, p.mGIAmbientEV)
-            && env_intensity_nearly_equal(gi_diffuse_ev, p.mGIProbeDiffuseEV)
-            && env_intensity_nearly_equal(gi_spec_ev, p.mGIProbeSpecEV)
-            && env_intensity_nearly_equal(local_ev, p.mLocalLightEV)
-            && env_intensity_nearly_equal(sun_kelvin, p.mSunKelvin)
-            && env_intensity_color_nearly_equal(sun_tint, p.mSunTintColor)
-            && env_intensity_nearly_equal(sun_tint_str, p.mSunTintStrength)
-            && env_intensity_color_nearly_equal(moon_tint, p.mMoonTintColor)
-            && env_intensity_nearly_equal(moon_tint_str, p.mMoonTintStrength)
-            && env_intensity_color_nearly_equal(amb_tint, p.mAmbientTintColor)
-            && env_intensity_nearly_equal(amb_tint_str, p.mAmbientTintStrength)
-            && env_intensity_nearly_equal(lift_ev, p.mShadowLiftEV))
+        if (ALEnvIntensityPresets::nearlyEqual(live, env_intensity_builtin_values(p)))
         {
             matched_key = p.mKey;
+            found = true;
             break;
+        }
+    }
+    if (!found)
+    {
+        const std::string user_name = ALEnvIntensityPresets::findMatchingName(live);
+        if (!user_name.empty())
+        {
+            matched_key = ENV_INTENSITY_USER_PREFIX + user_name;
         }
     }
     combo->setValue(LLSD(matched_key));

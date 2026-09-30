@@ -44,6 +44,7 @@
 // [SL:KB] - Patch: World-Derender | Checked: Catznip-3.2
 #include "alfloaterblocked.h"
 #include "alfloateravatarlightresponse.h" // [AvatarLightResponse]
+#include "alfloaterenvintensitypresets.h" // [EnvIntensity userpresets]
 #include "alfloatercinelightcues.h"
 // [/SL:KB]
 #include "alfloaterdirectory.h"
@@ -426,6 +427,8 @@ void LLViewerFloaterReg::registerFloaters()
     LLFloaterReg::add("env_fixed_environmentent_sky", "floater_fixedenvironment.xml", (LLFloaterBuildFunc)&LLFloaterReg::build<LLFloaterFixedEnvironmentSky>);
 
     LLFloaterReg::add("env_adjust_snapshot", "floater_adjust_environment.xml", (LLFloaterBuildFunc)&LLFloaterReg::build<LLFloaterEnvironmentAdjust>);
+    // [EnvIntensity userpresets] Save / Load / Delete floater for the Light Intensity strip presets
+    LLFloaterReg::add("env_intensity_presets", "floater_env_intensity_presets.xml", (LLFloaterBuildFunc)&LLFloaterReg::build<ALFloaterEnvIntensityPresets>);
     // [BDMerge B13] BD environment editors (donor: BD llviewerfloaterreg.cpp:380-381)
     LLFloaterReg::add("env_adjust_water", "floater_adjust_water.xml", (LLFloaterBuildFunc)&LLFloaterReg::build<LLFloaterWaterAdjust>);
     LLFloaterReg::add("env_settings", "floater_environment_settings.xml", (LLFloaterBuildFunc)&LLFloaterReg::build<LLFloaterEnvironmentSettings>);

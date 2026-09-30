@@ -287,6 +287,8 @@ set(viewer_SOURCE_FILES
     alcinehaze.cpp
     alcinerigrim.cpp
     alenvintensity.cpp
+    alenvintensitypresets.cpp
+    alfloaterenvintensitypresets.cpp
     alrotoink.cpp
     altron.cpp
     alcinelightrigmodel.cpp
@@ -1199,6 +1201,8 @@ set(viewer_HEADER_FILES
     alcinehaze.h
     alcinerigrim.h
     alenvintensity.h
+    alenvintensitypresets.h
+    alfloaterenvintensitypresets.h
     alrotoink.h
     altron.h
     alpanelcinelightrig.h
