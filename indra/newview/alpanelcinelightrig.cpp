@@ -73,6 +73,65 @@ void addLabeledSeparator(LLComboBox* combo, const std::string& label,
     combo->add(label, LLSD(), ADD_BOTTOM, false);
 }
 
+// [LiveProbeRefresh] One status line (kept to about 45 characters) describing
+// what the refresh scheduler is doing, from a manager snapshot.
+std::string liveProbeRefreshLine(
+    const LLReflectionMapManager::CinematicRefreshStatus& rs)
+{
+    using ALCineLiveProbeRefresh::Mode;
+    using ALCineLiveProbeRefresh::Path;
+    using ALCineLiveProbeRefresh::Reason;
+    switch (rs.mMode)
+    {
+        case Mode::EVERY_FRAME:
+            return "Refresh: Every frame";
+        case Mode::BALANCED:
+        case Mode::ECONOMY:
+        {
+            const char* const label =
+                rs.mMode == Mode::BALANCED ? "Balanced" : "Economy";
+            if (!rs.mStepping || rs.mPath == Path::FULL)
+            {
+                return llformat("Refresh: %s, warming up", label);
+            }
+            return llformat("Refresh: %s, %s %d/6", label,
+                rs.mPassIsRadiance ? "radiance" : "irradiance",
+                rs.mPassFace >= 0 ? rs.mPassFace : 6);
+        }
+        case Mode::ON_CHANGE:
+            break;
+    }
+    if (!rs.mStepping)
+    {
+        return "Refresh: On change, starting";
+    }
+    switch (rs.mPath)
+    {
+        case Path::FULL:
+            if (rs.mReason == Reason::ANIMATED)
+            {
+                return "Refresh: On change, live (animated)";
+            }
+            if (rs.mReason == Reason::SETTLING)
+            {
+                return "Refresh: On change, live (settling)";
+            }
+            return "Refresh: On change, warming up";
+        case Path::BUDGET:
+            return llformat("Refresh: On change, refreshing %d/6",
+                rs.mPassFace >= 0 ? rs.mPassFace : 6);
+        case Path::IDLE:
+            break;
+    }
+    if (rs.mSecondsSinceReason < 0.f)
+    {
+        return "Refresh: On change, idle";
+    }
+    return llformat("Refresh: On change, idle (%s %ds ago)",
+        ALCineLiveProbeRefresh::reasonName(rs.mReason),
+        ll_round(rs.mSecondsSinceReason));
+}
+
 void addThumbnailGobo(LLComboBox* combo, S32 index)
 {
     LLSD row;
@@ -507,6 +566,7 @@ const std::vector<std::string>& ALPanelCineLightRig::settings()
         "CineLightRigLiveProbeAmbiance",
         "CineLightRigLiveProbeBounceKeep",
         "CineLightRigLiveProbeGizmo",
+        "CineLightRigLiveProbeRefresh", // [LiveProbeRefresh]
         "CineLightRigNightMaskEnabled",
         "CineLightRigNightMaskTarget",
         "CineLightRigNightMaskShape",
@@ -595,6 +655,7 @@ bool ALPanelCineLightRig::postBuild()
     mGoboPreview = getChild<LLIconCtrl>("cine_gobo_preview");
     mGoboSoftness = getChild<LLTextBox>("cine_gobo_softness");
     mLiveProbeStatus = getChild<LLTextBox>("cine_live_probe_status");
+    mLiveProbeRefreshNow = getChild<LLButton>("cine_live_probe_refresh_now"); // [LiveProbeRefresh]
     mNightMaskPreset = getChild<LLComboBox>("cine_night_mask_preset");
     mEasyNightMaskPreset = getChild<LLComboBox>("cine_easy_night_mask_preset");
     mRigRimPreset = getChild<LLComboBox>("cine_rig_rim_preset"); // [RigRimPreset]
@@ -677,6 +738,10 @@ bool ALPanelCineLightRig::postBuild()
         [this](LLUICtrl*, const LLSD&) { resetAim(); });
     getChild<LLButton>("cine_reset_all")->setCommitCallback(
         [this](LLUICtrl*, const LLSD&) { resetAll(); });
+    // [LiveProbeRefresh] One-shot re-render of the live probe (On change mode).
+    mLiveProbeRefreshNow->setCommitCallback(
+        [](LLUICtrl*, const LLSD&)
+        { gPipeline.mReflectionMapManager.requestCinematicLiveProbeRefresh(); });
     mSeedEditor->setMaxTextLength(10);
     mSeedEditor->setCommitCallback(
         [this](LLUICtrl*, const LLSD&) { commitSeed(); });
@@ -2261,6 +2326,20 @@ void ALPanelCineLightRig::updateDerivedStatus()
         case ALCineLightRigManager::LiveProbeState::LIVE:
             probe_status = "Live";
             break;
+    }
+    {
+        // [LiveProbeRefresh] "Refresh now" only means something in On change.
+        mLiveProbeRefreshNow->setEnabled(
+            ALCineLiveProbeRefresh::sanitizeMode(
+                gSavedSettings.getS32("CineLightRigLiveProbeRefresh")) ==
+            ALCineLiveProbeRefresh::Mode::ON_CHANGE);
+    }
+    if (probe_state == ALCineLightRigManager::LiveProbeState::WARMING ||
+        probe_state == ALCineLightRigManager::LiveProbeState::LIVE)
+    {
+        // [LiveProbeRefresh]
+        probe_status += "\n" + liveProbeRefreshLine(
+            gPipeline.mReflectionMapManager.getCinematicRefreshStatus());
     }
     if (probe_state != ALCineLightRigManager::LiveProbeState::DISABLED)
     {

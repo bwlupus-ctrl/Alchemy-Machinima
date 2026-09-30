@@ -1100,6 +1100,12 @@ public:
     Slot cameraFocusSlot() const { return mFocusState.mFocus; }
     LiveProbeState liveProbeState() const;
     F32 liveProbeFade() const;
+    // [LiveProbeRefresh] Change-signature contribution of every enabled rig
+    // slot (all rigs light the capture) and their combined "animating" flag.
+    // Both read live state at call time; nothing is cached.
+    void appendLiveProbeSignature(ALCineLiveProbeRefresh::Signature& sig,
+                                  F32 move_m) const;
+    bool liveProbeAnimating() const;
 
 private:
     ALCineLightRigManager();

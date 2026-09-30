@@ -435,6 +435,36 @@ F32 ALCineLightRigManager::liveProbeFade() const
     return std::clamp(mLiveProbe->mReflectionProbe->mFadeIn, 0.f, 1.f);
 }
 
+void ALCineLightRigManager::appendLiveProbeSignature(
+    ALCineLiveProbeRefresh::Signature& sig, F32 move_m) const
+{
+    for (S32 i = 0; i < SLOT_COUNT; ++i)
+    {
+        const Slot slot = static_cast<Slot>(i);
+        const bool enabled = isSlotEnabled(slot);
+        sig.addExact(enabled);
+        if (enabled)
+        {
+            // The probe's target slot has its omnis/catchlight ignored by the capture.
+            at(slot).appendLiveProbeSignature(sig, move_m, slot == mLiveProbeTarget);
+        }
+    }
+}
+
+bool ALCineLightRigManager::liveProbeAnimating() const
+{
+    for (S32 i = 0; i < SLOT_COUNT; ++i)
+    {
+        const Slot slot = static_cast<Slot>(i);
+        if (isSlotEnabled(slot) &&
+            at(slot).liveProbeAnimating(slot == mLiveProbeTarget))
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
 ALCineLightRigManager::LiveProbeState
 ALCineLightRigManager::liveProbeState() const
 {

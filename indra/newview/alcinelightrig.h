@@ -11,6 +11,7 @@
 #define AL_CINE_LIGHT_RIG_H
 
 #include "alcinelightrigmodel.h"
+#include "alcineliveproberefresh.h" // [LiveProbeRefresh]
 #include "llpointer.h"
 #include "llsd.h"
 #include "lluuid.h"
@@ -230,6 +231,16 @@ public:
     void liveProbeIgnoredLightIds(std::vector<LLUUID>& ids) const;
     void liveProbeProjectorIds(std::vector<LLUUID>& ids) const;
     void setLiveProbeBounceScale(F32 scale);
+    // [LiveProbeRefresh] Appends this rig's capture-relevant emitter state
+    // (read on demand, nothing cached) to the live probe's change signature.
+    // exclude_ignored: this rig is the probe's target, so its omnis and
+    // catchlight (liveProbeIgnoredLightIds) never reach the capture and are
+    // left out of the hash and out of the animating test.
+    void appendLiveProbeSignature(ALCineLiveProbeRefresh::Signature& sig,
+                                  F32 move_m, bool exclude_ignored) const;
+    // [LiveProbeRefresh] True while an FX / transition / animated gobo /
+    // flicker program is driving this rig's captured emitters frame to frame.
+    bool liveProbeAnimating(bool exclude_ignored) const;
 
     void setAnchor(const LLUUID& id);
     const LLUUID& getAnchor() const { return mAnchor; }

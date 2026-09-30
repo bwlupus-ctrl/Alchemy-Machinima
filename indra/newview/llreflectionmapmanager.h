@@ -26,6 +26,7 @@
 
 #pragma once
 
+#include "alcineliveproberefresh.h" // [LiveProbeRefresh]
 #include "llreflectionmap.h"
 #include "llrendertarget.h"
 #include "llcubemaparray.h"
@@ -147,6 +148,27 @@ public:
         return static_cast<U32>(mCinematicPinnedLightIds.size());
     }
 
+    // [LiveProbeRefresh] Snapshot of the live probe refresh scheduler for the
+    // rig panel's status line. mStepping is false whenever the scheduler is not
+    // driving the probe (Every frame mode, fallback probe, paused, no probe).
+    struct CinematicRefreshStatus
+    {
+        ALCineLiveProbeRefresh::Mode mMode =
+            ALCineLiveProbeRefresh::Mode::EVERY_FRAME;
+        ALCineLiveProbeRefresh::Path mPath =
+            ALCineLiveProbeRefresh::Path::IDLE;
+        ALCineLiveProbeRefresh::Reason mReason =
+            ALCineLiveProbeRefresh::Reason::NONE;
+        F32 mSecondsSinceReason = -1.f;
+        S32 mPassFace = -1;        // 0-5 while a budget pass is running, else -1
+        bool mPassIsRadiance = false;
+        bool mConverged = false;
+        bool mStepping = false;
+    };
+    // Ask the On change scheduler for one full irradiance + radiance pair.
+    void requestCinematicLiveProbeRefresh();
+    CinematicRefreshStatus getCinematicRefreshStatus() const;
+
     // reset all state on the next update
     void reset();
 
@@ -232,6 +254,15 @@ private:
     void updateProbeFace(LLReflectionMap* probe, U32 face,
                          bool force_dynamic = false);
 
+    // [LiveProbeRefresh] The shipped six-faces-every-frame realtime capture
+    // (body moved verbatim out of update()) and the budgeted variants.
+    void updateRealtimeProbeAllFaces(LLReflectionMap* realtime_probe,
+                                     LLReflectionMap* cinematicLive);
+    void updateCinematicBudget(LLReflectionMap* probe, S32 faces);
+    U64 sampleCinematicH(LLReflectionMap* probe);
+    void resetCinematicRefresh();
+    void logCinematicRefresh(F64 now);
+
     // list of active reflection maps
     std::vector<LLPointer<LLReflectionMap> > mProbes;
 
@@ -271,7 +302,37 @@ private:
     bool mCinematicIrradianceReady = false;
     bool mCinematicRadianceReady = false;
 
-    LLPointer<LLReflectionMap> mDefaultProbe;  // default reflection probe to fall back to for pixels with no probe influences (should always be at cube index 0)
+    // [LiveProbeRefresh] Scheduler state for the Balanced / Economy / On change
+    // modes (see alcineliveproberefresh.h). Every frame mode never touches it.
+    struct CineRefreshStats
+    {
+        U32 mSteps = 0;
+        U32 mFaces = 0;
+        U32 mFullFrames = 0;
+        U32 mBudgetFrames = 0;
+        U32 mIdleFrames = 0;
+        U32 mIrrPub = 0;
+        U32 mRadPub = 0;
+        U32 mCleanPasses = 0;
+        U32 mDirtyPasses = 0;
+        U32 mBlocked = 0;
+        U32 mResets = 0;
+        U32 mHashSamples = 0;
+        F64 mHashUsSum = 0.0;
+        F64 mHashUsMax = 0.0;
+        F64 mWindowStart = -1.0;
+        F64 mLastStep = -1.0;
+    };
+    ALCineLiveProbeRefresh::State mCineRefresh;
+    ALCineLiveProbeRefresh::StickyHash mCineSticky;
+    ALCineLiveProbeRefresh::Signature mCineSig;
+    LLVector4a mCineFrozenOrigin;
+    U64 mCineLastH = 0;
+    ALCineLiveProbeRefresh::Path mCineLastPath =
+        ALCineLiveProbeRefresh::Path::IDLE;
+    CineRefreshStats mCineStats;
+
+    LLPointer<LLReflectionMap> mDefaultProbe; // default reflection probe to fall back to for pixels with no probe influences (should always be at cube index 0)
 
     // number of reflection probes to use for rendering
     U32 mReflectionProbeCount;

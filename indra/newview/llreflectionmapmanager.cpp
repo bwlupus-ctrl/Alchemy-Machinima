@@ -33,6 +33,8 @@
 
 #include <vector>
 
+#include "alcinelightrigmanager.h" // [LiveProbeRefresh]
+#include "lltimer.h"              // [LiveProbeRefresh]
 #include "llviewercamera.h"
 #include "llspatialpartition.h"
 #include "llviewerregion.h"
@@ -209,6 +211,7 @@ void LLReflectionMapManager::update()
 {
     if (!LLPipeline::sReflectionProbesEnabled || gTeleportDisplay || LLStartUp::getStartupState() < STATE_PRECACHE)
     {
+        resetCinematicRefresh(); // [LiveProbeRefresh]
         return;
     }
 
@@ -217,6 +220,7 @@ void LLReflectionMapManager::update()
     llassert(!gCubeSnapshot); // assert a snapshot is not in progress
     if (LLAppViewer::instance()->logoutRequestSent())
     {
+        resetCinematicRefresh(); // [LiveProbeRefresh]
         return;
     }
 
@@ -332,6 +336,7 @@ void LLReflectionMapManager::update()
 
     if (mProbes.empty())
     {
+        resetCinematicRefresh(); // [LiveProbeRefresh]
         return;
     }
 
@@ -494,50 +499,98 @@ void LLReflectionMapManager::update()
 
     LLReflectionMap* realtime_probe = cinematicLive
         ? cinematicLive : (realtime ? closestDynamic : nullptr);
-    if (realtime_probe != nullptr)
+    // [LiveProbeRefresh] Refresh-mode dispatch. Every frame mode and the
+    // closest-dynamic fallback run the shipped capture unchanged (its body now
+    // lives in updateRealtimeProbeAllFaces); the other modes go through the
+    // face-budget scheduler, sampled here so extra display() calls (snapshots,
+    // 360) can never advance it.
+    static LLCachedControl<S32> cine_refresh_mode(gSavedSettings, "CineLightRigLiveProbeRefresh", 3);
+    static LLCachedControl<S32> cine_change_faces(gSavedSettings, "CineLightRigLiveProbeChangeFaces", 2);
+    static LLCachedControl<F32> cine_watchdog_sec(gSavedSettings, "CineLightRigLiveProbeWatchdogSec", 5.f);
+    static LLCachedControl<F32> cine_settle_sec(gSavedSettings, "CineLightRigLiveProbeSettleSec", 0.5f);
+    const ALCineLiveProbeRefresh::Mode cine_mode =
+        ALCineLiveProbeRefresh::sanitizeMode(cine_refresh_mode);
+    if (realtime_probe != nullptr && realtime_probe == cinematicLive &&
+        cine_mode != ALCineLiveProbeRefresh::Mode::EVERY_FRAME)
     {
-        LL_PROFILE_ZONE_NAMED_CATEGORY_DISPLAY("rmmu - realtime");
-        // The designated cinematic probe owns the one realtime slot. Without
-        // one, preserve the shipped closest-dynamic behavior.
-        // should do a full irradiance pass on "odd" frames and a radiance pass on "even" frames
+        LL_PROFILE_ZONE_NAMED_CATEGORY_DISPLAY("rmmu - cine step");
         realtime_probe->autoAdjustOrigin();
-
-        // store and override the value of "isRadiancePass" -- parts of the render pipe rely on "isRadiancePass" to set
-        // lighting values etc
-        bool radiance_pass = isRadiancePass();
-        mRadiancePass = mRealtimeRadiancePass;
-        mCinematicLiveProbeCapture = realtime_probe == cinematicLive;
-        const bool saved_nearby_lights = mCinematicLiveProbeCapture &&
-            gPipeline.beginCinematicProbeCapture();
-        for (U32 i = 0; i < 6; ++i)
+        ALCineLiveProbeRefresh::Params cine_params;
+        cine_params.mMode = cine_mode;
+        cine_params.mChangeFaces = llclamp((S32)cine_change_faces, 1, 6);
+        cine_params.mWatchdogSec = llclamp((F32)cine_watchdog_sec, 0.f, 60.f);
+        cine_params.mSettleSec = llclamp((F32)cine_settle_sec, 0.f, 5.f);
+        const bool on_change = cine_mode == ALCineLiveProbeRefresh::Mode::ON_CHANGE;
+        const U64 cine_h = on_change ? sampleCinematicH(realtime_probe) : 0;
+        // sampleCinematicH above refreshed the pipeline's animated-gobo flag.
+        const bool cine_animating = on_change &&
+            (ALCineLightRigManager::instance().liveProbeAnimating() ||
+             gPipeline.isCinematicProbeLightAnimating());
+        const bool cine_ready = mCinematicIrradianceReady &&
+            mCinematicRadianceReady && realtime_probe->mComplete;
+        // decide() resets its own state on a probe / cube / mode change; count
+        // those here so the [LiveProbe] resets counter covers every reset.
+        if (mCineRefresh.mProbe != nullptr &&
+            (mCineRefresh.mProbe != realtime_probe ||
+             mCineRefresh.mCubeIndex != realtime_probe->mCubeIndex ||
+             mCineRefresh.mMode != cine_mode))
         {
-            updateProbeFace(realtime_probe, i);
+            ++mCineStats.mResets;
         }
-        if (mCinematicLiveProbeCapture)
+        const ALCineLiveProbeRefresh::Decision decision =
+            ALCineLiveProbeRefresh::decide(mCineRefresh, cine_params, cine_h,
+                cine_animating, cine_ready, (F64)gFrameTimeSeconds,
+                realtime_probe, realtime_probe->mCubeIndex);
+        ++mCineStats.mSteps;
+        mCineLastPath = decision.mPath;
+        if (decision.mPath == ALCineLiveProbeRefresh::Path::FULL)
         {
-            if (mRealtimeRadiancePass)
+            // Budget passes never advance mRealtimeRadiancePass, so resync the
+            // FULL cursor with the scheduler: the next pass is radiance iff the
+            // last completed pass was irradiance (strict alternation across
+            // budget <-> animation handoffs; an abandoned partial pass does not
+            // count as completed).
+            mRealtimeRadiancePass = mCineRefresh.mLastPassIrr;
+            const bool full_radiance = mRealtimeRadiancePass; // the pass the moved body will run
+            updateRealtimeProbeAllFaces(realtime_probe, cinematicLive);
+            ALCineLiveProbeRefresh::onFullPass(mCineRefresh, full_radiance,
+                cine_h, (F64)gFrameTimeSeconds);
+            ++(full_radiance ? mCineStats.mRadPub : mCineStats.mIrrPub);
+            ++mCineStats.mCleanPasses; // a FULL frame is one complete, clean pass
+            ++mCineStats.mFullFrames;
+            mCineStats.mFaces += 6;
+        }
+        else if (decision.mPath == ALCineLiveProbeRefresh::Path::BUDGET)
+        {
+            ALCineLiveProbeRefresh::noteFrameH(mCineRefresh, cine_h);
+            if (realtime_probe == mUpdatingProbe)
             {
-                mCinematicRadianceReady = true;
+                // would share the primary scratch: skip this frame, keep the cursor
+                ++mCineStats.mBlocked;
             }
             else
             {
-                mCinematicIrradianceReady = true;
-            }
-            if (mCinematicIrradianceReady && mCinematicRadianceReady)
-            {
-                realtime_probe->mComplete = true;
-                updateNeighbors(realtime_probe);
+                updateCinematicBudget(realtime_probe, decision.mFaces);
+                ++mCineStats.mBudgetFrames;
             }
         }
-        if (saved_nearby_lights)
+        else
         {
-            gPipeline.endCinematicProbeCapture();
+            ++mCineStats.mIdleFrames;
         }
-        mCinematicLiveProbeCapture = false;
-        mRealtimeRadiancePass = !mRealtimeRadiancePass;
-
-        // restore "isRadiancePass"
-        mRadiancePass = radiance_pass;
+        logCinematicRefresh((F64)gFrameTimeSeconds);
+    }
+    else
+    {
+        // Every frame / fallback / paused / no probe: the scheduler is not driving.
+        if (mCineRefresh.mProbe != nullptr)
+        {
+            resetCinematicRefresh();
+        }
+        if (realtime_probe != nullptr)
+        {
+            updateRealtimeProbeAllFaces(realtime_probe, cinematicLive);
+        }
     }
 
     static LLCachedControl<F32> sUpdatePeriod(gSavedSettings, "RenderDefaultProbeUpdatePeriod", 2.f);
@@ -572,6 +625,389 @@ void LLReflectionMapManager::update()
         oldestOccluded->autoAdjustOrigin();
         oldestOccluded->mLastUpdateTime = gFrameTimeSeconds;
     }
+}
+
+// [LiveProbeRefresh] The shipped realtime capture: all six faces of
+// realtime_probe every call, alternating irradiance / radiance. This body was
+// moved verbatim out of update() (only re-indented) so the Every frame mode and
+// the closest-dynamic fallback behave exactly as before.
+void LLReflectionMapManager::updateRealtimeProbeAllFaces(
+    LLReflectionMap* realtime_probe, LLReflectionMap* cinematicLive)
+{
+    LL_PROFILE_ZONE_NAMED_CATEGORY_DISPLAY("rmmu - realtime");
+    // The designated cinematic probe owns the one realtime slot. Without
+    // one, preserve the shipped closest-dynamic behavior.
+    // should do a full irradiance pass on "odd" frames and a radiance pass on "even" frames
+    realtime_probe->autoAdjustOrigin();
+
+    // store and override the value of "isRadiancePass" -- parts of the render pipe rely on "isRadiancePass" to set
+    // lighting values etc
+    bool radiance_pass = isRadiancePass();
+    mRadiancePass = mRealtimeRadiancePass;
+    mCinematicLiveProbeCapture = realtime_probe == cinematicLive;
+    const bool saved_nearby_lights = mCinematicLiveProbeCapture &&
+        gPipeline.beginCinematicProbeCapture();
+    for (U32 i = 0; i < 6; ++i)
+    {
+        updateProbeFace(realtime_probe, i);
+    }
+    if (mCinematicLiveProbeCapture)
+    {
+        if (mRealtimeRadiancePass)
+        {
+            mCinematicRadianceReady = true;
+        }
+        else
+        {
+            mCinematicIrradianceReady = true;
+        }
+        if (mCinematicIrradianceReady && mCinematicRadianceReady)
+        {
+            realtime_probe->mComplete = true;
+            updateNeighbors(realtime_probe);
+        }
+    }
+    if (saved_nearby_lights)
+    {
+        gPipeline.endCinematicProbeCapture();
+    }
+    mCinematicLiveProbeCapture = false;
+    mRealtimeRadiancePass = !mRealtimeRadiancePass;
+
+    // restore "isRadiancePass"
+    mRadiancePass = radiance_pass;
+}
+
+// [LiveProbeRefresh] Budgeted capture of the pass the scheduler started: up to
+// `faces` faces of one irradiance or radiance pass (never more than the pass
+// has left). Publication happens only when the sixth face lands, exactly as in
+// the six-face path; mComplete / mFadeIn are never touched, so the previous
+// cube stays displayed while the next one builds.
+void LLReflectionMapManager::updateCinematicBudget(
+    LLReflectionMap* probe, S32 faces)
+{
+    LL_PROFILE_ZONE_NAMED_CATEGORY_DISPLAY("rmmu - cine budget");
+    LL_PROFILE_ZONE_NUM(faces);
+    if (!mCineRefresh.mActive)
+    {
+        return;
+    }
+    if (mCineRefresh.mFace == 0)
+    {
+        // FREEZE the origin for this whole pass so its six faces agree.
+        mCineFrozenOrigin = probe->mOrigin;
+    }
+    const LLVector4a live_origin = probe->mOrigin;
+    probe->mOrigin = mCineFrozenOrigin;
+    const bool radiance_pass = isRadiancePass();
+    mCinematicLiveProbeCapture = true;
+    const bool saved_nearby_lights = gPipeline.beginCinematicProbeCapture();
+    // Stops at the pass end: a pass never starts mid-frame.
+    for (S32 n = 0; n < faces && mCineRefresh.mActive; ++n)
+    {
+        mRadiancePass = mCineRefresh.mRadiance;
+        updateProbeFace(probe, static_cast<U32>(mCineRefresh.mFace));
+        ++mCineStats.mFaces;
+        const ALCineLiveProbeRefresh::PassEnd pass_end =
+            ALCineLiveProbeRefresh::advanceFace(
+                mCineRefresh, static_cast<F64>(gFrameTimeSeconds));
+        // clean / dirty describe the pass itself (H stayed stable across it),
+        // for the same pass population as irr_pub + rad_pub.
+        if (pass_end == ALCineLiveProbeRefresh::PassEnd::IRRADIANCE)
+        {
+            ++mCineStats.mIrrPub;
+            ++(mCineRefresh.mPassClean ? mCineStats.mCleanPasses
+                                       : mCineStats.mDirtyPasses);
+        }
+        else if (pass_end == ALCineLiveProbeRefresh::PassEnd::RADIANCE)
+        {
+            ++mCineStats.mRadPub;
+            ++(mCineRefresh.mPassClean ? mCineStats.mCleanPasses
+                                       : mCineStats.mDirtyPasses);
+            mCinematicIrradianceReady = true;
+            mCinematicRadianceReady = true;
+            probe->mComplete = true;
+        }
+    }
+    if (saved_nearby_lights)
+    {
+        gPipeline.endCinematicProbeCapture();
+    }
+    mCinematicLiveProbeCapture = false;
+    mRadiancePass = radiance_pass;
+    // The influence volume keeps following the subject.
+    probe->mOrigin = live_origin;
+    if (!mCineRefresh.mActive)
+    {
+        updateNeighbors(probe); // after any pass end
+    }
+}
+
+// [LiveProbeRefresh] Quantised hash H of everything that changes what the live
+// probe would capture. Runs inside the manager step (after display() and the
+// environment update), so extra display() calls can never advance it. Field
+// order is fixed; see doc/LIVE_PROBE_REFRESH_DESIGN.md section 4.4.
+U64 LLReflectionMapManager::sampleCinematicH(LLReflectionMap* probe)
+{
+    LL_PROFILE_ZONE_NAMED_CATEGORY_DISPLAY("cine probe H");
+    LLTimer hash_timer;
+    static LLCachedControl<F32> move_tolerance(gSavedSettings, "CineLightRigLiveProbeMoveTolerance", 0.05f);
+    const F32 move_m = llclamp((F32)move_tolerance, 0.001f, 1.f);
+    static LLCachedControl<bool> auto_adjust_legacy(gSavedSettings, "RenderSkyAutoAdjustLegacy", false);
+
+    ALCineLiveProbeRefresh::Signature& sig = mCineSig;
+    sig.clear();
+
+    // 1. Probe
+    sig.addAbs3(probe->mOrigin.getF32ptr(), move_m);
+    sig.addAbs(probe->mRadius, 0.02f);
+    sig.addAbs(probe->getAmbiance(), 0.01f);
+    sig.addExact(static_cast<U64>(static_cast<U32>(probe->mCubeIndex)));
+
+    // 2. Rigs (all enabled slots light the capture)
+    ALCineLightRigManager::instance().appendLiveProbeSignature(sig, move_m);
+
+    // 2b. Non-rig local lights the capture could use (world prims + attachment
+    // lights), AlchemyGlobalLightScale and the attached/bdmerge light gates.
+    // Every light passing the capture's filters (no nearest-N / frustum
+    // truncation); see LLPipeline::appendCinematicProbeLightSignature.
+    gPipeline.appendCinematicProbeLightSignature(sig,
+        LLVector3(probe->mOrigin.getF32ptr()), probe->mRadius, move_m);
+
+    // 3. Sky
+    LLSettingsSky::ptr_t sky = LLEnvironment::instance().getCurrentSky();
+    if (!sky)
+    {
+        sig.addExact(false);
+    }
+    else
+    {
+        sig.addExact(true);
+        sig.addAngle(sky->getSunDirection().mV, 0.1f);
+        sig.addAngle(sky->getMoonDirection().mV, 0.1f);
+        sig.addColor(sky->getSunlightColor().mV, 0.005f, 1e-4f);
+        sig.addColor(sky->getMoonlightColor().mV, 0.005f, 1e-4f);
+        sig.addColor(sky->getCloudColor().mV, 0.005f, 1e-4f);
+        sig.addColor(sky->getAmbientColor().mV, 0.005f, 1e-4f);
+        sig.addColor(sky->getBlueDensity().mV, 0.005f, 1e-4f);
+        sig.addColor(sky->getBlueHorizon().mV, 0.005f, 1e-4f);
+        sig.addColor(sky->getGlow().mV, 0.005f, 1e-4f);
+        sig.addColor(sky->getCloudPosDensity1().mV, 0.005f, 1e-3f);
+        sig.addColor(sky->getCloudPosDensity2().mV, 0.005f, 1e-3f);
+        sig.addRel(sky->getHazeDensity(), 0.005f, 1e-4f);
+        sig.addRel(sky->getDensityMultiplier(), 0.01f, 1e-7f);
+        sig.addRel(sky->getDistanceMultiplier(), 0.005f, 1e-3f);
+        sig.addRel(sky->getCloudScale(), 0.005f, 1e-4f);
+        sig.addRel(sky->getStarBrightness(), 0.005f, 1e-3f);
+        sig.addRel(sky->getSkyDropletRadius(), 0.005f, 0.01f);
+        sig.addRel(sky->getMaxY(), 0.005f, 1.f);
+        sig.addAbs(sky->getHazeHorizon(), 1e-3f);
+        sig.addAbs(sky->getCloudShadow(), 1e-3f);
+        sig.addAbs(sky->getCloudVariance(), 1e-3f);
+        sig.addAbs(sky->getMoonBrightness(), 1e-3f);
+        sig.addAbs(sky->getSkyMoistureLevel(), 1e-3f);
+        sig.addAbs(sky->getSkyIceLevel(), 1e-3f);
+        sig.addAbs(sky->getReflectionProbeAmbiance(auto_adjust_legacy), 1e-3f);
+        sig.addAbs(sky->getGamma(), 1e-3f);
+        sig.addAbs(sky->getSunMoonGlowFactor(), 1e-3f);
+        // Sun / moon disc size: drawn into the cube faces (llvosky) and edited
+        // live by Personal Lighting without a manager reset.
+        sig.addRel(sky->getSunScale(), 0.005f, 1e-3f);
+        sig.addRel(sky->getMoonScale(), 0.005f, 1e-3f);
+        sig.addAbs(static_cast<F32>(sky->getBlendFactor()), 1e-3f);
+        sig.addExact(sky->getIsSunUp());
+        sig.addExact(sky->getSunTextureId());
+        sig.addExact(sky->getMoonTextureId());
+        sig.addExact(sky->getCloudNoiseTextureId());
+        sig.addExact(sky->getBloomTextureId());
+        sig.addExact(sky->getRainbowTextureId());
+        sig.addExact(sky->getHaloTextureId());
+        sig.addExact(sky->getNextSunTextureId());
+        sig.addExact(sky->getNextMoonTextureId());
+        sig.addExact(sky->getNextCloudNoiseTextureId());
+    }
+
+    // 4. Water
+    LLSettingsWater::ptr_t water = LLEnvironment::instance().getCurrentWater();
+    if (!water)
+    {
+        sig.addExact(false);
+    }
+    else
+    {
+        sig.addExact(true);
+        sig.addColor(water->getWaterFogColor().mV, 0.005f, 1e-4f);
+        sig.addRel(water->getModifiedWaterFogDensity(false), 0.005f, 1e-4f);
+        sig.addAbs(water->getFogMod(), 1e-3f);
+        sig.addAbs(water->getFresnelScale(), 1e-3f);
+        sig.addAbs(water->getFresnelOffset(), 1e-3f);
+        sig.addAbs(water->getScaleAbove(), 1e-3f);
+        sig.addAbs(water->getScaleBelow(), 1e-3f);
+        sig.addAbs(static_cast<F32>(water->getBlendFactor()), 1e-3f);
+        sig.addAbs(water->getBlurMultiplier(), 1e-4f);
+        const LLVector2 wave1 = water->getWave1Dir();
+        sig.addAbs(wave1.mV[0], 1e-3f);
+        sig.addAbs(wave1.mV[1], 1e-3f);
+        const LLVector2 wave2 = water->getWave2Dir();
+        sig.addAbs(wave2.mV[0], 1e-3f);
+        sig.addAbs(wave2.mV[1], 1e-3f);
+        sig.addAbs3(water->getNormalScale().mV, 1e-3f);
+        sig.addAbs(gPipeline.getRenderWaterHeight(), 0.01f);
+        sig.addExact(water->getNormalMapID());
+        sig.addExact(water->getNextNormalMapID());
+        sig.addExact(water->getTransparentTextureID());
+        sig.addExact(water->getNextTransparentTextureID());
+    }
+
+    // 5. Capture-relevant settings. GI / ambient sampling EVs are identity
+    // during captures (alenvintensity.cpp) and are deliberately excluded.
+    static LLCachedControl<F32> sun_ev(gSavedSettings, "AlchemyEnvSunEV", 0.f);
+    static LLCachedControl<F32> moon_ev(gSavedSettings, "AlchemyEnvMoonEV", 0.f);
+    static LLCachedControl<F32> local_light_ev(gSavedSettings, "AlchemyEnvLocalLightEV", 0.f);
+    static LLCachedControl<F32> shadow_lift_ev(gSavedSettings, "AlchemyEnvShadowLiftEV", 0.f);
+    static LLCachedControl<F32> sun_kelvin(gSavedSettings, "AlchemyEnvSunKelvin", 6500.f);
+    static LLCachedControl<LLColor4> sun_tint_color(gSavedSettings, "AlchemyEnvSunTintColor", LLColor4::white);
+    static LLCachedControl<LLColor4> moon_tint_color(gSavedSettings, "AlchemyEnvMoonTintColor", LLColor4::white);
+    static LLCachedControl<F32> sun_tint_strength(gSavedSettings, "AlchemyEnvSunTintStrength", 1.f);
+    static LLCachedControl<F32> moon_tint_strength(gSavedSettings, "AlchemyEnvMoonTintStrength", 1.f);
+    static LLCachedControl<bool> moon_linked(gSavedSettings, "AlchemyEnvMoonLinked", true);
+    static LLCachedControl<bool> local_light_include_rig(gSavedSettings, "AlchemyEnvLocalLightIncludeRig", false);
+    static LLCachedControl<S32> shadow_detail(gSavedSettings, "RenderShadowDetail", 2);
+    static LLCachedControl<S32> local_light_count(gSavedSettings, "RenderLocalLightCount", 256);
+    sig.addAbs((F32)sun_ev, 0.01f);
+    sig.addAbs((F32)moon_ev, 0.01f);
+    sig.addAbs((F32)local_light_ev, 0.01f);
+    sig.addAbs((F32)shadow_lift_ev, 0.01f);
+    sig.addAbs((F32)sun_kelvin, 10.f);
+    const LLColor4 sun_tint = sun_tint_color;
+    const LLColor4 moon_tint = moon_tint_color;
+    sig.addAbs3(sun_tint.mV, 1.f / 512.f);
+    sig.addAbs3(moon_tint.mV, 1.f / 512.f);
+    sig.addAbs((F32)sun_tint_strength, 1e-3f);
+    sig.addAbs((F32)moon_tint_strength, 1e-3f);
+    sig.addExact((bool)moon_linked);
+    sig.addExact((bool)local_light_include_rig);
+    sig.addExact(static_cast<U64>(static_cast<U32>((S32)shadow_detail)));
+    sig.addExact(static_cast<U64>(static_cast<U32>((S32)local_light_count)));
+    sig.addExact((bool)auto_adjust_legacy);
+
+    // 6. Sticky-quantised hash
+    const U64 h = mCineSticky.update(sig);
+    mCineLastH = h;
+
+    const F64 elapsed_us = static_cast<F64>(hash_timer.getElapsedTimeF64()) * 1.0e6;
+    mCineStats.mHashUsSum += elapsed_us;
+    mCineStats.mHashUsMax = std::max(mCineStats.mHashUsMax, elapsed_us);
+    ++mCineStats.mHashSamples;
+    return h;
+}
+
+// [LiveProbeRefresh] Drop all scheduler state. Called before every early
+// return of update(), on the non-scheduler branch, and at probe / map
+// lifecycle changes, so no pass or convergence survives a discontinuity.
+void LLReflectionMapManager::resetCinematicRefresh()
+{
+    if (mCineRefresh.mProbe == nullptr && mCineSticky.mAcc.empty())
+    {
+        return; // nothing live; keep the per-frame early-return cost trivial
+    }
+    ALCineLiveProbeRefresh::reset(mCineRefresh);
+    mCineSticky.mAcc.clear();
+    mCineSticky.mLayout.clear();
+    mCineLastH = 0;
+    mCineLastPath = ALCineLiveProbeRefresh::Path::IDLE;
+    ++mCineStats.mResets;
+}
+
+void LLReflectionMapManager::requestCinematicLiveProbeRefresh()
+{
+    // Only On change consumes a manual request; latching it in the other modes
+    // would leave it pending until an unrelated reset wiped it.
+    if (ALCineLiveProbeRefresh::sanitizeMode(
+            gSavedSettings.getS32("CineLightRigLiveProbeRefresh")) ==
+        ALCineLiveProbeRefresh::Mode::ON_CHANGE)
+    {
+        mCineRefresh.mManual = true;
+    }
+}
+
+LLReflectionMapManager::CinematicRefreshStatus
+LLReflectionMapManager::getCinematicRefreshStatus() const
+{
+    CinematicRefreshStatus status;
+    const ALCineLiveProbeRefresh::Mode configured =
+        ALCineLiveProbeRefresh::sanitizeMode(
+            gSavedSettings.getS32("CineLightRigLiveProbeRefresh"));
+    status.mMode = configured;
+    status.mStepping = configured != ALCineLiveProbeRefresh::Mode::EVERY_FRAME &&
+        mCineRefresh.mProbe != nullptr && mCineRefresh.mMode == configured;
+    if (!status.mStepping)
+    {
+        return status;
+    }
+    status.mPath = mCineLastPath;
+    status.mReason = mCineRefresh.mReason;
+    if (mCineRefresh.mReasonTime >= 0.0)
+    {
+        status.mSecondsSinceReason = static_cast<F32>(std::max(
+            0.0, static_cast<F64>(gFrameTimeSeconds) - mCineRefresh.mReasonTime));
+    }
+    status.mPassFace = mCineRefresh.mActive
+        ? static_cast<S32>(mCineRefresh.mFace) : -1;
+    status.mPassIsRadiance = mCineRefresh.mRadiance;
+    status.mConverged = ALCineLiveProbeRefresh::converged(mCineRefresh, mCineLastH);
+    return status;
+}
+
+// [LiveProbeRefresh] Once-per-second one-line summary (setting-gated).
+void LLReflectionMapManager::logCinematicRefresh(F64 now)
+{
+    static LLCachedControl<bool> refresh_log(gSavedSettings, "CineLightRigLiveProbeRefreshLog", false);
+    if (!refresh_log)
+    {
+        mCineStats.mWindowStart = -1.0;
+        return;
+    }
+    // A gap since the last scheduler step (Every frame mode, paused, early
+    // returns, log toggled) must not let the "per-second" window span many
+    // seconds of raw counts: restart it. Resets seen during the gap are kept.
+    const bool gap = mCineStats.mLastStep >= 0.0 && now - mCineStats.mLastStep > 0.5;
+    mCineStats.mLastStep = now;
+    if (mCineStats.mWindowStart < 0.0 || gap)
+    {
+        const U32 kept_resets = mCineStats.mResets;
+        mCineStats = CineRefreshStats();
+        mCineStats.mResets = kept_resets;
+        mCineStats.mWindowStart = now;
+        mCineStats.mLastStep = now;
+        return;
+    }
+    if (now - mCineStats.mWindowStart < 1.0)
+    {
+        return;
+    }
+    const CineRefreshStats& s = mCineStats;
+    const F64 idle_pct = s.mSteps > 0
+        ? 100.0 * static_cast<F64>(s.mIdleFrames) / static_cast<F64>(s.mSteps) : 0.0;
+    const F64 hash_avg = s.mHashSamples > 0
+        ? s.mHashUsSum / static_cast<F64>(s.mHashSamples) : 0.0;
+    const bool is_converged = ALCineLiveProbeRefresh::converged(mCineRefresh, mCineLastH);
+    const F64 reason_age = mCineRefresh.mReasonTime >= 0.0
+        ? std::max(0.0, now - mCineRefresh.mReasonTime) : -1.0;
+    static const char* const mode_names[] = { "every-frame", "balanced", "economy", "on-change" };
+    LL_INFOS("LiveProbe") << llformat(
+        "[LiveProbe] mode=%s steps=%u faces=%u full=%u budget=%u idle=%u(%.0f%%) "
+        "irr_pub=%u rad_pub=%u clean=%u dirty=%u blocked=%u resets=%u "
+        "hash_us=%.1f/%.1f converged=%s last=%s %.1fs",
+        mode_names[static_cast<S32>(mCineRefresh.mMode)], s.mSteps, s.mFaces,
+        s.mFullFrames, s.mBudgetFrames, s.mIdleFrames, idle_pct,
+        s.mIrrPub, s.mRadPub, s.mCleanPasses, s.mDirtyPasses, s.mBlocked,
+        s.mResets, hash_avg, s.mHashUsMax, is_converged ? "y" : "n",
+        ALCineLiveProbeRefresh::reasonName(mCineRefresh.mReason), reason_age)
+        << LL_ENDL;
+    mCineStats = CineRefreshStats();
+    mCineStats.mWindowStart = now;
+    mCineStats.mLastStep = now;
 }
 
 void LLReflectionMapManager::refreshSettings()
@@ -743,6 +1179,7 @@ void LLReflectionMapManager::setCinematicLiveProbe(
         mCinematicIrradianceReady = false;
         mCinematicRadianceReady = false;
         mRealtimeRadiancePass = false;
+        resetCinematicRefresh(); // [LiveProbeRefresh]
         if (probe)
         {
             probe->mComplete = false;
@@ -1128,6 +1565,9 @@ void LLReflectionMapManager::shift(const LLVector4a& offset)
     {
         probe->mOrigin.add(offset);
     }
+    // [LiveProbeRefresh] A budget pass in flight captures about the frozen
+    // origin; keep it in the same coordinate frame as the shifted probe.
+    mCineFrozenOrigin.add(offset);
 }
 
 void LLReflectionMapManager::updateNeighbors(LLReflectionMap* probe)
@@ -1576,6 +2016,7 @@ void LLReflectionMapManager::initReflectionMaps()
         mRealtimeRadiancePass = false;
         mCinematicIrradianceReady = false;
         mCinematicRadianceReady = false;
+        resetCinematicRefresh(); // [LiveProbeRefresh]
 
         // if default probe already exists, remember whether or not it's complete (SL-20498)
         bool default_complete = mDefaultProbe.isNull() ? false : mDefaultProbe->mComplete;
@@ -1642,6 +2083,7 @@ void LLReflectionMapManager::cleanup()
     mCinematicLiveProbeCapture = false;
     mCinematicIrradianceReady = false;
     mCinematicRadianceReady = false;
+    resetCinematicRefresh(); // [LiveProbeRefresh]
     mVertexBuffer = nullptr;
     mRenderTarget.release();
 

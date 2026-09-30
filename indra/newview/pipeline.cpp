@@ -67,8 +67,11 @@
 #include "llstartup.h"
 #include "llwindow.h"   // swapBuffers()
 
+#include <algorithm> // [LiveProbeRefresh]
 #include <array> // [F8] renderCompositionGuideOverlay()
 #include <cmath>
+#include <cstddef> // [LiveProbeRefresh]
+#include <vector> // [LiveProbeRefresh]
 
 // newview includes
 #include "llagent.h"
@@ -9525,6 +9528,194 @@ static F32 bdmerge_snapshot_autoscale_multiplier()
     static LLCachedControl<F32> bdmerge_multiplier(gSavedSettings, "BDMergeSnapshotAutoscaleMultiplier", 1.0f);
     // guard against a degenerate stored value (e.g. window minimized to zero height)
     return llclamp((F32)bdmerge_multiplier, 0.01f, 100.f);
+}
+
+// [LiveProbeRefresh] Change signature of the non-rig local lights a cinematic
+// live-probe capture uses. It re-derives the capture's own selection instead of
+// approximating it: the cinematic branch of calcNearbyLights (same drawable /
+// attachment / bdmerge / ignored-light filters, same scaled-colour and radius
+// floors, same calc_light_dist metric measured from the capture origin, pinned
+// lights first, spot lights always kept), with pinned-only when
+// RenderLocalLightCount is below 1. It deliberately does NOT truncate to the
+// nearest-N: each face applies its frustum test before its own limit, so a
+// global nearest-N is not a superset of any face's list. Every eligible light is
+// hashed (ordered by id) and none is dropped by count or by the per-face frustum
+// test. mNearbyLights itself cannot be read: it is built per face during the
+// capture, after H is sampled.
+// Rig emitters are hashed by the rig signature, not here.
+// Per-object gobo overrides (pattern, anim mode/speed, zoom, dispersion, tint,
+// variation) and BDMergeGoboAnisotropic are hashed; any animated non-rig gobo
+// sets mCineProbeLightsAnimating so On change uses the every-frame path.
+// Note: LLVOAvatar::isInMuteList() updates avatar cache fields, so this is not a
+// strictly pure read; that is acceptable for a per-frame sample.
+// Cost is one pass over mLights with cheap rejects plus a sort by id; the
+// candidate vector is reserved once and keeps its capacity (growth beyond the
+// reservation allocates, which is acceptable).
+void LLPipeline::appendCinematicProbeLightSignature(
+    ALCineLiveProbeRefresh::Signature& sig, const LLVector3& origin,
+    F32 probe_radius, F32 move_m)
+{
+    LL_PROFILE_ZONE_SCOPED_CATEGORY_DRAWPOOL;
+    (void)probe_radius; // selection is relative to the capture origin, not the influence radius
+    static LLCachedControl<F32> light_scale(
+        gSavedSettings, "AlchemyGlobalLightScale", 1.f);
+    static LLCachedControl<S32> local_light_count(
+        gSavedSettings, "RenderLocalLightCount", 256);
+    static LLCachedControl<bool> render_attached(
+        gSavedSettings, "RenderAttachedLights", true);
+    static LLCachedControl<bool> bd_toggles(
+        gSavedSettings, "BDMergeLightToggles", false);
+    static LLCachedControl<bool> bd_own(
+        gSavedSettings, "BDMergeRenderOwnAttachedLights", true);
+    static LLCachedControl<bool> bd_others(
+        gSavedSettings, "BDMergeRenderOthersAttachedLights", true);
+    static LLCachedControl<bool> bd_world(
+        gSavedSettings, "BDMergeRenderWorldLights", true);
+    static LLCachedControl<bool> bd_projectors(
+        gSavedSettings, "BDMergeRenderProjectors", true);
+    mCineProbeLightsAnimating = false;
+    const F32 ls_global = (F32)light_scale;
+    sig.addAbs(ls_global, 1e-3f);
+    sig.addExact(BDMergeGoboAnisotropic);
+    sig.addExact((bool)render_attached);
+    sig.addExact((bool)bd_toggles);
+    sig.addExact((bool)bd_own);
+    sig.addExact((bool)bd_others);
+    sig.addExact((bool)bd_world);
+    sig.addExact((bool)bd_projectors);
+
+    const S32 pinned_count = static_cast<S32>(
+        mReflectionMapManager.getCinematicLiveProbePinnedLightCount());
+    const S32 base_count = (S32)local_light_count;
+    const S32 effective_count = std::max(base_count, pinned_count);
+    if (effective_count < 1)
+    {
+        sig.addExact(static_cast<U64>(0));
+        return;
+    }
+    // [LiveProbeRefresh] no pinned-only restriction here: the signature must be a
+    // superset of every light the capture can render (Codex r4).
+
+    struct Candidate
+    {
+        LLDrawable* mDrawable;
+        LLVOVolume* mLight;
+    };
+    static std::vector<Candidate> candidates;
+    if (candidates.capacity() == 0)
+    {
+        candidates.reserve(512);
+    }
+    candidates.clear();
+
+    const F32 camera_far = LLViewerCamera::instance().getFar();
+    const F32 max_dist = sRenderDeferred
+        ? llmin(RenderFarClip, camera_far)
+        : llmin(llmin(RenderFarClip, camera_far), LIGHT_MAX_RADIUS * 4.f);
+    S32 pinned_order = 0;
+    for (LLDrawable* drawable : mLights)
+    {
+        LLVOVolume* light = drawable ? drawable->getVOVolume() : nullptr;
+        if (!light || !drawable->isState(LLDrawable::LIGHT) ||
+            light->isHUDAttachment() ||
+            mReflectionMapManager.isCinematicLiveProbeIgnoredLight(
+                light->getID()))
+        {
+            continue;
+        }
+        if (light->isAttachment())
+        {
+            if (!sRenderAttachedLights)
+            {
+                continue;
+            }
+            LLVOAvatar* avatar = light->getAvatar();
+            if (!bdmerge_should_render_light(
+                    true, avatar == gAgentAvatarp) ||
+                (avatar && (avatar->isTooComplex() ||
+                            avatar->isInMuteList() ||
+                            avatar->isTooSlow())))
+            {
+                continue;
+            }
+        }
+        else if (!light->isCineRigEmitter() &&
+                 !bdmerge_should_render_light(false, false))
+        {
+            continue;
+        }
+        const F32 light_radius = light->getLightRadius() * 1.5f;
+        const F32 ls = ls_global * ALEnvIntensity::localLightEVScale(light);
+        const LLColor3 light_color = light->getLightLinearColor() * ls;
+        if (light_radius <= 0.001f || light_color.magVecSquared() < 0.001f)
+        {
+            continue;
+        }
+        const bool pinned =
+            mReflectionMapManager.isCinematicLiveProbePinnedLight(
+                light->getID());
+        const bool is_spot = light->isLightSpotlight();
+        const F32 dist = pinned ? -4096.f + static_cast<F32>(pinned_order++)
+                                : calc_light_dist(light, origin, max_dist);
+        if (!(pinned || dist < max_dist || is_spot))
+        {
+            continue;
+        }
+        if (light->isCineRigEmitter())
+        {
+            continue; // hashed by the rig signature
+        }
+        candidates.push_back(Candidate{ drawable, light });
+    }
+
+    // Hash order must not depend on distance ordering: order by id.
+    std::sort(candidates.begin(), candidates.end(),
+        [](const Candidate& a, const Candidate& b)
+        { return a.mLight->getID() < b.mLight->getID(); });
+
+    U64 hashed = 0;
+    for (const Candidate& candidate : candidates)
+    {
+        LLVOVolume* light = candidate.mLight;
+        ++hashed;
+        const F32 ls = ls_global * ALEnvIntensity::localLightEVScale(light);
+        const LLColor3 light_color = light->getLightLinearColor() * ls;
+        sig.addExact(light->getID());
+        sig.addAbs3(candidate.mDrawable->getPositionAgent().mV, move_m);
+        sig.addColor(light_color.mV, 0.01f, 1e-3f);
+        sig.addAbs(light->getLightRadius(), 0.05f);
+        sig.addAbs(light->getLightFalloff(), 0.01f);
+        sig.addAbs3(light->getScale().mV, 0.005f);
+        const LLQuaternion rotation = light->getRenderRotation();
+        const LLVector3 forward = LLVector3(0.f, 0.f, -1.f) * rotation;
+        const LLVector3 up = LLVector3(0.f, 1.f, 0.f) * rotation;
+        sig.addAngle(forward.mV, 0.25f);
+        sig.addAngle(up.mV, 0.25f);
+        sig.addExact(light->isLightSpotlight());
+        const LLVector3& spot = light->getSpotLightParams();
+        sig.addAbs3(spot.mV, 0.00436f); // FOV (rad), focus, ambiance
+        sig.addExact(light->getLightTextureID());
+        sig.addExact(LLPipeline::isProjectorNoShadow(light->getID()));
+
+        // Everything setupSpotLight uploads from the per-object gobo override.
+        const GoboOverride gobo = getGoboOverride(light->getID());
+        sig.addExact(static_cast<U64>(static_cast<U32>(gobo.mPattern)));
+        sig.addExact(static_cast<U64>(static_cast<U32>(gobo.mAnimMode)));
+        sig.addAbs(gobo.mSpeed, 1e-3f);
+        sig.addAbs(gobo.mZoom, 1e-3f);
+        sig.addAbs(gobo.mDispersion, 1e-3f);
+        sig.addColor(gobo.mTint.mV, 0.005f, 1e-3f);
+        sig.addAbs(gobo.mPatternParams.mV[0], 1e-3f);
+        sig.addAbs(gobo.mPatternParams.mV[1], 1e-3f);
+        sig.addAbs(gobo.mPatternParams.mV[2], 1e-3f);
+        sig.addAbs(gobo.mPatternParams.mV[3], 1e-3f);
+        if (gobo.mAnimMode != 0 && light->isLightSpotlight())
+        {
+            // GOBO_TIME-driven uniforms change every frame.
+            mCineProbeLightsAnimating = true;
+        }
+    }
+    sig.addExact(hashed);
 }
 
 void LLPipeline::calcNearbyLights(LLCamera& camera)

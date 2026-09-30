@@ -1145,6 +1145,92 @@ void ALCineLightRig::setLiveProbeBounceScale(F32 scale)
         ? std::clamp(scale, 0.f, 1.f) : 1.f;
 }
 
+// [LiveProbeRefresh] Read straight from the live emitter objects at call time;
+// nothing is cached, so nothing can go stale. Field order is fixed: projectors
+// 0..LIGHT_COUNT-1, omnis 0..LIGHT_COUNT-1, then the catchlight.
+static void appendEmitterSignature(
+    ALCineLiveProbeRefresh::Signature& sig, const LLVOVolume* emitter,
+    F32 move_m)
+{
+    if (emitter == nullptr || emitter->isDead())
+    {
+        sig.addExact(false);
+        return;
+    }
+    sig.addExact(true);
+    sig.addAbs3(emitter->getPositionAgent().mV, move_m);
+    sig.addAbs3(emitter->getScale().mV, 0.005f);
+    const LLVector3 aim = LLVector3(0.f, 0.f, -1.f) * emitter->getRotation();
+    sig.addAngle(aim.mV, 0.25f);
+    sig.addColor(emitter->getLightSRGBColor().mV, 0.01f, 1.f / 512.f);
+    sig.addRel(emitter->getLightIntensity(), 0.01f, 1e-3f);
+    sig.addAbs(emitter->getLightRadius(), 0.02f);
+    sig.addAbs(emitter->getLightFalloff(), 0.01f);
+    sig.addAbs(emitter->getSpotLightParams().mV[0], 0.00436f);
+    sig.addExact(emitter->getIsLight());
+    sig.addExact(LLPipeline::isProjectorNoShadow(emitter->getID()));
+    sig.addExact(emitter->getLightTextureID());
+}
+
+void ALCineLightRig::appendLiveProbeSignature(
+    ALCineLiveProbeRefresh::Signature& sig, F32 move_m,
+    bool exclude_ignored) const
+{
+    for (S32 i = 0; i < LIGHT_COUNT; ++i)
+    {
+        appendEmitterSignature(sig, mProjectors[i].get(), move_m);
+    }
+    // [LiveProbeRefresh] The target rig's omnis and catchlight are in
+    // liveProbeIgnoredLightIds(): the capture skips them, so they must not
+    // move H. The slots stay in the layout as "absent" markers.
+    for (S32 i = 0; i < LIGHT_COUNT; ++i)
+    {
+        if (exclude_ignored)
+        {
+            sig.addExact(false);
+        }
+        else
+        {
+            appendEmitterSignature(sig, mOmnis[i].get(), move_m);
+        }
+    }
+    if (exclude_ignored)
+    {
+        sig.addExact(false);
+    }
+    else
+    {
+        appendEmitterSignature(sig, mCatchlight.get(), move_m);
+    }
+}
+
+bool ALCineLightRig::liveProbeAnimating(bool exclude_ignored) const
+{
+    if (mActiveFX >= 0 || mTransitionActive)
+    {
+        return true;
+    }
+    for (S32 i = 0; i < LIGHT_COUNT; ++i)
+    {
+        if (mLastFrame.mProj[i].mOn &&
+            goboIsAnimated(mLastFrame.mProj[i].mGobo))
+        {
+            return true;
+        }
+        // Flicker modulates both the projector and the omni of light i; on the
+        // target rig only the projector reaches the capture.
+        const bool captured_on = mLastFrame.mProj[i].mOn ||
+            (!exclude_ignored && mLastFrame.mOmni[i].mOn);
+        if (captured_on &&
+            mCurrentLive[i].mFlickerProgram != FLICKER_NONE &&
+            mCurrentLive[i].mFlickerAmount > 0.f)
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
 void ALCineLightRig::startFX(S32 fx_id, F64 presentation_time)
 {
     if (fx_id < 0 || fx_id >= FX_COUNT ||

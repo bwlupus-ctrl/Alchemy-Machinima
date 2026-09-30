@@ -2173,6 +2173,48 @@
       <key>Type</key><string>Boolean</string>
       <key>Value</key><integer>0</integer>
     </map>
+    <key>CineLightRigLiveProbeRefresh</key>
+    <map>
+      <key>Comment</key><string>[LiveProbeRefresh] How often the cinematic live probe re-renders its six cube faces (per machine, not saved in scenes or Setups): 0 = Every frame (six faces per frame, full quality, highest cost), 1 = Balanced (2 faces per frame, always cycling), 2 = Economy (1 face per frame, always cycling), 3 = On change (default; refreshes until the probe matches the scene, then idles; animated rig looks use Every frame). Out of range values behave as 3</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>S32</string>
+      <key>Value</key><integer>3</integer>
+    </map>
+    <key>CineLightRigLiveProbeChangeFaces</key>
+    <map>
+      <key>Comment</key><string>[LiveProbeRefresh] Cube faces the live probe captures per frame while refreshing in On change mode (1-6, default 2)</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>S32</string>
+      <key>Value</key><integer>2</integer>
+    </map>
+    <key>CineLightRigLiveProbeWatchdogSec</key>
+    <map>
+      <key>Comment</key><string>[LiveProbeRefresh] In On change mode, seconds between forced re-check refreshes of an idle live probe (0 = never, range 0-60, default 5)</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>5.0</real>
+    </map>
+    <key>CineLightRigLiveProbeSettleSec</key>
+    <map>
+      <key>Comment</key><string>[LiveProbeRefresh] In On change mode, seconds the probe keeps refreshing every frame after an animated rig look stops (range 0-5, default 0.5)</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.5</real>
+    </map>
+    <key>CineLightRigLiveProbeMoveTolerance</key>
+    <map>
+      <key>Comment</key><string>[LiveProbeRefresh] In On change mode, metres the probe origin or a rig emitter must move before it counts as a change (range 0.001-1, default 0.05)</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.05</real>
+    </map>
+    <key>CineLightRigLiveProbeRefreshLog</key>
+    <map>
+      <key>Comment</key><string>[LiveProbeRefresh] Log a one-line [LiveProbe] refresh summary (faces captured, passes published, idle percent, last reason, hash cost) once per second</string>
+      <key>Persist</key><integer>0</integer>
+      <key>Type</key><string>Boolean</string>
+      <key>Value</key><integer>0</integer>
+    </map>
     <key>CineLightRigNightMaskEnabled</key>
     <map>
       <key>Comment</key><string>Enable the subject-anchored Night Mask darkness fake</string>

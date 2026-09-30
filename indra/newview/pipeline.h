@@ -757,6 +757,18 @@ public:
     // probe builds a probe-local set for all six cubemap faces.
     bool beginCinematicProbeCapture();
     void endCinematicProbeCapture();
+    // [LiveProbeRefresh] Appends a signature of the non-rig local lights (world
+    // prims + attachment lights) a cinematic probe capture at `origin` could
+    // use: every light passing the cinematic calcNearbyLights filters, with no
+    // nearest-N or per-face frustum truncation. Every shader-consumed light
+    // input (incl. gobo overrides) is hashed. Read-only.
+    void appendCinematicProbeLightSignature(
+        ALCineLiveProbeRefresh::Signature& sig, const LLVector3& origin,
+        F32 probe_radius, F32 move_m);
+    // True when the last appendCinematicProbeLightSignature saw an animated
+    // (time-driven) non-rig projector gobo.
+    bool isCinematicProbeLightAnimating() const { return mCineProbeLightsAnimating; }
+    bool mCineProbeLightsAnimating = false;
     void setupAvatarLights(bool for_edit = false);
     void enableLights(U32 mask);
     void enableLightsDynamic();

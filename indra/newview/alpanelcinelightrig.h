@@ -161,6 +161,7 @@ private:
     LLUICtrl* mManualConeWidths[4] = {};
     LLTextBox* mShadowHint = nullptr;
     LLTextBox* mLiveProbeStatus = nullptr;
+    LLButton* mLiveProbeRefreshNow = nullptr; // [LiveProbeRefresh]
     LLButton* mShadowFixIt = nullptr;
     LLTextBox* mRadiusLabel = nullptr;
     LLButton* mSetupSave = nullptr;

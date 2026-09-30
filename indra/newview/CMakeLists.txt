@@ -1152,6 +1152,7 @@ set(viewer_HEADER_FILES
     alcinelightrig.h
     alcinelightrigmanager.h
     alcinelightrigmodel.h
+    alcineliveproberefresh.h # [LiveProbeRefresh]
     alavatarlightresponse.h # [AvatarLightResponse]
     alavatarlightresponsemodel.h # [AvatarLightResponse]
     alfloateravatarlightresponse.h # [AvatarLightResponse]

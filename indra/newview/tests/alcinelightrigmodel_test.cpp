@@ -12,6 +12,7 @@
 #include "../test/lltut.h"
 #include "../alcinelightrigmanager.h"
 #include "../alcinelightrigmodel.h"
+#include "../alcineliveproberefresh.h" // [LiveProbeRefresh]
 #include "../llviewercamera.h"
 #include "../pipeline.h"
 #include "../../llrender/llshadermgr.h"
@@ -19,6 +20,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstring>
+#include <functional>
 #include <limits>
 #include <map>
 #include <string>
@@ -500,8 +502,9 @@ struct cine_light_rig_model_data {};
 // (tut.hpp ~130) and registers test<n> for n = MaxTestsInGroup..1 by
 // recursive template instantiation starting AT that ceiling -- test<51>
 // through test<54> below compiled but were never registered/run. Raised to
-// 64 for headroom.
-typedef test_group<cine_light_rig_model_data, 64> cine_light_rig_model_group;
+// 64 for headroom. [LiveProbeRefresh] adds test<55>..test<69>, so the ceiling
+// is now 72 (same trap: anything above it compiles but silently never runs).
+typedef test_group<cine_light_rig_model_data, 72> cine_light_rig_model_group;
 typedef cine_light_rig_model_group::object cine_light_rig_model_object;
 cine_light_rig_model_group cine_light_rig_model_tests(
     "ALCineLightRigModel");
@@ -3722,5 +3725,810 @@ void cine_light_rig_model_object::test<54>()
         std::isfinite(sanitized.mLights[0].mRimSharpness));
     ensure_equals("infinite rim_sharpness falls back to 3.0",
         sanitized.mLights[0].mRimSharpness, 3.f);
+}
+
+// ---------------------------------------------------------------------------
+// [LiveProbeRefresh] Model tests M1-M15 (test<55>..test<69>).
+// These prove only the scheduling / hashing model driven by synthetic H values.
+// Timestamps use dt = 1/64 s (exactly representable), so the 5.0 s watchdog and
+// 0.5 s settle boundaries are exact rather than subject to rounding.
+// Not provable here: real frame order, scratch isolation, pixel identity of the
+// moved Every-frame body (those are the in-world checks in the design doc).
+// ---------------------------------------------------------------------------
+namespace lpr = ALCineLiveProbeRefresh;
+
+namespace
+{
+struct LiveProbeSim
+{
+    struct PassLog
+    {
+        S32 mFrame = 0;
+        lpr::PassEnd mEnd = lpr::PassEnd::NONE;
+    };
+
+    lpr::State mState;
+    lpr::Params mParams;
+    int mProbeTag = 0;
+    S32 mCube = 7;
+    bool mReady = true;
+    bool mAnimating = false;
+    bool mFullRadiance = false;
+    S32 mFrame = 0;
+    lpr::Decision mDecision;
+    S32 mIrrPubs = 0;
+    S32 mRadPubs = 0;
+    S32 mLastRadFrame = -1;
+    S32 mMaxRadGap = 0;
+    std::vector<PassLog> mLog;
+
+    static F64 timeOf(S32 frame) { return static_cast<F64>(frame) / 64.0; }
+    F64 now() const { return timeOf(mFrame); }
+
+    void note(lpr::PassEnd end)
+    {
+        PassLog entry;
+        entry.mFrame = mFrame;
+        entry.mEnd = end;
+        mLog.push_back(entry);
+        if (end == lpr::PassEnd::IRRADIANCE)
+        {
+            ++mIrrPubs;
+        }
+        else if (end == lpr::PassEnd::RADIANCE)
+        {
+            ++mRadPubs;
+            if (mLastRadFrame >= 0)
+            {
+                mMaxRadGap = std::max(mMaxRadGap, mFrame - mLastRadFrame);
+            }
+            mLastRadFrame = mFrame;
+        }
+    }
+
+    // One manager step: decide, then act exactly like the reflection manager.
+    lpr::Decision step(U64 h)
+    {
+        ++mFrame;
+        mDecision = lpr::decide(mState, mParams, h, mAnimating, mReady, now(),
+                                &mProbeTag, mCube);
+        if (mDecision.mPath == lpr::Path::BUDGET)
+        {
+            lpr::noteFrameH(mState, h);
+            for (S32 n = 0; n < mDecision.mFaces && mState.mActive; ++n)
+            {
+                const lpr::PassEnd end = lpr::advanceFace(mState, now());
+                if (end != lpr::PassEnd::NONE)
+                {
+                    note(end);
+                }
+            }
+        }
+        else if (mDecision.mPath == lpr::Path::FULL)
+        {
+            // Mirrors the manager: the FULL cursor is resynced with the
+            // scheduler (next pass is radiance iff the last completed pass was
+            // irradiance), since budget passes never advance it.
+            mFullRadiance = mState.mLastPassIrr;
+            const bool radiance = mFullRadiance;
+            lpr::onFullPass(mState, radiance, h, now());
+            note(radiance ? lpr::PassEnd::RADIANCE : lpr::PassEnd::IRRADIANCE);
+        }
+        return mDecision;
+    }
+};
+
+typedef std::function<void(lpr::Signature&, const F32*)> SigAdder;
+
+U64 sampleSticky(lpr::StickyHash& sticky, const SigAdder& add, const F32* v)
+{
+    lpr::Signature sig;
+    add(sig, v);
+    return sticky.update(sig);
+}
+
+// Deterministic pseudo-noise in [-1, 1].
+F32 lprNoise(S32 i)
+{
+    return static_cast<F32>((i * 37) % 201 - 100) / 100.f;
+}
+
+// The visible change must move H; bounded noise around the same base for 1000
+// frames must never move it.
+void checkFieldTolerance(const std::string& name, const SigAdder& add,
+                         const F32* base, const F32* changed,
+                         const F32* noise_amp)
+{
+    lpr::StickyHash noise_sticky;
+    const U64 h0 = sampleSticky(noise_sticky, add, base);
+    for (S32 i = 0; i < 1000; ++i)
+    {
+        F32 v[3];
+        for (S32 c = 0; c < 3; ++c)
+        {
+            v[c] = base[c] + noise_amp[c] * lprNoise(i * 3 + c);
+        }
+        const U64 h = sampleSticky(noise_sticky, add, v);
+        if (h != h0)
+        {
+            fail("bounded noise moved H for field: " + name);
+        }
+    }
+    lpr::StickyHash change_sticky;
+    const U64 hb = sampleSticky(change_sticky, add, base);
+    const U64 hc = sampleSticky(change_sticky, add, changed);
+    ensure("visible change must move H for field: " + name, hb != hc);
+}
+} // namespace
+
+// M1
+template<> template<>
+void cine_light_rig_model_object::test<55>()
+{
+    set_test_name("[LiveProbeRefresh] M1 sanitizeMode bounds");
+    ensure("-1 -> ON_CHANGE", lpr::sanitizeMode(-1) == lpr::Mode::ON_CHANGE);
+    ensure("0 -> EVERY_FRAME", lpr::sanitizeMode(0) == lpr::Mode::EVERY_FRAME);
+    ensure("1 -> BALANCED", lpr::sanitizeMode(1) == lpr::Mode::BALANCED);
+    ensure("2 -> ECONOMY", lpr::sanitizeMode(2) == lpr::Mode::ECONOMY);
+    ensure("3 -> ON_CHANGE", lpr::sanitizeMode(3) == lpr::Mode::ON_CHANGE);
+    ensure("4 -> ON_CHANGE", lpr::sanitizeMode(4) == lpr::Mode::ON_CHANGE);
+    ensure("100 -> ON_CHANGE", lpr::sanitizeMode(100) == lpr::Mode::ON_CHANGE);
+}
+
+// M2
+template<> template<>
+void cine_light_rig_model_object::test<56>()
+{
+    set_test_name("[LiveProbeRefresh] M2 not ready -> FULL / WARMUP in every budget mode");
+    const lpr::Mode modes[3] = {
+        lpr::Mode::BALANCED, lpr::Mode::ECONOMY, lpr::Mode::ON_CHANGE };
+    for (const lpr::Mode mode : modes)
+    {
+        LiveProbeSim sim;
+        sim.mParams.mMode = mode;
+        sim.mReady = false;
+        for (S32 f = 0; f < 5; ++f)
+        {
+            const lpr::Decision d = sim.step(9);
+            ensure("not ready is FULL", d.mPath == lpr::Path::FULL);
+            ensure("not ready reason is WARMUP", d.mReason == lpr::Reason::WARMUP);
+        }
+    }
+}
+
+// M3
+template<> template<>
+void cine_light_rig_model_object::test<57>()
+{
+    set_test_name("[LiveProbeRefresh] M3 Balanced 3-frame alternating passes, never idle");
+    LiveProbeSim sim;
+    sim.mParams.mMode = lpr::Mode::BALANCED;
+    for (S32 f = 1; f <= 12; ++f)
+    {
+        const lpr::Decision d = sim.step(0);
+        ensure("Balanced is never IDLE", d.mPath == lpr::Path::BUDGET);
+        ensure_equals("Balanced takes 2 faces per frame", d.mFaces, 2);
+    }
+    ensure_equals("four passes finished in 12 frames", static_cast<S32>(sim.mLog.size()), 4);
+    ensure_equals("pass 1 ends on frame 3", sim.mLog[0].mFrame, 3);
+    ensure("pass 1 is irradiance", sim.mLog[0].mEnd == lpr::PassEnd::IRRADIANCE);
+    ensure_equals("pass 2 ends on frame 6", sim.mLog[1].mFrame, 6);
+    ensure("pass 2 is radiance", sim.mLog[1].mEnd == lpr::PassEnd::RADIANCE);
+    ensure_equals("pass 3 ends on frame 9", sim.mLog[2].mFrame, 9);
+    ensure("pass 3 is irradiance", sim.mLog[2].mEnd == lpr::PassEnd::IRRADIANCE);
+    ensure_equals("pass 4 ends on frame 12", sim.mLog[3].mFrame, 12);
+    ensure("pass 4 is radiance", sim.mLog[3].mEnd == lpr::PassEnd::RADIANCE);
+}
+
+// M4
+template<> template<>
+void cine_light_rig_model_object::test<58>()
+{
+    set_test_name("[LiveProbeRefresh] M4 Economy 6-frame alternating passes, never idle");
+    LiveProbeSim sim;
+    sim.mParams.mMode = lpr::Mode::ECONOMY;
+    for (S32 f = 1; f <= 18; ++f)
+    {
+        const lpr::Decision d = sim.step(0);
+        ensure("Economy is never IDLE", d.mPath == lpr::Path::BUDGET);
+        ensure_equals("Economy takes 1 face per frame", d.mFaces, 1);
+    }
+    ensure_equals("three passes finished in 18 frames", static_cast<S32>(sim.mLog.size()), 3);
+    ensure_equals("pass 1 ends on frame 6", sim.mLog[0].mFrame, 6);
+    ensure("pass 1 is irradiance", sim.mLog[0].mEnd == lpr::PassEnd::IRRADIANCE);
+    ensure_equals("pass 2 ends on frame 12", sim.mLog[1].mFrame, 12);
+    ensure("pass 2 is radiance", sim.mLog[1].mEnd == lpr::PassEnd::RADIANCE);
+    ensure_equals("pass 3 ends on frame 18", sim.mLog[2].mFrame, 18);
+    ensure("pass 3 is irradiance", sim.mLog[2].mEnd == lpr::PassEnd::IRRADIANCE);
+}
+
+// M5
+template<> template<>
+void cine_light_rig_model_object::test<59>()
+{
+    set_test_name("[LiveProbeRefresh] M5 On change, constant H: clean pair then IDLE");
+    LiveProbeSim sim;
+    sim.mParams.mMode = lpr::Mode::ON_CHANGE;
+    const U64 h = 42;
+    for (S32 f = 1; f <= 6; ++f)
+    {
+        const lpr::Decision d = sim.step(h);
+        ensure("first six frames build the pair", d.mPath == lpr::Path::BUDGET);
+    }
+    ensure_equals("one irradiance pass", sim.mIrrPubs, 1);
+    ensure_equals("one radiance pass", sim.mRadPubs, 1);
+    ensure("converged after the clean pair", lpr::converged(sim.mState, h));
+    for (S32 f = 7; f <= 200; ++f)
+    {
+        const lpr::Decision d = sim.step(h);
+        ensure("idle once converged", d.mPath == lpr::Path::IDLE);
+    }
+    ensure_equals("no further irradiance passes", sim.mIrrPubs, 1);
+    ensure_equals("no further radiance passes", sim.mRadPubs, 1);
+    ensure("still converged", lpr::converged(sim.mState, h));
+}
+
+// M6
+template<> template<>
+void cine_light_rig_model_object::test<60>()
+{
+    set_test_name("[LiveProbeRefresh] M6 H changes inside an irradiance pass -> dirty, then clean pair");
+    LiveProbeSim sim;
+    sim.mParams.mMode = lpr::Mode::ON_CHANGE;
+    sim.step(1);
+    sim.step(2); // H changes mid-pass
+    sim.step(2);
+    ensure_equals("irradiance pass ended", sim.mIrrPubs, 1);
+    ensure("the dirty irradiance pass does not count", !sim.mState.mIrrOk);
+    // Cycling continues: radiance (dirty pairing), then irradiance, then radiance.
+    for (S32 f = 4; f <= 12; ++f)
+    {
+        const lpr::Decision d = sim.step(2);
+        ensure("keeps cycling while not converged", d.mPath == lpr::Path::BUDGET);
+    }
+    ensure("two clean passes on the stable H converge", lpr::converged(sim.mState, 2));
+    ensure("idle afterwards", sim.step(2).mPath == lpr::Path::IDLE);
+}
+
+// M7
+template<> template<>
+void cine_light_rig_model_object::test<61>()
+{
+    set_test_name("[LiveProbeRefresh] M7 A->B->A inside a radiance pass -> dirty, another pass runs");
+    LiveProbeSim sim;
+    sim.mParams.mMode = lpr::Mode::ON_CHANGE;
+    sim.step(1);
+    sim.step(1);
+    sim.step(1); // clean irradiance at H=1
+    ensure("clean irradiance", sim.mState.mIrrOk);
+    sim.step(1); // radiance pass starts at H=1
+    sim.step(2); // transient change
+    sim.step(1); // back to the start value; the pass ends
+    ensure_equals("radiance pass ended", sim.mRadPubs, 1);
+    ensure("A->B->A pass is dirty", !sim.mState.mRadOk);
+    ensure("not converged", !lpr::converged(sim.mState, 1));
+    ensure("another pass runs", sim.step(1).mPath == lpr::Path::BUDGET);
+    for (S32 f = 8; f <= 12; ++f)
+    {
+        sim.step(1);
+    }
+    ensure("a later clean pair converges", lpr::converged(sim.mState, 1));
+}
+
+// M8
+template<> template<>
+void cine_light_rig_model_object::test<62>()
+{
+    set_test_name("[LiveProbeRefresh] M8 clean irradiance at H1 then H2: radiance still next, not counted");
+    LiveProbeSim sim;
+    sim.mParams.mMode = lpr::Mode::ON_CHANGE;
+    sim.step(1);
+    sim.step(1);
+    sim.step(1);
+    ensure("clean irradiance at H1", sim.mState.mIrrOk && sim.mState.mIrrH == 1);
+    const lpr::Decision d = sim.step(2); // H2 before the radiance pass
+    ensure("next pass starts", d.mPath == lpr::Path::BUDGET);
+    ensure("the next pass is still radiance (alternation)", sim.mState.mRadiance);
+    sim.step(2);
+    sim.step(2);
+    ensure_equals("radiance pass ended", sim.mRadPubs, 1);
+    ensure("radiance on H2 after irradiance on H1 is not counted", !sim.mState.mRadOk);
+    for (S32 f = 7; f <= 12; ++f)
+    {
+        sim.step(2);
+    }
+    ensure("the irradiance -> radiance pair on H2 converges", lpr::converged(sim.mState, 2));
+}
+
+// M9
+template<> template<>
+void cine_light_rig_model_object::test<63>()
+{
+    set_test_name("[LiveProbeRefresh] M9 watchdog: exactly one pair every 5.0 s; 0 disables");
+    LiveProbeSim sim;
+    sim.mParams.mMode = lpr::Mode::ON_CHANGE;
+    sim.mParams.mWatchdogSec = 5.f;
+    const U64 h = 7;
+    for (S32 f = 1; f <= 6; ++f)
+    {
+        sim.step(h);
+    }
+    ensure("converged at frame 6", lpr::converged(sim.mState, h));
+    // Converged at frame 6 (t = 6/64). The watchdog fires when now - t >= 5.0,
+    // i.e. frame 326.
+    for (S32 f = 7; f <= 325; ++f)
+    {
+        ensure("IDLE until the watchdog interval elapses",
+            sim.step(h).mPath == lpr::Path::IDLE);
+    }
+    const lpr::Decision start = sim.step(h); // frame 326
+    ensure("watchdog starts a pass", start.mPath == lpr::Path::BUDGET);
+    ensure("watchdog reason", start.mReason == lpr::Reason::WATCHDOG);
+    sim.step(h);
+    sim.step(h); // irradiance ends (frame 328)
+    const lpr::Decision second = sim.step(h); // radiance starts (frame 329)
+    ensure("second half of the pair keeps the WATCHDOG reason",
+        second.mReason == lpr::Reason::WATCHDOG);
+    sim.step(h);
+    sim.step(h); // radiance ends (frame 331)
+    ensure_equals("exactly one extra irradiance pass", sim.mIrrPubs, 2);
+    ensure_equals("exactly one extra radiance pass", sim.mRadPubs, 2);
+    ensure("IDLE again after the pair", sim.step(h).mPath == lpr::Path::IDLE);
+
+    LiveProbeSim never;
+    never.mParams.mMode = lpr::Mode::ON_CHANGE;
+    never.mParams.mWatchdogSec = 0.f;
+    for (S32 f = 1; f <= 2000; ++f)
+    {
+        never.step(h);
+    }
+    ensure_equals("WatchdogSec = 0 never re-checks (irradiance)", never.mIrrPubs, 1);
+    ensure_equals("WatchdogSec = 0 never re-checks (radiance)", never.mRadPubs, 1);
+}
+
+// M10
+template<> template<>
+void cine_light_rig_model_object::test<64>()
+{
+    set_test_name("[LiveProbeRefresh] M10 manual request while IDLE -> exactly one pair");
+    LiveProbeSim sim;
+    sim.mParams.mMode = lpr::Mode::ON_CHANGE;
+    const U64 h = 11;
+    for (S32 f = 1; f <= 8; ++f)
+    {
+        sim.step(h);
+    }
+    ensure("idle before the request", sim.step(h).mPath == lpr::Path::IDLE);
+    sim.mState.mManual = true;
+    const lpr::Decision d = sim.step(h);
+    ensure("manual request starts a pass", d.mPath == lpr::Path::BUDGET);
+    ensure("manual reason", d.mReason == lpr::Reason::MANUAL);
+    ensure("request consumed", !sim.mState.mManual);
+    for (S32 f = 0; f < 5; ++f)
+    {
+        sim.step(h);
+    }
+    ensure_equals("one extra irradiance pass", sim.mIrrPubs, 2);
+    ensure_equals("one extra radiance pass", sim.mRadPubs, 2);
+    ensure("idle again", sim.step(h).mPath == lpr::Path::IDLE);
+    ensure_equals("still only one extra pair", sim.mIrrPubs, 2);
+}
+
+// M11
+template<> template<>
+void cine_light_rig_model_object::test<65>()
+{
+    set_test_name("[LiveProbeRefresh] M11 animating -> FULL/ANIMATED, then SETTLING, then IDLE");
+    LiveProbeSim sim;
+    sim.mParams.mMode = lpr::Mode::ON_CHANGE;
+    sim.mParams.mSettleSec = 0.5f;
+    const U64 h = 5;
+    sim.mAnimating = true;
+    for (S32 f = 1; f <= 9; ++f)
+    {
+        const lpr::Decision d = sim.step(h);
+        ensure("animating is FULL", d.mPath == lpr::Path::FULL);
+        ensure("animating reason", d.mReason == lpr::Reason::ANIMATED);
+    }
+    sim.mAnimating = false;
+    // Last animating frame was frame 9. Settling lasts while now - t < 0.5 s,
+    // i.e. 31 more frames at 1/64 s.
+    for (S32 k = 1; k <= 31; ++k)
+    {
+        const lpr::Decision d = sim.step(h);
+        ensure("settling is FULL", d.mPath == lpr::Path::FULL);
+        ensure("settling reason", d.mReason == lpr::Reason::SETTLING);
+    }
+    ensure("the last FULL pair matched the current H", lpr::converged(sim.mState, h));
+    ensure("IDLE once settled", sim.step(h).mPath == lpr::Path::IDLE);
+
+    LiveProbeSim exact;
+    exact.mParams.mMode = lpr::Mode::ON_CHANGE;
+    exact.mParams.mSettleSec = 0.f;
+    exact.mAnimating = true;
+    for (S32 f = 1; f <= 3; ++f)
+    {
+        ensure("animating is FULL (SettleSec 0)",
+            exact.step(h).mPath == lpr::Path::FULL);
+    }
+    exact.mAnimating = false;
+    ensure("SettleSec = 0 is FULL exactly while animating",
+        exact.step(h).mPath != lpr::Path::FULL);
+}
+
+// M12
+template<> template<>
+void cine_light_rig_model_object::test<66>()
+{
+    set_test_name("[LiveProbeRefresh] M12 probe / cube index / mode change resets the state");
+    const U64 h = 3;
+    {
+        LiveProbeSim sim;
+        sim.mParams.mMode = lpr::Mode::ON_CHANGE;
+        for (S32 f = 1; f <= 8; ++f)
+        {
+            sim.step(h);
+        }
+        ensure("control: unchanged identity stays IDLE",
+            lpr::decide(sim.mState, sim.mParams, h, false, true,
+                        LiveProbeSim::timeOf(9), &sim.mProbeTag, sim.mCube).mPath ==
+                lpr::Path::IDLE);
+        int other_probe = 0;
+        const lpr::Decision d = lpr::decide(sim.mState, sim.mParams, h, false, true,
+            LiveProbeSim::timeOf(10), &other_probe, sim.mCube);
+        ensure("new probe pointer resets and cycles", d.mPath == lpr::Path::BUDGET);
+        ensure("new probe pointer stored", sim.mState.mProbe == &other_probe);
+        ensure("convergence forgotten", !sim.mState.mIrrOk && !sim.mState.mRadOk);
+    }
+    {
+        LiveProbeSim sim;
+        sim.mParams.mMode = lpr::Mode::ON_CHANGE;
+        for (S32 f = 1; f <= 8; ++f)
+        {
+            sim.step(h);
+        }
+        const lpr::Decision d = lpr::decide(sim.mState, sim.mParams, h, false, true,
+            LiveProbeSim::timeOf(9), &sim.mProbeTag, sim.mCube + 1);
+        ensure("new cube index resets and cycles", d.mPath == lpr::Path::BUDGET);
+        ensure_equals("new cube index stored", sim.mState.mCubeIndex, sim.mCube + 1);
+    }
+    {
+        LiveProbeSim sim;
+        sim.mParams.mMode = lpr::Mode::ON_CHANGE;
+        for (S32 f = 1; f <= 8; ++f)
+        {
+            sim.step(h);
+        }
+        lpr::Params balanced = sim.mParams;
+        balanced.mMode = lpr::Mode::BALANCED;
+        const lpr::Decision d = lpr::decide(sim.mState, balanced, 0, false, true,
+            LiveProbeSim::timeOf(9), &sim.mProbeTag, sim.mCube);
+        ensure("mode change resets and cycles", d.mPath == lpr::Path::BUDGET);
+        ensure("mode change reason", d.mReason == lpr::Reason::CONTINUOUS);
+        ensure("mode change stored", sim.mState.mMode == lpr::Mode::BALANCED);
+        ensure("mode change forgot convergence", !sim.mState.mIrrOk && !sim.mState.mRadOk);
+    }
+}
+
+// M13
+template<> template<>
+void cine_light_rig_model_object::test<67>()
+{
+    set_test_name("[LiveProbeRefresh] M13 StickyHash: noise stable, drift = single transitions, layout/id changes fire");
+    const SigAdder scalar = [](lpr::Signature& sig, const F32* v)
+    {
+        sig.addAbs(v[0], 0.01f);
+        sig.addExact(true);
+    };
+
+    // Noise below tolerance never moves H (1000 frames).
+    {
+        lpr::StickyHash sticky;
+        const F32 base[1] = { 1.f };
+        const U64 h0 = sampleSticky(sticky, scalar, base);
+        for (S32 i = 0; i < 1000; ++i)
+        {
+            const F32 v[1] = { 1.f + 0.004f * lprNoise(i) };
+            ensure("sub-tolerance noise leaves H constant",
+                sampleSticky(sticky, scalar, v) == h0);
+        }
+    }
+
+    // Slow monotonic drift above tolerance: a few single transitions, and H never
+    // returns to an earlier value (no oscillation).
+    {
+        lpr::StickyHash sticky;
+        const SigAdder drift_add = [](lpr::Signature& sig, const F32* v)
+        {
+            sig.addAbs(v[0], 0.02f);
+        };
+        std::vector<U64> distinct;
+        U64 previous = 0;
+        S32 transitions = 0;
+        for (S32 i = 0; i <= 100; ++i)
+        {
+            const F32 v[1] = { 0.001f * static_cast<F32>(i) };
+            const U64 h = sampleSticky(sticky, drift_add, v);
+            if (i == 0 || h != previous)
+            {
+                if (i > 0)
+                {
+                    ++transitions;
+                }
+                ensure("H never returns to an earlier value",
+                    std::find(distinct.begin(), distinct.end(), h) == distinct.end());
+                distinct.push_back(h);
+            }
+            previous = h;
+        }
+        ensure("drift produced transitions", transitions >= 3);
+        ensure("drift produced only single transitions (about one per tolerance)",
+            transitions <= 6);
+    }
+
+    // A size change moves H.
+    {
+        lpr::StickyHash sticky;
+        lpr::Signature one;
+        one.addAbs(1.f, 0.01f);
+        const U64 h1 = sticky.update(one);
+        lpr::Signature two;
+        two.addAbs(1.f, 0.01f);
+        two.addAbs(1.f, 0.01f);
+        ensure("a size change changes H", sticky.update(two) != h1);
+    }
+
+    // An exact id change and an exact bool change move H.
+    {
+        lpr::StickyHash sticky;
+        const LLUUID id_a("11111111-1111-1111-1111-111111111111");
+        const LLUUID id_b("22222222-2222-2222-2222-222222222222");
+        lpr::Signature a;
+        a.addAbs(1.f, 0.01f);
+        a.addExact(id_a);
+        const U64 ha = sticky.update(a);
+        lpr::Signature b;
+        b.addAbs(1.f, 0.01f);
+        b.addExact(id_b);
+        const U64 hb = sticky.update(b);
+        ensure("an exact id change changes H", ha != hb);
+        lpr::Signature c;
+        c.addAbs(1.f, 0.01f);
+        c.addExact(id_b);
+        ensure("the same exact id is stable", sticky.update(c) == hb);
+        lpr::Signature d;
+        d.addAbs(1.f, 0.01f);
+        d.addExact(id_b);
+        d.addExact(true);
+        const U64 hd = sticky.update(d);
+        lpr::Signature e;
+        e.addAbs(1.f, 0.01f);
+        e.addExact(id_b);
+        e.addExact(false);
+        ensure("an exact bool change changes H", sticky.update(e) != hd);
+    }
+}
+
+// M14
+template<> template<>
+void cine_light_rig_model_object::test<68>()
+{
+    set_test_name("[LiveProbeRefresh] M14 continuous H change: publications alternate, radiance gap <= 6, never idle");
+    LiveProbeSim sim;
+    sim.mParams.mMode = lpr::Mode::ON_CHANGE;
+    sim.mParams.mChangeFaces = 2;
+    for (S32 f = 1; f <= 600; ++f)
+    {
+        const U64 h = static_cast<U64>(f);
+        const lpr::Decision d = sim.step(h);
+        ensure("continuous change is never IDLE", d.mPath != lpr::Path::IDLE);
+        ensure("continuous change is never converged", !lpr::converged(sim.mState, h));
+    }
+    ensure("publications happened", sim.mLog.size() >= 4);
+    for (size_t i = 0; i < sim.mLog.size(); ++i)
+    {
+        const lpr::PassEnd expected = (i % 2 == 0)
+            ? lpr::PassEnd::IRRADIANCE : lpr::PassEnd::RADIANCE;
+        ensure("irradiance and radiance publications strictly alternate",
+            sim.mLog[i].mEnd == expected);
+    }
+    ensure("the gap between radiance publications is at most 6 frames",
+        sim.mMaxRadGap <= 6);
+    ensure("radiance really published under continuous change", sim.mRadPubs >= 50);
+
+    // Once H is stable it converges within one in-flight pass + a clean pair.
+    S32 frames_to_converge = -1;
+    for (S32 f = 1; f <= 30; ++f)
+    {
+        sim.step(600);
+        if (lpr::converged(sim.mState, 600))
+        {
+            frames_to_converge = f;
+            break;
+        }
+    }
+    ensure("converges after H stabilises", frames_to_converge > 0);
+    ensure("converges within 12 frames", frames_to_converge <= 12);
+}
+
+// M15
+template<> template<>
+void cine_light_rig_model_object::test<69>()
+{
+    set_test_name("[LiveProbeRefresh] M15 per-field tolerances: visible change fires, bounded noise does not");
+
+    {   // densityMultiplier Rel(0.01, 1e-7): 1.0e-4 -> 1.1e-4 vs +-0.4 %
+        const SigAdder add = [](lpr::Signature& sig, const F32* v)
+        { sig.addRel(v[0], 0.01f, 1e-7f); };
+        const F32 base[3] = { 1.0e-4f, 0.f, 0.f };
+        const F32 changed[3] = { 1.1e-4f, 0.f, 0.f };
+        const F32 noise[3] = { 0.004f * 1.0e-4f, 0.f, 0.f };
+        checkFieldTolerance("densityMultiplier", add, base, changed, noise);
+    }
+    {   // water height Abs(0.01) at 20 m: +0.02 vs +-0.004
+        const SigAdder add = [](lpr::Signature& sig, const F32* v)
+        { sig.addAbs(v[0], 0.01f); };
+        const F32 base[3] = { 20.f, 0.f, 0.f };
+        const F32 changed[3] = { 20.02f, 0.f, 0.f };
+        const F32 noise[3] = { 0.004f, 0.f, 0.f };
+        checkFieldTolerance("water height", add, base, changed, noise);
+    }
+    {   // sun direction Ang(0.1 deg): rotated 0.2 deg vs +-0.04 deg (about Y)
+        const SigAdder add = [](lpr::Signature& sig, const F32* v)
+        { sig.addAngle(v, 0.1f); };
+        const F64 deg_to_rad = 0.017453292519943295;
+        // This row builds explicit unit directions rotated about Y.
+        const auto direction = [deg_to_rad](F64 degrees, F32* out)
+        {
+            const F64 a = degrees * deg_to_rad;
+            out[0] = static_cast<F32>(0.6 * std::cos(a) + 0.8 * std::sin(a));
+            out[1] = 0.f;
+            out[2] = static_cast<F32>(-0.6 * std::sin(a) + 0.8 * std::cos(a));
+        };
+        F32 base[3];
+        F32 changed[3];
+        direction(0.0, base);
+        direction(0.2, changed);
+        lpr::StickyHash noise_sticky;
+        const U64 h0 = sampleSticky(noise_sticky, add, base);
+        for (S32 i = 0; i < 1000; ++i)
+        {
+            F32 v[3];
+            direction(0.04 * static_cast<F64>(lprNoise(i)), v);
+            ensure("sun direction noise of 0.04 deg must not move H",
+                sampleSticky(noise_sticky, add, v) == h0);
+        }
+        lpr::StickyHash change_sticky;
+        const U64 hb = sampleSticky(change_sticky, add, base);
+        ensure("sun direction 0.2 deg rotation must move H",
+            sampleSticky(change_sticky, add, changed) != hb);
+    }
+    {   // colour Col(0.005, 1e-4): +1 % in one channel at 1.0 vs +-0.2 %
+        const SigAdder add = [](lpr::Signature& sig, const F32* v)
+        { sig.addColor(v, 0.005f, 1e-4f); };
+        const F32 base[3] = { 1.f, 0.5f, 0.25f };
+        const F32 changed[3] = { 1.01f, 0.5f, 0.25f };
+        const F32 noise[3] = { 0.002f, 0.001f, 0.0005f };
+        checkFieldTolerance("colour +1% at 1.0", add, base, changed, noise);
+    }
+    {   // colour Col(0.005, 1e-4): 0 -> 3e-4 vs +-5e-5
+        const SigAdder add = [](lpr::Signature& sig, const F32* v)
+        { sig.addColor(v, 0.005f, 1e-4f); };
+        const F32 base[3] = { 0.f, 0.f, 0.f };
+        const F32 changed[3] = { 3e-4f, 0.f, 0.f };
+        const F32 noise[3] = { 5e-5f, 5e-5f, 5e-5f };
+        checkFieldTolerance("colour 0 -> 3e-4", add, base, changed, noise);
+    }
+    {   // emitter position Abs(0.05): +0.06 m vs +-0.02 m
+        const SigAdder add = [](lpr::Signature& sig, const F32* v)
+        { sig.addAbs3(v, 0.05f); };
+        const F32 base[3] = { 10.f, 20.f, 30.f };
+        const F32 changed[3] = { 10.06f, 20.f, 30.f };
+        const F32 noise[3] = { 0.02f, 0.02f, 0.02f };
+        checkFieldTolerance("emitter position", add, base, changed, noise);
+    }
+    {   // emitter scale Abs(0.005): +0.01 vs +-0.002
+        const SigAdder add = [](lpr::Signature& sig, const F32* v)
+        { sig.addAbs3(v, 0.005f); };
+        const F32 base[3] = { 0.1f, 0.1f, 0.1f };
+        const F32 changed[3] = { 0.11f, 0.1f, 0.1f };
+        const F32 noise[3] = { 0.002f, 0.002f, 0.002f };
+        checkFieldTolerance("emitter scale", add, base, changed, noise);
+    }
+    {   // haze horizon Abs(1e-3): +0.003 vs +-0.0004
+        const SigAdder add = [](lpr::Signature& sig, const F32* v)
+        { sig.addAbs(v[0], 1e-3f); };
+        const F32 base[3] = { 0.19f, 0.f, 0.f };
+        const F32 changed[3] = { 0.193f, 0.f, 0.f };
+        const F32 noise[3] = { 0.0004f, 0.f, 0.f };
+        checkFieldTolerance("haze horizon", add, base, changed, noise);
+    }
+    {   // sun / moon scale Rel(0.005, 1e-3): +2 % vs +-0.2 %
+        const SigAdder add = [](lpr::Signature& sig, const F32* v)
+        { sig.addRel(v[0], 0.005f, 1e-3f); };
+        const F32 base[3] = { 1.f, 0.f, 0.f };
+        const F32 changed[3] = { 1.02f, 0.f, 0.f };
+        const F32 noise[3] = { 0.002f, 0.f, 0.f };
+        checkFieldTolerance("sun scale", add, base, changed, noise);
+    }
+}
+
+// Manual request landing right after an irradiance pass keeps its reason on
+// every pass it triggers (not relabelled "changed"), then converges.
+template<> template<>
+void cine_light_rig_model_object::test<70>()
+{
+    set_test_name("[LiveProbeRefresh] manual right after an irradiance pass keeps the MANUAL reason");
+    LiveProbeSim sim;
+    sim.mParams.mMode = lpr::Mode::ON_CHANGE;
+    const U64 h = 21;
+    sim.step(h);
+    sim.step(h);
+    sim.step(h); // irradiance pass ends (frame 3)
+    ensure_equals("irradiance ended", sim.mIrrPubs, 1);
+    sim.mState.mManual = true;
+    ensure("request starts a pass",
+        sim.step(h).mReason == lpr::Reason::MANUAL); // frame 4: radiance starts
+    sim.step(h);
+    sim.step(h); // radiance ends (frame 6), discarded by the request
+    const lpr::Decision next = sim.step(h); // frame 7: irradiance
+    ensure("follow-up pass runs", next.mPath == lpr::Path::BUDGET);
+    ensure("follow-up pass keeps MANUAL", next.mReason == lpr::Reason::MANUAL);
+    sim.step(h);
+    sim.step(h);
+    const lpr::Decision rad = sim.step(h); // frame 10: radiance
+    ensure("second follow-up keeps MANUAL", rad.mReason == lpr::Reason::MANUAL);
+    sim.step(h);
+    sim.step(h);
+    ensure("converged after the manual sequence", lpr::converged(sim.mState, h));
+    ensure("idle afterwards", sim.step(h).mPath == lpr::Path::IDLE);
+}
+
+// Budget <-> animation handoff keeps strict irradiance / radiance alternation.
+template<> template<>
+void cine_light_rig_model_object::test<71>()
+{
+    set_test_name("[LiveProbeRefresh] budget -> animation handoff alternates pass kinds");
+    const U64 h = 8;
+    {   // After a completed budget irradiance pass the first FULL pass is radiance.
+        LiveProbeSim sim;
+        sim.mParams.mMode = lpr::Mode::ON_CHANGE;
+        sim.step(h);
+        sim.step(h);
+        sim.step(h); // irradiance done
+        sim.mAnimating = true;
+        sim.step(h); // FULL
+        ensure("first FULL pass after an irradiance pass is radiance",
+            sim.mLog.back().mEnd == lpr::PassEnd::RADIANCE);
+        ensure("the pair converged", lpr::converged(sim.mState, h));
+    }
+    {   // After a completed radiance pass the first FULL pass is irradiance, then
+        // radiance again (the pair alternates across the handoff).
+        LiveProbeSim sim;
+        sim.mParams.mMode = lpr::Mode::ON_CHANGE;
+        for (S32 f = 1; f <= 6; ++f)
+        {
+            sim.step(h);
+        }
+        ensure("budget pair converged", lpr::converged(sim.mState, h));
+        sim.mAnimating = true;
+        sim.step(h);
+        ensure("first FULL pass after a radiance pass is irradiance",
+            sim.mLog.back().mEnd == lpr::PassEnd::IRRADIANCE);
+        sim.step(h);
+        ensure("the next FULL pass is radiance",
+            sim.mLog.back().mEnd == lpr::PassEnd::RADIANCE);
+        ensure("converged again on the same H", lpr::converged(sim.mState, h));
+    }
+    {   // An interrupted partial pass does not count: the FULL pass repeats its kind.
+        LiveProbeSim sim;
+        sim.mParams.mMode = lpr::Mode::ON_CHANGE;
+        sim.step(h);
+        sim.step(h); // 4 of 6 faces of the first irradiance pass
+        sim.mAnimating = true;
+        sim.step(h);
+        ensure("an abandoned pass does not advance the cursor",
+            sim.mLog.back().mEnd == lpr::PassEnd::IRRADIANCE);
+    }
 }
 } // namespace tut
