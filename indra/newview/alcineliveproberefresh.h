@@ -33,13 +33,14 @@ enum class Mode : S32
     EVERY_FRAME = 0,
     BALANCED = 1,
     ECONOMY = 2,
-    ON_CHANGE = 3
+    ON_CHANGE = 3,
+    MANUAL = 4 // [ProbeManualRate] user-set faces-per-burst / frames-between-bursts
 };
 
 // Out of range -> ON_CHANGE (the shipping default).
 inline Mode sanitizeMode(S32 v)
 {
-    if (v < 0 || v > 3)
+    if (v < 0 || v > 4)
     {
         return Mode::ON_CHANGE;
     }
@@ -364,6 +365,9 @@ struct Params
     S32 mChangeFaces = 2;
     F32 mWatchdogSec = 5.f;
     F32 mSettleSec = 0.5f;
+    // [ProbeManualRate] Mode::MANUAL only (clamped by decide()).
+    S32 mManualFaces = 2;  // faces per burst, 1..6
+    S32 mManualEvery = 4;  // frames between bursts, 1..120
 };
 
 struct State
@@ -390,6 +394,10 @@ struct State
     bool mManual = false;
     Reason mReason = Reason::NONE;
     F64 mReasonTime = -1.0;
+    // [ProbeManualRate] Mode::MANUAL only. Frames accumulated since the last
+    // burst, and the "Refresh now" turbo (passes still owed at 6 faces/frame).
+    S32 mManualCount = 0;
+    S32 mManualTurbo = 0;
 };
 
 struct Decision
@@ -472,6 +480,60 @@ inline Decision decide(State& s, const Params& p, U64 h, bool animating,
         d.mFaces = 6;
         d.mReason = Reason::WARMUP;
         return d;
+    }
+
+    // 2b. [ProbeManualRate] Manual: a burst of `faces` faces of the current pass
+    // every `every` frames, nothing in between. No hash, no idle, no watchdog,
+    // no animated-look fallback. Passes still alternate irradiance / radiance
+    // and publish only on their sixth face (advanceFace), like Balanced.
+    if (p.mMode == Mode::MANUAL)
+    {
+        const S32 faces = std::clamp(p.mManualFaces, 1, 6);
+        const S32 every = std::clamp(p.mManualEvery, 1, 120);
+        if (s.mManual)
+        {
+            // "Refresh now": drop any partial pass and rebuild both cubes at
+            // 6 faces/frame (never more than Every frame) until two passes land.
+            // The turbo ALWAYS runs a fresh irradiance pass, then a fresh radiance
+            // pass (the refresh-all barrier needs post-arm irradiance THEN
+            // radiance), whatever the abandoned pass was: mLastPassIrr = false
+            // makes the next pass irradiance, and advanceFace alternates from there.
+            s.mManual = false;
+            s.mActive = false;
+            s.mLastPassIrr = false;
+            s.mManualTurbo = 2;
+        }
+        S32 burst_faces = faces;
+        bool fire = false;
+        if (s.mManualTurbo > 0)
+        {
+            fire = true;
+            burst_faces = 6;
+            s.mManualCount = 0;
+        }
+        else
+        {
+            s.mManualCount = std::min(s.mManualCount + 1, every);
+            if (s.mManualCount >= every)
+            {
+                fire = true;
+                s.mManualCount = 0;
+            }
+        }
+        if (!fire)
+        {
+            d.mPath = Path::IDLE;
+            d.mFaces = 0;
+            d.mReason = Reason::MANUAL;
+            return d;
+        }
+        if (!s.mActive)
+        {
+            detail::startPass(s, s.mLastPassIrr, burst_faces, h,
+                              Reason::MANUAL, now);
+        }
+        s.mFaces = burst_faces; // Faces edits take effect on the next burst
+        return detail::budgetDecision(s);
     }
 
     // 3. Pure face budget, always cycling.
@@ -575,6 +637,10 @@ inline PassEnd advanceFace(State& s, F64 now)
         return PassEnd::NONE;
     }
     s.mActive = false;
+    if (s.mManualTurbo > 0)
+    {
+        --s.mManualTurbo; // [ProbeManualRate] one "Refresh now" pass landed
+    }
     const bool ok = s.mPassClean;
     if (!s.mRadiance)
     {
@@ -592,6 +658,20 @@ inline PassEnd advanceFace(State& s, F64 now)
         s.mLastConverged = now;
     }
     return PassEnd::RADIANCE;
+}
+
+// [ProbeManualRate] Manual only: a burst must deliver exactly `faces` faces even
+// when its pass ends mid-burst, so the capture loop calls this when the pass just
+// ended and faces remain. Starts the next pass (alternating kind) in the same
+// frame; false in every other mode, which keep "a pass never starts mid-frame".
+inline bool continueManualPass(State& s, F64 now)
+{
+    if (s.mMode != Mode::MANUAL || s.mActive)
+    {
+        return false;
+    }
+    detail::startPass(s, s.mLastPassIrr, s.mFaces, s.mPassH, Reason::MANUAL, now);
+    return true;
 }
 
 // After each FULL frame: one complete pass sampled at one instant is clean.

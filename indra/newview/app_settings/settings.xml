@@ -2175,10 +2175,24 @@
     </map>
     <key>CineLightRigLiveProbeRefresh</key>
     <map>
-      <key>Comment</key><string>[LiveProbeRefresh] How often the cinematic live probe re-renders its six cube faces (per machine, not saved in scenes or Setups): 0 = Every frame (six faces per frame, full quality, highest cost), 1 = Balanced (2 faces per frame, always cycling), 2 = Economy (1 face per frame, always cycling), 3 = On change (default; refreshes until the probe matches the scene, then idles; animated rig looks use Every frame). Out of range values behave as 3</string>
+      <key>Comment</key><string>[LiveProbeRefresh] How often the cinematic live probe re-renders its six cube faces (per machine, not saved in scenes or Setups): 0 = Every frame (six faces per frame, full quality, highest cost), 1 = Balanced (2 faces per frame, always cycling), 2 = Economy (1 face per frame, always cycling), 3 = On change (default; refreshes until the probe matches the scene, then idles; animated rig looks use Every frame), 4 = Manual ([ProbeManualRate]; renders CineLightRigLiveProbeManualFaces faces every CineLightRigLiveProbeManualFrames frames, no change detection, never idles). Out of range values behave as 3</string>
       <key>Persist</key><integer>1</integer>
       <key>Type</key><string>S32</string>
       <key>Value</key><integer>3</integer>
+    </map>
+    <key>CineLightRigLiveProbeManualFaces</key>
+    <map>
+      <key>Comment</key><string>[ProbeManualRate] Cube faces the live probe renders per refresh in Manual mode (1-6, default 2)</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>S32</string>
+      <key>Value</key><integer>2</integer>
+    </map>
+    <key>CineLightRigLiveProbeManualFrames</key>
+    <map>
+      <key>Comment</key><string>[ProbeManualRate] Frames between live probe refreshes in Manual mode (1-120, default 4). The probe renders nothing on the frames in between</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>S32</string>
+      <key>Value</key><integer>4</integer>
     </map>
     <key>CineLightRigLiveProbeChangeFaces</key>
     <map>
@@ -20710,6 +20724,17 @@
     <string>F32</string>
     <key>Value</key>
     <real>2.0</real>
+  </map>
+  <key>RenderProbeUpdateEveryNFrames</key>
+  <map>
+    <key>Comment</key>
+    <string>[ProbeManualRate] Ordinary (region) reflection probes render their cube faces only on every Nth frame. 1 = every frame (stock). Does not affect the Live Probe, the realtime probe slot or hero/mirror probes. Range 1 to 120.</string>
+    <key>Persist</key>
+    <integer>1</integer>
+    <key>Type</key>
+    <string>S32</string>
+    <key>Value</key>
+    <integer>1</integer>
   </map>
   <key>RenderProbeOnDemand</key>
   <map>

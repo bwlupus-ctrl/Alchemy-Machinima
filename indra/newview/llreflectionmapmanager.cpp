@@ -422,10 +422,25 @@ void LLReflectionMapManager::update()
     LLReflectionMap* oldestProbe = nullptr;
     LLReflectionMap* oldestOccluded = nullptr;
 
+    // [ProbeManualRate] Ordinary-probe face throttle. N = 1 (default) is today's
+    // code path exactly: every frame is a tick. On a skipped frame NOTHING ordinary
+    // runs: no continuation face, no new probe start (so no txn start, no ack, no
+    // op bump, no barrier event). did_update still marks "a probe pass is in
+    // flight" so the selection loop below can never start a second probe over it.
+    // The realtime slot, the Live probe, the hero probe and the allocation / cull
+    // bookkeeping above and below are not gated.
+    static LLCachedControl<S32> ord_every_n(gSavedSettings, "RenderProbeUpdateEveryNFrames", 1);
+    const S32 ord_n = llclamp(static_cast<S32>(ord_every_n), 1, 120);
+    const bool ord_tick = ord_n <= 1 ||
+        (mOrdThrottleCounter++ % static_cast<U32>(ord_n)) == 0;
+
     if (mUpdatingProbe != nullptr)
     {
         did_update = true;
-        doProbeUpdate();
+        if (ord_tick)
+        {
+            doProbeUpdate();
+        }
     }
 
     // update distance to camera for all probes
@@ -589,6 +604,8 @@ void LLReflectionMapManager::update()
     static LLCachedControl<S32> cine_change_faces(gSavedSettings, "CineLightRigLiveProbeChangeFaces", 2);
     static LLCachedControl<F32> cine_watchdog_sec(gSavedSettings, "CineLightRigLiveProbeWatchdogSec", 5.f);
     static LLCachedControl<F32> cine_settle_sec(gSavedSettings, "CineLightRigLiveProbeSettleSec", 0.5f);
+    static LLCachedControl<S32> cine_manual_faces(gSavedSettings, "CineLightRigLiveProbeManualFaces", 2); // [ProbeManualRate]
+    static LLCachedControl<S32> cine_manual_frames(gSavedSettings, "CineLightRigLiveProbeManualFrames", 4); // [ProbeManualRate]
     const ALCineLiveProbeRefresh::Mode cine_mode =
         ALCineLiveProbeRefresh::sanitizeMode(cine_refresh_mode);
     if (realtime_probe != nullptr && realtime_probe == cinematicLive &&
@@ -609,6 +626,11 @@ void LLReflectionMapManager::update()
         cine_params.mChangeFaces = llclamp((S32)cine_change_faces, 1, 6);
         cine_params.mWatchdogSec = llclamp((F32)cine_watchdog_sec, 0.f, 60.f);
         cine_params.mSettleSec = llclamp((F32)cine_settle_sec, 0.f, 5.f);
+        cine_params.mManualFaces = llclamp((S32)cine_manual_faces, 1, 6); // [ProbeManualRate]
+        cine_params.mManualEvery = llclamp((S32)cine_manual_frames, 1, 120); // [ProbeManualRate]
+        // [ProbeManualRate] on_change is false in Manual, so Manual samples no hash
+        // (H = 0, on the ON path too: sampleCinematicHOnDemand is never reached)
+        // and never takes the animated-look FULL fallback.
         const bool on_change = cine_mode == ALCineLiveProbeRefresh::Mode::ON_CHANGE;
         // [ProbeOnDemand] ON: the H takes its lights from the debounced light diff
         // (published values) and the animated-light FULL path is off, so flicker /
@@ -704,6 +726,13 @@ void LLReflectionMapManager::update()
                     if (mCineStats.mRadPub != probe_rad_before)
                     {
                         noteLivePassForBarrier(true, mBarrier.mLivePassStartOp);
+                    }
+                    if (mCineContStartOp != 0)
+                    {
+                        // [ProbeManualRate] a Manual burst began a new pass after
+                        // the one it just ended
+                        mBarrier.mLivePassStartOp = mCineContStartOp;
+                        mCineContStartOp = 0;
                     }
                 }
             }
@@ -810,7 +839,7 @@ void LLReflectionMapManager::update()
     }
 
     // switch to updating the next oldest probe
-    if (!did_update && oldestProbe != nullptr)
+    if (ord_tick && !did_update && oldestProbe != nullptr) // [ProbeManualRate] tick-gated
     {
         LLReflectionMap* probe = oldestProbe;
         llassert(probe->mCubeIndex != -1);
@@ -962,15 +991,38 @@ void LLReflectionMapManager::updateCinematicBudget(
     const bool radiance_pass = isRadiancePass();
     mCinematicLiveProbeCapture = true;
     const bool saved_nearby_lights = gPipeline.beginCinematicProbeCapture();
-    // Stops at the pass end: a pass never starts mid-frame.
-    for (S32 n = 0; n < faces && mCineRefresh.mActive; ++n)
+    // Stops at the pass end: a pass never starts mid-frame. [ProbeManualRate]
+    // Manual alone continues into the next pass so a burst is exactly `faces`.
+    bool pass_ended = false;
+    for (S32 n = 0; n < faces; ++n)
     {
+        if (!mCineRefresh.mActive)
+        {
+            if (!ALCineLiveProbeRefresh::continueManualPass(
+                    mCineRefresh, static_cast<F64>(gFrameTimeSeconds)))
+            {
+                break;
+            }
+            // [ProbeManualRate] new pass: re-freeze the origin, and remember its
+            // start op for the barrier (update() applies it after noting the pass
+            // that just ended).
+            mCineFrozenOrigin = live_origin;
+            probe->mOrigin = mCineFrozenOrigin;
+            if (mOnDemandActive)
+            {
+                mCineContStartOp = ALProbeDirty::nextOp();
+            }
+        }
         mRadiancePass = mCineRefresh.mRadiance;
         updateProbeFace(probe, static_cast<U32>(mCineRefresh.mFace));
         ++mCineStats.mFaces;
         const ALCineLiveProbeRefresh::PassEnd pass_end =
             ALCineLiveProbeRefresh::advanceFace(
                 mCineRefresh, static_cast<F64>(gFrameTimeSeconds));
+        if (pass_end != ALCineLiveProbeRefresh::PassEnd::NONE)
+        {
+            pass_ended = true;
+        }
         // clean / dirty describe the pass itself (H stayed stable across it),
         // for the same pass population as irr_pub + rad_pub.
         if (pass_end == ALCineLiveProbeRefresh::PassEnd::IRRADIANCE)
@@ -997,7 +1049,7 @@ void LLReflectionMapManager::updateCinematicBudget(
     mRadiancePass = radiance_pass;
     // The influence volume keeps following the subject.
     probe->mOrigin = live_origin;
-    if (!mCineRefresh.mActive)
+    if (pass_ended) // == !mCineRefresh.mActive in modes 0-3 (they stop at the end)
     {
         updateNeighbors(probe); // after any pass end
     }
@@ -1074,11 +1126,14 @@ void LLReflectionMapManager::resetCinematicRefresh()
 
 void LLReflectionMapManager::requestCinematicLiveProbeRefresh()
 {
-    // Only On change consumes a manual request; latching it in the other modes
-    // would leave it pending until an unrelated reset wiped it.
-    if (ALCineLiveProbeRefresh::sanitizeMode(
-            gSavedSettings.getS32("CineLightRigLiveProbeRefresh")) ==
-        ALCineLiveProbeRefresh::Mode::ON_CHANGE)
+    // Only On change and Manual ([ProbeManualRate]) consume a manual request;
+    // latching it in the other modes would leave it pending until an unrelated
+    // reset wiped it.
+    const ALCineLiveProbeRefresh::Mode request_mode =
+        ALCineLiveProbeRefresh::sanitizeMode(
+            gSavedSettings.getS32("CineLightRigLiveProbeRefresh"));
+    if (request_mode == ALCineLiveProbeRefresh::Mode::ON_CHANGE ||
+        request_mode == ALCineLiveProbeRefresh::Mode::MANUAL)
     {
         mCineRefresh.mManual = true;
     }
@@ -1147,7 +1202,7 @@ void LLReflectionMapManager::logCinematicRefresh(F64 now)
     const bool is_converged = ALCineLiveProbeRefresh::converged(mCineRefresh, mCineLastH);
     const F64 reason_age = mCineRefresh.mReasonTime >= 0.0
         ? std::max(0.0, now - mCineRefresh.mReasonTime) : -1.0;
-    static const char* const mode_names[] = { "every-frame", "balanced", "economy", "on-change" };
+    static const char* const mode_names[] = { "every-frame", "balanced", "economy", "on-change", "manual" };
     LL_INFOS("LiveProbe") << llformat(
         "[LiveProbe] mode=%s steps=%u faces=%u full=%u budget=%u idle=%u(%.0f%%) "
         "irr_pub=%u rad_pub=%u clean=%u dirty=%u blocked=%u resets=%u "
@@ -1582,7 +1637,7 @@ void LLReflectionMapManager::requestRefreshAllProbes()
         return;
     }
     mRefreshAllRequested = true;
-    // One full irradiance + radiance pair of the Live Probe (On change only).
+    // One full irradiance + radiance pair of the Live Probe (On change / Manual).
     requestCinematicLiveProbeRefresh();
 }
 

@@ -32,6 +32,8 @@
 #include "llui.h"
 #include "lluicolortable.h"
 #include "llviewercontrol.h"
+#include "llviewerstats.h" // [ProbeManualRate] FPS for the Manual status line
+#include "lltracerecording.h"
 #include "llenvironment.h"
 #include "llsettingssky.h"
 #include "v3color.h"
@@ -97,6 +99,21 @@ std::string liveProbeRefreshLine(
             return llformat("Refresh: %s, %s %d/6", label,
                 rs.mPassIsRadiance ? "radiance" : "irradiance",
                 rs.mPassFace >= 0 ? rs.mPassFace : 6);
+        }
+        case Mode::MANUAL:
+        {
+            // [ProbeManualRate] K faces every N frames; the rate uses the
+            // measured fps so the user can see what the setting costs.
+            const S32 faces = llclamp(
+                gSavedSettings.getS32("CineLightRigLiveProbeManualFaces"), 1, 6);
+            const S32 every = llclamp(
+                gSavedSettings.getS32("CineLightRigLiveProbeManualFrames"), 1, 120);
+            const F32 fps = static_cast<F32>(
+                LLTrace::get_frame_recording().getPeriodMeanPerSec(LLStatViewer::FPS));
+            return llformat("Refresh: Manual, %d %s every %d %s (~%.1f faces/s at current fps)",
+                faces, faces == 1 ? "face" : "faces", every,
+                every == 1 ? "frame" : "frames",
+                fps * static_cast<F32>(faces) / static_cast<F32>(every));
         }
         case Mode::ON_CHANGE:
             break;
@@ -567,6 +584,8 @@ const std::vector<std::string>& ALPanelCineLightRig::settings()
         "CineLightRigLiveProbeBounceKeep",
         "CineLightRigLiveProbeGizmo",
         "CineLightRigLiveProbeRefresh", // [LiveProbeRefresh]
+        "CineLightRigLiveProbeManualFaces", // [ProbeManualRate]
+        "CineLightRigLiveProbeManualFrames", // [ProbeManualRate]
         "CineLightRigNightMaskEnabled",
         "CineLightRigNightMaskTarget",
         "CineLightRigNightMaskShape",
@@ -656,6 +675,10 @@ bool ALPanelCineLightRig::postBuild()
     mGoboSoftness = getChild<LLTextBox>("cine_gobo_softness");
     mLiveProbeStatus = getChild<LLTextBox>("cine_live_probe_status");
     mLiveProbeRefreshNow = getChild<LLButton>("cine_live_probe_refresh_now"); // [LiveProbeRefresh]
+    mLiveProbeManualFaces = getChild<LLUICtrl>("cine_live_probe_manual_faces"); // [ProbeManualRate]
+    mLiveProbeManualFrames = getChild<LLUICtrl>("cine_live_probe_manual_frames"); // [ProbeManualRate]
+    mLiveProbeManualFacesReset = getChild<LLUICtrl>("cine_live_probe_manual_faces_reset"); // [ProbeManualRate]
+    mLiveProbeManualFramesReset = getChild<LLUICtrl>("cine_live_probe_manual_frames_reset"); // [ProbeManualRate]
     mNightMaskPreset = getChild<LLComboBox>("cine_night_mask_preset");
     mEasyNightMaskPreset = getChild<LLComboBox>("cine_easy_night_mask_preset");
     mRigRimPreset = getChild<LLComboBox>("cine_rig_rim_preset"); // [RigRimPreset]
@@ -2381,11 +2404,20 @@ void ALPanelCineLightRig::updateDerivedStatus()
             break;
     }
     {
-        // [LiveProbeRefresh] "Refresh now" only means something in On change.
-        mLiveProbeRefreshNow->setEnabled(
+        // [LiveProbeRefresh] "Refresh now" only means something in On change
+        // and, [ProbeManualRate], in Manual.
+        const ALCineLiveProbeRefresh::Mode refresh_mode =
             ALCineLiveProbeRefresh::sanitizeMode(
-                gSavedSettings.getS32("CineLightRigLiveProbeRefresh")) ==
-            ALCineLiveProbeRefresh::Mode::ON_CHANGE);
+                gSavedSettings.getS32("CineLightRigLiveProbeRefresh"));
+        mLiveProbeRefreshNow->setEnabled(
+            refresh_mode == ALCineLiveProbeRefresh::Mode::ON_CHANGE ||
+            refresh_mode == ALCineLiveProbeRefresh::Mode::MANUAL);
+        // [ProbeManualRate] the Faces / Every spinners only apply in Manual.
+        const bool manual_rate = refresh_mode == ALCineLiveProbeRefresh::Mode::MANUAL;
+        mLiveProbeManualFaces->setEnabled(manual_rate);
+        mLiveProbeManualFrames->setEnabled(manual_rate);
+        mLiveProbeManualFacesReset->setEnabled(manual_rate);
+        mLiveProbeManualFramesReset->setEnabled(manual_rate);
     }
     if (probe_state == ALCineLightRigManager::LiveProbeState::WARMING ||
         probe_state == ALCineLightRigManager::LiveProbeState::LIVE)

@@ -3758,6 +3758,7 @@ struct LiveProbeSim
     bool mAnimating = false;
     bool mFullRadiance = false;
     S32 mFrame = 0;
+    S32 mLastBurstFaces = 0; // faces actually captured by the last step
     lpr::Decision mDecision;
     S32 mIrrPubs = 0;
     S32 mRadPubs = 0;
@@ -3795,11 +3796,18 @@ struct LiveProbeSim
         ++mFrame;
         mDecision = lpr::decide(mState, mParams, h, mAnimating, mReady, now(),
                                 &mProbeTag, mCube);
+        mLastBurstFaces = 0;
         if (mDecision.mPath == lpr::Path::BUDGET)
         {
             lpr::noteFrameH(mState, h);
-            for (S32 n = 0; n < mDecision.mFaces && mState.mActive; ++n)
+            for (S32 n = 0; n < mDecision.mFaces; ++n)
             {
+                // Mirrors updateCinematicBudget: only Manual continues past a pass end.
+                if (!mState.mActive && !lpr::continueManualPass(mState, now()))
+                {
+                    break;
+                }
+                ++mLastBurstFaces;
                 const lpr::PassEnd end = lpr::advanceFace(mState, now());
                 if (end != lpr::PassEnd::NONE)
                 {
@@ -3874,7 +3882,8 @@ void cine_light_rig_model_object::test<55>()
     ensure("1 -> BALANCED", lpr::sanitizeMode(1) == lpr::Mode::BALANCED);
     ensure("2 -> ECONOMY", lpr::sanitizeMode(2) == lpr::Mode::ECONOMY);
     ensure("3 -> ON_CHANGE", lpr::sanitizeMode(3) == lpr::Mode::ON_CHANGE);
-    ensure("4 -> ON_CHANGE", lpr::sanitizeMode(4) == lpr::Mode::ON_CHANGE);
+    ensure("4 -> MANUAL", lpr::sanitizeMode(4) == lpr::Mode::MANUAL); // [ProbeManualRate]
+    ensure("5 -> ON_CHANGE", lpr::sanitizeMode(5) == lpr::Mode::ON_CHANGE);
     ensure("100 -> ON_CHANGE", lpr::sanitizeMode(100) == lpr::Mode::ON_CHANGE);
 }
 
@@ -6555,5 +6564,241 @@ void cine_light_rig_model_object::test<91>()
         }
         ensure("the culled set is bounded", !p.culledEmpty() && !p.wasCulled(1));
     }
+}
+
+// [ProbeManualRate] Manual cadence (test<92>..test<94>): the pure scheduler only;
+// the manager's capture of the faces it asks for is an in-world check.
+template<> template<>
+void cine_light_rig_model_object::test<92>()
+{
+    set_test_name("[ProbeManualRate] manual N=1 faces=6 matches Every frame face counts");
+    LiveProbeSim sim;
+    sim.mParams.mMode = lpr::Mode::MANUAL;
+    sim.mParams.mManualEvery = 1;
+    sim.mParams.mManualFaces = 6;
+    S32 faces = 0;
+    for (S32 f = 1; f <= 12; ++f)
+    {
+        const lpr::Decision d = sim.step(0);
+        ensure("manual N=1 renders on every frame", d.mPath == lpr::Path::BUDGET);
+        ensure_equals("six faces per frame, like Every frame", d.mFaces, 6);
+        faces += d.mFaces;
+    }
+    ensure_equals("72 faces in 12 frames (6 per frame)", faces, 72);
+    ensure_equals("one pass publishes per frame", static_cast<S32>(sim.mLog.size()), 12);
+    for (S32 i = 0; i < 12; ++i)
+    {
+        ensure_equals("pass lands on its own frame", sim.mLog[i].mFrame, i + 1);
+        ensure("irradiance / radiance alternate",
+            sim.mLog[i].mEnd == ((i % 2 == 0) ? lpr::PassEnd::IRRADIANCE
+                                              : lpr::PassEnd::RADIANCE));
+    }
+}
+
+template<> template<>
+void cine_light_rig_model_object::test<93>()
+{
+    set_test_name("[ProbeManualRate] manual N=4 faces=1 renders one face on every 4th frame only");
+    LiveProbeSim sim;
+    sim.mParams.mMode = lpr::Mode::MANUAL;
+    sim.mParams.mManualEvery = 4;
+    sim.mParams.mManualFaces = 1;
+    S32 faces = 0;
+    for (S32 f = 1; f <= 48; ++f)
+    {
+        // The hash, the animation flag and an idle-worthy constant H must all be ignored.
+        sim.mAnimating = (f % 5) == 0;
+        const lpr::Decision d = sim.step(static_cast<U64>(f % 3));
+        if (f % 4 == 0)
+        {
+            ensure("a burst frame is BUDGET", d.mPath == lpr::Path::BUDGET);
+            ensure_equals("one face per burst", d.mFaces, 1);
+            faces += 1;
+        }
+        else
+        {
+            ensure("a frame in between renders nothing", d.mPath == lpr::Path::IDLE);
+            ensure_equals("no faces in between", d.mFaces, 0);
+        }
+    }
+    ensure_equals("12 faces in 48 frames", faces, 12);
+    ensure_equals("two full passes in 48 frames", static_cast<S32>(sim.mLog.size()), 2);
+    ensure_equals("irradiance publishes on the 6th burst", sim.mLog[0].mFrame, 24);
+    ensure("first pass is irradiance", sim.mLog[0].mEnd == lpr::PassEnd::IRRADIANCE);
+    ensure_equals("radiance publishes on the 12th burst", sim.mLog[1].mFrame, 48);
+    ensure("second pass is radiance", sim.mLog[1].mEnd == lpr::PassEnd::RADIANCE);
+    // never idles for good: the cadence continues indefinitely
+    for (S32 f = 49; f <= 96; ++f)
+    {
+        const lpr::Decision d = sim.step(0);
+        ensure("keeps cycling forever", (d.mPath == lpr::Path::BUDGET) == (f % 4 == 0));
+    }
+    ensure_equals("four passes after 96 frames", static_cast<S32>(sim.mLog.size()), 4);
+}
+
+template<> template<>
+void cine_light_rig_model_object::test<94>()
+{
+    set_test_name("[ProbeManualRate] manual clamps, warm-up and Refresh now turbo");
+    {   // every < 1 -> 1 ; faces < 1 -> 1
+        LiveProbeSim sim;
+        sim.mParams.mMode = lpr::Mode::MANUAL;
+        sim.mParams.mManualEvery = -7;
+        sim.mParams.mManualFaces = 0;
+        for (S32 f = 1; f <= 6; ++f)
+        {
+            const lpr::Decision d = sim.step(0);
+            ensure("every clamps up to 1", d.mPath == lpr::Path::BUDGET);
+            ensure_equals("faces clamps up to 1", d.mFaces, 1);
+        }
+    }
+    {   // faces > 6 -> 6 ; every > 120 -> 120
+        LiveProbeSim sim;
+        sim.mParams.mMode = lpr::Mode::MANUAL;
+        sim.mParams.mManualEvery = 100000;
+        sim.mParams.mManualFaces = 99;
+        for (S32 f = 1; f <= 240; ++f)
+        {
+            const lpr::Decision d = sim.step(0);
+            if (f % 120 == 0)
+            {
+                ensure("every clamps down to 120", d.mPath == lpr::Path::BUDGET);
+                ensure_equals("faces clamps down to 6", d.mFaces, 6);
+            }
+            else
+            {
+                ensure("nothing between bursts", d.mPath == lpr::Path::IDLE);
+            }
+        }
+    }
+    {   // not ready: the shared one-time warm-up, not the manual cadence
+        LiveProbeSim sim;
+        sim.mParams.mMode = lpr::Mode::MANUAL;
+        sim.mParams.mManualEvery = 50;
+        sim.mReady = false;
+        const lpr::Decision d = sim.step(0);
+        ensure("not ready warms up FULL", d.mPath == lpr::Path::FULL);
+    }
+    {   // Refresh now: both cubes rebuilt at 6 faces/frame, then the cadence resumes
+        LiveProbeSim sim;
+        sim.mParams.mMode = lpr::Mode::MANUAL;
+        sim.mParams.mManualEvery = 10;
+        sim.mParams.mManualFaces = 1;
+        for (S32 f = 1; f <= 13; ++f)
+        {
+            sim.step(0); // frame 10 left a pass mid-way (1 of 6 faces)
+        }
+        const size_t before = sim.mLog.size();
+        sim.mState.mManual = true;
+        for (S32 k = 0; k < 2; ++k)
+        {
+            const lpr::Decision d = sim.step(0);
+            ensure("turbo frame renders", d.mPath == lpr::Path::BUDGET);
+            ensure_equals("turbo is capped at the 6-face Every frame budget", d.mFaces, 6);
+        }
+        ensure_equals("two clean passes landed", static_cast<S32>(sim.mLog.size() - before), 2);
+        ensure("turbo publishes irradiance first",
+            sim.mLog[before].mEnd == lpr::PassEnd::IRRADIANCE);
+        ensure("then radiance", sim.mLog[before + 1].mEnd == lpr::PassEnd::RADIANCE);
+        ensure("request consumed", !sim.mState.mManual);
+        for (S32 f = 0; f < 9; ++f)
+        {
+            const lpr::Decision d = sim.step(0);
+            ensure("back to nothing between bursts", d.mPath == lpr::Path::IDLE);
+        }
+        const lpr::Decision d = sim.step(0);
+        ensure("cadence resumes at N frames after the turbo", d.mPath == lpr::Path::BUDGET);
+        ensure_equals("with the configured face count", d.mFaces, 1);
+    }
+}
+
+// [ProbeManualRate] P2 fixes: exact K faces per burst across pass boundaries,
+// and the turbo's fixed irradiance-then-radiance order.
+template<> template<>
+void cine_light_rig_model_object::test<95>()
+{
+    set_test_name("[ProbeManualRate] manual K=4 and K=5 deliver exactly K faces per burst across pass ends");
+    {
+        LiveProbeSim sim;
+        sim.mParams.mMode = lpr::Mode::MANUAL;
+        sim.mParams.mManualEvery = 1;
+        sim.mParams.mManualFaces = 4;
+        for (S32 f = 1; f <= 6; ++f)
+        {
+            sim.step(0);
+            ensure_equals("K=4 burst is exactly 4 faces", sim.mLastBurstFaces, 4);
+        }
+        ensure_equals("24 faces = 4 passes", static_cast<S32>(sim.mLog.size()), 4);
+        const S32 frames[4] = { 2, 3, 5, 6 };
+        for (S32 i = 0; i < 4; ++i)
+        {
+            ensure_equals("K=4 pass end frame", sim.mLog[i].mFrame, frames[i]);
+            ensure("K=4 passes alternate",
+                sim.mLog[i].mEnd == ((i % 2 == 0) ? lpr::PassEnd::IRRADIANCE
+                                                  : lpr::PassEnd::RADIANCE));
+        }
+    }
+    {
+        LiveProbeSim sim;
+        sim.mParams.mMode = lpr::Mode::MANUAL;
+        sim.mParams.mManualEvery = 3;
+        sim.mParams.mManualFaces = 5;
+        S32 bursts = 0;
+        for (S32 f = 1; f <= 18; ++f)
+        {
+            sim.step(0);
+            if (f % 3 == 0)
+            {
+                ++bursts;
+                ensure_equals("K=5 burst is exactly 5 faces", sim.mLastBurstFaces, 5);
+            }
+            else
+            {
+                ensure_equals("no faces between bursts", sim.mLastBurstFaces, 0);
+            }
+        }
+        ensure_equals("six bursts", bursts, 6);
+        ensure_equals("30 faces = 5 passes", static_cast<S32>(sim.mLog.size()), 5);
+        const S32 frames[5] = { 6, 9, 12, 15, 18 };
+        for (S32 i = 0; i < 5; ++i)
+        {
+            ensure_equals("K=5 pass end frame", sim.mLog[i].mFrame, frames[i]);
+            ensure("K=5 passes alternate",
+                sim.mLog[i].mEnd == ((i % 2 == 0) ? lpr::PassEnd::IRRADIANCE
+                                                  : lpr::PassEnd::RADIANCE));
+        }
+    }
+}
+
+template<> template<>
+void cine_light_rig_model_object::test<96>()
+{
+    set_test_name("[ProbeManualRate] turbo from irradiance-done + radiance-partial runs irradiance, then radiance");
+    LiveProbeSim sim;
+    sim.mParams.mMode = lpr::Mode::MANUAL;
+    sim.mParams.mManualEvery = 1;
+    sim.mParams.mManualFaces = 6;
+    sim.step(0); // irradiance completes
+    ensure_equals("one pass", static_cast<S32>(sim.mLog.size()), 1);
+    ensure("irradiance first", sim.mLog[0].mEnd == lpr::PassEnd::IRRADIANCE);
+    sim.mParams.mManualFaces = 1;
+    sim.step(0);
+    sim.step(0); // radiance partial: 2 of 6
+    ensure("radiance still partial", sim.mState.mActive && sim.mState.mRadiance);
+    ensure_equals("no extra pass yet", static_cast<S32>(sim.mLog.size()), 1);
+    sim.mState.mManual = true; // Refresh now
+    sim.step(0);
+    ensure_equals("turbo frame 1 is a full burst", sim.mLastBurstFaces, 6);
+    ensure_equals("turbo frame 1 published", static_cast<S32>(sim.mLog.size()), 2);
+    ensure("turbo publishes irradiance first", sim.mLog[1].mEnd == lpr::PassEnd::IRRADIANCE);
+    sim.step(0);
+    ensure_equals("turbo frame 2 published", static_cast<S32>(sim.mLog.size()), 3);
+    ensure("then radiance", sim.mLog[2].mEnd == lpr::PassEnd::RADIANCE);
+    for (S32 f = 0; f < 6; ++f)
+    {
+        sim.step(0); // normal cadence, 1 face per frame
+    }
+    ensure_equals("next normal pass completed", static_cast<S32>(sim.mLog.size()), 4);
+    ensure("alternation continues with irradiance", sim.mLog[3].mEnd == lpr::PassEnd::IRRADIANCE);
 }
 } // namespace tut

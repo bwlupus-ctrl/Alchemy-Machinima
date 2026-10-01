@@ -353,6 +353,11 @@ private:
 
     LLReflectionMap* mUpdatingProbe = nullptr;
     U32 mUpdatingFace = 0;
+    // [ProbeManualRate] frame counter for RenderProbeUpdateEveryNFrames (only
+    // advanced while N > 1; an ordinary-probe tick is counter % N == 0)
+    U32 mOrdThrottleCounter = 0;
+    // [ProbeManualRate] start op of a pass a Manual burst began after ending one
+    U64 mCineContStartOp = 0;
 
     // if true, we're generating the radiance map for the current probe, otherwise we're generating the irradiance map.
     // Update sequence should be to generate the irradiance map from render of the world that has no irradiance,

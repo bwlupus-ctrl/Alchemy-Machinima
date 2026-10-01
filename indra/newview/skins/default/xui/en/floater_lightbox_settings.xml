@@ -1535,6 +1535,62 @@
 					function="LightBox.ResetControlDefault"
 					parameter="RenderHeroProbeUpdateRate" />
 			</button>
+			<!--[ProbeManualRate] Region probe update rate-->
+				<text
+					follows="left|top"
+					height="15"
+					left="10"
+					top_pad="10"
+					width="300"
+					layout="topleft"
+					tool_tip="1 = every frame (stock). Higher = region reflection probes refresh more slowly and cost less. 4 = a quarter of the cost."
+					name="probeUpdateEveryNLabel"
+					value="Region probe update every N frames:" />
+				<slider
+					control_name="RenderProbeUpdateEveryNFrames"
+					top_pad="2"
+					height="20"
+					increment="1"
+					follows="top|left"
+					layout="topleft"
+					max_val="120"
+					min_val="1"
+					left="29"
+					right="-56"
+					name="probeUpdateEveryNSlider"
+					tool_tip="1 = every frame (stock). Higher = region reflection probes refresh more slowly and cost less. 4 = a quarter of the cost."
+					show_text="false" />
+				<spinner
+					top_pad="-20"
+					height="15"
+					label_width="0"
+					right="-22"
+					decimal_digits="0"
+					follows="top|right"
+					layout="topleft"
+					max_val="120"
+					min_val="1"
+					width="55"
+					increment="1"
+					control_name="RenderProbeUpdateEveryNFrames"
+					tool_tip="1 = every frame (stock). Higher = region reflection probes refresh more slowly and cost less. 4 = a quarter of the cost."
+					name="probeUpdateEveryNSpinner" />
+				<button
+					name="reset_RenderProbeUpdateEveryNFrames"
+					follows="top|right"
+					layout="topleft"
+					height="22"
+					right="-2"
+					top_pad="-19"
+					width="18"
+					scale_image="true"
+					image_overlay="Refresh_Off"
+					image_overlay_alignment="center"
+					tool_tip="Reset to default value">
+					<button.commit_callback
+						function="LightBox.ResetControlDefault"
+						parameter="RenderProbeUpdateEveryNFrames" />
+				</button>
 			<!--Update probes on demand-->
 			<check_box
 				follows="left|top"

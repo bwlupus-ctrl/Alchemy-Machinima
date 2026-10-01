@@ -172,6 +172,11 @@ private:
     LLTextBox* mShadowHint = nullptr;
     LLTextBox* mLiveProbeStatus = nullptr;
     LLButton* mLiveProbeRefreshNow = nullptr; // [LiveProbeRefresh]
+    // [ProbeManualRate] Manual-mode controls (enabled only when Refresh = Manual)
+    LLUICtrl* mLiveProbeManualFaces = nullptr;
+    LLUICtrl* mLiveProbeManualFrames = nullptr;
+    LLUICtrl* mLiveProbeManualFacesReset = nullptr;
+    LLUICtrl* mLiveProbeManualFramesReset = nullptr;
     LLButton* mShadowFixIt = nullptr;
     LLTextBox* mRadiusLabel = nullptr;
     LLButton* mSetupSave = nullptr;
