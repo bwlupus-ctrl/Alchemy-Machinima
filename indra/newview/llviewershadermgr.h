@@ -282,6 +282,9 @@ extern LLGLSLShader         gDeferredLightProgram;
 extern LLGLSLShader         gDeferredMultiLightProgram[LL_DEFERRED_MULTI_LIGHT_COUNT];
 extern LLGLSLShader         gDeferredSpotLightProgram;
 extern LLGLSLShader         gDeferredMultiSpotLightProgram;
+// [ActorMask] Fullscreen-only wrappers of the unchanged stock light bodies.
+extern LLGLSLShader gDeferredMultiLightActorMaskProgram;
+extern LLGLSLShader gDeferredMultiSpotLightActorMaskProgram;
 extern LLGLSLShader         gDeferredSunProgram;
 extern LLGLSLShader         gDeferredSunProbeProgram;
 extern LLGLSLShader         gHazeProgram;

@@ -23109,7 +23109,7 @@ namespace
 class ScopedActorMaskState
 {
 public:
-    ScopedActorMaskState() :
+    explicit ScopedActorMaskState(bool save_all_textures = true) :
         mShader(LLGLSLShader::sCurBoundShaderPtr), mLastMatrix(gGLLastMatrix),
         mMode(gGL.getMatrixMode()), mUnit(gGL.getCurrentTexUnitIndex())
     {
@@ -23140,8 +23140,11 @@ public:
         gGL.matrixMode(LLRender::MM_TEXTURE0);
         gGL.pushMatrix();
         // [ActorMask] Preserve complete wrappers, including mip bookkeeping.
-        for (U32 i = 0; i < LL_NUM_TEXTURE_LAYERS; ++i)
-            mTextures.emplace_back(*gGL.getTexUnit(i));
+        if (save_all_textures)
+        {
+            for (U32 i = 0; i < LL_NUM_TEXTURE_LAYERS; ++i)
+                saveTexture(i);
+        }
         gGL.getTexUnit(mUnit)->activate();
         glActiveTexture(static_cast<GLenum>(mActiveTexture));
     }
@@ -23156,10 +23159,9 @@ public:
         gGL.popMatrix();
         gGL.matrixMode(mMode);
         gGLLastMatrix = mLastMatrix;
-        for (U32 i = 0; i < mTextures.size(); ++i)
+        for (const auto& texture : mTextures)
         {
-            auto* unit = gGL.getTexUnit(i);
-            mTextures[i].restore(*unit);
+            texture.restore(*gGL.getTexUnit(texture.getIndex()));
         }
         gGL.getTexUnit(mUnit)->activate();
         glActiveTexture(static_cast<GLenum>(mActiveTexture));
@@ -23175,7 +23177,30 @@ public:
         glViewport(mViewport[0], mViewport[1], mViewport[2], mViewport[3]);
         if (mScissor) glEnable(GL_SCISSOR_TEST); else glDisable(GL_SCISSOR_TEST);
     }
+    // [ActorMask] Capture linked sampler channels before any actor draws.
+    // Covers deferred bindings, the mask and cookie without querying unused
+    // units. Deferred cleanup also touches unit zero.
+    void saveShaderTextures(const LLGLSLShader& shader)
+    {
+        saveTexture(0);
+        for (GLint channel : shader.mTexture)
+        {
+            if (channel >= 0 && static_cast<U32>(channel) < LL_NUM_TEXTURE_LAYERS)
+                saveTexture(static_cast<U32>(channel));
+        }
+        gGL.getTexUnit(mUnit)->activate();
+        glActiveTexture(static_cast<GLenum>(mActiveTexture));
+    }
 private:
+    void saveTexture(U32 channel)
+    {
+        if (!mTextureSaved[channel])
+        {
+            mTextures.emplace_back(*gGL.getTexUnit(channel));
+            mTextureSaved[channel] = true;
+        }
+    }
+    bool mTextureSaved[LL_NUM_TEXTURE_LAYERS] = {};
     LLGLSLShader* mShader;
     const LLMatrix4* mLastMatrix;
     LLRender::eMatrixMode mMode;
@@ -23541,6 +23566,17 @@ void LLPipeline::renderActorMask()
     mActorMaskValid = true;
 }
 
+// [ActorMask] WP7 must check this before claiming PARITY, at the F3 capture.
+const char* LLPipeline::actorMaskParityPathInconclusiveReason() const
+{
+    if (!ALCineLightRigManager::anyActorOnly() || mActorMaskTestMode != ActorMaskTestMode::F3 ||
+        !mActorMaskF3PathsRecorded || mActorMaskF3PathFrame != gFrameCount)
+        return "no current F3 path record";
+    for (const auto& path : mActorMaskF3PointPaths)
+        if (path.volume) return nullptr;
+    return "no volume-path point in F3";
+}
+
 void LLPipeline::renderDeferredLighting(ActorMaskViewSource source)
 {
     LL_PROFILE_ZONE_SCOPED_CATEGORY_PIPELINE;
@@ -23613,6 +23649,29 @@ void LLPipeline::renderDeferredLighting(ActorMaskViewSource source)
                 if (!mActorMaskValid) mActorMaskView = ActorMaskView::EXCLUDE;
             }
         }
+    }
+    // [ActorMask] Test routing is main-view-only and cannot override fail-closed
+    // classification. WP7 sets the mode; the normal/off path binds nothing new.
+    const bool actor_only = ALCineLightRigManager::anyActorOnly();
+    if (actor_only && mActorMaskView == ActorMaskView::MASK && mActorMaskValid &&
+        (!gDeferredMultiLightActorMaskProgram.isComplete() ||
+         !gDeferredMultiSpotLightActorMaskProgram.isComplete()))
+    {
+        LL_WARNS_ONCE("ActorMask") << "[ActorMask] ACTORMASK NO-PROGRAM lights" << LL_ENDL;
+        mActorMaskView = ActorMaskView::EXCLUDE;
+        mActorMaskValid = false;
+    }
+    const bool actor_mask_ready = actor_only &&
+        mActorMaskView == ActorMaskView::MASK && mActorMaskValid;
+    const bool actor_test_view = actor_mask_ready && source == ActorMaskViewSource::MAIN &&
+        mRT == &mMainRT && !gCubeSnapshot && !sPrismLensRender;
+    const bool actor_as_world = actor_test_view && mActorMaskTestMode == ActorMaskTestMode::F3;
+    const bool actor_excluded = actor_test_view && mActorMaskTestMode == ActorMaskTestMode::F0;
+    if (actor_only && source == ActorMaskViewSource::MAIN)
+    {
+        mActorMaskF3PointPaths.clear();
+        mActorMaskF3PathFrame = gFrameCount;
+        mActorMaskF3PathsRecorded = actor_as_world;
     }
     llassert(!sRenderingHUDs);
 
@@ -23969,6 +24028,17 @@ void LLPipeline::renderDeferredLighting(ActorMaskViewSource source)
                         continue;
                     }
 
+                    // [ActorMask] Before EVERY count/toggle/selection side effect.
+                    // Removing these entries is exactly the light-off world list,
+                    // including which world entry triggers the count-limit break.
+                    const U8 actor_bits = actor_only ?
+                        ALCineLightRigManager::instance().actorOnlyBits(volume->getID()) : 0;
+                    if (actor_bits && (!actor_as_world ||
+                        !(actor_bits & ALCineLightRigManager::instance().liveRecipientBits())))
+                    {
+                        continue;
+                    }
+
                     // A cinematic live probe captures the four authored rig
                     // projectors, but not the target rig's synthetic bounce or
                     // eye catchlight. Baking those helpers into irradiance would
@@ -24057,6 +24127,9 @@ void LLPipeline::renderDeferredLighting(ActorMaskViewSource source)
                             continue;
                         }
 
+                        // [ActorMask] Record only accepted points actually drawn by F3.
+                        if (actor_as_world && actor_bits)
+                            mActorMaskF3PointPaths.push_back({ volume->getID(), true });
                         gDeferredLightProgram.uniform3fv(LLShaderMgr::LIGHT_CENTER, 1, c);
                         gDeferredLightProgram.uniform1f(LLShaderMgr::LIGHT_SIZE, s);
                         gDeferredLightProgram.uniform3fv(LLShaderMgr::DIFFUSE_COLOR, 1, col.mV);
@@ -24087,6 +24160,9 @@ void LLPipeline::renderDeferredLighting(ActorMaskViewSource source)
                         glm::vec3 tc(center);
                         tc = mul_mat4_vec3(mat, tc);
 
+                        // [ActorMask] This accepted F3 point will use the stock batch below.
+                        if (actor_as_world && actor_bits)
+                            mActorMaskF3PointPaths.push_back({ volume->getID(), false });
                         fullscreen_lights.push_back(LLVector4(tc.x, tc.y, tc.z, s));
                         light_colors.push_back(LLVector4(col.mV[0], col.mV[1], col.mV[2], volume->getLightFalloff(DEFERRED_LIGHT_FALLOFF)));
                         // [RigRim] Only staged when active; every consumer below checks the
@@ -24245,6 +24321,139 @@ void LLPipeline::renderDeferredLighting(ActorMaskViewSource source)
 
                 gDeferredMultiSpotLightProgram.disableTexture(LLShaderMgr::DEFERRED_PROJECTION);
                 unbindDeferredShader(gDeferredMultiSpotLightProgram);
+            }
+
+            // [ActorMask] Independent uncapped scan: the world collector's break
+            // cannot hide actors. All actor draws follow BOTH world spot blocks,
+            // so tier-0 projectors only auction after the world slots are settled.
+            if (actor_mask_ready && !actor_as_world && !actor_excluded)
+            {
+                LL_PROFILE_ZONE_NAMED_CATEGORY_PIPELINE("actor-only lights");
+                LLScopedActorMaskInvariant invariant("actor-only lights");
+                ScopedActorMaskState saved_state(false); // [ActorMask] Only drawn shaders' units.
+                LLGLDepthTest depth(GL_FALSE, GL_FALSE);
+                if (!gDeferredMultiLightActorMaskProgram.isComplete() ||
+                    !gDeferredMultiSpotLightActorMaskProgram.isComplete())
+                {
+                    LL_WARNS_ONCE("ActorMask") << "[ActorMask] ACTORMASK NO-PROGRAM lights" << LL_ENDL;
+                }
+                else
+                {
+                    struct ActorPoint { LLVector4 light, color, rim; };
+                    std::map<U8, std::vector<ActorPoint>> actor_points;
+                    std::map<U8, LLDrawable::drawable_vector_t> actor_spots;
+                    const auto& registry = ALCineLightRigManager::instance();
+                    const U8 live_bits = static_cast<U8>(registry.liveRecipientBits() & ~ALCineLightRigManager::ACTOR_ONLY_ORPHAN_BIT);
+                    for (const auto& entry : mNearbyLights)
+                    {
+                        LLDrawable* drawable = entry.drawable;
+                        LLVOVolume* volume = drawable ? drawable->getVOVolume() : nullptr;
+                        if (!volume) continue;
+                        const U8 bits = static_cast<U8>(registry.actorOnlyBits(volume->getID()) & live_bits);
+                        if (!bits) continue; // orphan-only entries never draw or auction
+                        if (volume->isAttachment() && (!sRenderAttachedLights ||
+                            !bdmerge_should_render_light(true, volume->getAvatar() == gAgentAvatarp))) continue;
+                        if (!volume->isAttachment() && !volume->isCineRigEmitter() &&
+                            !bdmerge_should_render_light(false, false)) continue;
+                        const F32 ls = light_scale * ALEnvIntensity::localLightEVScale(volume);
+                        const LLColor3 color = volume->getLightLinearColor() * ls;
+                        const F32 size = volume->getLightRadius() * 1.5f;
+                        if (color.magVecSquared() < 0.001f || size <= 0.001f) continue;
+                        LLVector4a center, extent;
+                        center.load3(drawable->getPositionAgent().mV);
+                        extent.splat(size);
+                        if (camera->AABBInFrustumNoFarClip(center, extent) == 0) continue;
+                        if (volume->isLightSpotlight() &&
+                            (volume->isCineRigEmitter() || bdmerge_should_render_projector()))
+                        {
+                            if (!sPrismLensRender) volume->updateSpotLightPriority();
+                            actor_spots[bits].push_back(drawable);
+                        }
+                        else
+                        {
+                            const glm::vec3 tc = mul_mat4_vec3(mat, glm::vec3(center));
+                            actor_points[bits].push_back({ LLVector4(tc.x, tc.y, tc.z, size),
+                                LLVector4(color.mV[0], color.mV[1], color.mV[2],
+                                    volume->getLightFalloff(DEFERRED_LIGHT_FALLOFF)),
+                                rig_rim_active ? ALCineRigRim::paramsForVolume(volume) : LLVector4(0.f, 0.f, 0.f, 0.f) });
+                        }
+                    }
+
+                    // [ActorMask] Save the union once, before either shader changes GL.
+                    if (!actor_points.empty())
+                        saved_state.saveShaderTextures(gDeferredMultiLightActorMaskProgram);
+                    if (!actor_spots.empty())
+                        saved_state.saveShaderTextures(gDeferredMultiSpotLightActorMaskProgram);
+
+                    for (const auto& group : actor_points)
+                    {
+                        constexpr U32 batch_size = 16; // matches LIGHT_COUNT, including padding
+                        for (size_t first = 0; first < group.second.size(); first += batch_size)
+                        {
+                            LLVector4 lights[batch_size], colors[batch_size], rims[batch_size];
+                            for (U32 i = 0; i < batch_size; ++i)
+                            {
+                                lights[i].set(0.f, 0.f, 1.e9f, 1.f);
+                                colors[i].set(0.f, 0.f, 0.f, 0.f);
+                                rims[i].set(0.f, 0.f, 0.f, 0.f);
+                            }
+                            const U32 count = static_cast<U32>(std::min<size_t>(batch_size, group.second.size() - first));
+                            F32 far_z = 0.f;
+                            for (U32 i = 0; i < count; ++i)
+                            {
+                                const auto& point = group.second[first + i];
+                                lights[i] = point.light;
+                                colors[i] = point.color;
+                                rims[i] = point.rim;
+                                far_z = llmin(far_z, point.light.mV[2] - point.light.mV[3]);
+                            }
+                            auto& shader = gDeferredMultiLightActorMaskProgram;
+                            bindDeferredShader(shader);
+                            if (bindActorMask(shader) >= 0)
+                            {
+                                shader.uniform1i(LLShaderMgr::ACTOR_MASK_BITS, group.first);
+                                shader.uniform1i(LLShaderMgr::MULTI_LIGHT_COUNT, count);
+                                shader.uniform4fv(LLShaderMgr::MULTI_LIGHT, batch_size, lights[0].mV);
+                                shader.uniform4fv(LLShaderMgr::MULTI_LIGHT_COL, batch_size, colors[0].mV);
+                                shader.uniform4fv(LLShaderMgr::RIG_RIM_LIGHTS, batch_size, rims[0].mV);
+                                shader.uniform1f(LLShaderMgr::MULTI_LIGHT_FAR_Z, far_z);
+                                shader.uniform1i(LLShaderMgr::CLASSIC_MODE, psky->canAutoAdjust() ? 1 : 0);
+                                mScreenTriangleVB->setBuffer();
+                                mScreenTriangleVB->drawArrays(LLRender::TRIANGLES, 0, 3);
+                                sVisibleLightCount += static_cast<S32>(count);
+                            }
+                            shader.disableTexture(LLShaderMgr::ACTOR_MASK_MAP);
+                            unbindDeferredShader(shader);
+                        }
+                    }
+                    for (const auto& group : actor_spots)
+                    {
+                        auto& shader = gDeferredMultiSpotLightActorMaskProgram;
+                        bindDeferredShader(shader);
+                        shader.enableTexture(LLShaderMgr::DEFERRED_PROJECTION);
+                        for (LLDrawable* drawable : group.second)
+                        {
+                            if (bindActorMask(shader) < 0) break;
+                            LLVOVolume* volume = drawable->getVOVolume();
+                            const glm::vec3 tc = mul_mat4_vec3(mat, glm::vec3(drawable->getPositionAgent()));
+                            setupSpotLight(shader, drawable);
+                            const F32 ls = light_scale * ALEnvIntensity::localLightEVScale(volume);
+                            const LLColor3 color = volume->getLightLinearColor() * ls;
+                            shader.uniform1i(LLShaderMgr::ACTOR_MASK_BITS, group.first);
+                            shader.uniform3fv(LLShaderMgr::LIGHT_CENTER, 1, glm::value_ptr(tc));
+                            shader.uniform1f(LLShaderMgr::LIGHT_SIZE, volume->getLightRadius() * 1.5f);
+                            shader.uniform3fv(LLShaderMgr::DIFFUSE_COLOR, 1, color.mV);
+                            shader.uniform1f(LLShaderMgr::LIGHT_FALLOFF, volume->getLightFalloff(DEFERRED_LIGHT_FALLOFF));
+                            shader.uniform1i(LLShaderMgr::CLASSIC_MODE, psky->canAutoAdjust() ? 1 : 0);
+                            mScreenTriangleVB->setBuffer();
+                            mScreenTriangleVB->drawArrays(LLRender::TRIANGLES, 0, 3);
+                            ++sVisibleLightCount;
+                        }
+                        shader.disableTexture(LLShaderMgr::ACTOR_MASK_MAP);
+                        shader.disableTexture(LLShaderMgr::DEFERRED_PROJECTION);
+                        unbindDeferredShader(shader);
+                    }
+                }
             }
 
             // Clear does not free internal vector storage, so this is more efficient than creating new vectors each frame
@@ -24955,6 +25164,8 @@ void LLPipeline::setupSpotLight(LLGLSLShader& shader, LLDrawable* drawablep)
 
         for (U32 i = 0; i < bdmergeMaxSpotShadows(); i++) // [BDMerge NSpot]
         {
+            // [ActorMask] A displaced empty slot ends the bubble, as baseline.
+            if (!potential) break;
             F32 pri = 0.f;
             LLVOVolume* incumbent_volume = nullptr;
 
@@ -24971,11 +25182,24 @@ void LLPipeline::setupSpotLight(LLGLSLShader& shader, LLDrawable* drawablep)
                 potential_volume->isCineRigEmitter();
             const bool incumbent_is_rig = incumbent_volume &&
                 incumbent_volume->isCineRigEmitter();
-            // Rig-vs-world priority is categorical. Numeric priority remains
-            // the exact tie-break used before when both lights are the same
-            // kind, keeping world-only auctions byte-identical.
-            const bool outranks = potential_is_rig != incumbent_is_rig
-                ? potential_is_rig : m_pri > pri;
+            // [ActorMask] F3 uses the baseline rig/world auction, so WP7 can
+            // reject PARITY when F1 and F3 shadow assignments differ.
+            const bool actor_tiers = ALCineLightRigManager::anyActorOnly() &&
+                !(mActorMaskTestMode == ActorMaskTestMode::F3 &&
+                  mActorMaskView == ActorMaskView::MASK && mActorMaskValid &&
+                  mRT == &mMainRT && !gCubeSnapshot && !sPrismLensRender);
+            const auto tier = [actor_tiers](LLVOVolume* candidate, bool rig)
+            {
+                return rig ? (actor_tiers &&
+                    ALCineLightRigManager::instance().actorOnlyBits(candidate->getID()) ? 0 : 2) : 1;
+            };
+            const S32 potential_tier = tier(potential_volume, potential_is_rig);
+            // Null ranks below actors. Keep the rig/world comparison against
+            // null verbatim; equal real tiers keep the baseline numeric tie-break.
+            const bool outranks = !incumbent_volume
+                ? (potential_tier == 0 ? true : (potential_is_rig ? true : m_pri > 0))
+                : (potential_tier != tier(incumbent_volume, incumbent_is_rig)
+                    ? potential_tier > tier(incumbent_volume, incumbent_is_rig) : m_pri > pri);
             if (outranks)
             {
                 LLDrawable* temp = mTargetShadowSpotLight[i];
@@ -27475,6 +27699,40 @@ void LLPipeline::generateSunShadow(LLCamera& camera)
                 }
                 LLViewerCamera::sCurCameraID = (LLViewerCamera::eCameraID)(LLViewerCamera::CAMERA_SPOT_SHADOW0 + i);
 
+                // [ActorMask] Actor shadows only borrow spare slots. Release one
+                // immediately for a pending world light, even if the actor is
+                // still a target. The stock handoff then sees an empty, zero-fade
+                // slot instead of inheriting the actor's shadow fade.
+                if (ALCineLightRigManager::anyActorOnly() && mShadowSpotLight[i].notNull())
+                {
+                    const auto& registry = ALCineLightRigManager::instance();
+                    LLVOVolume* owner = mShadowSpotLight[i]->getVOVolume();
+                    if (owner && registry.actorOnlyBits(owner->getID()))
+                    {
+                        for (U32 j = 0; j < num_spots; ++j)
+                        {
+                            LLVOVolume* target = mTargetShadowSpotLight[j].notNull()
+                                ? mTargetShadowSpotLight[j]->getVOVolume() : nullptr;
+                            if (!target || registry.actorOnlyBits(target->getID())) continue;
+                            bool held = false;
+                            for (U32 k = 0; k < num_spots; ++k)
+                            {
+                                if (mShadowSpotLight[k] == mTargetShadowSpotLight[j])
+                                {
+                                    held = true;
+                                    break;
+                                }
+                            }
+                            if (!held)
+                            {
+                                mShadowSpotLight[i] = NULL;
+                                mSpotLightFade[i] = 0.f;
+                                break;
+                            }
+                        }
+                    }
+                }
+
                 bool is_target = false;
                 if (mShadowSpotLight[i].notNull())
                 {
@@ -27503,6 +27761,20 @@ void LLPipeline::generateSunShadow(LLCamera& camera)
                             if (mTargetShadowSpotLight[j].isNull())
                             {
                                 continue;
+                            }
+                            // [ActorMask] Admit actor-only lights only into truly empty slots;
+                            // retain world owners at zero fade so returning targets fade in immediately.
+                            // An actor-held slot (faded out) may pass to another actor light.
+                            if (ALCineLightRigManager::anyActorOnly() && mShadowSpotLight[i].notNull())
+                            {
+                                const auto& registry = ALCineLightRigManager::instance();
+                                LLVOVolume* owner = mShadowSpotLight[i]->getVOVolume();
+                                LLVOVolume* target = mTargetShadowSpotLight[j]->getVOVolume();
+                                const bool world_owner = !owner || !registry.actorOnlyBits(owner->getID());
+                                if (world_owner && target && registry.actorOnlyBits(target->getID()))
+                                {
+                                    continue;
+                                }
                             }
                             bool held = false;
                             for (U32 k = 0; k < num_spots; k++)
@@ -27734,6 +28006,7 @@ void LLPipeline::generatePrismSpotShadows(LLCamera& camera)
     {
         F32 dist;
         LLDrawable* drawable;
+        bool actorOnly; // [ActorMask] Sort after all world/ordinary rig candidates.
     };
     std::vector<PrismSpotShadowCandidate> candidates;
     static LLCachedControl<S32> prism_local_light_count(
@@ -27790,13 +28063,19 @@ void LLPipeline::generatePrismSpotShadows(LLCamera& camera)
             { // per-projector "cast shadows" opt-out applies in the feed too
                 continue;
             }
+            // [ActorMask] Shadow selection precedes the mask pass. Reject
+            // orphan-only candidates here; preserve the existing within-tier order.
+            const U8 actor_bits = ALCineLightRigManager::anyActorOnly() ?
+                ALCineLightRigManager::instance().actorOnlyBits(light->getID()) : 0;
+            if (actor_bits && !(actor_bits & ALCineLightRigManager::instance().liveRecipientBits())) continue;
             candidates.push_back(
-                { calc_light_dist(light, cam_pos, max_dist), drawable });
+                { calc_light_dist(light, cam_pos, max_dist), drawable, actor_bits != 0 });
         }
         std::sort(candidates.begin(), candidates.end(),
                   [](const PrismSpotShadowCandidate& a,
                      const PrismSpotShadowCandidate& b)
                   {
+                      if (a.actorOnly != b.actorOnly) return !a.actorOnly; // [ActorMask]
                       if (a.dist < b.dist) return true;
                       if (b.dist < a.dist) return false;
                       return a.drawable < b.drawable;

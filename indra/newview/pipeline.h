@@ -691,6 +691,16 @@ public:
     std::map<LLUUID, std::string> mActorMaskRecipientStatus; // WP7: IMPOSTOR/STYLED/NATIVE
     bool mActorMaskSummaryFrame = false; // WP7 consumes same 5s probe cadence
 
+    // [ActorMask] WP7 owns sequencing/captures. Overrides apply only to a valid
+    // main MASK view; F3 never bypasses probe/Prism/excluded-view isolation.
+    enum class ActorMaskTestMode : U8 { NORMAL, F0, F1, F2, F3 };
+    ActorMaskTestMode mActorMaskTestMode = ActorMaskTestMode::NORMAL;
+    struct ActorMaskPointPath { LLUUID light; bool volume; };
+    std::vector<ActorMaskPointPath> mActorMaskF3PointPaths;
+    U32 mActorMaskF3PathFrame = 0;
+    bool mActorMaskF3PathsRecorded = false;
+    const char* actorMaskParityPathInconclusiveReason() const;
+
     // Blit deferredScreen's albedo (attachment 0) and normals (attachment 2)
     // into mReShadeAlbedoRaw / mReShadeNormalsRaw for the ReShade bridge,
     // while they are still guaranteed valid (see the members' declaration

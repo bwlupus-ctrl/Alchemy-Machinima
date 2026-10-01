@@ -184,6 +184,9 @@ LLGLSLShader            gDeferredLightProgram;
 LLGLSLShader            gDeferredMultiLightProgram[16];
 LLGLSLShader            gDeferredSpotLightProgram;
 LLGLSLShader            gDeferredMultiSpotLightProgram;
+// [ActorMask]
+LLGLSLShader gDeferredMultiLightActorMaskProgram;
+LLGLSLShader gDeferredMultiSpotLightActorMaskProgram;
 LLGLSLShader            gDeferredSunProgram;
 LLGLSLShader            gDeferredSunProbeProgram;
 LLGLSLShader            gHazeProgram;
@@ -1635,6 +1638,8 @@ bool LLViewerShaderMgr::loadShadersDeferred()
         }
         gDeferredSpotLightProgram.unload();
         gDeferredMultiSpotLightProgram.unload();
+        gDeferredMultiLightActorMaskProgram.unload(); // [ActorMask]
+        gDeferredMultiSpotLightActorMaskProgram.unload();
         gDeferredSunProgram.unload();
         gDeferredBlurLightProgram.unload();
         gDeferredSoftenProgram.unload();
@@ -2734,6 +2739,44 @@ bool LLViewerShaderMgr::loadShadersDeferred()
 
     if (success)
     {
+        // [ActorMask] Optional programs cannot change stock success/fallback.
+        // No environment uniforms: bindDeferredShader supplies globals, as stock.
+        for (S32 i = 0; i < 2; ++i)
+        {
+            LLGLSLShader& shader = i == 0 ? gDeferredMultiLightActorMaskProgram :
+                                           gDeferredMultiSpotLightActorMaskProgram;
+            shader.mName = i == 0 ? "Deferred MultiLight ActorMask" :
+                                   "Deferred MultiSpotLight ActorMask";
+            shader.mFeatures = LLShaderFeatures();
+            shader.mFeatures.isDeferred = true;
+            shader.mFeatures.hasFullGBuffer = true;
+            shader.mFeatures.hasShadows = true;
+            shader.mFeatures.hasSrgb = true;
+            shader.mShaderLevel = mShaderLevel[SHADER_DEFERRED];
+            shader.mShaderFiles.clear();
+            shader.mShaderFiles.push_back(make_pair("deferred/multiPointLightV.glsl", GL_VERTEX_SHADER));
+            shader.mShaderFiles.push_back(make_pair("deferred/actorMaskGateV.glsl", GL_VERTEX_SHADER));
+            shader.mShaderFiles.push_back(make_pair(i == 0 ? "deferred/multiPointLightF.glsl" :
+                                                    "deferred/spotLightF.glsl", GL_FRAGMENT_SHADER));
+            shader.mShaderFiles.push_back(make_pair("deferred/actorMaskGateF.glsl", GL_FRAGMENT_SHADER));
+            shader.clearPermutations();
+            shader.addPermutation("main", "actorMaskedMain");
+            if (i == 0) shader.addPermutation("LIGHT_COUNT", "16");
+            else shader.addPermutation("MULTI_SPOTLIGHT", "1");
+            add_common_permutations(&shader);
+            const bool created = shader.createShader();
+            LL_INFOS("ActorMask") << "[ActorMask] " << shader.mName
+                << " texture_channels=" << shader.mActiveTextureChannels
+                << " available=" << gGLManager.mNumTextureImageUnits << LL_ENDL;
+            if (!created || shader.getUniformLocation(LLShaderMgr::ACTOR_MASK_MAP) < 0 ||
+                shader.getUniformLocation(LLShaderMgr::ACTOR_MASK_BITS) < 0 ||
+                shader.mActiveTextureChannels > gGLManager.mNumTextureImageUnits)
+            {
+                shader.unload();
+                LL_WARNS("ActorMask") << "[ActorMask] ACTORMASK NO-PROGRAM " << shader.mName << LL_ENDL;
+            }
+        }
+
         std::string fragment;
         bool use_ao = gSavedSettings.getBOOL("RenderDeferredSSAO");
         if (use_ao)
