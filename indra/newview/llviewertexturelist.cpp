@@ -62,6 +62,7 @@
 #include "llviewerdisplay.h"
 #include "llviewerwindow.h"
 #include "llprogressview.h"
+#include "alprobedirty.h" // [ProbeOnDemand]
 
 ////////////////////////////////////////////////////////////////////////////
 
@@ -1174,6 +1175,12 @@ F32 LLViewerTextureList::updateImagesCreateTextures(F32 max_time)
             if (img && img->getHasGLTexture())
             {
                 img->scaleDown(image->getDesiredDiscardLevel());
+                // [ProbeOnDemand] DS: records a blur stamp (an op) for the probe
+                // dirty recorder; a downgrade itself never dirties a probe.
+                if (ALProbeDirty::recording())
+                {
+                    ALProbeDirty::noteTextureDownscale(image);
+                }
             }
 
             image->mDownScalePending = false;

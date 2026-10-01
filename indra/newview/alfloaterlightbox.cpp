@@ -66,6 +66,10 @@ ALFloaterLightBox::ALFloaterLightBox(const LLSD& key)
 {
     mCommitCallbackRegistrar.add("LightBox.ResetControlDefault", std::bind(&ALFloaterLightBox::onClickResetControlDefault, this, std::placeholders::_2));
     mCommitCallbackRegistrar.add("LightBox.ResetGroupDefault", std::bind(&ALFloaterLightBox::onClickResetGroupDefault, this, std::placeholders::_2));
+    // [ProbeOnDemand] "Refresh all probes now": re-capture every relevant probe
+    // (and the Live Probe pair); the status text is updated in draw().
+    mCommitCallbackRegistrar.add("LightBox.RefreshAllProbes",
+        [](LLUICtrl*, const LLSD&) { gPipeline.mReflectionMapManager.requestRefreshAllProbes(); });
     // [BDMerge G3.3 Batch 3] Selected Light quick panel actions.
     mCommitCallbackRegistrar.add("LightBox.SelLightCastShadows", std::bind(&ALFloaterLightBox::onSelLightCastShadows, this));
     mCommitCallbackRegistrar.add("LightBox.SelLightVolumetric", std::bind(&ALFloaterLightBox::onSelLightVolumetric, this));
@@ -239,6 +243,19 @@ bool ALFloaterLightBox::postBuild()
 
 void ALFloaterLightBox::draw()
 {
+    // [ProbeOnDemand] Refresh-all readout, at most 4 Hz; the manager holds a
+    // terminal text for 10 s. findChild-guarded so it is a no-op until the
+    // Rendering tab's widgets exist.
+    static LLFrameTimer probe_status_timer;
+    if (probe_status_timer.getElapsedTimeF32() > 0.25f)
+    {
+        probe_status_timer.reset();
+        if (LLTextBox* probe_status = findChild<LLTextBox>("probe_refresh_status"))
+        {
+            probe_status->setValue(gPipeline.mReflectionMapManager.getRefreshAllStatus());
+        }
+    }
+
     // [BDMerge B-2b.3] live RAM-pool readouts on the Machinima tab
     static LLFrameTimer pool_stats_timer;
     if (pool_stats_timer.getElapsedTimeF32() > 1.f)

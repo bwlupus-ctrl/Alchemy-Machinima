@@ -1317,7 +1317,7 @@
 				<panel
 					background_visible="false"
 					follows="left|top|right"
-					height="566"
+					height="776"
 					layout="topleft"
 					left="0"
 					name="render_settings_scroll_content"
@@ -1535,6 +1535,314 @@
 					function="LightBox.ResetControlDefault"
 					parameter="RenderHeroProbeUpdateRate" />
 			</button>
+			<!--Update probes on demand-->
+			<check_box
+				follows="left|top"
+				height="15"
+				left="10"
+				top_pad="10"
+				width="250"
+				layout="topleft"
+				label="Update probes on demand"
+				tool_tip="Update each reflection probe only when what it shows changes, plus a safety refresh. Continuous motion (spinners, physics, vehicles, drags), texture animation and light animation (flicker, moving lights) are frozen until they stop, then refreshed once; flexi, media frames, water waves and clouds in non-default probes are only refreshed by the safety refresh or Refresh all probes now."
+				control_name="RenderProbeOnDemand"
+				name="probeOnDemand_check" />
+			<text
+				enabled_control="RenderProbeOnDemand"
+				follows="left|top"
+				height="15"
+				left="29"
+				top_pad="6"
+				width="110"
+				layout="topleft"
+				tool_tip="A probe becomes due for a refresh after this long; the refresh itself follows the queue (and occlusion)."
+				value="Safety refresh (s):" />
+			<slider
+				enabled_control="RenderProbeOnDemand"
+				control_name="RenderProbeMaxAge"
+				top_pad="-18"
+				height="20"
+				increment="10"
+				follows="top|left"
+				layout="topleft"
+				max_val="600"
+				min_val="10"
+				left="140"
+				right="-56"
+				name="probeMaxAgeSlider"
+				tool_tip="A probe becomes due for a refresh after this long; the refresh itself follows the queue (and occlusion)."
+				show_text="false" />
+			<spinner
+				enabled_control="RenderProbeOnDemand"
+				top_pad="-20"
+				height="15"
+				label_width="0"
+				right="-22"
+				decimal_digits="0"
+				follows="top|right"
+				layout="topleft"
+				max_val="600"
+				min_val="10"
+				width="55"
+				increment="10"
+				control_name="RenderProbeMaxAge"
+				tool_tip="A probe becomes due for a refresh after this long; the refresh itself follows the queue (and occlusion)."
+				name="probeMaxAgeSpinner" />
+			<button
+				name="reset_RenderProbeMaxAge"
+				follows="top|right"
+				layout="topleft"
+				height="22"
+				right="-2"
+				top_pad="-19"
+				width="18"
+				scale_image="true"
+				image_overlay="Refresh_Off"
+				image_overlay_alignment="center"
+				tool_tip="Reset to default value">
+				<button.commit_callback
+					function="LightBox.ResetControlDefault"
+					parameter="RenderProbeMaxAge" />
+			</button>
+			<text
+				enabled_control="RenderProbeOnDemand"
+				follows="left|top"
+				height="15"
+				left="29"
+				top_pad="6"
+				width="110"
+				layout="topleft"
+				tool_tip="Minimum time between two captures of the same probe."
+				value="Min interval (s):" />
+			<slider
+				enabled_control="RenderProbeOnDemand"
+				control_name="RenderProbeMinInterval"
+				top_pad="-18"
+				height="20"
+				increment="0.5"
+				follows="top|left"
+				layout="topleft"
+				max_val="10"
+				min_val="0"
+				left="140"
+				right="-56"
+				name="probeMinIntervalSlider"
+				tool_tip="Minimum time between two captures of the same probe."
+				show_text="false" />
+			<spinner
+				enabled_control="RenderProbeOnDemand"
+				top_pad="-20"
+				height="15"
+				label_width="0"
+				right="-22"
+				decimal_digits="1"
+				follows="top|right"
+				layout="topleft"
+				max_val="10"
+				min_val="0"
+				width="55"
+				increment="0.5"
+				control_name="RenderProbeMinInterval"
+				tool_tip="Minimum time between two captures of the same probe."
+				name="probeMinIntervalSpinner" />
+			<button
+				name="reset_RenderProbeMinInterval"
+				follows="top|right"
+				layout="topleft"
+				height="22"
+				right="-2"
+				top_pad="-19"
+				width="18"
+				scale_image="true"
+				image_overlay="Refresh_Off"
+				image_overlay_alignment="center"
+				tool_tip="Reset to default value">
+				<button.commit_callback
+					function="LightBox.ResetControlDefault"
+					parameter="RenderProbeMinInterval" />
+			</button>
+			<text
+				enabled_control="RenderProbeOnDemand"
+				follows="left|top"
+				height="15"
+				left="29"
+				top_pad="6"
+				width="110"
+				layout="topleft"
+				tool_tip="Sun / moon direction change that counts as an environment change for the probes."
+				value="Sun change (deg):" />
+			<slider
+				enabled_control="RenderProbeOnDemand"
+				control_name="RenderProbeDirtySunDeg"
+				top_pad="-18"
+				height="20"
+				increment="0.1"
+				follows="top|left"
+				layout="topleft"
+				max_val="5"
+				min_val="0.1"
+				left="140"
+				right="-56"
+				name="probeSunDegSlider"
+				tool_tip="Sun / moon direction change that counts as an environment change for the probes."
+				show_text="false" />
+			<spinner
+				enabled_control="RenderProbeOnDemand"
+				top_pad="-20"
+				height="15"
+				label_width="0"
+				right="-22"
+				decimal_digits="1"
+				follows="top|right"
+				layout="topleft"
+				max_val="5"
+				min_val="0.1"
+				width="55"
+				increment="0.1"
+				control_name="RenderProbeDirtySunDeg"
+				tool_tip="Sun / moon direction change that counts as an environment change for the probes."
+				name="probeSunDegSpinner" />
+			<button
+				name="reset_RenderProbeDirtySunDeg"
+				follows="top|right"
+				layout="topleft"
+				height="22"
+				right="-2"
+				top_pad="-19"
+				width="18"
+				scale_image="true"
+				image_overlay="Refresh_Off"
+				image_overlay_alignment="center"
+				tool_tip="Reset to default value">
+				<button.commit_callback
+					function="LightBox.ResetControlDefault"
+					parameter="RenderProbeDirtySunDeg" />
+			</button>
+			<text
+				enabled_control="RenderProbeOnDemand"
+				follows="left|top"
+				height="15"
+				left="29"
+				top_pad="6"
+				width="110"
+				layout="topleft"
+				tool_tip="Realtime detail without a Live Probe only: cube faces captured per frame for the closest dynamic probe."
+				value="Realtime faces/frame:" />
+			<slider
+				enabled_control="RenderProbeOnDemand"
+				control_name="RenderProbeRealtimeFacesPerFrame"
+				top_pad="-18"
+				height="20"
+				increment="1"
+				follows="top|left"
+				layout="topleft"
+				max_val="6"
+				min_val="1"
+				left="140"
+				right="-56"
+				name="probeRealtimeFacesSlider"
+				tool_tip="Realtime detail without a Live Probe only: cube faces captured per frame for the closest dynamic probe."
+				show_text="false" />
+			<spinner
+				enabled_control="RenderProbeOnDemand"
+				top_pad="-20"
+				height="15"
+				label_width="0"
+				right="-22"
+				decimal_digits="0"
+				follows="top|right"
+				layout="topleft"
+				max_val="6"
+				min_val="1"
+				width="55"
+				increment="1"
+				control_name="RenderProbeRealtimeFacesPerFrame"
+				tool_tip="Realtime detail without a Live Probe only: cube faces captured per frame for the closest dynamic probe."
+				name="probeRealtimeFacesSpinner" />
+			<button
+				name="reset_RenderProbeRealtimeFacesPerFrame"
+				follows="top|right"
+				layout="topleft"
+				height="22"
+				right="-2"
+				top_pad="-19"
+				width="18"
+				scale_image="true"
+				image_overlay="Refresh_Off"
+				image_overlay_alignment="center"
+				tool_tip="Reset to default value">
+				<button.commit_callback
+					function="LightBox.ResetControlDefault"
+					parameter="RenderProbeRealtimeFacesPerFrame" />
+			</button>
+			<text
+				follows="left|top"
+				height="15"
+				left="29"
+				top_pad="6"
+				width="110"
+				layout="topleft"
+				tool_tip="Skips whole groups of small opaque non-PBR surfaces in probe captures."
+				value="Probe tiny cull:" />
+			<combo_box
+				follows="top|left"
+				layout="topleft"
+				height="16"
+				width="150"
+				right="-2"
+				top_pad="-16"
+				max_chars="128"
+				allow_text_entry="false"
+				tool_tip="Skips whole groups of small opaque non-PBR surfaces in probe captures."
+				control_name="RenderProbeTinyCullPixels"
+				name="probeTinyCull_combo">
+				<combo_box.item
+					label="Off"
+					name="probeTinyCull_off"
+					value="0" />
+				<combo_box.item
+					label="Light"
+					name="probeTinyCull_light"
+					value="1" />
+				<combo_box.item
+					label="Strong"
+					name="probeTinyCull_strong"
+					value="3" />
+			</combo_box>
+			<check_box
+				follows="left|top"
+				height="15"
+				left="10"
+				top_pad="6"
+				width="250"
+				layout="topleft"
+				label="Log probe schedule"
+				tool_tip="Write a one-line probe scheduler summary ([ProbeSched]) to the log every 5 seconds."
+				control_name="RenderProbeSchedLog"
+				name="probeSchedLog_check" />
+			<button
+				enabled_control="RenderProbeOnDemand"
+				follows="left|top"
+				height="22"
+				label="Refresh all probes now"
+				layout="topleft"
+				left="10"
+				name="probe_refresh_all_btn"
+				top_pad="6"
+				width="160"
+				tool_tip="Re-captures every probe now; use before a take. Flexi, media and continuous motion are otherwise frozen until they stop.">
+				<button.commit_callback
+					function="LightBox.RefreshAllProbes" />
+			</button>
+			<text
+				follows="left|top|right"
+				height="15"
+				left="10"
+				name="probe_refresh_status"
+				top_pad="4"
+				width="380"
+				layout="topleft"
+				value="" />
 			<!--Probe Draw Distance-->
 			<!--
 			<text

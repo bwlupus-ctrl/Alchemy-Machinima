@@ -38,6 +38,7 @@
 #include "alcinelightrig.h"
 #include "alcinelightrigmanager.h"
 #include "alcinelightrigmodel.h"
+#include "alprobedirty.h" // [ProbeOnDemand]
 #include "aldiopterrelevance.h"      // [Ultimate Diopter] shared armed-state helpers, wave 2
 #include "alweathermodel.h"
 
@@ -4479,18 +4480,24 @@ void LLPipeline::shiftObjects(const LLVector3 &offset)
     LLVector4a offseta;
     offseta.load3(offset.mV);
 
-    for (LLDrawable::drawable_vector_t::iterator iter = mShiftList.begin();
-            iter != mShiftList.end(); iter++)
     {
-        LLDrawable *drawablep = *iter;
-        if (drawablep->isDead() || !drawablep->getVObj())
+        // [ProbeOnDemand] a region crossing moves the world, not the scene: the
+        // rebuilds shiftPos() triggers (water, static non-volume drawables) are not
+        // scene changes (queued events and probes are shifted by the manager).
+        ALProbeDirty::ScopedTag probe_shift_tag(ALProbeDirty::TAG_REGION_SHIFT);
+        for (LLDrawable::drawable_vector_t::iterator iter = mShiftList.begin();
+                iter != mShiftList.end(); iter++)
         {
-            continue;
+            LLDrawable *drawablep = *iter;
+            if (drawablep->isDead() || !drawablep->getVObj())
+            {
+                continue;
+            }
+            drawablep->shiftPos(offseta);
+            drawablep->clearState(LLDrawable::ON_SHIFT_LIST);
         }
-        drawablep->shiftPos(offseta);
-        drawablep->clearState(LLDrawable::ON_SHIFT_LIST);
+        mShiftList.resize(0);
     }
-    mShiftList.resize(0);
 
     for (LLWorld::region_list_t::const_iterator iter = LLWorld::getInstance()->getRegionList().begin();
             iter != LLWorld::getInstance()->getRegionList().end(); ++iter)
@@ -4519,6 +4526,11 @@ void LLPipeline::markTextured(LLDrawable *drawablep)
     if (drawablep && !drawablep->isDead() && assertInitialized())
     {
         mRetexturedList.insert(drawablep);
+        // [ProbeOnDemand] H3: a texture / material change of this drawable.
+        if (ALProbeDirty::recording())
+        {
+            ALProbeDirty::noteDrawable(drawablep, ALProbeSched::R_TEX, ALProbeSched::Motion::NONE);
+        }
     }
 }
 
@@ -4592,6 +4604,14 @@ void LLPipeline::markRebuild(LLDrawable *drawablep, LLDrawable::EDrawableFlags f
             drawablep->getVObj()->setChanged(LLXform::SILHOUETTE);
         }
         drawablep->setState(flag);
+
+        // [ProbeOnDemand] H3: any rebuild flag other than a pure position rebuild
+        // is a geometry change (LOD / texture-animation churn arrives tagged and
+        // is dropped by the recorder). The group overload is not hooked.
+        if (ALProbeDirty::recording() && (flag & ~LLDrawable::REBUILD_POSITION) != 0)
+        {
+            ALProbeDirty::noteDrawable(drawablep, ALProbeSched::R_GEOM, ALProbeSched::Motion::NONE);
+        }
     }
 }
 
@@ -5071,11 +5091,47 @@ void LLPipeline::sortAlphaGroupsForInterleaving()
     std::sort(sCull->beginRiggedAlphaGroups(), sCull->endRiggedAlphaGroups(), LLSpatialGroup::CompareDepthRenderOrder());
 }
 
+// [ProbeOnDemand] D: passes a group may consist of for the conservative tiny-group
+// probe cull -- plain opaque / alpha-masked non-PBR surfaces only. Fullbright,
+// emissive, glow, blend, alpha, invisible, rigged and every PASS_GLTF_PBR* pass
+// (emissive PBR registers there) keep the group.
+static bool probe_tiny_cull_pass_ok(U32 pass)
+{
+    switch (pass)
+    {
+        case LLRenderPass::PASS_SIMPLE:
+        case LLRenderPass::PASS_GRASS:
+        case LLRenderPass::PASS_SHINY:
+        case LLRenderPass::PASS_BUMP:
+        case LLRenderPass::PASS_POST_BUMP:
+        case LLRenderPass::PASS_MATERIAL:
+        case LLRenderPass::PASS_MATERIAL_ALPHA_MASK:
+        case LLRenderPass::PASS_SPECMAP:
+        case LLRenderPass::PASS_SPECMAP_MASK:
+        case LLRenderPass::PASS_NORMMAP:
+        case LLRenderPass::PASS_NORMMAP_MASK:
+        case LLRenderPass::PASS_NORMSPEC:
+        case LLRenderPass::PASS_NORMSPEC_MASK:
+        case LLRenderPass::PASS_ALPHA_MASK:
+            return true;
+        default:
+            return false;
+    }
+}
+
 void LLPipeline::postSort(LLCamera &camera)
 {
     LL_PROFILE_ZONE_SCOPED_CATEGORY_PIPELINE;
 
     assertInitialized();
+
+    // [ProbeOnDemand] D: conservative tiny-group cull (default OFF). Read once per
+    // call; with RenderProbeTinyCullPixels at 0 the cull branch is never taken.
+    static LLCachedControl<F32> probe_tiny_cull(gSavedSettings, "RenderProbeTinyCullPixels", 0.f);
+    const F32 probe_tiny_px = llclamp(static_cast<F32>(probe_tiny_cull), 0.f, 8.f);
+    const bool probe_tiny_active = probe_tiny_px > 0.f &&
+        LLReflectionMapManager::getCaptureKind() != LLReflectionMapManager::ProbeCaptureKind::NONE &&
+        !sShadowRender && !sPrismLensRender;
 
     if (!gCubeSnapshot)
     {
@@ -5113,6 +5169,49 @@ void LLPipeline::postSort(LLCamera &camera)
              group->mSurfaceArea > RenderAutoHideSurfaceAreaLimit * llmax(group->mObjectBoxSize, 10.f)))
         {
             continue;
+        }
+
+        if (probe_tiny_active)
+        {
+            LL_PROFILE_ZONE_NAMED_CATEGORY_PIPELINE("probe tiny cull");
+            // [ProbeOnDemand] D: skip a whole volume group of small opaque non-PBR
+            // surfaces whose projected size in this cube face is below the
+            // threshold. 3 = the cube-corner magnification bound; res is the FINAL
+            // probe resolution. Lights and shadow casters are unaffected.
+            LLSpatialPartition* tiny_part = group->getSpatialPartition();
+            bool rejectable = tiny_part &&
+                tiny_part->mPartitionType == LLViewerRegion::PARTITION_VOLUME &&
+                tiny_part->asBridge() == nullptr && !group->mDrawMap.empty();
+            if (rejectable)
+            {
+                for (LLSpatialGroup::draw_map_t::iterator tj = group->mDrawMap.begin();
+                     tj != group->mDrawMap.end(); ++tj)
+                {
+                    if (!probe_tiny_cull_pass_ok(tj->first))
+                    {
+                        rejectable = false;
+                        break;
+                    }
+                }
+            }
+            if (rejectable)
+            {
+                const LLVector4a* tiny_bounds = group->getObjectBounds();
+                const F32 tiny_r = tiny_bounds[1].getLength3().getF32();
+                LLVector4a tiny_to_cam;
+                tiny_to_cam.load3(camera.getOrigin().mV);
+                tiny_to_cam.sub(tiny_bounds[0]);
+                const F32 tiny_d = tiny_to_cam.getLength3().getF32();
+                if (tiny_d - tiny_r > 2.f * camera.getNear())
+                {
+                    const F32 tiny_p = 3.f * tiny_r * static_cast<F32>(mReflectionMapManager.mProbeResolution) /
+                        (tiny_d - tiny_r);
+                    if (tiny_p < probe_tiny_px)
+                    {
+                        continue;
+                    }
+                }
+            }
         }
 
         if (group->hasState(LLSpatialGroup::NEW_DRAWINFO) && group->hasState(LLSpatialGroup::GEOM_DIRTY) && !gCubeSnapshot)
@@ -9490,6 +9589,13 @@ static bool bdmerge_should_render_light(bool is_attachment, bool is_own_avatar)
     return bdmerge_render_world;
 }
 
+// [ProbeOnDemand] Public wrapper of the file-static light-class toggle test, for
+// the reflection manager's camera-independent light diff.
+bool LLPipeline::probeShouldRenderLight(bool is_attachment, bool is_own_avatar)
+{
+    return bdmerge_should_render_light(is_attachment, is_own_avatar);
+}
+
 static bool bdmerge_should_render_projector()
 {
     static LLCachedControl<bool> bdmerge_light_toggles(gSavedSettings, "BDMergeLightToggles", false);
@@ -9723,8 +9829,11 @@ void LLPipeline::calcNearbyLights(LLCamera& camera)
     LL_PROFILE_ZONE_SCOPED_CATEGORY_DRAWPOOL;
     assertInitialized();
 
+    // [ProbeOnDemand] ...and ON-path probe-centric captures (ordinary, default and
+    // sliced faces under RenderProbeOnDemand); false with on-demand OFF.
     const bool cinematic_probe_capture = gCubeSnapshot &&
-        mReflectionMapManager.isCinematicLiveProbeCapture();
+        (mReflectionMapManager.isCinematicLiveProbeCapture() ||
+         mReflectionMapManager.isProbeCentricLightCapture());
     if (((LLPipeline::sReflectionRender || gCubeSnapshot) &&
          !cinematic_probe_capture) || LLPipeline::sRenderingHUDs ||
         LLApp::isExiting())
@@ -9738,13 +9847,20 @@ void LLPipeline::calcNearbyLights(LLCamera& camera)
         // follow an off-camera rig, so build a transient cube-eye list without
         // touching persistent NEARBY_LIGHT bits or fade clocks. The target
         // projectors are pinned ahead of all other lights.
+        // [ProbeOnDemand] Under RenderProbeOnDemand the ordinary / default /
+        // sliced probe captures take this branch too (a probe-centric list: lights
+        // reach a probe by its own position, never by the main camera); the
+        // pinned list and the ignored / pinned predicates are Live-gated, so
+        // they are empty there.
         mNearbyLights.clear();
         static LLCachedControl<S32> cine_local_light_count(
             gSavedSettings, "RenderLocalLightCount", 256);
         static LLCachedControl<F32> cine_light_scale(
             gSavedSettings, "AlchemyGlobalLightScale", 1.f);
-        const S32 pinned_count = static_cast<S32>(
-            mReflectionMapManager.getCinematicLiveProbePinnedLightCount());
+        const S32 pinned_count = mReflectionMapManager.isCinematicLiveProbeCapture()
+            ? static_cast<S32>(
+                mReflectionMapManager.getCinematicLiveProbePinnedLightCount())
+            : 0;
         if (std::max((S32)cine_local_light_count, pinned_count) < 1)
         {
             return;
@@ -9773,11 +9889,14 @@ void LLPipeline::calcNearbyLights(LLCamera& camera)
                     continue;
                 }
                 LLVOAvatar* avatar = light->getAvatar();
+                // [ProbeOnDemand] isTooSlow (AutoTune-driven, camera-dependent) is
+                // not evaluated under RenderProbeOnDemand (spec 4.5.4).
                 if (!bdmerge_should_render_light(
                         true, avatar == gAgentAvatarp) ||
                     (avatar && (avatar->isTooComplex() ||
                                 avatar->isInMuteList() ||
-                                avatar->isTooSlow())))
+                                (!mReflectionMapManager.isOnDemandActive() &&
+                                 avatar->isTooSlow()))))
                 {
                     continue;
                 }

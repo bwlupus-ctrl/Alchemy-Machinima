@@ -339,6 +339,13 @@ void LLPresetsManager::getGraphicsControlNames(std::vector<std::string>& names)
         "RenderTreeLODFactor",
         "RenderVolumeLODFactor",
         "RenderScreenSpaceReflections",
+        // [ProbeOnDemand]
+        "RenderProbeOnDemand",
+        "RenderProbeMinInterval",
+        "RenderProbeMaxAge",
+        "RenderProbeDirtySunDeg",
+        "RenderProbeRealtimeFacesPerFrame",
+        "RenderProbeTinyCullPixels",
         "RenderReflectionProbeDetail",
         "RenderReflectionProbeLevel"
         "RenderCASSharpness",

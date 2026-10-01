@@ -50,6 +50,7 @@
 #include "llworld.h"
 #include "noise.h"
 #include "pipeline.h"
+#include "alprobedirty.h" // [ProbeOnDemand]
 #include "llspatialpartition.h"
 #include "llnotificationsutil.h"
 #include "raytrace.h"
@@ -377,6 +378,9 @@ void LLVOTree::idleUpdate(LLAgent &agent, const F64 &time)
     }
     else if (trunk_LOD != mTrunkLOD)
     {
+        // [ProbeOnDemand] LTr: a camera-distance trunk LOD switch is churn; the
+        // first build and move/rotate below stay events.
+        ALProbeDirty::ScopedTag probe_tag(ALProbeDirty::TAG_LOD_TREE);
         gPipeline.markRebuild(mDrawable, LLDrawable::REBUILD_ALL);
     }
     else

@@ -1,0 +1,24 @@
+**GO-after-fixes.** Read-only at `303065bda35`; no edits, builds or commits. “Fixed” means addressed by the design, not implemented or verified.
+
+R2 reconciliation: **P0-1 partly; P0-2 partly; P0-3 fixed for first gobo arrival; P0-4 fixed; P0-5 fixed; P0-6 partly; P1 partly; P2 partly.** The remaining failures follow.
+
+- **P0 — Live bypasses suppression** (V4 §5.2). `sampleCinematicH` still hashes moving attachment lights directly (`llreflectionmapmanager.cpp:774`); rig flicker explicitly sets `liveProbeAnimating()` (`alcinelightrig.cpp:1207`), forcing FULL captures through `alcineliveproberefresh.h:490`. Suppressing the ordinary light diff cannot make Live idle. Its ON-path signature and animation dispatch need the same suppression policy; preserve OFF behavior.
+
+- **P0 — Camera independence remains incomplete** (§4.5.3). The bdmerge wrapper itself reads settings, but eligibility reads `avatar->isTooSlow()`, backed by measured rendering time (`llvoavatar.cpp:9954,10020`). Thus “no camera input exists” is too strong: camera-dependent rendering can change eligibility. Also, shifting StickyHash position accumulators without recomputing cached `mH` produces false light changes: the hash incorporates accumulator float bits (`alcineliveproberefresh.h:349`). SH fixes coordinates, not hash equality.
+
+- **P0 — Cap transition misses displaced contributors** (§4.5.3). With cap+1 eligible lights, remove a distant spotlight that consumed a slot. The new count equals the cap, so its deletion event becomes spatial rather than global, although another light can now contribute elsewhere. Apply the global rule using **both previous and current eligibility counts**.
+
+- **P0 — Streak lifecycle is insufficient** (§4.10). Alternating keys or >0.25-second intervals never suppress; these can refresh forever. Once suppressed, a 0.3-second gap resets the count and passes events despite `mSuppressed`; `U16` also wraps. A real edit sharing a continuously moving object’s key remains suppressed indefinitely. Light deletion must retain accumulated bounds until settling; pointer reuse needs identity protection. Saturate counts, define suppression exit explicitly, and separate discrete edits from motion. A settle arriving mid-capture is correctly retained by serial ordering.
+
+- **P0 — Refresh-all can lie or hang** (§§4.6–4.11). REALTIME-owned probes are excluded entirely. Ownership changes can remove pending records from the counted population without acknowledgment. Allocated irrelevant probes remain skipped at `llreflectionmapmanager.cpp:427`; bypassing occlusion alone does not help. Live completion counters accept a pass **started before arming**, contradicting the stated guarantee. Live removal, disabling probes/on-demand, and cancellation need explicit terminal semantics. Keep barrier membership stable by identity and require post-arm starts; clear flags only through successful acknowledgment, resolving §4.6’s unconditional “then clear” wording.
+
+- **P0 — Texture/mesh completion still misses changes** (§4.4). Repeated downscales overwrite `mProbeBlurStamp`, forgetting an intervening blurry capture; the counter also excludes Live-only captures. Preserve the first outstanding blur stamp and track Live exposure. `mProbeBuilt` records “has faces,” not completion of a particular mesh/sculpt asset: replacing an asset and later receiving it can be mislabeled LOD after the initial edit capture. Track asset identity/readiness. H7’s PBR callbacks and LIGHT_TEX first-image fan-out are appropriate.
+
+- **P0 residue judgment:** water’s ongoing shader animation is a reasonable frozen/backstop case. Flexi/media **stopping without a settle notification** still violates the requested promise; slow periodic sources likewise remain blockers. Global over-cap invalidation is acceptable after the transition fix. The checked llTargetOmega loop has no visibility gate (`llviewerobjectlist.cpp:1006`; `llviewerobject.cpp:2538`).
+
+**P1 — Cost/tests.** Face ceilings remain ≤1 ordinary plus ≤6 secondary; incomplete realtime warm-up is repaired. CPU cost is not ≤today: all-light hashing plus per-face ordered-list construction/copying scales with thousands of lights. Benchmark it. T0–T36/S14 miss the counterexamples above; inherited T1/T21 and S4 need updated expectations. S13 tests the builder, not getter wiring or complete stateful Live-H equality.
+
+**P2 — Isolation/compile.** Per-face save/restore and zero ordinary pinned-count look sound; no new main-eye/Live/shadow leak found (`pipeline.cpp:10321,24251`). OFF identity remains implementation-dependent. No definite new `/WX` blocker; qualify H4’s drawable `isState`, preserve friend access, and audit narrowing/unused variables. MaxAge’s 10–600 clamp fixes zero-disable, but occlusion/queueing prevent a hard completion deadline.
+
+Codex session ID: 01a0f339-ca77-7222-a0fe-b2e9023650ec
+Resume in Codex: codex resume 01a0f339-ca77-7222-a0fe-b2e9023650ec

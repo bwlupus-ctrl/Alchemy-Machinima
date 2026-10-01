@@ -32,6 +32,7 @@
 #include "llvosurfacepatch.h"
 #include "llsurface.h"
 #include "pipeline.h"
+#include "alprobedirty.h" // [ProbeOnDemand]
 #include "llagent.h"
 #include "llsky.h"
 #include "llviewercamera.h"
@@ -1056,6 +1057,9 @@ void LLSurfacePatch::updateVisibility()
             // are not updated when their data is changed.  When this changes we can get
             // rid of mbIsVisible altogether.
         {
+            // [ProbeOnDemand] LT: a camera-distance terrain stride change is LOD
+            // churn; real edits (dirty(), dirtyPatch(), composition) stay events.
+            ALProbeDirty::ScopedTag probe_tag(ALProbeDirty::TAG_LOD_TERRAIN);
             if (mVObjp)
             {
                 mVObjp->dirtyGeom();

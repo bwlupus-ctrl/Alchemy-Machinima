@@ -440,6 +440,12 @@ public:
     bool mCreatePending = false;    // if true, this is in gTextureList.mCreateTextureList
     mutable bool mDownScalePending = false; // if true, this is in gTextureList.mDownScaleQueue
 
+    // [ProbeOnDemand] H6/DS bookkeeping for the reflection probe dirty recorder
+    // (alprobedirty.cpp). Written ONLY while RenderProbeOnDemand is ON.
+    S8   mProbeNotedDiscard = -1; // finest discard level already reported
+    bool mProbeBlurred = false;   // downscaled below what a probe resolves
+    U64  mProbeBlurStamp = 0;     // op counter value at the first outstanding blur
+
     LLUUID      getUploader();
     LLDate      getUploadTime();
     std::string getComment();

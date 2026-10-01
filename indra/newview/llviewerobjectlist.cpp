@@ -42,6 +42,7 @@
 #include "llagent.h"
 #include "llagentcamera.h"
 #include "pipeline.h"
+#include "alprobedirty.h" // [ProbeOnDemand]
 #include "llspatialpartition.h"
 #include "lltooltip.h"
 #include "llworld.h"
@@ -241,6 +242,20 @@ void LLViewerObjectList::processUpdateCore(LLViewerObject* objectp,
     // ignore returned flags
     LL_DEBUGS("ObjectUpdate") << "uuid " << objectp->mID << " calling processUpdateMessage "
                               << objectp << " just_created " << just_created << " from_cache " << from_cache << " msg " << msg << LL_ENDL;
+
+    // [ProbeOnDemand] An object re-created from the object cache after a cache cull
+    // is not a scene change; a real server update makes it authoritative again.
+    if (ALProbeDirty::recording())
+    {
+        if (!from_cache)
+        {
+            ALProbeDirty::noteServerUpdate(objectp->mID);
+        }
+        else if (just_created)
+        {
+            ALProbeDirty::noteCacheCreated(objectp->mID);
+        }
+    }
 
     objectp->processUpdateMessage(msg, user_data, i, update_type, dpp);
 
@@ -510,7 +525,7 @@ void LLViewerObjectList::processObjectUpdate(LLMessageSystem *mesgsys,
                 else if ((flags & FLAGS_TEMPORARY_ON_REZ) == 0)
                 {
                     //send to object cache
-                    regionp->cacheFullUpdate(compressed_dp, flags);
+                    regionp->cacheFullUpdate(compressed_dp, flags, &fullid);
                     continue;
                 }
             }

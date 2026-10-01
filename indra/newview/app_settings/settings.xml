@@ -20711,6 +20711,83 @@
     <key>Value</key>
     <real>2.0</real>
   </map>
+  <key>RenderProbeOnDemand</key>
+  <map>
+    <key>Comment</key>
+    <string>[ProbeOnDemand] Update reflection probes only when what they show changes (plus a safety refresh) instead of continuously. Continuous motion (spinners, flexi, media, water) is frozen until it stops; use Refresh all probes now before a take.</string>
+    <key>Persist</key>
+    <integer>1</integer>
+    <key>Type</key>
+    <string>Boolean</string>
+    <key>Value</key>
+    <integer>0</integer>
+  </map>
+  <key>RenderProbeMinInterval</key>
+  <map>
+    <key>Comment</key>
+    <string>[ProbeOnDemand] Minimum seconds between two capture starts of the same reflection probe while on-demand updating is enabled. Range 0 to 10.</string>
+    <key>Persist</key>
+    <integer>1</integer>
+    <key>Type</key>
+    <string>F32</string>
+    <key>Value</key>
+    <real>1.0</real>
+  </map>
+  <key>RenderProbeMaxAge</key>
+  <map>
+    <key>Comment</key>
+    <string>[ProbeOnDemand] Safety refresh: a reflection probe becomes due for an unconditional refresh after this many seconds (refresh still follows the queue). Range 10 to 600.</string>
+    <key>Persist</key>
+    <integer>1</integer>
+    <key>Type</key>
+    <string>F32</string>
+    <key>Value</key>
+    <real>60</real>
+  </map>
+  <key>RenderProbeDirtySunDeg</key>
+  <map>
+    <key>Comment</key>
+    <string>[ProbeOnDemand] Sun/moon direction change (degrees) that counts as an environment change for on-demand reflection probes. Range 0.1 to 5.</string>
+    <key>Persist</key>
+    <integer>1</integer>
+    <key>Type</key>
+    <string>F32</string>
+    <key>Value</key>
+    <real>0.5</real>
+  </map>
+  <key>RenderProbeRealtimeFacesPerFrame</key>
+  <map>
+    <key>Comment</key>
+    <string>[ProbeOnDemand] Cube faces per frame for the realtime (closest dynamic) reflection probe while on-demand updating is enabled and no Live Probe is designated. Range 1 to 6.</string>
+    <key>Persist</key>
+    <integer>1</integer>
+    <key>Type</key>
+    <string>S32</string>
+    <key>Value</key>
+    <integer>2</integer>
+  </map>
+  <key>RenderProbeTinyCullPixels</key>
+  <map>
+    <key>Comment</key>
+    <string>[ProbeOnDemand] Skip whole groups of small opaque non-PBR surfaces whose projected size in a probe cube face is below this many pixels. 0 = off. Range 0 to 8.</string>
+    <key>Persist</key>
+    <integer>1</integer>
+    <key>Type</key>
+    <string>F32</string>
+    <key>Value</key>
+    <real>0</real>
+  </map>
+  <key>RenderProbeSchedLog</key>
+  <map>
+    <key>Comment</key>
+    <string>[ProbeOnDemand] Log a one-line reflection probe scheduler summary every 5 seconds ([ProbeSched]).</string>
+    <key>Persist</key>
+    <integer>0</integer>
+    <key>Type</key>
+    <string>Boolean</string>
+    <key>Value</key>
+    <integer>0</integer>
+  </map>
   <key>RenderReflectionProbeLevel</key>
   <map>
     <key>Comment</key>

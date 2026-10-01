@@ -48,6 +48,7 @@
 #include "llvosurfacepatch.h" // for debugging
 #include "llworld.h"
 #include "pipeline.h"
+#include "alprobedirty.h" // [ProbeOnDemand]
 #include "llspatialpartition.h"
 #include "llviewerobjectlist.h"
 #include "llviewerwindow.h"
@@ -805,7 +806,35 @@ bool LLDrawable::updateMove()
 
 bool LLDrawable::updateMoveUndamped()
 {
+    // [ProbeOnDemand] H1a: snapshot the transform + bounds, note a real
+    // displacement afterwards (updateXform's return value is interpolation
+    // error, not displacement). Read-only; nothing runs unless recording.
+    const bool probe_rec = ALProbeDirty::recording();
+    F32 probe_old_pos[3];   // raw, uninitialised: free when recording is off
+    F32 probe_old_rot[4];
+    F32 probe_old_scale[3];
+    LLVector4a probe_old_ext[2];
+    if (probe_rec)
+    {
+        for (S32 probe_i = 0; probe_i < 3; ++probe_i)
+        {
+            probe_old_pos[probe_i] = mXform.getPosition().mV[probe_i];
+            probe_old_scale[probe_i] = mCurrentScale.mV[probe_i];
+        }
+        for (S32 probe_i = 0; probe_i < 4; ++probe_i)
+        {
+            probe_old_rot[probe_i] = mXform.getRotation().mQ[probe_i];
+        }
+        ALProbeDirty::snapshotBounds(this, probe_old_ext);
+    }
+
     F32 dist_squared = updateXform(true);
+
+    if (probe_rec)
+    {
+        ALProbeDirty::noteXformDelta(this, probe_old_pos, probe_old_rot, probe_old_scale,
+            probe_old_ext, mXform.getPosition(), mXform.getRotation(), mCurrentScale);
+    }
 
     mGeneration++;
 
@@ -843,7 +872,33 @@ bool LLDrawable::updateMoveDamped()
 {
     LL_PROFILE_ZONE_SCOPED_CATEGORY_DRAWABLE;
 
+    // [ProbeOnDemand] H1a: see updateMoveUndamped().
+    const bool probe_rec = ALProbeDirty::recording();
+    F32 probe_old_pos[3];   // raw, uninitialised: free when recording is off
+    F32 probe_old_rot[4];
+    F32 probe_old_scale[3];
+    LLVector4a probe_old_ext[2];
+    if (probe_rec)
+    {
+        for (S32 probe_i = 0; probe_i < 3; ++probe_i)
+        {
+            probe_old_pos[probe_i] = mXform.getPosition().mV[probe_i];
+            probe_old_scale[probe_i] = mCurrentScale.mV[probe_i];
+        }
+        for (S32 probe_i = 0; probe_i < 4; ++probe_i)
+        {
+            probe_old_rot[probe_i] = mXform.getRotation().mQ[probe_i];
+        }
+        ALProbeDirty::snapshotBounds(this, probe_old_ext);
+    }
+
     F32 dist_squared = updateXform(false);
+
+    if (probe_rec)
+    {
+        ALProbeDirty::noteXformDelta(this, probe_old_pos, probe_old_rot, probe_old_scale,
+            probe_old_ext, mXform.getPosition(), mXform.getRotation(), mCurrentScale);
+    }
 
     mGeneration++;
 

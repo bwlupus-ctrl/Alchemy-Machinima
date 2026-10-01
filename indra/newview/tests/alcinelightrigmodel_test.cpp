@@ -13,6 +13,7 @@
 #include "../alcinelightrigmanager.h"
 #include "../alcinelightrigmodel.h"
 #include "../alcineliveproberefresh.h" // [LiveProbeRefresh]
+#include "../alprobeschedule.h"        // [ProbeOnDemand]
 #include "../llviewercamera.h"
 #include "../pipeline.h"
 #include "../../llrender/llshadermgr.h"
@@ -504,7 +505,9 @@ struct cine_light_rig_model_data {};
 // through test<54> below compiled but were never registered/run. Raised to
 // 64 for headroom. [LiveProbeRefresh] adds test<55>..test<69>, so the ceiling
 // is now 72 (same trap: anything above it compiles but silently never runs).
-typedef test_group<cine_light_rig_model_data, 72> cine_light_rig_model_group;
+// [ProbeOnDemand] adds test<72>..test<90> (S1-S18 + the S15b recount bound),
+// so the ceiling is now 96 (test<91> adds the cache-provenance S19).
+typedef test_group<cine_light_rig_model_data, 96> cine_light_rig_model_group;
 typedef cine_light_rig_model_group::object cine_light_rig_model_object;
 cine_light_rig_model_group cine_light_rig_model_tests(
     "ALCineLightRigModel");
@@ -4529,6 +4532,2028 @@ void cine_light_rig_model_object::test<71>()
         sim.step(h);
         ensure("an abandoned pass does not advance the cursor",
             sim.mLog.back().mEnd == lpr::PassEnd::IRRADIANCE);
+    }
+}
+
+// ---------------------------------------------------------------------------
+// [ProbeOnDemand] Model tests S1-S18 (test<72>..test<89>).
+// They prove only the pure scheduling / dirtiness / debounce / barrier /
+// signature model (alprobeschedule.h) on synthetic input. Not provable here:
+// the viewer hooks, the real frame order and the in-world T0-T58 checks.
+// Times use multiples of 1/64 s so boundaries are exact.
+// ---------------------------------------------------------------------------
+namespace aps = ALProbeSched;
+
+namespace
+{
+struct PodBox
+{
+    F32 mMin[3];
+    F32 mMax[3];
+    PodBox(F32 x0, F32 x1, F32 y = 0.f, F32 z = 0.f)
+    {
+        mMin[0] = x0;
+        mMin[1] = y;
+        mMin[2] = z;
+        mMax[0] = x1;
+        mMax[1] = y + 1.f;
+        mMax[2] = z + 1.f;
+    }
+};
+
+F64 podTime(S32 frame)
+{
+    return static_cast<F64>(frame) / 64.0;
+}
+
+aps::Event podEvent(F32 x0, F32 x1, U16 reason, U8 cls, U64 first_serial)
+{
+    const PodBox b(x0, x1);
+    return aps::makeEvent(b.mMin, b.mMax, reason, cls, first_serial);
+}
+
+// Note one motion sample for key `key` on a debounce map.
+void podNote(aps::DebounceMap& map, const void* key, U64 tag, F32 x0, F32 x1,
+             F64 now, F32 dt, U64 serial)
+{
+    const PodBox b(x0, x1);
+    map.onMotion(key, static_cast<U8>(aps::Motion::XFORM), tag, b.mMin, b.mMax,
+                 static_cast<U16>(aps::R_GEOM), static_cast<U8>(aps::C_STATIC), false,
+                 serial, now, dt);
+}
+
+U32 podCountSettles(const std::vector<aps::Event>& events)
+{
+    U32 n = 0;
+    for (const aps::Event& e : events)
+    {
+        if (e.mReason & aps::R_SETTLE)
+        {
+            ++n;
+        }
+    }
+    return n;
+}
+
+// A light sample at x with default photometry.
+aps::LightSample podLight(S32 id_byte, F32 x, F32 radius)
+{
+    aps::LightSample s;
+    s.mId.mData[0] = static_cast<U8>(id_byte);
+    s.mEligible = true;
+    s.mPos[0] = x;
+    s.mPos[1] = 5.f;
+    s.mPos[2] = 3.f;
+    s.mColor[0] = 1.f;
+    s.mColor[1] = 0.5f;
+    s.mColor[2] = 0.25f;
+    s.mRadius = radius;
+    s.mFalloff = 0.5f;
+    s.mScale[0] = 0.1f;
+    s.mScale[1] = 0.1f;
+    s.mScale[2] = 0.1f;
+    return s;
+}
+
+// Distinct, non-trivial environment values.
+aps::EnvSample podEnv()
+{
+    aps::EnvSample e;
+    aps::SkySample& s = e.mSky;
+    s.mValid = true;
+    F32 v = 0.11f;
+    aps::V3* vecs[11] = { &s.mSunDir, &s.mMoonDir, &s.mSunlight, &s.mMoonlight,
+        &s.mCloudColor, &s.mAmbient, &s.mBlueDensity, &s.mBlueHorizon, &s.mGlow,
+        &s.mCloudPosDensity1, &s.mCloudPosDensity2 };
+    for (aps::V3* p : vecs)
+    {
+        for (S32 c = 0; c < 3; ++c)
+        {
+            p->mV[c] = v;
+            v += 0.07f;
+        }
+    }
+    s.mHazeDensity = 0.31f;
+    s.mDensityMultiplier = 0.32f;
+    s.mDistanceMultiplier = 0.33f;
+    s.mCloudScale = 0.34f;
+    s.mStarBrightness = 0.35f;
+    s.mDropletRadius = 0.36f;
+    s.mMaxY = 4000.f;
+    s.mHazeHorizon = 0.41f;
+    s.mCloudShadow = 0.42f;
+    s.mCloudVariance = 0.43f;
+    s.mMoonBrightness = 0.44f;
+    s.mMoistureLevel = 0.45f;
+    s.mIceLevel = 0.46f;
+    s.mReflectionAmbiance = 0.47f;
+    s.mGamma = 2.2f;
+    s.mSunMoonGlowFactor = 0.48f;
+    s.mSunScale = 1.5f;
+    s.mMoonScale = 1.25f;
+    s.mBlendFactor = 0.5f;
+    s.mIsSunUp = true;
+    s.mSunTex.mData[0] = 1;
+    s.mMoonTex.mData[0] = 2;
+    s.mCloudNoiseTex.mData[0] = 3;
+    s.mBloomTex.mData[0] = 4;
+    s.mRainbowTex.mData[0] = 5;
+    s.mHaloTex.mData[0] = 6;
+    s.mNextSunTex.mData[0] = 7;
+    s.mNextMoonTex.mData[0] = 8;
+    s.mNextCloudNoiseTex.mData[0] = 9;
+
+    aps::WaterSample& w = e.mWater;
+    w.mValid = true;
+    w.mFogColor.mV[0] = 0.1f;
+    w.mFogColor.mV[1] = 0.2f;
+    w.mFogColor.mV[2] = 0.3f;
+    w.mFogDensity = 0.51f;
+    w.mFogMod = 0.52f;
+    w.mFresnelScale = 0.53f;
+    w.mFresnelOffset = 0.54f;
+    w.mScaleAbove = 0.55f;
+    w.mScaleBelow = 0.56f;
+    w.mBlendFactor = 0.57f;
+    w.mBlurMultiplier = 0.58f;
+    w.mWave1[0] = 0.61f;
+    w.mWave1[1] = 0.62f;
+    w.mWave2[0] = 0.63f;
+    w.mWave2[1] = 0.64f;
+    w.mNormalScale.mV[0] = 2.f;
+    w.mNormalScale.mV[1] = 3.f;
+    w.mNormalScale.mV[2] = 4.f;
+    w.mRenderWaterHeight = 20.f;
+    w.mNormalMap.mData[0] = 11;
+    w.mNextNormalMap.mData[0] = 12;
+    w.mTransparent.mData[0] = 13;
+    w.mNextTransparent.mData[0] = 14;
+
+    aps::EnvSettings& t = e.mSet;
+    t.mSunEV = 0.7f;
+    t.mMoonEV = -0.3f;
+    t.mLocalLightEV = 0.2f;
+    t.mShadowLiftEV = 0.1f;
+    t.mSunKelvin = 5600.f;
+    t.mSunTint[0] = 0.9f;
+    t.mSunTint[1] = 0.8f;
+    t.mSunTint[2] = 0.7f;
+    t.mMoonTint[0] = 0.6f;
+    t.mMoonTint[1] = 0.5f;
+    t.mMoonTint[2] = 0.4f;
+    t.mSunTintStrength = 0.95f;
+    t.mMoonTintStrength = 0.85f;
+    t.mMoonLinked = false;
+    t.mLocalLightIncludeRig = true;
+    t.mShadowDetail = 2;
+    t.mLocalLightCount = 128;
+    t.mAutoAdjustLegacy = true;
+    return e;
+}
+
+// An independent copy of the Live probe's H sections 3-5 as they stood at HEAD
+// (llreflectionmapmanager.cpp, sampleCinematicH) -- written out literally so
+// the extracted builder is compared against the original statement order.
+void podReferenceHeadEnv(lpr::Signature& sig, const aps::EnvSample& e)
+{
+    const aps::SkySample& sky = e.mSky;
+    sig.addExact(true);
+    sig.addAngle(sky.mSunDir.mV, 0.1f);
+    sig.addAngle(sky.mMoonDir.mV, 0.1f);
+    sig.addColor(sky.mSunlight.mV, 0.005f, 1e-4f);
+    sig.addColor(sky.mMoonlight.mV, 0.005f, 1e-4f);
+    sig.addColor(sky.mCloudColor.mV, 0.005f, 1e-4f);
+    sig.addColor(sky.mAmbient.mV, 0.005f, 1e-4f);
+    sig.addColor(sky.mBlueDensity.mV, 0.005f, 1e-4f);
+    sig.addColor(sky.mBlueHorizon.mV, 0.005f, 1e-4f);
+    sig.addColor(sky.mGlow.mV, 0.005f, 1e-4f);
+    sig.addColor(sky.mCloudPosDensity1.mV, 0.005f, 1e-3f);
+    sig.addColor(sky.mCloudPosDensity2.mV, 0.005f, 1e-3f);
+    sig.addRel(sky.mHazeDensity, 0.005f, 1e-4f);
+    sig.addRel(sky.mDensityMultiplier, 0.01f, 1e-7f);
+    sig.addRel(sky.mDistanceMultiplier, 0.005f, 1e-3f);
+    sig.addRel(sky.mCloudScale, 0.005f, 1e-4f);
+    sig.addRel(sky.mStarBrightness, 0.005f, 1e-3f);
+    sig.addRel(sky.mDropletRadius, 0.005f, 0.01f);
+    sig.addRel(sky.mMaxY, 0.005f, 1.f);
+    sig.addAbs(sky.mHazeHorizon, 1e-3f);
+    sig.addAbs(sky.mCloudShadow, 1e-3f);
+    sig.addAbs(sky.mCloudVariance, 1e-3f);
+    sig.addAbs(sky.mMoonBrightness, 1e-3f);
+    sig.addAbs(sky.mMoistureLevel, 1e-3f);
+    sig.addAbs(sky.mIceLevel, 1e-3f);
+    sig.addAbs(sky.mReflectionAmbiance, 1e-3f);
+    sig.addAbs(sky.mGamma, 1e-3f);
+    sig.addAbs(sky.mSunMoonGlowFactor, 1e-3f);
+    sig.addRel(sky.mSunScale, 0.005f, 1e-3f);
+    sig.addRel(sky.mMoonScale, 0.005f, 1e-3f);
+    sig.addAbs(sky.mBlendFactor, 1e-3f);
+    sig.addExact(sky.mIsSunUp);
+    sig.addExact(sky.mSunTex);
+    sig.addExact(sky.mMoonTex);
+    sig.addExact(sky.mCloudNoiseTex);
+    sig.addExact(sky.mBloomTex);
+    sig.addExact(sky.mRainbowTex);
+    sig.addExact(sky.mHaloTex);
+    sig.addExact(sky.mNextSunTex);
+    sig.addExact(sky.mNextMoonTex);
+    sig.addExact(sky.mNextCloudNoiseTex);
+
+    const aps::WaterSample& water = e.mWater;
+    sig.addExact(true);
+    sig.addColor(water.mFogColor.mV, 0.005f, 1e-4f);
+    sig.addRel(water.mFogDensity, 0.005f, 1e-4f);
+    sig.addAbs(water.mFogMod, 1e-3f);
+    sig.addAbs(water.mFresnelScale, 1e-3f);
+    sig.addAbs(water.mFresnelOffset, 1e-3f);
+    sig.addAbs(water.mScaleAbove, 1e-3f);
+    sig.addAbs(water.mScaleBelow, 1e-3f);
+    sig.addAbs(water.mBlendFactor, 1e-3f);
+    sig.addAbs(water.mBlurMultiplier, 1e-4f);
+    sig.addAbs(water.mWave1[0], 1e-3f);
+    sig.addAbs(water.mWave1[1], 1e-3f);
+    sig.addAbs(water.mWave2[0], 1e-3f);
+    sig.addAbs(water.mWave2[1], 1e-3f);
+    sig.addAbs3(water.mNormalScale.mV, 1e-3f);
+    sig.addAbs(water.mRenderWaterHeight, 0.01f);
+    sig.addExact(water.mNormalMap);
+    sig.addExact(water.mNextNormalMap);
+    sig.addExact(water.mTransparent);
+    sig.addExact(water.mNextTransparent);
+
+    const aps::EnvSettings& st = e.mSet;
+    sig.addAbs(st.mSunEV, 0.01f);
+    sig.addAbs(st.mMoonEV, 0.01f);
+    sig.addAbs(st.mLocalLightEV, 0.01f);
+    sig.addAbs(st.mShadowLiftEV, 0.01f);
+    sig.addAbs(st.mSunKelvin, 10.f);
+    sig.addAbs3(st.mSunTint, 1.f / 512.f);
+    sig.addAbs3(st.mMoonTint, 1.f / 512.f);
+    sig.addAbs(st.mSunTintStrength, 1e-3f);
+    sig.addAbs(st.mMoonTintStrength, 1e-3f);
+    sig.addExact(st.mMoonLinked);
+    sig.addExact(st.mLocalLightIncludeRig);
+    sig.addExact(static_cast<U64>(static_cast<U32>(st.mShadowDetail)));
+    sig.addExact(static_cast<U64>(static_cast<U32>(st.mLocalLightCount)));
+    sig.addExact(st.mAutoAdjustLegacy);
+}
+
+struct PodRow
+{
+    lpr::Tol mTol;
+    U8 mCount;
+    F32 mA;
+    F32 mB;
+};
+
+// The Live probe H layout of sections 3-5, field by field (what HEAD emits).
+std::vector<PodRow> podExpectedEnvLayout(F32 sun_moon_deg)
+{
+    std::vector<PodRow> rows;
+    const lpr::Tol angle = lpr::Tol::ANGLE;
+    const lpr::Tol color = lpr::Tol::COLOR;
+    const lpr::Tol rel = lpr::Tol::REL;
+    const lpr::Tol absv = lpr::Tol::ABS;
+    // sky: 2 angles (6 floats), 9 colours (27), 7 rel, 9 abs, 2 rel, 1 abs
+    // = 6 + 27 + 7 + 9 + 2 + 1 = 52 floats (the brief's "50" is a miscount of
+    // HEAD :786-817)
+    rows.push_back({ angle, 3, sun_moon_deg, 0.f });
+    rows.push_back({ angle, 3, sun_moon_deg, 0.f });
+    for (S32 i = 0; i < 7; ++i)
+    {
+        rows.push_back({ color, 3, 0.005f, 1e-4f });
+    }
+    rows.push_back({ color, 3, 0.005f, 1e-3f });
+    rows.push_back({ color, 3, 0.005f, 1e-3f });
+    rows.push_back({ rel, 1, 0.005f, 1e-4f });
+    rows.push_back({ rel, 1, 0.01f, 1e-7f });
+    rows.push_back({ rel, 1, 0.005f, 1e-3f });
+    rows.push_back({ rel, 1, 0.005f, 1e-4f });
+    rows.push_back({ rel, 1, 0.005f, 1e-3f });
+    rows.push_back({ rel, 1, 0.005f, 0.01f });
+    rows.push_back({ rel, 1, 0.005f, 1.f });
+    for (S32 i = 0; i < 9; ++i)
+    {
+        rows.push_back({ absv, 1, 1e-3f, 0.f });
+    }
+    rows.push_back({ rel, 1, 0.005f, 1e-3f });
+    rows.push_back({ rel, 1, 0.005f, 1e-3f });
+    rows.push_back({ absv, 1, 1e-3f, 0.f }); // sky blend factor
+    // water: 19 floats
+    rows.push_back({ color, 3, 0.005f, 1e-4f });
+    rows.push_back({ rel, 1, 0.005f, 1e-4f });
+    for (S32 i = 0; i < 5; ++i)
+    {
+        rows.push_back({ absv, 1, 1e-3f, 0.f });
+    }
+    rows.push_back({ absv, 1, 1e-3f, 0.f }); // water blend factor
+    rows.push_back({ absv, 1, 1e-4f, 0.f });
+    for (S32 i = 0; i < 4 + 3; ++i)
+    {
+        rows.push_back({ absv, 1, 1e-3f, 0.f });
+    }
+    rows.push_back({ absv, 1, 0.01f, 0.f });
+    // settings: 13 floats
+    for (S32 i = 0; i < 4; ++i)
+    {
+        rows.push_back({ absv, 1, 0.01f, 0.f });
+    }
+    rows.push_back({ absv, 1, 10.f, 0.f });
+    for (S32 i = 0; i < 6; ++i)
+    {
+        rows.push_back({ absv, 1, 1.f / 512.f, 0.f });
+    }
+    rows.push_back({ absv, 1, 1e-3f, 0.f });
+    rows.push_back({ absv, 1, 1e-3f, 0.f });
+    return rows;
+}
+
+// Everything a Live ON-path H sample needs, from a set of light entries.
+struct PodLiveH
+{
+    lpr::StickyHash mSticky;
+    lpr::Signature mSig;
+    aps::LiveHInput mIn;
+    aps::EnvSample mEnv;
+    std::vector<aps::LiveToken> mTokens;
+
+    PodLiveH() : mEnv(podEnv()) {}
+
+    U64 sample(const std::vector<const aps::LightEntry*>& entries)
+    {
+        mSig.clear();
+        mTokens.clear();
+        for (const aps::LightEntry* e : entries)
+        {
+            mTokens.push_back(aps::liveTokenOf(*e));
+        }
+        aps::buildLiveOnSignature(mSig, mIn, mTokens, mEnv);
+        return mSticky.update(mSig);
+    }
+};
+}
+
+// S1
+template<> template<>
+void cine_light_rig_model_object::test<72>()
+{
+    set_test_name("[ProbeOnDemand] S1 an event mid-transaction stays dirty after completion");
+    aps::Record r;
+    r.mId = 1;
+    aps::hit(r, aps::R_GEOM, 3, 1.0);
+    ensure("dirty before the start", aps::dirty(r));
+    aps::onTxnStart(r, 5, 1, 2.0, aps::R_GEOM, 4);
+    aps::onTxnIrradianceDone(r, 1);
+    aps::hit(r, aps::R_TEX, 6, 2.5);
+    ensure("the pair is acked", aps::onTxnComplete(r, 1, 4, 3.0, 7));
+    ensure("the mid-transaction event survives the ack", aps::dirty(r));
+    ensure_equals("only the new reason stays pending",
+        static_cast<S32>(r.mPending), static_cast<S32>(aps::R_TEX));
+    ensure_equals("its first-dirty time is kept", r.mFirstDirty, 2.5);
+    ensure_equals("ack serial = transaction serial", r.mAckSerial, static_cast<U64>(5));
+    ensure_equals("the acked reasons are reported", static_cast<S32>(r.mLastReasons),
+        static_cast<S32>(aps::R_GEOM));
+}
+
+// S2
+template<> template<>
+void cine_light_rig_model_object::test<73>()
+{
+    set_test_name("[ProbeOnDemand] S2 an event noted in the transaction's own frame is acked");
+    aps::Record r;
+    r.mId = 2;
+    aps::hit(r, aps::R_GEOM, 5, 1.0);
+    aps::onTxnStart(r, 5, 1, 1.0, aps::R_GEOM, 3);
+    aps::onTxnIrradianceDone(r, 1);
+    ensure("acked", aps::onTxnComplete(r, 1, 3, 2.0, 9));
+    ensure("a same-frame pre-start event does not survive", !aps::dirty(r));
+    ensure_equals("pending cleared", static_cast<S32>(r.mPending), 0);
+    ensure("first-dirty cleared", r.mFirstDirty < 0.0);
+    ensure_equals("complete time recorded", r.mLastComplete, 2.0);
+}
+
+// S3
+template<> template<>
+void cine_light_rig_model_object::test<74>()
+{
+    set_test_name("[ProbeOnDemand] S3 MinInterval keeps a dirty probe pending");
+    aps::Record r;
+    r.mId = 3;
+    r.mLastStart = 9.0;
+    r.mLastComplete = 9.5;
+    aps::Policy p;
+    p.mMinInterval = 1.f;
+    p.mMaxAge = 60.f;
+    aps::View v;
+    v.mAllocated = true;
+    v.mComplete = true;
+    aps::hit(r, aps::R_GEOM, 4, 9.6);
+    ensure("inside the interval a dirty probe waits",
+        aps::evaluate(r, v, p, 9.9) == aps::Why::WAIT_INTERVAL);
+    ensure("the interval boundary releases it",
+        aps::evaluate(r, v, p, 10.0) == aps::Why::DIRTY);
+    ensure("DIRTY is eligible", aps::eligible(aps::Why::DIRTY));
+    ensure("WAIT_INTERVAL is not eligible", !aps::eligible(aps::Why::WAIT_INTERVAL));
+
+    aps::Record clean;
+    clean.mLastStart = 9.0;
+    clean.mLastComplete = 9.5;
+    ensure("inside the interval a clean probe has nothing to do",
+        aps::evaluate(clean, v, p, 9.9) == aps::Why::NONE);
+    aps::View dyn = v;
+    dyn.mDynamic = true;
+    ensure("a dynamic probe waits too",
+        aps::evaluate(clean, dyn, p, 9.9) == aps::Why::WAIT_INTERVAL);
+    ensure("then runs as DYNAMIC", aps::evaluate(clean, dyn, p, 10.0) == aps::Why::DYNAMIC);
+    ensure("an unallocated probe is never scheduled",
+        aps::evaluate(r, aps::View(), p, 10.0) == aps::Why::NONE);
+    aps::View incomplete;
+    incomplete.mAllocated = true;
+    ensure("an incomplete probe is WARMUP (ignores the interval)",
+        aps::evaluate(r, incomplete, p, 9.9) == aps::Why::WARMUP);
+}
+
+// S4
+template<> template<>
+void cine_light_rig_model_object::test<75>()
+{
+    set_test_name("[ProbeOnDemand] S4 safety fires at MaxAge; MaxAge cannot be disabled");
+    aps::Record r;
+    r.mId = 4;
+    r.mLastStart = 0.0;
+    r.mLastComplete = 0.0;
+    aps::View v;
+    v.mAllocated = true;
+    v.mComplete = true;
+    const aps::Policy p = aps::policyFromSettings(1.f, 10.f);
+    ensure_equals("MaxAge 10 kept", p.mMaxAge, 10.f);
+    ensure("not due just before MaxAge",
+        aps::evaluate(r, v, p, 9.99) == aps::Why::NONE);
+    ensure("due at MaxAge", aps::evaluate(r, v, p, 10.0) == aps::Why::SAFETY);
+
+    ensure_equals("a 0 MaxAge is clamped to 10 (no permanent disable)",
+        aps::policyFromSettings(1.f, 0.f).mMaxAge, 10.f);
+    ensure_equals("a negative MaxAge is clamped to 10",
+        aps::policyFromSettings(1.f, -5.f).mMaxAge, 10.f);
+    ensure_equals("MaxAge is capped at 600", aps::policyFromSettings(1.f, 9999.f).mMaxAge, 600.f);
+    ensure_equals("a NaN MaxAge falls back to 60",
+        aps::policyFromSettings(1.f, std::numeric_limits<F32>::quiet_NaN()).mMaxAge, 60.f);
+    ensure_equals("MinInterval is capped at 10",
+        aps::policyFromSettings(50.f, 60.f).mMinInterval, 10.f);
+    ensure_equals("MinInterval below 0 is 0",
+        aps::policyFromSettings(-1.f, 60.f).mMinInterval, 0.f);
+    // A complete probe that never completed a transaction gets grace, not an
+    // immediate safety refresh.
+    aps::Record fresh;
+    aps::graceInit(fresh, true, 100.0);
+    ensure_equals("grace-init stamps the completion time", fresh.mLastComplete, 100.0);
+    ensure("no immediate safety",
+        aps::evaluate(fresh, v, p, 100.0) == aps::Why::NONE);
+}
+
+// S5
+template<> template<>
+void cine_light_rig_model_object::test<76>()
+{
+    set_test_name("[ProbeOnDemand] S5 DEFERRED keeps dirt; BARRIER overrides occlusion and interval");
+    aps::Record r;
+    r.mLastStart = 9.5;
+    r.mLastComplete = 9.6;
+    aps::Policy p;
+    aps::View v;
+    v.mAllocated = true;
+    v.mComplete = true;
+    v.mOccluded = true;
+    ensure("occluded + clean + not due: nothing",
+        aps::evaluate(r, v, p, 10.0) == aps::Why::NONE);
+    aps::hit(r, aps::R_GEOM, 3, 9.7);
+    ensure("occluded + dirty: DEFERRED", aps::evaluate(r, v, p, 10.0) == aps::Why::DEFERRED);
+    ensure("DEFERRED is not eligible", !aps::eligible(aps::Why::DEFERRED));
+    ensure("the dirt is kept while deferred", aps::dirty(r));
+    aps::Record due;
+    due.mLastComplete = 0.0;
+    ensure("occluded + safety due: DEFERRED",
+        aps::evaluate(due, v, p, 100.0) == aps::Why::DEFERRED);
+    aps::View barrier = v;
+    barrier.mBarrier = true;
+    ensure("BARRIER overrides occlusion and the interval (recent start)",
+        aps::evaluate(r, barrier, p, 10.0) == aps::Why::BARRIER);
+    ensure("BARRIER is eligible", aps::eligible(aps::Why::BARRIER));
+    aps::View incomplete = barrier;
+    incomplete.mComplete = false;
+    ensure("an incomplete member is still WARMUP first",
+        aps::evaluate(r, incomplete, p, 10.0) == aps::Why::WARMUP);
+}
+
+// S6
+template<> template<>
+void cine_light_rig_model_object::test<77>()
+{
+    set_test_name("[ProbeOnDemand] S6 footprint: sphere, terrain global, capsule on miss, masks, face-op skip");
+    const F32 origin[3] = { 0.f, 0.f, 0.f };
+    const F32 rcap = 131.f;
+    const U8 ordinary = static_cast<U8>(aps::C_STATIC | aps::C_TERRAIN_WATER | aps::C_LIGHT | aps::C_GLOBAL);
+    const U8 dflt = static_cast<U8>(aps::C_TERRAIN_WATER | aps::C_LIGHT | aps::C_GLOBAL);
+    aps::Record rec;
+    rec.mRecountDue = false;
+    aps::ShadowDirs off;
+    aps::ShadowDirs on;
+    on.mEnabled = true;
+    on.mSunValid = true;
+    on.mSun[0] = 1.f;
+    on.mSun[1] = 0.f;
+    on.mSun[2] = 0.f; // sun on the +x horizon: shadows fall along -x
+    const S32 cap = 256;
+
+    ensure("a static event inside the sphere hits",
+        aps::hitsCapture(podEvent(50.f, 51.f, aps::R_GEOM, aps::C_STATIC, 1), rec, origin, rcap, ordinary, cap, off));
+    ensure("a static event outside the sphere misses (no shadows)",
+        !aps::hitsCapture(podEvent(300.f, 301.f, aps::R_GEOM, aps::C_STATIC, 1), rec, origin, rcap, ordinary, cap, off));
+    ensure("terrain / water edits are global",
+        aps::hitsCapture(podEvent(5000.f, 5001.f, aps::R_GEOM, aps::C_TERRAIN_WATER, 1), rec, origin, rcap, ordinary, cap, off));
+    ensure("a global event always hits",
+        aps::hitsCapture(podEvent(5000.f, 5001.f, aps::R_ENV, aps::C_GLOBAL, 1), rec, origin, rcap, dflt, cap, off));
+
+    // capsule only on a sphere miss: an object at +x whose shadow falls onto
+    // the probe's capture.
+    const aps::Event shadow_hit = podEvent(200.f, 201.f, aps::R_GEOM, aps::C_STATIC, 1);
+    const aps::Event shadow_miss = podEvent(-201.f, -200.f, aps::R_GEOM, aps::C_STATIC, 1);
+    ensure("without shadows the outside object misses",
+        !aps::hitsCapture(shadow_hit, rec, origin, rcap, ordinary, cap, off));
+    ensure("its sun shadow reaches the capture",
+        aps::hitsCapture(shadow_hit, rec, origin, rcap, ordinary, cap, on));
+    ensure("an object whose shadow falls away misses",
+        !aps::hitsCapture(shadow_miss, rec, origin, rcap, ordinary, cap, on));
+    aps::ShadowDirs moon_only;
+    moon_only.mEnabled = true;
+    moon_only.mMoonValid = true;
+    moon_only.mMoon[0] = 1.f;
+    moon_only.mMoon[1] = 0.f;
+    moon_only.mMoon[2] = 0.f;
+    ensure("the moon capsule works the same way",
+        aps::hitsCapture(shadow_hit, rec, origin, rcap, ordinary, cap, moon_only));
+
+    // class masks
+    ensure("the default probe does not render static prims",
+        !aps::hitsCapture(podEvent(50.f, 51.f, aps::R_GEOM, aps::C_STATIC, 1), rec, origin, rcap, dflt, cap, on));
+    ensure("the default probe does render lights",
+        aps::hitsCapture(podEvent(50.f, 51.f, aps::R_LIGHT, aps::C_LIGHT, 1), rec, origin, rcap, dflt, cap, off));
+    ensure("a distant light misses an under-cap probe",
+        !aps::hitsCapture(podEvent(900.f, 901.f, aps::R_LIGHT, aps::C_LIGHT, 1), rec, origin, rcap, ordinary, cap, off));
+
+    // face-op skip
+    aps::Event blurred = podEvent(50.f, 51.f, aps::R_TEX, aps::C_STATIC, 1);
+    blurred.mMinFaceOp = 10;
+    rec.mLastFaceOp = 10;
+    ensure("a probe that rendered at (not after) the blur op is skipped",
+        !aps::hitsCapture(blurred, rec, origin, rcap, ordinary, cap, off));
+    rec.mLastFaceOp = 11;
+    ensure("a probe that rendered after the blur is hit",
+        aps::hitsCapture(blurred, rec, origin, rcap, ordinary, cap, off));
+    rec.mLastFaceOp = 0;
+    ensure("a probe that never rendered is skipped",
+        !aps::hitsCapture(blurred, rec, origin, rcap, ordinary, cap, off));
+}
+
+// S7
+template<> template<>
+void cine_light_rig_model_object::test<78>()
+{
+    set_test_name("[ProbeOnDemand] S7 transaction contract: refusals, newer serials, overflow");
+    {   // no transaction at all
+        aps::Record r;
+        ensure("no transaction: nack", !aps::onTxnComplete(r, 1, 3, 1.0, 5));
+        ensure("a nack leaves the probe dirty (resync)", aps::dirty(r));
+        ensure("with an R_RESYNC reason", (r.mPending & aps::R_RESYNC) != 0);
+    }
+    {   // irradiance never reported
+        aps::Record r;
+        aps::onTxnStart(r, 5, 1, 1.0, aps::R_GEOM, 3);
+        ensure("no irradiance pass: nack", !aps::onTxnComplete(r, 1, 3, 2.0, 6));
+        ensure("the transaction is dropped", !r.mInTxn);
+        ensure("dirty again", aps::dirty(r));
+        ensure("the reasons covered by the dropped transaction come back",
+            (r.mPending & aps::R_GEOM) != 0);
+    }
+    {   // epoch mismatch
+        aps::Record r;
+        aps::onTxnStart(r, 5, 1, 1.0, 0, 3);
+        aps::onTxnIrradianceDone(r, 1);
+        ensure("epoch mismatch: nack", !aps::onTxnComplete(r, 2, 3, 2.0, 6));
+    }
+    {   // a stale irradiance-done report from another epoch is ignored
+        aps::Record r;
+        aps::onTxnStart(r, 5, 1, 1.0, 0, 3);
+        aps::onTxnIrradianceDone(r, 9);
+        ensure("a foreign-epoch irradiance report is ignored", !r.mTxnIrrDone);
+    }
+    {   // cube changed under the transaction
+        aps::Record r;
+        aps::onTxnStart(r, 5, 1, 1.0, 0, 3);
+        aps::onTxnIrradianceDone(r, 1);
+        ensure("cube mismatch: nack", !aps::onTxnComplete(r, 1, 4, 2.0, 6));
+    }
+    {   // the redo after a nack is acked and clears the resync
+        aps::Record r;
+        ensure("nack first", !aps::onTxnComplete(r, 1, 3, 1.0, 5));
+        aps::onTxnStart(r, 6, 1, 2.0, aps::R_RESYNC, 3);
+        aps::onTxnIrradianceDone(r, 1);
+        ensure("the redo acks", aps::onTxnComplete(r, 1, 3, 3.0, 7));
+        ensure("and the resync is gone (never an infinite refresh loop)", !aps::dirty(r));
+    }
+    {   // newer serials are never cleared by an ack
+        aps::Record r;
+        aps::onTxnStart(r, 5, 1, 1.0, 0, 3);
+        aps::onTxnIrradianceDone(r, 1);
+        aps::hit(r, aps::R_TEX, 8, 1.5);
+        ensure("acked", aps::onTxnComplete(r, 1, 3, 2.0, 9));
+        ensure("serial 8 > 5 survives", aps::dirty(r));
+        ensure_equals("the dirty serial is intact", r.mDirtySerial, static_cast<U64>(8));
+    }
+    {   // an overflow-style resync hit mid-transaction never clears the transaction
+        aps::Record r;
+        aps::onTxnStart(r, 5, 1, 1.0, 0, 3);
+        aps::hit(r, aps::R_RESYNC, 6, 1.2); // overflow marks everything dirty
+        ensure("still in the transaction", r.mInTxn);
+        aps::onTxnIrradianceDone(r, 1);
+        ensure("the transaction still completes", aps::onTxnComplete(r, 1, 3, 2.0, 7));
+        ensure("the overflow dirt remains", aps::dirty(r));
+    }
+}
+
+// S8
+template<> template<>
+void cine_light_rig_model_object::test<79>()
+{
+    set_test_name("[ProbeOnDemand] S8 verdict priority and the UNSETTLED streak");
+    aps::VerdictInput in;
+    ensure("quiet is OK", aps::verdict(in) == aps::Verdict::OK);
+    in.mStarvedCount = 3;
+    in.mStarvedWorst = 7.0;
+    ensure("starved", aps::verdict(in) == aps::Verdict::STARVED);
+    in.mUnsettled = true;
+    in.mUnsettledId = 12;
+    in.mUnsettledReasons = static_cast<U16>(aps::R_GEOM | aps::R_TEX);
+    ensure("UNSETTLED beats STARVED", aps::verdict(in) == aps::Verdict::UNSETTLED);
+    ensure("the text names the probe and reasons",
+        aps::verdictText(in) == "UNSETTLED id=12 reasons=GT");
+    in.mPaused = true;
+    ensure("PAUSED beats UNSETTLED", aps::verdict(in) == aps::Verdict::PAUSED);
+    in.mOverBudget = true;
+    ensure("OVER BUDGET beats everything", aps::verdict(in) == aps::Verdict::OVER_BUDGET);
+    in.mOn = false;
+    ensure("scheduler off is OFF-BASELINE", aps::verdict(in) == aps::Verdict::OFF_BASELINE);
+    aps::VerdictInput starved;
+    starved.mStarvedCount = 2;
+    starved.mStarvedWorst = 6.4;
+    ensure("STARVED text", aps::verdictText(starved) == "STARVED 2 6s");
+
+    // streak: 3 consecutive windows with reasons outside S/W/R/B
+    aps::Record r;
+    ensure("window 1: not yet", !aps::noteStartWindow(r, 1, aps::R_GEOM));
+    ensure("window 2: not yet", !aps::noteStartWindow(r, 2, aps::R_TEX));
+    ensure("window 3: unsettled", aps::noteStartWindow(r, 3, aps::R_LIGHT));
+    aps::Record gap;
+    aps::noteStartWindow(gap, 1, aps::R_GEOM);
+    aps::noteStartWindow(gap, 2, aps::R_GEOM);
+    ensure("a skipped window restarts the streak", !aps::noteStartWindow(gap, 4, aps::R_GEOM));
+    aps::Record benign;
+    aps::noteStartWindow(benign, 1, aps::R_SAFETY);
+    aps::noteStartWindow(benign, 2, aps::R_WARMUP);
+    ensure("safety / warm-up / resync / barrier never build a streak",
+        !aps::noteStartWindow(benign, 3, static_cast<U16>(aps::R_RESYNC | aps::R_BARRIER)));
+    aps::Record broken;
+    aps::noteStartWindow(broken, 1, aps::R_GEOM);
+    aps::noteStartWindow(broken, 2, aps::R_GEOM);
+    aps::noteStartWindow(broken, 3, aps::R_SAFETY);
+    ensure("a benign window resets the streak", !aps::noteStartWindow(broken, 4, aps::R_GEOM));
+    ensure("frame budget: ord 1 is fine",
+        !aps::frameOverBudget(aps::SchedFrame{ 1, 0, 0, false }, 2));
+    ensure("frame budget: ord 2 is over", aps::frameOverBudget(aps::SchedFrame{ 2, 0, 0, false }, 2));
+    ensure("frame budget: rt 7 is over", aps::frameOverBudget(aps::SchedFrame{ 0, 7, 0, false }, 2));
+    ensure("frame budget: sliced 3 > N 2 is over",
+        aps::frameOverBudget(aps::SchedFrame{ 0, 3, 3, false }, 2));
+    ensure("frame budget: sliced 2 <= N 2 is fine",
+        !aps::frameOverBudget(aps::SchedFrame{ 0, 2, 2, false }, 2));
+    ensure("reason letters", aps::reasonLetters(static_cast<U16>(aps::R_GEOM | aps::R_BARRIER)) == "GB");
+}
+
+// S9
+template<> template<>
+void cine_light_rig_model_object::test<80>()
+{
+    set_test_name("[ProbeOnDemand] S9 slice cursor: N faces, alternation, identity reset, blocked frame");
+    aps::SliceCursor c;
+    aps::sliceBind(c, 5, 7);
+    // N = 2: three frames per pass, pass kinds alternate irradiance / radiance
+    S32 frame = 0;
+    std::vector<lpr::PassEnd> ends;
+    std::vector<S32> end_frames;
+    for (S32 f = 0; f < 12; ++f)
+    {
+        ++frame;
+        aps::sliceBind(c, 5, 7);
+        aps::sliceBegin(c, static_cast<U64>(frame));
+        for (S32 n = 0; n < 2 && c.mActive; ++n)
+        {
+            const lpr::PassEnd end = aps::sliceAdvance(c);
+            if (end != lpr::PassEnd::NONE)
+            {
+                ends.push_back(end);
+                end_frames.push_back(frame);
+            }
+        }
+    }
+    ensure_equals("four passes in 12 frames at N=2", static_cast<S32>(ends.size()), 4);
+    ensure("pass 1 irradiance", ends[0] == lpr::PassEnd::IRRADIANCE);
+    ensure("pass 2 radiance", ends[1] == lpr::PassEnd::RADIANCE);
+    ensure("pass 3 irradiance", ends[2] == lpr::PassEnd::IRRADIANCE);
+    ensure("pass 4 radiance", ends[3] == lpr::PassEnd::RADIANCE);
+    ensure_equals("pass 1 ends on frame 3", end_frames[0], 3);
+    ensure_equals("pass 2 ends on frame 6", end_frames[1], 6);
+
+    // N = 6 completes a pass per frame; N = 1 takes six frames
+    aps::SliceCursor six;
+    aps::sliceBind(six, 1, 1);
+    aps::sliceBegin(six, 1);
+    lpr::PassEnd last = lpr::PassEnd::NONE;
+    for (S32 n = 0; n < 6 && six.mActive; ++n)
+    {
+        last = aps::sliceAdvance(six);
+    }
+    ensure("N=6 finishes the pass in one frame", last == lpr::PassEnd::IRRADIANCE);
+    aps::sliceBegin(six, 2);
+    ensure("and the next pass is radiance", six.mRadiance);
+
+    // identity change drops the partial pass; the next pass starts at face 0
+    aps::SliceCursor id;
+    aps::sliceBind(id, 3, 4);
+    aps::sliceBegin(id, 1);
+    aps::sliceAdvance(id);
+    aps::sliceAdvance(id);
+    ensure_equals("mid-pass", static_cast<S32>(id.mFace), 2);
+    aps::sliceBind(id, 9, 4);
+    ensure("a new probe id resets the cursor", !id.mActive && id.mFace == 0 && id.mId == 9);
+    aps::sliceBegin(id, 5);
+    ensure("the pass restarts at face 0", id.mActive && id.mFace == 0);
+    ensure_equals("and records its start serial", id.mPassStartSerial, static_cast<U64>(5));
+    aps::sliceBind(id, 9, 5);
+    ensure("a cube change resets as well", !id.mActive && id.mCube == 5);
+
+    // a blocked frame (the probe is the ordinary updating probe) keeps the cursor
+    aps::SliceCursor blocked;
+    aps::sliceBind(blocked, 1, 1);
+    aps::sliceBegin(blocked, 1);
+    aps::sliceAdvance(blocked);
+    aps::sliceAdvance(blocked);
+    const U8 face_before = blocked.mFace;
+    aps::sliceBind(blocked, 1, 1); // the manager still binds, but captures nothing
+    ensure_equals("a blocked frame keeps the face", static_cast<S32>(blocked.mFace),
+        static_cast<S32>(face_before));
+    ensure("and the pass stays active", blocked.mActive);
+
+    // Regression (T22): a partial sliced pass, then the Live probe writes the
+    // secondary scratch, then the same dynamic probe is realtime again. The cursor
+    // must NOT resume at face k on top of Live's faces; the pass restarts at face 0.
+    aps::SliceCursor handoff;
+    aps::sliceBind(handoff, 4, 2);
+    aps::sliceBegin(handoff, 10);
+    aps::sliceAdvance(handoff);
+    aps::sliceAdvance(handoff);
+    aps::sliceAdvance(handoff);
+    ensure_equals("mid-pass at face 3", static_cast<S32>(handoff.mFace), 3);
+    aps::SliceCursor without_fix = handoff;
+    aps::sliceBind(without_fix, 4, 2);
+    ensure("(without the invalidation the same id / cube would resume mid-pass)",
+        without_fix.mActive && without_fix.mFace == 3);
+    aps::sliceInvalidate(handoff); // Live took the scratch
+    aps::sliceBind(handoff, 4, 2); // the same probe is realtime again
+    ensure("the cursor is idle after the handoff", !handoff.mActive && handoff.mFace == 0);
+    aps::sliceBegin(handoff, 20);
+    ensure("a new pass starts at face 0", handoff.mActive && handoff.mFace == 0);
+    ensure_equals("with a fresh start serial", handoff.mPassStartSerial, static_cast<U64>(20));
+    ensure("and the pass kind restarts as irradiance", !handoff.mRadiance);
+}
+
+// S10
+template<> template<>
+void cine_light_rig_model_object::test<81>()
+{
+    set_test_name("[ProbeOnDemand] S10 grace-init and the ON-edge clearTxn");
+    aps::Record never;
+    aps::graceInit(never, false, 5.0);
+    ensure("an incomplete probe gets no grace stamp", never.mLastComplete < 0.0);
+    aps::graceInit(never, true, 5.0);
+    ensure_equals("a complete probe is stamped", never.mLastComplete, 5.0);
+    aps::graceInit(never, true, 99.0);
+    ensure_equals("an existing stamp is never overwritten", never.mLastComplete, 5.0);
+
+    // ON edge: any in-flight transaction from a previous ON period is dropped
+    // and the record is resynced, so a late completion cannot ack it.
+    aps::Record r;
+    aps::onTxnStart(r, 5, 1, 1.0, aps::R_GEOM, 3);
+    aps::onTxnIrradianceDone(r, 1);
+    aps::clearTxn(r);
+    aps::hit(r, aps::R_RESYNC, 6, 2.0);
+    ensure("the stale completion is refused", !aps::onTxnComplete(r, 1, 3, 3.0, 7));
+    ensure("and the probe is dirty", aps::dirty(r));
+    // the redo
+    aps::onTxnStart(r, 8, 1, 4.0, aps::R_RESYNC, 3);
+    aps::onTxnIrradianceDone(r, 1);
+    ensure("a fresh transaction acks", aps::onTxnComplete(r, 1, 3, 5.0, 9));
+    ensure("and clears everything", !aps::dirty(r));
+}
+
+// S11
+template<> template<>
+void cine_light_rig_model_object::test<82>()
+{
+    set_test_name("[ProbeOnDemand] S11 ownership excludes LIVE / REALTIME records from selection");
+    aps::Policy p;
+    aps::View v;
+    v.mAllocated = true;
+    v.mComplete = true;
+    const aps::Owner owners[3] = { aps::Owner::ORDINARY, aps::Owner::LIVE, aps::Owner::REALTIME };
+    for (S32 i = 0; i < 3; ++i)
+    {
+        aps::Record r;
+        r.mOwner = owners[i];
+        r.mLastComplete = 100.0;
+        aps::hit(r, aps::R_GEOM, 2, 100.5);
+        ensure(i == 0 ? "an ORDINARY dirty record is selectable"
+                      : "a LIVE / REALTIME record is never selected",
+            aps::selectable(r, v, p, 101.0) == (i == 0));
+    }
+    aps::Record warm;
+    warm.mOwner = aps::Owner::LIVE;
+    aps::View incomplete;
+    incomplete.mAllocated = true;
+    ensure("even warm-up never selects a LIVE record",
+        !aps::selectable(warm, incomplete, p, 1.0));
+}
+
+// S12
+template<> template<>
+void cine_light_rig_model_object::test<83>()
+{
+    set_test_name("[ProbeOnDemand] S12 texture notification rule (H6 / DS)");
+    // integer Dp
+    ensure_equals("1024 / 128 -> 3", aps::probeDiscardFloor(1024, 128), 3);
+    ensure_equals("512 / 128 -> 2", aps::probeDiscardFloor(512, 128), 2);
+    ensure_equals("128 / 128 -> 0", aps::probeDiscardFloor(128, 128), 0);
+    ensure_equals("smaller than the probe -> 0", aps::probeDiscardFloor(100, 128), 0);
+    ensure_equals("zero dimension -> 0", aps::probeDiscardFloor(0, 128), 0);
+    ensure_equals("zero probe resolution -> 0", aps::probeDiscardFloor(1024, 0), 0);
+    ensure_equals("non power of two uses integer shifts", aps::probeDiscardFloor(1000, 128), 2);
+
+    const S32 dp = 3;
+    aps::TexNote n;
+    // the d < 0 guard
+    ensure("d < 0 never notifies", !aps::texArrival(n, -1, dp).mNotify);
+    ensure_equals("and changes nothing", static_cast<S32>(n.mNotedDiscard), -1);
+    // first image
+    aps::TexVerdict v = aps::texArrival(n, 5, dp);
+    ensure("the first image notifies", v.mNotify);
+    ensure_equals("unconditionally", v.mMinFaceOp, static_cast<U64>(0));
+    ensure_equals("noted = 5", static_cast<S32>(n.mNotedDiscard), 5);
+    // coarse refinement while still coarser than Dp
+    ensure("5 -> 4 (noted > Dp) notifies", aps::texArrival(n, 4, dp).mNotify);
+    ensure("4 -> 3 (noted > Dp) notifies", aps::texArrival(n, 3, dp).mNotify);
+    // nothing beyond Dp
+    ensure("3 -> 2 (noted == Dp) does not notify", !aps::texArrival(n, 2, dp).mNotify);
+    ensure("2 -> 0 does not notify", !aps::texArrival(n, 0, dp).mNotify);
+    ensure_equals("noted tracks the minimum", static_cast<S32>(n.mNotedDiscard), 0);
+    // a downgrade never notifies
+    ensure("a downgrade does not notify", !aps::texArrival(n, 5, dp).mNotify);
+    ensure_equals("noted never rises", static_cast<S32>(n.mNotedDiscard), 0);
+
+    // blur / re-sharpen, first stamp kept across repeated downscales
+    aps::texDownscale(n, 5, dp, 100);
+    ensure("a blur is recorded", n.mBlurred);
+    ensure_equals("with its stamp", n.mBlurStamp, static_cast<U64>(100));
+    aps::texDownscale(n, 6, dp, 200);
+    ensure_equals("the FIRST outstanding stamp is kept", n.mBlurStamp, static_cast<U64>(100));
+    aps::TexNote shallow;
+    shallow.mNotedDiscard = 2;
+    aps::texDownscale(shallow, 3, dp, 50); // 3 is not beyond Dp
+    ensure("a downscale that stays within Dp is not a blur", !shallow.mBlurred);
+    aps::TexNote unseen;
+    aps::texDownscale(unseen, 9, dp, 1);
+    ensure("a never-noted texture that is downscaled counts as blurred (conservative)", unseen.mBlurred);
+    v = aps::texArrival(n, 2, dp);
+    ensure("a re-sharpen notifies", v.mNotify);
+    ensure_equals("carrying the blur stamp as the minimum face op", v.mMinFaceOp,
+        static_cast<U64>(100));
+    ensure("and clears the blur", !n.mBlurred);
+    ensure("a second arrival at the same depth does not notify", !aps::texArrival(n, 2, dp).mNotify);
+
+    // op ordering: a face captured before the downscale stamp is not exposed
+    ensure("face op N, stamp N+1: not exposed", !aps::faceExposed(10, 11));
+    ensure("stamp N, face op N+1: exposed", aps::faceExposed(12, 11));
+    ensure("equal ops are not exposed", !aps::faceExposed(11, 11));
+    aps::Record before;
+    before.mLastFaceOp = 10;
+    aps::Record after;
+    after.mLastFaceOp = 12;
+    aps::Event ev = podEvent(50.f, 51.f, aps::R_TEX, aps::C_STATIC, 1);
+    ev.mMinFaceOp = 11;
+    const F32 origin[3] = { 0.f, 0.f, 0.f };
+    const U8 mask = static_cast<U8>(aps::C_STATIC | aps::C_GLOBAL | aps::C_LIGHT | aps::C_TERRAIN_WATER);
+    const aps::ShadowDirs sd = aps::ShadowDirs();
+    ensure("the pre-blur probe is not hit",
+        !aps::hitsCapture(ev, before, origin, 131.f, mask, 256, sd));
+    ensure("the post-blur probe is hit",
+        aps::hitsCapture(ev, after, origin, 131.f, mask, 256, sd));
+}
+
+// S13
+template<> template<>
+void cine_light_rig_model_object::test<84>()
+{
+    set_test_name("[ProbeOnDemand] S13 environment builder: layout table + HEAD-order oracle");
+    const aps::EnvSample env = podEnv();
+
+    // (i) layout table
+    lpr::Signature sig;
+    aps::appendEnvironmentFields(sig, env, 0.1f, false);
+    const std::vector<PodRow> rows = podExpectedEnvLayout(0.1f);
+    ensure_equals("field count matches the table", static_cast<S32>(sig.mField.size()),
+        static_cast<S32>(rows.size()));
+    S32 floats = 0;
+    for (size_t i = 0; i < rows.size(); ++i)
+    {
+        const lpr::Field& f = sig.mField[i];
+        ensure("tolerance kind of field " + std::to_string(i), f.mTol == rows[i].mTol);
+        ensure("count of field " + std::to_string(i), f.mCount == rows[i].mCount);
+        ensure("a of field " + std::to_string(i), f.mA == rows[i].mA);
+        ensure("b of field " + std::to_string(i), f.mB == rows[i].mB);
+        floats += static_cast<S32>(f.mCount);
+    }
+    ensure_equals("52 sky + 19 water + 13 settings floats", floats, 84);
+    ensure_equals("the value vector matches the field counts",
+        static_cast<S32>(sig.mVal.size()), floats);
+
+    // (ii) the H equals the original statement order on the same values
+    lpr::Signature reference;
+    podReferenceHeadEnv(reference, env);
+    lpr::StickyHash sticky_a;
+    lpr::StickyHash sticky_b;
+    ensure("builder == HEAD-order oracle", sticky_a.update(sig) == sticky_b.update(reference));
+    // The reviewer's independently computed golden H (a Python FNV re-implementation
+    // of StickyHash::update over podEnv() in HEAD order: 60 fields, 84 floats). A
+    // zero or missing golden is a FAILURE, never a skip.
+    const U64 kGoldenH = 0x1E859BA4513A0291ULL;
+    ensure("a golden H must be supplied", kGoldenH != 0);
+    {
+        lpr::StickyHash fresh;
+        ensure("builder == reviewer golden H", fresh.update(sig) == kGoldenH);
+    }
+    // stable across repeated sampling
+    ensure("same input, same H", sticky_a.update(sig) == sticky_b.update(reference));
+
+    // the two documented differences
+    lpr::Signature half;
+    aps::appendEnvironmentFields(half, env, 0.5f, false);
+    ensure("the direction tolerance parameter replaces the 0.1 literal",
+        half.mField[0].mA == 0.5f && half.mField[1].mA == 0.5f &&
+        half.mField[2].mA == 0.005f);
+
+    aps::EnvSample steady = env;
+    steady.mSky.mNextSunTex = steady.mSky.mSunTex;
+    steady.mSky.mNextMoonTex = steady.mSky.mMoonTex;
+    steady.mSky.mNextCloudNoiseTex = steady.mSky.mCloudNoiseTex;
+    steady.mWater.mNextNormalMap = steady.mWater.mNormalMap;
+    steady.mWater.mNextTransparent = steady.mWater.mTransparent;
+    lpr::Signature mixing_off;
+    aps::appendEnvironmentFields(mixing_off, steady, 0.1f, true);
+    lpr::Signature mixing_off_verbatim;
+    aps::appendEnvironmentFields(mixing_off_verbatim, steady, 0.1f, false);
+    // sky blend is value index 33 + 7 + 9 + 2 = 51; water blend index 52 + 3 + 1 + 5 = 61
+    ensure("sky blend zeroed when the textures do not mix", mixing_off.mVal[51] == 0.f);
+    ensure("water blend zeroed when the textures do not mix", mixing_off.mVal[61] == 0.f);
+    ensure("verbatim mode keeps the blends",
+        mixing_off_verbatim.mVal[51] == 0.5f && mixing_off_verbatim.mVal[61] == 0.57f);
+    lpr::Signature mixing_on;
+    aps::appendEnvironmentFields(mixing_on, env, 0.1f, true);
+    ensure("sky blend kept while the textures mix", mixing_on.mVal[51] == 0.5f);
+    ensure("water blend kept while the textures mix", mixing_on.mVal[61] == 0.57f);
+
+    // a missing sky / water contributes only the exact false
+    aps::EnvSample none = env;
+    none.mSky.mValid = false;
+    none.mWater.mValid = false;
+    lpr::Signature none_sig;
+    aps::appendEnvironmentFields(none_sig, none, 0.1f, false);
+    ensure_equals("missing sky + water leave only the 13 settings floats",
+        static_cast<S32>(none_sig.mVal.size()), 13);
+
+    // ordinary tail: fixed layout whatever the rim state
+    aps::OrdTailSample tail;
+    tail.mSlotCount = 5;
+    tail.mLightCount = 4;
+    lpr::Signature plain;
+    aps::appendOrdinaryTail(plain, tail);
+    tail.mRimEnabled = true;
+    tail.mRimIncludeProbes = true;
+    tail.mSlotEnabled[1] = true;
+    tail.mRimParams[1][2][3] = 0.8f;
+    lpr::Signature rimmed;
+    aps::appendOrdinaryTail(rimmed, tail);
+    ensure("the tail layout is fixed", plain.mField.size() == rimmed.mField.size());
+    lpr::StickyHash ha;
+    lpr::StickyHash hb;
+    ensure("rim state changes the tail", ha.update(plain) != hb.update(rimmed));
+    tail.mRimIncludeProbes = false;
+    lpr::Signature excluded;
+    aps::appendOrdinaryTail(excluded, tail);
+    lpr::Signature excluded_plain;
+    aps::OrdTailSample tail_plain;
+    tail_plain.mSlotCount = 5;
+    tail_plain.mLightCount = 4;
+    tail_plain.mRimEnabled = true; // exact flag differs: include-probes is off in both
+    aps::appendOrdinaryTail(excluded_plain, tail_plain);
+    lpr::StickyHash hc;
+    lpr::StickyHash hd;
+    ensure("with probes excluded the rim parameters are zeroed (no churn)",
+        hc.update(excluded) == hd.update(excluded_plain));
+}
+
+// S14
+template<> template<>
+void cine_light_rig_model_object::test<85>()
+{
+    set_test_name("[ProbeOnDemand] S14 motion debounce, teardown, cap policy, discrete bypass, shift");
+    const F32 dt = 1.f / 64.f;
+    int key_a = 0;
+    int key_b = 0;
+
+    {   // continuous motion at 64 fps: nothing until 0.5 s quiet, then ONE settle
+        aps::DebounceMap map;
+        std::vector<aps::Event> out;
+        for (S32 f = 0; f <= 128; ++f)
+        {
+            podNote(map, &key_a, 1, static_cast<F32>(f), static_cast<F32>(f) + 1.f, podTime(f), dt, 3);
+            map.drain(podTime(f), out);
+        }
+        ensure_equals("no event while it moves", static_cast<S32>(out.size()), 0);
+        map.drain(podTime(128) + 0.4921875, out); // 63 frames after the last note: not yet
+        ensure_equals("not before the quiet window", static_cast<S32>(out.size()), 0);
+        map.drain(podTime(128) + 0.5, out);
+        ensure_equals("one settle after 0.5 s of quiet", static_cast<S32>(out.size()), 1);
+        ensure("it is a settle", (out[0].mReason & aps::R_SETTLE) != 0);
+        ensure("carrying the geometry reason", (out[0].mReason & aps::R_GEOM) != 0);
+        ensure("over the union bounds", out[0].mMin[0] == 0.f && out[0].mMax[0] == 129.f);
+        ensure_equals("and the serial the motion began at", out[0].mFirstSerial, static_cast<U64>(3));
+        map.drain(podTime(128) + 5.0, out);
+        ensure_equals("exactly one", static_cast<S32>(out.size()), 1);
+    }
+    {   // 2 s periodic source: frozen from its second cycle
+        aps::DebounceMap map;
+        std::vector<aps::Event> out;
+        for (S32 c = 0; c <= 10; ++c)
+        {
+            const F64 t = 2.0 * static_cast<F64>(c);
+            podNote(map, &key_a, 1, 0.f, 1.f, t, dt, 1);
+            map.drain(t, out);
+            map.drain(t + 0.5, out); // the 0.5 s mark inside the cycle
+        }
+        ensure_equals("only the first cycle produced a settle", static_cast<S32>(out.size()), 1);
+        map.drain(20.0 + 3.9, out);
+        ensure_equals("still frozen just before 2x the gap after the last note",
+            static_cast<S32>(out.size()), 1);
+        map.drain(20.0 + 4.0, out);
+        ensure_equals("one settle after it stops", static_cast<S32>(out.size()), 2);
+    }
+    {   // a gap longer than 60 s forgets the estimate
+        aps::DebounceMap map;
+        std::vector<aps::Event> out;
+        podNote(map, &key_a, 1, 0.f, 1.f, 0.0, dt, 1);
+        podNote(map, &key_a, 1, 0.f, 1.f, 2.0, dt, 1);
+        map.drain(10.0, out); // settles (the 2 s estimate gives a 4 s quiet)
+        const size_t before = out.size();
+        podNote(map, &key_a, 1, 0.f, 1.f, 100.0, dt, 1);
+        map.drain(100.5, out);
+        ensure_equals("treated as fresh: 0.5 s quiet", static_cast<S32>(out.size()),
+            static_cast<S32>(before + 1));
+    }
+    {   // low fps stretches the quiet window
+        aps::DebounceMap map;
+        std::vector<aps::Event> out;
+        const F32 slow = 1.f / 3.f;
+        podNote(map, &key_a, 1, 0.f, 1.f, 0.0, slow, 1);
+        map.drain(0.9, out);
+        ensure_equals("3 fps: not at 0.9 s", static_cast<S32>(out.size()), 0);
+        map.drain(1.0, out);
+        ensure_equals("3 fps: quiet is 3 frame times (1 s)", static_cast<S32>(out.size()), 1);
+    }
+    {   // alternating keys debounce independently
+        aps::DebounceMap map;
+        std::vector<aps::Event> out;
+        for (S32 f = 0; f < 128; ++f)
+        {
+            podNote(map, &key_a, 1, 0.f, 1.f, podTime(f), dt, 1);
+            if (f < 64)
+            {
+                podNote(map, &key_b, 2, 10.f, 11.f, podTime(f), dt, 1);
+            }
+            map.drain(podTime(f), out);
+        }
+        // B stopped at frame 63 -> settles at 63/64 + 0.5; A is still moving.
+        map.drain(podTime(63) + 0.5, out);
+        ensure_equals("B settled while A keeps moving", static_cast<S32>(out.size()), 1);
+        ensure("and it is B's bounds", out[0].mMin[0] == 10.f);
+    }
+    {   // saturating count
+        aps::DebounceConfig cfg;
+        aps::Debounce d;
+        const PodBox b(0.f, 1.f);
+        for (S32 i = 0; i < 70000; ++i)
+        {
+            aps::debOnMotion(cfg, d, 0.0, dt, b.mMin, b.mMax, static_cast<U16>(aps::R_GEOM),
+                static_cast<U8>(aps::C_STATIC), false, 1);
+        }
+        ensure_equals("the count saturates", static_cast<S32>(d.mCount), 0xFFFF);
+    }
+    {   // an id-tag mismatch emits the OLD pending union first, then resets
+        aps::DebounceMap map;
+        std::vector<aps::Event> out;
+        podNote(map, &key_a, 1, 0.f, 1.f, 0.0, dt, 1);
+        podNote(map, &key_a, 99, 500.f, 501.f, 0.25, dt, 2); // pointer reuse
+        map.drain(0.25, out);
+        ensure_equals("the old object's pending bounds were emitted", static_cast<S32>(out.size()), 1);
+        ensure("and they are the old bounds", out[0].mMin[0] == 0.f && out[0].mMax[0] == 1.f);
+        ensure_equals("the stat counts it", static_cast<S32>(map.stats().mIdMismatchEmits), 1);
+        map.drain(0.75, out);
+        ensure_equals("the new object settles on its own", static_cast<S32>(out.size()), 2);
+        ensure("with only its own bounds", out[1].mMin[0] == 500.f && out[1].mMax[0] == 501.f);
+    }
+    {   // teardown: pending states merge into the removal event and are erased
+        aps::DebounceMap map;
+        std::vector<aps::Event> out;
+        podNote(map, &key_a, 1, 0.f, 1.f, 0.0, dt, 4);
+        const PodBox moved(20.f, 21.f);
+        map.onMotion(&key_a, static_cast<U8>(aps::Motion::TEXANIM), 1, moved.mMin, moved.mMax,
+            static_cast<U16>(aps::R_TEX), static_cast<U8>(aps::C_STATIC), false, 5, 0.1, dt);
+        aps::Event removal = podEvent(30.f, 31.f, aps::R_GEOM, aps::C_STATIC, 9);
+        ensure("something pending was merged", map.takePending(&key_a, removal));
+        ensure("the removal covers the old path", removal.mMin[0] == 0.f && removal.mMax[0] == 31.f);
+        ensure("and carries the texture reason too", (removal.mReason & aps::R_TEX) != 0);
+        ensure_equals("with the earliest serial", removal.mFirstSerial, static_cast<U64>(4));
+        ensure_equals("the states are erased", static_cast<S32>(map.size()), 0);
+        map.drain(10.0, out);
+        ensure_equals("no stale settle follows", static_cast<S32>(out.size()), 0);
+        aps::Event nothing = podEvent(0.f, 1.f, aps::R_GEOM, aps::C_STATIC, 1);
+        ensure("nothing pending: not merged", !map.takePending(&key_b, nothing));
+    }
+    {   // cap policy with a small cap (T54): history first, early settle of quiet keys,
+        // then the bulk state with its hard deadline. T54 has TWO separate expectations:
+        //  (A) a TRACKED key that stops settles within kQmin of stopping (here: it is
+        //      delivered at the cap-pressure early settle, never held by the movers);
+        //  (B) a key that was already FOLDED INTO BULK settles by the bulk hard deadline
+        //      (10 s after the bulk's first pending note), NOT by kQmin.
+        aps::DebounceConfig cfg;
+        cfg.mMapCap = 4;
+        aps::DebounceMap map(cfg);
+        std::vector<aps::Event> out;
+        int keys[10] = {};
+        // key 0 settles and becomes idle history
+        podNote(map, &keys[0], 1, 0.f, 1.f, 0.0, dt, 1);
+        map.drain(1.0, out);
+        ensure_equals("key 0 settled and is now history", static_cast<S32>(out.size()), 1);
+        podNote(map, &keys[1], 1, 10.f, 11.f, 2.0, dt, 1);
+        podNote(map, &keys[2], 1, 20.f, 21.f, 2.0, dt, 1);
+        podNote(map, &keys[3], 1, 30.f, 31.f, 2.0, dt, 1);
+        ensure_equals("map is full", static_cast<S32>(map.size()), 4);
+        podNote(map, &keys[4], 1, 40.f, 41.f, 2.0, dt, 1);
+        ensure_equals("(1) idle history was evicted first", static_cast<S32>(map.stats().mEvictions), 1);
+        ensure_equals("no bulk", static_cast<S32>(map.stats().mBulkNotes), 0);
+        ensure_equals("still full", static_cast<S32>(map.size()), 4);
+        out.clear();
+
+        // (2) = expectation (A): keys 1 and 2 keep their last note at t=2 and then stop
+        // (they are tracked); keys 3 and 4 keep moving
+        for (S32 f = 0; f < 192; ++f)
+        {
+            const F64 t = 2.5 + podTime(f);
+            podNote(map, &keys[3], 1, 30.f, 31.f, t, dt, 1);
+            podNote(map, &keys[4], 1, 40.f, 41.f, t, dt, 1);
+        }
+        const F64 t_new = 2.5 + podTime(191);
+        podNote(map, &keys[5], 1, 50.f, 51.f, t_new, dt, 1); // t = 5.48: 1 and 2 stopped long ago
+        ensure("(2) the stopped keys were settled early to make room",
+            map.stats().mEarlySettles >= 2);
+        ensure_equals("(2) the new key is tracked, not bulked", static_cast<S32>(map.stats().mBulkNotes), 0);
+        map.drain(t_new, out);
+        S32 stopped_delivered = 0;
+        for (const aps::Event& e : out)
+        {
+            if (e.mMin[0] == 10.f || e.mMin[0] == 20.f)
+            {
+                ++stopped_delivered;
+            }
+        }
+        ensure_equals("tracked stopped keys are delivered without waiting for the movers",
+            stopped_delivered, 2);
+        out.clear();
+
+        // (3) = expectation (B): every tracked key is moving, so new keys fold into bulk;
+        // their area is delivered by the bulk deadline (not kQmin)
+        std::vector<int> bulk_keys(static_cast<size_t>(12 * 64 + 16));
+        podNote(map, &keys[6], 1, 80.f, 81.f, t_new, dt, 1); // still fits (3 -> 4 keys)
+        podNote(map, &keys[7], 1, 70.f, 71.f, t_new, dt, 1); // full, all moving -> bulk
+        ensure("(3) all tracked keys moving: the new key went to bulk", map.stats().mBulkNotes >= 1);
+        ensure("bulk is pending", map.bulkPending());
+        // Fresh keys keep arriving (and the tracked keys keep moving) for 12 s.
+        // Bulk must emit within 10 s of its first pending note even though its
+        // notes never stop, and the tracked movers never get settled.
+        const F64 bulk_start = t_new;
+        F64 first_bulk = -1.0;
+        for (S32 f = 1; f <= 12 * 64; ++f)
+        {
+            const F64 t = bulk_start + podTime(f);
+            podNote(map, &keys[3], 1, 30.f, 31.f, t, dt, 1);
+            podNote(map, &keys[4], 1, 40.f, 41.f, t, dt, 1);
+            podNote(map, &keys[5], 1, 50.f, 51.f, t, dt, 1);
+            podNote(map, &keys[6], 1, 80.f, 81.f, t, dt, 1);
+            podNote(map, &bulk_keys[static_cast<size_t>(f)], 1, 60.f, 61.f, t, dt, 1);
+            std::vector<aps::Event> tick;
+            map.drain(t, tick);
+            for (const aps::Event& e : tick)
+            {
+                ensure("a tracked mover is never settled while it moves",
+                    !(e.mMin[0] == 30.f || e.mMin[0] == 40.f || e.mMin[0] == 50.f || e.mMin[0] == 80.f));
+                if (e.mMin[0] == 60.f && e.mMax[0] >= 71.f && first_bulk < 0.0)
+                {
+                    first_bulk = t;
+                }
+            }
+        }
+        ensure("(3) the bulk area refreshed", first_bulk >= 0.0);
+        ensure("(3) ... no earlier than its deadline (it never went quiet)",
+            first_bulk >= bulk_start + 10.0 - 1e-9);
+        ensure("(3) ... and no later than 10 s after its first pending note",
+            first_bulk <= bulk_start + 10.0 + 0.05);
+        ensure_equals("(3) the deadline path emitted it", static_cast<S32>(map.stats().mBulkDeadlines), 1);
+    }
+    {   // expectation (B) again: a key already folded into bulk is only GUARANTEED by the
+        // bulk hard deadline (10 s), not by kQmin; it is never held hostage by tracked
+        // movers (the loop runs 11 s with both tracked keys moving the whole time)
+        aps::DebounceConfig cfg;
+        cfg.mMapCap = 2;
+        aps::DebounceMap map(cfg);
+        std::vector<aps::Event> out;
+        int keys[4] = {};
+        podNote(map, &keys[0], 1, 0.f, 1.f, 0.0, dt, 1);
+        podNote(map, &keys[1], 1, 5.f, 6.f, 0.0, dt, 1);
+        podNote(map, &keys[2], 1, 90.f, 91.f, 0.0, dt, 1); // folded into bulk
+        ensure("folded into bulk", map.stats().mBulkNotes == 1);
+        for (S32 f = 1; f < 64 * 11; ++f)
+        {
+            const F64 t = podTime(f);
+            podNote(map, &keys[0], 1, 0.f, 1.f, t, dt, 1);
+            podNote(map, &keys[1], 1, 5.f, 6.f, t, dt, 1);
+            map.drain(t, out);
+        }
+        bool bulk_seen = false;
+        for (const aps::Event& e : out)
+        {
+            bulk_seen = bulk_seen || e.mMin[0] == 90.f;
+        }
+        ensure("the folded key's area refreshed within the hard deadline", bulk_seen);
+    }
+    {   // discrete notes never enter the debounce
+        aps::DebounceMap map;
+        aps::DiscreteNotes discrete(3);
+        std::vector<aps::Event> out;
+        for (S32 f = 0; f < 128; ++f)
+        {
+            podNote(map, &key_a, 1, 0.f, 1.f, podTime(f), dt, 1);
+        }
+        const PodBox tex(40.f, 41.f);
+        discrete.note(&key_b, tex.mMin, tex.mMax, static_cast<U16>(aps::R_TEX),
+            static_cast<U8>(aps::C_STATIC), 7);
+        const PodBox tex2(42.f, 43.f);
+        discrete.note(&key_b, tex2.mMin, tex2.mMax, static_cast<U16>(aps::R_GEOM),
+            static_cast<U8>(aps::C_STATIC), 7);
+        ensure_equals("same-key notes coalesce", static_cast<S32>(discrete.size()), 1);
+        std::vector<aps::Event> events;
+        ensure("no overflow", !discrete.take(events));
+        ensure_equals("one discrete event", static_cast<S32>(events.size()), 1);
+        ensure("union of bounds", events[0].mMin[0] == 40.f && events[0].mMax[0] == 43.f);
+        ensure("OR of reasons",
+            (events[0].mReason & aps::R_TEX) != 0 && (events[0].mReason & aps::R_GEOM) != 0);
+        ensure("a discrete event is not a settle", (events[0].mReason & aps::R_SETTLE) == 0);
+        map.drain(podTime(127), out);
+        ensure_equals("the moving key stays frozen while the discrete event was delivered",
+            static_cast<S32>(out.size()), 0);
+        int keys[5] = {};
+        for (S32 i = 0; i < 5; ++i)
+        {
+            discrete.note(&keys[i], tex.mMin, tex.mMax, static_cast<U16>(aps::R_TEX),
+                static_cast<U8>(aps::C_STATIC), 1);
+        }
+        std::vector<aps::Event> capped;
+        ensure("beyond the cap the overflow flag is raised", discrete.take(capped));
+        ensure_equals("and the cap is honoured", static_cast<S32>(capped.size()), 3);
+    }
+    {   // shift offsets queued bounds
+        aps::DebounceMap map;
+        std::vector<aps::Event> out;
+        podNote(map, &key_a, 1, 0.f, 1.f, 0.0, dt, 1);
+        const F32 off[3] = { 256.f, 0.f, 0.f };
+        map.shift(off);
+        map.drain(1.0, out);
+        ensure_equals("settled once", static_cast<S32>(out.size()), 1);
+        ensure("bounds moved with the world", out[0].mMin[0] == 256.f && out[0].mMax[0] == 257.f);
+        ensure_equals("settle counter", static_cast<S32>(podCountSettles(out)), 1);
+    }
+}
+
+// S15
+template<> template<>
+void cine_light_rig_model_object::test<86>()
+{
+    set_test_name("[ProbeOnDemand] S15 cap rule: history, recount, amortised budget, spots");
+    const F32 origin[3] = { 0.f, 0.f, 0.f };
+    const U8 mask = static_cast<U8>(aps::C_STATIC | aps::C_TERRAIN_WATER | aps::C_LIGHT | aps::C_GLOBAL);
+    const aps::ShadowDirs sd = aps::ShadowDirs();
+    const S32 cap = 256;
+    aps::Record rec;
+    rec.mRecountDue = false;
+    const aps::Event far_light = podEvent(900.f, 901.f, aps::R_LIGHT, aps::C_LIGHT, 20);
+    ensure("under cap, far, not due: a distant light event misses",
+        !aps::hitsCapture(far_light, rec, origin, 131.f, mask, cap, sd));
+    rec.mLocalLights = static_cast<U16>(cap + 1);
+    ensure("over cap: the distance order can change anywhere (current count)",
+        aps::hitsCapture(far_light, rec, origin, 131.f, mask, cap, sd));
+    // cap + 1 -> cap transition (a distant spot removed): the previous count keeps hitting
+    rec.mLocalLightsPrev = rec.mLocalLights;
+    rec.mLocalLights = static_cast<U16>(cap);
+    ensure("cap+1 -> cap: the previous count still hits",
+        aps::hitsCapture(far_light, rec, origin, 131.f, mask, cap, sd));
+    rec.mLocalLightsPrev = static_cast<U16>(cap);
+    ensure("cap -> cap: no longer over", !aps::hitsCapture(far_light, rec, origin, 131.f, mask, cap, sd));
+
+    // history: the probe was over cap at serial 10; a settle whose motion began at 9 is still global
+    rec.mOverCapSerial = 10;
+    aps::Event delayed = podEvent(900.f, 901.f, static_cast<U16>(aps::R_LIGHT | aps::R_SETTLE), aps::C_LIGHT, 9);
+    ensure("over-cap history keeps a delayed settle global after the recount dropped under cap",
+        aps::hitsCapture(delayed, rec, origin, 131.f, mask, cap, sd));
+    delayed.mFirstSerial = 11;
+    ensure("a motion that began after the probe was last over cap does not",
+        !aps::hitsCapture(delayed, rec, origin, 131.f, mask, cap, sd));
+    aps::Record never;
+    never.mRecountDue = false;
+    aps::Event unset = podEvent(900.f, 901.f, aps::R_LIGHT, aps::C_LIGHT, 0);
+    ensure("a probe that was never over cap is not hit by an event with serial 0",
+        !aps::hitsCapture(unset, never, origin, 131.f, mask, cap, sd));
+
+    // a probe whose recount is pending counts as over cap
+    aps::Record due;
+    ensure("recount-due defaults to true", due.mRecountDue);
+    ensure("a recount-pending probe is treated as over cap",
+        aps::hitsCapture(far_light, due, origin, 131.f, mask, cap, sd));
+
+    // spot events follow the same rule (T57)
+    aps::Event spot = podEvent(500.f, 501.f, static_cast<U16>(aps::R_LIGHT | aps::R_SETTLE), aps::C_LIGHT, 30);
+    spot.mSpot = true;
+    aps::Record under;
+    under.mRecountDue = false;
+    under.mLocalLights = 3;
+    under.mLocalLightsPrev = 3;
+    ensure("an under-cap probe is not hit by a distant spot",
+        !aps::hitsCapture(spot, under, origin, 131.f, mask, cap, sd));
+    under.mLocalLights = static_cast<U16>(cap + 2);
+    ensure("an over-cap probe is hit by the same spot",
+        aps::hitsCapture(spot, under, origin, 131.f, mask, cap, sd));
+
+    // The recount: pairs, cursor, budget.
+    const S32 num_lights = 5000;
+    std::vector<aps::LightEntry> storage(static_cast<size_t>(num_lights));
+    std::vector<const aps::LightEntry*> lights;
+    for (S32 i = 0; i < num_lights; ++i)
+    {
+        aps::LightEntry& e = storage[static_cast<size_t>(i)];
+        e.mSeq = static_cast<U64>(i + 1);
+        e.mEligible = (i % 7) != 0;
+        e.mSpot = (i % 500) == 0;
+        e.mPos[0] = static_cast<F32>(i % 400);
+        e.mPos[1] = 0.f;
+        e.mPos[2] = 0.f;
+        e.mRadius = 2.f;
+        e.mReach = 3.f;
+        lights.push_back(&e);
+    }
+    std::vector<aps::Record> recs(3);
+    std::vector<aps::RecountProbe> probes;
+    for (U32 i = 0; i < 3; ++i)
+    {
+        recs[i].mId = i + 1;
+        aps::RecountProbe p;
+        p.mRec = &recs[i];
+        p.mOrigin[0] = static_cast<F32>(i) * 100.f;
+        p.mMaxDist = 150.f;
+        probes.push_back(p);
+    }
+    aps::Recount recount;
+    U64 serial = 100;
+    U32 frames = 0;
+    bool all_recounted = false;
+    for (; frames < 40 && !all_recounted; ++frames)
+    {
+        const U32 used = recount.run(probes, lights, aps::kRecountPairBudget, ++serial, cap);
+        ensure("the per-frame pair budget is honoured", used <= aps::kRecountPairBudget);
+        all_recounted = recs[0].mLastRecountSerial != 0 && recs[1].mLastRecountSerial != 0 &&
+                        recs[2].mLastRecountSerial != 0;
+    }
+    ensure("all three probes were recounted", all_recounted);
+    ensure("amortised: 3 x 5000 pairs does not fit one 8192-pair frame", frames > 1);
+    for (U32 i = 0; i < 3; ++i)
+    {
+        U32 expected = 0;
+        for (const aps::LightEntry* l : lights)
+        {
+            if (!l->mEligible)
+            {
+                continue;
+            }
+            const F32 dx = l->mPos[0] - probes[i].mOrigin[0];
+            if (l->mSpot || std::fabs(dx) - l->mReach < 150.f)
+            {
+                ++expected;
+            }
+        }
+        ensure_equals("recount matches the brute-force count", static_cast<S32>(recs[i].mLocalLights),
+            static_cast<S32>(expected));
+        ensure("and the probe is no longer pending", !recs[i].mRecountDue);
+    }
+}
+
+// S15b: spec correction 2 -- resumable, starvation-free recount.
+template<> template<>
+void cine_light_rig_model_object::test<87>()
+{
+    set_test_name("[ProbeOnDemand] S15b recount: bounded progress with 10000 lights and continuous re-dirtying");
+    const S32 num_lights = 10000;
+    const S32 num_probes = 8;
+    std::vector<aps::LightEntry> storage(static_cast<size_t>(num_lights));
+    std::vector<const aps::LightEntry*> lights;
+    for (S32 i = 0; i < num_lights; ++i)
+    {
+        aps::LightEntry& e = storage[static_cast<size_t>(i)];
+        e.mSeq = static_cast<U64>(i + 1);
+        e.mEligible = true;
+        e.mPos[0] = static_cast<F32>(i % 300);
+        e.mReach = 3.f;
+        lights.push_back(&e);
+    }
+    std::vector<aps::Record> recs(static_cast<size_t>(num_probes));
+    std::vector<aps::RecountProbe> probes;
+    for (S32 i = 0; i < num_probes; ++i)
+    {
+        recs[static_cast<size_t>(i)].mId = static_cast<U32>(i + 1);
+        aps::RecountProbe p;
+        p.mRec = &recs[static_cast<size_t>(i)];
+        p.mOrigin[0] = static_cast<F32>(i) * 40.f;
+        p.mMaxDist = 100.f;
+        probes.push_back(p);
+    }
+    ensure("one probe-pass over 10000 lights cannot fit one frame",
+        num_lights > static_cast<S32>(aps::kRecountPairBudget));
+
+    // Every frame EVERY probe is re-dirtied by light events (the priority queue
+    // never empties). Each probe must still complete a recount within a bound.
+    aps::Recount recount;
+    std::vector<U64> first_done(static_cast<size_t>(num_probes), 0);
+    const U64 bound = static_cast<U64>(
+        (2 * num_lights * num_probes + static_cast<S32>(aps::kRecountPairBudget) - 1) /
+            static_cast<S32>(aps::kRecountPairBudget) + num_probes + 4);
+    U64 serial = 1000;
+    for (U64 frame = 1; frame <= bound; ++frame)
+    {
+        for (aps::Record& r : recs)
+        {
+            aps::markRecountDue(r);
+        }
+        const U32 used = recount.run(probes, lights, aps::kRecountPairBudget, ++serial, 256);
+        ensure("budget honoured under churn", used <= aps::kRecountPairBudget);
+        for (S32 i = 0; i < num_probes; ++i)
+        {
+            const aps::Record& r = recs[static_cast<size_t>(i)];
+            if (first_done[static_cast<size_t>(i)] == 0 && r.mLastRecountSerial != 0)
+            {
+                first_done[static_cast<size_t>(i)] = frame;
+            }
+        }
+    }
+    for (S32 i = 0; i < num_probes; ++i)
+    {
+        ensure("every probe completed a recount within the bound under continuous re-dirtying",
+            first_done[static_cast<size_t>(i)] != 0 && first_done[static_cast<size_t>(i)] <= bound);
+    }
+    ensure("the cursor resumed across frames (no probe restarted forever)",
+        recount.completed() >= static_cast<U32>(num_probes));
+    // While re-dirtied the due flag stays set (treated as over cap: conservative)
+    ensure("the due flag is conservative while re-dirtying continues", recs[0].mRecountDue);
+
+    // Once the churn stops every probe settles and the counts are exact.
+    for (U64 frame = 0; frame < bound; ++frame)
+    {
+        recount.run(probes, lights, aps::kRecountPairBudget, ++serial, 256);
+    }
+    for (S32 i = 0; i < num_probes; ++i)
+    {
+        U32 expected = 0;
+        for (const aps::LightEntry* l : lights)
+        {
+            const F32 dx = l->mPos[0] - probes[static_cast<size_t>(i)].mOrigin[0];
+            if (std::fabs(dx) - l->mReach < 100.f)
+            {
+                ++expected;
+            }
+        }
+        const aps::Record& r = recs[static_cast<size_t>(i)];
+        ensure_equals("exact count once the churn stops", static_cast<S32>(r.mLocalLights),
+            static_cast<S32>(std::min<U32>(expected, 0xFFFFu)));
+        ensure("and the due flag clears", !r.mRecountDue);
+    }
+
+    // The regular job is not starved by a stream of priority work: with only one
+    // probe ever marked due, the others are still recounted in bounded time.
+    std::vector<aps::Record> recs2(static_cast<size_t>(num_probes));
+    std::vector<aps::RecountProbe> probes2;
+    for (S32 i = 0; i < num_probes; ++i)
+    {
+        recs2[static_cast<size_t>(i)].mId = static_cast<U32>(i + 1);
+        recs2[static_cast<size_t>(i)].mRecountDue = false;
+        aps::RecountProbe p;
+        p.mRec = &recs2[static_cast<size_t>(i)];
+        p.mOrigin[0] = static_cast<F32>(i) * 40.f;
+        p.mMaxDist = 100.f;
+        probes2.push_back(p);
+    }
+    aps::Recount recount2;
+    U64 serial2 = 5000;
+    for (U64 frame = 1; frame <= bound; ++frame)
+    {
+        aps::markRecountDue(recs2[0]);
+        recount2.run(probes2, lights, aps::kRecountPairBudget, ++serial2, 256);
+    }
+    for (S32 i = 1; i < num_probes; ++i)
+    {
+        ensure("a non-priority probe is recounted despite constant priority work",
+            recs2[static_cast<size_t>(i)].mLastRecountSerial != 0);
+    }
+
+    // Budget-driven (not "3 probes per frame"): 256 probes x 50 lights = 12800 pair
+    // tests complete in ceil(12800 / 8192) = 2 frames.
+    {
+        const S32 many_probes = 256;
+        const S32 few_lights = 50;
+        std::vector<aps::LightEntry> few(static_cast<size_t>(few_lights));
+        std::vector<const aps::LightEntry*> few_ptrs;
+        for (S32 i = 0; i < few_lights; ++i)
+        {
+            aps::LightEntry& e = few[static_cast<size_t>(i)];
+            e.mSeq = static_cast<U64>(i + 1);
+            e.mEligible = true;
+            e.mPos[0] = static_cast<F32>(i);
+            e.mReach = 3.f;
+            few_ptrs.push_back(&e);
+        }
+        std::vector<aps::Record> many(static_cast<size_t>(many_probes));
+        std::vector<aps::RecountProbe> many_probes_v;
+        for (S32 i = 0; i < many_probes; ++i)
+        {
+            many[static_cast<size_t>(i)].mId = static_cast<U32>(i + 1);
+            aps::RecountProbe p;
+            p.mRec = &many[static_cast<size_t>(i)];
+            p.mMaxDist = 100.f;
+            many_probes_v.push_back(p);
+        }
+        aps::Recount big;
+        S32 frames_needed = 0;
+        bool all_done = false;
+        for (U64 f = 1; f <= 6 && !all_done; ++f)
+        {
+            const U32 used = big.run(many_probes_v, few_ptrs, aps::kRecountPairBudget, 9000 + f, 256);
+            ensure("the budget is honoured", used <= aps::kRecountPairBudget);
+            ++frames_needed;
+            all_done = true;
+            for (const aps::Record& r : many)
+            {
+                all_done = all_done && r.mLastRecountSerial != 0;
+            }
+        }
+        ensure("all 256 probes were recounted", all_done);
+        ensure("within ceil(P*L / budget) = 2 frames (+1 slack)", frames_needed <= 3);
+    }
+}
+
+// S16
+template<> template<>
+void cine_light_rig_model_object::test<88>()
+{
+    set_test_name("[ProbeOnDemand] S16 stickyDigest == StickyHash::update; shifted accumulators");
+    lpr::StickyHash sticky;
+    lpr::Signature sig;
+    const F32 pos[3] = { 1.f, 2.f, 3.f };
+    const F32 fwd[3] = { 0.f, 0.f, -1.f };
+    const F32 col[3] = { 1.f, 0.5f, 0.25f };
+    sig.addAbs3(pos, 0.05f);
+    sig.addAngle(fwd, 0.25f);
+    sig.addColor(col, 0.01f, 1e-3f);
+    sig.addRel(3.f, 0.005f, 1e-3f);
+    sig.addExact(true);
+    sig.addExact(static_cast<U64>(77));
+    const U64 h = sticky.update(sig);
+    ensure("digest == update for an unchanged signature", aps::stickyDigest(sticky, sig.mExact) == h);
+    for (S32 i = 0; i < 10; ++i)
+    {
+        ensure("and it stays equal", sticky.update(sig) == h && aps::stickyDigest(sticky, sig.mExact) == h);
+    }
+
+    // a light entry across a region crossing
+    aps::DebounceConfig dc;
+    std::vector<aps::Event> out;
+    aps::LightEntry e;
+    aps::LightSample s = podLight(1, 100.f, 10.f);
+    s.mPos[1] = 40.f;
+    aps::lightStep(e, s, true, 1, 0.0, 1.f / 64.f, dc, out);
+    const size_t events_before = out.size();
+    ensure("a new eligible light is one discrete event", events_before == 1);
+    ensure("its XFORM hash is the digest of its accumulators",
+        e.mH[aps::LS_XFORM] == aps::stickyDigest(e.mSticky[aps::LS_XFORM], e.mExact[aps::LS_XFORM]));
+
+    const F32 off[3] = { -256.f, 0.f, 0.f };
+    aps::lightShift(e, off);
+    ensure("the shifted accumulator equals the shifted position",
+        e.mSticky[aps::LS_XFORM].mAcc[0] == 100.f - 256.f);
+    ensure("the published position moved too", e.mPubPos[0] == 100.f - 256.f);
+    // the sample after the crossing is the same light at the shifted position
+    aps::LightSample crossed = s;
+    crossed.mPos[0] += off[0];
+    const U64 stored = e.mH[aps::LS_XFORM];
+    const U64 stored_pub = e.mPubH[0];
+    const U8 res = aps::lightStep(e, crossed, false, 2, 1.0, 1.f / 64.f, dc, out);
+    ensure_equals("a crossing produces no light flags", static_cast<S32>(res), 0);
+    ensure_equals("and no light event", static_cast<S32>(out.size()), static_cast<S32>(events_before));
+    ensure("the digest after the shift equals the next update() result", e.mH[aps::LS_XFORM] == stored);
+    ensure("the published digest is consistent with its accumulators",
+        stored_pub == aps::stickyDigest(e.mPubAcc[0], e.mSticky[aps::LS_XFORM].mLayout,
+                                        e.mExact[aps::LS_XFORM]));
+    ensure("nothing is pending", !e.mDeb[0].mPending && !e.mDeb[1].mPending);
+
+    // without the digest fix a crossing WOULD fire: positions shifted but the
+    // stored hash recomputed from stale accumulators differ.
+    aps::LightEntry stale;
+    aps::lightStep(stale, s, true, 1, 0.0, 1.f / 64.f, dc, out);
+    const U64 before_hash = stale.mH[aps::LS_XFORM];
+    ALCineLiveProbeRefresh::StickyHash& sx = stale.mSticky[aps::LS_XFORM];
+    sx.mAcc[0] += off[0]; // shift the accumulator only
+    ensure("recomputing after a shift yields a different hash than before it",
+        aps::stickyDigest(sx, stale.mExact[aps::LS_XFORM]) != before_hash);
+}
+
+// S17
+template<> template<>
+void cine_light_rig_model_object::test<89>()
+{
+    set_test_name("[ProbeOnDemand] S17 refresh-all barrier state machine");
+    typedef aps::Barrier B;
+    {   // membership by id; ordinary needs a post-arm ack; realtime a post-arm pair; Live post-arm ops
+        B b;
+        const std::vector<U32> ids = { 1, 2, 3 };
+        aps::barrierArm(b, 10, 100.0, ids, B::LiveState::PENDING, 7, 50);
+        ensure("armed", b.mActive && aps::barrierTotal(b) == 3);
+        ensure("members are pending", aps::barrierIsMember(b, 1) && aps::barrierIsMember(b, 3));
+        ensure("unknown ids are not members", !aps::barrierIsMember(b, 99));
+        aps::barrierMemberAck(b, 1, 9);
+        ensure("an ack of a pre-arm transaction does not count", aps::barrierIsMember(b, 1));
+        aps::barrierMemberAck(b, 1, 10);
+        ensure("a post-arm ack does", !aps::barrierIsMember(b, 1));
+        // REALTIME member
+        aps::barrierRealtimePass(b, 2, true, 11);
+        ensure("a radiance pass before any irradiance does not finish it", aps::barrierIsMember(b, 2));
+        aps::barrierRealtimePass(b, 2, false, 9);
+        aps::barrierRealtimePass(b, 2, true, 9);
+        ensure("pre-arm passes never count", aps::barrierIsMember(b, 2));
+        aps::barrierRealtimePass(b, 2, false, 10);
+        aps::barrierRealtimePass(b, 2, true, 11);
+        ensure("a post-arm irradiance then radiance pair finishes it", !aps::barrierIsMember(b, 2));
+        // dropped member
+        aps::barrierMemberDropped(b, 3);
+        ensure("a dropped member no longer holds the barrier", !aps::barrierIsMember(b, 3));
+        // Live: pre-arm / at-arm passes excluded, wrong id excluded
+        aps::barrierLivePass(b, 7, false, 49);
+        aps::barrierLivePass(b, 7, false, 50);
+        ensure("passes at or before the arm op do not count", b.mLive == B::LiveState::PENDING);
+        aps::barrierLivePass(b, 8, false, 60);
+        ensure("a pass of a different probe id never counts", b.mLive == B::LiveState::PENDING);
+        aps::barrierLivePass(b, 7, true, 61);
+        ensure("a radiance pass before the irradiance does not count", b.mLive == B::LiveState::PENDING);
+        aps::barrierLivePass(b, 7, false, 62);
+        ensure("a post-arm irradiance pass", b.mLive == B::LiveState::IRR_DONE);
+        aps::barrierTick(b, 101.0, false);
+        ensure("Live still pending: not done", b.mActive);
+        aps::barrierLivePass(b, 7, true, 63);
+        ensure("then radiance", b.mLive == B::LiveState::DONE);
+        aps::barrierTick(b, 102.0, false);
+        ensure("terminal DONE", !b.mActive && b.mTerminal == B::Terminal::DONE);
+        ensure("the readout says what happened",
+            aps::barrierReadout(b) ==
+                "All remaining probes refreshed (2 of 3, 1 dropped), Live: refreshed");
+    }
+    {   // all done, nothing dropped, no Live
+        B b;
+        const std::vector<U32> ids = { 4, 5 };
+        aps::barrierArm(b, 3, 10.0, ids, B::LiveState::NONE, 0, 1);
+        aps::barrierMemberAck(b, 4, 3);
+        aps::barrierMemberAck(b, 5, 4);
+        aps::barrierTick(b, 11.0, false);
+        ensure("All probes refreshed (n)", aps::barrierReadout(b) == "All probes refreshed (2)");
+    }
+    {   // Live replacement: the re-arm is an OP, so a same-frame pass after it counts
+        B b;
+        const std::vector<U32> ids;
+        aps::barrierArm(b, 5, 0.0, ids, B::LiveState::PENDING, 7, 100);
+        aps::barrierLivePass(b, 7, false, 101);
+        ensure("old probe irradiance counted", b.mLive == B::LiveState::IRR_DONE);
+        aps::barrierLiveDesignation(b, true, true, 9, 110);
+        ensure("replaced -> re-armed", b.mLive == B::LiveState::PENDING && b.mLiveId == 9 &&
+                                           b.mLiveRearms == 1);
+        ensure("the readout says so",
+            aps::barrierReadout(b).find("Live: replaced -> re-armed") != std::string::npos);
+        aps::barrierLivePass(b, 7, false, 111);
+        ensure("a pass of the OLD probe never counts after the replacement",
+            b.mLive == B::LiveState::PENDING);
+        aps::barrierLivePass(b, 9, false, 105);
+        ensure("the new probe's earlier pass never counts", b.mLive == B::LiveState::PENDING);
+        aps::barrierLivePass(b, 9, false, 111);
+        ensure("a pass that starts later in the SAME frame (op > re-arm op) counts",
+            b.mLive == B::LiveState::IRR_DONE);
+        aps::barrierLivePass(b, 9, true, 112);
+        ensure("and the radiance finishes it", b.mLive == B::LiveState::DONE);
+        // a replacement with no cube / relevance is UNAVAILABLE
+        B c;
+        aps::barrierArm(c, 5, 0.0, ids, B::LiveState::PENDING, 7, 100);
+        aps::barrierLiveDesignation(c, true, false, 9, 110);
+        ensure("a replacement without a cube is unavailable", c.mLive == B::LiveState::UNAVAILABLE);
+    }
+    {   // Every-frame single-frame passes are counted by kind
+        B b;
+        const std::vector<U32> ids;
+        aps::barrierArm(b, 5, 0.0, ids, B::LiveState::PENDING, 7, 10);
+        aps::barrierLivePass(b, 7, true, 11);
+        ensure("a radiance single-frame pass first: not counted", b.mLive == B::LiveState::PENDING);
+        aps::barrierLivePass(b, 7, false, 12);
+        aps::barrierLivePass(b, 7, true, 13);
+        ensure("irradiance then radiance single-frame passes finish Live", b.mLive == B::LiveState::DONE);
+    }
+    {   // UNAVAILABLE and REMOVED never hang the barrier
+        B b;
+        const std::vector<U32> ids;
+        aps::barrierArm(b, 5, 0.0, ids, B::LiveState::UNAVAILABLE, 0, 10);
+        aps::barrierTick(b, 1.0, false);
+        ensure("unavailable Live does not hold the barrier", !b.mActive && b.mTerminal == B::Terminal::DONE);
+        ensure("and is reported", aps::barrierReadout(b).find("Live: unavailable") != std::string::npos);
+        B r;
+        aps::barrierArm(r, 5, 0.0, ids, B::LiveState::PENDING, 7, 10);
+        aps::barrierLiveDesignation(r, false, false, 0, 20);
+        ensure("an undesignated Live is REMOVED", r.mLive == B::LiveState::REMOVED);
+        aps::barrierTick(r, 1.0, false);
+        ensure("and the barrier completes", !r.mActive && r.mTerminal == B::Terminal::DONE);
+    }
+    {   // pause freezes the timeout; the timeout is incomplete, never "All"
+        B b;
+        const std::vector<U32> ids = { 1 };
+        aps::barrierArm(b, 5, 0.0, ids, B::LiveState::NONE, 0, 10);
+        aps::barrierTick(b, 29.0, false);
+        ensure("29 s: still waiting", b.mActive);
+        for (S32 t = 30; t < 100; ++t)
+        {
+            aps::barrierTick(b, static_cast<F64>(t), true);
+        }
+        ensure("a long pause does not time the barrier out", b.mActive);
+        ensure("the readout says paused", aps::barrierReadout(b).find("(paused)") != std::string::npos);
+        aps::barrierTick(b, 99.5, false);
+        ensure("the clock resumes (29.5 unpaused seconds)", b.mActive);
+        aps::barrierTick(b, 100.0, false);
+        ensure("30 unpaused seconds: incomplete", !b.mActive && b.mTerminal == B::Terminal::INCOMPLETE);
+        ensure("Incomplete readout, never 'All'",
+            aps::barrierReadout(b) == "Incomplete: 0/1 refreshed");
+    }
+    {   // cancel, then re-arm
+        B b;
+        const std::vector<U32> ids = { 1, 2 };
+        aps::barrierArm(b, 5, 0.0, ids, B::LiveState::NONE, 0, 10);
+        aps::barrierCancel(b, false, 1.0);
+        ensure("cancelled (disabled)", aps::barrierReadout(b) == "Refresh all: cancelled (disabled)");
+        aps::barrierArm(b, 6, 2.0, ids, B::LiveState::NONE, 0, 11);
+        ensure("pressing again re-arms", b.mActive && b.mTerminal == B::Terminal::NONE);
+        aps::barrierCancel(b, true, 3.0);
+        ensure("cancelled (reset)", aps::barrierReadout(b) == "Refresh all: cancelled (reset)");
+        // members deleted mid-barrier: dropped, never a hang
+        aps::barrierArm(b, 7, 4.0, ids, B::LiveState::NONE, 0, 12);
+        aps::barrierMemberDropped(b, 1);
+        aps::barrierMemberAck(b, 2, 7);
+        aps::barrierTick(b, 5.0, false);
+        ensure("a dropped + a done member completes", !b.mActive && b.mTerminal == B::Terminal::DONE);
+        ensure("with the dropped count", aps::barrierReadout(b) ==
+            "All remaining probes refreshed (1 of 2, 1 dropped)");
+    }
+}
+
+// S18
+template<> template<>
+void cine_light_rig_model_object::test<90>()
+{
+    set_test_name("[ProbeOnDemand] S18 Live ON-path H: published values, STRUCT, range, scene serial");
+    aps::DebounceConfig dc;
+    const F32 dt = 1.f / 64.f;
+    std::vector<aps::Event> events;
+    aps::LightEntry l1;
+    aps::LightEntry l2;
+    aps::lightStep(l1, podLight(1, 10.f, 5.f), true, 1, 0.0, dt, dc, events);
+    aps::lightStep(l2, podLight(2, 20.f, 5.f), true, 1, 0.0, dt, dc, events);
+    PodLiveH live;
+    live.mIn.mOrigin[0] = 12.f;
+    live.mIn.mRadius = 8.f;
+    std::vector<const aps::LightEntry*> both;
+    both.push_back(&l1);
+    both.push_back(&l2);
+
+    const U64 h0 = live.sample(both);
+    for (S32 f = 0; f < 1000; ++f)
+    {
+        ensure("an unchanged state gives a constant H", live.sample(both) == h0);
+    }
+
+    // XFORM motion of a light: debounce pending, published values frozen -> H unchanged
+    F64 now = 1.0;
+    for (S32 f = 1; f <= 20; ++f)
+    {
+        now = 1.0 + podTime(f);
+        const U8 res = aps::lightStep(l1, podLight(1, 10.f + static_cast<F32>(f), 5.f), false, 2, now, dt, dc, events);
+        ensure("the move is a motion note", (res & aps::LSR_MOTION) != 0);
+        aps::lightSettleDue(l1, now, events);
+        ensure("H stays unchanged while the light moves", live.sample(both) == h0);
+    }
+    ensure("the debounce is pending", l1.mDeb[0].mPending);
+    // it stops: one settle, then H changes exactly once
+    U64 changes = 0;
+    U64 last = h0;
+    for (S32 f = 21; f < 21 + 64; ++f)
+    {
+        now = 1.0 + podTime(f);
+        aps::lightStep(l1, podLight(1, 30.f, 5.f), false, 3, now, dt, dc, events);
+        aps::lightSettleDue(l1, now, events);
+        const U64 h = live.sample(both);
+        if (h != last)
+        {
+            ++changes;
+            last = h;
+        }
+    }
+    ensure_equals("H changed exactly once, at the settle", changes, static_cast<U64>(1));
+    ensure("the published position is the settled one", l1.mPubPos[0] == 30.f);
+
+    // PHOTO motion (flicker): same behaviour
+    changes = 0;
+    const U64 h_photo0 = live.sample(both);
+    for (S32 f = 0; f < 40; ++f)
+    {
+        now = 5.0 + podTime(f);
+        aps::LightSample flick = podLight(1, 30.f, 5.f);
+        flick.mColor[0] = (f % 2) ? 1.f : 3.f;
+        aps::lightStep(l1, flick, false, 4, now, dt, dc, events);
+        aps::lightSettleDue(l1, now, events);
+        ensure("flicker does not move H while it runs", live.sample(both) == h_photo0);
+    }
+    aps::LightSample steady = podLight(1, 30.f, 5.f);
+    steady.mColor[0] = 3.f;
+    U64 photo_last = h_photo0;
+    for (S32 f = 0; f < 64; ++f)
+    {
+        now = 6.0 + podTime(f);
+        aps::lightStep(l1, steady, false, 5, now, dt, dc, events);
+        aps::lightSettleDue(l1, now, events);
+        const U64 h = live.sample(both);
+        if (h != photo_last)
+        {
+            ++changes;
+            photo_last = h;
+        }
+    }
+    ensure_equals("one change at the PHOTO settle", changes, static_cast<U64>(1));
+
+    // STRUCT change (radius): immediate
+    const U64 before_struct = live.sample(both);
+    const U8 sres = aps::lightStep(l2, podLight(2, 20.f, 9.f), false, 6, 8.0, dt, dc, events);
+    ensure("a radius change is a STRUCT change", (sres & aps::LSR_STRUCT) != 0);
+    ensure("H changes immediately", live.sample(both) != before_struct);
+
+    // a light entering / leaving the Live range via its published position
+    const F32 origin[3] = { 12.f, 0.f, 0.f };
+    aps::LightEntry far_light;
+    aps::lightStep(far_light, podLight(3, 400.f, 2.f), true, 1, 0.0, dt, dc, events);
+    ensure("a far light is not selected", !aps::liveSelects(far_light, origin, 64.f, false, false));
+    ensure("unless pinned", aps::liveSelects(far_light, origin, 64.f, true, false));
+    ensure("a pinned but ignored light is excluded", !aps::liveSelects(far_light, origin, 64.f, true, true));
+    aps::LightSample spot = podLight(3, 400.f, 2.f);
+    spot.mSpot = true;
+    aps::LightEntry spot_entry;
+    aps::lightStep(spot_entry, spot, true, 1, 0.0, dt, dc, events);
+    ensure("a spot is always a candidate", aps::liveSelects(spot_entry, origin, 64.f, false, false));
+    const U64 without = live.sample(both);
+    std::vector<const aps::LightEntry*> with_far = both;
+    with_far.push_back(&far_light);
+    ensure("adding a light to the token set changes H once",
+        live.sample(with_far) != without && live.sample(with_far) == live.sample(with_far));
+
+    // scene serial
+    const U64 serial_before = live.sample(both);
+    live.mIn.mSceneSerial += 1;
+    ensure("a scene serial bump changes H", live.sample(both) != serial_before);
+
+    // probe origin: raw, with the sticky tolerance
+    const U64 origin_before = live.sample(both);
+    live.mIn.mOrigin[0] += 0.01f;
+    ensure("a sub-tolerance origin drift does not change H", live.sample(both) == origin_before);
+    live.mIn.mOrigin[0] += 1.0f;
+    ensure("a real origin move does", live.sample(both) != origin_before);
+
+    // order independence
+    PodLiveH a;
+    PodLiveH b;
+    std::vector<const aps::LightEntry*> forward;
+    forward.push_back(&l1);
+    forward.push_back(&l2);
+    forward.push_back(&far_light);
+    std::vector<const aps::LightEntry*> reversed;
+    reversed.push_back(&far_light);
+    reversed.push_back(&l2);
+    reversed.push_back(&l1);
+    ensure("re-sorting the same token set by id is order independent",
+        a.sample(forward) == b.sample(reversed));
+
+    // fewer than one effective light: no tokens at all
+    PodLiveH none;
+    none.mIn.mEffectiveCount = 0;
+    const U64 none_h = none.sample(both);
+    ensure("with the light count at 0 the lights do not matter",
+        none_h == none.sample(forward));
+}
+
+// S19: VO-cache provenance (cache cull / re-creation vs authoritative changes)
+template<> template<>
+void cine_light_rig_model_object::test<91>()
+{
+    set_test_name("[ProbeOnDemand] S19 cache provenance: unchanged re-creation only; authoritative clears both");
+    const U64 obj = 0x1111;
+    const U64 other = 0x2222;
+    {   // unchanged cull + re-creation is cache-born; it stays so until a real update
+        aps::CacheProvenance p;
+        p.noteCulled(obj);
+        ensure("culled", p.wasCulled(obj));
+        ensure("an id that was never culled is not cache-born when created", !p.noteCreated(other));
+        ensure("an unchanged re-creation of the culled id is cache-born", p.noteCreated(obj));
+        ensure("cache-born", p.isBorn(obj));
+        ensure("the culled marker was consumed", !p.wasCulled(obj));
+        p.noteAuthoritative(obj); // real server update
+        ensure("a real update ends the cache-born state", !p.isBorn(obj));
+    }
+    {   // (a) changed while culled (CRC change / replaced entry / miss + full update):
+        // the authoritative note arrives BEFORE the re-creation -> not cache-born
+        aps::CacheProvenance p;
+        p.noteCulled(obj);
+        p.noteAuthoritative(obj);
+        ensure("a changed object is not cache-born when re-created", !p.noteCreated(obj));
+        ensure("so its edits are never hidden", !p.isBorn(obj));
+        // already cache-born, then a real change arrives: suppression ends
+        aps::CacheProvenance q;
+        q.noteCulled(obj);
+        q.noteCreated(obj);
+        ensure("cache-born", q.isBorn(obj));
+        q.noteAuthoritative(obj);
+        ensure("a real change of a cache-born object ends suppression", !q.isBorn(obj));
+    }
+    {   // (b) a stale culled marker must not outlive an authoritative update or a real kill
+        aps::CacheProvenance p;
+        p.noteCulled(obj);
+        p.noteAuthoritative(obj); // server update or real kill
+        ensure("no stale culled marker (a later genuine removal is not silenced)", !p.wasCulled(obj));
+        ensure("and no stale born marker", !p.isBorn(obj));
+        p.noteCulled(other);
+        ensure("other ids are untouched", p.wasCulled(other));
+    }
+    {   // bounded
+        aps::CacheProvenance p(4);
+        for (U64 i = 1; i <= 10; ++i)
+        {
+            p.noteCulled(i);
+        }
+        ensure("the culled set is bounded", !p.culledEmpty() && !p.wasCulled(1));
     }
 }
 } // namespace tut

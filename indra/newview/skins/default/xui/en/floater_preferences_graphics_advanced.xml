@@ -982,6 +982,22 @@
           value="256"/>
     </combo_box>
 
+  <!-- [ProbeOnDemand] -->
+  <check_box
+    control_name="RenderProbeOnDemand"
+    height="16"
+    initial_value="false"
+    label="Update reflection probes on demand"
+    layout="topleft"
+    left="420"
+    name="ProbeOnDemand"
+    top_delta="22"
+    tool_tip="Update each reflection probe only when what it shows changes, plus a safety refresh, instead of continuously. Continuous motion (spinners, flexi, media, water) is frozen until it stops; use Refresh all probes now (Lightbox) before a take."
+    width="300">
+    <check_box.commit_callback
+      function="Pref.RenderOptionUpdate" />
+  </check_box>
+
   <slider
     control_name="RenderExposure"
     decimal_digits="1"

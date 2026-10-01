@@ -66,6 +66,7 @@
 #include "llworld.h"
 #include "llselectmgr.h"
 #include "pipeline.h"
+#include "alprobedirty.h" // [ProbeOnDemand]
 #include "llsdutil.h"
 #include "llmatrix4a.h"
 #include "llmediaentry.h"
@@ -623,6 +624,12 @@ void LLVOVolume::animateTextures()
 
         if (result)
         {
+            // [ProbeOnDemand] TXa: texture animation is running (called for every
+            // instance every frame, independent of the camera) -> debounced motion.
+            if (ALProbeDirty::recording())
+            {
+                ALProbeDirty::noteDrawable(mDrawable, ALProbeSched::R_TEX, ALProbeSched::Motion::TEXANIM);
+            }
             if (!mTexAnimMode)
             {
                 mFaceMappingChanged = true;
@@ -667,6 +674,9 @@ void LLVOVolume::animateTextures()
                     facep->mTextureMatrix = new LLMatrix4();
                     if (facep->getVirtualSize() > MIN_TEX_ANIM_SIZE)
                     {
+                        // [ProbeOnDemand] TXt: an animated-texture batch toggle is
+                        // LOD-like churn, not a content change.
+                        ALProbeDirty::ScopedTag probe_tag(ALProbeDirty::TAG_TEXANIM_TOGGLE);
                         // Fix the one edge case missed in
                         // LLVOVolume::updateTextureVirtualSize when the
                         // mTextureMatrix is not yet present
@@ -877,6 +887,9 @@ void LLVOVolume::updateTextureVirtualSize(bool forced)
         {
             if ((vsize > MIN_TEX_ANIM_SIZE) != (old_size > MIN_TEX_ANIM_SIZE))
             {
+                // [ProbeOnDemand] TXt: size-driven texture-animation toggle (camera
+                // distance), not a content change.
+                ALProbeDirty::ScopedTag probe_tag(ALProbeDirty::TAG_TEXANIM_TOGGLE);
                 gPipeline.markRebuild(mDrawable, LLDrawable::REBUILD_TCOORD);
                 // dirtyGeom+markRebuild tells the engine to call
                 // LLVolumeGeometryManager::rebuildGeom, which rebuilds the
@@ -931,7 +944,14 @@ void LLVOVolume::updateTextureVirtualSize(bool forced)
                 (texture_discard < current_discard || //texture has more data than last rebuild
                 current_discard < 0)) //no previous rebuild
             {
-                gPipeline.markRebuild(mDrawable, LLDrawable::REBUILD_VOLUME);
+                {
+                    // [ProbeOnDemand] MS: a refinement of an already-built sculpt is
+                    // LOD churn; a first build (current_discard < 0) stays an event.
+                    const bool probe_lod_arrival = probeNoteAssetArrival();
+                    ALProbeDirty::ScopedTag probe_tag(probe_lod_arrival ? ALProbeDirty::TAG_LOD_MESH
+                                                                        : ALProbeDirty::currentTag());
+                    gPipeline.markRebuild(mDrawable, LLDrawable::REBUILD_VOLUME);
+                }
                 mSculptChanged = true;
             }
 
@@ -1281,10 +1301,41 @@ void LLVOVolume::updateVisualComplexity()
     }
 }
 
+// [ProbeOnDemand] MS: is this rebuild a pure refinement / LOD arrival of an asset
+// this volume already built (same sculpt id + type, ready)? A first arrival or a
+// SWAPPED asset returns false and stays a real geometry event.
+bool LLVOVolume::probeNoteAssetArrival()
+{
+    if (!ALProbeDirty::recording() || !mProbeAssetReady)
+    {
+        return false;
+    }
+    const LLVolume* volume = getVolume();
+    if (!volume)
+    {
+        return false;
+    }
+    const LLVolumeParams& params = volume->getParams();
+    if (params.getSculptID() != mProbeAssetId ||
+        params.getSculptType() != mProbeAssetType)
+    {
+        return false;
+    }
+    mProbeLodArrival = true;
+    return true;
+}
+
 void LLVOVolume::notifyMeshLoaded()
 {
     mSculptChanged = true;
-    gPipeline.markRebuild(mDrawable, LLDrawable::REBUILD_GEOMETRY);
+    {
+        // [ProbeOnDemand] MS: mesh LOD / refinement of an already-built asset is
+        // camera-driven churn; a first load or a swapped asset is a real event.
+        const bool probe_lod_arrival = probeNoteAssetArrival();
+        ALProbeDirty::ScopedTag probe_tag(probe_lod_arrival ? ALProbeDirty::TAG_LOD_MESH
+                                                            : ALProbeDirty::currentTag());
+        gPipeline.markRebuild(mDrawable, LLDrawable::REBUILD_GEOMETRY);
+    }
 
     if (!mSkinInfo && !mSkinInfoUnavaliable)
     {
@@ -1704,6 +1755,9 @@ bool LLVOVolume::updateLOD()
     }
 
     LL_PROFILE_ZONE_SCOPED_CATEGORY_VOLUME;
+
+    // [ProbeOnDemand] LV: a camera-distance LOD switch is not a content change.
+    ALProbeDirty::ScopedTag probe_tag(ALProbeDirty::TAG_LOD_VOLUME);
 
     bool lod_changed = false;
 
@@ -2158,6 +2212,23 @@ bool LLVOVolume::updateGeometry(LLDrawable *drawable)
 {
     LL_PROFILE_ZONE_SCOPED_CATEGORY_VOLUME;
 
+    // [ProbeOnDemand] H4: a pure LOD rebuild (no content flag, no REBUILD_POSITION)
+    // is camera-driven churn: tag the WHOLE function (including genBBoxes ->
+    // movePartition) so its notes are dropped. A changed volume invalidates the
+    // built-asset identity. Nothing below runs unless RenderProbeOnDemand is ON.
+    const bool probe_rec = ALProbeDirty::recording();
+    const bool probe_lod_only = probe_rec &&
+        (mLODChanged || (mSculptChanged && mProbeLodArrival)) &&
+        !mVolumeChanged && !mFaceMappingChanged && !mColorChanged &&
+        !(mSculptChanged && !mProbeLodArrival) &&
+        !mDrawable->isState(LLDrawable::REBUILD_POSITION);
+    ALProbeDirty::ScopedTag probe_tag(probe_lod_only ? ALProbeDirty::TAG_LOD_VOLUME
+                                                     : ALProbeDirty::currentTag());
+    if (probe_rec && mVolumeChanged)
+    {
+        mProbeAssetReady = false; // volume params changed
+    }
+
     if (mDrawable->isState(LLDrawable::REBUILD_RIGGED))
     {
         LL_PROFILE_ZONE_NAMED_CATEGORY_VOLUME("rebuild rigged");
@@ -2187,6 +2258,16 @@ bool LLVOVolume::updateGeometry(LLDrawable *drawable)
     if (mDrawable.isNull()) // Not sure why this is happening, but it is...
     {
         return true; // No update to complete
+    }
+
+    // [ProbeOnDemand] H4: entry bounds + whether this rebuild changes content.
+    LLVector4a probe_entry_bounds[2];
+    bool probe_content = false;
+    if (probe_rec)
+    {
+        ALProbeDirty::snapshotBounds(mDrawable, probe_entry_bounds);
+        probe_content = !probe_lod_only &&
+            (mVolumeChanged || mSculptChanged || mFaceMappingChanged || mColorChanged);
     }
 
     bool compiled = false;
@@ -2251,6 +2332,36 @@ bool LLVOVolume::updateGeometry(LLDrawable *drawable)
     mSculptChanged = false;
     mFaceMappingChanged = false;
     mColorChanged = false;
+
+    if (probe_rec)
+    {
+        if (probe_content)
+        {
+            // Content changed: one discrete event over the entry + exit bounds.
+            ALProbeDirty::noteDrawableBounds(mDrawable, probe_entry_bounds,
+                ALProbeSched::R_GEOM, ALProbeSched::Motion::NONE);
+        }
+        else
+        {
+            // No content change but the bounds moved: motion.
+            ALProbeDirty::noteDrawableBoundsIfChanged(mDrawable, probe_entry_bounds,
+                ALProbeSched::R_GEOM, ALProbeSched::Motion::XFORM);
+        }
+        // Built-asset identity (MS): ready only once the asset itself is loaded.
+        if (mDrawable->getNumFaces() > 0)
+        {
+            const LLVolume* probe_volume = getVolume();
+            if (probe_volume)
+            {
+                const LLVolumeParams& probe_params = probe_volume->getParams();
+                mProbeAssetId = probe_params.getSculptID();
+                mProbeAssetType = probe_params.getSculptType();
+                mProbeAssetReady = isMesh() ? probe_volume->isMeshAssetLoaded()
+                                            : (probe_volume->getSculptLevel() >= 0);
+            }
+        }
+        mProbeLodArrival = false;
+    }
 
     return LLViewerObject::updateGeometry(drawable);
 }

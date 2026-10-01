@@ -44,6 +44,7 @@
 #include "llviewerregion.h"
 #include "llcamera.h"
 #include "pipeline.h"
+#include "alprobedirty.h" // [ProbeOnDemand]
 #include "llmeshrepository.h"
 #include "llrender.h"
 #include "lldrawpool.h"
@@ -774,12 +775,23 @@ bool LLSpatialGroup::changeLOD()
 void LLSpatialGroup::handleInsertion(const TreeNode* node, LLViewerOctreeEntry* entry)
 {
     addObject((LLDrawable*)entry->getDrawable());
+    // [ProbeOnDemand] H2: membership (creation outside a move, motion inside one).
+    if (ALProbeDirty::recording())
+    {
+        ALProbeDirty::noteInsertion((LLDrawable*)entry->getDrawable());
+    }
     unbound();
     setState(OBJECT_DIRTY);
 }
 
 void LLSpatialGroup::handleRemoval(const TreeNode* node, LLViewerOctreeEntry* entry)
 {
+    // [ProbeOnDemand] H2: membership (deletion outside a move, motion inside one);
+    // before removeObject so the drawable's group / bounds are still valid.
+    if (ALProbeDirty::recording())
+    {
+        ALProbeDirty::noteRemoval((LLDrawable*)entry->getDrawable());
+    }
     removeObject((LLDrawable*)entry->getDrawable(), true);
     LLViewerOctreeGroup::handleRemoval(node, entry);
 }
@@ -969,6 +981,45 @@ bool LLSpatialPartition::remove(LLDrawable *drawablep, LLSpatialGroup *curp)
     return true;
 }
 
+namespace
+{
+// [ProbeOnDemand] H1b: a partition move is motion, not creation/deletion. While
+// it is open, octree membership notes (H2) are motion; on every exit the bounds
+// change is noted as debounced motion (usually a no-op for volumes: genBBoxes
+// updates extents before movePartition and H4 covers that). Read-only.
+class ProbeMoveNote
+{
+public:
+    explicit ProbeMoveNote(LLDrawable* drawable)
+        : mDrawable(drawable)
+        , mActive(ALProbeDirty::recording())
+        , mMove(mActive)
+    {
+        if (mActive)
+        {
+            ALProbeDirty::snapshotBounds(drawable, mOld);
+        }
+    }
+    ~ProbeMoveNote()
+    {
+        if (mActive &&
+            !ALProbeDirty::noteDrawableBoundsIfChanged(mDrawable, mOld, ALProbeSched::R_GEOM,
+                                                       ALProbeSched::Motion::XFORM))
+        {
+            ALProbeDirty::noteNoopMove();
+        }
+    }
+    ProbeMoveNote(const ProbeMoveNote&) = delete;
+    ProbeMoveNote& operator=(const ProbeMoveNote&) = delete;
+
+private:
+    LLDrawable* mDrawable;
+    bool mActive;
+    ALProbeDirty::ScopedMove mMove;
+    LLVector4a mOld[2];
+};
+} // namespace
+
 void LLSpatialPartition::move(LLDrawable *drawablep, LLSpatialGroup *curp, bool immediate)
 {
     LL_PROFILE_ZONE_SCOPED;
@@ -979,6 +1030,8 @@ void LLSpatialPartition::move(LLDrawable *drawablep, LLSpatialGroup *curp, bool 
         OCT_ERRS << "LLSpatialPartition::move was passed a bad drawable." << LL_ENDL;
         return;
     }
+
+    const ProbeMoveNote probe_move_note(drawablep); // [ProbeOnDemand] H1b
 
     bool was_visible = curp ? curp->isVisible() : false;
 

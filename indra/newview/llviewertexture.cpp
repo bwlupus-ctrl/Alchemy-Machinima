@@ -63,6 +63,7 @@
 #include "lltexturemanagerbridge.h"
 #include "llmediaentry.h"
 #include "llvovolume.h"
+#include "alprobedirty.h"          // [ProbeOnDemand]
 // [BDMerge] capture-mode auto-arming reads these "am I filming?" signals
 #include "llviewerjoystick.h"      // flycam override camera
 #include "llcinematiccamera.h"     // cinematic camera active
@@ -2138,8 +2139,21 @@ void LLViewerFetchedTexture::postCreateTexture()
         if (volume)
         {
             volume->mSculptChanged = true;
+            // [ProbeOnDemand] MS: a refinement of an already-built sculpt is LOD
+            // churn (tagged, dropped); a first arrival or a swapped asset stays a
+            // real geometry event.
+            const bool probe_lod_arrival = ALProbeDirty::recording() && volume->probeNoteAssetArrival();
+            ALProbeDirty::ScopedTag probe_tag(probe_lod_arrival ? ALProbeDirty::TAG_LOD_MESH
+                                                                : ALProbeDirty::currentTag());
             gPipeline.markRebuild(volume->mDrawable);
         }
+    }
+
+    // [ProbeOnDemand] H6: a new / refined / re-sharpened texture dirties the
+    // probes that show it (quantised by what a probe can resolve).
+    if (ALProbeDirty::recording())
+    {
+        ALProbeDirty::noteTextureArrival(this);
     }
 
     if (!needsToSaveRawImage())

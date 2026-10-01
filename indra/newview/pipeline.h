@@ -769,6 +769,11 @@ public:
     // (time-driven) non-rig projector gobo.
     bool isCinematicProbeLightAnimating() const { return mCineProbeLightsAnimating; }
     bool mCineProbeLightsAnimating = false;
+    // [ProbeOnDemand] Read-only view of every light drawable (the camera-
+    // independent probe light diff iterates it) and the capture's light-class
+    // toggle test (bdmerge_should_render_light, file-static).
+    const LLDrawable::ordered_drawable_set_t& getLights() const { return mLights; }
+    static bool probeShouldRenderLight(bool is_attachment, bool is_own_avatar);
     void setupAvatarLights(bool for_edit = false);
     void enableLights(U32 mask);
     void enableLightsDynamic();

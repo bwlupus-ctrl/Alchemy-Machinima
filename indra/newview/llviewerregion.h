@@ -371,7 +371,9 @@ public:
     } eCacheUpdateResult;
 
     // handle a full update message
-    eCacheUpdateResult cacheFullUpdate(LLDataPackerBinaryBuffer &dp, U32 flags);
+    // [ProbeOnDemand] probe_id: the object's UUID when known; a changed / replaced /
+    // new cache entry then counts as an authoritative update for the probe recorder.
+    eCacheUpdateResult cacheFullUpdate(LLDataPackerBinaryBuffer &dp, U32 flags, const LLUUID* probe_id = nullptr);
     eCacheUpdateResult cacheFullUpdate(LLViewerObject* objectp, LLDataPackerBinaryBuffer &dp, U32 flags);
 
     void cacheFullUpdateGLTFOverride(const LLGLTFOverrideCacheEntry &override_data);

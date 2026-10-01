@@ -333,6 +333,7 @@ set(viewer_SOURCE_FILES
     alpanelanimpreview.cpp
     alpanelatmosphericvolumes.cpp
     alpanelcinelightrig.cpp
+    alprobedirty.cpp # [ProbeOnDemand]
     alprojectorshaftpresets.cpp
     alpanelcinecamparams.cpp
     alpanellensgaze.cpp
@@ -1206,6 +1207,8 @@ set(viewer_HEADER_FILES
     alrotoink.h
     altron.h
     alpanelcinelightrig.h
+    alprobedirty.h # [ProbeOnDemand]
+    alprobeschedule.h # [ProbeOnDemand]
     alprojectorshaftpresets.h
     alpanelcinecamparams.h
     algazemath.h

@@ -1299,7 +1299,11 @@ void display_cube_face()
     // build the transient probe-centric list here. Gate is identical to the one
     // calcNearbyLights uses for its transient cube-eye branch; ordinary probes
     // and the main eye never enter it.
-    if (gCubeSnapshot && gPipeline.mReflectionMapManager.isCinematicLiveProbeCapture())
+    // [ProbeOnDemand] ...and ON-path probe-centric captures (ordinary, default
+    // and sliced faces under RenderProbeOnDemand), which empty the list the
+    // same way. Both terms are false with on-demand OFF and for the main eye.
+    if (gCubeSnapshot && (gPipeline.mReflectionMapManager.isCinematicLiveProbeCapture() ||
+                          gPipeline.mReflectionMapManager.isProbeCentricLightCapture()))
     {
         gPipeline.calcNearbyLights(*LLViewerCamera::getInstance());
     }
@@ -1319,16 +1323,23 @@ void display_cube_face()
     static LLCullResult result;
     LLViewerCamera::sCurCameraID = LLViewerCamera::CAMERA_WORLD;
     LLPipeline::sUnderWaterRender = LLViewerCamera::getInstance()->cameraUnderWater();
-    gPipeline.updateCull(*LLViewerCamera::getInstance(), result);
+    {
+        LL_PROFILE_ZONE_NAMED_CATEGORY_DISPLAY("cube face cull"); // [ProbeOnDemand] C0
+        gPipeline.updateCull(*LLViewerCamera::getInstance(), result);
+    }
 
     gGL.setColorMask(true, true);
 
     glClearColor(0.f, 0.f, 0.f, 0.f);
-    gPipeline.generateSunShadow(*LLViewerCamera::getInstance());
+    {
+        LL_PROFILE_ZONE_NAMED_CATEGORY_DISPLAY("cube face shadow"); // [ProbeOnDemand] C0
+        gPipeline.generateSunShadow(*LLViewerCamera::getInstance());
+    }
 
     glClear(GL_DEPTH_BUFFER_BIT); // | GL_STENCIL_BUFFER_BIT);
 
     {
+        LL_PROFILE_ZONE_NAMED_CATEGORY_DISPLAY("cube face sort"); // [ProbeOnDemand] C0
         LLViewerCamera::sCurCameraID = LLViewerCamera::CAMERA_WORLD;
         gPipeline.stateSort(*LLViewerCamera::getInstance(), result);
 
@@ -1365,11 +1376,17 @@ void display_cube_face()
 
     LLViewerCamera::sCurCameraID = LLViewerCamera::CAMERA_WORLD;
 
-    gPipeline.renderGeomDeferred(*LLViewerCamera::getInstance());
+    {
+        LL_PROFILE_ZONE_NAMED_CATEGORY_DISPLAY("cube face geom"); // [ProbeOnDemand] C0
+        gPipeline.renderGeomDeferred(*LLViewerCamera::getInstance());
+    }
 
     gPipeline.mRT->deferredScreen.flush();
 
-    gPipeline.renderDeferredLighting();
+    {
+        LL_PROFILE_ZONE_NAMED_CATEGORY_DISPLAY("cube face light"); // [ProbeOnDemand] C0
+        gPipeline.renderDeferredLighting();
+    }
 
     LLPipeline::sUnderWaterRender = false;
 

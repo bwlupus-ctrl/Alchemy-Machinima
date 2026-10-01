@@ -26,6 +26,7 @@
 
 #pragma once
 
+#include "alprobeschedule.h" // [ProbeOnDemand]
 #include "llcubemaparray.h"
 #include "llmemory.h"
 
@@ -136,6 +137,10 @@ public:
     GLuint mOcclusionQuery = 0;
     bool mOccluded = false;
     U32 mOcclusionPendingFrames = 0;
+
+    // [ProbeOnDemand] On-demand update schedule record (dirty serials, transaction
+    // state, recount state). Owned and written only by LLReflectionMapManager.
+    ALProbeSched::Record mSched;
 
     ProbeType mType;
 };
