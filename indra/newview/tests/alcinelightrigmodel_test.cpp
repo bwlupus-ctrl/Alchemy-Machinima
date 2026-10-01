@@ -24,6 +24,7 @@
 #include <functional>
 #include <limits>
 #include <map>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -96,6 +97,8 @@ ALCineLightRigParamBlob distinctiveBlob()
     blob.mCatchlightEV = 1.75f;
     blob.mCatchlightSize = 0.22f;
     blob.mCatchlightAngle = 137.5f;
+    blob.mBounceLightsSet = true;      // [ActorMask]
+    blob.mCatchlightActorOnly = true;  // [ActorMask]
     blob.mObjectTarget.set("aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee", false);
     for (S32 i = 0; i < LIGHT_COUNT; ++i)
     {
@@ -117,6 +120,7 @@ ALCineLightRigParamBlob distinctiveBlob()
         blob.mLights[i].mGelSlot[2] = 15 + i;
         blob.mLights[i].mSourceSizeM = 0.05f * (i + 1);
         blob.mLights[i].mFixturePreset = 2 + i;
+        blob.mLights[i].mActorOnly = (i % 3) == 0; // [ActorMask] KEY and BG
         // [RigRim] per-light rim params (Phase A).
         blob.mLights[i].mRimGain = 0.1f + i * 0.2f;
         blob.mLights[i].mRimSharpness = 1.f + i * 0.5f;
@@ -166,6 +170,8 @@ void ensureSameBlob(const ALCineLightRigParamBlob& expected,
     ensure_equals("blob CatchlightEV", actual.mCatchlightEV, expected.mCatchlightEV);
     ensure_equals("blob CatchlightSize", actual.mCatchlightSize, expected.mCatchlightSize);
     ensure_equals("blob CatchlightAngle", actual.mCatchlightAngle, expected.mCatchlightAngle);
+    ensure_equals("blob BounceLightsSet", actual.mBounceLightsSet, expected.mBounceLightsSet); // [ActorMask]
+    ensure_equals("blob CatchlightActorOnly", actual.mCatchlightActorOnly, expected.mCatchlightActorOnly); // [ActorMask]
     ensure_equals("blob ObjectTarget", actual.mObjectTarget, expected.mObjectTarget);
     for (S32 i = 0; i < LIGHT_COUNT; ++i)
     {
@@ -190,6 +196,7 @@ void ensureSameBlob(const ALCineLightRigParamBlob& expected,
         }
         ensure_equals("blob light SourceSize", actual.mLights[i].mSourceSizeM, expected.mLights[i].mSourceSizeM);
         ensure_equals("blob light FixturePreset", actual.mLights[i].mFixturePreset, expected.mLights[i].mFixturePreset);
+        ensure_equals("blob light ActorOnly", actual.mLights[i].mActorOnly, expected.mLights[i].mActorOnly); // [ActorMask]
         // [RigRim] per-light rim params (Phase A).
         ensure_equals("blob light RimGain", actual.mLights[i].mRimGain, expected.mLights[i].mRimGain);
         ensure_equals("blob light RimSharpness", actual.mLights[i].mRimSharpness, expected.mLights[i].mRimSharpness);
@@ -243,6 +250,9 @@ void seedSettingsIndependently(FakeRigSettings& settings,
     settings.setF32("CineLightRigCatchlightEV", value.mCatchlightEV);
     settings.setF32("CineLightRigCatchlightSize", value.mCatchlightSize);
     settings.setF32("CineLightRigCatchlightAngle", value.mCatchlightAngle);
+    // [ActorMask] literal key names, independent of the production writer.
+    settings.setBOOL("CineLightRigBounceLightsSet", value.mBounceLightsSet);
+    settings.setBOOL("CineLightRigCatchlightActorOnly", value.mCatchlightActorOnly);
     settings.setString("CineLightRigObjectTarget", value.mObjectTarget.asString());
     static const char* const prefixes[LIGHT_COUNT] = {
         "CineLightRigKey", "CineLightRigFill",
@@ -271,6 +281,7 @@ void seedSettingsIndependently(FakeRigSettings& settings,
         }
         settings.setF32(prefix + "SourceSizeM", value.mLights[i].mSourceSizeM);
         settings.setS32(prefix + "FixturePreset", value.mLights[i].mFixturePreset);
+        settings.setBOOL(prefix + "ActorOnly", value.mLights[i].mActorOnly); // [ActorMask]
     }
     // [RigRim] per-light rim params (Phase A): second prefix table.
     static const char* const rim_prefixes[LIGHT_COUNT] = {
@@ -318,6 +329,9 @@ void ensureSettingsMatchIndependently(
     actual.mCatchlightEV = settings.getF32("CineLightRigCatchlightEV");
     actual.mCatchlightSize = settings.getF32("CineLightRigCatchlightSize");
     actual.mCatchlightAngle = settings.getF32("CineLightRigCatchlightAngle");
+    actual.mBounceLightsSet = settings.getBOOL("CineLightRigBounceLightsSet"); // [ActorMask]
+    actual.mCatchlightActorOnly =
+        settings.getBOOL("CineLightRigCatchlightActorOnly"); // [ActorMask]
     actual.mObjectTarget.set(
         settings.getString("CineLightRigObjectTarget"), false);
     static const char* const prefixes[LIGHT_COUNT] = {
@@ -351,6 +365,8 @@ void ensureSettingsMatchIndependently(
             settings.getF32(prefix + "SourceSizeM");
         actual.mLights[i].mFixturePreset =
             settings.getS32(prefix + "FixturePreset");
+        actual.mLights[i].mActorOnly =
+            settings.getBOOL(prefix + "ActorOnly"); // [ActorMask]
     }
     // [RigRim] per-light rim params (Phase A): second prefix table.
     static const char* const rim_prefixes[LIGHT_COUNT] = {
@@ -507,8 +523,9 @@ struct cine_light_rig_model_data {};
 // is now 72 (same trap: anything above it compiles but silently never runs).
 // [ProbeOnDemand] adds test<72>..test<90> (S1-S18 + the S15b recount bound),
 // so the ceiling is now 96 (test<91> adds the cache-provenance S19).
-// [ActorMask] Tests 97..107 must be registered, not merely compiled.
-typedef test_group<cine_light_rig_model_data, 107> cine_light_rig_model_group;
+// [ActorMask] Tests 97..113 must be registered, not merely compiled
+// (108..113 are the WP5 persistence tests).
+typedef test_group<cine_light_rig_model_data, 113> cine_light_rig_model_group;
 typedef cine_light_rig_model_group::object cine_light_rig_model_object;
 cine_light_rig_model_group cine_light_rig_model_tests(
     "ALCineLightRigModel");
@@ -7067,5 +7084,229 @@ void cine_light_rig_model_object::test<107>()
     ensure_equals("same owner adds no set", same.actorOnlyDrawBytes().size(), size_t(1));
     ensure("kill switch clears candidates",
         am::buildActorOnlyRegistry({animesh, wearer}, true).actorOnlyDrawBytes().empty());
+}
+
+// [ActorMask] WP5 persistence. The Setup/cue/preset LLSD helpers
+// (lightToLLSD / setupFromLLSD) are file-local to alcinelightrig.cpp, which
+// this test target does not link; those sites are covered by the code
+// inspection counts in the WP5 report. Everything reachable from the pure
+// model and the ParamBlob (scene save, settings store) is tested here.
+namespace
+{
+// Records every key a ParamBlob writes, to count the settings surface.
+class RecordingSettings
+{
+public:
+    void setBOOL(const std::string& name, bool) { mKeys.insert(name); }
+    void setF32(const std::string& name, F32) { mKeys.insert(name); }
+    void setS32(const std::string& name, S32) { mKeys.insert(name); }
+    void setU32(const std::string& name, U32) { mKeys.insert(name); }
+    void setString(const std::string& name, const std::string&)
+    {
+        mKeys.insert(name);
+    }
+    std::set<std::string> mKeys;
+};
+}
+
+template<> template<>
+void cine_light_rig_model_object::test<108>()
+{
+    set_test_name("[ActorMask] scene-blob LLSD and settings round-trip carry every flag");
+    const ALCineLightRigParamBlob expected = distinctiveBlob();
+    ensure("fixture uses a mixed per-light pattern",
+        expected.mLights[0].mActorOnly && !expected.mLights[1].mActorOnly &&
+        !expected.mLights[2].mActorOnly && expected.mLights[3].mActorOnly);
+    const LLSD data = expected.toLLSD();
+    ensure("rig bounce key", data.has("CineLightRigBounceLightsSet") &&
+        data["CineLightRigBounceLightsSet"].asBoolean());
+    ensure("rig catchlight key", data.has("CineLightRigCatchlightActorOnly") &&
+        data["CineLightRigCatchlightActorOnly"].asBoolean());
+    for (S32 i = 0; i < LIGHT_COUNT; ++i)
+    {
+        ensure("per-light key present", data["lights"][i].has("actor_only"));
+        ensure_equals("per-light key value",
+            data["lights"][i]["actor_only"].asBoolean(), (i % 3) == 0);
+    }
+    ensureSameBlob(expected, ALCineLightRigParamBlob::fromLLSD(data), true);
+
+    FakeRigSettings settings;
+    expected.toSettingsStore(settings);
+    ensure_equals("Key literal", settings.getBOOL("CineLightRigKeyActorOnly"), true);
+    ensure_equals("Fill literal", settings.getBOOL("CineLightRigFillActorOnly"), false);
+    ensure_equals("Rim literal", settings.getBOOL("CineLightRigRimActorOnly"), false);
+    ensure_equals("Bg literal", settings.getBOOL("CineLightRigBgActorOnly"), true);
+    ensure_equals("bounce literal", settings.getBOOL("CineLightRigBounceLightsSet"), true);
+    ensure_equals("catchlight literal",
+        settings.getBOOL("CineLightRigCatchlightActorOnly"), true);
+    ensureSameBlob(expected, ALCineLightRigParamBlob::fromSettingsStore(settings), false);
+}
+
+template<> template<>
+void cine_light_rig_model_object::test<109>()
+{
+    set_test_name("[ActorMask] old data without the keys loads as false");
+    const ALCineLightRigParamBlob expected = distinctiveBlob();
+    LLSD data = expected.toLLSD();
+    data.erase("CineLightRigBounceLightsSet");
+    data.erase("CineLightRigCatchlightActorOnly");
+    for (S32 i = 0; i < LIGHT_COUNT; ++i)
+        data["lights"][i].erase("actor_only");
+    const ALCineLightRigParamBlob legacy = ALCineLightRigParamBlob::fromLLSD(data);
+    ensure("absent bounce key is false", !legacy.mBounceLightsSet);
+    ensure("absent catchlight key is false", !legacy.mCatchlightActorOnly);
+    for (S32 i = 0; i < LIGHT_COUNT; ++i)
+        ensure("absent per-light key is false", !legacy.mLights[i].mActorOnly);
+    // Neighbouring keys survive the erase untouched.
+    ensure_equals("fixture preset still read", legacy.mLights[2].mFixturePreset,
+        expected.mLights[2].mFixturePreset);
+    ensure_equals("catchlight still read", legacy.mCatchlight, expected.mCatchlight);
+
+    const ALCineLightRigParamBlob from_empty = ALCineLightRigParamBlob::fromLLSD(LLSD::emptyMap());
+    ensure("empty map: bounce false", !from_empty.mBounceLightsSet);
+    ensure("empty map: catchlight false", !from_empty.mCatchlightActorOnly);
+    FakeRigSettings blank;
+    const ALCineLightRigParamBlob from_blank = ALCineLightRigParamBlob::fromSettingsStore(blank);
+    ensure("blank settings: bounce false", !from_blank.mBounceLightsSet);
+    ensure("blank settings: catchlight false", !from_blank.mCatchlightActorOnly);
+    for (S32 i = 0; i < LIGHT_COUNT; ++i)
+    {
+        ensure("empty map: per-light false", !from_empty.mLights[i].mActorOnly);
+        ensure("blank settings: per-light false", !from_blank.mLights[i].mActorOnly);
+        ensure("default blob: per-light false", !ALCineLightRigParamBlob().mLights[i].mActorOnly);
+    }
+}
+
+template<> template<>
+void cine_light_rig_model_object::test<110>()
+{
+    set_test_name("[ActorMask] rule 6: settings and LLSD key counts");
+    RecordingSettings recorder;
+    distinctiveBlob().toSettingsStore(recorder);
+    S32 actor_only_keys = 0;
+    S32 bounce_keys = 0;
+    for (const std::string& key : recorder.mKeys)
+    {
+        if (key.find("ActorOnly") != std::string::npos) ++actor_only_keys;
+        if (key.find("BounceLightsSet") != std::string::npos) ++bounce_keys;
+    }
+    // 4 per-light + the catchlight flag; 1 bounce-set flag.
+    ensure_equals("ActorOnly keys written", actor_only_keys, 5);
+    ensure_equals("BounceLightsSet keys written", bounce_keys, 1);
+    // 28 pre-existing rig keys + 2 new; 19 pre-existing keys per light + 1 new
+    // (x4 lights); 4 rim keys per light (x4). Total 126.
+    ensure_equals("total key count", S32(recorder.mKeys.size()),
+        (28 + 2) + 4 * (19 + 1) + 4 * 4);
+    for (const char* name : {"CineLightRigKeyActorOnly", "CineLightRigFillActorOnly",
+                             "CineLightRigRimActorOnly", "CineLightRigBgActorOnly",
+                             "CineLightRigCatchlightActorOnly", "CineLightRigBounceLightsSet"})
+        ensure(name, recorder.mKeys.count(name) == 1);
+    const LLSD data = distinctiveBlob().toLLSD();
+    ensure_equals("lights array", S32(data["lights"].size()), S32(LIGHT_COUNT));
+    for (S32 i = 0; i < LIGHT_COUNT; ++i)
+    {
+        // 21 pre-existing per-light keys + actor_only.
+        ensure_equals("per-light LLSD key count", S32(data["lights"][i].size()), 21 + 1);
+    }
+}
+
+template<> template<>
+void cine_light_rig_model_object::test<111>()
+{
+    set_test_name("[ActorMask] cue crossfade flips each light's flag at the midpoint");
+    CueState start;
+    Cue target;
+    target.mProfile = CUE_FADE_LINEAR;
+    target.mFadeSec = 2.f;
+    // KEY goes actor->world, FILL goes world->actor, RIM stays actor, BG stays world.
+    start.mSetup.mLights[0].mActorOnly = true;
+    start.mSetup.mLights[2].mActorOnly = true;
+    target.mSetup.mLights[1].mActorOnly = true;
+    target.mSetup.mLights[2].mActorOnly = true;
+    const bool before[LIGHT_COUNT] = { true, false, true, false };
+    const bool after[LIGHT_COUNT] = { false, true, true, false };
+    const CueState at_start = evaluateCueTransition(start, target, 0.0, 0.0);
+    const CueState at_mid = evaluateCueTransition(start, target, 1.0, 0.0);
+    const CueState past_mid = evaluateCueTransition(start, target, 1.1, 0.0);
+    const CueState done = evaluateCueTransition(start, target, 2.0, 0.0);
+    for (S32 i = 0; i < LIGHT_COUNT; ++i)
+    {
+        ensure_equals("t=0 keeps the start flag", at_start.mSetup.mLights[i].mActorOnly, before[i]);
+        ensure_equals("midpoint belongs to the start", at_mid.mSetup.mLights[i].mActorOnly, before[i]);
+        ensure_equals("past midpoint takes the target", past_mid.mSetup.mLights[i].mActorOnly, after[i]);
+        ensure_equals("fade end is the target", done.mSetup.mLights[i].mActorOnly, after[i]);
+    }
+}
+
+template<> template<>
+void cine_light_rig_model_object::test<112>()
+{
+    set_test_name("[ActorMask] rule 6: positional blob rows are intact and counted");
+    const ALCineLightRigParamBlob blob;
+    ensure_equals("four light rows", S32(sizeof(blob.mLights) / sizeof(blob.mLights[0])), 4);
+    ensure_equals("LIGHT_COUNT", S32(LIGHT_COUNT), 4);
+    // The 11 positional members of each row, from alcinelightrigmanager.h.
+    struct Row { F32 yaw, pitch; S32 profile; F32 ev; S32 beam, gobo, gel; S32 flicker; F32 amount, soft; bool on; };
+    const Row rows[4] = {
+        {  45.f,  35.f, 3,  0.f, 1, 0, 0, FLICKER_NONE, 0.f, 0.f, true  },
+        { -45.f,   5.f, 3, -2.f, 1, 0, 0, FLICKER_NONE, 0.f, 0.f, true  },
+        {-135.f,  45.f, 4, -1.f, 0, 0, 0, FLICKER_NONE, 0.f, 0.f, true  },
+        {   0.f, -20.f, 3,  0.f, 0, 0, 0, FLICKER_NONE, 0.f, 0.f, false },
+    };
+    const F32 rim_gain[4] = { 0.f, 0.f, 1.f, 0.f };
+    for (S32 i = 0; i < 4; ++i)
+    {
+        const ALCineLightRigParamBlob::Light& light = blob.mLights[i];
+        ensure_equals("yaw", light.mYaw, rows[i].yaw);
+        ensure_equals("pitch", light.mPitch, rows[i].pitch);
+        ensure_equals("profile", light.mProfile, rows[i].profile);
+        ensure_equals("ev", light.mEV, rows[i].ev);
+        ensure_equals("beam", light.mBeam, rows[i].beam);
+        ensure_equals("gobo", light.mGobo, rows[i].gobo);
+        ensure_equals("gel", light.mGel, rows[i].gel);
+        ensure_equals("flicker", light.mFlickerProgram, rows[i].flicker);
+        ensure_equals("flicker amount", light.mFlickerAmount, rows[i].amount);
+        ensure_equals("shadow soft", light.mShadowSoft, rows[i].soft);
+        ensure_equals("on", light.mOn, rows[i].on);
+        // Members after the 11 positional ones keep their defaults.
+        ensure("fixture mode off", !light.mFixtureMode);
+        ensure_equals("kelvin", light.mKelvin, 5600.f);
+        ensure_equals("source size", light.mSourceSizeM, 0.10f);
+        ensure_equals("fixture preset", light.mFixturePreset, 0);
+        ensure_equals("offset z", light.mOffsetZ, 0.f);
+        ensure_equals("rim gain", light.mRimGain, rim_gain[i]);
+        ensure_equals("rim sharpness", light.mRimSharpness, 3.f);
+        ensure_equals("rim wrap", light.mRimWrap, 0.35f);
+        ensure_equals("rim back bias", light.mRimBackBias, 0.f);
+        ensure("actor only off", !light.mActorOnly);
+    }
+    ensure("bounce lights set off", !blob.mBounceLightsSet);
+    ensure("catchlight actor only off", !blob.mCatchlightActorOnly);
+}
+
+template<> template<>
+void cine_light_rig_model_object::test<113>()
+{
+    set_test_name("[ActorMask] legacy scene migration clears inherited flags");
+    // A blob captured from live settings that still carry the previous scene.
+    ALCineLightRigParamBlob captured = distinctiveBlob();
+    ensure("fixture: rig flags start true",
+        captured.mBounceLightsSet && captured.mCatchlightActorOnly);
+    ensure("fixture: some light starts actor only",
+        captured.mLights[0].mActorOnly && captured.mLights[3].mActorOnly);
+    ALCineLightRigManagerModel::clearActorOnlyForLegacyMigration(captured);
+    ensure("bounce cleared", !captured.mBounceLightsSet);
+    ensure("catchlight cleared", !captured.mCatchlightActorOnly);
+    for (S32 i = 0; i < LIGHT_COUNT; ++i)
+        ensure("per-light cleared", !captured.mLights[i].mActorOnly);
+    // Nothing else is disturbed.
+    const ALCineLightRigParamBlob original = distinctiveBlob();
+    ensure_equals("fixture preset untouched", captured.mLights[1].mFixturePreset,
+        original.mLights[1].mFixturePreset);
+    ensure_equals("catchlight enable untouched", captured.mCatchlight, original.mCatchlight);
+    // A serialized round trip of the cleared blob stays false.
+    const ALCineLightRigParamBlob reloaded = ALCineLightRigParamBlob::fromLLSD(captured.toLLSD());
+    ensure("reload: bounce false", !reloaded.mBounceLightsSet);
+    ensure("reload: catchlight false", !reloaded.mCatchlightActorOnly);
 }
 } // namespace tut

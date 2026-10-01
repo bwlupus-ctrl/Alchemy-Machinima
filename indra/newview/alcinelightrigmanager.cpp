@@ -182,6 +182,11 @@ bool blobMapWellFormed(const LLSD& data)
          !data["CineLightRigRatioLock"].isBoolean()) ||
         (data.has("CineLightRigCatchlight") &&
          !data["CineLightRigCatchlight"].isBoolean()) ||
+        // [ActorMask] Additive rig-level flags; absent means false.
+        (data.has("CineLightRigBounceLightsSet") &&
+         !data["CineLightRigBounceLightsSet"].isBoolean()) ||
+        (data.has("CineLightRigCatchlightActorOnly") &&
+         !data["CineLightRigCatchlightActorOnly"].isBoolean()) ||
         (data.has("cue_list") &&
          (!data["cue_list"].isMap() ||
           !ALCineLightRig::validateCueListData(data["cue_list"]))))
@@ -264,6 +269,9 @@ bool blobMapWellFormed(const LLSD& data)
              !light["source_size_m"].isInteger()) ||
             (light.has("fixture_preset") &&
              !light["fixture_preset"].isInteger()) ||
+            // [ActorMask] Additive per-light flag; absent means false.
+            (light.has("actor_only") &&
+             !light["actor_only"].isBoolean()) ||
             (light.has("fixture_gel_slots") &&
              (!light["fixture_gel_slots"].isArray() ||
               light["fixture_gel_slots"].size() !=
@@ -1597,6 +1605,16 @@ void ALCineLightRigManager::applySceneData(const LLSD& data)
     selected().applySceneData(data);
     if (!data.isMap() || !data.has("version"))
     {
+        // [ActorMask] An unversioned scene carries no Actor only data: do not
+        // inherit the previous scene's flags (live settings or selected blob).
+        ParamBlob& selected_blob = mBlobs[slotIndex(mSelected)];
+        ALCineLightRigManagerModel::clearActorOnlyForLegacyMigration(selected_blob);
+        gSavedSettings.setBOOL("CineLightRigBounceLightsSet", false);
+        gSavedSettings.setBOOL("CineLightRigCatchlightActorOnly", false);
+        gSavedSettings.setBOOL("CineLightRigKeyActorOnly", false);
+        gSavedSettings.setBOOL("CineLightRigFillActorOnly", false);
+        gSavedSettings.setBOOL("CineLightRigRimActorOnly", false);
+        gSavedSettings.setBOOL("CineLightRigBgActorOnly", false);
         liveProbeConfigToSettings(
             ALCineLightRigManagerModel::LiveProbeConfig());
         destroyLiveProbe();
@@ -1666,6 +1684,10 @@ void ALCineLightRigManager::migrateLegacyScene(const LLSD& data)
     ParamBlob migrated = captureSelected();
     // Object targeting did not exist in the legacy single-rig scene block.
     migrated.mObjectTarget.setNull();
+    // [ActorMask] Legacy scenes carry no Actor only data; do not inherit the
+    // previous scene's flags from the captured live settings. The migrated
+    // blob is written back to settings by toSettings() below.
+    ALCineLightRigManagerModel::clearActorOnlyForLegacyMigration(migrated);
     // [RigRim] Round-2 P2-B fix: an EARLIER round-1 fix unconditionally reset
     // every light's rim fields here, reasoning that captureSelected()'s live
     // snapshot could carry a previous scene's rim values into a legacy

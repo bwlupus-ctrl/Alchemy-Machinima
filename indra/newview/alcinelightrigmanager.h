@@ -69,6 +69,9 @@ struct ALCineLightRigParamBlob
         F32 mRimSharpness = kDefaultRimSharpness;
         F32 mRimWrap = kDefaultRimWrap;
         F32 mRimBackBias = kDefaultRimBackBias;
+        // [ActorMask] Appended last: the positional mLights[] rows below list
+        // only their first 11 members, so this stays default-false.
+        bool mActorOnly = false;
     };
 
     // [RigRim] P1-B fix: per-light default rim gain, indexed. The Light
@@ -122,6 +125,9 @@ struct ALCineLightRigParamBlob
     F32 mCatchlightEV = -0.5f;                // CineLightRigCatchlightEV
     F32 mCatchlightSize = 0.35f;              // CineLightRigCatchlightSize
     F32 mCatchlightAngle = 120.f;             // CineLightRigCatchlightAngle
+    // [ActorMask] rig-level flags; not cue-animated, default false.
+    bool mBounceLightsSet = false;            // CineLightRigBounceLightsSet
+    bool mCatchlightActorOnly = false;        // CineLightRigCatchlightActorOnly
     // Per-light fields enumerate Yaw/Pitch/Profile/EV/Beam/Gobo/Gel,
     // fixture mode/preset/Kelvin/three gel slots/source size,
     // Flicker/FlickerAmount/ShadowSoft/On for Key, Fill, Rim and Bg.
@@ -228,6 +234,10 @@ struct ALCineLightRigParamBlob
         blob.mCatchlightEV = settings.getF32("CineLightRigCatchlightEV");
         blob.mCatchlightSize = settings.getF32("CineLightRigCatchlightSize");
         blob.mCatchlightAngle = settings.getF32("CineLightRigCatchlightAngle");
+        // [ActorMask] rig-level flags.
+        blob.mBounceLightsSet = settings.getBOOL("CineLightRigBounceLightsSet");
+        blob.mCatchlightActorOnly =
+            settings.getBOOL("CineLightRigCatchlightActorOnly");
 
         static const char* const prefixes[
             ALCineLightRigModel::LIGHT_COUNT] = {
@@ -265,6 +275,8 @@ struct ALCineLightRigParamBlob
                 settings.getF32(prefix + "SourceSizeM");
             blob.mLights[i].mFixturePreset =
                 settings.getS32(prefix + "FixturePreset");
+            blob.mLights[i].mActorOnly =
+                settings.getBOOL(prefix + "ActorOnly"); // [ActorMask]
         }
 
         // [RigRim] per-light rim params: second prefix table (Phase A).
@@ -318,6 +330,10 @@ struct ALCineLightRigParamBlob
         settings.setF32("CineLightRigCatchlightEV", mCatchlightEV);
         settings.setF32("CineLightRigCatchlightSize", mCatchlightSize);
         settings.setF32("CineLightRigCatchlightAngle", mCatchlightAngle);
+        // [ActorMask] rig-level flags.
+        settings.setBOOL("CineLightRigBounceLightsSet", mBounceLightsSet);
+        settings.setBOOL(
+            "CineLightRigCatchlightActorOnly", mCatchlightActorOnly);
 
         static const char* const prefixes[
             ALCineLightRigModel::LIGHT_COUNT] = {
@@ -352,6 +368,8 @@ struct ALCineLightRigParamBlob
             settings.setF32(prefix + "SourceSizeM", mLights[i].mSourceSizeM);
             settings.setS32(
                 prefix + "FixturePreset", mLights[i].mFixturePreset);
+            settings.setBOOL(
+                prefix + "ActorOnly", mLights[i].mActorOnly); // [ActorMask]
         }
 
         // [RigRim] per-light rim params: second prefix table (Phase A).
@@ -404,6 +422,9 @@ inline LLSD ALCineLightRigParamBlob::toLLSD() const
     data["CineLightRigCatchlightEV"] = mCatchlightEV;
     data["CineLightRigCatchlightSize"] = mCatchlightSize;
     data["CineLightRigCatchlightAngle"] = mCatchlightAngle;
+    // [ActorMask] rig-level flags.
+    data["CineLightRigBounceLightsSet"] = mBounceLightsSet;
+    data["CineLightRigCatchlightActorOnly"] = mCatchlightActorOnly;
     data["lights"] = LLSD::emptyArray();
     for (S32 i = 0; i < ALCineLightRigModel::LIGHT_COUNT; ++i)
     {
@@ -424,6 +445,7 @@ inline LLSD ALCineLightRigParamBlob::toLLSD() const
         light["kelvin"] = mLights[i].mKelvin;
         light["source_size_m"] = mLights[i].mSourceSizeM;
         light["fixture_preset"] = mLights[i].mFixturePreset;
+        light["actor_only"] = mLights[i].mActorOnly; // [ActorMask]
         // [RigRim] per-light rim params (Phase A).
         light["rim_gain"] = mLights[i].mRimGain;
         light["rim_sharpness"] = mLights[i].mRimSharpness;
@@ -504,6 +526,10 @@ inline ALCineLightRigParamBlob ALCineLightRigParamBlob::fromLLSD(
     AL_CINE_READ_F32("CineLightRigCatchlightEV", blob.mCatchlightEV);
     AL_CINE_READ_F32("CineLightRigCatchlightSize", blob.mCatchlightSize);
     AL_CINE_READ_F32("CineLightRigCatchlightAngle", blob.mCatchlightAngle);
+    // [ActorMask] Absent keys (old scenes) leave the false defaults.
+    AL_CINE_READ_BOOL("CineLightRigBounceLightsSet", blob.mBounceLightsSet);
+    AL_CINE_READ_BOOL(
+        "CineLightRigCatchlightActorOnly", blob.mCatchlightActorOnly);
 #undef AL_CINE_READ_BOOL
 #undef AL_CINE_READ_S32
 #undef AL_CINE_READ_F32
@@ -556,6 +582,9 @@ inline ALCineLightRigParamBlob ALCineLightRigParamBlob::fromLLSD(
             if (light.has("fixture_preset"))
                 blob.mLights[i].mFixturePreset =
                     light["fixture_preset"].asInteger();
+            // [ActorMask] Absent (old scene) means false: a world light.
+            blob.mLights[i].mActorOnly = light.has("actor_only")
+                ? light["actor_only"].asBoolean() : false;
             // [RigRim] P1-B fix: absent = the per-light CONTRACT default
             // (RIM 1.0, others 0; sharpness 3, wrap 0.35, back bias 0), NOT
             // the Light struct's index-independent default, so a scene blob
@@ -625,6 +654,19 @@ inline ALCineLightRigParamBlob ALCineLightRigParamBlob::fromLLSD(
 
 namespace ALCineLightRigManagerModel
 {
+// [ActorMask] A legacy single-rig scene has no Actor only data. The blob
+// captured from live settings may carry the PREVIOUS scene's flags, so the
+// legacy migration clears them (rig-level and per-light) to false.
+inline void clearActorOnlyForLegacyMigration(ALCineLightRigParamBlob& blob)
+{
+    blob.mBounceLightsSet = false;
+    blob.mCatchlightActorOnly = false;
+    for (S32 i = 0; i < ALCineLightRigModel::LIGHT_COUNT; ++i)
+    {
+        blob.mLights[i].mActorOnly = false;
+    }
+}
+
 // [ActorMask] Never assigned to geometry: orphan lights cannot light the world.
 constexpr U8 ACTOR_ONLY_ORPHAN_BIT = static_cast<U8>(1u << 6);
 

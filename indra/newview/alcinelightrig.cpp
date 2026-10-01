@@ -87,6 +87,11 @@ const char* const FIXTURE_PRESET_SETTINGS[LIGHT_COUNT] = {
     "CineLightRigKeyFixturePreset", "CineLightRigFillFixturePreset",
     "CineLightRigRimFixturePreset", "CineLightRigBgFixturePreset"
 };
+// [ActorMask] Per-light Actor only flag, KEY/FILL/RIM/BG order (ROLE_NAMES).
+const char* const ACTOR_ONLY_SETTINGS[LIGHT_COUNT] = {
+    "CineLightRigKeyActorOnly", "CineLightRigFillActorOnly",
+    "CineLightRigRimActorOnly", "CineLightRigBgActorOnly"
+};
 const char* const FIXTURE_GEL_SETTINGS[LIGHT_COUNT][FIXTURE_GEL_SLOT_COUNT] = {
     { "CineLightRigKeyGelSlot0", "CineLightRigKeyGelSlot1",
       "CineLightRigKeyGelSlot2" },
@@ -489,6 +494,7 @@ LLSD lightToLLSD(const LightBase& light)
     data["source_size_m"] = light.mSourceSizeM;
     data["fixture_preset_idx"] = light.mFixturePreset;
     data["fixture_preset_name"] = fixturePresetName(light.mFixturePreset);
+    data["actor_only"] = light.mActorOnly; // [ActorMask]
     data["fixture_gel_slots"] = LLSD::emptyArray();
     data["fixture_gel_names"] = LLSD::emptyArray();
     for (S32 slot = 0; slot < FIXTURE_GEL_SLOT_COUNT; ++slot)
@@ -613,6 +619,10 @@ bool setupFromLLSD(const LLSD& data, Setup& output)
                 light.mFixturePreset = named_preset;
             }
         }
+        // [ActorMask] Old saved Setups/cues/presets predate this key; absent
+        // means false (a world light).
+        light.mActorOnly = item.has("actor_only")
+            ? item["actor_only"].asBoolean() : false;
         if (item["fixture_gel_slots"].isArray() &&
             item["fixture_gel_slots"].size() == FIXTURE_GEL_SLOT_COUNT)
         {
@@ -1452,6 +1462,8 @@ void ALCineLightRig::readSettings(Setup& setup, Globals& globals,
             gSavedSettings.getF32(FIXTURE_SOURCE_SETTINGS[i]);
         setup.mLights[i].mFixturePreset =
             gSavedSettings.getS32(FIXTURE_PRESET_SETTINGS[i]);
+        setup.mLights[i].mActorOnly =
+            gSavedSettings.getBOOL(ACTOR_ONLY_SETTINGS[i]); // [ActorMask]
     }
 
     globals.mMasterEV = master_ev;
@@ -1502,6 +1514,7 @@ void ALCineLightRig::readSettings(const ALCineLightRigParamBlob& blob,
         }
         setup.mLights[i].mSourceSizeM = blob.mLights[i].mSourceSizeM;
         setup.mLights[i].mFixturePreset = blob.mLights[i].mFixturePreset;
+        setup.mLights[i].mActorOnly = blob.mLights[i].mActorOnly; // [ActorMask]
     }
 
     globals.mMasterEV = blob.mMasterEV;
@@ -1554,6 +1567,8 @@ void ALCineLightRig::writeSetupToSettings(const Setup& input) const
         gSavedSettings.setF32(prefix + "SourceSizeM", light.mSourceSizeM);
         gSavedSettings.setS32(
             prefix + "FixturePreset", light.mFixturePreset);
+        gSavedSettings.setBOOL(
+            ACTOR_ONLY_SETTINGS[i], light.mActorOnly); // [ActorMask]
     }
 }
 
@@ -2213,6 +2228,11 @@ void ALCineLightRig::tickSelected(F64 presentation_time, bool owns_shadows)
         gSavedSettings, "CineLightRigCatchlightSize");
     static LLCachedControl<F32> catchlight_angle(
         gSavedSettings, "CineLightRigCatchlightAngle");
+    // [ActorMask] rig-level flags (not cue-animated).
+    static LLCachedControl<bool> bounce_lights_set_setting(
+        gSavedSettings, "CineLightRigBounceLightsSet", false);
+    static LLCachedControl<bool> catchlight_actor_only_setting(
+        gSavedSettings, "CineLightRigCatchlightActorOnly", false);
     static LLCachedControl<F32> key_shadow_soft(
         gSavedSettings, "CineLightRigKeyShadowSoft");
     static LLCachedControl<F32> fill_shadow_soft(
@@ -2280,6 +2300,8 @@ void ALCineLightRig::tickSelected(F64 presentation_time, bool owns_shadows)
     Globals globals;
     Transforms transforms;
     readSettings(setup, globals, transforms);
+    setBounceLightsSet(bounce_lights_set_setting); // [ActorMask]
+    setCatchlightActorOnly(catchlight_actor_only_setting); // [ActorMask]
     const F32 shadow_softness[LIGHT_COUNT] = {
         key_shadow_soft, fill_shadow_soft, rim_shadow_soft, bg_shadow_soft
     };
@@ -2352,6 +2374,8 @@ void ALCineLightRig::tickFromBlob(const ALCineLightRigParamBlob& blob,
     Globals globals;
     Transforms transforms;
     readSettings(blob, setup, globals, transforms);
+    setBounceLightsSet(blob.mBounceLightsSet); // [ActorMask]
+    setCatchlightActorOnly(blob.mCatchlightActorOnly); // [ActorMask]
     tickShared(presentation_time, owns_shadows, fx_setting, offset_z_setting,
                damping_setting, track_mode_setting, scale_aware_setting,
                shadow_mode, catchlight_enabled, catchlight_ev,

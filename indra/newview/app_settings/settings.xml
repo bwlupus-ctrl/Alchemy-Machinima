@@ -2110,6 +2110,48 @@
       <key>Type</key><string>F32</string>
       <key>Value</key><real>120.0</real>
     </map>
+    <key>CineLightRigBounceLightsSet</key>
+    <map>
+      <key>Comment</key><string>[ActorMask] 0 = each bounce omni follows its light's Actor only flag; 1 = bounce lights the whole set</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>Boolean</string>
+      <key>Value</key><integer>0</integer>
+    </map>
+    <key>CineLightRigCatchlightActorOnly</key>
+    <map>
+      <key>Comment</key><string>[ActorMask] The catchlight lights only this rig's subject and what they wear</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>Boolean</string>
+      <key>Value</key><integer>0</integer>
+    </map>
+    <key>CineLightRigActorMaskDisable</key>
+    <map>
+      <key>Comment</key><string>[ActorMask] Kill switch: Actor only flags are ignored and every light behaves normally</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>Boolean</string>
+      <key>Value</key><integer>0</integer>
+    </map>
+    <key>CineLightRigActorMaskDebug</key>
+    <map>
+      <key>Comment</key><string>[ActorMask] Debug view: 0 off, 1 overlay, 2 mask only; also enables guard capture</string>
+      <key>Persist</key><integer>0</integer>
+      <key>Type</key><string>U32</string>
+      <key>Value</key><integer>0</integer>
+    </map>
+    <key>CineLightRigActorMaskBias</key>
+    <map>
+      <key>Comment</key><string>[ActorMask] Actor mask pass polygon offset units (tuning guess)</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>-4.0</real>
+    </map>
+    <key>CineLightRigActorMaskTest</key>
+    <map>
+      <key>Comment</key><string>[ActorMask] Isolation test trigger: 1 arm, 2 cancel; self-resets</string>
+      <key>Persist</key><integer>0</integer>
+      <key>Type</key><string>U32</string>
+      <key>Value</key><integer>0</integer>
+    </map>
     <key>CineLightRigInstances</key>
     <map>
       <key>Comment</key><string>Hidden versioned five-slot cinematic light-rig parameter and session-state store</string>
@@ -2377,6 +2419,13 @@
       <key>Type</key><string>S32</string>
       <key>Value</key><integer>0</integer>
     </map>
+    <key>CineLightRigKeyActorOnly</key>
+    <map>
+      <key>Comment</key><string>[ActorMask] KEY light lights only this rig's subject and what they wear (Actor only)</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>Boolean</string>
+      <key>Value</key><integer>0</integer>
+    </map>
     <key>CineLightRigKeyKelvin</key>
     <map>
       <key>Comment</key><string>KEY fixture emitter color temperature in kelvin</string>
@@ -2508,6 +2557,13 @@
       <key>Comment</key><string>FILL fixture preset provenance index</string>
       <key>Persist</key><integer>1</integer>
       <key>Type</key><string>S32</string>
+      <key>Value</key><integer>0</integer>
+    </map>
+    <key>CineLightRigFillActorOnly</key>
+    <map>
+      <key>Comment</key><string>[ActorMask] FILL light lights only this rig's subject and what they wear (Actor only)</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>Boolean</string>
       <key>Value</key><integer>0</integer>
     </map>
     <key>CineLightRigFillKelvin</key>
@@ -2643,6 +2699,13 @@
       <key>Type</key><string>S32</string>
       <key>Value</key><integer>0</integer>
     </map>
+    <key>CineLightRigRimActorOnly</key>
+    <map>
+      <key>Comment</key><string>[ActorMask] RIM light lights only this rig's subject and what they wear (Actor only)</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>Boolean</string>
+      <key>Value</key><integer>0</integer>
+    </map>
     <key>CineLightRigRimKelvin</key>
     <map>
       <key>Comment</key><string>RIM fixture emitter color temperature in kelvin</string>
@@ -2774,6 +2837,13 @@
       <key>Comment</key><string>BG fixture preset provenance index</string>
       <key>Persist</key><integer>1</integer>
       <key>Type</key><string>S32</string>
+      <key>Value</key><integer>0</integer>
+    </map>
+    <key>CineLightRigBgActorOnly</key>
+    <map>
+      <key>Comment</key><string>[ActorMask] BG light lights only this rig's subject and what they wear (Actor only)</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>Boolean</string>
       <key>Value</key><integer>0</integer>
     </map>
     <key>CineLightRigBgKelvin</key>

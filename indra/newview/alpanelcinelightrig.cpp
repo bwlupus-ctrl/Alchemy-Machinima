@@ -500,6 +500,8 @@ const std::vector<std::string>& ALPanelCineLightRig::settings()
         "CineLightRigCatchlightEV",
         "CineLightRigCatchlightSize",
         "CineLightRigCatchlightAngle",
+        "CineLightRigBounceLightsSet", // [ActorMask]
+        "CineLightRigCatchlightActorOnly", // [ActorMask]
         "CineLightRigKeyYaw",
         "CineLightRigKeyPitch",
         "CineLightRigKeyOffsetZ",
@@ -510,6 +512,7 @@ const std::vector<std::string>& ALPanelCineLightRig::settings()
         "CineLightRigKeyGel",
         "CineLightRigKeyFixtureMode",
         "CineLightRigKeyFixturePreset",
+        "CineLightRigKeyActorOnly", // [ActorMask]
         "CineLightRigKeyKelvin",
         "CineLightRigKeyGelSlot0",
         "CineLightRigKeyGelSlot1",
@@ -529,6 +532,7 @@ const std::vector<std::string>& ALPanelCineLightRig::settings()
         "CineLightRigFillGel",
         "CineLightRigFillFixtureMode",
         "CineLightRigFillFixturePreset",
+        "CineLightRigFillActorOnly", // [ActorMask]
         "CineLightRigFillKelvin",
         "CineLightRigFillGelSlot0",
         "CineLightRigFillGelSlot1",
@@ -548,6 +552,7 @@ const std::vector<std::string>& ALPanelCineLightRig::settings()
         "CineLightRigRimGel",
         "CineLightRigRimFixtureMode",
         "CineLightRigRimFixturePreset",
+        "CineLightRigRimActorOnly", // [ActorMask]
         "CineLightRigRimKelvin",
         "CineLightRigRimGelSlot0",
         "CineLightRigRimGelSlot1",
@@ -567,6 +572,7 @@ const std::vector<std::string>& ALPanelCineLightRig::settings()
         "CineLightRigBgGel",
         "CineLightRigBgFixtureMode",
         "CineLightRigBgFixturePreset",
+        "CineLightRigBgActorOnly", // [ActorMask]
         "CineLightRigBgKelvin",
         "CineLightRigBgGelSlot0",
         "CineLightRigBgGelSlot1",
