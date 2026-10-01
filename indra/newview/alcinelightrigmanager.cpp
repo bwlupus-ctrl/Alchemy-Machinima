@@ -667,6 +667,22 @@ void ALCineLightRigManager::updateLiveProbe()
     std::vector<LLUUID> pinned_light_ids;
     at(target).liveProbeIgnoredLightIds(ignored_light_ids);
     at(target).liveProbeProjectorIds(pinned_light_ids);
+    // [ActorMask] Keep the original lists byte-for-byte on the off path. The
+    // registry includes every rig, its bounce policy and optional catchlight.
+    if (anyActorOnly())
+    {
+        pinned_light_ids.erase(std::remove_if(pinned_light_ids.begin(),
+            pinned_light_ids.end(), [this](const LLUUID& id)
+            { return actorOnlyBits(id) != 0; }), pinned_light_ids.end());
+        for (const auto& light : mActorOnlyRegistry.mLights)
+        {
+            if (std::find(ignored_light_ids.begin(), ignored_light_ids.end(),
+                          light.mId) == ignored_light_ids.end())
+            {
+                ignored_light_ids.push_back(light.mId);
+            }
+        }
+    }
     gPipeline.mReflectionMapManager.setCinematicLiveProbe(
         mLiveProbe->mReflectionProbe, ignored_light_ids, pinned_light_ids);
     mLiveProbeRetryTicks = 0;

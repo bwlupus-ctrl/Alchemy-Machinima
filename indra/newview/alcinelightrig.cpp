@@ -1186,7 +1186,10 @@ static void appendEmitterSignature(
     ALCineLiveProbeRefresh::Signature& sig, const LLVOVolume* emitter,
     F32 move_m)
 {
-    if (emitter == nullptr || emitter->isDead())
+    // [ActorMask] Keep the existing slot layout; excluded emitters are absent.
+    if (emitter == nullptr || emitter->isDead() ||
+        (ALCineLightRigManager::anyActorOnly() &&
+         ALCineLightRigManager::instance().actorOnlyBits(emitter->getID())))
     {
         sig.addExact(false);
         return;
@@ -1240,21 +1243,38 @@ void ALCineLightRig::appendLiveProbeSignature(
 
 bool ALCineLightRig::liveProbeAnimating(bool exclude_ignored) const
 {
-    if (mActiveFX >= 0 || mTransitionActive)
+    // [ActorMask] The off path retains the rig-wide animation shortcut. On the
+    // actor path only captured emitters can request the animation refresh rate.
+    const bool actor_only = ALCineLightRigManager::anyActorOnly();
+    if (!actor_only && (mActiveFX >= 0 || mTransitionActive))
+    {
+        return true;
+    }
+    if (actor_only && !exclude_ignored && (mActiveFX >= 0 || mTransitionActive) &&
+        mCatchlight.notNull() && !mCatchlight->isDead() && mCatchlight->getIsLight() &&
+        !ALCineLightRigManager::instance().actorOnlyBits(mCatchlight->getID()))
     {
         return true;
     }
     for (S32 i = 0; i < LIGHT_COUNT; ++i)
     {
-        if (mLastFrame.mProj[i].mOn &&
+        const bool projector_captured = !actor_only ||
+            !ALCineLightRigManager::instance().actorOnlyBits(projectorId(i));
+        const bool omni_captured = !exclude_ignored && (!actor_only ||
+            !ALCineLightRigManager::instance().actorOnlyBits(omniId(i)));
+        const bool captured_on = (projector_captured && mLastFrame.mProj[i].mOn) ||
+            (omni_captured && mLastFrame.mOmni[i].mOn);
+        if (actor_only && captured_on && (mActiveFX >= 0 || mTransitionActive))
+        {
+            return true;
+        }
+        if (projector_captured && mLastFrame.mProj[i].mOn &&
             goboIsAnimated(mLastFrame.mProj[i].mGobo))
         {
             return true;
         }
         // Flicker modulates both the projector and the omni of light i; on the
         // target rig only the projector reaches the capture.
-        const bool captured_on = mLastFrame.mProj[i].mOn ||
-            (!exclude_ignored && mLastFrame.mOmni[i].mOn);
         if (captured_on &&
             mCurrentLive[i].mFlickerProgram != FLICKER_NONE &&
             mCurrentLive[i].mFlickerAmount > 0.f)
@@ -1932,6 +1952,55 @@ void ALCineLightRig::evaluateTransition(F64 presentation_time)
         mTransitionGlobalsStart, mTransitionGlobalsTarget, eased);
 }
 
+// [ActorMask] Same timing/easing as world globals, including interrupted fades.
+void ALCineLightRig::updateActorBounceTransition(
+    const Globals& target, F32 duration, F64 presentation_time, bool restart)
+{
+    const auto evaluate = [this, presentation_time]()
+    {
+        if (!mActorBounceTransitionActive) return;
+        if (!std::isfinite(presentation_time) ||
+            presentation_time < mActorBounceStartTime ||
+            mActorBounceDuration <= 0.f)
+        {
+            mCurrentActorBounce = mActorBounceTarget;
+            mActorBounceTransitionActive = false;
+            return;
+        }
+        static LLCachedControl<U32> easing_mode(
+            gSavedSettings, "CineLightRigEasing", 2);
+        const F32 t = static_cast<F32>(
+            (presentation_time - mActorBounceStartTime) / mActorBounceDuration);
+        if (t >= 1.f)
+        {
+            mCurrentActorBounce = mActorBounceTarget;
+            mActorBounceTransitionActive = false;
+            return;
+        }
+        mCurrentActorBounce = blendGlobals(mActorBounceStart, mActorBounceTarget,
+                                          ease(t, static_cast<U32>(easing_mode)));
+    };
+    if (!mHaveActorBounceTarget || !mHaveTarget)
+    {
+        mActorBounceTarget = target;
+        mCurrentActorBounce = target;
+        mHaveActorBounceTarget = true;
+        mActorBounceTransitionActive = false;
+        return;
+    }
+    evaluate();
+    if (restart || !sameGlobals(target, mActorBounceTarget))
+    {
+        mActorBounceStart = mCurrentActorBounce;
+        mActorBounceTarget = target;
+        mActorBounceStartTime = presentation_time;
+        mActorBounceDuration = duration;
+        mActorBounceTransitionActive = duration > 0.f;
+        if (!mActorBounceTransitionActive) mCurrentActorBounce = target;
+    }
+    evaluate();
+}
+
 void ALCineLightRig::updateTransition(
     const LightBase target[LIGHT_COUNT], F32 target_radius,
     const Globals& target_globals, F32 duration,
@@ -2584,6 +2653,31 @@ void ALCineLightRig::tickShared(
             ? avatar->getUniformScale() : 1.f;
     }
     globals = sanitizeGlobals(globals);
+    const Globals unscaled_globals = globals; // [ActorMask] Before Live scaling.
+    const F32 actor_bounce_ratio = globals.mBounceRatio;
+    const bool actor_bounce_enabled = globals.mBounceEnabled;
+    // [ActorMask] Require a live recipient for this rig's actor light key in
+    // the previous registry; orphan-only rigs retain the world lifecycle.
+    bool actor_bounce = false;
+    if (!object_targeted && !mBounceLightsSet)
+    {
+        for (S32 i = 0; i < LIGHT_COUNT; ++i)
+        {
+            if (mCurrentLive[i].mActorOnly || setup.mLights[i].mActorOnly)
+            {
+                const auto& registry = ALCineLightRigManager::instance();
+                actor_bounce = actor_bounce ||
+                    (registry.actorOnlyBits(projectorId(i)) & registry.liveRecipientBits()) != 0;
+            }
+        }
+        if (actor_bounce)
+        {
+            static LLCachedControl<bool> actor_mask_disabled(
+                gSavedSettings, "CineLightRigActorMaskDisable", false);
+            actor_bounce = !actor_mask_disabled;
+        }
+    }
+    // [ActorMask] Keep world bounce arithmetic AND its transition history intact.
     globals.mBounceRatio *= mLiveProbeBounceScale;
     globals.mBounceEnabled = globals.mBounceEnabled &&
         globals.mBounceRatio > F_APPROXIMATELY_ZERO;
@@ -2639,7 +2733,10 @@ void ALCineLightRig::tickShared(
         return;
     }
 
-    if (!globals.mBounceEnabled)
+    if (!globals.mBounceEnabled && !(actor_bounce && actor_bounce_enabled &&
+        (actor_bounce_ratio > F_APPROXIMATELY_ZERO ||
+         (mHaveActorBounceTarget &&
+          mCurrentActorBounce.mBounceRatio > F_APPROXIMATELY_ZERO)))) // [ActorMask]
     {
         destroyOmnis();
         mOmniRetryTicks = 0;
@@ -2770,6 +2867,8 @@ void ALCineLightRig::tickShared(
             (subject_scale - mSmoothedScale) * alpha);
     }
 
+    // [ActorMask] An inactive policy must not retain stale actor history.
+    if (!actor_bounce) mHaveActorBounceTarget = false;
     LightBase desired[LIGHT_COUNT];
     if (mActiveFX >= 0)
     {
@@ -2816,12 +2915,28 @@ void ALCineLightRig::tickShared(
         mTransitionRadiusTarget = setup.mRadius;
         mCurrentGlobals = globals;
         mTransitionGlobalsTarget = globals;
+        if (actor_bounce) // [ActorMask] FX follows the existing immediate path.
+        {
+            mCurrentActorBounce = unscaled_globals;
+            mActorBounceTarget = unscaled_globals;
+            mHaveActorBounceTarget = true;
+            mActorBounceTransitionActive = false;
+        }
         mHaveTarget = true;
         mTransitionActive = false;
     }
     else
     {
         computeLive(setup, transforms, desired);
+        if (actor_bounce) // [ActorMask] Match world retargets without changing them.
+        {
+            const bool restart = mHaveTarget &&
+                (!sameLights(desired, mTransitionTarget) ||
+                setup.mRadius != mTransitionRadiusTarget ||
+                !sameGlobals(sanitizeGlobals(globals), mTransitionGlobalsTarget));
+            updateActorBounceTransition(unscaled_globals,
+                cue_driven ? 0.f : globals.mTransitionSec, presentation_time, restart);
+        }
         updateTransition(desired, setup.mRadius, globals,
                          cue_driven ? 0.f : globals.mTransitionSec,
                          presentation_time);
@@ -2830,6 +2945,27 @@ void ALCineLightRig::tickShared(
     Globals render_globals = mCurrentGlobals;
     render_globals.mSubjectScale = mSmoothedScale;
     render(mCurrentRadius, mCurrentLive, render_globals, mLastFrame);
+    if (actor_bounce)
+    {
+        // [ActorMask] Scale before the model's clamp/on-threshold calculation,
+        // not the already-clamped emitter intensity. Actor omnis keep full bounce;
+        // ordinary omnis retain the untouched world frame/transition. Interpolate
+        // unscaled history before applying the per-omni policy, even at Keep=0.
+        // Explicit bounce OFF still wins.
+        Globals actor_globals = render_globals;
+        actor_globals.mBounceRatio = mCurrentActorBounce.mBounceRatio;
+        actor_globals.mBounceEnabled = actor_bounce_enabled &&
+            mCurrentActorBounce.mBounceEnabled;
+        RigFrame actor_frame;
+        render(mCurrentRadius, mCurrentLive, actor_globals, actor_frame);
+        for (S32 i = 0; i < LIGHT_COUNT; ++i)
+        {
+            if (mCurrentLive[i].mActorOnly)
+            {
+                mLastFrame.mOmni[i] = actor_frame.mOmni[i];
+            }
+        }
+    }
     for (S32 i = 0; i < LIGHT_COUNT; ++i)
     {
         if (mCurrentLive[i].mFixtureMode &&

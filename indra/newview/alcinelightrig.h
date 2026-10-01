@@ -372,6 +372,9 @@ private:
                           F32 duration,
                           F64 presentation_time);
     void evaluateTransition(F64 presentation_time);
+    // [ActorMask] Independent unscaled bounce history.
+    void updateActorBounceTransition(const ALCineLightRigModel::Globals& target,
+                                    F32 duration, F64 presentation_time, bool restart);
     ALCineLightRigModel::CueState captureCueState() const;
     static ALCineLightRigModel::CueState releasedCueState(
         const ALCineLightRigModel::CueState& basis);
@@ -433,6 +436,14 @@ private:
     ALCineLightRigModel::Globals mTransitionGlobalsStart;
     ALCineLightRigModel::Globals mTransitionGlobalsTarget;
     ALCineLightRigModel::Globals mCurrentGlobals;
+    // [ActorMask] Never derive these from Live-scaled world history.
+    ALCineLightRigModel::Globals mActorBounceStart;
+    ALCineLightRigModel::Globals mActorBounceTarget;
+    ALCineLightRigModel::Globals mCurrentActorBounce;
+    F64 mActorBounceStartTime = 0.0;
+    F32 mActorBounceDuration = 0.f;
+    bool mHaveActorBounceTarget = false;
+    bool mActorBounceTransitionActive = false;
     F32 mTransitionDuration = 0.9f;
     F64 mTransitionStartTime = 0.0;
     bool mHaveTarget = false;

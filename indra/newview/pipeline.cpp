@@ -9903,6 +9903,13 @@ void LLPipeline::calcNearbyLights(LLCamera& camera)
             {
                 continue;
             }
+            // [ActorMask] Live and on-demand ordinary/sky/default/realtime faces,
+            // including the early [LiveProbeFaceLights] collector call.
+            if (ALCineLightRigManager::anyActorOnly() &&
+                ALCineLightRigManager::instance().actorOnlyBits(light->getID()))
+            {
+                continue;
+            }
             if (light->isAttachment())
             {
                 if (!sRenderAttachedLights)

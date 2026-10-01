@@ -1314,6 +1314,13 @@ void probe_gather_light(LLDrawable* drawable, LLVOVolume* light, F32 light_scale
         eligible = false;
     }
     s.mEligible = eligible;
+    // [ActorMask] Eligibility changes remove the old contribution once; later
+    // motion/photometry of this emitter is irrelevant to every probe.
+    if (ALCineLightRigManager::anyActorOnly() &&
+        ALCineLightRigManager::instance().actorOnlyBits(s.mId))
+    {
+        s.mEligible = false;
+    }
 }
 
 } // namespace
@@ -1575,6 +1582,12 @@ U64 LLReflectionMapManager::sampleCinematicHOnDemand(LLReflectionMap* probe)
         : llmin(llmin(LLPipeline::RenderFarClip, camera_far), LIGHT_MAX_RADIUS * 4.f);
     for (const ALProbeSched::LightEntry* entry : mLightsBySeq)
     {
+        // [ActorMask] Also reject a published token from before the light diff.
+        if (ALCineLightRigManager::anyActorOnly() &&
+            ALCineLightRigManager::instance().actorOnlyBits(entry->mId))
+        {
+            continue;
+        }
         // The ignored / pinned predicates are capture-gated, so read the lists directly.
         const bool ignored = std::find(mCinematicIgnoredLightIds.begin(),
             mCinematicIgnoredLightIds.end(), entry->mId) != mCinematicIgnoredLightIds.end();
@@ -1815,6 +1828,16 @@ void LLReflectionMapManager::flushLightDiff(F64 now, U64 serial, F32 dt, F32 rca
         }
         ALProbeSched::LightEntry& entry = it->second;
         entry.mSeen = true;
+        // [ActorMask] Remove over the published position AND pending motion
+        // bounds before cancelling settles; lightStep's STRUCT box alone only
+        // covers the last sampled position, which may never have been captured.
+        const bool actor_excluded = ALCineLightRigManager::anyActorOnly() &&
+            ALCineLightRigManager::instance().actorOnlyBits(sample.mId);
+        if (actor_excluded && entry.mEligible)
+        {
+            if (!entry.mSilent) ALProbeSched::lightLeave(entry, serial, events);
+            entry.mEligible = false;
+        }
         if (!is_new && entry.mSilent && loud)
         {
             // A Live-only light became visible to an ordinary probe: update its
@@ -1853,6 +1876,16 @@ void LLReflectionMapManager::flushLightDiff(F64 now, U64 serial, F32 dt, F32 rca
             }
             ALProbeSched::lightStep(entry, sample, is_new, serial, now, dt,
                                     mLightDebounceConfig, out);
+        }
+        // [ActorMask] lightStep suppresses new events while ineligible, but
+        // lightSettleDue can still emit an earlier pending motion. The removal
+        // above already invalidated the old capture including those bounds.
+        if (actor_excluded)
+        {
+            entry.mDeb[0] = ALProbeSched::Debounce{};
+            entry.mDeb[1] = ALProbeSched::Debounce{};
+            ALProbeSched::lightPublish(entry, 0);
+            ALProbeSched::lightPublish(entry, 1);
         }
     }
 
@@ -2637,6 +2670,9 @@ void LLReflectionMapManager::setCinematicLiveProbe(
 bool LLReflectionMapManager::isCinematicLiveProbeIgnoredLight(
     const LLUUID& id) const
 {
+    // [ActorMask] Global membership, not just helpers of the Live target rig.
+    if (mCinematicLiveProbeCapture && ALCineLightRigManager::anyActorOnly() &&
+        ALCineLightRigManager::instance().actorOnlyBits(id)) return true;
     return mCinematicLiveProbeCapture &&
         std::find(mCinematicIgnoredLightIds.begin(),
                   mCinematicIgnoredLightIds.end(), id) !=
@@ -2646,6 +2682,9 @@ bool LLReflectionMapManager::isCinematicLiveProbeIgnoredLight(
 bool LLReflectionMapManager::isCinematicLiveProbePinnedLight(
     const LLUUID& id) const
 {
+    // [ActorMask] A stale pin must never override capture exclusion.
+    if (ALCineLightRigManager::anyActorOnly() &&
+        ALCineLightRigManager::instance().actorOnlyBits(id)) return false;
     return mCinematicLiveProbeCapture &&
         std::find(mCinematicPinnedLightIds.begin(),
                   mCinematicPinnedLightIds.end(), id) !=
