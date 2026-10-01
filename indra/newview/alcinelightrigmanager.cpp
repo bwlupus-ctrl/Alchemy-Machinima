@@ -187,6 +187,8 @@ bool blobMapWellFormed(const LLSD& data)
          !data["CineLightRigBounceLightsSet"].isBoolean()) ||
         (data.has("CineLightRigCatchlightActorOnly") &&
          !data["CineLightRigCatchlightActorOnly"].isBoolean()) ||
+        (data.has("CineLightRigActorOnlyAll") &&
+         !data["CineLightRigActorOnlyAll"].isBoolean()) ||
         (data.has("cue_list") &&
          (!data["cue_list"].isMap() ||
           !ALCineLightRig::validateCueListData(data["cue_list"]))))
@@ -1014,7 +1016,10 @@ void ALCineLightRigManager::rebuildActorOnlyRegistry()
                 continue;
             }
             input.mBounceLightsSet = rig.bounceLightsSet();
-            input.mCatchlightActorOnly = rig.catchlightActorOnly();
+            // [ActorMask] Effective states (master || flag); the master is also
+            // passed so the pure registry applies the same single definition.
+            input.mCatchlightActorOnly = rig.catchlightActorOnlyEffective();
+            input.mActorOnlyAll = rig.actorOnlyAll();
             input.mCatchlight = rig.catchlightId();
             for (S32 i = 0; i < ALCineLightRigModel::LIGHT_COUNT; ++i)
             {
@@ -1627,6 +1632,7 @@ void ALCineLightRigManager::applySceneData(const LLSD& data)
         ALCineLightRigManagerModel::clearActorOnlyForLegacyMigration(selected_blob);
         gSavedSettings.setBOOL("CineLightRigBounceLightsSet", false);
         gSavedSettings.setBOOL("CineLightRigCatchlightActorOnly", false);
+        gSavedSettings.setBOOL("CineLightRigActorOnlyAll", false); // [ActorMask] master
         gSavedSettings.setBOOL("CineLightRigKeyActorOnly", false);
         gSavedSettings.setBOOL("CineLightRigFillActorOnly", false);
         gSavedSettings.setBOOL("CineLightRigRimActorOnly", false);

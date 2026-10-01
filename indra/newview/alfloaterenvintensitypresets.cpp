@@ -105,7 +105,16 @@ void ALFloaterEnvIntensityPresets::refreshList(std::string select_name)
     const std::vector<std::string> names = ALEnvIntensityPresets::listNames();
     for (const std::string& name : names)
     {
-        mList->addSimpleElement(name, ADD_BOTTOM, LLSD(name));
+        // Bind the cell to the XML "name" column: an unnamed cell created a second
+        // column "0" beside it, so the name drew in the right half (off-centre).
+        LLScrollListItem::Params row;
+        row.value(LLSD(name));
+        row.columns.add()
+            .column("name")
+            .value(name)
+            .font(LLFontGL::getFontSansSerifSmall())
+            .font_halign(LLFontGL::LEFT);
+        mList->addRow(row, ADD_BOTTOM);
     }
     if (!select_name.empty())
     {

@@ -169,14 +169,18 @@ private:
     LLCheckBoxCtrl* mShaftControls[4] = {};
     LLCheckBoxCtrl* mHeroControls[4] = {};
     // [ActorMask] Actor only checkboxes: 4 per-light, then Bounce lights the
-    // set and Catchlight actor only. Each has a reset button. Disabled while
-    // the selected rig has an object target (Actor only is avatar-only in v1).
-    static constexpr S32 ACTOR_ONLY_CONTROL_COUNT = 6;
+    // set, Catchlight actor only, then the rig-level master "Actor only (all
+    // lights)". Each has a reset button. All are disabled while the selected rig
+    // has an object target (Actor only is avatar-only in v1); the four per-light
+    // boxes and the catchlight box are also disabled while the master is on.
+    static constexpr S32 ACTOR_ONLY_CONTROL_COUNT = 7;
+    static constexpr S32 ACTOR_ONLY_MASTER_INDEX = 6;
     LLUICtrl* mActorOnlyControls[ACTOR_ONLY_CONTROL_COUNT] = {};
     LLUICtrl* mActorOnlyResets[ACTOR_ONLY_CONTROL_COUNT] = {};
     std::string mActorOnlyTips[ACTOR_ONLY_CONTROL_COUNT];
-    S32 mActorOnlyLockState = -1; // [ActorMask] -1 unset, 0 enabled, 1 locked
-    void syncActorOnlyControls(bool object_targeted); // [ActorMask]
+    // [ActorMask] -1 unset; else bit 0 = object-target lock, bit 1 = master on.
+    S32 mActorOnlyLockState = -1;
+    void syncActorOnlyControls(bool object_targeted, bool actor_only_all); // [ActorMask]
     LLUICtrl* mManualConeWidths[4] = {};
     LLTextBox* mShadowHint = nullptr;
     LLTextBox* mLiveProbeStatus = nullptr;

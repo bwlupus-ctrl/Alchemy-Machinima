@@ -2124,6 +2124,13 @@
       <key>Type</key><string>Boolean</string>
       <key>Value</key><integer>0</integer>
     </map>
+    <key>CineLightRigActorOnlyAll</key>
+    <map>
+      <key>Comment</key><string>[ActorMask] Master override: every light in this rig (Key, Fill, Rim, BG and the catchlight) is Actor only, whatever its own flag says. The per-light flags are not modified.</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>Boolean</string>
+      <key>Value</key><integer>0</integer>
+    </map>
     <key>CineLightRigActorMaskDisable</key>
     <map>
       <key>Comment</key><string>[ActorMask] Kill switch: Actor only flags are ignored and every light behaves normally</string>

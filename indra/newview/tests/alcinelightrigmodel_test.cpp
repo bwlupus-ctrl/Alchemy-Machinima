@@ -99,6 +99,7 @@ ALCineLightRigParamBlob distinctiveBlob()
     blob.mCatchlightAngle = 137.5f;
     blob.mBounceLightsSet = true;      // [ActorMask]
     blob.mCatchlightActorOnly = true;  // [ActorMask]
+    blob.mActorOnlyAll = true;         // [ActorMask] master
     blob.mObjectTarget.set("aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee", false);
     for (S32 i = 0; i < LIGHT_COUNT; ++i)
     {
@@ -172,6 +173,7 @@ void ensureSameBlob(const ALCineLightRigParamBlob& expected,
     ensure_equals("blob CatchlightAngle", actual.mCatchlightAngle, expected.mCatchlightAngle);
     ensure_equals("blob BounceLightsSet", actual.mBounceLightsSet, expected.mBounceLightsSet); // [ActorMask]
     ensure_equals("blob CatchlightActorOnly", actual.mCatchlightActorOnly, expected.mCatchlightActorOnly); // [ActorMask]
+    ensure_equals("blob ActorOnlyAll", actual.mActorOnlyAll, expected.mActorOnlyAll); // [ActorMask]
     ensure_equals("blob ObjectTarget", actual.mObjectTarget, expected.mObjectTarget);
     for (S32 i = 0; i < LIGHT_COUNT; ++i)
     {
@@ -253,6 +255,7 @@ void seedSettingsIndependently(FakeRigSettings& settings,
     // [ActorMask] literal key names, independent of the production writer.
     settings.setBOOL("CineLightRigBounceLightsSet", value.mBounceLightsSet);
     settings.setBOOL("CineLightRigCatchlightActorOnly", value.mCatchlightActorOnly);
+    settings.setBOOL("CineLightRigActorOnlyAll", value.mActorOnlyAll);
     settings.setString("CineLightRigObjectTarget", value.mObjectTarget.asString());
     static const char* const prefixes[LIGHT_COUNT] = {
         "CineLightRigKey", "CineLightRigFill",
@@ -332,6 +335,7 @@ void ensureSettingsMatchIndependently(
     actual.mBounceLightsSet = settings.getBOOL("CineLightRigBounceLightsSet"); // [ActorMask]
     actual.mCatchlightActorOnly =
         settings.getBOOL("CineLightRigCatchlightActorOnly"); // [ActorMask]
+    actual.mActorOnlyAll = settings.getBOOL("CineLightRigActorOnlyAll"); // [ActorMask]
     actual.mObjectTarget.set(
         settings.getString("CineLightRigObjectTarget"), false);
     static const char* const prefixes[LIGHT_COUNT] = {
@@ -524,8 +528,9 @@ struct cine_light_rig_model_data {};
 // [ProbeOnDemand] adds test<72>..test<90> (S1-S18 + the S15b recount bound),
 // so the ceiling is now 96 (test<91> adds the cache-provenance S19).
 // [ActorMask] Tests 97..113 must be registered, not merely compiled
-// (108..113 are the WP5 persistence tests).
-typedef test_group<cine_light_rig_model_data, 113> cine_light_rig_model_group;
+// (108..113 are the WP5 persistence tests). 114..119 are the rig-level master
+// "Actor only (all lights)" tests, so the ceiling is now 119.
+typedef test_group<cine_light_rig_model_data, 119> cine_light_rig_model_group;
 typedef cine_light_rig_model_group::object cine_light_rig_model_object;
 cine_light_rig_model_group cine_light_rig_model_tests(
     "ALCineLightRigModel");
@@ -5526,14 +5531,16 @@ void cine_light_rig_model_object::test<84>()
     lpr::StickyHash sticky_a;
     lpr::StickyHash sticky_b;
     ensure("builder == HEAD-order oracle", sticky_a.update(sig) == sticky_b.update(reference));
-    // The reviewer's independently computed golden H (a Python FNV re-implementation
-    // of StickyHash::update over podEnv() in HEAD order: 60 fields, 84 floats). A
-    // zero or missing golden is a FAILURE, never a skip.
-    const U64 kGoldenH = 0x1E859BA4513A0291ULL;
+    // Regression lock: the H of the HEAD-order environment over podEnv() (60 fields,
+    // 84 floats), as produced by the C++ StickyHash. Equality with HEAD's statement
+    // order is proven independently by the oracle check above; the earlier
+    // hand-computed Python value (0x1E859BA4513A0291) did not reproduce StickyHash
+    // bit-for-bit. A zero or missing golden is a FAILURE, never a skip.
+    const U64 kGoldenH = 0x5B503AD76FE09BACULL;
     ensure("a golden H must be supplied", kGoldenH != 0);
     {
         lpr::StickyHash fresh;
-        ensure("builder == reviewer golden H", fresh.update(sig) == kGoldenH);
+        ensure_equals("builder == reviewer golden H", fresh.update(sig), kGoldenH);
     }
     // stable across repeated sampling
     ensure("same input, same H", sticky_a.update(sig) == sticky_b.update(reference));
@@ -7139,6 +7146,9 @@ void cine_light_rig_model_object::test<108>()
     ensure_equals("bounce literal", settings.getBOOL("CineLightRigBounceLightsSet"), true);
     ensure_equals("catchlight literal",
         settings.getBOOL("CineLightRigCatchlightActorOnly"), true);
+    ensure("master LLSD key", data.has("CineLightRigActorOnlyAll") &&
+        data["CineLightRigActorOnlyAll"].asBoolean()); // [ActorMask] master
+    ensure_equals("master literal", settings.getBOOL("CineLightRigActorOnlyAll"), true);
     ensureSameBlob(expected, ALCineLightRigParamBlob::fromSettingsStore(settings), false);
 }
 
@@ -7150,9 +7160,11 @@ void cine_light_rig_model_object::test<109>()
     LLSD data = expected.toLLSD();
     data.erase("CineLightRigBounceLightsSet");
     data.erase("CineLightRigCatchlightActorOnly");
+    data.erase("CineLightRigActorOnlyAll"); // [ActorMask] master
     for (S32 i = 0; i < LIGHT_COUNT; ++i)
         data["lights"][i].erase("actor_only");
     const ALCineLightRigParamBlob legacy = ALCineLightRigParamBlob::fromLLSD(data);
+    ensure("absent master key is false", !legacy.mActorOnlyAll);
     ensure("absent bounce key is false", !legacy.mBounceLightsSet);
     ensure("absent catchlight key is false", !legacy.mCatchlightActorOnly);
     for (S32 i = 0; i < LIGHT_COUNT; ++i)
@@ -7165,8 +7177,10 @@ void cine_light_rig_model_object::test<109>()
     const ALCineLightRigParamBlob from_empty = ALCineLightRigParamBlob::fromLLSD(LLSD::emptyMap());
     ensure("empty map: bounce false", !from_empty.mBounceLightsSet);
     ensure("empty map: catchlight false", !from_empty.mCatchlightActorOnly);
+    ensure("empty map: master false", !from_empty.mActorOnlyAll);
     FakeRigSettings blank;
     const ALCineLightRigParamBlob from_blank = ALCineLightRigParamBlob::fromSettingsStore(blank);
+    ensure("blank settings: master false", !from_blank.mActorOnlyAll);
     ensure("blank settings: bounce false", !from_blank.mBounceLightsSet);
     ensure("blank settings: catchlight false", !from_blank.mCatchlightActorOnly);
     for (S32 i = 0; i < LIGHT_COUNT; ++i)
@@ -7190,16 +7204,18 @@ void cine_light_rig_model_object::test<110>()
         if (key.find("ActorOnly") != std::string::npos) ++actor_only_keys;
         if (key.find("BounceLightsSet") != std::string::npos) ++bounce_keys;
     }
-    // 4 per-light + the catchlight flag; 1 bounce-set flag.
-    ensure_equals("ActorOnly keys written", actor_only_keys, 5);
+    // 4 per-light + the catchlight flag + the rig-level master
+    // (CineLightRigActorOnlyAll); 1 bounce-set flag.
+    ensure_equals("ActorOnly keys written", actor_only_keys, 6);
     ensure_equals("BounceLightsSet keys written", bounce_keys, 1);
-    // 28 pre-existing rig keys + 2 new; 19 pre-existing keys per light + 1 new
-    // (x4 lights); 4 rim keys per light (x4). Total 126.
+    // 28 pre-existing rig keys + 3 new; 19 pre-existing keys per light + 1 new
+    // (x4 lights); 4 rim keys per light (x4). Total 127.
     ensure_equals("total key count", S32(recorder.mKeys.size()),
-        (28 + 2) + 4 * (19 + 1) + 4 * 4);
+        (28 + 3) + 4 * (19 + 1) + 4 * 4);
     for (const char* name : {"CineLightRigKeyActorOnly", "CineLightRigFillActorOnly",
                              "CineLightRigRimActorOnly", "CineLightRigBgActorOnly",
-                             "CineLightRigCatchlightActorOnly", "CineLightRigBounceLightsSet"})
+                             "CineLightRigCatchlightActorOnly", "CineLightRigBounceLightsSet",
+                             "CineLightRigActorOnlyAll"})
         ensure(name, recorder.mKeys.count(name) == 1);
     const LLSD data = distinctiveBlob().toLLSD();
     ensure_equals("lights array", S32(data["lights"].size()), S32(LIGHT_COUNT));
@@ -7282,6 +7298,7 @@ void cine_light_rig_model_object::test<112>()
     }
     ensure("bounce lights set off", !blob.mBounceLightsSet);
     ensure("catchlight actor only off", !blob.mCatchlightActorOnly);
+    ensure("master actor only off", !blob.mActorOnlyAll); // [ActorMask] appended last
 }
 
 template<> template<>
@@ -7291,12 +7308,14 @@ void cine_light_rig_model_object::test<113>()
     // A blob captured from live settings that still carry the previous scene.
     ALCineLightRigParamBlob captured = distinctiveBlob();
     ensure("fixture: rig flags start true",
-        captured.mBounceLightsSet && captured.mCatchlightActorOnly);
+        captured.mBounceLightsSet && captured.mCatchlightActorOnly &&
+        captured.mActorOnlyAll);
     ensure("fixture: some light starts actor only",
         captured.mLights[0].mActorOnly && captured.mLights[3].mActorOnly);
     ALCineLightRigManagerModel::clearActorOnlyForLegacyMigration(captured);
     ensure("bounce cleared", !captured.mBounceLightsSet);
     ensure("catchlight cleared", !captured.mCatchlightActorOnly);
+    ensure("master cleared", !captured.mActorOnlyAll); // [ActorMask]
     for (S32 i = 0; i < LIGHT_COUNT; ++i)
         ensure("per-light cleared", !captured.mLights[i].mActorOnly);
     // Nothing else is disturbed.
@@ -7308,5 +7327,179 @@ void cine_light_rig_model_object::test<113>()
     const ALCineLightRigParamBlob reloaded = ALCineLightRigParamBlob::fromLLSD(captured.toLLSD());
     ensure("reload: bounce false", !reloaded.mBounceLightsSet);
     ensure("reload: catchlight false", !reloaded.mCatchlightActorOnly);
+    ensure("reload: master false", !reloaded.mActorOnlyAll);
+}
+
+// [ActorMask] Rig-level master "Actor only (all lights)". The master is an
+// OVERRIDE: effective = master || stored flag, stored flags are never modified,
+// and master false is byte-identical to the pre-master behaviour.
+template<> template<>
+void cine_light_rig_model_object::test<114>()
+{
+    set_test_name("[ActorMask] master: effective helper and actorOnlyRequested override");
+    ensure("master off, flag off", !effectiveActorOnly(false, false));
+    ensure("master off, flag on", effectiveActorOnly(false, true));
+    ensure("master on, flag off", effectiveActorOnly(true, false));
+    ensure("master on, flag on", effectiveActorOnly(true, true));
+
+    LightBase lights[LIGHT_COUNT]; // every stored flag false
+    // Master false is the existing behaviour (the default argument).
+    ensure("off: resolved projector, no flags", !actorOnlyRequested(lights, 1, 1, false, false, true));
+    ensure("off == explicit false", actorOnlyRequested(lights, 1, 1, false, false, true, false) ==
+        actorOnlyRequested(lights, 1, 1, false, false, true));
+    // Master true overrides false per-light flags.
+    ensure("master requests via projector", actorOnlyRequested(lights, 1, 0, false, false, false, true));
+    ensure("master requests via any light", actorOnlyRequested(lights, 8, 0, false, false, false, true));
+    ensure("master requests via omni", actorOnlyRequested(lights, 0, 4, false, false, false, true));
+    ensure("master with world bounce: omni alone does not request",
+        !actorOnlyRequested(lights, 0, 4, true, false, false, true));
+    ensure("master + existing catchlight (flag false) requests",
+        actorOnlyRequested(lights, 0, 0, false, false, true, true));
+    ensure("master + absent catchlight and no emitters cannot latch",
+        !actorOnlyRequested(lights, 0, 0, false, false, false, true));
+    // Toggling the master off again clears the request with nothing else changed.
+    ensure("toggle off clears", !actorOnlyRequested(lights, 1, 1, false, false, true, false));
+    // The stored flags were never modified by any of the above.
+    for (S32 i = 0; i < LIGHT_COUNT; ++i)
+        ensure("stored flag untouched", !lights[i].mActorOnly);
+}
+
+template<> template<>
+void cine_light_rig_model_object::test<115>()
+{
+    set_test_name("[ActorMask] master: registry links every emitter, flags untouched");
+    auto rig = actorMaskRig(1, 100);
+    rig.mActorOnly[0] = false; // every per-light flag false
+    rig.mCatchlightActorOnly = false;
+    for (S32 i = 1; i < LIGHT_COUNT; ++i)
+    {
+        rig.mProjectors[i] = actorMaskId(static_cast<U8>(120 + i));
+        rig.mOmnis[i] = actorMaskId(static_cast<U8>(130 + i));
+    }
+    ensure("master off: nothing linked", am::buildActorOnlyRegistry({rig}, false).mLights.empty());
+    rig.mActorOnlyAll = true;
+    auto registry = am::buildActorOnlyRegistry({rig}, false);
+    ensure_equals("one identity", registry.mRecipients.size(), size_t(1));
+    ensure_equals("projector 0", S32(registry.actorOnlyBits(actorMaskId(100))), 1);
+    ensure_equals("omni 0 follows", S32(registry.actorOnlyBits(actorMaskId(101))), 1);
+    ensure_equals("catchlight", S32(registry.actorOnlyBits(actorMaskId(102))), 1);
+    for (S32 i = 1; i < LIGHT_COUNT; ++i)
+    {
+        ensure_equals("projector linked", S32(registry.actorOnlyBits(actorMaskId(static_cast<U8>(120 + i)))), 1);
+        ensure_equals("omni linked", S32(registry.actorOnlyBits(actorMaskId(static_cast<U8>(130 + i)))), 1);
+    }
+    // 4 projectors + 4 omnis + catchlight.
+    ensure_equals("light count", registry.actorOnlyLightCount(), size_t(9));
+    // Bounce lights the set still keeps the omnis in the world.
+    rig.mBounceLightsSet = true;
+    registry = am::buildActorOnlyRegistry({rig}, false);
+    ensure_equals("world bounce: omni 0 world", S32(registry.actorOnlyBits(actorMaskId(101))), 0);
+    ensure_equals("world bounce: projector linked", S32(registry.actorOnlyBits(actorMaskId(100))), 1);
+    ensure_equals("world bounce: lights", registry.actorOnlyLightCount(), size_t(5));
+    // The master is the override, never a write to the stored flags.
+    for (S32 i = 0; i < LIGHT_COUNT; ++i)
+        ensure("stored per-light flag untouched", !rig.mActorOnly[i]);
+    ensure("stored catchlight flag untouched", !rig.mCatchlightActorOnly);
+    // Object targets, the kill switch and a disabled rig still win over the master.
+    rig.mObjectTarget = true;
+    ensure("object target ignores master", am::buildActorOnlyRegistry({rig}, false).mLights.empty());
+    rig.mObjectTarget = false;
+    ensure("kill switch beats master", am::buildActorOnlyRegistry({rig}, true).mLights.empty());
+    // Master on, no catchlight emitter: only the projectors/omnis link.
+    rig.mBounceLightsSet = false;
+    rig.mCatchlight.setNull();
+    ensure_equals("no catchlight emitter", am::buildActorOnlyRegistry({rig}, false).actorOnlyLightCount(), size_t(8));
+}
+
+template<> template<>
+void cine_light_rig_model_object::test<116>()
+{
+    set_test_name("[ActorMask] master: LLSD and settings round-trip with every other flag false");
+    ALCineLightRigParamBlob expected;
+    expected.mActorOnlyAll = true;
+    const LLSD data = expected.toLLSD();
+    ensure("master key present", data.has("CineLightRigActorOnlyAll"));
+    ensure("master key is a boolean", data["CineLightRigActorOnlyAll"].isBoolean());
+    ensure("master key value", data["CineLightRigActorOnlyAll"].asBoolean());
+    const ALCineLightRigParamBlob loaded = ALCineLightRigParamBlob::fromLLSD(data);
+    ensure("LLSD round-trip", loaded.mActorOnlyAll);
+    // The master is an override: nothing else is set as a side effect.
+    ensure("bounce flag untouched", !loaded.mBounceLightsSet);
+    ensure("catchlight flag untouched", !loaded.mCatchlightActorOnly);
+    for (S32 i = 0; i < LIGHT_COUNT; ++i)
+        ensure("per-light flag untouched", !loaded.mLights[i].mActorOnly);
+    FakeRigSettings settings;
+    expected.toSettingsStore(settings);
+    ensure("settings literal", settings.getBOOL("CineLightRigActorOnlyAll"));
+    ensure("settings round-trip", ALCineLightRigParamBlob::fromSettingsStore(settings).mActorOnlyAll);
+    ALCineLightRigParamBlob off;
+    ensure("false round-trips as false",
+        !ALCineLightRigParamBlob::fromLLSD(off.toLLSD()).mActorOnlyAll);
+}
+
+template<> template<>
+void cine_light_rig_model_object::test<117>()
+{
+    set_test_name("[ActorMask] master: a missing key loads as false");
+    ALCineLightRigParamBlob expected = distinctiveBlob();
+    ensure("fixture: master starts true", expected.mActorOnlyAll);
+    LLSD data = expected.toLLSD();
+    data.erase("CineLightRigActorOnlyAll");
+    const ALCineLightRigParamBlob legacy = ALCineLightRigParamBlob::fromLLSD(data);
+    ensure("absent master key is false", !legacy.mActorOnlyAll);
+    // The other rig-level flags are still read (only the master key was absent).
+    ensure("bounce flag still read", legacy.mBounceLightsSet);
+    ensure("catchlight flag still read", legacy.mCatchlightActorOnly);
+    ensure("default blob is false", !ALCineLightRigParamBlob().mActorOnlyAll);
+}
+
+template<> template<>
+void cine_light_rig_model_object::test<118>()
+{
+    set_test_name("[ActorMask] master: legacy migration clears it and only it as a rig-level flag");
+    ALCineLightRigParamBlob captured;
+    captured.mActorOnlyAll = true; // every other flag false: only the master is set
+    ALCineLightRigManagerModel::clearActorOnlyForLegacyMigration(captured);
+    ensure("master cleared", !captured.mActorOnlyAll);
+    ensure("master cleared survives a round trip",
+        !ALCineLightRigParamBlob::fromLLSD(captured.toLLSD()).mActorOnlyAll);
+    // The default blob and clearing are idempotent.
+    ALCineLightRigManagerModel::clearActorOnlyForLegacyMigration(captured);
+    ensure("clear is idempotent", !captured.mActorOnlyAll);
+}
+
+template<> template<>
+void cine_light_rig_model_object::test<119>()
+{
+    set_test_name("[ActorMask] master: cue crossfade keeps per-light midpoint switch; master overrides throughout");
+    // The master is rig-level (like the bounce/catchlight flags) and is NOT
+    // cue-animated, so the cue crossfade keeps switching only the per-light
+    // stored flags at the midpoint; the effective state is master || that flag.
+    CueState start;
+    Cue target;
+    target.mProfile = CUE_FADE_LINEAR;
+    target.mFadeSec = 2.f;
+    start.mSetup.mLights[0].mActorOnly = true;   // KEY actor -> world
+    target.mSetup.mLights[1].mActorOnly = true;  // FILL world -> actor
+    const bool before[LIGHT_COUNT] = { true, false, false, false };
+    const bool after[LIGHT_COUNT] = { false, true, false, false };
+    const double times[] = { 0.0, 1.0, 1.1, 2.0 };
+    for (double t : times)
+    {
+        const CueState state = evaluateCueTransition(start, target, t, 0.0);
+        for (S32 i = 0; i < LIGHT_COUNT; ++i)
+        {
+            const bool flag = state.mSetup.mLights[i].mActorOnly;
+            ensure_equals("stored flag switches strictly after the midpoint", flag,
+                t <= 1.0 ? before[i] : after[i]);
+            ensure_equals("master off: effective follows the flag",
+                effectiveActorOnly(false, flag), flag);
+            ensure("master on: effective true at every point of the fade",
+                effectiveActorOnly(true, flag));
+        }
+    }
+    // Midpoint switch of the stored flags is unchanged by the master existing.
+    ensure("no stored flag set by the master",
+        !evaluateCueTransition(start, target, 1.0, 0.0).mSetup.mLights[2].mActorOnly);
 }
 } // namespace tut

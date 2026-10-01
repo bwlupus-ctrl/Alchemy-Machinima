@@ -230,7 +230,18 @@ public:
     bool bounceLightsSet() const { return mBounceLightsSet; }
     void setCatchlightActorOnly(bool enabled) { mCatchlightActorOnly = enabled; }
     bool catchlightActorOnly() const { return mCatchlightActorOnly; }
+    // [ActorMask] Rig-level master: overrides every per-light flag and the
+    // catchlight flag without modifying them.
+    void setActorOnlyAll(bool enabled) { mActorOnlyAll = enabled; }
+    bool actorOnlyAll() const { return mActorOnlyAll; }
+    // [ActorMask] EFFECTIVE states (master || stored flag); every runtime
+    // consumer calls these rather than reading the stored flags.
     bool lightActorOnly(S32 light) const;
+    bool catchlightActorOnlyEffective() const
+    {
+        return ALCineLightRigModel::effectiveActorOnly(
+            mActorOnlyAll, mCatchlightActorOnly);
+    }
     // [RigRim] per-light rim params (Phase A), bounds-checked; returns a
     // static zero vector for an out-of-range index.
     const LLVector4& rigRimParams(S32 light) const;
@@ -326,6 +337,7 @@ private:
     bool mActorOnlyRequested = false;
     bool mBounceLightsSet = false;
     bool mCatchlightActorOnly = false;
+    bool mActorOnlyAll = false; // [ActorMask] master override, default off
 
     bool ensureProjectors(const std::string& cookie_setting);
     bool ensureOmnis();

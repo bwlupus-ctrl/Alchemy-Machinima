@@ -190,6 +190,11 @@ struct ALCineLightRigParamBlob
     F64 mPendingFXPhase = -1.0;
     S32 mPendingFXId = -1;
     LLSD mCueList;
+    // [ActorMask] Rig-level MASTER "Actor only (all lights)"; appended at the END
+    // of the struct (no positional row is touched), default false. It is
+    // persisted with the rig-level flags above (CineLightRigActorOnlyAll) and,
+    // like them, is not cue-animated.
+    bool mActorOnlyAll = false;       // CineLightRigActorOnlyAll
 
     static ALCineLightRigParamBlob fromSettings(
         const ALCineLightRig* rig = nullptr);
@@ -238,6 +243,8 @@ struct ALCineLightRigParamBlob
         blob.mBounceLightsSet = settings.getBOOL("CineLightRigBounceLightsSet");
         blob.mCatchlightActorOnly =
             settings.getBOOL("CineLightRigCatchlightActorOnly");
+        blob.mActorOnlyAll =
+            settings.getBOOL("CineLightRigActorOnlyAll"); // [ActorMask] master
 
         static const char* const prefixes[
             ALCineLightRigModel::LIGHT_COUNT] = {
@@ -334,6 +341,8 @@ struct ALCineLightRigParamBlob
         settings.setBOOL("CineLightRigBounceLightsSet", mBounceLightsSet);
         settings.setBOOL(
             "CineLightRigCatchlightActorOnly", mCatchlightActorOnly);
+        settings.setBOOL(
+            "CineLightRigActorOnlyAll", mActorOnlyAll); // [ActorMask] master
 
         static const char* const prefixes[
             ALCineLightRigModel::LIGHT_COUNT] = {
@@ -425,6 +434,7 @@ inline LLSD ALCineLightRigParamBlob::toLLSD() const
     // [ActorMask] rig-level flags.
     data["CineLightRigBounceLightsSet"] = mBounceLightsSet;
     data["CineLightRigCatchlightActorOnly"] = mCatchlightActorOnly;
+    data["CineLightRigActorOnlyAll"] = mActorOnlyAll; // [ActorMask] master
     data["lights"] = LLSD::emptyArray();
     for (S32 i = 0; i < ALCineLightRigModel::LIGHT_COUNT; ++i)
     {
@@ -530,6 +540,8 @@ inline ALCineLightRigParamBlob ALCineLightRigParamBlob::fromLLSD(
     AL_CINE_READ_BOOL("CineLightRigBounceLightsSet", blob.mBounceLightsSet);
     AL_CINE_READ_BOOL(
         "CineLightRigCatchlightActorOnly", blob.mCatchlightActorOnly);
+    AL_CINE_READ_BOOL(
+        "CineLightRigActorOnlyAll", blob.mActorOnlyAll); // [ActorMask] master
 #undef AL_CINE_READ_BOOL
 #undef AL_CINE_READ_S32
 #undef AL_CINE_READ_F32
@@ -661,6 +673,7 @@ inline void clearActorOnlyForLegacyMigration(ALCineLightRigParamBlob& blob)
 {
     blob.mBounceLightsSet = false;
     blob.mCatchlightActorOnly = false;
+    blob.mActorOnlyAll = false; // [ActorMask] master
     for (S32 i = 0; i < ALCineLightRigModel::LIGHT_COUNT; ++i)
     {
         blob.mLights[i].mActorOnly = false;
@@ -686,6 +699,7 @@ struct ActorOnlyRig
     bool mObjectTarget = false;
     bool mBounceLightsSet = false;
     bool mCatchlightActorOnly = false;
+    bool mActorOnlyAll = false; // [ActorMask] master; overrides the flags below
     bool mActorOnly[ALCineLightRigModel::LIGHT_COUNT] = {};
     LLUUID mProjectors[ALCineLightRigModel::LIGHT_COUNT];
     LLUUID mOmnis[ALCineLightRigModel::LIGHT_COUNT];
@@ -746,10 +760,19 @@ inline ActorOnlyRegistry buildActorOnlyRegistry(
     for (const auto& rig : rigs)
     {
         if (!rig.mEnabled || rig.mObjectTarget) continue;
-        bool requested = rig.mCatchlightActorOnly && rig.mCatchlight.notNull();
+        // [ActorMask] Effective states: the master overrides every stored flag.
+        const bool catchlight_actor_only = ALCineLightRigModel::effectiveActorOnly(
+            rig.mActorOnlyAll, rig.mCatchlightActorOnly);
+        bool light_actor_only[ALCineLightRigModel::LIGHT_COUNT];
         for (S32 i = 0; i < ALCineLightRigModel::LIGHT_COUNT; ++i)
         {
-            requested = requested || (rig.mActorOnly[i] &&
+            light_actor_only[i] = ALCineLightRigModel::effectiveActorOnly(
+                rig.mActorOnlyAll, rig.mActorOnly[i]);
+        }
+        bool requested = catchlight_actor_only && rig.mCatchlight.notNull();
+        for (S32 i = 0; i < ALCineLightRigModel::LIGHT_COUNT; ++i)
+        {
+            requested = requested || (light_actor_only[i] &&
                 (rig.mProjectors[i].notNull() ||
                  (!rig.mBounceLightsSet && rig.mOmnis[i].notNull())));
         }
@@ -787,11 +810,11 @@ inline ActorOnlyRegistry buildActorOnlyRegistry(
         };
         for (S32 i = 0; i < ALCineLightRigModel::LIGHT_COUNT; ++i)
         {
-            if (!rig.mActorOnly[i]) continue;
+            if (!light_actor_only[i]) continue;
             add(rig.mProjectors[i]);
             if (!rig.mBounceLightsSet) add(rig.mOmnis[i]);
         }
-        if (rig.mCatchlightActorOnly) add(rig.mCatchlight);
+        if (catchlight_actor_only) add(rig.mCatchlight);
     }
     // [ActorMask] Resolve owner/wearer unions after all recipients own bits.
     const auto add_draw_byte = [&result](U8 value)

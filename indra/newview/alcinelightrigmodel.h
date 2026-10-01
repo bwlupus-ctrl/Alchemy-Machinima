@@ -103,16 +103,27 @@ struct LightBase
     bool mActorOnly = false; // [ActorMask] Discrete cue/transition property.
 };
 
+// [ActorMask] The ONE definition of an effective Actor-only state: the rig-level
+// master ("Actor only (all lights)") overrides every per-light flag and the
+// catchlight flag. Stored flags are never modified; master false is identity.
+inline bool effectiveActorOnly(bool actor_only_all, bool flag)
+{
+    return actor_only_all || flag;
+}
+
 // [ActorMask] Cleared emitter masks drop requests without changing authored flags.
 inline bool actorOnlyRequested(const LightBase lights[LIGHT_COUNT],
     U8 projectors, U8 omnis, bool bounce_lights_set,
-    bool catchlight_actor_only, bool catchlight_exists)
+    bool catchlight_actor_only, bool catchlight_exists,
+    bool actor_only_all = false)
 {
-    if (catchlight_actor_only && catchlight_exists) return true;
+    if (effectiveActorOnly(actor_only_all, catchlight_actor_only) &&
+        catchlight_exists) return true;
     const U8 linked = static_cast<U8>(projectors | (bounce_lights_set ? 0 : omnis));
     for (S32 i = 0; i < LIGHT_COUNT; ++i)
     {
-        if (lights[i].mActorOnly && (linked & (1u << i))) return true;
+        if (effectiveActorOnly(actor_only_all, lights[i].mActorOnly) &&
+            (linked & (1u << i))) return true;
     }
     return false;
 }

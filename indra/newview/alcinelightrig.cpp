@@ -1096,7 +1096,10 @@ LLUUID ALCineLightRig::catchlightId() const
 
 bool ALCineLightRig::lightActorOnly(S32 light) const
 {
-    return light >= 0 && light < LIGHT_COUNT && mCurrentLive[light].mActorOnly;
+    // [ActorMask] Effective: the rig-level master overrides the live flag.
+    return light >= 0 && light < LIGHT_COUNT &&
+        ALCineLightRigModel::effectiveActorOnly(
+            mActorOnlyAll, mCurrentLive[light].mActorOnly);
 }
 
 LLUUID ALCineLightRig::projectorId(S32 light) const
@@ -2302,6 +2305,8 @@ void ALCineLightRig::tickSelected(F64 presentation_time, bool owns_shadows)
         gSavedSettings, "CineLightRigBounceLightsSet", false);
     static LLCachedControl<bool> catchlight_actor_only_setting(
         gSavedSettings, "CineLightRigCatchlightActorOnly", false);
+    static LLCachedControl<bool> actor_only_all_setting(
+        gSavedSettings, "CineLightRigActorOnlyAll", false); // [ActorMask]
     static LLCachedControl<F32> key_shadow_soft(
         gSavedSettings, "CineLightRigKeyShadowSoft");
     static LLCachedControl<F32> fill_shadow_soft(
@@ -2371,6 +2376,7 @@ void ALCineLightRig::tickSelected(F64 presentation_time, bool owns_shadows)
     readSettings(setup, globals, transforms);
     setBounceLightsSet(bounce_lights_set_setting); // [ActorMask]
     setCatchlightActorOnly(catchlight_actor_only_setting); // [ActorMask]
+    setActorOnlyAll(actor_only_all_setting); // [ActorMask] master override
     const F32 shadow_softness[LIGHT_COUNT] = {
         key_shadow_soft, fill_shadow_soft, rim_shadow_soft, bg_shadow_soft
     };
@@ -2445,6 +2451,7 @@ void ALCineLightRig::tickFromBlob(const ALCineLightRigParamBlob& blob,
     readSettings(blob, setup, globals, transforms);
     setBounceLightsSet(blob.mBounceLightsSet); // [ActorMask]
     setCatchlightActorOnly(blob.mCatchlightActorOnly); // [ActorMask]
+    setActorOnlyAll(blob.mActorOnlyAll); // [ActorMask] master override
     tickShared(presentation_time, owns_shadows, fx_setting, offset_z_setting,
                damping_setting, track_mode_setting, scale_aware_setting,
                shadow_mode, catchlight_enabled, catchlight_ev,
@@ -2663,7 +2670,9 @@ void ALCineLightRig::tickShared(
     {
         for (S32 i = 0; i < LIGHT_COUNT; ++i)
         {
-            if (mCurrentLive[i].mActorOnly || setup.mLights[i].mActorOnly)
+            // [ActorMask] Effective state: master || live flag || pending flag.
+            if (ALCineLightRigModel::effectiveActorOnly(mActorOnlyAll,
+                    mCurrentLive[i].mActorOnly || setup.mLights[i].mActorOnly))
             {
                 const auto& registry = ALCineLightRigManager::instance();
                 actor_bounce = actor_bounce ||
@@ -2962,7 +2971,7 @@ void ALCineLightRig::tickShared(
         render(mCurrentRadius, mCurrentLive, actor_globals, actor_frame);
         for (S32 i = 0; i < LIGHT_COUNT; ++i)
         {
-            if (mCurrentLive[i].mActorOnly)
+            if (lightActorOnly(i)) // [ActorMask] effective (master || flag)
             {
                 mLastFrame.mOmni[i] = actor_frame.mOmni[i];
             }
@@ -3034,7 +3043,10 @@ void ALCineLightRig::tickShared(
     // Evaluated after applyCatchlight(), which can destroy the catchlight, so
     // a catchlight-only request never outlives its emitter.
     const bool catchlight_exists = catchlightId().notNull();
-    if (mActorOnlyRequested || (mCatchlightActorOnly && catchlight_exists) ||
+    // [ActorMask] The master joins the gate so toggling it (either way) always
+    // re-evaluates the cached request, exactly like a per-light flag change.
+    if (mActorOnlyRequested || mActorOnlyAll ||
+        (mCatchlightActorOnly && catchlight_exists) ||
         mCurrentLive[0].mActorOnly || mCurrentLive[1].mActorOnly ||
         mCurrentLive[2].mActorOnly || mCurrentLive[3].mActorOnly)
     {
@@ -3046,7 +3058,8 @@ void ALCineLightRig::tickShared(
             if (omniId(i).notNull()) omnis |= static_cast<U8>(1u << i);
         }
         setActorOnlyRequested(actorOnlyRequested(mCurrentLive, projectors, omnis,
-            mBounceLightsSet, mCatchlightActorOnly, catchlight_exists));
+            mBounceLightsSet, mCatchlightActorOnly, catchlight_exists,
+            mActorOnlyAll));
     }
     // Every enabled rig manages its OWN projectors' shadow casting per its own
     // ShadowMode. The deferred pipeline already caps the total at

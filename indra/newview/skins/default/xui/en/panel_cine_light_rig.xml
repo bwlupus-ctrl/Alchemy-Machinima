@@ -189,7 +189,7 @@
          background_visible="false"
          border="true"
          follows="left|top"
-         height="298"
+         height="322"
          layout="topleft"
          left="0"
          name="cine_rig_card"
@@ -242,10 +242,12 @@
         <text follows="left|top" height="15" layout="topleft" left="180" top="228" value="Angle" width="42" />
         <spinner control_name="CineLightRigCatchlightAngle" decimal_digits="0" follows="left|top" height="20" increment="5" layout="topleft" left="230" max_val="360" min_val="0" name="cine_catchlight_angle" top="224" width="88" />
         <button follows="left|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_catchlight_angle_reset" top="225" tool_tip="Reset to the classic 11 o'clock position" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigCatchlightAngle" />
-        <check_box control_name="CineLightRigBounceLightsSet" follows="left|top" height="18" label="Bounce lights the set" layout="topleft" left="8" name="cine_bounce_lights_set" top="248" tool_tip="Normally the bounce light that goes with an Actor only light lights only the subject too. Tick this to let the bounce light the whole set instead. It does nothing unless a light is set to Actor only." width="300" />
-        <button follows="left|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_bounce_lights_set_reset" top="249" tool_tip="Reset to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigBounceLightsSet" />
-        <check_box control_name="CineLightRigCatchlightActorOnly" follows="left|top" height="18" label="Catchlight: Actor only" layout="topleft" left="8" name="cine_catchlight_actor_only" top="272" tool_tip="The catchlight lights only this rig's subject and everything they wear. Other lights still light them. It can't cast a visible shadow onto the set." width="300" />
-        <button follows="left|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_catchlight_actor_only_reset" top="273" tool_tip="Reset to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigCatchlightActorOnly" />
+        <check_box control_name="CineLightRigActorOnlyAll" follows="left|top" height="18" label="Actor only (all lights)" layout="topleft" left="8" name="cine_actor_only_all" top="248" tool_tip="Makes every light in this rig (Key, Fill, Rim, BG and the catchlight) light only the rig's subject and what they wear. The per-light Actor only boxes are ignored while this is on." width="300" />
+        <button follows="left|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_actor_only_all_reset" top="249" tool_tip="Reset to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigActorOnlyAll" />
+        <check_box control_name="CineLightRigBounceLightsSet" follows="left|top" height="18" label="Bounce lights the set" layout="topleft" left="8" name="cine_bounce_lights_set" top="272" tool_tip="Normally the bounce light that goes with an Actor only light lights only the subject too. Tick this to let the bounce light the whole set instead. It does nothing unless a light is set to Actor only." width="300" />
+        <button follows="left|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_bounce_lights_set_reset" top="273" tool_tip="Reset to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigBounceLightsSet" />
+        <check_box control_name="CineLightRigCatchlightActorOnly" follows="left|top" height="18" label="Catchlight: Actor only" layout="topleft" left="8" name="cine_catchlight_actor_only" top="296" tool_tip="The catchlight lights only this rig's subject and everything they wear. Other lights still light them. It can't cast a visible shadow onto the set." width="300" />
+        <button follows="left|top" height="18" layout="topleft" left="322" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="cine_catchlight_actor_only_reset" top="297" tool_tip="Reset to default" commit_callback.function="CineLightRig.ResetControl" commit_callback.parameter="CineLightRigCatchlightActorOnly" />
         </panel>
         <panel
          background_visible="false"

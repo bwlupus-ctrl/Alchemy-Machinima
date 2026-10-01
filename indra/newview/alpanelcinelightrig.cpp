@@ -502,6 +502,7 @@ const std::vector<std::string>& ALPanelCineLightRig::settings()
         "CineLightRigCatchlightAngle",
         "CineLightRigBounceLightsSet", // [ActorMask]
         "CineLightRigCatchlightActorOnly", // [ActorMask]
+        "CineLightRigActorOnlyAll", // [ActorMask]
         "CineLightRigKeyYaw",
         "CineLightRigKeyPitch",
         "CineLightRigKeyOffsetZ",
@@ -855,7 +856,9 @@ bool ALPanelCineLightRig::postBuild()
         else
         {
             base = (i == ALCineLightRigModel::LIGHT_COUNT)
-                ? "cine_bounce_lights_set" : "cine_catchlight_actor_only";
+                ? "cine_bounce_lights_set"
+                : (i == ALCineLightRigModel::LIGHT_COUNT + 1)
+                    ? "cine_catchlight_actor_only" : "cine_actor_only_all";
         }
         mActorOnlyControls[i] = getChild<LLUICtrl>(base);
         mActorOnlyResets[i] = getChild<LLUICtrl>(base + "_reset");
@@ -2312,9 +2315,15 @@ void ALPanelCineLightRig::syncEasyControls()
 // carry an explanation. The saved values are left untouched, so un-targeting the
 // rig restores the user's choices. Runs from updateDerivedStatus(); the cached
 // lock state keeps the tooltip writes off the per-frame path.
-void ALPanelCineLightRig::syncActorOnlyControls(bool object_targeted)
+// The rig-level master "Actor only (all lights)" is locked by an object target
+// too, and while it is on it additionally greys the four per-light boxes and the
+// catchlight box (their stored values are never touched). The cached state
+// (object-target bit | master bit) keeps all of this off the per-frame path
+// except for one compare.
+void ALPanelCineLightRig::syncActorOnlyControls(
+    bool object_targeted, bool actor_only_all)
 {
-    const S32 state = object_targeted ? 1 : 0;
+    const S32 state = (object_targeted ? 1 : 0) | (actor_only_all ? 2 : 0);
     if (state == mActorOnlyLockState)
     {
         return;
@@ -2323,16 +2332,25 @@ void ALPanelCineLightRig::syncActorOnlyControls(bool object_targeted)
     static const std::string LOCKED_TIP =
         "Actor only isn't supported for object targets in this version. "
         "With an object target these lights light normally.";
+    static const std::string OVERRIDDEN_TIP =
+        "Ignored while \"Actor only (all lights)\" is on. "
+        "Your setting here is kept and applies again when that is turned off.";
     for (S32 i = 0; i < ACTOR_ONLY_CONTROL_COUNT; ++i)
     {
         if (!mActorOnlyControls[i] || !mActorOnlyResets[i])
         {
             continue;
         }
-        mActorOnlyControls[i]->setEnabled(!object_targeted);
-        mActorOnlyResets[i]->setEnabled(!object_targeted);
-        mActorOnlyControls[i]->setToolTip(
-            object_targeted ? LOCKED_TIP : mActorOnlyTips[i]);
+        // Bounce lights the set is not overridden by the master; only the four
+        // per-light boxes and the catchlight box are.
+        const bool overridden = actor_only_all &&
+            i != ALCineLightRigModel::LIGHT_COUNT &&
+            i != ACTOR_ONLY_MASTER_INDEX;
+        const bool enabled = !object_targeted && !overridden;
+        mActorOnlyControls[i]->setEnabled(enabled);
+        mActorOnlyResets[i]->setEnabled(enabled);
+        mActorOnlyControls[i]->setToolTip(object_targeted ? LOCKED_TIP
+            : (overridden ? OVERRIDDEN_TIP : mActorOnlyTips[i]));
     }
 }
 
@@ -2368,7 +2386,8 @@ void ALPanelCineLightRig::updateDerivedStatus()
         mShaftControls[i]->setValue(rig.isShaftEnabled(i));
         mHeroControls[i]->setValue(rig.isHeroEnabled(i));
     }
-    syncActorOnlyControls(rig.getObjectTarget().notNull()); // [ActorMask]
+    syncActorOnlyControls(rig.getObjectTarget().notNull(),
+        gSavedSettings.getBOOL("CineLightRigActorOnlyAll")); // [ActorMask]
 
     const S32 mode = std::clamp(
         gSavedSettings.getS32("CineLightRigShadowMode"), 0, 2);
