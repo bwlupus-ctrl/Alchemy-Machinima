@@ -607,6 +607,7 @@ struct ALActorMaskDiagnostics::Impl
                 else
                     ++it;
             }
+            ++entry; // [ActorMask] Advance to the next recipient (missing: infinite loop).
         }
     }
 
