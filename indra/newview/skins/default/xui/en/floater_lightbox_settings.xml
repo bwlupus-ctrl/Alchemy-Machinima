@@ -5902,7 +5902,40 @@
 				</panel>
 			</scroll_container>
 		</panel>
-		<panel follows="all" label="Roto Ink" layout="topleft" name="rotoink_settings" can_resize="false">
+		<!-- [ActorMask] Actor Mask tab: the per-light Actor only flags live on the Cine
+			     Light Rig panel; this tab holds the global kill switch, the debug view,
+			     the mask bias and the isolation self-test. Every control is XML-bound
+			     (control_name); resets use the generic LightBox.ResetControlDefault. -->
+			<panel follows="all" label="Actor Mask" layout="topleft" name="actor_mask_settings" can_resize="false">
+				<scroll_container follows="all" height="806" layout="topleft" left="0"
+				 name="actor_mask_settings_scroll" opaque="false" reserve_scroll_corner="false" top="0" width="420">
+					<panel background_visible="false" follows="left|top|right" height="640" layout="topleft" left="0"
+					 name="actor_mask_settings_scroll_content" top="0" width="400">
+			<text follows="left|top" height="15" left="8" top_pad="12" width="384" layout="topleft" font="SansSerifBold" value="Actor only lights" />
+			<text follows="left|top" height="45" left="10" top_pad="6" width="380" layout="topleft" word_wrap="true" value="Tick Actor only on a light in the Cine Light Rig panel to light only that rig's subject and what they wear. The controls below apply to every rig." />
+			<check_box follows="left|top" height="16" left="12" top_pad="8" width="360" layout="topleft" label="Disable Actor only (all lights act normally)" name="am_disable_check" control_name="CineLightRigActorMaskDisable" tool_tip="Turns Actor only off everywhere without losing your settings. While ticked, every light lights the whole scene as usual." />
+			<text follows="left|top" height="15" left="8" top_pad="14" width="384" layout="topleft" font="SansSerifBold" value="Checking the result" />
+			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" value="Debug view:" />
+			<combo_box follows="left|top" layout="topleft" height="20" top_pad="-17" left="136" width="188" allow_text_entry="false" name="am_debug_combo" control_name="CineLightRigActorMaskDebug" tool_tip="Shows what the Actor only lights can reach. Overlay tints the picture where the actor mask is. Mask only shows just the mask. For checking only; this is not saved between sessions.">
+				<combo_box.item label="Off" name="am_dbg_0" value="0" />
+				<combo_box.item label="Overlay" name="am_dbg_1" value="1" />
+				<combo_box.item label="Mask only" name="am_dbg_2" value="2" />
+			</combo_box>
+			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" value="Mask bias:" />
+			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="-64" max_val="0" increment="0.5" decimal_digits="1" show_text="true" can_edit_text="true" name="am_bias_slider" control_name="CineLightRigActorMaskBias" tool_tip="A small depth nudge used when the actor mask is drawn. If the Debug view shows holes in the mask, move it lower (more negative). Closer to 0 is a tighter match. Leave it at -8 unless you see holes." />
+			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value (-8)" name="am_reset_CineLightRigActorMaskBias"><button.commit_callback function="LightBox.ResetControlDefault" parameter="CineLightRigActorMaskBias" /></button>
+			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" value="Isolation test:" />
+			<combo_box follows="left|top" layout="topleft" height="20" top_pad="-17" left="136" width="188" allow_text_entry="false" name="am_test_combo" control_name="CineLightRigActorMaskTest" tool_tip="Checks that Actor only lights change nothing outside the actor. Pick Run test to start; the result is written to the log as ACTORMASK TEST lines, and this goes back to Idle by itself. Needs a still camera and a still subject, with shafts, Froxel Air and Depth Haze off.">
+				<combo_box.item label="Idle" name="am_test_0" value="0" />
+				<combo_box.item label="Run test" name="am_test_1" value="1" />
+				<combo_box.item label="Cancel" name="am_test_2" value="2" />
+			</combo_box>
+			<text follows="left|top" height="15" left="8" top_pad="14" width="384" layout="topleft" font="SansSerifBold" value="Good to know" />
+			<text follows="left|top" height="250" left="10" top_pad="6" width="380" layout="topleft" name="am_limits_text" word_wrap="true" value="- ReShade RTGI (or any screen-space GI) can bounce some of the brighter actor's light onto nearby floor and walls.&#10;- Hair, lashes and sheer cloth use six local light slots. On a crowded set a world light can drop off them.&#10;- An Actor only light cannot cast a visible shadow onto the set. The actor can still shadow themselves, unless every shadow slot is already taken by other lights.&#10;- Shafts and haze still show the beam. Untick Shaft on that light to hide it.&#10;- Reflections never show the light on the set. Mirrors can lag by a few frames, and with reflection probes off (level 0) mirrors show no local lights at all.&#10;- Expect about 1 pixel of speckle at the actor's outline.&#10;- A subject drawn as an impostor, muted, or covered by a Replace/Cover Actor FX gets no Actor only light." />
+					</panel>
+				</scroll_container>
+			</panel>
+			<panel follows="all" label="Roto Ink" layout="topleft" name="rotoink_settings" can_resize="false">
 			<scroll_container follows="all" height="806" layout="topleft" left="0"
 			 name="rotoink_settings_scroll" opaque="false" reserve_scroll_corner="false" top="0" width="420">
 				<panel background_visible="false" follows="left|top|right" height="2520" layout="topleft" left="0"

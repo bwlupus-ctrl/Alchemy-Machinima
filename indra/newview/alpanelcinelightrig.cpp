@@ -841,6 +841,28 @@ bool ALPanelCineLightRig::postBuild()
             });
     }
 
+    // [ActorMask] Actor only controls: control_name-bound checkboxes (the rig
+    // reads the settings itself), so only the lookups are needed here. The
+    // XML tooltip is captured as the enabled-state text; syncActorOnlyControls()
+    // swaps in the object-target explanation while locked.
+    for (S32 i = 0; i < ACTOR_ONLY_CONTROL_COUNT; ++i)
+    {
+        std::string base;
+        if (i < ALCineLightRigModel::LIGHT_COUNT)
+        {
+            base = std::string("cine_") + ROLE_WIDGET_NAMES[i] + "_actor_only";
+        }
+        else
+        {
+            base = (i == ALCineLightRigModel::LIGHT_COUNT)
+                ? "cine_bounce_lights_set" : "cine_catchlight_actor_only";
+        }
+        mActorOnlyControls[i] = getChild<LLUICtrl>(base);
+        mActorOnlyResets[i] = getChild<LLUICtrl>(base + "_reset");
+        mActorOnlyTips[i] = mActorOnlyControls[i]->getToolTip();
+    }
+    mActorOnlyLockState = -1;
+
     // [NightMaskPercent] Percent sliders over the 0..1 brightness-floor setting.
     mNightMaskDarkness->setCommitCallback(
         [this](LLUICtrl* control, const LLSD&) { onNightMaskDarknessCommit(control); });
@@ -2285,6 +2307,35 @@ void ALPanelCineLightRig::syncEasyControls()
     mSyncingEasyControls = false;
 }
 
+// [ActorMask] Actor only is avatar-only in v1: the registry skips object-target
+// rigs, so the six controls (and their reset buttons) are disabled for them and
+// carry an explanation. The saved values are left untouched, so un-targeting the
+// rig restores the user's choices. Runs from updateDerivedStatus(); the cached
+// lock state keeps the tooltip writes off the per-frame path.
+void ALPanelCineLightRig::syncActorOnlyControls(bool object_targeted)
+{
+    const S32 state = object_targeted ? 1 : 0;
+    if (state == mActorOnlyLockState)
+    {
+        return;
+    }
+    mActorOnlyLockState = state;
+    static const std::string LOCKED_TIP =
+        "Actor only isn't supported for object targets in this version. "
+        "With an object target these lights light normally.";
+    for (S32 i = 0; i < ACTOR_ONLY_CONTROL_COUNT; ++i)
+    {
+        if (!mActorOnlyControls[i] || !mActorOnlyResets[i])
+        {
+            continue;
+        }
+        mActorOnlyControls[i]->setEnabled(!object_targeted);
+        mActorOnlyResets[i]->setEnabled(!object_targeted);
+        mActorOnlyControls[i]->setToolTip(
+            object_targeted ? LOCKED_TIP : mActorOnlyTips[i]);
+    }
+}
+
 void ALPanelCineLightRig::onClickShadowFixIt()
 {
     const S32 requested = computeRequestedShadowSlots();
@@ -2317,6 +2368,7 @@ void ALPanelCineLightRig::updateDerivedStatus()
         mShaftControls[i]->setValue(rig.isShaftEnabled(i));
         mHeroControls[i]->setValue(rig.isHeroEnabled(i));
     }
+    syncActorOnlyControls(rig.getObjectTarget().notNull()); // [ActorMask]
 
     const S32 mode = std::clamp(
         gSavedSettings.getS32("CineLightRigShadowMode"), 0, 2);
