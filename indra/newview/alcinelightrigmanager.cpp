@@ -19,6 +19,7 @@
 #include "llgl.h"
 #include "llreflectionmap.h"
 #include "llrender.h"
+#include "llspatialpartition.h" // [ActorMask] LLDrawInfo owners.
 #include "llviewercontrol.h"
 #include "llviewercamera.h"
 #include "llviewerobject.h"
@@ -911,6 +912,153 @@ void ALCineLightRigManager::resolveCameraFocus()
     focusFilter(mFocusState, raw, raw_distance, incumbent_distance);
 }
 
+// [ActorMask] Renderer hot paths read only this cached bool.
+bool ALCineLightRigManager::sAnyActorOnly = false;
+
+U8 ALCineLightRigManager::actorOnlyBits(const LLUUID& light_id) const
+{
+    return sAnyActorOnly ? mActorOnlyRegistry.actorOnlyBits(light_id) : 0;
+}
+
+U8 ALCineLightRigManager::recipientBit(const LLVOAvatar* av) const
+{
+    if (!sAnyActorOnly || !av || av->isDead()) return 0;
+    for (const auto& recipient : mActorOnlyRecipients)
+    {
+        if (recipient.mAvatar.get() == av && recipient.mAvatarId == av->getID())
+            return recipient.mBit;
+    }
+    return 0;
+}
+
+U8 ALCineLightRigManager::byteForOwner(const LLUUID& fx_owner) const
+{
+    U8 bits = 0;
+    if (!sAnyActorOnly || fx_owner.isNull()) return bits;
+    for (const auto& recipient : mActorOnlyRecipients)
+    {
+        if (recipient.mAvatar.notNull() && !recipient.mAvatar->isDead() &&
+            recipient.mFxOwner == fx_owner)
+            bits = static_cast<U8>(bits | recipient.mBit);
+    }
+    return bits;
+}
+
+U8 ALCineLightRigManager::drawByte(const LLDrawInfo& di) const
+{
+    return static_cast<U8>(byteForOwner(di.mActorFxOwner) |
+                           byteForOwner(di.mActorFxFallbackOwner));
+}
+
+const std::vector<ALCineLightRigManager::ActorOnlyRecipient>&
+ALCineLightRigManager::actorOnlyRecipients() const
+{
+    return mActorOnlyRecipients;
+}
+
+bool ALCineLightRigManager::isActorOnlyRecipient(const LLVOAvatar* av) const
+{
+    return recipientBit(av) != 0;
+}
+
+void ALCineLightRigManager::rebuildActorOnlyRegistry()
+{
+    // WP5 installs the setting. Until then, absence means the default false.
+    const bool disabled = gSavedSettings.controlExists("CineLightRigActorMaskDisable") &&
+        gSavedSettings.getBOOL("CineLightRigActorMaskDisable");
+    std::vector<ActorOnlyRig> rigs;
+    std::vector<LLVOAvatar*> avatars;
+    U32 object_slots = 0;
+    if (!disabled)
+    {
+        for (S32 slot = 0; slot < SLOT_COUNT; ++slot)
+        {
+            const ALCineLightRig& rig = mInstances[slot];
+            if (!rig.mActorOnlyRequested || !isSlotEnabled(static_cast<Slot>(slot)))
+                continue;
+            ActorOnlyRig input;
+            input.mEnabled = true;
+            input.mObjectTarget = rig.getObjectTarget().notNull();
+            if (input.mObjectTarget)
+            {
+                const U32 bit = 1u << slot;
+                object_slots |= bit;
+                if (!(mActorOnlyObjectSlots & bit))
+                {
+                    LL_INFOS("ActorMask") << "ACTORMASK OBJECT-TARGET " << slot << LL_ENDL;
+                }
+                continue;
+            }
+            input.mBounceLightsSet = rig.bounceLightsSet();
+            input.mCatchlightActorOnly = rig.catchlightActorOnly();
+            input.mCatchlight = rig.catchlightId();
+            for (S32 i = 0; i < ALCineLightRigModel::LIGHT_COUNT; ++i)
+            {
+                input.mActorOnly[i] = rig.lightActorOnly(i);
+                input.mProjectors[i] = rig.projectorId(i);
+                input.mOmnis[i] = rig.omniId(i);
+            }
+            const auto add = [&input, &avatars](LLVOAvatar* avatar)
+            {
+                // Cast resolution intentionally permits entity clones. Proxy
+                // and overlay ghosts are never added by these resolvers.
+                if (!avatar || avatar->isDead()) return;
+                ActorOnlyIdentity identity;
+                identity.mAvatarId = avatar->getID();
+                identity.mFxOwner = avatar->getActorFxOwnerId();
+                if (avatar->isControlAvatar())
+                {
+                    const LLVOAvatar* wearer = avatar->getAttachedAvatar();
+                    if (wearer && !wearer->isDead())
+                        identity.mFallbackOwner = wearer->getActorFxOwnerId();
+                }
+                input.mRecipients.push_back(identity);
+                avatars.push_back(avatar);
+            };
+            if (rig.isGroupEnabled())
+            {
+                LLDirectorCast& cast = LLDirectorCast::instance();
+                const U32 slots = rig.lastResolvedGroupSlots();
+                if (slots & ALCineLightRig::GROUP_SLOT_SELF) add(cast.resolve(LLUUID::null));
+                if (slots & ALCineLightRig::GROUP_SLOT_A) add(cast.resolveSubjectA());
+                if (slots & ALCineLightRig::GROUP_SLOT_B) add(cast.resolveSubjectB());
+                if (slots & ALCineLightRig::GROUP_SLOT_C) add(cast.resolveSubjectC());
+                if (slots & ALCineLightRig::GROUP_SLOT_D) add(cast.resolveSubjectD());
+            }
+            else
+            {
+                add(rig.resolveSlotAvatar());
+            }
+            rigs.push_back(input);
+        }
+    }
+    mActorOnlyObjectSlots = object_slots;
+    mActorOnlyRegistry = buildActorOnlyRegistry(rigs, disabled);
+    mActorOnlyRecipients.clear();
+    for (const auto& identity : mActorOnlyRegistry.mRecipients)
+    {
+        for (LLVOAvatar* avatar : avatars)
+        {
+            if (avatar->getID() == identity.mAvatarId)
+            {
+                ActorOnlyRecipient recipient;
+                recipient.mAvatar = avatar;
+                recipient.mAvatarId = identity.mAvatarId;
+                recipient.mFxOwner = identity.mFxOwner;
+                recipient.mBit = identity.mBit;
+                mActorOnlyRecipients.push_back(recipient);
+                break;
+            }
+        }
+    }
+    if (mActorOnlyRegistry.mOverflow && !mActorOnlyOverflowLogged)
+    {
+        LL_WARNS("ActorMask") << "ACTORMASK RECIPIENT-OVERFLOW" << LL_ENDL;
+        mActorOnlyOverflowLogged = true;
+    }
+    sAnyActorOnly = !mActorOnlyRegistry.mLights.empty();
+}
+
 void ALCineLightRigManager::tick(F64 presentation_time)
 {
     if (mNeedsSessionRestore)
@@ -949,6 +1097,9 @@ void ALCineLightRigManager::tick(F64 presentation_time)
                 break;
         }
     }
+    // [ActorMask] No off-path scans, settings reads, allocations or logging.
+    if (ALCineLightRig::sActorOnlyRequestedSlots || sAnyActorOnly || mActorOnlyObjectSlots)
+        rebuildActorOnlyRegistry();
     // No blanket non-focus suppression: each enabled rig casts per its own
     // ShadowMode and the pipeline caps the total at MAX_SPOT_SHADOWS(10) by
     // priority. Force-suppressing non-focus rigs starved multi-light shadow/
@@ -1061,6 +1212,11 @@ void ALCineLightRigManager::clearShadowSuppression()
 
 void ALCineLightRigManager::shutdown()
 {
+    // [ActorMask] Drop retained avatars and light IDs before shutdown.
+    sAnyActorOnly = false;
+    mActorOnlyRegistry = ActorOnlyRegistry();
+    mActorOnlyRecipients.clear();
+    mActorOnlyObjectSlots = 0;
     restoreAutoShadowSlots();
     if (!mNeedsSessionRestore)
     {

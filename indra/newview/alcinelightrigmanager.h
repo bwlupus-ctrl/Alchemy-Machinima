@@ -15,6 +15,9 @@
 #include <algorithm>
 #include <cmath>
 #include <string>
+#include <vector> // [ActorMask]
+
+class LLDrawInfo; // [ActorMask]
 
 struct ALCineLightRigParamBlob
 {
@@ -622,6 +625,148 @@ inline ALCineLightRigParamBlob ALCineLightRigParamBlob::fromLLSD(
 
 namespace ALCineLightRigManagerModel
 {
+// [ActorMask] Never assigned to geometry: orphan lights cannot light the world.
+constexpr U8 ACTOR_ONLY_ORPHAN_BIT = static_cast<U8>(1u << 6);
+
+// [ActorMask] Pure inputs are already resolved, in slot/member order. No viewer
+// objects or settings are consulted here; UUID identity, never slot, owns a bit.
+struct ActorOnlyIdentity
+{
+    LLUUID mAvatarId;
+    LLUUID mFxOwner;
+    U8 mBit = 0;
+    LLUUID mFallbackOwner; // [ActorMask] Wearer of a recipient control avatar.
+};
+
+struct ActorOnlyRig
+{
+    bool mEnabled = false;
+    bool mObjectTarget = false;
+    bool mBounceLightsSet = false;
+    bool mCatchlightActorOnly = false;
+    bool mActorOnly[ALCineLightRigModel::LIGHT_COUNT] = {};
+    LLUUID mProjectors[ALCineLightRigModel::LIGHT_COUNT];
+    LLUUID mOmnis[ALCineLightRigModel::LIGHT_COUNT];
+    LLUUID mCatchlight;
+    std::vector<ActorOnlyIdentity> mRecipients;
+};
+
+struct ActorOnlyLight
+{
+    LLUUID mId;
+    U8 mBits = 0;
+};
+
+struct ActorOnlyRegistry
+{
+    std::vector<ActorOnlyIdentity> mRecipients;
+    std::vector<ActorOnlyLight> mLights;
+    bool mOverflow = false;
+    std::vector<U8> mDrawBytes; // [ActorMask] Distinct nonzero forward-set candidates.
+    U8 mLiveRecipientBits = 0;
+
+    const std::vector<U8>& actorOnlyDrawBytes() const { return mDrawBytes; }
+    U8 liveRecipientBits() const { return mLiveRecipientBits; }
+    size_t actorOnlyLightCount() const { return mLights.size(); }
+
+    U8 byteForOwner(const LLUUID& owner) const
+    {
+        U8 bits = 0;
+        if (owner.notNull())
+        {
+            for (const auto& recipient : mRecipients)
+            {
+                if (recipient.mFxOwner == owner)
+                    bits = static_cast<U8>(bits | recipient.mBit);
+            }
+        }
+        return bits;
+    }
+    U8 drawByte(const LLUUID& owner, const LLUUID& fallback) const
+    {
+        return static_cast<U8>(byteForOwner(owner) | byteForOwner(fallback));
+    }
+    U8 actorOnlyBits(const LLUUID& id) const
+    {
+        for (const auto& light : mLights)
+        {
+            if (light.mId == id) return light.mBits;
+        }
+        return 0;
+    }
+};
+
+inline ActorOnlyRegistry buildActorOnlyRegistry(
+    const std::vector<ActorOnlyRig>& rigs, bool disabled)
+{
+    ActorOnlyRegistry result;
+    if (disabled) return result;
+    for (const auto& rig : rigs)
+    {
+        if (!rig.mEnabled || rig.mObjectTarget) continue;
+        bool requested = rig.mCatchlightActorOnly && rig.mCatchlight.notNull();
+        for (S32 i = 0; i < ALCineLightRigModel::LIGHT_COUNT; ++i)
+        {
+            requested = requested || (rig.mActorOnly[i] &&
+                (rig.mProjectors[i].notNull() ||
+                 (!rig.mBounceLightsSet && rig.mOmnis[i].notNull())));
+        }
+        if (!requested) continue;
+        U8 bits = 0;
+        for (const auto& identity : rig.mRecipients)
+        {
+            if (identity.mAvatarId.isNull()) continue;
+            auto found = std::find_if(result.mRecipients.begin(), result.mRecipients.end(),
+                [&identity](const ActorOnlyIdentity& entry)
+                { return entry.mAvatarId == identity.mAvatarId; });
+            if (found == result.mRecipients.end())
+            {
+                if (result.mRecipients.size() >= 6)
+                {
+                    result.mOverflow = true;
+                    continue;
+                }
+                ActorOnlyIdentity entry = identity;
+                entry.mBit = static_cast<U8>(1u << result.mRecipients.size());
+                result.mRecipients.push_back(entry);
+                bits = static_cast<U8>(bits | entry.mBit);
+            }
+            else
+            {
+                bits = static_cast<U8>(bits | found->mBit);
+            }
+        }
+        // [ActorMask] Six identities are possible. Reserve bit 6 for an empty
+        // or overflow-only set so its emitter cannot become a world light.
+        const U8 light_bits = bits ? bits : ACTOR_ONLY_ORPHAN_BIT;
+        const auto add = [&result, light_bits](const LLUUID& id)
+        {
+            if (id.notNull()) result.mLights.push_back({id, light_bits});
+        };
+        for (S32 i = 0; i < ALCineLightRigModel::LIGHT_COUNT; ++i)
+        {
+            if (!rig.mActorOnly[i]) continue;
+            add(rig.mProjectors[i]);
+            if (!rig.mBounceLightsSet) add(rig.mOmnis[i]);
+        }
+        if (rig.mCatchlightActorOnly) add(rig.mCatchlight);
+    }
+    // [ActorMask] Resolve owner/wearer unions after all recipients own bits.
+    const auto add_draw_byte = [&result](U8 value)
+    {
+        if (value && std::find(result.mDrawBytes.begin(), result.mDrawBytes.end(),
+                              value) == result.mDrawBytes.end())
+            result.mDrawBytes.push_back(value);
+    };
+    for (const auto& recipient : result.mRecipients)
+    {
+        result.mLiveRecipientBits = static_cast<U8>(result.mLiveRecipientBits | recipient.mBit);
+        add_draw_byte(recipient.mBit);
+        add_draw_byte(result.drawByte(recipient.mFxOwner, recipient.mFallbackOwner));
+    }
+    return result;
+}
+
 constexpr F64 FOCUS_MARGIN_M = 0.75;
 constexpr S32 FOCUS_DWELL_TICKS = 20;
 
@@ -1074,6 +1219,28 @@ public:
 
     static ALCineLightRigManager& instance();
 
+    // [ActorMask] Frozen renderer/diagnostics API. Consumers skip dead avatars.
+    struct ActorOnlyRecipient
+    {
+        LLPointer<LLVOAvatar> mAvatar;
+        LLUUID mAvatarId;
+        LLUUID mFxOwner;
+        U8 mBit = 0;
+    };
+    static bool anyActorOnly() { return sAnyActorOnly; }
+    static constexpr U8 ACTOR_ONLY_ORPHAN_BIT =
+        ALCineLightRigManagerModel::ACTOR_ONLY_ORPHAN_BIT;
+    const std::vector<U8>& actorOnlyDrawBytes() const
+        { return mActorOnlyRegistry.actorOnlyDrawBytes(); }
+    U8 liveRecipientBits() const { return mActorOnlyRegistry.liveRecipientBits(); }
+    size_t actorOnlyLightCount() const { return mActorOnlyRegistry.actorOnlyLightCount(); }
+    U8 actorOnlyBits(const LLUUID& light_id) const;
+    U8 recipientBit(const LLVOAvatar* av) const;
+    U8 byteForOwner(const LLUUID& fx_owner) const;
+    U8 drawByte(const LLDrawInfo& di) const;
+    const std::vector<ActorOnlyRecipient>& actorOnlyRecipients() const;
+    bool isActorOnlyRecipient(const LLVOAvatar* av) const;
+
     void tick(F64 presentation_time);
     void shutdown();
     void renderGizmo() const;
@@ -1109,6 +1276,14 @@ public:
 
 private:
     ALCineLightRigManager();
+
+    // [ActorMask] Rebuilt after rig evaluation, before the Live probe update.
+    void rebuildActorOnlyRegistry();
+    static bool sAnyActorOnly;
+    ALCineLightRigManagerModel::ActorOnlyRegistry mActorOnlyRegistry;
+    std::vector<ActorOnlyRecipient> mActorOnlyRecipients;
+    U32 mActorOnlyObjectSlots = 0;
+    bool mActorOnlyOverflowLogged = false;
 
     static bool validSlot(Slot slot);
     void updateAutoShadowSlots();

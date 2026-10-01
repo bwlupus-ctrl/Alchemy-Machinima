@@ -507,7 +507,8 @@ struct cine_light_rig_model_data {};
 // is now 72 (same trap: anything above it compiles but silently never runs).
 // [ProbeOnDemand] adds test<72>..test<90> (S1-S18 + the S15b recount bound),
 // so the ceiling is now 96 (test<91> adds the cache-provenance S19).
-typedef test_group<cine_light_rig_model_data, 96> cine_light_rig_model_group;
+// [ActorMask] Tests 97..107 must be registered, not merely compiled.
+typedef test_group<cine_light_rig_model_data, 107> cine_light_rig_model_group;
 typedef cine_light_rig_model_group::object cine_light_rig_model_object;
 cine_light_rig_model_group cine_light_rig_model_tests(
     "ALCineLightRigModel");
@@ -6800,5 +6801,271 @@ void cine_light_rig_model_object::test<96>()
     }
     ensure_equals("next normal pass completed", static_cast<S32>(sim.mLog.size()), 4);
     ensure("alternation continues with irradiance", sim.mLog[3].mEnd == lpr::PassEnd::IRRADIANCE);
+}
+// [ActorMask] Pure registry fixtures: identities deliberately differ from owners.
+namespace
+{
+namespace am = ALCineLightRigManagerModel;
+LLUUID actorMaskId(U8 value)
+{
+    LLUUID id;
+    id.mData[UUID_BYTES - 1] = value;
+    return id;
+}
+
+am::ActorOnlyRig actorMaskRig(U8 avatar, U8 emitter)
+{
+    am::ActorOnlyRig rig;
+    rig.mEnabled = true;
+    rig.mActorOnly[0] = true;
+    rig.mProjectors[0] = actorMaskId(emitter);
+    rig.mOmnis[0] = actorMaskId(static_cast<U8>(emitter + 1));
+    rig.mCatchlight = actorMaskId(static_cast<U8>(emitter + 2));
+    rig.mRecipients.push_back({actorMaskId(avatar),
+        actorMaskId(static_cast<U8>(avatar + 20)), 0});
+    return rig;
+}
+}
+
+template<> template<>
+void cine_light_rig_model_object::test<97>()
+{
+    set_test_name("[ActorMask] defaults, cleanLight, computeLive and FX defaults");
+    Setup setup;
+    ensure("default is world", !setup.mLights[0].mActorOnly);
+    setup.mLights[0].mActorOnly = true;
+    setup.mLights[0].mKelvin = std::numeric_limits<F32>::quiet_NaN();
+    const Setup clean = sanitizeSetup(setup);
+    ensure("clean copy preserves linking", clean.mLights[0].mActorOnly);
+    LightBase live[LIGHT_COUNT];
+    computeLive(clean, Transforms(), live);
+    ensure("live copy preserves linking", live[0].mActorOnly);
+    ensure("other lights stay world", !live[1].mActorOnly);
+    for (S32 fx = 0; fx < FX_COUNT; ++fx)
+    {
+        evalFX(fx, DEFAULT_SEED, 1.0, live);
+        for (const auto& light : live)
+            ensure("FX clean-copy defaults stay world", !light.mActorOnly);
+    }
+}
+
+template<> template<>
+void cine_light_rig_model_object::test<98>()
+{
+    set_test_name("[ActorMask] blend and cue switch strictly after midpoint");
+    LightBase world, actor;
+    actor.mActorOnly = true;
+    ensure("start", !blendLight(world, actor, 0.f).mActorOnly);
+    ensure("midpoint belongs to start", !blendLight(world, actor, 0.5f).mActorOnly);
+    ensure("after midpoint", blendLight(world, actor, 0.501f).mActorOnly);
+    ensure("end", blendLight(world, actor, 1.f).mActorOnly);
+    ensure("reverse midpoint", blendLight(actor, world, 0.5f).mActorOnly);
+    ensure("reverse after midpoint", !blendLight(actor, world, 0.501f).mActorOnly);
+    CueState start;
+    Cue target;
+    target.mProfile = CUE_FADE_LINEAR;
+    target.mFadeSec = 2.f;
+    target.mSetup.mLights[0].mActorOnly = true;
+    ensure("cue midpoint", !evaluateCueTransition(start, target, 1.0, 0.0)
+        .mSetup.mLights[0].mActorOnly);
+    ensure("cue after midpoint", evaluateCueTransition(start, target, 1.1, 0.0)
+        .mSetup.mLights[0].mActorOnly);
+}
+
+template<> template<>
+void cine_light_rig_model_object::test<99>()
+{
+    set_test_name("[ActorMask] slot routing, bounce override and catchlight");
+    auto rig = actorMaskRig(1, 100);
+    auto registry = am::buildActorOnlyRegistry({rig}, false);
+    ensure_equals("one identity", registry.mRecipients.size(), size_t(1));
+    ensure_equals("projector", S32(registry.actorOnlyBits(actorMaskId(100))), 1);
+    ensure_equals("omni follows", S32(registry.actorOnlyBits(actorMaskId(101))), 1);
+    ensure_equals("catchlight defaults world", S32(registry.actorOnlyBits(actorMaskId(102))), 0);
+    rig.mBounceLightsSet = true;
+    rig.mCatchlightActorOnly = true;
+    registry = am::buildActorOnlyRegistry({rig}, false);
+    ensure_equals("bounce world", S32(registry.actorOnlyBits(actorMaskId(101))), 0);
+    ensure_equals("catchlight linked", S32(registry.actorOnlyBits(actorMaskId(102))), 1);
+    rig.mActorOnly[0] = false;
+    registry = am::buildActorOnlyRegistry({rig}, false);
+    ensure_equals("catchlight alone", registry.mLights.size(), size_t(1));
+    rig.mCatchlight.setNull();
+    registry = am::buildActorOnlyRegistry({rig}, false);
+    ensure("absent catchlight creates no lights", registry.mLights.empty());
+    ensure("absent catchlight allocates no recipients", registry.mRecipients.empty());
+}
+
+template<> template<>
+void cine_light_rig_model_object::test<100>()
+{
+    set_test_name("[ActorMask] group deduplicates UUIDs and shares recipient bits");
+    auto group = actorMaskRig(1, 100);
+    const auto second = actorMaskRig(2, 110);
+    group.mRecipients.push_back(group.mRecipients.front());
+    group.mRecipients.push_back(second.mRecipients.front());
+    const auto registry = am::buildActorOnlyRegistry({group, second}, false);
+    ensure_equals("two identities", registry.mRecipients.size(), size_t(2));
+    ensure_equals("group union", S32(registry.actorOnlyBits(actorMaskId(100))), 3);
+    ensure_equals("shared identity keeps bit", S32(registry.actorOnlyBits(actorMaskId(110))), 2);
+    ensure_equals("null light is world", S32(registry.actorOnlyBits(LLUUID::null)), 0);
+}
+
+template<> template<>
+void cine_light_rig_model_object::test<101>()
+{
+    set_test_name("[ActorMask] off, kill switch, object target and rebuild remove entries");
+    auto rig = actorMaskRig(1, 100);
+    ensure("kill switch", am::buildActorOnlyRegistry({rig}, true).mLights.empty());
+    rig.mObjectTarget = true;
+    auto registry = am::buildActorOnlyRegistry({rig}, false);
+    ensure("object lights normally", registry.mLights.empty());
+    ensure("object allocates no identities", registry.mRecipients.empty());
+    rig.mObjectTarget = false;
+    rig.mEnabled = false;
+    ensure("disabled rig", am::buildActorOnlyRegistry({rig}, false).mLights.empty());
+    rig.mEnabled = true;
+    rig.mActorOnly[0] = false;
+    ensure("all flags off", am::buildActorOnlyRegistry({rig}, false).mRecipients.empty());
+    rig.mActorOnly[0] = true;
+    registry = am::buildActorOnlyRegistry({rig}, false);
+    registry = am::buildActorOnlyRegistry({}, false);
+    ensure("stale lights removed", registry.mLights.empty());
+    ensure("stale recipients removed", registry.mRecipients.empty());
+}
+
+template<> template<>
+void cine_light_rig_model_object::test<102>()
+{
+    set_test_name("[ActorMask] legacy SELF anchor and Group SELF never alias");
+    const auto legacy_self = actorMaskRig(6, 100);
+    auto group_self = actorMaskRig(1, 110);
+    group_self.mRecipients.push_back(actorMaskRig(2, 120).mRecipients.front());
+    const auto registry = am::buildActorOnlyRegistry({legacy_self, group_self}, false);
+    ensure_equals("legacy anchor owns first bit", S32(registry.actorOnlyBits(actorMaskId(100))), 1);
+    ensure_equals("group self and A own different bits", S32(registry.actorOnlyBits(actorMaskId(110))), 6);
+    ensure_equals("self owner excludes legacy bit", S32(registry.byteForOwner(actorMaskId(21))), 2);
+}
+
+template<> template<>
+void cine_light_rig_model_object::test<103>()
+{
+    set_test_name("[ActorMask] worn animesh primary and fallback owner union");
+    const auto registry = am::buildActorOnlyRegistry(
+        {actorMaskRig(1, 100), actorMaskRig(2, 110)}, false);
+    ensure_equals("animesh plus wearer", S32(registry.drawByte(actorMaskId(21), actorMaskId(22))), 3);
+    ensure_equals("same owner is idempotent", S32(registry.drawByte(actorMaskId(21), actorMaskId(21))), 1);
+    ensure_equals("fallback only", S32(registry.drawByte(LLUUID::null, actorMaskId(22))), 2);
+    ensure_equals("unknown and null", S32(registry.drawByte(actorMaskId(99), LLUUID::null)), 0);
+}
+
+template<> template<>
+void cine_light_rig_model_object::test<104>()
+{
+    set_test_name("[ActorMask] six identities, overflow and missing recipients fail closed");
+    std::vector<am::ActorOnlyRig> rigs;
+    auto group = actorMaskRig(1, 100);
+    for (U8 i = 2; i <= 6; ++i)
+        group.mRecipients.push_back(actorMaskRig(i, 110).mRecipients.front());
+    rigs.push_back(group);
+    rigs.push_back(actorMaskRig(7, 120));
+    const auto registry = am::buildActorOnlyRegistry(rigs, false);
+    ensure_equals("bounded at six", registry.mRecipients.size(), size_t(6));
+    ensure("overflow reported", registry.mOverflow);
+    ensure_equals("six unique bits", S32(registry.actorOnlyBits(actorMaskId(100))), 63);
+    const U8 overflow_bits = registry.actorOnlyBits(actorMaskId(120));
+    ensure_equals("overflow uses orphan sentinel", S32(overflow_bits), S32(am::ACTOR_ONLY_ORPHAN_BIT));
+    ensure_equals("all six live recipient bits", S32(registry.liveRecipientBits()), 63);
+    ensure("overflow is not world", overflow_bits != 0);
+    ensure_equals("overflow cannot light another recipient", S32(overflow_bits & 63), 0);
+    ensure_equals("overflow recipient gets no bit", S32(registry.byteForOwner(actorMaskId(27))), 0);
+    group.mRecipients.clear();
+    const auto missing = am::buildActorOnlyRegistry({group}, false);
+    ensure("unresolved cannot become world", missing.actorOnlyBits(actorMaskId(100)) != 0);
+    ensure("unresolved draws nothing", missing.mRecipients.empty());
+
+    rigs.clear();
+    for (S32 slot = 0; slot < 5; ++slot)
+    {
+        auto rig = actorMaskRig(static_cast<U8>(slot + 1), 100);
+        for (S32 light = 0; light < LIGHT_COUNT; ++light)
+        {
+            rig.mActorOnly[light] = true;
+            rig.mProjectors[light] = actorMaskId(static_cast<U8>(150 + slot * 9 + light * 2));
+            rig.mOmnis[light] = actorMaskId(static_cast<U8>(151 + slot * 9 + light * 2));
+        }
+        rig.mCatchlightActorOnly = true;
+        rig.mCatchlight = actorMaskId(static_cast<U8>(158 + slot * 9));
+        rigs.push_back(rig);
+    }
+    const auto full = am::buildActorOnlyRegistry(rigs, false);
+    ensure_equals("five rigs have at most 45 emitters", full.mLights.size(), size_t(45));
+    ensure_equals("five unique recipients", full.mRecipients.size(), size_t(5));
+    const auto rebuilt = am::buildActorOnlyRegistry(rigs, false);
+    for (const auto& light : full.mLights)
+        ensure_equals("rebuild is deterministic", S32(rebuilt.actorOnlyBits(light.mId)), S32(light.mBits));
+}
+template<> template<>
+void cine_light_rig_model_object::test<105>()
+{
+    set_test_name("[ActorMask] request lifecycle follows existing emitters");
+    LightBase lights[LIGHT_COUNT];
+    lights[0].mActorOnly = true;
+    ensure("resolved projector requests", actorOnlyRequested(lights, 1, 0, false, false, false));
+    ensure("recipient loss clears request", !actorOnlyRequested(lights, 0, 0, false, false, false));
+    lights[0].mActorOnly = false;
+    ensure("flags off while unresolved", !actorOnlyRequested(lights, 0, 0, false, false, false));
+    ensure("return with flags off", !actorOnlyRequested(lights, 1, 1, false, false, false));
+    lights[0].mActorOnly = true;
+    ensure("flags on while unresolved", !actorOnlyRequested(lights, 0, 0, false, false, false));
+    ensure("recipient return recovers", actorOnlyRequested(lights, 1, 1, false, false, false));
+    ensure("omni alone follows", actorOnlyRequested(lights, 0, 1, false, false, false));
+    ensure("world bounce does not request", !actorOnlyRequested(lights, 0, 1, true, false, false));
+    lights[0].mActorOnly = false;
+    ensure("absent catchlight cannot latch", !actorOnlyRequested(lights, 1, 1, false, true, false));
+    ensure("existing catchlight requests", actorOnlyRequested(lights, 0, 0, false, true, true));
+    ensure("catchlight off clears", !actorOnlyRequested(lights, 0, 0, false, false, true));
+}
+
+template<> template<>
+void cine_light_rig_model_object::test<106>()
+{
+    set_test_name("[ActorMask] orphan sentinel, live mask and light count");
+    auto orphan = actorMaskRig(1, 100);
+    orphan.mRecipients.clear();
+    const auto registry = am::buildActorOnlyRegistry({orphan, actorMaskRig(2, 110)}, false);
+    ensure_equals("named orphan bit", S32(registry.actorOnlyBits(actorMaskId(100))),
+        S32(am::ACTOR_ONLY_ORPHAN_BIT));
+    ensure_equals("live bits exclude orphan", S32(registry.liveRecipientBits()), 1);
+    ensure_equals("orphan lights cannot match live geometry",
+        S32(registry.actorOnlyBits(actorMaskId(100)) & registry.liveRecipientBits()), 0);
+    ensure_equals("log counts live and orphan emitters", registry.actorOnlyLightCount(), size_t(4));
+    const auto empty = am::buildActorOnlyRegistry({orphan}, false);
+    ensure_equals("orphan only has no live bits", S32(empty.liveRecipientBits()), 0);
+    ensure("orphan creates no forward set", empty.actorOnlyDrawBytes().empty());
+    const auto disabled = am::buildActorOnlyRegistry({orphan}, true);
+    ensure_equals("disabled count", disabled.actorOnlyLightCount(), size_t(0));
+}
+
+template<> template<>
+void cine_light_rig_model_object::test<107>()
+{
+    set_test_name("[ActorMask] forward candidates include deduplicated wearer unions");
+    auto animesh = actorMaskRig(1, 100);
+    const auto wearer = actorMaskRig(2, 110);
+    animesh.mRecipients.front().mFallbackOwner = actorMaskId(22);
+    const auto registry = am::buildActorOnlyRegistry({animesh, wearer, animesh}, false);
+    const auto& bytes = registry.actorOnlyDrawBytes();
+    ensure_equals("two recipient bits and one union", bytes.size(), size_t(3));
+    for (U8 value = 1; value <= 3; ++value)
+        ensure("candidate present", std::find(bytes.begin(), bytes.end(), value) != bytes.end());
+    ensure_equals("union shares drawByte rule", S32(registry.drawByte(actorMaskId(21), actorMaskId(22))), 3);
+    const auto alone = am::buildActorOnlyRegistry({animesh}, false);
+    ensure_equals("unknown wearer adds no set", alone.actorOnlyDrawBytes().size(), size_t(1));
+    animesh.mRecipients.front().mFallbackOwner = actorMaskId(21);
+    const auto same = am::buildActorOnlyRegistry({animesh}, false);
+    ensure_equals("same owner adds no set", same.actorOnlyDrawBytes().size(), size_t(1));
+    ensure("kill switch clears candidates",
+        am::buildActorOnlyRegistry({animesh, wearer}, true).actorOnlyDrawBytes().empty());
 }
 } // namespace tut

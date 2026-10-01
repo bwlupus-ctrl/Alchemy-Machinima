@@ -43,6 +43,7 @@
 
 #include "alavatargroups.h"
 #include "alavatarlightresponse.h" // [AvatarLightResponse]
+#include "alcinelightrigmanager.h" // [ActorMask]
 #include "aoengine.h"
 #include "llagent.h" //  Get state values from here
 #include "llagentbenefits.h"
@@ -4640,7 +4641,11 @@ void LLVOAvatar::computeUpdatePeriod()
     // [AvatarLightResponse] An adjusted avatar is kept live: full geometry and per-frame
     // animation, so it never renders through an impostor bake (which cannot carry the
     // trim). Muted / Never Render / too-complex avatars stay authoritative.
-    if (ALAvatarLightResponse::keepsLive(this) && !isVisuallyMuted())
+    // [ActorMask] Keep recipients live without overriding visual mute policy.
+    if ((ALAvatarLightResponse::keepsLive(this) ||
+         (ALCineLightRigManager::anyActorOnly() &&
+          ALCineLightRigManager::instance().isActorOnlyRecipient(this))) &&
+        !isVisuallyMuted())
     {
         mUpdatePeriod = 1;
         return;

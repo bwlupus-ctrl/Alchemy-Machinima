@@ -271,6 +271,7 @@ LightBase cleanLight(const LightBase& input, F32 min_ev = MIN_EV)
         FIXTURE_SOURCE_SIZE_MIN, FIXTURE_SOURCE_SIZE_MAX);
     output.mFixturePreset = std::clamp(
         input.mFixturePreset, 0, FIXTURE_PRESET_COUNT - 1);
+    output.mActorOnly = input.mActorOnly; // [ActorMask]
     return output;
 }
 
@@ -430,6 +431,7 @@ void copyCleanLights(const LightBase input[LIGHT_COUNT],
         }
         output[i].mSourceSizeM = safe.mSourceSizeM;
         output[i].mFixturePreset = safe.mFixturePreset;
+        output[i].mActorOnly = safe.mActorOnly; // [ActorMask]
     }
 }
 
@@ -1078,6 +1080,7 @@ void computeLive(const Setup& setup, const Transforms& transforms,
         }
         out[i].mSourceSizeM = base.mSourceSizeM;
         out[i].mFixturePreset = base.mFixturePreset;
+        out[i].mActorOnly = base.mActorOnly; // [ActorMask]
     }
     if (safe_setup.mRatioLock)
     {
@@ -1144,6 +1147,8 @@ LightBase blendLight(const LightBase& start, const LightBase& target,
         (safe_target.mSourceSizeM - safe_start.mSourceSizeM) * eased;
     output.mFixturePreset = eased > 0.5f
         ? safe_target.mFixturePreset : safe_start.mFixturePreset;
+    output.mActorOnly = eased > 0.5f
+        ? safe_target.mActorOnly : safe_start.mActorOnly; // [ActorMask]
     return output;
 }
 

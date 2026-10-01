@@ -224,6 +224,13 @@ public:
     LLUUID projectorId(S32 light) const;
     // [RigRim] bounce-fill omni id for a rig light, mirrors projectorId.
     LLUUID omniId(S32 light) const;
+    // [ActorMask] Runtime state; persistence is wired by WP5.
+    LLUUID catchlightId() const;
+    void setBounceLightsSet(bool enabled) { mBounceLightsSet = enabled; }
+    bool bounceLightsSet() const { return mBounceLightsSet; }
+    void setCatchlightActorOnly(bool enabled) { mCatchlightActorOnly = enabled; }
+    bool catchlightActorOnly() const { return mCatchlightActorOnly; }
+    bool lightActorOnly(S32 light) const;
     // [RigRim] per-light rim params (Phase A), bounds-checked; returns a
     // static zero vector for an out-of-range index.
     const LLVector4& rigRimParams(S32 light) const;
@@ -313,6 +320,12 @@ public:
 
 private:
     friend struct ALCineLightRigParamBlob;
+    friend class ALCineLightRigManager; // [ActorMask]
+    void setActorOnlyRequested(bool requested); // [ActorMask]
+    static U32 sActorOnlyRequestedSlots; // [ActorMask] No off-path registry scan.
+    bool mActorOnlyRequested = false;
+    bool mBounceLightsSet = false;
+    bool mCatchlightActorOnly = false;
 
     bool ensureProjectors(const std::string& cookie_setting);
     bool ensureOmnis();

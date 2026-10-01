@@ -267,7 +267,8 @@ bool sameLight(const LightBase& first, const LightBase& second)
            first.mGelSlot[1] == second.mGelSlot[1] &&
            first.mGelSlot[2] == second.mGelSlot[2] &&
            first.mSourceSizeM == second.mSourceSizeM &&
-           first.mFixturePreset == second.mFixturePreset;
+           first.mFixturePreset == second.mFixturePreset &&
+           first.mActorOnly == second.mActorOnly; // [ActorMask] Detect flag-only transitions.
 }
 
 bool sameLights(const LightBase first[LIGHT_COUNT],
@@ -1065,6 +1066,29 @@ LLVOAvatar* ALCineLightRig::resolveSlotAvatar() const
     }
 }
 
+// [ActorMask] Updated only when a rig requests linking (or clears its request).
+U32 ALCineLightRig::sActorOnlyRequestedSlots = 0;
+
+void ALCineLightRig::setActorOnlyRequested(bool requested)
+{
+    if (mActorOnlyRequested == requested) return;
+    mActorOnlyRequested = requested;
+    const U32 bit = 1u << static_cast<S32>(mSlot);
+    sActorOnlyRequestedSlots = requested
+        ? sActorOnlyRequestedSlots | bit : sActorOnlyRequestedSlots & ~bit;
+}
+
+LLUUID ALCineLightRig::catchlightId() const
+{
+    return mCatchlight.notNull() && !mCatchlight->isDead()
+        ? mCatchlight->getID() : LLUUID::null;
+}
+
+bool ALCineLightRig::lightActorOnly(S32 light) const
+{
+    return light >= 0 && light < LIGHT_COUNT && mCurrentLive[light].mActorOnly;
+}
+
 LLUUID ALCineLightRig::projectorId(S32 light) const
 {
     if (light < 0 || light >= LIGHT_COUNT || mProjectors[light].isNull() ||
@@ -1635,6 +1659,7 @@ void ALCineLightRig::destroyEmitter(LLPointer<LLVOVolume>& emitter)
 
 void ALCineLightRig::destroyEmitters()
 {
+    setActorOnlyRequested(false); // [ActorMask] Covers unresolved/failed creation returns.
     for (S32 i = 0; i < LIGHT_COUNT; ++i)
     {
         destroyEmitter(mProjectors[i]);
@@ -1816,6 +1841,7 @@ void ALCineLightRig::updateProjectorFlags()
 
 void ALCineLightRig::setEmittersDark()
 {
+    setActorOnlyRequested(false); // [ActorMask] Invalid time and projector retry returns.
     std::memset(&mLastFrame, 0, sizeof(mLastFrame));
     for (S32 i = 0; i < LIGHT_COUNT; ++i)
     {
@@ -2679,6 +2705,7 @@ void ALCineLightRig::tickShared(
             mCatchlightRetryTicks = 0;
             mLastPresentationTime = presentation_time;
         }
+        setEmittersDark(); // [ActorMask] Unresolved tracking cannot retain a request.
         return;
     }
     F32 offset_z = offset_z_setting;
@@ -2755,6 +2782,8 @@ void ALCineLightRig::tickShared(
                 setup.mLights[i].mSourceSizeM;
             fx_setup.mLights[i].mFixturePreset =
                 setup.mLights[i].mFixturePreset;
+            fx_setup.mLights[i].mActorOnly =
+                setup.mLights[i].mActorOnly; // [ActorMask]
         }
         computeLive(fx_setup, transforms, desired);
         copyLights(desired, mCurrentLive);
@@ -2837,6 +2866,25 @@ void ALCineLightRig::tickShared(
                          render_globals.mMasterTempMired, catchlight_ev,
                          catchlight_size * mLastFrame.mCatchlightSizeScale,
                          catchlight_angle, cookie_setting);
+    }
+
+    // [ActorMask] One off-path branch, no recipient resolution or allocation.
+    // Evaluated after applyCatchlight(), which can destroy the catchlight, so
+    // a catchlight-only request never outlives its emitter.
+    const bool catchlight_exists = catchlightId().notNull();
+    if (mActorOnlyRequested || (mCatchlightActorOnly && catchlight_exists) ||
+        mCurrentLive[0].mActorOnly || mCurrentLive[1].mActorOnly ||
+        mCurrentLive[2].mActorOnly || mCurrentLive[3].mActorOnly)
+    {
+        U8 projectors = 0;
+        U8 omnis = 0;
+        for (S32 i = 0; i < LIGHT_COUNT; ++i)
+        {
+            if (projectorId(i).notNull()) projectors |= static_cast<U8>(1u << i);
+            if (omniId(i).notNull()) omnis |= static_cast<U8>(1u << i);
+        }
+        setActorOnlyRequested(actorOnlyRequested(mCurrentLive, projectors, omnis,
+            mBounceLightsSet, mCatchlightActorOnly, catchlight_exists));
     }
     // Every enabled rig manages its OWN projectors' shadow casting per its own
     // ShadowMode. The deferred pipeline already caps the total at
