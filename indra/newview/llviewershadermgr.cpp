@@ -48,6 +48,7 @@
 #include "llsky.h"
 
 #include "pipeline.h"
+#include "alactormaskdiagnostics.h" // [ActorMask] WP7 gActorMaskDebugProgram
 
 #include "llfile.h"
 #include "llviewerwindow.h"
@@ -1661,6 +1662,7 @@ bool LLViewerShaderMgr::loadShadersDeferred()
         gDeferredAvatarAlphaShadowProgram.unload();
         gDeferredAvatarAlphaMaskShadowProgram.unload();
         for (auto& shader : gActorMaskProgram) shader.unload(); // [ActorMask]
+        gActorMaskDebugProgram.unload(); // [ActorMask] WP7
         gDeferredAvatarProgram.unload();
         gDeferredAvatarAlphaProgram.unload();
         gDeferredAlphaProgram.unload();
@@ -5260,6 +5262,23 @@ bool LLViewerShaderMgr::loadShadersDeferred()
                 LL_INFOS("ActorMask") << "[ActorMask] program=" << i
                     << " MIRROR_FLAG=" << clip << LL_ENDL;
             }
+        }
+
+        // [ActorMask] WP7 debug view (CineLightRigActorMaskDebug 1/2). Optional:
+        // a failure only disables the view and never touches `success`.
+        gActorMaskDebugProgram.mName = "ActorMask Debug View";
+        gActorMaskDebugProgram.mFeatures = LLShaderFeatures();
+        gActorMaskDebugProgram.mShaderLevel = mShaderLevel[SHADER_DEFERRED];
+        gActorMaskDebugProgram.mShaderFiles.clear();
+        gActorMaskDebugProgram.mShaderFiles.push_back(make_pair("deferred/postDeferredNoTCV.glsl", GL_VERTEX_SHADER));
+        gActorMaskDebugProgram.mShaderFiles.push_back(make_pair("deferred/actorMaskDebugF.glsl", GL_FRAGMENT_SHADER));
+        gActorMaskDebugProgram.clearPermutations();
+        if (!gActorMaskDebugProgram.createShader())
+        {
+            gActorMaskDebugProgram.unload();
+            // [ActorMask] Review #6: debug level here so the off path stays silent;
+            // ACTORMASK NO-PROGRAM is logged once when the view is requested on-path.
+            LL_DEBUGS("ActorMask") << "[ActorMask] debug view program failed to compile" << LL_ENDL;
         }
     }
     return success;

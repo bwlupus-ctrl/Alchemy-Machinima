@@ -276,6 +276,7 @@ set(viewer_SOURCE_FILES
     llcallingcard.cpp
     llcameraoperator.cpp
     llactormaskeligibility.cpp # [ActorMask]
+    alactormaskdiagnostics.cpp # [ActorMask] WP7
     llactormover.cpp
     alghostattachmentenumerator.cpp
     alghostmaterialresolver.cpp
@@ -1146,6 +1147,7 @@ set(viewer_HEADER_FILES
     llcallingcard.h
     llcameraoperator.h
     llactormaskeligibility.h # [ActorMask]
+    alactormaskdiagnostics.h # [ActorMask] WP7
     llactormover.h
     alghostattachmentenumerator.h
     alghostmaterialresolver.h

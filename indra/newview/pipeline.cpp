@@ -29,6 +29,7 @@
 
 #include "llviewerprecompiledheaders.h"
 #include "llactormaskeligibility.h" // [ActorMask]
+#include "alactormaskdiagnostics.h" // [ActorMask] WP7
 #include "alghostattachmentenumerator.h"
 #include <optional> // [ActorMask]
 
@@ -1013,6 +1014,7 @@ void LLPipeline::init()
 
     gSavedSettings.getControl("RenderColorGrade")->getCommitSignal()->connect(boost::bind(&LLPipeline::setupGradingLUT, this));
     gSavedSettings.getControl("RenderColorGradeLUT")->getCommitSignal()->connect(boost::bind(&LLPipeline::setupGradingLUT, this));
+    ALActorMaskDiagnostics::instance().connectSettings(); // [ActorMask] WP7 test-arm listener
 }
 
 LLPipeline::~LLPipeline()
@@ -23526,6 +23528,9 @@ ActorMaskBatchResult drawActorMaskBatch(LLDrawInfo& di, const ActorMaskPass& pas
 void LLPipeline::renderActorMask()
 {
     LL_PROFILE_ZONE_SCOPED;
+    // [ActorMask] WP7 extended guard (Debug != 0 only); outlives saved_state.
+    LLScopedGhostRenderInvariant wp7_guard("actor mask pass",
+        ALActorMaskDiagnostics::instance().stateLeakCounter(), EGhostInvariantMode::ACTOR_MASK);
     LLScopedActorMaskInvariant invariant("mask");
     ScopedActorMaskState saved_state;
     mActorMaskValid = false;
@@ -23699,8 +23704,11 @@ void LLPipeline::renderActorMask()
         const bool tight = main && mActorMaskQueries.begin(tag);
         const U32 draws = draw();
         if (tight) mActorMaskQueries.end(draws, skipped);
+        ALActorMaskDiagnostics::instance().noteMaskDraws(draws); // [ActorMask] WP7 summary
         if (probes)
         {
+            LLScopedGhostRenderInvariant wp7_probe_guard("loose/raster probes",
+                ALActorMaskDiagnostics::instance().stateLeakCounter(), EGhostInvariantMode::ACTOR_MASK);
             LLScopedActorMaskInvariant probe_guard("probes");
             gGL.setColorMask(false, false);
             tag.kind = LLActorMaskQueryKind::LOOSE;
@@ -23833,6 +23841,10 @@ void LLPipeline::renderDeferredLighting(ActorMaskViewSource source)
         mActorMaskView = ActorMaskView::EXCLUDE;
         mActorMaskValid = false;
     }
+    // [ActorMask] WP7: view count; main view also drains verdicts, writes the
+    // 5 s summary and sets mActorMaskTestMode BEFORE it is read below.
+    if (actor_only)
+        ALActorMaskDiagnostics::instance().onLightingView(*this, source == ActorMaskViewSource::MAIN);
     const bool actor_mask_ready = actor_only &&
         mActorMaskView == ActorMaskView::MASK && mActorMaskValid;
     const bool actor_test_view = actor_mask_ready && source == ActorMaskViewSource::MAIN &&
@@ -24501,6 +24513,9 @@ void LLPipeline::renderDeferredLighting(ActorMaskViewSource source)
             if (actor_mask_ready && !actor_as_world && !actor_excluded)
             {
                 LL_PROFILE_ZONE_NAMED_CATEGORY_PIPELINE("actor-only lights");
+                // [ActorMask] WP7 extended guard (Debug != 0 only); outlives saved_state.
+                LLScopedGhostRenderInvariant wp7_guard("actor-only lights",
+                    ALActorMaskDiagnostics::instance().stateLeakCounter(), EGhostInvariantMode::ACTOR_MASK);
                 LLScopedActorMaskInvariant invariant("actor-only lights");
                 ScopedActorMaskState saved_state(false); // [ActorMask] Only drawn shaders' units.
                 LLGLDepthTest depth(GL_FALSE, GL_FALSE);
@@ -24635,6 +24650,10 @@ void LLPipeline::renderDeferredLighting(ActorMaskViewSource source)
             light_colors.clear();
             light_rims.clear(); // [RigRim]
         }
+
+        // [ActorMask] WP7 C_deferred capture (test frames only), screen still bound.
+        if (actor_only && source == ActorMaskViewSource::MAIN)
+            ALActorMaskDiagnostics::instance().captureDeferred(*this, *screen_target);
 
         gGL.setColorMask(true, true);
     }
@@ -25044,6 +25063,11 @@ void LLPipeline::renderDeferredLighting(ActorMaskViewSource source)
             }
         }
     }
+
+    // [ActorMask] WP7 C_post capture (test frames only), then the
+    // CineLightRigActorMaskDebug view, while this view's mask is still valid.
+    if (actor_only && source == ActorMaskViewSource::MAIN)
+        ALActorMaskDiagnostics::instance().endMainView(*this, *screen_target);
 
     screen_target->flush();
 

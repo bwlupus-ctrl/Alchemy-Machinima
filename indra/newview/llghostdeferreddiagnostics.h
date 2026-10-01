@@ -22,10 +22,23 @@
 
 #include <memory>
 
+// [ActorMask] Opt-in extended mode (brief V3 sec. 9.2). GHOST is the default and is
+// byte-for-byte the original behaviour (GhostDeferredDebugLog gate, no extra
+// fields, llassert on leak). ACTOR_MASK is gated on CineLightRigActorMaskDebug
+// != 0, additionally snapshots polygon offset (enable/factor/units), logic-op
+// and the clear colour, reports "ACTORMASK STATE-LEAK <scope>: <changes>"
+// (rate-limited per scope) and never asserts.
+enum class EGhostInvariantMode : U8
+{
+    GHOST,
+    ACTOR_MASK
+};
+
 class LLScopedGhostRenderInvariant
 {
 public:
-    LLScopedGhostRenderInvariant(const char* scope, U64* violation_counter);
+    LLScopedGhostRenderInvariant(const char* scope, U64* violation_counter,
+                                 EGhostInvariantMode mode = EGhostInvariantMode::GHOST);
     ~LLScopedGhostRenderInvariant();
 
     LLScopedGhostRenderInvariant(const LLScopedGhostRenderInvariant&) = delete;
@@ -41,6 +54,7 @@ private:
     U64* mViolationCounter = nullptr;
     std::unique_ptr<Snapshot> mBefore;
     bool mFinished = false;
+    EGhostInvariantMode mMode = EGhostInvariantMode::GHOST; // [ActorMask]
 };
 
 class LLCamera;

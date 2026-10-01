@@ -20,6 +20,7 @@
 #include "llactormover.h"      // [GhostDeferred] proxy queue + counters
 #include "llcamera.h"
 #include "llviewercamera.h"    // sCurCameraID
+#include "llframetimer.h"      // [ActorMask] STATE-LEAK rate limit
 
 #include <algorithm>
 #include <array>
@@ -27,6 +28,7 @@
 #include <cstring>
 #include <iomanip>
 #include <limits>
+#include <map>                 // [ActorMask]
 #include <sstream>
 #include <string>
 #include <vector>
@@ -189,6 +191,24 @@ struct LLScopedGhostRenderInvariant::Snapshot
 
     const LLMatrix4* mGLLastMatrix = nullptr;
 
+    // [ActorMask] Extended-mode fields; captured and compared only when
+    // mExtended is set, so GHOST-mode scopes are unchanged.
+    bool mExtended = false;
+    GLboolean mPolygonOffsetFill = GL_FALSE;
+    std::array<GLfloat, 2> mPolygonOffset{}; // factor, units
+    GLboolean mLogicOp = GL_FALSE;
+    std::array<GLfloat, 4> mClearColor{};
+
+    void captureExtended()
+    {
+        mExtended = true;
+        mPolygonOffsetFill = glIsEnabled(GL_POLYGON_OFFSET_FILL);
+        glGetFloatv(GL_POLYGON_OFFSET_FACTOR, &mPolygonOffset[0]);
+        glGetFloatv(GL_POLYGON_OFFSET_UNITS, &mPolygonOffset[1]);
+        mLogicOp = glIsEnabled(GL_COLOR_LOGIC_OP);
+        glGetFloatv(GL_COLOR_CLEAR_VALUE, mClearColor.data());
+    }
+
     void capture()
     {
         // All raw queries here are valid in the viewer's OpenGL core-ish
@@ -242,10 +262,27 @@ struct LLScopedGhostRenderInvariant::Snapshot
 
 LLScopedGhostRenderInvariant::LLScopedGhostRenderInvariant(
     const char* scope,
-    U64* violation_counter)
+    U64* violation_counter,
+    EGhostInvariantMode mode)
 :   mScope(scope ? scope : "(unnamed)"),
-    mViolationCounter(violation_counter)
+    mViolationCounter(violation_counter),
+    mMode(mode)
 {
+    if (mMode == EGhostInvariantMode::ACTOR_MASK)
+    {
+        // [ActorMask] Capture only while the Actor Mask debug view is on.
+        static LLCachedControl<U32> actor_mask_debug(
+            gSavedSettings, "CineLightRigActorMaskDebug", 0);
+        if (actor_mask_debug == 0)
+        {
+            return;
+        }
+        mBefore = std::make_unique<Snapshot>();
+        mBefore->capture();
+        mBefore->captureExtended();
+        return;
+    }
+
     static LLCachedControl<bool> enabled(
         gSavedSettings, "GhostDeferredDebugLog", false);
 
@@ -281,6 +318,10 @@ void LLScopedGhostRenderInvariant::finish()
 
     Snapshot after;
     after.capture();
+    if (mBefore->mExtended)
+    {
+        after.captureExtended(); // [ActorMask]
+    }
 
     bool changed = false;
     std::ostringstream changes;
@@ -390,6 +431,15 @@ void LLScopedGhostRenderInvariant::finish()
 
     GHOST_COMPARE_POINTER(mGLLastMatrix, "gGLLastMatrix");
 
+    if (mBefore->mExtended)
+    {
+        // [ActorMask] Extended fields (brief V3 sec. 9.2 / sec. 7 checklist).
+        GHOST_COMPARE_BOOL(mPolygonOffsetFill, "polygon_offset_fill");
+        GHOST_COMPARE_ARRAY(mPolygonOffset, "polygon_offset_factor_units");
+        GHOST_COMPARE_BOOL(mLogicOp, "logic_op");
+        GHOST_COMPARE_ARRAY(mClearColor, "clear_color");
+    }
+
 #undef GHOST_COMPARE_POINTER
 #undef GHOST_COMPARE_MATRIX
 #undef GHOST_COMPARE_ARRAY
@@ -398,6 +448,27 @@ void LLScopedGhostRenderInvariant::finish()
 
     if (!changed)
     {
+        return;
+    }
+
+    if (mMode == EGhostInvariantMode::ACTOR_MASK)
+    {
+        // [ActorMask] Count every leak; log at most one line per scope per 5 s.
+        // Never restore (that would hide the leak) and never assert.
+        if (mViolationCounter)
+        {
+            ++*mViolationCounter;
+        }
+        static std::map<std::string, F64> last_report;
+        const F64 now = LLFrameTimer::getElapsedSeconds().value();
+        auto found = last_report.find(mScope);
+        if (found == last_report.end() || now - found->second >= 5.0)
+        {
+            last_report[mScope] = now;
+            LL_WARNS("ActorMask") << "[ActorMask] ACTORMASK STATE-LEAK " << mScope
+                << " (total " << (mViolationCounter ? *mViolationCounter : 0)
+                << "): " << changes.str() << LL_ENDL;
+        }
         return;
     }
 
