@@ -169,7 +169,9 @@ bool classify_group(const QueryGroup& g, EVerdict& verdict, std::string& detail)
         if (!g.mHasRaster) return false;
         if (g.mRaster == 0)
         {
-            verdict = EVerdict::OFFSCREEN;
+            // Final review: tight and raster replay the same harvest, so an empty
+            // harvest and native culling are indistinguishable here. Undecidable.
+            verdict = EVerdict::INCONCLUSIVE;
             out << "in_frustum=1 draws=0 raster=0 skipped_like_native=" << t.batchesSkippedLikeNative
                 << " (natively culled, or harvest failure: the Debug=1 overlay decides)";
         }

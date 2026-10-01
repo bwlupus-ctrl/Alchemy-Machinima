@@ -2826,7 +2826,9 @@ void ALCineLightRig::tickShared(
             mCatchlightRetryTicks = 0;
             mLastPresentationTime = presentation_time;
         }
-        setEmittersDark(); // [ActorMask] Unresolved tracking cannot retain a request.
+        // [ActorMask] Unresolved tracking cannot retain a request. Emitters keep
+        // their last frame exactly as before (off path unchanged).
+        setActorOnlyRequested(false);
         return;
     }
     F32 offset_z = offset_z_setting;
