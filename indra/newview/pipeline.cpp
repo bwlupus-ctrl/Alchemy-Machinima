@@ -7000,6 +7000,8 @@ void LLPipeline::renderGhostPostDeferred(const LLCamera& camera, EGhostForwardSt
         finalizeGhostRiggedSolidCoverage();
         return;
     }
+    // [ActorMask] Ghost proxies/overlays are never recipient surfaces.
+    selectForwardLightSet(0);
     if (stage == EGhostForwardStage::RIGGED_BLEND)
     {
         renderGhostRiggedBlend(camera);
@@ -10229,6 +10231,11 @@ bool LLPipeline::beginPrismAuxiliaryState()
     // No inherited main-eye entries in the auxiliary list. Main drawable bits
     // remain as-is and are ignored by calcNearbyLights' Prism-only builder.
     mNearbyLights.clear();
+    // [ActorMask] Save camera-space snapshots alongside the GL cache.
+    mPrismSavedForwardLightSets = std::move(mForwardLightSets);
+    mPrismSavedForwardLightByte = mForwardLightByte;
+    mPrismSavedForwardLightsImplicit = mForwardLightsImplicit;
+    mForwardLightByte = 0;
     mPrismSavedLightMask = mLightMask;
     mPrismSavedLightMovingMask = mLightMovingMask;
     gGL.getLightStateSnapshot(mPrismSavedGLLights, mPrismSavedGLAmbient);
@@ -10441,6 +10448,10 @@ void LLPipeline::endPrismAuxiliaryState()
     mMoonDiffuse = mPrismSavedMoonDiffuse;
     mSunDir = mPrismSavedSunDir;
     mMoonDir = mPrismSavedMoonDir;
+    // [ActorMask] Auxiliary snapshots cannot survive camera restoration.
+    mForwardLightSets = std::move(mPrismSavedForwardLightSets);
+    mForwardLightByte = mPrismSavedForwardLightByte;
+    mForwardLightsImplicit = mPrismSavedForwardLightsImplicit;
     mLightMask = mPrismSavedLightMask;
     mLightMovingMask = mPrismSavedLightMovingMask;
 
@@ -10492,6 +10503,15 @@ void LLPipeline::setupHWLights()
         return;
     }
 
+    // [ActorMask] Fresh snapshots in this view's modelview.
+    const bool actor_only = ALCineLightRigManager::anyActorOnly();
+    mForwardLightSets.clear();
+    mForwardLightByte = 0;
+    mForwardLightsImplicit = true;
+    const bool actor_test_view = actor_only && mActorMaskView == ActorMaskView::MASK &&
+        mActorMaskValid && mRT == &mMainRT && !gCubeSnapshot && !sPrismLensRender &&
+        !sImpostorRender;
+    const bool actor_as_world = actor_test_view && mActorMaskTestMode == ActorMaskTestMode::F3;
     F32 light_scale = 1.f;
 
     if (gCubeSnapshot)
@@ -10589,6 +10609,67 @@ void LLPipeline::setupHWLights()
         mReflectionMapManager.isCinematicLiveProbeCapture() &&
         (S32)local_light_count < 1;
 
+    // [ActorMask] Both sets use the same view-space unit writer.
+    const auto write_local_light = [&](LLVOVolume* light, const LLColor4& light_color,
+                                      F32 adjusted_radius, S32 unit)
+    {
+        LLVector4 light_pos_gl(light->getRenderPosition(), 1.0f);
+        F32 x = (3.f * (1.f + (light->getLightFalloff() * 2.0f)));  // why this magic?  probably trying to match a historic behavior.
+        F32 linatten = x / adjusted_radius;                         // % of brightness at radius
+
+        mHWLightColors[unit] = light_color;
+        LLLightState* light_state = gGL.getLight(unit);
+
+        light_state->setPosition(light_pos_gl);
+        light_state->setDiffuse(light_color);
+        light_state->setAmbient(LLColor4::black);
+        light_state->setConstantAttenuation(0.f);
+        light_state->setSize(light->getLightRadius() * 1.5f);
+        light_state->setFalloff(light->getLightFalloff(DEFERRED_LIGHT_FALLOFF));
+        light_state->setRigRim(ALCineRigRim::paramsForVolume(light)); // [RigRim]
+
+        if (sRenderDeferred)
+        {
+            light_state->setLinearAttenuation(linatten);
+            light_state->setQuadraticAttenuation(light->getLightFalloff(DEFERRED_LIGHT_FALLOFF) + 1.f); // get falloff to match for forward deferred rendering lights
+        }
+        else
+        {
+            light_state->setLinearAttenuation(linatten);
+            light_state->setQuadraticAttenuation(0.f);
+        }
+
+
+        if (light->isLightSpotlight() // directional (spot-)light
+            && (LLPipeline::sRenderDeferred || RenderSpotLightsInNondeferred) // these are only rendered as GL spotlights if we're in deferred rendering mode *or* the setting forces them on
+            // Rig projectors obey the rig controls, not the projector toggle.
+            && (light->isCineRigEmitter() ||
+                bdmerge_should_render_projector())) // [BDMerge A5.6] projector toggle: falls back to omni light below when off
+        {
+            LLQuaternion quat = light->getRenderRotation();
+            LLVector3 at_axis(0,0,-1); // this matches deferred rendering's object light direction
+            at_axis *= quat;
+
+            light_state->setSpotDirection(at_axis);
+            light_state->setSpotCutoff(90.f);
+            light_state->setSpotExponent(2.f);
+
+            LLVector3 spotParams = light->getSpotLightParams();
+
+            const LLColor4 specular(0.f, 0.f, 0.f, spotParams[2]);
+            light_state->setSpecular(specular);
+        }
+        else // omnidirectional (point) light
+        {
+            light_state->setSpotExponent(0.f);
+            light_state->setSpotCutoff(180.f);
+
+            // we use specular.z = 1.0 as a cheap hack for the shaders to know that this is omnidirectional rather than a spotlight
+            const LLColor4 specular(0.f, 0.f, 1.f, 0.f);
+            light_state->setSpecular(specular);
+        }
+    };
+
     if (effective_local_light_count >= 1)
     {
         S32 cinematic_light_count = 0;
@@ -10598,6 +10679,12 @@ void LLPipeline::setupHWLights()
             LLDrawable* drawable = iter->drawable;
             LLVOVolume* light = drawable->getVOVolume();
             if (!light)
+            {
+                continue;
+            }
+            // [ActorMask] No count, fade, moving-mask or unit side effects.
+            if (actor_only && !actor_as_world &&
+                ALCineLightRigManager::instance().actorOnlyBits(light->getID()))
             {
                 continue;
             }
@@ -10675,69 +10762,13 @@ void LLPipeline::setupHWLights()
                 continue;
             }
 
-            LLVector3 light_pos(light->getRenderPosition());
-            LLVector4 light_pos_gl(light_pos, 1.0f);
-
             F32 adjusted_radius = light->getLightRadius() * (sRenderDeferred ? 1.5f : 1.0f);
             if (adjusted_radius <= 0.001f)
             {
                 continue;
             }
 
-            F32 x = (3.f * (1.f + (light->getLightFalloff() * 2.0f)));  // why this magic?  probably trying to match a historic behavior.
-            F32 linatten = x / adjusted_radius;                         // % of brightness at radius
-
-            mHWLightColors[cur_light] = light_color;
-            LLLightState* light_state = gGL.getLight(cur_light);
-
-            light_state->setPosition(light_pos_gl);
-            light_state->setDiffuse(light_color);
-            light_state->setAmbient(LLColor4::black);
-            light_state->setConstantAttenuation(0.f);
-            light_state->setSize(light->getLightRadius() * 1.5f);
-            light_state->setFalloff(light->getLightFalloff(DEFERRED_LIGHT_FALLOFF));
-            light_state->setRigRim(ALCineRigRim::paramsForVolume(light)); // [RigRim]
-
-            if (sRenderDeferred)
-            {
-                light_state->setLinearAttenuation(linatten);
-                light_state->setQuadraticAttenuation(light->getLightFalloff(DEFERRED_LIGHT_FALLOFF) + 1.f); // get falloff to match for forward deferred rendering lights
-            }
-            else
-            {
-                light_state->setLinearAttenuation(linatten);
-                light_state->setQuadraticAttenuation(0.f);
-            }
-
-
-            if (light->isLightSpotlight() // directional (spot-)light
-                && (LLPipeline::sRenderDeferred || RenderSpotLightsInNondeferred) // these are only rendered as GL spotlights if we're in deferred rendering mode *or* the setting forces them on
-                // Rig projectors obey the rig controls, not the projector toggle.
-                && (light->isCineRigEmitter() ||
-                    bdmerge_should_render_projector())) // [BDMerge A5.6] projector toggle: falls back to omni light below when off
-            {
-                LLQuaternion quat = light->getRenderRotation();
-                LLVector3 at_axis(0,0,-1); // this matches deferred rendering's object light direction
-                at_axis *= quat;
-
-                light_state->setSpotDirection(at_axis);
-                light_state->setSpotCutoff(90.f);
-                light_state->setSpotExponent(2.f);
-
-                LLVector3 spotParams = light->getSpotLightParams();
-
-                const LLColor4 specular(0.f, 0.f, 0.f, spotParams[2]);
-                light_state->setSpecular(specular);
-            }
-            else // omnidirectional (point) light
-            {
-                light_state->setSpotExponent(0.f);
-                light_state->setSpotCutoff(180.f);
-
-                // we use specular.z = 1.0 as a cheap hack for the shaders to know that this is omnidirectional rather than a spotlight
-                const LLColor4 specular(0.f, 0.f, 1.f, 0.f);
-                light_state->setSpecular(specular);
-            }
+            write_local_light(light, light_color, adjusted_radius, cur_light);
             cur_light++;
             if (cur_light >= 8)
             {
@@ -10756,6 +10787,107 @@ void LLPipeline::setupHWLights()
         light->setRigRim(LLVector4(0.f, 0.f, 0.f, 0.f)); // [RigRim]
     }
 
+    // [ActorMask] Independent uncapped scan, after world units and padding.
+    if (actor_only && !actor_as_world && effective_local_light_count >= 1)
+    {
+        // [ActorMask] Advance fades in every world-fade setup, including before
+        // classification. Only a valid mask view may build light sets.
+        const bool build_sets = mActorMaskView == ActorMaskView::MASK &&
+            mActorMaskValid && !sImpostorRender;
+        const auto& registry = ALCineLightRigManager::instance();
+        ForwardLightSet world;
+        LLColor4 ambient_snapshot;
+        if (build_sets)
+        {
+            gGL.getLightStateSnapshot(world.units, ambient_snapshot);
+            for (U32 i = 2; i < 8; ++i) world.colors[i - 2] = mHWLightColors[i];
+            mForwardLightSets.emplace(0, world);
+        }
+
+        struct Candidate { U8 bits; LLLightState unit; LLColor4 color; };
+        std::vector<Candidate> candidates;
+        // Nearest-first. Each actor fade advances once, even for shared sets.
+        for (const auto& entry : mNearbyLights)
+        {
+            LLVOVolume* light = entry.drawable->getVOVolume();
+            if (!light) continue;
+            const U8 bits = registry.actorOnlyBits(light->getID());
+            if (!bits) continue;
+            // [ActorMask] Match the world fade eligibility gates.
+            if (mReflectionMapManager.isCinematicLiveProbeIgnoredLight(light->getID()) ||
+                (cinematic_pinned_only &&
+                 !mReflectionMapManager.isCinematicLiveProbePinnedLight(light->getID()))) continue;
+            if (light->isAttachment())
+            {
+                if (!sRenderAttachedLights ||
+                    !bdmerge_should_render_light(true, light->getAvatar() == gAgentAvatarp)) continue;
+            }
+            else if (!light->isCineRigEmitter() && !bdmerge_should_render_light(false, false)) continue;
+            const F32 ls = light_scale * ALEnvIntensity::localLightEVScale(light);
+            LLColor4 color = light->getLightLinearColor() * ls;
+            color.mV[3] = 0.f;
+            F32 fade = entry.fade;
+            if (fade < LIGHT_FADE_TIME)
+            {
+                if (fade >= 0.f)
+                {
+                    fade /= LIGHT_FADE_TIME;
+                    const_cast<Light&>(entry).fade += gFrameIntervalSeconds.value();
+                }
+                else
+                {
+                    fade = 1.f + fade / LIGHT_FADE_TIME;
+                    const_cast<Light&>(entry).fade -= gFrameIntervalSeconds.value();
+                }
+                color *= llclamp(fade, 0.f, 1.f);
+            }
+            if (!build_sets) continue; // [ActorMask] Fade-only before classification.
+            const F32 radius = light->getLightRadius() * (sRenderDeferred ? 1.5f : 1.f);
+            if (color.magVecSquared() < 0.001f || radius <= 0.001f) continue;
+            write_local_light(light, color, radius, 2);
+            LLRender::light_state_snapshot_t captured;
+            LLColor4 unused_ambient;
+            gGL.getLightStateSnapshot(captured, unused_ambient);
+            candidates.push_back({bits, captured[2], color});
+        }
+        if (build_sets)
+        {
+            U8 eligible_bits = 0;
+            for (const auto& recipient : registry.actorOnlyRecipients())
+            {
+                if (LLActorMover::actorMaskAvatarEligible(recipient.mAvatar.get()))
+                    eligible_bits = static_cast<U8>(eligible_bits | recipient.mBit);
+            }
+            for (U8 byte : registry.actorOnlyDrawBytes())
+            {
+                ForwardLightSet set = world;
+                U32 slot = 2;
+                U32 matching = 0;
+                for (const auto& candidate : candidates)
+                {
+                    if (!(candidate.bits & byte & eligible_bits)) continue;
+                    ++matching;
+                    if (slot == 8) continue;
+                    set.units[slot] = candidate.unit;
+                    set.colors[slot - 2] = candidate.color;
+                    ++slot;
+                }
+                if (!matching) continue; // alias to world without switching
+                if (matching > 6) ++mActorMaskAlphaSlotOverflow; // WP7 counter
+                for (U32 world_slot = 2; slot < 8; ++slot, ++world_slot)
+                {
+                    set.units[slot] = world.units[world_slot];
+                    set.colors[slot - 2] = world.colors[world_slot - 2];
+                }
+                mForwardLightSets.emplace(byte, std::move(set));
+            }
+            // Restore raw content before the unchanged disable loop, never through
+            // position/direction setters (main, mirror and Prism are already in view space).
+            gGL.restoreLightStateSnapshot(world.units, ambient_snapshot);
+            for (U32 i = 2; i < 8; ++i) mHWLightColors[i] = world.colors[i - 2];
+        }
+    }
+
     // Bookmark comment to allow searching for mSpecialRenderMode == 3 (avatar edit mode),
     // prev site of forward (non-deferred) character light injection, removed by SL-13522 09/20
 
@@ -10767,6 +10899,37 @@ void LLPipeline::setupHWLights()
     mLightMask = 0;
 }
 
+// [ActorMask] Draw-time model matrices must never transform captured lights.
+void LLPipeline::selectForwardLightSet(U8 byte)
+{
+    if (!ALCineLightRigManager::anyActorOnly()) return;
+    if (mActorMaskView != ActorMaskView::MASK || !mActorMaskValid ||
+        sRenderingHUDs || sImpostorRender) byte = 0;
+    const bool test_view = mRT == &mMainRT && !gCubeSnapshot && !sPrismLensRender;
+    if (test_view && (mActorMaskTestMode == ActorMaskTestMode::F0 ||
+                      mActorMaskTestMode == ActorMaskTestMode::F1)) byte = 0;
+    auto found = mForwardLightSets.find(byte);
+    if (found == mForwardLightSets.end())
+    {
+        byte = 0;
+        found = mForwardLightSets.find(0);
+    }
+    if (byte == mForwardLightByte || found == mForwardLightSets.end()) return;
+    gGL.flush();
+    const auto& set = found->second;
+    // setupHWLights leaves live diffuse with disabled units and mask 0.
+    // Avatar alpha can consume this before enableLights. Preserve that initial
+    // convention; explicit nonzero masks still black out disabled units.
+    if (mForwardLightsImplicit)
+        for (U32 i = 2; i < 8; ++i) gGL.getLight(i)->enable();
+    gGL.restoreLightUnitContent(set.units, 2, 7);
+    if (mForwardLightsImplicit)
+        for (U32 i = 2; i < 8; ++i) gGL.getLight(i)->disable();
+    for (U32 i = 2; i < 8; ++i) mHWLightColors[i] = set.colors[i - 2];
+    mForwardLightByte = byte;
+    ++mActorMaskAlphaSwitches; // WP7 counter; unchanged selection is inert
+}
+
 void LLPipeline::enableLights(U32 mask)
 {
     assertInitialized();
@@ -10776,6 +10939,7 @@ void LLPipeline::enableLights(U32 mask)
         stop_glerror();
         if (mask)
         {
+            mForwardLightsImplicit = false; // [ActorMask] Explicit enable policy replaces setup content.
             stop_glerror();
             for (S32 i=0; i<8; i++)
             {
@@ -23603,6 +23767,7 @@ void LLPipeline::renderDeferredLighting(ActorMaskViewSource source)
         LLPipeline& pipe;
         ~ResetActorMaskView()
         {
+            pipe.selectForwardLightSet(0); // [ActorMask] Restore before dropping validity.
             pipe.mActorMaskView = ActorMaskView::NONE;
             pipe.mActorMaskValid = false;
         }

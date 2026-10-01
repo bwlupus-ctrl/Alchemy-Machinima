@@ -48,6 +48,7 @@
 #include "llviewerobjectlist.h" // For debugging
 #include "llviewerwindow.h"
 #include "pipeline.h"
+#include "alcinelightrigmanager.h" // [ActorMask]
 #include "llviewershadermgr.h"
 #include "llviewerregion.h"
 #include "lldrawpoolwater.h"
@@ -829,6 +830,13 @@ void LLDrawPoolAlpha::renderActorFxEmissives(
 void LLDrawPoolAlpha::renderAlpha(U32 mask, bool depth_only, EAlphaStream stream, AttachmentFilter filter)
 {
     LL_PROFILE_ZONE_SCOPED_CATEGORY_DRAWPOOL;
+    // [ActorMask] Every exit restores world, including depth-only/empty streams.
+    const bool actor_only = ALCineLightRigManager::anyActorOnly();
+    struct RestoreForwardWorld
+    {
+        bool active;
+        ~RestoreForwardWorld() { if (active) gPipeline.selectForwardLightSet(0); }
+    } restore_forward_world{actor_only};
     const bool merged = (stream == EAlphaStream::INTERLEAVED);
     LLActorMover& actor_mover = LLActorMover::instance();
     size_t shared_proxy_index = 0;
@@ -979,7 +987,24 @@ void LLDrawPoolAlpha::renderAlpha(U32 mask, bool depth_only, EAlphaStream stream
                 gGL.setIndexedDrawBufferGuardMask(
                     SL_COVERAGE_ATTACHMENT, false, false, false, false);
             }
+            // [ActorMask] Proxies own their binds; raw content survives them.
+            if (actor_only)
+            {
+                const auto& registry = ALCineLightRigManager::instance();
+                const LLVOAvatar* avatar = actor_mover.sharedActorStyleProxyAvatar(shared_proxy_index);
+                U8 byte = 0;
+                if (avatar && !avatar->isDead())
+                {
+                    // [ActorMask] Match drawByte's exact owner OR wearer key.
+                    byte = registry.byteForOwner(avatar->getActorFxOwnerId());
+                    const LLVOAvatar* wearer = avatar->isControlAvatar() ? avatar->getAttachedAvatar() : nullptr;
+                    if (wearer && !wearer->isDead())
+                        byte = static_cast<U8>(byte | registry.byteForOwner(wearer->getActorFxOwnerId()));
+                }
+                gPipeline.selectForwardLightSet(byte);
+            }
             actor_mover.renderSharedActorStyleProxy(shared_proxy_index++);
+            if (actor_only) gPipeline.selectForwardLightSet(0);
             if (publish_visible_diffuse)
             {
                 gGL.setIndexedDrawBufferGuardMask(
@@ -1217,6 +1242,12 @@ void LLDrawPoolAlpha::renderAlpha(U32 mask, bool depth_only, EAlphaStream stream
                     continue;
                 }
 
+                // [ActorMask] Eligibility was evaluated under the real shader
+                // above. WP0 unions exact owner and wearer (including animesh).
+                if (actor_only)
+                    gPipeline.selectForwardLightSet(depth_only ? 0 :
+                        ALCineLightRigManager::instance().drawByte(params));
+
                 if (params.mAvatar && !uploadMatrixPalette(params.mAvatar, params.mSkinInfo, lastAvatar, lastMeshId, lastAvatarShader, skipLastSkin))
                 {
                     continue;
@@ -1347,6 +1378,9 @@ void LLDrawPoolAlpha::renderAlpha(U32 mask, bool depth_only, EAlphaStream stream
                     gGL.matrixMode(LLRender::MM_MODELVIEW);
                 }
             }
+
+            // [ActorMask] Emissive replays and following passes start with world.
+            if (actor_only) gPipeline.selectForwardLightSet(0);
 
             // render emissive faces into alpha channel for bloom effects
             if (!depth_only)

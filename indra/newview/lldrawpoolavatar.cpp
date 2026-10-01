@@ -47,6 +47,7 @@
 #include "llviewerregion.h"
 #include "noise.h"
 #include "pipeline.h"
+#include "alcinelightrigmanager.h" // [ActorMask]
 #include "llviewershadermgr.h"
 #include "llvovolume.h"
 #include "llvolume.h"
@@ -1136,6 +1137,18 @@ void LLDrawPoolAvatar::renderAvatars(LLVOAvatar* single_avatar, S32 pass)
         // disabled, then composites the actorghost result over it.
         return;
     }
+    // [ActorMask] Fable A3: classic hair/skirt/lashes bypass the alpha pool.
+    // Select only after native suppression, under the actual forward shader.
+    const bool actor_forward = is_post_deferred_render &&
+        ALCineLightRigManager::anyActorOnly();
+    struct RestoreForwardWorld
+    {
+        bool active;
+        ~RestoreForwardWorld() { if (active) gPipeline.selectForwardLightSet(0); }
+    } restore_forward_world{actor_forward};
+    if (actor_forward)
+        gPipeline.selectForwardLightSet(ALCineLightRigManager::instance().recipientBit(avatarp));
+
     const bool shared_replay = use_system_actor_ghost_replay(
         avatarp, actor_fx_id);
     const bool wireframe = !shared_replay && has_actor_fx_wireframe(avatarp);

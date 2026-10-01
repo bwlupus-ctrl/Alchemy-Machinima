@@ -1658,6 +1658,25 @@ void LLRender::getLightStateSnapshot(LLRender::light_state_snapshot_t& state,
     ambient = mAmbientLightColor;
 }
 
+// [ActorMask] Copy all content including view-space position/direction and
+// attenuation/Rig Rim, without applying the current modelview.
+void LLRender::restoreLightUnitContent(const light_state_snapshot_t& state,
+                                      U32 first, U32 last)
+{
+    llassert(first <= last && last < LL_NUM_LIGHT_UNITS);
+    if (first > last || last >= LL_NUM_LIGHT_UNITS) return;
+    for (U32 i = first; i <= last; ++i)
+    {
+        const S32 index = mLightState[i].mIndex;
+        const bool enabled = mLightState[i].mEnabled;
+        mLightState[i] = state[i];
+        mLightState[i].mIndex = index;
+        mLightState[i].mEnabled = enabled;
+        if (!enabled) mLightState[i].mDiffuse = LLColor4::black;
+    }
+    ++mLightHash;
+}
+
 void LLRender::restoreLightStateSnapshot(
     const LLRender::light_state_snapshot_t& state,
     const LLColor4& ambient)

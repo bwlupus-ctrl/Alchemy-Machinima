@@ -533,6 +533,8 @@ public:
                                LLColor4& ambient) const;
     void restoreLightStateSnapshot(const light_state_snapshot_t& state,
                                    const LLColor4& ambient);
+    // [ActorMask] Inclusive raw-content range; preserve index/enabled state.
+    void restoreLightUnitContent(const light_state_snapshot_t& state, U32 first, U32 last);
     void setAmbientLightColor(const LLColor4& color);
 
     void setLineWidth(F32 width);
