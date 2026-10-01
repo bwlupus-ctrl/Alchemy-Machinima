@@ -4,7 +4,8 @@
 **Status:** DESIGN ONLY. Nothing implemented, nothing built, nothing committed.
 **Supersedes:** `doc/CINE_RIG_ACTOR_MASK_BRIEF_V2.md` and V1. Resolves every finding in
 `doc/CINE_RIG_ACTOR_MASK_REVIEW_OPUS_R1.md` (A1-A13, B1-B7, C1-C6) and
-`doc/CINE_RIG_ACTOR_MASK_REVIEW_CODEX_R1.md` (Codex 1-8). This document stands alone.
+`doc/CINE_RIG_ACTOR_MASK_REVIEW_CODEX_R1.md` (Codex 1-8) and `doc/CINE_RIG_ACTOR_MASK_REVIEW_FABLE_R1.md`
+(Fable A1-A4 plus nits; edited in place). This document stands alone.
 
 **Anchored at:** HEAD `057e55885f9`. Only documents changed since `025ed6763c6`, which contains probe
 on-demand `def6630db74` and the manual probe rate. Every `file:line` below was re-read at this HEAD.
@@ -82,7 +83,28 @@ The bounding-volume shortcut is rejected: it lights anything inside the actor's 
 | 7 | EMPTY is not a trustworthy verdict | EMPTY is removed (Codex R2: a loose-depth hit does not prove visibility either). A tight count of 0 gives `VISIBILITY INCONCLUSIVE` with the loose count as a diagnostic. Broken-mask detection is the Debug=1 overlay plus NO-GEOMETRY. Each query is tagged with the frame, view, recipient and the visibility state captured at issue time | §9.1 |
 | 8 | Work-package parallelism contradicts file ownership | The "disjoint files" claim is dropped. A single sequential order covers every WP | §10 |
 
-### 2.3 Findings of my own carried from V2 (PROVES unless marked)
+### 2.3 Fable R1 (edited into V3 in place)
+
+All four A items are PROVES at HEAD `057e55885f9`. I re-read every anchor below.
+
+| # | Finding (Fable R1) | Resolution | Where |
+|---|---|---|---|
+| A1 (WP1) | `LLRenderTarget::clear()` is a bare `glClear` with the current clear colour (llrendertarget.cpp:569-596). At the mask site that colour is still the G-buffer magenta (llviewerdisplay.cpp:1030 main, 1373 cube; grey under wireframe at 1026/1369), and the colour mask is still `(true,false)`. Both are reset only later, at pipeline.cpp:23066 and 23096-23098. R8 clears to 255, every pixel passes any-of, and the whole set is lit | Before the colour-only clear: `gGL.setColorMask(true, true); glClearColor(0,0,0,0);`. On exit, restore the previous clear colour and colour mask. Clear colour is added to the §7 checklist. The instrument logs a mask-byte histogram | §5.3, §5.4, §7, §9.3 |
+| A2 (WP1) | `mirror_flag` and `clipPlane` (llsettingsvo.cpp:1312, 1315) only reach programs dirtied from `mShaderList` (llenvironment.cpp:1676-1690). Mask programs that are not on that list keep `mirror_flag = 0`, so `mirrorClip` does nothing in mirror and Prism views | Push every mask program onto `mShaderList`, following the actorghost pattern (llviewershadermgr.cpp:614-627). Rigged variants are dirtied with their parent (llenvironment.cpp:1681-1683). The WP1 report verifies `getUniformLocation(MIRROR_FLAG) >= 0` (llshadermgr.h:104-105) for each program. New verdict `ACTORMASK NO-CLIP`: the view drops to `EXCLUDE` | §5.4.2, §9.1 |
+| A3 (WP3) | System avatar alpha (hair, skirt, eyelashes) is forward-lit by `gDeferredAvatarAlphaProgram` through `LLDrawPoolAvatar::renderPostDeferred`, outside `LLDrawPoolAlpha`. No selection site covers it | On the post-deferred path of `LLDrawPoolAvatar::renderAvatars`: call `selectForwardLightSet(recipientBit(avatarp))` after the suppression test at lldrawpoolavatar.cpp:1132 and before `renderSkinned()` at :1179, then restore the world set. lldrawpoolavatar.cpp joins WP3 | §5.7, §10 |
+| A4 (WP1) | Depth agreement is a rule per program. The shadow avatar template has no `AVATAR_CLOTH` | Each mask program uses the identical `gl_Position` expression and helper file as its G-buffer counterpart. The body copies `avatarV`, including the `AVATAR_CLOTH` block, and uploads the three wind uniforms as llactormover.cpp:15122-15146 already does. The WP1 report lists each expression beside its counterpart | §5.4.2 |
+
+**Nits folded in:**
+- The bias default is now -8, and the bisect starts there (Fable C1).
+- PARITY records which path each F3 point took, and is INCONCLUSIVE if none took the volume path (C4).
+- The new light programs copy the stock feature flags, call `add_common_permutations` and bind through `bindDeferredShader` (C5).
+- The texture-channel count of the two new programs is logged (C6).
+- New invariant: actor spot draws come after both world spot blocks (C8).
+- B5 now notes that mirrors at probe level 0 skip all local lights (C3).
+- The dead `isMirrorPass` clause in the probe-centric branch is removed (C9).
+- Fable's shader-depth-sampling alternative is recorded as a **fallback only** (§5.4.3).
+
+### 2.4 Findings of my own carried from V2 (PROVES unless marked)
 
 - **N1.** `LLRenderTarget::clear()` also clears a shared depth attachment (llrendertarget.cpp:569-577).
   The mask must clear with `clear(GL_COLOR_BUFFER_BIT)` only and must never write depth.
@@ -173,7 +195,7 @@ for B1.
 | Spot shadow auction (null incumbent 24384-24389, swap 24400-24408) | pipeline.cpp:24372-24410 |
 | Prism spot-shadow selection | pipeline.cpp:27156-27219 |
 | Light program registration / unload | llviewershadermgr.cpp:2639-2721 / 1620-1626 |
-| Shadow alpha-mask program family (template for the mask programs) | llviewershadermgr.cpp:3431-3449, 3554-3590 |
+| Shadow alpha-mask program family (fragment-side starting point only; vertex follows the A4 rule) | llviewershadermgr.cpp:3431-3449, 3554-3590 |
 | `createShader`: hash / binary cache / per-file compile with `&mDefines` / feature attach | llglslshader.cpp:443 / 457 / **466-479** / 483 |
 | Library shader objects (precompiled, shared) | llglslshader.cpp:569-596 |
 | Define injection at `[EXTRA_CODE_HERE]` | llshadermgr.cpp:730-733 (permutation defines), 862-895 (marker insertion) |
@@ -191,7 +213,13 @@ for B1.
 | System body replay pattern | llactormover.cpp:14861-14899, 14901+ |
 | Shared Actor FX proxies | llactormover.cpp:16932-17020 |
 | Ghost invariant guard | llghostdeferreddiagnostics.h:25-44, 61-88 |
-| Mirror/Prism clip | diffuseF.glsl:37/62; llsettingsvo.cpp:1287-1307 |
+| Mirror/Prism clip | diffuseF.glsl:37/62; llsettingsvo.cpp:1287-1307; uploads at 1312 (`CLIP_PLANE`) and 1315 (`MIRROR_FLAG`); reserved names llshadermgr.h:104-105 |
+| Environment-uniform dirtying over `mShaderList` | llenvironment.cpp:1676-1690 (rigged variant 1681-1683) |
+| `mShaderList` push pattern (actorghost) | llviewershadermgr.cpp:614-627 |
+| G-buffer clear colour (magenta, grey under wireframe) | llviewerdisplay.cpp:1026, 1030 (main); 1369, 1373 (cube) |
+| `renderDeferredLighting` colour mask / clear-colour pair | pipeline.cpp:23066 / 23096-23098 |
+| Avatar pool: suppression test / cloth wind uniforms / `renderSkinned` | lldrawpoolavatar.cpp:1132 / 1152-1175 / 1179 |
+| Actorghost body cloth upload (template for the mask body) | llactormover.cpp:15122-15146 |
 | Rig panel per-light rows / Director embed / reset list | panel_cine_light_rig.xml:321-322, 390-391, 455-456, 520-521 / floater_director.xml:1683-1684 / alpanelcinelightrig.cpp:471+ |
 
 The remaining anchors (the release/alloc sites in pipeline.cpp, llviewerdisplay order, Prism, probes)
@@ -304,7 +332,15 @@ llviewerdisplay.cpp:1388. If a `MASK` view cannot produce a valid mask, it becom
   - Release always comes first because `shareDepthBuffer` raises LL_ERRS on a target that already has
     depth (llrendertarget.cpp:430-438).
 - **Freed when unused:** at the main view, if `!anyActorOnly()`, every pack's mask is released.
-- **Clear:** `actorMask.clear(GL_COLOR_BUFFER_BIT)` only (N1). Never clear or write depth.
+- **Clear (Fable A1):**
+  1. Save the current clear colour and colour mask.
+  2. `gGL.setColorMask(true, true); glClearColor(0, 0, 0, 0);`.
+  3. `actorMask.clear(GL_COLOR_BUFFER_BIT)` only (N1). Never clear or write depth.
+  4. Restore both values on exit.
+
+  `clear()` is a bare `glClear` with the current clear colour (llrendertarget.cpp:569-596). At this
+  site that colour is still the G-buffer magenta (llviewerdisplay.cpp:1030, 1373), so a mask cleared
+  without step 2 reads 255 everywhere.
 
 ### 5.4 The mask pass (WP1)
 
@@ -318,7 +354,7 @@ are current and its G-buffer depth is final. In the main view that depth include
 - `LLGLEnable(GL_POLYGON_OFFSET_FILL)` with `glPolygonOffset(0, CineLightRigActorMaskBias)`, then
   `glPolygonOffset(0, 0)` on exit.
 - G-buffer culling: back-face, except double-sided GLTF (N7).
-- Colour mask set, then restored.
+- Colour mask `(true,true)` and clear colour `(0,0,0,0)` set for the clear (§5.3), then both restored.
 - **No** `blendFunc`, **no** scissor, **no** logic-op.
 - Wrapped in the extended invariant guard (§9).
 
@@ -389,12 +425,40 @@ Each draw writes `byte / 255.0` (exact in UNORM8).
    idempotent.
 4. **Alpha-mask draws:** use the draw's own cutoff and texture transform, mirroring exactly the discard
    of the G-buffer program that drew the draw.
-5. **Mirror clip:** every mask fragment shader calls `mirrorClip(vary_position)` (N5).
+5. **Mirror clip (N5, Fable A2):**
+   - Every mask fragment shader calls `mirrorClip(vary_position)`.
+   - Every mask program is **pushed onto `mShaderList`** using the actorghost pattern
+     (llviewershadermgr.cpp:614-627). That way `LLEnvironment::update` dirties it
+     (llenvironment.cpp:1676-1690, rigged variants 1681-1683), and `mirror_flag`/`clipPlane` are uploaded
+     at bind (llsettingsvo.cpp:1312, 1315).
+   - The WP1 report verifies `getUniformLocation(LLShaderMgr::MIRROR_FLAG) >= 0` for each mask program.
+   - At runtime: in a mirror `MASK` view, or a Prism view with an active lens clip, if any bound mask
+     program lacks the `MIRROR_FLAG` location, log `ACTORMASK NO-CLIP` and drop the view to `EXCLUDE`.
 
-**Programs:** new program objects only, modelled on the shadow alpha-mask family
-(llviewershadermgr.cpp:3431-3449, 3554-3590): static, rigged, GLTF alpha-mask (+ rigged), avatar,
-eyeball. That is at most 6. They are added to the unload list and every bind is guarded by
-`isComplete()`. If one is missing: `ACTORMASK NO-PROGRAM`, and the view becomes `EXCLUDE`.
+**Programs:** new program objects only: static, rigged, GLTF alpha-mask (+ rigged), avatar body,
+eyeball. That is at most 6. They are added to the unload list, and every bind is guarded by
+`isComplete()`. If one is missing, log `ACTORMASK NO-PROGRAM` and the view becomes `EXCLUDE`.
+
+**Depth-agreement rule (Fable A4):** depth agreement is a rule for each program, not a family template.
+Each mask vertex shader uses the identical `gl_Position` expression, uniform set and helper file
+(`objectSkinV.glsl`, `avatarSkinV.glsl`) as the G-buffer program that drew that geometry:
+- **Static:** `modelview_projection_matrix * vec4(position, 1)`, the form used by
+  diffuseV/pbropaqueV/materialV/bumpV.
+- **Rigged (`HAS_SKIN`):** `mat = modelview_matrix * getObjectSkinnedTransform(); pos = mat * p; gl_Position = projection_matrix * pos`.
+- **System body:** the `avatarV` transform, **including the `AVATAR_CLOTH` block**. The permutation is
+  mirrored from `gDeferredAvatarProgram` whenever `RenderAvatarCloth` is on. The three wind uniforms
+  (`AVATAR_WIND`, `AVATAR_SINWAVE`, `AVATAR_GRAVITY`) are uploaded exactly as the actorghost replay does
+  at llactormover.cpp:15122-15146, which mirrors lldrawpoolavatar.cpp:1152-1175. The shadow avatar
+  template is **not** enough: it has no cloth path, so displaced skirt and lower-body vertices would leave
+  holes.
+- **Eyes:** the static form.
+
+The shadow alpha-mask family (llviewershadermgr.cpp:3431-3449, 3554-3590) stays a starting point for the
+fragment side only.
+
+**The WP1 report lists each mask program's `gl_Position` expression beside its G-buffer counterpart**, and
+the reviewer verifies them by reading, not by compiling. Under `RenderDepthPrePass` the static
+pre-pass uses the same static MVP form; note this in the report.
 
 **Ordering and ties:**
 - At an exact depth tie inside one avatar, every draw writes the same byte, so the result is harmless.
@@ -403,8 +467,23 @@ eyeball. That is at most 6. They are added to the unload list and every bind is 
 
 **Queries:** tagged per recipient (§9.1).
 
-**Polygon offset:** units only, factor 0. `CineLightRigActorMaskBias` defaults to **-4.0 (GUESS)**, range
--64..0.
+**Polygon offset:** units only, factor 0. `CineLightRigActorMaskBias` defaults to **-8.0 (GUESS)**, range
+-64..0. In-world test 1 bisects toward 0 starting from -8. Only holes are at stake: the offset is tens of
+micrometres at 5 m, far below hand-on-shoulder spacing.
+
+#### 5.4.3 Fallback only: depth sampling in the mask shader (Fable R1 §6)
+
+**Use this only if** in-world test 1's bias bisect shows the shared-depth LEQUAL-plus-offset route is
+flaky on the user's driver. It is not a plan for v1.
+
+If needed, the mask pass would stop using the shared depth and the polygon offset entirely. Instead:
+- The mask fragment shader samples `deferredScreen`'s depth texture. It is not attached to the mask FBO,
+  so there is no feedback loop.
+- It compares linear depths with a metric tolerance that scales with `z^2`.
+
+The cost is one depth fetch per mask fragment, plus the loss of hardware early-Z on mask draws.
+
+Adopting it is a separate fix round with its own review.
 
 ### 5.5 Deferred actor-only lights (WP2)
 
@@ -451,6 +530,16 @@ when the actor-only lights are switched off.
 2. `gDeferredMultiSpotLightActorMaskProgram`: `MULTI_SPOTLIGHT = 1`.
    - Vertex: `multiPointLightV.glsl` + `actorMaskGateV.glsl`.
    - Fragment: `spotLightF.glsl` + `actorMaskGateF.glsl`.
+
+**Program setup (Fable C5, C6):**
+- Both programs copy the stock light programs' feature flags verbatim (`isDeferred`, `hasFullGBuffer`,
+  `hasShadows`, `hasSrgb`; llviewershadermgr.cpp:2639-2721) and call `add_common_permutations`.
+  Otherwise `rigRimMode()`, the shadow samplers and the `GET_GBUFFER_FLAG` preamble would differ from the
+  bodies they wrap.
+- They bind through `bindDeferredShader` (pipeline.cpp:22665), like the stock programs.
+- They are deliberately **not** in `mShaderList`: they take no environment uniforms.
+- The WP2 report logs each program's `mActiveTextureChannels` against `gGLManager.mNumTextureImageUnits`.
+  `createShader` warns above 24 channels, and the mask sampler adds one.
 
 **Main-rename wrappers (Codex R1 #2).** Each new program calls `addPermutation("main", "actorMaskedMain")`
 **after** `clearPermutations()`. `createShader` passes `mDefines` to **every** listed file
@@ -505,6 +594,10 @@ count them (rule 6).
   - Set `actor_mask_bits`, bind the mask texture, draw.
 - **Spots:** for each spot: `setupSpotLight()`, the same uniforms as 23654-23664, `actor_mask_bits`, draw.
 - No scissor in v1. Tracy zone: `"actor-only lights"`.
+- **Invariant (Fable C8):** the actor spot draws come **after both world spot blocks** (spot volumes
+  23530-23570 and multi-spot 23636-23671). The shadow auction runs inside `setupSpotLight`, so this
+  order ensures every world auction completes before any tier-0 candidate appears. Moving the actor
+  block earlier would silently turn "fills empty slots" into "fills, then gets displaced".
 
 ### 5.6 Spot-shadow tiers (WP2, Codex R1 #4)
 
@@ -531,6 +624,9 @@ baseline.
 
 In `generatePrismSpotShadows` (27156-27219), sort actor-only candidates after all others and keep the
 existing order within each group.
+
+This byte-identity depends on the draw-order invariant in §5.5: actor spot draws come after both world
+spot blocks.
 
 ### 5.7 Forward lighting: world set and actor sets (WP3)
 
@@ -578,6 +674,16 @@ valid mask.
   `LLActorMover::sharedActorStyleProxyAvatar(index)` (the proxy holds `mAvatar`, 16932-16960). Restore
   the world set afterwards.
 - **Every `renderAlpha` exit:** an RAII guard restores the world set.
+- **System avatar alpha (Fable A3).** Hair, skirt and eyelashes are forward-lit by
+  `gDeferredAvatarAlphaProgram` through `LLDrawPoolAvatar::renderPostDeferred`, which is outside
+  `LLDrawPoolAlpha`.
+  - In `LLDrawPoolAvatar::renderAvatars`, on the post-deferred path only, call
+    `selectForwardLightSet(recipientBit(avatarp))` **after** the suppression test at
+    lldrawpoolavatar.cpp:1132 (so eligibility stays with the real submission) and **before**
+    `renderSkinned()` at :1179.
+  - Restore the world set afterwards with RAII.
+  - The byte is forced to 0 when the view is not `MASK`, and for impostor pass 0 (B7).
+  - Each switch counts in `alpha_switches`.
 
 Ghost proxy and overlay replays (23748-23775) run outside `renderAlpha` and always see the world set.
 
@@ -589,7 +695,7 @@ draw (precedent: `setRigRimActive`, llrender.cpp:888-900).
 | Site | Change |
 |---|---|
 | Deferred loop and `setupHWLights` in cube faces | Covered by §5.2, §5.5 and §5.7 |
-| `calcNearbyLights` probe-centric branch (9875-9939) | Skip actor-only lights at insertion **unless** `isMirrorPass()` |
+| `calcNearbyLights` probe-centric branch (9875-9939) | Skip actor-only lights at insertion. (No mirror clause is needed: the hero mirror never enters this branch and reuses the main-eye list. Fable C9.) |
 | `appendCinematicProbeLightSignature` | **No change** (N9) |
 | Rig Live signature/animating (alcinelightrig.cpp:1175-1230) | Actor-only emitters become absent markers (`addExact(false)`) and are ignored by `liveProbeAnimating` |
 | `updateLiveProbe` (alcinelightrigmanager.cpp:657-662) | Remove actor-only ids from the pinned list |
@@ -650,7 +756,7 @@ sites.** Verify by grepping both names and comparing the counts.
 | `CineLightRigCatchlightActorOnly` | Boolean | 0 | The catchlight lights only the recipients |
 | `CineLightRigActorMaskDisable` | Boolean | 0 | Kill switch: flags are ignored and lights behave normally |
 | `CineLightRigActorMaskDebug` | U32 | 0 | 0 off, 1 overlay, 2 mask only; also enables guard capture |
-| `CineLightRigActorMaskBias` | F32 | -4.0 | Polygon offset units (GUESS) |
+| `CineLightRigActorMaskBias` | F32 | -8.0 | Polygon offset units (GUESS; bisect from -8) |
 | `CineLightRigActorMaskTest` | U32 | 0 | 1 arm, 2 cancel (§9.3) |
 
 Add the six rig keys to `ALPanelCineLightRig::settings()` (alpanelcinelightrig.cpp:471+). Do not add them
@@ -676,7 +782,9 @@ to llpresetsmanager.cpp.
 ### Off (every flag false, or the kill switch on)
 
 When `anyActorOnly()` is false, nothing new runs:
-- No mask is allocated, no mask pass runs, and no new program is bound.
+- No mask is allocated, no mask pass runs, and no new program is bound. The mask programs sit on
+  `mShaderList` (Fable A2), so they are dirtied each frame. Uniforms are uploaded only at bind, and they
+  are never bound, so nothing reaches the GPU.
 - The eligibility recorder is never armed. Its hook sits on the predicates' true branch behind one bool.
 - The world loops' new `continue` is one cached-bool branch.
 - No actor scans run.
@@ -707,6 +815,7 @@ It holds only with all of the following:
 **What reviewers check.** Against both the beauty pass and the off path, after the mask pass and after
 the actor-only light block:
 - colour mask;
+- **clear colour** (Fable A1);
 - blend enable and blend function;
 - draw buffers;
 - depth function and depth mask;
@@ -737,7 +846,9 @@ to engineer around them.
    air, not on surfaces, so the cone stays visible. Untick that light's Shaft if you do not want it.
 5. **Reflections never show it on the set; mirrors lag.** Reflection probes and SSR show the set
    without the Actor-only light. That is by design, because the light does not touch the set. A mirror
-   shows the actor lit, but updates at the hero-probe rate, so it can trail by a few faces.
+   shows the actor lit, but updates at the hero-probe rate, so it can trail by a few faces. At reflection
+   probe level 0, mirrors skip all local lights, as stock does for every local light. The mirror then
+   shows the actor without the Actor-only light while the main view shows it lit.
 6. **About 1-pixel speckle at the silhouette.** The mask is a second drawing of the actor, so edge
    pixels and contact points (a hand on a shoulder) can be off by about one pixel. The debug overlay
    shows exactly where.
@@ -779,6 +890,7 @@ to engineer around them.
 | `ACTORMASK IMPOSTOR <r>` / `STYLED <r>` | Fail closed by design (B7; §5.4.1) |
 | `ACTORMASK OBJECT-TARGET <slot>` / `RECIPIENT-OVERFLOW` | §5.1 |
 | `ACTORMASK STALE` / `ALLOC-FAIL` / `NO-PROGRAM` | The view fell back to `EXCLUDE` |
+| `ACTORMASK NO-CLIP` | Mirror `MASK` view, or Prism view with an active lens clip, where a mask program has no `MIRROR_FLAG` location; the view fell back to `EXCLUDE` (Fable A2) |
 | `ACTORMASK VIEW-UNCLASSIFIED <view>` | Fail-closed path hit |
 | `ACTORMASK STATE-LEAK <what>` | Extended guard tripped |
 
@@ -818,12 +930,20 @@ INCONCLUSIVE.
 **Checks:**
 - **ISOLATION-DEFERRED:** F1 vs F0 at C_deferred. Stable pixels with mask == 0 must be bit-identical.
   Zero changed mask pixels gives INCONCLUSIVE.
+  - The instrument also prints a mask-byte histogram (Fable A1).
+  - A histogram with no zero bin means the mask was not cleared to 0, so the test reports FAIL and
+    names "mask clear".
 - **ISOLATION-FORWARD:** F2 vs F1 at C_post. Stable pixels outside the recipients' bounds, dilated by
   8 px, must be identical. Precondition: shafts, froxel lights and haze are off (otherwise
   INCONCLUSIVE, B4).
 - **PARITY:** F1 vs F3 at C_deferred, on mask pixels eroded by 2 px:
   `|a-b| <= 1e-3 + 0.01*max(a,b)`. INCONCLUSIVE if the shadow-slot assignment differs between F1 and
   F3, or the rig is animating.
+  - **Path record (Fable C4):** F3 records the path each actor-only point light took, volume or
+    fullscreen (pipeline.cpp:23464-23466).
+  - If no point light took the volume path, PARITY is INCONCLUSIVE, reason "no volume-path point in F3".
+    In that case F3 and F1 ran the same program, so the comparison proves nothing.
+  - Spots need no record: both spot programs compile `spotLightF.glsl`.
 
 **INCONCLUSIVE preconditions:**
 - SSR is on;
@@ -856,9 +976,9 @@ has converged.
 |---|---|---|---|---|
 | 1 | **0** | Codex | Registry, recipient bits, `drawByte`, `LightBase.mActorOnly` + 5 runtime sites, rig-level members, `catchlightId()`, keep-live clause, pure-model registry + tests | alcinelightrigmodel.h/.cpp, alcinelightrig.h/.cpp, alcinelightrigmanager.h/.cpp, llvoavatar.cpp, alcinelightrigmodel_test.cpp |
 | 2 | **5** | Sonnet | §6.1 IO sites, rig-level IO, settings.xml keys, reset list, tests | alcinelightrig.cpp, alcinelightrigmanager.h, settings.xml, alpanelcinelightrig.cpp (`settings()` only), alcinelightrigmodel_test.cpp |
-| 3 | **1** | Codex | Classification, mask lifecycle, eligibility recorder, mask pass and programs, reserved uniforms, walk parameters, proxy-avatar accessor, query plumbing | pipeline.h/.cpp, lldrawpool.cpp (recorder hooks), new llactormaskeligibility.h/.cpp, llviewershadermgr.h/.cpp, llshadermgr.h/.cpp, new mask shaders, llactormover.h/.cpp |
-| 4 | **2** | Codex | Light skip + actor scan, 2 programs + 2 wrappers, fullscreen draws, shadow tiers, Prism order | pipeline.cpp, llviewershadermgr.cpp, new `actorMaskGateV/F.glsl` |
-| 5 | **3** | Codex | World/actor sets, `restoreLightUnitContent`, `selectForwardLightSet`, alpha-pool selection | pipeline.h/.cpp, llrender.h/.cpp (new method only), lldrawpoolalpha.cpp |
+| 3 | **1** | Codex | Classification, mask lifecycle (including clear colour), eligibility recorder, mask pass and programs (each on `mShaderList`; report lists every `gl_Position` expression beside its G-buffer counterpart, and the `MIRROR_FLAG` location check), reserved uniforms, walk parameters, proxy-avatar accessor, query plumbing | pipeline.h/.cpp, lldrawpool.cpp (recorder hooks), new llactormaskeligibility.h/.cpp, llviewershadermgr.h/.cpp, llshadermgr.h/.cpp, new mask shaders, llactormover.h/.cpp |
+| 4 | **2** | Codex | Light skip + actor scan, 2 programs + 2 wrappers (stock feature flags, `add_common_permutations`, texture-channel log), fullscreen draws placed after both world spot blocks, shadow tiers, Prism order | pipeline.cpp, llviewershadermgr.cpp, new `actorMaskGateV/F.glsl` |
+| 5 | **3** | Codex | World/actor sets, `restoreLightUnitContent`, `selectForwardLightSet`, alpha-pool selection, system avatar alpha selection (Fable A3) | pipeline.h/.cpp, llrender.h/.cpp (new method only), lldrawpoolalpha.cpp, **lldrawpoolavatar.cpp** |
 | 6 | **4** | Codex | §5.8 | pipeline.cpp, llreflectionmapmanager.cpp, alcinelightrig.cpp, alcinelightrigmanager.cpp |
 | 7 | **6** | Sonnet | §6.3 UI, tooltips, Lightbox controls, doc note | panel_cine_light_rig.xml, floater_lightbox_settings.xml, alpanelcinelightrig.cpp/.h |
 | 8 | **7** | Opus | §9 verdicts, tagged query readout, extended guard, debug view, test instrument | llghostdeferreddiagnostics.h/.cpp, new alactormaskdiagnostics.h/.cpp, pipeline.cpp, llviewershadermgr.cpp |
@@ -873,7 +993,9 @@ Open the log and keep `CineLightRigActorMaskDebug` handy.
    - *Expect tinted:* the avatar and everything worn.
    - *Expect not tinted:* background seen through hair cards, an object in front, fullbright faces.
    - *Expect in the log:* `ACTORMASK OK`.
-   - Then step `Bias` toward 0 until holes in the Debug=1 overlay or speckle appear, and report the value where it is clean.
+   - Then, starting at the default -8, step `Bias` toward 0 until holes in the Debug=1 overlay or
+     speckle appear, and report the value where it is clean. If no value is clean, see the fallback in
+     §5.4.3.
 2. **Isolation.** Light floor and wall, Key Actor-only.
    - *Expect:* the avatar lit; no pool and no bounce pool on floor or wall.
    - With **Bounce lights the set** ticked, only the bounce pool appears.
@@ -912,8 +1034,9 @@ Open the log and keep `CineLightRigActorMaskDebug` handy.
 
 ## 12. Least-sure list (for the next reviewer)
 
-1. **Polygon offset.** The -4 default is a GUESS. Look for rigged-redraw z-fighting, and for a partner's
-   hand passing within the epsilon.
+1. **Polygon offset.** The -8 default is a GUESS. Look for rigged-redraw z-fighting and for a partner's
+   hand passing within the epsilon. Depth invariance across programs is INFERENCE (Fable A4): record the
+   clean bias for each geometry class (static, rigged, body, eyes).
 2. **Eligibility recorder completeness.** Is every native G-buffer suppression path routed through the
    three predicates? Is every G-buffer submission for a `MASK` view inside the armed scope? The ghost
    deferred submit sits between the main G-buffer and lighting; does it call the predicates while

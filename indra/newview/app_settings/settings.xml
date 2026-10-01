@@ -2143,7 +2143,7 @@
       <key>Comment</key><string>[ActorMask] Actor mask pass polygon offset units (tuning guess)</string>
       <key>Persist</key><integer>1</integer>
       <key>Type</key><string>F32</string>
-      <key>Value</key><real>-4.0</real>
+      <key>Value</key><real>-8.0</real>
     </map>
     <key>CineLightRigActorMaskTest</key>
     <map>

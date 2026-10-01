@@ -132,6 +132,14 @@ LLGLSLShader        gWorldActorGhostProgram;
 LLGLSLShader        gWorldSkinnedActorGhostProgram;
 LLGLSLShader        gWorldActorGhostIndexedProgram;
 LLGLSLShader        gWorldSkinnedActorGhostIndexedProgram;
+LLGLSLShader gActorMaskProgram[ACTOR_MASK_PROGRAM_COUNT]; // [ActorMask]
+// [ActorMask] One sampler per slot; native material auxiliary maps are unnecessary.
+S32 actorMaskTextureChannels()
+{
+    return llclamp(llmax(LLGLSLShader::sIndexedTextureChannels,
+                        LLGLSLShader::sIndexedGLTFChannels), 1,
+                   llmin(gGLManager.mNumTextureImageUnits, 32));
+}
 LLGLSLShader        gAvatarActorGhostProgram;
 LLGLSLShader        gAvatarEyeballActorGhostProgram;
 
@@ -604,6 +612,9 @@ LLViewerShaderMgr::~LLViewerShaderMgr()
 
 void LLViewerShaderMgr::finalizeShaderList()
 {
+    // [ActorMask] mirror_flag/clipPlane dirtied here, uploaded only at bind.
+    for (auto& shader : gActorMaskProgram)
+        if (shader.isComplete()) mShaderList.push_back(&shader);
     //ONLY shaders that need WL Param management should be added here
     mShaderList.push_back(&gAvatarProgram);
     mShaderList.push_back(&gWaterProgram);
@@ -1644,6 +1655,7 @@ bool LLViewerShaderMgr::loadShadersDeferred()
         gDeferredAvatarShadowProgram.unload();
         gDeferredAvatarAlphaShadowProgram.unload();
         gDeferredAvatarAlphaMaskShadowProgram.unload();
+        for (auto& shader : gActorMaskProgram) shader.unload(); // [ActorMask]
         gDeferredAvatarProgram.unload();
         gDeferredAvatarAlphaProgram.unload();
         gDeferredAlphaProgram.unload();
@@ -5166,6 +5178,47 @@ bool LLViewerShaderMgr::loadShadersDeferred()
         success = gRlvSphereProgram.createShader();
     }
     // [/RLV:KB]
+    // [ActorMask] Optional programs never affect stock shader success/fallback.
+    if (success)
+    {
+        for (S32 i = 0; i < ACTOR_MASK_PROGRAM_COUNT; ++i)
+        {
+            LLGLSLShader& shader = gActorMaskProgram[i];
+            shader.mName = llformat("ActorMask %d", i);
+            shader.mFeatures = LLShaderFeatures();
+            shader.mFeatures.hasSkinning = i == ACTOR_MASK_BODY;
+            shader.mFeatures.hasObjectSkinning =
+                i == ACTOR_MASK_RIGGED || i == ACTOR_MASK_PBR_RIGGED;
+            shader.mShaderLevel = mShaderLevel[SHADER_DEFERRED];
+            shader.mShaderFiles.clear();
+            const bool system = i >= ACTOR_MASK_BODY;
+            shader.mShaderFiles.push_back(make_pair(
+                i == ACTOR_MASK_BODY ? "deferred/actorMaskAvatarV.glsl" :
+                i == ACTOR_MASK_EYES ? "deferred/actorMaskEyesV.glsl" :
+                                      "deferred/actorMaskV.glsl", GL_VERTEX_SHADER));
+            shader.mShaderFiles.push_back(make_pair(system ?
+                "deferred/actorMaskAvatarF.glsl" : "deferred/actorMaskF.glsl", GL_FRAGMENT_SHADER));
+            shader.clearPermutations();
+            // All permutations follow clearPermutations (CLAUDE.md).
+            shader.addPermutation("MASK_CHANNELS", llformat("%d", actorMaskTextureChannels()));
+            if (shader.mFeatures.hasObjectSkinning) shader.addPermutation("HAS_SKIN", "1");
+            if (i == ACTOR_MASK_PBR || i == ACTOR_MASK_PBR_RIGGED)
+                shader.addPermutation("MASK_PBR", "1");
+            if (i == ACTOR_MASK_BODY && gSavedSettings.getBOOL("RenderAvatarCloth"))
+                shader.addPermutation("AVATAR_CLOTH", "1");
+            if (!shader.createShader())
+            {
+                shader.unload();
+                LL_WARNS("ActorMask") << "ACTORMASK NO-PROGRAM " << i << LL_ENDL;
+            }
+            else
+            {
+                const S32 clip = shader.getUniformLocation(LLShaderMgr::MIRROR_FLAG);
+                LL_INFOS("ActorMask") << "[ActorMask] program=" << i
+                    << " MIRROR_FLAG=" << clip << LL_ENDL;
+            }
+        }
+    }
     return success;
 }
 

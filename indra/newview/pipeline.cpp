@@ -28,6 +28,9 @@
  */
 
 #include "llviewerprecompiledheaders.h"
+#include "llactormaskeligibility.h" // [ActorMask]
+#include "alghostattachmentenumerator.h"
+#include <optional> // [ActorMask]
 
 #include "alcinehaze.h"
 #include "alcinerigrim.h" // [RigRim]
@@ -1276,6 +1279,10 @@ bool LLPipeline::allocateScreenBufferInternal(U32 resX, U32 resY)
     S32 shadow_detail = RenderShadowDetail;
     bool ssao = RenderDeferredSSAO;
 
+    // [ActorMask] Detach before deferredScreen.allocate destroys its depth.
+    const bool had_actor_mask = mRT->actorMask.isComplete();
+    mRT->actorMask.release();
+    mRT->actorMaskDepthSrc = 0;
     //allocate deferred rendering color buffers
     if (!mRT->deferredScreen.allocate(resX, resY, GL_SRGB8_ALPHA8, true)) return false;
     if (!addDeferredAttachments(mRT->deferredScreen)) return false;
@@ -1321,6 +1328,8 @@ bool LLPipeline::allocateScreenBufferInternal(U32 resX, U32 resY)
     }
 
     mRT->deferredScreen.shareDepthBuffer(mRT->screen);
+    // [ActorMask] Re-share in the allocation path; failure affects only the mask.
+    if (had_actor_mask && ALCineLightRigManager::anyActorOnly()) ensureActorMask();
 
     if (shadow_detail > 0 || ssao || RenderDepthOfField)
     { //only need mRT->deferredLight for shadows OR ssao OR dof
@@ -1573,6 +1582,8 @@ bool LLPipeline::allocateScreenBufferInternal(U32 resX, U32 resY)
 // caller outside the acquire/release pair can partially tear down an entry.
 static void release_prism_scratch_entry(LLPipeline::PrismLensScratch& entry)
 {
+    entry.rt.actorMask.release(); // [ActorMask] Before shared depth owner
+    entry.rt.actorMaskDepthSrc = 0;
     entry.rt.screen.release();
     entry.rt.deferredScreen.release();
     entry.rt.deferredLight.release();
@@ -2296,8 +2307,13 @@ void LLPipeline::releaseShadowBuffers()
 
 void LLPipeline::releaseScreenBuffers()
 {
+    mActorMaskQueries.release(); // [ActorMask]
+    mActorMaskValid = false;
+    mActorMaskAllocated = false;
     auto release_pack = [](RenderTargetPack& rt)
     {
+        rt.actorMask.release(); // [ActorMask] Before shared depth owner
+        rt.actorMaskDepthSrc = 0;
         rt.screen.release();
         rt.deferredScreen.release();
         rt.deferredLight.release();
@@ -7262,6 +7278,9 @@ void LLPipeline::renderGeomDeferred(LLCamera& camera, bool do_occlusion)
     LLAppViewer::instance()->pingMainloopTimeout("Pipeline:RenderGeomDeferred");
     LL_PROFILE_ZONE_SCOPED_CATEGORY_DRAWPOOL; //LL_RECORD_BLOCK_TIME(FTM_RENDER_GEOMETRY);
     LL_PROFILE_GPU_ZONE("renderGeomDeferred");
+    // [ActorMask] The disarmed path is one cached branch, no recorder lookup.
+    std::optional<LLActorMaskEligibility::Scope> actor_mask_scope;
+    if (ALCineLightRigManager::anyActorOnly()) actor_mask_scope.emplace(actorMaskViewStamp());
 
     llassert(!sRenderingHUDs);
 
@@ -23013,7 +23032,516 @@ void LLPipeline::preserveReShadeGBuffer()
     mReShadeGBufferRawValid = true;
 }
 
-void LLPipeline::renderDeferredLighting()
+// [ActorMask] View-local mask infrastructure. No entry on the disabled path.
+LLActorMaskViewStamp LLPipeline::actorMaskViewStamp() const
+{
+    return { gFrameCount, mRT, mActivePrismLensScratch, gCubeSnapshot,
+             mHeroProbeManager.isMirrorPass(), sPrismLensRender };
+}
+
+void LLPipeline::releaseActorMasks()
+{
+    auto release = [](RenderTargetPack& pack)
+    {
+        pack.actorMask.release();
+        pack.actorMaskDepthSrc = 0;
+    };
+    release(mMainRT);
+    release(mAuxillaryRT);
+    release(mHeroProbeRT);
+    for (auto& entry : mPrismLensScratchPool) release(entry.rt);
+    mActorMaskQueries.release();
+    mActorMaskAllocated = false;
+    mActorMaskValid = false;
+    mActorMaskRecipientStatus.clear();
+}
+
+bool LLPipeline::ensureActorMask()
+{
+    if (!ALCineLightRigManager::anyActorOnly()) return false;
+    auto& pack = *mRT;
+    auto& depth = pack.deferredScreen;
+    auto& mask = pack.actorMask;
+    if (!depth.isComplete() || !depth.getDepth()) return false;
+    // [ActorMask] Validate only a newly allocated/shared attachment.
+    if (mask.isComplete() && mask.getWidth() == depth.getWidth() &&
+        mask.getHeight() == depth.getHeight() && pack.actorMaskDepthSrc == depth.getDepth())
+        return true;
+    mask.release(); // shareDepthBuffer cannot replace an existing attachment
+    pack.actorMaskDepthSrc = 0;
+    if (!mask.allocate(depth.getWidth(), depth.getHeight(), GL_R8, false))
+    {
+        LL_WARNS_ONCE("ActorMask") << "ACTORMASK ALLOC-FAIL" << LL_ENDL;
+        return false;
+    }
+    depth.shareDepthBuffer(mask);
+    mActorMaskAllocated = true;
+    // [ActorMask] A failed validation must be retried, never cached as complete.
+    GLint draw_fbo = 0, read_fbo = 0, attachment = 0;
+    glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &draw_fbo);
+    glGetIntegerv(GL_READ_FRAMEBUFFER_BINDING, &read_fbo);
+    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, mask.getFBO());
+    glGetFramebufferAttachmentParameteriv(GL_DRAW_FRAMEBUFFER, GL_DEPTH_ATTACHMENT,
+        GL_FRAMEBUFFER_ATTACHMENT_OBJECT_NAME, &attachment);
+    const bool complete = glCheckFramebufferStatus(GL_DRAW_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE;
+    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, draw_fbo);
+    glBindFramebuffer(GL_READ_FRAMEBUFFER, read_fbo);
+    if (!complete || static_cast<U32>(attachment) != depth.getDepth())
+    {
+        mask.release();
+        return false;
+    }
+    pack.actorMaskDepthSrc = depth.getDepth();
+    return true;
+}
+
+S32 LLPipeline::bindActorMask(LLGLSLShader& shader)
+{
+    if (mActorMaskView != ActorMaskView::MASK || !mActorMaskValid) return -1;
+    return shader.bindTexture(LLShaderMgr::ACTOR_MASK_MAP, &mRT->actorMask,
+                              false, LLTexUnit::TFO_POINT);
+}
+
+namespace
+{
+// Restores wrapper caches as well as GL. The invariant outside this scope
+// observes the restored state, including a non-default clear colour.
+class ScopedActorMaskState
+{
+public:
+    ScopedActorMaskState() :
+        mShader(LLGLSLShader::sCurBoundShaderPtr), mLastMatrix(gGLLastMatrix),
+        mMode(gGL.getMatrixMode()), mUnit(gGL.getCurrentTexUnitIndex())
+    {
+        gGL.flush();
+        glGetBooleanv(GL_COLOR_WRITEMASK, mColor);
+        glGetFloatv(GL_COLOR_CLEAR_VALUE, mClear);
+        glGetFloatv(GL_POLYGON_OFFSET_FACTOR, &mFactor);
+        glGetFloatv(GL_POLYGON_OFFSET_UNITS, &mUnits);
+        glGetIntegerv(GL_CULL_FACE_MODE, &mCull);
+        glGetIntegerv(GL_VIEWPORT, mViewport);
+        glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &mDrawFBO);
+        glGetIntegerv(GL_READ_FRAMEBUFFER_BINDING, &mReadFBO);
+        glGetIntegerv(GL_READ_BUFFER, &mReadBuffer);
+        glGetIntegerv(GL_ACTIVE_TEXTURE, &mActiveTexture); // [ActorMask] Preserve raw and wrapper selectors.
+        mScissor = glIsEnabled(GL_SCISSOR_TEST); // [ActorMask] Prism changes GL directly, bypassing LLGLState.
+        // [ActorMask] Preserve all FBO draw buffers, including attachments above four.
+        GLint count = 1;
+        if (mDrawFBO) glGetIntegerv(GL_MAX_DRAW_BUFFERS, &count);
+        mDrawBuffers.resize(count);
+        for (GLint i = 0; i < count; ++i)
+        {
+            GLint value = 0;
+            glGetIntegerv(GL_DRAW_BUFFER0 + i, &value);
+            mDrawBuffers[i] = static_cast<GLenum>(value);
+        }
+        gGL.matrixMode(LLRender::MM_MODELVIEW);
+        gGL.pushMatrix();
+        gGL.matrixMode(LLRender::MM_TEXTURE0);
+        gGL.pushMatrix();
+        // [ActorMask] Preserve complete wrappers, including mip bookkeeping.
+        for (U32 i = 0; i < LL_NUM_TEXTURE_LAYERS; ++i)
+            mTextures.emplace_back(*gGL.getTexUnit(i));
+        gGL.getTexUnit(mUnit)->activate();
+        glActiveTexture(static_cast<GLenum>(mActiveTexture));
+    }
+    ~ScopedActorMaskState()
+    {
+        gGL.flush();
+        LLVertexBuffer::unbind();
+        if (mShader) mShader->bind(); else LLGLSLShader::unbind();
+        gGL.matrixMode(LLRender::MM_TEXTURE0);
+        gGL.popMatrix();
+        gGL.matrixMode(LLRender::MM_MODELVIEW);
+        gGL.popMatrix();
+        gGL.matrixMode(mMode);
+        gGLLastMatrix = mLastMatrix;
+        for (U32 i = 0; i < mTextures.size(); ++i)
+        {
+            auto* unit = gGL.getTexUnit(i);
+            mTextures[i].restore(*unit);
+        }
+        gGL.getTexUnit(mUnit)->activate();
+        glActiveTexture(static_cast<GLenum>(mActiveTexture));
+        gGL.setColorMask(mColor[0] != 0, mColor[1] != 0, mColor[2] != 0, mColor[3] != 0);
+        glClearColor(mClear[0], mClear[1], mClear[2], mClear[3]);
+        glPolygonOffset(mFactor, mUnits);
+        glCullFace(mCull);
+        glBindFramebuffer(GL_DRAW_FRAMEBUFFER, mDrawFBO);
+        glBindFramebuffer(GL_READ_FRAMEBUFFER, mReadFBO);
+        if (mDrawFBO) glDrawBuffers(static_cast<GLsizei>(mDrawBuffers.size()), mDrawBuffers.data());
+        else glDrawBuffer(mDrawBuffers.front()); // [ActorMask] GL_BACK requires glDrawBuffer.
+        glReadBuffer(mReadBuffer);
+        glViewport(mViewport[0], mViewport[1], mViewport[2], mViewport[3]);
+        if (mScissor) glEnable(GL_SCISSOR_TEST); else glDisable(GL_SCISSOR_TEST);
+    }
+private:
+    LLGLSLShader* mShader;
+    const LLMatrix4* mLastMatrix;
+    LLRender::eMatrixMode mMode;
+    U32 mUnit;
+    GLboolean mColor[4], mScissor;
+    GLfloat mClear[4], mFactor, mUnits;
+    GLint mCull, mViewport[4], mDrawFBO, mReadFBO, mReadBuffer, mActiveTexture;
+    std::vector<GLenum> mDrawBuffers;
+    std::vector<LLActorMaskTextureState> mTextures;
+};
+
+// Verified against lldrawpool.h; every entry has an explicit rigged partner.
+struct ActorMaskPass { U32 pass; bool rigged, pbr, masked, material, vec3Position; };
+const ActorMaskPass kActorMaskPasses[] = {
+    { LLRenderPass::PASS_SIMPLE, false, false, false, false, false },
+    { LLRenderPass::PASS_SIMPLE_RIGGED, true, false, false, false, false },
+    { LLRenderPass::PASS_SHINY, false, false, false, false, false },
+    { LLRenderPass::PASS_SHINY_RIGGED, true, false, false, false, false },
+    { LLRenderPass::PASS_BUMP, false, false, true, false, true },
+    { LLRenderPass::PASS_BUMP_RIGGED, true, false, true, false, true },
+    { LLRenderPass::PASS_MATERIAL, false, false, false, true, true },
+    { LLRenderPass::PASS_MATERIAL_RIGGED, true, false, false, true, true },
+    { LLRenderPass::PASS_MATERIAL_ALPHA_MASK, false, false, true, true, true },
+    { LLRenderPass::PASS_MATERIAL_ALPHA_MASK_RIGGED, true, false, true, true, true },
+    { LLRenderPass::PASS_SPECMAP, false, false, false, true, true },
+    { LLRenderPass::PASS_SPECMAP_RIGGED, true, false, false, true, true },
+    { LLRenderPass::PASS_SPECMAP_MASK, false, false, true, true, true },
+    { LLRenderPass::PASS_SPECMAP_MASK_RIGGED, true, false, true, true, true },
+    { LLRenderPass::PASS_NORMMAP, false, false, false, true, true },
+    { LLRenderPass::PASS_NORMMAP_RIGGED, true, false, false, true, true },
+    { LLRenderPass::PASS_NORMMAP_MASK, false, false, true, true, true },
+    { LLRenderPass::PASS_NORMMAP_MASK_RIGGED, true, false, true, true, true },
+    { LLRenderPass::PASS_NORMSPEC, false, false, false, true, true },
+    { LLRenderPass::PASS_NORMSPEC_RIGGED, true, false, false, true, true },
+    { LLRenderPass::PASS_NORMSPEC_MASK, false, false, true, true, true },
+    { LLRenderPass::PASS_NORMSPEC_MASK_RIGGED, true, false, true, true, true },
+    // [ActorMask] Emissive alpha mode is opaque G-buffer material coverage.
+    { LLRenderPass::PASS_MATERIAL_ALPHA_EMISSIVE, false, false, false, true, true },
+    { LLRenderPass::PASS_MATERIAL_ALPHA_EMISSIVE_RIGGED, true, false, false, true, true },
+    { LLRenderPass::PASS_SPECMAP_EMISSIVE, false, false, false, true, true },
+    { LLRenderPass::PASS_SPECMAP_EMISSIVE_RIGGED, true, false, false, true, true },
+    { LLRenderPass::PASS_NORMMAP_EMISSIVE, false, false, false, true, true },
+    { LLRenderPass::PASS_NORMMAP_EMISSIVE_RIGGED, true, false, false, true, true },
+    { LLRenderPass::PASS_NORMSPEC_EMISSIVE, false, false, false, true, true },
+    { LLRenderPass::PASS_NORMSPEC_EMISSIVE_RIGGED, true, false, false, true, true },
+    { LLRenderPass::PASS_ALPHA_MASK, false, false, true, false, false },
+    { LLRenderPass::PASS_ALPHA_MASK_RIGGED, true, false, true, false, false },
+    { LLRenderPass::PASS_GLTF_PBR, false, true, false, false, true },
+    { LLRenderPass::PASS_GLTF_PBR_RIGGED, true, true, false, false, true },
+    { LLRenderPass::PASS_GLTF_PBR_ALPHA_MASK, false, true, true, false, true },
+    { LLRenderPass::PASS_GLTF_PBR_ALPHA_MASK_RIGGED, true, true, true, false, true },
+};
+
+// [ActorMask] Native no-pixel draws must not invalidate other recipients.
+enum class ActorMaskBatchResult : U8 { DRAWN, SKIPPED_LIKE_NATIVE, MASK_FAILED };
+ActorMaskBatchResult drawActorMaskBatch(LLDrawInfo& di, const ActorMaskPass& pass, U8 byte)
+{
+    if (!di.mCount || di.mVertexBuffer.isNull()) return ActorMaskBatchResult::SKIPPED_LIKE_NATIVE;
+    // [ActorMask] Native rigged submissions use the culled pass list and palette
+    // availability, not the stricter body/impostor eligibility predicate.
+    if (pass.rigged && di.mAvatar.isNull()) return ActorMaskBatchResult::SKIPPED_LIKE_NATIVE;
+    if (pass.rigged && di.mSkinInfo.isNull()) return ActorMaskBatchResult::MASK_FAILED;
+    LLGLSLShader& shader = gActorMaskProgram[pass.pbr ?
+        (pass.rigged ? ACTOR_MASK_PBR_RIGGED : ACTOR_MASK_PBR) :
+        (pass.rigged ? ACTOR_MASK_RIGGED : ACTOR_MASK_STATIC)];
+    if (!shader.isComplete()) return ActorMaskBatchResult::MASK_FAILED;
+    shader.bind(); // all programs preflighted before any mask write
+    if (pass.rigged && !LLRenderPass::uploadMatrixPalette(di.mAvatar, di.mSkinInfo))
+        return ActorMaskBatchResult::SKIPPED_LIKE_NATIVE; // native skips unloaded palettes too
+
+    const bool pbr_slots = pass.pbr && di.mGLTFMaterialList.size() > 1;
+    const bool bump = pass.pass == LLRenderPass::PASS_BUMP || pass.pass == LLRenderPass::PASS_BUMP_RIGGED;
+    const bool legacy_slots = pass.material && di.mMaterialSlotList.size() > 1;
+    const bool slots = pbr_slots || legacy_slots;
+    const bool texture_batch = !pass.pbr && !pass.material && !bump && di.mTextureList.size() > 1;
+    const size_t count = pbr_slots ? di.mGLTFMaterialList.size() :
+                         legacy_slots ? di.mMaterialSlotList.size() :
+                         texture_batch ? di.mTextureList.size() : 1;
+    if (count > static_cast<size_t>(actorMaskTextureChannels()) ||
+        (slots && count > 8)) return ActorMaskBatchResult::MASK_FAILED;
+
+    F32 cutoffs[8] = {};
+    F32 transforms[64] = {};
+    bool double_sided = false;
+    for (size_t i = 0; i < count; ++i)
+    {
+        LLViewerTexture* texture = nullptr;
+        F32 cutoff = pass.masked ? di.mAlphaMaskCutoff : -1.f;
+        if (pass.pbr)
+        {
+            LLFetchedGLTFMaterial* mat = pbr_slots ? di.mGLTFMaterialList[i].get() : di.mGLTFMaterial.get();
+            if (!mat)
+            {
+                // [ActorMask] Native pushGLTFBatch still draws with inherited
+                // material state when null; its coverage cannot be replayed here.
+                if (!pbr_slots) return ActorMaskBatchResult::MASK_FAILED;
+                cutoffs[i] = -1.f; // native indexed binder permits unused fragmented slots
+                continue;
+            }
+            double_sided = double_sided || mat->mDoubleSided;
+            texture = !pbr_slots && di.mTexture.notNull() ? di.mTexture.get() : mat->mBaseColorTexture.get();
+            if (pbr_slots)
+            {
+                cutoff = i < di.mGLTFAlphaMaskCutoffList.size()
+                    ? di.mGLTFAlphaMaskCutoffList[i]
+                    : mat->mAlphaMode == LLGLTFMaterial::ALPHA_MODE_MASK ? mat->mAlphaCutoff : -1.f;
+            }
+            LLGLTFMaterial::TextureTransform::Pack packed;
+            mat->mTextureTransform[LLGLTFMaterial::GLTF_TEXTURE_INFO_BASE_COLOR].getPacked(packed);
+            memcpy(&transforms[8*i], packed, sizeof(packed));
+        }
+        else if (legacy_slots)
+        {
+            texture = di.mMaterialSlotList[i].mDiffuse.get();
+            cutoff = pass.masked ? di.mMaterialSlotList[i].mAlphaMaskCutoff : -1.f;
+        }
+        else texture = texture_batch ? di.mTextureList[i].get() : di.mTexture.get();
+        if (!texture) texture = LLViewerFetchedTexture::sWhiteImagep.get();
+        gGL.getTexUnit(static_cast<S32>(i))->bindFast(texture);
+        // materialF/materialIndexedF compare texture alpha alone with half-byte bias.
+        if (pass.material && cutoff >= 0.f) cutoff -= 0.001953125f;
+        cutoffs[slots ? i : 0] = cutoff;
+    }
+    GLint samplers[32];
+    const S32 channels = actorMaskTextureChannels();
+    for (S32 i = 0; i < channels; ++i) samplers[i] = i;
+    static const LLStaticHashedString textures("mask_textures"), cutoff("mask_cutoff"),
+        indexed("mask_indexed"), material_slots("mask_material_slots"),
+        vec3_position("mask_vec3_position"), vertex_alpha("mask_vertex_alpha"),
+        transform("mask_transform");
+    shader.uniform1iv(textures, channels, samplers);
+    shader.uniform1fv(cutoff, 8, cutoffs);
+    shader.uniform1i(indexed, slots || texture_batch);
+    shader.uniform1i(material_slots, slots);
+    shader.uniform1i(vec3_position, pass.vec3Position);
+    shader.uniform1i(vertex_alpha, !pass.material && !bump); // [ActorMask] Bump tests texture alpha alone.
+    shader.uniform1i(LLShaderMgr::ACTOR_MASK_BITS, byte);
+    if (pass.pbr) shader.uniform4fv(transform, 16, transforms);
+    gGL.matrixMode(LLRender::MM_TEXTURE0);
+    if (di.mTextureMatrix && !slots && !texture_batch)
+        gGL.loadMatrix(reinterpret_cast<const F32*>(di.mTextureMatrix->mMatrix));
+    else gGL.loadIdentity();
+    gGL.matrixMode(LLRender::MM_MODELVIEW);
+    LLRenderPass::applyModelMatrix(di);
+    LLGLDisable cull(double_sided ? GL_CULL_FACE : 0);
+    di.mVertexBuffer->setBuffer();
+    di.mVertexBuffer->drawRange(LLRender::TRIANGLES, di.mStart, di.mEnd, di.mCount, di.mOffset);
+    return ActorMaskBatchResult::DRAWN;
+}
+} // namespace
+
+void LLPipeline::renderActorMask()
+{
+    LL_PROFILE_ZONE_SCOPED;
+    LLScopedActorMaskInvariant invariant("mask");
+    ScopedActorMaskState saved_state;
+    mActorMaskValid = false;
+    if (!ensureActorMask())
+    {
+        LL_WARNS_ONCE("ActorMask") << "ACTORMASK STALE" << LL_ENDL;
+        return;
+    }
+    for (auto& shader : gActorMaskProgram)
+    {
+        if (!shader.isComplete())
+        {
+            LL_WARNS_ONCE("ActorMask") << "ACTORMASK NO-PROGRAM" << LL_ENDL;
+            return;
+        }
+        // Stricter than needed: require clip support even when the plane is off.
+        // Therefore no mirror or active Prism lens clip can silently go unclipped.
+        if (shader.getUniformLocation(LLShaderMgr::MIRROR_FLAG) < 0)
+        {
+            LL_WARNS_ONCE("ActorMask") << "ACTORMASK NO-CLIP" << LL_ENDL;
+            return;
+        }
+    }
+    auto& recorder = LLActorMaskEligibility::instance();
+    if (!recorder.matches(actorMaskViewStamp()))
+    {
+        // Missing native-submission evidence is never permission to replay.
+        LL_WARNS_ONCE("ActorMask") << "ACTORMASK STALE eligibility" << LL_ENDL;
+        return;
+    }
+    if (glIsEnabled(GL_COLOR_LOGIC_OP))
+    {
+        LL_WARNS_ONCE("ActorMask") << "ACTORMASK STATE-LEAK mask entry logic-op" << LL_ENDL;
+        return;
+    }
+    // [ActorMask] Prism keeps scissor enabled through deferred lighting.
+    glDisable(GL_SCISSOR_TEST); // [ActorMask] Restored from actual GL state by saved_state.
+    LLGLDisable blend(GL_BLEND);
+    LLGLDepthTest depth(GL_TRUE, GL_FALSE, GL_LEQUAL);
+    LLGLEnable offset(GL_POLYGON_OFFSET_FILL);
+    LLGLEnable cull(GL_CULL_FACE);
+    glCullFace(GL_BACK);
+    static LLCachedControl<F32> bias(gSavedSettings, "CineLightRigActorMaskBias", -8.f);
+    const F32 units = llclamp(static_cast<F32>(bias), -64.f, 0.f);
+    glPolygonOffset(0.f, units);
+
+    auto& mask = mRT->actorMask;
+    mask.bindTarget();
+    struct FlushMask { LLRenderTarget& target; ~FlushMask() { target.flush(); } } flush{mask};
+    // Fable A1: both values are set BEFORE the colour-only clear.
+    gGL.setColorMask(true, true);
+    glClearColor(0.f, 0.f, 0.f, 0.f);
+    mask.clear(GL_COLOR_BUFFER_BIT);
+
+    const bool main = mRT == &mMainRT && !gCubeSnapshot && !sPrismLensRender;
+    static LLCachedControl<U32> debug(gSavedSettings, "CineLightRigActorMaskDebug", 0);
+    mActorMaskSummaryFrame = main && mActorMaskProbeTimer.getElapsedTimeF32() >= 5.f;
+    if (mActorMaskSummaryFrame) mActorMaskProbeTimer.reset();
+    const bool probes = main && (mActorMaskSummaryFrame || debug != 0);
+    if (main) mActorMaskQueries.poll();
+
+    // [ActorMask] Cache each touched pass once per view, shared by all recipients.
+    std::map<U32, std::unordered_set<const LLDrawInfo*>> visible_passes;
+    const auto visible = [&](const LLDrawInfo* di, U32 pass)
+    {
+        if (!hasRenderType(pass)) return false;
+        auto inserted = visible_passes.try_emplace(pass);
+        auto& draws = inserted.first->second;
+        if (inserted.second)
+        {
+            auto* begin = beginRenderMap(pass);
+            auto* end = endRenderMap(pass);
+            // Empty maps may use null iterators; do not subtract those pointers.
+            if (begin != end) draws.insert(begin, end);
+        }
+        return draws.count(di) != 0;
+    };
+    bool replay_failed = false;
+    const U8 coverage_bits = recorder.coverageBits();
+    // Match native body-pool enrollment as well as its early visibility gates.
+    std::unordered_set<const LLVOAvatar*> native_bodies;
+    if (hasRenderType(RENDER_TYPE_AVATAR))
+    {
+        for (LLDrawPool* pool : mPools)
+        {
+            if (pool->getType() != LLDrawPool::POOL_AVATAR || pool->getSkipRenderFlag()) continue;
+            const auto* avatar_pool = static_cast<const LLDrawPoolAvatar*>(pool);
+            if (avatar_pool->mDrawFace.empty()) continue;
+            const LLFace* face = avatar_pool->mDrawFace.front();
+            if (face && face->getDrawable())
+                native_bodies.insert(static_cast<LLVOAvatar*>(face->getDrawable()->getVObj().get()));
+        }
+    }
+    const auto& registry = ALCineLightRigManager::instance();
+    LLActorMover& mover = LLActorMover::instance();
+    for (const auto& recipient : registry.actorOnlyRecipients())
+    {
+        LLVOAvatar* av = recipient.mAvatar.get();
+        if (!av || av->isDead()) continue;
+        const LLVector3* ext = av->getLastAnimExtents();
+        const LLVector3 center = (ext[0] + ext[1]) * 0.5f;
+        const LLVector3 half = (ext[1] - ext[0]) * 0.5f;
+        LLVector4a c, h;
+        c.load3(center.mV); h.load3(half.mV);
+        bool in_frustum = center.isFinite() && half.isFinite() &&
+            LLViewerCamera::instance().AABBInFrustum(c, h) != 0;
+        const bool impostor = !LLActorMover::actorMaskAvatarEligible(av);
+        const bool native_styled = (coverage_bits & recipient.mBit) != 0;
+        bool styled = native_styled || recorder.suppressed(av->getActorFxOwnerId());
+        struct Batch { LLDrawInfo* info; const ActorMaskPass* pass; U8 byte; };
+        std::vector<Batch> batches;
+        std::unordered_set<const LLDrawInfo*> visited;
+        if (!impostor)
+        {
+            const auto temp = ALGhostTempAttachmentPolicy::INCLUDE;
+            mover.walkGhostSourceGeometry(av, {}, {}, {}, &temp, [&](LLSpatialGroup* group)
+            {
+                for (const auto& pass : kActorMaskPasses)
+                {
+                    const auto found = group->mDrawMap.find(pass.pass);
+                    if (found == group->mDrawMap.end()) continue;
+                    for (const auto& ptr : found->second)
+                    {
+                        LLDrawInfo* di = ptr.get();
+                        if (!di) continue;
+                        const U8 owner_byte = registry.drawByte(*di);
+                        if (!(owner_byte & recipient.mBit) || !visible(di, pass.pass)) continue;
+                        // [ActorMask] Native culling includes attachment bounds even with an offscreen body.
+                        in_frustum = true;
+                        const U8 byte = static_cast<U8>(owner_byte & ~coverage_bits);
+                        if (native_styled || !byte) continue;
+                        if (recorder.suppressed(di)) { styled = true; continue; }
+                        if (visited.insert(di).second) batches.push_back({di, &pass, byte});
+                    }
+                }
+            });
+        }
+        U32 skipped = 0; // [ActorMask] Per-query batch skips for WP7.
+        auto draw = [&]()
+        {
+            skipped = 0; // Probe replays must not accumulate the tight query's count.
+            U32 draws = 0;
+            if (!in_frustum || impostor || native_styled) return draws;
+            gGL.matrixMode(LLRender::MM_MODELVIEW);
+            gGL.loadMatrix(gGLModelView);
+            gGLLastMatrix = nullptr;
+            gGL.matrixMode(LLRender::MM_TEXTURE0);
+            gGL.loadIdentity();
+            gGL.matrixMode(LLRender::MM_MODELVIEW);
+            if (!recorder.suppressed(av->getActorFxOwnerId()) && native_bodies.count(av))
+                draws += mover.renderSystemActorMask(av, registry.recipientBit(av));
+            for (const auto& batch : batches)
+            {
+                switch (drawActorMaskBatch(*batch.info, *batch.pass, batch.byte))
+                {
+                case ActorMaskBatchResult::DRAWN: ++draws; break;
+                case ActorMaskBatchResult::SKIPPED_LIKE_NATIVE: ++skipped; break;
+                case ActorMaskBatchResult::MASK_FAILED: replay_failed = true; break;
+                }
+            }
+            return draws;
+        };
+        LLActorMaskQueryTag tag;
+        tag.frame = gFrameCount;
+        tag.view = mActorMaskViewId;
+        tag.recipient = recipient.mAvatarId;
+        tag.recipientBit = recipient.mBit;
+        tag.inFrustum = in_frustum;
+        tag.impostor = impostor;
+        tag.styled = styled;
+        const bool tight = main && mActorMaskQueries.begin(tag);
+        const U32 draws = draw();
+        if (tight) mActorMaskQueries.end(draws, skipped);
+        if (probes)
+        {
+            LLScopedActorMaskInvariant probe_guard("probes");
+            gGL.setColorMask(false, false);
+            tag.kind = LLActorMaskQueryKind::LOOSE;
+            if (mActorMaskQueries.begin(tag))
+            {
+                glPolygonOffset(0.f, 16.f * units);
+                const U32 probe_draws = draw();
+                mActorMaskQueries.end(probe_draws, skipped);
+                glPolygonOffset(0.f, units);
+            }
+            tag.kind = LLActorMaskQueryKind::RASTER;
+            if (mActorMaskQueries.begin(tag))
+            {
+                LLGLDepthTest no_depth(GL_FALSE, GL_FALSE);
+                const U32 probe_draws = draw();
+                mActorMaskQueries.end(probe_draws, skipped);
+            }
+            gGL.setColorMask(true, true);
+        }
+        const char* status = impostor ? "IMPOSTOR" : styled ? "STYLED" : "NATIVE";
+        auto& previous = mActorMaskRecipientStatus[recipient.mAvatarId];
+        if (previous != status)
+        {
+            previous = status;
+            if (impostor || styled)
+                LL_INFOS("ActorMask") << "ACTORMASK " << status << " " << recipient.mAvatarId << LL_ENDL;
+        }
+    }
+    if (replay_failed)
+    {
+        LL_WARNS_ONCE("ActorMask") << "[ActorMask] ACTORMASK REPLAY-FAIL view excluded" << LL_ENDL;
+        return;
+    }
+    mActorMaskValid = true;
+}
+
+void LLPipeline::renderDeferredLighting(ActorMaskViewSource source)
 {
     LL_PROFILE_ZONE_SCOPED_CATEGORY_PIPELINE;
     LL_PROFILE_GPU_ZONE("renderDeferredLighting");
@@ -23032,11 +23560,60 @@ void LLPipeline::renderDeferredLighting()
     // if it were current.
     preserveReShadeGBuffer();
 
+    // [ActorMask] Reset on every return, including the null-cull path. Consumers
+    // use this scope's validity, never a previous frame's surviving R8 texture.
+    struct ResetActorMaskView
+    {
+        LLPipeline& pipe;
+        ~ResetActorMaskView()
+        {
+            pipe.mActorMaskView = ActorMaskView::NONE;
+            pipe.mActorMaskValid = false;
+        }
+    } reset_actor_mask{*this};
     if (!sCull)
     {
+        // [ActorMask] An empty main view still owns the off-transition cleanup.
+        if (mActorMaskAllocated && source == ActorMaskViewSource::MAIN &&
+            !ALCineLightRigManager::anyActorOnly()) releaseActorMasks();
         return;
     }
 
+    // [ActorMask] One cached gate; cleanup happens once on the off transition.
+    if (ALCineLightRigManager::anyActorOnly() || mActorMaskAllocated)
+    {
+        mActorMaskView = ActorMaskView::EXCLUDE;
+        mActorMaskValid = false;
+        if (!ALCineLightRigManager::anyActorOnly())
+        {
+            mActorMaskView = ActorMaskView::NONE;
+            if (source == ActorMaskViewSource::MAIN) releaseActorMasks();
+        }
+        else if (!sImpostorRender && !sRenderingHUDs)
+        {
+            ++mActorMaskViewId;
+            if (gCubeSnapshot && source == ActorMaskViewSource::CUBE)
+            {
+                if (mHeroProbeManager.isMirrorPass() && mRT == &mHeroProbeRT)
+                    mActorMaskView = ActorMaskView::MASK;
+            }
+            else if (!gCubeSnapshot && sPrismLensRender &&
+                source == ActorMaskViewSource::PRISM && mActivePrismLensScratch &&
+                mRT == &mActivePrismLensScratch->rt)
+                mActorMaskView = ActorMaskView::MASK;
+            else if (!gCubeSnapshot && !sPrismLensRender &&
+                source == ActorMaskViewSource::MAIN && mRT == &mMainRT)
+                mActorMaskView = ActorMaskView::MASK;
+            else
+                LL_WARNS_ONCE("ActorMask") << "ACTORMASK VIEW-UNCLASSIFIED "
+                    << static_cast<U32>(source) << LL_ENDL;
+            if (mActorMaskView == ActorMaskView::MASK)
+            {
+                renderActorMask();
+                if (!mActorMaskValid) mActorMaskView = ActorMaskView::EXCLUDE;
+            }
+        }
+    }
     llassert(!sRenderingHUDs);
 
     F32 light_scale = 1.f;

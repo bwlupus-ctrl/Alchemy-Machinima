@@ -25,6 +25,7 @@
  */
 
 #include "llviewerprecompiledheaders.h"
+#include "llactormaskeligibility.h" // [ActorMask]
 
 #include "lldrawpool.h"
 #include "llrender.h"
@@ -649,6 +650,15 @@ LLVector2 LLRenderPass::actorFxScreenSize()
     return size;
 }
 
+// [ActorMask] actorFxF's sole native discard is Dissolve (look 10).
+// Evaluate at submission under the real shader, after shared-replay routing.
+static bool actor_mask_native_changes_coverage(const LLDirectorCast::ActorStyle& style)
+{
+    const LLGLSLShader* shader = get_actor_fx_shader();
+    return shader && shader->mFeatures.hasActorFx && style.mEnabled && style.mStyle == 10 &&
+        (style.mMode == LLDirectorCast::ACTOR_STYLE_REPLACE || style.mAlpha > 0.001f);
+}
+
 bool upload_actor_fx_style(const LLUUID& style_id,
                            const LLDirectorCast::ActorStyle& style,
                            bool allow_native_wire)
@@ -671,6 +681,9 @@ bool upload_actor_fx_style(const LLUUID& style_id,
         shader->uniform1i(sActorFxEnabled, 0);
         return false;
     }
+
+    if (LLActorMaskEligibility::sArmed && actor_mask_native_changes_coverage(style))
+        LLActorMaskEligibility::instance().coverageChanged(style_id.isNull() ? gAgentID : style_id); // [ActorMask]
 
     // Wire always keeps a native hidden-line backing under its dedicated live
     // topology pass. Layer mixes authored material toward that backing by its
@@ -848,6 +861,9 @@ bool LLRenderPass::uploadActorFx(const LLDrawInfo& params, bool force_native)
         }
         else
         {
+            // [ActorMask] Worn animesh may carry both a cast bit and the wearer's bit.
+            if (LLActorMaskEligibility::sArmed && actor_mask_native_changes_coverage(style))
+                LLActorMaskEligibility::instance().coverageChanged(params);
             result = upload_actor_fx_style(owner, style, false);
         }
     }
@@ -946,6 +962,7 @@ bool LLRenderPass::shouldSuppressSharedActorFx(const LLUUID& actor_id)
     {
         // No replacement draw is needed at this exact endpoint, so this path
         // is intentionally independent of shared-proxy shader readiness.
+        if (LLActorMaskEligibility::sArmed) LLActorMaskEligibility::instance().suppress(actor_id); // [ActorMask]
         return true;
     }
     if (!shared_actor_fx_beauty_context())
@@ -953,7 +970,9 @@ bool LLRenderPass::shouldSuppressSharedActorFx(const LLUUID& actor_id)
         return false;
     }
 
-    return shared_actor_fx_style_suppresses(actor_id, style);
+    const bool suppressed = shared_actor_fx_style_suppresses(actor_id, style);
+    if (suppressed && LLActorMaskEligibility::sArmed) LLActorMaskEligibility::instance().suppress(actor_id); // [ActorMask]
+    return suppressed;
 }
 
 // static
@@ -972,6 +991,7 @@ bool LLRenderPass::shouldSuppressSharedActorFx(const LLDrawInfo& params,
     if (shared_actor_fx_zero_cover_context() &&
         shared_actor_fx_zero_cover(style))
     {
+        if (LLActorMaskEligibility::sArmed) LLActorMaskEligibility::instance().suppress(&params); // [ActorMask]
         return true;
     }
     if (!shared_actor_fx_beauty_context())
@@ -986,7 +1006,9 @@ bool LLRenderPass::shouldSuppressSharedActorFx(const LLDrawInfo& params,
     {
         return false;
     }
-    return shared_actor_fx_style_suppresses(owner, style);
+    const bool suppressed = shared_actor_fx_style_suppresses(owner, style);
+    if (suppressed && LLActorMaskEligibility::sArmed) LLActorMaskEligibility::instance().suppress(&params); // [ActorMask]
+    return suppressed;
 }
 
 // static
@@ -1005,6 +1027,7 @@ bool LLRenderPass::shouldSuppressSharedActorFxPBR(const LLDrawInfo& params,
     if (shared_actor_fx_zero_cover_context() &&
         shared_actor_fx_zero_cover(style))
     {
+        if (LLActorMaskEligibility::sArmed) LLActorMaskEligibility::instance().suppress(&params); // [ActorMask]
         return true;
     }
     if (!shared_actor_fx_beauty_context())
@@ -1025,6 +1048,7 @@ bool LLRenderPass::shouldSuppressSharedActorFxPBR(const LLDrawInfo& params,
     {
         return false;
     }
+    if (LLActorMaskEligibility::sArmed) LLActorMaskEligibility::instance().suppress(&params); // [ActorMask]
     return true;
 }
 

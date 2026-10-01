@@ -48,6 +48,7 @@ class LLVOAvatar;
 class LLDrawInfo;
 class LLFace;
 class LLCamera;     // [GhostDeferred] proxy-queue build/cull takes an explicit view
+enum class ALGhostTempAttachmentPolicy : U8; // [ActorMask]
 class LLSpatialGroup;   // [CloneFidelity] shared source-walk callback arg
 class LLViewerObject;   // [CloneFidelity] shared source-walk callback arg
 class LLFetchedGLTFMaterial;
@@ -729,6 +730,9 @@ public:
     bool   hasSharedActorStyleProxies() const;
     size_t sharedActorStyleProxyCount() const;
     F32    sharedActorStyleProxyDepth(size_t index) const;
+    LLVOAvatar* sharedActorStyleProxyAvatar(size_t index) const; // [ActorMask]
+    static bool actorMaskAvatarEligible(LLVOAvatar* avatar); // [ActorMask]
+    U32 renderSystemActorMask(LLVOAvatar* avatar, U8 byte); // [ActorMask]
     // Cover owns an opaque/masked depth silhouette. Prime that silhouette once
     // before any native/shared alpha is drained so already-blended world alpha
     // cannot leak through a styled actor whose sorted colour turn is later.
@@ -818,7 +822,9 @@ public:
                                  // clone fidelity from treating PASS_GLOW_RIGGED
                                  // as ordinary beauty geometry.
                                  const ghost_rigged_source_cb_t&
-                                     shared_legacy_glow_cb = {});
+                                     shared_legacy_glow_cb = {},
+                                 const ALGhostTempAttachmentPolicy* temp_policy_override = nullptr, // [ActorMask]
+                                 const std::function<void(LLSpatialGroup*)>& group_cb = {});
 
     void collectGhostBatches();
 

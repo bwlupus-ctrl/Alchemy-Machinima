@@ -1117,7 +1117,7 @@ void display(bool rebuild, F32 zoom_factor, int subfield, bool for_snapshot)
 
         if (LLPipeline::sRenderDeferred)
         {
-            gPipeline.renderDeferredLighting();
+            gPipeline.renderDeferredLighting(LLPipeline::ActorMaskViewSource::MAIN); // [ActorMask]
         }
 
         LLPrismLens::compositeDebug();
@@ -1385,7 +1385,7 @@ void display_cube_face()
 
     {
         LL_PROFILE_ZONE_NAMED_CATEGORY_DISPLAY("cube face light"); // [ProbeOnDemand] C0
-        gPipeline.renderDeferredLighting();
+        gPipeline.renderDeferredLighting(LLPipeline::ActorMaskViewSource::CUBE); // [ActorMask]
     }
 
     LLPipeline::sUnderWaterRender = false;

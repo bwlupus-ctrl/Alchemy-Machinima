@@ -177,6 +177,11 @@ inline bool operator != (LLViewerShaderMgr::shader_iter const & a, LLViewerShade
 extern LLVector4            gShinyOrigin;
 
 //utility shaders
+// [ActorMask] Independent programs; no stock object is mutated.
+enum { ACTOR_MASK_STATIC, ACTOR_MASK_RIGGED, ACTOR_MASK_PBR,
+       ACTOR_MASK_PBR_RIGGED, ACTOR_MASK_BODY, ACTOR_MASK_EYES, ACTOR_MASK_PROGRAM_COUNT };
+extern LLGLSLShader gActorMaskProgram[ACTOR_MASK_PROGRAM_COUNT];
+S32 actorMaskTextureChannels(); // [ActorMask] Native diffuse AND material batch widths.
 extern LLGLSLShader         gOcclusionProgram;
 extern LLGLSLShader         gOcclusionCubeProgram;
 extern LLGLSLShader         gGlowCombineProgram;

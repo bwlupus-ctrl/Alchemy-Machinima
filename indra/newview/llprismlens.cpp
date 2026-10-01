@@ -7583,7 +7583,7 @@ void renderAuxiliaryView()
         rt.deferredScreen.clear();
         gPipeline.renderGeomDeferred(LLViewerCamera::instance(), false);
         rt.deferredScreen.flush();
-        gPipeline.renderDeferredLighting();
+        gPipeline.renderDeferredLighting(LLPipeline::ActorMaskViewSource::PRISM); // [ActorMask]
 
         // [Prism camera feed - projector volumetric rays] Inject the projector
         // volumetric shafts into THIS aux capture. renderProjectorVolumetric only

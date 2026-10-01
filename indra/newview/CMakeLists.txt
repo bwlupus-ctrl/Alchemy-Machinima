@@ -275,6 +275,7 @@ set(viewer_SOURCE_FILES
     llbuycurrencyhtml.cpp
     llcallingcard.cpp
     llcameraoperator.cpp
+    llactormaskeligibility.cpp # [ActorMask]
     llactormover.cpp
     alghostattachmentenumerator.cpp
     alghostmaterialresolver.cpp
@@ -1144,6 +1145,7 @@ set(viewer_HEADER_FILES
     llbuycurrencyhtml.h
     llcallingcard.h
     llcameraoperator.h
+    llactormaskeligibility.h # [ActorMask]
     llactormover.h
     alghostattachmentenumerator.h
     alghostmaterialresolver.h

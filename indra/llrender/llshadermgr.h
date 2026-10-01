@@ -916,6 +916,8 @@ public:
         SKY_AMB_TINT,                      //  "sky_amb_tint"          vec3 luminance-normalised swatch tint on amblit / probe irradiance / SSAO ceiling
         SHADOW_LIFT_GAIN,                  //  "shadow_lift_gain"      float 2^(shadow lift EV) - 1; 0 = off (deferredUtil.glsl applyShadowLift)
 
+        ACTOR_MASK_MAP,  // [ActorMask] actorMaskMap
+        ACTOR_MASK_BITS, // [ActorMask] actor_mask_bits
         END_RESERVED_UNIFORMS
     } eGLSLReservedUniforms;
     // clang-format on

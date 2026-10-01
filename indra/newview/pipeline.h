@@ -42,6 +42,8 @@
 #include "llrender.h"
 #include "lldrawable.h"
 #include "llrendertarget.h"
+#include "llactormaskeligibility.h" // [ActorMask]
+#include "lltimer.h"
 #include "llreflectionmapmanager.h"
 #include "llheroprobemanager.h"
 #include "llprismlens.h"
@@ -670,7 +672,24 @@ public:
     void bindReflectionProbes(LLGLSLShader& shader);
     void unbindReflectionProbes(LLGLSLShader& shader);
 
-    void renderDeferredLighting();
+    // [ActorMask] Unknown callers fail closed; explicit entry points are verified
+    // against the active pack/flags, never trusted as permission by themselves.
+    enum class ActorMaskViewSource : U8 { UNCLASSIFIED, MAIN, PRISM, CUBE };
+    enum class ActorMaskView : U8 { NONE, EXCLUDE, MASK };
+    void renderDeferredLighting(ActorMaskViewSource source = ActorMaskViewSource::UNCLASSIFIED);
+    ActorMaskView mActorMaskView = ActorMaskView::NONE;
+    bool mActorMaskValid = false; // valid only during this lighting/forward view
+    U64 mActorMaskViewId = 0;
+    bool mActorMaskAllocated = false;
+    LLActorMaskQueries mActorMaskQueries; // WP7: takeResults(), never blocking
+    LLActorMaskViewStamp actorMaskViewStamp() const;
+    void renderActorMask();
+    void releaseActorMasks();
+    bool ensureActorMask();
+    S32 bindActorMask(LLGLSLShader& shader); // WP2: ACTOR_MASK_MAP, -1 on invalid
+    LLTimer mActorMaskProbeTimer;
+    std::map<LLUUID, std::string> mActorMaskRecipientStatus; // WP7: IMPOSTOR/STYLED/NATIVE
+    bool mActorMaskSummaryFrame = false; // WP7 consumes same 5s probe cadence
 
     // Blit deferredScreen's albedo (attachment 0) and normals (attachment 2)
     // into mReShadeAlbedoRaw / mReShadeNormalsRaw for the ReShade bridge,
@@ -1185,6 +1204,8 @@ public:
         //screen texture
         LLRenderTarget          screen;
         LLRenderTarget          deferredScreen;
+        LLRenderTarget          actorMask; // [ActorMask] R8; shared depth, never owned
+        U32                     actorMaskDepthSrc = 0;
         LLRenderTarget          deferredLight;
 
         // tonemapped and gamma corrected render ready for post

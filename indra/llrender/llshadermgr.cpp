@@ -2142,6 +2142,8 @@ void LLShaderMgr::initAttribsAndUniforms()
     mReservedUniforms.push_back("sky_sun_tint");        // SKY_SUN_TINT
     mReservedUniforms.push_back("sky_amb_tint");        // SKY_AMB_TINT
     mReservedUniforms.push_back("shadow_lift_gain");    // SHADOW_LIFT_GAIN
+    mReservedUniforms.push_back("actorMaskMap");        // [ActorMask] ACTOR_MASK_MAP
+    mReservedUniforms.push_back("actor_mask_bits");     // [ActorMask] ACTOR_MASK_BITS
 
     llassert(mReservedUniforms.size() == END_RESERVED_UNIFORMS);
 

@@ -13831,7 +13831,9 @@ void LLActorMover::walkGhostSourceGeometry(LLVOAvatar* av,
                                            const ghost_rigged_source_cb_t& rigged_cb,
                                            const ghost_static_source_cb_t& static_cb,
                                            const ghost_rigged_source_cb_t&
-                                               shared_legacy_glow_cb)
+                                               shared_legacy_glow_cb,
+                                           const ALGhostTempAttachmentPolicy* temp_policy_override,
+                                           const std::function<void(LLSpatialGroup*)>& group_cb)
 {
     if (!av || av->isDead())
     {
@@ -13842,6 +13844,9 @@ void LLActorMover::walkGhostSourceGeometry(LLVOAvatar* av,
 
     static LLCachedControl<bool> exclude_temporary(
         gSavedSettings, "GhostUnifiedExcludeTemporaryAttachments", false);
+    const bool exclude_temp = temp_policy_override
+        ? *temp_policy_override == ALGhostTempAttachmentPolicy::EXCLUDE
+        : static_cast<bool>(exclude_temporary); // [ActorMask]
     auto gather_root_geometry = [&](LLViewerObject* attached)
     {
         std::vector<LLViewerObject*> objs;
@@ -13875,7 +13880,7 @@ void LLActorMover::walkGhostSourceGeometry(LLVOAvatar* av,
                     {
                         continue;   // rigged faces come via the batch sweep below
                     }
-                    static_cb(av, obj, face);
+                    if (static_cb) static_cb(av, obj, face);
                 }
             }
         }
@@ -13891,7 +13896,7 @@ void LLActorMover::walkGhostSourceGeometry(LLVOAvatar* av,
         ? static_cast<LLControlAvatar*>(av) : nullptr;
     if (control && control->mRootVolp && !control->mRootVolp->isDead()
         && !control->mRootVolp->isHUDAttachment()
-        && (!exclude_temporary || !control->mRootVolp->isTempAttachment()))
+        && (!exclude_temp || !control->mRootVolp->isTempAttachment()))
     {
         gather_root_geometry(control->mRootVolp);
     }
@@ -13899,7 +13904,7 @@ void LLActorMover::walkGhostSourceGeometry(LLVOAvatar* av,
     {
         ALGhostAttachmentEnumerator::visitWorldRoots(
                 av,
-                exclude_temporary
+                exclude_temp
                     ? ALGhostTempAttachmentPolicy::EXCLUDE
                     : ALGhostTempAttachmentPolicy::INCLUDE,
                 [&](LLViewerObject* attached, S32, bool)
@@ -13910,7 +13915,8 @@ void LLActorMover::walkGhostSourceGeometry(LLVOAvatar* av,
 
     for (LLSpatialGroup* group : groups)
     {
-        for (U32 pass : kRiggedPasses)
+        if (group_cb) group_cb(group); // [ActorMask]
+        if (rigged_cb) for (U32 pass : kRiggedPasses)
         {
             auto found = group->mDrawMap.find(pass);   // find(): never insert
             if (found == group->mDrawMap.end())
@@ -14896,6 +14902,81 @@ bool LLActorMover::canRenderSystemActorGhost(LLVOAvatar* avatar,
     return style.mEnabled
         && (style.mMode == LLDirectorCast::ACTOR_STYLE_REPLACE
             || style.mAlpha > 0.001f);
+}
+
+// [ActorMask] Native gates that precede the suppression predicates cannot be
+// inferred from the suppression recorder. Mirror them conservatively here.
+bool LLActorMover::actorMaskAvatarEligible(LLVOAvatar* avatar)
+{
+    if (!avatar || avatar->isDead() || avatar->mDrawable.isNull() ||
+        !avatar->isFullyLoaded() || avatar->isHardVisualMute() ||
+        avatar->getOverallAppearance() != LLVOAvatar::AOA_NORMAL ||
+        avatar->isImpostor() || avatar->isVisuallyMuted() ||
+        avatar->isTooComplex() || avatar->isTooSlow()) return false;
+    static LLCachedControl<bool> friends_only(gSavedSettings, "RenderAvatarFriendsOnly", false);
+    if (friends_only && !avatar->isUIAvatar() && !avatar->isControlAvatar() &&
+        !avatar->isSelf() && !avatar->isBuddy()) return false;
+    LLVOAvatar* wearer = avatar->getAttachedAvatar();
+    const LLVOAvatar* owner = avatar->isGhostAvatar() ? avatar : wearer;
+    if (owner && owner->isGhostAvatar() &&
+        !static_cast<const LLGhostAvatar*>(owner)->isEntityCloneVisible()) return false;
+    if (wearer && (!gPipeline.hasRenderType(LLPipeline::RENDER_TYPE_AVATAR) ||
+        wearer->isHardVisualMute() || wearer->getOverallAppearance() != LLVOAvatar::AOA_NORMAL))
+        return false;
+    return true;
+}
+
+// [ActorMask] Native opaque body/eye replay. Caller owns depth, colour and blend state.
+U32 LLActorMover::renderSystemActorMask(LLVOAvatar* avatar, U8 byte)
+{
+    if (!actorMaskAvatarEligible(avatar) || avatar->isControlAvatar()) return 0;
+    LLGLSLShader* saved_avatar_shader = LLDrawPoolAvatar::sVertexProgram;
+    const S32 saved_diffuse = LLDrawPoolAvatar::sDiffuseChannel;
+    const bool saved_opaque = LLDrawPoolAvatar::sSkipOpaque;
+    const bool saved_transparent = LLDrawPoolAvatar::sSkipTransparent;
+    LLGLSLShader& body_shader = gActorMaskProgram[ACTOR_MASK_BODY];
+    body_shader.bind();
+    LLDrawPoolAvatar::sVertexProgram = &body_shader;
+    LLDrawPoolAvatar::sDiffuseChannel = body_shader.enableTexture(LLShaderMgr::DIFFUSE_MAP);
+    LLDrawPoolAvatar::sSkipOpaque = false;
+    LLDrawPoolAvatar::sSkipTransparent = true;
+    body_shader.uniform1i(LLShaderMgr::ACTOR_MASK_BITS, byte);
+    body_shader.setMinimumAlpha(LLDrawPoolAvatar::sMinimumAlpha);
+    if (LLPipeline::RenderAvatarCloth)
+    {
+        LLMatrix4 rot_mat;
+        LLViewerCamera::getInstance()->getMatrixToLocal(rot_mat);
+        LLMatrix4 cfr(OGL_TO_CFR_ROTATION);
+        rot_mat *= cfr;
+        LLVector4 wind;
+        wind.setVec(avatar->mWindVec);
+        wind.mV[VW] = 0.f;
+        wind = wind * rot_mat;
+        wind.mV[VW] = avatar->mWindVec.mV[VW];
+        body_shader.uniform4fv(LLViewerShaderMgr::AVATAR_WIND, 1, wind.mV);
+        const F32 phase = -avatar->mRipplePhase;
+        const F32 freq = 7.f + noise1(avatar->mRipplePhase) * 2.f;
+        const LLVector4 sin_params(freq, freq, freq, phase);
+        body_shader.uniform4fv(LLViewerShaderMgr::AVATAR_SINWAVE, 1, sin_params.mV);
+        LLVector4 gravity(0.f, 0.f, -0.7f, 0.f);
+        gravity = gravity * rot_mat;
+        body_shader.uniform4fv(LLViewerShaderMgr::AVATAR_GRAVITY, 1, gravity.mV);
+    }
+    U32 draws = avatar->renderSkinned() ? 1 : 0;
+    body_shader.disableTexture(LLShaderMgr::DIFFUSE_MAP);
+    LLGLSLShader& eye_shader = gActorMaskProgram[ACTOR_MASK_EYES];
+    eye_shader.bind();
+    LLDrawPoolAvatar::sVertexProgram = &eye_shader;
+    LLDrawPoolAvatar::sDiffuseChannel = eye_shader.enableTexture(LLShaderMgr::DIFFUSE_MAP);
+    eye_shader.uniform1i(LLShaderMgr::ACTOR_MASK_BITS, byte);
+    eye_shader.setMinimumAlpha(LLDrawPoolAvatar::sMinimumAlpha);
+    draws += avatar->renderRigid() ? 1 : 0;
+    eye_shader.disableTexture(LLShaderMgr::DIFFUSE_MAP);
+    LLDrawPoolAvatar::sVertexProgram = saved_avatar_shader;
+    LLDrawPoolAvatar::sDiffuseChannel = saved_diffuse;
+    LLDrawPoolAvatar::sSkipOpaque = saved_opaque;
+    LLDrawPoolAvatar::sSkipTransparent = saved_transparent;
+    return draws;
 }
 
 bool LLActorMover::renderSystemActorGhost(LLVOAvatar* avatar,
@@ -16932,6 +17013,13 @@ bool LLActorMover::hasSharedActorStyleProxies() const
 size_t LLActorMover::sharedActorStyleProxyCount() const
 {
     return hasSharedActorStyleProxies() ? mSharedActorStyleProxies.size() : 0;
+}
+
+// [ActorMask] Frame-local proxy identity for forward selection.
+LLVOAvatar* LLActorMover::sharedActorStyleProxyAvatar(size_t index) const
+{
+    return hasSharedActorStyleProxies() && index < mSharedActorStyleProxies.size()
+        ? mSharedActorStyleProxies[index].mAvatar : nullptr;
 }
 
 F32 LLActorMover::sharedActorStyleProxyDepth(size_t index) const
