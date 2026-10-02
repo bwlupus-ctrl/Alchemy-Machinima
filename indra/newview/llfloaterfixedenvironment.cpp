@@ -555,8 +555,15 @@ void LLFloaterFixedEnvironment::onButtonDelete()
 
     std::string type = mSettings->getSettingsType();
     std::string folder = type == "sky" ? "skies" : "water";
-    gBDMergeEnvLibrary.deletePreset(mPresetCombo->getValue(), folder);
-    populatePresetsList();
+    // [FileSafety] Confirm first; refresh the list only after the delete attempt.
+    LLHandle<LLFloaterFixedEnvironment> handle = getDerivedHandle<LLFloaterFixedEnvironment>();
+    gBDMergeEnvLibrary.confirmDeletePreset(mPresetCombo->getValue().asString(), folder, [handle]()
+    {
+        if (LLFloaterFixedEnvironment* self = handle.get())
+        {
+            self->populatePresetsList();
+        }
+    });
 }
 
 void LLFloaterFixedEnvironment::onSelectPreset()

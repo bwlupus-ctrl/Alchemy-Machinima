@@ -19,6 +19,14 @@
  * The file is treated as untrusted on load (version / type / range / finite
  * checks, 200 presets, 64-character names) and written atomically
  * (temp file -> rename). All functions are main-thread only.
+ *
+ * [EnvIntensity backup] A damaged file (over 4 MB, unreadable, not an LLSD map,
+ * or with any rejected preset) is never deleted or overwritten: it is RENAMED
+ * to light_intensity_presets.bad.xml (then .bad.2.xml .. .bad.5.xml, first free
+ * name, never overwriting one) in the same directory, and any salvaged presets
+ * are written back to a fresh presets file. If that rename is impossible the
+ * module goes read-only for the session instead. The only file this module ever
+ * removes is its own temp file (presets path + "." + UUID + ".tmp").
  */
 
 #pragma once
@@ -96,14 +104,24 @@ namespace ALEnvIntensityPresets
         SAVE_INVALID_NAME,
         SAVE_RESERVED_NAME,
         SAVE_LIMIT_REACHED,   // MAX_PRESETS and `name` is new
-        SAVE_WRITE_FAILED     // file could not be written; the in-memory list is rolled back
+        SAVE_WRITE_FAILED,    // file could not be written; the in-memory list is rolled back
+        SAVE_READ_ONLY,       // [EnvIntensity backup] damaged presets file could not be backed up; saving is off this session
+        SAVE_BUSY             // [EnvIntensity backup] presets file locked by another viewer for ~2 s; nothing was written
     };
     // Stores (or overwrites, case-insensitively) `values` under `raw_name`.
     // Values are clamped to each setting's valid range (non-finite -> default) so
     // what is saved always reloads.
     SaveResult save(const std::string& raw_name, const Values& values);
     SaveResult saveCurrent(const std::string& raw_name);     // save(raw_name, currentValues())
-    bool       remove(const std::string& name);              // false = missing or write failed (rolled back)
+    bool       remove(const std::string& name);              // false = missing, write failed (rolled back) or read-only
+    // [EnvIntensity backup] true when the presets file was damaged and could not be
+    // preserved by renaming it to light_intensity_presets.bad[.N].xml (all 5 names
+    // taken, or the rename failed). save() / remove() then refuse for the whole
+    // session and the damaged file is left exactly as it was.
+    bool       isReadOnly();
+    // [EnvIntensity backup] true if the last save()/remove() was refused because the
+    // cross-process lock (light_intensity_presets.lock) could not be taken in ~2 s.
+    bool       lastWriteWasBusy();
     bool       applyNamed(const std::string& name);          // false = no such preset
 
     // ---- signals ----------------------------------------------------------------

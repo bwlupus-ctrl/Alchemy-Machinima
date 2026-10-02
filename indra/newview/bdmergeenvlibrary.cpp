@@ -275,9 +275,42 @@ void BDMergeEnvLibrary::savePreset(std::string name, LLSettingsBase::ptr_t setti
     presetsXML.close();
 }
 
-void BDMergeEnvLibrary::deletePreset(std::string name, std::string folder)
+namespace
 {
-    if (name.empty() || folder.empty()) return;
+    // [FileSafety] The preset name comes from TYPED text in an editable combo, so it is untrusted.
+    // Only its FINAL path component is ever used (split on BOTH '/' and '\', independent of the
+    // platform delimiter), and a directory part is never used to build a delete path.
+    std::string preset_final_component(const std::string& name)
+    {
+        const size_t pos = name.find_last_of("/\\");
+        return pos == std::string::npos ? name : name.substr(pos + 1);
+    }
+
+    bool preset_component_is_safe(const std::string& comp)
+    {
+        return !comp.empty() && comp != "." && comp != ".."
+            && comp.find_first_of(":*?[]{}") == std::string::npos;
+    }
+
+    std::string lower_copy(std::string s)
+    {
+        LLStringUtil::toLower(s);
+        return s;
+    }
+}
+
+bool BDMergeEnvLibrary::deletePreset(std::string name, std::string folder)
+{
+    if (name.empty() || folder.empty()) return false;
+
+    //BD - [FileSafety] Only the final component of the value is used; reject anything odd first.
+    const std::string comp = preset_final_component(name);
+    if (!preset_component_is_safe(comp))
+    {
+        LLNotificationsUtil::add("BDCantRemovePreset");
+        LL_WARNS("WindLight") << "Refusing to delete windlight preset with invalid name: " << name << LL_ENDL;
+        return false;
+    }
 
     //BD - Check whether we are in the system presets folder which means we are trying
     //     to delete one.
@@ -289,18 +322,98 @@ void BDMergeEnvLibrary::deletePreset(std::string name, std::string folder)
     if (sys_dir == name)
     {
         LLNotificationsUtil::add("WLNoEditDefault");
-        return;
+        return false;
     }
-    else
+
+    //BD - [FileSafety] Delete exactly one file, never a mask. The delete path is ALWAYS
+    //     user_dir + a filename returned by listing user_dir itself -- never built from user text.
+    const std::string user_dir = getWindlightDir(folder);
+    std::vector<std::string> listed;
     {
-        //BD - We assume its the user_settings folder since we never allow deleting
-        //     system presets and we shouldn't get here if we intended to delete one.
-        if (gDirUtilp->deleteFilesInDir(getWindlightDir(folder), filename) < 1)
+        LLDirIterator dir_it(user_dir, "*.xml"); // non-recursive
+        std::string file;
+        while (dir_it.next(file))
         {
-            LLNotificationsUtil::add("BDCantRemovePreset");
-            LL_WARNS("WindLight") << "Error removing windlight preset " << name << " from disk" << LL_ENDL;
+            listed.push_back(file);
         }
     }
+
+    // (a) The final component EXACTLY names a listed file (case-sensitive first, then
+    //     case-insensitive for Windows). (b) Otherwise the canonical name savePreset() would have
+    //     written for this text, only if that file is in the listing.
+    std::string match;
+    for (const std::string& f : listed)
+    {
+        if (f == comp) { match = f; break; }
+    }
+    if (match.empty())
+    {
+        const std::string comp_lc = lower_copy(comp);
+        for (const std::string& f : listed)
+        {
+            if (lower_copy(f) == comp_lc) { match = f; break; }
+        }
+    }
+    if (match.empty())
+    {
+        const std::string base = gDirUtilp->getBaseFileName(LLURI::unescape(comp), true);
+        if (!base.empty())
+        {
+            const std::string canonical = escapeString(base) + ".xml";
+            const std::string canonical_lc = lower_copy(canonical);
+            for (const std::string& f : listed)
+            {
+                if (f == canonical || lower_copy(f) == canonical_lc) { match = f; break; }
+            }
+        }
+    }
+
+    const std::string path = match.empty() ? std::string() : gDirUtilp->add(user_dir, match);
+    if (path.empty() || !LLFile::isfile(path))
+    {
+        LLNotificationsUtil::add("BDPresetNotFound");
+        LL_WARNS("WindLight") << "Windlight preset not found, nothing deleted: " << name << LL_ENDL;
+        return false;
+    }
+
+    if (LLFile::remove(path) != 0)
+    {
+        LLNotificationsUtil::add("BDCantRemovePreset");
+        LL_WARNS("WindLight") << "Error removing windlight preset " << path << " from disk" << LL_ENDL;
+        return false;
+    }
+    return true;
+}
+
+void BDMergeEnvLibrary::confirmDeletePreset(std::string name, std::string folder, std::function<void()> on_done)
+{
+    if (name.empty() || folder.empty()) return;
+
+    //BD - [FileSafety] Reject bad names up front so the user is not asked to confirm a delete
+    //     that cannot happen. deletePreset() re-validates when the confirmation returns.
+    const std::string comp = preset_final_component(name);
+    if (!preset_component_is_safe(comp))
+    {
+        LLNotificationsUtil::add("BDCantRemovePreset");
+        LL_WARNS("WindLight") << "Refusing to delete windlight preset with invalid name: " << name << LL_ENDL;
+        return;
+    }
+
+    LLSD args;
+    args["NAME"] = gDirUtilp->getBaseFileName(LLURI::unescape(comp), true);
+    LLNotificationsUtil::add("BDConfirmDeletePreset", args, LLSD(),
+        [name, folder, on_done](const LLSD& notification, const LLSD& response)
+        {
+            if (LLNotificationsUtil::getSelectedOption(notification, response) != 0)
+            {
+                return;
+            }
+            gBDMergeEnvLibrary.deletePreset(name, folder);
+            if (on_done)
+            {
+                on_done();
+            }
+        });
 }
 
 void BDMergeEnvLibrary::loadPresetsFromDir(LLComboBox* combo, std::string folder)

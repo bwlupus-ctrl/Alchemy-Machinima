@@ -13583,6 +13583,24 @@ Selected Preset could not be found. It's name contains invalid characters. Pleas
 Preset could not be removed, either it or its folder does not exist or you are not allowed to delete files.
   </notification>
 
+  <!-- [FileSafety] -->
+  <notification
+   icon="alertmodal.tga"
+   name="BDPresetNotFound"
+   type="alertmodal">
+Preset not found. Nothing was deleted.
+  </notification>
+
+  <!-- [FileSafety] -->
+  <notification
+   icon="alertmodal.tga"
+   name="BDConfirmDeletePreset"
+   type="alertmodal">
+    Delete the local preset &quot;[NAME]&quot;? This cannot be undone.
+    <tag>confirm</tag>
+    <usetemplate name="okcancelbuttons" notext="Cancel" yestext="Delete"/>
+  </notification>
+
   <!-- [F4] Phototools environment quick-switcher (donor: Firestorm I:\enve
        indra/newview/skins/default/xui/en/notifications.xml; campaign item F4,
        alfloaterphototools.cpp) -->
@@ -13781,6 +13799,55 @@ This cannot be undone.
    type="alertmodal">
     <unique/>
     Couldn't write your Light Intensity presets file, so the change was not saved. Your current settings are unchanged.
+    <tag>fail</tag>
+  </notification>
+
+  <!-- [EnvIntensity backup] cross-process lock busy -->
+  <notification
+   icon="alertmodal.tga"
+   name="EnvIntensityPresetBusy"
+   type="alertmodal">
+    <unique/>
+    The Light Intensity presets file is busy (another viewer?). Nothing was changed. Please try again in a moment.
+    <tag>fail</tag>
+  </notification>
+
+  <!-- [EnvIntensity backup] damaged presets file handling -->
+  <notification
+   icon="alertmodal.tga"
+   name="EnvIntensityPresetsDamaged"
+   type="alertmodal">
+    <unique/>
+    Your Light Intensity presets file was damaged. The original was kept as [FILENAME] in your settings folder; [COUNT] preset(s) were recovered.
+    <tag>fail</tag>
+  </notification>
+
+  <notification
+   icon="alertmodal.tga"
+   name="EnvIntensityPresetsRestored"
+   type="alertmodal">
+    <unique/>
+    Your Light Intensity presets were restored from the previous saved version.
+    <tag>fail</tag>
+  </notification>
+
+  <notification
+   icon="alertmodal.tga"
+   name="EnvIntensityPresetsDamagedReadOnly"
+   type="alertmodal">
+    <unique/>
+    Your Light Intensity presets file was damaged, and it could not be moved aside to keep a copy of it. Nothing was changed or deleted. Saving and deleting presets is turned off for this session to protect the file. [COUNT] preset(s) were recovered and can still be loaded.
+
+If light_intensity_presets.bad.xml to light_intensity_presets.bad.5.xml already exist in your settings folder, move or rename them. Otherwise the file may be locked by another program (another viewer, a sync tool or antivirus). Close that program, then restart the viewer.
+    <tag>fail</tag>
+  </notification>
+
+  <notification
+   icon="alertmodal.tga"
+   name="EnvIntensityPresetReadOnly"
+   type="alertmodal">
+    <unique/>
+    Saving and deleting Light Intensity presets is turned off for this session. Your presets file was damaged and could not be moved aside, so it is being left untouched to protect it. Move or rename any light_intensity_presets.bad*.xml files in your settings folder, close any other program that may have the presets file open, and restart the viewer.
     <tag>fail</tag>
   </notification>
 </notifications>

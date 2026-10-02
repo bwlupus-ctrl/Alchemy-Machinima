@@ -610,7 +610,9 @@ public:
     bool setInstanceAutoAnimate(const LLUUID& id, bool enabled);
     bool setInstanceAutoAnimWindow(const LLUUID& id, F32 seconds);
     bool autoAnimateAction(const LLUUID& id, ALGhostAutoAnim::Action action);
-    bool saveAutoAnimate(const LLUUID& id, const std::string& path);
+    // [FileSafety] exclusive=true creates the file atomically (never truncates); if it already
+    // exists the call returns false and sets *out_exists.
+    bool saveAutoAnimate(const LLUUID& id, const std::string& path, bool exclusive = false, bool* out_exists = nullptr);
     bool loadAutoAnimate(const LLUUID& id, const std::string& path);
     void getAutoAnimateStatus(const LLUUID& id, ALGhostAutoAnim::LearnStatus& status) const;
     const Instance* findInstanceByRuntime(const LLUUID& runtime) const;

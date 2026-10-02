@@ -39,6 +39,12 @@ namespace
         case ALEnvIntensityPresets::SAVE_WRITE_FAILED:
             LLNotificationsUtil::add("EnvIntensityPresetSaveFailed");
             break;
+        case ALEnvIntensityPresets::SAVE_READ_ONLY:   // [EnvIntensity backup]
+            LLNotificationsUtil::add("EnvIntensityPresetReadOnly");
+            break;
+        case ALEnvIntensityPresets::SAVE_BUSY:        // [EnvIntensity backup]
+            LLNotificationsUtil::add("EnvIntensityPresetBusy");
+            break;
         case ALEnvIntensityPresets::SAVE_OK:
             break;
         }
@@ -147,6 +153,11 @@ void ALFloaterEnvIntensityPresets::onSelectionChanged()
 
 void ALFloaterEnvIntensityPresets::onSave()
 {
+    if (ALEnvIntensityPresets::isReadOnly())   // [EnvIntensity backup] say why, before any overwrite prompt
+    {
+        LLNotificationsUtil::add("EnvIntensityPresetReadOnly");
+        return;
+    }
     std::string name;
     const ALEnvIntensityPresets::NameCheck check = ALEnvIntensityPresets::checkName(mNameEditor->getText(), name);
     if (check == ALEnvIntensityPresets::NAME_INVALID)
@@ -198,6 +209,11 @@ void ALFloaterEnvIntensityPresets::onDelete()
     {
         return;
     }
+    if (ALEnvIntensityPresets::isReadOnly())   // [EnvIntensity backup]
+    {
+        LLNotificationsUtil::add("EnvIntensityPresetReadOnly");
+        return;
+    }
     LLNotificationsUtil::add("EnvIntensityPresetConfirmDelete", LLSD().with("NAME", name), LLSD(),
         [name](const LLSD& notification, const LLSD& response)
         {
@@ -207,8 +223,10 @@ void ALFloaterEnvIntensityPresets::onDelete()
             }
             if (!ALEnvIntensityPresets::remove(name) && ALEnvIntensityPresets::exists(name))
             {
-                // still there: the presets file could not be rewritten
-                LLNotificationsUtil::add("EnvIntensityPresetSaveFailed");
+                // still there: busy (another viewer), read-only, or the file could not be rewritten
+                LLNotificationsUtil::add(ALEnvIntensityPresets::lastWriteWasBusy() ? "EnvIntensityPresetBusy"
+                    : ALEnvIntensityPresets::isReadOnly() ? "EnvIntensityPresetReadOnly"
+                    : "EnvIntensityPresetSaveFailed");
             }
         });
 }

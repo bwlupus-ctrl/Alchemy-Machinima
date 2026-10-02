@@ -1279,9 +1279,15 @@ void LLFloaterEnvironmentAdjust::onButtonSave()
 void LLFloaterEnvironmentAdjust::onButtonDelete()
 {
     if (!mLiveSky || !mNameCombo) return;
-    gBDMergeEnvLibrary.deletePreset(mNameCombo->getValue(), "skies");
-    gBDMergeEnvLibrary.loadPresetsFromDir(mNameCombo, "skies");
-    gBDMergeEnvLibrary.addInventoryPresets(mNameCombo, mLiveSky);
+    // [FileSafety] Confirm first; refresh the list only after the delete attempt.
+    LLHandle<LLFloaterEnvironmentAdjust> handle = getDerivedHandle<LLFloaterEnvironmentAdjust>();
+    gBDMergeEnvLibrary.confirmDeletePreset(mNameCombo->getValue().asString(), "skies", [handle]()
+    {
+        LLFloaterEnvironmentAdjust* self = handle.get();
+        if (!self || !self->mNameCombo || !self->mLiveSky) return;
+        gBDMergeEnvLibrary.loadPresetsFromDir(self->mNameCombo, "skies");
+        gBDMergeEnvLibrary.addInventoryPresets(self->mNameCombo, self->mLiveSky);
+    });
 }
 
 void LLFloaterEnvironmentAdjust::onButtonImport()

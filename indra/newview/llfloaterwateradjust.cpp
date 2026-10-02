@@ -510,9 +510,15 @@ void LLFloaterWaterAdjust::onButtonSave()
 void LLFloaterWaterAdjust::onButtonDelete()
 {
     if (!mLiveWater) return;
-    gBDMergeEnvLibrary.deletePreset(mNameCombo->getValue(), "water");
-    gBDMergeEnvLibrary.loadPresetsFromDir(mNameCombo, "water");
-    gBDMergeEnvLibrary.addInventoryPresets(mNameCombo, mLiveWater);
+    // [FileSafety] Confirm first; refresh the list only after the delete attempt.
+    LLHandle<LLFloaterWaterAdjust> handle = getDerivedHandle<LLFloaterWaterAdjust>();
+    gBDMergeEnvLibrary.confirmDeletePreset(mNameCombo->getValue().asString(), "water", [handle]()
+    {
+        LLFloaterWaterAdjust* self = handle.get();
+        if (!self || !self->mNameCombo || !self->mLiveWater) return;
+        gBDMergeEnvLibrary.loadPresetsFromDir(self->mNameCombo, "water");
+        gBDMergeEnvLibrary.addInventoryPresets(self->mNameCombo, self->mLiveWater);
+    });
 }
 
 void LLFloaterWaterAdjust::onButtonImport()

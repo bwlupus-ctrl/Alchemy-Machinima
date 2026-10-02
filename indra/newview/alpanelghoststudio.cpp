@@ -26,6 +26,9 @@
 #include "llbutton.h"
 #include "llcheckboxctrl.h"
 #include "llcombobox.h"
+#include "lldir.h"                  // [FileSafety] sibling path splitting
+#include "llfile.h"                 // [FileSafety] LLFile::exists
+#include "llnotificationsutil.h"    // [FileSafety] skipped-sibling notice
 #include "llf32uictrl.h"
 #include "lldirectorcast.h"         // source picker = the cast
 #include "lljoint.h"
@@ -2149,19 +2152,47 @@ void ALPanelGhostStudio::autoAnimFileReply(const std::vector<LLUUID>& ids, bool 
     if (filenames.empty()) return;
     ALGhostStudio& studio = ALGhostStudio::instance();
     U32 index = 0;
+    U32 skipped = 0;
     for (const LLUUID& id : ids)
     {
         const auto* inst = studio.getInstance(id);
         if (!inst || inst->mKind != ALGhostStudio::BACKING_ENTITY_CLONE) continue;
         std::string path = filenames.front();
         // A multi-selection saves one file per entity instead of overwriting the first.
+        // [FileSafety] Insert "_<8 hex>" into the BASE NAME only (never a parent folder name),
+        // and never overwrite an existing sibling: only the exact file the user picked
+        // (index 0, already confirmed by the OS save dialog) may be replaced.
         if (save && index != 0)
         {
-            const size_t dot = path.find_last_of('.');
-            path.insert(dot == std::string::npos ? path.size() : dot, "_" + id.asString().substr(0, 8));
+            const std::string dir = gDirUtilp->getDirName(filenames.front());
+            const std::string full_base = gDirUtilp->getBaseFileName(filenames.front(), false);
+            const std::string stem = gDirUtilp->getBaseFileName(filenames.front(), true);
+            // Preserve the extension's original case; empty when there is none.
+            const std::string ext = full_base.size() > stem.size() ? full_base.substr(stem.size()) : std::string();
+            const std::string sibling = stem + "_" + id.asString().substr(0, 8) + ext;
+            path = dir.empty() ? sibling : gDirUtilp->add(dir, sibling);
+            // Atomic create-new: closes the check-then-write race. exists==true means a file
+            // (or something else) already occupies the name and was left untouched.
+            bool exists = false;
+            studio.saveAutoAnimate(id, path, true, &exists);
+            if (exists)
+            {
+                LL_WARNS("GhostStudio") << "AUTOANIM-SAVE skip existing sibling file " << path << LL_ENDL;
+                ++skipped;
+            }
+            ++index;
+            continue;
         }
         if (save) studio.saveAutoAnimate(id, path); else studio.loadAutoAnimate(id, path);
         ++index;
+    }
+    if (skipped > 0)
+    {
+        LLSD args;
+        args["MESSAGE"] = llformat("%u additional AutoAnimate file(s) were NOT saved because a file with the "
+                                   "same name already exists next to the file you picked. Existing files were "
+                                   "left untouched; pick a different name or folder.", skipped);
+        LLNotificationsUtil::add("GenericAlertOK", args);
     }
 }
 void ALPanelGhostStudio::onAutoAnimFile(bool save)

@@ -1311,6 +1311,15 @@ bool FSPoserAnimator::tryGetJointSaveVectors(LLVOAvatar* avatar, const FSPoserJo
 bool FSPoserAnimator::loadPoseFileOntoAvatar(LLVOAvatar* avatar, const std::string& poseFileBaseName, E_LoadPoseMethods loadMethod)
 {
     bool        loadSuccess = false;
+
+    // [FileSafety] The base name is joined onto user_settings/poses unescaped; refuse traversal.
+    if (poseFileBaseName.find("..") != std::string::npos ||
+        poseFileBaseName.find_first_of("/\\") != std::string::npos)
+    {
+        LL_WARNS("Posing") << "Refusing pose file name with path separators or '..': " << poseFileBaseName << LL_ENDL;
+        return loadSuccess;
+    }
+
     std::string pathname = gDirUtilp->getExpandedFilename(LL_PATH_USER_SETTINGS, POSE_SAVE_SUBDIRECTORY);
     if (!gDirUtilp->fileExists(pathname))
         return loadSuccess;

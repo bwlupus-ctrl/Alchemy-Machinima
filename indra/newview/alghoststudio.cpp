@@ -16,6 +16,8 @@
 #include "llsdserialize.h"
 #include "llfile.h"
 #include <sstream>
+#include <cerrno>   // [FileSafety] EEXIST
+#include <cstdio>
 
 #include "alghostnameplates.h"
 #include "alghostspawnengine.h"
@@ -540,8 +542,9 @@ bool ALGhostStudio::autoAnimateAction(const LLUUID& id, ALGhostAutoAnim::Action 
     }
     return true;
 }
-bool ALGhostStudio::saveAutoAnimate(const LLUUID& id, const std::string& path)
+bool ALGhostStudio::saveAutoAnimate(const LLUUID& id, const std::string& path, bool exclusive, bool* out_exists)
 {
+    if (out_exists) *out_exists = false;
     Instance* inst = getInstance(id);
     if (!inst || inst->mKind != BACKING_ENTITY_CLONE) return false;
     if (LLGhostAvatar* ghost = resolveEntityClone(id))
@@ -557,6 +560,30 @@ bool ALGhostStudio::saveAutoAnimate(const LLUUID& id, const std::string& path)
     {
         LL_WARNS("GhostStudio") << "AUTOANIM-SAVE reject reason=pool exceeds 1 MB file limit" << LL_ENDL;
         return false;
+    }
+    if (exclusive)
+    {
+        // [FileSafety] Atomic create-new: fails (EEXIST) instead of truncating an existing file,
+        // so a sibling that appears between the caller's check and now is never lost. Text mode
+        // ("wx") matches the llofstream path below.
+#if LL_WINDOWS
+        FILE* fp = _wfopen(ll_convert_string_to_wide(path).c_str(), L"wx");
+#else
+        FILE* fp = fopen(path.c_str(), "wx");
+#endif
+        if (!fp)
+        {
+            if (out_exists && errno == EEXIST) *out_exists = true;
+            return false;
+        }
+        const bool wrote = fwrite(bytes.data(), 1, bytes.size(), fp) == bytes.size();
+        const bool closed = fclose(fp) == 0;
+        if (!(wrote && closed))
+        {
+            LLFile::remove(path); // our own just-created file; do not leave a truncated one
+            return false;
+        }
+        return true;
     }
     llofstream output(path.c_str());
     if (!output.is_open()) return false;

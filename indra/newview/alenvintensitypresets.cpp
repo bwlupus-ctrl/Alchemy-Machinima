@@ -13,16 +13,29 @@
 #include "alenvintensitypresets.h"
 
 #include "lldir.h"
+#include "lldiriterator.h"
 #include "llfile.h"
 #include "llsd.h"
 #include "llsdserialize.h"
+#include "llnotificationsutil.h"
 #include "llstring.h"
 #include "lluuid.h"
 #include "llviewercontrol.h"
 
 #include <algorithm>
+#if LL_WINDOWS
+#include "llwin32headers.h"   // [EnvIntensity backup] MoveFileExW / FlushFileBuffers
+#else
+#include <fcntl.h>            // [EnvIntensity backup] open / fsync / flock
+#include <sys/file.h>
+#include <unistd.h>
+#endif
+#include <chrono>
 #include <cmath>
+#include <iterator>
 #include <map>
+#include <sstream>
+#include <thread>
 
 namespace ALEnvIntensityPresets
 {
@@ -144,6 +157,7 @@ namespace
 
     bool sLoaded   = false;
     bool sApplying = false;
+    bool sReadOnly = false;   // [EnvIntensity backup] damaged file could not be preserved: no save/remove this session
 
     signal_t& listChangedSignal()
     {
@@ -285,8 +299,225 @@ namespace
         return true;
     }
 
-    // Crash-safe write: temp -> flush -> close -> rename, all checked; a failure
-    // removes the temp file and leaves the existing file untouched.
+    // [EnvIntensity backup] Fixed names next to the presets file. Constants only: no user
+    // text, file content or preset name ever forms part of a path.
+    //   .prev.xml  = rolling previous version, overwritten on every replacement
+    //   .bad*.xml  = damage backups (see BACKUP_FILENAMES), never overwritten
+    const char* const PREVIOUS_FILENAME = "light_intensity_presets.prev.xml";
+
+    // [EnvIntensity backup] Size + last-write time of the presets file, recorded at load
+    // and after our own writes, so a change by another viewer / program is noticed.
+    struct FileSig
+    {
+        bool mExists = false;
+        S64  mSize   = 0;
+        S64  mTime   = 0;
+        bool operator==(const FileSig& o) const
+        {
+            return mExists == o.mExists && mSize == o.mSize && mTime == o.mTime;
+        }
+        bool operator!=(const FileSig& o) const { return !(*this == o); }
+    };
+    FileSig sLoadedSig;
+
+    FileSig fileSig(const std::string& path)
+    {
+        FileSig sig;
+#if LL_WINDOWS
+        WIN32_FILE_ATTRIBUTE_DATA data;
+        if (GetFileAttributesExW(ll_convert_string_to_wide(path).c_str(), GetFileExInfoStandard, &data))
+        {
+            sig.mExists = true;
+            sig.mSize   = (static_cast<S64>(data.nFileSizeHigh) << 32) | static_cast<S64>(data.nFileSizeLow);
+            sig.mTime   = (static_cast<S64>(data.ftLastWriteTime.dwHighDateTime) << 32)
+                        | static_cast<S64>(data.ftLastWriteTime.dwLowDateTime);
+        }
+#else
+        llstat st;
+        if (LLFile::stat(path, &st) == 0)
+        {
+            sig.mExists = true;
+            sig.mSize   = static_cast<S64>(st.st_size);
+            sig.mTime   = static_cast<S64>(st.st_mtime);
+        }
+#endif
+        return sig;
+    }
+
+    // [EnvIntensity backup] Defensive check before any rename: both paths must be
+    // directly inside the same directory as presetsPath(), must differ, and one of
+    // them must BE presetsPath() (source for a backup / previous-version move; call
+    // it as (presets, other) for the restore too).
+    bool isSafeBackupPair(const std::string& source, const std::string& target)
+    {
+        const std::string home = presetsPath();
+        const std::string dir  = gDirUtilp->getDirName(home);
+        return !dir.empty()
+            && source == home
+            && target != home
+            && gDirUtilp->getDirName(source) == dir
+            && gDirUtilp->getDirName(target) == dir;
+    }
+
+    // [EnvIntensity backup] Rename that can NEVER replace an existing file: on Windows
+    // MoveFileExW without MOVEFILE_REPLACE_EXISTING fails atomically if the target
+    // exists, closing the gap between the exists() check and the rename.
+    // Elsewhere there is no such primitive here, so it simply refuses (the caller then
+    // goes read-only, the safe failure) rather than racing exists()+rename.
+    bool renameNoReplace(const std::string& source, const std::string& target)
+    {
+#if LL_WINDOWS
+        return MoveFileExW(ll_convert_string_to_wide(source).c_str(),
+                           ll_convert_string_to_wide(target).c_str(), 0) != 0;
+#else
+        (void)source;
+        (void)target;
+        return false;
+#endif
+    }
+
+    // [EnvIntensity backup] Rename that replaces the target and (Windows) does not
+    // return until the move is on disk. Only used for our own temp -> presets file and
+    // presets file -> .prev slot.
+    bool moveReplace(const std::string& source, const std::string& target)
+    {
+#if LL_WINDOWS
+        return MoveFileExW(ll_convert_string_to_wide(source).c_str(),
+                           ll_convert_string_to_wide(target).c_str(),
+                           MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH) != 0;
+#else
+        return LLFile::rename(source, target) == 0;
+#endif
+    }
+
+    // [EnvIntensity backup] Forces the (already closed) file's data to disk.
+    bool flushToDisk(const std::string& path)
+    {
+#if LL_WINDOWS
+        HANDLE h = CreateFileW(ll_convert_string_to_wide(path).c_str(), GENERIC_WRITE,
+                               FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr, OPEN_EXISTING,
+                               FILE_ATTRIBUTE_NORMAL, nullptr);
+        if (h == INVALID_HANDLE_VALUE)
+        {
+            return false;
+        }
+        const bool ok = FlushFileBuffers(h) != 0;
+        CloseHandle(h);
+        return ok;
+#else
+        const int fd = ::open(path.c_str(), O_RDWR);
+        if (fd < 0)
+        {
+            return false;
+        }
+        const bool ok = ::fsync(fd) == 0;
+        ::close(fd);
+        return ok;
+#endif
+    }
+
+    // [EnvIntensity backup] Cross-process lock around every whole transaction (reload +
+    // read-modify + keep-previous + replace, and the load-time restore / damage backup /
+    // salvage write), so two viewers can never interleave them. Fixed file name next to the
+    // presets file; created on first use and NEVER deleted (tiny, fixed name). Held for the
+    // transaction only. Re-entrant within the process (depth counter). If it cannot be taken
+    // within ~2 s the operation is refused ("busy"); nothing is written.
+    const char* const LOCK_FILENAME = "light_intensity_presets.lock";
+    const S32         LOCK_ATTEMPTS = 40;   // x 50 ms = ~2 s
+    S32               sLockDepth    = 0;
+    bool              sLastBusy     = false;
+#if LL_WINDOWS
+    HANDLE            sLockHandle   = INVALID_HANDLE_VALUE;
+#else
+    int               sLockFd       = -1;
+#endif
+
+    bool acquirePresetsLock()
+    {
+        if (sLockDepth > 0)
+        {
+            ++sLockDepth;
+            return true;
+        }
+        const std::string lock_path = gDirUtilp->getExpandedFilename(LL_PATH_USER_SETTINGS, LOCK_FILENAME);
+        if (!isSafeBackupPair(presetsPath(), lock_path))   // same-directory validation
+        {
+            return false;
+        }
+        for (S32 attempt = 0; attempt < LOCK_ATTEMPTS; ++attempt)
+        {
+            if (attempt > 0)
+            {
+                std::this_thread::sleep_for(std::chrono::milliseconds(50));
+            }
+#if LL_WINDOWS
+            HANDLE h = CreateFileW(ll_convert_string_to_wide(lock_path).c_str(),
+                                   GENERIC_READ | GENERIC_WRITE, 0 /* share mode 0 = exclusive */,
+                                   nullptr, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
+            if (h != INVALID_HANDLE_VALUE)
+            {
+                sLockHandle = h;
+                sLockDepth  = 1;
+                return true;
+            }
+#else
+            const int fd = ::open(lock_path.c_str(), O_RDWR | O_CREAT, 0644);
+            if (fd >= 0)
+            {
+                if (::flock(fd, LOCK_EX | LOCK_NB) == 0)
+                {
+                    sLockFd    = fd;
+                    sLockDepth = 1;
+                    return true;
+                }
+                ::close(fd);
+            }
+#endif
+        }
+        LL_WARNS("EnvIntensity") << "[EnvIntensity backup] presets file is busy (lock \"" << lock_path
+            << "\" not available)" << LL_ENDL;
+        return false;
+    }
+
+    void releasePresetsLock()
+    {
+        if (--sLockDepth > 0)
+        {
+            return;
+        }
+        sLockDepth = 0;
+#if LL_WINDOWS
+        if (sLockHandle != INVALID_HANDLE_VALUE)
+        {
+            CloseHandle(sLockHandle);   // the file itself stays
+            sLockHandle = INVALID_HANDLE_VALUE;
+        }
+#else
+        if (sLockFd >= 0)
+        {
+            ::flock(sLockFd, LOCK_UN);
+            ::close(sLockFd);
+            sLockFd = -1;
+        }
+#endif
+    }
+
+    struct PresetsLock
+    {
+        PresetsLock() : mHeld(acquirePresetsLock()) {}
+        ~PresetsLock() { if (mHeld) { releasePresetsLock(); } }
+        PresetsLock(const PresetsLock&) = delete;
+        PresetsLock& operator=(const PresetsLock&) = delete;
+        bool held() const { return mHeld; }
+    private:
+        bool mHeld;
+    };
+
+    // Crash-safe write: temp -> flush -> close -> fsync -> (previous version kept) ->
+    // replace, all checked; a failure removes the temp file and leaves the existing
+    // file untouched. [EnvIntensity backup] The current file is first moved to the
+    // fixed .prev slot, so every replacement leaves the previous bytes recoverable; if
+    // that cannot be done the write is refused (a missing file needs no previous).
     bool writeAtomic(const std::string& path, const LLSD& content)
     {
         const std::string temporary = path + "." + LLUUID::generateNewID().asString() + ".tmp";
@@ -299,8 +530,31 @@ namespace
         output.flush();
         const bool succeeded = serialized > 0 && output.good();
         output.close();
-        if (!succeeded || output.fail() || LLFile::rename(temporary, path) != 0)
+        if (!succeeded || output.fail() || !flushToDisk(temporary))
         {
+            LLFile::remove(temporary);
+            return false;
+        }
+
+        bool moved_previous = false;
+        const std::string previous = gDirUtilp->getExpandedFilename(LL_PATH_USER_SETTINGS, PREVIOUS_FILENAME);
+        if (LLFile::exists(path))
+        {
+            if (!isSafeBackupPair(path, previous) || !moveReplace(path, previous))
+            {
+                LL_WARNS("EnvIntensity") << "[EnvIntensity backup] could not keep the previous version as \""
+                    << previous << "\"; save refused" << LL_ENDL;
+                LLFile::remove(temporary);
+                return false;
+            }
+            moved_previous = true;
+        }
+        if (!moveReplace(temporary, path))
+        {
+            if (moved_previous && isSafeBackupPair(path, previous))
+            {
+                renameNoReplace(previous, path);   // put the old file back (P is absent, so this cannot clobber)
+            }
             LLFile::remove(temporary);
             return false;
         }
@@ -309,73 +563,398 @@ namespace
 
     bool writeStore()
     {
+        if (sLockDepth <= 0)
+        {
+            return false;   // [EnvIntensity backup] never write outside the cross-process lock
+        }
         LLSD root = LLSD::emptyMap();
         for (const auto& kv : store())
         {
             root[kv.second.mName] = toLLSD(kv.second.mValues);
         }
-        return writeAtomic(presetsPath(), root);
+        const std::string path = presetsPath();
+        if (!writeAtomic(path, root))
+        {
+            return false;
+        }
+        sLoadedSig = fileSig(path);   // our own write is not "another viewer's change"
+        return true;
+    }
+
+    // [EnvIntensity backup] Fixed backup file names, tried in order; the first one
+    // that does not exist wins and an existing one is never overwritten.
+    const char* const BACKUP_FILENAMES[] =
+    {
+        "light_intensity_presets.bad.xml",
+        "light_intensity_presets.bad.2.xml",
+        "light_intensity_presets.bad.3.xml",
+        "light_intensity_presets.bad.4.xml",
+        "light_intensity_presets.bad.5.xml",
+    };
+
+    // [EnvIntensity backup] Preserves a damaged presets file by RENAMING it (every byte
+    // kept, no copy, works for oversized files). Returns the backup file NAME on
+    // success; empty = impossible (all names taken, guard refused, or the rename failed)
+    // in which case nothing at all has been changed.
+    std::string backupDamagedFile(const std::string& source)
+    {
+        for (const char* const name : BACKUP_FILENAMES)
+        {
+            const std::string target = gDirUtilp->getExpandedFilename(LL_PATH_USER_SETTINGS, name);
+            if (LLFile::exists(target))   // file OR directory: never overwrite
+            {
+                continue;
+            }
+            if (!isSafeBackupPair(source, target))
+            {
+                LL_WARNS("EnvIntensity") << "[EnvIntensity backup] refusing to rename \"" << source
+                    << "\" to \"" << target << "\": not in the presets directory" << LL_ENDL;
+                return std::string();
+            }
+            if (!renameNoReplace(source, target))
+            {
+                LL_WARNS("EnvIntensity") << "[EnvIntensity backup] could not rename \"" << source
+                    << "\" to \"" << target << "\"" << LL_ENDL;
+                return std::string();
+            }
+            return name;
+        }
+        LL_WARNS("EnvIntensity") << "[EnvIntensity backup] all " << std::size(BACKUP_FILENAMES)
+            << " backup names already exist next to \"" << source << "\"" << LL_ENDL;
+        return std::string();
+    }
+
+    // [EnvIntensity backup] Called once, after a load that found damage. `damage`
+    // describes it (for the log); the store holds whatever could be salvaged.
+    void handleDamagedFile(const std::string& path, const std::string& damage)
+    {
+        const S32 salvaged = static_cast<S32>(store().size());
+        LL_WARNS("EnvIntensity") << "[EnvIntensity backup] presets file \"" << path << "\" is damaged ("
+            << damage << "); " << salvaged << " preset(s) recovered" << LL_ENDL;
+
+        const std::string backup = backupDamagedFile(path);
+        if (backup.empty())
+        {
+            // Nothing was renamed, rewritten or deleted: the damaged file is exactly as
+            // it was. Refuse every save/remove so it can never be replaced.
+            sReadOnly = true;
+            LL_WARNS("EnvIntensity") << "[EnvIntensity backup] read-only for this session; "
+                << "saving and deleting presets is disabled" << LL_ENDL;
+            LLNotificationsUtil::add("EnvIntensityPresetsDamagedReadOnly",
+                LLSD().with("COUNT", salvaged));
+            return;
+        }
+
+        LL_WARNS("EnvIntensity") << "[EnvIntensity backup] original kept as \"" << backup << "\"" << LL_ENDL;
+        if (salvaged > 0 && !writeStore())
+        {
+            // The original is safe in the backup; the next save retries the write.
+            LL_WARNS("EnvIntensity") << "[EnvIntensity backup] could not write the recovered presets back" << LL_ENDL;
+        }
+        LLNotificationsUtil::add("EnvIntensityPresetsDamaged",
+            LLSD().with("FILENAME", backup).with("COUNT", salvaged));
+    }
+
+    // [EnvIntensity backup] Hostile-input limits, enforced BEFORE the XML parser sees the file.
+    const S32 MAX_CONTAINER_DEPTH = 6;   // our own files nest 3 deep (root map > preset map > color array)
+
+    bool isAllowedElement(const std::string& name)
+    {
+        static const char* const ALLOWED[] =
+        {
+            "llsd", "map", "array", "key", "real", "integer", "boolean", "string", "undef",
+        };
+        for (const char* a : ALLOWED)
+        {
+            if (name == a)
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    // Pre-scan of the raw XML text. false = reject as damaged (reason in `why`):
+    // more than MAX_CONTAINER_DEPTH nested <map>/<array> (self-closing ones included),
+    // an element name outside the LLSD subset we write, a DOCTYPE / entity declaration,
+    // or malformed markup.
+    bool prescanXml(const std::string& text, std::string& why)
+    {
+        const size_t n = text.size();
+        size_t i = 0;
+        S32 depth = 0;
+        while (i < n)
+        {
+            i = text.find('<', i);
+            if (i == std::string::npos)
+            {
+                break;
+            }
+            if (text.compare(i, 4, "<!--") == 0)
+            {
+                const size_t e = text.find("-->", i + 4);
+                if (e == std::string::npos) { why = "unterminated comment"; return false; }
+                i = e + 3;
+                continue;
+            }
+            if (text.compare(i, 9, "<![CDATA[") == 0)
+            {
+                const size_t e = text.find("]]>", i + 9);
+                if (e == std::string::npos) { why = "unterminated CDATA"; return false; }
+                i = e + 3;
+                continue;
+            }
+            if (text.compare(i, 2, "<?") == 0)
+            {
+                const size_t e = text.find("?>", i + 2);
+                if (e == std::string::npos) { why = "unterminated declaration"; return false; }
+                i = e + 2;
+                continue;
+            }
+            if (text.compare(i, 2, "<!") == 0)
+            {
+                why = "DOCTYPE / entity declaration not allowed";
+                return false;
+            }
+
+            // an element tag: find its closing '>' (quoted attribute values may contain '>')
+            size_t j = i + 1;
+            char quote = 0;
+            while (j < n && (quote != 0 || text[j] != '>'))
+            {
+                if (quote != 0)
+                {
+                    if (text[j] == quote) { quote = 0; }
+                }
+                else if (text[j] == '"' || text[j] == '\'')
+                {
+                    quote = text[j];
+                }
+                ++j;
+            }
+            if (j >= n)
+            {
+                why = "unterminated tag";
+                return false;
+            }
+            const bool closing      = (text[i + 1] == '/');
+            const bool self_closing = (text[j - 1] == '/');
+            size_t name_start = i + 1 + (closing ? 1 : 0);
+            size_t name_end   = name_start;
+            while (name_end < j && text[name_end] != ' ' && text[name_end] != '\t'
+                   && text[name_end] != '\r' && text[name_end] != '\n' && text[name_end] != '/')
+            {
+                ++name_end;
+            }
+            const std::string name = text.substr(name_start, name_end - name_start);
+            if (!isAllowedElement(name))
+            {
+                why = "unexpected element <" + name.substr(0, 32) + ">";
+                return false;
+            }
+            if (name == "map" || name == "array")
+            {
+                if (closing)
+                {
+                    if (--depth < 0) { why = "unbalanced container tags"; return false; }
+                }
+                else
+                {
+                    if (++depth > MAX_CONTAINER_DEPTH) { why = "container nesting too deep"; return false; }
+                    if (self_closing) { --depth; }
+                }
+            }
+            i = j + 1;
+        }
+        return true;
+    }
+
+    // [EnvIntensity backup] Reads the whole file, enforcing the size cap on the bytes
+    // actually read (not just the size reported up front).
+    bool readCapped(const std::string& path, std::string& out, std::string& why)
+    {
+        llifstream input(path, std::ios::in | std::ios::binary);
+        if (!input.is_open())
+        {
+            why = "cannot be opened for reading";
+            return false;
+        }
+        char buffer[65536];
+        for (;;)
+        {
+            input.read(buffer, sizeof(buffer));
+            const std::streamsize got = input.gcount();
+            if (got > 0)
+            {
+                out.append(buffer, static_cast<size_t>(got));
+                if (static_cast<S64>(out.size()) > MAX_FILE_BYTES)
+                {
+                    why = "more than " + std::to_string(MAX_FILE_BYTES) + " bytes";
+                    return false;
+                }
+            }
+            if (!input)
+            {
+                break;
+            }
+        }
+        const bool read_error = input.bad();
+        input.close();   // must be closed before any rename
+        if (read_error)
+        {
+            why = "read error";
+            return false;
+        }
+        return true;
+    }
+
+    // [EnvIntensity backup] Leftover temp files from an interrupted write. Only names of the
+    // exact form "light_intensity_presets.xml.<36-char UUID>.tmp" are counted. They are only
+    // logged: never deleted.
+    void logStrayTempFiles()
+    {
+        const std::string prefix = std::string(PRESETS_FILENAME) + ".";
+        const std::string suffix = ".tmp";
+        const std::string dir    = gDirUtilp->getDirName(presetsPath());
+        if (dir.empty())
+        {
+            return;
+        }
+        S32 count = 0;
+        LLDirIterator iter(dir, prefix + "*" + suffix);
+        std::string name;
+        while (iter.next(name))
+        {
+            if (name.size() == prefix.size() + 36 + suffix.size()
+                && name.compare(0, prefix.size(), prefix) == 0
+                && name.compare(name.size() - suffix.size(), suffix.size(), suffix) == 0)
+            {
+                ++count;
+            }
+        }
+        if (count > 0)
+        {
+            LL_WARNS("EnvIntensity") << "[EnvIntensity backup] " << count
+                << " leftover temp file(s) next to the presets file (left in place)" << LL_ENDL;
+        }
     }
 
     void loadFromDisk()
     {
         sLoaded = true;
+        sReadOnly = false;
         store().clear();
 
+        // [EnvIntensity backup] The restore / damage backup / salvage write below are
+        // transactions: hold the cross-process lock. If it is busy we still READ the file
+        // for display but change nothing on disk, and mark the snapshot "unknown" so the
+        // next save/remove reloads it (under the lock) before writing.
+        PresetsLock lock;
+        const bool have_lock = lock.held();
+
         const std::string path = presetsPath();
-        if (!LLFile::isfile(path))
+        logStrayTempFiles();
+
+        // [EnvIntensity backup] Crash between "P -> .prev" and "temp -> P" leaves P missing
+        // with the data in .prev: restore it (never replacing anything) and load it normally.
+        // If that cannot be done, load nothing and go read-only so .prev is never replaced.
+        if (have_lock && !LLFile::exists(path))
         {
-            return;   // first run: nothing saved yet
-        }
-        const S64 bytes = LLFile::size(path);
-        if (bytes < 0 || bytes > MAX_FILE_BYTES)
-        {
-            LL_WARNS("EnvIntensity") << "[EnvIntensity userpresets] ignoring \"" << path
-                << "\" (" << bytes << " bytes)" << LL_ENDL;
-            return;
-        }
-        llifstream input(path.c_str());
-        if (!input.is_open())
-        {
-            return;
-        }
-        LLSD root;
-        const S32 ret = LLSDSerialize::fromXML(root, input);
-        input.close();
-        if (ret == LLSDParser::PARSE_FAILURE || !root.isMap())
-        {
-            LL_WARNS("EnvIntensity") << "[EnvIntensity userpresets] ignoring unreadable \"" << path << "\"" << LL_ENDL;
-            return;
+            const std::string previous = gDirUtilp->getExpandedFilename(LL_PATH_USER_SETTINGS, PREVIOUS_FILENAME);
+            if (LLFile::isfile(previous))
+            {
+                if (isSafeBackupPair(path, previous) && renameNoReplace(previous, path))
+                {
+                    LL_WARNS("EnvIntensity") << "[EnvIntensity backup] presets file was missing; restored from \""
+                        << previous << "\"" << LL_ENDL;
+                    LLNotificationsUtil::add("EnvIntensityPresetsRestored");
+                }
+                else
+                {
+                    sReadOnly = true;
+                    LL_WARNS("EnvIntensity") << "[EnvIntensity backup] presets file missing and \"" << previous
+                        << "\" could not be restored; read-only for this session" << LL_ENDL;
+                    sLoadedSig = fileSig(path);
+                    LLNotificationsUtil::add("EnvIntensityPresetReadOnly");
+                    return;
+                }
+            }
         }
 
-        S32 rejected = 0;
-        for (LLSD::map_const_iterator it = root.beginMap(); it != root.endMap(); ++it)
+        const FileSig before = fileSig(path);   // taken BEFORE reading: a change during the read is seen as stale later
+        sLoadedSig = before;
+        if (!have_lock)
         {
-            std::string clean;
-            if (checkName(it->first, clean) != NAME_OK || clean != it->first)
-            {
-                ++rejected;
-                continue;
-            }
-            const std::string key = lowerCopy(clean);
-            if (store().size() >= MAX_PRESETS || store().find(key) != store().end())
-            {
-                ++rejected;
-                continue;
-            }
-            Preset p;
-            p.mName = clean;
-            if (!fromLLSD(it->second, p.mValues))
-            {
-                ++rejected;
-                continue;
-            }
-            store()[key] = p;
+            sLoadedSig.mSize = -1;   // never equals a real signature: next write reloads under the lock
         }
-        if (rejected > 0)
+        if (!LLFile::exists(path))
         {
-            LL_WARNS("EnvIntensity") << "[EnvIntensity userpresets] skipped " << rejected
-                << " invalid preset(s) in \"" << path << "\"" << LL_ENDL;
+            return;   // first run (or nothing salvageable was left): nothing saved yet
+        }
+
+        // Empty = the file is fine. Anything else is the reason it is damaged.
+        std::string damage;
+        const S64 bytes = LLFile::isfile(path) ? LLFile::size(path) : -1;
+        std::string text;
+        if (bytes < 0 || bytes > MAX_FILE_BYTES)
+        {
+            damage = "not a regular file, or size " + std::to_string(bytes) + " bytes is out of range";
+        }
+        else if (readCapped(path, text, damage) && prescanXml(text, damage))
+        {
+            std::istringstream input(text);
+            LLSD root;
+            const S32 ret = LLSDSerialize::fromXML(root, input);
+            if (ret == LLSDParser::PARSE_FAILURE || !root.isMap())
+            {
+                damage = "unreadable or not a preset map";
+            }
+            else
+            {
+                S32 rejected = 0;
+                for (LLSD::map_const_iterator it = root.beginMap(); it != root.endMap(); ++it)
+                {
+                    std::string clean;
+                    if (checkName(it->first, clean) != NAME_OK || clean != it->first)
+                    {
+                        ++rejected;
+                        continue;
+                    }
+                    const std::string key = lowerCopy(clean);
+                    if (store().size() >= MAX_PRESETS || store().find(key) != store().end())
+                    {
+                        ++rejected;
+                        continue;
+                    }
+                    Preset p;
+                    p.mName = clean;
+                    if (!fromLLSD(it->second, p.mValues))
+                    {
+                        ++rejected;
+                        continue;
+                    }
+                    store()[key] = p;
+                }
+                if (rejected > 0)
+                {
+                    damage = std::to_string(rejected) + " invalid preset(s) rejected";
+                }
+            }
+        }
+        // (readCapped / prescanXml failures leave `damage` set; the store is still empty)
+
+        if (!damage.empty())
+        {
+            if (have_lock)
+            {
+                handleDamagedFile(path, damage);
+                sLoadedSig = fileSig(path);   // whatever the backup / write-back left behind is ours
+            }
+            else
+            {
+                LL_WARNS("EnvIntensity") << "[EnvIntensity backup] presets file looks damaged (" << damage
+                    << ") but is busy; backup deferred to the next save" << LL_ENDL;
+            }
         }
     }
 
@@ -385,6 +964,24 @@ namespace
         {
             loadFromDisk();
         }
+    }
+
+    // [EnvIntensity backup] Never write from a stale snapshot: if the presets file changed
+    // on disk since we loaded (or last wrote) it, reload it through the full damage-check
+    // path first. Returns true if the store was reloaded.
+    bool reloadIfChanged()
+    {
+        // Always reload under the transaction lock (the file is tiny): a size+mtime
+        // signature can miss two same-length writes within one timestamp tick (POSIX
+        // whole-second mtime), which would let a stale store overwrite another
+        // viewer's save. The return value only reports whether the signature moved.
+        const bool changed = fileSig(presetsPath()) != sLoadedSig;
+        if (changed)
+        {
+            LL_WARNS("EnvIntensity") << "[EnvIntensity backup] presets file changed on disk since it was loaded; reloading" << LL_ENDL;
+        }
+        loadFromDisk();
+        return changed;
     }
 
     struct ApplyGuard
@@ -580,6 +1177,7 @@ std::string findMatchingName(const Values& values)
 SaveResult save(const std::string& raw_name, const Values& values)
 {
     ensureLoaded();
+    sLastBusy = false;
     std::string clean;
     const NameCheck check = checkName(raw_name, clean);
     if (check == NAME_INVALID)
@@ -589,6 +1187,23 @@ SaveResult save(const std::string& raw_name, const Values& values)
     if (check == NAME_RESERVED)
     {
         return SAVE_RESERVED_NAME;
+    }
+
+    // [EnvIntensity backup] The whole transaction (reload, read-modify, keep-previous,
+    // replace) runs under the cross-process lock. Busy = refuse, write nothing.
+    PresetsLock lock;
+    if (!lock.held())
+    {
+        sLastBusy = true;
+        return SAVE_BUSY;
+    }
+    if (reloadIfChanged())   // never write from a stale snapshot
+    {
+        listChangedSignal()();
+    }
+    if (sReadOnly)
+    {
+        return SAVE_READ_ONLY;
     }
 
     const std::string key = lowerCopy(clean);
@@ -631,9 +1246,35 @@ SaveResult saveCurrent(const std::string& raw_name)
     return save(raw_name, currentValues());
 }
 
+bool lastWriteWasBusy()
+{
+    return sLastBusy;   // [EnvIntensity backup]
+}
+
+bool isReadOnly()
+{
+    ensureLoaded();
+    return sReadOnly;   // [EnvIntensity backup]
+}
+
 bool remove(const std::string& name)
 {
     ensureLoaded();
+    sLastBusy = false;
+    PresetsLock lock;   // [EnvIntensity backup] whole transaction under the cross-process lock
+    if (!lock.held())
+    {
+        sLastBusy = true;
+        return false;
+    }
+    if (reloadIfChanged())   // never write from a stale snapshot
+    {
+        listChangedSignal()();
+    }
+    if (sReadOnly)
+    {
+        return false;
+    }
     const std::string key = lowerCopy(name);
     const auto found = store().find(key);
     if (found == store().end())

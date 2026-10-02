@@ -29,6 +29,7 @@
 #ifndef BDMERGE_ENVLIBRARY_H
 #define BDMERGE_ENVLIBRARY_H
 
+#include <functional>
 #include <string>
 
 #include "llsd.h"
@@ -42,7 +43,11 @@ class BDMergeEnvLibrary
 public:
     //BD - Windlight functions
     void savePreset(std::string name, LLSettingsBase::ptr_t settings);
-    void deletePreset(std::string name, std::string folder = "skies");
+    //BD - [FileSafety] Deletes exactly one local preset file (never a glob). Returns true if removed.
+    bool deletePreset(std::string name, std::string folder = "skies");
+    //BD - [FileSafety] Ask for confirmation, then deletePreset(); on_done runs after the
+    //     attempt (success or not) so callers can refresh their lists. Not called on Cancel.
+    void confirmDeletePreset(std::string name, std::string folder, std::function<void()> on_done);
     void loadPresetsFromDir(LLComboBox* combo, std::string folder = "skies");
     bool doLoadPreset(const std::string& path);
     static std::string getWindlightDir(std::string folder, bool system = false);
