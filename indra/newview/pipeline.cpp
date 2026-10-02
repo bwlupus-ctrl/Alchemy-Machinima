@@ -342,6 +342,7 @@ F32  LLPipeline::RenderShadowSubjectMaxDistance;
 F32  LLPipeline::RenderShadowSubjectFeather;
 bool LLPipeline::RenderShadowSubjectSnap;
 S32  LLPipeline::RenderShadowAlphaMode;
+S32  LLPipeline::RenderShadowAlphaNearCascades; // [AlphaShadowCap]
 F32  LLPipeline::RenderShadowAlphaCutoff;
 bool LLPipeline::PrismSunCascadeReexpress;
 F32 LLPipeline::RenderShadowErrorCutoff;
@@ -584,7 +585,63 @@ bool    LLPipeline::sBakeSunlight = false;
 bool    LLPipeline::sNoAlpha = false;
 bool    LLPipeline::sUseFarClip = true;
 bool    LLPipeline::sShadowRender = false;
-bool    LLPipeline::sRainOcclusionRender = false;
+U8      LLPipeline::sShadowDrawFilter = 0; // [AlphaShadowCap]
+
+namespace
+{
+// [AlphaShadowCap] No per-draw diagnostic work unless the cap filter is active.
+struct AlphaCapCounts
+{
+    bool active = false;
+    U32 rejected = 0;
+    U32 attached = 0;
+    U32 expected = 0;
+    bool treeSkipped = false;
+};
+AlphaCapCounts sAlphaCapCounts;
+
+bool alphaCapDebug()
+{
+    static LLCachedControl<bool> debug(gSavedSettings, "RenderShadowAlphaCapDebug", false);
+    return debug;
+}
+
+class ShadowDrawFilterScope
+{
+public:
+    explicit ShadowDrawFilterScope(U8 filter) : mSaved(LLPipeline::sShadowDrawFilter)
+    {
+        LLPipeline::sShadowDrawFilter = filter;
+    }
+    ~ShadowDrawFilterScope() { LLPipeline::sShadowDrawFilter = mSaved; }
+    ShadowDrawFilterScope(const ShadowDrawFilterScope&) = delete;
+    ShadowDrawFilterScope& operator=(const ShadowDrawFilterScope&) = delete;
+private:
+    U8 mSaved;
+};
+
+// Check all exits, including the early-return paths of generateSunShadow.
+struct AlphaCapSunLeakCheck
+{
+    ~AlphaCapSunLeakCheck()
+    {
+        if (alphaCapDebug() && LLPipeline::sShadowDrawFilter != 0)
+        {
+            LL_WARNS("AlphaShadowCap") << "[AlphaCap] FAIL(leak) generateSunShadow exit filter="
+                << static_cast<U32>(LLPipeline::sShadowDrawFilter) << LL_ENDL;
+        }
+    }
+};
+}
+
+void LLPipeline::countShadowAlphaCapDraw(bool attached)
+{
+    if (sAlphaCapCounts.active)
+    {
+        if (attached) ++sAlphaCapCounts.attached;
+        else ++sAlphaCapCounts.rejected;
+    }
+}
 bool    LLPipeline::sRenderGlow = false;
 bool    LLPipeline::sReflectionRender = false;
 bool    LLPipeline::sDistortionRender = false;
@@ -899,6 +956,7 @@ void LLPipeline::init()
     connectRefreshCachedSettingsSafe("RenderShadowSubjectFeather");
     connectRefreshCachedSettingsSafe("RenderShadowSubjectSnap");
     connectRefreshCachedSettingsSafe("RenderShadowAlphaMode");
+    connectRefreshCachedSettingsSafe("RenderShadowAlphaNearCascades"); // [AlphaShadowCap]
     connectRefreshCachedSettingsSafe("RenderShadowAlphaCutoff");
     connectRefreshCachedSettingsSafe("PrismSunCascadeReexpress");
     connectRefreshCachedSettingsSafe("RenderShadowErrorCutoff");
@@ -2057,6 +2115,7 @@ void LLPipeline::refreshCachedSettings()
     RenderShadowSubjectFeather = gSavedSettings.getF32("RenderShadowSubjectFeather");
     RenderShadowSubjectSnap = gSavedSettings.getBOOL("RenderShadowSubjectSnap");
     RenderShadowAlphaMode = gSavedSettings.getS32("RenderShadowAlphaMode");
+    RenderShadowAlphaNearCascades = gSavedSettings.getS32("RenderShadowAlphaNearCascades"); // [AlphaShadowCap]
     RenderShadowAlphaCutoff = gSavedSettings.getF32("RenderShadowAlphaCutoff");
     PrismSunCascadeReexpress = gSavedSettings.getBOOL("PrismSunCascadeReexpress");
     gPipeline.updateShadowEngaged(); // [ShadowDist] refreshCachedSettings() is static
@@ -7907,7 +7966,7 @@ void LLPipeline::renderGeomPostDeferred(LLCamera& camera)
     // sidecar_guard disarms both attachments here.
 }
 
-void LLPipeline::renderGeomShadow(LLCamera& camera)
+void LLPipeline::renderGeomShadow(LLCamera& camera, bool include_tree_pool)
 {
     LL_PROFILE_ZONE_SCOPED_CATEGORY_PIPELINE;
     LL_PROFILE_GPU_ZONE("renderGeomShadow");
@@ -7926,7 +7985,13 @@ void LLPipeline::renderGeomShadow(LLCamera& camera)
         cur_type = poolp->getType();
 
         pool_set_t::iterator iter2 = iter1;
-        if (hasRenderType(poolp->getType()) && poolp->getNumShadowPasses() > 0)
+        // [AlphaShadowCap] Use the existing type-skip iterator; avatar pools are untouched.
+        if (!include_tree_pool && cur_type == LLDrawPool::POOL_TREE && sAlphaCapCounts.active)
+        {
+            sAlphaCapCounts.treeSkipped = true;
+        }
+        if (hasRenderType(poolp->getType()) && poolp->getNumShadowPasses() > 0 &&
+            (include_tree_pool || poolp->getType() != LLDrawPool::POOL_TREE))
         {
             poolp->prerender() ;
 
@@ -11858,6 +11923,8 @@ void LLPipeline::renderAlphaObjects(bool rigged)
     // mSimplePool->pushBatch rebinds texture units and would clobber the material
     LLFetchedGLTFMaterial* lastMatGLTF = nullptr;
     LLViewerTexture* lastTexGLTF = nullptr;
+    const bool attach_only = (sShadowDrawFilter >= 2); // [AlphaShadowCap] loop invariant
+    const bool cap_count = (sShadowDrawFilter == 3);
     auto* begin = gPipeline.beginRenderMap(type);
     auto* end = gPipeline.endRenderMap(type);
 
@@ -11901,6 +11968,12 @@ void LLPipeline::renderAlphaObjects(bool rigged)
         }
         else
         {
+            // [AlphaShadowCap] Reject before any per-draw shader/material binds.
+            if (attach_only)
+            {
+                if (cap_count) countShadowAlphaCapDraw(pparams->mAttachedToAvatar);
+                if (!pparams->mAttachedToAvatar) continue;
+            }
             if (pparams->mGLTFMaterial)
             {
                 gDeferredShadowGLTFAlphaBlendProgram.bind(rigged);
@@ -26149,15 +26222,15 @@ void LLPipeline::generateWeatherRainOcclusion(LLCamera& camera)
         shadow_camera, true, false, true);
 
     static LLCullResult rain_occlusion_result;
-    const bool saved_rain_occlusion_render = sRainOcclusionRender;
-    sRainOcclusionRender = true;
+    const U8 saved_shadow_draw_filter = sShadowDrawFilter; // [AlphaShadowCap]
+    sShadowDrawFilter = 1;
     // Unrigged opaque + alpha-mask world geometry only. Ordinary alpha blend
     // has no reliable "stops rain" material semantic; rigid worn attachments
-    // are rejected centrally while this scoped flag is true.
+    // are rejected centrally while this scoped filter is 1.
     renderShadow(
         view, projection, shadow_camera, rain_occlusion_result,
         true, true, false, false, false);
-    sRainOcclusionRender = saved_rain_occlusion_render;
+    sShadowDrawFilter = saved_shadow_draw_filter;
 
     // Publish the map only when stateSort built at least one caster batch for
     // a pass renderShadow submitted. A cleared D24 map is all-far and the
@@ -26265,10 +26338,24 @@ void LLPipeline::renderShadow(const glm::mat4& view, const glm::mat4& proj,
                               bool depth_clamp, bool do_cull,
                               bool include_rigged,
                               bool include_alpha_blend,
-                              bool cull_faces)
+                              bool cull_faces,
+                              bool include_alpha_cutout)
 {
     LL_PROFILE_ZONE_SCOPED_CATEGORY_PIPELINE; //LL_RECORD_BLOCK_TIME(FTM_SHADOW_RENDER);
     LL_PROFILE_GPU_ZONE("renderShadow");
+
+    // [AlphaShadowCap] Rain may legitimately enter with filter 1, never filter 2/3.
+    const bool cap_debug = alphaCapDebug();
+    if (cap_debug)
+    {
+        if (sShadowDrawFilter >= 2)
+        {
+            LL_WARNS("AlphaShadowCap") << "[AlphaCap] FAIL(leak) renderShadow entry" << LL_ENDL;
+        }
+        sAlphaCapCounts = AlphaCapCounts{};
+    }
+    sAlphaCapCounts.active = cap_debug && !include_alpha_cutout;
+    const U8 cap_filter = sAlphaCapCounts.active ? U8{3} : U8{2};
 
     LLPipeline::sShadowRender = true;
 
@@ -26312,6 +26399,48 @@ void LLPipeline::renderShadow(const glm::mat4& view, const glm::mat4& proj,
     }
 
     stateSort(shadow_cam, result);
+
+    // [AlphaShadowCap] Independent expected count from the sorted maps, not from
+    // filter invocations. Scalar legacy sweeps omit multi-slot draws; only the
+    // four material-mask types below have an optional indexed shadow sweep.
+    if (sAlphaCapCounts.active)
+    {
+        const bool legacy_indexed = LLGLSLShader::sIndexedLegacyMaterials &&
+            gDeferredShadowMaterialIndexedProgram.isComplete();
+        const U32 mask_types[] = {
+            LLRenderPass::PASS_ALPHA_MASK, LLRenderPass::PASS_FULLBRIGHT_ALPHA_MASK,
+            LLRenderPass::PASS_NORMSPEC_MASK, LLRenderPass::PASS_MATERIAL_ALPHA_MASK,
+            LLRenderPass::PASS_SPECMAP_MASK, LLRenderPass::PASS_NORMMAP_MASK
+        };
+        for (U32 type : mask_types)
+        {
+            sAlphaCapCounts.expected += result.getRenderMapSize(type);
+            const bool has_indexed_sweep = legacy_indexed &&
+                type != LLRenderPass::PASS_ALPHA_MASK && type != LLRenderPass::PASS_FULLBRIGHT_ALPHA_MASK;
+            if (!has_indexed_sweep)
+            {
+                auto* end = result.endRenderMap(type);
+                for (auto* it = result.beginRenderMap(type); it != end; )
+                {
+                    if ((*it)->mMaterialSlotList.size() > 1) --sAlphaCapCounts.expected;
+                    LLCullResult::increment_iterator(it, end);
+                }
+            }
+        }
+        // PBR has either scalar + indexed sweeps or one unsplit fallback sweep.
+        sAlphaCapCounts.expected += result.getRenderMapSize(LLRenderPass::PASS_GLTF_PBR_ALPHA_MASK);
+        sAlphaCapCounts.expected += result.getRenderMapSize(LLRenderPass::PASS_GRASS);
+        if (include_alpha_blend)
+        {
+            sAlphaCapCounts.expected += result.getRenderMapSize(LLRenderPass::PASS_ALPHA);
+            auto* end = result.endRenderMap(LLRenderPass::PASS_ALPHA);
+            for (auto* it = result.beginRenderMap(LLRenderPass::PASS_ALPHA); it != end; )
+            {
+                if ((*it)->mAvatar != nullptr) --sAlphaCapCounts.expected;
+                LLCullResult::increment_iterator(it, end);
+            }
+        }
+    }
 
     //generate shadow map
     gGL.matrixMode(LLRender::MM_PROJECTION);
@@ -26376,7 +26505,7 @@ void LLPipeline::renderShadow(const glm::mat4& view, const glm::mat4& proj,
 
     {
         LL_PROFILE_ZONE_NAMED_CATEGORY_PIPELINE("shadow geom");
-        renderGeomShadow(shadow_cam);
+        renderGeomShadow(shadow_cam, include_alpha_cutout); // [AlphaShadowCap]
     }
 
     {
@@ -26387,6 +26516,9 @@ void LLPipeline::renderShadow(const glm::mat4& view, const glm::mat4& proj,
 
         for (int i = 0; i < pass_count; ++i)
         {
+            // [AlphaShadowCap] Before binds; restored at iteration end, before rigged.
+            std::optional<ShadowDrawFilterScope> alpha_filter;
+            if (!include_alpha_cutout && i == 0) alpha_filter.emplace(cap_filter);
             bool rigged = i == 1;
 
             {
@@ -26424,7 +26556,15 @@ void LLPipeline::renderShadow(const glm::mat4& view, const glm::mat4& proj,
 
                 if (i == 0)
                 {
-                    renderObjects(LLRenderPass::PASS_GRASS, true);
+                    // [AlphaShadowCap] Grass cannot be a worn attachment.
+                    if (include_alpha_cutout)
+                    {
+                        renderObjects(LLRenderPass::PASS_GRASS, true);
+                    }
+                    else if (sAlphaCapCounts.active)
+                    {
+                        sAlphaCapCounts.rejected += result.getRenderMapSize(LLRenderPass::PASS_GRASS);
+                    }
                 }
 
                 {
@@ -26453,6 +26593,9 @@ void LLPipeline::renderShadow(const glm::mat4& view, const glm::mat4& proj,
 
         for (int i = 0; i < pass_count; ++i)
         {
+            // [AlphaShadowCap] Before binds; restored at iteration end, before rigged.
+            std::optional<ShadowDrawFilterScope> alpha_filter;
+            if (!include_alpha_cutout && i == 0) alpha_filter.emplace(cap_filter);
             bool rigged = i == 1;
             gDeferredShadowGLTFAlphaMaskProgram.bind(rigged);
             LLGLSLShader::sCurBoundShaderPtr->uniform1i(LLShaderMgr::SUN_UP_FACTOR, sun_up);
@@ -26523,6 +26666,7 @@ void LLPipeline::renderShadow(const glm::mat4& view, const glm::mat4& proj,
     // reset occlusion culling flag
     sUseOcclusion = saved_occlusion;
     LLPipeline::sShadowRender = false;
+    sAlphaCapCounts.active = false; // [AlphaShadowCap] never count outside this call
 }
 
 bool LLPipeline::getVisiblePointCloud(LLCamera& camera, LLVector3& min, LLVector3& max, std::vector<LLVector3>& fp, LLVector3 light_dir)
@@ -26828,6 +26972,7 @@ static void bucketShadowCull(LLCullResult& src, LLCamera& cam, LLCullResult& dst
 
 void LLPipeline::generateSunShadow(LLCamera& camera, bool clip_only)
 {
+    AlphaCapSunLeakCheck alpha_cap_leak_check; // [AlphaShadowCap] all exits
     // [ProbeCost] A failed/early-returning main generation cannot publish stale maps.
     if (mRT == &mMainRT && !gCubeSnapshot) mMainSunShadowToken = false;
     if (!sRenderDeferred || RenderShadowDetail <= 0)
@@ -27919,7 +28064,28 @@ void LLPipeline::generateSunShadow(LLCamera& camera, bool clip_only)
                 {   // re-bucket the shared union cull down to this cascade's frustum
                     bucketShadowCull(sUnionShadowResult, shadow_cam, result[j]);
                 }
-                renderShadow(view[j], proj[j], shadow_cam, result[j], true, !have_union_cull);
+                // [AlphaShadowCap] Only main-view sun slices; column/probes/spots
+                // retain the declaration's stock default. Invalid K also means off.
+                bool alpha_casters = true;
+                const S32 k = RenderShadowAlphaNearCascades;
+                if (k >= 1 && k <= 3 && !gCubeSnapshot && mRT == &mMainRT)
+                {
+                    const S32 max_j = subject_active ? llmin(k, 2) : k - 1;
+                    alpha_casters = (j <= max_j);
+                }
+                renderShadow(view[j], proj[j], shadow_cam, result[j], true, !have_union_cull,
+                             true, true, true, alpha_casters);
+                if (!alpha_casters && alphaCapDebug() && (gFrameCount & 63U) == 0)
+                {
+                    const char* verdict = sAlphaCapCounts.expected == 0 ? "INCONCLUSIVE" :
+                        (sAlphaCapCounts.rejected + sAlphaCapCounts.attached == sAlphaCapCounts.expected ? "PASS" : "FAIL");
+                    LL_INFOS("AlphaShadowCap") << "[AlphaCap] K=" << k << " subj=" << subject_active
+                        << " cam=SUN_SHADOW" << (LLViewerCamera::sCurCameraID - LLViewerCamera::CAMERA_SUN_SHADOW0)
+                        << " capped rej=" << sAlphaCapCounts.rejected << " att=" << sAlphaCapCounts.attached
+                        << " exp=" << sAlphaCapCounts.expected
+                        << " tree=" << (sAlphaCapCounts.treeSkipped ? "skipped" : "absent")
+                        << " " << verdict << LL_ENDL;
+                }
             }
 
             mRT->shadow[j].flush();

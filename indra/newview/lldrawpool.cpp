@@ -426,10 +426,19 @@ void LLFacePool::LLOverrideFaceColor::setColor(F32 r, F32 g, F32 b, F32 a)
 //=============================
 // Render Pass Implementation
 //=============================
-static bool skip_rain_occlusion_attachment(const LLDrawInfo* params)
+static bool skip_shadow_draw(const LLDrawInfo* params)
 {
-    return LLPipeline::sRainOcclusionRender &&
-           params && params->mAttachedToAvatar;
+    // [AlphaShadowCap] Fold both policies into the existing per-draw rain filter.
+    const U8 f = LLPipeline::sShadowDrawFilter;
+    if (f != 0 && params)
+    {
+        if (f == 3) // debug accounting only; plain attachments-only is 2
+        {
+            LLPipeline::countShadowAlphaCapDraw(params->mAttachedToAvatar);
+        }
+        return params->mAttachedToAvatar == (f == 1);
+    }
+    return false;
 }
 
 namespace
@@ -1071,7 +1080,7 @@ void LLRenderPass::renderGroup(LLSpatialGroup* group, U32 type, bool texture)
     for (LLSpatialGroup::drawmap_elem_t::iterator k = draw_info.begin(); k != draw_info.end(); ++k)
     {
         LLDrawInfo *pparams = *k;
-        if (pparams && !skip_rain_occlusion_attachment(pparams))
+        if (pparams && !skip_shadow_draw(pparams))
         {
             pushBatch(*pparams, texture);
         }
@@ -1111,7 +1120,7 @@ void LLRenderPass::pushBatches(U32 type, bool texture, bool batch_textures)
             LLDrawInfo* pparams = *i;
             LLCullResult::increment_iterator(i, end);
 
-            if (skip_rain_occlusion_attachment(pparams))
+            if (skip_shadow_draw(pparams))
             {
                 continue;
             }
@@ -1134,7 +1143,7 @@ void LLRenderPass::pushUntexturedBatches(U32 type)
         LLDrawInfo* pparams = *i;
         LLCullResult::increment_iterator(i, end);
 
-        if (skip_rain_occlusion_attachment(pparams))
+        if (skip_shadow_draw(pparams))
         {
             continue;
         }
@@ -1199,12 +1208,13 @@ void LLRenderPass::pushMaskBatches(U32 type, bool texture, bool batch_textures)
     {
         LLDrawInfo* pparams = *i;
         LLCullResult::increment_iterator(i, end);
-        if (skip_rain_occlusion_attachment(pparams))
-        {
-            continue;
-        }
         if (pparams->mMaterialSlotList.size() > 1)
         { // multi-material legacy batch -- drawn by pushMaskBatchesIndexed
+            continue;
+        }
+        // [AlphaShadowCap] Count only the sweep that owns this slot count.
+        if (skip_shadow_draw(pparams))
+        {
             continue;
         }
         LLGLSLShader::sCurBoundShaderPtr->setMinimumAlpha(pparams->mAlphaMaskCutoff);
@@ -1258,11 +1268,12 @@ void LLRenderPass::pushMaskBatchesIndexed(U32 type, bool rigged)
         LLDrawInfo& params = **i;
         LLCullResult::increment_iterator(i, end);
 
-        if (skip_rain_occlusion_attachment(&params))
+        if (params.mMaterialSlotList.size() < 2)
         {
             continue;
         }
-        if (params.mMaterialSlotList.size() < 2)
+        // [AlphaShadowCap] Count only the sweep that owns this slot count.
+        if (skip_shadow_draw(&params))
         {
             continue;
         }
@@ -2136,7 +2147,7 @@ void LLRenderPass::pushGLTFBatches(U32 type)
         LLDrawInfo& params = **i;
         LLCullResult::increment_iterator(i, end);
 
-        if (skip_rain_occlusion_attachment(&params))
+        if (skip_shadow_draw(&params))
         {
             continue;
         }
@@ -2155,7 +2166,7 @@ void LLRenderPass::pushUntexturedGLTFBatches(U32 type)
         LLDrawInfo& params = **i;
         LLCullResult::increment_iterator(i, end);
 
-        if (skip_rain_occlusion_attachment(&params))
+        if (skip_shadow_draw(&params))
         {
             continue;
         }
@@ -2178,12 +2189,13 @@ void LLRenderPass::pushGLTFBatchesScalar(U32 type)
         LLDrawInfo& params = **i;
         LLCullResult::increment_iterator(i, end);
 
-        if (skip_rain_occlusion_attachment(&params))
-        {
-            continue;
-        }
         if (params.mGLTFMaterialList.size() > 1)
         { // multi-material batch -- handled by the indexed sweep
+            continue;
+        }
+        // [AlphaShadowCap] Count only the sweep that owns this slot count.
+        if (skip_shadow_draw(&params))
+        {
             continue;
         }
 
@@ -2203,12 +2215,13 @@ void LLRenderPass::pushGLTFBatchesIndexed(U32 type, eGLTFIndexedMaps maps)
         LLDrawInfo& params = **i;
         LLCullResult::increment_iterator(i, end);
 
-        if (skip_rain_occlusion_attachment(&params))
-        {
-            continue;
-        }
         if (params.mGLTFMaterialList.size() < 2)
         { // single-material batch -- handled by the scalar sweep
+            continue;
+        }
+        // [AlphaShadowCap] Count only the sweep that owns this slot count.
+        if (skip_shadow_draw(&params))
+        {
             continue;
         }
 

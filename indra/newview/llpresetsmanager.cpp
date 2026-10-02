@@ -332,6 +332,7 @@ void LLPresetsManager::getGraphicsControlNames(std::vector<std::string>& names)
         "RenderMaxPartCount",
         "RenderQualityPerformance",
         "RenderShadowDetail",
+        "RenderShadowAlphaNearCascades", // [AlphaShadowCap]
         "RenderTerrainLODFactor",
         "RenderExposure",
         "AlchemyRenderTonemapType",
@@ -588,6 +589,13 @@ void LLPresetsManager::loadPreset(const std::string& subdirectory, std::string n
     bool edit_camera_movement = gSavedSettings.getBOOL("EditCameraMovement");
 
     mIgnoreChangedSignal = true;
+    // [AlphaShadowCap] Older graphics presets omit this key: load those as stock,
+    // even when the previous preset enabled the cap. Restore on a failed load.
+    const S32 saved_alpha_cap = gSavedSettings.getS32("RenderShadowAlphaNearCascades");
+    if (PRESETS_GRAPHIC == subdirectory)
+    {
+        gSavedSettings.setS32("RenderShadowAlphaNearCascades", 0);
+    }
     if(gSavedSettings.loadFromFile(full_path, false, true) > 0)
     {
         mIgnoreChangedSignal = false;
@@ -620,6 +628,10 @@ void LLPresetsManager::loadPreset(const std::string& subdirectory, std::string n
     }
     else
     {
+        if (PRESETS_GRAPHIC == subdirectory)
+        {
+            gSavedSettings.setS32("RenderShadowAlphaNearCascades", saved_alpha_cap);
+        }
         mIgnoreChangedSignal = false;
         LL_WARNS("Presets") << "failed to load preset '"<<name<<"' from '"<<full_path<<"'" << LL_ENDL;
     }

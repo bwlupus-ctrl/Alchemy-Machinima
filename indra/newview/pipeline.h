@@ -620,7 +620,7 @@ public:
     // body is not double-drawn while blended/glow/static faces still render.
     GhostCoverageMask getGhostDeferredCoverageThisFrame(const LLUUID& instance_id) const;
     void renderGeomPostDeferred(LLCamera& camera);
-    void renderGeomShadow(LLCamera& camera);
+    void renderGeomShadow(LLCamera& camera, bool include_tree_pool = true); // [AlphaShadowCap]
     // [BDMerge A5.4-1a] Velocity / motion-vector geometry pass. Re-rasterizes the
     // opaque scene into mVelocityMap (RG16F) writing per-pixel screen-space
     // velocity. renderVelocityDebug blits it to screen for validation.
@@ -745,7 +745,8 @@ public:
                       bool depth_clamp, bool do_cull = true,
                       bool include_rigged = true,
                       bool include_alpha_blend = true,
-                      bool cull_faces = true);
+                      bool cull_faces = true,
+                      bool include_alpha_cutout = true); // [AlphaShadowCap]
     void renderSelectedFaces(const LLColor4& color);
     void renderHighlights();
     void renderDebug();
@@ -1175,10 +1176,12 @@ public:
     static bool             sNoAlpha;
     static bool             sUseFarClip;
     static bool             sShadowRender;
-    // Scoped true only while the rain-cover depth pass submits batches.
-    // LLRenderPass uses it to reject rigid avatar attachments that are not
-    // covered by the ordinary rigged/avatar render-type masks.
-    static bool             sRainOcclusionRender;
+    // [AlphaShadowCap] 0 = none, 1 = rain (reject attachments), 2 = attachments only,
+    // 3 = attachments only + debug accounting (chosen once per pass, so debug-off
+    // draws never touch the counters).
+    // Values 2/3 are scoped to a static alpha iteration, never the rigged/avatar passes.
+    static U8               sShadowDrawFilter;
+    static void countShadowAlphaCapDraw(bool attached); // debug-only accounting
     // [BDMerge A5.4-1a] true only while the velocity/motion-vector geometry pass
     // is executing (renderGeomVelocity). Lets pool code and shaders distinguish
     // the velocity pass from the normal render if needed.
@@ -2205,6 +2208,7 @@ public:
     static F32  RenderShadowSubjectFeather;
     static bool RenderShadowSubjectSnap;
     static S32  RenderShadowAlphaMode;
+    static S32  RenderShadowAlphaNearCascades; // [AlphaShadowCap]
     static F32  RenderShadowAlphaCutoff;
     static bool PrismSunCascadeReexpress;
     static F32 RenderShadowErrorCutoff;

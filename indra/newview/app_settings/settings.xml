@@ -17883,6 +17883,28 @@
     <key>Value</key>
     <integer>1</integer>
   </map>
+  <key>RenderShadowAlphaNearCascades</key>
+  <map>
+    <key>Comment</key>
+    <string>[AlphaShadowCap] Perf: 0 = stock. 1-3 = only the 1-3 nearest main-view sun cascades draw static alpha-cutout shadow casters (alpha-mask, PBR MASK and alpha-blend faces - foliage, grass, fences, and opaque-looking objects whose textures carry alpha). Rigged and worn items, avatars, projector shadows, the Follow-subject column, full reflection probes and mirrors are unaffected; Reuse probes and Prism inherit it.</string>
+    <key>Persist</key>
+    <integer>1</integer>
+    <key>Type</key>
+    <string>S32</string>
+    <key>Value</key>
+    <integer>0</integer>
+  </map>
+  <key>RenderShadowAlphaCapDebug</key>
+  <map>
+    <key>Comment</key>
+    <string>[AlphaShadowCap] Log capped-cascade draw-count verdicts every 64 frames and check for shadow draw filter leaks. Debug only.</string>
+    <key>Persist</key>
+    <integer>0</integer>
+    <key>Type</key>
+    <string>Boolean</string>
+    <key>Value</key>
+    <integer>0</integer>
+  </map>
   <key>RenderShadowAlphaMode</key>
   <map>
     <key>Comment</key>

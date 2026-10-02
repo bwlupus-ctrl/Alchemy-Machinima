@@ -2580,7 +2580,7 @@
 				<panel
 					background_visible="false"
 					follows="left|top|right"
-					height="1100"
+					height="1130"
 					layout="topleft"
 					left="0"
 					name="shadow_settings_scroll_content"
@@ -4050,6 +4050,49 @@
 				decimal_digits="2"
 				name="sd_alpha_cutoff"
 				tool_tip="Low cutoff mode: blended surfaces cast shadows from this alpha upward (stock needs 0.6). Lower keeps thinner chains; too low makes faint glass cast." />
+			<!-- [AlphaShadowCap] Opt-in main-view static alpha caster cap. -->
+			<text
+				follows="left|top"
+				height="15"
+				left="5"
+				top_pad="8"
+				width="180"
+				layout="topleft"
+				tool_tip="Faster shadows: surfaces drawn with alpha cut-outs or alpha blending cast sun shadows only near the camera. That covers leaves, grass and fences, and also some objects that LOOK solid, such as buildings or rocks whose textures carry an alpha channel. Avatars, worn items and projector shadows are unchanged.&#10;&#10;The cost: distant ground under trees and some alpha-textured buildings become sunlit. The shadow fades out where the shadow cascades meet. Volumetric shafts in forests get brighter. Mirrors and Reuse probes may disagree with the main view.&#10;&#10;With Sharp shadow range at 0, &quot;Near&quot; means the stock nearest-cascade distance, which moves with the angle between the camera and the sun and with how far you can see. Set Sharp shadow range for a stable distance. With Follow subject, &quot;Near + mid&quot; equals &quot;All but far&quot;."
+				value="Alpha-cutout shadows (distant):" />
+			<combo_box
+				allow_text_entry="false"
+				control_name="RenderShadowAlphaNearCascades"
+				follows="left|top"
+				layout="topleft"
+				height="18"
+				top_pad="-17"
+				left="190"
+				max_chars="128"
+				name="sd_alpha_cap_combo"
+				width="168"
+				tool_tip="Faster shadows: surfaces drawn with alpha cut-outs or alpha blending cast sun shadows only near the camera. That covers leaves, grass and fences, and also some objects that LOOK solid, such as buildings or rocks whose textures carry an alpha channel. Avatars, worn items and projector shadows are unchanged.&#10;&#10;The cost: distant ground under trees and some alpha-textured buildings become sunlit. The shadow fades out where the shadow cascades meet. Volumetric shafts in forests get brighter. Mirrors and Reuse probes may disagree with the main view.&#10;&#10;With Sharp shadow range at 0, &quot;Near&quot; means the stock nearest-cascade distance, which moves with the angle between the camera and the sun and with how far you can see. Set Sharp shadow range for a stable distance. With Follow subject, &quot;Near + mid&quot; equals &quot;All but far&quot;.">
+				<combo_box.item label="All distances (stock)" name="sd_alpha_cap_stock" value="0" />
+				<combo_box.item label="Near only" name="sd_alpha_cap_near" value="1" />
+				<combo_box.item label="Near + mid" name="sd_alpha_cap_mid" value="2" />
+				<combo_box.item label="All but far" name="sd_alpha_cap_far" value="3" />
+			</combo_box>
+			<button
+				name="reset_RenderShadowAlphaNearCascades"
+				follows="left|top"
+				layout="topleft"
+				height="22"
+				left="360"
+				top_pad="-22"
+				width="18"
+				scale_image="true"
+				image_overlay="Refresh_Off"
+				image_overlay_alignment="center"
+				tool_tip="Reset to default value">
+				<button.commit_callback
+					function="LightBox.ResetControlDefault"
+					parameter="RenderShadowAlphaNearCascades" />
+			</button>
 			<text
 				follows="left|top"
 				height="15"
