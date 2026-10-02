@@ -246,4 +246,27 @@
     tool_tip="Writes extra diagnostic lines from the machinima tools (light rig, probes, ghosts, director, actor mask...) to the log. Leave off for normal use; turn on only when collecting a log for a bug report. Warnings and errors are always logged."
     top_pad="14"
     width="320"/>
+  <!-- [WebIdle] hidden/never-opened built-in web pages cost CPU+GPU for nothing -->
+  <check_box
+    control_name="AlchemyWebPauseHidden"
+    follows="top|left"
+    height="15"
+    label="Pause hidden web pages (saves CPU/GPU)"
+    layout="topleft"
+    left="30"
+    name="alchemy_web_pause_hidden_check"
+    tool_tip="Built-in web pages (Destination Guide, Marketplace, profiles, search...) that are not on screen. Stops the viewer updating their images, which saves frame time; they update again as soon as you open them. Does not affect in-world media."
+    top_pad="4"
+    width="320"/>
+  <check_box
+    control_name="AlchemyWebPreloadToolbarPages"
+    follows="top|left"
+    height="15"
+    label="Preload Guide/Avatar/Marketplace pages at login"
+    layout="topleft"
+    left="30"
+    name="alchemy_web_preload_toolbar_check"
+    tool_tip="When off (default), the Destination Guide, Avatar picker and Marketplace web pages are not loaded until you open them, which saves CPU, GPU and network at login. When on, they are loaded in the background at login so they open instantly. Takes effect on the next login."
+    top_pad="4"
+    width="320"/>
 </panel>

@@ -2709,14 +2709,37 @@ void LLViewerWindow::initWorldUI()
 
     if (!gNonInteractive)
     {
+        // [WebIdle] AlchemyWebPreloadToolbarPages (default off): the Destination
+        // Guide, Avatar Welcome Pack and Marketplace floaters are otherwise built
+        // (and their web pages navigated + rendered) at login without ever being
+        // opened. When off they are created the first time the user opens them
+        // (LLFloaterReg builds on demand and their postBuild navigates).
+        // The Avatar Welcome Pack is still created on the very first login of an
+        // install, because llstartup.cpp shows it then via findInstance().
+        static LLCachedControl<bool> preload_toolbar_pages(gSavedSettings, "AlchemyWebPreloadToolbarPages", false);
         if (physical_mem > MIN_PHYSICAL_MEMORY)
         {
-            LL_INFOS() << "Preloading cef instances" << LL_ENDL;
+            if (preload_toolbar_pages)
+            {
+                LL_INFOS() << "Preloading cef instances" << LL_ENDL;
 
-            LLFloaterReg::getInstance("destinations");
-            LLFloaterReg::getInstance("avatar_welcome_pack");
-            LLFloaterReg::getInstance("search");
-            LLFloaterReg::getInstance("marketplace");
+                LLFloaterReg::getInstance("destinations");
+                LLFloaterReg::getInstance("avatar_welcome_pack");
+                LLFloaterReg::getInstance("search");
+                LLFloaterReg::getInstance("marketplace");
+            }
+            else
+            {
+                LL_INFOS() << "Skipping toolbar web page preload (AlchemyWebPreloadToolbarPages is off)" << LL_ENDL;
+
+                if (gSavedSettings.getBOOL("FirstLoginThisInstall"))
+                {
+                    LLFloaterReg::getInstance("avatar_welcome_pack");
+                }
+                // "search" is not one of the three toolbar pages and its web page
+                // is not navigated until the user searches, so keep it as before.
+                LLFloaterReg::getInstance("search");
+            }
         }
         else if (gSavedSettings.getBOOL("FirstLoginThisInstall"))
         {

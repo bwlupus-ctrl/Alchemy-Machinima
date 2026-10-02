@@ -844,6 +844,12 @@ void LLMediaCtrl::draw()
 {
     F32 alpha = getDrawContext().mAlpha;
 
+    // [WebIdle] this page is on screen: keep it (or wake it) out of the paused state
+    if (mMediaSource)
+    {
+        mMediaSource->noteUIDrawn();
+    }
+
     if ( gRestoreGL == 1 || mUpdateScrolls)
     {
         LLRect r = getRect();

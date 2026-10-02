@@ -282,6 +282,8 @@ public:
     LLUUID getMediaTextureID() const;
 
     void suspendUpdates(bool suspend) { mSuspendUpdates = suspend; }
+    // [WebIdle] re-evaluate the UI-web pause state; called from update().
+    void updateWebPause();
     void setVisible(bool visible);
     bool getVisible() const { return mVisible; }
     bool isVisible() const { return mVisible; }
@@ -394,6 +396,14 @@ public:
     void setUsedInUI(bool used_in_ui);
     bool getUsedInUI() const { return mUsedInUI; };
 
+    // [WebIdle] UI web pages (LLMediaCtrl-owned impls only) that have not been
+    // drawn for a second are paused: no texture uploads, plugin priority HIDDEN
+    // (viewer side only; CEF itself is not told). LLMediaCtrl::draw()
+    // calls noteUIDrawn() every frame it is drawn, which resumes instantly.
+    // Never applies to in-world / parcel media (getUsedInUI() == false).
+    void noteUIDrawn();
+    bool isWebPaused() const { return mWebPaused; }
+
     void setBackgroundColor(LLColor4 color);
 
     F64 getCPUUsage() const;
@@ -480,6 +490,15 @@ private:
     EMediaNavState mMediaNavState;
     F64 mInterest;
     bool mUsedInUI;
+    // [WebIdle] see noteUIDrawn(). mUILastDrawTime is LLTimer::getElapsedSeconds()
+    // of the last LLMediaCtrl::draw() (initialised to impl creation time so a
+    // never-drawn, preloaded page gets a one second grace period).
+    F64 mUILastDrawTime = 0.0;
+    // Viewer frame of the last draw: pausing also requires missed FRAMES, so a
+    // visible page at very low frame rates (>1 s per frame) never freezes.
+    U32 mUILastDrawFrame = 0;
+    bool mWebPaused = false;
+    bool mWebRefreshPending = false; // force one texture refresh after resume
     bool mHasFocus;
     LLPluginClassMedia::EPriority mPriority;
     bool mNavigateRediscoverType;

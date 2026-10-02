@@ -769,7 +769,7 @@ void LLViewerMedia::updateMedia(void *dummy_arg)
                 // Hard limit on the number of instances that will be loaded at one time
                 new_priority = LLPluginClassMedia::PRIORITY_UNLOADED;
             }
-            else if(!pimpl->getVisible())
+            else if(!pimpl->getVisible() || pimpl->isWebPaused()) // [WebIdle] paused UI pages sit at HIDDEN
             {
                 new_priority = LLPluginClassMedia::PRIORITY_HIDDEN;
             }
@@ -1704,6 +1704,10 @@ LLViewerMediaImpl::LLViewerMediaImpl(     const LLUUID& texture_id,
 
     mMainQueue = LL::WorkQueue::getInstance("mainloop");
     mTexUpdateQueue = LL::WorkQueue::getInstance("LLImageGL"); // Share work queue with tex loader.
+
+    // [WebIdle] grace period before an undrawn UI page is paused
+    mUILastDrawTime = LLTimer::getElapsedSeconds();
+    mUILastDrawFrame = gFrameCount;
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////
@@ -2998,6 +3002,9 @@ void LLViewerMediaImpl::update()
 {
     LL_PROFILE_ZONE_SCOPED_CATEGORY_MEDIA; //LL_RECORD_BLOCK_TIME(FTM_MEDIA_DO_UPDATE);
 
+    // [WebIdle] pause / resume undrawn UI web pages (UI impls only)
+    updateWebPause();
+
     // Shared CEF daemon crash recovery: once the backoff has elapsed, clear the
     // failure latch so the normal load path below recreates the source (which
     // respawns or reconnects the daemon). isForcedUnloaded() pins mPriority to
@@ -3087,8 +3094,14 @@ void LLViewerMediaImpl::update()
         // register would deadlock.
         LLCEFSurfaceReceiver::instance().ensureStarted();
 #endif
-        if (!mSuspendUpdates && mVisible && mMediaSource->getAcceleratedPaintDirty())
+        // [WebIdle] a paused UI page does no texture work (the dirty flag is kept,
+        // so the first update after resume uploads the newest frame)
+        // On resume mWebRefreshPending forces one re-blit of the plugin's current
+        // shared texture even if no new frame is flagged dirty (viewer-side refresh).
+        if (!mSuspendUpdates && mVisible && !mWebPaused
+            && (mMediaSource->getAcceleratedPaintDirty() || mWebRefreshPending))
         {
+            mWebRefreshPending = false;
             updateAcceleratedTexture();
         }
         return;
@@ -3099,7 +3112,7 @@ void LLViewerMediaImpl::update()
         return;
     }
 
-    if(mSuspendUpdates || !mVisible)
+    if(mSuspendUpdates || !mVisible || mWebPaused) // [WebIdle]
     {
         return;
     }
@@ -3436,6 +3449,60 @@ LLViewerMediaTexture* LLViewerMediaImpl::updateMediaImage()
 LLUUID LLViewerMediaImpl::getMediaTextureID() const
 {
     return mTextureId;
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////
+// [WebIdle] Decide whether this UI page should be paused. Only impls owned by an
+// LLMediaCtrl (mUsedInUI) are ever paused; in-world / parcel media is untouched.
+void LLViewerMediaImpl::updateWebPause()
+{
+    if (!mUsedInUI)
+    {
+        return;
+    }
+
+    static LLCachedControl<bool> pause_hidden(gSavedSettings, "AlchemyWebPauseHidden", true);
+    const F64 WEB_IDLE_SECONDS = 1.0;
+    const U32 WEB_IDLE_FRAMES = 30;
+    const F64 now = LLTimer::getElapsedSeconds();
+    // Both: >1 s AND >30 viewer frames without a draw. Wall time alone would pause
+    // a visible page every frame when frames are >1 s apart (background throttle).
+    const bool want_paused = pause_hidden
+        && ((now - mUILastDrawTime) > WEB_IDLE_SECONDS)
+        && ((gFrameCount - mUILastDrawFrame) > WEB_IDLE_FRAMES);
+
+    if (want_paused != mWebPaused)
+    {
+        mWebPaused = want_paused;
+        if (!mWebPaused)
+        {
+            mWebRefreshPending = true; // e.g. setting switched off while paused
+        }
+        LL_DEBUGS("Media") << "[WebIdle] " << this << (mWebPaused ? " paused" : " resumed") << LL_ENDL;
+    }
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////
+// [WebIdle] Called by LLMediaCtrl::draw() every frame the page is on screen.
+void LLViewerMediaImpl::noteUIDrawn()
+{
+    mUILastDrawTime = LLTimer::getElapsedSeconds();
+    mUILastDrawFrame = gFrameCount;
+
+    if (mWebPaused)
+    {
+        // Resume right now (do not wait for the next update()) and force a
+        // texture refresh so the first drawn frame is current.
+        mWebPaused = false;
+        mWebRefreshPending = true;
+        if (mPriority > LLPluginClassMedia::PRIORITY_UNLOADED && mPriority < LLPluginClassMedia::PRIORITY_NORMAL)
+        {
+            // updateMedia() recomputes the exact priority next frame; this just
+            // restores the plugin's idle rate immediately.
+            setPriority(LLPluginClassMedia::PRIORITY_NORMAL);
+        }
+        LL_DEBUGS("Media") << "[WebIdle] " << this << " resumed by draw" << LL_ENDL;
+    }
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////
