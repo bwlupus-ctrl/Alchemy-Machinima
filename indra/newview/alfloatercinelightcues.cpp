@@ -94,15 +94,20 @@ bool ALFloaterCineLightCues::postBuild()
         [this](LLUICtrl*, const LLSD&) { onDeleteCue(); });
     mTimecodeMode->setCommitCallback(
         [this](LLUICtrl*, const LLSD&) { onTimecodeMode(); });
-    getChild<LLButton>("cue_go")->setCommitCallback(
+    mGoBtn = getChild<LLButton>("cue_go"); // [UIPerf]
+    mBackBtn = getChild<LLButton>("cue_back");
+    mGotoBtn = getChild<LLButton>("cue_goto");
+    mSnapGotoBtn = getChild<LLButton>("cue_snap_goto");
+    mReleaseBtn = getChild<LLButton>("cue_release");
+    mGoBtn->setCommitCallback(
         [this](LLUICtrl*, const LLSD&) { onGo(); });
-    getChild<LLButton>("cue_back")->setCommitCallback(
+    mBackBtn->setCommitCallback(
         [this](LLUICtrl*, const LLSD&) { onBack(); });
-    getChild<LLButton>("cue_goto")->setCommitCallback(
+    mGotoBtn->setCommitCallback(
         [this](LLUICtrl*, const LLSD&) { onGoto(false); });
-    getChild<LLButton>("cue_snap_goto")->setCommitCallback(
+    mSnapGotoBtn->setCommitCallback(
         [this](LLUICtrl*, const LLSD&) { onGoto(true); });
-    getChild<LLButton>("cue_release")->setCommitCallback(
+    mReleaseBtn->setCommitCallback(
         [this](LLUICtrl*, const LLSD&) { onRelease(); });
 
     Cue defaults = ALCineLightRigManager::instance().selected().captureCue("Cue 1");
@@ -371,11 +376,11 @@ void ALFloaterCineLightCues::draw()
     refreshCueRows();
     refreshStatus();
     const bool live_transport = !mTimecodeMode->get();
-    getChild<LLButton>("cue_go")->setEnabled(live_transport);
-    getChild<LLButton>("cue_back")->setEnabled(live_transport);
-    getChild<LLButton>("cue_goto")->setEnabled(live_transport);
-    getChild<LLButton>("cue_snap_goto")->setEnabled(live_transport);
-    getChild<LLButton>("cue_release")->setEnabled(live_transport);
+    mGoBtn->setEnabled(live_transport); // [UIPerf] cached in postBuild
+    mBackBtn->setEnabled(live_transport);
+    mGotoBtn->setEnabled(live_transport);
+    mSnapGotoBtn->setEnabled(live_transport);
+    mReleaseBtn->setEnabled(live_transport);
     LLFloater::draw();
 }
 

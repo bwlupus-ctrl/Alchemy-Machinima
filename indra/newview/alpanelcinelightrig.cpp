@@ -712,6 +712,39 @@ bool ALPanelCineLightRig::postBuild()
         "LabelTextColor", LLColor4::white);
     mSetupSave = getChild<LLButton>("cine_setup_save");
     mSetupDelete = getChild<LLButton>("cine_setup_delete");
+    // [UIPerf] cache the formerly per-frame name lookups (tolerant findChild,
+    // same null semantics as before).
+    mFXStop = getChild<LLUICtrl>("cine_fx_stop");
+    {
+        static const char* const easy_gated_names[8] = {
+            "cine_easy_shaft_length", "cine_easy_flare_preset",
+            "cine_easy_probe_enable", "cine_easy_probe_gizmo",
+            "cine_easy_probe_radius", "cine_easy_night_mask_enable",
+            "cine_easy_night_mask_preset", "cine_easy_night_mask_darkness",
+        };
+        static const char* const easy_reset_names[8] = {
+            "cine_easy_brightness_reset", "cine_easy_drama_reset",
+            "cine_easy_warmth_reset", "cine_easy_cone_width_reset",
+            "cine_easy_cone_feather_reset", "cine_easy_shaft_length_reset",
+            "cine_easy_probe_radius_reset", "cine_easy_night_mask_darkness_reset",
+        };
+        static const char* const tron_names[7] = {
+            "cine_rig_rim_tron_label", "cine_rig_rim_tron_mode",
+            "cine_rig_rim_tron_mix_label", "cine_rig_rim_tron_mix",
+            "cine_rig_rim_tron_mix_reset",
+            "cine_rig_rim_tron_color_label", "cine_rig_rim_tron_color",
+        };
+        for (S32 i = 0; i < 8; ++i)
+        {
+            mEasyGatedControls[i] = findChild<LLUICtrl>(easy_gated_names[i]);
+            mEasyResetButtons[i] = findChild<LLUICtrl>(easy_reset_names[i]);
+        }
+        for (S32 i = 0; i < 7; ++i)
+        {
+            mTronTintWidgets[i] = findChild<LLView>(tron_names[i]);
+        }
+    }
+    mFlowGrid = findChildView("cine_light_rig_flow_grid");
     if (std::find(LIVE_PANELS.begin(), LIVE_PANELS.end(), this) ==
         LIVE_PANELS.end())
     {
@@ -1213,9 +1246,15 @@ void ALPanelCineLightRig::syncGoboLibrary(bool force)
               gSavedSettings.getF32("CineLightRigRadius"))
         : gSavedSettings.getF32(prefix + "ShadowSoft");
     static const char* const bucket_names[] = { "sharp", "medium", "heavy" };
-    mGoboSoftness->setText(llformat(
+    const std::string softness_text = llformat(
         "%s variant (softness %.2f)",
-        bucket_names[ALCineLightRigModel::goboBlurBucket(softness)], softness));
+        bucket_names[ALCineLightRigModel::goboBlurBucket(softness)], softness);
+    if (!mGoboSoftnessSet || softness_text != mLastGoboSoftness) // [UIPerf]
+    {
+        mGoboSoftness->setText(softness_text);
+        mLastGoboSoftness = softness_text;
+        mGoboSoftnessSet = true;
+    }
 }
 
 void ALPanelCineLightRig::onGoboLibraryCommit()
@@ -2191,7 +2230,7 @@ void ALPanelCineLightRig::applyManualLock()
     // Lock the effect selector while manual so an effect cannot silently take
     // over per-light aim/exposure/colour again.
     mFXCombo->setEnabled(!manual);
-    getChild<LLUICtrl>("cine_fx_stop")->setEnabled(!manual);
+    mFXStop->setEnabled(!manual); // [UIPerf] cached in postBuild
 }
 
 void ALPanelCineLightRig::syncEasyControls()
@@ -2248,57 +2287,22 @@ void ALPanelCineLightRig::syncEasyControls()
     mEasyWarmth->setEnabled(mEasyModeActive);
     mEasyConeWidth->setEnabled(mEasyModeActive);
     mEasyConeFeather->setEnabled(mEasyModeActive);
-    // Easy Shaft length is a direct control_name binding (no remap handler), but
-    // it edits a global lever, so gate it on Easy exactly like Cone/Edge above.
-    if (LLUICtrl* shaft = findChild<LLUICtrl>("cine_easy_shaft_length"))
+    // [UIPerf] The Easy card's gated controls (Shaft length, Flare preset, Live
+    // Probe row, Night row) and their reset buttons are direct control_name
+    // bindings / apply-and-snap-back combos with no remap handler, so they are
+    // gated on Easy mode here. Pointers cached in postBuild() (were findChild
+    // by name, 16x per frame); the Easy reset buttons write the same backing
+    // settings, so they are gated too.
+    for (LLUICtrl* control : mEasyGatedControls)
     {
-        shaft->setEnabled(mEasyModeActive);
+        if (control)
+        {
+            control->setEnabled(mEasyModeActive);
+        }
     }
-    // The Easy card's Flare preset shortcut and Live Probe row are likewise
-    // direct control_name bindings / apply-and-snap-back combos with no
-    // dedicated remap handler, so gate them the same way.
-    if (LLUICtrl* flare = findChild<LLUICtrl>("cine_easy_flare_preset"))
+    for (LLUICtrl* button : mEasyResetButtons)
     {
-        flare->setEnabled(mEasyModeActive);
-    }
-    if (LLUICtrl* probe_enable = findChild<LLUICtrl>("cine_easy_probe_enable"))
-    {
-        probe_enable->setEnabled(mEasyModeActive);
-    }
-    if (LLUICtrl* probe_gizmo = findChild<LLUICtrl>("cine_easy_probe_gizmo"))
-    {
-        probe_gizmo->setEnabled(mEasyModeActive);
-    }
-    if (LLUICtrl* probe_radius = findChild<LLUICtrl>("cine_easy_probe_radius"))
-    {
-        probe_radius->setEnabled(mEasyModeActive);
-    }
-    // The Easy card's Night row (Enable + preset shortcut + Darkness) is
-    // likewise a direct control_name binding / apply-and-snap-back combo with
-    // no dedicated remap handler, so gate it the same way as Flare/Probe above.
-    if (LLUICtrl* night_enable = findChild<LLUICtrl>("cine_easy_night_mask_enable"))
-    {
-        night_enable->setEnabled(mEasyModeActive);
-    }
-    if (LLUICtrl* night_preset = findChild<LLUICtrl>("cine_easy_night_mask_preset"))
-    {
-        night_preset->setEnabled(mEasyModeActive);
-    }
-    if (LLUICtrl* night_darkness = findChild<LLUICtrl>("cine_easy_night_mask_darkness"))
-    {
-        night_darkness->setEnabled(mEasyModeActive);
-    }
-    // The Easy reset buttons write the same backing settings, so gate them too;
-    // otherwise a reset click would edit the light while Easy mode is off.
-    static const char* const EASY_RESET_BUTTONS[] = {
-        "cine_easy_brightness_reset", "cine_easy_drama_reset",
-        "cine_easy_warmth_reset", "cine_easy_cone_width_reset",
-        "cine_easy_cone_feather_reset", "cine_easy_shaft_length_reset",
-        "cine_easy_probe_radius_reset", "cine_easy_night_mask_darkness_reset",
-    };
-    for (const char* button_name : EASY_RESET_BUTTONS)
-    {
-        if (LLUICtrl* button = findChild<LLUICtrl>(button_name))
+        if (button)
         {
             button->setEnabled(mEasyModeActive);
         }
@@ -2524,7 +2528,12 @@ void ALPanelCineLightRig::updateDerivedStatus()
             (probe_amb <= sky_floor) ? " (probe Ambiance has no effect)" : "",
             ll_round(keep * 100.f));
     }
-    mLiveProbeStatus->setText(probe_status);
+    if (!mLiveProbeStatusSet || probe_status != mLastLiveProbeStatus) // [UIPerf]
+    {
+        mLiveProbeStatus->setText(probe_status);
+        mLastLiveProbeStatus = probe_status;
+        mLiveProbeStatusSet = true;
+    }
     if (mNightMaskStatus)
     {
         std::string night_status;
@@ -2559,7 +2568,12 @@ void ALPanelCineLightRig::updateDerivedStatus()
                 }
             }
         }
-        mNightMaskStatus->setText(LLStringExplicit(night_status));
+        if (!mNightMaskStatusSet || night_status != mLastNightMaskStatus) // [UIPerf]
+        {
+            mNightMaskStatus->setText(LLStringExplicit(night_status));
+            mLastNightMaskStatus = night_status;
+            mNightMaskStatusSet = true;
+        }
     }
     std::string setup_name = mSetupCombo
         ? mSetupCombo->getSimple() : std::string();
@@ -2580,14 +2594,9 @@ void ALPanelCineLightRig::updateDerivedStatus()
     // signal connection for three rows.
     {
         const bool rig_rim_enabled = gSavedSettings.getBOOL("CineRigRimEnabled");
-        static const char* const tron_tint_widgets[] = {
-            "cine_rig_rim_tron_label", "cine_rig_rim_tron_mode",
-            "cine_rig_rim_tron_mix_label", "cine_rig_rim_tron_mix", "cine_rig_rim_tron_mix_reset",
-            "cine_rig_rim_tron_color_label", "cine_rig_rim_tron_color",
-        };
-        for (const char* widget_name : tron_tint_widgets)
+        for (LLView* v : mTronTintWidgets) // [UIPerf] cached in postBuild
         {
-            if (LLView* v = findChild<LLView>(widget_name))
+            if (v)
             {
                 v->setVisible(rig_rim_enabled);
             }
@@ -2612,7 +2621,11 @@ void ALPanelCineLightRig::reshape(S32 width, S32 height, bool called_from_parent
     // is used instead of another reshape() so we don't re-trigger the
     // generic follows-based child cascade above and disturb the grid's
     // already-correct position.
-    if (LLView* grid = findChildView("cine_light_rig_flow_grid"))
+    if (!mFlowGrid)
+    {
+        mFlowGrid = findChildView("cine_light_rig_flow_grid"); // [UIPerf] lazy; reshape may precede postBuild
+    }
+    if (LLView* grid = mFlowGrid)
     {
         const S32 grid_height = grid->getRect().getHeight();
         if (grid_height != getRect().getHeight())

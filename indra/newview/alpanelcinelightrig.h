@@ -194,6 +194,22 @@ private:
     LLTextBox* mRadiusLabel = nullptr;
     LLButton* mSetupSave = nullptr;
     LLButton* mSetupDelete = nullptr;
+    // [UIPerf] Widgets that used to be findChild'd by name every frame
+    // (syncEasyControls / applyManualLock / updateDerivedStatus). Resolved once
+    // in postBuild(); null-checked at use exactly like the old findChild result.
+    LLUICtrl* mFXStop = nullptr;
+    LLUICtrl* mEasyGatedControls[8] = {};   // shaft, flare, probe x3, night x3
+    LLUICtrl* mEasyResetButtons[8] = {};
+    LLView* mTronTintWidgets[7] = {};
+    LLView* mFlowGrid = nullptr;
+    // [UIPerf] last text pushed per frame, so unchanged status lines skip the
+    // LLTextBox re-parse / reflow.
+    std::string mLastLiveProbeStatus;
+    std::string mLastNightMaskStatus;
+    std::string mLastGoboSoftness;
+    bool mLiveProbeStatusSet = false;
+    bool mNightMaskStatusSet = false;
+    bool mGoboSoftnessSet = false;
     std::vector<LLUUID> mCastIds;
     std::vector<std::string> mCastNames;
     S32 mDisplayedSlot = -1;

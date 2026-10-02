@@ -36,6 +36,13 @@
 #include "llfloater.h"
 #include <string>
 
+class LLButton;
+class LLCheckBoxCtrl;
+class LLColorSwatchCtrl;
+class LLComboBox;
+class LLSliderCtrl;
+class LLTextBox;
+
 class ALFloaterLightBox final : public LLFloater
 {
 public:
@@ -54,6 +61,26 @@ public:
     // [BDMerge G3.3 Batch 3] Selected Light quick panel: live per-projector
     // controls that follow the currently-selected object.
     void updateSelectedLightPanel();
+    // [UIPerf] Selected Light widgets, resolved once (lazily, while the tab's
+    // widgets are still absent) instead of 13 findChild-by-name per frame.
+    struct SelLightWidgets
+    {
+        LLCheckBoxCtrl*    cast_cb = nullptr;
+        LLCheckBoxCtrl*    vol_cb = nullptr;
+        LLButton*          cap_btn = nullptr;
+        LLButton*          clr_btn = nullptr;
+        LLTextBox*         status = nullptr;
+        LLComboBox*        gobo_pattern = nullptr;
+        LLComboBox*        gobo_anim = nullptr;
+        LLSliderCtrl*      gobo_speed = nullptr;
+        LLSliderCtrl*      gobo_zoom = nullptr;
+        LLSliderCtrl*      gobo_dispersion = nullptr;
+        LLColorSwatchCtrl* gobo_tint = nullptr;
+        LLSliderCtrl*      gobo_var1 = nullptr;
+        LLSliderCtrl*      gobo_var2 = nullptr;
+        LLSliderCtrl*      gobo_soft = nullptr;
+        LLCheckBoxCtrl*    gobo_invert = nullptr;
+    } mSelLight;
     void onSelLightCastShadows();
     void onSelLightVolumetric();
     void onSelLightCaptureOverride();

@@ -191,7 +191,11 @@ void LLFloaterActorMover::draw()
     refreshRoster();
 
     // live transport state readout
-    LLTextBox* status = getChild<LLTextBox>("status_text");
+    if (!mStatusText)
+    {
+        mStatusText = getChild<LLTextBox>("status_text"); // [UIPerf] once, not every frame
+    }
+    LLTextBox* status = mStatusText;
     if (status)
     {
         status->setText(LLActorMover::instance().anyMoving()

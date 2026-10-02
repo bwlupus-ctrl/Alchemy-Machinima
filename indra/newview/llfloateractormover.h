@@ -15,6 +15,7 @@
 class ALPanelActorMover;
 class ALPanelPathEditor;
 class LLScrollListCtrl;
+class LLTextBox;
 
 class LLFloaterActorMover final : public LLFloater
 {
@@ -32,6 +33,7 @@ private:
     LLScrollListCtrl*   mRosterList = nullptr;
     ALPanelActorMover*  mMoverPanel = nullptr;  // shared transport (scope, heading, params, Walk/Stop)
     ALPanelPathEditor*  mPathPanel = nullptr;   // shared waypoint editor
+    LLTextBox*          mStatusText = nullptr;  // [UIPerf] resolved once on first draw
 };
 
 #endif // LL_LLFLOATERACTORMOVER_H

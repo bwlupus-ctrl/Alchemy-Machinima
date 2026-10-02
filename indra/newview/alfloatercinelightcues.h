@@ -66,6 +66,12 @@ private:
     LLButton* mUpdate = nullptr;
     LLButton* mDeleteCue = nullptr;
     LLTextBox* mStatus = nullptr;
+    // [UIPerf] live-transport buttons gated in draw(); cached in postBuild
+    LLButton* mGoBtn = nullptr;
+    LLButton* mBackBtn = nullptr;
+    LLButton* mGotoBtn = nullptr;
+    LLButton* mSnapGotoBtn = nullptr;
+    LLButton* mReleaseBtn = nullptr;
     U64 mSeenRevision = U64(-1);
     S32 mSeenSlot = -1;
     std::string mListSignature;

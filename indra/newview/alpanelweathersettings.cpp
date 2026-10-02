@@ -190,18 +190,31 @@ void ALPanelWeatherSettings::updateControlGroup()
 void ALPanelWeatherSettings::updateDeferredAvailability()
 {
     const bool deferred = LLPipeline::sRenderDeferred;
-    if (LLPanel* controls = findChild<LLPanel>("weather_controls"))
+    // [UIPerf] cached; searched by name only while still null
+    if (!mControlsPanel)
+    {
+        mControlsPanel = findChild<LLPanel>("weather_controls");
+    }
+    if (!mDeferredNote)
+    {
+        mDeferredNote = findChild<LLTextBox>("weather_deferred_note");
+    }
+    if (!mTriggerButton)
+    {
+        mTriggerButton = findChild<LLButton>("weather_trigger");
+    }
+    if (LLPanel* controls = mControlsPanel)
     {
         controls->setEnabled(deferred);
     }
-    if (LLTextBox* note = findChild<LLTextBox>("weather_deferred_note"))
+    if (LLTextBox* note = mDeferredNote)
     {
         note->setVisible(!deferred);
     }
 
     // A manual strike also requires the two settings gates. Unlike the shader
     // path, the UI should explain a no-op before the user presses the button.
-    if (LLButton* trigger = findChild<LLButton>("weather_trigger"))
+    if (LLButton* trigger = mTriggerButton)
     {
         trigger->setEnabled(
             deferred &&

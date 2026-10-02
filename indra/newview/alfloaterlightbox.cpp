@@ -332,23 +332,43 @@ void ALFloaterLightBox::draw()
 // read from gPipeline's in-memory sets - nothing here is persisted.
 void ALFloaterLightBox::updateSelectedLightPanel()
 {
-    LLCheckBoxCtrl* cast_cb = findChild<LLCheckBoxCtrl>("sl_cast_shadows");
-    if (!cast_cb) // tab/widgets not built yet
-        return;
-    LLCheckBoxCtrl* vol_cb  = findChild<LLCheckBoxCtrl>("sl_volumetric");
-    LLButton*       cap_btn = findChild<LLButton>("sl_capture");
-    LLButton*       clr_btn = findChild<LLButton>("sl_clear");
-    LLTextBox*      status  = findChild<LLTextBox>("sl_status");
-    LLComboBox*     gobo_pattern = findChild<LLComboBox>("sl_gobo");
-    LLComboBox*     gobo_anim = findChild<LLComboBox>("sl_gobo_animmode");
-    LLSliderCtrl*   gobo_speed = findChild<LLSliderCtrl>("sl_gobo_speed");
-    LLSliderCtrl*   gobo_zoom = findChild<LLSliderCtrl>("sl_gobo_zoom");
-    LLSliderCtrl*   gobo_dispersion = findChild<LLSliderCtrl>("sl_gobo_dispersion");
-    LLColorSwatchCtrl* gobo_tint = findChild<LLColorSwatchCtrl>("sl_gobo_tint");
-    LLSliderCtrl*   gobo_var1 = findChild<LLSliderCtrl>("sl_gobo_var1");
-    LLSliderCtrl*   gobo_var2 = findChild<LLSliderCtrl>("sl_gobo_var2");
-    LLSliderCtrl*   gobo_soft = findChild<LLSliderCtrl>("sl_gobo_soft");
-    LLCheckBoxCtrl* gobo_invert = findChild<LLCheckBoxCtrl>("sl_gobo_invert");
+    // [UIPerf] Look the widgets up by name only while the tab's anchor widget
+    // is still missing; once found, every later frame uses the cached pointers.
+    if (!mSelLight.cast_cb)
+    {
+        mSelLight.cast_cb = findChild<LLCheckBoxCtrl>("sl_cast_shadows");
+        if (!mSelLight.cast_cb) // tab/widgets not built yet
+            return;
+        mSelLight.vol_cb  = findChild<LLCheckBoxCtrl>("sl_volumetric");
+        mSelLight.cap_btn = findChild<LLButton>("sl_capture");
+        mSelLight.clr_btn = findChild<LLButton>("sl_clear");
+        mSelLight.status  = findChild<LLTextBox>("sl_status");
+        mSelLight.gobo_pattern = findChild<LLComboBox>("sl_gobo");
+        mSelLight.gobo_anim = findChild<LLComboBox>("sl_gobo_animmode");
+        mSelLight.gobo_speed = findChild<LLSliderCtrl>("sl_gobo_speed");
+        mSelLight.gobo_zoom = findChild<LLSliderCtrl>("sl_gobo_zoom");
+        mSelLight.gobo_dispersion = findChild<LLSliderCtrl>("sl_gobo_dispersion");
+        mSelLight.gobo_tint = findChild<LLColorSwatchCtrl>("sl_gobo_tint");
+        mSelLight.gobo_var1 = findChild<LLSliderCtrl>("sl_gobo_var1");
+        mSelLight.gobo_var2 = findChild<LLSliderCtrl>("sl_gobo_var2");
+        mSelLight.gobo_soft = findChild<LLSliderCtrl>("sl_gobo_soft");
+        mSelLight.gobo_invert = findChild<LLCheckBoxCtrl>("sl_gobo_invert");
+    }
+    LLCheckBoxCtrl* cast_cb = mSelLight.cast_cb;
+    LLCheckBoxCtrl* vol_cb  = mSelLight.vol_cb;
+    LLButton*       cap_btn = mSelLight.cap_btn;
+    LLButton*       clr_btn = mSelLight.clr_btn;
+    LLTextBox*      status  = mSelLight.status;
+    LLComboBox*     gobo_pattern = mSelLight.gobo_pattern;
+    LLComboBox*     gobo_anim = mSelLight.gobo_anim;
+    LLSliderCtrl*   gobo_speed = mSelLight.gobo_speed;
+    LLSliderCtrl*   gobo_zoom = mSelLight.gobo_zoom;
+    LLSliderCtrl*   gobo_dispersion = mSelLight.gobo_dispersion;
+    LLColorSwatchCtrl* gobo_tint = mSelLight.gobo_tint;
+    LLSliderCtrl*   gobo_var1 = mSelLight.gobo_var1;
+    LLSliderCtrl*   gobo_var2 = mSelLight.gobo_var2;
+    LLSliderCtrl*   gobo_soft = mSelLight.gobo_soft;
+    LLCheckBoxCtrl* gobo_invert = mSelLight.gobo_invert;
 
     LLViewerObject* pObj = LLSelectMgr::getInstance()->getSelection()->getPrimaryObject();
     LLVOVolume* pVol = dynamic_cast<LLVOVolume*>(pObj);

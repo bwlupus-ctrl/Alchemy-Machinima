@@ -15,7 +15,9 @@
 #include <string>
 #include <vector>
 
+class LLButton;
 class LLComboBox;
+class LLTextBox;
 
 class ALPanelWeatherSettings final : public LLPanel
 {
@@ -50,6 +52,11 @@ private:
 
     LLComboBox* mPresetCombo = nullptr;
     LLComboBox* mControlGroupCombo = nullptr;
+    // [UIPerf] updateDeferredAvailability() runs every draw; resolve lazily,
+    // look up again only while still null.
+    LLPanel* mControlsPanel = nullptr;
+    LLTextBox* mDeferredNote = nullptr;
+    LLButton* mTriggerButton = nullptr;
 };
 
 #endif // AL_ALPANELWEATHERSETTINGS_H
