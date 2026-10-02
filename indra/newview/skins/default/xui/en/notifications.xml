@@ -13746,11 +13746,21 @@ This cannot be undone.
    type="alertmodal">
     <unique/>
     A Light Intensity preset named &quot;[NAME]&quot; already exists. Replace it with the current settings?
+
+The saved preset will be lost.
     <tag>confirm</tag>
-    <usetemplate
-     name="okcancelbuttons"
-     notext="Cancel"
-     yestext="Overwrite"/>
+    <!-- [EnvIntensity] Cancel is the default so Enter never overwrites a preset; Overwrite must be clicked. -->
+    <form name="form">
+      <button
+       index="0"
+       name="Overwrite"
+       text="Overwrite"/>
+      <button
+       default="true"
+       index="1"
+       name="Cancel"
+       text="Cancel"/>
+    </form>
   </notification>
 
   <notification
