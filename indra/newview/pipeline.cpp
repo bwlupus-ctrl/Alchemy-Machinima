@@ -3014,7 +3014,7 @@ void LLPipeline::loadProjVolDustMap()
         return;
     }
 
-    LL_INFOS() << "[BDMerge Dust] loaded " << dim << "^3 dust volume: " << path << LL_ENDL;
+    LL_INFOS("BDMerge") << "[BDMerge Dust] loaded " << dim << "^3 dust volume: " << path << LL_ENDL; // [DebugLogging] tagged
 }
 
 

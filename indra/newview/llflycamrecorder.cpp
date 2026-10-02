@@ -720,7 +720,7 @@ bool LLFlycamRecorder::saveToFile(const std::string& filename)
     LLSDSerialize::toPrettyXML(doc, file);
     file.close();
     mStatus = llformat("Saved %d keys", getNumKeyframes());
-    LL_INFOS() << "Flycam take saved to " << filename << LL_ENDL;
+    LL_INFOS("FlycamRecorder") << "Flycam take saved to " << filename << LL_ENDL; // [DebugLogging] tagged
     return true;
 }
 
@@ -794,6 +794,6 @@ bool LLFlycamRecorder::loadFromFile(const std::string& filename)
     }
     mHaveRecAnchor = true;
     mStatus = llformat("Loaded %d keys (%.1f s)", getNumKeyframes(), getDuration());
-    LL_INFOS() << "Flycam take loaded from " << filename << LL_ENDL;
+    LL_INFOS("FlycamRecorder") << "Flycam take loaded from " << filename << LL_ENDL; // [DebugLogging] tagged
     return true;
 }

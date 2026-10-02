@@ -1853,8 +1853,11 @@ void ALCineLightRig::updateProjectorFlags()
     // [DIAG cine-shadow] throttled runtime dump of the rig's shadow/shaft
     // intent, ~once/2s. Answers: does each projector exist, is it flagged
     // NoShadow (=> no shadow slot => no shaft), and is its shaft toggled on.
+    // [DebugLogging] gated on the master debug-logging switch so the whole block
+    // (counter, loop, string building) costs nothing when it is off.
+    static LLCachedControl<bool> debug_logging(gSavedSettings, "MachinimaDebugLogging", false);
     static S32 s_diag = 0;
-    if ((s_diag++ % 120) == 0)
+    if (debug_logging && (s_diag++ % 120) == 0)
     {
         for (S32 i = 0; i < LIGHT_COUNT; ++i)
         {

@@ -2242,7 +2242,7 @@ bool LLAppViewer::cleanup()
     static LLCachedControl<bool> fast_exit(gSavedSettings, "BDMergeFastExit", true);
     if (fast_exit)
     {
-        LL_INFOS() << "[BDMerge FastExit] Persistence and subsystem shutdown complete; skipping static teardown and exiting now." << LL_ENDL;
+        LL_INFOS("BDMerge") << "[BDMerge FastExit] Persistence and subsystem shutdown complete; skipping static teardown and exiting now." << LL_ENDL; // [DebugLogging] tagged
         removeMarkerFiles();
         _exit(0);
     }
@@ -2428,7 +2428,19 @@ namespace
             "NSpotDbg",
             "BDMerge",
             "BDMergeTexSpike",
-            "AOEngine"
+            "AOEngine",
+            // [DebugLogging] additional fork tags
+            "CineRigShadow",
+            "ActorMask",
+            "ProbeSched",
+            "LiveProbe",
+            "AvatarLightResponse",
+            "ReShadeBridge",
+            "BDMergeMemory",
+            "VRAMGovernor",
+            "UltimateDiopter",
+            "GhostDeferredInvariant",
+            "FlycamRecorder"
         };
 
         const LLError::ELevel level = gSavedSettings.getBOOL("MachinimaDebugLogging")

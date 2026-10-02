@@ -7296,13 +7296,13 @@
     <key>GhostAutoAnimateCostLog</key>
     <map>
       <key>Comment</key>
-      <string>[GhostStudio] Log measured recorder and scheduler microseconds per second every 60 seconds while active.</string>
+      <string>[GhostStudio] Log measured recorder and scheduler microseconds per second every 60 seconds while active. [DebugLogging] Default off; still requires MachinimaDebugLogging for the GhostStudio tag to emit.</string>
       <key>Persist</key>
       <integer>1</integer>
       <key>Type</key>
       <string>Boolean</string>
       <key>Value</key>
-      <integer>1</integer>
+      <integer>0</integer>
     </map>
     <!-- [TrueMirror] begin: DRIVE_TRUE_MIRROR settings -->
     <key>GhostTrueMirrorCopyFacing</key>
@@ -14379,7 +14379,7 @@
     <key>MachinimaDebugLogging</key>
     <map>
       <key>Comment</key>
-      <string>Emit verbose machinima / BD-merge diagnostic logging (Ghost Studio, Cinematic and Director camera, clone audit, weather, etc.). Off by default for a clean log; turn on when diagnosing an issue.</string>
+      <string>Emit verbose machinima / BD-merge diagnostic logging (Ghost Studio, Cinematic and Director camera, clone audit, weather, etc.). Off by default for a clean log; turn on when diagnosing an issue. [DebugLogging] This is the master switch: it raises the INFO log level for all machinima/fork log tags (light rig, probes, ghosts, director, actor mask, ReShade bridge, VRAM governor, diopter, flycam, BD-merge...) and gates the periodic CineRigShadow dump. Warnings and errors always log. Also exposed in Preferences > Advanced.</string>
       <key>Persist</key>
       <integer>1</integer>
       <key>Type</key>
