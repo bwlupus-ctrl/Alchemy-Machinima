@@ -14892,7 +14892,8 @@ bool LLActorMover::canRenderSystemActorGhost(LLVOAvatar* avatar,
 
     static LLCachedControl<bool> friends_only(
         gSavedSettings, "RenderAvatarFriendsOnly", false);
-    if (friends_only() && !avatar->isSelf() && !avatar->isBuddy())
+    if (friends_only() && !avatar->isSelf() && !avatar->isBuddy()
+        && !avatar->isGhostAvatar()) // [FriendsOnly] client-only clones always render
     {
         return false;
     }
@@ -14915,7 +14916,8 @@ bool LLActorMover::actorMaskAvatarEligible(LLVOAvatar* avatar)
         avatar->isTooComplex() || avatar->isTooSlow()) return false;
     static LLCachedControl<bool> friends_only(gSavedSettings, "RenderAvatarFriendsOnly", false);
     if (friends_only && !avatar->isUIAvatar() && !avatar->isControlAvatar() &&
-        !avatar->isSelf() && !avatar->isBuddy()) return false;
+        !avatar->isSelf() && !avatar->isBuddy() &&
+        !avatar->isGhostAvatar()) return false; // [FriendsOnly] clones always render
     LLVOAvatar* wearer = avatar->getAttachedAvatar();
     const LLVOAvatar* owner = avatar->isGhostAvatar() ? avatar : wearer;
     if (owner && owner->isGhostAvatar() &&

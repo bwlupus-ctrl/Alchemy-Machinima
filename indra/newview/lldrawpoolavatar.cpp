@@ -503,7 +503,8 @@ void LLDrawPoolAvatar::renderShadow(S32 pass)
     if (friends_only()
         && !avatarp->isControlAvatar()
         && !avatarp->isSelf()
-        && !avatarp->isBuddy())
+        && !avatarp->isBuddy()
+        && !avatarp->isGhostAvatar()) // [FriendsOnly] client-only clones always render
     {
         return;
     }
@@ -1003,7 +1004,8 @@ void LLDrawPoolAvatar::renderAvatars(LLVOAvatar* single_avatar, S32 pass)
         && !avatarp->isUIAvatar()
         && !avatarp->isControlAvatar()
         && !avatarp->isSelf()
-        && !avatarp->isBuddy())
+        && !avatarp->isBuddy()
+        && !avatarp->isGhostAvatar()) // [FriendsOnly] client-only clones always render
     {
         return;
     }

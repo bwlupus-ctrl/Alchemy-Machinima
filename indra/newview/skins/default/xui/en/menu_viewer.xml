@@ -1127,6 +1127,19 @@
              parameter="2" />
           </menu_item_check>
           <menu_item_separator />
+          <!-- [FriendsOnly] same setting as Develop > Avatar > Character Tests > Render Only Friends.
+               Self, friends, animesh and Ghost clones always render. -->
+          <menu_item_check
+             label="Show Friends Only"
+             name="Show Friends Only">
+            <menu_item_check.on_check
+             function="CheckControl"
+             parameter="RenderAvatarFriendsOnly" />
+            <menu_item_check.on_click
+             function="ToggleControl"
+             parameter="RenderAvatarFriendsOnly" />
+          </menu_item_check>
+          <menu_item_separator />
            <menu_item_check
                  label="Beacons"
                  name="beacons"

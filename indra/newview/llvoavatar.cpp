@@ -9535,7 +9535,8 @@ bool LLVOAvatar::isVisible() const
     return mDrawable.notNull()
         && (!mOrphaned || isSelf())
         && (mDrawable->isVisible() || mIsDummy)
-        && (!friends_only() || isUIAvatar() || isSelf() || isControlAvatar() || isBuddy());
+        && (!friends_only() || isUIAvatar() || isSelf() || isControlAvatar() || isBuddy()
+            || isGhostAvatar()); // [FriendsOnly] client-only clones always render
 }
 
 // Determine if we have enough avatar data to render
