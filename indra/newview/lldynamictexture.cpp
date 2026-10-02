@@ -203,18 +203,30 @@ bool LLViewerDynamicTexture::updateAllInstances()
     llassert(bake_target.getWidth() >= (U32) LLAvatarAppearanceDefines::SCRATCH_TEX_WIDTH);
     llassert(bake_target.getHeight() >= (U32) LLAvatarAppearanceDefines::SCRATCH_TEX_HEIGHT);
 
-    preview_target.bindTarget();
-    preview_target.clear();
-
+    // [DynTexIdle] The shared targets are bound + cleared lazily, only once an
+    // instance actually needs to render. Binding/clearing both every frame with
+    // nothing to draw cost ~3-5 ms/frame of CPU (driver stalls) in Tracy.
+    // needsRender() has side effects, so it is still called exactly once.
+    // Note: when nothing renders, this no longer resets GL to FB0/gGLViewport
+    // via flush(); raw glBindFramebuffer users must restore their own binding.
     LLGLSLShader::unbind();
     LLVertexBuffer::unbind();
 
     bool result = false;
     bool ret = false ;
-    auto update_func = [&](LLViewerDynamicTexture* dynamicTexture, LLRenderTarget& renderTarget, S32 width, S32 height)
+    auto update_func = [&](LLViewerDynamicTexture* dynamicTexture, LLRenderTarget& renderTarget, S32 width, S32 height, bool& target_bound)
         {
             if (dynamicTexture->needsRender())
             {
+                if (!target_bound)
+                {
+                    renderTarget.bindTarget();
+                    renderTarget.clear();
+                    LLGLSLShader::unbind();
+                    LLVertexBuffer::unbind();
+                    target_bound = true;
+                }
+
                 llassert(dynamicTexture->getFullWidth() <= width);
                 llassert(dynamicTexture->getFullHeight() <= height);
 
@@ -238,29 +250,34 @@ bool LLViewerDynamicTexture::updateAllInstances()
         };
 
     // ORDER_FIRST is unused, ORDER_MIDDLE is various ui preview
+    bool preview_bound = false;
     for(S32 order = 0; order < ORDER_LAST; ++order)
     {
         for (LLViewerDynamicTexture* dynamicTexture : LLViewerDynamicTexture::sInstances[order])
         {
-            update_func(dynamicTexture, preview_target, LLPipeline::MAX_PREVIEW_WIDTH, LLPipeline::MAX_PREVIEW_WIDTH);
+            update_func(dynamicTexture, preview_target, LLPipeline::MAX_PREVIEW_WIDTH, LLPipeline::MAX_PREVIEW_WIDTH, preview_bound);
         }
     }
-    preview_target.flush();
+    if (preview_bound)
+    {
+        preview_target.flush();
+    }
 
     // ORDER_LAST is baked skin preview, ORDER_RESET resets appearance parameters and does not render.
-    bake_target.bindTarget();
-    bake_target.clear();
-
+    bool bake_bound = false;
     result = false;
     ret = false;
     for (S32 order = ORDER_LAST; order < ORDER_COUNT; ++order)
     {
         for (LLViewerDynamicTexture* dynamicTexture : LLViewerDynamicTexture::sInstances[order])
         {
-            update_func(dynamicTexture, bake_target, LLAvatarAppearanceDefines::SCRATCH_TEX_WIDTH, LLAvatarAppearanceDefines::SCRATCH_TEX_HEIGHT);
+            update_func(dynamicTexture, bake_target, LLAvatarAppearanceDefines::SCRATCH_TEX_WIDTH, LLAvatarAppearanceDefines::SCRATCH_TEX_HEIGHT, bake_bound);
         }
     }
-    bake_target.flush();
+    if (bake_bound)
+    {
+        bake_target.flush();
+    }
 
     gGL.flush();
 
