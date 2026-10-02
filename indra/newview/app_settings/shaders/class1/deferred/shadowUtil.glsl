@@ -30,6 +30,12 @@ uniform sampler2DShadow shadowMap0;
 uniform sampler2DShadow shadowMap1;
 uniform sampler2DShadow shadowMap2;
 uniform sampler2DShadow shadowMap3;
+// [ProbeCost] Dedicated opt-in uniforms; stock matrices and selection stay untouched.
+uniform int shadow_probe_mode = 0;
+uniform mat4 shadow_reuse_matrix[4];
+uniform vec4 shadow_reuse_valid;
+uniform vec4 shadow_reuse_res;
+uniform vec4 shadow_reuse_res_h;
 #endif
 
 #if defined(SPOT_SHADOW)
@@ -528,9 +534,146 @@ float pcfSpotShadow(sampler2DShadow shadowMap, vec4 stc, float bias_scale, vec2 
 #endif
 }
 
+#if defined(SUN_SHADOW)
+// [ProbeCost] Legacy kernel with this cascade's actual dimensions. The stock
+// pcfShadow above is deliberately unchanged.
+float pcfShadowRes(sampler2DShadow shadowMap, vec3 norm, vec4 stc, float bias_mul, vec2 pos_screen, vec3 light_dir, vec2 res)
+{
+#if defined(SUN_SHADOW)
+    float offset = shadow_bias * bias_mul;
+    stc.xyz /= stc.w;
+    stc.z += offset * 2.0;
+
+    // [BDMerge Batch 2] Optional soft (contact-hardening + filled) sun path.
+    // Gated by BOTH soft_shadow_enable and soft_shadow_sun so the default is the
+    // byte-identical classic 5-tap kernel below.
+    if (soft_shadow_enable != 0 && soft_shadow_sun != 0)
+    {
+        float pr = clamp(1.0 + soft_shadow_scale * clamp(stc.z, 0.0, 1.0),
+                         1.0, max(soft_shadow_max, 1.0));
+        vec2 texel = pr / res;
+        float shadow = 0.0;
+
+        if (soft_shadow_vogel != 0)
+        {
+            // [Vogel A/B] Vogel-disk PCF over the SAME penumbra radius (texel).
+            // Per-pixel base rotation phi = interleaved gradient noise on
+            // gl_FragCoord.xy - SPATIAL ONLY, no frame/time term, so the dither
+            // is stable under the ReShade temporal chain. gl_FragCoord.xy (not
+            // pos_screen) is used because pos_screen's units differ per caller
+            // (0..1 UV here, world xy in the spot path); gl_FragCoord is always
+            // window pixels, exactly what IGN expects for true per-pixel grain.
+            int taps = clamp(soft_shadow_taps, 1, SOFT_SHADOW_VOGEL_MAX);
+            float inv_n = 1.0 / float(taps);
+            float phi = 6.2831853 * fract(52.9829189 *
+                        fract(dot(gl_FragCoord.xy, vec2(0.06711056, 0.00583715))));
+            for (int i = 0; i < SOFT_SHADOW_VOGEL_MAX; ++i)
+            {
+                if (i >= taps) break;
+                float r = sqrt((float(i) + 0.5) * inv_n);
+                float theta = float(i) * SOFT_SHADOW_GOLDEN_ANGLE + phi;
+                vec2 o = r * vec2(cos(theta), sin(theta)) * texel;
+                shadow += texture(shadowMap, vec3(stc.xy + o, stc.z));
+            }
+            shadow *= inv_n;
+        }
+        else
+        {
+            float jit = fract(pos_screen.y * res.y);
+            for (int i = 0; i < 12; ++i)
+            {
+                vec2 o = SOFT_SHADOW_DISK[i] * texel;
+                o.x += (jit - 0.5) * texel.x;
+                shadow += texture(shadowMap, vec3(stc.xy + o, stc.z));
+            }
+            shadow /= 12.0;
+        }
+        // [BDMerge fix] Same partial-visibility guard as the spot path below: the
+        // fill floor must never lift a FULLY occluded pixel (e.g. a room interior),
+        // or the sun leaks through walls wherever soft sun shadows are enabled.
+        if (soft_shadow_fill > 0.0 && shadow > 0.0)
+            shadow = mix(soft_shadow_fill, 1.0, shadow);
+        return clamp(shadow, 0.0, 1.0);
+    }
+
+    stc.x = floor(stc.x*res.x + fract(pos_screen.y*res.y))/res.x; // add some chaotic jitter to X sample pos according to Y to disguise the snapping going on here
+    float cs = texture(shadowMap, stc.xyz);
+    float shadow = cs * 4.0;
+    shadow += texture(shadowMap, stc.xyz+vec3( 1.5/res.x,  0.5/res.y, 0.0));
+    shadow += texture(shadowMap, stc.xyz+vec3( 0.5/res.x, -1.5/res.y, 0.0));
+    shadow += texture(shadowMap, stc.xyz+vec3(-1.5/res.x, -0.5/res.y, 0.0));
+    shadow += texture(shadowMap, stc.xyz+vec3(-0.5/res.x,  1.5/res.y, 0.0));
+    return clamp(shadow * 0.125, 0.0, 1.0);
+#else
+    return 1.0;
+#endif
+}
+
+
+// Test the ACTUAL normal-offset projection sunBandC/pcfShadowRes will sample.
+// The conservative footprint includes every tap, jitter/snap and bilinear neighbours.
+// Failure means try the next cascade, never clamp an out-of-map receiver to an edge.
+bool probeReuseBand(sampler2DShadow shadowMap, int cascade, vec3 pos, vec3 norm,
+                    vec2 pos_screen, vec3 L, float NdotL, float sin_a, out float result)
+{
+    if (shadow_reuse_valid[cascade] < 0.5) return false;
+    mat4 smat = shadow_reuse_matrix[cascade];
+    vec4 coef = shadow_cascade_coef[cascade];
+    vec2 res = vec2(shadow_reuse_res[cascade], shadow_reuse_res_h[cascade]);
+    bool units = sunUnitsCascade(cascade) || (cascade == 0 && shadow_subject.x > 0.5);
+    vec4 lp;
+    if (units)
+    {
+        vec4 lp0 = smat * vec4(pos, 1.0);
+        if (!(lp0.w > 1e-4)) return false;
+        float w0 = lp0.w;
+        vec2 tm = coef.w > 0.5 ? vec2(coef.y * w0, coef.z * w0 * w0) : coef.yz;
+        lp = smat * vec4(pos + norm * (shadow_offset_texels * max(tm.x, tm.y) * sin_a), 1.0);
+    }
+    else
+    {
+        vec3 p = pos + L * (1.0 - NdotL) * shadow_offset * 2.0;
+        lp = smat * vec4(p, 1.0);
+    }
+    if (!(lp.w > 1e-4)) return false;
+    vec3 st = lp.xyz / lp.w;
+    bool soft = soft_shadow_enable != 0 && soft_shadow_sun != 0;
+    float cap = max(soft_shadow_max, 1.0);
+    // Poisson disk extrema plus X jitter (0.5 radius); Vogel stays in unit disk.
+    // Hard legacy additionally snaps X by up to one texel; units does not snap.
+    vec2 pad_tex = soft ? (soft_shadow_vogel != 0 ? vec2(cap + 0.5)
+                           : vec2(1.45 * cap + 0.5, 0.95 * cap + 0.5))
+                        : (units ? vec2(2.0) : vec2(3.0, 2.0));
+    vec2 pad = pad_tex / res;
+    if (!(all(greaterThanEqual(st.xy, pad)) && all(lessThanEqual(st.xy, vec2(1.0) - pad))
+          && st.z >= 0.0 && st.z <= 1.0)) return false;
+    result = units ? sunBandC(shadowMap, smat, coef, res, true,
+                             pos, norm, NdotL, sin_a, pos_screen, L)
+                   : pcfShadowRes(shadowMap, norm, lp, 1.0, pos_screen, L, res);
+    return true;
+}
+
+float sampleDirectionalShadowReuse(vec3 pos, vec3 norm, vec2 pos_screen)
+{
+    vec3 L = normalize(sun_up_factor == 1 ? sun_dir : moon_dir);
+    float NdotL = clamp(dot(norm, L), 0.0, 1.0);
+    float sin_a = sqrt(max(1.0 - NdotL * NdotL, 0.0));
+    float result;
+    // Explicit sampler calls are valid on every supported SUN_SHADOW permutation.
+    if (probeReuseBand(shadowMap0, 0, pos, norm, pos_screen, L, NdotL, sin_a, result)) return result;
+    if (probeReuseBand(shadowMap1, 1, pos, norm, pos_screen, L, NdotL, sin_a, result)) return result;
+    if (probeReuseBand(shadowMap2, 2, pos, norm, pos_screen, L, NdotL, sin_a, result)) return result;
+    if (probeReuseBand(shadowMap3, 3, pos, norm, pos_screen, L, NdotL, sin_a, result)) return result;
+    return 1.0;
+}
+#endif
+
 float sampleDirectionalShadow(vec3 pos, vec3 norm, vec2 pos_screen)
 {
 #if defined(SUN_SHADOW)
+    // [ProbeCost] Off returns before ANY projection, divide or texture read.
+    if (shadow_probe_mode == 2) return 1.0;
+    if (shadow_probe_mode == 1) return sampleDirectionalShadowReuse(pos, norm, pos_screen);
     // [ShadowDist P2] three-way structure (design v3 s5.4 / v4 s2.2):
     //   LEGACY  -- the original function body, verbatim (only the P1 blend
     //              substitution), when the maps were generated in legacy units

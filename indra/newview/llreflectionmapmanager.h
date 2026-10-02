@@ -517,6 +517,8 @@ private:
 
     // resolution of reflection probes
     U32 mProbeResolution = 128;
+    U32 mProbeCaptureScale = 4; // [ProbeCost] Clamped allocation-time scale.
+    static U32 getProbeCaptureScale();
 
     // resolution of irradiance maps
     U32 mIrradianceMapResolution = 16;

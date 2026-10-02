@@ -918,6 +918,12 @@ public:
 
         ACTOR_MASK_MAP,  // [ActorMask] actorMaskMap
         ACTOR_MASK_BITS, // [ActorMask] actor_mask_bits
+        // [ProbeCost] Append in lockstep with llshadermgr.cpp.
+        SHADOW_PROBE_MODE,
+        SHADOW_REUSE_MATRIX,
+        SHADOW_REUSE_VALID,
+        SHADOW_REUSE_RES,
+        SHADOW_REUSE_RES_H,
         END_RESERVED_UNIFORMS
     } eGLSLReservedUniforms;
     // clang-format on

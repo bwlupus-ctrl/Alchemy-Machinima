@@ -1549,6 +1549,9 @@ bool LLAppViewer::doFrame()
                 resumeMainloopTimeout("df snapshot n disconnect");
             }
 
+            // [ProbeCost] Never reuse a previous iteration, including skipped displays.
+            gPipeline.mMainSunShadowToken = false;
+
             // Render scene.
             // *TODO: Should we run display() even during gHeadlessClient?  DK 2011-02-18
             if (!LLApp::isExiting() && !gHeadlessClient && gViewerWindow)

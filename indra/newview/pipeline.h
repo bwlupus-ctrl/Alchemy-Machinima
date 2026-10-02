@@ -724,7 +724,7 @@ public:
 
     void postDeferredGammaCorrect(LLRenderTarget* screen_target);
 
-    void generateSunShadow(LLCamera& camera);
+    void generateSunShadow(LLCamera& camera, bool clip_only = false);
     // [Prism spot shadows Stage 2] Generate projector/spot shadow maps for the
     // Prism auxiliary capture into the dedicated mPrismSpotShadow[] targets.
     // Called only from LLPrismLens::renderAuxiliaryView, inside the auxiliary
@@ -1283,6 +1283,15 @@ public:
 
     // Auxillary render target pack scaled to the hero probe's per-face size.
     RenderTargetPack mHeroProbeRT;
+
+    // [ProbeCost] Ordinary probe captures only; previews and heroes retain stock packs.
+    RenderTargetPack mProbeCaptureRT;
+    bool mProbeCaptureRTComplete = false;
+    U32 mProbeSunShadowMode = 0;
+    U32 mProbeShadowSampleMode = 0;
+    bool mMainSunShadowToken = false;
+    bool mainSunShadowsPublishedThisIteration() const;
+    void reexpressProbeSpotShadows();
 
     // Option B (reworked): bounded pool of EXACT-SIZE auxiliary deferred
     // scratch packs, reused across frames keyed by (width,height). Exact-size

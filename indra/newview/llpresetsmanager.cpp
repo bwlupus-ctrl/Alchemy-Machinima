@@ -347,6 +347,8 @@ void LLPresetsManager::getGraphicsControlNames(std::vector<std::string>& names)
         "RenderProbeRealtimeFacesPerFrame",
         "RenderProbeTinyCullPixels",
         "RenderProbeUpdateEveryNFrames", // [ProbeManualRate]
+        "RenderProbeSunShadows", // [ProbeCost]
+        "RenderProbeCaptureScale", // [ProbeCost]
         "RenderReflectionProbeDetail",
         "RenderReflectionProbeLevel", // [ProbeManualRate] was missing its comma
         "RenderCASSharpness",

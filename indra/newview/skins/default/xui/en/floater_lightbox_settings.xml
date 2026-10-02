@@ -1317,7 +1317,7 @@
 				<panel
 					background_visible="false"
 					follows="left|top|right"
-					height="776"
+					height="872"
 					layout="topleft"
 					left="0"
 					name="render_settings_scroll_content"
@@ -1591,6 +1591,37 @@
 						function="LightBox.ResetControlDefault"
 						parameter="RenderProbeUpdateEveryNFrames" />
 				</button>
+			<!-- [ProbeCost] Capture cost controls; heroes retain stock quality. -->
+            <text name="RenderProbeSunShadows_label" value="Probe sun shadows:"
+                follows="left|top" layout="topleft" height="15" left="10" top_pad="10" width="190"
+                tool_tip="How reflection probes get sun shadows. Full (stock): each probe face renders its own, which is the most accurate and the most expensive. Reuse main view: probes borrow your camera's shadows, which is much cheaper. Areas your camera's shadows don't cover (often behind you) are lit, and probes can show shadows of things they don't draw, such as avatars. Off: probes get no sun shadows, which is cheapest. Interiors in reflections and ambient light get brighter. Mirrors are not affected." />
+            <combo_box name="RenderProbeSunShadows_combo" control_name="RenderProbeSunShadows" allow_text_entry="false"
+                follows="left|top" layout="topleft" height="20" left="29" right="-24" top_pad="2"
+                tool_tip="How reflection probes get sun shadows. Full (stock): each probe face renders its own, which is the most accurate and the most expensive. Reuse main view: probes borrow your camera's shadows, which is much cheaper. Areas your camera's shadows don't cover (often behind you) are lit, and probes can show shadows of things they don't draw, such as avatars. Off: probes get no sun shadows, which is cheapest. Interiors in reflections and ambient light get brighter. Mirrors are not affected.">
+                <combo_box.item label="Full (stock)" name="RenderProbeSunShadows_0" value="0" />
+                <combo_box.item label="Reuse main view" name="RenderProbeSunShadows_1" value="1" />
+                <combo_box.item label="Off" name="RenderProbeSunShadows_2" value="2" />
+            </combo_box>
+            <button name="reset_RenderProbeSunShadows" follows="top|right" layout="topleft"
+                height="22" width="18" right="-2" top_pad="-21" scale_image="true"
+                image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value">
+                <button.commit_callback function="LightBox.ResetControlDefault" parameter="RenderProbeSunShadows" />
+            </button>
+            <text name="RenderProbeCaptureScale_label" value="Probe capture resolution:"
+                follows="left|top" layout="topleft" height="15" left="10" top_pad="10" width="190"
+                tool_tip="How sharply probes are rendered before they are shrunk. 4x (stock) is the smoothest. 2x costs about a quarter of the pixel work and 1x about a sixteenth, with more shimmer. It saves little when probe capture is CPU-bound. It uses a few MB MORE video memory, not less. Changing it rebuilds the probes and mirrors (brief hitch)." />
+            <combo_box name="RenderProbeCaptureScale_combo" control_name="RenderProbeCaptureScale" allow_text_entry="false"
+                follows="left|top" layout="topleft" height="20" left="29" right="-24" top_pad="2"
+                tool_tip="How sharply probes are rendered before they are shrunk. 4x (stock) is the smoothest. 2x costs about a quarter of the pixel work and 1x about a sixteenth, with more shimmer. It saves little when probe capture is CPU-bound. It uses a few MB MORE video memory, not less. Changing it rebuilds the probes and mirrors (brief hitch).">
+                <combo_box.item label="4x (stock)" name="RenderProbeCaptureScale_4" value="4" />
+                <combo_box.item label="2x" name="RenderProbeCaptureScale_2" value="2" />
+                <combo_box.item label="1x" name="RenderProbeCaptureScale_1" value="1" />
+            </combo_box>
+            <button name="reset_RenderProbeCaptureScale" follows="top|right" layout="topleft"
+                height="22" width="18" right="-2" top_pad="-21" scale_image="true"
+                image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value">
+                <button.commit_callback function="LightBox.ResetControlDefault" parameter="RenderProbeCaptureScale" />
+            </button>
 			<!--Update probes on demand-->
 			<check_box
 				follows="left|top"

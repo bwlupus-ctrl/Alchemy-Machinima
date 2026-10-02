@@ -2145,6 +2145,13 @@ void LLShaderMgr::initAttribsAndUniforms()
     mReservedUniforms.push_back("actorMaskMap");        // [ActorMask] ACTOR_MASK_MAP
     mReservedUniforms.push_back("actor_mask_bits");     // [ActorMask] ACTOR_MASK_BITS
 
+    // [ProbeCost] Append in lockstep with llshadermgr.h.
+    mReservedUniforms.push_back("shadow_probe_mode");
+    mReservedUniforms.push_back("shadow_reuse_matrix");
+    mReservedUniforms.push_back("shadow_reuse_valid");
+    mReservedUniforms.push_back("shadow_reuse_res");
+    mReservedUniforms.push_back("shadow_reuse_res_h");
+
     llassert(mReservedUniforms.size() == END_RESERVED_UNIFORMS);
 
     std::set<std::string> dupe_check;

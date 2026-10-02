@@ -359,7 +359,7 @@ void LLReflectionMapManager::update()
     if (!mRenderTarget.isComplete())
     {
         U32 color_fmt = render_hdr ? GL_R11F_G11F_B10F : GL_RGB8;
-        U32 targetRes = mProbeResolution * 4; // super sample
+        U32 targetRes = mProbeResolution * mProbeCaptureScale; // [ProbeCost] super sample
         mRenderTarget.allocate(targetRes, targetRes, color_fmt, true);
     }
 
@@ -2827,26 +2827,57 @@ void LLReflectionMapManager::updateProbeFace(
     static LLCachedControl<F32> tiny_cull_px(gSavedSettings, "RenderProbeTinyCullPixels", 0.f);
     const bool capture_context = mOnDemandActive || static_cast<F32>(tiny_cull_px) > 0.f;
     // hacky hot-swap of camera specific render targets
-    gPipeline.mRT = &gPipeline.mAuxillaryRT;
+    // [ProbeCost] Preserve the selected pack for filtering after mRT returns to main.
+    LLPipeline::RenderTargetPack* capture_pack =
+        getProbeCaptureScale() != 4 && gPipeline.mProbeCaptureRTComplete
+        ? &gPipeline.mProbeCaptureRT : &gPipeline.mAuxillaryRT;
+    gPipeline.mRT = capture_pack;
 
-    mLightScale = 1.f;
-    static LLCachedControl<F32> max_local_light_ambiance(gSavedSettings, "RenderReflectionProbeMaxLocalLightAmbiance", 8.f);
-    if (!isRadiancePass() && probe->getAmbiance() > max_local_light_ambiance)
+    struct ProbeSunModeScope
     {
-        mLightScale = max_local_light_ambiance / probe->getAmbiance();
-    }
-
-    if (probe == mDefaultProbe)
-    {
-        touch_default_probe(probe);
-
-        gPipeline.pushRenderTypeMask();
-
-        //only render sky, water, terrain, and clouds
-        gPipeline.andRenderTypeMask(LLPipeline::RENDER_TYPE_SKY, LLPipeline::RENDER_TYPE_WL_SKY,
-            LLPipeline::RENDER_TYPE_WATER, LLPipeline::RENDER_TYPE_VOIDWATER, LLPipeline::RENDER_TYPE_CLOUDS, LLPipeline::RENDER_TYPE_TERRAIN, LLPipeline::END_RENDER_TYPES);
-
+        U32 saved = gPipeline.mProbeSunShadowMode;
+        ProbeSunModeScope()
         {
+            static LLCachedControl<U32> mode(gSavedSettings, "RenderProbeSunShadows", 0U);
+            const U32 requested = mode;
+            gPipeline.mProbeSunShadowMode = LLPipeline::sRenderDeferred && LLPipeline::RenderShadowDetail > 0
+                && requested <= 2 ? requested : 0U;
+        }
+        ~ProbeSunModeScope() { gPipeline.mProbeSunShadowMode = saved; }
+    };
+    {
+        ProbeSunModeScope sun_mode;
+
+        mLightScale = 1.f;
+        static LLCachedControl<F32> max_local_light_ambiance(gSavedSettings, "RenderReflectionProbeMaxLocalLightAmbiance", 8.f);
+        if (!isRadiancePass() && probe->getAmbiance() > max_local_light_ambiance)
+        {
+            mLightScale = max_local_light_ambiance / probe->getAmbiance();
+        }
+
+        if (probe == mDefaultProbe)
+        {
+            touch_default_probe(probe);
+
+            gPipeline.pushRenderTypeMask();
+
+            //only render sky, water, terrain, and clouds
+            gPipeline.andRenderTypeMask(LLPipeline::RENDER_TYPE_SKY, LLPipeline::RENDER_TYPE_WL_SKY,
+                LLPipeline::RENDER_TYPE_WATER, LLPipeline::RENDER_TYPE_VOIDWATER, LLPipeline::RENDER_TYPE_CLOUDS, LLPipeline::RENDER_TYPE_TERRAIN, LLPipeline::END_RENDER_TYPES);
+
+            {
+                // [ProbeOnDemand] capture context (tiny cull kind + probe-centric lights)
+                ProbeCaptureScope capture_scope(*this, capture_context, mOnDemandActive && !mCinematicLiveProbeCapture,
+                    mCinematicLiveProbeCapture ? ProbeCaptureKind::LIVE
+                        : (probe != mUpdatingProbe ? ProbeCaptureKind::REALTIME : ProbeCaptureKind::ORDINARY));
+                probe->update(mRenderTarget.getWidth(), face, force_dynamic);
+            }
+
+            gPipeline.popRenderTypeMask();
+        }
+        else
+        {
+            llassert(mRenderReflectionProbeLevel > 0); // should never update a probe that's not the default probe if reflection coverage is none
             // [ProbeOnDemand] capture context (tiny cull kind + probe-centric lights)
             ProbeCaptureScope capture_scope(*this, capture_context, mOnDemandActive && !mCinematicLiveProbeCapture,
                 mCinematicLiveProbeCapture ? ProbeCaptureKind::LIVE
@@ -2854,18 +2885,7 @@ void LLReflectionMapManager::updateProbeFace(
             probe->update(mRenderTarget.getWidth(), face, force_dynamic);
         }
 
-        gPipeline.popRenderTypeMask();
-    }
-    else
-    {
-        llassert(mRenderReflectionProbeLevel > 0); // should never update a probe that's not the default probe if reflection coverage is none
-        // [ProbeOnDemand] capture context (tiny cull kind + probe-centric lights)
-        ProbeCaptureScope capture_scope(*this, capture_context, mOnDemandActive && !mCinematicLiveProbeCapture,
-            mCinematicLiveProbeCapture ? ProbeCaptureKind::LIVE
-                : (probe != mUpdatingProbe ? ProbeCaptureKind::REALTIME : ProbeCaptureKind::ORDINARY));
-        probe->update(mRenderTarget.getWidth(), face, force_dynamic);
-    }
-
+    } // [ProbeCost] Restore mode before filtering.
     gPipeline.mRT = &gPipeline.mMainRT;
 
     S32 sourceIdx = mReflectionProbeCount;
@@ -2898,7 +2918,7 @@ void LLReflectionMapManager::updateProbeFace(
         static LLStaticHashedString znear("znear");
         static LLStaticHashedString zfar("zfar");
 
-        LLRenderTarget* screen_rt = &gPipeline.mAuxillaryRT.screen;
+        LLRenderTarget* screen_rt = &capture_pack->screen; // [ProbeCost]
 
         // perform a gaussian blur on the super sampled render before downsampling
         {
@@ -3521,16 +3541,25 @@ void LLReflectionMapManager::renderDebug()
     gDebugProgram.unbind();
 }
 
+// [ProbeCost] One clamp shared by allocation and capture selection.
+U32 LLReflectionMapManager::getProbeCaptureScale()
+{
+    static LLCachedControl<U32> scale(gSavedSettings, "RenderProbeCaptureScale", 4U);
+    const U32 value = scale;
+    return value >= 4 ? 4U : (value >= 2 ? 2U : 1U);
+}
+
 void LLReflectionMapManager::initReflectionMaps()
 {
     static LLCachedControl<U32> ref_probe_res(gSavedSettings, "RenderReflectionProbeResolution", 128U);
     static LLCachedControl<U32> ref_probe_irradiance_res(gSavedSettings, "RenderReflectionProbeIrradianceResolution", 16U);
+    const U32 capture_scale = getProbeCaptureScale(); // [ProbeCost]
     U32 probe_resolution = nhpo2(llclamp(ref_probe_res(), (U32)64, (U32)512));
     U32 irradiance_resolution = llmin(nhpo2(llclamp(ref_probe_irradiance_res(), (U32)16, (U32)256)), probe_resolution); // Must be equal or smaller then probe resolution
     if (mTexture.isNull() || mReflectionProbeCount != mDynamicProbeCount || mProbeResolution != probe_resolution ||
-        mIrradianceMapResolution != irradiance_resolution || mReset)
+        mIrradianceMapResolution != irradiance_resolution || mProbeCaptureScale != capture_scale || mReset)
     {
-        if(mProbeResolution != probe_resolution)
+        if(mProbeResolution != probe_resolution || mProbeCaptureScale != capture_scale)
         {
             mRenderTarget.release();
             mMipChain.clear();
@@ -3540,6 +3569,7 @@ void LLReflectionMapManager::initReflectionMaps()
         mReset = false;
         mReflectionProbeCount = mDynamicProbeCount;
         mProbeResolution = probe_resolution;
+        mProbeCaptureScale = capture_scale; // [ProbeCost]
         mIrradianceMapResolution = irradiance_resolution;
         mMaxProbeLOD = log2f((F32)mProbeResolution) - 1.f; // number of mips - 1
 

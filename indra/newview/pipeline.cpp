@@ -1247,6 +1247,16 @@ bool LLPipeline::allocateScreenBufferInternal(U32 resX, U32 resY)
         U32 res = mReflectionMapManager.mProbeResolution * 4;  //multiply by 4 because probes will be 16x super sampled
         allocateScreenBufferInternal(res, res);
 
+        // [ProbeCost] Keep the stock aux pack for previews.
+        mProbeCaptureRTComplete = false;
+        const U32 capture_scale = LLReflectionMapManager::getProbeCaptureScale();
+        if (capture_scale != 4)
+        {
+            mRT = &mProbeCaptureRT;
+            const U32 capture_res = mReflectionMapManager.mProbeResolution * capture_scale;
+            mProbeCaptureRTComplete = allocateScreenBufferInternal(capture_res, capture_res);
+        }
+
         if (RenderMirrors)
         {
             mHeroProbeManager.initReflectionMaps();
@@ -1350,7 +1360,7 @@ bool LLPipeline::allocateScreenBufferInternal(U32 resX, U32 resY)
     // Non-HDR is unchanged (8-bit RGBA).
     const bool post_16bit = hdr && gSavedSettings.getBOOL("RenderHDR16BitColor");
     U32 post_color_fmt = hdr ? (post_16bit ? GL_RGBA16F : GL_RGB10_A2) : GL_RGBA;
-    if(mRT != &mHeroProbeRT)
+    if(mRT != &mHeroProbeRT && mRT != &mProbeCaptureRT) // [ProbeCost]
     {
         if (hdr)
         {
@@ -1403,7 +1413,16 @@ bool LLPipeline::allocateScreenBufferInternal(U32 resX, U32 resY)
         mRT->deferredScreen.shareDepthBuffer(mRT->postPingMap);
     }
 
-    allocateShadowBuffer(resX, resY);
+    // [ProbeCost] Match stock aux shadow dimensions, including resolution modifiers.
+    if (mRT == &mProbeCaptureRT)
+    {
+        if (!allocateShadowBuffer(mAuxillaryRT.deferredScreen.getWidth(),
+                                  mAuxillaryRT.deferredScreen.getHeight())) return false;
+    }
+    else
+    {
+        allocateShadowBuffer(resX, resY);
+    }
 
     if (!gCubeSnapshot) // hack to not re-allocate various targets for cube snapshots
     {
@@ -1793,6 +1812,8 @@ bool LLPipeline::allocateShadowBuffer(U32 resX, U32 resY)
     F32 scale = gCubeSnapshot ? 1.0f : llmax(0.f, RenderShadowResolutionScale); // Don't scale probe shadow maps
     U32 sun_shadow_map_width = BlurHappySize(resX, scale);
     U32 sun_shadow_map_height = BlurHappySize(resY, scale);
+
+    if (mRT == &mMainRT) mMainSunShadowToken = false; // [ProbeCost]
 
     // [ShadowDist P1] ShadowMeta site 6: the maps of this pack are being
     // (re)allocated or released -> their interpretation is void until the next
@@ -2287,7 +2308,7 @@ void LLPipeline::releaseLUTBuffers()
 void LLPipeline::releaseShadowBuffers()
 {
     // Sun shadows are allocated through mRT->shadow[], and mRT is swapped
-    // between packs during cube snapshots, so any of the three packs may
+    // between packs during cube snapshots, so any of the capture packs may
     // hold allocations. releaseSunShadowTargets() only handles the active
     // pack (because resize callers want exactly that); for full teardown
     // we have to walk every pack ourselves.
@@ -2302,6 +2323,8 @@ void LLPipeline::releaseShadowBuffers()
     release_sun_shadows(mMainRT);
     release_sun_shadows(mAuxillaryRT);
     release_sun_shadows(mHeroProbeRT);
+    release_sun_shadows(mProbeCaptureRT); // [ProbeCost]
+    mProbeCaptureRTComplete = false;
     updateShadowEngaged(); // [ShadowDist P1] main meta is legacy again
 
     releaseSpotShadowTargets();
@@ -2330,6 +2353,8 @@ void LLPipeline::releaseScreenBuffers()
     release_pack(mMainRT);
     release_pack(mAuxillaryRT);
     release_pack(mHeroProbeRT);
+    release_pack(mProbeCaptureRT); // [ProbeCost]
+    mProbeCaptureRTComplete = false;
     releasePrismLensBuffers();
     releasePrismLensOutputs();
     LLPrismLens::onRenderTargetsReleased();
@@ -22622,7 +22647,7 @@ void LLPipeline::uploadShadowUniforms(LLGLSLShader& shader)
 {
     // The pack whose maps bindShadowMaps() just bound: main, a probe pack, or
     // (under Prism) the main pack sampled from the aux camera.
-    const RenderTargetPack& pack = sPrismLensRender ? mMainRT : *mRT;
+    const RenderTargetPack& pack = (sPrismLensRender || mProbeShadowSampleMode == 1) ? mMainRT : *mRT; // [ProbeCost]
     const RenderTargetPack::ShadowMeta& meta = pack.shadowMeta;
 
     ShadowUniformStamp& stamp = mShadowStampByShader[&shader];
@@ -22668,6 +22693,28 @@ void LLPipeline::uploadShadowUniforms(LLGLSLShader& shader)
         stamp.serial = meta.serial;
     }
 
+    // [ProbeCost] Both bind paths reach this, including the stock-meta early return.
+    shader.uniform1i(LLShaderMgr::SHADOW_PROBE_MODE, static_cast<S32>(mProbeShadowSampleMode));
+    if (mProbeShadowSampleMode == 1)
+    {
+        const glm::dmat4 inv_view = glm::inverse(glm::dmat4(get_current_modelview()));
+        F32 matrices[16 * 4];
+        LLVector4 valid, widths, heights;
+        for (U32 j = 0; j < 4; ++j)
+        {
+            const bool fitted = j < meta.validCascades && meta.fitted[j];
+            const glm::mat4 matrix = fitted ? glm::mat4(meta.sunVP[j] * inv_view) : glm::mat4(1.f);
+            std::copy_n(glm::value_ptr(matrix), 16, matrices + 16 * j);
+            valid.mV[j] = fitted ? 1.f : 0.f;
+            widths.mV[j] = llmax(static_cast<F32>(pack.shadow[j].getWidth()), 1.f);
+            heights.mV[j] = llmax(static_cast<F32>(pack.shadow[j].getHeight()), 1.f);
+        }
+        shader.uniformMatrix4fv(LLShaderMgr::SHADOW_REUSE_MATRIX, 4, GL_FALSE, matrices);
+        shader.uniform4fv(LLShaderMgr::SHADOW_REUSE_VALID, 1, valid.mV);
+        shader.uniform4fv(LLShaderMgr::SHADOW_REUSE_RES, 1, widths.mV);
+        shader.uniform4fv(LLShaderMgr::SHADOW_REUSE_RES_H, 1, heights.mV);
+    }
+
     if (!mShadowEngaged || meta.validCascades == 0)
     {
         // OFF path: the slow path's stock DEFERRED_SHADOW_MATRIX / _CLIP uploads
@@ -22699,7 +22746,9 @@ void LLPipeline::uploadShadowUniforms(LLGLSLShader& shader)
     }
     // count 4 -> elements 0..3 of shadow_matrix[14]; the spot slots 4..13 stay slow-path.
     shader.uniformMatrix4fv(LLShaderMgr::DEFERRED_SHADOW_MATRIX, 4, GL_FALSE, sun_mats);
-    shader.uniform4fv(LLShaderMgr::DEFERRED_SHADOW_CLIP, 1, meta.clip.mV);
+    // [ProbeCost] Projectors use this view's clip/fade distances in Reuse/Off.
+    shader.uniform4fv(LLShaderMgr::DEFERRED_SHADOW_CLIP, 1,
+                      mProbeShadowSampleMode != 0 ? mSunClipPlanes.mV : meta.clip.mV);
     // [ShadowDist P3] the column's own sampling matrix, composed with the current inverse view in
     // double (camera-independent: Prism aux / probe / main all get the same light-space uv/depth).
     if (!meta.legacy && meta.subject)
@@ -23222,6 +23271,7 @@ void LLPipeline::releaseActorMasks()
     release(mMainRT);
     release(mAuxillaryRT);
     release(mHeroProbeRT);
+    release(mProbeCaptureRT); // [ProbeCost]
     for (auto& entry : mPrismLensScratchPool) release(entry.rt);
     mActorMaskQueries.release();
     mActorMaskAllocated = false;
@@ -26672,10 +26722,38 @@ void LLPipeline::renderHighlight(const LLViewerObject* obj, F32 fade)
 }
 
 
+// [ProbeCost] Allocation metadata and this iteration's completed generation are both required.
+bool LLPipeline::mainSunShadowsPublishedThisIteration() const
+{
+    if (!mMainSunShadowToken || mMainRT.shadowMeta.validCascades == 0) return false;
+    for (U32 i = 0; i < 4; ++i)
+    {
+        if (!mMainRT.shadow[i].isComplete()) return false;
+    }
+    return true;
+}
+
+void LLPipeline::reexpressProbeSpotShadows()
+{
+    if (RenderShadowDetail <= 1) return;
+    const glm::mat4 inv_view = glm::inverse(get_current_modelview());
+    const glm::mat4 bias(0.5f, 0.f, 0.f, 0.f,
+                         0.f, 0.5f, 0.f, 0.f,
+                         0.f, 0.f, 0.5f, 0.f,
+                         0.5f, 0.5f, 0.5f, 1.f);
+    for (U32 i = 0; i < bdmergeMaxSpotShadows(); ++i)
+    {
+        if (mShadowSpotLight[i].notNull() && mSpotShadow[i].isComplete())
+        {
+            mSunShadowMatrix[i + 4] = bias * mShadowProjection[i + 4] * mShadowModelview[i + 4] * inv_view;
+        }
+    }
+}
+
 LLRenderTarget* LLPipeline::getSunShadowTarget(U32 i)
 {
     llassert(i < 4);
-    return sPrismLensRender ? &mMainRT.shadow[i] : &mRT->shadow[i];
+    return (sPrismLensRender || mProbeShadowSampleMode == 1) ? &mMainRT.shadow[i] : &mRT->shadow[i]; // [ProbeCost]
 }
 
 LLRenderTarget* LLPipeline::getSpotShadowTarget(U32 i)
@@ -26748,8 +26826,10 @@ static void bucketShadowCull(LLCullResult& src, LLCamera& cam, LLCullResult& dst
     }
 }
 
-void LLPipeline::generateSunShadow(LLCamera& camera)
+void LLPipeline::generateSunShadow(LLCamera& camera, bool clip_only)
 {
+    // [ProbeCost] A failed/early-returning main generation cannot publish stale maps.
+    if (mRT == &mMainRT && !gCubeSnapshot) mMainSunShadowToken = false;
     if (!sRenderDeferred || RenderShadowDetail <= 0)
     {
         return;
@@ -26844,7 +26924,7 @@ void LLPipeline::generateSunShadow(LLCamera& camera)
                     LLPipeline::RENDER_TYPE_PASS_GLTF_PBR_ALPHA_MASK_RIGGED,
                     END_RENDER_TYPES);
 
-    gGL.setColorMask(false, false);
+    if (!clip_only) gGL.setColorMask(false, false);
 
     LLEnvironment& environment = LLEnvironment::instance();
 
@@ -27054,6 +27134,18 @@ void LLPipeline::generateSunShadow(LLCamera& camera)
         mSunClipPlanes.mV[3] *= 1.5f;
     }
 
+
+    // [ProbeCost] Reuse/Off need Full's probe projector clip/fade distances,
+    // but must leave all shadow maps and their metadata untouched.
+    if (clip_only)
+    {
+        popRenderTypeMask();
+        if (!skip_avatar_update)
+        {
+            gAgentAvatarp->updateAttachmentVisibility(gAgentCamera.getCameraMode());
+        }
+        return;
+    }
 
     // [ShadowDist P1] ShadowMeta site 1 (design v6 s1.1 / v5 s5): written after
     // Control A's override and the cube-snapshot stretch, i.e. these are the
@@ -28138,6 +28230,8 @@ void LLPipeline::generateSunShadow(LLCamera& camera)
     {
         gAgentAvatarp->updateAttachmentVisibility(gAgentCamera.getCameraMode());
     }
+    // [ProbeCost] Only completed main generations publish; early returns stay invalid.
+    if (mRT == &mMainRT && !gCubeSnapshot) mMainSunShadowToken = true;
 }
 
 // [Prism spot shadows Stage 2] Generate projector/spot shadow maps for the

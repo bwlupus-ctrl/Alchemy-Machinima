@@ -62,6 +62,8 @@
 #include "llimagepng.h"
 #include "llmachineid.h"
 #include "llmemory.h"
+#include <memory> // [ProbeCost]
+#include <algorithm>
 #include "llparcel.h"
 #include "llperfstats.h"
 #include "llprismlens.h"
@@ -1252,6 +1254,102 @@ std::string getProfileStatsFilename()
     return name;
 }
 
+namespace
+{
+// [ProbeCost] Allocated only for opt-in faces; includes a Reuse -> Full fallback.
+// The default face never snapshots/restores state or invalidates fast binds.
+class ScopedProbeShadowState
+{
+public:
+    ScopedProbeShadowState()
+        : clip(gPipeline.mSunClipPlanes), ortho_clip(gPipeline.mSunOrthoClipPlanes),
+          error(gPipeline.mShadowError), fov(gPipeline.mShadowFOV),
+          sample_mode(gPipeline.mProbeShadowSampleMode)
+    {
+        std::copy_n(gPipeline.mSunShadowMatrix, LLPipeline::MAX_SHADOW_MATS, sun);
+        std::copy_n(gPipeline.mShadowModelview, LLPipeline::MAX_SHADOW_MATS, view);
+        std::copy_n(gPipeline.mShadowProjection, LLPipeline::MAX_SHADOW_MATS, proj);
+        std::copy_n(gPipeline.mShadowCamera, 8, camera);
+        std::copy_n(gPipeline.mShadowFrustOrigin, 4, origin);
+        std::copy_n(gPipeline.mShadowFrustPoints, 4, points);
+        std::copy_n(gPipeline.mShadowSpotLight, LLPipeline::MAX_SPOT_SHADOWS, spots);
+        std::copy_n(gPipeline.mTargetShadowSpotLight, LLPipeline::MAX_SPOT_SHADOWS, target_spots);
+        std::copy_n(gPipeline.mSpotLightFade, LLPipeline::MAX_SPOT_SHADOWS, spot_fade);
+        for (U32 i = 0; i < 4; ++i)
+            std::copy_n(gPipeline.mShadowExtents[i], 2, extents[i]);
+        gPipeline.mProbeShadowSampleMode = 0; // Full fallback must use its own maps.
+        invalidateFastBinds();
+    }
+    // [ProbeCost] Bound the hardware footprint as well as the explicit PCF taps.
+    // Restore the known stock filter policy without querying the driver.
+    void useBilinearReuseMaps()
+    {
+        restore_filter = true;
+        saved_filter = gPipeline.mShadowUnitsFilterApplied == 1
+            ? LLTexUnit::TFO_BILINEAR : LLTexUnit::TFO_ANISOTROPIC;
+        gGL.getTexUnit(0)->activate();
+        for (U32 i = 0; i < 4; ++i)
+        {
+            gGL.getTexUnit(0)->bind(&gPipeline.mMainRT.shadow[i], true);
+            gGL.getTexUnit(0)->setTextureFilteringOption(LLTexUnit::TFO_BILINEAR);
+        }
+        gGL.getTexUnit(0)->unbind(LLTexUnit::TT_TEXTURE);
+    }
+    ~ScopedProbeShadowState()
+    {
+        if (restore_filter)
+        {
+            gGL.getTexUnit(0)->activate();
+            for (U32 i = 0; i < 4; ++i)
+            {
+                gGL.getTexUnit(0)->bind(&gPipeline.mMainRT.shadow[i], true);
+                gGL.getTexUnit(0)->setTextureFilteringOption(saved_filter);
+            }
+            gGL.getTexUnit(0)->unbind(LLTexUnit::TT_TEXTURE);
+        }
+        std::copy_n(sun, LLPipeline::MAX_SHADOW_MATS, gPipeline.mSunShadowMatrix);
+        std::copy_n(view, LLPipeline::MAX_SHADOW_MATS, gPipeline.mShadowModelview);
+        std::copy_n(proj, LLPipeline::MAX_SHADOW_MATS, gPipeline.mShadowProjection);
+        std::copy_n(camera, 8, gPipeline.mShadowCamera);
+        std::copy_n(origin, 4, gPipeline.mShadowFrustOrigin);
+        std::copy_n(points, 4, gPipeline.mShadowFrustPoints);
+        std::copy_n(spots, LLPipeline::MAX_SPOT_SHADOWS, gPipeline.mShadowSpotLight);
+        std::copy_n(target_spots, LLPipeline::MAX_SPOT_SHADOWS, gPipeline.mTargetShadowSpotLight);
+        std::copy_n(spot_fade, LLPipeline::MAX_SPOT_SHADOWS, gPipeline.mSpotLightFade);
+        for (U32 i = 0; i < 4; ++i)
+            std::copy_n(extents[i], 2, gPipeline.mShadowExtents[i]);
+        gPipeline.mSunClipPlanes = clip;
+        gPipeline.mSunOrthoClipPlanes = ortho_clip;
+        gPipeline.mShadowError = error;
+        gPipeline.mShadowFOV = fov;
+        gPipeline.mProbeShadowSampleMode = sample_mode;
+        invalidateFastBinds();
+    }
+    ScopedProbeShadowState(const ScopedProbeShadowState&) = delete;
+    ScopedProbeShadowState& operator=(const ScopedProbeShadowState&) = delete;
+private:
+    static void invalidateFastBinds()
+    {
+        for (LLGLSLShader* shader : LLGLSLShader::sInstances)
+            if (shader) shader->mCanBindFast = false;
+    }
+    glm::mat4 sun[LLPipeline::MAX_SHADOW_MATS];
+    glm::mat4 view[LLPipeline::MAX_SHADOW_MATS];
+    glm::mat4 proj[LLPipeline::MAX_SHADOW_MATS];
+    LLCamera camera[8];
+    LLVector3 origin[4];
+    std::vector<LLVector3> points[4];
+    LLPointer<LLDrawable> spots[LLPipeline::MAX_SPOT_SHADOWS];
+    LLPointer<LLDrawable> target_spots[LLPipeline::MAX_SPOT_SHADOWS];
+    F32 spot_fade[LLPipeline::MAX_SPOT_SHADOWS];
+    LLVector3 extents[4][2];
+    LLVector4 clip, ortho_clip, error, fov;
+    U32 sample_mode;
+    bool restore_filter = false;
+    LLTexUnit::eTextureFilterOptions saved_filter = LLTexUnit::TFO_ANISOTROPIC;
+};
+} // namespace
+
 // WIP simplified copy of display() that does minimal work
 void display_cube_face()
 {
@@ -1331,9 +1429,26 @@ void display_cube_face()
     gGL.setColorMask(true, true);
 
     glClearColor(0.f, 0.f, 0.f, 0.f);
+    // [ProbeCost] Keep restoration alive through deferred lighting and forward passes.
+    std::unique_ptr<ScopedProbeShadowState> probe_shadow_state;
+    const U32 probe_mode = gPipeline.mProbeSunShadowMode;
+    if (probe_mode != 0)
+    {
+        probe_shadow_state = std::make_unique<ScopedProbeShadowState>();
+    }
+    if (probe_mode == 0 ||
+        (probe_mode == 1 && !gPipeline.mainSunShadowsPublishedThisIteration()))
     {
         LL_PROFILE_ZONE_NAMED_CATEGORY_DISPLAY("cube face shadow"); // [ProbeOnDemand] C0
         gPipeline.generateSunShadow(*LLViewerCamera::getInstance());
+    }
+    else
+    {
+        // Compute Full's probe clip/fade distances without generating maps.
+        gPipeline.generateSunShadow(*LLViewerCamera::getInstance(), true);
+        if (probe_mode == 1) probe_shadow_state->useBilinearReuseMaps();
+        gPipeline.reexpressProbeSpotShadows();
+        gPipeline.mProbeShadowSampleMode = probe_mode;
     }
 
     glClear(GL_DEPTH_BUFFER_BIT); // | GL_STENCIL_BUFFER_BIT);
