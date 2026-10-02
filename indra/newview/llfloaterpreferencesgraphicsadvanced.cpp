@@ -123,7 +123,12 @@ bool LLFloaterPreferenceGraphicsAdvanced::postBuild()
 
 void LLFloaterPreferenceGraphicsAdvanced::draw()
 {
-    refreshVRAMStatus();
+    // [UIPerf] 4 Hz is plenty for a live status readout.
+    if (mVRAMStatusTimer.getElapsedTimeF32() > 0.25f)
+    {
+        mVRAMStatusTimer.reset();
+        refreshVRAMStatus();
+    }
     LLFloater::draw();
 }
 
@@ -199,8 +204,14 @@ void LLFloaterPreferenceGraphicsAdvanced::refresh()
 
 void LLFloaterPreferenceGraphicsAdvanced::refreshVRAMStatus()
 {
-    LLTextBox* status = getChild<LLTextBox>("VRAMStatus", true);
-    LLTextBox* title = getChild<LLTextBox>("VRAMStatusTitle", true);
+    // [UIPerf] Resolve once; the widgets live for the floater's lifetime.
+    if (!mVRAMStatus)
+    {
+        mVRAMStatus = findChild<LLTextBox>("VRAMStatus", true);
+        mVRAMStatusTitle = findChild<LLTextBox>("VRAMStatusTitle", true);
+    }
+    LLTextBox* status = mVRAMStatus;
+    LLTextBox* title = mVRAMStatusTitle;
     if (!status)
     {
         return;

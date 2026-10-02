@@ -69,6 +69,12 @@ protected:
     boost::signals2::connection mComplexityModeChangedSignal;
     boost::signals2::connection mLODFactorChangedSignal;
     boost::signals2::connection mNumImpostorsChangedSignal;
+
+    // [UIPerf] VRAM status readout: widgets cached once (were looked up by name
+    // every frame) and the readout refreshed at 4 Hz instead of every frame.
+    LLTextBox*   mVRAMStatus = nullptr;
+    LLTextBox*   mVRAMStatusTitle = nullptr;
+    LLFrameTimer mVRAMStatusTimer;
 };
 
 #endif //LLFLOATERPREFERENCEGRAPHICSADVANCED_H
