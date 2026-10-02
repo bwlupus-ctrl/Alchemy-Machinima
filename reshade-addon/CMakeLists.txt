@@ -13,6 +13,9 @@ project(sl_reshade_bridge CXX)
 
 add_library(sl_reshade_bridge SHARED src/sl_reshade_bridge.cpp)
 
+# [DepthPin] Read-only SHA-256 and FileVersion allowlist for the loaded ReShade module.
+target_link_libraries(sl_reshade_bridge PRIVATE bcrypt version)
+
 target_include_directories(sl_reshade_bridge PRIVATE external/reshade)
 target_compile_features(sl_reshade_bridge PRIVATE cxx_std_17)
 

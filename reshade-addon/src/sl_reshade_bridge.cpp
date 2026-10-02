@@ -61,9 +61,12 @@
 #include <cstring>
 #include <cstdio>
 #include <vector>
+#include <mutex>
+#include <string_view>
 
 #define RESHADE_ADDON 1
 #include "reshade.hpp"
+#include "sl_depth_pin.hpp" // [DepthPin] Phase A: GD remains the DEPTH provider.
 
 #include "../../indra/newview/llreshadebridgeabi.h"
 
@@ -215,58 +218,6 @@ struct GBufferSlot
 };
 
 // -----------------------------------------------------------------------------
-// TRUE DEPTH -- replaces ReShade's built-in generic_depth heuristic.
-//
-// Bound DIRECTLY (no replicate/copy), unlike the colour G-buffer slots above:
-//   * depth<->colour copies are ILLEGAL (glCopyImageSubData requires a matching
-//     internal-format class), so the replicate path simply cannot carry depth;
-//   * the replicate path only exists to dodge GL mip-INcompleteness when
-//     sampling, which does not apply here -- the viewer allocates depth as a
-//     single-level NEAREST texture, so it is already complete and safe to
-//     sample in place.
-// This mirrors what generic_depth itself does, minus the guesswork: we bind the
-// viewer's real deferredScreen depth, so DEPTH is guaranteed to be the exact
-// buffer our normals/albedo/motion came from (no heuristic misdetection during
-// shadow / reflection-probe / impostor passes).
-//
-// REQUIRES the built-in "Generic depth" add-on to be DISABLED -- it rebinds the
-// DEPTH semantic every frame and would otherwise fight us for the binding.
-//
-// STATUS 2026-07-14: DISABLED (rolled back). The direct bind does NOT work --
-// create_resource_view() fails on the viewer's GL depth texture:
-//     "[SLBridge] DEPTH: create_resource_view failed for GL 3044 (fmt 0x81A6)"
-// Almost certainly because ReShade's GL backend builds views via glTextureView,
-// which requires IMMUTABLE storage (glTexStorage*), while LLRenderTarget
-// allocates with glTexImage2D (mutable). That is very likely the original reason
-// the colour slots replicate into add-on-OWNED textures (ReShade creates those
-// immutable, so they are viewable) rather than binding the source directly.
-//
-// => Direct-bind is a dead end. See doc/SL_TRUTH_RESHADE_BRIEF.md §2: the
-//    pre-compensated-depth design routes around this entirely, because the client
-//    writes depth into an R32F COLOUR texture, which rides the existing proven
-//    copy path and needs no view of a depth resource at all.
-//
-// Code kept (inert) as the delivery mechanism for that design.
-// Set SL_PROVIDE_DEPTH=1 only if the view problem is solved.
-// -----------------------------------------------------------------------------
-#ifndef SL_PROVIDE_DEPTH
-#define SL_PROVIDE_DEPTH 0
-#endif
-
-struct DepthSlot
-{
-    resource_view srv     = { 0 };
-    uint32_t      gl_name = 0;
-    uint32_t      width   = 0;
-    uint32_t      height  = 0;
-    bool          warned  = false;
-
-    // Drop handles WITHOUT a GL destroy (owning context gone / wrong device) --
-    // same rule as the colour slots, see on_destroy_effect_runtime.
-    void forget() { srv = { 0 }; gl_name = width = height = 0; }
-};
-
-// -----------------------------------------------------------------------------
 // Tail status pushed to the FX layer as uint uniforms each frame.
 // -----------------------------------------------------------------------------
 struct FrameStatus
@@ -317,8 +268,6 @@ struct BridgeState
         { "SL_VISIBLE_DIFFUSE",  "SLVisibleDiffuseTex",  SLRESHADE_SEM_VALID_VISIBLE_DIFFUSE,  SRC_VISIBLE_DIFFUSE  },
     };
 
-    DepthSlot depth;   // ReShade's DEPTH semantic, bound direct (see DepthSlot)
-
     // Shared 4x4 all-zero immutable texture: the deterministic NEUTRAL every
     // invalid semantic is bound to (fail closed, contract v2 section 4).
     resource      neutral     = { 0 };
@@ -366,7 +315,7 @@ static const SLReShadeTexture *slot_source(const SLReShadeFrame &f,
 // uniform annotation sources: < source = "sl_view_matrix"; > etc.
 // is_uint entries are pushed with set_uniform_value_uint from FrameStatus.
 struct UniformSourceDef { const char *name; uint32_t count; bool is_uint; };
-static const UniformSourceDef kUniformSources[] = {
+static constexpr UniformSourceDef kUniformSources[] = {
     { "sl_view_matrix",       16, false },  // row-major LLMatrix4 (row-vector convention)
     { "sl_proj_matrix",       16, false },
     { "sl_camera_pos",         3, false },
@@ -385,7 +334,10 @@ static const UniformSourceDef kUniformSources[] = {
     { "sl_motion_coverage",    1, true  },
     { "sl_config_flags",       1, true  },
     { "sl_tail_valid",         1, true  },
+    { "sl_depth_pin",          1, true  }, // [DepthPin] status only, never readiness
 };
+static constexpr uint8_t kSrcDepthPin = 17; // [DepthPin] annotation table index
+static_assert(std::string_view(kUniformSources[kSrcDepthPin].name) == "sl_depth_pin");
 
 static const float *uniform_source_data(const SLReShadeFrame &f, uint8_t idx,
                                         float *scratch /* >= 16 floats */)
@@ -803,70 +755,6 @@ static void maybe_log_copy_stats()
 }
 
 // -----------------------------------------------------------------------------
-// Point ReShade's DEPTH semantic at the viewer's real depth buffer.
-// Cheap: only (re)creates the view when the source texture actually changes
-// (resize / RT rebuild); steady-state frames early-out.
-// -----------------------------------------------------------------------------
-#if SL_PROVIDE_DEPTH
-static void update_depth_binding(const SLReShadeTexture &src, effect_runtime *runtime)
-{
-    device *dev = runtime->get_device();
-
-    if (src.gl_name == 0 || src.width == 0 || src.height == 0)
-    {
-        // Not published this frame (RT rebuild in progress): keep the last good
-        // binding rather than dropping DEPTH to nothing.
-        return;
-    }
-
-    // Same source as last time -> existing view is still valid.
-    if (g.depth.srv != 0 && g.depth.gl_name == src.gl_name &&
-        g.depth.width == src.width && g.depth.height == src.height)
-    {
-        return;
-    }
-
-    g.stage = "depth_create_resource_view";
-    if (g.depth.srv != 0)
-    {
-        dev->destroy_resource_view(g.depth.srv);
-        g.depth.srv = { 0 };
-    }
-
-    // D24 sampled as R24 -> depth arrives in .r, which is what ReShade's
-    // RESHADE_DEPTH_* macros / ReShade::GetLinearizedDepth() expect. Feed RAW
-    // (non-linear) depth: linearisation is the FX layer's job, do NOT pre-do it.
-    if (!dev->create_resource_view(wrap_gl_texture(src.gl_name),
-                                   resource_usage::shader_resource,
-                                   resource_view_desc(format::r24_unorm_x8_uint),
-                                   &g.depth.srv))
-    {
-        if (!g.depth.warned)
-        {
-            g.depth.warned = true;
-            logf(reshade::log::level::error,
-                 "[SLBridge] DEPTH: create_resource_view failed for GL %u (fmt 0x%04X) "
-                 "-- leaving the DEPTH semantic alone",
-                 src.gl_name, src.gl_internal_format);
-        }
-        g.depth.srv = { 0 };
-        return;
-    }
-
-    g.depth.gl_name = src.gl_name;
-    g.depth.width   = src.width;
-    g.depth.height  = src.height;
-
-    g.stage = "depth_update_texture_bindings";
-    runtime->update_texture_bindings("DEPTH", g.depth.srv, g.depth.srv);
-    logf(reshade::log::level::info,
-         "[SLBridge] DEPTH: bound TRUE SL depth %ux%u (GL %u). Disable the built-in "
-         "\"Generic depth\" add-on or it will fight us for this semantic.",
-         g.depth.width, g.depth.height, g.depth.gl_name);
-}
-#endif // SL_PROVIDE_DEPTH
-
-// -----------------------------------------------------------------------------
 // Uniform cache: rebuilt after every effect (re)load (always BEFORE the slot
 // update loop -- see do_begin_effects). Also recomputes the per-slot
 // demand-copy gate: a slot is "consumed" when any loaded effect declares its
@@ -935,7 +823,7 @@ static void push_uniforms(effect_runtime *runtime, const SLReShadeFrame *f,
         const UniformSourceDef &def = kUniformSources[u.source];
         if (def.is_uint)
         {
-            const uint32_t v = uniform_source_uint(st, u.source);
+            const uint32_t v = u.source == kSrcDepthPin ? depth_pin::status(runtime) : uniform_source_uint(st, u.source);
             runtime->set_uniform_value_uint(u.var, &v, 1);
         }
         else if (f != nullptr)
@@ -954,6 +842,10 @@ static void push_uniforms(effect_runtime *runtime, const SLReShadeFrame *f,
 // -----------------------------------------------------------------------------
 static void on_init_effect_runtime(effect_runtime *runtime)
 {
+    // [DepthPin] Version/CNG checks must run outside the loader lock, once per load.
+    static std::once_flag binary_check;
+    std::call_once(binary_check, depth_pin::check_binary);
+    depth_pin::init(runtime); // [DepthPin] after GD init, including every re-init
     g.runtime = runtime;
     g.uniforms_dirty = true;
     // slots hold device objects from a previous runtime? init means fresh
@@ -962,7 +854,6 @@ static void on_init_effect_runtime(effect_runtime *runtime)
     {
         s.forget();
     }
-    g.depth.forget();
     g.neutral = { 0 };
     g.neutral_srv = { 0 };
     logf(reshade::log::level::info, "[SLBridge] effect runtime initialized");
@@ -970,6 +861,7 @@ static void on_init_effect_runtime(effect_runtime *runtime)
 
 static void on_destroy_effect_runtime(effect_runtime *runtime)
 {
+    depth_pin::destroy(runtime); // [DepthPin] drop local state only
     if (runtime != g.runtime)
     {
         return;
@@ -986,7 +878,6 @@ static void on_destroy_effect_runtime(effect_runtime *runtime)
     {
         s.forget();
     }
-    g.depth.forget();   // view belongs to the dying context; drop, don't destroy
     g.neutral = { 0 };
     g.neutral_srv = { 0 };
     g.uniforms.clear();
@@ -996,6 +887,7 @@ static void on_destroy_effect_runtime(effect_runtime *runtime)
 
 static void on_reloaded_effects(effect_runtime *runtime)
 {
+    depth_pin::reload(runtime); // [DepthPin] PinDepth escape hatch / explicit retry
     if (g.dead)
     {
         return;
@@ -1046,7 +938,6 @@ static void do_begin_effects(effect_runtime *runtime, command_list *cmd)
         {
             s.forget();
         }
-        g.depth.forget();
         g.neutral = { 0 };
         g.neutral_srv = { 0 };
         g.uniforms_dirty = true;
@@ -1164,9 +1055,6 @@ static void do_begin_effects(effect_runtime *runtime, command_list *cmd)
                         force_recreate);
         }
         maybe_log_copy_stats();
-#if SL_PROVIDE_DEPTH
-        update_depth_binding(f.depth, runtime);
-#endif
     }
 
     // EFFECTIVE validity for the FX layer: the viewer's claim AND the slot
@@ -1203,6 +1091,23 @@ static void do_begin_effects(effect_runtime *runtime, command_list *cmd)
     g.stage = "idle";
 }
 
+// [DepthPin] Keep diagnostics live after bridge failure. Enumerate current handles
+// directly because the bridge's cache may be incomplete or stale after reload.
+static void push_depth_pin_status(effect_runtime *runtime)
+{
+    runtime->enumerate_uniform_variables(nullptr,
+        [](effect_runtime *rt, effect_uniform_variable var)
+        {
+            char source[64] = "";
+            if (rt->get_annotation_string_from_uniform_variable(var, "source", source) &&
+                std::strcmp(source, kUniformSources[kSrcDepthPin].name) == 0)
+            {
+                const uint32_t value = depth_pin::status(rt);
+                rt->set_uniform_value_uint(var, &value, 1);
+            }
+        });
+}
+
 // SEH-guarded wrapper: whatever faults inside our per-frame work, log the
 // exception code + the stage breadcrumb and permanently self-disable -- the
 // bridge goes inert but ReShade's hook SURVIVES (no more silent soft-crash).
@@ -1210,8 +1115,10 @@ static void do_begin_effects(effect_runtime *runtime, command_list *cmd)
 static void on_begin_effects(effect_runtime *runtime, command_list *cmd,
                              resource_view /*rtv*/, resource_view /*rtv_srgb*/)
 {
+    depth_pin::verify(runtime); // [DepthPin] GD selection already ran; release failed pins now.
     if (g.dead)
     {
+        push_depth_pin_status(runtime); // [DepthPin] independent of viewer bridge health
         return;
     }
     unsigned long code = 0;
@@ -1227,6 +1134,7 @@ static void on_begin_effects(effect_runtime *runtime, command_list *cmd,
              "self-disabled for this session (ReShade keeps running)",
              code, g.stage);
     }
+    if (g.dead) push_depth_pin_status(runtime); // [DepthPin] also update on the faulting frame
 }
 
 // -----------------------------------------------------------------------------
@@ -1241,6 +1149,8 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD fdwReason, LPVOID)
         {
             return FALSE;   // ReShade not present or incompatible -- refuse load
         }
+        reshade::register_event<reshade::addon_event::present>(&depth_pin::present);
+        reshade::register_event<reshade::addon_event::reshade_finish_effects>(&depth_pin::finish);
         reshade::register_event<reshade::addon_event::init_effect_runtime>(&on_init_effect_runtime);
         reshade::register_event<reshade::addon_event::destroy_effect_runtime>(&on_destroy_effect_runtime);
         reshade::register_event<reshade::addon_event::reshade_reloaded_effects>(&on_reloaded_effects);
