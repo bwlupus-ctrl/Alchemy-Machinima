@@ -2328,44 +2328,11 @@ void ALPanelCineLightRig::syncActorOnlyControls(
     bool object_targeted, bool actor_only_all)
 {
     const S32 state = (object_targeted ? 1 : 0) | (actor_only_all ? 2 : 0);
-    // [ActorMask] While the master is on, the overridden per-light/catchlight
-    // boxes DISPLAY ticked (the effective state). setValue() is display-only:
-    // the stored per-light settings are untouched. Re-asserted every call so a
-    // control-bound refresh (preset/rig switch) can't flip the display back.
-    if (actor_only_all)
-    {
-        for (S32 i = 0; i < ACTOR_ONLY_CONTROL_COUNT; ++i)
-        {
-            if (mActorOnlyControls[i] && i != ALCineLightRigModel::LIGHT_COUNT &&
-                i != ACTOR_ONLY_MASTER_INDEX && !mActorOnlyControls[i]->getValue().asBoolean())
-            {
-                mActorOnlyControls[i]->setValue(true);
-            }
-        }
-    }
     if (state == mActorOnlyLockState)
     {
         return;
     }
-    const bool master_turned_off = (mActorOnlyLockState & 2) && !actor_only_all;
     mActorOnlyLockState = state;
-    if (master_turned_off)
-    {
-        // [ActorMask] Show each box's own stored value again. (The checkbox's
-        // control binding lives on its inner button, so read the settings.)
-        static const char* const STORED[ACTOR_ONLY_CONTROL_COUNT] = {
-            "CineLightRigKeyActorOnly", "CineLightRigFillActorOnly",
-            "CineLightRigRimActorOnly", "CineLightRigBgActorOnly",
-            nullptr, "CineLightRigCatchlightActorOnly", nullptr
-        };
-        for (S32 i = 0; i < ACTOR_ONLY_CONTROL_COUNT; ++i)
-        {
-            if (mActorOnlyControls[i] && STORED[i])
-            {
-                mActorOnlyControls[i]->setValue(gSavedSettings.getBOOL(STORED[i]));
-            }
-        }
-    }
     static const std::string LOCKED_TIP =
         "Actor only isn't supported for object targets in this version. "
         "With an object target these lights light normally.";
