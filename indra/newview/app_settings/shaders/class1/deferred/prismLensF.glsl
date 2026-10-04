@@ -22,18 +22,23 @@ uniform float edgeFeather;
 uniform vec4 prismLensOptics;
 
 // Per-display TV/CRT screen effect packs. Every effect block below gates on
-// its strength being > 0.001, so an all-zero pack (the default) leaves this
-// shader's output bit-identical to the pre-effects composite.
+// its strength being > 0.001, so zero strengths (the default) leave this
+// shader's output bit-identical to the pre-effects composite. screenEffect5
+// holds scanline SHAPE (defaults .45/0/.5); it only matters when
+// screenEffect0.x > 0.
 // screenEffect0: x scanlines, y scanline density, z pixelate, w grayscale
 // screenEffect1: x sepia, y static noise, z vertical roll, w roll speed
 // screenEffect2: x tracking, y flicker, z chroma bleed, w vignette
 // screenEffect3: x interlace, y dropout, z brightness, w reserved
 // screenEffect4: x flip-H, y flip-V, z rotate-90, w environmental sheen (0..1)
+// screenEffect5: x scanline depth, y sharpness, z bright-line duty, w reserved
 uniform vec4 screenEffect0;
 uniform vec4 screenEffect1;
 uniform vec4 screenEffect2;
 uniform vec4 screenEffect3;
 uniform vec4 screenEffect4;
+// [PrismScanlines] x depth, y sharpness, z bright-line duty, w reserved
+uniform vec4 screenEffect5;
 uniform float screenEffectTime;
 
 // Environmental sheen palette (Feature B). Uploaded once per composite batch
@@ -69,6 +74,12 @@ void main()
     {
         discard;
     }
+    // [PrismScanlines] Screen-space footprint of the orientation UV, taken in
+    // uniform control flow (derivatives are undefined inside the branch
+    // below). Used only to anti-alias the hard scanline edges.
+    vec2 sl_uv_fw = fwidth(logical_uv * retainedOrientationScale +
+                           retainedOrientationOffset);
+
     // FIT deliberately maps bars outside canonical capture UV. Test before
     // orientation and sampling so an edge texel is never smeared into a bar.
     if (letterbox != 0 &&
@@ -219,7 +230,39 @@ void main()
         {
             float sl_density = mix(200.0, 1200.0, screenEffect0.y);
             float sl_wave = sin(oriented_uv.y * sl_density * 3.14159265) * 0.5 + 0.5;
-            col.rgb *= mix(1.0, sl_wave * 0.45 + 0.55, screenEffect0.x);
+            // [PrismScanlines] density = 2*lines. Retain the legacy sine
+            // argument/order at duty 0.5 to avoid fract-induced rounding drift.
+            float sl_lines = sl_density * 0.5;
+            float sl_phase = fract(oriented_uv.y * sl_lines);
+            float sl_thickness = screenEffect5.z;
+            float sl_soft = sl_wave;
+            if (sl_thickness != 0.5)
+            {
+                // Warp each half-cycle so the positive half has the chosen duty.
+                float sl_warp = sl_phase < sl_thickness
+                    ? 0.5 * sl_phase / sl_thickness
+                    : 0.5 + 0.5 * (sl_phase - sl_thickness) / (1.0 - sl_thickness);
+                sl_soft = 0.5 + 0.5 * sin(sl_warp * 6.28318530);
+            }
+            // Periodic distance to the bright band [0, thickness].
+            // Wrapping around its center smooths BOTH edges, including phase 0.
+            float sl_distance = abs(fract(sl_phase - 0.5 * sl_thickness + 0.5) - 0.5);
+            // Never sharper than ~one pixel of line phase (rotate-90 swaps axes),
+            // so crisp bands don't alias/moire at high line counts or distance.
+            float sl_px = (screenEffect4.z > 0.5) ? sl_uv_fw.x : sl_uv_fw.y;
+            float sl_edge = max(mix(0.5, 0.005, screenEffect5.y), sl_px * sl_lines);
+            float sl_hard = 1.0 - smoothstep(-sl_edge, sl_edge,
+                sl_distance - 0.5 * sl_thickness);
+            if (screenEffect5.x == 0.45 && screenEffect5.y == 0.0 && sl_thickness == 0.5)
+            {
+                // Default shape: the exact legacy expression (bit-identical).
+                col.rgb *= mix(1.0, sl_wave * 0.45 + 0.55, screenEffect0.x);
+            }
+            else
+            {
+                float sl_profile = mix(sl_soft, sl_hard, screenEffect5.y);
+                col.rgb *= mix(1.0, mix(1.0 - screenEffect5.x, 1.0, sl_profile), screenEffect0.x);
+            }
         }
 
         // Interlace field line shimmer: alternate fields dim on a 30 Hz beat.

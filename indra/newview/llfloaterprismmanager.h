@@ -242,6 +242,9 @@ private:
     LLButton* mPresetCCTVButton = nullptr;
     LLSliderCtrl* mEffectScanlinesSlider = nullptr;
     LLSliderCtrl* mEffectScanlineCountSlider = nullptr;
+    LLSliderCtrl* mEffectScanlineDepthSlider = nullptr;
+    LLSliderCtrl* mEffectScanlineSharpnessSlider = nullptr;
+    LLSliderCtrl* mEffectScanlineThicknessSlider = nullptr;
     LLSliderCtrl* mEffectPixelateSlider = nullptr;
     LLSliderCtrl* mEffectGrayscaleSlider = nullptr;
     LLSliderCtrl* mEffectSepiaSlider = nullptr;

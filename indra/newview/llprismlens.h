@@ -14,6 +14,7 @@
 #include "v3math.h"
 
 #include <array>
+#include <cmath>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -366,13 +367,17 @@ struct ActionStatus
 // pass, target, or allocation is involved. Every knob is a strict no-op at 0
 // (the shader gates each effect block at > 0.001), so a default-constructed
 // struct leaves the composite bit-identical to a build without this feature.
-// mScanlineCount and mRollSpeed are shaping parameters that only matter while
+// Scanline shape parameters and mRollSpeed only matter while
 // their gating strength (mScanlines / mVerticalRoll) is non-zero, which is
 // why they carry non-zero defaults and are excluded from isZero().
 struct ScreenEffects
 {
     F32 mScanlines      = 0.f;  // 0..1 scanline blend strength
-    F32 mScanlineCount  = 0.5f; // 0..1 line density (0.5 = mid density)
+    // [PrismScanlines] Legacy coordinate: lines = 100 + 500*y.
+    F32 mScanlineCount  = 0.5f; // -0.16..2.2 => 20..1200 dark/bright pairs
+    F32 mScanlineDepth = 0.45f; // 0..1 maximum darkening
+    F32 mScanlineSharpness = 0.f; // 0..1 sine to crisp bands
+    F32 mScanlineThickness = 0.5f; // 0.1..0.9 bright-line duty
     F32 mPixelate       = 0.f;  // 0..1 block quantization strength
     F32 mGrayscale      = 0.f;  // 0..1 luma desaturation
     F32 mSepia          = 0.f;  // 0..1 sepia tone blend
@@ -405,7 +410,11 @@ struct ScreenEffects
     void clampAndValidate()
     {
         mScanlines     = llclamp(mScanlines, 0.f, 1.f);
-        mScanlineCount = llclamp(mScanlineCount, 0.f, 1.f);
+        // [PrismScanlines] Non-finite values recover legacy defaults.
+        mScanlineCount = std::isfinite(mScanlineCount) ? llclamp(mScanlineCount, -0.16f, 2.2f) : 0.5f;
+        mScanlineDepth = std::isfinite(mScanlineDepth) ? llclamp(mScanlineDepth, 0.f, 1.f) : 0.45f;
+        mScanlineSharpness = std::isfinite(mScanlineSharpness) ? llclamp(mScanlineSharpness, 0.f, 1.f) : 0.f;
+        mScanlineThickness = std::isfinite(mScanlineThickness) ? llclamp(mScanlineThickness, 0.1f, 0.9f) : 0.5f;
         mPixelate      = llclamp(mPixelate, 0.f, 1.f);
         mGrayscale     = llclamp(mGrayscale, 0.f, 1.f);
         mSepia         = llclamp(mSepia, 0.f, 1.f);
@@ -557,7 +566,7 @@ struct CompositeState
     // x: Chromatic Aberration, y: Film Grain, z: CRT Scanlines, w: Exposure Bias
     F32 mOpticsParams[4] = { 0.f, 0.f, 0.f, 0.f };
 
-    // Per-display TV/CRT screen effect uniform packs (4x vec4). All-zero is
+    // Per-display TV/CRT screen effect uniform packs (6x vec4). Zero strength is
     // a strict shader no-op; see ScreenEffects.
     F32 mScreenEffect0[4] = { 0.f, 0.f, 0.f, 0.f }; // Scanlines, ScanlineCount, Pixelate, Grayscale
     F32 mScreenEffect1[4] = { 0.f, 0.f, 0.f, 0.f }; // Sepia, Static, VerticalRoll, RollSpeed
@@ -565,6 +574,7 @@ struct CompositeState
     F32 mScreenEffect3[4] = { 0.f, 0.f, 0.f, 0.f }; // Interlace, Dropout, Brightness, Reserved
     // Feature A + B orientation/sheen pack. All-zero is a strict shader no-op.
     F32 mScreenEffect4[4] = { 0.f, 0.f, 0.f, 0.f }; // FlipH, FlipV, Rotate90, Sheen
+    F32 mScreenEffect5[4] = { 0.45f, 0.f, 0.5f, 0.f }; // [PrismScanlines] Depth, Sharpness, Thickness, Reserved
 };
 
 // Viewer-local registry. No call writes prim, TE, or material data and no call

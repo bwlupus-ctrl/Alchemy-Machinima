@@ -4833,6 +4833,10 @@ public:
             LLSD effects_sd = LLSD::emptyMap();
             effects_sd["scanlines"]      = fx.mScanlines;
             effects_sd["scanline_count"] = fx.mScanlineCount;
+            // [PrismScanlines] Absent keys retain the legacy shape on load.
+            effects_sd["scanline_depth"] = fx.mScanlineDepth;
+            effects_sd["scanline_sharpness"] = fx.mScanlineSharpness;
+            effects_sd["scanline_thickness"] = fx.mScanlineThickness;
             effects_sd["pixelate"]       = fx.mPixelate;
             effects_sd["grayscale"]      = fx.mGrayscale;
             effects_sd["sepia"]          = fx.mSepia;
@@ -5363,6 +5367,9 @@ public:
                 };
                 read_effect("scanlines",      fx.mScanlines);
                 read_effect("scanline_count", fx.mScanlineCount);
+                read_effect("scanline_depth", fx.mScanlineDepth);
+                read_effect("scanline_sharpness", fx.mScanlineSharpness);
+                read_effect("scanline_thickness", fx.mScanlineThickness);
                 read_effect("pixelate",       fx.mPixelate);
                 read_effect("grayscale",      fx.mGrayscale);
                 read_effect("sepia",          fx.mSepia);
@@ -7714,8 +7721,8 @@ U32 getCompositeStates(LLRenderTarget* screen_target, CompositeState* states,
             state.mOpticsParams[2] = capture->mCamera.mOptics.mCRTScanlines;
             state.mOpticsParams[3] = capture->mCamera.mOptics.mExposureBias;
 
-            // Per-display TV screen effects, packed as four vec4 uniforms for
-            // the composite shader. A default ScreenEffects packs all zeros
+            // Per-display TV screen effects, packed as six vec4 uniforms for
+            // the composite shader. A default ScreenEffects has zero strengths
             // and every shader block gates on > 0.001, so an untouched
             // display composites bit-identical to a build without effects.
             const ScreenEffects& effects = display->mSettings.mEffects;
@@ -7743,6 +7750,11 @@ U32 getCompositeStates(LLRenderTarget* screen_target, CompositeState* states,
             state.mScreenEffect4[1] = effects.mFlipV ? 1.f : 0.f;
             state.mScreenEffect4[2] = effects.mRotate90 ? 1.f : 0.f;
             state.mScreenEffect4[3] = effects.mSheen;
+            // [PrismScanlines]
+            state.mScreenEffect5[0] = effects.mScanlineDepth;
+            state.mScreenEffect5[1] = effects.mScanlineSharpness;
+            state.mScreenEffect5[2] = effects.mScanlineThickness;
+            state.mScreenEffect5[3] = 0.f;
 
             std::memcpy(state.mRetainedOrientationScale, output_uv_scale,
                         sizeof(state.mRetainedOrientationScale));
@@ -7989,6 +8001,11 @@ U32 getAuxCompositeStates(LLRenderTarget* screen_target, CompositeState* states,
             state.mScreenEffect4[1] = effects.mFlipV ? 1.f : 0.f;
             state.mScreenEffect4[2] = effects.mRotate90 ? 1.f : 0.f;
             state.mScreenEffect4[3] = effects.mSheen;
+            // [PrismScanlines]
+            state.mScreenEffect5[0] = effects.mScanlineDepth;
+            state.mScreenEffect5[1] = effects.mScanlineSharpness;
+            state.mScreenEffect5[2] = effects.mScanlineThickness;
+            state.mScreenEffect5[3] = 0.f;
 
             std::memcpy(state.mRetainedOrientationScale, output_uv_scale,
                         sizeof(state.mRetainedOrientationScale));

@@ -25051,6 +25051,7 @@ void LLPipeline::renderDeferredLighting(ActorMaskViewSource source)
             static const LLStaticHashedString sScreenEffect2("screenEffect2");
             static const LLStaticHashedString sScreenEffect3("screenEffect3");
             static const LLStaticHashedString sScreenEffect4("screenEffect4");
+            static const LLStaticHashedString sScreenEffect5("screenEffect5"); // [PrismScanlines]
             static const LLStaticHashedString sScreenEffectTime("screenEffectTime");
             static const LLStaticHashedString sPrismEnvSheenSky("prismEnvSheenSky");
             static const LLStaticHashedString sPrismEnvSheenGround(
@@ -25147,6 +25148,7 @@ void LLPipeline::renderDeferredLighting(ActorMaskViewSource source)
                 gPrismLensProgram.uniform4fv(sScreenEffect2, 1, prism_state.mScreenEffect2);
                 gPrismLensProgram.uniform4fv(sScreenEffect3, 1, prism_state.mScreenEffect3);
                 gPrismLensProgram.uniform4fv(sScreenEffect4, 1, prism_state.mScreenEffect4);
+                gPrismLensProgram.uniform4fv(sScreenEffect5, 1, prism_state.mScreenEffect5);
 
                 if (prism_state.mFace)
                 {

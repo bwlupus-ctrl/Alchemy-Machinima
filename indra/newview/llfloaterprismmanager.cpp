@@ -435,6 +435,9 @@ bool LLFloaterPrismManager::postBuild()
     mPresetCCTVButton = getChild<LLButton>("preset_cctv");
     mEffectScanlinesSlider = getChild<LLSliderCtrl>("effect_scanlines");
     mEffectScanlineCountSlider = getChild<LLSliderCtrl>("effect_scanline_count");
+    mEffectScanlineDepthSlider = getChild<LLSliderCtrl>("effect_scanline_depth");
+    mEffectScanlineSharpnessSlider = getChild<LLSliderCtrl>("effect_scanline_sharpness");
+    mEffectScanlineThicknessSlider = getChild<LLSliderCtrl>("effect_scanline_thickness");
     mEffectPixelateSlider = getChild<LLSliderCtrl>("effect_pixelate");
     mEffectGrayscaleSlider = getChild<LLSliderCtrl>("effect_grayscale");
     mEffectSepiaSlider = getChild<LLSliderCtrl>("effect_sepia");
@@ -658,6 +661,9 @@ bool LLFloaterPrismManager::postBuild()
     };
     mEffectScanlinesSlider->setCommitCallback(effects_commit);
     mEffectScanlineCountSlider->setCommitCallback(effects_commit);
+    mEffectScanlineDepthSlider->setCommitCallback(effects_commit);
+    mEffectScanlineSharpnessSlider->setCommitCallback(effects_commit);
+    mEffectScanlineThicknessSlider->setCommitCallback(effects_commit);
     mEffectPixelateSlider->setCommitCallback(effects_commit);
     mEffectGrayscaleSlider->setCommitCallback(effects_commit);
     mEffectSepiaSlider->setCommitCallback(effects_commit);
@@ -1291,6 +1297,9 @@ void LLFloaterPrismManager::refreshDisplayEditor()
     mPresetCCTVButton->setEnabled(effects_editable);
     mEffectScanlinesSlider->setEnabled(effects_editable);
     mEffectScanlineCountSlider->setEnabled(effects_editable);
+    mEffectScanlineDepthSlider->setEnabled(effects_editable);
+    mEffectScanlineSharpnessSlider->setEnabled(effects_editable);
+    mEffectScanlineThicknessSlider->setEnabled(effects_editable);
     mEffectPixelateSlider->setEnabled(effects_editable);
     mEffectGrayscaleSlider->setEnabled(effects_editable);
     mEffectSepiaSlider->setEnabled(effects_editable);
@@ -2390,7 +2399,11 @@ LLPrismLens::ScreenEffects LLFloaterPrismManager::effectsFromUI() const
 {
     LLPrismLens::ScreenEffects effects;
     effects.mScanlines     = static_cast<F32>(mEffectScanlinesSlider->getValue().asReal());
-    effects.mScanlineCount = static_cast<F32>(mEffectScanlineCountSlider->getValue().asReal());
+    // [PrismScanlines] UI uses actual pairs and percentages; scenes keep legacy units.
+    effects.mScanlineCount = (static_cast<F32>(mEffectScanlineCountSlider->getValue().asReal()) - 100.f) / 500.f;
+    effects.mScanlineDepth = static_cast<F32>(mEffectScanlineDepthSlider->getValue().asReal()) / 100.f;
+    effects.mScanlineSharpness = static_cast<F32>(mEffectScanlineSharpnessSlider->getValue().asReal()) / 100.f;
+    effects.mScanlineThickness = static_cast<F32>(mEffectScanlineThicknessSlider->getValue().asReal()) / 100.f;
     effects.mPixelate      = static_cast<F32>(mEffectPixelateSlider->getValue().asReal());
     effects.mGrayscale     = static_cast<F32>(mEffectGrayscaleSlider->getValue().asReal());
     effects.mSepia         = static_cast<F32>(mEffectSepiaSlider->getValue().asReal());
@@ -2415,7 +2428,10 @@ LLPrismLens::ScreenEffects LLFloaterPrismManager::effectsFromUI() const
 void LLFloaterPrismManager::setUIFromEffects(const LLPrismLens::ScreenEffects& effects)
 {
     mEffectScanlinesSlider->setValue(effects.mScanlines);
-    mEffectScanlineCountSlider->setValue(effects.mScanlineCount);
+    mEffectScanlineCountSlider->setValue(ll_round(100.f + 500.f * effects.mScanlineCount));
+    mEffectScanlineDepthSlider->setValue(100.f * effects.mScanlineDepth);
+    mEffectScanlineSharpnessSlider->setValue(100.f * effects.mScanlineSharpness);
+    mEffectScanlineThicknessSlider->setValue(100.f * effects.mScanlineThickness);
     mEffectPixelateSlider->setValue(effects.mPixelate);
     mEffectGrayscaleSlider->setValue(effects.mGrayscale);
     mEffectSepiaSlider->setValue(effects.mSepia);
