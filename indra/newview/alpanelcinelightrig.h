@@ -181,6 +181,9 @@ private:
     // [ActorMask] -1 unset; else bit 0 = object-target lock, bit 1 = master on.
     S32 mActorOnlyLockState = -1;
     void syncActorOnlyControls(bool object_targeted, bool actor_only_all); // [ActorMask]
+    // [ActorMask] Master click: ticks (or unticks) every per-light + catchlight
+    // Actor only box -- the proven per-light path.
+    void onActorOnlyAllChanged(bool enabled);
     LLUICtrl* mManualConeWidths[4] = {};
     LLTextBox* mShadowHint = nullptr;
     LLTextBox* mLiveProbeStatus = nullptr;

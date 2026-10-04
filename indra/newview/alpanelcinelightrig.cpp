@@ -898,6 +898,16 @@ bool ALPanelCineLightRig::postBuild()
         mActorOnlyTips[i] = mActorOnlyControls[i]->getToolTip();
     }
     mActorOnlyLockState = -1;
+    // [ActorMask] The master acts on USER CLICKS only (not on rig/preset/cue
+    // loads, which write the settings themselves): it ticks or unticks every
+    // per-light + catchlight box, i.e. exactly the proven per-light path.
+    if (LLUICtrl* master = mActorOnlyControls[ACTOR_ONLY_MASTER_INDEX])
+    {
+        master->setCommitCallback([this](LLUICtrl* ctrl, const LLSD&)
+        {
+            onActorOnlyAllChanged(ctrl->getValue().asBoolean());
+        });
+    }
 
     // [NightMaskPercent] Percent sliders over the 0..1 brightness-floor setting.
     mNightMaskDarkness->setCommitCallback(
@@ -2337,8 +2347,8 @@ void ALPanelCineLightRig::syncActorOnlyControls(
         "Actor only isn't supported for object targets in this version. "
         "With an object target these lights light normally.";
     static const std::string OVERRIDDEN_TIP =
-        "Ignored while \"Actor only (all lights)\" is on. "
-        "Your setting here is kept and applies again when that is turned off.";
+        "Ticked by \"Actor only (all lights)\". "
+        "Untick that to set lights individually.";
     for (S32 i = 0; i < ACTOR_ONLY_CONTROL_COUNT; ++i)
     {
         if (!mActorOnlyControls[i] || !mActorOnlyResets[i])
@@ -2355,6 +2365,21 @@ void ALPanelCineLightRig::syncActorOnlyControls(
         mActorOnlyResets[i]->setEnabled(enabled);
         mActorOnlyControls[i]->setToolTip(object_targeted ? LOCKED_TIP
             : (overridden ? OVERRIDDEN_TIP : mActorOnlyTips[i]));
+    }
+}
+
+void ALPanelCineLightRig::onActorOnlyAllChanged(bool enabled)
+{
+    // [ActorMask] KEY, FILL, RIM, BG, catchlight -- the settings the per-light
+    // boxes are bound to. Writing them is exactly what ticking each box does.
+    static const char* const NAMES[5] = {
+        "CineLightRigKeyActorOnly", "CineLightRigFillActorOnly",
+        "CineLightRigRimActorOnly", "CineLightRigBgActorOnly",
+        "CineLightRigCatchlightActorOnly"
+    };
+    for (S32 i = 0; i < 5; ++i)
+    {
+        if (gSavedSettings.getBOOL(NAMES[i]) != enabled) gSavedSettings.setBOOL(NAMES[i], enabled);
     }
 }
 
