@@ -28,6 +28,8 @@
 #define LL_LLVIEWERJOYSTICK_H
 
 #include "stdtypes.h"
+#include "llframetimer.h"
+#include "llnotificationptr.h"
 
 #if LIB_NDOF
 #if LL_DARWIN
@@ -162,8 +164,53 @@ public:
     // when this is set. Eliminates the periodic main-thread DI8 EnumDevices
     // walk (a filming micro-stutter every few seconds) — enumeration now
     // happens only on actual plug/unplug events and once at startup.
-    void setDeviceListDirty() { mDeviceListDirty = true; }
+    void setDeviceListDirty();
+    void beginMainLoop(); // [XInputPad] once per pass, before the scan gate
+    std::string getXInputStatus() const;
 private:
+    void invalidateXInput(bool rescan);
+    void scanXInputAssociation();
+    void pollXInputState();
+    void handleXInputDpad();
+    void xInputHint(const std::string& message);
+    bool xInputAssociated() const;
+    void updateXInputTakeover(bool reset = false);
+    void seedTriggerHistory();
+    void computeTriggerOutputs(F32& roll, F32& throttle) const;
+    F32 getFlycamAxis(U32 axis) const;
+
+    bool mXIAssociated = false;
+    bool mXIMaster = false;
+    bool mXITakeover = false;
+    bool mXIReleasePending = false; // [XInputPad] DI axis 2 must return to neutral.
+    LLSD mXIReleaseGuid;
+    LLSD mXIDisconnectedGuid;
+    bool mXIShaped = false;
+    S32 mXIMode = 0;
+    std::array<S32, 7> mXIPreviousAxes = {{-1, -1, -1, -1, -1, -1, -1}};
+    LLSD mXIGuid;
+    LLSD mXIObservedGuid;
+    S32 mXISlot = -1;
+    U32 mXIScanGeneration = 0;
+    U32 mXIDIGeneration = 0;
+    U32 mXISlotGeneration = 0;
+    S32 mXIRetry = 4;
+    LLFrameTimer mXIRetryTimer;
+    LLFrameTimer mXIDebugTimer;
+    std::string mXIStatus = "none";
+    U64 mXILoopGeneration = 0;
+    U64 mXISampleGeneration = 0;
+    U64 mXILastScanGeneration = 0;
+    U64 mXILevelGeneration = 0;
+    bool mXISampleValid = false;
+    bool mXIPrime = true;
+    bool mXIWasFocused = false;
+    bool mXILevelPending = false;
+    U16 mXIPrevRaw = 0;
+    U16 mXIEdges = 0;
+    U8 mXILT = 0;
+    U8 mXIRT = 0;
+    LLNotificationPtr mXIHint;
 #if LIB_NDOF
     static NDOF_HotPlugResult HotPlugAddCallback(NDOF_Device *dev);
     static void HotPlugRemovalCallback(NDOF_Device *dev);

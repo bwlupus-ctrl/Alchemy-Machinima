@@ -27,6 +27,10 @@
 #include "llviewerprecompiledheaders.h"
 
 #include "llviewerjoystick.h"
+#include "alxinputmath.h"
+#include "alcinelightrig.h"
+#include "alcinelightrigmanager.h"
+#include "llpresentationtime.h"
 
 #include "llframetimer.h"
 #include "llnotificationsutil.h"
@@ -52,6 +56,8 @@
 #define DIRECTINPUT_VERSION 0x0800
 
 #include <dinput.h>
+#include <Xinput.h>
+#include <cwctype>
 #endif
 
 
@@ -118,6 +124,86 @@ std::ostream& operator<<(std::ostream& out, NDOF_Device* ptr)
 #if LL_WINDOWS && !LL_MESA_HEADLESS
 namespace
 {
+// [XInputPad] Types only from Xinput.h: no import library or application DLL search.
+HMODULE sXInputLibrary = nullptr;
+using XInputGetStateFn = DWORD (WINAPI*)(DWORD, XINPUT_STATE*);
+XInputGetStateFn sXInputGetState = nullptr;
+bool sXInputLoadAttempted = false;
+
+bool loadXInput()
+{
+    if (sXInputLoadAttempted) return sXInputGetState != nullptr;
+    sXInputLoadAttempted = true;
+    for (const wchar_t* name : { L"xinput1_4.dll", L"xinput9_1_0.dll" })
+    {
+        HMODULE library = LoadLibraryExW(name, nullptr, LOAD_LIBRARY_SEARCH_SYSTEM32);
+        if (!library && GetLastError() == ERROR_INVALID_PARAMETER)
+        {
+            wchar_t directory[MAX_PATH];
+            const UINT length = GetSystemDirectoryW(directory, MAX_PATH);
+            if (length > 0 && length < MAX_PATH)
+            {
+                const std::wstring path = std::wstring(directory) + L"\\" + name;
+                library = LoadLibraryW(path.c_str());
+            }
+        }
+        if (!library) continue;
+        FARPROC symbol = GetProcAddress(library, "XInputGetState");
+        if (symbol)
+        {
+            static_assert(sizeof(symbol) == sizeof(sXInputGetState), "function pointer size");
+            memcpy(&sXInputGetState, &symbol, sizeof(symbol)); // avoid MSVC C4191
+            sXInputLibrary = library;
+            return true;
+        }
+        FreeLibrary(library);
+    }
+    LL_INFOS("XInput") << "[XInputPad] System XInput unavailable; feature inert." << LL_ENDL;
+    return false;
+}
+
+struct XInputDeviceProbe
+{
+    LPDIRECTINPUT8 di = nullptr;
+    S32 count = 0;
+    bool failed = false;
+    LLSD guid;
+};
+
+BOOL CALLBACK di8_xinput_probe_callback(LPCDIDEVICEINSTANCE instance, LPVOID data)
+{
+    auto& probe = *static_cast<XInputDeviceProbe*>(data);
+    LPDIRECTINPUTDEVICE8 device = nullptr;
+    if (!instance || FAILED(probe.di->CreateDevice(instance->guidInstance, &device, nullptr)))
+    {
+        probe.failed = true;
+        return DIENUM_CONTINUE;
+    }
+    DIPROPGUIDANDPATH property = {};
+    property.diph.dwSize = sizeof(property);
+    property.diph.dwHeaderSize = sizeof(property.diph);
+    property.diph.dwHow = DIPH_DEVICE;
+    const HRESULT result = device->GetProperty(DIPROP_GUIDANDPATH, &property.diph);
+    device->Release();
+    if (FAILED(result))
+    {
+        probe.failed = true;
+        return DIENUM_CONTINUE;
+    }
+    std::wstring path(property.wszPath);
+    std::transform(path.begin(), path.end(), path.begin(),
+        [](wchar_t c) { return static_cast<wchar_t>(std::towupper(c)); });
+    if (path.find(L"IG_") != std::wstring::npos)
+    {
+        ++probe.count;
+        LLSD::Binary guid(sizeof(GUID));
+        memcpy(guid.data(), &instance->guidInstance, sizeof(GUID));
+        probe.guid = LLSD(guid);
+        LL_DEBUGS("XInput") << "[XInputPad] IG product VID/PID " << instance->guidProduct.Data1 << LL_ENDL;
+    }
+    return DIENUM_CONTINUE;
+}
+
 constexpr F32 XBOX_DEVICE_POLL_SECONDS = 3.f;
 
 bool isXboxProductName(std::string product_name)
@@ -317,6 +403,7 @@ void LLViewerJoystick::updateEnabled(bool autoenable)
 
 void LLViewerJoystick::setOverrideCamera(bool val)
 {
+    mXILevelPending = false;
     if (!mJoystickEnabled)
     {
         mOverrideCamera = FALSE;
@@ -326,6 +413,7 @@ void LLViewerJoystick::setOverrideCamera(bool val)
         mOverrideCamera = val;
     }
 
+    updateXInputTakeover();
     if (mOverrideCamera)
     {
         gAgentCamera.changeCameraToDefault();
@@ -346,6 +434,7 @@ NDOF_HotPlugResult LLViewerJoystick::HotPlugAddCallback(NDOF_Device *dev)
         joystick->mDriverState = JDS_INITIALIZED;
         res = NDOF_KEEP_HOTPLUGGED;
     }
+    joystick->invalidateXInput(true);
     joystick->updateEnabled(true);
     return res;
 }
@@ -363,6 +452,7 @@ void LLViewerJoystick::HotPlugRemovalCallback(NDOF_Device *dev)
         ndof_dump(stderr, dev);
         joystick->mDriverState = JDS_UNINITIALIZED;
     }
+    joystick->invalidateXInput(true);
     joystick->updateEnabled(true);
 }
 #endif
@@ -690,11 +780,13 @@ void LLViewerJoystick::refreshFromSettings()
     mMappedButtons[MOUSELOOK] = gSavedSettings.getS32("JoystickButtonMouselook");
     mMappedButtons[FLYCAM] = gSavedSettings.getS32("JoystickButtonFlycam");
     mMappedButtons[TOGGLE_RUN] = gSavedSettings.getS32("JoystickButtonRunToggle");
+    updateXInputTakeover();
 }
 
 void LLViewerJoystick::initDevice(LLSD &guid)
 {
 #if LIB_NDOF
+    invalidateXInput(true);
     mLastDeviceUUID = guid;
     U32 device_type = 0;
     void* win_callback = nullptr;
@@ -752,6 +844,7 @@ void LLViewerJoystick::initDevice(LLSD &guid)
 bool LLViewerJoystick::initDevice(void * preffered_device /*LPDIRECTINPUTDEVICE8*/, std::string &name, LLSD &guid)
 {
 #if LIB_NDOF
+    invalidateXInput(true);
     mLastDeviceUUID = guid;
 
 #if LL_DARWIN
@@ -784,6 +877,7 @@ bool LLViewerJoystick::initDevice(void * preffered_device /*LPDIRECTINPUTDEVICE8
 
 bool LLViewerJoystick::initDevice(void * preffered_device /* LPDIRECTINPUTDEVICE8* */)
 {
+    invalidateXInput(true);
 #if LIB_NDOF
     // Different joysticks will return different ranges of raw values.
     // Since we want to handle every device in the same uniform way,
@@ -812,6 +906,7 @@ bool LLViewerJoystick::initDevice(void * preffered_device /* LPDIRECTINPUTDEVICE
     else
     {
         mDriverState = JDS_INITIALIZED;
+        mXIDisconnectedGuid = LLSD(); // [XInputPad] A newly initialized DI device is readable.
         return true;
     }
 #endif
@@ -821,6 +916,12 @@ bool LLViewerJoystick::initDevice(void * preffered_device /* LPDIRECTINPUTDEVICE
 // -----------------------------------------------------------------------------
 void LLViewerJoystick::terminate()
 {
+    invalidateXInput(false);
+#if LL_WINDOWS && !LL_MESA_HEADLESS
+    sXInputGetState = nullptr;
+    if (sXInputLibrary) FreeLibrary(sXInputLibrary);
+    sXInputLibrary = nullptr;
+#endif
 #if LIB_NDOF
     if (mNdofDev != NULL)
     {
@@ -843,9 +944,22 @@ void LLViewerJoystick::updateStatus()
 
     ndof_update(mNdofDev);
 
+#if LL_WINDOWS && !LL_MESA_HEADLESS
+    // [XInputPad] Failed DI reads retain cached axes; suppress only the lost pad,
+    // and only while the feature is on (turning it off restores legacy reads).
+    static LLCachedControl<bool> xi_enabled(gSavedSettings, "JoystickXInputEnabled", true);
+    if (!xi_enabled && mXIDisconnectedGuid.isDefined())
+    {
+        mXIDisconnectedGuid = LLSD();
+    }
+    const bool disconnected = xi_enabled && sameWindowsDeviceId(mLastDeviceUUID, mXIDisconnectedGuid);
+#endif
     for (int i=0; i<6; i++)
     {
         mAxes[i] = (F32) mNdofDev->axes[i] / mNdofDev->axes_max;
+#if LL_WINDOWS && !LL_MESA_HEADLESS
+        if (disconnected) mAxes[i] = 0.f;
+#endif
     }
 
     for (int i=0; i<16; i++)
@@ -1016,7 +1130,7 @@ void LLViewerJoystick::resetDeltas(S32 axis[])
 {
     for (U32 i = 0; i < 6; i++)
     {
-        sLastDelta[i] = -mAxes[axis[i]];
+        sLastDelta[i] = -getJoystickAxis(axis[i]);
         sDelta[i] = 0.f;
     }
 
@@ -1598,6 +1712,7 @@ void LLViewerJoystick::moveFlycam(bool reset)
     static LLVector3            sOrbitFocus;            // pan offset, anchor-local
     static F32                  sOrbitRoll = 0.f;       // view-axis roll (unleveled mode)
 
+    updateXInputTakeover();
     if (!gFocusMgr.getAppHasFocus() || mDriverState != JDS_INITIALIZED
         || !mJoystickEnabled || !mFlycamEnabled)
     {
@@ -1612,12 +1727,29 @@ void LLViewerJoystick::moveFlycam(bool reset)
         sFlycamZoom = LLViewerCamera::getInstance()->getView();
 
         resetDeltas(mJoystickAxis);
+        updateXInputTakeover(true);
         // [phoenix port] don't carry reactive momentum across flycam toggles/teleports
         LLCameraOperator::instance().reset();
         // [machinima] re-seed the orbit from the fresh camera pose next frame
         sOrbitWasActive = false;
 
         return;
+    }
+
+    F32 trigger_roll = 0.f;
+    F32 trigger_throttle = 1.f;
+    computeTriggerOutputs(trigger_roll, trigger_throttle);
+    const bool level_horizon = mXILevelPending && xInputAssociated() &&
+        mOverrideCamera && mXILoopGeneration - mXILevelGeneration <= 1;
+    mXILevelPending = false;
+    if (mXIDebugTimer.getElapsedTimeF32() >= 1.f && xInputAssociated())
+    {
+        mXIDebugTimer.reset();
+        LL_DEBUGS("XInput") << "[XInputPad] assoc=" << xInputAssociated()
+            << " compat=" << ALXInput::compatible(mJoystickAxis, m3DCursor)
+            << " takeover=" << mXITakeover << " mode=" << mXIMode
+            << " LT=" << static_cast<U32>(mXILT) << " RT=" << static_cast<U32>(mXIRT)
+            << " m=" << trigger_throttle << " r=" << trigger_roll << LL_ENDL;
     }
 
     static LLCachedControl<F32> build_mode_scale(gSavedSettings, "FlycamBuildModeScale", 1.0);
@@ -1654,7 +1786,7 @@ void LLViewerJoystick::moveFlycam(bool reset)
         bool is_zero = true;
         for (U32 i = 0; i < 7; i++)
         {
-            cur_delta[i] = -getJoystickAxis(mJoystickAxis[i]);
+            cur_delta[i] = -getFlycamAxis(mJoystickAxis[i]);
 
             if (i == CAM_W_AXIS)
             {
@@ -1696,6 +1828,11 @@ void LLViewerJoystick::moveFlycam(bool reset)
                 cur_delta[i] = cur_delta[i] / (1.f - axis_deadzone);
             }
 
+            if (mXITakeover && mXIMode == 0 && i == CAM_X_AXIS)
+                cur_delta[i] = llclamp(cur_delta[i] + trigger_roll, -1.f, 1.f);
+            if (mXITakeover && i <= Z_AXIS && trigger_throttle != 1.f)
+                cur_delta[i] *= trigger_throttle;
+
             // We may want to scale camera movements up or down in build mode.
             // NOTE: this needs to remain after the deadzone calculation, otherwise
             // we have issues with flycam "jumping" when the build dialog is opened/closed  -Nyx
@@ -1732,7 +1869,7 @@ void LLViewerJoystick::moveFlycam(bool reset)
         LLMatrix3 rot_mat(sDelta[CAM_X_AXIS], sDelta[CAM_Y_AXIS], sDelta[CAM_Z_AXIS]);
         sFlycamRotation = LLQuaternion(rot_mat)*sFlycamRotation;
 
-        if (mAutoLeveling || getJoystickButton(mMappedButtons[ROLL_DEFAULT]) == 1)
+        if (level_horizon || mAutoLeveling || getJoystickButton(mMappedButtons[ROLL_DEFAULT]) == 1)
         {
             LLMatrix3 level(sFlycamRotation);
 
@@ -1748,7 +1885,7 @@ void LLViewerJoystick::moveFlycam(bool reset)
 
             LLQuaternion quat(level);
             LLQuaternion lerp = nlerp(llmin(flycam_feather * time, 1.f), sFlycamRotation, quat);
-            sFlycamRotation = getJoystickButton(mMappedButtons[ROLL_DEFAULT]) == 1 ? quat : lerp;
+            sFlycamRotation = level_horizon || getJoystickButton(mMappedButtons[ROLL_DEFAULT]) == 1 ? quat : lerp;
         }
 
         if (mZoomDirect)
@@ -1779,7 +1916,7 @@ void LLViewerJoystick::moveFlycam(bool reset)
 
         for (U32 i = 0; i < 7; i++)
         {
-            cur_delta[i] = -getJoystickAxis(mJoystickAxis[i]);
+            cur_delta[i] = -getFlycamAxis(mJoystickAxis[i]);
 
             if (!mInvertPitch && i == 4)
                 cur_delta[i] = -cur_delta[i];
@@ -1799,6 +1936,11 @@ void LLViewerJoystick::moveFlycam(bool reset)
             {
                 cur_delta[i] = llmin(cur_delta[i]+ mFlycamAxisDeadZone[i], 0.f);
             }
+
+            if (mXITakeover && mXIMode == 0 && i == CAM_X_AXIS)
+                cur_delta[i] = llclamp(cur_delta[i] + trigger_roll, -1.f, 1.f);
+            if (mXITakeover && i <= Z_AXIS && trigger_throttle != 1.f)
+                cur_delta[i] *= trigger_throttle;
 
             // We may want to scale camera movements up or down in build mode.
             // NOTE: this needs to remain after the deadzone calculation, otherwise
@@ -1835,7 +1977,7 @@ void LLViewerJoystick::moveFlycam(bool reset)
         LLMatrix3 rot_mat(sDelta[3], sDelta[4], sDelta[5]);
         sFlycamRotation = LLQuaternion(rot_mat)*sFlycamRotation;
 
-        if (mAutoLeveling)
+        if (level_horizon || mAutoLeveling)
         {
             LLMatrix3 level(sFlycamRotation);
 
@@ -1850,7 +1992,7 @@ void LLViewerJoystick::moveFlycam(bool reset)
             level.orthogonalize();
 
             LLQuaternion quat(level);
-            sFlycamRotation = nlerp(llmin(feather*time,1.f), sFlycamRotation, quat);
+            sFlycamRotation = level_horizon ? quat : nlerp(llmin(feather*time,1.f), sFlycamRotation, quat);
         }
 
         if (mZoomDirect)
@@ -1863,6 +2005,12 @@ void LLViewerJoystick::moveFlycam(bool reset)
             //     the zoom level to not react until that extra has been removed first.
             sFlycamZoom = llclamp(sFlycamZoom + sDelta[6], LLViewerCamera::getInstance()->getMinView(), LLViewerCamera::getInstance()->getMaxView());
         }
+    }
+
+    if (level_horizon)
+    {
+        sDelta[CAM_X_AXIS] = 0.f;
+        sLastDelta[CAM_X_AXIS] = -getFlycamAxis(mJoystickAxis[CAM_X_AXIS]);
     }
 
     // [machinima] Flycam Orbit: bone-locked stabilized orbit. When active, the
@@ -1980,6 +2128,7 @@ void LLViewerJoystick::moveFlycam(bool reset)
             if (!orbit_level)
             {
                 sOrbitRoll += sDelta[CAM_X_AXIS];
+                if (level_horizon) sOrbitRoll = 0.f;
                 if (sOrbitRoll > F_PI)       sOrbitRoll -= F_TWO_PI;
                 else if (sOrbitRoll < -F_PI) sOrbitRoll += F_TWO_PI;
                 if (fabsf(sOrbitRoll) > 0.0001f)
@@ -2075,9 +2224,11 @@ void LLViewerJoystick::moveFlycam(bool reset)
 // -----------------------------------------------------------------------------
 bool LLViewerJoystick::toggleFlycam()
 {
+    mXILevelPending = false;
     if (!mJoystickEnabled || !mFlycamEnabled)
     {
         mOverrideCamera = false;
+        updateXInputTakeover();
         return false;
     }
 
@@ -2092,6 +2243,7 @@ bool LLViewerJoystick::toggleFlycam()
     }
 
     mOverrideCamera = !mOverrideCamera;
+    updateXInputTakeover();
     if (mOverrideCamera)
     {
         // Taking manual camera control definitively ends any latched path-camera
@@ -2271,14 +2423,343 @@ void LLViewerJoystick::pollForXboxController()
 }
 
 // -----------------------------------------------------------------------------
+namespace
+{
+struct XInputSettings
+{
+    LLCachedControl<bool> enabled{gSavedSettings, "JoystickXInputEnabled", true};
+    LLCachedControl<S32> mode{gSavedSettings, "JoystickXInputTriggerMode", 0};
+    LLCachedControl<bool> shaped{gSavedSettings, "JoystickXInputRollShaped", false};
+    LLCachedControl<F32> minimum{gSavedSettings, "JoystickXInputThrottleMin", .1f};
+    LLCachedControl<F32> maximum{gSavedSettings, "JoystickXInputThrottleMax", 4.f};
+    LLCachedControl<F32> deadzone{gSavedSettings, "JoystickXInputTriggerDeadZone", .06f};
+    LLCachedControl<F32> curve{gSavedSettings, "JoystickXInputTriggerCurve", 2.f};
+    LLCachedControl<S32> left{gSavedSettings, "JoystickXInputDpadLeft", 0};
+    LLCachedControl<S32> right{gSavedSettings, "JoystickXInputDpadRight", 0};
+    LLCachedControl<S32> up{gSavedSettings, "JoystickXInputDpadUp", 0};
+};
+
+const XInputSettings& xInputSettings()
+{
+    static XInputSettings settings;
+    return settings;
+}
+}
+
+void LLViewerJoystick::setDeviceListDirty()
+{
+    mDeviceListDirty = true;
+    invalidateXInput(true); // invalidate NOW; only discovery is debounced
+}
+
+void LLViewerJoystick::invalidateXInput(bool rescan)
+{
+    mXIAssociated = false;
+    mXIGuid = LLSD();
+    mXISlot = -1;
+    mXISampleValid = false;
+    mXILT = mXIRT = 0;
+    mXIEdges = mXIPrevRaw = 0;
+    mXIPrime = true;
+    mXIWasFocused = false;
+    mXILevelPending = false;
+    mXIRetry = rescan ? 0 : 4;
+    mXIRetryTimer.reset();
+    mXIStatus = rescan ? "waiting" : "off";
+    if (mXITakeover)
+    {
+        // [XInputPad] Arm before seeding, including WM_DEVICECHANGE invalidation.
+        mXIReleasePending = true;
+        mXIReleaseGuid = mLastDeviceUUID;
+        mXITakeover = false;
+        seedTriggerHistory();
+    }
+}
+
+bool LLViewerJoystick::xInputAssociated() const
+{
+#if LIB_NDOF && LL_WINDOWS && !LL_MESA_HEADLESS
+    return xInputSettings().enabled && sXInputGetState && mXIAssociated &&
+        mDriverState == JDS_INITIALIZED && mJoystickEnabled &&
+        mXIDIGeneration == mXIScanGeneration && mXISlotGeneration == mXIScanGeneration &&
+        sameWindowsDeviceId(mLastDeviceUUID, mXIGuid);
+#else
+    return false;
+#endif
+}
+
+void LLViewerJoystick::beginMainLoop()
+{
+    ++mXILoopGeneration;
+#if LIB_NDOF && LL_WINDOWS && !LL_MESA_HEADLESS
+    const bool enabled = xInputSettings().enabled;
+    if (enabled != mXIMaster)
+    {
+        mXIMaster = enabled;
+        invalidateXInput(enabled);
+    }
+    if (mXIObservedGuid.isBinary() != mLastDeviceUUID.isBinary() ||
+        (mLastDeviceUUID.isBinary() && !sameWindowsDeviceId(mXIObservedGuid, mLastDeviceUUID)))
+    {
+        mXIObservedGuid = mLastDeviceUUID;
+        invalidateXInput(enabled);
+    }
+    if (mXIAssociated && !xInputAssociated()) invalidateXInput(enabled);
+#endif
+    // Also notice focus loss on passes where scanJoystick is gated out.
+    if (!gFocusMgr.getAppHasFocus()) mXIWasFocused = false;
+    if (mXILevelPending && mXILoopGeneration - mXILevelGeneration > 1)
+        mXILevelPending = false;
+    updateXInputTakeover();
+}
+
+void LLViewerJoystick::scanXInputAssociation()
+{
+#if LIB_NDOF && LL_WINDOWS && !LL_MESA_HEADLESS
+    if (!xInputSettings().enabled || mXIAssociated || mXIRetry >= 4) return;
+    static const F32 delays[] = { .5f, 1.f, 2.f, 4.f };
+    if (mXIRetryTimer.getElapsedTimeF32() < delays[mXIRetry]) return;
+    mXIRetryTimer.reset(); // [XInputPad] Each attempt gets its own debounce interval.
+    ++mXIRetry;
+    if (!loadXInput())
+    {
+        mXIRetry = 4;
+        mXIStatus = "XInput unavailable";
+        return;
+    }
+    ++mXIScanGeneration;
+    XInputDeviceProbe probe;
+    bool enumerated = false;
+    if (gViewerWindow && gViewerWindow->getWindow())
+    {
+        auto* window = gViewerWindow->getWindow();
+        void* direct_input = window->getDirectInput8();
+        if (direct_input) probe.di = *static_cast<LPDIRECTINPUT8*>(direct_input);
+        if (probe.di)
+        {
+            std::function<bool(std::string&, LLSD&, void*)> osx_callback;
+            enumerated = window->getInputDevices(DI8DEVCLASS_GAMECTRL, osx_callback,
+                                                 &di8_xinput_probe_callback, &probe);
+        }
+    }
+    mXIDIGeneration = mXIScanGeneration;
+    S32 slots = 0;
+    S32 slot = -1;
+    bool slot_failed = false;
+    for (DWORD i = 0; i < XUSER_MAX_COUNT; ++i)
+    {
+        XINPUT_STATE state = {};
+        const DWORD result = sXInputGetState(i, &state);
+        if (result == ERROR_SUCCESS) { ++slots; slot = static_cast<S32>(i); }
+        else if (result != ERROR_DEVICE_NOT_CONNECTED) slot_failed = true;
+    }
+    mXISlotGeneration = mXIScanGeneration;
+    if (!enumerated || probe.failed || slot_failed) mXIStatus = "scan failed";
+    else if (slots == 0 && probe.count == 0)
+    {
+        mXIStatus = "none";
+        mXIRetry = 4; // [XInputPad] Successful empty scan: wait for a device event.
+    }
+    else if (slots > 1 || probe.count > 1) mXIStatus = llformat("ambiguous (%d XInput)", slots);
+    else if (slots != 1 || probe.count != 1) mXIStatus = "none";
+    else if (!sameWindowsDeviceId(mLastDeviceUUID, probe.guid)) mXIStatus = "active device mismatch";
+    else if (mDriverState != JDS_INITIALIZED || !mJoystickEnabled) mXIStatus = "joystick disabled";
+    else
+    {
+        mXIAssociated = true;
+        mXIGuid = probe.guid;
+        mXISlot = slot;
+        mXIPrime = true;
+        mXIRetry = 4;
+        mXIStatus = "ready";
+    }
+    LL_INFOS("XInput") << "[XInputPad] scan " << mXIScanGeneration
+        << " IG=" << probe.count << " slots=" << slots << " verdict="
+        << (mXIAssociated ? "PASS: " : "INCONCLUSIVE: ") << mXIStatus << LL_ENDL;
+#endif
+}
+
+void LLViewerJoystick::pollXInputState()
+{
+    mXIEdges = 0;
+#if LIB_NDOF && LL_WINDOWS && !LL_MESA_HEADLESS
+    if (!xInputAssociated()) return;
+    XINPUT_STATE state = {};
+    const DWORD result = sXInputGetState(static_cast<DWORD>(mXISlot), &state);
+    if (result != ERROR_SUCCESS)
+    {
+        if (result == ERROR_DEVICE_NOT_CONNECTED)
+        {
+            // [XInputPad] xInputAssociated() above proves this is the active DI pad.
+            mXIDisconnectedGuid = mXIGuid;
+            std::fill(std::begin(mAxes), std::end(mAxes), 0.f);
+        }
+        invalidateXInput(true);
+        return;
+    }
+    mXIDisconnectedGuid = LLSD();
+    const bool focused = gFocusMgr.getAppHasFocus();
+    const U16 raw = state.Gamepad.wButtons;
+    const bool prime = ALXInput::primeSample(mXIPrime, focused, mXIWasFocused,
+                                            mXILoopGeneration, mXILastScanGeneration);
+    mXIEdges = ALXInput::edges(raw, mXIPrevRaw, prime, focused);
+    mXIPrevRaw = raw; // raw history is never overwritten by focus policy
+    mXIPrime = false;
+    mXIWasFocused = focused;
+    mXILastScanGeneration = mXILoopGeneration;
+    mXISampleGeneration = mXILoopGeneration;
+    mXISampleValid = true;
+    mXILT = state.Gamepad.bLeftTrigger;
+    mXIRT = state.Gamepad.bRightTrigger;
+#endif
+}
+
+void LLViewerJoystick::seedTriggerHistory()
+{
+    static LLCachedControl<bool> blackdragon(gSavedSettings, "BlackDragonControls", false);
+    for (S32 i = 0; i < MAX_AXES; ++i)
+    {
+        // Departing ownership must cover the old mapping as well as the new one.
+        if (mJoystickAxis[i] == 2 || mXIPreviousAxes[i] == 2)
+        {
+            sLastDelta[i] = -getFlycamAxis(mJoystickAxis[i]);
+            if (!blackdragon && !mInvertPitch && i == CAM_Y_AXIS)
+                sLastDelta[i] = -sLastDelta[i];
+        }
+    }
+    sDelta[CAM_X_AXIS] = 0.f;
+}
+
+void LLViewerJoystick::updateXInputTakeover(bool reset)
+{
+    const auto& settings = xInputSettings();
+    const S32 mode = settings.mode == 1 ? 1 : 0;
+    const bool shaped = settings.shaped;
+    const bool compatible = ALXInput::compatible(mJoystickAxis, m3DCursor);
+    bool release_cleared = false;
+#if LIB_NDOF && LL_WINDOWS && !LL_MESA_HEADLESS
+    if (mXIReleasePending && (!settings.enabled || !compatible ||
+        !sameWindowsDeviceId(mXIReleaseGuid, mLastDeviceUUID) ||
+        llabs(getJoystickAxis(2)) <= mFlycamAxisDeadZone[CAM_X_AXIS]))
+    {
+        mXIReleasePending = false;
+        mXIReleaseGuid = LLSD();
+        release_cleared = true;
+    }
+#endif
+    const bool takeover = xInputAssociated() &&
+        compatible &&
+        mOverrideCamera && mFlycamEnabled && (mode == 1 || shaped);
+    const bool changed = takeover != mXITakeover ||
+        (takeover && (mode != mXIMode || shaped != mXIShaped));
+    const bool had_takeover = mXITakeover;
+    mXITakeover = takeover;
+    // Legacy resets/mode toggles are intentionally untouched.
+    if (release_cleared || (changed && (had_takeover || takeover)) || (reset && takeover))
+        seedTriggerHistory();
+    mXIMode = mode;
+    mXIShaped = shaped;
+    std::copy(std::begin(mJoystickAxis), std::end(mJoystickAxis), mXIPreviousAxes.begin());
+}
+
+F32 LLViewerJoystick::getFlycamAxis(U32 axis) const
+{
+    return (mXITakeover || mXIReleasePending) && axis == 2 ? 0.f : getJoystickAxis(axis);
+}
+
+void LLViewerJoystick::computeTriggerOutputs(F32& roll, F32& throttle) const
+{
+    roll = 0.f;
+    throttle = 1.f;
+    if (!mXITakeover || !xInputAssociated() ||
+        !ALXInput::fresh(mXISampleValid, gFocusMgr.getAppHasFocus(),
+                        mXISampleGeneration, mXILoopGeneration)) return;
+    const auto& settings = xInputSettings();
+    if (mXIMode == 1)
+    {
+        const F32 left = ALXInput::shape(mXILT / 255.f, settings.deadzone, settings.curve);
+        const F32 right = ALXInput::shape(mXIRT / 255.f, settings.deadzone, settings.curve);
+        throttle = ALXInput::throttle(left, right, settings.minimum, settings.maximum);
+    }
+    else roll = ALXInput::roll(mXILT / 255.f, mXIRT / 255.f, settings.deadzone, settings.curve);
+}
+
+void LLViewerJoystick::xInputHint(const std::string& message)
+{
+    if (mXIHint) LLNotificationsUtil::cancel(mXIHint);
+    LLSD args;
+    args["MESSAGE"] = message;
+    mXIHint = LLNotificationsUtil::add("XInputPadHint", args);
+}
+
+void LLViewerJoystick::handleXInputDpad()
+{
+#if LIB_NDOF && LL_WINDOWS && !LL_MESA_HEADLESS
+    if (!xInputAssociated() ||
+        !ALXInput::fresh(mXISampleValid, gFocusMgr.getAppHasFocus(),
+                        mXISampleGeneration, mXILoopGeneration)) return;
+    const U16 edges = mXIEdges;
+    mXIEdges = 0;
+    const auto& settings = xInputSettings();
+    if (edges & XINPUT_GAMEPAD_DPAD_DOWN)
+    {
+        const S32 mode = settings.mode == 1 ? 0 : 1;
+        gSavedSettings.setS32("JoystickXInputTriggerMode", mode);
+        xInputHint(mode == 1 ? "Triggers: THROTTLE" : "Triggers: ROLL");
+    }
+    const auto action = [this](S32 value)
+    {
+        if (value == 3)
+        {
+            if (!getOverrideCamera()) { xInputHint("Flycam not active"); return; }
+            mXILevelPending = true;
+            mXILevelGeneration = mXILoopGeneration;
+            xInputHint("Level horizon");
+        }
+        else if (value == 1 || value == 2)
+        {
+            auto& rig = ALCineLightRigManager::instance().selected();
+            if (rig.cueList().mTimecodeMode) { xInputHint("Timecode mode"); return; }
+            if (rig.cueList().mCues.empty()) { xInputHint("No light cues"); return; }
+            const F64 time = llmax(LLPresentationTime::currentFrame().presentation_time, 0.0);
+            if (value == 1) rig.cueGo(time); else rig.cueBack(time);
+            xInputHint(llformat("Light cue %d/%d", rig.activeCue() + 1,
+                               static_cast<S32>(rig.cueList().mCues.size())));
+        }
+    };
+    if (edges & XINPUT_GAMEPAD_DPAD_LEFT) action(settings.left);
+    if (edges & XINPUT_GAMEPAD_DPAD_RIGHT) action(settings.right);
+    if (edges & XINPUT_GAMEPAD_DPAD_UP) action(settings.up);
+    updateXInputTakeover();
+#endif
+}
+
+std::string LLViewerJoystick::getXInputStatus() const
+{
+    const auto& settings = xInputSettings();
+    const char* mode = !xInputAssociated() ? "inactive"
+        : m3DCursor ? "legacy: 3D cursor"
+        : !ALXInput::compatible(mJoystickAxis, false) ? "legacy: mapping"
+        : settings.mode == 1 ? "THROTTLE" : settings.shaped ? "ROLL shaped" : "ROLL legacy";
+    const bool fresh = xInputAssociated() &&
+        ALXInput::fresh(mXISampleValid, gFocusMgr.getAppHasFocus(),
+                        mXISampleGeneration, mXILoopGeneration);
+    return "Pad: " + (settings.enabled ? mXIStatus : std::string("off")) +
+        llformat(" - LT %.2f RT %.2f", fresh ? mXILT / 255.f : 0.f,
+                 fresh ? mXIRT / 255.f : 0.f) + "\nTriggers: " + mode;
+}
+
 void LLViewerJoystick::scanJoystick()
 {
     pollForXboxController();
+    scanXInputAssociation();
 
     if (mDriverState != JDS_INITIALIZED || !mJoystickEnabled)
     {
         return;
     }
+
+    pollXInputState();
 
 #if LL_WINDOWS
     // On windows, the flycam is updated syncronously with a timer, so there is
@@ -2293,6 +2774,8 @@ void LLViewerJoystick::scanJoystick()
     {
         return;
     }
+
+    handleXInputDpad();
 
     static long toggle_flycam = 0;
 

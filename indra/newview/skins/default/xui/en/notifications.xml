@@ -9280,6 +9280,10 @@ Xbox controller detected: [DEVICE]. It is ready as the active Flycam controller 
 Xbox controller disconnected.
   </notification>
 
+  <notification icon="notifytip.tga" name="XInputPadHint" type="notifytip">
+[MESSAGE]
+  </notification>
+
   <notification name="IMToast" type="notifytoast">
 [MESSAGE]
     <form name="form">

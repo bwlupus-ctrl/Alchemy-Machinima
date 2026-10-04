@@ -73,6 +73,7 @@ private:
     // Device prefs
     bool mJoystickEnabled;
     bool mAutoFlycamEnabled;
+    LLSD mXInputSnapshot; // excludes pad-owned TriggerMode
     LLSD mJoystickId;
     S32 mJoystickAxis[7];
     bool m3DCursor;

@@ -13616,6 +13616,76 @@
       <key>Value</key>
       <integer>1</integer>
     </map>
+    <key>JoystickXInputEnabled</key>
+    <map>
+      <key>Comment</key><string>Enable associated Xbox pad triggers and D-pad.</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>Boolean</string>
+      <key>Value</key><integer>1</integer>
+    </map>
+    <key>JoystickXInputTriggerMode</key>
+    <map>
+      <key>Comment</key><string>Pad-owned trigger mode: 0 ROLL (legacy by default), 1 THROTTLE.</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>S32</string>
+      <key>Value</key><integer>0</integer>
+    </map>
+    <key>JoystickXInputRollShaped</key>
+    <map>
+      <key>Comment</key><string>Shape trigger roll instead of passing through legacy DirectInput roll.</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>Boolean</string>
+      <key>Value</key><integer>0</integer>
+    </map>
+    <key>JoystickXInputThrottleMin</key>
+    <map>
+      <key>Comment</key><string>Left trigger slow multiplier, clamped to 0.01 through 1.</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.1</real>
+    </map>
+    <key>JoystickXInputThrottleMax</key>
+    <map>
+      <key>Comment</key><string>Right trigger fast multiplier, clamped to 1 through 20.</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>4.0</real>
+    </map>
+    <key>JoystickXInputTriggerDeadZone</key>
+    <map>
+      <key>Comment</key><string>Trigger deadzone, clamped to 0 through 0.5.</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.06</real>
+    </map>
+    <key>JoystickXInputTriggerCurve</key>
+    <map>
+      <key>Comment</key><string>Trigger response exponent, clamped to 1 through 4.</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>2.0</real>
+    </map>
+    <key>JoystickXInputDpadLeft</key>
+    <map>
+      <key>Comment</key><string>D-pad action: 0 None, 1 Lighting cue Go, 2 Lighting cue Back, 3 Level horizon.</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>S32</string>
+      <key>Value</key><integer>0</integer>
+    </map>
+    <key>JoystickXInputDpadRight</key>
+    <map>
+      <key>Comment</key><string>D-pad action: 0 None, 1 Lighting cue Go, 2 Lighting cue Back, 3 Level horizon.</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>S32</string>
+      <key>Value</key><integer>0</integer>
+    </map>
+    <key>JoystickXInputDpadUp</key>
+    <map>
+      <key>Comment</key><string>D-pad action: 0 None, 1 Lighting cue Go, 2 Lighting cue Back, 3 Level horizon.</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>S32</string>
+      <key>Value</key><integer>0</integer>
+    </map>
     <key>JoystickBuildEnabled</key>
     <map>
       <key>Comment</key>

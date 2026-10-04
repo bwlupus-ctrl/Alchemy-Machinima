@@ -1495,6 +1495,8 @@ bool LLAppViewer::doFrame()
                 LL_PROFILE_ZONE_NAMED_CATEGORY_APP("df JoystickKeyboard");
                 pingMainloopTimeout("Main:JoystickKeyboard");
 
+                joystick->beginMainLoop(); // [XInputPad] advances even when scan is gated out
+
                 // Scan keyboard for movement keys.  Command keys and typing
                 // are handled by windows callbacks.  Don't do this until we're
                 // done initializing.  JC

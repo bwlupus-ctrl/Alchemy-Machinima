@@ -107,6 +107,9 @@ LLFloaterJoystick::LLFloaterJoystick(const LLSD& data)
 void LLFloaterJoystick::draw()
 {
     LLViewerJoystick* joystick(LLViewerJoystick::getInstance());
+    const std::string xinput_status = joystick->getXInputStatus();
+    getChild<LLUICtrl>("xinput_status")->setValue(xinput_status);
+    getChild<LLUICtrl>("xinput_status")->setToolTip(xinput_status + "\nD-pad Down toggles ROLL / THROTTLE.");
     bool joystick_inited = joystick->isJoystickInitialized();
     if (joystick_inited != mHasDeviceList)
     {
@@ -196,6 +199,15 @@ void LLFloaterJoystick::apply()
 
 void LLFloaterJoystick::initFromSettings()
 {
+    mXInputSnapshot["JoystickXInputEnabled"] = gSavedSettings.getControl("JoystickXInputEnabled")->getValue();
+    mXInputSnapshot["JoystickXInputRollShaped"] = gSavedSettings.getControl("JoystickXInputRollShaped")->getValue();
+    mXInputSnapshot["JoystickXInputThrottleMin"] = gSavedSettings.getControl("JoystickXInputThrottleMin")->getValue();
+    mXInputSnapshot["JoystickXInputThrottleMax"] = gSavedSettings.getControl("JoystickXInputThrottleMax")->getValue();
+    mXInputSnapshot["JoystickXInputTriggerDeadZone"] = gSavedSettings.getControl("JoystickXInputTriggerDeadZone")->getValue();
+    mXInputSnapshot["JoystickXInputTriggerCurve"] = gSavedSettings.getControl("JoystickXInputTriggerCurve")->getValue();
+    mXInputSnapshot["JoystickXInputDpadLeft"] = gSavedSettings.getControl("JoystickXInputDpadLeft")->getValue();
+    mXInputSnapshot["JoystickXInputDpadRight"] = gSavedSettings.getControl("JoystickXInputDpadRight")->getValue();
+    mXInputSnapshot["JoystickXInputDpadUp"] = gSavedSettings.getControl("JoystickXInputDpadUp")->getValue();
     mJoystickEnabled = gSavedSettings.getBOOL("JoystickEnabled");
     mAutoFlycamEnabled = gSavedSettings.getBOOL("JoystickAutoFlycamEnabled");
     mJoystickId = gSavedSettings.getLLSD("JoystickDeviceUUID");
@@ -349,6 +361,8 @@ void LLFloaterJoystick::refreshListOfDevices()
 
 void LLFloaterJoystick::cancel()
 {
+    for (LLSD::map_const_iterator it = mXInputSnapshot.beginMap(); it != mXInputSnapshot.endMap(); ++it)
+        gSavedSettings.getControl(it->first)->setValue(it->second);
     gSavedSettings.setBOOL("JoystickEnabled", mJoystickEnabled);
     gSavedSettings.setBOOL("JoystickAutoFlycamEnabled", mAutoFlycamEnabled);
     gSavedSettings.setLLSD("JoystickDeviceUUID", mJoystickId);
