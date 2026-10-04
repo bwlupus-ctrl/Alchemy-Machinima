@@ -2428,7 +2428,7 @@ LLPrismLens::ScreenEffects LLFloaterPrismManager::effectsFromUI() const
 void LLFloaterPrismManager::setUIFromEffects(const LLPrismLens::ScreenEffects& effects)
 {
     mEffectScanlinesSlider->setValue(effects.mScanlines);
-    mEffectScanlineCountSlider->setValue(ll_round(100.f + 500.f * effects.mScanlineCount));
+    mEffectScanlineCountSlider->setValue(static_cast<F32>(ll_round(100.f + 500.f * effects.mScanlineCount)));
     mEffectScanlineDepthSlider->setValue(100.f * effects.mScanlineDepth);
     mEffectScanlineSharpnessSlider->setValue(100.f * effects.mScanlineSharpness);
     mEffectScanlineThicknessSlider->setValue(100.f * effects.mScanlineThickness);
