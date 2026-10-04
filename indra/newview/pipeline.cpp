@@ -19957,6 +19957,13 @@ void LLPipeline::renderFroxelVolumetrics(LLRenderTarget* target)
             {
                 continue;
             }
+            // [ActorMask] An actor-only light must not light the set through the
+            // froxel atmosphere (or its surface rim) either.
+            if (ALCineLightRigManager::anyActorOnly() &&
+                ALCineLightRigManager::instance().actorOnlyBits(volume->getID()))
+            {
+                continue;
+            }
 
             // Match the light-source prim's own ID and its root-edit ID (identical to
             // the per-cone loop's session-only art-direction filter).
@@ -20798,6 +20805,13 @@ void LLPipeline::renderProjectorVolumetric(LLRenderTarget* target, bool aux_dire
         }
         LLVOVolume* volume = drawablep->getVOVolume();
         if (volume == NULL)
+        {
+            continue;
+        }
+        // [ActorMask] Actor-only lights render no per-cone shaft or volumetric
+        // surface rim: those passes are not actor-masked and light the set.
+        if (ALCineLightRigManager::anyActorOnly() &&
+            ALCineLightRigManager::instance().actorOnlyBits(volume->getID()))
         {
             continue;
         }
