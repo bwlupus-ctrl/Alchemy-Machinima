@@ -11,7 +11,6 @@
 
 #include "llfloaterdirector.h"
 #include "alghoststudio.h" // [AutoAnimate]
-#include "alscrollfocus.h"
 #include "aluirefresh.h"            // [UIPerfC1] diff-guarded text writes
 
 #include "indra_constants.h"        // KEY_ESCAPE / MASK_NONE, MASK_ALT
@@ -541,24 +540,9 @@ bool LLFloaterDirector::postBuild()
     // selected/pasted anim + its source object each draw.
     mAnimPreviewPanel = findChild<ALPanelAnimPreview>("anim_preview_panel");
 
-    // Move and Animate are fixed-height documents inside resizable tabs. Keep
-    // keyboard-focused controls visible at the Director's saved/minimum size.
-    LLScrollContainer* move_scroll = getChild<LLScrollContainer>("move_scroll");
-    LLView* move_document = getChildView("move_scroll_content");
-    ALScrollFocus::install(move_scroll, move_document, move_document);
-    LLScrollContainer* animate_scroll = getChild<LLScrollContainer>("animate_scroll");
-    LLView* animate_document = getChildView("animate_scroll_content");
-    ALScrollFocus::install(animate_scroll, animate_document, animate_document);
-    LLScrollContainer* actor_style_scroll =
-        getChild<LLScrollContainer>("actor_style_scroll");
-    LLView* actor_style_document = getChildView("actor_style_scroll_content");
-    ALScrollFocus::install(actor_style_scroll, actor_style_document,
-                           actor_style_document);
-    LLScrollContainer* shafts_scroll =
-        getChild<LLScrollContainer>("projector_volumetrics_scroll");
-    LLView* shafts_document =
-        getChildView("projector_volumetrics_scroll_content");
-    ALScrollFocus::install(shafts_scroll, shafts_document, shafts_document);
+    // [DirFix] D1: the four explicit ALScrollFocus installs (Move / Animate / Actor FX /
+    // Shafts) moved into mScrollFit.installForTabs() at the end of postBuild, which covers
+    // every tab-level container.
 
     // ---- Camera tab ----
     mSubjectAText = getChild<LLTextBox>("subject_a_text");
@@ -612,6 +596,14 @@ bool LLFloaterDirector::postBuild()
     mStatusStrip = getChild<LLTextBox>("status_strip");
     mRecIndicator = getChild<LLTextBox>("rec_indicator");
 
+    // [DirFix] D1: after every getChild and after the tab commit callback above (onTabChanged
+    // and the helper's refit both stay on the commit signal; the refit is connected later,
+    // neither reads what the other writes). Wraps the tabs that have no scroller (Ghosts,
+    // Props, Takes, Time), installs focus-reveal on every tab-level container (incl. the
+    // nested Ghost Studio sub-tabs), fits every document from its children (the hand-typed
+    // XML heights are gone) and enables wheel adjust on every slider.
+    mScrollFit.installForTabs(mTabContainer, this);
+
     return true;
 }
 
@@ -624,12 +616,34 @@ void LLFloaterDirector::onOpen(const LLSD& key)
         refreshSceneList(mSceneCombo->getSelectedItemLabel());
     }
 
-    // return to the tab left showing last time (clamped: tab set can shrink)
+    // return to the tab left showing last time. [DirFix] D11: by tab NAME (a reorder of the
+    // <panel> nodes no longer changes which tab reopens); fall back to the legacy index
+    // (clamped: tab set can shrink) and migrate it. No early return: the legend reset and
+    // LLFloater::onOpen below must always run.
     if (mTabContainer)
     {
-        const S32 last = llclamp(gSavedSettings.getS32("DirectorLastTab"),
-                                 0, mTabContainer->getTabCount() - 1);
-        mTabContainer->selectTab(last);
+        const std::string name = gSavedSettings.getString("DirectorLastTabName");
+        const bool restored = !name.empty() && mTabContainer->selectTabByName(name);
+        if (!restored)
+        {
+            const S32 last = llclamp(gSavedSettings.getS32("DirectorLastTab"),
+                                     0, mTabContainer->getTabCount() - 1);
+            mTabContainer->selectTab(last);
+            if (LLPanel* panel = mTabContainer->getCurrentPanel())
+            {
+                gSavedSettings.setString("DirectorLastTabName", panel->getName());
+            }
+        }
+
+        // [DirFix] D8: refreshers gated on tab visibility did not run while the console was
+        // closed or the tab hidden; discard their caches on the first visible pass. (The
+        // selectTab above fires onTabChanged, which sets these too; belt and braces.)
+        mActorStyleTabDirty = true;
+        mAnimateTabDirty = true;
+
+        // [DirFix] D1: re-fit every tab document with the controller's recorded minimums
+        // (cheap, idempotent) so the open frame is already sized from content.
+        mScrollFit.fit(this, mTabContainer);
     }
 
     // a reopened console never resurfaces the legend
@@ -647,8 +661,18 @@ void LLFloaterDirector::onTabChanged()
 {
     if (mTabContainer)
     {
+        // [DirFix] D11: save by name AND keep writing the legacy index for one release
+        // (older AlchemyTest.pre-*.exe backups read the index).
+        if (LLPanel* panel = mTabContainer->getCurrentPanel())
+        {
+            gSavedSettings.setString("DirectorLastTabName", panel->getName());
+        }
         gSavedSettings.setS32("DirectorLastTab", mTabContainer->getCurrentPanelIndex());
     }
+    // [DirFix] D8: a tab was revealed (and another hidden): the gated refreshers re-sync on
+    // their next visible pass. Only flags are written here; nothing reads layout.
+    mActorStyleTabDirty = true;
+    mAnimateTabDirty = true;
 }
 
 void LLFloaterDirector::onToggleLegend()
@@ -665,14 +689,32 @@ void LLFloaterDirector::draw()
     refreshCastList();
     refreshGroupControls();
     refreshTransport();
-    refreshMoveTab();
-    refreshPathTab();
-    refreshActorStyleTab();
-    refreshAnimateTab();
-    refreshCameraTab();
+    // [DirFix] D10: one selection vector per frame for the three consumers (was three)
+    const uuid_vec_t selected = selectedCastIds();
+    refreshMoveTab(selected);
+    refreshPathTab(selected);
+    refreshActorStyleTab();     // [DirFix] D8: gated on its tab being visible (inside)
+    refreshAnimateTab();        // [DirFix] D8: gated on its tab being visible (inside)
+    refreshCameraTab(selected);
     refreshStatusStrip();
     LLFloater::draw();
     // the embedded ALPanelAnimPreview blits + spins its own dummy in its draw()
+}
+
+// [DirFix] D1: wheel rule (the Lightbox's, via ALScrollFit::WheelGuard): wheel over a slider
+// adjusts it (wheel_adjust is enabled on every slider by installForTabs), EXCEPT within 0.5 s
+// of the same scroll container really scrolling, when the event falls through to the
+// container so the scroll gesture keeps going. State is per floater instance.
+bool LLFloaterDirector::handleScrollWheel(S32 x, S32 y, LLScrollDelta delta)
+{
+    return mScrollFit.onScrollWheel(this, x, y,
+        [&] { return LLFloater::handleScrollWheel(x, y, delta); });
+}
+
+bool LLFloaterDirector::handleScrollHWheel(S32 x, S32 y, LLScrollDelta delta)
+{
+    return mScrollFit.onScrollHWheel(this, x, y,
+        [&] { return LLFloater::handleScrollHWheel(x, y, delta); });
 }
 
 bool LLFloaterDirector::handleKeyHere(KEY key, MASK mask)
@@ -2072,7 +2114,7 @@ void LLFloaterDirector::refreshGroupControls()
 // ---------------------------------------------------------------------------
 // Move tab: the shared transport panel, targeting the cast selection
 // ---------------------------------------------------------------------------
-void LLFloaterDirector::refreshMoveTab()
+void LLFloaterDirector::refreshMoveTab(const uuid_vec_t& selected)
 {
     LL_PROFILE_ZONE_NAMED_CATEGORY_UI("Director refreshMoveTab"); // [DirFix] D9
     // the shared ALPanelActorMover owns the scope radio, heading dial, params,
@@ -2081,7 +2123,6 @@ void LLFloaterDirector::refreshMoveTab()
     // drives startAll/stopAll, Selected acts on exactly this set, so the buttons
     // behave identically to the standalone floater (which feeds its roster
     // selection the same way).
-    const uuid_vec_t selected = selectedCastIds();
     if (mMoverPanel)
     {
         mMoverPanel->setSelectedActors(selected);
@@ -2091,7 +2132,7 @@ void LLFloaterDirector::refreshMoveTab()
 // ---------------------------------------------------------------------------
 // Path tab: the shared waypoint editor, targeting the cast selection
 // ---------------------------------------------------------------------------
-void LLFloaterDirector::refreshPathTab()
+void LLFloaterDirector::refreshPathTab(const uuid_vec_t& selected)
 {
     LL_PROFILE_ZONE_NAMED_CATEGORY_UI("Director refreshPathTab"); // [DirFix] D9
     // the waypoint editor now owns its own tab (always visible); keep it pointed
@@ -2099,7 +2140,8 @@ void LLFloaterDirector::refreshPathTab()
     // own state internally)
     if (mPathPanel)
     {
-        mPathPanel->setTargetActor(firstSelectedCastId());
+        // [DirFix] D10: front() == firstSelectedCastId() (both walk the list in order)
+        mPathPanel->setTargetActor(selected.empty() ? LLUUID::null : selected.front());
     }
 }
 
@@ -2187,6 +2229,24 @@ void LLFloaterDirector::refreshActorStyleTab()
     if (!mActorStyleTarget)
     {
         return;
+    }
+
+    // [DirFix] D8: a pure-UI mirror of LLDirectorCast with no model writes and no readers of
+    // its caches while hidden (the tab's own controls are the only entry points), so skip
+    // it while the Actor FX tab is not in the visible chain. onTabChanged / onOpen set
+    // mActorStyleTabDirty; the first visible pass drops every "last written" cache so the
+    // reveal frame rebuilds the roster and rewrites all controls (force) before paint.
+    if (!mActorStyleTarget->isInVisibleChain())
+    {
+        return;
+    }
+    const bool reveal = mActorStyleTabDirty;
+    if (reveal)
+    {
+        mActorStyleTabDirty = false;
+        mActorStyleRosterBuilt = false;     // Phase A flag: next pass rebuilds the roster
+        mActorStyleRoster.clear();
+        mActorStyleHadTarget = false;       // next pass rewrites every control
     }
 
     LLDirectorCast& cast = LLDirectorCast::instance();
@@ -2324,8 +2384,9 @@ void LLFloaterDirector::refreshActorStyleTab()
         // focus guard; otherwise a control the user is dragging/typing into is left alone
         // (V12) and the snapshot is NOT advanced, so the next frame retries. Check boxes
         // always force (their "focus" after a click is meaningless, aluirefresh.h).
-        // Phase B (D8) ORs `|| mActorStyleTabDirty` into `force` (reveal).
-        const bool force = (id != mActorStyleShownFor);
+        // [DirFix] D8: on the reveal pass force is also true (`reveal` = mActorStyleTabDirty as
+        // it was at entry; the flag itself is consumed above so the reset runs only once).
+        const bool force = (id != mActorStyleShownFor) || reveal;
         bool skipped = false;
         auto write = [&](auto* w, const LLSD& v, bool always_force)
         {
@@ -2699,6 +2760,24 @@ void LLFloaterDirector::refreshLocomotionRoleEditor(const LLUUID& member_id)
 void LLFloaterDirector::refreshAnimateTab()
 {
     LL_PROFILE_ZONE_NAMED_CATEGORY_UI("Director refreshAnimateTab"); // [DirFix] D9
+    // [DirFix] D8: a pure-UI mirror (rows, hint, tooltips, locomotion editor, the embedded
+    // preview feed): nothing reads its caches while the tab is hidden (the click handlers read
+    // the widgets directly) and the preview panel does not draw hidden. Skip it, and on the
+    // first visible pass after onTabChanged / onOpen drop every "last written" cache so the
+    // reveal frame is fully re-synced before paint.
+    if (!mAnimList || !mAnimList->isInVisibleChain())
+    {
+        return;
+    }
+    const bool reveal = mAnimateTabDirty;
+    if (reveal)
+    {
+        mAnimateTabDirty = false;
+        mAnimAvatarId.setNull();
+        mAnimSnapshot.clear();
+        mLocomotionEditorLoaded = false;
+    }
+
     LLDirectorCast& cast = LLDirectorCast::instance();
     const LLUUID sel = firstSelectedCastId();
     LLVOAvatar* av = sel.notNull() ? cast.resolve(sel) : nullptr;
@@ -2718,8 +2797,11 @@ void LLFloaterDirector::refreshAnimateTab()
         snap.assign(av->mSignaledAnimations.begin(), av->mSignaledAnimations.end());
     }
 
-    // membership change -> rebuild rows (rare); otherwise only re-set cells
-    if (sel != mAnimAvatarId || snap != mAnimSnapshot)
+    // membership change -> rebuild rows (rare); otherwise only re-set cells.
+    // [DirFix] D8: `reveal` forces the rebuild too: with nothing selected the nulled caches
+    // above equal the "no member" state, so the rows left over from before the tab was
+    // hidden would otherwise survive.
+    if (reveal || sel != mAnimAvatarId || snap != mAnimSnapshot)
     {
         const LLUUID prev_sel = selectedAnimId();
         mAnimAvatarId = sel;
@@ -3025,12 +3107,17 @@ void LLFloaterDirector::onClickHeroArc()
         LLCinematicCamera::MODE_ARC, true);
 }
 
-void LLFloaterDirector::refreshCameraTab()
+void LLFloaterDirector::refreshCameraTab(const uuid_vec_t& selected)
 {
     LL_PROFILE_ZONE_NAMED_CATEGORY_UI("Director refreshCameraTab"); // [DirFix] D9
-    ALFloaterActorGaze::updateSelection(
-        ALFloaterActorGaze::ESelectionSource::DIRECTOR,
-        selectedCastIds());
+    // [DirFix] D10: push to the Actor Gaze floater on selection change only (the registry
+    // lookup used to run every frame); a reopened gaze floater pulls on open.
+    if (selected != mLastGazePush)
+    {
+        mLastGazePush = selected;
+        ALFloaterActorGaze::updateSelection(
+            ALFloaterActorGaze::ESelectionSource::DIRECTOR, selected);
+    }
 
     LLDirectorCast& cast = LLDirectorCast::instance();
     const LLUUID a = cast.getSubjectA();

@@ -18,6 +18,7 @@
 #ifndef LL_LLFLOATERDIRECTOR_H
 #define LL_LLFLOATERDIRECTOR_H
 
+#include "alscrollfit.h" // [DirFix] D1: mScrollFit (wrap/fit/focus-reveal/wheel guard, per instance)
 #include "llfloater.h"
 #include "llframetimer.h"
 
@@ -54,6 +55,10 @@ public:
     // Esc = CUT while the transport is running or counting down; stock
     // floater behavior otherwise
     bool handleKeyHere(KEY key, MASK mask) override;
+    // [DirFix] D1: wheel over a slider adjusts it, except while a tab is being scrolled
+    // (the Lightbox rule, ALScrollFit::WheelGuard)
+    bool handleScrollWheel(S32 x, S32 y, LLScrollDelta delta) override;
+    bool handleScrollHWheel(S32 x, S32 y, LLScrollDelta delta) override;
 
     // [DirFix] D10: read-only public view of the cast-list selection, so the
     // Actor Gaze floater can pull it on open (see doc/DIRECTOR_CONSOLE_FIX_PLAN.md)
@@ -85,7 +90,7 @@ private:
     void loadScene(const std::string& name);
 
     // ---- tabs ----
-    void onTabChanged();                // remember the active tab (DirectorLastTab)
+    void onTabChanged();                // remember the active tab (DirectorLastTabName + DirectorLastTab)
 
     // ---- legend popover ----
     void onToggleLegend();
@@ -122,10 +127,11 @@ private:
     void onClickGroupDissolve();
 
     // ---- Move tab ----
-    void refreshMoveTab();              // feed the shared transport panel the cast selection
+    // [DirFix] D10: the per-frame cast selection is computed once in draw() and passed in
+    void refreshMoveTab(const uuid_vec_t& selected);  // feed the shared transport panel the cast selection
 
     // ---- Path tab ----
-    void refreshPathTab();              // point the embedded editor at the selection
+    void refreshPathTab(const uuid_vec_t& selected);  // point the embedded editor at the selection
 
     // ---- Actor FX tab ----
     void refreshActorStyleTab();        // roster + model -> controls
@@ -164,7 +170,7 @@ private:
     void onClickBuildOtsPair();
     void onClickZolly();
     void onClickHeroArc();
-    void refreshCameraTab();
+    void refreshCameraTab(const uuid_vec_t& selected); // [DirFix] D10
 
     // ---- Takes tab ----
     // the shared ALPanelFlycamRecorder (panel_flycam_recorder.xml) is embedded
@@ -194,6 +200,14 @@ private:
 
     // left-rail tabs + legend popover
     LLTabContainer* mTabContainer = nullptr;
+    // [DirFix] D1: wrap + auto-fit + focus-reveal + wheel rule for every tab (incl. nested)
+    ALScrollFit::Controller mScrollFit;
+    // [DirFix] D8: set on tab change / open; the hidden-tab-gated refreshers (Actor FX,
+    // Animate) discard their "last written" caches the first visible pass after it
+    bool            mActorStyleTabDirty = true;
+    bool            mAnimateTabDirty = true;
+    // [DirFix] D10: last cast selection pushed to the Actor Gaze floater (push on change only)
+    uuid_vec_t      mLastGazePush;
     LLButton*       mHelpBtn = nullptr;
     LLPanel*        mLegendPanel = nullptr;
 
