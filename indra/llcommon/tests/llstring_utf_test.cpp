@@ -1732,6 +1732,23 @@ namespace tut
             return v;
         }
 
+        std::string describe(const LLWString& ws, size_t p, const char* what)
+        {
+            std::ostringstream oss;
+            oss << what << " @" << p << " in [" << std::hex << std::uppercase;
+            if (ws.size() <= 128)
+            {
+                for (llwchar c : ws) oss << "U+" << (U32)c << ' ';
+            }
+            else
+            {
+                oss << std::dec << ws.size() << " codepoints, first U+" << std::hex
+                    << (U32)ws[0] << " last U+" << (U32)ws[ws.size() - 1];
+            }
+            oss << "]";
+            return oss.str();
+        }
+
         void check_equivalence_at(const LLWString& ws, const EmojiClusterList& full, size_t p)
         {
             ensure_equals(describe(ws, p, "align_forward"),
@@ -1799,23 +1816,6 @@ namespace tut
                 corpus.push_back(ws);
             }
             return corpus;
-        }
-
-        std::string describe(const LLWString& ws, size_t p, const char* what)
-        {
-            std::ostringstream oss;
-            oss << what << " @" << p << " in [" << std::hex << std::uppercase;
-            if (ws.size() <= 128)
-            {
-                for (llwchar c : ws) oss << "U+" << (U32)c << ' ';
-            }
-            else
-            {
-                oss << std::dec << ws.size() << " codepoints, first U+" << std::hex
-                    << (U32)ws[0] << " last U+" << (U32)ws[ws.size() - 1];
-            }
-            oss << "]";
-            return oss.str();
         }
     }
 
