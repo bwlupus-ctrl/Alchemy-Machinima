@@ -1841,7 +1841,8 @@ void LLViewerJoystick::moveFlycam(bool reset)
 
             if (mXITakeover && mXIMode == 0 && i == CAM_X_AXIS)
                 cur_delta[i] = llclamp(cur_delta[i] + trigger_roll, -1.f, 1.f);
-            if (mXITakeover && i <= Z_AXIS && trigger_throttle != 1.f)
+            // [XInputPad] Throttle scales movement AND pan/tilt/roll; zoom (CAM_W) excluded.
+            if (mXITakeover && i <= CAM_Z_AXIS && trigger_throttle != 1.f)
                 cur_delta[i] *= trigger_throttle;
 
             // We may want to scale camera movements up or down in build mode.
@@ -1950,7 +1951,8 @@ void LLViewerJoystick::moveFlycam(bool reset)
 
             if (mXITakeover && mXIMode == 0 && i == CAM_X_AXIS)
                 cur_delta[i] = llclamp(cur_delta[i] + trigger_roll, -1.f, 1.f);
-            if (mXITakeover && i <= Z_AXIS && trigger_throttle != 1.f)
+            // [XInputPad] Throttle scales movement AND pan/tilt/roll; zoom (CAM_W) excluded.
+            if (mXITakeover && i <= CAM_Z_AXIS && trigger_throttle != 1.f)
                 cur_delta[i] *= trigger_throttle;
 
             // We may want to scale camera movements up or down in build mode.
