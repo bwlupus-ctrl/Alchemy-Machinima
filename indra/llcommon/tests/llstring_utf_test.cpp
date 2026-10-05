@@ -39,8 +39,11 @@
 #include "../llstring.h"
 #include "../test/lltut.h"
 
+#include <algorithm>
+#include <chrono>
 #include <cstring>
 #include <sstream>
+#include <vector>
 
 namespace
 {
@@ -1598,5 +1601,459 @@ namespace tut
         ensure_equals("empty range_at first overload",
                       wstring_emoji_range_at(empty, 0).first,
                       wstring_emoji_range_at(empty, 0, no_clusters).first);
+    }
+
+    // ---------------------------------------------------------------
+    // [TextLinear] Bounded single-position helpers vs. the full-scan
+    // cluster-list overloads.
+    //
+    // The single-argument align / step / range_at helpers no longer call
+    // wstring_find_emoji_clusters on the whole string (that made
+    // LLTextBase::setCursorPos O(document) and multi-line appendText
+    // O(lines x length)). They resync from the nearest codepoint that can
+    // never be a cluster continuation and re-run the same greedy walk. The
+    // contract is bit-for-bit equality with the cluster-list overloads fed
+    // the full wstring_find_emoji_clusters(wstr) list, at every position
+    // 0..size (and a few out-of-range ones), over the whole emoji corpus
+    // the tests above use plus pseudo-random concatenations of it.
+    // ---------------------------------------------------------------
+
+    namespace
+    {
+        // Every emoji / malformed fragment used by tests 90..106, as atoms.
+        std::vector<LLWString> emoji_corpus_atoms()
+        {
+            std::vector<LLWString> a;
+            a.push_back({ (llwchar)'H', (llwchar)'i', (llwchar)'!' });                       // ascii
+            a.push_back({ (llwchar)0x65E5, (llwchar)0x672C });                                // cjk
+            a.push_back({ (llwchar)0x1F680 });                                                // lone emoji
+            a.push_back({ (llwchar)0x1F680, (llwchar)0x1F681 });                              // two adjacent emoji
+            a.push_back({ (llwchar)0x1F468, (llwchar)0x200D, (llwchar)0x1F469,
+                          (llwchar)0x200D, (llwchar)0x1F467 });                               // ZWJ family
+            a.push_back({ (llwchar)0x1F468, (llwchar)0x1F3FB });                              // skin tone
+            a.push_back({ (llwchar)0x1F680, (llwchar)0xFE0F });                               // VS16
+            a.push_back({ (llwchar)0x1F1FA, (llwchar)0x1F1F8 });                              // flag
+            a.push_back({ (llwchar)0x1F1FA, (llwchar)0x1F1F8, (llwchar)0x1F1EB, (llwchar)0x1F1F7 }); // two flags
+            a.push_back({ (llwchar)0x1F1FA, (llwchar)0x1F1F8, (llwchar)0x1F1F8 });            // three RI (odd)
+            a.push_back({ (llwchar)0x1F1FA });                                                // lone RI
+            a.push_back({ (llwchar)'9', (llwchar)0xFE0F, (llwchar)0x20E3 });                  // digit keycap
+            a.push_back({ (llwchar)'#', (llwchar)0xFE0F, (llwchar)0x20E3 });                  // hash keycap
+            a.push_back({ (llwchar)'*', (llwchar)0xFE0F, (llwchar)0x20E3 });                  // star keycap
+            a.push_back({ (llwchar)'5' });                                                    // bare digit
+            a.push_back({ (llwchar)0x1F3F4, (llwchar)0xE0067, (llwchar)0xE0062, (llwchar)0xE0073,
+                          (llwchar)0xE0063, (llwchar)0xE0074, (llwchar)0xE007F });            // subdivision flag
+            a.push_back({ (llwchar)0x1F3F4, (llwchar)0xE0067, (llwchar)0xE0062 });            // truncated tag
+            a.push_back({ (llwchar)0x2764, (llwchar)0xFE0F, (llwchar)0x200D, (llwchar)0x1F525 }); // heart on fire
+            a.push_back({ (llwchar)'a', (llwchar)0x200D, (llwchar)'b' });                     // bare ZWJ
+            a.push_back({ (llwchar)'a', (llwchar)0xFE0F, (llwchar)'b' });                     // bare VS16
+            a.push_back({ (llwchar)0x200D, (llwchar)0x1F468 });                               // leading ZWJ
+            a.push_back({ (llwchar)0x1F468, (llwchar)0x200D });                               // trailing ZWJ
+            a.push_back({ (llwchar)0x1F3FB });                                                // lone skin tone
+            a.push_back({ (llwchar)0x1F468, (llwchar)0x200D, (llwchar)0x1F469,
+                          (llwchar)0x1F468, (llwchar)0x200D, (llwchar)0x1F469 });             // back-to-back families
+            a.push_back({ (llwchar)0x1F468, (llwchar)0x200D, (llwchar)'A' });                 // ZWJ + non-pictograph
+            a.push_back({ (llwchar)0x1F468, (llwchar)0x200D, (llwchar)0x200D, (llwchar)0x1F469 }); // double ZWJ
+            a.push_back({ (llwchar)0x1FFF });                                                 // just below astral
+            a.push_back({ (llwchar)0x3300 });                                                 // just above BMP window
+            a.push_back({ (llwchar)0xA9, (llwchar)0xFE0F });                                  // (c) + VS16
+            a.push_back({ (llwchar)' ' });
+            a.push_back({ (llwchar)'\n' });
+            a.push_back({ (llwchar)0xE9 });                                                   // Latin-1 (non-ASCII, non-emoji)
+            // Garbage that user-pasted / network text can carry: lone
+            // surrogates and values outside Unicode. None is a pictograph
+            // base or extender, so they must act as hard cluster breaks.
+            a.push_back({ (llwchar)0xD800 });                                                 // lone high surrogate
+            a.push_back({ (llwchar)0xDFFF });                                                 // lone low surrogate
+            a.push_back({ (llwchar)0x1F468, (llwchar)0x200D, (llwchar)0xD83D, (llwchar)0xDC69 }); // ZWJ + UTF-16 pair leaked as two llwchars
+            a.push_back({ (llwchar)0x110000 });                                               // first value above Unicode
+            a.push_back({ (llwchar)0xFFFFFFFF });                                             // max llwchar
+            a.push_back({ (llwchar)0x1F468, (llwchar)0x200D, (llwchar)0x110000 });            // ZWJ + invalid
+            a.push_back({ (llwchar)0x1F3F4, (llwchar)0xE0000 });                              // base + tag-block char outside extender range
+            a.push_back({ (llwchar)0x1F3F4, (llwchar)0xE0080 });                              // base + just past CANCEL TAG
+            a.push_back({ (llwchar)0x1F000, (llwchar)0x200D, (llwchar)0x1FFFF });             // astral window edges, joined
+            a.push_back({ (llwchar)0x1F1E6, (llwchar)0x200D, (llwchar)0x1F1FF });             // RI + ZWJ + RI (joined, not a pair)
+            a.push_back({ (llwchar)0x1F1E6, (llwchar)0x1F3FB });                              // RI + skin tone
+            return a;
+        }
+
+        // Adversarial 100k-codepoint runs: standalone pictographs (every one a
+        // resync point: O(1) per query), regional indicators (one 100k RI run:
+        // pairing parity needs the run start), extenders after one base (one
+        // 100k cluster), bare extenders after ASCII (no base), bare ZWJs, and
+        // alternating ZWJ+base (one 100k joined cluster).
+        std::vector<LLWString> adversarial_corpus()
+        {
+            const size_t N = 100000;
+            std::vector<LLWString> c;
+
+            LLWString rockets(N, (llwchar)0x1F680);
+            c.push_back(rockets);
+            c.push_back(LLWString({ (llwchar)'<' }) + rockets + LLWString({ (llwchar)'>' }));
+
+            LLWString ri;
+            for (size_t i = 0; i < N; ++i)
+                ri.push_back((llwchar)(0x1F1E6 + (i % 26)));
+            c.push_back(ri);
+            c.push_back(LLWString({ (llwchar)'<' }) + ri + LLWString({ (llwchar)'>' }));
+            c.push_back(ri.substr(0, N - 1));                                   // odd length
+
+            LLWString vs(N, (llwchar)0xFE0F);
+            c.push_back(LLWString({ (llwchar)0x1F680 }) + vs);                   // base + 100k VS16
+            c.push_back(LLWString({ (llwchar)'a' }) + vs);                       // bare: no base
+            c.push_back(LLWString({ (llwchar)0x1F3F4 }) + LLWString(N, (llwchar)0xE0067)); // base + 100k tag chars
+            c.push_back(LLWString(N, (llwchar)0x200D));                          // bare ZWJs
+            c.push_back(LLWString({ (llwchar)0x1F468 }) + LLWString(N, (llwchar)0x200D)); // base + ZWJs (orphan)
+
+            LLWString joined;
+            joined.push_back((llwchar)0x1F468);
+            for (size_t i = 0; i < N / 2; ++i)
+            {
+                joined.push_back((llwchar)0x200D);
+                joined.push_back((llwchar)0x1F469);
+            }
+            c.push_back(joined);
+
+            LLWString lone_surrogates(N, (llwchar)0xD800);
+            c.push_back(LLWString({ (llwchar)0x1F468, (llwchar)0x200D }) + lone_surrogates);
+            c.push_back(LLWString(N, (llwchar)0x110000));
+            return c;
+        }
+
+        // Position sample for the 100k strings. Each probe is up to five
+        // lookups, and inside an RI/extender run both the bounded form and
+        // the full-scan comparator are O(100k) by design, so keep the probe
+        // count small and deterministic (this runs in every viewer build):
+        // boundaries, the midpoint at both parities, and four interior points.
+        std::vector<size_t> sample_positions(size_t n)
+        {
+            std::vector<size_t> v = { 0, 1, 2, n - 2, n - 1, n, n + 1,
+                                      n / 2, n / 2 + 1,
+                                      n / 5, 2 * n / 5, 3 * n / 5, 4 * n / 5 };
+            return v;
+        }
+
+        void check_equivalence_at(const LLWString& ws, const EmojiClusterList& full, size_t p)
+        {
+            ensure_equals(describe(ws, p, "align_forward"),
+                          wstring_grapheme_align_forward(ws, p),
+                          wstring_grapheme_align_forward(ws, p, full));
+            ensure_equals(describe(ws, p, "align_backward"),
+                          wstring_grapheme_align_backward(ws, p),
+                          wstring_grapheme_align_backward(ws, p, full));
+            ensure_equals(describe(ws, p, "step_forward"),
+                          wstring_step_grapheme_forward(ws, p),
+                          wstring_step_grapheme_forward(ws, p, full));
+            ensure_equals(describe(ws, p, "step_backward"),
+                          wstring_step_grapheme_backward(ws, p),
+                          wstring_step_grapheme_backward(ws, p, full));
+            const auto r1 = wstring_emoji_range_at(ws, p);
+            const auto r2 = wstring_emoji_range_at(ws, p, full);
+            ensure_equals(describe(ws, p, "range_at.first"),  r1.first,  r2.first);
+            ensure_equals(describe(ws, p, "range_at.second"), r1.second, r2.second);
+        }
+
+        // The corpus: every atom alone, the mixed strings from tests 97/104,
+        // long regional-indicator runs (odd and even -- pairing parity is
+        // the one thing a fixed window would get wrong), and deterministic
+        // pseudo-random concatenations of atoms (LCG, fixed seed).
+        std::vector<LLWString> emoji_corpus()
+        {
+            const std::vector<LLWString> atoms = emoji_corpus_atoms();
+            std::vector<LLWString> corpus(atoms.begin(), atoms.end());
+
+            corpus.push_back({ (llwchar)'H',
+                               (llwchar)0x1F1FA, (llwchar)0x1F1F8,
+                               (llwchar)' ',
+                               (llwchar)0x1F468, (llwchar)0x200D,
+                               (llwchar)0x1F469, (llwchar)0x200D,
+                               (llwchar)0x1F467,
+                               (llwchar)'!' });
+
+            for (size_t count : { size_t(40), size_t(41), size_t(65) })
+            {
+                LLWString ri;
+                for (size_t i = 0; i < count; ++i)
+                    ri.push_back((llwchar)(0x1F1E6 + (i % 26)));
+                corpus.push_back(ri);
+                corpus.push_back(LLWString({ (llwchar)'x' }) + ri + LLWString({ (llwchar)'y' }));
+            }
+
+            // 60 consecutive extenders after one base: a run longer than
+            // any fixed window.
+            {
+                LLWString long_tag = { (llwchar)0x1F3F4 };
+                for (size_t i = 0; i < 60; ++i)
+                    long_tag.push_back((llwchar)(0xE0061 + (i % 26)));
+                long_tag.push_back((llwchar)0xE007F);
+                corpus.push_back(long_tag);
+            }
+
+            U32 lcg = 0x5EEDu;
+            auto next = [&lcg]() { lcg = lcg * 1664525u + 1013904223u; return lcg >> 8; };
+            for (int s = 0; s < 300; ++s)
+            {
+                LLWString ws;
+                const size_t pieces = 1 + (next() % 12);
+                for (size_t k = 0; k < pieces; ++k)
+                    ws += atoms[next() % atoms.size()];
+                corpus.push_back(ws);
+            }
+            return corpus;
+        }
+
+        std::string describe(const LLWString& ws, size_t p, const char* what)
+        {
+            std::ostringstream oss;
+            oss << what << " @" << p << " in [" << std::hex << std::uppercase;
+            if (ws.size() <= 128)
+            {
+                for (llwchar c : ws) oss << "U+" << (U32)c << ' ';
+            }
+            else
+            {
+                oss << std::dec << ws.size() << " codepoints, first U+" << std::hex
+                    << (U32)ws[0] << " last U+" << (U32)ws[ws.size() - 1];
+            }
+            oss << "]";
+            return oss.str();
+        }
+    }
+
+    template<> template<>
+    void llstring_utf_object_t::test<107>()
+    {
+        size_t strings = 0, positions = 0, clusters = 0;
+        for (const LLWString& ws : emoji_corpus())
+        {
+            const EmojiClusterList full = wstring_find_emoji_clusters(ws);
+            clusters += full.size();
+            ++strings;
+            // Every in-range position plus a few past-the-end ones.
+            for (size_t p = 0; p <= ws.size() + 2; ++p)
+            {
+                ++positions;
+                check_equivalence_at(ws, full, p);
+            }
+        }
+        // Sanity: the corpus actually exercised clusters.
+        ensure("corpus has strings",  strings  > 300);
+        ensure("corpus has clusters", clusters > 300);
+        ensure("corpus has positions", positions > 5000);
+
+        // Adversarial 100k-codepoint runs, sampled positions (see
+        // sample_positions). Equivalence with the full scan is required at
+        // every probed position, including inside the RI / extender runs
+        // where the bounded form is O(run) by design.
+        size_t adversarial = 0;
+        for (const LLWString& ws : adversarial_corpus())
+        {
+            const EmojiClusterList full = wstring_find_emoji_clusters(ws);
+            for (size_t p : sample_positions(ws.size()))
+            {
+                ++adversarial;
+                check_equivalence_at(ws, full, p);
+            }
+        }
+        ensure("adversarial positions checked", adversarial >= 13 * 13);
+    }
+
+    // [TextLinear] Regression guard for the Ghost Studio hitch
+    // (doc/GHOST_PERF_AUDIT_FABLE.md section 1.2): LLTextBase::appendText
+    // ran two grapheme alignments over the WHOLE document per appended line,
+    // so setText of L lines cost O(L^2 x line length). An LLTextEditor cannot
+    // be constructed in the llui test harness (it needs LLUI, fonts and the
+    // widget registry; indra/llui/tests only hosts the llurlentry/llurlmatch
+    // stubs), so this pins the lowest-level equivalent.
+    //
+    // Document: 2,000 lines x 100 codepoints, every line ending in a 5-
+    // codepoint ZWJ family followed by '\n'. Part 1 replays appendText's
+    // per-line cursor traffic (align at the new end, align at the previous
+    // end) and additionally queries positions INSIDE the trailing family so
+    // the cluster walk is exercised on every line, asserting the snapped
+    // values. Part 2 is the complexity assertion, measured in WORK, not time:
+    // llstring.cpp counts every codepoint the bounded lookup visits
+    // (test-only sink, wstring_set_grapheme_lookup_step_sink). The same fixed batch of in-cluster
+    // queries runs on the 1x document and on a 4x document (8,000 lines);
+    // the step deltas must be exactly equal (the lookup only ever reads the
+    // family it is in, never the document), and the per-query cost must be
+    // under a small constant. Wall-clock time is logged for information only.
+    namespace
+    {
+        LLWString build_family_doc(size_t lines)
+        {
+            LLWString line;
+            for (size_t i = 0; i < 95; ++i)
+                line.push_back((llwchar)('a' + (i % 26)));
+            line.insert(line.end(), { (llwchar)0x1F468, (llwchar)0x200D,
+                                      (llwchar)0x1F469, (llwchar)0x200D,
+                                      (llwchar)0x1F467 });
+            line.push_back((llwchar)'\n');
+            LLWString doc;
+            doc.reserve(line.size() * lines);
+            for (size_t l = 0; l < lines; ++l)
+                doc += line;
+            return doc;
+        }
+
+        // One batch of queries: for `count` evenly spaced lines, align
+        // forward/backward from the four interior positions of that line's
+        // trailing family. Returns a checksum so the work cannot be elided.
+        size_t family_query_batch(const LLWString& doc, size_t line_len, size_t lines, size_t count)
+        {
+            size_t checksum = 0;
+            const size_t stride = std::max(size_t(1), lines / count);
+            for (size_t l = 0; l < lines; l += stride)
+            {
+                const size_t fam_start = (l + 1) * line_len - 6;   // index of U+1F468
+                for (size_t off = 1; off <= 4; ++off)
+                {
+                    checksum += wstring_grapheme_align_forward(doc, fam_start + off);
+                    checksum += wstring_grapheme_align_backward(doc, fam_start + off);
+                }
+            }
+            return checksum;
+        }
+
+        struct BatchCost
+        {
+            U64    steps;     // codepoints visited by the bounded lookup
+            size_t queries;   // lookups issued
+            double ms;        // informational only
+        };
+
+        // RAII: install a local step counter as the llstring lookup sink for
+        // the duration of a measurement and always uninstall it afterwards
+        // (including on a thrown tut::failure), so no dangling pointer is
+        // left behind for later tests in this process.
+        struct StepSinkScope
+        {
+            U64 mSteps = 0;
+            StepSinkScope()  { wstring_set_grapheme_lookup_step_sink(&mSteps); }
+            ~StepSinkScope() { wstring_set_grapheme_lookup_step_sink(nullptr); }
+            StepSinkScope(const StepSinkScope&) = delete;
+            StepSinkScope& operator=(const StepSinkScope&) = delete;
+        };
+
+        BatchCost measure_batch(const LLWString& doc, size_t line_len, size_t lines,
+                                size_t count, size_t& checksum)
+        {
+            StepSinkScope sink;
+            const auto t0 = std::chrono::steady_clock::now();
+            checksum += family_query_batch(doc, line_len, lines, count);
+            const double ms = std::chrono::duration<double, std::milli>(
+                std::chrono::steady_clock::now() - t0).count();
+            const size_t stride = std::max(size_t(1), lines / count);
+            const size_t queried_lines = (lines + stride - 1) / stride;
+            return { sink.mSteps, queried_lines * 8, ms };
+        }
+    }
+
+    template<> template<>
+    void llstring_utf_object_t::test<108>()
+    {
+        const size_t LINES = 2000;
+        const size_t LINE_LEN = 101;   // 95 ascii + 5-codepoint family + '\n'
+
+        // ---- Part 1: replay + correctness of in-cluster snaps -------------
+        {
+            LLWString line = build_family_doc(1);
+            ensure_equals("line length", line.size(), LINE_LEN);
+            LLWString doc;
+            doc.reserve(LINE_LEN * LINES);
+            for (size_t l = 0; l < LINES; ++l)
+            {
+                const size_t prev_end = doc.size();
+                doc += line;
+                // appendAndHighlightTextImpl's old per-line traffic
+                ensure_equals("end stays end",
+                              wstring_grapheme_align_forward(doc, doc.size()), doc.size());
+                ensure_equals("prev end stays (on '\\n' boundary)",
+                              wstring_grapheme_align_backward(doc, prev_end), prev_end);
+                // Inside this line's trailing family: [fam, fam+5) then '\n'.
+                const size_t fam = doc.size() - 6;
+                for (size_t off = 1; off <= 4; ++off)
+                {
+                    ensure_equals("mid-family forward -> family end",
+                                  wstring_grapheme_align_forward(doc, fam + off), fam + 5);
+                    ensure_equals("mid-family backward -> family start",
+                                  wstring_grapheme_align_backward(doc, fam + off), fam);
+                }
+                ensure_equals("family start unchanged",
+                              wstring_grapheme_align_backward(doc, fam), fam);
+                ensure_equals("family end unchanged",
+                              wstring_grapheme_align_forward(doc, fam + 5), fam + 5);
+            }
+            ensure_equals("doc size", doc.size(), LINE_LEN * LINES);
+        }
+
+        // ---- Part 2: per-query work must not grow with document length ----
+        {
+            const LLWString doc1 = build_family_doc(LINES);
+            const LLWString doc4 = build_family_doc(LINES * 4);
+            const size_t QUERY_LINES = 200;   // 200 lines x 8 queries per batch
+            size_t checksum = 0;
+
+            const BatchCost c1 = measure_batch(doc1, LINE_LEN, LINES,     QUERY_LINES, checksum);
+            const BatchCost c4 = measure_batch(doc4, LINE_LEN, LINES * 4, QUERY_LINES, checksum);
+            ensure("checksum used", checksum > 0);
+            ensure_equals("same number of queries", c4.queries, c1.queries);
+            ensure("batch did work", c1.steps > 0);
+
+            // Exactly equal: every query backtracks at most 4 codepoints to
+            // the family start and walks the 5-codepoint family forward; the
+            // document around it is never read.
+            std::ostringstream oss;
+            oss << "bounded lookup work depends on document length: 1x doc visited "
+                << c1.steps << " codepoints, 4x doc visited " << c4.steps
+                << " (" << c1.queries << " in-cluster queries each)";
+            ensure_equals(oss.str(), c4.steps, c1.steps);
+
+            // Bounded per query: <= 4 back + 5 forward = 9 codepoints here.
+            const U64 per_query_x10 = (c1.steps * 10) / c1.queries;
+            std::ostringstream oss2;
+            oss2 << "bounded lookup visits too many codepoints per in-cluster query: "
+                 << per_query_x10 / 10 << "." << per_query_x10 % 10 << " (bound 16)";
+            ensure(oss2.str(), c1.steps <= c1.queries * 16);
+
+            // Timing is informational only (runs in every viewer build; wall
+            // clock must never gate the result).
+            LL_INFOS("TextLinear") << "test<108> in-cluster align batch: 1x doc "
+                                   << c1.ms << " ms, 4x doc " << c4.ms << " ms ("
+                                   << c1.queries << " queries, " << c1.steps
+                                   << " codepoints visited each)" << LL_ENDL;
+        }
+    }
+
+    // [TextLinear] Invariant behind the LLTextBase::setCursorPos fast path:
+    // a position whose own codepoint is ASCII can never be strictly inside an
+    // emoji cluster (every non-first cluster element is >= U+0080), so
+    // alignment is the identity there and the editor may skip it. Pin this
+    // against the full-scan cluster list over the whole corpus so a future
+    // change to the cluster grammar (e.g. accepting an ASCII continuation)
+    // fails here instead of silently parking carets mid-cluster.
+    template<> template<>
+    void llstring_utf_object_t::test<109>()
+    {
+        size_t checked = 0;
+        for (const LLWString& ws : emoji_corpus())
+        {
+            const EmojiClusterList full = wstring_find_emoji_clusters(ws);
+            for (size_t p = 0; p < ws.size(); ++p)
+            {
+                if (ws[p] >= 0x80)
+                    continue;
+                ++checked;
+                ensure_equals(describe(ws, p, "ascii align_forward identity"),
+                              wstring_grapheme_align_forward(ws, p, full), p);
+                ensure_equals(describe(ws, p, "ascii align_backward identity"),
+                              wstring_grapheme_align_backward(ws, p, full), p);
+                for (const auto& run : full)
+                {
+                    ensure(describe(ws, p, "ascii not strictly inside cluster"),
+                           !(run.first < p && p < run.second));
+                }
+            }
+        }
+        ensure("ascii positions checked", checked > 300);
     }
 }

@@ -672,12 +672,28 @@ using EmojiClusterList = std::vector<std::pair<size_t, size_t>>;
 LL_COMMON_API EmojiClusterList
 wstring_find_emoji_clusters(LLWStringView wstr);
 
-// Cost note for the cluster-aware helpers below: the single-argument forms
-// rebuild the cluster list internally on every call (an O(N) scan of `wstr`).
-// Fine for one-off cursor moves; expensive in tight loops over the same text.
-// Callers making multiple cluster-aware queries on the same wstring should
-// call wstring_find_emoji_clusters once and feed the result into the
-// three-argument overloads, amortising the scan across the batch.
+// [TextLinear] TEST-ONLY instrumentation. While `sink` is non-null, every
+// bounded single-position lookup below adds the number of codepoints it
+// visited (backtrack + forward walk) to *sink, once per lookup. Pass nullptr
+// to uninstall. NOT thread-safe: the pointer is a plain static and the add is
+// unsynchronised; install it only from a single-threaded test, and uninstall
+// before the counter goes out of scope. Production leaves it null, where the
+// cost is one predictable branch. Used by the llstring_utf tests to assert the
+// per-lookup cost is independent of document length without wall-clock timing.
+LL_COMMON_API void wstring_set_grapheme_lookup_step_sink(U64* sink);
+
+// Cost note for the cluster-aware helpers below. [TextLinear]: the
+// single-position forms (no cluster list) are BOUNDED -- O(1) when `pos` sits
+// on plain text, at a document boundary, or on a standalone / cluster-leading
+// pictograph (including runs of unjoined emoji), and O(k) only when `pos` is
+// inside a run of k ZWJ / extender / regional-indicator codepoints (inherent:
+// the answer is that run's far edge). They never scan the whole string, yet
+// return exactly what the cluster-list overloads return for the full
+// wstring_find_emoji_clusters(wstr) list (pinned by the llstring_utf tests,
+// including lone surrogates, out-of-range llwchar values and 100k-codepoint
+// adversarial runs). The cluster-list overloads remain for callers that
+// already hold a cluster list (the font shaper, selection walkers) or need
+// many lookups against the same precomputed list.
 
 // Cluster-aware cursor stepping. Move one codepoint forward/backward from
 // `pos`, then — if that single-codepoint step landed strictly inside an emoji

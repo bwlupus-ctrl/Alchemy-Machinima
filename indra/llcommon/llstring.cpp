@@ -828,6 +828,7 @@ static size_t advance_shaping_run(const llwchar* p, size_t n, size_t start)
 
 EmojiClusterList wstring_find_emoji_clusters(LLWStringView wstr)
 {
+    LL_PROFILE_ZONE_SCOPED_CATEGORY_STRING; // [TextLinear] O(N) whole-string scan; keep visible in Tracy
     EmojiClusterList runs;
     const llwchar* p = wstr.data();
     const size_t n = wstr.size();
@@ -857,6 +858,131 @@ EmojiClusterList wstring_find_emoji_clusters(LLWStringView wstr)
     return runs;
 }
 
+// [TextLinear] Local (bounded) cluster lookup.
+//
+// The single-position helpers below (align / step / range_at without a
+// precomputed cluster list) used to call wstring_find_emoji_clusters on the
+// whole string, i.e. O(N) per cursor move. LLTextBase::setCursorPos runs
+// one of them on every programmatic append, which made multi-line
+// setText/appendText O(lines x document length) -- the 350 ms Ghost Studio
+// hitch in doc/GHOST_PERF_AUDIT_FABLE.md.
+//
+// Correctness argument. The full walk visits every index that is not
+// STRICTLY inside a cluster it emits (it only ever jumps over cluster
+// interiors). The non-first codepoints a cluster can contain, per
+// advance_shaping_run, are exactly:
+//   (a) ZWJ (U+200D) and the extenders (VS-15/16, keycap combiner, skin
+//       tones, tag chars), in any context;
+//   (b) a pictograph base, ONLY when immediately preceded by a ZWJ;
+//   (c) a regional indicator, ONLY as the second of an RI pair (preceded by
+//       an RI) or as a ZWJ-joined base (case b).
+// So an index s is a guaranteed resync point (visited by the full walk)
+// when p[s] is none of (a)-(c): any non-emoji codepoint (ASCII, CJK,
+// Latin-1, surrogates, out-of-range values), or a pictograph base whose
+// predecessor is not a ZWJ (and, for an RI, not an RI either). Re-running
+// the same greedy walk from s with the same is_shaping_starter /
+// advance_shaping_run primitives on the full buffer reproduces the full
+// scan's decomposition for everything at or after s, bit for bit --
+// including RI pairing parity over arbitrarily long flag runs, which a
+// fixed window could not guarantee.
+//
+// Complexity guarantee (k = length of the maximal contiguous run of
+// ZWJ / extender / RI / ZWJ-joined-base codepoints that contains pos; the
+// forward walk additionally covers the cluster that ends after pos):
+//   - O(1) when p[pos] (or its predecessor) is a non-emoji codepoint or a
+//     standalone / cluster-starting pictograph -- this includes plain text,
+//     the end of a document, and a run of 100k consecutive emoji with no
+//     joiners (each is its own resync point);
+//   - O(k) inside a joiner/extender/RI run. This is inherent, not slack:
+//     the correct answer for a mid-run position is the run's far edge (the
+//     cluster end or start, or the RI pair boundary whose parity depends on
+//     the run start), so any exact implementation must read the run. Only
+//     a document that IS one such run (100k RIs, 100k VS-16s) degenerates
+//     to O(N), and then only for queries inside it.
+// Never O(document) for positions outside such a run.
+static inline bool is_regional_indicator(llwchar c)
+{
+    return c >= 0x1F1E6 && c <= 0x1F1FF;
+}
+
+// True when index s might be strictly inside a cluster, i.e. we must keep
+// backtracking. False means s is a guaranteed resync point (see above).
+static inline bool may_be_cluster_interior(const llwchar* p, size_t s)
+{
+    const llwchar c = p[s];
+    if (c == 0x200D || LLStringOps::isEmojiClusterExtender(c))
+        return true;                                      // case (a)
+    if (!LLStringOps::isPictographBase(c))
+        return false;                                     // non-emoji: resync
+    if (s == 0)
+        return false;                                     // nothing before it
+    const llwchar prev = p[s - 1];
+    if (prev == 0x200D)
+        return true;                                      // case (b)
+    return is_regional_indicator(c) && is_regional_indicator(prev); // case (c)
+}
+
+// [TextLinear] Test-only work sink for the bounded lookup: when non-null, the
+// total number of codepoints a lookup visited (backtrack + forward walk) is
+// added to it once per lookup. Production cost is one predictable branch on a
+// null pointer. Not thread-safe by design: the llstring_utf tests install a
+// local counter, run their batches on the test thread, and uninstall it.
+static U64* sGraphemeLookupStepSink = nullptr;
+
+void wstring_set_grapheme_lookup_step_sink(U64* sink)
+{
+    sGraphemeLookupStepSink = sink;
+}
+
+// Finds the multi-codepoint cluster [begin, end) with begin <= pos < end,
+// if any (inclusive of the leading boundary, like wstring_emoji_range_at).
+// Returns false when pos is out of range or not covered by a cluster.
+static bool find_emoji_cluster_containing(const llwchar* p, size_t n, size_t pos,
+                                          size_t& begin, size_t& end)
+{
+    if (pos >= n)
+        return false;
+
+    U64 steps = 0;
+    bool found = false;
+
+    // Walk back to the nearest resync boundary (see comment above).
+    size_t s = pos;
+    while (s > 0 && may_be_cluster_interior(p, s))
+    {
+        --s;
+        ++steps;
+    }
+
+    // Same greedy walk as wstring_find_emoji_clusters, from s until we pass pos.
+    size_t i = s;
+    while (i <= pos)
+    {
+        if (is_shaping_starter(p, n, i))
+        {
+            const size_t e = advance_shaping_run(p, n, i);
+            steps += e - i;
+            if (e > i + 1 && pos < e)
+            {
+                begin = i;
+                end = e;
+                found = true;
+                break;
+            }
+            i = e;
+        }
+        else
+        {
+            ++i;
+            ++steps;
+        }
+    }
+
+    if (sGraphemeLookupStepSink)
+        *sGraphemeLookupStepSink += steps;
+    return found;
+}
+
 size_t wstring_step_grapheme_forward(LLWStringView wstr, size_t pos,
                                      const EmojiClusterList& clusters)
 {
@@ -877,7 +1003,15 @@ size_t wstring_step_grapheme_forward(LLWStringView wstr, size_t pos,
 
 size_t wstring_step_grapheme_forward(LLWStringView wstr, size_t pos)
 {
-    return wstring_step_grapheme_forward(wstr, pos, wstring_find_emoji_clusters(wstr));
+    // [TextLinear] bounded; identical result to the cluster-list overload.
+    const size_t n = wstr.size();
+    if (pos >= n)
+        return n;
+    const size_t next = pos + 1;
+    size_t b, e;
+    if (find_emoji_cluster_containing(wstr.data(), n, next, b, e) && b < next)
+        return e;
+    return next;
 }
 
 size_t wstring_step_grapheme_backward(LLWStringView wstr, size_t pos,
@@ -898,7 +1032,14 @@ size_t wstring_step_grapheme_backward(LLWStringView wstr, size_t pos,
 
 size_t wstring_step_grapheme_backward(LLWStringView wstr, size_t pos)
 {
-    return wstring_step_grapheme_backward(wstr, pos, wstring_find_emoji_clusters(wstr));
+    // [TextLinear] bounded; identical result to the cluster-list overload.
+    if (pos == 0)
+        return 0;
+    const size_t prev = pos - 1;
+    size_t b, e;
+    if (find_emoji_cluster_containing(wstr.data(), wstr.size(), prev, b, e) && b < prev)
+        return b;
+    return prev;
 }
 
 size_t wstring_grapheme_align_backward(LLWStringView wstr, size_t pos,
@@ -918,7 +1059,13 @@ size_t wstring_grapheme_align_backward(LLWStringView wstr, size_t pos,
 
 size_t wstring_grapheme_align_backward(LLWStringView wstr, size_t pos)
 {
-    return wstring_grapheme_align_backward(wstr, pos, wstring_find_emoji_clusters(wstr));
+    // [TextLinear] bounded; identical result to the cluster-list overload.
+    if (pos == 0 || pos >= wstr.size())
+        return pos;
+    size_t b, e;
+    if (find_emoji_cluster_containing(wstr.data(), wstr.size(), pos, b, e) && b < pos)
+        return b;
+    return pos;
 }
 
 size_t wstring_grapheme_align_forward(LLWStringView wstr, size_t pos,
@@ -938,7 +1085,13 @@ size_t wstring_grapheme_align_forward(LLWStringView wstr, size_t pos,
 
 size_t wstring_grapheme_align_forward(LLWStringView wstr, size_t pos)
 {
-    return wstring_grapheme_align_forward(wstr, pos, wstring_find_emoji_clusters(wstr));
+    // [TextLinear] bounded; identical result to the cluster-list overload.
+    if (pos >= wstr.size())
+        return wstr.size();
+    size_t b, e;
+    if (find_emoji_cluster_containing(wstr.data(), wstr.size(), pos, b, e) && b < pos)
+        return e;
+    return pos;
 }
 
 std::pair<size_t, size_t> wstring_emoji_range_at(LLWStringView wstr, size_t pos,
@@ -966,7 +1119,15 @@ std::pair<size_t, size_t> wstring_emoji_range_at(LLWStringView wstr, size_t pos,
 
 std::pair<size_t, size_t> wstring_emoji_range_at(LLWStringView wstr, size_t pos)
 {
-    return wstring_emoji_range_at(wstr, pos, wstring_find_emoji_clusters(wstr));
+    // [TextLinear] bounded; identical result to the cluster-list overload.
+    if (pos >= wstr.size())
+        return { pos, pos };
+    size_t b, e;
+    if (find_emoji_cluster_containing(wstr.data(), wstr.size(), pos, b, e))
+        return { b, e };
+    return LLStringOps::isPictographBase(wstr[pos])
+        ? std::make_pair(pos, pos + 1)
+        : std::make_pair(pos, pos);
 }
 
 #if LL_WINDOWS

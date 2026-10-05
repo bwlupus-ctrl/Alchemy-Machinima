@@ -252,6 +252,7 @@ LLTextBase::LLTextBase(const LLTextBase::Params &p)
 // [/SL:KB]
     mBGVisible(p.bg_visible),
     mScroller(NULL),
+    mAppendCursorBatch(false),      // [TextLinear]
     mStyleDirty(true)
 {
     if(p.allow_scroll)
@@ -1054,6 +1055,7 @@ void LLTextBase::drawText()
 
 S32 LLTextBase::insertStringNoUndo(S32 pos, const LLWString &wstr, LLTextBase::segment_vec_t* segments )
 {
+    LL_PROFILE_ZONE_SCOPED_CATEGORY_UI; // [TextLinear]
     beforeValueChange();
 
     S32 old_len = getLength();      // length() returns character length
@@ -2414,6 +2416,8 @@ void LLTextBase::createUrlContextMenu(S32 x, S32 y, const std::string &in_url)
 
 void LLTextBase::setText(const LLStringExplicit &utf8str, const LLStyle::Params& input_params)
 {
+    LL_PROFILE_ZONE_SCOPED_CATEGORY_UI; // [TextLinear]
+
     // clear out the existing text and segments
     getViewModel()->setDisplay(LLWStringUtil::null);
 
@@ -2458,9 +2462,71 @@ static LLUIImagePtr image_from_icon_name(const std::string& icon_name)
 }
 
 
+// [TextLinear] RAII scope for the once-per-append cursor/selection
+// save+restore (audit A3). Previously appendAndHighlightTextImpl did this for
+// every '\n'-separated chunk: deselect, setCursorPos(old_length), insert,
+// restore -- two setCursorPos calls per line, each running a grapheme
+// alignment over the whole document plus a font-measured updateCursorXPos.
+// Hoisting it here keeps the externally visible contract identical (a user
+// selection survives the append; a cursor parked at the end stays at the end;
+// any other cursor keeps its index; mScrollNeeded is raised exactly as before)
+// while paying it once per appendText instead of 2 x lines.
+struct LLTextBase::AppendCursorScope
+{
+    AppendCursorScope(LLTextBase& editor)
+    :   mEditor(editor),
+        mNested(editor.mAppendCursorBatch),
+        mSelectionStart(editor.mSelectionStart),
+        mSelectionEnd(editor.mSelectionEnd),
+        mWasSelecting(editor.mIsSelecting),
+        mCursorPos(editor.mCursorPos),
+        mCursorWasAtEnd(editor.mCursorPos == editor.getLength())
+    {
+        if (mNested)
+            return;
+        mEditor.deselect();
+        mEditor.setCursorPos(mEditor.getLength());
+        mEditor.mAppendCursorBatch = true;
+    }
+
+    ~AppendCursorScope()
+    {
+        if (mNested)
+            return;
+        mEditor.mAppendCursorBatch = false;
+        // Set the cursor and scroll position -- same three-way rule the
+        // per-chunk code used.
+        if (mSelectionStart != mSelectionEnd)
+        {
+            mEditor.mSelectionStart = mSelectionStart;
+            mEditor.mSelectionEnd = mSelectionEnd;
+            mEditor.mIsSelecting = mWasSelecting;
+            mEditor.setCursorPos(mCursorPos);
+        }
+        else if (mCursorWasAtEnd)
+        {
+            mEditor.setCursorPos(mEditor.getLength());
+        }
+        else
+        {
+            mEditor.setCursorPos(mCursorPos);
+        }
+    }
+
+    LLTextBase& mEditor;
+    bool        mNested;
+    S32         mSelectionStart;
+    S32         mSelectionEnd;
+    bool        mWasSelecting;
+    S32         mCursorPos;
+    bool        mCursorWasAtEnd;
+};
+
 void LLTextBase::appendTextImpl(const std::string& new_text, const LLStyle::Params& input_params, bool force_slurl)
 {
     LL_PROFILE_ZONE_SCOPED_CATEGORY_UI;
+    AppendCursorScope cursor_scope(*this); // [TextLinear] one save/restore for the whole append
+
     LLStyle::Params style_params(getStyleParams());
     style_params.overwriteFrom(input_params);
 
@@ -2717,6 +2783,14 @@ void LLTextBase::appendWidget(const LLInlineViewSegment::Params& params, const s
 
 void LLTextBase::appendAndHighlightTextImpl(const std::string &new_text, S32 highlight_part, const LLStyle::Params& style_params, e_underline underline_link)
 {
+    LL_PROFILE_ZONE_SCOPED_CATEGORY_UI; // [TextLinear]
+
+    // [TextLinear] When called inside appendTextImpl (the only in-tree path),
+    // AppendCursorScope has already saved selection+cursor and parked the
+    // cursor at the end; the per-chunk save/restore below is skipped. The
+    // fallback keeps the old behaviour for any direct caller.
+    const bool batch = mAppendCursorBatch;
+
     // Save old state
     S32 selection_start = mSelectionStart;
     S32 selection_end = mSelectionEnd;
@@ -2725,9 +2799,11 @@ void LLTextBase::appendAndHighlightTextImpl(const std::string &new_text, S32 hig
     S32 old_length = getLength();
     bool cursor_was_at_end = (mCursorPos == old_length);
 
-    deselect();
-
-    setCursorPos(old_length);
+    if (!batch)
+    {
+        deselect();
+        setCursorPos(old_length);
+    }
 
     if (mParseHighlights)
     {
@@ -2799,6 +2875,11 @@ void LLTextBase::appendAndHighlightTextImpl(const std::string &new_text, S32 hig
         }
 
         insertStringNoUndo(getLength(), wide_text, &segments);
+    }
+
+    if (batch)
+    {
+        return; // [TextLinear] AppendCursorScope restores once at the end of appendTextImpl
     }
 
     // Set the cursor and scroll position
@@ -3476,6 +3557,7 @@ bool LLTextBase::setCursor(S32 row, S32 column)
 
 bool LLTextBase::setCursorPos(S32 cursor_pos, bool keep_cursor_offset)
 {
+    LL_PROFILE_ZONE_SCOPED_CATEGORY_UI; // [TextLinear]
     S32 new_cursor_pos = cursor_pos;
     if (new_cursor_pos != mCursorPos)
     {
@@ -3486,11 +3568,24 @@ bool LLTextBase::setCursorPos(S32 cursor_pos, bool keep_cursor_offset)
         // parks inside a ZWJ family / flag pair / keycap. No-op when already
         // on a boundary, so arrow-key callers (already grapheme-stepped) and
         // plain ASCII positions pass through unchanged.
-        const bool fwd = new_cursor_pos >= mCursorPos;
+        //
+        // [TextLinear] Fast path (audit A2): a document boundary (0 or
+        // >= length) can never be mid-cluster, and neither can a position
+        // whose own codepoint is ASCII -- every non-first codepoint of an
+        // emoji cluster (ZWJ, VS, keycap mark, skin tone, tag, joined base,
+        // second regional indicator) is >= U+0080. Programmatic appends
+        // always hit one of these, so they skip alignment entirely. The
+        // alignment itself is also bounded now (llstring.cpp), so the
+        // remaining calls are O(cluster), not O(document).
         const LLWString& text = getWText();
-        new_cursor_pos = (S32)(fwd
-            ? wstring_grapheme_align_forward(text, (size_t)new_cursor_pos)
-            : wstring_grapheme_align_backward(text, (size_t)new_cursor_pos));
+        const S32 text_len = (S32)text.size();
+        if (new_cursor_pos > 0 && new_cursor_pos < text_len && text[new_cursor_pos] >= 0x80)
+        {
+            const bool fwd = new_cursor_pos >= mCursorPos;
+            new_cursor_pos = (S32)(fwd
+                ? wstring_grapheme_align_forward(text, (size_t)new_cursor_pos)
+                : wstring_grapheme_align_backward(text, (size_t)new_cursor_pos));
+        }
     }
 
     mCursorPos = llclamp(new_cursor_pos, 0, (S32)getLength());

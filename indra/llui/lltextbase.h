@@ -725,6 +725,7 @@ protected:
     // avatar names are looked up.
     void replaceUrl(const std::string &url, const std::string &label, const std::string& icon);
 
+    struct AppendCursorScope;       // [TextLinear] once-per-append cursor/selection save+restore (lltextbase.cpp)
     void                            appendTextImpl(const std::string &new_text, const LLStyle::Params& input_params = LLStyle::Params(), bool force_slurl = false);
     void                            appendAndHighlightTextImpl(const std::string &new_text, S32 highlight_part, const LLStyle::Params& style_params, e_underline underline_link = e_underline::UNDERLINE_ALWAYS);
     S32 normalizeUri(std::string& uri);
@@ -826,6 +827,12 @@ protected:
     bool                        mAlwaysShowIcons;
 
     bool                        mSkipLinkUnderline;
+
+    // [TextLinear] appendTextImpl saves/restores selection+cursor once for the
+    // whole append; while true, appendAndHighlightTextImpl skips its own
+    // per-chunk save/restore (which cost two whole-document setCursorPos
+    // calls per line and made multi-line appends quadratic).
+    bool                        mAppendCursorBatch;
 
     // support widgets
     LLHandle<LLContextMenu>     mPopupMenuHandle;
