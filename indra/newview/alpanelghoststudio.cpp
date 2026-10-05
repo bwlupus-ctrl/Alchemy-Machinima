@@ -98,6 +98,17 @@ const char* kind_name(ALGhostStudio::EBackingKind kind)
     return kind == ALGhostStudio::BACKING_ENTITY_CLONE ? "Entity" : "Overlay";
 }
 
+// [GhostPanelPerf] Debug switch for stale-UI reports: restores the old every-frame
+// refresh behaviour (signature compares, ungated detail/crowd blocks, 0.5 s rig
+// diagnostics with live columns). Cached control: no settings-map lookup per frame.
+bool ghost_refresh_always()
+{
+    static LLCachedControl<bool> refresh_always(
+        gSavedSettings, "GhostStudioRefreshAlways", false);
+    // GhostStudioRefreshAlways is an ALIAS of the global UIRefreshForceAlways (either enables it)
+    return refresh_always || alUiRefreshForceAlways();
+}
+
 const char* state_name(const ALGhostStudio::Instance& inst)
 {
     switch (inst.mState)
@@ -349,6 +360,7 @@ bool ALPanelGhostStudio::postBuild()
     mLiveBtn    = getChild<LLButton>("btn_live");
     mPoseStatus = getChild<LLTextBox>("pose_status");
     mRigDiagnostics = getChild<LLTextEditor>("rig_diagnostics");
+    mRigDiagRefreshBtn = getChild<LLButton>("btn_rig_diag_refresh"); // [GhostPanelPerf]
 
     mArrayCount   = getChild<LLSpinCtrl>("array_count_spinner");
     mArraySpacing = getChild<LLSpinCtrl>("array_spacing_spinner");
@@ -468,7 +480,12 @@ bool ALPanelGhostStudio::postBuild()
     mDirectedAnimEdit->setCommitCallback([this](LLUICtrl*, const LLSD&) { onDirectedAnimCommit(); });
     mAnimationLibraryCombo->setCommitCallback([this](LLUICtrl*, const LLSD&) { onAnimationLibraryCommit(); });
     mAnimationLibraryRefreshBtn->setCommitCallback(
-        [this](LLUICtrl*, const LLSD&) { populateAnimationLibrary(); });
+        [this](LLUICtrl*, const LLSD&)
+        {
+            // explicit re-scan (a click, not a draw): shared cache, then mirror it
+            ALGhostStudio::instance().scanAnimLibrary();
+            populateAnimationLibrary();
+        });
     mLoopModeCombo->setCommitCallback([this](LLUICtrl*, const LLSD&) { onLoopModeCommit(); });
     mAnimSyncBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickAnimSync(); });
     mLensGazeCheck->setCommitCallback(
@@ -521,6 +538,8 @@ bool ALPanelGhostStudio::postBuild()
 
     mFreezeBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickFreeze(); });
     mLiveBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickLive(); });
+    mRigDiagRefreshBtn->setCommitCallback(
+        [this](LLUICtrl*, const LLSD&) { onClickRigDiagRefresh(); }); // [GhostPanelPerf]
 
     mArrayLineBtn->setCommitCallback([this](LLUICtrl*, const LLSD&)
         { onClickArray(ALGhostStudio::FORMATION_LINE); });
@@ -670,7 +689,71 @@ void ALPanelGhostStudio::onVisibilityChange(bool new_visibility)
         exitEditMode();
         releaseOwnedCrowdPlacement();
     }
+    else
+    {
+        // [GhostPanelPerf] The first frame after a re-show is a FULL refresh, so
+        // correctness never depends on the gates having seen every revision while
+        // hidden (the host may have been a hidden Director tab, or scrolled away).
+        mListGate.reset();
+        mSourceGate.reset();
+        mLookTargetGate.reset();
+        mDetailGate.reset();
+        mCrowdGate.reset();
+        mReadoutClock.forceDue();
+        mStatusClock.forceDue();
+        mDetailDirty = true;
+        mCrowdDirty = true;
+        mRigDiagShown = false;
+        noteListSelectionChanged();
+        mAnimLibraryShownRev = 0; // re-mirror the shared library when directed controls show
+    }
     LLPanel::onVisibilityChange(new_visibility);
+}
+
+// [GhostPanelPerf] Cached selection snapshot. Rebuilt only when the list selection
+// (epoch, bumped at every programmatic change and by onListSelect), the shared
+// selection, or the instance model moved; num-selected / first-index are an
+// allocation-free safety net for a missed epoch bump.
+const ALPanelGhostStudio::SelectionCache& ALPanelGhostStudio::selection()
+{
+    ALGhostStudio& studio = ALGhostStudio::instance();
+    const U64 instance_rev = studio.getInstanceRevision();
+    const U64 shared_rev = studio.getSelectionRevision();
+    const S32 num_selected = mList->getNumSelected();
+    const S32 first_index = mList->getFirstSelectedIndex();
+    SelectionCache& cache = mSel;
+    // The gate revalidates on any revision / list-state change AND, via its built-in
+    // 1 s fallback, at least once a second even if a bump was missed.
+    if (!mSelectionGate.changed({ mSelectionEpoch, instance_rev, shared_rev,
+                                  (U64)(S64)num_selected, (U64)(S64)first_index }))
+    {
+        return cache;
+    }
+    cache.mEpoch = mSelectionEpoch;
+    cache.mInstanceRev = instance_rev;
+    cache.mSharedRev = shared_rev;
+    cache.mNumSelected = num_selected;
+    cache.mFirstIndex = first_index;
+    ++cache.mStamp;
+    cache.mRow = selectedListValue();
+    cache.mInstance = selectedInstance();
+    cache.mInstances = selectedInstances();
+    cache.mAnyGroup = false;
+    cache.mAnyEntity = false;
+    for (const LLUUID& id : cache.mInstances)
+    {
+        if (studio.groupForMember(id))
+        {
+            cache.mAnyGroup = true;
+        }
+        const ALGhostStudio::Instance* selected = studio.getInstance(id);
+        if (selected && selected->mKind == ALGhostStudio::BACKING_ENTITY_CLONE &&
+            selected->mEntityId.notNull())
+        {
+            cache.mAnyEntity = true;
+        }
+    }
+    return cache;
 }
 
 // ---------------------------------------------------------------------------
@@ -833,13 +916,19 @@ bool ALPanelGhostStudio::applyUnitTransform(
 // ---------------------------------------------------------------------------
 void ALPanelGhostStudio::draw()
 {
+    // [GhostPanelPerf] named Tracy zone ("ALPanelGhostStudio::draw") so the next
+    // regression shows up under this panel instead of inside LLFloater::draw.
+    // draw() only consults revisions / clocks and runs diff-guarded writes; see
+    // aluirefresh.h and CLAUDE.md "UI PANELS MUST NOT DO WORK IN draw()".
+    LL_PROFILE_ZONE_SCOPED_CATEGORY_UI;
     ALGhostStudio& studio = ALGhostStudio::instance();
+    // Sample the readout clocks ONCE per draw so every refresher shares the tick.
+    mReadoutTick = mReadoutClock.due();
+    mStatusTick = mStatusClock.due();
 
-    // keep the master check honest against external state
-    if (mShowAllCheck->get() != studio.getShowAll())
-    {
-        mShowAllCheck->set(studio.getShowAll());
-    }
+    // keep the master check honest against external state (diff-guarded, forced:
+    // a check box that was merely clicked must still follow the model)
+    setValueIfChanged(mShowAllCheck, LLSD(studio.getShowAll()), true);
 
     // [R2-3] if our edit tool was taken away (build tools, another picker, Esc
     // inside the tool), reflect that in the toggle instead of a stale "on" --
@@ -851,15 +940,12 @@ void ALPanelGhostStudio::draw()
     mEditMode =
         edit_tool->isEditModeActive() &&
         edit_tool->editOwner() == mPlacementOwner;
-    if (mEditModeCheck->get() != mEditMode)
-    {
-        mEditModeCheck->set(mEditMode);
-    }
+    setValueIfChanged(mEditModeCheck, LLSD(mEditMode), true);
     // hint line follows the mode (diffed; tells the hands what they can do)
     if (mHintEdit != mEditMode)
     {
         mHintEdit = mEditMode;
-        mHint->setText(mEditMode
+        setTextIfChanged(mHint, mEditMode
             ? std::string("Click a ghost to select \xC2\xB7 move/rotate with the gizmo \xC2\xB7 scale below \xC2\xB7 Del removes \xC2\xB7 Esc exits")
             : std::string("Styled copies of cast bodies: place, pose, multiply. Double-click clones to show/hide; groups to expand"));
     }
@@ -867,11 +953,10 @@ void ALPanelGhostStudio::draw()
     refreshSourceCombo();
     refreshList();
     refreshLookTargetCombo();
-    refreshAnimationLibrary();
 
     // [R2-3] mirror the SHARED selection (the in-world edit tool writes it;
     // both panel hosts follow). selectByID is programmatic -- no commit loop.
-    const LLUUID shared_sel = studio.getSelected();
+    const LLUUID& shared_sel = studio.getSelected();
     const U64 shared_selection_revision =
         studio.getSelectionRevision();
     LLUUID desired_row = shared_sel;
@@ -892,17 +977,26 @@ void ALPanelGhostStudio::draw()
             mList->selectByID(desired_row);
         }
         mObservedSelectionRevision = shared_selection_revision;
+        noteListSelectionChanged();
     }
-    else if (desired_row != selectedListValue())
+    else
     {
-        mList->deselectAllItems(true);
-        if (desired_row.isNull())
+        // [GhostPanelPerf] compare against the cached row value (no LLSD/UUID
+        // temporaries per frame); the cache is keyed on the list selection.
+        const LLUUID listed_row = selection().mRow;
+        if (desired_row != listed_row)
         {
-            // already cleared
-        }
-        else
-        {
-            mList->selectByID(desired_row);
+            mList->deselectAllItems(true);
+            if (desired_row.notNull())
+            {
+                mList->selectByID(desired_row);
+            }
+            // Only invalidate when the list really changed: a desired row that is
+            // not in the list must not churn the cache (and the detail gate) per frame.
+            if (selectedListValue() != listed_row)
+            {
+                noteListSelectionChanged();
+            }
         }
     }
     syncCrowdFacingPointPrototype();
@@ -911,139 +1005,52 @@ void ALPanelGhostStudio::draw()
     refreshRigDiagnostics();
     refreshStatus();
     refreshCrowdPlacement();
-    if (!mNameplateMode->hasFocus())
     {
-        mNameplateMode->setValue(
-            gSavedSettings.getS32("GhostStudioNameplateMode"));
+        // Cached control, diff-guarded write; focus-aware (never fights an open combo).
+        static LLCachedControl<S32> nameplate_mode(
+            gSavedSettings, "GhostStudioNameplateMode", 1);
+        setValueIfChanged(mNameplateMode, LLSD((S32)nameplate_mode));
     }
-    LLPanel::draw();
+    {
+        LL_PROFILE_ZONE_NAMED_CATEGORY_UI("ghost panel child draw");
+        LLPanel::draw();
+    }
 }
 
 // ---------------------------------------------------------------------------
 // refreshers
 // ---------------------------------------------------------------------------
-void ALPanelGhostStudio::refreshSourceCombo()
+// [GhostPanelPerf] Legacy signature builders: used ONLY while GhostStudioRefreshAlways
+// is on (the old every-frame string-diff behaviour, for chasing stale-UI reports).
+std::string ALPanelGhostStudio::sourceSignature() const
 {
-    // "You" plus every cast member; rebuilt only when the cast (or a cached
-    // name) changes so the dropdown never shuffles mid-interaction
-    LLDirectorCast& cast = LLDirectorCast::instance();
     std::string sig;
-    for (const LLDirectorCast::CastMember& m : cast.getCast())
+    for (const LLDirectorCast::CastMember& m : LLDirectorCast::instance().getCast())
     {
         sig += m.mId.asString();
         sig += m.mLastName;
         sig += '|';
     }
-    if (sig == mSourceSig)
-    {
-        return;
-    }
-    mSourceSig = sig;
-    const LLSD prev = mSourceCombo->getSelectedValue();
-    mSourceCombo->clearRows();
-    mSourceCombo->add("You", LLSD(LLUUID::null));
-    for (const LLDirectorCast::CastMember& m : cast.getCast())
-    {
-        mSourceCombo->add(sourceName(m.mId), LLSD(m.mId));
-    }
-    if (!prev.isDefined() || !mSourceCombo->setSelectedByValue(prev, true))
-    {
-        mSourceCombo->selectFirstItem();    // "You"
-    }
-    populateLensGazeCastTargets();
+    return sig;
 }
 
-void ALPanelGhostStudio::populateLensGazeCastTargets()
+std::string ALPanelGhostStudio::lookTargetSignature() const
 {
-    const LLSD previous = mLensGazeCastTarget->getSelectedValue();
-    mLensGazeCastTarget->clearRows();
-    for (const LLDirectorCast::CastMember& member :
-         LLDirectorCast::instance().getCast())
-    {
-        mLensGazeCastTarget->add(sourceName(member.mId), LLSD(member.mId));
-    }
-    if (!previous.isDefined() ||
-        !mLensGazeCastTarget->setSelectedByValue(previous, true))
-    {
-        mLensGazeCastTarget->selectFirstItem();
-    }
-}
-
-void ALPanelGhostStudio::refreshLookTargetCombo()
-{
-    ALGhostStudio& studio = ALGhostStudio::instance();
     std::string sig;
     for (const LLDirectorCast::CastMember& m : LLDirectorCast::instance().getCast())
     {
         sig += m.mId.asString() + m.mLastName;
     }
-    for (const ALGhostStudio::Instance& inst : studio.getInstances())
+    for (const ALGhostStudio::Instance& inst : ALGhostStudio::instance().getInstances())
     {
         sig += inst.mId.asString() + inst.mName;
     }
-    if (sig == mLookTargetSig)
-    {
-        return;
-    }
-    mLookTargetSig = sig;
-    const LLSD previous = mLookTargetCombo->getSelectedValue();
-    mLookTargetCombo->clearRows();
-    mLookTargetCombo->add("Camera", "camera");
-    mLookTargetCombo->add("Me", "me");
-    for (const LLDirectorCast::CastMember& m : LLDirectorCast::instance().getCast())
-    {
-        mLookTargetCombo->add("Actor: " + sourceName(m.mId),
-                              "actor:" + m.mId.asString());
-    }
-    for (const ALGhostStudio::Instance& inst : studio.getInstances())
-    {
-        mLookTargetCombo->add("Ghost: " + inst.mName,
-                              "ghost:" + inst.mId.asString());
-    }
-    if (!previous.isDefined() ||
-        !mLookTargetCombo->setSelectedByValue(previous, true))
-    {
-        mLookTargetCombo->selectFirstItem();
-    }
+    return sig;
 }
 
-// draw() path: fill the list ONCE, the first time the Directed-mode library
-// actually becomes visible. There is deliberately no polling -- inventory
-// rarely changes, and populateAnimationLibrary() walks the WHOLE inventory
-// (collectDescendentsIf from the root, then sorts), which cost a visible
-// microstutter when it ran per-frame. The operator re-scans with Refresh.
-void ALPanelGhostStudio::refreshAnimationLibrary()
-{
-    if (mAnimationLibraryPopulated || !mAnimationLibraryCombo->isInVisibleChain())
-    {
-        return;
-    }
-    populateAnimationLibrary();
-}
-
-// Explicit re-scan: the Refresh button, and the one-shot fill above.
-void ALPanelGhostStudio::populateAnimationLibrary()
-{
-    mAnimationLibraryPopulated = true;
-    const auto& entries = ALGhostAnimAssetIndex::instance().refreshInventory();
-    const LLSD selected = mAnimationLibraryCombo->getSelectedValue();
-    mAnimationLibraryCombo->removeall();
-    mAnimationLibraryCombo->add("Choose inventory animation...", LLUUID::null);
-    for (const auto& entry : entries)
-    {
-        mAnimationLibraryCombo->add(entry.mName, entry.mAssetId);
-    }
-    if (!selected.isUndefined())
-    {
-        mAnimationLibraryCombo->setSelectedByValue(selected, true);
-    }
-}
-
-void ALPanelGhostStudio::refreshList()
+std::string ALPanelGhostStudio::listSignature() const
 {
     ALGhostStudio& studio = ALGhostStudio::instance();
-
-    // composed signature: rebuild rows only when something row-visible changed
     std::string sig;
     std::set<LLUUID> signed_groups;
     for (const ALGhostStudio::Instance& inst : studio.getInstances())
@@ -1073,11 +1080,152 @@ void ALPanelGhostStudio::refreshList()
             sig += '|';
         }
     }
-    if (sig == mListSig)
+    return sig;
+}
+
+void ALPanelGhostStudio::refreshSourceCombo()
+{
+    // "You" plus every cast member; rebuilt only when the cast revision moves
+    // (membership or a cached name) so the dropdown never shuffles mid-interaction.
+    // The gate is unprimed until the first call, so a fresh login (empty cast) still
+    // builds once and adds the default "You" entry.
+    LLDirectorCast& cast = LLDirectorCast::instance();
+    bool rebuild = mSourceGate.changed({ cast.getCastRevision() }, ghost_refresh_always());
+    if (rebuild && mSourceGate.lastWasFallback())
+    {
+        // the gate's built-in 1 s self-heal (or a debug force): verify by signature
+        rebuild = sourceSignature() != mSourceSig;
+    }
+    if (!rebuild)
     {
         return;
     }
-    mListSig = sig;
+    LL_PROFILE_ZONE_NAMED_CATEGORY_UI("ghost rebuild source combo");
+    const LLSD prev = mSourceCombo->getSelectedValue();
+    mSourceCombo->clearRows();
+    mSourceCombo->add("You", LLSD(LLUUID::null));
+    for (const LLDirectorCast::CastMember& m : cast.getCast())
+    {
+        mSourceCombo->add(sourceName(m.mId), LLSD(m.mId));
+    }
+    if (!prev.isDefined() || !mSourceCombo->setSelectedByValue(prev, true))
+    {
+        mSourceCombo->selectFirstItem();    // "You"
+    }
+    populateLensGazeCastTargets();
+    mSourceSig = sourceSignature(); // keep the fallback diff baseline current
+}
+
+void ALPanelGhostStudio::populateLensGazeCastTargets()
+{
+    const LLSD previous = mLensGazeCastTarget->getSelectedValue();
+    mLensGazeCastTarget->clearRows();
+    for (const LLDirectorCast::CastMember& member :
+         LLDirectorCast::instance().getCast())
+    {
+        mLensGazeCastTarget->add(sourceName(member.mId), LLSD(member.mId));
+    }
+    if (!previous.isDefined() ||
+        !mLensGazeCastTarget->setSelectedByValue(previous, true))
+    {
+        mLensGazeCastTarget->selectFirstItem();
+    }
+}
+
+void ALPanelGhostStudio::refreshLookTargetCombo()
+{
+    ALGhostStudio& studio = ALGhostStudio::instance();
+    bool rebuild = mLookTargetGate.changed(
+        { LLDirectorCast::instance().getCastRevision(),
+          studio.getInstanceRevision() }, ghost_refresh_always());
+    if (rebuild && mLookTargetGate.lastWasFallback())
+    {
+        rebuild = lookTargetSignature() != mLookTargetSig;
+    }
+    if (!rebuild)
+    {
+        return;
+    }
+    LL_PROFILE_ZONE_NAMED_CATEGORY_UI("ghost rebuild look-target combo");
+    const LLSD previous = mLookTargetCombo->getSelectedValue();
+    mLookTargetCombo->clearRows();
+    mLookTargetCombo->add("Camera", "camera");
+    mLookTargetCombo->add("Me", "me");
+    for (const LLDirectorCast::CastMember& m : LLDirectorCast::instance().getCast())
+    {
+        mLookTargetCombo->add("Actor: " + sourceName(m.mId),
+                              "actor:" + m.mId.asString());
+    }
+    for (const ALGhostStudio::Instance& inst : studio.getInstances())
+    {
+        mLookTargetCombo->add("Ghost: " + inst.mName,
+                              "ghost:" + inst.mId.asString());
+    }
+    if (!previous.isDefined() ||
+        !mLookTargetCombo->setSelectedByValue(previous, true))
+    {
+        mLookTargetCombo->selectFirstItem();
+    }
+    mLookTargetSig = lookTargetSignature(); // fallback diff baseline
+}
+
+// [GhostPanelPerf] Mirrors the SHARED library (ALGhostStudio::animLibrary, scanned
+// lazily outside draw() and cached for both hosts) into this panel's combo. No
+// inventory walk happens here; it is revision-gated by mAnimLibraryShownRev.
+void ALPanelGhostStudio::populateAnimationLibrary()
+{
+    // Never clear a combo the operator has focused or open (a scan / Refresh from the
+    // OTHER host lands here too): leave the shown revision stale so it retries.
+    if (alIsBeingEdited(mAnimationLibraryCombo))
+    {
+        return;
+    }
+    ALGhostStudio& studio = ALGhostStudio::instance();
+    mAnimLibraryShownRev = studio.animLibraryRevision();
+    const LLSD selected = mAnimationLibraryCombo->getSelectedValue();
+    mAnimationLibraryCombo->removeall();
+    mAnimationLibraryCombo->add("Choose inventory animation...", LLUUID::null);
+    for (const auto& entry : studio.animLibrary())
+    {
+        mAnimationLibraryCombo->add(entry.first, entry.second);
+    }
+    if (!selected.isUndefined())
+    {
+        mAnimationLibraryCombo->setSelectedByValue(selected, true);
+    }
+}
+void ALPanelGhostStudio::refreshList(bool force_now)
+{
+    ALGhostStudio& studio = ALGhostStudio::instance();
+
+    // [GhostPanelPerf] rebuild rows only when the instance/group model or the cast
+    // (source-name column) revision moved -- no signature strings in the draw path.
+    const std::initializer_list<U64> revisions =
+        { studio.getInstanceRevision(), LLDirectorCast::instance().getCastRevision() };
+    bool stale = mListGate.isStale(revisions) || ghost_refresh_always();
+    if (stale && (mListGate.lastWasFallback() || ghost_refresh_always()))
+    {
+        // built-in 1 s self-heal / debug force: verify by signature. The baseline
+        // (mListSig) is refreshed at the END of a rebuild, so a 2 Hz-capped early
+        // return cannot swallow a detected difference.
+        if (listSignature() == mListSig)
+        {
+            mListGate.accept(revisions); // verified current; restart the fallback timer
+            stale = false;
+        }
+    }
+    if (!stale)
+    {
+        return;
+    }
+    // Rule 3: a list with more than 50 rows refreshes at most 2 Hz. A handler that
+    // just mutated the model passes force_now and always gets its rows immediately.
+    if (!force_now && mList->getItemCount() > 50 && !mListCapClock.due())
+    {
+        return;
+    }
+    mListGate.accept(revisions);
+    LL_PROFILE_ZONE_NAMED_CATEGORY_UI("ghost rebuild list");
 
     const LLUUID prev_sel = selectedListValue();
     mList->deleteAllItems();
@@ -1176,13 +1324,17 @@ void ALPanelGhostStudio::refreshList()
     {
         mList->selectByID(prev_sel);
     }
+    noteListSelectionChanged(); // rows were rebuilt: cached selection is stale
+    mListSig = listSignature(); // fallback diff baseline
 }
 
 void ALPanelGhostStudio::refreshDetail()
 {
     ALGhostStudio& studio = ALGhostStudio::instance();
-    const LLUUID row_value = selectedListValue();
-    const LLUUID sel = selectedInstance();
+    // [GhostPanelPerf] cached selection: no vector/set builds per frame
+    const SelectionCache& selected = selection();
+    const LLUUID row_value = selected.mRow;
+    const LLUUID sel = selected.mInstance;
     ALGhostStudio::Instance* inst = studio.getInstance(sel);
     const bool have = inst != nullptr;
     const bool overlay = have && inst->mKind == ALGhostStudio::BACKING_OVERLAY;
@@ -1191,37 +1343,62 @@ void ALPanelGhostStudio::refreshDetail()
     const bool group_header = group && row_value == group->mId;
     const bool member_edit =
         group && group->mEditMembers && !group_header;
-    bool any_group_selected = false;
-    for (const LLUUID& id : selectedInstances())
+    const bool any_group_selected = selected.mAnyGroup;
+    const ALGhostStudio::CrowdPlacementDraft& crowd_draft =
+        studio.getCrowdPlacementDraft();
+    const bool crowd_active = crowd_draft.mActive;
+
+    // [GhostPanelPerf] GATE. The enable/visible block and the value mirrors only
+    // run when (a) the selection / instance model / crowd-draft key changed, (b) a
+    // commit handler asked for it, or (c) the 10 Hz readout tick is due. The key is
+    // built from model state only (no widget reads, no allocations).
+    const U64 key_flags =
+        (crowd_active ? 1ULL : 0ULL) |
+        (mEditMode ? 2ULL : 0ULL) |
+        (mHasTransformClipboard ? 4ULL : 0ULL) |
+        (mActiveStrip != 0 ? 8ULL : 0ULL) |
+        (have ? 16ULL : 0ULL) |
+        ((have && inst->mChaosEnabled) ? 32ULL : 0ULL) |
+        ((have && inst->mPose == ALGhostStudio::POSE_FROZEN) ? 64ULL : 0ULL) |
+        (group ? 128ULL : 0ULL) |
+        (member_edit ? 256ULL : 0ULL) |
+        (group_header ? 512ULL : 0ULL) |
+        ((have && inst->mEntityId.notNull()) ? 1024ULL : 0ULL) |
+        (have ? ((U64)inst->mKind + 1ULL) << 12 : 0ULL) |
+        (have ? ((U64)inst->mDriveMode + 1ULL) << 16 : 0ULL);
+    const bool refresh_always = ghost_refresh_always();
+    const bool key_changed = mDetailGate.changed(
+        { selected.mStamp, key_flags, crowd_draft.mRevision }, refresh_always);
+    if (!key_changed && !mReadoutTick && !mDetailDirty)
     {
-        if (studio.groupForMember(id))
-        {
-            any_group_selected = true;
-            break;
-        }
+        return;
     }
+    mDetailDirty = false;
+    LL_PROFILE_ZONE_NAMED_CATEGORY_UI("ghost refreshDetail apply");
+    // strings / metadata / pose status refresh at 4 Hz (or immediately on a key change)
+    const bool slow_tick = key_changed || mStatusTick;
 
     // enables (the add row is always live; everything else needs a selection)
-    mDupBtn->setEnabled(group_header || overlay);
-    mDelBtn->setEnabled(have && !member_edit);
-    mNameEdit->setEnabled(have);
-    mPosX->setEnabled(have);
-    mPosY->setEnabled(have);
-    mPosZ->setEnabled(have);
-    mHeadingDial->setEnabled(have);
-    mYawSpin->setEnabled(have);
-    mScaleSpin->setEnabled(have);
-    mLookTargetCombo->setEnabled(have);
-    mFaceNowBtn->setEnabled(have);
-    mKeepFacingCheck->setEnabled(have);
+    setEnabledIfChanged(mDupBtn, group_header || overlay);
+    setEnabledIfChanged(mDelBtn, have && !member_edit);
+    setEnabledIfChanged(mNameEdit, have);
+    setEnabledIfChanged(mPosX, have);
+    setEnabledIfChanged(mPosY, have);
+    setEnabledIfChanged(mPosZ, have);
+    setEnabledIfChanged(mHeadingDial, have);
+    setEnabledIfChanged(mYawSpin, have);
+    setEnabledIfChanged(mScaleSpin, have);
+    setEnabledIfChanged(mLookTargetCombo, have);
+    setEnabledIfChanged(mFaceNowBtn, have);
+    setEnabledIfChanged(mKeepFacingCheck, have);
     const bool entity = have && inst->mKind == ALGhostStudio::BACKING_ENTITY_CLONE;
     const bool directed = entity &&
         inst->mDriveMode == ALGhostStudio::DRIVE_DIRECTED;
     const bool show_style_controls = !entity;
-    mLookSection->setVisible(show_style_controls);
-    mEntityStyleHint->setVisible(!show_style_controls);
-    mRefreshBtn->setVisible(entity);
-    mRefreshBtn->setEnabled(entity);
+    setVisibleIfChanged(mLookSection, show_style_controls);
+    setVisibleIfChanged(mEntityStyleHint, !show_style_controls);
+    setVisibleIfChanged(mRefreshBtn, entity);
+    setEnabledIfChanged(mRefreshBtn, entity);
     std::string type = "Type: No selection";
     if (overlay)
     {
@@ -1231,99 +1408,88 @@ void ALPanelGhostStudio::refreshDetail()
     {
         type = std::string("Type: Entity clone \xC2\xB7 ") + state_name(*inst);
     }
-    if (mTypeText->getText() != type)
-    {
-        mTypeText->setText(type);
-    }
-    const ALGhostStudio::CrowdPlacementDraft& crowd_draft =
-        studio.getCrowdPlacementDraft();
-    mCrowdCopiesAs->setValue(
-        crowd_draft.mActive
+    setTextIfChanged(mTypeText, type);
+    setValueIfChanged(mCrowdCopiesAs,
+        LLSD(crowd_active
             ? (S32)crowd_draft.mSource.mKind
-            : (have ? (S32)inst->mKind : -1));
-    mCrowdCopiesAs->setEnabled(false);
-    mChaosCheck->setEnabled(entity && !any_group_selected);
-    mChaosSlider->setEnabled(
+            : (have ? (S32)inst->mKind : -1)));
+    setEnabledIfChanged(mCrowdCopiesAs, false);
+    setEnabledIfChanged(mChaosCheck, entity && !any_group_selected);
+    setEnabledIfChanged(mChaosSlider,
         entity && inst->mChaosEnabled && !any_group_selected);
-    mAnimSpeedSpin->setEnabled(entity);
+    setEnabledIfChanged(mAnimSpeedSpin, entity);
     refreshAutoAnimate(inst); // [AutoAnimate]
-    mPhysicsCheck->setEnabled(entity);
-    mAnimPauseBtn->setEnabled(entity);
-    mAnimResumeBtn->setEnabled(entity);
-    mEntityLookCombo->setEnabled(entity);
-    mDriveModeCombo->setEnabled(entity);
-    mDirectedAnimEdit->setVisible(directed);
-    mDirectedAnimEdit->setEnabled(directed);
-    mAnimationLibraryCombo->setVisible(directed);
-    mAnimationLibraryRefreshBtn->setVisible(directed);
-    mAnimationLibraryCombo->setEnabled(directed);
-    mAnimMetadataText->setVisible(directed);
-    mLoopModeCombo->setEnabled(entity);
-    mAnimSyncBtn->setEnabled(entity);
-    mLensGazeCheck->setEnabled(entity && inst->mEntityId.notNull());
-    bool have_selected_entity = false;
-    for (const LLUUID& id : selectedInstances())
-    {
-        const ALGhostStudio::Instance* selected = studio.getInstance(id);
-        have_selected_entity = have_selected_entity ||
-            (selected && selected->mKind == ALGhostStudio::BACKING_ENTITY_CLONE &&
-             selected->mEntityId.notNull());
-    }
-    mLensGazeSelectionBtn->setEnabled(have_selected_entity);
-    mLensGazeTorsoSlider->setEnabled(have_selected_entity);
-    mLensGazeTargetMode->setEnabled(have_selected_entity);
-    mLensGazeCastTarget->setEnabled(have_selected_entity &&
+    setEnabledIfChanged(mPhysicsCheck, entity);
+    setEnabledIfChanged(mAnimPauseBtn, entity);
+    setEnabledIfChanged(mAnimResumeBtn, entity);
+    setEnabledIfChanged(mEntityLookCombo, entity);
+    setEnabledIfChanged(mDriveModeCombo, entity);
+    setVisibleIfChanged(mDirectedAnimEdit, directed);
+    setEnabledIfChanged(mDirectedAnimEdit, directed);
+    setVisibleIfChanged(mAnimationLibraryCombo, directed);
+    setVisibleIfChanged(mAnimationLibraryRefreshBtn, directed);
+    setEnabledIfChanged(mAnimationLibraryCombo, directed);
+    setVisibleIfChanged(mAnimMetadataText, directed);
+    setEnabledIfChanged(mLoopModeCombo, entity);
+    setEnabledIfChanged(mAnimSyncBtn, entity);
+    setEnabledIfChanged(mLensGazeCheck, entity && inst->mEntityId.notNull());
+    const bool have_selected_entity = selected.mAnyEntity;
+    setEnabledIfChanged(mLensGazeSelectionBtn, have_selected_entity);
+    setEnabledIfChanged(mLensGazeTorsoSlider, have_selected_entity);
+    setEnabledIfChanged(mLensGazeTargetMode, have_selected_entity);
+    setEnabledIfChanged(mLensGazeCastTarget, have_selected_entity &&
         mLensGazeTargetMode->getValue().asInteger() == LLActorMover::GAZE_CAST);
-    mLensGazeHeadEyeSlider->setEnabled(have_selected_entity);
-    mLensGazeIntensitySlider->setEnabled(have_selected_entity);
-    mLensGazeSmoothingSlider->setEnabled(have_selected_entity);
-    const bool crowd_active =
-        studio.getCrowdPlacementDraft().mActive;
-    mPlaceBtn->setEnabled(overlay && !crowd_active);
-    mEditModeCheck->setEnabled(!crowd_active || mEditMode);
-    mToActorBtn->setEnabled(overlay);
-    mToMeBtn->setEnabled(overlay);
-    mStyleCombo->setEnabled(overlay);
-    mActorTintCheck->setEnabled(overlay);
-    mHueSlider->setEnabled(overlay && !mActorTintCheck->get());
-    mAlphaSlider->setEnabled(overlay);
-    mShimmerSpeedSlider->setEnabled(overlay);
-    mShimmerAmountSlider->setEnabled(overlay);
-    mPixelSlider->setEnabled(overlay);
-    mGlitchSlider->setEnabled(overlay);
-    mDistortCombo->setEnabled(overlay);
-    mDistortAmountSlider->setEnabled(overlay && mDistortCombo->getValue().asInteger() != 0);
-    mBrightnessSlider->setEnabled(overlay);
-    mEffectFps->setEnabled(overlay);
-    mLockMode->setEnabled(group != nullptr);
-    mFreezeBtn->setEnabled(overlay);
-    mLiveBtn->setEnabled(overlay && inst->mPose == ALGhostStudio::POSE_FROZEN);
-    mArrayCount->setEnabled(overlay);
-    mArraySpacing->setEnabled(overlay);
-    mArrayLineBtn->setEnabled(overlay);
-    mArrayRingBtn->setEnabled(overlay);
-    mDropBtn->setEnabled(have);
-    mAlignFeetBtn->setEnabled(have);
-    mUprightBtn->setEnabled(have);
-    mDupInPlaceBtn->setEnabled(have);
-    mCopyTransformBtn->setEnabled(have);
-    mPasteTransformBtn->setEnabled(have && mHasTransformClipboard);
-    mArrayCount->setEnabled(have);
-    mArraySpacing->setEnabled(have);
-    mArrayLineBtn->setEnabled(have);
-    mArrayRingBtn->setEnabled(have);
-    mFormationCombo->setEnabled(have);
-    mArrayBuildBtn->setEnabled(have);
+    setEnabledIfChanged(mLensGazeHeadEyeSlider, have_selected_entity);
+    setEnabledIfChanged(mLensGazeIntensitySlider, have_selected_entity);
+    setEnabledIfChanged(mLensGazeSmoothingSlider, have_selected_entity);
+    setEnabledIfChanged(mPlaceBtn, overlay && !crowd_active);
+    setEnabledIfChanged(mEditModeCheck, !crowd_active || mEditMode);
+    setEnabledIfChanged(mToActorBtn, overlay);
+    setEnabledIfChanged(mToMeBtn, overlay);
+    setEnabledIfChanged(mStyleCombo, overlay);
+    setEnabledIfChanged(mActorTintCheck, overlay);
+    setEnabledIfChanged(mHueSlider, overlay && !mActorTintCheck->get());
+    setEnabledIfChanged(mAlphaSlider, overlay);
+    setEnabledIfChanged(mShimmerSpeedSlider, overlay);
+    setEnabledIfChanged(mShimmerAmountSlider, overlay);
+    setEnabledIfChanged(mPixelSlider, overlay);
+    setEnabledIfChanged(mGlitchSlider, overlay);
+    setEnabledIfChanged(mDistortCombo, overlay);
+    setEnabledIfChanged(mDistortAmountSlider,
+        overlay && mDistortCombo->getValue().asInteger() != 0);
+    setEnabledIfChanged(mBrightnessSlider, overlay);
+    setEnabledIfChanged(mEffectFps, overlay);
+    setEnabledIfChanged(mLockMode, group != nullptr);
+    setEnabledIfChanged(mFreezeBtn, overlay);
+    setEnabledIfChanged(mLiveBtn,
+        overlay && inst->mPose == ALGhostStudio::POSE_FROZEN);
+    setEnabledIfChanged(mArrayCount, overlay);
+    setEnabledIfChanged(mArraySpacing, overlay);
+    setEnabledIfChanged(mArrayLineBtn, overlay);
+    setEnabledIfChanged(mArrayRingBtn, overlay);
+    setEnabledIfChanged(mDropBtn, have);
+    setEnabledIfChanged(mAlignFeetBtn, have);
+    setEnabledIfChanged(mUprightBtn, have);
+    setEnabledIfChanged(mDupInPlaceBtn, have);
+    setEnabledIfChanged(mCopyTransformBtn, have);
+    setEnabledIfChanged(mPasteTransformBtn, have && mHasTransformClipboard);
+    setEnabledIfChanged(mArrayCount, have);
+    setEnabledIfChanged(mArraySpacing, have);
+    setEnabledIfChanged(mArrayLineBtn, have);
+    setEnabledIfChanged(mArrayRingBtn, have);
+    setEnabledIfChanged(mFormationCombo, have);
+    setEnabledIfChanged(mArrayBuildBtn, have);
     const ALGhostStudio::EFormation crowd_formation =
         (ALGhostStudio::EFormation)mFormationCombo->getValue().asInteger();
-    mStripStartBtn->setEnabled(
+    setEnabledIfChanged(mStripStartBtn,
         have && formationSupportsFreezeStrip(crowd_formation));
-    mStripCancelBtn->setEnabled(mActiveStrip != 0);
-    mMotionApplyBtn->setEnabled(have && !any_group_selected);
-    mGroupEditMembersCheck->setEnabled(group != nullptr);
-    mGroupEditMembersCheck->set(group && group->mEditMembers);
-    mGroupMemberPinnedCheck->setEnabled(member_edit);
-    mGroupMemberResetBtn->setEnabled(member_edit);
+    setEnabledIfChanged(mStripCancelBtn, mActiveStrip != 0);
+    setEnabledIfChanged(mMotionApplyBtn, have && !any_group_selected);
+    setEnabledIfChanged(mGroupEditMembersCheck, group != nullptr);
+    setValueIfChanged(mGroupEditMembersCheck,
+        LLSD(group && group->mEditMembers), true);
+    setEnabledIfChanged(mGroupMemberPinnedCheck, member_edit);
+    setEnabledIfChanged(mGroupMemberResetBtn, member_edit);
     bool member_pinned = false;
     if (member_edit)
     {
@@ -1336,11 +1502,12 @@ void ALPanelGhostStudio::refreshDetail()
             }
         }
     }
-    mGroupMemberPinnedCheck->set(member_pinned);
-    if (group_header && !mNameEdit->hasFocus() &&
-        mNameEdit->getText() != group->mName)
+    setValueIfChanged(mGroupMemberPinnedCheck,
+        LLSD(member_pinned), true);
+    if (group_header)
     {
-        mNameEdit->setText(group->mName);
+        // setTextIfChanged is focus-aware: it never overwrites a name being typed
+        setTextIfChanged(mNameEdit, group->mName);
     }
 
     if (!have)
@@ -1348,8 +1515,8 @@ void ALPanelGhostStudio::refreshDetail()
         if (mShownFor.notNull())
         {
             mShownFor.setNull();
-            mNameEdit->setText(std::string());
-            mPoseStatus->setText(std::string("Select a ghost"));
+            setTextIfChanged(mNameEdit, std::string(), true);
+            setTextIfChanged(mPoseStatus, std::string("Select a ghost"), true);
         }
         return;
     }
@@ -1370,110 +1537,124 @@ void ALPanelGhostStudio::refreshDetail()
         !collapsed_group ||
         studio.getGroupScaleLimits(
             row_value, scale_minimum, scale_maximum);
-    mScaleSpin->setEnabled(have && have_group_scale_limits);
-    mScaleSpin->setMinValue(scale_minimum);
-    mScaleSpin->setMaxValue(scale_maximum);
-    if (!mScaleSpin->hasFocus())
+    setEnabledIfChanged(mScaleSpin, have && have_group_scale_limits);
+    // [GhostPanelPerf] limits / increment / tooltip are rewritten only when their
+    // inputs change (the tooltip used to be re-formatted EVERY frame).
+    if (!mScaleStateValid || mScaleMinShown != scale_minimum ||
+        mScaleMaxShown != scale_maximum ||
+        mScaleCollapsedShown != collapsed_group)
+    {
+        mScaleSpin->setMinValue(scale_minimum);
+        setMaxValueIfChanged(mScaleSpin, scale_maximum); // range before the value write below
+        mScaleSpin->setIncrement(collapsed_group ? 0.01f : 0.05f);
+        setToolTipIfChanged(mScaleSpin, collapsed_group
+            ? llformat(
+                "Group scale factor. Allowed range: %.6g to %.6g. "
+                "The authored group pivot and every member's safe size are preserved.",
+                scale_minimum, scale_maximum)
+            : std::string("Uniform size, pivoted at the feet so they stay planted "
+                          "(1 = life size)"));
+        mScaleMinShown = scale_minimum;
+        mScaleMaxShown = scale_maximum;
+        mScaleCollapsedShown = collapsed_group;
+        mScaleStateValid = true;
+        mScalePrecisionPending = true;
+    }
+    if (mScalePrecisionPending && !alIsBeingEdited(mScaleSpin))
     {
         // setPrecision() rewrites LLSpinCtrl's inline editor; never call it
         // over text the operator is actively typing.
         mScaleSpin->setPrecision(collapsed_group ? 4 : 2);
+        mScalePrecisionPending = false;
     }
-    mScaleSpin->setIncrement(collapsed_group ? 0.01f : 0.05f);
-    mScaleSpin->setToolTip(collapsed_group
-        ? llformat(
-            "Group scale factor. Allowed range: %.6g to %.6g. "
-            "The authored group pivot and every member's safe size are preserved.",
-            scale_minimum, scale_maximum)
-        : "Uniform size, pivoted at the feet so they stay planted "
-          "(1 = life size)");
 
-    // POSITION mirrors every frame (cheap; a LIVE ghost never moves itself,
-    // but Place / snaps / arrays move it from outside the spinners) -- unless
-    // the operator is typing in one
-    if (!mPosX->hasFocus() && !mPosY->hasFocus() && !mPosZ->hasFocus())
+    // POSITION mirrors at the 10 Hz readout rate (a LIVE ghost never moves itself,
+    // but Place / snaps / arrays move it from outside the spinners). Every write is
+    // focus-aware and diff-guarded: a spinner the operator is typing in is skipped.
     {
         const LLVector3 agent_pos =
             gAgent.getPosAgentFromGlobal(unit_foot);
-        mPosX->setValue(agent_pos.mV[VX]);
-        mPosY->setValue(agent_pos.mV[VY]);
-        mPosZ->setValue(agent_pos.mV[VZ]);
+        setValueIfChanged(mPosX, LLSD((F64)agent_pos.mV[VX]));
+        setValueIfChanged(mPosY, LLSD((F64)agent_pos.mV[VY]));
+        setValueIfChanged(mPosZ, LLSD((F64)agent_pos.mV[VZ]));
     }
-    if (!mScaleSpin->hasFocus())
-    {
-        mScaleSpin->setValue(unit_scale);
-        mChaosCheck->set(inst->mChaosEnabled);
-        mChaosSlider->setValue(inst->mChaosAmount);
-        if (!mAnimSpeedSpin->hasFocus())
-        {
-            mAnimSpeedSpin->setValue(inst->mAnimSpeed);
-        }
-        mPhysicsCheck->set(inst->mPhysicsEnabled);
-        mEntityLookCombo->setValue(inst->mLook);
-    }
-    if (!mEffectFps->hasFocus())
-        mEffectFps->setValue(inst->mEffectFps);
-    if (inst->mGroupId.notNull() && !mLockMode->hasFocus() &&
-        !studio.getCrowdPlacementDraft().mActive)
-        mLockMode->setValue(inst->mLockMode);
+    // [GhostPanelPerf] No outer Scale-focus guard: each helper guards ITS OWN widget
+    // (descendants included), so a focused Scale spinner never freezes the unrelated
+    // Chaos / anim speed / physics / entity-look mirrors.
+    setValueIfChanged(mScaleSpin, LLSD((F64)unit_scale));
+    setValueIfChanged(mChaosCheck, LLSD(inst->mChaosEnabled), true);
+    setValueIfChanged(mChaosSlider, LLSD((F64)inst->mChaosAmount));
+    setValueIfChanged(mAnimSpeedSpin, LLSD((F64)inst->mAnimSpeed));
+    setValueIfChanged(mPhysicsCheck, LLSD(inst->mPhysicsEnabled), true);
+    setValueIfChanged(mEntityLookCombo, LLSD((S32)inst->mLook));
+    setValueIfChanged(mEffectFps, LLSD((F64)inst->mEffectFps));
+    if (inst->mGroupId.notNull() && !studio.getCrowdPlacementDraft().mActive)
+        setValueIfChanged(mLockMode, LLSD((S32)inst->mLockMode));
     if (!mYawSpin->hasFocus() && !mHeadingDial->hasMouseCapture())
     {
         // Aim commands, continuous tracking, and the in-world manip proxy can
-        // all change heading outside these controls. Mirror every draw (while
-        // preserving an active edit) so the dial and exact spinner never lie.
-        mHeadingDial->setValue(unit_yaw_degrees);
-        mYawSpin->setValue(unit_yaw_degrees);
+        // all change heading outside these controls. Mirror at the readout rate
+        // (while preserving an active edit) so the dial and exact spinner never lie.
+        setValueIfChanged(mHeadingDial, LLSD((F64)unit_yaw_degrees));
+        setValueIfChanged(mYawSpin, LLSD((F64)unit_yaw_degrees));
     }
-    mKeepFacingCheck->set(inst->mKeepFacing);
-    if (entity && !mDriveModeCombo->hasFocus())
+    setValueIfChanged(mKeepFacingCheck, LLSD(inst->mKeepFacing),
+                      true);
+    if (entity)
     {
-        mDriveModeCombo->setValue(inst->mDriveMode);
+        setValueIfChanged(mDriveModeCombo, LLSD((S32)inst->mDriveMode));
+        // no LLUUID::asString() per tick: format only when the model value moved
+        // (or the selection/key changed)
+        if (key_changed || mDirectedAnimShown != inst->mDirectedAnim)
+        {
+            setTextIfChanged(mDirectedAnimEdit, inst->mDirectedAnim.asString());
+            mDirectedAnimShown = inst->mDirectedAnim;
+        }
     }
-    if (entity && !mDirectedAnimEdit->hasFocus())
-    {
-        mDirectedAnimEdit->setText(inst->mDirectedAnim.asString());
-    }
-    mLoopModeCombo->setValue(inst->mLoopMode);
+    setValueIfChanged(mLoopModeCombo, LLSD((S32)inst->mLoopMode));
     if (entity)
     {
         LLActorMover& mover = LLActorMover::instance();
-        mLensGazeCheck->set(inst->mEntityId.notNull() &&
-            mover.isGazeEnabled(inst->mEntityId));
-        mLensGazeTargetMode->setValue(
-            mover.getGazeTargetMode(inst->mEntityId));
-        mLensGazeCastTarget->setValue(
-            mover.getGazeCastTarget(inst->mEntityId));
-        if (!mLensGazeTorsoSlider->hasMouseCapture())
+        setValueIfChanged(mLensGazeCheck,
+            LLSD(inst->mEntityId.notNull() &&
+                 mover.isGazeEnabled(inst->mEntityId)),
+            true);
+        setValueIfChanged(mLensGazeTargetMode,
+            LLSD((S32)mover.getGazeTargetMode(inst->mEntityId)));
+        setValueIfChanged(mLensGazeCastTarget,
+            LLSD(mover.getGazeCastTarget(inst->mEntityId)));
+        // sliders: the helper itself skips a control under mouse capture / focus
+        setValueIfChanged(mLensGazeTorsoSlider,
+            LLSD((F64)mover.getGazeTorsoAmount(inst->mEntityId)));
+        setValueIfChanged(mLensGazeHeadEyeSlider,
+            LLSD((F64)mover.getGazeHeadEyeBlend(inst->mEntityId)));
+        setValueIfChanged(mLensGazeIntensitySlider,
+            LLSD((F64)mover.getGazeIntensity(inst->mEntityId)));
+        setValueIfChanged(mLensGazeSmoothingSlider,
+            LLSD((F64)mover.getGazeSmoothing(inst->mEntityId)));
+        if (slow_tick)
         {
-            mLensGazeTorsoSlider->setValue(
-                mover.getGazeTorsoAmount(inst->mEntityId));
+            std::string gaze_status;
+            mover.getGazeStatus(inst->mEntityId, gaze_status);
+            setTextIfChanged(mLensGazeStatus, gaze_status);
         }
-        if (!mLensGazeHeadEyeSlider->hasMouseCapture())
-        {
-            mLensGazeHeadEyeSlider->setValue(
-                mover.getGazeHeadEyeBlend(inst->mEntityId));
-        }
-        if (!mLensGazeIntensitySlider->hasMouseCapture())
-        {
-            mLensGazeIntensitySlider->setValue(
-                mover.getGazeIntensity(inst->mEntityId));
-        }
-        if (!mLensGazeSmoothingSlider->hasMouseCapture())
-        {
-            mLensGazeSmoothingSlider->setValue(
-                mover.getGazeSmoothing(inst->mEntityId));
-        }
-        std::string gaze_status;
-        mover.getGazeStatus(inst->mEntityId, gaze_status);
-        mLensGazeStatus->setText(gaze_status);
     }
 
-    if (directed)
+    if (directed && slow_tick)
     {
+        // library: lazy, shared, never scanned here. Ask once; mirror when it changes.
+        if (!studio.animLibraryScanned())
+        {
+            studio.requestAnimLibraryScan();
+        }
+        else if (studio.animLibraryRevision() != mAnimLibraryShownRev)
+        {
+            populateAnimationLibrary();
+        }
         ALGhostAnimAssetIndex& index = ALGhostAnimAssetIndex::instance();
         if (inst->mDirectedAnim.notNull())
         {
-            mAnimationLibraryCombo->setValue(inst->mDirectedAnim);
+            setValueIfChanged(mAnimationLibraryCombo, LLSD(inst->mDirectedAnim));
             index.requestMetadata(inst->mDirectedAnim);
         }
         const auto* info = index.find(inst->mDirectedAnim);
@@ -1512,33 +1693,33 @@ void ALPanelGhostStudio::refreshDetail()
                 }
             }
         }
-        mAnimMetadataText->setText(metadata);
+        setTextIfChanged(mAnimMetadataText, metadata);
     }
 
-    // the rest loads on selection change only (never over in-progress edits)
-    if (row_value != mShownFor)
+    // [GhostPanelPerf] EVERY model-backed detail field is mirrored on each detail
+    // run (revision/key change or the 10 Hz tick) through the focus-guarded diff
+    // helpers, so an edit made from the OTHER visible host (rename, style, tint,
+    // alpha, distortion, look target...) lands within one tick. `force` bypasses the
+    // focus guard ONLY when the selection identity changed.
+    const bool identity_changed = row_value != mShownFor;
+    mShownFor = row_value;
+    const bool force = identity_changed;
+    setTextIfChanged(mNameEdit, group_header ? group->mName : inst->mName, force);
+    setValueIfChanged(mStyleCombo, LLSD((S32)inst->mStyle), force);
+    setValueIfChanged(mActorTintCheck, LLSD(inst->mUseActorTint), true);
+    setValueIfChanged(mHueSlider, LLSD((F64)inst->mHue), force);
+    setValueIfChanged(mAlphaSlider, LLSD((F64)inst->mAlpha), force);
+    setValueIfChanged(mShimmerSpeedSlider, LLSD((F64)inst->mShimmerSpeed), force);
+    setValueIfChanged(mShimmerAmountSlider, LLSD((F64)inst->mShimmerIntensity), force);
+    setValueIfChanged(mPixelSlider, LLSD((F64)inst->mPixelSize), force);
+    setValueIfChanged(mGlitchSlider, LLSD((F64)inst->mGlitch), force);
+    setValueIfChanged(mDistortCombo, LLSD((S32)inst->mDistort), force);
+    setValueIfChanged(mDistortAmountSlider, LLSD((F64)inst->mDistortAmount), force);
+    setValueIfChanged(mBrightnessSlider, LLSD((F64)inst->mBrightness), force);
+    if (force || slow_tick || mShownLookTarget != (S32)inst->mLookTarget ||
+        mShownLookTargetId != inst->mLookTargetId)
     {
-        mShownFor = row_value;
-        mNameEdit->setText(group_header ? group->mName : inst->mName);
-        mHeadingDial->setValue(unit_yaw_degrees);
-        mYawSpin->setValue(unit_yaw_degrees);
-        mScaleSpin->setValue(unit_scale);
-        mAnimSpeedSpin->setValue(inst->mAnimSpeed);
-        mPhysicsCheck->set(inst->mPhysicsEnabled);
-        mDriveModeCombo->setValue(inst->mDriveMode);
-        mDirectedAnimEdit->setText(inst->mDirectedAnim.asString());
-        mStyleCombo->setValue(inst->mStyle);
-        mActorTintCheck->set(inst->mUseActorTint);
-        mHueSlider->setValue(inst->mHue);
-        mAlphaSlider->setValue(inst->mAlpha);
-        mShimmerSpeedSlider->setValue(inst->mShimmerSpeed);
-        mShimmerAmountSlider->setValue(inst->mShimmerIntensity);
-        mPixelSlider->setValue(inst->mPixelSize);
-        mGlitchSlider->setValue(inst->mGlitch);
-        mDistortCombo->setValue(inst->mDistort);
-        mDistortAmountSlider->setValue(inst->mDistortAmount);
-        mBrightnessSlider->setValue(inst->mBrightness);
-        mEffectFps->setValue(inst->mEffectFps);
+        // formatted only when its model inputs moved (or at the 4 Hz slow tick)
         std::string target = "camera";
         if (inst->mLookTarget == ALGhostStudio::LOOK_TARGET_ME)
             target = "me";
@@ -1546,35 +1727,59 @@ void ALPanelGhostStudio::refreshDetail()
             target = "actor:" + inst->mLookTargetId.asString();
         else if (inst->mLookTarget == ALGhostStudio::LOOK_TARGET_GHOST)
             target = "ghost:" + inst->mLookTargetId.asString();
-        mLookTargetCombo->setValue(target);
+        setValueIfChanged(mLookTargetCombo, LLSD(target), force);
+        mShownLookTarget = (S32)inst->mLookTarget;
+        mShownLookTargetId = inst->mLookTargetId;
     }
-
+    if (identity_changed)
+    {
+        // controls mirrored above only while NOT focused get a forced resync here
+        setValueIfChanged(mHeadingDial, LLSD((F64)unit_yaw_degrees), true);
+        setValueIfChanged(mYawSpin, LLSD((F64)unit_yaw_degrees), true);
+        setValueIfChanged(mScaleSpin, LLSD((F64)unit_scale), true);
+        setValueIfChanged(mAnimSpeedSpin, LLSD((F64)inst->mAnimSpeed), true);
+        setValueIfChanged(mPhysicsCheck, LLSD(inst->mPhysicsEnabled), true);
+        setValueIfChanged(mDriveModeCombo, LLSD((S32)inst->mDriveMode), true);
+        setTextIfChanged(mDirectedAnimEdit, inst->mDirectedAnim.asString(), true);
+        mDirectedAnimShown = inst->mDirectedAnim;
+        setValueIfChanged(mEffectFps, LLSD((F64)inst->mEffectFps), true);
+        // the combo values the enable block reads just changed
+        mDetailDirty = true;
+    }
     // pose status: what the ghost is doing, and why a freeze might not bite
-    std::string pose;
-    if (inst->mPose == ALGhostStudio::POSE_FROZEN)
+    if (slow_tick)
     {
-        pose = "FROZEN pose held";
-    }
-    else if (inst->mKind == ALGhostStudio::BACKING_ENTITY_CLONE)
-    {
-        pose = "Scene-lit entity; overlay style controls unavailable";
-    }
-    else
-    {
-        LLVOAvatar* av = LLDirectorCast::instance().resolve(inst->mSource);
-        pose = (av && LLActorMover::instance().ghostBatchesFor(av->getID()))
-             ? "Following live pose"
-             : "Source not rendering (no ghost)";
-    }
-    if (mPoseStatus->getText() != pose)
-    {
-        mPoseStatus->setText(pose);
+        std::string pose;
+        if (inst->mPose == ALGhostStudio::POSE_FROZEN)
+        {
+            pose = "FROZEN pose held";
+        }
+        else if (inst->mKind == ALGhostStudio::BACKING_ENTITY_CLONE)
+        {
+            pose = "Scene-lit entity; overlay style controls unavailable";
+        }
+        else
+        {
+            LLVOAvatar* av = LLDirectorCast::instance().resolve(inst->mSource);
+            pose = (av && LLActorMover::instance().ghostBatchesFor(av->getID()))
+                 ? "Following live pose"
+                 : "Source not rendering (no ghost)";
+        }
+        setTextIfChanged(mPoseStatus, pose);
     }
 }
 
 void ALPanelGhostStudio::refreshStatus()
 {
     ALGhostStudio& studio = ALGhostStudio::instance();
+    // [GhostPanelPerf] status strings: 4 Hz, or immediately when the instance model moves
+    const U64 instance_rev = studio.getInstanceRevision();
+    if (!mStatusTick && instance_rev == mStatusInstanceRev &&
+        !ghost_refresh_always())
+    {
+        return;
+    }
+    mStatusInstanceRev = instance_rev;
     S32 shown = 0;
     for (const ALGhostStudio::Instance& inst : studio.getInstances())
     {
@@ -1586,10 +1791,7 @@ void ALPanelGhostStudio::refreshStatus()
     std::string txt = llformat("%d ghost(s), %d shown%s",
                                (S32)studio.getInstances().size(), shown,
                                studio.getShowAll() ? "" : " (all hidden)");
-    if (mStatusText->getText() != txt)
-    {
-        mStatusText->setText(txt);
-    }
+    setTextIfChanged(mStatusText, txt);
     std::string strip = studio.freezeStripStatus();
     const ALGhostStudio::EFormation formation =
         (ALGhostStudio::EFormation)mFormationCombo->getValue().asInteger();
@@ -1598,50 +1800,102 @@ void ALPanelGhostStudio::refreshStatus()
         strip = "Freeze Strip unavailable for this formation; "
                 "choose a classic layout above.";
     }
-    if (mStripStatus->getText() != strip)
-    {
-        mStripStatus->setText(strip);
-    }
+    setTextIfChanged(mStripStatus, strip);
     if (mActiveStrip && strip.find(llformat("Strip %u:", mActiveStrip)) != 0)
     {
         mActiveStrip = 0;
-        mStripCancelBtn->setEnabled(false);
+        setEnabledIfChanged(mStripCancelBtn, false);
     }
 }
 
+// [GhostPanelPerf] Rig diagnostics are ON DEMAND, not polled. The text is rebuilt
+// only when ALL of these hold:
+//   * something is known stale: first build, selection changed, the selected
+//     clone's runtime changed, the 0.5 Hz structure re-snapshot is due (the text reads
+//     async drawables/faces/TEs no revision tracks), or Refresh was pressed;
+//   * the editor is actually on screen (isWidgetOnScreen -- the same visibility
+//     and rect test LLView::drawChildren applies, so a editor scrolled out of its
+//     host costs nothing and fills on its first on-screen frame);
+//   * the operator is not selecting/copying text in it.
+// The auto text is the STRUCTURE snapshot (capped); the camera-dependent
+// render/cull columns appear only in a Refresh snapshot. GhostStudioRefreshAlways
+// restores the old 0.5 s live rebuild regardless of visibility.
 void ALPanelGhostStudio::refreshRigDiagnostics()
 {
     ALGhostStudio& studio = ALGhostStudio::instance();
-    const LLUUID selection = studio.getSelected();
-    if (selection == mRigDiagnosticsSelection &&
-        mRigDiagnosticsTimer.getElapsedTimeF32() < 0.5f)
+    const bool always = ghost_refresh_always();
+    const LLUUID& selection_id = studio.getSelected();
+    const ALGhostStudio::Instance* instance = studio.getInstance(selection_id);
+    const bool entity_clone =
+        instance && instance->mKind == ALGhostStudio::BACKING_ENTITY_CLONE;
+    const LLUUID entity_id = entity_clone ? instance->mEntityId : LLUUID::null;
+
+    bool live = mRigDiagRefreshRequested;
+    bool stale = live || !mRigDiagShown ||
+                 selection_id != mRigDiagShownSelection ||
+                 entity_id != mRigDiagShownEntity;
+    if (always)
     {
-        return;
+        if (!stale && mRigDiagnosticsTimer.getElapsedTimeF32() < 0.5f)
+        {
+            return;
+        }
+        mRigDiagnosticsTimer.reset();
+        live = true;
+        stale = true;
     }
-    mRigDiagnosticsSelection = selection;
-    mRigDiagnosticsTimer.reset();
+    else if (!stale)
+    {
+        // The structure text reads asynchronously created drawables / faces / TEs
+        // that no revision tracks, so re-snapshot at 0.5 Hz -- but only while the
+        // editor is on screen (checked below) and only for an entity clone. The text
+        // is camera-independent and capped, and setTextIfChanged skips an identical
+        // result, so an unchanged clone costs one capped string build per 2 s.
+        if (!entity_clone || !mRigDiagPollClock.due())
+        {
+            return;
+        }
+    }    if (!always)
+    {
+        if (!isWidgetOnScreen(mRigDiagnostics))
+        {
+            return; // stays stale; refreshed on the first on-screen frame
+        }
+        if (!live && mRigDiagnostics->hasFocus())
+        {
+            return; // never pull text out from under a selection
+        }
+    }
 
-    const ALGhostStudio::Instance* instance =
-        studio.getInstance(selection);
-
+    LL_PROFILE_ZONE_NAMED_CATEGORY_UI("ghost rig diagnostics refresh");
     std::string text =
         "Select an entity clone to inspect rig and per-face texture state.";
-    if (instance &&
-        instance->mKind == ALGhostStudio::BACKING_ENTITY_CLONE)
+    U64 clone_revision = 0;
+    if (entity_clone)
     {
-        LLViewerObject* object =
-            gObjectList.findObject(instance->mEntityId);
-        LLGhostAvatar* ghost =
-            object ? dynamic_cast<LLGhostAvatar*>(object->asAvatar()) : nullptr;
-        text = ghost
-            ? ghost->getRigDiagnosticText()
-            : "Selected entity clone is not currently available.";
+        LLGhostAvatar* ghost = studio.resolveEntityClone(instance->mId);
+        if (ghost)
+        {
+            text = ghost->getRigDiagnosticText(live);
+            clone_revision = ghost->getRigDiagRevision();
+        }
+        else
+        {
+            text = "Selected entity clone is not currently available.";
+        }
     }
+    setTextIfChanged(mRigDiagnostics, text, true);
+    mRigDiagShown = true;
+    mRigDiagShownSelection = selection_id;
+    mRigDiagShownEntity = entity_id;
+    mRigDiagShownCloneRev = clone_revision;
+    mRigDiagRefreshRequested = false;
+}
 
-    if (mRigDiagnostics->getText() != text)
-    {
-        mRigDiagnostics->setText(text);
-    }
+void ALPanelGhostStudio::onClickRigDiagRefresh()
+{
+    // one snapshot WITH the live render/cull columns; applied by the next draw if on screen
+    mRigDiagRefreshRequested = true;
 }
 
 // ---------------------------------------------------------------------------
@@ -1651,6 +1905,7 @@ void ALPanelGhostStudio::onListSelect()
 {
     // [R2-3] the list drives the SHARED selection (tool + both hosts follow);
     // refreshDetail() loads the widgets on the next draw
+    noteListSelectionChanged(); // [GhostPanelPerf] user changed the list selection
     ALGhostStudio& studio = ALGhostStudio::instance();
     const LLUUID row_value = selectedListValue();
     const ALGhostGroupModel::Group* group =
@@ -1686,7 +1941,7 @@ void ALPanelGhostStudio::onListMouseUp(S32 x, S32, MASK mask)
         {
             studio.setInstanceEnabled(member.mInstanceId, !all_enabled);
         }
-        refreshList();
+        refreshList(true);
     }
     else if (ALGhostStudio::Instance* inst =
                  studio.getInstance(selectedInstance()))
@@ -1694,7 +1949,7 @@ void ALPanelGhostStudio::onListMouseUp(S32 x, S32, MASK mask)
         studio.setInstanceEnabled(inst->mId, !inst->mEnabled);
         // The enabled bit is part of mListSig, so this rebuilds the dot now
         // while preserving the selected instance by UUID.
-        refreshList();
+        refreshList(true);
     }
 }
 
@@ -1709,7 +1964,7 @@ void ALPanelGhostStudio::onListDoubleClick()
         const bool editing = !group->mEditMembers;
         studio.setGroupEditMembers(group->mId, editing);
         studio.setSelected(editing ? group->mId : representative);
-        mListSig.clear();
+        mListGate.reset(); // [GhostPanelPerf] force a rebuild on the next refreshList()
         return;
     }
     if (ALGhostStudio::Instance* inst = studio.getInstance(selectedInstance()))
@@ -1736,8 +1991,9 @@ void ALPanelGhostStudio::onClickAdd()
     {
         const LLUUID id = inst->mId;    // list rebuild invalidates the pointer
         ALGhostStudio::instance().setSelected(id);
-        refreshList();
+        refreshList(true);
         mList->selectByID(id);
+        noteListSelectionChanged();
     }
 }
 
@@ -1755,7 +2011,7 @@ void ALPanelGhostStudio::onNameCommit()
     {
         studio.renameInstance(selectedInstance(), mNameEdit->getText());
     }
-    mListSig.clear();
+    mListGate.reset(); // [GhostPanelPerf] force a rebuild on the next refreshList()
 }
 
 void ALPanelGhostStudio::onClickDuplicate()
@@ -1816,9 +2072,10 @@ void ALPanelGhostStudio::onClickDuplicate()
     if (!duplicate_rows.empty())
     {
         studio.setSelected(first_selection);
-        refreshList();
+        refreshList(true);
         mList->deselectAllItems(true);
         mList->selectMultiple(duplicate_rows);
+        noteListSelectionChanged();
         mObservedSelectionRevision =
             studio.getSelectionRevision();
     }
@@ -1882,9 +2139,10 @@ void ALPanelGhostStudio::onClickDuplicateInPlace()
     if (!duplicate_rows.empty())
     {
         studio.setSelected(first_selection);
-        refreshList();
+        refreshList(true);
         mList->deselectAllItems(true);
         mList->selectMultiple(duplicate_rows);
+        noteListSelectionChanged();
         mObservedSelectionRevision =
             studio.getSelectionRevision();
     }
@@ -1927,8 +2185,9 @@ void ALPanelGhostStudio::onClickDelete()
         return;
     }
     studio.setSelected(LLUUID::null);
-    refreshList();
+    refreshList(true);
     mList->deselectAllItems(true);
+    noteListSelectionChanged();
     mShownFor.setNull();
 }
 
@@ -2220,27 +2479,28 @@ void ALPanelGhostStudio::refreshAutoAnimate(const ALGhostStudio::Instance* inst)
     const bool entity = inst && inst->mKind == ALGhostStudio::BACKING_ENTITY_CLONE;
     ALGhostAutoAnim::LearnStatus status;
     if (entity) ALGhostStudio::instance().getAutoAnimateStatus(inst->mId, status);
-    if (!mAutoAnimDisplayValid || mAutoAnimCheck->getEnabled() != entity)
-        mAutoAnimCheck->setToolTip(std::string(entity ? "Learn the source's idle performance, then continue independently" :
+    setToolTipIfChanged(mAutoAnimCheck, std::string(entity ? "Learn the source's idle performance, then continue independently" :
             "AutoAnimate needs an entity clone (overlays redraw the live source)"));
-    mAutoAnimCheck->setEnabled(entity); mAutoAnimCheck->set(entity && inst->mAutoAnimate);
-    mAutoAnimWindow->setEnabled(entity);
-    if (!mAutoAnimWindow->hasFocus()) mAutoAnimWindow->setValue(status.mWindow);
-    mAutoAnimReset->setEnabled(entity);
-    mAutoAnimStop->setEnabled(entity && status.mLearning);
-    mAutoAnimRelearn->setEnabled(entity);
-    mAutoAnimReseed->setEnabled(entity && status.mOn);
+    // [GhostPanelPerf] diff-guarded writes (this runs at the detail tick, not per frame)
+    setEnabledIfChanged(mAutoAnimCheck, entity);
+    setValueIfChanged(mAutoAnimCheck, LLSD(entity && inst->mAutoAnimate), true);
+    setEnabledIfChanged(mAutoAnimWindow, entity);
+    setValueIfChanged(mAutoAnimWindow, LLSD((F64)status.mWindow));
+    setEnabledIfChanged(mAutoAnimReset, entity);
+    setEnabledIfChanged(mAutoAnimStop, entity && status.mLearning);
+    setEnabledIfChanged(mAutoAnimRelearn, entity);
+    setEnabledIfChanged(mAutoAnimReseed, entity && status.mOn);
     bool entries = status.mLiveEntries != 0;
     if (entity && inst->mAutoAnimPool)
     {
         entries = entries || !inst->mAutoAnimPool->mBody.entries.empty();
         for (const auto& channel : inst->mAutoAnimPool->mAnimesh) entries = entries || !channel.second.entries.empty();
     }
-    mAutoAnimGo->setEnabled(entity && status.mOn && entries &&
+    setEnabledIfChanged(mAutoAnimGo, entity && status.mOn && entries &&
         (inst->mDriveMode == ALGhostStudio::DRIVE_MIRROR || inst->mDriveMode == ALGhostStudio::DRIVE_TRUE_MIRROR));
-    mAutoAnimFollow->setEnabled(entity && (status.mBodyAutonomous || status.mAnimeshAutonomous));
-    mAutoAnimSave->setEnabled(entity && bool(inst->mAutoAnimPool));
-    mAutoAnimLoad->setEnabled(entity);
+    setEnabledIfChanged(mAutoAnimFollow, entity && (status.mBodyAutonomous || status.mAnimeshAutonomous));
+    setEnabledIfChanged(mAutoAnimSave, entity && bool(inst->mAutoAnimPool));
+    setEnabledIfChanged(mAutoAnimLoad, entity);
     // [AutoAnimate] Fractional observed time does not change the visible clock.
     const S32 mode = entity ? static_cast<S32>(inst->mDriveMode) : -1;
     const auto& previous = mAutoAnimDisplay;
@@ -2269,8 +2529,8 @@ void ALPanelGhostStudio::refreshAutoAnimate(const ALGhostStudio::Instance* inst)
         if (inst->mDriveMode == ALGhostStudio::DRIVE_DIRECTED) text += " (dormant: Directed)";
         else if (inst->mDriveMode == ALGhostStudio::DRIVE_FROZEN) text += " (dormant: Frozen)";
     }
-    if (mAutoAnimStatus->getText() != text) mAutoAnimStatus->setText(text);
-    if (mAutoAnimStatus->getToolTip() != status.mDetail) mAutoAnimStatus->setToolTip(status.mDetail);
+    setTextIfChanged(mAutoAnimStatus, text);
+    setToolTipIfChanged(mAutoAnimStatus, status.mDetail);
 }
 
 void ALPanelGhostStudio::onDirectedAnimCommit()
@@ -2364,6 +2624,7 @@ void ALPanelGhostStudio::onClickLensGazeSelection()
 
 void ALPanelGhostStudio::onLensGazeSettingsCommit()
 {
+    mDetailDirty = true; mCrowdDirty = true; // [GhostPanelPerf] enables depend on this widget's value
     ALGhostStudio& studio = ALGhostStudio::instance();
     LLActorMover& mover = LLActorMover::instance();
     const S32 mode = llclamp(
@@ -2656,12 +2917,16 @@ void ALPanelGhostStudio::onStyleCommit()
     {
         if (ALGhostStudio::Instance* inst =
                 ALGhostStudio::instance().getInstance(id))
+        {
             inst->mStyle = mStyleCombo->getValue().asInteger();
+            ALGhostStudio::instance().touchInstances(); // [GhostPanelPerf] Style column
+        }
     }
 }
 
 void ALPanelGhostStudio::onActorTintToggle()
 {
+    mDetailDirty = true; mCrowdDirty = true; // [GhostPanelPerf] enables depend on this widget's value
     if (ALGhostStudio::Instance* inst =
             ALGhostStudio::instance().getInstance(selectedInstance()))
     {
@@ -2731,6 +2996,7 @@ void ALPanelGhostStudio::onGlitchCommit()
 
 void ALPanelGhostStudio::onDistortCommit()
 {
+    mDetailDirty = true; mCrowdDirty = true; // [GhostPanelPerf] enables depend on this widget's value
     for (const LLUUID& id : selectedInstances())
     {
         if (ALGhostStudio::Instance* inst =
@@ -2970,26 +3236,49 @@ void ALPanelGhostStudio::captureFormationParameter()
 void ALPanelGhostStudio::configureFormationParameter(
     ALGhostStudio::EFormation formation)
 {
-    mConfiguredFormation = formation;
     const CrowdParameterDescriptor descriptor =
         crowd_parameter_descriptor(formation);
     const bool visible = descriptor.mParameter != ECrowdParameter::NONE;
-    mFormationParam->setVisible(visible);
-    mFormationParamReset->setVisible(visible);
+
+    // [GhostPanelPerf] Deferral comes FIRST, before ANY visibility or configuration
+    // change: hiding or reconfiguring the spinner (setPrecision rewrites its inline
+    // editor) while the operator is editing it would strand or lose the edit. The
+    // pending flag is retried from refreshCrowdPlacement() once editing ends.
+    // mConfiguredFormation is what the spinner is ACTUALLY configured for (its commit
+    // handler stores the value under it), so it only changes once the guard passes; the
+    // requested formation waits in mPendingFormation meanwhile.
+    if (alIsBeingEdited(mFormationParam))
+    {
+        mPendingFormation = formation;
+        mParamConfigPending = true;
+        return;
+    }
+    mConfiguredFormation = formation;
+    mParamConfigPending = false;
+    setVisibleIfChanged(mFormationParam, visible);
+    setVisibleIfChanged(mFormationParamReset, visible);
     if (!visible)
     {
+        mParamConfigShown = -1;
         return;
     }
 
-    mFormationParam->setLabel(std::string(descriptor.mLabel));
-    mFormationParam->setToolTip(std::string(descriptor.mTooltip));
-    mFormationParamReset->setToolTip(
-        std::string("Reset ") + descriptor.mLabel + " for this formation");
-    mFormationParam->setMinValue(descriptor.mMinimum);
-    mFormationParam->setMaxValue(descriptor.mMaximum);
-    mFormationParam->setIncrement(descriptor.mIncrement);
-    mFormationParam->setPrecision(descriptor.mPrecision);
-
+    // The descriptor configuration (label, tooltip, range, increment, precision) is
+    // cached by FORMATION id -- two formations can share a parameter kind yet carry a
+    // different label/tooltip (STAGGERED_MILITARY vs RING_BRIGADE, Soul Train variants).
+    if (mParamConfigShown != (S32)formation)
+    {
+        mFormationParam->setLabel(std::string(descriptor.mLabel));
+        setToolTipIfChanged(mFormationParam, std::string(descriptor.mTooltip));
+        setToolTipIfChanged(mFormationParamReset,
+            std::string("Reset ") + descriptor.mLabel + " for this formation");
+        // shrinking range: max before value (the value write is below)
+        mFormationParam->setMinValue(descriptor.mMinimum);
+        setMaxValueIfChanged(mFormationParam, descriptor.mMaximum);
+        mFormationParam->setIncrement(descriptor.mIncrement);
+        mFormationParam->setPrecision(descriptor.mPrecision);
+        mParamConfigShown = (S32)formation;
+    }
     F32 value = descriptor.mDefault;
     switch (descriptor.mParameter)
     {
@@ -3026,7 +3315,8 @@ void ALPanelGhostStudio::configureFormationParameter(
     case ECrowdParameter::NONE:
         break;
     }
-    mFormationParam->setValue(value);
+    // while a draft import is applying, never overwrite a parameter the operator is editing
+    setValueIfChanged(mFormationParam, LLSD((F64)value), !mApplyingCrowdDraft);
 }
 
 void ALPanelGhostStudio::importFormationParameters(
@@ -3208,6 +3498,7 @@ ALGhostStudio::FormationSpec ALPanelGhostStudio::capturePlacementSpec() const
 
 void ALPanelGhostStudio::updateOwnedCrowdPlacement()
 {
+    mCrowdDirty = true; // [GhostPanelPerf]
     if (mApplyingCrowdDraft)
     {
         return;
@@ -3244,39 +3535,78 @@ void ALPanelGhostStudio::refreshCrowdPlacement()
         mSawOwnedCrowdDraft = false;
     }
 
-    if (draft.mActive && draft.mRevision != mLastCrowdDraftRevision)
+    if (mParamConfigPending && !alIsBeingEdited(mFormationParam))
+    {
+        configureFormationParameter(mPendingFormation); // replay the formation deferred while it was edited
+    }
+
+    // [GhostPanelPerf] The import goes through the focus-guarded diff helpers (a
+    // control the operator is editing is left alone, descendants included). If ANY
+    // import control was being edited, the draft revision is NOT accepted: the import
+    // stays pending and is retried on the 10 Hz tick until every control has synced.
+    if (draft.mActive && draft.mRevision != mLastCrowdDraftRevision &&
+        (!mCrowdImportPending || mReadoutTick))
     {
         mApplyingCrowdDraft = true;
         importFormationParameters(draft.mSpec);
-        mFormationCombo->setValue((S32)draft.mSpec.mFormation);
+        setValueIfChanged(mFormationCombo, LLSD((S32)draft.mSpec.mFormation));
         configureFormationParameter(draft.mSpec.mFormation);
-        mArrayCount->setValue(draft.mSpec.mCount);
-        mArraySpacing->setValue(draft.mSpec.mCenterSpacing);
-        mFormationEdgeGap->setValue(draft.mSpec.mEdgeGap);
-        mBrigadeColumns->setValue((S32)draft.mSpec.mGridColumns);
-        mBrigadeRows->setValue((S32)draft.mSpec.mGridRows);
-        mBrigadeFileSpacing->setValue(draft.mSpec.mFileSpacing);
-        mBrigadeRankSpacing->setValue(draft.mSpec.mRankSpacing);
-        mFormationJitter->setValue(draft.mSpec.mJitter);
-        mFormationGuideShape->setValue((S32)draft.mSpec.mGuideShape);
-        mFormationGuideSize->setValue(draft.mSpec.mGuideSize);
-        mFormationSeed->setValue((S32)draft.mSpec.mSeed);
-        mFormationTerrain->set(draft.mSpec.mTerrainConform);
-        mFormationFacing->setValue((S32)draft.mSpec.mFacing);
-        mPreserveSourceTilt->set(draft.mSpec.mPreserveSourceTilt);
-        if (!mFacingYawOffset->hasFocus())
-        {
-            mFacingYawOffset->setValue(draft.mFacingYawOffset * RAD_TO_DEG);
-        }
-        mCrowdCreateMode->setValue((S32)draft.mSpec.mLockMode);
-        mCrowdCopiesAs->setValue((S32)draft.mSource.mKind);
+        setValueIfChanged(mArrayCount, LLSD((S32)draft.mSpec.mCount));
+        setValueIfChanged(mArraySpacing, LLSD((F64)draft.mSpec.mCenterSpacing));
+        setValueIfChanged(mFormationEdgeGap, LLSD((F64)draft.mSpec.mEdgeGap));
+        setValueIfChanged(mBrigadeColumns, LLSD((S32)draft.mSpec.mGridColumns));
+        setValueIfChanged(mBrigadeRows, LLSD((S32)draft.mSpec.mGridRows));
+        setValueIfChanged(mBrigadeFileSpacing, LLSD((F64)draft.mSpec.mFileSpacing));
+        setValueIfChanged(mBrigadeRankSpacing, LLSD((F64)draft.mSpec.mRankSpacing));
+        setValueIfChanged(mFormationJitter, LLSD((F64)draft.mSpec.mJitter));
+        setValueIfChanged(mFormationGuideShape, LLSD((S32)draft.mSpec.mGuideShape));
+        setValueIfChanged(mFormationGuideSize, LLSD((F64)draft.mSpec.mGuideSize));
+        setValueIfChanged(mFormationSeed, LLSD((S32)draft.mSpec.mSeed));
+        setValueIfChanged(mFormationTerrain, LLSD(draft.mSpec.mTerrainConform), true);
+        setValueIfChanged(mFormationFacing, LLSD((S32)draft.mSpec.mFacing));
+        setValueIfChanged(mPreserveSourceTilt, LLSD(draft.mSpec.mPreserveSourceTilt), true);
+        setValueIfChanged(mFacingYawOffset, LLSD((F64)(draft.mFacingYawOffset * RAD_TO_DEG)));
+        setValueIfChanged(mCrowdCreateMode, LLSD((S32)draft.mSpec.mLockMode));
+        setValueIfChanged(mCrowdCopiesAs, LLSD((S32)draft.mSource.mKind));
         mApplyingCrowdDraft = false;
-        mLastCrowdDraftRevision = draft.mRevision;
-    }
-    else if (!draft.mActive)
+        mCrowdImportPending =
+            alIsBeingEdited(mFormationCombo) || alIsBeingEdited(mFormationParam) ||
+            alIsBeingEdited(mArrayCount) || alIsBeingEdited(mArraySpacing) ||
+            alIsBeingEdited(mFormationEdgeGap) || alIsBeingEdited(mBrigadeColumns) ||
+            alIsBeingEdited(mBrigadeRows) || alIsBeingEdited(mBrigadeFileSpacing) ||
+            alIsBeingEdited(mBrigadeRankSpacing) || alIsBeingEdited(mFormationJitter) ||
+            alIsBeingEdited(mFormationGuideShape) || alIsBeingEdited(mFormationGuideSize) ||
+            alIsBeingEdited(mFormationSeed) || alIsBeingEdited(mFormationFacing) ||
+            alIsBeingEdited(mFacingYawOffset) || alIsBeingEdited(mCrowdCreateMode);
+        if (!mCrowdImportPending)
+        {
+            mLastCrowdDraftRevision = draft.mRevision;
+        }
+    }    else if (!draft.mActive)
     {
+        mCrowdImportPending = false;
         mLastCrowdDraftRevision = 0;
     }
+
+    // [GhostPanelPerf] GATE: the ~30 enable/visible writes and the status string run
+    // only when the draft revision / ownership / selection / last message changed,
+    // when a handler asked (mCrowdDirty), or on the 10 Hz readout tick (which also
+    // covers the widget-derived inputs: formation + guide-shape combo values and the
+    // owner-only live source-unchanged check).
+    const U64 crowd_flags =
+        (owner ? 1ULL : 0ULL) | (blocked ? 2ULL : 0ULL) |
+        (draft.mActive ? 4ULL : 0ULL) | (draft.mPinned ? 8ULL : 0ULL) |
+        (mActiveStrip != 0 ? 16ULL : 0ULL);
+    const bool crowd_key_changed = mCrowdGate.changed(
+        { draft.mRevision, crowd_flags, selection().mStamp,
+          (U64)std::hash<std::string>{}(mLastCrowdMessage) },
+        ghost_refresh_always());
+    if (!crowd_key_changed && !mReadoutTick && !mCrowdDirty)
+    {
+        return;
+    }
+    mCrowdDirty = false;
+    LL_PROFILE_ZONE_NAMED_CATEGORY_UI("ghost refreshCrowdPlacement apply");
 
     const ALGhostStudio::EFormation formation =
         (ALGhostStudio::EFormation)mFormationCombo->getValue().asInteger();
@@ -3291,7 +3621,7 @@ void ALPanelGhostStudio::refreshCrowdPlacement()
         !owner || studio.crowdPlacementSourceUnchanged(&source_reason);
     const bool can_edit = !blocked;
     const ALGhostStudio::Instance* prototype =
-        studio.getInstance(selectedInstance());
+        studio.getInstance(selection().mInstance);
     const bool have_prototype = prototype != nullptr;
 
     for (LLUICtrl* control :
@@ -3308,39 +3638,39 @@ void ALPanelGhostStudio::refreshCrowdPlacement()
            static_cast<LLUICtrl*>(mPreserveSourceTilt),
            static_cast<LLUICtrl*>(mCrowdCreateMode) })
     {
-        control->setEnabled(can_edit);
+        setEnabledIfChanged(control, can_edit);
     }
     const bool uses_grid = formation_uses_grid(formation);
-    mBrigadeColumns->setVisible(uses_grid);
-    mBrigadeRows->setVisible(uses_grid);
-    mBrigadeFileSpacing->setVisible(uses_grid);
-    mBrigadeRankSpacing->setVisible(uses_grid);
-    mArrayCount->setEnabled(can_edit && !uses_grid);
-    mFormationEdgeGap->setVisible(!uses_grid);
-    mFormationJitter->setVisible(!uses_grid);
-    mBrigadeColumns->setEnabled(can_edit && uses_grid);
-    mBrigadeRows->setEnabled(can_edit && uses_grid);
-    mBrigadeFileSpacing->setEnabled(can_edit && uses_grid);
-    mBrigadeRankSpacing->setEnabled(can_edit && uses_grid);
-    mFormationGuideSize->setEnabled(can_edit && guide_visible);
-    mFormationParam->setEnabled(can_edit && has_parameter);
-    mFormationParam->setVisible(has_parameter);
-    mFormationParamReset->setVisible(has_parameter);
-    mFormationParamReset->setEnabled(can_edit && has_parameter);
-    mCrowdCopiesAs->setEnabled(false);
-    mArrayLineBtn->setEnabled(
+    setVisibleIfChanged(mBrigadeColumns, uses_grid);
+    setVisibleIfChanged(mBrigadeRows, uses_grid);
+    setVisibleIfChanged(mBrigadeFileSpacing, uses_grid);
+    setVisibleIfChanged(mBrigadeRankSpacing, uses_grid);
+    setEnabledIfChanged(mArrayCount, can_edit && !uses_grid);
+    setVisibleIfChanged(mFormationEdgeGap, !uses_grid);
+    setVisibleIfChanged(mFormationJitter, !uses_grid);
+    setEnabledIfChanged(mBrigadeColumns, can_edit && uses_grid);
+    setEnabledIfChanged(mBrigadeRows, can_edit && uses_grid);
+    setEnabledIfChanged(mBrigadeFileSpacing, can_edit && uses_grid);
+    setEnabledIfChanged(mBrigadeRankSpacing, can_edit && uses_grid);
+    setEnabledIfChanged(mFormationGuideSize, can_edit && guide_visible);
+    setEnabledIfChanged(mFormationParam, can_edit && has_parameter);
+    setVisibleIfChanged(mFormationParam, has_parameter);
+    setVisibleIfChanged(mFormationParamReset, has_parameter);
+    setEnabledIfChanged(mFormationParamReset, can_edit && has_parameter);
+    setEnabledIfChanged(mCrowdCopiesAs, false);
+    setEnabledIfChanged(mArrayLineBtn,
         !draft.mActive && can_edit && have_prototype);
-    mArrayRingBtn->setEnabled(
+    setEnabledIfChanged(mArrayRingBtn,
         !draft.mActive && can_edit && have_prototype);
-    mArrayBuildBtn->setEnabled(
+    setEnabledIfChanged(mArrayBuildBtn,
         !draft.mActive && can_edit && have_prototype);
-    mPickFacingTarget->setEnabled(
+    setEnabledIfChanged(mPickFacingTarget,
         !draft.mActive && have_prototype);
-    mCrowdConfirmBtn->setEnabled(
+    setEnabledIfChanged(mCrowdConfirmBtn,
         owner && draft.mValidation.mCanCommit && source_unchanged &&
         draft.mAnchorValid);
-    mCrowdUnpinBtn->setEnabled(owner && draft.mPinned);
-    mCrowdCancelBtn->setEnabled(owner);
+    setEnabledIfChanged(mCrowdUnpinBtn, owner && draft.mPinned);
+    setEnabledIfChanged(mCrowdCancelBtn, owner);
 
     // Status vocabulary: Ready / Ready with warnings / Blocked. Only genuine
     // blockers (missing prototype / invalid spec via mCanCommit, a legality
@@ -3417,10 +3747,7 @@ void ALPanelGhostStudio::refreshCrowdPlacement()
             ? "Ready. Select a clone, choose a formation, then Preview in world."
             : mLastCrowdMessage;
     }
-    if (mCrowdPlacementStatus->getText() != status)
-    {
-        mCrowdPlacementStatus->setText(status);
-    }
+    setTextIfChanged(mCrowdPlacementStatus, status);
 }
 
 void ALPanelGhostStudio::onClickCrowdConfirm()
@@ -3448,7 +3775,7 @@ void ALPanelGhostStudio::onClickCrowdConfirm()
                 mPlacementOwner, draft.mSessionId);
         mLastCrowdMessage = result.mMessage;
     }
-    mListSig.clear();
+    mListGate.reset(); // [GhostPanelPerf] force a rebuild on the next refreshList()
     refreshCrowdPlacement();
 }
 
@@ -3520,6 +3847,7 @@ void ALPanelGhostStudio::releaseOwnedCrowdPlacement()
 
 void ALPanelGhostStudio::onFormationCommit()
 {
+    mDetailDirty = true; mCrowdDirty = true; // [GhostPanelPerf] enables depend on this widget's value
     if (!mApplyingCrowdDraft)
     {
         // The combo already contains the new formation. Save the generic
@@ -3694,7 +4022,7 @@ void ALPanelGhostStudio::syncCrowdFacingPointPrototype()
     {
         return;
     }
-    const LLUUID selected = selectedInstance();
+    const LLUUID selected = selection().mInstance; // [GhostPanelPerf] cached, no per-frame LLSD/UUID work
     const ALGhostStudio::Instance* prototype =
         ALGhostStudio::instance().getInstance(selected);
     if (selected == mCrowdFacingPrototype && prototype &&
@@ -3738,7 +4066,7 @@ void ALPanelGhostStudio::onLockModeCommit()
         else if (mode != ALGhostStudio::LOCK_OFF &&
                  selectedInstances().size() > 1)
             ALGhostStudio::instance().lockGroup(selectedInstances(), mode);
-        mListSig.clear();
+        mListGate.reset(); // [GhostPanelPerf] force a rebuild on the next refreshList()
     }
 }
 
@@ -3755,7 +4083,7 @@ void ALPanelGhostStudio::onGroupEditMembersCommit()
     studio.setGroupEditMembers(
         group->mId, mGroupEditMembersCheck->get());
     studio.setSelected(selected);
-    mListSig.clear();
+    mListGate.reset(); // [GhostPanelPerf] force a rebuild on the next refreshList()
 }
 
 void ALPanelGhostStudio::onGroupMemberPinnedCommit()
@@ -3770,7 +4098,7 @@ void ALPanelGhostStudio::onGroupMemberPinnedCommit()
     }
     studio.setGroupMemberPinned(
         row_value, mGroupMemberPinnedCheck->get());
-    mListSig.clear();
+    mListGate.reset(); // [GhostPanelPerf] force a rebuild on the next refreshList()
 }
 
 void ALPanelGhostStudio::onClickGroupMemberReset()
@@ -3784,7 +4112,7 @@ void ALPanelGhostStudio::onClickGroupMemberReset()
         return;
     }
     studio.resetGroupMemberOffset(row_value);
-    mListSig.clear();
+    mListGate.reset(); // [GhostPanelPerf] force a rebuild on the next refreshList()
 }
 
 void ALPanelGhostStudio::onNameplateModeCommit()

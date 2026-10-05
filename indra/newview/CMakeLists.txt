@@ -1183,6 +1183,7 @@ set(viewer_HEADER_FILES
     alscrollfocus.h
     alobjectpathmover.h
     alpanelghoststudio.h
+    aluirefresh.h # [GhostPanelPerf]
     alpanelpropmover.h
     altoolcrowdplace.h
     altoolfocuspick.h

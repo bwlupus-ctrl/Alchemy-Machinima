@@ -39,9 +39,19 @@ public:
     void clear();
 
 private:
-    LLHUDNameTag* getOrCreate(const LLUUID& key);
+    // [GhostPanelPerf] LLHUDNameTag::setString() re-tokenises and re-measures the
+    // text, so remember what each tag was last given and only call setString()/
+    // setColor() when the text or colour actually changed.
+    struct Entry
+    {
+        LLPointer<LLHUDNameTag> mTag;
+        std::string mText;
+        LLColor4    mColor;
+        bool        mApplied = false;   // mText/mColor reflect a setString() call
+    };
+    Entry* getOrCreate(const LLUUID& key);
 
-    std::map<LLUUID, LLPointer<LLHUDNameTag>> mTags;
+    std::map<LLUUID, Entry> mTags;
 };
 
 #endif // AL_ALGHOSTNAMEPLATES_H

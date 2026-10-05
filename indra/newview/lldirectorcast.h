@@ -270,6 +270,12 @@ public:
                                               const LLUUID& fallback,
                                               LLUUID& resolved_id) const;
     const std::vector<CastMember>& getCast() const { return mCast; }
+    // [GhostPanelPerf] Bumped when membership or a member's cached display name
+    // (mLastName) changes -- everything a cast picker / list mirror shows. UI
+    // compares this instead of rebuilding id+name signature strings per frame.
+    // Code that writes mLastName directly must call touchCast() afterwards.
+    U64 getCastRevision() const { return mCastRevision; }
+    void touchCast() { ++mCastRevision; }
     // parallel id list, kept in membership order; this is what
     // LLActorMover::getRoster() hands out (empty = "my avatar")
     const uuid_vec_t& getIds() const { return mIds; }
@@ -454,6 +460,7 @@ private:
     GazeInfluenceKeyList mSelfGazeInfluenceKeys;
     ActorStyle mSelfActorStyle;
     U64 mGazeCueRevision = 0;
+    U64 mCastRevision = 1;      // [GhostPanelPerf] membership + cached names
 
     // transport state: what THIS action() run started, so cut() undoes
     // only that

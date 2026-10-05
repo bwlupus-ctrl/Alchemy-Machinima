@@ -557,6 +557,30 @@ public:
     const LLUUID& getSelected() const { return mSelected; }
     U64           getSelectionRevision() const { return mSelectionRevision; }
 
+    // [GhostPanelPerf] ROW-VISIBLE model revision: bumped by every mutator that
+    // changes anything the instance list / combos show (add, remove, rename,
+    // enable, drive mode, freeze, group edits, lifecycle STATE CHANGES, source
+    // label, style). The panels compare this instead of rebuilding signature
+    // strings every frame (CLAUDE.md "UI PANELS MUST NOT DO WORK IN draw()").
+    // Not bumped for transform/live values -- those use the 10 Hz readout clock.
+    U64           getInstanceRevision() const { return mInstanceRevision; }
+    // getInstances() hands out mutable Instances; code that edits a ROW-VISIBLE
+    // field directly (name, enabled, state, style, pose, source label, group,
+    // lock mode) outside an ALGhostStudio method must call this afterwards.
+    void          touchInstances() { ++mInstanceRevision; }
+
+    // [GhostPanelPerf] Shared (both panel hosts) inventory-animation library for the
+    // Directed-mode picker. The whole-inventory walk is LAZY and never runs from a
+    // widget draw(): a panel whose directed controls are visible calls
+    // requestAnimLibraryScan() (an idempotent flag); updatePerFrame() performs the one
+    // scan. Each panel mirrors animLibrary() when animLibraryRevision() changes.
+    // scanAnimLibrary() is the explicit re-scan (the Refresh button).
+    void requestAnimLibraryScan() { if (!animLibraryScanned()) mAnimLibraryScanRequested = true; }
+    bool animLibraryScanned() const { return mAnimLibraryRevision != 0; }
+    U64  animLibraryRevision() const { return mAnimLibraryRevision; }
+    void scanAnimLibrary();
+    const std::vector<std::pair<std::string, LLUUID>>& animLibrary() const { return mAnimLibrary; }
+
     // ---- instance CRUD ----
     // Add spawns at the source's current rendered feet (so a fresh ghost is
     // immediately visible standing in the actor); nullptr when the source is
@@ -835,6 +859,10 @@ private:
     bool mShowAll = true;
     LLUUID mSelected;       // [R2-3] shared edit selection (null = none)
     U64    mSelectionRevision = 0;
+    U64    mInstanceRevision = 1;   // [GhostPanelPerf] see getInstanceRevision()
+    bool   mAnimLibraryScanRequested = false;   // [GhostPanelPerf] see requestAnimLibraryScan()
+    U64    mAnimLibraryRevision = 0;            // 0 = never scanned
+    std::vector<std::pair<std::string, LLUUID>> mAnimLibrary;
     std::vector<FreezeStrip> mFreezeStrips;
     U32 mNextStripId = 1;
     std::string mLastStripStatus;

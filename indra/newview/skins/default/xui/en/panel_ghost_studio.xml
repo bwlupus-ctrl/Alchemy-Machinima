@@ -299,8 +299,11 @@
            tool_tip="0 is snappy; 1 is very smooth" width="468" />
           <button follows="top|right" height="18" label="↺" layout="topleft" name="reset_lens_gaze_smoothing" right="-8" top="486" tool_tip="Reset gaze smoothing to default" width="18" />
           <text follows="left|top|right" height="34" layout="topleft" left="8" name="lens_gaze_status" right="-8" text_color="LtGray_50" top="510" width="468">Gaze off</text>
-          <text follows="left|top|right" font="SansSerifSmallBold" height="16" layout="topleft" left="8" name="rig_diagnostics_label" right="-8" top="548" width="468">Entity clone rig + texture diagnostics</text>
-          <text_editor follows="left|top|right" font="Monospace" height="210" layout="topleft" left="8" max_length="1048576" name="rig_diagnostics" read_only="true" right="-8" top="570" width="468" word_wrap="false">Select an entity clone to inspect rig and per-face texture state.</text_editor>
+          <text follows="left|top|right" font="SansSerifSmallBold" height="16" layout="topleft" left="8" name="rig_diagnostics_label" right="-78" top="548" width="398"
+           tool_tip="[GhostPanelPerf] The structure part is re-sampled every 2 s while this editor is on screen. The live render/cull columns (draw pass, texture bindings, pool) are NOT polled: press Refresh to capture them.">Entity clone rig diagnostics (structure; Refresh for live state)</text>
+          <button follows="top|right" height="18" label="Refresh" layout="topleft" name="btn_rig_diag_refresh" right="-8" top="547"
+           tool_tip="Capture the live render/cull state (draw pass, texture bindings, pool) of the selected entity clone now. It is a snapshot and does not follow the camera" width="64" />
+          <text_editor follows="left|top|right" font="Monospace" height="210" layout="topleft" left="8" max_length="32768" name="rig_diagnostics" read_only="true" right="-8" top="570" width="468" word_wrap="false">Select an entity clone to inspect rig and per-face texture state.</text_editor>
         </panel>
               </panel>
             </scroll_container>

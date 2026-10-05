@@ -7405,6 +7405,28 @@
     <key>Value</key>
     <integer>1</integer>
   </map>
+  <key>UIRefreshForceAlways</key>
+  <map>
+    <key>Comment</key>
+    <string>[GhostPanelPerf] Debug switch for stale-UI reports. 1 = every ALRevisionGate (aluirefresh.h) reports changed on every call, restoring per-frame refresh in all panels that use the shared refresh helpers. GhostStudioRefreshAlways is an alias that enables the same behaviour for Ghost Studio (plus its legacy signature diffs and 0.5 s live rig diagnostics). Costs frame time. Not persisted.</string>
+    <key>Persist</key>
+    <integer>0</integer>
+    <key>Type</key>
+    <string>Boolean</string>
+    <key>Value</key>
+    <integer>0</integer>
+  </map>
+  <key>GhostStudioRefreshAlways</key>
+  <map>
+    <key>Comment</key>
+    <string>[GhostPanelPerf] Debug switch for stale-UI reports. 0 (default) = the Ghost Studio panel refreshes its list/combos/detail from model revisions and 10 Hz readout clocks, and the rig diagnostics refresh on demand. 1 = restore the old behaviour: the list/combos are re-diffed by signature every frame, the detail and crowd blocks run every frame, and the rig diagnostics rebuild (with live render columns) every 0.5 s even when off screen. Costs frame time; for chasing a missing revision bump only. Not persisted: it resets to 0 next session.</string>
+    <key>Persist</key>
+    <integer>0</integer>
+    <key>Type</key>
+    <string>Boolean</string>
+    <key>Value</key>
+    <integer>0</integer>
+  </map>
   <key>GhostStudioGuideWidthPixels</key>
   <map>
     <key>Comment</key>

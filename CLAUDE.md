@@ -121,6 +121,30 @@ have compiled and shipped scrambled parameters.
 **Rule:** after any scripted/positional edit, verify by COUNTING and by cross-checking values against
 the source of truth. "It compiled" proves nothing about positional data.
 
+## ⛔ UI PANELS MUST NOT DO WORK IN draw() (user directive, 2026-10-05)
+Earned on the Ghost Studio clone hitch. Every 0.5 s, a draw()-driven refresher rewrote a 40-90 KB
+rig-diagnostics dump into an off-screen text editor, costing 345 ms per write. Its string-compare
+guard could never hold, because the dump contained camera-dependent fields. The Director console
+and the Cine Light Rig had the same pattern. Full evidence: `doc/GHOST_PERF_AUDIT_FABLE.md`.
+Helpers: `indra/newview/aluirefresh.h`.
+
+1. `draw()` may **only** check revisions or timers and call the diff-guarded writes
+   (`setTextIfChanged`, `setValueIfChanged`, `setToolTipIfChanged`, `setEnabledIfChanged`,
+   `setVisibleIfChanged`). Never put any of these directly in a draw path:
+   - `setText`, `clearRows`, `deleteAllItems`, `removeall`, `add` or `setToolTip`;
+   - a `getChild`/`findChild` lookup by name;
+   - `gSavedSettings.getXxx("name")`;
+   - `LLUUID::asString()`.
+2. Model objects that a UI mirrors expose a `U64` revision. The UI compares revisions and never
+   rebuilds signature strings to detect change.
+3. A widget that can hold more than about 1 KB of text, or a list with more than 50 rows, refreshes
+   on demand or at most 2 Hz. It refreshes only while on screen (`isWidgetOnScreen`), and never
+   decides from a string compare of its own contents.
+4. Live numeric readouts are throttled to at most 10 Hz and diff-guarded.
+5. Every panel `draw()` gets a Tracy zone named after the panel
+   (`LL_PROFILE_ZONE_SCOPED_CATEGORY_UI`), so the next regression shows up under its own name
+   instead of hiding inside `LLFloater::draw`.
+
 ## ⛔ MANDATORY WORKING AGREEMENT — CONSULT CODEX (user directive, 2026-07-21)
 
 **For this project, from 2026-07-21 onward: every code change must be reviewed with Codex, and

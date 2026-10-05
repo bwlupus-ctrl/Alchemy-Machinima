@@ -190,9 +190,21 @@ public:
     // the live simulator-known source prim's current rendered LOD.
     static bool getClonedSourceLOD(const LLVOVolume* volume, S32& source_lod);
 
-    // Live per-prim clone/source rig state for the Ghost Studio diagnostic
-    // readout. This is viewer-local inspection only.
-    std::string getRigDiagnosticText() const;
+    // Per-prim clone/source rig state for the Ghost Studio diagnostic readout.
+    // This is viewer-local inspection only.
+    //
+    // [GhostPanelPerf] The dump is NOT cheap and its render-state columns change with
+    // the camera (draw pass, cull/INVISIBLE, texture bindings, pool), so it must never
+    // be polled into a text widget. include_live_render_state == false emits only the
+    // structural columns (stable between clone/release events); true adds the volatile
+    // render/cull columns and is meant for an explicit Refresh. max_prims caps the
+    // number of prims listed (the rest are summarised in one line); output is also
+    // capped in bytes so it always fits the widget's max_length.
+    std::string getRigDiagnosticText(bool include_live_render_state = true,
+                                     S32 max_prims = 48) const;
+    // [GhostPanelPerf] Bumped whenever the cloned-linkset set changes (attachments
+    // cloned or released), i.e. whenever the STRUCTURAL diagnostic text can differ.
+    U64 getRigDiagRevision() const { return mRigDiagRevision; }
 
     // Destroy every ghost spawned by the palette-isolation test harness.
     static S32 clearTestHarnessGhosts();
@@ -300,6 +312,7 @@ private:
         std::map<LLUUID, RepeatState> mRepeatStates;
     };
     std::vector<ClonedLinkset> mClonedLinksets;
+    U64 mRigDiagRevision = 1; // [GhostPanelPerf] see getRigDiagRevision()
     // [AutoAnimate] Allocated only while the instance toggle is on.
     struct AutoAnimRuntime;
     std::unique_ptr<AutoAnimRuntime> mAutoAnim;

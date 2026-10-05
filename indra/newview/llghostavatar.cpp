@@ -1579,6 +1579,7 @@ void LLGhostAvatar::applyTrueMirrorStamp()
         return;
     }
     mTrueMirrorLastStampFrame = frame;
+    LL_PROFILE_ZONE_SCOPED_CATEGORY_UI; // [GhostPanelPerf] only the frames that actually stamp
 
     // Resolve the source through gObjectList every frame (never retained).
     // A ghost source is allowed: its final pose is evaluated in the object
@@ -2908,6 +2909,7 @@ S32 LLGhostAvatar::cloneAttachmentsFrom(LLVOAvatar* source)
             }
 
             mClonedLinksets.push_back(record);
+            ++mRigDiagRevision; // [GhostPanelPerf] structural diagnostic text changed
             cloned++;
 
             // Structural failures (attachment registration, joint parenting,
@@ -2985,6 +2987,7 @@ void LLGhostAvatar::releaseClonedAttachments()
         }
     }
     mClonedLinksets.clear();
+    ++mRigDiagRevision; // [GhostPanelPerf] structural diagnostic text changed
     mRigHealedLogged.clear();
 
     // Reset the transactional counters WITH the roots they describe. Clearing
@@ -2997,16 +3000,38 @@ void LLGhostAvatar::releaseClonedAttachments()
     mCloneFailures      = 0;
 }
 
-std::string LLGhostAvatar::getRigDiagnosticText() const
+std::string LLGhostAvatar::getRigDiagnosticText(bool include_live_render_state,
+                                                S32 max_prims) const
 {
-    std::string text =
-        "       id       mesh skin rig anim cav attach\n"
-        "  face te diffuse  bind     magic/default alpha/cut  fb pool        pass/ready\n";
+    // [GhostPanelPerf] named zone: this is the string that used to be rebuilt
+    // every 0.5 s by the Ghost Studio panel.
+    LL_PROFILE_ZONE_SCOPED_CATEGORY_UI;
+    // Byte cap so the result always fits the widget (panel_ghost_studio.xml
+    // rig_diagnostics max_length = 32768) with room for the summary line.
+    constexpr size_t kMaxChars = 30000;
+    // Every emitted row is budgeted: a row is appended only if it fits under kBudget, and
+    // kReserve is held back for the one summary line, so the total NEVER exceeds kMaxChars.
+    constexpr size_t kReserve = 256;            // >= the longest summary line
+    constexpr size_t kBudget = kMaxChars - kReserve;
+    constexpr size_t kRowMax = 200;             // >= the longest single row
+    bool truncated = false;
+    std::string text = include_live_render_state
+        ? "[LIVE snapshot: render/cull state as of the last Refresh press]\n"
+          "       id       mesh skin rig anim cav attach\n"
+          "  face te diffuse  bind     magic/default alpha/cut  fb pool        pass/ready\n"
+        : "[STRUCTURE snapshot, re-sampled every 2 s while visible; press Refresh for live render/cull state]\n"
+          "       id       mesh skin rig anim cav attach\n"
+          "  face te diffuse  magic alpha/cut  fb  src-alpha a\n";
     S32 prim_index = 0;
+    S32 prims_not_shown = 0;
 
-    auto append_prim = [&text, &prim_index](const LLUUID& clone_id,
-                                            const LLUUID& source_id)
+    auto append_prim = [&](const LLUUID& clone_id, const LLUUID& source_id)
     {
+        if (text.size() + 2 * kRowMax > kBudget)
+        {
+            truncated = true;
+            return;
+        }
         LLVOVolume* clone = dynamic_cast<LLVOVolume*>(
             gObjectList.findObject(clone_id));
         LLVOVolume* source = dynamic_cast<LLVOVolume*>(
@@ -3045,11 +3070,40 @@ std::string LLGhostAvatar::getRigDiagnosticText() const
                 {
                     continue;
                 }
+                if (text.size() + kRowMax > kBudget)
+                {
+                    truncated = true;
+                    break;
+                }
 
                 const U8 te_index = face->getTEOffset();
                 const LLTextureEntry* te =
                     te_index < clone->getNumTEs()
                         ? clone->getTE(te_index) : nullptr;
+                if (!include_live_render_state)
+                {
+                    // [GhostPanelPerf] STRUCTURE-only row: TE data that does not
+                    // change with the camera. No draw-pass / cull / binding / pool
+                    // columns, so the text is stable between clone events.
+                    const LLTextureEntry* structure_source_te =
+                        source && te_index < source->getNumTEs()
+                            ? source->getTE(te_index) : nullptr;
+                    const bool structure_magic = te &&
+                        LLAvatarAppearanceDefines::LLAvatarAppearanceDictionary::
+                            isBakedImageId(te->getID());
+                    const std::string structure_diffuse =
+                        te ? te->getID().asString().substr(0, 8) : "missing ";
+                    text += llformat(
+                        "  F%03d %02d %-8s %d     %-9s %.2f %d  sa=%s/%.2f a=%.2f\n",
+                        face_index, (S32)te_index,
+                        structure_diffuse.c_str(), structure_magic,
+                        face_alpha_mode(te).c_str(), face_alpha_cutoff(te),
+                        te && te->getFullbright(),
+                        face_alpha_mode(structure_source_te).c_str(),
+                        face_alpha_cutoff(structure_source_te),
+                        te ? te->getColor().mV[3] : -1.f);
+                    continue;
+                }
                 LLViewerTexture* binding =
                     te_index < clone->getNumTEs()
                         ? clone->getTEImage(te_index) : nullptr;
@@ -3109,11 +3163,25 @@ std::string LLGhostAvatar::getRigDiagnosticText() const
         ++prim_index;
     };
 
+    // [GhostPanelPerf] Cap by prim count and by bytes; summarise the remainder.
+    auto capped = [&]() {
+        return prim_index >= max_prims || truncated || text.size() + 2 * kRowMax > kBudget;
+    };
     for (const ClonedLinkset& linkset : mClonedLinksets)
     {
+        if (capped())
+        {
+            prims_not_shown += 1 + (S32)linkset.mChildren.size();
+            continue;
+        }
         append_prim(linkset.mRoot, linkset.mSourceRoot);
         for (size_t i = 0; i < linkset.mChildren.size(); ++i)
         {
+            if (capped())
+            {
+                ++prims_not_shown;
+                continue;
+            }
             append_prim(
                 linkset.mChildren[i],
                 i < linkset.mSourceChildren.size()
@@ -3124,6 +3192,11 @@ std::string LLGhostAvatar::getRigDiagnosticText() const
     if (prim_index == 0)
     {
         text += "No cloned attachment prims recorded.";
+    }
+    if (prims_not_shown > 0 || truncated)
+    {
+        text += llformat("... %d more prim(s) not shown, output truncated (cap %d prims / %d bytes).\n",
+                         prims_not_shown, (S32)max_prims, (S32)kMaxChars);
     }
     return text;
 }
@@ -3350,6 +3423,7 @@ void LLGhostAvatar::resetHeldAnimeshRepeat()
 // virtual
 void LLGhostAvatar::idleUpdate(LLAgent &agent, const F64 &time)
 {
+    LL_PROFILE_ZONE_SCOPED_CATEGORY_UI; // [GhostPanelPerf] named zone, sub-zones below
     if (mMarkedForDeath)
     {
         markDead();
@@ -3366,9 +3440,14 @@ void LLGhostAvatar::idleUpdate(LLAgent &agent, const F64 &time)
     static LLCachedControl<bool> hold_on_source_change(
         gSavedSettings, "GhostMirrorHoldOnSourceChange", true);
     const bool hold_eff = mAutoAnim != nullptr || hold_on_source_change; // [AutoAnimate]
-    if (mAutoAnim) autoAnimRecordTick(); // [AutoAnimate]
+    if (mAutoAnim)
+    {
+        LL_PROFILE_ZONE_NAMED_CATEGORY_UI("ghost autoAnimRecordTick"); // [GhostPanelPerf]
+        autoAnimRecordTick(); // [AutoAnimate]
+    }
     if (mEntityDriveMode == ALGhostStudio::DRIVE_MIRROR)
     {
+        LL_PROFILE_ZONE_NAMED_CATEGORY_UI("ghost mirror body sync"); // [GhostPanelPerf]
         LLViewerObject* source_obj = gObjectList.findObject(mAnimationSourceId);
         LLVOAvatar* source = source_obj ? source_obj->asAvatar() : nullptr;
         // [AutoAnimate] Absence is evaluated even when the resolved pointer is null.
@@ -3387,10 +3466,41 @@ void LLGhostAvatar::idleUpdate(LLAgent &agent, const F64 &time)
             // simulator safety.  Retain it solely as a behavioral choice:
             // ghosts do not adopt ground-sit poses, while ordinary prim-sit
             // animations continue to mirror.
-            signaled_animation_map_t mirrored_animations =
+            // [GhostPanelPerf] Compare IN PLACE against the source map (minus the
+            // two ground-sit keys) instead of copying the whole map every frame;
+            // only build the filtered copy when a sync is actually going to run.
+            const signaled_animation_map_t& source_animations =
                 source->mSignaledAnimations;
-            mirrored_animations.erase(ANIM_AGENT_SIT_GROUND);
-            mirrored_animations.erase(ANIM_AGENT_SIT_GROUND_CONSTRAINED);
+            const auto is_ground_sit = [](const LLUUID& id)
+            {
+                return id == ANIM_AGENT_SIT_GROUND ||
+                       id == ANIM_AGENT_SIT_GROUND_CONSTRAINED;
+            };
+            size_t mirrored_count = source_animations.size();
+            if (source_animations.find(ANIM_AGENT_SIT_GROUND) != source_animations.end())
+                --mirrored_count;
+            if (source_animations.find(ANIM_AGENT_SIT_GROUND_CONSTRAINED) != source_animations.end())
+                --mirrored_count;
+            bool mirrored_equal = mirrored_count == mCloneDesiredAnimations.size();
+            if (mirrored_equal)
+            {
+                auto desired = mCloneDesiredAnimations.begin();
+                for (const auto& entry : source_animations)
+                {
+                    if (is_ground_sit(entry.first))
+                    {
+                        continue;
+                    }
+                    if (desired == mCloneDesiredAnimations.end() ||
+                        desired->first != entry.first ||
+                        desired->second != entry.second)
+                    {
+                        mirrored_equal = false;
+                        break;
+                    }
+                    ++desired;
+                }
+            }
             // A source change (outfit swap, brief de-rez, out-of-view imposter, or
             // AO gap) transiently empties the source's signaled set. With
             // GhostMirrorHoldOnSourceChange on, mirroring that empty would stop the
@@ -3398,9 +3508,11 @@ void LLGhostAvatar::idleUpdate(LLAgent &agent, const F64 &time)
             // source momentarily contributes nothing. A genuine switch to a different
             // animation is still non-empty and mirrors normally. Option off = faithful
             // live mirror (an empty source set stops the clone too).
-            if ((!hold_eff || !mirrored_animations.empty()) &&
-                mCloneDesiredAnimations != mirrored_animations)
+            if ((!hold_eff || mirrored_count != 0) && !mirrored_equal)
             {
+                signaled_animation_map_t mirrored_animations = source_animations;
+                mirrored_animations.erase(ANIM_AGENT_SIT_GROUND);
+                mirrored_animations.erase(ANIM_AGENT_SIT_GROUND_CONSTRAINED);
                 autoAnimSyncBody(mirrored_animations); // [AutoAnimate] Audit recouple/follow sync too.
             }
         }
@@ -3448,6 +3560,7 @@ void LLGhostAvatar::idleUpdate(LLAgent &agent, const F64 &time)
     if (mEntityDriveMode == ALGhostStudio::DRIVE_MIRROR ||
         mEntityDriveMode == ALGhostStudio::DRIVE_TRUE_MIRROR)
     {
+      LL_PROFILE_ZONE_NAMED_CATEGORY_UI("ghost mirror ledger"); // [GhostPanelPerf]
       for (ClonedLinkset& linkset : mClonedLinksets)
       {
         if (mAutoAnim && autoAnimLinksetStep(linkset)) continue; // [AutoAnimate]
@@ -3607,39 +3720,65 @@ void LLGhostAvatar::idleUpdate(LLAgent &agent, const F64 &time)
     // control avatar already running at the Studio speed.
     repeatHeldAnimesh();
 
-    LLVOAvatar::idleUpdate(agent, time);
+    {
+        LL_PROFILE_ZONE_NAMED_CATEGORY_UI("ghost LLVOAvatar::idleUpdate"); // [GhostPanelPerf]
+        LLVOAvatar::idleUpdate(agent, time);
+    }
 
     // A client-only prim has no later simulator ObjectUpdate to repair it.
     // Record the first frame on which each clone nevertheless has both skin
     // and at least one rigged face, so a delayed repository acquisition is
     // distinguishable from a prim that remains permanently static.
-    for (const ClonedLinkset& linkset : mClonedLinksets)
+    //
+    // [GhostPanelPerf] This used to findObject() + dynamic_cast EVERY cloned prim
+    // EVERY frame forever (permanently static prims never log). Now: (1) test the
+    // logged set BEFORE the object lookup, (2) skip the loop entirely once every
+    // recorded prim has logged, (3) re-scan the still-unlogged prims every 30th
+    // frame (it is a one-shot diagnostic log; a 30-frame delay is irrelevant).
     {
-        auto log_healed_once = [this](const LLUUID& clone_id,
-                                      const LLUUID& source_id)
+        size_t recorded_prims = 0;
+        for (const ClonedLinkset& linkset : mClonedLinksets)
         {
-            LLVOVolume* clone = dynamic_cast<LLVOVolume*>(
-                gObjectList.findObject(clone_id));
-            if (!clone || clone->isDead() ||
-                mRigHealedLogged.find(clone_id) != mRigHealedLogged.end() ||
-                !clone->getSkinInfo() || !has_rigged_face(clone))
+            recorded_prims += 1 + linkset.mChildren.size();
+        }
+        // Phase by object address so a crowd of clones does not all scan on one frame.
+        const U32 frame = LLFrameTimer::getFrameCount() +
+            static_cast<U32>(reinterpret_cast<uintptr_t>(this) >> 6);
+        if (mRigHealedLogged.size() < recorded_prims && (frame % 30u) == 0u)
+        {
+            LL_PROFILE_ZONE_NAMED_CATEGORY_UI("ghost log_healed scan");
+            for (const ClonedLinkset& linkset : mClonedLinksets)
             {
-                return;
+                auto log_healed_once = [this](const LLUUID& clone_id,
+                                              const LLUUID& source_id)
+                {
+                    if (mRigHealedLogged.find(clone_id) != mRigHealedLogged.end())
+                    {
+                        return;
+                    }
+                    LLVOVolume* clone = dynamic_cast<LLVOVolume*>(
+                        gObjectList.findObject(clone_id));
+                    if (!clone || clone->isDead() ||
+                        !clone->getSkinInfo() || !has_rigged_face(clone))
+                    {
+                        return;
+                    }
+
+                    LLVOVolume* source = dynamic_cast<LLVOVolume*>(
+                        gObjectList.findObject(source_id));
+                    log_ghost_rig(clone, source);
+                    mRigHealedLogged.insert(clone_id);
+                };
+
+                log_healed_once(linkset.mRoot, linkset.mSourceRoot);
+                const size_t count = llmin(linkset.mChildren.size(),
+                                           linkset.mSourceChildren.size());
+                for (size_t i = 0; i < count; ++i)
+                {
+                    log_healed_once(linkset.mChildren[i],
+                                    linkset.mSourceChildren[i]);
+                }
             }
-
-            LLVOVolume* source = dynamic_cast<LLVOVolume*>(
-                gObjectList.findObject(source_id));
-            log_ghost_rig(clone, source);
-            mRigHealedLogged.insert(clone_id);
-        };
-
-        log_healed_once(linkset.mRoot, linkset.mSourceRoot);
-        const size_t count = llmin(linkset.mChildren.size(),
-                                   linkset.mSourceChildren.size());
-        for (size_t i = 0; i < count; ++i)
-        {
-            log_healed_once(linkset.mChildren[i],
-                            linkset.mSourceChildren[i]);
         }
     }
 

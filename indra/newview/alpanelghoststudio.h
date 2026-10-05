@@ -23,6 +23,7 @@
 #include "llpanel.h"
 #include "alghoststudio.h"
 
+#include "aluirefresh.h"            // [GhostPanelPerf] revision gates + live clocks
 #include "lluuid.h"
 #include "llframetimer.h"
 #include "v3dmath.h"
@@ -54,11 +55,15 @@ public:
     void onVisibilityChange(bool new_visibility) override;
 
 private:
-    // ---- refreshers (draw-rate, all change-diffed) ----
-    void refreshSourceCombo();      // "You" + cast members (rebuilt on cast change)
-    void refreshLookTargetCombo();  // camera/me + cast + other ghosts
-    void refreshList();             // instance rows (rebuilt on composed-sig change)
-    void refreshDetail();           // selected-instance widgets + enables
+    // ---- refreshers ----
+    // [GhostPanelPerf] draw() only consults revisions / clocks and runs diff-guarded
+    // writes (CLAUDE.md "UI PANELS MUST NOT DO WORK IN draw()"; aluirefresh.h).
+    void refreshSourceCombo();      // "You" + cast members (rebuilt on cast revision)
+    void refreshLookTargetCombo();  // camera/me + cast + other ghosts (cast + instance revisions)
+    // instance rows: rebuilt on (instance, cast) revision. force_now = a handler
+    // that just mutated the model wants the rows NOW (skips the >50-row 2 Hz cap).
+    void refreshList(bool force_now = false);
+    void refreshDetail();           // selected-instance widgets + enables (key-gated + 10 Hz)
     // [AutoAnimate]
     void refreshAutoAnimate(const ALGhostStudio::Instance* inst);
     void onAutoAnimToggle();
@@ -82,10 +87,35 @@ private:
     ALGhostAutoAnim::LearnStatus mAutoAnimDisplay;
     S32 mAutoAnimDisplayMode = -1;
     bool mAutoAnimDisplayValid = false;
-    void refreshAnimationLibrary();
-    void populateAnimationLibrary();   // explicit inventory re-scan (Refresh)
-    void refreshStatus();           // bottom status line
-    void refreshRigDiagnostics();   // selected entity clone/source prim state
+    void populateAnimationLibrary();   // mirror the shared ALGhostStudio animation library into the combo
+    void refreshStatus();           // bottom status line (4 Hz)
+    void refreshRigDiagnostics();   // selected entity clone/source prim state: on demand / revision, on screen only
+    void onClickRigDiagRefresh();   // Refresh button: one snapshot WITH live render/cull columns
+    // Legacy signature builders: used ONLY while GhostStudioRefreshAlways is on.
+    std::string listSignature() const;
+    std::string sourceSignature() const;
+    std::string lookTargetSignature() const;
+
+    // [GhostPanelPerf] Cached list selection, rebuilt only when the list selection,
+    // the shared selection or the instance model moved (see selection()).
+    struct SelectionCache
+    {
+        U64 mEpoch = ~0ULL;
+        U64 mInstanceRev = ~0ULL;
+        U64 mSharedRev = ~0ULL;
+        S32 mNumSelected = -1;
+        S32 mFirstIndex = -2;
+        U64 mStamp = 0;                 // changes every time the cache is rebuilt
+        LLUUID mRow;                    // raw first-selected row value (group id for headers)
+        LLUUID mInstance;               // selectedInstance()
+        std::vector<LLUUID> mInstances; // selectedInstances()
+        bool mAnyGroup = false;
+        bool mAnyEntity = false;        // any selected entity clone with a runtime id
+    };
+    const SelectionCache& selection();
+    void noteListSelectionChanged() { ++mSelectionEpoch; }
+    SelectionCache mSel;
+    U64 mSelectionEpoch = 1;
 
     LLUUID selectedInstance() const;    // list selection -> instance id (null = none)
     LLUUID selectedListValue() const;   // raw row value (group id for headers)
@@ -206,16 +236,50 @@ private:
     // cached display name for a source id ("You" for null/self)
     static std::string sourceName(const LLUUID& id);
 
-    // ---- change-diffing state ----
-    std::string mListSig;           // composed instance-list signature last built
-    // Cast signature the source combo was built from. Seeded to a sentinel that no
-    // real signature can equal (a real one is "" for an empty cast, or ends in '|'),
-    // so refreshSourceCombo() builds at least once -- otherwise a fresh login (empty
-    // cast, sig == "") would early-return and never add the default "You" entry,
-    // leaving the source dropdown blank.
+    // ---- change-diffing state ([GhostPanelPerf]: revision gates, no per-frame strings) ----
+    // A gate is "unprimed" until its first changed(), so the first draw always builds
+    // (a fresh login with an empty cast must still add the default "You" entry), and
+    // reset() in onVisibilityChange(true) forces a full refresh on re-show.
+    ALRevisionGate mListGate;           // (instance revision, cast revision)
+    ALRevisionGate mSourceGate;         // (cast revision)
+    ALRevisionGate mLookTargetGate;     // (cast revision, instance revision)
+    ALRevisionGate mDetailGate;         // refreshDetail key
+    ALRevisionGate mCrowdGate;          // refreshCrowdPlacement key
+    ALRevisionGate mSelectionGate;      // selection() cache (built-in 1 s fallback revalidates it)
+    ALLiveReadoutClock mReadoutClock{10.f};    // live numeric readouts + detail tick
+    ALLiveReadoutClock mStatusClock{4.f};      // status strings / gaze status
+    ALLiveReadoutClock mListCapClock{2.f};     // >50-row list rebuild cap
+    ALLiveReadoutClock mRigDiagPollClock{0.5f}; // 0.5 Hz structure re-snapshot while the editor is on screen
+    bool mDetailDirty = true;           // a commit handler wants the detail block now
+    bool mCrowdDirty = true;
+    // Clock ticks sampled ONCE per draw() so several refreshers can share one tick.
+    bool mReadoutTick = true;           // 10 Hz
+    bool mStatusTick = true;            // 4 Hz
+    S32  mParamConfigShown = -1;        // crowd parameter descriptor kind last applied to mFormationParam
+    ALGhostStudio::EFormation mPendingFormation = ALGhostStudio::FORMATION_LINE; // requested while the spinner was edited
+    bool mParamConfigPending = false;   // its configuration was deferred while the spinner was being edited
+    U64  mAnimLibraryShownRev = 0;      // ALGhostStudio::animLibraryRevision() last shown in mAnimationLibraryCombo
+    bool mCrowdImportPending = false;   // a draft import skipped an edited control; retry until all synced
+    S32  mShownLookTarget = -1;         // look-target model values last formatted into mLookTargetCombo
+    LLUUID mShownLookTargetId;
+    U64  mStatusInstanceRev = 0;
+    // Legacy signatures, touched ONLY while GhostStudioRefreshAlways is on.
+    std::string mListSig;
     std::string mSourceSig{"<unbuilt>"};
     std::string mLookTargetSig;
-    bool        mAnimationLibraryPopulated = false;  // filled once; Refresh re-scans
+    // Scale-spinner state last applied (limits/precision/tooltip are not rewritten per tick).
+    bool mScaleCollapsedShown = false;
+    bool mScaleStateValid = false;
+    bool mScalePrecisionPending = true;
+    LLUUID mDirectedAnimShown;          // directed-anim id last formatted into mDirectedAnimEdit
+    F32  mScaleMinShown = 0.f;
+    F32  mScaleMaxShown = 0.f;
+    // Rig diagnostics: what the text widget currently shows, and why it may be stale.
+    LLUUID mRigDiagShownSelection;
+    LLUUID mRigDiagShownEntity;         // runtime id of the clone the text describes
+    U64  mRigDiagShownCloneRev = 0;
+    bool mRigDiagShown = false;         // false until a first build
+    bool mRigDiagRefreshRequested = false;   // Refresh button: build once WITH live state
     LLUUID      mShownFor;          // instance the detail widgets were last loaded for
     U64         mObservedSelectionRevision = 0;
     bool        mEditMode = false;  // [R2-3] our transient edit tool is armed
@@ -296,8 +360,8 @@ private:
     LLButton*         mLiveBtn = nullptr;
     LLTextBox*        mPoseStatus = nullptr;
     LLTextEditor*     mRigDiagnostics = nullptr;
-    LLFrameTimer      mRigDiagnosticsTimer;
-    LLUUID            mRigDiagnosticsSelection;
+    LLButton*         mRigDiagRefreshBtn = nullptr;
+    LLFrameTimer      mRigDiagnosticsTimer;     // GhostStudioRefreshAlways 0.5 s cadence only
 
     LLSpinCtrl*       mArrayCount = nullptr;
     LLSpinCtrl*       mArraySpacing = nullptr;

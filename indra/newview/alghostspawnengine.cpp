@@ -162,6 +162,7 @@ public:
         // GHOST_STYLE_CLONE and is required by the deferred clone queue.
         instance->mStyle = 1;
         apply_request_metadata(*instance, source, request);
+        studio.touchInstances(); // [GhostPanelPerf] style + source label are row-visible
         result.mStatus = ALGhostSpawnStatus::OK;
         result.mEffectiveRenderRoute =
             request.mRender == ALGhostCloneRequest::Render::FORWARD
@@ -277,6 +278,7 @@ public:
         }
 
         apply_request_metadata(*instance, source, request);
+        studio.touchInstances(); // [GhostPanelPerf] source label is row-visible
         result.mStatus = ALGhostSpawnStatus::OK;
         result.mEffectiveRenderRoute =
             ALGhostRenderRoute::ENTITY_SCENE_PIPELINE;

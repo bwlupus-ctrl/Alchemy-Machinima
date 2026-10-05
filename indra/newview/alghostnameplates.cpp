@@ -30,12 +30,12 @@ ALGhostNameplates::~ALGhostNameplates()
     clear();
 }
 
-LLHUDNameTag* ALGhostNameplates::getOrCreate(const LLUUID& key)
+ALGhostNameplates::Entry* ALGhostNameplates::getOrCreate(const LLUUID& key)
 {
     const auto found = mTags.find(key);
     if (found != mTags.end())
     {
-        return found->second.get();
+        return &found->second;
     }
 
     LLPointer<LLHUDNameTag> tag = static_cast<LLHUDNameTag*>(
@@ -57,8 +57,9 @@ LLHUDNameTag* ALGhostNameplates::getOrCreate(const LLUUID& key)
                          GHOST_NAMEPLATE_FADE_RANGE);
     tag->setZCompare(false);
     tag->setHidden(true);
-    mTags.emplace(key, tag);
-    return tag.get();
+    Entry entry;
+    entry.mTag = tag;
+    return &mTags.emplace(key, std::move(entry)).first->second;
 }
 
 void ALGhostNameplates::update(
@@ -88,11 +89,12 @@ void ALGhostNameplates::update(
                 continue;
             }
 
-            LLHUDNameTag* tag = getOrCreate(label.mKey);
-            if (!tag)
+            Entry* entry = getOrCreate(label.mKey);
+            if (!entry || entry->mTag.isNull())
             {
                 continue;
             }
+            LLHUDNameTag* tag = entry->mTag.get();
             wanted.insert(label.mKey);
             const F32 fade = distance <= GHOST_NAMEPLATE_DISTANCE
                 ? 1.f
@@ -103,9 +105,18 @@ void ALGhostNameplates::update(
                 ? LLColor4(1.f, 0.82f, 0.2f, 1.f) : label.mColor;
             color.mV[VALPHA] *= fade;
             tag->setPositionAgent(label.mPositionAgent);
-            // setString() snapshots the current color into its text segments.
-            tag->setColor(color);
-            tag->setString(label.mText);
+            // [GhostPanelPerf] setString() snapshots the current color into its text
+            // segments AND re-tokenises/re-measures the text, so apply both only
+            // when the text or colour changed (rename / selection / fade).
+            if (!entry->mApplied || entry->mText != label.mText ||
+                entry->mColor != color)
+            {
+                tag->setColor(color);
+                tag->setString(label.mText);
+                entry->mText = label.mText;
+                entry->mColor = color;
+                entry->mApplied = true;
+            }
             tag->setHidden(false);
         }
     }
@@ -114,7 +125,7 @@ void ALGhostNameplates::update(
     {
         if (wanted.find(it->first) == wanted.end())
         {
-            it->second->markDead();
+            it->second.mTag->markDead();
             it = mTags.erase(it);
         }
         else
@@ -128,9 +139,9 @@ void ALGhostNameplates::clear()
 {
     for (auto& entry : mTags)
     {
-        if (entry.second.notNull())
+        if (entry.second.mTag.notNull())
         {
-            entry.second->markDead();
+            entry.second.mTag->markDead();
         }
     }
     mTags.clear();

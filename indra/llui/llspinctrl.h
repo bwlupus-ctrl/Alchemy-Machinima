@@ -65,6 +65,9 @@ public:
     virtual void    setValue(const LLSD& value );
             F32     get() const { return getValueF32(); }
             void    set(F32 value) { setValue(value); mInitialValue = value; }
+    // False until the first setValue()/forceSetValue(), and again after clear():
+    // an unset spinner writes even an equal value (see setValue()).
+    bool            hasBeenSet() const { return mbHasBeenSet; }
 
     bool            isMouseHeldDown() const;
 

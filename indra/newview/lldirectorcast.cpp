@@ -1063,6 +1063,7 @@ void LLDirectorCast::add(const LLUUID& id)
     mCast.push_back(member);
     mIds.push_back(actor_id);
     mMemberIndex[actor_id] = mCast.size() - 1;
+    ++mCastRevision; // [GhostPanelPerf] membership changed
     // seed the cached name right away when the actor is in world
     resolve(actor_id);
 }
@@ -1080,6 +1081,7 @@ void LLDirectorCast::remove(const LLUUID& id)
     LLActorMover::instance().clearDirectorLookAtRuntime(actor_id);
     mCast.erase(it);
     ++mGazeCueRevision;
+    ++mCastRevision; // [GhostPanelPerf] membership changed
     mIds.erase(std::find(mIds.begin(), mIds.end(), actor_id));
     rebuildMemberIndex();
     mLookAtCameraIds.erase(actor_id);
@@ -1704,6 +1706,7 @@ LLVOAvatar* LLDirectorCast::resolve(const LLUUID& id)
         if (!name.empty() && name != m->mLastName)
         {
             m->mLastName = name;
+            ++mCastRevision; // [GhostPanelPerf] cached display name changed
         }
     }
     return av;
@@ -2184,6 +2187,7 @@ void LLDirectorCast::applySceneData(const LLSD& data)
     }
     mGroupDelays.clear();
     mCast.clear();
+    ++mCastRevision; // [GhostPanelPerf] wholesale membership replace (also bumped per loaded member)
     mIds.clear();
     mMemberIndex.clear();
     mLookAtCameraIds.clear();
@@ -2347,6 +2351,7 @@ void LLDirectorCast::applySceneData(const LLSD& data)
         mCast.push_back(m);
         mIds.push_back(m.mId);
         mMemberIndex[m.mId] = mCast.size() - 1;
+        ++mCastRevision; // [GhostPanelPerf] loaded member
         if (e.has("gaze_cues"))
         {
             setGazeCues(m.mId, loaded_gaze_cues);

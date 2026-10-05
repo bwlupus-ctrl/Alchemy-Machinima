@@ -11,6 +11,7 @@
 #include "llpresentationtime.h"    // [Temporal Capture]
 
 #include "alghoststudio.h"
+#include "alghostanimassetindex.h" // [GhostPanelPerf] shared animation library
 
 // [AutoAnimate] Bounded LLSD XML persistence.
 #include "llsdserialize.h"
@@ -454,6 +455,7 @@ void ALGhostStudio::onEntityRuntimeReplaced(Instance& inst,
         applyEntityRuntimeState(inst, new_ghost);
     }
     inst.mEntityId = new_runtime;
+    ++mInstanceRevision; // [GhostPanelPerf] runtime swap: lifecycle/state/rows may differ
     // [GhostWalk] Actor Mover keys walks / paths / suspend-resume state by the
     // RUNTIME uuid: migrate them to the replacement (or park them across a
     // despawn, or drop them on final removal) BEFORE the consumer walk, so any
@@ -475,6 +477,7 @@ void ALGhostStudio::onEntityRuntimeReplaced(Instance& inst,
                 LLDirectorCast::instance().getMember(new_runtime))
         {
             member->mLastName = stable_name;
+            LLDirectorCast::instance().touchCast(); // [GhostPanelPerf]
         }
     }
 }
@@ -753,6 +756,7 @@ ALGhostStudio::Instance* ALGhostStudio::addInstance(const LLUUID& source)
         inst.mRotation = avatar->getRotation();
     }
     mInstances.push_back(inst);
+    ++mInstanceRevision; // [GhostPanelPerf]
     return &mInstances.back();
 }
 
@@ -792,6 +796,7 @@ ALGhostStudio::Instance* ALGhostStudio::spawnEntityClone(
         gAgent.getPosGlobalFromAgent(source_foot + horizontal_offset);
     record.mRotation = source->getRotation();
     mInstances.push_back(record);
+    ++mInstanceRevision; // [GhostPanelPerf]
     const LLUUID stable_id = record.mId;
 
     Instance* committed = getInstance(stable_id);
@@ -839,6 +844,7 @@ ALGhostStudio::Instance* ALGhostStudio::spawnEntityClone(
         return nullptr;
     }
     committed->mState = STATE_READY;
+    ++mInstanceRevision; // [GhostPanelPerf]
     LL_INFOS("GhostStudio") << "entity instance " << stable_id
                             << " committed runtime=" << committed->mEntityId
                             << " attachments=" << attachments << LL_ENDL;
@@ -862,6 +868,7 @@ bool ALGhostStudio::refreshEntityClone(const LLUUID& id)
     LLGhostAvatar* old_ghost = resolveEntityClone(id);
     if (!source || !gAgent.getRegion())
     {
+        ++mInstanceRevision; // [GhostPanelPerf]
         inst->mState = old_ghost ? STATE_SOURCE_MISSING : STATE_RECOVERABLE;
         LL_WARNS("GhostStudio") << "refreshEntityClone: ghost or source unavailable for "
                                 << id << LL_ENDL;
@@ -886,6 +893,7 @@ bool ALGhostStudio::refreshEntityClone(const LLUUID& id)
         if (baseline_unchanged)
         {
             LLGhostAvatar* current_runtime = resolveEntityClone(stable_id);
+            ++mInstanceRevision; // [GhostPanelPerf]
             inst->mState =
                 current_runtime ? STATE_ERROR : STATE_RECOVERABLE;
         }
@@ -928,6 +936,7 @@ bool ALGhostStudio::refreshEntityClone(const LLUUID& id)
     }
 
     inst->mState = STATE_READY;
+    ++mInstanceRevision; // [GhostPanelPerf]
     LL_INFOS("GhostStudio") << "refreshEntityClone: replaced entity clone " << id
                             << " runtime=" << inst->mEntityId
                             << " attachments=" << attachments << LL_ENDL;
@@ -951,6 +960,7 @@ ALGhostStudio::Instance* ALGhostStudio::duplicateInstance(const LLUUID& id)
     const F32 yaw = copy.getYaw();
     copy.mFootGlobal += LLVector3d(-sinf(yaw), cosf(yaw), 0.0);
     mInstances.push_back(copy);
+    ++mInstanceRevision; // [GhostPanelPerf]
     return &mInstances.back();
 }
 
@@ -975,6 +985,7 @@ ALGhostStudio::Instance* ALGhostStudio::duplicateInstanceSnapshotInPlace(
         copy.mGroupId.setNull();
         copy.mLockMode = LOCK_OFF;
         mInstances.push_back(copy);
+        ++mInstanceRevision; // [GhostPanelPerf]
         return &mInstances.back();
     }
 
@@ -996,6 +1007,7 @@ ALGhostStudio::Instance* ALGhostStudio::duplicateInstanceSnapshotInPlace(
     copy->mName = new_name;
     copy->mGroupId.setNull();
     copy->mLockMode = LOCK_OFF;
+    ++mInstanceRevision; // [GhostPanelPerf] the record was overwritten with the prototype's row fields
     if (entity_clone_count(mInstances) > ENTITY_PHYSICS_CROWD_THRESHOLD)
     {
         copy->mPhysicsEnabled = false;
@@ -1137,6 +1149,7 @@ std::vector<LLUUID> ALGhostStudio::duplicateGroup(
         rollback();
         return result;
     }
+    ++mInstanceRevision; // [GhostPanelPerf] a group now exists in the model
 
     const ELockMode lock_mode =
         source_group.mMode == ALGhostGroupModel::MODE_MOVE_FACE
@@ -1147,15 +1160,18 @@ std::vector<LLUUID> ALGhostStudio::duplicateGroup(
         if (!copy)
         {
             mGroups.eraseGroup(clone_group_id);
+            ++mInstanceRevision; // [GhostPanelPerf]
             rollback();
             return result;
         }
         copy->mGroupId = clone_group_id;
         copy->mLockMode = lock_mode;
     }
+    ++mInstanceRevision; // [GhostPanelPerf] group created + members adopted
     if (!applyGroupTransforms(clone_group_id, nullptr))
     {
         mGroups.eraseGroup(clone_group_id);
+        ++mInstanceRevision; // [GhostPanelPerf] group erased on rollback
         for (const LLUUID& created_id : created)
         {
             if (Instance* copy = getInstance(created_id))
@@ -1168,6 +1184,7 @@ std::vector<LLUUID> ALGhostStudio::duplicateGroup(
         return result;
     }
     result = created;
+    ++mInstanceRevision; // [GhostPanelPerf]
     return result;
 }
 
@@ -1179,12 +1196,14 @@ bool ALGhostStudio::renameInstance(const LLUUID& id, const std::string& name)
         return false;
     }
     inst->mName = name; // Deliberately no uniqueness check: mId remains identity.
+    ++mInstanceRevision; // [GhostPanelPerf]
     if (inst->mKind == BACKING_ENTITY_CLONE && inst->mEntityId.notNull())
     {
         if (LLDirectorCast::CastMember* member =
                 LLDirectorCast::instance().getMember(inst->mEntityId))
         {
             member->mLastName = name;
+            LLDirectorCast::instance().touchCast(); // [GhostPanelPerf]
         }
     }
     return true;
@@ -1205,6 +1224,10 @@ bool ALGhostStudio::setInstanceEnabled(const LLUUID& id, bool enabled)
         for (const LLUUID& member : groupMembers(id))
             if (Instance* item = getInstance(member))
             {
+                if (item->mEnabled != enabled)
+                {
+                    ++mInstanceRevision; // [GhostPanelPerf] only on a real change (callers may re-assert per frame)
+                }
                 item->mEnabled = enabled;
                 if (item->mKind == BACKING_ENTITY_CLONE)
                     if (LLGhostAvatar* ghost = resolveEntityClone(member))
@@ -1212,6 +1235,10 @@ bool ALGhostStudio::setInstanceEnabled(const LLUUID& id, bool enabled)
                 changed = true;
             }
         return changed;
+    }
+    if (inst->mEnabled != enabled)
+    {
+        ++mInstanceRevision; // [GhostPanelPerf] enable dot
     }
     inst->mEnabled = enabled;
     if (inst->mKind == BACKING_ENTITY_CLONE)
@@ -1221,6 +1248,7 @@ bool ALGhostStudio::setInstanceEnabled(const LLUUID& id, bool enabled)
         if (!ghost || ghost->isDead())
         {
             onEntityRuntimeReplaced(*inst, LLUUID::null);
+            ++mInstanceRevision; // [GhostPanelPerf] state -> recoverable
             inst->mState = STATE_RECOVERABLE;
             return false;
         }
@@ -1330,6 +1358,7 @@ bool ALGhostStudio::setInstanceAnimSpeed(const LLUUID& id, F32 speed)
     LLGhostAvatar* ghost = resolveEntityClone(id);
     if (!ghost)
     {
+        ++mInstanceRevision; // [GhostPanelPerf]
         inst->mState = STATE_ERROR;
         return false;
     }
@@ -1353,6 +1382,7 @@ bool ALGhostStudio::setInstancePhysicsEnabled(const LLUUID& id, bool enabled)
     LLGhostAvatar* ghost = resolveEntityClone(id);
     if (!ghost)
     {
+        ++mInstanceRevision; // [GhostPanelPerf]
         inst->mState = STATE_ERROR;
         return false;
     }
@@ -1840,6 +1870,7 @@ void ALGhostStudio::updateNameplates()
     {
         return;
     }
+    LL_PROFILE_ZONE_SCOPED_CATEGORY_UI; // [GhostPanelPerf]
     static LLCachedControl<S32> mode(
         gSavedSettings, "GhostStudioNameplateMode", 1);
     const bool ui_visible = gViewerWindow && gViewerWindow->getUIVisibility() &&
@@ -1936,12 +1967,39 @@ void ALGhostStudio::updateNameplates()
     mNameplates->update(labels, true);
 }
 
+void ALGhostStudio::scanAnimLibrary()
+{
+    // [GhostPanelPerf] one whole-inventory walk, cached for every panel host
+    mAnimLibrary.clear();
+    for (const auto& entry : ALGhostAnimAssetIndex::instance().refreshInventory())
+    {
+        mAnimLibrary.emplace_back(entry.mName, entry.mAssetId);
+    }
+    ++mAnimLibraryRevision;
+}
+
 void ALGhostStudio::updatePerFrame()
 {
+    LL_PROFILE_ZONE_SCOPED_CATEGORY_UI; // [GhostPanelPerf]
     assert_main_thread();
-    refreshLifecycleStates();
+    if (mAnimLibraryScanRequested)
+    {
+        // [GhostPanelPerf] the lazy whole-inventory scan, outside any widget draw()
+        mAnimLibraryScanRequested = false;
+        if (!animLibraryScanned())
+        {
+            scanAnimLibrary();
+        }
+    }
+    {
+        LL_PROFILE_ZONE_NAMED_CATEGORY_UI("ghost refreshLifecycleStates"); // [GhostPanelPerf]
+        refreshLifecycleStates();
+    }
     finishPendingRuntimeFreezes();
-    updateAutoAnimate(); // [AutoAnimate]
+    {
+        LL_PROFILE_ZONE_NAMED_CATEGORY_UI("ghost updateAutoAnimate"); // [GhostPanelPerf]
+        updateAutoAnimate(); // [AutoAnimate]
+    }
     updateNameplates();
     const F64 facing_now = LLTimer::getTotalSeconds();
     std::set<LLUUID> dynamic_facing_groups;
@@ -2050,6 +2108,7 @@ bool ALGhostStudio::trueMirrorOwnsFacing(const Instance& inst) const
 
 void ALGhostStudio::updatePostObjectList()
 {
+    LL_PROFILE_ZONE_SCOPED_CATEGORY_UI; // [GhostPanelPerf]
     assert_main_thread();
     // Hook point: called from LLAppViewer::idle() immediately after
     // gObjectList.update(gAgent). By then every avatar -- source and clone
@@ -2390,8 +2449,13 @@ bool ALGhostStudio::setInstanceDriveMode(const LLUUID& id, EDriveMode mode,
         dynamic_cast<LLGhostAvatar*>(gObjectList.findObject(inst->mEntityId));
     if (!ghost || ghost->isDead())
     {
+        ++mInstanceRevision; // [GhostPanelPerf]
         inst->mState = STATE_ERROR;
         return false;
+    }
+    if (inst->mDriveMode != mode)
+    {
+        ++mInstanceRevision; // [GhostPanelPerf] "frozen" state label follows the drive mode
     }
     inst->mDriveMode = mode;
     inst->mDirectedAnim = mode == DRIVE_DIRECTED ? directed_anim : LLUUID::null;
@@ -2413,6 +2477,9 @@ void ALGhostStudio::refreshLifecycleStates()
         }
         LLGhostAvatar* ghost =
             dynamic_cast<LLGhostAvatar*>(gObjectList.findObject(inst.mEntityId));
+        // [GhostPanelPerf] Bump ONLY when the state actually changes: this runs
+        // every frame, and a per-frame bump would rebuild the Studio list every frame.
+        const ELifecycleState previous_state = inst.mState;
         if (!ghost || ghost->isDead())
         {
             if (inst.mEntityId.notNull())
@@ -2426,6 +2493,10 @@ void ALGhostStudio::refreshLifecycleStates()
         {
             inst.mState = LLDirectorCast::instance().resolve(inst.mSource)
                 ? STATE_READY : STATE_SOURCE_MISSING;
+        }
+        if (inst.mState != previous_state)
+        {
+            ++mInstanceRevision;
         }
     }
 }
@@ -2453,6 +2524,7 @@ void ALGhostStudio::removeInstance(const LLUUID& id)
     {
         return;
     }
+    ++mInstanceRevision; // [GhostPanelPerf] row removed (groups/recursion below also bump)
     if (inst->mGroupId.notNull())
     {
         const LLUUID group_id = inst->mGroupId;
@@ -2491,6 +2563,7 @@ void ALGhostStudio::removeInstance(const LLUUID& id)
         std::remove_if(mInstances.begin(), mInstances.end(),
                        [&id](const Instance& i) { return i.mId == id; }),
         mInstances.end());
+    ++mInstanceRevision; // [GhostPanelPerf]
 }
 
 std::vector<LLUUID> ALGhostStudio::groupMembers(const LLUUID& id) const
@@ -2593,6 +2666,7 @@ S32 ALGhostStudio::lockGroup(const std::vector<LLUUID>& ids, ELockMode mode)
         inst->mGroupId = group;
         inst->mLockMode = mode;
     }
+    ++mInstanceRevision; // [GhostPanelPerf] group created
     ++mNextGroupNumber;
     if (std::find(ids.begin(), ids.end(), mSelected) != ids.end())
     {
@@ -2612,6 +2686,7 @@ S32 ALGhostStudio::ungroup(const LLUUID& id)
     const std::vector<LLUUID> ids = mGroups.members(group_id);
     const bool selected_header = mSelected == group_id;
     mGroups.eraseGroup(group_id);
+    ++mInstanceRevision; // [GhostPanelPerf] group dissolved
     for (const LLUUID& member : ids)
         if (Instance* inst = getInstance(member))
         {
@@ -2658,6 +2733,7 @@ S32 ALGhostStudio::setLockMode(const LLUUID& id, ELockMode mode)
             {
                 return 0;
             }
+            ++mInstanceRevision; // [GhostPanelPerf] group mode + member lock modes
             for (const LLUUID& member : members)
                 if (Instance* item = getInstance(member)) item->mLockMode = mode;
             if (mSelected.notNull())
@@ -2675,7 +2751,12 @@ S32 ALGhostStudio::setLockMode(const LLUUID& id, ELockMode mode)
 bool ALGhostStudio::renameGroup(const LLUUID& id, const std::string& name)
 {
     ALGhostGroupModel::Group* group = groupForMember(id);
-    return group && mGroups.renameGroup(group->mId, name);
+    const bool renamed = group && mGroups.renameGroup(group->mId, name);
+    if (renamed)
+    {
+        ++mInstanceRevision; // [GhostPanelPerf]
+    }
+    return renamed;
 }
 
 bool ALGhostStudio::setGroupEditMembers(const LLUUID& id, bool editing)
@@ -2685,6 +2766,7 @@ bool ALGhostStudio::setGroupEditMembers(const LLUUID& id, bool editing)
     {
         return false;
     }
+    ++mInstanceRevision; // [GhostPanelPerf] expand/collapse arrow + child rows
     if (!editing)
     {
         setSelected(mGroups.representative(group->mId));
@@ -2700,6 +2782,7 @@ bool ALGhostStudio::resetGroupMemberOffset(const LLUUID& id)
         return false;
     }
     const ALGhostGroupModel::Group before = *group;
+    ++mInstanceRevision; // [GhostPanelPerf] resetting an offset clears the member's pin flag
     return mGroups.resetMemberOffset(id) &&
            applyGroupTransforms(before.mId, &before);
 }
@@ -2713,6 +2796,7 @@ bool ALGhostStudio::setGroupMemberPinned(const LLUUID& id, bool pinned)
     }
     const LLUUID group_id = group->mId;
     const ALGhostGroupModel::Group before = *group;
+    ++mInstanceRevision; // [GhostPanelPerf] member pin flags are part of the group row signature
     // "Pinned" means keep this custom member-local offset. Unpinning is an
     // explicit return to the authored formation slot, so the toggle has an
     // immediate, visible meaning even before a future group reflow.
@@ -2733,6 +2817,10 @@ bool ALGhostStudio::applyGroupTransforms(
     {
         return false;
     }
+    // [GhostPanelPerf] NO revision bump here on purpose: this runs every frame
+    // during gizmo drags and dynamic-facing crowds, and a per-frame bump would
+    // rebuild the Studio list every frame. Row-visible group changes (create,
+    // mode, name, expand, pins, membership) bump in their own mutators.
 
     struct Application
     {
@@ -3198,6 +3286,7 @@ bool ALGhostStudio::freezeInstance(const LLUUID& id)
         }
     }
     inst->mPose = POSE_FROZEN;
+    ++mInstanceRevision; // [GhostPanelPerf] Pose column / state label
     return true;
 }
 
@@ -3205,6 +3294,7 @@ void ALGhostStudio::unfreezeInstance(const LLUUID& id)
 {
     if (Instance* inst = getInstance(id))
     {
+        ++mInstanceRevision; // [GhostPanelPerf]
         inst->mPose = POSE_LIVE;
         inst->mFrozenHeadValid = false;
         inst->mFrozenPalettes.clear();
@@ -3695,6 +3785,7 @@ S32 ALGhostStudio::makeArray(const LLUUID& id, S32 count, F32 spacing,
                 copy.setYaw(s.mYaw);
             }
             mInstances.push_back(copy);
+            ++mInstanceRevision; // [GhostPanelPerf]
             created.push_back(copy.mId);
             ++made;
         }
