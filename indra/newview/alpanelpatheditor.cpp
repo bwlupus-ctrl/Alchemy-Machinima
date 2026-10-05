@@ -12,6 +12,7 @@
 #include "alpanelpatheditor.h"
 
 #include "altoolpathedit.h"
+#include "aluirefresh.h"             // [UIPerfC1] diff-guarded enable/tooltip writes
 #include "llactormover.h"
 #include "llagent.h"                 // gAgent camera origin <-> global (Set camera here)
 #include "llaccordionctrl.h"
@@ -304,6 +305,9 @@ std::string ALPanelPathEditor::actorName(const LLUUID& id)
 // ---------------------------------------------------------------------------
 void ALPanelPathEditor::draw()
 {
+    // [UIPerfC1] every setEnabled/setToolTip in the refresh*() calls below is a
+    // setEnabledIfChanged/setToolTipIfChanged (aluirefresh.h)
+    LL_PROFILE_ZONE_SCOPED_CATEGORY_UI;
     // while visible, this panel owns the shared edit-selection actor: it drives
     // the in-world node highlight and the edit tool's target
     LLActorMover::instance().setEditActor(mActor);
@@ -335,7 +339,7 @@ void ALPanelPathEditor::refreshResetButtons()
 {
     for (const auto& binding : mResetBindings)
     {
-        binding.first->setEnabled(binding.second->getEnabled());
+        setEnabledIfChanged(binding.first, binding.second->getEnabled()); // [UIPerfC1]
     }
 }
 
@@ -498,7 +502,7 @@ void ALPanelPathEditor::refreshHeader()
     {
         mHeader->setText(want);
     }
-    mEditModeCheck->setEnabled(mActor.notNull());
+    setEnabledIfChanged(mEditModeCheck, mActor.notNull());
 }
 
 void ALPanelPathEditor::refreshList()
@@ -610,16 +614,16 @@ void ALPanelPathEditor::refreshInspector()
     const bool corner_node = cornerRadiusEligible(
         path, sel, LLActorMover::instance().isPathWalking(mActor));
 
-    mNodeHeight->setEnabled(have);
-    mNodeDwell->setEnabled(have);
-    mNodeSpeed->setEnabled(have);
-    mNodeCornerRadius->setEnabled(corner_node);
-    mNodeCornerRadius->setToolTip(corner_node
+    setEnabledIfChanged(mNodeHeight, have);
+    setEnabledIfChanged(mNodeDwell, have);
+    setEnabledIfChanged(mNodeSpeed, have);
+    setEnabledIfChanged(mNodeCornerRadius, corner_node);
+    setToolTipIfChanged(mNodeCornerRadius, corner_node
         ? std::string("Exact circular turn radius at this node. Oversized radii "
                       "are reduced automatically to fit the adjacent legs.")
         : std::string("Select an interior waypoint on a stopped path. Loop paths "
                       "may round every node."));
-    mNodeAnim->setEnabled(have);
+    setEnabledIfChanged(mNodeAnim, have);
 
     if (!have)
     {
@@ -678,40 +682,40 @@ void ALPanelPathEditor::refreshPathControls()
                                !path->mCornerPieces.empty();
     const S32 shape = path ? path->mShape : ALPathGeometry::WAYPOINTS;
     const bool can_edit_geometry = have_actor && !walking && !primitive;
-    mEditModeCheck->setEnabled(can_edit_geometry);
+    setEnabledIfChanged(mEditModeCheck, can_edit_geometry);
     if (!can_edit_geometry && mEditMode)
     {
         exitEditMode();
     }
 
-    mPathSpeed->setEnabled(have_actor);
-    mCadence->setEnabled(have_actor);
-    mTension->setEnabled(have_actor && !primitive && !walking && !exact_corners);
-    mTension->setToolTip(exact_corners
+    setEnabledIfChanged(mPathSpeed, have_actor);
+    setEnabledIfChanged(mCadence, have_actor);
+    setEnabledIfChanged(mTension, have_actor && !primitive && !walking && !exact_corners);
+    setToolTipIfChanged(mTension, exact_corners
         ? std::string("Corner smoothing is replaced by exact straight/arc "
                       "geometry while any node has a Corner radius.")
         : std::string("Blend waypoint routing from straight segments to a "
                       "flowing centripetal curve."));
-    mEaseIn->setEnabled(have_actor);
-    mEaseOut->setEnabled(have_actor);
-    mGroundFollow->setEnabled(have_actor && !(path && path->mAirborne));
-    mPitch->setEnabled(have_actor && !(path && path->mAirborne));
-    mAirborne->setEnabled(have_actor);
-    mEndCombo->setEnabled(have_actor);
-    mShapeCombo->setEnabled(have_actor && !walking);
-    mCenterPrimitiveBtn->setEnabled(have_actor && primitive && !walking);
-    mPrimitiveRadiusX->setEnabled(have_actor && primitive && !walking);
+    setEnabledIfChanged(mEaseIn, have_actor);
+    setEnabledIfChanged(mEaseOut, have_actor);
+    setEnabledIfChanged(mGroundFollow, have_actor && !(path && path->mAirborne));
+    setEnabledIfChanged(mPitch, have_actor && !(path && path->mAirborne));
+    setEnabledIfChanged(mAirborne, have_actor);
+    setEnabledIfChanged(mEndCombo, have_actor);
+    setEnabledIfChanged(mShapeCombo, have_actor && !walking);
+    setEnabledIfChanged(mCenterPrimitiveBtn, have_actor && primitive && !walking);
+    setEnabledIfChanged(mPrimitiveRadiusX, have_actor && primitive && !walking);
     const bool uses_radius_y = shape == ALPathGeometry::ELLIPSE_ARC ||
                                shape == ALPathGeometry::DIAMOND ||
                                shape == ALPathGeometry::FIGURE_EIGHT ||
                                shape == ALPathGeometry::SINE_WAVE;
-    mPrimitiveRadiusY->setEnabled(have_actor && uses_radius_y && !walking);
-    mPrimitiveStart->setEnabled(have_actor && primitive && !walking);
-    mPrimitiveSweep->setEnabled(have_actor && primitive && !walking);
-    mPrimitiveYaw->setEnabled(have_actor && primitive && !walking);
-    mPrimitivePitch->setEnabled(have_actor && primitive && !walking);
-    mPrimitiveRoll->setEnabled(have_actor && primitive && !walking);
-    mPrimitiveRise->setEnabled(have_actor &&
+    setEnabledIfChanged(mPrimitiveRadiusY, have_actor && uses_radius_y && !walking);
+    setEnabledIfChanged(mPrimitiveStart, have_actor && primitive && !walking);
+    setEnabledIfChanged(mPrimitiveSweep, have_actor && primitive && !walking);
+    setEnabledIfChanged(mPrimitiveYaw, have_actor && primitive && !walking);
+    setEnabledIfChanged(mPrimitivePitch, have_actor && primitive && !walking);
+    setEnabledIfChanged(mPrimitiveRoll, have_actor && primitive && !walking);
+    setEnabledIfChanged(mPrimitiveRise, have_actor &&
         (shape == ALPathGeometry::HELIX || shape == ALPathGeometry::SINE_WAVE) && !walking);
 
     // engine defaults when no path yet (a Path struct's own defaults)
@@ -795,10 +799,10 @@ void ALPanelPathEditor::refreshPathControls()
     sync_spin(mPrimitiveRoll, path ? path->mPrimitiveRollDeg : 0.f);
     sync_spin(mPrimitiveRise, path ? path->mPrimitiveRise : 3.f);
 
-    mShapeCombo->setToolTip(walking
+    setToolTipIfChanged(mShapeCombo, walking
         ? std::string("Stop path playback before converting its geometry")
         : std::string("Exact path geometry: Waypoints, arcs, helix, diamond, figure eight, or sine wave"));
-    mCenterPrimitiveBtn->setToolTip(!primitive
+    setToolTipIfChanged(mCenterPrimitiveBtn, !primitive
         ? std::string("Choose an exact primitive first")
         : (walking ? std::string("Stop path playback before repositioning the primitive")
                    : std::string("Move the primitive center to the actor's current foot position")));
@@ -815,23 +819,23 @@ void ALPanelPathEditor::refreshPathControls()
     const S32 n = path ? (S32)path->mNodes.size() : 0;
     const S32 sel = listSelectedNode();
     const bool waypoint_edit = have_actor && !walking && !primitive;
-    mAddBtn->setEnabled(waypoint_edit);
-    mInsertBtn->setEnabled(waypoint_edit && sel >= 0);
-    mDeleteBtn->setEnabled(waypoint_edit && sel >= 0);
-    mClearBtn->setEnabled(have_actor && n > 0);
-    mFitHalfArcBtn->setEnabled(have_actor && n >= 2 && !walking);
-    mFitSineBtn->setEnabled(have_actor && n >= 2 && !walking);
+    setEnabledIfChanged(mAddBtn, waypoint_edit);
+    setEnabledIfChanged(mInsertBtn, waypoint_edit && sel >= 0);
+    setEnabledIfChanged(mDeleteBtn, waypoint_edit && sel >= 0);
+    setEnabledIfChanged(mClearBtn, have_actor && n > 0);
+    setEnabledIfChanged(mFitHalfArcBtn, have_actor && n >= 2 && !walking);
+    setEnabledIfChanged(mFitSineBtn, have_actor && n >= 2 && !walking);
     const std::string geometry_reason = walking
         ? std::string("Stop path playback before editing waypoint geometry")
         : (primitive ? std::string("Primitive event anchors are generated; edit the exact shape controls below")
                      : std::string());
-    mInsertBtn->setToolTip(!geometry_reason.empty() ? geometry_reason
+    setToolTipIfChanged(mInsertBtn, !geometry_reason.empty() ? geometry_reason
         : (sel >= 0 ? std::string("Insert a waypoint just after the selected one")
                     : std::string("Select a waypoint first")));
-    mDeleteBtn->setToolTip(!geometry_reason.empty() ? geometry_reason
+    setToolTipIfChanged(mDeleteBtn, !geometry_reason.empty() ? geometry_reason
         : (sel >= 0 ? std::string("Delete the selected waypoint")
                     : std::string("Select a waypoint first")));
-    mClearBtn->setToolTip(n > 0
+    setToolTipIfChanged(mClearBtn, n > 0
         ? (walking ? std::string("Stop playback, release the path camera, and remove this path")
                    : std::string("Remove this path and all of its event anchors"))
         : std::string("This actor has no waypoints yet"));
@@ -857,21 +861,21 @@ void ALPanelPathEditor::refreshCameraControls()
 
     // Set is blocked while previewing (the render camera is the frozen preview
     // pose -- capturing it would be a no-op)
-    mSetCamBtn->setEnabled(have && !previewing);
-    mSetCamBtn->setToolTip(!have
+    setEnabledIfChanged(mSetCamBtn, have && !previewing);
+    setToolTipIfChanged(mSetCamBtn, !have
         ? std::string("Select a waypoint first")
         : (previewing
             ? std::string("Exit preview first so you can aim the camera")
             : std::string("Capture the current camera position, aim and FOV into this node")));
 
-    mClearCamBtn->setEnabled(has_cam && !previewing);
-    mClearCamBtn->setToolTip(!have
+    setEnabledIfChanged(mClearCamBtn, has_cam && !previewing);
+    setToolTipIfChanged(mClearCamBtn, !have
         ? std::string("Select a waypoint first")
         : (has_cam ? std::string("Remove the camera from this node")
                    : std::string("This node has no camera yet")));
 
-    mCamTransCombo->setEnabled(has_cam);
-    mCamTransCombo->setToolTip(has_cam
+    setEnabledIfChanged(mCamTransCombo, has_cam);
+    setToolTipIfChanged(mCamTransCombo, has_cam
         ? std::string("Cut: snap to this shot when the actor reaches the node. Ease: glide from the previous camera node")
         : std::string("Set a camera on this node first"));
     if (has_cam && !mCamTransCombo->hasFocus() &&
@@ -882,10 +886,10 @@ void ALPanelPathEditor::refreshCameraControls()
 
     // Preview toggles: enabled when the node has a camera, or always available
     // to exit while previewing
-    mPreviewBtn->setEnabled(has_cam || previewing);
+    setEnabledIfChanged(mPreviewBtn, has_cam || previewing);
     mPreviewBtn->setLabel(previewing ? std::string("Exit preview")
                                      : std::string("Preview"));
-    mPreviewBtn->setToolTip(previewing
+    setToolTipIfChanged(mPreviewBtn, previewing
         ? std::string("Return the camera to normal control")
         : (has_cam ? std::string("Jump the camera to this node's shot to check the framing")
                    : std::string("Set a camera on this node first")));
@@ -961,19 +965,19 @@ void ALPanelPathEditor::refreshSuspendBanner()
     const bool is_near     = m.suspendedActorNearAnchor(mActor);
     const bool has_path    = m.hasWalkablePath(mActor);
 
-    mResumeBtn->setEnabled(resolvable);
-    mResumeBtn->setToolTip(resolvable
+    setEnabledIfChanged(mResumeBtn, resolvable);
+    setToolTipIfChanged(mResumeBtn, resolvable
         ? std::string("Resume the walk from where it left off")
         : std::string("The actor isn't here yet \xE2\x80\x94 waiting for it to return"));
 
-    mReanchorBtn->setEnabled(resolvable && has_path);
-    mReanchorBtn->setToolTip(!resolvable
+    setEnabledIfChanged(mReanchorBtn, resolvable && has_path);
+    setToolTipIfChanged(mReanchorBtn, !resolvable
         ? std::string("The actor isn't here yet \xE2\x80\x94 waiting for it to return")
         : (has_path
             ? std::string("Move the whole path to the actor's current position and resume from here (keep shooting on this sim)")
             : std::string("Re-anchor applies to a waypoint path")));
 
-    mCancelSuspendBtn->setEnabled(true);     // always able to drop the walk
+    setEnabledIfChanged(mCancelSuspendBtn, true);     // always able to drop the walk
 
     std::string status;
     if (!resolvable)
@@ -1364,13 +1368,13 @@ void ALPanelPathEditor::refreshEditButtons()
     const bool can_undo = have_actor && m.canUndoPath(mActor);
     const bool can_redo = have_actor && m.canRedoPath(mActor);
 
-    mUndoBtn->setEnabled(can_undo && !walking);
-    mUndoBtn->setToolTip(walking
+    setEnabledIfChanged(mUndoBtn, can_undo && !walking);
+    setToolTipIfChanged(mUndoBtn, walking
         ? std::string("Stop the walk to undo path edits")
         : (can_undo ? std::string("Undo the last path edit")
                     : std::string("Nothing to undo")));
-    mRedoBtn->setEnabled(can_redo && !walking);
-    mRedoBtn->setToolTip(walking
+    setEnabledIfChanged(mRedoBtn, can_redo && !walking);
+    setToolTipIfChanged(mRedoBtn, walking
         ? std::string("Stop the walk to redo path edits")
         : (can_redo ? std::string("Redo the last undone edit")
                     : std::string("Nothing to redo")));
@@ -1384,12 +1388,12 @@ void ALPanelPathEditor::refreshEditButtons()
     const LLActorMover::Path* path = m.getPath(mActor);
     const bool primitive = path && path->isPrimitive();
 
-    mReverseBtn->setEnabled(ops_ok);
-    mReverseBtn->setToolTip(reason.empty()
+    setEnabledIfChanged(mReverseBtn, ops_ok);
+    setToolTipIfChanged(mReverseBtn, reason.empty()
         ? std::string("Reverse the path direction (per-node timing and cameras stay attached)")
         : reason);
-    mMirrorBtn->setEnabled(ops_ok && !primitive);
-    mMirrorBtn->setToolTip(primitive
+    setEnabledIfChanged(mMirrorBtn, ops_ok && !primitive);
+    setToolTipIfChanged(mMirrorBtn, primitive
         ? std::string("Use Plane yaw/tilt/roll to orient an exact primitive")
         : (reason.empty()
         ? std::string("Mirror the path left-to-right across its line of travel (positions and cameras)")
@@ -1398,8 +1402,8 @@ void ALPanelPathEditor::refreshEditButtons()
         (path->mShape == ALPathGeometry::SINE_WAVE ||
          (path->mShape == ALPathGeometry::HELIX &&
           fabsf(path->mPrimitiveRise) > 0.001f));
-    mLoopCloseBtn->setEnabled(ops_ok && !open_primitive);
-    mLoopCloseBtn->setToolTip(open_primitive
+    setEnabledIfChanged(mLoopCloseBtn, ops_ok && !open_primitive);
+    setToolTipIfChanged(mLoopCloseBtn, open_primitive
         ? (path->mShape == ALPathGeometry::SINE_WAVE
             ? std::string("A sine wave is open; use Ping-pong to repeat it")
             : std::string("A rising helix cannot close; set Rise to 0 first"))
@@ -1407,17 +1411,17 @@ void ALPanelPathEditor::refreshEditButtons()
         ? std::string("Snap the last waypoint onto the first and set the path to loop")
         : reason));
 
-    mWalkHereBtn->setEnabled(have_actor);
-    mWalkHereBtn->setToolTip(have_actor
+    setEnabledIfChanged(mWalkHereBtn, have_actor);
+    setToolTipIfChanged(mWalkHereBtn, have_actor
         ? std::string("Arm one ground click: the actor gets a straight path to that spot and walks it")
         : std::string("Select a cast member first"));
-    mPlayPathBtn->setEnabled(walkable && !walking);
-    mPlayPathBtn->setToolTip(!walkable
+    setEnabledIfChanged(mPlayPathBtn, walkable && !walking);
+    setToolTipIfChanged(mPlayPathBtn, !walkable
         ? std::string("Create a path with at least two anchors first")
         : (walking ? std::string("This path is already playing")
                    : std::string("Play this authored path without firing ACTION")));
-    mStopPathBtn->setEnabled(walking);
-    mStopPathBtn->setToolTip(walking
+    setEnabledIfChanged(mStopPathBtn, walking);
+    setToolTipIfChanged(mStopPathBtn, walking
         ? std::string("Stop this path and release its path camera")
         : std::string("This path is not playing"));
 }
@@ -1456,7 +1460,7 @@ void ALPanelPathEditor::refreshCopyCombo()
 
     const bool walkable = mActor.notNull() && m.hasWalkablePath(mActor);
     const bool have_dst = mCopyToCombo->getItemCount() > 0;
-    mCopyToCombo->setEnabled(have_dst);
+    setEnabledIfChanged(mCopyToCombo, have_dst);
 
     LLUUID dst;
     if (have_dst)
@@ -1464,8 +1468,8 @@ void ALPanelPathEditor::refreshCopyCombo()
         dst = LLUUID(mCopyToCombo->getSelectedValue().asString());
     }
     const bool dst_walking = dst.notNull() && m.isPathWalking(dst);
-    mCopyBtn->setEnabled(walkable && have_dst && !dst_walking);
-    mCopyBtn->setToolTip(!walkable
+    setEnabledIfChanged(mCopyBtn, walkable && have_dst && !dst_walking);
+    setToolTipIfChanged(mCopyBtn, !walkable
         ? std::string("This actor has no path to copy")
         : (!have_dst ? std::string("Add another cast member to copy the path to")
         : (dst_walking ? std::string("That actor is walking \xE2\x80\x94 stop it first")
@@ -1484,16 +1488,16 @@ void ALPanelPathEditor::refreshChoreography()
 
     // ---- Sync to camera take ----
     const bool sync_on = path ? path->mSyncToTake : false;
-    mSyncCheck->setEnabled(have_actor);
-    mSyncCheck->setToolTip(have_actor
+    setEnabledIfChanged(mSyncCheck, have_actor);
+    setToolTipIfChanged(mSyncCheck, have_actor
         ? std::string("Drive this path from the Flycam Recorder playhead: play or scrub the take and the actor moves in lockstep (deterministic actor+lens takes). No take loaded = no change to the walk.")
         : std::string("Select a cast member first"));
     if (mSyncCheck->getValue().asBoolean() != sync_on)
     {
         mSyncCheck->set(sync_on);
     }
-    mSyncOffset->setEnabled(have_actor && sync_on);
-    mSyncOffset->setToolTip(std::string("Lead (+) or trail (-) the lens by this many seconds along the take"));
+    setEnabledIfChanged(mSyncOffset, have_actor && sync_on);
+    setToolTipIfChanged(mSyncOffset, std::string("Lead (+) or trail (-) the lens by this many seconds along the take"));
     const F32 lead = path ? path->mSyncLeadTrail : 0.f;
     if (!mSyncOffset->hasFocus() &&
         fabsf((F32)mSyncOffset->getValue().asReal() - lead) > 0.001f)
@@ -1567,18 +1571,18 @@ void ALPanelPathEditor::refreshChoreography()
             }
         }
     }
-    mFollowCombo->setEnabled(have_actor && mFollowCombo->getItemCount() > 1);
+    setEnabledIfChanged(mFollowCombo, have_actor && mFollowCombo->getItemCount() > 1);
 
-    mFollowOffset->setEnabled(following);
-    mFollowOffset->setToolTip(std::string("Metres the follower stays behind the leader along the path"));
+    setEnabledIfChanged(mFollowOffset, following);
+    setToolTipIfChanged(mFollowOffset, std::string("Metres the follower stays behind the leader along the path"));
     if (following && !mFollowOffset->hasFocus() &&
         fabsf((F32)mFollowOffset->getValue().asReal() - offset) > 0.001f)
     {
         mFollowOffset->setValue(offset);
     }
 
-    mStopFollowBtn->setEnabled(following);
-    mStopFollowBtn->setToolTip(following
+    setEnabledIfChanged(mStopFollowBtn, following);
+    setToolTipIfChanged(mStopFollowBtn, following
         ? std::string("Stop following; this actor keeps its own path (if any)")
         : std::string("This actor isn't following anyone"));
 

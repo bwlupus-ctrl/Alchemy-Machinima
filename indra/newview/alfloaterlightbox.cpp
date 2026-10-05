@@ -31,6 +31,7 @@
 #include "llviewerprecompiledheaders.h"
 #include "alfloaterlightbox.h"
 #include "alscrollfocus.h"
+#include "aluirefresh.h" // [UIPerfC1] diff-guarded Selected Light mirror
 #include "alprojectorshaftpresets.h"
 #include "alcinehaze.h"
 #include "alrotoink.h"
@@ -606,6 +607,7 @@ bool ALFloaterLightBox::handleScrollHWheel(S32 x, S32 y, LLScrollDelta delta)
 
 void ALFloaterLightBox::draw()
 {
+    LL_PROFILE_ZONE_SCOPED_CATEGORY_UI; // [UIPerfC1]
     // [ProbeOnDemand] Refresh-all readout, at most 4 Hz; the manager holds a
     // terminal text for 10 s. findChild-guarded so it is a no-op until the
     // Rendering tab's widgets exist.
@@ -613,7 +615,12 @@ void ALFloaterLightBox::draw()
     if (probe_status_timer.getElapsedTimeF32() > 0.25f)
     {
         probe_status_timer.reset();
-        if (LLTextBox* probe_status = findChild<LLTextBox>("probe_refresh_status"))
+        // [UIPerfC1] cached once found (optional: stays null until the tab exists)
+        if (!mTick.probe_status)
+        {
+            mTick.probe_status = findChild<LLTextBox>("probe_refresh_status");
+        }
+        if (LLTextBox* probe_status = mTick.probe_status)
         {
             probe_status->setValue(gPipeline.mReflectionMapManager.getRefreshAllStatus());
         }
@@ -627,7 +634,12 @@ void ALFloaterLightBox::draw()
 
         // [BDMerge B6] BD Bone Camera joint dropdown - donor fill code
         // (BD 9682ff208e), populated lazily once the avatar skeleton exists
-        LLComboBox* joint_combo = getChild<LLComboBox>("bd_joint_combo");
+        // [UIPerfC1] required widgets (getChild semantics), resolved once and cached
+        if (!mTick.bd_joint_combo)
+        {
+            mTick.bd_joint_combo = getChild<LLComboBox>("bd_joint_combo");
+        }
+        LLComboBox* joint_combo = mTick.bd_joint_combo;
         if (joint_combo->getItemCount() <= 1 && isAgentAvatarValid())
         {
             S32 current = gSavedSettings.getS32("CameraFollowJoint");
@@ -642,13 +654,25 @@ void ALFloaterLightBox::draw()
             }
             joint_combo->setSelectedByValue(current, true);
         }
-        getChild<LLTextBox>("bd_texpool_stats")->setValue("Textures: " + BDMergeTexPool::shortStatus());
-        getChild<LLTextBox>("bd_meshpool_stats")->setValue("Meshes: " + BDMergeMeshPool::shortStatus());
+        if (!mTick.bd_texpool_stats)
+        {
+            mTick.bd_texpool_stats = getChild<LLTextBox>("bd_texpool_stats");
+        }
+        if (!mTick.bd_meshpool_stats)
+        {
+            mTick.bd_meshpool_stats = getChild<LLTextBox>("bd_meshpool_stats");
+        }
+        mTick.bd_texpool_stats->setValue("Textures: " + BDMergeTexPool::shortStatus());
+        mTick.bd_meshpool_stats->setValue("Meshes: " + BDMergeMeshPool::shortStatus());
 
         // [TronT1] Read-only origin readout (TronGridOriginGlobal); throttled
         // on the same 1 s timer as the pool stats above, findChild-guarded so
         // it's a no-op before the Tron tab's widgets are ever built.
-        if (LLTextBox* origin_status = findChild<LLTextBox>("tr_grid_origin_status"))
+        if (!mTick.tr_grid_origin_status) // [UIPerfC1] optional, cached once found
+        {
+            mTick.tr_grid_origin_status = findChild<LLTextBox>("tr_grid_origin_status");
+        }
+        if (LLTextBox* origin_status = mTick.tr_grid_origin_status)
         {
             const LLVector3d origin = gSavedSettings.getVector3d("TronGridOriginGlobal");
             origin_status->setValue(llformat("Origin: (%.1f, %.1f, %.1f)",
@@ -659,7 +683,11 @@ void ALFloaterLightBox::draw()
         // planes the main maps were actually built from, after the Sharp
         // shadow range override and the far-clip clamp) -- design v2 s2.2.
         // Same 1 s throttle; findChild-guarded.
-        if (LLTextBox* splits_status = findChild<LLTextBox>("sd_effective_splits"))
+        if (!mTick.sd_effective_splits) // [UIPerfC1] optional, cached once found
+        {
+            mTick.sd_effective_splits = findChild<LLTextBox>("sd_effective_splits");
+        }
+        if (LLTextBox* splits_status = mTick.sd_effective_splits)
         {
             // [ShadowDist P1 fix] no fitted maps yet (reset, sun shadows off)
             // -> the meta holds placeholder planes; don't present them as real.
@@ -737,58 +765,71 @@ void ALFloaterLightBox::updateSelectedLightPanel()
     LLVOVolume* pVol = dynamic_cast<LLVOVolume*>(pObj);
     const bool is_projector = (pVol && pVol->isLightSpotlight());
 
-    cast_cb->setEnabled(is_projector);
-    vol_cb->setEnabled(is_projector);
-    cap_btn->setEnabled(is_projector);
-    if (gobo_pattern) gobo_pattern->setEnabled(is_projector);
-    if (gobo_anim) gobo_anim->setEnabled(is_projector);
-    if (gobo_speed) gobo_speed->setEnabled(is_projector);
-    if (gobo_zoom) gobo_zoom->setEnabled(is_projector);
-    if (gobo_dispersion) gobo_dispersion->setEnabled(is_projector);
-    if (gobo_tint) gobo_tint->setEnabled(is_projector);
-    if (gobo_var1) gobo_var1->setEnabled(is_projector);
-    if (gobo_var2) gobo_var2->setEnabled(is_projector);
-    if (gobo_soft) gobo_soft->setEnabled(is_projector);
-    if (gobo_invert) gobo_invert->setEnabled(is_projector);
+    // [UIPerfC1] Identity of what is mirrored. In the frame it changes (another object, or
+    // projector <-> not), every mirror write bypasses the keyboard-focus guard, so a newly
+    // selected light never shows the previous light's state because a control kept focus.
+    const LLUUID sel_id = pObj ? pObj->getID() : LLUUID::null;
+    const bool identity_changed = (sel_id != mSelLightLastId) || (is_projector != mSelLightLastProjector);
+    mSelLightLastId = sel_id;
+    mSelLightLastProjector = is_projector;
+    // Check boxes are never "edited" by focus (a click leaves them focused), so they always
+    // resync exactly as the old per-frame set() did; sliders / combos honour the focus guard
+    // except on an identity change.
+    const bool force_ctrl = identity_changed;
+
+    setEnabledIfChanged(cast_cb, is_projector);
+    setEnabledIfChanged(vol_cb, is_projector);
+    setEnabledIfChanged(cap_btn, is_projector);
+    setEnabledIfChanged(gobo_pattern, is_projector);
+    setEnabledIfChanged(gobo_anim, is_projector);
+    setEnabledIfChanged(gobo_speed, is_projector);
+    setEnabledIfChanged(gobo_zoom, is_projector);
+    setEnabledIfChanged(gobo_dispersion, is_projector);
+    setEnabledIfChanged(gobo_tint, is_projector);
+    setEnabledIfChanged(gobo_var1, is_projector);
+    setEnabledIfChanged(gobo_var2, is_projector);
+    setEnabledIfChanged(gobo_soft, is_projector);
+    setEnabledIfChanged(gobo_invert, is_projector);
 
     if (is_projector)
     {
         const LLUUID& id = pObj->getID();
         // Checked = casts shadows (default), i.e. NOT in the opt-out set.
-        cast_cb->set(!LLPipeline::isProjectorNoShadow(id));
-        vol_cb->set(LLPipeline::isVolumetricShaftEnabled(id));
-        clr_btn->setEnabled(LLPipeline::hasVolumetricShaftOverride(id) ||
-                            LLPipeline::hasGoboOverride(id));
+        setValueIfChanged(cast_cb, LLSD(!LLPipeline::isProjectorNoShadow(id)), true);
+        setValueIfChanged(vol_cb, LLSD(LLPipeline::isVolumetricShaftEnabled(id)), true);
+        setEnabledIfChanged(clr_btn, LLPipeline::hasVolumetricShaftOverride(id) ||
+                                     LLPipeline::hasGoboOverride(id));
         const LLPipeline::GoboOverride gobo = LLPipeline::getGoboOverride(id);
-        if (gobo_pattern) gobo_pattern->setValue(LLSD(gobo.mPattern));
-        if (gobo_anim) gobo_anim->setValue(LLSD(gobo.mAnimMode));
-        if (gobo_speed) gobo_speed->setValue(LLSD((F64)gobo.mSpeed));
-        if (gobo_zoom) gobo_zoom->setValue(LLSD((F64)gobo.mZoom));
-        if (gobo_dispersion) gobo_dispersion->setValue(LLSD((F64)gobo.mDispersion));
+        setValueIfChanged(gobo_pattern, LLSD(gobo.mPattern), force_ctrl);
+        setValueIfChanged(gobo_anim, LLSD(gobo.mAnimMode), force_ctrl);
+        setValueIfChanged(gobo_speed, LLSD((F64)gobo.mSpeed), force_ctrl);
+        setValueIfChanged(gobo_zoom, LLSD((F64)gobo.mZoom), force_ctrl);
+        setValueIfChanged(gobo_dispersion, LLSD((F64)gobo.mDispersion), force_ctrl);
+        // [UIPerfC1] swatch left as the original per-frame write: LLColorSwatchCtrl::set also
+        // refreshes mPrevColor and the open colour picker, which a value compare would skip.
         if (gobo_tint) gobo_tint->set(LLColor4(gobo.mTint), TRUE);
-        if (gobo_var1) gobo_var1->setValue(LLSD((F64)gobo.mPatternParams.mV[0]));
-        if (gobo_var2) gobo_var2->setValue(LLSD((F64)gobo.mPatternParams.mV[1]));
-        if (gobo_soft) gobo_soft->setValue(LLSD((F64)gobo.mPatternParams.mV[2]));
-        if (gobo_invert) gobo_invert->set(gobo.mPatternParams.mV[3] >= 0.5f);
+        setValueIfChanged(gobo_var1, LLSD((F64)gobo.mPatternParams.mV[0]), force_ctrl);
+        setValueIfChanged(gobo_var2, LLSD((F64)gobo.mPatternParams.mV[1]), force_ctrl);
+        setValueIfChanged(gobo_soft, LLSD((F64)gobo.mPatternParams.mV[2]), force_ctrl);
+        setValueIfChanged(gobo_invert, LLSD(gobo.mPatternParams.mV[3] >= 0.5f), true);
         if (status)
         {
             LLSelectNode* node = LLSelectMgr::getInstance()->getSelection()->getFirstRootNode();
             std::string name = (node && !node->mName.empty()) ? node->mName : std::string("(selected projector)");
-            status->setValue("Editing: " + name);
+            setTextIfChanged(status, "Editing: " + name, true);
         }
     }
     else
     {
-        cast_cb->set(false);
-        vol_cb->set(false);
-        clr_btn->setEnabled(false);
-        if (gobo_pattern) gobo_pattern->setValue(LLSD(-1));
-        if (gobo_anim) gobo_anim->setValue(LLSD(0));
-        if (gobo_speed) gobo_speed->setValue(LLSD(1.0));
-        if (gobo_zoom) gobo_zoom->setValue(LLSD(1.0));
-        if (gobo_dispersion) gobo_dispersion->setValue(LLSD(0.0));
-        if (status)
-            status->setValue("Select a spotlight projector in-world to edit it here.");
+        setValueIfChanged(cast_cb, LLSD(false), true);
+        setValueIfChanged(vol_cb, LLSD(false), true);
+        setEnabledIfChanged(clr_btn, false);
+        setValueIfChanged(gobo_pattern, LLSD(-1), force_ctrl);
+        setValueIfChanged(gobo_anim, LLSD(0), force_ctrl);
+        setValueIfChanged(gobo_speed, LLSD(1.0), force_ctrl);
+        setValueIfChanged(gobo_zoom, LLSD(1.0), force_ctrl);
+        setValueIfChanged(gobo_dispersion, LLSD(0.0), force_ctrl);
+        setTextIfChanged(status, std::string("Select a spotlight projector in-world to edit it here."), true);
     }
 }
 

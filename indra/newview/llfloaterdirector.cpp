@@ -12,6 +12,7 @@
 #include "llfloaterdirector.h"
 #include "alghoststudio.h" // [AutoAnimate]
 #include "alscrollfocus.h"
+#include "aluirefresh.h"            // [UIPerfC1] diff-guarded text writes
 
 #include "indra_constants.h"        // KEY_ESCAPE / MASK_NONE, MASK_ALT
 
@@ -650,6 +651,7 @@ void LLFloaterDirector::onToggleLegend()
 
 void LLFloaterDirector::draw()
 {
+    LL_PROFILE_ZONE_SCOPED_CATEGORY_UI; // [UIPerfC1]
     refreshCastList();
     refreshGroupControls();
     refreshTransport();
@@ -2622,7 +2624,7 @@ void LLFloaterDirector::refreshAnimateTab()
                                                   : std::string();
 
     // header: who the tab is showing
-    mAnimateHeader->setText(sel.isNull()
+    setTextIfChanged(mAnimateHeader, sel.isNull()   // [UIPerfC1]
         ? std::string("No cast member selected")
         : av ? member_name
              : member_name + " (away)");
@@ -2938,13 +2940,14 @@ void LLFloaterDirector::refreshCameraTab()
     const LLUUID c = cast.getSubjectC();
     const LLUUID d = cast.getSubjectD();
 
-    mSubjectAText->setText("A: " + (a.notNull() ? castMemberName(a)
+    // [UIPerfC1] diff-guarded: identical text is never rewritten
+    setTextIfChanged(mSubjectAText, "A: " + (a.notNull() ? castMemberName(a)
                                                 : std::string("\xE2\x80\x94")));
-    mSubjectBText->setText("B: " + (b.notNull() ? castMemberName(b)
+    setTextIfChanged(mSubjectBText, "B: " + (b.notNull() ? castMemberName(b)
                                                  : std::string("\xE2\x80\x94")));
-    mSubjectCText->setText("C: " + (c.notNull() ? castMemberName(c)
+    setTextIfChanged(mSubjectCText, "C: " + (c.notNull() ? castMemberName(c)
                                                  : std::string("\xE2\x80\x94")));
-    mSubjectDText->setText("D: " + (d.notNull() ? castMemberName(d)
+    setTextIfChanged(mSubjectDText, "D: " + (d.notNull() ? castMemberName(d)
                                                  : std::string("\xE2\x80\x94")));
 
     const bool have_sel_av = avatarFromSelection().notNull();
@@ -3166,9 +3169,10 @@ void LLFloaterDirector::refreshStatusStrip()
     {
         queued = llformat(" \xC2\xB7 %d queued", cast.pendingStartCount());
     }
-    mStatusStrip->setText(llformat("%d moving%s \xC2\xB7 %s \xC2\xB7 Orbit %s",
-                                   moving, queued.c_str(), cam.c_str(),
-                                   orbit_enabled ? "on" : "off"));
+    setTextIfChanged(mStatusStrip,                  // [UIPerfC1]
+                     llformat("%d moving%s \xC2\xB7 %s \xC2\xB7 Orbit %s",
+                              moving, queued.c_str(), cam.c_str(),
+                              orbit_enabled ? "on" : "off"));
 
     // REC indicator: red danger dot while capturing, muted circle when idle
     // (diffed so the color/text are only re-set on a state change)

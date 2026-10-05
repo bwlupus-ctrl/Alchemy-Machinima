@@ -11,6 +11,7 @@
 #define AL_FLOATER_CINE_LIGHT_CUES_H
 
 #include "alcinelightrigmodel.h"
+#include "aluirefresh.h"            // [UIPerfC2] ALRevisionGate
 #include "llfloater.h"
 
 class LLButton;
@@ -35,7 +36,7 @@ private:
     S32 selectedCueIndex() const;
     void refreshListNames(bool force = false);
     void refreshCueRows(bool force = false);
-    void refreshStatus();
+    void refreshStatus(bool force = false); // [UIPerfC2] force = skip the gate
     void loadEditor(const ALCineLightRigModel::Cue& cue);
     ALCineLightRigModel::Cue readEditor(
         const ALCineLightRigModel::Cue& base) const;
@@ -75,6 +76,8 @@ private:
     U64 mSeenRevision = U64(-1);
     S32 mSeenSlot = -1;
     std::string mListSignature;
+    // [UIPerfC2] status text gate: {rig slot, cue revision, active cue, playback, timecode}
+    ALRevisionGate mStatusGate;
 };
 
 #endif // AL_FLOATER_CINE_LIGHT_CUES_H

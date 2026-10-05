@@ -197,30 +197,44 @@ void ALFloaterCineLightCues::refreshCueRows(bool force)
     const bool selected = selectedCueIndex() >= 0;
     mUpdate->setEnabled(selected);
     mDeleteCue->setEnabled(selected);
-    refreshStatus();
+    refreshStatus(true); // [UIPerfC2] rows rebuilt: bypass the gate
 }
 
-void ALFloaterCineLightCues::refreshStatus()
+void ALFloaterCineLightCues::refreshStatus(bool force)
 {
-    ALCineLightRig& rig = ALCineLightRigManager::instance().selected();
+    ALCineLightRigManager& manager = ALCineLightRigManager::instance();
+    ALCineLightRig& rig = manager.selected();
     const S32 active = rig.activeCue();
+    // [UIPerfC2] revision gate (built-in 1 Hz self-heal). changed() always records,
+    // so a forced call (button click, row rebuild) also re-primes the gate.
+    const bool gate_open = mStatusGate.changed({
+        static_cast<U64>(manager.selectedSlot()),
+        rig.cueRevision(),
+        static_cast<U64>(static_cast<S64>(active)),
+        rig.cuePlaybackActive() ? U64(1) : U64(0),
+        rig.cueList().mTimecodeMode ? U64(1) : U64(0) });
+    if (!force && !gate_open)
+    {
+        return;
+    }
+    // [UIPerfC1] diff-guarded writes
     if (rig.cueList().mTimecodeMode)
     {
-        mStatus->setText(active >= 0
+        setTextIfChanged(mStatus, active >= 0
             ? llformat("TIMECODE  Cue %d: %s", active + 1,
                        rig.cueList().mCues[active].mLabel.c_str())
-            : "TIMECODE  Released before first cue");
+            : std::string("TIMECODE  Released before first cue"));
     }
     else if (rig.cuePlaybackActive())
     {
-        mStatus->setText(active >= 0
+        setTextIfChanged(mStatus, active >= 0
             ? llformat("LIVE  Cue %d: %s", active + 1,
                        rig.cueList().mCues[active].mLabel.c_str())
-            : "LIVE  Released");
+            : std::string("LIVE  Released"));
     }
     else
     {
-        mStatus->setText(std::string("Idle"));
+        setTextIfChanged(mStatus, std::string("Idle"));
     }
 }
 
@@ -348,39 +362,41 @@ void ALFloaterCineLightCues::onTimecodeMode()
 void ALFloaterCineLightCues::onGo()
 {
     ALCineLightRigManager::instance().selected().cueGo(presentationTime());
-    refreshStatus();
+    refreshStatus(true); // [UIPerfC2]
 }
 
 void ALFloaterCineLightCues::onBack()
 {
     ALCineLightRigManager::instance().selected().cueBack(presentationTime());
-    refreshStatus();
+    refreshStatus(true); // [UIPerfC2]
 }
 
 void ALFloaterCineLightCues::onGoto(bool snap)
 {
     ALCineLightRigManager::instance().selected().cueGoto(
         selectedCueIndex(), presentationTime(), snap);
-    refreshStatus();
+    refreshStatus(true); // [UIPerfC2]
 }
 
 void ALFloaterCineLightCues::onRelease()
 {
     ALCineLightRigManager::instance().selected().cueRelease(presentationTime());
-    refreshStatus();
+    refreshStatus(true); // [UIPerfC2]
 }
 
 void ALFloaterCineLightCues::draw()
 {
+    LL_PROFILE_ZONE_SCOPED_CATEGORY_UI; // [UIPerfC1]
     refreshListNames();
     refreshCueRows();
-    refreshStatus();
+    refreshStatus(); // [UIPerfC2] gated
     const bool live_transport = !mTimecodeMode->get();
-    mGoBtn->setEnabled(live_transport); // [UIPerf] cached in postBuild
-    mBackBtn->setEnabled(live_transport);
-    mGotoBtn->setEnabled(live_transport);
-    mSnapGotoBtn->setEnabled(live_transport);
-    mReleaseBtn->setEnabled(live_transport);
+    // [UIPerfC1] diff-guarded; buttons cached in postBuild [UIPerf]
+    setEnabledIfChanged(mGoBtn, live_transport);
+    setEnabledIfChanged(mBackBtn, live_transport);
+    setEnabledIfChanged(mGotoBtn, live_transport);
+    setEnabledIfChanged(mSnapGotoBtn, live_transport);
+    setEnabledIfChanged(mReleaseBtn, live_transport);
     LLFloater::draw();
 }
 

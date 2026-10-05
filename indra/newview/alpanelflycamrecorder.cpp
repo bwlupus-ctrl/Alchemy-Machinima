@@ -11,6 +11,7 @@
 
 #include "alpanelflycamrecorder.h"
 
+#include "aluirefresh.h"        // [UIPerfC1] diff-guarded writes
 #include "llbutton.h"
 #include "llflycamrecorder.h"
 #include "llsliderctrl.h"
@@ -80,50 +81,54 @@ bool ALPanelFlycamRecorder::postBuild()
 
 void ALPanelFlycamRecorder::draw()
 {
+    LL_PROFILE_ZONE_SCOPED_CATEGORY_UI; // [UIPerfC1]
     LLFlycamRecorder& rec = LLFlycamRecorder::instance();
     const LLFlycamRecorder::EState state = rec.getState();
     const F32 duration = rec.getDuration();
     const bool recording = (state == LLFlycamRecorder::STATE_RECORDING);
     const bool have_take = rec.getNumKeyframes() > 0;
 
-    mRecordBtn->setLabel(recording ? LLStringExplicit("Stop rec")
-                                   : LLStringExplicit("Record"));
-    mPlayBtn->setLabel(state == LLFlycamRecorder::STATE_PLAYING
-                           ? LLStringExplicit("Pause")
-                           : LLStringExplicit("Play"));
-    mPlayBtn->setEnabled(have_take && !recording);
+    // [UIPerfC1] diff-guarded labels / enables / texts
+    setLabelIfChanged(mRecordBtn, recording ? std::string("Stop rec")
+                                            : std::string("Record"));
+    setLabelIfChanged(mPlayBtn, state == LLFlycamRecorder::STATE_PLAYING
+                                    ? std::string("Pause")
+                                    : std::string("Play"));
+    setEnabledIfChanged(mPlayBtn, have_take && !recording);
     setToolTipIfChanged(mPlayBtn,
         !have_take ? std::string("Record or load a take first")
         : recording ? std::string("Stop recording first")
                     : std::string("Play or pause the recorded take (takes over the camera)"));
 
-    mScrub->setEnabled(have_take && !recording);
+    setEnabledIfChanged(mScrub, have_take && !recording);
     setToolTipIfChanged(mScrub,
         !have_take ? std::string("Record or load a take first")
         : recording ? std::string("Stop recording first")
                     : std::string("Scrub through the take. Dragging while stopped previews that moment"));
 
-    mScrub->setMaxValue(llmax(duration, 0.01f));
-    mScrub->setValue(rec.getPlayhead());
+    // [UIPerfC1] max BEFORE value (original order); both increment-aware and
+    // focus-guarded (no write while the operator drags/edits the scrub slider)
+    setMaxValueIfChanged(mScrub, llmax(duration, 0.01f));
+    setValueIfChanged(mScrub, LLSD(rec.getPlayhead()));
 
     const F32 shown = recording ? duration : rec.getPlayhead();
-    mTimeText->setText(llformat("%.1f / %.1f s   %d keys",
-                                shown, duration, rec.getNumKeyframes()));
-    mStatusText->setText(rec.getStatus());
+    setTextIfChanged(mTimeText, llformat("%.1f / %.1f s   %d keys",
+                                         shown, duration, rec.getNumKeyframes()));
+    setTextIfChanged(mStatusText, rec.getStatus());
 
     // Clear / Save need a take; Load is always available (all drive the one
     // singleton the standalone floater and the console Takes tab share)
-    mClearBtn->setEnabled(have_take && !recording);
+    setEnabledIfChanged(mClearBtn, have_take && !recording);
     setToolTipIfChanged(mClearBtn,
         !have_take ? std::string("No take to clear")
         : recording ? std::string("Stop recording first")
                     : std::string("Discard the current take"));
-    mSaveBtn->setEnabled(have_take && !recording);
+    setEnabledIfChanged(mSaveBtn, have_take && !recording);
     setToolTipIfChanged(mSaveBtn,
         !have_take ? std::string("Record or load a take first")
         : recording ? std::string("Stop recording first")
                     : std::string("Save the take to a hand-editable XML file"));
-    mLoadBtn->setEnabled(!recording);
+    setEnabledIfChanged(mLoadBtn, !recording);
     setToolTipIfChanged(mLoadBtn,
         recording ? std::string("Stop recording first")
                   : std::string("Load a take from an XML file"));

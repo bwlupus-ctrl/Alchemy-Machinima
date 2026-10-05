@@ -34,6 +34,7 @@
 #define AL_FLOATERLIGHTBOX_H
 
 #include "llfloater.h"
+#include "lluuid.h" // [UIPerfC1] mSelLightLastId
 #include <string>
 
 class LLButton;
@@ -89,6 +90,24 @@ public:
         LLSliderCtrl*      gobo_soft = nullptr;
         LLCheckBoxCtrl*    gobo_invert = nullptr;
     } mSelLight;
+    // [UIPerfC1] identity of what the Selected Light mirror last showed. A change
+    // (different object, or projector <-> non-projector) forces every mirror write
+    // past the focus guard so a newly selected light can never show stale state.
+    LLUUID mSelLightLastId;
+    bool   mSelLightLastProjector = false;
+    // [UIPerfC1] draw() 4 Hz / 1 s tick widgets, resolved once and cached instead of
+    // a by-name lookup per tick. Resolved lazily while null, preserving the original
+    // semantics: required ones via getChild (bd_*), optional ones via findChild
+    // (the Rendering / Tron / Shadow tabs may not exist yet).
+    struct TickWidgets
+    {
+        LLTextBox*  probe_status = nullptr;       // optional
+        LLComboBox* bd_joint_combo = nullptr;     // required (getChild)
+        LLTextBox*  bd_texpool_stats = nullptr;   // required (getChild)
+        LLTextBox*  bd_meshpool_stats = nullptr;  // required (getChild)
+        LLTextBox*  tr_grid_origin_status = nullptr; // optional
+        LLTextBox*  sd_effective_splits = nullptr;   // optional
+    } mTick;
     void onSelLightCastShadows();
     void onSelLightVolumetric();
     void onSelLightCaptureOverride();

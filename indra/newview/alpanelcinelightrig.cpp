@@ -14,6 +14,7 @@
 #include "alcinelightrig.h"
 #include "alcinelightrigmanager.h"
 #include "alcinelightrigmodel.h"
+#include "aluirefresh.h" // [UIPerfC1] widget-aware value compare
 #include "llbutton.h"
 #include "llcheckboxctrl.h"
 #include "llcombobox.h"
@@ -64,6 +65,68 @@ const char* const ROLE_ON_SETTINGS[ALCineLightRigModel::LIGHT_COUNT] = {
     "CineLightRigRimOn", "CineLightRigBgOn"
 };
 std::vector<ALPanelCineLightRig*> LIVE_PANELS;
+
+// [UIPerfC1] Per-role fixture settings, resolved ONCE to control pointers instead of a
+// string concat + by-name gSavedSettings lookup per field per frame (syncFixtureControls,
+// syncGoboLibrary, syncEasyControls all run from draw()). Indexed [role][field]; the role
+// index is ALPanelCineLightRig::mFixtureRoleIndex (changes only in onFixtureRoleCommit) or
+// the loop role. A pointer is only ever read through the index of ITS OWN role, so a role
+// change can never leave a stale pointer behind. LLPointer keeps the variable alive.
+constexpr S32 FF_MODE = 0;
+constexpr S32 FF_PRESET = 1;
+constexpr S32 FF_KELVIN = 2;
+constexpr S32 FF_SOURCE = 3;
+constexpr S32 FF_GOBO = 4;
+constexpr S32 FF_SHADOWSOFT = 5;
+constexpr S32 FF_BEAM = 6;
+constexpr S32 FF_GEL0 = 7; // + slot
+constexpr S32 FF_COUNT = FF_GEL0 + ALCineLightRigModel::FIXTURE_GEL_SLOT_COUNT;
+
+LLPointer<LLControlVariable> sFixtureControls[ALCineLightRigModel::LIGHT_COUNT][FF_COUNT];
+bool sFixtureControlsResolved = false;
+
+void resolveFixtureControls()
+{
+    if (sFixtureControlsResolved)
+    {
+        return;
+    }
+    static const char* const SUFFIX[FF_GEL0] = {
+        "FixtureMode", "FixturePreset", "Kelvin", "SourceSizeM",
+        "Gobo", "ShadowSoft", "Beam"
+    };
+    bool all_found = true;
+    for (S32 role = 0; role < ALCineLightRigModel::LIGHT_COUNT; ++role)
+    {
+        for (S32 field = 0; field < FF_COUNT; ++field)
+        {
+            const std::string name = std::string("CineLightRig") + ROLE_NAMES[role] +
+                (field < FF_GEL0
+                    ? std::string(SUFFIX[field])
+                    : "GelSlot" + std::to_string(field - FF_GEL0));
+            sFixtureControls[role][field] = gSavedSettings.getControl(name);
+            all_found = all_found && sFixtureControls[role][field].notNull();
+        }
+    }
+    // a missing setting is a bug; retry (and stay null-safe) rather than cache the hole
+    sFixtureControlsResolved = all_found;
+}
+
+// Reads exactly what gSavedSettings.getXxx(name) would return for this control.
+// False (out untouched) when the control does not exist: the caller must not write.
+template <class T>
+bool fixtureSetting(S32 role, S32 field, T& out)
+{
+    resolveFixtureControls();
+    role = std::clamp(role, 0, ALCineLightRigModel::LIGHT_COUNT - 1);
+    LLControlVariable* control = sFixtureControls[role][field].get();
+    if (!control)
+    {
+        return false;
+    }
+    out = convert_from_llsd<T>(control->get(), control->type(), control->getName());
+    return true;
+}
 
 void addLabeledSeparator(LLComboBox* combo, const std::string& label,
                          bool add_separator)
@@ -1142,34 +1205,52 @@ void ALPanelCineLightRig::syncFixtureControls(bool force)
         force = true;
         mDisplayedFixtureSlot = selected_slot;
     }
-    const std::string prefix = fixtureSettingPrefix();
+    // [UIPerfC1] role-indexed cached control pointers (see fixtureSetting); no per-frame
+    // prefix string / by-name lookups. The panel's own descendant-focus guard and `force`
+    // semantics are unchanged: only the compare moves to setValueIfChanged (force=true
+    // there, because the guard has already been applied here).
+    const S32 role = mFixtureRoleIndex;
     auto sync_value = [force](LLUICtrl* control, const LLSD& value)
     {
         if (force || (!control->hasFocus() &&
                       !gFocusMgr.childHasKeyboardFocus(control)))
         {
-            control->setValue(value);
+            setValueIfChanged(control, value, true);
         }
     };
 
-    const bool fixture_mode =
-        gSavedSettings.getBOOL(prefix + "FixtureMode");
-    sync_value(mFixtureMode, fixture_mode);
-    sync_value(mFixturePreset,
-               gSavedSettings.getS32(prefix + "FixturePreset"));
-    sync_value(mFixtureKelvin,
-               gSavedSettings.getF32(prefix + "Kelvin"));
-    sync_value(mFixtureSourceSize,
-               gSavedSettings.getF32(prefix + "SourceSizeM"));
+    bool fixture_mode = false;
+    if (fixtureSetting(role, FF_MODE, fixture_mode))
+    {
+        sync_value(mFixtureMode, fixture_mode);
+    }
+    S32 preset = 0;
+    if (fixtureSetting(role, FF_PRESET, preset))
+    {
+        sync_value(mFixturePreset, preset);
+    }
+    F32 kelvin = 0.f;
+    if (fixtureSetting(role, FF_KELVIN, kelvin))
+    {
+        sync_value(mFixtureKelvin, kelvin);
+    }
+    F32 source_size = 0.f;
+    if (fixtureSetting(role, FF_SOURCE, source_size))
+    {
+        sync_value(mFixtureSourceSize, source_size);
+    }
     for (S32 slot = 0;
          slot < ALCineLightRigModel::FIXTURE_GEL_SLOT_COUNT; ++slot)
     {
-        sync_value(mFixtureGelSlots[slot], gSavedSettings.getS32(
-            prefix + "GelSlot" + std::to_string(slot)));
-        mFixtureGelSlots[slot]->setEnabled(fixture_mode);
+        S32 gel = 0;
+        if (fixtureSetting(role, FF_GEL0 + slot, gel))
+        {
+            sync_value(mFixtureGelSlots[slot], gel);
+        }
+        setEnabledIfChanged(mFixtureGelSlots[slot], fixture_mode);
     }
-    mFixtureKelvin->setEnabled(fixture_mode);
-    mFixtureSourceSize->setEnabled(fixture_mode);
+    setEnabledIfChanged(mFixtureKelvin, fixture_mode);
+    setEnabledIfChanged(mFixtureSourceSize, fixture_mode);
 }
 
 void ALPanelCineLightRig::onFixtureRoleCommit()
@@ -1236,25 +1317,36 @@ void ALPanelCineLightRig::syncGoboLibrary(bool force)
     {
         return;
     }
-    const std::string prefix = fixtureSettingPrefix();
+    // [UIPerfC1] role-indexed cached control pointers (see fixtureSetting). A missing
+    // control falls back to the setting's zero default and is never written to the widget.
+    const S32 role = mFixtureRoleIndex;
+    S32 gobo_raw = 0;
+    const bool have_gobo = fixtureSetting(role, FF_GOBO, gobo_raw);
     const S32 index = std::clamp(
-        gSavedSettings.getS32(prefix + "Gobo"),
-        0, ALCineLightRigModel::GOBO_COUNT - 1);
-    if (force || (!mGoboLibrary->hasFocus() &&
-                  !gFocusMgr.childHasKeyboardFocus(mGoboLibrary)))
+        gobo_raw, 0, ALCineLightRigModel::GOBO_COUNT - 1);
+    if (have_gobo &&
+        (force || (!mGoboLibrary->hasFocus() &&
+                   !gFocusMgr.childHasKeyboardFocus(mGoboLibrary))))
     {
-        mGoboLibrary->setValue(index);
+        // panel guard applied above, so the helper's own guard is bypassed (force=true)
+        setValueIfChanged(mGoboLibrary, LLSD(index), true);
     }
     mGoboPreview->setVisible(index > 0);
     if (index > 0)
     {
         mGoboPreview->setImage(LLUI::getUIImage(llformat("CineGobo%02d", index)));
     }
-    const F32 softness = gSavedSettings.getBOOL(prefix + "FixtureMode")
+    bool fixture_mode = false;
+    fixtureSetting(role, FF_MODE, fixture_mode);
+    F32 source_size = 0.f;
+    fixtureSetting(role, FF_SOURCE, source_size);
+    F32 shadow_soft = 0.f;
+    fixtureSetting(role, FF_SHADOWSOFT, shadow_soft);
+    const F32 softness = fixture_mode
         ? ALCineLightRigModel::penumbraSoftness(
-              gSavedSettings.getF32(prefix + "SourceSizeM"),
+              source_size,
               gSavedSettings.getF32("CineLightRigRadius"))
-        : gSavedSettings.getF32(prefix + "ShadowSoft");
+        : shadow_soft;
     static const char* const bucket_names[] = { "sharp", "medium", "heavy" };
     const std::string softness_text = llformat(
         "%s variant (softness %.2f)",
@@ -2253,7 +2345,8 @@ void ALPanelCineLightRig::syncEasyControls()
         if (!control->hasFocus() &&
             !gFocusMgr.childHasKeyboardFocus(control))
         {
-            control->setValue(value);
+            // [UIPerfC1] own guard kept; only the compare moves to the helper
+            setValueIfChanged(control, value, true);
         }
     };
     set_unfocused(mEasyBrightness, LLSD(
@@ -2282,12 +2375,14 @@ void ALPanelCineLightRig::syncEasyControls()
         gSavedSettings.getF32("BDMergeProjectorVolumetricsFeather")));
     for (S32 light = 0; light < ALCineLightRigModel::LIGHT_COUNT; ++light)
     {
-        set_unfocused(mManualConeWidths[light], LLSD(
-            ALCineLightRigModel::easyConeWidthFromBeam(
-                gSavedSettings.getS32(
-                    std::string("CineLightRig") + ROLE_NAMES[light] +
-                    "Beam"))));
-        mManualConeWidths[light]->setEnabled(!mEasyModeActive);
+        // [UIPerfC1] cached role x field control; a missing control is not written
+        S32 beam = 0;
+        if (fixtureSetting(light, FF_BEAM, beam))
+        {
+            set_unfocused(mManualConeWidths[light], LLSD(
+                ALCineLightRigModel::easyConeWidthFromBeam(beam)));
+        }
+        setEnabledIfChanged(mManualConeWidths[light], !mEasyModeActive);
     }
 
     mEasyBrightness->setEnabled(mEasyModeActive);
@@ -2664,6 +2759,7 @@ void ALPanelCineLightRig::reshape(S32 width, S32 height, bool called_from_parent
 
 void ALPanelCineLightRig::draw()
 {
+    LL_PROFILE_ZONE_SCOPED_CATEGORY_UI; // [UIPerfC1]
     updateAnchorList();
     syncGroupControls();
     if (mSetupRefreshPending &&
