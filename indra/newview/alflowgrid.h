@@ -33,6 +33,10 @@ public:
         Optional<S32> column_gap;
         Optional<S32> row_gap;
         Optional<S32> pad;
+        // [DirFix] H2: size every card from its own children (ALScrollFit::fitPanelToChildren,
+        // pad = this grid's pad) instead of the card's declared height. Default off: grids
+        // that do not opt in lay out exactly as before.
+        Optional<bool> fit_cards;
 
         Params();
     };
@@ -48,6 +52,7 @@ private:
     S32 mColumnGap;
     S32 mRowGap;
     S32 mPad;
+    bool mFitCards; // [DirFix]
 };
 
 #endif // AL_FLOWGRID_H

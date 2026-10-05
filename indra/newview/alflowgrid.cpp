@@ -22,6 +22,7 @@
 
 #include "alflowgrid.h"
 
+#include "alscrollfit.h"
 #include "llscrollcontainer.h"
 
 #include <algorithm>
@@ -37,7 +38,8 @@ ALFlowGrid::Params::Params()
     max_columns("max_columns", 4),
     column_gap("column_gap", 12),
     row_gap("row_gap", 12),
-    pad("pad", 8)
+    pad("pad", 8),
+    fit_cards("fit_cards", false) // [DirFix]
 {
 }
 
@@ -47,7 +49,8 @@ ALFlowGrid::ALFlowGrid(const Params& p)
     mMaxColumns(llmax(1, p.max_columns())),
     mColumnGap(llmax(0, p.column_gap())),
     mRowGap(llmax(0, p.row_gap())),
-    mPad(llmax(0, p.pad()))
+    mPad(llmax(0, p.pad())),
+    mFitCards(p.fit_cards()) // [DirFix]
 {
 }
 
@@ -99,7 +102,12 @@ void ALFlowGrid::reshape(S32 width, S32 height, bool called_from_parent)
             continue;
         }
 
-        CardLayout layout{ card, card->getRect().getHeight() };
+        // [DirFix] fit_cards: size the card from its own children first (visible AND hidden
+        // cards, so a hidden card keeps a content-true height). Off: declared height, as before.
+        const S32 card_h = mFitCards
+            ? ALScrollFit::fitPanelToChildren(card, mPad)
+            : card->getRect().getHeight();
+        CardLayout layout{ card, card_h };
         if (card->getVisible())
         {
             cards.push_back(layout);

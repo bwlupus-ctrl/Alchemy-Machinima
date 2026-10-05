@@ -93,6 +93,18 @@ LLScrollContainer* wrapTabPanel(LLPanel* tab, StretcherMins* mins = nullptr);
 // Child visibility is ignored on purpose (runtime-toggled rows keep their slot).
 void fitContainer(LLScrollContainer* sc, const StretcherMins* mins = nullptr);
 
+// [DirFix] H2: sizes a PANEL (not a scroll document) to its own direct children, e.g. a flow
+// grid card (title band + embedded shared panel). Same follows rules as fitContainer, with
+// `pad` in place of FIT_PAD and no recorded minimums (a follows-top-AND-bottom child counts
+// as 1 px): need = max over direct children of
+//   follows top only      -> (old_h - child.mBottom) + pad   (moves with the top edge)
+//   follows neither/bottom -> child.mTop + pad               (stays put)
+//   follows top AND bottom -> (old_h - child.height) + 1 + pad.
+// Child visibility is ignored. Grows AND shrinks (never below 1 px), keeps the panel's top
+// edge in place, and is idempotent. A panel with no children is left unchanged. Returns the
+// panel's height after the call (0 for a null panel).
+S32 fitPanelToChildren(LLPanel* panel, S32 pad);
+
 // (c) Tab-level containers: the direct-child scrollers of each tab panel (any document
 // type). Appends to `out` (no de-duplication; a scroller is only ever one tab's child).
 void collectTabContainers(LLTabContainer* tabs, std::vector<LLScrollContainer*>& out);

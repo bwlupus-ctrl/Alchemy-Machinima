@@ -163,6 +163,43 @@ void fitContainer(LLScrollContainer* sc, const StretcherMins* mins)
     sc->reshape(sc->getRect().getWidth(), sc->getRect().getHeight(), true);
 }
 
+// [DirFix] H2: see alscrollfit.h. Same per-child rules as fitContainer, applied to a panel.
+S32 fitPanelToChildren(LLPanel* panel, S32 pad)
+{
+    if (!panel) return 0;
+
+    pad = llmax(0, pad);
+    const LLRect panel_rect = panel->getRect();
+    const S32 old_h = panel_rect.getHeight();
+    bool any = false;
+    S32 need = 1;
+    for (LLView* child : *panel->getChildList())
+    {
+        if (!child) continue;
+        any = true; // visibility ignored on purpose
+        const LLRect& r = child->getRect();
+        if (child->followsTop() && !child->followsBottom())
+        {
+            need = llmax(need, old_h - r.mBottom + pad);
+        }
+        else if (!child->followsTop())
+        {
+            need = llmax(need, r.mTop + pad);
+        }
+        else
+        {
+            // follows top AND bottom: stretches with the panel; counted at its 1-px floor.
+            need = llmax(need, old_h - r.getHeight() + 1 + pad);
+        }
+    }
+    if (any && need != old_h)
+    {
+        panel->reshape(panel_rect.getWidth(), need, true);
+        panel->translate(0, panel_rect.mTop - panel->getRect().mTop); // keep the top edge
+    }
+    return panel->getRect().getHeight();
+}
+
 LLScrollContainer* wrapTabPanel(LLPanel* tab, StretcherMins* mins)
 {
     if (!tab || hasDirectScrollContainer(tab)) return nullptr;
