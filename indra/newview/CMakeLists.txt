@@ -178,6 +178,7 @@ set(viewer_SOURCE_FILES
     alfloatergenerictext.cpp
     alfloatergroupprofile.cpp
     alfloaterlightbox.cpp
+    alscrollfit.cpp # [ScrollFit]
     alfloaterparticleeditor.cpp
     alfloaterphototools.cpp
     alfloaterprofilelegacy.cpp
@@ -1181,6 +1182,7 @@ set(viewer_HEADER_FILES
     alghostanimassetindex.h
     alworldoverlayviz.h
     alscrollfocus.h
+    alscrollfit.h # [ScrollFit]
     alobjectpathmover.h
     alpanelghoststudio.h
     aluirefresh.h # [GhostPanelPerf]

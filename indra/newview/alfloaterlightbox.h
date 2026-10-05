@@ -35,6 +35,7 @@
 
 #include "llfloater.h"
 #include "lluuid.h" // [UIPerfC1] mSelLightLastId
+#include "alscrollfit.h" // [ScrollFit] mScrollFit (per-instance wheel guard + focus tracker)
 #include <string>
 
 class LLButton;
@@ -60,6 +61,8 @@ public:
   private:
     // [LightboxWheel] Fits every scroll container's content panel to its children.
     void fitScrollContent();
+    // [ScrollFit] shared per-tab scroll machinery state (focus installs + wheel guard).
+    ALScrollFit::Controller mScrollFit;
 
     void onClickResetControlDefault(const LLSD& userdata);
     void onClickResetGroupDefault(const LLSD& userdata);
