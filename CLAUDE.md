@@ -144,6 +144,29 @@ Helpers: `indra/newview/aluirefresh.h`.
 5. Every panel `draw()` gets a Tracy zone named after the panel
    (`LL_PROFILE_ZONE_SCOPED_CATEGORY_UI`), so the next regression shows up under its own name
    instead of hiding inside `LLFloater::draw`.
+6. **Layout.** Applies to hosts created or modified from 2026-10-05 on; added by the Director
+   console fix, `doc/DIRECTOR_CONSOLE_FIX_PLAN.md`.
+   - Never hand-type the height of a scroll document, and never put `height=` on a
+     `<panel filename=...>` node that embeds a shared panel.
+   - The host wraps (where needed) and fits every tab-level container at build, open and tab
+     change via `alscrollfit.h` (`ALScrollFit::Controller::installForTabs`).
+   - A flow grid that hosts embedded panels uses `fit_cards="true"`.
+   - Named exceptions keep their hand-typed layouts until they are next touched:
+     - floater_actor_mover.xml (`path_scroll_content`, `path_editor`, and the Move-tab document);
+     - floater_ghost_studio.xml (`ghost_studio_panel`);
+     - floater_prop_mover.xml, floater_temporal_capture.xml, floater_flycam_recorder.xml;
+     - floater_cinematic_camera.xml (both panel instances);
+     - floater_flycam_orbit.xml, floater_animation_explorer.xml, floater_cine_light_rig.xml.
+
+     Converting one of them is a separate, in-world-checked change, never a side effect of
+     another edit.
+7. **Ownership.** A shared panel never claims singleton edit state from `draw()`. It claims on
+   reveal, focus or user action with an owner token, and releases only what it owns. Follow the
+   Ghost Studio `mPlacementOwner` and path editor `mEditOwner` patterns.
+8. **Hidden tabs.** A refresher that only feeds a tab's widgets returns early while that tab is
+   not in the visible chain, and is forced on the next reveal (`onVisibilityChange(true)` or the
+   tab commit). Refreshers with model side effects (selection pushes, hotkey state) run
+   regardless and must stay cheap.
 
 ## ⛔ MANDATORY WORKING AGREEMENT — CONSULT CODEX (user directive, 2026-07-21)
 
