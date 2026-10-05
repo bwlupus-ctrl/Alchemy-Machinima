@@ -74,6 +74,7 @@ void ALPanelTemporalCapture::onScaleCommit()
 
 void ALPanelTemporalCapture::draw()
 {
+    LL_PROFILE_ZONE_SCOPED_CATEGORY_UI; // [DirFix] D9
     // Read the live frozen frame so the readouts show the ACTUAL effective scale
     // (which equals the requested scale in Landing 1, but is sourced from the
     // service so it stays correct if adaptive scaling lands later).

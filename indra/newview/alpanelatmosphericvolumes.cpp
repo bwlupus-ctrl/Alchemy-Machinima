@@ -100,6 +100,7 @@ bool ALPanelAtmosphericVolumes::postBuild()
 
 void ALPanelAtmosphericVolumes::draw()
 {
+    LL_PROFILE_ZONE_SCOPED_CATEGORY_UI; // [DirFix] D9
     refreshBank(false);
     const S32 manager_selection =
         ALLocalFogManager::instance().selectedVolume();

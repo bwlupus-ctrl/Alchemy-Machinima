@@ -113,6 +113,7 @@ bool ALPanelDirectorAnimSwitcher::postBuild()
 
 void ALPanelDirectorAnimSwitcher::draw()
 {
+    LL_PROFILE_ZONE_SCOPED_CATEGORY_UI; // [DirFix] D9
     // A mirrored panel, scene load, or auto cut can replace the LLSD bank or
     // the live program without touching this instance. Twelve small records are
     // cheap to compare while visible.
@@ -532,7 +533,9 @@ void ALPanelDirectorAnimSwitcher::refreshEditor()
 void ALPanelDirectorAnimSwitcher::refreshProgramState()
 {
     ALDirectorAnimSwitcher& switcher = ALDirectorAnimSwitcher::instance();
-    const bool armed = gSavedSettings.getBOOL("DirectorAnimSwitcherArmed");
+    // [DirFix] D13: cached control, no by-name settings lookup per frame
+    static LLCachedControl<bool> anim_switcher_armed(gSavedSettings, "DirectorAnimSwitcherArmed", false);
+    const bool armed = anim_switcher_armed;
     const S32 active = armed ? switcher.activeSlot() : INVALID_SLOT;
 
     if (mHaveProgramSnapshot && armed == mLastArmed && active == mLastActiveSlot)

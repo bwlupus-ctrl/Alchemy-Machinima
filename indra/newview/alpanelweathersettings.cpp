@@ -11,6 +11,8 @@
 
 #include "alpanelweathersettings.h"
 
+#include "aluirefresh.h"            // [DirFix] D13 diff-guarded writes
+
 #include "llbutton.h"
 #include "llcombobox.h"
 #include "lldir.h"
@@ -150,6 +152,7 @@ bool ALPanelWeatherSettings::postBuild()
 
 void ALPanelWeatherSettings::draw()
 {
+    LL_PROFILE_ZONE_SCOPED_CATEGORY_UI; // [DirFix] D9
     updateDeferredAvailability();
     LLPanel::draw();
 }
@@ -203,23 +206,25 @@ void ALPanelWeatherSettings::updateDeferredAvailability()
     {
         mTriggerButton = findChild<LLButton>("weather_trigger");
     }
+    // [DirFix] D13: cached controls (no by-name settings lookup per frame) and
+    // diff-guarded widget writes
+    static LLCachedControl<bool> weather_enabled(gSavedSettings, "AlchemyWeatherEnabled", false);
+    static LLCachedControl<bool> weather_lightning(gSavedSettings, "AlchemyWeatherLightningEnabled", true);
     if (LLPanel* controls = mControlsPanel)
     {
-        controls->setEnabled(deferred);
+        setEnabledIfChanged(controls, deferred);
     }
     if (LLTextBox* note = mDeferredNote)
     {
-        note->setVisible(!deferred);
+        setVisibleIfChanged(note, !deferred);
     }
 
     // A manual strike also requires the two settings gates. Unlike the shader
     // path, the UI should explain a no-op before the user presses the button.
     if (LLButton* trigger = mTriggerButton)
     {
-        trigger->setEnabled(
-            deferred &&
-            gSavedSettings.getBOOL("AlchemyWeatherEnabled") &&
-            gSavedSettings.getBOOL("AlchemyWeatherLightningEnabled"));
+        setEnabledIfChanged(trigger,
+            deferred && weather_enabled && weather_lightning);
     }
 }
 

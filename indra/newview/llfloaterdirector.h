@@ -55,6 +55,10 @@ public:
     // floater behavior otherwise
     bool handleKeyHere(KEY key, MASK mask) override;
 
+    // [DirFix] D10: read-only public view of the cast-list selection, so the
+    // Actor Gaze floater can pull it on open (see doc/DIRECTOR_CONSOLE_FIX_PLAN.md)
+    uuid_vec_t currentCastSelection() const { return selectedCastIds(); }
+
     // The Animate-tab preview dummy + its drag-to-rotate mouse handling live in
     // the shared ALPanelAnimPreview embedded in the tab, not on this floater.
 
@@ -211,6 +215,14 @@ private:
         bool        mInWorld = true;
     };
     std::vector<CastRowState> mRowStates;
+    // [DirFix] D7: scroll-list column indices, resolved once in postBuild (XML-declared columns)
+    S32 mCastStatusCol = 0;
+    S32 mCastNameCol = 0;
+    S32 mCastABCol = 0;
+    S32 mCastMarkCol = 0;
+    S32 mCastLookCol = 0;
+    S32 mAnimPrioCol = 0;
+    S32 mAnimPlayingCol = 0;
 
     // groups: the assign combo under the cast list (free-typed or picked) and
     // the Move tab's group transport (selector + Start/Stop). Both combos are
@@ -260,7 +272,17 @@ private:
     LLSpinCtrl*      mActorStyleEffectFps = nullptr;
     LLButton*        mActorStyleReset = nullptr;
     LLTextBox*       mActorStyleStatus = nullptr;
-    std::string      mActorStyleRosterSignature;
+    // [DirFix] D4: allocation-free roster compare (replaces the per-frame signature string)
+    struct ActorStyleRosterRow
+    {
+        LLUUID      mId;
+        std::string mName;      // CastMember::mLastName at build time
+        bool        mInWorld = false;
+    };
+    std::vector<ActorStyleRosterRow> mActorStyleRoster;
+    bool             mActorStyleRosterBuilt = false;    // false = next pass rebuilds (first pass / forced)
+    bool             mActorStyleRosterHadSelf = false;
+    LLUUID           mActorStyleRosterSelfId;
     std::string      mActorStyleSnapshot;
     LLUUID           mActorStyleShownFor;
     bool             mActorStyleHadTarget = false;
@@ -298,6 +320,12 @@ private:
     LLButton*         mAnimPlayBtn = nullptr;
     LLButton*         mAnimStopBtn = nullptr;
     LLLineEditor*     mPasteEditor = nullptr;
+    // [DirFix] D5: paste-row cache keyed on the full editor text (pasteAnimId() is a pure
+    // function of it), so the per-frame path does one string compare, not a copy + trim + validate
+    std::string       mPasteTextSeen;
+    LLUUID            mPasteIdSeen;
+    bool              mPasteSeenEmpty = true;
+    bool              mPasteCacheValid = false;
     LLButton*         mPastePlayBtn = nullptr;
     LLButton*         mPasteStopBtn = nullptr;
     LLButton*         mPasteSetLocoBtn = nullptr;

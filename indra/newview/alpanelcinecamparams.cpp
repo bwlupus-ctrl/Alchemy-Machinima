@@ -393,10 +393,19 @@ bool ALPanelCineCamParams::postBuild()
     // fixed-height scroll document. Make keyboard Tab reveal focused controls.
     ALScrollFocus::installAncestor(this);
 
-    getChild<LLButton>("btn_reset_mode")->setCommitCallback(
-        [this](LLUICtrl*, const LLSD&) { onClickResetMode(); });
-    getChild<LLButton>("btn_reset_all")->setCommitCallback(
-        [this](LLUICtrl*, const LLSD&) { onClickResetAll(); });
+    // [DirFix] D12: optional -- the Camera Shake (operator) page has no reset
+    // buttons; it used to carry 1-px invisible stubs so a required getChild
+    // would not log and create a dummy.
+    if (LLButton* reset_mode = findChild<LLButton>("btn_reset_mode"))
+    {
+        reset_mode->setCommitCallback(
+            [this](LLUICtrl*, const LLSD&) { onClickResetMode(); });
+    }
+    if (LLButton* reset_all = findChild<LLButton>("btn_reset_all"))
+    {
+        reset_all->setCommitCallback(
+            [this](LLUICtrl*, const LLSD&) { onClickResetAll(); });
+    }
     if (LLButton* preset_save = findChild<LLButton>("btn_preset_save"))
     {
         preset_save->setCommitCallback(

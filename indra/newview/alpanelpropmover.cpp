@@ -12,6 +12,7 @@
 #include "alpanelpropmover.h"
 
 #include "alobjectpathmover.h"
+#include "aluirefresh.h"            // [DirFix] D16 diff-guarded text write
 #include "alobjectproperties.h"     // cached object names (populated by selection replies)
 #include "llactormover.h"           // shared Path store + per-node accessors
 #include "llbutton.h"
@@ -128,6 +129,7 @@ bool ALPanelPropMover::postBuild()
 // wiring change signals through every mutation site.
 void ALPanelPropMover::draw()
 {
+    LL_PROFILE_ZONE_SCOPED_CATEGORY_UI; // [DirFix] D9
     if (mRefreshTimer.getElapsedTimeF32() > 0.5f)
     {
         mRefreshTimer.reset();
@@ -202,12 +204,12 @@ void ALPanelPropMover::refresh()
     // ---- status line: sticky action feedback, else a live summary ---------
     if (!mStatusMsg.empty() && (F32)LLFrameTimer::getElapsedSeconds() < mStatusUntil)
     {
-        mStatusText->setText(mStatusMsg);
+        setTextIfChanged(mStatusText, mStatusMsg);      // [DirFix] D16
     }
     else
     {
         mStatusMsg.clear();
-        mStatusText->setText(llformat("%d prop%s enrolled, %d driving",
+        setTextIfChanged(mStatusText, llformat("%d prop%s enrolled, %d driving",    // [DirFix] D16
                                       (S32)opm.getRoster().size(),
                                       opm.getRoster().size() == 1 ? "" : "s",
                                       driving));

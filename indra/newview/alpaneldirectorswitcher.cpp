@@ -205,6 +205,7 @@ void ALPanelDirectorSwitcher::updateCurveControlsEnabled()
 
 void ALPanelDirectorSwitcher::draw()
 {
+    LL_PROFILE_ZONE_SCOPED_CATEGORY_UI; // [DirFix] D9
     // A mirrored panel or scene load can replace the LLSD bank without touching
     // this instance. Twelve small records are cheap to compare while visible.
     refreshBank(false);
@@ -536,7 +537,9 @@ void ALPanelDirectorSwitcher::refreshEditor()
 void ALPanelDirectorSwitcher::refreshProgramState()
 {
     ALDirectorSwitcher& switcher = ALDirectorSwitcher::instance();
-    const bool armed = gSavedSettings.getBOOL("DirectorSwitcherArmed");
+    // [DirFix] D13: cached control, no by-name settings lookup per frame
+    static LLCachedControl<bool> switcher_armed(gSavedSettings, "DirectorSwitcherArmed", false);
+    const bool armed = switcher_armed;
     const bool driving = switcher.isDrivingCamera();
     const S32 active = driving ? switcher.activeSlot() : INVALID_SLOT;
 

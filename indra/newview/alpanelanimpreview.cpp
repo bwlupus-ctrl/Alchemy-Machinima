@@ -82,6 +82,7 @@ void ALPanelAnimPreview::previewAnim(const LLUUID& anim_id, const LLUUID& source
 
 void ALPanelAnimPreview::draw()
 {
+    LL_PROFILE_ZONE_SCOPED_CATEGORY_UI; // [DirFix] D9
     // create the dummy-avatar preview lazily, once the agent avatar is ready
     if (!mAnimationPreview && mPreviewCtrl && isAgentAvatarValid())
     {

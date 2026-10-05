@@ -67,6 +67,7 @@
 
 #include <algorithm>
 #include <set>
+#include <unordered_map>
 
 namespace
 {
@@ -345,6 +346,12 @@ bool LLFloaterDirector::postBuild()
     mCastHint = getChild<LLTextBox>("cast_hint");
     mRemoveBtn = getChild<LLButton>("btn_remove");
     mFocusBtn = getChild<LLButton>("btn_focus");
+    // [DirFix] D7: columns are XML-declared; resolve their indices once (same unchecked deref as before)
+    mCastStatusCol = mCastList->getColumn("status")->mIndex;
+    mCastNameCol = mCastList->getColumn("name")->mIndex;
+    mCastABCol = mCastList->getColumn("ab")->mIndex;
+    mCastMarkCol = mCastList->getColumn("mark")->mIndex;
+    mCastLookCol = mCastList->getColumn("look")->mIndex;
     getChild<LLButton>("btn_add_you")->setCommitCallback(
         [this](LLUICtrl*, const LLSD&) { onClickAddYou(); });
     getChild<LLButton>("btn_add_animesh")->setCommitCallback(
@@ -490,6 +497,9 @@ bool LLFloaterDirector::postBuild()
     mAnimateHeader = getChild<LLTextBox>("animate_header");
     mAnimList = getChild<LLScrollListCtrl>("anim_list");
     mAnimHint = getChild<LLTextBox>("anim_hint");
+    // [DirFix] D7: XML-declared columns, resolved once
+    mAnimPrioCol = mAnimList->getColumn("prio")->mIndex;
+    mAnimPlayingCol = mAnimList->getColumn("playing")->mIndex;
     mAnimCopyBtn = getChild<LLButton>("btn_anim_copy");
     mAnimSetLocoBtn = getChild<LLButton>("btn_anim_setloco");
     mAnimPlayBtn = getChild<LLButton>("btn_anim_play");
@@ -718,6 +728,7 @@ void LLFloaterDirector::onClickResetMarks()
 
 void LLFloaterDirector::refreshTransport()
 {
+    LL_PROFILE_ZONE_NAMED_CATEGORY_UI("Director refreshTransport"); // [DirFix] D9
     static LLCachedControl<bool> arm_moves(gSavedSettings, "DirectorArmMoves", true);
     static LLCachedControl<bool> arm_camera(gSavedSettings, "DirectorArmCamera", true);
     static LLCachedControl<bool> arm_play(gSavedSettings, "DirectorArmRecorderPlay", false);
@@ -1414,6 +1425,23 @@ void LLFloaterDirector::loadScene(const std::string& name)
 // ---------------------------------------------------------------------------
 // cast column
 // ---------------------------------------------------------------------------
+// [DirFix] D6: memo of the 8-char UUID prefix used in fallback names. A UUID's text never
+// changes, so this is a pure cache; cleared when it grows past a handful of entries.
+static const std::string& dirfix_short_id(const LLUUID& id)
+{
+    static std::unordered_map<LLUUID, std::string> sShortIdCache;
+    auto it = sShortIdCache.find(id);
+    if (it == sShortIdCache.end())
+    {
+        if (sShortIdCache.size() > 256)
+        {
+            sShortIdCache.clear();
+        }
+        it = sShortIdCache.emplace(id, id.asString().substr(0, 8)).first;
+    }
+    return it->second;
+}
+
 //static
 std::string LLFloaterDirector::castMemberName(const LLUUID& id)
 {
@@ -1424,7 +1452,7 @@ std::string LLFloaterDirector::castMemberName(const LLUUID& id)
     }
     if (LLGhostAvatar::isGhostId(id))
     {
-        return "Entity clone " + id.asString().substr(0, 8);
+        return "Entity clone " + dirfix_short_id(id);
     }
     if (LLAvatarName av_name; LLAvatarNameCache::get(id, &av_name))
     {
@@ -1433,12 +1461,13 @@ std::string LLFloaterDirector::castMemberName(const LLUUID& id)
     LLViewerObject* obj = gObjectList.findObject(id);
     LLVOAvatar* av = obj ? obj->asAvatar() : nullptr;
     return (av && av->isControlAvatar())
-        ? "Animesh " + id.asString().substr(0, 8)
-        : id.asString().substr(0, 8);
+        ? "Animesh " + dirfix_short_id(id)
+        : dirfix_short_id(id);
 }
 
 void LLFloaterDirector::refreshCastList()
 {
+    LL_PROFILE_ZONE_NAMED_CATEGORY_UI("Director refreshCastList"); // [DirFix] D9
     LLDirectorCast& cast = LLDirectorCast::instance();
     const uuid_vec_t& ids = cast.getIds();
 
@@ -1489,11 +1518,11 @@ void LLFloaterDirector::refreshCastList()
         items = mCastList->getAllData();
     }
 
-    const S32 status_col = mCastList->getColumn("status")->mIndex;
-    const S32 name_col = mCastList->getColumn("name")->mIndex;
-    const S32 ab_col = mCastList->getColumn("ab")->mIndex;
-    const S32 mark_col = mCastList->getColumn("mark")->mIndex;
-    const S32 look_col = mCastList->getColumn("look")->mIndex;
+    const S32 status_col = mCastStatusCol;     // [DirFix] D7 cached in postBuild
+    const S32 name_col = mCastNameCol;
+    const S32 ab_col = mCastABCol;
+    const S32 mark_col = mCastMarkCol;
+    const S32 look_col = mCastLookCol;
 
     LLActorMover& mover = LLActorMover::instance();
     for (size_t i = 0; i < items.size(); ++i)
@@ -1916,6 +1945,7 @@ void LLFloaterDirector::onClickGroupDissolve()
 
 void LLFloaterDirector::refreshGroupControls()
 {
+    LL_PROFILE_ZONE_NAMED_CATEGORY_UI("Director refreshGroupControls"); // [DirFix] D9
     LLDirectorCast& cast = LLDirectorCast::instance();
 
     // rebuild both combos only when the distinct-name set changed (rare)
@@ -2044,6 +2074,7 @@ void LLFloaterDirector::refreshGroupControls()
 // ---------------------------------------------------------------------------
 void LLFloaterDirector::refreshMoveTab()
 {
+    LL_PROFILE_ZONE_NAMED_CATEGORY_UI("Director refreshMoveTab"); // [DirFix] D9
     // the shared ALPanelActorMover owns the scope radio, heading dial, params,
     // and Walk/Stop; the console's only job is to hand it the current cast
     // selection each draw. Walk/Stop honor ActorMoverSync internally -- Everyone
@@ -2062,6 +2093,7 @@ void LLFloaterDirector::refreshMoveTab()
 // ---------------------------------------------------------------------------
 void LLFloaterDirector::refreshPathTab()
 {
+    LL_PROFILE_ZONE_NAMED_CATEGORY_UI("Director refreshPathTab"); // [DirFix] D9
     // the waypoint editor now owns its own tab (always visible); keep it pointed
     // at the console's cast selection every draw (cheap; the panel diffs its
     // own state internally)
@@ -2151,6 +2183,7 @@ void LLFloaterDirector::onActorStyleReset()
 
 void LLFloaterDirector::refreshActorStyleTab()
 {
+    LL_PROFILE_ZONE_NAMED_CATEGORY_UI("Director refreshActorStyleTab"); // [DirFix] D9
     if (!mActorStyleTarget)
     {
         return;
@@ -2167,9 +2200,15 @@ void LLFloaterDirector::refreshActorStyleTab()
     // changes. The explicit You row maps to null; skip the agent's real UUID
     // when it is also enrolled in Cast so the UI cannot offer two controls for
     // one rendered body.
-    std::string roster_signature = have_self
-        ? "you:" + self_id.asString() + "|"
-        : std::string("no-you|");
+    //
+    // [DirFix] D4: compared element-wise against the stored roster (same fields the old
+    // signature string encoded: self flag/id, member id, mLastName, in-world) -- no
+    // per-frame allocation. cast.resolve() is still called for every member each pass
+    // (it refreshes the cached name), exactly as the signature loop did.
+    bool roster_changed = !mActorStyleRosterBuilt
+        || have_self != mActorStyleRosterHadSelf
+        || (have_self && self_id != mActorStyleRosterSelfId);
+    size_t roster_count = 0;
     for (const LLDirectorCast::CastMember& member : cast.getCast())
     {
         if (self_id.notNull() && member.mId == self_id)
@@ -2177,13 +2216,33 @@ void LLFloaterDirector::refreshActorStyleTab()
             continue;
         }
         const bool in_world = cast.resolve(member.mId) != nullptr;
-        roster_signature += member.mId.asString() + ":" + member.mLastName
-                         + (in_world ? "+|" : "-|");
+        if (!roster_changed)
+        {
+            if (roster_count >= mActorStyleRoster.size())
+            {
+                roster_changed = true;
+            }
+            else
+            {
+                const ActorStyleRosterRow& row = mActorStyleRoster[roster_count];
+                roster_changed = row.mId != member.mId
+                              || row.mInWorld != in_world
+                              || row.mName != member.mLastName;
+            }
+        }
+        ++roster_count;
+    }
+    if (!roster_changed && roster_count != mActorStyleRoster.size())
+    {
+        roster_changed = true;
     }
 
-    if (roster_signature != mActorStyleRosterSignature)
+    if (roster_changed)
     {
-        mActorStyleRosterSignature = roster_signature;
+        mActorStyleRosterBuilt = true;
+        mActorStyleRosterHadSelf = have_self;
+        mActorStyleRosterSelfId = self_id;
+        mActorStyleRoster.clear();
         const bool had_previous = mActorStyleTarget->getCurrentIndex() >= 0;
         const LLSD previous = mActorStyleTarget->getSelectedValue();
 
@@ -2200,6 +2259,7 @@ void LLFloaterDirector::refreshActorStyleTab()
                 continue;
             }
             const bool in_world = cast.resolve(member.mId) != nullptr;
+            mActorStyleRoster.push_back({ member.mId, member.mLastName, in_world }); // [DirFix] D4
             std::string label = castMemberName(member.mId);
             if (!in_world)
             {
@@ -2218,27 +2278,28 @@ void LLFloaterDirector::refreshActorStyleTab()
     }
 
     const bool have_target = hasActorStyleTarget();
-    mActorStyleTarget->setEnabled(mActorStyleTarget->getItemCount() > 0);
+    // [DirFix] D4: pure early-out helpers (same end state, no widget touch when unchanged)
+    setEnabledIfChanged(mActorStyleTarget, mActorStyleTarget->getItemCount() > 0);
     if (!have_target)
     {
-        mActorStyleEnabled->setEnabled(false);
-        mActorStyleMode->setEnabled(false);
-        mActorStyleLook->setEnabled(false);
-        mActorStyleUseActorHue->setEnabled(false);
-        mActorStyleHue->setEnabled(false);
-        mActorStyleAlpha->setEnabled(false);
-        mActorStyleDissolveProgress->setEnabled(false);
+        setEnabledIfChanged(mActorStyleEnabled, false);
+        setEnabledIfChanged(mActorStyleMode, false);
+        setEnabledIfChanged(mActorStyleLook, false);
+        setEnabledIfChanged(mActorStyleUseActorHue, false);
+        setEnabledIfChanged(mActorStyleHue, false);
+        setEnabledIfChanged(mActorStyleAlpha, false);
+        setEnabledIfChanged(mActorStyleDissolveProgress, false);
         mActorStyleDissolveProgress->setVisible(false);
-        mActorStylePixel->setEnabled(false);
-        mActorStyleShimmerSpeed->setEnabled(false);
-        mActorStyleShimmerAmount->setEnabled(false);
-        mActorStyleGlitch->setEnabled(false);
-        mActorStyleDistortion->setEnabled(false);
-        mActorStyleDistortionAmount->setEnabled(false);
-        mActorStyleBrightness->setEnabled(false);
-        mActorStyleEffectFps->setEnabled(false);
-        mActorStyleReset->setEnabled(false);
-        mActorStyleStatus->setText(LLStringExplicit(
+        setEnabledIfChanged(mActorStylePixel, false);
+        setEnabledIfChanged(mActorStyleShimmerSpeed, false);
+        setEnabledIfChanged(mActorStyleShimmerAmount, false);
+        setEnabledIfChanged(mActorStyleGlitch, false);
+        setEnabledIfChanged(mActorStyleDistortion, false);
+        setEnabledIfChanged(mActorStyleDistortionAmount, false);
+        setEnabledIfChanged(mActorStyleBrightness, false);
+        setEnabledIfChanged(mActorStyleEffectFps, false);
+        setEnabledIfChanged(mActorStyleReset, false);
+        setTextIfChanged(mActorStyleStatus, std::string(
             "You is unavailable and the Director cast is empty."));
         mActorStyleHadTarget = false;
         mActorStyleSnapshot.clear();
@@ -2259,51 +2320,71 @@ void LLFloaterDirector::refreshActorStyleTab()
     if (!mActorStyleHadTarget || id != mActorStyleShownFor ||
         snapshot != mActorStyleSnapshot)
     {
+        // [DirFix] D4: widget-exact writes. `force` (actor identity changed) bypasses the
+        // focus guard; otherwise a control the user is dragging/typing into is left alone
+        // (V12) and the snapshot is NOT advanced, so the next frame retries. Check boxes
+        // always force (their "focus" after a click is meaningless, aluirefresh.h).
+        // Phase B (D8) ORs `|| mActorStyleTabDirty` into `force` (reveal).
+        const bool force = (id != mActorStyleShownFor);
+        bool skipped = false;
+        auto write = [&](auto* w, const LLSD& v, bool always_force)
+        {
+            const bool f = force || always_force;
+            if (!f && alIsBeingEdited(w) && !alValueMatches(w, w->getValue(), v))
+            {
+                skipped = true;     // a focus-guarded write that was actually needed
+                return;
+            }
+            setValueIfChanged(w, v, f);
+        };
         mRefreshingActorStyle = true;
-        mActorStyleEnabled->set(style.mEnabled);
-        mActorStyleMode->setValue(static_cast<S32>(style.mMode));
-        mActorStyleLook->setValue(style.mStyle);
-        mActorStyleUseActorHue->set(style.mUseActorHue);
-        mActorStyleHue->setValue(style.mHue);
-        mActorStyleAlpha->setValue(style.mAlpha);
-        mActorStyleDissolveProgress->setValue(style.mDissolveProgress);
-        mActorStylePixel->setValue(style.mPixelSize);
-        mActorStyleShimmerSpeed->setValue(style.mShimmerSpeed);
-        mActorStyleShimmerAmount->setValue(style.mShimmerAmount);
-        mActorStyleGlitch->setValue(style.mGlitch);
-        mActorStyleDistortion->setValue(style.mDistortion);
-        mActorStyleDistortionAmount->setValue(style.mDistortionAmount);
-        mActorStyleBrightness->setValue(style.mBrightness);
-        mActorStyleEffectFps->setValue(style.mEffectFps);
+        write(mActorStyleEnabled, LLSD(style.mEnabled), true);
+        write(mActorStyleMode, LLSD(static_cast<S32>(style.mMode)), false);
+        write(mActorStyleLook, LLSD(style.mStyle), false);
+        write(mActorStyleUseActorHue, LLSD(style.mUseActorHue), true);
+        write(mActorStyleHue, LLSD(style.mHue), false);
+        write(mActorStyleAlpha, LLSD(style.mAlpha), false);
+        write(mActorStyleDissolveProgress, LLSD(style.mDissolveProgress), false);
+        write(mActorStylePixel, LLSD(style.mPixelSize), false);
+        write(mActorStyleShimmerSpeed, LLSD(style.mShimmerSpeed), false);
+        write(mActorStyleShimmerAmount, LLSD(style.mShimmerAmount), false);
+        write(mActorStyleGlitch, LLSD(style.mGlitch), false);
+        write(mActorStyleDistortion, LLSD(style.mDistortion), false);
+        write(mActorStyleDistortionAmount, LLSD(style.mDistortionAmount), false);
+        write(mActorStyleBrightness, LLSD(style.mBrightness), false);
+        write(mActorStyleEffectFps, LLSD(style.mEffectFps), false);
         mRefreshingActorStyle = false;
-        mActorStyleShownFor = id;
-        mActorStyleHadTarget = true;
-        mActorStyleSnapshot = snapshot;
+        if (!skipped)
+        {
+            mActorStyleShownFor = id;
+            mActorStyleHadTarget = true;
+            mActorStyleSnapshot = snapshot;
+        }
     }
 
-    mActorStyleEnabled->setEnabled(true);
+    setEnabledIfChanged(mActorStyleEnabled, true);
     const bool active = style.mEnabled;
-    mActorStyleMode->setEnabled(active);
-    mActorStyleLook->setEnabled(active);
-    mActorStyleUseActorHue->setEnabled(active);
-    mActorStyleHue->setEnabled(active && !style.mUseActorHue);
+    setEnabledIfChanged(mActorStyleMode, active);
+    setEnabledIfChanged(mActorStyleLook, active);
+    setEnabledIfChanged(mActorStyleUseActorHue, active);
+    setEnabledIfChanged(mActorStyleHue, active && !style.mUseActorHue);
     // Effect opacity belongs to the shared replay in both modes. Layer
     // composites it over authored beauty; Cover uses it for the replacement
     // itself (including the intentional fully-invisible zero endpoint).
-    mActorStyleAlpha->setEnabled(active);
+    setEnabledIfChanged(mActorStyleAlpha, active);
     const bool dissolve = style.mStyle == 10;
     mActorStyleDissolveProgress->setVisible(dissolve);
-    mActorStyleDissolveProgress->setEnabled(active && dissolve);
-    mActorStylePixel->setEnabled(active);
-    mActorStyleShimmerSpeed->setEnabled(active);
-    mActorStyleShimmerAmount->setEnabled(active);
-    mActorStyleGlitch->setEnabled(active);
-    mActorStyleDistortion->setEnabled(active);
-    mActorStyleDistortionAmount->setEnabled(
+    setEnabledIfChanged(mActorStyleDissolveProgress, active && dissolve);
+    setEnabledIfChanged(mActorStylePixel, active);
+    setEnabledIfChanged(mActorStyleShimmerSpeed, active);
+    setEnabledIfChanged(mActorStyleShimmerAmount, active);
+    setEnabledIfChanged(mActorStyleGlitch, active);
+    setEnabledIfChanged(mActorStyleDistortion, active);
+    setEnabledIfChanged(mActorStyleDistortionAmount,
         active && style.mDistortion != 0);
-    mActorStyleBrightness->setEnabled(active);
-    mActorStyleEffectFps->setEnabled(active);
-    mActorStyleReset->setEnabled(true);
+    setEnabledIfChanged(mActorStyleBrightness, active);
+    setEnabledIfChanged(mActorStyleEffectFps, active);
+    setEnabledIfChanged(mActorStyleReset, true);
 
     std::string who = id.isNull() ? std::string("You")
                                   : castMemberName(id);
@@ -2314,9 +2395,9 @@ void LLFloaterDirector::refreshActorStyleTab()
     const char* mode = style.mMode == LLDirectorCast::ACTOR_STYLE_REPLACE
         ? "Opaque cover preview"
         : "Layer";
-    mActorStyleStatus->setText(LLStringExplicit(
+    setTextIfChanged(mActorStyleStatus,
         style.mEnabled ? who + " \xC2\xB7 " + mode + " style active"
-                       : who + " \xC2\xB7 styling off"));
+                       : who + " \xC2\xB7 styling off");     // [DirFix] D4
 }
 
 // ---------------------------------------------------------------------------
@@ -2617,6 +2698,7 @@ void LLFloaterDirector::refreshLocomotionRoleEditor(const LLUUID& member_id)
 
 void LLFloaterDirector::refreshAnimateTab()
 {
+    LL_PROFILE_ZONE_NAMED_CATEGORY_UI("Director refreshAnimateTab"); // [DirFix] D9
     LLDirectorCast& cast = LLDirectorCast::instance();
     const LLUUID sel = firstSelectedCastId();
     LLVOAvatar* av = sel.notNull() ? cast.resolve(sel) : nullptr;
@@ -2668,8 +2750,8 @@ void LLFloaterDirector::refreshAnimateTab()
     // per-row priority / playing marker, diffed (draw()-rate friendly)
     if (av)
     {
-        const S32 prio_col = mAnimList->getColumn("prio")->mIndex;
-        const S32 playing_col = mAnimList->getColumn("playing")->mIndex;
+        const S32 prio_col = mAnimPrioCol;          // [DirFix] D7 cached in postBuild
+        const S32 playing_col = mAnimPlayingCol;
         std::vector<LLScrollListItem*> items = mAnimList->getAllData();
         for (size_t i = 0; i < items.size() && i < mAnimRowStates.size(); ++i)
         {
@@ -2720,10 +2802,11 @@ void LLFloaterDirector::refreshAnimateTab()
     {
         hint = "No signaled animations on " + member_name;
     }
-    mAnimHint->setVisible(!hint.empty());
+    // [DirFix] D5: setText on this word-wrapped box reflowed every frame in the idle state
+    setVisibleIfChanged(mAnimHint, !hint.empty());
     if (!hint.empty())
     {
-        mAnimHint->setText(hint);
+        setTextIfChanged(mAnimHint, hint);
     }
 
     // row-action buttons (reason-tooltips when disabled, usability rule 1)
@@ -2751,10 +2834,21 @@ void LLFloaterDirector::refreshAnimateTab()
         : "Stop this animation on " + member_name + " (client-side only)");
 
     // paste row
-    const LLUUID pasted = pasteAnimId();
-    std::string paste_text = mPasteEditor->getText();
-    LLStringUtil::trim(paste_text);
-    const std::string bad_uuid_tip = paste_text.empty()
+    // [DirFix] D5: pasteAnimId() is a pure function of the editor text, so recompute it
+    // (copy + trim + validate) only when the full text differs from the last one seen.
+    const std::string& paste_raw = mPasteEditor->getText();
+    if (!mPasteCacheValid || paste_raw != mPasteTextSeen)
+    {
+        mPasteTextSeen = paste_raw;
+        mPasteIdSeen = pasteAnimId();
+        std::string trimmed = paste_raw;
+        LLStringUtil::trim(trimmed);
+        mPasteSeenEmpty = trimmed.empty();
+        mPasteCacheValid = true;
+    }
+    const LLUUID pasted = mPasteIdSeen;
+    const bool paste_text_empty = mPasteSeenEmpty;
+    const std::string bad_uuid_tip = paste_text_empty
         ? std::string("Enter an animation asset UUID first")
         : std::string("That is not a valid UUID");
     mPastePlayBtn->setEnabled(pasted.notNull() && av);
@@ -2788,7 +2882,10 @@ void LLFloaterDirector::refreshAnimateTab()
     // handling, and those buttons -- one copy, embedded in both hosts.
     if (mAnimPreviewPanel)
     {
-        const LLUUID focus = previewAnimId();
+        // [DirFix] D5: previewAnimId() == selected row, else the pasted UUID; reuse the
+        // paste cache refreshed above (same editor text, same frame)
+        const LLUUID row_anim = selectedAnimId();
+        const LLUUID focus = row_anim.notNull() ? row_anim : pasted;
         mAnimPreviewPanel->previewAnim(focus, animSourceObject(focus));
     }
 }
@@ -2930,6 +3027,7 @@ void LLFloaterDirector::onClickHeroArc()
 
 void LLFloaterDirector::refreshCameraTab()
 {
+    LL_PROFILE_ZONE_NAMED_CATEGORY_UI("Director refreshCameraTab"); // [DirFix] D9
     ALFloaterActorGaze::updateSelection(
         ALFloaterActorGaze::ESelectionSource::DIRECTOR,
         selectedCastIds());
@@ -3108,6 +3206,7 @@ void LLFloaterDirector::refreshCameraTab()
 // ---------------------------------------------------------------------------
 void LLFloaterDirector::refreshStatusStrip()
 {
+    LL_PROFILE_ZONE_NAMED_CATEGORY_UI("Director refreshStatusStrip"); // [DirFix] D9
     static LLCachedControl<bool> cam_enabled(gSavedSettings, "CinematicCamEnabled", false);
     static LLCachedControl<S32>  cam_mode(gSavedSettings, "CinematicCamMode", 0);
     static LLCachedControl<bool> orbit_enabled(gSavedSettings, "FlycamOrbitEnabled", false);

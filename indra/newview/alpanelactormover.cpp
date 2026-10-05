@@ -52,6 +52,7 @@ bool ALPanelActorMover::postBuild()
 
 void ALPanelActorMover::draw()
 {
+    LL_PROFILE_ZONE_SCOPED_CATEGORY_UI; // [DirFix] D9
     static LLCachedControl<bool> sync(gSavedSettings, "ActorMoverSync", true);
     static LLCachedControl<F32>  heading(gSavedSettings, "ActorMoverHeading", 0.f);
 
