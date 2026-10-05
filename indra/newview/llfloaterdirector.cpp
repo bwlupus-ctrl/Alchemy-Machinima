@@ -310,6 +310,14 @@ bool LLFloaterDirector::postBuild()
     // ---- left-rail tabs (remember the active tab, icon each rail button) ----
     mTabContainer = getChild<LLTabContainer>("director_tabs");
     mTabContainer->setCommitCallback([this](LLUICtrl*, const LLSD&) { onTabChanged(); });
+    // [DirFix] D14: LLFloater::setMinimized() never toggles child visibility, so
+    // the Path panel's own reveal claim cannot see an un-minimize; if the other
+    // host claimed while this console was minimized, restoring it re-feeds +
+    // re-claims here (revealFor stores only while another tab is current).
+    setMinimizeCallback([this](LLUICtrl*, const LLSD& minimized)
+    {
+        if (!minimized.asBoolean() && mPathPanel) mPathPanel->revealFor(firstSelectedCastId());
+    });
     // per-tab icons: image overlay left of the label (existing skin assets)
     struct { const char* panel; const char* icon; } tab_icons[] = {
         { "move_tab",    TAB_ICON_MOVE },
@@ -361,6 +369,13 @@ bool LLFloaterDirector::postBuild()
         [this](LLUICtrl* ctrl, S32 x, S32 y, MASK) { onCastRightClick(ctrl, x, y); });
     // double-click a cast row = Set Subject A (mirrors the right-click path)
     mCastList->setDoubleClickCallback([this]() { onCastSetSubject(SUBJECT_A); });
+    // [DirFix] D14: a cast selection is a user event; feed + claim the Path host
+    // synchronously (claims only while the Path tab is visible). draw()'s
+    // refreshPathTab stays ownership-neutral (setTargetActor).
+    mCastList->setCommitCallback([this](LLUICtrl*, const LLSD&)
+    {
+        if (mPathPanel) mPathPanel->revealFor(firstSelectedCastId());
+    });
     {
         // same LLContextMenu idiom as the Animation Explorer's list menu
         LLUICtrl::CommitCallbackRegistry::ScopedRegistrar registrar;
@@ -646,6 +661,16 @@ void LLFloaterDirector::onOpen(const LLSD& key)
         mScrollFit.fit(this, mTabContainer);
     }
 
+    // [DirFix] D14: the console is visible here (openFloater shows before onOpen);
+    // if the restored tab is Path, feed + claim the current cast selection NOW so
+    // the first painted frame already has the highlight / edit selection (the
+    // panel's own reveal claim ran before any draw supplied the actor). Hidden
+    // Path tab: revealFor only stores the actor.
+    if (mPathPanel)
+    {
+        mPathPanel->revealFor(firstSelectedCastId());
+    }
+
     // a reopened console never resurfaces the legend
     if (mLegendPanel)
     {
@@ -673,6 +698,12 @@ void LLFloaterDirector::onTabChanged()
     // their next visible pass. Only flags are written here; nothing reads layout.
     mActorStyleTabDirty = true;
     mAnimateTabDirty = true;
+    // [DirFix] D14: Path tab revealed by a tab switch -> feed + claim before paint
+    // (no-op store when another tab is now current).
+    if (mPathPanel)
+    {
+        mPathPanel->revealFor(firstSelectedCastId());
+    }
 }
 
 void LLFloaterDirector::onToggleLegend()
@@ -1697,6 +1728,9 @@ void LLFloaterDirector::onCastRightClick(LLUICtrl* ctrl, S32 x, S32 y)
             if (index >= 0)
             {
                 mCastList->selectNthItem(index);
+                // [DirFix] D14: programmatic select (no list commit) on a user
+                // right-click -> feed + claim the Path host synchronously
+                if (mPathPanel) mPathPanel->revealFor(firstSelectedCastId());
             }
         }
         menu->buildDrawLabels();
@@ -1932,6 +1966,9 @@ void LLFloaterDirector::onGroupsListSelect()
     // makes the batch ops to the left (assign, marks, Move-tab Walk on the
     // selection) act on exactly this group.
     mCastList->selectMultiple(cast.membersInGroup(name));
+    // [DirFix] D14: programmatic cast selection (no list commit) on a user click
+    // in the groups list -> feed + claim the Path host synchronously
+    if (mPathPanel) mPathPanel->revealFor(firstSelectedCastId());
     // load the delay spinner + prefill the rename editor with the current name
     mGroupDelayShownFor = name;
     mGroupDelaySpinner->setValue(cast.getGroupDelay(name));

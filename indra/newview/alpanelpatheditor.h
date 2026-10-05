@@ -27,6 +27,7 @@
 
 #include <vector>
 #include <utility>
+#include <unordered_set>
 
 class LLButton;
 class LLAccordionCtrl;
@@ -47,11 +48,18 @@ public:
     bool postBuild() override;
     void draw() override;
     void onVisibilityChange(bool new_visibility) override;
+    bool handleMouseDown(S32 x, S32 y, MASK mask) override; // [DirFix]
 
     // host -> panel: which cast/roster actor to edit (null = nothing selected,
     // which disables editing and clears the in-world highlight)
     void setTargetActor(const LLUUID& actor_id);
     const LLUUID& getTargetActor() const { return mActor; }
+    // [DirFix] host EVENT paths only (floater open, tab change, list selection):
+    // feed the current actor AND claim it for this host when visible (a null
+    // actor releases this host's claim). Unlike setTargetActor, which is
+    // draw-safe and ownership-neutral, this transfers ownership, so it must never
+    // be reached from a draw() path.
+    void revealFor(const LLUUID& actor_id);
 
     // host convenience: does the target already have a walkable path? (the Move
     // tab uses this to auto-pick Path mode) -- without reaching into the engine
@@ -62,6 +70,11 @@ public:
     void exitEditMode();
 
 private:
+    void claimEdit();        // [DirFix] claim/release owned singleton state
+    bool ownsEdit() const;
+    bool ownsTool() const;
+    void installOwnerHooks();
+
     void refreshHeader();
     void refreshList();
     void refreshInspector();
@@ -149,6 +162,8 @@ private:
     static std::string actorName(const LLUUID& id);
 
     LLUUID mActor;              // current target (raw cast/roster id; null = none)
+    LLUUID mEditOwner;          // [DirFix] unique owner token for this panel host
+    std::unordered_set<const LLView*> mOwnerHooked; // [DirFix] idempotent focus hooks
     bool   mEditMode = false;   // our transient tool is armed
     bool   mSuspendShown = false;   // banner visibility last set (avoid churn)
     S32    mAccordionNormalHeight = 0;

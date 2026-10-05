@@ -60,6 +60,7 @@ bool cornerRadiusEligible(const LLActorMover::Path* path, S32 node,
 
 ALPanelPathEditor::ALPanelPathEditor()
 {
+    mEditOwner.generate(); // [DirFix] never alias a recycled panel address
 }
 
 ALPanelPathEditor::~ALPanelPathEditor()
@@ -67,7 +68,8 @@ ALPanelPathEditor::~ALPanelPathEditor()
     // never leave the shared tool armed or a camera preview latched if the
     // panel is torn down
     exitEditMode();
-    LLPathCamera::instance().stopPreview();
+    LLPathCamera::instance().stopPreviewFor(mEditOwner); // [DirFix]
+    LLActorMover::instance().releaseEdit(mEditOwner);    // [DirFix]
 }
 
 bool ALPanelPathEditor::postBuild()
@@ -260,10 +262,66 @@ bool ALPanelPathEditor::postBuild()
         mColorSwatch->setBackgroundVisible(true);
         mColorSwatch->setBackgroundOpaque(true);    // show the solid per-actor color
     }
+    installOwnerHooks(); // [DirFix] static XML controls; reveal retries idempotently
     return true;
 }
 
 // ---------------------------------------------------------------------------
+void ALPanelPathEditor::claimEdit()
+{
+    // [DirFix] Null selection owns nothing; otherwise this host becomes current.
+    LLActorMover& mover = LLActorMover::instance();
+    if (mActor.isNull())
+    {
+        mover.releaseEdit(mEditOwner);
+    }
+    else
+    {
+        mover.claimEdit(mEditOwner, mActor);
+    }
+}
+
+bool ALPanelPathEditor::ownsEdit() const
+{
+    return LLActorMover::instance().getEditOwner() == mEditOwner;
+}
+
+bool ALPanelPathEditor::ownsTool() const
+{
+    LLToolMgr* tm = LLToolMgr::getInstance();
+    ALToolPathEdit* tool = ALToolPathEdit::getInstance();
+    // [DirFix] Keep draw-time reflection read-only; getCurrentTool() can select.
+    return tm->usingTransientTool() && tool->owner() == mEditOwner;
+}
+
+void ALPanelPathEditor::installOwnerHooks()
+{
+    // [DirFix] Focus in either host claims ownership without any draw-time write.
+    std::vector<LLView*> pending;
+    pending.push_back(this);
+    while (!pending.empty())
+    {
+        LLView* parent = pending.back();
+        pending.pop_back();
+        for (LLView* child : *parent->getChildList())
+        {
+            pending.push_back(child);
+            if (LLUICtrl* control = dynamic_cast<LLUICtrl*>(child);
+                control && mOwnerHooked.insert(child).second)
+            {
+                control->setFocusReceivedCallback(
+                    [this](LLFocusableElement*) { claimEdit(); });
+            }
+        }
+    }
+}
+
+bool ALPanelPathEditor::handleMouseDown(S32 x, S32 y, MASK mask)
+{
+    claimEdit(); // [DirFix] background clicks also select this host
+    return LLPanel::handleMouseDown(x, y, mask);
+}
+
 void ALPanelPathEditor::setTargetActor(const LLUUID& actor_id)
 {
     if (actor_id == mActor)
@@ -274,6 +332,33 @@ void ALPanelPathEditor::setTargetActor(const LLUUID& actor_id)
     // force a full list + selection re-sync on the next draw
     mSnap.clear();
     mLastEngineNode = -2;
+    // [DirFix] RULE: setTargetActor is STRICTLY store-only -- both hosts call it
+    // from draw() (Actor Mover roster, Director refreshPathTab) and draw never
+    // writes a singleton, not even owner-preserving. The singleton's actor
+    // follows this host only through event paths: revealFor() from the host's
+    // open / un-minimize / tab-change / list-selection events, the panel's own
+    // reveal, focus-received and mouse-down claims, and every control handler
+    // (each starts with claimEdit(), which re-syncs the actor on use).
+}
+
+void ALPanelPathEditor::revealFor(const LLUUID& actor_id)
+{
+    // [DirFix] Event-path feed + claim (see header). Same store as setTargetActor,
+    // then an unconditional claim when visible: the host told us, from a user or
+    // open event, that this target is now the one on screen. Idempotent with the
+    // panel's own onVisibilityChange(true) claim (same owner, same actor), which
+    // stays as the fallback for reveals the host does not see (un-minimize,
+    // programmatic setVisible).
+    if (actor_id != mActor)
+    {
+        mActor = actor_id;
+        mSnap.clear();
+        mLastEngineNode = -2;
+    }
+    if (isInVisibleChain())
+    {
+        claimEdit();        // claims the actor, or releases ours when it is null
+    }
 }
 
 bool ALPanelPathEditor::targetHasWalkablePath() const
@@ -308,16 +393,12 @@ void ALPanelPathEditor::draw()
     // [UIPerfC1] every setEnabled/setToolTip in the refresh*() calls below is a
     // setEnabledIfChanged/setToolTipIfChanged (aluirefresh.h)
     LL_PROFILE_ZONE_SCOPED_CATEGORY_UI;
-    // while visible, this panel owns the shared edit-selection actor: it drives
-    // the in-world node highlight and the edit tool's target
-    LLActorMover::instance().setEditActor(mActor);
-
     // if our transient tool was taken away (build tools, another picker, focus
     // loss), reflect that in the toggle instead of showing a stale "on"
-    if (mEditMode && !LLToolMgr::getInstance()->usingTransientTool())
+    if (mEditMode && !ownsTool())
     {
         mEditMode = false;
-        mEditModeCheck->set(false);
+        setValueIfChanged(mEditModeCheck, LLSD(false), true); // [DirFix]
     }
 
     refreshHeader();
@@ -485,10 +566,15 @@ void ALPanelPathEditor::onVisibilityChange(bool new_visibility)
         // leaving the tab / hiding the panel must never strand the user in the
         // tool or in a camera preview, and must drop the in-world highlight
         exitEditMode();
-        LLPathCamera::instance().stopPreview();
-        LLActorMover::instance().setEditActor(LLUUID::null);
+        LLPathCamera::instance().stopPreviewFor(mEditOwner); // [DirFix]
+        LLActorMover::instance().releaseEdit(mEditOwner);    // [DirFix]
     }
     LLPanel::onVisibilityChange(new_visibility);
+    if (new_visibility && isInVisibleChain())
+    {
+        installOwnerHooks(); // [DirFix] idempotent future-dynamic-control coverage
+        claimEdit();
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -582,7 +668,9 @@ void ALPanelPathEditor::refreshList()
 
 void ALPanelPathEditor::syncListSelectionFromEngine()
 {
-    const S32 en = LLActorMover::instance().getEditNode();
+    // [DirFix] only the owning host mirrors the shared node: a non-owner's list
+    // must not show the other host's (other actor's) row as selected
+    const S32 en = ownsEdit() ? LLActorMover::instance().getEditNode() : -1;
     if (en == mLastEngineNode)
     {
         return;         // nothing changed since we last mirrored it
@@ -1027,6 +1115,7 @@ void ALPanelPathEditor::onClickCancelSuspend()
 // ---------------------------------------------------------------------------
 void ALPanelPathEditor::onListSelect()
 {
+    claimEdit(); // [DirFix] edit-node selection belongs to this host
     const S32 n = listSelectedNode();
     LLActorMover::instance().setEditNode(n);
     mLastEngineNode = n;        // we set it; don't let the sync fight us
@@ -1042,6 +1131,7 @@ void ALPanelPathEditor::onClickAdd()
     {
         return;
     }
+    claimEdit(); // [DirFix]
     m.snapshotForUndo(mActor);
     m.appendWaypointHere(mActor);       // ground-snaps at the actor's feet
     if (const LLActorMover::Path* p = m.getPath(mActor); p && !p->mNodes.empty())
@@ -1059,6 +1149,7 @@ void ALPanelPathEditor::onClickInsert()
     {
         return;
     }
+    claimEdit(); // [DirFix]
     m.snapshotForUndo(mActor);
     const S32 n = (S32)p->mNodes.size();
     if (sel + 1 < n)
@@ -1091,6 +1182,7 @@ void ALPanelPathEditor::onClickDelete()
     {
         return;
     }
+    claimEdit(); // [DirFix]
     m.snapshotForUndo(mActor);
     if (m.deleteWaypoint(mActor, sel))
     {
@@ -1108,6 +1200,7 @@ void ALPanelPathEditor::onClickClear()
     {
         return;     // confirm only when there is something to clear
     }
+    claimEdit(); // [DirFix] async callback records this host's ownership
     LLSD args;
     args["MESSAGE"] = llformat("Remove all %d waypoint%s from this path?",
                                n, (n == 1 ? "" : "s"));
@@ -1135,7 +1228,7 @@ bool ALPanelPathEditor::clearCallback(const LLSD& notification, const LLSD& resp
     LLActorMover& m = LLActorMover::instance();
     m.snapshotForUndo(actor);
     m.clearPath(actor);
-    if (mActor == actor)
+    if (mActor == actor && ownsEdit()) // [DirFix] dialog may outlive ownership
     {
         m.setEditNode(-1);
     }
@@ -1165,9 +1258,11 @@ void ALPanelPathEditor::onToggleEditMode()
         }
         // edit mode places nodes by picking against the render camera; a held
         // preview would freeze that camera, so the two are mutually exclusive
+        claimEdit(); // [DirFix]
         LLPathCamera::instance().stopPreview();
-        LLActorMover::instance().setEditActor(mActor);
-        tm->setTransientTool(ALToolPathEdit::getInstance());
+        ALToolPathEdit* tool = ALToolPathEdit::getInstance();
+        tool->beginSessionFor(mEditOwner); // [DirFix] reset before tool handoff
+        tm->setTransientTool(tool);
         mEditMode = true;
     }
     else
@@ -1178,18 +1273,16 @@ void ALPanelPathEditor::onToggleEditMode()
 
 void ALPanelPathEditor::exitEditMode()
 {
-    if (mEditMode)
-    {
-        mEditMode = false;
-        LLToolMgr* tm = LLToolMgr::getInstance();
-        if (tm->usingTransientTool())
-        {
-            tm->clearTransientTool();       // restores the prior tool (camera control)
-        }
-    }
+    mEditMode = false;
     if (mEditModeCheck)
     {
-        mEditModeCheck->set(false);
+        setValueIfChanged(mEditModeCheck, LLSD(false), true); // [DirFix]
+    }
+    LLToolMgr* tm = LLToolMgr::getInstance();
+    ALToolPathEdit* tool = ALToolPathEdit::getInstance();
+    if (tool->endSessionFor(mEditOwner)) // [DirFix] release only our session
+    {
+        tm->clearTransientTool();       // restores the prior tool (camera control)
     }
 }
 
@@ -1295,8 +1388,9 @@ void ALPanelPathEditor::onClickWalkHere()
     // drop edit mode; the tool disarms + returns the camera after the click
     LLPathCamera::instance().stopPreview();
     exitEditMode();
-    LLActorMover::instance().setEditActor(mActor);
+    claimEdit(); // [DirFix]
     ALToolPathEdit* tool = ALToolPathEdit::getInstance();
+    tool->beginSessionFor(mEditOwner); // [DirFix] reset before arming/handoff
     tool->armWalkTo();
     LLToolMgr::getInstance()->setTransientTool(tool);
 }
@@ -1738,9 +1832,10 @@ void ALPanelPathEditor::onClickPreview()
     {
         return;         // nothing to preview
     }
+    claimEdit(); // [DirFix] preview ownership follows the initiating host (after every early-out)
     // previewing and the in-world edit tool both want the camera; drop edit mode
     exitEditMode();
-    LLPathCamera::instance().startPreview(pos, rot, fov);
+    LLPathCamera::instance().startPreview(pos, rot, fov, mEditOwner); // [DirFix]
 }
 
 // ---------------------------------------------------------------------------

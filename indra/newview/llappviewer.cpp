@@ -6118,6 +6118,12 @@ void LLAppViewer::disconnectViewer()
     // torn down. This is idempotent on logout, relog, and final shutdown.
     ALCineLightRigManager::instance().shutdown();
 
+    // [DirFix] The path editor's shared edit session (edit owner/actor/node,
+    // the transient path-edit tool, a held path-camera preview) is per-session
+    // UI state pointing at avatars about to be torn down; end it here, before
+    // the views and objects go. Idempotent on logout, relog and final quit.
+    LLActorMover::instance().resetEditSession();
+
     // [BDMerge G3.3 Phase 2] Session-only projector volumetric-shaft opt-in set
     // must not survive a session; clear it on logout/relog (this runs before
     // reconnecting to a new session and again on quit).

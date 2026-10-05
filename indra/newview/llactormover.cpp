@@ -56,6 +56,7 @@
 #include "llrendertarget.h"         // shared PBR HDR-only draw-buffer scope
 #include "llspatialpartition.h"     // LLDrawInfo / LLCullResult (model-ghost geometry sweep)
 #include "lltoolmgr.h"              // [R2-3] edit-tool gate for the highlight ring
+#include "llpathcamera.h"           // [DirFix] logout reset stops a held path-camera preview
 #include "llvector4a.h"             // downward ground raycast (pathing ground-follow)
 #include "llvertexbuffer.h"         // draw the actor's rigged batches for the model ghost
 #include "llviewercamera.h"         // camera basis for billboarded path node numbers
@@ -4035,6 +4036,91 @@ bool LLActorMover::getPathCameraPose(const LLUUID& actor_id, LLVector3d& out_pos
 // ---------------------------------------------------------------------------
 // P2 edit selection (shared spine for the panel, the in-world tool and the viz)
 // ---------------------------------------------------------------------------
+void LLActorMover::setEditOwnerInternal(const LLUUID& owner)
+{
+    if (owner == mEditOwner)
+    {
+        return;
+    }
+    mEditOwner = owner;
+    // [DirFix] Atomic handoff: the path tool learns of every owner change here,
+    // so a session held by the previous owner ends on the SAME call that moved
+    // or dropped ownership (never an inert transient tool until the next
+    // input). instanceExists(): never resurrect the tool singleton at shutdown.
+    if (ALToolPathEdit::instanceExists())
+    {
+        ALToolPathEdit::getInstance()->onEditOwnerChanged(owner);
+    }
+}
+
+void LLActorMover::claimEdit(const LLUUID& owner, const LLUUID& actor_id)
+{
+    // [DirFix] A host may only own a concrete actor; null selection releases.
+    llassert(actor_id.notNull());
+    setEditActor(actor_id);         // actor/node first, then the owner notify
+    setEditOwnerInternal(owner);
+}
+
+void LLActorMover::releaseEdit(const LLUUID& owner)
+{
+    // [DirFix] Never let one path-editor host release another host's state.
+    if (owner != mEditOwner)
+    {
+        return;
+    }
+    // [DirFix] Release is total even if a stale node index somehow survived.
+    mEditActor.setNull();
+    mEditNode = -1;
+    setEditOwnerInternal(LLUUID::null);
+}
+
+void LLActorMover::resetEditSession()
+{
+    // [DirFix] Logout/relog: the shared edit selection, the path-tool session
+    // and a path-camera preview are per-session UI state pointing at objects
+    // about to be torn down. Everything below is idempotent.
+    mEditActor.setNull();
+    mEditNode = -1;
+    setEditOwnerInternal(LLUUID::null);     // ends an owned tool session
+    if (ALToolPathEdit::instanceExists())
+    {
+        ALToolPathEdit::getInstance()->endSession();    // and an unowned one
+    }
+    LLPathCamera::instance().stopPreview();
+}
+
+void LLActorMover::pruneEditActor()
+{
+    // [DirFix] Called from cast add() / applySceneData() (model mutations, never
+    // draw). The effective roster is what both path hosts list: the cast ids, or
+    // my own avatar while the cast is empty (the Actor Mover's implicit self).
+    if (mEditActor.isNull())
+    {
+        return;
+    }
+    const uuid_vec_t& roster = getRoster();
+    const bool present = roster.empty()
+        ? (mEditActor == gAgent.getID())
+        : (std::find(roster.begin(), roster.end(), mEditActor) != roster.end());
+    if (!present)
+    {
+        setEditActor(LLUUID::null);     // -> owner null -> tool session ends
+    }
+}
+
+void LLActorMover::onRosterMemberRemoved(const LLUUID& actor_id)
+{
+    // [DirFix] Called from cast remove(). Targeted on purpose: during a ghost
+    // runtime replace the mover has already migrated mEditActor old->new
+    // (onActorRuntimeReplaced runs before the cast consumer, alghoststudio.cpp)
+    // and new is not yet a member when remove(old) runs, so an effective-roster
+    // check here would wrongly drop the migrated edit actor.
+    if (actor_id.notNull() && mEditActor == actor_id)
+    {
+        setEditActor(LLUUID::null);     // -> owner null -> tool session ends
+    }
+}
+
 void LLActorMover::setEditActor(const LLUUID& actor_id)
 {
     // A concrete avatar id IS the path key (path_key is identity for non-null),
@@ -4045,6 +4131,12 @@ void LLActorMover::setEditActor(const LLUUID& actor_id)
     {
         mEditActor = actor_id;
         mEditNode = -1;     // a fresh actor starts with nothing selected
+    }
+    // [DirFix] Engine-side actor removal (dropActor) also invalidates any UI
+    // ownership, and through the owner notify ends the owner's tool session.
+    if (actor_id.isNull())
+    {
+        setEditOwnerInternal(LLUUID::null);
     }
 }
 

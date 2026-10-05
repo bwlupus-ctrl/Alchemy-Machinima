@@ -50,6 +50,18 @@ public:
     void handleDeselect() override;
     void onMouseCaptureLost() override;
 
+    void beginSessionFor(const LLUUID& owner); // [DirFix]
+    bool endSessionFor(const LLUUID& owner);   // [DirFix]
+    // [DirFix] Any-owner termination: reset, drop the owner and hand the camera
+    // back if this is the current transient tool. Idempotent. Used by the
+    // edit-owner handoff notify and by the logout reset.
+    void endSession();
+    // [DirFix] LLActorMover calls this on EVERY edit-owner change (claim by a
+    // host, release, dropActor/setEditActor(null)): a session whose owner is no
+    // longer the edit owner ends atomically, so an inert tool is never observable.
+    void onEditOwnerChanged(const LLUUID& owner);
+    const LLUUID& owner() const { return mOwner; }
+
     // "Walk to here" one-shot: the panel arms this, then the NEXT ground click
     // builds a fresh 2-node straight path (actor -> click) and walks it, and the
     // tool hands the camera back. A sky-miss stays armed for another try.
@@ -75,12 +87,20 @@ private:
     void ensureMenu();
     void onMenuDelete();
     void onMenuInsertAfter();
+    void resetSession(); // [DirFix]
+    // [DirFix] Common guard: true only while our session owner is also the edit
+    // owner. On a mismatch it ends the session (camera returns on this input).
+    bool sessionLive();
 
+    LLUUID mOwner;                  // [DirFix] path-editor tool-session owner
     S32  mDragNode = -1;         // node being dragged (-1 = none)
     S32  mHoverNode = -1;        // node under the cursor (-1 = none); drives hover highlight
     bool mDragDidSnapshot = false;  // pushed the pre-drag undo yet (coalesce a drag to one entry)
     bool mWalkToArmed = false;      // next ground click is a "walk to here"
     LLHandle<LLContextMenu> mMenuHandle;
+    LLUUID mMenuOwner;              // [DirFix] deferred menu capture triple
+    LLUUID mMenuActor;
+    S32 mMenuNode = -1;
 };
 
 #endif // AL_ALTOOLPATHEDIT_H

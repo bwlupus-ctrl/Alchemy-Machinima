@@ -114,15 +114,29 @@ void LLPathCamera::updateCamera()
 
 // ---------------------------------------------------------------------------
 void LLPathCamera::startPreview(const LLVector3d& pos_global,
-                                const LLQuaternion& rot, F32 fov)
+                                const LLQuaternion& rot, F32 fov,
+                                const LLUUID& owner)
 {
     mPreviewPos = pos_global;
     mPreviewRot = rot;
     mPreviewFov = fov;
+    mPreviewOwner = owner; // [DirFix]
     mPreview    = true;
 }
 
 void LLPathCamera::stopPreview()
 {
     mPreview = false;
+    mPreviewOwner.setNull(); // [DirFix]
+}
+
+bool LLPathCamera::stopPreviewFor(const LLUUID& owner)
+{
+    // [DirFix] Hiding one path-editor host must not stop another host's preview.
+    if (owner != mPreviewOwner)
+    {
+        return false;
+    }
+    stopPreview();
+    return true;
 }

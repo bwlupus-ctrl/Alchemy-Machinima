@@ -37,6 +37,7 @@
 #include "stdtypes.h"
 #include "v3dmath.h"
 #include "llquaternion.h"
+#include "lluuid.h"
 
 class LLPathCamera
 {
@@ -54,14 +55,17 @@ public:
     // previewing the path camera owns the render camera regardless of the master
     // toggle, so the director can inspect a shot before pressing ACTION; exiting
     // hands control back to the agent camera the same frame.
-    void startPreview(const LLVector3d& pos_global, const LLQuaternion& rot, F32 fov);
+    void startPreview(const LLVector3d& pos_global, const LLQuaternion& rot, F32 fov,
+                      const LLUUID& owner = LLUUID::null); // [DirFix]
     void stopPreview();
+    bool stopPreviewFor(const LLUUID& owner); // [DirFix]
     bool isPreviewing() const { return mPreview; }
 
 private:
     LLPathCamera() = default;
 
     bool         mPreview = false;
+    LLUUID       mPreviewOwner; // [DirFix] path-editor host that started preview
     LLVector3d   mPreviewPos;
     LLQuaternion mPreviewRot;
     F32          mPreviewFov = 0.f;

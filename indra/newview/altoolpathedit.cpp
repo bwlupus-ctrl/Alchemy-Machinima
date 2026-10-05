@@ -132,6 +132,11 @@ S32 ALToolPathEdit::pickSegment(S32 x, S32 y, const LLUUID& actor) const
 // ---------------------------------------------------------------------------
 bool ALToolPathEdit::handleMouseDown(S32 x, S32 y, MASK mask)
 {
+    // [DirFix] Common ownership guard (ends a stale session, see sessionLive).
+    if (!sessionLive())
+    {
+        return false;
+    }
     const LLUUID actor = targetActor();
     LLActorMover& mover = LLActorMover::instance();
 
@@ -188,6 +193,11 @@ bool ALToolPathEdit::handleMouseDown(S32 x, S32 y, MASK mask)
 
 bool ALToolPathEdit::handleHover(S32 x, S32 y, MASK mask)
 {
+    // [DirFix] Common ownership guard for every hover/drag mutation path.
+    if (!sessionLive())
+    {
+        return false;
+    }
     if (mDragNode >= 0 && hasMouseCapture())
     {
         LLVector3d gp;
@@ -226,6 +236,11 @@ bool ALToolPathEdit::handleMouseUp(S32 x, S32 y, MASK mask)
 
 bool ALToolPathEdit::handleRightMouseDown(S32 x, S32 y, MASK mask)
 {
+    // [DirFix] Common ownership guard for node selection and menu capture.
+    if (!sessionLive())
+    {
+        return false;
+    }
     const S32 node = pickNode(x, y, targetActor());
     if (node < 0)
     {
@@ -237,6 +252,10 @@ bool ALToolPathEdit::handleRightMouseDown(S32 x, S32 y, MASK mask)
     ensureMenu();
     if (LLContextMenu* menu = mMenuHandle.get())
     {
+        // [DirFix] Deferred menu writers must still match this exact session.
+        mMenuOwner = mOwner;
+        mMenuActor = targetActor();
+        mMenuNode = node;
         menu->buildDrawLabels();
         menu->updateParent(LLMenuGL::sMenuContainer);
         menu->show(x, y);
@@ -246,7 +265,19 @@ bool ALToolPathEdit::handleRightMouseDown(S32 x, S32 y, MASK mask)
 
 bool ALToolPathEdit::handleKey(KEY key, MASK mask)
 {
-    // Delete/Backspace removes the selected node; Esc leaves the tool cleanly
+    // [DirFix] Esc must ALWAYS leave the tool, owner or not: never trap the user
+    // in a transient tool without camera control.
+    if (key == KEY_ESCAPE)
+    {
+        LLToolMgr::getInstance()->clearTransientTool();
+        return true;
+    }
+    // [DirFix] Common ownership guard for keyboard mutations.
+    if (!sessionLive())
+    {
+        return false;
+    }
+    // Delete/Backspace removes the selected node
     LLActorMover& mover = LLActorMover::instance();
     if ((key == KEY_DELETE || key == KEY_BACKSPACE) && mover.getEditNode() >= 0)
     {
@@ -256,11 +287,6 @@ bool ALToolPathEdit::handleKey(KEY key, MASK mask)
         {
             mover.setEditNode(-1);
         }
-        return true;
-    }
-    if (key == KEY_ESCAPE)
-    {
-        LLToolMgr::getInstance()->clearTransientTool();
         return true;
     }
     return false;
@@ -274,6 +300,19 @@ void ALToolPathEdit::handleSelect()
 
 void ALToolPathEdit::handleDeselect()
 {
+    // [DirFix] Focus loss deselects without replacing the transient tool. Reset
+    // volatile state in both cases, but keep ownership while still current.
+    resetSession();
+    LLToolMgr* tm = LLToolMgr::getInstance();
+    const bool still_current = tm->usingTransientTool() && tm->getCurrentTool() == this;
+    if (!still_current)
+    {
+        mOwner.setNull();
+    }
+}
+
+void ALToolPathEdit::resetSession()
+{
     if (hasMouseCapture())
     {
         setMouseCapture(false);
@@ -282,6 +321,74 @@ void ALToolPathEdit::handleDeselect()
     mHoverNode = -1;
     mDragDidSnapshot = false;
     mWalkToArmed = false;       // never leave a pending walk-to armed off-tool
+    if (LLContextMenu* menu = mMenuHandle.get())
+    {
+        menu->hide();
+    }
+    mMenuOwner.setNull();
+    mMenuActor.setNull();
+    mMenuNode = -1;
+}
+
+void ALToolPathEdit::beginSessionFor(const LLUUID& owner)
+{
+    // [DirFix] Reset before owner handoff even when this tool is already current.
+    resetSession();
+    mOwner = owner;
+}
+
+bool ALToolPathEdit::endSessionFor(const LLUUID& owner)
+{
+    // [DirFix] A stale host cannot terminate the current host's tool session.
+    if (owner != mOwner)
+    {
+        return false;
+    }
+    resetSession();
+    mOwner.setNull();
+    return true;
+}
+
+void ALToolPathEdit::endSession()
+{
+    // [DirFix] Any-owner termination. Owner is dropped BEFORE the tool change so
+    // the nested handleDeselect (not still current) finds nothing left to do.
+    resetSession();
+    mOwner.setNull();
+    LLToolMgr* tm = LLToolMgr::getInstance();
+    if (tm->usingTransientTool() && tm->getCurrentTool() == this)
+    {
+        tm->clearTransientTool();       // restores the prior tool (camera control)
+    }
+}
+
+void ALToolPathEdit::onEditOwnerChanged(const LLUUID& owner)
+{
+    // [DirFix] Edit ownership moved to another host or was dropped (release,
+    // dropActor, logout) while we hold a session for the previous owner: end it
+    // now, synchronously, so the camera returns and the previous host's toggle
+    // reflects "off" on its next draw (ownsTool() is false once mOwner is null).
+    if (mOwner.notNull() && mOwner != owner)
+    {
+        endSession();
+    }
+}
+
+bool ALToolPathEdit::sessionLive()
+{
+    if (mOwner.isNull())
+    {
+        return false;
+    }
+    if (LLActorMover::instance().getEditOwner() != mOwner)
+    {
+        // belt and braces: the owner notify should already have ended this
+        // session; if anything slipped past, end it on this input instead of
+        // leaving a dead transient tool in front of the camera tool
+        endSession();
+        return false;
+    }
+    return true;
 }
 
 void ALToolPathEdit::onMouseCaptureLost()
@@ -313,11 +420,20 @@ void ALToolPathEdit::ensureMenu()
 void ALToolPathEdit::onMenuDelete()
 {
     LLActorMover& mover = LLActorMover::instance();
-    const S32 n = mover.getEditNode();
+    // [DirFix] Reject a deferred callback after owner/actor/node handoff. The
+    // common guard comes first: another host claiming the SAME actor and node
+    // still invalidates this menu (the captured triple alone would not see it).
+    if (!sessionLive() || mOwner != mMenuOwner ||
+        mover.getEditActor() != mMenuActor || mover.getEditNode() != mMenuNode)
+    {
+        return;
+    }
+    const LLUUID actor = mMenuActor;
+    const S32 n = mMenuNode;
     if (n >= 0)
     {
-        mover.snapshotForUndo(mover.getEditActor());
-        if (mover.deleteWaypoint(mover.getEditActor(), n))
+        mover.snapshotForUndo(actor);
+        if (mover.deleteWaypoint(actor, n))
         {
             mover.setEditNode(-1);
         }
@@ -327,9 +443,16 @@ void ALToolPathEdit::onMenuDelete()
 void ALToolPathEdit::onMenuInsertAfter()
 {
     LLActorMover& mover = LLActorMover::instance();
-    const LLUUID actor = mover.getEditActor();
+    // [DirFix] Reject a deferred callback after owner/actor/node handoff (common
+    // guard first, then the captured triple; see onMenuDelete).
+    if (!sessionLive() || mOwner != mMenuOwner ||
+        mover.getEditActor() != mMenuActor || mover.getEditNode() != mMenuNode)
+    {
+        return;
+    }
+    const LLUUID actor = mMenuActor;
     const LLActorMover::Path* path = mover.getPath(actor);
-    const S32 n = mover.getEditNode();
+    const S32 n = mMenuNode;
     if (!path || n < 0 || n >= (S32)path->mNodes.size())
     {
         return;

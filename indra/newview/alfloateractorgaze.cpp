@@ -12,6 +12,8 @@
 #include "alfloateractorgaze.h"
 
 #include "alpanellensgaze.h"
+#include "llfloateractormover.h"
+#include "llfloaterdirector.h"
 #include "llfloaterreg.h"
 
 ALFloaterActorGaze::ALFloaterActorGaze(const LLSD& key)
@@ -23,6 +25,38 @@ bool ALFloaterActorGaze::postBuild()
 {
     mGazePanel = findChild<ALPanelLensGaze>("lens_gaze_panel");
     return LLFloater::postBuild();
+}
+
+void ALFloaterActorGaze::onOpen(const LLSD& key)
+{
+    LLFloater::onOpen(key);
+    pullSelection(); // [DirFix] correct before the first reopened frame paints
+}
+
+void ALFloaterActorGaze::pullSelection()
+{
+    // [DirFix] Pull from the retained source; an uninstantiated source is empty.
+    switch (mSelectionSource)
+    {
+        case ESelectionSource::DIRECTOR:
+        {
+            LLFloaterDirector* source =
+                LLFloaterReg::findTypedInstance<LLFloaterDirector>("director");
+            takeSelection(ESelectionSource::DIRECTOR,
+                          source ? source->currentCastSelection() : uuid_vec_t());
+            break;
+        }
+        case ESelectionSource::ACTOR_MOVER:
+        {
+            LLFloaterActorMover* source =
+                LLFloaterReg::findTypedInstance<LLFloaterActorMover>("actor_mover");
+            takeSelection(ESelectionSource::ACTOR_MOVER,
+                          source ? source->currentSelection() : uuid_vec_t());
+            break;
+        }
+        case ESelectionSource::NONE:
+            break;
+    }
 }
 
 void ALFloaterActorGaze::showForSelection(ESelectionSource source,

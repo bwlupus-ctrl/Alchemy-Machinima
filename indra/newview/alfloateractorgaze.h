@@ -29,6 +29,7 @@ public:
     ~ALFloaterActorGaze() override = default;
 
     bool postBuild() override;
+    void onOpen(const LLSD& key) override; // [DirFix]
 
     static void showForSelection(ESelectionSource source,
                                  const uuid_vec_t& actors);
@@ -37,6 +38,7 @@ public:
 
 private:
     void takeSelection(ESelectionSource source, const uuid_vec_t& actors);
+    void pullSelection(); // [DirFix]
 
     ESelectionSource mSelectionSource = ESelectionSource::NONE;
     ALPanelLensGaze* mGazePanel = nullptr;

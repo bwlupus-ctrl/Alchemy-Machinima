@@ -330,6 +330,23 @@ public:
     // Which actor's path is being edited (stored as the resolved path key) and
     // which node is selected (-1 = none). Written by the panel (list row <->
     // in-world node) and read by renderHeadingPreview() (highlight) + the tool.
+    void          claimEdit(const LLUUID& owner, const LLUUID& actor_id); // [DirFix]
+    void          releaseEdit(const LLUUID& owner);                       // [DirFix]
+    const LLUUID& getEditOwner() const { return mEditOwner; }             // [DirFix]
+    // [DirFix] Logout/relog reset: drop owner/actor/node, end any path-tool
+    // session and stop any path-camera preview. Idempotent; called from
+    // LLAppViewer::disconnectViewer() before view/object teardown.
+    void          resetEditSession();
+    // [DirFix] Roster-membership hooks (model mutation paths only, never draw).
+    // pruneEditActor: drop the edit actor when it is no longer in the EFFECTIVE
+    // roster (cast ids, or my avatar while the cast is empty) -- cast add(),
+    // applySceneData(). onRosterMemberRemoved: targeted form for cast remove(),
+    // which only drops the removed id: a runtime replace migrates old->new in the
+    // mover BEFORE cast.remove(old)/add(new), so a general check there would
+    // prune the freshly migrated actor while new is not yet a member. Both go
+    // through setEditActor(null) -> owner, node and tool session end atomically.
+    void          pruneEditActor();
+    void          onRosterMemberRemoved(const LLUUID& actor_id);
     void          setEditActor(const LLUUID& actor_id);
     const LLUUID& getEditActor() const { return mEditActor; }
     void          setEditNode(S32 index) { mEditNode = index; }
@@ -1651,6 +1668,10 @@ private:
     std::map<LLUUID, GazeObjectCenterCache> mGazeObjectCenters;
 
     // P2 edit selection: the path key under edit + the selected node index
+    // [DirFix] the ONLY writer of mEditOwner: on change it notifies the path
+    // tool so a session held by the previous owner ends atomically
+    void   setEditOwnerInternal(const LLUUID& owner);
+    LLUUID mEditOwner;      // [DirFix] path-editor host that owns edit selection
     LLUUID mEditActor;      // resolved path key (null = nothing being edited)
     S32    mEditNode = -1;  // selected node in that path (-1 = none)
 };

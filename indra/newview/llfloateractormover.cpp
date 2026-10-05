@@ -20,6 +20,7 @@
 #include "llbutton.h"
 #include "lldirectorcast.h"         // group tag suffix (roster IS the cast)
 #include "llscrolllistctrl.h"
+#include "lltabcontainer.h"         // [DirFix] D14 Path-tab reveal hook
 #include "lltextbox.h"
 #include "llviewerobjectlist.h"     // gObjectList
 #include "llvoavatar.h"
@@ -40,6 +41,23 @@ bool LLFloaterActorMover::postBuild()
     mPathPanel = findChild<ALPanelPathEditor>("path_editor");
     getChild<LLButton>("btn_actor_gaze")->setCommitCallback(
         [this](LLUICtrl*, const LLSD&) { onOpenActorGaze(); });
+    // [DirFix] D14: the Path host claims only from EVENTS (draw's setTargetActor
+    // is ownership-neutral): a roster selection and a switch to the Path tab both
+    // feed + claim synchronously, before paint. (The roster rebuild in draw
+    // re-selects without commit: no commit_on_selection_change on the list.)
+    mRosterList->setCommitCallback(
+        [this](LLUICtrl*, const LLSD&) { revealPathTarget(); });
+    if (LLTabContainer* tabs = findChild<LLTabContainer>("actor_mover_tabs"))
+    {
+        tabs->setCommitCallback(
+            [this](LLUICtrl*, const LLSD&) { revealPathTarget(); });
+    }
+    // [DirFix] D14: setMinimized() never toggles child visibility, so the Path
+    // panel cannot see an un-minimize; re-feed + re-claim on restore.
+    setMinimizeCallback([this](LLUICtrl*, const LLSD& minimized)
+    {
+        if (!minimized.asBoolean()) revealPathTarget();
+    });
 
     LLScrollContainer* move_scroll = getChild<LLScrollContainer>("move_scroll");
     LLView* move_document = getChildView("move_scroll_content");
@@ -64,6 +82,29 @@ uuid_vec_t LLFloaterActorMover::selectedActors() const
         selected.push_back(id);
     }
     return selected;
+}
+
+uuid_vec_t LLFloaterActorMover::currentSelection() const
+{
+    return selectedActors(); // [DirFix]
+}
+
+void LLFloaterActorMover::onOpen(const LLSD& key)
+{
+    LLFloater::onOpen(key);
+    // [DirFix] D14: the floater is already visible here; if its Path tab is the
+    // current one, the retained roster selection is fed + claimed before the first
+    // painted frame (the panel's own reveal claim ran with a possibly stale or
+    // null actor). Hidden Path tab: store only.
+    revealPathTarget();
+}
+
+void LLFloaterActorMover::revealPathTarget()
+{
+    if (mPathPanel)
+    {
+        mPathPanel->revealFor(selectedActor());
+    }
 }
 
 void LLFloaterActorMover::onOpenActorGaze()
@@ -213,8 +254,13 @@ void LLFloaterActorMover::draw()
     {
         mMoverPanel->setSelectedActors(sel);
     }
-    ALFloaterActorGaze::updateSelection(
-        ALFloaterActorGaze::ESelectionSource::ACTOR_MOVER, sel);
+    if (sel != mLastGazePush)
+    {
+        // [DirFix] Registry lookup/copy only when this source selection changes.
+        ALFloaterActorGaze::updateSelection(
+            ALFloaterActorGaze::ESelectionSource::ACTOR_MOVER, sel);
+        mLastGazePush = sel;
+    }
 
     // point the shared path editor at the selected roster actor (implicit self
     // resolves to a concrete id in refreshRoster, so this is never null-for-self)

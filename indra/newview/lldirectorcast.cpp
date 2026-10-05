@@ -1066,6 +1066,10 @@ void LLDirectorCast::add(const LLUUID& id)
     ++mCastRevision; // [GhostPanelPerf] membership changed
     // seed the cached name right away when the actor is in world
     resolve(actor_id);
+    // [DirFix] D14: the effective roster changed (an empty cast's implicit self
+    // gives way to explicit members): a path-editor edit actor that left it is
+    // dropped here, synchronously, never from a draw-time list rebuild.
+    LLActorMover::instance().pruneEditActor();
 }
 
 void LLDirectorCast::remove(const LLUUID& id)
@@ -1084,6 +1088,10 @@ void LLDirectorCast::remove(const LLUUID& id)
     ++mCastRevision; // [GhostPanelPerf] membership changed
     mIds.erase(std::find(mIds.begin(), mIds.end(), actor_id));
     rebuildMemberIndex();
+    // [DirFix] D14: a removed member can no longer be the path-editor edit actor;
+    // drop it (owner, node and tool session end with it) here, not in the hosts'
+    // draw-time list rebuild. Targeted on the removed id: see onRosterMemberRemoved.
+    LLActorMover::instance().onRosterMemberRemoved(actor_id);
     mLookAtCameraIds.erase(actor_id);
     // a subject that leaves the cast stops being a subject
     if (mSubjectA == actor_id)
@@ -2427,6 +2435,11 @@ void LLDirectorCast::applySceneData(const LLSD& data)
             ALAvatarLightResponse::instance().saveIfPersist();
         }
     }
+
+    // [DirFix] D14: membership was replaced wholesale; if the path-editor edit
+    // actor is not in the loaded cast, drop it now (owner, node and tool session
+    // end with it) rather than leaving the hosts' draw-time rebuild to deselect.
+    LLActorMover::instance().pruneEditActor();
 }
 
 // ---------------------------------------------------------------------------
