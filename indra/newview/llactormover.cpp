@@ -4094,18 +4094,27 @@ void LLActorMover::pruneEditActor()
     // [DirFix] Called from cast add() / applySceneData() (model mutations, never
     // draw). The effective roster is what both path hosts list: the cast ids, or
     // my own avatar while the cast is empty (the Actor Mover's implicit self).
-    if (mEditActor.isNull())
-    {
-        return;
-    }
-    const uuid_vec_t& roster = getRoster();
-    const bool present = roster.empty()
-        ? (mEditActor == gAgent.getID())
-        : (std::find(roster.begin(), roster.end(), mEditActor) != roster.end());
-    if (!present)
+    if (mEditActor.notNull() && !isInEffectiveRoster(mEditActor))
     {
         setEditActor(LLUUID::null);     // -> owner null -> tool session ends
     }
+}
+
+//static
+bool LLActorMover::isInEffectiveRoster(const LLUUID& actor_id)
+{
+    // [DirFix] A null id is never a member. Implicit self counts only while the
+    // cast is empty (the Actor Mover's "(you)" row disappears with the first
+    // explicit member). Reads the model directly, so a host that claims from an
+    // open/reveal event before its draw-time list refresh still sees the truth.
+    if (actor_id.isNull())
+    {
+        return false;
+    }
+    const uuid_vec_t& roster = getRoster();
+    return roster.empty()
+        ? (actor_id == gAgent.getID())
+        : (std::find(roster.begin(), roster.end(), actor_id) != roster.end());
 }
 
 void LLActorMover::onRosterMemberRemoved(const LLUUID& actor_id)

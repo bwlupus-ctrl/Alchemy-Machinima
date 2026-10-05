@@ -270,8 +270,15 @@ bool ALPanelPathEditor::postBuild()
 void ALPanelPathEditor::claimEdit()
 {
     // [DirFix] Null selection owns nothing; otherwise this host becomes current.
+    // The target is validated against the CURRENT effective roster (model, not
+    // this host's list, which refreshes only in draw): an open/reveal claim that
+    // runs before the first draw can carry a stale mActor (e.g. implicit self
+    // after the first explicit member was added while this host was closed).
+    // A stale target releases ONLY this panel's token and never claims, so it
+    // can neither steal the other host's session nor leave a stale owner.
+    // revealFor() and every handler claim through here, so all share the check.
     LLActorMover& mover = LLActorMover::instance();
-    if (mActor.isNull())
+    if (!LLActorMover::isInEffectiveRoster(mActor))     // false for null too
     {
         mover.releaseEdit(mEditOwner);
     }

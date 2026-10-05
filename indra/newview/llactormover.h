@@ -347,6 +347,9 @@ public:
     // through setEditActor(null) -> owner, node and tool session end atomically.
     void          pruneEditActor();
     void          onRosterMemberRemoved(const LLUUID& actor_id);
+    // [DirFix] the one definition of "effective roster" (cast ids, or my avatar
+    // while the cast is empty); pruneEditActor and the path hosts' claims use it
+    static bool   isInEffectiveRoster(const LLUUID& actor_id);
     void          setEditActor(const LLUUID& actor_id);
     const LLUUID& getEditActor() const { return mEditActor; }
     void          setEditNode(S32 index) { mEditNode = index; }
