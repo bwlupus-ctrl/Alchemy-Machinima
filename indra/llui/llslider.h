@@ -108,6 +108,9 @@ public:
     // [EnvIntensity v2] accessors for LLSliderCtrl's gated wheel forwarding
     bool            getWheelAdjust() const  { return mWheelAdjust; }
     F32             getWheelFineDiv() const { return mWheelFineDiv; }
+    // [LightboxWheel] Runtime override of the wheel_adjust param (ALFloaterLightBox
+    // enables it on every Lightbox slider and gates it while the panel is scrolling).
+    void            setWheelAdjust(bool b)  { mWheelAdjust = b; }
 
 private:
     void            setValueAndCommit(F32 value);
@@ -127,7 +130,7 @@ private:
     LLPointer<LLUIImage>    mTrackHighlightVerticalImage;
 
     const EOrientation  mOrientation;
-    const bool          mWheelAdjust; // [AL] hovered vertical wheel steps a horizontal slider
+    bool                mWheelAdjust; // [AL] ([LightboxWheel] no longer const; layout unchanged) hovered vertical wheel steps a horizontal slider
     const F32           mWheelFineDiv; // [EnvIntensity v2] Shift fine divisor (0 = off)
 
     LLRect      mThumbRect;

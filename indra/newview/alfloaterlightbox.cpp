@@ -60,6 +60,235 @@
 #include "pipeline.h"
 #include "llviewershadermgr.h" // [TronT1] LLViewerShaderMgr::gbufferAvatarTagActive()
 #include <algorithm> // [RotoInk Anim] std::clamp (updateRotoInkAnimVisibility)
+#include <vector>
+#include "llslider.h" // [LightboxWheel]
+#include "lltabcontainer.h" // [LightboxWheel]
+#include "llscrollbar.h" // [LightboxWheel]
+#include "llviewborder.h" // [LightboxWheel]
+#include "llpanel.h" // [LightboxWheel]
+#include "lluictrlfactory.h" // [LightboxWheel]
+
+// [LightboxWheel] Scroll auto-fit + wheel rules for every Lightbox tab.
+namespace
+{
+    // Gap kept below the lowest child of a scroll document.
+    constexpr S32 LB_FIT_PAD = 12;
+    // A slider ignores the wheel (the panel scrolls instead) for this long after its
+    // enclosing scroll container really scrolled from a wheel event.
+    constexpr F64 LB_WHEEL_GUARD_SEC = 0.5;
+    // The one container that last scrolled by wheel, and when. Compared by identity only
+    // (never dereferenced); reset in ~ALFloaterLightBox.
+    const LLScrollContainer* sLbWheelContainer = nullptr;
+    F64 sLbWheelTime = -1.0e9;
+
+    // The document (scrolled view) of a scroll container. mScrolledView is protected, so
+    // match the child whose rect is getScrolledViewRect() (scrollbars/border excluded).
+    LLView* lbScrolledView(LLScrollContainer* sc)
+    {
+        const LLRect doc_rect = sc->getScrolledViewRect();
+        for (LLView* child : *sc->getChildList())
+        {
+            if (child && child->getRect() == doc_rect
+                && !dynamic_cast<LLScrollbar*>(child) && !dynamic_cast<LLViewBorder*>(child))
+            {
+                return child;
+            }
+        }
+        return nullptr;
+    }
+
+    // Only a DIRECT child scroller of the tab panel counts as the tab's own scroller;
+    // nested/internal scrollers (text editors, lists) must not stop the wrap.
+    bool lbHasDirectScrollContainer(LLView* tab)
+    {
+        for (LLView* child : *tab->getChildList())
+        {
+            if (dynamic_cast<LLScrollContainer*>(child))
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    // Tab-level containers: the direct-child scrollers of each tab panel (any document type).
+    void lbCollectTabScrollContainers(LLTabContainer* tabs, std::vector<LLScrollContainer*>& out)
+    {
+        for (S32 i = 0, count = tabs->getTabCount(); i < count; ++i)
+        {
+            LLPanel* tab = tabs->getPanelByIndex(i);
+            if (!tab) continue;
+            for (LLView* child : *tab->getChildList())
+            {
+                if (LLScrollContainer* sc = dynamic_cast<LLScrollContainer*>(child))
+                {
+                    out.push_back(sc);
+                }
+            }
+        }
+    }
+
+    // Other "document" style containers (panel inside a panel, e.g. Actor Mask nested in a
+    // tab); skips the internal scrollers of text widgets. Appends without duplicates.
+    void lbCollectScrollContainers(LLView* root, std::vector<LLScrollContainer*>& out)
+    {
+        for (LLView* child : *root->getChildList())
+        {
+            if (!child) continue;
+            if (LLScrollContainer* sc = dynamic_cast<LLScrollContainer*>(child))
+            {
+                if (dynamic_cast<LLPanel*>(sc->getParent()) && dynamic_cast<LLPanel*>(lbScrolledView(sc))
+                    && std::find(out.begin(), out.end(), sc) == out.end())
+                {
+                    out.push_back(sc);
+                }
+            }
+            lbCollectScrollContainers(child, out);
+        }
+    }
+
+    // The slider (or slider ctrl's inner slider) and the nearest scroll container under
+    // the cursor, in the floater's local coordinates.
+    void lbFindWheelTargets(LLView* floater, S32 x, S32 y, LLSlider*& slider, LLScrollContainer*& container)
+    {
+        slider = nullptr;
+        container = nullptr;
+        for (LLView* v = floater->childFromPoint(x, y, true); v && v != floater; v = v->getParent())
+        {
+            if (!slider)
+            {
+                slider = dynamic_cast<LLSlider*>(v);
+                if (!slider && dynamic_cast<LLSliderCtrl*>(v))
+                {
+                    // wheel-forwarding slider ctrls (wheel_fine_div) route via their inner slider
+                    for (LLView* c : *v->getChildList())
+                    {
+                        if ((slider = dynamic_cast<LLSlider*>(c)) != nullptr) break;
+                    }
+                }
+            }
+            container = dynamic_cast<LLScrollContainer*>(v);
+            if (container) break;
+        }
+    }
+
+    bool lbWheelGuardActive(const LLSlider* slider, const LLScrollContainer* container)
+    {
+        return slider && container && container == sLbWheelContainer
+            && (LLTimer::getTotalSeconds() - sLbWheelTime) < LB_WHEEL_GUARD_SEC;
+    }
+
+    // Resizes the document so its height = lowest child extent + padding (grows AND shrinks,
+    // never below 1 px), keeping the document's top edge in place, then makes the container
+    // recompute its scroll range / scrollbar visibility.
+    void lbFitScrollContainer(LLScrollContainer* sc)
+    {
+        LLView* doc = lbScrolledView(sc);
+        if (!doc) return;
+
+        const LLRect doc_rect = doc->getRect();
+        const S32 old_h = doc_rect.getHeight();
+        bool any = false;
+        S32 need = 1;
+        for (LLView* child : *doc->getChildList())
+        {
+            if (!child) continue;
+            any = true; // visibility ignored on purpose: rows toggled at runtime keep their slot
+            const LLRect& r = child->getRect();
+            if (child->followsTop() && !child->followsBottom())
+            {
+                // moves with the top edge: its bottom ends at (r.mBottom + new_h - old_h)
+                need = llmax(need, old_h - r.mBottom + LB_FIT_PAD);
+            }
+            else if (!child->followsTop())
+            {
+                // anchored to the bottom (or nothing): stays put, must still fit inside
+                need = llmax(need, r.mTop + LB_FIT_PAD);
+            }
+            else
+            {
+                // follows top AND bottom: stretches with the document; keep it >= 1 px tall
+                // when shrinking (height after = r.height + new_h - old_h)
+                need = llmax(need, old_h - r.getHeight() + 1 + LB_FIT_PAD);
+            }
+        }
+        if (any && need != old_h)
+        {
+            doc->reshape(doc_rect.getWidth(), need, true);
+            doc->translate(0, doc_rect.mTop - doc->getRect().mTop); // keep the top edge
+        }
+        // Re-derive doc size / page size / scrollbar visibility.
+        sc->reshape(sc->getRect().getWidth(), sc->getRect().getHeight(), true);
+    }
+
+    // Gives a tab panel that has no scroll container of its own one: a follows-all
+    // scroll container holding a document panel that adopts the tab's children (rects
+    // and order preserved). The document is then narrowed by the scrollbar width, so the
+    // right-following controls land left of the scrollbar.
+    void lbWrapTabPanel(LLPanel* tab)
+    {
+        if (!tab || lbHasDirectScrollContainer(tab)) return;
+
+        const LLRect local = tab->getLocalRect();
+
+        LLScrollContainer::Params sp;
+        sp.name = tab->getName() + "_auto_scroll";
+        sp.rect = local;
+        sp.follows.flags(FOLLOWS_ALL);
+        sp.is_opaque = false;
+        sp.reserve_scroll_corner = false;
+        LLScrollContainer* sc = LLUICtrlFactory::create<LLScrollContainer>(sp);
+        if (!sc) return;
+
+        LLPanel::Params pp;
+        pp.name = tab->getName() + "_auto_scroll_content";
+        pp.rect = local;
+        pp.follows.flags(FOLLOWS_LEFT | FOLLOWS_TOP | FOLLOWS_RIGHT);
+        pp.background_visible = false;
+        LLPanel* doc = LLUICtrlFactory::create<LLPanel>(pp);
+        if (!doc)
+        {
+            delete sc;
+            return;
+        }
+        sc->addChild(doc); // first child becomes the scrolled view
+
+        // Snapshot (frontmost first), then re-add back-to-front to keep the child order.
+        std::vector<std::pair<LLView*, S32>> kids;
+        for (LLView* child : *tab->getChildList())
+        {
+            if (!child) continue;
+            const LLView::child_tab_order_t& order = tab->getTabOrder();
+            const LLView::child_tab_order_const_iter_t it = order.find(child);
+            kids.emplace_back(child, it != order.end() ? it->second : 0);
+        }
+        for (auto it = kids.rbegin(); it != kids.rend(); ++it)
+        {
+            doc->addChild(it->first, it->second); // removes it from the tab panel
+        }
+
+        tab->addChild(sc);
+
+        const S32 sb = llmax(0, gSavedSettings.getS32("UIScrollbarSize"));
+        doc->reshape(llmax(1, local.getWidth() - sb), local.getHeight(), true);
+
+        // Focus-reveal is installed once for every tab-level container in postBuild.
+        lbFitScrollContainer(sc);
+    }
+
+    void lbEnableSliderWheel(LLView* root)
+    {
+        for (LLView* child : *root->getChildList())
+        {
+            if (!child) continue;
+            if (LLSlider* slider = dynamic_cast<LLSlider*>(child))
+            {
+                slider->setWheelAdjust(true);
+            }
+            lbEnableSliderWheel(child);
+        }
+    }
+}
 
 ALFloaterLightBox::ALFloaterLightBox(const LLSD& key)
 :   LLFloater(key)
@@ -105,6 +334,7 @@ ALFloaterLightBox::ALFloaterLightBox(const LLSD& key)
 
 ALFloaterLightBox::~ALFloaterLightBox()
 {
+    sLbWheelContainer = nullptr; // [LightboxWheel] identity-only guard pointer
     mTonemapConnection.disconnect();
     mCASConnection.disconnect();
     mRotoInkDepthModeConnection.disconnect();
@@ -141,13 +371,54 @@ ALFloaterLightBox::~ALFloaterLightBox()
 
 bool ALFloaterLightBox::postBuild()
 {
-    ALScrollFocus::install(this, "render_settings_scroll", "render_settings_scroll_content");
-    ALScrollFocus::install(this, "projshaft_settings_scroll", "projshaft_settings_scroll_content");
-    ALScrollFocus::install(this, "froxel_settings_scroll", "froxel_settings_scroll_content");
-    ALScrollFocus::install(this, "weather_settings_scroll", "weather_settings_scroll_content");
-    ALScrollFocus::install(this, "cinehaze_settings_scroll", "cinehaze_settings_scroll_content");
-    ALScrollFocus::install(this, "rotoink_settings_scroll", "rotoink_settings_scroll_content");
-    ALScrollFocus::install(this, "tron_settings_scroll", "tron_settings_scroll_content");
+    // [LightboxWheel] Every tab panel without a scroll container (Image, Glow, DoF, ...,
+    // and any tab added later) gets one wrapped around its children before anything else
+    // looks at the hierarchy (all lookups below are by name, recursive).
+    LLTabContainer* lb_tabs = findChild<LLTabContainer>("lightbox_tab_container");
+    if (lb_tabs)
+    {
+        for (S32 i = 0, count = lb_tabs->getTabCount(); i < count; ++i)
+        {
+            lbWrapTabPanel(lb_tabs->getPanelByIndex(i));
+        }
+        // [LightboxWheel] Re-fit when the active tab changes (commit fires on tab select).
+        lb_tabs->setCommitCallback([this](LLUICtrl*, const LLSD&) { fitScrollContent(); });
+    }
+
+    // [LightboxWheel] ALScrollFocus::install is NOT idempotent (each call connects another
+    // focus slot), so remember which containers the explicit installs below covered.
+    std::vector<LLScrollContainer*> focus_done;
+    const auto focus_install = [&](const char* scroller, const char* document)
+    {
+        if (LLScrollContainer* sc = findChild<LLScrollContainer>(scroller))
+        {
+            focus_done.push_back(sc);
+        }
+        ALScrollFocus::install(this, scroller, document);
+    };
+    focus_install("render_settings_scroll", "render_settings_scroll_content");
+    focus_install("projshaft_settings_scroll", "projshaft_settings_scroll_content");
+    focus_install("froxel_settings_scroll", "froxel_settings_scroll_content");
+    focus_install("weather_settings_scroll", "weather_settings_scroll_content");
+    focus_install("cinehaze_settings_scroll", "cinehaze_settings_scroll_content");
+    focus_install("rotoink_settings_scroll", "rotoink_settings_scroll_content");
+    focus_install("tron_settings_scroll", "tron_settings_scroll_content");
+    // [LightboxWheel] Every other tab-level container (Shadows, Atmos Volumes, Actor Mask,
+    // the auto-wrapped tabs, future tabs) gets focus-reveal exactly once.
+    if (lb_tabs)
+    {
+        std::vector<LLScrollContainer*> tab_level;
+        lbCollectTabScrollContainers(lb_tabs, tab_level);
+        for (LLScrollContainer* sc : tab_level)
+        {
+            if (std::find(focus_done.begin(), focus_done.end(), sc) != focus_done.end()) continue;
+            if (LLView* doc = lbScrolledView(sc))
+            {
+                ALScrollFocus::install(sc, doc, doc);
+                focus_done.push_back(sc);
+            }
+        }
+    }
 
     getChild<LLComboBox>("ps_preset")->setCommitCallback(
         [](LLUICtrl* control, const LLSD&)
@@ -238,7 +509,99 @@ bool ALFloaterLightBox::postBuild()
     mTronTrailFogConnection = gSavedSettings.getControl("TronTrailFog")->getSignal()->connect([&](LLControlVariable*, const LLSD&, const LLSD&) { updateTronVisibility(); });
     mTronTrailTargetSetConnection = gSavedSettings.getControl("TronTrailTargetSet")->getSignal()->connect([&](LLControlVariable*, const LLSD&, const LLSD&) { updateTronVisibility(); });
 
+    // [LightboxWheel] Fit every scroll document to its children (the hand-typed XML
+    // heights are ignored) and enable wheel adjust on every Lightbox slider.
+    fitScrollContent();
+    lbEnableSliderWheel(this);
+
     return LLFloater::postBuild();
+}
+
+// [LightboxWheel]
+void ALFloaterLightBox::fitScrollContent()
+{
+    std::vector<LLScrollContainer*> containers;
+    // Every tab-level scroller (any document type) first, then the other panel-in-panel
+    // document containers; internal widget scrollers are skipped.
+    if (LLTabContainer* tabs = findChild<LLTabContainer>("lightbox_tab_container"))
+    {
+        lbCollectTabScrollContainers(tabs, containers);
+    }
+    lbCollectScrollContainers(this, containers);
+    for (LLScrollContainer* sc : containers)
+    {
+        lbFitScrollContainer(sc);
+    }
+}
+
+// [LightboxWheel]
+void ALFloaterLightBox::onOpen(const LLSD& key)
+{
+    LLFloater::onOpen(key);
+    fitScrollContent();
+}
+
+// [LightboxWheel] Wheel rule for the Lightbox. Wheel over a slider adjusts it (wheel_adjust
+// is enabled on every Lightbox slider in postBuild), EXCEPT while the panel is being
+// scrolled: if THAT SAME scroll container really scrolled (doc position changed) from a
+// wheel event less than 0.5 s ago, a slider under the cursor has its wheel adjust masked
+// for this one dispatch, so the event falls through to the container and keeps scrolling.
+// The guard is armed only by an actual scroll (LLFloater::handleScrollWheel always returns
+// true, so its result says nothing). Confined to this floater.
+bool ALFloaterLightBox::handleScrollWheel(S32 x, S32 y, LLScrollDelta delta)
+{
+    LLSlider* slider = nullptr;
+    LLScrollContainer* container = nullptr;
+    lbFindWheelTargets(this, x, y, slider, container);
+
+    const bool guard = lbWheelGuardActive(slider, container);
+    const bool saved_adjust = slider ? slider->getWheelAdjust() : false;
+    if (guard)
+    {
+        slider->setWheelAdjust(false);
+    }
+    const S32 v_before = container ? container->getDocPosVertical() : 0;
+    const S32 h_before = container ? container->getDocPosHorizontal() : 0;
+    const bool handled = LLFloater::handleScrollWheel(x, y, delta);
+    if (guard)
+    {
+        slider->setWheelAdjust(saved_adjust);
+    }
+    // Arm on a real scroll; a guard-redirected event also keeps it alive, so spinning on at
+    // the end of the scroll range over a slider never starts adjusting it.
+    if (container && (guard
+        || container->getDocPosVertical() != v_before || container->getDocPosHorizontal() != h_before))
+    {
+        sLbWheelContainer = container;
+        sLbWheelTime = LLTimer::getTotalSeconds();
+    }
+    return handled;
+}
+
+// [LightboxWheel] LLSlider::handleScrollHWheel ignores wheel_adjust, so it cannot be
+// masked like the vertical wheel; while the guard is active (panel was just scrolled) a
+// horizontal wheel over a slider is swallowed so a scroll gesture never nudges it.
+// Otherwise stock behaviour.
+bool ALFloaterLightBox::handleScrollHWheel(S32 x, S32 y, LLScrollDelta delta)
+{
+    LLSlider* slider = nullptr;
+    LLScrollContainer* container = nullptr;
+    lbFindWheelTargets(this, x, y, slider, container);
+    if (lbWheelGuardActive(slider, container))
+    {
+        sLbWheelTime = LLTimer::getTotalSeconds(); // a swallowed event keeps the guard alive
+        return true;
+    }
+    const S32 v_before = container ? container->getDocPosVertical() : 0;
+    const S32 h_before = container ? container->getDocPosHorizontal() : 0;
+    const bool handled = LLFloater::handleScrollHWheel(x, y, delta);
+    if (container
+        && (container->getDocPosVertical() != v_before || container->getDocPosHorizontal() != h_before))
+    {
+        sLbWheelContainer = container;
+        sLbWheelTime = LLTimer::getTotalSeconds();
+    }
+    return handled;
 }
 
 void ALFloaterLightBox::draw()

@@ -50,8 +50,16 @@ public:
     ~ALFloaterLightBox() override;
     bool postBuild() override;
     virtual void draw() override;
+    // [LightboxWheel] re-fit every tab's scroll content on open (cheap, idempotent)
+    void onOpen(const LLSD& key) override;
+    // [LightboxWheel] scroll-through guard: see ALFloaterLightBox::handleScrollWheel.
+    bool handleScrollWheel(S32 x, S32 y, LLScrollDelta delta) override;
+    bool handleScrollHWheel(S32 x, S32 y, LLScrollDelta delta) override;
 
   private:
+    // [LightboxWheel] Fits every scroll container's content panel to its children.
+    void fitScrollContent();
+
     void onClickResetControlDefault(const LLSD& userdata);
     void onClickResetGroupDefault(const LLSD& userdata);
     void updateTonemapper();
