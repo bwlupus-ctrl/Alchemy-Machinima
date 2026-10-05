@@ -128,6 +128,8 @@ namespace
 HMODULE sXInputLibrary = nullptr;
 using XInputGetStateFn = DWORD (WINAPI*)(DWORD, XINPUT_STATE*);
 XInputGetStateFn sXInputGetState = nullptr;
+using XInputSetStateFn = DWORD (WINAPI*)(DWORD, XINPUT_VIBRATION*);
+XInputSetStateFn sXInputSetState = nullptr; // [XInputRumble] optional; absence only disables rumble
 bool sXInputLoadAttempted = false;
 
 bool loadXInput()
@@ -154,6 +156,13 @@ bool loadXInput()
             static_assert(sizeof(symbol) == sizeof(sXInputGetState), "function pointer size");
             memcpy(&sXInputGetState, &symbol, sizeof(symbol)); // avoid MSVC C4191
             sXInputLibrary = library;
+            FARPROC set_symbol = GetProcAddress(library, "XInputSetState");
+            if (set_symbol)
+            {
+                static_assert(sizeof(set_symbol) == sizeof(sXInputSetState), "function pointer size");
+                memcpy(&sXInputSetState, &set_symbol, sizeof(set_symbol));
+            }
+            else LL_INFOS("XInput") << "[XInputRumble] XInputSetState missing; rumble inert." << LL_ENDL;
             return true;
         }
         FreeLibrary(library);
@@ -916,9 +925,11 @@ bool LLViewerJoystick::initDevice(void * preffered_device /* LPDIRECTINPUTDEVICE
 // -----------------------------------------------------------------------------
 void LLViewerJoystick::terminate()
 {
+    stopRumble(true); // [XInputRumble] zero the pad before the library is freed
     invalidateXInput(false);
 #if LL_WINDOWS && !LL_MESA_HEADLESS
     sXInputGetState = nullptr;
+    sXInputSetState = nullptr;
     if (sXInputLibrary) FreeLibrary(sXInputLibrary);
     sXInputLibrary = nullptr;
 #endif
@@ -2260,6 +2271,7 @@ bool LLViewerJoystick::toggleFlycam()
         setCameraNeedsUpdate(false);
         setNeedsReset(true);
     }
+    playRumble(mOverrideCamera ? ALXInput::RUMBLE_FLYCAM_ON : ALXInput::RUMBLE_FLYCAM_OFF);
     return true;
 }
 
@@ -2345,6 +2357,7 @@ void LLViewerJoystick::pollForXboxController()
                     toggleFlycam();
                 }
                 mDriverState = JDS_UNINITIALIZED;
+                mXIHelloOnReconnect = true; // [XInputRumble] real disconnect: hello on replug
                 std::fill(std::begin(mAxes), std::end(mAxes), 0.f);
                 memset(mBtn, 0, sizeof(mBtn));
                 LL_INFOS("Joystick")
@@ -2437,6 +2450,8 @@ struct XInputSettings
     LLCachedControl<S32> left{gSavedSettings, "JoystickXInputDpadLeft", 0};
     LLCachedControl<S32> right{gSavedSettings, "JoystickXInputDpadRight", 0};
     LLCachedControl<S32> up{gSavedSettings, "JoystickXInputDpadUp", 0};
+    LLCachedControl<bool> rumble{gSavedSettings, "JoystickXInputRumble", true};
+    LLCachedControl<F32> rumbleStrength{gSavedSettings, "JoystickXInputRumbleStrength", 1.f};
 };
 
 const XInputSettings& xInputSettings()
@@ -2454,6 +2469,7 @@ void LLViewerJoystick::setDeviceListDirty()
 
 void LLViewerJoystick::invalidateXInput(bool rescan)
 {
+    stopRumble(); // [XInputRumble] BEFORE the slot is cleared; uses mXIRumbleSlot
     mXIAssociated = false;
     mXIGuid = LLSD();
     mXISlot = -1;
@@ -2488,6 +2504,98 @@ bool LLViewerJoystick::xInputAssociated() const
 #endif
 }
 
+// [XInputRumble] Start (replacing any in-progress) pattern; inert unless fully eligible.
+void LLViewerJoystick::playRumble(S32 pattern)
+{
+#if LIB_NDOF && LL_WINDOWS && !LL_MESA_HEADLESS
+    const auto& settings = xInputSettings();
+    if (!settings.rumble || !(settings.rumbleStrength > 0.f) || !sXInputSetState ||
+        !gFocusMgr.getAppHasFocus() || !xInputAssociated() || mXISlot < 0 ||
+        !ALXInput::rumblePattern(pattern)) return;
+    mXIRumblePattern = pattern;
+    mXIRumbleTimer.reset();
+    updateXInputRumble(); // apply step 0 now; later steps advance in beginMainLoop
+#endif
+}
+
+// [XInputRumble] Zero the last-driven slot. No-op when nothing is playing and both motors are 0.
+// A failed zero-write keeps the cached motors non-zero so updateXInputRumble retries it
+// (backed off 250 ms); force bypasses the backoff for terminate/quit.
+void LLViewerJoystick::stopRumble(bool force)
+{
+    mXIRumblePattern = -1;
+    if (!mXIRumbleLow && !mXIRumbleHigh) return;
+#if LL_WINDOWS && !LL_MESA_HEADLESS
+    if (sXInputSetState && mXIRumbleSlot >= 0)
+    {
+        const F64 now = LLTimer::getTotalSeconds();
+        if (!force && now < mXIRumbleRetryAt) return;
+        XINPUT_VIBRATION off = {};
+        const DWORD result = sXInputSetState(static_cast<DWORD>(mXIRumbleSlot), &off);
+        if (result != ERROR_SUCCESS && result != ERROR_DEVICE_NOT_CONNECTED)
+        {
+            mXIRumbleRetryAt = now + 0.25;
+            return;
+        }
+    }
+#endif
+    mXIRumbleRetryAt = 0.0;
+    mXIRumbleLow = mXIRumbleHigh = 0;
+}
+
+// [XInputRumble] Send only on change; cache only what the pad accepted.
+void LLViewerJoystick::setRumbleMotors(U16 low, U16 high)
+{
+#if LL_WINDOWS && !LL_MESA_HEADLESS
+    if (low == mXIRumbleLow && high == mXIRumbleHigh) return;
+    if (!sXInputSetState || mXISlot < 0) return;
+    XINPUT_VIBRATION vibration = {};
+    vibration.wLeftMotorSpeed = low;
+    vibration.wRightMotorSpeed = high;
+    mXIRumbleSlot = mXISlot;
+    const DWORD result = sXInputSetState(static_cast<DWORD>(mXIRumbleSlot), &vibration);
+    if (result == ERROR_SUCCESS)
+    {
+        mXIRumbleLow = low;
+        mXIRumbleHigh = high;
+    }
+    else if (result == ERROR_DEVICE_NOT_CONNECTED)
+    {
+        mXIRumblePattern = -1;
+        mXIRumbleLow = mXIRumbleHigh = 0; // device gone: nothing left to zero
+    }
+    else
+    {
+        // Unknown motor state: mark dirty so the next pass re-sends and any stop sends zero.
+        mXIRumbleLow = mXIRumbleHigh = 0xFFFF;
+    }
+#endif
+}
+
+void LLViewerJoystick::updateXInputRumble()
+{
+#if LIB_NDOF && LL_WINDOWS && !LL_MESA_HEADLESS
+    if (mXIRumblePattern < 0 && !mXIRumbleLow && !mXIRumbleHigh) return;
+    const auto& settings = xInputSettings();
+    if (!settings.rumble || !(settings.rumbleStrength > 0.f) || !sXInputSetState ||
+        !gFocusMgr.getAppHasFocus() || !xInputAssociated() || mXIRumblePattern < 0)
+    {
+        stopRumble(); // setting off / strength 0 / focus lost / pad gone / stray motors
+        return;
+    }
+    float low = 0.f;
+    float high = 0.f;
+    if (!ALXInput::rumbleLevels(ALXInput::rumblePattern(mXIRumblePattern),
+                                mXIRumbleTimer.getElapsedTimeF32() * 1000.f, low, high))
+    {
+        stopRumble();
+        return;
+    }
+    const F32 strength = settings.rumbleStrength;
+    setRumbleMotors(ALXInput::rumbleMotor(low, strength), ALXInput::rumbleMotor(high, strength));
+#endif
+}
+
 void LLViewerJoystick::beginMainLoop()
 {
     ++mXILoopGeneration;
@@ -2511,6 +2619,7 @@ void LLViewerJoystick::beginMainLoop()
     if (mXILevelPending && mXILoopGeneration - mXILevelGeneration > 1)
         mXILevelPending = false;
     updateXInputTakeover();
+    updateXInputRumble(); // [XInputRumble] advance pattern; also stops on focus loss / setting off
 }
 
 void LLViewerJoystick::scanXInputAssociation()
@@ -2554,6 +2663,9 @@ void LLViewerJoystick::scanXInputAssociation()
         else if (result != ERROR_DEVICE_NOT_CONNECTED) slot_failed = true;
     }
     mXISlotGeneration = mXIScanGeneration;
+    // [XInputRumble] A clean scan with no XInput pad is confirmed absence: hello on the next
+    // association (setDeviceListDirty can invalidate before pollXInputState sees the unplug).
+    if (!slot_failed && slots == 0) mXIHelloOnReconnect = true;
     if (!enumerated || probe.failed || slot_failed) mXIStatus = "scan failed";
     else if (slots == 0 && probe.count == 0)
     {
@@ -2572,6 +2684,15 @@ void LLViewerJoystick::scanXInputAssociation()
         mXIPrime = true;
         mXIRetry = 4;
         mXIStatus = "ready";
+        // [XInputRumble] Hello only for a genuine (re)connection, not spurious re-association.
+        const bool hello = !mXIHelloGuid.isDefined() || mXIHelloOnReconnect ||
+            !sameWindowsDeviceId(mXIHelloGuid, probe.guid);
+        mXIHelloOnReconnect = false;
+        if (hello)
+        {
+            mXIHelloGuid = probe.guid;
+            playRumble(ALXInput::RUMBLE_CONNECT);
+        }
     }
     LL_INFOS("XInput") << "[XInputPad] scan " << mXIScanGeneration
         << " IG=" << probe.count << " slots=" << slots << " verdict="
@@ -2592,6 +2713,7 @@ void LLViewerJoystick::pollXInputState()
         {
             // [XInputPad] xInputAssociated() above proves this is the active DI pad.
             mXIDisconnectedGuid = mXIGuid;
+            mXIHelloOnReconnect = true; // [XInputRumble] real disconnect: hello on next association
             std::fill(std::begin(mAxes), std::end(mAxes), 0.f);
         }
         invalidateXInput(true);
@@ -2706,6 +2828,7 @@ void LLViewerJoystick::handleXInputDpad()
         const S32 mode = settings.mode == 1 ? 0 : 1;
         gSavedSettings.setS32("JoystickXInputTriggerMode", mode);
         xInputHint(mode == 1 ? "Triggers: THROTTLE" : "Triggers: ROLL");
+        playRumble(ALXInput::RUMBLE_MODE_TICK);
     }
     const auto action = [this](S32 value)
     {

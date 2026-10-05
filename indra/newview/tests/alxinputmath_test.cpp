@@ -83,4 +83,61 @@ template<> template<> void xinput_object::test<4>()
     axes[6] = 2;
     ensure("zoom only", !ALXInput::compatible(axes, false));
 }
+
+template<> template<> void xinput_object::test<5>()
+{
+    float low = -1.f, high = -1.f;
+    const ALXInput::RumblePattern* connect = ALXInput::rumblePattern(ALXInput::RUMBLE_CONNECT);
+    ensure("connect exists", connect != nullptr);
+    ensure("connect t=0", ALXInput::rumbleLevels(connect, 0.f, low, high));
+    ensure_equals("connect step1 low", low, .35f);
+    ensure_equals("connect step1 high", high, 0.f);
+    ensure("connect t=89", ALXInput::rumbleLevels(connect, 89.f, low, high));
+    ensure_equals("connect still step1", low, .35f);
+    ensure("connect t=90 gap", ALXInput::rumbleLevels(connect, 90.f, low, high));
+    ensure_equals("connect gap low", low, 0.f);
+    ensure_equals("connect gap high", high, 0.f);
+    ensure("connect t=149 gap", ALXInput::rumbleLevels(connect, 149.f, low, high));
+    ensure_equals("connect gap end", high, 0.f);
+    ensure("connect t=150", ALXInput::rumbleLevels(connect, 150.f, low, high));
+    ensure_equals("connect step3 low", low, 0.f);
+    ensure_equals("connect step3 high", high, .7f);
+    ensure("connect t=259", ALXInput::rumbleLevels(connect, 259.f, low, high));
+    ensure("connect finished at 260", !ALXInput::rumbleLevels(connect, 260.f, low, high));
+    ensure_equals("finished low zero", low, 0.f);
+    ensure_equals("finished high zero", high, 0.f);
+    ensure("negative elapsed = start", ALXInput::rumbleLevels(connect, -5.f, low, high));
+    ensure_equals("negative start low", low, .35f);
+    ensure("NaN elapsed = start", ALXInput::rumbleLevels(connect, std::numeric_limits<float>::quiet_NaN(), low, high));
+    ensure_equals("NaN start low", low, .35f);
+
+    const ALXInput::RumblePattern* off = ALXInput::rumblePattern(ALXInput::RUMBLE_FLYCAM_OFF);
+    ensure("flycam off t=219", ALXInput::rumbleLevels(off, 219.f, low, high));
+    ensure_equals("flycam off high", high, .1f);
+    ensure("flycam off done", !ALXInput::rumbleLevels(off, 220.f, low, high));
+    const ALXInput::RumblePattern* tick = ALXInput::rumblePattern(ALXInput::RUMBLE_MODE_TICK);
+    ensure("tick t=44", ALXInput::rumbleLevels(tick, 44.f, low, high));
+    ensure_equals("tick high", high, .45f);
+    ensure("tick done", !ALXInput::rumbleLevels(tick, 45.f, low, high));
+    const ALXInput::RumblePattern* on = ALXInput::rumblePattern(ALXInput::RUMBLE_FLYCAM_ON);
+    ensure("flycam on pulse2", ALXInput::rumbleLevels(on, 150.f, low, high));
+    ensure_equals("flycam on pulse2 low", low, .5f);
+    ensure("flycam on done", !ALXInput::rumbleLevels(on, 210.f, low, high));
+    ensure("invalid id", ALXInput::rumblePattern(-1) == nullptr && ALXInput::rumblePattern(ALXInput::RUMBLE_COUNT) == nullptr);
+    ensure("null pattern finished", !ALXInput::rumbleLevels(nullptr, 0.f, low, high));
+}
+
+template<> template<> void xinput_object::test<6>()
+{
+    const float nan = std::numeric_limits<float>::quiet_NaN();
+    ensure_equals("zero level", ALXInput::rumbleMotor(0.f, 1.f), static_cast<std::uint16_t>(0));
+    ensure_equals("full", ALXInput::rumbleMotor(1.f, 1.f), static_cast<std::uint16_t>(65535));
+    ensure_equals("zero strength", ALXInput::rumbleMotor(1.f, 0.f), static_cast<std::uint16_t>(0));
+    ensure_equals("half", ALXInput::rumbleMotor(1.f, .5f), static_cast<std::uint16_t>(32768));
+    ensure_equals("level over clamps", ALXInput::rumbleMotor(5.f, 1.f), static_cast<std::uint16_t>(65535));
+    ensure_equals("strength over clamps", ALXInput::rumbleMotor(1.f, 9.f), static_cast<std::uint16_t>(65535));
+    ensure_equals("negative clamps", ALXInput::rumbleMotor(-1.f, 1.f), static_cast<std::uint16_t>(0));
+    ensure_equals("NaN level", ALXInput::rumbleMotor(nan, 1.f), static_cast<std::uint16_t>(0));
+    ensure_equals("NaN strength", ALXInput::rumbleMotor(1.f, nan), static_cast<std::uint16_t>(0));
+}
 }

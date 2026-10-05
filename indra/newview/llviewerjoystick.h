@@ -29,6 +29,7 @@
 
 #include "stdtypes.h"
 #include "llframetimer.h"
+#include "lltimer.h"
 #include "llnotificationptr.h"
 
 #if LIB_NDOF
@@ -167,6 +168,7 @@ public:
     void setDeviceListDirty();
     void beginMainLoop(); // [XInputPad] once per pass, before the scan gate
     std::string getXInputStatus() const;
+    void stopRumble(bool force = false); // [XInputRumble] idempotent; also called at quit start / fastQuit
 private:
     void invalidateXInput(bool rescan);
     void scanXInputAssociation();
@@ -175,6 +177,10 @@ private:
     void xInputHint(const std::string& message);
     bool xInputAssociated() const;
     void updateXInputTakeover(bool reset = false);
+    // [XInputRumble] pattern is an ALXInput::RumbleId.
+    void playRumble(S32 pattern);
+    void updateXInputRumble();
+    void setRumbleMotors(U16 low, U16 high);
     void seedTriggerHistory();
     void computeTriggerOutputs(F32& roll, F32& throttle) const;
     F32 getFlycamAxis(U32 axis) const;
@@ -211,6 +217,16 @@ private:
     U8 mXILT = 0;
     U8 mXIRT = 0;
     LLNotificationPtr mXIHint;
+    // [XInputRumble] Active pattern id (-1 none), real-time clock, last motor values
+    // sent, and the slot last driven (kept separately: invalidateXInput clears mXISlot).
+    S32 mXIRumblePattern = -1;
+    LLTimer mXIRumbleTimer;
+    U16 mXIRumbleLow = 0;
+    U16 mXIRumbleHigh = 0;
+    S32 mXIRumbleSlot = -1;
+    F64 mXIRumbleRetryAt = 0.0;  // failed zero-write: next retry time (LLTimer::getTotalSeconds)
+    LLSD mXIHelloGuid;           // last GUID that got the connect hello
+    bool mXIHelloOnReconnect = false; // previous association ended in a real disconnect
 #if LIB_NDOF
     static NDOF_HotPlugResult HotPlugAddCallback(NDOF_Device *dev);
     static void HotPlugRemovalCallback(NDOF_Device *dev);

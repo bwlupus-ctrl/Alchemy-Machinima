@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8" standalone="yes"?>
 <floater
  legacy_header_height="18"
- height="724"
+ height="748"
  layout="topleft"
  name="Joystick"
  help_topic="Viewerhelp:Joystick_Configuration"
@@ -2612,6 +2612,12 @@
       <combo_box.item label="Lighting cue Go" value="1" />
       <combo_box.item label="Level horizon" value="3" />
     </combo_box>
+    <!-- [XInputRumble] Connect hello, flycam on/off pulses, trigger-mode tick. -->
+    <check_box name="xinput_rumble" control_name="JoystickXInputRumble"
+     label="Rumble" left="359" top="656" width="90" height="18" layout="topleft" />
+    <spinner name="xinput_rumble_strength" control_name="JoystickXInputRumbleStrength" label="Strength"
+     left="461" top="656" width="98" height="18" label_width="50" layout="topleft"
+     min_val="0" max_val="1" increment="0.05" decimal_digits="2" />
     <button
      follows="right|bottom"
      height="20"
@@ -2620,7 +2626,7 @@
      layout="topleft"
      left="359"
      name="ok_btn"
-     top="674"
+     top="698"
      width="98" />
     <button
      follows="right|bottom"

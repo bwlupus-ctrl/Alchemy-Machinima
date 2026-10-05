@@ -1770,6 +1770,10 @@ void LLAppViewer::flushLFSIO()
 
 bool LLAppViewer::cleanup()
 {
+    // [XInputRumble] The main loop no longer advances patterns; stop the pad now,
+    // not when the joystick is terminated much later in cleanup.
+    if (LLViewerJoystick::instanceExists()) LLViewerJoystick::getInstance()->stopRumble(true);
+
 #if LL_VELOPACK
     // Apply any pending Velopack update before shutdown
     if (velopack_is_update_pending())
@@ -4376,6 +4380,8 @@ void LLAppViewer::forceQuit()
 
 void LLAppViewer::fastQuit(S32 error_code)
 {
+    // [XInputRumble] _exit below skips LLViewerJoystick::terminate.
+    if (LLViewerJoystick::instanceExists()) LLViewerJoystick::getInstance()->stopRumble(true);
     // finish pending transfers
     flushLFSIO();
     // let sim know we're logging out

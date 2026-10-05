@@ -58,5 +58,69 @@ inline bool primeSample(bool first, bool focused, bool was_focused,
 {
     return first || (focused && !was_focused) || generation != last + 1;
 }
+
+// [XInputRumble] Pure rumble pattern player. Levels are 0-1 per motor; the
+// runtime scales by the strength setting and converts to the XInput U16 range.
+struct RumbleStep
+{
+    float low;  // low-frequency (heavy) motor
+    float high; // high-frequency (light) motor
+    int ms;
+};
+
+enum RumbleId
+{
+    RUMBLE_CONNECT = 0,
+    RUMBLE_FLYCAM_ON,
+    RUMBLE_FLYCAM_OFF,
+    RUMBLE_MODE_TICK,
+    RUMBLE_COUNT
+};
+
+struct RumblePattern
+{
+    int count;
+    RumbleStep steps[3];
+};
+
+inline const RumblePattern* rumblePattern(int id)
+{
+    static const RumblePattern patterns[RUMBLE_COUNT] =
+    {
+        { 3, {{ .35f, 0.f, 90 }, { 0.f, 0.f, 60 }, { 0.f, .7f, 110 }} },  // CONNECT "hello" ramp
+        { 3, {{ .5f, .5f, 70 }, { 0.f, 0.f, 70 }, { .5f, .5f, 70 }} },    // FLYCAM_ON double pulse
+        { 1, {{ .35f, .1f, 220 }, { 0.f, 0.f, 0 }, { 0.f, 0.f, 0 }} },    // FLYCAM_OFF soft thud
+        { 1, {{ 0.f, .45f, 45 }, { 0.f, 0.f, 0 }, { 0.f, 0.f, 0 }} },     // MODE_TICK
+    };
+    return id >= 0 && id < RUMBLE_COUNT ? &patterns[id] : nullptr;
+}
+
+// Motor levels at elapsed_ms into the pattern; false once the pattern is finished
+// (or invalid). Negative/NaN elapsed is treated as the start.
+inline bool rumbleLevels(const RumblePattern* pattern, float elapsed_ms, float& low, float& high)
+{
+    low = high = 0.f;
+    if (!pattern) return false;
+    elapsed_ms = bounded(elapsed_ms, 0.f, 1.0e9f, 0.f);
+    float end = 0.f;
+    for (int i = 0; i < pattern->count && i < 3; ++i)
+    {
+        end += static_cast<float>(pattern->steps[i].ms);
+        if (elapsed_ms < end)
+        {
+            low = pattern->steps[i].low;
+            high = pattern->steps[i].high;
+            return true;
+        }
+    }
+    return false;
+}
+
+// 0-1 level times 0-1 strength -> XInput 0-65535, clamped (NaN -> 0).
+inline std::uint16_t rumbleMotor(float level, float strength)
+{
+    const float scaled = bounded(level, 0.f, 1.f, 0.f) * bounded(strength, 0.f, 1.f, 0.f);
+    return static_cast<std::uint16_t>(std::lround(bounded(scaled, 0.f, 1.f, 0.f) * 65535.f));
+}
 }
 #endif

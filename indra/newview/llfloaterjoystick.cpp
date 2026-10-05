@@ -208,6 +208,8 @@ void LLFloaterJoystick::initFromSettings()
     mXInputSnapshot["JoystickXInputDpadLeft"] = gSavedSettings.getControl("JoystickXInputDpadLeft")->getValue();
     mXInputSnapshot["JoystickXInputDpadRight"] = gSavedSettings.getControl("JoystickXInputDpadRight")->getValue();
     mXInputSnapshot["JoystickXInputDpadUp"] = gSavedSettings.getControl("JoystickXInputDpadUp")->getValue();
+    mXInputSnapshot["JoystickXInputRumble"] = gSavedSettings.getControl("JoystickXInputRumble")->getValue();
+    mXInputSnapshot["JoystickXInputRumbleStrength"] = gSavedSettings.getControl("JoystickXInputRumbleStrength")->getValue();
     mJoystickEnabled = gSavedSettings.getBOOL("JoystickEnabled");
     mAutoFlycamEnabled = gSavedSettings.getBOOL("JoystickAutoFlycamEnabled");
     mJoystickId = gSavedSettings.getLLSD("JoystickDeviceUUID");
