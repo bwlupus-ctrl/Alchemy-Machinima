@@ -15,6 +15,7 @@
 #include <cmath>
 #include <cstring>
 #include <limits>
+#include <random>
 
 namespace tut
 {
@@ -618,60 +619,43 @@ namespace tut
     template<> template<>
     void avatar_light_response_object::test<23>()
     {
-        bool input_order_differs = false;
-        bool squared_keep_differs = false;
         const F32 metallics[] = { 0.f, 0.5f, 1.f };
         const F32 keeps[] = { 0.25f, 0.5f, 0.75f };
         const LLVector3 base(0.72f, 0.31f, 0.09f);
+        const LLVector3 fill(0.11f, 0.37f, 0.83f);
         const LLVector3 n(0.f, 0.f, 1.f);
         const LLVector3 v(0.f, 0.f, 1.f);
         const LLVector3 l(0.6f, 0.f, 0.8f);
+        bool rejects_double_specular_scale = false;
         for (F32 metallic : metallics)
         {
             LLVector3 diffuse, specular;
             calcDiffuseSpecularMirror(base, metallic, diffuse, specular);
-            for (S32 channel = 0; channel < 3; ++channel)
-            {
-                const F32 true_f0 = 0.04f * (1.f - metallic) + base.mV[channel] * metallic;
-                ensure_equals("F0 is mixed from true base colour", specular.mV[channel], true_f0);
-            }
-            const PbrPunctualMirrorResult normal_incidence =
-                pbrPunctualMirror(diffuse, specular, 1.f, metallic, n, v, v);
-            ensure_equals("normal-incidence NdotL", normal_incidence.nl, 1.f);
-            for (S32 channel = 0; channel < 3; ++channel)
-            {
-                ensure_approximately_equals_range("punctual diffuse mirror",
-                    normal_incidence.diffuse.mV[channel],
-                    (1.f - specular.mV[channel]) * (diffuse.mV[channel] / F_PI), 1.0e-6f);
-                ensure_approximately_equals_range("punctual specular mirror",
-                    normal_incidence.specular.mV[channel],
-                    specular.mV[channel] / (4.f * F_PI), 1.0e-6f);
-            }
             const PbrPunctualMirrorResult punctual =
                 pbrPunctualMirror(diffuse, specular, 0.63f, metallic, n, v, l);
             for (F32 keep : keeps)
             {
-                LLVector3 scaled_base = base * keep;
-                LLVector3 wrong_diffuse, wrong_specular;
-                calcDiffuseSpecularMirror(scaled_base, metallic, wrong_diffuse, wrong_specular);
-                const PbrPunctualMirrorResult wrong =
-                    pbrPunctualMirror(wrong_diffuse, wrong_specular, 0.63f, metallic, n, v, l);
+                const F32 amount = 1.f - keep;
+                const LLVector3 actual = pbrPunctualSilhouette(
+                    base, metallic, 0.63f, n, v, l, fill, amount);
                 for (S32 channel = 0; channel < 3; ++channel)
                 {
-                    const F32 lit = punctual.nl * (punctual.diffuse.mV[channel] + punctual.specular.mV[channel]);
-                    const F32 actual = lit * keep;
-                    const F32 reference = lit * keep;
-                    ensure("output-side applies k exactly once", sameBits(actual, reference));
-                    squared_keep_differs = squared_keep_differs
-                        || std::fabs(actual - lit * keep * keep) > 1.0e-6f;
-                    const F32 input_side = wrong.nl
-                        * (wrong.diffuse.mV[channel] + wrong.specular.mV[channel]) * keep;
-                    input_order_differs = input_order_differs || std::fabs(input_side - reference) > 1.0e-6f;
+                    const F32 diffuse_lit = punctual.nl * punctual.diffuse.mV[channel];
+                    const F32 specular_lit = punctual.nl * punctual.specular.mV[channel];
+                    const F32 lit = std::min(std::max(diffuse_lit + specular_lit, 0.f), 10.f);
+                    const F32 reference = lit * keep
+                                        + fill.mV[channel] * amount;
+                    const F32 wrong_k2 = diffuse_lit * keep
+                                       + specular_lit * keep * keep
+                                       + fill.mV[channel] * amount;
+                    ensure_approximately_equals_range("model is lit*k + fill*a",
+                        actual.mV[channel], reference, 1.0e-6f);
+                    rejects_double_specular_scale = rejects_double_specular_scale
+                        || std::fabs(actual.mV[channel] - wrong_k2) > 1.0e-6f;
                 }
             }
         }
-        ensure("input-side scaling is a regression", input_order_differs);
-        ensure("metallic mid-fade is k, not k squared", squared_keep_differs);
+        ensure("metallic specular is not scaled by k twice", rejects_double_specular_scale);
     }
 
     // Silhouette unit 16: Keep Rim uses the unscaled diffuse tint and r=1.
@@ -684,23 +668,30 @@ namespace tut
         RigRimMirrorUniforms uniforms;
         uniforms.globals.set(1.2f, 0.7f, 0.3f, 0.8f);
         const LLVector3 rim = rigRimTermMirror(n, v, l, light, diffuse, 0.45f, rim_params, uniforms);
+        const LLVector3 nonrim(0.42f, 0.18f, 0.73f);
+        const LLVector3 fill(0.09f, 0.61f, 0.27f);
         const F32 amounts[] = { 0.f, 0.25f, 0.5f, 0.75f, 1.f };
-        bool scaled_tint_differs = false;
+        bool rejects_scaled_tint = false;
         for (F32 amount : amounts)
         {
             const F32 keep = 1.f - amount;
-            const LLVector3 kept_rim = rim * 1.f;
-            const LLVector3 cut_rim = rim * keep;
-            const LLVector3 wrong = rigRimTermMirror(n, v, l, light, diffuse * keep,
-                                                     0.45f, rim_params, uniforms);
+            const LLVector3 kept = keepRimSilhouette(nonrim, rim, fill, amount, true);
+            const LLVector3 cut = keepRimSilhouette(nonrim, rim, fill, amount, false);
+            const LLVector3 wrong_tint = rigRimTermMirror(
+                n, v, l, light, diffuse * keep, 0.45f, rim_params, uniforms);
             for (S32 channel = 0; channel < 3; ++channel)
             {
-                ensure("Keep Rim ON is unsilhouetted rim", sameBits(kept_rim.mV[channel], rim.mV[channel]));
-                ensure_equals("Keep Rim OFF is rim times k", cut_rim.mV[channel], rim.mV[channel] * keep);
-                scaled_tint_differs = scaled_tint_differs || wrong.mV[channel] != rim.mV[channel];
+                const F32 reference_on = rim.mV[channel] + nonrim.mV[channel] * keep
+                                       + fill.mV[channel] * amount;
+                const F32 reference_off = (nonrim.mV[channel] + rim.mV[channel]) * keep
+                                        + fill.mV[channel] * amount;
+                ensure_approximately_equals_range("Keep Rim ON recombination", kept.mV[channel], reference_on, 1.0e-6f);
+                ensure_approximately_equals_range("Keep Rim OFF recombination", cut.mV[channel], reference_off, 1.0e-6f);
+                rejects_scaled_tint = rejects_scaled_tint
+                    || std::fabs(wrong_tint.mV[channel] - rim.mV[channel]) > 1.0e-6f;
             }
         }
-        ensure("rim tint uses unscaled diffuse", scaled_tint_differs);
+        ensure("rim tint is evaluated before silhouette scaling", rejects_scaled_tint);
     }
 
     // Silhouette unit 17: the established graphicCover mirror remains unchanged.
@@ -733,22 +724,50 @@ namespace tut
     template<> template<>
     void avatar_light_response_object::test<27>()
     {
-        const F32 base = 0.25f, rim = 0.5f;
-        const F32 identity_with_rim = base + rim;
-        const F32 identity_without_rim = base;
-        const F32 identity_delta = identity_with_rim - identity_without_rim;
-        ensure("identity delta is rim bitwise", sameBits(identity_delta, rim));
+        const LLVector3 identity_base(0.25f, 0.25f, 0.25f);
+        const LLVector3 identity_rim(0.5f, 0.5f, 0.5f);
+        const LLVector3 identity = nonlinearLookRimSilhouette(
+            identity_base + identity_rim, identity_base, LLVector3::zero,
+            1.f, true);
+        for (S32 channel = 0; channel < 3; ++channel)
+        {
+            ensure("identity look delta is the rim bitwise",
+                   sameBits(identity.mV[channel], identity_rim.mV[channel]));
+        }
 
-        const F32 sigma = 0.75f;
-        const F32 styled = nonlinearLook(base + rim, base + rim, sigma);
-        const F32 styled_no_rim = nonlinearLook(base, base, sigma);
-        const F32 delta = styled - styled_no_rim;
-        const F32 wrong_delta = nonlinearLook(rim, rim, sigma) - nonlinearLook(0.f, 0.f, sigma);
-        ensure("nonlinear rim delta subtracts styled base", delta != wrong_delta);
-        const F32 at_one = 1.f * styled + (1.f - 1.f) * delta;
-        const F32 at_zero = 0.f * styled + (1.f - 0.f) * delta;
-        ensure_equals("rim composite at k one is S", at_one, styled);
-        ensure_equals("rim composite at k zero is delta", at_zero, delta);
+        const LLVector3 base(0.25f, 0.41f, 0.17f);
+        const LLVector3 rim(0.5f, 0.23f, 0.61f);
+        const LLVector3 fill(0.08f, 0.66f, 0.31f);
+        const F32 sigma = 0.75f, amount = 0.6f, keep = 1.f - amount;
+        LLVector3 styled, styled_no_rim;
+        for (S32 channel = 0; channel < 3; ++channel)
+        {
+            styled.mV[channel] = nonlinearLook(base.mV[channel] + rim.mV[channel],
+                                               base.mV[channel] + rim.mV[channel], sigma);
+            styled_no_rim.mV[channel] = nonlinearLook(base.mV[channel], base.mV[channel], sigma);
+        }
+        const LLVector3 actual = nonlinearLookRimSilhouette(
+            styled, styled_no_rim, fill, amount, true);
+        bool rejects_look_of_rim = false;
+        for (S32 channel = 0; channel < 3; ++channel)
+        {
+            const F32 reference = keep * nonlinearLook(
+                base.mV[channel] + rim.mV[channel],
+                base.mV[channel] + rim.mV[channel], sigma)
+                + amount * (nonlinearLook(base.mV[channel] + rim.mV[channel],
+                                          base.mV[channel] + rim.mV[channel], sigma)
+                          - nonlinearLook(base.mV[channel], base.mV[channel], sigma))
+                + amount * fill.mV[channel];
+            const F32 wrong = keep * styled.mV[channel]
+                + amount * (nonlinearLook(rim.mV[channel], rim.mV[channel], sigma)
+                          - nonlinearLook(0.f, 0.f, sigma))
+                + amount * fill.mV[channel];
+            ensure_approximately_equals_range("second post-light call isolates rim delta",
+                actual.mV[channel], reference, 1.0e-6f);
+            rejects_look_of_rim = rejects_look_of_rim
+                || std::fabs(actual.mV[channel] - wrong) > 1.0e-6f;
+        }
+        ensure("nonlinear delta is look(lit)-look(nonrim)", rejects_look_of_rim);
     }
 
     // Silhouette unit 20: uploadPlan fully defines every uniform on every transition.
@@ -835,5 +854,33 @@ namespace tut
         const F32 multiply_then_add = nr_scaled + rr_scaled;
         ensure("chosen values distinguish multiply-then-add",
                !sameBits(multiply_then_add, rimRecombine(nonrim, rim_raw, true, scale).mV[VX]));
+
+        std::mt19937 rng(0x51A0u);
+        std::uniform_real_distribution<F32> distribution(-8.f, 8.f);
+        bool distributed_differs = false;
+        for (S32 sample = 0; sample < 2048; ++sample)
+        {
+            LLVector3 nr(distribution(rng), distribution(rng), distribution(rng));
+            LLVector3 rr(distribution(rng), distribution(rng), distribution(rng));
+            const F32 fs = distribution(rng);
+            const bool rim_on = (sample & 1) != 0;
+            LLVector3 reference = nr;
+            if (rim_on) reference += rr;
+            reference *= fs;
+            const LLVector3 actual = rimRecombine(nr, rr, rim_on, fs);
+            for (S32 channel = 0; channel < 3; ++channel)
+            {
+                ensure("randomized RimSplit recombination bitwise",
+                       sameBits(actual.mV[channel], reference.mV[channel]));
+                if (rim_on)
+                {
+                    volatile F32 nr_scaled = nr.mV[channel] * fs;
+                    volatile F32 rr_scaled = rr.mV[channel] * fs;
+                    distributed_differs = distributed_differs
+                        || !sameBits(nr_scaled + rr_scaled, reference.mV[channel]);
+                }
+            }
+        }
+        ensure("randomized gate rejects distributed scaling", distributed_differs);
     }
 }

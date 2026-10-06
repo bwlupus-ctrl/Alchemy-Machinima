@@ -135,6 +135,19 @@ LLVector3 rigRimTermMirror(const LLVector3& n, const LLVector3& v, const LLVecto
                            const RigRimMirrorUniforms& uniforms);
 LLVector3 rimRecombine(const LLVector3& nonrim, const LLVector3& rim_raw,
                        bool rim_on, F32 light_scale);
+// Production-composition mirrors: these own the output-side silhouette order
+// used by the shaders; tests build their references independently.
+LLVector3 pbrPunctualSilhouette(const LLVector3& base_color, F32 metallic,
+                               F32 perceptual_roughness,
+                               const LLVector3& n, const LLVector3& v,
+                               const LLVector3& l, const LLVector3& fill,
+                               F32 amount);
+LLVector3 keepRimSilhouette(const LLVector3& nonrim, const LLVector3& rim,
+                           const LLVector3& fill, F32 amount, bool keep_rim);
+LLVector3 nonlinearLookRimSilhouette(const LLVector3& styled_with_rim,
+                                    const LLVector3& styled_without_rim,
+                                    const LLVector3& fill, F32 amount,
+                                    bool keep_rim);
 // CPU mirror of GLSL alr_gain: effective albedo gain (ceiling when k > 1).
 F32       albedoGain(F32 k, F32 max_rgb);
 // CPU mirror of the legacy-gloss rule (GLSL alrLegacySpec).

@@ -18297,7 +18297,8 @@ void LLActorMover::renderSharedProxySilCover(U32 phase)
     for (SharedActorStyleProxy& proxy : mSharedActorStyleProxies)
     {
         if (!proxy.mActive || !proxy.mAvatar || proxy.mAvatar->isDead() ||
-            (proxy.mBatches.empty() && proxy.mStaticFaces.empty()))
+            (proxy.mBatches.empty() && proxy.mStaticFaces.empty()
+             && proxy.mPBRCommands.empty()))
         {
             continue;
         }
@@ -18311,9 +18312,41 @@ void LLActorMover::renderSharedProxySilCover(U32 phase)
         params.mWorldLinear = true;
         params.mLightResponseKey = proxy.mWearerId;
         params.mSilCoverPhase = phase == 0 ? 1 : 2;
-        bool complete = true;
-        drawGeometryGhost(proxy.mAvatar, proxy.mBatches, proxy.mFootAgent,
-                          tint, 1.f, GHOST_STYLE_GHOST, params,
-                          &proxy.mStaticFaces, &complete);
+        if (!proxy.mBatches.empty() || !proxy.mStaticFaces.empty())
+        {
+            bool complete = true;
+            drawGeometryGhost(proxy.mAvatar, proxy.mBatches, proxy.mFootAgent,
+                              tint, 1.f, GHOST_STYLE_GHOST, params,
+                              &proxy.mStaticFaces, &complete);
+        }
+
+        // Shared PBR commands are harvested separately from the legacy batch
+        // arrays. Re-submit their exact rigged/static geometry through the same
+        // coverage-only path so command-only proxies cannot disappear. The
+        // coverage mode binds only gSilCoverProgram and skips beauty, style,
+        // glow, and all beauty sweep blend-state calls.
+        std::vector<GhostBatch> pbr_batches;
+        std::vector<GhostStaticFace> pbr_static_faces;
+        for (const SharedActorPBRCommand& command : proxy.mPBRCommands)
+        {
+            const bool command_blended =
+                command.mAlphaMode == SHARED_ACTOR_FX_PBR_ALPHA_BLEND;
+            if (command_blended != (phase != 0)) continue;
+            if (command.mRigged)
+            {
+                pbr_batches.push_back(command.mBatch);
+            }
+            else
+            {
+                pbr_static_faces.push_back(command.mStaticFace);
+            }
+        }
+        if (!pbr_batches.empty() || !pbr_static_faces.empty())
+        {
+            bool pbr_complete = true;
+            drawGeometryGhost(proxy.mAvatar, pbr_batches, proxy.mFootAgent,
+                              tint, 1.f, GHOST_STYLE_GHOST, params,
+                              &pbr_static_faces, &pbr_complete);
+        }
     }
 }

@@ -356,6 +356,61 @@ LLVector3 rimRecombine(const LLVector3& nonrim, const LLVector3& rim_raw,
     return color * light_scale;
 }
 
+LLVector3 pbrPunctualSilhouette(const LLVector3& base_color, F32 metallic,
+                               F32 perceptual_roughness,
+                               const LLVector3& n, const LLVector3& v,
+                               const LLVector3& l, const LLVector3& fill,
+                               F32 amount)
+{
+    LLVector3 diffuse_color, specular_color;
+    calcDiffuseSpecularMirror(base_color, metallic, diffuse_color, specular_color);
+    const PbrPunctualMirrorResult punctual = pbrPunctualMirror(
+        diffuse_color, specular_color, perceptual_roughness, metallic, n, v, l);
+    const F32 keep = 1.f - amount;
+    LLVector3 result;
+    for (S32 channel = 0; channel < 3; ++channel)
+    {
+        const F32 lit = punctual.nl
+            * (punctual.diffuse.mV[channel] + punctual.specular.mV[channel]);
+        result.mV[channel] = std::min(std::max(lit, 0.f), 10.f) * keep
+                           + fill.mV[channel] * amount;
+    }
+    return result;
+}
+
+LLVector3 keepRimSilhouette(const LLVector3& nonrim, const LLVector3& rim,
+                           const LLVector3& fill, F32 amount, bool keep_rim)
+{
+    const F32 keep = 1.f - amount;
+    LLVector3 result;
+    if (keep_rim)
+    {
+        result = nonrim * keep;
+        result += rim;
+    }
+    else
+    {
+        result = (nonrim + rim) * keep;
+    }
+    result += fill * amount;
+    return result;
+}
+
+LLVector3 nonlinearLookRimSilhouette(const LLVector3& styled_with_rim,
+                                    const LLVector3& styled_without_rim,
+                                    const LLVector3& fill, F32 amount,
+                                    bool keep_rim)
+{
+    const F32 keep = 1.f - amount;
+    LLVector3 result = styled_with_rim * keep;
+    if (keep_rim)
+    {
+        result += (styled_with_rim - styled_without_rim) * amount;
+    }
+    result += fill * amount;
+    return result;
+}
+
 F32 srgbToLinear(F32 c)
 {
     c = clampField(c, 0.f, 1.f, 0.f);

@@ -2403,13 +2403,11 @@ void LLPipeline::releaseScreenBuffers()
     mActorMaskQueries.release(); // [ActorMask]
     mActorMaskValid = false;
     mActorMaskAllocated = false;
-    mSilCoverValid = false;
+    releaseSilCovers(); // [AvatarSilhouette] Detach every shared-depth cover first.
     auto release_pack = [](RenderTargetPack& rt)
     {
         rt.actorMask.release(); // [ActorMask] Before shared depth owner
         rt.actorMaskDepthSrc = 0;
-        rt.silCover.release(); // [AvatarSilhouette] Before shared depth owner
-        rt.silCoverDepthSrc = 0;
         rt.screen.release();
         rt.deferredScreen.release();
         rt.deferredLight.release();
@@ -23800,6 +23798,24 @@ LLRender::eBlendFactor silCoverBlendFactor(GLint factor)
     }
 }
 
+bool silCoverBlendCacheMatches(GLint factor, LLRender::eBlendFactor cached)
+{
+    switch (factor)
+    {
+    case GL_ONE: return cached == LLRender::BF_ONE;
+    case GL_ZERO: return cached == LLRender::BF_ZERO;
+    case GL_DST_COLOR: return cached == LLRender::BF_DEST_COLOR;
+    case GL_SRC_COLOR: return cached == LLRender::BF_SOURCE_COLOR;
+    case GL_ONE_MINUS_DST_COLOR: return cached == LLRender::BF_ONE_MINUS_DEST_COLOR;
+    case GL_ONE_MINUS_SRC_COLOR: return cached == LLRender::BF_ONE_MINUS_SOURCE_COLOR;
+    case GL_DST_ALPHA: return cached == LLRender::BF_DEST_ALPHA;
+    case GL_SRC_ALPHA: return cached == LLRender::BF_SOURCE_ALPHA;
+    case GL_ONE_MINUS_DST_ALPHA: return cached == LLRender::BF_ONE_MINUS_DEST_ALPHA;
+    case GL_ONE_MINUS_SRC_ALPHA: return cached == LLRender::BF_ONE_MINUS_SOURCE_ALPHA;
+    default: return false;
+    }
+}
+
 // ScopedActorMaskState owns the broad FBO/matrix/texture contract. This nested
 // guard owns the blend/stencil state that Actor Mask intentionally does not.
 class ScopedSilCoverState
@@ -23837,7 +23853,40 @@ private:
 
 // T22 is deliberately glGet-heavy and exists only under the existing carrier
 // debug switch. ScopedActorMaskState plus ScopedSilCoverState perform restores;
-// this guard reports a concise verdict without trying to hide a leak.
+// this guard reports every leaking field without trying to hide a leak.
+// Explicit template instantiation may name private members without relaxing
+// LLRender's public API; the friend functions expose read-only member pointers
+// solely to this debug-only invariant.
+template<typename Tag, typename Tag::type Member>
+struct SilCoverPrivateMember
+{
+    friend typename Tag::type silCoverPrivate(Tag) { return Member; }
+};
+struct SilCoverBlendColorSrcTag
+{
+    using type = LLRender::eBlendFactor LLRender::*;
+    friend type silCoverPrivate(SilCoverBlendColorSrcTag);
+};
+struct SilCoverBlendColorDstTag
+{
+    using type = LLRender::eBlendFactor LLRender::*;
+    friend type silCoverPrivate(SilCoverBlendColorDstTag);
+};
+struct SilCoverBlendAlphaSrcTag
+{
+    using type = LLRender::eBlendFactor LLRender::*;
+    friend type silCoverPrivate(SilCoverBlendAlphaSrcTag);
+};
+struct SilCoverBlendAlphaDstTag
+{
+    using type = LLRender::eBlendFactor LLRender::*;
+    friend type silCoverPrivate(SilCoverBlendAlphaDstTag);
+};
+template struct SilCoverPrivateMember<SilCoverBlendColorSrcTag, &LLRender::mCurrBlendColorSFactor>;
+template struct SilCoverPrivateMember<SilCoverBlendColorDstTag, &LLRender::mCurrBlendColorDFactor>;
+template struct SilCoverPrivateMember<SilCoverBlendAlphaSrcTag, &LLRender::mCurrBlendAlphaSFactor>;
+template struct SilCoverPrivateMember<SilCoverBlendAlphaDstTag, &LLRender::mCurrBlendAlphaDFactor>;
+
 class ScopedSilCoverInvariant
 {
 public:
@@ -23852,18 +23901,78 @@ public:
         if (!mEnabled) return;
         State after;
         capture(after);
-        if (mBefore == after)
+        bool clean = true;
+        auto leak = [&](const char* field)
+        {
+            clean = false;
+            LL_WARNS("AvatarSilhouette") << "[ALR] SILCOVER STATE-LEAK "
+                << field << " " << mScope << LL_ENDL;
+        };
+        static const char* const int_names[] = {
+            "blend-src-rgb", "blend-dst-rgb", "blend-src-alpha", "blend-dst-alpha",
+            "blend-equation-rgb", "blend-equation-alpha", "depth-func", "depth-writemask",
+            "cull-face-mode", "draw-fbo", "read-fbo", "read-buffer", "active-texture",
+            "current-program", "blend-enable", "stencil-enable", "depth-enable", "cull-enable",
+            "polygon-offset-enable", "scissor-enable", "viewport-x", "viewport-y",
+            "viewport-width", "viewport-height", "scissor-x", "scissor-y", "scissor-width",
+            "scissor-height", "color-mask-r", "color-mask-g", "color-mask-b", "color-mask-a"
+        };
+        for (size_t i = 0; i < mBefore.i.size(); ++i)
+            if (mBefore.i[i] != after.i[i]) leak(int_names[i]);
+        if (mBefore.draw_buffers.size() != after.draw_buffers.size()) leak("draw-buffer-count");
+        const size_t draw_count = llmin(mBefore.draw_buffers.size(), after.draw_buffers.size());
+        for (size_t i = 0; i < draw_count; ++i)
+            if (mBefore.draw_buffers[i] != after.draw_buffers[i])
+            {
+                const std::string field = llformat("draw-buffer-%u", static_cast<U32>(i));
+                leak(field.c_str());
+            }
+        static const char* const cache_names[] = {
+            "llrender-blend-src-rgb", "llrender-blend-dst-rgb",
+            "llrender-blend-src-alpha", "llrender-blend-dst-alpha"
+        };
+        for (size_t i = 0; i < mBefore.blend_cache.size(); ++i)
+            if (mBefore.blend_cache[i] != after.blend_cache[i]) leak(cache_names[i]);
+        for (size_t i = 0; i < after.blend_cache.size(); ++i)
+            if (!silCoverBlendCacheMatches(after.i[i], after.blend_cache[i]))
+            {
+                const std::string field = llformat("%s-vs-gl", cache_names[i]);
+                leak(field.c_str());
+            }
+        if (mBefore.f[0] != after.f[0]) leak("polygon-offset-factor");
+        if (mBefore.f[1] != after.f[1]) leak("polygon-offset-units");
+        auto float_block_differs = [&](size_t first, size_t count)
+        {
+            return !std::equal(mBefore.f.begin() + first, mBefore.f.begin() + first + count,
+                               after.f.begin() + first);
+        };
+        if (float_block_differs(2, 16)) leak("gGLModelView");
+        if (float_block_differs(18, 16)) leak("gGLProjection");
+        if (float_block_differs(34, 16)) leak("gGL-modelview-stack");
+        if (float_block_differs(50, 16)) leak("gGL-projection-stack");
+        if (float_block_differs(66, 4)) leak("color-clear-value");
+        for (U32 t = 0; t < 4; ++t)
+            if (float_block_differs(70 + 16*t, 16))
+            {
+                const std::string field = llformat("gGL-texture%u-stack", t);
+                leak(field.c_str());
+            }
+        static const char* const pointer_names[] = {
+            "gGLLastMatrix", "bound-shader", "bound-render-target"
+        };
+        for (size_t i = 0; i < mBefore.p.size(); ++i)
+            if (mBefore.p[i] != after.p[i]) leak(pointer_names[i]);
+        if (clean)
             LL_INFOS("AvatarSilhouette") << "[ALR] SILCOVER STATE OK " << mScope << LL_ENDL;
-        else
-            LL_WARNS("AvatarSilhouette") << "[ALR] SILCOVER STATE-LEAK " << mScope << LL_ENDL;
     }
 private:
     struct State
     {
-        std::array<GLint, 40> i{};
+        std::array<GLint, 32> i{};
         std::array<GLfloat, 134> f{};
         std::array<const void*, 3> p{};
-        bool operator==(const State& rhs) const { return i == rhs.i && f == rhs.f && p == rhs.p; }
+        std::array<LLRender::eBlendFactor, 4> blend_cache{};
+        std::vector<GLint> draw_buffers;
     };
     static void capture(State& s)
     {
@@ -23880,7 +23989,17 @@ private:
         glGetIntegerv(GL_VIEWPORT, &s.i[n]); n += 4;
         glGetIntegerv(GL_SCISSOR_BOX, &s.i[n]); n += 4;
         glGetIntegerv(GL_COLOR_WRITEMASK, &s.i[n]); n += 4;
-        for (U32 b = 0; b < 4; ++b) glGetIntegerv(GL_DRAW_BUFFER0 + b, &s.i[n++]);
+        GLint max_draw_buffers = 0;
+        glGetIntegerv(GL_MAX_DRAW_BUFFERS, &max_draw_buffers);
+        s.draw_buffers.resize(llmax(max_draw_buffers, 0));
+        for (GLint b = 0; b < max_draw_buffers; ++b)
+            glGetIntegerv(GL_DRAW_BUFFER0 + b, &s.draw_buffers[b]);
+        s.blend_cache = {
+            gGL.*silCoverPrivate(SilCoverBlendColorSrcTag()),
+            gGL.*silCoverPrivate(SilCoverBlendColorDstTag()),
+            gGL.*silCoverPrivate(SilCoverBlendAlphaSrcTag()),
+            gGL.*silCoverPrivate(SilCoverBlendAlphaDstTag())
+        };
         glGetFloatv(GL_POLYGON_OFFSET_FACTOR, &s.f[0]);
         glGetFloatv(GL_POLYGON_OFFSET_UNITS, &s.f[1]);
         memcpy(&s.f[2], gGLModelView, 16 * sizeof(F32));
