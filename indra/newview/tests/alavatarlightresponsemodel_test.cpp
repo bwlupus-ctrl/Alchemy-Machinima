@@ -15,7 +15,6 @@
 #include <cmath>
 #include <cstring>
 #include <limits>
-#include <random>
 
 namespace tut
 {
@@ -59,15 +58,6 @@ namespace tut
         return result;
     }
 
-    F32 pbrLitMirror(F32 base, F32 metallic)
-    {
-        const F32 f0 = 0.04f;
-        const F32 diffuse = base * (1.f - f0) * (1.f - metallic);
-        const F32 specular = f0 * (1.f - metallic) + base * metallic;
-        const F32 fresnel = specular;
-        return (1.f - fresnel) * diffuse + fresnel * specular;
-    }
-
     F32 nonlinearFx(F32 source)
     {
         return 0.2f + source * source;
@@ -78,15 +68,6 @@ namespace tut
         return layer_source * (1.f - sigma) + nonlinearFx(source) * sigma;
     }
 
-    F32 rimRecombine(F32 nonrim, F32 rim_raw, bool rim_on, F32 light_scale)
-    {
-        F32 color = nonrim;
-        if (rim_on)
-        {
-            color += rim_raw;
-        }
-        return color * light_scale;
-    }
     }
 
     // Defaults are exact identity and pack to (0, 1, 1, 1).
@@ -488,7 +469,8 @@ namespace tut
         ensure("zero LDR code rejected", !silDecode(0.f, false, amount, haze_skip, rim_cut));
     }
 
-    // Silhouette unit 8: quantization error bounds and exact endpoint.
+    // Silhouette unit 8: quantization error bounds and exact endpoint.  The
+    // half-step bounds are normative only outside the forced-q=1 domain.
     template<> template<>
     void avatar_light_response_object::test<16>()
     {
@@ -511,6 +493,12 @@ namespace tut
         ensure_equals("HDR one exact", silAmountQ(silQuant(1.f, true), true), 1.f);
         ensure_equals("LDR one exact", silAmountQ(silQuant(1.f, false), false), 1.f);
         ensure_equals("threshold off", silQuant(1.0e-4f, true), 0);
+        const F32 hdr_forced_min = 5.0e-4f;
+        const F32 ldr_forced_min = 1.0e-3f;
+        ensure("HDR forced-min sample is below half-step", hdr_forced_min < 1.f / (2.f * 510.f));
+        ensure("LDR forced-min sample is below half-step", ldr_forced_min < 1.f / (2.f * 62.f));
+        ensure_equals("HDR positive sub-half-step forces q one", silQuant(hdr_forced_min, true), 1);
+        ensure_equals("LDR positive sub-half-step forces q one", silQuant(ldr_forced_min, false), 1);
     }
 
     // Silhouette unit 9: fill preset codes and matching tolerance.
@@ -631,42 +619,88 @@ namespace tut
     void avatar_light_response_object::test<23>()
     {
         bool input_order_differs = false;
+        bool squared_keep_differs = false;
         const F32 metallics[] = { 0.f, 0.5f, 1.f };
         const F32 keeps[] = { 0.25f, 0.5f, 0.75f };
+        const LLVector3 base(0.72f, 0.31f, 0.09f);
+        const LLVector3 n(0.f, 0.f, 1.f);
+        const LLVector3 v(0.f, 0.f, 1.f);
+        const LLVector3 l(0.6f, 0.f, 0.8f);
         for (F32 metallic : metallics)
         {
+            LLVector3 diffuse, specular;
+            calcDiffuseSpecularMirror(base, metallic, diffuse, specular);
+            for (S32 channel = 0; channel < 3; ++channel)
+            {
+                const F32 true_f0 = 0.04f * (1.f - metallic) + base.mV[channel] * metallic;
+                ensure_equals("F0 is mixed from true base colour", specular.mV[channel], true_f0);
+            }
+            const PbrPunctualMirrorResult normal_incidence =
+                pbrPunctualMirror(diffuse, specular, 1.f, metallic, n, v, v);
+            ensure_equals("normal-incidence NdotL", normal_incidence.nl, 1.f);
+            for (S32 channel = 0; channel < 3; ++channel)
+            {
+                ensure_approximately_equals_range("punctual diffuse mirror",
+                    normal_incidence.diffuse.mV[channel],
+                    (1.f - specular.mV[channel]) * (diffuse.mV[channel] / F_PI), 1.0e-6f);
+                ensure_approximately_equals_range("punctual specular mirror",
+                    normal_incidence.specular.mV[channel],
+                    specular.mV[channel] / (4.f * F_PI), 1.0e-6f);
+            }
+            const PbrPunctualMirrorResult punctual =
+                pbrPunctualMirror(diffuse, specular, 0.63f, metallic, n, v, l);
             for (F32 keep : keeps)
             {
-                const F32 lit = pbrLitMirror(0.72f, metallic);
-                const F32 output_side = lit * keep;
-                const F32 reference = keep * lit;
-                ensure_equals("output-side equals k*Lit", output_side, reference);
-                const F32 input_side = pbrLitMirror(0.72f * keep, metallic) * keep;
-                input_order_differs = input_order_differs || std::fabs(input_side - reference) > 1.0e-6f;
+                LLVector3 scaled_base = base * keep;
+                LLVector3 wrong_diffuse, wrong_specular;
+                calcDiffuseSpecularMirror(scaled_base, metallic, wrong_diffuse, wrong_specular);
+                const PbrPunctualMirrorResult wrong =
+                    pbrPunctualMirror(wrong_diffuse, wrong_specular, 0.63f, metallic, n, v, l);
+                for (S32 channel = 0; channel < 3; ++channel)
+                {
+                    const F32 lit = punctual.nl * (punctual.diffuse.mV[channel] + punctual.specular.mV[channel]);
+                    const F32 actual = lit * keep;
+                    const F32 reference = lit * keep;
+                    ensure("output-side applies k exactly once", sameBits(actual, reference));
+                    squared_keep_differs = squared_keep_differs
+                        || std::fabs(actual - lit * keep * keep) > 1.0e-6f;
+                    const F32 input_side = wrong.nl
+                        * (wrong.diffuse.mV[channel] + wrong.specular.mV[channel]) * keep;
+                    input_order_differs = input_order_differs || std::fabs(input_side - reference) > 1.0e-6f;
+                }
             }
         }
         ensure("input-side scaling is a regression", input_order_differs);
+        ensure("metallic mid-fade is k, not k squared", squared_keep_differs);
     }
 
     // Silhouette unit 16: Keep Rim uses the unscaled diffuse tint and r=1.
     template<> template<>
     void avatar_light_response_object::test<24>()
     {
-        const F32 diffuse = 0.36f;
-        const F32 tint_mix = 0.8f;
-        const F32 rim_base = 1.7f;
-        const F32 rim = rim_base * ((1.f - tint_mix) + diffuse * tint_mix);
-        const F32 keeps[] = { 0.f, 0.25f, 0.5f, 0.75f, 1.f };
-        for (F32 keep : keeps)
+        const LLVector3 n(1.f, 0.f, 0.f), v(0.f, 0.f, 1.f), l(0.6f, 0.f, -0.8f);
+        const LLVector3 light(1.7f, 0.8f, 0.3f), diffuse(0.36f, 0.57f, 0.22f);
+        const LLVector4 rim_params(1.1f, 2.f, 0.2f, 0.1f);
+        RigRimMirrorUniforms uniforms;
+        uniforms.globals.set(1.2f, 0.7f, 0.3f, 0.8f);
+        const LLVector3 rim = rigRimTermMirror(n, v, l, light, diffuse, 0.45f, rim_params, uniforms);
+        const F32 amounts[] = { 0.f, 0.25f, 0.5f, 0.75f, 1.f };
+        bool scaled_tint_differs = false;
+        for (F32 amount : amounts)
         {
-            const F32 kept_rim = rim * 1.f;
-            ensure("r=1 keeps rim bitwise", sameBits(kept_rim, rim));
-            const F32 wrongly_input_scaled = rim_base * ((1.f - tint_mix) + diffuse * keep * tint_mix);
-            if (keep != 1.f)
+            const F32 keep = 1.f - amount;
+            const LLVector3 kept_rim = rim * 1.f;
+            const LLVector3 cut_rim = rim * keep;
+            const LLVector3 wrong = rigRimTermMirror(n, v, l, light, diffuse * keep,
+                                                     0.45f, rim_params, uniforms);
+            for (S32 channel = 0; channel < 3; ++channel)
             {
-                ensure("scaled tint would change rim", wrongly_input_scaled != rim);
+                ensure("Keep Rim ON is unsilhouetted rim", sameBits(kept_rim.mV[channel], rim.mV[channel]));
+                ensure_equals("Keep Rim OFF is rim times k", cut_rim.mV[channel], rim.mV[channel] * keep);
+                scaled_tint_differs = scaled_tint_differs || wrong.mV[channel] != rim.mV[channel];
             }
         }
+        ensure("rim tint uses unscaled diffuse", scaled_tint_differs);
     }
 
     // Silhouette unit 17: the established graphicCover mirror remains unchanged.
@@ -699,7 +733,7 @@ namespace tut
     template<> template<>
     void avatar_light_response_object::test<27>()
     {
-        const F32 base = 0.f, rim = 0.45f;
+        const F32 base = 0.25f, rim = 0.5f;
         const F32 identity_with_rim = base + rim;
         const F32 identity_without_rim = base;
         const F32 identity_delta = identity_with_rim - identity_without_rim;
@@ -709,6 +743,8 @@ namespace tut
         const F32 styled = nonlinearLook(base + rim, base + rim, sigma);
         const F32 styled_no_rim = nonlinearLook(base, base, sigma);
         const F32 delta = styled - styled_no_rim;
+        const F32 wrong_delta = nonlinearLook(rim, rim, sigma) - nonlinearLook(0.f, 0.f, sigma);
+        ensure("nonlinear rim delta subtracts styled base", delta != wrong_delta);
         const F32 at_one = 1.f * styled + (1.f - 1.f) * delta;
         const F32 at_zero = 0.f * styled + (1.f - 0.f) * delta;
         ensure_equals("rim composite at k one is S", at_one, styled);
@@ -728,35 +764,44 @@ namespace tut
         p.mSilAmount = 0.f;
         const Packed no_sil = packAll(p, true);
 
-        const UploadPlan beauty_sil = uploadPlan(&sil, UPLOAD_BEAUTY, false);
-        ensure_equals("beauty silhouette enabled", beauty_sil.enabled, 1);
-        ensure_equals("beauty silhouette amount", beauty_sil.sil.mV[VW], sil.mSil.mV[VW]);
+        UploadPlan expected_beauty_sil;
+        expected_beauty_sil.enabled = 1;
+        expected_beauty_sil.params = sil.mParams;
+        expected_beauty_sil.sil = sil.mSil;
+        expected_beauty_sil.aux = sil.mSilAux;
+        UploadPlan expected_glow;
+        expected_glow.enabled = 1;
+        expected_glow.params = sil.mParams;
+        expected_glow.params.mV[VZ] = sil.mParams.mV[VW] * (1.f - sil.mSil.mV[VW]);
+        UploadPlan expected_sil_only;
+        expected_sil_only.enabled = 1;
+        expected_sil_only.sil = sil.mSil;
+        expected_sil_only.aux = sil.mSilAux;
+        UploadPlan expected_beauty_plain;
+        expected_beauty_plain.enabled = 1;
+        expected_beauty_plain.params = no_sil.mParams;
 
-        const UploadPlan sil_only_plain = uploadPlan(&no_sil, UPLOAD_SIL_ONLY, false);
-        ensure_equals("plain sil-only disabled", sil_only_plain.enabled, 0);
-        const UploadPlan absent = uploadPlan(nullptr, UPLOAD_BEAUTY, false);
-        ensure_equals("absent disabled", absent.enabled, 0);
-        const UploadPlan glow = uploadPlan(&sil, UPLOAD_GLOW, false);
-        ensure_equals("glow enabled", glow.enabled, 1);
-        ensure_equals("glow z is g*k", glow.params.mV[VZ], sil.mParams.mV[VW] * (1.f - sil.mSil.mV[VW]));
-        const UploadPlan sil_only = uploadPlan(&sil, UPLOAD_SIL_ONLY, false);
-        ensure_equals("sil-only enabled", sil_only.enabled, 1);
-        ensure_equals("sil-only trims identity", sil_only.params.mV[VY], 1.f);
-        const UploadPlan beauty_plain = uploadPlan(&no_sil, UPLOAD_BEAUTY, false);
-        ensure_equals("plain beauty remains enabled", beauty_plain.enabled, 1);
-        ensure_equals("plain beauty keeps params", beauty_plain.params.mV[VX], no_sil.mParams.mV[VX]);
-
-        const UploadPlan plans[] = { sil_only_plain, absent, glow, beauty_plain };
-        for (const UploadPlan& plan : plans)
+        const UploadPlan actual[] = {
+            uploadPlan(&sil, UPLOAD_BEAUTY, false),
+            uploadPlan(&no_sil, UPLOAD_SIL_ONLY, false),
+            uploadPlan(nullptr, UPLOAD_BEAUTY, false),
+            uploadPlan(&sil, UPLOAD_GLOW, false),
+            uploadPlan(&sil, UPLOAD_SIL_ONLY, false),
+            uploadPlan(&no_sil, UPLOAD_BEAUTY, false)
+        };
+        const UploadPlan expected[] = {
+            expected_beauty_sil, UploadPlan(), UploadPlan(), expected_glow,
+            expected_sil_only, expected_beauty_plain
+        };
+        for (S32 step = 0; step < 6; ++step)
         {
-            ensure_equals("no-fill step sil x reset", plan.sil.mV[VX], 0.f);
-            ensure_equals("no-fill step sil y reset", plan.sil.mV[VY], 0.f);
-            ensure_equals("no-fill step sil z reset", plan.sil.mV[VZ], 0.f);
-            ensure_equals("no-fill step sil w reset", plan.sil.mV[VW], 0.f);
-            ensure_equals("no-fill step aux x reset", plan.aux.mV[VX], 0.f);
-            ensure_equals("no-fill step aux y reset", plan.aux.mV[VY], 0.f);
-            ensure_equals("no-fill step aux z reset", plan.aux.mV[VZ], 0.f);
-            ensure_equals("no-fill step aux w reset", plan.aux.mV[VW], 0.f);
+            ensure_equals("transition enabled", actual[step].enabled, expected[step].enabled);
+            for (S32 component = 0; component < 4; ++component)
+            {
+                ensure_equals("transition params component", actual[step].params.mV[component], expected[step].params.mV[component]);
+                ensure_equals("transition sil component", actual[step].sil.mV[component], expected[step].sil.mV[component]);
+                ensure_equals("transition aux component", actual[step].aux.mV[component], expected[step].aux.mV[component]);
+            }
         }
         const UploadPlan debug = uploadPlan(&sil, UPLOAD_BEAUTY, true);
         ensure_equals("debug tint enabled code", debug.enabled, 3);
@@ -767,33 +812,28 @@ namespace tut
     template<> template<>
     void avatar_light_response_object::test<29>()
     {
-        std::mt19937 rng(0x51A0u);
-        std::uniform_real_distribution<F32> distribution(-8.f, 8.f);
-        bool distributed_differs = false;
-        for (S32 sample = 0; sample < 2048; ++sample)
+        const LLVector3 nonrim(-2.4333839416503906f, 0.75f, -0.5f);
+        const LLVector3 rim_raw(0.7585997581481934f, 0.25f, 0.125f);
+        const F32 scale = 2.091503858566284f;
+        for (S32 enabled = 0; enabled < 2; ++enabled)
         {
-            const F32 nonrim = distribution(rng);
-            const F32 rim = distribution(rng);
-            const F32 scale = distribution(rng);
-            const bool rim_on = (sample & 1) != 0;
-
-            F32 reference = nonrim;
+            const bool rim_on = enabled != 0;
+            LLVector3 reference = nonrim;
             if (rim_on)
             {
-                reference += rim;
+                reference += rim_raw;
             }
-            reference *= scale;
-            const F32 recombined = rimRecombine(nonrim, rim, rim_on, scale);
-            ensure("RimSplit recombination bitwise", sameBits(recombined, reference));
-
-            if (rim_on)
+            reference = reference * scale;
+            const LLVector3 recombined = rimRecombine(nonrim, rim_raw, rim_on, scale);
+            for (S32 channel = 0; channel < 3; ++channel)
             {
-                volatile F32 nr_scaled = nonrim * scale;
-                volatile F32 rr_scaled = rim * scale;
-                const F32 distributed = nr_scaled + rr_scaled;
-                distributed_differs = distributed_differs || !sameBits(distributed, reference);
+                ensure("RimSplit add-then-multiply bitwise", sameBits(recombined.mV[channel], reference.mV[channel]));
             }
         }
-        ensure("distributed RimSplit form differs for a sample", distributed_differs);
+        volatile F32 nr_scaled = nonrim.mV[VX] * scale;
+        volatile F32 rr_scaled = rim_raw.mV[VX] * scale;
+        const F32 multiply_then_add = nr_scaled + rr_scaled;
+        ensure("chosen values distinguish multiply-then-add",
+               !sameBits(multiply_then_add, rimRecombine(nonrim, rim_raw, true, scale).mV[VX]));
     }
 }

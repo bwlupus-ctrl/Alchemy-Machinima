@@ -40,6 +40,8 @@ out vec4 frag_color;
 in vec2 vary_fragcoord;
 
 uniform sampler2D froxelIntegrated; // RGBA16F integrated atlas (rgb = L, a = T)
+uniform int alr_sil_active;
+uniform sampler2D silCoverMap;
 
 uniform vec3 froxel_grid;           // (GridX, GridY, GridZ)
 uniform vec4 froxel_atlas;          // (tilesX, tilesY, atlasW, atlasH)
@@ -77,6 +79,17 @@ void main()
     vec4  acc = froxelTrilinear(froxelIntegrated, fc, froxel_grid, froxel_atlas);
     vec3  L   = acc.rgb; // integrated in-scatter radiance to this depth
     float T   = clamp(acc.a, 0.0, 1.0); // transmittance camera -> this depth
+    if ((alr_sil_active & 32) != 0)
+    {
+        float h = texture(silCoverMap, tc).r;
+        L *= 1.0 - h;
+        T = 1.0 - (1.0 - h) * (1.0 - T);
+        if ((alr_sil_active & 8) != 0)
+        {
+            L = vec3(0.0, 1.0, 1.0) * h;
+            T = 1.0 - h;
+        }
+    }
 
     // Output (L, T); the GL_ONE / GL_SRC_ALPHA blend does scene*T + L in place.
     frag_color = vec4(L, T);

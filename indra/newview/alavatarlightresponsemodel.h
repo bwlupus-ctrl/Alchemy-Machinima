@@ -70,6 +70,23 @@ struct UploadPlan
     LLVector4 aux = LLVector4(0.f, 0.f, 0.f, 0.f);
 };
 
+// Pure CPU mirrors of the shader arithmetic used by the silhouette regression
+// tests.  These deliberately expose the shader-sized vector results so the
+// tests exercise channel coupling and operation order, not scalar stand-ins.
+struct PbrPunctualMirrorResult
+{
+    F32       nl = 0.f;
+    LLVector3 diffuse = LLVector3::zero;
+    LLVector3 specular = LLVector3::zero;
+};
+
+struct RigRimMirrorUniforms
+{
+    LLVector4 globals = LLVector4(1.f, 1.f, 1.f, 0.f);
+    LLVector4 tron = LLVector4(0.f, 0.f, 1.f, 0.f);
+    LLVector3 tron_color = LLVector3::zero;
+};
+
 // Clamp every field; non-finite values fall back to the field default.
 Params    sanitize(const Params& p);
 // bypass || every (sanitized) field within 1e-4 of its default.
@@ -105,6 +122,19 @@ LLVector3 silForward(const LLVector3& lit, const LLVector3& fill_lin,
                      bool haze_over);
 void      silHazeBlend(LLVector3& src_rgb, F32& src_a, F32 h);
 UploadPlan uploadPlan(const Packed* slot, EUploadSlot which, bool debug_tint);
+void      calcDiffuseSpecularMirror(const LLVector3& base_color, F32 metallic,
+                                    LLVector3& diffuse_color, LLVector3& specular_color);
+PbrPunctualMirrorResult pbrPunctualMirror(const LLVector3& diffuse_color,
+                                          const LLVector3& specular_color,
+                                          F32 perceptual_roughness, F32 metallic,
+                                          const LLVector3& n, const LLVector3& v,
+                                          const LLVector3& l);
+LLVector3 rigRimTermMirror(const LLVector3& n, const LLVector3& v, const LLVector3& l,
+                           const LLVector3& light_color, const LLVector3& diffuse_color,
+                           F32 roughness, const LLVector4& rim,
+                           const RigRimMirrorUniforms& uniforms);
+LLVector3 rimRecombine(const LLVector3& nonrim, const LLVector3& rim_raw,
+                       bool rim_on, F32 light_scale);
 // CPU mirror of GLSL alr_gain: effective albedo gain (ceiling when k > 1).
 F32       albedoGain(F32 k, F32 max_rgb);
 // CPU mirror of the legacy-gloss rule (GLSL alrLegacySpec).

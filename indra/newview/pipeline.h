@@ -691,6 +691,15 @@ public:
     std::map<LLUUID, std::string> mActorMaskRecipientStatus; // WP7: IMPOSTOR/STYLED/NATIVE
     bool mActorMaskSummaryFrame = false; // WP7 consumes same 5s probe cadence
 
+    // [AvatarSilhouette] View-local RG8 coverage replay. Phase 0 is opaque /
+    // masked (before atmospherics); phase 1 adds authored-alpha coverage before
+    // froxel/projector volumetrics.
+    bool ensureSilCover();
+    void renderSilCover(U32 phase);
+    void renderGhostSilCover(U32 phase);
+    void releaseSilCovers();
+    bool mSilCoverValid = false;
+
     // [ActorMask] WP7 owns sequencing/captures. Overrides apply only to a valid
     // main MASK view; F3 never bypasses probe/Prism/excluded-view isolation.
     enum class ActorMaskTestMode : U8 { NORMAL, F0, F1, F2, F3 };
@@ -1223,6 +1232,8 @@ public:
         LLRenderTarget          deferredScreen;
         LLRenderTarget          actorMask; // [ActorMask] R8; shared depth, never owned
         U32                     actorMaskDepthSrc = 0;
+        LLRenderTarget          silCover; // [AvatarSilhouette] RG8; shared depth, never owned
+        U32                     silCoverDepthSrc = 0;
         LLRenderTarget          deferredLight;
 
         // tonemapped and gamma corrected render ready for post

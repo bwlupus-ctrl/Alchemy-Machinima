@@ -30,6 +30,7 @@
 
 #include "llviewerprecompiledheaders.h"
 
+#include <algorithm>
 #include <boost/lexical_cast.hpp>
 #include <filesystem>
 #include <fstream>
@@ -134,6 +135,7 @@ LLGLSLShader        gWorldSkinnedActorGhostProgram;
 LLGLSLShader        gWorldActorGhostIndexedProgram;
 LLGLSLShader        gWorldSkinnedActorGhostIndexedProgram;
 LLGLSLShader gActorMaskProgram[ACTOR_MASK_PROGRAM_COUNT]; // [ActorMask]
+LLGLSLShader gSilCoverProgram[ACTOR_MASK_PROGRAM_COUNT]; // [AvatarSilhouette]
 // [ActorMask] One sampler per slot; native material auxiliary maps are unnecessary.
 S32 actorMaskTextureChannels()
 {
@@ -649,6 +651,8 @@ void LLViewerShaderMgr::finalizeShaderList()
         mShaderList.push_back(&gAvatarActorGhostProgram);
         mShaderList.push_back(&gAvatarEyeballActorGhostProgram);
     }
+    for (auto& shader : gSilCoverProgram)
+        if (shader.isComplete()) mShaderList.push_back(&shader);
     if (gWorldActorGhostProgram.mProgramObject)
     {
         mShaderList.push_back(&gWorldActorGhostProgram);
@@ -819,7 +823,18 @@ void LLViewerShaderMgr::initAttribsAndUniforms(void)
     if (mReservedAttribs.empty())
     {
         LLShaderMgr::initAttribsAndUniforms();
+        // [AvatarSilhouette] WP4's exhaustive file list excludes llshadermgr.*;
+        // register the independent coverage sampler here before any programs
+        // are linked so every LLGLSLShader sizes/maps its uniform vectors with it.
+        mReservedUniforms.push_back("silCoverMap");
     }
+}
+
+S32 silCoverMapUniform()
+{
+    const auto& uniforms = LLShaderMgr::instance()->mReservedUniforms;
+    const auto found = std::find(uniforms.begin(), uniforms.end(), "silCoverMap");
+    return found == uniforms.end() ? -1 : static_cast<S32>(found - uniforms.begin());
 }
 
 
@@ -1681,6 +1696,7 @@ bool LLViewerShaderMgr::loadShadersDeferred()
         gDeferredAvatarAlphaShadowProgram.unload();
         gDeferredAvatarAlphaMaskShadowProgram.unload();
         for (auto& shader : gActorMaskProgram) shader.unload(); // [ActorMask]
+        for (auto& shader : gSilCoverProgram) shader.unload(); // [AvatarSilhouette]
         gActorMaskDebugProgram.unload(); // [ActorMask] WP7
         gDeferredAvatarProgram.unload();
         gDeferredAvatarAlphaProgram.unload();
@@ -5292,6 +5308,38 @@ bool LLViewerShaderMgr::loadShadersDeferred()
                 const S32 clip = shader.getUniformLocation(LLShaderMgr::MIRROR_FLAG);
                 LL_INFOS("ActorMask") << "[ActorMask] program=" << i
                     << " MIRROR_FLAG=" << clip << LL_ENDL;
+            }
+        }
+
+        // [AvatarSilhouette] Coverage replay programs deliberately share the
+        // Actor Mask vertex contract, but write continuous RG coverage.
+        for (S32 i = 0; i < ACTOR_MASK_PROGRAM_COUNT; ++i)
+        {
+            LLGLSLShader& shader = gSilCoverProgram[i];
+            shader.mName = llformat("SilCover %d", i);
+            shader.mFeatures = LLShaderFeatures();
+            shader.mFeatures.hasSkinning = i == ACTOR_MASK_BODY;
+            shader.mFeatures.hasObjectSkinning =
+                i == ACTOR_MASK_RIGGED || i == ACTOR_MASK_PBR_RIGGED;
+            shader.mShaderLevel = mShaderLevel[SHADER_DEFERRED];
+            shader.mShaderFiles.clear();
+            shader.mShaderFiles.push_back(make_pair(
+                i == ACTOR_MASK_BODY ? "deferred/actorMaskAvatarV.glsl" :
+                i == ACTOR_MASK_EYES ? "deferred/actorMaskEyesV.glsl" :
+                                      "deferred/actorMaskV.glsl", GL_VERTEX_SHADER));
+            shader.mShaderFiles.push_back(make_pair("deferred/silCoverF.glsl", GL_FRAGMENT_SHADER));
+            shader.clearPermutations();
+            shader.addPermutation("MASK_CHANNELS", llformat("%d", actorMaskTextureChannels()));
+            if (shader.mFeatures.hasObjectSkinning) shader.addPermutation("HAS_SKIN", "1");
+            if (i == ACTOR_MASK_PBR || i == ACTOR_MASK_PBR_RIGGED)
+                shader.addPermutation("MASK_PBR", "1");
+            if (i >= ACTOR_MASK_BODY) shader.addPermutation("SIL_COVER_SYSTEM", "1");
+            if (i == ACTOR_MASK_BODY && gSavedSettings.getBOOL("RenderAvatarCloth"))
+                shader.addPermutation("AVATAR_CLOTH", "1");
+            if (!shader.createShader())
+            {
+                shader.unload();
+                LL_WARNS("AvatarSilhouette") << "SILCOVER NO-PROGRAM " << i << LL_ENDL;
             }
         }
 

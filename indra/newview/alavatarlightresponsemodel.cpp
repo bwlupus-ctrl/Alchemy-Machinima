@@ -74,6 +74,30 @@ LLVector3 vector3Field(const LLSD& s, const char* key, const LLVector3& fallback
     }
     return result;
 }
+
+F32 dot3(const LLVector3& a, const LLVector3& b)
+{
+    return a.mV[VX] * b.mV[VX] + a.mV[VY] * b.mV[VY] + a.mV[VZ] * b.mV[VZ];
+}
+
+LLVector3 normalize3(const LLVector3& value)
+{
+    const F32 inv_length = 1.f / std::sqrt(dot3(value, value));
+    return LLVector3(value.mV[VX] * inv_length,
+                     value.mV[VY] * inv_length,
+                     value.mV[VZ] * inv_length);
+}
+
+F32 clamp01(F32 value)
+{
+    return std::min(std::max(value, 0.f), 1.f);
+}
+
+F32 smoothstepMirror(F32 edge0, F32 edge1, F32 value)
+{
+    const F32 t = clamp01((value - edge0) / (edge1 - edge0));
+    return t * t * (3.f - 2.f * t);
+}
 }
 
 Params sanitize(const Params& p)
@@ -174,6 +198,9 @@ bool silDecode(F32 carrier, bool hdr, F32& a_q, bool& haze_skip, bool& rim_cut)
     }
     else
     {
+        // LDR has no spare precision for an integrality check.  Rejecting
+        // blended carriers therefore relies on every G-buffer writer that can
+        // produce one running with blending disabled; HDR rejects by encoding.
         const S32 code = static_cast<S32>(std::round(carrier * 255.f));
         if (code < 1 || code > 248)
         {
@@ -187,6 +214,146 @@ bool silDecode(F32 carrier, bool hdr, F32& a_q, bool& haze_skip, bool& rim_cut)
     haze_skip = (flags & 1) != 0;
     rim_cut = (flags & 2) != 0;
     return true;
+}
+
+void calcDiffuseSpecularMirror(const LLVector3& base_color, F32 metallic,
+                               LLVector3& diffuse_color, LLVector3& specular_color)
+{
+    // deferredUtil.glsl calcDiffuseSpecular, including its statement order.
+    const LLVector3 f0(0.04f, 0.04f, 0.04f);
+    for (S32 i = 0; i < 3; ++i)
+    {
+        diffuse_color.mV[i] = base_color.mV[i] * (1.f - f0.mV[i]);
+        diffuse_color.mV[i] *= 1.f - metallic;
+        specular_color.mV[i] = f0.mV[i] * (1.f - metallic) + base_color.mV[i] * metallic;
+    }
+}
+
+PbrPunctualMirrorResult pbrPunctualMirror(const LLVector3& diffuse_color,
+                                          const LLVector3& specular_color,
+                                          F32 perceptual_roughness, F32 metallic,
+                                          const LLVector3& n, const LLVector3& v,
+                                          const LLVector3& l)
+{
+    // deferredUtil.glsl pbrPunctual and its three BRDF helpers, in shader order.
+    perceptual_roughness = std::max(perceptual_roughness, 0.045f);
+    const F32 alpha_roughness = perceptual_roughness * perceptual_roughness;
+    const F32 reflectance = std::max(std::max(specular_color.mV[VX], specular_color.mV[VY]),
+                                     specular_color.mV[VZ]);
+    const F32 reflectance90 = clamp01(reflectance * 25.f);
+
+    const LLVector3 h = normalize3(LLVector3(l.mV[VX] + v.mV[VX],
+                                             l.mV[VY] + v.mV[VY],
+                                             l.mV[VZ] + v.mV[VZ]));
+    const F32 v_dot_n = dot3(v, n);
+    LLVector3 reflection = normalize3(LLVector3(v.mV[VX] - 2.f * v_dot_n * n.mV[VX],
+                                                v.mV[VY] - 2.f * v_dot_n * n.mV[VY],
+                                                v.mV[VZ] - 2.f * v_dot_n * n.mV[VZ]));
+    reflection *= -1.f;
+    reflection.mV[VY] *= -1.f;
+
+    const F32 ndotl = std::min(std::max(dot3(n, l), 0.001f), 1.f);
+    const F32 ndotv = std::min(std::max(std::fabs(dot3(n, v)), 0.001f), 1.f);
+    const F32 ndoth = clamp01(dot3(n, h));
+    const F32 ldoth = clamp01(dot3(l, h));
+    const F32 vdoth = clamp01(dot3(v, h));
+
+    PbrPunctualMirrorResult result;
+    result.nl = ndotl;
+    const F32 fresnel_weight = std::pow(clamp01(1.f - vdoth), 5.f);
+    LLVector3 fresnel;
+    for (S32 i = 0; i < 3; ++i)
+    {
+        fresnel.mV[i] = specular_color.mV[i]
+            + (reflectance90 - specular_color.mV[i]) * fresnel_weight;
+    }
+    const F32 r = alpha_roughness;
+    const F32 attenuation_l = 2.f * ndotl /
+        (ndotl + std::sqrt(r * r + (1.f - r * r) * (ndotl * ndotl)));
+    const F32 attenuation_v = 2.f * ndotv /
+        (ndotv + std::sqrt(r * r + (1.f - r * r) * (ndotv * ndotv)));
+    const F32 geometric = attenuation_l * attenuation_v;
+    const F32 roughness_sq = alpha_roughness * alpha_roughness;
+    const F32 distribution_f = (ndoth * roughness_sq - ndoth) * ndoth + 1.f;
+    const F32 distribution = roughness_sq / (F_PI * distribution_f * distribution_f);
+
+    for (S32 i = 0; i < 3; ++i)
+    {
+        const F32 lambert = diffuse_color.mV[i] / F_PI;
+        result.diffuse.mV[i] = (1.f - fresnel.mV[i]) * lambert;
+        result.specular.mV[i] = fresnel.mV[i] * geometric * distribution / (4.f * ndotl * ndotv);
+    }
+    (void)reflection;
+    (void)ldoth;
+    (void)metallic; // Present in the GLSL PBRInfo even though these helpers do not read it.
+    return result;
+}
+
+LLVector3 rigRimTermMirror(const LLVector3& n, const LLVector3& v, const LLVector3& l,
+                           const LLVector3& light_color, const LLVector3& diffuse_color,
+                           F32 roughness, const LLVector4& rim,
+                           const RigRimMirrorUniforms& uniforms)
+{
+    const F32 gain = rim.mV[VX] * uniforms.globals.mV[VX];
+    if (gain <= 0.f)
+    {
+        return LLVector3::zero;
+    }
+
+    LLVector3 c_l = light_color;
+    if (uniforms.tron.mV[VX] > 0.5f)
+    {
+        const F32 luminance = dot3(c_l, LLVector3(0.2126f, 0.7152f, 0.0722f));
+        LLVector3 tint(std::max(uniforms.tron_color.mV[VX], 0.f),
+                       std::max(uniforms.tron_color.mV[VY], 0.f),
+                       std::max(uniforms.tron_color.mV[VZ], 0.f));
+        const F32 tint_lum = std::max(dot3(tint, LLVector3(0.2126f, 0.7152f, 0.0722f)), 1.0e-4f);
+        const F32 tint_max = std::max(std::max(tint.mV[VX], tint.mV[VY]),
+                                      std::max(tint.mV[VZ], 1.0e-4f));
+        const F32 tint_den = std::sqrt(tint_lum * tint_max);
+        const F32 tint_mix = clamp01(uniforms.tron.mV[VY]);
+        for (S32 i = 0; i < 3; ++i)
+        {
+            c_l.mV[i] = c_l.mV[i] * (1.f - tint_mix)
+                       + luminance * (tint.mV[i] / tint_den) * tint_mix;
+        }
+        if (uniforms.tron.mV[VX] > 1.5f)
+        {
+            c_l *= std::max(uniforms.tron.mV[VZ], 0.f);
+        }
+    }
+
+    const F32 nov = std::fabs(dot3(n, v));
+    const F32 soften = clamp01(roughness) * clamp01(uniforms.globals.mV[VY]);
+    const F32 rim_k = std::max(rim.mV[VY], 0.05f);
+    const F32 k_eff = rim_k * (1.f - soften) + std::min(rim_k, 1.f) * soften;
+    const F32 grazing = std::pow(clamp01(1.f - nov), k_eff);
+    const F32 wrap = clamp01(rim.mV[VZ]);
+    const F32 light_weight = clamp01((dot3(n, l) + wrap) / (1.f + wrap));
+    const F32 back0 = rim.mV[VW];
+    const F32 back1 = back0 + std::max(uniforms.globals.mV[VZ], 1.0e-4f);
+    const F32 back = smoothstepMirror(back0, back1, -dot3(v, l));
+    const F32 surface_mix = clamp01(uniforms.globals.mV[VW]);
+
+    LLVector3 result;
+    for (S32 i = 0; i < 3; ++i)
+    {
+        const F32 tint = 1.f * (1.f - surface_mix) + diffuse_color.mV[i] * surface_mix;
+        result.mV[i] = std::min(std::max(gain * c_l.mV[i]
+                                         * (grazing * light_weight * back) * tint, 0.f), 10.f);
+    }
+    return result;
+}
+
+LLVector3 rimRecombine(const LLVector3& nonrim, const LLVector3& rim_raw,
+                       bool rim_on, F32 light_scale)
+{
+    LLVector3 color = nonrim;
+    if (rim_on)
+    {
+        color += rim_raw;
+    }
+    return color * light_scale;
 }
 
 F32 srgbToLinear(F32 c)

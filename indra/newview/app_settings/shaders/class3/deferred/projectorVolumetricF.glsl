@@ -70,6 +70,8 @@ uniform float proj_lod;
 uniform float proj_range;
 uniform vec3  proj_n;           // projector axis used by the shaft-length clip
 uniform float projvol_max_distance; // metres along projector axis; 0 = full range
+uniform int alr_sil_active;
+uniform sampler2D silCoverMap;
 
 // Shared godray controls (this program uploads its OWN values into these).
 uniform int   godray_res;         // raymarch sample count (bounded local march;
@@ -721,6 +723,9 @@ void main()
     // base is the true light color and the tint layers on top of it.
     float march_scale = dt * PROJVOL_SCATTER * godray_multiplier;
     vec3 shaft = accum * march_scale * color;
+    vec2 sil_cov = (alr_sil_active & 32) != 0
+        ? texture(silCoverMap, tc).rg : vec2(0.0);
+    shaft *= 1.0 - sil_cov.r;
     depth_w *= march_scale;
     w_sum   *= march_scale;
 
@@ -803,6 +808,7 @@ void main()
                 // brightness only, so it reads as colored light instead of clipping to a
                 // white sticker edge. Added into the additive HDR shaft -> rides bloom-feed.
                 vec3 rim = E * (geom * gate * PROJVOL_RIM_SCALE) * color;
+                rim *= 1.0 - sil_cov.g;
                 shaft += rim;
                 if (projvol_temporal_beam_depth != 0)
                 {

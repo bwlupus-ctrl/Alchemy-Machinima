@@ -31,6 +31,7 @@
 #include "lluuid.h"
 #include "llsd.h"
 #include "v3math.h"
+#include "v2math.h"
 #include "v3dmath.h"
 #include "v4color.h"        // actorPathColor()
 #include "llquaternion.h"
@@ -753,6 +754,8 @@ public:
     LLVOAvatar* sharedActorStyleProxyAvatar(size_t index) const; // [ActorMask]
     static bool actorMaskAvatarEligible(LLVOAvatar* avatar); // [ActorMask]
     U32 renderSystemActorMask(LLVOAvatar* avatar, U8 byte); // [ActorMask]
+    U32 renderSystemSilCover(LLVOAvatar* avatar, const LLVector2& cover, U32 phase);
+    void renderSharedProxySilCover(U32 phase);
     // Cover owns an opaque/masked depth silhouette. Prime that silhouette once
     // before any native/shared alpha is drained so already-blended world alpha
     // cannot leak through a styled actor whose sorted colour turn is later.
@@ -1084,6 +1087,8 @@ public:
         // no coverage info -> the classic full draw, byte-identical.
         GhostCoverageMask mDeferredCoverage = GHOST_COVERAGE_NONE;
         GhostCoverageMask mPresentCoverage  = GHOST_COVERAGE_NONE;
+        // [AvatarSilhouette] 0=beauty, 1=coverage Phase A, 2=coverage Phase B.
+        U8 mSilCoverPhase = 0;
     };
 
 private:
