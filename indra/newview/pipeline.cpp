@@ -21564,6 +21564,27 @@ bool LLPipeline::isHeroProjector(const LLUUID& id)
     return !sHeroProjectors.empty() && sHeroProjectors.count(id) != 0;
 }
 
+// [BDMerge G2.3 fix] Resolve attachment ownership without mistaking a worn
+// animesh control avatar for its wearer. Standalone animesh retains the control
+// avatar as its alpha-override owner.
+static LLVOAvatar* bdmerge_alpha_owner_avatar(LLViewerObject* object)
+{
+    if (!object)
+        return nullptr;
+
+    LLVOAvatar* owner = object->getAvatarAncestor();
+    if (!owner)
+        owner = object->getAvatar();
+    if (!owner)
+        owner = object->asAvatar();
+    if (owner && owner->isControlAvatar())
+    {
+        if (LLVOAvatar* wearer = owner->getAttachedAvatar())
+            owner = wearer;
+    }
+    return owner;
+}
+
 // [BDMerge G2.3 per-target] Rebuild the geometry keyed by an override id NOW, so a
 // mode change re-routes immediately (canRenderAsMask() is consulted at batch build;
 // the global flag only takes effect lazily). The id may be an object ROOT id (rebuild
@@ -21577,8 +21598,23 @@ static void bdmerge_rebuild_for_alpha_target(const LLUUID& id)
     if (!obj)
         return;
 
+    std::vector<LLViewerObject*> pending;
+    std::set<LLViewerObject*> visited;
+    std::set<LLSpatialGroup*> groups;
+
+    auto enqueue_tree = [&pending](LLViewerObject* root)
+    {
+        if (root)
+            pending.push_back(root);
+    };
+
     if (LLVOAvatar* av = obj->asAvatar())
     {
+        // [BDMerge G2.3 fix] A worn control avatar belongs to the real wearer;
+        // standalone animesh continues to use its own control-avatar identity.
+        if (LLVOAvatar* owner = bdmerge_alpha_owner_avatar(av))
+            av = owner;
+
         // Avatar id: re-route every attachment (and its linkset children).
         for (LLVOAvatar::attachment_map_t::iterator it = av->mAttachmentPoints.begin();
              it != av->mAttachmentPoints.end(); ++it)
@@ -21590,27 +21626,40 @@ static void bdmerge_rebuild_for_alpha_target(const LLUUID& id)
                  ait != attachment->mAttachedObjects.end(); ++ait)
             {
                 LLViewerObject* att = ait->get();
-                if (!att)
-                    continue;
-                if (att->mDrawable.notNull())
-                    gPipeline.markRebuild(att->mDrawable, LLDrawable::REBUILD_ALL);
-                for (const LLPointer<LLViewerObject>& child : att->getChildren())
-                {
-                    if (child.notNull() && child->mDrawable.notNull())
-                        gPipeline.markRebuild(child->mDrawable, LLDrawable::REBUILD_ALL);
-                }
+                enqueue_tree(att);
             }
         }
-        return;
+    }
+    else
+    {
+        enqueue_tree(obj);
     }
 
-    // Object id: rebuild this object and its linkset children.
-    if (obj->mDrawable.notNull())
-        gPipeline.markRebuild(obj->mDrawable, LLDrawable::REBUILD_ALL);
-    for (const LLPointer<LLViewerObject>& child : obj->getChildren())
+    // [BDMerge G2.3 fix] Walk every descendant and dirty each spatial group
+    // once. Drawable REBUILD_ALL alone does not rebuild pass classification.
+    for (size_t index = 0; index < pending.size(); ++index)
     {
-        if (child.notNull() && child->mDrawable.notNull())
-            gPipeline.markRebuild(child->mDrawable, LLDrawable::REBUILD_ALL);
+        LLViewerObject* current = pending[index];
+        if (!current || !visited.insert(current).second)
+            continue;
+        if (current->mDrawable.notNull())
+        {
+            if (LLSpatialGroup* group = current->mDrawable->getSpatialGroup())
+                groups.insert(group);
+        }
+        for (const LLPointer<LLViewerObject>& child : current->getChildren())
+        {
+            if (child.notNull())
+                pending.push_back(child.get());
+        }
+    }
+    for (LLSpatialGroup* group : groups)
+    {
+        if (!group->isDead())
+        {
+            group->dirtyGeom();
+            gPipeline.markRebuild(group);
+        }
     }
 }
 
@@ -21640,6 +21689,11 @@ S32 LLPipeline::getAlphaModeOverride(const LLUUID& id)
         return 0;
     auto it = sAlphaModeOverride.find(id);
     return (it != sAlphaModeOverride.end()) ? it->second : 0;
+}
+
+bool LLPipeline::hasAlphaOverrides()
+{
+    return !sAlphaModeOverride.empty();
 }
 
 // Object-specific override beats avatar-wide: OBJECT override wins if present
@@ -21750,10 +21804,21 @@ LLPipeline::AlphaPolicy LLPipeline::resolveAlphaPolicy(const LLFace* facep)
         return policy;
     }
 
-    LLViewerObject* root = vobj->getRootEdit();
-    const LLUUID obj_id = root ? root->getID() : vobj->getID();
-    const LLUUID avatar_id = vobj->getAvatar() ? vobj->getAvatar()->getID() : LLUUID::null;
-    const S32 override_mode = resolveAlphaMode(obj_id, avatar_id);
+    LLUUID obj_id;
+    LLUUID avatar_id;
+    S32 override_mode = 0;
+    // [BDMerge G2.3 fix] Keep attachment ancestry off the normal per-face path:
+    // the session override map is empty unless the feature is actively used.
+    if (!sAlphaModeOverride.empty())
+    {
+        LLViewerObject* root = vobj->getRootEdit();
+        obj_id = root ? root->getID() : vobj->getID();
+        // Attachment ancestry owns worn animesh; only a standalone animesh
+        // keeps its control-avatar identity.
+        LLVOAvatar* owner_avatar = bdmerge_alpha_owner_avatar(vobj);
+        avatar_id = owner_avatar ? owner_avatar->getID() : LLUUID::null;
+        override_mode = resolveAlphaMode(obj_id, avatar_id);
+    }
 
     // Match the established physical guard. Force Blend is always meaningful;
     // Force Mask only takes over a face whose TE alpha/glow do not require
@@ -21765,6 +21830,7 @@ LLPipeline::AlphaPolicy LLPipeline::resolveAlphaPolicy(const LLFace* facep)
     {
         policy.mMode = ALPHA_MODE_BLEND;
         policy.mCutoff = -1.f;
+        policy.mOverride = ALPHA_OVERRIDE_TARGET_BLEND;
         policy.mOverridden = true;
         return policy;
     }
@@ -21774,12 +21840,25 @@ LLPipeline::AlphaPolicy LLPipeline::resolveAlphaPolicy(const LLFace* facep)
 
     if (override_mode == 1)
     {
-        if (mask_eligible)
+        // [BDMerge G2.3 fix] Explicit Force Mask converts every resolved BLEND
+        // face. OPAQUE remains opaque; authored MASK keeps its cutoff unless a
+        // per-target cutoff is explicitly set. The physical guard below is
+        // intentionally retained only for the global automatic hammer.
+        if (policy.mMode == ALPHA_MODE_BLEND)
         {
             F32 cutoff = resolveAlphaMaskCutoff(obj_id, avatar_id);
             policy.mMode = ALPHA_MODE_MASK;
             policy.mCutoff = llclamp(
                 cutoff >= 0.f ? cutoff : (F32)force_cutoff, 0.f, 1.f);
+            policy.mOverride = ALPHA_OVERRIDE_TARGET_MASK;
+            policy.mOverridden = true;
+        }
+        else if (policy.mMode == ALPHA_MODE_MASK)
+        {
+            F32 cutoff = resolveAlphaMaskCutoff(obj_id, avatar_id);
+            if (cutoff >= 0.f)
+                policy.mCutoff = llclamp(cutoff, 0.f, 1.f);
+            policy.mOverride = ALPHA_OVERRIDE_TARGET_MASK;
             policy.mOverridden = true;
         }
         return policy;
@@ -21808,6 +21887,7 @@ LLPipeline::AlphaPolicy LLPipeline::resolveAlphaPolicy(const LLFace* facep)
         {
             policy.mMode = ALPHA_MODE_MASK;
             policy.mCutoff = llclamp((F32)force_cutoff, 0.f, 1.f);
+            policy.mOverride = ALPHA_OVERRIDE_GLOBAL_MASK;
             policy.mOverridden = true;
         }
     }

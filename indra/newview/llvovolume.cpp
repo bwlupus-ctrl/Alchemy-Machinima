@@ -5889,7 +5889,7 @@ void LLVolumeGeometryManager::registerFace(LLSpatialGroup* group, LLFace* facep,
             effective_draw_alpha_mode == LLPipeline::ALPHA_MODE_BLEND ||
             te->getColor().mV[3] < 0.999f;
         U32 material_alpha_mode = LLMaterial::DIFFUSE_ALPHA_MODE_DEFAULT;
-        if (alpha_policy.mOverridden)
+        if (alpha_policy.mOverride != LLPipeline::ALPHA_OVERRIDE_NONE)
         {
             material_alpha_mode =
                 alpha_policy.mMode == LLPipeline::ALPHA_MODE_MASK
@@ -6163,7 +6163,7 @@ void LLVolumeGeometryManager::registerFace(LLSpatialGroup* group, LLFace* facep,
 
             draw_info->mAlphaMaskCutoff = mat->getAlphaMaskCutoff() * (1.f / 255.f);
             draw_info->mDiffuseAlphaMode =
-                alpha_policy.mOverridden
+                alpha_policy.mOverride != LLPipeline::ALPHA_OVERRIDE_NONE
                     ? (alpha_policy.mMode == LLPipeline::ALPHA_MODE_MASK
                            ? LLMaterial::DIFFUSE_ALPHA_MODE_MASK
                            : (alpha_policy.mMode == LLPipeline::ALPHA_MODE_BLEND
@@ -6538,12 +6538,12 @@ void LLVolumeGeometryManager::rebuildGeom(LLSpatialGroup* group)
                     U32 type = gPipeline.getPoolTypeFromTE(te, tex);
                     const LLPipeline::AlphaPolicy alpha_policy =
                         LLPipeline::resolveAlphaPolicy(facep);
-                    if (alpha_policy.mOverridden &&
+                    if (alpha_policy.mOverride != LLPipeline::ALPHA_OVERRIDE_NONE &&
                         alpha_policy.mMode == LLPipeline::ALPHA_MODE_BLEND)
                     {
                         type = LLDrawPool::POOL_ALPHA;
                     }
-                    else if (alpha_policy.mOverridden &&
+                    else if (alpha_policy.mOverride != LLPipeline::ALPHA_OVERRIDE_NONE &&
                              alpha_policy.mMode == LLPipeline::ALPHA_MODE_MASK)
                     {
                         type = is_pbr
@@ -6824,6 +6824,54 @@ void LLVolumeGeometryManager::rebuildGeom(LLSpatialGroup* group)
     group->clearState(LLSpatialGroup::GEOM_DIRTY | LLSpatialGroup::ALPHA_DIRTY);
 }
 
+// TARGET_MASK coverage is texture alpha alone.  Bake that policy only into the
+// affected face's vertex range: RGB remains untouched, while alpha becomes one.
+// Legacy glow has no per-DrawInfo cutoff upload, so its otherwise-unused
+// emissive RGB carries a 16-bit cutoff plus a marker for the glow shader.
+static void apply_target_mask_vertex_coverage(
+    LLFace* facep, const LLPipeline::AlphaPolicy& policy)
+{
+    if (!facep ||
+        policy.mOverride != LLPipeline::ALPHA_OVERRIDE_TARGET_MASK)
+    {
+        return;
+    }
+
+    LLVertexBuffer* buffer = facep->getVertexBuffer();
+    if (!buffer)
+    {
+        return;
+    }
+
+    const S32 geom_count = facep->getGeomCount();
+    if (buffer->hasDataType(LLVertexBuffer::TYPE_COLOR))
+    {
+        LLStrider<LLColor4U> colors;
+        buffer->getColorStrider(colors, facep->getGeomIndex(), geom_count);
+        for (S32 i = 0; i < geom_count; ++i)
+        {
+            colors[i].setAlpha(255);
+        }
+    }
+
+    const LLTextureEntry* te = facep->getTextureEntry();
+    if (te && !te->getGLTFRenderMaterial() && te->getGlow() > 0.f &&
+        buffer->hasDataType(LLVertexBuffer::TYPE_EMISSIVE))
+    {
+        const U32 encoded_cutoff = (U32)ll_round(
+            llclamp(policy.mCutoff, 0.f, 1.f) * 65535.f);
+        LLStrider<LLColor4U> emissive;
+        buffer->getEmissiveStrider(
+            emissive, facep->getGeomIndex(), geom_count);
+        for (S32 i = 0; i < geom_count; ++i)
+        {
+            emissive[i].mV[VRED] = (U8)(encoded_cutoff >> 8);
+            emissive[i].mV[VGREEN] = (U8)(encoded_cutoff & 0xff);
+            emissive[i].mV[VBLUE] = 255;
+        }
+    }
+}
+
 void LLVolumeGeometryManager::rebuildMesh(LLSpatialGroup* group)
 {
     LL_PROFILE_ZONE_SCOPED_CATEGORY_VOLUME;
@@ -6880,6 +6928,11 @@ void LLVolumeGeometryManager::rebuildMesh(LLSpatialGroup* group)
                                     // rebuild this group with no debug assert because MESH_DIRTY
                                     group->dirtyGeom();
                                     gPipeline.markRebuild(group);
+                                }
+                                else
+                                {
+                                    apply_target_mask_vertex_coverage(
+                                        face, LLPipeline::resolveAlphaPolicy(face));
                                 }
                             }
                         }
@@ -7196,7 +7249,7 @@ U32 LLVolumeGeometryManager::genDrawInfo(LLSpatialGroup* group, U32 mask, LLFace
                 auto material_alpha_mode =
                     [](const LLPipeline::AlphaPolicy& policy) -> U32
                 {
-                    if (!policy.mOverridden)
+                    if (policy.mOverride == LLPipeline::ALPHA_OVERRIDE_NONE)
                     {
                         return LLMaterial::DIFFUSE_ALPHA_MODE_DEFAULT;
                     }
@@ -7520,6 +7573,14 @@ U32 LLVolumeGeometryManager::genDrawInfo(LLSpatialGroup* group, U32 mask, LLFace
             LLGLTFMaterial* gltf_mat = te->getGLTFRenderMaterial();
             const LLPipeline::AlphaPolicy alpha_policy =
                 LLPipeline::resolveAlphaPolicy(facep);
+            // [BDMerge G2.3 fix] Only an explicit per-target MASK policy owns
+            // pass routing independently of TE alpha.
+            const bool target_mask =
+                alpha_policy.mOverride == LLPipeline::ALPHA_OVERRIDE_TARGET_MASK;
+            // getGeometryVolume() baked TE/base-colour alpha into this range.
+            // Remove it only for TARGET_MASK so every mask shader tests texture
+            // alpha alone; all other faces incur no vertex rewrite.
+            apply_target_mask_vertex_coverage(facep, alpha_policy);
 
             if (hud_group && gltf_mat == nullptr)
             { //all hud attachments are fullbright
@@ -7528,7 +7589,7 @@ U32 LLVolumeGeometryManager::genDrawInfo(LLSpatialGroup* group, U32 mask, LLFace
 
             tex = facep->getTexture();
 
-            bool is_alpha = alpha_policy.mOverridden
+            bool is_alpha = alpha_policy.mOverride != LLPipeline::ALPHA_OVERRIDE_NONE
                 ? alpha_policy.mMode == LLPipeline::ALPHA_MODE_BLEND
                 : facep->getPoolType() == LLDrawPool::POOL_ALPHA;
 
@@ -7545,7 +7606,7 @@ U32 LLVolumeGeometryManager::genDrawInfo(LLSpatialGroup* group, U32 mask, LLFace
                 if (mat)
                 {
                     legacy_alpha_mode = mat->getDiffuseAlphaMode();
-                    if (alpha_policy.mOverridden)
+                    if (alpha_policy.mOverride != LLPipeline::ALPHA_OVERRIDE_NONE)
                     {
                         legacy_alpha_mode =
                             alpha_policy.mMode == LLPipeline::ALPHA_MODE_MASK
@@ -7565,7 +7626,7 @@ U32 LLVolumeGeometryManager::genDrawInfo(LLSpatialGroup* group, U32 mask, LLFace
             bool blinn_phong_opaque = blinn_phong_alpha >= 0.999f;
             bool blinn_phong_transparent = blinn_phong_alpha < 0.999f;
 
-            if (!gltf_mat)
+            if (!gltf_mat && !target_mask)
             {
                 is_alpha |= blinn_phong_transparent;
             }
@@ -7599,7 +7660,7 @@ U32 LLVolumeGeometryManager::genDrawInfo(LLSpatialGroup* group, U32 mask, LLFace
                 {
                     if (legacy_alpha_mode == LLMaterial::DIFFUSE_ALPHA_MODE_MASK)
                     {
-                        if (blinn_phong_opaque)
+                        if (target_mask || blinn_phong_opaque)
                         {
                             registerFace(group, facep, LLRenderPass::PASS_FULLBRIGHT_ALPHA_MASK);
                         }
@@ -7630,6 +7691,12 @@ U32 LLVolumeGeometryManager::genDrawInfo(LLSpatialGroup* group, U32 mask, LLFace
                             }
                         }
                     }
+                }
+                // [BDMerge G2.3 fix] Forced MASK material faces must reach the
+                // material-mask table even with TE alpha or legacy bump set.
+                else if (target_mask)
+                {
+                    material_pass = true;
                 }
                 else if (blinn_phong_transparent)
                 {
@@ -7723,7 +7790,7 @@ U32 LLVolumeGeometryManager::genDrawInfo(LLSpatialGroup* group, U32 mask, LLFace
                     registerFace(group, facep, fullbright ? LLRenderPass::PASS_FULLBRIGHT : LLRenderPass::PASS_SIMPLE);
                 }
             }
-            else if (alpha_policy.mOverridden &&
+            else if (alpha_policy.mOverride != LLPipeline::ALPHA_OVERRIDE_NONE &&
                      alpha_policy.mMode == LLPipeline::ALPHA_MODE_MASK)
             {
                 registerFace(

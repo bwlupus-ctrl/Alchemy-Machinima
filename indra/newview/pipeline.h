@@ -103,11 +103,20 @@ public:
         ALPHA_MODE_BLEND  = 2
     };
 
+    enum EAlphaOverrideOrigin : U8
+    {
+        ALPHA_OVERRIDE_NONE = 0,
+        ALPHA_OVERRIDE_GLOBAL_MASK,
+        ALPHA_OVERRIDE_TARGET_MASK,
+        ALPHA_OVERRIDE_TARGET_BLEND
+    };
+
     struct AlphaPolicy
     {
         EEffectiveAlphaMode mMode = ALPHA_MODE_OPAQUE;
         F32 mCutoff = -1.f; // valid for MASK; -1 disables alpha discard
-        bool mOverridden = false;
+        EAlphaOverrideOrigin mOverride = ALPHA_OVERRIDE_NONE;
+        bool mOverridden = false; // compatibility for callers that only need any/none
     };
 
     static constexpr U32 BLOOM_MAX_MIPS = 7;
@@ -424,6 +433,7 @@ public:
     // clearVolumetricShafts(). See llface.cpp canRenderAsMask() for the routing.
     static void  setAlphaModeOverride(const LLUUID& id, S32 mode);
     static S32   getAlphaModeOverride(const LLUUID& id);
+    static bool  hasAlphaOverrides();
     // Object override wins if present (non-0); else avatar override; else 0.
     static S32   resolveAlphaMode(const LLUUID& objRootId, const LLUUID& avatarId);
 

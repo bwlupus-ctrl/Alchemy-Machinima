@@ -147,6 +147,17 @@ void main()
 #endif
     // NOTE: when this shader is used, only alpha is being written to
     float diffuse_alpha = sample_diffuse(vary_texcoord0.xy).a;
+    // TARGET_MASK legacy glow encodes its 16-bit cutoff in emissive RG and
+    // marks it in B. Ordinary glow keeps emissive RGB at zero.
+    if (vertex_color.b > 0.5)
+    {
+        float target_mask_cutoff =
+            (vertex_color.r * 256.0 + vertex_color.g) / 257.0;
+        if (diffuse_alpha < target_mask_cutoff)
+        {
+            discard;
+        }
+    }
 #ifdef HAS_ACTOR_FX
     float cutoff_alpha = actorFxSharedAlphaCutoffMode == 2
         ? diffuse_alpha * vertex_alpha : diffuse_alpha;

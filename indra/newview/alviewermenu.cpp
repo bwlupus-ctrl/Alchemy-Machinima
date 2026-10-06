@@ -820,6 +820,23 @@ namespace
     // no-mod content (no permission/mValid gate), mirroring the Volumetric Shaft /
     // Hero Beam session toggles. setAlphaModeOverride() re-routes the geometry
     // immediately, so the change is visible on click.
+    // [BDMerge G2.3 fix] Match pipeline ownership for menu checks: worn
+    // animesh belongs to its wearer; standalone animesh keeps its control id.
+    LLUUID alpha_mode_avatar_id(LLViewerObject* object)
+    {
+        if (!object)
+            return LLUUID::null;
+        LLVOAvatar* owner = object->getAvatarAncestor();
+        if (!owner)
+            owner = object->getAvatar();
+        if (owner && owner->isControlAvatar())
+        {
+            if (LLVOAvatar* wearer = owner->getAttachedAvatar())
+                owner = wearer;
+        }
+        return owner ? owner->getID() : LLUUID::null;
+    }
+
     void handle_object_alpha_mode(const LLSD& sdParam)
     {
         const S32 mode = sdParam.asInteger(); // 0/1/2 from the menu param
@@ -847,7 +864,7 @@ namespace
         if (!pObj)
             return false;
         LLUUID objId = pObj->getRootEdit() ? pObj->getRootEdit()->getID() : LLUUID::null;
-        LLUUID avId  = pObj->getAvatar() ? pObj->getAvatar()->getID() : LLUUID::null;
+        LLUUID avId = alpha_mode_avatar_id(pObj);
         return LLPipeline::resolveAlphaMode(objId, avId) == mode;
     }
 
@@ -924,7 +941,7 @@ namespace
         if (!pObj)
             return false;
         LLUUID objId = pObj->getRootEdit() ? pObj->getRootEdit()->getID() : LLUUID::null;
-        LLUUID avId  = pObj->getAvatar() ? pObj->getAvatar()->getID() : LLUUID::null;
+        LLUUID avId = alpha_mode_avatar_id(pObj);
         static LLCachedControl<F32> force_cutoff(gSavedSettings, "BDMergeForceAlphaMaskCutoff", 0.5f);
         F32 eff = LLPipeline::resolveAlphaMaskCutoff(objId, avId);
         if (eff < 0.f) eff = (F32)force_cutoff; // unset -> effective global default
@@ -939,7 +956,7 @@ namespace
         if (!pObj)
             return false;
         LLUUID objId = pObj->getRootEdit() ? pObj->getRootEdit()->getID() : LLUUID::null;
-        LLUUID avId  = pObj->getAvatar() ? pObj->getAvatar()->getID() : LLUUID::null;
+        LLUUID avId = alpha_mode_avatar_id(pObj);
         return LLPipeline::resolveAlphaMode(objId, avId) == 1;
     }
 

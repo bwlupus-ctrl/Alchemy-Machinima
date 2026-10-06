@@ -14468,61 +14468,74 @@ void LLActorMover::collectGhostBatches()
                 gf.mObjectId = obj->getID();
                 const LLTextureEntry* te = face->getTextureEntry();
                 LLGLTFMaterial* gmat = te ? te->getGLTFRenderMaterial() : nullptr;
-                LLDrawInfo* face_info = face->mDrawInfo;
-                if (face_info &&
-                    face_info->mEffectiveAlphaMode == LLPipeline::ALPHA_MODE_MASK)
+                gf.mDoubleSided = gmat && gmat->mDoubleSided;
+                if (LLPipeline::hasAlphaOverrides())
                 {
-                    gf.mAlphaKind = 1;
-                    gf.mCutoff = face_info->mAlphaMaskCutoff;
-                    gf.mDoubleSided = gmat && gmat->mDoubleSided;
-                }
-                else if (face_info &&
-                         face_info->mEffectiveAlphaMode == LLPipeline::ALPHA_MODE_BLEND)
-                {
-                    gf.mAlphaKind = 2;
-                    gf.mDoubleSided = gmat && gmat->mDoubleSided;
-                }
-                else if (gmat)
-                {
-                    gf.mDoubleSided = gmat->mDoubleSided;
-                    if (gmat->mAlphaMode == LLGLTFMaterial::ALPHA_MODE_MASK)
+                    // Only the active override case needs live ownership
+                    // resolution; preserve the DrawInfo fast path otherwise.
+                    const LLPipeline::AlphaPolicy alpha_policy =
+                        LLPipeline::resolveAlphaPolicy(face);
+                    if (alpha_policy.mMode == LLPipeline::ALPHA_MODE_MASK)
                     {
                         gf.mAlphaKind = 1;
-                        gf.mCutoff = gmat->mAlphaCutoff;
+                        gf.mCutoff = alpha_policy.mCutoff;
                     }
-                    else if (gmat->mAlphaMode == LLGLTFMaterial::ALPHA_MODE_BLEND)
+                    else if (alpha_policy.mMode == LLPipeline::ALPHA_MODE_BLEND)
                     {
                         gf.mAlphaKind = 2;
                     }
                 }
-                else if (te)
+                else
                 {
-                    const LLMaterial* mat = te->getMaterialParams().get();
-                    if (mat && mat->getDiffuseAlphaMode() == LLMaterial::DIFFUSE_ALPHA_MODE_MASK)
+                    LLDrawInfo* face_info = face->mDrawInfo;
+                    if (face_info &&
+                        face_info->mEffectiveAlphaMode == LLPipeline::ALPHA_MODE_MASK)
                     {
                         gf.mAlphaKind = 1;
-                        gf.mCutoff = mat->getAlphaMaskCutoff() * (1.f / 255.f);
+                        gf.mCutoff = face_info->mAlphaMaskCutoff;
                     }
-                    else if (mat && mat->getDiffuseAlphaMode() == LLMaterial::DIFFUSE_ALPHA_MODE_BLEND)
+                    else if (face_info &&
+                             face_info->mEffectiveAlphaMode == LLPipeline::ALPHA_MODE_BLEND)
                     {
                         gf.mAlphaKind = 2;
                     }
-                    else if (!mat
-                             && (face->getPoolType() == LLDrawPool::POOL_ALPHA_MASK
-                                 || face->getPoolType() == LLDrawPool::POOL_FULLBRIGHT_ALPHA_MASK))
+                    else if (gmat)
                     {
-                        // Stock canRenderAsMask routing for legacy faces without
-                        // LLMaterial uses the DrawInfo cutoff (normally 0.33;
-                        // session force-mask overrides may replace it). Mirror
-                        // the exact generated value when it is available.
-                        gf.mAlphaKind = 1;
-                        gf.mCutoff = face->mDrawInfo
-                            ? face->mDrawInfo->mAlphaMaskCutoff : 0.33f;
+                        if (gmat->mAlphaMode == LLGLTFMaterial::ALPHA_MODE_MASK)
+                        {
+                            gf.mAlphaKind = 1;
+                            gf.mCutoff = gmat->mAlphaCutoff;
+                        }
+                        else if (gmat->mAlphaMode == LLGLTFMaterial::ALPHA_MODE_BLEND)
+                        {
+                            gf.mAlphaKind = 2;
+                        }
                     }
-                    else if (face->getPoolType() == LLDrawPool::POOL_ALPHA
-                             || te->getColor().mV[VW] < 0.999f)
+                    else if (te)
                     {
-                        gf.mAlphaKind = 2;
+                        const LLMaterial* mat = te->getMaterialParams().get();
+                        if (mat && mat->getDiffuseAlphaMode() == LLMaterial::DIFFUSE_ALPHA_MODE_MASK)
+                        {
+                            gf.mAlphaKind = 1;
+                            gf.mCutoff = mat->getAlphaMaskCutoff() * (1.f / 255.f);
+                        }
+                        else if (mat && mat->getDiffuseAlphaMode() == LLMaterial::DIFFUSE_ALPHA_MODE_BLEND)
+                        {
+                            gf.mAlphaKind = 2;
+                        }
+                        else if (!mat
+                                 && (face->getPoolType() == LLDrawPool::POOL_ALPHA_MASK
+                                     || face->getPoolType() == LLDrawPool::POOL_FULLBRIGHT_ALPHA_MASK))
+                        {
+                            gf.mAlphaKind = 1;
+                            gf.mCutoff = face_info
+                                ? face_info->mAlphaMaskCutoff : 0.33f;
+                        }
+                        else if (face->getPoolType() == LLDrawPool::POOL_ALPHA
+                                 || te->getColor().mV[VW] < 0.999f)
+                        {
+                            gf.mAlphaKind = 2;
+                        }
                     }
                 }
                 faces.push_back(gf);
@@ -16020,22 +16033,52 @@ bool shared_pbr_alpha_mode(const LLDrawInfo* info, U8& out_mode)
     }
 }
 
-bool shared_pbr_authored_alpha_mode(
-    const LLFetchedGLTFMaterial* material, U8& out_mode)
+bool shared_pbr_face_alpha_mode(LLFace* face, U8& out_mode)
 {
-    if (!material)
+    if (!face)
     {
         return false;
     }
-    switch (material->mAlphaMode)
+    if (!LLPipeline::hasAlphaOverrides())
     {
-    case LLGLTFMaterial::ALPHA_MODE_OPAQUE:
+        if (shared_pbr_alpha_mode(face->mDrawInfo, out_mode))
+        {
+            return true;
+        }
+        const LLTextureEntry* te = face->getTextureEntry();
+        const LLGLTFMaterial* material =
+            te ? te->getGLTFRenderMaterial() : nullptr;
+        if (!material)
+        {
+            return false;
+        }
+        switch (material->mAlphaMode)
+        {
+        case LLGLTFMaterial::ALPHA_MODE_OPAQUE:
+            out_mode = SHARED_ACTOR_FX_PBR_ALPHA_OPAQUE;
+            return true;
+        case LLGLTFMaterial::ALPHA_MODE_MASK:
+            out_mode = SHARED_ACTOR_FX_PBR_ALPHA_MASK;
+            return true;
+        case LLGLTFMaterial::ALPHA_MODE_BLEND:
+            out_mode = SHARED_ACTOR_FX_PBR_ALPHA_BLEND;
+            return true;
+        default:
+            return false;
+        }
+    }
+
+    // An active session override must classify the live face even if DrawInfo
+    // is stale during clone fallback.
+    switch (LLPipeline::resolveAlphaPolicy(face).mMode)
+    {
+    case LLPipeline::ALPHA_MODE_OPAQUE:
         out_mode = SHARED_ACTOR_FX_PBR_ALPHA_OPAQUE;
         return true;
-    case LLGLTFMaterial::ALPHA_MODE_MASK:
+    case LLPipeline::ALPHA_MODE_MASK:
         out_mode = SHARED_ACTOR_FX_PBR_ALPHA_MASK;
         return true;
-    case LLGLTFMaterial::ALPHA_MODE_BLEND:
+    case LLPipeline::ALPHA_MODE_BLEND:
         out_mode = SHARED_ACTOR_FX_PBR_ALPHA_BLEND;
         return true;
     default:
@@ -16837,12 +16880,10 @@ void LLActorMover::buildSharedActorStyleQueue()
             }
 
             U8 alpha_mode = 0;
-            LLDrawInfo* static_info =
-                source_face.mFace ? source_face.mFace->mDrawInfo : nullptr;
+            // Keep the DrawInfo fast path until a session override requires
+            // live face classification.
             if (!LLViewerShaderMgr::hasSharedActorFxPBRShaders()
-                || !(static_info
-                         ? shared_pbr_alpha_mode(static_info, alpha_mode)
-                         : shared_pbr_authored_alpha_mode(material, alpha_mode)))
+                || !shared_pbr_face_alpha_mode(source_face.mFace, alpha_mode))
             {
                 replay_complete = false;
                 continue;
