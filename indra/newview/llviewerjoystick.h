@@ -140,6 +140,8 @@ public:
     bool toggleFlycam();
     void setSNDefaults();
     void setXboxDefaults();
+    bool applyDronePreset(S32 preset);
+    void resetDroneSettings();
     bool isDeviceUUIDSet();
     LLSD getDeviceUUID(); //unconverted, OS dependent value wrapped into LLSD, for comparison/search
     std::string getDeviceUUIDString(); // converted readable value for settings

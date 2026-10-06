@@ -181,14 +181,70 @@ template<> template<> void xinput_object::test<7>()
     ensure_equals("Classic roll unchanged", ALXInput::roll(0.f, 1.f, .06f, 2.f), 1.f);
 }
 
-// Section 16.3 coverage boundary (rev 11):
-// - Pure helpers above pin focus-loss edge suppression, reconnect/invalidate
-//   freshness, Drone trigger neutralisation, and the MODE_TICK rumble pattern.
-// - D-pad Down/model-aware hint dispatch, actions 0-6, Cursor3D refusal, and
-//   THROTTLE->ROLL release-pending are LLViewerJoystick lifecycle behavior and
-//   have no pure helper in alxinputmath.h; they remain integration items.
-// - TODO(WP4/T39-T41): once the migration/default helpers exist, exhaust all
-//   5^3 slot matrices for None-only migration, version 0/1/5 behavior, restored
-//   backups, Xbox Defaults, seven-entry values 0-6, and unchanged flight model.
-//   Do not duplicate settings mutation here: that would not test the WP4 code.
+// Flycam brief T39: exhaust the 5^3 None/non-None slot matrix.
+template<> template<> void xinput_object::test<8>()
+{
+    const int values[] = {0, 1, 2, 3, 7};
+    for (int up : values)
+    for (int left : values)
+    for (int right : values)
+    {
+        const ALXInput::DpadSettings migrated =
+            ALXInput::migrateDroneDpad({up, left, right, 0});
+        ensure_equals("T39 Up None-only", migrated.up, up == 0 ? 4 : up);
+        ensure_equals("T39 Left None-only", migrated.left, left == 0 ? 5 : left);
+        ensure_equals("T39 Right None-only", migrated.right, right == 0 ? 6 : right);
+        ensure_equals("T39 migration version", migrated.version, 1);
+    }
+}
+
+// Flycam brief T40: idempotence, future versions, and restored backups.
+template<> template<> void xinput_object::test<9>()
+{
+    ALXInput::DpadSettings migrated = ALXInput::migrateDroneDpad({0, 0, 0, 0});
+    migrated.left = 0;
+    migrated = ALXInput::migrateDroneDpad(migrated);
+    ensure_equals("T40 user None survives rerun", migrated.left, 0);
+    ensure_equals("T40 version one remains", migrated.version, 1);
+
+    const ALXInput::DpadSettings future = ALXInput::migrateDroneDpad({0, 0, 0, 5});
+    ensure_equals("T40 future Up untouched", future.up, 0);
+    ensure_equals("T40 future Left untouched", future.left, 0);
+    ensure_equals("T40 future Right untouched", future.right, 0);
+    ensure_equals("T40 future version never decreases", future.version, 5);
+
+    const ALXInput::DpadSettings restored = ALXInput::migrateDroneDpad({0, 1, 3, 0});
+    ensure_equals("T40 restored None fills", restored.up, 4);
+    ensure_equals("T40 restored cue survives", restored.left, 1);
+    ensure_equals("T40 restored level survives", restored.right, 3);
+    ensure_equals("T40 restored version", restored.version, 1);
+}
+
+// Flycam brief T41: Xbox Defaults uses the same fill without touching other state.
+template<> template<> void xinput_object::test<10>()
+{
+    const int values[] = {0, 1, 2, 3, 7};
+    for (int up : values)
+    for (int left : values)
+    for (int right : values)
+    {
+        const ALXInput::DpadSettings filled =
+            ALXInput::fillDroneDpadDefaults({up, left, right, 5});
+        ensure_equals("T41 Up None-only", filled.up, up == 0 ? 4 : up);
+        ensure_equals("T41 Left None-only", filled.left, left == 0 ? 5 : left);
+        ensure_equals("T41 Right None-only", filled.right, right == 0 ? 6 : right);
+        ensure_equals("T41 version untouched", filled.version, 5);
+    }
+    // ABI coverage for the values consumed by production dispatch. Actual
+    // combo resource counts and global-setting non-mutation need integration
+    // coverage; skins and other tests are outside WP4's allowed files.
+    ensure_equals("T41 action count", static_cast<int>(ALXInput::DPAD_ACTION_COUNT), 7);
+    ensure_equals("T41 None value", static_cast<int>(ALXInput::DPAD_NONE), 0);
+    ensure_equals("T41 cue Go value", static_cast<int>(ALXInput::DPAD_CUE_GO), 1);
+    ensure_equals("T41 cue Back value", static_cast<int>(ALXInput::DPAD_CUE_BACK), 2);
+    ensure_equals("T41 level value", static_cast<int>(ALXInput::DPAD_LEVEL), 3);
+    ensure_equals("T41 model value", static_cast<int>(ALXInput::DPAD_FLIGHT_MODEL), 4);
+    ensure_equals("T41 release value", static_cast<int>(ALXInput::DPAD_RELEASE), 5);
+    ensure_equals("T41 recentre value", static_cast<int>(ALXInput::DPAD_RECENTRE), 6);
+}
 }

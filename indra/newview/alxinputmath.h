@@ -68,6 +68,47 @@ inline bool primeSample(bool first, bool focused, bool was_focused,
     return first || (focused && !was_focused) || generation != last + 1;
 }
 
+// The persisted D-pad slots are deliberately independent of viewer settings so
+// the None-only default and migration matrices can be exhaustively tested.
+struct DpadSettings
+{
+    int up;
+    int left;
+    int right;
+    int version;
+};
+
+enum DpadAction
+{
+    DPAD_NONE = 0,
+    DPAD_CUE_GO = 1,
+    DPAD_CUE_BACK = 2,
+    DPAD_LEVEL = 3,
+    DPAD_FLIGHT_MODEL = 4,
+    DPAD_RELEASE = 5,
+    DPAD_RECENTRE = 6,
+    DPAD_ACTION_COUNT = 7
+};
+
+inline DpadSettings fillDroneDpadDefaults(DpadSettings settings)
+{
+    if (settings.up == DPAD_NONE) settings.up = DPAD_FLIGHT_MODEL;
+    if (settings.left == DPAD_NONE) settings.left = DPAD_RELEASE;
+    if (settings.right == DPAD_NONE) settings.right = DPAD_RECENTRE;
+    return settings;
+}
+
+inline DpadSettings migrateDroneDpad(DpadSettings settings)
+{
+    constexpr int DPAD_MIGRATION_DRONE = 1;
+    if (settings.version < DPAD_MIGRATION_DRONE)
+    {
+        settings = fillDroneDpadDefaults(settings);
+        settings.version = DPAD_MIGRATION_DRONE;
+    }
+    return settings;
+}
+
 // [XInputRumble] Pure rumble pattern player. Levels are 0-1 per motor; the
 // runtime scales by the strength setting and converts to the XInput U16 range.
 struct RumbleStep

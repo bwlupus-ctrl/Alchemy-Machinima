@@ -812,6 +812,16 @@ LLViewerJoystick::~LLViewerJoystick()
 // -----------------------------------------------------------------------------
 void LLViewerJoystick::init(bool autoenable, bool apply_defaults)
 {
+    ALXInput::DpadSettings dpad = ALXInput::migrateDroneDpad({
+        gSavedSettings.getS32("JoystickXInputDpadUp"),
+        gSavedSettings.getS32("JoystickXInputDpadLeft"),
+        gSavedSettings.getS32("JoystickXInputDpadRight"),
+        gSavedSettings.getS32("JoystickXInputDpadMigrationVersion")});
+    gSavedSettings.setS32("JoystickXInputDpadUp", dpad.up);
+    gSavedSettings.setS32("JoystickXInputDpadLeft", dpad.left);
+    gSavedSettings.setS32("JoystickXInputDpadRight", dpad.right);
+    gSavedSettings.setS32("JoystickXInputDpadMigrationVersion", dpad.version);
+
 #if LIB_NDOF
     static bool libinit = false;
     mDriverState = JDS_INITIALIZING;
@@ -3219,7 +3229,7 @@ void LLViewerJoystick::handleXInputDpad()
     }
     const auto action = [this](S32 value)
     {
-        if (value == 4)
+        if (value == ALXInput::DPAD_FLIGHT_MODEL)
         {
             const bool drone = gSavedSettings.getS32("FlycamFlightModel") == 1;
             if (!drone && m3DCursor)
@@ -3231,7 +3241,7 @@ void LLViewerJoystick::handleXInputDpad()
             xInputHint(drone ? "Flight: Classic" : "Flight: Drone");
             playRumble(ALXInput::RUMBLE_MODE_TICK);
         }
-        else if (value == 5)
+        else if (value == ALXInput::DPAD_RELEASE)
         {
             const bool drone_owns_camera = getOverrideCamera() &&
                 gCameraDispatchOwner == ECameraOwner::FLYCAM && mDroneCameraOwner;
@@ -3244,7 +3254,7 @@ void LLViewerJoystick::handleXInputDpad()
             gSavedSettings.setS32("FlycamDroneRelease", release);
             xInputHint(release == 1 ? "Release: Drift" : "Release: Hold");
         }
-        else if (value == 6)
+        else if (value == ALXInput::DPAD_RECENTRE)
         {
             const bool drone_owns_camera = getOverrideCamera() &&
                 gCameraDispatchOwner == ECameraOwner::FLYCAM && mDroneCameraOwner;
@@ -3259,20 +3269,20 @@ void LLViewerJoystick::handleXInputDpad()
             mXIRecentreGeneration = mXILoopGeneration;
             xInputHint("Gimbal recentring");
         }
-        else if (value == 3)
+        else if (value == ALXInput::DPAD_LEVEL)
         {
             if (!getOverrideCamera()) { xInputHint("Flycam not active"); return; }
             mXILevelPending = true;
             mXILevelGeneration = mXILoopGeneration;
             xInputHint("Level horizon");
         }
-        else if (value == 1 || value == 2)
+        else if (value == ALXInput::DPAD_CUE_GO || value == ALXInput::DPAD_CUE_BACK)
         {
             auto& rig = ALCineLightRigManager::instance().selected();
             if (rig.cueList().mTimecodeMode) { xInputHint("Timecode mode"); return; }
             if (rig.cueList().mCues.empty()) { xInputHint("No light cues"); return; }
             const F64 time = llmax(LLPresentationTime::currentFrame().presentation_time, 0.0);
-            if (value == 1) rig.cueGo(time); else rig.cueBack(time);
+            if (value == ALXInput::DPAD_CUE_GO) rig.cueGo(time); else rig.cueBack(time);
             xInputHint(llformat("Light cue %d/%d", rig.activeCue() + 1,
                                static_cast<S32>(rig.cueList().mCues.size())));
         }
@@ -3625,6 +3635,15 @@ void LLViewerJoystick::setXboxDefaults()
     gSavedSettings.setS32("JoystickButtonRollRight", -1);
     gSavedSettings.setS32("JoystickButtonRollDefault", -1);
 
+    const ALXInput::DpadSettings dpad = ALXInput::fillDroneDpadDefaults({
+        gSavedSettings.getS32("JoystickXInputDpadUp"),
+        gSavedSettings.getS32("JoystickXInputDpadLeft"),
+        gSavedSettings.getS32("JoystickXInputDpadRight"),
+        gSavedSettings.getS32("JoystickXInputDpadMigrationVersion")});
+    gSavedSettings.setS32("JoystickXInputDpadUp", dpad.up);
+    gSavedSettings.setS32("JoystickXInputDpadLeft", dpad.left);
+    gSavedSettings.setS32("JoystickXInputDpadRight", dpad.right);
+
     gSavedSettings.setBOOL("Cursor3D", false); // Xbox Gamepad, not 3D Mouse
     gSavedSettings.setBOOL("AutoLeveling", false);
     gSavedSettings.setBOOL("ZoomDirect", false);
@@ -3675,4 +3694,47 @@ void LLViewerJoystick::setXboxDefaults()
     gSavedSettings.setF32("AvatarFeathering", 20.0f);
     gSavedSettings.setF32("BuildFeathering", 3.f);
     gSavedSettings.setF32("FlycamFeathering", 1.0f);
+}
+
+bool LLViewerJoystick::applyDronePreset(S32 preset)
+{
+    if (preset < 0 || preset >= static_cast<S32>(LLFlycamDrone::PresetId::COUNT))
+        return false;
+
+    const LLFlycamDrone::HumanParams& p =
+        LLFlycamDrone::presets()[static_cast<std::size_t>(preset)].human;
+    gSavedSettings.setS32("FlycamDronePreset", preset);
+    gSavedSettings.setF32("FlycamDroneCruise", p.cruise);
+    gSavedSettings.setF32("FlycamDroneTop", p.top);
+    gSavedSettings.setF32("FlycamDroneTimeToTop", p.timeToTop);
+    gSavedSettings.setF32("FlycamDroneStopDistance", p.stopDistance);
+    gSavedSettings.setF32("FlycamDroneHoldTime", p.holdTime);
+    gSavedSettings.setF32("FlycamDroneCoastTime", p.coastTime);
+    gSavedSettings.setF32("FlycamDroneHighSpeedFloat", p.highSpeedFloat);
+    gSavedSettings.setF32("FlycamDroneOnset", p.onset);
+    gSavedSettings.setF32("FlycamDroneGrip", p.grip);
+    gSavedSettings.setF32("FlycamDroneTurnRate", p.turnRateDegrees);
+    gSavedSettings.setF32("FlycamDroneTurnWeight", p.turnWeight);
+    gSavedSettings.setF32("FlycamDroneTiltRate", p.tiltRateDegrees);
+    gSavedSettings.setF32("FlycamDroneClimb", p.climb);
+    gSavedSettings.setF32("FlycamDroneClimbTime", p.climbTime);
+    gSavedSettings.setS32("FlycamDroneRelease",
+        p.release == LLFlycamDrone::ReleaseMode::DRIFT ? 1 : 0);
+    gSavedSettings.setBOOL("FlycamDroneFreeFly", p.freeFly);
+    return true;
+}
+
+void LLViewerJoystick::resetDroneSettings()
+{
+    gSavedSettings.setS32("FlycamFlightModel", 0);
+    applyDronePreset(static_cast<S32>(LLFlycamDrone::PresetId::NORMAL));
+    gSavedSettings.setS32("FlycamDroneThrottleMode", 0);
+    gSavedSettings.setF32("FlycamDroneSimulationHz", 120.f);
+    gSavedSettings.setF32("FlycamDroneMoveDeadzone", .10f);
+    gSavedSettings.setF32("FlycamDroneLookDeadzone", .12f);
+    gSavedSettings.setF32("FlycamDroneSaturation", .05f);
+    gSavedSettings.setF32("FlycamDroneExpoMove", .35f);
+    gSavedSettings.setF32("FlycamDroneExpoYaw", .45f);
+    gSavedSettings.setF32("FlycamDroneExpoGimbal", .45f);
+    gSavedSettings.setS32("FlycamDroneResumeMomentum", 0);
 }
