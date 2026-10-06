@@ -73,6 +73,8 @@ item links to its full how-to.
 - **[Auto-Reframe](#36-auto-reframe)** — skeleton-aware automatic subject framing.
 - **[Flycam Recorder & Orbit](#37-flycam-recorder--orbit)** — record, play back, and
   scrub camera paths.
+- **[Drone flycam](#38-drone-flycam)** — a mass-and-momentum flight model for
+  smooth joystick camera moves.
 
 **Direction & timing**
 - **[Director Console](#2-the-director-console)** — one hub for every machinima
@@ -159,6 +161,7 @@ are **default-off** and only cost you when you enable them.
    - [Frame & Lens](#35-frame--lens)
    - [Auto-Reframe](#36-auto-reframe)
    - [Flycam Recorder & Orbit](#37-flycam-recorder--orbit)
+   - [Drone flycam](#38-drone-flycam)
 4. [Look-At / Gaze](#4-look-at--gaze)
 5. [Temporal Capture (world time scale)](#5-temporal-capture-world-time-scale)
 6. [Actors & Props (motion paths)](#6-actors--props-motion-paths)
@@ -431,6 +434,82 @@ Recorder. Record a free camera take, then play it back or scrub it.
 **Flycam Orbit** — Me menu → *Flycam Orbit…*. A simple, always-available orbit:
 `FlycamOrbitEnabled`, with `MinRadius` / `MaxRadius` / `Zoom` / `Level` /
 `OffsetLeft` / `OffsetUp` / `Smoothing`.
+
+### 3.8 Drone flycam
+
+Drone is an optional joystick-flycam flight model with acceleration, braking,
+coasting, grip, and softened starts and stops. Unlike Classic, it feels as if the
+camera has mass. Find its controls in the **Joystick floater → Flycam** section
+and in the **Director flycam panel**. Start flycam normally, then choose **Drone**
+as the Flight model; choose **Classic** to get the original flycam behaviour.
+
+**Xbox controls.** The normal sticks steer and aim. **D-pad Up** toggles Flight
+model Drone/Classic, **Left** toggles release Hold/Drift, and **Right** recentres
+the gimbal. In trigger **THROTTLE** mode, RT adds throttle and LT brakes. In
+trigger **ROLL** mode, the triggers roll the camera, as in Classic. D-pad Down
+switches the trigger mode. Existing D-pad cue Go/Back assignments are preserved.
+
+**Presets.** **Cine** is slow, soft, and controlled; **Normal** is the balanced
+starting point; **Sport** accelerates hard and carves fast moves; **FPV** is the
+fastest, most agile choice and enables Free-fly; **Dolly** is slow, strongly
+gripped, and locks vertical travel for precise track-style shots.
+
+**Tuning in plain language.** Cruise is the normal stick speed and Top speed is
+the full-throttle ceiling. Time to top controls pull-away; Stop distance controls
+full-brake travel. Hold time says how quickly a released stick settles to a
+hover. Coast time and High-speed float shape a Drift glide. Onset softness adds
+weight to starts and arrivals. Grip removes sideways slide. Turn rate is maximum
+yaw speed; Turn weight makes fast turns wider. Tilt rate controls the gimbal.
+Climb speed/time control vertical travel. Deadzones ignore small stick noise,
+saturation reaches full input early, and expo gives finer control near centre.
+Assist lets the stick cruise without RT and uses RT to open the range toward Top
+speed; Pure makes RT command the whole speed range. The Advanced readouts show
+the resulting maximum acceleration and maximum jerk.
+
+Without XInput takeover (including non-Xbox pads), sticks still fly Drone but
+triggers keep their existing DirectInput mapping, normally roll. Drone then uses
+Assist at Cruise speed and has no separate trigger brake.
+
+**Release and hand-back.** **Hold** eases to a stop when you release the stick;
+**Drift** coasts. **Resume momentum: Stop** resumes from another camera at rest.
+**Keep** carries a smooth recorder/path move forward when reliable presented
+history exists; cuts or bad history safely fall back to Stop. **Free-fly** makes
+movement follow the full camera attitude instead of keeping travel level with the
+horizon. **Reset Drone** restores Normal and the default Drone controls.
+It also selects Classic, so choose Drone again when you are ready to fly.
+
+**In-world checks (expected result stated first).** Run these while watching the
+viewer log for the named verdicts:
+
+1. In Drone + THROTTLE, RT alone accelerates, LT alone brakes, and neither fires
+   when released. Press D-pad Down: it changes to ROLL, shows “Triggers: ROLL
+   (Drone),” and gives a tick rumble.
+2. Aim straight down and push forward: Drone flies level; Classic dives. With
+   Normal, Drift reaches cruise then glides for roughly Coast time, while Hold
+   eases to a hover. At cruise, RT pulls smoothly toward Top speed and LT slows
+   progressively. In Sport, a 90° turn is wide at speed and tight when slow.
+3. Toggle the Flight model Classic↔Drone while moving: there is no jolt. Compare
+   a 30 fps cap with
+   uncapped: the feel is the same, and distance differs only by the input change
+   over at most one frame (the fixed-step frame-rate bound).
+4. Enable the Camera Operator and boost: gait/shake grows with speed; disable it
+   and the image is clean. Enable Orbit in flight: Orbit behaves normally, then
+   Drone exits it with momentum and no pop.
+5. Select Classic and compare ROLL/THROTTLE, build mode, and both BD/non-BD
+   controls with the older viewer: behaviour should be indistinguishable.
+6. With Resume momentum **Stop**, hand the camera to Path Camera, recorder
+   playback, or a Director arm. On return there is no jump, motion starts still,
+   and the log says `DRONE OWNER-REGAIN foreign momentum=stop`.
+7. With **Keep**, end a smooth recorder dolly or Path Camera move: Drone continues
+   in the same direction and on-screen speed, then eases (Hold) or glides (Drift).
+   A Director cut instead starts still with `keep-rejected:cut`. Alt-tab during a
+   glide and return: it resumes at the same spot.
+8. Teleport: Drone resets with zero velocity even in Keep. Turn Cursor3D on:
+   Drone is unavailable, its reason is shown, Classic runs, and the log says
+   `DRONE INACTIVE 3d-cursor`.
+9. Check the D-pad: Up toggles Classic/Drone with a hint and tick; Left toggles
+   Hold/Drift; Right recentres. A profile already using Left/Right for cue
+   Go/Back keeps those assignments.
 
 ---
 

@@ -34,6 +34,15 @@ inline float throttle(float left, float right, float minimum, float maximum)
         : std::pow(maximum, right) * std::pow(minimum, left);
 }
 
+// Drone's clutch mode treats the triggers independently: RT is throttle and
+// LT is brake. The caller owns sample freshness/association gating.
+inline void droneTriggers(float left, float right, float deadzone, float curve,
+                          float& throttle_out, float& brake_out)
+{
+    throttle_out = shape(right, deadzone, curve);
+    brake_out = shape(left, deadzone, curve);
+}
+
 inline bool compatible(const int* axes, bool cursor)
 {
     if (cursor || axes[3] != 2) return false;
@@ -57,6 +66,47 @@ inline bool primeSample(bool first, bool focused, bool was_focused,
                         std::uint64_t generation, std::uint64_t last)
 {
     return first || (focused && !was_focused) || generation != last + 1;
+}
+
+// The persisted D-pad slots are deliberately independent of viewer settings so
+// the None-only default and migration matrices can be exhaustively tested.
+struct DpadSettings
+{
+    int up;
+    int left;
+    int right;
+    int version;
+};
+
+enum DpadAction
+{
+    DPAD_NONE = 0,
+    DPAD_CUE_GO = 1,
+    DPAD_CUE_BACK = 2,
+    DPAD_LEVEL = 3,
+    DPAD_FLIGHT_MODEL = 4,
+    DPAD_RELEASE = 5,
+    DPAD_RECENTRE = 6,
+    DPAD_ACTION_COUNT = 7
+};
+
+inline DpadSettings fillDroneDpadDefaults(DpadSettings settings)
+{
+    if (settings.up == DPAD_NONE) settings.up = DPAD_FLIGHT_MODEL;
+    if (settings.left == DPAD_NONE) settings.left = DPAD_RELEASE;
+    if (settings.right == DPAD_NONE) settings.right = DPAD_RECENTRE;
+    return settings;
+}
+
+inline DpadSettings migrateDroneDpad(DpadSettings settings)
+{
+    constexpr int DPAD_MIGRATION_DRONE = 1;
+    if (settings.version < DPAD_MIGRATION_DRONE)
+    {
+        settings = fillDroneDpadDefaults(settings);
+        settings.version = DPAD_MIGRATION_DRONE;
+    }
+    return settings;
 }
 
 // [XInputRumble] Pure rumble pattern player. Levels are 0-1 per motor; the

@@ -31,6 +31,7 @@
 #include "llframetimer.h"
 #include "lltimer.h"
 #include "llnotificationptr.h"
+#include "llflycamdrone.h"
 
 #if LIB_NDOF
 #if LL_DARWIN
@@ -140,6 +141,15 @@ public:
     bool toggleFlycam();
     void setSNDefaults();
     void setXboxDefaults();
+    bool applyDronePreset(S32 preset);
+    LLFlycamDrone::CompiledValues getDroneCompiledValues() const;
+    LLFlycamDrone::HumanParams getDroneAcceptedValues() const;
+    F32 getDroneCompiledTick() const;
+    void markDronePresetCustom();
+    S32 getDronePresetProvenance() const;
+    bool isDronePresetCustom() const;
+    U64 getDronePresetProvenanceRevision() const;
+    void resetDroneSettings();
     bool isDeviceUUIDSet();
     LLSD getDeviceUUID(); //unconverted, OS dependent value wrapped into LLSD, for comparison/search
     std::string getDeviceUUIDString(); // converted readable value for settings
@@ -208,10 +218,14 @@ private:
     U64 mXISampleGeneration = 0;
     U64 mXILastScanGeneration = 0;
     U64 mXILevelGeneration = 0;
+    U64 mXIRecentreGeneration = 0;
     bool mXISampleValid = false;
     bool mXIPrime = true;
     bool mXIWasFocused = false;
     bool mXILevelPending = false;
+    bool mXIRecentrePending = false;
+    bool mDroneCameraOwner = false;
+    bool mDroneRecentreActive = false;
     U16 mXIPrevRaw = 0;
     U16 mXIEdges = 0;
     U8 mXILT = 0;

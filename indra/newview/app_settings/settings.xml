@@ -12910,6 +12910,188 @@
       <key>Value</key>
       <real>1.0</real>
     </map>
+    <key>FlycamDroneClimb</key>
+    <map>
+      <key>Comment</key><string>Drone vertical climb speed in metres per second; validated when compiled.</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>2.0</real>
+    </map>
+    <key>FlycamDroneClimbTime</key>
+    <map>
+      <key>Comment</key><string>Drone time to reach climb speed in seconds; validated when compiled.</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.8</real>
+    </map>
+    <key>FlycamDroneCoastTime</key>
+    <map>
+      <key>Comment</key><string>Drone coast time in seconds; validated when compiled.</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>4.0</real>
+    </map>
+    <key>FlycamDroneCruise</key>
+    <map>
+      <key>Comment</key><string>Drone cruise speed in metres per second; validated when compiled.</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>4.0</real>
+    </map>
+    <key>FlycamDroneExpoGimbal</key>
+    <map>
+      <key>Comment</key><string>Drone gimbal response expo, clamped to 0 through 1.</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.45</real>
+    </map>
+    <key>FlycamDroneExpoMove</key>
+    <map>
+      <key>Comment</key><string>Drone movement response expo, clamped to 0 through 1.</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.35</real>
+    </map>
+    <key>FlycamDroneExpoYaw</key>
+    <map>
+      <key>Comment</key><string>Drone yaw response expo, clamped to 0 through 1.</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.45</real>
+    </map>
+    <key>FlycamDroneFreeFly</key>
+    <map>
+      <key>Comment</key><string>Use free-fly rather than Drone-frame movement.</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>Boolean</string>
+      <key>Value</key><integer>0</integer>
+    </map>
+    <key>FlycamDroneGrip</key>
+    <map>
+      <key>Comment</key><string>Drone lateral grip; validated when compiled.</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.6</real>
+    </map>
+    <key>FlycamDroneHighSpeedFloat</key>
+    <map>
+      <key>Comment</key><string>Drone high-speed float; validated when compiled.</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.5</real>
+    </map>
+    <key>FlycamDroneHoldTime</key>
+    <map>
+      <key>Comment</key><string>Drone hold stopping time in seconds; validated when compiled.</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.8</real>
+    </map>
+    <key>FlycamDroneLookDeadzone</key>
+    <map>
+      <key>Comment</key><string>Drone look-stick deadzone, clamped to 0 through 0.5.</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.12</real>
+    </map>
+    <key>FlycamDroneMoveDeadzone</key>
+    <map>
+      <key>Comment</key><string>Drone movement-stick deadzone, clamped to 0 through 0.5.</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.10</real>
+    </map>
+    <key>FlycamDroneOnset</key>
+    <map>
+      <key>Comment</key><string>Drone jerk-onset time in seconds; validated when compiled.</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.10</real>
+    </map>
+    <key>FlycamDronePreset</key>
+    <map>
+      <key>Comment</key><string>Drone preset: 0 Cine, 1 Normal, 2 Sport, 3 Dolly, 4 FPV, 5 Custom.</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>S32</string>
+      <key>Value</key><integer>1</integer>
+    </map>
+    <key>FlycamDroneRelease</key>
+    <map>
+      <key>Comment</key><string>Drone stick-release behaviour: 0 Hold, 1 Drift.</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>S32</string>
+      <key>Value</key><integer>0</integer>
+    </map>
+    <key>FlycamDroneResumeMomentum</key>
+    <map>
+      <key>Comment</key><string>Drone momentum after focus or camera ownership resumes: 0 Stop, 1 Keep.</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>S32</string>
+      <key>Value</key><integer>0</integer>
+    </map>
+    <key>FlycamDroneSaturation</key>
+    <map>
+      <key>Comment</key><string>Drone stick saturation margin, clamped to 0 through 0.5.</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.05</real>
+    </map>
+    <key>FlycamDroneSimulationHz</key>
+    <map>
+      <key>Comment</key><string>Drone fixed simulation rate in Hz, clamped to 30 through 240.</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>120.0</real>
+    </map>
+    <key>FlycamDroneStopDistance</key>
+    <map>
+      <key>Comment</key><string>Drone stopping distance in metres; validated when compiled.</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>10.0</real>
+    </map>
+    <key>FlycamDroneThrottleMode</key>
+    <map>
+      <key>Comment</key><string>Drone throttle behaviour: 0 Assist, 1 Pure.</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>S32</string>
+      <key>Value</key><integer>0</integer>
+    </map>
+    <key>FlycamDroneTiltRate</key>
+    <map>
+      <key>Comment</key><string>Drone gimbal tilt rate in degrees per second; validated when compiled.</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>50.0</real>
+    </map>
+    <key>FlycamDroneTimeToTop</key>
+    <map>
+      <key>Comment</key><string>Drone time to top speed in seconds; validated when compiled.</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>2.0</real>
+    </map>
+    <key>FlycamDroneTop</key>
+    <map>
+      <key>Comment</key><string>Drone top speed in metres per second; validated when compiled.</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>12.0</real>
+    </map>
+    <key>FlycamDroneTurnRate</key>
+    <map>
+      <key>Comment</key><string>Drone yaw turn rate in degrees per second; validated when compiled.</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>70.0</real>
+    </map>
+    <key>FlycamDroneTurnWeight</key>
+    <map>
+      <key>Comment</key><string>Drone turn weighting; validated when compiled.</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.5</real>
+    </map>
     <key>FlycamFeathering</key>
     <map>
       <key>Comment</key>
@@ -12920,6 +13102,13 @@
       <string>F32</string>
       <key>Value</key>
       <real>16.0</real>
+    </map>
+    <key>FlycamFlightModel</key>
+    <map>
+      <key>Comment</key><string>Flycam flight model: 0 Classic, 1 Drone.</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>S32</string>
+      <key>Value</key><integer>0</integer>
     </map>
     <key>FlyingAtExit</key>
     <map>
@@ -13700,21 +13889,28 @@
     </map>
     <key>JoystickXInputDpadLeft</key>
     <map>
-      <key>Comment</key><string>D-pad action: 0 None, 1 Lighting cue Go, 2 Lighting cue Back, 3 Level horizon.</string>
+      <key>Comment</key><string>D-pad action: 0 None, 1 Lighting cue Go, 2 Lighting cue Back, 3 Level horizon, 4 Classic/Drone, 5 Hold/Drift, 6 Recentre gimbal.</string>
       <key>Persist</key><integer>1</integer>
       <key>Type</key><string>S32</string>
       <key>Value</key><integer>0</integer>
     </map>
     <key>JoystickXInputDpadRight</key>
     <map>
-      <key>Comment</key><string>D-pad action: 0 None, 1 Lighting cue Go, 2 Lighting cue Back, 3 Level horizon.</string>
+      <key>Comment</key><string>D-pad action: 0 None, 1 Lighting cue Go, 2 Lighting cue Back, 3 Level horizon, 4 Classic/Drone, 5 Hold/Drift, 6 Recentre gimbal.</string>
       <key>Persist</key><integer>1</integer>
       <key>Type</key><string>S32</string>
       <key>Value</key><integer>0</integer>
     </map>
     <key>JoystickXInputDpadUp</key>
     <map>
-      <key>Comment</key><string>D-pad action: 0 None, 1 Lighting cue Go, 2 Lighting cue Back, 3 Level horizon.</string>
+      <key>Comment</key><string>D-pad action: 0 None, 1 Lighting cue Go, 2 Lighting cue Back, 3 Level horizon, 4 Classic/Drone, 5 Hold/Drift, 6 Recentre gimbal.</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>S32</string>
+      <key>Value</key><integer>0</integer>
+    </map>
+    <key>JoystickXInputDpadMigrationVersion</key>
+    <map>
+      <key>Comment</key><string>Never-decreasing D-pad migration version; version 1 fills only None slots with Drone actions.</string>
       <key>Persist</key><integer>1</integer>
       <key>Type</key><string>S32</string>
       <key>Value</key><integer>0</integer>

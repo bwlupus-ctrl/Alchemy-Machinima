@@ -1,4 +1,4 @@
-// [XInputPad] Pure helpers. Deliberately not registered: this task forbids CMake edits.
+// [XInputPad] Pure helpers, registered directly as a header-only integration test.
 #include "linden_common.h"
 #include "../test/lltut.h"
 #include "../alxinputmath.h"
@@ -139,5 +139,112 @@ template<> template<> void xinput_object::test<6>()
     ensure_equals("negative clamps", ALXInput::rumbleMotor(-1.f, 1.f), static_cast<std::uint16_t>(0));
     ensure_equals("NaN level", ALXInput::rumbleMotor(nan, 1.f), static_cast<std::uint16_t>(0));
     ensure_equals("NaN strength", ALXInput::rumbleMotor(1.f, nan), static_cast<std::uint16_t>(0));
+}
+
+// Flycam brief section 16.3/T25: Drone owns independent shaped RT throttle
+// and LT brake.  Freshness/focus association gates both values at the caller.
+template<> template<> void xinput_object::test<7>()
+{
+    float throttle = -1.f, brake = -1.f;
+    ALXInput::droneTriggers(0.f, 0.f, .06f, 2.f, throttle, brake);
+    ensure_equals("Drone triggers rest throttle", throttle, 0.f);
+    ensure_equals("Drone triggers rest brake", brake, 0.f);
+
+    ALXInput::droneTriggers(1.f, 0.f, .06f, 2.f, throttle, brake);
+    ensure_equals("LT is full brake", brake, 1.f);
+    ensure_equals("LT does not throttle", throttle, 0.f);
+    ALXInput::droneTriggers(0.f, 1.f, .06f, 2.f, throttle, brake);
+    ensure_equals("RT is full throttle", throttle, 1.f);
+    ensure_equals("RT does not brake", brake, 0.f);
+
+    for (int left = 0; left <= 255; ++left)
+    for (int right = 0; right <= 255; right += 17)
+    {
+        const float l = left / 255.f, r = right / 255.f;
+        ALXInput::droneTriggers(l, r, .06f, 2.f, throttle, brake);
+        ensure_equals("Drone RT uses shared shape", throttle, ALXInput::shape(r, .06f, 2.f));
+        ensure_equals("Drone LT uses shared shape", brake, ALXInput::shape(l, .06f, 2.f));
+    }
+
+    // The public freshness helper is the contract used before exposing the pair.
+    ALXInput::droneTriggers(.8f, .9f, .06f, 2.f, throttle, brake);
+    if (!ALXInput::fresh(true, false, 10, 10)) throttle = brake = 0.f;
+    ensure_equals("unfocused sample neutral throttle", throttle, 0.f);
+    ensure_equals("unfocused sample neutral brake", brake, 0.f);
+    ALXInput::droneTriggers(.8f, .9f, .06f, 2.f, throttle, brake);
+    if (!ALXInput::fresh(true, true, 9, 10)) throttle = brake = 0.f;
+    ensure_equals("stale sample neutral throttle", throttle, 0.f);
+    ensure_equals("stale sample neutral brake", brake, 0.f);
+
+    // Classic trigger endpoints remain independently pinned by test<1>.
+    ensure_equals("Classic rest multiplier unchanged", ALXInput::throttle(0.f, 0.f, .1f, 4.f), 1.f);
+    ensure_equals("Classic roll unchanged", ALXInput::roll(0.f, 1.f, .06f, 2.f), 1.f);
+}
+
+// Flycam brief T39: exhaust the 5^3 None/non-None slot matrix.
+template<> template<> void xinput_object::test<8>()
+{
+    const int values[] = {0, 1, 2, 3, 7};
+    for (int up : values)
+    for (int left : values)
+    for (int right : values)
+    {
+        const ALXInput::DpadSettings migrated =
+            ALXInput::migrateDroneDpad({up, left, right, 0});
+        ensure_equals("T39 Up None-only", migrated.up, up == 0 ? 4 : up);
+        ensure_equals("T39 Left None-only", migrated.left, left == 0 ? 5 : left);
+        ensure_equals("T39 Right None-only", migrated.right, right == 0 ? 6 : right);
+        ensure_equals("T39 migration version", migrated.version, 1);
+    }
+}
+
+// Flycam brief T40: idempotence, future versions, and restored backups.
+template<> template<> void xinput_object::test<9>()
+{
+    ALXInput::DpadSettings migrated = ALXInput::migrateDroneDpad({0, 0, 0, 0});
+    migrated.left = 0;
+    migrated = ALXInput::migrateDroneDpad(migrated);
+    ensure_equals("T40 user None survives rerun", migrated.left, 0);
+    ensure_equals("T40 version one remains", migrated.version, 1);
+
+    const ALXInput::DpadSettings future = ALXInput::migrateDroneDpad({0, 0, 0, 5});
+    ensure_equals("T40 future Up untouched", future.up, 0);
+    ensure_equals("T40 future Left untouched", future.left, 0);
+    ensure_equals("T40 future Right untouched", future.right, 0);
+    ensure_equals("T40 future version never decreases", future.version, 5);
+
+    const ALXInput::DpadSettings restored = ALXInput::migrateDroneDpad({0, 1, 3, 0});
+    ensure_equals("T40 restored None fills", restored.up, 4);
+    ensure_equals("T40 restored cue survives", restored.left, 1);
+    ensure_equals("T40 restored level survives", restored.right, 3);
+    ensure_equals("T40 restored version", restored.version, 1);
+}
+
+// Flycam brief T41: Xbox Defaults uses the same fill without touching other state.
+template<> template<> void xinput_object::test<10>()
+{
+    const int values[] = {0, 1, 2, 3, 7};
+    for (int up : values)
+    for (int left : values)
+    for (int right : values)
+    {
+        const ALXInput::DpadSettings filled =
+            ALXInput::fillDroneDpadDefaults({up, left, right, 5});
+        ensure_equals("T41 Up None-only", filled.up, up == 0 ? 4 : up);
+        ensure_equals("T41 Left None-only", filled.left, left == 0 ? 5 : left);
+        ensure_equals("T41 Right None-only", filled.right, right == 0 ? 6 : right);
+        ensure_equals("T41 version untouched", filled.version, 5);
+    }
+    // ABI coverage for the values consumed by production dispatch. Actual
+    // combo resource counts and global-setting non-mutation need integration
+    // coverage; skins and other tests are outside WP4's allowed files.
+    ensure_equals("T41 action count", static_cast<int>(ALXInput::DPAD_ACTION_COUNT), 7);
+    ensure_equals("T41 None value", static_cast<int>(ALXInput::DPAD_NONE), 0);
+    ensure_equals("T41 cue Go value", static_cast<int>(ALXInput::DPAD_CUE_GO), 1);
+    ensure_equals("T41 cue Back value", static_cast<int>(ALXInput::DPAD_CUE_BACK), 2);
+    ensure_equals("T41 level value", static_cast<int>(ALXInput::DPAD_LEVEL), 3);
+    ensure_equals("T41 model value", static_cast<int>(ALXInput::DPAD_FLIGHT_MODEL), 4);
+    ensure_equals("T41 release value", static_cast<int>(ALXInput::DPAD_RELEASE), 5);
+    ensure_equals("T41 recentre value", static_cast<int>(ALXInput::DPAD_RECENTRE), 6);
 }
 }

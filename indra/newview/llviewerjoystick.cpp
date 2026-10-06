@@ -27,12 +27,16 @@
 #include "llviewerprecompiledheaders.h"
 
 #include "llviewerjoystick.h"
+#include "alcameradispatch.h"
+#include "alflycamclassic.h"
 #include "alxinputmath.h"
+#include "llflycamdrone.h"
 #include "alcinelightrig.h"
 #include "alcinelightrigmanager.h"
 #include "llpresentationtime.h"
 
 #include "llframetimer.h"
+#include "llcallbacklist.h"
 #include "llnotificationsutil.h"
 #include "llpathcamera.h"       // clear a latched path-camera preview on flycam engage
 #include "llviewercontrol.h"
@@ -81,6 +85,368 @@ std::array<F32, 7>  LLViewerJoystick::sDelta = {0,0,0,0,0,0,0};
 // values in the [-3000, 3000] range.
 #define MAX_SPACENAVIGATOR_INPUT  3000.0f
 #define MAX_JOYSTICK_INPUT_VALUE  MAX_SPACENAVIGATOR_INPUT
+
+namespace
+{
+struct FlycamPoseSample
+{
+    LLVector3d positionGlobal;
+    LLQuaternion rotation;
+    F64 dt = 0.0;
+    bool valid = false;
+};
+
+struct FlycamDroneRuntime
+{
+    bool nonFiniteSinceReport = false;
+    bool boundAccelerationSinceReport = false;
+    bool boundJerkSinceReport = false;
+    bool backlogSinceReport = false;
+    bool triggersStale = false;
+    F64 reportSeconds = 0.0;
+    F64 triggerStaleSeconds = 0.0;
+    U64 reportSteps = 0;
+    U64 reportClamps = 0;
+    F32 maxVelocity = 0.f;
+    F32 maxAcceleration = 0.f;
+    F32 maxJerk = 0.f;
+    F32 accelerationLimitAtMax = 0.f;
+    F32 jerkLimitAtMax = 0.f;
+    LLFlycamDrone drone;
+    LLFlycamDrone::Params baseParams;
+    LLFlycamDrone::HumanParams accepted =
+        LLFlycamDrone::presets()[static_cast<std::size_t>(LLFlycamDrone::PresetId::NORMAL)].human;
+    LLFlycamDrone::HumanParams lastRequested;
+    F32 lastRequestedTick = 0.f;
+    F32 lastRequestedRoll = 0.f;
+    bool haveRequested = false;
+    ALFlycamPoseOwner owner = ALFlycamPoseOwner::CLASSIC;
+    FlycamPoseSample previousPose;
+    FlycamPoseSample currentPose;
+    LLFlycamDrone::RenderPose lastDronePose;
+    bool haveLastDronePose = false;
+    bool resetPending = true;
+    U64 lastWrittenSerial = 0;
+    F32 buildScale = 1.f;
+    bool buildScaleValid = false;
+
+    FlycamDroneRuntime()
+    : drone(LLFlycamDrone().params(), [this](const std::string& message)
+      {
+          if (message.compare(0, 15, "DRONE NONFINITE") == 0)
+          {
+              nonFiniteSinceReport = true;
+          }
+          else if (message.compare(0, 18, "DRONE ORIGIN-SHIFT") == 0)
+          {
+              LL_INFOS("FlycamDrone") << message << LL_ENDL;
+          }
+      }),
+      baseParams(drone.params())
+    {}
+};
+
+struct FlycamDroneSettings
+{
+    LLCachedControl<S32> preset{gSavedSettings, "FlycamDronePreset", 1};
+    LLCachedControl<F32> cruise{gSavedSettings, "FlycamDroneCruise", 4.f};
+    LLCachedControl<F32> top{gSavedSettings, "FlycamDroneTop", 12.f};
+    LLCachedControl<F32> timeToTop{gSavedSettings, "FlycamDroneTimeToTop", 2.f};
+    LLCachedControl<F32> stopDistance{gSavedSettings, "FlycamDroneStopDistance", 10.f};
+    LLCachedControl<F32> holdTime{gSavedSettings, "FlycamDroneHoldTime", .8f};
+    LLCachedControl<F32> coastTime{gSavedSettings, "FlycamDroneCoastTime", 4.f};
+    LLCachedControl<F32> highSpeedFloat{gSavedSettings, "FlycamDroneHighSpeedFloat", .5f};
+    LLCachedControl<F32> onset{gSavedSettings, "FlycamDroneOnset", .1f};
+    LLCachedControl<F32> grip{gSavedSettings, "FlycamDroneGrip", .6f};
+    LLCachedControl<F32> turnRate{gSavedSettings, "FlycamDroneTurnRate", 70.f};
+    LLCachedControl<F32> turnWeight{gSavedSettings, "FlycamDroneTurnWeight", .5f};
+    LLCachedControl<F32> tiltRate{gSavedSettings, "FlycamDroneTiltRate", 50.f};
+    LLCachedControl<F32> climb{gSavedSettings, "FlycamDroneClimb", 2.f};
+    LLCachedControl<F32> climbTime{gSavedSettings, "FlycamDroneClimbTime", .8f};
+    LLCachedControl<S32> release{gSavedSettings, "FlycamDroneRelease", 0};
+    LLCachedControl<S32> throttleMode{gSavedSettings, "FlycamDroneThrottleMode", 0};
+    LLCachedControl<bool> freeFly{gSavedSettings, "FlycamDroneFreeFly", false};
+    LLCachedControl<F32> simulationHz{gSavedSettings, "FlycamDroneSimulationHz", 120.f};
+    LLCachedControl<F32> moveDeadzone{gSavedSettings, "FlycamDroneMoveDeadzone", .10f};
+    LLCachedControl<F32> lookDeadzone{gSavedSettings, "FlycamDroneLookDeadzone", .12f};
+    LLCachedControl<F32> saturation{gSavedSettings, "FlycamDroneSaturation", .05f};
+    LLCachedControl<F32> expoMove{gSavedSettings, "FlycamDroneExpoMove", .35f};
+    LLCachedControl<F32> expoYaw{gSavedSettings, "FlycamDroneExpoYaw", .45f};
+    LLCachedControl<F32> expoGimbal{gSavedSettings, "FlycamDroneExpoGimbal", .45f};
+    LLCachedControl<S32> resumeMomentum{gSavedSettings, "FlycamDroneResumeMomentum", 0};
+    LLCachedControl<F32> triggerDeadzone{gSavedSettings, "JoystickXInputTriggerDeadZone", .06f};
+    LLCachedControl<F32> triggerCurve{gSavedSettings, "JoystickXInputTriggerCurve", 2.f};
+};
+
+LLCachedControl<S32>& flycamFlightModel()
+{
+    static LLCachedControl<S32> setting(gSavedSettings, "FlycamFlightModel", 0);
+    return setting;
+}
+
+FlycamDroneSettings& droneSettings()
+{
+    static FlycamDroneSettings settings;
+    return settings;
+}
+
+LLFlycamDrone::CompiledValues& cachedDroneCompiledValues()
+{
+    static LLFlycamDrone::CompiledValues values;
+    return values;
+}
+
+struct DroneCompilePreviewCache
+{
+    LLFlycamDrone::HumanParams accepted =
+        LLFlycamDrone::presets()[static_cast<std::size_t>(LLFlycamDrone::PresetId::NORMAL)].human;
+    LLFlycamDrone::Params params;
+};
+
+DroneCompilePreviewCache& droneCompilePreviewCache()
+{
+    static DroneCompilePreviewCache cache;
+    return cache;
+}
+
+struct DronePresetProvenance
+{
+    S32 source = static_cast<S32>(LLFlycamDrone::PresetId::NORMAL);
+    bool custom = false;
+    U64 revision = 1;
+};
+
+DronePresetProvenance& dronePresetProvenance()
+{
+    static DronePresetProvenance provenance;
+    return provenance;
+}
+
+void syncDronePresetProvenance(S32 preset)
+{
+    DronePresetProvenance& provenance = dronePresetProvenance();
+    if (preset >= 0 && preset < static_cast<S32>(LLFlycamDrone::PresetId::COUNT))
+    {
+        provenance.source = preset;
+        provenance.custom = false;
+    }
+    else
+    {
+        provenance.custom = true;
+    }
+    ++provenance.revision;
+}
+
+LLFlycamDrone::HumanParams requestedDroneHumanParams()
+{
+    FlycamDroneSettings& s = droneSettings();
+    LLFlycamDrone::HumanParams requested;
+    requested.cruise = s.cruise;
+    requested.top = s.top;
+    requested.timeToTop = s.timeToTop;
+    requested.stopDistance = s.stopDistance;
+    requested.holdTime = s.holdTime;
+    requested.coastTime = s.coastTime;
+    requested.highSpeedFloat = s.highSpeedFloat;
+    requested.onset = s.onset;
+    requested.grip = s.grip;
+    requested.turnRateDegrees = s.turnRate;
+    requested.turnWeight = s.turnWeight;
+    requested.tiltRateDegrees = s.tiltRate;
+    requested.climb = s.climb;
+    requested.climbTime = s.climbTime;
+    requested.release = (S32)s.release == 1
+        ? LLFlycamDrone::ReleaseMode::DRIFT : LLFlycamDrone::ReleaseMode::HOLD;
+    requested.throttleMode = (S32)s.throttleMode == 1
+        ? LLFlycamDrone::ThrottleMode::PURE : LLFlycamDrone::ThrottleMode::ASSIST;
+    requested.freeFly = s.freeFly;
+    return requested;
+}
+
+U64& droneCompilePreviewGeneration()
+{
+    static U64 generation = 0;
+    return generation;
+}
+
+void refreshDroneCompilePreviewCache()
+{
+    DroneCompilePreviewCache& cache = droneCompilePreviewCache();
+    const LLFlycamDrone::HumanParams requested = requestedDroneHumanParams();
+    const F32 requested_hz = droneSettings().simulationHz;
+    LLFlycamDrone::compile(requested, cache.accepted, 1.f / requested_hz,
+        fabsf(gSavedSettings.getF32("FlycamAxisScale3")), cache.params, &cache.accepted);
+    cachedDroneCompiledValues() = { cache.params.totalLimit, cache.params.effectiveJerk,
+                                    cache.params.validationClamps };
+}
+
+void scheduleDroneCompilePreview()
+{
+    const U64 generation = ++droneCompilePreviewGeneration();
+    doAfterInterval([generation]()
+    {
+        if (generation == droneCompilePreviewGeneration())
+        {
+            refreshDroneCompilePreviewCache();
+        }
+    }, .15f);
+}
+
+F32 signedExpo(F32 value, F32 amount)
+{
+    const F32 magnitude = llclamp(fabsf(value), 0.f, 1.f);
+    const F32 k = llclamp(amount, 0.f, 1.f);
+    const F32 shaped = (1.f - k) * magnitude + k * magnitude * magnitude * magnitude;
+    return value < 0.f ? -shaped : shaped;
+}
+
+bool sameSetting(F32 a, F32 b)
+{
+    return a == b || (std::isnan(a) && std::isnan(b));
+}
+
+bool sameHumanParams(const LLFlycamDrone::HumanParams& a,
+                     const LLFlycamDrone::HumanParams& b)
+{
+    return sameSetting(a.cruise, b.cruise) && sameSetting(a.top, b.top) &&
+        sameSetting(a.timeToTop, b.timeToTop) &&
+        sameSetting(a.stopDistance, b.stopDistance) &&
+        sameSetting(a.holdTime, b.holdTime) && sameSetting(a.coastTime, b.coastTime) &&
+        sameSetting(a.highSpeedFloat, b.highSpeedFloat) &&
+        sameSetting(a.onset, b.onset) && sameSetting(a.grip, b.grip) &&
+        sameSetting(a.turnRateDegrees, b.turnRateDegrees) &&
+        sameSetting(a.turnWeight, b.turnWeight) &&
+        sameSetting(a.tiltRateDegrees, b.tiltRateDegrees) &&
+        sameSetting(a.climb, b.climb) && sameSetting(a.climbTime, b.climbTime) &&
+        a.release == b.release && a.throttleMode == b.throttleMode &&
+        a.freeFly == b.freeFly;
+}
+
+void logDroneClamp(FlycamDroneRuntime& runtime, const char* name,
+                   F32 requested, F32 applied)
+{
+    if (sameSetting(requested, applied))
+        return;
+    LL_INFOS("FlycamDrone") << "DRONE CLAMP " << name << ' ' << requested
+        << "\xE2\x86\x92" << applied << LL_ENDL;
+    ++runtime.reportClamps;
+}
+
+const char* dronePresetName(S32 preset)
+{
+    const auto& presets = LLFlycamDrone::presets();
+    return preset >= 0 && preset < static_cast<S32>(presets.size())
+        ? presets[static_cast<std::size_t>(preset)].name : "Custom";
+}
+
+void logDroneValidation(FlycamDroneRuntime& runtime,
+                        const LLFlycamDrone::HumanParams& requested,
+                        const LLFlycamDrone::HumanParams& applied,
+                        F32 requestedHz, const LLFlycamDrone::Params& compiled,
+                        F32 requestedRoll)
+{
+    logDroneClamp(runtime, "cruise", requested.cruise, applied.cruise);
+    logDroneClamp(runtime, "top", requested.top, applied.top);
+    logDroneClamp(runtime, "timeToTop", requested.timeToTop, applied.timeToTop);
+    logDroneClamp(runtime, "stopDistance", requested.stopDistance, applied.stopDistance);
+    logDroneClamp(runtime, "holdTime", requested.holdTime, applied.holdTime);
+    logDroneClamp(runtime, "coastTime", requested.coastTime, applied.coastTime);
+    logDroneClamp(runtime, "highSpeedFloat", requested.highSpeedFloat, applied.highSpeedFloat);
+    logDroneClamp(runtime, "onset", requested.onset, applied.onset);
+    logDroneClamp(runtime, "grip", requested.grip, applied.grip);
+    logDroneClamp(runtime, "turnRate", requested.turnRateDegrees, applied.turnRateDegrees);
+    logDroneClamp(runtime, "turnWeight", requested.turnWeight, applied.turnWeight);
+    logDroneClamp(runtime, "tiltRate", requested.tiltRateDegrees, applied.tiltRateDegrees);
+    logDroneClamp(runtime, "climb", requested.climb, applied.climb);
+    logDroneClamp(runtime, "climbTime", requested.climbTime, applied.climbTime);
+    const F32 applied_hz = compiled.tick > 0.f ? 1.f / compiled.tick : 0.f;
+    logDroneClamp(runtime, "simulationHz", requestedHz, applied_hz);
+    logDroneClamp(runtime, "rollRate", requestedRoll, compiled.rollRate);
+}
+
+void shapeRadial(F32& x, F32& y, F32 deadzone, F32 saturation, F32 expo)
+{
+    const F32 radius = sqrtf(x * x + y * y);
+    const F32 d = llclamp(deadzone, 0.f, .5f);
+    const F32 o = llclamp(saturation, 0.f, .5f);
+    const F32 denominator = llmax(1.f - d - o, .001f);
+    const F32 remapped = llclamp((radius - d) / denominator, 0.f, 1.f);
+    if (radius <= 0.f || remapped <= 0.f)
+    {
+        x = y = 0.f;
+        return;
+    }
+    const F32 shaped = signedExpo(remapped, expo) / radius;
+    x *= shaped;
+    y *= shaped;
+}
+
+LLFlycamDrone::Params buildScaledParams(const LLFlycamDrone::Params& source, F32 scale)
+{
+    LLFlycamDrone::Params p = source;
+    const F32 s = llclamp(scale, .001f, 1000.f);
+    p.cruise *= s;
+    p.top *= s;
+    p.acceleration *= s;
+    p.deceleration *= s;
+    p.brakeDeceleration *= s;
+    p.dragQuadratic /= s;
+    p.climbSpeed *= s;
+    p.climbAcceleration *= s;
+    p.speedReference *= s;
+    p.velocityCap *= s;
+    p.horizontalLimit *= s;
+    p.dragLimit *= s;
+    p.totalLimit *= s;
+    p.effectiveJerk *= s;
+    return p;
+}
+
+void configureDrone(FlycamDroneRuntime& runtime, F32 rollRate,
+                    bool autoLevel, bool buildMode, F32 frameDt,
+                    F32 buildModeScale)
+{
+    FlycamDroneSettings& s = droneSettings();
+    const LLFlycamDrone::HumanParams requested = requestedDroneHumanParams();
+
+    LLFlycamDrone::Params compiled = runtime.baseParams;
+    const F32 requested_hz = s.simulationHz;
+    const F32 requested_tick = 1.f / requested_hz;
+    const F32 requested_roll = fabsf(rollRate);
+    if (!runtime.haveRequested || !sameHumanParams(requested, runtime.lastRequested) ||
+        !sameSetting(requested_tick, runtime.lastRequestedTick) ||
+        !sameSetting(requested_roll, runtime.lastRequestedRoll))
+    {
+        LLFlycamDrone::compile(requested, runtime.accepted, requested_tick,
+            requested_roll, compiled, &runtime.accepted);
+        logDroneValidation(runtime, requested, runtime.accepted, requested_hz,
+                           compiled, requested_roll);
+        runtime.lastRequested = requested;
+        runtime.lastRequestedTick = requested_tick;
+        runtime.lastRequestedRoll = requested_roll;
+        runtime.haveRequested = true;
+    }
+    compiled.autoLevel = autoLevel;
+    compiled.yawExpo = llclamp((F32)s.expoYaw, 0.f, 1.f);
+    compiled.gimbalExpo = llclamp((F32)s.expoGimbal, 0.f, 1.f);
+    runtime.baseParams = compiled;
+
+    const F32 targetScale = buildMode
+        ? llclamp(buildModeScale, .001f, 1000.f) : 1.f;
+    if (!runtime.buildScaleValid)
+    {
+        runtime.buildScale = targetScale;
+        runtime.buildScaleValid = true;
+    }
+    else
+    {
+        const F32 dt = llclamp(frameDt, 0.f, .25f);
+        runtime.buildScale += (targetScale - runtime.buildScale) *
+            (1.f - expf(-dt / .3f));
+    }
+    runtime.drone.setParams(buildScaledParams(compiled, runtime.buildScale));
+}
+}
 
 
 #if LIB_NDOF
@@ -570,7 +936,34 @@ LLViewerJoystick::LLViewerJoystick()
     gSavedSettings.getControl("JoystickButtonFlycam")->getCommitSignal()->connect([this](LLControlVariable* control, const LLSD& new_val, const LLSD& old_val) { refreshFromSettings(); });
     gSavedSettings.getControl("JoystickButtonRunToggle")->getCommitSignal()->connect([this](LLControlVariable* control, const LLSD& new_val, const LLSD& old_val) { refreshFromSettings(); });
 
+    static const char* const drone_compile_controls[] =
+    {
+        "FlycamDroneCruise", "FlycamDroneTop", "FlycamDroneTimeToTop",
+        "FlycamDroneStopDistance", "FlycamDroneHoldTime", "FlycamDroneCoastTime",
+        "FlycamDroneHighSpeedFloat", "FlycamDroneOnset", "FlycamDroneGrip",
+        "FlycamDroneTurnRate", "FlycamDroneTurnWeight", "FlycamDroneTiltRate",
+        "FlycamDroneClimb", "FlycamDroneClimbTime", "FlycamDroneRelease",
+        "FlycamDroneThrottleMode", "FlycamDroneFreeFly", "FlycamDroneSimulationHz",
+        "FlycamAxisScale3"
+    };
+    for (const char* name : drone_compile_controls)
+    {
+        gSavedSettings.getControl(name)->getCommitSignal()->connect(
+            [](LLControlVariable*, const LLSD&, const LLSD&)
+            {
+                scheduleDroneCompilePreview();
+            });
+    }
+
+    gSavedSettings.getControl("FlycamDronePreset")->getCommitSignal()->connect(
+        [](LLControlVariable*, const LLSD& value, const LLSD&)
+        {
+            syncDronePresetProvenance(value.asInteger());
+        });
+
     refreshFromSettings();
+    refreshDroneCompilePreviewCache();
+    syncDronePresetProvenance(gSavedSettings.getS32("FlycamDronePreset"));
 }
 
 // -----------------------------------------------------------------------------
@@ -585,6 +978,16 @@ LLViewerJoystick::~LLViewerJoystick()
 // -----------------------------------------------------------------------------
 void LLViewerJoystick::init(bool autoenable, bool apply_defaults)
 {
+    ALXInput::DpadSettings dpad = ALXInput::migrateDroneDpad({
+        gSavedSettings.getS32("JoystickXInputDpadUp"),
+        gSavedSettings.getS32("JoystickXInputDpadLeft"),
+        gSavedSettings.getS32("JoystickXInputDpadRight"),
+        gSavedSettings.getS32("JoystickXInputDpadMigrationVersion")});
+    gSavedSettings.setS32("JoystickXInputDpadUp", dpad.up);
+    gSavedSettings.setS32("JoystickXInputDpadLeft", dpad.left);
+    gSavedSettings.setS32("JoystickXInputDpadRight", dpad.right);
+    gSavedSettings.setS32("JoystickXInputDpadMigrationVersion", dpad.version);
+
 #if LIB_NDOF
     static bool libinit = false;
     mDriverState = JDS_INITIALIZING;
@@ -1722,6 +2125,9 @@ void LLViewerJoystick::moveFlycam(bool reset)
     static F32                  sOrbitRadius = 3.f;
     static LLVector3            sOrbitFocus;            // pan offset, anchor-local
     static F32                  sOrbitRoll = 0.f;       // view-axis roll (unleveled mode)
+    static FlycamDroneRuntime   sDrone;
+    static LLCachedControl<F32> build_mode_scale(gSavedSettings, "FlycamBuildModeScale", 1.0);
+    static LLCachedControl<bool> blackdragon(gSavedSettings, "BlackDragonControls", false);
 
     updateXInputTakeover();
     if (!gFocusMgr.getAppHasFocus() || mDriverState != JDS_INITIALIZED
@@ -1744,15 +2150,32 @@ void LLViewerJoystick::moveFlycam(bool reset)
         // [machinima] re-seed the orbit from the fresh camera pose next frame
         sOrbitWasActive = false;
 
+        const bool drone_selected = (S32)flycamFlightModel() == 1 && !m3DCursor;
+        if (drone_selected)
+        {
+            configureDrone(sDrone, mFlycamAxisScale[CAM_X_AXIS], mAutoLeveling,
+                           in_build_mode, gFrameIntervalSeconds.value(), build_mode_scale);
+            const LLVector3d origin = gAgent.getPosGlobalFromAgent(LLVector3::zero);
+            sDrone.drone.seed(sFlycamPosition, sFlycamRotation, LLVector3::zero, origin);
+            sDrone.lastDronePose = sDrone.drone.renderPose();
+            sDrone.haveLastDronePose = true;
+        }
+        sDrone.owner = drone_selected ? ALFlycamPoseOwner::DRONE : ALFlycamPoseOwner::CLASSIC;
+        sDrone.previousPose = FlycamPoseSample();
+        sDrone.currentPose = FlycamPoseSample();
+        sDrone.resetPending = true;
+        mXILevelPending = false;
+        mXIRecentrePending = false;
+        mDroneCameraOwner = false;
+        mDroneRecentreActive = false;
+
         return;
     }
 
     F32 trigger_roll = 0.f;
     F32 trigger_throttle = 1.f;
     computeTriggerOutputs(trigger_roll, trigger_throttle);
-    const bool level_horizon = mXILevelPending && xInputAssociated() &&
-        mOverrideCamera && mXILoopGeneration - mXILevelGeneration <= 1;
-    mXILevelPending = false;
+    const bool level_horizon = mXILevelPending;
     if (mXIDebugTimer.getElapsedTimeF32() >= 1.f && xInputAssociated())
     {
         mXIDebugTimer.reset();
@@ -1763,268 +2186,443 @@ void LLViewerJoystick::moveFlycam(bool reset)
             << " m=" << trigger_throttle << " r=" << trigger_roll << LL_ENDL;
     }
 
-    static LLCachedControl<F32> build_mode_scale(gSavedSettings, "FlycamBuildModeScale", 1.0);
-
-    static LLCachedControl<bool> blackdragon(gSavedSettings, "BlackDragonControls", false);
-    if (blackdragon)
+    // Resolve Orbit once. The same result selects and drives this frame.
+    static LLCachedControl<bool> orbit_enabled(gSavedSettings, "FlycamOrbitEnabled", false);
+    static LLCachedControl<bool> orbit_level(gSavedSettings, "FlycamOrbitLevel", true);
+    static LLCachedControl<F32>  orbit_min_r(gSavedSettings, "FlycamOrbitMinRadius", 0.1f);
+    static LLCachedControl<F32>  orbit_max_r(gSavedSettings, "FlycamOrbitMaxRadius", 30.f);
+    static LLCachedControl<F32>  orbit_smooth(gSavedSettings, "FlycamOrbitSmoothing", 0.15f);
+    static LLCachedControl<F32>  orbit_zoom(gSavedSettings, "FlycamOrbitZoom", 1.f);
+    static LLCachedControl<F32>  orbit_off_up(gSavedSettings, "FlycamOrbitOffsetUp", 0.f);
+    static LLCachedControl<F32>  orbit_off_left(gSavedSettings, "FlycamOrbitOffsetLeft", 0.f);
+    LLVector3 resolved_anchor_pos;
+    LLQuaternion resolved_anchor_rot;
+    const bool orbit_resolved = orbit_enabled &&
+        LLCinematicCamera::instance().resolveAnchor(
+            resolved_anchor_pos, resolved_anchor_rot, orbit_level);
+    if (orbit_resolved)
     {
-        F32 time = gFrameIntervalSeconds.value();
-
-        //BD - Avoid making ridiculously big movements if there's a big drop in fps
-        time = llclamp(time, 0.016f, 0.033f);
-
-        F32 flycam_feather = mFlycamFeathering;
-        F32 cur_delta[MAX_AXES];
-        F32 max_angle = LLViewerCamera::getInstance()->getMaxView();
-        F32 min_angle = LLViewerCamera::getInstance()->getMinView();
-
-        //BD - Slam zoom back to default and kill any delta we might have.
-        if (getJoystickButton(mMappedButtons[ZOOM_DEFAULT]) == 1)
-        {
-            sFlycamZoom = gSavedSettings.getF32("CameraAngle");
-            sDelta[CAM_W_AXIS] = 0.0f;
-        }
-
-        //BD - Only smooth flycam zoom if we are not capping at the min/max otherwise the feathering
-        //     ends up working against previous input, delaying zoom in movement when we just zoomed
-        //     out beyond capped max for a bit and vise versa.
-        if ((sFlycamZoom <= min_angle
-            || sFlycamZoom >= max_angle))
-        {
-            flycam_feather = 3.0f;
-        }
-
-        bool is_zero = true;
-        for (U32 i = 0; i < 7; i++)
-        {
-            cur_delta[i] = -getFlycamAxis(mJoystickAxis[i]);
-
-            if (i == CAM_W_AXIS)
-            {
-                cur_delta[i] -= (F32)getJoystickButton(mMappedButtons[ZOOM_OUT]);
-                cur_delta[i] += (F32)getJoystickButton(mMappedButtons[ZOOM_IN]);
-            }
-            if (i == Z_AXIS)
-            {
-                cur_delta[i] += (F32)getJoystickButton(mMappedButtons[JUMP]);
-                cur_delta[i] -= (F32)getJoystickButton(mMappedButtons[CROUCH]);
-            }
-            if (i == CAM_X_AXIS)
-            {
-                cur_delta[i] -= (F32)getJoystickButton(mMappedButtons[ROLL_LEFT]);
-                cur_delta[i] += (F32)getJoystickButton(mMappedButtons[ROLL_RIGHT]);
-            }
-
-            F32 tmp = cur_delta[i];
-            F32 axis_deadzone = mFlycamAxisDeadZone[i];
-            if (m3DCursor || llabs(cur_delta[i]) < axis_deadzone)
-            {
-                cur_delta[i] = cur_delta[i] - sLastDelta[i];
-            }
-            sLastDelta[i] = tmp;
-
-            //BD - We assume that delta 1.0 is the maximum.
-            if (llabs(cur_delta[i]) > axis_deadzone)
-            {
-                //BD - Clamp the delta between 1 and -1 while taking the deadzone into account.
-                if (cur_delta[i] > 0)
-                {
-                    cur_delta[i] = llclamp(cur_delta[i] - axis_deadzone, 0.f, 1.f - axis_deadzone);
-                }
-                else
-                {
-                    cur_delta[i] = llclamp(cur_delta[i] + axis_deadzone, -1.f + axis_deadzone, 0.f);
-                }
-                //BD - Rescale the remaining delta to match the maximum to get a new clean 0 to 1 range.
-                cur_delta[i] = cur_delta[i] / (1.f - axis_deadzone);
-            }
-
-            if (mXITakeover && mXIMode == 0 && i == CAM_X_AXIS)
-                cur_delta[i] = llclamp(cur_delta[i] + trigger_roll, -1.f, 1.f);
-            // [XInputPad] Throttle scales movement AND pan/tilt/roll; zoom (CAM_W) excluded.
-            if (mXITakeover && i <= CAM_Z_AXIS && trigger_throttle != 1.f)
-                cur_delta[i] *= trigger_throttle;
-
-            // We may want to scale camera movements up or down in build mode.
-            // NOTE: this needs to remain after the deadzone calculation, otherwise
-            // we have issues with flycam "jumping" when the build dialog is opened/closed  -Nyx
-            if (LLToolMgr::getInstance()->inBuildMode())
-            {
-                if (i == X_I || i == Y_I || i == Z_I)
-                {
-                    cur_delta[i] *= build_mode_scale;
-                }
-            }
-
-            cur_delta[i] *= mFlycamAxisScale[i];
-
-            if (!m3DCursor)
-            {
-                cur_delta[i] *= time;
-            }
-
-            sDelta[i] = sDelta[i] + (cur_delta[i] - sDelta[i]) * time * flycam_feather;
-            is_zero = is_zero && (cur_delta[i] == 0.f);
-        }
-
-    //  //BD - Invertable Pitch Controls
-        if (mInvertPitch)
-            cur_delta[CAM_Y_AXIS] = -cur_delta[CAM_Y_AXIS];
-
-        // Clear AFK state if moved beyond the deadzone
-        if (!is_zero && gAwayTimer.getElapsedTimeF32() > LLAgent::MIN_AFK_TIME)
-        {
-            gAgent.clearAFK();
-        }
-
-        sFlycamPosition += LLVector3(sDelta.data()) * sFlycamRotation;
-        LLMatrix3 rot_mat(sDelta[CAM_X_AXIS], sDelta[CAM_Y_AXIS], sDelta[CAM_Z_AXIS]);
-        sFlycamRotation = LLQuaternion(rot_mat)*sFlycamRotation;
-
-        if (level_horizon || mAutoLeveling || getJoystickButton(mMappedButtons[ROLL_DEFAULT]) == 1)
-        {
-            LLMatrix3 level(sFlycamRotation);
-
-            LLVector3 x = LLVector3(level.mMatrix[0]);
-            LLVector3 y = LLVector3(level.mMatrix[1]);
-            LLVector3 z = LLVector3(level.mMatrix[2]);
-
-            y.mV[2] = 0.f;
-            y.normVec();
-
-            level.setRows(x,y,z);
-            level.orthogonalize();
-
-            LLQuaternion quat(level);
-            LLQuaternion lerp = nlerp(llmin(flycam_feather * time, 1.f), sFlycamRotation, quat);
-            sFlycamRotation = level_horizon || getJoystickButton(mMappedButtons[ROLL_DEFAULT]) == 1 ? quat : lerp;
-        }
-
-        if (mZoomDirect)
-        {
-            sFlycamZoom = sLastDelta[CAM_W_AXIS] * mFlycamAxisScale[FLYCAM_AXIS_6] + mFlycamAxisScale[FLYCAM_AXIS_6];
-        }
-        else
-        {
-            //BD - We need to cap zoom otherwise it internally counts higher causing
-            //     the zoom level to not react until that extra has been removed first.
-            sFlycamZoom = llclamp(sFlycamZoom + sDelta[CAM_W_AXIS], LLViewerCamera::getInstance()->getMinView(), LLViewerCamera::getInstance()->getMaxView());
-        }
+        resolved_anchor_pos += LLVector3(0.f, (F32)orbit_off_left,
+                                        (F32)orbit_off_up) * resolved_anchor_rot;
     }
-    else
-    {
-        F32 time = gFrameIntervalSeconds.value();
 
-        // avoid making ridiculously big movements if there's a big drop in fps
-        if (time > .2f)
+    const bool tagged_dispatch = gCameraDispatchOwner == ECameraOwner::FLYCAM;
+    const bool dispatch_foreign = !sDrone.resetPending &&
+        gCameraDispatchForeignSinceFlycamWrite;
+    const bool drone_selected = (S32)flycamFlightModel() == 1 && !m3DCursor;
+    const ALFlycamFrameDecision frame_decision = alResolveFlycamFrame(
+        (S32)flycamFlightModel(), m3DCursor, orbit_resolved, sDrone.owner,
+        tagged_dispatch, dispatch_foreign);
+    const ALFlycamPoseOwner desired_owner = frame_decision.selectedOwner;
+    const ALFlycamPoseOwner frame_owner = frame_decision.frameOwner;
+    const bool owner_edge = frame_decision.edge != ALFlycamOwnerEdge::NONE;
+    const bool drone_frame = frame_owner == ALFlycamPoseOwner::DRONE;
+    const bool orbit_frame = frame_owner == ALFlycamPoseOwner::ORBIT;
+
+    if (frame_decision.discardDroneAccumulator)
+        sDrone.drone.discardAccumulator();
+
+    // Configuration is Drone-owned work. Classic->Drone is configured at its
+    // end-of-frame seed; Orbit->Drone is an immediate edge.
+    if (drone_selected && drone_frame)
+    {
+        configureDrone(sDrone, mFlycamAxisScale[CAM_X_AXIS], mAutoLeveling,
+                       in_build_mode, gFrameIntervalSeconds.value(), build_mode_scale);
+    }
+
+    if (tagged_dispatch && sDrone.resetPending)
+    {
+        sDrone.lastWrittenSerial = gCameraDispatchSerial - 1;
+        gCameraDispatchForeignSinceFlycamWrite = false;
+        sDrone.resetPending = false;
+    }
+
+    if (drone_frame || desired_owner == ALFlycamPoseOwner::DRONE)
+    {
+        const LLVector3d new_origin = gAgent.getPosGlobalFromAgent(LLVector3::zero);
+        const LLVector3d old_origin = sDrone.drone.originTag();
+        if (sDrone.drone.applyOrigin(new_origin))
         {
-            time = .2f;
+            const LLVector3d wide_delta = old_origin - new_origin;
+            const LLVector3 delta((F32)wide_delta.mdV[VX],
+                                  (F32)wide_delta.mdV[VY],
+                                  (F32)wide_delta.mdV[VZ]);
+            sFlycamPosition += delta;
+            if (sDrone.haveLastDronePose)
+                sDrone.lastDronePose.position += delta;
         }
 
-        F32 cur_delta[7];
-        F32 feather = mFlycamFeathering;
-        bool absolute = m3DCursor;
-        bool is_zero = true;
-
-        for (U32 i = 0; i < 7; i++)
+        if (frame_decision.seedDrone &&
+            frame_decision.edge == ALFlycamOwnerEdge::ORBIT_TO_DRONE &&
+            !frame_decision.foreignDroneRegain)
         {
-            cur_delta[i] = -getFlycamAxis(mJoystickAxis[i]);
-
-            if (!mInvertPitch && i == 4)
-                cur_delta[i] = -cur_delta[i];
-
-            F32 tmp = cur_delta[i];
-            if (absolute)
+            if (sDrone.previousPose.valid && sDrone.currentPose.valid)
             {
-                cur_delta[i] = cur_delta[i] - sLastDelta[i];
-            }
-            sLastDelta[i] = tmp;
-
-            if (cur_delta[i] > 0)
-            {
-                cur_delta[i] = llmax(cur_delta[i]- mFlycamAxisDeadZone[i], 0.f);
+                sDrone.drone.seedFromHistory(
+                    sDrone.previousPose.positionGlobal, sDrone.previousPose.rotation,
+                    sDrone.currentPose.positionGlobal, sDrone.currentPose.rotation,
+                    sDrone.currentPose.dt, new_origin, &sDrone.drone.state());
             }
             else
             {
-                cur_delta[i] = llmin(cur_delta[i]+ mFlycamAxisDeadZone[i], 0.f);
+                sDrone.drone.seed(sFlycamPosition, sFlycamRotation,
+                    LLVector3::zero, new_origin, &sDrone.drone.state());
             }
+            sDrone.lastDronePose = sDrone.drone.renderPose();
+            sDrone.haveLastDronePose = true;
+            mXILevelPending = false;
+            mXIRecentrePending = false;
+            mDroneRecentreActive = false;
+        }
 
-            if (mXITakeover && mXIMode == 0 && i == CAM_X_AXIS)
-                cur_delta[i] = llclamp(cur_delta[i] + trigger_roll, -1.f, 1.f);
-            // [XInputPad] Throttle scales movement AND pan/tilt/roll; zoom (CAM_W) excluded.
-            if (mXITakeover && i <= CAM_Z_AXIS && trigger_throttle != 1.f)
-                cur_delta[i] *= trigger_throttle;
-
-            // We may want to scale camera movements up or down in build mode.
-            // NOTE: this needs to remain after the deadzone calculation, otherwise
-            // we have issues with flycam "jumping" when the build dialog is opened/closed  -Nyx
-            if (in_build_mode)
+        if (tagged_dispatch)
+        {
+            alCameraDispatchFinalizePresented();
             {
-                if (i == X_I || i == Y_I || i == Z_I)
+                const ALFlycamGapDecision gap = alClassifyFlycamDispatchGap(
+                    gCameraDispatchSerial, sDrone.lastWrittenSerial,
+                    gCameraDispatchForeignSinceFlycamWrite);
+                const bool foreign = gap.gap == ALFlycamDispatchGap::FOREIGN;
+                if ((gap.gap == ALFlycamDispatchGap::SELF && drone_frame) || foreign)
                 {
-                    cur_delta[i] *= build_mode_scale;
+                    const bool keep = (S32)droneSettings().resumeMomentum == 1;
+                    std::string outcome = "stop";
+                    if (!foreign)
+                    {
+                        if (sDrone.haveLastDronePose)
+                        {
+                            sFlycamPosition = sDrone.lastDronePose.position;
+                            sFlycamRotation = sDrone.lastDronePose.rotation;
+                        }
+                        if (!keep)
+                        {
+                            sDrone.drone.seed(sFlycamPosition, sFlycamRotation,
+                                LLVector3::zero, new_origin, &sDrone.drone.state());
+                            mXIRecentrePending = false;
+                            mDroneRecentreActive = false;
+                        }
+                        else
+                        {
+                            // SELF-Keep is an exact pause of the pose that was
+                            // last presented: prev = cur and acc = 0.
+                            sDrone.drone.pauseAtRenderPose();
+                            sDrone.lastDronePose = sDrone.drone.renderPose();
+                            sFlycamPosition = sDrone.lastDronePose.position;
+                            sFlycamRotation = sDrone.lastDronePose.rotation;
+                            outcome = llformat("keep v=%.3f",
+                                sDrone.drone.state().velocity.length());
+                        }
+                        LL_INFOS("FlycamDrone") << "DRONE OWNER-REGAIN self momentum="
+                            << outcome << LL_ENDL;
+                    }
+                    else
+                    {
+                        LLViewerCamera* camera = LLViewerCamera::getInstance();
+                        sFlycamPosition = camera->getOrigin();
+                        sFlycamRotation = camera->getQuaternion();
+                        const LLVector3d current_global =
+                            gAgent.getPosGlobalFromAgent(sFlycamPosition);
+                        std::string reject;
+                        LLVector3 v_keep;
+                        if (keep)
+                        {
+                            if (gCameraDispatchSampleCount < 3)
+                                reject = "stale";
+                            else
+                            {
+                                const U32 n = gCameraDispatchSampleCount;
+                                const U32 capacity = gCameraDispatchSamples.size();
+                                const ALCameraDispatchSample& a = gCameraDispatchSamples[
+                                    (gCameraDispatchSampleStart + n - 3) % capacity];
+                                const ALCameraDispatchSample& b = gCameraDispatchSamples[
+                                    (gCameraDispatchSampleStart + n - 2) % capacity];
+                                const ALCameraDispatchSample& c = gCameraDispatchSamples[
+                                    (gCameraDispatchSampleStart + n - 1) % capacity];
+                                const std::array<ALCameraDispatchSample, 3> samples = {{a, b, c}};
+                                const ALFlycamKeepResult estimate = alEstimateFlycamKeep(
+                                    samples, gCameraDispatchSerial,
+                                    sDrone.baseParams.velocityCap,
+                                    sDrone.baseParams.totalLimit,
+                                    sDrone.baseParams.yawRate,
+                                    sDrone.baseParams.yawAcceleration,
+                                    sDrone.buildScale);
+                                if (!estimate.ok)
+                                {
+                                    reject = alFlycamKeepRejectName(estimate.reason);
+                                }
+                                else
+                                {
+                                    v_keep = estimate.velocity;
+                                    const LLVector3d synthetic_previous = current_global -
+                                        LLVector3d(v_keep) * (F64)c.dt;
+                                    sDrone.drone.seedFromHistory(synthetic_previous, b.rotation,
+                                        current_global, c.rotation, c.dt, new_origin,
+                                        &sDrone.drone.state());
+                                    outcome = llformat("keep v=%.3f", v_keep.length());
+                                }
+                            }
+                        }
+                        if (!keep || !reject.empty())
+                        {
+                            sDrone.drone.seed(sFlycamPosition, sFlycamRotation,
+                                LLVector3::zero, new_origin, &sDrone.drone.state());
+                            if (!reject.empty()) outcome = "keep-rejected:" + reject;
+                        }
+                        sDrone.lastDronePose = sDrone.drone.renderPose();
+                        sDrone.haveLastDronePose = true;
+                        mXILevelPending = false;
+                        mXIRecentrePending = false;
+                        mDroneRecentreActive = false;
+                        if (gap.resetOperator)
+                            LLCameraOperator::instance().reset();
+                        LL_INFOS("FlycamDrone") << "DRONE OWNER-REGAIN foreign momentum="
+                            << outcome << LL_ENDL;
+                    }
                 }
             }
+        }
+    }
 
-            cur_delta[i] *= mFlycamAxisScale[i];
+    ALFlycamClassic::Input classic_input;
+    for (U32 i = 0; i < ALFlycamClassic::AXIS_COUNT; ++i)
+    {
+        classic_input.axis[i] = getFlycamAxis(mJoystickAxis[i]);
+        classic_input.axisDeadZone[i] = mFlycamAxisDeadZone[i];
+        classic_input.axisScale[i] = mFlycamAxisScale[i];
+    }
+    classic_input.frameIntervalSeconds = gFrameIntervalSeconds.value();
+    classic_input.flycamFeathering = mFlycamFeathering;
+    classic_input.buildModeScale = build_mode_scale;
+    classic_input.minView = LLViewerCamera::getInstance()->getMinView();
+    classic_input.maxView = LLViewerCamera::getInstance()->getMaxView();
+    classic_input.cameraAngle = gSavedSettings.getF32("CameraAngle");
+    classic_input.triggerRoll = trigger_roll;
+    classic_input.triggerThrottle = trigger_throttle;
+    classic_input.zoomDefault = getJoystickButton(mMappedButtons[ZOOM_DEFAULT]);
+    classic_input.zoomOut = getJoystickButton(mMappedButtons[ZOOM_OUT]);
+    classic_input.zoomIn = getJoystickButton(mMappedButtons[ZOOM_IN]);
+    classic_input.jump = getJoystickButton(mMappedButtons[JUMP]);
+    classic_input.crouch = getJoystickButton(mMappedButtons[CROUCH]);
+    classic_input.rollLeft = getJoystickButton(mMappedButtons[ROLL_LEFT]);
+    classic_input.rollRight = getJoystickButton(mMappedButtons[ROLL_RIGHT]);
+    classic_input.rollDefault = getJoystickButton(mMappedButtons[ROLL_DEFAULT]);
+    classic_input.xiMode = mXIMode;
+    classic_input.blackDragon = blackdragon;
+    classic_input.cursor3D = m3DCursor;
+    classic_input.xiTakeover = mXITakeover;
+    classic_input.buildMode = in_build_mode;
+    classic_input.invertPitch = mInvertPitch;
+    classic_input.autoLeveling = mAutoLeveling;
+    classic_input.zoomDirect = mZoomDirect;
+    classic_input.levelHorizon = level_horizon;
 
-            if (!absolute)
+    const LLVector3 shadow_entry_position = sFlycamPosition;
+    const LLQuaternion shadow_entry_rotation = sFlycamRotation;
+    ALFlycamClassic::State classic_state =
+    {
+        sLastDelta,
+        sDelta,
+        sFlycamPosition,
+        sFlycamRotation,
+        sFlycamZoom
+    };
+    const ALFlycamClassic::Intermediate classic_intermediate =
+        ALFlycamClassic::integrateDeltas(classic_input, classic_state);
+
+    // Clear AFK state if moved beyond the deadzone
+    if (!classic_intermediate.isZero &&
+        gAwayTimer.getElapsedTimeF32() > LLAgent::MIN_AFK_TIME)
+    {
+        gAgent.clearAFK();
+    }
+
+    ALFlycamClassic::finishIntegration(classic_input, classic_intermediate, classic_state);
+
+    // Drone->Orbit engages from Drone's last rendered pose. Keep the Classic
+    // deltas for Orbit controls, but discard the shadow pose increment.
+    if (frame_decision.discardClassicShadowPose)
+    {
+        sFlycamPosition = shadow_entry_position;
+        sFlycamRotation = shadow_entry_rotation;
+    }
+
+    // Classic is always advanced above.  Drone owns only the final pose and
+    // overwrites that shadow result before Orbit and the common camera tail.
+    if (drone_frame)
+    {
+        F32 raw[6];
+        for (U32 i = 0; i < 6; ++i)
+        {
+            raw[i] = -getFlycamAxis(mJoystickAxis[i]);
+            if (!blackdragon && i == CAM_Y_AXIS && !mInvertPitch)
+                raw[i] = -raw[i];
+            const F32 scale = mFlycamAxisScale[i];
+            raw[i] *= scale > 0.f ? 1.f : scale < 0.f ? -1.f : 0.f;
+        }
+
+        LLFlycamDrone::Input input;
+        F32 move_forward = raw[X_AXIS];
+        F32 move_left = raw[Y_AXIS];
+        shapeRadial(move_forward, move_left, droneSettings().moveDeadzone,
+                    droneSettings().saturation, droneSettings().expoMove);
+        input.move.set(move_forward, move_left, 0.f);
+
+        F32 yaw = raw[CAM_Z_AXIS];
+        F32 tilt = raw[CAM_Y_AXIS];
+        shapeRadial(yaw, tilt, droneSettings().lookDeadzone,
+                    droneSettings().saturation, 0.f);
+        input.yaw = yaw;
+        input.tilt = tilt;
+        input.vertical = llclamp(raw[Z_AXIS] +
+            (F32)getJoystickButton(mMappedButtons[JUMP]) -
+            (F32)getJoystickButton(mMappedButtons[CROUCH]), -1.f, 1.f);
+        input.roll = raw[CAM_X_AXIS] + trigger_roll;
+        if (fabsf(input.roll) <= mFlycamAxisDeadZone[CAM_X_AXIS])
+            input.roll = 0.f;
+
+        const bool trigger_fresh = mXITakeover && xInputAssociated() &&
+            ALXInput::fresh(mXISampleValid, gFocusMgr.getAppHasFocus(),
+                            mXISampleGeneration, mXILoopGeneration);
+        input.droneThrottle = trigger_fresh && mXIMode == 1;
+        if (input.droneThrottle)
+        {
+            ALXInput::droneTriggers(mXILT / 255.f, mXIRT / 255.f,
+                droneSettings().triggerDeadzone, droneSettings().triggerCurve,
+                input.throttle, input.brake);
+        }
+        const F64 elapsed_dt = std::isfinite(gFrameIntervalSeconds.value())
+            ? llmax((F64)gFrameIntervalSeconds.value(), 0.0) : 0.0;
+        const F64 frame_dt = llmin(elapsed_dt, .25);
+        if (mXIMode == 1 && gFocusMgr.getAppHasFocus())
+        {
+            if (trigger_fresh)
             {
-                cur_delta[i] *= time;
+                sDrone.triggerStaleSeconds = 0.0;
+                sDrone.triggersStale = false;
             }
-
-            sDelta[i] = sDelta[i] + (cur_delta[i]-sDelta[i])*time*feather;
-
-            is_zero = is_zero && (cur_delta[i] == 0.f);
-
-        }
-
-        // Clear AFK state if moved beyond the deadzone
-        if (!is_zero && gAwayTimer.getElapsedTimeF32() > LLAgent::MIN_AFK_TIME)
-        {
-            gAgent.clearAFK();
-        }
-
-        sFlycamPosition += LLVector3(sDelta.data()) * sFlycamRotation;
-
-        LLMatrix3 rot_mat(sDelta[3], sDelta[4], sDelta[5]);
-        sFlycamRotation = LLQuaternion(rot_mat)*sFlycamRotation;
-
-        if (level_horizon || mAutoLeveling)
-        {
-            LLMatrix3 level(sFlycamRotation);
-
-            LLVector3 x = LLVector3(level.mMatrix[0]);
-            LLVector3 y = LLVector3(level.mMatrix[1]);
-            LLVector3 z = LLVector3(level.mMatrix[2]);
-
-            y.mV[2] = 0.f;
-            y.normVec();
-
-            level.setRows(x,y,z);
-            level.orthogonalize();
-
-            LLQuaternion quat(level);
-            sFlycamRotation = level_horizon ? quat : nlerp(llmin(feather*time,1.f), sFlycamRotation, quat);
-        }
-
-        if (mZoomDirect)
-        {
-            sFlycamZoom = sLastDelta[6]* mFlycamAxisScale[6]+ mFlycamAxisDeadZone[6];
+            else
+            {
+                sDrone.triggerStaleSeconds += elapsed_dt;
+                if (sDrone.triggerStaleSeconds > 2.0 && !sDrone.triggersStale)
+                {
+                    LL_INFOS("FlycamDrone") << "DRONE TRIGGERS-STALE" << LL_ENDL;
+                    sDrone.triggersStale = true;
+                }
+            }
         }
         else
         {
-            //BD - We need to cap zoom otherwise it internally counts higher causing
-            //     the zoom level to not react until that extra has been removed first.
-            sFlycamZoom = llclamp(sFlycamZoom + sDelta[6], LLViewerCamera::getInstance()->getMinView(), LLViewerCamera::getInstance()->getMaxView());
+            sDrone.triggerStaleSeconds = 0.0;
+            sDrone.triggersStale = false;
         }
+        const F64 accumulator_before = sDrone.drone.accumulator();
+        const F32 tick = sDrone.drone.params().tick;
+        const U64 steps = tick > 0.f
+            ? static_cast<U64>(llmin(512.0, floor((accumulator_before + frame_dt + 1.0e-9) / tick)))
+            : 0;
+        const bool executes_step = sDrone.drone.accumulator() + frame_dt + 1.0e-9 >=
+            tick;
+        input.level = mXILevelPending;
+        input.recentre = mXIRecentrePending;
+
+        const LLFlycamDrone::RenderPose pose =
+            sDrone.drone.advance(gFrameIntervalSeconds.value(), input);
+
+        // Sample the last real fixed step produced by advance(). Do not replay
+        // step() for telemetry: that doubled model work on multi-step frames.
+        if (steps > 0)
+        {
+            const LLFlycamDrone::State& measured = sDrone.drone.previousState();
+            const LLFlycamDrone::State& next = sDrone.drone.state();
+            const F32 acceleration = tick > 0.f
+                ? next.deltaVelocity.length() / tick : 0.f;
+            const F32 jerk = tick > 0.f
+                ? (next.deltaVelocity - measured.deltaVelocity).length() / (tick * tick) : 0.f;
+            sDrone.maxVelocity = llmax(sDrone.maxVelocity, next.velocity.length());
+            const F32 acceleration_limit = next.totalLimitMax;
+            const F32 jerk_limit = LLFlycamDrone::effectiveJerk(
+                next.pole, next.totalLimitMax, tick);
+            if (acceleration >= sDrone.maxAcceleration)
+            {
+                sDrone.maxAcceleration = acceleration;
+                sDrone.accelerationLimitAtMax = acceleration_limit;
+            }
+            if (jerk >= sDrone.maxJerk)
+            {
+                sDrone.maxJerk = jerk;
+                sDrone.jerkLimitAtMax = jerk_limit;
+            }
+            if (acceleration > acceleration_limit * 1.001f &&
+                !sDrone.boundAccelerationSinceReport)
+            {
+                sDrone.boundAccelerationSinceReport = true;
+            }
+            if (jerk > jerk_limit * 1.001f && !sDrone.boundJerkSinceReport)
+            {
+                sDrone.boundJerkSinceReport = true;
+            }
+        }
+        sDrone.reportSeconds += elapsed_dt;
+        sDrone.reportSteps += steps;
+        if (sDrone.drone.accumulator() > .1 && !sDrone.backlogSinceReport)
+        {
+            LL_INFOS("FlycamDrone") << "DRONE BACKLOG "
+                << sDrone.drone.accumulator() << LL_ENDL;
+            sDrone.backlogSinceReport = true;
+        }
+        if (sDrone.reportSeconds >= 5.0)
+        {
+            const char* verdict = sDrone.nonFiniteSinceReport ? "DRONE NONFINITE" :
+                sDrone.boundAccelerationSinceReport ? "DRONE BOUND-EXCEEDED acc" :
+                sDrone.boundJerkSinceReport ? "DRONE BOUND-EXCEEDED jerk" : "DRONE OK";
+            LL_INFOS("FlycamDrone") << verdict
+                << " preset=" << dronePresetName(droneSettings().preset)
+                << " hz=" << (tick > 0.f ? 1.f / tick : 0.f)
+                << " steps/s=" << (sDrone.reportSteps / sDrone.reportSeconds)
+                << " backlog=" << sDrone.drone.accumulator()
+                << " vmax=" << sDrone.maxVelocity
+                << " acc_max_seen=" << sDrone.maxAcceleration
+                << " (L_tot=" << sDrone.accelerationLimitAtMax << ')'
+                << " jerk_max_seen=" << sDrone.maxJerk
+                << " (J_eff=" << sDrone.jerkLimitAtMax << ')'
+                << " clamps=" << sDrone.reportClamps << LL_ENDL;
+            sDrone.reportSeconds = 0.0;
+            sDrone.reportSteps = 0;
+            sDrone.reportClamps = 0;
+            sDrone.maxVelocity = 0.f;
+            sDrone.maxAcceleration = 0.f;
+            sDrone.maxJerk = 0.f;
+            sDrone.accelerationLimitAtMax = 0.f;
+            sDrone.jerkLimitAtMax = 0.f;
+            sDrone.nonFiniteSinceReport = false;
+            sDrone.boundAccelerationSinceReport = false;
+            sDrone.boundJerkSinceReport = false;
+            sDrone.backlogSinceReport = false;
+        }
+        if (executes_step)
+        {
+            if (input.level)
+                mXILevelPending = false;
+            if (input.recentre)
+                mXIRecentrePending = false;
+        }
+        mDroneRecentreActive = sDrone.drone.state().recentre;
+        sFlycamPosition = pose.position;
+        sFlycamRotation = pose.rotation;
+        sDrone.lastDronePose = pose;
+        sDrone.haveLastDronePose = true;
+    }
+    else if (level_horizon)
+    {
+        // Classic and Orbit consume Level directly in their frame integrator.
+        mXILevelPending = false;
     }
 
-    if (level_horizon)
-    {
-        sDelta[CAM_X_AXIS] = 0.f;
-        sLastDelta[CAM_X_AXIS] = -getFlycamAxis(mJoystickAxis[CAM_X_AXIS]);
-    }
+    static bool sLoggedCursorInactive = false;
+    const bool cursor_blocks_drone = (S32)flycamFlightModel() == 1 && m3DCursor;
+    if (cursor_blocks_drone && !sLoggedCursorInactive)
+        LL_INFOS("FlycamDrone") << "DRONE INACTIVE 3d-cursor" << LL_ENDL;
+    sLoggedCursorInactive = cursor_blocks_drone;
 
     // [machinima] Flycam Orbit: bone-locked stabilized orbit. When active, the
     // free-space pose integrated above is replaced by an orbit maintained
@@ -2036,49 +2634,35 @@ void LLViewerJoystick::moveFlycam(bool reset)
     // into sFlycamPosition/sFlycamRotation so the tail below (camera write,
     // handheld operator layer, flycam recorder) works unchanged, and free
     // flight resumes seamlessly from wherever the orbit leaves the camera.
-    static LLCachedControl<bool> orbit_enabled(gSavedSettings, "FlycamOrbitEnabled", false);
-    bool orbit_active = false;
+    bool orbit_active = orbit_frame;
     F32 orbit_fov_mul = 1.f;    // FOV multiplier, applied only while orbiting
-    if (orbit_enabled)
+    if (orbit_active)
     {
-        static LLCachedControl<bool> orbit_level(gSavedSettings, "FlycamOrbitLevel", true);
-        static LLCachedControl<F32>  orbit_min_r(gSavedSettings, "FlycamOrbitMinRadius", 0.1f);
-        static LLCachedControl<F32>  orbit_max_r(gSavedSettings, "FlycamOrbitMaxRadius", 30.f);
-        static LLCachedControl<F32>  orbit_smooth(gSavedSettings, "FlycamOrbitSmoothing", 0.15f);
-        static LLCachedControl<F32>  orbit_zoom(gSavedSettings, "FlycamOrbitZoom", 1.f);
-        static LLCachedControl<F32>  orbit_off_up(gSavedSettings, "FlycamOrbitOffsetUp", 0.f);
-        static LLCachedControl<F32>  orbit_off_left(gSavedSettings, "FlycamOrbitOffsetLeft", 0.f);
+        // lens: composed into the camera write below, never into
+        // sFlycamZoom itself, so leaving orbit restores free-flight FOV
+        orbit_fov_mul = llclamp((F32)orbit_zoom, 0.1f, 4.f);
+        const F32 dt = llclamp(gFrameIntervalSeconds.value(), 0.0005f, 0.25f);
+        const F32 min_r = llmax((F32)orbit_min_r, 0.01f);
+        const F32 max_r = llmax((F32)orbit_max_r, min_r);
 
-        LLVector3 anchor_pos;
-        LLQuaternion anchor_rot;
-        if (LLCinematicCamera::instance().resolveAnchor(anchor_pos, anchor_rot, orbit_level))
+        // On the outgoing falling-edge frame, retain the last resolved anchor.
+        if (orbit_resolved)
         {
-            orbit_active = true;
-            // lens: composed into the camera write below, never into
-            // sFlycamZoom itself, so leaving orbit restores free-flight FOV
-            orbit_fov_mul = llclamp((F32)orbit_zoom, 0.1f, 4.f);
-            // framing offset in the (leveled) anchor frame, applied before
-            // smoothing/recovery so it shifts both what the camera circles
-            // around and what it aims at
-            anchor_pos += LLVector3(0.f, (F32)orbit_off_left, (F32)orbit_off_up) * anchor_rot;
-            const F32 dt = llclamp(gFrameIntervalSeconds.value(), 0.0005f, 0.25f);
-            const F32 min_r = llmax((F32)orbit_min_r, 0.01f);
-            const F32 max_r = llmax((F32)orbit_max_r, min_r);
-
             // temporal smoothing of the ANCHOR only (one-pole, dt-correct);
             // user input stays direct
             const F32 tau = llmax((F32)orbit_smooth, 0.f);
             if (!sOrbitWasActive || tau < 1e-3f)
             {
-                sOrbitAnchorPos = anchor_pos;
-                sOrbitAnchorRot = anchor_rot;
+                sOrbitAnchorPos = resolved_anchor_pos;
+                sOrbitAnchorRot = resolved_anchor_rot;
             }
             else
             {
                 const F32 alpha = 1.f - expf(-dt / tau);
-                sOrbitAnchorPos += (anchor_pos - sOrbitAnchorPos) * alpha;
-                sOrbitAnchorRot = nlerp(alpha, sOrbitAnchorRot, anchor_rot);
+                sOrbitAnchorPos += (resolved_anchor_pos - sOrbitAnchorPos) * alpha;
+                sOrbitAnchorRot = nlerp(alpha, sOrbitAnchorRot, resolved_anchor_rot);
             }
+        }
 
             if (!sOrbitWasActive)
             {
@@ -2158,9 +2742,68 @@ void LLViewerJoystick::moveFlycam(bool reset)
 
             sFlycamPosition = sOrbitAnchorPos + (sOrbitFocus * sOrbitAnchorRot) + off_world;
             sFlycamRotation = orbit_rot;
-        }
     }
     sOrbitWasActive = orbit_active;
+
+    // Record the final pre-operator pose before applying an ownership edge.
+    sDrone.previousPose = sDrone.currentPose;
+    sDrone.currentPose.positionGlobal = gAgent.getPosGlobalFromAgent(sFlycamPosition);
+    sDrone.currentPose.rotation = sFlycamRotation;
+    sDrone.currentPose.dt = gFrameIntervalSeconds.value();
+    sDrone.currentPose.valid = sDrone.currentPose.positionGlobal.isFinite() &&
+        sFlycamRotation.isFinite() && std::isfinite(sDrone.currentPose.dt);
+
+    if (owner_edge)
+    {
+        const LLVector3d origin = gAgent.getPosGlobalFromAgent(LLVector3::zero);
+        if (frame_decision.seedDrone &&
+            frame_decision.edge == ALFlycamOwnerEdge::CLASSIC_TO_DRONE &&
+            !frame_decision.foreignDroneRegain)
+        {
+            // The outgoing owner has completed its edge frame.  Only now may
+            // Drone advance build scaling and install the parameters used by
+            // the history seed.
+            configureDrone(sDrone, mFlycamAxisScale[CAM_X_AXIS], mAutoLeveling,
+                           in_build_mode, gFrameIntervalSeconds.value(),
+                           build_mode_scale);
+            if (sDrone.previousPose.valid && sDrone.currentPose.valid)
+            {
+                sDrone.drone.seedFromHistory(
+                    sDrone.previousPose.positionGlobal, sDrone.previousPose.rotation,
+                    sDrone.currentPose.positionGlobal, sDrone.currentPose.rotation,
+                    sDrone.currentPose.dt, origin, &sDrone.drone.state());
+            }
+            else
+            {
+                sDrone.drone.seed(sFlycamPosition, sFlycamRotation,
+                                  LLVector3::zero, origin, &sDrone.drone.state());
+            }
+            sDrone.lastDronePose = sDrone.drone.renderPose();
+            sDrone.haveLastDronePose = true;
+        }
+        else if (frame_decision.edge == ALFlycamOwnerEdge::DRONE_TO_CLASSIC)
+        {
+            const std::array<F32, 6> seed =
+                sDrone.drone.classicSeed(gFrameIntervalSeconds.value());
+            for (U32 i = 0; i < seed.size(); ++i)
+                sDelta[i] = seed[i];
+        }
+        sDrone.owner = desired_owner;
+        if (desired_owner != ALFlycamPoseOwner::DRONE)
+        {
+            mXIRecentrePending = false;
+            mDroneRecentreActive = false;
+        }
+    }
+
+    const bool orbit_operator_edge =
+        frame_decision.edge == ALFlycamOwnerEdge::DRONE_TO_ORBIT ||
+        frame_decision.edge == ALFlycamOwnerEdge::ORBIT_TO_DRONE;
+    if (frame_decision.resetOperator && orbit_operator_edge &&
+        !frame_decision.foreignDroneRegain)
+    {
+        LLCameraOperator::instance().reset();
+    }
 
     LLMatrix3 mat(sFlycamRotation);
 
@@ -2187,7 +2830,7 @@ void LLViewerJoystick::moveFlycam(bool reset)
     // from gFrameIntervalSeconds because the upstream tail has no local time).
     if (operator_enabled || apply_active)
     {
-        if (apply_active)
+        if (apply_active && !drone_frame)
         {
             static U32 sLastOperatorFrame = 0;
             if (sLastOperatorFrame == 0 || gFrameCount > sLastOperatorFrame + 1)
@@ -2197,15 +2840,23 @@ void LLViewerJoystick::moveFlycam(bool reset)
             sLastOperatorFrame = gFrameCount;
         }
         const F32 op_dt = llmax(gFrameIntervalSeconds.value(), 0.0005f);
-        const F32 inv_t = 1.f / op_dt;
-        LLCameraOperatorInput opin;
-        opin.mDeltaTime  = op_dt;
-        // sDelta[0..2] is the camera-local translation applied this frame,
-        // sDelta[3..5] the (roll, pitch, yaw) rotation applied this frame.
-        opin.mLinearVel  = LLVector3(sDelta[VX], sDelta[VY], sDelta[VZ]) * inv_t;
-        opin.mAngularVel = LLVector3(sDelta[3], sDelta[4], sDelta[5]) * inv_t;
-
-        const LLCameraOperatorOutput op = LLCameraOperator::instance().update(opin);
+        LLCameraOperatorOutput op;
+        if (drone_frame)
+        {
+            op = LLCameraOperator::instance().updateFromPose(
+                op_dt, sFlycamPosition, sFlycamRotation);
+        }
+        else
+        {
+            const F32 inv_t = 1.f / op_dt;
+            LLCameraOperatorInput opin;
+            opin.mDeltaTime  = op_dt;
+            // sDelta[0..2] is the camera-local translation applied this frame,
+            // sDelta[3..5] the (roll, pitch, yaw) rotation applied this frame.
+            opin.mLinearVel  = LLVector3(sDelta[VX], sDelta[VY], sDelta[VZ]) * inv_t;
+            opin.mAngularVel = LLVector3(sDelta[3], sDelta[4], sDelta[5]) * inv_t;
+            op = LLCameraOperator::instance().update(opin);
+        }
 
         // orientation wobble pre-multiplied as a quaternion (same idiom as the
         // flycam's own rotation above) so the basis stays orthonormal
@@ -2232,12 +2883,26 @@ void LLViewerJoystick::moveFlycam(bool reset)
         LLViewerCamera::getInstance()->mYAxis = LLVector3(mat.mMatrix[1]);
         LLViewerCamera::getInstance()->mZAxis = LLVector3(mat.mMatrix[2]);
     }
+
+    if (tagged_dispatch && sDrone.lastWrittenSerial != gCameraDispatchSerial)
+    {
+        sDrone.lastWrittenSerial = gCameraDispatchSerial;
+        gCameraDispatchFlycamWrote = true;
+        gCameraDispatchForeignSinceFlycamWrite = false;
+    }
+    mDroneCameraOwner = tagged_dispatch && drone_frame && !orbit_frame;
+    if (frame_decision.resetOperator && !orbit_operator_edge &&
+        !frame_decision.foreignDroneRegain)
+        LLCameraOperator::instance().reset();
 }
 
 // -----------------------------------------------------------------------------
 bool LLViewerJoystick::toggleFlycam()
 {
     mXILevelPending = false;
+    mXIRecentrePending = false;
+    mDroneCameraOwner = false;
+    mDroneRecentreActive = false;
     if (!mJoystickEnabled || !mFlycamEnabled)
     {
         mOverrideCamera = false;
@@ -2480,7 +3145,11 @@ void LLViewerJoystick::invalidateXInput(bool rescan)
     mXIEdges = mXIPrevRaw = 0;
     mXIPrime = true;
     mXIWasFocused = false;
-    mXILevelPending = false;
+    if (!mDroneCameraOwner)
+    {
+        mXILevelPending = false;
+        mXIRecentrePending = false;
+    }
     mXIRetry = rescan ? 0 : 4;
     mXIRetryTimer.reset();
     mXIStatus = rescan ? "waiting" : "off";
@@ -2618,8 +3287,13 @@ void LLViewerJoystick::beginMainLoop()
 #endif
     // Also notice focus loss on passes where scanJoystick is gated out.
     if (!gFocusMgr.getAppHasFocus()) mXIWasFocused = false;
-    if (mXILevelPending && mXILoopGeneration - mXILevelGeneration > 1)
+    const bool flycam_dispatch_owns_camera = getOverrideCamera() &&
+        gCameraDispatchOwner == ECameraOwner::FLYCAM;
+    if (mXILevelPending && (!flycam_dispatch_owns_camera ||
+        mXILoopGeneration - mXILevelGeneration > 1))
+    {
         mXILevelPending = false;
+    }
     updateXInputTakeover();
     updateXInputRumble(); // [XInputRumble] advance pattern; also stops on focus loss / setting off
 }
@@ -2829,25 +3503,72 @@ void LLViewerJoystick::handleXInputDpad()
     {
         const S32 mode = settings.mode == 1 ? 0 : 1;
         gSavedSettings.setS32("JoystickXInputTriggerMode", mode);
-        xInputHint(mode == 1 ? "Triggers: THROTTLE" : "Triggers: ROLL");
+        const bool drone = gSavedSettings.getS32("FlycamFlightModel") == 1 &&
+            getOverrideCamera() && !m3DCursor;
+        xInputHint(drone
+            ? (mode == 1 ? "Triggers: THROTTLE + BRAKE (Drone)" : "Triggers: ROLL (Drone)")
+            : (mode == 1 ? "Triggers: THROTTLE" : "Triggers: ROLL"));
         playRumble(ALXInput::RUMBLE_MODE_TICK);
     }
     const auto action = [this](S32 value)
     {
-        if (value == 3)
+        if (value == ALXInput::DPAD_FLIGHT_MODEL)
         {
-            if (!getOverrideCamera()) { xInputHint("Flycam not active"); return; }
+            const bool drone = gSavedSettings.getS32("FlycamFlightModel") == 1;
+            if (!drone && m3DCursor)
+            {
+                xInputHint("Drone unavailable: 3D cursor");
+                return;
+            }
+            gSavedSettings.setS32("FlycamFlightModel", drone ? 0 : 1);
+            xInputHint(drone ? "Flight: Classic" : "Flight: Drone");
+            playRumble(ALXInput::RUMBLE_MODE_TICK);
+        }
+        else if (value == ALXInput::DPAD_RELEASE)
+        {
+            const bool drone_owns_camera = getOverrideCamera() &&
+                gCameraDispatchOwner == ECameraOwner::FLYCAM && mDroneCameraOwner;
+            if (!drone_owns_camera)
+            {
+                xInputHint("Drone not active");
+                return;
+            }
+            const S32 release = gSavedSettings.getS32("FlycamDroneRelease") == 1 ? 0 : 1;
+            gSavedSettings.setS32("FlycamDroneRelease", release);
+            markDronePresetCustom();
+            xInputHint(release == 1 ? "Release: Drift" : "Release: Hold");
+        }
+        else if (value == ALXInput::DPAD_RECENTRE)
+        {
+            const bool drone_owns_camera = getOverrideCamera() &&
+                gCameraDispatchOwner == ECameraOwner::FLYCAM && mDroneCameraOwner;
+            if (!drone_owns_camera)
+            {
+                xInputHint("Drone not active");
+                return;
+            }
+            if (mXIRecentrePending || mDroneRecentreActive)
+                return;
+            mXIRecentrePending = true;
+            mXIRecentreGeneration = mXILoopGeneration;
+            xInputHint("Gimbal recentring");
+        }
+        else if (value == ALXInput::DPAD_LEVEL)
+        {
+            const bool flycam_owns_camera = getOverrideCamera() &&
+                gCameraDispatchOwner == ECameraOwner::FLYCAM;
+            if (!flycam_owns_camera) { xInputHint("Flycam not active"); return; }
             mXILevelPending = true;
             mXILevelGeneration = mXILoopGeneration;
             xInputHint("Level horizon");
         }
-        else if (value == 1 || value == 2)
+        else if (value == ALXInput::DPAD_CUE_GO || value == ALXInput::DPAD_CUE_BACK)
         {
             auto& rig = ALCineLightRigManager::instance().selected();
             if (rig.cueList().mTimecodeMode) { xInputHint("Timecode mode"); return; }
             if (rig.cueList().mCues.empty()) { xInputHint("No light cues"); return; }
             const F64 time = llmax(LLPresentationTime::currentFrame().presentation_time, 0.0);
-            if (value == 1) rig.cueGo(time); else rig.cueBack(time);
+            if (value == ALXInput::DPAD_CUE_GO) rig.cueGo(time); else rig.cueBack(time);
             xInputHint(llformat("Light cue %d/%d", rig.activeCue() + 1,
                                static_cast<S32>(rig.cueList().mCues.size())));
         }
@@ -2862,9 +3583,12 @@ void LLViewerJoystick::handleXInputDpad()
 std::string LLViewerJoystick::getXInputStatus() const
 {
     const auto& settings = xInputSettings();
+    const bool drone = mOverrideCamera && gCameraDispatchOwner == ECameraOwner::FLYCAM &&
+        mDroneCameraOwner;
     const char* mode = !xInputAssociated() ? "inactive"
         : m3DCursor ? "legacy: 3D cursor"
         : !ALXInput::compatible(mJoystickAxis, false) ? "legacy: mapping"
+        : drone ? (settings.mode == 1 ? "THROTTLE + BRAKE (Drone)" : "ROLL (Drone)")
         : settings.mode == 1 ? "THROTTLE" : settings.shaped ? "ROLL shaped" : "ROLL legacy";
     const bool fresh = xInputAssociated() &&
         ALXInput::fresh(mXISampleValid, gFocusMgr.getAppHasFocus(),
@@ -3197,6 +3921,15 @@ void LLViewerJoystick::setXboxDefaults()
     gSavedSettings.setS32("JoystickButtonRollRight", -1);
     gSavedSettings.setS32("JoystickButtonRollDefault", -1);
 
+    const ALXInput::DpadSettings dpad = ALXInput::fillDroneDpadDefaults({
+        gSavedSettings.getS32("JoystickXInputDpadUp"),
+        gSavedSettings.getS32("JoystickXInputDpadLeft"),
+        gSavedSettings.getS32("JoystickXInputDpadRight"),
+        gSavedSettings.getS32("JoystickXInputDpadMigrationVersion")});
+    gSavedSettings.setS32("JoystickXInputDpadUp", dpad.up);
+    gSavedSettings.setS32("JoystickXInputDpadLeft", dpad.left);
+    gSavedSettings.setS32("JoystickXInputDpadRight", dpad.right);
+
     gSavedSettings.setBOOL("Cursor3D", false); // Xbox Gamepad, not 3D Mouse
     gSavedSettings.setBOOL("AutoLeveling", false);
     gSavedSettings.setBOOL("ZoomDirect", false);
@@ -3247,4 +3980,97 @@ void LLViewerJoystick::setXboxDefaults()
     gSavedSettings.setF32("AvatarFeathering", 20.0f);
     gSavedSettings.setF32("BuildFeathering", 3.f);
     gSavedSettings.setF32("FlycamFeathering", 1.0f);
+}
+
+bool LLViewerJoystick::applyDronePreset(S32 preset)
+{
+    if (preset < 0 || preset >= static_cast<S32>(LLFlycamDrone::PresetId::COUNT))
+        return false;
+
+    DronePresetProvenance& provenance = dronePresetProvenance();
+    provenance.source = preset;
+    provenance.custom = false;
+    ++provenance.revision;
+
+    const LLFlycamDrone::HumanParams& p =
+        LLFlycamDrone::presets()[static_cast<std::size_t>(preset)].human;
+    gSavedSettings.setS32("FlycamDronePreset", preset);
+    gSavedSettings.setF32("FlycamDroneCruise", p.cruise);
+    gSavedSettings.setF32("FlycamDroneTop", p.top);
+    gSavedSettings.setF32("FlycamDroneTimeToTop", p.timeToTop);
+    gSavedSettings.setF32("FlycamDroneStopDistance", p.stopDistance);
+    gSavedSettings.setF32("FlycamDroneHoldTime", p.holdTime);
+    gSavedSettings.setF32("FlycamDroneCoastTime", p.coastTime);
+    gSavedSettings.setF32("FlycamDroneHighSpeedFloat", p.highSpeedFloat);
+    gSavedSettings.setF32("FlycamDroneOnset", p.onset);
+    gSavedSettings.setF32("FlycamDroneGrip", p.grip);
+    gSavedSettings.setF32("FlycamDroneTurnRate", p.turnRateDegrees);
+    gSavedSettings.setF32("FlycamDroneTurnWeight", p.turnWeight);
+    gSavedSettings.setF32("FlycamDroneTiltRate", p.tiltRateDegrees);
+    gSavedSettings.setF32("FlycamDroneClimb", p.climb);
+    gSavedSettings.setF32("FlycamDroneClimbTime", p.climbTime);
+    gSavedSettings.setS32("FlycamDroneRelease",
+        p.release == LLFlycamDrone::ReleaseMode::DRIFT ? 1 : 0);
+    gSavedSettings.setS32("FlycamDroneThrottleMode",
+        p.throttleMode == LLFlycamDrone::ThrottleMode::PURE ? 1 : 0);
+    gSavedSettings.setBOOL("FlycamDroneFreeFly", p.freeFly);
+    return true;
+}
+
+LLFlycamDrone::CompiledValues LLViewerJoystick::getDroneCompiledValues() const
+{
+    return cachedDroneCompiledValues();
+}
+
+LLFlycamDrone::HumanParams LLViewerJoystick::getDroneAcceptedValues() const
+{
+    return droneCompilePreviewCache().accepted;
+}
+
+F32 LLViewerJoystick::getDroneCompiledTick() const
+{
+    return droneCompilePreviewCache().params.tick;
+}
+
+void LLViewerJoystick::markDronePresetCustom()
+{
+    DronePresetProvenance& provenance = dronePresetProvenance();
+    const S32 current = gSavedSettings.getS32("FlycamDronePreset");
+    if (current >= 0 && current < static_cast<S32>(LLFlycamDrone::PresetId::COUNT))
+    {
+        provenance.source = current;
+    }
+    provenance.custom = true;
+    gSavedSettings.setS32("FlycamDronePreset", 5);
+    ++provenance.revision;
+}
+
+S32 LLViewerJoystick::getDronePresetProvenance() const
+{
+    return dronePresetProvenance().source;
+}
+
+bool LLViewerJoystick::isDronePresetCustom() const
+{
+    return dronePresetProvenance().custom;
+}
+
+U64 LLViewerJoystick::getDronePresetProvenanceRevision() const
+{
+    return dronePresetProvenance().revision;
+}
+
+void LLViewerJoystick::resetDroneSettings()
+{
+    gSavedSettings.setS32("FlycamFlightModel", 0);
+    applyDronePreset(static_cast<S32>(LLFlycamDrone::PresetId::NORMAL));
+    gSavedSettings.setS32("FlycamDroneThrottleMode", 0);
+    gSavedSettings.setF32("FlycamDroneSimulationHz", 120.f);
+    gSavedSettings.setF32("FlycamDroneMoveDeadzone", .10f);
+    gSavedSettings.setF32("FlycamDroneLookDeadzone", .12f);
+    gSavedSettings.setF32("FlycamDroneSaturation", .05f);
+    gSavedSettings.setF32("FlycamDroneExpoMove", .35f);
+    gSavedSettings.setF32("FlycamDroneExpoYaw", .45f);
+    gSavedSettings.setF32("FlycamDroneExpoGimbal", .45f);
+    gSavedSettings.setS32("FlycamDroneResumeMomentum", 0);
 }

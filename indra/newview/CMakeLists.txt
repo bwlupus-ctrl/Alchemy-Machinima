@@ -189,6 +189,7 @@ set(viewer_SOURCE_FILES
     alfloatertransactionlog.cpp
     alsceneexplorerpredicate.cpp
     alfloaterwebprofile.cpp
+    alflycamclassic.cpp
     allegacynotificationwellwindow.cpp
     alobjectproperties.cpp
     alpanelaomini.cpp
@@ -348,6 +349,7 @@ set(viewer_SOURCE_FILES
     alpanelflycamorbit.cpp
     alpanelflycamrecorder.cpp
     alpanelpatheditor.cpp
+    llflycamdrone.cpp
     llflycamrecorder.cpp
     llpathcamera.cpp
     llcefaccelinterop.cpp
@@ -1061,6 +1063,8 @@ set(viewer_HEADER_FILES
     alfloatertransactionlog.h
     alsceneexplorerpredicate.h
     alfloaterwebprofile.h
+    alflycamclassic.h
+    alcameradispatch.h
     allegacynotificationwellwindow.h
     alobjectproperties.h
     alpanelaomini.h
@@ -1238,6 +1242,7 @@ set(viewer_HEADER_FILES
     alpanelflycamorbit.h
     alpanelflycamrecorder.h
     alpanelpatheditor.h
+    llflycamdrone.h
     llflycamrecorder.h
     llpathcamera.h
     llcapabilityprovider.h
@@ -2716,6 +2721,10 @@ if (BUILD_TESTING)
   )
 
   LL_ADD_PROJECT_UNIT_TESTS(${VIEWER_BINARY_NAME} "${viewer_TEST_SOURCE_FILES}")
+
+  LL_ADD_INTEGRATION_TEST(llflycamdrone "llflycamdrone.cpp;alflycamclassic.cpp" "${test_libs}" "${test_project}")
+  LL_ADD_INTEGRATION_TEST(alflycamclassic "alflycamclassic.cpp" "${test_libs}" "${test_project}")
+  LL_ADD_INTEGRATION_TEST(alxinputmath "" "${test_libs}" "${test_project}")
 
   # ALGazeMath is deliberately header-only, so register its TUT directly
   # instead of inventing a production .cpp solely for the per-source macro.
