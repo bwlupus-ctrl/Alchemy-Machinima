@@ -150,6 +150,12 @@ public:
     // to the slider bar. Every other slider takes the base-class path.
     /*virtual*/ bool    handleScrollWheel(S32 x, S32 y, LLScrollDelta delta);
 
+    // [SliderWheel] design v7 4.2b. The inner slider re-resolved through its handle after a call that
+    // can run foreign code: returns it only if it is alive (itself and every ancestor, see
+    // LLSliderWheel::alive), STILL parented to this ctrl, and STILL mSlider. A child that was
+    // deleted, die()d, removed, reparented or REPLACED by a callback yields null.
+    LLSlider*       liveSlider(const LLHandle<LLSlider>& sh) const;
+
     static void     onSliderCommit(LLUICtrl* caller, const LLSD& userdata);
 
     static void     onEditorCommit(LLUICtrl* ctrl, const LLSD& userdata);

@@ -167,6 +167,16 @@ Helpers: `indra/newview/aluirefresh.h`.
    not in the visible chain, and is forced on the next reveal (`onVisibilityChange(true)` or the
    tab commit). Refreshers with model side effects (selection pushes, hotkey state) run
    regardless and must stay cheap.
+9. **Scrollers and the slider wheel.** Every slider takes the mouse wheel viewer-wide
+   (`UISliderWheelAdjust`; design `doc/SLIDER_WHEEL_GLOBAL_DESIGN.md`). The scroll-through guard that
+   stops a panel scroll from nudging a slider is global in llui (`indra/llui/llsliderwheel.h`):
+   `LLScrollbar::scrollByWheel` stamps it on every real line change. **Any scroller that moves content
+   without going through `LLScrollbar::scrollByWheel` MUST call `LLSliderWheel::noteScroll(this)` when it
+   really moves**, or a slider inside it steals the wheel mid-scroll. Review new `handleScrollWheel`
+   overrides for this. Do not add per-floater wheel guards or `handleScrollWheel` overrides for sliders
+   (`ALScrollFit::WheelGuard` is retired). A slider that must not take the wheel (a scrubber) says
+   `wheel_adjust="false"`. Wheel commits of a slider with a mouse-up finaliser are PREVIEW-ONLY; the
+   wheel settle / close flush is the sole final commit, so no caller may finalise per notch.
 
 ## ⛔ MANDATORY WORKING AGREEMENT — CONSULT CODEX (user directive, 2026-07-21)
 

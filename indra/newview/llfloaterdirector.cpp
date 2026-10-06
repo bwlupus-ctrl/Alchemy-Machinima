@@ -732,21 +732,10 @@ void LLFloaterDirector::draw()
     // the embedded ALPanelAnimPreview blits + spins its own dummy in its draw()
 }
 
-// [DirFix] D1: wheel rule (the Lightbox's, via ALScrollFit::WheelGuard): wheel over a slider
-// adjusts it (wheel_adjust is enabled on every slider by installForTabs), EXCEPT within 0.5 s
-// of the same scroll container really scrolling, when the event falls through to the
-// container so the scroll gesture keeps going. State is per floater instance.
-bool LLFloaterDirector::handleScrollWheel(S32 x, S32 y, LLScrollDelta delta)
-{
-    return mScrollFit.onScrollWheel(this, x, y,
-        [&] { return LLFloater::handleScrollWheel(x, y, delta); });
-}
-
-bool LLFloaterDirector::handleScrollHWheel(S32 x, S32 y, LLScrollDelta delta)
-{
-    return mScrollFit.onScrollHWheel(this, x, y,
-        [&] { return LLFloater::handleScrollHWheel(x, y, delta); });
-}
+// [SliderWheel] [DirFix] D1's wheel rule (wheel over a slider adjusts it, except within 0.5 s of
+// a scroller really scrolling) is global in llui now (indra/llui/llsliderwheel.h); the
+// per-floater WheelGuard and the two overrides that were here are retired. Sliders stay
+// explicit ON via installForTabs -> ALScrollFit::enableSliderWheel (legacy step).
 
 bool LLFloaterDirector::handleKeyHere(KEY key, MASK mask)
 {

@@ -71,6 +71,8 @@ target_sources(llui
     llsearcheditor.cpp
     llslider.cpp
     llsliderctrl.cpp
+    llsliderwheel.cpp
+    llsliderwheelcore.cpp
     llspinctrl.cpp
     llstatbar.cpp
     llstatgraph.cpp
@@ -190,6 +192,8 @@ target_sources(llui
     llscrolllistitem.h
     llsliderctrl.h
     llslider.h
+    llsliderwheel.h
+    llsliderwheelcore.h
     llspellcheck.h
     llspellcheckengine.h
     llspellcheckmenuhandler.h
@@ -300,6 +304,7 @@ if(BUILD_TESTING)
 
   SET(llui_TEST_SOURCE_FILES
       llurlmatch.cpp
+      llsliderwheelcore.cpp # [SliderWheel] pure logic, tests/llsliderwheelcore_test.cpp
       )
   set_property( SOURCE ${llui_TEST_SOURCE_FILES} PROPERTY LL_TEST_ADDITIONAL_LIBRARIES ${test_libs})
   LL_ADD_PROJECT_UNIT_TESTS(llui "${llui_TEST_SOURCE_FILES}")

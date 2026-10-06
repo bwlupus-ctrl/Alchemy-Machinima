@@ -273,24 +273,10 @@ void ALFloaterLightBox::onOpen(const LLSD& key)
     fitScrollContent();
 }
 
-// [ScrollFit] Wheel rule for the Lightbox (semantics unchanged, see ALScrollFit::WheelGuard):
-// wheel over a slider adjusts it (wheel_adjust is enabled on every Lightbox slider in
-// postBuild), EXCEPT within 0.5 s of the same scroll container really scrolling, when the
-// event falls through to the container so the scroll gesture keeps going. Guard state is
-// per floater instance (mScrollFit).
-bool ALFloaterLightBox::handleScrollWheel(S32 x, S32 y, LLScrollDelta delta)
-{
-    return mScrollFit.onScrollWheel(this, x, y,
-        [&] { return LLFloater::handleScrollWheel(x, y, delta); });
-}
-
-// [ScrollFit] LLSlider::handleScrollHWheel ignores wheel_adjust, so it cannot be masked;
-// the guard swallows a horizontal wheel over a slider right after a scroll. Otherwise stock.
-bool ALFloaterLightBox::handleScrollHWheel(S32 x, S32 y, LLScrollDelta delta)
-{
-    return mScrollFit.onScrollHWheel(this, x, y,
-        [&] { return LLFloater::handleScrollHWheel(x, y, delta); });
-}
+// [SliderWheel] The Lightbox wheel rule (wheel over a slider adjusts it, except within 0.5 s of
+// a scroller really scrolling, when the panel keeps scrolling) is global in llui now
+// (indra/llui/llsliderwheel.h): the per-floater WheelGuard and the two overrides that were here
+// are retired. Sliders stay explicit ON via ALScrollFit::enableSliderWheel (legacy step).
 
 void ALFloaterLightBox::draw()
 {

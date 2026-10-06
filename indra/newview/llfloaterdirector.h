@@ -55,10 +55,8 @@ public:
     // Esc = CUT while the transport is running or counting down; stock
     // floater behavior otherwise
     bool handleKeyHere(KEY key, MASK mask) override;
-    // [DirFix] D1: wheel over a slider adjusts it, except while a tab is being scrolled
-    // (the Lightbox rule, ALScrollFit::WheelGuard)
-    bool handleScrollWheel(S32 x, S32 y, LLScrollDelta delta) override;
-    bool handleScrollHWheel(S32 x, S32 y, LLScrollDelta delta) override;
+    // [SliderWheel] [DirFix] D1's wheel overrides are retired: the scroll-through guard is global
+    // in llui (indra/llui/llsliderwheel.h).
 
     // [DirFix] D10: read-only public view of the cast-list selection, so the
     // Actor Gaze floater can pull it on open (see doc/DIRECTOR_CONSOLE_FIX_PLAN.md)

@@ -18,9 +18,7 @@
  *     // postBuild(), once the XML tree exists:
  *     mScrollFit.installForTabs(findChild<LLTabContainer>("tabs"), this);
  *     // onOpen(): mScrollFit.fit(this, tabs);                 (cheap, idempotent)
- *     // handleScrollWheel / handleScrollHWheel overrides:
- *     return mScrollFit.onScrollWheel(this, x, y,
- *         [&] { return LLFloater::handleScrollWheel(x, y, delta); });
+ *     // [SliderWheel] no wheel overrides: the scroll-through guard is global in llui.
  *
  * installForTabs does, in this order: wrap every tab without a DIRECT-child scroller
  * (wrapTabPanel), re-fit on tab change, install focus-reveal on the named scrollers and
@@ -28,9 +26,7 @@
  * enable wheel adjust on every LLSlider under `root` (enableSliderWheel).
  *
  * LIFETIME: the tab-change commit callback captures `tabs` and `root`; `root` must be an
- * ancestor of (or equal to) `tabs`, so both die together. The wheel guard stores a
- * scroll-container pointer for identity comparison only (never dereferenced); it lives in
- * the Controller, i.e. per floater instance, not file-static.
+ * ancestor of (or equal to) `tabs`, so both die together.
  */
 
 #ifndef AL_SCROLLFIT_H
@@ -51,10 +47,6 @@ namespace ALScrollFit
 {
 // Gap kept below the lowest child of a scroll document.
 constexpr S32 FIT_PAD = 12;
-// A slider ignores the wheel (the panel scrolls instead) for this long after its
-// enclosing scroll container really scrolled from a wheel event.
-constexpr F64 WHEEL_GUARD_SEC = 0.5;
-
 // ---- (a)/(b)/(c) layout -------------------------------------------------------------
 
 // The document (scrolled view) of a scroll container, or nullptr. mScrolledView is
@@ -155,38 +147,12 @@ private:
 
 // ---- (e) wheel rule -----------------------------------------------------------------
 
-// Enables wheel adjust on every LLSlider under `root` (recursive).
+// Enables wheel adjust on every LLSlider under `root` (recursive) = explicit ON (legacy step,
+// ignores the UISliderWheelAdjust switch).
+// [SliderWheel] The per-floater WheelGuard that used to live here is RETIRED: the scroll-through
+// guard is global in llui now (indra/llui/llsliderwheel.h, doc/SLIDER_WHEEL_GLOBAL_DESIGN.md), so
+// a floater needs no handleScrollWheel / handleScrollHWheel overrides for it.
 void enableSliderWheel(LLView* root);
-
-// Scroll-through guard. Wheel over a slider adjusts it (see enableSliderWheel), EXCEPT
-// while the panel is being scrolled: if THAT SAME scroll container really scrolled (doc
-// position changed) from a wheel event less than WHEEL_GUARD_SEC ago, a slider under the
-// cursor has its wheel adjust masked for this one dispatch, so the event falls through to
-// the container and keeps scrolling. A guard-redirected/swallowed event keeps the guard
-// alive. LLFloater::handleScrollWheel always returns true, so its result says nothing; the
-// guard arms only on an actual doc-position change. State is per instance.
-class WheelGuard
-{
-public:
-    // Call from handleScrollWheel; `base` performs the stock dispatch
-    // (e.g. [&]{ return LLFloater::handleScrollWheel(x, y, delta); }) and its result is
-    // returned. `root` is the floater (hit-tests in its local coordinates).
-    bool onScrollWheel(LLView* root, S32 x, S32 y, const std::function<bool()>& base);
-
-    // Call from handleScrollHWheel. LLSlider::handleScrollHWheel ignores wheel_adjust, so
-    // it cannot be masked: while the guard is active a horizontal wheel over a slider is
-    // swallowed (returns true without calling `base`); otherwise stock behaviour.
-    bool onScrollHWheel(LLView* root, S32 x, S32 y, const std::function<bool()>& base);
-
-    void reset();
-
-private:
-    bool guardActive(const LLSlider* slider, const LLScrollContainer* container) const;
-    void arm(const LLScrollContainer* container);
-
-    const LLScrollContainer* mContainer = nullptr; // identity only, never dereferenced
-    F64 mTime = -1.0e9;
-};
 
 // ---- (f) one-call convenience -------------------------------------------------------
 
@@ -216,22 +182,12 @@ public:
     // instead of the bare fitAll, which knows no minimums).
     void fit(LLView* root, LLTabContainer* tabs) { fitAll(root, tabs, mMins.get()); }
 
-    bool onScrollWheel(LLView* root, S32 x, S32 y, const std::function<bool()>& base)
-    {
-        return mWheel.onScrollWheel(root, x, y, base);
-    }
-    bool onScrollHWheel(LLView* root, S32 x, S32 y, const std::function<bool()>& base)
-    {
-        return mWheel.onScrollHWheel(root, x, y, base);
-    }
-    void reset() { mWheel.reset(); mFocus.clear(); mMins->clear(); }
+    void reset() { mFocus.clear(); mMins->clear(); }
 
     FocusTracker& focus() { return mFocus; }
-    WheelGuard& wheel() { return mWheel; }
 
 private:
     FocusTracker mFocus;
-    WheelGuard mWheel;
     // Shared with the tab-change callbacks (they may outlive this object during floater
     // teardown, so they hold their own reference).
     std::shared_ptr<StretcherMins> mMins = std::make_shared<StretcherMins>();

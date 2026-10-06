@@ -38,6 +38,7 @@
 #define LL_LLSLIDER_H
 
 #include "llf32uictrl.h"
+#include "llsliderwheelcore.h" // [SliderWheel] EWheelAdjust, SettleState
 #include "v4color.h"
 #include "lluiimage.h"
 
@@ -66,6 +67,10 @@ public:
         // slider by its increment while hovered, for precision adjustment. Off by
         // default so sliders inside scroll containers keep routing the wheel to
         // the container. Vertical sliders already take the vertical wheel.
+        // [SliderWheel] Tri-state now: not provided = follows the UISliderWheelAdjust
+        // switch (default on, nice 1-2-5 step, scroll-through guard); true = explicit ON
+        // (legacy step, ignores the switch); false = explicit OFF (declines the wheel, e.g.
+        // the media scrubber). The default value below only matters for isProvided().
         Optional<bool>                  wheel_adjust;
 
         // [EnvIntensity v2] Opt-in fine wheel step: with wheel_fine_div > 0 (and
@@ -105,14 +110,35 @@ public:
     virtual bool    handleScrollHWheel(S32 x, S32 y, LLScrollDelta delta);
     virtual void    draw();
 
-    // [EnvIntensity v2] accessors for LLSliderCtrl's gated wheel forwarding
-    bool            getWheelAdjust() const  { return mWheelAdjust; }
+    // [EnvIntensity v2] accessor for LLSliderCtrl's gated wheel forwarding
     F32             getWheelFineDiv() const { return mWheelFineDiv; }
-    // [LightboxWheel] Runtime override of the wheel_adjust param (ALFloaterLightBox
-    // enables it on every Lightbox slider and gates it while the panel is scrolling).
-    void            setWheelAdjust(bool b)  { mWheelAdjust = b; }
+    // [SliderWheel] Runtime override of the wheel_adjust param = explicit ON / OFF (replaces the
+    // [LightboxWheel] bool; the retired ALScrollFit::WheelGuard used to toggle it per event).
+    void            setWheelAdjust(bool b)  { mWheelAdjust = b ? LLSliderWheel::WHEEL_ON : LLSliderWheel::WHEEL_OFF; }
+
+    // [SliderWheel] (design v7 2.2/2.3) Resolved wheel state. The raw tri-state accessor is for
+    // tests only; behaviour reads participates()/wheelEnabled()/hwheelEnabled().
+    LLSliderWheel::EWheelAdjust getWheelAdjustState() const { return mWheelAdjust; }
+    // ON, or UNSET with UISliderWheelAdjust on: gates ALL new behaviour (guard, nice125 step,
+    // settle, the scroll-container hook). Otherwise today's code runs verbatim.
+    bool            participates() const;
+    // Vertical-wheel dispatch (LLSliderCtrl forwarding) / horizontal wheel.
+    bool            wheelEnabled() const;
+    bool            hwheelEnabled() const;
+
+    // [SliderWheel] Wheel commit: clamp+snap, commit, and report whether the value really changed
+    // AFTER the commit callbacks ran (a validation revert or a clamp is "no change"). The caller
+    // schedules the settle only on true, through a re-resolved handle (design 4.1).
+    bool            applyWheelValue(F32 requested, bool precision_override);
+    // [SliderWheel] Wheel settle (design 4.2): one synthesised mouse-up per wheel gesture.
+    void            scheduleWheelSettle();
+    void            cancelWheelSettle() { mWheelSettle.invalidate(); }   // cancel, never fire
+    void            fireWheelSettle(U32 gen);                            // registry/close flush only
+    U32             getWheelSettleGen() const       { return mWheelSettle.gen; }
+    bool            isWheelSettlePending() const    { return mWheelSettle.pending; }
 
 private:
+    bool            handleScrollWheelStock(S32 x, S32 y, LLScrollDelta delta); // pre-[SliderWheel] body, verbatim
     void            setValueAndCommit(F32 value);
     void            updateThumbRect();
     F32             snapToFineGrid(F32 value) const; // [EnvIntensity v2] wheel_fine_div grid, ends pinned exactly
@@ -130,8 +156,11 @@ private:
     LLPointer<LLUIImage>    mTrackHighlightVerticalImage;
 
     const EOrientation  mOrientation;
-    bool                mWheelAdjust; // [AL] ([LightboxWheel] no longer const; layout unchanged) hovered vertical wheel steps a horizontal slider
+    // [AL] hovered vertical wheel steps a horizontal slider. [SliderWheel] tri-state: UNSET (param
+    // not provided), ON, OFF (design 2.1). Not const: setWheelAdjust() makes it explicit ON/OFF.
+    LLSliderWheel::EWheelAdjust mWheelAdjust;
     const F32           mWheelFineDiv; // [EnvIntensity v2] Shift fine divisor (0 = off)
+    LLSliderWheel::SettleState mWheelSettle; // [SliderWheel] one pending generation per slider
 
     LLRect      mThumbRect;
     LLUIColor   mThumbOutlineColor;

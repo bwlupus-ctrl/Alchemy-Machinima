@@ -29,33 +29,7 @@
 
 namespace ALScrollFit
 {
-namespace
-{
-// The slider (or slider ctrl's inner slider) and the nearest scroll container under
-// the cursor, in the floater's local coordinates.
-void findWheelTargets(LLView* floater, S32 x, S32 y, LLSlider*& slider, LLScrollContainer*& container)
-{
-    slider = nullptr;
-    container = nullptr;
-    for (LLView* v = floater->childFromPoint(x, y, true); v && v != floater; v = v->getParent())
-    {
-        if (!slider)
-        {
-            slider = dynamic_cast<LLSlider*>(v);
-            if (!slider && dynamic_cast<LLSliderCtrl*>(v))
-            {
-                // wheel-forwarding slider ctrls (wheel_fine_div) route via their inner slider
-                for (LLView* c : *v->getChildList())
-                {
-                    if ((slider = dynamic_cast<LLSlider*>(c)) != nullptr) break;
-                }
-            }
-        }
-        container = dynamic_cast<LLScrollContainer*>(v);
-        if (container) break;
-    }
-}
-} // namespace
+// [SliderWheel] findWheelTargets moved to LLSliderWheel::sliderAt (indra/llui/llsliderwheel.cpp).
 
 LLView* scrolledView(LLScrollContainer* sc)
 {
@@ -351,6 +325,10 @@ void FocusTracker::installTabLevel(LLTabContainer* tabs)
 
 // ---- wheel --------------------------------------------------------------------------
 
+// [SliderWheel] WheelGuard is RETIRED: the scroll-through guard is now global (llui,
+// indra/llui/llsliderwheel.h: LLScrollbar::scrollByWheel stamps it, sliders consult it, and
+// LLScrollContainer keeps it alive over disabled sliders). enableSliderWheel stays: explicit ON =
+// the legacy step, and it ignores the UISliderWheelAdjust kill switch.
 void enableSliderWheel(LLView* root)
 {
     for (LLView* child : *root->getChildList())
@@ -362,74 +340,6 @@ void enableSliderWheel(LLView* root)
         }
         enableSliderWheel(child);
     }
-}
-
-bool WheelGuard::guardActive(const LLSlider* slider, const LLScrollContainer* container) const
-{
-    return slider && container && container == mContainer
-        && (LLTimer::getTotalSeconds() - mTime) < WHEEL_GUARD_SEC;
-}
-
-void WheelGuard::arm(const LLScrollContainer* container)
-{
-    mContainer = container;
-    mTime = LLTimer::getTotalSeconds();
-}
-
-void WheelGuard::reset()
-{
-    mContainer = nullptr;
-    mTime = -1.0e9;
-}
-
-bool WheelGuard::onScrollWheel(LLView* root, S32 x, S32 y, const std::function<bool()>& base)
-{
-    LLSlider* slider = nullptr;
-    LLScrollContainer* container = nullptr;
-    findWheelTargets(root, x, y, slider, container);
-
-    const bool guard = guardActive(slider, container);
-    const bool saved_adjust = slider ? slider->getWheelAdjust() : false;
-    if (guard)
-    {
-        slider->setWheelAdjust(false);
-    }
-    const S32 v_before = container ? container->getDocPosVertical() : 0;
-    const S32 h_before = container ? container->getDocPosHorizontal() : 0;
-    const bool handled = base();
-    if (guard)
-    {
-        slider->setWheelAdjust(saved_adjust);
-    }
-    // Arm on a real scroll; a guard-redirected event also keeps it alive, so spinning on at
-    // the end of the scroll range over a slider never starts adjusting it.
-    if (container && (guard
-        || container->getDocPosVertical() != v_before || container->getDocPosHorizontal() != h_before))
-    {
-        arm(container);
-    }
-    return handled;
-}
-
-bool WheelGuard::onScrollHWheel(LLView* root, S32 x, S32 y, const std::function<bool()>& base)
-{
-    LLSlider* slider = nullptr;
-    LLScrollContainer* container = nullptr;
-    findWheelTargets(root, x, y, slider, container);
-    if (guardActive(slider, container))
-    {
-        mTime = LLTimer::getTotalSeconds(); // a swallowed event keeps the guard alive
-        return true;
-    }
-    const S32 v_before = container ? container->getDocPosVertical() : 0;
-    const S32 h_before = container ? container->getDocPosHorizontal() : 0;
-    const bool handled = base();
-    if (container
-        && (container->getDocPosVertical() != v_before || container->getDocPosHorizontal() != h_before))
-    {
-        arm(container);
-    }
-    return handled;
 }
 
 // ---- Controller ---------------------------------------------------------------------

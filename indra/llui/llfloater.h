@@ -374,6 +374,8 @@ public:
 
     virtual void    setTornOff(bool torn_off) { mTornOff = torn_off; }
     bool isTornOff() const { return mTornOff; }
+    // [SliderWheel] see mLifecycleSerial
+    U32  getLifecycleSerial() const { return mLifecycleSerial; }
     void setOpenPositioning(LLFloaterEnums::EOpenPositioning pos) {mPositioning = pos;}
 
 
@@ -569,6 +571,12 @@ private:
     bool            mCanDock;
     bool            mDocked;
     bool            mTornOff;
+
+    // [SliderWheel] design v7 4.2a: close-flush re-entrancy guard. mLifecycleSerial is bumped by
+    // openFloater and by every closeFloater that reaches the flush point, so a flush callback that
+    // reopens or re-closes this floater is detected by the outer closeFloater.
+    bool            mCloseFlushActive = false;
+    U32             mLifecycleSerial = 0;
 
     static LLMultiFloater* sHostp;
     static bool     sQuitting;

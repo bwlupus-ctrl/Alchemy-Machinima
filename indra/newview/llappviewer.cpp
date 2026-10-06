@@ -65,6 +65,7 @@
 #include "llstartup.h"
 #include "llpresentationtime.h"     // [Temporal Capture] presentation clock
 #include "llfocusmgr.h"
+#include "llsliderwheel.h" // [SliderWheel] cancelAllForQuit
 #include "llurlfloaterdispatchhandler.h"
 #include "llviewerjoystick.h"
 #include "llactormover.h"    // TP-away walk suspend/resume state machine (idle tick)
@@ -4438,6 +4439,10 @@ void LLAppViewer::requestQuit()
     // editing things.
     if (gFloaterView)
     {
+        // [SliderWheel] design v7 4.2: drop every pending slider wheel settle WITHOUT firing and
+        // latch the quit flag, so no settle can send a hover / region-environment update during
+        // logout. Covers sliders outside floaters (Quick Settings pulldown) too.
+        LLSliderWheel::cancelAllForQuit();
         // application is quitting
         gFloaterView->closeAllChildren(true);
         mClosingFloaters = true;
@@ -5683,6 +5688,8 @@ void LLAppViewer::idleShutdown()
     {
         if (!mClosingFloaters)
         {
+            // [SliderWheel] second quit site: cancel (never fire) pending slider wheel settles
+            LLSliderWheel::cancelAllForQuit();
             // application is quitting
             gFloaterView->closeAllChildren(true);
             mClosingFloaters = true;

@@ -373,6 +373,7 @@
 		  initial_value="0.5"
 		  layout="topleft"
 		  tool_tip="Movie play progress"
+		  wheel_adjust="false"
 		  width="200">
       <slider_bar.mouse_down_callback
         function="MediaCtrl.MouseDown" />

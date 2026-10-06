@@ -58,6 +58,7 @@
 #include "lltrans.h"
 #include "llhelp.h"
 #include "llmultifloater.h"
+#include "llsliderwheel.h" // [SliderWheel]
 #include "llsdutil.h"
 
 // use this to control "jumping" behavior when Ctrl-Tabbing
@@ -721,6 +722,8 @@ void LLFloater::openFloater(const LLSD& key)
 
     mKey = key; // in case we need to open ourselves again
 
+    ++mLifecycleSerial; // [SliderWheel] a reopen supersedes an in-progress close flush (design 4.2a)
+
     if (getSoundFlags() != SILENT
     // don't play open sound for hosted (tabbed) windows
         && !getHost()
@@ -837,6 +840,33 @@ void LLFloater::closeFloater(bool app_quitting)
         cleanupHandles();
 
         dirtyRect();
+
+        // [SliderWheel] design v7 4.2/4.2a: flush pending slider wheel settles (the single final
+        // mouse-up of a wheel gesture) while the whole floater, derived class included, is still
+        // alive: canClose() passed, dependents are closed, onClose has NOT run, nothing is hidden or
+        // destroyed. The flush runs arbitrary mouse-up callbacks that may re-enter closeFloater,
+        // reopen, die() or delete this floater, so: self handle + lifecycle serial + active flag.
+        if (!mCloseFlushActive)                         // nested close: the outer call owns the flush
+        {
+            LLHandle<LLFloater> self = getHandle();
+            const U32 serial = ++mLifecycleSerial;
+            mCloseFlushActive = true;
+            LLSliderWheel::settleForClose(self, serial, app_quitting);   // may run arbitrary callbacks
+            LLFloater* f = self.get();
+            if (!f)
+            {
+                return;                                 // deleted (destroyInstance -> delete): touch nothing
+            }
+            f->mCloseFlushActive = false;
+            if (f->mLifecycleSerial != serial || f->isDead())
+            {
+                return;                                 // nested close / reopen / die(): superseded
+            }
+        }
+        else
+        {
+            ++mLifecycleSerial;                         // a nested close supersedes the outer one
+        }
 
         // Close callbacks
         onClose(app_quitting);

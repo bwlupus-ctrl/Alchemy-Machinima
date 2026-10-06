@@ -35,6 +35,7 @@
 #include "llbutton.h"
 #include "llcriticaldamp.h"
 #include "llkeyboard.h"
+#include "llsliderwheel.h" // [SliderWheel]
 #include "llui.h"
 #include "llfocusmgr.h"
 #include "llwindow.h"
@@ -417,6 +418,9 @@ bool LLScrollbar::scrollByWheel(F32 precise)
     mScrollWheelResidue -= (F32)lines;
     if (changeLine(lines, true))
     {
+        // [SliderWheel] design 1.1: a real line change arms the slider-wheel scroll-through guard
+        // for the owning scroller. The sub-notch "handled, no line" returns below do not stamp.
+        LLSliderWheel::noteScroll(getParent());
         return true; // moved at least one whole line
     }
     // No whole line crossed yet (sub-notch precise scroll). Still report the

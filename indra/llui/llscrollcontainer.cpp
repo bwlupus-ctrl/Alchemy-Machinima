@@ -35,6 +35,8 @@
 // #include "llfolderview.h"
 #include "llscrollingpanellist.h"
 #include "llscrollbar.h"
+#include "llslider.h"      // [SliderWheel]
+#include "llsliderwheel.h" // [SliderWheel]
 #include "llui.h"
 #include "llkeyboard.h"
 #include "llviewborder.h"
@@ -269,6 +271,19 @@ bool LLScrollContainer::handleScrollWheel( S32 x, S32 y, LLScrollDelta delta )
     if (LLUICtrl::handleScrollWheel(x,y,delta))
         return true;
 
+    // [SliderWheel] design 1.3 disabled-slider hook. Dispatch skips disabled children, so a
+    // DISABLED participating slider under the cursor never saw the event, but the retired
+    // ALScrollFit::WheelGuard did (childFromPoint checks visibility only). Under an armed guard,
+    // keep it alive and scroll as normal.
+    if (LLSliderWheel::guarded(this))
+    {
+        LLSlider* guarded_slider = LLSliderWheel::sliderAt(this, x, y);
+        if (guarded_slider && guarded_slider->participates())
+        {
+            LLSliderWheel::keepAlive();
+        }
+    }
+
     // When the vertical scrollbar is visible, scroll wheel
     // only affects vertical scrolling.  It's confusing to have
     // scroll wheel perform both vertical and horizontal in a
@@ -304,6 +319,19 @@ bool LLScrollContainer::handleScrollHWheel(S32 x, S32 y, LLScrollDelta delta)
     if (LLUICtrl::handleScrollHWheel(x,y,delta))
     {
         return true;
+    }
+
+    // [SliderWheel] design 1.3 disabled-slider hook, horizontal wheel: a guarded H-wheel over a
+    // participating (necessarily disabled, an enabled one already handled it) slider is
+    // SWALLOWED and keeps the guard alive, exactly what WheelGuard did.
+    if (LLSliderWheel::guarded(this))
+    {
+        LLSlider* guarded_slider = LLSliderWheel::sliderAt(this, x, y);
+        if (guarded_slider && guarded_slider->participates())
+        {
+            LLSliderWheel::keepAlive();
+            return true;
+        }
     }
 
     LLScrollbar* horizontal = mScrollbar[HORIZONTAL];

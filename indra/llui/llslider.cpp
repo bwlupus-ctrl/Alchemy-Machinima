@@ -30,6 +30,8 @@
 #include "linden_common.h"
 
 #include "llslider.h"
+#include "llsliderctrl.h"  // [SliderWheel] liveSlider() for attachedSlider()
+#include "llsliderwheel.h" // [SliderWheel]
 #include "llui.h"
 
 #include "llgl.h"
@@ -65,7 +67,10 @@ LLSlider::LLSlider(const LLSlider::Params& p)
 :   LLF32UICtrl(p),
     mMouseOffset( 0 ),
     mOrientation ((p.orientation() == "horizontal") ? HORIZONTAL : VERTICAL),
-    mWheelAdjust(p.wheel_adjust),
+    // [SliderWheel] provided true/false = explicit ON/OFF, not provided = UNSET (design 2.1)
+    mWheelAdjust(p.wheel_adjust.isProvided()
+                    ? (p.wheel_adjust() ? LLSliderWheel::WHEEL_ON : LLSliderWheel::WHEEL_OFF)
+                    : LLSliderWheel::WHEEL_UNSET),
     mWheelFineDiv(llmax(0.f, (F32)p.wheel_fine_div)), // [EnvIntensity v2]
     mThumbOutlineColor(p.thumb_outline_color()),
     mThumbCenterColor(p.thumb_center_color()),
@@ -106,6 +111,9 @@ LLSlider::LLSlider(const LLSlider::Params& p)
 
 LLSlider::~LLSlider()
 {
+    // [SliderWheel] destruction only CANCELS a pending wheel settle (never fires from a dtor);
+    // the registry's dead handle drops the entry.
+    cancelWheelSettle();
     delete mMouseDownSignal;
     delete mMouseUpSignal;
 }
@@ -127,7 +135,15 @@ void LLSlider::setValue(F32 value, bool from_event, bool precision_override)
 
     if (!from_event && getValueF32() != value)
     {
+        // [SliderWheel] design 4.2b: setControlValue runs control-variable listeners (foreign
+        // code) that may destroy or die() this slider or an ancestor. Handle taken BEFORE the
+        // call, only in the branch that actually writes; bail before touching members.
+        LLHandle<LLSlider> self_h = getDerivedHandle<LLSlider>();
         setControlValue(value);
+        if (!LLSliderWheel::alive(self_h))
+        {
+            return;
+        }
     }
 
     LLF32UICtrl::setValue(value);
@@ -265,6 +281,10 @@ bool LLSlider::handleMouseUp(S32 x, S32 y, MASK mask)
 
     if( hasMouseCapture() )
     {
+        // [SliderWheel] a real mouse-up reports for this gesture: cancel any pending wheel
+        // settle BEFORE the signal runs (design 4.2). The uncaptured branch does not invalidate.
+        cancelWheelSettle();
+
         gFocusMgr.setMouseCapture( NULL );
 
         if (mMouseUpSignal)
@@ -310,6 +330,9 @@ bool LLSlider::handleMouseDown(S32 x, S32 y, MASK mask)
         }
 
         // Start dragging the thumb
+        // [SliderWheel] a drag starts and its real mouse-up will report: cancel a pending wheel
+        // settle. (The Ctrl+click branch above takes no capture and leaves a pending settle alone.)
+        cancelWheelSettle();
         // No handler needed for focus lost since this class has no state that depends on it.
         gFocusMgr.setMouseCapture( this );
         mDragStartThumbRect = mThumbRect;
@@ -340,11 +363,173 @@ bool LLSlider::handleKeyHere(KEY key, MASK mask)
     return handled;
 }
 
+// [SliderWheel] design v7 2.2/2.3: resolved wheel state.
+bool LLSlider::participates() const
+{
+    return LLSliderWheel::resolve(mWheelAdjust, mOrientation == VERTICAL,
+                                  mWheelAdjust == LLSliderWheel::WHEEL_UNSET ? LLSliderWheel::switchOn() : true).participates;
+}
+
+bool LLSlider::wheelEnabled() const
+{
+    return LLSliderWheel::resolve(mWheelAdjust, mOrientation == VERTICAL,
+                                  mWheelAdjust == LLSliderWheel::WHEEL_UNSET ? LLSliderWheel::switchOn() : true).wheelEnabled;
+}
+
+bool LLSlider::hwheelEnabled() const
+{
+    return mWheelAdjust != LLSliderWheel::WHEEL_OFF;
+}
+
+// [SliderWheel] design 4.1. Everything after a foreign call goes through alive(h), never `this`.
+// review P1-2: the slider re-resolved through its handle AND still attached where it was when the
+// wheel notch started: same live parent, and, inside an LLSliderCtrl, still that ctrl's mSlider.
+// A callback that removed, reparented or replaced the slider (without deleting it) yields null.
+static LLSlider* attachedSlider(const LLHandle<LLSlider>& h, const LLHandle<LLView>& ph, bool had_parent)
+{
+    LLSlider* s = LLSliderWheel::alive(h);
+    if (!s || !had_parent)
+    {
+        return s;
+    }
+    LLView* p = LLSliderWheel::alive(ph);
+    if (!p || s->getParent() != p)
+    {
+        return nullptr;
+    }
+    if (LLSliderCtrl* ctrl = dynamic_cast<LLSliderCtrl*>(p))
+    {
+        return ctrl->liveSlider(h);
+    }
+    return s;
+}
+
+bool LLSlider::applyWheelValue(F32 requested, bool precision_override)
+{
+    LLHandle<LLSlider> h = getDerivedHandle<LLSlider>(); // before ANY foreign code (4.2b)
+    LLView* parent = getParent();
+    const bool had_parent = (parent != NULL);
+    LLHandle<LLView> ph = parent ? parent->getHandle() : LLHandle<LLView>();
+    const F32 before = getValueF32();
+    setValue(requested, false, precision_override);      // clamp + snap; the control write runs listeners
+    LLSlider* s = attachedSlider(h, ph, had_parent);
+    if (!s)
+    {
+        if (LLSlider* old = h.get()) old->cancelWheelSettle(); // detached / dead ancestry: no settle
+        return false;
+    }
+    if (s->getValueF32() == before)
+    {
+        return false;                                    // clamped: no commit (as today)
+    }
+    s->onCommit();                                       // ctrl validate (may revert) + commit signal
+    s = attachedSlider(h, ph, had_parent);
+    if (!s)
+    {
+        if (LLSlider* old = h.get()) old->cancelWheelSettle();
+        return false;
+    }
+    return s->getValueF32() != before;                   // POST-callback compare
+}
+
+// [SliderWheel] design 4.2 "Schedule". Called through alive(h) by the wheel handler, only after
+// applyWheelValue returned true.
+void LLSlider::scheduleWheelSettle()
+{
+    if (!LLSliderWheel::shouldSchedule(mMouseUpSignal != NULL, hasMouseCapture(), LLSliderWheel::isQuitting()))
+    {
+        return; // no mouse-up consumer / a drag's real mouse-up will report / quitting
+    }
+    mWheelSettle.arm();
+    LLSliderWheel::scheduleSettle(getDerivedHandle<LLSlider>(), mWheelSettle.gen,
+                                  LLSliderWheel::now() + LLSliderWheel::SETTLE_SEC);
+}
+
+// [SliderWheel] Registry tick / close flush only. Re-checks generation + pending, clears pending,
+// then synthesises the one mouse-up for the gesture. Nothing is touched after the signal.
+void LLSlider::fireWheelSettle(U32 gen)
+{
+    if (!mWheelSettle.consume(gen))
+    {
+        return;
+    }
+    if (mMouseUpSignal)
+    {
+        (*mMouseUpSignal)( this, getValueF32() );
+    }
+}
+
 bool LLSlider::handleScrollWheel(S32 x, S32 y, LLScrollDelta delta)
+{
+    // [SliderWheel] explicit OFF declines both orientations (the media scrubber).
+    if (mWheelAdjust == LLSliderWheel::WHEEL_OFF)
+    {
+        return LLF32UICtrl::handleScrollWheel(x, y, delta);
+    }
+    // UNSET with the UISliderWheelAdjust switch off: today's code VERBATIM (no guard, step, settle).
+    if (!participates())
+    {
+        return handleScrollWheelStock(x, y, delta);
+    }
+
+    // design 1.3: a panel that was just wheel-scrolled keeps scrolling; the container scrolls (and
+    // stamps) or is parked.
+    if (LLSliderWheel::guarded(this))
+    {
+        LLSliderWheel::keepAlive();
+        return false;
+    }
+    // design 2.4: sub-notch events go to the container so it can accumulate its residue.
+    if (delta.mClicks == 0)
+    {
+        return false;
+    }
+    // A horizontal slider takes the vertical wheel only when it participates (checked above);
+    // vertical sliders always take it.
+    const bool shift    = gKeyboard && gKeyboard->getKeyDown(KEY_SHIFT);
+    const bool ctrl_alt = gKeyboard && (gKeyboard->getKeyDown(KEY_CONTROL) || gKeyboard->getKeyDown(KEY_ALT));
+    LLHandle<LLSlider> h = getDerivedHandle<LLSlider>(); // before ANY foreign code (4.2b)
+    bool changed = false;
+    if (mWheelFineDiv > 0.f)
+    {
+        // [EnvIntensity v2] existing fine path, unchanged: Shift = increment / div, Ctrl/Alt = x10,
+        // plain = increment, Shift wins, snapped to the FINE grid.
+        const F32 inc  = getIncrement();
+        F32 step = inc;
+        if (shift)
+        {
+            step = inc / mWheelFineDiv;
+        }
+        else if (ctrl_alt)
+        {
+            step = inc * 10.f;
+        }
+        changed = applyWheelValue(snapToFineGrid(getValueF32() - delta.mClicks * step), /*precision_override*/ true);
+    }
+    else
+    {
+        // design 3: legacy step for explicit ON and every vertical slider; nice125 for UNSET horizontal.
+        const bool legacy = (mWheelAdjust == LLSliderWheel::WHEEL_ON) || (mOrientation == VERTICAL);
+        const F32 step = LLSliderWheel::wheelStep(mMinValue, mMaxValue, getIncrement(), legacy, shift, ctrl_alt);
+        changed = applyWheelValue(getValueF32() - delta.mClicks * step, false);
+    }
+    if (changed)
+    {
+        if (LLSlider* s = LLSliderWheel::alive(h))
+        {
+            s->scheduleWheelSettle();
+        }
+    }
+    return true;
+}
+
+// [AL] pre-[SliderWheel] body, VERBATIM (only reached for UNSET sliders while the
+// UISliderWheelAdjust switch is off, where mWheelAdjust was false in stock: vertical sliders only).
+bool LLSlider::handleScrollWheelStock(S32 x, S32 y, LLScrollDelta delta)
 {
     // [AL] wheel_adjust: hovered vertical wheel steps a horizontal slider by its
     // increment (wheel up = increase), giving precision control without dragging.
-    if ( mOrientation == VERTICAL || (mWheelAdjust && mOrientation == HORIZONTAL) )
+    if ( mOrientation == VERTICAL )
     {
         // [EnvIntensity v2] Opt-in fine stepping (wheel_fine_div > 0): Shift =
         // increment / div, Ctrl or Alt = x10 (shipping convention), plain =
@@ -405,13 +590,44 @@ bool LLSlider::handleScrollWheel(S32 x, S32 y, LLScrollDelta delta)
 
 bool LLSlider::handleScrollHWheel(S32 x, S32 y, LLScrollDelta delta)
 {
-    if (mOrientation == HORIZONTAL)
+    // [SliderWheel] explicit OFF declines the horizontal wheel too (design 2.2).
+    if (mWheelAdjust == LLSliderWheel::WHEEL_OFF)
     {
-        F32 new_val = getValueF32() - delta.mClicks * getIncrement();
-        setValueAndCommit(new_val);
+        return LLF32UICtrl::handleScrollHWheel(x, y, delta);
+    }
+    // Not participating (UNSET, switch off) or a vertical slider: today's code verbatim.
+    if (mOrientation != HORIZONTAL || !participates())
+    {
+        if (mOrientation == HORIZONTAL)
+        {
+            F32 new_val = getValueF32() - delta.mClicks * getIncrement();
+            setValueAndCommit(new_val);
+            return true;
+        }
+        return LLF32UICtrl::handleScrollHWheel(x, y, delta);
+    }
+
+    // [SliderWheel] participating horizontal slider.
+    // design 1.3: guarded H-wheel is SWALLOWED (as WheelGuard did) and keeps the guard alive.
+    if (LLSliderWheel::guarded(this))
+    {
+        LLSliderWheel::keepAlive();
         return true;
     }
-    return LLF32UICtrl::handleScrollHWheel(x, y, delta);
+    if (delta.mClicks == 0)
+    {
+        return false; // sub-notch (design 2.4)
+    }
+    // H-wheel: one increment per notch, no modifiers (as today).
+    LLHandle<LLSlider> h = getDerivedHandle<LLSlider>(); // before ANY foreign code (4.2b)
+    if (applyWheelValue(getValueF32() - delta.mClicks * getIncrement(), false))
+    {
+        if (LLSlider* s = LLSliderWheel::alive(h))
+        {
+            s->scheduleWheelSettle();
+        }
+    }
+    return true;
 }
 
 void LLSlider::draw()

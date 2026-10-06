@@ -37,6 +37,7 @@
 #include "llkeyboard.h"
 #include "lllineeditor.h"
 #include "llslider.h"
+#include "llsliderwheel.h" // [SliderWheel]
 #include "llstring.h"
 #include "lltextbox.h"
 #include "llui.h"
@@ -145,7 +146,10 @@ LLSliderCtrl::LLSliderCtrl(const LLSliderCtrl::Params& p)
     {
         slider_p.orientation = p.orientation;
     }
-    if (!slider_p.wheel_adjust.isProvided())
+    // [SliderWheel] design 2.1: copy ONLY a wheel_adjust the ctrl was actually given. Copying the
+    // ctrl's default (false) would mark the child provided = explicit OFF and defeat the global
+    // default; an unprovided ctrl leaves the child UNSET.
+    if (p.wheel_adjust.isProvided() && !slider_p.wheel_adjust.isProvided())
     {
         slider_p.wheel_adjust = p.wheel_adjust; // [AL] hover-wheel precision opt-in
     }
@@ -221,12 +225,53 @@ void LLSliderCtrl::onEditorGainFocus( LLFocusableElement* caller, void *userdata
 }
 
 
+// [SliderWheel] design v7 4.2b.
+LLSlider* LLSliderCtrl::liveSlider(const LLHandle<LLSlider>& sh) const
+{
+    LLSlider* s = LLSliderWheel::alive(sh);
+    if (s && s->getParent() == this && mSlider == s)
+    {
+        return s;
+    }
+    return nullptr;
+}
+
+// [SliderWheel] RS(): after every foreign call where execution continues, re-resolve the ctrl AND
+// the child; return before any further access if either failed. Needs locals h, sh, self, s.
+// review P1-2: when ctrl/child re-resolution fails, the ORIGINAL slider (which may still exist,
+// removed / reparented / replaced / under a die()d ancestor) gets its pending wheel settle
+// cancelled, so a detached slider can never fire a settle later.
+static void cancelWheelSettleOf(const LLHandle<LLSlider>& sh)
+{
+    if (LLSlider* old = sh.get())
+    {
+        old->cancelWheelSettle();
+    }
+}
+
+#define SLIDERWHEEL_RS() \
+    do { \
+        self = LLSliderWheel::alive(h); \
+        if (!self) { cancelWheelSettleOf(sh); return; } \
+        s = self->liveSlider(sh); \
+        if (!s) { cancelWheelSettleOf(sh); return; } \
+    } while (0)
+
 void LLSliderCtrl::setValue(F32 v, bool from_event, bool precision_override)
 {
     // [BDMerge C8]
+    // [SliderWheel] the child's control write runs listeners (foreign code) that may destroy the
+    // ctrl, only the child, or die() an ancestor: handles first, re-resolve both afterwards and
+    // touch mSlider/mValue/updateText only through the re-resolved pointers, never `this`.
+    LLHandle<LLSliderCtrl> h  = getDerivedHandle<LLSliderCtrl>();
+    LLHandle<LLSlider>     sh = mSlider->getDerivedHandle<LLSlider>();
     mSlider->setValue( v, from_event, precision_override );
-    mValue = mSlider->getValueF32();
-    updateText();
+    LLSliderCtrl* self = LLSliderWheel::alive(h);
+    if (!self) { cancelWheelSettleOf(sh); return; }
+    LLSlider* s = self->liveSlider(sh);
+    if (!s) { cancelWheelSettleOf(sh); return; }
+    self->mValue = s->getValueF32();
+    self->updateText();
 }
 
 // [EnvIntensity v2] Control-variable sync path. For a slider without
@@ -234,16 +279,24 @@ void LLSliderCtrl::setValue(F32 v, bool from_event, bool precision_override)
 // true, false)); with it, LLSlider keeps the incoming fine value.
 void LLSliderCtrl::setValue(const LLSD& value)
 {
+    // [SliderWheel] identical hardening to the F32 overload above.
+    LLHandle<LLSliderCtrl> h  = getDerivedHandle<LLSliderCtrl>();
+    LLHandle<LLSlider>     sh = mSlider->getDerivedHandle<LLSlider>();
     mSlider->setValue(value);
-    mValue = mSlider->getValueF32();
-    updateText();
+    LLSliderCtrl* self = LLSliderWheel::alive(h);
+    if (!self) { cancelWheelSettleOf(sh); return; }
+    LLSlider* s = self->liveSlider(sh);
+    if (!s) { cancelWheelSettleOf(sh); return; }
+    self->mValue = s->getValueF32();
+    self->updateText();
 }
 
 // [EnvIntensity v2] Gated on wheel_fine_div so the shipping wheel_adjust
 // floaters keep their current hit area (slider bar only).
+// [SliderWheel] wheelEnabled() = the resolved vertical-wheel state (design 2.3).
 bool LLSliderCtrl::handleScrollWheel(S32 x, S32 y, LLScrollDelta delta)
 {
-    if (mSlider && mSlider->getWheelAdjust() && mSlider->getWheelFineDiv() > 0.f)
+    if (mSlider && mSlider->wheelEnabled() && mSlider->getWheelFineDiv() > 0.f)
     {
         return mSlider->handleScrollWheel(x, y, delta);
     }
@@ -361,6 +414,13 @@ void LLSliderCtrl::onEditorCommit( LLUICtrl* ctrl, const LLSD& userdata )
     if (!self)
         return;
 
+    // [SliderWheel] design v7 4.2b: handles for the ctrl AND its child BEFORE the first foreign
+    // call (setValue's control write, the validate signal, onCommit, the editor signal). After
+    // each one SLIDERWHEEL_RS() re-resolves both and returns if either is gone.
+    LLHandle<LLSliderCtrl> h  = self->getDerivedHandle<LLSliderCtrl>();
+    LLHandle<LLSlider>     sh = self->mSlider->getDerivedHandle<LLSlider>();
+    LLSlider* s = self->mSlider;
+
     bool success = false;
     F32 val = self->mValue;
     F32 saved_val = self->mValue;
@@ -370,12 +430,15 @@ void LLSliderCtrl::onEditorCommit( LLUICtrl* ctrl, const LLSD& userdata )
     {
         LLLocale locale(LLLocale::USER_LOCALE);
         val = (F32) atof( text.c_str() );
-        if( self->mSlider->getMinValue() <= val && val <= self->mSlider->getMaxValue() )
+        if( s->getMinValue() <= val && val <= s->getMaxValue() )
         {
             // [BDMerge C8] Typed values may land between increments when gated on.
             static LLCachedControl<bool> sPrecisionOverride(*LLUI::getInstance()->mSettingGroups["config"], "BDMergeSliderPrecision", false);
             self->setValue( val, false, sPrecisionOverride );  // set the value temporarily so that the callback can retrieve it.
-            if( !self->mValidateSignal || (*(self->mValidateSignal))( self, val ) )
+            SLIDERWHEEL_RS();                                  // control write ran listeners
+            const bool valid = !self->mValidateSignal || (*(self->mValidateSignal))( self, val );
+            SLIDERWHEEL_RS();                                  // validate signal
+            if( valid )
             {
                 success = true;
             }
@@ -384,19 +447,29 @@ void LLSliderCtrl::onEditorCommit( LLUICtrl* ctrl, const LLSD& userdata )
 
     if( success )
     {
+        // [SliderWheel] the typed value is the final commit: cancel a pending wheel settle FIRST,
+        // before any callback (s is fresh from the RS() above).
+        s->cancelWheelSettle();
         self->onCommit();
+        SLIDERWHEEL_RS();                                      // commit signal + control write
         if (self->mEditorCommitSignal)
-            (*(self->mEditorCommitSignal))(self, self->getValueF32());
+        {
+            const F32 committed = self->getValueF32();         // child read: s is fresh
+            (*(self->mEditorCommitSignal))(self, committed);
+            SLIDERWHEEL_RS();
+        }
     }
     else
     {
-        if( self->getValueF32() != saved_val )
+        if( self->getValueF32() != saved_val )                 // child read: nothing foreign ran since the last RS()/entry
         {
             self->setValue( saved_val );
+            SLIDERWHEEL_RS();                                  // reject-path control write
         }
-        self->reportInvalidData();
+        self->reportInvalidData();                             // sound only, no foreign code
     }
-    self->updateText();
+    SLIDERWHEEL_RS();                                          // fresh, immediately before updateText
+    self->updateText();                                        // reads getValueF32() -> mSlider
 }
 
 // static
@@ -406,30 +479,41 @@ void LLSliderCtrl::onSliderCommit( LLUICtrl* ctrl, const LLSD& userdata )
     if (!self)
         return;
 
+    // [SliderWheel] design v7 4.2b (see onEditorCommit): handles first, RS() after every foreign call.
+    LLHandle<LLSliderCtrl> h  = self->getDerivedHandle<LLSliderCtrl>();
+    LLHandle<LLSlider>     sh = self->mSlider->getDerivedHandle<LLSlider>();
+    LLSlider* s = self->mSlider;
+
     bool success = false;
     F32 saved_val = self->mValue;
-    F32 new_val = self->mSlider->getValueF32();
+    F32 new_val = s->getValueF32();                            // before any callback
 
     self->mValue = new_val;  // set the value temporarily so that the callback can retrieve it.
     if( !self->mValidateSignal || (*(self->mValidateSignal))( self, new_val ) )
     {
         success = true;
     }
+    SLIDERWHEEL_RS();                                          // validate signal
 
     if( success )
     {
         self->onCommit();
+        SLIDERWHEEL_RS();                                      // commit signal + control write
     }
     else
     {
         if( self->mValue != saved_val )
         {
             self->setValue( saved_val );
+            SLIDERWHEEL_RS();                                  // reject-path control write
         }
         self->reportInvalidData();
     }
+    SLIDERWHEEL_RS();                                          // fresh, immediately before updateText
     self->updateText();
 }
+
+#undef SLIDERWHEEL_RS
 
 void LLSliderCtrl::setEnabled(bool b)
 {
