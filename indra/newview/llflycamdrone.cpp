@@ -265,8 +265,7 @@ bool LLFlycamDrone::compile(const HumanParams& requested, const HumanParams& pre
     h.turnWeight = acceptedValue("turnWeight", h.turnWeight, previous.turnWeight, 0.f, 1.f, logger, valid);
     h.tiltRateDegrees = acceptedValue("tiltRate", h.tiltRateDegrees, previous.tiltRateDegrees, .001f, MAX_RATE_DEGREES, logger, valid);
     h.climb = acceptedValue("climb", h.climb, previous.climb, 0.f, MAX_SPEED, logger, valid);
-    if (h.climb > 0.f)
-        h.climbTime = acceptedValue("climbTime", h.climbTime, std::max(previous.climbTime, minTime), minTime, MAX_TIME, logger, valid);
+    h.climbTime = acceptedValue("climbTime", h.climbTime, std::max(previous.climbTime, minTime), minTime, MAX_TIME, logger, valid);
     const F32 stopFloor = h.top * (h.onset + 2.f * tick);
     h.stopDistance = acceptedValue("stopDistance", h.stopDistance, previous.stopDistance,
                                    stopFloor, MAX_STOP_DISTANCE, logger, valid);
@@ -445,7 +444,7 @@ LLFlycamDrone::State LLFlycamDrone::step(const State& source, const Input& input
             n = target / targetSpeed;
         else if (reference.length() > 0.f)
             n = reference / reference.length();
-        const bool engaged = targetSpeed > 0.f || brake > 0.f || mParams.release == ReleaseMode::HOLD;
+        const bool engaged = moveLength > 0.f || brake > 0.f || mParams.release == ReleaseMode::HOLD;
         if (engaged)
         {
             F32 along = reference * n;
@@ -676,6 +675,31 @@ LLFlycamDrone::RenderPose LLFlycamDrone::renderPose() const
     if (mCur.quaternionSign < 0.f)
         negate(result.rotation);
     return result;
+}
+
+void LLFlycamDrone::pauseAtRenderPose()
+{
+    const RenderPose pose = renderPose();
+    State paused = mCur;
+    paused.position = pose.position;
+    paused.yaw = pose.yaw;
+    paused.tilt = pose.tilt;
+    paused.roll = pose.roll;
+    if (finite(paused) && finiteQuaternion(pose.rotation))
+    {
+        mCur = paused;
+    }
+    else
+    {
+        log("DRONE NONFINITE pause pose ignored");
+    }
+    mPrev = mCur;
+    mAccumulator = 0.0;
+}
+
+void LLFlycamDrone::discardAccumulator()
+{
+    mAccumulator = 0.0;
 }
 
 LLQuaternion LLFlycamDrone::rotation(F32 yaw, F32 tilt, F32 roll)

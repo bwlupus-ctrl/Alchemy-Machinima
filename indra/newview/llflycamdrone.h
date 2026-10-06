@@ -156,6 +156,12 @@ public:
     RenderPose advanceRaw(F64 frameDt, const Input& input);
     RenderPose renderPose() const;
 
+    // Section 11.2.1 SELF-Keep: materialize the last rendered pose as
+    // prev = cur and discard wall time, preserving all dynamic state.
+    void pauseAtRenderPose();
+    // Section 11.3 Orbit ownership: discard wall time without changing state.
+    void discardAccumulator();
+
     void seed(const LLVector3& position, const LLQuaternion& rotation,
               const LLVector3& velocity = LLVector3::zero,
               const LLVector3d& originTag = LLVector3d::zero,
