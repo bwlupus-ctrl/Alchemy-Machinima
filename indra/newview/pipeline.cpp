@@ -23895,12 +23895,13 @@ public:
     explicit ScopedSilCoverInvariant(const char* scope) : mScope(scope)
     {
         static LLCachedControl<bool> debug(gSavedSettings, "AvatarSilhouetteDebugCarrier", false);
-        mEnabled = debug;
-        if (mEnabled) capture(mBefore);
+        if (!debug) return;
+        mBefore.emplace();
+        capture(*mBefore);
     }
     ~ScopedSilCoverInvariant()
     {
-        if (!mEnabled) return;
+        if (!mBefore) return;
         State after;
         capture(after);
         bool clean = true;
@@ -23919,12 +23920,12 @@ public:
             "viewport-width", "viewport-height", "scissor-x", "scissor-y", "scissor-width",
             "scissor-height", "color-mask-r", "color-mask-g", "color-mask-b", "color-mask-a"
         };
-        for (size_t i = 0; i < mBefore.i.size(); ++i)
-            if (mBefore.i[i] != after.i[i]) leak(int_names[i]);
-        if (mBefore.draw_buffers.size() != after.draw_buffers.size()) leak("draw-buffer-count");
-        const size_t draw_count = llmin(mBefore.draw_buffers.size(), after.draw_buffers.size());
+        for (size_t i = 0; i < mBefore->i.size(); ++i)
+            if (mBefore->i[i] != after.i[i]) leak(int_names[i]);
+        if (mBefore->draw_buffers.size() != after.draw_buffers.size()) leak("draw-buffer-count");
+        const size_t draw_count = llmin(mBefore->draw_buffers.size(), after.draw_buffers.size());
         for (size_t i = 0; i < draw_count; ++i)
-            if (mBefore.draw_buffers[i] != after.draw_buffers[i])
+            if (mBefore->draw_buffers[i] != after.draw_buffers[i])
             {
                 const std::string field = llformat("draw-buffer-%u", static_cast<U32>(i));
                 leak(field.c_str());
@@ -23933,19 +23934,19 @@ public:
             "llrender-blend-src-rgb", "llrender-blend-dst-rgb",
             "llrender-blend-src-alpha", "llrender-blend-dst-alpha"
         };
-        for (size_t i = 0; i < mBefore.blend_cache.size(); ++i)
-            if (mBefore.blend_cache[i] != after.blend_cache[i]) leak(cache_names[i]);
+        for (size_t i = 0; i < mBefore->blend_cache.size(); ++i)
+            if (mBefore->blend_cache[i] != after.blend_cache[i]) leak(cache_names[i]);
         for (size_t i = 0; i < after.blend_cache.size(); ++i)
             if (!silCoverBlendCacheMatches(after.i[i], after.blend_cache[i]))
             {
                 const std::string field = llformat("%s-vs-gl", cache_names[i]);
                 leak(field.c_str());
             }
-        if (mBefore.f[0] != after.f[0]) leak("polygon-offset-factor");
-        if (mBefore.f[1] != after.f[1]) leak("polygon-offset-units");
+        if (mBefore->f[0] != after.f[0]) leak("polygon-offset-factor");
+        if (mBefore->f[1] != after.f[1]) leak("polygon-offset-units");
         auto float_block_differs = [&](size_t first, size_t count)
         {
-            return !std::equal(mBefore.f.begin() + first, mBefore.f.begin() + first + count,
+            return !std::equal(mBefore->f.begin() + first, mBefore->f.begin() + first + count,
                                after.f.begin() + first);
         };
         if (float_block_differs(2, 16)) leak("gGLModelView");
@@ -23962,8 +23963,8 @@ public:
         static const char* const pointer_names[] = {
             "gGLLastMatrix", "bound-shader", "bound-render-target"
         };
-        for (size_t i = 0; i < mBefore.p.size(); ++i)
-            if (mBefore.p[i] != after.p[i]) leak(pointer_names[i]);
+        for (size_t i = 0; i < mBefore->p.size(); ++i)
+            if (mBefore->p[i] != after.p[i]) leak(pointer_names[i]);
         if (clean)
             LL_INFOS("AvatarSilhouette") << "[ALR] SILCOVER STATE OK " << mScope << LL_ENDL;
     }
@@ -24017,8 +24018,7 @@ private:
                 LLRenderTarget::getCurrentBoundTarget() };
     }
     const char* mScope;
-    bool mEnabled = false;
-    State mBefore;
+    std::optional<State> mBefore;
 };
 
 bool silCoverFor(const LLUUID& k1, const LLUUID& k2, const LLUUID& k3, LLVector2& cover)

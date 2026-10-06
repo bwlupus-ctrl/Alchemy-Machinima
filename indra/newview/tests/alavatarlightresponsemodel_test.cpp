@@ -626,13 +626,107 @@ namespace tut
         const LLVector3 n(0.f, 0.f, 1.f);
         const LLVector3 v(0.f, 0.f, 1.f);
         const LLVector3 l(0.6f, 0.f, 0.8f);
+
+        // Independent, double-precision expansion of deferredUtil.glsl's
+        // calcDiffuseSpecular + pbrPunctual equations.  Keep this oracle out
+        // of the production mirrors so a shared regression cannot self-pass.
+        const F64 roughness = std::max(0.63, 0.045);
+        const F64 alpha_roughness = roughness * roughness;
+        const F64 half_x = static_cast<F64>(l.mV[VX]) + v.mV[VX];
+        const F64 half_y = static_cast<F64>(l.mV[VY]) + v.mV[VY];
+        const F64 half_z = static_cast<F64>(l.mV[VZ]) + v.mV[VZ];
+        const F64 half_length = std::sqrt(half_x * half_x + half_y * half_y + half_z * half_z);
+        const F64 h_x = half_x / half_length;
+        const F64 h_y = half_y / half_length;
+        const F64 h_z = half_z / half_length;
+        const F64 ndotl = std::min(std::max(
+            static_cast<F64>(n.mV[VX]) * l.mV[VX]
+          + static_cast<F64>(n.mV[VY]) * l.mV[VY]
+          + static_cast<F64>(n.mV[VZ]) * l.mV[VZ], 0.001), 1.0);
+        const F64 ndotv = std::min(std::max(std::fabs(
+            static_cast<F64>(n.mV[VX]) * v.mV[VX]
+          + static_cast<F64>(n.mV[VY]) * v.mV[VY]
+          + static_cast<F64>(n.mV[VZ]) * v.mV[VZ]), 0.001), 1.0);
+        const F64 ndoth = std::min(std::max(
+            static_cast<F64>(n.mV[VX]) * h_x
+          + static_cast<F64>(n.mV[VY]) * h_y
+          + static_cast<F64>(n.mV[VZ]) * h_z, 0.0), 1.0);
+        const F64 vdoth = std::min(std::max(
+            static_cast<F64>(v.mV[VX]) * h_x
+          + static_cast<F64>(v.mV[VY]) * h_y
+          + static_cast<F64>(v.mV[VZ]) * h_z, 0.0), 1.0);
+        const F64 roughness_sq = alpha_roughness * alpha_roughness;
+        const F64 attenuation_l = 2.0 * ndotl /
+            (ndotl + std::sqrt(roughness_sq + (1.0 - roughness_sq) * ndotl * ndotl));
+        const F64 attenuation_v = 2.0 * ndotv /
+            (ndotv + std::sqrt(roughness_sq + (1.0 - roughness_sq) * ndotv * ndotv));
+        const F64 geometric = attenuation_l * attenuation_v;
+        const F64 distribution_f = (ndoth * roughness_sq - ndoth) * ndoth + 1.0;
+        const F64 distribution = roughness_sq /
+            (3.141592653589793238462643383279502884 * distribution_f * distribution_f);
+
         bool rejects_double_specular_scale = false;
         for (F32 metallic : metallics)
         {
-            LLVector3 diffuse, specular;
-            calcDiffuseSpecularMirror(base, metallic, diffuse, specular);
-            const PbrPunctualMirrorResult punctual =
-                pbrPunctualMirror(diffuse, specular, 0.63f, metallic, n, v, l);
+            F64 diffuse_input[3];
+            F64 specular_input[3];
+            for (S32 channel = 0; channel < 3; ++channel)
+            {
+                diffuse_input[channel] = static_cast<F64>(base.mV[channel]) * 0.96
+                                       * (1.0 - metallic);
+                specular_input[channel] = 0.04 * (1.0 - metallic)
+                                        + static_cast<F64>(base.mV[channel]) * metallic;
+            }
+            const F64 reflectance = std::max(std::max(specular_input[VX], specular_input[VY]),
+                                             specular_input[VZ]);
+            const F64 reflectance90 = std::min(std::max(reflectance * 25.0, 0.0), 1.0);
+            const F64 fresnel_weight = std::pow(
+                std::min(std::max(1.0 - vdoth, 0.0), 1.0), 5.0);
+            F64 diffuse_lit[3];
+            F64 specular_lit[3];
+            for (S32 channel = 0; channel < 3; ++channel)
+            {
+                const F64 fresnel = specular_input[channel]
+                    + (reflectance90 - specular_input[channel]) * fresnel_weight;
+                const F64 lambert = diffuse_input[channel]
+                    / 3.141592653589793238462643383279502884;
+                diffuse_lit[channel] = ndotl * (1.0 - fresnel) * lambert;
+                specular_lit[channel] = ndotl * fresnel * geometric * distribution
+                                      / (4.0 * ndotl * ndotv);
+            }
+
+            if (metallic == 0.5f)
+            {
+                LLVector3 mirror_diffuse, mirror_specular;
+                calcDiffuseSpecularMirror(base, metallic, mirror_diffuse, mirror_specular);
+                const F32 golden_diffuse[] = { 0.3456f, 0.1488f, 0.0432f };
+                const F32 golden_specular[] = { 0.38f, 0.175f, 0.065f };
+                for (S32 channel = 0; channel < 3; ++channel)
+                {
+                    ensure_approximately_equals_range("calcDiffuseSpecular golden diffuse",
+                        mirror_diffuse.mV[channel], golden_diffuse[channel], 1.0e-6f);
+                    ensure_approximately_equals_range("calcDiffuseSpecular golden specular",
+                        mirror_specular.mV[channel], golden_specular[channel], 1.0e-6f);
+                }
+                const PbrPunctualMirrorResult mirror_punctual = pbrPunctualMirror(
+                    mirror_diffuse, mirror_specular, 0.63f, metallic, n, v, l);
+                const F32 golden_diffuse_term[] = {
+                    0.0682048717f, 0.0390757077f, 0.0128571683f
+                };
+                const F32 golden_specular_term[] = {
+                    0.0997014662f, 0.0459151993f, 0.0170542756f
+                };
+                ensure_approximately_equals_range("pbrPunctual golden nl",
+                    mirror_punctual.nl, 0.8f, 1.0e-6f);
+                for (S32 channel = 0; channel < 3; ++channel)
+                {
+                    ensure_approximately_equals_range("pbrPunctual golden diffuse",
+                        mirror_punctual.diffuse.mV[channel], golden_diffuse_term[channel], 1.0e-6f);
+                    ensure_approximately_equals_range("pbrPunctual golden specular",
+                        mirror_punctual.specular.mV[channel], golden_specular_term[channel], 1.0e-6f);
+                }
+            }
+
             for (F32 keep : keeps)
             {
                 const F32 amount = 1.f - keep;
@@ -640,18 +734,29 @@ namespace tut
                     base, metallic, 0.63f, n, v, l, fill, amount);
                 for (S32 channel = 0; channel < 3; ++channel)
                 {
-                    const F32 diffuse_lit = punctual.nl * punctual.diffuse.mV[channel];
-                    const F32 specular_lit = punctual.nl * punctual.specular.mV[channel];
-                    const F32 lit = std::min(std::max(diffuse_lit + specular_lit, 0.f), 10.f);
-                    const F32 reference = lit * keep
-                                        + fill.mV[channel] * amount;
-                    const F32 wrong_k2 = diffuse_lit * keep
-                                       + specular_lit * keep * keep
-                                       + fill.mV[channel] * amount;
+                    const F64 lit = std::min(std::max(
+                        diffuse_lit[channel] + specular_lit[channel], 0.0), 10.0);
+                    const F64 reference = lit * keep
+                                        + static_cast<F64>(fill.mV[channel]) * amount;
+                    const F64 wrong_k2 = diffuse_lit[channel] * keep
+                                       + specular_lit[channel] * keep * keep
+                                       + static_cast<F64>(fill.mV[channel]) * amount;
                     ensure_approximately_equals_range("model is lit*k + fill*a",
-                        actual.mV[channel], reference, 1.0e-6f);
+                        actual.mV[channel], static_cast<F32>(reference), 1.0e-6f);
                     rejects_double_specular_scale = rejects_double_specular_scale
                         || std::fabs(actual.mV[channel] - wrong_k2) > 1.0e-6f;
+                }
+
+                if (metallic == 0.5f && keep == 0.5f)
+                {
+                    const F32 golden_output[] = {
+                        0.1221625351f, 0.2189963628f, 0.4269645776f
+                    };
+                    for (S32 channel = 0; channel < 3; ++channel)
+                    {
+                        ensure_approximately_equals_range("silhouette PBR golden output",
+                            actual.mV[channel], golden_output[channel], 1.0e-6f);
+                    }
                 }
             }
         }
