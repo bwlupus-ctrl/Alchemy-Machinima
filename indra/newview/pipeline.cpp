@@ -7817,6 +7817,28 @@ void LLPipeline::renderGeomVelocity()
 
 // Render all of our geometry that's required after our deferred pass.
 // This is gonna be stuff like alpha, water, etc.
+static bool parityMaskBlendSupported()
+{
+    return gAvatarSilhouetteRimParityCompiled &&
+        glEnablei && glDisablei && glBlendEquationi && glBlendFunci &&
+        glBlendEquationSeparatei && glBlendFuncSeparatei && glClearBufferfv;
+}
+
+static void applyParityMaskBlend()
+{
+    if (!parityMaskBlendSupported())
+    {
+        return;
+    }
+
+    // INVARIANT: every forward batch that can write the parity mask enters
+    // with attachment 3 configured as a frame-wide OR. Global blend calls in
+    // intervening passes apply to every attachment, so this must be reasserted.
+    glEnablei(GL_BLEND, ALR_RIM_PARITY_ATTACHMENT);
+    glBlendEquationi(ALR_RIM_PARITY_ATTACHMENT, GL_MAX);
+    glBlendFunci(ALR_RIM_PARITY_ATTACHMENT, GL_ONE, GL_ONE);
+}
+
 void LLPipeline::renderGeomPostDeferred(LLCamera& camera)
 {
     LL_PROFILE_ZONE_SCOPED_CATEGORY_DRAWPOOL;
@@ -7853,7 +7875,7 @@ void LLPipeline::renderGeomPostDeferred(LLCamera& camera)
     static LLCachedControl<bool> rim_parity(
         gSavedSettings, "AvatarSilhouetteRimParity", false);
     const bool accumulate_rim_parity = rim_parity() &&
-        gAvatarSilhouetteRimParityCompiled && mRT == &mMainRT &&
+        parityMaskBlendSupported() && mRT == &mMainRT &&
         !gCubeSnapshot && !LLPipeline::sRenderingHUDs && !sImpostorRender &&
         !sPrismLensRender &&
         LLRenderTarget::getCurrentBoundTarget() == &mRT->screen &&
@@ -7902,11 +7924,7 @@ void LLPipeline::renderGeomPostDeferred(LLCamera& camera)
     gGL.setColorMask(true, false);
     if (accumulate_rim_parity)
     {
-        // T21 is a frame-wide OR: once any forward fragment reports a
-        // mismatch, a later matching fragment must not erase it.
-        glEnablei(GL_BLEND, ALR_RIM_PARITY_ATTACHMENT);
-        glBlendEquationi(ALR_RIM_PARITY_ATTACHMENT, GL_MAX);
-        glBlendFunci(ALR_RIM_PARITY_ATTACHMENT, GL_ONE, GL_ONE);
+        applyParityMaskBlend();
     }
 
     pool_set_t::iterator iter1 = mPools.begin();
@@ -8089,6 +8107,10 @@ void LLPipeline::renderGeomPostDeferred(LLCamera& camera)
                         break;
                     }
 
+                    if (accumulate_rim_parity)
+                    {
+                        applyParityMaskBlend();
+                    }
                     p->renderPostDeferred(i);
                 }
                 poolp->endPostDeferredPass(i);
@@ -24739,8 +24761,14 @@ void LLPipeline::renderDeferredLighting(ActorMaskViewSource source)
         LL_WARNS_ONCE("AvatarLightResponse")
             << "[ALR] RIMSPLIT PARITY NOT COMPILED" << LL_ENDL;
     }
+    if (rim_parity() && gAvatarSilhouetteRimParityCompiled &&
+        !parityMaskBlendSupported())
+    {
+        LL_WARNS_ONCE("AvatarLightResponse")
+            << "[ALR] RIMSPLIT PARITY UNSUPPORTED" << LL_ENDL;
+    }
     const bool rim_parity_main = rim_parity() &&
-        gAvatarSilhouetteRimParityCompiled &&
+        parityMaskBlendSupported() &&
         source == ActorMaskViewSource::MAIN && mRT == &mMainRT &&
         !gCubeSnapshot && !sRenderingHUDs && !sImpostorRender &&
         !sPrismLensRender;
@@ -25056,8 +25084,32 @@ void LLPipeline::renderDeferredLighting(ActorMaskViewSource source)
             screen_target->getNumTextures() > ALR_RIM_PARITY_ATTACHMENT)
         {
             const GLfloat clear_rim_parity[4] = { 0.f, 0.f, 0.f, 0.f };
+            GLboolean previous_mask[4] = { GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE };
+            const bool indexed_mask = glColorMaski && glGetBooleani_v;
+            if (indexed_mask)
+            {
+                glGetBooleani_v(GL_COLOR_WRITEMASK, ALR_RIM_PARITY_ATTACHMENT,
+                                previous_mask);
+                glColorMaski(ALR_RIM_PARITY_ATTACHMENT,
+                             GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+            }
+            else
+            {
+                glGetBooleanv(GL_COLOR_WRITEMASK, previous_mask);
+                glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+            }
             glClearBufferfv(GL_COLOR, ALR_RIM_PARITY_ATTACHMENT,
                             clear_rim_parity);
+            if (indexed_mask)
+            {
+                glColorMaski(ALR_RIM_PARITY_ATTACHMENT, previous_mask[0],
+                             previous_mask[1], previous_mask[2], previous_mask[3]);
+            }
+            else
+            {
+                glColorMask(previous_mask[0], previous_mask[1],
+                            previous_mask[2], previous_mask[3]);
+            }
         }
 
         if (publish_visible_diffuse)
