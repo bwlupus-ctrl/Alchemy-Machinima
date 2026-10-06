@@ -780,7 +780,8 @@ void main()
 #endif
     frag_color = max(vec4(color * final_scale, output_alpha), vec4(0.0));
 #ifdef ALR_RIMSPLIT_PARITY
-    // Dedicated R8 diagnostic output; beauty never writes or encodes T21.
+    // Dedicated R8 diagnostic output; pipeline GL_MAX blending makes this a
+    // frame-wide mismatch OR, so a later zero cannot erase an earlier one.
     alr_rimsplit_parity_mask = vec4(alr_rimsplit_mismatch ? 1.0 : 0.0,
                                     0.0, 0.0, 1.0);
 #endif

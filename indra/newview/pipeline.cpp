@@ -1410,7 +1410,7 @@ bool LLPipeline::allocateScreenBufferInternal(U32 resX, U32 resY)
     // allocated while parity is off.
     static LLCachedControl<bool> rim_parity(
         gSavedSettings, "AvatarSilhouetteRimParity", false);
-    if (rim_parity() && mRT == &mMainRT)
+    if (rim_parity() && gAvatarSilhouetteRimParityCompiled && mRT == &mMainRT)
     {
         while (mRT->screen.getNumTextures() < ALR_RIM_PARITY_ATTACHMENT)
         {
@@ -7850,6 +7850,14 @@ void LLPipeline::renderGeomPostDeferred(LLCamera& camera)
         !gCubeSnapshot && !LLPipeline::sRenderingHUDs && !sImpostorRender &&
         LLRenderTarget::getCurrentBoundTarget() == &mRT->screen &&
         mRT->screen.getNumTextures() > SL_COVERAGE_ATTACHMENT;
+    static LLCachedControl<bool> rim_parity(
+        gSavedSettings, "AvatarSilhouetteRimParity", false);
+    const bool accumulate_rim_parity = rim_parity() &&
+        gAvatarSilhouetteRimParityCompiled && mRT == &mMainRT &&
+        !gCubeSnapshot && !LLPipeline::sRenderingHUDs && !sImpostorRender &&
+        !sPrismLensRender &&
+        LLRenderTarget::getCurrentBoundTarget() == &mRT->screen &&
+        mRT->screen.getNumTextures() > ALR_RIM_PARITY_ATTACHMENT;
 
     // Arm the indexed guard CLOSED (attachment 1 write-disabled) for the whole
     // pass. From here on nothing writes the sidecar unless it explicitly opens
@@ -7892,6 +7900,14 @@ void LLPipeline::renderGeomPostDeferred(LLCamera& camera)
 
     gGL.setSceneBlendType(LLRender::BT_ALPHA);
     gGL.setColorMask(true, false);
+    if (accumulate_rim_parity)
+    {
+        // T21 is a frame-wide OR: once any forward fragment reports a
+        // mismatch, a later matching fragment must not erase it.
+        glEnablei(GL_BLEND, ALR_RIM_PARITY_ATTACHMENT);
+        glBlendEquationi(ALR_RIM_PARITY_ATTACHMENT, GL_MAX);
+        glBlendFunci(ALR_RIM_PARITY_ATTACHMENT, GL_ONE, GL_ONE);
+    }
 
     pool_set_t::iterator iter1 = mPools.begin();
 
@@ -8102,6 +8118,38 @@ void LLPipeline::renderGeomPostDeferred(LLCamera& camera)
         }
         iter1 = iter2;
         stop_glerror();
+    }
+
+    if (accumulate_rim_parity)
+    {
+        // Put attachment 3 back on beauty's current global blend state. Raw
+        // indexed calls do not update LLRender's cache; reassert the active
+        // sidecar guard after restoring so its indexed state remains canonical.
+        GLint equation_rgb = GL_FUNC_ADD;
+        GLint equation_alpha = GL_FUNC_ADD;
+        GLint src_rgb = GL_ONE;
+        GLint dst_rgb = GL_ZERO;
+        GLint src_alpha = GL_ONE;
+        GLint dst_alpha = GL_ZERO;
+        glGetIntegerv(GL_BLEND_EQUATION_RGB, &equation_rgb);
+        glGetIntegerv(GL_BLEND_EQUATION_ALPHA, &equation_alpha);
+        glGetIntegerv(GL_BLEND_SRC_RGB, &src_rgb);
+        glGetIntegerv(GL_BLEND_DST_RGB, &dst_rgb);
+        glGetIntegerv(GL_BLEND_SRC_ALPHA, &src_alpha);
+        glGetIntegerv(GL_BLEND_DST_ALPHA, &dst_alpha);
+        if (glIsEnabled(GL_BLEND))
+        {
+            glEnablei(GL_BLEND, ALR_RIM_PARITY_ATTACHMENT);
+        }
+        else
+        {
+            glDisablei(GL_BLEND, ALR_RIM_PARITY_ATTACHMENT);
+        }
+        glBlendEquationSeparatei(ALR_RIM_PARITY_ATTACHMENT,
+                                 equation_rgb, equation_alpha);
+        glBlendFuncSeparatei(ALR_RIM_PARITY_ATTACHMENT,
+                             src_rgb, dst_rgb, src_alpha, dst_alpha);
+        gGL.reassertIndexedDrawBuffer();
     }
 
     gGLLastMatrix = NULL;
@@ -25004,6 +25052,13 @@ void LLPipeline::renderDeferredLighting(ActorMaskViewSource source)
         // clear color buffer here - zeroing alpha (glow) is important or it will accumulate against sky
         glClearColor(0, 0, 0, 0);
         screen_target->clear(GL_COLOR_BUFFER_BIT);
+        if (rim_parity_main &&
+            screen_target->getNumTextures() > ALR_RIM_PARITY_ATTACHMENT)
+        {
+            const GLfloat clear_rim_parity[4] = { 0.f, 0.f, 0.f, 0.f };
+            glClearBufferfv(GL_COLOR, ALR_RIM_PARITY_ATTACHMENT,
+                            clear_rim_parity);
+        }
 
         if (publish_visible_diffuse)
         {
