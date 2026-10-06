@@ -367,14 +367,16 @@ ECameraOwner gCameraDispatchOwner = ECameraOwner::AGENT;
 bool gCameraDispatchFlycamWrote = false;
 bool gCameraDispatchForeignSinceFlycamWrite = false;
 std::array<ALCameraDispatchSample, 4> gCameraDispatchSamples;
+U32 gCameraDispatchSampleStart = 0;
 U32 gCameraDispatchSampleCount = 0;
 
 void alCameraDispatchFinalizePresented()
 {
     if (gCameraDispatchSampleCount == 0)
         return;
-    ALCameraDispatchSample& sample =
-        gCameraDispatchSamples[gCameraDispatchSampleCount - 1];
+    const U32 newest = (gCameraDispatchSampleStart +
+        gCameraDispatchSampleCount - 1) % gCameraDispatchSamples.size();
+    ALCameraDispatchSample& sample = gCameraDispatchSamples[newest];
     if (gFrameCount > sample.frameCountAtSample)
         sample.presented = true;
 }
@@ -382,16 +384,22 @@ void alCameraDispatchFinalizePresented()
 void alCameraDispatchSampleFinal()
 {
     alCameraDispatchFinalizePresented();
-    if (gCameraDispatchSampleCount == gCameraDispatchSamples.size())
+    U32 sample_index = 0;
+    if (gCameraDispatchSampleCount < gCameraDispatchSamples.size())
     {
-        for (U32 i = 1; i < gCameraDispatchSampleCount; ++i)
-            gCameraDispatchSamples[i - 1] = gCameraDispatchSamples[i];
-        --gCameraDispatchSampleCount;
+        sample_index = (gCameraDispatchSampleStart +
+            gCameraDispatchSampleCount) % gCameraDispatchSamples.size();
+        ++gCameraDispatchSampleCount;
+    }
+    else
+    {
+        sample_index = gCameraDispatchSampleStart;
+        gCameraDispatchSampleStart = (gCameraDispatchSampleStart + 1) %
+            gCameraDispatchSamples.size();
     }
 
     LLViewerCamera* camera = LLViewerCamera::getInstance();
-    ALCameraDispatchSample& sample =
-        gCameraDispatchSamples[gCameraDispatchSampleCount++];
+    ALCameraDispatchSample& sample = gCameraDispatchSamples[sample_index];
     sample.serial = gCameraDispatchSerial;
     sample.owner = gCameraDispatchOwner;
     sample.dt = gFrameIntervalSeconds.value();

@@ -42,6 +42,7 @@ extern ECameraOwner gCameraDispatchOwner;
 extern bool gCameraDispatchFlycamWrote;
 extern bool gCameraDispatchForeignSinceFlycamWrite;
 extern std::array<ALCameraDispatchSample, 4> gCameraDispatchSamples;
+extern U32 gCameraDispatchSampleStart;
 extern U32 gCameraDispatchSampleCount;
 
 // Finalize the newest sample against the display clock.  Sampling calls this

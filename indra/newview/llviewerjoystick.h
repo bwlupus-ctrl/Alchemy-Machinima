@@ -214,6 +214,8 @@ private:
     bool mXIWasFocused = false;
     bool mXILevelPending = false;
     bool mXIRecentrePending = false;
+    bool mDroneCameraOwner = false;
+    bool mDroneRecentreActive = false;
     U16 mXIPrevRaw = 0;
     U16 mXIEdges = 0;
     U8 mXILT = 0;
