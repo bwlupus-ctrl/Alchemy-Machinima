@@ -35,6 +35,7 @@
 
 #include "alcinehaze.h"
 #include "alcinerigrim.h" // [RigRim]
+#include "alavatarlightresponse.h" // [AvatarSilhouette]
 #include "alenvintensity.h" // [EnvIntensity v2] local lights EV, SSAO ceiling factor
 #include "altron.h" // [TronT1]
 
@@ -472,6 +473,7 @@ extern bool gDisplaySwapBuffers;
 extern bool gDebugGL;
 extern bool gCubeSnapshot;
 extern bool gSnapshotNoPost;
+extern bool gAvatarSilhouetteRimParityCompiled;
 
 bool    gAvatarBacklight = false;
 
@@ -677,22 +679,23 @@ bool addDeferredAttachments(LLRenderTarget& target, bool for_impostor = false)
 {
     U32 orm = GL_RGBA;
     U32 norm = GL_RGBA16;
-    U32 emissive = GL_RGB16F;
+    U32 emissive = GL_RGBA16F;
 
     static LLCachedControl<bool> has_emissive(gSavedSettings, "RenderEnableEmissiveBuffer", false);
+    static LLCachedControl<bool> force_emissive(gSavedSettings, "AvatarSilhouetteForceEmissive", false);
     static LLCachedControl<bool> has_hdr(gSavedSettings, "RenderHDREnabled", true);
     bool hdr = has_hdr() && gGLManager.mGLVersion > 4.05f;
 
     if (!hdr)
     {
         norm = GL_RGB10_A2;
-        emissive = GL_RGB;
+        emissive = GL_RGBA;
     }
 
     bool valid = true;
     valid      = valid && target.addColorAttachment(orm);    // frag-data[1] specular OR PBR ORM
     valid      = valid && target.addColorAttachment(norm);
-    if (has_emissive)
+    if (has_emissive() || force_emissive())
     {
         valid = valid && target.addColorAttachment(emissive); // frag_data[3] PBR emissive OR material env intensity
     }
@@ -1353,6 +1356,10 @@ bool LLPipeline::allocateScreenBufferInternal(U32 resX, U32 resY)
     const bool had_actor_mask = mRT->actorMask.isComplete();
     mRT->actorMask.release();
     mRT->actorMaskDepthSrc = 0;
+    const bool had_sil_cover = mRT->silCover.isComplete();
+    mRT->silCover.release();
+    mRT->silCoverDepthSrc = 0;
+    mSilCoverValid = false;
     //allocate deferred rendering color buffers
     if (!mRT->deferredScreen.allocate(resX, resY, GL_SRGB8_ALPHA8, true)) return false;
     if (!addDeferredAttachments(mRT->deferredScreen)) return false;
@@ -1397,9 +1404,25 @@ bool LLPipeline::allocateScreenBufferInternal(U32 resX, U32 resY)
         }
     }
 
+    // T21's mismatch result is an explicit full-resolution R8 MRT channel.
+    // Keep attachment 3 stable across the visible-diffuse permutation; debug-
+    // only R8 padding occupies any unused earlier locations. Nothing is
+    // allocated while parity is off.
+    static LLCachedControl<bool> rim_parity(
+        gSavedSettings, "AvatarSilhouetteRimParity", false);
+    if (rim_parity() && gAvatarSilhouetteRimParityCompiled && mRT == &mMainRT)
+    {
+        while (mRT->screen.getNumTextures() < ALR_RIM_PARITY_ATTACHMENT)
+        {
+            if (!mRT->screen.addColorAttachment(GL_R8)) return false;
+        }
+        if (!mRT->screen.addColorAttachment(GL_R8)) return false;
+    }
+
     mRT->deferredScreen.shareDepthBuffer(mRT->screen);
     // [ActorMask] Re-share in the allocation path; failure affects only the mask.
     if (had_actor_mask && ALCineLightRigManager::anyActorOnly()) ensureActorMask();
+    if (had_sil_cover && (ALAvatarLightResponse::sSilFrameMask & 6u)) ensureSilCover();
 
     if (shadow_detail > 0 || ssao || RenderDepthOfField)
     { //only need mRT->deferredLight for shadows OR ssao OR dof
@@ -1663,6 +1686,8 @@ static void release_prism_scratch_entry(LLPipeline::PrismLensScratch& entry)
 {
     entry.rt.actorMask.release(); // [ActorMask] Before shared depth owner
     entry.rt.actorMaskDepthSrc = 0;
+    entry.rt.silCover.release(); // [AvatarSilhouette] Before shared depth owner
+    entry.rt.silCoverDepthSrc = 0;
     entry.rt.screen.release();
     entry.rt.deferredScreen.release();
     entry.rt.deferredLight.release();
@@ -2394,6 +2419,7 @@ void LLPipeline::releaseScreenBuffers()
     mActorMaskQueries.release(); // [ActorMask]
     mActorMaskValid = false;
     mActorMaskAllocated = false;
+    releaseSilCovers(); // [AvatarSilhouette] Detach every shared-depth cover first.
     auto release_pack = [](RenderTargetPack& rt)
     {
         rt.actorMask.release(); // [ActorMask] Before shared depth owner
@@ -5693,6 +5719,12 @@ U32 LLPipeline::sCurRenderPoolType = 0 ;
 // ===========================================================================
 namespace
 {
+struct SilCoverPass { U32 pass; bool rigged, pbr, masked, material, vec3Position; };
+bool silCoverFor(const LLUUID& k1, const LLUUID& k2, const LLUUID& k3, LLVector2& cover);
+bool drawSilCoverBatch(LLDrawInfo& di, const SilCoverPass& pass,
+                       const LLVector2& cover, bool blended,
+                       bool apply_model_matrix = true);
+
 // [AvatarLightResponse] Ghost Studio instance whose deferred/forward proxy is being submitted: ScopedGhostTransform
 // (below) sets it for the lifetime of each proxy's draw loop, so the pushGhost* helpers can key the
 // light response as (instance id, batch owner, batch fallback owner). Null outside a proxy loop.
@@ -6263,6 +6295,140 @@ GhostCoverageMask LLPipeline::getGhostDeferredCoverageThisFrame(const LLUUID& in
     }
     auto it = mGhostDeferredCoverage.find(instance_id);
     return it != mGhostDeferredCoverage.end() ? it->second : GHOST_COVERAGE_NONE;
+}
+
+void LLPipeline::renderGhostSilCover(U32 phase)
+{
+    struct Counters
+    {
+        U64 proxies = 0, batches = 0, statics_a = 0, statics_b = 0;
+        U64 skip_view = 0, skip_stale = 0;
+        LLTimer timer;
+    };
+    static Counters c;
+    auto log_tick = [&]()
+    {
+        if (c.timer.getElapsedTimeF32() < 1.f) return;
+        c.timer.reset();
+        LL_INFOS("AvatarSilhouette") << "[ALR] SILCOVER proxies=" << c.proxies
+            << " batches=" << c.batches << " statics_A=" << c.statics_a
+            << " statics_B=" << c.statics_b << " SILCOVER-SKIP view=" << c.skip_view
+            << " stale-queue=" << c.skip_stale << LL_ENDL;
+        c.proxies = c.batches = c.statics_a = c.statics_b = 0;
+        c.skip_view = c.skip_stale = 0;
+    };
+
+    if (gCubeSnapshot || sReflectionRender || sRenderingHUDs ||
+        LLViewerCamera::sCurCameraID != LLViewerCamera::CAMERA_WORLD)
+    {
+        ++c.skip_view;
+        log_tick();
+        return;
+    }
+    LLViewerCamera& camera = LLViewerCamera::instance();
+    LLActorMover& mover = LLActorMover::instance();
+    if (!mover.hasValidGhostDeferredQueueThisFrame(camera, LLActorMover::GHOST_VIEW_WORLD_MAIN))
+    {
+        ++c.skip_stale;
+        log_tick();
+        return;
+    }
+    const LLActorMover::GhostProxyQueue& queue =
+        mover.getGhostDeferredQueue(camera, LLActorMover::GHOST_VIEW_WORLD_MAIN);
+    const bool blended = phase != 0;
+    static const LLStaticHashedString sSilCover("sil_cover"), sSilBlended("sil_blended"),
+        sMaskTextures("mask_textures"), sMaskCutoff("mask_cutoff"),
+        sMaskIndexed("mask_indexed"), sMaskMaterialSlots("mask_material_slots"),
+        sMaskVertexAlpha("mask_vertex_alpha"), sMaskVec3Position("mask_vec3_position");
+
+    for (const LLActorMover::GhostProxy& proxy : queue.mProxies)
+    {
+        if (!proxy.mFrustumVisible) continue;
+        bool proxy_drawn = false;
+        ScopedGhostTransform transform(proxy);
+        if (proxy.mBatches)
+        {
+            for (const LLActorMover::GhostBatch& batch : *proxy.mBatches)
+            {
+                const EGhostBatchPhase kind = classifyGhostBatchPhase(batch.mPass);
+                const bool selected = blended ? kind == EGhostBatchPhase::BLEND :
+                    kind == EGhostBatchPhase::GBUFFER_SOLID ||
+                    kind == EGhostBatchPhase::FORWARD_FULLBRIGHT ||
+                    kind == EGhostBatchPhase::FORWARD_FULLBRIGHT_SHINY ||
+                    kind == EGhostBatchPhase::FORWARD_FULLBRIGHT_MASKED;
+                LLDrawInfo* di = batch.mInfo;
+                if (!selected || !di) continue;
+                LLVector2 cover;
+                if (!silCoverFor(proxy.mInstanceId, di->mActorFxOwner,
+                                 di->mActorFxFallbackOwner, cover)) continue;
+                const bool pbr = di->mGLTFMaterial.notNull() || !di->mGLTFMaterialList.empty();
+                const bool material = di->mMaterial.notNull() || !di->mMaterialSlotList.empty();
+                SilCoverPass pass{ batch.mPass, true, pbr,
+                    !blended && ghost_pass_is_mask(batch.mPass), material, pbr || material };
+                if (drawSilCoverBatch(*di, pass, cover, blended, false))
+                {
+                    ++c.batches;
+                    proxy_drawn = true;
+                }
+            }
+        }
+        if (proxy.mStaticFaces)
+        {
+            for (const LLActorMover::GhostStaticFace& gf : *proxy.mStaticFaces)
+            {
+                if ((blended && gf.mAlphaKind != 2) || (!blended && gf.mAlphaKind == 2)) continue;
+                LLFace* face = gf.mFace;
+                LLVertexBuffer* vb = face ? face->getVertexBuffer() : nullptr;
+                const LLDrawInfo* di = face ? face->mDrawInfo : nullptr;
+                if (!vb || !di) continue;
+                LLVector2 cover;
+                if (!silCoverFor(proxy.mInstanceId, di->mActorFxOwner,
+                                 di->mActorFxFallbackOwner, cover)) continue;
+                LLGLSLShader& shader = gSilCoverProgram[ACTOR_MASK_STATIC];
+                shader.bind();
+                GLint samplers[32];
+                const S32 channels = actorMaskTextureChannels();
+                for (S32 i = 0; i < channels; ++i) samplers[i] = i;
+                shader.uniform1iv(sMaskTextures, channels, samplers);
+                shader.uniform1i(sMaskIndexed, 0);
+                shader.uniform1i(sMaskMaterialSlots, 0);
+                shader.uniform1i(sMaskVec3Position, 0);
+                const LLTextureEntry* te = face->getTextureEntry();
+                LLGLTFMaterial* gmat = te ? te->getGLTFRenderMaterial() : nullptr;
+                shader.uniform1i(sMaskVertexAlpha,
+                    (blended || (gf.mAlphaKind == 1 && gmat)) ? 1 : 0);
+                shader.uniform2fv(sSilCover, 1, cover.mV);
+                shader.uniform1i(sSilBlended, blended ? 1 : 0);
+                F32 cutoffs[8] = {};
+                cutoffs[0] = gf.mAlphaKind == 1 ? gf.mCutoff : -1.f;
+                shader.uniform1fv(sMaskCutoff, 8, cutoffs);
+                LLViewerTexture* texture = nullptr;
+                if (const LLFetchedGLTFMaterial* fetched =
+                        dynamic_cast<const LLFetchedGLTFMaterial*>(gmat))
+                    texture = fetched->mBaseColorTexture.get();
+                if (!texture) texture = face->getTexture();
+                gGL.getTexUnit(0)->bindFast(texture ? texture : LLViewerFetchedTexture::sWhiteImagep.get());
+                gGL.matrixMode(LLRender::MM_TEXTURE0);
+                if (face->mTextureMatrix) gGL.loadMatrix((GLfloat*)face->mTextureMatrix->mMatrix);
+                else gGL.loadIdentity();
+                gGL.matrixMode(LLRender::MM_MODELVIEW);
+                gGL.pushMatrix();
+                gGL.multMatrix((GLfloat*)face->getRenderMatrix().mMatrix);
+                gGL.syncMatrices();
+                LLGLDisable no_cull(gf.mDoubleSided ? GL_CULL_FACE : 0);
+                vb->setBuffer();
+                vb->drawRange(LLRender::TRIANGLES, face->getGeomIndex(),
+                    face->getGeomIndex() + face->getGeomCount() - 1,
+                    face->getIndicesCount(), face->getIndicesStart());
+                gGL.popMatrix();
+                gGL.syncMatrices();
+                if (blended) ++c.statics_b; else ++c.statics_a;
+                proxy_drawn = true;
+            }
+        }
+        if (proxy_drawn) ++c.proxies;
+    }
+    log_tick();
 }
 
 void LLPipeline::renderGhostDeferredOpaqueMasked(const LLCamera& camera)
@@ -7651,6 +7817,28 @@ void LLPipeline::renderGeomVelocity()
 
 // Render all of our geometry that's required after our deferred pass.
 // This is gonna be stuff like alpha, water, etc.
+static bool parityMaskBlendSupported()
+{
+    return gAvatarSilhouetteRimParityCompiled &&
+        glEnablei && glDisablei && glBlendEquationi && glBlendFunci &&
+        glBlendEquationSeparatei && glBlendFuncSeparatei && glClearBufferfv;
+}
+
+static void applyParityMaskBlend()
+{
+    if (!parityMaskBlendSupported())
+    {
+        return;
+    }
+
+    // INVARIANT: every forward batch that can write the parity mask enters
+    // with attachment 3 configured as a frame-wide OR. Global blend calls in
+    // intervening passes apply to every attachment, so this must be reasserted.
+    glEnablei(GL_BLEND, ALR_RIM_PARITY_ATTACHMENT);
+    glBlendEquationi(ALR_RIM_PARITY_ATTACHMENT, GL_MAX);
+    glBlendFunci(ALR_RIM_PARITY_ATTACHMENT, GL_ONE, GL_ONE);
+}
+
 void LLPipeline::renderGeomPostDeferred(LLCamera& camera)
 {
     LL_PROFILE_ZONE_SCOPED_CATEGORY_DRAWPOOL;
@@ -7684,6 +7872,14 @@ void LLPipeline::renderGeomPostDeferred(LLCamera& camera)
         !gCubeSnapshot && !LLPipeline::sRenderingHUDs && !sImpostorRender &&
         LLRenderTarget::getCurrentBoundTarget() == &mRT->screen &&
         mRT->screen.getNumTextures() > SL_COVERAGE_ATTACHMENT;
+    static LLCachedControl<bool> rim_parity(
+        gSavedSettings, "AvatarSilhouetteRimParity", false);
+    const bool accumulate_rim_parity = rim_parity() &&
+        parityMaskBlendSupported() && mRT == &mMainRT &&
+        !gCubeSnapshot && !LLPipeline::sRenderingHUDs && !sImpostorRender &&
+        !sPrismLensRender &&
+        LLRenderTarget::getCurrentBoundTarget() == &mRT->screen &&
+        mRT->screen.getNumTextures() > ALR_RIM_PARITY_ATTACHMENT;
 
     // Arm the indexed guard CLOSED (attachment 1 write-disabled) for the whole
     // pass. From here on nothing writes the sidecar unless it explicitly opens
@@ -7726,6 +7922,10 @@ void LLPipeline::renderGeomPostDeferred(LLCamera& camera)
 
     gGL.setSceneBlendType(LLRender::BT_ALPHA);
     gGL.setColorMask(true, false);
+    if (accumulate_rim_parity)
+    {
+        applyParityMaskBlend();
+    }
 
     pool_set_t::iterator iter1 = mPools.begin();
 
@@ -7840,6 +8040,7 @@ void LLPipeline::renderGeomPostDeferred(LLCamera& camera)
 
         if (cur_type >= atmospherics_pass && !done_atmospherics)
         { // do atmospherics against depth buffer before rendering alpha
+            renderSilCover(0); // [AvatarSilhouette] Phase A: opaque/masked coverage.
             doAtmospherics();
             done_atmospherics = true;
         }
@@ -7906,6 +8107,10 @@ void LLPipeline::renderGeomPostDeferred(LLCamera& camera)
                         break;
                     }
 
+                    if (accumulate_rim_parity)
+                    {
+                        applyParityMaskBlend();
+                    }
                     p->renderPostDeferred(i);
                 }
                 poolp->endPostDeferredPass(i);
@@ -7935,6 +8140,38 @@ void LLPipeline::renderGeomPostDeferred(LLCamera& camera)
         }
         iter1 = iter2;
         stop_glerror();
+    }
+
+    if (accumulate_rim_parity)
+    {
+        // Put attachment 3 back on beauty's current global blend state. Raw
+        // indexed calls do not update LLRender's cache; reassert the active
+        // sidecar guard after restoring so its indexed state remains canonical.
+        GLint equation_rgb = GL_FUNC_ADD;
+        GLint equation_alpha = GL_FUNC_ADD;
+        GLint src_rgb = GL_ONE;
+        GLint dst_rgb = GL_ZERO;
+        GLint src_alpha = GL_ONE;
+        GLint dst_alpha = GL_ZERO;
+        glGetIntegerv(GL_BLEND_EQUATION_RGB, &equation_rgb);
+        glGetIntegerv(GL_BLEND_EQUATION_ALPHA, &equation_alpha);
+        glGetIntegerv(GL_BLEND_SRC_RGB, &src_rgb);
+        glGetIntegerv(GL_BLEND_DST_RGB, &dst_rgb);
+        glGetIntegerv(GL_BLEND_SRC_ALPHA, &src_alpha);
+        glGetIntegerv(GL_BLEND_DST_ALPHA, &dst_alpha);
+        if (glIsEnabled(GL_BLEND))
+        {
+            glEnablei(GL_BLEND, ALR_RIM_PARITY_ATTACHMENT);
+        }
+        else
+        {
+            glDisablei(GL_BLEND, ALR_RIM_PARITY_ATTACHMENT);
+        }
+        glBlendEquationSeparatei(ALR_RIM_PARITY_ATTACHMENT,
+                                 equation_rgb, equation_alpha);
+        glBlendFuncSeparatei(ALR_RIM_PARITY_ATTACHMENT,
+                             src_rgb, dst_rgb, src_alpha, dst_alpha);
+        gGL.reassertIndexedDrawBuffer();
     }
 
     gGLLastMatrix = NULL;
@@ -22195,6 +22432,45 @@ void LLPipeline::renderFinalize()
     // [BDMerge Froxel F0] Hybrid froxel volumetrics grid (media atlas + debug
     // overlay). Runs right before the per-cone projector volumetrics, at the same
     // composite point. Fully gated on BDMergeFroxelVolumetrics (default OFF = no-op).
+    // [AvatarSilhouette] Fullscreen lens/bloom passes above have replaced the
+    // live world matrices. Restore the exact matrices captured at entry while
+    // Phase B adds authored-alpha coverage, then restore every stack/global.
+    const bool sil_volumetrics = mSilCoverValid && (ALAvatarLightResponse::sSilFrameMask & 6u) &&
+        mRT == &mMainRT &&
+        ((BDMergeFroxelVolumetrics && gFroxelMediaProgram.isComplete()) ||
+         (BDMergeProjectorVolumetrics && RenderShadowDetail > 0 &&
+          gDeferredProjectorVolumetricProgram.isComplete()));
+    if (sil_volumetrics)
+    {
+        const LLRender::eMatrixMode saved_mode = gGL.getMatrixMode();
+        const LLMatrix4* saved_last = gGLLastMatrix;
+        F32 saved_modelview[16], saved_projection[16];
+        GLint saved_viewport[4];
+        memcpy(saved_modelview, gGLModelView, sizeof(saved_modelview));
+        memcpy(saved_projection, gGLProjection, sizeof(saved_projection));
+        glGetIntegerv(GL_VIEWPORT, saved_viewport);
+        gGL.matrixMode(LLRender::MM_PROJECTION);
+        gGL.pushMatrix();
+        gGL.loadMatrix(glm::value_ptr(actor_path_projection));
+        gGL.matrixMode(LLRender::MM_MODELVIEW);
+        gGL.pushMatrix();
+        gGL.loadMatrix(glm::value_ptr(actor_path_modelview));
+        memcpy(gGLProjection, glm::value_ptr(actor_path_projection), sizeof(saved_projection));
+        memcpy(gGLModelView, glm::value_ptr(actor_path_modelview), sizeof(saved_modelview));
+        gGLLastMatrix = nullptr;
+        glViewport(0, 0, mRT->deferredScreen.getWidth(), mRT->deferredScreen.getHeight());
+        renderSilCover(1);
+        memcpy(gGLModelView, saved_modelview, sizeof(saved_modelview));
+        memcpy(gGLProjection, saved_projection, sizeof(saved_projection));
+        gGL.matrixMode(LLRender::MM_MODELVIEW);
+        gGL.popMatrix();
+        gGL.matrixMode(LLRender::MM_PROJECTION);
+        gGL.popMatrix();
+        gGL.matrixMode(saved_mode);
+        gGLLastMatrix = saved_last;
+        glViewport(saved_viewport[0], saved_viewport[1], saved_viewport[2], saved_viewport[3]);
+    }
+
     renderFroxelVolumetrics(&mRT->screen);
 
     renderProjectorVolumetric(&mRT->screen);
@@ -22930,6 +23206,21 @@ void LLPipeline::uploadShadowAlphaMode(S32 blended_pass)
 // [/ShadowDist P3] --------------------------------------------------------
 // [/ShadowDist P1] --------------------------------------------------------
 
+// [AvatarSilhouette] Frame-wide carrier/coverage gate. WP4 extends this
+// helper with the per-view silCover-valid bit and texture binding.
+static void uploadSilhouetteFrame(LLGLSLShader& shader)
+{
+    static const LLStaticHashedString alr_sil_active("alr_sil_active");
+    U32 mask = ALAvatarLightResponse::sSilFrameMask;
+    if (gPipeline.mSilCoverValid && gPipeline.mRT && gPipeline.mRT->silCover.isComplete())
+    {
+        mask |= 32u;
+        shader.bindTexture(silCoverMapUniform(), &gPipeline.mRT->silCover,
+                           false, LLTexUnit::TFO_POINT);
+    }
+    shader.uniform1i(alr_sil_active, static_cast<S32>(mask));
+}
+
 void LLPipeline::bindDeferredShaderFast(LLGLSLShader& shader)
 {
     if (shader.mCanBindFast)
@@ -22947,6 +23238,7 @@ void LLPipeline::bindDeferredShaderFast(LLGLSLShader& shader)
         // fast-bound program's sun-shadow state coherent with the maps it
         // samples (design v6 s1.2). Nothing is uploaded on the OFF path.
         uploadShadowUniforms(shader);
+        uploadSilhouetteFrame(shader);
         bindReflectionProbes(shader);
 
         auto dirty_it = mPrismLensDirtyScreenShaders.end();
@@ -22997,6 +23289,7 @@ void LLPipeline::bindDeferredShader(LLGLSLShader& shader, LLRenderTarget* light_
     LLRenderTarget* deferred_light_target = &mRT->deferredLight;
 
     shader.bind();
+    uploadSilhouetteFrame(shader);
     S32 channel = 0;
     channel = shader.enableTexture(LLShaderMgr::DEFERRED_DIFFUSE, deferred_target->getUsage());
     if (channel > -1)
@@ -23348,6 +23641,57 @@ LLActorMaskViewStamp LLPipeline::actorMaskViewStamp() const
              mHeroProbeManager.isMirrorPass(), sPrismLensRender };
 }
 
+void LLPipeline::releaseSilCovers()
+{
+    auto release = [](RenderTargetPack& pack)
+    {
+        pack.silCover.release();
+        pack.silCoverDepthSrc = 0;
+    };
+    release(mMainRT);
+    release(mAuxillaryRT);
+    release(mHeroProbeRT);
+    release(mProbeCaptureRT);
+    for (auto& entry : mPrismLensScratchPool) release(entry.rt);
+    mSilCoverValid = false;
+}
+
+bool LLPipeline::ensureSilCover()
+{
+    if (!(ALAvatarLightResponse::sSilFrameMask & 6u)) return false;
+    auto& pack = *mRT;
+    auto& depth = pack.deferredScreen;
+    auto& cover = pack.silCover;
+    if (!depth.isComplete() || !depth.getDepth()) return false;
+    if (cover.isComplete() && cover.getWidth() == depth.getWidth() &&
+        cover.getHeight() == depth.getHeight() && pack.silCoverDepthSrc == depth.getDepth())
+        return true;
+    cover.release();
+    pack.silCoverDepthSrc = 0;
+    if (!cover.allocate(depth.getWidth(), depth.getHeight(), GL_RG8, false))
+    {
+        LL_WARNS_ONCE("AvatarSilhouette") << "SILCOVER ALLOC-FAIL" << LL_ENDL;
+        return false;
+    }
+    depth.shareDepthBuffer(cover);
+    GLint draw_fbo = 0, read_fbo = 0, attachment = 0;
+    glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &draw_fbo);
+    glGetIntegerv(GL_READ_FRAMEBUFFER_BINDING, &read_fbo);
+    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, cover.getFBO());
+    glGetFramebufferAttachmentParameteriv(GL_DRAW_FRAMEBUFFER, GL_DEPTH_ATTACHMENT,
+        GL_FRAMEBUFFER_ATTACHMENT_OBJECT_NAME, &attachment);
+    const bool complete = glCheckFramebufferStatus(GL_DRAW_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE;
+    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, draw_fbo);
+    glBindFramebuffer(GL_READ_FRAMEBUFFER, read_fbo);
+    if (!complete || static_cast<U32>(attachment) != depth.getDepth())
+    {
+        cover.release();
+        return false;
+    }
+    pack.silCoverDepthSrc = depth.getDepth();
+    return true;
+}
+
 void LLPipeline::releaseActorMasks()
 {
     auto release = [](RenderTargetPack& pack)
@@ -23522,8 +23866,257 @@ private:
     std::vector<LLActorMaskTextureState> mTextures;
 };
 
-// Verified against lldrawpool.h; every entry has an explicit rigged partner.
+LLRender::eBlendFactor silCoverBlendFactor(GLint factor)
+{
+    switch (factor)
+    {
+    case GL_ONE: return LLRender::BF_ONE;
+    case GL_ZERO: return LLRender::BF_ZERO;
+    case GL_DST_COLOR: return LLRender::BF_DEST_COLOR;
+    case GL_SRC_COLOR: return LLRender::BF_SOURCE_COLOR;
+    case GL_ONE_MINUS_DST_COLOR: return LLRender::BF_ONE_MINUS_DEST_COLOR;
+    case GL_ONE_MINUS_SRC_COLOR: return LLRender::BF_ONE_MINUS_SOURCE_COLOR;
+    case GL_DST_ALPHA: return LLRender::BF_DEST_ALPHA;
+    case GL_SRC_ALPHA: return LLRender::BF_SOURCE_ALPHA;
+    case GL_ONE_MINUS_DST_ALPHA: return LLRender::BF_ONE_MINUS_DEST_ALPHA;
+    case GL_ONE_MINUS_SRC_ALPHA: return LLRender::BF_ONE_MINUS_SOURCE_ALPHA;
+    default: return LLRender::BF_ONE;
+    }
+}
+
+bool silCoverBlendCacheMatches(GLint factor, LLRender::eBlendFactor cached)
+{
+    switch (factor)
+    {
+    case GL_ONE: return cached == LLRender::BF_ONE;
+    case GL_ZERO: return cached == LLRender::BF_ZERO;
+    case GL_DST_COLOR: return cached == LLRender::BF_DEST_COLOR;
+    case GL_SRC_COLOR: return cached == LLRender::BF_SOURCE_COLOR;
+    case GL_ONE_MINUS_DST_COLOR: return cached == LLRender::BF_ONE_MINUS_DEST_COLOR;
+    case GL_ONE_MINUS_SRC_COLOR: return cached == LLRender::BF_ONE_MINUS_SOURCE_COLOR;
+    case GL_DST_ALPHA: return cached == LLRender::BF_DEST_ALPHA;
+    case GL_SRC_ALPHA: return cached == LLRender::BF_SOURCE_ALPHA;
+    case GL_ONE_MINUS_DST_ALPHA: return cached == LLRender::BF_ONE_MINUS_DEST_ALPHA;
+    case GL_ONE_MINUS_SRC_ALPHA: return cached == LLRender::BF_ONE_MINUS_SOURCE_ALPHA;
+    default: return false;
+    }
+}
+
+// ScopedActorMaskState owns the broad FBO/matrix/texture contract. This nested
+// guard owns the blend/stencil state that Actor Mask intentionally does not.
+class ScopedSilCoverState
+{
+public:
+    explicit ScopedSilCoverState(bool blended) :
+        mBlend(GL_BLEND, blended ? LLGLState::ENABLED_STATE : LLGLState::DISABLED_STATE),
+        mStencil(GL_STENCIL_TEST, LLGLState::DISABLED_STATE)
+    {
+        glGetIntegerv(GL_BLEND_SRC_RGB, &mSrcRGB);
+        glGetIntegerv(GL_BLEND_DST_RGB, &mDstRGB);
+        glGetIntegerv(GL_BLEND_SRC_ALPHA, &mSrcAlpha);
+        glGetIntegerv(GL_BLEND_DST_ALPHA, &mDstAlpha);
+        glGetIntegerv(GL_BLEND_EQUATION_RGB, &mEqRGB);
+        glGetIntegerv(GL_BLEND_EQUATION_ALPHA, &mEqAlpha);
+        if (blended)
+        {
+            gGL.blendFunc(LLRender::BF_ONE, LLRender::BF_ONE_MINUS_SOURCE_COLOR,
+                          LLRender::BF_ONE, LLRender::BF_ONE_MINUS_SOURCE_COLOR);
+            glBlendEquationSeparate(GL_FUNC_ADD, GL_FUNC_ADD);
+        }
+    }
+    ~ScopedSilCoverState()
+    {
+        gGL.blendFunc(silCoverBlendFactor(mSrcRGB), silCoverBlendFactor(mDstRGB),
+                      silCoverBlendFactor(mSrcAlpha), silCoverBlendFactor(mDstAlpha));
+        glBlendEquationSeparate(mEqRGB, mEqAlpha);
+    }
+private:
+    LLGLState mBlend;
+    LLGLState mStencil;
+    GLint mSrcRGB = GL_ONE, mDstRGB = GL_ZERO, mSrcAlpha = GL_ONE, mDstAlpha = GL_ZERO;
+    GLint mEqRGB = GL_FUNC_ADD, mEqAlpha = GL_FUNC_ADD;
+};
+
+// T22 is deliberately glGet-heavy and exists only under the existing carrier
+// debug switch. ScopedActorMaskState plus ScopedSilCoverState perform restores;
+// this guard reports every leaking field without trying to hide a leak.
+// Explicit template instantiation may name private members without relaxing
+// LLRender's public API; the friend functions expose read-only member pointers
+// solely to this debug-only invariant.
+template<typename Tag, typename Tag::type Member>
+struct SilCoverPrivateMember
+{
+    friend typename Tag::type silCoverPrivate(Tag) { return Member; }
+};
+struct SilCoverBlendColorSrcTag
+{
+    using type = LLRender::eBlendFactor LLRender::*;
+    friend type silCoverPrivate(SilCoverBlendColorSrcTag);
+};
+struct SilCoverBlendColorDstTag
+{
+    using type = LLRender::eBlendFactor LLRender::*;
+    friend type silCoverPrivate(SilCoverBlendColorDstTag);
+};
+struct SilCoverBlendAlphaSrcTag
+{
+    using type = LLRender::eBlendFactor LLRender::*;
+    friend type silCoverPrivate(SilCoverBlendAlphaSrcTag);
+};
+struct SilCoverBlendAlphaDstTag
+{
+    using type = LLRender::eBlendFactor LLRender::*;
+    friend type silCoverPrivate(SilCoverBlendAlphaDstTag);
+};
+template struct SilCoverPrivateMember<SilCoverBlendColorSrcTag, &LLRender::mCurrBlendColorSFactor>;
+template struct SilCoverPrivateMember<SilCoverBlendColorDstTag, &LLRender::mCurrBlendColorDFactor>;
+template struct SilCoverPrivateMember<SilCoverBlendAlphaSrcTag, &LLRender::mCurrBlendAlphaSFactor>;
+template struct SilCoverPrivateMember<SilCoverBlendAlphaDstTag, &LLRender::mCurrBlendAlphaDFactor>;
+
+class ScopedSilCoverInvariant
+{
+public:
+    explicit ScopedSilCoverInvariant(const char* scope) : mScope(scope)
+    {
+        static LLCachedControl<bool> debug(gSavedSettings, "AvatarSilhouetteDebugCarrier", false);
+        if (!debug) return;
+        mBefore.emplace();
+        capture(*mBefore);
+    }
+    ~ScopedSilCoverInvariant()
+    {
+        if (!mBefore) return;
+        State after;
+        capture(after);
+        bool clean = true;
+        auto leak = [&](const char* field)
+        {
+            clean = false;
+            LL_WARNS("AvatarSilhouette") << "[ALR] SILCOVER STATE-LEAK "
+                << field << " " << mScope << LL_ENDL;
+        };
+        static const char* const int_names[] = {
+            "blend-src-rgb", "blend-dst-rgb", "blend-src-alpha", "blend-dst-alpha",
+            "blend-equation-rgb", "blend-equation-alpha", "depth-func", "depth-writemask",
+            "cull-face-mode", "draw-fbo", "read-fbo", "read-buffer", "active-texture",
+            "current-program", "blend-enable", "stencil-enable", "depth-enable", "cull-enable",
+            "polygon-offset-enable", "scissor-enable", "viewport-x", "viewport-y",
+            "viewport-width", "viewport-height", "scissor-x", "scissor-y", "scissor-width",
+            "scissor-height", "color-mask-r", "color-mask-g", "color-mask-b", "color-mask-a"
+        };
+        for (size_t i = 0; i < mBefore->i.size(); ++i)
+            if (mBefore->i[i] != after.i[i]) leak(int_names[i]);
+        if (mBefore->draw_buffers.size() != after.draw_buffers.size()) leak("draw-buffer-count");
+        const size_t draw_count = llmin(mBefore->draw_buffers.size(), after.draw_buffers.size());
+        for (size_t i = 0; i < draw_count; ++i)
+            if (mBefore->draw_buffers[i] != after.draw_buffers[i])
+            {
+                const std::string field = llformat("draw-buffer-%u", static_cast<U32>(i));
+                leak(field.c_str());
+            }
+        static const char* const cache_names[] = {
+            "llrender-blend-src-rgb", "llrender-blend-dst-rgb",
+            "llrender-blend-src-alpha", "llrender-blend-dst-alpha"
+        };
+        for (size_t i = 0; i < mBefore->blend_cache.size(); ++i)
+            if (mBefore->blend_cache[i] != after.blend_cache[i]) leak(cache_names[i]);
+        for (size_t i = 0; i < after.blend_cache.size(); ++i)
+            if (!silCoverBlendCacheMatches(after.i[i], after.blend_cache[i]))
+            {
+                const std::string field = llformat("%s-vs-gl", cache_names[i]);
+                leak(field.c_str());
+            }
+        if (mBefore->f[0] != after.f[0]) leak("polygon-offset-factor");
+        if (mBefore->f[1] != after.f[1]) leak("polygon-offset-units");
+        auto float_block_differs = [&](size_t first, size_t count)
+        {
+            return !std::equal(mBefore->f.begin() + first, mBefore->f.begin() + first + count,
+                               after.f.begin() + first);
+        };
+        if (float_block_differs(2, 16)) leak("gGLModelView");
+        if (float_block_differs(18, 16)) leak("gGLProjection");
+        if (float_block_differs(34, 16)) leak("gGL-modelview-stack");
+        if (float_block_differs(50, 16)) leak("gGL-projection-stack");
+        if (float_block_differs(66, 4)) leak("color-clear-value");
+        for (U32 t = 0; t < 4; ++t)
+            if (float_block_differs(70 + 16*t, 16))
+            {
+                const std::string field = llformat("gGL-texture%u-stack", t);
+                leak(field.c_str());
+            }
+        static const char* const pointer_names[] = {
+            "gGLLastMatrix", "bound-shader", "bound-render-target"
+        };
+        for (size_t i = 0; i < mBefore->p.size(); ++i)
+            if (mBefore->p[i] != after.p[i]) leak(pointer_names[i]);
+        if (clean)
+            LL_INFOS("AvatarSilhouette") << "[ALR] SILCOVER STATE OK " << mScope << LL_ENDL;
+    }
+private:
+    struct State
+    {
+        std::array<GLint, 32> i{};
+        std::array<GLfloat, 134> f{};
+        std::array<const void*, 3> p{};
+        std::array<LLRender::eBlendFactor, 4> blend_cache{};
+        std::vector<GLint> draw_buffers;
+    };
+    static void capture(State& s)
+    {
+        size_t n = 0;
+        const GLenum ints[] = { GL_BLEND_SRC_RGB, GL_BLEND_DST_RGB, GL_BLEND_SRC_ALPHA,
+            GL_BLEND_DST_ALPHA, GL_BLEND_EQUATION_RGB, GL_BLEND_EQUATION_ALPHA,
+            GL_DEPTH_FUNC, GL_DEPTH_WRITEMASK, GL_CULL_FACE_MODE,
+            GL_DRAW_FRAMEBUFFER_BINDING, GL_READ_FRAMEBUFFER_BINDING, GL_READ_BUFFER,
+            GL_ACTIVE_TEXTURE, GL_CURRENT_PROGRAM };
+        for (GLenum e : ints) glGetIntegerv(e, &s.i[n++]);
+        const GLenum enables[] = { GL_BLEND, GL_STENCIL_TEST, GL_DEPTH_TEST, GL_CULL_FACE,
+            GL_POLYGON_OFFSET_FILL, GL_SCISSOR_TEST };
+        for (GLenum e : enables) s.i[n++] = glIsEnabled(e);
+        glGetIntegerv(GL_VIEWPORT, &s.i[n]); n += 4;
+        glGetIntegerv(GL_SCISSOR_BOX, &s.i[n]); n += 4;
+        glGetIntegerv(GL_COLOR_WRITEMASK, &s.i[n]); n += 4;
+        GLint max_draw_buffers = 0;
+        glGetIntegerv(GL_MAX_DRAW_BUFFERS, &max_draw_buffers);
+        s.draw_buffers.resize(llmax(max_draw_buffers, 0));
+        for (GLint b = 0; b < max_draw_buffers; ++b)
+            glGetIntegerv(GL_DRAW_BUFFER0 + b, &s.draw_buffers[b]);
+        s.blend_cache = {
+            gGL.*silCoverPrivate(SilCoverBlendColorSrcTag()),
+            gGL.*silCoverPrivate(SilCoverBlendColorDstTag()),
+            gGL.*silCoverPrivate(SilCoverBlendAlphaSrcTag()),
+            gGL.*silCoverPrivate(SilCoverBlendAlphaDstTag())
+        };
+        glGetFloatv(GL_POLYGON_OFFSET_FACTOR, &s.f[0]);
+        glGetFloatv(GL_POLYGON_OFFSET_UNITS, &s.f[1]);
+        memcpy(&s.f[2], gGLModelView, 16 * sizeof(F32));
+        memcpy(&s.f[18], gGLProjection, 16 * sizeof(F32));
+        memcpy(&s.f[34], &gGL.getModelviewMatrix(), 16 * sizeof(F32));
+        memcpy(&s.f[50], &gGL.getProjectionMatrix(), 16 * sizeof(F32));
+        glGetFloatv(GL_COLOR_CLEAR_VALUE, &s.f[66]);
+        for (U32 t = 0; t < 4; ++t)
+            memcpy(&s.f[70 + 16*t], &gGL.getMatrix(
+                static_cast<LLRender::eMatrixMode>(LLRender::MM_TEXTURE0 + t)),
+                16 * sizeof(F32));
+        s.p = { gGLLastMatrix, LLGLSLShader::sCurBoundShaderPtr,
+                LLRenderTarget::getCurrentBoundTarget() };
+    }
+    const char* mScope;
+    std::optional<State> mBefore;
+};
+
+bool silCoverFor(const LLUUID& k1, const LLUUID& k2, const LLUUID& k3, LLVector2& cover)
+{
+    const ALLightResponse::Packed* p = ALAvatarLightResponse::instance().peek(k1, k2, k3);
+    if (!p || p->mSil.mV[VW] <= 0.f) return false;
+    const F32 amount = p->mSil.mV[VW];
+    cover.set(p->mSilAux.mV[VY] < 0.5f ? amount : 0.f,
+              p->mSilAux.mV[VZ] < 0.5f ? amount : 0.f);
+    return cover.mV[VX] > 0.f || cover.mV[VY] > 0.f;
+}
+
 struct ActorMaskPass { U32 pass; bool rigged, pbr, masked, material, vec3Position; };
+// Verified against lldrawpool.h; every entry has an explicit rigged partner.
 const ActorMaskPass kActorMaskPasses[] = {
     { LLRenderPass::PASS_SIMPLE, false, false, false, false, false },
     { LLRenderPass::PASS_SIMPLE_RIGGED, true, false, false, false, false },
@@ -23660,7 +24253,265 @@ ActorMaskBatchResult drawActorMaskBatch(LLDrawInfo& di, const ActorMaskPass& pas
     di.mVertexBuffer->drawRange(LLRender::TRIANGLES, di.mStart, di.mEnd, di.mCount, di.mOffset);
     return ActorMaskBatchResult::DRAWN;
 }
+
+bool drawSilCoverBatch(LLDrawInfo& di, const SilCoverPass& pass,
+                       const LLVector2& cover, bool blended,
+                       bool apply_model_matrix)
+{
+    if (!di.mCount || di.mVertexBuffer.isNull()) return false;
+    if (pass.rigged && (di.mAvatar.isNull() || di.mSkinInfo.isNull())) return false;
+    LLGLSLShader& shader = gSilCoverProgram[pass.pbr ?
+        (pass.rigged ? ACTOR_MASK_PBR_RIGGED : ACTOR_MASK_PBR) :
+        (pass.rigged ? ACTOR_MASK_RIGGED : ACTOR_MASK_STATIC)];
+    if (!shader.isComplete()) return false;
+    shader.bind();
+    if (pass.rigged && !LLRenderPass::uploadMatrixPalette(di.mAvatar, di.mSkinInfo)) return false;
+
+    const bool pbr_slots = pass.pbr && di.mGLTFMaterialList.size() > 1;
+    const bool bump = pass.pass == LLRenderPass::PASS_BUMP || pass.pass == LLRenderPass::PASS_BUMP_RIGGED;
+    const bool legacy_slots = pass.material && di.mMaterialSlotList.size() > 1;
+    const bool slots = pbr_slots || legacy_slots;
+    const bool texture_batch = !pass.pbr && !pass.material && !bump && di.mTextureList.size() > 1;
+    const size_t count = pbr_slots ? di.mGLTFMaterialList.size() :
+                         legacy_slots ? di.mMaterialSlotList.size() :
+                         texture_batch ? di.mTextureList.size() : 1;
+    if (count > static_cast<size_t>(actorMaskTextureChannels()) || (slots && count > 8)) return false;
+
+    F32 cutoffs[8] = {};
+    F32 transforms[64] = {};
+    bool double_sided = false;
+    for (size_t i = 0; i < count; ++i)
+    {
+        LLViewerTexture* texture = nullptr;
+        F32 cutoff = pass.masked ? di.mAlphaMaskCutoff : -1.f;
+        if (pass.pbr)
+        {
+            LLFetchedGLTFMaterial* mat = pbr_slots ? di.mGLTFMaterialList[i].get() : di.mGLTFMaterial.get();
+            if (!mat)
+            {
+                if (!pbr_slots) return false;
+                cutoffs[i] = -1.f;
+                continue;
+            }
+            double_sided = double_sided || mat->mDoubleSided;
+            texture = !pbr_slots && di.mTexture.notNull() ? di.mTexture.get() : mat->mBaseColorTexture.get();
+            if (pbr_slots)
+                cutoff = i < di.mGLTFAlphaMaskCutoffList.size() ? di.mGLTFAlphaMaskCutoffList[i] :
+                    mat->mAlphaMode == LLGLTFMaterial::ALPHA_MODE_MASK ? mat->mAlphaCutoff : -1.f;
+            LLGLTFMaterial::TextureTransform::Pack packed;
+            mat->mTextureTransform[LLGLTFMaterial::GLTF_TEXTURE_INFO_BASE_COLOR].getPacked(packed);
+            memcpy(&transforms[8*i], packed, sizeof(packed));
+        }
+        else if (legacy_slots)
+        {
+            texture = di.mMaterialSlotList[i].mDiffuse.get();
+            cutoff = pass.masked ? di.mMaterialSlotList[i].mAlphaMaskCutoff : -1.f;
+        }
+        else texture = texture_batch ? di.mTextureList[i].get() : di.mTexture.get();
+        if (!texture) texture = LLViewerFetchedTexture::sWhiteImagep.get();
+        gGL.getTexUnit(static_cast<S32>(i))->bindFast(texture);
+        if (pass.material && cutoff >= 0.f) cutoff -= 0.001953125f;
+        cutoffs[slots ? i : 0] = cutoff;
+    }
+    GLint samplers[32];
+    const S32 channels = actorMaskTextureChannels();
+    for (S32 i = 0; i < channels; ++i) samplers[i] = i;
+    static const LLStaticHashedString textures("mask_textures"), cutoff("mask_cutoff"),
+        indexed("mask_indexed"), material_slots("mask_material_slots"),
+        vec3_position("mask_vec3_position"), vertex_alpha("mask_vertex_alpha"),
+        transform("mask_transform"), sil_cover("sil_cover"), sil_blended("sil_blended");
+    shader.uniform1iv(textures, channels, samplers);
+    shader.uniform1fv(cutoff, 8, cutoffs);
+    shader.uniform1i(indexed, slots || texture_batch);
+    shader.uniform1i(material_slots, slots);
+    shader.uniform1i(vec3_position, pass.vec3Position);
+    shader.uniform1i(vertex_alpha, blended || (!pass.material && !bump));
+    shader.uniform2fv(sil_cover, 1, cover.mV);
+    shader.uniform1i(sil_blended, blended ? 1 : 0);
+    if (pass.pbr) shader.uniform4fv(transform, 16, transforms);
+    gGL.matrixMode(LLRender::MM_TEXTURE0);
+    if (di.mTextureMatrix && !slots && !texture_batch)
+        gGL.loadMatrix(reinterpret_cast<const F32*>(di.mTextureMatrix->mMatrix));
+    else gGL.loadIdentity();
+    gGL.matrixMode(LLRender::MM_MODELVIEW);
+    if (apply_model_matrix) LLRenderPass::applyModelMatrix(di);
+    LLGLDisable cull(double_sided ? GL_CULL_FACE : 0);
+    di.mVertexBuffer->setBuffer();
+    di.mVertexBuffer->drawRange(LLRender::TRIANGLES, di.mStart, di.mEnd, di.mCount, di.mOffset);
+    return true;
+}
 } // namespace
+
+void LLPipeline::renderSilCover(U32 phase)
+{
+    const bool blended = phase != 0;
+    if (!(ALAvatarLightResponse::sSilFrameMask & 6u))
+    {
+        mSilCoverValid = false;
+        if (mRT && mRT->silCover.isComplete())
+        {
+            mRT->silCover.release();
+            mRT->silCoverDepthSrc = 0;
+        }
+        return;
+    }
+    if (mRT != &mMainRT || gCubeSnapshot || sReflectionRender || sRenderingHUDs ||
+        sImpostorRender || sPrismLensRender || LLViewerCamera::sCurCameraID != LLViewerCamera::CAMERA_WORLD)
+    {
+        // Counter-only guard probe: renderGhostSilCover returns before queue
+        // access or any GL work in these views (T23).
+        renderGhostSilCover(phase);
+        return;
+    }
+
+    ScopedSilCoverInvariant invariant(blended ? "phase B" : "phase A");
+    ScopedActorMaskState saved_state;
+    ScopedSilCoverState blend_state(blended);
+    if (!ensureSilCover())
+    {
+        mSilCoverValid = false;
+        return;
+    }
+    for (auto& shader : gSilCoverProgram)
+        if (!shader.isComplete()) { mSilCoverValid = false; return; }
+
+    struct ProjectionStackGuard
+    {
+        LLRender::eMatrixMode mode;
+        ProjectionStackGuard() : mode(gGL.getMatrixMode())
+        {
+            gGL.matrixMode(LLRender::MM_PROJECTION);
+            gGL.pushMatrix();
+        }
+        ~ProjectionStackGuard()
+        {
+            gGL.matrixMode(LLRender::MM_PROJECTION);
+            gGL.popMatrix();
+            gGL.matrixMode(mode);
+        }
+    } projection_stack;
+
+    glDisable(GL_SCISSOR_TEST);
+    LLGLDepthTest depth(GL_TRUE, GL_FALSE, GL_LEQUAL);
+    LLGLEnable offset(GL_POLYGON_OFFSET_FILL);
+    LLGLEnable cull(GL_CULL_FACE);
+    glCullFace(GL_BACK);
+    static LLCachedControl<F32> bias(gSavedSettings, "AvatarSilhouetteCoverBias", -8.f);
+    glPolygonOffset(0.f, llclamp(static_cast<F32>(bias), -64.f, 0.f));
+
+    auto& target = mRT->silCover;
+    target.bindTarget();
+    struct FlushCover { LLRenderTarget& target; ~FlushCover() { target.flush(); } } flush{target};
+    gGL.setColorMask(true, true);
+    if (!blended)
+    {
+        glClearColor(0.f, 0.f, 0.f, 0.f);
+        target.clear(GL_COLOR_BUFFER_BIT);
+    }
+
+    gGL.matrixMode(LLRender::MM_PROJECTION);
+    gGL.loadMatrix(gGLProjection);
+    gGL.matrixMode(LLRender::MM_MODELVIEW);
+    gGL.loadMatrix(gGLModelView);
+    gGLLastMatrix = nullptr;
+
+    std::unordered_set<const LLDrawInfo*> visited;
+    auto draw_info = [&](LLDrawInfo* di, const SilCoverPass& pass)
+    {
+        if (!di || !visited.insert(di).second) return;
+        LLVector2 cover;
+        if (!silCoverFor(di->mActorFxOwner, di->mActorFxFallbackOwner, LLUUID::null, cover)) return;
+        drawSilCoverBatch(*di, pass, cover, blended);
+    };
+
+    if (!blended)
+    {
+        for (const ActorMaskPass& pass : kActorMaskPasses)
+        {
+            if (!hasRenderType(pass.pass)) continue;
+            for (auto it = beginRenderMap(pass.pass), end = endRenderMap(pass.pass); it != end; ++it)
+                draw_info(*it, { pass.pass, pass.rigged, pass.pbr, pass.masked,
+                                 pass.material, pass.vec3Position });
+        }
+        const SilCoverPass extra[] = {
+            { LLRenderPass::PASS_FULLBRIGHT, false, false, false, false, false },
+            { LLRenderPass::PASS_FULLBRIGHT_RIGGED, true, false, false, false, false },
+            { LLRenderPass::PASS_FULLBRIGHT_SHINY, false, false, false, false, false },
+            { LLRenderPass::PASS_FULLBRIGHT_SHINY_RIGGED, true, false, false, false, false },
+            { LLRenderPass::PASS_FULLBRIGHT_ALPHA_MASK, false, false, true, false, false },
+            { LLRenderPass::PASS_FULLBRIGHT_ALPHA_MASK_RIGGED, true, false, true, false, false }
+        };
+        for (const SilCoverPass& pass : extra)
+        {
+            if (!hasRenderType(pass.pass)) continue;
+            for (auto it = beginRenderMap(pass.pass), end = endRenderMap(pass.pass); it != end; ++it)
+                draw_info(*it, pass);
+        }
+    }
+    else
+    {
+        auto draw_alpha_groups = [&](LLCullResult::sg_iterator begin,
+                                     LLCullResult::sg_iterator end, U32 pass_id, bool rigged)
+        {
+            for (auto it = begin; it != end; ++it)
+            {
+                LLSpatialGroup* group = *it;
+                if (!group || group->isDead() || !group->getSpatialPartition()->mRenderByGroup) continue;
+                auto found = group->mDrawMap.find(pass_id);
+                if (found == group->mDrawMap.end()) continue;
+                for (const auto& ptr : found->second)
+                {
+                    LLDrawInfo* di = ptr.get();
+                    if (!di) continue;
+                    const bool pbr = di->mGLTFMaterial.notNull() || !di->mGLTFMaterialList.empty();
+                    const bool material = di->mMaterial.notNull() || !di->mMaterialSlotList.empty();
+                    SilCoverPass pass{ pass_id, rigged, pbr, false, material, pbr || material };
+                    draw_info(di, pass);
+                }
+            }
+        };
+        draw_alpha_groups(beginAlphaGroups(), endAlphaGroups(), LLRenderPass::PASS_ALPHA, false);
+        draw_alpha_groups(beginRiggedAlphaGroups(), endRiggedAlphaGroups(), LLRenderPass::PASS_ALPHA_RIGGED, true);
+    }
+
+    // Native system bodies and both ghost-proxy domains share the same target/state.
+    std::unordered_set<LLVOAvatar*> bodies;
+    if (hasRenderType(RENDER_TYPE_AVATAR))
+    {
+        for (LLDrawPool* pool : mPools)
+        {
+            if (pool->getType() != LLDrawPool::POOL_AVATAR || pool->getSkipRenderFlag()) continue;
+            const auto* avatar_pool = static_cast<const LLDrawPoolAvatar*>(pool);
+            if (avatar_pool->mDrawFace.empty()) continue;
+            LLFace* face = avatar_pool->mDrawFace.front();
+            if (face && face->getDrawable())
+                bodies.insert(static_cast<LLVOAvatar*>(face->getDrawable()->getVObj().get()));
+        }
+    }
+    LLActorMover& mover = LLActorMover::instance();
+    for (LLVOAvatar* av : bodies)
+    {
+        LLVector2 cover;
+        const LLUUID key = ALAvatarLightResponse::keyForAvatar(av);
+        if (silCoverFor(key, LLUUID::null, LLUUID::null, cover))
+            mover.renderSystemSilCover(av, cover, phase);
+    }
+    {
+        ScopedSilCoverInvariant hook_invariant(
+            blended ? "ghost hook B" : "ghost hook A");
+        ScopedActorMaskState hook_state;
+        ScopedSilCoverState hook_blend(blended);
+        renderGhostSilCover(phase);
+    }
+    {
+        ScopedSilCoverInvariant hook_invariant(
+            blended ? "shared hook B" : "shared hook A");
+        ScopedActorMaskState hook_state;
+        ScopedSilCoverState hook_blend(blended);
+        mover.renderSharedProxySilCover(phase);
+    }
+    mSilCoverValid = true;
+}
 
 void LLPipeline::renderActorMask()
 {
@@ -23895,8 +24746,32 @@ const char* LLPipeline::actorMaskParityPathInconclusiveReason() const
 
 void LLPipeline::renderDeferredLighting(ActorMaskViewSource source)
 {
+    // Coverage is produced later, immediately before this view's fog. Never
+    // advertise a previous frame/view while deferred lighting is running.
+    mSilCoverValid = false;
     LL_PROFILE_ZONE_SCOPED_CATEGORY_PIPELINE;
     LL_PROFILE_GPU_ZONE("renderDeferredLighting");
+
+    // T21 is a debug-only, setting-gated GPU verdict. Runtime inspection is
+    // forbidden until shader loading confirms the matching permutation.
+    static LLCachedControl<bool> rim_parity(
+        gSavedSettings, "AvatarSilhouetteRimParity", false);
+    if (rim_parity() && !gAvatarSilhouetteRimParityCompiled)
+    {
+        LL_WARNS_ONCE("AvatarLightResponse")
+            << "[ALR] RIMSPLIT PARITY NOT COMPILED" << LL_ENDL;
+    }
+    if (rim_parity() && gAvatarSilhouetteRimParityCompiled &&
+        !parityMaskBlendSupported())
+    {
+        LL_WARNS_ONCE("AvatarLightResponse")
+            << "[ALR] RIMSPLIT PARITY UNSUPPORTED" << LL_ENDL;
+    }
+    const bool rim_parity_main = rim_parity() &&
+        parityMaskBlendSupported() &&
+        source == ActorMaskViewSource::MAIN && mRT == &mMainRT &&
+        !gCubeSnapshot && !sRenderingHUDs && !sImpostorRender &&
+        !sPrismLensRender;
 
     // ReShade bridge: capture deferredScreen's albedo/normals for gatherFrame()
     // NOW, at the earliest point they are guaranteed fully populated and
@@ -24205,6 +25080,37 @@ void LLPipeline::renderDeferredLighting(ActorMaskViewSource source)
         // clear color buffer here - zeroing alpha (glow) is important or it will accumulate against sky
         glClearColor(0, 0, 0, 0);
         screen_target->clear(GL_COLOR_BUFFER_BIT);
+        if (rim_parity_main &&
+            screen_target->getNumTextures() > ALR_RIM_PARITY_ATTACHMENT)
+        {
+            const GLfloat clear_rim_parity[4] = { 0.f, 0.f, 0.f, 0.f };
+            GLboolean previous_mask[4] = { GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE };
+            const bool indexed_mask = glColorMaski && glGetBooleani_v;
+            if (indexed_mask)
+            {
+                glGetBooleani_v(GL_COLOR_WRITEMASK, ALR_RIM_PARITY_ATTACHMENT,
+                                previous_mask);
+                glColorMaski(ALR_RIM_PARITY_ATTACHMENT,
+                             GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+            }
+            else
+            {
+                glGetBooleanv(GL_COLOR_WRITEMASK, previous_mask);
+                glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+            }
+            glClearBufferfv(GL_COLOR, ALR_RIM_PARITY_ATTACHMENT,
+                            clear_rim_parity);
+            if (indexed_mask)
+            {
+                glColorMaski(ALR_RIM_PARITY_ATTACHMENT, previous_mask[0],
+                             previous_mask[1], previous_mask[2], previous_mask[3]);
+            }
+            else
+            {
+                glColorMask(previous_mask[0], previous_mask[1],
+                            previous_mask[2], previous_mask[3]);
+            }
+        }
 
         if (publish_visible_diffuse)
         {
@@ -25207,6 +26113,64 @@ void LLPipeline::renderDeferredLighting(ActorMaskViewSource source)
     // CineLightRigActorMaskDebug view, while this view's mask is still valid.
     if (actor_only && source == ActorMaskViewSource::MAIN)
         ALActorMaskDiagnostics::instance().endMainView(*this, *screen_target);
+
+    if (rim_parity_main &&
+        screen_target->getNumTextures() > ALR_RIM_PARITY_ATTACHMENT &&
+        mRimParityReadbackTimer.getElapsedTimeF32() >= 1.f)
+    {
+        // T21 reads the dedicated R8 mask at native resolution. Beauty is
+        // never inspected and no resampling can hide a mismatching texel.
+        const S32 width = screen_target->getWidth();
+        const S32 height = screen_target->getHeight();
+        GLint read_fbo = 0;
+        GLint read_buffer = GL_COLOR_ATTACHMENT0;
+        GLint pack_buffer = 0;
+        GLint pack_alignment = 4;
+        glGetIntegerv(GL_READ_FRAMEBUFFER_BINDING, &read_fbo);
+        glGetIntegerv(GL_READ_BUFFER, &read_buffer);
+        glGetIntegerv(GL_PIXEL_PACK_BUFFER_BINDING, &pack_buffer);
+        glGetIntegerv(GL_PACK_ALIGNMENT, &pack_alignment);
+        glBindBuffer(GL_PIXEL_PACK_BUFFER, 0);
+        glPixelStorei(GL_PACK_ALIGNMENT, 1);
+        glBindFramebuffer(GL_READ_FRAMEBUFFER, screen_target->getFBO());
+        glReadBuffer(GL_COLOR_ATTACHMENT0 + ALR_RIM_PARITY_ATTACHMENT);
+        std::vector<U8> pixels(static_cast<size_t>(width) * height);
+        for (U32 i = 0; i < 16 && glGetError() != GL_NO_ERROR; ++i)
+        {
+            // Discard stale errors so the verdict covers this readback only.
+        }
+        glReadPixels(0, 0, width, height, GL_RED, GL_UNSIGNED_BYTE, pixels.data());
+        const GLenum read_error = glGetError();
+        glBindFramebuffer(GL_READ_FRAMEBUFFER, read_fbo);
+        glReadBuffer(read_buffer);
+        glPixelStorei(GL_PACK_ALIGNMENT, pack_alignment);
+        glBindBuffer(GL_PIXEL_PACK_BUFFER, static_cast<GLuint>(pack_buffer));
+
+        U32 mismatch_count = read_error == GL_NO_ERROR ? 0 : 1;
+        if (read_error == GL_NO_ERROR)
+        {
+            for (U8 pixel : pixels)
+            {
+                mismatch_count += pixel != 0;
+            }
+        }
+        if (mismatch_count == 0)
+        {
+            LL_INFOS("AvatarLightResponse")
+                << "[ALR] RIMSPLIT PARITY PASS 0" << LL_ENDL;
+        }
+        else
+        {
+            LL_WARNS("AvatarLightResponse")
+                << "[ALR] RIMSPLIT PARITY FAIL " << mismatch_count;
+            if (read_error != GL_NO_ERROR)
+            {
+                LL_CONT << " readback_error=" << static_cast<U32>(read_error);
+            }
+            LL_CONT << LL_ENDL;
+        }
+        mRimParityReadbackTimer.reset();
+    }
 
     screen_target->flush();
 

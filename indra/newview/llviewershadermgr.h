@@ -181,6 +181,8 @@ extern LLVector4            gShinyOrigin;
 enum { ACTOR_MASK_STATIC, ACTOR_MASK_RIGGED, ACTOR_MASK_PBR,
        ACTOR_MASK_PBR_RIGGED, ACTOR_MASK_BODY, ACTOR_MASK_EYES, ACTOR_MASK_PROGRAM_COUNT };
 extern LLGLSLShader gActorMaskProgram[ACTOR_MASK_PROGRAM_COUNT];
+extern LLGLSLShader gSilCoverProgram[ACTOR_MASK_PROGRAM_COUNT];
+S32 silCoverMapUniform(); // [AvatarSilhouette] viewer-reserved sampler index
 S32 actorMaskTextureChannels(); // [ActorMask] Native diffuse AND material batch widths.
 extern LLGLSLShader         gOcclusionProgram;
 extern LLGLSLShader         gOcclusionCubeProgram;

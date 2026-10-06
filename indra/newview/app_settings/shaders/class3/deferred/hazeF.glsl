@@ -45,6 +45,8 @@ uniform vec4 waterPlane;
 uniform int cube_snapshot;
 
 uniform float sky_hdr_scale;
+uniform int alr_sil_active;
+uniform sampler2D silCoverMap;
 
 // [Cine Haze] Cinematic Depth Atmosphere layer (windlight/cineHazeF.glsl).
 // Uniform-gated: with cine_haze_active == 0 this pass is byte-identical to before.
@@ -114,6 +116,17 @@ void main()
                 return;
             }
             cineHazeDeferred(pos.xyz, color, alpha);
+        }
+        if ((alr_sil_active & 32) != 0)
+        {
+            float h = texture(silCoverMap, tc).r;
+            color *= 1.0 - h;
+            alpha = 1.0 - (1.0 - h) * (1.0 - alpha);
+            if ((alr_sil_active & 8) != 0)
+            {
+                color = vec3(0.0, 1.0, 1.0) * h;
+                alpha = 1.0 - h;
+            }
         }
     }
     else

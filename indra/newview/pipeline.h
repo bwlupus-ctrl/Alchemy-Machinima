@@ -88,6 +88,7 @@ bool setup_hud_matrices(const LLRect& screen_region); // specify portion of scre
 //   2: GL_RG8           R = deferred/G-buffer coverage, G = forward coverage
 static const U32 SL_SIDECAR_ATTACHMENT  = 1;
 static const U32 SL_COVERAGE_ATTACHMENT = 2;
+static const U32 ALR_RIM_PARITY_ATTACHMENT = 3;
 
 class LLPipeline
 {
@@ -691,6 +692,15 @@ public:
     std::map<LLUUID, std::string> mActorMaskRecipientStatus; // WP7: IMPOSTOR/STYLED/NATIVE
     bool mActorMaskSummaryFrame = false; // WP7 consumes same 5s probe cadence
 
+    // [AvatarSilhouette] View-local RG8 coverage replay. Phase 0 is opaque /
+    // masked (before atmospherics); phase 1 adds authored-alpha coverage before
+    // froxel/projector volumetrics.
+    bool ensureSilCover();
+    void renderSilCover(U32 phase);
+    void renderGhostSilCover(U32 phase);
+    void releaseSilCovers();
+    bool mSilCoverValid = false;
+
     // [ActorMask] WP7 owns sequencing/captures. Overrides apply only to a valid
     // main MASK view; F3 never bypasses probe/Prism/excluded-view isolation.
     enum class ActorMaskTestMode : U8 { NORMAL, F0, F1, F2, F3 };
@@ -1223,6 +1233,8 @@ public:
         LLRenderTarget          deferredScreen;
         LLRenderTarget          actorMask; // [ActorMask] R8; shared depth, never owned
         U32                     actorMaskDepthSrc = 0;
+        LLRenderTarget          silCover; // [AvatarSilhouette] RG8; shared depth, never owned
+        U32                     silCoverDepthSrc = 0;
         LLRenderTarget          deferredLight;
 
         // tonemapped and gamma corrected render ready for post
@@ -1279,6 +1291,10 @@ public:
 
     // main full resoltuion render target
     RenderTargetPack mMainRT;
+
+    // [AvatarSilhouette T21] Full-resolution R8 mask read back at most 1 Hz.
+    // The attachment itself is owned by mMainRT.screen only in the parity build.
+    LLTimer        mRimParityReadbackTimer;
 
     // auxillary 512x512 render target pack
     // used by reflection probes and dynamic texture bakes

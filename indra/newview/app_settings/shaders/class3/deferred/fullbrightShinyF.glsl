@@ -65,6 +65,9 @@ vec2 actorFxUv(vec2 authored_uv, vec3 position_eye);
 vec2 actorFxRgbSplitUv(vec2 transformed_uv, float direction);
 vec3 alrPresentedLinear(vec3 c);
 float alrSpecKeep();
+bool alrSilOn();
+float alrSilKeep();
+vec3 alrSilFillAdd();
 bool alrDebug();
 #endif
 
@@ -152,6 +155,9 @@ void main()
     alr_keep = alrSpecKeep();
 #endif
     applyLegacyEnvKeep(color.rgb, legacyenv, spec, pos, norm, env_intensity, alr_keep);
+#ifdef HAS_ACTOR_FX
+    if (alrSilOn()) color.rgb *= alrSilKeep();
+#endif
 #endif
 
     color.a = 1.0;
@@ -161,9 +167,17 @@ void main()
         // This is an unblended world pass, so destination alpha is glow
         // metadata rather than material coverage.  Publish synthetic Actor FX
         // emission without changing the beauty colour or authored alpha path.
-        color.a += max(max(actor_fx_emissive.r, actor_fx_emissive.g),
-                       actor_fx_emissive.b);
+        float actor_fx_glow = max(max(actor_fx_emissive.r,
+                                      actor_fx_emissive.g),
+                                   actor_fx_emissive.b);
+#ifndef IS_HUD
+        if (alrSilOn()) actor_fx_glow *= alrSilKeep();
+#endif
+        color.a += actor_fx_glow;
     }
+#ifndef IS_HUD
+    if (alrSilOn()) color.rgb += alrSilFillAdd();
+#endif
 #endif
 
 #ifdef HAS_ACTOR_FX

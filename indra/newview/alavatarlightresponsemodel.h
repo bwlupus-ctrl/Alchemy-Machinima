@@ -33,6 +33,7 @@ constexpr F32 GLOW_MIN = 0.f;
 constexpr F32 GLOW_MAX = 2.f;
 constexpr F32 GLOW_DEFAULT = 1.f;
 constexpr F32 IDENTITY_EPSILON = 1.0e-4f;
+constexpr F32 SILHOUETTE_EPSILON = 1.0e-4f;
 
 struct Params
 {
@@ -40,7 +41,50 @@ struct Params
     F32  mTame       = 0.f;              // t, 0..1  (UI 0-100 %)
     F32  mExposureEV = 0.f;              // e, -2..+1 EV
     F32  mGlow       = GLOW_DEFAULT;     // g, 0..2  (UI 0-200 %)
+    F32  mSilAmount  = 0.f;              // a, 0..1  (UI 0-100 %)
+    LLVector3 mSilFillSrgb = LLVector3::zero; // display-sRGB fill colour
+    bool mSilHaze    = true;             // atmosphere lies over the fill
+    bool mSilKeepRim = false;            // keep evaluated rig/projector rim
     bool mBypass     = false;            // explicit identity (A/B)
+};
+
+struct Packed
+{
+    LLVector4 mParams = LLVector4(0.f, 1.f, 1.f, 1.f);
+    LLVector4 mSil = LLVector4(0.f, 0.f, 0.f, 0.f);
+    LLVector4 mSilAux = LLVector4(0.f, 0.f, 0.f, 0.f);
+};
+
+enum EUploadSlot
+{
+    UPLOAD_BEAUTY = 0,
+    UPLOAD_GLOW,
+    UPLOAD_SIL_ONLY
+};
+
+struct UploadPlan
+{
+    S32       enabled = 0;
+    LLVector4 params = LLVector4(0.f, 1.f, 1.f, 1.f);
+    LLVector4 sil = LLVector4(0.f, 0.f, 0.f, 0.f);
+    LLVector4 aux = LLVector4(0.f, 0.f, 0.f, 0.f);
+};
+
+// Pure CPU mirrors of the shader arithmetic used by the silhouette regression
+// tests.  These deliberately expose the shader-sized vector results so the
+// tests exercise channel coupling and operation order, not scalar stand-ins.
+struct PbrPunctualMirrorResult
+{
+    F32       nl = 0.f;
+    LLVector3 diffuse = LLVector3::zero;
+    LLVector3 specular = LLVector3::zero;
+};
+
+struct RigRimMirrorUniforms
+{
+    LLVector4 globals = LLVector4(1.f, 1.f, 1.f, 0.f);
+    LLVector4 tron = LLVector4(0.f, 0.f, 1.f, 0.f);
+    LLVector3 tron_color = LLVector3::zero;
 };
 
 // Clamp every field; non-finite values fall back to the field default.
@@ -49,6 +93,61 @@ Params    sanitize(const Params& p);
 bool      isIdentity(const Params& p);
 // (d, 1 - t, exp2(e), g); identity vector (0,1,1,1) when bypassed.
 LLVector4 pack(const Params& p);
+// All per-draw values. hdr_encoding selects the exact-integer fp16 carrier.
+Packed    packAll(const Params& p, bool hdr_encoding);
+S32       silQuant(F32 a, bool hdr);
+F32       silAmountQ(S32 q, bool hdr);
+F32       silCarrier(S32 q, bool haze_over, bool keep_rim, bool hdr);
+bool      silDecode(F32 carrier, bool hdr, F32& a_q, bool& haze_skip, bool& rim_cut);
+F32       srgbToLinear(F32 c);
+LLVector3 srgbToLinear(const LLVector3& c);
+
+enum EFillPreset
+{
+    FILL_BLACK = 0,
+    FILL_CHARCOAL,
+    FILL_WHITE,
+    FILL_CHROMA_GREEN,
+    FILL_CHROMA_BLUE,
+    FILL_CUSTOM,
+    FILL_PRESET_COUNT
+};
+
+LLVector3   fillPresetSrgb(EFillPreset preset);
+EFillPreset matchFillPreset(const LLVector3& fill_srgb);
+
+LLVector3 silForward(const LLVector3& lit, const LLVector3& fill_lin,
+                     F32 a_q, F32 fill_scale,
+                     const LLVector3& fog_A, const LLVector3& fog_B,
+                     bool haze_over);
+void      silHazeBlend(LLVector3& src_rgb, F32& src_a, F32 h);
+UploadPlan uploadPlan(const Packed* slot, EUploadSlot which, bool debug_tint);
+void      calcDiffuseSpecularMirror(const LLVector3& base_color, F32 metallic,
+                                    LLVector3& diffuse_color, LLVector3& specular_color);
+PbrPunctualMirrorResult pbrPunctualMirror(const LLVector3& diffuse_color,
+                                          const LLVector3& specular_color,
+                                          F32 perceptual_roughness, F32 metallic,
+                                          const LLVector3& n, const LLVector3& v,
+                                          const LLVector3& l);
+LLVector3 rigRimTermMirror(const LLVector3& n, const LLVector3& v, const LLVector3& l,
+                           const LLVector3& light_color, const LLVector3& diffuse_color,
+                           F32 roughness, const LLVector4& rim,
+                           const RigRimMirrorUniforms& uniforms);
+LLVector3 rimRecombine(const LLVector3& nonrim, const LLVector3& rim_raw,
+                       bool rim_on, F32 light_scale);
+// Production-composition mirrors: these own the output-side silhouette order
+// used by the shaders; tests build their references independently.
+LLVector3 pbrPunctualSilhouette(const LLVector3& base_color, F32 metallic,
+                               F32 perceptual_roughness,
+                               const LLVector3& n, const LLVector3& v,
+                               const LLVector3& l, const LLVector3& fill,
+                               F32 amount);
+LLVector3 keepRimSilhouette(const LLVector3& nonrim, const LLVector3& rim,
+                           const LLVector3& fill, F32 amount, bool keep_rim);
+LLVector3 nonlinearLookRimSilhouette(const LLVector3& styled_with_rim,
+                                    const LLVector3& styled_without_rim,
+                                    const LLVector3& fill, F32 amount,
+                                    bool keep_rim);
 // CPU mirror of GLSL alr_gain: effective albedo gain (ceiling when k > 1).
 F32       albedoGain(F32 k, F32 max_rgb);
 // CPU mirror of the legacy-gloss rule (GLSL alrLegacySpec).
@@ -66,12 +165,13 @@ enum EPreset
     PRESET_MINUS_HALF_STOP,
     PRESET_MINUS_ONE_STOP,
     PRESET_GLOW_OFF,
+    PRESET_SILHOUETTE,
     PRESET_COUNT
 };
 
 Params    applyPreset(const Params& cur, EPreset preset);
 
-LLSD      toLLSD(const Params& p);     // "diffuse","tame","ev","glow","bypass"
+LLSD      toLLSD(const Params& p);     // v1 keys, including sil_* fields
 Params    fromLLSD(const LLSD& s);     // missing keys => defaults; result sanitized
 }
 

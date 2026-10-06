@@ -30,6 +30,7 @@
 
 #include "llviewerprecompiledheaders.h"
 
+#include <algorithm>
 #include <boost/lexical_cast.hpp>
 #include <filesystem>
 #include <fstream>
@@ -71,6 +72,10 @@ using std::string;
 
 bool                LLViewerShaderMgr::sInitialized = false;
 bool                LLViewerShaderMgr::sSkipReload = false;
+
+// Runtime T21 readback is legal only after a successful load of the matching
+// compile-time permutation. pipeline.cpp consumes this load-result latch.
+bool gAvatarSilhouetteRimParityCompiled = false;
 
 LLVector4           gShinyOrigin;
 
@@ -134,6 +139,7 @@ LLGLSLShader        gWorldSkinnedActorGhostProgram;
 LLGLSLShader        gWorldActorGhostIndexedProgram;
 LLGLSLShader        gWorldSkinnedActorGhostIndexedProgram;
 LLGLSLShader gActorMaskProgram[ACTOR_MASK_PROGRAM_COUNT]; // [ActorMask]
+LLGLSLShader gSilCoverProgram[ACTOR_MASK_PROGRAM_COUNT]; // [AvatarSilhouette]
 // [ActorMask] One sampler per slot; native material auxiliary maps are unnecessary.
 S32 actorMaskTextureChannels()
 {
@@ -486,14 +492,31 @@ static bool sl_visible_diffuse_sidecar()
     return sl_sidecar;
 }
 
-static void add_common_permutations(LLGLSLShader* shader)
+static bool alr_emissive_buffer_enabled()
 {
     static LLCachedControl<bool> emissive(gSavedSettings, "RenderEnableEmissiveBuffer", false);
+    static LLCachedControl<bool> silhouette_force(gSavedSettings, "AvatarSilhouetteForceEmissive", false);
+    return emissive() || silhouette_force();
+}
+
+static bool alr_silhouette_only_emissive()
+{
+    static LLCachedControl<bool> emissive(gSavedSettings, "RenderEnableEmissiveBuffer", false);
+    static LLCachedControl<bool> silhouette_force(gSavedSettings, "AvatarSilhouetteForceEmissive", false);
+    return !emissive() && silhouette_force();
+}
+
+static void add_common_permutations(LLGLSLShader* shader)
+{
     static LLCachedControl<bool> visible_diffuse(gSavedSettings, "RenderVisibleDiffuseSidecar", false);
 
-    if (emissive)
+    if (alr_emissive_buffer_enabled())
     {
         shader->addPermutation("HAS_EMISSIVE", "1");
+    }
+    if (alr_silhouette_only_emissive())
+    {
+        shader->addPermutation("EMISSIVE_SILHOUETTE_ONLY", "1");
     }
     if (visible_diffuse)
     {
@@ -632,6 +655,8 @@ void LLViewerShaderMgr::finalizeShaderList()
         mShaderList.push_back(&gAvatarActorGhostProgram);
         mShaderList.push_back(&gAvatarEyeballActorGhostProgram);
     }
+    for (auto& shader : gSilCoverProgram)
+        if (shader.isComplete()) mShaderList.push_back(&shader);
     if (gWorldActorGhostProgram.mProgramObject)
     {
         mShaderList.push_back(&gWorldActorGhostProgram);
@@ -802,7 +827,18 @@ void LLViewerShaderMgr::initAttribsAndUniforms(void)
     if (mReservedAttribs.empty())
     {
         LLShaderMgr::initAttribsAndUniforms();
+        // [AvatarSilhouette] WP4's exhaustive file list excludes llshadermgr.*;
+        // register the independent coverage sampler here before any programs
+        // are linked so every LLGLSLShader sizes/maps its uniform vectors with it.
+        mReservedUniforms.push_back("silCoverMap");
     }
+}
+
+S32 silCoverMapUniform()
+{
+    const auto& uniforms = LLShaderMgr::instance()->mReservedUniforms;
+    const auto found = std::find(uniforms.begin(), uniforms.end(), "silCoverMap");
+    return found == uniforms.end() ? -1 : static_cast<S32>(found - uniforms.begin());
 }
 
 
@@ -1232,11 +1268,13 @@ std::string LLViewerShaderMgr::loadBasicShaders()
     attribs["MAX_JOINTS_PER_MESH_OBJECT"] =
         std::to_string(LLSkinningUtil::getMaxJointCount());
 
-    static LLCachedControl<bool> emissive(gSavedSettings, "RenderEnableEmissiveBuffer", false);
-
-    if (emissive)
+    if (alr_emissive_buffer_enabled())
     {
         attribs["HAS_EMISSIVE"] = "1";
+    }
+    if (alr_silhouette_only_emissive())
+    {
+        attribs["EMISSIVE_SILHOUETTE_ONLY"] = "1";
     }
 
     bool ssr = gSavedSettings.getBOOL("RenderScreenSpaceReflections");
@@ -1614,6 +1652,7 @@ bool LLViewerShaderMgr::loadShadersEffects()
 bool LLViewerShaderMgr::loadShadersDeferred()
 {
     LL_PROFILE_ZONE_SCOPED;
+    gAvatarSilhouetteRimParityCompiled = false;
     bool use_sun_shadow = mShaderLevel[SHADER_DEFERRED] > 1 &&
         gSavedSettings.getS32("RenderShadowDetail") > 0;
 
@@ -1662,6 +1701,7 @@ bool LLViewerShaderMgr::loadShadersDeferred()
         gDeferredAvatarAlphaShadowProgram.unload();
         gDeferredAvatarAlphaMaskShadowProgram.unload();
         for (auto& shader : gActorMaskProgram) shader.unload(); // [ActorMask]
+        for (auto& shader : gSilCoverProgram) shader.unload(); // [AvatarSilhouette]
         gActorMaskDebugProgram.unload(); // [ActorMask] WP7
         gDeferredAvatarProgram.unload();
         gDeferredAvatarAlphaProgram.unload();
@@ -2226,6 +2266,10 @@ bool LLViewerShaderMgr::loadShadersDeferred()
         shader->mShaderFiles.push_back(make_pair("deferred/pbralphaF.glsl", GL_FRAGMENT_SHADER));
 
         shader->clearPermutations();
+        if (gSavedSettings.getBOOL("AvatarSilhouetteRimParity"))
+        {
+            shader->addPermutation("ALR_RIMSPLIT_PARITY", "1");
+        }
         shader->addPermutation("HAS_ACTOR_FX", "1");
 
         U32 alpha_mode = LLMaterial::DIFFUSE_ALPHA_MODE_BLEND;
@@ -2309,6 +2353,10 @@ bool LLViewerShaderMgr::loadShadersDeferred()
                 "deferred/sharedActorFxPbrF.glsl", GL_FRAGMENT_SHADER));
             beauty.mShaderLevel = mShaderLevel[SHADER_DEFERRED];
             beauty.clearPermutations();
+            if (gSavedSettings.getBOOL("AvatarSilhouetteRimParity"))
+            {
+                beauty.addPermutation("ALR_RIMSPLIT_PARITY", "1");
+            }
             beauty.addPermutation("HAS_ACTOR_FX", "1");
             beauty.addPermutation("SHARED_ACTOR_FX_REPLAY", "1");
             beauty.addPermutation("SHARED_ACTOR_FX_ALPHA_MODE",
@@ -3297,6 +3345,10 @@ bool LLViewerShaderMgr::loadShadersDeferred()
             gVisibleDiffuseSeedProgram.mName = "Visible Diffuse Seed Shader";
             gVisibleDiffuseSeedProgram.mShaderFiles.clear();
             gVisibleDiffuseSeedProgram.clearPermutations();
+            if (alr_emissive_buffer_enabled())
+            {
+                gVisibleDiffuseSeedProgram.addPermutation("HAS_EMISSIVE", "1");
+            }
             gVisibleDiffuseSeedProgram.mFeatures.isDeferred = true;
             gVisibleDiffuseSeedProgram.mFeatures.hasFullGBuffer = true;
             gVisibleDiffuseSeedProgram.mShaderFiles.push_back(make_pair("deferred/softenLightV.glsl", GL_VERTEX_SHADER));
@@ -4129,6 +4181,10 @@ bool LLViewerShaderMgr::loadShadersDeferred()
         gDeferredProjectorVolumetricProgram.mFeatures.hasShadows = true;
         gDeferredProjectorVolumetricProgram.mShaderFiles.clear();
         gDeferredProjectorVolumetricProgram.clearPermutations();
+        if (alr_emissive_buffer_enabled())
+        {
+            gDeferredProjectorVolumetricProgram.addPermutation("HAS_EMISSIVE", "1");
+        }
         gDeferredProjectorVolumetricProgram.addPermutation("SPOT_SHADOW", "1");
         // [BDMerge G3.3 Dust / review fix] Dust is a compile-time permutation:
         // with the lever OFF the sampler3D projvol_dust_map (and all dust code)
@@ -4865,6 +4921,10 @@ bool LLViewerShaderMgr::loadShadersDeferred()
         gFroxelApplyProgram.mFeatures.isDeferred = true;
         gFroxelApplyProgram.mShaderFiles.clear();
         gFroxelApplyProgram.clearPermutations();
+        if (alr_emissive_buffer_enabled())
+        {
+            gFroxelApplyProgram.addPermutation("HAS_EMISSIVE", "1");
+        }
         gFroxelApplyProgram.mShaderFiles.push_back(make_pair("deferred/postDeferredNoTCV.glsl", GL_VERTEX_SHADER));
         gFroxelApplyProgram.mShaderFiles.push_back(make_pair("deferred/froxelApplyF.glsl", GL_FRAGMENT_SHADER));
         gFroxelApplyProgram.mShaderFiles.push_back(make_pair("deferred/froxelUtil.glsl", GL_FRAGMENT_SHADER));
@@ -5264,6 +5324,38 @@ bool LLViewerShaderMgr::loadShadersDeferred()
             }
         }
 
+        // [AvatarSilhouette] Coverage replay programs deliberately share the
+        // Actor Mask vertex contract, but write continuous RG coverage.
+        for (S32 i = 0; i < ACTOR_MASK_PROGRAM_COUNT; ++i)
+        {
+            LLGLSLShader& shader = gSilCoverProgram[i];
+            shader.mName = llformat("SilCover %d", i);
+            shader.mFeatures = LLShaderFeatures();
+            shader.mFeatures.hasSkinning = i == ACTOR_MASK_BODY;
+            shader.mFeatures.hasObjectSkinning =
+                i == ACTOR_MASK_RIGGED || i == ACTOR_MASK_PBR_RIGGED;
+            shader.mShaderLevel = mShaderLevel[SHADER_DEFERRED];
+            shader.mShaderFiles.clear();
+            shader.mShaderFiles.push_back(make_pair(
+                i == ACTOR_MASK_BODY ? "deferred/actorMaskAvatarV.glsl" :
+                i == ACTOR_MASK_EYES ? "deferred/actorMaskEyesV.glsl" :
+                                      "deferred/actorMaskV.glsl", GL_VERTEX_SHADER));
+            shader.mShaderFiles.push_back(make_pair("deferred/silCoverF.glsl", GL_FRAGMENT_SHADER));
+            shader.clearPermutations();
+            shader.addPermutation("MASK_CHANNELS", llformat("%d", actorMaskTextureChannels()));
+            if (shader.mFeatures.hasObjectSkinning) shader.addPermutation("HAS_SKIN", "1");
+            if (i == ACTOR_MASK_PBR || i == ACTOR_MASK_PBR_RIGGED)
+                shader.addPermutation("MASK_PBR", "1");
+            if (i >= ACTOR_MASK_BODY) shader.addPermutation("SIL_COVER_SYSTEM", "1");
+            if (i == ACTOR_MASK_BODY && gSavedSettings.getBOOL("RenderAvatarCloth"))
+                shader.addPermutation("AVATAR_CLOTH", "1");
+            if (!shader.createShader())
+            {
+                shader.unload();
+                LL_WARNS("AvatarSilhouette") << "SILCOVER NO-PROGRAM " << i << LL_ENDL;
+            }
+        }
+
         // [ActorMask] WP7 debug view (CineLightRigActorMaskDebug 1/2). Optional:
         // a failure only disables the view and never touches `success`.
         gActorMaskDebugProgram.mName = "ActorMask Debug View";
@@ -5281,6 +5373,9 @@ bool LLViewerShaderMgr::loadShadersDeferred()
             LL_DEBUGS("ActorMask") << "[ActorMask] debug view program failed to compile" << LL_ENDL;
         }
     }
+    gAvatarSilhouetteRimParityCompiled = success &&
+        gSavedSettings.getBOOL("AvatarSilhouetteRimParity") &&
+        gDeferredPBRAlphaProgram.isComplete();
     return success;
 }
 

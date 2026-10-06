@@ -66,6 +66,9 @@ void pbrPunctual(vec3 diffuseColor, vec3 specularColor,
                     out vec3 spec);
 
 GBufferInfo getGBuffer(vec2 screenpos);
+#if defined(HAS_EMISSIVE)
+bool alrSilDecode(float carrier, float gbuffer_flag, out float k, out float r, out bool haze_skip);
+#endif
 
 // [RigRim] per-light rim params (x gain, y k, z wrap, w back bias); zero for
 // every non-rig light.  Uploaded next to LIGHT_CENTER/LIGHT_SIZE in the
@@ -81,6 +84,13 @@ void main()
     vec2 tc          = getScreenCoord(vary_fragcoord);
     vec3 pos         = getPosition(tc).xyz;
     GBufferInfo gb = getGBuffer(tc);
+    bool alr_sil = false;
+    float alr_k = 1.0;
+    float alr_r = 1.0;
+    bool alr_haze_skip = false;
+#if defined(HAS_EMISSIVE)
+    alr_sil = alrSilDecode(gb.emissive.a, gb.gbufferFlag, alr_k, alr_r, alr_haze_skip);
+#endif
 
     vec3 n = gb.normal;
 
@@ -134,7 +144,14 @@ void main()
             {
                 final_color = vec3(0.0); // debug: rim only
             }
-            final_color += rim_color;
+            if (alr_sil)
+            {
+                final_color = final_color * alr_k + rim_color * alr_r;
+            }
+            else
+            {
+                final_color += rim_color;
+            }
         }
     }
     else
@@ -181,13 +198,24 @@ void main()
             {
                 final_color = vec3(0.0); // debug: rim only
             }
-            final_color += rim_color;
+            if (alr_sil)
+            {
+                final_color = final_color * alr_k + rim_color * alr_r;
+            }
+            else
+            {
+                final_color += rim_color;
+            }
         }
 
         if (dot(final_color, final_color) <= 0.0)
         {
             discard;
         }
+    }
+    if (alr_sil && rigRimMode() == 0)
+    {
+        final_color *= alr_k;
     }
     float final_scale = 1.0;
     if (classic_mode > 0)

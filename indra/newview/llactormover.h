@@ -31,6 +31,7 @@
 #include "lluuid.h"
 #include "llsd.h"
 #include "v3math.h"
+#include "v2math.h"
 #include "v3dmath.h"
 #include "v4color.h"        // actorPathColor()
 #include "llquaternion.h"
@@ -753,6 +754,8 @@ public:
     LLVOAvatar* sharedActorStyleProxyAvatar(size_t index) const; // [ActorMask]
     static bool actorMaskAvatarEligible(LLVOAvatar* avatar); // [ActorMask]
     U32 renderSystemActorMask(LLVOAvatar* avatar, U8 byte); // [ActorMask]
+    U32 renderSystemSilCover(LLVOAvatar* avatar, const LLVector2& cover, U32 phase);
+    void renderSharedProxySilCover(U32 phase);
     // Cover owns an opaque/masked depth silhouette. Prime that silhouette once
     // before any native/shared alpha is drained so already-blended world alpha
     // cannot leak through a styled actor whose sorted colour turn is later.
@@ -1038,6 +1041,9 @@ public:
         // [AvatarLightResponse] Ghost Studio instance id for a Studio CLONE draw (light-response key);
         // null for path ghosts and shared Actor FX live replays => identity.
         LLUUID     mLightResponseKey;
+        // Provenance, not a look-number test: Actor FX forward-fallback look 1
+        // intentionally aliases GHOST_STYLE_CLONE numerically.
+        bool       mIsClone = false;
         F32        mDissolveProgress = 0.5f; // shared beauty/shadow coverage 0..1
         // actorghostF historically composites after tone mapping and therefore
         // authors its output in display/sRGB space.  The native live Wire pass
@@ -1084,6 +1090,8 @@ public:
         // no coverage info -> the classic full draw, byte-identical.
         GhostCoverageMask mDeferredCoverage = GHOST_COVERAGE_NONE;
         GhostCoverageMask mPresentCoverage  = GHOST_COVERAGE_NONE;
+        // [AvatarSilhouette] 0=beauty, 1=coverage Phase A, 2=coverage Phase B.
+        U8 mSilCoverPhase = 0;
     };
 
 private:

@@ -13,6 +13,7 @@
 
 #include "alavatarlightresponse.h"
 #include "alavatarlightresponsemodel.h"
+#include "aluirefresh.h"
 
 #include "llfloater.h"
 #include "llframetimer.h"
@@ -28,6 +29,7 @@
 class LLButton;
 class LLCheckBoxCtrl;
 class LLComboBox;
+class LLColorSwatchCtrl;
 class LLScrollListCtrl;
 class LLSliderCtrl;
 class LLTextBox;
@@ -41,6 +43,7 @@ public:
     bool postBuild() override;
     void onOpen(const LLSD& key) override;
     void onClose(bool app_quitting) override;
+    void onVisibilityChange(bool new_visibility) override;
     void draw() override;
 
 private:
@@ -49,7 +52,8 @@ private:
         FIELD_DIFFUSE = 0,
         FIELD_TAME,
         FIELD_BRIGHTNESS,
-        FIELD_GLOW
+        FIELD_GLOW,
+        FIELD_SIL_AMOUNT
     };
 
     struct RowInfo
@@ -65,6 +69,9 @@ private:
     void refreshEditors();
     void refreshStatus();
     void refreshBrightnessValue();
+    void refreshSilhouetteNote();
+    static void onIdle(void* user_data);
+    void idleUpdate();
 
     std::vector<LLUUID> selectedKeys() const;
     ALLightResponse::Params currentParams(const LLUUID& key) const;
@@ -75,6 +82,9 @@ private:
     void onSliderCommit(EField field);
     void onSliderMouseUp();
     void onBypass();
+    void onSilFill(bool save_now, bool custom);
+    void onSilFillPreset();
+    void onSilCheckbox(bool haze);
     void onApplyPreset();
     void onResetSelected();
     void onInheritSelected();
@@ -91,6 +101,12 @@ private:
     LLSliderCtrl*     mBrightness = nullptr;
     LLSliderCtrl*     mGlow = nullptr;
     LLCheckBoxCtrl*   mBypass = nullptr;
+    LLSliderCtrl*     mSilAmount = nullptr;
+    LLColorSwatchCtrl* mSilFill = nullptr;
+    LLComboBox*       mSilFillPreset = nullptr;
+    LLCheckBoxCtrl*   mSilHaze = nullptr;
+    LLCheckBoxCtrl*   mSilKeepRim = nullptr;
+    LLTextBox*        mSilNote = nullptr;
     LLComboBox*       mPreset = nullptr;
     LLButton*         mApplyPreset = nullptr;
     LLButton*         mResetSelected = nullptr;
@@ -103,13 +119,17 @@ private:
 
     std::vector<LLUUID>          mRowKeys;       // keys of the rows currently in the list, in order
     std::map<LLUUID, RowInfo>    mRowInfo;
+    std::map<LLUUID, S32>        mStateVisuals;  // diff guard for dot text/colour writes
     std::set<LLUUID>             mPinnedKeys;    // rows requested through onOpen(key) that no other source lists
     bool                         mUpdating = false;   // widgets are being set from code: ignore commits
-    bool                         mStatesDirty = true;
+    bool                         mIdleRowsPending = true;
+    bool                         mIdleRowsImmediate = false;
+    bool                         mIdleStatePending = true;
     bool                         mSliderDragging = false;   // a slider has mouse capture: never reset it from a refresh
     bool                         mHaveClip = false;
     ALLightResponse::Params      mClip;
     LLFrameTimer                 mRefreshTimer;
+    ALRevisionGate               mStoreGate;
     boost::signals2::connection  mChangeConnection;
 };
 

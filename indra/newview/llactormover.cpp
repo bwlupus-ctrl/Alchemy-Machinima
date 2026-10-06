@@ -63,6 +63,7 @@
 #include "llviewercontrol.h"        // gSavedSettings, LLCachedControl
 #include "llviewerobjectlist.h"     // gObjectList (object gaze targets)
 #include "llviewershadermgr.h"      // gUIProgram / gHighlightProgram (heading preview + model ghost)
+#include "alavatarlightresponse.h"  // [AvatarSilhouette] coverage-key resolution
 #include "llviewertexture.h"        // sWhiteImagep (flat-tint texture for the model ghost)
 #include "llviewerwindow.h"         // raw snapshot tile dimensions for Actor FX
 #include "llvoavatar.h"
@@ -11323,6 +11324,8 @@ static LLStaticHashedString sGhostAux("ghostAux");
 static LLStaticHashedString sGhostFx("ghostFx");
 static LLStaticHashedString sGhostSlot("ghostSlot");
 static LLStaticHashedString sGhostLook("ghostLook");
+static LLStaticHashedString sGhostIsClone("ghostIsClone");
+static LLStaticHashedString sGhostAlrParams("alrParams");
 static LLStaticHashedString sGhostDistort("ghostDistort");
 static LLStaticHashedString sGhostDistortParams("ghostDistortParams");
 static LLStaticHashedString sGhostUseVertexAlpha("ghostUseVertexAlpha");
@@ -11828,6 +11831,8 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
                       bool* out_complete = nullptr)
 {
     bool complete = true;
+    const bool coverage_mode = gp.mSilCoverPhase != 0;
+    const bool coverage_blended = gp.mSilCoverPhase == 2;
     if (out_complete)
     {
         *out_complete = true;
@@ -11844,7 +11849,7 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
     // IDs above the shared prefix are a live-world contract. Preserve the
     // historical default Ghost behavior for every non-world caller even if
     // malformed/future instance data somehow supplies a live-only value.
-    if (!gp.mWorldLinear && LLDirectorCast::isLiveActorStyleLook(style))
+    if (!coverage_mode && !gp.mWorldLinear && LLDirectorCast::isLiveActorStyleLook(style))
     {
         style = GHOST_STYLE_GHOST;
     }
@@ -11859,20 +11864,22 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
         ? &gWorldActorGhostProgram : &gActorGhostProgram;
     LLGLSLShader* fx = fx_base->mRiggedVariant;
     const bool have_fx = fx && fx->mProgramObject;
-    if (gp.mWorldLinear && !have_fx)
+    if (!coverage_mode && gp.mWorldLinear && !have_fx)
     {
         // Shared activation preflights the world permutation before native
         // suppression. Falling back here is still useful to legacy callers,
         // but is an invariant violation for the shared replay.
         complete = false;
     }
-    if (!have_fx && style != GHOST_STYLE_GHOST && style != GHOST_STYLE_CLONE
+    if (!coverage_mode && !have_fx && style != GHOST_STYLE_GHOST && style != GHOST_STYLE_CLONE
         && style != GHOST_STYLE_WIREFRAME)
     {
         style = GHOST_STYLE_GHOST;
     }
-    LLGLSLShader* shader = have_fx ? fx : gHighlightProgram.mRiggedVariant;
-    LLGLSLShader* static_shader = have_fx ? fx_base : &gHighlightProgram;
+    LLGLSLShader* shader = coverage_mode ? gSilCoverProgram[ACTOR_MASK_RIGGED] :
+        (have_fx ? fx : gHighlightProgram.mRiggedVariant);
+    LLGLSLShader* static_shader = coverage_mode ? &gSilCoverProgram[ACTOR_MASK_STATIC] :
+        (have_fx ? fx_base : &gHighlightProgram);
     LLGLSLShader* indexed_shader = gp.mWorldLinear
         ? &gWorldSkinnedActorGhostIndexedProgram : nullptr;
     const bool have_indexed_shader = indexed_shader
@@ -11961,7 +11968,20 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
         ? LLRenderPass::actorFxScreenSize() : LLVector2(1.f, 1.f);
     auto apply_program = [&](LLGLSLShader* sh)
     {
-        if (gp.mWorldLinear)
+        if (coverage_mode)
+        {
+            sh->bind();
+            GLint samplers[32];
+            const S32 channels = actorMaskTextureChannels();
+            for (S32 i = 0; i < channels; ++i) samplers[i] = i;
+            static const LLStaticHashedString textures("mask_textures"), indexed("mask_indexed"),
+                material_slots("mask_material_slots"), vec3_position("mask_vec3_position");
+            sh->uniform1iv(textures, channels, samplers);
+            sh->uniform1i(indexed, 0);
+            sh->uniform1i(material_slots, 0);
+            sh->uniform1i(vec3_position, 0);
+        }
+        else if (gp.mWorldLinear)
         {
             gPipeline.bindDeferredShaderFast(*sh);
         }
@@ -11969,7 +11989,7 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
         {
             sh->bind();
         }
-        if (have_fx)
+        if (!coverage_mode && have_fx)
         {
             // neutral alpha state (per-draw code retargets ghostAux.xy and
             // ghostSlot); the per-instance creative FX ride zw / ghostFx
@@ -11980,6 +12000,7 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
                           gp.mGlitch, llclamp(gp.mBrightness, 0.05f, 1.5f));
             sh->uniform1i(sGhostSlot, -1);
             sh->uniform1i(sGhostLook, style);
+            sh->uniform1i(sGhostIsClone, gp.mIsClone ? 1 : 0);
             sh->uniform1i(sGhostDistort, gp.mDistort);
             sh->uniform4f(sGhostDistortParams,
                           llclamp(gp.mDistortAmount, 0.f, 1.f), 0.5f, 0.5f, 0.f);
@@ -12119,7 +12140,7 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
 
             const S32 indexed_slot_count =
                 ghost_legacy_indexed_slot_count(di);
-            const bool indexed_world = gp.mWorldLinear
+            const bool indexed_world = !coverage_mode && gp.mWorldLinear
                 && indexed_slot_count > 1;
             if (indexed_world
                 && !di->mVertexBuffer->hasDataType(
@@ -12152,16 +12173,43 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
             }
 
             // [AvatarLightResponse] light response goes to the program that is BOUND for this draw (batch_shader
-            // == active_shader here), on every batch of every style so identity always resets; only
-            // a Studio CLONE draw carries a non-zero response. GLOW slot: the additive authored-
-            // emissive sweep receives Glow (z := g) and never Brightness.
+            // == active_shader here), on every batch of every style so identity always resets.
+            // Studio CLONE uses normal BEAUTY/GLOW trims; shared Actor FX replays use SIL_ONLY
+            // so the resident silhouette survives without applying trims a second time.
+            if (coverage_mode)
             {
-                const bool alr_on = style == GHOST_STYLE_CLONE && gp.mLightResponseKey.notNull();
+                LLVector2 cover;
+                const ALLightResponse::Packed* packed = ALAvatarLightResponse::instance().peek(
+                    gp.mLightResponseKey, di->mActorFxOwner, di->mActorFxFallbackOwner);
+                if (!packed || packed->mSil.mV[VW] <= 0.f)
+                {
+                    continue;
+                }
+                const F32 amount = packed->mSil.mV[VW];
+                cover.set(packed->mSilAux.mV[VY] < 0.5f ? amount : 0.f,
+                          packed->mSilAux.mV[VZ] < 0.5f ? amount : 0.f);
+                if (cover.mV[VX] <= 0.f && cover.mV[VY] <= 0.f) continue;
+                static const LLStaticHashedString sSilCover("sil_cover"), sSilBlended("sil_blended");
+                batch_shader->uniform2fv(sSilCover, 1, cover.mV);
+                batch_shader->uniform1i(sSilBlended, coverage_blended ? 1 : 0);
+            }
+            else
+            {
+                const bool alr_on = gp.mIsClone && gp.mLightResponseKey.notNull();
                 LLRenderPass::uploadAvatarLightResponseTo(*batch_shader,
-                    alr_on ? gp.mLightResponseKey : LLUUID::null,
-                    alr_on ? di->mActorFxOwner : LLUUID::null,
-                    alr_on ? di->mActorFxFallbackOwner : LLUUID::null,
-                    subset == SWEEP_GLOW ? LLRenderPass::ALR_SLOT_GLOW : LLRenderPass::ALR_SLOT_BEAUTY);
+                    gp.mLightResponseKey,
+                    di->mActorFxOwner,
+                    di->mActorFxFallbackOwner,
+                    alr_on
+                        ? (subset == SWEEP_GLOW ? LLRenderPass::ALR_SLOT_GLOW
+                                                : LLRenderPass::ALR_SLOT_BEAUTY)
+                        : LLRenderPass::ALR_SLOT_SIL_ONLY);
+                if (!alr_on)
+                {
+                    // SIL_ONLY is trim identity even if its implementation or
+                    // a prior program upload changes independently.
+                    batch_shader->uniform4f(sGhostAlrParams, 0.f, 1.f, 1.f, 1.f);
+                }
             }
 
             // matrix palette: a FROZEN studio instance uploads the snapshot
@@ -12204,7 +12252,7 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
             // also biases the cutoff); PBR OPAQUE ignores base-colour alpha.
             // Legacy non-alpha-pool faces otherwise bake SHININESS there
             // (shiny "None" == 0).
-            if (have_fx)
+            if (have_fx || coverage_mode)
             {
                 const bool is_pbr = di->mGLTFMaterial.notNull()
                     || !di->mGLTFMaterialList.empty();
@@ -12214,10 +12262,15 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
                 const bool use_vertex_alpha = is_blend
                     || cutoff_mode == GHOST_CUTOFF_TEXTURE_VERTEX_ALPHA
                     || (is_pbr && is_mask);
-                batch_shader->uniform1i(sGhostUseVertexAlpha,
-                                        use_vertex_alpha ? 1 : 0);
-                if (gp.mWorldLinear)
+                if (coverage_mode)
                 {
+                    static const LLStaticHashedString sMaskVertexAlpha("mask_vertex_alpha");
+                    batch_shader->uniform1i(sMaskVertexAlpha, use_vertex_alpha ? 1 : 0);
+                }
+                else
+                {
+                    batch_shader->uniform1i(sGhostUseVertexAlpha,
+                                            use_vertex_alpha ? 1 : 0);
                     batch_shader->uniform1i(sGhostAlphaCutoffMode, cutoff_mode);
                 }
             }
@@ -12383,7 +12436,33 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
             // per slot with the ghostSlot shader filter; flat tints that never
             // sample texture RGB keep the single unfiltered draw.
             const S32 slot_count = ghost_batch_slot_count(di);
-            const bool per_slot = have_fx && slot_count > 1
+            if (coverage_mode && slot_count > 1 && slot_count <= 8 &&
+                di->mVertexBuffer->hasDataType(LLVertexBuffer::TYPE_TEXTURE_INDEX))
+            {
+                F32 cutoffs[8] = {};
+                for (S32 s = 0; s < slot_count; ++s)
+                {
+                    F32 slot_cutoff = 0.f;
+                    LLColor4 factor;
+                    LLViewerTexture* tex = ghost_batch_slot_texture(
+                        di, s, false, slot_cutoff, factor);
+                    gGL.getTexUnit(s)->bind(tex ? tex :
+                        (LLViewerTexture*)LLViewerFetchedTexture::sWhiteImagep);
+                    cutoffs[s] = is_mask ? slot_cutoff : -1.f;
+                }
+                static const LLStaticHashedString sMaskIndexed("mask_indexed"),
+                    sMaskMaterialSlots("mask_material_slots"), sMaskCutoff("mask_cutoff");
+                batch_shader->uniform1i(sMaskIndexed, 1);
+                batch_shader->uniform1i(sMaskMaterialSlots, 1);
+                batch_shader->uniform1fv(sMaskCutoff, 8, cutoffs);
+                di->mVertexBuffer->setBuffer();
+                di->mVertexBuffer->drawRange(LLRender::TRIANGLES, di->mStart,
+                                             di->mEnd, di->mCount, di->mOffset);
+                batch_shader->uniform1i(sMaskIndexed, 0);
+                batch_shader->uniform1i(sMaskMaterialSlots, 0);
+                continue;
+            }
+            const bool per_slot = !coverage_mode && have_fx && slot_count > 1
                 && (texture_rgb || (alpha_aware && (is_mask || is_blend)))
                 && di->mVertexBuffer->hasDataType(LLVertexBuffer::TYPE_TEXTURE_INDEX);
             const S32 draws = per_slot ? slot_count : 1;
@@ -12443,7 +12522,7 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
                 else
                 {
                     // scalar path (the common case, unchanged semantics)
-                    if (texture_rgb || (alpha_aware && have_fx && (is_mask || is_blend)))
+                    if (texture_rgb || (alpha_aware && (have_fx || coverage_mode) && (is_mask || is_blend)))
                     {
                         tex = ghost_batch_texture(di);
                     }
@@ -12467,7 +12546,7 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
                 gGL.getTexUnit(0)->bind(
                     tex ? tex : (LLViewerTexture*)LLViewerFetchedTexture::sWhiteImagep);
 
-                if (have_fx)
+                if (!coverage_mode && have_fx)
                 {
                     // Alpha follows the material's ALPHA MODE, not merely the
                     // presence of an alpha channel. PBR base-colour factor alpha
@@ -12527,7 +12606,14 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
                     gGL.diffuseColor4f(r, g, b, a);
                 }
 
-                if (have_fx)
+                if (coverage_mode)
+                {
+                    F32 cutoffs[8] = {};
+                    cutoffs[0] = is_mask ? cutoff : -1.f;
+                    static const LLStaticHashedString sMaskCutoff("mask_cutoff");
+                    batch_shader->uniform1fv(sMaskCutoff, 8, cutoffs);
+                }
+                else if (have_fx)
                 {
                     // per-draw cutoff (0 keeps everything); re-upload only on
                     // change, always carrying the instance FX in zw along
@@ -12634,6 +12720,22 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
                 complete = false;
                 continue;
             }
+            const LLDrawInfo* alr_di = face->mDrawInfo;
+            if (coverage_mode)
+            {
+                const ALLightResponse::Packed* packed = ALAvatarLightResponse::instance().peek(
+                    gp.mLightResponseKey,
+                    alr_di ? alr_di->mActorFxOwner : LLUUID::null,
+                    alr_di ? alr_di->mActorFxFallbackOwner : LLUUID::null);
+                if (!packed || packed->mSil.mV[VW] <= 0.f) continue;
+                const F32 amount = packed->mSil.mV[VW];
+                LLVector2 cover(packed->mSilAux.mV[VY] < 0.5f ? amount : 0.f,
+                                packed->mSilAux.mV[VZ] < 0.5f ? amount : 0.f);
+                if (cover.mV[VX] <= 0.f && cover.mV[VY] <= 0.f) continue;
+                static const LLStaticHashedString sSilCover("sil_cover"), sSilBlended("sil_blended");
+                static_shader->uniform2fv(sSilCover, 1, cover.mV);
+                static_shader->uniform1i(sSilBlended, coverage_blended ? 1 : 0);
+            }
 
             // [R2-5] cull-faithful: double-sided GLTF unculls per face
             LLGLDisable no_cull(gf.mDoubleSided ? GL_CULL_FACE : 0);
@@ -12642,7 +12744,7 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
             LLViewerTexture* ftex = nullptr;
             const LLTextureEntry* te = face->getTextureEntry();
             LLGLTFMaterial* gmat = te ? te->getGLTFRenderMaterial() : nullptr;
-            if (texture_rgb || (alpha_aware && have_fx && gf.mAlphaKind != 0))
+            if (texture_rgb || (alpha_aware && (have_fx || coverage_mode) && gf.mAlphaKind != 0))
             {
                 // [R3] Mirror ghost_batch_texture's rule for rigged batches. On
                 // a PBR face the colour map is the MATERIAL's base-colour
@@ -12696,7 +12798,17 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
                 }
                 gGL.diffuseColor4f(r, g, b, a);
             }
-            if (have_fx)
+            if (coverage_mode)
+            {
+                const bool use_vertex_alpha = face->isInAlphaPool() || gmat != nullptr;
+                F32 cutoffs[8] = {};
+                cutoffs[0] = gf.mAlphaKind == 1 ? gf.mCutoff : -1.f;
+                static const LLStaticHashedString sMaskVertexAlpha("mask_vertex_alpha"),
+                    sMaskCutoff("mask_cutoff");
+                static_shader->uniform1i(sMaskVertexAlpha, use_vertex_alpha ? 1 : 0);
+                static_shader->uniform1fv(sMaskCutoff, 8, cutoffs);
+            }
+            else if (have_fx)
             {
                 // Same channel-semantics gate as the rigged sweep, per face:
                 // alpha-pool BLEND and ordinary simple/PBR MASK use diffuse
@@ -12777,15 +12889,23 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
             gGL.syncMatrices();
 
             // [AvatarLightResponse] static faces draw through static_shader (the program bound by apply_program above);
-            // same rule as the rigged sweep -- every face, identity for non-CLONE styles.
+            // same rule as the rigged sweep -- BEAUTY for CLONE, SIL_ONLY otherwise.
             {
-                const LLDrawInfo* alr_di = face->mDrawInfo;
-                const bool alr_on = style == GHOST_STYLE_CLONE && gp.mLightResponseKey.notNull();
-                LLRenderPass::uploadAvatarLightResponseTo(*static_shader,
-                    alr_on ? gp.mLightResponseKey : LLUUID::null,
-                    alr_on && alr_di ? alr_di->mActorFxOwner : LLUUID::null,
-                    alr_on && alr_di ? alr_di->mActorFxFallbackOwner : LLUUID::null,
-                    LLRenderPass::ALR_SLOT_BEAUTY);   // static faces never run SWEEP_GLOW
+                if (!coverage_mode)
+                {
+                    const bool alr_on = gp.mIsClone && gp.mLightResponseKey.notNull();
+                    LLRenderPass::uploadAvatarLightResponseTo(*static_shader,
+                        gp.mLightResponseKey,
+                        alr_di ? alr_di->mActorFxOwner : LLUUID::null,
+                        alr_di ? alr_di->mActorFxFallbackOwner : LLUUID::null,
+                        alr_on ? LLRenderPass::ALR_SLOT_BEAUTY
+                               : LLRenderPass::ALR_SLOT_SIL_ONLY);
+                    if (!alr_on)
+                    {
+                        static_shader->uniform4f(sGhostAlrParams,
+                                                 0.f, 1.f, 1.f, 1.f);
+                    }
+                }
             }
 
             vb->setBuffer();
@@ -12806,9 +12926,19 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
     // still depth-PRIME below: they are exactly the occluders the uncovered
     // translucent layers need (this UI-phase overlay has no world depth).
     const GhostCoverageMask overlay_mask =
-        (style == GHOST_STYLE_CLONE && gp.mPresentCoverage != GHOST_COVERAGE_NONE)
+        (gp.mIsClone && gp.mPresentCoverage != GHOST_COVERAGE_NONE)
             ? (GhostCoverageMask)(gp.mPresentCoverage & ~gp.mDeferredCoverage)
             : (GhostCoverageMask)GHOST_COVERAGE_ALL;
+
+    if (coverage_mode)
+    {
+        gGL.setColorMask(true, true);
+        const S32 subset = coverage_blended ? SWEEP_BLEND : SWEEP_SOLID;
+        draw_batches(subset, true, false, true);
+        draw_static(subset, true, false, true);
+    }
+    else
+    {
 
     // --- pass 1: prime depth only (single-layer silhouette), no colour ---
     // Masked batches cutoff-discard here too, so the depth silhouette matches
@@ -13162,11 +13292,12 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
                       LLRender::BF_ONE_MINUS_SOURCE_ALPHA);
     }
     }
+    }
 
     gGL.popMatrix();
     gGL.syncMatrices();
     gGL.setColorMask(true, true);
-    if (gp.mWorldLinear && !gp.mDepthOnly)
+    if (!coverage_mode && gp.mWorldLinear && !gp.mDepthOnly)
     {
         // Shared replay is interleaved with native LLDrawPoolAlpha items. Never
         // leak Clone replacement/additive factors into the next queue item.
@@ -13178,6 +13309,10 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
     gGL.getTexUnit(0)->unbind(LLTexUnit::TT_TEXTURE);
     // [R2-4] restore the diffuse_color generic to the GL boot default so no
     // later pass inherits our white park (generic state is global)
+    if (coverage_mode && static_shader != shader)
+    {
+        static_shader->vertexAttrib4f(LLVertexBuffer::TYPE_COLOR, 0.f, 0.f, 0.f, 1.f);
+    }
     shader->vertexAttrib4f(LLVertexBuffer::TYPE_COLOR, 0.f, 0.f, 0.f, 1.f);
     shader->unbind();   // draw_static always hands back to the rigged program
     if (out_complete)
@@ -14907,6 +15042,7 @@ void LLActorMover::renderStudioGhosts()
         gp.mDeferredCoverage = coverage;
         gp.mPresentCoverage  = item.mPresent;
         gp.mLightResponseKey = inst.mId; // [AvatarLightResponse]
+        gp.mIsClone = inst.mStyle == GHOST_STYLE_CLONE;
 
         drawGeometryGhost(item.mAv, *item.mBatches, item.mFootAgent, tint,
                           llclamp(inst.mAlpha, 0.f, 1.f), inst.mStyle, gp,
@@ -15090,6 +15226,64 @@ U32 LLActorMover::renderSystemActorMask(LLVOAvatar* avatar, U8 byte)
     return draws;
 }
 
+U32 LLActorMover::renderSystemSilCover(LLVOAvatar* avatar, const LLVector2& cover, U32 phase)
+{
+    if (!actorMaskAvatarEligible(avatar) || avatar->isControlAvatar()) return 0;
+    LLGLSLShader* saved_avatar_shader = LLDrawPoolAvatar::sVertexProgram;
+    const S32 saved_diffuse = LLDrawPoolAvatar::sDiffuseChannel;
+    const bool saved_opaque = LLDrawPoolAvatar::sSkipOpaque;
+    const bool saved_transparent = LLDrawPoolAvatar::sSkipTransparent;
+    static const LLStaticHashedString sSilCover("sil_cover"), sSilBlended("sil_blended");
+    LLGLSLShader& body_shader = gSilCoverProgram[ACTOR_MASK_BODY];
+    body_shader.bind();
+    LLDrawPoolAvatar::sVertexProgram = &body_shader;
+    LLDrawPoolAvatar::sDiffuseChannel = body_shader.enableTexture(LLShaderMgr::DIFFUSE_MAP);
+    LLDrawPoolAvatar::sSkipOpaque = phase != 0;
+    LLDrawPoolAvatar::sSkipTransparent = phase == 0;
+    body_shader.uniform2fv(sSilCover, 1, cover.mV);
+    body_shader.uniform1i(sSilBlended, phase != 0 ? 1 : 0);
+    body_shader.setMinimumAlpha(phase != 0 ? 0.f : LLDrawPoolAvatar::sMinimumAlpha);
+    if (LLPipeline::RenderAvatarCloth)
+    {
+        LLMatrix4 rot_mat;
+        LLViewerCamera::getInstance()->getMatrixToLocal(rot_mat);
+        LLMatrix4 cfr(OGL_TO_CFR_ROTATION);
+        rot_mat *= cfr;
+        LLVector4 wind;
+        wind.setVec(avatar->mWindVec);
+        wind.mV[VW] = 0.f;
+        wind = wind * rot_mat;
+        wind.mV[VW] = avatar->mWindVec.mV[VW];
+        body_shader.uniform4fv(LLViewerShaderMgr::AVATAR_WIND, 1, wind.mV);
+        const F32 phase_value = -avatar->mRipplePhase;
+        const F32 freq = 7.f + noise1(avatar->mRipplePhase) * 2.f;
+        const LLVector4 sin_params(freq, freq, freq, phase_value);
+        body_shader.uniform4fv(LLViewerShaderMgr::AVATAR_SINWAVE, 1, sin_params.mV);
+        LLVector4 gravity(0.f, 0.f, -0.7f, 0.f);
+        gravity = gravity * rot_mat;
+        body_shader.uniform4fv(LLViewerShaderMgr::AVATAR_GRAVITY, 1, gravity.mV);
+    }
+    U32 draws = avatar->renderSkinned() ? 1 : 0;
+    body_shader.disableTexture(LLShaderMgr::DIFFUSE_MAP);
+    if (phase == 0)
+    {
+        LLGLSLShader& eye_shader = gSilCoverProgram[ACTOR_MASK_EYES];
+        eye_shader.bind();
+        LLDrawPoolAvatar::sVertexProgram = &eye_shader;
+        LLDrawPoolAvatar::sDiffuseChannel = eye_shader.enableTexture(LLShaderMgr::DIFFUSE_MAP);
+        eye_shader.uniform2fv(sSilCover, 1, cover.mV);
+        eye_shader.uniform1i(sSilBlended, 0);
+        eye_shader.setMinimumAlpha(LLDrawPoolAvatar::sMinimumAlpha);
+        draws += avatar->renderRigid() ? 1 : 0;
+        eye_shader.disableTexture(LLShaderMgr::DIFFUSE_MAP);
+    }
+    LLDrawPoolAvatar::sVertexProgram = saved_avatar_shader;
+    LLDrawPoolAvatar::sDiffuseChannel = saved_diffuse;
+    LLDrawPoolAvatar::sSkipOpaque = saved_opaque;
+    LLDrawPoolAvatar::sSkipTransparent = saved_transparent;
+    return draws;
+}
+
 bool LLActorMover::renderSystemActorGhost(LLVOAvatar* avatar,
                                           const LLUUID& style_id,
                                           bool blend_sweep,
@@ -15134,7 +15328,7 @@ bool LLActorMover::renderSystemActorGhost(LLVOAvatar* avatar,
     LLVector4 style_params(0.f, 0.f, 0.f, 6.f);
     bool texture_rgb = look != GHOST_STYLE_GHOST
                     && look != GHOST_STYLE_WIREFRAME;
-    if (look == GHOST_STYLE_CLONE)
+    if (look == LLDirectorCast::ACTOR_LOOK_FORWARD_FALLBACK)
     {
         style_color.set(0.98f, 0.98f, 0.98f, base_alpha);
         if (!style.mUseActorHue)
@@ -15206,6 +15400,12 @@ bool LLActorMover::renderSystemActorGhost(LLVOAvatar* avatar,
     bool glow_only = false;
     auto upload = [&](LLGLSLShader& shader, F32 cutoff)
     {
+        // Shared system-body replays must retain only the resident's
+        // silhouette; all legacy Light Response trims remain native-only.
+        LLRenderPass::uploadAvatarLightResponseTo(
+            shader, avatar->getID(), LLUUID::null, LLUUID::null,
+            LLRenderPass::ALR_SLOT_SIL_ONLY);
+        shader.uniform4f(sGhostAlrParams, 0.f, 1.f, 1.f, 1.f);
         shader.uniform1f(sGhostTime, ghost_now);
         shader.uniform4fv(sGhostParams, 1, style_params.mV);
         shader.uniform4f(sGhostAux, cutoff, texture_rgb ? 1.f : 0.f,
@@ -15214,6 +15414,7 @@ bool LLActorMover::renderSystemActorGhost(LLVOAvatar* avatar,
                          gp.mGlitch, gp.mBrightness);
         shader.uniform1i(sGhostSlot, -1);
         shader.uniform1i(sGhostLook, look);
+        shader.uniform1i(sGhostIsClone, 0); // Actor FX look 1 is not a Studio Clone.
         shader.uniform1i(sGhostDistort, gp.mDistort);
         shader.uniform4f(sGhostDistortParams, gp.mDistortAmount,
                          0.5f, 0.5f, 0.f);
@@ -15248,7 +15449,7 @@ bool LLActorMover::renderSystemActorGhost(LLVOAvatar* avatar,
 
     const bool alpha_blend = !depth_only && (blend_sweep
         || style.mMode == LLDirectorCast::ACTOR_STYLE_LAYER
-        || look != GHOST_STYLE_CLONE
+        || look != LLDirectorCast::ACTOR_LOOK_FORWARD_FALLBACK
         || base_alpha < 0.999f);
     // Cover and coverage-changing Layer+Dissolve suppress native beauty, so
     // their solid replay must restore the ordinary opaque depth surface.
@@ -15541,7 +15742,7 @@ bool shared_world_indexed_actorghost_ready(
     LLGLSLShader& shader = gWorldSkinnedActorGhostIndexedProgram;
     const LLStaticHashedString* required[] = {
         &sGhostTime, &sGhostParams, &sGhostAux, &sGhostFx, &sGhostSlot,
-        &sGhostLook, &sGhostDistort, &sGhostDistortParams,
+        &sGhostLook, &sGhostIsClone, &sGhostDistort, &sGhostDistortParams,
         &sGhostWorldLinear, &sGhostGlowOnly, &sGhostFragOffset,
         &sGhostScreenSize, &sGhostDissolveProgress,
         &sGhostCoverageLayerStrength, &sGhostIndexedMaterialFactor,
@@ -18105,4 +18306,64 @@ bool LLActorMover::renderSharedActorStyleProxyItem(
             << LL_ENDL;
     }
     return complete;
+}
+
+void LLActorMover::renderSharedProxySilCover(U32 phase)
+{
+    if (!hasSharedActorStyleProxies()) return;
+    for (SharedActorStyleProxy& proxy : mSharedActorStyleProxies)
+    {
+        if (!proxy.mActive || !proxy.mAvatar || proxy.mAvatar->isDead() ||
+            (proxy.mBatches.empty() && proxy.mStaticFaces.empty()
+             && proxy.mPBRCommands.empty()))
+        {
+            continue;
+        }
+        if ((phase == 0 && proxy.mPart != ESharedActorStylePart::ACTOR_SOLID) ||
+            (phase != 0 && proxy.mPart == ESharedActorStylePart::SYSTEM_BLEND))
+        {
+            continue;
+        }
+        LLColor4 tint(1.f, 1.f, 1.f, 1.f);
+        GhostDrawParams params;
+        params.mWorldLinear = true;
+        params.mLightResponseKey = proxy.mWearerId;
+        params.mSilCoverPhase = phase == 0 ? 1 : 2;
+        if (!proxy.mBatches.empty() || !proxy.mStaticFaces.empty())
+        {
+            bool complete = true;
+            drawGeometryGhost(proxy.mAvatar, proxy.mBatches, proxy.mFootAgent,
+                              tint, 1.f, GHOST_STYLE_GHOST, params,
+                              &proxy.mStaticFaces, &complete);
+        }
+
+        // Shared PBR commands are harvested separately from the legacy batch
+        // arrays. Re-submit their exact rigged/static geometry through the same
+        // coverage-only path so command-only proxies cannot disappear. The
+        // coverage mode binds only gSilCoverProgram and skips beauty, style,
+        // glow, and all beauty sweep blend-state calls.
+        std::vector<GhostBatch> pbr_batches;
+        std::vector<GhostStaticFace> pbr_static_faces;
+        for (const SharedActorPBRCommand& command : proxy.mPBRCommands)
+        {
+            const bool command_blended =
+                command.mAlphaMode == SHARED_ACTOR_FX_PBR_ALPHA_BLEND;
+            if (command_blended != (phase != 0)) continue;
+            if (command.mRigged)
+            {
+                pbr_batches.push_back(command.mBatch);
+            }
+            else
+            {
+                pbr_static_faces.push_back(command.mStaticFace);
+            }
+        }
+        if (!pbr_batches.empty() || !pbr_static_faces.empty())
+        {
+            bool pbr_complete = true;
+            drawGeometryGhost(proxy.mAvatar, pbr_batches, proxy.mFootAgent,
+                              tint, 1.f, GHOST_STYLE_GHOST, params,
+                              &pbr_static_faces, &pbr_complete);
+        }
+    }
 }

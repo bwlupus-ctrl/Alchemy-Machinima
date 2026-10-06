@@ -13,6 +13,8 @@
 
 uniform int  alrEnabled;   // 0 identity; 1 active; 3 active + debug override
 uniform vec4 alrParams;    // x diffuse d, y specular keep s, z albedo gain k, w authored-emission gain g
+uniform vec4 alrSil;       // rgb fill (linear), a quantized silhouette amount; zero means off
+uniform vec4 alrSilAux;    // x G-buffer carrier, y haze over, z keep rim
 
 const vec3 ALR_MAGENTA = vec3(1.0, 0.0, 1.0);
 
@@ -137,4 +139,54 @@ vec3 alrDebugEmission(vec3 e)                          // REPLACES emission in d
 bool alrDebug()
 {
     return alrEnabled == 3;
+}
+
+bool alrSilOn()
+{
+    return alrEnabled == 1 && alrSil.a > 0.0;
+}
+
+float alrSilKeep()
+{
+    return alrSilOn() ? 1.0 - alrSil.a : 1.0;
+}
+
+float alrSilRimKeep()
+{
+    return (alrSilOn() && alrSilAux.z < 0.5) ? 1.0 - alrSil.a : 1.0;
+}
+
+bool alrSilHazeOver()
+{
+    return alrSilAux.y > 0.5;
+}
+
+bool alrSilNeedsFogZero()
+{
+    return alrSilOn() && !alrSilHazeOver();
+}
+
+vec3 alrSilPreFog(vec3 c, float w)
+{
+    return (alrSilOn() && alrSilHazeOver()) ? c + alrSil.a * alrSil.rgb * w : c;
+}
+
+vec3 alrSilPostFog(vec3 c, vec3 fog_zero, float w)
+{
+    return alrSilNeedsFogZero() ? c + alrSil.a * (alrSil.rgb * w - fog_zero) : c;
+}
+
+vec3 alrSilFillAdd()
+{
+    return alrSil.a * alrSil.rgb;
+}
+
+vec4 alrSilGBufferPbr(vec3 e)
+{
+    return vec4(e * (1.0 - alrSil.a) + alrSil.a * alrSil.rgb, alrSilAux.x);
+}
+
+vec4 alrSilGBufferLegacy()
+{
+    return vec4(alrSil.a * alrSil.rgb, alrSilAux.x);
 }

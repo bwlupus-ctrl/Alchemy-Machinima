@@ -26,6 +26,10 @@ uniform sampler2D diffuseRect;    // G-buffer 0: base colour (sRGB storage)
 uniform sampler2D specularRect;   // G-buffer 1: PBR occlusion/roughness/metallic
 uniform sampler2D normalMap;      // G-buffer 2: .w carries GBUFFER_FLAG_*
 uniform sampler2D depthMap;       // shared depth
+#if defined(HAS_EMISSIVE)
+uniform sampler2D emissiveRect;   // G-buffer 3: .a carries the silhouette code
+bool alrSilDecode(float carrier, float gbuffer_flag, out float k, out float r, out bool haze_skip);
+#endif
 
 in vec2 vary_fragcoord;
 
@@ -72,6 +76,20 @@ void main()
     }
 
     vec3 diffuse = max(albedo.rgb, vec3(0.0));
+
+#if defined(HAS_EMISSIVE)
+    if ((alr_sil_active & 1) != 0)
+    {
+        float alr_k;
+        float alr_r;
+        bool alr_haze_skip;
+        float carrier = texture(emissiveRect, vary_fragcoord).a;
+        if (alrSilDecode(carrier, flag, alr_k, alr_r, alr_haze_skip))
+        {
+            diffuse *= alr_k;
+        }
+    }
+#endif
 
     if (has_pbr)
     {

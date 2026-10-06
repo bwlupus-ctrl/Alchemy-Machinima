@@ -21,6 +21,7 @@
 #include "lldir.h"
 #include "llfile.h"
 #include "llghostavatar.h"
+#include "llgl.h"
 #include "llsdserialize.h"
 #include "llsdutil.h"
 #include "lltimer.h"
@@ -59,6 +60,7 @@ ALAvatarLightResponse::EKind kindFromString(const std::string& str)
 }
 
 bool ALAvatarLightResponse::sEverActive = false;
+U32 ALAvatarLightResponse::sSilFrameMask = 0;
 
 // static
 ALAvatarLightResponse& ALAvatarLightResponse::instance()
@@ -166,6 +168,14 @@ void ALAvatarLightResponse::tick()
     }
     ALAvatarLightResponse& store = instance();
     store.ensureTable();
+    if ((sSilFrameMask & 1u) &&
+        !gSavedSettings.getBOOL("RenderEnableEmissiveBuffer") &&
+        !gSavedSettings.getBOOL("AvatarSilhouetteForceEmissive"))
+    {
+        // Session-sticky: the non-persistent setting is cleared on login and
+        // forcing it once avoids rebuilding targets and shaders on every edit.
+        gSavedSettings.setBOOL("AvatarSilhouetteForceEmissive", true);
+    }
     store.debugLogTick();
 }
 
@@ -249,6 +259,7 @@ void ALAvatarLightResponse::clearAll(bool save_now)
     }
     mEntries.clear();
     mDirty = true;
+    ++mRevision;
     LLVOAvatar::resetImpostors();
     mChangeSignal();
     if (save_now)
@@ -260,6 +271,7 @@ void ALAvatarLightResponse::clearAll(bool save_now)
 void ALAvatarLightResponse::markChanged(const LLUUID& key)
 {
     mDirty = true;
+    ++mRevision;
     dirtyImpostors(key);
     mChangeSignal();
 }
@@ -316,6 +328,7 @@ void ALAvatarLightResponse::ensureTable()
     mDirty = false;
     mTable.clear();
     mLiveWearers.clear();
+    sSilFrameMask = 0;
 
     static LLCachedControl<bool> master(gSavedSettings, "AvatarLightResponseEnabled", true);
     if (!master() || mEntries.empty())
@@ -323,13 +336,30 @@ void ALAvatarLightResponse::ensureTable()
         return;
     }
 
+    static LLCachedControl<bool> has_hdr(gSavedSettings, "RenderHDREnabled", true);
+    const bool hdr = has_hdr() && gGLManager.mGLVersion > 4.05f;
+
     for (const auto& kv : mEntries)
     {
         Slot slot;
         slot.mIdentity = ALLightResponse::isIdentity(kv.second.mParams);
-        slot.mPacked   = ALLightResponse::pack(kv.second.mParams);
+        slot.mPacked   = ALLightResponse::packAll(kv.second.mParams, hdr);
         slot.mStoreKey = kv.first;
         mTable[kv.first] = slot;
+
+        if (slot.mPacked.mSil.mV[VW] > 0.f)
+        {
+            sSilFrameMask |= 1u;
+            if (slot.mPacked.mSilAux.mV[VY] < 0.5f) sSilFrameMask |= 2u;
+            if (slot.mPacked.mSilAux.mV[VZ] < 0.5f) sSilFrameMask |= 4u;
+        }
+    }
+
+    if (sSilFrameMask & 1u)
+    {
+        static LLCachedControl<bool> debug_carrier(gSavedSettings, "AvatarSilhouetteDebugCarrier", false);
+        if (debug_carrier()) sSilFrameMask |= 8u;
+        if (hdr)             sSilFrameMask |= 16u;
     }
 
     // Entity clones are drawn as avatars keyed by their runtime id: map that id
@@ -420,14 +450,14 @@ const ALAvatarLightResponse::Slot* ALAvatarLightResponse::findSlot(const LLUUID&
     return nullptr;
 }
 
-const LLVector4* ALAvatarLightResponse::lookup(const LLUUID& k1, const LLUUID& k2, const LLUUID& k3,
-                                               LLUUID* hit_key)
+const ALLightResponse::Packed* ALAvatarLightResponse::lookup(const LLUUID& k1, const LLUUID& k2, const LLUUID& k3,
+                                                             LLUUID* hit_key)
 {
     const Slot* slot = findSlot(k1, k2, k3, hit_key);
     return (slot && !slot->mIdentity) ? &slot->mPacked : nullptr;
 }
 
-const LLVector4* ALAvatarLightResponse::peek(const LLUUID& k1, const LLUUID& k2, const LLUUID& k3)
+const ALLightResponse::Packed* ALAvatarLightResponse::peek(const LLUUID& k1, const LLUUID& k2, const LLUUID& k3)
 {
     const Slot* slot = findSlot(k1, k2, k3, nullptr);
     return (slot && !slot->mIdentity) ? &slot->mPacked : nullptr;
@@ -547,7 +577,8 @@ void ALAvatarLightResponse::debugLogTick()
     LL_INFOS("AvatarLightResponse") << "[ALR] targets=" << mTable.size()
         << " explicit=" << mEntries.size()
         << " active=" << active
-        << " live_over_budget=" << countLiveOverBudget() << LL_ENDL;
+        << " live_over_budget=" << countLiveOverBudget()
+        << " sil_mask=" << sSilFrameMask << LL_ENDL;
 
     for (const auto& kv : mEntries)
     {
@@ -578,6 +609,14 @@ void ALAvatarLightResponse::debugLogTick()
             << " uploads=" << st.mUploads
             << " visible=" << st.mVisible
             << " muted=" << (st.mMuted ? 1 : 0)
+            << " sil=" << ALLightResponse::packAll(kv.second.mParams,
+                    (sSilFrameMask & 16u) != 0).mSil.mV[VW]
+            << " fill=" << llformat("#%02X%02X%02X",
+                    static_cast<U32>(ll_round(llclamp(kv.second.mParams.mSilFillSrgb.mV[VX], 0.f, 1.f) * 255.f)),
+                    static_cast<U32>(ll_round(llclamp(kv.second.mParams.mSilFillSrgb.mV[VY], 0.f, 1.f) * 255.f)),
+                    static_cast<U32>(ll_round(llclamp(kv.second.mParams.mSilFillSrgb.mV[VZ], 0.f, 1.f) * 255.f)))
+            << " haze=" << (kv.second.mParams.mSilHaze ? 1 : 0)
+            << " rim=" << (kv.second.mParams.mSilKeepRim ? 1 : 0)
             << " VERDICT=" << verdict << LL_ENDL;
     }
 }
@@ -645,6 +684,9 @@ void ALAvatarLightResponse::loadFromFile()
     mUploadsNow.clear();
     mUploadsLast.clear();
     mDirty = true;
+    ++mRevision;
+    // AvatarSilhouetteForceEmissive is sticky only for one login session.
+    gSavedSettings.setBOOL("AvatarSilhouetteForceEmissive", false);
     mChangeSignal();
 
     if (!gSavedSettings.getBOOL("AvatarLightResponsePersist"))
@@ -744,6 +786,7 @@ bool ALAvatarLightResponse::importMerge(const LLSD& data)
     if (any)
     {
         mDirty = true;
+        ++mRevision;
         mChangeSignal();
     }
     return any;

@@ -16,8 +16,10 @@
 #include "llagentdata.h"
 #include "llavatarnamecache.h"
 #include "llbutton.h"
+#include "llcallbacklist.h"
 #include "llcharacter.h"
 #include "llcheckboxctrl.h"
+#include "llcolorswatch.h"
 #include "llcombobox.h"
 #include "llcontrolavatar.h"
 #include "lldirectorcast.h"
@@ -25,6 +27,7 @@
 #include "llscrolllistctrl.h"
 #include "llsliderctrl.h"
 #include "lltextbox.h"
+#include "llviewercontrol.h"
 #include "llviewerobjectlist.h"
 #include "llvoavatar.h"
 #include "llworld.h"
@@ -64,6 +67,7 @@ ALFloaterAvatarLightResponse::ALFloaterAvatarLightResponse(const LLSD& key)
 
 ALFloaterAvatarLightResponse::~ALFloaterAvatarLightResponse()
 {
+    gIdleCallbacks.deleteFunction(onIdle, this);
     mChangeConnection.disconnect();
 }
 
@@ -76,6 +80,12 @@ bool ALFloaterAvatarLightResponse::postBuild()
     mBrightness      = getChild<LLSliderCtrl>("sld_brightness");
     mGlow            = getChild<LLSliderCtrl>("sld_glow");
     mBypass          = getChild<LLCheckBoxCtrl>("chk_bypass");
+    mSilAmount       = getChild<LLSliderCtrl>("sld_sil_amount");
+    mSilFill         = getChild<LLColorSwatchCtrl>("swatch_sil_fill");
+    mSilFillPreset   = getChild<LLComboBox>("combo_sil_fill");
+    mSilHaze         = getChild<LLCheckBoxCtrl>("chk_sil_haze");
+    mSilKeepRim      = getChild<LLCheckBoxCtrl>("chk_sil_keep_rim");
+    mSilNote         = getChild<LLTextBox>("txt_sil_note");
     mPreset          = getChild<LLComboBox>("combo_preset");
     mApplyPreset     = getChild<LLButton>("btn_apply_preset");
     mResetSelected   = getChild<LLButton>("btn_reset_selected");
@@ -95,25 +105,36 @@ bool ALFloaterAvatarLightResponse::postBuild()
     });
     getChild<LLButton>("btn_refresh")->setCommitCallback([this](LLUICtrl*, const LLSD&)
     {
-        refreshRows(true);
-        refreshEditors();
+        // A manual refresh is ordinary list work, not a reveal or structural
+        // event. Coalesce it with store notifications at the 1 Hz cadence.
+        mIdleRowsPending = true;
+        mIdleStatePending = true;
     });
 
     mDiffuse->setCommitCallback([this](LLUICtrl*, const LLSD&) { onSliderCommit(FIELD_DIFFUSE); });
     mTame->setCommitCallback([this](LLUICtrl*, const LLSD&) { onSliderCommit(FIELD_TAME); });
     mBrightness->setCommitCallback([this](LLUICtrl*, const LLSD&) { onSliderCommit(FIELD_BRIGHTNESS); });
     mGlow->setCommitCallback([this](LLUICtrl*, const LLSD&) { onSliderCommit(FIELD_GLOW); });
+    mSilAmount->setCommitCallback([this](LLUICtrl*, const LLSD&) { onSliderCommit(FIELD_SIL_AMOUNT); });
     // Drag tracking: the 1 Hz row refresh must not reset a slider the user is holding.
     mDiffuse->setSliderMouseDownCallback([this](LLUICtrl*, const LLSD&) { mSliderDragging = true; });
     mTame->setSliderMouseDownCallback([this](LLUICtrl*, const LLSD&) { mSliderDragging = true; });
     mBrightness->setSliderMouseDownCallback([this](LLUICtrl*, const LLSD&) { mSliderDragging = true; });
     mGlow->setSliderMouseDownCallback([this](LLUICtrl*, const LLSD&) { mSliderDragging = true; });
+    mSilAmount->setSliderMouseDownCallback([this](LLUICtrl*, const LLSD&) { mSliderDragging = true; });
     mDiffuse->setSliderMouseUpCallback([this](LLUICtrl*, const LLSD&) { onSliderMouseUp(); });
     mTame->setSliderMouseUpCallback([this](LLUICtrl*, const LLSD&) { onSliderMouseUp(); });
     mBrightness->setSliderMouseUpCallback([this](LLUICtrl*, const LLSD&) { onSliderMouseUp(); });
     mGlow->setSliderMouseUpCallback([this](LLUICtrl*, const LLSD&) { onSliderMouseUp(); });
+    mSilAmount->setSliderMouseUpCallback([this](LLUICtrl*, const LLSD&) { onSliderMouseUp(); });
 
     mBypass->setCommitCallback([this](LLUICtrl*, const LLSD&) { onBypass(); });
+    mSilFill->setCommitCallback([this](LLUICtrl*, const LLSD&) { onSilFill(false, true); });
+    mSilFill->setOnSelectCallback([this](LLUICtrl*, const LLSD&) { onSilFill(true, true); });
+    mSilFill->setOnCancelCallback([this](LLUICtrl*, const LLSD&) { onSilFill(true, false); });
+    mSilFillPreset->setCommitCallback([this](LLUICtrl*, const LLSD&) { onSilFillPreset(); });
+    mSilHaze->setCommitCallback([this](LLUICtrl*, const LLSD&) { onSilCheckbox(true); });
+    mSilKeepRim->setCommitCallback([this](LLUICtrl*, const LLSD&) { onSilCheckbox(false); });
     mApplyPreset->setCommitCallback([this](LLUICtrl*, const LLSD&) { onApplyPreset(); });
     mResetSelected->setCommitCallback([this](LLUICtrl*, const LLSD&) { onResetSelected(); });
     mInheritSelected->setCommitCallback([this](LLUICtrl*, const LLSD&) { onInheritSelected(); });
@@ -122,7 +143,11 @@ bool ALFloaterAvatarLightResponse::postBuild()
     mPaste->setCommitCallback([this](LLUICtrl*, const LLSD&) { onPaste(); });
 
     mPreset->selectFirstItem();   // never leave the combo empty: an empty combo reads as index 0 (Reset)
-    mChangeConnection = ALAvatarLightResponse::instance().setChangeCallback([this]() { mStatesDirty = true; });
+    mChangeConnection = ALAvatarLightResponse::instance().setChangeCallback([this]()
+    {
+        mIdleStatePending = true;
+    });
+    gIdleCallbacks.addFunction(onIdle, this);
 
     refreshRows(true);
     refreshEditors();
@@ -158,21 +183,69 @@ void ALFloaterAvatarLightResponse::onClose(bool app_quitting)
     LLFloater::onClose(app_quitting);
 }
 
+void ALFloaterAvatarLightResponse::onVisibilityChange(bool new_visibility)
+{
+    if (new_visibility)
+    {
+        mStoreGate.reset();
+        mIdleRowsPending = true;
+        mIdleRowsImmediate = true;
+        mIdleStatePending = true;
+    }
+    LLFloater::onVisibilityChange(new_visibility);
+}
+
 void ALFloaterAvatarLightResponse::draw()
 {
+    LL_PROFILE_ZONE_SCOPED_CATEGORY_UI;
     const bool tick = mRefreshTimer.getElapsedTimeF32() >= 1.f;
     if (tick)
     {
-        mRefreshTimer.reset();
-        refreshRows(false);
+        mIdleRowsPending = true;
+        mIdleStatePending = true;
     }
-    if (tick || mStatesDirty)
+    if (mStoreGate.changed({ ALAvatarLightResponse::instance().revision() }))
     {
-        mStatesDirty = false;
-        refreshStateCells();
-        refreshStatus();
+        mIdleStatePending = true;
     }
     LLFloater::draw();
+}
+
+// static
+void ALFloaterAvatarLightResponse::onIdle(void* user_data)
+{
+    static_cast<ALFloaterAvatarLightResponse*>(user_data)->idleUpdate();
+}
+
+void ALFloaterAvatarLightResponse::idleUpdate()
+{
+    if (!isWidgetOnScreen(this))
+    {
+        return;
+    }
+    // Capture both decisions before refreshRows() resets the shared cadence
+    // timer. Store callbacks can fire every slider event; all pending row,
+    // state-cell and status work is therefore coalesced to at most 1 Hz.
+    // Reveal and structural work marks rows immediate and may update both now.
+    const bool cadence_due = mRefreshTimer.getElapsedTimeF32() >= 1.f;
+    const bool immediate = mIdleRowsImmediate;
+    bool rows_refreshed = false;
+    if (mIdleRowsPending && (immediate || cadence_due))
+    {
+        refreshRows(false);
+        rows_refreshed = true;
+    }
+    if (mIdleStatePending && (immediate || cadence_due))
+    {
+        mIdleStatePending = false;
+        refreshStateCells();
+        refreshStatus();
+        refreshSilhouetteNote();
+        if (!rows_refreshed)
+        {
+            mRefreshTimer.reset();
+        }
+    }
 }
 
 std::string ALFloaterAvatarLightResponse::rowName(const LLUUID& key, ALAvatarLightResponse::EKind kind,
@@ -313,6 +386,11 @@ void ALFloaterAvatarLightResponse::refreshRows(bool force)
     {
         return;
     }
+    // Row discovery/rebuild is the >50-row path: coalesce ordinary requests to
+    // 1 Hz. Reveal and known structural changes set mIdleRowsImmediate.
+    mIdleRowsPending = false;
+    mIdleRowsImmediate = false;
+    mRefreshTimer.reset();
     ALAvatarLightResponse& store = ALAvatarLightResponse::instance();
 
     std::vector<LLUUID> order;
@@ -345,9 +423,10 @@ void ALFloaterAvatarLightResponse::refreshRows(bool force)
                 continue;
             }
             LLScrollListCell* name_cell = item->getColumn(1);
-            if (name_cell)
+            const std::string name = it->second.mName + (it->second.mAway ? " (away)" : "");
+            if (name_cell && name_cell->getValue().asString() != name)
             {
-                name_cell->setValue(it->second.mName + (it->second.mAway ? " (away)" : ""));
+                name_cell->setValue(name);
             }
         }
         return;
@@ -358,6 +437,7 @@ void ALFloaterAvatarLightResponse::refreshRows(bool force)
 
     mUpdating = true;
     mTargetList->deleteAllItems();
+    mStateVisuals.clear();
     for (const LLUUID& key : order)
     {
         const RowInfo& row = info[key];
@@ -396,12 +476,14 @@ void ALFloaterAvatarLightResponse::refreshStateCells()
         const LLUUID key = item->getUUID();
         std::string text;
         LLColor4 color = ALR_COLOR_GREY;
+        S32 visual = 0;
         const ALAvatarLightResponse::Entry* entry = store.findEntry(key);
         if (entry)
         {
             if (ALLightResponse::isIdentity(entry->mParams))
             {
                 text = ALR_DOT_HOLLOW;
+                visual = 1;
             }
             else
             {
@@ -409,12 +491,17 @@ void ALFloaterAvatarLightResponse::refreshStateCells()
                 const bool ok = st.mUploads > 0 && st.mVisible == 1 && !st.mMuted;   // unknown (-1) stays amber
                 text = ALR_DOT_FILLED;
                 color = ok ? ALR_COLOR_GREEN : ALR_COLOR_AMBER;
+                visual = ok ? 3 : 2;
             }
         }
-        if (LLScrollListCell* cell = item->getColumn(0))
+        if (mStateVisuals[key] != visual)
         {
-            cell->setValue(text);
-            cell->setColor(color);
+            mStateVisuals[key] = visual;
+            if (LLScrollListCell* cell = item->getColumn(0))
+            {
+                cell->setValue(text);
+                cell->setColor(color);
+            }
         }
     }
 }
@@ -446,19 +533,25 @@ void ALFloaterAvatarLightResponse::refreshStatus()
             ++visible;
         }
     }
-    mStatus->setText(llformat("%d adjusted  |  %d uploaded  |  %d visible", adjusted, uploaded, visible));
+    setTextIfChanged(mStatus,
+                     llformat("%d adjusted  |  %d uploaded  |  %d visible", adjusted, uploaded, visible));
 
     const S32 over = store.countLiveOverBudget();
     if (over > 0)
     {
-        mBudget->setColor(ALR_COLOR_AMBER);
-        mBudget->setText(llformat("%d adjusted avatars render at full detail beyond your avatar impostor limit (%d) - expect lower FPS.",
-                                  over, static_cast<S32>(LLVOAvatar::sMaxNonImpostors)));
-        mBudget->setVisible(true);
+        const bool changed = setTextIfChanged(
+            mBudget,
+            llformat("%d adjusted avatars render at full detail beyond your avatar impostor limit (%d) - expect lower FPS.",
+                     over, static_cast<S32>(LLVOAvatar::sMaxNonImpostors)));
+        if (changed)
+        {
+            mBudget->setColor(ALR_COLOR_AMBER);
+        }
+        setVisibleIfChanged(mBudget, true);
     }
     else
     {
-        mBudget->setVisible(false);
+        setVisibleIfChanged(mBudget, false);
     }
 }
 
@@ -499,6 +592,9 @@ ALLightResponse::Params ALFloaterAvatarLightResponse::currentParams(const LLUUID
 
 void ALFloaterAvatarLightResponse::applyParams(const LLUUID& key, const ALLightResponse::Params& params, bool save_now)
 {
+    const ALAvatarLightResponse::Entry* old_entry = ALAvatarLightResponse::instance().findEntry(key);
+    const bool was_adjusted = old_entry && !ALLightResponse::isIdentity(old_entry->mParams);
+    const bool will_be_adjusted = !ALLightResponse::isIdentity(ALLightResponse::sanitize(params));
     ALAvatarLightResponse::EKind kind = ALAvatarLightResponse::KIND_RESIDENT;
     std::string label = shortId(key);
     const std::map<LLUUID, RowInfo>::const_iterator it = mRowInfo.find(key);
@@ -521,6 +617,13 @@ void ALFloaterAvatarLightResponse::applyParams(const LLUUID& key, const ALLightR
         LLNotificationsUtil::add("AvatarLightResponseCapReached",
             LLSD().with("MAX", static_cast<LLSD::Integer>(ALAvatarLightResponse::maxStoredEntries())));
     }
+    else if (mOnlyAdjusted->get() && was_adjusted != will_be_adjusted)
+    {
+        // This edit changes list membership. Defer until the current callback
+        // unwinds, but bypass the 1 Hz limiter as a structural change.
+        mIdleRowsPending = true;
+        mIdleRowsImmediate = true;
+    }
 }
 
 void ALFloaterAvatarLightResponse::refreshEditors()
@@ -534,24 +637,38 @@ void ALFloaterAvatarLightResponse::refreshEditors()
     const ALLightResponse::Params p = any ? currentParams(keys.front()) : ALLightResponse::Params();
 
     mUpdating = true;
-    mDiffuse->setValue(p.mDiffuse * 100.f);
-    mTame->setValue(p.mTame * 100.f);
-    mBrightness->setValue(p.mExposureEV);
-    mGlow->setValue(p.mGlow * 100.f);
-    mBypass->set(p.mBypass);
+    setValueIfChanged(mDiffuse, LLSD((F64)(p.mDiffuse * 100.f)), true);
+    setValueIfChanged(mTame, LLSD((F64)(p.mTame * 100.f)), true);
+    setValueIfChanged(mBrightness, LLSD((F64)p.mExposureEV), true);
+    setValueIfChanged(mGlow, LLSD((F64)(p.mGlow * 100.f)), true);
+    setValueIfChanged(mBypass, LLSD(p.mBypass), true);
+    setValueIfChanged(mSilAmount, LLSD((F64)(p.mSilAmount * 100.f)), true);
+    setValueIfChanged(mSilFill,
+                      LLColor4(p.mSilFillSrgb.mV[VX], p.mSilFillSrgb.mV[VY],
+                               p.mSilFillSrgb.mV[VZ], 1.f).getValue(), true);
+    setValueIfChanged(mSilFillPreset,
+                      LLSD((S32)ALLightResponse::matchFillPreset(p.mSilFillSrgb)), true);
+    setValueIfChanged(mSilHaze, LLSD(p.mSilHaze), true);
+    setValueIfChanged(mSilKeepRim, LLSD(p.mSilKeepRim), true);
     mUpdating = false;
     refreshBrightnessValue();
+    refreshSilhouetteNote();
 
-    mDiffuse->setEnabled(any);
-    mTame->setEnabled(any);
-    mBrightness->setEnabled(any);
-    mGlow->setEnabled(any);
-    mBypass->setEnabled(any);
-    mPreset->setEnabled(any);
-    mApplyPreset->setEnabled(any);
-    mResetSelected->setEnabled(any);
-    mCopy->setEnabled(any);
-    mPaste->setEnabled(any && mHaveClip);
+    setEnabledIfChanged(mDiffuse, any);
+    setEnabledIfChanged(mTame, any);
+    setEnabledIfChanged(mBrightness, any);
+    setEnabledIfChanged(mGlow, any);
+    setEnabledIfChanged(mBypass, any);
+    setEnabledIfChanged(mSilAmount, any);
+    setEnabledIfChanged(mSilFill, any);
+    setEnabledIfChanged(mSilFillPreset, any);
+    setEnabledIfChanged(mSilHaze, any);
+    setEnabledIfChanged(mSilKeepRim, any);
+    setEnabledIfChanged(mPreset, any);
+    setEnabledIfChanged(mApplyPreset, any);
+    setEnabledIfChanged(mResetSelected, any);
+    setEnabledIfChanged(mCopy, any);
+    setEnabledIfChanged(mPaste, any && mHaveClip);
 
     // Inherit is meaningful only where a fallback exists (animesh -> wearer, clone -> source)
     // and only for rows that currently hold an explicit entry.
@@ -569,15 +686,52 @@ void ALFloaterAvatarLightResponse::refreshEditors()
             break;
         }
     }
-    mInheritSelected->setEnabled(can_inherit);
+    setEnabledIfChanged(mInheritSelected, can_inherit);
 }
 
 void ALFloaterAvatarLightResponse::refreshBrightnessValue()
 {
     if (mBrightnessValue && mBrightness)
     {
-        mBrightnessValue->setText(llformat("%+.2f EV", mBrightness->getValueF32()));
+        setTextIfChanged(mBrightnessValue, llformat("%+.2f EV", mBrightness->getValueF32()));
     }
+}
+
+void ALFloaterAvatarLightResponse::refreshSilhouetteNote()
+{
+    if (!mSilNote)
+    {
+        return;
+    }
+
+    bool any_silhouette = false;
+    for (const auto& kv : ALAvatarLightResponse::instance().entries())
+    {
+        const ALLightResponse::Params p = ALLightResponse::sanitize(kv.second.mParams);
+        if (!p.mBypass && p.mSilAmount > ALLightResponse::SILHOUETTE_EPSILON)
+        {
+            any_silhouette = true;
+            break;
+        }
+    }
+    const bool preparing = any_silhouette
+        && !gSavedSettings.getBOOL("RenderEnableEmissiveBuffer")
+        && !gSavedSettings.getBOOL("AvatarSilhouetteForceEmissive");
+
+    bool rim_unavailable = false;
+    const std::vector<LLUUID> keys = selectedKeys();
+    if (!keys.empty())
+    {
+        const ALLightResponse::Params p = currentParams(keys.front());
+        rim_unavailable = p.mSilAmount > ALLightResponse::SILHOUETTE_EPSILON
+            && p.mSilKeepRim && !gSavedSettings.getBOOL("CineRigRimEnabled");
+    }
+
+    const std::string note = preparing
+        ? "Preparing silhouette buffer\xE2\x80\xA6"
+        : (rim_unavailable ? "Keep Rim: Rig Rim is off (Cine Light Rig)" : std::string());
+    setTextIfChanged(mSilNote, note);
+    setVisibleIfChanged(mSilNote, !note.empty());
 }
 
 void ALFloaterAvatarLightResponse::onSelectionChanged()
@@ -604,17 +758,102 @@ void ALFloaterAvatarLightResponse::onSliderCommit(EField field)
         case FIELD_TAME:       p.mTame = mTame->getValueF32() / 100.f; break;
         case FIELD_BRIGHTNESS: p.mExposureEV = mBrightness->getValueF32(); break;
         case FIELD_GLOW:       p.mGlow = mGlow->getValueF32() / 100.f; break;
+        case FIELD_SIL_AMOUNT: p.mSilAmount = mSilAmount->getValueF32() / 100.f; break;
         default: break;
         }
         applyParams(key, p, false);   // saved on slider mouse-up
     }
     refreshBrightnessValue();
+    if (field == FIELD_SIL_AMOUNT)
+    {
+        refreshSilhouetteNote();
+    }
 }
 
 void ALFloaterAvatarLightResponse::onSliderMouseUp()
 {
     mSliderDragging = false;
     ALAvatarLightResponse::instance().saveIfPersist();
+}
+
+void ALFloaterAvatarLightResponse::onSilFill(bool save_now, bool custom)
+{
+    if (mUpdating)
+    {
+        return;
+    }
+    const LLColor4 color = mSilFill->get();
+    const LLVector3 fill(color.mV[VRED], color.mV[VGREEN], color.mV[VBLUE]);
+    for (const LLUUID& key : selectedKeys())
+    {
+        ALLightResponse::Params p = currentParams(key);
+        p.mSilFillSrgb = fill;
+        applyParams(key, p, false);
+    }
+    if (save_now)
+    {
+        ALAvatarLightResponse::instance().saveIfPersist();
+    }
+    if (custom)
+    {
+        setValueIfChanged(mSilFillPreset, LLSD((S32)ALLightResponse::FILL_CUSTOM), true);
+    }
+    else
+    {
+        setValueIfChanged(mSilFillPreset,
+                          LLSD((S32)ALLightResponse::matchFillPreset(fill)), true);
+    }
+    refreshSilhouetteNote();
+}
+
+void ALFloaterAvatarLightResponse::onSilFillPreset()
+{
+    if (mUpdating)
+    {
+        return;
+    }
+    const S32 value = mSilFillPreset->getValue().asInteger();
+    if (value < 0 || value >= ALLightResponse::FILL_PRESET_COUNT)
+    {
+        return;
+    }
+    const ALLightResponse::EFillPreset preset = static_cast<ALLightResponse::EFillPreset>(value);
+    if (preset == ALLightResponse::FILL_CUSTOM)
+    {
+        return;
+    }
+    const LLVector3 fill = ALLightResponse::fillPresetSrgb(preset);
+    for (const LLUUID& key : selectedKeys())
+    {
+        ALLightResponse::Params p = currentParams(key);
+        p.mSilFillSrgb = fill;
+        applyParams(key, p, false);
+    }
+    ALAvatarLightResponse::instance().saveIfPersist();
+    refreshEditors();
+}
+
+void ALFloaterAvatarLightResponse::onSilCheckbox(bool haze)
+{
+    if (mUpdating)
+    {
+        return;
+    }
+    for (const LLUUID& key : selectedKeys())
+    {
+        ALLightResponse::Params p = currentParams(key);
+        if (haze)
+        {
+            p.mSilHaze = mSilHaze->get();
+        }
+        else
+        {
+            p.mSilKeepRim = mSilKeepRim->get();
+        }
+        applyParams(key, p, false);
+    }
+    ALAvatarLightResponse::instance().saveIfPersist();
+    refreshEditors();
 }
 
 void ALFloaterAvatarLightResponse::onBypass()
@@ -677,12 +916,18 @@ void ALFloaterAvatarLightResponse::onInheritSelected()
 
 void ALFloaterAvatarLightResponse::onResetAll()
 {
+    const LLHandle<ALFloaterAvatarLightResponse> handle = getDerivedHandle<ALFloaterAvatarLightResponse>();
     LLNotificationsUtil::add("AvatarLightResponseResetAll", LLSD(), LLSD(),
-        [](const LLSD& notification, const LLSD& response)
+        [handle](const LLSD& notification, const LLSD& response)
         {
             if (LLNotificationsUtil::getSelectedOption(notification, response) == 0)
             {
                 ALAvatarLightResponse::instance().clearAll(true);
+                if (ALFloaterAvatarLightResponse* self = handle.get())
+                {
+                    self->mIdleRowsPending = true;
+                    self->mIdleRowsImmediate = true;
+                }
             }
         });
 }

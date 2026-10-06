@@ -437,6 +437,60 @@ vec4 getNormRaw(vec2 screenpos)
     return norm;
 }
 
+#if defined(HAS_EMISSIVE)
+uniform int alr_sil_active; // [AvatarSilhouette] frame mask; bit 4 selects the fp16 carrier
+
+bool alrSilDecode(float carrier, float gbuffer_flag, out float k, out float r, out bool haze_skip)
+{
+    k = 1.0;
+    r = 1.0;
+    haze_skip = false;
+
+    if ((alr_sil_active & 1) == 0 ||
+        !(GET_GBUFFER_FLAG(gbuffer_flag, GBUFFER_FLAG_HAS_PBR) ||
+          GET_GBUFFER_FLAG(gbuffer_flag, GBUFFER_FLAG_HAS_ATMOS)))
+    {
+        return false;
+    }
+
+    int q;
+    int flags;
+    if ((alr_sil_active & 16) != 0)
+    {
+        float encoded = carrier - 2.0;
+        float rounded = floor(encoded + 0.5);
+        if (!(abs(encoded - rounded) < 0.25) || !(rounded >= 1.0 && rounded <= 2046.0))
+        {
+            return false;
+        }
+        int code = int(rounded);
+        q = code & 511;
+        if (q < 1 || q > 510)
+        {
+            return false;
+        }
+        flags = code >> 9;
+        k = 1.0 - float(q) / 510.0;
+    }
+    else
+    {
+        float rounded = floor(carrier * 255.0 + 0.5);
+        if (!(rounded >= 1.0 && rounded <= 248.0))
+        {
+            return false;
+        }
+        int code = int(rounded);
+        flags = (code - 1) / 62;
+        q = code - flags * 62;
+        k = 1.0 - float(q) / 62.0;
+    }
+
+    haze_skip = (flags & 1) != 0;
+    r = (flags & 2) != 0 ? k : 1.0;
+    return true;
+}
+#endif
+
 // get linear depth value given a depth buffer sample d and znear and zfar values
 float linearDepth(float d, float znear, float zfar)
 {
@@ -927,7 +981,9 @@ vec3 rigRimTerm(vec3 n,            // surface normal (eye space)
 // helper early-outs on, so every existing caller keeps its exact result.
 // [AvatarLightResponse] spec_keep scales ONLY the evaluated specular term
 // (specPunc) after the BRDF; the old name forwards 1.0 (x * 1.0 is exact).
-vec3 pbrCalcPointLightOrSpotLightRimKeep(vec3 diffuseColor, vec3 specularColor,
+#ifdef ALR_RIMSPLIT_PARITY
+// [AvatarSilhouette] Verbatim pre-RimSplit reference for the T21 permutation.
+vec3 pbrCalcPointLightOrSpotLightRimKeepRef(vec3 diffuseColor, vec3 specularColor,
                     float perceptualRoughness,
                     float metallic,
                     vec3 n, // normal
@@ -985,6 +1041,102 @@ vec3 pbrCalcPointLightOrSpotLightRimKeep(vec3 diffuseColor, vec3 specularColor,
     if (classic_mode > 0)
         final_scale = 0.9;
     return color * final_scale;
+}
+#endif
+
+// [AvatarSilhouette] Evaluate the raw non-rim and rim components separately.
+// final_scale is returned, never distributed, so the compatibility wrapper
+// below preserves today's add-then-multiply operation order exactly.
+void pbrCalcPointLightOrSpotLightRimSplit(vec3 diffuseColor, vec3 specularColor,
+                    float perceptualRoughness,
+                    float metallic,
+                    vec3 n, // normal
+                    vec3 p, // pixel position
+                    vec3 v, // view vector (negative normalized pixel position)
+                    vec3 lp, // light position
+                    vec3 ld, // light direction (for spotlights)
+                    vec3 lightColor,
+                    float lightSize, float falloff, float is_pointlight, float ambiance,
+                    vec4 rim, // [RigRim] per-light rim params (rig_rim_lights[i])
+                    float spec_keep, // [AvatarLightResponse] 1.0 = untouched
+                    out vec3 nonrim, out vec3 rim_raw, out bool rim_on,
+                    out float light_scale)
+{
+    nonrim = vec3(0,0,0);
+    rim_raw = vec3(0.0);
+    rim_on = false;
+
+    vec3 lv = lp.xyz - p;
+
+    float lightDist = length(lv);
+
+    float dist = lightDist / lightSize;
+    if (dist <= 1.0)
+    {
+        lv /= lightDist;
+
+        float dist_atten = calcLegacyDistanceAttenuation(dist, falloff);
+
+        // spotlight coefficient.
+        float spot = max(dot(-ld, lv), is_pointlight);
+        // spot*spot => GL_SPOT_EXPONENT=2
+        float spot_atten = spot*spot;
+
+        vec3 intensity = spot_atten * dist_atten * lightColor * 3.0; //magic number to balance with legacy materials
+
+        float nl = 0;
+        vec3 diffPunc = vec3(0);
+        vec3 specPunc = vec3(0);
+
+        pbrPunctual(diffuseColor, specularColor, perceptualRoughness, metallic, n.xyz, v, lv, nl, diffPunc, specPunc);
+        specPunc *= spec_keep; // [AvatarLightResponse]
+        nonrim = intensity * clamp(nl * (diffPunc + specPunc), vec3(0), vec3(10));
+
+        // [RigRim] additive rim from this forward light (cone + attenuation
+        // weighted; forward lights carry no per-light shadow).
+        rim_on = rig_rim_mode != 0;
+        if (rim_on)
+        {
+            rim_raw = rigRimTerm(n.xyz, v, lv, spot_atten * dist_atten * lightColor,
+                                diffuseColor, perceptualRoughness, rim);
+            if (rig_rim_mode == 2)
+            {
+                nonrim = vec3(0.0); // debug: rim only
+            }
+        }
+    }
+    light_scale = 1.0;
+    if (classic_mode > 0)
+        light_scale = 0.9;
+}
+
+vec3 pbrCalcPointLightOrSpotLightRimKeep(vec3 diffuseColor, vec3 specularColor,
+                    float perceptualRoughness,
+                    float metallic,
+                    vec3 n, // normal
+                    vec3 p, // pixel position
+                    vec3 v, // view vector (negative normalized pixel position)
+                    vec3 lp, // light position
+                    vec3 ld, // light direction (for spotlights)
+                    vec3 lightColor,
+                    float lightSize, float falloff, float is_pointlight, float ambiance,
+                    vec4 rim, // [RigRim] per-light rim params (rig_rim_lights[i])
+                    float spec_keep) // [AvatarLightResponse] 1.0 = untouched
+{
+    vec3 nonrim;
+    vec3 rim_raw;
+    bool rim_on;
+    float light_scale;
+    pbrCalcPointLightOrSpotLightRimSplit(diffuseColor, specularColor,
+        perceptualRoughness, metallic, n, p, v, lp, ld, lightColor, lightSize,
+        falloff, is_pointlight, ambiance, rim, spec_keep, nonrim, rim_raw,
+        rim_on, light_scale);
+    vec3 color = nonrim;
+    if (rim_on)
+    {
+        color += rim_raw;
+    }
+    return color * light_scale;
 }
 
 // [AvatarLightResponse] old name: forwards spec_keep = 1.0.

@@ -48,6 +48,8 @@ vec2 actorFxRgbSplitUv(vec2 transformed_uv, float direction);
 vec3 alrAlbedoSrgb(vec3 c);
 void alrLegacySpec(inout vec3 spec_srgb, inout float gloss, inout float env);
 vec3 alrDebugEmission(vec3 e);
+bool alrSilOn();
+vec4 alrSilGBufferLegacy();
 #endif
 
 vec3 linear_to_srgb(vec3 c);
@@ -121,6 +123,7 @@ void main()
         frag_data[3].rgb = actorFxEmissive(vec3(0.0), actor_fx_styled_linear);
     }
     frag_data[3].rgb = alrDebugEmission(frag_data[3].rgb); // [AvatarLightResponse] debug REPLACES emission
+    if (alrSilOn()) frag_data[3] = alrSilGBufferLegacy();
 #endif
 #endif
 }

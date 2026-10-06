@@ -30144,5 +30144,33 @@
     <key>Type</key><string>Boolean</string>
     <key>Value</key><integer>0</integer>
   </map>
+  <key>AvatarSilhouetteDebugCarrier</key>
+  <map>
+    <key>Comment</key><string>[AvatarSilhouette] Debug the deferred carrier and coverage mask; also enables carrier blend-state diagnostics.</string>
+    <key>Persist</key><integer>0</integer>
+    <key>Type</key><string>Boolean</string>
+    <key>Value</key><integer>0</integer>
+  </map>
+  <key>AvatarSilhouetteForceEmissive</key>
+  <map>
+    <key>Comment</key><string>[AvatarSilhouette] Session-only forced emissive G-buffer attachment used when a silhouette is active in vintage mode.</string>
+    <key>Persist</key><integer>0</integer>
+    <key>Type</key><string>Boolean</string>
+    <key>Value</key><integer>0</integer>
+  </map>
+  <key>AvatarSilhouetteCoverBias</key>
+  <map>
+    <key>Comment</key><string>[AvatarSilhouette] Polygon-offset units for the depth-tested post-deferred coverage replay.</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>F32</string>
+    <key>Value</key><real>-8.0</real>
+  </map>
+  <key>AvatarSilhouetteRimParity</key>
+  <map>
+    <key>Comment</key><string>[AvatarSilhouette] Compile the T21 forward RimSplit bit-parity instrument; mismatches paint magenta.</string>
+    <key>Persist</key><integer>0</integer>
+    <key>Type</key><string>Boolean</string>
+    <key>Value</key><integer>0</integer>
+  </map>
 </map>
 </llsd>

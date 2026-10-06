@@ -244,7 +244,10 @@ void LLReShadeBridge::gatherFrame()
             if (n > 2) fill_texture(f.normals, def, 2);
         }
         if (n > 1) fill_texture(f.orm,      def, 1);
-        if (n > 3) fill_texture(f.emissive, def, 3);
+        static LLCachedControl<bool> emissive_enabled(gSavedSettings, "RenderEnableEmissiveBuffer", false);
+        static LLCachedControl<bool> silhouette_force(gSavedSettings, "AvatarSilhouetteForceEmissive", false);
+        const bool silhouette_only_emissive = !emissive_enabled() && silhouette_force();
+        if (n > 3 && !silhouette_only_emissive) fill_texture(f.emissive, def, 3);
 
         // On-lens decouple: when applyOnLensFilters captured a RAW pre-filter
         // snapshot this frame (RenderReShadeDecoupleOnLens on + filters active),

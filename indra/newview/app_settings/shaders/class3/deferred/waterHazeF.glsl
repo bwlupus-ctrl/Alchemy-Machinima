@@ -36,6 +36,8 @@ vec4 getWaterFogView(vec3 pos);
 uniform int above_water;
 
 uniform sampler2D exclusionTex;
+uniform int alr_sil_active;
+uniform sampler2D silCoverMap;
 
 void main()
 {
@@ -70,6 +72,17 @@ void main()
 
     vec4 fogged = getWaterFogView(pos.xyz);
     fogged.a = max(pow(fogged.a, 1.7), 0);
+    if ((alr_sil_active & 32) != 0)
+    {
+        float h = texture(silCoverMap, tc).r;
+        fogged.rgb *= 1.0 - h;
+        fogged.a = 1.0 - (1.0 - h) * (1.0 - fogged.a);
+        if ((alr_sil_active & 8) != 0)
+        {
+            fogged.rgb = vec3(0.0, 1.0, 1.0) * h;
+            fogged.a = 1.0 - h;
+        }
+    }
 
     frag_color = max(fogged, vec4(0)); //output linear since local lights will be added to this shader's results
 
