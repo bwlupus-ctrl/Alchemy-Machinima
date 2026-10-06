@@ -1818,7 +1818,7 @@ void LLFloaterDirector::onCastSetMarkHere()
         if (av && av->getRootJoint() && m)
         {
             // current RENDERED root, same convention as setMarks()
-            m->mMark = av->getRootJoint()->getWorldPosition();
+            m->mMark = av->getBaseRootPosition();   // [ClientHeight] marks are BASE space
             m->mHasMark = true;
         }
     }

@@ -1,11 +1,14 @@
 <?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<!-- [ClientHeight] Set Hover Height also hosts the local (client-side) avatar height: a render-only
+     offset, session only, never sent or saved. The stock hover slider is unchanged (it is the server
+     hover, enabled only for Me). -->
 <floater
  positioning="cascading"
  legacy_header_height="225"
  can_minimize="true"
  can_close="true"
  can_resize="false"
- height="84"
+ height="172"
  width="515"
  layout="topleft"
  name="HoverHeight"
@@ -14,31 +17,104 @@
  save_rect="true"
  save_visibility="true"
  title="SET HOVER HEIGHT">
-      <slider
-     enabled="false"
-     control_name="HoverHeightSlider"
-     decimal_digits="3"
-     follows="top|left"
-     height="15"
-     increment="0.001"
-     initial_value="0.0"
-     label="Height"
-     label_width="60"
-     left="10"
-     width="501"
-     layout="topleft"
-     name="HoverHeightSlider"
-     top="35"
-     can_edit_text="true"
-     >
-    </slider>
+  <text
+   follows="top|left"
+   height="16"
+   layout="topleft"
+   left="10"
+   name="target_label"
+   top="30"
+   width="60">
+    Avatar
+  </text>
+  <combo_box
+   follows="top|left"
+   height="20"
+   layout="topleft"
+   left_pad="2"
+   name="target_combo"
+   tool_tip="Pick whose height to adjust: you, a resident, an animated object or a Ghost Studio clone. A * marks an avatar that already has a local offset."
+   top_delta="3"
+   width="439" />
+  <slider
+   enabled="false"
+   control_name="HoverHeightSlider"
+   decimal_digits="3"
+   follows="top|left"
+   height="15"
+   increment="0.001"
+   initial_value="0.0"
+   label="Hover height (everyone sees)"
+   label_width="170"
+   left="10"
+   width="501"
+   layout="topleft"
+   name="HoverHeightSlider"
+   tool_tip="The real hover height: sent to the region, so everyone sees it. Only available for Me, and only on regions that support it."
+   top_pad="12"
+   can_edit_text="true"
+   >
+  </slider>
+  <!-- Local offset: 5 mm increment for drag and text entry. The mouse wheel follows the GLOBAL
+       slider-wheel default (25 mm per notch, Shift 5 mm, Ctrl 250 mm); do not set wheel_adjust here. -->
+  <slider
+   decimal_digits="3"
+   follows="top|left"
+   height="15"
+   increment="0.005"
+   initial_value="0.0"
+   label="Local offset (only you see)"
+   label_width="170"
+   left="10"
+   max_val="2"
+   min_val="-2"
+   width="501"
+   layout="topleft"
+   name="ClientHeightSlider"
+   tool_tip="Lifts or lowers this avatar on YOUR screen only. Never sent to the region, never saved: it is gone when you log out."
+   top_pad="10"
+   can_edit_text="true"
+   >
+  </slider>
+  <button
+   follows="top|left"
+   height="20"
+   label="Reset"
+   layout="topleft"
+   left="10"
+   name="btn_reset_local"
+   tool_tip="Set the selected avatar's local offset back to 0"
+   top_pad="10"
+   width="90" />
+  <button
+   follows="top|left"
+   height="20"
+   label="Reset all"
+   layout="topleft"
+   left_pad="6"
+   name="btn_reset_all_local"
+   tool_tip="Clear the local offset of every avatar"
+   top_delta="0"
+   width="90" />
+  <text
+   follows="top|left"
+   height="16"
+   layout="topleft"
+   left_pad="10"
+   name="txt_status"
+   top_delta="-2"
+   use_ellipses="true"
+   width="300">
+    0 avatars adjusted
+  </text>
   <check_box
-     control_name="HoverHeightAffectsCamera"
-     follows="all"
-     height="15"
-     label="Bind Camera view"
-     layout="topleft"
-     name="BindCameraCheck"
-     top_pad="14"
-     width="237"/>
+   control_name="HoverHeightAffectsCamera"
+   follows="all"
+   height="15"
+   label="Bind Camera view (covers hover height and local offset)"
+   layout="topleft"
+   left="10"
+   name="BindCameraCheck"
+   top_pad="14"
+   width="400"/>
 </floater>

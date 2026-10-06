@@ -2703,7 +2703,7 @@ void ALPanelGhostStudio::onClickToActor()
     LLVOAvatar* av = LLDirectorCast::instance().resolve(inst->mSource);
     if (av && av->getRootJoint())
     {
-        LLVector3 foot = av->getRootJoint()->getWorldPosition();
+        LLVector3 foot = av->getBaseRootPosition();   // [ClientHeight] Ghost placements are BASE space
         F32 pelvis_to_foot = av->getPelvisToFoot();
         if (!llfinite(pelvis_to_foot))
         {
@@ -2737,7 +2737,7 @@ void ALPanelGhostStudio::onClickToMe()
     {
         return;
     }
-    LLVector3 foot = gAgentAvatarp->getRootJoint()->getWorldPosition();
+    LLVector3 foot = gAgentAvatarp->getBaseRootPosition();   // [ClientHeight] Ghost placements are BASE space
     F32 pelvis_to_foot = gAgentAvatarp->getPelvisToFoot();
     if (!llfinite(pelvis_to_foot))
     {

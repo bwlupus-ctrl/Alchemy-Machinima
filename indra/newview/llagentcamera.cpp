@@ -2509,7 +2509,15 @@ F32 LLAgentCamera::getCameraMaxZoomDistance()
 LLVector3 LLAgentCamera::getAvatarRootPosition()
 {
     static LLCachedControl<bool> use_hover_height(gSavedSettings, "HoverHeightAffectsCamera");
-    return use_hover_height ? gAgentAvatarp->mRoot->getWorldPosition() : gAgentAvatarp->mRoot->getWorldPosition() - gAgentAvatarp->getHoverOffset();
+    if (use_hover_height)
+    {
+        return gAgentAvatarp->mRoot->getWorldPosition();
+    }
+    // [ClientHeight] "Bind Camera" off excludes BOTH the stock hover and the local (client-side)
+    // offset (a world-vertical lift, so a plain world-Z subtraction).
+    LLVector3 pos = gAgentAvatarp->mRoot->getWorldPosition() - gAgentAvatarp->getHoverOffset();
+    pos.mV[VZ] -= gAgentAvatarp->getClientHeightZ();
+    return pos;
 
 }
 //-----------------------------------------------------------------------------

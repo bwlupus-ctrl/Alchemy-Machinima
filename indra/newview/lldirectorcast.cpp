@@ -2000,7 +2000,7 @@ void LLDirectorCast::setMarks()
         {
             // current RENDERED root, so a mark taken mid ghost-move (or on
             // a posed actor) captures what the camera actually sees
-            m.mMark = av->getRootJoint()->getWorldPosition();
+            m.mMark = av->getBaseRootPosition();   // [ClientHeight] marks are BASE space
             m.mHasMark = true;
         }
     }
@@ -2033,7 +2033,7 @@ bool LLDirectorCast::setMark(const LLUUID& id)
         return false;
     }
     // same capture as setMarks(): the current RENDERED root
-    m->mMark = av->getRootJoint()->getWorldPosition();
+    m->mMark = av->getBaseRootPosition();   // [ClientHeight] marks are BASE space
     m->mHasMark = true;
     return true;
 }

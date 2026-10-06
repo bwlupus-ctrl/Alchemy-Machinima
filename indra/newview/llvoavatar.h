@@ -56,6 +56,7 @@
 #include "llavatarrendernotifier.h"
 #include "llmodel.h"
 #include "alposepolish.h"       // [Machinima] post-blend Pose Polish stage
+#include "alclientheightmodel.h" // [ClientHeight] pure cache/stamp model
 
 extern const LLUUID ANIM_AGENT_BODY_NOISE;
 extern const LLUUID ANIM_AGENT_BREATHE_ROT;
@@ -529,6 +530,37 @@ public:
     // Director mutation boundary, this never consults gObjectList.
     LLUUID      getActorFxOwnerId() const;
     bool        hasEffectiveActorFx() const;
+
+    // [ClientHeight] Client-side avatar height (doc/CLIENT_AVATAR_HEIGHT_DESIGN.md):
+    // a session-only, render-only vertical offset (never sent, never saved) that
+    // every root writer adds next to the stock hover term.
+    // getClientHeightZ(): this avatar's OWN offset in metres; re-resolves the cache
+    // when its stamp is stale (store revision, ghost instance revision, wearer key,
+    // null/changed key) and is a single branch while the store is empty.
+    F32         getClientHeightZ();
+    // The EFFECTIVE offset = own + the wearer's when this is a WORN control avatar
+    // (the attach joint already carries the wearer's term, so only the own term is
+    // written at the attachment writer). Equals own for every other avatar.
+    F32         getEffectiveClientHeightZ();
+    // Resolve BEFORE computeNeedsUpdate() in updateCharacter(); true (once) when the
+    // offset changed since the last call, so a throttled avatar is forced to update.
+    bool        refreshClientHeight();
+    // The rendered root minus the EFFECTIVE offset: the "authoring" (base) space that
+    // Actor Mover paths, marks and Ghost placements live in. Reads the cached value.
+    // (BASE count: the 13 callers below; VISUAL: the 9 that still read the rendered root.)
+    //
+    // CLASSIFICATION of every root-joint world-position reader (22 sites; keep this list in
+    // step with the source count check: 9 stay on the rendered root, 13 call this helper).
+    // A new capture must pick a side, or the offset double-counts:
+    //  BASE (13): captures root to author state -> use getBaseRootPosition():
+    //    llactormover.cpp (7), lldirectorcast.cpp (2), llfloaterdirector.cpp (1),
+    //    alghoststudio.cpp source_foot_agent (1), alpanelghoststudio.cpp (2).
+    //  VISUAL (9): wants where the avatar is DRAWN -> keep the rendered root:
+    //    llactormover.cpp debug log, look-at delta, live-root hold, origin,
+    //    impostor centre-minus-foot (offset cancels), 14532 live root (6);
+    //    alghoststudio.cpp overlay head-paired foot + palette anchor (2);
+    //    llvoavatar.cpp 11960 (1).
+    LLVector3   getBaseRootPosition() const;
 // [RLVa:KB] - Checked: RLVa-2.2 (@setcam_avdist)
     bool        isRlvSilhouette() const;
 // [/RLVa:KB]
@@ -1176,6 +1208,17 @@ private:
     bool            mIsSitting;
     // position backup in case of missing data
     LLVector3       mLastRootPos;
+    // [ClientHeight] mLastRootPos minus the effective client offset, captured on the same
+    // line. mLastRootPos stays VISUAL (name tag, voice); only getOffObject's standoff
+    // fallback (which becomes the drawable's position) needs the BASE value.
+    LLVector3       mLastBaseRootPos;
+    // [ClientHeight] cached own / effective offset + the stamp it was resolved against.
+    ALClientHeightModel::Cache mClientHeightCache;
+    bool            mClientHeightChangePending = false;
+    // true when LLActorMover::applyOverride() wrote the root this frame (it owns the client term)
+    bool            mClientHeightMoverWroteRoot = false;
+    // Resolves the cache; flags a pending forced update on a change.
+    void            resolveClientHeight();
 
 /**                    Hierarchy
  **                                                                            **

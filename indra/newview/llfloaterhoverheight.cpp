@@ -1,6 +1,7 @@
 /**
 * @file llfloaterhoverheight.cpp
-* @brief Controller for self avatar hover height
+* @brief Controller for self avatar hover height, and (ClientHeight) the local,
+*        render-only height offset of any avatar.
 * @author vir@lindenlab.com
 *
 * $LicenseInfo:firstyear=2014&license=viewerlgpl$
@@ -28,15 +29,48 @@
 #include "llviewerprecompiledheaders.h"
 
 #include "llfloaterhoverheight.h"
-#include "llsliderctrl.h"
-#include "llviewercontrol.h"
-#include "llsdserialize.h"
+
+#include "alclientheight.h"
+#include "alghoststudio.h"
+#include "aluirefresh.h"
 #include "llagent.h"
+#include "llagentdata.h"
+#include "llavatarnamecache.h"
+#include "llbutton.h"
+#include "llcharacter.h"
+#include "llcombobox.h"
+#include "llfocusmgr.h"
+#include "llsdserialize.h"
+#include "llsliderctrl.h"
+#include "lltextbox.h"
+#include "llviewercontrol.h"
 #include "llviewerregion.h"
+#include "llvoavatar.h"
 #include "llvoavatarself.h"
+#include "llworld.h"
+
+#include <algorithm>
+
+namespace
+{
+std::string clientHeightShortId(const LLUUID& key)
+{
+    return key.asString().substr(0, 8);
+}
+}
 
 LLFloaterHoverHeight::LLFloaterHoverHeight(const LLSD& key) : LLFloater(key)
 {
+}
+
+LLFloaterHoverHeight::~LLFloaterHoverHeight()
+{
+    // [ClientHeight] the lambdas capture this
+    mStoreConnection.disconnect();
+    for (boost::signals2::connection& conn : mNameConnections)
+    {
+        conn.disconnect();
+    }
 }
 
 void LLFloaterHoverHeight::syncFromPreferenceSetting(void *user_data, bool update_offset)
@@ -59,11 +93,29 @@ void LLFloaterHoverHeight::syncFromPreferenceSetting(void *user_data, bool updat
 bool LLFloaterHoverHeight::postBuild()
 {
     LLSliderCtrl* sldrCtrl = getChild<LLSliderCtrl>("HoverHeightSlider");
+    mHoverSlider = sldrCtrl;
     sldrCtrl->setMinValue(MIN_HOVER_Z);
     sldrCtrl->setMaxValue(MAX_HOVER_Z);
     sldrCtrl->setSliderMouseUpCallback(boost::bind(&LLFloaterHoverHeight::onFinalCommit,this));
     sldrCtrl->setSliderEditorCommitCallback(boost::bind(&LLFloaterHoverHeight::onFinalCommit,this));
+    // Stock behaviour, unchanged: the server send happens only on mouse-up / editor commit.
     childSetCommitCallback("HoverHeightSlider", &LLFloaterHoverHeight::onSliderMoved, NULL);
+
+    // [ClientHeight] target selector, local offset slider, resets, status.
+    mTargetCombo    = getChild<LLComboBox>("target_combo");
+    mClientSlider   = getChild<LLSliderCtrl>("ClientHeightSlider");
+    mResetButton    = getChild<LLButton>("btn_reset_local");
+    mResetAllButton = getChild<LLButton>("btn_reset_all_local");
+    mStatusText     = getChild<LLTextBox>("txt_status");
+    mClientSlider->setMinValue(-ALClientHeightModel::MAX_OFFSET);
+    mClientSlider->setMaxValue(ALClientHeightModel::MAX_OFFSET);
+    mClientSlider->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClientHeightMoved(); });
+    mTargetCombo->setCommitCallback([this](LLUICtrl*, const LLSD&) { onTargetChanged(); });
+    // The drop-down opening is one of the few places the list is rebuilt (never from draw()).
+    mTargetCombo->setPrearrangeCallback([this](LLUICtrl*, const LLSD&) { rebuildTargets(); });
+    mResetButton->setCommitCallback([this](LLUICtrl*, const LLSD&) { onResetTarget(); });
+    mResetAllButton->setCommitCallback([this](LLUICtrl*, const LLSD&) { onResetAll(); });
+    mStoreConnection = ALClientHeight::instance().setChangeCallback([this]() { onStoreChanged(); });
 
     // Initialize slider from pref setting.
     syncFromPreferenceSetting(this);
@@ -86,7 +138,29 @@ bool LLFloaterHoverHeight::postBuild()
     // Set up based on initial region.
     onRegionChanged();
 
+    rebuildTargets();
+    refreshTargetWidgets(true);
+
     return true;
+}
+
+// virtual
+void LLFloaterHoverHeight::onOpen(const LLSD& key)
+{
+    LLFloater::onOpen(key);
+    // A UUID key (menu "Local Height...") selects that avatar; otherwise keep the selection (default Me).
+    if (key.isUUID() && key.asUUID().notNull())
+    {
+        mTargetKey = key.asUUID();
+    }
+    if (!mRegionChangedSlot.connected())
+    {
+        // onClose() drops the region callback; take it back up on re-open.
+        mRegionChangedSlot = gAgent.addRegionChangedCallback(boost::bind(&LLFloaterHoverHeight::onRegionChanged,this));
+    }
+    rebuildTargets();
+    refreshTargetWidgets(true);
+    updateEditEnabled();
 }
 
 void LLFloaterHoverHeight::onClose(bool app_quitting)
@@ -143,7 +217,9 @@ void LLFloaterHoverHeight::onSimulatorFeaturesReceived(const LLUUID &region_id)
 
 void LLFloaterHoverHeight::updateEditEnabled()
 {
-    bool enabled = gAgent.getRegion() && gAgent.getRegion()->avatarHoverHeightEnabled();
+    // [ClientHeight] The stock (server) hover slider is region-gated AND only meaningful for Me:
+    // it never moves when another avatar is selected, so nobody's server hover is changed by accident.
+    bool enabled = gAgent.getRegion() && gAgent.getRegion()->avatarHoverHeightEnabled() && isMeSelected();
     LLSliderCtrl* sldrCtrl = getChild<LLSliderCtrl>("HoverHeightSlider");
     sldrCtrl->setEnabled(enabled);
     if (enabled)
@@ -152,4 +228,204 @@ void LLFloaterHoverHeight::updateEditEnabled()
     }
 }
 
+// ---------------------------------------------------------------------------
+// [ClientHeight] local (client-side) avatar height
+// ---------------------------------------------------------------------------
+LLUUID LLFloaterHoverHeight::targetKey() const
+{
+    return mTargetKey.notNull() ? mTargetKey : gAgentID;
+}
 
+bool LLFloaterHoverHeight::isMeSelected() const
+{
+    return targetKey() == gAgentID;
+}
+
+void LLFloaterHoverHeight::rebuildTargets()
+{
+    if (!mTargetCombo)
+    {
+        return;
+    }
+    const ALClientHeightModel::Store& store = ALClientHeight::instance().store();
+
+    struct Row
+    {
+        LLUUID      mKey;
+        std::string mName;
+    };
+    std::vector<Row> rows;
+    std::set<LLUUID> seen;
+    auto add = [&](const LLUUID& key, const std::string& name)
+    {
+        if (key.isNull() || !seen.insert(key).second)
+        {
+            return;
+        }
+        rows.push_back({key, name});
+    };
+    // Display name through the name cache; the short id until it resolves (a callback then rebuilds).
+    auto resident_name = [this](const LLUUID& id) -> std::string
+    {
+        LLAvatarName av_name;
+        if (LLAvatarNameCache::get(id, &av_name))
+        {
+            return av_name.getDisplayName();
+        }
+        if (mNamesRequested.insert(id).second)
+        {
+            mNameConnections.push_back(LLAvatarNameCache::get(id,
+                [this](const LLUUID&, const LLAvatarName&) { onNameResolved(); }));
+        }
+        return clientHeightShortId(id);
+    };
+
+    // Me
+    add(gAgentID, "Me");
+
+    // Residents (display name, short id until it resolves)
+    uuid_vec_t resident_ids;
+    LLWorld::getInstance()->getAvatars(&resident_ids);
+    std::vector<Row> residents;
+    for (const LLUUID& id : resident_ids)
+    {
+        if (id.notNull() && id != gAgentID && seen.find(id) == seen.end())
+        {
+            residents.push_back({id, resident_name(id)});
+        }
+    }
+    std::sort(residents.begin(), residents.end(), [](const Row& a, const Row& b)
+    {
+        return LLStringUtil::compareInsensitive(a.mName, b.mName) < 0;
+    });
+    for (const Row& r : residents)
+    {
+        add(r.mKey, r.mName);
+    }
+
+    // Animesh (control avatars, not dead); worn ones are labelled
+    for (LLCharacter* character : LLCharacter::sInstances)
+    {
+        LLVOAvatar* av = static_cast<LLVOAvatar*>(character);
+        if (av && av->isControlAvatar() && !av->isDead())
+        {
+            const LLUUID key = ALClientHeight::keyForAvatar(av);
+            add(key, "Animesh " + clientHeightShortId(key) + (av->getAttachedAvatar() ? " (worn)" : ""));
+        }
+    }
+
+    // Ghost Studio clones
+    for (const ALGhostStudio::Instance& inst : ALGhostStudio::instance().getInstances())
+    {
+        std::string name = !inst.mName.empty() ? inst.mName : inst.mSourceLabel;
+        if (name.empty())
+        {
+            name = clientHeightShortId(inst.mId);
+        }
+        add(inst.mId, "Clone: " + name);
+    }
+
+    // Stored keys that are not present (the entry is kept for the session), and the selection
+    // itself when a menu handed us a key that is not in any list above.
+    for (const auto& kv : store.entries())
+    {
+        if (seen.find(kv.first) == seen.end())
+        {
+            add(kv.first, clientHeightShortId(kv.first) + " (away)");
+        }
+    }
+    if (seen.find(targetKey()) == seen.end())
+    {
+        add(targetKey(), clientHeightShortId(targetKey()) + " (away)");
+    }
+
+    mUpdating = true;
+    mTargetCombo->removeall();
+    for (const Row& r : rows)
+    {
+        std::string label = r.mName;
+        const F32 z = store.get(r.mKey);
+        if (z != 0.f)
+        {
+            label += llformat("   * %+.3f m", z);
+        }
+        mTargetCombo->add(label, r.mKey);
+    }
+    mTargetCombo->setValue(LLSD(targetKey()));
+    mUpdating = false;
+}
+
+void LLFloaterHoverHeight::onNameResolved()
+{
+    // A name arrived late. Never rebuild under an open drop-down (the next opening rebuilds anyway).
+    if (getVisible() && !alIsBeingEdited(mTargetCombo))
+    {
+        rebuildTargets();
+    }
+}
+
+void LLFloaterHoverHeight::onTargetChanged()
+{
+    if (mUpdating || !mTargetCombo)
+    {
+        return;
+    }
+    const LLUUID key = mTargetCombo->getValue().asUUID();
+    if (key.isNull())
+    {
+        return;
+    }
+    mTargetKey = key;
+    refreshTargetWidgets(true);
+    updateEditEnabled();
+}
+
+void LLFloaterHoverHeight::onClientHeightMoved()
+{
+    if (mUpdating || !mClientSlider)
+    {
+        return;
+    }
+    // Live write while dragging: the store only (cheap); avatars pick it up through their revision cache.
+    ALClientHeight::instance().set(targetKey(), mClientSlider->getValueF32());
+}
+
+void LLFloaterHoverHeight::onResetTarget()
+{
+    ALClientHeight::instance().reset(targetKey());
+    refreshTargetWidgets(true);
+}
+
+void LLFloaterHoverHeight::onResetAll()
+{
+    ALClientHeight::instance().resetAll();
+    rebuildTargets();               // drops the "away" rows and the markers
+    refreshTargetWidgets(true);
+}
+
+void LLFloaterHoverHeight::onStoreChanged()
+{
+    // Not forced: a slider being dragged / typed into keeps what the user is doing.
+    refreshTargetWidgets(false);
+}
+
+void LLFloaterHoverHeight::refreshTargetWidgets(bool force)
+{
+    if (!mClientSlider)
+    {
+        return;
+    }
+    const F32 z = ALClientHeight::instance().get(targetKey());
+    mUpdating = true;
+    setValueIfChanged(mClientSlider, LLSD(z), force);
+    mUpdating = false;
+    setEnabledIfChanged(mResetButton, z != 0.f);
+    refreshStatus();
+}
+
+void LLFloaterHoverHeight::refreshStatus()
+{
+    const size_t n = ALClientHeight::instance().size();
+    setTextIfChanged(mStatusText,
+        llformat("%u %s adjusted", (unsigned)n, n == 1 ? "avatar" : "avatars"), true);
+}

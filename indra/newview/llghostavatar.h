@@ -73,6 +73,13 @@ public:
     void setGhostFootPosition(const LLVector3& foot_agent);
     void setGhostRotation(const LLQuaternion& rotation);
 
+    // [ClientHeight] The stable Ghost Studio instance id (Instance::mId), stamped by
+    // Studio BEFORE applyEntityRuntimeState() so the very first foot lock already
+    // resolves the clone's local height offset (inst.mEntityId is only published
+    // AFTER that call, so findInstanceByRuntime() would miss).
+    void setClientHeightKey(const LLUUID& key) { mClientHeightKey = key; }
+    const LLUUID& getClientHeightKey() const { return mClientHeightKey; }
+
     // LLVOAvatar::slamPosition() MINUS its opening gAgent.setPositionAgent()
     // (llvoavatar.cpp:4038), which would teleport the real agent onto the ghost.
     // Never call the base slamPosition() on a ghost.
@@ -230,6 +237,7 @@ private:
     void buildTrueMirrorParamSets();
 
     bool mMarkedForDeath;
+    LLUUID mClientHeightKey;   // [ClientHeight] see setClientHeightKey()
     bool mEntityCloneVisible;
     // Global coordinates survive agent-origin changes at region crossings.
     LLVector3d mDesiredGhostFootGlobal;

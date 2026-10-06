@@ -2131,7 +2131,7 @@ bool LLActorMover::setPathShape(const LLUUID& actor_id, S32 shape)
     if (new_path)
     {
         path.mNodes.clear();
-        const LLVector3 root_agent = av->getRootJoint()->getWorldPosition();
+        const LLVector3 root_agent = av->getBaseRootPosition();   // [ClientHeight] capture -> base
         LLVector3d foot_global = gAgent.getPosGlobalFromAgent(root_agent);
         const F32 root_above = llmax(0.f, av->getPelvisToFoot());
         foot_global.mdV[VZ] -= root_above;
@@ -2318,7 +2318,7 @@ bool LLActorMover::centerPathPrimitiveOnActor(const LLUUID& actor_id)
         stop(av->getID());
     }
     LLVector3d center = gAgent.getPosGlobalFromAgent(
-        av->getRootJoint()->getWorldPosition());
+        av->getBaseRootPosition());   // [ClientHeight] capture -> base
     center.mdV[VZ] -= llmax(0.f, av->getPelvisToFoot());
     const LLVector3d delta = center - path->mPrimitiveCenterGlobal;
     path->mPrimitiveCenterGlobal = center;
@@ -2359,7 +2359,7 @@ void LLActorMover::appendWaypointHere(const LLUUID& actor_id)
     // capture->walk round-trip reproduces the exact captured root height no
     // matter what the ground-snap returned or how the walk pose differs -- the
     // same "hold the captured root" convention the legacy straight move uses.
-    const LLVector3 root = av->getRootJoint()->getWorldPosition();
+    const LLVector3 root = av->getBaseRootPosition();   // [ClientHeight] capture -> base
     const F32 p2f = av->getPelvisToFoot();
     LLVector3 foot = root;
     foot.mV[VZ] -= p2f;
@@ -4292,7 +4292,7 @@ void LLActorMover::start(const LLUUID& actor_id)
     const F32 yaw = atan2f(at.mV[VY], at.mV[VX]) + (F32)heading * DEG_TO_RAD;
 
     Move mv;
-    mv.mOrigin   = av->getRootJoint()->getWorldPosition();   // rendered pose, incl. a prior move
+    mv.mOrigin   = av->getBaseRootPosition();   // rendered pose, incl. a prior move ([ClientHeight] base: offset re-added in applyOverride)
     mv.mHeading  = yaw;
     mv.mSpeed    = llclamp((F32)speed, 0.05f, 150.f);
     mv.mDistance = llmax((F32)distance, 0.1f);
@@ -4605,7 +4605,15 @@ bool LLActorMover::applyOverride(LLVOAvatar* av)
         }
     }
 
-    av->getRootJoint()->setWorldPosition(mv.mCurPos);
+    // [ClientHeight] Mover space (mCurPos, paths, marks) is authored in BASE space with no local
+    // offset; the render root re-adds the EFFECTIVE offset (own + wearer for a worn animesh,
+    // since this rebuilds the root from un-offset mover space, also when re-run from
+    // LLControlAvatar::matchVolumeTransform()).
+    {
+        LLVector3 root_world = mv.mCurPos;
+        root_world.mV[VZ] += av->getEffectiveClientHeightZ();
+        av->getRootJoint()->setWorldPosition(root_world);
+    }
     av->getRootJoint()->setWorldRotation(mv.mCurRot);
 
     ALPosePolish::ContactHints hints;
@@ -4924,7 +4932,7 @@ bool LLActorMover::reanchorWalk(const LLUUID& actor_id)
     // ...and the actor's current foot position now (rendered root minus the
     // pelvis-to-foot, matching the node capture convention). Suspended, the root
     // is NOT overridden, so it reflects the actor's real standing pose.
-    LLVector3  root_agent  = av->getRootJoint()->getWorldPosition();
+    LLVector3  root_agent  = av->getBaseRootPosition();   // [ClientHeight] capture -> base
     LLVector3d foot_global = gAgent.getPosGlobalFromAgent(root_agent);
     foot_global.mdV[VZ] -= av->getPelvisToFoot();
     // translate the WHOLE path (and every node camera) so the current arc
@@ -5229,7 +5237,7 @@ void LLActorMover::advancePath(LLVOAvatar* av, Move& mv, F32 dt)
         // contains any future out-of-band erase/load failure at the actor's live
         // root and releases path-camera ownership immediately.
         mv.mCurPos = av->getRootJoint()
-            ? av->getRootJoint()->getWorldPosition() : av->getPositionAgent();
+            ? av->getBaseRootPosition() : av->getPositionAgent();   // [ClientHeight] capture -> base
         mv.mArrived = true;
         enterSuspend(av->getID(), mv, av);
         return;
@@ -5552,7 +5560,7 @@ void LLActorMover::advanceFollower(LLVOAvatar* av, Move& mv, const Follow& f, F3
     {
         if (!mv.mFaceInit)
         {
-            mv.mCurPos          = av->getRootJoint()->getWorldPosition();
+            mv.mCurPos          = av->getBaseRootPosition();   // [ClientHeight] capture -> base
             mv.mCurRot          = av->getRenderRotation();
             mv.mFollowRootAbove = llmax(0.f, av->getPelvisToFoot());
             mv.mFaceInit        = true;

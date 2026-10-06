@@ -191,7 +191,9 @@ void LLControlAvatar::matchVolumeTransform()
                 LLVector3 obj_pos = mRootVolp->mDrawable->getPosition();
                 LLQuaternion obj_rot = mRootVolp->mDrawable->getRotation();
                 obj_pos.rotVec(joint_rot);
-                mRoot->setWorldPosition(obj_pos + joint_pos);
+                // [ClientHeight] Own term only: the attach joint already carries the wearer's
+                // offset (it rides the wearer's root), so the two STACK.
+                mRoot->setWorldPosition(obj_pos + joint_pos + LLVector3(0.f, 0.f, getClientHeightZ()));
                 mRoot->setWorldRotation(obj_rot * joint_rot);
                 setRotation(mRoot->getRotation());
 
@@ -243,7 +245,8 @@ void LLControlAvatar::matchVolumeTransform()
             {
                 setPositionAgent(vol_pos);
             }
-            mRoot->setPosition(vol_pos + mPositionConstraintFixup);
+            // [ClientHeight] local, render-only offset (world Z); setPositionAgent above is untouched.
+            mRoot->setPosition(vol_pos + mPositionConstraintFixup + LLVector3(0.f, 0.f, getClientHeightZ()));
 
             setGlobalScale(mScaleConstraintFixup);
         }

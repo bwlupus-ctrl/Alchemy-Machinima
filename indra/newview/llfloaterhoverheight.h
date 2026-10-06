@@ -1,6 +1,7 @@
 /**
 * @file   llfloaterhoverheight.h
-* @brief  Controller for self avatar hover height.
+* @brief  Controller for self avatar hover height, and (ClientHeight) the local,
+*         render-only height offset of any avatar.
 * @author vir@lindenlab.com
 *
 * $LicenseInfo:firstyear=2014&license=viewerlgpl$
@@ -28,11 +29,21 @@
 #define LL_LLFLOATERHOVERHEIGHT_H
 
 #include "llfloater.h"
+#include "lluuid.h"
+
+#include <set>
+#include <vector>
+
+class LLButton;
+class LLComboBox;
+class LLSliderCtrl;
+class LLTextBox;
 
 class LLFloaterHoverHeight: public LLFloater
 {
 public:
     LLFloaterHoverHeight(const LLSD& key);
+    ~LLFloaterHoverHeight();
     bool postBuild();
 
     static void onSliderMoved(LLUICtrl* ctrl, void* userData);
@@ -45,8 +56,37 @@ public:
     void onSimulatorFeaturesReceived(const LLUUID &region_id);
     void updateEditEnabled();
 
+    /*virtual*/ void onOpen(const LLSD& key);
     /*virtual*/ void onClose(bool app_quitting);
     boost::signals2::connection mRegionChangedSlot;
+
+private:
+    // [ClientHeight] Local (client-side) avatar height. No draw() override: every refresh below is
+    // event-driven (open, drop-down opening, Reset all, name-cache callback, store change).
+    LLUUID targetKey() const;            // the selected store key (Me = gAgentID)
+    bool   isMeSelected() const;
+    void   rebuildTargets();             // combo contents; never from draw()
+    void   onTargetChanged();
+    void   onClientHeightMoved();        // live write to the store (cheap)
+    void   onResetTarget();
+    void   onResetAll();
+    void   onStoreChanged();
+    void   onNameResolved();
+    void   refreshTargetWidgets(bool force);
+    void   refreshStatus();
+
+    LLComboBox*   mTargetCombo = nullptr;
+    LLSliderCtrl* mHoverSlider = nullptr;
+    LLSliderCtrl* mClientSlider = nullptr;
+    LLButton*     mResetButton = nullptr;
+    LLButton*     mResetAllButton = nullptr;
+    LLTextBox*    mStatusText = nullptr;
+
+    LLUUID        mTargetKey;            // null = Me
+    bool          mUpdating = false;     // programmatic combo / slider writes
+    boost::signals2::connection mStoreConnection;
+    std::set<LLUUID>                         mNamesRequested;
+    std::vector<boost::signals2::connection> mNameConnections;
 };
 
 #endif

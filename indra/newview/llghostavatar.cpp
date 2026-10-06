@@ -1098,6 +1098,10 @@ void LLGhostAvatar::applyDesiredGhostFootPosition()
     LLVector3 root_agent =
         gAgent.getPosAgentFromGlobal(mDesiredGhostFootGlobal);
     root_agent.mV[VZ] += llmax(0.f, pelvis_to_foot);
+    // [ClientHeight] A ghost's object position is its visual root by contract, so the
+    // local height offset belongs here (stock hover is skipped for ghosts). The
+    // redundancy guard below compares against this offset root and still holds.
+    root_agent.mV[VZ] += getClientHeightZ();
     if (!root_agent.isFinite())
     {
         return;

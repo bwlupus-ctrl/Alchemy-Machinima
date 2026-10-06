@@ -28,6 +28,7 @@
 
 #include "llappviewer.h"
 #include "alavatarlightresponse.h" // [AvatarLightResponse]
+#include "alclientheight.h"       // [ClientHeight] disconnect reset
 
 // Viewer includes
 #include "llversioninfo.h"
@@ -6123,6 +6124,13 @@ void LLAppViewer::disconnectViewer()
     // UI state pointing at avatars about to be torn down; end it here, before
     // the views and objects go. Idempotent on logout, relog and final quit.
     LLActorMover::instance().resetEditSession();
+
+    // [ClientHeight] Session-only local avatar height offsets are keyed by avatar/clone/linkset
+    // ids; they must not leak into a different account or relog session.
+    if (ALClientHeight::instanceExists())
+    {
+        ALClientHeight::getInstance()->clearSession();
+    }
 
     // [BDMerge G3.3 Phase 2] Session-only projector volumetric-shaft opt-in set
     // must not survive a session; clear it on logout/relog (this runs before

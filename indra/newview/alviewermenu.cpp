@@ -30,6 +30,7 @@
 // newview
 #include "alavataractions.h"
 #include "alavatarlightresponse.h" // [AvatarLightResponse]
+#include "alclientheight.h"        // [ClientHeight]
 #include "llcontrolavatar.h"        // [AvatarLightResponse] worn-animesh target
 #include "llcinematiccamera.h"  // [Cinematic] locked follow subject
 #include "llactormover.h"       // [ActorMover] ghost locomotion subject
@@ -1032,6 +1033,35 @@ namespace
         }
     }
 
+// [ClientHeight] "Local Height...": open Set Hover Height on that target. Same target
+// resolution as "Light Response..." (a worn animesh targets its OWN control avatar).
+    void handle_avatar_local_height(const LLSD&)
+    {
+        LLViewerObject* primary = LLSelectMgr::getInstance()->getSelection()->getPrimaryObject();
+        LLVOAvatar* avatarp = nullptr;
+        if (primary && !primary->isAvatar())
+        {
+            LLControlAvatar* cav = primary->getControlAvatar();
+            if (cav && !cav->isDead())
+            {
+                avatarp = cav;
+            }
+        }
+        if (!avatarp)
+        {
+            avatarp = find_avatar_from_object(primary);
+        }
+        if (!avatarp)
+        {
+            return;
+        }
+        const LLUUID key = ALClientHeight::keyForAvatar(avatarp, nullptr);
+        if (key.notNull())
+        {
+            LLFloaterReg::showInstance("edit_hover_height", LLSD(key));
+        }
+    }
+
 // [ObjectPath] right-click any object > Director > "Path Object": toggle the
 // clicked linkset's ROOT into the client-side object path mover roster (drive
 // a prop along a spline, sim never told). The clicked prim resolves to its
@@ -1267,6 +1297,7 @@ void ALViewerMenu::initialize_menus()
     enable.add("Avatar.CheckActorMoverTarget", boost::bind(&check_avatar_actor_mover_target, _2));
     // [AvatarLightResponse]
     commit.add("Avatar.LightResponse", boost::bind(&handle_avatar_light_response, _2));
+    commit.add("Avatar.LocalHeight", boost::bind(&handle_avatar_local_height, _2));   // [ClientHeight]
     // [ObjectPath] client-side object path mover roster (props on splines)
     commit.add("Object.PathTarget", boost::bind(&handle_object_path_target, _2));
     enable.add("Object.CheckPathTarget", boost::bind(&check_object_path_target, _2));

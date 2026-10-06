@@ -4708,7 +4708,10 @@ class LLEnableHoverHeight : public view_listener_t
 {
     bool handleEvent(const LLSD& userdata)
     {
-        return gAgent.getRegion() && gAgent.getRegion()->avatarHoverHeightEnabled();
+        // [ClientHeight] The Set Hover Height floater now also hosts the local (client-side)
+        // avatar height, which needs no region support. Keep the menu always enabled; only the
+        // stock server hover slider is gated (LLFloaterHoverHeight::updateEditEnabled()).
+        return true;
     }
 };
 

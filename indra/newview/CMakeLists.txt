@@ -298,6 +298,8 @@ set(viewer_SOURCE_FILES
     alavatarlightresponse.cpp # [AvatarLightResponse]
     alavatarlightresponsemodel.cpp # [AvatarLightResponse]
     alfloateravatarlightresponse.cpp # [AvatarLightResponse]
+    alavatarkey.cpp # [ClientHeight]
+    alclientheight.cpp # [ClientHeight]
     aldiopterpresetbank.cpp
     aldiopterrelevance.cpp
     alfloatercinelightcues.cpp
@@ -1164,6 +1166,9 @@ set(viewer_HEADER_FILES
     alavatarlightresponse.h # [AvatarLightResponse]
     alavatarlightresponsemodel.h # [AvatarLightResponse]
     alfloateravatarlightresponse.h # [AvatarLightResponse]
+    alavatarkey.h # [ClientHeight]
+    alclientheight.h # [ClientHeight]
+    alclientheightmodel.h # [ClientHeight]
     aldiopterpresetbank.h
     aldiopterrelevance.h
     alfloatercinelightcues.h
@@ -2723,6 +2728,14 @@ if (BUILD_TESTING)
   # [Machinima] Pose Polish pure-math modules (inertialization, contact, etc.);
   # header-only, TUT registered directly like ALGazeMath.
   LL_ADD_INTEGRATION_TEST(alposepolish
+    ""
+    "${test_libs}"
+    "${test_project}"
+  )
+
+  # [ClientHeight] The pure store / per-avatar resolve model is header-only
+  # (alclientheightmodel.h), so its TUT is registered directly like ALGazeMath.
+  LL_ADD_INTEGRATION_TEST(alclientheightmodel
     ""
     "${test_libs}"
     "${test_project}"

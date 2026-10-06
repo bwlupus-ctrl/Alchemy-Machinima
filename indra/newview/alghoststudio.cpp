@@ -99,7 +99,7 @@ bool source_foot_agent(const LLUUID& source, LLVector3& out_foot)
     {
         return false;
     }
-    out_foot = av->getRootJoint()->getWorldPosition();
+    out_foot = av->getBaseRootPosition();   // [ClientHeight] a clone placed here copies the BASE foot
     F32 pelvis_to_foot = av->getPelvisToFoot();
     if (!llfinite(pelvis_to_foot))
     {
@@ -452,6 +452,10 @@ void ALGhostStudio::onEntityRuntimeReplaced(Instance& inst,
     }
     if (new_ghost)
     {
+        // [ClientHeight] Stamp the STABLE id before the foot is placed:
+        // applyEntityRuntimeState() places the foot BEFORE inst.mEntityId is published
+        // below, so findInstanceByRuntime() would miss on that first slam.
+        new_ghost->setClientHeightKey(stable_id);
         applyEntityRuntimeState(inst, new_ghost);
     }
     inst.mEntityId = new_runtime;

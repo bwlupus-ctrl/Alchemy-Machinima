@@ -43,6 +43,10 @@
 
 #include "alavatargroups.h"
 #include "alavatarlightresponse.h" // [AvatarLightResponse]
+#include "alclientheight.h"        // [ClientHeight]
+#include "llagentdata.h"           // [ClientHeight] gAgentID
+#include "alghoststudio.h"         // [ClientHeight] ghost instance revision
+#include "llghostavatar.h"         // [ClientHeight] stamped clone key
 #include "alcinelightrigmanager.h" // [ActorMask]
 #include "aoengine.h"
 #include "llagent.h" //  Get state values from here
@@ -2925,6 +2929,10 @@ void LLVOAvatar::idleUpdate(LLAgent &agent, const F64 &time)
     // animate the character
     // store off last frame's root position to be consistent with camera position
     mLastRootPos = mRoot->getWorldPosition();
+    // [ClientHeight] mLastRootPos stays VISUAL (name tag, voice); the BASE twin feeds only
+    // getOffObject's standoff fallback.
+    mLastBaseRootPos = mLastRootPos;
+    mLastBaseRootPos.mV[VZ] -= mClientHeightCache.effective();
     bool detailed_update = updateCharacter(agent);
 
     // [BDMerge B12] (EXPERIMENTAL) Mouselook head-bone scaling: apply/restore every frame, after the
@@ -5019,6 +5027,9 @@ void LLVOAvatar::updateRootPositionAndRotation(LLAgent& agent, F32 speed, bool w
             if (!isGhostAvatar())   // [GhostClone] no extra hover on clones (see note above)
             {
                 root_pos += LLVector3d(getHoverOffset());
+                // [ClientHeight] local, render-only offset; after mInAir above, so footsteps /
+                // in-air state keep using the un-offset root. Ghosts get it in the foot lock.
+                root_pos.mdV[VZ] += getClientHeightZ();
             }
             if (getOverallAppearance() == AOA_JELLYDOLL)
             {
@@ -5088,6 +5099,12 @@ void LLVOAvatar::updateRootPositionAndRotation(LLAgent& agent, F32 speed, bool w
         // Sitting on an object - mRoot is slaved to mDrawable orientation.
         LLVector3 pos = mDrawable->getPosition();
         pos += getHoverOffset() * mDrawable->getRotation();
+        // [ClientHeight] WORLD-vertical lift; mRoot is seat-local here, so express it in the
+        // seat's frame (the camera's world-Z subtraction then matches exactly).
+        if (const LLViewerObject* seat = (const LLViewerObject*)getParent())
+        {
+            pos += ALClientHeightModel::worldLiftInSeatSpace(getClientHeightZ(), seat->getRenderRotation());
+        }
         // SL-315
         mRoot->setPosition(pos);
         mRoot->setRotation(mDrawable->getRotation());
@@ -5097,7 +5114,10 @@ void LLVOAvatar::updateRootPositionAndRotation(LLAgent& agent, F32 speed, bool w
     // the Actor Mover, override the rendered root pose AFTER the sim-derived
     // placement above. The skeleton and every attachment follow the root; the
     // sim-true position (and culling) are untouched. Client-side only.
-    LLActorMover::instance().applyOverride(this);
+    // [ClientHeight] Record the ONE owner of the client term this frame: when the mover wrote the
+    // root, applyOverride() already added base + effective offset, so the ground-sit write in
+    // updateCharacter() must not add the client term again (stock hover is still added there).
+    mClientHeightMoverWroteRoot = LLActorMover::instance().applyOverride(this);
 }
 
 //------------------------------------------------------------------------
@@ -5686,7 +5706,13 @@ bool LLVOAvatar::updateCharacter(LLAgent &agent)
     // Set mUpdatePeriod and visible based on distance and other criteria,
     // and flag for impostor update if needed.
     //--------------------------------------------------------------------
+    // [ClientHeight] Resolve the local height offset BEFORE computeNeedsUpdate(): a changed
+    // offset must force one update on a LOD-throttled / impostored avatar, and
+    // LLControlAvatar::computeNeedsUpdate() overwrites mNeedsImpostorUpdate with the
+    // wearer's value, so the flag is re-asserted AFTER the call (and before the early-out).
+    const bool client_height_changed = refreshClientHeight();
     bool needs_update = computeNeedsUpdate();
+    ALClientHeightModel::applyForcedUpdate(client_height_changed, needs_update, mNeedsImpostorUpdate);
 
     //--------------------------------------------------------------------
     // Early out if does not need update and not self
@@ -5810,6 +5836,8 @@ bool LLVOAvatar::updateCharacter(LLAgent &agent)
     {
 
         F32 off_z = (F32)LLVector3d(getHoverOffset()).mdV[VZ];
+        // [ClientHeight] world Z, post-motion like hover; zero when the Actor Mover owns the root
+        off_z += ALClientHeightModel::groundSitClientTerm(mClientHeightMoverWroteRoot, getClientHeightZ());
         if (off_z != 0.0f)
         {
             LLVector3 pos = mRoot->getWorldPosition();
@@ -9250,7 +9278,10 @@ void LLVOAvatar::sitOnObject(LLViewerObject *sit_object)
     sitDown(true);
     mRoot->getXform()->setParent(&sit_object->mDrawable->mXform); // LLVOAvatar::sitOnObject
     // SL-315
-    mRoot->setPosition(getPosition());
+    // [ClientHeight] sitOnObject runs outside the avatar update (and a LOD-skipped avatar never
+    // reaches the root writer that frame), so it carries the world-vertical term itself.
+    mRoot->setPosition(getPosition() +
+        ALClientHeightModel::worldLiftInSeatSpace(getClientHeightZ(), sit_object->getRenderRotation()));
     mRoot->updateWorldMatrixChildren();
 
     stopMotion(ANIM_AGENT_BODY_NOISE);
@@ -9291,13 +9322,15 @@ void LLVOAvatar::getOffObject()
     LLVector3 cur_position_world = mDrawable->getWorldPosition();
     LLQuaternion cur_rotation_world = mDrawable->getWorldRotation();
 
-    if (mLastRootPos.length() >= MAX_STANDOFF_FROM_ORIGIN
+    // [ClientHeight] The fallback becomes the drawable's position, so it must be the BASE
+    // (un-offset) cache; the root write below re-adds the local height offset.
+    if (mLastBaseRootPos.length() >= MAX_STANDOFF_FROM_ORIGIN
         && (cur_position_world.length() < MAX_STANDOFF_FROM_ORIGIN
-            || dist_vec(cur_position_world, mLastRootPos) > MAX_STANDOFF_DISTANCE_CHANGE))
+            || dist_vec(cur_position_world, mLastBaseRootPos) > MAX_STANDOFF_DISTANCE_CHANGE))
     {
         // Most likely drawable got updated too early or some updates were missed - we got relative position to non-existing parent
         // restore coordinates from cache
-        cur_position_world = mLastRootPos;
+        cur_position_world = mLastBaseRootPos;
     }
 
     // set *local* position based on last *world* position, since we're unparenting the avatar
@@ -9310,7 +9343,12 @@ void LLVOAvatar::getOffObject()
 
     mRoot->getXform()->setParent(NULL); // LLVOAvatar::getOffObject
     // SL-315
-    mRoot->setPosition(cur_position_world);
+    // [ClientHeight] world write (the parent is null now): re-add the local height offset.
+    {
+        LLVector3 root_world = cur_position_world;
+        root_world.mV[VZ] += getClientHeightZ();
+        mRoot->setPosition(root_world);
+    }
     mRoot->setRotation(cur_rotation_world);
     mRoot->getXform()->update();
 
@@ -12383,6 +12421,87 @@ LLUUID LLVOAvatar::getActorFxOwnerId() const
 
     return getID();
 }
+
+// [ClientHeight] ---------------------------------------------------------------
+void LLVOAvatar::resolveClientHeight()
+{
+    static const ALClientHeightModel::Store sEmptyStore{};
+    const ALClientHeightModel::Store& store =
+        ALClientHeight::instanceExists() ? ALClientHeight::getInstance()->store() : sEmptyStore;
+
+    bool worn = false;
+    LLUUID wearer_key;
+    LLUUID key_hint;
+    U64 ghost_inst_rev = 0;
+    if (!store.empty())
+    {
+        if (isControlAvatar())
+        {
+            if (const LLVOAvatar* wearer = getAttachedAvatar())
+            {
+                worn = true;
+                wearer_key = ALClientHeight::keyForAvatar(wearer);
+            }
+        }
+        // Cheap live approximation of the key; the real resolve runs only when the
+        // stamp says so (ALClientHeightModel::needsResolve).
+        if (isSelf())
+        {
+            key_hint = gAgentID;
+        }
+        else if (isGhostAvatar())
+        {
+            key_hint = static_cast<const LLGhostAvatar*>(this)->getClientHeightKey();
+            ghost_inst_rev = ALGhostStudio::instance().getInstanceRevision();
+        }
+        else if (isControlAvatar())
+        {
+            key_hint = getActorFxOwnerId();
+        }
+        else
+        {
+            key_hint = getID();
+        }
+    }
+
+    const bool changed = mClientHeightCache.refresh(
+        store, ghost_inst_rev, key_hint, worn, wearer_key,
+        [this]() { return ALClientHeight::keyForAvatar(this); });
+    if (changed)
+    {
+        mClientHeightChangePending = true;
+        mNeedsImpostorUpdate = true;    // re-bake an impostor at the new height
+        mPosePolish.reset();            // drop stale foot locks
+    }
+}
+
+F32 LLVOAvatar::getClientHeightZ()
+{
+    resolveClientHeight();
+    return mClientHeightCache.own();
+}
+
+F32 LLVOAvatar::getEffectiveClientHeightZ()
+{
+    resolveClientHeight();
+    return mClientHeightCache.effective();
+}
+
+bool LLVOAvatar::refreshClientHeight()
+{
+    resolveClientHeight();
+    const bool changed = mClientHeightChangePending;
+    mClientHeightChangePending = false;
+    return changed;
+}
+
+LLVector3 LLVOAvatar::getBaseRootPosition() const
+{
+    LLVector3 pos = mRoot->getWorldPosition();
+    pos.mV[VZ] -= mClientHeightCache.effective();
+    return pos;
+}
+// [/ClientHeight] --------------------------------------------------------------
 
 bool LLVOAvatar::hasEffectiveActorFx() const
 {

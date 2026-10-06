@@ -12,6 +12,7 @@
 
 #include "alavatarlightresponse.h"
 
+#include "alavatarkey.h"   // [ClientHeight] shared key helper
 #include "alghoststudio.h"
 #include "llagentdata.h"
 #include "llappviewer.h"
@@ -111,38 +112,19 @@ LLUUID ALAvatarLightResponse::keyFromString(const std::string& str)
 // static
 LLUUID ALAvatarLightResponse::keyForAvatar(const LLVOAvatar* av, EKind* out)
 {
-    EKind kind = KIND_RESIDENT;
-    LLUUID key;
-    if (av)
-    {
-        if (av->isSelf())
-        {
-            kind = KIND_SELF;
-            key = gAgentID;
-        }
-        else if (av->isGhostAvatar())
-        {
-            kind = KIND_CLONE;
-            const ALGhostStudio::Instance* inst =
-                ALGhostStudio::instance().findInstanceByRuntime(av->getID());
-            if (inst)
-            {
-                key = inst->mId;
-            }
-        }
-        else if (av->isControlAvatar())
-        {
-            kind = KIND_ANIMESH;
-            key = av->getActorFxOwnerId();
-        }
-        else
-        {
-            key = av->getID();
-        }
-    }
+    // [ClientHeight] The convention now lives in the shared helper (alavatarkey.h);
+    // use_clone_stamp = false keeps the historical behaviour exactly.
+    ALAvatarKey::EKind kind = ALAvatarKey::KIND_RESIDENT;
+    const LLUUID key = ALAvatarKey::forAvatar(av, &kind, false);
     if (out)
     {
-        *out = kind;
+        switch (kind)
+        {
+        case ALAvatarKey::KIND_SELF:    *out = KIND_SELF;    break;
+        case ALAvatarKey::KIND_ANIMESH: *out = KIND_ANIMESH; break;
+        case ALAvatarKey::KIND_CLONE:   *out = KIND_CLONE;   break;
+        default:                        *out = KIND_RESIDENT; break;
+        }
     }
     return key;
 }
