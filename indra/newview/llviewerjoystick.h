@@ -31,6 +31,7 @@
 #include "llframetimer.h"
 #include "lltimer.h"
 #include "llnotificationptr.h"
+#include "llflycamdrone.h"
 
 #if LIB_NDOF
 #if LL_DARWIN
@@ -141,6 +142,7 @@ public:
     void setSNDefaults();
     void setXboxDefaults();
     bool applyDronePreset(S32 preset);
+    LLFlycamDrone::CompiledValues getDroneCompiledValues() const;
     void resetDroneSettings();
     bool isDeviceUUIDSet();
     LLSD getDeviceUUID(); //unconverted, OS dependent value wrapped into LLSD, for comparison/search

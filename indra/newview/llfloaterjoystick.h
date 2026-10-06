@@ -37,6 +37,7 @@ class LLComboBox;
 class LLPanel;
 class LLTabContainer;
 class LLTextBox;
+class LLSliderCtrl;
 class LLUICtrl;
 
 class LLFloaterJoystick final : public LLFloater, public LLEventTimer
@@ -72,6 +73,8 @@ private:
     void initFromSettings();
     void refreshLiveControls();
     void refreshDroneEnabled();
+    void refreshDroneReadouts();
+    void refreshDronePresetLabel();
 
     static void onCommitJoystickEnabled(LLUICtrl*, void*);
     static void onCommitFlightModel(LLUICtrl*, void*);
@@ -116,6 +119,11 @@ private:
     LLUICtrl        *mFlightModel = nullptr;
     LLPanel         *mDroneSettingsPanel = nullptr;
     LLTextBox       *mDroneCursorReason = nullptr;
+    LLComboBox      *mDronePreset = nullptr;
+    LLTextBox       *mDroneLimits = nullptr;
+    LLTextBox       *mDroneValidation = nullptr;
+    LLSliderCtrl    *mDroneTimeSliders[5]{};
+    LLSliderCtrl    *mDroneStopDistance = nullptr;
 
     bool mHasDeviceList;
 

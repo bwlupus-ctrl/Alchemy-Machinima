@@ -13,9 +13,12 @@
 
 #include "aluirefresh.h"        // [UIPerfC1] diff-guarded writes
 #include "llbutton.h"
+#include "llcombobox.h"
 #include "llflycamrecorder.h"
 #include "llsliderctrl.h"
 #include "lltextbox.h"
+#include "llviewercontrol.h"
+#include "llviewerjoystick.h"
 #include "llviewermenufile.h"   // LLFilePickerReplyThread
 
 // both the standalone Flycam Recorder floater and the Director Console Takes tab
@@ -58,6 +61,8 @@ void ALPanelFlycamRecorder::setToolTipIfChanged(LLUICtrl* ctrl, const std::strin
 
 bool ALPanelFlycamRecorder::postBuild()
 {
+    LLComboBox* preset = getChild<LLComboBox>("FlycamDronePreset");
+    LLComboBox* release = getChild<LLComboBox>("FlycamDroneRelease");
     mRecordBtn  = getChild<LLButton>("btn_record");
     mPlayBtn    = getChild<LLButton>("btn_play");
     mStopBtn    = getChild<LLButton>("btn_stop");
@@ -75,6 +80,21 @@ bool ALPanelFlycamRecorder::postBuild()
     mSaveBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onSave(); });
     mLoadBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onLoad(); });
     mScrub->setCommitCallback([this](LLUICtrl*, const LLSD&) { onScrub(); });
+
+    preset->setCommitCallback([preset](LLUICtrl* control, const LLSD&)
+    {
+        const S32 selected = control ? control->getValue().asInteger() : 5;
+        if (selected >= 0 && selected < 5)
+            LLViewerJoystick::getInstance()->applyDronePreset(selected);
+    });
+    release->setCommitCallback([preset](LLUICtrl*, const LLSD&)
+    {
+        static const char* const names[] = { "Cine", "Normal", "Sport", "Dolly", "FPV" };
+        const S32 source = gSavedSettings.getS32("FlycamDronePreset");
+        gSavedSettings.setS32("FlycamDronePreset", 5);
+        if (source >= 0 && source < 5)
+            preset->setLabel(llformat("Custom (from %s)", names[source]));
+    });
 
     return true;
 }

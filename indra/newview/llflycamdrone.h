@@ -22,6 +22,32 @@ public:
     enum class ThrottleMode { ASSIST, PURE };
     enum class PresetId { CINE, NORMAL, SPORT, DOLLY, FPV, COUNT };
 
+    enum ValidationClamp : U32
+    {
+        CLAMP_CRUISE       = 1u << 0,
+        CLAMP_TOP          = 1u << 1,
+        CLAMP_TIME_TO_TOP  = 1u << 2,
+        CLAMP_STOP_DISTANCE= 1u << 3,
+        CLAMP_HOLD_TIME    = 1u << 4,
+        CLAMP_COAST_TIME   = 1u << 5,
+        CLAMP_FLOAT        = 1u << 6,
+        CLAMP_ONSET        = 1u << 7,
+        CLAMP_GRIP         = 1u << 8,
+        CLAMP_TURN_RATE    = 1u << 9,
+        CLAMP_TURN_WEIGHT  = 1u << 10,
+        CLAMP_TILT_RATE    = 1u << 11,
+        CLAMP_CLIMB        = 1u << 12,
+        CLAMP_CLIMB_TIME   = 1u << 13,
+        CLAMP_SIMULATION_HZ= 1u << 14
+    };
+
+    struct CompiledValues
+    {
+        F32 totalLimit = 0.f;       // L_tot
+        F32 effectiveJerk = 0.f;    // J_eff
+        U32 validationClamps = 0;
+    };
+
     struct HumanParams
     {
         F32 cruise = 4.f;
@@ -75,6 +101,7 @@ public:
         F32 totalLimit = 0.f;
         F32 gMax = 0.f;
         F32 effectiveJerk = 0.f;
+        U32 validationClamps = 0;
         F32 tick = 1.f / 120.f;
         ReleaseMode release = ReleaseMode::HOLD;
         ThrottleMode throttleMode = ThrottleMode::ASSIST;
@@ -147,6 +174,10 @@ public:
 
     void setParams(const Params& params);
     const Params& params() const { return mParams; }
+    CompiledValues compiledValues() const
+    {
+        return { mParams.totalLimit, mParams.effectiveJerk, mParams.validationClamps };
+    }
     const State& state() const { return mCur; }
     const State& previousState() const { return mPrev; }
     F64 accumulator() const { return mAccumulator; }

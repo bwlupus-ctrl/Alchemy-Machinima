@@ -164,6 +164,13 @@ FlycamDroneSettings& droneSettings()
     return settings;
 }
 
+LLFlycamDrone::CompiledValues& cachedDroneCompiledValues()
+{
+    static LLFlycamDrone defaults;
+    static LLFlycamDrone::CompiledValues values = defaults.compiledValues();
+    return values;
+}
+
 F32 signedExpo(F32 value, F32 amount)
 {
     const F32 magnitude = llclamp(fabsf(value), 0.f, 1.f);
@@ -306,6 +313,7 @@ void configureDrone(FlycamDroneRuntime& runtime, F32 rollRate,
             (1.f - expf(-dt / .3f));
     }
     runtime.drone.setParams(buildScaledParams(compiled, runtime.buildScale));
+    cachedDroneCompiledValues() = runtime.drone.compiledValues();
 }
 }
 
@@ -3734,8 +3742,15 @@ bool LLViewerJoystick::applyDronePreset(S32 preset)
     gSavedSettings.setF32("FlycamDroneClimbTime", p.climbTime);
     gSavedSettings.setS32("FlycamDroneRelease",
         p.release == LLFlycamDrone::ReleaseMode::DRIFT ? 1 : 0);
+    gSavedSettings.setS32("FlycamDroneThrottleMode",
+        p.throttleMode == LLFlycamDrone::ThrottleMode::PURE ? 1 : 0);
     gSavedSettings.setBOOL("FlycamDroneFreeFly", p.freeFly);
     return true;
+}
+
+LLFlycamDrone::CompiledValues LLViewerJoystick::getDroneCompiledValues() const
+{
+    return cachedDroneCompiledValues();
 }
 
 void LLViewerJoystick::resetDroneSettings()

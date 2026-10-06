@@ -240,6 +240,7 @@ bool LLFlycamDrone::compile(const HumanParams& requested, const HumanParams& pre
         return false;
     }
     bool valid = true;
+    const F32 requestedTick = tick;
     const F32 previousTick = std::isfinite(out.tick) ? out.tick : 1.f / 120.f;
     const F32 previousRoll = std::isfinite(out.rollRate) ? out.rollRate : 1.f;
     tick = acceptedValue("tick", tick, previousTick, 1.f / 240.f, 1.f / 30.f, logger, valid);
@@ -322,6 +323,25 @@ bool LLFlycamDrone::compile(const HumanParams& requested, const HumanParams& pre
     p.release = h.release;
     p.throttleMode = h.throttleMode;
     p.freeFly = h.freeFly;
+    const auto changed = [](F32 requested_value, F32 accepted_value)
+    {
+        return !std::isfinite(requested_value) || requested_value != accepted_value;
+    };
+    if (changed(requested.cruise, h.cruise))                 p.validationClamps |= CLAMP_CRUISE;
+    if (changed(requested.top, h.top))                       p.validationClamps |= CLAMP_TOP;
+    if (changed(requested.timeToTop, h.timeToTop))           p.validationClamps |= CLAMP_TIME_TO_TOP;
+    if (changed(requested.stopDistance, h.stopDistance))     p.validationClamps |= CLAMP_STOP_DISTANCE;
+    if (changed(requested.holdTime, h.holdTime))             p.validationClamps |= CLAMP_HOLD_TIME;
+    if (changed(requested.coastTime, h.coastTime))           p.validationClamps |= CLAMP_COAST_TIME;
+    if (changed(requested.highSpeedFloat, h.highSpeedFloat)) p.validationClamps |= CLAMP_FLOAT;
+    if (changed(requested.onset, h.onset))                   p.validationClamps |= CLAMP_ONSET;
+    if (changed(requested.grip, h.grip))                     p.validationClamps |= CLAMP_GRIP;
+    if (changed(requested.turnRateDegrees, h.turnRateDegrees)) p.validationClamps |= CLAMP_TURN_RATE;
+    if (changed(requested.turnWeight, h.turnWeight))         p.validationClamps |= CLAMP_TURN_WEIGHT;
+    if (changed(requested.tiltRateDegrees, h.tiltRateDegrees)) p.validationClamps |= CLAMP_TILT_RATE;
+    if (changed(requested.climb, h.climb))                   p.validationClamps |= CLAMP_CLIMB;
+    if (changed(requested.climbTime, h.climbTime))           p.validationClamps |= CLAMP_CLIMB_TIME;
+    if (!std::isfinite(requestedTick) || requestedTick != p.tick) p.validationClamps |= CLAMP_SIMULATION_HZ;
     const F32 jerkToLimit = p.effectiveJerk / p.totalLimit;
     const bool derivedValid = std::isfinite(p.acceleration) && std::isfinite(p.deceleration) &&
         std::isfinite(p.brakeDeceleration) && std::isfinite(p.dragLinear) &&

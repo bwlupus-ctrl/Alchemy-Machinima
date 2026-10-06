@@ -2603,9 +2603,9 @@
      min_val="1" max_val="4" increment="0.1" decimal_digits="2" />
     <check_box name="xinput_shaped" control_name="JoystickXInputRollShaped"
      label="Shaped roll (Deadzone/Curve)" left="359" top="562" width="200" height="18" layout="topleft" />
-    <text name="xinput_label_Left" left="359" top="586" width="46" height="20" layout="topleft" font="SansSerifSmall">D-pad L</text>
+    <text name="xinput_label_Left" left="309" top="586" width="46" height="20" layout="topleft" font="SansSerifSmall">D-pad L</text>
     <combo_box name="xinput_dpad_Left" control_name="JoystickXInputDpadLeft"
-     left_pad="4" top_delta="0" width="150" height="20" layout="topleft">
+     left_pad="4" top_delta="0" width="200" height="20" layout="topleft">
       <combo_box.item label="None" value="0" />
       <combo_box.item label="Lighting cue Back" value="2" />
       <combo_box.item label="Lighting cue Go" value="1" />
@@ -2614,9 +2614,9 @@
       <combo_box.item label="Release: Hold / Drift" value="5" />
       <combo_box.item label="Recentre gimbal" value="6" />
     </combo_box>
-    <text name="xinput_label_Right" left="359" top="608" width="46" height="20" layout="topleft" font="SansSerifSmall">D-pad R</text>
+    <text name="xinput_label_Right" left="309" top="608" width="46" height="20" layout="topleft" font="SansSerifSmall">D-pad R</text>
     <combo_box name="xinput_dpad_Right" control_name="JoystickXInputDpadRight"
-     left_pad="4" top_delta="0" width="150" height="20" layout="topleft">
+     left_pad="4" top_delta="0" width="200" height="20" layout="topleft">
       <combo_box.item label="None" value="0" />
       <combo_box.item label="Lighting cue Back" value="2" />
       <combo_box.item label="Lighting cue Go" value="1" />
@@ -2625,9 +2625,9 @@
       <combo_box.item label="Release: Hold / Drift" value="5" />
       <combo_box.item label="Recentre gimbal" value="6" />
     </combo_box>
-    <text name="xinput_label_Up" left="359" top="630" width="46" height="20" layout="topleft" font="SansSerifSmall">D-pad Up</text>
+    <text name="xinput_label_Up" left="309" top="630" width="46" height="20" layout="topleft" font="SansSerifSmall">D-pad Up</text>
     <combo_box name="xinput_dpad_Up" control_name="JoystickXInputDpadUp"
-     left_pad="4" top_delta="0" width="150" height="20" layout="topleft">
+     left_pad="4" top_delta="0" width="200" height="20" layout="topleft">
       <combo_box.item label="None" value="0" />
       <combo_box.item label="Lighting cue Back" value="2" />
       <combo_box.item label="Lighting cue Go" value="1" />
@@ -2731,46 +2731,46 @@
 
               <slider can_edit_text="true" control_name="FlycamDroneCruise" decimal_digits="1"
                height="22" increment="0.1" label="Cruise (m/s)" label_width="112" layout="topleft"
-               left="14" max_val="40" min_val="0.1" name="FlycamDroneCruise" show_text="true" top="124" width="245" />
+               left="14" max_val="200" min_val="0.001" name="FlycamDroneCruise" show_text="true" top="124" width="245" />
               <slider can_edit_text="true" control_name="FlycamDroneTop" decimal_digits="1"
                height="22" increment="0.1" label="Top speed (m/s)" label_width="112" layout="topleft"
-               left="274" max_val="80" min_val="0.1" name="FlycamDroneTop" show_text="true" top="124" width="245" />
+               left="274" max_val="200" min_val="0.001" name="FlycamDroneTop" show_text="true" top="124" width="245" />
               <slider can_edit_text="true" control_name="FlycamDroneTimeToTop" decimal_digits="2"
                height="22" increment="0.05" label="Time to top (+ onset)" label_width="145" layout="topleft"
-               left="14" max_val="20" min_val="0.02" name="FlycamDroneTimeToTop" show_text="true" top="152" width="245" />
+               left="14" max_val="60" min_val="0.0167" name="FlycamDroneTimeToTop" show_text="true" top="152" width="245" />
               <slider can_edit_text="true" control_name="FlycamDroneStopDistance" decimal_digits="1"
                height="22" increment="0.1" label="Stop distance (m)" label_width="125" layout="topleft"
-               left="274" max_val="200" min_val="0.1" name="FlycamDroneStopDistance" show_text="true" top="152" width="245" />
+               left="274" max_val="10000" min_val="0.001" name="FlycamDroneStopDistance" show_text="true" top="152" width="245" />
               <slider can_edit_text="true" control_name="FlycamDroneHoldTime" decimal_digits="2"
                height="22" increment="0.05" label="Hold stop (+ onset)" label_width="140" layout="topleft"
-               left="14" max_val="20" min_val="0.02" name="FlycamDroneHoldTime" show_text="true" top="180" width="245" />
+               left="14" max_val="60" min_val="0.0167" name="FlycamDroneHoldTime" show_text="true" top="180" width="245" />
               <slider can_edit_text="true" control_name="FlycamDroneCoastTime" decimal_digits="2"
                height="22" increment="0.05" label="Coast time (+ onset)" label_width="145" layout="topleft"
-               left="274" max_val="60" min_val="0.02" name="FlycamDroneCoastTime" show_text="true" top="180" width="245" />
+               left="274" max_val="60" min_val="0.0167" name="FlycamDroneCoastTime" show_text="true" top="180" width="245" />
               <slider can_edit_text="true" control_name="FlycamDroneHighSpeedFloat" decimal_digits="2"
                height="22" increment="0.01" label="High-speed float" label_width="120" layout="topleft"
                left="14" max_val="1" min_val="0" name="FlycamDroneHighSpeedFloat" show_text="true" top="208" width="245" />
               <slider can_edit_text="true" control_name="FlycamDroneOnset" decimal_digits="2"
                height="22" increment="0.01" label="Onset softness (s)" label_width="130" layout="topleft"
-               left="274" max_val="2" min_val="0.02" name="FlycamDroneOnset" show_text="true" top="208" width="245" />
+               left="274" max_val="2" min_val="0.0167" name="FlycamDroneOnset" show_text="true" top="208" width="245" />
               <slider can_edit_text="true" control_name="FlycamDroneGrip" decimal_digits="2"
                height="22" increment="0.01" label="Grip" label_width="112" layout="topleft"
                left="14" max_val="1" min_val="0.05" name="FlycamDroneGrip" show_text="true" top="236" width="245" />
               <slider can_edit_text="true" control_name="FlycamDroneTurnRate" decimal_digits="0"
                height="22" increment="1" label="Turn rate (deg/s)" label_width="130" layout="topleft"
-               left="274" max_val="360" min_val="1" name="FlycamDroneTurnRate" show_text="true" top="236" width="245" />
+               left="274" max_val="720" min_val="0.001" name="FlycamDroneTurnRate" show_text="true" top="236" width="245" />
               <slider can_edit_text="true" control_name="FlycamDroneTurnWeight" decimal_digits="2"
                height="22" increment="0.01" label="Turn weight" label_width="112" layout="topleft"
                left="14" max_val="1" min_val="0" name="FlycamDroneTurnWeight" show_text="true" top="264" width="245" />
               <slider can_edit_text="true" control_name="FlycamDroneTiltRate" decimal_digits="0"
                height="22" increment="1" label="Tilt rate (deg/s)" label_width="130" layout="topleft"
-               left="274" max_val="360" min_val="1" name="FlycamDroneTiltRate" show_text="true" top="264" width="245" />
+               left="274" max_val="720" min_val="0.001" name="FlycamDroneTiltRate" show_text="true" top="264" width="245" />
               <slider can_edit_text="true" control_name="FlycamDroneClimb" decimal_digits="1"
                height="22" increment="0.1" label="Climb speed (m/s)" label_width="130" layout="topleft"
-               left="14" max_val="20" min_val="0" name="FlycamDroneClimb" show_text="true" top="292" width="245" />
+               left="14" max_val="200" min_val="0" name="FlycamDroneClimb" show_text="true" top="292" width="245" />
               <slider can_edit_text="true" control_name="FlycamDroneClimbTime" decimal_digits="2"
                height="22" increment="0.05" label="Climb time (+ onset)" label_width="145" layout="topleft"
-               left="274" max_val="20" min_val="0.02" name="FlycamDroneClimbTime" show_text="true" top="292" width="245" />
+               left="274" max_val="60" min_val="0.0167" name="FlycamDroneClimbTime" show_text="true" top="292" width="245" />
 
               <text font="SansSerifBold" height="20" layout="topleft" left="14"
                name="drone_advanced_title" top="330" width="250">Advanced input shaping</text>
@@ -2796,10 +2796,15 @@
                height="22" increment="1" label="Simulation (Hz)" label_width="115" layout="topleft"
                left="14" max_val="240" min_val="30" name="FlycamDroneSimulationHz" show_text="true" top="440" width="245" />
 
+              <text font="SansSerifSmall" height="18" layout="topleft" left="274"
+               name="drone_compiled_limits" top="442" width="245">L_tot --   J_eff --</text>
               <text font="SansSerifSmall" height="36" layout="topleft" left="14"
                name="drone_trigger_note" top="478" width="505" wrap="true">
                 Trigger mode is shown on the General tab. Non-XInput pads use Drone sticks in Assist cruise with no brake; their mapped triggers keep the existing DirectInput behavior.
               </text>
+              <text font="SansSerifSmall" height="1" layout="topleft" left="14"
+               name="drone_validation_reason" text_color="LtOrange" top="522" visible="false"
+               width="505" wrap="true" />
             </panel>
           </panel>
         </scroll_container>

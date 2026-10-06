@@ -46,6 +46,7 @@
 #include "llcheckboxctrl.h"
 #include "llcombobox.h"
 #include "llpanel.h"
+#include "llsliderctrl.h"
 #include "lltabcontainer.h"
 #include "lltextbox.h"
 
@@ -71,6 +72,10 @@ static LLTrace::SampleStatHandle<>* sJoystickAxes[6] =
     &sJoystickAxis4,
     &sJoystickAxis5
 };
+
+// Section 13 defines no persisted provenance setting. Keep it for this viewer
+// session so Custom can still say which named preset the operator edited.
+static S32 sDronePresetProvenance = 1;
 
 
 #if LL_WINDOWS && !LL_MESA_HEADLESS
@@ -143,6 +148,7 @@ void LLFloaterJoystick::refreshLiveControls()
     if (mFlightModel && isWidgetOnScreen(mFlightModel))
     {
         refreshDroneEnabled();
+        refreshDroneReadouts();
     }
 
     if (!isWidgetOnScreen(mJoysticksCombo))
@@ -186,6 +192,74 @@ void LLFloaterJoystick::refreshLiveControls()
         }
         mAxisButton[i]->setToggleState(value);
     }
+}
+
+void LLFloaterJoystick::refreshDronePresetLabel()
+{
+    if (!mDronePreset)
+        return;
+    if (gSavedSettings.getS32("FlycamDronePreset") == 5)
+    {
+        static const char* const names[] = { "Cine", "Normal", "Sport", "Dolly", "FPV" };
+        const S32 source = llclamp(sDronePresetProvenance, 0, 4);
+        const std::string label = llformat("Custom (from %s)", names[source]);
+        if (mDronePreset->getSimple() != label)
+            mDronePreset->setLabel(label);
+    }
+}
+
+void LLFloaterJoystick::refreshDroneReadouts()
+{
+    if (!mDroneLimits || !mDroneValidation || !isWidgetOnScreen(mDroneLimits))
+        return;
+
+    const F32 hz = llclamp(gSavedSettings.getF32("FlycamDroneSimulationHz"), 30.f, 240.f);
+    const F32 min_time = 4.f / hz;
+    for (LLSliderCtrl* slider : mDroneTimeSliders)
+    {
+        if (slider)
+            slider->setMinValue(min_time);
+    }
+    const F32 stop_floor = gSavedSettings.getF32("FlycamDroneTop") *
+        (gSavedSettings.getF32("FlycamDroneOnset") + 2.f / hz);
+    if (mDroneStopDistance)
+        mDroneStopDistance->setMinValue(stop_floor);
+
+    const LLFlycamDrone::CompiledValues values =
+        LLViewerJoystick::getInstance()->getDroneCompiledValues();
+    setTextIfChanged(mDroneLimits, llformat("L_tot %.2f m/s\xC2\xB2   J_eff %.2f m/s\xC2\xB3",
+                                            values.totalLimit, values.effectiveJerk));
+
+    std::string reason;
+    const struct { U32 bit; const char* name; } fields[] =
+    {
+        { LLFlycamDrone::CLAMP_CRUISE, "Cruise" }, { LLFlycamDrone::CLAMP_TOP, "Top speed" },
+        { LLFlycamDrone::CLAMP_TIME_TO_TOP, "Time to top" }, { LLFlycamDrone::CLAMP_STOP_DISTANCE, "Stop distance" },
+        { LLFlycamDrone::CLAMP_HOLD_TIME, "Hold time" }, { LLFlycamDrone::CLAMP_COAST_TIME, "Coast time" },
+        { LLFlycamDrone::CLAMP_FLOAT, "Float" }, { LLFlycamDrone::CLAMP_ONSET, "Onset" },
+        { LLFlycamDrone::CLAMP_GRIP, "Grip" }, { LLFlycamDrone::CLAMP_TURN_RATE, "Turn rate" },
+        { LLFlycamDrone::CLAMP_TURN_WEIGHT, "Turn weight" }, { LLFlycamDrone::CLAMP_TILT_RATE, "Tilt rate" },
+        { LLFlycamDrone::CLAMP_CLIMB, "Climb" }, { LLFlycamDrone::CLAMP_CLIMB_TIME, "Climb time" },
+        { LLFlycamDrone::CLAMP_SIMULATION_HZ, "Simulation Hz" }
+    };
+    for (const auto& field : fields)
+    {
+        if (values.validationClamps & field.bit)
+        {
+            if (!reason.empty()) reason += ", ";
+            reason += field.name;
+        }
+    }
+    if (setTextIfChanged(mDroneValidation, reason.empty() ? std::string() : "Validation adjusted: " + reason))
+    {
+        const LLRect old_rect = mDroneValidation->getRect();
+        mDroneValidation->reshape(old_rect.getWidth(),
+            llmax(1, mDroneValidation->getTextPixelHeight()), true);
+        mDroneValidation->translate(0, old_rect.mTop - mDroneValidation->getRect().mTop);
+        mScrollFit.fit(this, mTabs);
+    }
+    setVisibleIfChanged(mDroneValidation, !reason.empty());
+    refreshDronePresetLabel();
 }
 
 void LLFloaterJoystick::refreshDroneEnabled()
@@ -241,6 +315,15 @@ bool LLFloaterJoystick::postBuild()
     mFlightModel = getChild<LLUICtrl>("FlycamFlightModel");
     mDroneSettingsPanel = getChild<LLPanel>("drone_settings_panel");
     mDroneCursorReason = getChild<LLTextBox>("drone_cursor_reason");
+    mDronePreset = getChild<LLComboBox>("FlycamDronePreset");
+    mDroneLimits = getChild<LLTextBox>("drone_compiled_limits");
+    mDroneValidation = getChild<LLTextBox>("drone_validation_reason");
+    mDroneTimeSliders[0] = getChild<LLSliderCtrl>("FlycamDroneTimeToTop");
+    mDroneTimeSliders[1] = getChild<LLSliderCtrl>("FlycamDroneHoldTime");
+    mDroneTimeSliders[2] = getChild<LLSliderCtrl>("FlycamDroneCoastTime");
+    mDroneTimeSliders[3] = getChild<LLSliderCtrl>("FlycamDroneOnset");
+    mDroneTimeSliders[4] = getChild<LLSliderCtrl>("FlycamDroneClimbTime");
+    mDroneStopDistance = getChild<LLSliderCtrl>("FlycamDroneStopDistance");
     childSetCommitCallback("FlycamFlightModel", onCommitFlightModel, this);
     childSetCommitCallback("FlycamDronePreset", onCommitDronePreset, this);
 
@@ -251,7 +334,10 @@ bool LLFloaterJoystick::postBuild()
         "FlycamDroneHighSpeedFloat", "FlycamDroneOnset", "FlycamDroneGrip",
         "FlycamDroneTurnRate", "FlycamDroneTurnWeight", "FlycamDroneTiltRate",
         "FlycamDroneClimb", "FlycamDroneClimbTime", "FlycamDroneRelease",
-        "FlycamDroneFreeFly"
+        "FlycamDroneFreeFly", "FlycamDroneThrottleMode", "FlycamDroneResumeMomentum",
+        "FlycamDroneSimulationHz", "FlycamDroneMoveDeadzone", "FlycamDroneLookDeadzone",
+        "FlycamDroneSaturation", "FlycamDroneExpoMove", "FlycamDroneExpoYaw",
+        "FlycamDroneExpoGimbal"
     };
     for (const char* name : tuning_controls)
     {
@@ -588,9 +674,15 @@ void LLFloaterJoystick::onCommitJoystickEnabled(LLUICtrl*, void *joy_panel)
     self->refreshListOfDevices();
 }
 
-void LLFloaterJoystick::onCommitDroneTuning(LLUICtrl*, void*)
+void LLFloaterJoystick::onCommitDroneTuning(LLUICtrl*, void* userdata)
 {
+    LLFloaterJoystick* self = static_cast<LLFloaterJoystick*>(userdata);
+    const S32 current = gSavedSettings.getS32("FlycamDronePreset");
+    if (self && current >= 0 && current < 5)
+        sDronePresetProvenance = current;
     gSavedSettings.setS32("FlycamDronePreset", 5); // Custom
+    if (self)
+        self->refreshDronePresetLabel();
 }
 
 void LLFloaterJoystick::onCommitFlightModel(LLUICtrl*, void* userdata)
@@ -602,11 +694,14 @@ void LLFloaterJoystick::onCommitFlightModel(LLUICtrl*, void* userdata)
     }
 }
 
-void LLFloaterJoystick::onCommitDronePreset(LLUICtrl* control, void*)
+void LLFloaterJoystick::onCommitDronePreset(LLUICtrl* control, void* userdata)
 {
     const S32 preset = control ? control->getValue().asInteger() : 5;
     if (preset >= 0 && preset < 5)
     {
+        LLFloaterJoystick* self = static_cast<LLFloaterJoystick*>(userdata);
+        if (self)
+            sDronePresetProvenance = preset;
         LLViewerJoystick::getInstance()->applyDronePreset(preset);
     }
 }

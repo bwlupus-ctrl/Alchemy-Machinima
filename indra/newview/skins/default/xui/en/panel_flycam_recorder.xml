@@ -16,13 +16,37 @@
  layout="topleft"
  name="panel_flycam_recorder"
  width="320">
+    <text follows="left|top" font="SansSerifBold" height="14" layout="topleft"
+     left="12" name="flight_model_lbl" top="2" width="306">Flycam flight</text>
+    <combo_box control_name="FlycamFlightModel" follows="left|top" height="20"
+     layout="topleft" left="12" name="FlycamFlightModel" top="18"
+     tool_tip="Choose the Classic or Drone flycam flight model" width="84">
+        <combo_box.item label="Classic" value="0" />
+        <combo_box.item label="Drone" value="1" />
+    </combo_box>
+    <combo_box control_name="FlycamDronePreset" follows="left|top" height="20"
+     layout="topleft" left_pad="6" name="FlycamDronePreset" top_delta="0"
+     tool_tip="Apply a complete Drone flight preset" width="112">
+        <combo_box.item label="Cine" value="0" />
+        <combo_box.item label="Normal" value="1" />
+        <combo_box.item label="Sport" value="2" />
+        <combo_box.item label="Dolly" value="3" />
+        <combo_box.item label="FPV" value="4" />
+        <combo_box.item label="Custom" value="5" />
+    </combo_box>
+    <combo_box control_name="FlycamDroneRelease" follows="left|top" height="20"
+     layout="topleft" left_pad="6" name="FlycamDroneRelease" top_delta="0"
+     tool_tip="Release behavior: Hold stops; Drift coasts" width="92">
+        <combo_box.item label="Hold" value="0" />
+        <combo_box.item label="Drift" value="1" />
+    </combo_box>
     <button
      follows="left|top"
      height="23"
      label="Record"
      layout="topleft"
      left="12"
-     top="4"
+     top="44"
      name="btn_record"
      tool_tip="Record the live camera (flycam, mouse, or cinematic) into a take"
      width="72" />
@@ -68,7 +92,7 @@
      left="12"
      max_val="1"
      min_val="0"
-     top_pad="12"
+     top_pad="4"
      name="scrub_slider"
      tool_tip="Scrub through the take. Dragging while stopped previews that moment"
      width="306" />
@@ -95,7 +119,7 @@
      text_color="EmphasisColor">
     </text>
 
-    <text follows="left|top" halign="left" height="14" layout="topleft" left="12" top_pad="10" width="306" name="playback_lbl" font="SansSerifBold">
+    <text follows="left|top" halign="left" height="14" layout="topleft" left="12" top_pad="4" width="306" name="playback_lbl" font="SansSerifBold">
         Playback
     </text>
     <slider
@@ -111,7 +135,7 @@
      left="12"
      max_val="5"
      min_val="0.05"
-     top_pad="6"
+     top_pad="2"
      name="FlycamRecSpeed"
      tool_tip="Playback speed multiplier (0.5 = slow motion, 2 = double time)"
      width="306" />
@@ -121,7 +145,7 @@
      height="20"
      layout="topleft"
      left="12"
-     top_pad="6"
+     top_pad="2"
      name="FlycamRecLoopMode"
      tool_tip="What happens when playback reaches the end of the take"
      width="140">
@@ -146,7 +170,7 @@
      height="20"
      layout="topleft"
      left="12"
-     top_pad="6"
+     top_pad="2"
      name="FlycamRecAnchorMode"
      tool_tip="Where the path plays: at its recorded world position, or re-anchored to a subject. Anchored modes map the path's offsets from the recording avatar onto the new anchor"
      width="180">
@@ -173,12 +197,12 @@
      label="Handheld operator layer on playback"
      layout="topleft"
      left="12"
-     top_pad="6"
+     top_pad="2"
      name="FlycamRecUseOperator"
      tool_tip="Route playback through the procedural handheld operator. Record a clean pass with the operator off, then add the texture here"
      width="290" />
 
-    <text follows="left|top" halign="left" height="14" layout="topleft" left="12" top_pad="10" width="306" name="recording_lbl" font="SansSerifBold">
+    <text follows="left|top" halign="left" height="14" layout="topleft" left="12" top_pad="4" width="306" name="recording_lbl" font="SansSerifBold">
         Recording
     </text>
     <slider
@@ -194,12 +218,12 @@
      left="12"
      max_val="120"
      min_val="1"
-     top_pad="6"
+     top_pad="2"
      name="FlycamRecSampleRate"
      tool_tip="Keyframes captured per second. 30 is plenty with smoothing on; lower makes smaller, easier-to-hand-edit files"
      width="306" />
 
-    <text follows="left|top" halign="left" height="14" layout="topleft" left="12" top_pad="10" width="306" name="file_lbl" font="SansSerifBold">
+    <text follows="left|top" halign="left" height="14" layout="topleft" left="12" top_pad="4" width="306" name="file_lbl" font="SansSerifBold">
         Take file (XML)
     </text>
     <button
@@ -208,7 +232,7 @@
      label="Save..."
      layout="topleft"
      left="12"
-     top_pad="6"
+     top_pad="2"
      name="btn_save"
      tool_tip="Save the take to a hand-editable XML file"
      width="150" />
