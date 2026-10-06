@@ -555,7 +555,11 @@ LLFlycamDrone::State LLFlycamDrone::step(const State& source, const Input& input
     const bool settle = noInput(move, throttle, brake, vertical, yawInput, tiltInput,
                                 rollInput, input) && exactZero(reference) && steadyNear;
     const bool rebaseline = next.totalLimitMax > mParams.totalLimit && steadyNear;
-    if (steadyNear && (settle || rebaseline || next.hasPendingPole))
+    const bool snapChangesState = source.smootherVelocity != reference ||
+                                  source.velocity != reference ||
+                                  next.hasPendingPole ||
+                                  next.totalLimitMax > mParams.totalLimit;
+    if (steadyNear && snapChangesState && (settle || rebaseline || next.hasPendingPole))
     {
         next.smootherVelocity = reference;
         next.velocity = reference;
