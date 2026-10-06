@@ -486,14 +486,31 @@ static bool sl_visible_diffuse_sidecar()
     return sl_sidecar;
 }
 
-static void add_common_permutations(LLGLSLShader* shader)
+static bool alr_emissive_buffer_enabled()
 {
     static LLCachedControl<bool> emissive(gSavedSettings, "RenderEnableEmissiveBuffer", false);
+    static LLCachedControl<bool> silhouette_force(gSavedSettings, "AvatarSilhouetteForceEmissive", false);
+    return emissive() || silhouette_force();
+}
+
+static bool alr_silhouette_only_emissive()
+{
+    static LLCachedControl<bool> emissive(gSavedSettings, "RenderEnableEmissiveBuffer", false);
+    static LLCachedControl<bool> silhouette_force(gSavedSettings, "AvatarSilhouetteForceEmissive", false);
+    return !emissive() && silhouette_force();
+}
+
+static void add_common_permutations(LLGLSLShader* shader)
+{
     static LLCachedControl<bool> visible_diffuse(gSavedSettings, "RenderVisibleDiffuseSidecar", false);
 
-    if (emissive)
+    if (alr_emissive_buffer_enabled())
     {
         shader->addPermutation("HAS_EMISSIVE", "1");
+    }
+    if (alr_silhouette_only_emissive())
+    {
+        shader->addPermutation("EMISSIVE_SILHOUETTE_ONLY", "1");
     }
     if (visible_diffuse)
     {
@@ -1232,11 +1249,13 @@ std::string LLViewerShaderMgr::loadBasicShaders()
     attribs["MAX_JOINTS_PER_MESH_OBJECT"] =
         std::to_string(LLSkinningUtil::getMaxJointCount());
 
-    static LLCachedControl<bool> emissive(gSavedSettings, "RenderEnableEmissiveBuffer", false);
-
-    if (emissive)
+    if (alr_emissive_buffer_enabled())
     {
         attribs["HAS_EMISSIVE"] = "1";
+    }
+    if (alr_silhouette_only_emissive())
+    {
+        attribs["EMISSIVE_SILHOUETTE_ONLY"] = "1";
     }
 
     bool ssr = gSavedSettings.getBOOL("RenderScreenSpaceReflections");
@@ -3297,6 +3316,10 @@ bool LLViewerShaderMgr::loadShadersDeferred()
             gVisibleDiffuseSeedProgram.mName = "Visible Diffuse Seed Shader";
             gVisibleDiffuseSeedProgram.mShaderFiles.clear();
             gVisibleDiffuseSeedProgram.clearPermutations();
+            if (alr_emissive_buffer_enabled())
+            {
+                gVisibleDiffuseSeedProgram.addPermutation("HAS_EMISSIVE", "1");
+            }
             gVisibleDiffuseSeedProgram.mFeatures.isDeferred = true;
             gVisibleDiffuseSeedProgram.mFeatures.hasFullGBuffer = true;
             gVisibleDiffuseSeedProgram.mShaderFiles.push_back(make_pair("deferred/softenLightV.glsl", GL_VERTEX_SHADER));
@@ -4129,6 +4152,10 @@ bool LLViewerShaderMgr::loadShadersDeferred()
         gDeferredProjectorVolumetricProgram.mFeatures.hasShadows = true;
         gDeferredProjectorVolumetricProgram.mShaderFiles.clear();
         gDeferredProjectorVolumetricProgram.clearPermutations();
+        if (alr_emissive_buffer_enabled())
+        {
+            gDeferredProjectorVolumetricProgram.addPermutation("HAS_EMISSIVE", "1");
+        }
         gDeferredProjectorVolumetricProgram.addPermutation("SPOT_SHADOW", "1");
         // [BDMerge G3.3 Dust / review fix] Dust is a compile-time permutation:
         // with the lever OFF the sampler3D projvol_dust_map (and all dust code)
@@ -4865,6 +4892,10 @@ bool LLViewerShaderMgr::loadShadersDeferred()
         gFroxelApplyProgram.mFeatures.isDeferred = true;
         gFroxelApplyProgram.mShaderFiles.clear();
         gFroxelApplyProgram.clearPermutations();
+        if (alr_emissive_buffer_enabled())
+        {
+            gFroxelApplyProgram.addPermutation("HAS_EMISSIVE", "1");
+        }
         gFroxelApplyProgram.mShaderFiles.push_back(make_pair("deferred/postDeferredNoTCV.glsl", GL_VERTEX_SHADER));
         gFroxelApplyProgram.mShaderFiles.push_back(make_pair("deferred/froxelApplyF.glsl", GL_FRAGMENT_SHADER));
         gFroxelApplyProgram.mShaderFiles.push_back(make_pair("deferred/froxelUtil.glsl", GL_FRAGMENT_SHADER));

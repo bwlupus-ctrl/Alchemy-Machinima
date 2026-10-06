@@ -4,7 +4,7 @@
  can_close="true"
  can_minimize="true"
  can_resize="false"
- height="470"
+ height="580"
  layout="topleft"
  name="avatar_light_response"
  save_rect="true"
@@ -151,13 +151,105 @@
      tool_tip="Explicit identity for the selected rows. It still blocks fallback to a wearer or source."
      top="318"
      width="340" />
+    <text
+     follows="left|top"
+     height="16"
+     layout="topleft"
+     left="10"
+     name="txt_sil_header"
+     top="342"
+     width="340">
+        Silhouette
+    </text>
+    <slider
+     decimal_digits="0"
+     follows="left|top"
+     height="20"
+     increment="1"
+     initial_value="0"
+     label="Silhouette (%)"
+     label_width="96"
+     layout="topleft"
+     left="10"
+     max_val="100"
+     min_val="0"
+     name="sld_sil_amount"
+     tool_tip="Blends this avatar from its normal look (0 %) to a flat, unlit fill (100 %). The fill is scene light: exposure, tonemap and grade still apply. For exact key colours use Actor Chroma Key."
+     top="360"
+     width="340" />
+    <text
+     follows="left|top"
+     height="20"
+     layout="topleft"
+     left="10"
+     top="386"
+     width="90">
+        Fill
+    </text>
+    <color_swatch
+     can_apply_immediately="true"
+     follows="left|top"
+     height="22"
+     label=""
+     label_height="0"
+     layout="topleft"
+     left="106"
+     name="swatch_sil_fill"
+     top="384"
+     width="28" />
+    <combo_box
+     follows="left|top"
+     height="20"
+     layout="topleft"
+     left="140"
+     name="combo_sil_fill"
+     top="384"
+     width="210">
+        <combo_box.item label="Black" name="sil_fill_black" value="0" />
+        <combo_box.item label="Charcoal" name="sil_fill_charcoal" value="1" />
+        <combo_box.item label="White" name="sil_fill_white" value="2" />
+        <combo_box.item label="Chroma Green" name="sil_fill_chroma_green" value="3" />
+        <combo_box.item label="Chroma Blue" name="sil_fill_chroma_blue" value="4" />
+        <combo_box.item label="Custom" name="sil_fill_custom" value="5" />
+    </combo_box>
+    <check_box
+     follows="left|top"
+     height="18"
+     initial_value="true"
+     label="Haze over silhouette"
+     layout="topleft"
+     left="10"
+     name="chk_sil_haze"
+     top="410"
+     width="170" />
+    <check_box
+     follows="left|top"
+     height="18"
+     initial_value="false"
+     label="Keep Rim"
+     layout="topleft"
+     left="186"
+     name="chk_sil_keep_rim"
+     top="410"
+     width="164" />
+    <text
+     follows="left|top"
+     height="16"
+     layout="topleft"
+     left="10"
+     name="txt_sil_note"
+     text_color="Orange"
+     top="432"
+     visible="false"
+     width="340">
+    </text>
     <combo_box
      follows="left|top"
      height="20"
      layout="topleft"
      left="10"
      name="combo_preset"
-     top="342"
+     top="452"
      width="220">
         <combo_box.item
          label="Reset"
@@ -191,6 +283,10 @@
          label="Glow off"
          name="preset_glow_off"
          value="7" />
+        <combo_box.item
+         label="Silhouette"
+         name="preset_silhouette"
+         value="8" />
     </combo_box>
     <button
      follows="left|top"
@@ -199,7 +295,7 @@
      layout="topleft"
      left="236"
      name="btn_apply_preset"
-     top="342"
+     top="452"
      width="114" />
     <button
      follows="left|top"
@@ -209,7 +305,7 @@
      left="10"
      name="btn_reset_selected"
      tool_tip="Set the selected rows to explicit identity (no trim, still blocks fallback)"
-     top="368"
+     top="478"
      width="100" />
     <button
      follows="left|top"
@@ -219,7 +315,7 @@
      left="114"
      name="btn_inherit_selected"
      tool_tip="Remove the selected rows' own entry so they follow their wearer or source again (animesh and clones)"
-     top="368"
+     top="478"
      width="100" />
     <button
      follows="left|top"
@@ -228,7 +324,7 @@
      layout="topleft"
      left="218"
      name="btn_copy"
-     top="368"
+     top="478"
      width="64" />
     <button
      follows="left|top"
@@ -237,7 +333,7 @@
      layout="topleft"
      left="286"
      name="btn_paste"
-     top="368"
+     top="478"
      width="64" />
     <button
      follows="left|top"
@@ -247,7 +343,7 @@
      left="10"
      name="btn_reset_all"
      tool_tip="Remove every avatar's light response"
-     top="394"
+     top="504"
      width="100" />
     <check_box
      control_name="AvatarLightResponseDebugTint"
@@ -258,7 +354,7 @@
      left="120"
      name="chk_debug_tint"
      tool_tip="Reveals surfaces the trim does not cover: every adjusted surface should turn magenta"
-     top="395"
+     top="505"
      width="230" />
     <text
      follows="left|top"
@@ -266,7 +362,7 @@
      layout="topleft"
      left="10"
      name="txt_status"
-     top="420"
+     top="530"
      use_ellipses="true"
      width="340">
         0 adjusted  |  0 uploaded  |  0 visible
@@ -277,7 +373,7 @@
      layout="topleft"
      left="10"
      name="txt_budget"
-     top="436"
+     top="546"
      visible="false"
      word_wrap="true"
      width="340">

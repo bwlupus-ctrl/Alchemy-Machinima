@@ -55,9 +55,9 @@ public:
 
     struct Slot
     {
-        bool      mIdentity = true;
-        LLVector4 mPacked = LLVector4(0.f, 1.f, 1.f, 1.f);
-        LLUUID    mStoreKey;       // entry this slot originates from (instrument attribution)
+        bool                       mIdentity = true;
+        ALLightResponse::Packed    mPacked;
+        LLUUID                     mStoreKey;       // entry this slot originates from (instrument attribution)
     };
 
     // Result of the on-demand instrument query for one stored target.
@@ -72,6 +72,9 @@ public:
     // Set the first time any non-identity value is set or loaded; sticky for
     // the session.  Checked before instance() so a fresh session adds zero GL calls.
     static bool sEverActive;
+    // Frame-local silhouette summary. Bits are documented in
+    // AVATAR_SILHOUETTE_DESIGN.md section 5.2.
+    static U32 sSilFrameMask;
 
     static ALAvatarLightResponse& instance();
 
@@ -101,8 +104,8 @@ public:
     // ---- draw-time lookup (first non-null key with a slot terminates) ----
     // lookup: nullptr for absent OR identity.  peek: identical, kept as a
     // separate name for the non-counting call sites.
-    const LLVector4* lookup(const LLUUID& k1, const LLUUID& k2, const LLUUID& k3, LLUUID* hit_key);
-    const LLVector4* peek(const LLUUID& k1, const LLUUID& k2, const LLUUID& k3);
+    const ALLightResponse::Packed* lookup(const LLUUID& k1, const LLUUID& k2, const LLUUID& k3, LLUUID* hit_key);
+    const ALLightResponse::Packed* peek(const LLUUID& k1, const LLUUID& k2, const LLUUID& k3);
     void noteUpload(const LLUUID& hit_key);
 
     // ---- instrument / UI support ----
@@ -130,6 +133,7 @@ public:
     {
         return mChangeSignal.connect(cb);
     }
+    U64 revision() const { return mRevision; }
 
     static std::string keyToString(const LLUUID& key);
     static LLUUID      keyFromString(const std::string& str);
@@ -153,6 +157,7 @@ private:
     bool                               mDirty = true;
     U32                                mTableFrame = 0xFFFFFFFFu;
     F64                                mLastLogTime = 0.0;
+    U64                                mRevision = 1;
     change_signal_t                    mChangeSignal;
 };
 

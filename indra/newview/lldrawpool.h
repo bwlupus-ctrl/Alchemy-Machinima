@@ -387,8 +387,8 @@ public:
     // upload the response from the command's own draw info instead).
     // uploadAvatarLightResponse*: first non-null key with a stored entry wins;
     // an explicit identity/bypass entry terminates the chain; no entry = identity.
-    // GLOW slot packs z := g (actorghost SWEEP_GLOW only).
-    enum EAlrSlot { ALR_SLOT_BEAUTY = 0, ALR_SLOT_GLOW = 1 };
+    // GLOW packs z := g*(1-a) without fill; SIL_ONLY carries only silhouette.
+    enum EAlrSlot { ALR_SLOT_BEAUTY = 0, ALR_SLOT_GLOW = 1, ALR_SLOT_SIL_ONLY = 2 };
     static bool uploadActorFxStyleOnly(const LLUUID& actor_id,
                                        bool allow_native_wire = false,
                                        bool force_native = false);

@@ -37,6 +37,7 @@
 #include "alavatarlightresponse.h" // [AvatarLightResponse]
 
 #include <cmath> // [TronT2] std::isfinite for the Tron Suit uniform sanitisers
+#include <unordered_set>
 
 #include "lldrawable.h"
 #include "lldrawpoolalpha.h"
@@ -460,6 +461,8 @@ const LLStaticHashedString sActorFxTronColor("actorFxTronColor");
 // [AvatarLightResponse] per-avatar light response uniforms -- avatarLightResponseF.glsl / actorghostF.glsl
 const LLStaticHashedString sAlrEnabled("alrEnabled");
 const LLStaticHashedString sAlrParams("alrParams");
+const LLStaticHashedString sAlrSil("alrSil");
+const LLStaticHashedString sAlrSilAux("alrSilAux");
 
 // Uploads one draw's response to `shader`, which MUST be the program that is
 // currently bound (uniform4fv resolves location/cache from the object it is
@@ -468,22 +471,45 @@ void upload_alr(LLGLSLShader& shader, const LLUUID& k1, const LLUUID& k2, const 
                 LLRenderPass::EAlrSlot slot)
 {
     static LLCachedControl<bool> debug_tint(gSavedSettings, "AvatarLightResponseDebugTint", false);
+    static LLCachedControl<bool> debug_carrier(gSavedSettings, "AvatarSilhouetteDebugCarrier", false);
     LLUUID hit;
-    const LLVector4* p = (LLPipeline::sImpostorRender || (k1.isNull() && k2.isNull() && k3.isNull()))
+    const ALLightResponse::Packed* p = (LLPipeline::sImpostorRender || (k1.isNull() && k2.isNull() && k3.isNull()))
         ? nullptr : ALAvatarLightResponse::instance().lookup(k1, k2, k3, &hit);
-    if (!p)
-    {
-        shader.uniform1i(sAlrEnabled, 0);
-        return;
-    }
-    LLVector4 v = *p;
+
+    ALLightResponse::EUploadSlot upload_slot = ALLightResponse::UPLOAD_BEAUTY;
     if (slot == LLRenderPass::ALR_SLOT_GLOW)
     {
-        v.mV[VZ] = v.mV[VW];
+        upload_slot = ALLightResponse::UPLOAD_GLOW;
     }
-    shader.uniform4fv(sAlrParams, 1, v.mV);
-    shader.uniform1i(sAlrEnabled, debug_tint() ? 3 : 1);
-    if (shader.getUniformLocation(sAlrParams) >= 0)   // count only real consumers
+    else if (slot == LLRenderPass::ALR_SLOT_SIL_ONLY)
+    {
+        upload_slot = ALLightResponse::UPLOAD_SIL_ONLY;
+    }
+
+    const ALLightResponse::UploadPlan plan = ALLightResponse::uploadPlan(p, upload_slot, debug_tint());
+    // Full reset on every draw: program uniforms survive draws, so even the
+    // absent/identity cases must overwrite every value a previous avatar set.
+    shader.uniform1i(sAlrEnabled, plan.enabled);
+    shader.uniform4fv(sAlrParams, 1, plan.params.mV);
+    shader.uniform4fv(sAlrSil, 1, plan.sil.mV);
+    shader.uniform4fv(sAlrSilAux, 1, plan.aux.mV);
+
+    if (debug_carrier() && plan.sil.mV[VW] > 0.f && gPipeline.mRT && glIsEnabled(GL_BLEND))
+    {
+        GLint draw_fbo = 0;
+        glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &draw_fbo);
+        if (draw_fbo && static_cast<U32>(draw_fbo) == gPipeline.mRT->deferredScreen.getFBO())
+        {
+            static std::unordered_set<GLuint> warned_programs;
+            if (warned_programs.insert(shader.mProgramObject).second)
+            {
+                LL_WARNS("AvatarLightResponse") << "[ALR] SIL-CARRIER-BLENDED program="
+                    << shader.mName << LL_ENDL;
+            }
+        }
+    }
+
+    if (plan.enabled != 0 && shader.getUniformLocation(sAlrParams) >= 0)   // count only real consumers
     {
         ALAvatarLightResponse::instance().noteUpload(hit);
     }
@@ -547,7 +573,12 @@ void LLRenderPass::uploadAvatarLightResponseDisabled()
     LLGLSLShader* shader = LLGLSLShader::sCurBoundShaderPtr;
     if (shader && shader->mFeatures.hasActorFx)
     {
-        shader->uniform1i(sAlrEnabled, 0);
+        const ALLightResponse::UploadPlan reset = ALLightResponse::uploadPlan(
+            nullptr, ALLightResponse::UPLOAD_BEAUTY, false);
+        shader->uniform1i(sAlrEnabled, reset.enabled);
+        shader->uniform4fv(sAlrParams, 1, reset.params.mV);
+        shader->uniform4fv(sAlrSil, 1, reset.sil.mV);
+        shader->uniform4fv(sAlrSilAux, 1, reset.aux.mV);
     }
 }
 

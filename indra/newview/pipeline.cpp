@@ -35,6 +35,7 @@
 
 #include "alcinehaze.h"
 #include "alcinerigrim.h" // [RigRim]
+#include "alavatarlightresponse.h" // [AvatarSilhouette]
 #include "alenvintensity.h" // [EnvIntensity v2] local lights EV, SSAO ceiling factor
 #include "altron.h" // [TronT1]
 
@@ -677,22 +678,23 @@ bool addDeferredAttachments(LLRenderTarget& target, bool for_impostor = false)
 {
     U32 orm = GL_RGBA;
     U32 norm = GL_RGBA16;
-    U32 emissive = GL_RGB16F;
+    U32 emissive = GL_RGBA16F;
 
     static LLCachedControl<bool> has_emissive(gSavedSettings, "RenderEnableEmissiveBuffer", false);
+    static LLCachedControl<bool> force_emissive(gSavedSettings, "AvatarSilhouetteForceEmissive", false);
     static LLCachedControl<bool> has_hdr(gSavedSettings, "RenderHDREnabled", true);
     bool hdr = has_hdr() && gGLManager.mGLVersion > 4.05f;
 
     if (!hdr)
     {
         norm = GL_RGB10_A2;
-        emissive = GL_RGB;
+        emissive = GL_RGBA;
     }
 
     bool valid = true;
     valid      = valid && target.addColorAttachment(orm);    // frag-data[1] specular OR PBR ORM
     valid      = valid && target.addColorAttachment(norm);
-    if (has_emissive)
+    if (has_emissive() || force_emissive())
     {
         valid = valid && target.addColorAttachment(emissive); // frag_data[3] PBR emissive OR material env intensity
     }
@@ -22930,6 +22932,14 @@ void LLPipeline::uploadShadowAlphaMode(S32 blended_pass)
 // [/ShadowDist P3] --------------------------------------------------------
 // [/ShadowDist P1] --------------------------------------------------------
 
+// [AvatarSilhouette] Frame-wide carrier/coverage gate. WP4 extends this
+// helper with the per-view silCover-valid bit and texture binding.
+static void uploadSilhouetteFrame(LLGLSLShader& shader)
+{
+    static const LLStaticHashedString alr_sil_active("alr_sil_active");
+    shader.uniform1i(alr_sil_active, static_cast<S32>(ALAvatarLightResponse::sSilFrameMask));
+}
+
 void LLPipeline::bindDeferredShaderFast(LLGLSLShader& shader)
 {
     if (shader.mCanBindFast)
@@ -22947,6 +22957,7 @@ void LLPipeline::bindDeferredShaderFast(LLGLSLShader& shader)
         // fast-bound program's sun-shadow state coherent with the maps it
         // samples (design v6 s1.2). Nothing is uploaded on the OFF path.
         uploadShadowUniforms(shader);
+        uploadSilhouetteFrame(shader);
         bindReflectionProbes(shader);
 
         auto dirty_it = mPrismLensDirtyScreenShaders.end();
@@ -22997,6 +23008,7 @@ void LLPipeline::bindDeferredShader(LLGLSLShader& shader, LLRenderTarget* light_
     LLRenderTarget* deferred_light_target = &mRT->deferredLight;
 
     shader.bind();
+    uploadSilhouetteFrame(shader);
     S32 channel = 0;
     channel = shader.enableTexture(LLShaderMgr::DEFERRED_DIFFUSE, deferred_target->getUsage());
     if (channel > -1)
