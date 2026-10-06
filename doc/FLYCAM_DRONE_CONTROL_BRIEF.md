@@ -1,4 +1,4 @@
-# Flycam Drone Control — Xbox-first, AAA-feel flight model — design brief (for adversarial review)
+# Flycam Drone Control — weight & mass for the flycam (Xbox-first) — design brief (for adversarial review)
 
 **Date:** 2026-10-06
 **Status:** DESIGN ONLY. Nothing implemented, nothing built.
@@ -18,26 +18,30 @@ builds; Codex/Fable never build; Codex only via `--prompt-file`). See §11.
 > should impact the movement mid-flight." — "Right now it just controls the direction, but has no
 > impact on the momentum." — "Make it feel natural, triple-A game input." — "Primary focus is an Xbox
 > controller, but Alchemy supports non-Xbox controllers. Focus on making the Xbox input feel like a
-> drone."
+> drone." — **"I'm not trying to change DirectInput. Mainly just trying to add weight and mass to
+> flycam, making it feel drone and natural."**
+
+**Core goal: weight and mass.** Everything here serves that. The input path (DirectInput / libndof)
+is **not** modified; the feature works entirely on the axis/button values it already delivers.
 
 ---
 
 ## 2. Scope (ship whole)
 
 **In this delivery:**
-1. **Input layer:** XInput reader for Xbox pads (independent LT/RT, rumble); DirectInput path unchanged
-   for everything else; radial stick shaping, response curves, trigger dead/saturation zones.
+1. **Input shaping (post-read only):** radial stick dead zone, response curves, trigger
+   dead/saturation zones — applied to the values the existing DirectInput path already returns. No
+   change to device enumeration, polling or mapping code.
 2. **Drone flight model:** world-up yaw, horizon-locked translation, separate gimbal tilt, a real
    velocity state with throttle/brake/drag/grip, Hold vs Drift release behaviour, flight modes.
 3. **Roll ↔ Clutch trigger toggle** (latched + momentary), D-pad roll in Clutch mode.
 4. **Fixed-step simulation + render interpolation**; recorder stores shaped input.
 5. **Speed-coupled camera extras** (all default OFF): speed-scaled look, look acceleration, bank, FOV
    kick, look-ahead.
-6. **Feedback:** XInput rumble incl. trigger motors (default OFF while recording).
 7. **Tuning UI in human terms**, presets (Cine / Normal / Sport / Dolly / FPV), debug telemetry graph.
 8. Settings, Joystick floater + Flycam/Director UI, reset/preset registration, log verdicts.
 
-**Not changing:** the Classic flight model. `FlycamFlightModel = Classic` must be byte-identical to
+**Not changing:** the input API (DirectInput/libndof stays exactly as is); the Classic flight model. `FlycamFlightModel = Classic` must be byte-identical to
 today (§9).
 
 ---
@@ -53,7 +57,7 @@ today (§9).
 | Dead zones are **per axis** (`mFlycamAxisDeadZone[i]`) → notchy diagonals | `:1676+` |
 | Input via DirectInput (`<dinput.h>`, libndof). DirectInput normally exposes an Xbox pad's LT/RT as **one combined axis** (INFERENCE from DirectInput's standard Xbox behaviour — verify in the Joystick floater axis readout) | `:54`, `:80-115` |
 | Xbox defaults: roll on joystick axis 2 (the trigger axis); roll buttons unmapped (`-1`); Jump/Crouch buttons add to the Z (vertical) axis in flycam; bumpers = zoom in/out | `setXboxDefaults`, `:2568-2590`; `:1664-1672` |
-| No rumble / haptics anywhere in joystick or window code | `git grep rumble|haptic|XInputSetState` → none |
+| No rumble / haptics anywhere in joystick or window code (and none is added — out of scope) | `git grep rumble|haptic|XInputSetState` → none |
 | The handheld operator consumes flycam velocity: `opin.mLinearVel = sDelta[0..2] / dt`, `mAngularVel = sDelta[3..5] / dt` | `:2041-2046` (`LLCameraOperator::update`) |
 | Operator has a fixed simulation quantum setting | `FlycamOperatorSimulationHz` |
 | Flycam Orbit writes `sFlycamPosition` from its own anchor maths when active | `:1997` |
@@ -64,22 +68,18 @@ today (§9).
 
 ## 4. Input layer
 
-### 4.1 Device paths
-- **Xbox (XInput) path — new, Windows.** Poll `XInputGetState` each frame for the active pad: two
-  independent 8-bit triggers, 16-bit sticks, buttons; `XInputSetState` for body rumble. Trigger motors
-  (Xbox One-class "impulse triggers") are only reachable through `Windows.Gaming.Input`; treat as
-  optional sub-feature (§8) gated on availability.
-- **DirectInput path — unchanged** for non-Xbox pads, 3D mice, and as fallback when XInput finds no pad.
-- **No double input.** When XInput owns a pad, its DirectInput twin must be ignored for flycam (the
-  same physical Xbox pad is visible through both APIs). Identity mapping between the two APIs is the
-  known hard part — see §10.1.
-- **Combined-axis fallback.** On DirectInput with a combined trigger axis, Clutch mode treats + as
-  throttle and − as brake; pressing both cancels (documented limitation, shown in the UI as
-  "Combined triggers: throttle/brake can't overlap").
-- Log once on change: `DRONEINPUT xinput pad=<n>` / `DRONEINPUT dinput combined-triggers` /
-  `DRONEINPUT dinput separate-triggers` / `DRONEINPUT none`.
+### 4.1 Input source — unchanged
+- The flight model reads the **same** axis and button values `moveFlycam` reads today
+  (`getJoystickAxis` / `getJoystickButton` through the existing mapping). No XInput, no new device
+  code, no change to `JoystickAxis*` / `JoystickButton*` semantics.
+- **Triggers on one combined axis** (the usual DirectInput Xbox layout — verify in the Joystick floater
+  axis readout): in Clutch mode the axis is split by sign — one direction = **throttle**, the other =
+  **brake**. Pressing both cancels, so throttle and brake can't overlap; documented in the tooltip.
+  A "Swap throttle/brake" checkbox covers pads that report the opposite sign.
+- **Pads that expose triggers as two axes** work too: map throttle and brake to separate axes in the
+  existing mapping UI (two new flight-model axis assignments, not new device code).
 
-### 4.2 Shaping (applies to both paths)
+### 4.2 Shaping (post-read, Drone model only)
 - **Radial dead zone** for each stick (magnitude-based, then rescaled 0..1 so there's no jump at the
   edge) replacing per-axis trimming in the drone model. Classic keeps per-axis.
 - **Outer saturation** (default 5%): last bit of travel = full.
@@ -197,18 +197,13 @@ auto-level); Clutch→Roll eases throttle contribution to zero over the decel ti
 
 ---
 
-## 8. Feedback (XInput only, default ON live / OFF while recording)
-- Body rumble grows with speed; short pulse on hard brake; tick on mode change.
-- Trigger motors (if `Windows.Gaming.Input` available): RT resistance-like buzz with throttle, LT pulse
-  under hard braking.
-- Global strength slider; auto-off when the window loses focus.
-
----
+## 8. Feedback
+- No rumble (would need a different input API — out of scope by user decision). Feedback is visual
+  only: mode toasts and the optional speed readout, both hidden with the UI.
 
 ## 9. Off-path inert
 - `FlycamFlightModel = Classic` (default for the first in-world A/B): both existing `moveFlycam` paths
-  run unchanged; no XInput polling side effects on the Classic maths (XInput may still be polled for
-  device detection only — reviewer to decide if even that should wait for Drone).
+  run unchanged.
 - Non-Xbox devices in Classic: identical to today.
 - No render-state changes anywhere in this feature.
 
@@ -216,9 +211,10 @@ auto-level); Clutch→Roll eases throttle contribution to zero over the decel ti
 
 ## 10. Reviewer: attack these first (least-sure list)
 
-1. **Same pad through XInput and DirectInput.** How do we reliably suppress the DirectInput twin
-   (VID/PID + "IG_" device-path convention is the usual approach)? What happens with two Xbox pads, or
-   an Xbox pad plus a 3D mouse?
+1. **Combined trigger axis.** Confirm how the existing DirectInput path reports an Xbox pad's
+   triggers (one axis or two) and its rest value; prove the throttle/brake split has no drift at rest
+   and no sign flip across pads. 3D mice (absolute `m3DCursor` mode) must keep Classic behaviour or be
+   explicitly handled.
 2. **Frame change without regressions.** Horizon-locked translation + world-up yaw replace the
    camera-local maths only in Drone; prove Classic, Orbit and the operator are untouched.
 3. **Fixed step + interpolation + operator.** The operator already has its own quantum — is there a
@@ -235,11 +231,10 @@ auto-level); Clutch→Roll eases throttle contribution to zero over the decel ti
 
 | WP | Content | Owner | Review |
 |---|---|---|---|
-| 1 | XInput reader, device ownership/twin suppression, rumble, input logs | **Codex** | Opus adversarial |
-| 2 | Shaping layer (radial DZ, curves, saturation, trigger zones) | **Codex** | Opus adversarial |
+| 1 | Shaping layer on existing axis values (radial DZ, curves, saturation, trigger split/zones), input-layout log | **Codex** | Opus adversarial |
 | 3 | `LLFlycamDrone` flight model: frames, velocity, thrust curve, drag, brake, jerk limit, grip, Hold/Drift, modes, Free-fly | **Fable** | Opus adversarial |
 | 4 | Fixed step + interpolation, operator feed, Orbit/cut/Classic handover, recorder format | **Fable** | Opus adversarial |
-| 5 | Controls/mapping, Roll↔Clutch toggle, toasts, Joystick floater additions | **Sonnet** | Opus adversarial |
+| 5 | Controls/mapping (existing mapping UI only), Roll↔Clutch toggle, toasts | **Sonnet** | Opus adversarial |
 | 6 | Tuning UI in human terms + presets + debug telemetry graph | **Sonnet** | Opus adversarial |
 | 7 | Settings, reset/preset registration, docs (`MACHINIMA_USER_GUIDE.md`) | **Opus** | independent Opus adversarial |
 
@@ -250,8 +245,8 @@ across all packages; then one build.
 
 ## 12. In-world test (outcomes stated in advance)
 
-1. **Device detection.** Xbox pad → log `DRONEINPUT xinput pad=0`; unplug → `dinput`/`none`; no double
-   movement when both APIs see the pad.
+1. **Trigger split.** Clutch mode, Joystick floater open: RT alone → throttle only; LT alone → brake
+   only; both released → neither (no drift). Log `DRONEINPUT combined-triggers` or `separate-triggers`.
 2. **Horizon lock.** Drone/Normal: pitch the gimbal straight down, push forward. *Expect:* level flight
    over the ground. Classic: *expect* today's dive.
 3. **Momentum.** Drift mode: reach speed, release. *Expect:* glide with smooth decay. Hold mode:
@@ -262,4 +257,4 @@ across all packages; then one build.
 6. **Toggle.** Switch Roll↔Clutch mid-move. *Expect:* no jolt; toast shows mode.
 7. **Determinism.** Record a take, replay at 30 and 144 fps. *Expect:* same path.
 8. **Classic off-path.** `FlycamFlightModel = Classic`. *Expect:* indistinguishable from today.
-9. **Non-Xbox pad.** Generic DirectInput pad in Drone. *Expect:* works with combined-trigger note.
+9. **Non-Xbox pad.** Generic pad in Drone via the existing mapping. *Expect:* same weight and coast feel.
