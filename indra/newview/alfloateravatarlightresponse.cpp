@@ -131,8 +131,8 @@ bool ALFloaterAvatarLightResponse::postBuild()
     mSilFill->setOnSelectCallback([this](LLUICtrl*, const LLSD&) { onSilFill(true, true); });
     mSilFill->setOnCancelCallback([this](LLUICtrl*, const LLSD&) { onSilFill(true, false); });
     mSilFillPreset->setCommitCallback([this](LLUICtrl*, const LLSD&) { onSilFillPreset(); });
-    mSilHaze->setCommitCallback([this](LLUICtrl*, const LLSD&) { onSilCheckbox(); });
-    mSilKeepRim->setCommitCallback([this](LLUICtrl*, const LLSD&) { onSilCheckbox(); });
+    mSilHaze->setCommitCallback([this](LLUICtrl*, const LLSD&) { onSilCheckbox(true); });
+    mSilKeepRim->setCommitCallback([this](LLUICtrl*, const LLSD&) { onSilCheckbox(false); });
     mApplyPreset->setCommitCallback([this](LLUICtrl*, const LLSD&) { onApplyPreset(); });
     mResetSelected->setCommitCallback([this](LLUICtrl*, const LLSD&) { onResetSelected(); });
     mInheritSelected->setCommitCallback([this](LLUICtrl*, const LLSD&) { onInheritSelected(); });
@@ -143,7 +143,6 @@ bool ALFloaterAvatarLightResponse::postBuild()
     mPreset->selectFirstItem();   // never leave the combo empty: an empty combo reads as index 0 (Reset)
     mChangeConnection = ALAvatarLightResponse::instance().setChangeCallback([this]()
     {
-        mIdleRowsPending = true;
         mIdleStatePending = true;
     });
     gIdleCallbacks.addFunction(onIdle, this);
@@ -188,6 +187,7 @@ void ALFloaterAvatarLightResponse::onVisibilityChange(bool new_visibility)
     {
         mStoreGate.reset();
         mIdleRowsPending = true;
+        mIdleRowsImmediate = true;
         mIdleStatePending = true;
     }
     LLFloater::onVisibilityChange(new_visibility);
@@ -199,13 +199,11 @@ void ALFloaterAvatarLightResponse::draw()
     const bool tick = mRefreshTimer.getElapsedTimeF32() >= 1.f;
     if (tick)
     {
-        mRefreshTimer.reset();
         mIdleRowsPending = true;
         mIdleStatePending = true;
     }
     if (mStoreGate.changed({ ALAvatarLightResponse::instance().revision() }))
     {
-        mIdleRowsPending = true;
         mIdleStatePending = true;
     }
     LLFloater::draw();
@@ -223,9 +221,9 @@ void ALFloaterAvatarLightResponse::idleUpdate()
     {
         return;
     }
-    if (mIdleRowsPending)
+    if (mIdleRowsPending &&
+        (mIdleRowsImmediate || mRefreshTimer.getElapsedTimeF32() >= 1.f))
     {
-        mIdleRowsPending = false;
         refreshRows(false);
     }
     if (mIdleStatePending)
@@ -375,6 +373,11 @@ void ALFloaterAvatarLightResponse::refreshRows(bool force)
     {
         return;
     }
+    // Row discovery/rebuild is the >50-row path: coalesce ordinary requests to
+    // 1 Hz. Reveal and known structural changes set mIdleRowsImmediate.
+    mIdleRowsPending = false;
+    mIdleRowsImmediate = false;
+    mRefreshTimer.reset();
     ALAvatarLightResponse& store = ALAvatarLightResponse::instance();
 
     std::vector<LLUUID> order;
@@ -576,6 +579,9 @@ ALLightResponse::Params ALFloaterAvatarLightResponse::currentParams(const LLUUID
 
 void ALFloaterAvatarLightResponse::applyParams(const LLUUID& key, const ALLightResponse::Params& params, bool save_now)
 {
+    const ALAvatarLightResponse::Entry* old_entry = ALAvatarLightResponse::instance().findEntry(key);
+    const bool was_adjusted = old_entry && !ALLightResponse::isIdentity(old_entry->mParams);
+    const bool will_be_adjusted = !ALLightResponse::isIdentity(ALLightResponse::sanitize(params));
     ALAvatarLightResponse::EKind kind = ALAvatarLightResponse::KIND_RESIDENT;
     std::string label = shortId(key);
     const std::map<LLUUID, RowInfo>::const_iterator it = mRowInfo.find(key);
@@ -597,6 +603,13 @@ void ALFloaterAvatarLightResponse::applyParams(const LLUUID& key, const ALLightR
         // capacity reached: refuse loudly (unique notification, so a slider drag cannot stack them)
         LLNotificationsUtil::add("AvatarLightResponseCapReached",
             LLSD().with("MAX", static_cast<LLSD::Integer>(ALAvatarLightResponse::maxStoredEntries())));
+    }
+    else if (mOnlyAdjusted->get() && was_adjusted != will_be_adjusted)
+    {
+        // This edit changes list membership. Defer until the current callback
+        // unwinds, but bypass the 1 Hz limiter as a structural change.
+        mIdleRowsPending = true;
+        mIdleRowsImmediate = true;
     }
 }
 
@@ -807,7 +820,7 @@ void ALFloaterAvatarLightResponse::onSilFillPreset()
     refreshEditors();
 }
 
-void ALFloaterAvatarLightResponse::onSilCheckbox()
+void ALFloaterAvatarLightResponse::onSilCheckbox(bool haze)
 {
     if (mUpdating)
     {
@@ -816,8 +829,14 @@ void ALFloaterAvatarLightResponse::onSilCheckbox()
     for (const LLUUID& key : selectedKeys())
     {
         ALLightResponse::Params p = currentParams(key);
-        p.mSilHaze = mSilHaze->get();
-        p.mSilKeepRim = mSilKeepRim->get();
+        if (haze)
+        {
+            p.mSilHaze = mSilHaze->get();
+        }
+        else
+        {
+            p.mSilKeepRim = mSilKeepRim->get();
+        }
         applyParams(key, p, false);
     }
     ALAvatarLightResponse::instance().saveIfPersist();
@@ -884,12 +903,18 @@ void ALFloaterAvatarLightResponse::onInheritSelected()
 
 void ALFloaterAvatarLightResponse::onResetAll()
 {
+    const LLHandle<ALFloaterAvatarLightResponse> handle = getDerivedHandle<ALFloaterAvatarLightResponse>();
     LLNotificationsUtil::add("AvatarLightResponseResetAll", LLSD(), LLSD(),
-        [](const LLSD& notification, const LLSD& response)
+        [handle](const LLSD& notification, const LLSD& response)
         {
             if (LLNotificationsUtil::getSelectedOption(notification, response) == 0)
             {
                 ALAvatarLightResponse::instance().clearAll(true);
+                if (ALFloaterAvatarLightResponse* self = handle.get())
+                {
+                    self->mIdleRowsPending = true;
+                    self->mIdleRowsImmediate = true;
+                }
             }
         });
 }

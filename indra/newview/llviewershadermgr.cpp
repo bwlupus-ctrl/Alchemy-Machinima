@@ -2261,6 +2261,10 @@ bool LLViewerShaderMgr::loadShadersDeferred()
         shader->mShaderFiles.push_back(make_pair("deferred/pbralphaF.glsl", GL_FRAGMENT_SHADER));
 
         shader->clearPermutations();
+        if (gSavedSettings.getBOOL("AvatarSilhouetteRimParity"))
+        {
+            shader->addPermutation("ALR_RIMSPLIT_PARITY", "1");
+        }
         shader->addPermutation("HAS_ACTOR_FX", "1");
 
         U32 alpha_mode = LLMaterial::DIFFUSE_ALPHA_MODE_BLEND;
@@ -2344,6 +2348,10 @@ bool LLViewerShaderMgr::loadShadersDeferred()
                 "deferred/sharedActorFxPbrF.glsl", GL_FRAGMENT_SHADER));
             beauty.mShaderLevel = mShaderLevel[SHADER_DEFERRED];
             beauty.clearPermutations();
+            if (gSavedSettings.getBOOL("AvatarSilhouetteRimParity"))
+            {
+                beauty.addPermutation("ALR_RIMSPLIT_PARITY", "1");
+            }
             beauty.addPermutation("HAS_ACTOR_FX", "1");
             beauty.addPermutation("SHARED_ACTOR_FX_REPLAY", "1");
             beauty.addPermutation("SHARED_ACTOR_FX_ALPHA_MODE",

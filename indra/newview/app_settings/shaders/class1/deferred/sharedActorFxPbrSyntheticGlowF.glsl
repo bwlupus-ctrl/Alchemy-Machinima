@@ -64,6 +64,8 @@ vec3 actorFxPbrSyntheticEmission(vec3 authored_source,
                                  vec3 position_eye, vec2 authored_uv,
                                  float dissolve_coverage);
 bool actorFxActive();
+bool alrSilOn();
+float alrSilKeep();
 void actorFxTronPrime(); // [TronT2 fix] seam footprint, uniform flow
 float actorFxPbrDissolveCoverage();
 float actorFxPbrDissolveAlpha(float coverage);
@@ -206,6 +208,7 @@ void main()
 #endif
     float opacity = clamp(sharedActorFxOpacity, 0.0, 1.0);
     float glow = max(max(emitted.r, emitted.g), emitted.b);
+    if (alrSilOn()) glow *= alrSilKeep(); // [AvatarSilhouette] completed look glow
     frag_color = vec4(0.0, 0.0, 0.0,
                       max(glow, 0.0) * coverage * opacity);
 }

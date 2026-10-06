@@ -88,6 +88,12 @@ bool actorFxRgbSplitEnabled();
 vec2 actorFxUv(vec2 authored_uv, vec3 position_eye);
 vec2 actorFxRgbSplitUv(vec2 transformed_uv, float direction);
 vec3 alrAlbedoLinear(vec3 c);
+bool alrSilOn();
+float alrSilKeep();
+float alrSilRimKeep();
+bool alrSilNeedsFogZero();
+vec3 alrSilPreFog(vec3 c, float w);
+vec3 alrSilPostFog(vec3 c, vec3 fog_zero, float w);
 bool alrDebug();
 #endif
 void calcAtmosphericVarsLinear(vec3 inPositionEye, vec3 norm, vec3 light_dir, out vec3 sunlit, out vec3 amblit, out vec3 atten, out vec3 additive);
@@ -107,7 +113,7 @@ void sampleReflectionProbesLegacy(inout vec3 ambenv, inout vec3 glossenv, inout 
 
 // [RigRim] `rim` = this light unit's rig rim params (rig_rim_lights[i]); zero
 // for non-rig lights.  NOTE: `v` is the eye-space POSITION here (legacy naming).
-vec3 calcPointLightOrSpotLight(vec3 light_col, vec3 diffuse, vec3 v, vec3 n, vec4 lp, vec3 ln, float la, float fa, float is_pointlight, float ambiance, vec4 rim)
+vec3 calcPointLightOrSpotLight(vec3 light_col, vec3 diffuse, vec3 v, vec3 n, vec4 lp, vec3 ln, float la, float fa, float is_pointlight, float ambiance, vec4 rim, float sil_keep, float rim_keep)
 {
     // SL-14895 inverted attenuation work-around
     // This routine is tweaked to match deferred lighting, but previously used an inverted la value. To reconstruct
@@ -187,6 +193,8 @@ vec3 calcPointLightOrSpotLight(vec3 light_col, vec3 diffuse, vec3 v, vec3 n, vec
 
         // no spec for alpha shader...
 
+        col *= sil_keep;
+
         // [RigRim] additive rim (cone + attenuation weighted, no shadow).  No
         // glossiness on this path, so roughness = 1 (softest).  Independent of
         // `da` so wrap can reach past the terminator.  Mode 0 never enters.
@@ -198,7 +206,7 @@ vec3 calcPointLightOrSpotLight(vec3 light_col, vec3 diffuse, vec3 v, vec3 n, vec
             {
                 col = vec3(0.0); // debug: rim only
             }
-            col += rim_col;
+            col += rim_col * rim_keep;
         }
     }
     float final_scale = 1.0;
@@ -366,11 +374,19 @@ void main()
     }
 
     color.rgb *= diffuse_linear.rgb;
+#ifdef HAS_ACTOR_FX
+    float alr_sil_keep = alrSilKeep();
+    float alr_rim_keep = alrSilRimKeep();
+    if (alrSilOn()) color.rgb *= alr_sil_keep;
+#else
+    const float alr_sil_keep = 1.0;
+    const float alr_rim_keep = 1.0;
+#endif
 
     vec4 light = vec4(0,0,0,0);
 
    // [RigRim] trailing rig_rim_lights[i] argument
-   #define LIGHT_LOOP(i) light.rgb += calcPointLightOrSpotLight(light_diffuse[i].rgb, diffuse_linear.rgb, pos.xyz, norm, light_position[i], light_direction[i].xyz, light_attenuation[i].x, light_attenuation[i].y, light_attenuation[i].z, light_attenuation[i].w, rig_rim_lights[i]);
+   #define LIGHT_LOOP(i) light.rgb += calcPointLightOrSpotLight(light_diffuse[i].rgb, diffuse_linear.rgb, pos.xyz, norm, light_position[i], light_direction[i].xyz, light_attenuation[i].x, light_attenuation[i].y, light_attenuation[i].z, light_attenuation[i].w, rig_rim_lights[i], alr_sil_keep, alr_rim_keep);
 
     LIGHT_LOOP(1)
     LIGHT_LOOP(2)
@@ -383,10 +399,25 @@ void main()
     // sum local light contrib in linear colorspace
     color.rgb += light.rgb;
 #ifdef HAS_ACTOR_FX
+    if (alrSilOn()) actor_fx_emissive *= alr_sil_keep;
     color.rgb += actor_fx_emissive;
+    if (alrSilOn())
+    {
+        float alr_fill_scale = classic_mode > 0 ? 1.0 / 1.1 : 1.0;
+        color.rgb = alrSilPreFog(color.rgb, alr_fill_scale);
+    }
 #endif
 
     color.rgb = applySkyAndWaterFog(pos.xyz, additive, atten, color).rgb;
+#ifdef HAS_ACTOR_FX
+    if (alrSilOn() && alrSilNeedsFogZero())
+    {
+        vec3 alr_fog_zero = applySkyAndWaterFog(
+            pos.xyz, additive, atten, vec4(0.0, 0.0, 0.0, 1.0)).rgb;
+        float alr_fill_scale = classic_mode > 0 ? 1.0 / 1.1 : 1.0;
+        color.rgb = alrSilPostFog(color.rgb, alr_fog_zero, alr_fill_scale);
+    }
+#endif
 
 #endif // #else // FOR_IMPOSTOR
     float final_scale = 1;
@@ -407,7 +438,11 @@ void main()
     visible_diffuse = vec4(0.0);
     surface_coverage = vec2(0.0);
 #else
-    visible_diffuse = vec4(max(diffuse_linear.rgb, vec3(0)), final_alpha);
+    vec3 alr_visible_diffuse = diffuse_linear.rgb;
+#ifdef HAS_ACTOR_FX
+    if (alrSilOn()) alr_visible_diffuse *= alr_sil_keep;
+#endif
+    visible_diffuse = vec4(max(alr_visible_diffuse, vec3(0)), final_alpha);
     // R = 0 is written but masked off by the pool; G claims forward coverage
     // proportional to how much of this pixel this layer actually covers.
     surface_coverage = vec2(0.0, final_alpha);

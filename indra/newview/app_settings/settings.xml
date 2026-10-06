@@ -29969,5 +29969,12 @@
     <key>Type</key><string>F32</string>
     <key>Value</key><real>-8.0</real>
   </map>
+  <key>AvatarSilhouetteRimParity</key>
+  <map>
+    <key>Comment</key><string>[AvatarSilhouette] Compile the T21 forward RimSplit bit-parity instrument; mismatches paint magenta.</string>
+    <key>Persist</key><integer>0</integer>
+    <key>Type</key><string>Boolean</string>
+    <key>Value</key><integer>0</integer>
+  </map>
 </map>
 </llsd>

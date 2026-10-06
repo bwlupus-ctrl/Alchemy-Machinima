@@ -53,6 +53,12 @@ bool actorFxRgbSplitEnabled();
 vec2 actorFxUv(vec2 authored_uv, vec3 position_eye);
 vec2 actorFxRgbSplitUv(vec2 transformed_uv, float direction);
 vec3 alrPresentedLinear(vec3 c);
+bool alrSilOn();
+float alrSilKeep();
+bool alrSilNeedsFogZero();
+vec3 alrSilPreFog(vec3 c, float w);
+vec3 alrSilPostFog(vec3 c, vec3 fog_zero, float w);
+vec3 alrSilFillAdd();
 bool alrDebug();
 #endif
 
@@ -150,13 +156,17 @@ void main()
         // tag, not material transparency. Active Actor FX emission is emitted
         // in the same draw; blended alpha uses its dedicated additive pass.
         vec3 actor_fx_emissive = actorFxEmissive(vec3(0.0), color.rgb);
-        color.a += max(max(actor_fx_emissive.r, actor_fx_emissive.g),
-                       actor_fx_emissive.b);
+        float actor_fx_glow = max(max(actor_fx_emissive.r,
+                                      actor_fx_emissive.g),
+                                   actor_fx_emissive.b);
+        if (alrSilOn()) actor_fx_glow *= alrSilKeep();
+        color.a += actor_fx_glow;
 #endif
     }
 #endif
 #ifdef HAS_ACTOR_FX
     color.rgb = alrPresentedLinear(color.rgb); // [AvatarLightResponse] presented (unlit) colour
+    if (alrSilOn()) color.rgb *= alrSilKeep();
 #endif
     visible_diffuse_color = color.rgb;
 #ifdef IS_ALPHA
@@ -167,8 +177,25 @@ void main()
     vec3 atten;
     calcAtmosphericVars(pos.xyz, vec3(0), 1.0, sunlit, amblit, additive, atten);
 
+#ifdef HAS_ACTOR_FX
+    if (alrSilOn()) color.rgb = alrSilPreFog(color.rgb, 1.0);
+#endif
     color.rgb = applySkyAndWaterFog(pos, additive, atten, color).rgb;
+#ifdef HAS_ACTOR_FX
+    if (alrSilOn() && alrSilNeedsFogZero())
+    {
+        vec3 alr_fog_zero = applySkyAndWaterFog(
+            pos, additive, atten, vec4(0.0, 0.0, 0.0, 1.0)).rgb;
+        color.rgb = alrSilPostFog(color.rgb, alr_fog_zero, 1.0);
+    }
+#endif
 
+#endif
+
+#ifdef HAS_ACTOR_FX
+#ifndef IS_ALPHA
+    if (alrSilOn()) color.rgb += alrSilFillAdd();
+#endif
 #endif
 
 #endif

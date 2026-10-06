@@ -84,7 +84,7 @@ private:
     void onBypass();
     void onSilFill(bool save_now, bool custom);
     void onSilFillPreset();
-    void onSilCheckbox();
+    void onSilCheckbox(bool haze);
     void onApplyPreset();
     void onResetSelected();
     void onInheritSelected();
@@ -123,6 +123,7 @@ private:
     std::set<LLUUID>             mPinnedKeys;    // rows requested through onOpen(key) that no other source lists
     bool                         mUpdating = false;   // widgets are being set from code: ignore commits
     bool                         mIdleRowsPending = true;
+    bool                         mIdleRowsImmediate = false;
     bool                         mIdleStatePending = true;
     bool                         mSliderDragging = false;   // a slider has mouse capture: never reset it from a refresh
     bool                         mHaveClip = false;

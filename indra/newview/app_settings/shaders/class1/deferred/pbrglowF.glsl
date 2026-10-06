@@ -57,6 +57,8 @@ bool actorFxRgbSplitEnabled();
 vec2 actorFxUv(vec2 authored_uv, vec3 position_eye);
 vec2 actorFxRgbSplitUv(vec2 transformed_uv, float direction);
 vec3 alrEmissive(vec3 e); // [AvatarLightResponse]
+bool alrSilOn();
+float alrSilKeep();
 #endif
 
 void main()
@@ -152,6 +154,9 @@ void main()
 #endif
 
     // HUDs are rendered after gamma correction, output in sRGB space
+#ifdef HAS_ACTOR_FX
+    if (alrSilOn()) lum *= alrSilKeep(); // [AvatarSilhouette] authored + look glow
+#endif
     frag_color.rgb = vec3(0);
     frag_color.a = lum;
 }

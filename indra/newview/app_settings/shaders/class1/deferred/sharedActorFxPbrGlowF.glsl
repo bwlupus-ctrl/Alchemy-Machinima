@@ -91,6 +91,8 @@ bool actorFxRgbSplitEnabled();
 vec2 actorFxUv(vec2 authored_uv, vec3 position_eye);
 vec2 actorFxRgbSplitUv(vec2 transformed_uv, float direction);
 float alrEmissiveGain(); // [AvatarLightResponse]
+bool alrSilOn();
+float alrSilKeep();
 #endif
 
 void calcAtmosphericVarsLinear(vec3 inPositionEye, vec3 norm,
@@ -313,6 +315,9 @@ void main()
 
     float opacity = clamp(sharedActorFxOpacity, 0.0, 1.0);
     float lum = max(authored_lum + synthetic_lum, 0.0) * coverage * opacity;
+#ifdef HAS_ACTOR_FX
+    if (alrSilOn()) lum *= alrSilKeep(); // [AvatarSilhouette] after all look processing
+#endif
 
     frag_color.rgb = vec3(0.0);
     frag_color.a = lum;

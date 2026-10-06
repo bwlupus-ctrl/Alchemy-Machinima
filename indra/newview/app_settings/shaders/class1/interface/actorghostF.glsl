@@ -112,11 +112,13 @@ uniform vec4 ghostDistortParams;
 // Native live Actor wire is submitted to the linear HDR world buffer. Ghost
 // Studio overlays remain post-tonemap/display-space and leave this disabled.
 uniform int ghostWorldLinear;
-// [AvatarLightResponse] Ghost Studio CLONE draws only: the CPU uploads a non-zero alrEnabled for those
-// draws and leaves the GL link default (0 = identity) for everything else. These programs do
-// not link avatarLightResponseF.glsl, so the uniforms are declared locally.
+// [AvatarLightResponse] CLONE draws receive the normal trim slots; shared Actor FX
+// replays receive SIL_ONLY. These programs do not link avatarLightResponseF.glsl,
+// so the uniforms are declared locally.
 uniform int alrEnabled;   // 0 identity; 1 active; 3 active + debug override
 uniform vec4 alrParams;   // z = Brightness gain k (beauty sweeps) or Glow gain g (SWEEP_GLOW sweep)
+uniform vec4 alrSil;      // rgb = linear fill, a = quantized silhouette amount
+uniform vec4 alrSilAux;   // y = haze over silhouette
 #ifdef GHOST_WORLD_PASS
 // Shared live Actor FX reuses the exact animated beauty program for its bloom
 // replay.  This mode preserves every alpha/mask/dissolve decision above, emits
@@ -1481,6 +1483,8 @@ void main()
             ghostSrgbChannelToLinear(worldDissolveSource.b));
 #endif
     }
+    bool sil = alrEnabled == 1 && alrSil.a > 0.0;
+    float silKeep = sil ? 1.0 - alrSil.a : 1.0;
     // [AvatarLightResponse] Brightness (beauty sweeps) / Glow (SWEEP_GLOW) trim for a Ghost Studio CLONE.
     if (alrEnabled == 1 && ghostLook == 1)          // GHOST_STYLE_CLONE
     {
@@ -1509,6 +1513,12 @@ void main()
     // glow replay publishes below. Fog/atmospherics then attenuate the combined
     // world result through the existing path.
     rgb += worldRadiance;
+    if (sil)
+    {
+        // Output-side: all nonlinear look, dissolve, signal and radiance work
+        // above is part of the styled result and is scaled exactly once here.
+        rgb *= silKeep;
+    }
     if (ghostGlowOnly != 0)
     {
         // The caller only schedules this pass for the frozen signature list.
@@ -1532,6 +1542,7 @@ void main()
             ? syntheticCoverage : worldAuthoredCoverage;
         float glow = max(max(emitted.r, emitted.g), emitted.b)
                    * bloomCoverage;
+        if (sil) glow *= silKeep;
         frag_color = vec4(0.0, 0.0, 0.0, max(glow, 0.0));
         return;
     }
@@ -1556,8 +1567,35 @@ void main()
     }
     else
     {
+        vec3 silFill = ghostWorldLinear != 0
+            ? alrSil.rgb
+            : vec3(alr_ghost_l2s(alrSil.r), alr_ghost_l2s(alrSil.g),
+                   alr_ghost_l2s(alrSil.b));
+        if (sil && alrSilAux.y > 0.5)
+        {
+            rgb += alrSil.a * silFill;
+        }
         rgb = applySkyAndWaterFog(vary_position, getAdditiveColor(),
                                   getAtmosAttenuation(), vec4(rgb, alpha)).rgb;
+        if (sil && alrSilAux.y <= 0.5)
+        {
+            vec3 fogZero = applySkyAndWaterFog(
+                vary_position, getAdditiveColor(), getAtmosAttenuation(),
+                vec4(vec3(0.0), alpha)).rgb;
+            rgb += alrSil.a * (silFill - fogZero);
+        }
+    }
+#endif
+#ifndef GHOST_WORLD_PASS
+    if (sil)
+    {
+        rgb = vec3(
+            alr_ghost_l2s(ghostSrgbChannelToLinear(rgb.r) * silKeep
+                          + alrSil.a * alrSil.r),
+            alr_ghost_l2s(ghostSrgbChannelToLinear(rgb.g) * silKeep
+                          + alrSil.a * alrSil.g),
+            alr_ghost_l2s(ghostSrgbChannelToLinear(rgb.b) * silKeep
+                          + alrSil.a * alrSil.b));
     }
 #endif
     // [AvatarLightResponse] debug override, final: after signal modulation, additive radiance and fog.

@@ -166,11 +166,31 @@ vec3 pbrCalcPointLightOrSpotLightRimKeep(vec3 diffuseColor, vec3 specularColor,
                     vec3 n, vec3 p, vec3 v, vec3 lp, vec3 ld, vec3 lightColor,
                     float lightSize, float falloff, float is_pointlight, float ambiance,
                     vec4 rim, float spec_keep);
+void pbrCalcPointLightOrSpotLightRimSplit(vec3 diffuseColor, vec3 specularColor,
+                    float perceptualRoughness, float metallic, vec3 n, vec3 p,
+                    vec3 v, vec3 lp, vec3 ld, vec3 lightColor,
+                    float lightSize, float falloff, float is_pointlight,
+                    float ambiance, vec4 rim, float spec_keep,
+                    out vec3 nonrim, out vec3 rim_raw, out bool rim_on,
+                    out float light_scale);
+#ifdef ALR_RIMSPLIT_PARITY
+vec3 pbrCalcPointLightOrSpotLightRimKeepRef(vec3 diffuseColor, vec3 specularColor,
+                    float perceptualRoughness, float metallic, vec3 n, vec3 p,
+                    vec3 v, vec3 lp, vec3 ld, vec3 lightColor,
+                    float lightSize, float falloff, float is_pointlight,
+                    float ambiance, vec4 rim, float spec_keep);
+#endif
 #ifdef HAS_ACTOR_FX
 vec3 alrEmissive(vec3 e);
 vec3 alrAlbedoLinear(vec3 c);
 float alrRoughness(float r);
 float alrSpecKeep();
+bool alrSilOn();
+float alrSilKeep();
+float alrSilRimKeep();
+bool alrSilNeedsFogZero();
+vec3 alrSilPreFog(vec3 c, float w);
+vec3 alrSilPostFog(vec3 c, vec3 fog_zero, float w);
 bool alrDebug();
 #endif
 
@@ -323,13 +343,82 @@ void main()
     alr_keep = alrSpecKeep();
 #endif
     color = pbrBaseLightKeep(diffuseColor, specularColor, metallic, v, norm.xyz, perceptualRoughness, light_dir, sunlit_linear, scol, radiance, irradiance, colorEmissive, ao, additive, atten, alr_keep);
+#ifdef HAS_ACTOR_FX
+    if (alrSilOn()) color *= alrSilKeep();
+#endif
 
     vec3 light = vec3(0);
 
     // Punctual lights
     // [RigRim] ...Rim variant carries rig_rim_lights[i]; identical result when
     // the rim params are zero / rig_rim_mode is 0.
+#ifdef HAS_ACTOR_FX
+    float alr_sk = alrSilKeep();
+    float alr_rk = alrSilRimKeep();
+#ifdef ALR_RIMSPLIT_PARITY
+    bool alr_rimsplit_mismatch = false;
+#define LIGHT_LOOP(i) {                                                        \
+        vec3 alr_nr; vec3 alr_rr; bool alr_ron; float alr_ls;                 \
+        pbrCalcPointLightOrSpotLightRimSplit(diffuseColor, specularColor,     \
+            perceptualRoughness, metallic, norm.xyz, pos.xyz, v,             \
+            light_position[i].xyz, light_direction[i].xyz,                   \
+            light_diffuse[i].rgb, light_deferred_attenuation[i].x,           \
+            light_deferred_attenuation[i].y, light_attenuation[i].z,         \
+            light_attenuation[i].w, rig_rim_lights[i], alr_keep,             \
+            alr_nr, alr_rr, alr_ron, alr_ls);                                \
+        vec3 alr_split = alr_nr;                                               \
+        if (alr_ron) alr_split += alr_rr;                                      \
+        alr_split *= alr_ls;                                                    \
+        vec3 alr_ref = pbrCalcPointLightOrSpotLightRimKeepRef(                 \
+            diffuseColor, specularColor, perceptualRoughness, metallic,       \
+            norm.xyz, pos.xyz, v, light_position[i].xyz,                      \
+            light_direction[i].xyz, light_diffuse[i].rgb,                    \
+            light_deferred_attenuation[i].x,                                 \
+            light_deferred_attenuation[i].y, light_attenuation[i].z,         \
+            light_attenuation[i].w, rig_rim_lights[i], alr_keep);            \
+        alr_rimsplit_mismatch = alr_rimsplit_mismatch                         \
+            || any(notEqual(floatBitsToUint(alr_split),                       \
+                            floatBitsToUint(alr_ref)));                        \
+        if (alrSilOn())                                                        \
+            light += (alr_nr * alr_sk                                         \
+                + (alr_ron ? alr_rr : vec3(0.0)) * alr_rk) * alr_ls;         \
+        else                                                                   \
+            light += pbrCalcPointLightOrSpotLightRimKeep(                     \
+                diffuseColor, specularColor, perceptualRoughness, metallic,   \
+                norm.xyz, pos.xyz, v, light_position[i].xyz,                  \
+                light_direction[i].xyz, light_diffuse[i].rgb,                \
+                light_deferred_attenuation[i].x,                             \
+                light_deferred_attenuation[i].y, light_attenuation[i].z,     \
+                light_attenuation[i].w, rig_rim_lights[i], alr_keep); }
+#else
+#define LIGHT_LOOP(i) {                                                        \
+        if (alrSilOn())                                                        \
+        {                                                                      \
+            vec3 alr_nr; vec3 alr_rr; bool alr_ron; float alr_ls;             \
+            pbrCalcPointLightOrSpotLightRimSplit(diffuseColor, specularColor, \
+                perceptualRoughness, metallic, norm.xyz, pos.xyz, v,         \
+                light_position[i].xyz, light_direction[i].xyz,               \
+                light_diffuse[i].rgb, light_deferred_attenuation[i].x,       \
+                light_deferred_attenuation[i].y, light_attenuation[i].z,     \
+                light_attenuation[i].w, rig_rim_lights[i], alr_keep,         \
+                alr_nr, alr_rr, alr_ron, alr_ls);                            \
+            light += (alr_nr * alr_sk                                         \
+                + (alr_ron ? alr_rr : vec3(0.0)) * alr_rk) * alr_ls;         \
+        }                                                                      \
+        else                                                                   \
+        {                                                                      \
+            light += pbrCalcPointLightOrSpotLightRimKeep(                     \
+                diffuseColor, specularColor, perceptualRoughness, metallic,   \
+                norm.xyz, pos.xyz, v, light_position[i].xyz,                  \
+                light_direction[i].xyz, light_diffuse[i].rgb,                \
+                light_deferred_attenuation[i].x,                             \
+                light_deferred_attenuation[i].y, light_attenuation[i].z,     \
+                light_attenuation[i].w, rig_rim_lights[i], alr_keep);         \
+        } }
+#endif
+#else
 #define LIGHT_LOOP(i) light += pbrCalcPointLightOrSpotLightRimKeep(diffuseColor, specularColor, perceptualRoughness, metallic, norm.xyz, pos.xyz, v, light_position[i].xyz, light_direction[i].xyz, light_diffuse[i].rgb, light_deferred_attenuation[i].x, light_deferred_attenuation[i].y, light_attenuation[i].z, light_attenuation[i].w, rig_rim_lights[i], alr_keep);
+#endif
 
     LIGHT_LOOP(1)
     LIGHT_LOOP(2)
@@ -338,10 +427,27 @@ void main()
     LIGHT_LOOP(5)
     LIGHT_LOOP(6)
     LIGHT_LOOP(7)
+#undef LIGHT_LOOP
 
     color.rgb += light.rgb;
 
+#ifdef HAS_ACTOR_FX
+    if (alrSilOn())
+    {
+        float alr_fill_scale = classic_mode > 0 ? 1.0 / 1.1 : 1.0;
+        color.rgb = alrSilPreFog(color.rgb, alr_fill_scale);
+    }
+#endif
     color.rgb = applySkyAndWaterFog(pos.xyz, additive, atten, vec4(color, 1.0)).rgb;
+#ifdef HAS_ACTOR_FX
+    if (alrSilOn() && alrSilNeedsFogZero())
+    {
+        vec3 alr_fog_zero = applySkyAndWaterFog(
+            pos.xyz, additive, atten, vec4(0.0, 0.0, 0.0, 1.0)).rgb;
+        float alr_fill_scale = classic_mode > 0 ? 1.0 / 1.1 : 1.0;
+        color.rgb = alrSilPostFog(color.rgb, alr_fog_zero, alr_fill_scale);
+    }
+#endif
 
     float a = basecolor.a*vertex_color.a;
     float final_scale = 1;
@@ -349,10 +455,17 @@ void main()
         final_scale = 1.1;
 #ifdef HAS_ACTOR_FX
     if (alrDebug()) color.rgb = vec3(1.0, 0.0, 1.0); // [AvatarLightResponse] debug override
+#ifdef ALR_RIMSPLIT_PARITY
+    if (alr_rimsplit_mismatch) color.rgb = vec3(1.0, 0.0, 1.0);
+#endif
 #endif
     frag_color = max(vec4(color.rgb * final_scale,a), vec4(0));
 #ifdef HAS_VISIBLE_DIFFUSE
-    visible_diffuse = vec4(max(diffuseColor, vec3(0)), a);
+    vec3 alr_visible_diffuse = diffuseColor;
+#ifdef HAS_ACTOR_FX
+    if (alrSilOn()) alr_visible_diffuse *= alrSilKeep();
+#endif
+    visible_diffuse = vec4(max(alr_visible_diffuse, vec3(0)), a);
     surface_coverage = vec2(0.0, a);
 #endif
 }

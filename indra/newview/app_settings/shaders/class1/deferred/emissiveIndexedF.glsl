@@ -45,6 +45,8 @@ float actorFxAuthoredMaterialResponse();
 bool actorFxDissolveEnabled();
 float actorFxBeautyDissolveCoverage();
 float alrEmissiveGain(); // [AvatarLightResponse]
+bool alrSilOn();
+float alrSilKeep();
 uniform int actorFxSharedAuthoredOnly;
 uniform int actorFxUseCoverageAlpha;
 uniform float actorFxSharedGlowAttenuation;
@@ -178,6 +180,7 @@ void main()
         a += max(max(fx_emissive.r, fx_emissive.g), fx_emissive.b)
            * fx_coverage;
     }
+    if (alrSilOn()) a *= alrSilKeep(); // [AvatarSilhouette] completed glow output
 #endif
     frag_color = max(vec4(0, 0, 0, a), vec4(0));
 }

@@ -12170,9 +12170,9 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
             }
 
             // [AvatarLightResponse] light response goes to the program that is BOUND for this draw (batch_shader
-            // == active_shader here), on every batch of every style so identity always resets; only
-            // a Studio CLONE draw carries a non-zero response. GLOW slot: the additive authored-
-            // emissive sweep receives Glow (z := g) and never Brightness.
+            // == active_shader here), on every batch of every style so identity always resets.
+            // Studio CLONE uses normal BEAUTY/GLOW trims; shared Actor FX replays use SIL_ONLY
+            // so the resident silhouette survives without applying trims a second time.
             if (coverage_mode)
             {
                 LLVector2 cover;
@@ -12194,10 +12194,13 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
             {
                 const bool alr_on = style == GHOST_STYLE_CLONE && gp.mLightResponseKey.notNull();
                 LLRenderPass::uploadAvatarLightResponseTo(*batch_shader,
-                    alr_on ? gp.mLightResponseKey : LLUUID::null,
-                    alr_on ? di->mActorFxOwner : LLUUID::null,
-                    alr_on ? di->mActorFxFallbackOwner : LLUUID::null,
-                    subset == SWEEP_GLOW ? LLRenderPass::ALR_SLOT_GLOW : LLRenderPass::ALR_SLOT_BEAUTY);
+                    gp.mLightResponseKey,
+                    di->mActorFxOwner,
+                    di->mActorFxFallbackOwner,
+                    alr_on
+                        ? (subset == SWEEP_GLOW ? LLRenderPass::ALR_SLOT_GLOW
+                                                : LLRenderPass::ALR_SLOT_BEAUTY)
+                        : LLRenderPass::ALR_SLOT_SIL_ONLY);
             }
 
             // matrix palette: a FROZEN studio instance uploads the snapshot
@@ -12877,16 +12880,17 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
             gGL.syncMatrices();
 
             // [AvatarLightResponse] static faces draw through static_shader (the program bound by apply_program above);
-            // same rule as the rigged sweep -- every face, identity for non-CLONE styles.
+            // same rule as the rigged sweep -- BEAUTY for CLONE, SIL_ONLY otherwise.
             {
                 if (!coverage_mode)
                 {
                     const bool alr_on = style == GHOST_STYLE_CLONE && gp.mLightResponseKey.notNull();
                     LLRenderPass::uploadAvatarLightResponseTo(*static_shader,
-                        alr_on ? gp.mLightResponseKey : LLUUID::null,
-                        alr_on && alr_di ? alr_di->mActorFxOwner : LLUUID::null,
-                        alr_on && alr_di ? alr_di->mActorFxFallbackOwner : LLUUID::null,
-                        LLRenderPass::ALR_SLOT_BEAUTY);
+                        gp.mLightResponseKey,
+                        alr_di ? alr_di->mActorFxOwner : LLUUID::null,
+                        alr_di ? alr_di->mActorFxFallbackOwner : LLUUID::null,
+                        alr_on ? LLRenderPass::ALR_SLOT_BEAUTY
+                               : LLRenderPass::ALR_SLOT_SIL_ONLY);
                 }
             }
 
@@ -15381,6 +15385,11 @@ bool LLActorMover::renderSystemActorGhost(LLVOAvatar* avatar,
     bool glow_only = false;
     auto upload = [&](LLGLSLShader& shader, F32 cutoff)
     {
+        // Shared system-body replays must retain only the resident's
+        // silhouette; all legacy Light Response trims remain native-only.
+        LLRenderPass::uploadAvatarLightResponseTo(
+            shader, avatar->getID(), LLUUID::null, LLUUID::null,
+            LLRenderPass::ALR_SLOT_SIL_ONLY);
         shader.uniform1f(sGhostTime, ghost_now);
         shader.uniform4fv(sGhostParams, 1, style_params.mV);
         shader.uniform4f(sGhostAux, cutoff, texture_rgb ? 1.f : 0.f,

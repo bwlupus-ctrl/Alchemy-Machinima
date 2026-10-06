@@ -108,6 +108,12 @@ void applyLegacyEnv(inout vec3 color, vec3 legacyenv, vec4 spec, vec3 pos, vec3 
 void applyLegacyEnvKeep(inout vec3 color, vec3 legacyenv, vec4 spec, vec3 pos, vec3 norm, float envIntensity, float keep); // [AvatarLightResponse]
 #ifdef HAS_ACTOR_FX
 float alrSpecKeep();
+bool alrSilOn();
+float alrSilKeep();
+float alrSilRimKeep();
+bool alrSilNeedsFogZero();
+vec3 alrSilPreFog(vec3 c, float w);
+vec3 alrSilPostFog(vec3 c, vec3 fog_zero, float w);
 #endif
 
 uniform samplerCube environmentMap;
@@ -143,8 +149,9 @@ vec3 rigRimTerm(vec3 n, vec3 v, vec3 l, vec3 c_l, vec3 diffuseColor, float rough
 // [RigRim] `rim` = this light unit's rig rim params (rig_rim_lights[i]); zero
 // for non-rig lights.  NOTE: `v` is the eye-space POSITION and `npos` the
 // normalized view vector here (legacy naming).
-vec3 calcPointLightOrSpotLight(vec3 light_col, vec3 npos, vec3 diffuse, vec4 spec, vec3 v, vec3 n, vec4 lp, vec3 ln, float la, float fa, float is_pointlight, inout float glare, float ambiance, vec4 rim)
+vec3 calcPointLightOrSpotLight(vec3 light_col, vec3 npos, vec3 diffuse, vec4 spec, vec3 v, vec3 n, vec4 lp, vec3 ln, float la, float fa, float is_pointlight, inout float glare, float ambiance, vec4 rim, float sil_keep, float rim_keep)
 {
+    float glare_start = glare;
     // SL-14895 inverted attenuation work-around
     // This routine is tweaked to match deferred lighting, but previously used an inverted la value. To reconstruct
     // that previous value now that the inversion is corrected, we reverse the calculations in LLPipeline::setupHWLights()
@@ -229,6 +236,12 @@ vec3 calcPointLightOrSpotLight(vec3 light_col, vec3 npos, vec3 diffuse, vec4 spe
             }
         }
 
+        if (sil_keep != 1.0)
+        {
+            glare = glare_start + (glare - glare_start) * sil_keep;
+        }
+        col *= sil_keep;
+
         // [RigRim] additive rim (cone + attenuation weighted, no shadow);
         // roughness from legacy glossiness (spec.a).  Independent of `da` so
         // wrap can reach past the terminator.  Mode 0 never enters.
@@ -239,7 +252,7 @@ vec3 calcPointLightOrSpotLight(vec3 light_col, vec3 npos, vec3 diffuse, vec4 spe
             {
                 col = vec3(0.0); // debug: rim only
             }
-            col += rim_col;
+            col += rim_col * rim_keep;
         }
     }
     float final_scale = 1.0;
@@ -536,11 +549,24 @@ void main()
         glare += cur_glare;
     }
 
+#ifdef HAS_ACTOR_FX
+    float alr_sil_keep = alrSilKeep();
+    float alr_rim_keep = alrSilRimKeep();
+    if (alrSilOn())
+    {
+        color *= alr_sil_keep;
+        glare *= alr_sil_keep;
+    }
+#else
+    const float alr_sil_keep = 1.0;
+    const float alr_rim_keep = 1.0;
+#endif
+
     vec3 npos = normalize(-pos.xyz);
     vec3 light = vec3(0, 0, 0);
 
 // [RigRim] trailing rig_rim_lights[i] argument
-#define LIGHT_LOOP(i) light.rgb += calcPointLightOrSpotLight(light_diffuse[i].rgb, npos, diffuse.rgb, spec, pos.xyz, norm.xyz, light_position[i], light_direction[i].xyz, light_attenuation[i].x, light_attenuation[i].y, light_attenuation[i].z, glare, light_attenuation[i].w, rig_rim_lights[i] );
+#define LIGHT_LOOP(i) light.rgb += calcPointLightOrSpotLight(light_diffuse[i].rgb, npos, diffuse.rgb, spec, pos.xyz, norm.xyz, light_position[i], light_direction[i].xyz, light_attenuation[i].x, light_attenuation[i].y, light_attenuation[i].z, glare, light_attenuation[i].w, rig_rim_lights[i], alr_sil_keep, alr_rim_keep);
 
     LIGHT_LOOP(1)
         LIGHT_LOOP(2)
@@ -558,11 +584,28 @@ void main()
         // Legacy material BLEND is a forward path and has no emissive GBuffer
         // attachment. Publish the same synthetic Actor FX emission used by the
         // opaque/mask permutations directly into beauty before atmospheric fog.
-        color += actorFxEmissive(vec3(0.0), actor_fx_styled_linear);
+        vec3 actor_fx_emission = actorFxEmissive(
+            vec3(0.0), actor_fx_styled_linear);
+        if (alrSilOn()) actor_fx_emission *= alr_sil_keep;
+        color += actor_fx_emission;
+    }
+    if (alrSilOn())
+    {
+        float alr_fill_scale = classic_mode > 0 ? 1.0 / 1.1 : 1.0;
+        color = alrSilPreFog(color, alr_fill_scale);
     }
 #endif
 
     color.rgb = applySkyAndWaterFog(pos.xyz, additive, atten, vec4(color, 1.0)).rgb;
+#ifdef HAS_ACTOR_FX
+    if (alrSilOn() && alrSilNeedsFogZero())
+    {
+        vec3 alr_fog_zero = applySkyAndWaterFog(
+            pos.xyz, additive, atten, vec4(0.0, 0.0, 0.0, 1.0)).rgb;
+        float alr_fill_scale = classic_mode > 0 ? 1.0 / 1.1 : 1.0;
+        color = alrSilPostFog(color, alr_fog_zero, alr_fill_scale);
+    }
+#endif
 
     glare *= 1.0-emissive;
     glare = min(glare, 1.0);
@@ -585,7 +628,11 @@ void main()
     // colour is unlit OUTPUT, not reflectance, so publish ZERO diffuse -- the
     // same declared-BRDF statement fullbrightF.glsl makes, not a missing
     // measurement. K still claims this layer's coverage.
-    visible_diffuse = vec4(max(diffcol.rgb, vec3(0.0)) * (1.0 - emissive), al);
+    vec3 alr_visible_diffuse = diffcol.rgb * (1.0 - emissive);
+#ifdef HAS_ACTOR_FX
+    if (alrSilOn()) alr_visible_diffuse *= alr_sil_keep;
+#endif
+    visible_diffuse = vec4(max(alr_visible_diffuse, vec3(0.0)), al);
     // R = 0 is written but masked off by the pool (the seed pass owns deferred
     // coverage); G claims forward coverage in proportion to this layer's
     // alpha, accumulating as a union under ONE / ONE_MINUS_SRC_COLOR.

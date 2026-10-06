@@ -20,6 +20,8 @@ vec3 srgb_to_linear(vec3 c);
 vec3 actorFxApply(vec3 source, vec3 normal_eye, vec3 position_eye, vec2 authored_uv);
 vec3 actorFxEmissive(vec3 authored_emissive, vec3 styled_color);
 bool actorFxActive();
+bool alrSilOn();
+float alrSilKeep();
 void actorFxTronPrime(); // [TronT2 fix] seam footprint, uniform flow
 bool actorFxUvTransformEnabled();
 bool actorFxRgbSplitEnabled();
@@ -61,5 +63,6 @@ void main()
     vec3 styled = actorFxApply(source, n, vary_position, vary_texcoord0);
     vec3 emitted = actorFxEmissive(vec3(0.0), styled);
     float glow = max(max(emitted.r, emitted.g), emitted.b) * authored_alpha;
+    if (alrSilOn()) glow *= alrSilKeep(); // [AvatarSilhouette] completed look glow
     frag_color = vec4(0.0, 0.0, 0.0, max(glow, 0.0));
 }
