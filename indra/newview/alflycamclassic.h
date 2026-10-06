@@ -6,6 +6,7 @@
 #ifndef AL_FLYCAM_CLASSIC_H
 #define AL_FLYCAM_CLASSIC_H
 
+#include "llmath.h"
 #include "llquaternion.h"
 #include "v3math.h"
 #include "stdtypes.h"

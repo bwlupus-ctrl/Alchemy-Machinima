@@ -11,6 +11,8 @@
 #include "m3math.h"
 #include <array>
 #include <cmath>
+#include <iomanip>
+#include <sstream>
 
 namespace tut { namespace {
 constexpr U32 CAM_X=3,CAM_Y=4,CAM_Z=5,CAM_W=6;
@@ -29,14 +31,21 @@ ALFlycamClassic::Input input(bool bd,F32 dt){
 }
 F32 signed_deadzone(F32 x,F32 dz,bool normalise){
  if(normalise&&std::fabs(x)<=dz)return x;
- x=x>0.f?std::max(x-dz,0.f):std::min(x+dz,0.f);return normalise?x/(1.f-dz):x;
+ x=x>0.f?std::max(x-dz,0.f):std::min(x+dz,0.f);
+ if(normalise)x=std::max(-1.f+dz,std::min(1.f-dz,x));
+ return normalise?x/(1.f-dz):x;
 }
 F32 raw_axis(const ALFlycamClassic::Input& in,U32 a){
  F32 x=-in.axis[a];if(in.blackDragon){if(a==CAM_W)x+=(F32)in.zoomIn-(F32)in.zoomOut;
- if(a==0)x+=(F32)in.jump-(F32)in.crouch;if(a==CAM_X)x+=(F32)in.rollRight-(F32)in.rollLeft;}
+ if(a==2)x+=(F32)in.jump-(F32)in.crouch;if(a==CAM_X)x+=(F32)in.rollRight-(F32)in.rollLeft;}
  else if(!in.invertPitch&&a==CAM_Y)x=-x;return x;
 }
 struct Expected{std::array<F32,7> last,delta;F32 time,feather;bool zero;};
+void scalar_close(const char* label,const char* field,U32 index,F32 actual,F32 expected,F32 tolerance=1.e-6f){
+ if(std::fabs(actual-expected)<=tolerance)return;
+ std::ostringstream out;out<<label<<" "<<field<<"["<<index<<"] expected "<<std::setprecision(9)<<expected<<" actual "<<actual;
+ ensure(out.str(),false);
+}
 Expected closed_form(const ALFlycamClassic::Input& in,const Storage& before){
  Expected out{before.last,before.delta,in.blackDragon?std::max(.016f,std::min(.033f,in.frameIntervalSeconds)):std::min(.2f,in.frameIntervalSeconds),in.flycamFeathering,true};
  if(in.blackDragon&&(before.zoom<=in.minView||before.zoom>=in.maxView))out.feather=3.f;
@@ -54,15 +63,19 @@ void verify_case(const char* label,ALFlycamClassic::Input in){
  Expected e=closed_form(in,before);auto state=actual.state();auto mid=ALFlycamClassic::integrateDeltas(in,state);
  ensure_equals("branch",mid.blackDragon,in.blackDragon);ensure_equals("zero",mid.isZero,e.zero);
  ensure("time",std::fabs(mid.time-e.time)<=1.e-6f);ensure("feather",std::fabs(mid.feather-e.feather)<=1.e-6f);
- for(U32 a=0;a<7;++a){ensure(label,std::fabs(actual.last[a]-e.last[a])<=1.e-6f);ensure(label,std::fabs(actual.delta[a]-e.delta[a])<=1.e-6f);}
+ for(U32 a=0;a<7;++a){scalar_close(label,"last",a,actual.last[a],e.last[a]);scalar_close(label,"delta",a,actual.delta[a],e.delta[a]);}
  LLVector3 pos=before.position+LLVector3(e.delta.data())*before.rotation;
  LLQuaternion rot=LLQuaternion(LLMatrix3(e.delta[CAM_X],e.delta[CAM_Y],e.delta[CAM_Z]))*before.rotation;
+ if(in.levelHorizon||in.autoLeveling||(in.blackDragon&&in.rollDefault==1)){
+  LLMatrix3 level(rot);LLVector3 x(level.mMatrix[0]),y(level.mMatrix[1]),z(level.mMatrix[2]);
+  y.mV[2]=0.f;y.normVec();level.setRows(x,y,z);level.orthogonalize();LLQuaternion quat(level);
+  rot=(in.levelHorizon||(in.blackDragon&&in.rollDefault==1))?quat:nlerp(std::min(e.feather*e.time,1.f),rot,quat);
+ }
  F32 zoom=in.zoomDirect?e.last[CAM_W]*in.axisScale[CAM_W]+(in.blackDragon?in.axisScale[CAM_W]:in.axisDeadZone[CAM_W])
                        :std::max(in.minView,std::min(in.maxView,before.zoom+e.delta[CAM_W]));
- ALFlycamClassic::finishIntegration(in,mid,state);ensure(label,(actual.position-pos).length()<=1.e-6f);
- if(!in.levelHorizon&&!in.autoLeveling&&!(in.blackDragon&&in.rollDefault==1))for(U32 i=0;i<4;++i)ensure(label,std::fabs(actual.rotation.mQ[i]-rot.mQ[i])<=1.e-6f);
- if(in.levelHorizon||(in.blackDragon&&in.rollDefault==1)){LLMatrix3 level(actual.rotation);ensure("exact horizon has zero vertical left",std::fabs(level.mMatrix[1][2])<=1.e-6f);}
- ensure(label,std::fabs(actual.zoom-zoom)<=1.e-6f);if(in.levelHorizon){ensure_equals("level delta",actual.delta[CAM_X],0.f);ensure_equals("level reseed",actual.last[CAM_X],-in.axis[CAM_X]);}
+ ALFlycamClassic::finishIntegration(in,mid,state);scalar_close(label,"position error",0,(actual.position-pos).length(),0.f);
+ for(U32 i=0;i<4;++i)scalar_close(label,"rotation",i,actual.rotation.mQ[i],rot.mQ[i]);
+ scalar_close(label,"zoom",0,actual.zoom,zoom);if(in.levelHorizon){ensure_equals("level delta",actual.delta[CAM_X],0.f);ensure_equals("level reseed",actual.last[CAM_X],-in.axis[CAM_X]);}
 }
 }}
 namespace tut {

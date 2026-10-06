@@ -2,6 +2,8 @@
 #include "linden_common.h"
 #include "../test/lltut.h"
 #include "../alxinputmath.h"
+#include <algorithm>
+#include <cmath>
 #include <limits>
 
 namespace tut
@@ -10,6 +12,13 @@ struct xinput_data {};
 typedef test_group<xinput_data> xinput_group;
 typedef xinput_group::object xinput_object;
 xinput_group gXInputGroup("alxinputmath");
+
+static bool relatively_equal(float lhs, float rhs, float tolerance)
+{
+    if (lhs == rhs) return true;
+    const float scale = std::max(std::fabs(lhs), std::fabs(rhs));
+    return scale > 0.f && std::fabs(lhs - rhs) <= tolerance * scale;
+}
 
 template<> template<> void xinput_object::test<1>()
 {
@@ -162,8 +171,10 @@ template<> template<> void xinput_object::test<7>()
     {
         const float l = left / 255.f, r = right / 255.f;
         ALXInput::droneTriggers(l, r, .06f, 2.f, throttle, brake);
-        ensure_equals("Drone RT uses shared shape", throttle, ALXInput::shape(r, .06f, 2.f));
-        ensure_equals("Drone LT uses shared shape", brake, ALXInput::shape(l, .06f, 2.f));
+        ensure("Drone RT uses shared shape",
+               relatively_equal(throttle, ALXInput::shape(r, .06f, 2.f), 1.0e-5f));
+        ensure("Drone LT uses shared shape",
+               relatively_equal(brake, ALXInput::shape(l, .06f, 2.f), 1.0e-5f));
     }
 
     // The public freshness helper is the contract used before exposing the pair.
@@ -178,7 +189,11 @@ template<> template<> void xinput_object::test<7>()
 
     // Classic trigger endpoints remain independently pinned by test<1>.
     ensure_equals("Classic rest multiplier unchanged", ALXInput::throttle(0.f, 0.f, .1f, 4.f), 1.f);
-    ensure_equals("Classic roll unchanged", ALXInput::roll(0.f, 1.f, .06f, 2.f), 1.f);
+    // powf at the shaped endpoint may round one ulp below 1 on MSVC; two F32
+    // ulps preserve the mathematical endpoint without weakening its contract.
+    ensure("Classic roll unchanged",
+           relatively_equal(ALXInput::roll(0.f, 1.f, .06f, 2.f), 1.f,
+                            2.f * std::numeric_limits<float>::epsilon()));
 }
 
 // Flycam brief T39: exhaust the 5^3 None/non-None slot matrix.

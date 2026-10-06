@@ -464,7 +464,8 @@ LLFlycamDrone::State LLFlycamDrone::step(const State& source, const Input& input
             n = target / targetSpeed;
         else if (reference.length() > 0.f)
             n = reference / reference.length();
-        const bool engaged = moveLength > 0.f || brake > 0.f || mParams.release == ReleaseMode::HOLD;
+        const bool engaged = moveLength > 0.f || vertical != 0.f || brake > 0.f ||
+                             mParams.release == ReleaseMode::HOLD;
         if (engaged)
         {
             F32 along = reference * n;
@@ -770,18 +771,22 @@ void LLFlycamDrone::decompose(const LLQuaternion& source, const State* prior,
     LLQuaternion q = source;
     if (!finiteQuaternion(q) || q.normalize() == 0.f)
         q.loadIdentity();
-    const LLMatrix3 matrix(q);
-    const LLVector3 forward = matrix.getFwdRow();
-    const LLVector3 left = matrix.getLeftRow();
-    const F32 horizontal = std::sqrt(forward.mV[VX] * forward.mV[VX] +
-                                     forward.mV[VY] * forward.mV[VY]);
-    yaw = horizontal >= 1.0e-4f ? std::atan2(forward.mV[VY], forward.mV[VX])
-                                : (prior ? prior->yaw
-                                         : std::atan2(left.mV[VY], left.mV[VX]) - NINETY);
-    tilt = std::atan2(forward.mV[VZ], horizontal);
-    const LLQuaternion base = rotation(yaw, tilt, 0.f);
-    const LLVector3 baseLeft = LLVector3(0.f, 1.f, 0.f) * base;
-    roll = std::atan2(forward * (baseLeft % left), baseLeft * left);
+    F32 eulerRoll, eulerTilt, eulerYaw;
+    q.getEulerAngles(&eulerRoll, &eulerTilt, &eulerYaw);
+    const F32 horizontal = std::fabs(std::cos(eulerTilt));
+    if (horizontal >= 1.0e-4f)
+    {
+        roll = eulerRoll;
+        tilt = eulerTilt;
+        yaw = eulerYaw;
+        return;
+    }
+    // At the pole LL's inverse chooses roll=0 and places the shared degree of
+    // freedom in yaw. Section 11.5 instead retains prior yaw and lets roll
+    // absorb the difference, while reconstructing the identical quaternion.
+    tilt = eulerTilt;
+    yaw = prior ? prior->yaw : eulerYaw;
+    roll = tilt >= 0.f ? wrap(eulerYaw - yaw) : wrap(yaw - eulerYaw);
 }
 
 void LLFlycamDrone::seededRates(const LLQuaternion& previous, const LLQuaternion& current,

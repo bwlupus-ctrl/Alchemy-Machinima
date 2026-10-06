@@ -5,6 +5,7 @@
 #ifndef AL_CAMERA_DISPATCH_H
 #define AL_CAMERA_DISPATCH_H
 
+#include "llmath.h"
 #include "llquaternion.h"
 #include "stdtypes.h"
 #include "v3dmath.h"

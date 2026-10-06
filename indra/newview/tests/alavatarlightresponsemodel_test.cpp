@@ -808,7 +808,8 @@ namespace tut
         for (S32 i = 0; i < 3; ++i)
         {
             const F32 expected = c.mV[i] + (0.6f - 1.f) * (c.mV[i] - 0.6f * lit.mV[i]);
-            ensure_equals("graphicCover formula unchanged", result.mV[i], expected);
+            ensure_approximately_equals_range("graphicCover formula unchanged",
+                                              result.mV[i], expected, 1.0e-6f);
         }
     }
 

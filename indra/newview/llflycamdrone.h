@@ -5,6 +5,7 @@
 #ifndef LL_LLFLYCAMDRONE_H
 #define LL_LLFLYCAMDRONE_H
 
+#include "llmath.h"
 #include "llquaternion.h"
 #include "v3dmath.h"
 #include "v3math.h"
