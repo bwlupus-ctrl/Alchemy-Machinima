@@ -36,6 +36,7 @@
 #include "lltrace.h"
 
 // project includes
+#include "aluirefresh.h"
 #include "lluictrlfactory.h"
 #include "llviewercontrol.h"
 #include "llappviewer.h"
@@ -44,6 +45,9 @@
 #include "llwindow.h"
 #include "llcheckboxctrl.h"
 #include "llcombobox.h"
+#include "llpanel.h"
+#include "lltabcontainer.h"
+#include "lltextbox.h"
 
 #if LL_WINDOWS && !LL_MESA_HEADLESS
 // Require DirectInput version 8
@@ -94,6 +98,7 @@ BOOL CALLBACK di8_list_devices_callback(LPCDIDEVICEINSTANCE device_instance_ptr,
 
 LLFloaterJoystick::LLFloaterJoystick(const LLSD& data)
     : LLFloater(data),
+    LLEventTimer(0.1f),
     mHasDeviceList(false)
 {
     if (!LLViewerJoystick::getInstance()->isJoystickInitialized())
@@ -106,10 +111,45 @@ LLFloaterJoystick::LLFloaterJoystick(const LLSD& data)
 
 void LLFloaterJoystick::draw()
 {
-    LLViewerJoystick* joystick(LLViewerJoystick::getInstance());
-    const std::string xinput_status = joystick->getXInputStatus();
-    getChild<LLUICtrl>("xinput_status")->setValue(xinput_status);
-    getChild<LLUICtrl>("xinput_status")->setToolTip(xinput_status + "\nD-pad Down toggles ROLL / THROTTLE.");
+    LL_PROFILE_ZONE_SCOPED_CATEGORY_UI;
+    LLFloater::draw();
+}
+
+bool LLFloaterJoystick::tick()
+{
+    if (isWidgetOnScreen(this))
+    {
+        refreshLiveControls();
+    }
+    return false;
+}
+
+void LLFloaterJoystick::refreshLiveControls()
+{
+    if (!mJoysticksCombo)
+    {
+        return;
+    }
+
+    LLViewerJoystick* joystick = LLViewerJoystick::getInstance();
+    if (mXInputStatus && isWidgetOnScreen(mXInputStatus))
+    {
+        const std::string xinput_status = joystick->getXInputStatus();
+        setTextIfChanged(mXInputStatus, xinput_status);
+        setToolTipIfChanged(mXInputStatus,
+            xinput_status + "\nD-pad Down toggles ROLL / THROTTLE.");
+    }
+
+    if (mFlightModel && isWidgetOnScreen(mFlightModel))
+    {
+        refreshDroneEnabled();
+    }
+
+    if (!isWidgetOnScreen(mJoysticksCombo))
+    {
+        return;
+    }
+
     bool joystick_inited = joystick->isJoystickInitialized();
     if (joystick_inited != mHasDeviceList)
     {
@@ -146,7 +186,20 @@ void LLFloaterJoystick::draw()
         }
         mAxisButton[i]->setToggleState(value);
     }
-    LLFloater::draw();
+}
+
+void LLFloaterJoystick::refreshDroneEnabled()
+{
+    if (!mFlightModel || !mDroneSettingsPanel || !mDroneCursorReason)
+    {
+        return;
+    }
+
+    const bool cursor_3d = gSavedSettings.getBOOL("Cursor3D");
+    const bool drone = gSavedSettings.getS32("FlycamFlightModel") == 1;
+    setEnabledIfChanged(mFlightModel, !cursor_3d);
+    setVisibleIfChanged(mDroneCursorReason, cursor_3d);
+    setEnabledIfChanged(mDroneSettingsPanel, drone && !cursor_3d);
 }
 
 bool LLFloaterJoystick::postBuild()
@@ -179,12 +232,48 @@ bool LLFloaterJoystick::postBuild()
 
     childSetAction("SpaceNavigatorDefaults", onClickRestoreSNDefaults, this);
     childSetAction("XboxDefaults", onClickRestoreXboxDefaults, this);
+    childSetAction("reset_drone", onClickResetDrone, this);
     childSetAction("cancel_btn", onClickCancel, this);
     childSetAction("ok_btn", onClickOK, this);
 
+    mTabs = getChild<LLTabContainer>("joystick_tabs");
+    mXInputStatus = getChild<LLTextBox>("xinput_status");
+    mFlightModel = getChild<LLUICtrl>("FlycamFlightModel");
+    mDroneSettingsPanel = getChild<LLPanel>("drone_settings_panel");
+    mDroneCursorReason = getChild<LLTextBox>("drone_cursor_reason");
+    childSetCommitCallback("FlycamFlightModel", onCommitFlightModel, this);
+    childSetCommitCallback("FlycamDronePreset", onCommitDronePreset, this);
+
+    static const char* const tuning_controls[] =
+    {
+        "FlycamDroneCruise", "FlycamDroneTop", "FlycamDroneTimeToTop",
+        "FlycamDroneStopDistance", "FlycamDroneHoldTime", "FlycamDroneCoastTime",
+        "FlycamDroneHighSpeedFloat", "FlycamDroneOnset", "FlycamDroneGrip",
+        "FlycamDroneTurnRate", "FlycamDroneTurnWeight", "FlycamDroneTiltRate",
+        "FlycamDroneClimb", "FlycamDroneClimbTime", "FlycamDroneRelease",
+        "FlycamDroneFreeFly"
+    };
+    for (const char* name : tuning_controls)
+    {
+        childSetCommitCallback(name, onCommitDroneTuning, this);
+    }
+
+    mScrollFit.installForTabs(mTabs, this,
+        { { "drone_scroll", "drone_scroll_content" } });
+
     refresh();
     refreshListOfDevices();
+    refreshLiveControls();
     return TRUE;
+}
+
+void LLFloaterJoystick::onOpen(const LLSD& key)
+{
+    LLFloater::onOpen(key);
+    mEventTimer.start();
+    refresh();
+    mScrollFit.fit(this, mTabs);
+    refreshLiveControls();
 }
 
 LLFloaterJoystick::~LLFloaterJoystick()
@@ -210,6 +299,25 @@ void LLFloaterJoystick::initFromSettings()
     mXInputSnapshot["JoystickXInputDpadUp"] = gSavedSettings.getControl("JoystickXInputDpadUp")->getValue();
     mXInputSnapshot["JoystickXInputRumble"] = gSavedSettings.getControl("JoystickXInputRumble")->getValue();
     mXInputSnapshot["JoystickXInputRumbleStrength"] = gSavedSettings.getControl("JoystickXInputRumbleStrength")->getValue();
+    static const char* const drone_controls[] =
+    {
+        "FlycamFlightModel", "FlycamDronePreset", "FlycamDroneCruise", "FlycamDroneTop",
+        "FlycamDroneTimeToTop", "FlycamDroneStopDistance", "FlycamDroneHoldTime",
+        "FlycamDroneCoastTime", "FlycamDroneHighSpeedFloat", "FlycamDroneOnset",
+        "FlycamDroneGrip", "FlycamDroneTurnRate", "FlycamDroneTurnWeight",
+        "FlycamDroneTiltRate", "FlycamDroneClimb", "FlycamDroneClimbTime",
+        "FlycamDroneRelease", "FlycamDroneThrottleMode", "FlycamDroneFreeFly",
+        "FlycamDroneSimulationHz", "FlycamDroneMoveDeadzone", "FlycamDroneLookDeadzone",
+        "FlycamDroneSaturation", "FlycamDroneExpoMove", "FlycamDroneExpoYaw",
+        "FlycamDroneExpoGimbal", "FlycamDroneResumeMomentum"
+    };
+    for (const char* name : drone_controls)
+    {
+        if (LLControlVariable* control = gSavedSettings.getControl(name))
+        {
+            mXInputSnapshot[name] = control->getValue();
+        }
+    }
     mJoystickEnabled = gSavedSettings.getBOOL("JoystickEnabled");
     mAutoFlycamEnabled = gSavedSettings.getBOOL("JoystickAutoFlycamEnabled");
     mJoystickId = gSavedSettings.getLLSD("JoystickDeviceUUID");
@@ -364,7 +472,12 @@ void LLFloaterJoystick::refreshListOfDevices()
 void LLFloaterJoystick::cancel()
 {
     for (LLSD::map_const_iterator it = mXInputSnapshot.beginMap(); it != mXInputSnapshot.endMap(); ++it)
-        gSavedSettings.getControl(it->first)->setValue(it->second);
+    {
+        if (LLControlVariable* control = gSavedSettings.getControl(it->first))
+        {
+            control->setValue(it->second);
+        }
+    }
     gSavedSettings.setBOOL("JoystickEnabled", mJoystickEnabled);
     gSavedSettings.setBOOL("JoystickAutoFlycamEnabled", mAutoFlycamEnabled);
     gSavedSettings.setLLSD("JoystickDeviceUUID", mJoystickId);
@@ -475,6 +588,29 @@ void LLFloaterJoystick::onCommitJoystickEnabled(LLUICtrl*, void *joy_panel)
     self->refreshListOfDevices();
 }
 
+void LLFloaterJoystick::onCommitDroneTuning(LLUICtrl*, void*)
+{
+    gSavedSettings.setS32("FlycamDronePreset", 5); // Custom
+}
+
+void LLFloaterJoystick::onCommitFlightModel(LLUICtrl*, void* userdata)
+{
+    LLFloaterJoystick* self = static_cast<LLFloaterJoystick*>(userdata);
+    if (self)
+    {
+        self->refreshDroneEnabled();
+    }
+}
+
+void LLFloaterJoystick::onCommitDronePreset(LLUICtrl* control, void*)
+{
+    const S32 preset = control ? control->getValue().asInteger() : 5;
+    if (preset >= 0 && preset < 5)
+    {
+        LLViewerJoystick::getInstance()->applyDronePreset(preset);
+    }
+}
+
 void LLFloaterJoystick::onClickRestoreSNDefaults(void *joy_panel)
 {
     setSNDefaults();
@@ -483,6 +619,17 @@ void LLFloaterJoystick::onClickRestoreSNDefaults(void *joy_panel)
 void LLFloaterJoystick::onClickRestoreXboxDefaults(void* joy_panel)
 {
     setXboxDefaults();
+}
+
+void LLFloaterJoystick::onClickResetDrone(void* userdata)
+{
+    // WP4 owns the preset/reset implementation and exposes this entry point.
+    LLViewerJoystick::getInstance()->resetDroneSettings();
+    LLFloaterJoystick* self = static_cast<LLFloaterJoystick*>(userdata);
+    if (self)
+    {
+        self->refreshDroneEnabled();
+    }
 }
 
 void LLFloaterJoystick::onClickCancel(void *joy_panel)
@@ -530,6 +677,7 @@ void LLFloaterJoystick::setXboxDefaults()
 
 void LLFloaterJoystick::onClose(bool app_quitting)
 {
+    mEventTimer.stop();
     if (app_quitting)
     {
         cancel();

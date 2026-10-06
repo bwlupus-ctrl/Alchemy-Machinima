@@ -27,23 +27,31 @@
 #ifndef LL_LLFLOATERJOYSTICK_H
 #define LL_LLFLOATERJOYSTICK_H
 
+#include "alscrollfit.h"
+#include "lleventtimer.h"
 #include "llfloater.h"
 #include "llstatview.h"
 
 class LLCheckBoxCtrl;
 class LLComboBox;
+class LLPanel;
+class LLTabContainer;
+class LLTextBox;
+class LLUICtrl;
 
-class LLFloaterJoystick final : public LLFloater
+class LLFloaterJoystick final : public LLFloater, public LLEventTimer
 {
     friend class LLFloaterReg;
 
 public:
 
-    virtual bool postBuild();   // [fork] base class migrated BOOL->bool
-    virtual void refresh();
-    virtual void apply();   // Apply the changed values.
-    virtual void cancel();  // Cancel the changed values.
-    virtual void draw();
+    bool postBuild() override;   // [fork] base class migrated BOOL->bool
+    void onOpen(const LLSD& key) override;
+    void refresh() override;
+    void apply() override;   // Apply the changed values.
+    void cancel() override;  // Cancel the changed values.
+    void draw() override;
+    bool tick() override;
     static  void setSNDefaults();
     static  void setXboxDefaults();
 
@@ -62,10 +70,16 @@ private:
     virtual ~LLFloaterJoystick();
 
     void initFromSettings();
+    void refreshLiveControls();
+    void refreshDroneEnabled();
 
     static void onCommitJoystickEnabled(LLUICtrl*, void*);
+    static void onCommitFlightModel(LLUICtrl*, void*);
+    static void onCommitDronePreset(LLUICtrl*, void*);
+    static void onCommitDroneTuning(LLUICtrl*, void*);
     static void onClickRestoreSNDefaults(void*);
     static void onClickRestoreXboxDefaults(void*);
+    static void onClickResetDrone(void*);
     static void onClickCancel(void*);
     static void onClickOK(void*);
 
@@ -73,7 +87,7 @@ private:
     // Device prefs
     bool mJoystickEnabled;
     bool mAutoFlycamEnabled;
-    LLSD mXInputSnapshot; // excludes pad-owned TriggerMode
+    LLSD mXInputSnapshot; // XInput + Drone controls; excludes pad-owned TriggerMode
     LLSD mJoystickId;
     S32 mJoystickAxis[7];
     bool m3DCursor;
@@ -97,13 +111,20 @@ private:
     // Controls that can disable the flycam
     LLCheckBoxCtrl  *mCheckFlycamEnabled;
     LLComboBox      *mJoysticksCombo;
+    LLTabContainer  *mTabs = nullptr;
+    LLTextBox       *mXInputStatus = nullptr;
+    LLUICtrl        *mFlightModel = nullptr;
+    LLPanel         *mDroneSettingsPanel = nullptr;
+    LLTextBox       *mDroneCursorReason = nullptr;
 
     bool mHasDeviceList;
 
-    // stats view
-    LLStatBar* mAxisStatsBar[6];
+    ALScrollFit::Controller mScrollFit;
 
-    LLButton* mAxisButton[16];
+    // stats view
+    LLStatBar* mAxisStatsBar[6]{};
+
+    LLButton* mAxisButton[16]{};
 };
 
 #endif
