@@ -180,4 +180,15 @@ template<> template<> void xinput_object::test<7>()
     ensure_equals("Classic rest multiplier unchanged", ALXInput::throttle(0.f, 0.f, .1f, 4.f), 1.f);
     ensure_equals("Classic roll unchanged", ALXInput::roll(0.f, 1.f, .06f, 2.f), 1.f);
 }
+
+// Section 16.3 coverage boundary (rev 11):
+// - Pure helpers above pin focus-loss edge suppression, reconnect/invalidate
+//   freshness, Drone trigger neutralisation, and the MODE_TICK rumble pattern.
+// - D-pad Down/model-aware hint dispatch, actions 0-6, Cursor3D refusal, and
+//   THROTTLE->ROLL release-pending are LLViewerJoystick lifecycle behavior and
+//   have no pure helper in alxinputmath.h; they remain integration items.
+// - TODO(WP4/T39-T41): once the migration/default helpers exist, exhaust all
+//   5^3 slot matrices for None-only migration, version 0/1/5 behavior, restored
+//   backups, Xbox Defaults, seven-entry values 0-6, and unchanged flight model.
+//   Do not duplicate settings mutation here: that would not test the WP4 code.
 }

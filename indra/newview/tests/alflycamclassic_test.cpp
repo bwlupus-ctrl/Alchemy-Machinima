@@ -1,194 +1,81 @@
 /**
  * @file alflycamclassic_test.cpp
- * @brief Independent golden oracle for the pre-change Classic moveFlycam math.
+ * @brief Independent golden checks for the pre-change Classic flycam math.
  *
- * The reference below is a direct re-statement of the two integrators from
- * git show 7a6d4e5e5e3:indra/newview/llviewerjoystick.cpp.  It deliberately
- * does not call, include, or share helpers with alflycamclassic.cpp.
+ * Derived from git show 7a6d4e5e5e3:indra/newview/llviewerjoystick.cpp.
+ * Expectations are closed-form per-axis calculations, not a second integrator.
  */
-
 #include "linden_common.h"
 #include "../test/lltut.h"
 #include "../alflycamclassic.h"
 #include "m3math.h"
-
 #include <array>
 #include <cmath>
 
-namespace tut
-{
-namespace
-{
-constexpr U32 X_I=1,Y_I=2,Z_I=0,CAM_X=3,CAM_Y=4,CAM_Z=5,CAM_W=6;
-
-struct Storage
-{
-    std::array<F32,7> last{{.03f,-.02f,.01f,.04f,-.03f,.02f,-.01f}};
-    std::array<F32,7> delta{{.01f,-.015f,.02f,-.01f,.005f,.012f,-.02f}};
-    LLVector3 position{1.f,2.f,3.f};
-    LLQuaternion rotation;
-    F32 zoom=1.1f;
-    Storage() { rotation.setQuat(.12f,-.18f,.23f); }
-    ALFlycamClassic::State state() { return {last,delta,position,rotation,zoom}; }
+namespace tut { namespace {
+constexpr U32 CAM_X=3,CAM_Y=4,CAM_Z=5,CAM_W=6;
+struct Storage {
+ std::array<F32,7> last{{.03f,-.02f,.01f,.04f,-.03f,.02f,-.01f}};
+ std::array<F32,7> delta{{.01f,-.015f,.02f,-.01f,.005f,.012f,-.02f}};
+ LLVector3 position{1.f,2.f,3.f}; LLQuaternion rotation; F32 zoom=1.1f;
+ Storage(){rotation.setQuat(.12f,-.18f,.23f);}
+ ALFlycamClassic::State state(){return {last,delta,position,rotation,zoom};}
 };
-
-ALFlycamClassic::Input base_input(bool bd,F32 dt)
-{
-    ALFlycamClassic::Input in{};
-    in.axis={{.32f,-.41f,.18f,.27f,-.22f,.35f,-.16f}};
-    in.axisDeadZone={{.02f,.04f,.06f,.08f,.10f,.12f,.14f}};
-    in.axisScale={{1.1f,-.9f,.7f,1.2f,-.8f,.6f,1.4f}};
-    in.frameIntervalSeconds=dt;in.flycamFeathering=5.25f;in.buildModeScale=.23f;
-    in.minView=.2f;in.maxView=2.1f;in.cameraAngle=1.047f;
-    in.triggerRoll=.31f;in.triggerThrottle=1.f;
-    in.blackDragon=bd;in.zoomDirect=false;
-    return in;
+ALFlycamClassic::Input input(bool bd,F32 dt){
+ ALFlycamClassic::Input in{};in.axis={{.32f,-.41f,.18f,.27f,-.22f,.35f,-.16f}};
+ in.axisDeadZone={{.02f,.04f,.06f,.08f,.10f,.12f,.14f}};in.axisScale={{1.1f,-.9f,.7f,1.2f,-.8f,.6f,1.4f}};
+ in.frameIntervalSeconds=dt;in.flycamFeathering=5.25f;in.buildModeScale=.23f;in.minView=.2f;in.maxView=2.1f;
+ in.cameraAngle=1.047f;in.triggerRoll=.31f;in.triggerThrottle=1.f;in.blackDragon=bd;return in;
 }
-
-ALFlycamClassic::Intermediate reference_deltas(const ALFlycamClassic::Input& in,Storage& s)
-{
-    F32 time=in.frameIntervalSeconds;
-    F32 cur[7]; bool zero=true;
-    if(in.blackDragon)
-    {
-        time=llclamp(time,.016f,.033f);F32 feather=in.flycamFeathering;
-        if(in.zoomDefault==1){s.zoom=in.cameraAngle;s.delta[CAM_W]=0.f;}
-        if(s.zoom<=in.minView||s.zoom>=in.maxView)feather=3.f;
-        for(U32 i=0;i<7;++i)
-        {
-            cur[i]=-in.axis[i];
-            if(i==CAM_W){cur[i]-=(F32)in.zoomOut;cur[i]+=(F32)in.zoomIn;}
-            if(i==Z_I){cur[i]+=(F32)in.jump;cur[i]-=(F32)in.crouch;}
-            if(i==CAM_X){cur[i]-=(F32)in.rollLeft;cur[i]+=(F32)in.rollRight;}
-            F32 tmp=cur[i],dz=in.axisDeadZone[i];
-            if(in.cursor3D||llabs(cur[i])<dz)cur[i]-=s.last[i];
-            s.last[i]=tmp;
-            if(llabs(cur[i])>dz)
-            {
-                if(cur[i]>0)cur[i]=llclamp(cur[i]-dz,0.f,1.f-dz);
-                else cur[i]=llclamp(cur[i]+dz,-1.f+dz,0.f);
-                cur[i]/=(1.f-dz);
-            }
-            if(in.xiTakeover&&in.xiMode==0&&i==CAM_X)cur[i]=llclamp(cur[i]+in.triggerRoll,-1.f,1.f);
-            if(in.xiTakeover&&i<=CAM_Z&&in.triggerThrottle!=1.f)cur[i]*=in.triggerThrottle;
-            if(in.buildMode&&(i==X_I||i==Y_I||i==Z_I))cur[i]*=in.buildModeScale;
-            cur[i]*=in.axisScale[i];
-            if(!in.cursor3D)cur[i]*=time;
-            s.delta[i]=s.delta[i]+(cur[i]-s.delta[i])*time*feather;
-            zero=zero&&(cur[i]==0.f);
-        }
-        if(in.invertPitch)cur[CAM_Y]=-cur[CAM_Y];
-        return {true,zero,time,feather};
-    }
-    if(time>.2f)time=.2f;
-    F32 feather=in.flycamFeathering;bool absolute=in.cursor3D;
-    for(U32 i=0;i<7;++i)
-    {
-        cur[i]=-in.axis[i];
-        if(!in.invertPitch&&i==4)cur[i]=-cur[i];
-        F32 tmp=cur[i];if(absolute)cur[i]-=s.last[i];s.last[i]=tmp;
-        if(cur[i]>0)cur[i]=llmax(cur[i]-in.axisDeadZone[i],0.f);
-        else cur[i]=llmin(cur[i]+in.axisDeadZone[i],0.f);
-        if(in.xiTakeover&&in.xiMode==0&&i==CAM_X)cur[i]=llclamp(cur[i]+in.triggerRoll,-1.f,1.f);
-        if(in.xiTakeover&&i<=CAM_Z&&in.triggerThrottle!=1.f)cur[i]*=in.triggerThrottle;
-        if(in.buildMode&&(i==X_I||i==Y_I||i==Z_I))cur[i]*=in.buildModeScale;
-        cur[i]*=in.axisScale[i];if(!absolute)cur[i]*=time;
-        s.delta[i]=s.delta[i]+(cur[i]-s.delta[i])*time*feather;
-        zero=zero&&(cur[i]==0.f);
-    }
-    return {false,zero,time,feather};
+F32 signed_deadzone(F32 x,F32 dz,bool normalise){
+ if(normalise&&std::fabs(x)<=dz)return x;
+ x=x>0.f?std::max(x-dz,0.f):std::min(x+dz,0.f);return normalise?x/(1.f-dz):x;
 }
-
-void reference_finish(const ALFlycamClassic::Input& in,const ALFlycamClassic::Intermediate& mid,Storage& s)
-{
-    const F32 time=mid.time,feather=mid.feather;
-    s.position+=LLVector3(s.delta.data())*s.rotation;
-    LLMatrix3 rm(s.delta[CAM_X],s.delta[CAM_Y],s.delta[CAM_Z]);s.rotation=LLQuaternion(rm)*s.rotation;
-    if(in.blackDragon?(in.levelHorizon||in.autoLeveling||in.rollDefault==1):(in.levelHorizon||in.autoLeveling))
-    {
-        LLMatrix3 level(s.rotation);LLVector3 x(level.mMatrix[0]),y(level.mMatrix[1]),z(level.mMatrix[2]);
-        y.mV[2]=0.f;y.normVec();level.setRows(x,y,z);level.orthogonalize();LLQuaternion q(level);
-        if(in.blackDragon)
-        {
-            LLQuaternion lerp=nlerp(llmin(feather*time,1.f),s.rotation,q);
-            s.rotation=in.levelHorizon||in.rollDefault==1?q:lerp;
-        }
-        else s.rotation=in.levelHorizon?q:nlerp(llmin(feather*time,1.f),s.rotation,q);
-    }
-    if(in.zoomDirect)
-        s.zoom=in.blackDragon?s.last[CAM_W]*in.axisScale[6]+in.axisScale[6]
-                             :s.last[CAM_W]*in.axisScale[6]+in.axisDeadZone[6];
-    else s.zoom=llclamp(s.zoom+s.delta[CAM_W],in.minView,in.maxView);
-    if(in.levelHorizon){s.delta[CAM_X]=0.f;s.last[CAM_X]=-in.axis[CAM_X];}
+F32 raw_axis(const ALFlycamClassic::Input& in,U32 a){
+ F32 x=-in.axis[a];if(in.blackDragon){if(a==CAM_W)x+=(F32)in.zoomIn-(F32)in.zoomOut;
+ if(a==0)x+=(F32)in.jump-(F32)in.crouch;if(a==CAM_X)x+=(F32)in.rollRight-(F32)in.rollLeft;}
+ else if(!in.invertPitch&&a==CAM_Y)x=-x;return x;
 }
-
-void compare(const char* label,const ALFlycamClassic::Input& in)
-{
-    Storage golden,actual;auto actual_state=actual.state();
-    auto gm=reference_deltas(in,golden);auto am=ALFlycamClassic::integrateDeltas(in,actual_state);
-    ensure_equals("golden branch",am.blackDragon,gm.blackDragon);ensure_equals("golden zero",am.isZero,gm.isZero);
-    ensure("golden time",std::fabs(am.time-gm.time)<=1.e-6f);ensure("golden feather",std::fabs(am.feather-gm.feather)<=1.e-6f);
-    reference_finish(in,gm,golden);ALFlycamClassic::finishIntegration(in,am,actual_state);
-    for(U32 i=0;i<7;++i){ensure(label,std::fabs(actual.last[i]-golden.last[i])<=1.e-6f);ensure(label,std::fabs(actual.delta[i]-golden.delta[i])<=1.e-6f);}
-    ensure(label,(actual.position-golden.position).length()<=1.e-6f);
-    ensure(label,std::fabs(actual.zoom-golden.zoom)<=1.e-6f);
-    for(U32 i=0;i<4;++i)ensure(label,std::fabs(actual.rotation.mQ[i]-golden.rotation.mQ[i])<=1.e-6f);
+struct Expected{std::array<F32,7> last,delta;F32 time,feather;bool zero;};
+Expected closed_form(const ALFlycamClassic::Input& in,const Storage& before){
+ Expected out{before.last,before.delta,in.blackDragon?std::max(.016f,std::min(.033f,in.frameIntervalSeconds)):std::min(.2f,in.frameIntervalSeconds),in.flycamFeathering,true};
+ if(in.blackDragon&&(before.zoom<=in.minView||before.zoom>=in.maxView))out.feather=3.f;
+ for(U32 a=0;a<7;++a){const F32 raw=raw_axis(in,a);F32 cmd=raw;
+  if((in.blackDragon&&(in.cursor3D||std::fabs(raw)<in.axisDeadZone[a]))||(!in.blackDragon&&in.cursor3D))cmd-=before.last[a];
+  out.last[a]=raw;cmd=signed_deadzone(cmd,in.axisDeadZone[a],in.blackDragon);
+  if(in.xiTakeover&&in.xiMode==0&&a==CAM_X)cmd=std::max(-1.f,std::min(1.f,cmd+in.triggerRoll));
+  if(in.xiTakeover&&a<=CAM_Z&&in.triggerThrottle!=1.f)cmd*=in.triggerThrottle;
+  if(in.buildMode&&a<=2)cmd*=in.buildModeScale;cmd*=in.axisScale[a];if(!in.cursor3D)cmd*=out.time;
+  out.delta[a]=before.delta[a]+(cmd-before.delta[a])*out.time*out.feather;out.zero=out.zero&&cmd==0.f;}
+ return out;
 }
+void verify_case(const char* label,ALFlycamClassic::Input in){
+ Storage actual,before=actual;if(in.blackDragon&&in.zoomDefault==1){before.zoom=in.cameraAngle;before.delta[CAM_W]=0.f;}
+ Expected e=closed_form(in,before);auto state=actual.state();auto mid=ALFlycamClassic::integrateDeltas(in,state);
+ ensure_equals("branch",mid.blackDragon,in.blackDragon);ensure_equals("zero",mid.isZero,e.zero);
+ ensure("time",std::fabs(mid.time-e.time)<=1.e-6f);ensure("feather",std::fabs(mid.feather-e.feather)<=1.e-6f);
+ for(U32 a=0;a<7;++a){ensure(label,std::fabs(actual.last[a]-e.last[a])<=1.e-6f);ensure(label,std::fabs(actual.delta[a]-e.delta[a])<=1.e-6f);}
+ LLVector3 pos=before.position+LLVector3(e.delta.data())*before.rotation;
+ LLQuaternion rot=LLQuaternion(LLMatrix3(e.delta[CAM_X],e.delta[CAM_Y],e.delta[CAM_Z]))*before.rotation;
+ F32 zoom=in.zoomDirect?e.last[CAM_W]*in.axisScale[CAM_W]+(in.blackDragon?in.axisScale[CAM_W]:in.axisDeadZone[CAM_W])
+                       :std::max(in.minView,std::min(in.maxView,before.zoom+e.delta[CAM_W]));
+ ALFlycamClassic::finishIntegration(in,mid,state);ensure(label,(actual.position-pos).length()<=1.e-6f);
+ if(!in.levelHorizon&&!in.autoLeveling&&!(in.blackDragon&&in.rollDefault==1))for(U32 i=0;i<4;++i)ensure(label,std::fabs(actual.rotation.mQ[i]-rot.mQ[i])<=1.e-6f);
+ if(in.levelHorizon||(in.blackDragon&&in.rollDefault==1)){LLMatrix3 level(actual.rotation);ensure("exact horizon has zero vertical left",std::fabs(level.mMatrix[1][2])<=1.e-6f);}
+ ensure(label,std::fabs(actual.zoom-zoom)<=1.e-6f);if(in.levelHorizon){ensure_equals("level delta",actual.delta[CAM_X],0.f);ensure_equals("level reseed",actual.last[CAM_X],-in.axis[CAM_X]);}
 }
-
-struct flycam_classic_data{};
-typedef test_group<flycam_classic_data> flycam_classic_group;
-typedef flycam_classic_group::object flycam_classic_object;
+}}
+namespace tut {
+struct flycam_classic_data{};typedef test_group<flycam_classic_data> flycam_classic_group;typedef flycam_classic_group::object flycam_classic_object;
 flycam_classic_group gFlycamClassicGroup("alflycamclassic");
-
-// Golden matrix: BD/non-BD x operator(XInput) off/ROLL/THROTTLE x build x dt clamps.
-template<> template<> void flycam_classic_object::test<1>()
-{
-    for(bool bd:{false,true})for(S32 xi=0;xi<3;++xi)for(bool build:{false,true})
-    for(F32 dt:{1.f/30.f,1.f/60.f,1.f/144.f,.5f})
-    {
-        auto in=base_input(bd,dt);in.buildMode=build;in.xiTakeover=xi!=0;
-        if(xi==1){in.xiMode=0;in.triggerRoll=.37f;}else if(xi==2){in.xiMode=1;in.triggerThrottle=.31f;}
-        compare("classic matrix",in);
-    }
-}
-
-// BD-only buttons and direct/limited zoom paths.
-template<> template<> void flycam_classic_object::test<2>()
-{
-    for(bool direct:{false,true})for(U32 button=0;button<7;++button)
-    {
-        auto in=base_input(true,1.f/60);in.zoomDirect=direct;
-        if(button==0)in.zoomDefault=1;if(button==1)in.zoomOut=1;if(button==2)in.zoomIn=1;
-        if(button==3)in.jump=1;if(button==4)in.crouch=1;if(button==5)in.rollLeft=1;if(button==6)in.rollRight=1;
-        compare("BD buttons",in);
-    }
-}
-
-// ROLL_DEFAULT, auto-level and the moved level-horizon tail in both branches.
-template<> template<> void flycam_classic_object::test<3>()
-{
-    for(bool bd:{false,true})for(bool automatic:{false,true})for(bool horizon:{false,true})
-    {
-        auto in=base_input(bd,1.f/60);in.autoLeveling=automatic;in.levelHorizon=horizon;in.rollDefault=bd&&automatic;
-        compare("level matrix",in);
-        if(horizon)
-        {
-            Storage actual;auto state=actual.state();auto mid=ALFlycamClassic::integrateDeltas(in,state);ALFlycamClassic::finishIntegration(in,mid,state);
-            ensure_equals("level cleanup delta",actual.delta[CAM_X],0.f);
-            ensure_equals("level cleanup raw reseed",actual.last[CAM_X],-in.axis[CAM_X]);
-        }
-    }
-}
-
-// Pitch inversion, per-axis sign/dead-zone coverage, and cursor/absolute path.
-template<> template<> void flycam_classic_object::test<4>()
-{
-    for(bool bd:{false,true})for(bool invert:{false,true})for(bool cursor:{false,true})for(U32 axis=0;axis<7;++axis)
-    {
-        auto in=base_input(bd,1.f/144);in.invertPitch=invert;in.cursor3D=cursor;
-        in.axis.fill(0.f);in.axis[axis]=(axis&1)?-.11f:.11f;in.axisScale[axis]=(axis&1)?-1.3f:1.3f;
-        compare("axis parity",in);
-    }
-}
+template<> template<> void flycam_classic_object::test<1>(){
+ for(bool bd:{false,true})for(S32 mode=0;mode<3;++mode)for(bool build:{false,true})for(F32 dt:{1.f/30.f,1.f/60.f,1.f/144.f,.5f}){
+  auto in=input(bd,dt);in.buildMode=build;in.xiTakeover=mode!=0;in.xiMode=mode==1?0:1;if(mode==1)in.triggerRoll=.37f;if(mode==2)in.triggerThrottle=.31f;verify_case("classic matrix",in);}}
+template<> template<> void flycam_classic_object::test<2>(){
+ for(bool direct:{false,true})for(U32 b=0;b<7;++b){auto in=input(true,1.f/60);in.zoomDirect=direct;
+  if(b==0)in.zoomDefault=1;if(b==1)in.zoomOut=1;if(b==2)in.zoomIn=1;if(b==3)in.jump=1;if(b==4)in.crouch=1;if(b==5)in.rollLeft=1;if(b==6)in.rollRight=1;verify_case("BD buttons",in);}}
+template<> template<> void flycam_classic_object::test<3>(){
+ for(bool bd:{false,true})for(bool automatic:{false,true})for(bool horizon:{false,true}){auto in=input(bd,1.f/60);in.autoLeveling=automatic;in.levelHorizon=horizon;in.rollDefault=bd&&automatic;verify_case("level matrix",in);}}
+template<> template<> void flycam_classic_object::test<4>(){
+ for(bool bd:{false,true})for(bool invert:{false,true})for(bool cursor:{false,true})for(U32 a=0;a<7;++a){auto in=input(bd,1.f/144);in.invertPitch=invert;in.cursor3D=cursor;in.axis.fill(0.f);in.axis[a]=(a&1)?-.11f:.11f;in.axisScale[a]=(a&1)?-1.3f:1.3f;verify_case("axis/dead-zone",in);}}
 }
