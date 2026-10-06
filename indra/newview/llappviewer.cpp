@@ -27,6 +27,7 @@
 #include "llviewerprecompiledheaders.h"
 
 #include "llappviewer.h"
+#include "alcameradispatch.h"
 #include "alavatarlightresponse.h" // [AvatarLightResponse]
 #include "alclientheight.h"       // [ClientHeight] disconnect reset
 
@@ -360,6 +361,52 @@ LLPumpIO* gServicePump = NULL;
 U64MicrosecondsImplicit gFrameTime = 0;
 F32SecondsImplicit gFrameTimeSeconds = 0.f;
 F32SecondsImplicit gFrameIntervalSeconds = 0.f;
+
+U64 gCameraDispatchSerial = 0;
+ECameraOwner gCameraDispatchOwner = ECameraOwner::AGENT;
+bool gCameraDispatchFlycamWrote = false;
+bool gCameraDispatchForeignSinceFlycamWrite = false;
+std::array<ALCameraDispatchSample, 4> gCameraDispatchSamples;
+U32 gCameraDispatchSampleCount = 0;
+
+void alCameraDispatchFinalizePresented()
+{
+    if (gCameraDispatchSampleCount == 0)
+        return;
+    ALCameraDispatchSample& sample =
+        gCameraDispatchSamples[gCameraDispatchSampleCount - 1];
+    if (gFrameCount > sample.frameCountAtSample)
+        sample.presented = true;
+}
+
+void alCameraDispatchSampleFinal()
+{
+    alCameraDispatchFinalizePresented();
+    if (gCameraDispatchSampleCount == gCameraDispatchSamples.size())
+    {
+        for (U32 i = 1; i < gCameraDispatchSampleCount; ++i)
+            gCameraDispatchSamples[i - 1] = gCameraDispatchSamples[i];
+        --gCameraDispatchSampleCount;
+    }
+
+    LLViewerCamera* camera = LLViewerCamera::getInstance();
+    ALCameraDispatchSample& sample =
+        gCameraDispatchSamples[gCameraDispatchSampleCount++];
+    sample.serial = gCameraDispatchSerial;
+    sample.owner = gCameraDispatchOwner;
+    sample.dt = gFrameIntervalSeconds.value();
+    sample.positionGlobal = gAgent.getPosGlobalFromAgent(camera->getOrigin());
+    sample.rotation = camera->getQuaternion();
+    sample.xAxis = camera->mXAxis;
+    sample.yAxis = camera->mYAxis;
+    sample.zAxis = camera->mZAxis;
+    sample.flycamWrote = gCameraDispatchFlycamWrote;
+    sample.frameCountAtSample = gFrameCount;
+    sample.presented = false;
+
+    if (gCameraDispatchOwner != ECameraOwner::FLYCAM)
+        gCameraDispatchForeignSinceFlycamWrite = true;
+}
 F32 gFPSClamped = 10.f;                     // Pretend we start at target rate.
 F32 gFrameDTClamped = 0.f;                  // Time between adjacent checks to network for packets
 U64MicrosecondsImplicit gStartTime = 0; // gStartTime is "private", used only to calculate gFrameTimeSeconds
@@ -5591,17 +5638,22 @@ void LLAppViewer::idle()
     ALVCamBonePov::instance().tick(
         LLPresentationTime::currentFrame().presentation_time);
 
+    ++gCameraDispatchSerial;
+    gCameraDispatchFlycamWrote = false;
     if (gAgentPilot.isPlaying() && gAgentPilot.getOverrideCamera())
     {
+        gCameraDispatchOwner = ECameraOwner::PILOT;
         gAgentPilot.moveCamera();
     }
     else if (LLFlycamRecorder::instance().isPlaybackActive())
     {
+        gCameraDispatchOwner = ECameraOwner::RECORDER;
         // recorded camera path playback / scrubbing (phoenix port)
         LLFlycamRecorder::instance().updateCamera();
     }
     else if (LLPathCamera::instance().isActive())
     {
+        gCameraDispatchOwner = ECameraOwner::PATH;
         // per-node path camera: the cameras authored on Subject A's path drive
         // the render camera as the actor walks (a walk + camera = one take).
         // Below recorder playback, above the auto cinematic patterns. Releases
@@ -5610,15 +5662,18 @@ void LLAppViewer::idle()
     }
     else if (LLCinematicCamera::instance().isActive())
     {
+        gCameraDispatchOwner = ECameraOwner::CINE;
         // automated cinematic camera (bone lock / orbit / hover / sweep / crane)
         LLCinematicCamera::instance().updateCamera();
     }
     else if (LLViewerJoystick::getInstance()->getOverrideCamera())
     {
+        gCameraDispatchOwner = ECameraOwner::FLYCAM;
         LLViewerJoystick::getInstance()->moveFlycam();
     }
     else
     {
+        gCameraDispatchOwner = ECameraOwner::AGENT;
         if (LLToolMgr::getInstance()->inBuildMode())
         {
             LLViewerJoystick::getInstance()->moveObjects();
@@ -5627,7 +5682,9 @@ void LLAppViewer::idle()
         gAgentCamera.updateCamera();
     }
 
-    // sample the (now final) camera into the flycam recorder when recording
+    // The ownership sampler and recorder must observe the same final,
+    // post-operator camera.  Keep this immediately before onIdleFrame().
+    alCameraDispatchSampleFinal();
     LLFlycamRecorder::instance().onIdleFrame();
 
     // update media focus

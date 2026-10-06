@@ -208,10 +208,12 @@ private:
     U64 mXISampleGeneration = 0;
     U64 mXILastScanGeneration = 0;
     U64 mXILevelGeneration = 0;
+    U64 mXIRecentreGeneration = 0;
     bool mXISampleValid = false;
     bool mXIPrime = true;
     bool mXIWasFocused = false;
     bool mXILevelPending = false;
+    bool mXIRecentrePending = false;
     U16 mXIPrevRaw = 0;
     U16 mXIEdges = 0;
     U8 mXILT = 0;

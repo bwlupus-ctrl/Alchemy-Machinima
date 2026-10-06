@@ -1064,6 +1064,7 @@ set(viewer_HEADER_FILES
     alsceneexplorerpredicate.h
     alfloaterwebprofile.h
     alflycamclassic.h
+    alcameradispatch.h
     allegacynotificationwellwindow.h
     alobjectproperties.h
     alpanelaomini.h
