@@ -53,5 +53,7 @@ enum EGhostCoverage : U32
 // suppressed solid sweep would leave that batch rendering nowhere.
 bool ghost_pass_is_blend(U32 pass);
 bool ghost_pass_is_glow(U32 pass);
+// [Silhouette] masked (cutoff-discard) rigged pass; shared with the coverage replay.
+bool ghost_pass_is_mask(U32 pass);
 
 #endif // LL_LLGHOSTCOVERAGE_H

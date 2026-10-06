@@ -13,6 +13,7 @@
 
 namespace
 {
+constexpr U32 Z_AXIS = 2;       // mirrors E_Axes in llviewerjoystick.h
 constexpr U32 CAM_X_AXIS = 3;
 constexpr U32 CAM_Y_AXIS = 4;
 constexpr U32 CAM_Z_AXIS = 5;

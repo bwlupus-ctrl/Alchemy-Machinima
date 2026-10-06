@@ -400,7 +400,7 @@ template<> template<> void flycam_drone_object::test<10>()
     for(S32 run=0;run<10000;++run)
     {
       auto p=compiled(run%5,HZS[run%4]);LLFlycamDrone d(p);
-      if((run&1)!=0){p.throttleMode=LLFlycamDrone::ThrottleMode::PURE;d.setParams(p);}
+      if((run&1)!=0){p.throttleMode=LLFlycamDrone::ThrottleMode::PURE_THROTTLE;d.setParams(p);}
       if((run%11)==0)d.seed(LLVector3::zero,LLQuaternion(),LLVector3(p.velocityCap*(u(rng)+1.f)*.5f,0,0));
       auto a=d.state();
       for(S32 tick=0;tick<20;++tick)
@@ -562,7 +562,7 @@ template<> template<> void flycam_drone_object::test<24>()
 
 template<> template<> void flycam_drone_object::test<25>()
 {
-    auto p=compiled(1,120);p.throttleMode=LLFlycamDrone::ThrottleMode::PURE;LLFlycamDrone d(p);
+    auto p=compiled(1,120);p.throttleMode=LLFlycamDrone::ThrottleMode::PURE_THROTTLE;LLFlycamDrone d(p);
     LLFlycamDrone::Input stale;stale.droneThrottle=false;auto stopped=d.step(d.state(),stale,p.tick);ensure_equals("T25 stale trigger is neutral",stopped.referenceVelocity.lengthSquared(),0.f);
     LLFlycamDrone::Input move=forward(0.f);move.droneThrottle=true;auto pure=d.step(d.state(),move,p.tick);ensure_equals("T25 Pure zero throttle is zero target",pure.referenceVelocity.lengthSquared(),0.f);
     move.droneThrottle=false;auto fallback=d.step(d.state(),move,p.tick);ensure("T25 Pure falls back to Assist outside Drone THROTTLE",fallback.referenceVelocity.length()>0.f);

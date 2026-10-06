@@ -258,7 +258,7 @@ LLFlycamDrone::HumanParams requestedDroneHumanParams()
     requested.release = (S32)s.release == 1
         ? LLFlycamDrone::ReleaseMode::DRIFT : LLFlycamDrone::ReleaseMode::HOLD;
     requested.throttleMode = (S32)s.throttleMode == 1
-        ? LLFlycamDrone::ThrottleMode::PURE : LLFlycamDrone::ThrottleMode::ASSIST;
+        ? LLFlycamDrone::ThrottleMode::PURE_THROTTLE : LLFlycamDrone::ThrottleMode::ASSIST;
     requested.freeFly = s.freeFly;
     return requested;
 }
@@ -2331,7 +2331,7 @@ void LLViewerJoystick::moveFlycam(bool reset)
                             else
                             {
                                 const U32 n = gCameraDispatchSampleCount;
-                                const U32 capacity = gCameraDispatchSamples.size();
+                                const U32 capacity = static_cast<U32>(gCameraDispatchSamples.size());
                                 const ALCameraDispatchSample& a = gCameraDispatchSamples[
                                     (gCameraDispatchSampleStart + n - 3) % capacity];
                                 const ALCameraDispatchSample& b = gCameraDispatchSamples[
@@ -4012,7 +4012,7 @@ bool LLViewerJoystick::applyDronePreset(S32 preset)
     gSavedSettings.setS32("FlycamDroneRelease",
         p.release == LLFlycamDrone::ReleaseMode::DRIFT ? 1 : 0);
     gSavedSettings.setS32("FlycamDroneThrottleMode",
-        p.throttleMode == LLFlycamDrone::ThrottleMode::PURE ? 1 : 0);
+        p.throttleMode == LLFlycamDrone::ThrottleMode::PURE_THROTTLE ? 1 : 0);
     gSavedSettings.setBOOL("FlycamDroneFreeFly", p.freeFly);
     return true;
 }

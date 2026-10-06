@@ -104,7 +104,7 @@ bool validParams(const LLFlycamDrone::Params& p)
         (p.release == LLFlycamDrone::ReleaseMode::HOLD ||
          p.release == LLFlycamDrone::ReleaseMode::DRIFT) &&
         (p.throttleMode == LLFlycamDrone::ThrottleMode::ASSIST ||
-         p.throttleMode == LLFlycamDrone::ThrottleMode::PURE);
+         p.throttleMode == LLFlycamDrone::ThrottleMode::PURE_THROTTLE);
 }
 
 bool exactZero(const LLVector3& value)
@@ -220,7 +220,7 @@ bool LLFlycamDrone::compile(const HumanParams& requested, const HumanParams& pre
 {
     if ((requested.release != ReleaseMode::HOLD && requested.release != ReleaseMode::DRIFT) ||
         (requested.throttleMode != ThrottleMode::ASSIST &&
-         requested.throttleMode != ThrottleMode::PURE))
+         requested.throttleMode != ThrottleMode::PURE_THROTTLE))
     {
         if (logger)
             logger("DRONE PARAM-CLAMP invalid release/throttle enum; previous block kept");

@@ -205,14 +205,14 @@ void LLFloaterJoystick::refreshDronePresetLabel()
         const S32 source = llclamp(joystick->getDronePresetProvenance(), 0, 4);
         const std::string label = llformat("Custom (from %s)", names[source]);
         if (mDronePreset->getSimple() != label)
-            mDronePreset->setLabel(label);
+            mDronePreset->setLabel(LLStringExplicit(label));
     }
     else
     {
         static const char* const names[] = { "Cine", "Normal", "Sport", "Dolly", "FPV" };
         const char* label = names[llclamp(joystick->getDronePresetProvenance(), 0, 4)];
         if (mDronePreset->getSimple() != label)
-            mDronePreset->setLabel(label);
+            mDronePreset->setLabel(LLStringExplicit(label));
     }
 }
 

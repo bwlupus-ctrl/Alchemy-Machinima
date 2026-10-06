@@ -19,7 +19,7 @@ class LLFlycamDrone
 {
 public:
     enum class ReleaseMode { HOLD, DRIFT };
-    enum class ThrottleMode { ASSIST, PURE };
+    enum class ThrottleMode { ASSIST, PURE_THROTTLE };   // not "PURE": <objbase.h> #defines PURE as "= 0"
     enum class PresetId { CINE, NORMAL, SPORT, DOLLY, FPV, COUNT };
 
     enum ValidationClamp : U32

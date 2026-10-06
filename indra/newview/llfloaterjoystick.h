@@ -49,8 +49,8 @@ public:
     bool postBuild() override;   // [fork] base class migrated BOOL->bool
     void onOpen(const LLSD& key) override;
     void refresh() override;
-    void apply() override;   // Apply the changed values.
-    void cancel() override;  // Cancel the changed values.
+    virtual void apply();   // Apply the changed values.
+    virtual void cancel();  // Cancel the changed values.
     void draw() override;
     bool tick() override;
     static  void setSNDefaults();

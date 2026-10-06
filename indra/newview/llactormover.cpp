@@ -11506,6 +11506,9 @@ LLVector2 actor_ghost_frag_offset()
 // FX shader's ghostAux.x, blending via a separate sweep) instead of drawing
 // everything opaque -- drawing a masked hair sheet or a sheer clothing layer
 // solid is what produced the white halos / solid fringes on the styled clone.
+// EXTERNAL linkage (declared in llghostcoverage.h): the silhouette coverage
+// replay in pipeline.cpp must classify masked passes exactly like the sweeps.
+} // anonymous namespace (reopened below)
 bool ghost_pass_is_mask(U32 pass)
 {
     switch (pass)
@@ -11522,6 +11525,8 @@ bool ghost_pass_is_mask(U32 pass)
         return false;
     }
 }
+namespace
+{
 
 // Native legacy MASK shaders do not share one coverage law. Ordinary simple
 // masks compare texture * diffuse vertex alpha; fullbright masks compare only
@@ -11876,7 +11881,7 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
     {
         style = GHOST_STYLE_GHOST;
     }
-    LLGLSLShader* shader = coverage_mode ? gSilCoverProgram[ACTOR_MASK_RIGGED] :
+    LLGLSLShader* shader = coverage_mode ? &gSilCoverProgram[ACTOR_MASK_RIGGED] :
         (have_fx ? fx : gHighlightProgram.mRiggedVariant);
     LLGLSLShader* static_shader = coverage_mode ? &gSilCoverProgram[ACTOR_MASK_STATIC] :
         (have_fx ? fx_base : &gHighlightProgram);

@@ -7,7 +7,7 @@
 #define AL_FLYCAM_CLASSIC_H
 
 #include "llquaternion.h"
-#include "llvector3.h"
+#include "v3math.h"
 #include "stdtypes.h"
 
 #include <array>
