@@ -1164,6 +1164,8 @@ void settings_setup_listeners()
     setting_setup_signal_listener(gSavedSettings, "RenderBloomHalation", handleHalationChanged);
     setting_setup_signal_listener(gSavedSettings, "RenderEnableEmissiveBuffer", handleEnableEmissiveChanged);
     setting_setup_signal_listener(gSavedSettings, "AvatarSilhouetteForceEmissive", handleEnableEmissiveChanged);
+    // T21 changes shader permutations and the main-view debug attachment.
+    setting_setup_signal_listener(gSavedSettings, "AvatarSilhouetteRimParity", handleEnableEmissiveChanged);
     setting_setup_signal_listener(gSavedSettings, "RenderDisableVintageMode", handleDisableVintageMode);
     setting_setup_signal_listener(gSavedSettings, "RenderHDREnabled", handleEnableHDR);
     // [TronA0] G-buffer avatar tag is a hashed global define -> shader reload.

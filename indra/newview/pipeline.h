@@ -88,6 +88,7 @@ bool setup_hud_matrices(const LLRect& screen_region); // specify portion of scre
 //   2: GL_RG8           R = deferred/G-buffer coverage, G = forward coverage
 static const U32 SL_SIDECAR_ATTACHMENT  = 1;
 static const U32 SL_COVERAGE_ATTACHMENT = 2;
+static const U32 ALR_RIM_PARITY_ATTACHMENT = 3;
 
 class LLPipeline
 {
@@ -1291,9 +1292,8 @@ public:
     // main full resoltuion render target
     RenderTargetPack mMainRT;
 
-    // [AvatarSilhouette T21] Lazily allocated only while the parity setting is
-    // on; a tiny downsample of main-view HDR beauty is read back at most 1 Hz.
-    LLRenderTarget mRimParityReadback;
+    // [AvatarSilhouette T21] Full-resolution R8 mask read back at most 1 Hz.
+    // The attachment itself is owned by mMainRT.screen only in the parity build.
     LLTimer        mRimParityReadbackTimer;
 
     // auxillary 512x512 render target pack

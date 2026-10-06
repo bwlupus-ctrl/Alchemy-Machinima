@@ -88,6 +88,9 @@ uniform vec4 ghostParams;
 uniform vec4 ghostAux;
 uniform vec4 ghostFx;
 uniform int ghostLook;
+// Explicit draw provenance. Actor FX forward-fallback look 1 shares Clone's
+// numeric look value but must never receive Clone-only Light Response trims.
+uniform int ghostIsClone;
 // 1 = vertex-colour ALPHA is real opacity (alpha-pool / PBR draws) and
 // multiplies the texture alpha; 0 = legacy non-alpha-pool face whose vertex
 // alpha bakes SHININESS, not opacity (RGB tint still always applies).
@@ -1486,7 +1489,7 @@ void main()
     bool sil = alrEnabled == 1 && alrSil.a > 0.0;
     float silKeep = sil ? 1.0 - alrSil.a : 1.0;
     // [AvatarLightResponse] Brightness (beauty sweeps) / Glow (SWEEP_GLOW) trim for a Ghost Studio CLONE.
-    if (alrEnabled == 1 && ghostLook == 1)          // GHOST_STYLE_CLONE
+    if (alrEnabled == 1 && ghostIsClone != 0)
     {
         if (alrParams.z != 1.0)
         {
@@ -1599,7 +1602,7 @@ void main()
     }
 #endif
     // [AvatarLightResponse] debug override, final: after signal modulation, additive radiance and fog.
-    if (alrEnabled == 3 && ghostLook == 1)
+    if (alrEnabled == 3 && ghostIsClone != 0)
     {
         rgb = vec3(1.0, 0.0, 1.0);
     }

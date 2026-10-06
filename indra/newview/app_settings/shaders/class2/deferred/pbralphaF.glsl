@@ -52,6 +52,9 @@ layout(location = 2) out vec2 surface_coverage;
 #else
 out vec4 frag_color;
 #endif
+#ifdef ALR_RIMSPLIT_PARITY
+layout(location = 3) out vec4 alr_rimsplit_parity_mask;
+#endif
 
 in vec3 vary_fragcoord;
 
@@ -458,8 +461,9 @@ void main()
 #endif
     frag_color = max(vec4(color.rgb * final_scale,a), vec4(0));
 #ifdef ALR_RIMSPLIT_PARITY
-    // Opaque alpha makes the readback marker survive the forward blend exactly.
-    if (alr_rimsplit_mismatch) frag_color = vec4(1.0, 0.0, 1.0, 1.0);
+    // Dedicated R8 diagnostic output; beauty never writes or encodes T21.
+    alr_rimsplit_parity_mask = vec4(alr_rimsplit_mismatch ? 1.0 : 0.0,
+                                    0.0, 0.0, 1.0);
 #endif
 #ifdef HAS_VISIBLE_DIFFUSE
     vec3 alr_visible_diffuse = diffuseColor;

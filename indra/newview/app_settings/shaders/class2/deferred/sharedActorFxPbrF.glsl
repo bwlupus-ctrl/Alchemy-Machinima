@@ -78,7 +78,10 @@ uniform vec3 sun_dir;
 uniform vec3 moon_dir;
 uniform int classic_mode;
 
-out vec4 frag_color;
+layout(location = 0) out vec4 frag_color;
+#ifdef ALR_RIMSPLIT_PARITY
+layout(location = 3) out vec4 alr_rimsplit_parity_mask;
+#endif
 
 in vec3 vary_fragcoord;
 in vec3 vary_position;
@@ -777,7 +780,8 @@ void main()
 #endif
     frag_color = max(vec4(color * final_scale, output_alpha), vec4(0.0));
 #ifdef ALR_RIMSPLIT_PARITY
-    // Opaque alpha makes the readback marker survive the forward blend exactly.
-    if (alr_rimsplit_mismatch) frag_color = vec4(1.0, 0.0, 1.0, 1.0);
+    // Dedicated R8 diagnostic output; beauty never writes or encodes T21.
+    alr_rimsplit_parity_mask = vec4(alr_rimsplit_mismatch ? 1.0 : 0.0,
+                                    0.0, 0.0, 1.0);
 #endif
 }

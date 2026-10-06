@@ -73,6 +73,10 @@ using std::string;
 bool                LLViewerShaderMgr::sInitialized = false;
 bool                LLViewerShaderMgr::sSkipReload = false;
 
+// Runtime T21 readback is legal only after a successful load of the matching
+// compile-time permutation. pipeline.cpp consumes this load-result latch.
+bool gAvatarSilhouetteRimParityCompiled = false;
+
 LLVector4           gShinyOrigin;
 
 S32 clamp_terrain_mapping(S32 mapping)
@@ -1648,6 +1652,7 @@ bool LLViewerShaderMgr::loadShadersEffects()
 bool LLViewerShaderMgr::loadShadersDeferred()
 {
     LL_PROFILE_ZONE_SCOPED;
+    gAvatarSilhouetteRimParityCompiled = false;
     bool use_sun_shadow = mShaderLevel[SHADER_DEFERRED] > 1 &&
         gSavedSettings.getS32("RenderShadowDetail") > 0;
 
@@ -5368,6 +5373,9 @@ bool LLViewerShaderMgr::loadShadersDeferred()
             LL_DEBUGS("ActorMask") << "[ActorMask] debug view program failed to compile" << LL_ENDL;
         }
     }
+    gAvatarSilhouetteRimParityCompiled = success &&
+        gSavedSettings.getBOOL("AvatarSilhouetteRimParity") &&
+        gDeferredPBRAlphaProgram.isComplete();
     return success;
 }
 

@@ -11324,6 +11324,8 @@ static LLStaticHashedString sGhostAux("ghostAux");
 static LLStaticHashedString sGhostFx("ghostFx");
 static LLStaticHashedString sGhostSlot("ghostSlot");
 static LLStaticHashedString sGhostLook("ghostLook");
+static LLStaticHashedString sGhostIsClone("ghostIsClone");
+static LLStaticHashedString sGhostAlrParams("alrParams");
 static LLStaticHashedString sGhostDistort("ghostDistort");
 static LLStaticHashedString sGhostDistortParams("ghostDistortParams");
 static LLStaticHashedString sGhostUseVertexAlpha("ghostUseVertexAlpha");
@@ -11998,6 +12000,7 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
                           gp.mGlitch, llclamp(gp.mBrightness, 0.05f, 1.5f));
             sh->uniform1i(sGhostSlot, -1);
             sh->uniform1i(sGhostLook, style);
+            sh->uniform1i(sGhostIsClone, gp.mIsClone ? 1 : 0);
             sh->uniform1i(sGhostDistort, gp.mDistort);
             sh->uniform4f(sGhostDistortParams,
                           llclamp(gp.mDistortAmount, 0.f, 1.f), 0.5f, 0.5f, 0.f);
@@ -12192,7 +12195,7 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
             }
             else
             {
-                const bool alr_on = style == GHOST_STYLE_CLONE && gp.mLightResponseKey.notNull();
+                const bool alr_on = gp.mIsClone && gp.mLightResponseKey.notNull();
                 LLRenderPass::uploadAvatarLightResponseTo(*batch_shader,
                     gp.mLightResponseKey,
                     di->mActorFxOwner,
@@ -12201,6 +12204,12 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
                         ? (subset == SWEEP_GLOW ? LLRenderPass::ALR_SLOT_GLOW
                                                 : LLRenderPass::ALR_SLOT_BEAUTY)
                         : LLRenderPass::ALR_SLOT_SIL_ONLY);
+                if (!alr_on)
+                {
+                    // SIL_ONLY is trim identity even if its implementation or
+                    // a prior program upload changes independently.
+                    batch_shader->uniform4f(sGhostAlrParams, 0.f, 1.f, 1.f, 1.f);
+                }
             }
 
             // matrix palette: a FROZEN studio instance uploads the snapshot
@@ -12884,13 +12893,18 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
             {
                 if (!coverage_mode)
                 {
-                    const bool alr_on = style == GHOST_STYLE_CLONE && gp.mLightResponseKey.notNull();
+                    const bool alr_on = gp.mIsClone && gp.mLightResponseKey.notNull();
                     LLRenderPass::uploadAvatarLightResponseTo(*static_shader,
                         gp.mLightResponseKey,
                         alr_di ? alr_di->mActorFxOwner : LLUUID::null,
                         alr_di ? alr_di->mActorFxFallbackOwner : LLUUID::null,
                         alr_on ? LLRenderPass::ALR_SLOT_BEAUTY
                                : LLRenderPass::ALR_SLOT_SIL_ONLY);
+                    if (!alr_on)
+                    {
+                        static_shader->uniform4f(sGhostAlrParams,
+                                                 0.f, 1.f, 1.f, 1.f);
+                    }
                 }
             }
 
@@ -12912,7 +12926,7 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
     // still depth-PRIME below: they are exactly the occluders the uncovered
     // translucent layers need (this UI-phase overlay has no world depth).
     const GhostCoverageMask overlay_mask =
-        (style == GHOST_STYLE_CLONE && gp.mPresentCoverage != GHOST_COVERAGE_NONE)
+        (gp.mIsClone && gp.mPresentCoverage != GHOST_COVERAGE_NONE)
             ? (GhostCoverageMask)(gp.mPresentCoverage & ~gp.mDeferredCoverage)
             : (GhostCoverageMask)GHOST_COVERAGE_ALL;
 
@@ -15028,6 +15042,7 @@ void LLActorMover::renderStudioGhosts()
         gp.mDeferredCoverage = coverage;
         gp.mPresentCoverage  = item.mPresent;
         gp.mLightResponseKey = inst.mId; // [AvatarLightResponse]
+        gp.mIsClone = inst.mStyle == GHOST_STYLE_CLONE;
 
         drawGeometryGhost(item.mAv, *item.mBatches, item.mFootAgent, tint,
                           llclamp(inst.mAlpha, 0.f, 1.f), inst.mStyle, gp,
@@ -15313,7 +15328,7 @@ bool LLActorMover::renderSystemActorGhost(LLVOAvatar* avatar,
     LLVector4 style_params(0.f, 0.f, 0.f, 6.f);
     bool texture_rgb = look != GHOST_STYLE_GHOST
                     && look != GHOST_STYLE_WIREFRAME;
-    if (look == GHOST_STYLE_CLONE)
+    if (look == LLDirectorCast::ACTOR_LOOK_FORWARD_FALLBACK)
     {
         style_color.set(0.98f, 0.98f, 0.98f, base_alpha);
         if (!style.mUseActorHue)
@@ -15390,6 +15405,7 @@ bool LLActorMover::renderSystemActorGhost(LLVOAvatar* avatar,
         LLRenderPass::uploadAvatarLightResponseTo(
             shader, avatar->getID(), LLUUID::null, LLUUID::null,
             LLRenderPass::ALR_SLOT_SIL_ONLY);
+        shader.uniform4f(sGhostAlrParams, 0.f, 1.f, 1.f, 1.f);
         shader.uniform1f(sGhostTime, ghost_now);
         shader.uniform4fv(sGhostParams, 1, style_params.mV);
         shader.uniform4f(sGhostAux, cutoff, texture_rgb ? 1.f : 0.f,
@@ -15398,6 +15414,7 @@ bool LLActorMover::renderSystemActorGhost(LLVOAvatar* avatar,
                          gp.mGlitch, gp.mBrightness);
         shader.uniform1i(sGhostSlot, -1);
         shader.uniform1i(sGhostLook, look);
+        shader.uniform1i(sGhostIsClone, 0); // Actor FX look 1 is not a Studio Clone.
         shader.uniform1i(sGhostDistort, gp.mDistort);
         shader.uniform4f(sGhostDistortParams, gp.mDistortAmount,
                          0.5f, 0.5f, 0.f);
@@ -15432,7 +15449,7 @@ bool LLActorMover::renderSystemActorGhost(LLVOAvatar* avatar,
 
     const bool alpha_blend = !depth_only && (blend_sweep
         || style.mMode == LLDirectorCast::ACTOR_STYLE_LAYER
-        || look != GHOST_STYLE_CLONE
+        || look != LLDirectorCast::ACTOR_LOOK_FORWARD_FALLBACK
         || base_alpha < 0.999f);
     // Cover and coverage-changing Layer+Dissolve suppress native beauty, so
     // their solid replay must restore the ordinary opaque depth surface.
@@ -15725,7 +15742,7 @@ bool shared_world_indexed_actorghost_ready(
     LLGLSLShader& shader = gWorldSkinnedActorGhostIndexedProgram;
     const LLStaticHashedString* required[] = {
         &sGhostTime, &sGhostParams, &sGhostAux, &sGhostFx, &sGhostSlot,
-        &sGhostLook, &sGhostDistort, &sGhostDistortParams,
+        &sGhostLook, &sGhostIsClone, &sGhostDistort, &sGhostDistortParams,
         &sGhostWorldLinear, &sGhostGlowOnly, &sGhostFragOffset,
         &sGhostScreenSize, &sGhostDissolveProgress,
         &sGhostCoverageLayerStrength, &sGhostIndexedMaterialFactor,
