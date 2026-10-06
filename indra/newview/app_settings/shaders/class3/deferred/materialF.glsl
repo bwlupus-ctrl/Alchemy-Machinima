@@ -66,6 +66,10 @@ vec3 alrAlbedoSrgb(vec3 c);
 void alrLegacySpec(inout vec3 spec_srgb, inout float gloss, inout float env);
 vec3 alrDebugEmission(vec3 e);
 bool alrDebug();
+#if (DIFFUSE_ALPHA_MODE != DIFFUSE_ALPHA_MODE_BLEND)
+bool alrSilOn();
+vec4 alrSilGBufferLegacy();
+#endif
 #endif
 vec4 encodeNormal(vec3 n, float env, float gbuffer_flag);
 float gbufferAvatarFlag(float flag);   // [TronA0] globalF.glsl
@@ -608,6 +612,7 @@ void main()
         frag_data[3].rgb = actorFxEmissive(vec3(0.0), actor_fx_styled_linear);
     }
     frag_data[3].rgb = alrDebugEmission(frag_data[3].rgb); // [AvatarLightResponse] debug REPLACES emission
+    if (alrSilOn()) frag_data[3] = alrSilGBufferLegacy();
 #endif
 #endif
 

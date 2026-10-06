@@ -437,6 +437,60 @@ vec4 getNormRaw(vec2 screenpos)
     return norm;
 }
 
+#if defined(HAS_EMISSIVE)
+uniform int alr_sil_active; // [AvatarSilhouette] frame mask; bit 4 selects the fp16 carrier
+
+bool alrSilDecode(float carrier, float gbuffer_flag, out float k, out float r, out bool haze_skip)
+{
+    k = 1.0;
+    r = 1.0;
+    haze_skip = false;
+
+    if ((alr_sil_active & 1) == 0 ||
+        !(GET_GBUFFER_FLAG(gbuffer_flag, GBUFFER_FLAG_HAS_PBR) ||
+          GET_GBUFFER_FLAG(gbuffer_flag, GBUFFER_FLAG_HAS_ATMOS)))
+    {
+        return false;
+    }
+
+    int q;
+    int flags;
+    if ((alr_sil_active & 16) != 0)
+    {
+        float encoded = carrier - 2.0;
+        float rounded = floor(encoded + 0.5);
+        if (!(abs(encoded - rounded) < 0.25) || !(rounded >= 1.0 && rounded <= 2046.0))
+        {
+            return false;
+        }
+        int code = int(rounded);
+        q = code & 511;
+        if (q < 1 || q > 510)
+        {
+            return false;
+        }
+        flags = code >> 9;
+        k = 1.0 - float(q) / 510.0;
+    }
+    else
+    {
+        float rounded = floor(carrier * 255.0 + 0.5);
+        if (!(rounded >= 1.0 && rounded <= 248.0))
+        {
+            return false;
+        }
+        int code = int(rounded);
+        flags = (code - 1) / 62;
+        q = code - flags * 62;
+        k = 1.0 - float(q) / 62.0;
+    }
+
+    haze_skip = (flags & 1) != 0;
+    r = (flags & 2) != 0 ? k : 1.0;
+    return true;
+}
+#endif
+
 // get linear depth value given a depth buffer sample d and znear and zfar values
 float linearDepth(float d, float znear, float zfar)
 {

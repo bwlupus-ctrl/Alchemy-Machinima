@@ -123,6 +123,9 @@ vec3 pbrBaseLightKeep(vec3 diffuseColor,
 
 GBufferInfo getGBuffer(vec2 screenpos);
 vec3 clampHDRRange(vec3 color);
+#if defined(HAS_EMISSIVE)
+bool alrSilDecode(float carrier, float gbuffer_flag, out float k, out float r, out bool haze_skip);
+#endif
 
 // [EnvIntensity v2] deferredUtil.glsl: shadow lift (0 gain = untouched).
 vec3 applyShadowLift(vec3 irradiance, vec3 norm, vec3 light_dir, float scol);
@@ -155,6 +158,16 @@ void main()
     GBufferInfo gb = getGBuffer(tc);
 
     vec3 colorEmissive = gb.emissive.rgb;
+    bool alr_sil = false;
+    float alr_k = 1.0;
+    float alr_r = 1.0;
+    bool alr_haze_skip = false;
+#if defined(HAS_EMISSIVE)
+    alr_sil = alrSilDecode(gb.emissive.a, gb.gbufferFlag, alr_k, alr_r, alr_haze_skip);
+#if defined(EMISSIVE_SILHOUETTE_ONLY)
+    colorEmissive = alr_sil ? gb.emissive.rgb : vec3(0.0);
+#endif
+#endif
     float envIntensity = gb.envIntensity;
     vec3  light_dir   = (sun_up_factor == 1) ? sun_dir : moon_dir;
 
@@ -216,7 +229,7 @@ void main()
         calcDiffuseSpecular(baseColor.rgb, metallic, diffuseColor, specularColor);
 
         vec3 v = -normalize(pos.xyz);
-        color = pbrBaseLightKeep(diffuseColor, specularColor, metallic, v, gb.normal, perceptualRoughness, light_dir, sunlit_linear, scol, radiance, irradiance, colorEmissive, ao, additive, atten, 1.0 - gb.envIntensity); // [AvatarLightResponse] Tame carrier
+        color = pbrBaseLightKeep(diffuseColor, specularColor, metallic, v, gb.normal, perceptualRoughness, light_dir, sunlit_linear, scol, radiance, irradiance, alr_sil ? vec3(0.0) : colorEmissive, ao, additive, atten, 1.0 - gb.envIntensity); // [AvatarLightResponse] Tame carrier
     }
     else if (GET_GBUFFER_FLAG(gb.gbufferFlag, GBUFFER_FLAG_HAS_HDRI))
     {
@@ -226,7 +239,7 @@ void main()
     else if (GET_GBUFFER_FLAG(gb.gbufferFlag, GBUFFER_FLAG_SKIP_ATMOS))
     {
         //should only be true of WL sky, port over base color value and scale for fake HDR
-#if defined(HAS_EMISSIVE)
+#if defined(HAS_EMISSIVE) && !defined(EMISSIVE_SILHOUETTE_ONLY)
         color = colorEmissive.rgb;
 #else
         color = baseColor.rgb;
@@ -311,6 +324,14 @@ void main()
     if (classic_mode > 0)
         final_scale = 1.1;
 
-    frag_color.rgb = clampHDRRange(color.rgb * final_scale); //output linear since local lights will be added to this shader's results
+    frag_color.rgb = alr_sil
+        ? clampHDRRange(color.rgb * final_scale * alr_k + gb.emissive.rgb)
+        : clampHDRRange(color.rgb * final_scale); //output linear since local lights will be added to this shader's results
+#if defined(HAS_EMISSIVE)
+    if (alr_sil && (alr_sil_active & 8) != 0)
+    {
+        frag_color.rgb = vec3(0.0, 1.0, 1.0) * (0.25 + 0.75 * (1.0 - alr_k));
+    }
+#endif
     frag_color.a = 0.0;
 }

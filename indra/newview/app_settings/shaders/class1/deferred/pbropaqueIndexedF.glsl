@@ -99,6 +99,8 @@ vec3 alrAlbedoLinear(vec3 c);
 float alrRoughness(float r);
 float alrPbrCarrier();
 vec3 alrDebugEmission(vec3 e);
+bool alrSilOn();
+vec4 alrSilGBufferPbr(vec3 e);
 #endif
 
 vec4 sample_basecolor(vec2 uv)
@@ -331,7 +333,19 @@ void main()
 #endif
 
 #if defined(HAS_EMISSIVE)
+#if defined(EMISSIVE_SILHOUETTE_ONLY)
+#ifdef HAS_ACTOR_FX
+    frag_data[3] = alrSilOn() ? max(alrSilGBufferPbr(vec3(0.0)), vec4(0)) : vec4(0.0);
+#else
+    frag_data[3] = vec4(0.0);
+#endif
+#else
+#ifdef HAS_ACTOR_FX
+    frag_data[3] = alrSilOn() ? max(alrSilGBufferPbr(emissive), vec4(0)) : max(vec4(emissive, 0), vec4(0));
+#else
     frag_data[3] = max(vec4(emissive, 0), vec4(0));             // PBR sRGB Emissive
+#endif
+#endif
 #ifdef HAS_ACTOR_FX
     frag_data[3].rgb = alrDebugEmission(frag_data[3].rgb); // [AvatarLightResponse] debug REPLACES emission
 #endif
