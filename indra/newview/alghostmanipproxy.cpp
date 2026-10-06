@@ -174,6 +174,7 @@ ALGhostManipProxy::~ALGhostManipProxy()
 void ALGhostManipProxy::begin()
 {
     mEditMode = true;
+    mEmptyGroundClicked = false;    // [GhostEditFix]
     mSeenRevision = 0;      // force the first-tick push
     mSeenGroupRevision = 0;
 }
@@ -678,12 +679,41 @@ void ALGhostManipProxy::tick()
     }
 
     ALGhostStudio& studio = ALGhostStudio::instance();
+
+    // [GhostEditFix] Consume the empty-ground provenance flag set by the stock
+    // pick path (ALToolGhostEdit::handleStockPick, from the Translate/Rotate/Scale
+    // pickCallbacks): the user clicked nothing at all while a ghost was being
+    // edited -> deselect it and end edit mode (the panel's draw mirror unchecks
+    // Edit). Done here, on the idle tick, never from inside the pick callback.
+    if (mEmptyGroundClicked)
+    {
+        mEmptyGroundClicked = false;
+        if (mDragging)
+        {
+            endDrag(false);
+        }
+        studio.setSelected(LLUUID::null);
+        ALToolGhostEdit::getInstance()->stopEditMode(/*restore_toolset*/ true);
+        return;
+    }
+
     const LLUUID selected = studio.getSelected();
 
     // Follow the shared selection (panel list OR in-world pick both setSelected).
     // A change drops the old proxy so the block below rebuilds for the new target.
+    // [GhostEditFix] "Live ghost deselected" = the shared selection went from a
+    // ghost that STILL EXISTS to null (list deselect). A deleted ghost, initial
+    // entry and picker arming all have prev null or a dead prev -> keep the
+    // armed picker as before.
+    const LLUUID prev_instance = mInstanceId;
     if (selected != mInstanceId)
     {
+        if (selected.isNull() && prev_instance.notNull() &&
+            backingInstanceForUnit(studio, prev_instance))
+        {
+            ALToolGhostEdit::getInstance()->stopEditMode(/*restore_toolset*/ true);
+            return;
+        }
         mInstanceId = selected;
         destroyProxy();
         mSeenRevision = 0;
@@ -770,6 +800,7 @@ void ALGhostManipProxy::teardown(bool restore_toolset)
         return;     // already clean (idempotent)
     }
     mEditMode = false;
+    mEmptyGroundClicked = false;    // [GhostEditFix]
 
     // Release any in-progress gizmo drag. Capture lives on the composite's
     // internal manip, so releaseManip() -- NOT setMouseCapture() on the composite

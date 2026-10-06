@@ -68,6 +68,8 @@ public:
     // the stock build toolset. Before that handoff, a deselect means the user
     // replaced the picker and edit mode should terminate.
     bool hasToolHandoff() const { return mSavedToolset != nullptr; }
+    // [GhostEditFix] set by ALToolGhostEdit::handleStockPick (event path); tick() acts.
+    void noteEmptyGroundClick() { mEmptyGroundClicked = true; }
     // True if `object` IS our proxy (for pick/command policy callers).
     bool owns(const LLViewerObject* object) const;
 
@@ -105,6 +107,10 @@ private:
     U64  mSeenGroupRevision = 0;
     bool mEditMode = false;
     bool mDragging = false;
+    // [GhostEditFix] Provenance flag: the stock pick path saw a CONFIRMED empty-
+    // ground click (no ghost, no object, no avatar, no gizmo part) during a ghost
+    // edit session. Consumed by tick(); cleared by begin()/teardown().
+    bool mEmptyGroundClicked = false;
 
     // Pre-drag transform snapshot, restored when a drag is cancelled.
     LLVector3d   mDragStartFoot;

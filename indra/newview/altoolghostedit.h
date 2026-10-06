@@ -34,6 +34,8 @@
 
 #include "alghostmanipproxy.h"
 
+class LLPickInfo;
+
 class ALToolGhostEdit final : public LLTool, public LLSingleton<ALToolGhostEdit>
 {
     LLSINGLETON(ALToolGhostEdit);
@@ -45,6 +47,18 @@ public:
 
     void handleSelect() override;
     void handleDeselect() override;
+
+    // [GhostEditFix] Called from the stock Translate/Rotate/Scale pickCallbacks
+    // (lltoolcomp.cpp) right after the gizmo highlight, BEFORE any selection
+    // change. After the handoff the stock tool owns clicks and cannot see ghosts,
+    // so the ghost screen-space pick is run here. Returns true when the pick was
+    // CONSUMED (stock selection must not change):
+    //   - ghost hit      -> studio selection switches to it, edit mode stays on
+    //   - nothing at all -> empty ground: flags the proxy, which (on its idle tick)
+    //                       deselects and ends edit mode
+    // Returns false (stock behaviour untouched) when no ghost session is in the
+    // stock-gizmo state, a gizmo part is hit, or a real object/avatar was hit.
+    bool handleStockPick(const LLPickInfo& pick_info, bool gizmo_part_hit);
 
     // The in-world build-mode manip proxy driving the selected ghost's gizmos.
     ALGhostManipProxy& getManipProxy() { return mManipProxy; }

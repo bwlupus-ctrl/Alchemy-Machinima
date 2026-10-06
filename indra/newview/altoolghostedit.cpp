@@ -17,6 +17,7 @@
 #include "llagent.h"                // global <-> agent (pick projection)
 #include "lltoolmgr.h"
 #include "llviewercamera.h"         // projectPosAgentToScreen (screen-space pick)
+#include "llviewerobject.h"         // [GhostEditFix] LLPointer<LLViewerObject> needs the full type
 #include "llviewerwindow.h"         // gViewerWindow
 
 namespace
@@ -112,6 +113,49 @@ bool ALToolGhostEdit::handleMouseDown(S32 x, S32 y, MASK mask)
         ALGhostStudio::instance().setSelected(hit);
     }
     return true;        // tool mode: clicks never fall through to world selection
+}
+
+bool ALToolGhostEdit::handleStockPick(const LLPickInfo& pick_info, bool gizmo_part_hit)
+{
+    // [GhostEditFix] Only while a ghost session is in the stock-gizmo state
+    // (proxy handed off) and the click is not on a gizmo part.
+    if (!mEditModeActive || !mManipProxy.isActive() ||
+        !mManipProxy.hasToolHandoff() || gizmo_part_hit)
+    {
+        return false;
+    }
+    ALGhostStudio& studio = ALGhostStudio::instance();
+    if (!studio.getShowAll())
+    {
+        return false;   // tick() ends the session on master-hide
+    }
+    const LLPointer<LLViewerObject> hit_obj = pick_info.getObject();
+    if (hit_obj.notNull() && mManipProxy.owns(hit_obj.get()))
+    {
+        return false;   // the (invisible) proxy itself: stock keeps it selected
+    }
+    const LLUUID ghost = pickInstance(pick_info.mMousePt.mX, pick_info.mMousePt.mY);
+    if (ghost.notNull())
+    {
+        if (ghost != studio.getSelected())
+        {
+            studio.setSelected(ghost);  // tick() rebuilds the proxy on the new ghost
+        }
+        return true;                    // consume: stock selection unchanged
+    }
+    if (hit_obj.notNull())
+    {
+        return false;   // real prim / avatar: today's behaviour exactly
+    }
+    // Only a genuine land or sky click counts as "empty ground"; HUD icons,
+    // parcel walls and other pick kinds keep today's stock behaviour.
+    if (pick_info.mPickType != LLPickInfo::PICK_LAND &&
+        pick_info.mPickType != LLPickInfo::PICK_INVALID)
+    {
+        return false;
+    }
+    mManipProxy.noteEmptyGroundClick(); // confirmed empty ground: tick() ends edit mode
+    return true;
 }
 
 bool ALToolGhostEdit::handleRightMouseDown(S32 x, S32 y, MASK mask)

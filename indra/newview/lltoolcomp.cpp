@@ -54,9 +54,20 @@
 #include "llviewercontrol.h"
 #include "llviewercamera.h"
 #include "lleventtimer.h"
+#include "altoolghostedit.h"    // [GhostEditFix]
 
 // we use this in various places instead of NULL
 static LLPointer<LLTool> sNullTool(new LLTool(std::string("null"), NULL));
+
+// [GhostEditFix] Shared by the Translate/Rotate/Scale pickCallbacks: while a Ghost
+// Studio edit session has handed off to the stock gizmos, only the ghost tool can
+// hit-test ghosts. Returns true when the pick was consumed (ghost switch, or a
+// confirmed empty-ground click flagged for the proxy tick); false = stock path.
+static bool alGhostStockPickConsumed(const LLPickInfo& pick_info, bool gizmo_part_hit)
+{
+    return ALToolGhostEdit::instanceExists() &&
+           ALToolGhostEdit::getInstance()->handleStockPick(pick_info, gizmo_part_hit);
+}
 
 // [GhostStudio] a manip drag holds mouse capture on the internal LLManip, not on
 // the composite -- so external drivers (ALGhostManipProxy) must query these.
@@ -293,6 +304,12 @@ void LLToolCompTranslate::pickCallback(const LLPickInfo& pick_info)
     LLViewerObject* hit_obj = pick_info.getObject();
 
     LLToolCompTranslate::getInstance()->mManip->highlightManipulators(pick_info.mMousePt.mX, pick_info.mMousePt.mY);
+    // [GhostEditFix] ghost pick / empty-ground exit before any stock selection change
+    if (alGhostStockPickConsumed(pick_info,
+            LLToolCompTranslate::getInstance()->mManip->getHighlightedPart() != LLManip::LL_NO_PART))
+    {
+        return;
+    }
     if (!LLToolCompTranslate::getInstance()->mMouseDown)
     {
         // fast click on object, but mouse is already up...just do select
@@ -419,6 +436,12 @@ void LLToolCompScale::pickCallback(const LLPickInfo& pick_info)
     LLViewerObject* hit_obj = pick_info.getObject();
 
     LLToolCompScale::getInstance()->mManip->highlightManipulators(pick_info.mMousePt.mX, pick_info.mMousePt.mY);
+    // [GhostEditFix] ghost pick / empty-ground exit before any stock selection change
+    if (alGhostStockPickConsumed(pick_info,
+            LLToolCompScale::getInstance()->mManip->getHighlightedPart() != LLManip::LL_NO_PART))
+    {
+        return;
+    }
     if (!LLToolCompScale::getInstance()->mMouseDown)
     {
         // fast click on object, but mouse is already up...just do select
@@ -630,6 +653,12 @@ void LLToolCompRotate::pickCallback(const LLPickInfo& pick_info)
     LLViewerObject* hit_obj = pick_info.getObject();
 
     LLToolCompRotate::getInstance()->mManip->highlightManipulators(pick_info.mMousePt.mX, pick_info.mMousePt.mY);
+    // [GhostEditFix] ghost pick / empty-ground exit before any stock selection change
+    if (alGhostStockPickConsumed(pick_info,
+            LLToolCompRotate::getInstance()->mManip->getHighlightedPart() != LLManip::LL_NO_PART))
+    {
+        return;
+    }
     if (!LLToolCompRotate::getInstance()->mMouseDown)
     {
         // fast click on object, but mouse is already up...just do select
