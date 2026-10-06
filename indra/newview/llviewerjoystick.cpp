@@ -2057,9 +2057,10 @@ void LLViewerJoystick::moveFlycam(bool reset)
     if (orbit_frame)
         sDrone.drone.discardAccumulator();
 
-    // Configuration is Drone-only work.  It is needed for an outgoing Drone
-    // frame or before a selected Drone is seeded on an incoming edge.
-    if (drone_selected && (drone_frame || desired_owner == FlycamPoseOwner::DRONE))
+    // Configuration is Drone-owned work.  Incoming owners are configured at
+    // their end-of-frame seed point below, so an outgoing Orbit frame remains
+    // completely frozen until Orbit has produced its final pose.
+    if (drone_selected && drone_frame)
     {
         configureDrone(sDrone, mFlycamAxisScale[CAM_X_AXIS], mAutoLeveling,
                        in_build_mode, gFrameIntervalSeconds.value(), build_mode_scale);
@@ -2128,6 +2129,13 @@ void LLViewerJoystick::moveFlycam(bool reset)
                     }
                     else
                     {
+                        if (desired_owner == FlycamPoseOwner::DRONE && !drone_frame)
+                        {
+                            // This regain is the incoming Drone's seed point.
+                            configureDrone(sDrone, mFlycamAxisScale[CAM_X_AXIS],
+                                mAutoLeveling, in_build_mode,
+                                gFrameIntervalSeconds.value(), build_mode_scale);
+                        }
                         LLViewerCamera* camera = LLViewerCamera::getInstance();
                         sFlycamPosition = camera->getOrigin();
                         sFlycamRotation = camera->getQuaternion();
@@ -2494,6 +2502,12 @@ void LLViewerJoystick::moveFlycam(bool reset)
         const LLVector3d origin = gAgent.getPosGlobalFromAgent(LLVector3::zero);
         if (desired_owner == FlycamPoseOwner::DRONE && !foreign_drone_regain)
         {
+            // The outgoing owner has completed its edge frame.  Only now may
+            // Drone advance build scaling and install the parameters used by
+            // the history seed.
+            configureDrone(sDrone, mFlycamAxisScale[CAM_X_AXIS], mAutoLeveling,
+                           in_build_mode, gFrameIntervalSeconds.value(),
+                           build_mode_scale);
             if (sDrone.previousPose.valid && sDrone.currentPose.valid)
             {
                 sDrone.drone.seedFromHistory(

@@ -683,21 +683,52 @@ LLFlycamDrone::RenderPose LLFlycamDrone::renderPose() const
 
 void LLFlycamDrone::pauseAtRenderPose()
 {
-    const RenderPose pose = renderPose();
+    const F32 alpha = mParams.tick > 0.f
+        ? clampf(static_cast<F32>(mAccumulator / mParams.tick), 0.f, 1.f) : 0.f;
+    // Coefficients, pending changes, latches and event flags are discrete.
+    // Section 11.2.1 does not define a blend or nearest-state rule for them,
+    // so retain the current state's values.
     State paused = mCur;
-    paused.position = pose.position;
-    paused.yaw = pose.yaw;
-    paused.tilt = pose.tilt;
-    paused.roll = pose.roll;
-    if (finite(paused) && finiteQuaternion(pose.rotation))
+    const auto interpolate = [alpha](F32 previous, F32 current)
     {
+        return previous + (current - previous) * alpha;
+    };
+    const auto interpolateVector = [alpha](const LLVector3& previous,
+                                            const LLVector3& current)
+    {
+        return previous + (current - previous) * alpha;
+    };
+
+    paused.position = interpolateVector(mPrev.position, mCur.position);
+    paused.referenceVelocity = interpolateVector(mPrev.referenceVelocity,
+                                                  mCur.referenceVelocity);
+    paused.smootherVelocity = interpolateVector(mPrev.smootherVelocity,
+                                                 mCur.smootherVelocity);
+    paused.velocity = interpolateVector(mPrev.velocity, mCur.velocity);
+    paused.deltaVelocity = interpolateVector(mPrev.deltaVelocity,
+                                              mCur.deltaVelocity);
+    paused.yaw = mPrev.yaw + wrap(mCur.yaw - mPrev.yaw) * alpha;
+    paused.yawVelocity = interpolate(mPrev.yawVelocity, mCur.yawVelocity);
+    paused.tilt = mPrev.tilt + wrap(mCur.tilt - mPrev.tilt) * alpha;
+    paused.tiltVelocity = interpolate(mPrev.tiltVelocity, mCur.tiltVelocity);
+    paused.roll = mPrev.roll + wrap(mCur.roll - mPrev.roll) * alpha;
+    paused.rollVelocity = interpolate(mPrev.rollVelocity, mCur.rollVelocity);
+    paused.tiltLimit = interpolate(mPrev.tiltLimit, mCur.tiltLimit);
+    // The retained history must bound both endpoints of the interrupted
+    // segment; interpolating it could incorrectly weaken G1.
+    paused.totalLimitMax = std::max(mPrev.totalLimitMax, mCur.totalLimitMax);
+
+    const LLQuaternion pausedRotation = rotation(paused.yaw, paused.tilt, paused.roll);
+    if (finite(paused) && finiteQuaternion(pausedRotation))
+    {
+        mPrev = paused;
         mCur = paused;
     }
     else
     {
-        log("DRONE NONFINITE pause pose ignored");
+        log("DRONE NONFINITE pause state ignored");
+        mPrev = mCur;
     }
-    mPrev = mCur;
     mAccumulator = 0.0;
 }
 

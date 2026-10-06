@@ -156,8 +156,8 @@ public:
     RenderPose advanceRaw(F64 frameDt, const Input& input);
     RenderPose renderPose() const;
 
-    // Section 11.2.1 SELF-Keep: materialize the last rendered pose as
-    // prev = cur and discard wall time, preserving all dynamic state.
+    // Section 11.2.1 SELF-Keep: materialize the last rendered dynamic state
+    // as prev = cur and discard the gap's wall time.
     void pauseAtRenderPose();
     // Section 11.3 Orbit ownership: discard wall time without changing state.
     void discardAccumulator();
