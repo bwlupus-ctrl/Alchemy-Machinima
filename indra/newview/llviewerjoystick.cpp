@@ -99,6 +99,20 @@ struct FlycamPoseSample
 
 struct FlycamDroneRuntime
 {
+    bool nonFiniteSinceReport = false;
+    bool boundAccelerationSinceReport = false;
+    bool boundJerkSinceReport = false;
+    bool backlogSinceReport = false;
+    bool triggersStale = false;
+    F64 reportSeconds = 0.0;
+    F64 triggerStaleSeconds = 0.0;
+    U64 reportSteps = 0;
+    U64 reportClamps = 0;
+    F32 maxVelocity = 0.f;
+    F32 maxAcceleration = 0.f;
+    F32 maxJerk = 0.f;
+    F32 accelerationLimitAtMax = 0.f;
+    F32 jerkLimitAtMax = 0.f;
     LLFlycamDrone drone;
     LLFlycamDrone::Params baseParams;
     LLFlycamDrone::HumanParams accepted =
@@ -117,7 +131,20 @@ struct FlycamDroneRuntime
     F32 buildScale = 1.f;
     bool buildScaleValid = false;
 
-    FlycamDroneRuntime() : baseParams(drone.params()) {}
+    FlycamDroneRuntime()
+    : drone(LLFlycamDrone().params(), [this](const std::string& message)
+      {
+          if (message.compare(0, 15, "DRONE NONFINITE") == 0)
+          {
+              nonFiniteSinceReport = true;
+          }
+          else if (message.compare(0, 18, "DRONE ORIGIN-SHIFT") == 0)
+          {
+              LL_INFOS("FlycamDrone") << message << LL_ENDL;
+          }
+      }),
+      baseParams(drone.params())
+    {}
 };
 
 struct FlycamDroneSettings
@@ -201,6 +228,48 @@ bool sameHumanParams(const LLFlycamDrone::HumanParams& a,
         a.freeFly == b.freeFly;
 }
 
+void logDroneClamp(FlycamDroneRuntime& runtime, const char* name,
+                   F32 requested, F32 applied)
+{
+    if (sameSetting(requested, applied))
+        return;
+    LL_INFOS("FlycamDrone") << "DRONE CLAMP " << name << ' ' << requested
+        << "\xE2\x86\x92" << applied << LL_ENDL;
+    ++runtime.reportClamps;
+}
+
+const char* dronePresetName(S32 preset)
+{
+    const auto& presets = LLFlycamDrone::presets();
+    return preset >= 0 && preset < static_cast<S32>(presets.size())
+        ? presets[static_cast<std::size_t>(preset)].name : "Custom";
+}
+
+void logDroneValidation(FlycamDroneRuntime& runtime,
+                        const LLFlycamDrone::HumanParams& requested,
+                        const LLFlycamDrone::HumanParams& applied,
+                        F32 requestedHz, const LLFlycamDrone::Params& compiled,
+                        F32 requestedRoll)
+{
+    logDroneClamp(runtime, "cruise", requested.cruise, applied.cruise);
+    logDroneClamp(runtime, "top", requested.top, applied.top);
+    logDroneClamp(runtime, "timeToTop", requested.timeToTop, applied.timeToTop);
+    logDroneClamp(runtime, "stopDistance", requested.stopDistance, applied.stopDistance);
+    logDroneClamp(runtime, "holdTime", requested.holdTime, applied.holdTime);
+    logDroneClamp(runtime, "coastTime", requested.coastTime, applied.coastTime);
+    logDroneClamp(runtime, "highSpeedFloat", requested.highSpeedFloat, applied.highSpeedFloat);
+    logDroneClamp(runtime, "onset", requested.onset, applied.onset);
+    logDroneClamp(runtime, "grip", requested.grip, applied.grip);
+    logDroneClamp(runtime, "turnRate", requested.turnRateDegrees, applied.turnRateDegrees);
+    logDroneClamp(runtime, "turnWeight", requested.turnWeight, applied.turnWeight);
+    logDroneClamp(runtime, "tiltRate", requested.tiltRateDegrees, applied.tiltRateDegrees);
+    logDroneClamp(runtime, "climb", requested.climb, applied.climb);
+    logDroneClamp(runtime, "climbTime", requested.climbTime, applied.climbTime);
+    const F32 applied_hz = compiled.tick > 0.f ? 1.f / compiled.tick : 0.f;
+    logDroneClamp(runtime, "simulationHz", requestedHz, applied_hz);
+    logDroneClamp(runtime, "rollRate", requestedRoll, compiled.rollRate);
+}
+
 void shapeRadial(F32& x, F32& y, F32 deadzone, F32 saturation, F32 expo)
 {
     const F32 radius = sqrtf(x * x + y * y);
@@ -280,15 +349,17 @@ void configureDrone(FlycamDroneRuntime& runtime, F32 rollRate,
     requested.freeFly = s.freeFly;
 
     LLFlycamDrone::Params compiled = runtime.baseParams;
-    const F32 requested_tick = 1.f / (F32)s.simulationHz;
+    const F32 requested_hz = s.simulationHz;
+    const F32 requested_tick = 1.f / requested_hz;
     const F32 requested_roll = fabsf(rollRate);
     if (!runtime.haveRequested || !sameHumanParams(requested, runtime.lastRequested) ||
         !sameSetting(requested_tick, runtime.lastRequestedTick) ||
         !sameSetting(requested_roll, runtime.lastRequestedRoll))
     {
         LLFlycamDrone::compile(requested, runtime.accepted, requested_tick,
-            requested_roll, compiled, &runtime.accepted,
-            [](const std::string& message) { LL_INFOS("FlycamDrone") << message << LL_ENDL; });
+            requested_roll, compiled, &runtime.accepted);
+        logDroneValidation(runtime, requested, runtime.accepted, requested_hz,
+                           compiled, requested_roll);
         runtime.lastRequested = requested;
         runtime.lastRequestedTick = requested_tick;
         runtime.lastRequestedRoll = requested_roll;
@@ -2094,8 +2165,6 @@ void LLViewerJoystick::moveFlycam(bool reset)
             sFlycamPosition += delta;
             if (sDrone.haveLastDronePose)
                 sDrone.lastDronePose.position += delta;
-            LL_INFOS("FlycamDrone") << "DRONE ORIGIN-SHIFT |delta|="
-                << delta.length() << LL_ENDL;
         }
 
         if (tagged_dispatch)
@@ -2130,7 +2199,8 @@ void LLViewerJoystick::moveFlycam(bool reset)
                             sDrone.lastDronePose = sDrone.drone.renderPose();
                             sFlycamPosition = sDrone.lastDronePose.position;
                             sFlycamRotation = sDrone.lastDronePose.rotation;
-                            outcome = "keep";
+                            outcome = llformat("keep v=%.3f",
+                                sDrone.drone.state().velocity.length());
                         }
                         LL_INFOS("FlycamDrone") << "DRONE OWNER-REGAIN self momentum="
                             << outcome << LL_ENDL;
@@ -2342,15 +2412,117 @@ void LLViewerJoystick::moveFlycam(bool reset)
                 droneSettings().triggerDeadzone, droneSettings().triggerCurve,
                 input.throttle, input.brake);
         }
-        const F64 frame_dt = std::isfinite(gFrameIntervalSeconds.value())
-            ? llclamp((F64)gFrameIntervalSeconds.value(), 0.0, .25) : 0.0;
+        const F64 elapsed_dt = std::isfinite(gFrameIntervalSeconds.value())
+            ? llmax((F64)gFrameIntervalSeconds.value(), 0.0) : 0.0;
+        const F64 frame_dt = llmin(elapsed_dt, .25);
+        if (mXIMode == 1 && gFocusMgr.getAppHasFocus())
+        {
+            if (trigger_fresh)
+            {
+                sDrone.triggerStaleSeconds = 0.0;
+                sDrone.triggersStale = false;
+            }
+            else
+            {
+                sDrone.triggerStaleSeconds += elapsed_dt;
+                if (sDrone.triggerStaleSeconds > 2.0 && !sDrone.triggersStale)
+                {
+                    LL_INFOS("FlycamDrone") << "DRONE TRIGGERS-STALE" << LL_ENDL;
+                    sDrone.triggersStale = true;
+                }
+            }
+        }
+        else
+        {
+            sDrone.triggerStaleSeconds = 0.0;
+            sDrone.triggersStale = false;
+        }
+        const F64 accumulator_before = sDrone.drone.accumulator();
+        const F32 tick = sDrone.drone.params().tick;
+        const U64 steps = tick > 0.f
+            ? static_cast<U64>(llmin(512.0, floor((accumulator_before + frame_dt + 1.0e-9) / tick)))
+            : 0;
         const bool executes_step = sDrone.drone.accumulator() + frame_dt + 1.0e-9 >=
-            sDrone.drone.params().tick;
+            tick;
         input.level = mXILevelPending;
         input.recentre = mXIRecentrePending;
 
+        // Measure every fixed tick, including frames which group several ticks.
+        // step() is pure with respect to model state; this shadow changes no
+        // camera behaviour and allocates nothing on the normal path.
+        LLFlycamDrone::State measured = sDrone.drone.state();
+        for (U64 step_number = 0; step_number < steps; ++step_number)
+        {
+            const LLFlycamDrone::State next = sDrone.drone.step(measured, input, tick);
+            const F32 acceleration = tick > 0.f
+                ? next.deltaVelocity.length() / tick : 0.f;
+            const F32 jerk = tick > 0.f
+                ? (next.deltaVelocity - measured.deltaVelocity).length() / (tick * tick) : 0.f;
+            sDrone.maxVelocity = llmax(sDrone.maxVelocity, next.velocity.length());
+            const F32 acceleration_limit = next.totalLimitMax;
+            const F32 jerk_limit = LLFlycamDrone::effectiveJerk(
+                next.pole, next.totalLimitMax, tick);
+            if (acceleration >= sDrone.maxAcceleration)
+            {
+                sDrone.maxAcceleration = acceleration;
+                sDrone.accelerationLimitAtMax = acceleration_limit;
+            }
+            if (jerk >= sDrone.maxJerk)
+            {
+                sDrone.maxJerk = jerk;
+                sDrone.jerkLimitAtMax = jerk_limit;
+            }
+            if (acceleration > acceleration_limit * 1.001f &&
+                !sDrone.boundAccelerationSinceReport)
+            {
+                sDrone.boundAccelerationSinceReport = true;
+            }
+            if (jerk > jerk_limit * 1.001f && !sDrone.boundJerkSinceReport)
+            {
+                sDrone.boundJerkSinceReport = true;
+            }
+            measured = next;
+        }
+
         const LLFlycamDrone::RenderPose pose =
             sDrone.drone.advance(gFrameIntervalSeconds.value(), input);
+        sDrone.reportSeconds += elapsed_dt;
+        sDrone.reportSteps += steps;
+        if (sDrone.drone.accumulator() > .1 && !sDrone.backlogSinceReport)
+        {
+            LL_INFOS("FlycamDrone") << "DRONE BACKLOG "
+                << sDrone.drone.accumulator() << LL_ENDL;
+            sDrone.backlogSinceReport = true;
+        }
+        if (sDrone.reportSeconds >= 5.0)
+        {
+            const char* verdict = sDrone.nonFiniteSinceReport ? "DRONE NONFINITE" :
+                sDrone.boundAccelerationSinceReport ? "DRONE BOUND-EXCEEDED acc" :
+                sDrone.boundJerkSinceReport ? "DRONE BOUND-EXCEEDED jerk" : "DRONE OK";
+            LL_INFOS("FlycamDrone") << verdict
+                << " preset=" << dronePresetName(droneSettings().preset)
+                << " hz=" << (tick > 0.f ? 1.f / tick : 0.f)
+                << " steps/s=" << (sDrone.reportSteps / sDrone.reportSeconds)
+                << " backlog=" << sDrone.drone.accumulator()
+                << " vmax=" << sDrone.maxVelocity
+                << " acc_max_seen=" << sDrone.maxAcceleration
+                << " (L_tot=" << sDrone.accelerationLimitAtMax << ')'
+                << " jerk_max_seen=" << sDrone.maxJerk
+                << " (J_eff=" << sDrone.jerkLimitAtMax << ')'
+                << " clamps=" << sDrone.reportClamps << LL_ENDL;
+            sDrone.reportSeconds = 0.0;
+            sDrone.reportSteps = 0;
+            sDrone.reportClamps = 0;
+            sDrone.maxVelocity = 0.f;
+            sDrone.maxAcceleration = 0.f;
+            sDrone.maxJerk = 0.f;
+            sDrone.accelerationLimitAtMax = 0.f;
+            sDrone.jerkLimitAtMax = 0.f;
+            sDrone.nonFiniteSinceReport = false;
+            sDrone.boundAccelerationSinceReport = false;
+            sDrone.boundJerkSinceReport = false;
+            sDrone.backlogSinceReport = false;
+        }
         if (executes_step)
         {
             if (input.level)
