@@ -189,6 +189,7 @@ set(viewer_SOURCE_FILES
     alfloatertransactionlog.cpp
     alsceneexplorerpredicate.cpp
     alfloaterwebprofile.cpp
+    alflycamclassic.cpp
     allegacynotificationwellwindow.cpp
     alobjectproperties.cpp
     alpanelaomini.cpp
@@ -348,6 +349,7 @@ set(viewer_SOURCE_FILES
     alpanelflycamorbit.cpp
     alpanelflycamrecorder.cpp
     alpanelpatheditor.cpp
+    llflycamdrone.cpp
     llflycamrecorder.cpp
     llpathcamera.cpp
     llcefaccelinterop.cpp
@@ -1061,6 +1063,7 @@ set(viewer_HEADER_FILES
     alfloatertransactionlog.h
     alsceneexplorerpredicate.h
     alfloaterwebprofile.h
+    alflycamclassic.h
     allegacynotificationwellwindow.h
     alobjectproperties.h
     alpanelaomini.h
@@ -1238,6 +1241,7 @@ set(viewer_HEADER_FILES
     alpanelflycamorbit.h
     alpanelflycamrecorder.h
     alpanelpatheditor.h
+    llflycamdrone.h
     llflycamrecorder.h
     llpathcamera.h
     llcapabilityprovider.h

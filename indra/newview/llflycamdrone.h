@@ -1,0 +1,195 @@
+/**
+ * @file llflycamdrone.h
+ * @brief Pure fixed-step simulation for the flycam Drone flight model.
+ */
+#ifndef LL_LLFLYCAMDRONE_H
+#define LL_LLFLYCAMDRONE_H
+
+#include "llquaternion.h"
+#include "v3dmath.h"
+#include "v3math.h"
+
+#include <array>
+#include <cstddef>
+#include <functional>
+#include <string>
+#include <vector>
+
+class LLFlycamDrone
+{
+public:
+    enum class ReleaseMode { HOLD, DRIFT };
+    enum class ThrottleMode { ASSIST, PURE };
+    enum class PresetId { CINE, NORMAL, SPORT, DOLLY, FPV, COUNT };
+
+    struct HumanParams
+    {
+        F32 cruise = 4.f;
+        F32 top = 12.f;
+        F32 timeToTop = 2.f;
+        F32 stopDistance = 10.f;
+        F32 holdTime = .8f;
+        F32 coastTime = 4.f;
+        F32 highSpeedFloat = .5f;
+        F32 onset = .1f;
+        F32 grip = .6f;
+        F32 turnRateDegrees = 70.f;
+        F32 turnWeight = .5f;
+        F32 tiltRateDegrees = 50.f;
+        F32 climb = 2.f;
+        F32 climbTime = .8f;
+        ReleaseMode release = ReleaseMode::HOLD;
+        ThrottleMode throttleMode = ThrottleMode::ASSIST;
+        bool freeFly = false;
+    };
+
+    struct Preset
+    {
+        const char* name;
+        HumanParams human;
+    };
+
+    struct Params
+    {
+        F32 cruise = 4.f;
+        F32 top = 12.f;
+        F32 acceleration = 0.f;
+        F32 deceleration = 0.f;
+        F32 brakeDeceleration = 0.f;
+        F32 dragLinear = 0.f;
+        F32 dragQuadratic = 0.f;
+        F32 grip = .6f;
+        F32 climbSpeed = 2.f;
+        F32 climbAcceleration = 0.f;
+        F32 pole = 0.f;
+        F32 yawRate = 0.f;
+        F32 speedReference = 1.f;
+        F32 yawAcceleration = 0.f;
+        F32 tiltRate = 0.f;
+        F32 tiltAcceleration = 0.f;
+        F32 rollRate = 0.f;
+        F32 rollAcceleration = 0.f;
+        F32 velocityCap = 0.f;
+        F32 horizontalLimit = 0.f;
+        F32 dragLimit = 0.f;
+        F32 totalLimit = 0.f;
+        F32 gMax = 0.f;
+        F32 effectiveJerk = 0.f;
+        F32 tick = 1.f / 120.f;
+        ReleaseMode release = ReleaseMode::HOLD;
+        ThrottleMode throttleMode = ThrottleMode::ASSIST;
+        bool freeFly = false;
+        bool autoLevel = false;
+        F32 yawExpo = .45f;
+        F32 gimbalExpo = .45f;
+    };
+
+    struct Input
+    {
+        // Move is (forward, left). Values supplied here are post dead-zone.
+        LLVector3 move;
+        F32 throttle = 0.f;
+        F32 brake = 0.f;
+        F32 vertical = 0.f;
+        F32 yaw = 0.f;
+        F32 tilt = 0.f;
+        F32 roll = 0.f;
+        bool level = false;
+        bool recentre = false;
+    };
+
+    struct State
+    {
+        LLVector3 position;
+        LLVector3 referenceVelocity;
+        LLVector3 smootherVelocity;
+        LLVector3 velocity;
+        LLVector3 deltaVelocity;
+        F32 yaw = 0.f;
+        F32 yawVelocity = 0.f;
+        F32 tilt = 0.f;
+        F32 tiltVelocity = 0.f;
+        F32 roll = 0.f;
+        F32 rollVelocity = 0.f;
+        F32 quaternionSign = 1.f;
+        F32 tiltLimit = 0.f;
+        F32 pole = 0.f;
+        F32 pendingPole = 0.f;
+        F32 totalLimitMax = 0.f;
+        bool hasPendingPole = false;
+        bool recentre = false;
+        bool snapped = false;
+        bool settled = false;
+        bool nonFiniteRecovered = false;
+    };
+
+    struct RenderPose
+    {
+        LLVector3 position;
+        LLQuaternion rotation;
+        F32 yaw = 0.f;
+        F32 tilt = 0.f;
+        F32 roll = 0.f;
+    };
+
+    using Logger = std::function<void(const std::string&)>;
+
+    LLFlycamDrone();
+    explicit LLFlycamDrone(const Params& params, Logger logger = Logger());
+
+    static const std::array<Preset, static_cast<std::size_t>(PresetId::COUNT)>& presets();
+    static bool compile(const HumanParams& requested, const HumanParams& previous,
+                        F32 tick, F32 rollRate, Params& compiled,
+                        HumanParams* accepted = nullptr, Logger logger = Logger());
+
+    void setParams(const Params& params);
+    const Params& params() const { return mParams; }
+    const State& state() const { return mCur; }
+    const State& previousState() const { return mPrev; }
+    F64 accumulator() const { return mAccumulator; }
+
+    State step(const State& state, const Input& input, F32 tick) const;
+    RenderPose advance(F64 frameDt, const Input& input);
+    RenderPose advanceRaw(F64 frameDt, const Input& input);
+    RenderPose renderPose() const;
+
+    void seed(const LLVector3& position, const LLQuaternion& rotation,
+              const LLVector3& velocity = LLVector3::zero,
+              const LLVector3d& originTag = LLVector3d::zero,
+              const State* prior = nullptr);
+    void seedFromHistory(const LLVector3d& previousGlobal, const LLQuaternion& previousRotation,
+                         const LLVector3d& currentGlobal, const LLQuaternion& currentRotation,
+                         F64 frameDt, const LLVector3d& originTag,
+                         const State* prior = nullptr);
+    std::array<F32, 6> classicSeed(F32 frameDt) const;
+
+    // Re-express all owned agent-space positions in a new agent origin.
+    bool applyOrigin(const LLVector3d& newOrigin);
+    const LLVector3d& originTag() const { return mOriginTag; }
+    bool hasOriginTag() const { return mHasOriginTag; }
+
+    static LLQuaternion rotation(F32 yaw, F32 tilt, F32 roll);
+    static void decompose(const LLQuaternion& rotation, const State* prior,
+                          F32& yaw, F32& tilt, F32& roll);
+    static void seededRates(const LLQuaternion& previous, const LLQuaternion& current,
+                            F64 frameDt, F32 yaw, F32 tilt,
+                            const Params& params, F32& yawRate,
+                            F32& tiltRate, F32& rollRate);
+    static F32 gMax(F32 pole);
+    static F32 effectiveJerk(F32 pole, F32 totalLimit, F32 tick);
+
+private:
+    RenderPose advanceImpl(F64 frameDt, const Input& input, bool clampFrame);
+    static bool finite(const State& state);
+    void log(const std::string& message) const;
+
+    Params mParams;
+    State mPrev;
+    State mCur;
+    F64 mAccumulator = 0.0;
+    LLVector3d mOriginTag;
+    bool mHasOriginTag = false;
+    Logger mLogger;
+};
+
+#endif

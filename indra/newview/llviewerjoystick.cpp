@@ -27,6 +27,7 @@
 #include "llviewerprecompiledheaders.h"
 
 #include "llviewerjoystick.h"
+#include "alflycamclassic.h"
 #include "alxinputmath.h"
 #include "alcinelightrig.h"
 #include "alcinelightrigmanager.h"
@@ -1764,267 +1765,60 @@ void LLViewerJoystick::moveFlycam(bool reset)
     }
 
     static LLCachedControl<F32> build_mode_scale(gSavedSettings, "FlycamBuildModeScale", 1.0);
-
     static LLCachedControl<bool> blackdragon(gSavedSettings, "BlackDragonControls", false);
-    if (blackdragon)
+
+    ALFlycamClassic::Input classic_input;
+    for (U32 i = 0; i < ALFlycamClassic::AXIS_COUNT; ++i)
     {
-        F32 time = gFrameIntervalSeconds.value();
-
-        //BD - Avoid making ridiculously big movements if there's a big drop in fps
-        time = llclamp(time, 0.016f, 0.033f);
-
-        F32 flycam_feather = mFlycamFeathering;
-        F32 cur_delta[MAX_AXES];
-        F32 max_angle = LLViewerCamera::getInstance()->getMaxView();
-        F32 min_angle = LLViewerCamera::getInstance()->getMinView();
-
-        //BD - Slam zoom back to default and kill any delta we might have.
-        if (getJoystickButton(mMappedButtons[ZOOM_DEFAULT]) == 1)
-        {
-            sFlycamZoom = gSavedSettings.getF32("CameraAngle");
-            sDelta[CAM_W_AXIS] = 0.0f;
-        }
-
-        //BD - Only smooth flycam zoom if we are not capping at the min/max otherwise the feathering
-        //     ends up working against previous input, delaying zoom in movement when we just zoomed
-        //     out beyond capped max for a bit and vise versa.
-        if ((sFlycamZoom <= min_angle
-            || sFlycamZoom >= max_angle))
-        {
-            flycam_feather = 3.0f;
-        }
-
-        bool is_zero = true;
-        for (U32 i = 0; i < 7; i++)
-        {
-            cur_delta[i] = -getFlycamAxis(mJoystickAxis[i]);
-
-            if (i == CAM_W_AXIS)
-            {
-                cur_delta[i] -= (F32)getJoystickButton(mMappedButtons[ZOOM_OUT]);
-                cur_delta[i] += (F32)getJoystickButton(mMappedButtons[ZOOM_IN]);
-            }
-            if (i == Z_AXIS)
-            {
-                cur_delta[i] += (F32)getJoystickButton(mMappedButtons[JUMP]);
-                cur_delta[i] -= (F32)getJoystickButton(mMappedButtons[CROUCH]);
-            }
-            if (i == CAM_X_AXIS)
-            {
-                cur_delta[i] -= (F32)getJoystickButton(mMappedButtons[ROLL_LEFT]);
-                cur_delta[i] += (F32)getJoystickButton(mMappedButtons[ROLL_RIGHT]);
-            }
-
-            F32 tmp = cur_delta[i];
-            F32 axis_deadzone = mFlycamAxisDeadZone[i];
-            if (m3DCursor || llabs(cur_delta[i]) < axis_deadzone)
-            {
-                cur_delta[i] = cur_delta[i] - sLastDelta[i];
-            }
-            sLastDelta[i] = tmp;
-
-            //BD - We assume that delta 1.0 is the maximum.
-            if (llabs(cur_delta[i]) > axis_deadzone)
-            {
-                //BD - Clamp the delta between 1 and -1 while taking the deadzone into account.
-                if (cur_delta[i] > 0)
-                {
-                    cur_delta[i] = llclamp(cur_delta[i] - axis_deadzone, 0.f, 1.f - axis_deadzone);
-                }
-                else
-                {
-                    cur_delta[i] = llclamp(cur_delta[i] + axis_deadzone, -1.f + axis_deadzone, 0.f);
-                }
-                //BD - Rescale the remaining delta to match the maximum to get a new clean 0 to 1 range.
-                cur_delta[i] = cur_delta[i] / (1.f - axis_deadzone);
-            }
-
-            if (mXITakeover && mXIMode == 0 && i == CAM_X_AXIS)
-                cur_delta[i] = llclamp(cur_delta[i] + trigger_roll, -1.f, 1.f);
-            // [XInputPad] Throttle scales movement AND pan/tilt/roll; zoom (CAM_W) excluded.
-            if (mXITakeover && i <= CAM_Z_AXIS && trigger_throttle != 1.f)
-                cur_delta[i] *= trigger_throttle;
-
-            // We may want to scale camera movements up or down in build mode.
-            // NOTE: this needs to remain after the deadzone calculation, otherwise
-            // we have issues with flycam "jumping" when the build dialog is opened/closed  -Nyx
-            if (LLToolMgr::getInstance()->inBuildMode())
-            {
-                if (i == X_I || i == Y_I || i == Z_I)
-                {
-                    cur_delta[i] *= build_mode_scale;
-                }
-            }
-
-            cur_delta[i] *= mFlycamAxisScale[i];
-
-            if (!m3DCursor)
-            {
-                cur_delta[i] *= time;
-            }
-
-            sDelta[i] = sDelta[i] + (cur_delta[i] - sDelta[i]) * time * flycam_feather;
-            is_zero = is_zero && (cur_delta[i] == 0.f);
-        }
-
-    //  //BD - Invertable Pitch Controls
-        if (mInvertPitch)
-            cur_delta[CAM_Y_AXIS] = -cur_delta[CAM_Y_AXIS];
-
-        // Clear AFK state if moved beyond the deadzone
-        if (!is_zero && gAwayTimer.getElapsedTimeF32() > LLAgent::MIN_AFK_TIME)
-        {
-            gAgent.clearAFK();
-        }
-
-        sFlycamPosition += LLVector3(sDelta.data()) * sFlycamRotation;
-        LLMatrix3 rot_mat(sDelta[CAM_X_AXIS], sDelta[CAM_Y_AXIS], sDelta[CAM_Z_AXIS]);
-        sFlycamRotation = LLQuaternion(rot_mat)*sFlycamRotation;
-
-        if (level_horizon || mAutoLeveling || getJoystickButton(mMappedButtons[ROLL_DEFAULT]) == 1)
-        {
-            LLMatrix3 level(sFlycamRotation);
-
-            LLVector3 x = LLVector3(level.mMatrix[0]);
-            LLVector3 y = LLVector3(level.mMatrix[1]);
-            LLVector3 z = LLVector3(level.mMatrix[2]);
-
-            y.mV[2] = 0.f;
-            y.normVec();
-
-            level.setRows(x,y,z);
-            level.orthogonalize();
-
-            LLQuaternion quat(level);
-            LLQuaternion lerp = nlerp(llmin(flycam_feather * time, 1.f), sFlycamRotation, quat);
-            sFlycamRotation = level_horizon || getJoystickButton(mMappedButtons[ROLL_DEFAULT]) == 1 ? quat : lerp;
-        }
-
-        if (mZoomDirect)
-        {
-            sFlycamZoom = sLastDelta[CAM_W_AXIS] * mFlycamAxisScale[FLYCAM_AXIS_6] + mFlycamAxisScale[FLYCAM_AXIS_6];
-        }
-        else
-        {
-            //BD - We need to cap zoom otherwise it internally counts higher causing
-            //     the zoom level to not react until that extra has been removed first.
-            sFlycamZoom = llclamp(sFlycamZoom + sDelta[CAM_W_AXIS], LLViewerCamera::getInstance()->getMinView(), LLViewerCamera::getInstance()->getMaxView());
-        }
+        classic_input.axis[i] = getFlycamAxis(mJoystickAxis[i]);
+        classic_input.axisDeadZone[i] = mFlycamAxisDeadZone[i];
+        classic_input.axisScale[i] = mFlycamAxisScale[i];
     }
-    else
+    classic_input.frameIntervalSeconds = gFrameIntervalSeconds.value();
+    classic_input.flycamFeathering = mFlycamFeathering;
+    classic_input.buildModeScale = build_mode_scale;
+    classic_input.minView = LLViewerCamera::getInstance()->getMinView();
+    classic_input.maxView = LLViewerCamera::getInstance()->getMaxView();
+    classic_input.cameraAngle = gSavedSettings.getF32("CameraAngle");
+    classic_input.triggerRoll = trigger_roll;
+    classic_input.triggerThrottle = trigger_throttle;
+    classic_input.zoomDefault = getJoystickButton(mMappedButtons[ZOOM_DEFAULT]);
+    classic_input.zoomOut = getJoystickButton(mMappedButtons[ZOOM_OUT]);
+    classic_input.zoomIn = getJoystickButton(mMappedButtons[ZOOM_IN]);
+    classic_input.jump = getJoystickButton(mMappedButtons[JUMP]);
+    classic_input.crouch = getJoystickButton(mMappedButtons[CROUCH]);
+    classic_input.rollLeft = getJoystickButton(mMappedButtons[ROLL_LEFT]);
+    classic_input.rollRight = getJoystickButton(mMappedButtons[ROLL_RIGHT]);
+    classic_input.rollDefault = getJoystickButton(mMappedButtons[ROLL_DEFAULT]);
+    classic_input.xiMode = mXIMode;
+    classic_input.blackDragon = blackdragon;
+    classic_input.cursor3D = m3DCursor;
+    classic_input.xiTakeover = mXITakeover;
+    classic_input.buildMode = in_build_mode;
+    classic_input.invertPitch = mInvertPitch;
+    classic_input.autoLeveling = mAutoLeveling;
+    classic_input.zoomDirect = mZoomDirect;
+    classic_input.levelHorizon = level_horizon;
+
+    ALFlycamClassic::State classic_state =
     {
-        F32 time = gFrameIntervalSeconds.value();
+        sLastDelta,
+        sDelta,
+        sFlycamPosition,
+        sFlycamRotation,
+        sFlycamZoom
+    };
+    const ALFlycamClassic::Intermediate classic_intermediate =
+        ALFlycamClassic::integrateDeltas(classic_input, classic_state);
 
-        // avoid making ridiculously big movements if there's a big drop in fps
-        if (time > .2f)
-        {
-            time = .2f;
-        }
-
-        F32 cur_delta[7];
-        F32 feather = mFlycamFeathering;
-        bool absolute = m3DCursor;
-        bool is_zero = true;
-
-        for (U32 i = 0; i < 7; i++)
-        {
-            cur_delta[i] = -getFlycamAxis(mJoystickAxis[i]);
-
-            if (!mInvertPitch && i == 4)
-                cur_delta[i] = -cur_delta[i];
-
-            F32 tmp = cur_delta[i];
-            if (absolute)
-            {
-                cur_delta[i] = cur_delta[i] - sLastDelta[i];
-            }
-            sLastDelta[i] = tmp;
-
-            if (cur_delta[i] > 0)
-            {
-                cur_delta[i] = llmax(cur_delta[i]- mFlycamAxisDeadZone[i], 0.f);
-            }
-            else
-            {
-                cur_delta[i] = llmin(cur_delta[i]+ mFlycamAxisDeadZone[i], 0.f);
-            }
-
-            if (mXITakeover && mXIMode == 0 && i == CAM_X_AXIS)
-                cur_delta[i] = llclamp(cur_delta[i] + trigger_roll, -1.f, 1.f);
-            // [XInputPad] Throttle scales movement AND pan/tilt/roll; zoom (CAM_W) excluded.
-            if (mXITakeover && i <= CAM_Z_AXIS && trigger_throttle != 1.f)
-                cur_delta[i] *= trigger_throttle;
-
-            // We may want to scale camera movements up or down in build mode.
-            // NOTE: this needs to remain after the deadzone calculation, otherwise
-            // we have issues with flycam "jumping" when the build dialog is opened/closed  -Nyx
-            if (in_build_mode)
-            {
-                if (i == X_I || i == Y_I || i == Z_I)
-                {
-                    cur_delta[i] *= build_mode_scale;
-                }
-            }
-
-            cur_delta[i] *= mFlycamAxisScale[i];
-
-            if (!absolute)
-            {
-                cur_delta[i] *= time;
-            }
-
-            sDelta[i] = sDelta[i] + (cur_delta[i]-sDelta[i])*time*feather;
-
-            is_zero = is_zero && (cur_delta[i] == 0.f);
-
-        }
-
-        // Clear AFK state if moved beyond the deadzone
-        if (!is_zero && gAwayTimer.getElapsedTimeF32() > LLAgent::MIN_AFK_TIME)
-        {
-            gAgent.clearAFK();
-        }
-
-        sFlycamPosition += LLVector3(sDelta.data()) * sFlycamRotation;
-
-        LLMatrix3 rot_mat(sDelta[3], sDelta[4], sDelta[5]);
-        sFlycamRotation = LLQuaternion(rot_mat)*sFlycamRotation;
-
-        if (level_horizon || mAutoLeveling)
-        {
-            LLMatrix3 level(sFlycamRotation);
-
-            LLVector3 x = LLVector3(level.mMatrix[0]);
-            LLVector3 y = LLVector3(level.mMatrix[1]);
-            LLVector3 z = LLVector3(level.mMatrix[2]);
-
-            y.mV[2] = 0.f;
-            y.normVec();
-
-            level.setRows(x,y,z);
-            level.orthogonalize();
-
-            LLQuaternion quat(level);
-            sFlycamRotation = level_horizon ? quat : nlerp(llmin(feather*time,1.f), sFlycamRotation, quat);
-        }
-
-        if (mZoomDirect)
-        {
-            sFlycamZoom = sLastDelta[6]* mFlycamAxisScale[6]+ mFlycamAxisDeadZone[6];
-        }
-        else
-        {
-            //BD - We need to cap zoom otherwise it internally counts higher causing
-            //     the zoom level to not react until that extra has been removed first.
-            sFlycamZoom = llclamp(sFlycamZoom + sDelta[6], LLViewerCamera::getInstance()->getMinView(), LLViewerCamera::getInstance()->getMaxView());
-        }
+    // Clear AFK state if moved beyond the deadzone
+    if (!classic_intermediate.isZero &&
+        gAwayTimer.getElapsedTimeF32() > LLAgent::MIN_AFK_TIME)
+    {
+        gAgent.clearAFK();
     }
 
-    if (level_horizon)
-    {
-        sDelta[CAM_X_AXIS] = 0.f;
-        sLastDelta[CAM_X_AXIS] = -getFlycamAxis(mJoystickAxis[CAM_X_AXIS]);
-    }
+    ALFlycamClassic::finishIntegration(classic_input, classic_intermediate, classic_state);
 
     // [machinima] Flycam Orbit: bone-locked stabilized orbit. When active, the
     // free-space pose integrated above is replaced by an orbit maintained

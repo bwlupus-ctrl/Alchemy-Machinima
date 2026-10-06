@@ -34,6 +34,15 @@ inline float throttle(float left, float right, float minimum, float maximum)
         : std::pow(maximum, right) * std::pow(minimum, left);
 }
 
+// Drone's clutch mode treats the triggers independently: RT is throttle and
+// LT is brake. The caller owns sample freshness/association gating.
+inline void droneTriggers(float left, float right, float deadzone, float curve,
+                          float& throttle_out, float& brake_out)
+{
+    throttle_out = shape(right, deadzone, curve);
+    brake_out = shape(left, deadzone, curve);
+}
+
 inline bool compatible(const int* axes, bool cursor)
 {
     if (cursor || axes[3] != 2) return false;
