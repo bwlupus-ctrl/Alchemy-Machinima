@@ -61,7 +61,7 @@ void ALPanelFlycamRecorder::setToolTipIfChanged(LLUICtrl* ctrl, const std::strin
 
 bool ALPanelFlycamRecorder::postBuild()
 {
-    LLComboBox* preset = getChild<LLComboBox>("FlycamDronePreset");
+    mDronePreset = getChild<LLComboBox>("FlycamDronePreset");
     LLComboBox* release = getChild<LLComboBox>("FlycamDroneRelease");
     mRecordBtn  = getChild<LLButton>("btn_record");
     mPlayBtn    = getChild<LLButton>("btn_play");
@@ -81,19 +81,15 @@ bool ALPanelFlycamRecorder::postBuild()
     mLoadBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onLoad(); });
     mScrub->setCommitCallback([this](LLUICtrl*, const LLSD&) { onScrub(); });
 
-    preset->setCommitCallback([preset](LLUICtrl* control, const LLSD&)
+    mDronePreset->setCommitCallback([](LLUICtrl* control, const LLSD&)
     {
         const S32 selected = control ? control->getValue().asInteger() : 5;
         if (selected >= 0 && selected < 5)
             LLViewerJoystick::getInstance()->applyDronePreset(selected);
     });
-    release->setCommitCallback([preset](LLUICtrl*, const LLSD&)
+    release->setCommitCallback([](LLUICtrl*, const LLSD&)
     {
-        static const char* const names[] = { "Cine", "Normal", "Sport", "Dolly", "FPV" };
-        const S32 source = gSavedSettings.getS32("FlycamDronePreset");
-        gSavedSettings.setS32("FlycamDronePreset", 5);
-        if (source >= 0 && source < 5)
-            preset->setLabel(llformat("Custom (from %s)", names[source]));
+        LLViewerJoystick::getInstance()->markDronePresetCustom();
     });
 
     return true;
@@ -107,6 +103,28 @@ void ALPanelFlycamRecorder::draw()
     const F32 duration = rec.getDuration();
     const bool recording = (state == LLFlycamRecorder::STATE_RECORDING);
     const bool have_take = rec.getNumKeyframes() > 0;
+
+    LLViewerJoystick* joystick = LLViewerJoystick::getInstance();
+    const U64 preset_revision = joystick->getDronePresetProvenanceRevision();
+    if (preset_revision != mDronePresetRevision)
+    {
+        mDronePresetRevision = preset_revision;
+        if (joystick->isDronePresetCustom())
+        {
+            static const char* const names[] = { "Cine", "Normal", "Sport", "Dolly", "FPV" };
+            const S32 source = llclamp(joystick->getDronePresetProvenance(), 0, 4);
+            const std::string label = llformat("Custom (from %s)", names[source]);
+            if (mDronePreset->getSimple() != label)
+                mDronePreset->setLabel(label);
+        }
+        else
+        {
+            static const char* const names[] = { "Cine", "Normal", "Sport", "Dolly", "FPV" };
+            const char* label = names[llclamp(joystick->getDronePresetProvenance(), 0, 4)];
+            if (mDronePreset->getSimple() != label)
+                mDronePreset->setLabel(label);
+        }
+    }
 
     // [UIPerfC1] diff-guarded labels / enables / texts
     setLabelIfChanged(mRecordBtn, recording ? std::string("Stop rec")

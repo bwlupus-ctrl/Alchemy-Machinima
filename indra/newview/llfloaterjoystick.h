@@ -124,6 +124,7 @@ private:
     LLTextBox       *mDroneValidation = nullptr;
     LLSliderCtrl    *mDroneTimeSliders[5]{};
     LLSliderCtrl    *mDroneStopDistance = nullptr;
+    U64             mDronePresetRevision = 0;
 
     bool mHasDeviceList;
 

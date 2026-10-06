@@ -143,6 +143,12 @@ public:
     void setXboxDefaults();
     bool applyDronePreset(S32 preset);
     LLFlycamDrone::CompiledValues getDroneCompiledValues() const;
+    LLFlycamDrone::HumanParams getDroneAcceptedValues() const;
+    F32 getDroneCompiledTick() const;
+    void markDronePresetCustom();
+    S32 getDronePresetProvenance() const;
+    bool isDronePresetCustom() const;
+    U64 getDronePresetProvenanceRevision() const;
     void resetDroneSettings();
     bool isDeviceUUIDSet();
     LLSD getDeviceUUID(); //unconverted, OS dependent value wrapped into LLSD, for comparison/search

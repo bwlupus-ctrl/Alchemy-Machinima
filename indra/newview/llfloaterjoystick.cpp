@@ -73,10 +73,6 @@ static LLTrace::SampleStatHandle<>* sJoystickAxes[6] =
     &sJoystickAxis5
 };
 
-// Section 13 defines no persisted provenance setting. Keep it for this viewer
-// session so Custom can still say which named preset the operator edited.
-static S32 sDronePresetProvenance = 1;
-
 
 #if LL_WINDOWS && !LL_MESA_HEADLESS
 
@@ -198,11 +194,23 @@ void LLFloaterJoystick::refreshDronePresetLabel()
 {
     if (!mDronePreset)
         return;
-    if (gSavedSettings.getS32("FlycamDronePreset") == 5)
+    LLViewerJoystick* joystick = LLViewerJoystick::getInstance();
+    const U64 revision = joystick->getDronePresetProvenanceRevision();
+    if (revision == mDronePresetRevision)
+        return;
+    mDronePresetRevision = revision;
+    if (joystick->isDronePresetCustom())
     {
         static const char* const names[] = { "Cine", "Normal", "Sport", "Dolly", "FPV" };
-        const S32 source = llclamp(sDronePresetProvenance, 0, 4);
+        const S32 source = llclamp(joystick->getDronePresetProvenance(), 0, 4);
         const std::string label = llformat("Custom (from %s)", names[source]);
+        if (mDronePreset->getSimple() != label)
+            mDronePreset->setLabel(label);
+    }
+    else
+    {
+        static const char* const names[] = { "Cine", "Normal", "Sport", "Dolly", "FPV" };
+        const char* label = names[llclamp(joystick->getDronePresetProvenance(), 0, 4)];
         if (mDronePreset->getSimple() != label)
             mDronePreset->setLabel(label);
     }
@@ -213,20 +221,20 @@ void LLFloaterJoystick::refreshDroneReadouts()
     if (!mDroneLimits || !mDroneValidation || !isWidgetOnScreen(mDroneLimits))
         return;
 
-    const F32 hz = llclamp(gSavedSettings.getF32("FlycamDroneSimulationHz"), 30.f, 240.f);
-    const F32 min_time = 4.f / hz;
+    LLViewerJoystick* joystick = LLViewerJoystick::getInstance();
+    const LLFlycamDrone::CompiledValues values = joystick->getDroneCompiledValues();
+    const LLFlycamDrone::HumanParams accepted = joystick->getDroneAcceptedValues();
+    const F32 tick = joystick->getDroneCompiledTick();
+    const F32 min_time = 4.f * tick;
     for (LLSliderCtrl* slider : mDroneTimeSliders)
     {
-        if (slider)
+        if (slider && slider->getMinValue() != min_time)
             slider->setMinValue(min_time);
     }
-    const F32 stop_floor = gSavedSettings.getF32("FlycamDroneTop") *
-        (gSavedSettings.getF32("FlycamDroneOnset") + 2.f / hz);
-    if (mDroneStopDistance)
+    const F32 stop_floor = accepted.top * (accepted.onset + 2.f * tick);
+    if (mDroneStopDistance && mDroneStopDistance->getMinValue() != stop_floor)
         mDroneStopDistance->setMinValue(stop_floor);
 
-    const LLFlycamDrone::CompiledValues values =
-        LLViewerJoystick::getInstance()->getDroneCompiledValues();
     setTextIfChanged(mDroneLimits, llformat("L_tot %.2f m/s\xC2\xB2   J_eff %.2f m/s\xC2\xB3",
                                             values.totalLimit, values.effectiveJerk));
 
@@ -677,10 +685,7 @@ void LLFloaterJoystick::onCommitJoystickEnabled(LLUICtrl*, void *joy_panel)
 void LLFloaterJoystick::onCommitDroneTuning(LLUICtrl*, void* userdata)
 {
     LLFloaterJoystick* self = static_cast<LLFloaterJoystick*>(userdata);
-    const S32 current = gSavedSettings.getS32("FlycamDronePreset");
-    if (self && current >= 0 && current < 5)
-        sDronePresetProvenance = current;
-    gSavedSettings.setS32("FlycamDronePreset", 5); // Custom
+    LLViewerJoystick::getInstance()->markDronePresetCustom();
     if (self)
         self->refreshDronePresetLabel();
 }
@@ -699,9 +704,6 @@ void LLFloaterJoystick::onCommitDronePreset(LLUICtrl* control, void* userdata)
     const S32 preset = control ? control->getValue().asInteger() : 5;
     if (preset >= 0 && preset < 5)
     {
-        LLFloaterJoystick* self = static_cast<LLFloaterJoystick*>(userdata);
-        if (self)
-            sDronePresetProvenance = preset;
         LLViewerJoystick::getInstance()->applyDronePreset(preset);
     }
 }

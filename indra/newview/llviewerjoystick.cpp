@@ -36,6 +36,7 @@
 #include "llpresentationtime.h"
 
 #include "llframetimer.h"
+#include "llcallbacklist.h"
 #include "llnotificationsutil.h"
 #include "llpathcamera.h"       // clear a latched path-camera preview on flycam engage
 #include "llviewercontrol.h"
@@ -193,9 +194,104 @@ FlycamDroneSettings& droneSettings()
 
 LLFlycamDrone::CompiledValues& cachedDroneCompiledValues()
 {
-    static LLFlycamDrone defaults;
-    static LLFlycamDrone::CompiledValues values = defaults.compiledValues();
+    static LLFlycamDrone::CompiledValues values;
     return values;
+}
+
+struct DroneCompilePreviewCache
+{
+    LLFlycamDrone::HumanParams accepted =
+        LLFlycamDrone::presets()[static_cast<std::size_t>(LLFlycamDrone::PresetId::NORMAL)].human;
+    LLFlycamDrone::Params params;
+};
+
+DroneCompilePreviewCache& droneCompilePreviewCache()
+{
+    static DroneCompilePreviewCache cache;
+    return cache;
+}
+
+struct DronePresetProvenance
+{
+    S32 source = static_cast<S32>(LLFlycamDrone::PresetId::NORMAL);
+    bool custom = false;
+    U64 revision = 1;
+};
+
+DronePresetProvenance& dronePresetProvenance()
+{
+    static DronePresetProvenance provenance;
+    return provenance;
+}
+
+void syncDronePresetProvenance(S32 preset)
+{
+    DronePresetProvenance& provenance = dronePresetProvenance();
+    if (preset >= 0 && preset < static_cast<S32>(LLFlycamDrone::PresetId::COUNT))
+    {
+        provenance.source = preset;
+        provenance.custom = false;
+    }
+    else
+    {
+        provenance.custom = true;
+    }
+    ++provenance.revision;
+}
+
+LLFlycamDrone::HumanParams requestedDroneHumanParams()
+{
+    FlycamDroneSettings& s = droneSettings();
+    LLFlycamDrone::HumanParams requested;
+    requested.cruise = s.cruise;
+    requested.top = s.top;
+    requested.timeToTop = s.timeToTop;
+    requested.stopDistance = s.stopDistance;
+    requested.holdTime = s.holdTime;
+    requested.coastTime = s.coastTime;
+    requested.highSpeedFloat = s.highSpeedFloat;
+    requested.onset = s.onset;
+    requested.grip = s.grip;
+    requested.turnRateDegrees = s.turnRate;
+    requested.turnWeight = s.turnWeight;
+    requested.tiltRateDegrees = s.tiltRate;
+    requested.climb = s.climb;
+    requested.climbTime = s.climbTime;
+    requested.release = (S32)s.release == 1
+        ? LLFlycamDrone::ReleaseMode::DRIFT : LLFlycamDrone::ReleaseMode::HOLD;
+    requested.throttleMode = (S32)s.throttleMode == 1
+        ? LLFlycamDrone::ThrottleMode::PURE : LLFlycamDrone::ThrottleMode::ASSIST;
+    requested.freeFly = s.freeFly;
+    return requested;
+}
+
+U64& droneCompilePreviewGeneration()
+{
+    static U64 generation = 0;
+    return generation;
+}
+
+void refreshDroneCompilePreviewCache()
+{
+    DroneCompilePreviewCache& cache = droneCompilePreviewCache();
+    const LLFlycamDrone::HumanParams requested = requestedDroneHumanParams();
+    const F32 requested_hz = droneSettings().simulationHz;
+    LLFlycamDrone::compile(requested, cache.accepted, 1.f / requested_hz,
+        fabsf(gSavedSettings.getF32("FlycamAxisScale3")), cache.params, &cache.accepted);
+    cachedDroneCompiledValues() = { cache.params.totalLimit, cache.params.effectiveJerk,
+                                    cache.params.validationClamps };
+}
+
+void scheduleDroneCompilePreview()
+{
+    const U64 generation = ++droneCompilePreviewGeneration();
+    doAfterInterval([generation]()
+    {
+        if (generation == droneCompilePreviewGeneration())
+        {
+            refreshDroneCompilePreviewCache();
+        }
+    }, .15f);
 }
 
 F32 signedExpo(F32 value, F32 amount)
@@ -327,26 +423,7 @@ void configureDrone(FlycamDroneRuntime& runtime, F32 rollRate,
                     F32 buildModeScale)
 {
     FlycamDroneSettings& s = droneSettings();
-    LLFlycamDrone::HumanParams requested;
-    requested.cruise = s.cruise;
-    requested.top = s.top;
-    requested.timeToTop = s.timeToTop;
-    requested.stopDistance = s.stopDistance;
-    requested.holdTime = s.holdTime;
-    requested.coastTime = s.coastTime;
-    requested.highSpeedFloat = s.highSpeedFloat;
-    requested.onset = s.onset;
-    requested.grip = s.grip;
-    requested.turnRateDegrees = s.turnRate;
-    requested.turnWeight = s.turnWeight;
-    requested.tiltRateDegrees = s.tiltRate;
-    requested.climb = s.climb;
-    requested.climbTime = s.climbTime;
-    requested.release = (S32)s.release == 1
-        ? LLFlycamDrone::ReleaseMode::DRIFT : LLFlycamDrone::ReleaseMode::HOLD;
-    requested.throttleMode = (S32)s.throttleMode == 1
-        ? LLFlycamDrone::ThrottleMode::PURE : LLFlycamDrone::ThrottleMode::ASSIST;
-    requested.freeFly = s.freeFly;
+    const LLFlycamDrone::HumanParams requested = requestedDroneHumanParams();
 
     LLFlycamDrone::Params compiled = runtime.baseParams;
     const F32 requested_hz = s.simulationHz;
@@ -384,7 +461,6 @@ void configureDrone(FlycamDroneRuntime& runtime, F32 rollRate,
             (1.f - expf(-dt / .3f));
     }
     runtime.drone.setParams(buildScaledParams(compiled, runtime.buildScale));
-    cachedDroneCompiledValues() = runtime.drone.compiledValues();
 }
 }
 
@@ -876,7 +952,34 @@ LLViewerJoystick::LLViewerJoystick()
     gSavedSettings.getControl("JoystickButtonFlycam")->getCommitSignal()->connect([this](LLControlVariable* control, const LLSD& new_val, const LLSD& old_val) { refreshFromSettings(); });
     gSavedSettings.getControl("JoystickButtonRunToggle")->getCommitSignal()->connect([this](LLControlVariable* control, const LLSD& new_val, const LLSD& old_val) { refreshFromSettings(); });
 
+    static const char* const drone_compile_controls[] =
+    {
+        "FlycamDroneCruise", "FlycamDroneTop", "FlycamDroneTimeToTop",
+        "FlycamDroneStopDistance", "FlycamDroneHoldTime", "FlycamDroneCoastTime",
+        "FlycamDroneHighSpeedFloat", "FlycamDroneOnset", "FlycamDroneGrip",
+        "FlycamDroneTurnRate", "FlycamDroneTurnWeight", "FlycamDroneTiltRate",
+        "FlycamDroneClimb", "FlycamDroneClimbTime", "FlycamDroneRelease",
+        "FlycamDroneThrottleMode", "FlycamDroneFreeFly", "FlycamDroneSimulationHz",
+        "FlycamAxisScale3"
+    };
+    for (const char* name : drone_compile_controls)
+    {
+        gSavedSettings.getControl(name)->getCommitSignal()->connect(
+            [](LLControlVariable*, const LLSD&, const LLSD&)
+            {
+                scheduleDroneCompilePreview();
+            });
+    }
+
+    gSavedSettings.getControl("FlycamDronePreset")->getCommitSignal()->connect(
+        [](LLControlVariable*, const LLSD& value, const LLSD&)
+        {
+            syncDronePresetProvenance(value.asInteger());
+        });
+
     refreshFromSettings();
+    refreshDroneCompilePreviewCache();
+    syncDronePresetProvenance(gSavedSettings.getS32("FlycamDronePreset"));
 }
 
 // -----------------------------------------------------------------------------
@@ -3446,6 +3549,7 @@ void LLViewerJoystick::handleXInputDpad()
             }
             const S32 release = gSavedSettings.getS32("FlycamDroneRelease") == 1 ? 0 : 1;
             gSavedSettings.setS32("FlycamDroneRelease", release);
+            markDronePresetCustom();
             xInputHint(release == 1 ? "Release: Drift" : "Release: Hold");
         }
         else if (value == ALXInput::DPAD_RECENTRE)
@@ -3895,6 +3999,11 @@ bool LLViewerJoystick::applyDronePreset(S32 preset)
     if (preset < 0 || preset >= static_cast<S32>(LLFlycamDrone::PresetId::COUNT))
         return false;
 
+    DronePresetProvenance& provenance = dronePresetProvenance();
+    provenance.source = preset;
+    provenance.custom = false;
+    ++provenance.revision;
+
     const LLFlycamDrone::HumanParams& p =
         LLFlycamDrone::presets()[static_cast<std::size_t>(preset)].human;
     gSavedSettings.setS32("FlycamDronePreset", preset);
@@ -3923,6 +4032,44 @@ bool LLViewerJoystick::applyDronePreset(S32 preset)
 LLFlycamDrone::CompiledValues LLViewerJoystick::getDroneCompiledValues() const
 {
     return cachedDroneCompiledValues();
+}
+
+LLFlycamDrone::HumanParams LLViewerJoystick::getDroneAcceptedValues() const
+{
+    return droneCompilePreviewCache().accepted;
+}
+
+F32 LLViewerJoystick::getDroneCompiledTick() const
+{
+    return droneCompilePreviewCache().params.tick;
+}
+
+void LLViewerJoystick::markDronePresetCustom()
+{
+    DronePresetProvenance& provenance = dronePresetProvenance();
+    const S32 current = gSavedSettings.getS32("FlycamDronePreset");
+    if (current >= 0 && current < static_cast<S32>(LLFlycamDrone::PresetId::COUNT))
+    {
+        provenance.source = current;
+    }
+    provenance.custom = true;
+    gSavedSettings.setS32("FlycamDronePreset", 5);
+    ++provenance.revision;
+}
+
+S32 LLViewerJoystick::getDronePresetProvenance() const
+{
+    return dronePresetProvenance().source;
+}
+
+bool LLViewerJoystick::isDronePresetCustom() const
+{
+    return dronePresetProvenance().custom;
+}
+
+U64 LLViewerJoystick::getDronePresetProvenanceRevision() const
+{
+    return dronePresetProvenance().revision;
 }
 
 void LLViewerJoystick::resetDroneSettings()

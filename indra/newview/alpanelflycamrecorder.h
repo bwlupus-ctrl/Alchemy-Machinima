@@ -27,6 +27,7 @@
 #include "llpanel.h"
 
 class LLButton;
+class LLComboBox;
 class LLSliderCtrl;
 class LLTextBox;
 
@@ -60,6 +61,8 @@ private:
     LLSliderCtrl* mScrub = nullptr;
     LLTextBox*    mTimeText = nullptr;
     LLTextBox*    mStatusText = nullptr;
+    LLComboBox*   mDronePreset = nullptr;
+    U64           mDronePresetRevision = 0;
 };
 
 #endif // AL_ALPANELFLYCAMRECORDER_H
