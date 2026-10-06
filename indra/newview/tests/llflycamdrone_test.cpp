@@ -153,27 +153,53 @@ void ensure_stop_reason(const char* what, const ALFlycamKeepResult& result,
 }
 void classic_to_drone_continuity(bool blackDragon, F32 hz)
 {
-    const F32 dt=1.f/hz;const LLVector3 velocity(1.2f,-.7f,.35f);const F32 yawRate=.2f;
-    std::array<F32,7> last{};std::array<F32,7> delta{{velocity.mV[VX]*dt,velocity.mV[VY]*dt,velocity.mV[VZ]*dt,0.f,0.f,yawRate*dt,0.f}};
+    const F32 dt=1.f/hz,feather=8.f;
+    std::array<F32,7> last{},delta{};
     LLVector3 position(4.f,5.f,6.f);LLQuaternion rotation;F32 zoom=1.f;
-    ALFlycamClassic::Input in{};in.axisScale.fill(1.f);in.frameIntervalSeconds=dt;in.flycamFeathering=0.f;in.minView=.1f;in.maxView=2.f;in.triggerThrottle=1.f;in.blackDragon=blackDragon;in.invertPitch=true;
-    ALFlycamClassic::State state{last,delta,position,rotation,zoom};const LLVector3 previousPosition=position;const LLQuaternion previousRotation=rotation;
+    ALFlycamClassic::Input in{};in.axisScale.fill(1.f);in.frameIntervalSeconds=dt;in.flycamFeathering=feather;in.minView=.1f;in.maxView=2.f;in.triggerThrottle=1.f;in.blackDragon=blackDragon;in.invertPitch=true;
+    in.axis[0]=-.25f;in.axis[1]=-.65f;in.axis[2]=.3f;in.axis[5]=-.22f;
+    ALFlycamClassic::State state{last,delta,position,rotation,zoom};
+    constexpr S32 warmupFrames=240;
+    for(S32 frame=0;frame<warmupFrames;++frame){const auto mid=ALFlycamClassic::integrateDeltas(in,state);ALFlycamClassic::finishIntegration(in,mid,state);}
+    const LLVector3 previousPosition=position;const LLQuaternion previousRotation=rotation;
     const auto mid=ALFlycamClassic::integrateDeltas(in,state);ALFlycamClassic::finishIntegration(in,mid,state);
-    if(blackDragon&&hz==144.f)close("T26 BD 144 clamp active",mid.time,.016,1.e-7);
+    const F32 integrationTime=blackDragon?std::max(.016f,std::min(.033f,dt)):dt;
+    if(blackDragon)close("T26 BD timestep clamp",mid.time,integrationTime,1.e-7);
+    const F32 response=1.f-std::pow(1.f-integrationTime*feather,(F32)(warmupFrames+1));
+    const LLVector3 expectedLocal(.25f*integrationTime*response,.65f*integrationTime*response,-.3f*integrationTime*response);
+    const LLVector3 expectedVelocity=(expectedLocal*previousRotation)/dt;
+    const F32 expectedYawRate=.22f*integrationTime*response/dt;
+    vector_close(blackDragon?"T26 BD driven Classic velocity":"T27 non-BD driven Classic velocity",(position-previousPosition)/dt,expectedVelocity,expectedVelocity.length()*.0001f);
     LLFlycamDrone drone(compiled(1,120.f));drone.seedFromHistory(LLVector3d(previousPosition),previousRotation,LLVector3d(position),rotation,dt,LLVector3d::zero);
-    vector_close(blackDragon?"T26 BD velocity continuity":"T27 non-BD velocity continuity",drone.state().velocity,velocity,velocity.length()*.02f);
+    vector_close(blackDragon?"T26 BD velocity continuity":"T27 non-BD velocity continuity",drone.state().velocity,expectedVelocity,expectedVelocity.length()*.02f);
     vector_close(blackDragon?"T26 BD no pose pop":"T27 non-BD no pose pop",drone.renderPose().position,position,1.e-6f);
-    close(blackDragon?"T26 BD rotation continuity":"T27 non-BD rotation continuity",drone.state().yawVelocity,yawRate,std::fabs(yawRate)*.02);
+    quaternion_close(blackDragon?"T26 BD angle continuity":"T27 non-BD angle continuity",drone.renderPose().rotation,rotation,.05f*DEG);
+    close(blackDragon?"T26 BD angular-rate continuity":"T27 non-BD angular-rate continuity",drone.state().yawVelocity,expectedYawRate,std::fabs(expectedYawRate)*.02);
+    close(blackDragon?"T26 BD tilt-rate continuity":"T27 non-BD tilt-rate continuity",drone.state().tiltVelocity,0.,1.e-5);
+    close(blackDragon?"T26 BD roll-rate continuity":"T27 non-BD roll-rate continuity",drone.state().rollVelocity,0.,1.e-5);
 }
 void drone_to_classic_continuity(bool blackDragon,F32 hz)
 {
     const F32 dt=1.f/hz;const LLVector3 velocity(1.1f,-.6f,.3f);LLQuaternion previousRotation,currentRotation;currentRotation.setAngleAxis(.15f*dt,LLVector3(0.f,0.f,1.f));
     LLFlycamDrone drone(compiled(1,120.f));drone.seedFromHistory(LLVector3d::zero,previousRotation,LLVector3d(velocity)*(F64)dt,currentRotation,dt,LLVector3d::zero);const auto seed=drone.classicSeed(dt);
-    std::array<F32,7> last{},delta{};for(U32 i=0;i<seed.size();++i)delta[i]=seed[i];LLVector3 position=drone.renderPose().position;LLQuaternion rotation=drone.renderPose().rotation;const LLVector3 beforePosition=position;const LLQuaternion beforeRotation=rotation;F32 zoom=1.f;
-    ALFlycamClassic::Input in{};in.axisScale.fill(1.f);in.frameIntervalSeconds=dt;in.flycamFeathering=0.f;in.minView=.1f;in.maxView=2.f;in.triggerThrottle=1.f;in.blackDragon=blackDragon;in.invertPitch=true;
-    ALFlycamClassic::State state{last,delta,position,rotation,zoom};const auto mid=ALFlycamClassic::integrateDeltas(in,state);ALFlycamClassic::finishIntegration(in,mid,state);(void)mid;
-    const LLVector3 expected=velocity*dt;vector_close("T28 first Classic frame executed",position-beforePosition,expected,expected.length()*.02f);
-    const LLQuaternion expectedRotation=LLQuaternion(LLMatrix3(seed[3],seed[4],seed[5]))*beforeRotation;quaternion_close("T28 rotation increment continuity",rotation,expectedRotation,1.e-5f);
+    std::array<F32,7> last{},delta{{.07f,-.04f,.03f,.02f,-.01f,.04f,0.f}};LLVector3 position=drone.renderPose().position;LLQuaternion rotation=drone.renderPose().rotation;F32 zoom=1.f;
+    ALFlycamClassic::Input in{};in.axisScale.fill(1.f);in.frameIntervalSeconds=dt;in.flycamFeathering=.5f;in.minView=.1f;in.maxView=2.f;in.triggerThrottle=1.f;in.blackDragon=blackDragon;in.invertPitch=true;
+    ALFlycamClassic::State state{last,delta,position,rotation,zoom};
+    // The edge frame updates the Classic shadow first; production installs the
+    // Drone seed only afterwards.  Its first visible Classic integration is next.
+    const auto edgeMid=ALFlycamClassic::integrateDeltas(in,state);ALFlycamClassic::finishIntegration(in,edgeMid,state);
+    const auto shadowDelta=delta;for(U32 i=0;i<seed.size();++i)delta[i]=seed[i];
+    position=drone.renderPose().position;rotation=drone.renderPose().rotation;const LLVector3 beforePosition=position;const LLQuaternion beforeRotation=rotation;
+    const auto firstMid=ALFlycamClassic::integrateDeltas(in,state);ALFlycamClassic::finishIntegration(in,firstMid,state);
+    const F32 alpha=firstMid.time*in.flycamFeathering;
+    std::array<F32,6> expected{},seededBefore{};
+    for(U32 i=0;i<seed.size();++i){expected[i]=seed[i]*(1.f-alpha);seededBefore[i]=expected[i]*(1.f-alpha);close("T28 seed-after feather result",delta[i],expected[i],1.e-7);}
+    ensure("T28 seed-before and seed-after are distinguishable",std::fabs(seededBefore[0]-expected[0])>1.e-6f&&shadowDelta!=delta);
+    const LLVector3 expectedDisplacement=LLVector3(expected.data())*beforeRotation;
+    vector_close("T28 first Classic frame production displacement",position-beforePosition,expectedDisplacement,1.e-6f);
+    vector_close("T28 velocity continuity",position-beforePosition,velocity*dt,(velocity*dt).length()*.02f);
+    const LLQuaternion expectedRotation=LLQuaternion(LLMatrix3(expected[3],expected[4],expected[5]))*beforeRotation;quaternion_close("T28 rotation increment production order",rotation,expectedRotation,.05f*DEG);
+    close("T28 angular-rate continuity",expected[5]/dt,.15,.15*.02);
 }
 
 struct Crossing { F32 interpolated; F32 raw; };
@@ -571,10 +597,30 @@ template<> template<> void flycam_drone_object::test<29>()
     const auto fall=alResolveFlycamFrame(1,false,false,ALFlycamPoseOwner::ORBIT,true,false);
     ensure("T29 Orbit->Drone disengages this frame",fall.frameOwner==ALFlycamPoseOwner::DRONE);
     ensure("T29 Orbit->Drone seeds/reset",fall.seedDrone&&fall.resetOperator&&fall.edge==ALFlycamOwnerEdge::ORBIT_TO_DRONE);
-    // Orbit-owner frames freeze dynamics and discard only unsimulated wall time.
-    auto p=compiled(1,120);LLFlycamDrone d(p);d.advanceRaw(2.5*p.tick,forward());const auto frozen=d.state();d.discardAccumulator();ensure_equals("T29 orbit discards accumulator",d.accumulator(),0.);ensure("T29 orbit freezes state",exact_state(d.state(),frozen));
-    const auto held=d.renderPose();ensure("T29 rising-edge pose held",rise.discardClassicShadowPose);vector_close("T29 held pose is Drone last",d.renderPose().position,held.position,1.e-6f);
-    LLVector3d a(0,0,0),b(100,0,0);d.seedFromHistory(a,LLQuaternion(),b,LLQuaternion(),.01,LLVector3d::zero);ensure("T29 falling-edge history caps momentum",d.state().velocity.length()<=p.velocityCap*FP);vector_close("T29 falling-edge pose seed",d.renderPose().position,LLVector3(100,0,0),1.e-6f);
+    // Apply the rising-edge decision to a distinguishable Classic shadow pose.
+    auto p=compiled(1,120);LLFlycamDrone d(p);d.advanceRaw(2.5*p.tick,forward());
+    const auto outgoing=d.renderPose();const auto frozen=d.state(),prior=d.previousState();const F32 alpha=(F32)(d.accumulator()/p.tick);
+    const LLVector3 expectedHeld=prior.position+(frozen.position-prior.position)*alpha;
+    const LLQuaternion expectedHeldRotation=LLFlycamDrone::rotation(
+        prior.yaw+std::remainder(frozen.yaw-prior.yaw,2.f*PI)*alpha,
+        prior.tilt+std::remainder(frozen.tilt-prior.tilt,2.f*PI)*alpha,
+        prior.roll+std::remainder(frozen.roll-prior.roll,2.f*PI)*alpha);
+    LLVector3 resultingPosition=outgoing.position;LLQuaternion resultingRotation=outgoing.rotation;
+    const LLVector3 shadowEntryPosition=resultingPosition;const LLQuaternion shadowEntryRotation=resultingRotation;
+    resultingPosition.set(91.f,-37.f,12.f);resultingRotation.setAngleAxis(1.f,LLVector3(1,0,0));
+    if(rise.discardDroneAccumulator)d.discardAccumulator();
+    if(rise.discardClassicShadowPose){resultingPosition=shadowEntryPosition;resultingRotation=shadowEntryRotation;}
+    ensure_equals("T29 orbit discards accumulator",d.accumulator(),0.);ensure("T29 orbit freezes state",exact_state(d.state(),frozen));
+    vector_close("T29 rising-edge resulting pose",resultingPosition,expectedHeld,1.e-6f);quaternion_close("T29 rising-edge resulting angle",resultingRotation,expectedHeldRotation,.05f*DEG);
+
+    // Apply the falling-edge seed decision and compare with the orbit history,
+    // not with renderPose captured from the seeded model.
+    const LLVector3d orbitPrevious(10.,20.,30.),orbitCurrent(110.,20.,30.),origin(4.,5.,6.);const F64 orbitDt=.01;
+    LLQuaternion orbitPreviousRotation,orbitCurrentRotation;orbitCurrentRotation.setAngleAxis(.12f,LLVector3(0,0,1));
+    if(fall.seedDrone)d.seedFromHistory(orbitPrevious,orbitPreviousRotation,orbitCurrent,orbitCurrentRotation,orbitDt,origin);
+    const LLVector3 expectedOrbitPose(106.f,15.f,24.f),expectedCappedVelocity(p.velocityCap,0,0);
+    vector_close("T29 falling-edge resulting pose",d.state().position,expectedOrbitPose,1.e-6f);quaternion_close("T29 falling-edge resulting angle",d.renderPose().rotation,orbitCurrentRotation,.05f*DEG);
+    vector_close("T29 falling-edge momentum cap",d.state().velocity,expectedCappedVelocity,1.e-5f);
 }
 
 template<> template<> void flycam_drone_object::test<30>()
@@ -585,7 +631,20 @@ template<> template<> void flycam_drone_object::test<30>()
     ensure("T30 FOREIGN rendered-pose Stop/operator reset",foreign.gap==ALFlycamDispatchGap::FOREIGN&&foreign.reseed&&foreign.resetOperator);
     ensure("T30 minimized idle is SELF",alClassifyFlycamDispatchGap(20,16,false).gap==ALFlycamDispatchGap::SELF);
     ensure("T30 four-pass snapshot is no gap",alClassifyFlycamDispatchGap(17,16,false).gap==ALFlycamDispatchGap::NONE);
-    auto p=compiled(1,120);LLFlycamDrone d(p);d.seed(LLVector3(4,5,6),LLQuaternion());vector_close("T30 Stop pose",d.renderPose().position,LLVector3(4,5,6),1.e-6f);ensure_equals("T30 Stop velocity",d.state().velocity.lengthSquared(),0.f);
+    auto p=compiled(1,120);LLFlycamDrone own(p);own.seed(LLVector3(-8,3,2),LLFlycamDrone::rotation(.3f,.1f,-.2f),LLVector3(2,0,0));own.advanceRaw(3.5*p.tick,forward());
+    const auto ownPrevious=own.previousState(),ownCurrent=own.state();const F32 ownAlpha=(F32)(own.accumulator()/p.tick);
+    const LLVector3 expectedOwnPose=ownPrevious.position+(ownCurrent.position-ownPrevious.position)*ownAlpha;
+    const LLQuaternion expectedOwnRotation=LLFlycamDrone::rotation(
+        ownPrevious.yaw+std::remainder(ownCurrent.yaw-ownPrevious.yaw,2.f*PI)*ownAlpha,
+        ownPrevious.tilt+std::remainder(ownCurrent.tilt-ownPrevious.tilt,2.f*PI)*ownAlpha,
+        ownPrevious.roll+std::remainder(ownCurrent.roll-ownPrevious.roll,2.f*PI)*ownAlpha);
+    own.pauseAtRenderPose();const auto paused=own.state();const LLVector3 ownPose=paused.position;const LLQuaternion ownRotation=LLFlycamDrone::rotation(paused.yaw,paused.tilt,paused.roll);
+    const LLVector3d foreignGlobal(1040.,1988.,307.),foreignOrigin(1000.,2000.,300.);const LLVector3 foreignRendered(foreignGlobal-foreignOrigin);LLQuaternion foreignRotation;foreignRotation.setAngleAxis(.7f,LLVector3(0,0,1));
+    ensure("T30 SELF and FOREIGN source poses differ",mag(expectedOwnPose-foreignRendered)>1.f);
+    if(self.reseed)own.seed(ownPose,ownRotation,LLVector3::zero,LLVector3d::zero,&paused);
+    vector_close("T30 SELF Stop chooses paused Drone pose",own.state().position,expectedOwnPose,1.e-6f);quaternion_close("T30 SELF Stop chooses paused Drone angle",own.renderPose().rotation,expectedOwnRotation,.05f*DEG);ensure_equals("T30 SELF Stop zero velocity",own.state().velocity.lengthSquared(),0.f);
+    LLFlycamDrone handedBack(p);if(foreign.reseed)handedBack.seed(foreignRendered,foreignRotation,LLVector3::zero,foreignOrigin);
+    vector_close("T30 FOREIGN Stop chooses rendered pose",handedBack.state().position,LLVector3(40.f,-12.f,7.f),1.e-6f);quaternion_close("T30 FOREIGN Stop chooses rendered angle",handedBack.renderPose().rotation,foreignRotation,.05f*DEG);ensure_equals("T30 FOREIGN Stop zero velocity",handedBack.state().velocity.lengthSquared(),0.f);
 }
 
 template<> template<> void flycam_drone_object::test<31>()
@@ -607,6 +666,10 @@ template<> template<> void flycam_drone_object::test<32>()
     const auto keep=estimate_keep(samples,10,p);ensure("T32 constant-acceleration Keep accepted",keep.ok&&keep.reason==ALFlycamKeepReject::NONE);vector_close("T32 v at end S-1",keep.velocity,u+accel*(2.f*dt),1.e-4f);
     std::array<ALCameraDispatchSample,3> constant={{dispatch_sample(7,LLVector3d::zero,dt),dispatch_sample(8,LLVector3d(u)*(F64)dt,dt),dispatch_sample(9,LLVector3d(u)*(F64)(2.f*dt),dt)}};vector_close("T32 constant-u Keep",estimate_keep(constant,10,p).velocity,u,1.e-4f);
     LLFlycamDrone d(p);d.seed(LLVector3::zero,LLQuaternion(),keep.velocity);ensure_equals("T32 smoother starts steady",d.state().deltaVelocity.lengthSquared(),0.f);
+    auto state=d.state();LLFlycamDrone::Input resume=forward(.7f);resume.move.set(.8f,-.35f,0.f);resume.vertical=.2f;resume.yaw=.3f;
+    const F32 tJ=2.f*p.tick*p.pole/(1.f-p.pole);const S32 ticks=(S32)std::ceil(2.f*tJ/p.tick);
+    ensure("T32 runs at least two onset times",ticks*p.tick>=2.f*tJ);
+    for(S32 tick=0;tick<ticks;++tick){const auto next=d.step(state,resume,p.tick);assert_g1("T32 post-Keep G1 every tick",state,next,p,p.tick);state=next;}
 }
 
 template<> template<> void flycam_drone_object::test<33>()
@@ -634,6 +697,8 @@ template<> template<> void flycam_drone_object::test<35>()
     for(F32 dt:{0.f,.0005f,.25001f,std::numeric_limits<F32>::quiet_NaN()}){auto bad=samples;bad[1].dt=dt;ensure_stop_reason("T35 bad dt Stop",estimate_keep(bad,4,p),ALFlycamKeepReject::DT);}
     auto bad=samples;bad[1].positionGlobal.mdV[VX]=std::numeric_limits<F64>::quiet_NaN();ensure_stop_reason("T35 nonfinite position Stop",estimate_keep(bad,4,p),ALFlycamKeepReject::NONFINITE);
     bad=samples;bad[2].rotation.mQ[VX]=std::numeric_limits<F32>::infinity();ensure_stop_reason("T35 nonfinite rotation Stop",estimate_keep(bad,4,p),ALFlycamKeepReject::NONFINITE);
+    const std::array<std::pair<ALFlycamKeepReject,const char*>,7> names={{{ALFlycamKeepReject::STALE,"stale"},{ALFlycamKeepReject::STRADDLE,"straddle"},{ALFlycamKeepReject::UNPRESENTED,"unpresented"},{ALFlycamKeepReject::DT,"dt"},{ALFlycamKeepReject::NONFINITE,"nonfinite"},{ALFlycamKeepReject::CUT,"cut"},{ALFlycamKeepReject::INCONSISTENT,"inconsistent"}}};
+    for(const auto& entry:names)ensure("T35 rejection enum production log name",std::strcmp(alFlycamKeepRejectName(entry.first),entry.second)==0);
 }
 
 template<> template<> void flycam_drone_object::test<36>()
