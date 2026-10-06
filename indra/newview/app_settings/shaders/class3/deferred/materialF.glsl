@@ -149,9 +149,19 @@ vec3 rigRimTerm(vec3 n, vec3 v, vec3 l, vec3 c_l, vec3 diffuseColor, float rough
 // [RigRim] `rim` = this light unit's rig rim params (rig_rim_lights[i]); zero
 // for non-rig lights.  NOTE: `v` is the eye-space POSITION and `npos` the
 // normalized view vector here (legacy naming).
-vec3 calcPointLightOrSpotLight(vec3 light_col, vec3 npos, vec3 diffuse, vec4 spec, vec3 v, vec3 n, vec4 lp, vec3 ln, float la, float fa, float is_pointlight, inout float glare, float ambiance, vec4 rim, float sil_keep, float rim_keep)
+vec3 calcPointLightOrSpotLight(vec3 light_col, vec3 npos, vec3 diffuse, vec4 spec, vec3 v, vec3 n, vec4 lp, vec3 ln, float la, float fa, float is_pointlight, inout float glare, float ambiance, vec4 rim
+#ifdef HAS_ACTOR_FX
+    , bool sil_on, float sil_keep, float rim_keep
+#endif
+)
 {
-    float glare_start = glare;
+#ifdef HAS_ACTOR_FX
+    float glare_start;
+    if (sil_on)
+    {
+        glare_start = glare;
+    }
+#endif
     // SL-14895 inverted attenuation work-around
     // This routine is tweaked to match deferred lighting, but previously used an inverted la value. To reconstruct
     // that previous value now that the inversion is corrected, we reverse the calculations in LLPipeline::setupHWLights()
@@ -236,11 +246,13 @@ vec3 calcPointLightOrSpotLight(vec3 light_col, vec3 npos, vec3 diffuse, vec4 spe
             }
         }
 
-        if (sil_keep != 1.0)
+#ifdef HAS_ACTOR_FX
+        if (sil_on)
         {
             glare = glare_start + (glare - glare_start) * sil_keep;
+            col *= sil_keep;
         }
-        col *= sil_keep;
+#endif
 
         // [RigRim] additive rim (cone + attenuation weighted, no shadow);
         // roughness from legacy glossiness (spec.a).  Independent of `da` so
@@ -252,7 +264,16 @@ vec3 calcPointLightOrSpotLight(vec3 light_col, vec3 npos, vec3 diffuse, vec4 spe
             {
                 col = vec3(0.0); // debug: rim only
             }
-            col += rim_col * rim_keep;
+#ifdef HAS_ACTOR_FX
+            if (sil_on)
+            {
+                col += rim_col * rim_keep;
+            }
+            else
+#endif
+            {
+                col += rim_col;
+            }
         }
     }
     float final_scale = 1.0;
@@ -550,23 +571,25 @@ void main()
     }
 
 #ifdef HAS_ACTOR_FX
+    bool alr_sil_on = alrSilOn();
     float alr_sil_keep = alrSilKeep();
     float alr_rim_keep = alrSilRimKeep();
-    if (alrSilOn())
+    if (alr_sil_on)
     {
         color *= alr_sil_keep;
         glare *= alr_sil_keep;
     }
-#else
-    const float alr_sil_keep = 1.0;
-    const float alr_rim_keep = 1.0;
 #endif
 
     vec3 npos = normalize(-pos.xyz);
     vec3 light = vec3(0, 0, 0);
 
 // [RigRim] trailing rig_rim_lights[i] argument
-#define LIGHT_LOOP(i) light.rgb += calcPointLightOrSpotLight(light_diffuse[i].rgb, npos, diffuse.rgb, spec, pos.xyz, norm.xyz, light_position[i], light_direction[i].xyz, light_attenuation[i].x, light_attenuation[i].y, light_attenuation[i].z, glare, light_attenuation[i].w, rig_rim_lights[i], alr_sil_keep, alr_rim_keep);
+#ifdef HAS_ACTOR_FX
+#define LIGHT_LOOP(i) light.rgb += calcPointLightOrSpotLight(light_diffuse[i].rgb, npos, diffuse.rgb, spec, pos.xyz, norm.xyz, light_position[i], light_direction[i].xyz, light_attenuation[i].x, light_attenuation[i].y, light_attenuation[i].z, glare, light_attenuation[i].w, rig_rim_lights[i], alr_sil_on, alr_sil_keep, alr_rim_keep);
+#else
+#define LIGHT_LOOP(i) light.rgb += calcPointLightOrSpotLight(light_diffuse[i].rgb, npos, diffuse.rgb, spec, pos.xyz, norm.xyz, light_position[i], light_direction[i].xyz, light_attenuation[i].x, light_attenuation[i].y, light_attenuation[i].z, glare, light_attenuation[i].w, rig_rim_lights[i]);
+#endif
 
     LIGHT_LOOP(1)
         LIGHT_LOOP(2)

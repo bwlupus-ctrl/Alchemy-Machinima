@@ -455,11 +455,12 @@ void main()
         final_scale = 1.1;
 #ifdef HAS_ACTOR_FX
     if (alrDebug()) color.rgb = vec3(1.0, 0.0, 1.0); // [AvatarLightResponse] debug override
-#ifdef ALR_RIMSPLIT_PARITY
-    if (alr_rimsplit_mismatch) color.rgb = vec3(1.0, 0.0, 1.0);
-#endif
 #endif
     frag_color = max(vec4(color.rgb * final_scale,a), vec4(0));
+#ifdef ALR_RIMSPLIT_PARITY
+    // Opaque alpha makes the readback marker survive the forward blend exactly.
+    if (alr_rimsplit_mismatch) frag_color = vec4(1.0, 0.0, 1.0, 1.0);
+#endif
 #ifdef HAS_VISIBLE_DIFFUSE
     vec3 alr_visible_diffuse = diffuseColor;
 #ifdef HAS_ACTOR_FX

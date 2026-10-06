@@ -1291,6 +1291,11 @@ public:
     // main full resoltuion render target
     RenderTargetPack mMainRT;
 
+    // [AvatarSilhouette T21] Lazily allocated only while the parity setting is
+    // on; a tiny downsample of main-view HDR beauty is read back at most 1 Hz.
+    LLRenderTarget mRimParityReadback;
+    LLTimer        mRimParityReadbackTimer;
+
     // auxillary 512x512 render target pack
     // used by reflection probes and dynamic texture bakes
     RenderTargetPack mAuxillaryRT;

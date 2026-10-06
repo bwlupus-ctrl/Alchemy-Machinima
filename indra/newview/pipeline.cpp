@@ -2307,6 +2307,8 @@ void LLPipeline::releaseGLBuffers()
 
     mDiopterMap.release(); // [Ultimate Diopter]
 
+    mRimParityReadback.release(); // [AvatarSilhouette T21]
+
     mSceneMap.release();
 
     mProjVolHalf.release(); // [BDMerge G3.3 Phase 1 item 3]
@@ -24666,6 +24668,30 @@ void LLPipeline::renderDeferredLighting(ActorMaskViewSource source)
     LL_PROFILE_ZONE_SCOPED_CATEGORY_PIPELINE;
     LL_PROFILE_GPU_ZONE("renderDeferredLighting");
 
+    // T21 is a debug-only, setting-gated GPU verdict. Keep no allocation when
+    // disabled; when enabled, the main view lazily owns one 64x64 RGBA8 target.
+    // The actual screen sample is taken after all forward geometry below.
+    static LLCachedControl<bool> rim_parity(
+        gSavedSettings, "AvatarSilhouetteRimParity", false);
+    const bool rim_parity_main = rim_parity() &&
+        source == ActorMaskViewSource::MAIN && mRT == &mMainRT &&
+        !gCubeSnapshot && !sRenderingHUDs && !sImpostorRender &&
+        !sPrismLensRender;
+    if (!rim_parity() && mRimParityReadback.isComplete())
+    {
+        mRimParityReadback.release();
+    }
+    else if (rim_parity_main && !mRimParityReadback.isComplete() &&
+             mRimParityReadbackTimer.getElapsedTimeF32() >= 1.f)
+    {
+        if (!mRimParityReadback.allocate(64, 64, GL_RGBA))
+        {
+            LL_WARNS("AvatarLightResponse")
+                << "[ALR] RIMSPLIT PARITY FAIL 1 allocation_error" << LL_ENDL;
+            mRimParityReadbackTimer.reset();
+        }
+    }
+
     // ReShade bridge: capture deferredScreen's albedo/normals for gatherFrame()
     // NOW, at the earliest point they are guaranteed fully populated and
     // before any of this function's own reads (or renderFinalize()'s post
@@ -25975,6 +26001,72 @@ void LLPipeline::renderDeferredLighting(ActorMaskViewSource source)
     // CineLightRigActorMaskDebug view, while this view's mask is still valid.
     if (actor_only && source == ActorMaskViewSource::MAIN)
         ALActorMaskDiagnostics::instance().endMainView(*this, *screen_target);
+
+    if (rim_parity_main && mRimParityReadback.isComplete() &&
+        mRimParityReadbackTimer.getElapsedTimeF32() >= 1.f)
+    {
+        // T21 method: parity shaders replace any bitwise-mismatching fragment
+        // with opaque exact magenta. Downsample attachment 0 to a tiny FBO,
+        // read that real GPU result at most once per second, and count markers.
+        // The entire allocation/blit/readback path is absent while the setting
+        // is off; this point is before screen_target->flush(), while beauty is
+        // complete and its FBO is still current.
+        constexpr S32 PARITY_SIZE = 64;
+        mRimParityReadback.copyContents(
+            *screen_target, 0, 0, screen_target->getWidth(), screen_target->getHeight(),
+            0, 0, PARITY_SIZE, PARITY_SIZE, GL_COLOR_BUFFER_BIT, GL_NEAREST);
+
+        GLint read_fbo = 0;
+        GLint read_buffer = GL_COLOR_ATTACHMENT0;
+        GLint pack_buffer = 0;
+        GLint pack_alignment = 4;
+        glGetIntegerv(GL_READ_FRAMEBUFFER_BINDING, &read_fbo);
+        glGetIntegerv(GL_READ_BUFFER, &read_buffer);
+        glGetIntegerv(GL_PIXEL_PACK_BUFFER_BINDING, &pack_buffer);
+        glGetIntegerv(GL_PACK_ALIGNMENT, &pack_alignment);
+        glBindBuffer(GL_PIXEL_PACK_BUFFER, 0);
+        glPixelStorei(GL_PACK_ALIGNMENT, 1);
+        glBindFramebuffer(GL_READ_FRAMEBUFFER, mRimParityReadback.getFBO());
+        glReadBuffer(GL_COLOR_ATTACHMENT0);
+        std::array<U8, PARITY_SIZE * PARITY_SIZE * 4> pixels;
+        for (U32 i = 0; i < 16 && glGetError() != GL_NO_ERROR; ++i)
+        {
+            // Discard stale errors so the verdict covers this readback only.
+        }
+        glReadPixels(0, 0, PARITY_SIZE, PARITY_SIZE,
+                     GL_RGBA, GL_UNSIGNED_BYTE, pixels.data());
+        const GLenum read_error = glGetError();
+        glBindFramebuffer(GL_READ_FRAMEBUFFER, read_fbo);
+        glReadBuffer(read_buffer);
+        glPixelStorei(GL_PACK_ALIGNMENT, pack_alignment);
+        glBindBuffer(GL_PIXEL_PACK_BUFFER, static_cast<GLuint>(pack_buffer));
+
+        U32 mismatch_count = read_error == GL_NO_ERROR ? 0 : 1;
+        if (read_error == GL_NO_ERROR)
+        {
+            for (size_t i = 0; i < pixels.size(); i += 4)
+            {
+                mismatch_count += pixels[i] == 255 && pixels[i + 1] == 0 &&
+                                  pixels[i + 2] == 255 && pixels[i + 3] == 255;
+            }
+        }
+        if (mismatch_count == 0)
+        {
+            LL_INFOS("AvatarLightResponse")
+                << "[ALR] RIMSPLIT PARITY PASS 0" << LL_ENDL;
+        }
+        else
+        {
+            LL_WARNS("AvatarLightResponse")
+                << "[ALR] RIMSPLIT PARITY FAIL " << mismatch_count;
+            if (read_error != GL_NO_ERROR)
+            {
+                LL_CONT << " readback_error=" << static_cast<U32>(read_error);
+            }
+            LL_CONT << LL_ENDL;
+        }
+        mRimParityReadbackTimer.reset();
+    }
 
     screen_target->flush();
 

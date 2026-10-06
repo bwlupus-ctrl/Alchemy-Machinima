@@ -105,8 +105,10 @@ bool ALFloaterAvatarLightResponse::postBuild()
     });
     getChild<LLButton>("btn_refresh")->setCommitCallback([this](LLUICtrl*, const LLSD&)
     {
-        refreshRows(true);
-        refreshEditors();
+        // A manual refresh is ordinary list work, not a reveal or structural
+        // event. Coalesce it with store notifications at the 1 Hz cadence.
+        mIdleRowsPending = true;
+        mIdleStatePending = true;
     });
 
     mDiffuse->setCommitCallback([this](LLUICtrl*, const LLSD&) { onSliderCommit(FIELD_DIFFUSE); });
@@ -221,17 +223,28 @@ void ALFloaterAvatarLightResponse::idleUpdate()
     {
         return;
     }
-    if (mIdleRowsPending &&
-        (mIdleRowsImmediate || mRefreshTimer.getElapsedTimeF32() >= 1.f))
+    // Capture both decisions before refreshRows() resets the shared cadence
+    // timer. Store callbacks can fire every slider event; all pending row,
+    // state-cell and status work is therefore coalesced to at most 1 Hz.
+    // Reveal and structural work marks rows immediate and may update both now.
+    const bool cadence_due = mRefreshTimer.getElapsedTimeF32() >= 1.f;
+    const bool immediate = mIdleRowsImmediate;
+    bool rows_refreshed = false;
+    if (mIdleRowsPending && (immediate || cadence_due))
     {
         refreshRows(false);
+        rows_refreshed = true;
     }
-    if (mIdleStatePending)
+    if (mIdleStatePending && (immediate || cadence_due))
     {
         mIdleStatePending = false;
         refreshStateCells();
         refreshStatus();
         refreshSilhouetteNote();
+        if (!rows_refreshed)
+        {
+            mRefreshTimer.reset();
+        }
     }
 }
 
