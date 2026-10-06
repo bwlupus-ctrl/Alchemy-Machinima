@@ -5,6 +5,7 @@
 
 #include "linden_common.h"
 #include "../test/lltut.h"
+#include "../alcameradispatch.h"
 #include "../llflycamdrone.h"
 
 #include <algorithm>
@@ -494,21 +495,34 @@ template<> template<> void flycam_drone_object::test<25>()
 
 template<> template<> void flycam_drone_object::test<26>()
 {
-    // Pure seam used by T26/T27 after LLViewerJoystick selects the outgoing pose/velocity.
+    const auto edge=alResolveFlycamFrame(1,false,false,ALFlycamPoseOwner::CLASSIC,true,false);
+    ensure("T26 Classic->Drone uses outgoing frame",edge.frameOwner==ALFlycamPoseOwner::CLASSIC);
+    ensure("T26 Classic->Drone seed/reset",edge.seedDrone&&edge.resetOperator&&edge.edge==ALFlycamOwnerEdge::CLASSIC_TO_DRONE);
     auto p=compiled(1,120);LLFlycamDrone d(p);LLVector3 v(3,1,0);d.seed(LLVector3(1,2,3),LLQuaternion(),v);vector_close("T26/T27 seed velocity seam",d.state().velocity,v,1.e-6f);vector_close("T26/T27 seed pose seam",d.renderPose().position,LLVector3(1,2,3),1.e-6f);
 }
 template<> template<> void flycam_drone_object::test<27>()
 {
+    const auto edge=alResolveFlycamFrame(0,false,false,ALFlycamPoseOwner::DRONE,true,false);
+    ensure("T27 Drone->Classic uses outgoing frame",edge.frameOwner==ALFlycamPoseOwner::DRONE);
+    ensure("T27 Drone->Classic reset/no Drone seed",edge.resetOperator&&!edge.seedDrone&&edge.edge==ALFlycamOwnerEdge::DRONE_TO_CLASSIC);
     auto p=compiled(1,120);LLFlycamDrone d(p);d.seed(LLVector3::zero,LLQuaternion(),LLVector3(2,1,.5f));auto seed=d.classicSeed(1.f/144.f);close("T28 first Classic displacement x",seed[0],2.f/144.f,1.e-6);close("T28 first Classic displacement y",seed[1],1.f/144.f,1.e-6);
 }
 
 template<> template<> void flycam_drone_object::test<28>()
 {
+    const auto edge=alResolveFlycamFrame(1,true,false,ALFlycamPoseOwner::DRONE,true,false);
+    ensure("T28 Cursor3D selects Classic",edge.selectedOwner==ALFlycamPoseOwner::CLASSIC&&edge.frameOwner==ALFlycamPoseOwner::DRONE);
     auto p=compiled(1,120);LLFlycamDrone d(p);LLVector3 v(2,1,.5);d.seed(LLVector3::zero,LLQuaternion(),v);auto seed=d.classicSeed(1.f/60);close("T28 displacement x",seed[0],v.mV[VX]/60.f,1.e-6);close("T28 rotation rate",seed[3],0,1.e-6);
 }
 
 template<> template<> void flycam_drone_object::test<29>()
 {
+    const auto rise=alResolveFlycamFrame(1,false,true,ALFlycamPoseOwner::DRONE,true,false);
+    ensure("T29 Drone->Orbit engages this frame",rise.frameOwner==ALFlycamPoseOwner::ORBIT);
+    ensure("T29 Drone->Orbit discards shadow/reset",rise.discardClassicShadowPose&&rise.discardDroneAccumulator&&rise.resetOperator&&!rise.seedDrone);
+    const auto fall=alResolveFlycamFrame(1,false,false,ALFlycamPoseOwner::ORBIT,true,false);
+    ensure("T29 Orbit->Drone disengages this frame",fall.frameOwner==ALFlycamPoseOwner::DRONE);
+    ensure("T29 Orbit->Drone seeds/reset",fall.seedDrone&&fall.resetOperator&&fall.edge==ALFlycamOwnerEdge::ORBIT_TO_DRONE);
     // Orbit-owner frames freeze dynamics and discard only unsimulated wall time.
     auto p=compiled(1,120);LLFlycamDrone d(p);d.advanceRaw(2.5*p.tick,forward());const auto frozen=d.state();d.discardAccumulator();ensure_equals("T29 orbit discards accumulator",d.accumulator(),0.);ensure("T29 orbit freezes state",exact_state(d.state(),frozen));
     LLVector3d a(0,0,0),b(100,0,0);d.seedFromHistory(a,LLQuaternion(),b,LLQuaternion(),.01,LLVector3d::zero);ensure("T29 falling-edge history caps momentum",d.state().velocity.length()<=p.velocityCap*FP);
@@ -516,6 +530,9 @@ template<> template<> void flycam_drone_object::test<29>()
 
 template<> template<> void flycam_drone_object::test<30>()
 {
+    const auto regain=alResolveFlycamFrame(1,false,false,ALFlycamPoseOwner::CLASSIC,true,true);
+    ensure("T30 foreign regain enters Drone now",regain.frameOwner==ALFlycamPoseOwner::DRONE&&regain.foreignDroneRegain);
+    ensure("T30 foreign regain seeds/resets",regain.seedDrone&&regain.resetOperator);
     // Dispatch classification is viewer-owned; Stop's public reseed semantics are testable here.
     auto p=compiled(1,120);LLFlycamDrone d(p);d.seed(LLVector3(4,5,6),LLQuaternion(),LLVector3::zero);vector_close("T30 Stop pose",d.renderPose().position,LLVector3(4,5,6),1.e-6f);ensure_equals("T30 Stop velocity",d.state().velocity.lengthSquared(),0.f);
 }
@@ -533,15 +550,38 @@ template<> template<> void flycam_drone_object::test<31>()
 
 template<> template<> void flycam_drone_object::test<32>()
 {
+    const auto classic=alResolveFlycamFrame(0,false,false,ALFlycamPoseOwner::CLASSIC,true,false);
+    const auto drone=alResolveFlycamFrame(1,false,false,ALFlycamPoseOwner::DRONE,true,false);
+    const auto orbit=alResolveFlycamFrame(0,false,true,ALFlycamPoseOwner::ORBIT,true,false);
+    ensure("T32 steady Classic",classic.edge==ALFlycamOwnerEdge::NONE&&classic.frameOwner==ALFlycamPoseOwner::CLASSIC&&!classic.resetOperator);
+    ensure("T32 steady Drone",drone.edge==ALFlycamOwnerEdge::NONE&&drone.frameOwner==ALFlycamPoseOwner::DRONE&&!drone.seedDrone);
+    ensure("T32 steady Orbit freezes",orbit.edge==ALFlycamOwnerEdge::NONE&&orbit.frameOwner==ALFlycamPoseOwner::ORBIT&&orbit.discardDroneAccumulator);
     auto p=compiled(1,120);LLFlycamDrone d(p);LLVector3d a(1,2,3),b(1.2,2.4,3.6);d.seedFromHistory(a,LLQuaternion(),b,LLQuaternion(),.2,LLVector3d::zero);vector_close("T32 constant-u Keep",d.state().velocity,LLVector3(1,2,3),1.e-4f);ensure_equals("T32 steady acceleration",d.state().deltaVelocity.lengthSquared(),0.f);
 }
 
-// T26/T27 edge selection and fps sampling; T29 rising-edge ownership; T30
-// dispatch-serial SELF/FOREIGN/no-gap/minimized/multi-pass classification;
-// T32 constant-acceleration three-sample estimation; and T33/T34 cut,
-// straddle, stale and PRESENTED rejection live only inside LLViewerJoystick.
-// They are intentionally deferred to the in-world/integration list instead of
-// being faked by calling LLFlycamDrone::seed() directly.
+template<> template<> void flycam_drone_object::test<33>()
+{
+    const auto engage=alResolveFlycamFrame(0,false,true,ALFlycamPoseOwner::CLASSIC,true,false);
+    const auto disengage=alResolveFlycamFrame(0,false,false,ALFlycamPoseOwner::ORBIT,true,false);
+    ensure("T33 Classic->Orbit same frame",engage.frameOwner==ALFlycamPoseOwner::ORBIT&&engage.edge==ALFlycamOwnerEdge::CLASSIC_TO_ORBIT);
+    ensure("T33 Orbit->Classic same frame",disengage.frameOwner==ALFlycamPoseOwner::CLASSIC&&disengage.edge==ALFlycamOwnerEdge::ORBIT_TO_CLASSIC);
+    ensure("T33 Classic/Orbit does not reset operator",!engage.resetOperator&&!disengage.resetOperator);
+    ensure("T33 Classic/Orbit keeps Classic shadow pose",!engage.discardClassicShadowPose&&!disengage.discardClassicShadowPose);
+}
+
+template<> template<> void flycam_drone_object::test<34>()
+{
+    const auto cursor=alResolveFlycamFrame(1,true,true,ALFlycamPoseOwner::CLASSIC,false,true);
+    const auto untagged=alResolveFlycamFrame(1,false,false,ALFlycamPoseOwner::CLASSIC,false,true);
+    const auto regain=alResolveFlycamFrame(1,false,false,ALFlycamPoseOwner::DRONE,true,true);
+    ensure("T34 Orbit wins model/cursor",cursor.frameOwner==ALFlycamPoseOwner::ORBIT&&cursor.edge==ALFlycamOwnerEdge::CLASSIC_TO_ORBIT);
+    ensure("T34 untagged foreign flag ignored",untagged.frameOwner==ALFlycamPoseOwner::CLASSIC&&!untagged.foreignDroneRegain);
+    ensure("T34 steady foreign Drone reseeds",regain.edge==ALFlycamOwnerEdge::NONE&&regain.seedDrone&&regain.resetOperator&&regain.foreignDroneRegain);
+}
+
+// Dispatch-history validation (cut, straddle, stale and PRESENTED rejection)
+// remains an LLViewerJoystick integration concern; the pure frame/edge table is
+// covered above by T26-T30 and T32-T34.
 
 template<> template<> void flycam_drone_object::test<35>()
 {

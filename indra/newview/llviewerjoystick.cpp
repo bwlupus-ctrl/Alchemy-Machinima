@@ -88,8 +88,6 @@ std::array<F32, 7>  LLViewerJoystick::sDelta = {0,0,0,0,0,0,0};
 
 namespace
 {
-enum class FlycamPoseOwner { CLASSIC, DRONE, ORBIT };
-
 struct FlycamPoseSample
 {
     LLVector3d positionGlobal;
@@ -122,7 +120,7 @@ struct FlycamDroneRuntime
     F32 lastRequestedTick = 0.f;
     F32 lastRequestedRoll = 0.f;
     bool haveRequested = false;
-    FlycamPoseOwner owner = FlycamPoseOwner::CLASSIC;
+    ALFlycamPoseOwner owner = ALFlycamPoseOwner::CLASSIC;
     FlycamPoseSample previousPose;
     FlycamPoseSample currentPose;
     LLFlycamDrone::RenderPose lastDronePose;
@@ -2176,7 +2174,7 @@ void LLViewerJoystick::moveFlycam(bool reset)
             sDrone.lastDronePose = sDrone.drone.renderPose();
             sDrone.haveLastDronePose = true;
         }
-        sDrone.owner = drone_selected ? FlycamPoseOwner::DRONE : FlycamPoseOwner::CLASSIC;
+        sDrone.owner = drone_selected ? ALFlycamPoseOwner::DRONE : ALFlycamPoseOwner::CLASSIC;
         sDrone.previousPose = FlycamPoseSample();
         sDrone.currentPose = FlycamPoseSample();
         sDrone.resetPending = true;
@@ -2202,8 +2200,7 @@ void LLViewerJoystick::moveFlycam(bool reset)
             << " m=" << trigger_throttle << " r=" << trigger_roll << LL_ENDL;
     }
 
-    // Resolve the Orbit owner once.  The result selects this frame's desired
-    // owner and the same pose is consumed by the (possibly delayed) Orbit frame.
+    // Resolve Orbit once. The same result selects and drives this frame.
     static LLCachedControl<bool> orbit_enabled(gSavedSettings, "FlycamOrbitEnabled", false);
     static LLCachedControl<bool> orbit_level(gSavedSettings, "FlycamOrbitLevel", true);
     static LLCachedControl<F32>  orbit_min_r(gSavedSettings, "FlycamOrbitMinRadius", 0.1f);
@@ -2223,25 +2220,24 @@ void LLViewerJoystick::moveFlycam(bool reset)
                                         (F32)orbit_off_up) * resolved_anchor_rot;
     }
 
-    const bool drone_selected = (S32)flycamFlightModel() == 1 && !m3DCursor;
-    const FlycamPoseOwner desired_owner = orbit_resolved
-        ? FlycamPoseOwner::ORBIT
-        : (drone_selected ? FlycamPoseOwner::DRONE : FlycamPoseOwner::CLASSIC);
-    const FlycamPoseOwner frame_owner = sDrone.owner;
-    const bool owner_edge = desired_owner != frame_owner;
-    bool drone_frame = frame_owner == FlycamPoseOwner::DRONE;
-    bool orbit_frame = frame_owner == FlycamPoseOwner::ORBIT;
     const bool tagged_dispatch = gCameraDispatchOwner == ECameraOwner::FLYCAM;
-    bool foreign_drone_regain = false;
+    const bool dispatch_foreign = !sDrone.resetPending &&
+        gCameraDispatchForeignSinceFlycamWrite;
+    const bool drone_selected = (S32)flycamFlightModel() == 1 && !m3DCursor;
+    const ALFlycamFrameDecision frame_decision = alResolveFlycamFrame(
+        (S32)flycamFlightModel(), m3DCursor, orbit_resolved, sDrone.owner,
+        tagged_dispatch, dispatch_foreign);
+    const ALFlycamPoseOwner desired_owner = frame_decision.selectedOwner;
+    const ALFlycamPoseOwner frame_owner = frame_decision.frameOwner;
+    const bool owner_edge = frame_decision.edge != ALFlycamOwnerEdge::NONE;
+    const bool drone_frame = frame_owner == ALFlycamPoseOwner::DRONE;
+    const bool orbit_frame = frame_owner == ALFlycamPoseOwner::ORBIT;
 
-    // Orbit owns the pose for this whole frame.  Do not evolve Drone parameters
-    // or build scaling, and do not let elapsed wall time collect as backlog.
-    if (orbit_frame)
+    if (frame_decision.discardDroneAccumulator)
         sDrone.drone.discardAccumulator();
 
-    // Configuration is Drone-owned work.  Incoming owners are configured at
-    // their end-of-frame seed point below, so an outgoing Orbit frame remains
-    // completely frozen until Orbit has produced its final pose.
+    // Configuration is Drone-owned work. Classic->Drone is configured at its
+    // end-of-frame seed; Orbit->Drone is an immediate edge.
     if (drone_selected && drone_frame)
     {
         configureDrone(sDrone, mFlycamAxisScale[CAM_X_AXIS], mAutoLeveling,
@@ -2255,7 +2251,7 @@ void LLViewerJoystick::moveFlycam(bool reset)
         sDrone.resetPending = false;
     }
 
-    if (drone_frame || desired_owner == FlycamPoseOwner::DRONE)
+    if (drone_frame || desired_owner == ALFlycamPoseOwner::DRONE)
     {
         const LLVector3d new_origin = gAgent.getPosGlobalFromAgent(LLVector3::zero);
         const LLVector3d old_origin = sDrone.drone.originTag();
@@ -2268,6 +2264,29 @@ void LLViewerJoystick::moveFlycam(bool reset)
             sFlycamPosition += delta;
             if (sDrone.haveLastDronePose)
                 sDrone.lastDronePose.position += delta;
+        }
+
+        if (frame_decision.seedDrone &&
+            frame_decision.edge == ALFlycamOwnerEdge::ORBIT_TO_DRONE &&
+            !frame_decision.foreignDroneRegain)
+        {
+            if (sDrone.previousPose.valid && sDrone.currentPose.valid)
+            {
+                sDrone.drone.seedFromHistory(
+                    sDrone.previousPose.positionGlobal, sDrone.previousPose.rotation,
+                    sDrone.currentPose.positionGlobal, sDrone.currentPose.rotation,
+                    sDrone.currentPose.dt, new_origin, &sDrone.drone.state());
+            }
+            else
+            {
+                sDrone.drone.seed(sFlycamPosition, sFlycamRotation,
+                    LLVector3::zero, new_origin, &sDrone.drone.state());
+            }
+            sDrone.lastDronePose = sDrone.drone.renderPose();
+            sDrone.haveLastDronePose = true;
+            mXILevelPending = false;
+            mXIRecentrePending = false;
+            mDroneRecentreActive = false;
         }
 
         if (tagged_dispatch)
@@ -2310,13 +2329,6 @@ void LLViewerJoystick::moveFlycam(bool reset)
                     }
                     else
                     {
-                        if (desired_owner == FlycamPoseOwner::DRONE && !drone_frame)
-                        {
-                            // This regain is the incoming Drone's seed point.
-                            configureDrone(sDrone, mFlycamAxisScale[CAM_X_AXIS],
-                                mAutoLeveling, in_build_mode,
-                                gFrameIntervalSeconds.value(), build_mode_scale);
-                        }
                         LLViewerCamera* camera = LLViewerCamera::getInstance();
                         sFlycamPosition = camera->getOrigin();
                         sFlycamRotation = camera->getQuaternion();
@@ -2398,20 +2410,12 @@ void LLViewerJoystick::moveFlycam(bool reset)
                         }
                         sDrone.lastDronePose = sDrone.drone.renderPose();
                         sDrone.haveLastDronePose = true;
+                        mXILevelPending = false;
                         mXIRecentrePending = false;
                         mDroneRecentreActive = false;
                         LLCameraOperator::instance().reset();
                         LL_INFOS("FlycamDrone") << "DRONE OWNER-REGAIN foreign momentum="
                             << outcome << LL_ENDL;
-                        if (desired_owner == FlycamPoseOwner::DRONE && !drone_frame)
-                        {
-                            // A Classic -> Drone selection may happen while a
-                            // foreign dispatcher owns the camera.  Resume from
-                            // that owner's final rendered pose, not stale Classic.
-                            drone_frame = true;
-                            orbit_frame = false;
-                            foreign_drone_regain = true;
-                        }
                     }
                 }
             }
@@ -2451,6 +2455,8 @@ void LLViewerJoystick::moveFlycam(bool reset)
     classic_input.zoomDirect = mZoomDirect;
     classic_input.levelHorizon = level_horizon;
 
+    const LLVector3 shadow_entry_position = sFlycamPosition;
+    const LLQuaternion shadow_entry_rotation = sFlycamRotation;
     ALFlycamClassic::State classic_state =
     {
         sLastDelta,
@@ -2470,6 +2476,14 @@ void LLViewerJoystick::moveFlycam(bool reset)
     }
 
     ALFlycamClassic::finishIntegration(classic_input, classic_intermediate, classic_state);
+
+    // Drone->Orbit engages from Drone's last rendered pose. Keep the Classic
+    // deltas for Orbit controls, but discard the shadow pose increment.
+    if (frame_decision.discardClassicShadowPose)
+    {
+        sFlycamPosition = shadow_entry_position;
+        sFlycamRotation = shadow_entry_rotation;
+    }
 
     // Classic is always advanced above.  Drone owns only the final pose and
     // overwrites that shadow result before Orbit and the common camera tail.
@@ -2550,13 +2564,15 @@ void LLViewerJoystick::moveFlycam(bool reset)
         input.level = mXILevelPending;
         input.recentre = mXIRecentrePending;
 
-        // Measure every fixed tick, including frames which group several ticks.
-        // step() is pure with respect to model state; this shadow changes no
-        // camera behaviour and allocates nothing on the normal path.
-        LLFlycamDrone::State measured = sDrone.drone.state();
-        for (U64 step_number = 0; step_number < steps; ++step_number)
+        const LLFlycamDrone::RenderPose pose =
+            sDrone.drone.advance(gFrameIntervalSeconds.value(), input);
+
+        // Sample the last real fixed step produced by advance(). Do not replay
+        // step() for telemetry: that doubled model work on multi-step frames.
+        if (steps > 0)
         {
-            const LLFlycamDrone::State next = sDrone.drone.step(measured, input, tick);
+            const LLFlycamDrone::State& measured = sDrone.drone.previousState();
+            const LLFlycamDrone::State& next = sDrone.drone.state();
             const F32 acceleration = tick > 0.f
                 ? next.deltaVelocity.length() / tick : 0.f;
             const F32 jerk = tick > 0.f
@@ -2584,11 +2600,7 @@ void LLViewerJoystick::moveFlycam(bool reset)
             {
                 sDrone.boundJerkSinceReport = true;
             }
-            measured = next;
         }
-
-        const LLFlycamDrone::RenderPose pose =
-            sDrone.drone.advance(gFrameIntervalSeconds.value(), input);
         sDrone.reportSeconds += elapsed_dt;
         sDrone.reportSteps += steps;
         if (sDrone.drone.accumulator() > .1 && !sDrone.backlogSinceReport)
@@ -2783,7 +2795,9 @@ void LLViewerJoystick::moveFlycam(bool reset)
     if (owner_edge)
     {
         const LLVector3d origin = gAgent.getPosGlobalFromAgent(LLVector3::zero);
-        if (desired_owner == FlycamPoseOwner::DRONE && !foreign_drone_regain)
+        if (frame_decision.seedDrone &&
+            frame_decision.edge == ALFlycamOwnerEdge::CLASSIC_TO_DRONE &&
+            !frame_decision.foreignDroneRegain)
         {
             // The outgoing owner has completed its edge frame.  Only now may
             // Drone advance build scaling and install the parameters used by
@@ -2806,8 +2820,7 @@ void LLViewerJoystick::moveFlycam(bool reset)
             sDrone.lastDronePose = sDrone.drone.renderPose();
             sDrone.haveLastDronePose = true;
         }
-        else if (frame_owner == FlycamPoseOwner::DRONE &&
-                 desired_owner == FlycamPoseOwner::CLASSIC)
+        else if (frame_decision.edge == ALFlycamOwnerEdge::DRONE_TO_CLASSIC)
         {
             const std::array<F32, 6> seed =
                 sDrone.drone.classicSeed(gFrameIntervalSeconds.value());
@@ -2815,11 +2828,20 @@ void LLViewerJoystick::moveFlycam(bool reset)
                 sDelta[i] = seed[i];
         }
         sDrone.owner = desired_owner;
-        if (desired_owner != FlycamPoseOwner::DRONE)
+        if (desired_owner != ALFlycamPoseOwner::DRONE)
         {
             mXIRecentrePending = false;
             mDroneRecentreActive = false;
         }
+    }
+
+    const bool orbit_operator_edge =
+        frame_decision.edge == ALFlycamOwnerEdge::DRONE_TO_ORBIT ||
+        frame_decision.edge == ALFlycamOwnerEdge::ORBIT_TO_DRONE;
+    if (frame_decision.resetOperator && orbit_operator_edge &&
+        !frame_decision.foreignDroneRegain)
+    {
+        LLCameraOperator::instance().reset();
     }
 
     LLMatrix3 mat(sFlycamRotation);
@@ -2908,7 +2930,8 @@ void LLViewerJoystick::moveFlycam(bool reset)
         gCameraDispatchForeignSinceFlycamWrite = false;
     }
     mDroneCameraOwner = tagged_dispatch && drone_frame && !orbit_frame;
-    if (owner_edge)
+    if (frame_decision.resetOperator && !orbit_operator_edge &&
+        !frame_decision.foreignDroneRegain)
         LLCameraOperator::instance().reset();
 }
 
@@ -3303,8 +3326,10 @@ void LLViewerJoystick::beginMainLoop()
 #endif
     // Also notice focus loss on passes where scanJoystick is gated out.
     if (!gFocusMgr.getAppHasFocus()) mXIWasFocused = false;
-    if (!mDroneCameraOwner && mXILevelPending &&
-        mXILoopGeneration - mXILevelGeneration > 1)
+    const bool flycam_dispatch_owns_camera = getOverrideCamera() &&
+        gCameraDispatchOwner == ECameraOwner::FLYCAM;
+    if (mXILevelPending && (!flycam_dispatch_owns_camera ||
+        mXILoopGeneration - mXILevelGeneration > 1))
     {
         mXILevelPending = false;
     }
@@ -3569,7 +3594,9 @@ void LLViewerJoystick::handleXInputDpad()
         }
         else if (value == ALXInput::DPAD_LEVEL)
         {
-            if (!getOverrideCamera()) { xInputHint("Flycam not active"); return; }
+            const bool flycam_owns_camera = getOverrideCamera() &&
+                gCameraDispatchOwner == ECameraOwner::FLYCAM;
+            if (!flycam_owns_camera) { xInputHint("Flycam not active"); return; }
             mXILevelPending = true;
             mXILevelGeneration = mXILoopGeneration;
             xInputHint("Level horizon");

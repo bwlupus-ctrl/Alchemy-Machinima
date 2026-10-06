@@ -22,6 +22,105 @@ enum class ECameraOwner
     AGENT
 };
 
+enum class ALFlycamPoseOwner
+{
+    CLASSIC,
+    DRONE,
+    ORBIT
+};
+
+enum class ALFlycamOwnerEdge
+{
+    NONE,
+    CLASSIC_TO_DRONE,
+    DRONE_TO_CLASSIC,
+    CLASSIC_TO_ORBIT,
+    ORBIT_TO_CLASSIC,
+    DRONE_TO_ORBIT,
+    ORBIT_TO_DRONE
+};
+
+struct ALFlycamFrameDecision
+{
+    ALFlycamPoseOwner selectedOwner = ALFlycamPoseOwner::CLASSIC;
+    ALFlycamPoseOwner frameOwner = ALFlycamPoseOwner::CLASSIC;
+    ALFlycamOwnerEdge edge = ALFlycamOwnerEdge::NONE;
+    bool resetOperator = false;
+    bool discardDroneAccumulator = false;
+    bool discardClassicShadowPose = false;
+    bool seedDrone = false;
+    bool foreignDroneRegain = false;
+};
+
+// Pure per-frame ownership decision. Orbit takes/releases ownership on the
+// resolveAnchor frame; only Classic<->Drone model changes use the outgoing
+// owner for their edge frame.
+inline ALFlycamFrameDecision alResolveFlycamFrame(
+    S32 modelSetting, bool cursor3D, bool orbitResolved,
+    ALFlycamPoseOwner previousOwner, bool taggedDispatch,
+    bool foreignSinceFlycamWrite)
+{
+    ALFlycamFrameDecision result;
+    const bool droneSelected = modelSetting == 1 && !cursor3D;
+    result.selectedOwner = orbitResolved ? ALFlycamPoseOwner::ORBIT :
+        (droneSelected ? ALFlycamPoseOwner::DRONE : ALFlycamPoseOwner::CLASSIC);
+    result.frameOwner = result.selectedOwner;
+    result.foreignDroneRegain = taggedDispatch && foreignSinceFlycamWrite &&
+        result.selectedOwner == ALFlycamPoseOwner::DRONE;
+
+    if (previousOwner == result.selectedOwner)
+    {
+        result.discardDroneAccumulator = result.frameOwner == ALFlycamPoseOwner::ORBIT;
+        result.seedDrone = result.foreignDroneRegain;
+        result.resetOperator = result.foreignDroneRegain;
+        return result;
+    }
+
+    if (previousOwner == ALFlycamPoseOwner::CLASSIC &&
+        result.selectedOwner == ALFlycamPoseOwner::DRONE)
+    {
+        result.edge = ALFlycamOwnerEdge::CLASSIC_TO_DRONE;
+        result.frameOwner = result.foreignDroneRegain
+            ? ALFlycamPoseOwner::DRONE : ALFlycamPoseOwner::CLASSIC;
+        result.seedDrone = true;
+        result.resetOperator = true;
+    }
+    else if (previousOwner == ALFlycamPoseOwner::DRONE &&
+             result.selectedOwner == ALFlycamPoseOwner::CLASSIC)
+    {
+        result.edge = ALFlycamOwnerEdge::DRONE_TO_CLASSIC;
+        result.frameOwner = ALFlycamPoseOwner::DRONE;
+        result.resetOperator = true;
+    }
+    else if (previousOwner == ALFlycamPoseOwner::CLASSIC &&
+             result.selectedOwner == ALFlycamPoseOwner::ORBIT)
+    {
+        result.edge = ALFlycamOwnerEdge::CLASSIC_TO_ORBIT;
+    }
+    else if (previousOwner == ALFlycamPoseOwner::ORBIT &&
+             result.selectedOwner == ALFlycamPoseOwner::CLASSIC)
+    {
+        result.edge = ALFlycamOwnerEdge::ORBIT_TO_CLASSIC;
+    }
+    else if (previousOwner == ALFlycamPoseOwner::DRONE &&
+             result.selectedOwner == ALFlycamPoseOwner::ORBIT)
+    {
+        result.edge = ALFlycamOwnerEdge::DRONE_TO_ORBIT;
+        result.resetOperator = true;
+        result.discardClassicShadowPose = true;
+    }
+    else if (previousOwner == ALFlycamPoseOwner::ORBIT &&
+             result.selectedOwner == ALFlycamPoseOwner::DRONE)
+    {
+        result.edge = ALFlycamOwnerEdge::ORBIT_TO_DRONE;
+        result.seedDrone = true;
+        result.resetOperator = true;
+    }
+
+    result.discardDroneAccumulator = result.frameOwner == ALFlycamPoseOwner::ORBIT;
+    return result;
+}
+
 struct ALCameraDispatchSample
 {
     U64 serial = 0;
