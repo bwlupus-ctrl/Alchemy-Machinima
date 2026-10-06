@@ -22,6 +22,17 @@ constexpr F32 NINETY = 90.f * DEG;
 constexpr F32 EIGHTY_FIVE = 85.f * DEG;
 constexpr F32 EIGHTY_NINE = 89.f * DEG;
 
+// Sections 13-14 specify only the normalized and simulation-Hz ranges; keep
+// the otherwise-unspecified human sliders inside conservative defensive
+// ceilings: 200 m/s speeds, 60 s times, 2 s onset, 10 km stop distance, and
+// 720 degrees/s rotation.  These cover every section 10 preset generously.
+constexpr F32 MAX_SPEED = 200.f;
+constexpr F32 MAX_TIME = 60.f;
+constexpr F32 MAX_ONSET = 2.f;
+constexpr F32 MAX_STOP_DISTANCE = 10000.f;
+constexpr F32 MAX_RATE_DEGREES = 720.f;
+constexpr F32 MAX_ROLL_RATE = 4.f * PI;
+
 F32 clampf(F32 value, F32 low, F32 high)
 {
     if (!std::isfinite(value))
@@ -73,7 +84,7 @@ bool validParams(const LLFlycamDrone::Params& p)
         std::isfinite(p.grip) && p.grip >= .05f &&
         std::isfinite(p.climbSpeed) && p.climbSpeed >= 0.f &&
         std::isfinite(p.climbAcceleration) && p.climbAcceleration >= 0.f &&
-        std::isfinite(p.pole) && p.pole >= 0.f && p.pole < 1.f &&
+        std::isfinite(p.pole) && p.pole > 0.f && p.pole < 1.f &&
         std::isfinite(p.yawRate) && p.yawRate >= 0.f &&
         std::isfinite(p.speedReference) && p.speedReference > 0.f &&
         std::isfinite(p.yawAcceleration) && p.yawAcceleration >= 0.f &&
@@ -84,12 +95,16 @@ bool validParams(const LLFlycamDrone::Params& p)
         std::isfinite(p.velocityCap) && p.velocityCap > 0.f &&
         std::isfinite(p.horizontalLimit) && p.horizontalLimit >= 0.f &&
         std::isfinite(p.dragLimit) && p.dragLimit >= 0.f &&
-        std::isfinite(p.totalLimit) && p.totalLimit >= 0.f &&
-        std::isfinite(p.gMax) && p.gMax >= 0.f &&
-        std::isfinite(p.effectiveJerk) && p.effectiveJerk >= 0.f &&
+        std::isfinite(p.totalLimit) && p.totalLimit > 0.f &&
+        std::isfinite(p.gMax) && p.gMax > 0.f &&
+        std::isfinite(p.effectiveJerk) && p.effectiveJerk > 0.f &&
         std::isfinite(p.tick) && p.tick >= 1.f / 240.f && p.tick <= 1.f / 30.f &&
         std::isfinite(p.yawExpo) && p.yawExpo >= 0.f && p.yawExpo <= 1.f &&
-        std::isfinite(p.gimbalExpo) && p.gimbalExpo >= 0.f && p.gimbalExpo <= 1.f;
+        std::isfinite(p.gimbalExpo) && p.gimbalExpo >= 0.f && p.gimbalExpo <= 1.f &&
+        (p.release == LLFlycamDrone::ReleaseMode::HOLD ||
+         p.release == LLFlycamDrone::ReleaseMode::DRIFT) &&
+        (p.throttleMode == LLFlycamDrone::ThrottleMode::ASSIST ||
+         p.throttleMode == LLFlycamDrone::ThrottleMode::PURE);
 }
 
 bool exactZero(const LLVector3& value)
@@ -97,11 +112,12 @@ bool exactZero(const LLVector3& value)
     return value.mV[VX] == 0.f && value.mV[VY] == 0.f && value.mV[VZ] == 0.f;
 }
 
-bool noInput(const LLFlycamDrone::Input& input)
+bool noInput(const LLVector3& move, F32 throttle, F32 brake, F32 vertical,
+             F32 yaw, F32 tilt, F32 roll, const LLFlycamDrone::Input& input)
 {
-    return exactZero(input.move) && input.throttle == 0.f && input.brake == 0.f &&
-           input.vertical == 0.f && input.yaw == 0.f && input.tilt == 0.f &&
-           input.roll == 0.f && !input.level && !input.recentre;
+    return exactZero(move) && throttle == 0.f && brake == 0.f && vertical == 0.f &&
+           yaw == 0.f && tilt == 0.f && roll == 0.f &&
+           !input.level && !input.recentre;
 }
 
 F32 acceptedValue(const char* name, F32 requested, F32 previous, F32 low, F32 high,
@@ -117,6 +133,23 @@ F32 acceptedValue(const char* name, F32 requested, F32 previous, F32 low, F32 hi
         logger(out.str());
     }
     return previous;
+}
+
+F32 clampedFloor(const char* name, F32 requested, F32 previous, F32 low, F32 high,
+                 const LLFlycamDrone::Logger& logger, bool& valid)
+{
+    if (!std::isfinite(requested) || requested > high)
+        return acceptedValue(name, requested, previous, low, high, logger, valid);
+    if (requested >= low)
+        return requested;
+    valid = false;
+    if (logger)
+    {
+        std::ostringstream out;
+        out << "DRONE PARAM-CLAMP " << name << '=' << requested << " applied=" << low;
+        logger(out.str());
+    }
+    return low;
 }
 
 F32 brakingDistance(F32 top, F32 deceleration, F32 tick)
@@ -185,14 +218,34 @@ bool LLFlycamDrone::compile(const HumanParams& requested, const HumanParams& pre
                             F32 tick, F32 rollRate, Params& out,
                             HumanParams* accepted, Logger logger)
 {
+    if ((requested.release != ReleaseMode::HOLD && requested.release != ReleaseMode::DRIFT) ||
+        (requested.throttleMode != ThrottleMode::ASSIST &&
+         requested.throttleMode != ThrottleMode::PURE))
+    {
+        if (logger)
+            logger("DRONE PARAM-CLAMP invalid release/throttle enum; previous block kept");
+        if (accepted)
+            *accepted = previous;
+        return false;
+    }
+    // A huge but finite onset can round p to one before later validation.
+    // Section 13/14 leaves this slider maximum open; the defensive 2 s
+    // ceiling above is therefore a rejection, not a coefficient saturation.
+    if (std::isfinite(requested.onset) && requested.onset > MAX_ONSET)
+    {
+        if (logger)
+            logger("DRONE PARAM-CLAMP onset exceeds 2 s; previous block kept");
+        if (accepted)
+            *accepted = previous;
+        return false;
+    }
     bool valid = true;
     const F32 previousTick = std::isfinite(out.tick) ? out.tick : 1.f / 120.f;
     const F32 previousRoll = std::isfinite(out.rollRate) ? out.rollRate : 1.f;
-    const F32 largest = std::numeric_limits<F32>::max();
     tick = acceptedValue("tick", tick, previousTick, 1.f / 240.f, 1.f / 30.f, logger, valid);
     HumanParams h = requested;
-    h.cruise = acceptedValue("cruise", h.cruise, previous.cruise, .001f, largest, logger, valid);
-    h.top = acceptedValue("top", h.top, previous.top, .001f, largest, logger, valid);
+    h.cruise = acceptedValue("cruise", h.cruise, previous.cruise, .001f, MAX_SPEED, logger, valid);
+    h.top = acceptedValue("top", h.top, previous.top, .001f, MAX_SPEED, logger, valid);
     if (h.top < h.cruise)
     {
         valid = false;
@@ -202,21 +255,21 @@ bool LLFlycamDrone::compile(const HumanParams& requested, const HumanParams& pre
         h.top = previous.top;
     }
     const F32 minTime = 4.f * tick;
-    h.timeToTop = acceptedValue("timeToTop", h.timeToTop, std::max(previous.timeToTop, minTime), minTime, largest, logger, valid);
-    h.holdTime = acceptedValue("holdTime", h.holdTime, std::max(previous.holdTime, minTime), minTime, largest, logger, valid);
-    h.coastTime = acceptedValue("coastTime", h.coastTime, std::max(previous.coastTime, minTime), minTime, largest, logger, valid);
-    h.onset = acceptedValue("onset", h.onset, std::max(previous.onset, minTime), minTime, largest, logger, valid);
+    h.timeToTop = acceptedValue("timeToTop", h.timeToTop, std::max(previous.timeToTop, minTime), minTime, MAX_TIME, logger, valid);
+    h.holdTime = acceptedValue("holdTime", h.holdTime, std::max(previous.holdTime, minTime), minTime, MAX_TIME, logger, valid);
+    h.coastTime = acceptedValue("coastTime", h.coastTime, std::max(previous.coastTime, minTime), minTime, MAX_TIME, logger, valid);
+    h.onset = acceptedValue("onset", h.onset, std::max(previous.onset, minTime), minTime, MAX_ONSET, logger, valid);
     h.highSpeedFloat = acceptedValue("highSpeedFloat", h.highSpeedFloat, previous.highSpeedFloat, 0.f, 1.f, logger, valid);
-    h.grip = acceptedValue("grip", h.grip, previous.grip, .05f, 1.f, logger, valid);
-    h.turnRateDegrees = acceptedValue("turnRate", h.turnRateDegrees, previous.turnRateDegrees, .001f, largest, logger, valid);
+    h.grip = clampedFloor("grip", h.grip, previous.grip, .05f, 1.f, logger, valid);
+    h.turnRateDegrees = acceptedValue("turnRate", h.turnRateDegrees, previous.turnRateDegrees, .001f, MAX_RATE_DEGREES, logger, valid);
     h.turnWeight = acceptedValue("turnWeight", h.turnWeight, previous.turnWeight, 0.f, 1.f, logger, valid);
-    h.tiltRateDegrees = acceptedValue("tiltRate", h.tiltRateDegrees, previous.tiltRateDegrees, .001f, largest, logger, valid);
-    h.climb = acceptedValue("climb", h.climb, previous.climb, 0.f, largest, logger, valid);
+    h.tiltRateDegrees = acceptedValue("tiltRate", h.tiltRateDegrees, previous.tiltRateDegrees, .001f, MAX_RATE_DEGREES, logger, valid);
+    h.climb = acceptedValue("climb", h.climb, previous.climb, 0.f, MAX_SPEED, logger, valid);
     if (h.climb > 0.f)
-        h.climbTime = acceptedValue("climbTime", h.climbTime, std::max(previous.climbTime, minTime), minTime, largest, logger, valid);
+        h.climbTime = acceptedValue("climbTime", h.climbTime, std::max(previous.climbTime, minTime), minTime, MAX_TIME, logger, valid);
     const F32 stopFloor = h.top * (h.onset + 2.f * tick);
     h.stopDistance = acceptedValue("stopDistance", h.stopDistance, previous.stopDistance,
-                                   stopFloor, largest, logger, valid);
+                                   stopFloor, MAX_STOP_DISTANCE, logger, valid);
     if (h.stopDistance < stopFloor)
     {
         valid = false;
@@ -224,7 +277,7 @@ bool LLFlycamDrone::compile(const HumanParams& requested, const HumanParams& pre
         if (logger)
             logger("DRONE PARAM-CLAMP stopDistance raised to onset floor");
     }
-    rollRate = acceptedValue("rollRate", std::fabs(rollRate), previousRoll, 0.f, largest, logger, valid);
+    rollRate = acceptedValue("rollRate", std::fabs(rollRate), previousRoll, 0.f, MAX_ROLL_RATE, logger, valid);
 
     Params p;
     p.tick = tick;
@@ -270,20 +323,24 @@ bool LLFlycamDrone::compile(const HumanParams& requested, const HumanParams& pre
     p.release = h.release;
     p.throttleMode = h.throttleMode;
     p.freeFly = h.freeFly;
-    const bool derivedFinite = std::isfinite(p.acceleration) && std::isfinite(p.deceleration) &&
+    const F32 jerkToLimit = p.effectiveJerk / p.totalLimit;
+    const bool derivedValid = std::isfinite(p.acceleration) && std::isfinite(p.deceleration) &&
         std::isfinite(p.brakeDeceleration) && std::isfinite(p.dragLinear) &&
         std::isfinite(p.dragQuadratic) && std::isfinite(p.climbAcceleration) &&
-        std::isfinite(p.pole) && std::isfinite(p.yawRate) &&
+        std::isfinite(p.pole) && p.pole > 0.f && p.pole < 1.f &&
+        std::isfinite(p.yawRate) &&
         std::isfinite(p.speedReference) && std::isfinite(p.yawAcceleration) &&
         std::isfinite(p.tiltRate) && std::isfinite(p.tiltAcceleration) &&
         std::isfinite(p.rollAcceleration) && std::isfinite(p.velocityCap) &&
         std::isfinite(p.horizontalLimit) && std::isfinite(p.dragLimit) &&
-        std::isfinite(p.totalLimit) && std::isfinite(p.gMax) &&
-        std::isfinite(p.effectiveJerk);
-    if (!derivedFinite)
+        std::isfinite(p.totalLimit) && p.totalLimit > 0.f &&
+        std::isfinite(p.gMax) && p.gMax > 0.f &&
+        std::isfinite(p.effectiveJerk) && p.effectiveJerk > 0.f &&
+        std::isfinite(jerkToLimit) && jerkToLimit > 0.f;
+    if (!derivedValid)
     {
         if (logger)
-            logger("DRONE PARAM-CLAMP derived coefficients non-finite; previous block kept");
+            logger("DRONE PARAM-CLAMP derived coefficient outside finite domain; previous block kept");
         if (accepted)
             *accepted = previous;
         return false;
@@ -320,18 +377,22 @@ F32 LLFlycamDrone::gMax(F32 pole)
 {
     if (!(pole >= 0.f && pole < 1.f))
         return pole == 1.f ? 0.f : 1.f;
-    const F64 oneMinus = 1.0 - pole;
-    F64 term = oneMinus * oneMinus;
-    F64 maximum = term;
-    for (S32 k = 0; k < 100000; ++k)
+    if (pole == 0.f)
+        return 1.f;
+
+    // g_k=(1-p)^2(k+1)p^k.  log(g_k) is strictly concave and its
+    // real-valued maximum is k*=-1/log(p)-1, so the exact integer maximum is
+    // one of floor(k*) and ceil(k*) (with k constrained to be non-negative).
+    const F64 p = pole;
+    const F64 logPole = std::log(p);
+    const F64 peak = std::max(0.0, -1.0 / logPole - 1.0);
+    const F64 lower = std::floor(peak);
+    const F64 upper = std::ceil(peak);
+    const auto kernel = [p, logPole](F64 k)
     {
-        const F64 next = term * pole * static_cast<F64>(k + 2) / static_cast<F64>(k + 1);
-        if (next < term)
-            break;
-        maximum = next;
-        term = next;
-    }
-    return static_cast<F32>(maximum);
+        return std::exp(2.0 * std::log1p(-p) + std::log(k + 1.0) + k * logPole);
+    };
+    return static_cast<F32>(std::max(kernel(lower), kernel(upper)));
 }
 
 F32 LLFlycamDrone::effectiveJerk(F32 pole, F32 totalLimit, F32 tick)
@@ -357,11 +418,14 @@ LLFlycamDrone::State LLFlycamDrone::step(const State& source, const Input& input
     const F32 throttle = clampf(input.throttle, 0.f, 1.f);
     const F32 brake = clampf(input.brake, 0.f, 1.f);
     const F32 vertical = clampf(input.vertical, -1.f, 1.f);
+    const F32 yawInput = clampf(input.yaw, -1.f, 1.f);
+    const F32 tiltInput = clampf(input.tilt, -1.f, 1.f);
+    const F32 rollInput = clampf(input.roll, -1.f, 1.f);
     LLVector3 move(std::isfinite(input.move.mV[VX]) ? input.move.mV[VX] : 0.f,
                    std::isfinite(input.move.mV[VY]) ? input.move.mV[VY] : 0.f, 0.f);
     move = clampLength(move, 1.f);
     const F32 moveLength = move.length();
-    const bool assist = mParams.throttleMode == ThrottleMode::ASSIST;
+    const bool assist = mParams.throttleMode == ThrottleMode::ASSIST || !input.droneThrottle;
     const F32 speedLimit = assist ? mParams.cruise + (mParams.top - mParams.cruise) * throttle
                                   : throttle * mParams.top;
     const F32 requestedSpeed = moveLength * speedLimit * (1.f - brake);
@@ -489,7 +553,8 @@ LLFlycamDrone::State LLFlycamDrone::step(const State& source, const Input& input
     const bool steadyNear = (source.smootherVelocity - reference).length() <= epsilonQ &&
                             (source.velocity - source.smootherVelocity).length() <= epsilonQ &&
                             source.deltaVelocity.length() <= epsilonQ;
-    const bool settle = noInput(input) && exactZero(reference) && steadyNear;
+    const bool settle = noInput(move, throttle, brake, vertical, yawInput, tiltInput,
+                                rollInput, input) && exactZero(reference) && steadyNear;
     const bool rebaseline = next.totalLimitMax > mParams.totalLimit && steadyNear;
     if (steadyNear && (settle || rebaseline || next.hasPendingPole))
     {
@@ -509,7 +574,7 @@ LLFlycamDrone::State LLFlycamDrone::step(const State& source, const Input& input
     next.deltaVelocity = next.velocity - source.velocity;
     next.position = source.position + next.velocity * tick;
 
-    const F32 yawTarget = shaped(input.yaw, mParams.yawExpo) * mParams.yawRate /
+    const F32 yawTarget = shaped(yawInput, mParams.yawExpo) * mParams.yawRate /
                           (1.f + LLVector3(next.velocity.mV[VX], next.velocity.mV[VY], 0.f).length() /
                            mParams.speedReference);
     next.yawVelocity += clampf(yawTarget - next.yawVelocity,
@@ -517,27 +582,32 @@ LLFlycamDrone::State LLFlycamDrone::step(const State& source, const Input& input
     next.yaw = wrap(source.yaw + next.yawVelocity * tick);
     if (input.recentre)
         next.recentre = true;
-    if (next.recentre && input.tilt != 0.f)
+    if (next.recentre && tiltInput != 0.f)
         next.recentre = false;
-    F32 tiltTarget = shaped(input.tilt, mParams.gimbalExpo) * mParams.tiltRate;
-    if (next.recentre)
-        tiltTarget = clampf(-source.tilt * mParams.tiltRate / (10.f * DEG),
-                            -mParams.tiltRate, mParams.tiltRate);
-    next.tiltVelocity += clampf(tiltTarget - next.tiltVelocity,
-                                -mParams.tiltAcceleration * tick, mParams.tiltAcceleration * tick);
-    next.tilt = source.tilt + next.tiltVelocity * tick;
     next.tiltLimit = std::max(EIGHTY_NINE, std::fabs(source.tilt) <= EIGHTY_NINE
                                            ? EIGHTY_NINE : source.tiltLimit);
-    if (std::fabs(next.tilt) > next.tiltLimit)
-    {
-        next.tilt = std::copysign(next.tiltLimit, next.tilt);
-        next.tiltVelocity = 0.f;
-    }
-    if (next.recentre && std::fabs(next.tilt) < .1f * DEG &&
-        std::fabs(next.tiltVelocity) < .5f * DEG)
+    // Section 6.3 step 7 completes against the current state, before a new
+    // target, rate, or integrated angle is computed.
+    if (next.recentre && std::fabs(source.tilt) < .1f * DEG &&
+        std::fabs(source.tiltVelocity) < .5f * DEG)
     {
         next.tilt = next.tiltVelocity = 0.f;
         next.recentre = false;
+    }
+    else
+    {
+        F32 tiltTarget = shaped(tiltInput, mParams.gimbalExpo) * mParams.tiltRate;
+        if (next.recentre)
+            tiltTarget = clampf(-source.tilt * mParams.tiltRate / (10.f * DEG),
+                                -mParams.tiltRate, mParams.tiltRate);
+        next.tiltVelocity += clampf(tiltTarget - next.tiltVelocity,
+                                    -mParams.tiltAcceleration * tick, mParams.tiltAcceleration * tick);
+        next.tilt = source.tilt + next.tiltVelocity * tick;
+        if (std::fabs(next.tilt) > next.tiltLimit)
+        {
+            next.tilt = std::copysign(next.tiltLimit, next.tilt);
+            next.tiltVelocity = 0.f;
+        }
     }
     if (input.level)
     {
@@ -545,11 +615,11 @@ LLFlycamDrone::State LLFlycamDrone::step(const State& source, const Input& input
     }
     else
     {
-        const F32 rollTarget = clampf(input.roll, -1.f, 1.f) * mParams.rollRate;
+        const F32 rollTarget = rollInput * mParams.rollRate;
         next.rollVelocity += clampf(rollTarget - next.rollVelocity,
                                     -mParams.rollAcceleration * tick, mParams.rollAcceleration * tick);
         next.roll = wrap(source.roll + next.rollVelocity * tick);
-        if (mParams.autoLevel && input.roll == 0.f)
+        if (mParams.autoLevel && rollInput == 0.f)
             next.roll -= next.roll * std::min(1.f, tick / .5f);
     }
 
@@ -746,8 +816,25 @@ bool LLFlycamDrone::applyOrigin(const LLVector3d& newOrigin)
     const LLVector3 delta(static_cast<F32>(wideDelta.mdV[VX]),
                           static_cast<F32>(wideDelta.mdV[VY]),
                           static_cast<F32>(wideDelta.mdV[VZ]));
-    mCur.position += delta;
-    mPrev.position += delta;
+    const LLVector3 shiftedCur = mCur.position + delta;
+    const LLVector3 shiftedPrev = mPrev.position + delta;
+    if (!wideDelta.isFinite() || !finiteVector(delta) ||
+        !finiteVector(shiftedCur) || !finiteVector(shiftedPrev))
+    {
+        // Section 6.3 step 8 recovery: a narrowing overflow cannot preserve an
+        // agent-space pose, so reseed safely in the new section 11.9 frame.
+        const bool stateWasFinite = finite(mCur);
+        const LLQuaternion orientation = stateWasFinite
+            ? rotation(mCur.yaw, mCur.tilt, mCur.roll) : LLQuaternion();
+        const State* prior = stateWasFinite ? &mCur : nullptr;
+        seed(LLVector3::zero, orientation, LLVector3::zero, newOrigin, prior);
+        mCur.nonFiniteRecovered = true;
+        mPrev = mCur;
+        log("DRONE NONFINITE origin-shift reseed");
+        return true;
+    }
+    mCur.position = shiftedCur;
+    mPrev.position = shiftedPrev;
     mOriginTag = newOrigin;
     std::ostringstream out;
     out << "DRONE ORIGIN-SHIFT " << wideDelta.length();

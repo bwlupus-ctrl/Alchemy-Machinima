@@ -90,6 +90,9 @@ public:
         LLVector3 move;
         F32 throttle = 0.f;
         F32 brake = 0.f;
+        // True only while the unified trigger mode is Drone-THROTTLE.  The
+        // model uses Assist when this is false, even if the preset says Pure.
+        bool droneThrottle = false;
         F32 vertical = 0.f;
         F32 yaw = 0.f;
         F32 tilt = 0.f;

@@ -1,4 +1,4 @@
-// [XInputPad] Pure helpers. Deliberately not registered: this task forbids CMake edits.
+// [XInputPad] Pure helpers, registered directly as a header-only integration test.
 #include "linden_common.h"
 #include "../test/lltut.h"
 #include "../alxinputmath.h"
@@ -139,5 +139,45 @@ template<> template<> void xinput_object::test<6>()
     ensure_equals("negative clamps", ALXInput::rumbleMotor(-1.f, 1.f), static_cast<std::uint16_t>(0));
     ensure_equals("NaN level", ALXInput::rumbleMotor(nan, 1.f), static_cast<std::uint16_t>(0));
     ensure_equals("NaN strength", ALXInput::rumbleMotor(1.f, nan), static_cast<std::uint16_t>(0));
+}
+
+// Flycam brief section 16.3/T25: Drone owns independent shaped RT throttle
+// and LT brake.  Freshness/focus association gates both values at the caller.
+template<> template<> void xinput_object::test<7>()
+{
+    float throttle = -1.f, brake = -1.f;
+    ALXInput::droneTriggers(0.f, 0.f, .06f, 2.f, throttle, brake);
+    ensure_equals("Drone triggers rest throttle", throttle, 0.f);
+    ensure_equals("Drone triggers rest brake", brake, 0.f);
+
+    ALXInput::droneTriggers(1.f, 0.f, .06f, 2.f, throttle, brake);
+    ensure_equals("LT is full brake", brake, 1.f);
+    ensure_equals("LT does not throttle", throttle, 0.f);
+    ALXInput::droneTriggers(0.f, 1.f, .06f, 2.f, throttle, brake);
+    ensure_equals("RT is full throttle", throttle, 1.f);
+    ensure_equals("RT does not brake", brake, 0.f);
+
+    for (int left = 0; left <= 255; ++left)
+    for (int right = 0; right <= 255; right += 17)
+    {
+        const float l = left / 255.f, r = right / 255.f;
+        ALXInput::droneTriggers(l, r, .06f, 2.f, throttle, brake);
+        ensure_equals("Drone RT uses shared shape", throttle, ALXInput::shape(r, .06f, 2.f));
+        ensure_equals("Drone LT uses shared shape", brake, ALXInput::shape(l, .06f, 2.f));
+    }
+
+    // The public freshness helper is the contract used before exposing the pair.
+    ALXInput::droneTriggers(.8f, .9f, .06f, 2.f, throttle, brake);
+    if (!ALXInput::fresh(true, false, 10, 10)) throttle = brake = 0.f;
+    ensure_equals("unfocused sample neutral throttle", throttle, 0.f);
+    ensure_equals("unfocused sample neutral brake", brake, 0.f);
+    ALXInput::droneTriggers(.8f, .9f, .06f, 2.f, throttle, brake);
+    if (!ALXInput::fresh(true, true, 9, 10)) throttle = brake = 0.f;
+    ensure_equals("stale sample neutral throttle", throttle, 0.f);
+    ensure_equals("stale sample neutral brake", brake, 0.f);
+
+    // Classic trigger endpoints remain independently pinned by test<1>.
+    ensure_equals("Classic rest multiplier unchanged", ALXInput::throttle(0.f, 0.f, .1f, 4.f), 1.f);
+    ensure_equals("Classic roll unchanged", ALXInput::roll(0.f, 1.f, .06f, 2.f), 1.f);
 }
 }
