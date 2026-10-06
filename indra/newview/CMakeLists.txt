@@ -2722,7 +2722,7 @@ if (BUILD_TESTING)
 
   LL_ADD_PROJECT_UNIT_TESTS(${VIEWER_BINARY_NAME} "${viewer_TEST_SOURCE_FILES}")
 
-  LL_ADD_INTEGRATION_TEST(llflycamdrone "llflycamdrone.cpp" "${test_libs}" "${test_project}")
+  LL_ADD_INTEGRATION_TEST(llflycamdrone "llflycamdrone.cpp;alflycamclassic.cpp" "${test_libs}" "${test_project}")
   LL_ADD_INTEGRATION_TEST(alflycamclassic "alflycamclassic.cpp" "${test_libs}" "${test_project}")
   LL_ADD_INTEGRATION_TEST(alxinputmath "" "${test_libs}" "${test_project}")
 

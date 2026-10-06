@@ -402,20 +402,6 @@ LLFlycamDrone::Params buildScaledParams(const LLFlycamDrone::Params& source, F32
     return p;
 }
 
-LLVector3 angularVelocity(const LLQuaternion& from, const LLQuaternion& to, F32 dt)
-{
-    if (!(dt > 0.f) || !std::isfinite(dt) || !from.isFinite() || !to.isFinite())
-        return LLVector3::zero;
-    LLQuaternion delta = to * ~from;
-    if (delta.mQ[VW] < 0.f)
-        delta = -delta;
-    delta.normalize();
-    F32 angle = 0.f;
-    LLVector3 axis;
-    delta.getAngleAxis(&angle, axis);
-    return axis * (angle / dt);
-}
-
 void configureDrone(FlycamDroneRuntime& runtime, F32 rollRate,
                     bool autoLevel, bool buildMode, F32 frameDt,
                     F32 buildModeScale)
@@ -2293,9 +2279,11 @@ void LLViewerJoystick::moveFlycam(bool reset)
         {
             alCameraDispatchFinalizePresented();
             {
-                const bool gap = gCameraDispatchSerial != sDrone.lastWrittenSerial + 1;
-                const bool foreign = gCameraDispatchForeignSinceFlycamWrite;
-                if ((gap && drone_frame) || foreign)
+                const ALFlycamGapDecision gap = alClassifyFlycamDispatchGap(
+                    gCameraDispatchSerial, sDrone.lastWrittenSerial,
+                    gCameraDispatchForeignSinceFlycamWrite);
+                const bool foreign = gap.gap == ALFlycamDispatchGap::FOREIGN;
+                if ((gap.gap == ALFlycamDispatchGap::SELF && drone_frame) || foreign)
                 {
                     const bool keep = (S32)droneSettings().resumeMomentum == 1;
                     std::string outcome = "stop";
@@ -2350,55 +2338,27 @@ void LLViewerJoystick::moveFlycam(bool reset)
                                     (gCameraDispatchSampleStart + n - 2) % capacity];
                                 const ALCameraDispatchSample& c = gCameraDispatchSamples[
                                     (gCameraDispatchSampleStart + n - 1) % capacity];
-                                if (a.serial + 1 != b.serial || b.serial + 1 != c.serial ||
-                                    c.serial + 1 != gCameraDispatchSerial)
-                                    reject = "stale";
-                                else if (a.owner != b.owner || b.owner != c.owner ||
-                                         c.owner == ECameraOwner::FLYCAM)
-                                    reject = "straddle";
-                                else if (!a.presented || !b.presented || !c.presented)
-                                    reject = "unpresented";
-                                else if (!(a.dt > .0005f && a.dt <= .25f &&
-                                           b.dt > .0005f && b.dt <= .25f &&
-                                           c.dt > .0005f && c.dt <= .25f))
-                                    reject = "dt";
-                                else if (!a.positionGlobal.isFinite() ||
-                                         !b.positionGlobal.isFinite() ||
-                                         !c.positionGlobal.isFinite() ||
-                                         !a.rotation.isFinite() || !b.rotation.isFinite() ||
-                                         !c.rotation.isFinite())
-                                    reject = "nonfinite";
+                                const std::array<ALCameraDispatchSample, 3> samples = {{a, b, c}};
+                                const ALFlycamKeepResult estimate = alEstimateFlycamKeep(
+                                    samples, gCameraDispatchSerial,
+                                    sDrone.baseParams.velocityCap,
+                                    sDrone.baseParams.totalLimit,
+                                    sDrone.baseParams.yawRate,
+                                    sDrone.baseParams.yawAcceleration,
+                                    sDrone.buildScale);
+                                if (!estimate.ok)
+                                {
+                                    reject = alFlycamKeepRejectName(estimate.reason);
+                                }
                                 else
                                 {
-                                    const LLVector3 va = LLVector3(b.positionGlobal - a.positionGlobal) / b.dt;
-                                    const LLVector3 vb = LLVector3(c.positionGlobal - b.positionGlobal) / c.dt;
-                                    const F32 mean_dt = (b.dt + c.dt) * .5f;
-                                    const LLVector3 accel = (vb - va) / mean_dt;
-                                    const LLVector3 omega_a = angularVelocity(a.rotation, b.rotation, b.dt);
-                                    const LLVector3 omega_b = angularVelocity(b.rotation, c.rotation, c.dt);
-                                    const LLVector3 angular_accel = (omega_b - omega_a) / mean_dt;
-                                    if (!va.isFinite() || !vb.isFinite() || !accel.isFinite() ||
-                                        !omega_a.isFinite() || !omega_b.isFinite() ||
-                                        !angular_accel.isFinite())
-                                        reject = "nonfinite";
-                                    else if (vb.length() > sDrone.drone.params().velocityCap ||
-                                             omega_b.length() > 2.f * sDrone.drone.params().yawRate)
-                                        reject = "cut";
-                                    else if (accel.length() > 1.5f * sDrone.drone.params().totalLimit ||
-                                             angular_accel.length() > 2.f * sDrone.drone.params().yawAcceleration)
-                                        reject = "inconsistent";
-                                    else
-                                        v_keep = vb + accel * (c.dt * .5f);
-
-                                    if (reject.empty())
-                                    {
-                                        const LLVector3d synthetic_previous = current_global -
-                                            LLVector3d(v_keep) * (F64)c.dt;
-                                        sDrone.drone.seedFromHistory(synthetic_previous, b.rotation,
-                                            current_global, c.rotation, c.dt, new_origin,
-                                            &sDrone.drone.state());
-                                        outcome = llformat("keep v=%.3f", v_keep.length());
-                                    }
+                                    v_keep = estimate.velocity;
+                                    const LLVector3d synthetic_previous = current_global -
+                                        LLVector3d(v_keep) * (F64)c.dt;
+                                    sDrone.drone.seedFromHistory(synthetic_previous, b.rotation,
+                                        current_global, c.rotation, c.dt, new_origin,
+                                        &sDrone.drone.state());
+                                    outcome = llformat("keep v=%.3f", v_keep.length());
                                 }
                             }
                         }
@@ -2413,7 +2373,8 @@ void LLViewerJoystick::moveFlycam(bool reset)
                         mXILevelPending = false;
                         mXIRecentrePending = false;
                         mDroneRecentreActive = false;
-                        LLCameraOperator::instance().reset();
+                        if (gap.resetOperator)
+                            LLCameraOperator::instance().reset();
                         LL_INFOS("FlycamDrone") << "DRONE OWNER-REGAIN foreign momentum="
                             << outcome << LL_ENDL;
                     }
