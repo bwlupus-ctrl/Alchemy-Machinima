@@ -118,6 +118,28 @@ execute_process(
     "${CMAKE_CURRENT_SOURCE_DIR}/app_settings/alchemy_logo.png"
   )
 
+# [AbsoluteCinema] Fork branding override: the tracked mark in branding/absolute_cinema replaces
+# the vcpkg alchemy-branding assets copied above (vcpkg itself is left untouched). Runs after the
+# stock copies so it always wins; missing files simply keep the stock asset.
+set(AC_BRANDING_DIR "${CMAKE_CURRENT_SOURCE_DIR}/branding/absolute_cinema")
+foreach(_ac_pair
+    "ll_icon.ico|res/ll_icon.ico"
+    "ll_icon.BMP|res/ll_icon.BMP"
+    "ll_icon.BMP|res-sdl/ll_icon.BMP"
+    "install_icon.ico|installers/windows/install_icon.ico"
+    "alchemy_logo.png|app_settings/alchemy_logo.png")
+  string(REPLACE "|" ";" _ac_parts "${_ac_pair}")
+  list(GET _ac_parts 0 _ac_src)
+  list(GET _ac_parts 1 _ac_dst)
+  if (EXISTS "${AC_BRANDING_DIR}/${_ac_src}")
+    execute_process(
+      COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        "${AC_BRANDING_DIR}/${_ac_src}"
+        "${CMAKE_CURRENT_SOURCE_DIR}/${_ac_dst}"
+      )
+  endif ()
+endforeach()
+
 if (HAVOK)
    # When using HAVOK_TPV, the library is precompiled, so no need for this
 
