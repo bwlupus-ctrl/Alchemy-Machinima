@@ -327,16 +327,56 @@ const char* presetName(S32 preset)
 
 LLQuaternion classicLevel(const LLQuaternion& rotation, const FrameIn& in)
 {
-    std::array<F32, 7> scratchDelta{};
-    scratchDelta[6] = in.delta[6];
-    std::array<F32, 7> scratchLast = in.lastDelta;
-    LLVector3 scratchPosition;
-    LLQuaternion scratchRotation = rotation;
-    F32 scratchZoom = in.zoom;
-    ALFlycamClassic::State scratchState{
-        scratchLast, scratchDelta, scratchPosition, scratchRotation, scratchZoom };
-    ALFlycamClassic::finishIntegration(in.classicIn, in.classicIm, scratchState);
-    return scratchRotation;
+    // Design R3 OPEN-12 fallback: this is the leveling block copied verbatim
+    // from Classic, with only the state rotation replaced by this local value.
+    // Calling finishIntegration with an identity motion quaternion is not
+    // bitwise transparent under Release /fp:fast.
+    LLQuaternion flycamRotation = rotation;
+    const F32 time = in.classicIm.time;
+    const F32 feather = in.classicIm.feather;
+
+    if (in.classicIm.blackDragon)
+    {
+        const F32 flycam_feather = in.classicIm.feather;
+
+        if (in.classicIn.levelHorizon || in.classicIn.autoLeveling || in.classicIn.rollDefault == 1)
+        {
+            LLMatrix3 level(flycamRotation);
+
+            LLVector3 x = LLVector3(level.mMatrix[0]);
+            LLVector3 y = LLVector3(level.mMatrix[1]);
+            LLVector3 z = LLVector3(level.mMatrix[2]);
+
+            y.mV[2] = 0.f;
+            y.normVec();
+
+            level.setRows(x,y,z);
+            level.orthogonalize();
+
+            LLQuaternion quat(level);
+            LLQuaternion lerp = nlerp(llmin(flycam_feather * time, 1.f), flycamRotation, quat);
+            flycamRotation = in.classicIn.levelHorizon || in.classicIn.rollDefault == 1 ? quat : lerp;
+        }
+    }
+    else if (in.classicIn.levelHorizon || in.classicIn.autoLeveling)
+    {
+        LLMatrix3 level(flycamRotation);
+
+        LLVector3 x = LLVector3(level.mMatrix[0]);
+        LLVector3 y = LLVector3(level.mMatrix[1]);
+        LLVector3 z = LLVector3(level.mMatrix[2]);
+
+        y.mV[2] = 0.f;
+        y.normVec();
+
+        level.setRows(x,y,z);
+        level.orthogonalize();
+
+        LLQuaternion quat(level);
+        flycamRotation = in.classicIn.levelHorizon ? quat : nlerp(llmin(feather*time,1.f), flycamRotation, quat);
+    }
+
+    return flycamRotation;
 }
 
 void Coordinator::report(const FrameIn& in, FrameOut& out)

@@ -25,6 +25,7 @@ void close(const char* label, F64 actual, F64 expected, F64 tolerance)
 {
     if (std::fabs(actual - expected) <= tolerance) return;
     std::ostringstream message;
+    message.precision(17);
     message << label << " expected " << expected << " actual " << actual;
     ensure(message.str(), false);
 }
@@ -52,6 +53,22 @@ F64 rotationDistance(const LLQuaternion& lhs, const LLQuaternion& rhs)
 bool exactQuaternion(const LLQuaternion& lhs, const LLQuaternion& rhs)
 {
     return std::memcmp(lhs.mQ, rhs.mQ, sizeof(lhs.mQ)) == 0;
+}
+
+void exactQuaternionDiagnostic(const char* label, const LLQuaternion& actual,
+                               const LLQuaternion& expected, bool blackDragon,
+                               bool level, bool automatic, U32 rollDefault)
+{
+    if (exactQuaternion(actual, expected)) return;
+    std::ostringstream message;
+    message.precision(9);
+    message << label << " BD=" << blackDragon << " level=" << level
+            << " auto=" << automatic << " rollDefault=" << rollDefault
+            << " expected (" << expected.mQ[0] << ',' << expected.mQ[1] << ','
+            << expected.mQ[2] << ',' << expected.mQ[3] << ") actual ("
+            << actual.mQ[0] << ',' << actual.mQ[1] << ',' << actual.mQ[2]
+            << ',' << actual.mQ[3] << ')';
+    ensure(message.str(), false);
 }
 
 F64 signedRoll(const LLQuaternion& rotation)
@@ -368,7 +385,10 @@ template<> template<> void weighted_object::test<16>()
 {
     ALFlycamWeighted::State state; ALFlycamWeighted::rest(state);
     const auto step = ALFlycamWeighted::advance(state, target(3.), {0.,0.}, .2);
-    close("W16 pass-through integral", step.dp.mdV[VX], .6, 0.);
+    // The pass-through path is F64, but 3.0 * 0.2 is not the same binary F64
+    // value as the separately rounded literal 0.6.
+    close("W16 pass-through integral", step.dp.mdV[VX], .6,
+        std::numeric_limits<F64>::epsilon());
     close("W16 pass-through state", state.vT.mdV[VX], 3., 0.);
 }
 
@@ -507,11 +527,34 @@ template<> template<> void weighted_object::test<26>()
         in.classicIn.levelHorizon = level; in.classicIn.autoLeveling = automatic;
         in.classicIn.rollDefault = rollDefault; in.classicIm.blackDragon = blackDragon;
         LLQuaternion q; q.setAngleAxis(.3f, LLVector3(1.f,.2f,0.f));
-        std::array<F32,7> delta{}; delta[6] = in.delta[6];
+        std::array<F32,7> delta{};
+        delta[3] = .01f; delta[4] = -.02f; delta[5] = .03f;
+        delta[6] = in.delta[6];
         std::array<F32,7> last = in.lastDelta; LLVector3 position; LLQuaternion expected = q; F32 zoom = in.zoom;
         ALFlycamClassic::State scratch{last,delta,position,expected,zoom};
         ALFlycamClassic::finishIntegration(in.classicIn, in.classicIm, scratch);
-        ensure("W26 scratch is bitwise Classic", exactQuaternion(ALFlycamWeighted::classicLevel(q, in), expected));
+        // OPEN-12 fallback oracle: start the copied leveling block at the
+        // exact pre-level pose produced inside Classic. This cross-checks the
+        // leveling arithmetic without reintroducing the /fp:fast identity
+        // multiply that the fallback exists to avoid.
+        LLQuaternion preLevel = q;
+        LLVector3 preLevelPosition;
+        F32 preLevelZoom = in.zoom;
+        std::array<F32,7> preLevelDelta = delta;
+        // finishIntegration consumes Level by zeroing the referenced roll
+        // delta, so restore the scripted pre-level motion for this oracle.
+        preLevelDelta[3] = .01f;
+        std::array<F32,7> preLevelLast = in.lastDelta;
+        ALFlycamClassic::Input noLevel = in.classicIn;
+        noLevel.levelHorizon = false;
+        noLevel.autoLeveling = false;
+        noLevel.rollDefault = 0;
+        ALFlycamClassic::State preLevelState{preLevelLast, preLevelDelta,
+            preLevelPosition, preLevel, preLevelZoom};
+        ALFlycamClassic::finishIntegration(noLevel, in.classicIm, preLevelState);
+        exactQuaternionDiagnostic("W26 fallback is bitwise Classic leveling",
+            ALFlycamWeighted::classicLevel(preLevel, in), expected,
+            blackDragon, level, automatic, rollDefault);
         if (!level && !automatic && !(blackDragon && rollDefault == 1U))
             ensure("W26 leveling-off identity", exactQuaternion(ALFlycamWeighted::classicLevel(q, in), q));
     }
@@ -532,7 +575,7 @@ template<> template<> void weighted_object::test<27>()
         ALFlycamClassic::State shadow{shadowLast,shadowDelta,shadowPosition,shadowRotation,shadowZoom};
         ALFlycamClassic::State classic{classicLast,classicDelta,classicPosition,classicRotation,classicZoom};
         ALFlycamWeighted::State weightedState; ALFlycamWeighted::rest(weightedState);
-        LLVector3d weightedPosition;
+        LLVector3 weightedPosition;
         F64 weightedCruise = 0.0;
         F64 classicCruise = 0.0;
         LLVector3 previousClassic;
@@ -547,13 +590,17 @@ template<> template<> void weighted_object::test<27>()
                 std::memcmp(shadowDelta.data(), classicDelta.data(), sizeof(F32) * 7) == 0);
             const auto desired = ALFlycamWeighted::targetFromClassic(
                 shadowDelta.data(), entryRotation, 1. / hz, shadowIntermediate.isZero);
-            weightedPosition += ALFlycamWeighted::advance(
-                weightedState, desired, {0.,0.}, 1. / hz).dp;
+            // Production narrows every output pose to F32 before the next
+            // frame; compare Classic at that same boundary, not an artificial
+            // F64 accumulator that retains precision production discards.
+            weightedPosition += LLVector3(ALFlycamWeighted::advance(
+                weightedState, desired, {0.,0.}, 1. / hz).dp);
             if (index >= static_cast<S32>(hz * 9.))
                 classicCruise += static_cast<F64>((classicPosition - previousClassic).length());
             previousClassic = classicPosition;
         }
-        close("W27 tau-zero equals Classic", magnitude(weightedPosition - LLVector3d(classicPosition)), 0., 2.e-5);
+        close("W27 tau-zero equals Classic",
+            static_cast<F64>((weightedPosition - classicPosition).length()), 0., 0.);
 
         ALFlycamWeighted::State massive; ALFlycamWeighted::rest(massive);
         const auto cruiseTarget = ALFlycamWeighted::targetFromClassic(
@@ -889,7 +936,17 @@ template<> template<> void weighted_object::test<41>()
     in.delta.fill(0.f); in.classicIm.isZero = true;
     const auto history = coordinator.frame(in);
     ensure("I4 history seed", history.writePose);
-    close("I4 history velocity seed", coordinator.state().vT.mdV[VX], 2.0, 2.e-6);
+    const auto historyTuning = ALFlycamWeighted::tuningForWeight(
+        in.settings.weight, in.settings.tauMax, in.settings.curve,
+        in.settings.rotationShare);
+    const F64 historyRatio = in.frameIntervalSeconds / historyTuning.tauT;
+    const F64 expectedHistoryVelocity = 2.0 * std::exp(-historyRatio) *
+        (1.0 + historyRatio);
+    // Per section 5.4, the history seed is followed by the normal same-frame
+    // advance; with a zero Classic target this is the exact cascade result.
+    // The tolerance covers F64 exp/multiply rounding in the two evaluations.
+    close("I4 history velocity after first weighted frame",
+        coordinator.state().vT.mdV[VX], expectedHistoryVelocity, 2.e-12);
     ensure("I4 history position continuous", history.pos.mV[VX] > w2d.pos.mV[VX]);
     in.weightedEdge = ALFlycamWeightedEdge::W2O; in.frameOwner = ALFlycamPoseOwner::ORBIT;
     ensure("I4 W2O", !coordinator.frame(in).writePose);
