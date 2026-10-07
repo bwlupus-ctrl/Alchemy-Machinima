@@ -28,7 +28,8 @@ enum class ALFlycamPoseOwner
 {
     CLASSIC,
     DRONE,
-    ORBIT
+    ORBIT,
+    WEIGHTED
 };
 
 enum class ALFlycamOwnerEdge
@@ -39,7 +40,20 @@ enum class ALFlycamOwnerEdge
     CLASSIC_TO_ORBIT,
     ORBIT_TO_CLASSIC,
     DRONE_TO_ORBIT,
-    ORBIT_TO_DRONE
+    ORBIT_TO_DRONE,
+    CLASSIC_TO_WEIGHTED,
+    WEIGHTED_TO_CLASSIC
+};
+
+enum class ALFlycamWeightedEdge
+{
+    NONE,
+    C2W,
+    W2C,
+    W2D,
+    D2W,
+    W2O,
+    O2W
 };
 
 struct ALFlycamFrameDecision
@@ -52,12 +66,21 @@ struct ALFlycamFrameDecision
     bool discardClassicShadowPose = false;
     bool seedDrone = false;
     bool foreignDroneRegain = false;
+    ALFlycamWeightedEdge weightedEdge = ALFlycamWeightedEdge::NONE;
 };
 
-// Pure per-frame ownership decision. Orbit takes/releases ownership on the
-// resolveAnchor frame; only Classic<->Drone model changes use the outgoing
-// owner for their edge frame.
-inline ALFlycamFrameDecision alResolveFlycamFrame(
+inline S32 alEffectiveFlycamModel(S32 model, F32 weightPercent)
+{
+    if (model == 1)
+        return 1;
+    if (model == 2 && std::isfinite(weightPercent) && weightPercent > 0.f)
+        return 2;
+    return 0;
+}
+
+// This is the pre-Weighted decision function, kept as a literal frozen core so
+// models 0/1 retain every legacy field exactly. Weighted is overlaid below.
+inline ALFlycamFrameDecision alResolveLegacyFlycamFrame(
     S32 modelSetting, bool cursor3D, bool orbitResolved,
     ALFlycamPoseOwner previousOwner, bool taggedDispatch,
     bool foreignSinceFlycamWrite)
@@ -120,6 +143,71 @@ inline ALFlycamFrameDecision alResolveFlycamFrame(
     }
 
     result.discardDroneAccumulator = result.frameOwner == ALFlycamPoseOwner::ORBIT;
+    return result;
+}
+
+// Pure per-frame ownership decision. Orbit takes/releases ownership on the
+// resolveAnchor frame; only Classic<->Drone model changes use the outgoing
+// owner for their edge frame.
+inline ALFlycamFrameDecision alResolveFlycamFrame(
+    S32 modelSetting, bool cursor3D, bool orbitResolved,
+    ALFlycamPoseOwner previousOwner, bool taggedDispatch,
+    bool foreignSinceFlycamWrite)
+{
+    const S32 legacyModel = modelSetting == 2 ? 0 : modelSetting;
+    const ALFlycamPoseOwner legacyPrevious = previousOwner == ALFlycamPoseOwner::WEIGHTED
+        ? ALFlycamPoseOwner::CLASSIC : previousOwner;
+    ALFlycamFrameDecision result = alResolveLegacyFlycamFrame(
+        legacyModel, cursor3D, orbitResolved, legacyPrevious,
+        taggedDispatch, foreignSinceFlycamWrite);
+
+    const bool weightedSelected = modelSetting == 2 && !cursor3D && !orbitResolved;
+    if (weightedSelected)
+    {
+        result.selectedOwner = ALFlycamPoseOwner::WEIGHTED;
+        if (previousOwner == ALFlycamPoseOwner::CLASSIC)
+        {
+            result.frameOwner = ALFlycamPoseOwner::WEIGHTED;
+            result.edge = ALFlycamOwnerEdge::CLASSIC_TO_WEIGHTED;
+            result.weightedEdge = ALFlycamWeightedEdge::C2W;
+        }
+        else if (previousOwner == ALFlycamPoseOwner::DRONE)
+        {
+            result.frameOwner = ALFlycamPoseOwner::DRONE;
+            result.weightedEdge = ALFlycamWeightedEdge::D2W;
+        }
+        else if (previousOwner == ALFlycamPoseOwner::ORBIT)
+        {
+            result.frameOwner = ALFlycamPoseOwner::WEIGHTED;
+            result.weightedEdge = ALFlycamWeightedEdge::O2W;
+        }
+        else
+        {
+            result.frameOwner = ALFlycamPoseOwner::WEIGHTED;
+        }
+    }
+    else if (previousOwner == ALFlycamPoseOwner::WEIGHTED)
+    {
+        if (result.selectedOwner == ALFlycamPoseOwner::DRONE)
+        {
+            result.edge = ALFlycamOwnerEdge::CLASSIC_TO_DRONE;
+            result.frameOwner = result.foreignDroneRegain
+                ? ALFlycamPoseOwner::DRONE : ALFlycamPoseOwner::WEIGHTED;
+            result.weightedEdge = ALFlycamWeightedEdge::W2D;
+        }
+        else if (result.selectedOwner == ALFlycamPoseOwner::ORBIT)
+        {
+            result.edge = ALFlycamOwnerEdge::CLASSIC_TO_ORBIT;
+            result.frameOwner = ALFlycamPoseOwner::ORBIT;
+            result.weightedEdge = ALFlycamWeightedEdge::W2O;
+        }
+        else
+        {
+            result.edge = ALFlycamOwnerEdge::WEIGHTED_TO_CLASSIC;
+            result.frameOwner = ALFlycamPoseOwner::CLASSIC;
+            result.weightedEdge = ALFlycamWeightedEdge::W2C;
+        }
+    }
     return result;
 }
 

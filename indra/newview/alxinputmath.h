@@ -109,6 +109,43 @@ inline DpadSettings migrateDroneDpad(DpadSettings settings)
     return settings;
 }
 
+enum class ModelToggle
+{
+    CHANGED,
+    NORMALISED_PAIR,
+    BLOCKED_3D_CURSOR
+};
+
+inline int partner(int model)
+{
+    return model == 0 ? 2 : 0;
+}
+
+inline int toggleFlightModel(int current, int pairA, int pairB,
+                             bool cursor3D, ModelToggle& result)
+{
+    const bool validA = pairA >= 0 && pairA <= 2;
+    const bool validB = pairB >= 0 && pairB <= 2;
+    bool normalised = !validA || !validB;
+    pairA = validA ? pairA : 0;
+    pairB = validB ? pairB : 2;
+    if (pairA == pairB)
+    {
+        pairA = 0;
+        pairB = 2;
+        normalised = true;
+    }
+
+    const int target = current == pairA ? pairB : pairA;
+    if (cursor3D && target != 0)
+    {
+        result = ModelToggle::BLOCKED_3D_CURSOR;
+        return current;
+    }
+    result = normalised ? ModelToggle::NORMALISED_PAIR : ModelToggle::CHANGED;
+    return target;
+}
+
 // [XInputRumble] Pure rumble pattern player. Levels are 0-1 per motor; the
 // runtime scales by the strength setting and converts to the XInput U16 range.
 struct RumbleStep

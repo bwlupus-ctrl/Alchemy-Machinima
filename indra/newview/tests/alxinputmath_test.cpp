@@ -262,4 +262,46 @@ template<> template<> void xinput_object::test<10>()
     ensure_equals("T41 release value", static_cast<int>(ALXInput::DPAD_RELEASE), 5);
     ensure_equals("T41 recentre value", static_cast<int>(ALXInput::DPAD_RECENTRE), 6);
 }
+
+// Weighted Classic X1: pair toggle, normalization, outside-pair entry and cursor gate.
+template<> template<> void xinput_object::test<11>()
+{
+    ALXInput::ModelToggle result = ALXInput::ModelToggle::CHANGED;
+    ensure_equals("X1 A to B", ALXInput::toggleFlightModel(0, 0, 2, false, result), 2);
+    ensure("X1 ordinary result", result == ALXInput::ModelToggle::CHANGED);
+    ensure_equals("X1 B to A", ALXInput::toggleFlightModel(2, 0, 2, false, result), 0);
+    ensure_equals("X1 outside pair enters A", ALXInput::toggleFlightModel(1, 0, 2, false, result), 0);
+    ensure_equals("X1 Drone pair", ALXInput::toggleFlightModel(0, 0, 1, false, result), 1);
+    ensure_equals("X1 duplicate normalizes", ALXInput::toggleFlightModel(0, 1, 1, false, result), 2);
+    ensure("X1 duplicate reports normalization", result == ALXInput::ModelToggle::NORMALISED_PAIR);
+    ensure_equals("X1 invalid normalizes", ALXInput::toggleFlightModel(0, -9, 17, false, result), 2);
+    ensure("X1 invalid reports normalization", result == ALXInput::ModelToggle::NORMALISED_PAIR);
+    ensure_equals("X1 cursor blocks non-Classic", ALXInput::toggleFlightModel(0, 0, 2, true, result), 0);
+    ensure("X1 cursor result", result == ALXInput::ModelToggle::BLOCKED_3D_CURSOR);
+    ensure_equals("X1 cursor permits Classic", ALXInput::toggleFlightModel(2, 0, 2, true, result), 0);
+}
+
+// Weighted Classic X3: partner rule and the commit-validation state transition.
+template<> template<> void xinput_object::test<12>()
+{
+    ensure_equals("X3 Classic partner", ALXInput::partner(0), 2);
+    ensure_equals("X3 Weighted partner", ALXInput::partner(2), 0);
+    ensure_equals("X3 Drone partner", ALXInput::partner(1), 0);
+    ensure_equals("X3 invalid partner", ALXInput::partner(99), 0);
+
+    for (int changedSide = 0; changedSide < 2; ++changedSide)
+    for (int model = 0; model < 3; ++model)
+    {
+        int pairA = model;
+        int pairB = model;
+        if (changedSide == 0) pairB = ALXInput::partner(pairA);
+        else pairA = ALXInput::partner(pairB);
+        ensure("X3 equal commit moves other side", pairA != pairB);
+        const int savedA = pairA, savedB = pairB;
+        if (pairA == pairB) pairB = ALXInput::partner(pairA);
+        ensure("X3 signal re-entry is no-op", pairA == savedA && pairB == savedB);
+        int restoredA = savedA, restoredB = savedB;
+        ensure("X3 Cancel-style restore remains valid", restoredA != restoredB);
+    }
+}
 }
