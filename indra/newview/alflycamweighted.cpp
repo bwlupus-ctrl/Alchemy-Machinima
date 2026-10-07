@@ -142,11 +142,14 @@ Tuning tuningForWeight(F32 weightPercent, F32 tauMax, F32 curveK, F32 rotationSh
     const F64 rawWeight = std::isfinite(weightPercent)
         ? static_cast<F64>(weightPercent) : 0.0;
     const F64 weight = std::max(0.0, std::min(100.0, rawWeight)) / 100.0;
+    // Spec §8 ranges: TauMax [0.1, 3] s (default 1), Curve [1, 1000] (default 20),
+    // RotationShare [0, 2] (default 0.6). Non-finite values fall back to the default.
     const F64 maximumTau = std::isfinite(tauMax)
-        ? std::max(0.0, static_cast<F64>(tauMax)) : 0.0;
-    const F64 curve = std::isfinite(curveK) ? static_cast<F64>(curveK) : 1.0;
+        ? std::max(0.1, std::min(3.0, static_cast<F64>(tauMax))) : 1.0;
+    const F64 curve = std::isfinite(curveK)
+        ? std::max(1.0, std::min(1000.0, static_cast<F64>(curveK))) : 20.0;
     const F64 share = std::isfinite(rotationShare)
-        ? std::max(0.0, static_cast<F64>(rotationShare)) : 0.0;
+        ? std::max(0.0, std::min(2.0, static_cast<F64>(rotationShare))) : 0.6;
 
     Tuning result;
     result.tauT = curve <= 1.0001

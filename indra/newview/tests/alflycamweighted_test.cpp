@@ -181,6 +181,18 @@ template<> template<> void weighted_object::test<2>()
     close("W1 rotation share", middle.tauR, .6 * middle.tauT, 1.e-8);
     ensure_equals("W1 NaN clamp", ALFlycamWeighted::tuningForWeight(
         std::numeric_limits<F32>::quiet_NaN(), 1.f, 20.f, .6f).tauT, 0.0);
+    // §8 range clamps: TauMax [0.1,3], Curve [1,1000], RotationShare [0,2]; non-finite -> default.
+    close("W1 tauMax upper clamp", ALFlycamWeighted::tuningForWeight(100.f, 50.f, 20.f, .6f).tauT, 3., 1.e-9);
+    close("W1 tauMax lower clamp", ALFlycamWeighted::tuningForWeight(100.f, 0.f, 20.f, .6f).tauT, .1, 1.e-9);
+    close("W1 tauMax NaN default", ALFlycamWeighted::tuningForWeight(100.f,
+        std::numeric_limits<F32>::quiet_NaN(), 20.f, .6f).tauT, 1., 1.e-9);
+    close("W1 curve upper clamp", ALFlycamWeighted::tuningForWeight(50.f, 1.f, 1.e6f, .6f).tauT,
+        (std::sqrt(1000.) - 1.) / 999., 1.e-9);
+    close("W1 curve lower clamp (linear)", ALFlycamWeighted::tuningForWeight(50.f, 1.f, -5.f, .6f).tauT, .5, 1.e-9);
+    const auto share_hi = ALFlycamWeighted::tuningForWeight(100.f, 1.f, 20.f, 9.f);
+    close("W1 share upper clamp", share_hi.tauR, 2. * share_hi.tauT, 1.e-9);
+    const auto share_lo = ALFlycamWeighted::tuningForWeight(100.f, 1.f, 20.f, -1.f);
+    close("W1 share lower clamp", share_lo.tauR, 0., 0.);
     for (S32 preset = 0; preset < 4; ++preset)
         ensure_equals("W1 preset round trip", ALFlycamWeighted::presetForWeight(
             ALFlycamWeighted::presetWeight(preset)), preset);
