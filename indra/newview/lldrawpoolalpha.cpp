@@ -671,7 +671,11 @@ void LLDrawPoolAlpha::renderVelocityGroups(EAlphaStream stream, AttachmentFilter
             setup_texture_matrix(params); // [AlphaVel] independent of beauty shader state
             if (!rigged)
             {
-                const LLMatrix4* last_mat = LLRenderPass::getLastVelocityModelMatrix(params);
+                // [VelHistory] Pass-end write-back keeps this live pointer at
+                // the previous-frame transform throughout every alpha draw.
+                static const LLMatrix4 identity;
+                const LLMatrix4* last_mat = params.mLastModelMatrix
+                    ? params.mLastModelMatrix : &identity;
                 shader->uniformMatrix4fv(LLShaderMgr::LAST_OBJECT_MATRIX, 1, GL_FALSE,
                                          (GLfloat*)last_mat->mMatrix);
             }

@@ -434,8 +434,8 @@ public:
 
     // [BDMerge A5.4-1a] Velocity-pass batch pushers (rigid). pushVelocityBatches
     // uploads the per-object previous matrix from mLastModelMatrix, draws, then
-    // writes the current matrix back for next frame. The *Textured variant also
-    // binds the diffuse texture for alpha-mask cutout.
+    // queues the current matrix for pass-end write-back. The *Textured variant
+    // also binds the diffuse texture for alpha-mask cutout.
     void pushVelocityBatches(U32 type);
     void pushVelocityBatchesTextured(U32 type, bool legacy_material = false);
     // Multi-material cutout velocity.  The caller binds either the legacy or
@@ -461,12 +461,9 @@ public:
     // camera modelview + un-jittered projection). Call at pass begin and after any
     // rebind (e.g. the rigged-variant bind in Phase 1b).
     static void bindVelocityUniforms(LLGLSLShader& shader);
-    // [AlphaVel] Preserve the frame-start rigid transform across the opaque and
-    // later alpha stamps; both can share one drawable history pointer.
-    static void beginVelocityModelMatrixCache();
-    static void beginVelocityAlphaModelMatrixCache();
-    static void endVelocityModelMatrixCache();
-    static const LLMatrix4* getLastVelocityModelMatrix(LLDrawInfo& params);
+    // [VelHistory] Defer rigid history mutation across every velocity stage.
+    static void beginVelocityModelMatrixUpdates();
+    static void flushVelocityModelMatrixUpdates();
     static void updateLastVelocityModelMatrix(LLDrawInfo& params);
 
     // push full GLTF batches

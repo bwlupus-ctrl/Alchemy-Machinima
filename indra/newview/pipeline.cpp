@@ -7726,6 +7726,20 @@ void LLPipeline::renderGeomVelocity()
         return;
     }
 
+    // [VelHistory] Destructor flushes every queued rigid update exactly once,
+    // including any future early return added below this point.
+    struct VelocityModelMatrixUpdateGuard
+    {
+        VelocityModelMatrixUpdateGuard()
+        {
+            LLRenderPass::beginVelocityModelMatrixUpdates();
+        }
+        ~VelocityModelMatrixUpdateGuard()
+        {
+            LLRenderPass::flushVelocityModelMatrixUpdates();
+        }
+    } velocity_model_matrix_update_guard;
+
     mVelocityMap.bindTarget();
     mVelocityMap.clear(GL_COLOR_BUFFER_BIT);
 
@@ -7818,11 +7832,6 @@ void LLPipeline::renderGeomVelocity()
                                                  "BDMergeVelocityAlpha", true);
     const bool velocity_alpha_enabled = velocity_alpha;
     sVelocityRender = true;
-    if (velocity_alpha_enabled)
-    {
-        // [AlphaVel] Alpha runs after opaque history writes.
-        LLRenderPass::beginVelocityModelMatrixCache();
-    }
 
     // Each draw pool is responsible for producing its own velocity.
     for (pool_set_t::iterator iter = mPools.begin(); iter != mPools.end(); ++iter)
@@ -7847,8 +7856,6 @@ void LLPipeline::renderGeomVelocity()
     bool alpha_pool_velocity_ran = false;
     if (velocity_alpha_enabled)
     {
-        // [AlphaVel] Sort opaque captures once before any alpha history writes.
-        LLRenderPass::beginVelocityAlphaModelMatrixCache();
         LL_PROFILE_GPU_ZONE("velocity alpha"); // [AlphaVel] dominant translucent coverage
         LLGLDisable blend(GL_BLEND);
         LLGLDepthTest alpha_depth(GL_TRUE, GL_FALSE, GL_LEQUAL);
@@ -7891,11 +7898,6 @@ void LLPipeline::renderGeomVelocity()
             poolp->renderVelocity(0);
             poolp->endVelocityPass(0);
         }
-    }
-
-    if (velocity_alpha_enabled)
-    {
-        LLRenderPass::endVelocityModelMatrixCache(); // [AlphaVel] pass-local snapshots only
     }
 
     sVelocityRender = false;

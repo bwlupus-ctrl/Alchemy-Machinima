@@ -283,10 +283,11 @@ public:
     LLXformMatrix       mXform;
 
     // [BDMerge A5.4-1a] Previous-frame world/render matrix for the velocity pass.
-    // Read as the "last" object matrix, then overwritten with the current matrix
-    // each velocity draw (see LLRenderPass::pushVelocityBatches). Identity on the
-    // first frame a drawable is seen -> zero object velocity (camera velocity still
-    // applies).
+    // Read as the "last" object matrix by every velocity draw of the drawable; the
+    // current matrix is queued and written once at velocity-pass exit ([VelHistory],
+    // see LLRenderPass::updateLastVelocityModelMatrix). Identity until the first
+    // velocity pass sees the drawable, which gives a one-frame object-velocity spike
+    // on that first frame (known; a frame-gap stamp would fix it).
     LLMatrix4           mLastVelocityMatrix;
 
     // vis data

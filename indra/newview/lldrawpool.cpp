@@ -38,7 +38,6 @@
 
 #include <algorithm>
 #include <cmath> // [TronT2] std::isfinite for the Tron Suit uniform sanitisers
-#include <functional>
 #include <unordered_set>
 #include <utility>
 #include <vector>
@@ -76,16 +75,11 @@ extern bool gSnapshot;
 extern bool gCubeSnapshot;
 static const LLClientOuterTransform* sLastOuterTransform = nullptr;
 static U32 sLastOuterTransformRevision = 0;
-// [AlphaVel] A drawable can contribute opaque and alpha DrawInfos. Keep opaque
-// matrices in capture order and sort only compact (pointer, index) keys so the
-// first pre-write value remains available without moving matrices during sort.
-using VelocityModelMatrixKey = std::pair<LLMatrix4*, U32>;
-using VelocityModelMatrixEntry = std::pair<LLMatrix4*, LLMatrix4>;
-static std::vector<LLMatrix4> sVelocityModelMatrices;
-static std::vector<VelocityModelMatrixKey> sVelocityModelMatrixKeys;
-static std::vector<VelocityModelMatrixEntry> sVelocityAlphaModelMatrixCache;
-static bool sVelocityModelMatrixCacheActive = false;
-static bool sVelocityAlphaModelMatrixCacheActive = false;
+// [VelHistory] Keep drawable history live throughout the velocity pass, then
+// apply each requested current transform at pass exit. Capacity survives clears.
+using VelocityModelMatrixUpdate = std::pair<LLMatrix4*, LLMatrix4>;
+static std::vector<VelocityModelMatrixUpdate> sVelocityModelMatrixUpdates;
+static bool sVelocityModelMatrixUpdatesDeferred = false;
 
 void setup_texture_matrix(LLDrawInfo& params);
 void teardown_texture_matrix(LLDrawInfo& params);
@@ -1525,152 +1519,55 @@ void LLRenderPass::bindVelocityUniforms(LLGLSLShader& shader)
     shader.uniformMatrix4fv(LLShaderMgr::PROJECTION_MATRIX_UNJITTERED, 1, GL_FALSE, gPipeline.mVelocityProjMat);
 }
 
-// [AlphaVel] Start one frame-local snapshot set before any pool advances history.
+// [VelHistory] Begin one pass-wide deferred history transaction before any pool
+// reads or requests an update.
 //static
-void LLRenderPass::beginVelocityModelMatrixCache()
+void LLRenderPass::beginVelocityModelMatrixUpdates()
 {
-    sVelocityModelMatrixCacheActive = true;
-    sVelocityAlphaModelMatrixCacheActive = false;
-    sVelocityModelMatrices.clear();
-    sVelocityModelMatrixKeys.clear();
-    sVelocityAlphaModelMatrixCache.clear();
-    if (sVelocityModelMatrices.capacity() == 0)
+    llassert(!sVelocityModelMatrixUpdatesDeferred);
+    sVelocityModelMatrixUpdates.clear();
+    if (sVelocityModelMatrixUpdates.capacity() == 0)
     {
-        sVelocityModelMatrices.reserve(16384);
+        sVelocityModelMatrixUpdates.reserve(16384);
     }
-    if (sVelocityModelMatrixKeys.capacity() == 0)
-    {
-        sVelocityModelMatrixKeys.reserve(16384);
-    }
-    if (sVelocityAlphaModelMatrixCache.capacity() == 0)
-    {
-        sVelocityAlphaModelMatrixCache.reserve(256);
-    }
+    sVelocityModelMatrixUpdatesDeferred = true;
 }
 
-// [AlphaVel] Freeze the opaque capture set once, then use binary lookup during
-// alpha. The capture index tie-break keeps the first capture first for duplicates.
+// [VelHistory] Flush exactly once at velocity-pass exit. Duplicate targets are
+// intentional: all DrawInfos owned by a drawable share both its history target
+// and its current model matrix, so their recorded values are identical.
 //static
-void LLRenderPass::beginVelocityAlphaModelMatrixCache()
+void LLRenderPass::flushVelocityModelMatrixUpdates()
 {
-    const std::less<const LLMatrix4*> less;
-    std::sort(sVelocityModelMatrixKeys.begin(),
-              sVelocityModelMatrixKeys.end(),
-              [&less](const VelocityModelMatrixKey& lhs,
-                      const VelocityModelMatrixKey& rhs)
-              {
-                  if (less(lhs.first, rhs.first))
-                  {
-                      return true;
-                  }
-                  if (less(rhs.first, lhs.first))
-                  {
-                      return false;
-                  }
-                  return lhs.second < rhs.second;
-              });
-    sVelocityAlphaModelMatrixCacheActive = true;
+    llassert(sVelocityModelMatrixUpdatesDeferred);
+    for (const VelocityModelMatrixUpdate& update : sVelocityModelMatrixUpdates)
+    {
+        *update.first = update.second;
+    }
+    sVelocityModelMatrixUpdates.clear();
+    sVelocityModelMatrixUpdatesDeferred = false;
 }
 
-// [AlphaVel] Drop raw drawable pointers as soon as the velocity pass is complete.
-//static
-void LLRenderPass::endVelocityModelMatrixCache()
-{
-    sVelocityModelMatrices.clear();
-    sVelocityModelMatrixKeys.clear();
-    sVelocityAlphaModelMatrixCache.clear();
-    sVelocityAlphaModelMatrixCacheActive = false;
-    sVelocityModelMatrixCacheActive = false;
-}
-
-// [AlphaVel] Return the first value observed this pass, not a value an earlier
-// opaque face may already have advanced to the current frame.
-//static
-const LLMatrix4* LLRenderPass::getLastVelocityModelMatrix(LLDrawInfo& params)
-{
-    static const LLMatrix4 identity;
-    if (!params.mLastModelMatrix)
-    {
-        return &identity;
-    }
-
-    const std::less<const LLMatrix4*> less;
-    const LLMatrix4* target = params.mLastModelMatrix;
-    auto found = std::lower_bound(
-        sVelocityModelMatrixKeys.begin(), sVelocityModelMatrixKeys.end(), target,
-        [&less](const VelocityModelMatrixKey& key, const LLMatrix4* value)
-        {
-            return less(key.first, value);
-        });
-    if (found != sVelocityModelMatrixKeys.end() && found->first == target)
-    {
-        return &sVelocityModelMatrices[found->second];
-    }
-
-    // [AlphaVel] Alpha-only drawables are absent from the sorted opaque set.
-    // The secondary set is pointer-sorted for logarithmic lookup.
-    auto alpha_found = std::lower_bound(
-        sVelocityAlphaModelMatrixCache.begin(), sVelocityAlphaModelMatrixCache.end(), target,
-        [&less](const VelocityModelMatrixEntry& entry, const LLMatrix4* value)
-        {
-            return less(entry.first, value);
-        });
-    if (alpha_found != sVelocityAlphaModelMatrixCache.end() && alpha_found->first == target)
-    {
-        return &alpha_found->second;
-    }
-
-    // Return the live value by pointer; no vector element can be invalidated
-    // before the caller uploads it, and update captures it only after the draw.
-    return target;
-}
-
+// [VelHistory] During renderGeomVelocity, record rather than mutate so every
+// DrawInfo sharing a drawable reads the same previous-frame matrix. Callers
+// outside that pass retain the original immediate write-back behaviour.
 //static
 void LLRenderPass::updateLastVelocityModelMatrix(LLDrawInfo& params)
 {
     if (params.mLastModelMatrix)
     {
-        if (sVelocityModelMatrixCacheActive)
-        {
-            if (sVelocityAlphaModelMatrixCacheActive)
-            {
-                // Opaque captures already own the first value. Alpha-only
-                // pointers enter the sorted secondary set exactly once.
-                const std::less<const LLMatrix4*> less;
-                const LLMatrix4* target = params.mLastModelMatrix;
-                auto opaque_found = std::lower_bound(
-                    sVelocityModelMatrixKeys.begin(), sVelocityModelMatrixKeys.end(), target,
-                    [&less](const VelocityModelMatrixKey& key, const LLMatrix4* value)
-                    {
-                        return less(key.first, value);
-                    });
-                if (opaque_found == sVelocityModelMatrixKeys.end() || opaque_found->first != target)
-                {
-                    auto alpha_found = std::lower_bound(
-                        sVelocityAlphaModelMatrixCache.begin(), sVelocityAlphaModelMatrixCache.end(), target,
-                        [&less](const VelocityModelMatrixEntry& entry, const LLMatrix4* value)
-                        {
-                            return less(entry.first, value);
-                        });
-                    if (alpha_found == sVelocityAlphaModelMatrixCache.end() || alpha_found->first != target)
-                    {
-                        sVelocityAlphaModelMatrixCache.emplace(alpha_found,
-                                                               params.mLastModelMatrix,
-                                                               *params.mLastModelMatrix);
-                    }
-                }
-            }
-            else
-            {
-                const U32 capture_index = static_cast<U32>(sVelocityModelMatrices.size());
-                sVelocityModelMatrices.emplace_back(*params.mLastModelMatrix);
-                sVelocityModelMatrixKeys.emplace_back(params.mLastModelMatrix, capture_index);
-            }
-        }
         static const LLMatrix4 identity;
         const LLMatrix4* current_mat = params.mModelMatrix
             ? params.mModelMatrix : &identity;
-        *params.mLastModelMatrix = *current_mat;
+        if (sVelocityModelMatrixUpdatesDeferred)
+        {
+            sVelocityModelMatrixUpdates.emplace_back(params.mLastModelMatrix,
+                                                      *current_mat);
+        }
+        else
+        {
+            *params.mLastModelMatrix = *current_mat;
+        }
     }
 }
 
@@ -1681,10 +1578,9 @@ void LLRenderPass::updateLastVelocityModelMatrix(LLDrawInfo& params)
 // Per draw info: honour double-sided GLTF culling, apply the current model
 // matrix (so modelview_matrix syncs to camera*object), upload the PREVIOUS
 // object matrix (LAST_OBJECT_MATRIX) from mLastModelMatrix (identity fallback ->
-// zero object velocity), draw, then WRITE BACK the current matrix into
-// *mLastModelMatrix for next frame. The write-back must happen exactly once per
-// drawable per frame. [AlphaVel] The pass-local cache below lets the later
-// blended-alpha stamp reuse that same original previous transform safely.
+// zero object velocity), draw, then request that the current matrix be written
+// into *mLastModelMatrix for next frame. [VelHistory] renderGeomVelocity defers
+// those requests until every opaque, classic-avatar and alpha stage has read.
 void LLRenderPass::pushVelocityBatches(U32 type)
 {
     LL_PROFILE_ZONE_SCOPED_CATEGORY_DRAWPOOL;
@@ -1721,9 +1617,8 @@ void LLRenderPass::pushVelocityBatches(U32 type)
 
         uploadActorFx(params);
 
-        // [AlphaVel] NOTE: preserve the old opaque multi-DrawInfo history bug:
-        // later DrawInfos read the matrix advanced by the first. Fixing that
-        // would change established opaque velocity output.
+        // [VelHistory] Fixed: pass-wide deferred write-back leaves the true
+        // previous-frame transform live for every DrawInfo of this drawable.
         const LLMatrix4* last_mat = params.mLastModelMatrix ? params.mLastModelMatrix : &identity;
         LLGLSLShader::sCurBoundShaderPtr->uniformMatrix4fv(LLShaderMgr::LAST_OBJECT_MATRIX, 1, GL_FALSE, (GLfloat*)last_mat->mMatrix);
 
