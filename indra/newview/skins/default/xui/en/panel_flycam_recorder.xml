@@ -20,10 +20,13 @@
      left="12" name="flight_model_lbl" top="2" width="306">Flycam flight</text>
     <combo_box control_name="FlycamFlightModel" follows="left|top" height="20"
      layout="topleft" left="12" name="FlycamFlightModel" top="18"
-     tool_tip="Choose the Classic or Drone flycam flight model" width="84">
+     tool_tip="Choose the Classic, Weighted Classic, or Drone flycam flight model" width="84">
         <combo_box.item label="Classic" value="0" />
+        <combo_box.item label="Weighted" value="2" />
         <combo_box.item label="Drone" value="1" />
     </combo_box>
+    <!-- xui-check: allow-overlap FlycamDronePreset FlycamWeightedPreset -->
+    <!-- xui-check: allow-overlap FlycamDroneRelease FlycamWeightedWeight -->
     <combo_box control_name="FlycamDronePreset" follows="left|top" height="20"
      layout="topleft" left_pad="6" name="FlycamDronePreset" top_delta="0"
      tool_tip="Apply a complete Drone flight preset" width="112">
@@ -40,6 +43,20 @@
         <combo_box.item label="Hold" value="0" />
         <combo_box.item label="Drift" value="1" />
     </combo_box>
+    <combo_box control_name="FlycamWeightedPreset" follows="left|top" height="20"
+     layout="topleft" left="102" name="FlycamWeightedPreset" top="18"
+     tool_tip="Apply a Weighted Classic preset" visible="false" width="112">
+        <combo_box.item label="Light" value="0" />
+        <combo_box.item label="Steadicam" value="1" />
+        <combo_box.item label="Heavy" value="2" />
+        <combo_box.item label="Crane" value="3" />
+        <combo_box.item label="Custom" value="4" />
+    </combo_box>
+    <spinner control_name="FlycamWeightedWeight" decimal_digits="0" follows="left|top"
+     height="20" increment="1" label="Weight" label_width="44" layout="topleft"
+     left="220" max_val="100" min_val="0" name="FlycamWeightedWeight" top="18"
+     tool_tip="Weighted Classic mass, from 0% (Classic) to 100% (maximum weight)"
+     visible="false" width="92" />
     <button
      follows="left|top"
      height="23"
@@ -189,7 +206,7 @@
      top_delta="2"
      name="FlycamRecFollowAnchor"
      tool_tip="Re-anchor every frame so the whole move rides a walking avatar or moving object"
-     width="120" />
+     width="116" />
     <check_box
      control_name="FlycamRecUseOperator"
      follows="left|top"

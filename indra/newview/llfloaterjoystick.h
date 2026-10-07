@@ -75,14 +75,17 @@ private:
     void refreshDroneEnabled();
     void refreshDroneReadouts();
     void refreshDronePresetLabel();
+    void refreshWeightedReadout();
 
     static void onCommitJoystickEnabled(LLUICtrl*, void*);
     static void onCommitFlightModel(LLUICtrl*, void*);
     static void onCommitDronePreset(LLUICtrl*, void*);
     static void onCommitDroneTuning(LLUICtrl*, void*);
+    static void onCommitWeightedPreset(LLUICtrl*, void*);
     static void onClickRestoreSNDefaults(void*);
     static void onClickRestoreXboxDefaults(void*);
     static void onClickResetDrone(void*);
+    static void onClickResetWeighted(void*);
     static void onClickCancel(void*);
     static void onClickOK(void*);
 
@@ -117,6 +120,8 @@ private:
     LLTabContainer  *mTabs = nullptr;
     LLTextBox       *mXInputStatus = nullptr;
     LLUICtrl        *mFlightModel = nullptr;
+    LLPanel         *mWeightedSettingsPanel = nullptr;
+    LLTextBox       *mWeightedReadout = nullptr;
     LLPanel         *mDroneSettingsPanel = nullptr;
     LLTextBox       *mDroneCursorReason = nullptr;
     LLComboBox      *mDronePreset = nullptr;

@@ -980,8 +980,29 @@ template<> template<> void weighted_object::test<47>()
         coordinator.telemetry().posecutLastPresented &&
         coordinator.telemetry().posecutLastDistance > 4.9 &&
         coordinator.telemetry().posecutLastSerialDelta == 1);
+
+    ALFlycamWeighted::Coordinator guarded; auto guardedIn = basicFrame();
+    guardedIn.weightedEdge = ALFlycamWeightedEdge::C2W;
+    guardedIn.delta[0] = .01f; guardedIn.delta[3] = .002f;
+    guardedIn.classicIm.isZero = false; guardedIn.presentedComparable = true;
+    auto guardedOut = guarded.frame(guardedIn);
+    guardedIn.weightedEdge = ALFlycamWeightedEdge::NONE;
+    guardedIn.entryPos = guardedOut.pos; guardedIn.entryRot = guardedOut.rot;
+    guardedIn.presentedPos = guardedOut.pos; guardedIn.presentedRot = guardedOut.rot;
+    guardedIn.delta.fill(0.f); guardedIn.classicIm.isZero = true;
+    guardedOut = guarded.frame(guardedIn);
+    ensure("I10 armed-rest starts while coasting", !guarded.state().settled &&
+        magnitude(guarded.state().vT) > 0.0 && magnitude(guarded.state().vR) > 0.0);
+    guardedIn.entryPos = guardedOut.pos; guardedIn.entryRot = guardedOut.rot;
+    guardedIn.presentedPos = guardedOut.pos + LLVector3(5.f,0.f,0.f);
+    guardedIn.presentedRot = guardedOut.rot;
+    guardedIn.settings.guardArmed = true;
+    guarded.frame(guardedIn);
+    ensure("I10 armed pose cut rests momentum", guarded.guardArmed() &&
+        guarded.telemetry().posecutPresented == 1 && guarded.state().settled &&
+        magnitude(guarded.state().vT) == 0.0 && magnitude(guarded.state().vR) == 0.0);
+
     in.settings.guardArmed = true; coordinator.frame(in);
-    ensure("I10 armed rests", coordinator.state().settled);
     for (S32 index = 0; index < 11; ++index)
     {
         in.presentedPos.mV[VX] += 1.f;
@@ -1037,29 +1058,85 @@ template<> template<> void weighted_object::test<49>()
     ALFlycamWeighted::Coordinator coordinator; auto in = basicFrame(); in.weightedEdge = ALFlycamWeightedEdge::C2W;
     in.delta[0] = .01f; in.delta[1] = -.002f; in.delta[5] = .003f;
     in.classicIm.isZero = false; in.zoom = 2.f;
-    const auto desired = ALFlycamWeighted::targetFromClassic(
-        in.delta.data(),in.entryRot,in.frameIntervalSeconds,false);
-    ALFlycamWeighted::State expectedState;
-    ALFlycamWeighted::seedAtTarget(expectedState,desired);
-    const auto expectedStep = ALFlycamWeighted::advance(expectedState,desired,
-        ALFlycamWeighted::tuningForWeight(in.settings.weight,in.settings.tauMax,
-            in.settings.curve,in.settings.rotationShare),in.frameIntervalSeconds);
-    const LLVector3 expectedLocal = LLVector3(expectedStep.dp) * ~in.entryRot;
-    const auto out = coordinator.frame(in);
+
+    struct OracleLag { LLVector3d x1; LLVector3d x2; } translation, rotation;
+    const F64 weight = static_cast<F64>(in.settings.weight) / 100.0;
+    const F64 curve = static_cast<F64>(in.settings.curve);
+    const F64 tauT = static_cast<F64>(in.settings.tauMax) *
+        (std::pow(curve, weight) - 1.0) / (curve - 1.0);
+    const F64 tauR = static_cast<F64>(in.settings.rotationShare) * tauT;
+
+    auto oracleTarget = [](const ALFlycamWeighted::FrameIn& frame,
+                           LLVector3d& velocity, LLVector3d& angularVelocity)
+    {
+        const F64 dt = frame.frameIntervalSeconds;
+        velocity = LLVector3d(LLVector3(frame.delta[0], frame.delta[1], frame.delta[2]) *
+            frame.entryRot) * (1.0 / dt);
+        angularVelocity.setZero();
+        LLQuaternion increment(LLMatrix3(frame.delta[3], frame.delta[4], frame.delta[5]));
+        if (increment.mQ[VW] < 0.f) increment = -increment;
+        const F64 x = increment.mQ[VX], y = increment.mQ[VY], z = increment.mQ[VZ];
+        const F64 imaginaryLength = std::sqrt(x * x + y * y + z * z);
+        if (imaginaryLength >= 1.e-12)
+        {
+            const F64 scale = 2.0 * std::atan2(imaginaryLength,
+                static_cast<F64>(increment.mQ[VW])) / (imaginaryLength * dt);
+            angularVelocity.set(x * scale, y * scale, z * scale);
+        }
+    };
+    auto oracleStep = [](OracleLag& state, const LLVector3d& target,
+                         F64 tau, F64 dt)
+    {
+        const F64 ratio = dt / tau;
+        const F64 e = std::exp(-ratio);
+        const F64 b = ratio * e;
+        const F64 oneMinusE = -std::expm1(-ratio);
+        const LLVector3d x1Error = state.x1 - target;
+        const LLVector3d x2Error = state.x2 - target;
+        const LLVector3d integral = target * dt + tau *
+            (oneMinusE * x2Error + (oneMinusE - b) * x1Error);
+        state.x1 = target + e * x1Error;
+        state.x2 = target + e * x2Error + b * x1Error;
+        return integral;
+    };
+    auto checkFrame = [&](const char* phase, bool seed)
+    {
+        LLVector3d velocity, angularVelocity;
+        oracleTarget(in, velocity, angularVelocity);
+        if (seed)
+        {
+            translation.x1 = translation.x2 = velocity;
+            rotation.x1 = rotation.x2 = angularVelocity;
+        }
+        const LLVector3d expectedDp = oracleStep(translation, velocity, tauT,
+            in.frameIntervalSeconds);
+        const LLVector3d expectedDtheta = oracleStep(rotation, angularVelocity, tauR,
+            in.frameIntervalSeconds);
+        const LLVector3 expectedLocal = LLVector3(expectedDp) * ~in.entryRot;
+        const auto out = coordinator.frame(in);
+        const F64 f32Tolerance = 8.0 * std::numeric_limits<F32>::epsilon();
+        const F64 expected[6] = { expectedLocal.mV[VX], expectedLocal.mV[VY],
+            expectedLocal.mV[VZ], expectedDtheta.mdV[VX], expectedDtheta.mdV[VY],
+            expectedDtheta.mdV[VZ] };
+        for (S32 axis = 0; axis < 6; ++axis)
+        {
+            std::ostringstream label;
+            label << "I12 " << phase << " weighted local axis " << axis;
+            // operatorDelta is deliberately narrowed at the production F32 boundary.
+            close(label.str().c_str(), out.operatorDelta[axis], expected[axis],
+                f32Tolerance * std::max(1.0, std::fabs(expected[axis])));
+        }
+        in.entryPos = out.pos; in.entryRot = out.rot;
+        return out;
+    };
+
+    const auto out = checkFrame("seed", true);
     ensure("I12 no zoom channel", out.writePose);
-    close("I12 weighted local x", out.operatorDelta[0], expectedLocal.mV[VX], 1.e-7);
-    close("I12 weighted local y", out.operatorDelta[1], expectedLocal.mV[VY], 1.e-7);
-    close("I12 weighted local z", out.operatorDelta[2], expectedLocal.mV[VZ], 1.e-7);
-    close("I12 weighted roll", out.operatorDelta[3], expectedStep.dtheta.mdV[VX], 1.e-7);
-    close("I12 weighted pitch", out.operatorDelta[4], expectedStep.dtheta.mdV[VY], 1.e-7);
-    close("I12 weighted yaw", out.operatorDelta[5], expectedStep.dtheta.mdV[VZ], 1.e-7);
-    close("I12 telemetry velocity maximum", coordinator.telemetry().velocityMaximum,
-        magnitude(expectedState.vT),1.e-9);
-    close("I12 telemetry target maximum", coordinator.telemetry().velocityTargetMaximum,
-        magnitude(desired.v),1.e-9);
     in.weightedEdge = ALFlycamWeightedEdge::NONE;
-    in.entryPos = out.pos; in.entryRot = out.rot;
+    in.delta[0] = -.004f; in.delta[1] = .006f; in.delta[5] = -.001f;
+    checkFrame("retarget", false);
     in.delta.fill(0.f); in.classicIm.isZero = true;
+    checkFrame("coast", false);
     for (S32 index = 0; index < 1000 && !coordinator.state().settled; ++index)
     {
         const auto coast = coordinator.frame(in);

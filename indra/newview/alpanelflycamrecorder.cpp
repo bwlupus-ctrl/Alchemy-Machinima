@@ -62,7 +62,9 @@ void ALPanelFlycamRecorder::setToolTipIfChanged(LLUICtrl* ctrl, const std::strin
 bool ALPanelFlycamRecorder::postBuild()
 {
     mDronePreset = getChild<LLComboBox>("FlycamDronePreset");
-    LLComboBox* release = getChild<LLComboBox>("FlycamDroneRelease");
+    mDroneRelease = getChild<LLComboBox>("FlycamDroneRelease");
+    mWeightedPreset = getChild<LLComboBox>("FlycamWeightedPreset");
+    mWeightedWeight = getChild<LLUICtrl>("FlycamWeightedWeight");
     mRecordBtn  = getChild<LLButton>("btn_record");
     mPlayBtn    = getChild<LLButton>("btn_play");
     mStopBtn    = getChild<LLButton>("btn_stop");
@@ -87,12 +89,36 @@ bool ALPanelFlycamRecorder::postBuild()
         if (selected >= 0 && selected < 5)
             LLViewerJoystick::getInstance()->applyDronePreset(selected);
     });
-    release->setCommitCallback([](LLUICtrl*, const LLSD&)
+    mDroneRelease->setCommitCallback([](LLUICtrl*, const LLSD&)
     {
         LLViewerJoystick::getInstance()->markDronePresetCustom();
     });
+    mWeightedPreset->setCommitCallback([](LLUICtrl* control, const LLSD&)
+    {
+        const S32 selected = control ? control->getValue().asInteger() : 4;
+        if (selected >= 0 && selected < 4)
+        {
+            LLViewerJoystick::getInstance()->applyWeightedPreset(selected);
+        }
+    });
+
+    mFlightModelConnection = gSavedSettings.getControl("FlycamFlightModel")
+        ->getCommitSignal()->connect([this](LLControlVariable*, const LLSD&, const LLSD&)
+        {
+            updateFlightModelVisibility();
+        });
+    updateFlightModelVisibility();
 
     return true;
+}
+
+void ALPanelFlycamRecorder::updateFlightModelVisibility()
+{
+    const bool weighted = gSavedSettings.getS32("FlycamFlightModel") == 2;
+    mDronePreset->setVisible(!weighted);
+    mDroneRelease->setVisible(!weighted);
+    mWeightedPreset->setVisible(weighted);
+    mWeightedWeight->setVisible(weighted);
 }
 
 void ALPanelFlycamRecorder::draw()

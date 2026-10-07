@@ -26,10 +26,13 @@
 
 #include "llpanel.h"
 
+#include <boost/signals2/connection.hpp>
+
 class LLButton;
 class LLComboBox;
 class LLSliderCtrl;
 class LLTextBox;
+class LLUICtrl;
 
 class ALPanelFlycamRecorder final : public LLPanel
 {
@@ -48,6 +51,7 @@ private:
     void onSave();
     void onLoad();
     void onScrub();
+    void updateFlightModelVisibility();
 
     // set a tooltip only when it changed (draw()-rate friendly)
     static void setToolTipIfChanged(LLUICtrl* ctrl, const std::string& tip);
@@ -62,7 +66,11 @@ private:
     LLTextBox*    mTimeText = nullptr;
     LLTextBox*    mStatusText = nullptr;
     LLComboBox*   mDronePreset = nullptr;
+    LLComboBox*   mDroneRelease = nullptr;
+    LLComboBox*   mWeightedPreset = nullptr;
+    LLUICtrl*     mWeightedWeight = nullptr;
     U64           mDronePresetRevision = 0;
+    boost::signals2::scoped_connection mFlightModelConnection;
 };
 
 #endif // AL_ALPANELFLYCAMRECORDER_H
