@@ -63,6 +63,11 @@ bool LLDrawPoolAlpha::sShowDebugAlpha = false;
 
 #define current_shader (LLGLSLShader::sCurBoundShaderPtr)
 
+// [AlphaVel] Shared velocity texture-matrix helpers; unlike TexSetup these do
+// not depend on beauty-pass shader pointers having been initialized.
+void setup_texture_matrix(LLDrawInfo& params);
+void teardown_texture_matrix(LLDrawInfo& params);
+
 LLVector4 LLDrawPoolAlpha::sWaterPlane;
 
 // minimum alpha before discarding a fragment
@@ -305,6 +310,381 @@ void LLDrawPoolAlpha::renderPostDeferred(S32 pass)
             true); // <--- discard mostly transparent faces
 
         gGL.setColorMask(true, false);
+    }
+}
+
+void LLDrawPoolAlpha::beginVelocityPass(S32 pass)
+{
+    // [AlphaVel] Programs are selected per DrawInfo because one sorted alpha
+    // stream can interleave legacy/PBR, scalar/indexed, and rigid/rigged faces.
+}
+
+void LLDrawPoolAlpha::endVelocityPass(S32 pass)
+{
+    // [AlphaVel] Leave the same unbound/program-neutral contract as other
+    // velocity pools before renderGeomVelocity restores its modelview.
+    LLGLSLShader::unbind();
+    gGL.getTexUnit(0)->activate();
+}
+
+void LLDrawPoolAlpha::renderVelocity(S32 pass)
+{
+    LL_PROFILE_ZONE_SCOPED_CATEGORY_DRAWPOOL;
+
+    if (LLPipeline::sRenderingHUDs || LLPipeline::sImpostorRender ||
+        (LLPipeline::isWaterClip() && getType() == LLDrawPool::POOL_ALPHA_PRE_WATER))
+    { // [AlphaVel] Match the scene-only velocity exclusions.
+        return;
+    }
+
+    LLGLEnable cull(GL_CULL_FACE);
+
+    // [AlphaVel] Reproduce beauty's native alpha ordering so replace-only
+    // velocity obeys the same last-writer-wins result as visible alpha.
+    const bool interleave = LLPipeline::canUseInterleavedAlpha() &&
+                            getType() == LLDrawPool::POOL_ALPHA_POST_WATER;
+    static LLCachedControl<bool> attach_sort(gSavedSettings,
+                                              "BDMergeAlphaAttachmentSort", false);
+    if (interleave)
+    {
+        gPipeline.sortAlphaGroupsForInterleaving();
+        renderVelocityGroups(EAlphaStream::INTERLEAVED);
+    }
+    else if (attach_sort && getType() == LLDrawPool::POOL_ALPHA_POST_WATER)
+    {
+        renderVelocityGroups(EAlphaStream::WORLD, ATTACHMENT_NONE);
+        renderVelocityGroups(EAlphaStream::RIGGED);
+        renderVelocityGroups(EAlphaStream::WORLD, ATTACHMENT_ONLY);
+    }
+    else
+    {
+        renderVelocityGroups(EAlphaStream::RIGGED);
+        renderVelocityGroups(EAlphaStream::WORLD);
+    }
+}
+
+void LLDrawPoolAlpha::renderVelocityGroups(EAlphaStream stream, AttachmentFilter filter)
+{
+    // [AlphaVel] A 0.5 cutout lets only the dominant translucent layer own the
+    // velocity pixel while retaining the alpha beauty pass's sorted draw lists.
+    constexpr F32 VELOCITY_ALPHA_CUTOFF = 0.5f;
+    static const LLStaticHashedString sTextureAlphaOnly("velocity_texture_alpha_only");
+    static const LLStaticHashedString sVelocityMinAlpha("velocity_minimum_alpha");
+    static const LLStaticHashedString sBaseXform("gltf_basecolor_transform");
+
+    const bool merged = stream == EAlphaStream::INTERLEAVED;
+    bool rigged = stream == EAlphaStream::RIGGED;
+    LLGLSLShader* active_shader = nullptr;
+    const LLVOAvatar* last_avatar = nullptr;
+    U64 last_mesh_id = 0;
+    bool skip_last_skin = false;
+
+    auto bind_program = [&](LLGLSLShader& base) -> LLGLSLShader*
+    {
+        LLGLSLShader* shader = rigged ? base.mRiggedVariant : &base;
+        if (!shader || !shader->isComplete())
+        {
+            return nullptr;
+        }
+        if (shader != active_shader)
+        {
+            base.bind(rigged);
+            LLRenderPass::bindVelocityUniforms(*shader);
+            shader->uniform1i(sTextureAlphaOnly, 0);
+            active_shader = shader;
+            // [AlphaVel] Palettes are program-local uniforms; a shader switch
+            // must force the current/previous pair to be uploaded again.
+            last_avatar = nullptr;
+            last_mesh_id = 0;
+            skip_last_skin = false;
+        }
+        return shader;
+    };
+
+    LLCullResult::sg_iterator iter = nullptr;
+    LLCullResult::sg_iterator end = nullptr;
+    LLCullResult::sg_iterator rigged_iter = nullptr;
+    LLCullResult::sg_iterator rigged_end = nullptr;
+    if (merged || !rigged)
+    {
+        iter = gPipeline.beginAlphaGroups();
+        end = gPipeline.endAlphaGroups();
+    }
+    if (merged || rigged)
+    {
+        rigged_iter = gPipeline.beginRiggedAlphaGroups();
+        rigged_end = gPipeline.endRiggedAlphaGroups();
+    }
+
+    const F32 water_height = gPipeline.getRenderWaterHeight();
+    bool above_water = getType() == LLDrawPool::POOL_ALPHA_POST_WATER;
+    if (LLPipeline::sUnderWaterRender)
+    {
+        above_water = !above_water;
+    }
+
+    while (iter != end || rigged_iter != rigged_end)
+    {
+        if (merged)
+        {
+            if (rigged_iter == rigged_end)
+            {
+                rigged = false;
+            }
+            else if (iter == end)
+            {
+                rigged = true;
+            }
+            else
+            {
+                const F32 rigged_depth = (*rigged_iter)->mAvatarDepth;
+                const F32 world_depth = (*iter)->worldAlphaDepth();
+                if (rigged_depth != world_depth)
+                {
+                    rigged = rigged_depth > world_depth;
+                }
+                else
+                {
+                    const LLVOAvatar* world_av = (*iter)->mAvatarp;
+                    const LLVOAvatar* rigged_av = (*rigged_iter)->mAvatarp;
+                    rigged = !rigged_av || !world_av || world_av == rigged_av ||
+                             std::less<const LLVOAvatar*>()(rigged_av, world_av);
+                }
+            }
+        }
+
+        LLSpatialGroup* group = rigged ? *rigged_iter++ : *iter++;
+        if (!group || group->isDead() || !group->getSpatialPartition() ||
+            !group->getSpatialPartition()->mRenderByGroup)
+        {
+            continue;
+        }
+
+        const S32 partition_type = group->getSpatialPartition()->mPartitionType;
+        if (partition_type == LLViewerRegion::PARTITION_HUD ||
+            partition_type == LLViewerRegion::PARTITION_HUD_PARTICLE)
+        { // [AlphaVel] HUD surfaces never contribute to scene motion.
+            continue;
+        }
+
+        LLSpatialBridge* bridge = group->getSpatialPartition()->asBridge();
+        const LLVector4a* ext = bridge ? bridge->getSpatialExtents() : group->getExtents();
+        if ((above_water && ext[1].getF32ptr()[2] < water_height) ||
+            (!above_water && ext[0].getF32ptr()[2] > water_height))
+        { // [AlphaVel] Use the same pre/post-water group rejection as beauty.
+            continue;
+        }
+
+        auto found = group->mDrawMap.find(rigged ? LLRenderPass::PASS_ALPHA_RIGGED
+                                                 : LLRenderPass::PASS_ALPHA);
+        if (found == group->mDrawMap.end())
+        {
+            continue;
+        }
+
+        const bool particle = partition_type == LLViewerRegion::PARTITION_PARTICLE;
+        for (const LLPointer<LLDrawInfo>& draw_ptr : found->second)
+        {
+            LLDrawInfo& params = *draw_ptr;
+            if (params.mVertexBuffer.isNull() || !params.mCount ||
+                rigged != (params.mAvatar != nullptr))
+            {
+                continue;
+            }
+
+            if (!rigged)
+            {
+                if (filter == ATTACHMENT_NONE && params.mAttachedToAvatar)
+                {
+                    continue;
+                }
+                if (filter == ATTACHMENT_ONLY && !params.mAttachedToAvatar)
+                {
+                    continue;
+                }
+            }
+
+            if (params.mBlendFuncDst != LLRender::BF_ONE_MINUS_SOURCE_ALPHA)
+            {
+                // [AlphaVel] Beauty treats additive/custom alpha as emitters,
+                // not occluding surface coverage.
+                if (!rigged)
+                {
+                    LLRenderPass::updateLastVelocityModelMatrix(params);
+                }
+                continue;
+            }
+
+            const bool pbr_source = params.mGLTFMaterial.notNull() ||
+                                    !params.mGLTFMaterialList.empty();
+            const bool pbr = pbr_source &&
+                params.mEffectiveAlphaMode == LLPipeline::ALPHA_MODE_BLEND;
+            if (pbr_source ? LLRenderPass::shouldSuppressSharedActorFxPBR(params)
+                           : LLRenderPass::shouldSuppressSharedActorFx(params))
+            { // [AlphaVel] Keep Replace/Cover invisibility identical to alpha beauty.
+                if (!rigged)
+                {
+                    LLRenderPass::updateLastVelocityModelMatrix(params);
+                }
+                continue;
+            }
+
+            const bool indexed_pbr = pbr && params.mGLTFMaterialList.size() > 1;
+            const bool indexed_legacy = !pbr &&
+                (params.mMaterialSlotList.size() > 1 || params.mTextureList.size() > 1);
+            constexpr S32 VELOCITY_ALPHA_SLOTS = 8;
+            const S32 indexed_limit = llmin(VELOCITY_ALPHA_SLOTS,
+                                             LLGLSLShader::sIndexedGLTFChannels);
+            const S32 list_size = indexed_pbr
+                ? (S32)params.mGLTFMaterialList.size()
+                : (indexed_legacy
+                    ? (params.mMaterialSlotList.size() > 1
+                        ? (S32)params.mMaterialSlotList.size()
+                        : (S32)params.mTextureList.size())
+                    : 0);
+            if (list_size > indexed_limit)
+            {
+                // [AlphaVel] The indexed velocity shaders expose eight cutoff
+                // entries; oversized beauty batches remain camera-only.
+                if (!rigged)
+                {
+                    LLRenderPass::updateLastVelocityModelMatrix(params);
+                }
+                continue;
+            }
+            LLGLSLShader* shader = nullptr;
+            if (indexed_pbr)
+            {
+                shader = bind_program(gVelocityPBRAlphaIndexedProgram);
+            }
+            else if (indexed_legacy)
+            {
+                shader = bind_program(gVelocityAlphaIndexedProgram);
+            }
+            else
+            {
+                shader = bind_program(pbr ? gVelocityPBRAlphaProgram
+                                          : gVelocityAlphaProgram);
+            }
+            if (!shader)
+            { // [AlphaVel] Never draw an indexed batch with incompatible scalar inputs.
+                if (!rigged)
+                {
+                    LLRenderPass::updateLastVelocityModelMatrix(params);
+                }
+                continue;
+            }
+
+            if (rigged && (!params.mSkinInfo ||
+                !LLRenderPass::uploadVelocityMatrixPalettes(params.mAvatar,
+                    params.mSkinInfo, last_avatar, last_mesh_id, skip_last_skin)))
+            {
+                continue;
+            }
+
+            bool double_sided = params.mGLTFMaterial.notNull() &&
+                                params.mGLTFMaterial->mDoubleSided;
+            if (indexed_pbr)
+            {
+                const S32 count = list_size;
+                F32 cutoffs[VELOCITY_ALPHA_SLOTS] = { 0.f };
+                F32 transforms[VELOCITY_ALPHA_SLOTS * 8] = { 0.f };
+                for (S32 slot = 0; slot < count; ++slot)
+                {
+                    LLFetchedGLTFMaterial* material = params.mGLTFMaterialList[slot].get();
+                    cutoffs[slot] = VELOCITY_ALPHA_CUTOFF;
+                    if (!material)
+                    {
+                        gGL.getTexUnit(slot)->bindFast(LLViewerFetchedTexture::sWhiteImagep.get());
+                        continue;
+                    }
+                    double_sided = double_sided || material->mDoubleSided;
+                    LLViewerTexture* texture = material->mBaseColorTexture.notNull()
+                        ? material->mBaseColorTexture.get()
+                        : LLViewerFetchedTexture::sWhiteImagep.get();
+                    gGL.getTexUnit(slot)->bindFast(texture);
+                    LLGLTFMaterial::TextureTransform::Pack packed;
+                    material->mTextureTransform[LLGLTFMaterial::GLTF_TEXTURE_INFO_BASE_COLOR].getPacked(packed);
+                    memcpy(&transforms[8 * slot], packed, sizeof(packed));
+                }
+                shader->uniform1fv(sVelocityMinAlpha, count, cutoffs);
+                shader->uniform4fv(sBaseXform, 2 * count, transforms);
+            }
+            else if (indexed_legacy)
+            {
+                const bool material_slots = params.mMaterialSlotList.size() > 1;
+                const S32 count = list_size;
+                F32 cutoffs[VELOCITY_ALPHA_SLOTS] = { 0.f };
+                for (S32 slot = 0; slot < count; ++slot)
+                {
+                    LLViewerTexture* texture = material_slots
+                        ? params.mMaterialSlotList[slot].mDiffuse.get()
+                        : params.mTextureList[slot].get();
+                    gGL.getTexUnit(slot)->bindFast(texture
+                        ? texture : LLViewerFetchedTexture::sWhiteImagep.get());
+                    cutoffs[slot] = VELOCITY_ALPHA_CUTOFF;
+                }
+                shader->uniform1fv(sVelocityMinAlpha, count, cutoffs);
+            }
+            else if (pbr)
+            {
+                LLFetchedGLTFMaterial* material = params.mGLTFMaterial.get();
+                if (!material && !params.mGLTFMaterialList.empty())
+                {
+                    material = params.mGLTFMaterialList.front().get();
+                }
+                if (!material)
+                {
+                    // [AlphaVel] Missing PBR inputs cannot be sampled, but rigid
+                    // history must still advance to prevent a resume spike.
+                    if (!rigged)
+                    {
+                        LLRenderPass::updateLastVelocityModelMatrix(params);
+                    }
+                    continue;
+                }
+                double_sided = material->mDoubleSided;
+                LLViewerTexture* texture = params.mTexture.notNull()
+                    ? params.mTexture.get() : material->mBaseColorTexture.get();
+                gGL.getTexUnit(0)->bindFast(texture
+                    ? texture : LLViewerFetchedTexture::sWhiteImagep.get());
+                shader->setMinimumAlpha(VELOCITY_ALPHA_CUTOFF);
+                LLGLTFMaterial::TextureTransform::Pack packed;
+                material->mTextureTransform[LLGLTFMaterial::GLTF_TEXTURE_INFO_BASE_COLOR].getPacked(packed);
+                shader->uniform4fv(LLShaderMgr::TEXTURE_BASE_COLOR_TRANSFORM, 2, packed);
+            }
+            else
+            {
+                LLViewerTexture* texture = params.mTexture.get();
+                if (!texture && !params.mMaterialSlotList.empty())
+                {
+                    texture = params.mMaterialSlotList.front().mDiffuse.get();
+                }
+                gGL.getTexUnit(0)->bindFast(texture
+                    ? texture : LLViewerFetchedTexture::sWhiteImagep.get());
+                shader->setMinimumAlpha(VELOCITY_ALPHA_CUTOFF);
+            }
+
+            LLGLDisable cull_face((particle || double_sided) ? GL_CULL_FACE : 0);
+            LLRenderPass::applyModelMatrix(params);
+            LLRenderPass::uploadActorFx(params);
+            setup_texture_matrix(params); // [AlphaVel] independent of beauty shader state
+            if (!rigged)
+            {
+                const LLMatrix4* last_mat = LLRenderPass::getLastVelocityModelMatrix(params);
+                shader->uniformMatrix4fv(LLShaderMgr::LAST_OBJECT_MATRIX, 1, GL_FALSE,
+                                         (GLfloat*)last_mat->mMatrix);
+            }
+
+            params.mVertexBuffer->setBuffer();
+            params.mVertexBuffer->drawRange(LLRender::TRIANGLES, params.mStart,
+                                            params.mEnd, params.mCount, params.mOffset);
+            teardown_texture_matrix(params);
+            if (!rigged)
+            {
+                LLRenderPass::updateLastVelocityModelMatrix(params);
+            }
+        }
     }
 }
 

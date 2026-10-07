@@ -58,6 +58,12 @@ public:
     /*virtual*/ void renderPostDeferred(S32 pass);
     /*virtual*/ S32  getNumPasses() { return 1; }
 
+    // [AlphaVel] Alpha pools are deferred to a final velocity stage so dominant
+    // translucent surfaces overwrite the opaque/camera fallback.
+    /*virtual*/ void beginVelocityPass(S32 pass);
+    /*virtual*/ void endVelocityPass(S32 pass);
+    /*virtual*/ void renderVelocity(S32 pass = 0);
+
     // [BDMerge] Per-draw avatar-attachment filter for the non-rigged BLEND dispatch.
     // Drives the gated 3-pass ordering (SIM non-rigged -> rigged -> attachment
     // non-rigged) so worn attachment alpha prims are not over-blended by rigged hair.
@@ -109,6 +115,7 @@ private:
                                 bool pbr, bool rigged);
     bool TexSetup(LLDrawInfo* draw, bool use_material);
     void RestoreTexSetup(bool tex_setup);
+    void renderVelocityGroups(EAlphaStream stream, AttachmentFilter filter = ATTACHMENT_ALL);
 
     // our 'normal' alpha blend function for this pass
     LLRender::eBlendFactor mColorSFactor;

@@ -893,11 +893,59 @@ void LLDrawPoolAvatar::renderVelocity(S32 pass)
         return;
     }
     LLRenderPass::uploadActorFx(actor_fx_id);
-    // Match the deferred body pass.  Alpha-blended skirt/hair/eyelashes remain
-    // on the camera-depth fallback rather than double-stamping ordered alpha.
+    // [AlphaVel] Match the deferred body pass here; transparent system meshes
+    // are deferred to renderVelocityAlpha after all opaque pool stamps.
     LLDrawPoolAvatar::sSkipTransparent = true;
     avatarp->renderSkinned();
     LLDrawPoolAvatar::sSkipTransparent = false;
+}
+
+void LLDrawPoolAvatar::renderVelocityAlpha()
+{
+    LL_PROFILE_ZONE_SCOPED_CATEGORY_AVATAR;
+
+    if (mDrawFace.empty())
+    {
+        return;
+    }
+
+    const LLFace* facep = mDrawFace[0];
+    if (!facep->getDrawable())
+    {
+        return;
+    }
+    LLVOAvatar* avatarp = (LLVOAvatar*)facep->getDrawable()->getVObj().get();
+
+    if (!avatarp || avatarp->isDead() || avatarp->isUIAvatar() || avatarp->mDrawable.isNull()
+        || is_hidden_entity_clone(avatarp))
+    {
+        return;
+    }
+
+    const bool actor_fx_enabled = has_enabled_actor_fx(avatarp);
+    const bool impostor = !actor_fx_enabled &&
+        !LLPipeline::sImpostorRender && avatarp->isImpostor();
+    if (avatarp->isHardVisualMute() ||
+        (!actor_fx_enabled && avatarp->isTooSlow()) || impostor ||
+        avatarp->getOverallAppearance() == LLVOAvatar::AOA_INVISIBLE)
+    {
+        return;
+    }
+
+    const LLUUID actor_fx_id = get_actor_fx_id(avatarp);
+    if (LLRenderPass::shouldSuppressSharedActorFx(actor_fx_id))
+    {
+        return;
+    }
+
+    // [AlphaVel] The existing avatar velocity fragment already samples baked
+    // alpha and applies Actor-FX dissolve; raise its discard to dominance.
+    sVertexProgram->setMinimumAlpha(0.5f);
+    LLRenderPass::uploadActorFx(actor_fx_id);
+    LLDrawPoolAvatar::sSkipOpaque = true;
+    avatarp->renderSkinned();
+    LLDrawPoolAvatar::sSkipOpaque = false;
+    sVertexProgram->setMinimumAlpha(LLDrawPoolAvatar::sMinimumAlpha);
 }
 
 void LLDrawPoolAvatar::beginDeferredSkinned()

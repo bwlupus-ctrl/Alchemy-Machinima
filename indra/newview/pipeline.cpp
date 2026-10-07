@@ -7713,10 +7713,9 @@ void LLPipeline::renderGeomDeferred(LLCamera& camera, bool do_occlusion)
 // Phase 1b -- prev-frame palettes via MatrixPaletteCache.mLastGLMp and
 // llviewerjointmesh.mLastMatrixPalette).
 //
-// Exclusions: blended alpha (order-dependent, double-stamp hazard), HUD/UI (this
-// runs before UI compositing), and cube snapshots / reflection probes (guarded by
-// the caller's !gCubeSnapshot). First-frame / no-prev-matrix drawables emit zero
-// velocity via the identity fallback in pushVelocityBatches.
+// [AlphaVel] Blended alpha is stamped last with a 0.5 dominance cutoff. HUD/UI,
+// water and cube snapshots / reflection probes remain excluded. First-frame /
+// no-prev-matrix drawables emit zero object velocity via the existing fallback.
 void LLPipeline::renderGeomVelocity()
 {
     LL_PROFILE_ZONE_SCOPED_CATEGORY_DRAWPOOL;
@@ -7786,7 +7785,7 @@ void LLPipeline::renderGeomVelocity()
 
     // [BDMerge A5.4-1c] Camera-motion fallback FIRST: fill every pixel with the
     // camera-induced motion reprojected from scene depth, so pixels no draw pool
-    // stamps (sky, excluded blended alpha, impostors) don't read "static" and
+    // stamps (sky, sub-threshold blended alpha, impostors) don't read "static" and
     // ghost in temporal consumers (SMAA T2x, ReShade bridge/RTGI). Rigged and
     // classic avatars get true limb velocity from the geometry passes (1b).
     // The geometry passes below then overwrite covered pixels with true
@@ -7815,12 +7814,26 @@ void LLPipeline::renderGeomVelocity()
             SLRESHADE_MOTION_COVERAGE_SKY);
     }
 
+    static LLCachedControl<bool> velocity_alpha(gSavedSettings,
+                                                 "BDMergeVelocityAlpha", true);
+    const bool velocity_alpha_enabled = velocity_alpha;
     sVelocityRender = true;
+    if (velocity_alpha_enabled)
+    {
+        // [AlphaVel] Alpha runs after opaque history writes.
+        LLRenderPass::beginVelocityModelMatrixCache();
+    }
 
     // Each draw pool is responsible for producing its own velocity.
     for (pool_set_t::iterator iter = mPools.begin(); iter != mPools.end(); ++iter)
     {
         LLDrawPool* poolp = *iter;
+        if (velocity_alpha_enabled &&
+            (poolp->getType() == LLDrawPool::POOL_ALPHA_PRE_WATER ||
+             poolp->getType() == LLDrawPool::POOL_ALPHA_POST_WATER))
+        { // [AlphaVel] Defer blended alpha until every existing pool stamp is complete.
+            continue;
+        }
         S32 num_passes = poolp->getNumVelocityPasses();
         for (S32 i = 0; i < num_passes; ++i)
         {
@@ -7830,16 +7843,82 @@ void LLPipeline::renderGeomVelocity()
         }
     }
 
+    bool alpha_velocity_ran = false;
+    bool alpha_pool_velocity_ran = false;
+    if (velocity_alpha_enabled)
+    {
+        // [AlphaVel] Sort opaque captures once before any alpha history writes.
+        LLRenderPass::beginVelocityAlphaModelMatrixCache();
+        LL_PROFILE_GPU_ZONE("velocity alpha"); // [AlphaVel] dominant translucent coverage
+        LLGLDisable blend(GL_BLEND);
+        LLGLDepthTest alpha_depth(GL_TRUE, GL_FALSE, GL_LEQUAL);
+        gGL.setColorMask(true, true);
+
+        for (pool_set_t::iterator iter = mPools.begin(); iter != mPools.end(); ++iter)
+        {
+            LLDrawPool* poolp = *iter;
+            if ((poolp->getType() != LLDrawPool::POOL_AVATAR &&
+                 poolp->getType() != LLDrawPool::POOL_CONTROL_AV) ||
+                poolp->getSkipRenderFlag() ||
+                !hasRenderType(poolp->getType()))
+            {
+                continue;
+            }
+
+            // [AlphaVel] Classic transparent meshes are not alpha DrawInfos;
+            // stamp them first so the later sorted attachment stream stays final.
+            alpha_velocity_ran = true;
+            LLDrawPoolAvatar* avatar_pool = static_cast<LLDrawPoolAvatar*>(poolp);
+            avatar_pool->beginVelocityPass(0);
+            avatar_pool->renderVelocityAlpha();
+            avatar_pool->endVelocityPass(0);
+        }
+
+        for (pool_set_t::iterator iter = mPools.begin(); iter != mPools.end(); ++iter)
+        {
+            LLDrawPool* poolp = *iter;
+            if ((poolp->getType() != LLDrawPool::POOL_ALPHA_PRE_WATER &&
+                 poolp->getType() != LLDrawPool::POOL_ALPHA_POST_WATER) ||
+                poolp->getSkipRenderFlag() ||
+                !hasRenderType(poolp->getType()))
+            {
+                continue;
+            }
+
+            alpha_velocity_ran = true;
+            alpha_pool_velocity_ran = true;
+            poolp->beginVelocityPass(0);
+            poolp->renderVelocity(0);
+            poolp->endVelocityPass(0);
+        }
+    }
+
+    if (velocity_alpha_enabled)
+    {
+        LLRenderPass::endVelocityModelMatrixCache(); // [AlphaVel] pass-local snapshots only
+    }
+
     sVelocityRender = false;
 
     // These are the categories for which the geometry loop above has live
     // velocity hooks. Coverage is "attempted", not inferred from pixel values.
-    LLReShadeBridge::instance().noteMotionCoverage(
+    U32 motion_coverage =
         SLRESHADE_MOTION_COVERAGE_RIGID |
         SLRESHADE_MOTION_COVERAGE_RIGGED_MESH |
         SLRESHADE_MOTION_COVERAGE_CLASSIC_AVATAR |
         SLRESHADE_MOTION_COVERAGE_ALPHA_TEST |
-        SLRESHADE_MOTION_COVERAGE_FULLBRIGHT);
+        SLRESHADE_MOTION_COVERAGE_FULLBRIGHT;
+    if (alpha_velocity_ran)
+    {
+        // [AlphaVel] Diagnostic bits describe a stage attempted this frame, not
+        // merely compiled support (the add-on forwards them unchanged).
+        motion_coverage |= SLRESHADE_MOTION_COVERAGE_ALPHA_BLEND;
+    }
+    if (alpha_pool_velocity_ran)
+    {
+        motion_coverage |= SLRESHADE_MOTION_COVERAGE_PARTICLES;
+    }
+    LLReShadeBridge::instance().noteMotionCoverage(motion_coverage);
 
     gGLLastMatrix = NULL;
     gGL.matrixMode(LLRender::MM_MODELVIEW);

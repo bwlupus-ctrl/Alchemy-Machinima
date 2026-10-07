@@ -6427,7 +6427,9 @@ U32 LLVOAvatar::renderSkinned()
 
         if (!LLDrawPoolAvatar::sSkipTransparent || LLPipeline::sImpostorRender)
         {
-            LLGLState blend(GL_BLEND, !mIsDummy);
+            // [AlphaVel] The velocity target is replace-only; do not let classic
+            // skirt/hair/eyelash rendering override the stage's blend disable.
+            LLGLState blend(GL_BLEND, !mIsDummy && !LLPipeline::sVelocityRender);
             num_indices += renderTransparent(first_pass);
         }
 

@@ -101,6 +101,7 @@ typedef enum
     /*virtual*/ void beginVelocityPass(S32 pass);
     /*virtual*/ void endVelocityPass(S32 pass);
     /*virtual*/ void renderVelocity(S32 pass);
+    void renderVelocityAlpha(); // [AlphaVel] deferred classic skirt/hair/eyelashes
 
     void beginRigid();
     void beginImpostor();

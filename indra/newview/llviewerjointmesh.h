@@ -91,6 +91,7 @@ private:
     // velocity instead of a stale-palette motion spike.
     GLfloat mLastMatrixPalette[45*4] = {};
     U32     mLastMatrixPaletteFrame = 0;
+    U32     mLastVelocityPaletteFrame = 0; // [AlphaVel] last history roll, not beauty upload
 };
 
 #endif // LL_LLVIEWERJOINTMESH_H

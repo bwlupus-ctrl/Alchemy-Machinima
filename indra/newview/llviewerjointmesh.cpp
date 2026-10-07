@@ -190,8 +190,29 @@ void LLViewerJointMesh::uploadJointMatrices()
             // palette, then roll the current one forward for next frame.
             if (LLGLSLShader::sCurBoundShaderPtr == &gAvatarVelocityProgram)
             {
-                LLGLSLShader::sCurBoundShaderPtr->uniform4fv(LLViewerShaderMgr::AVATAR_LAST_MATRIX, 45, mLastMatrixPalette);
-                memcpy(mLastMatrixPalette, mat, sizeof(GLfloat) * 45 * 4);
+                if (LLDrawPoolAvatar::sSkipOpaque)
+                {
+                    // [AlphaVel] Beauty uploads advance mLastMatrixPaletteFrame
+                    // even when alpha velocity is disabled or suppressed. Track
+                    // alpha-stage rolls separately so resume starts current == last.
+                    const bool previous_velocity_valid =
+                        mLastVelocityPaletteFrame + 1 == gFrameCount;
+                    LLGLSLShader::sCurBoundShaderPtr->uniform4fv(
+                        LLViewerShaderMgr::AVATAR_LAST_MATRIX, 45,
+                        previous_velocity_valid ? mLastMatrixPalette : mat);
+                    if (mLastVelocityPaletteFrame != gFrameCount)
+                    {
+                        memcpy(mLastMatrixPalette, mat, sizeof(GLfloat) * 45 * 4);
+                        mLastVelocityPaletteFrame = gFrameCount;
+                    }
+                }
+                else
+                {
+                    // [AlphaVel] NOTE: HEAD's opaque body can spike for one
+                    // frame on resume; retain it for a separate signed-off fix.
+                    LLGLSLShader::sCurBoundShaderPtr->uniform4fv(LLViewerShaderMgr::AVATAR_LAST_MATRIX, 45, mLastMatrixPalette);
+                    memcpy(mLastMatrixPalette, mat, sizeof(GLfloat) * 45 * 4);
+                }
             }
         }
         stop_glerror();

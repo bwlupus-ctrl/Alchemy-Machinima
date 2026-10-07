@@ -9693,6 +9693,17 @@
       <key>Value</key>
       <integer>0</integer>
     </map>
+    <key>BDMergeVelocityAlpha</key>
+    <map>
+      <key>Comment</key>
+      <string>[AlphaVel] Kill switch for the alpha-blended velocity stage. When ON, dominant alpha-blended surfaces stamp motion after opaque geometry. When OFF, blended alpha and particles retain camera-only velocity.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>Boolean</string>
+      <key>Value</key>
+      <integer>1</integer>
+    </map>
     <key>BDMergeVelocityDebug</key>
     <map>
       <key>Comment</key>
