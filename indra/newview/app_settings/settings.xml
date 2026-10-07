@@ -7416,6 +7416,29 @@
     <key>Value</key>
     <integer>1</integer>
   </map>
+  <key>UIFitDiagnosticsIgnore</key>
+  <map>
+    <key>Comment</key>
+    <string>[UIFitNoise] Comma-separated floater/panel direct-child overflow exceptions; no suffix suppresses both axes, while optional :h or :v suppresses only that axis.
+[UIFitNoise] panel_im/im_header and floater_im_box/im_header: LLChatHistoryHeader reshapes/translates user_name, time_box, and the info control at runtime (llchathistory.cpp).</string>
+    <key>Persist</key>
+    <integer>1</integer>
+    <key>Type</key>
+    <string>String</string>
+    <key>Value</key>
+    <string>panel_im/im_header,floater_im_box/im_header</string>
+  </map>
+  <key>UIFitDiagnosticsTolerancePx</key>
+  <map>
+    <key>Comment</key>
+    <string>[UIFitNoise] Ignore direct-child overflow up to this many pixels per edge; the default absorbs systemic one-pixel XUI rounding/edge placement noise.</string>
+    <key>Persist</key>
+    <integer>1</integer>
+    <key>Type</key>
+    <string>S32</string>
+    <key>Value</key>
+    <integer>1</integer>
+  </map>
   <key>UIRefreshForceAlways</key>
   <map>
     <key>Comment</key>
@@ -9395,6 +9418,39 @@
       <string>Boolean</string>
       <key>Value</key>
       <integer>0</integer>
+    </map>
+    <key>BDMergeReShadeCutAngle</key>
+    <map>
+      <key>Comment</key>
+      <string>[ReShadeReset] Main-view one-frame camera rotation, in degrees, above which the ReShade bridge resets temporal history when the rotation also exceeds 720 degrees/second. The conservative 60 degree default excludes normal eased/flycam/joystick/Weighted Classic/Drone motion.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>60.0</real>
+    </map>
+    <key>BDMergeReShadeCutDetect</key>
+    <map>
+      <key>Comment</key>
+      <string>[ReShadeReset] Master switch for all new ReShade temporal-history reset sources: hard presented Director cuts, large main-view camera pose jumps, and completed teleports. Projection changes and other pre-existing reset sources are unaffected.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>Boolean</string>
+      <key>Value</key>
+      <integer>1</integer>
+    </map>
+    <key>BDMergeReShadeCutDistance</key>
+    <map>
+      <key>Comment</key>
+      <string>[ReShadeReset] Main-view one-frame camera translation, in meters, above which the ReShade bridge may reset temporal history; the move must also imply more than 400 m/s. The conservative default is 8 meters.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>8.0</real>
     </map>
     <key>BDMergeEyeRotationLimit</key>
     <map>

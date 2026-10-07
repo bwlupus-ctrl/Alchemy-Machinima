@@ -22,9 +22,14 @@
 #include <atomic>
 #include <cstring>              // memcpy
 
+#include "alcameradispatch.h"  // [ReShadeReset] presented camera owner
+#include "aldirectorswitcher.h" // [ReShadeReset] explicit Director cuts
+#include "llagent.h"           // [ReShadeReset] agent-to-global camera position
+#include "llappviewer.h"       // [ReShadeReset] gFrameIntervalSeconds
 #include "pipeline.h"          // gPipeline, RenderTargetPack, LLRenderTarget, mVelocityMap
 #include "llviewercamera.h"    // LLViewerCamera (matrices, near/far/fov, world frame)
 #include "llviewercontrol.h"   // gSavedSettings / LLCachedControl (sidecar gate)
+#include "llviewerdisplay.h"   // [ReShadeReset] gDisplaySwapBuffers
 #include "llviewershadermgr.h" // [TronA0] gbufferAvatarTagActive (normals .w flag encoding)
 
 extern bool gSnapshot;         // llviewerdisplay.cpp
@@ -48,7 +53,17 @@ LLReShadeBridge::LLReShadeBridge()
     mEverHadValidFrame(false),
     mLastFrameValid(false),
     mLastHDR(false),
-    mLastSnapshot(false)
+    mLastSnapshot(false),
+    // [ReShadeReset] Camera history begins only after an add-on consumes the ABI.
+    mConsumerActive(false),
+    mHaveLastCamera(false),
+    mLastCameraGlobal(),
+    mLastCameraAt(),
+    mLastCutSerial(0),
+    mLastCutSlot(-1),
+    mLastCutMode(-1),
+    mLastCineDriving(false),
+    mPendingDirectorCut(false)
 {
     // Zero, then stamp the immutable header fields once. write_begin/write_end
     // start equal (0) == consistent-but-invalid frame.
@@ -67,6 +82,34 @@ void LLReShadeBridge::noteMotionCoverage(U32 bits)
 void LLReShadeBridge::noteProjectionChange()
 {
     noteResetEvent(SLRESHADE_RESET_PROJECTION_CHANGE);
+}
+
+void LLReShadeBridge::noteTeleport(const char* reason)
+{
+    // [ReShadeReset] Teleport/region callbacks are rare, but stay entirely inert
+    // until the external add-on has requested the bridge ABI at least once.
+    static LLCachedControl<bool> detect_cut(gSavedSettings,
+                                             "BDMergeReShadeCutDetect", true);
+    if (!isActive() || !detect_cut())
+    {
+        return;
+    }
+
+    noteResetEvent(SLRESHADE_RESET_TELEPORT);
+    LL_INFOS("ReShadeBridge") << "[ReShadeReset] teleport: " << reason << LL_ENDL;
+}
+
+void LLReShadeBridge::noteCameraCut(const char*)
+{
+    // [ReShadeReset] The cinematic camera calls this only for an uneased
+    // switcher cut that owns the presented camera. Defer the movement test
+    // until gatherFrame() sees the final camera pose.
+    static LLCachedControl<bool> detect_cut(gSavedSettings,
+                                             "BDMergeReShadeCutDetect", true);
+    if (isActive() && detect_cut())
+    {
+        mPendingDirectorCut = true;
+    }
 }
 
 void LLReShadeBridge::noteVisibleDiffuseSeeded()
@@ -100,6 +143,107 @@ void LLReShadeBridge::noteResetEvent(U32 flags)
     ++mResetEventCounter;
 }
 
+void LLReShadeBridge::detectCameraCut(const LLViewerCamera& camera)
+{
+    // [ReShadeReset] LLCachedControl avoids string lookups in this per-frame path.
+    static LLCachedControl<bool> detect_jump(gSavedSettings,
+                                              "BDMergeReShadeCutDetect", true);
+    static LLCachedControl<F32> cut_distance(gSavedSettings,
+                                              "BDMergeReShadeCutDistance", 8.f);
+    static LLCachedControl<F32> cut_angle(gSavedSettings,
+                                           "BDMergeReShadeCutAngle", 60.f);
+
+    const LLVector3d origin_global =
+        gAgent.getPosGlobalFromAgent(camera.getOrigin());
+    const LLVector3 at = camera.getAtAxis();
+    const ALDirectorSwitcher& switcher = ALDirectorSwitcher::instance();
+    const U64 cut_serial = switcher.cutSerial();
+    const S32 cut_slot = switcher.activeSlot();
+    const bool cine_driving =
+        gCameraDispatchOwner == ECameraOwner::CINE &&
+        switcher.isDrivingCamera();
+
+    // [ReShadeReset] Establish history without treating the first published
+    // main-view frame as a discontinuity.
+    if (!mHaveLastCamera)
+    {
+        mHaveLastCamera = true;
+        mLastCameraGlobal = origin_global;
+        mLastCameraAt = at;
+        mLastCutSerial = cut_serial;
+        mLastCutSlot = cut_slot;
+        mLastCutMode = switcher.activeMode();
+        mLastCineDriving = cine_driving;
+        mPendingDirectorCut = false;
+        return;
+    }
+
+    const F64 distance = dist_vec(origin_global, mLastCameraGlobal);
+    const F32 angle_degrees = angle_between(at, mLastCameraAt) * RAD_TO_DEG;
+    const F32 frame_dt = llmax(gFrameIntervalSeconds.value(), 0.000001f);
+    const F64 implied_speed = distance / frame_dt;
+    const F32 angular_speed = angle_degrees / frame_dt;
+    const bool camera_moved = distance > 0.01 || angle_degrees > 0.25f;
+    const bool teleport_pending =
+        (mPendingResetFlags & SLRESHADE_RESET_TELEPORT) != 0;
+    const bool serial_changed = cut_serial != mLastCutSerial;
+    // [ReShadeReset] The switcher deliberately advances its serial at every
+    // elapsed auto boundary, even when a one-slot bank selects the same live
+    // source. That is continuous program video, not a cut.
+    // Same slot AND same mode only: a same-index re-take, rewind, ACTION
+    // re-take or live mode edit is a real on-screen change and must not be
+    // absorbed here (it still has to pass camera_moved below).
+    const S32 cut_mode = switcher.activeMode();
+    const bool single_slot_auto = serial_changed && mLastCineDriving &&
+        cine_driving && cut_slot == mLastCutSlot && cut_mode == mLastCutMode;
+    // An authored ease is continuous program video. Suppress the generic
+    // discontinuity backstop only for the ease window plus its catch-up frame,
+    // on the same unscaled timer CineCam ends the ease on -- not for the whole
+    // switcher program.
+    const F64 ease_s = switcher.cutEaseSeconds();
+    const bool eased_director_shot = cine_driving && ease_s > 0.0 &&
+        switcher.cutEaseElapsedSeconds() < ease_s + llmax((F64)frame_dt, 0.1);
+    // [ReShadeReset] Recheck presentation ownership at publication time. The
+    // ease decision is CineCam's own (it only arms on its non-eased branch,
+    // including rejected eases). mLastCutSerial is still refreshed every
+    // frame, absorbing serial bumps while PATH, RECORDER, or another owner
+    // presents the camera.
+    const bool director_cut = detect_jump() && mPendingDirectorCut &&
+        cine_driving && !single_slot_auto && camera_moved;
+    // The pose backstop never needs the single-slot exemption: a static slot
+    // cannot reach 8 m at 400 m/s or 60 deg at 720 deg/s.
+    const bool position_jump = detect_jump() && !teleport_pending &&
+        !eased_director_shot &&
+        distance > llmax((F32)cut_distance, 0.f) && implied_speed > 400.f;
+    const bool rotation_jump = detect_jump() && !teleport_pending &&
+        !eased_director_shot &&
+        angle_degrees > llclamp((F32)cut_angle, 0.f, 180.f) &&
+        angular_speed > 720.f;
+
+    // [ReShadeReset] Coalesce coincident serial/pose evidence into one reset and
+    // one log line for this rendered frame.
+    if (director_cut || position_jump || rotation_jump)
+    {
+        noteResetEvent(SLRESHADE_RESET_CAMERA_CUT);
+        LL_INFOS("ReShadeBridge")
+            << "[ReShadeReset] " << (director_cut ? "cut" : "jump")
+            << ": distance=" << distance << "m"
+            << " angle=" << angle_degrees << "deg"
+            << " speed=" << implied_speed << "m/s"
+            << " angular_speed=" << angular_speed << "deg/s"
+            << " serial=" << mLastCutSerial << "->" << cut_serial
+            << LL_ENDL;
+    }
+
+    mLastCameraGlobal = origin_global;
+    mLastCameraAt = at;
+    mLastCutSerial = cut_serial;
+    mLastCutSlot = cut_slot;
+    mLastCutMode = cut_mode;
+    mLastCineDriving = cine_driving;
+    mPendingDirectorCut = false;
+}
+
 // -----------------------------------------------------------------------------
 // The one exported symbol the add-on resolves. Exporting from the executable
 // works like exporting from a DLL: the add-on does
@@ -116,7 +260,10 @@ const SLReShadeFrame* SLReShade_GetFrame(uint32_t requested_abi)
     {
         return nullptr;
     }
-    return &LLReShadeBridge::instance().getFrameData();
+    // [ReShadeReset] Do no cut-detection work in sessions with no ABI consumer.
+    LLReShadeBridge& bridge = LLReShadeBridge::instance();
+    bridge.markConsumerActive();
+    return &bridge.getFrameData();
 }
 
 // -----------------------------------------------------------------------------
@@ -152,6 +299,15 @@ void LLReShadeBridge::gatherFrame()
 {
     SLReShadeFrame& f = mFrame;
 
+    // [ReShadeReset] gatherFrame() has exactly one display-loop call site after
+    // scene rendering. The explicit snapshot gate plus that call-site placement
+    // keep snapshot, probe, hero, and Prism aux poses out of camera history.
+    LLViewerCamera* cam = LLViewerCamera::getInstance();
+    if (cam && isActive() && !gSnapshot)
+    {
+        detectCameraCut(*cam);
+    }
+
     // --- seqlock: open the write window ---
     f.write_begin++;
     std::atomic_thread_fence(std::memory_order_release);
@@ -167,7 +323,6 @@ void LLReShadeBridge::gatherFrame()
     f.motion    = SLReShadeTexture();
     SLReShadeFrameV11Tail tail = {};
 
-    LLViewerCamera* cam = LLViewerCamera::getInstance();
     if (cam)
     {
         // Camera scalars
@@ -460,7 +615,12 @@ void LLReShadeBridge::gatherFrame()
     mPendingVisibleDiffuseResolved = false;
     mPendingSurfaceCoverageSeeded = false;
     mPendingSurfaceCoverageResolved = false;
-    mPendingResetFlags = 0;
+    // [ReShadeReset] Snapshot rendering suppresses the next main-frame swap.
+    // Retain flags until a later gather whose frame will actually be presented.
+    if (gDisplaySwapBuffers)
+    {
+        mPendingResetFlags = 0;
+    }
 
     f.frame_counter++;
 

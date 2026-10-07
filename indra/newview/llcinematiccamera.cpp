@@ -13,6 +13,7 @@
 
 #include <cmath>
 
+#include "alcameradispatch.h"     // [ReShadeReset] presented camera owner
 #include "alcameracurve.h"
 #include "aldirectorswitcher.h"
 #include "llagentpilot.h"
@@ -25,6 +26,7 @@
 #include "llpanel.h"
 #include "llpathcamera.h"
 #include "llpresentationtime.h"
+#include "llreshadebridge.h"      // [ReShadeReset] hard Director cuts
 #include "llselectmgr.h"
 #include "llviewerobjectlist.h"     // gObjectList (locked follow target)
 #include "llviewercamera.h"
@@ -2709,6 +2711,17 @@ void LLCinematicCamera::updateCamera()
         else
         {
             mEaseActive = false;
+            // [ReShadeReset] Arm only a hard switcher cut that CineCam is
+            // actually presenting. gatherFrame() applies the final pose-move
+            // gate, so a one-slot auto switch with an unchanged pose is inert.
+            // This branch already means "not eased" (including an ease CineCam
+            // rejected), so no separate ease_seconds test here.
+            if (switcher_driving && serial_changed &&
+                gCameraDispatchOwner == ECameraOwner::CINE)
+            {
+                LLReShadeBridge::instance().noteCameraCut(
+                    "Director switcher hard cut");
+            }
         }
         mPhase = 0.f;
         mHavePose = false;

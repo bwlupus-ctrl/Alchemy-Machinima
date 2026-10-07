@@ -767,8 +767,8 @@ void LLFloater::openFloater(const LLSD& key)
 
     if (!mUIFitDiagnosed)
     {
-        mUIFitDiagnosed = true;
-        LLUIFitDiag::diagnoseFloater(this);
+        // [UIFitNoise] Retry on a later open if layout animation made this pass incomplete.
+        mUIFitDiagnosed = LLUIFitDiag::diagnoseFloater(this);
     }
 
     dirtyRect();

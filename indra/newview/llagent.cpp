@@ -66,6 +66,7 @@
 #include "llparcel.h"
 #include "llperfstats.h"
 #include "llrendersphere.h"
+#include "llreshadebridge.h" // [ReShadeReset] teleport history invalidation
 #include "llscriptruntimeperms.h"
 #include "llsdutil.h"
 #include "llsky.h"
@@ -4302,6 +4303,9 @@ void LLAgent::startTeleportRequest()
 void LLAgent::handleTeleportFinished()
 {
     LL_INFOS("Teleport") << "Agent handling teleport finished." << LL_ENDL;
+    // [ReShadeReset] Covers local and cross-region teleports without treating
+    // seamless region crossings as teleports.
+    LLReShadeBridge::instance().noteTeleport("teleport completed");
     if (mTPNeedsNeabyChatSeparator)
     {
         // parcel is ready at this point

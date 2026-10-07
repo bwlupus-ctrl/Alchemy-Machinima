@@ -18,7 +18,13 @@
 #ifndef LL_LLRESHADEBRIDGE_H
 #define LL_LLRESHADEBRIDGE_H
 
+#include <atomic>
+
 #include "llreshadebridgeabi.h"
+#include "v3dmath.h" // [ReShadeReset] global persisted main-view camera position
+#include "v3math.h" // [ReShadeReset] persisted main-view camera pose
+
+class LLViewerCamera;
 
 // Singleton bridge. gatherFrame() is called once per frame from the display
 // loop, right after the scene is finalized and before the UI is composited.
@@ -36,6 +42,12 @@ public:
     // explicit: neither coverage nor a reset may be inferred from texture data.
     void noteMotionCoverage(U32 bits);
     void noteProjectionChange();
+    // [ReShadeReset] Hard-cut and teleport events enqueue until the next
+    // presented main view.
+    void noteCameraCut(const char* reason);
+    void noteTeleport(const char* reason);
+    bool isActive() const { return mConsumerActive.load(std::memory_order_relaxed); }
+    void markConsumerActive() { mConsumerActive.store(true, std::memory_order_relaxed); }
     // Visible-diffuse sidecar readiness. TWO stages, both required, because
     // either one alone is satisfiable while the buffer is garbage:
     //
@@ -67,6 +79,8 @@ public:
 private:
     LLReShadeBridge();
     void noteResetEvent(U32 flags);
+    // [ReShadeReset] Sample only from gatherFrame(), never an auxiliary pass.
+    void detectCameraCut(const LLViewerCamera& camera);
 
     SLReShadeFrame mFrame;
     // One slot per texture tracked for generation/resize detection in
@@ -85,6 +99,17 @@ private:
     bool mLastFrameValid;
     bool mLastHDR;
     bool mLastSnapshot;
+    // [ReShadeReset] The export marks this after an add-on actually resolves us;
+    // inactive sessions pay only the gatherFrame() branch, not cut calculations.
+    std::atomic<bool> mConsumerActive;
+    bool mHaveLastCamera;
+    LLVector3d mLastCameraGlobal;
+    LLVector3 mLastCameraAt;
+    U64 mLastCutSerial;
+    S32 mLastCutSlot;
+    S32 mLastCutMode;
+    bool mLastCineDriving;
+    bool mPendingDirectorCut;
 };
 
 #endif // LL_LLRESHADEBRIDGE_H
