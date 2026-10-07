@@ -115,6 +115,17 @@ bool LLFloaterHoverHeight::postBuild()
     mTargetCombo->setPrearrangeCallback([this](LLUICtrl*, const LLSD&) { rebuildTargets(); });
     mResetButton->setCommitCallback([this](LLUICtrl*, const LLSD&) { onResetTarget(); });
     mResetAllButton->setCommitCallback([this](LLUICtrl*, const LLSD&) { onResetAll(); });
+    // Quick-reset buttons at the end of each slider row (Director console style).
+    getChild<LLButton>("btn_reset_local_mini")->setCommitCallback([this](LLUICtrl*, const LLSD&) { onResetTarget(); });
+    getChild<LLButton>("btn_reset_hover")->setCommitCallback([this](LLUICtrl*, const LLSD&)
+    {
+        LLSliderCtrl* hover = getChild<LLSliderCtrl>("HoverHeightSlider");
+        if (!hover->getEnabled() || !isAgentAvatarValid())
+            return;
+        hover->setValue(0.f);
+        gAgentAvatarp->setHoverOffset(LLVector3(0.f, 0.f, 0.f), false);
+        onFinalCommit(); // same send path as slider mouse-up / text entry
+    });
     mStoreConnection = ALClientHeight::instance().setChangeCallback([this]() { onStoreChanged(); });
 
     // Initialize slider from pref setting.
@@ -222,6 +233,7 @@ void LLFloaterHoverHeight::updateEditEnabled()
     bool enabled = gAgent.getRegion() && gAgent.getRegion()->avatarHoverHeightEnabled() && isMeSelected();
     LLSliderCtrl* sldrCtrl = getChild<LLSliderCtrl>("HoverHeightSlider");
     sldrCtrl->setEnabled(enabled);
+    getChild<LLButton>("btn_reset_hover")->setEnabled(enabled);
     if (enabled)
     {
         syncFromPreferenceSetting(this);

@@ -48,7 +48,7 @@
    label="Hover height (everyone sees)"
    label_width="170"
    left="10"
-   width="501"
+   width="477"
    layout="topleft"
    name="HoverHeightSlider"
    tool_tip="The real hover height: sent to the region, so everyone sees it. Only available for Me, and only on regions that support it."
@@ -56,6 +56,17 @@
    can_edit_text="true"
    >
   </slider>
+  <button
+   follows="top|left"
+   height="18"
+   image_overlay="Refresh_Off"
+   image_top_pad="0"
+   layout="topleft"
+   left_pad="4"
+   name="btn_reset_hover"
+   tool_tip="Reset hover height to 0 (sent to the region)"
+   top_delta="-2"
+   width="18" />
   <!-- Local offset: 5 mm increment for drag and text entry. The mouse wheel follows the GLOBAL
        slider-wheel default (25 mm per notch, Shift 5 mm, Ctrl 250 mm); do not set wheel_adjust here. -->
   <slider
@@ -69,7 +80,7 @@
    left="10"
    max_val="2"
    min_val="-2"
-   width="501"
+   width="477"
    layout="topleft"
    name="ClientHeightSlider"
    tool_tip="Lifts or lowers this avatar on YOUR screen only. Never sent to the region, never saved: it is gone when you log out."
@@ -77,6 +88,17 @@
    can_edit_text="true"
    >
   </slider>
+  <button
+   follows="top|left"
+   height="18"
+   image_overlay="Refresh_Off"
+   image_top_pad="0"
+   layout="topleft"
+   left_pad="4"
+   name="btn_reset_local_mini"
+   tool_tip="Reset the selected avatar's local offset to 0"
+   top_delta="-2"
+   width="18" />
   <button
    follows="top|left"
    height="20"
