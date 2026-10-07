@@ -1505,6 +1505,25 @@ bool LLPipeline::allocateScreenBufferInternal(U32 resX, U32 resY)
         allocateShadowBuffer(resX, resY);
     }
 
+    // [PerfB1] Reduced-scale captures use mProbeCaptureRT; leave unused aux scratch unallocated.
+    const bool needs_probe_water_targets =
+        mRT == &mProbeCaptureRT || mRT == &mHeroProbeRT ||
+        (mRT == &mAuxillaryRT && LLReflectionMapManager::getProbeCaptureScale() == 4);
+    if (needs_probe_water_targets)
+    {
+        // [PerfB1] Probe water shaders use screen-relative UVs, so their scratch must match this pack.
+        const bool water_dis_ok = mRT->waterDis.allocate(resX, resY, screenFormat, true);
+        const bool water_exclusion_ok = water_dis_ok &&
+            mRT->waterExclusionMask.allocate(resX, resY, GL_R8, true);
+        if (!water_dis_ok || !water_exclusion_ok)
+        {
+            LL_WARNS("Pipeline") << "[PerfB1] Unable to allocate pack-local probe water targets; "
+                                 << "falling back to the main targets." << LL_ENDL;
+            mRT->waterDis.release();
+            mRT->waterExclusionMask.release();
+        }
+    }
+
     if (!gCubeSnapshot) // hack to not re-allocate various targets for cube snapshots
     {
         if (RenderUIBuffer)
@@ -1838,6 +1857,12 @@ LLRenderTarget& LLPipeline::getWaterDisTarget()
     {
         return mActivePrismLensScratch->waterDis;
     }
+    if ((mRT == &mAuxillaryRT || mRT == &mProbeCaptureRT || mRT == &mHeroProbeRT) &&
+        mRT->waterDis.isComplete())
+    {
+        // [PerfB1] Keep probe depth/color copies inside the active capture pack.
+        return mRT->waterDis;
+    }
     return mWaterDis;
 }
 
@@ -1847,6 +1872,12 @@ LLRenderTarget& LLPipeline::getWaterExclusionMaskTarget()
         mRT == &mActivePrismLensScratch->rt)
     {
         return mActivePrismLensScratch->waterExclusionMask;
+    }
+    if ((mRT == &mAuxillaryRT || mRT == &mProbeCaptureRT || mRT == &mHeroProbeRT) &&
+        mRT->waterExclusionMask.isComplete())
+    {
+        // [PerfB1] Clear and sample the exclusion mask at the capture pack's resolution.
+        return mRT->waterExclusionMask;
     }
     return mWaterExclusionMask;
 }
@@ -2427,6 +2458,8 @@ void LLPipeline::releaseScreenBuffers()
         rt.screen.release();
         rt.deferredScreen.release();
         rt.deferredLight.release();
+        rt.waterDis.release(); // [PerfB1] Pack-local probe scratch.
+        rt.waterExclusionMask.release();
         rt.postPingMap.release();
         rt.postPongMap.release();
         for (U32 i = 0; i < BLOOM_MAX_MIPS; i++)
@@ -26371,6 +26404,13 @@ void LLPipeline::doWaterHaze()
     LL_PROFILE_ZONE_SCOPED_CATEGORY_PIPELINE;
     if (sImpostorRender)
     { // do not attempt water haze on impostors
+        return;
+    }
+
+    // [PerfB1] Above water, an empty current draw list means the haze geometry covers no pixels.
+    if (!sUnderWaterRender &&
+        (!mWaterPool || static_cast<LLFacePool*>(mWaterPool)->mDrawFace.empty()))
+    {
         return;
     }
 

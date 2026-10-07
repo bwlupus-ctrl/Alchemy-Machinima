@@ -345,7 +345,17 @@ S32 LLFolderView::arrange( S32* unused_width, S32* unused_height )
 
 void LLFolderView::filter( LLFolderViewFilter& filter )
 {
-    LL_PROFILE_ZONE_SCOPED_CATEGORY_UI;
+    LL_PROFILE_ZONE_NAMED_CATEGORY_UI("folder view filter");
+    const std::string& panel_name = mParentPanel.get()->getName();
+    LL_PROFILE_ZONE_TEXT(panel_name.c_str(), panel_name.size());
+
+    // [PerfB1] dirtyFilter() bubbles -1 to the root; a current, unmodified root has no work.
+    if (!filter.isModified()
+        && getViewModelItem()->getLastFilterGeneration() >= filter.getCurrentGeneration())
+    {
+        return;
+    }
+
     const S32 TIME_VISIBLE = 10; // in milliseconds
     const S32 TIME_INVISIBLE = 1;
     filter.resetTime(llclamp((mParentPanel.get()->getVisible() ? TIME_VISIBLE : TIME_INVISIBLE), 1, 100));

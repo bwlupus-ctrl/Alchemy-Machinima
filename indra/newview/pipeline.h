@@ -1246,6 +1246,9 @@ public:
         LLRenderTarget          silCover; // [AvatarSilhouette] RG8; shared depth, never owned
         U32                     silCoverDepthSrc = 0;
         LLRenderTarget          deferredLight;
+        // [PerfB1] Pack-local water scratch keeps auxiliary passes at capture resolution.
+        LLRenderTarget          waterDis;
+        LLRenderTarget          waterExclusionMask;
 
         // tonemapped and gamma corrected render ready for post
         LLRenderTarget          postPingMap;

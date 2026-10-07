@@ -1451,7 +1451,7 @@ void display_cube_face()
         gPipeline.mProbeShadowSampleMode = probe_mode;
     }
 
-    glClear(GL_DEPTH_BUFFER_BIT); // | GL_STENCIL_BUFFER_BIT);
+    // [PerfB1] Shadow setup does not make FB 0 capture-owned; deferredScreen is cleared after it is bound below.
 
     {
         LL_PROFILE_ZONE_NAMED_CATEGORY_DISPLAY("cube face sort"); // [ProbeOnDemand] C0
