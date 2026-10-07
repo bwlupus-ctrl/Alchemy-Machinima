@@ -53,6 +53,7 @@ uniform vec3 sun_dir;
 uniform vec3 moon_dir;
 uniform int  sun_up_factor;
 uniform int classic_mode;
+uniform int alr_sil_active; // [AvatarSilhouette] frame mask (each compilation unit must declare it)
 
 in vec2 vary_fragcoord;
 

@@ -26,6 +26,7 @@ uniform sampler2D diffuseRect;    // G-buffer 0: base colour (sRGB storage)
 uniform sampler2D specularRect;   // G-buffer 1: PBR occlusion/roughness/metallic
 uniform sampler2D normalMap;      // G-buffer 2: .w carries GBUFFER_FLAG_*
 uniform sampler2D depthMap;       // shared depth
+uniform int alr_sil_active;       // [AvatarSilhouette] frame mask (each compilation unit must declare it)
 #if defined(HAS_EMISSIVE)
 uniform sampler2D emissiveRect;   // G-buffer 3: .a carries the silhouette code
 bool alrSilDecode(float carrier, float gbuffer_flag, out float k, out float r, out bool haze_skip);
