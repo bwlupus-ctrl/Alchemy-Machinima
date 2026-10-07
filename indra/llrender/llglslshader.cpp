@@ -1048,6 +1048,17 @@ bool LLGLSLShader::link(bool suppress_errors)
 {
     LL_PROFILE_ZONE_SCOPED_CATEGORY_SHADER;
 
+    // GLSL 1.50 does not support explicit fragment-output locations without an
+    // extension. Bind the named forward-rendering outputs before linking; on
+    // newer GLSL these agree with (and do not override) the layout qualifiers.
+    if (glBindFragDataLocation)
+    {
+        glBindFragDataLocation(mProgramObject, 0, "frag_color");
+        glBindFragDataLocation(mProgramObject, 1, "visible_diffuse");
+        glBindFragDataLocation(mProgramObject, 2, "surface_coverage");
+        glBindFragDataLocation(mProgramObject, 3, "alr_rimsplit_parity_mask");
+    }
+
     bool success = LLShaderMgr::instance()->linkProgramObject(mProgramObject, suppress_errors);
 
     if (!success && !suppress_errors)

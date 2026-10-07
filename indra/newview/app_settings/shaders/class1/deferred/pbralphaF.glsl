@@ -25,7 +25,11 @@
 
  // debug stub
 
+#if __VERSION__ >= 330
+layout(location = 0) out vec4 frag_color;
+#else
 out vec4 frag_color;
+#endif
 
 void main()
 {

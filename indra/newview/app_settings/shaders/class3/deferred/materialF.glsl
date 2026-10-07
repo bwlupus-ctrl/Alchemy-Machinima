@@ -76,7 +76,11 @@ float gbufferAvatarFlag(float flag);   // [TronA0] globalF.glsl
 
 #if (DIFFUSE_ALPHA_MODE == DIFFUSE_ALPHA_MODE_BLEND)
 
+#if __VERSION__ >= 330
+layout(location = 0) out vec4 frag_color;
+#else
 out vec4 frag_color;
+#endif
 
 #ifdef HAS_VISIBLE_DIFFUSE
 // [ReShadeBridge] Visible-diffuse sidecar MRT outputs (mRT->screen attachments
@@ -92,8 +96,13 @@ out vec4 frag_color;
 // (llviewershadermgr.cpp), so these exist exactly when the sidecar exists.
 // Declared ONLY in the BLEND variant: the deferred variant's frag_data[4]
 // already occupies locations 0-3.
+#if __VERSION__ >= 330
 layout(location = 1) out vec4 visible_diffuse;
 layout(location = 2) out vec2 surface_coverage;
+#else
+out vec4 visible_diffuse;
+out vec2 surface_coverage;
+#endif
 #endif
 
 #ifdef HAS_SUN_SHADOW

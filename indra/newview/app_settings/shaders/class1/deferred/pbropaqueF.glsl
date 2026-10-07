@@ -248,7 +248,11 @@ uniform sampler2D diffuseMap;  //always in sRGB space
 uniform vec3 emissiveColor;
 uniform sampler2D emissiveMap;
 
+#if __VERSION__ >= 330
+layout(location = 0) out vec4 frag_color;
+#else
 out vec4 frag_color;
+#endif
 
 in vec3 vary_position;
 in vec4 vertex_color;

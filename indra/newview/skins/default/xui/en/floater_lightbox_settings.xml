@@ -384,7 +384,7 @@
 				height="15"
 				left="30"
 				top_pad="5"
-				width="100"
+				width="160"
 				layout="topleft"
 				tool_tip="Adjusts the overall brightness of the image via the Tonemapper"
 				value="Exposure:" />
@@ -396,8 +396,8 @@
 				layout="topleft"
 				max_val="4.0"
 				min_val="0.5"
-				left_delta="100"
-				right="-55"
+				left_delta="160"
+				right="-56"
 				name="exposure_slider"
 				tool_tip="Adjusts the overall brightness of the image via the Tonemapper"
 				control_name="RenderExposure" />
@@ -424,7 +424,7 @@
 				height="15"
 				left="30"
 				top_pad="5"
-				width="100"
+				width="160"
 				layout="topleft"
 				name="tm_saturation_label"
 				tool_tip="Post-tonemap saturation (all operators). 1.0 = neutral; lower flattens for grading."
@@ -437,8 +437,8 @@
 				layout="topleft"
 				max_val="2.0"
 				min_val="0.0"
-				left_delta="100"
-				right="-55"
+				left_delta="160"
+				right="-56"
 				name="tm_saturation_slider"
 				control_name="AlchemyToneMapSaturation" />
 			<spinner
@@ -460,7 +460,7 @@
 				height="15"
 				left="30"
 				top_pad="5"
-				width="100"
+				width="160"
 				layout="topleft"
 				name="tm_contrast_label"
 				tool_tip="Post-tonemap contrast (all operators), pivoting on mid-grey. 1.0 = neutral."
@@ -473,8 +473,8 @@
 				layout="topleft"
 				max_val="2.0"
 				min_val="0.0"
-				left_delta="100"
-				right="-55"
+				left_delta="160"
+				right="-56"
 				name="tm_contrast_slider"
 				control_name="AlchemyToneMapContrast" />
 			<spinner
@@ -496,7 +496,7 @@
 				height="15"
 				left="30"
 				top_pad="5"
-				width="100"
+				width="160"
 				layout="topleft"
 				name="tm_khronos_desat_label"
 				tool_tip="Khronos Neutral only: how hard highlights roll toward white. Higher = flatter / less saturated (LPM-like)."
@@ -509,8 +509,8 @@
 				layout="topleft"
 				max_val="1.0"
 				min_val="0.0"
-				left_delta="100"
-				right="-55"
+				left_delta="160"
+				right="-56"
 				name="tm_khronos_desat_slider"
 				control_name="AlchemyToneMapKhronosDesaturation" />
 			<spinner
@@ -532,7 +532,7 @@
 				height="15"
 				left="30"
 				top_pad="5"
-				width="100"
+				width="160"
 				layout="topleft"
 				name="tm_khronos_knee_label"
 				tool_tip="Khronos Neutral only: where highlight compression begins. Lower compresses more of the range."
@@ -545,8 +545,8 @@
 				layout="topleft"
 				max_val="1.0"
 				min_val="0.1"
-				left_delta="100"
-				right="-55"
+				left_delta="160"
+				right="-56"
 				name="tm_khronos_knee_slider"
 				control_name="AlchemyToneMapKhronosStartCompression" />
 			<spinner
@@ -1484,7 +1484,7 @@
 				height="15"
 				left="29"
 				top_pad="6"
-				width="110"
+				width="140"
 				layout="topleft"
 				tool_tip="Sets how many rendered frames mirrors should wait to update. Can improve average FPS at the cost of jittering."
 				value="Update Rate Delay:" />
@@ -1498,8 +1498,8 @@
 				layout="topleft"
 				max_val="4"
 				min_val="1"
-				left="140"
-				right="-56"
+				left="169"
+				right="-80"
 				name="mirrorUpdateRateSlider"
 				tool_tip="Sets how many rendered frames mirrors should wait to update. Can improve average FPS at the cost of jittering."
 				show_text="false" />
@@ -1556,7 +1556,7 @@
 					max_val="120"
 					min_val="1"
 					left="29"
-					right="-56"
+					right="-80"
 					name="probeUpdateEveryNSlider"
 					tool_tip="1 = every frame (stock). Higher = region reflection probes refresh more slowly and cost less. 4 = a quarter of the cost."
 					show_text="false" />
@@ -1640,7 +1640,7 @@
 				height="15"
 				left="29"
 				top_pad="6"
-				width="110"
+				width="140"
 				layout="topleft"
 				tool_tip="A probe becomes due for a refresh after this long; the refresh itself follows the queue (and occlusion)."
 				value="Safety refresh (s):" />
@@ -1654,8 +1654,8 @@
 				layout="topleft"
 				max_val="600"
 				min_val="10"
-				left="140"
-				right="-56"
+				left="169"
+				right="-80"
 				name="probeMaxAgeSlider"
 				tool_tip="A probe becomes due for a refresh after this long; the refresh itself follows the queue (and occlusion)."
 				show_text="false" />
@@ -1697,7 +1697,7 @@
 				height="15"
 				left="29"
 				top_pad="6"
-				width="110"
+				width="140"
 				layout="topleft"
 				tool_tip="Minimum time between two captures of the same probe."
 				value="Min interval (s):" />
@@ -1711,8 +1711,8 @@
 				layout="topleft"
 				max_val="10"
 				min_val="0"
-				left="140"
-				right="-56"
+				left="169"
+				right="-80"
 				name="probeMinIntervalSlider"
 				tool_tip="Minimum time between two captures of the same probe."
 				show_text="false" />
@@ -1754,7 +1754,7 @@
 				height="15"
 				left="29"
 				top_pad="6"
-				width="110"
+				width="140"
 				layout="topleft"
 				tool_tip="Sun / moon direction change that counts as an environment change for the probes."
 				value="Sun change (deg):" />
@@ -1768,8 +1768,8 @@
 				layout="topleft"
 				max_val="5"
 				min_val="0.1"
-				left="140"
-				right="-56"
+				left="169"
+				right="-80"
 				name="probeSunDegSlider"
 				tool_tip="Sun / moon direction change that counts as an environment change for the probes."
 				show_text="false" />
@@ -1811,7 +1811,7 @@
 				height="15"
 				left="29"
 				top_pad="6"
-				width="110"
+				width="140"
 				layout="topleft"
 				tool_tip="Realtime detail without a Live Probe only: cube faces captured per frame for the closest dynamic probe."
 				value="Realtime faces/frame:" />
@@ -1825,8 +1825,8 @@
 				layout="topleft"
 				max_val="6"
 				min_val="1"
-				left="140"
-				right="-56"
+				left="169"
+				right="-80"
 				name="probeRealtimeFacesSlider"
 				tool_tip="Realtime detail without a Live Probe only: cube faces captured per frame for the closest dynamic probe."
 				show_text="false" />
@@ -2137,7 +2137,7 @@
 				height="15"
 				left="10"
 				top_pad="12"
-				width="120"
+				width="145"
 				layout="topleft"
 				value="Draw Distance:" />
 			<slider_bar
@@ -2148,8 +2148,8 @@
 				layout="topleft"
 				max_val="2048"
 				min_val="32"
-				left="130"
-				right="-55"
+				left="155"
+				right="-57"
 				name="draw_dist_slider_bar"
 				control_name="RenderFarClip" />
 			<spinner
@@ -2172,7 +2172,7 @@
 				height="15"
 				left="10"
 				top_pad="12"
-				width="120"
+				width="145"
 				layout="topleft"
 				value="Object LOD:" />
 			<slider_bar
@@ -2183,8 +2183,8 @@
 				layout="topleft"
 				max_val="32.0"
 				min_val="1.0"
-				left="130"
-				right="-55"
+				left="155"
+				right="-57"
 				name="lod_slider_bar"
 				control_name="RenderVolumeLODFactor" />
 			<spinner
@@ -2207,7 +2207,7 @@
 				height="15"
 				left="10"
 				top_pad="12"
-				width="120"
+				width="145"
 				layout="topleft"
 				value="Max Particles:" />
 			<slider_bar
@@ -2218,8 +2218,8 @@
 				layout="topleft"
 				max_val="8192"
 				min_val="0"
-				left="130"
-				right="-55"
+				left="155"
+				right="-57"
 				name="max_particles_slider_bar"
 				control_name="RenderMaxPartCount" />
 			<spinner
@@ -2242,7 +2242,7 @@
 				height="15"
 				left="10"
 				top_pad="12"
-				width="120"
+				width="145"
 				layout="topleft"
 				value="Max Avatars:" />
 			<slider_bar
@@ -2253,8 +2253,8 @@
 				layout="topleft"
 				max_val="65"
 				min_val="0"
-				left="130"
-				right="-55"
+				left="155"
+				right="-57"
 				name="max_avatar_slider_bar"
 				control_name="RenderAvatarMaxNonImpostors" />
 			<spinner
@@ -2277,7 +2277,7 @@
 				height="15"
 				left="10"
 				top_pad="12"
-				width="120"
+				width="145"
 				layout="topleft"
 				value="Max Local Lights:" />
 			<slider_bar
@@ -2288,8 +2288,8 @@
 				layout="topleft"
 				max_val="4096"
 				min_val="8"
-				left="130"
-				right="-55"
+				left="155"
+				right="-57"
 				name="local_light_slider_bar"
 				control_name="RenderLocalLightCount" />
 			<spinner
@@ -2312,7 +2312,7 @@
 				height="15"
 				left="10"
 				top_pad="12"
-				width="120"
+				width="145"
 				layout="topleft"
 				value="Light Intensity Scale:" />
 			<slider_bar
@@ -2323,8 +2323,8 @@
 				layout="topleft"
 				max_val="10"
 				min_val="0"
-				left="130"
-				right="-55"
+				left="155"
+				right="-57"
 				name="global_light_inten_slider_bar"
 				control_name="AlchemyGlobalLightScale" />
 			<spinner
@@ -2348,7 +2348,7 @@
 				height="15"
 				left="5"
 				top_pad="12"
-				width="380"
+				width="395"
 				layout="topleft"
 				font="SansSerifBold"
 				value="Level of Detail (BD parity: Objects 2.0+, Trees 1.0)" />
@@ -3802,12 +3802,13 @@
 			</combo_box>
 			<text
 				follows="left|top"
-				height="15"
+				height="30"
 				left="5"
 				top_pad="4"
 				width="370"
 				layout="topleft"
 				name="sd_units_hint"
+				word_wrap="true"
 				value="World units ignore the Shadow Bias / Offset sliders above (except cascades 1-3 with scope = Cascade 0 only)." />
 			<!-- [ShadowDist P3] Follow subject (Control B): subject-fitted sun-shadow column -->
 			<check_box
@@ -3988,12 +3989,13 @@
 				tool_tip="Snap the column to a world-anchored texel grid and quantise its size (0.25 m steps; grows immediately, shrinks after 1 s) so the shadow does not shimmer as the subject moves." />
 			<text
 				follows="left|top"
-				height="15"
+				height="45"
 				left="5"
 				top_pad="4"
 				width="370"
 				layout="topleft"
 				name="sd_subject_hint"
+				word_wrap="true"
 				value="Follow subject forces World units; with soft sun shadows the seam uses an automatic 6 mm radius unless Soft penumbra (mm) is set." />
 			<!-- [ShadowDist P3] shadow-pass alpha policy (alpha-textured jewelry / chains) -->
 			<text
@@ -4001,7 +4003,7 @@
 				height="15"
 				left="5"
 				top_pad="8"
-				width="180"
+				width="205"
 				layout="topleft"
 				tool_tip="How alpha-textured surfaces cast into the shadow maps. Stock: alpha below 0.88 casts 50% column-dithered shadows and blended surfaces need alpha >= 0.6 - thin chains / hair whose texture mips average low lose their shadow with distance. Low cutoff: one cutoff, no dither, continuous shadows above it; blended surfaces cast from the cutoff up (semi-transparent glass then casts a full shadow). Alpha-mask materials keep their own cutoff."
 				value="Shadow alpha:" />
@@ -4012,10 +4014,10 @@
 				layout="topleft"
 				height="18"
 				top_pad="-17"
-				left="190"
+				left="215"
 				max_chars="128"
 				name="sd_alpha_mode_combo"
-				width="168"
+				width="143"
 				tool_tip="How alpha-textured surfaces cast into the shadow maps. Stock: alpha below 0.88 casts 50% column-dithered shadows and blended surfaces need alpha >= 0.6 - thin chains / hair whose texture mips average low lose their shadow with distance. Low cutoff: one cutoff, no dither, continuous shadows above it; blended surfaces cast from the cutoff up (semi-transparent glass then casts a full shadow). Alpha-mask materials keep their own cutoff.">
 				<combo_box.item
 					label="Stock (dither below 0.88)"
@@ -4031,7 +4033,7 @@
 				height="15"
 				left="5"
 				top_pad="6"
-				width="180"
+				width="205"
 				layout="topleft"
 				tool_tip="Low cutoff mode: blended surfaces cast shadows from this alpha upward (stock needs 0.6). Lower keeps thinner chains; too low makes faint glass cast."
 				value="Alpha cutoff:" />
@@ -4041,7 +4043,7 @@
 				layout="topleft"
 				height="20"
 				top_pad="-18"
-				left="190"
+				left="215"
 				width="88"
 				label=""
 				min_val="0.05"
@@ -4056,7 +4058,7 @@
 				height="15"
 				left="5"
 				top_pad="8"
-				width="180"
+				width="205"
 				layout="topleft"
 				tool_tip="Faster shadows: surfaces drawn with alpha cut-outs or alpha blending cast sun shadows only near the camera. That covers leaves, grass and fences, and also some objects that LOOK solid, such as buildings or rocks whose textures carry an alpha channel. Avatars, worn items and projector shadows are unchanged.&#10;&#10;The cost: distant ground under trees and some alpha-textured buildings become sunlit. The shadow fades out where the shadow cascades meet. Volumetric shafts in forests get brighter. Mirrors and Reuse probes may disagree with the main view.&#10;&#10;With Sharp shadow range at 0, &quot;Near&quot; means the stock nearest-cascade distance, which moves with the angle between the camera and the sun and with how far you can see. Set Sharp shadow range for a stable distance. With Follow subject, &quot;Near + mid&quot; equals &quot;All but far&quot;."
 				value="Alpha-cutout shadows (distant):" />
@@ -4067,10 +4069,10 @@
 				layout="topleft"
 				height="18"
 				top_pad="-17"
-				left="190"
+				left="215"
 				max_chars="128"
 				name="sd_alpha_cap_combo"
-				width="168"
+				width="143"
 				tool_tip="Faster shadows: surfaces drawn with alpha cut-outs or alpha blending cast sun shadows only near the camera. That covers leaves, grass and fences, and also some objects that LOOK solid, such as buildings or rocks whose textures carry an alpha channel. Avatars, worn items and projector shadows are unchanged.&#10;&#10;The cost: distant ground under trees and some alpha-textured buildings become sunlit. The shadow fades out where the shadow cascades meet. Volumetric shafts in forests get brighter. Mirrors and Reuse probes may disagree with the main view.&#10;&#10;With Sharp shadow range at 0, &quot;Near&quot; means the stock nearest-cascade distance, which moves with the angle between the camera and the sun and with how far you can see. Set Sharp shadow range for a stable distance. With Follow subject, &quot;Near + mid&quot; equals &quot;All but far&quot;.">
 				<combo_box.item label="All distances (stock)" name="sd_alpha_cap_stock" value="0" />
 				<combo_box.item label="Near only" name="sd_alpha_cap_near" value="1" />
@@ -4098,7 +4100,7 @@
 				height="15"
 				left="5"
 				top_pad="8"
-				width="180"
+				width="205"
 				layout="topleft"
 				value="Shadow-casting projectors:" />
 			<slider
@@ -4107,8 +4109,8 @@
 				layout="topleft"
 				height="20"
 				top_pad="-16"
-				left="190"
-				width="168"
+				left="215"
+				width="143"
 				min_val="2"
 				max_val="10"
 				increment="1"
@@ -4137,7 +4139,7 @@
 				height="15"
 				left="5"
 				top_pad="8"
-				width="180"
+				width="205"
 				layout="topleft"
 				value="Projector shadow resolution:" />
 			<spinner
@@ -4146,7 +4148,7 @@
 				layout="topleft"
 				height="20"
 				top_pad="-16"
-				left="190"
+				left="215"
 				width="88"
 				label=""
 				min_val="0"
@@ -4462,7 +4464,7 @@
 				height="15"
 				left="5"
 				top_pad="4"
-				width="120"
+				width="130"
 				layout="topleft"
 				tool_tip="What fraction of screen resolution should be used for rendering Depth of Field. NOTE: Viewer may become unresponsive if DoF becomes intense when Full Resolution is used."
 				value="DoF Resolution: " />
@@ -4474,7 +4476,7 @@
 				follows="left|top"
 				height="16"
 				layout="topleft"
-				left="135"
+				left="145"
 				max_chars="128"
 				name="dof_res_combo"
 				top_pad="-16"
@@ -4502,7 +4504,7 @@
 				height="15"
 				left="5"
 				top_pad="8"
-				width="120"
+				width="130"
 				layout="topleft"
 				tool_tip="Vertical FoV for DoF calculations"
 				value="Field of View:" />
@@ -4515,7 +4517,7 @@
 				layout="topleft"
 				max_val="175"
 				min_val="10"
-				left="135"
+				left="145"
 				right="-75"
 				name="dof_fov_slider"
 				tool_tip="Vertical FoV for DoF calculations"
@@ -4558,7 +4560,7 @@
 				height="15"
 				left="5"
 				top_pad="5"
-				width="120"
+				width="130"
 				layout="topleft"
 				tool_tip="Simulated camera aperture f-value. Smaller f-stops result in a narrower focal range. Larger increases focal range."
 				value="Aperture (f):" />
@@ -4571,7 +4573,7 @@
 				layout="topleft"
 				max_val="256"
 				min_val="0.5"
-				left="135"
+				left="145"
 				right="-75"
 				name="dof_fstop_slider"
 				tool_tip="Simulated camera aperture f-value. Smaller f-stops result in a narrower focal range. Larger increases focal range."
@@ -4615,7 +4617,7 @@
 				height="15"
 				left="5"
 				top_pad="5"
-				width="120"
+				width="130"
 				layout="topleft"
 				tool_tip="Focal length of simulated camera."
 				value="Focal Length (mm):" />
@@ -4628,7 +4630,7 @@
 				layout="topleft"
 				max_val="600"
 				min_val="10"
-				left="135"
+				left="145"
 				right="-75"
 				name="dof_length_slider"
 				tool_tip="Focal length of simulated camera."
@@ -4673,7 +4675,7 @@
 				height="15"
 				left="5"
 				top_pad="5"
-				width="120"
+				width="130"
 				layout="topleft"
 				tool_tip="Circle of Confusion, blur intensity of out objects out of focus. This limits the amount of blur applied. High values produce softer out of focus objects, but can cause the viewer or system to become unresponsive"
 				value="CoC Maximum:" />
@@ -4686,7 +4688,7 @@
 				layout="topleft"
 				max_val="40"
 				min_val="0"
-				left="135"
+				left="145"
 				right="-75"
 				name="dof_coc_slider"
 				tool_tip="Circle of Confusion, blur intensity of out objects out of focus. This limits the amount of blur applied. High values produce softer out of focus objects, but can cause the viewer or system to become unresponsive"
@@ -4730,7 +4732,7 @@
 				height="15"
 				left="5"
 				top_pad="5"
-				width="120"
+				width="130"
 				layout="topleft"
 				tool_tip="Time it takes for the camera to transition to a new focal point."
 				value="Transition Time (s):" />
@@ -4743,7 +4745,7 @@
 				layout="topleft"
 				max_val="2"
 				min_val="0"
-				left="135"
+				left="145"
 				right="-75"
 				name="dof_focaltime_slider"
 				tool_tip="Time it takes for the camera to transition to a new focal point."
@@ -5258,7 +5260,7 @@
 				height="15"
 				left="5"
 				top_pad="10"
-				width="120"
+				width="130"
 				layout="topleft"
 				value="Texture pool size:" />
 			<slider
@@ -5268,8 +5270,8 @@
 				layout="topleft"
 				height="20"
 				top_pad="-16"
-				left="110"
-				width="248"
+				left="140"
+				width="218"
 				min_val="0.05"
 				max_val="0.9"
 				increment="0.05"
@@ -5812,8 +5814,8 @@
 			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" value="Height fog:" />
 			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="0" max_val="1" increment="0.01" decimal_digits="2" show_text="true" can_edit_text="true" name="fx_BDMergeFroxelFogStrength_slider" control_name="BDMergeFroxelFogStrength" enabled_control="BDMergeFroxelVolumetrics" tool_tip="Height-fog blend (0 = off); denser near ground, thinner up high." />
 			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="fx_reset_BDMergeFroxelFogStrength"><button.commit_callback function="LightBox.ResetControlDefault" parameter="BDMergeFroxelFogStrength" /></button>
-			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" value="Fog base (offset m):" />
-			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="-10" max_val="10" increment="0.1" decimal_digits="2" show_text="true" can_edit_text="true" name="fx_BDMergeFroxelFogBase_slider" control_name="BDMergeFroxelFogBase" enabled_control="BDMergeFroxelVolumetrics" tool_tip="Ground reference altitude - agent-relative OFFSET from your feet (metres)." />
+			<text follows="left|top" height="15" left="10" top_pad="8" width="140" layout="topleft" value="Fog base (offset m):" />
+			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="152" width="172" min_val="-10" max_val="10" increment="0.1" decimal_digits="2" show_text="true" can_edit_text="true" name="fx_BDMergeFroxelFogBase_slider" control_name="BDMergeFroxelFogBase" enabled_control="BDMergeFroxelVolumetrics" tool_tip="Ground reference altitude - agent-relative OFFSET from your feet (metres)." />
 			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="fx_reset_BDMergeFroxelFogBase"><button.commit_callback function="LightBox.ResetControlDefault" parameter="BDMergeFroxelFogBase" /></button>
 			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" value="Fog falloff (m):" />
 			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="0.5" max_val="20" increment="0.1" decimal_digits="1" show_text="true" can_edit_text="true" name="fx_BDMergeFroxelFogFalloff_slider" control_name="BDMergeFroxelFogFalloff" enabled_control="BDMergeFroxelVolumetrics" tool_tip="Height-fog e-fold falloff distance (metres)." />
@@ -5944,12 +5946,12 @@
 			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="ch_reset_CineHazeColorIntensity"><button.commit_callback function="LightBox.ResetControlDefault" parameter="CineHazeColorIntensity" /></button>
 			<text follows="left|top" height="15" left="8" top_pad="12" width="384" layout="topleft" font="SansSerifBold" value="Height fog (optional)" />
 			<check_box follows="left|top" height="16" left="12" top_pad="6" width="360" layout="topleft" label="Height-dependent density (denser low)" control_name="CineHazeHeightEnable" enabled_control="CineHazeEnable" tool_tip="density = base * exp(-falloff * (height - reference)), integrated analytically along each ray. Falloff 0 is exactly uniform haze." />
-			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" value="Reference height (m):" />
-			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="0" max_val="4096" increment="0.5" decimal_digits="1" show_text="true" can_edit_text="true" name="ch_CineHazeReferenceHeight_slider" control_name="CineHazeReferenceHeight" enabled_control="CineHazeHeightEnable" tool_tip="Absolute SL altitude (metres) where the haze has its base density; denser below, thinner above." />
+			<text follows="left|top" height="15" left="10" top_pad="8" width="140" layout="topleft" value="Reference height (m):" />
+			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="152" width="172" min_val="0" max_val="4096" increment="0.5" decimal_digits="1" show_text="true" can_edit_text="true" name="ch_CineHazeReferenceHeight_slider" control_name="CineHazeReferenceHeight" enabled_control="CineHazeHeightEnable" tool_tip="Absolute SL altitude (metres) where the haze has its base density; denser below, thinner above." />
 			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="ch_reset_CineHazeReferenceHeight"><button.commit_callback function="LightBox.ResetControlDefault" parameter="CineHazeReferenceHeight" /></button>
-			<button follows="left|top" layout="topleft" height="20" left="136" top_pad="4" width="120" label="From camera" name="ch_ref_from_camera" enabled_control="CineHazeHeightEnable" tool_tip="Set the reference height to the current camera altitude."><button.commit_callback function="LightBox.CineHazeRefFromCamera" /></button>
-			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" value="Height falloff (1/m):" />
-			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="0" max_val="0.5" increment="0.005" decimal_digits="3" show_text="true" can_edit_text="true" name="ch_CineHazeHeightFalloff_slider" control_name="CineHazeHeightFalloff" enabled_control="CineHazeHeightEnable" tool_tip="Density thins by e every 1/falloff metres above the reference (0.05 = 20 m). 0 = uniform." />
+			<button follows="left|top" layout="topleft" height="20" left="152" top_pad="4" width="120" label="From camera" name="ch_ref_from_camera" enabled_control="CineHazeHeightEnable" tool_tip="Set the reference height to the current camera altitude."><button.commit_callback function="LightBox.CineHazeRefFromCamera" /></button>
+			<text follows="left|top" height="15" left="10" top_pad="8" width="140" layout="topleft" value="Height falloff (1/m):" />
+			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="152" width="172" min_val="0" max_val="0.5" increment="0.005" decimal_digits="3" show_text="true" can_edit_text="true" name="ch_CineHazeHeightFalloff_slider" control_name="CineHazeHeightFalloff" enabled_control="CineHazeHeightEnable" tool_tip="Density thins by e every 1/falloff metres above the reference (0.05 = 20 m). 0 = uniform." />
 			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="ch_reset_CineHazeHeightFalloff"><button.commit_callback function="LightBox.ResetControlDefault" parameter="CineHazeHeightFalloff" /></button>
 			<text follows="left|top" height="15" left="8" top_pad="12" width="384" layout="topleft" font="SansSerifBold" value="Advanced: sun response" />
 			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" value="Sun tint:" />
@@ -6099,16 +6101,19 @@
 				<combo_box.item label="Overlay (flat, no bloom/grade)" name="ri_layer_overlay" value="3" />
 			</combo_box>
 			<check_box follows="left|top" height="16" left="12" top_pad="8" width="360" layout="topleft" label="Silhouette" name="ri_sil_enable" control_name="CineOutlineSilhouetteEnabled" enabled_control="CineOutlineEnabled" tool_tip="Draw the outer silhouette line (a depth discontinuity between the subject and whatever is behind it)." />
-			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" name="ri_sil_thr_label" value="Silhouette threshold:" />
-			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="0.002" max_val="0.3" increment="0.001" decimal_digits="3" show_text="true" can_edit_text="true" name="ri_sil_thr_slider" control_name="CineOutlineSilhouetteThreshold" enabled_control="CineOutlineEnabled" tool_tip="How big a relative depth step counts as a silhouette. Only shown/used in Relative depth mode." />
+			<text follows="left|top" height="15" left="10" top_pad="8" width="140" layout="topleft" name="ri_sil_thr_label" value="Silhouette threshold:" />
+			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="152" width="172" min_val="0.002" max_val="0.3" increment="0.001" decimal_digits="3" show_text="true" can_edit_text="true" name="ri_sil_thr_slider" control_name="CineOutlineSilhouetteThreshold" enabled_control="CineOutlineEnabled" tool_tip="How big a relative depth step counts as a silhouette. Only shown/used in Relative depth mode." />
 			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="ri_reset_CineOutlineSilhouetteThreshold"><button.commit_callback function="LightBox.ResetControlDefault" parameter="CineOutlineSilhouetteThreshold" /></button>
 			<!-- [Round-2 review fix, Opus nit] Metric threshold lives in this SAME
 			     row (top_pad below cancels out to the Silhouette threshold row's
 			     own top; see updateRotoInkDepthMode()): the two are mutually
 			     exclusive by depth mode, so overlapping them here means exactly
 			     one is ever visible and no blank row is left behind either way. -->
-			<text follows="left|top" height="15" left="10" top_pad="-19" width="124" layout="topleft" name="ri_metric_thr_label" value="Metric threshold m:" />
-			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="0.01" max_val="5" increment="0.01" decimal_digits="2" show_text="true" can_edit_text="true" name="ri_metric_thr_slider" control_name="CineOutlineMetricThreshold" enabled_control="CineOutlineEnabled" tool_tip="Depth step in metres that counts as a silhouette. Only shown/used in Metric depth mode." />
+			<!-- xui-check: allow-overlap ri_sil_thr_label ri_metric_thr_label -->
+			<!-- xui-check: allow-overlap ri_sil_thr_slider ri_metric_thr_slider -->
+			<!-- xui-check: allow-overlap ri_reset_CineOutlineSilhouetteThreshold ri_reset_CineOutlineMetricThreshold -->
+			<text follows="left|top" height="15" left="10" top_pad="-19" width="140" layout="topleft" name="ri_metric_thr_label" value="Metric threshold m:" />
+			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="152" width="172" min_val="0.01" max_val="5" increment="0.01" decimal_digits="2" show_text="true" can_edit_text="true" name="ri_metric_thr_slider" control_name="CineOutlineMetricThreshold" enabled_control="CineOutlineEnabled" tool_tip="Depth step in metres that counts as a silhouette. Only shown/used in Metric depth mode." />
 			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="ri_reset_CineOutlineMetricThreshold"><button.commit_callback function="LightBox.ResetControlDefault" parameter="CineOutlineMetricThreshold" /></button>
 			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" value="Silhouette weight:" />
 			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="0" max_val="1" increment="0.01" decimal_digits="2" show_text="true" can_edit_text="true" name="ri_sil_weight_slider" control_name="CineOutlineSilhouetteWeight" enabled_control="CineOutlineEnabled" tool_tip="Strength of the silhouette line." />
@@ -6215,11 +6220,11 @@
 			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" name="CineOutlineSubjectScreenCY_row_label" value="Screen shape Y:" />
 			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="0" max_val="1" increment="0.01" decimal_digits="2" show_text="true" can_edit_text="true" name="ri_subject_screen_cy_slider" control_name="CineOutlineSubjectScreenCY" enabled_control="CineOutlineEnabled" tool_tip="Modes 7/8 only: shape centre Y, in screen uv (0 = bottom edge, 1 = top edge)." />
 			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="ri_reset_CineOutlineSubjectScreenCY"><button.commit_callback function="LightBox.ResetControlDefault" parameter="CineOutlineSubjectScreenCY" /></button>
-			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" name="CineOutlineSubjectScreenRX_row_label" value="Screen shape half-W:" />
-			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="0.01" max_val="1" increment="0.01" decimal_digits="2" show_text="true" can_edit_text="true" name="ri_subject_screen_rx_slider" control_name="CineOutlineSubjectScreenRX" enabled_control="CineOutlineEnabled" tool_tip="Modes 7/8 only: shape half-width, in screen uv." />
+			<text follows="left|top" height="15" left="10" top_pad="8" width="140" layout="topleft" name="CineOutlineSubjectScreenRX_row_label" value="Screen shape half-W:" />
+			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="152" width="172" min_val="0.01" max_val="1" increment="0.01" decimal_digits="2" show_text="true" can_edit_text="true" name="ri_subject_screen_rx_slider" control_name="CineOutlineSubjectScreenRX" enabled_control="CineOutlineEnabled" tool_tip="Modes 7/8 only: shape half-width, in screen uv." />
 			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="ri_reset_CineOutlineSubjectScreenRX"><button.commit_callback function="LightBox.ResetControlDefault" parameter="CineOutlineSubjectScreenRX" /></button>
-			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" name="CineOutlineSubjectScreenRY_row_label" value="Screen shape half-H:" />
-			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="0.01" max_val="1" increment="0.01" decimal_digits="2" show_text="true" can_edit_text="true" name="ri_subject_screen_ry_slider" control_name="CineOutlineSubjectScreenRY" enabled_control="CineOutlineEnabled" tool_tip="Modes 7/8 only: shape half-height, in screen uv." />
+			<text follows="left|top" height="15" left="10" top_pad="8" width="140" layout="topleft" name="CineOutlineSubjectScreenRY_row_label" value="Screen shape half-H:" />
+			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="152" width="172" min_val="0.01" max_val="1" increment="0.01" decimal_digits="2" show_text="true" can_edit_text="true" name="ri_subject_screen_ry_slider" control_name="CineOutlineSubjectScreenRY" enabled_control="CineOutlineEnabled" tool_tip="Modes 7/8 only: shape half-height, in screen uv." />
 			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="ri_reset_CineOutlineSubjectScreenRY"><button.commit_callback function="LightBox.ResetControlDefault" parameter="CineOutlineSubjectScreenRY" /></button>
 			<text follows="left|top" height="15" left="8" top_pad="12" width="384" layout="topleft" font="SansSerifBold" value="Ink" />
 			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" value="Ink colour:" />
@@ -6373,7 +6378,7 @@
 			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" name="CineOutlineMotionShape_row_label" value="Shape:" />
 			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="0" max_val="1" increment="0.01" decimal_digits="2" show_text="true" can_edit_text="true" name="ri_motion_shape_slider" control_name="CineOutlineMotionShape" enabled_control="CineOutlineEnabled" tool_tip="Per-style secondary parameter -- see the Style tooltip above for what it controls (duty cycle, reveal mode, noise size, and so on). Not used by every style." />
 			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="ri_reset_CineOutlineMotionShape"><button.commit_callback function="LightBox.ResetControlDefault" parameter="CineOutlineMotionShape" /></button>
-			<text follows="left|top" height="15" left="10" top_pad="8" width="300" layout="topleft" name="ri_motion_anchor_hint" font="SansSerifSmall" value="This style radiates from the subject target (or the frame centre if none is set), even while Subject isolation above is off." />
+			<text follows="left|top" height="30" left="10" top_pad="8" width="380" layout="topleft" name="ri_motion_anchor_hint" font="SansSerifSmall" word_wrap="true" value="This style radiates from the subject target (or the frame centre if none is set), even while Subject isolation above is off." />
 			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" value="Speed:" />
 			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="0.05" max_val="5" increment="0.05" decimal_digits="2" show_text="true" can_edit_text="true" name="ri_motion_speed_slider" control_name="CineOutlineMotionSpeed" enabled_control="CineOutlineEnabled" tool_tip="Motion speed, in cycles per second." />
 			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="ri_reset_CineOutlineMotionSpeed"><button.commit_callback function="LightBox.ResetControlDefault" parameter="CineOutlineMotionSpeed" /></button>
@@ -6441,7 +6446,7 @@
 			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" name="CineOutlineMotion2Angle_row_label" value="Angle deg:" />
 			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="0" max_val="360" increment="1" decimal_digits="0" show_text="true" can_edit_text="true" name="ri_motion2_angle_slider" control_name="CineOutlineMotion2Angle" enabled_control="CineOutlineEnabled" tool_tip="Second motion layer sweep/reveal/diagonal direction, for the styles that use an angle (Scan, Laser Scan, Barber Pole, Paint-On, Write-On)." />
 			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="ri_reset_CineOutlineMotion2Angle"><button.commit_callback function="LightBox.ResetControlDefault" parameter="CineOutlineMotion2Angle" /></button>
-			<text follows="left|top" height="15" left="10" top_pad="8" width="300" layout="topleft" name="ri_motion2_anchor_hint" font="SansSerifSmall" value="This style radiates from the subject target (or the frame centre if none is set), even while Subject isolation above is off." />
+			<text follows="left|top" height="30" left="10" top_pad="8" width="380" layout="topleft" name="ri_motion2_anchor_hint" font="SansSerifSmall" word_wrap="true" value="This style radiates from the subject target (or the frame centre if none is set), even while Subject isolation above is off." />
 			<text follows="left|top" height="15" left="8" top_pad="12" width="384" layout="topleft" font="SansSerifBold" value="Timing" />
 			<!-- [RotoInk Speed] Master speed/pause/Director-follow, at the top of
 			     Timing: every animated term in the shader (both motion layers,
@@ -6494,7 +6499,7 @@
 				<combo_box.item label="Scene" name="tr_layer_scene" value="0" />
 				<combo_box.item label="Camera (default)" name="tr_layer_camera" value="1" />
 			</combo_box>
-			<text follows="left|top" height="15" left="10" top_pad="4" width="380" layout="topleft" name="tr_layer_hint" font="SansSerifSmall" value="Scene layer: auto-exposure will brighten the grade -- lock RenderExposure for a stable look." />
+			<text follows="left|top" height="30" left="10" top_pad="4" width="380" layout="topleft" name="tr_layer_hint" font="SansSerifSmall" word_wrap="true" value="Scene layer: auto-exposure will brighten the grade -- lock RenderExposure for a stable look." />
 			<text follows="left|top" height="15" left="8" top_pad="12" width="384" layout="topleft" font="SansSerifBold" value="Presets" />
 			<combo_box follows="left|top" layout="topleft" height="22" left="12" top_pad="8" width="188" name="tr_preset_combo" tool_tip="Apply a full Tron look (palette, grade, grid, pulses, and -- per the checkboxes below -- the linked Roto Ink / Rig Rim preset). Never touches Enable, Layer or Subject / targets.">
 				<combo_box.item label="Preset..." name="custom" value="custom" />
@@ -6718,8 +6723,8 @@
 			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" name="tr_trace_pulse_amount_label" value="Pulse amount:" />
 			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="0" max_val="4" increment="0.05" decimal_digits="2" show_text="true" can_edit_text="true" name="tr_trace_pulse_amount_slider" control_name="TronTracePulseAmount" enabled_control="TronEnabled" tool_tip="Circuit trace travelling pulse brightness, a multiple of the trace intensity; 0 = off. Uses the grid pulse colour mode." />
 			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="tr_reset_TronTracePulseAmount"><button.commit_callback function="LightBox.ResetControlDefault" parameter="TronTracePulseAmount" /></button>
-			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" name="tr_trace_pulse_speed_label" value="Pulse speed cells/s:" />
-			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="-20" max_val="20" increment="0.5" decimal_digits="1" show_text="true" can_edit_text="true" name="tr_trace_pulse_speed_slider" control_name="TronTracePulseSpeed" enabled_control="TronEnabled" tool_tip="Circuit trace travelling pulse speed; negative reverses every trace." />
+			<text follows="left|top" height="15" left="10" top_pad="8" width="140" layout="topleft" name="tr_trace_pulse_speed_label" value="Pulse speed cells/s:" />
+			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="152" width="172" min_val="-20" max_val="20" increment="0.5" decimal_digits="1" show_text="true" can_edit_text="true" name="tr_trace_pulse_speed_slider" control_name="TronTracePulseSpeed" enabled_control="TronEnabled" tool_tip="Circuit trace travelling pulse speed; negative reverses every trace." />
 			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="tr_reset_TronTracePulseSpeed"><button.commit_callback function="LightBox.ResetControlDefault" parameter="TronTracePulseSpeed" /></button>
 			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" name="tr_trace_pulse_length_label" value="Pulse length:" />
 			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="0.05" max_val="1" increment="0.01" decimal_digits="2" show_text="true" can_edit_text="true" name="tr_trace_pulse_length_slider" control_name="TronTracePulseLength" enabled_control="TronEnabled" tool_tip="Circuit trace travelling pulse tail length, a fraction of a cell." />
@@ -6739,8 +6744,8 @@
 			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" name="tr_rim_silhouette_gain_label" value="Silhouette gain:" />
 			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="0" max_val="2" increment="0.02" decimal_digits="2" show_text="true" can_edit_text="true" name="tr_rim_silhouette_gain_slider" control_name="TronRimSilhouetteGain" enabled_control="TronEnabled" tool_tip="Depth-step outline gain where the Fresnel term is weak on camera-facing surfaces." />
 			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="tr_reset_TronRimSilhouetteGain"><button.commit_callback function="LightBox.ResetControlDefault" parameter="TronRimSilhouetteGain" /></button>
-			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" name="tr_rim_silhouette_threshold_label" value="Silhouette threshold:" />
-			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="0.005" max_val="0.5" increment="0.005" decimal_digits="3" show_text="true" can_edit_text="true" name="tr_rim_silhouette_threshold_slider" control_name="TronRimSilhouetteThreshold" enabled_control="TronEnabled" tool_tip="Relative depth step (dz/z) that counts as a silhouette." />
+			<text follows="left|top" height="15" left="10" top_pad="8" width="140" layout="topleft" name="tr_rim_silhouette_threshold_label" value="Silhouette threshold:" />
+			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="152" width="172" min_val="0.005" max_val="0.5" increment="0.005" decimal_digits="3" show_text="true" can_edit_text="true" name="tr_rim_silhouette_threshold_slider" control_name="TronRimSilhouetteThreshold" enabled_control="TronEnabled" tool_tip="Relative depth step (dz/z) that counts as a silhouette." />
 			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="tr_reset_TronRimSilhouetteThreshold"><button.commit_callback function="LightBox.ResetControlDefault" parameter="TronRimSilhouetteThreshold" /></button>
 			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" name="tr_rim_pulse_amount_label" value="Pulse amount:" />
 			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="0" max_val="1" increment="0.01" decimal_digits="2" show_text="true" can_edit_text="true" name="tr_rim_pulse_amount_slider" control_name="TronRimPulseAmount" enabled_control="TronEnabled" tool_tip="Depth of the shared pulse applied to the neon rim (Pulse rate / shape on the Master group)." />

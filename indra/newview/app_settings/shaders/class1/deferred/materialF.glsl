@@ -30,7 +30,11 @@
 #define DIFFUSE_ALPHA_MODE_BLEND    1
 
 #if (DIFFUSE_ALPHA_MODE == DIFFUSE_ALPHA_MODE_BLEND)
+#if __VERSION__ >= 330
+layout(location = 0) out vec4 frag_color;
+#else
 out vec4 frag_color;
+#endif
 #else
 out vec4 frag_data[4];
 #endif
@@ -49,4 +53,3 @@ void main()
 #endif
 #endif
 }
-

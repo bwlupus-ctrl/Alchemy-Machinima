@@ -20934,6 +20934,17 @@
         <key>Value</key>
         <integer>1024</integer>
     </map>
+    <key>RenderHeroProbeClearShaderCache</key>
+    <map>
+      <key>Comment</key>
+      <string>Stock mirror workaround (#3331): wipe the whole shader binary cache before the one-shot post-login shader reload. Off = reload from cache (much faster login). Turn on only if mirrors misbehave.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>Boolean</string>
+      <key>Value</key>
+      <integer>0</integer>
+    </map>
 	<key>RenderHeroProbeDistance</key>
 	<map>
 		<key>Comment</key>

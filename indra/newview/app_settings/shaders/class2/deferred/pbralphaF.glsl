@@ -45,15 +45,26 @@ uniform vec3 sun_dir;
 uniform vec3 moon_dir;
 uniform int classic_mode;
 
-#ifdef HAS_VISIBLE_DIFFUSE
+#if __VERSION__ >= 330
 layout(location = 0) out vec4 frag_color;
-layout(location = 1) out vec4 visible_diffuse;
-layout(location = 2) out vec2 surface_coverage;
 #else
 out vec4 frag_color;
 #endif
+#ifdef HAS_VISIBLE_DIFFUSE
+#if __VERSION__ >= 330
+layout(location = 1) out vec4 visible_diffuse;
+layout(location = 2) out vec2 surface_coverage;
+#else
+out vec4 visible_diffuse;
+out vec2 surface_coverage;
+#endif
+#endif
 #ifdef ALR_RIMSPLIT_PARITY
+#if __VERSION__ >= 330
 layout(location = 3) out vec4 alr_rimsplit_parity_mask;
+#else
+out vec4 alr_rimsplit_parity_mask;
+#endif
 #endif
 
 in vec3 vary_fragcoord;
@@ -483,7 +494,11 @@ uniform sampler2D emissiveMap;
 
 uniform vec3 emissiveColor;
 
+#if __VERSION__ >= 330
+layout(location = 0) out vec4 frag_color;
+#else
 out vec4 frag_color;
+#endif
 
 in vec3 vary_position;
 

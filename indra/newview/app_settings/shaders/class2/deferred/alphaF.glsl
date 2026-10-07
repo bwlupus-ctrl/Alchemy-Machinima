@@ -31,12 +31,19 @@
 #define NON_INDEXED 2
 #define NON_INDEXED_NO_COLOR 3
 
-#ifdef HAS_VISIBLE_DIFFUSE
+#if __VERSION__ >= 330
 layout(location = 0) out vec4 frag_color;
+#else
+out vec4 frag_color;
+#endif
+#ifdef HAS_VISIBLE_DIFFUSE
+#if __VERSION__ >= 330
 layout(location = 1) out vec4 visible_diffuse;
 layout(location = 2) out vec2 surface_coverage;
 #else
-out vec4 frag_color;
+out vec4 visible_diffuse;
+out vec2 surface_coverage;
+#endif
 #endif
 
 uniform mat3 env_mat;

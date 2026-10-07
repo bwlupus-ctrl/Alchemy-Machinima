@@ -86,7 +86,15 @@ void LLHeroProbeManager::update()
     // - Geenz 2025-02-25
     if (!mInitialized && LLStartUp::getStartupState() > STATE_PRECACHE)
     {
-        LLViewerShaderMgr::instance()->clearShaderCache();
+        // [ShaderLoadTime] The reload is what makes mirrors work; wiping the whole binary cache
+        // first forced a second COLD compile of every program at login (~45 s+ in this fork with
+        // its 44 shared Actor FX variants). Keep the cache by default so the reload is mostly
+        // cache hits; RenderHeroProbeClearShaderCache restores the exact stock workaround.
+        static LLCachedControl<bool> clear_cache(gSavedSettings, "RenderHeroProbeClearShaderCache", false);
+        if (clear_cache)
+        {
+            LLViewerShaderMgr::instance()->clearShaderCache();
+        }
         LLViewerShaderMgr::instance()->setShaders();
         mInitialized = true;
     }
