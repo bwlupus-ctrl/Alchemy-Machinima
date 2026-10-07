@@ -79,6 +79,10 @@ public:
         // value survives control-variable sync). Ctrl/Alt keep the shipping x10.
         // 0 (default) = the existing wheel_adjust code path, untouched.
         Optional<F32>                   wheel_fine_div;
+        // [SliderWheelStep] Explicit per-notch wheel step for a participating slider without
+        // wheel_fine_div (overrides the automatic nice-1-2-5 step). Shift = increment,
+        // Ctrl/Alt = step x10. 0 (default) = automatic step.
+        Optional<F32>                   wheel_step;
 
         Params();
     };
@@ -160,6 +164,7 @@ private:
     // not provided), ON, OFF (design 2.1). Not const: setWheelAdjust() makes it explicit ON/OFF.
     LLSliderWheel::EWheelAdjust mWheelAdjust;
     const F32           mWheelFineDiv; // [EnvIntensity v2] Shift fine divisor (0 = off)
+    const F32           mWheelStep;    // [SliderWheelStep] explicit plain-notch step (0 = automatic)
     LLSliderWheel::SettleState mWheelSettle; // [SliderWheel] one pending generation per slider
 
     LLRect      mThumbRect;

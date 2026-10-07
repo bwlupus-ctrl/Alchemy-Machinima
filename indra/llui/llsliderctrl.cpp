@@ -157,6 +157,10 @@ LLSliderCtrl::LLSliderCtrl(const LLSliderCtrl::Params& p)
     {
         slider_p.wheel_fine_div = p.wheel_fine_div; // [EnvIntensity v2] Shift fine step opt-in
     }
+    if (!slider_p.wheel_step.isProvided())
+    {
+        slider_p.wheel_step = p.wheel_step; // [SliderWheelStep] explicit per-notch step
+    }
 
     slider_p.commit_callback.function = &LLSliderCtrl::onSliderCommit;
     slider_p.control_name = p.control_name;

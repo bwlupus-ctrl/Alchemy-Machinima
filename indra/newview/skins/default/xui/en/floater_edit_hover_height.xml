@@ -43,6 +43,7 @@
    follows="top|left"
    height="15"
    increment="0.001"
+   wheel_step="0.025"
    initial_value="0.0"
    label="Hover height (everyone sees)"
    label_width="170"

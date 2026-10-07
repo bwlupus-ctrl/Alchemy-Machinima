@@ -60,7 +60,8 @@ LLSlider::Params::Params()
     mouse_down_callback("mouse_down_callback"),
     mouse_up_callback("mouse_up_callback"),
     wheel_adjust("wheel_adjust", false),
-    wheel_fine_div("wheel_fine_div", 0.f) // [EnvIntensity v2]
+    wheel_fine_div("wheel_fine_div", 0.f), // [EnvIntensity v2]
+    wheel_step("wheel_step", 0.f) // [SliderWheelStep]
 {}
 
 LLSlider::LLSlider(const LLSlider::Params& p)
@@ -72,6 +73,7 @@ LLSlider::LLSlider(const LLSlider::Params& p)
                     ? (p.wheel_adjust() ? LLSliderWheel::WHEEL_ON : LLSliderWheel::WHEEL_OFF)
                     : LLSliderWheel::WHEEL_UNSET),
     mWheelFineDiv(llmax(0.f, (F32)p.wheel_fine_div)), // [EnvIntensity v2]
+    mWheelStep(llmax(0.f, (F32)p.wheel_step)), // [SliderWheelStep]
     mThumbOutlineColor(p.thumb_outline_color()),
     mThumbCenterColor(p.thumb_center_color()),
     mThumbImage(p.thumb_image),
@@ -510,7 +512,12 @@ bool LLSlider::handleScrollWheel(S32 x, S32 y, LLScrollDelta delta)
     {
         // design 3: legacy step for explicit ON and every vertical slider; nice125 for UNSET horizontal.
         const bool legacy = (mWheelAdjust == LLSliderWheel::WHEEL_ON) || (mOrientation == VERTICAL);
-        const F32 step = LLSliderWheel::wheelStep(mMinValue, mMaxValue, getIncrement(), legacy, shift, ctrl_alt);
+        F32 step = LLSliderWheel::wheelStep(mMinValue, mMaxValue, getIncrement(), legacy, shift, ctrl_alt);
+        if (mWheelStep > 0.f && !shift)
+        {
+            // [SliderWheelStep] explicit per-notch step from XUI; Shift keeps the fine increment.
+            step = ctrl_alt ? mWheelStep * 10.f : mWheelStep;
+        }
         changed = applyWheelValue(getValueF32() - delta.mClicks * step, false);
     }
     if (changed)
