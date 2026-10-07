@@ -12921,6 +12921,20 @@
       <key>Value</key>
       <real>1.0</real>
     </map>
+    <key>FlycamDpadModelA</key>
+    <map>
+      <key>Comment</key><string>First D-pad flight model: 0 Classic, 1 Drone, 2 Weighted Classic; other values use 0.</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>S32</string>
+      <key>Value</key><integer>0</integer>
+    </map>
+    <key>FlycamDpadModelB</key>
+    <map>
+      <key>Comment</key><string>Second D-pad flight model: 0 Classic, 1 Drone, 2 Weighted Classic; other values use 2.</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>S32</string>
+      <key>Value</key><integer>2</integer>
+    </map>
     <key>FlycamDroneClimb</key>
     <map>
       <key>Comment</key><string>Drone vertical climb speed in metres per second; validated when compiled.</string>
@@ -13123,10 +13137,52 @@
     </map>
     <key>FlycamFlightModel</key>
     <map>
-      <key>Comment</key><string>Flycam flight model: 0 Classic, 1 Drone.</string>
+      <key>Comment</key><string>Flycam flight model: 0 Classic, 1 Drone, 2 Weighted Classic.</string>
       <key>Persist</key><integer>1</integer>
       <key>Type</key><string>S32</string>
       <key>Value</key><integer>0</integer>
+    </map>
+    <key>FlycamWeightedCurve</key>
+    <map>
+      <key>Comment</key><string>Weighted Classic response curve, clamped to 1 through 1000.</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>20.0</real>
+    </map>
+    <key>FlycamWeightedPoseGuardArmed</key>
+    <map>
+      <key>Comment</key><string>Allow presented-pose discontinuities to rest Weighted Classic.</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>Boolean</string>
+      <key>Value</key><integer>0</integer>
+    </map>
+    <key>FlycamWeightedPreset</key>
+    <map>
+      <key>Comment</key><string>Weighted Classic preset: 0 Light, 1 Steadicam, 2 Heavy, 3 Crane, 4 Custom.</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>S32</string>
+      <key>Value</key><integer>1</integer>
+    </map>
+    <key>FlycamWeightedRotationShare</key>
+    <map>
+      <key>Comment</key><string>Weighted Classic rotation share, clamped to 0 through 2.</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>0.6</real>
+    </map>
+    <key>FlycamWeightedTauMax</key>
+    <map>
+      <key>Comment</key><string>Weighted Classic maximum time constant, clamped to 0.1 through 3 seconds.</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>1.0</real>
+    </map>
+    <key>FlycamWeightedWeight</key>
+    <map>
+      <key>Comment</key><string>Weighted Classic mass percentage, clamped to 0 through 100.</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>F32</string>
+      <key>Value</key><real>50.0</real>
     </map>
     <key>FlyingAtExit</key>
     <map>

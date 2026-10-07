@@ -32,6 +32,7 @@
 #include "lltimer.h"
 #include "llnotificationptr.h"
 #include "llflycamdrone.h"
+#include "alflycamweighted.h"
 
 #if LIB_NDOF
 #if LL_DARWIN
@@ -142,6 +143,9 @@ public:
     void setSNDefaults();
     void setXboxDefaults();
     bool applyDronePreset(S32 preset);
+    bool applyWeightedPreset(S32 preset);
+    void resetWeightedSettings();
+    ALFlycamWeighted::Tuning getWeightedTuning() const;
     LLFlycamDrone::CompiledValues getDroneCompiledValues() const;
     LLFlycamDrone::HumanParams getDroneAcceptedValues() const;
     F32 getDroneCompiledTick() const;
