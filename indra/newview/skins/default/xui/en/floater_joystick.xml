@@ -644,7 +644,7 @@
             <combo_box.item label="Lighting cue Back" value="2" />
             <combo_box.item label="Lighting cue Go" value="1" />
             <combo_box.item label="Level horizon" value="3" />
-            <combo_box.item label="Flight model: Classic / Drone" value="4" />
+            <combo_box.item label="Flight model: toggle pair" value="4" />
             <combo_box.item label="Release: Hold / Drift" value="5" />
             <combo_box.item label="Recentre gimbal" value="6" />
           </combo_box>
@@ -654,7 +654,7 @@
             <combo_box.item label="Lighting cue Back" value="2" />
             <combo_box.item label="Lighting cue Go" value="1" />
             <combo_box.item label="Level horizon" value="3" />
-            <combo_box.item label="Flight model: Classic / Drone" value="4" />
+            <combo_box.item label="Flight model: toggle pair" value="4" />
             <combo_box.item label="Release: Hold / Drift" value="5" />
             <combo_box.item label="Recentre gimbal" value="6" />
           </combo_box>
@@ -664,30 +664,57 @@
             <combo_box.item label="Lighting cue Back" value="2" />
             <combo_box.item label="Lighting cue Go" value="1" />
             <combo_box.item label="Level horizon" value="3" />
-            <combo_box.item label="Flight model: Classic / Drone" value="4" />
+            <combo_box.item label="Flight model: toggle pair" value="4" />
             <combo_box.item label="Release: Hold / Drift" value="5" />
             <combo_box.item label="Recentre gimbal" value="6" />
           </combo_box>
           <text font="SansSerifSmall" halign="right" height="18" layout="topleft" left="20" name="xinput_label_Down" top="290" width="150">D-pad Down</text>
           <text font="SansSerifSmall" height="18" layout="topleft" left="180" name="xinput_dpad_Down_mode" top="290" width="360">Toggle trigger mode: Roll / Throttle</text>
-          <text font="SansSerifBold" height="18" layout="topleft" left="20" name="xbox_rumble_title" top="330" width="300">Rumble</text>
-          <check_box name="xinput_rumble" control_name="JoystickXInputRumble" label="Rumble" width="120" height="18" layout="topleft" left="20" top="355" />
-          <spinner name="xinput_rumble_strength" control_name="JoystickXInputRumbleStrength" label="Strength" width="220" height="18" label_width="100" layout="topleft" min_val="0" max_val="1" increment="0.05" decimal_digits="2" left="180" top="355" />
+          <text font="SansSerifSmall" halign="right" height="18" layout="topleft" left="20" name="xinput_label_Pair" top="312" width="150">Flight model pair</text>
+          <combo_box control_name="FlycamDpadModelA" height="18" layout="topleft" left="180" name="FlycamDpadModelA" top="312" tool_tip="A and B must differ; picking the same model moves the other side" width="170">
+            <combo_box.item label="Classic" value="0" />
+            <combo_box.item label="Weighted Classic" value="2" />
+            <combo_box.item label="Drone" value="1" />
+          </combo_box>
+          <combo_box control_name="FlycamDpadModelB" height="18" layout="topleft" left="370" name="FlycamDpadModelB" top="312" tool_tip="A and B must differ; picking the same model moves the other side" width="170">
+            <combo_box.item label="Classic" value="0" />
+            <combo_box.item label="Weighted Classic" value="2" />
+            <combo_box.item label="Drone" value="1" />
+          </combo_box>
+          <text font="SansSerifBold" height="18" layout="topleft" left="20" name="xbox_rumble_title" top="350" width="300">Rumble</text>
+          <check_box name="xinput_rumble" control_name="JoystickXInputRumble" label="Rumble" width="120" height="18" layout="topleft" left="20" top="375" />
+          <spinner name="xinput_rumble_strength" control_name="JoystickXInputRumbleStrength" label="Strength" width="220" height="18" label_width="100" layout="topleft" min_val="0" max_val="1" increment="0.05" decimal_digits="2" left="180" top="375" />
         </panel>
       </scroll_container>
     </panel>
-    <panel background_visible="false" height="637" label="Drone" layout="topleft" name="joystick_drone_tab" width="760">
+    <panel background_visible="false" height="637" label="Flight model" layout="topleft" name="joystick_drone_tab" width="760">
       <scroll_container follows="all" height="632" layout="topleft" left="0" name="drone_scroll" opaque="false" reserve_scroll_corner="false" top="0" width="760">
         <panel background_visible="false" follows="left|top|right" layout="topleft" left="0" name="drone_scroll_content" top="0" width="740" height="520">
           <text font="SansSerifBold" height="18" layout="topleft" name="drone_flight_model_title" width="150" left="20" top="12" halign="right">Flight model</text>
           <combo_box control_name="FlycamFlightModel" height="20" layout="topleft" name="FlycamFlightModel" width="150" left="180" top="10">
             <combo_box.item label="Classic" value="0" />
+            <combo_box.item label="Weighted Classic" value="2" />
             <combo_box.item label="Drone" value="1" />
           </combo_box>
           <text font="SansSerifSmall" height="18" layout="topleft" name="drone_cursor_reason" visible="false" width="370" left="350" top="12">
-              Drone unavailable while 3D Cursor is on
+              Weighted / Drone unavailable while 3D Cursor is on
             </text>
-          <panel background_visible="false" enabled="false" follows="left|top|right" height="460" layout="topleft" left="0" name="drone_settings_panel" top="40" width="740">
+          <panel background_visible="false" enabled="false" follows="left|top|right" height="80" layout="topleft" left="0" name="weighted_settings_panel" top="40" width="740">
+            <text font="SansSerifBold" height="18" layout="topleft" left="20" name="weighted_title" top="0" width="300">Weighted Classic</text>
+            <text halign="right" height="18" layout="topleft" left="20" name="weighted_preset_label" top="28" width="140">Preset</text>
+            <combo_box control_name="FlycamWeightedPreset" height="20" layout="topleft" left="170" name="FlycamWeightedPreset" top="28" width="180">
+              <combo_box.item label="Light" value="0" />
+              <combo_box.item label="Steadicam" value="1" />
+              <combo_box.item label="Heavy" value="2" />
+              <combo_box.item label="Crane" value="3" />
+              <combo_box.item label="Custom" value="4" />
+            </combo_box>
+            <button height="20" label="Reset Weighted" layout="topleft" left="370" name="reset_weighted" top="28" tool_tip="Restore the Steadicam Weighted Classic values." width="140" />
+            <slider can_edit_text="true" control_name="FlycamWeightedWeight" decimal_digits="0" height="18" increment="1" label="Weight %" label_width="140" layout="topleft" left="20" max_val="100" min_val="0" name="FlycamWeightedWeight" show_text="true" top="55" width="340" />
+            <text font="SansSerifSmall" height="18" layout="topleft" left="385" name="weighted_readout" top="55" width="340">Ease-in --   Stop --</text>
+          </panel>
+          <text font="SansSerifBold" height="18" layout="topleft" left="20" name="drone_section_title" top="124" width="300">Drone</text>
+          <panel background_visible="false" enabled="false" follows="left|top|right" height="460" layout="topleft" left="0" name="drone_settings_panel" top="146" width="740">
             <text height="18" layout="topleft" name="drone_preset_label" width="140" left="20" top="5" halign="right">Preset</text>
             <combo_box control_name="FlycamDronePreset" height="20" layout="topleft" name="FlycamDronePreset" width="180" left="170" top="3">
               <combo_box.item label="Cine" value="0" />

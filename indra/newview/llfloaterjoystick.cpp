@@ -144,6 +144,7 @@ void LLFloaterJoystick::refreshLiveControls()
     if (mFlightModel && isWidgetOnScreen(mFlightModel))
     {
         refreshDroneEnabled();
+        refreshWeightedReadout();
         refreshDroneReadouts();
     }
 
@@ -272,16 +273,30 @@ void LLFloaterJoystick::refreshDroneReadouts()
 
 void LLFloaterJoystick::refreshDroneEnabled()
 {
-    if (!mFlightModel || !mDroneSettingsPanel || !mDroneCursorReason)
+    if (!mFlightModel || !mWeightedSettingsPanel || !mDroneSettingsPanel || !mDroneCursorReason)
     {
         return;
     }
 
     const bool cursor_3d = gSavedSettings.getBOOL("Cursor3D");
-    const bool drone = gSavedSettings.getS32("FlycamFlightModel") == 1;
+    const S32 flight_model = gSavedSettings.getS32("FlycamFlightModel");
     setEnabledIfChanged(mFlightModel, !cursor_3d);
     setVisibleIfChanged(mDroneCursorReason, cursor_3d);
-    setEnabledIfChanged(mDroneSettingsPanel, drone && !cursor_3d);
+    setEnabledIfChanged(mWeightedSettingsPanel, flight_model == 2 && !cursor_3d);
+    setEnabledIfChanged(mDroneSettingsPanel, flight_model == 1 && !cursor_3d);
+}
+
+void LLFloaterJoystick::refreshWeightedReadout()
+{
+    if (!mWeightedReadout || !isWidgetOnScreen(mWeightedReadout))
+    {
+        return;
+    }
+
+    const ALFlycamWeighted::Tuning tuning =
+        LLViewerJoystick::getInstance()->getWeightedTuning();
+    setTextIfChanged(mWeightedReadout,
+        llformat("Ease-in %.2f s   Stop %.2f s", 3.89 * tuning.tauT, 5.83 * tuning.tauT));
 }
 
 bool LLFloaterJoystick::postBuild()
@@ -315,12 +330,15 @@ bool LLFloaterJoystick::postBuild()
     childSetAction("SpaceNavigatorDefaults", onClickRestoreSNDefaults, this);
     childSetAction("XboxDefaults", onClickRestoreXboxDefaults, this);
     childSetAction("reset_drone", onClickResetDrone, this);
+    childSetAction("reset_weighted", onClickResetWeighted, this);
     childSetAction("cancel_btn", onClickCancel, this);
     childSetAction("ok_btn", onClickOK, this);
 
     mTabs = getChild<LLTabContainer>("joystick_tabs");
     mXInputStatus = getChild<LLTextBox>("xinput_status");
     mFlightModel = getChild<LLUICtrl>("FlycamFlightModel");
+    mWeightedSettingsPanel = getChild<LLPanel>("weighted_settings_panel");
+    mWeightedReadout = getChild<LLTextBox>("weighted_readout");
     mDroneSettingsPanel = getChild<LLPanel>("drone_settings_panel");
     mDroneCursorReason = getChild<LLTextBox>("drone_cursor_reason");
     mDronePreset = getChild<LLComboBox>("FlycamDronePreset");
@@ -333,6 +351,7 @@ bool LLFloaterJoystick::postBuild()
     mDroneTimeSliders[4] = getChild<LLSliderCtrl>("FlycamDroneClimbTime");
     mDroneStopDistance = getChild<LLSliderCtrl>("FlycamDroneStopDistance");
     childSetCommitCallback("FlycamFlightModel", onCommitFlightModel, this);
+    childSetCommitCallback("FlycamWeightedPreset", onCommitWeightedPreset, this);
     childSetCommitCallback("FlycamDronePreset", onCommitDronePreset, this);
 
     static const char* const tuning_controls[] =
@@ -393,7 +412,7 @@ void LLFloaterJoystick::initFromSettings()
     mXInputSnapshot["JoystickXInputDpadUp"] = gSavedSettings.getControl("JoystickXInputDpadUp")->getValue();
     mXInputSnapshot["JoystickXInputRumble"] = gSavedSettings.getControl("JoystickXInputRumble")->getValue();
     mXInputSnapshot["JoystickXInputRumbleStrength"] = gSavedSettings.getControl("JoystickXInputRumbleStrength")->getValue();
-    static const char* const drone_controls[] =
+    static const char* const flycam_controls[] =
     {
         "FlycamFlightModel", "FlycamDronePreset", "FlycamDroneCruise", "FlycamDroneTop",
         "FlycamDroneTimeToTop", "FlycamDroneStopDistance", "FlycamDroneHoldTime",
@@ -404,9 +423,11 @@ void LLFloaterJoystick::initFromSettings()
         "FlycamDroneSimulationHz", "FlycamDroneMoveDeadzone", "FlycamDroneLookDeadzone",
         "FlycamDroneSaturation", "FlycamDroneExpoMove", "FlycamDroneExpoYaw",
         "FlycamDroneExpoGimbal", "FlycamDroneResumeMomentum",
-        "FlycamDroneInvertLook" // snapshot/restore on Cancel only; deliberately NOT a tuning->Custom control
+        "FlycamDroneInvertLook", // snapshot/restore on Cancel only; deliberately NOT a tuning->Custom control
+        "FlycamWeightedWeight", "FlycamWeightedPreset", "FlycamWeightedRotationShare",
+        "FlycamWeightedTauMax", "FlycamWeightedCurve", "FlycamDpadModelA", "FlycamDpadModelB"
     };
-    for (const char* name : drone_controls)
+    for (const char* name : flycam_controls)
     {
         if (LLControlVariable* control = gSavedSettings.getControl(name))
         {
@@ -709,6 +730,15 @@ void LLFloaterJoystick::onCommitDronePreset(LLUICtrl* control, void* userdata)
     }
 }
 
+void LLFloaterJoystick::onCommitWeightedPreset(LLUICtrl* control, void*)
+{
+    const S32 preset = control ? control->getValue().asInteger() : 4;
+    if (preset >= 0 && preset < 4)
+    {
+        LLViewerJoystick::getInstance()->applyWeightedPreset(preset);
+    }
+}
+
 void LLFloaterJoystick::onClickRestoreSNDefaults(void *joy_panel)
 {
     setSNDefaults();
@@ -727,6 +757,16 @@ void LLFloaterJoystick::onClickResetDrone(void* userdata)
     if (self)
     {
         self->refreshDroneEnabled();
+    }
+}
+
+void LLFloaterJoystick::onClickResetWeighted(void* userdata)
+{
+    LLViewerJoystick::getInstance()->resetWeightedSettings();
+    LLFloaterJoystick* self = static_cast<LLFloaterJoystick*>(userdata);
+    if (self)
+    {
+        self->refreshWeightedReadout();
     }
 }
 

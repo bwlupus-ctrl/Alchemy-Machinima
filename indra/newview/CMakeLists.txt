@@ -190,6 +190,7 @@ set(viewer_SOURCE_FILES
     alsceneexplorerpredicate.cpp
     alfloaterwebprofile.cpp
     alflycamclassic.cpp
+    alflycamweighted.cpp
     allegacynotificationwellwindow.cpp
     alobjectproperties.cpp
     alpanelaomini.cpp
@@ -1064,6 +1065,7 @@ set(viewer_HEADER_FILES
     alsceneexplorerpredicate.h
     alfloaterwebprofile.h
     alflycamclassic.h
+    alflycamweighted.h
     alcameradispatch.h
     allegacynotificationwellwindow.h
     alobjectproperties.h
@@ -2724,6 +2726,7 @@ if (BUILD_TESTING)
 
   LL_ADD_INTEGRATION_TEST(llflycamdrone "llflycamdrone.cpp;alflycamclassic.cpp" "${test_libs}" "${test_project}")
   LL_ADD_INTEGRATION_TEST(alflycamclassic "alflycamclassic.cpp" "${test_libs}" "${test_project}")
+  LL_ADD_INTEGRATION_TEST(alflycamweighted "alflycamweighted.cpp;alflycamclassic.cpp" "${test_libs}" "${test_project}")
   LL_ADD_INTEGRATION_TEST(alxinputmath "" "${test_libs}" "${test_project}")
 
   # ALGazeMath is deliberately header-only, so register its TUT directly

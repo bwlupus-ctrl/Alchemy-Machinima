@@ -29,6 +29,7 @@
 #include "llviewerjoystick.h"
 #include "alcameradispatch.h"
 #include "alflycamclassic.h"
+#include "alflycamweighted.h"
 #include "alxinputmath.h"
 #include "llflycamdrone.h"
 #include "alcinelightrig.h"
@@ -183,6 +184,45 @@ LLCachedControl<S32>& flycamFlightModel()
 {
     static LLCachedControl<S32> setting(gSavedSettings, "FlycamFlightModel", 0);
     return setting;
+}
+
+ALFlycamWeighted::PoseSample toWeightedSample(const FlycamPoseSample& sample)
+{
+    ALFlycamWeighted::PoseSample weighted;
+    weighted.positionGlobal = sample.positionGlobal;
+    weighted.rotation = sample.rotation;
+    weighted.dt = sample.dt;
+    weighted.valid = sample.valid;
+    return weighted;
+}
+
+struct FlycamWeightedSettings
+{
+    LLCachedControl<F32> weight{gSavedSettings, "FlycamWeightedWeight", 50.f};
+    LLCachedControl<S32> preset{gSavedSettings, "FlycamWeightedPreset", 1};
+    LLCachedControl<F32> rotationShare{gSavedSettings, "FlycamWeightedRotationShare", .6f};
+    LLCachedControl<F32> tauMax{gSavedSettings, "FlycamWeightedTauMax", 1.f};
+    LLCachedControl<F32> curve{gSavedSettings, "FlycamWeightedCurve", 20.f};
+    LLCachedControl<bool> guardArmed{gSavedSettings, "FlycamWeightedPoseGuardArmed", false};
+    LLCachedControl<bool> operatorEnabled{gSavedSettings, "FlycamOperatorEnabled", false};
+    LLCachedControl<bool> shakeApplyActive{gSavedSettings, "CameraShakeApplyActive", false};
+
+    ALFlycamWeighted::Settings snapshot() const
+    {
+        ALFlycamWeighted::Settings result;
+        result.weight = weight;
+        result.tauMax = tauMax;
+        result.curve = curve;
+        result.rotationShare = rotationShare;
+        result.guardArmed = guardArmed;
+        return result;
+    }
+};
+
+FlycamWeightedSettings& weightedSettings()
+{
+    static FlycamWeightedSettings settings;
+    return settings;
 }
 
 FlycamDroneSettings& droneSettings()
@@ -960,6 +1000,50 @@ LLViewerJoystick::LLViewerJoystick()
         [](LLControlVariable*, const LLSD& value, const LLSD&)
         {
             syncDronePresetProvenance(value.asInteger());
+        });
+
+    gSavedSettings.getControl("FlycamWeightedPreset")->getCommitSignal()->connect(
+        [](LLControlVariable*, const LLSD& value, const LLSD&)
+        {
+            const S32 preset = value.asInteger();
+            if (preset >= 0 && preset < 4)
+            {
+                const F32 weight = ALFlycamWeighted::presetWeight(preset);
+                if (gSavedSettings.getF32("FlycamWeightedWeight") != weight)
+                    gSavedSettings.setF32("FlycamWeightedWeight", weight);
+            }
+        });
+    gSavedSettings.getControl("FlycamWeightedWeight")->getCommitSignal()->connect(
+        [](LLControlVariable*, const LLSD& value, const LLSD&)
+        {
+            const F32 weight = static_cast<F32>(value.asReal());
+            const S32 preset = ALFlycamWeighted::presetForWeight(weight);
+            if (gSavedSettings.getS32("FlycamWeightedPreset") != preset)
+                gSavedSettings.setS32("FlycamWeightedPreset", preset);
+        });
+    gSavedSettings.getControl("FlycamDpadModelA")->getCommitSignal()->connect(
+        [](LLControlVariable*, const LLSD& value, const LLSD&)
+        {
+            S32 changed = value.asInteger();
+            if (changed < 0 || changed > 2)
+            {
+                changed = 0;
+                gSavedSettings.setS32("FlycamDpadModelA", changed);
+            }
+            if (changed == gSavedSettings.getS32("FlycamDpadModelB"))
+                gSavedSettings.setS32("FlycamDpadModelB", ALXInput::partner(changed));
+        });
+    gSavedSettings.getControl("FlycamDpadModelB")->getCommitSignal()->connect(
+        [](LLControlVariable*, const LLSD& value, const LLSD&)
+        {
+            S32 changed = value.asInteger();
+            if (changed < 0 || changed > 2)
+            {
+                changed = 2;
+                gSavedSettings.setS32("FlycamDpadModelB", changed);
+            }
+            if (changed == gSavedSettings.getS32("FlycamDpadModelA"))
+                gSavedSettings.setS32("FlycamDpadModelA", ALXInput::partner(changed));
         });
 
     refreshFromSettings();
@@ -2212,7 +2296,8 @@ void LLViewerJoystick::moveFlycam(bool reset)
         gCameraDispatchForeignSinceFlycamWrite;
     const bool drone_selected = (S32)flycamFlightModel() == 1 && !m3DCursor;
     const ALFlycamFrameDecision frame_decision = alResolveFlycamFrame(
-        (S32)flycamFlightModel(), m3DCursor, orbit_resolved, sDrone.owner,
+        alEffectiveFlycamModel(flycamFlightModel(), weightedSettings().weight),
+        m3DCursor, orbit_resolved, sDrone.owner,
         tagged_dispatch, dispatch_foreign);
     const ALFlycamPoseOwner desired_owner = frame_decision.selectedOwner;
     const ALFlycamPoseOwner frame_owner = frame_decision.frameOwner;
@@ -2445,6 +2530,34 @@ void LLViewerJoystick::moveFlycam(bool reset)
     {
         sFlycamPosition = shadow_entry_position;
         sFlycamRotation = shadow_entry_rotation;
+    }
+
+    // [Weighted Classic] Additive call site. Entered only on WEIGHTED-owned frames or WEIGHTED edges;
+    // never for FlycamFlightModel 0/1 unless leaving WEIGHTED (one W->* edge frame).
+    if (frame_owner == ALFlycamPoseOwner::WEIGHTED ||
+        frame_decision.weightedEdge != ALFlycamWeightedEdge::NONE)
+    {
+        static ALFlycamWeighted::Coordinator sWeighted;
+        ALFlycamWeighted::FrameIn win;
+        win.frameOwner = frame_owner;  win.weightedEdge = frame_decision.weightedEdge;
+        win.foreignDroneRegain = frame_decision.foreignDroneRegain;
+        win.tagged = tagged_dispatch;  win.dispatchSerial = gCameraDispatchSerial;
+        win.lastWrittenSerial = sDrone.lastWrittenSerial;
+        win.foreignSinceWrite = gCameraDispatchForeignSinceFlycamWrite;
+        win.originGlobal = gAgent.getPosGlobalFromAgent(LLVector3::zero);
+        win.entryPos = shadow_entry_position;  win.entryRot = shadow_entry_rotation;
+        win.classicPos = sFlycamPosition;  win.classicRot = sFlycamRotation;  win.zoom = sFlycamZoom;
+        win.delta = sDelta;  win.lastDelta = sLastDelta;
+        win.classicIn = classic_input;  win.classicIm = classic_intermediate;
+        win.frameIntervalSeconds = gFrameIntervalSeconds.value();
+        win.prevPose = toWeightedSample(sDrone.previousPose);  win.curPose = toWeightedSample(sDrone.currentPose);
+        win.presentedPos = LLViewerCamera::getInstance()->getOrigin();
+        win.presentedRot = LLViewerCamera::getInstance()->getQuaternion();
+        win.presentedComparable = !weightedSettings().operatorEnabled && !weightedSettings().shakeApplyActive;
+        win.settings = weightedSettings().snapshot();
+        const ALFlycamWeighted::FrameOut wout = sWeighted.frame(win);
+        if (wout.writePose) { sFlycamPosition = wout.pos;  sFlycamRotation = wout.rot; }
+        if (!wout.log.empty()) LL_INFOS("FlycamWeighted") << wout.log << LL_ENDL;
     }
 
     // Classic is always advanced above.  Drone owns only the final pose and
@@ -3515,14 +3628,40 @@ void LLViewerJoystick::handleXInputDpad()
     {
         if (value == ALXInput::DPAD_FLIGHT_MODEL)
         {
-            const bool drone = gSavedSettings.getS32("FlycamFlightModel") == 1;
-            if (!drone && m3DCursor)
+            const S32 current = gSavedSettings.getS32("FlycamFlightModel");
+            const S32 pair_a = gSavedSettings.getS32("FlycamDpadModelA");
+            const S32 pair_b = gSavedSettings.getS32("FlycamDpadModelB");
+            ALXInput::ModelToggle result;
+            const S32 next = ALXInput::toggleFlightModel(
+                current, pair_a, pair_b, m3DCursor, result);
+            if (result == ALXInput::ModelToggle::BLOCKED_3D_CURSOR)
             {
-                xInputHint("Drone unavailable: 3D cursor");
+                xInputHint("Weighted / Drone unavailable: 3D cursor");
                 return;
             }
-            gSavedSettings.setS32("FlycamFlightModel", drone ? 0 : 1);
-            xInputHint(drone ? "Flight: Classic" : "Flight: Drone");
+            gSavedSettings.setS32("FlycamFlightModel", next);
+            if (result == ALXInput::ModelToggle::NORMALISED_PAIR)
+            {
+                xInputHint("D-pad pair invalid: using Classic / Weighted");
+            }
+            else if (next == 0)
+            {
+                xInputHint("Flight: Classic");
+            }
+            else if (next == 1)
+            {
+                xInputHint("Flight: Drone");
+            }
+            else
+            {
+                const F32 weight = weightedSettings().weight;
+                if (weight <= 0.f)
+                    xInputHint("Flight: Weighted (0% = Classic)");
+                else
+                    xInputHint(llformat("Flight: Weighted (%s %.0f%%)",
+                        ALFlycamWeighted::presetName(
+                            ALFlycamWeighted::presetForWeight(weight)), weight));
+            }
             playRumble(ALXInput::RUMBLE_MODE_TICK);
         }
         else if (value == ALXInput::DPAD_RELEASE)
@@ -3983,6 +4122,33 @@ void LLViewerJoystick::setXboxDefaults()
     gSavedSettings.setF32("FlycamFeathering", 1.0f);
 }
 
+bool LLViewerJoystick::applyWeightedPreset(S32 preset)
+{
+    if (preset < 0 || preset >= 4)
+        return false;
+
+    gSavedSettings.setS32("FlycamWeightedPreset", preset);
+    gSavedSettings.setF32("FlycamWeightedWeight",
+        ALFlycamWeighted::presetWeight(preset));
+    return true;
+}
+
+void LLViewerJoystick::resetWeightedSettings()
+{
+    gSavedSettings.setS32("FlycamWeightedPreset", 1);
+    gSavedSettings.setF32("FlycamWeightedWeight", 50.f);
+    gSavedSettings.setF32("FlycamWeightedRotationShare", .6f);
+    gSavedSettings.setF32("FlycamWeightedTauMax", 1.f);
+    gSavedSettings.setF32("FlycamWeightedCurve", 20.f);
+}
+
+ALFlycamWeighted::Tuning LLViewerJoystick::getWeightedTuning() const
+{
+    const FlycamWeightedSettings& settings = weightedSettings();
+    return ALFlycamWeighted::tuningForWeight(settings.weight, settings.tauMax,
+        settings.curve, settings.rotationShare);
+}
+
 bool LLViewerJoystick::applyDronePreset(S32 preset)
 {
     if (preset < 0 || preset >= static_cast<S32>(LLFlycamDrone::PresetId::COUNT))
@@ -4063,7 +4229,6 @@ U64 LLViewerJoystick::getDronePresetProvenanceRevision() const
 
 void LLViewerJoystick::resetDroneSettings()
 {
-    gSavedSettings.setS32("FlycamFlightModel", 0);
     applyDronePreset(static_cast<S32>(LLFlycamDrone::PresetId::NORMAL));
     gSavedSettings.setS32("FlycamDroneThrottleMode", 0);
     gSavedSettings.setF32("FlycamDroneSimulationHz", 120.f);
