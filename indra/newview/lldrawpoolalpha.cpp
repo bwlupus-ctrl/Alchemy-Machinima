@@ -485,7 +485,7 @@ void LLDrawPoolAlpha::renderVelocityGroups(EAlphaStream stream, AttachmentFilter
         const bool particle = partition_type == LLViewerRegion::PARTITION_PARTICLE;
         for (const LLPointer<LLDrawInfo>& draw_ptr : found->second)
         {
-            LLDrawInfo& params = *draw_ptr;
+            LLDrawInfo& params = *draw_ptr.get(); // LLPointer::operator* const yields const&
             if (params.mVertexBuffer.isNull() || !params.mCount ||
                 rigged != (params.mAvatar != nullptr))
             {
