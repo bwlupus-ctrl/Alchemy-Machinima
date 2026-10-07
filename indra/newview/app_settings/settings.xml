@@ -7405,6 +7405,17 @@
     <key>Value</key>
     <integer>1</integer>
   </map>
+  <key>UIFitDiagnostics</key>
+  <map>
+    <key>Comment</key>
+    <string>[UIFit] On first open of each floater instance, warn once for panel overflow without usable scrolling and undersized scroll documents. One view-tree pass; no per-frame work.</string>
+    <key>Persist</key>
+    <integer>1</integer>
+    <key>Type</key>
+    <string>Boolean</string>
+    <key>Value</key>
+    <integer>1</integer>
+  </map>
   <key>UIRefreshForceAlways</key>
   <map>
     <key>Comment</key>
@@ -12986,6 +12997,13 @@
       <key>Persist</key><integer>1</integer>
       <key>Type</key><string>F32</string>
       <key>Value</key><real>0.8</real>
+    </map>
+    <key>FlycamDroneInvertLook</key>
+    <map>
+      <key>Comment</key><string>Drone: invert the look stick's vertical (tilt) axis. Personal preference; not part of presets or Reset Drone.</string>
+      <key>Persist</key><integer>1</integer>
+      <key>Type</key><string>Boolean</string>
+      <key>Value</key><boolean>0</boolean>
     </map>
     <key>FlycamDroneLookDeadzone</key>
     <map>

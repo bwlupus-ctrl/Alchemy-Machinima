@@ -1,0 +1,755 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<floater legacy_header_height="18" height="720" layout="topleft" name="Joystick" help_topic="Viewerhelp:Joystick_Configuration" title="JOYSTICK CONFIGURATION" width="760" can_resize="true" min_width="760" min_height="560">
+  <floater.string name="JoystickDisabled">
+        None
+    </floater.string>
+  <tab_container follows="all" height="660" layout="topleft" left="0" name="joystick_tabs" top="18" width="760" tab_height="23">
+    <!-- xui-check: allow-overlap joystick_general_tab joystick_buttons_tab -->
+    <!-- xui-check: allow-overlap joystick_general_tab joystick_xbox_tab -->
+    <!-- xui-check: allow-overlap joystick_general_tab joystick_drone_tab -->
+    <!-- xui-check: allow-overlap joystick_buttons_tab joystick_xbox_tab -->
+    <!-- xui-check: allow-overlap joystick_buttons_tab joystick_drone_tab -->
+    <!-- xui-check: allow-overlap joystick_xbox_tab joystick_drone_tab -->
+    <panel background_visible="false" height="637" label="General" layout="topleft" name="joystick_general_tab" width="760">
+      <scroll_container follows="all" height="632" layout="topleft" left="0" name="general_scroll" opaque="false" reserve_scroll_corner="false" top="0" width="760">
+        <panel background_visible="false" follows="left|top|right" height="650" layout="topleft" left="0" name="general_scroll_content" top="0" width="740">
+          <text font="SansSerifBold" height="18" layout="topleft" left="20" name="general_device_title" top="10" width="300">Device</text>
+          <text type="string" layout="topleft" follows="left|top" halign="right" height="18" width="150" mouse_opaque="false" name="joystick_lbl" left="20" top="35">
+      Joystick:
+    </text>
+          <combo_box allow_text_entry="false" follows="left|top" layout="topleft" name="joystick_combo" width="300" left="180" top="32" height="22" />
+          <check_box control_name="JoystickAutoFlycamEnabled" follows="left|top" height="18" label="Auto-detect Xbox for Flycam" layout="topleft" name="JoystickAutoFlycamEnabled" tool_tip="Poll every three seconds for an Xbox controller and automatically select it for Flycam. Saved controller mappings are never changed." width="225" left="500" top="34" />
+          <text font="SansSerifBold" height="18" layout="topleft" left="20" name="general_modes_title" top="65" width="300">Control modes</text>
+          <check_box height="18" control_name="JoystickAvatarEnabled" halign="left" label="Avatar" layout="topleft" name="JoystickAvatarEnabled" width="80" left="180" top="88" />
+          <check_box height="18" control_name="JoystickBuildEnabled" halign="left" label="Build" layout="topleft" name="JoystickBuildEnabled" width="80" left="270" top="88" />
+          <check_box height="18" control_name="JoystickFlycamEnabled" halign="left" label="Flycam" layout="topleft" name="JoystickFlycamEnabled" width="80" left="360" top="88" />
+          <text type="string" length="1" follows="left|top" halign="right" height="18" layout="topleft" mouse_opaque="false" name="Control Modes:" width="150" left="20" top="88">Enabled for:</text>
+          <text font="SansSerifBold" height="18" layout="topleft" left="20" name="general_axis_title" top="120" width="300">Axis mapping</text>
+          <spinner height="18" control_name="JoystickAxis1" decimal_digits="0" increment="1" label="X Axis Mapping" label_width="135" layout="topleft" max_val="5" min_val="-1" name="JoystickAxis1" width="215" left="20" top="145" />
+          <spinner height="18" control_name="JoystickAxis2" decimal_digits="0" increment="1" label="Y Axis Mapping" label_width="135" layout="topleft" max_val="5" min_val="-1" name="JoystickAxis2" width="215" left="255" top="145" />
+          <spinner height="18" control_name="JoystickAxis0" decimal_digits="0" increment="1" label="Z Axis Mapping" label_width="135" layout="topleft" max_val="5" min_val="-1" name="JoystickAxis0" width="215" left="490" top="145" />
+          <spinner height="18" control_name="JoystickAxis4" decimal_digits="0" increment="1" label="Pitch Mapping" label_width="135" layout="topleft" max_val="5" min_val="-1" name="JoystickAxis4" width="215" left="20" top="165" />
+          <spinner height="18" control_name="JoystickAxis5" decimal_digits="0" increment="1" label="Yaw Mapping" label_width="135" layout="topleft" max_val="5" min_val="-1" name="JoystickAxis5" width="215" left="255" top="165" />
+          <spinner height="18" control_name="JoystickAxis3" decimal_digits="0" increment="1" label="Roll Mapping" label_width="135" layout="topleft" max_val="5" min_val="-1" name="JoystickAxis3" width="215" left="490" top="165" />
+          <spinner height="18" control_name="JoystickAxis6" decimal_digits="0" increment="1" label="Zoom Mapping" label_width="135" layout="topleft" max_val="5" min_val="-1" name="JoystickAxis6" width="215" left="20" top="185" />
+          <text font="SansSerifBold" height="18" layout="topleft" left="20" name="general_options_title" top="215" width="300">Options</text>
+          <check_box height="18" control_name="ZoomDirect" label="Direct Zoom" layout="topleft" name="ZoomDirect" width="100" left="180" top="238" />
+          <check_box height="18" control_name="Cursor3D" label="3D Cursor" layout="topleft" name="Cursor3D" width="100" left="300" top="238" />
+          <check_box height="18" control_name="AutoLeveling" label="Auto Level" layout="topleft" name="AutoLeveling" width="110" left="420" top="238" />
+          <text font="SansSerifBold" height="18" layout="topleft" left="20" name="general_response_title" top="270" width="300">Response</text>
+          <text font="SansSerifSmall" height="18" layout="topleft" left="20" name="response_parameter_header" top="292" width="150" halign="right">Parameter</text>
+          <text font="SansSerifSmall" height="18" layout="topleft" left="180" name="response_avatar_header" top="292" width="70" halign="center">Avatar</text>
+          <text font="SansSerifSmall" height="18" layout="topleft" left="270" name="response_build_header" top="292" width="70" halign="center">Build</text>
+          <text font="SansSerifSmall" height="18" layout="topleft" left="360" name="response_flycam_header" top="292" width="70" halign="center">Flycam</text>
+          <text type="string" length="1" halign="right" layout="topleft" name="XScale" width="150" left="20" top="315" height="18">
+        X Scale
+    </text>
+          <spinner height="18" control_name="AvatarAxisScale1" decimal_digits="2" label_width="0" layout="topleft" max_val="50" min_val="-50" name="AvatarAxisScale1" width="70" left="180" top="315" />
+          <spinner height="18" control_name="BuildAxisScale1" decimal_digits="2" label_width="0" layout="topleft" max_val="1024" min_val="-1024" name="BuildAxisScale1" width="70" left="270" top="315" />
+          <spinner height="18" control_name="FlycamAxisScale1" decimal_digits="2" label_width="0" layout="topleft" max_val="1024" min_val="-1024" name="FlycamAxisScale1" width="70" left="360" top="315" />
+          <text type="string" length="1" halign="right" layout="topleft" name="YScale" width="150" left="20" top="335" height="18">
+        Y Scale
+    </text>
+          <spinner height="18" control_name="AvatarAxisScale2" decimal_digits="2" label_width="0" layout="topleft" max_val="50" min_val="-50" name="AvatarAxisScale2" width="70" left="180" top="335" />
+          <spinner height="18" control_name="BuildAxisScale2" decimal_digits="2" label_width="0" layout="topleft" max_val="1024" min_val="-1024" name="BuildAxisScale2" width="70" left="270" top="335" />
+          <spinner height="18" control_name="FlycamAxisScale2" decimal_digits="2" label_width="0" layout="topleft" max_val="1024" min_val="-1024" name="FlycamAxisScale2" width="70" left="360" top="335" />
+          <text type="string" length="1" halign="right" layout="topleft" name="ZScale" width="150" left="20" top="355" height="18">
+        Z Scale
+    </text>
+          <spinner height="18" control_name="AvatarAxisScale0" decimal_digits="2" label_width="0" layout="topleft" max_val="50" min_val="-50" name="AvatarAxisScale0" width="70" left="180" top="355" />
+          <spinner height="18" control_name="BuildAxisScale0" decimal_digits="2" label_width="0" layout="topleft" max_val="1024" min_val="-1024" name="BuildAxisScale0" width="70" left="270" top="355" />
+          <spinner height="18" control_name="FlycamAxisScale0" decimal_digits="2" label_width="0" layout="topleft" max_val="1024" min_val="-1024" name="FlycamAxisScale0" width="70" left="360" top="355" />
+          <text type="string" length="1" halign="right" layout="topleft" name="PitchScale" width="150" left="20" top="375" height="18">
+        Pitch Scale
+    </text>
+          <spinner height="18" control_name="AvatarAxisScale4" decimal_digits="2" label_width="0" layout="topleft" max_val="1024" min_val="-1024" name="AvatarAxisScale4" width="70" left="180" top="375" />
+          <spinner height="18" control_name="BuildAxisScale4" decimal_digits="2" label_width="0" layout="topleft" max_val="1024" min_val="-1024" name="BuildAxisScale4" width="70" left="270" top="375" />
+          <spinner height="18" control_name="FlycamAxisScale4" decimal_digits="2" label_width="0" layout="topleft" max_val="1024" min_val="-1024" name="FlycamAxisScale4" width="70" left="360" top="375" />
+          <text type="string" length="1" halign="right" layout="topleft" name="YawScale" width="150" left="20" top="395" height="18">
+        Yaw Scale
+    </text>
+          <spinner height="18" control_name="AvatarAxisScale5" decimal_digits="2" label_width="0" layout="topleft" max_val="1024" min_val="-1024" name="AvatarAxisScale5" width="70" left="180" top="395" />
+          <spinner height="18" control_name="BuildAxisScale5" decimal_digits="2" label_width="0" layout="topleft" max_val="1024" min_val="-1024" name="BuildAxisScale5" width="70" left="270" top="395" />
+          <spinner height="18" control_name="FlycamAxisScale5" decimal_digits="2" label_width="0" layout="topleft" max_val="1024" min_val="-1024" name="FlycamAxisScale5" width="70" left="360" top="395" />
+          <text type="string" length="1" halign="right" layout="topleft" name="RollScale" width="150" left="20" top="415" height="18">
+        Roll Scale
+    </text>
+          <spinner height="18" control_name="BuildAxisScale3" decimal_digits="2" label_width="0" layout="topleft" max_val="1024" min_val="-1024" name="BuildAxisScale3" width="70" left="270" top="415" />
+          <spinner height="18" control_name="FlycamAxisScale3" decimal_digits="2" label_width="0" layout="topleft" max_val="1024" min_val="-1024" name="FlycamAxisScale3" width="70" left="360" top="415" />
+          <text font="SansSerifBold" height="18" layout="topleft" left="20" name="general_deadzone_title" top="438" width="300">Dead zones</text>
+          <text type="string" length="1" halign="right" layout="topleft" name="XDeadZone" width="150" left="20" top="462" height="18">
+        X Dead Zone
+    </text>
+          <spinner height="18" control_name="AvatarAxisDeadZone1" decimal_digits="2" increment="0.01" label_width="0" layout="topleft" name="AvatarAxisDeadZone1" width="70" left="180" top="462" />
+          <spinner height="18" control_name="BuildAxisDeadZone1" decimal_digits="2" increment="0.01" label_width="0" layout="topleft" name="BuildAxisDeadZone1" width="70" left="270" top="462" />
+          <spinner height="18" control_name="FlycamAxisDeadZone1" decimal_digits="2" increment="0.01" label_width="0" layout="topleft" name="FlycamAxisDeadZone1" width="70" left="360" top="462" />
+          <text type="string" length="1" halign="right" layout="topleft" name="YDeadZone" width="150" left="20" top="482" height="18">
+        Y Dead Zone
+    </text>
+          <spinner height="18" control_name="AvatarAxisDeadZone2" decimal_digits="2" increment="0.01" label_width="0" layout="topleft" name="AvatarAxisDeadZone2" width="70" left="180" top="482" />
+          <spinner height="18" control_name="BuildAxisDeadZone2" decimal_digits="2" increment="0.01" label_width="0" layout="topleft" name="BuildAxisDeadZone2" width="70" left="270" top="482" />
+          <spinner height="18" control_name="FlycamAxisDeadZone2" decimal_digits="2" increment="0.01" label_width="0" layout="topleft" name="FlycamAxisDeadZone2" width="70" left="360" top="482" />
+          <text type="string" length="1" halign="right" layout="topleft" name="ZDeadZone" width="150" left="20" top="502" height="18">
+        Z Dead Zone
+    </text>
+          <spinner height="18" control_name="AvatarAxisDeadZone0" decimal_digits="2" increment="0.01" label_width="0" layout="topleft" name="AvatarAxisDeadZone0" width="70" left="180" top="502" />
+          <spinner height="18" control_name="BuildAxisDeadZone0" decimal_digits="2" increment="0.01" label_width="0" layout="topleft" name="BuildAxisDeadZone0" width="70" left="270" top="502" />
+          <spinner height="18" control_name="FlycamAxisDeadZone0" decimal_digits="2" increment="0.01" label_width="0" layout="topleft" name="FlycamAxisDeadZone0" width="70" left="360" top="502" />
+          <text type="string" length="1" halign="right" layout="topleft" name="PitchDeadZone" width="150" left="20" top="522" height="18">
+        Pitch Dead Zone
+    </text>
+          <spinner height="18" control_name="AvatarAxisDeadZone4" decimal_digits="2" increment="0.01" label_width="0" layout="topleft" name="AvatarAxisDeadZone4" width="70" left="180" top="522" />
+          <spinner height="18" control_name="BuildAxisDeadZone4" decimal_digits="2" increment="0.01" label_width="0" layout="topleft" name="BuildAxisDeadZone4" width="70" left="270" top="522" />
+          <spinner height="18" control_name="FlycamAxisDeadZone4" decimal_digits="2" increment="0.01" label_width="0" layout="topleft" name="FlycamAxisDeadZone4" width="70" left="360" top="522" />
+          <text type="string" length="1" halign="right" layout="topleft" name="YawDeadZone" width="150" left="20" top="542" height="18">
+        Yaw Dead Zone
+    </text>
+          <spinner height="18" control_name="AvatarAxisDeadZone5" decimal_digits="2" increment="0.01" label_width="0" layout="topleft" name="AvatarAxisDeadZone5" width="70" left="180" top="542" />
+          <spinner height="18" control_name="BuildAxisDeadZone5" decimal_digits="2" increment="0.01" label_width="0" layout="topleft" name="BuildAxisDeadZone5" width="70" left="270" top="542" />
+          <spinner height="18" control_name="FlycamAxisDeadZone5" decimal_digits="2" increment="0.01" label_width="0" layout="topleft" name="FlycamAxisDeadZone5" width="70" left="360" top="542" />
+          <text type="string" length="1" halign="right" layout="topleft" name="RollDeadZone" width="150" left="20" top="562" height="18">
+        Roll Dead Zone
+    </text>
+          <spinner height="18" control_name="BuildAxisDeadZone3" decimal_digits="2" increment="0.01" label_width="0" layout="topleft" name="BuildAxisDeadZone3" width="70" left="270" top="562" />
+          <spinner height="18" control_name="FlycamAxisDeadZone3" decimal_digits="2" increment="0.01" label_width="0" layout="topleft" name="FlycamAxisDeadZone3" width="70" left="360" top="562" />
+          <text type="string" length="1" halign="right" layout="topleft" name="Feathering" width="150" left="20" top="582" height="18">
+        Feathering
+    </text>
+          <slider control_name="AvatarFeathering" decimal_digits="0" follows="left|top" height="18" increment="1" initial_value="0.7" layout="topleft" max_val="32" min_val="1" name="AvatarFeathering" show_text="false" width="70" left="180" top="582" />
+          <slider control_name="BuildFeathering" decimal_digits="0" follows="left|top" height="18" increment="1" initial_value="0.7" layout="topleft" max_val="32" min_val="1" name="BuildFeathering" show_text="false" width="70" left="270" top="582" />
+          <slider control_name="FlycamFeathering" decimal_digits="0" follows="left|top" height="18" increment="1" initial_value="0.7" layout="topleft" max_val="32" min_val="1" name="FlycamFeathering" show_text="false" width="70" left="360" top="582" />
+          <text type="string" length="1" halign="right" layout="topleft" name="ZoomScale2" width="150" left="20" top="602" height="18">
+        Zoom Scale
+    </text>
+          <spinner height="18" control_name="FlycamAxisScale6" decimal_digits="2" label_width="0" layout="topleft" max_val="1024" min_val="-1024" name="FlycamAxisScale6" width="70" left="360" top="602" />
+          <text type="string" length="1" halign="right" layout="topleft" name="ZoomDeadZone" width="150" left="20" top="622" height="18">
+        Zoom Dead Zone
+    </text>
+          <spinner height="18" control_name="FlycamAxisDeadZone6" decimal_digits="2" increment="0.01" label_width="0" layout="topleft" name="FlycamAxisDeadZone6" width="70" left="360" top="622" />
+          <stat_view height="270" label="Joystick Monitor" layout="topleft" name="axis_view" show_label="true" width="225" left="500" top="270">
+            <stat_bar bar_max="2" bar_min="-2" show_bar="true" label="Axis 0" label_spacing="1" layout="topleft" left="0" name="axis0" tick_spacing="0.5" top="20" width="0" />
+            <stat_bar bar_max="2" bar_min="-2" show_bar="true" label="Axis 1" label_spacing="1" layout="topleft" name="axis1" tick_spacing="0.5" />
+            <stat_bar bar_max="2" bar_min="-2" show_bar="true" label="Axis 2" label_spacing="1" layout="topleft" name="axis2" tick_spacing="0.5" />
+            <stat_bar bar_max="2" bar_min="-2" show_bar="true" label="Axis 3" label_spacing="1" layout="topleft" name="axis3" tick_spacing="0.5" />
+            <stat_bar bar_max="2" bar_min="-2" show_bar="true" label="Axis 4" label_spacing="1" layout="topleft" name="axis4" tick_spacing="0.5" />
+            <stat_bar bar_max="2" bar_min="-2" label="Axis 5" show_bar="true" label_spacing="1" layout="topleft" name="axis5" tick_spacing="0.5" />
+          </stat_view>
+          <button follows="left|top" height="22" label="SpaceNavigator Defaults" layout="topleft" name="SpaceNavigatorDefaults" width="225" left="500" top="552" />
+          <button follows="left|top" height="22" label="Xbox Defaults" layout="topleft" name="XboxDefaults" width="225" left="500" top="580" />
+        </panel>
+      </scroll_container>
+    </panel>
+    <panel background_visible="false" height="637" label="Buttons" layout="topleft" name="joystick_buttons_tab" width="760">
+      <scroll_container follows="all" height="632" layout="topleft" left="0" name="buttons_scroll" opaque="false" reserve_scroll_corner="false" top="0" width="760">
+        <panel background_visible="false" follows="left|top|right" height="330" layout="topleft" left="0" name="buttons_scroll_content" top="0" width="740">
+          <text name="general_label" follows="left|top" layout="topleft" height="18" width="300" left="20" top="15" font="SansSerifBold">Button mapping</text>
+          <text height="18" label_width="125" layout="topleft" name="JoystickButtonJump" width="160" left="20" top="45" halign="right">
+       Jump
+       </text>
+          <icons_combo_box follows="left|top|right" control_name="JoystickButtonJump" height="18" layout="topleft" name="JoystickButtonJump" width="260" left="190" top="45">
+            <icons_combo_box.drop_down_button image_overlay="None" image_overlay_alignment="left" imgoverlay_label_space="3" pad_left="3" />
+            <icons_combo_box.item name="none" value="-1">
+              <item.columns halign="left" type="icontext" label="None" value="None" width="20" />
+            </icons_combo_box.item>
+            <icons_combo_box.item name="btn_a" value="0">
+              <item.columns halign="left" type="icontext" label="Button A" value="Button_A" width="20" />
+            </icons_combo_box.item>
+            <icons_combo_box.item name="btn_b" value="1">
+              <item.columns halign="left" type="icontext" label="Button B" value="Button_B" width="20" />
+            </icons_combo_box.item>
+            <icons_combo_box.item name="btn_y" value="3">
+              <item.columns halign="left" type="icontext" label="Button Y" value="Button_Y" width="20" />
+            </icons_combo_box.item>
+            <icons_combo_box.item name="btn_x" value="2">
+              <item.columns halign="left" type="icontext" label="Button X" value="Button_X" width="20" />
+            </icons_combo_box.item>
+            <icons_combo_box.item name="back" value="6">
+              <item.columns halign="left" type="icontext" label="Back" value="Button_Back" width="20" />
+            </icons_combo_box.item>
+            <icons_combo_box.item name="start" value="7">
+              <item.columns halign="left" type="icontext" label="Start" value="Button_Start" width="20" />
+            </icons_combo_box.item>
+            <icons_combo_box.item name="button_left" value="4">
+              <item.columns halign="left" type="icontext" label="Left Shoulder Button" value="Left_Button" width="20" />
+            </icons_combo_box.item>
+            <icons_combo_box.item name="button_right" value="5">
+              <item.columns halign="left" type="icontext" label="Right Shoulder Button" value="Right_Button" width="20" />
+            </icons_combo_box.item>
+            <icons_combo_box.item name="thumb_l" value="8">
+              <item.columns halign="left" type="icontext" label="Thumbstick Left" value="Left_Thumb_Press" width="20" />
+            </icons_combo_box.item>
+            <icons_combo_box.item name="thumb_r" value="9">
+              <item.columns halign="left" type="icontext" label="Thumbstick Right" value="Right_Thumb_Press" width="20" />
+            </icons_combo_box.item>
+          </icons_combo_box>
+          <text layout="topleft" name="JoystickButtonCrouch" width="160" height="18" left="20" top="65" halign="right">
+       Crouch
+       </text>
+          <icons_combo_box follows="left|top|right" control_name="JoystickButtonCrouch" height="18" layout="topleft" name="JoystickButtonCrouch" width="260" left="190" top="65">
+            <icons_combo_box.commit_callback function="Joystick.Refresh" />
+            <icons_combo_box.drop_down_button image_overlay="None" image_overlay_alignment="left" imgoverlay_label_space="3" pad_left="3" />
+            <icons_combo_box.item name="none" value="-1">
+              <item.columns halign="left" type="icontext" label="None" value="None" width="20" />
+            </icons_combo_box.item>
+            <icons_combo_box.item name="btn_a" value="0">
+              <item.columns halign="left" type="icontext" label="Button A" value="Button_A" width="20" />
+            </icons_combo_box.item>
+            <icons_combo_box.item name="btn_b" value="1">
+              <item.columns halign="left" type="icontext" label="Button B" value="Button_B" width="20" />
+            </icons_combo_box.item>
+            <icons_combo_box.item name="btn_y" value="3">
+              <item.columns halign="left" type="icontext" label="Button Y" value="Button_Y" width="20" />
+            </icons_combo_box.item>
+            <icons_combo_box.item name="btn_x" value="2">
+              <item.columns halign="left" type="icontext" label="Button X" value="Button_X" width="20" />
+            </icons_combo_box.item>
+            <icons_combo_box.item name="back" value="6">
+              <item.columns halign="left" type="icontext" label="Back" value="Button_Back" width="20" />
+            </icons_combo_box.item>
+            <icons_combo_box.item name="start" value="7">
+              <item.columns halign="left" type="icontext" label="Start" value="Button_Start" width="20" />
+            </icons_combo_box.item>
+            <icons_combo_box.item name="button_left" value="4">
+              <item.columns halign="left" type="icontext" label="Left Shoulder Button" value="Left_Button" width="20" />
+            </icons_combo_box.item>
+            <icons_combo_box.item name="button_right" value="5">
+              <item.columns halign="left" type="icontext" label="Right Shoulder Button" value="Right_Button" width="20" />
+            </icons_combo_box.item>
+            <icons_combo_box.item name="thumb_l" value="8">
+              <item.columns halign="left" type="icontext" label="Thumbstick Left" value="Left_Thumb_Press" width="20" />
+            </icons_combo_box.item>
+            <icons_combo_box.item name="thumb_r" value="9">
+              <item.columns halign="left" type="icontext" label="Thumbstick Right" value="Right_Thumb_Press" width="20" />
+            </icons_combo_box.item>
+          </icons_combo_box>
+          <text layout="topleft" name="JoystickButtonFly" width="160" height="18" left="20" top="85" halign="right">
+       Toggle Fly
+       </text>
+          <icons_combo_box follows="left|top|right" control_name="JoystickButtonFly" height="18" layout="topleft" name="JoystickButtonFly" width="260" left="190" top="85">
+            <icons_combo_box.commit_callback function="Joystick.Refresh" />
+            <icons_combo_box.drop_down_button image_overlay="None" image_overlay_alignment="left" imgoverlay_label_space="3" pad_left="3" />
+            <icons_combo_box.item name="none" value="-1">
+              <item.columns halign="left" type="icontext" label="None" value="None" width="20" />
+            </icons_combo_box.item>
+            <icons_combo_box.item name="btn_a" value="0">
+              <item.columns halign="left" type="icontext" label="Button A" value="Button_A" width="20" />
+            </icons_combo_box.item>
+            <icons_combo_box.item name="btn_b" value="1">
+              <item.columns halign="left" type="icontext" label="Button B" value="Button_B" width="20" />
+            </icons_combo_box.item>
+            <icons_combo_box.item name="btn_y" value="3">
+              <item.columns halign="left" type="icontext" label="Button Y" value="Button_Y" width="20" />
+            </icons_combo_box.item>
+            <icons_combo_box.item name="btn_x" value="2">
+              <item.columns halign="left" type="icontext" label="Button X" value="Button_X" width="20" />
+            </icons_combo_box.item>
+            <icons_combo_box.item name="back" value="6">
+              <item.columns halign="left" type="icontext" label="Back" value="Button_Back" width="20" />
+            </icons_combo_box.item>
+            <icons_combo_box.item name="start" value="7">
+              <item.columns halign="left" type="icontext" label="Start" value="Button_Start" width="20" />
+            </icons_combo_box.item>
+            <icons_combo_box.item name="button_left" value="4">
+              <item.columns halign="left" type="icontext" label="Left Shoulder Button" value="Left_Button" width="20" />
+            </icons_combo_box.item>
+            <icons_combo_box.item name="button_right" value="5">
+              <item.columns halign="left" type="icontext" label="Right Shoulder Button" value="Right_Button" width="20" />
+            </icons_combo_box.item>
+            <icons_combo_box.item name="thumb_l" value="8">
+              <item.columns halign="left" type="icontext" label="Thumbstick Left" value="Left_Thumb_Press" width="20" />
+            </icons_combo_box.item>
+            <icons_combo_box.item name="thumb_r" value="9">
+              <item.columns halign="left" type="icontext" label="Thumbstick Right" value="Right_Thumb_Press" width="20" />
+            </icons_combo_box.item>
+          </icons_combo_box>
+          <text height="18" layout="topleft" name="JoystickButtonRunToggle" width="160" left="20" top="105" halign="right">
+       Toggle Run
+       </text>
+          <icons_combo_box follows="left|top|right" control_name="JoystickButtonRunToggle" height="18" layout="topleft" name="JoystickButtonRunToggle" width="260" left="190" top="105">
+            <icons_combo_box.commit_callback function="Joystick.Refresh" />
+            <icons_combo_box.drop_down_button image_overlay="None" image_overlay_alignment="left" imgoverlay_label_space="3" pad_left="3" />
+            <icons_combo_box.item name="none" value="-1">
+              <item.columns halign="left" type="icontext" label="None" value="None" width="20" />
+            </icons_combo_box.item>
+            <icons_combo_box.item name="btn_a" value="0">
+              <item.columns halign="left" type="icontext" label="Button A" value="Button_A" width="20" />
+            </icons_combo_box.item>
+            <icons_combo_box.item name="btn_b" value="1">
+              <item.columns halign="left" type="icontext" label="Button B" value="Button_B" width="20" />
+            </icons_combo_box.item>
+            <icons_combo_box.item name="btn_y" value="3">
+              <item.columns halign="left" type="icontext" label="Button Y" value="Button_Y" width="20" />
+            </icons_combo_box.item>
+            <icons_combo_box.item name="btn_x" value="2">
+              <item.columns halign="left" type="icontext" label="Button X" value="Button_X" width="20" />
+            </icons_combo_box.item>
+            <icons_combo_box.item name="back" value="6">
+              <item.columns halign="left" type="icontext" label="Back" value="Button_Back" width="20" />
+            </icons_combo_box.item>
+            <icons_combo_box.item name="start" value="7">
+              <item.columns halign="left" type="icontext" label="Start" value="Button_Start" width="20" />
+            </icons_combo_box.item>
+            <icons_combo_box.item name="button_left" value="4">
+              <item.columns halign="left" type="icontext" label="Left Shoulder Button" value="Left_Button" width="20" />
+            </icons_combo_box.item>
+            <icons_combo_box.item name="button_right" value="5">
+              <item.columns halign="left" type="icontext" label="Right Shoulder Button" value="Right_Button" width="20" />
+            </icons_combo_box.item>
+            <icons_combo_box.item name="thumb_l" value="8">
+              <item.columns halign="left" type="icontext" label="Thumbstick Left" value="Left_Thumb_Press" width="20" />
+            </icons_combo_box.item>
+            <icons_combo_box.item name="thumb_r" value="9">
+              <item.columns halign="left" type="icontext" label="Thumbstick Right" value="Right_Thumb_Press" width="20" />
+            </icons_combo_box.item>
+          </icons_combo_box>
+          <text height="18" layout="topleft" name="JoystickButtonMouselook" width="160" left="20" top="125" halign="right">
+       Mouselook
+       </text>
+          <icons_combo_box follows="left|top|right" control_name="JoystickButtonMouselook" height="18" layout="topleft" name="JoystickButtonMouselook" width="260" left="190" top="125">
+            <icons_combo_box.commit_callback function="Joystick.Refresh" />
+            <icons_combo_box.drop_down_button image_overlay="None" image_overlay_alignment="left" imgoverlay_label_space="3" pad_left="3" />
+            <icons_combo_box.item name="none" value="-1">
+              <item.columns halign="left" type="icontext" label="None" value="None" width="20" />
+            </icons_combo_box.item>
+            <icons_combo_box.item name="btn_a" value="0">
+              <item.columns halign="left" type="icontext" label="Button A" value="Button_A" width="20" />
+            </icons_combo_box.item>
+            <icons_combo_box.item name="btn_b" value="1">
+              <item.columns halign="left" type="icontext" label="Button B" value="Button_B" width="20" />
+            </icons_combo_box.item>
+            <icons_combo_box.item name="btn_y" value="3">
+              <item.columns halign="left" type="icontext" label="Button Y" value="Button_Y" width="20" />
+            </icons_combo_box.item>
+            <icons_combo_box.item name="btn_x" value="2">
+              <item.columns halign="left" type="icontext" label="Button X" value="Button_X" width="20" />
+            </icons_combo_box.item>
+            <icons_combo_box.item name="back" value="6">
+              <item.columns halign="left" type="icontext" label="Back" value="Button_Back" width="20" />
+            </icons_combo_box.item>
+            <icons_combo_box.item name="start" value="7">
+              <item.columns halign="left" type="icontext" label="Start" value="Button_Start" width="20" />
+            </icons_combo_box.item>
+            <icons_combo_box.item name="button_left" value="4">
+              <item.columns halign="left" type="icontext" label="Left Shoulder Button" value="Left_Button" width="20" />
+            </icons_combo_box.item>
+            <icons_combo_box.item name="button_right" value="5">
+              <item.columns halign="left" type="icontext" label="Right Shoulder Button" value="Right_Button" width="20" />
+            </icons_combo_box.item>
+            <icons_combo_box.item name="thumb_l" value="8">
+              <item.columns halign="left" type="icontext" label="Thumbstick Left" value="Left_Thumb_Press" width="20" />
+            </icons_combo_box.item>
+            <icons_combo_box.item name="thumb_r" value="9">
+              <item.columns halign="left" type="icontext" label="Thumbstick Right" value="Right_Thumb_Press" width="20" />
+            </icons_combo_box.item>
+          </icons_combo_box>
+          <text height="18" layout="topleft" name="JoystickButtonFlycam" width="160" left="20" top="145" halign="right">
+       Toggle Flycam
+       </text>
+          <icons_combo_box follows="left|top|right" control_name="JoystickButtonFlycam" height="18" layout="topleft" name="JoystickButtonFlycam" width="260" left="190" top="145">
+            <icons_combo_box.commit_callback function="Joystick.Refresh" />
+            <icons_combo_box.drop_down_button image_overlay="None" image_overlay_alignment="left" imgoverlay_label_space="3" pad_left="3" />
+            <icons_combo_box.item name="none" value="-1">
+              <item.columns halign="left" type="icontext" label="None" value="None" width="20" />
+            </icons_combo_box.item>
+            <icons_combo_box.item name="btn_a" value="0">
+              <item.columns halign="left" type="icontext" label="Button A" value="Button_A" width="20" />
+            </icons_combo_box.item>
+            <icons_combo_box.item name="btn_b" value="1">
+              <item.columns halign="left" type="icontext" label="Button B" value="Button_B" width="20" />
+            </icons_combo_box.item>
+            <icons_combo_box.item name="btn_y" value="3">
+              <item.columns halign="left" type="icontext" label="Button Y" value="Button_Y" width="20" />
+            </icons_combo_box.item>
+            <icons_combo_box.item name="btn_x" value="2">
+              <item.columns halign="left" type="icontext" label="Button X" value="Button_X" width="20" />
+            </icons_combo_box.item>
+            <icons_combo_box.item name="back" value="6">
+              <item.columns halign="left" type="icontext" label="Back" value="Button_Back" width="20" />
+            </icons_combo_box.item>
+            <icons_combo_box.item name="start" value="7">
+              <item.columns halign="left" type="icontext" label="Start" value="Button_Start" width="20" />
+            </icons_combo_box.item>
+            <icons_combo_box.item name="button_left" value="4">
+              <item.columns halign="left" type="icontext" label="Left Shoulder Button" value="Left_Button" width="20" />
+            </icons_combo_box.item>
+            <icons_combo_box.item name="button_right" value="5">
+              <item.columns halign="left" type="icontext" label="Right Shoulder Button" value="Right_Button" width="20" />
+            </icons_combo_box.item>
+            <icons_combo_box.item name="thumb_l" value="8">
+              <item.columns halign="left" type="icontext" label="Thumbstick Left" value="Left_Thumb_Press" width="20" />
+            </icons_combo_box.item>
+            <icons_combo_box.item name="thumb_r" value="9">
+              <item.columns halign="left" type="icontext" label="Thumbstick Right" value="Right_Thumb_Press" width="20" />
+            </icons_combo_box.item>
+          </icons_combo_box>
+          <text height="18" label_width="125" layout="topleft" name="JoystickButtonZoomOut" width="160" left="20" top="165" halign="right">
+       Zoom Out
+       </text>
+          <icons_combo_box follows="left|top|right" control_name="JoystickButtonZoomOut" height="18" layout="topleft" name="JoystickButtonZoomOut" width="260" left="190" top="165">
+            <icons_combo_box.commit_callback function="Joystick.Refresh" />
+            <icons_combo_box.drop_down_button image_overlay="None" image_overlay_alignment="left" imgoverlay_label_space="3" pad_left="3" />
+            <icons_combo_box.item name="none" value="-1">
+              <item.columns halign="left" type="icontext" label="None" value="None" width="20" />
+            </icons_combo_box.item>
+            <icons_combo_box.item name="btn_a" value="0">
+              <item.columns halign="left" type="icontext" label="Button A" value="Button_A" width="20" />
+            </icons_combo_box.item>
+            <icons_combo_box.item name="btn_b" value="1">
+              <item.columns halign="left" type="icontext" label="Button B" value="Button_B" width="20" />
+            </icons_combo_box.item>
+            <icons_combo_box.item name="btn_y" value="3">
+              <item.columns halign="left" type="icontext" label="Button Y" value="Button_Y" width="20" />
+            </icons_combo_box.item>
+            <icons_combo_box.item name="btn_x" value="2">
+              <item.columns halign="left" type="icontext" label="Button X" value="Button_X" width="20" />
+            </icons_combo_box.item>
+            <icons_combo_box.item name="back" value="6">
+              <item.columns halign="left" type="icontext" label="Back" value="Button_Back" width="20" />
+            </icons_combo_box.item>
+            <icons_combo_box.item name="start" value="7">
+              <item.columns halign="left" type="icontext" label="Start" value="Button_Start" width="20" />
+            </icons_combo_box.item>
+            <icons_combo_box.item name="button_left" value="4">
+              <item.columns halign="left" type="icontext" label="Left Shoulder Button" value="Left_Button" width="20" />
+            </icons_combo_box.item>
+            <icons_combo_box.item name="button_right" value="5">
+              <item.columns halign="left" type="icontext" label="Right Shoulder Button" value="Right_Button" width="20" />
+            </icons_combo_box.item>
+            <icons_combo_box.item name="thumb_l" value="8">
+              <item.columns halign="left" type="icontext" label="Thumbstick Left" value="Left_Thumb_Press" width="20" />
+            </icons_combo_box.item>
+            <icons_combo_box.item name="thumb_r" value="9">
+              <item.columns halign="left" type="icontext" label="Thumbstick Right" value="Right_Thumb_Press" width="20" />
+            </icons_combo_box.item>
+          </icons_combo_box>
+          <text height="18" label_width="125" layout="topleft" name="JoystickButtonZoomIn" width="160" left="20" top="185" halign="right">
+       Zoom In
+       </text>
+          <icons_combo_box follows="left|top|right" control_name="JoystickButtonZoomIn" height="18" layout="topleft" name="JoystickButtonZoomIn" width="260" left="190" top="185">
+            <icons_combo_box.commit_callback function="Joystick.Refresh" />
+            <icons_combo_box.drop_down_button image_overlay="None" image_overlay_alignment="left" imgoverlay_label_space="3" pad_left="3" />
+            <icons_combo_box.item name="none" value="-1">
+              <item.columns halign="left" type="icontext" label="None" value="None" width="20" />
+            </icons_combo_box.item>
+            <icons_combo_box.item name="btn_a" value="0">
+              <item.columns halign="left" type="icontext" label="Button A" value="Button_A" width="20" />
+            </icons_combo_box.item>
+            <icons_combo_box.item name="btn_b" value="1">
+              <item.columns halign="left" type="icontext" label="Button B" value="Button_B" width="20" />
+            </icons_combo_box.item>
+            <icons_combo_box.item name="btn_y" value="3">
+              <item.columns halign="left" type="icontext" label="Button Y" value="Button_Y" width="20" />
+            </icons_combo_box.item>
+            <icons_combo_box.item name="btn_x" value="2">
+              <item.columns halign="left" type="icontext" label="Button X" value="Button_X" width="20" />
+            </icons_combo_box.item>
+            <icons_combo_box.item name="back" value="6">
+              <item.columns halign="left" type="icontext" label="Back" value="Button_Back" width="20" />
+            </icons_combo_box.item>
+            <icons_combo_box.item name="start" value="7">
+              <item.columns halign="left" type="icontext" label="Start" value="Button_Start" width="20" />
+            </icons_combo_box.item>
+            <icons_combo_box.item name="button_left" value="4">
+              <item.columns halign="left" type="icontext" label="Left Shoulder Button" value="Left_Button" width="20" />
+            </icons_combo_box.item>
+            <icons_combo_box.item name="button_right" value="5">
+              <item.columns halign="left" type="icontext" label="Right Shoulder Button" value="Right_Button" width="20" />
+            </icons_combo_box.item>
+            <icons_combo_box.item name="thumb_l" value="8">
+              <item.columns halign="left" type="icontext" label="Thumbstick Left" value="Left_Thumb_Press" width="20" />
+            </icons_combo_box.item>
+            <icons_combo_box.item name="thumb_r" value="9">
+              <item.columns halign="left" type="icontext" label="Thumbstick Right" value="Right_Thumb_Press" width="20" />
+            </icons_combo_box.item>
+          </icons_combo_box>
+          <text height="18" label_width="125" layout="topleft" name="JoystickButtonZoomDefault" width="160" left="20" top="205" halign="right">
+       Zoom Default
+       </text>
+          <icons_combo_box follows="left|top|right" control_name="JoystickButtonZoomDefault" height="18" layout="topleft" name="JoystickButtonZoomDefault" width="260" left="190" top="205">
+            <icons_combo_box.commit_callback function="Joystick.Refresh" />
+            <icons_combo_box.drop_down_button image_overlay="None" image_overlay_alignment="left" imgoverlay_label_space="3" pad_left="3" />
+            <icons_combo_box.item name="none" value="-1">
+              <item.columns halign="left" type="icontext" label="None" value="None" width="20" />
+            </icons_combo_box.item>
+            <icons_combo_box.item name="btn_a" value="0">
+              <item.columns halign="left" type="icontext" label="Button A" value="Button_A" width="20" />
+            </icons_combo_box.item>
+            <icons_combo_box.item name="btn_b" value="1">
+              <item.columns halign="left" type="icontext" label="Button B" value="Button_B" width="20" />
+            </icons_combo_box.item>
+            <icons_combo_box.item name="btn_y" value="3">
+              <item.columns halign="left" type="icontext" label="Button Y" value="Button_Y" width="20" />
+            </icons_combo_box.item>
+            <icons_combo_box.item name="btn_x" value="2">
+              <item.columns halign="left" type="icontext" label="Button X" value="Button_X" width="20" />
+            </icons_combo_box.item>
+            <icons_combo_box.item name="back" value="6">
+              <item.columns halign="left" type="icontext" label="Back" value="Button_Back" width="20" />
+            </icons_combo_box.item>
+            <icons_combo_box.item name="start" value="7">
+              <item.columns halign="left" type="icontext" label="Start" value="Button_Start" width="20" />
+            </icons_combo_box.item>
+            <icons_combo_box.item name="button_left" value="4">
+              <item.columns halign="left" type="icontext" label="Left Shoulder Button" value="Left_Button" width="20" />
+            </icons_combo_box.item>
+            <icons_combo_box.item name="button_right" value="5">
+              <item.columns halign="left" type="icontext" label="Right Shoulder Button" value="Right_Button" width="20" />
+            </icons_combo_box.item>
+            <icons_combo_box.item name="thumb_l" value="8">
+              <item.columns halign="left" type="icontext" label="Thumbstick Left" value="Left_Thumb_Press" width="20" />
+            </icons_combo_box.item>
+            <icons_combo_box.item name="thumb_r" value="9">
+              <item.columns halign="left" type="icontext" label="Thumbstick Right" value="Right_Thumb_Press" width="20" />
+            </icons_combo_box.item>
+          </icons_combo_box>
+          <text height="18" label_width="125" layout="topleft" name="JoystickButtonRollLeft" width="160" left="20" top="225" halign="right">
+       Roll Left
+       </text>
+          <icons_combo_box follows="left|top|right" control_name="JoystickButtonRollLeft" height="18" layout="topleft" name="JoystickButtonRollLeft" width="260" left="190" top="225">
+            <icons_combo_box.commit_callback function="Joystick.Refresh" />
+            <icons_combo_box.drop_down_button image_overlay="None" image_overlay_alignment="left" imgoverlay_label_space="3" pad_left="3" />
+            <icons_combo_box.item name="none" value="-1">
+              <item.columns halign="left" type="icontext" label="None" value="None" width="20" />
+            </icons_combo_box.item>
+            <icons_combo_box.item name="btn_a" value="0">
+              <item.columns halign="left" type="icontext" label="Button A" value="Button_A" width="20" />
+            </icons_combo_box.item>
+            <icons_combo_box.item name="btn_b" value="1">
+              <item.columns halign="left" type="icontext" label="Button B" value="Button_B" width="20" />
+            </icons_combo_box.item>
+            <icons_combo_box.item name="btn_y" value="3">
+              <item.columns halign="left" type="icontext" label="Button Y" value="Button_Y" width="20" />
+            </icons_combo_box.item>
+            <icons_combo_box.item name="btn_x" value="2">
+              <item.columns halign="left" type="icontext" label="Button X" value="Button_X" width="20" />
+            </icons_combo_box.item>
+            <icons_combo_box.item name="back" value="6">
+              <item.columns halign="left" type="icontext" label="Back" value="Button_Back" width="20" />
+            </icons_combo_box.item>
+            <icons_combo_box.item name="start" value="7">
+              <item.columns halign="left" type="icontext" label="Start" value="Button_Start" width="20" />
+            </icons_combo_box.item>
+            <icons_combo_box.item name="button_left" value="4">
+              <item.columns halign="left" type="icontext" label="Left Shoulder Button" value="Left_Button" width="20" />
+            </icons_combo_box.item>
+            <icons_combo_box.item name="button_right" value="5">
+              <item.columns halign="left" type="icontext" label="Right Shoulder Button" value="Right_Button" width="20" />
+            </icons_combo_box.item>
+            <icons_combo_box.item name="thumb_l" value="8">
+              <item.columns halign="left" type="icontext" label="Thumbstick Left" value="Left_Thumb_Press" width="20" />
+            </icons_combo_box.item>
+            <icons_combo_box.item name="thumb_r" value="9">
+              <item.columns halign="left" type="icontext" label="Thumbstick Right" value="Right_Thumb_Press" width="20" />
+            </icons_combo_box.item>
+          </icons_combo_box>
+          <text height="18" label_width="125" layout="topleft" name="JoystickButtonRollRight" width="160" left="20" top="245" halign="right">
+       Roll Right
+       </text>
+          <icons_combo_box follows="left|top|right" control_name="JoystickButtonRollRight" height="18" layout="topleft" name="JoystickButtonRollRight" width="260" left="190" top="245">
+            <icons_combo_box.commit_callback function="Joystick.Refresh" />
+            <icons_combo_box.drop_down_button image_overlay="None" image_overlay_alignment="left" imgoverlay_label_space="3" pad_left="3" />
+            <icons_combo_box.item name="none" value="-1">
+              <item.columns halign="left" type="icontext" label="None" value="None" width="20" />
+            </icons_combo_box.item>
+            <icons_combo_box.item name="btn_a" value="0">
+              <item.columns halign="left" type="icontext" label="Button A" value="Button_A" width="20" />
+            </icons_combo_box.item>
+            <icons_combo_box.item name="btn_b" value="1">
+              <item.columns halign="left" type="icontext" label="Button B" value="Button_B" width="20" />
+            </icons_combo_box.item>
+            <icons_combo_box.item name="btn_y" value="3">
+              <item.columns halign="left" type="icontext" label="Button Y" value="Button_Y" width="20" />
+            </icons_combo_box.item>
+            <icons_combo_box.item name="btn_x" value="2">
+              <item.columns halign="left" type="icontext" label="Button X" value="Button_X" width="20" />
+            </icons_combo_box.item>
+            <icons_combo_box.item name="back" value="6">
+              <item.columns halign="left" type="icontext" label="Back" value="Button_Back" width="20" />
+            </icons_combo_box.item>
+            <icons_combo_box.item name="start" value="7">
+              <item.columns halign="left" type="icontext" label="Start" value="Button_Start" width="20" />
+            </icons_combo_box.item>
+            <icons_combo_box.item name="button_left" value="4">
+              <item.columns halign="left" type="icontext" label="Left Shoulder Button" value="Left_Button" width="20" />
+            </icons_combo_box.item>
+            <icons_combo_box.item name="button_right" value="5">
+              <item.columns halign="left" type="icontext" label="Right Shoulder Button" value="Right_Button" width="20" />
+            </icons_combo_box.item>
+            <icons_combo_box.item name="thumb_l" value="8">
+              <item.columns halign="left" type="icontext" label="Thumbstick Left" value="Left_Thumb_Press" width="20" />
+            </icons_combo_box.item>
+            <icons_combo_box.item name="thumb_r" value="9">
+              <item.columns halign="left" type="icontext" label="Thumbstick Right" value="Right_Thumb_Press" width="20" />
+            </icons_combo_box.item>
+          </icons_combo_box>
+          <text height="18" label_width="125" layout="topleft" name="JoystickButtonRollDefault" width="160" left="20" top="265" halign="right">
+       Roll Default
+       </text>
+          <icons_combo_box follows="left|top|right" control_name="JoystickButtonRollDefault" height="18" layout="topleft" name="JoystickButtonRollDefault" width="260" left="190" top="265">
+            <icons_combo_box.commit_callback function="Joystick.Refresh" />
+            <icons_combo_box.drop_down_button image_overlay="None" image_overlay_alignment="left" imgoverlay_label_space="3" pad_left="3" />
+            <icons_combo_box.item name="none" value="-1">
+              <item.columns halign="left" type="icontext" label="None" value="None" width="20" />
+            </icons_combo_box.item>
+            <icons_combo_box.item name="btn_a" value="0">
+              <item.columns halign="left" type="icontext" label="Button A" value="Button_A" width="20" />
+            </icons_combo_box.item>
+            <icons_combo_box.item name="btn_b" value="1">
+              <item.columns halign="left" type="icontext" label="Button B" value="Button_B" width="20" />
+            </icons_combo_box.item>
+            <icons_combo_box.item name="btn_y" value="3">
+              <item.columns halign="left" type="icontext" label="Button Y" value="Button_Y" width="20" />
+            </icons_combo_box.item>
+            <icons_combo_box.item name="btn_x" value="2">
+              <item.columns halign="left" type="icontext" label="Button X" value="Button_X" width="20" />
+            </icons_combo_box.item>
+            <icons_combo_box.item name="back" value="6">
+              <item.columns halign="left" type="icontext" label="Back" value="Button_Back" width="20" />
+            </icons_combo_box.item>
+            <icons_combo_box.item name="start" value="7">
+              <item.columns halign="left" type="icontext" label="Start" value="Button_Start" width="20" />
+            </icons_combo_box.item>
+            <icons_combo_box.item name="button_left" value="4">
+              <item.columns halign="left" type="icontext" label="Left Shoulder Button" value="Left_Button" width="20" />
+            </icons_combo_box.item>
+            <icons_combo_box.item name="button_right" value="5">
+              <item.columns halign="left" type="icontext" label="Right Shoulder Button" value="Right_Button" width="20" />
+            </icons_combo_box.item>
+            <icons_combo_box.item name="thumb_l" value="8">
+              <item.columns halign="left" type="icontext" label="Thumbstick Left" value="Left_Thumb_Press" width="20" />
+            </icons_combo_box.item>
+            <icons_combo_box.item name="thumb_r" value="9">
+              <item.columns halign="left" type="icontext" label="Thumbstick Right" value="Right_Thumb_Press" width="20" />
+            </icons_combo_box.item>
+          </icons_combo_box>
+        </panel>
+      </scroll_container>
+    </panel>
+    <panel background_visible="false" height="637" label="Xbox Pad" layout="topleft" name="joystick_xbox_tab" width="760">
+      <scroll_container follows="all" height="632" layout="topleft" left="0" name="xbox_scroll" opaque="false" reserve_scroll_corner="false" top="0" width="760">
+        <panel background_visible="false" follows="left|top|right" height="430" layout="topleft" left="0" name="xbox_scroll_content" top="0" width="740">
+          <text font="SansSerifBold" height="18" layout="topleft" left="20" name="xbox_status_title" top="15" width="300">Xbox pad status</text>
+          <check_box name="xinput_enabled" control_name="JoystickXInputEnabled" label="Xbox pad: triggers + D-pad" width="260" height="18" layout="topleft" left="20" top="42" />
+          <text name="xinput_status" width="420" height="40" font="SansSerifSmall" layout="topleft" tool_tip="D-pad Down toggles ROLL / THROTTLE. Takeover requires Xbox Defaults mapping and Cursor3D off." left="300" top="40" />
+          <text font="SansSerifBold" height="18" layout="topleft" left="20" name="xbox_trigger_title" top="95" width="300">Triggers</text>
+          <spinner name="xinput_ThrottleMin" control_name="JoystickXInputThrottleMin" label="Slow x" width="220" height="18" label_width="100" layout="topleft" min_val="0.01" max_val="1" increment="0.01" decimal_digits="2" left="20" top="120" />
+          <spinner name="xinput_ThrottleMax" control_name="JoystickXInputThrottleMax" label="Fast x" width="220" height="18" label_width="100" layout="topleft" min_val="1" max_val="20" increment="0.1" decimal_digits="2" left="260" top="120" />
+          <spinner name="xinput_TriggerDeadZone" control_name="JoystickXInputTriggerDeadZone" label="Deadzone" width="220" height="18" label_width="100" layout="topleft" min_val="0" max_val="0.5" increment="0.01" decimal_digits="2" left="20" top="140" />
+          <spinner name="xinput_TriggerCurve" control_name="JoystickXInputTriggerCurve" label="Curve" width="220" height="18" label_width="100" layout="topleft" min_val="1" max_val="4" increment="0.1" decimal_digits="2" left="260" top="140" />
+          <check_box name="xinput_shaped" control_name="JoystickXInputRollShaped" label="Shaped roll (Deadzone/Curve)" width="300" height="18" layout="topleft" left="20" top="165" />
+          <text font="SansSerifBold" height="18" layout="topleft" left="20" name="xbox_dpad_title" top="205" width="300">D-pad actions</text>
+          <text name="xinput_label_Up" width="150" height="18" layout="topleft" font="SansSerifSmall" left="20" top="230" halign="right">D-pad Up</text>
+          <combo_box name="xinput_dpad_Up" control_name="JoystickXInputDpadUp" width="360" height="18" layout="topleft" left="180" top="230">
+            <combo_box.item label="None" value="0" />
+            <combo_box.item label="Lighting cue Back" value="2" />
+            <combo_box.item label="Lighting cue Go" value="1" />
+            <combo_box.item label="Level horizon" value="3" />
+            <combo_box.item label="Flight model: Classic / Drone" value="4" />
+            <combo_box.item label="Release: Hold / Drift" value="5" />
+            <combo_box.item label="Recentre gimbal" value="6" />
+          </combo_box>
+          <text name="xinput_label_Left" width="150" height="18" layout="topleft" font="SansSerifSmall" left="20" top="250" halign="right">D-pad Left</text>
+          <combo_box name="xinput_dpad_Left" control_name="JoystickXInputDpadLeft" width="360" height="18" layout="topleft" left="180" top="250">
+            <combo_box.item label="None" value="0" />
+            <combo_box.item label="Lighting cue Back" value="2" />
+            <combo_box.item label="Lighting cue Go" value="1" />
+            <combo_box.item label="Level horizon" value="3" />
+            <combo_box.item label="Flight model: Classic / Drone" value="4" />
+            <combo_box.item label="Release: Hold / Drift" value="5" />
+            <combo_box.item label="Recentre gimbal" value="6" />
+          </combo_box>
+          <text name="xinput_label_Right" width="150" height="18" layout="topleft" font="SansSerifSmall" left="20" top="270" halign="right">D-pad Right</text>
+          <combo_box name="xinput_dpad_Right" control_name="JoystickXInputDpadRight" width="360" height="18" layout="topleft" left="180" top="270">
+            <combo_box.item label="None" value="0" />
+            <combo_box.item label="Lighting cue Back" value="2" />
+            <combo_box.item label="Lighting cue Go" value="1" />
+            <combo_box.item label="Level horizon" value="3" />
+            <combo_box.item label="Flight model: Classic / Drone" value="4" />
+            <combo_box.item label="Release: Hold / Drift" value="5" />
+            <combo_box.item label="Recentre gimbal" value="6" />
+          </combo_box>
+          <text font="SansSerifSmall" halign="right" height="18" layout="topleft" left="20" name="xinput_label_Down" top="290" width="150">D-pad Down</text>
+          <text font="SansSerifSmall" height="18" layout="topleft" left="180" name="xinput_dpad_Down_mode" top="290" width="360">Toggle trigger mode: Roll / Throttle</text>
+          <text font="SansSerifBold" height="18" layout="topleft" left="20" name="xbox_rumble_title" top="330" width="300">Rumble</text>
+          <check_box name="xinput_rumble" control_name="JoystickXInputRumble" label="Rumble" width="120" height="18" layout="topleft" left="20" top="355" />
+          <spinner name="xinput_rumble_strength" control_name="JoystickXInputRumbleStrength" label="Strength" width="220" height="18" label_width="100" layout="topleft" min_val="0" max_val="1" increment="0.05" decimal_digits="2" left="180" top="355" />
+        </panel>
+      </scroll_container>
+    </panel>
+    <panel background_visible="false" height="637" label="Drone" layout="topleft" name="joystick_drone_tab" width="760">
+      <scroll_container follows="all" height="632" layout="topleft" left="0" name="drone_scroll" opaque="false" reserve_scroll_corner="false" top="0" width="760">
+        <panel background_visible="false" follows="left|top|right" layout="topleft" left="0" name="drone_scroll_content" top="0" width="740" height="520">
+          <text font="SansSerifBold" height="18" layout="topleft" name="drone_flight_model_title" width="150" left="20" top="12" halign="right">Flight model</text>
+          <combo_box control_name="FlycamFlightModel" height="20" layout="topleft" name="FlycamFlightModel" width="150" left="180" top="10">
+            <combo_box.item label="Classic" value="0" />
+            <combo_box.item label="Drone" value="1" />
+          </combo_box>
+          <text font="SansSerifSmall" height="18" layout="topleft" name="drone_cursor_reason" visible="false" width="370" left="350" top="12">
+              Drone unavailable while 3D Cursor is on
+            </text>
+          <panel background_visible="false" enabled="false" follows="left|top|right" height="460" layout="topleft" left="0" name="drone_settings_panel" top="40" width="740">
+            <text height="18" layout="topleft" name="drone_preset_label" width="140" left="20" top="5" halign="right">Preset</text>
+            <combo_box control_name="FlycamDronePreset" height="20" layout="topleft" name="FlycamDronePreset" width="180" left="170" top="3">
+              <combo_box.item label="Cine" value="0" />
+              <combo_box.item label="Normal" value="1" />
+              <combo_box.item label="Sport" value="2" />
+              <combo_box.item label="Dolly" value="3" />
+              <combo_box.item label="FPV" value="4" />
+              <combo_box.item label="Custom" value="5" />
+            </combo_box>
+            <button height="20" label="Reset Drone" layout="topleft" name="reset_drone" tool_tip="Restore the Normal Drone preset values." width="120" left="370" top="3" />
+            <text height="18" layout="topleft" name="drone_release_label" width="140" left="20" top="35" halign="right">Release</text>
+            <combo_box control_name="FlycamDroneRelease" height="20" layout="topleft" name="FlycamDroneRelease" width="180" left="170" top="33">
+              <combo_box.item label="Hold" value="0" />
+              <combo_box.item label="Drift" value="1" />
+            </combo_box>
+            <text height="18" layout="topleft" name="drone_throttle_label" width="140" left="385" top="35" halign="right">Throttle</text>
+            <combo_box control_name="FlycamDroneThrottleMode" height="20" layout="topleft" name="FlycamDroneThrottleMode" width="180" left="535" top="33">
+              <combo_box.item label="Assist" value="0" />
+              <combo_box.item label="Pure" value="1" />
+            </combo_box>
+            <text height="18" layout="topleft" name="drone_resume_label" width="140" left="20" top="55" halign="right">Resume</text>
+            <combo_box control_name="FlycamDroneResumeMomentum" height="20" layout="topleft" name="FlycamDroneResumeMomentum" tool_tip="After alt-tab or when another camera hands back: Stop = start still; Keep = carry on at the camera's last on-screen speed" width="180" left="170" top="53">
+              <combo_box.item label="Stop" value="0" />
+              <combo_box.item label="Keep" value="1" />
+            </combo_box>
+            <check_box control_name="FlycamDroneFreeFly" height="18" label="Free-fly (full 3-D frame)" layout="topleft" name="FlycamDroneFreeFly" width="330" left="385" top="55" />
+            <text font="SansSerifBold" height="18" layout="topleft" name="drone_tuning_title" width="300" left="20" top="90">Flight tuning</text>
+            <text font="SansSerifSmall" height="18" layout="topleft" name="drone_tuning_note" width="340" left="385" top="90">Times are mass-stage values (+ onset).</text>
+            <slider can_edit_text="true" control_name="FlycamDroneCruise" decimal_digits="1" height="18" increment="0.1" label="Cruise (m/s)" label_width="150" layout="topleft" max_val="200" min_val="0.001" name="FlycamDroneCruise" show_text="true" width="340" left="20" top="115" />
+            <slider can_edit_text="true" control_name="FlycamDroneTop" decimal_digits="1" height="18" increment="0.1" label="Top speed (m/s)" label_width="150" layout="topleft" max_val="200" min_val="0.001" name="FlycamDroneTop" show_text="true" width="340" left="385" top="115" />
+            <slider can_edit_text="true" control_name="FlycamDroneTimeToTop" decimal_digits="2" height="18" increment="0.05" label="Time to top (+ onset)" label_width="150" layout="topleft" max_val="60" min_val="0.0167" name="FlycamDroneTimeToTop" show_text="true" width="340" left="20" top="135" />
+            <slider can_edit_text="true" control_name="FlycamDroneStopDistance" decimal_digits="1" height="18" increment="0.1" label="Stop distance (m)" label_width="150" layout="topleft" max_val="10000" min_val="0.001" name="FlycamDroneStopDistance" show_text="true" width="340" left="385" top="135" />
+            <slider can_edit_text="true" control_name="FlycamDroneHoldTime" decimal_digits="2" height="18" increment="0.05" label="Hold stop (+ onset)" label_width="150" layout="topleft" max_val="60" min_val="0.0167" name="FlycamDroneHoldTime" show_text="true" width="340" left="20" top="155" />
+            <slider can_edit_text="true" control_name="FlycamDroneCoastTime" decimal_digits="2" height="18" increment="0.05" label="Coast time (+ onset)" label_width="150" layout="topleft" max_val="60" min_val="0.0167" name="FlycamDroneCoastTime" show_text="true" width="340" left="385" top="155" />
+            <slider can_edit_text="true" control_name="FlycamDroneHighSpeedFloat" decimal_digits="2" height="18" increment="0.01" label="High-speed float" label_width="150" layout="topleft" max_val="1" min_val="0" name="FlycamDroneHighSpeedFloat" show_text="true" width="340" left="20" top="175" />
+            <slider can_edit_text="true" control_name="FlycamDroneOnset" decimal_digits="2" height="18" increment="0.01" label="Onset softness (s)" label_width="150" layout="topleft" max_val="2" min_val="0.0167" name="FlycamDroneOnset" show_text="true" width="340" left="385" top="175" />
+            <slider can_edit_text="true" control_name="FlycamDroneGrip" decimal_digits="2" height="18" increment="0.01" label="Grip" label_width="150" layout="topleft" max_val="1" min_val="0.05" name="FlycamDroneGrip" show_text="true" width="340" left="20" top="195" />
+            <slider can_edit_text="true" control_name="FlycamDroneTurnRate" decimal_digits="0" height="18" increment="1" label="Turn rate (deg/s)" label_width="150" layout="topleft" max_val="720" min_val="0.001" name="FlycamDroneTurnRate" show_text="true" width="340" left="385" top="195" />
+            <slider can_edit_text="true" control_name="FlycamDroneTurnWeight" decimal_digits="2" height="18" increment="0.01" label="Turn weight" label_width="150" layout="topleft" max_val="1" min_val="0" name="FlycamDroneTurnWeight" show_text="true" width="340" left="20" top="215" />
+            <slider can_edit_text="true" control_name="FlycamDroneTiltRate" decimal_digits="0" height="18" increment="1" label="Tilt rate (deg/s)" label_width="150" layout="topleft" max_val="720" min_val="0.001" name="FlycamDroneTiltRate" show_text="true" width="340" left="385" top="215" />
+            <slider can_edit_text="true" control_name="FlycamDroneClimb" decimal_digits="1" height="18" increment="0.1" label="Climb speed (m/s)" label_width="150" layout="topleft" max_val="200" min_val="0" name="FlycamDroneClimb" show_text="true" width="340" left="20" top="235" />
+            <slider can_edit_text="true" control_name="FlycamDroneClimbTime" decimal_digits="2" height="18" increment="0.05" label="Climb time (+ onset)" label_width="150" layout="topleft" max_val="60" min_val="0.0167" name="FlycamDroneClimbTime" show_text="true" width="340" left="385" top="235" />
+            <text font="SansSerifBold" height="18" layout="topleft" name="drone_advanced_title" width="350" left="20" top="270">Advanced input shaping</text>
+            <slider can_edit_text="true" control_name="FlycamDroneMoveDeadzone" decimal_digits="2" height="18" increment="0.01" label="Move dead zone" label_width="150" layout="topleft" max_val="0.5" min_val="0" name="FlycamDroneMoveDeadzone" show_text="true" width="340" left="20" top="295" />
+            <slider can_edit_text="true" control_name="FlycamDroneLookDeadzone" decimal_digits="2" height="18" increment="0.01" label="Look dead zone" label_width="150" layout="topleft" max_val="0.5" min_val="0" name="FlycamDroneLookDeadzone" show_text="true" width="340" left="385" top="295" />
+            <slider can_edit_text="true" control_name="FlycamDroneSaturation" decimal_digits="2" height="18" increment="0.01" label="Saturation" label_width="150" layout="topleft" max_val="0.5" min_val="0" name="FlycamDroneSaturation" show_text="true" width="340" left="20" top="315" />
+            <slider can_edit_text="true" control_name="FlycamDroneExpoMove" decimal_digits="2" height="18" increment="0.01" label="Move expo" label_width="150" layout="topleft" max_val="1" min_val="0" name="FlycamDroneExpoMove" show_text="true" width="340" left="385" top="315" />
+            <slider can_edit_text="true" control_name="FlycamDroneExpoYaw" decimal_digits="2" height="18" increment="0.01" label="Yaw expo" label_width="150" layout="topleft" max_val="1" min_val="0" name="FlycamDroneExpoYaw" show_text="true" width="340" left="20" top="335" />
+            <slider can_edit_text="true" control_name="FlycamDroneExpoGimbal" decimal_digits="2" height="18" increment="0.01" label="Gimbal expo" label_width="150" layout="topleft" max_val="1" min_val="0" name="FlycamDroneExpoGimbal" show_text="true" width="340" left="385" top="335" />
+            <slider can_edit_text="true" control_name="FlycamDroneSimulationHz" decimal_digits="0" height="18" increment="1" label="Simulation (Hz)" label_width="150" layout="topleft" max_val="240" min_val="30" name="FlycamDroneSimulationHz" show_text="true" width="340" left="20" top="355" />
+            <check_box control_name="FlycamDroneInvertLook" height="18" label="Invert look up/down" layout="topleft" left="385" name="FlycamDroneInvertLook" top="355" tool_tip="Flip the look stick's vertical axis for the Drone flight model." width="340" />
+            <text font="SansSerifSmall" height="18" layout="topleft" name="drone_compiled_limits" width="340" left="385" top="375">L_tot --   J_eff --</text>
+            <text font="SansSerifSmall" height="36" layout="topleft" name="drone_trigger_note" width="705" wrap="true" left="20" top="395">
+                Trigger mode is shown on the General tab. Non-XInput pads use Drone sticks in Assist cruise with no brake; their mapped triggers keep the existing DirectInput behavior.
+              </text>
+            <text font="SansSerifSmall" height="20" layout="topleft" name="drone_validation_reason" text_color="LtOrange" visible="false" width="705" wrap="true" left="20" top="435" />
+          </panel>
+        </panel>
+      </scroll_container>
+    </panel>
+  </tab_container>
+  <button follows="right|bottom" height="20" label="OK" label_selected="OK" layout="topleft" name="ok_btn" width="98" left="548" top="690" />
+  <button follows="right|bottom" height="20" label="Cancel" label_selected="Cancel" layout="topleft" name="cancel_btn" width="98" left="654" top="690" />
+</floater>
+

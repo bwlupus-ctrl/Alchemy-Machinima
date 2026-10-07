@@ -173,6 +173,7 @@ struct FlycamDroneSettings
     LLCachedControl<F32> expoMove{gSavedSettings, "FlycamDroneExpoMove", .35f};
     LLCachedControl<F32> expoYaw{gSavedSettings, "FlycamDroneExpoYaw", .45f};
     LLCachedControl<F32> expoGimbal{gSavedSettings, "FlycamDroneExpoGimbal", .45f};
+    LLCachedControl<bool> invertLook{gSavedSettings, "FlycamDroneInvertLook", false}; // user preference, not preset tuning
     LLCachedControl<S32> resumeMomentum{gSavedSettings, "FlycamDroneResumeMomentum", 0};
     LLCachedControl<F32> triggerDeadzone{gSavedSettings, "JoystickXInputTriggerDeadZone", .06f};
     LLCachedControl<F32> triggerCurve{gSavedSettings, "JoystickXInputTriggerCurve", 2.f};
@@ -2472,7 +2473,7 @@ void LLViewerJoystick::moveFlycam(bool reset)
         shapeRadial(yaw, tilt, droneSettings().lookDeadzone,
                     droneSettings().saturation, 0.f);
         input.yaw = yaw;
-        input.tilt = tilt;
+        input.tilt = droneSettings().invertLook ? -tilt : tilt;
         input.vertical = llclamp(raw[Z_AXIS] +
             (F32)getJoystickButton(mMappedButtons[JUMP]) -
             (F32)getJoystickButton(mMappedButtons[CROUCH]), -1.f, 1.f);

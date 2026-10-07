@@ -177,6 +177,15 @@ Helpers: `indra/newview/aluirefresh.h`.
    (`ALScrollFit::WheelGuard` is retired). A slider that must not take the wheel (a scrubber) says
    `wheel_adjust="false"`. Wheel commits of a slider with a mouse-up finaliser are PREVIEW-ONLY; the
    wheel settle / close flush is the sole final commit, so no caller may finalise per notch.
+10. **XUI fit gate.** `xui_layout_check.py` rejects overlaps, clipping, undersized text, legacy
+    `bottom=`, unscrollable panel overflow, undersized scroll documents, and scrollers not wired to
+    `ALScrollFit`. Overlap checks exclude mutually exclusive tab pages, XML-hidden or code-toggled
+    alternates, composite-control metadata, and painted decoration inside its host; those widgets
+    are still checked individually for clipping and text width. Intentional layering not covered by
+    those structural rules may use `xui-check: allow-overlap`. Run `--selftest` for the broken/current
+    joystick regression fixtures. `prebuild_guard` runs it as `--changed <last-built-commit>` and
+    refuses findings. `UIFitDiagnostics` also warns once on each floater's first open for runtime
+    overflow or a scroll document that was not fitted.
 
 ## ⛔ MANDATORY WORKING AGREEMENT — CONSULT CODEX (user directive, 2026-07-21)
 

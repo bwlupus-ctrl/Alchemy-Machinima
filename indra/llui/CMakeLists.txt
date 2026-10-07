@@ -92,6 +92,7 @@ target_sources(llui
     lltoolbar.cpp
     lltooltip.cpp
     llui.cpp
+    lluifitdiag.cpp
     lluicolor.cpp
     lluicolortable.cpp
     lluictrl.cpp
@@ -221,6 +222,7 @@ target_sources(llui
     lluictrl.h
     lluifwd.h
     llui.h
+    lluifitdiag.h
     lluicolor.h
     lluistring.h
     llundo.h

@@ -59,6 +59,7 @@
 #include "llhelp.h"
 #include "llmultifloater.h"
 #include "llsliderwheel.h" // [SliderWheel]
+#include "lluifitdiag.h" // [UIFit]
 #include "llsdutil.h"
 
 // use this to control "jumping" behavior when Ctrl-Tabbing
@@ -299,6 +300,7 @@ LLFloater::LLFloater(const LLSD& key, const LLFloater::Params& p)
 // [/SL:KB]
     mForeground(false),
     mFirstLook(true),
+    mUIFitDiagnosed(false),
     mButtonScale(1.0f),
     mAutoFocus(true), // automatically take focus when opened
     mCanDock(false),
@@ -762,6 +764,12 @@ void LLFloater::openFloater(const LLSD& key)
 
     mOpenSignal(this, key);
     onOpen(key);
+
+    if (!mUIFitDiagnosed)
+    {
+        mUIFitDiagnosed = true;
+        LLUIFitDiag::diagnoseFloater(this);
+    }
 
     dirtyRect();
 }

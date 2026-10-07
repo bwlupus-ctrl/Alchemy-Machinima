@@ -554,6 +554,7 @@ private:
 
 
     bool            mFirstLook;         // true if the _next_ time this floater is visible will be the first time in the session that it is visible.
+    bool            mUIFitDiagnosed;    // [UIFit] one view-tree diagnostic pass per instance
 
     typedef std::set<LLHandle<LLFloater> > handle_set_t;
     typedef std::set<LLHandle<LLFloater> >::iterator handle_set_iter_t;
@@ -690,6 +691,5 @@ private:
 extern LLFloaterView* gFloaterView;
 
 #endif  // LL_FLOATER_H
-
 
 

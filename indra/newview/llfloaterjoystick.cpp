@@ -403,7 +403,8 @@ void LLFloaterJoystick::initFromSettings()
         "FlycamDroneRelease", "FlycamDroneThrottleMode", "FlycamDroneFreeFly",
         "FlycamDroneSimulationHz", "FlycamDroneMoveDeadzone", "FlycamDroneLookDeadzone",
         "FlycamDroneSaturation", "FlycamDroneExpoMove", "FlycamDroneExpoYaw",
-        "FlycamDroneExpoGimbal", "FlycamDroneResumeMomentum"
+        "FlycamDroneExpoGimbal", "FlycamDroneResumeMomentum",
+        "FlycamDroneInvertLook" // snapshot/restore on Cancel only; deliberately NOT a tuning->Custom control
     };
     for (const char* name : drone_controls)
     {
