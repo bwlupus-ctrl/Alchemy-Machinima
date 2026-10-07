@@ -23301,11 +23301,26 @@ static void uploadSilhouetteFrame(LLGLSLShader& shader)
     shader.uniform1i(alr_sil_active, static_cast<S32>(mask));
 }
 
+// Deferred-lighting diagnostic is a runtime uniform: changing it neither
+// changes a permutation nor reloads shaders.  Missing uniforms are harmless.
+static U32 debugLightingTerm()
+{
+    static LLCachedControl<U32> mode(gSavedSettings, "RenderDebugLightingTerm", 0);
+    return llmin(mode(), 7U);
+}
+
+static void uploadDebugLightingTerm(LLGLSLShader& shader)
+{
+    shader.uniform1i(LLShaderMgr::RENDER_DEBUG_LIGHTING_TERM,
+                     static_cast<S32>(debugLightingTerm()));
+}
+
 void LLPipeline::bindDeferredShaderFast(LLGLSLShader& shader)
 {
     if (shader.mCanBindFast)
     { // was previously fully bound, use fast path
         shader.bind();
+        uploadDebugLightingTerm(shader);
         // [TronT1] Cheap (one or two uniform4f) per-frame refresh of the Rig
         // Rim Tron tint's CPU pulse multiplier for a program that stays
         // fast-bound across many frames -- see ALCineRigRim::bindAnimated's
@@ -23369,6 +23384,7 @@ void LLPipeline::bindDeferredShader(LLGLSLShader& shader, LLRenderTarget* light_
     LLRenderTarget* deferred_light_target = &mRT->deferredLight;
 
     shader.bind();
+    uploadDebugLightingTerm(shader);
     uploadSilhouetteFrame(shader);
     S32 channel = 0;
     channel = shader.enableTexture(LLShaderMgr::DEFERRED_DIFFUSE, deferred_target->getUsage());
@@ -24995,7 +25011,8 @@ void LLPipeline::renderDeferredLighting(ActorMaskViewSource source)
         tc_moon = mat * tc_moon;
         mTransformedMoonDir.set(tc_moon);
 
-        if ((RenderDeferredSSAO && !gCubeSnapshot) || RenderShadowDetail > 0)
+        if ((RenderDeferredSSAO && !gCubeSnapshot) || RenderShadowDetail > 0 ||
+            debugLightingTerm() != 0)
         {
             LL_PROFILE_GPU_ZONE("sun program");
             bindPrismLensTarget(*deferred_light_target);
@@ -25026,7 +25043,10 @@ void LLPipeline::renderDeferredLighting(ActorMaskViewSource source)
             deferred_light_target->flush();
         }
 
-        if (RenderDeferredSSAO && !gCubeSnapshot)
+        // Cascade colours and raw R/G are producer diagnostics; preserve the
+        // sun pass exactly instead of running the normal two-pass light blur.
+        if (RenderDeferredSSAO && !gCubeSnapshot &&
+            debugLightingTerm() != 2 && debugLightingTerm() != 7)
         {
             // soften direct lighting lightmap
             LL_PROFILE_ZONE_NAMED_CATEGORY_PIPELINE("renderDeferredLighting - soften shadow");
@@ -25225,7 +25245,7 @@ void LLPipeline::renderDeferredLighting(ActorMaskViewSource source)
             LLReShadeBridge::instance().noteSurfaceCoverageSeeded();
         }
 
-        if (RenderDeferredAtmospheric)
+        if (RenderDeferredAtmospheric || debugLightingTerm() != 0)
         {  // apply sunlight contribution
             LLGLSLShader &soften_shader = gDeferredSoftenProgram;
 
@@ -25282,7 +25302,9 @@ void LLPipeline::renderDeferredLighting(ActorMaskViewSource source)
                     .getCinematicLiveProbePinnedLightCount())
                 : 0);
 
-        if (effective_local_light_count > 0 &&
+        // The diagnostic replaces opaque lighting; do not add punctual lights
+        // over its display-space result after the soften pass.
+        if (debugLightingTerm() == 0 && effective_local_light_count > 0 &&
             (!gCubeSnapshot || probe_level > 0))
         {
             static std::vector<LLVector4>        fullscreen_lights;

@@ -30,6 +30,7 @@ out vec4 frag_color;
 
 // Inputs
 in vec2 vary_fragcoord;
+uniform int render_debug_lighting_term;
 
 vec4 getPosition(vec2 pos_screen);
 vec4 getNorm(vec2 pos_screen);
@@ -37,12 +38,28 @@ vec4 getNorm(vec2 pos_screen);
 float sampleDirectionalShadow(vec3 shadow_pos, vec3 norm, vec2 pos_screen);
 float sampleSpotShadow(vec3 shadow_pos, vec3 norm, int index, vec2 pos_screen);
 float calcAmbientOcclusion(vec4 pos, vec3 norm, vec2 pos_screen);
+int directionalShadowCascade(vec3 pos, vec3 norm);
+
+vec3 cascadeDebugColor(int cascade)
+{
+    if (cascade == 0) return vec3(1.0, 0.0, 0.0);
+    if (cascade == 1) return vec3(0.0, 1.0, 0.0);
+    if (cascade == 2) return vec3(0.0, 0.0, 1.0);
+    if (cascade == 3) return vec3(1.0, 1.0, 0.0);
+    return vec3(1.0, 0.0, 1.0);
+}
 
 void main()
 {
     vec2 pos_screen = vary_fragcoord.xy;
     vec4 pos  = getPosition(pos_screen);
     vec4 norm = getNorm(pos_screen);
+
+    if (render_debug_lighting_term == 2)
+    {
+        frag_color = vec4(cascadeDebugColor(directionalShadowCascade(pos.xyz, norm.xyz)), 1.0);
+        return;
+    }
 
     vec4 col;
     col.r = sampleDirectionalShadow(pos.xyz, norm.xyz, pos_screen);

@@ -2151,6 +2151,7 @@ void LLShaderMgr::initAttribsAndUniforms()
     mReservedUniforms.push_back("shadow_reuse_valid");
     mReservedUniforms.push_back("shadow_reuse_res");
     mReservedUniforms.push_back("shadow_reuse_res_h");
+    mReservedUniforms.push_back("render_debug_lighting_term");
 
     llassert(mReservedUniforms.size() == END_RESERVED_UNIFORMS);
 

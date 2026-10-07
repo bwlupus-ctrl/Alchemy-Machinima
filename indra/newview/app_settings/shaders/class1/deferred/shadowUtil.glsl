@@ -900,6 +900,122 @@ float sampleDirectionalShadow(vec3 pos, vec3 norm, vec2 pos_screen)
 #endif
 }
 
+// Return the dominant cascade selected by the same split coordinates and
+// blend weights as sampleDirectionalShadow.  -1 is outside/no sun cascade.
+// Probe-reuse mode selects the first valid projected band, matching its sampler.
+int directionalShadowCascade(vec3 pos, vec3 norm)
+{
+#if defined(SUN_SHADOW)
+    if (shadow_probe_mode == 2) return -1;
+
+    vec3 L = normalize((sun_up_factor == 1) ? sun_dir : moon_dir);
+    float nl = clamp(dot(norm, L), 0.0, 1.0);
+    float sin_a = sqrt(max(1.0 - nl * nl, 0.0));
+
+    if (shadow_probe_mode == 1)
+    {
+        for (int i = 0; i < 4; ++i)
+        {
+            if (shadow_reuse_valid[i] < 0.5) continue;
+            bool units = sunUnitsCascade(i) || (i == 0 && shadow_subject.x > 0.5);
+            mat4 smat = shadow_reuse_matrix[i];
+            vec4 coef = shadow_cascade_coef[i];
+            vec2 res = vec2(shadow_reuse_res[i], shadow_reuse_res_h[i]);
+            vec4 lp;
+            if (units)
+            {
+                vec4 lp0 = smat * vec4(pos, 1.0);
+                if (lp0.w <= 1e-4) continue;
+                vec2 tm = coef.w > 0.5 ? vec2(coef.y * lp0.w, coef.z * lp0.w * lp0.w) : coef.yz;
+                lp = smat * vec4(pos + norm * (shadow_offset_texels * max(tm.x, tm.y) * sin_a), 1.0);
+            }
+            else
+            {
+                vec3 p = pos + L * (1.0 - nl) * shadow_offset * 2.0;
+                lp = smat * vec4(p, 1.0);
+            }
+            if (lp.w <= 1e-4) continue;
+            vec3 st = lp.xyz / lp.w;
+            bool soft = soft_shadow_enable != 0 && soft_shadow_sun != 0;
+            float cap = max(soft_shadow_max, 1.0);
+            vec2 pad_tex = soft ? (soft_shadow_vogel != 0 ? vec2(cap + 0.5)
+                                   : vec2(1.45 * cap + 0.5, 0.95 * cap + 0.5))
+                                : (units ? vec2(2.0) : vec2(3.0, 2.0));
+            vec2 pad = pad_tex / res;
+            if (all(greaterThanEqual(st.xy, pad)) &&
+                all(lessThanEqual(st.xy, vec2(1.0) - pad)) &&
+                st.z >= 0.0 && st.z <= 1.0) return i;
+        }
+        return -1;
+    }
+
+    bool units123 = shadow_units_mode != 0 && shadow_units_scope == 0;
+    vec3 legacy_pos = pos + L * (1.0 - nl) * shadow_offset * 2.0;
+    float z123 = units123 ? pos.z : legacy_pos.z;
+    float z0 = shadow_units_mode != 0 ? pos.z : legacy_pos.z;
+    if (z123 <= -shadow_clip.w) return -1;
+
+    vec4 near_split = shadow_clip * -(1.0 - shadow_split_blend);
+    vec4 far_split  = shadow_clip * -(1.0 + shadow_split_blend);
+    vec4 domain = near_split - far_split;
+    float best = 0.0;
+    int cascade = -1;
+    if (z123 < near_split.z)
+    {
+        float w = 1.0 - max(z123 - far_split.z, 0.0) / domain.z;
+        if (w > best) { best = w; cascade = 3; }
+    }
+    if (z123 < near_split.y && z123 > far_split.z)
+    {
+        float w = 1.0 - max(z123 - far_split.y, 0.0) / domain.y
+                      - max(near_split.z - z123, 0.0) / domain.z;
+        if (w > best) { best = w; cascade = 2; }
+    }
+    if (shadow_subject.x > 0.5)
+    {
+        if (z123 > far_split.y)
+        {
+            float w = 1.0 - max(near_split.y - z123, 0.0) / domain.y;
+            if (w > best) { best = w; cascade = 1; }
+        }
+    }
+    else
+    {
+        if (z0 < near_split.x && z123 > far_split.y)
+        {
+            float w = 1.0 - max(z0 - far_split.x, 0.0) / domain.x
+                          - max(near_split.y - z123, 0.0) / domain.y;
+            if (w > best) { best = w; cascade = 1; }
+        }
+        if (z0 > far_split.x)
+        {
+            float w = 1.0 - max(near_split.x - z0, 0.0) / domain.x;
+            if (w > best) { cascade = 0; }
+        }
+    }
+    if (shadow_subject.x > 0.5)
+    {
+        vec4 c0 = shadow_cascade_coef[0];
+        vec2 res0 = vec2(shadow_res_cascade.x, shadow_res_cascade_h.x);
+        float tm0 = max(c0.y, c0.z);
+        vec4 lp = shadow_subject_matrix * vec4(pos + norm * (shadow_offset_texels * tm0 * sin_a), 1.0);
+        bool soft = soft_shadow_enable != 0 && soft_shadow_sun != 0;
+        float cap = max(soft_shadow_max, 1.0);
+        vec2 pad_tex = soft ? (soft_shadow_vogel != 0 ? vec2(cap + 0.5)
+                               : vec2(cap * 1.45 + 0.5, cap * 0.95 + 0.5))
+                            : vec2(2.0);
+        vec2 edge = min(lp.xy, 1.0 - lp.xy) - pad_tex / res0;
+        float wxy = smoothstep(0.0, max(shadow_subject.y, 1e-3), min(edge.x, edge.y));
+        float fz = max(shadow_subject.z, 1e-3);
+        float wz = (1.0 - smoothstep(1.0 - fz, 1.0, lp.z)) * step(-0.02, lp.z);
+        if (wxy * wz > 0.5) return 0;
+    }
+    return cascade;
+#else
+    return -1;
+#endif
+}
+
 float sampleSpotShadow(vec3 pos, vec3 norm, int index, vec2 pos_screen)
 {
 #if defined(SPOT_SHADOW)

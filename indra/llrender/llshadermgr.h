@@ -924,6 +924,7 @@ public:
         SHADOW_REUSE_VALID,
         SHADOW_REUSE_RES,
         SHADOW_REUSE_RES_H,
+        RENDER_DEBUG_LIGHTING_TERM,         //  "render_debug_lighting_term" int: deferred opaque lighting diagnostic
         END_RESERVED_UNIFORMS
     } eGLSLReservedUniforms;
     // clang-format on

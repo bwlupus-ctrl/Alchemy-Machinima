@@ -31,9 +31,7 @@ out vec4 frag_color;
 
 const float M_PI = 3.14159265;
 
-#if defined(HAS_SUN_SHADOW) || defined(HAS_SSAO)
 uniform sampler2D lightMap;
-#endif
 
 uniform sampler2D     lightFunc;
 
@@ -54,6 +52,7 @@ uniform vec3 moon_dir;
 uniform int  sun_up_factor;
 uniform int classic_mode;
 uniform int alr_sil_active; // [AvatarSilhouette] frame mask (each compilation unit must declare it)
+uniform int render_debug_lighting_term;
 
 in vec2 vary_fragcoord;
 
@@ -152,6 +151,9 @@ void adjustIrradiance(inout vec3 irradiance, float ambocc)
 
 void main()
 {
+    // This is the only uniform comparison paid by mode 0.  All diagnostic
+    // evaluation and the output override stay behind the resulting boolean.
+    bool debug_lighting = render_debug_lighting_term != 0;
     vec2  tc           = vary_fragcoord.xy;
     float depth        = getDepth(tc.xy);
     vec4  pos          = getPositionWithDepth(tc, depth);
@@ -175,8 +177,13 @@ void main()
     vec4 baseColor     = gb.albedo;
     vec4 spec        = gb.specular; // NOTE: PBR linear Emissive
 
+    vec2 scol_ambocc = vec2(1.0);
 #if defined(HAS_SUN_SHADOW) || defined(HAS_SSAO)
-    vec2 scol_ambocc = texture(lightMap, vary_fragcoord.xy).rg;
+    scol_ambocc = texture(lightMap, vary_fragcoord.xy).rg;
+#else
+    // Keep mode 0 free of a new texture read while allowing diagnostics to be
+    // enabled at runtime even if shadows and SSAO were off at shader load.
+    if (debug_lighting) scol_ambocc = texture(lightMap, vary_fragcoord.xy).rg;
 #endif
 
 #if defined(HAS_SUN_SHADOW)
@@ -189,8 +196,12 @@ void main()
 #else
     float ambocc = 1.0;
 #endif
+    float debug_scol = max(scol_ambocc.r, baseColor.a);
 
     vec3  color = vec3(0);
+    vec3  debug_ambient = vec3(0.0);
+    vec3  debug_direct = vec3(0.0);
+    vec3  debug_specular = vec3(0.0);
     float bloom = 0.0;
 
     vec3 sunlit;
@@ -231,6 +242,16 @@ void main()
 
         vec3 v = -normalize(pos.xyz);
         color = pbrBaseLightKeep(diffuseColor, specularColor, metallic, v, gb.normal, perceptualRoughness, light_dir, sunlit_linear, scol, radiance, irradiance, alr_sil ? vec3(0.0) : colorEmissive, ao, additive, atten, 1.0 - gb.envIntensity); // [AvatarLightResponse] Tame carrier
+
+        if (debug_lighting)
+        {
+            if (render_debug_lighting_term == 3)
+                debug_ambient = pbrBaseLightKeep(diffuseColor, specularColor, metallic, v, gb.normal, perceptualRoughness, light_dir, vec3(0.0), 0.0, vec3(0.0), irradiance, vec3(0.0), ao, vec3(0.0), vec3(1.0), 1.0 - gb.envIntensity);
+            else if (render_debug_lighting_term == 4)
+                debug_direct = pbrBaseLightKeep(diffuseColor, specularColor, metallic, v, gb.normal, perceptualRoughness, light_dir, sunlit_linear, scol, vec3(0.0), vec3(0.0), vec3(0.0), ao, vec3(0.0), vec3(1.0), 1.0 - gb.envIntensity);
+            else if (render_debug_lighting_term == 6)
+                debug_specular = pbrBaseLightKeep(diffuseColor, specularColor, metallic, v, gb.normal, perceptualRoughness, light_dir, vec3(0.0), 0.0, radiance, vec3(0.0), vec3(0.0), ao, vec3(0.0), vec3(1.0), 1.0 - gb.envIntensity);
+        }
     }
     else if (GET_GBUFFER_FLAG(gb.gbufferFlag, GBUFFER_FLAG_HAS_HDRI))
     {
@@ -267,6 +288,8 @@ void main()
 
         // apply lambertian IBL only (see pbrIbl)
         color.rgb = irradiance;
+        if (debug_lighting) debug_ambient = irradiance * baseColor.rgb;
+        vec3 ambient_for_direct = irradiance;
 
         if (classic_mode > 0)
         {
@@ -274,6 +297,7 @@ void main()
             vec3 sun_contrib = vec3(min(da, scol));
 
             color.rgb = srgb_to_linear(color.rgb * 0.9 + (linear_to_srgb(sun_contrib) * sunlit_linear * 0.7));
+            ambient_for_direct = srgb_to_linear(irradiance * 0.9);
             sunlit_linear = srgb_to_linear(sunlit_linear);
         }
         else
@@ -282,7 +306,10 @@ void main()
             color.rgb += sun_contrib;
         }
 
+        if (debug_lighting) debug_direct = (color.rgb - ambient_for_direct) * baseColor.rgb;
+
         color.rgb *= baseColor.rgb;
+        vec3 before_direct_spec = color.rgb;
 
         vec3 refnormpersp = reflect(pos.xyz, gb.normal);
 
@@ -307,8 +334,12 @@ void main()
                 color.rgb += lit*scol*sunlit_linear.rgb*spec.rgb;
             }
 
+            if (debug_lighting) debug_direct += color.rgb - before_direct_spec;
+
             // add radiance map
+            vec3 before_reflection = color.rgb;
             applyGlossEnv(color, glossenv, spec, pos.xyz, gb.normal);
+            if (debug_lighting) debug_specular += color.rgb - before_reflection;
 
         }
 
@@ -316,7 +347,9 @@ void main()
 
         if (envIntensity > 0.0)
         {  // add environment map
+            vec3 before_reflection = color.rgb;
             applyLegacyEnv(color, legacyenv, spec, pos.xyz, gb.normal, envIntensity);
+            if (debug_lighting) debug_specular += color.rgb - before_reflection;
         }
    }
 
@@ -334,5 +367,17 @@ void main()
         frag_color.rgb = vec3(0.0, 1.0, 1.0) * (0.25 + 0.75 * (1.0 - alr_k));
     }
 #endif
+    if (debug_lighting)
+    {
+        vec3 debug_color = vec3(1.0, 0.0, 1.0);
+        if (render_debug_lighting_term == 1) debug_color = vec3(debug_scol);
+        else if (render_debug_lighting_term == 2) debug_color = texture(lightMap, tc).rgb;
+        else if (render_debug_lighting_term == 7) debug_color = vec3(scol_ambocc, 0.0);
+        else if (render_debug_lighting_term == 3) debug_color = linear_to_srgb(clamp(debug_ambient, vec3(0.0), vec3(1.0)));
+        else if (render_debug_lighting_term == 4) debug_color = linear_to_srgb(clamp(debug_direct, vec3(0.0), vec3(1.0)));
+        else if (render_debug_lighting_term == 5) debug_color = vec3(ambocc);
+        else if (render_debug_lighting_term == 6) debug_color = linear_to_srgb(clamp(debug_specular, vec3(0.0), vec3(1.0)));
+        frag_color.rgb = debug_color; // display-space diagnostic; factors remain numerically exact
+    }
     frag_color.a = 0.0;
 }

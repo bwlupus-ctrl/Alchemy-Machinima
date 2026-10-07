@@ -18582,6 +18582,17 @@
       <key>Value</key>
       <real>0.5</real>
     </map>
+    <key>RenderDebugLightingTerm</key>
+    <map>
+      <key>Comment</key>
+      <string>Deferred opaque lighting diagnostic: 0 off, 1 sun shadow, 2 shadow cascade, 3 ambient/irradiance, 4 direct sun, 5 SSAO, 6 probe/SSR specular, 7 raw light-map R/G.</string>
+      <key>Persist</key>
+      <integer>0</integer>
+      <key>Type</key>
+      <string>U32</string>
+      <key>Value</key>
+      <integer>0</integer>
+    </map>
     <key>RenderInterleavedAlpha</key>
     <map>
       <key>Comment</key>
