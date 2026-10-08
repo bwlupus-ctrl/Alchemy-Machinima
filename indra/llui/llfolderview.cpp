@@ -43,6 +43,7 @@
 // Linden library includes
 #include "lldbstrings.h"
 #include "llfocusmgr.h"
+#include "llframetimer.h" // [FolderIdle] throttled background settle
 #include "llfontgl.h"
 #include "llgl.h"
 #include "llrender.h"
@@ -356,9 +357,11 @@ void LLFolderView::filter( LLFolderViewFilter& filter )
         return;
     }
 
+    // [FolderIdle] Shown (or force-arranged) views get the foreground slice; hidden
+    // views only reach here on update()'s throttled background-settle frames.
     const S32 TIME_VISIBLE = 10; // in milliseconds
     const S32 TIME_INVISIBLE = 1;
-    filter.resetTime(llclamp((mParentPanel.get()->getVisible() ? TIME_VISIBLE : TIME_INVISIBLE), 1, 100));
+    filter.resetTime((isInVisibleChain() || mForceArrange) ? TIME_VISIBLE : TIME_INVISIBLE);
 
     // Note: we filter the model, not the view
     getViewModelItem()->filter(filter);
@@ -1741,25 +1744,41 @@ void LLFolderView::update()
     }
 
     LLFolderViewFilter& filter_object = getFolderViewModel()->getFilter();
+    // [FolderIdle] mForceArrange views are hidden on purpose, but their filter
+    // result decides whether they get shown again (Combination inventory view),
+    // so they keep filtering like visible views.
+    const bool filter_visible = isInVisibleChain() || mForceArrange;
+    // [FolderIdle] Hidden views settle in the background at 1 ms every 8th frame
+    // (~0.13 ms/frame avg instead of 1 ms per view per frame), so the first open
+    // after login is not a long multi-frame fill-in.
+    // Each view uses its own phase so hidden views never all settle on the same
+    // frame (avoids a periodic multi-ms spike while views are still building).
+    const U32 settle_phase = (U32)((reinterpret_cast<uintptr_t>(this) >> 6) & 7);
+    const bool background_settle = !filter_visible &&
+        ((LLFrameTimer::getFrameCount() + settle_phase) & 7) == 0;
+    const bool filter_ran = filter_visible || background_settle;
 
-    if (filter_object.isModified() && filter_object.isNotDefault() && mParentPanel.get()->getVisible())
+    if (filter_object.isModified() && filter_object.isNotDefault() && filter_visible)
     {
         mNeedsAutoSelect = true;
     }
 
-    // Filter to determine visibility before arranging
-    filter(filter_object);
+    if (filter_ran)
+    {
+        // Filter to determine visibility before arranging
+        filter(filter_object);
+    }
 
     // Clear the modified setting on the filter only if the filter finished after running the filter process
     // Note: if the filter count has timed out, that means the filter halted before completing the entire set of items
     bool filter_modified = filter_object.isModified();
-    if (filter_modified && (!filter_object.isTimedOut()))
+    if (filter_ran && filter_modified && (!filter_object.isTimedOut()))
     {
         filter_object.clearModified();
     }
 
     // automatically show matching items, and select first one if we had a selection
-    if (mNeedsAutoSelect)
+    if (filter_visible && mNeedsAutoSelect)
     {
         // select new item only if a filtered item not currently selected and there was a selection
         LLFolderViewItem* selected_itemp = mSelectedItems.empty() ? NULL : mSelectedItems.back();
@@ -1796,7 +1815,7 @@ void LLFolderView::update()
         mNeedsAutoSelect = false;
     }
 
-  bool is_visible = isInVisibleChain() || mForceArrange;
+  bool is_visible = filter_visible; // [FolderIdle] same rule as the filter gate
 
   //Puts folders/items in proper positions
   // arrange() takes the model filter flag into account and call sort() if necessary (CHUI-849)
