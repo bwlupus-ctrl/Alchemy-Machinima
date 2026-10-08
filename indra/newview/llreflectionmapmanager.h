@@ -353,6 +353,9 @@ private:
 
     LLReflectionMap* mUpdatingProbe = nullptr;
     U32 mUpdatingFace = 0;
+    // [ProbeBeforePresent] Coalesces RenderProbeFlushAfterFace to one kick at
+    // the end of update(), after all faces and their filtering/copies.
+    bool mRenderedProbeFaceThisUpdate = false;
     // [ProbeManualRate] frame counter for RenderProbeUpdateEveryNFrames (only
     // advanced while N > 1; an ordinary-probe tick is counter % N == 0)
     U32 mOrdThrottleCounter = 0;

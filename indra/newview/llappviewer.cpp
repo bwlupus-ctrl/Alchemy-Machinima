@@ -1625,7 +1625,14 @@ bool LLAppViewer::doFrame()
                     LLPerfStats::RecordSceneTime T(LLPerfStats::StatType_t::RENDER_IDLE);
                     LL_PROFILE_ZONE_NAMED_CATEGORY_APP("df Snapshot");
                     pingMainloopTimeout("Main:Snapshot");
-                    gPipeline.mReflectionMapManager.update();
+                    // [ProbeBeforePresent] FALSE preserves the original
+                    // post-display update site for live A/B captures.
+                    static LLCachedControl<bool> probe_before_present(
+                        gSavedSettings, "RenderProbeUpdateBeforePresent", true);
+                    if (!probe_before_present)
+                    {
+                        gPipeline.mReflectionMapManager.update();
+                    }
                     LLFloaterSnapshot::update(); // take snapshots
                     LLFloaterSimpleSnapshot::update();
                     gGLActive = false;

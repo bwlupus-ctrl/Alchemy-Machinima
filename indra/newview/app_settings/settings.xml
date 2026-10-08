@@ -18157,6 +18157,17 @@
     <key>Value</key>
     <integer>256</integer>
   </map>
+  <key>RenderShadowFlushEarly</key>
+  <map>
+    <key>Comment</key>
+    <string>[ProbeBeforePresent] Experimental non-blocking glFlush immediately after main-view sun-shadow cascade 0. Tests whether submitting the first cascade early hides a normal-frame GPU queue gap. Excludes reflection probes and auxiliary render targets. Default off.</string>
+    <key>Persist</key>
+    <integer>1</integer>
+    <key>Type</key>
+    <string>Boolean</string>
+    <key>Value</key>
+    <integer>0</integer>
+  </map>
   <key>RenderShadowSplitExponent</key>
   <map>
     <key>Comment</key>
@@ -21347,7 +21358,18 @@
   <key>RenderProbeFlushAfterFace</key>
   <map>
     <key>Comment</key>
-    <string>[ProbeFlush] Submit each reflection-probe cube face to the GPU right after it is recorded (glFlush, non-blocking). Without it the face's commands sit queued until the next frame flushes them and the GPU idles ~7 ms on every probe frame (Tracy 2026-10-07). Live toggle for A/B captures.</string>
+    <string>[ProbeBeforePresent] Submit reflection-probe work once after all faces, blur, mips and copies for this manager update are recorded (glFlush, non-blocking). Mainly useful when RenderProbeUpdateBeforePresent is off; with it on, SwapBuffers follows immediately. Live toggle for A/B captures.</string>
+    <key>Persist</key>
+    <integer>1</integer>
+    <key>Type</key>
+    <string>Boolean</string>
+    <key>Value</key>
+    <integer>1</integer>
+  </map>
+  <key>RenderProbeUpdateBeforePresent</key>
+  <map>
+    <key>Comment</key>
+    <string>[ProbeBeforePresent] Update ordinary, realtime and Live reflection probes after the main UI/bridge capture and render cleanup but before SwapBuffers, avoiding a GPU queue-empty gap after probe work. Off restores the original post-display update order for live A/B captures. Snapshot renders never update probes.</string>
     <key>Persist</key>
     <integer>1</integer>
     <key>Type</key>

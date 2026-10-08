@@ -259,6 +259,10 @@ static bool check_priority(LLReflectionMap* a, LLReflectionMap* b)
 // helper class to seed octree with probes
 void LLReflectionMapManager::update()
 {
+    // [ProbeBeforePresent] updateProbeFace() marks actual capture work so the
+    // optional submission kick happens once after every face/filter/copy in
+    // this manager step, rather than once in the middle of each face.
+    mRenderedProbeFaceThisUpdate = false;
     // [ProbeOnDemand] Latch the setting for this frame and (un)arm the dirty
     // recorder. With the setting OFF nothing below changes any behavior.
     static LLCachedControl<bool> on_demand(gSavedSettings, "RenderProbeOnDemand", false);
@@ -914,6 +918,16 @@ void LLReflectionMapManager::update()
     {
         logProbeSchedule(static_cast<F64>(gFrameTimeSeconds));
     }
+
+    static LLCachedControl<bool> flush_after_face(
+        gSavedSettings, "RenderProbeFlushAfterFace", true);
+    if (mRenderedProbeFaceThisUpdate && flush_after_face)
+    {
+        // [ProbeBeforePresent] CPU-only zone: a GPU zone ending after glFlush()
+        // would include the queue starvation this non-blocking kick removes.
+        LL_PROFILE_ZONE_NAMED_CATEGORY_DISPLAY("probe update flush");
+        glFlush();
+    }
 }
 
 // [LiveProbeRefresh] The shipped realtime capture: all six faces of
@@ -1056,8 +1070,8 @@ void LLReflectionMapManager::updateCinematicBudget(
 }
 
 // [LiveProbeRefresh] Quantised hash H of everything that changes what the live
-// probe would capture. Runs inside the manager step (after display() and the
-// environment update), so extra display() calls can never advance it. Field
+// probe would capture. [ProbeBeforePresent] Runs inside the once-per-main-frame
+// manager step after the environment update; snapshot display calls cannot advance it. Field
 // order is fixed; see doc/LIVE_PROBE_REFRESH_DESIGN.md section 4.4.
 U64 LLReflectionMapManager::sampleCinematicH(LLReflectionMap* probe)
 {
@@ -3097,6 +3111,10 @@ void LLReflectionMapManager::updateProbeFace(
 
         mMipChain[0].flush();
     }
+
+    // [ProbeBeforePresent] All face rendering, blur, mip generation and cube
+    // copies are now recorded. update() performs at most one optional glFlush.
+    mRenderedProbeFaceThisUpdate = true;
 }
 
 void LLReflectionMapManager::reset()

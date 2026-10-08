@@ -1151,15 +1151,55 @@ void display(bool rebuild, F32 zoom_factor, int subfield, bool for_snapshot)
             LLCloneFidelityAudit::instance().runLateAuditIfPending();
         }
 
+        bool display_cleanup_done = false;
         if (!for_snapshot)
         {
             render_ui();
-            swap();
+
+            static LLCachedControl<bool> probe_before_present(
+                gSavedSettings, "RenderProbeUpdateBeforePresent", true);
+            // [ProbeBeforePresent] gSnapshot retains the caller's snapshot
+            // request even when deferred rendering clears the local
+            // for_snapshot flag near display() entry.
+            if (probe_before_present && !gSnapshot)
+            {
+                // [ProbeBeforePresent] The outer display no longer needs its
+                // cull result after UI. Release it before a probe face replaces
+                // sCull and toggles sNoDelete in display_cube_face().
+                LLSpatialGroup::sNoDelete = false;
+                gPipeline.clearReferences();
+                display_cleanup_done = true;
+
+                {
+                    // Zone covers only the probe work, not swap(), so Tracy keeps
+                    // the SwapBuffers / frame-ahead wait separately attributable.
+                    LL_PROFILE_ZONE_NAMED_CATEGORY_DISPLAY("probe update (pre-swap)");
+                    // The probe must leave the window framebuffer untouched: an FB 0
+                    // clear in the cube path would wipe the presented frame and the
+                    // depth ReShade pins (PerfB1 removed those clears; keep it so).
+                    llassert(LLRenderTarget::sCurFBO == 0 && LLRenderTarget::getCurrentBoundTarget() == nullptr);
+                    // [ProbeBeforePresent] cubeSnapshot() leaves this true; restore
+                    // the enclosing display's presentation decision before swap().
+                    const bool saved_swap_buffers = gDisplaySwapBuffers;
+                    gPipeline.mReflectionMapManager.update();
+                    gDisplaySwapBuffers = saved_swap_buffers;
+                    llassert(LLRenderTarget::sCurFBO == 0 && LLRenderTarget::getCurrentBoundTarget() == nullptr);
+                }
+                swap();
+            }
+            else
+            {
+                // [ProbeBeforePresent] Preserve the original swap-before-cleanup
+                // tail for the live A/B off path and deferred snapshots.
+                swap();
+            }
         }
 
-
-        LLSpatialGroup::sNoDelete = false;
-        gPipeline.clearReferences();
+        if (!display_cleanup_done)
+        {
+            LLSpatialGroup::sNoDelete = false;
+            gPipeline.clearReferences();
+        }
     }
 
     LLAppViewer::instance()->pingMainloopTimeout("Display:FrameStats");
@@ -1479,8 +1519,9 @@ void display_cube_face()
     gGL.setColorMask(true, true);
 
     {
-        // [ProbeFlush] Labels the CPU wait that lands here when the GPU is the
-        // bottleneck (first GL command after present on probe frames).
+        // [ProbeBeforePresent] With the A/B switch off, labels the CPU wait that
+        // lands on the first probe GL command after present. With it on, this
+        // work is recorded before the enclosing display's present.
         LL_PROFILE_ZONE_NAMED_CATEGORY_DISPLAY("cube face bind+clear");
         gPipeline.mRT->deferredScreen.bindTarget();
         if (gUseWireframe)
@@ -1506,19 +1547,6 @@ void display_cube_face()
     {
         LL_PROFILE_ZONE_NAMED_CATEGORY_DISPLAY("cube face light"); // [ProbeOnDemand] C0
         gPipeline.renderDeferredLighting(LLPipeline::ActorMaskViewSource::CUBE); // [ActorMask]
-    }
-
-    // [ProbeFlush] Tracy 2026-10-07: the probe face's commands sat unsubmitted
-    // until the next frame flushed, leaving the GPU idle ~7 ms per probe frame
-    // (the face's depth blit "took" 7 ms; the real copy is ~0.01 ms). Submit the
-    // face now. glFlush does not block. Live toggle for A/B captures.
-    static LLCachedControl<bool> flush_after_face(gSavedSettings, "RenderProbeFlushAfterFace", true);
-    if (flush_after_face)
-    {
-        // CPU zone only: a GPU zone around glFlush would close after the flush
-        // and could time the very idle gap this removes.
-        LL_PROFILE_ZONE_NAMED_CATEGORY_DISPLAY("cube face flush");
-        glFlush();
     }
 
     LLPipeline::sUnderWaterRender = false;

@@ -10778,8 +10778,8 @@ void LLPipeline::activatePrismAuxiliaryProbeState()
         prism_probe_data.refParams[0].mV[3] =
             camera_origin.getF32ptr()[2] - default_probe->mRadius;
 
-        // The reflection-probe manager renders probe cube faces AFTER display() with
-        // gCubeSnapshot on; that render's updateUniforms leaves mProbeData's ambiance/
+        // [ProbeBeforePresent] The reflection-probe manager renders probe cube faces
+        // at the display tail with gCubeSnapshot on; that render's updateUniforms leaves mProbeData's ambiance/
         // radiance scale in the cube-snapshot pass state (ambscale = 0 on an ambiance/
         // irradiance pass, radscale = 0.5). The aux runs BEFORE the main-view
         // updateUniforms that corrects it, snapshots that stale struct, and the
@@ -29294,6 +29294,16 @@ void LLPipeline::generateSunShadow(LLCamera& camera, bool clip_only)
             }
 
             mRT->shadow[j].flush();
+
+            // [ProbeBeforePresent] Experimental early kick for the first
+            // main-view sun cascade. Excludes probe and auxiliary RT renders.
+            static LLCachedControl<bool> shadow_flush_early(
+                gSavedSettings, "RenderShadowFlushEarly", false);
+            if (shadow_flush_early && j == 0 && mRT == &mMainRT && !gCubeSnapshot)
+            {
+                LL_PROFILE_ZONE_NAMED_CATEGORY_PIPELINE("shadow0 early flush");
+                glFlush();
+            }
 
             if (!gPipeline.hasRenderDebugMask(LLPipeline::RENDER_DEBUG_SHADOW_FRUSTA) && !gCubeSnapshot)
             {
