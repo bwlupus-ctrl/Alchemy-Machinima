@@ -11,6 +11,7 @@
 #include "llpresentationtime.h"    // [Temporal Capture]
 
 #include "llactormover.h"
+#include "alavatarstaging.h"       // local avatar blocking when no Move owns root
 #include "algazemath.h"
 #include "algazemotor.h"           // coordinated gaze motor program assembly (spec 6A)
 #include "altron.h"                // [TronT2] ghostTronParams/2/Color (look 36 "Tron Suit")
@@ -4489,13 +4490,19 @@ LLVector3d ghost_walk_anchor_global(LLVOAvatar* av)
 // ---------------------------------------------------------------------------
 bool LLActorMover::applyOverride(LLVOAvatar* av)
 {
-    if (mMoves.empty() || !av)
+    if (!av)
     {
+        return false;
+    }
+    if (mMoves.empty())
+    {
+        ALAvatarStaging::applyIfStaged(av);
         return false;
     }
     auto it = mMoves.find(av->getID());
     if (it == mMoves.end())
     {
+        ALAvatarStaging::applyIfStaged(av);
         return false;
     }
     // [TrueMirror] A TRUE-mirror ghost is stamped from its source's final pose

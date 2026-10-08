@@ -45,7 +45,7 @@ ALDirectorSwitcherModel::Config gateConfig(
     return config;
 }
 
-bool near(F64 left, F64 right, F64 tolerance = 1e-6)
+bool approxNear(F64 left, F64 right, F64 tolerance = 1e-6)
 {
     return std::fabs(left - right) <= tolerance;
 }
@@ -141,7 +141,7 @@ void prism_gate_test_object::test<2>()
     const F64 past_boundary = 5.0;
     const F64 next_cut = gateNextCutTime(past_boundary, interval);
     ensure("next cut adds one interval to the just-fired boundary",
-           near(next_cut, 10.0));
+           approxNear(next_cut, 10.0));
     const F64 dt = 1.0 / 60.0;
     ensure("warm stays closed before corrected threshold",
            !gateWarmActive(9.949, next_cut, 3, dt));
@@ -245,7 +245,7 @@ void prism_gate_test_object::test<4>()
     ensure("serialized Gate parses", gateSettingsFromLLSD(encoded, output, &reason));
     ensure("outer Gate fields round trip",
            output.mGateId == input.mGateId && output.mActive == input.mActive &&
-           output.mMode == input.mMode && near(output.mIntervalSeconds, 11.5) &&
+           output.mMode == input.mMode && approxNear(output.mIntervalSeconds, 11.5) &&
            output.mPrewarmFrames == 4 && output.mProgramArmIndex == 0 &&
            output.mPreviewArmIndex == 1);
     ensure("armed order and capture IDs round trip",

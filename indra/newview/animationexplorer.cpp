@@ -58,6 +58,7 @@
 
 #include "llviewerprecompiledheaders.h"
 #include "animationexplorer.h"
+#include "alpaneldanceball.h"       // [DanceBall] playlist handoff
 
 #include "indra_constants.h"
 #include "message.h"                // for gMessageSystem
@@ -199,6 +200,7 @@ bool AnimationExplorer::postBuild()
         LLUICtrl::CommitCallbackRegistry::ScopedRegistrar registrar;
         registrar.add("AnimExplorer.CopyUUID", boost::bind(&AnimationExplorer::onCopyUUIDPressed, this));
         registrar.add("AnimExplorer.ToActorMover", boost::bind(&AnimationExplorer::onToActorMoverPressed, this));
+        registrar.add("AnimExplorer.ToDanceBall", boost::bind(&AnimationExplorer::onToDanceBallPressed, this));
         if (LLContextMenu* menu = LLUICtrlFactory::getInstance()->createFromFile<LLContextMenu>(
                 "menu_animation_explorer.xml", gMenuHolder, LLViewerMenuHolderGL::child_registry_t::instance()))
         {
@@ -279,6 +281,20 @@ void AnimationExplorer::onToActorMoverPressed()
     gSavedSettings.setString("ActorMoverCustomAnim", mCurrentAnimationID.asString());
     gSavedSettings.setBOOL("ActorMoverUseCustomAnim", true);
     LLFloaterReg::showInstance("actor_mover");
+}
+
+// [DanceBall] right-click "Add to Dance Ball": add the selected animation to the
+// playlist and open the Dance Ball floater. Another avatar's animation only shows
+// up in this list while "Capture all avatars" is on. (No floater button: the
+// explorer XML is a named hand-typed-layout exception, see CLAUDE.md UI rules.)
+void AnimationExplorer::onToDanceBallPressed()
+{
+    if (mCurrentAnimationID.isNull())
+    {
+        return;
+    }
+    ALPanelDanceBall::addAnimationAsset(mCurrentAnimationID);
+    LLFloaterReg::showInstance("dance_ball");
 }
 
 // [ActorMover] right-click on the animation list: select the row under the

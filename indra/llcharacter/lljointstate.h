@@ -112,7 +112,16 @@ public:
     LLJoint::JointPriority getPriority() const  { return mPriority; }
     void setPriority( LLJoint::JointPriority priority ) { mPriority = priority; }
 
+    // Precomputed by the owning LLMotion (see LLMotion::addJointState and
+    // rebuildJointSignature) whenever its presentation joint exclusion changes.
+    // The pose blender reads this flag instead of evaluating a predicate per
+    // joint per frame. Always false unless a presentation owner excludes the joint.
+    bool isPresentationExcluded() const         { return mPresentationExcluded; }
+    void setPresentationExcluded( bool excluded ) { mPresentationExcluded = excluded; }
+
 protected:
+    bool mPresentationExcluded = false;
+
     // Destructor
     virtual ~LLJointState()
     {

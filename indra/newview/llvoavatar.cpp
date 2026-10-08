@@ -43,6 +43,7 @@
 
 #include "alavatargroups.h"
 #include "alavatarlightresponse.h" // [AvatarLightResponse]
+#include "alavatarstaging.h"       // staged actors stay live while locally blocked
 #include "alclientheight.h"        // [ClientHeight]
 #include "llagentdata.h"           // [ClientHeight] gAgentID
 #include "alghoststudio.h"         // [ClientHeight] ghost instance revision
@@ -4650,10 +4651,11 @@ void LLVOAvatar::computeUpdatePeriod()
     // animation, so it never renders through an impostor bake (which cannot carry the
     // trim). Muted / Never Render / too-complex avatars stay authoritative.
     // [ActorMask] Keep recipients live without overriding visual mute policy.
-    if ((ALAvatarLightResponse::keepsLive(this) ||
-         (ALCineLightRigManager::anyActorOnly() &&
-          ALCineLightRigManager::instance().isActorOnlyRecipient(this))) &&
-        !isVisuallyMuted())
+    if (ALAvatarStaging::keepsLive(getID()) ||
+        ((ALAvatarLightResponse::keepsLive(this) ||
+          (ALCineLightRigManager::anyActorOnly() &&
+           ALCineLightRigManager::instance().isActorOnlyRecipient(this))) &&
+         !isVisuallyMuted()))
     {
         mUpdatePeriod = 1;
         return;

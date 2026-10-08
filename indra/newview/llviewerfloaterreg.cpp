@@ -54,6 +54,7 @@
 #include "alfloatergazecues.h"
 #include "alfloatergenerictext.h"
 #include "alfloatergroupprofile.h"
+#include "alfloaterexposurehub.h"
 #include "alfloaterlightbox.h"
 #include "alfloaterparticleeditor.h"
 #include "alfloaterphototools.h"
@@ -766,6 +767,8 @@ void LLViewerFloaterReg::registerFloaters()
         }
     }
     LLFloaterReg::add("ultimate_diopter", "floater_ultimate_diopter.xml", (LLFloaterBuildFunc)&LLFloaterReg::build<ALFloaterUltimateDiopter>);
+    // [ExposureHub] one place to edit the existing exposure / brightness settings
+    LLFloaterReg::add("exposure_hub", "floater_exposure_hub.xml", (LLFloaterBuildFunc)&LLFloaterReg::build<ALFloaterExposureHub>);
     LLFloaterReg::add("cine_light_cues", "floater_cine_light_cues.xml", (LLFloaterBuildFunc)&LLFloaterReg::build<ALFloaterCineLightCues>);
     LLFloaterReg::add("flycam_recorder", "floater_flycam_recorder.xml", &LLFloaterReg::build<LLFloater>);
     LLFloaterReg::add("flycam_orbit", "floater_flycam_orbit.xml", &LLFloaterReg::build<LLFloater>);
@@ -781,6 +784,9 @@ void LLViewerFloaterReg::registerFloaters()
     // ghost_studio is a thin shell around panel_ghost_studio.xml
     // (ALPanelGhostStudio), shared with the Director Console Ghosts tab
     LLFloaterReg::add("ghost_studio", "floater_ghost_studio.xml", &LLFloaterReg::build<LLFloater>);
+    // dance_ball is the same idiom: a thin shell around panel_dance_ball.xml
+    // (ALPanelDanceBall); the session-local ALDanceBall engine outlives it
+    LLFloaterReg::add("dance_ball", "floater_dance_ball.xml", &LLFloaterReg::build<LLFloater>);
     // [AvatarLightResponse] per-avatar Diffuse / Tame reflections / Brightness / Glow trim
     LLFloaterReg::add("avatar_light_response", "floater_avatar_light_response.xml", (LLFloaterBuildFunc)&LLFloaterReg::build<ALFloaterAvatarLightResponse>);
     // prop_mover is the same idiom: a thin shell around panel_prop_mover.xml

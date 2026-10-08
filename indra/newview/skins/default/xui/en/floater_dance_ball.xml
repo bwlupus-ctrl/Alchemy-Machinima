@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<!-- Standalone host for the shared Dance Ball panel (ALPanelDanceBall, class
+     panel_dance_ball). Pure chrome, same idiom as the Ghost Studio floater.
+     Dance Ball is local only: nothing here is sent to the simulator. -->
+<floater
+ legacy_header_height="18"
+ can_resize="true"
+ height="600"
+ min_height="420"
+ min_width="420"
+ layout="topleft"
+ name="floater_dance_ball"
+ save_rect="true"
+ single_instance="true"
+ title="DANCE BALL (LOCAL)"
+ width="440">
+  <panel
+   class="panel_dance_ball"
+   filename="panel_dance_ball.xml"
+   follows="all"
+   layout="topleft"
+   left="4"
+   top="24"
+   name="dance_ball_panel"
+   width="432" />
+</floater>

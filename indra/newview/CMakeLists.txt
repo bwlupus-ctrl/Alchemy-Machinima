@@ -187,6 +187,10 @@ set(viewer_SOURCE_FILES
     alclassifieditem.cpp
     alderenderlist.cpp
     aldirectoranimswitcher.cpp
+    aldanceball.cpp
+    aldanceballmodel.cpp
+    alavatarstaging.cpp
+    alavatarstagingmodel.cpp
     allocalfogmanager.cpp
     aldirectorhotkeys.cpp
     aldirectorswitcher.cpp
@@ -198,6 +202,7 @@ set(viewer_SOURCE_FILES
     alfloaterevent.cpp
     alfloaterexploresounds.cpp
     alfloatergenerictext.cpp
+    alfloaterexposurehub.cpp # [ExposureHub]
     alfloatergroupprofile.cpp
     alfloaterlightbox.cpp
     alscrollfit.cpp # [ScrollFit]
@@ -366,6 +371,7 @@ set(viewer_SOURCE_FILES
     alprojectorshaftpresets.cpp
     alpanelcinecamparams.cpp
     alpanellensgaze.cpp
+    alpaneldanceball.cpp
     alpaneldirectoranimswitcher.cpp
     alpaneldirectorswitcher.cpp
     alpanelweathersettings.cpp
@@ -1063,6 +1069,10 @@ set(viewer_HEADER_FILES
     alclassifieditem.h
     alderenderlist.h
     aldirectoranimswitcher.h
+    aldanceball.h
+    aldanceballmodel.h
+    alavatarstaging.h
+    alavatarstagingmodel.h
     allocalfogmanager.h
     aldirectorhotkeys.h
     aldirectorswitcher.h
@@ -1074,6 +1084,7 @@ set(viewer_HEADER_FILES
     alfloaterevent.h
     alfloaterexploresounds.h
     alfloatergenerictext.h
+    alfloaterexposurehub.h # [ExposureHub]
     alfloatergroupprofile.h
     alfloaterlightbox.h
     alfloaterparticleeditor.h
@@ -1260,6 +1271,7 @@ set(viewer_HEADER_FILES
     algazepolicy.h
     algazemotor.h
     alpanellensgaze.h
+    alpaneldanceball.h
     alpaneldirectoranimswitcher.h
     alpaneldirectorswitcher.h
     alpanelweathersettings.h
@@ -2667,6 +2679,8 @@ if (BUILD_TESTING)
     alcinelightrigmodel.cpp
     alavatarlightresponsemodel.cpp # [AvatarLightResponse]
     aldirectorswitchermodel.cpp
+    aldanceballmodel.cpp
+    alavatarstagingmodel.cpp
     alweathermodel.cpp
     alghostgroupmodel.cpp
     alghostinteractionstate.cpp

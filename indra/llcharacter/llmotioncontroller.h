@@ -173,6 +173,14 @@ public:
 
     F32 getAnimTime() const { return mAnimTime; }
 
+    // Single predicate used by every native non-loop stop/deactivate path.
+    // Public only so the owner-lifetime contract can be regression-tested
+    // without a wall-clock-dependent controller fixture.
+    static bool usesNativeLifetime(const LLMotion* motion)
+    {
+        return motion && !motion->hasOwnerManagedLifetime();
+    }
+
     motion_list_t& getActiveMotions() { return mActiveMotions; }
 
     void incMotionCounts(S32& num_motions, S32& num_loading_motions, S32& num_loaded_motions, S32& num_active_motions, S32& num_deprecated_motions);
@@ -261,4 +269,3 @@ private:
 #include "llcharacter.h"
 
 #endif // LL_LLMOTIONCONTROLLER_H
-

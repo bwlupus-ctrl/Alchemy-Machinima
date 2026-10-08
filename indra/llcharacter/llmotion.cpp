@@ -55,6 +55,8 @@ LLMotion::LLMotion( const LLUUID &id ) :
     mPresentationClockMode(PresentationClockMode::NATIVE),
     mExternalSampleTime(0.f),
     mPresentationWeight(1.f),
+    mOwnerManagedLifetime(false),
+    mPresentationJointExclusion(nullptr),
     mDeactivateCallback(nullptr),
     mDeactivateCallbackUserData(nullptr)
 {
@@ -113,6 +115,11 @@ void LLMotion::addJointState(const LLPointer<LLJointState>& jointState)
 
     U32 usage = jointState->getUsage();
 
+    // Precompute the presentation exclusion once, here, so the pose blender
+    // only has to read a flag per joint per frame.
+    const bool excluded = isPresentationJointExcluded(jointState->getJoint());
+    jointState->setPresentationExcluded(excluded);
+
     // for now, usage is everything
     S32 joint_num = jointState->getJoint()->getJointNum();
     if ((joint_num >= (S32)LL_CHARACTER_MAX_ANIMATED_JOINTS) || (joint_num < 0))
@@ -120,9 +127,45 @@ void LLMotion::addJointState(const LLPointer<LLJointState>& jointState)
         LL_WARNS() << "joint_num " << joint_num << " is outside of legal range [0-" << LL_CHARACTER_MAX_ANIMATED_JOINTS << ") for joint " << jointState->getJoint()->getName() << LL_ENDL;
         return;
     }
-    mJointSignature[0][joint_num] = (usage & LLJointState::POS) ? (0xff >> (7 - priority)) : 0;
-    mJointSignature[1][joint_num] = (usage & LLJointState::ROT) ? (0xff >> (7 - priority)) : 0;
-    mJointSignature[2][joint_num] = (usage & LLJointState::SCALE) ? (0xff >> (7 - priority)) : 0;
+    mJointSignature[0][joint_num] = (!excluded && (usage & LLJointState::POS)) ? (0xff >> (7 - priority)) : 0;
+    mJointSignature[1][joint_num] = (!excluded && (usage & LLJointState::ROT)) ? (0xff >> (7 - priority)) : 0;
+    mJointSignature[2][joint_num] = (!excluded && (usage & LLJointState::SCALE)) ? (0xff >> (7 - priority)) : 0;
+}
+
+void LLMotion::rebuildJointSignature()
+{
+    for (LLJointState* jsp = mPose.getFirstJointState(); jsp;
+         jsp = mPose.getNextJointState())
+    {
+        LLJoint* joint = jsp->getJoint();
+        if (!joint)
+        {
+            jsp->setPresentationExcluded(false);
+            continue;
+        }
+        // Evaluate the predicate once per joint state here (not per frame);
+        // LLPoseBlender::addMotion reads the cached flag.
+        const bool excluded = isPresentationJointExcluded(joint);
+        jsp->setPresentationExcluded(excluded);
+        const S32 joint_num = joint->getJointNum();
+        if (joint_num < 0 || joint_num >= (S32)LL_CHARACTER_MAX_ANIMATED_JOINTS)
+        {
+            continue;
+        }
+        const U32 usage = jsp->getUsage();
+        if (excluded)
+        {
+            mJointSignature[0][joint_num] = 0;
+            mJointSignature[1][joint_num] = 0;
+            mJointSignature[2][joint_num] = 0;
+            continue;
+        }
+        const S32 priority = llclamp((S32)getJointPriority(jsp),
+            (S32)LLJoint::LOW_PRIORITY, (S32)LL_CHARACTER_MAX_PRIORITY);
+        mJointSignature[0][joint_num] = (usage & LLJointState::POS) ? (U8)(0xff >> (7 - priority)) : 0;
+        mJointSignature[1][joint_num] = (usage & LLJointState::ROT) ? (U8)(0xff >> (7 - priority)) : 0;
+        mJointSignature[2][joint_num] = (usage & LLJointState::SCALE) ? (U8)(0xff >> (7 - priority)) : 0;
+    }
 }
 
 //-----------------------------------------------------------------------------
@@ -144,25 +187,7 @@ void LLMotion::setPriorityOverride(S32 priority)
     // finished loading yet mPose is empty and this loop is a no-op -- the
     // signature is then (re)built with the override honored when the joint
     // states are added in setupPose()/addJointState().
-    for (LLJointState* jsp = mPose.getFirstJointState(); jsp; jsp = mPose.getNextJointState())
-    {
-        LLJoint* joint = jsp->getJoint();
-        if (!joint)
-        {
-            continue;
-        }
-        S32 joint_num = joint->getJointNum();
-        if ((joint_num < 0) || (joint_num >= (S32)LL_CHARACTER_MAX_ANIMATED_JOINTS))
-        {
-            continue;
-        }
-        U32 usage = jsp->getUsage();
-        // keep the signature shift well-defined for any override value
-        S32 pri = llclamp((S32)getJointPriority(jsp), (S32)LLJoint::LOW_PRIORITY, (S32)LL_CHARACTER_MAX_PRIORITY);
-        mJointSignature[0][joint_num] = (usage & LLJointState::POS)   ? (U8)(0xff >> (7 - pri)) : 0;
-        mJointSignature[1][joint_num] = (usage & LLJointState::ROT)   ? (U8)(0xff >> (7 - pri)) : 0;
-        mJointSignature[2][joint_num] = (usage & LLJointState::SCALE) ? (U8)(0xff >> (7 - pri)) : 0;
-    }
+    rebuildJointSignature();
 }
 
 bool LLMotion::claimPresentationControl(const LLUUID& owner)
@@ -190,6 +215,16 @@ void LLMotion::releasePresentationControl(const LLUUID& owner)
 bool LLMotion::isPresentationControlledBy(const LLUUID& owner) const
 {
     return owner.notNull() && mPresentationOwner == owner;
+}
+
+bool LLMotion::setOwnerManagedLifetime(const LLUUID& owner, bool managed)
+{
+    if (!isPresentationControlledBy(owner))
+    {
+        return false;
+    }
+    mOwnerManagedLifetime = managed;
+    return true;
 }
 
 bool LLMotion::setExternalSampleTime(const LLUUID& owner, F32 sample_time)
@@ -224,12 +259,47 @@ bool LLMotion::setPresentationWeight(const LLUUID& owner, F32 weight)
     return true;
 }
 
+bool LLMotion::setPresentationJointExclusion(
+    const LLUUID& owner, PresentationJointPredicate predicate)
+{
+    if (!isPresentationControlledBy(owner))
+    {
+        return false;
+    }
+    if (mPresentationJointExclusion != predicate)
+    {
+        mPresentationJointExclusion = predicate;
+        rebuildJointSignature();
+    }
+    return true;
+}
+
+bool LLMotion::isFaceJoint(const LLJoint* joint)
+{
+    if (!joint)
+    {
+        return false;
+    }
+    const std::string& name = joint->getName();
+    return name.compare(0, 5, "mFace") == 0 ||
+        name == "mEyeLeft" || name == "mEyeRight" ||
+        name == "mSkull";
+    // The alt eye bones are mFaceEyeAlt*, already caught by the mFace prefix.
+}
+
 void LLMotion::resetPresentationControl()
 {
+    const bool had_joint_exclusion = mPresentationJointExclusion != nullptr;
     mPresentationOwner.setNull();
     mPresentationClockMode = PresentationClockMode::NATIVE;
     mExternalSampleTime = 0.f;
     mPresentationWeight = 1.f;
+    mOwnerManagedLifetime = false;
+    mPresentationJointExclusion = nullptr;
+    if (had_joint_exclusion)
+    {
+        rebuildJointSignature();
+    }
 }
 
 void LLMotion::setDeactivateCallback( void (*cb)(void *), void* userdata )
@@ -295,4 +365,3 @@ bool LLMotion::canDeprecate()
 }
 
 // End
-

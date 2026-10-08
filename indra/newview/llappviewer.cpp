@@ -72,6 +72,8 @@
 #include "llactormover.h"    // TP-away walk suspend/resume state machine (idle tick)
 #include "alobjectpathmover.h"  // [ObjectPath] per-frame object drives (idle tick)
 #include "alghoststudio.h"      // per-instance Keep facing transforms (idle tick)
+#include "alavatarstaging.h"    // staged avatar/ghost transforms (idle tick/logout)
+#include "aldanceball.h"        // client-only multi-avatar dance playback
 #include "altoolghostedit.h"    // [GhostStudio] per-frame manip-proxy sync (idle tick)
 #include "aldirectoranimswitcher.h" // presentation-time animation switchboard
 #include "allocalfogmanager.h"      // client-only atmospheric volumes
@@ -5496,6 +5498,8 @@ void LLAppViewer::idle()
     // FreezeTime. Zero cost with no drives.
     ALObjectPathMover::instance().update(dt_raw);
     ALGhostStudio::instance().updatePerFrame();
+    ALAvatarStaging::instance().update();
+    ALDanceBall::instance().tick();
 
     {
         if (!(logoutRequestSent() && hasSavedFinalSnapshot()))
@@ -6209,6 +6213,11 @@ void LLAppViewer::disconnectViewer()
     if (ALClientHeight::instanceExists())
     {
         ALClientHeight::getInstance()->clearSession();
+    }
+
+    if (ALAvatarStaging::instanceExists())
+    {
+        ALAvatarStaging::getInstance()->clear();
     }
 
     // [BDMerge G3.3 Phase 2] Session-only projector volumetric-shaft opt-in set

@@ -5,7 +5,9 @@
 
 #include "linden_common.h"
 
+#include "../lljointstate.h"
 #include "../llmotion.h"
+#include "../llmotioncontroller.h"
 #include "../test/lltut.h"
 
 #include <limits>
@@ -16,6 +18,11 @@ class TestMotion final : public LLMotion
 {
 public:
     using LLMotion::deactivate;
+    using LLMotion::addJointState;
+    U8 signature(S32 channel, S32 joint_num) const
+    {
+        return mJointSignature[channel][joint_num];
+    }
     explicit TestMotion(const LLUUID& id, bool sample_capable)
     : LLMotion(id), mSampleCapable(sample_capable)
     {
@@ -37,6 +44,7 @@ public:
 private:
     bool mSampleCapable;
 };
+
 }
 
 namespace tut
@@ -145,4 +153,178 @@ void motion_presentation_object::test<7>()
                   motion.getEffectiveUpdateTime(123456.f),
                   123456.f);
 }
+
+template<> template<>
+void motion_presentation_object::test<8>()
+{
+    TestMotion motion(LLUUID::generateNewID(), true);
+    const LLUUID owner = LLUUID::generateNewID();
+    const LLUUID other = LLUUID::generateNewID();
+
+    ensure("cannot set without a claim",
+           !motion.setOwnerManagedLifetime(owner, true));
+    ensure("claim", motion.claimPresentationControl(owner));
+    ensure("owner can set lifetime",
+           motion.setOwnerManagedLifetime(owner, true));
+    ensure("native stop suppression is visible to the controller",
+           !LLMotionController::usesNativeLifetime(&motion));
+    ensure("token mismatch cannot clear lifetime",
+           !motion.setOwnerManagedLifetime(other, false));
+    ensure("mismatched clear left lifetime set",
+           motion.hasOwnerManagedLifetime());
+    ensure("owner can clear lifetime",
+           motion.setOwnerManagedLifetime(owner, false));
+    ensure("lifetime clear took effect", !motion.hasOwnerManagedLifetime());
+    ensure("native lifetime restored after clear",
+           LLMotionController::usesNativeLifetime(&motion));
+}
+
+template<> template<>
+void motion_presentation_object::test<9>()
+{
+    TestMotion motion(LLUUID::generateNewID(), true);
+    const LLUUID owner = LLUUID::generateNewID();
+    ensure("claim", motion.claimPresentationControl(owner));
+    ensure("set lifetime", motion.setOwnerManagedLifetime(owner, true));
+    motion.deactivate();
+    ensure("deactivate resets lifetime", !motion.hasOwnerManagedLifetime());
+}
+
+template<> template<>
+void motion_presentation_object::test<10>()
+{
+    TestMotion motion(LLUUID::generateNewID(), true);
+    const LLUUID owner = LLUUID::generateNewID();
+    const LLUUID other = LLUUID::generateNewID();
+    LLJoint face("mFaceJaw");
+    LLJoint eye("mEyeLeft");
+    LLJoint skull("mSkull");
+    LLJoint head("mHead");
+    LLJoint neck("mNeck");
+
+    ensure("face helper includes Bento face", LLMotion::isFaceJoint(&face));
+    ensure("face helper includes legacy eye", LLMotion::isFaceJoint(&eye));
+    ensure("face helper includes skull", LLMotion::isFaceJoint(&skull));
+    ensure("face helper leaves head", !LLMotion::isFaceJoint(&head));
+    ensure("face helper leaves neck", !LLMotion::isFaceJoint(&neck));
+    ensure("cannot set without claim", !motion.setPresentationJointExclusion(
+        owner, &LLMotion::isFaceJoint));
+    ensure("claim", motion.claimPresentationControl(owner));
+    ensure("owner sets exclusion", motion.setPresentationJointExclusion(
+        owner, &LLMotion::isFaceJoint));
+    ensure("face is excluded", motion.isPresentationJointExcluded(&face));
+    ensure("head is not excluded", !motion.isPresentationJointExcluded(&head));
+    ensure("token mismatch cannot clear", !motion.setPresentationJointExclusion(
+        other, nullptr));
+    ensure("mismatched clear left exclusion", motion.isPresentationJointExcluded(&face));
+    ensure("owner clears exclusion", motion.setPresentationJointExclusion(owner, nullptr));
+    ensure("clear restored face", !motion.isPresentationJointExcluded(&face));
+    ensure("owner restores exclusion", motion.setPresentationJointExclusion(
+        owner, &LLMotion::isFaceJoint));
+    motion.releasePresentationControl(owner);
+    ensure("release clears exclusion", !motion.isPresentationJointExcluded(&face));
+    ensure("reclaim", motion.claimPresentationControl(owner));
+    ensure("restore exclusion after reclaim", motion.setPresentationJointExclusion(
+        owner, &LLMotion::isFaceJoint));
+    motion.deactivate();
+    ensure("deactivate clears exclusion", !motion.isPresentationJointExcluded(&face));
+}
+
+namespace
+{
+// True when any of the three channels carries a non-zero signature entry.
+bool anySignature(const TestMotion& motion, S32 joint_num)
+{
+    return motion.signature(0, joint_num) != 0 ||
+        motion.signature(1, joint_num) != 0 ||
+        motion.signature(2, joint_num) != 0;
+}
+}
+
+template<> template<>
+void motion_presentation_object::test<11>()
+{
+    // Joints must outlive the motion (and its pose) that references them.
+    LLJoint face("mFaceJaw");
+    LLJoint head("mHead");
+    LLJoint jaw2("mFaceTeethLower");
+    const S32 face_num = 3;
+    const S32 head_num = 4;
+    face.setJointNum(face_num);
+    head.setJointNum(head_num);
+    jaw2.setJointNum(5);
+
+    TestMotion motion(LLUUID::generateNewID(), true);
+    const LLUUID owner = LLUUID::generateNewID();
+    const LLUUID other = LLUUID::generateNewID();
+
+    LLPointer<LLJointState> face_state = new LLJointState(&face);
+    face_state->setUsage(LLJointState::POS | LLJointState::ROT | LLJointState::SCALE);
+    LLPointer<LLJointState> head_state = new LLJointState(&head);
+    head_state->setUsage(LLJointState::ROT);
+    motion.addJointState(face_state);
+    motion.addJointState(head_state);
+
+    // No exclusion: byte-identical to stock behaviour.
+    ensure("face signature present without exclusion", anySignature(motion, face_num));
+    ensure("head signature present without exclusion", anySignature(motion, head_num));
+    ensure("face blender flag clear without exclusion",
+           !face_state->isPresentationExcluded());
+    ensure("head blender flag clear without exclusion",
+           !head_state->isPresentationExcluded());
+
+    ensure("claim", motion.claimPresentationControl(owner));
+    ensure("owner sets exclusion", motion.setPresentationJointExclusion(
+        owner, &LLMotion::isFaceJoint));
+    for (S32 channel = 0; channel < 3; ++channel)
+    {
+        ensure("face signature zeroed in every channel", motion.signature(channel, face_num) == 0);
+    }
+    ensure("head signature retained", anySignature(motion, head_num));
+    ensure("head ROT signature retained", motion.signature(1, head_num) != 0);
+    ensure("blender skip flag set only for face", face_state->isPresentationExcluded());
+    ensure("blender skip flag clear for head", !head_state->isPresentationExcluded());
+
+    ensure("mismatched owner cannot clear", !motion.setPresentationJointExclusion(other, nullptr));
+    ensure("mismatched clear left face flag", face_state->isPresentationExcluded());
+
+    ensure("owner clears exclusion", motion.setPresentationJointExclusion(owner, nullptr));
+    ensure("clear restores face signature", anySignature(motion, face_num));
+    ensure("clear restores all face channels",
+           motion.signature(0, face_num) != 0 && motion.signature(1, face_num) != 0 &&
+           motion.signature(2, face_num) != 0);
+    ensure("clear restores head signature", anySignature(motion, head_num));
+    ensure("clear drops face blender flag", !face_state->isPresentationExcluded());
+    ensure("clear leaves head blender flag clear", !head_state->isPresentationExcluded());
+
+    // Release restores both too.
+    ensure("owner restores exclusion", motion.setPresentationJointExclusion(
+        owner, &LLMotion::isFaceJoint));
+    ensure("exclusion re-applied", !anySignature(motion, face_num));
+    motion.releasePresentationControl(owner);
+    ensure("release restores face signature", anySignature(motion, face_num));
+    ensure("release drops face blender flag", !face_state->isPresentationExcluded());
+    ensure("release keeps head signature", anySignature(motion, head_num));
+
+    // Deactivate restores both as well.
+    ensure("reclaim", motion.claimPresentationControl(owner));
+    ensure("exclusion after reclaim", motion.setPresentationJointExclusion(
+        owner, &LLMotion::isFaceJoint));
+    ensure("exclusion active after reclaim", !anySignature(motion, face_num));
+    motion.deactivate();
+    ensure("deactivate restores face signature", anySignature(motion, face_num));
+    ensure("deactivate drops face blender flag", !face_state->isPresentationExcluded());
+    ensure("deactivate keeps head signature", anySignature(motion, head_num));
+
+    // A joint state added while the exclusion is already active is flagged at add time.
+    ensure("claim for late add", motion.claimPresentationControl(owner));
+    ensure("exclusion for late add", motion.setPresentationJointExclusion(
+        owner, &LLMotion::isFaceJoint));
+    LLPointer<LLJointState> late_state = new LLJointState(&jaw2);
+    late_state->setUsage(LLJointState::ROT);
+    motion.addJointState(late_state);
+    ensure("late face joint flagged", late_state->isPresentationExcluded());
+    ensure("late face joint signature zero", !anySignature(motion, 5));
+}
+
 }

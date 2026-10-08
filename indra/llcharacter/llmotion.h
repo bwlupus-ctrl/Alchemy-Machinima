@@ -132,6 +132,13 @@ public:
     bool isPresentationControlledBy(const LLUUID& owner) const;
     bool hasPresentationControl() const { return mPresentationOwner.notNull(); }
 
+    // Opt-in for presentation owners that sample and terminate a motion on
+    // their own clock. While set, the controller neither arms nor fires its
+    // native non-loop stop. The same presentation owner token is required,
+    // and the opt-in is cleared with presentation control and on deactivate.
+    bool setOwnerManagedLifetime(const LLUUID& owner, bool managed);
+    bool hasOwnerManagedLifetime() const { return mOwnerManagedLifetime; }
+
     // External sampling is opt-in by motion type. Keyframe motions support it;
     // procedural/non-keyframe motions reject it and continue on native
     // controller time. The stored sample survives STATUS_HOLD so the first pose
@@ -168,6 +175,26 @@ public:
             : (mPresentationWeight > 0.f
                 ? llclamp(presented_weight / mPresentationWeight, 0.f, 1.f) : 0.f);
     }
+
+    // Optional per-instance joint exclusion. Excluded joint states never enter
+    // the pose blender, so they contribute exactly zero weight. The predicate
+    // must have static lifetime (normally a named helper such as isFaceJoint).
+    // Like the other presentation controls, only the current owner may change
+    // it and it is cleared on release or deactivate.
+    using PresentationJointPredicate = bool (*)(const LLJoint* joint);
+    bool setPresentationJointExclusion(const LLUUID& owner,
+                                       PresentationJointPredicate predicate);
+    bool isPresentationJointExcluded(const LLJoint* joint) const
+    {
+        return mPresentationJointExclusion && joint &&
+            mPresentationJointExclusion(joint);
+    }
+
+    // Bento face classification shared by presentation clients. mHead and
+    // mNeck deliberately remain body joints; mSkull is excluded with the eyes
+    // and all mFace* descendants so a presentation clip cannot disturb the
+    // avatar's own face rig.
+    static bool isFaceJoint(const LLJoint* joint);
 
     F32 getStopTime() const { return mStopTimestamp; }
 
@@ -274,12 +301,15 @@ protected:
     PresentationClockMode mPresentationClockMode;
     F32 mExternalSampleTime;    // absolute local clip sample, seconds
     F32 mPresentationWeight;    // explicit 0..1 multiplier; LOD fade is separate
+    bool mOwnerManagedLifetime; // presentation owner suppresses native lifetime
+    PresentationJointPredicate mPresentationJointExclusion;
     U8  mJointSignature[3][LL_CHARACTER_MAX_ANIMATED_JOINTS];   // signature of which joints are animated at what priority
     void (*mDeactivateCallback)(void* data);
     void* mDeactivateCallbackUserData;
 
 private:
     void resetPresentationControl();
+    void rebuildJointSignature();
 };
 
 
@@ -357,4 +387,3 @@ public:
     /*virtual*/ void onDeactivate() {}
 };
 #endif // LL_LLMOTION_H
-

@@ -508,6 +508,11 @@ bool LLPoseBlender::addMotion(LLMotion* motion)
     for(LLJointState* jsp = pose->getFirstJointState(); jsp; jsp = pose->getNextJointState())
     {
         LLJoint *jointp = jsp->getJoint();
+        // Precomputed per joint state by the owning motion: a single flag read.
+        if (jsp->isPresentationExcluded())
+        {
+            continue;
+        }
         LLJointStateBlender* joint_blender;
         if (mJointStateBlenderPool.find(jointp) == mJointStateBlenderPool.end())
         {
@@ -631,4 +636,3 @@ void LLPoseBlender::clearBlenders()
 
     mActiveBlenders.clear();
 }
-

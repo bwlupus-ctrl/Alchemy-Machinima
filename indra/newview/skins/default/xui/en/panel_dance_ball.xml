@@ -1,0 +1,981 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<!-- Dance Ball. Session-local, client-only multi-avatar dance playback
+     (aldanceball.h). ALPanelDanceBall (alpaneldanceball.cpp) owns all wiring.
+     Nothing here is sent to the simulator: only you see the dancing.
+     Tab pages are wrapped and fitted at runtime by ALScrollFit
+     (installForTabs), so tab contents may be taller than the tab. -->
+<panel
+ background_visible="false"
+ border="false"
+ height="568"
+ layout="topleft"
+ name="panel_dance_ball"
+ width="432">
+    <string name="kind_self">Me</string>
+    <string name="kind_resident">Avatar</string>
+    <string name="kind_animesh">Animesh</string>
+    <string name="kind_ghost">Ghost</string>
+    <string name="state_idle">Idle</string>
+    <string name="state_playing">Playing</string>
+    <string name="state_pending">Loading asset</string>
+    <string name="state_failed">Asset failed</string>
+    <string name="state_server">Server owns</string>
+    <string name="state_seated">Seated</string>
+    <string name="state_muted">Muted</string>
+    <string name="state_moving">Moving</string>
+    <string name="state_absent">Absent</string>
+    <string name="state_in_use">In use</string>
+    <string name="state_taken_over">Taken over</string>
+    <string name="on_yes">On</string>
+    <string name="on_no">-</string>
+    <string name="no_value">-</string>
+    <string name="name_loading">...</string>
+    <string name="name_animesh">Animesh [ID]</string>
+    <string name="name_ghost">Ghost [ID]</string>
+    <string name="distance_format">[METERS] m</string>
+    <string name="length_format">[SECONDS] s</string>
+    <string name="loop_yes">Loop</string>
+    <string name="loop_no">Once</string>
+    <string name="item_pending">Loading</string>
+    <string name="item_ready">Ready</string>
+    <string name="item_unavailable">Unavailable</string>
+    <string name="status_off">Off · [DANCERS] dancers</string>
+    <string name="status_on">[DANCERS] dancers · [ABSENT] absent · [MODE] · [SYNC]</string>
+    <string name="status_frozen"> · Frozen</string>
+    <string name="status_playing"> · Now: [LABEL]</string>
+    <string name="mode_same">Same</string>
+    <string name="mode_shuffle">Shuffle</string>
+    <string name="mode_sequence">Sequence</string>
+    <string name="sync_synced">Synced</string>
+    <string name="sync_desync">Desync [PERCENT]%</string>
+    <string name="msg_added_dancers">Added [COUNT] dancer(s)</string>
+    <string name="msg_no_dancers_added">No new dancers were added</string>
+    <string name="msg_nothing_selected">Select an avatar or animesh first</string>
+    <string name="msg_removed_dancers">Removed [COUNT] dancer(s)</string>
+    <string name="msg_excluded_dancers">Excluded [COUNT] dancer(s)</string>
+    <string name="msg_cleared_exclusions">Cleared [COUNT] exclusion(s)</string>
+    <string name="msg_include_me_first">Turn on Include me to add yourself</string>
+    <string name="msg_select_dancers">Select dancers in the list first</string>
+    <string name="msg_select_item">Select a playlist row first</string>
+    <string name="msg_item_added">Added to playlist: [NAME]</string>
+    <string name="msg_items_added">Added [COUNT] animation(s) to the playlist</string>
+    <string name="msg_item_duplicate">Already in the playlist</string>
+    <string name="msg_no_uuid">No animation UUID found on the clipboard</string>
+    <string name="msg_explorer_closed">Open the Animation Explorer first</string>
+    <string name="msg_explorer_none">No animation selected in the Animation Explorer</string>
+    <string name="msg_need_dancers">Add dancers first</string>
+    <string name="msg_playing_item">Playing: [NAME]</string>
+    <string name="msg_renamed">Renamed</string>
+    <string name="msg_ramping">Speed ramp started</string>
+    <string name="msg_export_ok">Session exported</string>
+    <string name="msg_export_fail">Could not write the session file</string>
+    <string name="msg_import_ok">Session imported</string>
+    <string name="msg_import_fail">That file is not a valid Dance Ball session</string>
+    <string name="msg_import_fail_reason">That file is not a valid Dance Ball session: [REASON]</string>
+    <string name="msg_import_open_fail">Could not read the session file</string>
+    <string name="msg_stopped">Dance Ball stopped</string>
+    <string name="msg_reshuffled">Phases reshuffled</string>
+    <string name="export_default_name">dance_ball_session.xml</string>
+
+    <!-- Header strip: transport, shuffle, sync slider, status, Stop all -->
+    <button
+     follows="left|top"
+     height="22"
+     is_toggle="true"
+     label="OFF"
+     label_selected="ON"
+     layout="topleft"
+     left="4"
+     name="db_on"
+     tool_tip="Master switch. ON starts the dance for everyone in the roster; OFF eases every motion out and restores ghosts."
+     top="4"
+     width="52" />
+    <button
+     follows="left|top"
+     height="22"
+     label="|&lt;"
+     layout="topleft"
+     left="60"
+     name="db_prev"
+     tool_tip="Previous playlist item"
+     top="4"
+     width="30" />
+    <button
+     follows="left|top"
+     height="22"
+     is_toggle="true"
+     label="Freeze"
+     label_selected="Frozen"
+     layout="topleft"
+     left="94"
+     name="db_freeze"
+     tool_tip="Freeze every dancer in place"
+     top="4"
+     width="62" />
+    <button
+     follows="left|top"
+     height="22"
+     label="&gt;|"
+     layout="topleft"
+     left="160"
+     name="db_next"
+     tool_tip="Next playlist item"
+     top="4"
+     width="30" />
+    <button
+     follows="left|top"
+     height="22"
+     is_toggle="true"
+     label="Shuffle"
+     layout="topleft"
+     left="194"
+     name="db_shuffle"
+     tool_tip="On: each dancer picks their own random playlist item. Off: everyone dances the same item."
+     top="4"
+     width="66" />
+    <button
+     follows="top|right"
+     height="22"
+     label="Stop all"
+     layout="topleft"
+     left="358"
+     name="db_stop_all"
+     tool_tip="Turn Dance Ball off and release every dancer"
+     top="4"
+     width="70" />
+    <text
+     follows="left|top"
+     font="SansSerifSmall"
+     height="16"
+     layout="topleft"
+     left="4"
+     name="db_sync_label"
+     top="33"
+     width="30">
+        Sync
+    </text>
+    <slider
+     can_edit_text="false"
+     decimal_digits="2"
+     follows="left|top|right"
+     height="20"
+     increment="0.01"
+     layout="topleft"
+     left="36"
+     max_val="1"
+     min_val="0"
+     name="db_header_desync"
+     show_text="false"
+     tool_tip="Sync to Desync: how far apart the dancers' start phases are spread"
+     top="30"
+     wheel_adjust="true"
+     width="344" />
+    <text
+     follows="top|right"
+     font="SansSerifSmall"
+     height="16"
+     layout="topleft"
+     left="384"
+     name="db_desync_label"
+     top="33"
+     width="44">
+        Desync
+    </text>
+    <text
+     follows="left|top|right"
+     font="SansSerifSmall"
+     height="16"
+     layout="topleft"
+     left="4"
+     name="db_status"
+     top="54"
+     use_ellipses="true"
+     width="424">
+        Off · 0 dancers
+    </text>
+
+    <tab_container
+     follows="all"
+     height="468"
+     layout="topleft"
+     left="2"
+     name="db_tabs"
+     tab_position="top"
+     top="74"
+     width="428">
+
+        <!-- ================= Dancers ================= -->
+        <panel
+         border="false"
+         follows="all"
+         height="444"
+         label="Dancers"
+         layout="topleft"
+         name="db_dancers_tab"
+         width="426">
+            <scroll_list
+             can_sort="false"
+             column_padding="0"
+             draw_heading="true"
+             follows="left|top|right"
+             height="176"
+             layout="topleft"
+             left="6"
+             multi_select="true"
+             name="db_dancer_list"
+             right="-6"
+             tool_tip="Everyone who dances. Absent avatars are kept and resume automatically when they come back."
+             top="4"
+             width="398">
+                <columns label="On" name="on" width="34" />
+                <columns label="Name" name="name" width="120" />
+                <columns label="Kind" name="kind" width="54" />
+                <columns label="Now playing" name="now" width="96" />
+                <columns label="Dist" name="dist" width="52" />
+            </scroll_list>
+            <button
+             follows="left|top"
+             height="22"
+             label="Add selected"
+             layout="topleft"
+             left="6"
+             name="db_add_selected"
+             tool_tip="Add the avatar or animesh you currently have selected (or right-click one and choose Add to Dance Ball)"
+             top="186"
+             width="92" />
+            <button
+             follows="left|top"
+             height="22"
+             label="Add cast"
+             layout="topleft"
+             left="102"
+             name="db_add_cast"
+             tool_tip="Add every Director cast member"
+             top="186"
+             width="64" />
+            <button
+             follows="left|top"
+             height="22"
+             label="Add ghosts"
+             layout="topleft"
+             left="170"
+             name="db_add_ghosts"
+             tool_tip="Add every Ghost Studio entity clone"
+             top="186"
+             width="76" />
+            <button
+             follows="left|top"
+             height="22"
+             label="Remove"
+             layout="topleft"
+             left="250"
+             name="db_remove"
+             tool_tip="Remove the selected dancers from the roster"
+             top="186"
+             width="62" />
+            <button
+             follows="left|top"
+             height="22"
+             label="Exclude"
+             layout="topleft"
+             left="316"
+             name="db_exclude"
+             tool_tip="Remove the selected dancers and stop nearby, cast and auto-join from adding them again"
+             top="186"
+             width="62" />
+            <button
+             follows="left|top"
+             height="22"
+             label="Add nearby"
+             layout="topleft"
+             left="6"
+             name="db_add_nearby"
+             tool_tip="Add everyone within the radius of the focal point"
+             top="212"
+             width="84" />
+            <spinner
+             decimal_digits="0"
+             follows="left|top"
+             height="20"
+             increment="1"
+             label="Radius"
+             label_width="42"
+             layout="topleft"
+             left="94"
+             max_val="512"
+             min_val="1"
+             name="db_radius"
+             tool_tip="Radius in metres for Add nearby and Auto-join"
+             top="213"
+             width="104" />
+            <text
+             follows="left|top"
+             font="SansSerifSmall"
+             height="16"
+             layout="topleft"
+             left="202"
+             name="db_radius_unit"
+             top="216"
+             width="14">
+                m
+            </text>
+            <text
+             follows="left|top"
+             font="SansSerifSmall"
+             height="16"
+             layout="topleft"
+             left="222"
+             name="db_focus_label"
+             top="216"
+             width="46">
+                around
+            </text>
+            <combo_box
+             follows="left|top"
+             height="20"
+             layout="topleft"
+             left="270"
+             name="db_focus"
+             tool_tip="Focal point for Add nearby and Auto-join"
+             top="213"
+             width="124">
+                <combo_box.item label="Me" name="focus_me" value="0" />
+                <combo_box.item label="Camera focus" name="focus_camera" value="1" />
+                <combo_box.item label="Subject A" name="focus_subject_a" value="2" />
+            </combo_box>
+            <check_box
+             follows="left|top"
+             height="18"
+             label="Auto-join"
+             layout="topleft"
+             left="6"
+             name="db_autojoin"
+             tool_tip="Keep adding avatars that come within the radius. Off by default."
+             top="240"
+             width="84" />
+            <check_box
+             follows="left|top"
+             height="18"
+             label="Include seated"
+             layout="topleft"
+             left="96"
+             name="db_include_seated"
+             tool_tip="Also dance avatars that are sitting"
+             top="240"
+             width="120" />
+            <check_box
+             follows="left|top"
+             height="18"
+             label="Include me"
+             layout="topleft"
+             left="222"
+             name="db_include_me"
+             tool_tip="Let your own avatar dance too. Off by default."
+             top="240"
+             width="100" />
+            <text
+             follows="left|top"
+             font="SansSerifSmall"
+             height="16"
+             layout="topleft"
+             left="6"
+             name="db_local_note"
+             top="270"
+             width="270">
+                Local only: only you see this.
+            </text>
+            <button
+             follows="left|top"
+             height="20"
+             label="Clear exclusions"
+             layout="topleft"
+             left="290"
+             name="db_clear_exclusions"
+             tool_tip="Allow every excluded avatar to be added again"
+             top="266"
+             width="104" />
+        </panel>
+
+        <!-- ================= Playlist ================= -->
+        <panel
+         border="false"
+         follows="all"
+         height="444"
+         label="Playlist"
+         layout="topleft"
+         name="db_playlist_tab"
+         width="426">
+            <text
+             follows="left|top"
+             font="SansSerifSmall"
+             height="16"
+             layout="topleft"
+             left="6"
+             name="db_drop_hint"
+             top="6"
+             width="388">
+                Drop animations or a folder here
+            </text>
+            <scroll_list
+             can_sort="false"
+             column_padding="0"
+             draw_heading="true"
+             follows="left|top|right"
+             height="150"
+             layout="topleft"
+             left="6"
+             name="db_playlist_list"
+             right="-6"
+             tool_tip="Dance animations. Drop animations or a folder from inventory anywhere on this window."
+             top="26"
+             width="398">
+                <columns label="Name" name="name" width="172" />
+                <columns label="Length" name="length" width="62" />
+                <columns label="Loop" name="loop" width="46" />
+                <columns label="Status" name="status" width="82" />
+            </scroll_list>
+            <button
+             follows="left|top"
+             height="22"
+             label="From Explorer"
+             layout="topleft"
+             left="6"
+             name="db_from_explorer"
+             tool_tip="Add the animation selected in the Animation Explorer. Other avatars' animations only appear there with Capture all avatars on."
+             top="182"
+             width="100" />
+            <button
+             follows="left|top"
+             height="22"
+             label="Paste UUID"
+             layout="topleft"
+             left="110"
+             name="db_paste_uuid"
+             tool_tip="Add the animation UUID(s) on the clipboard"
+             top="182"
+             width="90" />
+            <button
+             follows="left|top"
+             height="22"
+             label="Remove"
+             layout="topleft"
+             left="204"
+             name="db_pl_remove"
+             tool_tip="Remove the selected playlist row"
+             top="182"
+             width="64" />
+            <button
+             follows="left|top"
+             height="22"
+             label="Clear"
+             layout="topleft"
+             left="272"
+             name="db_pl_clear"
+             tool_tip="Empty the playlist"
+             top="182"
+             width="52" />
+            <button
+             follows="left|top"
+             height="22"
+             label="Up"
+             layout="topleft"
+             left="6"
+             name="db_pl_up"
+             tool_tip="Move the selected row up"
+             top="208"
+             width="44" />
+            <button
+             follows="left|top"
+             height="22"
+             label="Down"
+             layout="topleft"
+             left="54"
+             name="db_pl_down"
+             tool_tip="Move the selected row down"
+             top="208"
+             width="50" />
+            <line_editor
+             commit_on_focus_lost="false"
+             follows="left|top"
+             height="20"
+             layout="topleft"
+             left="108"
+             max_length_chars="60"
+             name="db_rename_edit"
+             tool_tip="Name for the selected row. Press Enter or click Rename."
+             top="209"
+             width="212" />
+            <button
+             follows="left|top"
+             height="22"
+             label="Rename"
+             layout="topleft"
+             left="324"
+             name="db_pl_rename"
+             tool_tip="Rename the selected row"
+             top="208"
+             width="70" />
+            <button
+             follows="left|top"
+             height="22"
+             label="Play on selected"
+             layout="topleft"
+             left="6"
+             name="db_play_selected"
+             tool_tip="Play the selected row now (starts Dance Ball if it is off)"
+             top="236"
+             width="126" />
+            <button
+             follows="left|top"
+             height="22"
+             label="Play on all"
+             layout="topleft"
+             left="136"
+             name="db_play_all"
+             tool_tip="Switch to Same-for-all and play the selected row on every dancer"
+             top="236"
+             width="100" />
+            <text
+             follows="left|top"
+             font="SansSerifSmall"
+             height="16"
+             layout="topleft"
+             left="6"
+             name="db_mode_label"
+             top="268"
+             width="36">
+                Mode
+            </text>
+            <combo_box
+             follows="left|top"
+             height="20"
+             layout="topleft"
+             left="44"
+             name="db_mode"
+             tool_tip="How dancers pick from the playlist"
+             top="265"
+             width="200">
+                <combo_box.item label="Same for all dancers" name="mode_same_item" value="0" />
+                <combo_box.item label="Shuffle each dancer" name="mode_shuffle_item" value="1" />
+                <combo_box.item label="Sequence each dancer" name="mode_sequence_item" value="2" />
+            </combo_box>
+            <check_box
+             follows="left|top"
+             height="18"
+             label="Auto-advance"
+             layout="topleft"
+             left="6"
+             name="db_auto_advance"
+             tool_tip="Move on to the next item automatically"
+             top="294"
+             width="116" />
+            <spinner
+             decimal_digits="1"
+             follows="left|top"
+             height="20"
+             increment="0.5"
+             label="Every"
+             label_width="34"
+             layout="topleft"
+             left="126"
+             max_val="600"
+             min_val="0.5"
+             name="db_adv_interval"
+             tool_tip="Seconds between automatic changes"
+             top="293"
+             width="104" />
+            <text
+             follows="left|top"
+             font="SansSerifSmall"
+             height="16"
+             layout="topleft"
+             left="232"
+             name="db_adv_interval_unit"
+             top="296"
+             width="10">
+                s
+            </text>
+            <spinner
+             decimal_digits="1"
+             follows="left|top"
+             height="20"
+             increment="0.5"
+             label="Jitter"
+             label_width="36"
+             layout="topleft"
+             left="250"
+             max_val="300"
+             min_val="0"
+             name="db_adv_jitter"
+             tool_tip="Random plus or minus seconds on each change"
+             top="293"
+             width="108" />
+            <text
+             follows="left|top"
+             font="SansSerifSmall"
+             height="16"
+             layout="topleft"
+             left="360"
+             name="db_adv_jitter_unit"
+             top="296"
+             width="10">
+                s
+            </text>
+        </panel>
+
+        <!-- ================= Timing ================= -->
+        <panel
+         border="false"
+         follows="all"
+         height="444"
+         label="Timing"
+         layout="topleft"
+         name="db_timing_tab"
+         width="426">
+            <slider
+             can_edit_text="true"
+             decimal_digits="2"
+             follows="left|top"
+             height="20"
+             increment="0.01"
+             label="Desync"
+             label_width="84"
+             layout="topleft"
+             left="6"
+             max_val="1"
+             min_val="0"
+             name="db_t_desync"
+             show_text="true"
+             tool_tip="0 = every dancer in perfect sync. 1 = phases fully spread."
+             top="6"
+             wheel_adjust="true"
+             width="388" />
+            <button
+             follows="left|top"
+             height="22"
+             label="Reshuffle phases"
+             layout="topleft"
+             left="6"
+             name="db_reshuffle"
+             tool_tip="Draw a new random phase and speed for every dancer"
+             top="34"
+             width="132" />
+            <slider
+             can_edit_text="true"
+             decimal_digits="2"
+             follows="left|top"
+             height="20"
+             increment="0.05"
+             label="Speed"
+             label_width="84"
+             layout="topleft"
+             left="6"
+             max_val="4"
+             min_val="0.25"
+             name="db_t_speed"
+             show_text="true"
+             tool_tip="Playback speed for all dancers. 1.00 is normal."
+             top="64"
+             wheel_adjust="true"
+             width="388" />
+            <slider
+             can_edit_text="true"
+             decimal_digits="2"
+             follows="left|top"
+             height="20"
+             increment="0.01"
+             label="Speed jitter"
+             label_width="84"
+             layout="topleft"
+             left="6"
+             max_val="1"
+             min_val="0"
+             name="db_t_speed_jitter"
+             show_text="true"
+             tool_tip="How much each dancer's speed varies from the group speed"
+             top="92"
+             wheel_adjust="true"
+             width="388" />
+            <slider
+             can_edit_text="true"
+             decimal_digits="2"
+             follows="left|top"
+             height="20"
+             increment="0.05"
+             label="Crossfade (s)"
+             label_width="84"
+             layout="topleft"
+             left="6"
+             max_val="5"
+             min_val="0"
+             name="db_t_crossfade"
+             show_text="true"
+             tool_tip="Seconds to blend between playlist items"
+             top="120"
+             wheel_adjust="true"
+             width="388" />
+            <text
+             follows="left|top"
+             font="SansSerifSmall"
+             height="16"
+             layout="topleft"
+             left="6"
+             name="db_priority_label"
+             top="152"
+             width="58">
+                Priority
+            </text>
+            <combo_box
+             follows="left|top"
+             height="20"
+             layout="topleft"
+             left="68"
+             name="db_t_priority"
+             tool_tip="Animation priority. 6 wins over everything the server plays on shared joints."
+             top="149"
+             width="200">
+                <combo_box.item label="Asset (as authored)" name="prio_asset" value="-1" />
+                <combo_box.item label="4" name="prio_4" value="4" />
+                <combo_box.item label="5" name="prio_5" value="5" />
+                <combo_box.item label="6 (default)" name="prio_6" value="6" />
+            </combo_box>
+            <check_box
+             follows="left|top"
+             height="18"
+             label="Dance drives face"
+             layout="topleft"
+             left="6"
+             name="db_t_dance_drives_face"
+             tool_tip="Off: dancers keep their own facial expressions and lip-sync; the dance drives body, hands and head only."
+             top="179"
+             width="180" />
+        </panel>
+
+        <!-- ================= Cinema ================= -->
+        <panel
+         border="false"
+         follows="all"
+         height="444"
+         label="Cinema"
+         layout="topleft"
+         name="db_cinema_tab"
+         width="426">
+            <text
+             follows="left|top"
+             font="SansSerifBold"
+             height="16"
+             layout="topleft"
+             left="6"
+             name="db_wave_title"
+             top="6"
+             width="200">
+                Wave / ripple
+            </text>
+            <check_box
+             follows="left|top"
+             height="18"
+             label="Enable wave"
+             layout="topleft"
+             left="6"
+             name="db_wave_enable"
+             tool_tip="Dancers start (or switch) one after another, spreading out from the focal point"
+             top="26"
+             width="106" />
+            <text
+             follows="left|top"
+             font="SansSerifSmall"
+             height="16"
+             layout="topleft"
+             left="118"
+             name="db_wave_from_label"
+             top="29"
+             width="34">
+                from
+            </text>
+            <combo_box
+             follows="left|top"
+             height="20"
+             layout="topleft"
+             left="156"
+             name="db_wave_focus"
+             tool_tip="Where the wave starts"
+             top="25"
+             width="130">
+                <combo_box.item label="Me" name="wave_focus_me" value="0" />
+                <combo_box.item label="Camera focus" name="wave_focus_camera" value="1" />
+                <combo_box.item label="Subject A" name="wave_focus_subject_a" value="2" />
+            </combo_box>
+            <slider
+             can_edit_text="true"
+             decimal_digits="1"
+             follows="left|top"
+             height="20"
+             increment="0.5"
+             label="Spread (m/s)"
+             label_width="84"
+             layout="topleft"
+             left="6"
+             max_val="100"
+             min_val="0.5"
+             name="db_wave_speed"
+             show_text="true"
+             tool_tip="How fast the wave travels outward, in metres per second"
+             top="52"
+             wheel_adjust="true"
+             width="388" />
+            <text
+             follows="left|top"
+             font="SansSerifSmall"
+             height="16"
+             layout="topleft"
+             left="6"
+             name="db_wave_dir_label"
+             top="84"
+             width="62">
+                Direction
+            </text>
+            <combo_box
+             follows="left|top"
+             height="20"
+             layout="topleft"
+             left="70"
+             name="db_wave_dir"
+             tool_tip="Outward: the near dancers go first. Inward: the far dancers go first."
+             top="81"
+             width="96">
+                <combo_box.item label="Outward" name="wave_outward" value="0" />
+                <combo_box.item label="Inward" name="wave_inward" value="1" />
+            </combo_box>
+            <text
+             follows="left|top"
+             font="SansSerifSmall"
+             height="16"
+             layout="topleft"
+             left="170"
+             name="db_wave_apply_label"
+             top="84"
+             width="52">
+                Apply on
+            </text>
+            <combo_box
+             follows="left|top"
+             height="20"
+             layout="topleft"
+             left="226"
+             name="db_wave_apply"
+             tool_tip="Which events the wave delays"
+             top="81"
+             width="150">
+                <combo_box.item label="Start only" name="wave_start" value="0" />
+                <combo_box.item label="Switch only" name="wave_switch" value="1" />
+                <combo_box.item label="Start and switch" name="wave_both" value="2" />
+            </combo_box>
+            <text
+             follows="left|top"
+             font="SansSerifBold"
+             height="16"
+             layout="topleft"
+             left="6"
+             name="db_ramp_title"
+             top="116"
+             width="200">
+                Speed ramp
+            </text>
+            <spinner
+             decimal_digits="2"
+             follows="left|top"
+             height="20"
+             increment="0.05"
+             label="Target"
+             label_width="40"
+             layout="topleft"
+             left="6"
+             max_val="4"
+             min_val="0.25"
+             name="db_ramp_target"
+             tool_tip="Speed to ramp to. 1 is normal."
+             top="137"
+             width="116" />
+            <spinner
+             decimal_digits="1"
+             follows="left|top"
+             height="20"
+             increment="0.5"
+             label="Seconds"
+             label_width="52"
+             layout="topleft"
+             left="128"
+             max_val="120"
+             min_val="0"
+             name="db_ramp_seconds"
+             tool_tip="How long the ramp takes"
+             top="137"
+             width="134" />
+            <button
+             follows="left|top"
+             height="22"
+             label="Go"
+             layout="topleft"
+             left="270"
+             name="db_ramp_go"
+             tool_tip="Ramp the speed to the target"
+             top="136"
+             width="50" />
+            <text
+             follows="left|top"
+             font="SansSerifBold"
+             height="16"
+             layout="topleft"
+             left="6"
+             name="db_session_title"
+             top="172"
+             width="200">
+                Session
+            </text>
+            <button
+             follows="left|top"
+             height="22"
+             label="Export..."
+             layout="topleft"
+             left="6"
+             name="db_export"
+             tool_tip="Save the roster, playlist and settings to a file"
+             top="192"
+             width="100" />
+            <button
+             follows="left|top"
+             height="22"
+             label="Import..."
+             layout="topleft"
+             left="110"
+             name="db_import"
+             tool_tip="Load a session file. Replaces the current playlist and settings."
+             top="192"
+             width="100" />
+            <text
+             follows="left|top"
+             font="SansSerifSmall"
+             height="32"
+             layout="topleft"
+             left="6"
+             name="db_session_note"
+             top="220"
+             width="388"
+             word_wrap="true">
+                Sessions are saved only when you export them. Dance Ball never loads a file by itself.
+            </text>
+        </panel>
+    </tab_container>
+
+    <text
+     follows="left|bottom|right"
+     font="SansSerifSmall"
+     height="16"
+     layout="topleft"
+     left="4"
+     name="db_message"
+     top="548"
+     use_ellipses="true"
+     width="424">
+    </text>
+</panel>

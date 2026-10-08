@@ -31,6 +31,7 @@
 #include "alavataractions.h"
 #include "alavatarlightresponse.h" // [AvatarLightResponse]
 #include "alclientheight.h"        // [ClientHeight]
+#include "alpaneldanceball.h"      // [DanceBall] right-click roster toggle
 #include "llcontrolavatar.h"        // [AvatarLightResponse] worn-animesh target
 #include "llcinematiccamera.h"  // [Cinematic] locked follow subject
 #include "llactormover.h"       // [ActorMover] ghost locomotion subject
@@ -1125,6 +1126,33 @@ namespace
         return avatarp && LLDirectorCast::instance().contains(avatarp->getID());
     }
 
+// [DanceBall] right-click avatar (or animesh) > toggle Dance Ball roster
+// membership. A worn animesh targets its OWN control avatar, like
+// "Light Response...". Client-side, session-only.
+    LLVOAvatar* dance_ball_target_from_selection()
+    {
+        LLViewerObject* primary = LLSelectMgr::getInstance()->getSelection()->getPrimaryObject();
+        if (primary && !primary->isAvatar())
+        {
+            LLControlAvatar* cav = primary->getControlAvatar();
+            if (cav && !cav->isDead())
+            {
+                return cav;
+            }
+        }
+        return find_avatar_from_object(primary);
+    }
+
+    void handle_avatar_add_to_dance_ball(const LLSD&)
+    {
+        ALPanelDanceBall::toggleAvatar(dance_ball_target_from_selection());
+    }
+
+    bool check_avatar_add_to_dance_ball(const LLSD&)
+    {
+        return ALPanelDanceBall::isAvatarDancer(dance_ball_target_from_selection());
+    }
+
 // [Director] right-click avatar (or animesh) > designate as Subject A-D.
 // Subjects must be cast members -- LLDirectorCast clears a subject the moment
 // it leaves the cast -- so resolve the clicked avatar the same way Add to Cast
@@ -1321,6 +1349,9 @@ void ALViewerMenu::initialize_menus()
     // [Director] cast membership (alias of the Actor Mover roster)
     commit.add("Avatar.AddToCast", boost::bind(&handle_avatar_add_to_cast, _2));
     enable.add("Avatar.CheckAddToCast", boost::bind(&check_avatar_add_to_cast, _2));
+    // [DanceBall] session-local multi-avatar dance roster
+    commit.add("Avatar.AddToDanceBall", boost::bind(&handle_avatar_add_to_dance_ball, _2));
+    enable.add("Avatar.CheckAddToDanceBall", boost::bind(&check_avatar_add_to_dance_ball, _2));
     // [Director] Subjects A-D (setters add to the cast when absent; subjects
     // must be cast members) + per-actor marks (Set Mark Here / Reset to Mark)
     commit.add("Avatar.SetSubjectA", boost::bind(&handle_avatar_set_subject_a, _2));

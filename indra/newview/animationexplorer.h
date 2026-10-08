@@ -134,6 +134,7 @@ protected:
     // [ActorMover] UUID tools
     void onCopyUUIDPressed();
     void onToActorMoverPressed();
+    void onToDanceBallPressed(); // [DanceBall] add the selected anim to the Dance Ball playlist
     void onScrollListRightClicked(LLUICtrl* ctrl, S32 x, S32 y);
 };
 

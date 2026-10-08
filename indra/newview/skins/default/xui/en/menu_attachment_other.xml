@@ -23,6 +23,16 @@
         function="Avatar.EnableAlphaMode" />
     </menu_item_check>
     <menu_item_check
+      label="Add to Dance Ball"
+      name="Add To Dance Ball">
+      <menu_item_check.on_click
+        function="Avatar.AddToDanceBall" />
+      <menu_item_check.on_check
+        function="Avatar.CheckAddToDanceBall" />
+      <menu_item_check.on_enable
+        function="Avatar.EnableAlphaMode" />
+    </menu_item_check>
+    <menu_item_check
       label="Set Subject A"
       name="Set Subject A">
       <menu_item_check.on_click

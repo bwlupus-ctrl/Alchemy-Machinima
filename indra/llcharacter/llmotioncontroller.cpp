@@ -535,7 +535,8 @@ void LLMotionController::updateIdleMotion(LLMotion* motionp)
                 motionp->getPose()->getWeight());
         }
     }
-    else if (mAnimTime > motionp->mSendStopTimestamp)
+    else if (usesNativeLifetime(motionp) &&
+             mAnimTime > motionp->mSendStopTimestamp)
     {
         // notify character of timed stop event on first iteration past sendstoptimestamp
         // this will only be called when an animation stops itself (runs out of time)
@@ -654,7 +655,8 @@ void LLMotionController::updateMotionsByType(LLMotion::LLMotionBlendType anim_ty
             motionp->fadeOut();
 
             //should we notify the simulator that this motion should be stopped (check even if skipped by LOD logic)
-            if (mAnimTime > motionp->mSendStopTimestamp)
+            if (usesNativeLifetime(motionp) &&
+                mAnimTime > motionp->mSendStopTimestamp)
             {
                 // notify character of timed stop event on first iteration past sendstoptimestamp
                 // this will only be called when an animation stops itself (runs out of time)
@@ -740,7 +742,8 @@ void LLMotionController::updateMotionsByType(LLMotion::LLMotionBlendType anim_ty
                 motionp->applyPresentationWeight(motionp->getFadeWeight()));
 
             //should we notify the simulator that this motion should be stopped?
-            if (mAnimTime > motionp->mSendStopTimestamp)
+            if (usesNativeLifetime(motionp) &&
+                mAnimTime > motionp->mSendStopTimestamp)
             {
                 // notify character of timed stop event on first iteration past sendstoptimestamp
                 // this will only be called when an animation stops itself (runs out of time)
@@ -790,7 +793,7 @@ void LLMotionController::updateMotionsByType(LLMotion::LLMotionBlendType anim_ty
         }
 
         // allow motions to deactivate themselves
-        if (!update_result)
+        if (!update_result && usesNativeLifetime(motionp))
         {
             if (!motionp->isStopped() || motionp->getStopTime() > mAnimTime)
             {
@@ -993,7 +996,8 @@ bool LLMotionController::activateMotionInstance(LLMotion *motion, F32 time)
         motion->getPose()->getWeight());
 
     // set stop time based on given duration and ease out time
-    if (motion->getDuration() != 0.f && !motion->getLoop())
+    if (usesNativeLifetime(motion) &&
+        motion->getDuration() != 0.f && !motion->getLoop())
     {
         F32 ease_out_time;
         F32 motion_duration;
