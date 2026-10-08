@@ -81,6 +81,66 @@ using VelocityModelMatrixUpdate = std::pair<LLMatrix4*, LLMatrix4>;
 static std::vector<VelocityModelMatrixUpdate> sVelocityModelMatrixUpdates;
 static bool sVelocityModelMatrixUpdatesDeferred = false;
 
+static bool sVelocityOffsetPassActive = false;
+static F32 sVelocityOffsetPassFactor = 0.f;
+static F32 sVelocityOffsetPassUnits = 0.f;
+
+void LLScopedVelocityPolygonOffset::beginPass()
+{
+    gGL.flush();
+    glGetFloatv(GL_POLYGON_OFFSET_FACTOR, &sVelocityOffsetPassFactor);
+    glGetFloatv(GL_POLYGON_OFFSET_UNITS, &sVelocityOffsetPassUnits);
+    sVelocityOffsetPassActive = true;
+}
+
+void LLScopedVelocityPolygonOffset::endPass()
+{
+    sVelocityOffsetPassActive = false;
+}
+
+LLScopedVelocityPolygonOffset::LLScopedVelocityPolygonOffset()
+{
+    gGL.flush();
+    if (sVelocityOffsetPassActive)
+    {
+        // Every guard restores these exact values, so they stay current all pass.
+        mSavedFactor = sVelocityOffsetPassFactor;
+        mSavedUnits = sVelocityOffsetPassUnits;
+    }
+    else
+    {
+        glGetFloatv(GL_POLYGON_OFFSET_FACTOR, &mSavedFactor);
+        glGetFloatv(GL_POLYGON_OFFSET_UNITS, &mSavedUnits);
+    }
+    mCurrentFactor = mSavedFactor;
+    mCurrentUnits = mSavedUnits;
+}
+
+LLScopedVelocityPolygonOffset::~LLScopedVelocityPolygonOffset()
+{
+    gGL.flush();
+    glPolygonOffset(mSavedFactor, mSavedUnits);
+}
+
+void LLScopedVelocityPolygonOffset::set(F32 factor, F32 units)
+{
+    if (factor != mCurrentFactor || units != mCurrentUnits)
+    {
+        gGL.flush();
+        glPolygonOffset(factor, units);
+        mCurrentFactor = factor;
+        mCurrentUnits = units;
+    }
+}
+
+F32 getVelocityRiggedBias()
+{
+    static LLCachedControl<F32> bias(gSavedSettings,
+                                     "BDMergeVelocityRiggedBias", -1.f);
+    // A positive bias would push velocity away from the camera (worse z-fight).
+    return llclamp((F32)bias, -16.f, 0.f);
+}
+
 void setup_texture_matrix(LLDrawInfo& params);
 void teardown_texture_matrix(LLDrawInfo& params);
 
@@ -1776,6 +1836,14 @@ void LLRenderPass::pushRiggedVelocityBatches(U32 type)
 {
     LL_PROFILE_ZONE_SCOPED_CATEGORY_DRAWPOOL;
 
+    // [VelZFight] One velocity program serves beauty shaders with different
+    // (though algebraically equivalent) skinned clip-position expressions.
+    // Pull only these depth-tested velocity fragments toward the camera.
+    LLScopedVelocityPolygonOffset saved_velocity_offset;
+    LLGLEnable velocity_depth_bias(GL_POLYGON_OFFSET_FILL);
+    const F32 bias = getVelocityRiggedBias();
+    saved_velocity_offset.set(bias, bias);
+
     const LLVOAvatar* lastAvatar = nullptr;
     U64 lastMeshId = 0;
     bool skipLastSkin = false;
@@ -1817,6 +1885,13 @@ void LLRenderPass::pushRiggedVelocityBatches(U32 type)
 void LLRenderPass::pushRiggedVelocityBatchesTextured(U32 type, bool legacy_material)
 {
     LL_PROFILE_ZONE_SCOPED_CATEGORY_DRAWPOOL;
+
+    // [VelZFight] See pushRiggedVelocityBatches: masked rigged velocity has the
+    // same unavoidable cross-program depth-expression mismatch.
+    LLScopedVelocityPolygonOffset saved_velocity_offset;
+    LLGLEnable velocity_depth_bias(GL_POLYGON_OFFSET_FILL);
+    const F32 bias = getVelocityRiggedBias();
+    saved_velocity_offset.set(bias, bias);
 
     const LLVOAvatar* lastAvatar = nullptr;
     U64 lastMeshId = 0;
@@ -1891,6 +1966,16 @@ void LLRenderPass::pushRiggedVelocityBatchesTextured(U32 type, bool legacy_mater
 void LLRenderPass::pushVelocityAlphaBatchesIndexed(U32 type, bool gltf, bool rigged)
 {
     LL_PROFILE_ZONE_SCOPED_CATEGORY_DRAWPOOL;
+
+    // [VelZFight] Indexed rigged masks share the generic rigged velocity
+    // position path; rigid indexed draws remain exactly on scene depth.
+    LLScopedVelocityPolygonOffset saved_velocity_offset;
+    LLGLEnable velocity_depth_bias(rigged ? GL_POLYGON_OFFSET_FILL : 0);
+    if (rigged)
+    {
+        const F32 bias = getVelocityRiggedBias();
+        saved_velocity_offset.set(bias, bias);
+    }
     static const LLMatrix4 identity;
     const LLVOAvatar* last_avatar = nullptr;
     U64 last_mesh_id = 0;

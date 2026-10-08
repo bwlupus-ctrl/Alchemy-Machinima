@@ -28,6 +28,7 @@ uniform mat4 texture_matrix0;
 uniform mat4 texture_matrix1;
 uniform mat4 modelview_matrix;
 uniform mat4 modelview_projection_matrix;
+invariant gl_Position; // [VelZFight] Keep beauty depth reproducible on replay.
 
 
 void calcAtmospherics(vec3 inPositionEye);

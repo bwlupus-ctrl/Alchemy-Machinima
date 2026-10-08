@@ -36,6 +36,7 @@ uniform mat4 last_projection_matrix_unjittered; // previous un-jittered projecti
 uniform mat4 last_modelview_matrix;         // previous frame camera modelview
 uniform mat4 last_object_matrix;            // previous frame object matrix
 uniform mat4 texture_matrix0;
+invariant gl_Position; // [VelZFight] Match invariant depth-producing positions.
 #ifdef PBR_ALPHA_MASK
 uniform vec4[2] texture_base_color_transform;
 vec2 texture_transform(vec2 vertex_texcoord, vec4[2] khr_gltf_transform,

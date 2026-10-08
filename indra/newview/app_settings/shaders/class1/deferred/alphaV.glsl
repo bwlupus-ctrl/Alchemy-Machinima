@@ -32,6 +32,7 @@ uniform mat4 texture_matrix0;
 uniform mat4 projection_matrix;
 uniform mat4 modelview_matrix;
 uniform mat4 modelview_projection_matrix;
+invariant gl_Position; // [VelZFight] Keep alpha beauty depth reproducible.
 
 in vec3 position;
 #ifdef HAS_ACTOR_FX

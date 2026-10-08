@@ -893,6 +893,15 @@ void LLDrawPoolAvatar::renderVelocity(S32 pass)
         return;
     }
     LLRenderPass::uploadActorFx(actor_fx_id);
+    // [VelZFight] The bias covers the classic-avatar dot() versus vector*matrix
+    // clip-position expression difference between avatarV and avatarVelocityV.
+    // NOTE: AVATAR_CLOTH wind displacement is not fixed here. RenderAvatarCloth
+    // defaults to 0; enabling it will require avatarVelocityV to apply the same
+    // wind displacement in a later change.
+    LLScopedVelocityPolygonOffset saved_velocity_offset;
+    LLGLEnable velocity_depth_bias(GL_POLYGON_OFFSET_FILL);
+    const F32 bias = getVelocityRiggedBias();
+    saved_velocity_offset.set(bias, bias);
     // [AlphaVel] Match the deferred body pass here; transparent system meshes
     // are deferred to renderVelocityAlpha after all opaque pool stamps.
     LLDrawPoolAvatar::sSkipTransparent = true;
@@ -942,6 +951,11 @@ void LLDrawPoolAvatar::renderVelocityAlpha()
     // alpha and applies Actor-FX dissolve; raise its discard to dominance.
     sVertexProgram->setMinimumAlpha(0.5f);
     LLRenderPass::uploadActorFx(actor_fx_id);
+    // [VelZFight] Match the scoped classic-avatar expression accommodation above.
+    LLScopedVelocityPolygonOffset saved_velocity_offset;
+    LLGLEnable velocity_depth_bias(GL_POLYGON_OFFSET_FILL);
+    const F32 bias = getVelocityRiggedBias();
+    saved_velocity_offset.set(bias, bias);
     LLDrawPoolAvatar::sSkipOpaque = true;
     avatarp->renderSkinned();
     LLDrawPoolAvatar::sSkipOpaque = false;

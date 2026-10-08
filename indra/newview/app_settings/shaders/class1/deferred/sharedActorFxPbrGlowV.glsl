@@ -16,6 +16,8 @@ uniform mat4 modelview_projection_matrix;
 uniform mat4 modelview_matrix;
 #endif
 
+invariant gl_Position; // [VelZFight] Match shared PBR beauty positions.
+
 #ifdef SHARED_ACTOR_FX_SLOT_FILTER
 uniform vec4 gltf_basecolor_transform[2*GLTF_INDEXED_CHANNELS];
 uniform vec4 gltf_emissive_transform[2*GLTF_INDEXED_CHANNELS];

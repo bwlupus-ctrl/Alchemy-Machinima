@@ -25,6 +25,7 @@
 
 uniform mat4 texture_matrix0;
 uniform mat4 modelview_projection_matrix;
+invariant gl_Position; // [VelZFight] Keep forward impostor depth reproducible.
 
 
 in vec3 position;

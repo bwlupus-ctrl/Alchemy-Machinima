@@ -23,6 +23,8 @@
  * $/LicenseInfo$
  */
 
+invariant gl_Position; // [VelZFight] Keep normal-debug depth tests stable.
+
 in vec3 position;
 in vec3 normal;
 out vec4 normal_g;

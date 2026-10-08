@@ -25,6 +25,7 @@
 
 uniform mat4 modelview_matrix;
 uniform mat4 modelview_projection_matrix;
+invariant gl_Position; // [VelZFight] Keep world-colour depth tests stable.
 
 uniform vec4 color;
 

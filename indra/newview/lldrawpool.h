@@ -42,6 +42,31 @@ class LLGLSLShader;
 class LLMeshSkinInfo;
 class LLFetchedGLTFMaterial;
 
+// [VelZFight] Preserve polygon-offset parameters around scoped velocity bias.
+// GL_POLYGON_OFFSET_FILL enablement remains owned by an adjacent LLGLEnable.
+class LLScopedVelocityPolygonOffset
+{
+public:
+    LLScopedVelocityPolygonOffset();
+    ~LLScopedVelocityPolygonOffset();
+
+    void set(F32 factor, F32 units);
+
+    // [VelZFight] Read the GL offset state ONCE per velocity pass (glGet can force a
+    // driver-thread sync under threaded optimisation). Guards inside an active pass
+    // reuse it; nothing else changes polygon offset during the velocity pass.
+    static void beginPass();
+    static void endPass();
+
+private:
+    F32 mSavedFactor;
+    F32 mSavedUnits;
+    F32 mCurrentFactor;
+    F32 mCurrentUnits;
+};
+
+F32 getVelocityRiggedBias();
+
 class LLDrawPool
 {
 public:

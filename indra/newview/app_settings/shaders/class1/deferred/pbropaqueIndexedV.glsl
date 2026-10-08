@@ -29,6 +29,7 @@
 // it selects this vertex's KHR_texture_transform set and is forwarded to the
 // fragment shader as vary_material_index. The HAS_SKIN variant adds rigged-mesh
 // matrix-palette skinning. See pbropaqueV.glsl for the single-material equivalent.
+invariant gl_Position; // [VelZFight] Keep beauty depth reproducible on replay.
 
 uniform mat4 modelview_matrix;
 

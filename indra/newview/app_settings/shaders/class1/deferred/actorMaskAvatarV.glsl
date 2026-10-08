@@ -26,6 +26,9 @@
 
 uniform mat4 projection_matrix;
 
+// [VelZFight] same depth-equality family as beauty (Actor Mask / Silhouette Cover)
+invariant gl_Position;
+
 in vec3 position;
 #ifdef HAS_ACTOR_FX
 out vec3 vary_actor_fx_position;

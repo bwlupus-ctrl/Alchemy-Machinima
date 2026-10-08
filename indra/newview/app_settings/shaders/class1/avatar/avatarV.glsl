@@ -24,6 +24,7 @@
  */
 
 uniform mat4 projection_matrix;
+invariant gl_Position; // [VelZFight] Keep forward avatar depth reproducible.
 
 in vec3 position;
 #ifdef HAS_ACTOR_FX

@@ -25,6 +25,7 @@
 
 
 #ifndef IS_HUD
+invariant gl_Position; // [VelZFight] Keep alpha beauty depth reproducible.
 
 // default alpha implementation
 

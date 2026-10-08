@@ -9,6 +9,7 @@ uniform mat4 projection_matrix_unjittered;
 uniform mat4 last_projection_matrix_unjittered;
 uniform mat4 last_modelview_matrix;
 uniform mat4 last_object_matrix;
+invariant gl_Position; // [VelZFight] Match invariant depth-producing positions.
 
 #ifdef PBR_ALPHA_MASK
 uniform vec4 gltf_basecolor_transform[2*GLTF_INDEXED_CHANNELS];

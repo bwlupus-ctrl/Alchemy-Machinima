@@ -33,6 +33,8 @@ uniform mat4 modelview_projection_matrix;
 uniform mat4 modelview_matrix;
 #endif
 
+invariant gl_Position; // [VelZFight] Match the PBR depth-producing position.
+
 uniform mat4 texture_matrix0;
 
 uniform vec4[2] texture_base_color_transform;

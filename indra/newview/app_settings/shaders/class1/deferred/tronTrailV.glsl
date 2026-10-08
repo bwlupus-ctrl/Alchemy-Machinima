@@ -26,6 +26,7 @@
 
 uniform mat4 modelview_projection_matrix;
 uniform mat4 modelview_matrix;
+invariant gl_Position; // [VelZFight] Keep depth-tested trail geometry stable.
 
 in vec3 position;     // camera-relative metres
 in vec2 texcoord0;    // x = fade01, y = across01

@@ -31,6 +31,7 @@
 uniform mat4 modelview_matrix;
 uniform mat4 projection_matrix;
 uniform mat4 modelview_projection_matrix;
+invariant gl_Position; // [VelZFight] Keep beauty depth reproducible on replay.
 
 #ifdef HAS_SKIN
 mat4 getObjectSkinnedTransform();

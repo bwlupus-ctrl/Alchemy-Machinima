@@ -41,6 +41,7 @@ uniform mat4 projection_matrix_unjittered;  // current projection without T2x ji
 uniform mat4 last_projection_matrix_unjittered; // previous un-jittered projection
 uniform mat4 last_modelview_matrix;         // previous frame camera modelview
 uniform mat4 last_object_matrix;            // previous frame object matrix (identity = first frame)
+invariant gl_Position; // [VelZFight] Match invariant depth-producing positions.
 
 in vec3 position;
 

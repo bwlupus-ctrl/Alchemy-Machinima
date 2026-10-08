@@ -35,6 +35,7 @@ uniform mat3 normal_matrix;
 uniform mat4 texture_matrix0;
 uniform mat4 modelview_matrix;
 uniform mat4 modelview_projection_matrix;
+invariant gl_Position; // [VelZFight] Keep terrain depth reproducible on replay.
 #if TERRAIN_PAINT_TYPE == TERRAIN_PAINT_TYPE_PBR_PAINTMAP
 uniform float region_scale;
 #endif

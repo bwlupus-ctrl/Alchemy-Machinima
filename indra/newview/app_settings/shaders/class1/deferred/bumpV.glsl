@@ -27,6 +27,7 @@ uniform mat4 modelview_matrix;
 uniform mat3 normal_matrix;
 uniform mat4 texture_matrix0;
 uniform mat4 modelview_projection_matrix;
+invariant gl_Position; // [VelZFight] Keep beauty depth reproducible on replay.
 
 in vec3 position;
 #ifdef HAS_ACTOR_FX

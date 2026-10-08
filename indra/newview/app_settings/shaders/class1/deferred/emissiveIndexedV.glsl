@@ -37,6 +37,8 @@ mat4 getObjectSkinnedTransform();
 uniform mat4 modelview_projection_matrix;
 #endif
 
+invariant gl_Position; // [VelZFight] Match indexed beauty depth positions.
+
 in vec3 position;
 #ifdef HAS_ACTOR_FX
 out vec3 vary_actor_fx_position;

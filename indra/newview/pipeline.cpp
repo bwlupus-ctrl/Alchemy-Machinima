@@ -7733,9 +7733,11 @@ void LLPipeline::renderGeomVelocity()
         VelocityModelMatrixUpdateGuard()
         {
             LLRenderPass::beginVelocityModelMatrixUpdates();
+            LLScopedVelocityPolygonOffset::beginPass(); // [VelZFight] one glGet per pass
         }
         ~VelocityModelMatrixUpdateGuard()
         {
+            LLScopedVelocityPolygonOffset::endPass();
             LLRenderPass::flushVelocityModelMatrixUpdates();
         }
     } velocity_model_matrix_update_guard;

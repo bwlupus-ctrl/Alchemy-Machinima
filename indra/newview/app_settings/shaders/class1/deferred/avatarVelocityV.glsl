@@ -36,6 +36,7 @@ uniform mat4 projection_matrix;             // current, JITTERED (raster positio
 uniform mat4 projection_matrix_unjittered;  // current projection without T2x jitter (velocity)
 uniform mat4 last_projection_matrix_unjittered; // previous un-jittered projection
 uniform vec4 lastMatrixPalette[45];
+invariant gl_Position; // [VelZFight] Match invariant avatar depth positions.
 
 in vec3 position;
 in vec4 weight;

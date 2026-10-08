@@ -26,6 +26,7 @@
 uniform mat4 texture_matrix0;
 uniform mat4 modelview_matrix;
 uniform mat4 modelview_projection_matrix;
+invariant gl_Position; // [VelZFight] Keep tree depth reproducible on replay.
 uniform mat3 normal_matrix;
 
 in vec3 position;

@@ -5,6 +5,7 @@
  * colour UV/factor used by beauty. Indexed MASK selects its KHR transform per
  * vertex so one draw covers the complete multi-material batch.
  */
+invariant gl_Position; // [VelZFight] Keep depth-prime positions reproducible.
 
 #define SHARED_ACTOR_FX_ALPHA_OPAQUE 0
 #define SHARED_ACTOR_FX_ALPHA_MASK   1

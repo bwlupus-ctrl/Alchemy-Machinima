@@ -2,6 +2,9 @@
 /*[EXTRA_CODE_HERE]*/
 uniform mat4 modelview_matrix;
 uniform mat4 modelview_projection_matrix;
+
+// [VelZFight] same depth-equality family as beauty (Actor Mask / Silhouette Cover)
+invariant gl_Position;
 uniform mat4 projection_matrix;
 uniform mat4 texture_matrix0;
 uniform int mask_indexed;

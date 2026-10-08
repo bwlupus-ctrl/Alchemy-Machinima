@@ -26,6 +26,7 @@
 uniform mat4 modelview_matrix;
 uniform mat3 normal_matrix;
 uniform mat4 modelview_projection_matrix;
+invariant gl_Position; // [VelZFight] Keep main-view water depth reproducible.
 
 in vec3 position;
 

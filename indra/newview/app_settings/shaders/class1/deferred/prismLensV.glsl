@@ -5,6 +5,7 @@
 
 uniform mat4 modelview_projection_matrix;
 uniform mat4 modelview_matrix;
+invariant gl_Position; // [VelZFight] Keep depth-tested lens geometry stable.
 uniform mat3 normal_matrix;
 uniform vec3 surfaceOrigin;
 uniform vec3 surfaceUDual;

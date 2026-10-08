@@ -7,6 +7,7 @@
  * variants share one material law; the indexed variant shades its complete
  * multi-material VBO in one draw.
  */
+invariant gl_Position; // [VelZFight] Keep replay beauty depth reproducible.
 
 #ifdef HAS_SKIN
 uniform mat4 modelview_matrix;

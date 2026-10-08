@@ -374,6 +374,11 @@ void LLDrawPoolAlpha::renderVelocityGroups(EAlphaStream stream, AttachmentFilter
 
     const bool merged = stream == EAlphaStream::INTERLEAVED;
     bool rigged = stream == EAlphaStream::RIGGED;
+    // [VelZFight] Rigged alpha beauty writes depth, so bias its velocity replay.
+    // Interleaved streams switch between rigged and rigid draws in depth order.
+    LLScopedVelocityPolygonOffset saved_velocity_offset;
+    LLGLEnable velocity_depth_bias(GL_POLYGON_OFFSET_FILL);
+    const F32 rigged_bias = getVelocityRiggedBias();
     LLGLSLShader* active_shader = nullptr;
     const LLVOAvatar* last_avatar = nullptr;
     U64 last_mesh_id = 0;
@@ -680,6 +685,8 @@ void LLDrawPoolAlpha::renderVelocityGroups(EAlphaStream stream, AttachmentFilter
                                          (GLfloat*)last_mat->mMatrix);
             }
 
+            saved_velocity_offset.set(rigged ? rigged_bias : 0.f,
+                                      rigged ? rigged_bias : 0.f);
             params.mVertexBuffer->setBuffer();
             params.mVertexBuffer->drawRange(LLRender::TRIANGLES, params.mStart,
                                             params.mEnd, params.mCount, params.mOffset);

@@ -25,6 +25,7 @@
 
 
 #ifndef IS_HUD
+invariant gl_Position; // [VelZFight] Keep beauty depth reproducible on replay.
 
 //deferred opaque implementation
 

@@ -7,6 +7,7 @@
  */
 
 uniform mat4 projection_matrix;
+invariant gl_Position; // [VelZFight] Match classic-avatar depth positions.
 
 in vec3 position;
 in vec3 normal;

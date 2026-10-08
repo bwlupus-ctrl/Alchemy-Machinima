@@ -24,6 +24,7 @@
  */
 
 uniform mat4 modelview_projection_matrix;
+invariant gl_Position; // [VelZFight] Keep world-overlay depth tests stable.
 
 in vec3 position;
 in vec2 texcoord0;

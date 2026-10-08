@@ -27,6 +27,7 @@ uniform mat4 texture_matrix0;
 uniform mat4 modelview_matrix;
 uniform mat4 projection_matrix;
 uniform mat3 normal_matrix;
+invariant gl_Position; // [VelZFight] Match the main-view surface depth.
 
 in vec3 position;
 in vec3 normal;

@@ -38,6 +38,8 @@ uniform mat4 modelview_projection_matrix;
 uniform mat4 modelview_matrix;
 #endif
 
+invariant gl_Position; // [VelZFight] Match indexed PBR depth positions.
+
 // Per-material KHR_texture_transform, two vec4 (packed scale/rotation/offset) per
 // slot, indexed by the material slot (texture_index).
 uniform vec4 gltf_basecolor_transform[2*GLTF_INDEXED_CHANNELS];

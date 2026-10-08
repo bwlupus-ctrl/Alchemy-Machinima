@@ -9749,6 +9749,17 @@
       <key>Value</key>
       <integer>0</integer>
     </map>
+    <key>BDMergeVelocityRiggedBias</key>
+    <map>
+      <key>Comment</key>
+      <string>[VelZFight] Polygon-offset factor and units used by rigged velocity draws. Default -1 pulls velocity fragments toward the camera to prevent depth-test patchwork; 0 disables the bias for in-world A/B diagnosis.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>-1.0</real>
+    </map>
     <key>BDMergeVelocityAlpha</key>
     <map>
       <key>Comment</key>

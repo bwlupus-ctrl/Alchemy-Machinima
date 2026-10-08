@@ -24,6 +24,7 @@
  */
 
 uniform mat4 modelview_projection_matrix;
+invariant gl_Position; // [VelZFight] Keep pathfinding overlay depth stable.
 
 in vec3 position;
 in vec4 diffuse_color;
