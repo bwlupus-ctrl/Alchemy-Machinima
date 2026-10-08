@@ -21333,6 +21333,17 @@
     <key>Value</key>
     <integer>1</integer>
   </map>
+  <key>RenderProbeFlushAfterFace</key>
+  <map>
+    <key>Comment</key>
+    <string>[ProbeFlush] Submit each reflection-probe cube face to the GPU right after it is recorded (glFlush, non-blocking). Without it the face's commands sit queued until the next frame flushes them and the GPU idles ~7 ms on every probe frame (Tracy 2026-10-07). Live toggle for A/B captures.</string>
+    <key>Persist</key>
+    <integer>1</integer>
+    <key>Type</key>
+    <string>Boolean</string>
+    <key>Value</key>
+    <integer>1</integer>
+  </map>
   <key>RenderProbeOnDemand</key>
   <map>
     <key>Comment</key>

@@ -692,14 +692,20 @@ void LLRenderTarget::copyContents(LLRenderTarget& source, S32 srcX0, S32 srcY0, 
         stop_glerror();
         check_framebuffer_status();
         stop_glerror();
-        glBlitFramebuffer(srcX0, srcY0, srcX1, srcY1, dstX0, dstY0, dstX1, dstY1, mask, filter);
-        stop_glerror();
-        glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
-        stop_glerror();
-        glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
-        stop_glerror();
-        glBindFramebuffer(GL_FRAMEBUFFER, sCurFBO);
-        stop_glerror();
+        {
+            LL_PROFILE_GPU_ZONE("copy blit"); // [ProbeFlush] instrumentation
+            glBlitFramebuffer(srcX0, srcY0, srcX1, srcY1, dstX0, dstY0, dstX1, dstY1, mask, filter);
+            stop_glerror();
+        }
+        {
+            LL_PROFILE_GPU_ZONE("copy rebind"); // [ProbeFlush] instrumentation
+            glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
+            stop_glerror();
+            glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+            stop_glerror();
+            glBindFramebuffer(GL_FRAMEBUFFER, sCurFBO);
+            stop_glerror();
+        }
     }
 }
 

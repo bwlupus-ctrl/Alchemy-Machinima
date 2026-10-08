@@ -1478,16 +1478,21 @@ void display_cube_face()
 
     gGL.setColorMask(true, true);
 
-    gPipeline.mRT->deferredScreen.bindTarget();
-    if (gUseWireframe)
     {
-        glClearColor(0.5f, 0.5f, 0.5f, 1.f);
+        // [ProbeFlush] Labels the CPU wait that lands here when the GPU is the
+        // bottleneck (first GL command after present on probe frames).
+        LL_PROFILE_ZONE_NAMED_CATEGORY_DISPLAY("cube face bind+clear");
+        gPipeline.mRT->deferredScreen.bindTarget();
+        if (gUseWireframe)
+        {
+            glClearColor(0.5f, 0.5f, 0.5f, 1.f);
+        }
+        else
+        {
+            glClearColor(1.f, 0.f, 1.f, 1.f);
+        }
+        gPipeline.mRT->deferredScreen.clear();
     }
-    else
-    {
-        glClearColor(1.f, 0.f, 1.f, 1.f);
-    }
-    gPipeline.mRT->deferredScreen.clear();
 
     LLViewerCamera::sCurCameraID = LLViewerCamera::CAMERA_WORLD;
 
@@ -1501,6 +1506,19 @@ void display_cube_face()
     {
         LL_PROFILE_ZONE_NAMED_CATEGORY_DISPLAY("cube face light"); // [ProbeOnDemand] C0
         gPipeline.renderDeferredLighting(LLPipeline::ActorMaskViewSource::CUBE); // [ActorMask]
+    }
+
+    // [ProbeFlush] Tracy 2026-10-07: the probe face's commands sat unsubmitted
+    // until the next frame flushed, leaving the GPU idle ~7 ms per probe frame
+    // (the face's depth blit "took" 7 ms; the real copy is ~0.01 ms). Submit the
+    // face now. glFlush does not block. Live toggle for A/B captures.
+    static LLCachedControl<bool> flush_after_face(gSavedSettings, "RenderProbeFlushAfterFace", true);
+    if (flush_after_face)
+    {
+        // CPU zone only: a GPU zone around glFlush would close after the flush
+        // and could time the very idle gap this removes.
+        LL_PROFILE_ZONE_NAMED_CATEGORY_DISPLAY("cube face flush");
+        glFlush();
     }
 
     LLPipeline::sUnderWaterRender = false;
