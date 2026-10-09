@@ -118,7 +118,9 @@ void LLMotion::addJointState(const LLPointer<LLJointState>& jointState)
     // Precompute the presentation exclusion once, here, so the pose blender
     // only has to read a flag per joint per frame.
     const bool excluded = isPresentationJointExcluded(jointState->getJoint());
-    jointState->setPresentationExcluded(excluded);
+    // const LLPointer's operator-> yields a const pointer; the flag is mutable
+    // per-instance state, so go through get() (same idiom as lldrawpoolalpha).
+    jointState.get()->setPresentationExcluded(excluded);
 
     // for now, usage is everything
     S32 joint_num = jointState->getJoint()->getJointNum();
