@@ -76,5 +76,7 @@ if (BUILD_TESTING)
   set(test_libs llcommon llmath)
   set(test_project llcharacter)
   LL_ADD_INTEGRATION_TEST(lljoint "lljoint.cpp" "${test_libs}" "${test_project}")
-  LL_ADD_INTEGRATION_TEST(llmotionpresentation "llmotion.cpp;llpose.cpp;lljoint.cpp" "${test_libs}" "${test_project}")
+  # llxml: the test includes llmotioncontroller.h (inline usesNativeLifetime),
+  # whose llcharacter.h -> llvisualparam.h chain needs llxmltree.h.
+  LL_ADD_INTEGRATION_TEST(llmotionpresentation "llmotion.cpp;llpose.cpp;lljoint.cpp" "${test_libs};llxml" "${test_project}")
 endif()
