@@ -394,9 +394,126 @@ bool ALDanceBall::removeDancer(const LLUUID& id)
         releaseRuntime(*found, runtime->second);
     }
     mScheduler.erase(found->mId.getDigest64(), mTiming.mMode);
+    ALAvatarStaging::instance().remove(found->mId);
     mRoster.erase(found);
     ++mRosterRevision;
     return true;
+}
+
+void ALDanceBall::setBlockingEnabled(bool enabled)
+{
+    ALAvatarStaging::instance().setEnabled(enabled);
+}
+
+bool ALDanceBall::blockingEnabled() const
+{
+    return ALAvatarStaging::instance().enabled();
+}
+
+U64 ALDanceBall::stagingRevision() const
+{
+    return ALAvatarStaging::instance().revision();
+}
+
+const ALAvatarStaging::Entry* ALDanceBall::blockingEntry(const LLUUID& id) const
+{
+    return ALAvatarStaging::instance().getEntry(canonical_dancer_id(id));
+}
+
+ALAvatarStaging::Status ALDanceBall::blockingStatus(const LLUUID& id) const
+{
+    return ALAvatarStaging::instance().status(canonical_dancer_id(id));
+}
+
+bool ALDanceBall::blockingWorldYaw(const LLUUID& id, F32& yaw) const
+{
+    return ALAvatarStaging::instance().currentWorldYaw(
+        canonical_dancer_id(id), yaw);
+}
+
+bool ALDanceBall::setBlockingYaw(const LLUUID& id, F32 radians)
+{
+    return ALAvatarStaging::instance().setYaw(canonical_dancer_id(id), radians);
+}
+
+bool ALDanceBall::nudgeBlockingYaw(const LLUUID& id, F32 radians)
+{
+    return ALAvatarStaging::instance().nudgeYaw(canonical_dancer_id(id), radians);
+}
+
+bool ALDanceBall::setBlockingMode(const LLUUID& id,
+                                  ALAvatarStaging::FacingMode mode)
+{
+    return ALAvatarStaging::instance().setMode(canonical_dancer_id(id), mode);
+}
+
+bool ALDanceBall::setDancerBlocking(const LLUUID& id, bool enabled)
+{
+    const LLUUID key = canonical_dancer_id(id);
+    if (enabled && !ALAvatarStaging::instance().getEntry(key))
+        return ALAvatarStaging::instance().setYaw(key, 0.f);
+    return ALAvatarStaging::instance().setEntryEnabled(key, enabled);
+}
+
+bool ALDanceBall::faceBlockingCamera(const LLUUID& id, bool keep)
+{ return ALAvatarStaging::instance().faceCamera(canonical_dancer_id(id), keep); }
+bool ALDanceBall::faceBlockingSubjectA(const LLUUID& id, bool keep)
+{ return ALAvatarStaging::instance().faceSubjectA(canonical_dancer_id(id), keep); }
+bool ALDanceBall::faceBlockingCentre(const LLUUID& id, bool away, bool keep)
+{ return ALAvatarStaging::instance().faceBallCentre(canonical_dancer_id(id), away, keep); }
+bool ALDanceBall::faceBlockingTarget(const LLUUID& id, const LLUUID& target, bool keep)
+{ return ALAvatarStaging::instance().faceTarget(canonical_dancer_id(id), canonical_dancer_id(target), keep); }
+bool ALDanceBall::nudgeBlockingLocal(const LLUUID& id, const LLVector3& delta)
+{ return ALAvatarStaging::instance().nudgeLocalOffset(canonical_dancer_id(id), delta); }
+bool ALDanceBall::pinBlockingHere(const LLUUID& id)
+{ return ALAvatarStaging::instance().pinHere(canonical_dancer_id(id)); }
+bool ALDanceBall::releaseBlockingPin(const LLUUID& id)
+{ return ALAvatarStaging::instance().releasePin(canonical_dancer_id(id)); }
+bool ALDanceBall::resetBlocking(const LLUUID& id)
+{ return ALAvatarStaging::instance().reset(canonical_dancer_id(id)); }
+void ALDanceBall::resetAllBlocking()
+{ ALAvatarStaging::instance().resetAll(); }
+
+bool ALDanceBall::setBlockingCentre(AutoJoinFocus focus)
+{
+    LLVector3d point;
+    if (!focalPoint(focus, point)) return false;
+    ALAvatarStaging::instance().setBallCentre(point);
+    return true;
+}
+
+void ALDanceBall::clearBlockingCentre()
+{
+    ALAvatarStaging::instance().clearBallCentre();
+}
+
+bool ALDanceBall::hasBlockingCentre() const
+{
+    return ALAvatarStaging::instance().hasBallCentre();
+}
+
+ALAvatarStaging::BallCentreSource ALDanceBall::blockingCentreSource() const
+{
+    return ALAvatarStaging::instance().ballCentreSource();
+}
+
+std::size_t ALDanceBall::blockingCentreDancerCount() const
+{
+    return ALAvatarStaging::instance().ballCentreDancerCount();
+}
+
+bool ALDanceBall::ensureBlockingCentre(const std::vector<LLUUID>& ids)
+{
+    std::vector<LLUUID> canonical_ids;
+    canonical_ids.reserve(ids.size());
+    for (const LLUUID& id : ids) canonical_ids.push_back(canonical_dancer_id(id));
+    return ALAvatarStaging::instance().ensureBallCentre(canonical_ids);
+}
+
+bool ALDanceBall::applyBlockingFormation(const std::vector<LLUUID>& ids,
+    ALAvatarStagingModel::Formation formation, F32 spacing)
+{
+    return ALAvatarStaging::instance().applyFormation(ids, formation, spacing);
 }
 
 void ALDanceBall::exclude(const LLUUID& id)
@@ -1913,6 +2030,7 @@ void ALDanceBall::tick()
 void ALDanceBall::shutdown()
 {
     releaseAll(true);
+    ALAvatarStaging::instance().clear(true);
     // Logout is terminal for this session; Ghost Studio tears down its own
     // instance ledger too, so no retry record crosses into a relog.
     mRuntime.clear();
@@ -1945,7 +2063,7 @@ void ALDanceBall::shutdown()
 LLSD ALDanceBall::exportSession() const
 {
     LLSD root;
-    root["version"] = 1;
+    root["version"] = 2;
     root["rules"]["include_self"] = mIncludeSelf;
     root["rules"]["include_seated"] = mIncludeSeated;
     root["rules"]["auto_join"] = mAutoJoin;
@@ -1989,6 +2107,19 @@ LLSD ALDanceBall::exportSession() const
     root["wave"]["apply"] = static_cast<S32>(mWave.mApply);
     root["wave"]["spread"] = mWave.mSpreadMetersPerSecond;
     root["wave"]["focus"] = static_cast<S32>(mWave.mFocus);
+    const LLSD staging = ALAvatarStaging::instance().exportEntries();
+    std::set<LLUUID> dancer_ids;
+    for (const Dancer& dancer : mRoster)
+        if (dancer.mKind != DancerKind::SELF) dancer_ids.insert(dancer.mId);
+    root["blocking"] = LLSD::emptyArray();
+    for (LLSD::array_const_iterator it = staging["blocking"].beginArray();
+         it != staging["blocking"].endArray(); ++it)
+    {
+        if (dancer_ids.count((*it)["id"].asUUID()))
+            root["blocking"].append(*it);
+    }
+    if (staging.has("ball_centre"))
+        root["ball_centre"] = staging["ball_centre"];
     return root;
 }
 
@@ -2001,10 +2132,13 @@ bool ALDanceBall::importSession(const LLSD& root)
         return false;
     };
     if (!root.isMap()) return fail("Session root is not a map");
-    if (!root.has("version") || root["version"].asInteger() != 1)
+    const S32 version = root.has("version") ? root["version"].asInteger() : 0;
+    if (version != 1 && version != 2)
         return fail("Unsupported Dance Ball session version");
     if (!root["roster"].isArray()) return fail("Roster is not an array");
     if (!root["playlist"].isArray()) return fail("Playlist is not an array");
+    if (version == 2 && !root["blocking"].isArray())
+        return fail("Blocking is not an array");
 
     constexpr std::size_t MAX_DANCERS = 256;
     constexpr std::size_t MAX_ANIMATIONS = 1024;
@@ -2036,14 +2170,24 @@ bool ALDanceBall::importSession(const LLSD& root)
         const S32 kind = (*it)["kind"].asInteger();
         if (id.isNull() || kind < static_cast<S32>(DancerKind::SELF) ||
             kind > static_cast<S32>(DancerKind::GHOST) ||
-            static_cast<DancerKind>(kind) == DancerKind::GHOST ||
             (static_cast<DancerKind>(kind) == DancerKind::SELF && !include_self))
         {
             continue;
         }
         Dancer dancer;
         if (static_cast<DancerKind>(kind) == DancerKind::SELF) id = gAgentID;
-        dancer.mId = LLDirectorCast::canonicalActorId(id);
+        if (static_cast<DancerKind>(kind) == DancerKind::GHOST)
+        {
+            const ALGhostStudio::Instance* ghost =
+                ALGhostStudio::instance().getInstance(id);
+            if (!ghost) ghost = ALGhostStudio::instance().findInstanceByRuntime(id);
+            if (!ghost) continue;
+            dancer.mId = ghost->mId;
+        }
+        else
+        {
+            dancer.mId = LLDirectorCast::canonicalActorId(id);
+        }
         dancer.mShortId = dancer.mId.asString().substr(0, 8);
         if (excluded.count(dancer.mId)) continue;
         dancer.mKind = static_cast<DancerKind>(kind);
@@ -2075,12 +2219,15 @@ bool ALDanceBall::importSession(const LLSD& root)
         static_cast<ALDanceBallModel::PlaylistMode>(
             std::clamp(time["mode"].asInteger(), 0, 2));
     if (time.has("auto")) timing.mAutoAdvance = time["auto"].asBoolean();
-    if (time.has("interval")) timing.mAdvanceSeconds = time["interval"].asReal();
-    if (time.has("jitter")) timing.mAdvanceJitterSeconds = time["jitter"].asReal();
+    if (time.has("interval")) timing.mAdvanceSeconds = std::clamp(
+        finite_nonnegative(time["interval"].asReal(), 8.0), 0.5, 600.0);
+    if (time.has("jitter")) timing.mAdvanceJitterSeconds = std::clamp(
+        finite_nonnegative(time["jitter"].asReal()), 0.0, 300.0);
     if (time.has("desync")) timing.mDesync = time["desync"].asReal();
     if (time.has("speed")) timing.mSpeed = time["speed"].asReal();
     if (time.has("speed_jitter")) timing.mSpeedJitter = time["speed_jitter"].asReal();
-    if (time.has("crossfade")) timing.mCrossfadeSeconds = time["crossfade"].asReal();
+    if (time.has("crossfade")) timing.mCrossfadeSeconds = std::clamp(
+        finite_nonnegative(time["crossfade"].asReal(), 0.5), 0.0, 5.0);
     if (time.has("priority")) timing.mPriority = time["priority"].asInteger();
     if (time.has("dance_drives_face"))
         timing.mDanceDrivesFace = time["dance_drives_face"].asBoolean();
@@ -2126,7 +2273,8 @@ bool ALDanceBall::importSession(const LLSD& root)
     mAutoJoin = rules.has("auto_join")
         ? rules["auto_join"].asBoolean() : false;
     mAutoJoinRadius = rules.has("auto_join_radius")
-        ? std::max(0.f, static_cast<F32>(rules["auto_join_radius"].asReal()))
+        ? static_cast<F32>(std::clamp(finite_nonnegative(
+            rules["auto_join_radius"].asReal(), 20.0), 0.0, 4096.0))
         : 20.f;
     mAutoJoinFocus = rules.has("auto_join_focus")
         ? static_cast<AutoJoinFocus>(std::clamp(
@@ -2143,10 +2291,28 @@ bool ALDanceBall::importSession(const LLSD& root)
         static_cast<ALDanceBallModel::WaveApply>(
             std::clamp(wave["apply"].asInteger(), 0, 2));
     if (wave.has("spread")) imported_wave.mSpreadMetersPerSecond =
-        finite_nonnegative(wave["spread"].asReal(), 10.0);
+        std::clamp(finite_nonnegative(wave["spread"].asReal(), 10.0),
+                   0.5, 100.0);
     if (wave.has("focus")) imported_wave.mFocus = static_cast<AutoJoinFocus>(
         std::clamp(wave["focus"].asInteger(), 0, 2));
     mWave = imported_wave;
+    LLSD staging;
+    staging["version"] = version;
+    if (version == 2)
+    {
+        staging["blocking"] = LLSD::emptyArray();
+        for (LLSD::array_const_iterator it = root["blocking"].beginArray();
+             it != root["blocking"].endArray() &&
+             staging["blocking"].size() < MAX_DANCERS; ++it)
+        {
+            if (roster_ids.count(canonical_dancer_id((*it)["id"].asUUID())))
+                staging["blocking"].append(*it);
+        }
+        if (root.has("ball_centre"))
+            staging["ball_centre"] = root["ball_centre"];
+    }
+    if (!ALAvatarStaging::instance().importEntries(staging))
+        return fail("Blocking data is invalid");
     for (const PlaylistEntry& entry : mPlaylist)
     {
         ALGhostAnimAssetIndex::instance().requestMetadata(entry.mAssetId);

@@ -11,6 +11,7 @@
 #define AL_ALDANCEBALL_H
 
 #include "aldanceballmodel.h"
+#include "alavatarstaging.h"
 #include "llsd.h"
 #include "lluuid.h"
 #include "stdtypes.h"
@@ -128,6 +129,36 @@ public:
     U32 addCast();
     const std::vector<Dancer>& roster() const { return mRoster; }
     const std::set<LLUUID>& exclusions() const { return mExcluded; }
+
+    // Session-local blocking passthrough. Self is deliberately rejected by
+    // ALAvatarStaging; these calls operate on canonical dancer ids.
+    void setBlockingEnabled(bool enabled);
+    bool blockingEnabled() const;
+    U64 stagingRevision() const;
+    const ALAvatarStaging::Entry* blockingEntry(const LLUUID& id) const;
+    ALAvatarStaging::Status blockingStatus(const LLUUID& id) const;
+    bool blockingWorldYaw(const LLUUID& id, F32& yaw) const;
+    bool setBlockingYaw(const LLUUID& id, F32 radians);
+    bool nudgeBlockingYaw(const LLUUID& id, F32 radians);
+    bool setBlockingMode(const LLUUID& id, ALAvatarStaging::FacingMode mode);
+    bool setDancerBlocking(const LLUUID& id, bool enabled);
+    bool faceBlockingCamera(const LLUUID& id, bool keep);
+    bool faceBlockingSubjectA(const LLUUID& id, bool keep);
+    bool faceBlockingCentre(const LLUUID& id, bool away, bool keep);
+    bool faceBlockingTarget(const LLUUID& id, const LLUUID& target, bool keep);
+    bool nudgeBlockingLocal(const LLUUID& id, const class LLVector3& delta);
+    bool pinBlockingHere(const LLUUID& id);
+    bool releaseBlockingPin(const LLUUID& id);
+    bool resetBlocking(const LLUUID& id);
+    void resetAllBlocking();
+    bool setBlockingCentre(AutoJoinFocus focus);
+    void clearBlockingCentre();
+    bool hasBlockingCentre() const;
+    ALAvatarStaging::BallCentreSource blockingCentreSource() const;
+    std::size_t blockingCentreDancerCount() const;
+    bool ensureBlockingCentre(const std::vector<LLUUID>& ids);
+    bool applyBlockingFormation(const std::vector<LLUUID>& ids,
+        ALAvatarStagingModel::Formation formation, F32 spacing);
 
     void setAutoJoin(bool enabled, F32 radius_meters = 20.f,
                      AutoJoinFocus focus = AutoJoinFocus::ME);

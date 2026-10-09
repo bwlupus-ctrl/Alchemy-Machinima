@@ -145,6 +145,39 @@ namespace ALAvatarStagingModel
         return Vec3(value.x, value.y, 0.0);
     }
 
+    Vec3 clampPinOffset(const Vec3& value)
+    {
+        Vec3 result = clampOffsetXY(value);
+        result.z = finite(value)
+            ? std::clamp(value.z, -MAX_OFFSET_METERS, MAX_OFFSET_METERS) : 0.0;
+        return result;
+    }
+
+    Vec3 makePinTarget(const Vec3& requested_position, const Vec3& anchor,
+                       double visible_z_offset)
+    {
+        Vec3 relative = clampPinOffset(requested_position - anchor);
+        relative.z = clampFinite(visible_z_offset, -MAX_OFFSET_METERS,
+                                 MAX_OFFSET_METERS, 0.0);
+        return Vec3(anchor.x + relative.x, anchor.y + relative.y, relative.z);
+    }
+
+    Vec3 pinTargetOffset(const Vec3& pin, const Vec3& simulated_position)
+    {
+        Vec3 relative = pin - simulated_position;
+        relative.z = pin.z;
+        return clampPinOffset(relative);
+    }
+
+    Vec3 localOffsetToWorld(const Vec3& value, double world_yaw)
+    {
+        if (!finite(value) || !finite(world_yaw)) return Vec3();
+        const double cosine = std::cos(world_yaw);
+        const double sine = std::sin(world_yaw);
+        return Vec3(value.x * cosine - value.y * sine,
+                    value.x * sine + value.y * cosine, value.z);
+    }
+
     Vec3 worldOffsetToLocal(const Vec3& value, double local_frame_yaw)
     {
         if (!finite(value) || !finite(local_frame_yaw))
@@ -155,6 +188,41 @@ namespace ALAvatarStagingModel
         const double sine = std::sin(local_frame_yaw);
         return Vec3(value.x * cosine + value.y * sine,
                     -value.x * sine + value.y * cosine, value.z);
+    }
+
+    bool centroid(const std::vector<Vec3>& points, Vec3& result)
+    {
+        result = Vec3();
+        std::size_t count = 0;
+        for (const Vec3& point : points)
+        {
+            if (!finite(point)) continue;
+            result = result + point;
+            ++count;
+        }
+        if (count == 0) return false;
+        result = result * (1.0 / static_cast<double>(count));
+        return true;
+    }
+
+    bool reuseFrozenCentroid(bool from_centroid, bool same_dancer_set,
+                             const Vec3& centre,
+                             const std::vector<Vec3>& dancer_positions,
+                             double maximum_distance)
+    {
+        if (!from_centroid || !same_dancer_set || !finite(centre) ||
+            !finite(maximum_distance) || maximum_distance < 0.0)
+        {
+            return false;
+        }
+        for (const Vec3& position : dancer_positions)
+        {
+            if (finite(position) && distance(centre, position) <= maximum_distance)
+            {
+                return true;
+            }
+        }
+        return false;
     }
 
     void snap(ScalarSpring& state, double value)

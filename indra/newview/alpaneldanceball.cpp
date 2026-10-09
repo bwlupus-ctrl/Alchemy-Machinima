@@ -26,9 +26,11 @@
 #include "lldirectorcast.h"
 #include "llfile.h"
 #include "llfloaterreg.h"
+#include "llfocusmgr.h"
 #include "llinventory.h"            // LLInventoryItem / LLInventoryCategory
 #include "llinventorymodel.h"
 #include "lllineeditor.h"
+#include "llradiogroup.h"
 #include "llscrolllistctrl.h"
 #include "llscrolllistitem.h"
 #include "llsd.h"
@@ -66,6 +68,7 @@ using Kind = ALDanceBall::DancerKind;
 using State = ALDanceBall::DancerState;
 
 constexpr std::size_t MAX_DROP_ANIMATIONS = 200;
+constexpr std::size_t MAX_DROP_FOLDERS = 2000;
 constexpr std::streamoff MAX_SESSION_FILE_BYTES = 8 * 1024 * 1024;
 
 // A gate used for structural and control refreshes. The self-heal of
@@ -102,6 +105,91 @@ std::string trimmed(std::string text)
     LLStringUtil::trim(text);
     return text;
 }
+
+std::string blocking_status_text(ALAvatarStaging::Status status)
+{
+    switch (status)
+    {
+    case ALAvatarStaging::Status::OFF: return "Off";
+    case ALAvatarStaging::Status::ACTIVE: return "Active";
+    case ALAvatarStaging::Status::SUSPENDED_MOVER: return "Moving";
+    case ALAvatarStaging::Status::SUSPENDED_SEATED_PIN: return "Seated";
+    case ALAvatarStaging::Status::PIN_RELEASED: return "Re-pin";
+    case ALAvatarStaging::Status::MUTED: return "Muted";
+    case ALAvatarStaging::Status::GHOST: return "Ghost";
+    case ALAvatarStaging::Status::GHOST_STUDIO_OWNS: return "Studio";
+    case ALAvatarStaging::Status::ABSENT: return "Absent";
+    }
+    return "Absent";
+}
+
+F32 display_yaw_degrees(F32 radians)
+{
+    F32 degrees = radians * RAD_TO_DEG;
+    if (degrees <= -179.999f) degrees = 180.f;
+    return degrees;
+}
+
+class LimitedAnimationCollector
+{
+public:
+    LimitedAnimationCollector(std::size_t item_limit, std::size_t folder_limit)
+        : mItemLimit(item_limit), mFolderLimit(folder_limit) {}
+
+    LLInventoryModel::item_array_t collect(const LLUUID& root)
+    {
+        LLInventoryModel::item_array_t result;
+        const LLUUID trash =
+            gInventory.findCategoryUUIDForType(LLFolderType::FT_TRASH);
+        if (root == trash || gInventory.isObjectDescendentOf(root, trash))
+            return result;
+        std::vector<LLUUID> pending(1, root);
+        std::size_t folders_visited = 0;
+        while (!pending.empty() && result.size() < mItemLimit &&
+               folders_visited < mFolderLimit)
+        {
+            const LLUUID folder = pending.back();
+            pending.pop_back();
+            ++folders_visited;
+            LLInventoryModel::cat_array_t* categories = nullptr;
+            LLInventoryModel::item_array_t* items = nullptr;
+            gInventory.getDirectDescendentsOf(folder, categories, items);
+            if (items)
+            {
+                for (const LLPointer<LLViewerInventoryItem>& item : *items)
+                {
+                    if (item.notNull() &&
+                        item->getType() == LLAssetType::AT_ANIMATION)
+                    {
+                        result.push_back(item);
+                        if (result.size() == mItemLimit) break;
+                    }
+                }
+            }
+            if (categories && result.size() < mItemLimit)
+            {
+                // Stack is LIFO: reverse-push to preserve the inventory's
+                // natural depth-first folder order.
+                for (auto iterator = categories->rbegin();
+                     iterator != categories->rend(); ++iterator)
+                {
+                    const LLPointer<LLViewerInventoryCategory>& category = *iterator;
+                    if (category.notNull() && category->getUUID() != trash)
+                        pending.push_back(category->getUUID());
+                }
+            }
+        }
+        mFolderLimitReached = !pending.empty() && folders_visited >= mFolderLimit;
+        return result;
+    }
+
+    bool folderLimitReached() const { return mFolderLimitReached; }
+
+private:
+    std::size_t mItemLimit;
+    std::size_t mFolderLimit;
+    bool mFolderLimitReached = false;
+};
 } // anonymous namespace
 
 ALPanelDanceBall::ALPanelDanceBall() = default;
@@ -173,6 +261,33 @@ bool ALPanelDanceBall::postBuild()
     mExportBtn = getChild<LLButton>("db_export");
     mImportBtn = getChild<LLButton>("db_import");
 
+    mBlockingList = getChild<LLScrollListCtrl>("db_blocking_list");
+    mBlockToggleRows = getChild<LLButton>("db_block_toggle_rows");
+    mBlockYawMinus = getChild<LLButton>("db_block_yaw_minus");
+    mBlockYaw = getChild<LLSliderCtrl>("db_block_yaw");
+    mBlockYawPlus = getChild<LLButton>("db_block_yaw_plus");
+    mBlockStep = getChild<LLSpinCtrl>("db_block_step");
+    mBlockMode = getChild<LLRadioGroup>("db_block_mode");
+    mBlockFace = getChild<LLComboBox>("db_block_face");
+    mBlockKeepFacing = getChild<LLCheckBoxCtrl>("db_block_keep_facing");
+    mBlockPin = getChild<LLButton>("db_block_pin");
+    mBlockRelease = getChild<LLButton>("db_block_release");
+    const char* nudge_names[] = { "db_block_f", "db_block_b", "db_block_l",
+                                  "db_block_r", "db_block_u", "db_block_d" };
+    for (S32 i = 0; i < 6; ++i)
+        mBlockNudge[i] = getChild<LLButton>(nudge_names[i]);
+    mBlockShape = getChild<LLComboBox>("db_block_shape");
+    mBlockSpacing = getChild<LLSpinCtrl>("db_block_spacing");
+    mBlockCentre = getChild<LLComboBox>("db_block_centre");
+    mBlockSetCentre = getChild<LLButton>("db_block_set_centre");
+    mBlockClearCentre = getChild<LLButton>("db_block_clear_centre");
+    mBlockCentreStatus = getChild<LLTextBox>("db_block_centre_status");
+    mBlockApplySelected = getChild<LLButton>("db_block_apply_selected");
+    mBlockApplyAll = getChild<LLButton>("db_block_apply_all");
+    mBlockResetSelected = getChild<LLButton>("db_block_reset_selected");
+    mBlockResetAll = getChild<LLButton>("db_block_reset_all");
+    mBlockingOn = getChild<LLCheckBoxCtrl>("db_blocking_on");
+
     // XML strings, cached once so no getString() ever runs per frame.
     mStrKind[0] = getString("kind_self");
     mStrKind[1] = getString("kind_resident");
@@ -211,6 +326,9 @@ bool ALPanelDanceBall::postBuild()
     mStrMode[2] = getString("mode_sequence");
     mStrSyncSynced = getString("sync_synced");
     mStrSyncDesync = getString("sync_desync");
+    mStrCentreNone = getString("centre_none");
+    mStrCentreSet = getString("centre_set");
+    mStrCentreCentroid = getString("centre_centroid");
 
     // header
     mOnBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onToggleOn(); });
@@ -270,6 +388,28 @@ bool ALPanelDanceBall::postBuild()
     mRampGoBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onRampGo(); });
     mExportBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onExport(); });
     mImportBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onImport(); });
+
+    mBlockingList->setCommitCallback([this](LLUICtrl*, const LLSD&) { onBlockingSelection(); });
+    mBlockToggleRows->setCommitCallback([this](LLUICtrl*, const LLSD&) { onBlockingToggleRows(); });
+    mBlockYawMinus->setCommitCallback([this](LLUICtrl*, const LLSD&) { onBlockingNudgeYaw(-1.f); });
+    mBlockYaw->setCommitCallback([this](LLUICtrl*, const LLSD&) { onBlockingYaw(); });
+    mBlockYawPlus->setCommitCallback([this](LLUICtrl*, const LLSD&) { onBlockingNudgeYaw(1.f); });
+    mBlockMode->setCommitCallback([this](LLUICtrl*, const LLSD&) { onBlockingMode(); });
+    mBlockFace->setCommitCallback([this](LLUICtrl*, const LLSD&) { onBlockingFace(); });
+    mBlockPin->setCommitCallback([this](LLUICtrl*, const LLSD&) { onBlockingPin(true); });
+    mBlockRelease->setCommitCallback([this](LLUICtrl*, const LLSD&) { onBlockingPin(false); });
+    const LLVector3 nudges[] = { LLVector3(.25f,0,0), LLVector3(-.25f,0,0),
+        LLVector3(0,.25f,0), LLVector3(0,-.25f,0), LLVector3(0,0,.25f),
+        LLVector3(0,0,-.25f) };
+    for (S32 i = 0; i < 6; ++i)
+        mBlockNudge[i]->setCommitCallback([this, delta=nudges[i]](LLUICtrl*, const LLSD&) { onBlockingNudge(delta); });
+    mBlockSetCentre->setCommitCallback([this](LLUICtrl*, const LLSD&) { onBlockingSetCentre(); });
+    mBlockClearCentre->setCommitCallback([this](LLUICtrl*, const LLSD&) { onBlockingClearCentre(); });
+    mBlockApplySelected->setCommitCallback([this](LLUICtrl*, const LLSD&) { onBlockingFormation(false); });
+    mBlockApplyAll->setCommitCallback([this](LLUICtrl*, const LLSD&) { onBlockingFormation(true); });
+    mBlockResetSelected->setCommitCallback([this](LLUICtrl*, const LLSD&) { onBlockingReset(false); });
+    mBlockResetAll->setCommitCallback([this](LLUICtrl*, const LLSD&) { onBlockingReset(true); });
+    mBlockingOn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onBlockingEnabled(); });
 
     // Wrap + fit every tab page, re-fit on tab change, and enable the wheel on
     // every slider under this panel (ALScrollFit; CLAUDE.md UI mandate).
@@ -366,6 +506,13 @@ void ALPanelDanceBall::draw()
         {
             refreshCinemaControls(ball);
         }
+        if (isWidgetOnScreen(mBlockingList))
+        {
+            if (gate_due(mBlockingGate, { roster_rev, ball.stagingRevision() }))
+                rebuildBlockingList(ball);
+            updateBlockingCells(ball);
+            refreshBlockingControls(ball);
+        }
     }
     LLPanel::draw();
 }
@@ -380,6 +527,7 @@ void ALPanelDanceBall::requestRefresh()
     mPlaylistControlGate.reset();
     mTimingGate.reset();
     mCinemaGate.reset();
+    mBlockingGate.reset();
     mVolatileClock.forceDue();
 }
 
@@ -1196,6 +1344,269 @@ void ALPanelDanceBall::onIncludeMe()
 }
 
 // ---------------------------------------------------------------------------
+// blocking
+// ---------------------------------------------------------------------------
+
+std::vector<LLUUID> ALPanelDanceBall::selectedBlockingIds() const
+{
+    std::vector<LLUUID> ids;
+    for (LLScrollListItem* item : mBlockingList->getAllSelected())
+        ids.push_back(item->getValue().asUUID());
+    return ids;
+}
+
+void ALPanelDanceBall::rebuildBlockingList(const ALDanceBall& ball)
+{
+    const std::vector<LLUUID> selected = selectedBlockingIds();
+    const S32 scroll = mBlockingList->getScrollPos();
+    mBlockingList->clearRows();
+    mBlockingRows.clear();
+    for (const ALDanceBall::Dancer& dancer : ball.roster())
+    {
+        if (dancer.mKind == Kind::SELF) continue;
+        const ALAvatarStaging::Entry* entry = ball.blockingEntry(dancer.mId);
+        BlockingRow row;
+        row.mOn = entry && entry->mOn ? "On" : "-";
+        row.mName = dancerName(dancer, resolveDancer(dancer), dancer.mShortId);
+        F32 yaw = entry ? (entry->mMode == ALAvatarStaging::FacingMode::OFFSET
+            ? entry->mYawOffset : entry->mLockYaw) : 0.f;
+        if (entry && entry->mMode == ALAvatarStaging::FacingMode::TRACK)
+            ball.blockingWorldYaw(dancer.mId, yaw);
+        row.mYaw = llformat("%+.0f", display_yaw_degrees(yaw));
+        row.mMode = !entry ? "Offset" :
+            entry->mMode == ALAvatarStaging::FacingMode::OFFSET ? "Offset" :
+            entry->mMode == ALAvatarStaging::FacingMode::LOCK ? "Lock" : "Track";
+        row.mPin = entry && entry->mPinRequested
+            ? (entry->mPinned ? "Pin" : "Wait") : "-";
+        row.mStatus = blocking_status_text(ball.blockingStatus(dancer.mId));
+        LLSD value;
+        value["id"] = dancer.mId;
+        const char* columns[] = { "on", "name", "yaw", "mode", "pin", "status" };
+        const std::string values[] = { row.mOn, row.mName, row.mYaw,
+                                       row.mMode, row.mPin, row.mStatus };
+        for (S32 i = 0; i < 6; ++i)
+        {
+            value["columns"][i]["column"] = columns[i];
+            value["columns"][i]["value"] = values[i];
+        }
+        mBlockingList->addElement(value);
+        mBlockingRows[dancer.mId] = row;
+    }
+    for (const LLUUID& id : selected) mBlockingList->selectByID(id);
+    mBlockingList->setScrollPos(scroll);
+}
+
+void ALPanelDanceBall::updateBlockingCells(const ALDanceBall& ball)
+{
+    S32 row_index = 0;
+    for (const ALDanceBall::Dancer& dancer : ball.roster())
+    {
+        if (dancer.mKind == Kind::SELF) continue;
+        LLScrollListItem* item = mBlockingList->getItemByIndex(row_index++);
+        auto cached = mBlockingRows.find(dancer.mId);
+        if (!item || item->getValue().asUUID() != dancer.mId ||
+            cached == mBlockingRows.end())
+        {
+            mBlockingGate.reset();
+            return;
+        }
+        BlockingRow& row = cached->second;
+        const ALAvatarStaging::Entry* entry = ball.blockingEntry(dancer.mId);
+        set_cell(item, 0, row.mOn, entry && entry->mOn ? "On" : "-");
+        F32 yaw = entry ? (entry->mMode == ALAvatarStaging::FacingMode::OFFSET
+            ? entry->mYawOffset : entry->mLockYaw) : 0.f;
+        if (entry && entry->mMode == ALAvatarStaging::FacingMode::TRACK)
+            ball.blockingWorldYaw(dancer.mId, yaw);
+        set_cell(item, 2, row.mYaw,
+                 llformat("%+.0f", display_yaw_degrees(yaw)));
+        set_cell(item, 5, row.mStatus,
+                 blocking_status_text(ball.blockingStatus(dancer.mId)));
+    }
+    if (row_index != mBlockingList->getItemCount()) mBlockingGate.reset();
+}
+
+void ALPanelDanceBall::refreshBlockingControls(const ALDanceBall& ball)
+{
+    setValueIfChanged(mBlockingOn, LLSD(ball.blockingEnabled()), true);
+    std::string centre_status = mStrCentreNone;
+    if (ball.blockingCentreSource() ==
+        ALAvatarStaging::BallCentreSource::SET)
+    {
+        centre_status = mStrCentreSet;
+    }
+    else if (ball.blockingCentreSource() ==
+             ALAvatarStaging::BallCentreSource::CENTROID)
+    {
+        LLStringUtil::format_map_t args;
+        args["[COUNT]"] = llformat("%u",
+            static_cast<U32>(ball.blockingCentreDancerCount()));
+        centre_status = formatString(mStrCentreCentroid, args);
+    }
+    setValueIfChanged(mBlockCentreStatus, LLSD(centre_status));
+    const std::vector<LLUUID> ids = selectedBlockingIds();
+    if (ids.empty()) return;
+    if (const ALAvatarStaging::Entry* entry = ball.blockingEntry(ids.front()))
+    {
+        F32 yaw = entry->mMode == ALAvatarStaging::FacingMode::OFFSET
+            ? entry->mYawOffset : entry->mLockYaw;
+        if (entry->mMode == ALAvatarStaging::FacingMode::TRACK)
+            ball.blockingWorldYaw(ids.front(), yaw);
+        if (!mBlockYaw->isMouseHeldDown() &&
+            !gFocusMgr.childHasKeyboardFocus(mBlockYaw))
+        {
+            setValueIfChanged(mBlockYaw, LLSD(display_yaw_degrees(yaw)));
+        }
+        setValueIfChanged(mBlockMode, LLSD(entry->mMode ==
+            ALAvatarStaging::FacingMode::OFFSET ? 0 : 1));
+    }
+}
+
+void ALPanelDanceBall::onBlockingSelection()
+{
+    refreshBlockingControls(ALDanceBall::instance());
+}
+
+void ALPanelDanceBall::onBlockingToggleRows()
+{
+    ALDanceBall& ball = ALDanceBall::instance();
+    for (const LLUUID& id : selectedBlockingIds())
+    {
+        const ALAvatarStaging::Entry* entry = ball.blockingEntry(id);
+        ball.setDancerBlocking(id, !entry || !entry->mOn);
+    }
+    mBlockingGate.reset();
+}
+
+void ALPanelDanceBall::onBlockingYaw()
+{
+    const F32 yaw = mBlockYaw->getValueF32() * DEG_TO_RAD;
+    ALDanceBall& ball = ALDanceBall::instance();
+    for (const LLUUID& id : selectedBlockingIds()) ball.setBlockingYaw(id, yaw);
+    mBlockingGate.reset();
+}
+
+void ALPanelDanceBall::onBlockingNudgeYaw(F32 sign)
+{
+    const F32 delta = sign * mBlockStep->getValueF32() * DEG_TO_RAD;
+    ALDanceBall& ball = ALDanceBall::instance();
+    for (const LLUUID& id : selectedBlockingIds()) ball.nudgeBlockingYaw(id, delta);
+    mBlockingGate.reset();
+}
+
+void ALPanelDanceBall::onBlockingMode()
+{
+    const auto mode = mBlockMode->getSelectedIndex() == 0
+        ? ALAvatarStaging::FacingMode::OFFSET : ALAvatarStaging::FacingMode::LOCK;
+    ALDanceBall& ball = ALDanceBall::instance();
+    for (const LLUUID& id : selectedBlockingIds()) ball.setBlockingMode(id, mode);
+    mBlockingGate.reset();
+}
+
+void ALPanelDanceBall::onBlockingFace()
+{
+    std::vector<LLUUID> ids = selectedBlockingIds();
+    if (ids.empty()) return;
+    ALDanceBall& ball = ALDanceBall::instance();
+    const bool keep = mBlockKeepFacing->get();
+    const S32 face = mBlockFace->getValue().asInteger();
+    const bool had_centre = ball.hasBlockingCentre();
+    if ((face == 2 || face == 3 || (face == 4 && (ids.size() & 1U))) &&
+        ball.ensureBlockingCentre(ids) && !had_centre)
+    {
+        setMessage(getString("msg_centre_centroid"));
+    }
+    if (face == 4)
+    {
+        for (std::size_t i = 0; i + 1 < ids.size(); i += 2)
+        {
+            ball.faceBlockingTarget(ids[i], ids[i + 1], keep);
+            ball.faceBlockingTarget(ids[i + 1], ids[i], keep);
+        }
+        if (ids.size() & 1U) ball.faceBlockingCentre(ids.back(), false, keep);
+    }
+    else if (face == 5)
+    {
+        F32 yaw = 0.f;
+        if (ball.blockingWorldYaw(ids.front(), yaw))
+        {
+            for (std::size_t i = 1; i < ids.size(); ++i)
+            {
+                ball.setBlockingMode(ids[i], ALAvatarStaging::FacingMode::LOCK);
+                ball.setBlockingYaw(ids[i], yaw);
+            }
+        }
+    }
+    else for (const LLUUID& id : ids)
+    {
+        if (face == 0) ball.faceBlockingCamera(id, keep);
+        else if (face == 1) ball.faceBlockingSubjectA(id, keep);
+        else ball.faceBlockingCentre(id, face == 3, keep);
+    }
+    mBlockingGate.reset();
+}
+
+void ALPanelDanceBall::onBlockingPin(bool pin)
+{
+    ALDanceBall& ball = ALDanceBall::instance();
+    for (const LLUUID& id : selectedBlockingIds())
+        pin ? ball.pinBlockingHere(id) : ball.releaseBlockingPin(id);
+    mBlockingGate.reset();
+}
+
+void ALPanelDanceBall::onBlockingNudge(const LLVector3& delta)
+{
+    ALDanceBall& ball = ALDanceBall::instance();
+    for (const LLUUID& id : selectedBlockingIds()) ball.nudgeBlockingLocal(id, delta);
+    mBlockingGate.reset();
+}
+
+void ALPanelDanceBall::onBlockingSetCentre()
+{
+    ALDanceBall::instance().setBlockingCentre(
+        static_cast<ALDanceBall::AutoJoinFocus>(mBlockCentre->getValue().asInteger()));
+    mBlockingGate.reset();
+}
+
+void ALPanelDanceBall::onBlockingClearCentre()
+{
+    ALDanceBall::instance().clearBlockingCentre();
+    mBlockingGate.reset();
+}
+
+void ALPanelDanceBall::onBlockingFormation(bool all)
+{
+    ALDanceBall& ball = ALDanceBall::instance();
+    std::vector<LLUUID> ids = selectedBlockingIds();
+    if (all)
+    {
+        ids.clear();
+        for (const ALDanceBall::Dancer& dancer : ball.roster())
+            if (dancer.mKind != Kind::SELF) ids.push_back(dancer.mId);
+    }
+    if (!ball.hasBlockingCentre() && ball.ensureBlockingCentre(ids))
+        setMessage(getString("msg_centre_centroid"));
+    ball.applyBlockingFormation(ids,
+        static_cast<ALAvatarStagingModel::Formation>(
+            std::clamp(mBlockShape->getValue().asInteger(), 0, 4)),
+        mBlockSpacing->getValueF32());
+    mBlockingGate.reset();
+}
+
+void ALPanelDanceBall::onBlockingReset(bool all)
+{
+    ALDanceBall& ball = ALDanceBall::instance();
+    if (all) ball.resetAllBlocking();
+    else for (const LLUUID& id : selectedBlockingIds()) ball.resetBlocking(id);
+    mBlockingGate.reset();
+}
+
+void ALPanelDanceBall::onBlockingEnabled()
+{
+    ALDanceBall::instance().setBlockingEnabled(mBlockingOn->get());
+    mBlockingGate.reset();
+}
+
+// ---------------------------------------------------------------------------
 // playlist
 // ---------------------------------------------------------------------------
 
@@ -1680,27 +2091,27 @@ bool ALPanelDanceBall::handleDragAndDrop(
     }
 
     LLInventoryCategory* category = static_cast<LLInventoryCategory*>(cargo_data);
-    LLInventoryModel::cat_array_t categories;
     LLInventoryModel::item_array_t items;
-    gInventory.collectDescendents(category->getUUID(), categories, items, false);
-    U32 added = 0;
-    std::size_t seen = 0;
-    for (const LLPointer<LLViewerInventoryItem>& item : items)
+    LimitedAnimationCollector collector(MAX_DROP_ANIMATIONS, MAX_DROP_FOLDERS);
     {
-        if (item.isNull() || item->getType() != LLAssetType::AT_ANIMATION)
+        LL_PROFILE_ZONE_NAMED_CATEGORY_UI("dance ball drop - collect category");
+        items = collector.collect(category->getUUID());
+    }
+    U32 added = 0;
+    {
+        LL_PROFILE_ZONE_NAMED_CATEGORY_UI("dance ball drop - add animations");
+        for (const LLPointer<LLViewerInventoryItem>& item : items)
         {
-            continue;
-        }
-        if (++seen > MAX_DROP_ANIMATIONS)
-        {
-            break;
-        }
-        if (addAnimationAsset(item->getAssetUUID(), item->getName()))
-        {
-            ++added;
+            if (addAnimationAsset(item->getAssetUUID(), item->getName()))
+                ++added;
         }
     }
-    if (added > 0)
+    if (collector.folderLimitReached())
+    {
+        setMessageFormat(getString("msg_items_added_scan_capped"), "[COUNT]",
+                         llformat("%u", added));
+    }
+    else if (added > 0)
     {
         setMessageFormat(getString("msg_items_added"), "[COUNT]",
                          llformat("%u", added));

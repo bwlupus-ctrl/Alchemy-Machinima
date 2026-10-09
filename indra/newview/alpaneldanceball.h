@@ -34,6 +34,7 @@ class LLButton;
 class LLCheckBoxCtrl;
 class LLComboBox;
 class LLLineEditor;
+class LLRadioGroup;
 class LLScrollListCtrl;
 class LLSliderCtrl;
 class LLSpinCtrl;
@@ -41,6 +42,7 @@ class LLTabContainer;
 class LLTextBox;
 class LLViewerObject;
 class LLVOAvatar;
+class LLVector3;
 
 class ALPanelDanceBall final : public LLPanel
 {
@@ -86,6 +88,10 @@ private:
         std::string mLoop;
         std::string mStatus;
     };
+    struct BlockingRow
+    {
+        std::string mOn, mName, mYaw, mMode, mPin, mStatus;
+    };
 
     static ALDanceBall::DancerKind kindForAvatar(LLVOAvatar* avatar);
     static LLUUID rosterIdFor(LLVOAvatar* avatar,
@@ -125,6 +131,10 @@ private:
     void refreshTimingControls(const ALDanceBall& ball);
     void refreshLiveSpeed(const ALDanceBall& ball);
     void refreshCinemaControls(const ALDanceBall& ball);
+    void rebuildBlockingList(const ALDanceBall& ball);
+    void updateBlockingCells(const ALDanceBall& ball);
+    void refreshBlockingControls(const ALDanceBall& ball);
+    std::vector<LLUUID> selectedBlockingIds() const;
     S32 selectedPlaylistIndex() const;
 
     // ---- header / transport
@@ -147,6 +157,21 @@ private:
     void onAutoJoinChanged();
     void onIncludeSeated();
     void onIncludeMe();
+
+    // ---- blocking
+    void onBlockingSelection();
+    void onBlockingToggleRows();
+    void onBlockingYaw();
+    void onBlockingNudgeYaw(F32 sign);
+    void onBlockingMode();
+    void onBlockingFace();
+    void onBlockingPin(bool pin);
+    void onBlockingNudge(const LLVector3& delta);
+    void onBlockingSetCentre();
+    void onBlockingClearCentre();
+    void onBlockingFormation(bool all);
+    void onBlockingReset(bool all);
+    void onBlockingEnabled();
 
     // ---- playlist
     void onFromExplorer();
@@ -236,6 +261,30 @@ private:
     LLButton*         mExportBtn = nullptr;
     LLButton*         mImportBtn = nullptr;
 
+    LLScrollListCtrl* mBlockingList = nullptr;
+    LLButton*         mBlockToggleRows = nullptr;
+    LLButton*         mBlockYawMinus = nullptr;
+    LLSliderCtrl*     mBlockYaw = nullptr;
+    LLButton*         mBlockYawPlus = nullptr;
+    LLSpinCtrl*       mBlockStep = nullptr;
+    LLRadioGroup*     mBlockMode = nullptr;
+    LLComboBox*       mBlockFace = nullptr;
+    LLCheckBoxCtrl*   mBlockKeepFacing = nullptr;
+    LLButton*         mBlockPin = nullptr;
+    LLButton*         mBlockRelease = nullptr;
+    LLButton*         mBlockNudge[6] = {};
+    LLComboBox*       mBlockShape = nullptr;
+    LLSpinCtrl*       mBlockSpacing = nullptr;
+    LLComboBox*       mBlockCentre = nullptr;
+    LLButton*         mBlockSetCentre = nullptr;
+    LLButton*         mBlockClearCentre = nullptr;
+    LLTextBox*        mBlockCentreStatus = nullptr;
+    LLButton*         mBlockApplySelected = nullptr;
+    LLButton*         mBlockApplyAll = nullptr;
+    LLButton*         mBlockResetSelected = nullptr;
+    LLButton*         mBlockResetAll = nullptr;
+    LLCheckBoxCtrl*   mBlockingOn = nullptr;
+
     // strings cached once from the XML (never getString in draw)
     std::string mStrKind[4];
     std::string mStrState[11];
@@ -246,6 +295,7 @@ private:
     std::string mStrStatusOff, mStrStatusOn, mStrStatusFrozen, mStrStatusPlaying;
     std::string mStrMode[3];
     std::string mStrSyncSynced, mStrSyncDesync;
+    std::string mStrCentreNone, mStrCentreSet, mStrCentreCentroid;
 
     // gates: each watches the engine revisions its area depends on
     ALRevisionGate mHeaderGate;
@@ -256,10 +306,12 @@ private:
     ALRevisionGate mPlaylistControlGate;
     ALRevisionGate mTimingGate;
     ALRevisionGate mCinemaGate;
+    ALRevisionGate mBlockingGate;
     ALLiveReadoutClock mVolatileClock{2.f};   // the single 2 Hz refresh cap
 
     std::unordered_map<LLUUID, DancerRow> mDancerRows;
     std::vector<PlaylistRow> mPlaylistRows;
+    std::unordered_map<LLUUID, BlockingRow> mBlockingRows;
     S32 mPendingPlaylistSelect = -1;
 
     ALScrollFit::Controller mScrollFit;

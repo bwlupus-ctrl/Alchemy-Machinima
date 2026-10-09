@@ -59,6 +59,11 @@
     <string name="msg_select_item">Select a playlist row first</string>
     <string name="msg_item_added">Added to playlist: [NAME]</string>
     <string name="msg_items_added">Added [COUNT] animation(s) to the playlist</string>
+    <string name="msg_items_added_scan_capped">Added [COUNT] animation(s); folder scan stopped at 2000 folders</string>
+    <string name="msg_centre_centroid">centre: centroid</string>
+    <string name="centre_none">centre: none</string>
+    <string name="centre_set">centre: set</string>
+    <string name="centre_centroid">centre: centroid ([COUNT] dancers)</string>
     <string name="msg_item_duplicate">Already in the playlist</string>
     <string name="msg_no_uuid">No animation UUID found on the clipboard</string>
     <string name="msg_explorer_closed">Open the Animation Explorer first</string>
@@ -749,6 +754,130 @@
              tool_tip="Off: dancers keep their own facial expressions and lip-sync; the dance drives body, hands and head only."
              top="179"
              width="180" />
+        </panel>
+
+        <!-- ================= Blocking ================= -->
+        <panel
+         border="false"
+         follows="all"
+         height="444"
+         label="Blocking"
+         layout="topleft"
+         name="db_blocking_tab"
+         width="426">
+            <scroll_list
+             can_sort="false"
+             column_padding="0"
+             draw_heading="true"
+             follows="left|top"
+             height="124"
+             layout="topleft"
+             left="6"
+             multi_select="true"
+             name="db_blocking_list"
+             tool_tip="Dance Ball dancers available for local blocking. Me is intentionally excluded."
+             top="4"
+             width="398">
+                <columns label="On" name="on" width="28" />
+                <columns label="Name" name="name" width="112" />
+                <columns label="Yaw" name="yaw" width="42" />
+                <columns label="Mode" name="mode" width="52" />
+                <columns label="Pin" name="pin" width="38" />
+                <columns label="Status" name="status" width="90" />
+            </scroll_list>
+            <button
+             follows="left|top"
+             height="22"
+             label="Toggle selected"
+             layout="topleft"
+             left="6"
+             name="db_block_toggle_rows"
+             tool_tip="Turn local blocking on or off for the selected dancers"
+             top="134"
+             width="124" />
+            <text follows="left|top" font="SansSerifBold" height="16" layout="topleft"
+             left="6" name="db_block_rotate_title" top="164" width="60">Rotate</text>
+            <button follows="left|top" height="22" label="-15°" layout="topleft"
+             left="6" name="db_block_yaw_minus" top="184" width="58" />
+            <slider can_edit_text="true" decimal_digits="0" follows="left|top|right"
+             height="20" increment="1" layout="topleft" left="68" max_val="180"
+             min_val="-180" name="db_block_yaw" show_text="true"
+             tool_tip="Set one yaw value on every selected dancer" top="185"
+             wheel_adjust="true" width="176" />
+            <button follows="left|top" height="22" label="+15°" layout="topleft"
+             left="248" name="db_block_yaw_plus" top="184" width="58" />
+            <spinner decimal_digits="0" follows="left|top" height="20" increment="1"
+             label="Step" label_width="30" layout="topleft" left="312" max_val="15"
+             min_val="1" name="db_block_step" top="185" value="15" width="88" />
+            <radio_group follows="left|top" height="42" layout="topleft" left="6"
+             name="db_block_mode" top="212" value="0" width="88">
+                <radio_item height="18" label="OFFSET" layout="topleft" left="0"
+                 name="db_block_offset" top="0" value="0" width="84" />
+                <radio_item height="18" label="LOCK" layout="topleft" left="0"
+                 name="db_block_lock" top="20" value="1" width="70" />
+            </radio_group>
+            <text follows="left|top" font="SansSerifBold" height="16" layout="topleft"
+             left="104" name="db_block_face_title" top="214" width="36">Face</text>
+            <combo_box follows="left|top|right" height="20" layout="topleft" left="144"
+             name="db_block_face" top="211" width="170">
+                <combo_box.item label="Camera" name="block_face_camera" value="0" />
+                <combo_box.item label="Subject A" name="block_face_subject" value="1" />
+                <combo_box.item label="Ball centre" name="block_face_centre" value="2" />
+                <combo_box.item label="Away from centre" name="block_face_away" value="3" />
+                <combo_box.item label="Each other" name="block_face_each" value="4" />
+                <combo_box.item label="Match first selected" name="block_face_match" value="5" />
+            </combo_box>
+            <check_box follows="left|top" height="18" label="Keep facing" layout="topleft"
+             left="320" name="db_block_keep_facing" top="213" width="100" />
+            <text follows="left|top" font="SansSerifBold" height="16" layout="topleft"
+             left="104" name="db_block_place_title" top="240" width="40">Place</text>
+            <button follows="left|top" height="22" label="Pin here" layout="topleft"
+             left="144" name="db_block_pin" top="237" width="68" />
+            <button follows="left|top" height="22" label="Release" layout="topleft"
+             left="216" name="db_block_release" top="237" width="62" />
+            <button follows="left|top" height="22" label="F" layout="topleft" left="6" name="db_block_f" top="264" width="32" />
+            <button follows="left|top" height="22" label="B" layout="topleft" left="42" name="db_block_b" top="264" width="32" />
+            <button follows="left|top" height="22" label="L" layout="topleft" left="78" name="db_block_l" top="264" width="32" />
+            <button follows="left|top" height="22" label="R" layout="topleft" left="114" name="db_block_r" top="264" width="32" />
+            <button follows="left|top" height="22" label="U" layout="topleft" left="150" name="db_block_u" top="264" width="32" />
+            <button follows="left|top" height="22" label="D" layout="topleft" left="186" name="db_block_d" top="264" width="32" />
+            <text follows="left|top" font="SansSerifSmall" height="16" layout="topleft"
+             left="228" name="db_block_nudge_note" top="267" width="174">0.25 m in dancer frame</text>
+            <text follows="left|top" font="SansSerifBold" height="16" layout="topleft"
+             left="6" name="db_block_formation_title" top="296" width="72">Formation</text>
+            <combo_box follows="left|top" height="20" layout="topleft" left="82"
+             name="db_block_shape" top="293" width="102">
+                <combo_box.item label="Circle in" name="block_circle_in" value="0" />
+                <combo_box.item label="Circle out" name="block_circle_out" value="1" />
+                <combo_box.item label="Arc" name="block_arc" value="2" />
+                <combo_box.item label="Line" name="block_line" value="3" />
+                <combo_box.item label="Grid" name="block_grid" value="4" />
+            </combo_box>
+            <spinner decimal_digits="2" follows="left|top" height="20" increment="0.25"
+             label="Size" label_width="28" layout="topleft" left="190" max_val="32"
+             min_val="0.25" name="db_block_spacing" top="293" value="2" width="94" />
+            <combo_box follows="left|top" height="20" layout="topleft" left="290"
+             name="db_block_centre" top="293" width="110">
+                <combo_box.item label="Me" name="block_centre_me" value="0" />
+                <combo_box.item label="Camera focus" name="block_centre_camera" value="1" />
+                <combo_box.item label="Subject A" name="block_centre_subject" value="2" />
+            </combo_box>
+            <button follows="left|top" height="22" label="Set centre here" layout="topleft"
+             left="6" name="db_block_set_centre" top="321" width="124" />
+            <button follows="left|top" height="22" label="Clear centre" layout="topleft"
+             left="134" name="db_block_clear_centre" top="321" width="100" />
+            <button follows="left|top" height="22" label="Apply to selected" layout="topleft"
+             left="6" name="db_block_apply_selected" top="347" width="132" />
+            <button follows="left|top" height="22" label="Apply to all" layout="topleft"
+             left="142" name="db_block_apply_all" top="347" width="92" />
+            <text follows="left|top" height="16" layout="topleft" left="6"
+             name="db_block_centre_status" top="375" width="398">centre: none</text>
+            <button follows="left|top" height="22" label="Reset selected" layout="topleft"
+             left="6" name="db_block_reset_selected" top="397" width="112" />
+            <button follows="left|top" height="22" label="Reset all" layout="topleft"
+             left="122" name="db_block_reset_all" top="397" width="76" />
+            <check_box follows="left|top" height="18" label="Blocking on" layout="topleft"
+             left="286" name="db_blocking_on" top="399" value="true" width="110" />
         </panel>
 
         <!-- ================= Cinema ================= -->

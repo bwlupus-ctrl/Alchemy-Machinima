@@ -75,7 +75,17 @@ namespace ALAvatarStagingModel
     double distance(const Vec3& lhs, const Vec3& rhs);
     double distanceXY(const Vec3& lhs, const Vec3& rhs);
     Vec3 clampOffsetXY(const Vec3& value);
+    Vec3 clampPinOffset(const Vec3& value);
+    Vec3 makePinTarget(const Vec3& requested_position, const Vec3& anchor,
+                       double visible_z_offset);
+    Vec3 pinTargetOffset(const Vec3& pin, const Vec3& simulated_position);
+    Vec3 localOffsetToWorld(const Vec3& value, double world_yaw);
     Vec3 worldOffsetToLocal(const Vec3& value, double local_frame_yaw);
+    bool centroid(const std::vector<Vec3>& points, Vec3& result);
+    bool reuseFrozenCentroid(bool from_centroid, bool same_dancer_set,
+                             const Vec3& centre,
+                             const std::vector<Vec3>& dancer_positions,
+                             double maximum_distance = 64.0);
 
     double stepCritical(ScalarSpring& state, double target, double dt,
                         double tau = TAU_SECONDS,
