@@ -43,6 +43,7 @@
 
 #include "llviewermedia_streamingaudio.h"
 #include "alavatarlightresponse.h" // [AvatarLightResponse]
+#include "alsettingsundohistory.h"
 #include "llaudioengine.h"
 // [SL:KB] - Patch: Control-TextParser | Checked: 2012-07-17 (Catznip-3.3)
 #include "lltextparser.h"
@@ -2629,6 +2630,9 @@ bool idle_startup()
         // LLUserAuth::getInstance()->reset();
 
         LLStartUp::setStartupState( STATE_STARTED );
+        // Startup feature recommendations and command-line graphics overrides
+        // are initialization, not user edits in the newly logged-in session.
+        ALExposureSettingsHistory::clear();
         do_startup_frame();
 
         // Unmute audio if desired and setup volumes.

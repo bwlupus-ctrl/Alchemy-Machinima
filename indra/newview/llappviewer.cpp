@@ -30,6 +30,7 @@
 #include "alcameradispatch.h"
 #include "alavatarlightresponse.h" // [AvatarLightResponse]
 #include "alclientheight.h"       // [ClientHeight] disconnect reset
+#include "alsettingsundohistory.h" // session-only exposure undo/redo
 
 // Viewer includes
 #include "llversioninfo.h"
@@ -6181,6 +6182,8 @@ void LLAppViewer::disconnectViewer()
     // Save snapshot for next time, if we made it through initialization
 
     LL_INFOS() << "Disconnecting viewer!" << LL_ENDL;
+
+    ALExposureSettingsHistory::clear();
 
     // Dump our frame statistics
 

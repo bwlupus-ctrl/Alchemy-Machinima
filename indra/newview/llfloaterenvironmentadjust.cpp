@@ -34,6 +34,7 @@
 #include "llsliderctrl.h"
 #include "llcolorswatch.h"
 #include "lltexturectrl.h"
+#include "lltabcontainer.h"
 #include "llvirtualtrackball.h"
 #include "llenvironment.h"
 #include "llviewercontrol.h"
@@ -47,12 +48,16 @@
 #include "llfloaterreg.h"       // [EnvIntensity userpresets] Presets... button
 #include "llflyoutcombobtn.h"
 #include "alenvintensitypresets.h" // [EnvIntensity userpresets]
+#include "alsettingsundohistory.h"
+#include "lllayoutstack.h"
 #include "llinventorymodel.h"
 #include "lllocalbitmaps.h"
 #include "llpanel.h"
 #include "llsettingsvo.h"
 #include "lltrans.h"
 #include "llviewermenufile.h"
+
+#include <iterator>
 
 //=========================================================================
 namespace
@@ -110,13 +115,15 @@ namespace
 
     const S32 FLOATER_ENVIRONMENT_UPDATE(-2);
 
-    // [EnvIntensity v2] Advanced exposure panel (lp_env_intensity_adv). Height
-    // mirrors the XML; the outer layout stack charges its 3 px panel spacing
-    // for every visible panel that is not the literal last one, so showing the
-    // panel costs height + spacing (335 -> 448 collapsed -> expanded).
+    // [EnvIntensity v2] Advanced exposure panel (lp_env_intensity_adv).
     const std::string PANEL_ENV_INTENSITY_ADV("lp_env_intensity_adv");
-    const S32 ENV_INTENSITY_ADV_PANEL_HEIGHT(110);
-    const S32 ENV_INTENSITY_PANEL_SPACING(3);
+    const char* const ENV_OUTER_PANEL_NAMES[] =
+    {
+        "env_controls",
+        "lp_env_intensity",
+        "lp_env_intensity_adv",
+        "lp_bdmerge",
+    };
 
     // [EnvIntensity v2] every Advanced-panel key: "Reset advanced" restores
     // these (never the two masters AlchemyEnvSunEV / AlchemyEnvSkyGIEV, never
@@ -283,9 +290,95 @@ LLFloaterEnvironmentAdjust::~LLFloaterEnvironmentAdjust()
     delete mFlyoutControl;
 }
 
+S32 LLFloaterEnvironmentAdjust::reshapeOuterStackToVisiblePanels()
+{
+    LLLayoutStack* outer_stack = findChild<LLLayoutStack>("outer_stack");
+    if (!outer_stack)
+    {
+        return 0;
+    }
+
+    // Match LLLayoutStack::updateLayout exactly: spacing is charged once for
+    // every visible panel, and refunded only when the literal last panel is
+    // visible. lp_bdmerge is that last panel even while hidden.
+    const S32 spacing = outer_stack->getPanelSpacing();
+    S32 height = 0;
+    for (const char* name : ENV_OUTER_PANEL_NAMES)
+    {
+        if (LLLayoutPanel* panel = findChild<LLLayoutPanel>(name))
+        {
+            if (panel->getVisible())
+            {
+                height += panel->getRect().getHeight() + spacing;
+            }
+        }
+    }
+    if (LLLayoutPanel* last = findChild<LLLayoutPanel>(
+            ENV_OUTER_PANEL_NAMES[std::size(ENV_OUTER_PANEL_NAMES) - 1]))
+    {
+        if (last->getVisible())
+        {
+            height -= spacing;
+        }
+    }
+
+    LLRect rect = outer_stack->getRect();
+    rect.mBottom = rect.mTop - height;
+    // The stack is laid out inside the tab panel at the tab container's full
+    // width before addTabPanel/ALScrollFit narrow it; follows-right then keeps
+    // that stale right margin (17 px clip). Pin the width to the parent's.
+    if (LLView* parent = outer_stack->getParent())
+    {
+        rect.mRight = rect.mLeft + parent->getRect().getWidth();
+    }
+    outer_stack->setShape(rect);
+    return height;
+}
+
+void LLFloaterEnvironmentAdjust::fitFloaterToEnvironmentDocument()
+{
+    LLTabContainer* tabs = findChild<LLTabContainer>("env_adjust_tabs");
+    mScrollFit.fit(this, tabs);
+
+    if (isMinimized())
+    {
+        return;
+    }
+
+    std::vector<LLScrollContainer*> containers;
+    ALScrollFit::collectTabContainers(tabs, containers);
+    if (containers.empty())
+    {
+        return;
+    }
+
+    LLScrollContainer* scroller = containers.front();
+    LLView* document = ALScrollFit::scrolledView(scroller);
+    if (!document)
+    {
+        return;
+    }
+
+    const S32 document_height = document->getRect().getHeight();
+    const S32 viewport_height = scroller->getVisibleContentRect().getHeight();
+    const S32 delta = document_height - viewport_height;
+    if (delta != 0)
+    {
+        LLRect rect = getRect();
+        rect.mBottom = rect.mTop - llmax(getMinHeight(), rect.getHeight() + delta);
+        setShape(rect);
+        mScrollFit.fit(this, tabs);
+    }
+}
+
 //-------------------------------------------------------------------------
 bool LLFloaterEnvironmentAdjust::postBuild()
 {
+    // XUI must contain the hidden panels for static validation, but they are
+    // not part of the collapsed scroll document. Derive the live document
+    // height from its visible panels before ScrollFit wraps the tab.
+    reshapeOuterStackToVisiblePanels();
+    mScrollFit.installForTabs(findChild<LLTabContainer>("env_adjust_tabs"), this);
     getChild<LLUICtrl>(FIELD_SKY_AMBIENT_LIGHT)->setCommitCallback([this](LLUICtrl *, const LLSD &) { onAmbientLightChanged(); });
     getChild<LLUICtrl>(FIELD_SKY_BLUE_HORIZON)->setCommitCallback([this](LLUICtrl *, const LLSD &) { onBlueHorizonChanged(); });
     getChild<LLUICtrl>(FIELD_SKY_BLUE_DENSITY)->setCommitCallback([this](LLUICtrl *, const LLSD &) { onBlueDensityChanged(); });
@@ -329,6 +422,7 @@ bool LLFloaterEnvironmentAdjust::postBuild()
     {
         sun_reset->setCommitCallback([](LLUICtrl*, const LLSD&)
         {
+            ALExposureSettingsHistory::ScopedBatch history_batch("Reset Sun EV");
             if (auto ctrl = gSavedSettings.getControl("AlchemyEnvSunEV")) { ctrl->resetToDefault(true); }
         });
     }
@@ -336,6 +430,7 @@ bool LLFloaterEnvironmentAdjust::postBuild()
     {
         gi_reset->setCommitCallback([](LLUICtrl*, const LLSD&)
         {
+            ALExposureSettingsHistory::ScopedBatch history_batch("Reset Sky light (GI) EV");
             if (auto ctrl = gSavedSettings.getControl("AlchemyEnvSkyGIEV")) { ctrl->resetToDefault(true); }
         });
     }
@@ -369,6 +464,9 @@ bool LLFloaterEnvironmentAdjust::postBuild()
             const std::string setting2(rb.mSetting2 ? rb.mSetting2 : "");
             btn->setCommitCallback([setting, setting2](LLUICtrl*, const LLSD&)
             {
+                const auto* tracked = ALExposureSettingsHistory::findTrackedSetting(setting);
+                ALExposureSettingsHistory::ScopedBatch history_batch(
+                    std::string("Reset ") + (tracked ? tracked->mLabel : setting));
                 env_intensity_reset_setting(setting);
                 if (!setting2.empty())
                 {
@@ -381,6 +479,7 @@ bool LLFloaterEnvironmentAdjust::postBuild()
     {
         reset_all->setCommitCallback([](LLUICtrl*, const LLSD&)
         {
+            ALExposureSettingsHistory::ScopedBatch history_batch("Reset All");
             for (const char* key : ENV_INTENSITY_ADV_KEYS)
             {
                 env_intensity_reset_setting(key);
@@ -411,6 +510,10 @@ bool LLFloaterEnvironmentAdjust::postBuild()
     }
     applyEnvIntensityAdvanced();
     updateEnvIntensityMoonLink();
+    ALExposureSettingsHistory::installEditFinalizers(
+        findChild<LLPanel>("lp_env_intensity"));
+    ALExposureSettingsHistory::installEditFinalizers(
+        findChild<LLPanel>(PANEL_ENV_INTENSITY_ADV));
 
     // [EnvIntensity presets] Quick Presets combo: apply-on-select, plus a
     // listener per watched key so a manual slider / swatch / Debug Settings
@@ -454,6 +557,26 @@ bool LLFloaterEnvironmentAdjust::postBuild()
         });
     }
 
+    mExposureUndoBtn = findChild<LLButton>("env_exposure_undo");
+    mExposureRedoBtn = findChild<LLButton>("env_exposure_redo");
+    if (mExposureUndoBtn)
+    {
+        mExposureUndoBtn->setCommitCallback([](LLUICtrl*, const LLSD&)
+        {
+            ALExposureSettingsHistory::undo();
+        });
+    }
+    if (mExposureRedoBtn)
+    {
+        mExposureRedoBtn->setCommitCallback([](LLUICtrl*, const LLSD&)
+        {
+            ALExposureSettingsHistory::redo();
+        });
+    }
+    mExposureHistoryConn = ALExposureSettingsHistory::connectRevisionChanged(
+        [this](U64) { updateExposureHistoryButtons(); });
+    updateExposureHistoryButtons();
+
     // [BDMerge B13] BD - Windlight Stuff: preset combo, save/delete/import,
     // cloud scroll locks. All the widgets live in a hidden bottom strip
     // (lp_bdmerge, visible="false"); when the gate is off nothing below is
@@ -463,9 +586,7 @@ bool LLFloaterEnvironmentAdjust::postBuild()
         if (LLPanel* bd_panel = findChild<LLPanel>(PANEL_BDMERGE))
         {
             bd_panel->setVisible(true);
-            // grow the floater by the strip's height so the stock controls
-            // keep their full size
-            reshape(getRect().getWidth(), getRect().getHeight() + bd_panel->getRect().getHeight());
+            reshapeOuterStackToVisiblePanels();
 
             mCloudScrollLockX = getChild<LLUICtrl>(FIELD_SKY_CLOUD_LOCK_X);
             mCloudScrollLockX->setCommitCallback([this](LLUICtrl *ctrl, const LLSD &) { onCloudScrollXLocked(ctrl->getValue()); });
@@ -483,6 +604,7 @@ bool LLFloaterEnvironmentAdjust::postBuild()
         }
     }
 
+    fitFloaterToEnvironmentDocument();
     refresh();
     return true;
 }
@@ -509,6 +631,7 @@ void LLFloaterEnvironmentAdjust::onOpen(const LLSD& key)
         gBDMergeEnvLibrary.loadPresetsFromDir(mNameCombo, "skies");
         gBDMergeEnvLibrary.addInventoryPresets(mNameCombo, mLiveSky);
     }
+    fitFloaterToEnvironmentDocument();
 }
 
 void LLFloaterEnvironmentAdjust::onClose(bool app_quitting)
@@ -955,7 +1078,12 @@ void LLFloaterEnvironmentAdjust::applyEnvIntensityAdvanced()
     {
         return;
     }
-    const S32 delta = (ENV_INTENSITY_ADV_PANEL_HEIGHT + ENV_INTENSITY_PANEL_SPACING) * (show ? 1 : -1);
+    LLLayoutStack* outer_stack = findChild<LLLayoutStack>("outer_stack");
+    const S32 old_stack_height = outer_stack ? outer_stack->getRect().getHeight() : 0;
+
+    adv->setVisible(show);
+    const S32 new_stack_height = reshapeOuterStackToVisiblePanels();
+    const S32 delta = new_stack_height - old_stack_height;
 
     if (isMinimized())
     {
@@ -966,17 +1094,13 @@ void LLFloaterEnvironmentAdjust::applyEnvIntensityAdvanced()
         const S32 new_height = llmax(expanded.getHeight() + delta, getMinHeight());
         expanded.mBottom = expanded.mTop - new_height;
         setExpandedRect(expanded);
-        adv->setVisible(show);
+        // Keep the scroll document in step so the restore shows no stale
+        // scrollbar or blank tail.
+        mScrollFit.fit(this, findChild<LLTabContainer>("env_adjust_tabs"));
         return;
     }
 
-    adv->setVisible(show);
-    // Never below min_height (the layout stack then keeps the stock panels intact).
-    const S32 new_height = llmax(getRect().getHeight() + delta, getMinHeight());
-    if (new_height != getRect().getHeight())
-    {
-        reshape(getRect().getWidth(), new_height);
-    }
+    fitFloaterToEnvironmentDocument();
 }
 
 // [EnvIntensity v2] Linked (default): the Sun slider drives both bodies and its
@@ -1019,6 +1143,8 @@ void LLFloaterEnvironmentAdjust::onEnvIntensityPresetSelected()
         refreshEnvIntensityPresetCombo();
         return;
     }
+    ALExposureSettingsHistory::ScopedBatch history_batch(
+        "Preset '" + combo->getSelectedItemLabel() + "'");
     // [EnvIntensity userpresets] "user:<name>" -> saved user preset
     if (key.compare(0, ENV_INTENSITY_USER_PREFIX.size(), ENV_INTENSITY_USER_PREFIX) == 0)
     {
@@ -1056,7 +1182,29 @@ void LLFloaterEnvironmentAdjust::applyEnvIntensityPreset(const std::string& key)
         return;
     }
 
+    ALExposureSettingsHistory::ScopedBatch history_batch(
+        std::string("Preset '") + preset->mKey + "'");
     ALEnvIntensityPresets::apply(env_intensity_builtin_values(*preset));
+}
+
+void LLFloaterEnvironmentAdjust::updateExposureHistoryButtons()
+{
+    const bool can_undo = ALExposureSettingsHistory::canUndo();
+    const bool can_redo = ALExposureSettingsHistory::canRedo();
+    if (mExposureUndoBtn)
+    {
+        mExposureUndoBtn->setEnabled(can_undo);
+        mExposureUndoBtn->setToolTip(can_undo
+            ? "Undo: " + ALExposureSettingsHistory::undoLabel()
+            : "Nothing to undo");
+    }
+    if (mExposureRedoBtn)
+    {
+        mExposureRedoBtn->setEnabled(can_redo);
+        mExposureRedoBtn->setToolTip(can_redo
+            ? "Redo: " + ALExposureSettingsHistory::redoLabel()
+            : "Nothing to redo");
+    }
 }
 
 // [EnvIntensity userpresets] Rebuilds the dynamic tail of the Quick Presets

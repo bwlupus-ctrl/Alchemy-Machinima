@@ -31,6 +31,7 @@
 #include "llsettingsbase.h"
 #include "llsettingssky.h"
 #include "llenvironment.h"
+#include "alscrollfit.h"
 
 #include <string>
 #include <vector>
@@ -62,6 +63,9 @@ public:
     virtual void                refresh() override;
 
 private:
+    ALScrollFit::Controller     mScrollFit;
+    S32                         reshapeOuterStackToVisiblePanels();
+    void                        fitFloaterToEnvironmentDocument();
     void                        captureCurrentEnvironment();
 
     void                        onAmbientLightChanged();
@@ -96,6 +100,7 @@ private:
     // and the Sun/Moon link label + Moon slider enable (AlchemyEnvMoonLinked).
     void                        applyEnvIntensityAdvanced();
     void                        updateEnvIntensityMoonLink();
+    void                        updateExposureHistoryButtons();
 
     // [EnvIntensity presets] Quick Preset combo (env_intensity_preset) on the
     // Light Intensity strip. Applying a preset writes the full deterministic
@@ -151,6 +156,9 @@ private:
     // [EnvIntensity v2] setting listeners (Debug Settings edits show live)
     boost::signals2::scoped_connection mEnvIntensityAdvancedConn;
     boost::signals2::scoped_connection mEnvIntensityMoonLinkedConn;
+    boost::signals2::scoped_connection mExposureHistoryConn;
+    LLButton*                    mExposureUndoBtn = nullptr;
+    LLButton*                    mExposureRedoBtn = nullptr;
 
     // [EnvIntensity presets] one scoped connection per tracked AlchemyEnv* key
     // (see ENV_INTENSITY_PRESET_WATCHED_KEYS), all routed to

@@ -4,8 +4,8 @@
          help_topic="day_presets"
          save_rect="false"
          title="Personal Lighting"
-         width="845"
-         height="335"
+         width="860"
+         height="405"
          min_width="500"
          min_height="330"
          single_instance="true"
@@ -14,7 +14,7 @@
   <string name="brightness_string">Brightness:</string>
   <string name="hdr_tooltip">Intensity of lighting effects such as realistically bright skies and dynamic exposure. 1.0 is the default, 0 is off, values between 0 and 1 are mixing Ambient with HDR.</string>
   <!-- [EnvIntensity] Light Intensity note texts, selected in updateGammaLabel(). -->
-  <string name="env_intensity_classic_note">Classic sky: sky sliders inactive (Local lights EV still applies)</string>
+  <string name="env_intensity_classic_note">Classic sky: Local lights only</string>
   <string name="env_intensity_classic_tooltip">This is a classic (pre-PBR) sky: a legacy sky with "auto-adjust legacy skies" (RenderSkyAutoAdjustLegacy) turned off. Classic shading mixes sun and ambient in gamma space, where a stop-based factor cannot be applied correctly, so the Sun / Moon, GI, probe, tint and shadow-lift controls are inactive on it. Local lights (EV) still applies: local lights are added after that mix, in linear light. Turn RenderSkyAutoAdjustLegacy on, or use a sky with Reflection Probe Ambiance above 0, to use the rest.</string>
   <!-- [EnvIntensity v2] Advanced toggle labels and the Sun/Moon link label swap
        (applyEnvIntensityAdvanced / updateEnvIntensityMoonLink). -->
@@ -25,12 +25,22 @@
   <string name="env_intensity_my_presets">-- My presets --</string>
   <string name="env_intensity_sun_moon_label">Sun / Moon (EV):</string>
   <string name="env_intensity_sun_label">Sun (EV):</string>
-  <string name="env_intensity_legacy_note">Legacy sky: Sun boost above 0 EV has no effect</string>
+  <string name="env_intensity_legacy_note">Legacy: Sun boost capped</string>
   <string name="env_intensity_legacy_tooltip">This sky has no Reflection Probe Ambiance (legacy / non-HDR), so it skips the tonemapper: Sun / Moon boosts above 0 EV would clip and are capped at 0 EV. Negative values still work. Set Reflection Probe Ambiance above 0 to enable boosts.</string>
+  <!-- xui-check: allow-overlap save btn_flyout -->
+    <tab_container follows="all"
+                   height="400"
+                   hide_tabs="true"
+                   layout="topleft"
+                   left="0"
+                   name="env_adjust_tabs"
+                   top="0"
+                   width="860">
+      <panel label="Lighting" layout="topleft" name="env_adjust_tab">
     <layout_stack name="outer_stack"
-                  width="845"
-                  height="330"
-                  follows="all"
+                  width="843"
+                  height="535"
+                  follows="left|top|right"
                   animate="false"
                   top="0"
                   orientation="vertical">
@@ -38,14 +48,14 @@
         <layout_panel name="env_controls"
                       border="false"
                       bevel_style="in"
-                      auto_resize="true"
+                      auto_resize="false"
                       user_resize="true"
-                      height="150"
-                      min_height="0"
+                      height="330"
+                      min_height="330"
                       visible="true">
             <layout_stack name="settings_stack"
-                          width="855"
-                          height="150"
+                          width="841"
+                          height="330"
                           follows="all"
                           animate="false"
                           orientation="horizontal">
@@ -79,7 +89,8 @@
                           layout="topleft"
                           left="7"
                           top_pad="10"
-                          width="80">Blue Horizon</text>
+                          tool_tip="Blue Horizon"
+                          width="80">Horizon</text>
                     <color_swatch can_apply_immediately="true"
                                   follows="left|top"
                                   height="40"
@@ -95,7 +106,8 @@
                           layout="topleft"
                           left="7"
                           top_pad="10"
-                          width="80">Blue Density</text>
+                          tool_tip="Blue Density"
+                          width="80">Density</text>
                     <color_swatch can_apply_immediately="true"
                                   follows="left|top"
                                   height="40"
@@ -114,14 +126,14 @@
                       name="btn_reset"
                       left_delta="-2"
                       top_pad="10"
-                      width="100"/>
+                      width="60"/>
                     <text follows="right|top"
                           name="sun_color_lbl"
                           height="10"
                           layout="topleft"
                           right="-12"
                           top="5"
-                          width="60">Sun Color</text>
+                          width="70">Sun Color</text>
                     <color_swatch can_apply_immediately="true"
                                   follows="left|top"
                                   height="10"
@@ -137,7 +149,7 @@
                           layout="topleft"
                           left_delta="0"
                           top_pad="5"
-                          width="80">Cloud Color</text>
+                          width="80">Cloud color</text>
                     <color_swatch can_apply_immediately="true"
                                   follows="left|top"
                                   height="10"
@@ -153,7 +165,7 @@
                           left_delta="0"
                           top_pad="10"
                           name="cloud_map_label"
-                          width="80">Cloud Image</text>
+                          width="80">Cloud map</text>
                     <texture_picker height="63"
                                     layout="topleft"
                                     left_delta="0"
@@ -164,9 +176,9 @@
                           height="10"
                           layout="topleft"
                           left_delta="0"
-                          top_pad="-13"
+                          top_pad="5"
                           name="water_map_label"
-                          width="80">Water Image</text>
+                          width="80">Water normal</text>
                     <texture_picker height="63"
                                     layout="topleft"
                                     left_delta="0"
@@ -188,7 +200,7 @@
                           layout="topleft"
                           left_delta="5"
                           top_pad="5"
-                          width="80">Haze Horizon:</text>
+                          width="100">Haze Horizon:</text>
                     <slider decimal_digits="2"
                             follows="left|top"
                             height="16"
@@ -208,7 +220,7 @@
                           layout="topleft"
                           left_delta="-5"
                           top_pad="5"
-                          width="80">Haze Density:</text>
+                          width="100">Haze Density:</text>
                     <slider decimal_digits="2"
                             follows="left|top"
                             height="16"
@@ -269,7 +281,7 @@
                           name="probe_ambiance_label"
                           tool_tip="Irradiance control.  When not zero, enables HDR lighting model."
                           top_pad="15"
-                          width="180">Reflection Probe Ambiance:</text>
+                          width="195">Reflection Probe Ambiance:</text>
                   <slider decimal_digits="2"
                           follows="left|top"
                           height="16"
@@ -290,7 +302,7 @@
                           layout="topleft"
                           left_delta="-5"
                           top_pad="15"
-                          width="80">Brightness:</text>
+                          width="90">Brightness:</text>
                     <slider decimal_digits="2"
                             follows="left|top"
                             height="16"
@@ -423,7 +435,7 @@
                           layout="topleft"
                           left_delta="-5"
                           top_pad="5"
-                          width="200">Glow Size:</text>
+                          width="150">Glow Size:</text>
                     <slider decimal_digits="2"
                             follows="left|top"
                             height="16"
@@ -443,7 +455,7 @@
                           layout="topleft"
                           left_delta="-5"
                           top_pad="10"
-                          width="200">Star Brightness:</text>
+                          width="150">Star Brightness:</text>
                     <slider decimal_digits="2"
                             follows="left|top"
                             height="16"
@@ -488,7 +500,7 @@
                         layout="topleft"
                         left_delta="0"
                         top_pad="5"
-                        width="200">Azimuth:</text>
+                        width="155">Azimuth:</text>
                   <slider decimal_digits="2"
                           follows="left|top"
                           height="16"
@@ -508,7 +520,7 @@
                         layout="topleft"
                         left_delta="-5"
                         top_pad="5"
-                        width="200">Elevation:</text>
+                        width="155">Elevation:</text>
                   <slider decimal_digits="2"
                           follows="left|top"
                           height="16"
@@ -535,15 +547,12 @@
             </layout_stack>
         </layout_panel>
         <!-- [EnvIntensity] Light Intensity strip.
-             Layout: fixed 52 px panel. The layout stack charges 3 px of panel
-             spacing for every visible panel that is not the last one
-             (lllayoutstack.cpp:429/438), so this strip costs 52 + 3 = 55 px and
-             the floater height, min_height and outer_stack height above were
-             raised by exactly 55 (280->335, 275->330, 275->330). The stock
-             env_controls panel therefore keeps its original 272 px (330 - 3
-             spacing - 55) with lp_bdmerge hidden; when the BDMerge strip is
-             shown, postBuild still grows the floater by that strip's own 28 px
-             (its 3 px separator was already charged while hidden -> 272 again).
+             Layout: fixed 58 px panel. The layout stack charges 3 px of panel
+             spacing for every visible panel, refunding it only when the literal
+             last panel is visible (lllayoutstack.cpp:429/438). Because hidden
+             lp_bdmerge remains the literal last panel, collapsed content is
+             330 + 3 + 58 + 3 = 394 px. The hidden one-page tab host is wrapped,
+             fitted and its floater resized by ALScrollFit runtime geometry.
              Behaviour: the sliders and the Auto exposure checkbox bind to viewer
              settings through control_name (two-way: Debug Settings edits show
              up live). The two reset buttons and the legacy-sky note are wired in
@@ -557,8 +566,8 @@
                       bevel_style="in"
                       auto_resize="false"
                       user_resize="false"
-                      height="52"
-                      min_height="52"
+                      height="58"
+                      min_height="58"
                       visible="true">
             <text follows="left|top"
                   font="SansSerifBold"
@@ -568,7 +577,7 @@
                   top="5"
                   name="env_intensity_label"
                   tool_tip="Viewer-side light intensity offsets applied on top of the current sky. Saved with your viewer settings, persist across skies and are never written into the sky (EEP) asset."
-                  width="110">Light Intensity</text>
+                  width="120">Light Intensity</text>
             <check_box control_name="RenderDynamicExposureEnabled"
                        follows="left|top"
                        height="16"
@@ -579,6 +588,24 @@
                        name="env_auto_exposure"
                        tool_tip="Dynamic (auto) exposure. It partially compensates intensity changes (about 2 stops of range), so the sliders feel softer in dim scenes. Turn it off for a fixed exposure and exact slider control. S-Log3 capture already ignores it. Viewer setting, not saved into the sky."
                        width="110"/>
+            <button follows="left|top"
+                    height="16"
+                    label="Undo"
+                    layout="topleft"
+                    left="5"
+                    name="env_exposure_undo"
+                    tool_tip="Nothing to undo"
+                    top="36"
+                    width="52"/>
+            <button follows="left|top"
+                    height="16"
+                    label="Redo"
+                    layout="topleft"
+                    left="62"
+                    name="env_exposure_redo"
+                    tool_tip="Nothing to redo"
+                    top="36"
+                    width="52"/>
             <text follows="left|top"
                   height="10"
                   layout="topleft"
@@ -676,19 +703,19 @@
                   name="env_legacy_sun_note"
                   visible="false"
                   tool_tip="This sky has no Reflection Probe Ambiance (legacy / non-HDR), so it skips the tonemapper: Sun / Moon boosts above 0 EV would clip and are capped at 0 EV. Negative values still work. Set Reflection Probe Ambiance above 0 to enable boosts."
-                  width="200">Legacy sky: Sun boost above 0 EV has no effect</text>
+                  width="200">Legacy: Sun boost capped</text>
             <text follows="left|top"
                   font="SansSerifSmall"
                   height="10"
                   layout="topleft"
                   left="125"
-                  top="38"
+                  top="42"
                   name="env_intensity_hint"
                   tool_tip="Auto exposure adapts to scene brightness (about 2 stops of range) and so partially compensates the sliders; turn it off for exact control. Every control on this strip is a viewer-side multiplier: not saved into the sky, and the sun disc / sky dome do not change with them. Hover a slider and scroll: one increment per notch, Shift for a fine step, Ctrl or Alt for x10."
-                  width="620">Auto exposure partially compensates (~2 stops): turn it off for exact control. Viewer-side only, not saved into the sky.</text>
+                  width="620">Auto exposure softens changes; off = exact control. Viewer-side, not saved to sky.</text>
             <!-- [EnvIntensity presets] Quick Presets combo. Geometry: this
                  strip's only free rectangle that does not grow the floater
-                 (width stays 845) is x 616 (env_gi_ev_reset right edge) .. 750
+                 is x 616 (env_gi_ev_reset right edge) .. 750
                  (env_adv_toggle left edge), y 16 (slider-row top, clear of
                  env_legacy_sun_note at top 5 / height 10) .. 38 (env_intensity_hint
                  top). left 636 + width 108 -> right edge 744, 6 px clear of the
@@ -749,9 +776,10 @@
         </layout_panel>
         <!-- [EnvIntensity v2] Advanced exposure panel. Hidden by default
              (AlchemyEnvIntensityAdvanced); applyEnvIntensityAdvanced() shows it
-             and grows the floater by 110 + 3 (panel + layout-stack spacing for a
-             non-last panel): 335 collapsed -> 448 expanded; the BDMerge strip
-             still adds its own 28 on top when gated on. Grid: 4 columns at left
+             and refits the floater from the measured scroll document. The stack
+             gains 110 + 3 (panel + charged spacing); the BDMerge strip gains 28
+             because making the literal last panel visible refunds its spacing.
+             Grid: 4 columns at left
              5 / 215 / 425 / 635 (content width 200): label (10 px) over a 160 px
              slider (text_width 46), unit text at +162, 18 px reset button at
              +180. Rows at top 4 / 40 / 76 (34 px pitch). Every control binds
@@ -830,7 +858,7 @@
                   top="4"
                   name="env_local_ev_label"
                   tool_tip="World point / spot / projector lights, in stops (EV)."
-                  width="100">Local lights (EV):</text>
+                  width="100">Local lights:</text>
             <check_box control_name="AlchemyEnvLocalLightIncludeRig"
                        follows="left|top"
                        height="16"
@@ -1357,4 +1385,6 @@
                 width="130"/>
         </layout_panel>
     </layout_stack>
+      </panel>
+    </tab_container>
 </floater>

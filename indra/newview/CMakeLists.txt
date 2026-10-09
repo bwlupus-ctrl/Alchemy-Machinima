@@ -320,6 +320,8 @@ set(viewer_SOURCE_FILES
     alcinerigrim.cpp
     alenvintensity.cpp
     alenvintensitypresets.cpp
+    alsettingsundohistory.cpp
+    alsettingsundohistorymodel.cpp
     alfloaterenvintensitypresets.cpp
     alrotoink.cpp
     altron.cpp
@@ -1254,6 +1256,8 @@ set(viewer_HEADER_FILES
     alcinerigrim.h
     alenvintensity.h
     alenvintensitypresets.h
+    alsettingsundohistory.h
+    alsettingsundohistorymodel.h
     alfloaterenvintensitypresets.h
     alrotoink.h
     altron.h
@@ -2686,6 +2690,7 @@ if (BUILD_TESTING)
     alghostinteractionstate.cpp
     alghostplacementresolver.cpp
     alsceneexplorerpredicate.cpp
+    alsettingsundohistorymodel.cpp
     llprismgate.cpp
     llagentaccess.cpp
     lldateutil.cpp

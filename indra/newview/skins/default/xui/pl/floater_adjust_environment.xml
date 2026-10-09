@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="utf-8" standalone="yes"?>
 <floater name="env_adjust_snapshot" title="Własne oświetlenie">
+	<tab_container name="env_adjust_tabs">
+		<panel name="env_adjust_tab">
 	<layout_stack name="outer_stack">
 		<layout_panel name="env_controls">
 			<layout_stack name="settings_stack">
@@ -83,4 +85,6 @@
 			</layout_stack>
 		</layout_panel>
 	</layout_stack>
+		</panel>
+	</tab_container>
 </floater>

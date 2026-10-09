@@ -95,6 +95,7 @@
 #include "llslurl.h"
 #include "llstartup.h"
 #include "llperfstats.h"
+#include "alsettingsundohistory.h"
 // [RLVa:KB] - Checked: 2015-12-27 (RLVa-1.5.0)
 #include "llvisualeffect.h"
 #include "rlvactions.h"
@@ -1109,6 +1110,9 @@ void setting_setup_signal_listener(LLControlGroup& group, const std::string& set
 void settings_setup_listeners()
 {
     LL_PROFILE_ZONE_SCOPED;
+    // Exposure history listens at the setting layer, so every editing surface
+    // (including Debug Settings and Lightbox) shares one session history.
+    ALExposureSettingsHistory::initialize();
     setting_setup_signal_listener(gSavedSettings, "FirstPersonAvatarVisible", handleRenderAvatarMouselookChanged);
     setting_setup_signal_listener(gSavedSettings, "NumpadControl", handleNumpadControlChanged);
     setting_setup_signal_listener(gSavedSettings, "RenderFarClip", handleRenderFarClipChanged);

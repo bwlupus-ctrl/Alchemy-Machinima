@@ -11,6 +11,7 @@
 #include "llviewerprecompiledheaders.h"
 
 #include "alenvintensitypresets.h"
+#include "alsettingsundohistory.h"
 
 #include "lldir.h"
 #include "lldiriterator.h"
@@ -1072,6 +1073,7 @@ bool nearlyEqual(const Values& a, const Values& b)
 
 void apply(const Values& values)
 {
+    ALExposureSettingsHistory::ScopedBatch history_batch("Preset");
     {
         ApplyGuard guard;   // suppresses the Quick Presets combo refresh while the 16 signals fire
         gSavedSettings.setF32("AlchemyEnvSunEV", values.mSunEV);
@@ -1299,6 +1301,7 @@ bool applyNamed(const std::string& name)
     {
         return false;
     }
+    ALExposureSettingsHistory::ScopedBatch history_batch("Preset '" + name + "'");
     apply(v);
     return true;
 }
