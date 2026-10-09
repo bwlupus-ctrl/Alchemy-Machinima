@@ -117,6 +117,10 @@ void collectTabContainerTree(LLTabContainer* tabs, std::vector<LLTabContainer*>&
 // at postBuild/onOpen/tab change.
 void fitAll(LLView* root, LLTabContainer* tabs, const StretcherMins* mins = nullptr);
 
+// Refit only the newly visible tab page. This is the tab-commit fast path;
+// install/open still use fitAll so initially hidden pages retain identical sizing.
+void fitPage(LLView* page, const StretcherMins* mins = nullptr);
+
 // Sizes a direct child to fill the usable area of an unwrapped tab page. The
 // child's left inset is preserved; its top edge is placed at `top_px` from the
 // page top (LLView origin y == 0 for that placement in this coordinate system).
@@ -183,7 +187,8 @@ public:
     // fitted too). One-shot per tab container: wrapping and the tab-change commit callback
     // are installed once per container however often this is called (further calls only
     // re-run the idempotent focus/fit/wheel steps). The callbacks are APPENDED (existing XML
-    // commit callbacks are kept) and refit the whole tree rooted at the `tabs` passed here.
+    // commit callbacks are kept) and refit only the newly visible page (including the
+    // current page of any nested tab container beneath it).
     // (`tabs` may be null: then only `named` focus installs, fitAll over `root's document
     // containers and slider wheel enabling run). `named` containers get focus-reveal
     // first (with their XML-named document), then every other tab-level container once.
@@ -193,6 +198,8 @@ public:
     // Re-fit with this controller's recorded stretcher minimums (use from onOpen etc.
     // instead of the bare fitAll, which knows no minimums).
     void fit(LLView* root, LLTabContainer* tabs) { fitAll(root, tabs, mMins.get()); }
+    void fitPage(LLView* page) { ALScrollFit::fitPage(page, mMins.get()); }
+    void setCommitFitEnabled(bool enabled) { *mCommitFitEnabled = enabled; }
 
     void reset() { mFocus.clear(); mMins->clear(); }
 
@@ -203,6 +210,7 @@ private:
     // Shared with the tab-change callbacks (they may outlive this object during floater
     // teardown, so they hold their own reference).
     std::shared_ptr<StretcherMins> mMins = std::make_shared<StretcherMins>();
+    std::shared_ptr<bool> mCommitFitEnabled = std::make_shared<bool>(true);
     std::vector<LLTabContainer*> mTabs; // containers already wrapped + callback-installed
     std::vector<std::string> mUnwrapped;
 };

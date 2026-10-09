@@ -92,6 +92,7 @@ public:
         {
             publishRevision();
         }
+        flushRevision();
         return false;
     }
 
@@ -186,16 +187,49 @@ private:
             }
         }
         mApplying = false;
-        publishRevision();
+        publishRevision(true);
     }
 
-    void publishRevision()
+    void publishRevision(bool force = false)
     {
-        mRevisionSignal(mModel.revision());
+        LL_PROFILE_ZONE_NAMED_CATEGORY_UI("ExposureHistory publishRevision");
+        const bool can_undo = mModel.canUndo();
+        const bool can_redo = mModel.canRedo();
+        const bool availability_changed = !mAvailabilityPrimed ||
+            can_undo != mLastCanUndo || can_redo != mLastCanRedo;
+        const std::string undo_label = mModel.undoLabel();
+        const std::string redo_label = mModel.redoLabel();
+        const bool label_changed = !mAvailabilityPrimed ||
+            undo_label != mLastUndoLabel || redo_label != mLastRedoLabel;
+        mLastCanUndo = can_undo;
+        mLastCanRedo = can_redo;
+        mLastUndoLabel = undo_label;
+        mLastRedoLabel = redo_label;
+        mAvailabilityPrimed = true;
+        mRevisionDirty = true;
+        if (force || availability_changed || label_changed)
+        {
+            flushRevision();
+        }
+    }
+
+    void flushRevision()
+    {
+        if (mRevisionDirty)
+        {
+            mRevisionDirty = false;
+            mRevisionSignal(mModel.revision());
+        }
     }
 
     ALSettingsUndoHistoryModel mModel;
     bool mApplying = false;
+    bool mRevisionDirty = false;
+    bool mAvailabilityPrimed = false;
+    bool mLastCanUndo = false;
+    bool mLastCanRedo = false;
+    std::string mLastUndoLabel;
+    std::string mLastRedoLabel;
     std::vector<boost::signals2::scoped_connection> mConnections;
     ALExposureSettingsHistory::revision_signal_t mRevisionSignal;
 };

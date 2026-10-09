@@ -22,6 +22,7 @@
 
 #include <array>
 #include <vector>
+#include <boost/signals2/connection.hpp>
 
 class LLButton;
 class LLCheckBoxCtrl;
@@ -105,6 +106,8 @@ private:
     bool mLastArmed = false;
     bool mHaveProgramSnapshot = false;
     bool mRefreshing = false;
+    bool mBankDirty = true;
+    boost::signals2::scoped_connection mBankConnection;
 };
 
 #endif // AL_ALPANELDIRECTORANIMSWITCHER_H

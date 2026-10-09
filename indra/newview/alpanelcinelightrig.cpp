@@ -138,8 +138,8 @@ void addLabeledSeparator(LLComboBox* combo, const std::string& label,
     combo->add(label, LLSD(), ADD_BOTTOM, false);
 }
 
-// [LiveProbeRefresh] One status line (kept to about 45 characters) describing
-// what the refresh scheduler is doing, from a manager snapshot.
+// [LiveProbeRefresh] Volatile half of the status. The mode/config text lives
+// in the word-wrapped static box; this single-line readout is clocked at 2 Hz.
 std::string liveProbeRefreshLine(
     const LLReflectionMapManager::CinematicRefreshStatus& rs)
 {
@@ -167,10 +167,12 @@ std::string liveProbeRefreshLine(
         {
             // [ProbeManualRate] K faces every N frames; the rate uses the
             // measured fps so the user can see what the setting costs.
-            const S32 faces = llclamp(
-                gSavedSettings.getS32("CineLightRigLiveProbeManualFaces"), 1, 6);
-            const S32 every = llclamp(
-                gSavedSettings.getS32("CineLightRigLiveProbeManualFrames"), 1, 120);
+            static LLCachedControl<S32> manual_faces(
+                gSavedSettings, "CineLightRigLiveProbeManualFaces", 2);
+            static LLCachedControl<S32> manual_frames(
+                gSavedSettings, "CineLightRigLiveProbeManualFrames", 1);
+            const S32 faces = llclamp((S32)manual_faces, 1, 6);
+            const S32 every = llclamp((S32)manual_frames, 1, 120);
             const F32 fps = static_cast<F32>(
                 LLTrace::get_frame_recording().getPeriodMeanPerSec(LLStatViewer::FPS));
             return llformat("Refresh: Manual, %d %s every %d %s (~%.1f faces/s at current fps)",
@@ -750,6 +752,7 @@ bool ALPanelCineLightRig::postBuild()
     mGoboPreview = getChild<LLIconCtrl>("cine_gobo_preview");
     mGoboSoftness = getChild<LLTextBox>("cine_gobo_softness");
     mLiveProbeStatus = getChild<LLTextBox>("cine_live_probe_status");
+    mLiveProbeLiveStatus = getChild<LLTextBox>("cine_live_probe_live_status");
     mLiveProbeRefreshNow = getChild<LLButton>("cine_live_probe_refresh_now"); // [LiveProbeRefresh]
     mLiveProbeManualFaces = getChild<LLUICtrl>("cine_live_probe_manual_faces"); // [ProbeManualRate]
     mLiveProbeManualFrames = getChild<LLUICtrl>("cine_live_probe_manual_frames"); // [ProbeManualRate]
@@ -1339,6 +1342,7 @@ void ALPanelCineLightRig::onFixtureValuesCommit()
 
 void ALPanelCineLightRig::syncGoboLibrary(bool force)
 {
+    LL_PROFILE_ZONE_NAMED_CATEGORY_UI("LightRig syncGoboLibrary");
     if (!mGoboLibrary || !mGoboPreview || !mGoboSoftness)
     {
         return;
@@ -1357,21 +1361,24 @@ void ALPanelCineLightRig::syncGoboLibrary(bool force)
         // panel guard applied above, so the helper's own guard is bypassed (force=true)
         setValueIfChanged(mGoboLibrary, LLSD(index), true);
     }
-    mGoboPreview->setVisible(index > 0);
-    if (index > 0)
+    setVisibleIfChanged(mGoboPreview, index > 0);
+    if (index > 0 && (force || index != mDisplayedGoboIndex))
     {
         mGoboPreview->setImage(LLUI::getUIImage(llformat("CineGobo%02d", index)));
     }
+    mDisplayedGoboIndex = index;
     bool fixture_mode = false;
     fixtureSetting(role, FF_MODE, fixture_mode);
     F32 source_size = 0.f;
     fixtureSetting(role, FF_SOURCE, source_size);
     F32 shadow_soft = 0.f;
     fixtureSetting(role, FF_SHADOWSOFT, shadow_soft);
+    static LLCachedControl<F32> rig_radius(
+        gSavedSettings, "CineLightRigRadius", 4.f);
     const F32 softness = fixture_mode
         ? ALCineLightRigModel::penumbraSoftness(
               source_size,
-              gSavedSettings.getF32("CineLightRigRadius"))
+              (F32)rig_radius)
         : shadow_soft;
     static const char* const bucket_names[] = { "sharp", "medium", "heavy" };
     const std::string softness_text = llformat(
@@ -1379,7 +1386,7 @@ void ALPanelCineLightRig::syncGoboLibrary(bool force)
         bucket_names[ALCineLightRigModel::goboBlurBucket(softness)], softness);
     if (!mGoboSoftnessSet || softness_text != mLastGoboSoftness) // [UIPerf]
     {
-        mGoboSoftness->setText(softness_text);
+        setTextIfChanged(mGoboSoftness, softness_text);
         mLastGoboSoftness = softness_text;
         mGoboSoftnessSet = true;
     }
@@ -1396,6 +1403,7 @@ void ALPanelCineLightRig::onGoboLibraryCommit()
 
 void ALPanelCineLightRig::updateAnchorList()
 {
+    LL_PROFILE_ZONE_NAMED_CATEGORY_UI("LightRig updateAnchorList");
     LLDirectorCast& cast = LLDirectorCast::instance();
     ALCineLightRigManager& manager = ALCineLightRigManager::instance();
     const LLUUID subject_ids[5] = {
@@ -2056,14 +2064,16 @@ void ALPanelCineLightRig::randomizeSeed()
 
 void ALPanelCineLightRig::syncSeedEditor(bool force)
 {
-    const U32 seed = gSavedSettings.getU32("CineLightRigSeed");
+    static LLCachedControl<U32> seed_control(
+        gSavedSettings, "CineLightRigSeed", 1u);
+    const U32 seed = seed_control;
     if ((mSeedInitialized && seed == mDisplayedSeed) ||
         (!force && (mSeedEditor->hasFocus() ||
                     gFocusMgr.childHasKeyboardFocus(mSeedEditor))))
     {
         return;
     }
-    mSeedEditor->setText(llformat("%u", seed));
+    setTextIfChanged(mSeedEditor, llformat("%u", seed), force);
     mDisplayedSeed = seed;
     mSeedInitialized = true;
 }
@@ -2077,7 +2087,12 @@ S32 ALPanelCineLightRig::computeRequestedShadowSlots() const
 
 bool ALPanelCineLightRig::selectedIsEasyNative() const
 {
-    if (std::fabs(gSavedSettings.getF32("CineLightRigKeyEV")) > 0.01f)
+    static LLCachedControl<F32> key_ev(gSavedSettings, "CineLightRigKeyEV", 0.f);
+    static LLCachedControl<bool> rim_on(gSavedSettings, "CineLightRigRimOn", false);
+    static LLCachedControl<F32> rim_ev(gSavedSettings, "CineLightRigRimEV", 0.f);
+    static LLCachedControl<bool> bg_on(gSavedSettings, "CineLightRigBgOn", false);
+    static LLCachedControl<F32> bg_ev(gSavedSettings, "CineLightRigBgEV", 0.f);
+    if (std::fabs((F32)key_ev) > 0.01f)
     {
         return false;
     }
@@ -2097,10 +2112,8 @@ bool ALPanelCineLightRig::selectedIsEasyNative() const
         return false;
     };
 
-    return (!gSavedSettings.getBOOL("CineLightRigRimOn") ||
-            is_bucket(gSavedSettings.getF32("CineLightRigRimEV"), true)) &&
-           (!gSavedSettings.getBOOL("CineLightRigBgOn") ||
-            is_bucket(gSavedSettings.getF32("CineLightRigBgEV"), false));
+    return (!(bool)rim_on || is_bucket((F32)rim_ev, true)) &&
+           (!(bool)bg_on || is_bucket((F32)bg_ev, false));
 }
 
 bool ALPanelCineLightRig::normalizeSelectedForEasy(bool explicit_entry)
@@ -2109,8 +2122,12 @@ bool ALPanelCineLightRig::normalizeSelectedForEasy(bool explicit_entry)
     // Key is anchored at 0. If the folded value cannot be represented within
     // Master EV's +/-16 range, refuse the fold and leave the rig for Advanced
     // (render would otherwise clamp Master and silently drop exposure).
-    const F32 key_ev = gSavedSettings.getF32("CineLightRigKeyEV");
-    const F32 folded = gSavedSettings.getF32("CineLightRigMasterEV") + key_ev;
+    static LLCachedControl<F32> key_ev_control(
+        gSavedSettings, "CineLightRigKeyEV", 0.f);
+    static LLCachedControl<F32> master_ev_control(
+        gSavedSettings, "CineLightRigMasterEV", 0.f);
+    const F32 key_ev = key_ev_control;
+    const F32 folded = (F32)master_ev_control + key_ev;
     if (std::fabs(folded) > 16.f + 0.01f)
     {
         return false;
@@ -2173,8 +2190,9 @@ void ALPanelCineLightRig::syncEasyModeForSelected(bool force)
     // an old scene restoring a non-zero Key EV), we must demote to Advanced so
     // the disabled EV/Ratio controls re-enable and a later Brightness commit
     // does not zero Key EV without folding it into Master.
-    const bool want_active =
-        gSavedSettings.getBOOL("CineLightRigEasyMode") &&
+    static LLCachedControl<bool> easy_mode(
+        gSavedSettings, "CineLightRigEasyMode", false);
+    const bool want_active = (bool)easy_mode &&
         selectedIsEasyNative();
     if (!force && selected == mEasyModeSlot && want_active == mEasyModeActive)
     {
@@ -2349,22 +2367,40 @@ void ALPanelCineLightRig::onManualCommit()
 
 void ALPanelCineLightRig::applyManualLock()
 {
-    const bool manual = gSavedSettings.getBOOL("CineLightRigManual");
-    if (manual && gSavedSettings.getS32("CineLightRigFX") != -1)
+    static LLCachedControl<bool> manual_control(
+        gSavedSettings, "CineLightRigManual", false);
+    static LLCachedControl<S32> fx_control(
+        gSavedSettings, "CineLightRigFX", -1);
+    const bool manual = manual_control;
+    if (manual && (S32)fx_control != -1)
     {
         // Manual owns the pose; drop any running effect and hold it off.
         gSavedSettings.setS32("CineLightRigFX", -1);
     }
     // Lock the effect selector while manual so an effect cannot silently take
     // over per-light aim/exposure/colour again.
-    mFXCombo->setEnabled(!manual);
-    mFXStop->setEnabled(!manual); // [UIPerf] cached in postBuild
+    setEnabledIfChanged(mFXCombo, !manual);
+    setEnabledIfChanged(mFXStop, !manual); // [UIPerf] cached in postBuild
 }
 
 void ALPanelCineLightRig::syncEasyControls()
 {
+    LL_PROFILE_ZONE_NAMED_CATEGORY_UI("LightRig syncEasyControls");
     mSyncingEasyControls = true;
-    mEasyModeToggle->setValue(mEasyModeActive);
+    setValueIfChanged(mEasyModeToggle, LLSD(mEasyModeActive), true);
+
+    static LLCachedControl<F32> master_ev(gSavedSettings, "CineLightRigMasterEV", 0.f);
+    static LLCachedControl<bool> ratio_lock(gSavedSettings, "CineLightRigRatioLock", false);
+    static LLCachedControl<F32> ratio(gSavedSettings, "CineLightRigRatio", 0.f);
+    static LLCachedControl<F32> key_ev(gSavedSettings, "CineLightRigKeyEV", 0.f);
+    static LLCachedControl<F32> fill_ev(gSavedSettings, "CineLightRigFillEV", 0.f);
+    static LLCachedControl<bool> rim_on(gSavedSettings, "CineLightRigRimOn", false);
+    static LLCachedControl<F32> rim_ev(gSavedSettings, "CineLightRigRimEV", 0.f);
+    static LLCachedControl<bool> bg_on(gSavedSettings, "CineLightRigBgOn", false);
+    static LLCachedControl<F32> bg_ev(gSavedSettings, "CineLightRigBgEV", 0.f);
+    static LLCachedControl<F32> warmth(gSavedSettings, "CineLightRigMasterTempMired", 0.f);
+    static LLCachedControl<S32> key_beam(gSavedSettings, "CineLightRigKeyBeam", 0);
+    static LLCachedControl<F32> feather(gSavedSettings, "BDMergeProjectorVolumetricsFeather", 0.f);
 
     const auto set_unfocused = [](LLUICtrl* control, const LLSD& value)
     {
@@ -2377,28 +2413,24 @@ void ALPanelCineLightRig::syncEasyControls()
     };
     set_unfocused(mEasyBrightness, LLSD(
         ALCineLightRigModel::easyBrightnessClamp(
-            gSavedSettings.getF32("CineLightRigMasterEV"))));
-    const F32 drama = gSavedSettings.getBOOL("CineLightRigRatioLock")
-        ? gSavedSettings.getF32("CineLightRigRatio")
-        : gSavedSettings.getF32("CineLightRigKeyEV") -
-          gSavedSettings.getF32("CineLightRigFillEV");
+            (F32)master_ev)));
+    const F32 drama = (bool)ratio_lock
+        ? (F32)ratio : (F32)key_ev - (F32)fill_ev;
     set_unfocused(mEasyDrama, LLSD(
         ALCineLightRigModel::easyDramaClamp(drama)));
     set_unfocused(mEasyRim, LLSD(
         ALCineLightRigModel::rimPresenceFromEV(
-            gSavedSettings.getBOOL("CineLightRigRimOn"),
-            gSavedSettings.getF32("CineLightRigRimEV"))));
+            (bool)rim_on, (F32)rim_ev)));
     set_unfocused(mEasyBg, LLSD(
         ALCineLightRigModel::bgPresenceFromEV(
-            gSavedSettings.getBOOL("CineLightRigBgOn"),
-            gSavedSettings.getF32("CineLightRigBgEV"))));
+            (bool)bg_on, (F32)bg_ev)));
     set_unfocused(mEasyWarmth, LLSD(
-        gSavedSettings.getF32("CineLightRigMasterTempMired")));
+        (F32)warmth));
     set_unfocused(mEasyConeWidth, LLSD(
         ALCineLightRigModel::easyConeWidthFromBeam(
-            gSavedSettings.getS32("CineLightRigKeyBeam"))));
+            (S32)key_beam)));
     set_unfocused(mEasyConeFeather, LLSD(
-        gSavedSettings.getF32("BDMergeProjectorVolumetricsFeather")));
+        (F32)feather));
     for (S32 light = 0; light < ALCineLightRigModel::LIGHT_COUNT; ++light)
     {
         // [UIPerfC1] cached role x field control; a missing control is not written
@@ -2411,13 +2443,13 @@ void ALPanelCineLightRig::syncEasyControls()
         setEnabledIfChanged(mManualConeWidths[light], !mEasyModeActive);
     }
 
-    mEasyBrightness->setEnabled(mEasyModeActive);
-    mEasyDrama->setEnabled(mEasyModeActive);
-    mEasyRim->setEnabled(mEasyModeActive);
-    mEasyBg->setEnabled(mEasyModeActive);
-    mEasyWarmth->setEnabled(mEasyModeActive);
-    mEasyConeWidth->setEnabled(mEasyModeActive);
-    mEasyConeFeather->setEnabled(mEasyModeActive);
+    setEnabledIfChanged(mEasyBrightness, mEasyModeActive);
+    setEnabledIfChanged(mEasyDrama, mEasyModeActive);
+    setEnabledIfChanged(mEasyRim, mEasyModeActive);
+    setEnabledIfChanged(mEasyBg, mEasyModeActive);
+    setEnabledIfChanged(mEasyWarmth, mEasyModeActive);
+    setEnabledIfChanged(mEasyConeWidth, mEasyModeActive);
+    setEnabledIfChanged(mEasyConeFeather, mEasyModeActive);
     // [UIPerf] The Easy card's gated controls (Shaft length, Flare preset, Live
     // Probe row, Night row) and their reset buttons are direct control_name
     // bindings / apply-and-snap-back combos with no remap handler, so they are
@@ -2428,19 +2460,19 @@ void ALPanelCineLightRig::syncEasyControls()
     {
         if (control)
         {
-            control->setEnabled(mEasyModeActive);
+            setEnabledIfChanged(control, mEasyModeActive);
         }
     }
     for (LLUICtrl* button : mEasyResetButtons)
     {
         if (button)
         {
-            button->setEnabled(mEasyModeActive);
+            setEnabledIfChanged(button, mEasyModeActive);
         }
     }
     for (LLUICtrl* control : mAdvancedDrivenControls)
     {
-        control->setEnabled(!mEasyModeActive);
+        setEnabledIfChanged(control, !mEasyModeActive);
     }
     mSyncingEasyControls = false;
 }
@@ -2482,9 +2514,9 @@ void ALPanelCineLightRig::syncActorOnlyControls(
             i != ALCineLightRigModel::LIGHT_COUNT &&
             i != ACTOR_ONLY_MASTER_INDEX;
         const bool enabled = !object_targeted && !overridden;
-        mActorOnlyControls[i]->setEnabled(enabled);
-        mActorOnlyResets[i]->setEnabled(enabled);
-        mActorOnlyControls[i]->setToolTip(object_targeted ? LOCKED_TIP
+        setEnabledIfChanged(mActorOnlyControls[i], enabled);
+        setEnabledIfChanged(mActorOnlyResets[i], enabled);
+        setToolTipIfChanged(mActorOnlyControls[i], object_targeted ? LOCKED_TIP
             : (overridden ? OVERRIDDEN_TIP : mActorOnlyTips[i]));
     }
 }
@@ -2513,34 +2545,48 @@ void ALPanelCineLightRig::onClickShadowFixIt()
 
 void ALPanelCineLightRig::updateDerivedStatus()
 {
+    LL_PROFILE_ZONE_NAMED_CATEGORY_UI("LightRig updateDerivedStatus");
+    static LLCachedControl<bool> ratio_lock_control(gSavedSettings, "CineLightRigRatioLock", false);
+    static LLCachedControl<F32> key_ev_control(gSavedSettings, "CineLightRigKeyEV", 0.f);
+    static LLCachedControl<F32> ratio_control(gSavedSettings, "CineLightRigRatio", 0.f);
+    static LLCachedControl<F32> fill_ev_control(gSavedSettings, "CineLightRigFillEV", 0.f);
+    static LLCachedControl<bool> actor_only_all_control(gSavedSettings, "CineLightRigActorOnlyAll", false);
+    static LLCachedControl<S32> shadow_mode_control(gSavedSettings, "CineLightRigShadowMode", 0);
+    static LLCachedControl<bool> key_on(gSavedSettings, "CineLightRigKeyOn", true);
+    static LLCachedControl<bool> fill_on(gSavedSettings, "CineLightRigFillOn", true);
+    static LLCachedControl<bool> rim_on(gSavedSettings, "CineLightRigRimOn", true);
+    static LLCachedControl<bool> bg_on(gSavedSettings, "CineLightRigBgOn", true);
+    static LLCachedControl<U32> shadow_slots(gSavedSettings, "BDMergeMaxSpotShadows", 2u);
+    static LLCachedControl<F32> rig_radius(gSavedSettings, "CineLightRigRadius", 4.f);
+    static LLCachedControl<S32> refresh_control(gSavedSettings, "CineLightRigLiveProbeRefresh", 3);
+    static LLCachedControl<bool> night_enabled(gSavedSettings, "CineLightRigNightMaskEnabled", false);
+    static LLCachedControl<bool> hdr_enabled(gSavedSettings, "RenderHDREnabled", false);
+    static LLCachedControl<S32> night_target(gSavedSettings, "CineLightRigNightMaskTarget", 0);
+    static LLCachedControl<bool> rig_rim_enabled_control(gSavedSettings, "CineRigRimEnabled", false);
     syncObjectTargetControls();
-    syncEasyModeForSelected();
     syncEasyControls();
-    applyManualLock();
     ALCineLightRig& rig = ALCineLightRigManager::instance().selected();
-    const bool ratio_locked =
-        gSavedSettings.getBOOL("CineLightRigRatioLock");
-    mFillEV->setEnabled(!mEasyModeActive && !ratio_locked);
+    const bool ratio_locked = ratio_lock_control;
+    setEnabledIfChanged(mFillEV, !mEasyModeActive && !ratio_locked);
     if (!mFillEV->hasFocus() && !gFocusMgr.childHasKeyboardFocus(mFillEV))
     {
         const F32 displayed_fill_ev = ratio_locked
-            ? gSavedSettings.getF32("CineLightRigKeyEV") -
-                std::clamp(gSavedSettings.getF32("CineLightRigRatio"),
+            ? (F32)key_ev_control -
+                std::clamp((F32)ratio_control,
                            0.f, 5.f)
-            : gSavedSettings.getF32("CineLightRigFillEV");
-        mFillEV->setValue(displayed_fill_ev);
+            : (F32)fill_ev_control;
+        setValueIfChanged(mFillEV, LLSD((F64)displayed_fill_ev));
     }
     for (S32 i = 0; i < ALCineLightRigModel::LIGHT_COUNT; ++i)
     {
-        mClipStatus[i]->setVisible(rig.isClipped(i));
-        mShaftControls[i]->setValue(rig.isShaftEnabled(i));
-        mHeroControls[i]->setValue(rig.isHeroEnabled(i));
+        setVisibleIfChanged(mClipStatus[i], rig.isClipped(i));
+        setValueIfChanged(mShaftControls[i], LLSD(rig.isShaftEnabled(i)), true);
+        setValueIfChanged(mHeroControls[i], LLSD(rig.isHeroEnabled(i)), true);
     }
     syncActorOnlyControls(rig.getObjectTarget().notNull(),
-        gSavedSettings.getBOOL("CineLightRigActorOnlyAll")); // [ActorMask]
+        (bool)actor_only_all_control); // [ActorMask]
 
-    const S32 mode = std::clamp(
-        gSavedSettings.getS32("CineLightRigShadowMode"), 0, 2);
+    const S32 mode = std::clamp((S32)shadow_mode_control, 0, 2);
     const S32 requested = computeRequestedShadowSlots();
     bool shaft_suppressed = false;
     bool shaft_on_dark_light = false;
@@ -2552,14 +2598,15 @@ void ALPanelCineLightRig::updateDerivedStatus()
             shaft_suppressed = true;
         }
         if (rig.isShaftEnabled(i) &&
-            !gSavedSettings.getBOOL(ROLE_ON_SETTINGS[i]))
+            !(i == 0 ? (bool)key_on : i == 1 ? (bool)fill_on :
+              i == 2 ? (bool)rim_on : (bool)bg_on))
         {
             shaft_on_dark_light = true;
         }
     }
     // BDMergeMaxSpotShadows is a U32 setting; getS32 on it failed conversion
     // every panel update (log flood) and returned the wrong value.
-    const S32 slots = (S32)gSavedSettings.getU32("BDMergeMaxSpotShadows");
+    const S32 slots = (S32)(U32)shadow_slots;
     const S32 hint_state = requested > slots ? 1
         : shaft_suppressed ? 2
         : shaft_on_dark_light ? 3 : 0;
@@ -2567,28 +2614,28 @@ void ALPanelCineLightRig::updateDerivedStatus()
         (hint_state == 1 &&
          (requested != mShadowHintRequested || slots != mShadowHintSlots)))
     {
-        mShadowHint->setVisible(hint_state != 0);
-        mShadowFixIt->setVisible(hint_state == 1);
+        setVisibleIfChanged(mShadowHint, hint_state != 0);
+        setVisibleIfChanged(mShadowFixIt, hint_state == 1);
         if (hint_state == 1)
         {
             const S32 displayed_request = std::clamp(requested, 2, 10);
-            mShadowHint->setText(llformat(
+            setTextIfChanged(mShadowHint, llformat(
                 "%d rig projectors request %d shadow slots. Raise Max Spot "
                 "Shadows or use Key only; shafts also require a slot.",
                 displayed_request, slots));
-            mShadowFixIt->setLabel(llformat(
+            setLabelIfChanged(mShadowFixIt, llformat(
                 "Allow %d spot shadows", displayed_request));
         }
         else if (hint_state == 2)
         {
-            mShadowHint->setText(std::string(
+            setTextIfChanged(mShadowHint, std::string(
                 "A shafted light is excluded by the current shadow policy. "
                 "Shafts require a shadow slot; choose All projectors "
                 "compete (or Key only for KEY)."));
         }
         else if (hint_state == 3)
         {
-            mShadowHint->setText(std::string(
+            setTextIfChanged(mShadowHint, std::string(
                 "A shaft is enabled on an Off light. Turn that light On before "
                 "it can request the shadow slot required for its shaft."));
         }
@@ -2597,7 +2644,7 @@ void ALPanelCineLightRig::updateDerivedStatus()
         mShadowHintSlots = slots;
     }
     const bool radius_over_ceiling =
-        gSavedSettings.getF32("CineLightRigRadius") >
+        (F32)rig_radius >
         ALCineLightRigModel::SCALED_RADIUS_CEIL;
     if (!mRadiusCueInitialized ||
         radius_over_ceiling != mRadiusOverCeiling)
@@ -2610,24 +2657,24 @@ void ALPanelCineLightRig::updateDerivedStatus()
     }
     const ALCineLightRigManager& manager = ALCineLightRigManager::instance();
     const ALCineLightRigManager::LiveProbeState probe_state = manager.liveProbeState();
-    std::string probe_status;
+    std::string probe_state_text;
     switch (probe_state)
     {
         case ALCineLightRigManager::LiveProbeState::DISABLED:
-            probe_status = "Disabled";
+            probe_state_text = "Disabled";
             break;
         case ALCineLightRigManager::LiveProbeState::UNAVAILABLE:
-            probe_status = "Unavailable: enable probe coverage and at least 2 slots";
+            probe_state_text = "Unavailable: enable probe coverage and at least 2 slots";
             break;
         case ALCineLightRigManager::LiveProbeState::WAITING_FOR_TARGET:
-            probe_status = "Waiting for the target rig";
+            probe_state_text = "Waiting for the target rig";
             break;
         case ALCineLightRigManager::LiveProbeState::WARMING:
-            probe_status = llformat("Warming... %d%%",
+            probe_state_text = llformat("Warming... %d%%",
                 ll_round(manager.liveProbeFade() * 100.f));
             break;
         case ALCineLightRigManager::LiveProbeState::LIVE:
-            probe_status = "Live";
+            probe_state_text = "Live";
             break;
     }
     {
@@ -2635,24 +2682,25 @@ void ALPanelCineLightRig::updateDerivedStatus()
         // and, [ProbeManualRate], in Manual.
         const ALCineLiveProbeRefresh::Mode refresh_mode =
             ALCineLiveProbeRefresh::sanitizeMode(
-                gSavedSettings.getS32("CineLightRigLiveProbeRefresh"));
-        mLiveProbeRefreshNow->setEnabled(
+                (S32)refresh_control);
+        setEnabledIfChanged(mLiveProbeRefreshNow,
             refresh_mode == ALCineLiveProbeRefresh::Mode::ON_CHANGE ||
             refresh_mode == ALCineLiveProbeRefresh::Mode::MANUAL);
         // [ProbeManualRate] the Faces / Every spinners only apply in Manual.
         const bool manual_rate = refresh_mode == ALCineLiveProbeRefresh::Mode::MANUAL;
-        mLiveProbeManualFaces->setEnabled(manual_rate);
-        mLiveProbeManualFrames->setEnabled(manual_rate);
-        mLiveProbeManualFacesReset->setEnabled(manual_rate);
-        mLiveProbeManualFramesReset->setEnabled(manual_rate);
+        setEnabledIfChanged(mLiveProbeManualFaces, manual_rate);
+        setEnabledIfChanged(mLiveProbeManualFrames, manual_rate);
+        setEnabledIfChanged(mLiveProbeManualFacesReset, manual_rate);
+        setEnabledIfChanged(mLiveProbeManualFramesReset, manual_rate);
     }
+    std::string probe_live = probe_state_text;
     if (probe_state == ALCineLightRigManager::LiveProbeState::WARMING ||
         probe_state == ALCineLightRigManager::LiveProbeState::LIVE)
     {
-        // [LiveProbeRefresh]
-        probe_status += "\n" + liveProbeRefreshLine(
+        probe_live += "\n" + liveProbeRefreshLine(
             gPipeline.mReflectionMapManager.getCinematicRefreshStatus());
     }
+    std::string probe_status;
     if (probe_state != ALCineLightRigManager::LiveProbeState::DISABLED)
     {
         // Effective fill ambiance, computed exactly as LLReflectionMapManager
@@ -2669,27 +2717,37 @@ void ALPanelCineLightRig::updateDerivedStatus()
         const F32 probe_amb = llclamp((F32)probe_ambiance, 0.f, 8.f);
         const F32 effective = llmax(sky_floor, probe_amb);
         const F32 keep = llclamp((F32)bounce_keep, 0.f, 1.f);
-        probe_status += llformat("\nFill: probe %.2f, sky floor %.2f -> %.2f%s. Rig bounce kept %d%%",
+        probe_status = llformat("Fill: probe %.2f, sky floor %.2f -> %.2f%s. Rig bounce kept %d%%",
             probe_amb, sky_floor, effective,
             (probe_amb <= sky_floor) ? " (probe Ambiance has no effect)" : "",
             ll_round(keep * 100.f));
     }
     if (!mLiveProbeStatusSet || probe_status != mLastLiveProbeStatus) // [UIPerf]
     {
-        mLiveProbeStatus->setText(probe_status);
+        setTextIfChanged(mLiveProbeStatus, probe_status);
         mLastLiveProbeStatus = probe_status;
         mLiveProbeStatusSet = true;
+    }
+    const S32 probe_state_value = static_cast<S32>(probe_state);
+    const bool probe_state_changed = probe_state_value != mLastLiveProbeState;
+    const bool probe_live_due = mLiveProbeClock.due();
+    if ((probe_state_changed || probe_live_due) &&
+        isWidgetOnScreen(mLiveProbeLiveStatus))
+    {
+        LL_PROFILE_ZONE_NAMED_CATEGORY_UI("LightRig liveProbeStatus setText");
+        setTextIfChanged(mLiveProbeLiveStatus, probe_live);
+        mLastLiveProbeState = probe_state_value;
     }
     if (mNightMaskStatus)
     {
         std::string night_status;
-        if (gSavedSettings.getBOOL("CineLightRigNightMaskEnabled"))
+        if ((bool)night_enabled)
         {
             // M1: Night Mask only runs inside LLPipeline::renderFinalize's
             // `if (hdr)` block — mirror that exact gate here so the status
             // line agrees with what actually renders.
             const bool hdr_active = gGLManager.mGLVersion > 4.05f &&
-                gSavedSettings.getBOOL("RenderHDREnabled");
+                (bool)hdr_enabled;
             if (!hdr_active)
             {
                 night_status = "Requires HDR rendering";
@@ -2700,7 +2758,7 @@ void ALPanelCineLightRig::updateDerivedStatus()
                 // independent anchor resolution in LLPipeline::updateNightMaskAnchor.
                 LLDirectorCast& cast = LLDirectorCast::instance();
                 LLVOAvatar* target_avatar = nullptr;
-                switch (gSavedSettings.getS32("CineLightRigNightMaskTarget"))
+                switch ((S32)night_target)
                 {
                     case 1: target_avatar = cast.resolveSubjectA(); break;
                     case 2: target_avatar = cast.resolveSubjectB(); break;
@@ -2716,7 +2774,7 @@ void ALPanelCineLightRig::updateDerivedStatus()
         }
         if (!mNightMaskStatusSet || night_status != mLastNightMaskStatus) // [UIPerf]
         {
-            mNightMaskStatus->setText(LLStringExplicit(night_status));
+            setTextIfChanged(mNightMaskStatus, night_status);
             mLastNightMaskStatus = night_status;
             mNightMaskStatusSet = true;
         }
@@ -2724,13 +2782,13 @@ void ALPanelCineLightRig::updateDerivedStatus()
     std::string setup_name = mSetupCombo
         ? mSetupCombo->getSimple() : std::string();
     LLStringUtil::trim(setup_name);
-    mSetupSave->setEnabled(!setup_name.empty() &&
+    setEnabledIfChanged(mSetupSave, !setup_name.empty() &&
                            !ALCineLightRig::isMasterSetup(setup_name) &&
                            !ALCineLightRig::isSetupDecorationName(
                                setup_name));
     const std::string selected = mSetupCombo
         ? mSetupCombo->getSelectedValue().asString() : std::string();
-    mSetupDelete->setEnabled(!selected.empty() &&
+    setEnabledIfChanged(mSetupDelete, !selected.empty() &&
                              !ALCineLightRig::isMasterSetup(selected) &&
                              !ALCineLightRig::isSetupDecorationName(selected));
 
@@ -2739,12 +2797,12 @@ void ALPanelCineLightRig::updateDerivedStatus()
     // clip/shaft/hero status loop above) rather than a dedicated settings
     // signal connection for three rows.
     {
-        const bool rig_rim_enabled = gSavedSettings.getBOOL("CineRigRimEnabled");
+        const bool rig_rim_enabled = rig_rim_enabled_control;
         for (LLView* v : mTronTintWidgets) // [UIPerf] cached in postBuild
         {
             if (v)
             {
-                v->setVisible(rig_rim_enabled);
+                setVisibleIfChanged(v, rig_rim_enabled);
             }
         }
     }
@@ -2786,19 +2844,30 @@ void ALPanelCineLightRig::reshape(S32 width, S32 height, bool called_from_parent
 void ALPanelCineLightRig::draw()
 {
     LL_PROFILE_ZONE_SCOPED_CATEGORY_UI; // [UIPerfC1]
-    updateAnchorList();
-    syncGroupControls();
-    if (mSetupRefreshPending &&
-        !mSetupCombo->hasFocus() &&
-        !gFocusMgr.childHasKeyboardFocus(mSetupCombo))
+    if (!isWidgetOnScreen(this))
     {
-        refreshSetupList(mPendingSetupSelection,
-                         mPendingSetupAllowEmpty, true);
+        return;
     }
-    syncSeedEditor();
-    syncFixtureControls();
-    syncGoboLibrary();
-    updateDerivedStatus();
+    // These two calls enforce model state, not just presentation. Keep their
+    // pre-batch per-frame cadence; their UI writes are diff-guarded.
+    syncEasyModeForSelected();
+    applyManualLock();
+    if (mPanelRefreshClock.due())
+    {
+        updateAnchorList();
+        syncGroupControls();
+        if (mSetupRefreshPending &&
+            !mSetupCombo->hasFocus() &&
+            !gFocusMgr.childHasKeyboardFocus(mSetupCombo))
+        {
+            refreshSetupList(mPendingSetupSelection,
+                             mPendingSetupAllowEmpty, true);
+        }
+        syncSeedEditor();
+        syncFixtureControls();
+        syncGoboLibrary();
+        updateDerivedStatus();
+    }
     if (mRigRimStatusClock.due() && isWidgetOnScreen(mRigRimQualityStatus) &&
         mRigRimStatusGate.changed({gPipeline.rigRimStatusRevision()}))
     {
@@ -2816,6 +2885,7 @@ void ALPanelCineLightRig::onVisibilityChange(bool new_visibility)
     {
         mRigRimStatusGate.reset();
         mRigRimStatusClock.forceDue();
+        mLiveProbeClock.forceDue();
         updateAnchorList();
         syncObjectTargetControls(true);
         syncGroupControls();
@@ -2825,6 +2895,9 @@ void ALPanelCineLightRig::onVisibilityChange(bool new_visibility)
             ? mSetupCombo->getSelectedValue().asString() : std::string(),
             true);
         updateDerivedStatus();
+        // The reveal pass above is the immediate refresh; consume the first
+        // 10 Hz tick so draw cannot repeat the same work in that frame.
+        (void)mPanelRefreshClock.due();
     }
     LLPanel::onVisibilityChange(new_visibility);
 }

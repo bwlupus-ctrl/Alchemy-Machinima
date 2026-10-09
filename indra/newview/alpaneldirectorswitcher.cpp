@@ -171,6 +171,16 @@ bool ALPanelDirectorSwitcher::postBuild()
             });
     }
 
+    if (LLControlVariable* bank =
+            gSavedSettings.getControl("DirectorSwitcherBank"))
+    {
+        mBankConnection = bank->getSignal()->connect(
+            [this](LLControlVariable*, const LLSD&, const LLSD&)
+            {
+                mBankDirty = true;
+            });
+    }
+
     refreshBank(true);
     refreshProgramState();
     updateCurveControlsEnabled();
@@ -208,7 +218,10 @@ void ALPanelDirectorSwitcher::draw()
     LL_PROFILE_ZONE_SCOPED_CATEGORY_UI; // [DirFix] D9
     // A mirrored panel or scene load can replace the LLSD bank without touching
     // this instance. Twelve small records are cheap to compare while visible.
-    refreshBank(false);
+    if (mBankDirty)
+    {
+        refreshBank(false);
+    }
     refreshProgramState();
     LLPanel::draw();
 }
@@ -447,6 +460,7 @@ void ALPanelDirectorSwitcher::saveBank(bool retake_custom)
     ALDirectorSwitcher::saveBank(mBank);
     // Reload the canonical clamped representation before reflecting it.
     mBank = loadNormalizedBank();
+    mBankDirty = false;
     refreshButtons();
     refreshEditor();
     if (retake_custom &&
@@ -462,6 +476,8 @@ void ALPanelDirectorSwitcher::saveBank(bool retake_custom)
 
 void ALPanelDirectorSwitcher::refreshBank(bool force)
 {
+    LL_PROFILE_ZONE_NAMED_CATEGORY_UI("DirectorSwitcher refreshBank");
+    mBankDirty = false;
     Bank latest = loadNormalizedBank();
     if (!force && banksEqual(latest, mBank))
     {

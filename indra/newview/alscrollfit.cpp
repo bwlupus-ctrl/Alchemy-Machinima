@@ -253,6 +253,7 @@ void collectTabContainerTree(LLTabContainer* tabs, std::vector<LLTabContainer*>&
 
 void fitAll(LLView* root, LLTabContainer* tabs, const StretcherMins* mins)
 {
+    LL_PROFILE_ZONE_NAMED_CATEGORY_UI("ALScrollFit fitAll");
     std::vector<LLScrollContainer*> containers;
     // Every tab-level scroller (any document type, nested tab containers included) first,
     // then the other panel-in-panel document containers; internal widget scrollers are
@@ -267,6 +268,55 @@ void fitAll(LLView* root, LLTabContainer* tabs, const StretcherMins* mins)
     {
         collectDocumentContainers(root, containers);
     }
+    for (LLScrollContainer* sc : containers)
+    {
+        fitContainer(sc, mins);
+    }
+}
+
+void fitPage(LLView* page, const StretcherMins* mins)
+{
+    LL_PROFILE_ZONE_NAMED_CATEGORY_UI("ALScrollFit fitPage");
+    if (!page)
+    {
+        return;
+    }
+    std::vector<LLScrollContainer*> containers;
+    std::function<void(LLView*, bool)> collect_visible_page =
+        [&](LLView* root, bool direct_tab_page)
+    {
+        if (!root) return;
+        if (LLTabContainer* nested_tabs = dynamic_cast<LLTabContainer*>(root))
+        {
+            collect_visible_page(nested_tabs->getCurrentPanel(), true);
+            return;
+        }
+        for (LLView* child : *root->getChildList())
+        {
+            if (!child) continue;
+            if (LLScrollContainer* sc = dynamic_cast<LLScrollContainer*>(child))
+            {
+                LLView* document = scrolledView(sc);
+                // A direct tab-page scroller accepts any document type, just
+                // like collectTabContainers(). Deeper document scrollers keep
+                // collectDocumentContainers()'s panel-in-panel filter.
+                if ((direct_tab_page ||
+                     (dynamic_cast<LLPanel*>(sc->getParent()) &&
+                      dynamic_cast<LLPanel*>(document))) &&
+                    std::find(containers.begin(), containers.end(), sc) == containers.end())
+                {
+                    containers.push_back(sc);
+                }
+                // Scrolled documents can host another tab container (Ghost
+                // Studio) and further document scrollers. Follow that visible
+                // chain so this fast path has the old fitAll geometry.
+                collect_visible_page(document, false);
+                continue;
+            }
+            collect_visible_page(child, false);
+        }
+    };
+    collect_visible_page(page, true);
     for (LLScrollContainer* sc : containers)
     {
         fitContainer(sc, mins);
@@ -291,6 +341,7 @@ bool FocusTracker::installed(const LLScrollContainer* sc) const
 
 bool FocusTracker::install(LLScrollContainer* sc, LLView* document, LLView* parent)
 {
+    LL_PROFILE_ZONE_NAMED_CATEGORY_UI("ALScrollFocus install");
     if (!sc || installed(sc)) return false;
     ALScrollFocus::install(sc, document, parent);
     mDone.push_back(sc);
@@ -299,11 +350,13 @@ bool FocusTracker::install(LLScrollContainer* sc, LLView* document, LLView* pare
 
 bool FocusTracker::installNamed(LLView* owner, const char* scroller_name, const char* document_name)
 {
+    LL_PROFILE_ZONE_NAMED_CATEGORY_UI("ALScrollFocus install");
     if (!owner) return false;
     if (LLScrollContainer* sc = owner->findChild<LLScrollContainer>(scroller_name))
     {
         if (installed(sc)) return false;
-        mDone.push_back(sc);
+        LLView* document = owner->getChildView(document_name);
+        return install(sc, document, document);
     }
     // Unchanged from the Lightbox: a missing name still goes through the getChild-based
     // overload (which logs), exactly as before.
@@ -313,6 +366,7 @@ bool FocusTracker::installNamed(LLView* owner, const char* scroller_name, const 
 
 void FocusTracker::installTabLevel(LLTabContainer* tabs)
 {
+    LL_PROFILE_ZONE_NAMED_CATEGORY_UI("ALScrollFocus install");
     if (!tabs) return;
     std::vector<LLTabContainer*> all_tabs;
     collectTabContainerTree(tabs, all_tabs);
@@ -326,8 +380,7 @@ void FocusTracker::installTabLevel(LLTabContainer* tabs)
         if (installed(sc)) continue;
         if (LLView* doc = scrolledView(sc))
         {
-            ALScrollFocus::install(sc, doc, doc);
-            mDone.push_back(sc);
+            install(sc, doc, doc);
         }
     }
 }
@@ -355,6 +408,7 @@ void enableSliderWheel(LLView* root)
 
 void Controller::installForTabs(LLTabContainer* tabs, LLView* root, const std::vector<NamedScroller>& named)
 {
+    LL_PROFILE_ZONE_NAMED_CATEGORY_UI("ALScrollFit installForTabs");
     // Every tab panel without a scroll container (and any tab added later) gets one
     // wrapped around its children before anything else looks at the hierarchy. Nested tab
     // containers are discovered first (the walk is pointer-stable across the reparenting
@@ -377,7 +431,14 @@ void Controller::installForTabs(LLTabContainer* tabs, LLView* root, const std::v
         // any XML-defined commit callback of this container is kept. The callback holds its
         // own reference to the stretcher minimums.
         std::shared_ptr<StretcherMins> mins = mMins;
-        tc->setCommitCallback([root, tabs, mins](LLUICtrl*, const LLSD&) { fitAll(root, tabs, mins.get()); });
+        std::shared_ptr<bool> fit_enabled = mCommitFitEnabled;
+        tc->setCommitCallback([tc, mins, fit_enabled](LLUICtrl*, const LLSD&)
+        {
+            if (*fit_enabled)
+            {
+                ALScrollFit::fitPage(tc->getCurrentPanel(), mins.get());
+            }
+        });
     }
     // Explicit (XML-named) focus installs first, then every other tab-level container once.
     for (const NamedScroller& n : named)

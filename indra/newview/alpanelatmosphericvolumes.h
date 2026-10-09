@@ -11,6 +11,7 @@
 #define AL_ALPANELATMOSPHERICVOLUMES_H
 
 #include "allocalfogmanager.h"
+#include "aluirefresh.h"
 #include "llpanel.h"
 
 class LLButton;
@@ -30,9 +31,11 @@ public:
 
     bool postBuild() override;
     void draw() override;
+    void onVisibilityChange(bool new_visibility) override;
 
 private:
     using Volume = ALLocalFogManager::Volume;
+    using Bank = ALLocalFogManager::Bank;
     static std::string displayLabel(const Volume& volume, S32 index);
 
     void onSelectionChanged();
@@ -40,11 +43,14 @@ private:
     void onDuplicate();
     void onDelete();
     void onMoveToCamera();
-    void onEditorCommit();
+    void onEditorCommit(LLUICtrl* source);
+    void onSliderMouseUp();
+    void flushPendingSave();
     void saveBank();
     void refreshBank(bool force);
     void refreshList();
-    void refreshEditor();
+    void refreshListRow(S32 index);
+    void refreshEditor(bool force = false);
 
     LLScrollListCtrl* mVolumeList = nullptr;
     LLButton* mAddButton = nullptr;
@@ -66,7 +72,9 @@ private:
 
     S32 mSelected = 0;
     U32 mSeenRevision = 0;
+    Bank mSeenBank;
     bool mRefreshing = false;
+    bool mSavePending = false;
 };
 
 #endif // AL_ALPANELATMOSPHERICVOLUMES_H

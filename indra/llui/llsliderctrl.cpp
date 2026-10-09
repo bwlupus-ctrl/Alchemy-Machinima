@@ -349,6 +349,7 @@ void LLSliderCtrl::clear()
 
 void LLSliderCtrl::updateText()
 {
+    LL_PROFILE_ZONE_NAMED_CATEGORY_UI("LLSliderCtrl::updateText");
     if( mEditor || mTextBox )
     {
         LLLocale locale(LLLocale::USER_LOCALE);
@@ -618,4 +619,3 @@ void LLSliderCtrl::reportInvalidData()
 {
     make_ui_sound("UISndBadKeystroke");
 }
-

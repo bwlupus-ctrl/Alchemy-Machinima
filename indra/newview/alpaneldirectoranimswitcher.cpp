@@ -106,6 +106,16 @@ bool ALPanelDirectorAnimSwitcher::postBuild()
     mResetSlot->setCommitCallback(
         [this](LLUICtrl*, const LLSD&) { onResetSlot(); });
 
+    if (LLControlVariable* bank =
+            gSavedSettings.getControl("DirectorAnimSwitcherBank"))
+    {
+        mBankConnection = bank->getSignal()->connect(
+            [this](LLControlVariable*, const LLSD&, const LLSD&)
+            {
+                mBankDirty = true;
+            });
+    }
+
     refreshBank(true);
     refreshProgramState();
     return true;
@@ -117,7 +127,10 @@ void ALPanelDirectorAnimSwitcher::draw()
     // A mirrored panel, scene load, or auto cut can replace the LLSD bank or
     // the live program without touching this instance. Twelve small records are
     // cheap to compare while visible.
-    refreshBank(false);
+    if (mBankDirty)
+    {
+        refreshBank(false);
+    }
     refreshProgramState();
     LLPanel::draw();
 }
@@ -400,6 +413,7 @@ void ALPanelDirectorAnimSwitcher::saveBank()
     ALDirectorAnimSwitcher::saveBank(mBank);
     // Reload the canonical clamped representation before reflecting it.
     mBank = loadNormalizedBank();
+    mBankDirty = false;
     refreshButtons();
     refreshEditor();
     // The active program may be this slot, so its displayed label can change
@@ -409,6 +423,8 @@ void ALPanelDirectorAnimSwitcher::saveBank()
 
 void ALPanelDirectorAnimSwitcher::refreshBank(bool force)
 {
+    LL_PROFILE_ZONE_NAMED_CATEGORY_UI("DirectorSwitcher refreshBank");
+    mBankDirty = false;
     Bank latest = loadNormalizedBank();
     if (!force && banksEqual(latest, mBank))
     {

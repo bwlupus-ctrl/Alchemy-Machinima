@@ -173,7 +173,10 @@ void ALPanelFlycamRecorder::draw()
     // [UIPerfC1] max BEFORE value (original order); both increment-aware and
     // focus-guarded (no write while the operator drags/edits the scrub slider)
     setMaxValueIfChanged(mScrub, llmax(duration, 0.01f));
-    setValueIfChanged(mScrub, LLSD(rec.getPlayhead()));
+    if (state != LLFlycamRecorder::STATE_PLAYING || mScrubClock.due())
+    {
+        setValueIfChanged(mScrub, LLSD(rec.getPlayhead()));
+    }
 
     const F32 shown = recording ? duration : rec.getPlayhead();
     setTextIfChanged(mTimeText, llformat("%.1f / %.1f s   %d keys",

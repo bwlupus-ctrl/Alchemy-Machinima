@@ -2717,6 +2717,7 @@ bool LLActorMover::isFollowing(const LLUUID& follower) const
 void LLActorMover::setGazeEnabled(const LLUUID& actor_id, bool on)
 {
     mGazes[path_key(actor_id)].mEnabled = on;
+    ++mGazeRevision;
 }
 
 bool LLActorMover::isGazeEnabled(const LLUUID& actor_id) const
@@ -2728,6 +2729,7 @@ bool LLActorMover::isGazeEnabled(const LLUUID& actor_id) const
 void LLActorMover::setGazeTargetMode(const LLUUID& actor_id, S32 mode)
 {
     mGazes[path_key(actor_id)].mTarget = llclamp(mode, (S32)GAZE_TANGENT, (S32)GAZE_OBJECT);
+    ++mGazeRevision;
 }
 
 S32 LLActorMover::getGazeTargetMode(const LLUUID& actor_id) const
@@ -2739,6 +2741,7 @@ S32 LLActorMover::getGazeTargetMode(const LLUUID& actor_id) const
 void LLActorMover::setGazeCastTarget(const LLUUID& actor_id, const LLUUID& cast_id)
 {
     mGazes[path_key(actor_id)].mCastTarget = cast_id;
+    ++mGazeRevision;
 }
 
 LLUUID LLActorMover::getGazeCastTarget(const LLUUID& actor_id) const
@@ -2750,6 +2753,7 @@ LLUUID LLActorMover::getGazeCastTarget(const LLUUID& actor_id) const
 void LLActorMover::setGazePointGlobal(const LLUUID& actor_id, const LLVector3d& p)
 {
     mGazes[path_key(actor_id)].mPoint = p;
+    ++mGazeRevision;
 }
 
 LLVector3d LLActorMover::getGazePointGlobal(const LLUUID& actor_id) const
@@ -2761,6 +2765,7 @@ LLVector3d LLActorMover::getGazePointGlobal(const LLUUID& actor_id) const
 void LLActorMover::setGazeObjectTarget(const LLUUID& actor_id, const LLUUID& object_id)
 {
     mGazes[path_key(actor_id)].mObjectTarget = object_id;
+    ++mGazeRevision;
 }
 
 LLUUID LLActorMover::getGazeObjectTarget(const LLUUID& actor_id) const
@@ -2858,6 +2863,7 @@ void LLActorMover::setGazeTargetConfig(const LLUUID& actor_id, const GazeTarget&
             g.mParamTransition.mActive = false;
         }
     }
+    ++mGazeRevision;
 }
 
 // static
@@ -3209,6 +3215,7 @@ LLActorMover::GazeTarget LLActorMover::getGazeTargetConfig(const LLUUID& actor_i
 void LLActorMover::setGazeHeadEyeBlend(const LLUUID& actor_id, F32 v)
 {
     mGazes[path_key(actor_id)].mHeadEyeBlend = llclamp(v, 0.f, 1.f);
+    ++mGazeRevision;
 }
 
 F32 LLActorMover::getGazeHeadEyeBlend(const LLUUID& actor_id) const
@@ -3220,6 +3227,7 @@ F32 LLActorMover::getGazeHeadEyeBlend(const LLUUID& actor_id) const
 void LLActorMover::setGazeTorsoAmount(const LLUUID& actor_id, F32 v)
 {
     mGazes[path_key(actor_id)].mTorsoAmount = llclamp(v, 0.f, 1.f);
+    ++mGazeRevision;
 }
 
 F32 LLActorMover::getGazeTorsoAmount(const LLUUID& actor_id) const
@@ -3231,6 +3239,7 @@ F32 LLActorMover::getGazeTorsoAmount(const LLUUID& actor_id) const
 void LLActorMover::setGazeIntensity(const LLUUID& actor_id, F32 v)
 {
     mGazes[path_key(actor_id)].mIntensity = llclamp(v, 0.f, 1.f);
+    ++mGazeRevision;
 }
 
 F32 LLActorMover::getGazeIntensity(const LLUUID& actor_id) const
@@ -3242,6 +3251,7 @@ F32 LLActorMover::getGazeIntensity(const LLUUID& actor_id) const
 void LLActorMover::setGazeSmoothing(const LLUUID& actor_id, F32 v)
 {
     mGazes[path_key(actor_id)].mSmoothing = llclamp(v, 0.f, 1.f);
+    ++mGazeRevision;
 }
 
 F32 LLActorMover::getGazeSmoothing(const LLUUID& actor_id) const
@@ -3256,6 +3266,7 @@ void LLActorMover::setGazeEyelineOffset(const LLUUID& actor_id,
     Gaze& gaze = mGazes[path_key(actor_id)];
     gaze.mEyelineYawDeg = llclamp(yaw_degrees, -15.f, 15.f);
     gaze.mEyelinePitchDeg = llclamp(pitch_degrees, -10.f, 10.f);
+    ++mGazeRevision;
 }
 
 F32 LLActorMover::getGazeEyelineYaw(const LLUUID& actor_id) const
@@ -5146,6 +5157,7 @@ void LLActorMover::migrateActor(const LLUUID& old_id, const LLUUID& new_id)
     {
         mGazes[new_id] = git->second;
         mGazes.erase(git);
+        ++mGazeRevision;
         // The actor identity (and thus the motor seed) changed: reset the
         // coordinated motor state so it re-initializes on the current target
         // under the new key instead of carrying the old body's trajectory.
@@ -5205,7 +5217,10 @@ void LLActorMover::dropActor(const LLUUID& actor_id)
     }
     mPaths.erase(actor_id);
     mHistory.erase(actor_id);
-    mGazes.erase(actor_id);
+    if (mGazes.erase(actor_id) != 0)
+    {
+        ++mGazeRevision;
+    }
     if (LLVOAvatar* avatar = resolve_actor(actor_id);
         avatar && avatar->isGhostAvatar())
     {

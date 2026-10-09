@@ -11,6 +11,7 @@
 #include "allenslooks.h"
 #include "alpanelcinecamparams.h"
 #include "alsettingsundohistory.h"
+#include "aluirefresh.h"
 #include "llbutton.h"
 #include "llcombobox.h"
 #include "llcontrol.h"
@@ -190,18 +191,19 @@ void ALPanelExposureHub::syncNightMaskDarkness()
     }
     const F32 floor_value = llclamp(
         gSavedSettings.getF32("CineLightRigNightMaskDarkness"), 0.f, 1.f);
-    mNightMaskDarkness->setValue(
-        static_cast<F32>(std::lround((1.f - floor_value) * 100.f)));
+    setValueIfChanged(mNightMaskDarkness,
+        LLSD(static_cast<F32>(std::lround((1.f - floor_value) * 100.f))), true);
 }
 
 void ALPanelExposureHub::updateHistoryButtons()
 {
+    LL_PROFILE_ZONE_NAMED_CATEGORY_UI("ExposureHub updateHistoryButtons");
     const bool can_undo = ALExposureSettingsHistory::canUndo();
     const bool can_redo = ALExposureSettingsHistory::canRedo();
-    mUndo->setEnabled(can_undo);
-    mUndo->setToolTip(can_undo ? "Undo: " + ALExposureSettingsHistory::undoLabel()
-                              : "Nothing to undo");
-    mRedo->setEnabled(can_redo);
-    mRedo->setToolTip(can_redo ? "Redo: " + ALExposureSettingsHistory::redoLabel()
-                              : "Nothing to redo");
+    setEnabledIfChanged(mUndo, can_undo);
+    setToolTipIfChanged(mUndo, can_undo ? "Undo: " + ALExposureSettingsHistory::undoLabel()
+                                       : "Nothing to undo");
+    setEnabledIfChanged(mRedo, can_redo);
+    setToolTipIfChanged(mRedo, can_redo ? "Redo: " + ALExposureSettingsHistory::redoLabel()
+                                       : "Nothing to redo");
 }

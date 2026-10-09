@@ -36,7 +36,10 @@ bool valid_volume(S32 volume)
 } // anonymous namespace
 
 ALPanelAtmosphericVolumes::ALPanelAtmosphericVolumes() = default;
-ALPanelAtmosphericVolumes::~ALPanelAtmosphericVolumes() = default;
+ALPanelAtmosphericVolumes::~ALPanelAtmosphericVolumes()
+{
+    flushPendingSave();
+}
 
 bool ALPanelAtmosphericVolumes::postBuild()
 {
@@ -75,7 +78,7 @@ bool ALPanelAtmosphericVolumes::postBuild()
     mMoveToCameraButton->setCommitCallback(
         [this](LLUICtrl*, const LLSD&) { onMoveToCamera(); });
 
-    const auto editor_commit = [this](LLUICtrl*, const LLSD&) { onEditorCommit(); };
+    const auto editor_commit = [this](LLUICtrl* source, const LLSD&) { onEditorCommit(source); };
     mEnabledCheck->setCommitCallback(editor_commit);
     mLabelEditor->setCommitCallback(editor_commit);
     for (S32 axis = 0; axis < 3; ++axis)
@@ -92,6 +95,12 @@ bool ALPanelAtmosphericVolumes::postBuild()
     mNoiseSpeedSlider->setCommitCallback(editor_commit);
     mTintSwatch->setCommitCallback(editor_commit);
     mTintSwatch->setCanApplyImmediately(true);
+    for (LLSliderCtrl* slider : { mDensitySlider, mFeatherSlider, mHeightSlider,
+                                  mNoiseScaleSlider, mNoiseSpeedSlider })
+    {
+        slider->setSliderMouseUpCallback(
+            [this](LLUICtrl*, const LLSD&) { onSliderMouseUp(); });
+    }
 
     mSelected = ALLocalFogManager::instance().selectedVolume();
     refreshBank(true);
@@ -101,6 +110,17 @@ bool ALPanelAtmosphericVolumes::postBuild()
 void ALPanelAtmosphericVolumes::draw()
 {
     LL_PROFILE_ZONE_SCOPED_CATEGORY_UI; // [DirFix] D9
+    // Capture can be lost without LLSlider's captured mouse-up callback (for
+    // example when the floater closes). Persist the last preview immediately.
+    if (mSavePending &&
+        !gFocusMgr.childHasMouseCapture(mDensitySlider) &&
+        !gFocusMgr.childHasMouseCapture(mFeatherSlider) &&
+        !gFocusMgr.childHasMouseCapture(mHeightSlider) &&
+        !gFocusMgr.childHasMouseCapture(mNoiseScaleSlider) &&
+        !gFocusMgr.childHasMouseCapture(mNoiseSpeedSlider))
+    {
+        flushPendingSave();
+    }
     refreshBank(false);
     const S32 manager_selection =
         ALLocalFogManager::instance().selectedVolume();
@@ -111,6 +131,15 @@ void ALPanelAtmosphericVolumes::draw()
         refreshEditor();
     }
     LLPanel::draw();
+}
+
+void ALPanelAtmosphericVolumes::onVisibilityChange(bool new_visibility)
+{
+    if (!new_visibility)
+    {
+        flushPendingSave();
+    }
+    LLPanel::onVisibilityChange(new_visibility);
 }
 
 //static
@@ -155,6 +184,8 @@ void ALPanelAtmosphericVolumes::onAdd()
             mSelected = index;
             ALLocalFogManager::instance().setSelected(index);
             saveBank();
+            mVolumeList->selectByValue(LLSD(mSelected));
+            refreshEditor();
             return;
         }
     }
@@ -179,6 +210,8 @@ void ALPanelAtmosphericVolumes::onDuplicate()
             mSelected = index;
             ALLocalFogManager::instance().setSelected(index);
             saveBank();
+            mVolumeList->selectByValue(LLSD(mSelected));
+            refreshEditor();
             return;
         }
     }
@@ -194,6 +227,7 @@ void ALPanelAtmosphericVolumes::onDelete()
     }
     bank[mSelected] = Volume();
     saveBank();
+    refreshEditor();
 }
 
 void ALPanelAtmosphericVolumes::onMoveToCamera()
@@ -206,9 +240,10 @@ void ALPanelAtmosphericVolumes::onMoveToCamera()
     }
     bank[mSelected].mCenter = LLViewerCamera::getInstance()->getOrigin();
     saveBank();
+    refreshEditor();
 }
 
-void ALPanelAtmosphericVolumes::onEditorCommit()
+void ALPanelAtmosphericVolumes::onEditorCommit(LLUICtrl* source)
 {
     ALLocalFogManager::Bank& bank = ALLocalFogManager::instance().volumes();
     if (mRefreshing || !valid_volume(mSelected) ||
@@ -237,21 +272,57 @@ void ALPanelAtmosphericVolumes::onEditorCommit()
     volume.mNoiseSpeed = (F32)mNoiseSpeedSlider->getValue().asReal();
     const LLColor4 tint = mTintSwatch->get();
     volume.mColor = LLColor3(tint);
+    ALLocalFogManager& manager = ALLocalFogManager::instance();
+    manager.touchBank();
+    mSeenRevision = manager.revision();
+    refreshListRow(mSelected);
+    mSeenBank = manager.volumes();
+
+    // Slider commits are previews while the thumb has capture. Persist once
+    // on release; the renderer and the other visible host still see each model
+    // revision immediately.
+    if (dynamic_cast<LLSliderCtrl*>(source) &&
+        gFocusMgr.childHasMouseCapture(source))
+    {
+        mSavePending = true;
+    }
+    else
+    {
+        saveBank();
+    }
+}
+
+void ALPanelAtmosphericVolumes::onSliderMouseUp()
+{
+    flushPendingSave();
+}
+
+void ALPanelAtmosphericVolumes::flushPendingSave()
+{
+    if (!mSavePending)
+    {
+        return;
+    }
+    mSavePending = false;
     saveBank();
 }
 
 void ALPanelAtmosphericVolumes::saveBank()
 {
+    LL_PROFILE_ZONE_NAMED_CATEGORY_UI("AtmosVolumes saveBank");
+    mSavePending = false;
     ALLocalFogManager& manager = ALLocalFogManager::instance();
     manager.saveBank();
     mSeenRevision = manager.revision();
-    refreshList();
-    refreshEditor();
+    refreshListRow(mSelected);
+    mSeenBank = manager.volumes();
+    refreshEditor(true);
 }
 
 void ALPanelAtmosphericVolumes::refreshBank(bool force)
 {
-    const U32 revision = ALLocalFogManager::instance().revision();
+    ALLocalFogManager& manager = ALLocalFogManager::instance();
+    const U32 revision = manager.revision();
     if (!force && revision == mSeenRevision)
     {
         return;
@@ -261,12 +332,32 @@ void ALPanelAtmosphericVolumes::refreshBank(bool force)
     {
         mSelected = 0;
     }
-    refreshList();
+    const Bank& bank = manager.volumes();
+    if (force || mSeenBank.size() != bank.size() ||
+        mVolumeList->getItemCount() != (S32)bank.size())
+    {
+        refreshList();
+    }
+    else
+    {
+        for (S32 index = 0; index < (S32)bank.size(); ++index)
+        {
+            const Volume& old = mSeenBank[index];
+            const Volume& now = bank[index];
+            if (displayLabel(old, index) != displayLabel(now, index) ||
+                old.mEnabled != now.mEnabled || old.mShape != now.mShape)
+            {
+                refreshListRow(index);
+            }
+        }
+    }
+    mSeenBank = bank;
     refreshEditor();
 }
 
 void ALPanelAtmosphericVolumes::refreshList()
 {
+    LL_PROFILE_ZONE_NAMED_CATEGORY_UI("AtmosVolumes refreshList");
     const ALLocalFogManager::Bank& bank =
         ALLocalFogManager::instance().volumes();
     mRefreshing = true;
@@ -288,10 +379,49 @@ void ALPanelAtmosphericVolumes::refreshList()
     }
     mVolumeList->selectByValue(LLSD(mSelected));
     mRefreshing = false;
+    mSeenBank = bank;
 }
 
-void ALPanelAtmosphericVolumes::refreshEditor()
+void ALPanelAtmosphericVolumes::refreshListRow(S32 index)
 {
+    const ALLocalFogManager::Bank& bank = ALLocalFogManager::instance().volumes();
+    if (!valid_volume(index) || index >= (S32)bank.size())
+    {
+        return;
+    }
+    LLScrollListItem* item = nullptr;
+    for (LLScrollListItem* candidate : mVolumeList->getAllData())
+    {
+        if (candidate && candidate->getValue().asInteger() == index)
+        {
+            item = candidate;
+            break;
+        }
+    }
+    if (!item)
+    {
+        refreshList();
+        return;
+    }
+    const Volume& volume = bank[index];
+    const std::string values[] = {
+        displayLabel(volume, index),
+        volume.mEnabled ? "On" : "Off",
+        volume.mShape == ALLocalFogManager::SHAPE_ELLIPSOID ? "Ellipsoid" : "Box"
+    };
+    for (S32 column = 0; column < 3; ++column)
+    {
+        if (LLScrollListCell* cell = item->getColumn(column);
+            cell && cell->getValue().asString() != values[column])
+        {
+            cell->setValue(values[column]);
+        }
+    }
+}
+
+void ALPanelAtmosphericVolumes::refreshEditor(bool force)
+{
+    LL_PROFILE_ZONE_NAMED_CATEGORY_UI("AtmosVolumes refreshEditor");
     const ALLocalFogManager::Bank& bank =
         ALLocalFogManager::instance().volumes();
     if (!valid_volume(mSelected) ||
@@ -301,28 +431,31 @@ void ALPanelAtmosphericVolumes::refreshEditor()
     }
     const Volume& volume = bank[mSelected];
     mRefreshing = true;
-    mEnabledCheck->setValue(volume.mEnabled);
-    mLabelEditor->setText(LLStringExplicit(volume.mLabel));
+    setValueIfChanged(mEnabledCheck, LLSD(volume.mEnabled), true);
+    setTextIfChanged(mLabelEditor, volume.mLabel, force);
     for (S32 axis = 0; axis < 3; ++axis)
     {
-        mCenter[axis]->setValue(LLSD((F64)volume.mCenter.mV[axis]));
-        mSize[axis]->setValue(LLSD((F64)volume.mSize.mV[axis]));
+        setValueIfChanged(mCenter[axis], LLSD((F64)volume.mCenter.mV[axis]), force);
+        setValueIfChanged(mSize[axis], LLSD((F64)volume.mSize.mV[axis]), force);
     }
     F32 roll = 0.f;
     F32 pitch = 0.f;
     F32 yaw = 0.f;
     volume.mRotation.getEulerAngles(&roll, &pitch, &yaw);
-    mRotation[VX]->setValue(LLSD((F64)(roll * RAD_TO_DEG)));
-    mRotation[VY]->setValue(LLSD((F64)(pitch * RAD_TO_DEG)));
-    mRotation[VZ]->setValue(LLSD((F64)(yaw * RAD_TO_DEG)));
-    mShapeCombo->setValue(LLSD(volume.mShape));
-    mDensitySlider->setValue(LLSD((F64)volume.mDensity));
-    mFeatherSlider->setValue(LLSD((F64)volume.mFeather));
-    mHeightSlider->setValue(LLSD((F64)volume.mHeightFalloff));
-    mNoiseScaleSlider->setValue(LLSD((F64)volume.mNoiseScale));
-    mNoiseSpeedSlider->setValue(LLSD((F64)volume.mNoiseSpeed));
-    mTintSwatch->set(LLColor4(volume.mColor, 1.f), true, false);
-    mDeleteButton->setEnabled(!volume.mLabel.empty() || volume.mEnabled);
-    mDuplicateButton->setEnabled(!volume.mLabel.empty() || volume.mEnabled);
+    setValueIfChanged(mRotation[VX], LLSD((F64)(roll * RAD_TO_DEG)), force);
+    setValueIfChanged(mRotation[VY], LLSD((F64)(pitch * RAD_TO_DEG)), force);
+    setValueIfChanged(mRotation[VZ], LLSD((F64)(yaw * RAD_TO_DEG)), force);
+    setValueIfChanged(mShapeCombo, LLSD(volume.mShape), force);
+    setValueIfChanged(mDensitySlider, LLSD((F64)volume.mDensity), force);
+    setValueIfChanged(mFeatherSlider, LLSD((F64)volume.mFeather), force);
+    setValueIfChanged(mHeightSlider, LLSD((F64)volume.mHeightFalloff), force);
+    setValueIfChanged(mNoiseScaleSlider, LLSD((F64)volume.mNoiseScale), force);
+    setValueIfChanged(mNoiseSpeedSlider, LLSD((F64)volume.mNoiseSpeed), force);
+    const LLColor4 tint(volume.mColor, 1.f);
+    if (mTintSwatch->get() != tint)
+        mTintSwatch->set(tint, true, false);
+    const bool populated = !volume.mLabel.empty() || volume.mEnabled;
+    setEnabledIfChanged(mDeleteButton, populated);
+    setEnabledIfChanged(mDuplicateButton, populated);
     mRefreshing = false;
 }

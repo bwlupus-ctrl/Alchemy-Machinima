@@ -737,7 +737,39 @@ bool ALPanelLensGaze::postBuild()
             editGazeTargetsFor(editActors(),
                 [](LLActorMover::GazeTarget& t) { t.mLeanMaxDegOverride = -1.f; });
         });
+    static const char* const watched_settings[] = {
+        "DirectorGazePriority", "DirectorGazeAnimationPriority",
+        "DirectorGazeMicroLife", "DirectorGazeVariation",
+        "DirectorGazeBreakFrequency", "DirectorGazeEaseAcquireSec",
+        "DirectorGazeEaseReleaseSec", "BDMergeGazeDeadZone",
+        "DirectorGazeCameraRoll", "DirectorGazeExaggerate",
+        "DirectorGazeComposition", "DirectorGazeCompositionMix",
+        "DirectorGazeChestShare", "DirectorGazeLeanCurve",
+        "DirectorGazeLeanThresholdDeg", "DirectorGazeLeanSoftnessDeg",
+        "DirectorGazeLeanMaxDeg", "DirectorGazeBlinks",
+        "DirectorLookAtCameraMode", "BDMergeGazeBehindPolicy"
+    };
+    for (const char* name : watched_settings)
+    {
+        if (LLControlVariable* control = gSavedSettings.getControl(name))
+        {
+            mSettingConnections.emplace_back(control->getSignal()->connect(
+                [this](LLControlVariable*, const LLSD&, const LLSD&)
+                {
+                    ++mSettingsRevision;
+                }));
+        }
+    }
     return true;
+}
+
+void ALPanelLensGaze::setSelectedActors(const uuid_vec_t& ids)
+{
+    if (ids != mSelected)
+    {
+        mSelected = ids;
+        ++mSelectionRevision;
+    }
 }
 
 LLUUID ALPanelLensGaze::slotActor(S32 slot_index) const
@@ -835,13 +867,43 @@ LLUUID ALPanelLensGaze::editDisplayActor() const
 
 void ALPanelLensGaze::draw()
 {
-    refreshEditActorCombo();
-    refreshCastCombo();
-    refreshControls();
+    LL_PROFILE_ZONE_NAMED_CATEGORY_UI("ALPanelLensGaze draw");
+    if (!isWidgetOnScreen(this))
+    {
+        return;
+    }
+    LLDirectorCast& cast = LLDirectorCast::instance();
+    LLActorMover& mover = LLActorMover::instance();
+    if (mStructureGate.changed({ cast.getCastRevision(),
+                                 cast.getGazeConfigRevision(),
+                                 cast.getGazeCueRevision(),
+                                 mover.getGazeRevision(),
+                                 mSettingsRevision,
+                                 mSelectionRevision }))
+    {
+        refreshEditActorCombo();
+        refreshCastCombo();
+        refreshControls();
+        mLiveClock.forceDue();
+    }
+    if (mLiveClock.due())
+    {
+        refreshLiveControls();
+    }
     // Random-performance cycling is driven by gazeRandomPerfTick() on the idle
     // callback list (registered in the ctor), NOT here, so it keeps running when
     // the floater is closed.
     LLPanel::draw();
+}
+
+void ALPanelLensGaze::onVisibilityChange(bool new_visibility)
+{
+    if (new_visibility)
+    {
+        mStructureGate.reset();
+        mLiveClock.forceDue();
+    }
+    LLPanel::onVisibilityChange(new_visibility);
 }
 
 // [Machinima] Random-performance auto-cycle. Runs every frame off the idle
@@ -937,6 +999,7 @@ static void gazeRandomPerfTick(void* /*user*/)
 
 void ALPanelLensGaze::refreshEditActorCombo()
 {
+    LL_PROFILE_ZONE_NAMED_CATEGORY_UI("Gaze refreshEditActorCombo");
     if (isEditing(mEditActor))
     {
         return;
@@ -970,36 +1033,36 @@ void ALPanelLensGaze::refreshEditActorCombo()
     const S32 want = mEditAll ? -1 : mActiveSlot;
     if (mEditActor->getValue().asInteger() != want)
     {
-        if (!mEditActor->setSelectedByValue(LLSD(want), true))
+        setValueIfChanged(mEditActor, LLSD(want), true);
+        if (mEditActor->getCurrentIndex() < 0)
         {
             // The selected slot lost its actor: fall back to All and re-sync.
             mEditAll = true;
             mActiveSlot = 0;
-            mEditActor->setSelectedByValue(LLSD(-1), true);
-            mCastSignature.clear();
+            setValueIfChanged(mEditActor, LLSD(-1), true);
+            mCastComboRevision = 0;
         }
     }
 }
 
 void ALPanelLensGaze::refreshCastCombo()
 {
-    std::string signature = llformat("slot:%d:", mActiveSlot);
-    signature += activeSlotActor().asString();
-    signature += mEditingEyeTarget ? ":eyes:" : ":head:";
-    for (const LLUUID& selected : mSelected)
+    LL_PROFILE_ZONE_NAMED_CATEGORY_UI("Gaze refreshCastCombo");
+    LLDirectorCast& cast = LLDirectorCast::instance();
+    const LLUUID displayed = activeSlotActor();
+    const LLUUID current = mEditingEyeTarget && cast.hasEyeGazeTarget(displayed)
+        ? cast.getEyeGazeTarget(displayed).mCastRef
+        : cast.getGazeTarget(displayed).mCastRef;
+    const U64 cast_revision = cast.getCastRevision();
+    const bool stale = cast_revision != mCastComboRevision ||
+        displayed != mCastComboActor || current != mCastComboSelection;
+    if (stale && !isEditing(mCast))
     {
-        signature += selected.asString();
-    }
-    for (const LLUUID& id : LLDirectorCast::instance().getIds())
-    {
-        signature += id.asString();
-    }
-    if (signature != mCastSignature && !isEditing(mCast))
-    {
-        mCastSignature = signature;
+        mCastComboRevision = cast_revision;
+        mCastComboActor = displayed;
+        mCastComboSelection = current;
         mCast->removeall();
-        const LLUUID displayed = activeSlotActor();
-        for (const LLUUID& id : LLDirectorCast::instance().getIds())
+        for (const LLUUID& id : cast.getIds())
         {
             const bool is_target_actor = displayed.notNull()
                 ? id == displayed
@@ -1013,18 +1076,13 @@ void ALPanelLensGaze::refreshCastCombo()
         {
             mCast->add("(add another cast member)", LLSD(std::string()));
         }
-    }
-
-    if (!isEditing(mCast))
-    {
-        LLDirectorCast& cast = LLDirectorCast::instance();
-        const LLUUID slot_actor = activeSlotActor();
-        const LLUUID current = mEditingEyeTarget &&
-            cast.hasEyeGazeTarget(slot_actor)
-            ? cast.getEyeGazeTarget(slot_actor).mCastRef
-            : cast.getGazeTarget(slot_actor).mCastRef;
-        if (current.isNull() ||
-            !mCast->setSelectedByValue(LLSD(current.asString()), true))
+        // Selection is part of the revision-gated refresh, never a per-frame
+        // deselect/select cycle.
+        if (current.notNull())
+        {
+            setValueIfChanged(mCast, LLSD(current.asString()), true);
+        }
+        if (current.isNull() || mCast->getCurrentIndex() < 0)
         {
             mCast->selectFirstItem();
         }
@@ -1033,6 +1091,7 @@ void ALPanelLensGaze::refreshCastCombo()
 
 void ALPanelLensGaze::refreshControls()
 {
+    LL_PROFILE_ZONE_NAMED_CATEGORY_UI("Gaze refreshControls");
     LLActorMover& mover = LLActorMover::instance();
     LLDirectorCast& cast = LLDirectorCast::instance();
     // Every edit row reads+presents ONE actor: the edited actor for a specific
@@ -1063,37 +1122,37 @@ void ALPanelLensGaze::refreshControls()
     const LLUUID sub_c = cast.getSubjectC();
     const LLUUID sub_d = cast.getSubjectD();
 
-    mSlotYou->setEnabled(isAgentAvatarValid());
-    mSlotA->setEnabled(sub_a.notNull());
-    mSlotB->setEnabled(sub_b.notNull());
-    mSlotC->setEnabled(sub_c.notNull());
-    mSlotD->setEnabled(sub_d.notNull());
+    setEnabledIfChanged(mSlotYou, isAgentAvatarValid());
+    setEnabledIfChanged(mSlotA, sub_a.notNull());
+    setEnabledIfChanged(mSlotB, sub_b.notNull());
+    setEnabledIfChanged(mSlotC, sub_c.notNull());
+    setEnabledIfChanged(mSlotD, sub_d.notNull());
 
     if (!isEditing(mSlotYou))
     {
-        mSlotYou->set(cast.isLookAtCamera(you_id));
+        setValueIfChanged(mSlotYou, LLSD(cast.isLookAtCamera(you_id)), true);
     }
     if (!isEditing(mSlotA))
     {
-        mSlotA->set(sub_a.notNull() && cast.isLookAtCamera(sub_a));
+        setValueIfChanged(mSlotA, LLSD(sub_a.notNull() && cast.isLookAtCamera(sub_a)), true);
     }
     if (!isEditing(mSlotB))
     {
-        mSlotB->set(sub_b.notNull() && cast.isLookAtCamera(sub_b));
+        setValueIfChanged(mSlotB, LLSD(sub_b.notNull() && cast.isLookAtCamera(sub_b)), true);
     }
     if (!isEditing(mSlotC))
     {
-        mSlotC->set(sub_c.notNull() && cast.isLookAtCamera(sub_c));
+        setValueIfChanged(mSlotC, LLSD(sub_c.notNull() && cast.isLookAtCamera(sub_c)), true);
     }
     if (!isEditing(mSlotD))
     {
-        mSlotD->set(sub_d.notNull() && cast.isLookAtCamera(sub_d));
+        setValueIfChanged(mSlotD, LLSD(sub_d.notNull() && cast.isLookAtCamera(sub_d)), true);
     }
 
-    mEnable->setEnabled(have_actor);
+    setEnabledIfChanged(mEnable, have_actor);
     if (!isEditing(mEnable) && mEnable->getValue().asBoolean() != enabled)
     {
-        mEnable->set(enabled);
+        setValueIfChanged(mEnable, LLSD(enabled), true);
     }
     // Head target / Eyes look at / target-detail are PROCEDURAL-gaze settings
     // (what the actor looks at), so they must be editable whenever procedural
@@ -1101,33 +1160,34 @@ void ALPanelLensGaze::refreshControls()
     // camera" set. Gating them on isLookAtCamera alone left them greyed (and the
     // eye target uneditable) for a procedural-gaze-only actor.
     const bool target_editable = have_slot && (enabled || slot_enabled);
-    mTarget->setEnabled(target_editable);
-    mEyeTarget->setEnabled(target_editable);
-    mTargetDetailScope->setEnabled(target_editable);
-    mPriority->setEnabled(have_slot);
-    mCameraRoll->setEnabled(
+    setEnabledIfChanged(mTarget, target_editable);
+    setEnabledIfChanged(mEyeTarget, target_editable);
+    setEnabledIfChanged(mTargetDetailScope, target_editable);
+    setEnabledIfChanged(mPriority, have_slot);
+    setEnabledIfChanged(mCameraRoll,
         have_slot && slot_enabled && mode == LLActorMover::GAZE_CAMERA);
-    mExaggerate->setEnabled(have_slot);
-    mMicroLife->setEnabled(have_slot);
-    mBlinks->setEnabled(have_slot);
-    mVariation->setEnabled(have_slot);
-    mBreakFreq->setEnabled(have_slot);
-    mEaseAcquire->setEnabled(have_slot);
-    mEaseRelease->setEnabled(have_slot);
-    mDeadZone->setEnabled(have_slot);
-    mMode->setEnabled(have_slot);
-    mGazeCues->setEnabled(have_slot);
+    setEnabledIfChanged(mExaggerate, have_slot);
+    setEnabledIfChanged(mMicroLife, have_slot);
+    setEnabledIfChanged(mBlinks, have_slot);
+    setEnabledIfChanged(mVariation, have_slot);
+    setEnabledIfChanged(mBreakFreq, have_slot);
+    setEnabledIfChanged(mEaseAcquire, have_slot);
+    setEnabledIfChanged(mEaseRelease, have_slot);
+    setEnabledIfChanged(mDeadZone, have_slot);
+    setEnabledIfChanged(mMode, have_slot);
+    setEnabledIfChanged(mGazeCues, have_slot);
     if (!isEditing(mTarget) && mTarget->getValue().asInteger() != mode)
     {
-        mTarget->setValue(mode);
+        setValueIfChanged(mTarget, LLSD(mode));
     }
     if (!isEditing(mEyeTarget) &&
         mEyeTarget->getValue().asInteger() != eye_mode)
     {
-        mEyeTarget->setValue(eye_mode);
+        setValueIfChanged(mEyeTarget, LLSD(eye_mode));
     }
+    static LLCachedControl<S32> gaze_priority(gSavedSettings, "DirectorGazePriority", 0);
     const S32 global_priority = llclamp(
-        gSavedSettings.getS32("DirectorGazePriority"),
+        (S32)gaze_priority,
         static_cast<S32>(LLActorMover::GAZE_PRIORITY_BLEND),
         static_cast<S32>(LLActorMover::GAZE_PRIORITY_PLANTED_SPINE));
     const S32 priority = (have_slot && slot_target.mGazePriorityOverride >= 0)
@@ -1137,7 +1197,7 @@ void ALPanelLensGaze::refreshControls()
         : global_priority;
     if (!isEditing(mPriority) && mPriority->getValue().asInteger() != priority)
     {
-        mPriority->setValue(priority);
+        setValueIfChanged(mPriority, LLSD(priority));
     }
     // [Machinima] Resolved Movement Style == Planted spine, computed once here
     // (override-or-global, same `priority` above) and reused below by chest
@@ -1147,66 +1207,63 @@ void ALPanelLensGaze::refreshControls()
     // [Machinima] Range preset chooser: stateless, so it never reflects target
     // state beyond staying enabled while there is an actor to edit and parked
     // on its "Choose range..." sentinel.
-    mRangePreset->setEnabled(have_slot);
+    setEnabledIfChanged(mRangePreset, have_slot);
     if (!isEditing(mRangePreset) && mRangePreset->getValue().asInteger() != -1)
     {
-        mRangePreset->setValue(LLSD(-1));
+        setValueIfChanged(mRangePreset, LLSD(-1));
     }
     // SL anim priority: per-actor override wins when >= -1 (NOT >= 0 -- here -1
     // is the meaningful "Legacy final" selection, and -2 means inherit).
-    const S32 global_anim_priority = llclamp(
-        gSavedSettings.getS32("DirectorGazeAnimationPriority"), -1, 6);
+    static LLCachedControl<S32> gaze_anim_priority(
+        gSavedSettings, "DirectorGazeAnimationPriority", -1);
+    const S32 global_anim_priority = llclamp((S32)gaze_anim_priority, -1, 6);
     const S32 anim_priority = (have_slot && slot_target.mAnimPriorityOverride >= -1)
         ? llclamp(slot_target.mAnimPriorityOverride, -1, 6)
         : global_anim_priority;
     if (!isEditing(mAnimPriority) &&
         mAnimPriority->getValue().asInteger() != anim_priority)
     {
-        mAnimPriority->setValue(anim_priority);
+        setValueIfChanged(mAnimPriority, LLSD(anim_priority));
     }
-    mAnimPriority->setEnabled(have_slot);
+    setEnabledIfChanged(mAnimPriority, have_slot);
     // [Machinima] IK Lean chooser: same stateless pattern as Range above, but
     // only enabled while the resolved Movement Style is Planted spine (IK) --
     // the lean curve is only ever consulted in that scope.
-    mIkLean->setEnabled(have_slot && planted_spine);
+    setEnabledIfChanged(mIkLean, have_slot && planted_spine);
     if (!isEditing(mIkLean) && mIkLean->getValue().asInteger() != -1)
     {
-        mIkLean->setValue(LLSD(-1));
+        setValueIfChanged(mIkLean, LLSD(-1));
     }
     if (!isEditing(mTargetDetailScope) &&
         mTargetDetailScope->getValue().asInteger() != (mEditingEyeTarget ? 1 : 0))
     {
-        mTargetDetailScope->setValue(mEditingEyeTarget ? 1 : 0);
+        setValueIfChanged(mTargetDetailScope, LLSD(mEditingEyeTarget ? 1 : 0));
     }
 
     const S32 detail_mode = mEditingEyeTarget ? eye_mode : mode;
     const bool cast_mode = (detail_mode == LLActorMover::GAZE_CAST);
     const bool point_mode = (detail_mode == LLActorMover::GAZE_POINT);
     const bool obj_mode = (detail_mode == LLActorMover::GAZE_OBJECT);
-    mCast->setVisible(cast_mode);
-    mCast->setEnabled(have_slot && slot_enabled && cast_mode && mCast->getItemCount() > 0);
-    mSetPoint->setVisible(point_mode);
-    mSetPoint->setEnabled(have_slot && slot_enabled && point_mode);
-    mPickObject->setVisible(obj_mode);
-    mPickObject->setEnabled(have_slot && slot_enabled && obj_mode);
-    mClearObject->setVisible(obj_mode);
-    mClearObject->setEnabled(have_slot && slot_enabled && obj_mode);
+    setVisibleIfChanged(mCast, cast_mode);
+    setEnabledIfChanged(mCast, have_slot && slot_enabled && cast_mode && mCast->getItemCount() > 0);
+    setVisibleIfChanged(mSetPoint, point_mode);
+    setEnabledIfChanged(mSetPoint, have_slot && slot_enabled && point_mode);
+    setVisibleIfChanged(mPickObject, obj_mode);
+    setEnabledIfChanged(mPickObject, have_slot && slot_enabled && obj_mode);
+    setVisibleIfChanged(mClearObject, obj_mode);
+    setEnabledIfChanged(mClearObject, have_slot && slot_enabled && obj_mode);
 
     LLUICtrl* authored[] = {
         mBlend, mTorso, mIntensity, mSmoothing, mEyelineYaw, mEyelinePitch
     };
     for (LLUICtrl* control : authored)
     {
-        control->setEnabled(have_actor && enabled);
+        setEnabledIfChanged(control, have_actor && enabled);
     }
 
     auto sync_slider = [](LLSliderCtrl* control, F32 value)
     {
-        if (!isEditing(control) &&
-            fabsf((F32)control->getValue().asReal() - value) > 0.001f)
-        {
-            control->setValue(value);
-        }
+        setValueIfChanged(control, LLSD((F64)value));
     };
     sync_slider(mBlend, have_actor ? mover.getGazeHeadEyeBlend(actor) : 0.7f);
     sync_slider(mTorso, have_actor ? mover.getGazeTorsoAmount(actor) : 0.25f);
@@ -1215,10 +1272,10 @@ void ALPanelLensGaze::refreshControls()
     sync_slider(mEyelineYaw, have_actor ? mover.getGazeEyelineYaw(actor) : 0.f);
     sync_slider(mEyelinePitch, have_actor ? mover.getGazeEyelinePitch(actor) : 0.f);
 
-    mPerformance->setEnabled(have_slot);
-    mPersonaDominance->setEnabled(have_slot);
-    mPersonaAffection->setEnabled(have_slot);
-    mPersonaAnxiety->setEnabled(have_slot);
+    setEnabledIfChanged(mPerformance, have_slot);
+    setEnabledIfChanged(mPersonaDominance, have_slot);
+    setEnabledIfChanged(mPersonaAffection, have_slot);
+    setEnabledIfChanged(mPersonaAnxiety, have_slot);
     sync_slider(mPersonaDominance,
                 have_slot ? slot_target.mPersonaDominance : 0.f);
     sync_slider(mPersonaAffection,
@@ -1238,7 +1295,7 @@ void ALPanelLensGaze::refreshControls()
         }
         if (mPerformance->getValue().asInteger() != preset_index)
         {
-            mPerformance->setValue(LLSD(preset_index));
+            setValueIfChanged(mPerformance, LLSD(preset_index));
         }
     }
 
@@ -1246,20 +1303,24 @@ void ALPanelLensGaze::refreshControls()
     // override when set (>= 0), else the matching global fallback value.
     auto sync_f32 = [](LLUICtrl* control, F32 value)
     {
-        if (!isEditing(control) &&
-            fabsf((F32)control->getValue().asReal() - value) > 0.001f)
-        {
-            control->setValue(value);
-        }
+        setValueIfChanged(control, LLSD((F64)value));
     };
-    const F32 g_microlife = gSavedSettings.getF32("DirectorGazeMicroLife");
-    const F32 g_variation = gSavedSettings.getF32("DirectorGazeVariation");
-    const F32 g_break = gSavedSettings.getF32("DirectorGazeBreakFrequency");
-    const F32 g_acq = gSavedSettings.getF32("DirectorGazeEaseAcquireSec");
-    const F32 g_rel = gSavedSettings.getF32("DirectorGazeEaseReleaseSec");
-    const F32 g_dead = gSavedSettings.getF32("BDMergeGazeDeadZone");
-    const F32 g_roll = gSavedSettings.getF32("DirectorGazeCameraRoll");
-    const F32 g_exag = gSavedSettings.getF32("DirectorGazeExaggerate");
+    static LLCachedControl<F32> c_microlife(gSavedSettings, "DirectorGazeMicroLife", 0.4f);
+    static LLCachedControl<F32> c_variation(gSavedSettings, "DirectorGazeVariation", 0.f);
+    static LLCachedControl<F32> c_break(gSavedSettings, "DirectorGazeBreakFrequency", 0.f);
+    static LLCachedControl<F32> c_acq(gSavedSettings, "DirectorGazeEaseAcquireSec", 0.f);
+    static LLCachedControl<F32> c_rel(gSavedSettings, "DirectorGazeEaseReleaseSec", 0.f);
+    static LLCachedControl<F32> c_dead(gSavedSettings, "BDMergeGazeDeadZone", 0.f);
+    static LLCachedControl<F32> c_roll(gSavedSettings, "DirectorGazeCameraRoll", 0.f);
+    static LLCachedControl<F32> c_exag(gSavedSettings, "DirectorGazeExaggerate", 1.f);
+    const F32 g_microlife = c_microlife;
+    const F32 g_variation = c_variation;
+    const F32 g_break = c_break;
+    const F32 g_acq = c_acq;
+    const F32 g_rel = c_rel;
+    const F32 g_dead = c_dead;
+    const F32 g_roll = c_roll;
+    const F32 g_exag = c_exag;
     sync_f32(mMicroLife, slot_target.mMicroLifeOverride >= 0.f
              ? slot_target.mMicroLifeOverride : g_microlife);
     sync_f32(mVariation, slot_target.mVariationOverride >= 0.f
@@ -1279,21 +1340,23 @@ void ALPanelLensGaze::refreshControls()
 
     // [Machinima] Phase 2: pose composition. Override-or-global like the rows
     // above; Animation retention is shown/enabled only for Blend.
-    const S32 g_composition = gSavedSettings.getS32("DirectorGazeComposition");
+    static LLCachedControl<S32> c_composition(gSavedSettings, "DirectorGazeComposition", 0);
+    static LLCachedControl<F32> c_composition_mix(gSavedSettings, "DirectorGazeCompositionMix", 0.f);
+    const S32 g_composition = c_composition;
     const S32 composition = slot_target.mCompositionOverride >= 0
         ? slot_target.mCompositionOverride : g_composition;
-    mComposition->setEnabled(have_slot);
+    setEnabledIfChanged(mComposition, have_slot);
     if (!isEditing(mComposition) && mComposition->getValue().asInteger() != composition)
     {
-        mComposition->setValue(composition);
+        setValueIfChanged(mComposition, LLSD(composition));
     }
     const bool composition_blend =
         composition == static_cast<S32>(LLActorMover::GAZE_COMPOSE_BLEND);
-    mCompositionMix->setVisible(composition_blend);
-    mCompositionMix->setEnabled(have_slot && composition_blend);
+    setVisibleIfChanged(mCompositionMix, composition_blend);
+    setEnabledIfChanged(mCompositionMix, have_slot && composition_blend);
     sync_f32(mCompositionMix, slot_target.mCompositionMixOverride >= 0.f
              ? slot_target.mCompositionMixOverride
-             : gSavedSettings.getF32("DirectorGazeCompositionMix"));
+             : (F32)c_composition_mix);
 
     // [Machinima] Phase 3: keyframed influence lane. Displays the EVALUATED
     // influence at the current presentation-time playhead (not an override
@@ -1301,28 +1364,20 @@ void ALPanelLensGaze::refreshControls()
     // Disabled in All -- per-actor tracks are not safely represented by the
     // single display actor.
     const bool influence_editable = have_slot && !mEditAll;
-    mInfluence->setEnabled(influence_editable);
-    mInfluenceSet->setEnabled(influence_editable);
-    mInfluenceDelete->setEnabled(influence_editable);
-    if (!isEditing(mInfluence))
-    {
-        const F64 playhead = llmax(
-            LLPresentationTime::currentFrame().presentation_time, 0.0);
-        const F32 influence = have_slot
-            ? LLDirectorCast::evaluateGazeInfluence(
-                  cast.getGazeInfluenceKeys(slot_actor), playhead)
-            : 1.f;
-        sync_slider(mInfluence, influence);
-    }
+    setEnabledIfChanged(mInfluence, influence_editable);
+    setEnabledIfChanged(mInfluenceSet, influence_editable);
+    setEnabledIfChanged(mInfluenceDelete, influence_editable);
 
     // [Machinima] Phase 2: planted-spine chest split. Enabled only when the
     // RESOLVED ownership scope is Planted spine (`planted_spine`, computed
     // above alongside `priority`) -- an inherited global Planted-spine
     // default should still let an operator tune chest share for this actor.
-    mChestShare->setEnabled(have_slot && planted_spine);
+    setEnabledIfChanged(mChestShare, have_slot && planted_spine);
+    static LLCachedControl<F32> c_chest_share(
+        gSavedSettings, "DirectorGazeChestShare", 0.f);
     sync_f32(mChestShare, slot_target.mChestShareOverride >= 0.f
              ? slot_target.mChestShareOverride
-             : gSavedSettings.getF32("DirectorGazeChestShare"));
+             : (F32)c_chest_share);
 
     // [Machinima] Phase 2: opt-in per-joint cone limit profile. "Limits
     // source" shows the actor's RAW override (-1/0/1); Inherit is a directly
@@ -1333,10 +1388,10 @@ void ALPanelLensGaze::refreshControls()
     // which this per-actor grid does not represent.
     const S32 limit_mode = have_slot
         ? llclamp(slot_target.mLimitProfileModeOverride, -1, 1) : -1;
-    mLimitMode->setEnabled(have_slot);
+    setEnabledIfChanged(mLimitMode, have_slot);
     if (!isEditing(mLimitMode) && mLimitMode->getValue().asInteger() != limit_mode)
     {
-        mLimitMode->setValue(limit_mode);
+        setValueIfChanged(mLimitMode, LLSD(limit_mode));
     }
     const bool limit_custom = limit_mode == 1;
     LLUICtrl* limit_grid[] = {
@@ -1350,7 +1405,7 @@ void ALPanelLensGaze::refreshControls()
     };
     for (LLUICtrl* control : limit_grid)
     {
-        control->setEnabled(have_slot && limit_custom);
+        setEnabledIfChanged(control, have_slot && limit_custom);
     }
     const ALGazeMath::AnatomicalLimitProfile& profile = slot_target.mLimitProfile;
     sync_f32(mLimitEyeYaw, profile.mEyeYawDeg);
@@ -1376,60 +1431,93 @@ void ALPanelLensGaze::refreshControls()
     // [Machinima] Phase 4: angle-driven spine-lean curve. Threshold/Softness/
     // Max are enabled only for Angle ease AND the RESOLVED Planted-spine scope
     // (v1 is Planted-spine only), matching the design doc.
-    const S32 g_lean_curve = gSavedSettings.getS32("DirectorGazeLeanCurve");
+    static LLCachedControl<S32> c_lean_curve(gSavedSettings, "DirectorGazeLeanCurve", 0);
+    static LLCachedControl<F32> c_lean_threshold(gSavedSettings, "DirectorGazeLeanThresholdDeg", 0.f);
+    static LLCachedControl<F32> c_lean_softness(gSavedSettings, "DirectorGazeLeanSoftnessDeg", 0.f);
+    static LLCachedControl<F32> c_lean_max(gSavedSettings, "DirectorGazeLeanMaxDeg", 0.f);
+    const S32 g_lean_curve = c_lean_curve;
     const S32 lean_curve = slot_target.mLeanCurveOverride >= 0
         ? slot_target.mLeanCurveOverride : g_lean_curve;
-    mLeanCurve->setEnabled(have_slot);
+    setEnabledIfChanged(mLeanCurve, have_slot);
     if (!isEditing(mLeanCurve) && mLeanCurve->getValue().asInteger() != lean_curve)
     {
-        mLeanCurve->setValue(lean_curve);
+        setValueIfChanged(mLeanCurve, LLSD(lean_curve));
     }
     const bool lean_active =
         lean_curve == static_cast<S32>(LLActorMover::GAZE_LEAN_ANGLE_EASE) &&
         planted_spine;
-    mLeanThreshold->setEnabled(have_slot && lean_active);
-    mLeanSoftness->setEnabled(have_slot && lean_active);
-    mLeanMax->setEnabled(have_slot && lean_active);
+    setEnabledIfChanged(mLeanThreshold, have_slot && lean_active);
+    setEnabledIfChanged(mLeanSoftness, have_slot && lean_active);
+    setEnabledIfChanged(mLeanMax, have_slot && lean_active);
     sync_f32(mLeanThreshold, slot_target.mLeanThresholdDegOverride >= 0.f
              ? slot_target.mLeanThresholdDegOverride
-             : gSavedSettings.getF32("DirectorGazeLeanThresholdDeg"));
+             : (F32)c_lean_threshold);
     sync_f32(mLeanSoftness, slot_target.mLeanSoftnessDegOverride >= 0.f
              ? slot_target.mLeanSoftnessDegOverride
-             : gSavedSettings.getF32("DirectorGazeLeanSoftnessDeg"));
+             : (F32)c_lean_softness);
     sync_f32(mLeanMax, slot_target.mLeanMaxDegOverride >= 0.f
              ? slot_target.mLeanMaxDegOverride
-             : gSavedSettings.getF32("DirectorGazeLeanMaxDeg"));
+             : (F32)c_lean_max);
 
+    static LLCachedControl<bool> c_blinks(gSavedSettings, "DirectorGazeBlinks", true);
     const bool blinks_on = slot_target.mBlinksOverride >= 0
         ? (slot_target.mBlinksOverride != 0)
-        : gSavedSettings.getBOOL("DirectorGazeBlinks");
+        : (bool)c_blinks;
     if (!isEditing(mBlinks) && mBlinks->getValue().asBoolean() != blinks_on)
     {
-        mBlinks->set(blinks_on);
+        setValueIfChanged(mBlinks, LLSD(blinks_on), true);
     }
-    const S32 g_mode =
-        gSavedSettings.getS32("DirectorLookAtCameraMode") == 1 ? 1 : 0;
+    static LLCachedControl<S32> c_camera_mode(gSavedSettings, "DirectorLookAtCameraMode", 0);
+    const S32 g_mode = (S32)c_camera_mode == 1 ? 1 : 0;
     const S32 mode_val = slot_target.mCameraModeOverride >= 0
         ? (slot_target.mCameraModeOverride == 1 ? 1 : 0)
         : g_mode;
     if (!isEditing(mMode) && mMode->getValue().asInteger() != mode_val)
     {
-        mMode->setValue(mode_val);
+        setValueIfChanged(mMode, LLSD(mode_val));
     }
 
-    const bool breakoff = gSavedSettings.getS32("BDMergeGazeBehindPolicy") == 1;
+    static LLCachedControl<S32> c_behind_policy(gSavedSettings, "BDMergeGazeBehindPolicy", 0);
+    const bool breakoff = (S32)c_behind_policy == 1;
     if (!isEditing(mBreakoff) && mBreakoff->getValue().asBoolean() != breakoff)
     {
-        mBreakoff->set(breakoff);
+        setValueIfChanged(mBreakoff, LLSD(breakoff), true);
     }
-    mBreakoffAngle->setEnabled(breakoff);
+    setEnabledIfChanged(mBreakoffAngle, breakoff);
+}
 
+void ALPanelLensGaze::refreshLiveControls()
+{
+    LL_PROFILE_ZONE_NAMED_CATEGORY_UI("Gaze refreshLiveControls");
+    LLDirectorCast& cast = LLDirectorCast::instance();
+    LLActorMover& mover = LLActorMover::instance();
+    const LLUUID actor = editDisplayActor();
+    const bool have_actor = actor.notNull();
+    const F64 playhead = llmax(
+        LLPresentationTime::currentFrame().presentation_time, 0.0);
+    const F32 influence = have_actor
+        ? LLDirectorCast::evaluateGazeInfluence(
+              cast.getGazeInfluenceKeys(actor), playhead)
+        : 1.f;
+    setValueIfChanged(mInfluence, LLSD((F64)influence));
+
+    // These may be interpolated by a gaze preset transition. They are live
+    // readouts, so mirror them at the same 10 Hz ceiling as the playhead lane.
+    setValueIfChanged(mBlend, LLSD((F64)(have_actor
+        ? mover.getGazeHeadEyeBlend(actor) : 0.7f)));
+    setValueIfChanged(mTorso, LLSD((F64)(have_actor
+        ? mover.getGazeTorsoAmount(actor) : 0.25f)));
+    setValueIfChanged(mIntensity, LLSD((F64)(have_actor
+        ? mover.getGazeIntensity(actor) : 1.f)));
+    setValueIfChanged(mSmoothing, LLSD((F64)(have_actor
+        ? mover.getGazeSmoothing(actor) : 0.5f)));
+    setValueIfChanged(mEyelineYaw, LLSD((F64)(have_actor
+        ? mover.getGazeEyelineYaw(actor) : 0.f)));
+    setValueIfChanged(mEyelinePitch, LLSD((F64)(have_actor
+        ? mover.getGazeEyelinePitch(actor) : 0.f)));
     std::string status;
     mover.getGazeStatus(actor, status);
-    if (mStatus->getValue().asString() != status)
-    {
-        mStatus->setText(status);
-    }
+    setTextIfChanged(mStatus, status);
 }
 
 void ALPanelLensGaze::onMasterEnableCommit()
@@ -1455,7 +1543,8 @@ void ALPanelLensGaze::onEditActorCommit()
         mEditAll = false;
         mActiveSlot = llclamp(value, 0, 4);
     }
-    mCastSignature.clear();
+    mCastComboRevision = 0;
+    ++mSelectionRevision;
 }
 
 void ALPanelLensGaze::onSlotLookAtCommit(S32 slot_index)
@@ -1504,7 +1593,7 @@ void ALPanelLensGaze::onTargetCommit()
     {
         mEditingEyeTarget = false;
         mTargetDetailScope->setValue(0);
-        mCastSignature.clear();
+        mCastComboRevision = 0;
     }
 }
 
@@ -1540,7 +1629,7 @@ void ALPanelLensGaze::onEyeTargetCommit()
         mEditingEyeTarget = true;
         mTargetDetailScope->setValue(1);
     }
-    mCastSignature.clear();
+    mCastComboRevision = 0;
 }
 
 void ALPanelLensGaze::onPriorityCommit()
@@ -1568,7 +1657,8 @@ void ALPanelLensGaze::onAnimPriorityCommit()
 void ALPanelLensGaze::onTargetDetailScopeCommit()
 {
     mEditingEyeTarget = mTargetDetailScope->getValue().asInteger() == 1;
-    mCastSignature.clear();
+    mCastComboRevision = 0;
+    ++mSelectionRevision;
 }
 
 void ALPanelLensGaze::onCastCommit()

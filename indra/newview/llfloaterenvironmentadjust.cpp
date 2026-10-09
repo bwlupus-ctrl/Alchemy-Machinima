@@ -522,6 +522,7 @@ bool LLFloaterEnvironmentAdjust::postBuild()
     // settings as postBuild found them.
     if (LLComboBox* preset_combo = findChild<LLComboBox>("env_intensity_preset"))
     {
+        mEnvIntensityPresetCombo = preset_combo;
         preset_combo->setCommitCallback([this](LLUICtrl*, const LLSD&) { onEnvIntensityPresetSelected(); });
 
         for (const char* name : ENV_INTENSITY_PRESET_WATCHED_KEYS)
@@ -529,7 +530,7 @@ bool LLFloaterEnvironmentAdjust::postBuild()
             if (auto ctrl = gSavedSettings.getControl(name))
             {
                 mEnvIntensityPresetConns.emplace_back(ctrl->getSignal()->connect(
-                    [this](LLControlVariable*, const LLSD&, const LLSD&) { refreshEnvIntensityPresetCombo(); }));
+                    [this](LLControlVariable*, const LLSD&, const LLSD&) { mEnvIntensityPresetDirty = true; }));
             }
         }
 
@@ -1189,19 +1190,20 @@ void LLFloaterEnvironmentAdjust::applyEnvIntensityPreset(const std::string& key)
 
 void LLFloaterEnvironmentAdjust::updateExposureHistoryButtons()
 {
+    LL_PROFILE_ZONE_NAMED_CATEGORY_UI("EnvAdjust updateExposureHistoryButtons");
     const bool can_undo = ALExposureSettingsHistory::canUndo();
     const bool can_redo = ALExposureSettingsHistory::canRedo();
     if (mExposureUndoBtn)
     {
-        mExposureUndoBtn->setEnabled(can_undo);
-        mExposureUndoBtn->setToolTip(can_undo
+        setEnabledIfChanged(mExposureUndoBtn, can_undo);
+        setToolTipIfChanged(mExposureUndoBtn, can_undo
             ? "Undo: " + ALExposureSettingsHistory::undoLabel()
             : "Nothing to undo");
     }
     if (mExposureRedoBtn)
     {
-        mExposureRedoBtn->setEnabled(can_redo);
-        mExposureRedoBtn->setToolTip(can_redo
+        setEnabledIfChanged(mExposureRedoBtn, can_redo);
+        setToolTipIfChanged(mExposureRedoBtn, can_redo
             ? "Redo: " + ALExposureSettingsHistory::redoLabel()
             : "Nothing to redo");
     }
@@ -1253,11 +1255,13 @@ void LLFloaterEnvironmentAdjust::rebuildEnvIntensityUserPresets()
 // ALEnvIntensityPresets::apply() is writing.
 void LLFloaterEnvironmentAdjust::refreshEnvIntensityPresetCombo()
 {
+    LL_PROFILE_ZONE_NAMED_CATEGORY_UI("EnvAdjust refreshEnvIntensityPresetCombo");
+    mEnvIntensityPresetDirty = false;
     if (ALEnvIntensityPresets::isApplying())
     {
         return;
     }
-    LLComboBox* combo = findChild<LLComboBox>("env_intensity_preset");
+    LLComboBox* combo = mEnvIntensityPresetCombo;
     if (!combo)
     {
         return;
@@ -1284,7 +1288,17 @@ void LLFloaterEnvironmentAdjust::refreshEnvIntensityPresetCombo()
             matched_key = ENV_INTENSITY_USER_PREFIX + user_name;
         }
     }
-    combo->setValue(LLSD(matched_key));
+    setValueIfChanged(combo, LLSD(matched_key), true);
+}
+
+void LLFloaterEnvironmentAdjust::draw()
+{
+    LL_PROFILE_ZONE_SCOPED_CATEGORY_UI;
+    if (mEnvIntensityPresetDirty)
+    {
+        refreshEnvIntensityPresetCombo();
+    }
+    LLFloater::draw();
 }
 
 void LLFloaterEnvironmentAdjust::onEnvironmentUpdated(LLEnvironment::EnvSelection_t env, S32 version)

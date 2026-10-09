@@ -1227,6 +1227,7 @@ void LLDirectorCast::setLookAtCamera(const LLUUID& id, bool selected)
     if (id.isNull() || (isAgentAvatarValid() && id == gAgentAvatarp->getID()))
     {
         mSelfLookAtCamera = selected;
+        ++mGazeConfigRevision;
         return;
     }
     if (!contains(id))
@@ -1241,6 +1242,7 @@ void LLDirectorCast::setLookAtCamera(const LLUUID& id, bool selected)
     {
         mLookAtCameraIds.erase(id);
     }
+    ++mGazeConfigRevision;
 }
 
 bool LLDirectorCast::isLookAtCamera(const LLUUID& id) const
@@ -1267,12 +1269,14 @@ void LLDirectorCast::setGazeTarget(const LLUUID& id, const LLActorMover::GazeTar
     {
         mSelfGazeTarget = target;
         LLActorMover::instance().setGazeTargetConfig(LLUUID::null, target);
+        ++mGazeConfigRevision;
         return;
     }
     if (CastMember* m = getMember(id))
     {
         m->mGazeTarget = target;
         LLActorMover::instance().setGazeTargetConfig(id, target);
+        ++mGazeConfigRevision;
     }
 }
 
@@ -1306,12 +1310,14 @@ void LLDirectorCast::setEyeGazeTarget(
     {
         mSelfEyeGazeTarget = target;
         mSelfEyeGazeTargetEnabled = true;
+        ++mGazeConfigRevision;
         return;
     }
     if (CastMember* m = getMember(id))
     {
         m->mEyeGazeTarget = target;
         m->mEyeGazeTargetEnabled = true;
+        ++mGazeConfigRevision;
     }
 }
 
@@ -1321,12 +1327,14 @@ void LLDirectorCast::clearEyeGazeTarget(const LLUUID& id)
     {
         mSelfEyeGazeTarget = LLActorMover::GazeTarget();
         mSelfEyeGazeTargetEnabled = false;
+        ++mGazeConfigRevision;
         return;
     }
     if (CastMember* m = getMember(id))
     {
         m->mEyeGazeTarget = LLActorMover::GazeTarget();
         m->mEyeGazeTargetEnabled = false;
+        ++mGazeConfigRevision;
     }
 }
 
@@ -1385,6 +1393,7 @@ void LLDirectorCast::setGazeCues(const LLUUID& id, const GazeCueList& input)
     }
 
     ++mGazeCueRevision;
+    ++mGazeConfigRevision;
     LLActorMover::instance().clearDirectorLookAtRuntime(runtime_id);
 }
 
@@ -1720,10 +1729,26 @@ LLVOAvatar* LLDirectorCast::resolve(const LLUUID& id)
     return av;
 }
 
-void LLDirectorCast::setSubjectA(const LLUUID& id) { mSubjectA = canonicalActorId(id); }
-void LLDirectorCast::setSubjectB(const LLUUID& id) { mSubjectB = canonicalActorId(id); }
-void LLDirectorCast::setSubjectC(const LLUUID& id) { mSubjectC = canonicalActorId(id); }
-void LLDirectorCast::setSubjectD(const LLUUID& id) { mSubjectD = canonicalActorId(id); }
+void LLDirectorCast::setSubjectA(const LLUUID& id)
+{
+    const LLUUID value = canonicalActorId(id);
+    if (mSubjectA != value) { mSubjectA = value; ++mGazeConfigRevision; }
+}
+void LLDirectorCast::setSubjectB(const LLUUID& id)
+{
+    const LLUUID value = canonicalActorId(id);
+    if (mSubjectB != value) { mSubjectB = value; ++mGazeConfigRevision; }
+}
+void LLDirectorCast::setSubjectC(const LLUUID& id)
+{
+    const LLUUID value = canonicalActorId(id);
+    if (mSubjectC != value) { mSubjectC = value; ++mGazeConfigRevision; }
+}
+void LLDirectorCast::setSubjectD(const LLUUID& id)
+{
+    const LLUUID value = canonicalActorId(id);
+    if (mSubjectD != value) { mSubjectD = value; ++mGazeConfigRevision; }
+}
 
 LLVOAvatar* LLDirectorCast::resolveSubjectA()
 {
@@ -2412,6 +2437,7 @@ void LLDirectorCast::applySceneData(const LLSD& data)
         mSubjectD = d;
     }
     ++mGazeCueRevision;
+    ++mGazeConfigRevision;
 
     // group start delays (absent in pre-delay scenes); only names some loaded
     // member actually carries are kept -- no stale registry

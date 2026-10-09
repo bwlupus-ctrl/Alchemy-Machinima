@@ -192,6 +192,7 @@ private:
     LLUICtrl* mManualConeWidths[4] = {};
     LLTextBox* mShadowHint = nullptr;
     LLTextBox* mLiveProbeStatus = nullptr;
+    LLTextBox* mLiveProbeLiveStatus = nullptr;
     LLButton* mLiveProbeRefreshNow = nullptr; // [LiveProbeRefresh]
     // [ProbeManualRate] Manual-mode controls (enabled only when Refresh = Manual)
     LLUICtrl* mLiveProbeManualFaces = nullptr;
@@ -216,8 +217,12 @@ private:
     std::string mLastNightMaskStatus;
     std::string mLastGoboSoftness;
     bool mLiveProbeStatusSet = false;
+    S32 mLastLiveProbeState = -1;
     bool mNightMaskStatusSet = false;
     bool mGoboSoftnessSet = false;
+    S32 mDisplayedGoboIndex = -1;
+    ALLiveReadoutClock mPanelRefreshClock{10.f};
+    ALLiveReadoutClock mLiveProbeClock{2.f};
     std::vector<LLUUID> mCastIds;
     std::vector<std::string> mCastNames;
     S32 mDisplayedSlot = -1;

@@ -555,6 +555,9 @@ void LLScrollContainer::draw()
         // of the rectangle.
         if( mScrolledView )
         {
+            // Tracy value for the existing LLScrollContainer::draw zone: this
+            // makes dense scroll documents stand out without changing culling.
+            LL_PROFILE_ZONE_NUM(mScrolledView->getChildCount());
             updateScroll();
 
             // Draw the scrolled area.

@@ -337,6 +337,7 @@ void LLSpinCtrl::updateLabelColor()
 
 void LLSpinCtrl::updateEditor()
 {
+    LL_PROFILE_ZONE_NAMED_CATEGORY_UI("LLSpinCtrl::updateEditor");
     LLLocale locale(LLLocale::USER_LOCALE);
 
     // Don't display very small negative valu   es as -0.000
@@ -523,4 +524,3 @@ bool LLSpinCtrl::handleKeyHere(KEY key, MASK mask)
     }
     return false;
 }
-

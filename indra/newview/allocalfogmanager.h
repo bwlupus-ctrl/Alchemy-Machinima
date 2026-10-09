@@ -55,6 +55,7 @@ public:
     const Bank& volumes() const { return mVolumes; }
     Bank& volumes() { return mVolumes; }
     U32 revision() const { return mRevision; }
+    void touchBank() { ++mRevision; }
     void saveBank();
 
     void tick(F64 presentation_time);

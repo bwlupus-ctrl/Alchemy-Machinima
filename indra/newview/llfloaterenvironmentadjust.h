@@ -32,6 +32,7 @@
 #include "llsettingssky.h"
 #include "llenvironment.h"
 #include "alscrollfit.h"
+#include "aluirefresh.h"
 
 #include <string>
 #include <vector>
@@ -59,6 +60,7 @@ public:
     virtual bool                postBuild() override;
     virtual void                onOpen(const LLSD& key) override;
     virtual void                onClose(bool app_quitting) override;
+    virtual void                draw() override;
 
     virtual void                refresh() override;
 
@@ -167,6 +169,8 @@ private:
     // presets floater), so that fan-out does not fight the write or flash
     // "Custom" mid-apply; the explicit refresh comes from the "applied" signal.
     std::vector<boost::signals2::scoped_connection> mEnvIntensityPresetConns;
+    LLComboBox*                 mEnvIntensityPresetCombo = nullptr;
+    bool                        mEnvIntensityPresetDirty = false;
 
     // [EnvIntensity userpresets] number of static (XUI) combo items; everything
     // after that index is the dynamic user-preset section.

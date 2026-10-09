@@ -77,7 +77,10 @@ ALPanelAvatarLightResponse::ALPanelAvatarLightResponse()
 
 ALPanelAvatarLightResponse::~ALPanelAvatarLightResponse()
 {
-    gIdleCallbacks.deleteFunction(onIdle, this);
+    if (mIdleRegistered)
+    {
+        gIdleCallbacks.deleteFunction(onIdle, this);
+    }
     mChangeConnection.disconnect();
 }
 
@@ -159,7 +162,11 @@ bool ALPanelAvatarLightResponse::postBuild()
         mIdleStatePending = true;
         mIdleEditorsPending = true;
     });
-    gIdleCallbacks.addFunction(onIdle, this);
+    if (isInVisibleChain())
+    {
+        gIdleCallbacks.addFunction(onIdle, this);
+        mIdleRegistered = true;
+    }
 
     refreshRows(true);
     refreshEditors();
@@ -185,6 +192,11 @@ void ALPanelAvatarLightResponse::focusTarget(const LLUUID& target)
 
 void ALPanelAvatarLightResponse::onVisibilityChange(bool new_visibility)
 {
+    if (new_visibility && !mIdleRegistered && mTargetList)
+    {
+        gIdleCallbacks.addFunction(onIdle, this);
+        mIdleRegistered = true;
+    }
     if (new_visibility)
     {
         mStoreGate.reset();
@@ -199,6 +211,11 @@ void ALPanelAvatarLightResponse::onVisibilityChange(bool new_visibility)
 void ALPanelAvatarLightResponse::draw()
 {
     LL_PROFILE_ZONE_NAMED_CATEGORY_UI("ALPanelAvatarLightResponse draw");
+    if (!mIdleRegistered)
+    {
+        gIdleCallbacks.addFunction(onIdle, this);
+        mIdleRegistered = true;
+    }
     const bool tick = mRefreshTimer.getElapsedTimeF32() >= 1.f;
     if (tick)
     {
@@ -220,8 +237,14 @@ void ALPanelAvatarLightResponse::onIdle(void* user_data)
 
 void ALPanelAvatarLightResponse::idleUpdate()
 {
+    LL_PROFILE_ZONE_NAMED_CATEGORY_UI("LightResponse idleUpdate");
     if (!isWidgetOnScreen(this))
     {
+        // Single-instance floaters retain their children after close, so a
+        // child visibility callback is not guaranteed. Retire the callback
+        // here; the first visible draw registers it again.
+        gIdleCallbacks.deleteFunction(onIdle, this);
+        mIdleRegistered = false;
         return;
     }
     if (mSeenClipRevision != mClipRevision)
@@ -306,6 +329,7 @@ std::string ALPanelAvatarLightResponse::rowName(const LLUUID& key, ALAvatarLight
 void ALPanelAvatarLightResponse::collectRows(std::vector<LLUUID>& order,
                                                std::map<LLUUID, RowInfo>& info) const
 {
+    LL_PROFILE_ZONE_NAMED_CATEGORY_UI("LightResponse collectRows");
     ALAvatarLightResponse& store = ALAvatarLightResponse::instance();
 
     auto add = [&](const LLUUID& key, ALAvatarLightResponse::EKind kind, const std::string& fallback_name)
@@ -399,6 +423,8 @@ void ALPanelAvatarLightResponse::collectRows(std::vector<LLUUID>& order,
 
 void ALPanelAvatarLightResponse::refreshRows(bool force)
 {
+    LL_PROFILE_ZONE_NAMED_CATEGORY_UI("LightResponse refreshRows");
+    (void)force; // membership diffing makes forced destructive rebuilds unnecessary
     if (!mTargetList)
     {
         return;
@@ -427,10 +453,13 @@ void ALPanelAvatarLightResponse::refreshRows(bool force)
         }
         order.swap(filtered);
     }
+    LL_PROFILE_ZONE_NUM(order.size());
 
-    if (!force && order == mRowKeys)
+    const std::set<LLUUID> wanted(order.begin(), order.end());
+    const std::set<LLUUID> shown(mRowKeys.begin(), mRowKeys.end());
+    if (wanted == shown)
     {
-        // Same rows: only names/away flags can have changed (names resolve late).
+        // Same rows: names, away flags and kind can still change in place.
         mRowInfo = info;
         for (LLScrollListItem* item : mTargetList->getAllData())
         {
@@ -445,6 +474,12 @@ void ALPanelAvatarLightResponse::refreshRows(bool force)
             {
                 name_cell->setValue(name);
             }
+            LLScrollListCell* kind_cell = item->getColumn(2);
+            const std::string kind = kindLabel(it->second.mKind);
+            if (kind_cell && kind_cell->getValue().asString() != kind)
+            {
+                kind_cell->setValue(kind);
+            }
         }
         return;
     }
@@ -453,6 +488,8 @@ void ALPanelAvatarLightResponse::refreshRows(bool force)
     const S32 scroll_pos = mTargetList->getScrollPos();
 
     mUpdating = true;
+    // A real membership change is uncommon and retains the old full-rebuild
+    // order: You, cast, nearby, animesh, clones, pinned, then away.
     mTargetList->deleteAllItems();
     mStateVisuals.clear();
     for (const LLUUID& key : order)

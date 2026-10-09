@@ -563,6 +563,7 @@ public:
     };
 
     void        setGazeEnabled(const LLUUID& actor_id, bool on);
+    U64         getGazeRevision() const { return mGazeRevision; }
     bool        isGazeEnabled(const LLUUID& actor_id) const;
     void        setGazeTargetMode(const LLUUID& actor_id, S32 mode);      // 0..4
     S32         getGazeTargetMode(const LLUUID& actor_id) const;
@@ -1669,6 +1670,7 @@ private:
     std::map<LLUUID, EditHistory> mHistory;   // per-actor bounded undo/redo stacks
     std::map<LLUUID, Follow> mFollows;  // follower key -> leader relationship (session-only)
     std::map<LLUUID, Gaze> mGazes;      // per-actor look-at config + runtime (session-only)
+    U64 mGazeRevision = 1;
     std::map<LLUUID, DirectorGaze> mDirectorGazes; // render-only real-cast camera gaze runtime
     struct GazeObjectCenterCache
     {

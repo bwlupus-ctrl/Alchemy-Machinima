@@ -36,12 +36,14 @@
 #include "llfloater.h"
 #include "lluuid.h" // [UIPerfC1] mSelLightLastId
 #include "alscrollfit.h" // [ScrollFit] mScrollFit (per-instance wheel guard + focus tracker)
+#include "aluirefresh.h"
 #include <string>
 
 class LLButton;
 class LLCheckBoxCtrl;
 class LLColorSwatchCtrl;
 class LLComboBox;
+class LLPanel;
 class LLSliderCtrl;
 class LLTextBox;
 
@@ -70,8 +72,8 @@ public:
     // [BDMerge G3.3 Batch 3] Selected Light quick panel: live per-projector
     // controls that follow the currently-selected object.
     void updateSelectedLightPanel();
-    // [UIPerf] Selected Light widgets, resolved once (lazily, while the tab's
-    // widgets are still absent) instead of 13 findChild-by-name per frame.
+    // [UIPerf] Selected Light widgets, resolved once in postBuild instead of
+    // findChild-by-name work from draw().
     struct SelLightWidgets
     {
         LLCheckBoxCtrl*    cast_cb = nullptr;
@@ -90,6 +92,7 @@ public:
         LLSliderCtrl*      gobo_soft = nullptr;
         LLCheckBoxCtrl*    gobo_invert = nullptr;
     } mSelLight;
+    LLPanel* mSelLightPage = nullptr;
     // [UIPerfC1] identity of what the Selected Light mirror last showed. A change
     // (different object, or projector <-> non-projector) forces every mirror write
     // past the focus guard so a newly selected light can never show stale state.
@@ -108,6 +111,9 @@ public:
         LLTextBox*  tr_grid_origin_status = nullptr; // optional
         LLTextBox*  sd_effective_splits = nullptr;   // optional
     } mTick;
+    ALLiveReadoutClock mProbeStatusClock{4.f};
+    ALLiveReadoutClock mStatsClock{1.f};
+    bool mJointComboFilled = false;
     void onSelLightCastShadows();
     void onSelLightVolumetric();
     void onSelLightCaptureOverride();

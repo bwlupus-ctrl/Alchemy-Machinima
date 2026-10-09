@@ -25,6 +25,7 @@
 #define AL_ALPANELFLYCAMRECORDER_H
 
 #include "llpanel.h"
+#include "aluirefresh.h"
 
 #include <boost/signals2/connection.hpp>
 
@@ -70,6 +71,7 @@ private:
     LLComboBox*   mWeightedPreset = nullptr;
     LLUICtrl*     mWeightedWeight = nullptr;
     U64           mDronePresetRevision = 0;
+    ALLiveReadoutClock mScrubClock{10.f};
     boost::signals2::scoped_connection mFlightModelConnection;
 };
 

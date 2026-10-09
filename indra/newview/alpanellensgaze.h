@@ -11,10 +11,13 @@
 #define AL_ALPANELLENSGAZE_H
 
 #include "llpanel.h"
+#include "aluirefresh.h"
 #include "lluuid.h"
 
 #include <map>
 #include <string>
+#include <vector>
+#include <boost/signals2.hpp>
 
 class LLButton;
 class LLCheckBoxCtrl;
@@ -36,10 +39,11 @@ public:
 
     bool postBuild() override;
     void draw() override;
+    void onVisibilityChange(bool new_visibility) override;
 
     // Commits address every selected actor. Empty selection deliberately means
     // the agent avatar; refresh presents the first selected actor's state.
-    void setSelectedActors(const uuid_vec_t& ids) { mSelected = ids; }
+    void setSelectedActors(const uuid_vec_t& ids);
 
 private:
     LLUUID slotActor(S32 slot_index) const;
@@ -54,6 +58,7 @@ private:
     void refreshCastCombo();
     void refreshEditActorCombo();
     void refreshControls();
+    void refreshLiveControls();
     // Random-performance cycling (DirectorGazeRandomMode) lives in the
     // file-static gazeRandomPerfTick() in the .cpp, driven by a persistent idle
     // callback registered from the ctor, so it keeps running with the floater
@@ -120,7 +125,9 @@ private:
     // Editing scope: true broadcasts edit rows to every populated actor; false
     // edits only the mActiveSlot actor (You / A-D).
     bool mEditAll = false;
-    std::string mCastSignature;
+    U64 mCastComboRevision = 0;
+    LLUUID mCastComboActor;
+    LLUUID mCastComboSelection;
     std::string mEditActorSignature;
 
     LLTextBox* mStatus = nullptr;
@@ -213,6 +220,11 @@ private:
     LLComboBox* mMode = nullptr;
     LLButton* mGazeCues = nullptr;
     bool mEditingEyeTarget = false;
+    U64 mSelectionRevision = 1;
+    U64 mSettingsRevision = 1;
+    ALRevisionGate mStructureGate;
+    ALLiveReadoutClock mLiveClock{10.f};
+    std::vector<boost::signals2::scoped_connection> mSettingConnections;
 };
 
 #endif // AL_ALPANELLENSGAZE_H

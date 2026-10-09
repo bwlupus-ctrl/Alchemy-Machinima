@@ -866,6 +866,7 @@ void ALPanelDanceBall::refreshHeader(const ALDanceBall& ball)
 
 void ALPanelDanceBall::rebuildDancerList(const ALDanceBall& ball)
 {
+    LL_PROFILE_ZONE_NAMED_CATEGORY_UI("DanceBall rebuildDancerList");
     mRefreshing = true;
     std::vector<LLUUID> selected;
     for (LLScrollListItem* item : mDancerList->getAllSelected())
@@ -912,6 +913,7 @@ void ALPanelDanceBall::rebuildDancerList(const ALDanceBall& ball)
 
 void ALPanelDanceBall::updateDancerCells(const ALDanceBall& ball)
 {
+    LL_PROFILE_ZONE_NAMED_CATEGORY_UI("DanceBall updateDancerCells");
     const std::vector<ALDanceBall::Dancer>& roster = ball.roster();
     if (mDancerList->getItemCount() != static_cast<S32>(roster.size()))
     {
@@ -1398,6 +1400,7 @@ void ALPanelDanceBall::rebuildBlockingList(const ALDanceBall& ball)
 
 void ALPanelDanceBall::updateBlockingCells(const ALDanceBall& ball)
 {
+    LL_PROFILE_ZONE_NAMED_CATEGORY_UI("DanceBall blocking");
     S32 row_index = 0;
     for (const ALDanceBall::Dancer& dancer : ball.roster())
     {

@@ -91,6 +91,8 @@ private:
     bool mLastArmed = false;
     bool mHaveProgramSnapshot = false;
     bool mRefreshing = false;
+    bool mBankDirty = true;
+    boost::signals2::scoped_connection mBankConnection;
     boost::signals2::scoped_connection mEaseCurveConnection;
     boost::signals2::scoped_connection mFreezeCurveConnection;
 };

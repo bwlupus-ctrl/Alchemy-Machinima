@@ -307,6 +307,7 @@ public:
     void                     setGazeInfluenceKeys(const LLUUID& id, const GazeInfluenceKeyList& keys);
     const GazeInfluenceKeyList& getGazeInfluenceKeys(const LLUUID& id) const;
     U64                      getGazeCueRevision() const { return mGazeCueRevision; }
+    U64                      getGazeConfigRevision() const { return mGazeConfigRevision; }
 
     // Pure track evaluation. Empty lists (and times before the first cue)
     // return mHasOverride=false; callers then retain their live-target path.
@@ -460,6 +461,7 @@ private:
     GazeInfluenceKeyList mSelfGazeInfluenceKeys;
     ActorStyle mSelfActorStyle;
     U64 mGazeCueRevision = 0;
+    U64 mGazeConfigRevision = 1;
     U64 mCastRevision = 1;      // [GhostPanelPerf] membership + cached names
 
     // transport state: what THIS action() run started, so cut() undoes

@@ -126,6 +126,7 @@ private:
     bool                         mIdleStatePending = true;
     bool                         mIdleEditorsPending = true;
     bool                         mSliderDragging = false;   // a slider has mouse capture: never reset it from a refresh
+    bool                         mIdleRegistered = false;
     U64                          mSeenClipRevision = 0;
     static bool                  mHaveClip;
     static U64                   mClipRevision;

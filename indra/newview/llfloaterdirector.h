@@ -214,6 +214,10 @@ private:
     std::vector<std::pair<LLPanel*, LLTabContainer*>> mGroups;
     // [DirFix] D1: wrap + auto-fit + focus-reveal + wheel rule for every tab (incl. nested)
     ALScrollFit::Controller mScrollFit;
+    LLPanel*        mDancePage = nullptr;
+    LLView*         mDancePanelView = nullptr;
+    LLPanel*        mExposurePage = nullptr;
+    LLView*         mExposurePanelView = nullptr;
     // [DirFix] D8: set on tab change / open; the hidden-tab-gated refreshers (Actor FX,
     // Animate) discard their "last written" caches the first visible pass after it
     bool            mActorStyleTabDirty = true;

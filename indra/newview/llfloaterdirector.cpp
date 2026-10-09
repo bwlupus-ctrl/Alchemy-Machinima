@@ -709,10 +709,12 @@ bool LLFloaterDirector::postBuild()
     mScrollFit.setUnwrappedPages({"cast_group", "performance_group", "camera_group", "lens_group",
         "light_group", "look_group", "world_group", "capture_group", "dance_tab", "exposure_tab"});
     mScrollFit.installForTabs(mTabContainer, this);
-    ALScrollFit::fillPage(findChild<LLPanel>("dance_tab"),
-                          findChild<LLView>("director_dance_ball_panel"), 30);
-    ALScrollFit::fillPage(findChild<LLPanel>("exposure_tab"),
-                          findChild<LLView>("director_exposure_panel"), 30);
+    mDancePage = findChild<LLPanel>("dance_tab");
+    mDancePanelView = findChild<LLView>("director_dance_ball_panel");
+    mExposurePage = findChild<LLPanel>("exposure_tab");
+    mExposurePanelView = findChild<LLView>("director_exposure_panel");
+    ALScrollFit::fillPage(mDancePage, mDancePanelView, 30);
+    ALScrollFit::fillPage(mExposurePage, mExposurePanelView, 30);
 
     const F32 build_ms = mBuildTimer.getElapsedTimeF32() * 1000.f;
     LL_INFOS("Director") << "Director build " << build_ms << " ms "
@@ -723,6 +725,7 @@ bool LLFloaterDirector::postBuild()
 
 void LLFloaterDirector::onOpen(const LLSD& key)
 {
+    LL_PROFILE_ZONE_NAMED_CATEGORY_UI("Director onOpen");
     mLauncherClock.forceDue();
     // pick up scenes saved by an earlier session without losing the current
     // combo selection
@@ -737,6 +740,9 @@ void LLFloaterDirector::onOpen(const LLSD& key)
     // LLFloater::onOpen below must always run.
     if (mTabContainer)
     {
+        // Restore both tab levels without fitting each commit separately;
+        // once the leaf is known, fit exactly that newly visible page.
+        mScrollFit.setCommitFitEnabled(false);
         const std::string name = migrate_tab_name(gSavedSettings.getString("DirectorLastTabName"));
         bool restored = !name.empty() && selectLeafTab(name);
         if (!restored)
@@ -745,6 +751,8 @@ void LLFloaterDirector::onOpen(const LLSD& key)
             restored = selectLeafTab(migrate_tab_name(OLD_FLAT_TABS[last]));
         }
         if (!restored) selectLeafTab("move_tab");
+        mScrollFit.setCommitFitEnabled(true);
+        mScrollFit.fitPage(currentLeafPanel());
         if (LLPanel* leaf = currentLeafPanel())
             gSavedSettings.setString("DirectorLastTabName", leaf->getName());
 
@@ -755,13 +763,10 @@ void LLFloaterDirector::onOpen(const LLSD& key)
         mAnimateTabDirty = true;
         mGroupsTabDirty = true;
 
-        // [DirFix] D1: re-fit every tab document with the controller's recorded minimums
-        // (cheap, idempotent) so the open frame is already sized from content.
-        mScrollFit.fit(this, mTabContainer);
-        ALScrollFit::fillPage(findChild<LLPanel>("dance_tab"),
-                              findChild<LLView>("director_dance_ball_panel"), 30);
-        ALScrollFit::fillPage(findChild<LLPanel>("exposure_tab"),
-                              findChild<LLView>("director_exposure_panel"), 30);
+        // The tab commits above refit only the newly visible pages. Keep the
+        // two opt-in unwrapped shared panels filled without another tree fit.
+        ALScrollFit::fillPage(mDancePage, mDancePanelView, 30);
+        ALScrollFit::fillPage(mExposurePage, mExposurePanelView, 30);
     }
 
     const uuid_vec_t selected = selectedCastIds();
@@ -817,6 +822,7 @@ bool LLFloaterDirector::selectLeafTab(const std::string& name)
 
 void LLFloaterDirector::onTabChanged()
 {
+    LL_PROFILE_ZONE_NAMED_CATEGORY_UI("Director onTabChanged");
     mLauncherClock.forceDue(); // newly shown launcher summaries fill in on the next draw
     if (mTabContainer)
     {

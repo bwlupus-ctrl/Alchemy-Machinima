@@ -249,6 +249,30 @@ bool ALFloaterLightBox::postBuild()
     mTronTrailFogConnection = gSavedSettings.getControl("TronTrailFog")->getSignal()->connect([&](LLControlVariable*, const LLSD&, const LLSD&) { updateTronVisibility(); });
     mTronTrailTargetSetConnection = gSavedSettings.getControl("TronTrailTargetSet")->getSignal()->connect([&](LLControlVariable*, const LLSD&, const LLSD&) { updateTronVisibility(); });
 
+    // Resolve draw-path widgets once. All Lightbox tabs are eagerly built.
+    mTick.probe_status = findChild<LLTextBox>("probe_refresh_status");
+    mTick.bd_joint_combo = getChild<LLComboBox>("bd_joint_combo");
+    mTick.bd_texpool_stats = getChild<LLTextBox>("bd_texpool_stats");
+    mTick.bd_meshpool_stats = getChild<LLTextBox>("bd_meshpool_stats");
+    mTick.tr_grid_origin_status = findChild<LLTextBox>("tr_grid_origin_status");
+    mTick.sd_effective_splits = findChild<LLTextBox>("sd_effective_splits");
+
+    mSelLight.cast_cb = findChild<LLCheckBoxCtrl>("sl_cast_shadows");
+    mSelLight.vol_cb = findChild<LLCheckBoxCtrl>("sl_volumetric");
+    mSelLight.cap_btn = findChild<LLButton>("sl_capture");
+    mSelLight.clr_btn = findChild<LLButton>("sl_clear");
+    mSelLight.status = findChild<LLTextBox>("sl_status");
+    mSelLight.gobo_pattern = findChild<LLComboBox>("sl_gobo");
+    mSelLight.gobo_anim = findChild<LLComboBox>("sl_gobo_animmode");
+    mSelLight.gobo_speed = findChild<LLSliderCtrl>("sl_gobo_speed");
+    mSelLight.gobo_zoom = findChild<LLSliderCtrl>("sl_gobo_zoom");
+    mSelLight.gobo_dispersion = findChild<LLSliderCtrl>("sl_gobo_dispersion");
+    mSelLight.gobo_tint = findChild<LLColorSwatchCtrl>("sl_gobo_tint");
+    mSelLight.gobo_var1 = findChild<LLSliderCtrl>("sl_gobo_var1");
+    mSelLight.gobo_var2 = findChild<LLSliderCtrl>("sl_gobo_var2");
+    mSelLight.gobo_soft = findChild<LLSliderCtrl>("sl_gobo_soft");
+    mSelLight.gobo_invert = findChild<LLCheckBoxCtrl>("sl_gobo_invert");
+    mSelLightPage = findChild<LLPanel>("sellight_settings");
     return LLFloater::postBuild();
 }
 
@@ -287,102 +311,96 @@ void ALFloaterLightBox::draw()
     // [ProbeOnDemand] Refresh-all readout, at most 4 Hz; the manager holds a
     // terminal text for 10 s. findChild-guarded so it is a no-op until the
     // Rendering tab's widgets exist.
-    static LLFrameTimer probe_status_timer;
-    if (probe_status_timer.getElapsedTimeF32() > 0.25f)
+    if (mProbeStatusClock.due() && isWidgetOnScreen(mTick.probe_status))
     {
-        probe_status_timer.reset();
-        // [UIPerfC1] cached once found (optional: stays null until the tab exists)
-        if (!mTick.probe_status)
-        {
-            mTick.probe_status = findChild<LLTextBox>("probe_refresh_status");
-        }
+        LL_PROFILE_ZONE_NAMED_CATEGORY_UI("Lightbox 4Hz probe status");
         if (LLTextBox* probe_status = mTick.probe_status)
         {
-            probe_status->setValue(gPipeline.mReflectionMapManager.getRefreshAllStatus());
+            setTextIfChanged(probe_status,
+                gPipeline.mReflectionMapManager.getRefreshAllStatus());
         }
     }
 
     // [BDMerge B-2b.3] live RAM-pool readouts on the Machinima tab
-    static LLFrameTimer pool_stats_timer;
-    if (pool_stats_timer.getElapsedTimeF32() > 1.f)
+    if (mStatsClock.due())
     {
-        pool_stats_timer.reset();
+        const bool stats_visible = isWidgetOnScreen(mTick.bd_joint_combo) ||
+            isWidgetOnScreen(mTick.bd_texpool_stats) ||
+            isWidgetOnScreen(mTick.bd_meshpool_stats) ||
+            isWidgetOnScreen(mTick.tr_grid_origin_status) ||
+            isWidgetOnScreen(mTick.sd_effective_splits);
+        if (stats_visible)
+        {
+            LL_PROFILE_ZONE_NAMED_CATEGORY_UI("Lightbox 1Hz stats");
 
-        // [BDMerge B6] BD Bone Camera joint dropdown - donor fill code
-        // (BD 9682ff208e), populated lazily once the avatar skeleton exists
-        // [UIPerfC1] required widgets (getChild semantics), resolved once and cached
-        if (!mTick.bd_joint_combo)
-        {
-            mTick.bd_joint_combo = getChild<LLComboBox>("bd_joint_combo");
-        }
-        LLComboBox* joint_combo = mTick.bd_joint_combo;
-        if (joint_combo->getItemCount() <= 1 && isAgentAvatarValid())
-        {
-            S32 current = gSavedSettings.getS32("CameraFollowJoint");
-            joint_combo->clear();
-            joint_combo->add("None", -1);
-            for (auto joint : gAgentAvatarp->getSkeleton())
+            // [BDMerge B6] BD Bone Camera joint dropdown - donor fill code
+            // (BD 9682ff208e), populated lazily once the avatar skeleton exists
+            // [UIPerfC1] required widgets (getChild semantics), resolved once and cached
+            LLComboBox* joint_combo = mTick.bd_joint_combo;
+            if (!mJointComboFilled && isWidgetOnScreen(joint_combo) &&
+                isAgentAvatarValid())
             {
-                if (joint)
+                static LLCachedControl<S32> camera_follow_joint(
+                    gSavedSettings, "CameraFollowJoint", -1);
+                const S32 current = camera_follow_joint;
+                joint_combo->clear();
+                joint_combo->add("None", -1);
+                for (auto joint : gAgentAvatarp->getSkeleton())
                 {
-                    joint_combo->add(joint->getName(), joint->mJointNum);
+                    if (joint)
+                    {
+                        joint_combo->add(joint->getName(), joint->mJointNum);
+                    }
                 }
+                joint_combo->setSelectedByValue(current, true);
+                mJointComboFilled = joint_combo->getItemCount() > 1;
             }
-            joint_combo->setSelectedByValue(current, true);
-        }
-        if (!mTick.bd_texpool_stats)
-        {
-            mTick.bd_texpool_stats = getChild<LLTextBox>("bd_texpool_stats");
-        }
-        if (!mTick.bd_meshpool_stats)
-        {
-            mTick.bd_meshpool_stats = getChild<LLTextBox>("bd_meshpool_stats");
-        }
-        mTick.bd_texpool_stats->setValue("Textures: " + BDMergeTexPool::shortStatus());
-        mTick.bd_meshpool_stats->setValue("Meshes: " + BDMergeMeshPool::shortStatus());
+            if (isWidgetOnScreen(mTick.bd_texpool_stats))
+                setTextIfChanged(mTick.bd_texpool_stats,
+                    "Textures: " + BDMergeTexPool::shortStatus());
+            if (isWidgetOnScreen(mTick.bd_meshpool_stats))
+                setTextIfChanged(mTick.bd_meshpool_stats,
+                    "Meshes: " + BDMergeMeshPool::shortStatus());
 
-        // [TronT1] Read-only origin readout (TronGridOriginGlobal); throttled
-        // on the same 1 s timer as the pool stats above, findChild-guarded so
-        // it's a no-op before the Tron tab's widgets are ever built.
-        if (!mTick.tr_grid_origin_status) // [UIPerfC1] optional, cached once found
-        {
-            mTick.tr_grid_origin_status = findChild<LLTextBox>("tr_grid_origin_status");
-        }
-        if (LLTextBox* origin_status = mTick.tr_grid_origin_status)
-        {
-            const LLVector3d origin = gSavedSettings.getVector3d("TronGridOriginGlobal");
-            origin_status->setValue(llformat("Origin: (%.1f, %.1f, %.1f)",
-                origin.mdV[VX], origin.mdV[VY], origin.mdV[VZ]));
-        }
-
-        // [ShadowDist P1] Read-only effective sun-cascade split distances (the
-        // planes the main maps were actually built from, after the Sharp
-        // shadow range override and the far-clip clamp) -- design v2 s2.2.
-        // Same 1 s throttle; findChild-guarded.
-        if (!mTick.sd_effective_splits) // [UIPerfC1] optional, cached once found
-        {
-            mTick.sd_effective_splits = findChild<LLTextBox>("sd_effective_splits");
-        }
-        if (LLTextBox* splits_status = mTick.sd_effective_splits)
-        {
-            // [ShadowDist P1 fix] no fitted maps yet (reset, sun shadows off)
-            // -> the meta holds placeholder planes; don't present them as real.
-            if (gPipeline.mMainRT.shadowMeta.validCascades == 0)
+            // [TronT1] Read-only origin readout (TronGridOriginGlobal); throttled
+            // on the same 1 s timer as the pool stats above, findChild-guarded so
+            // it's a no-op before the Tron tab's widgets are ever built.
+            if (LLTextBox* origin_status = isWidgetOnScreen(mTick.tr_grid_origin_status)
+                    ? mTick.tr_grid_origin_status : nullptr)
             {
-                splits_status->setValue(std::string("Effective cascade splits: -"));
+                static LLCachedControl<LLVector3d> origin_control(
+                    gSavedSettings, "TronGridOriginGlobal", LLVector3d::zero);
+                const LLVector3d origin = origin_control;
+                setTextIfChanged(origin_status, llformat("Origin: (%.1f, %.1f, %.1f)",
+                    origin.mdV[VX], origin.mdV[VY], origin.mdV[VZ]));
             }
-            else
+
+            // [ShadowDist P1] Read-only effective sun-cascade split distances (the
+            // planes the main maps were actually built from, after the Sharp
+            // shadow range override and the far-clip clamp) -- design v2 s2.2.
+            // Same 1 s throttle; findChild-guarded.
+            if (LLTextBox* splits_status = isWidgetOnScreen(mTick.sd_effective_splits)
+                    ? mTick.sd_effective_splits : nullptr)
             {
-                const LLVector4& c = gPipeline.mMainRT.shadowMeta.clip;
-                if (gPipeline.mMainRT.shadowMeta.subject)
-                {   // [ShadowDist P3 fix] cascade 0 is the subject column, not a camera slice
-                    splits_status->setValue(llformat("Effective cascade splits: column / %.1f / %.1f / %.1f m",
-                        c.mV[1], c.mV[2], c.mV[3]));
+                // [ShadowDist P1 fix] no fitted maps yet (reset, sun shadows off)
+                // -> the meta holds placeholder planes; don't present them as real.
+                if (gPipeline.mMainRT.shadowMeta.validCascades == 0)
+                {
+                    setTextIfChanged(splits_status, "Effective cascade splits: -");
                 }
                 else
                 {
-                    splits_status->setValue(llformat("Effective cascade splits: %.1f / %.1f / %.1f / %.1f m",
-                        c.mV[0], c.mV[1], c.mV[2], c.mV[3]));
+                    const LLVector4& c = gPipeline.mMainRT.shadowMeta.clip;
+                    if (gPipeline.mMainRT.shadowMeta.subject)
+                    {   // [ShadowDist P3 fix] cascade 0 is the subject column, not a camera slice
+                        setTextIfChanged(splits_status, llformat("Effective cascade splits: column / %.1f / %.1f / %.1f m",
+                            c.mV[1], c.mV[2], c.mV[3]));
+                    }
+                    else
+                    {
+                        setTextIfChanged(splits_status, llformat("Effective cascade splits: %.1f / %.1f / %.1f / %.1f m",
+                            c.mV[0], c.mV[1], c.mV[2], c.mV[3]));
+                    }
                 }
             }
         }
@@ -399,27 +417,10 @@ void ALFloaterLightBox::draw()
 // read from gPipeline's in-memory sets - nothing here is persisted.
 void ALFloaterLightBox::updateSelectedLightPanel()
 {
-    // [UIPerf] Look the widgets up by name only while the tab's anchor widget
-    // is still missing; once found, every later frame uses the cached pointers.
-    if (!mSelLight.cast_cb)
+    LL_PROFILE_ZONE_NAMED_CATEGORY_UI("Lightbox updateSelectedLightPanel");
+    if (!isWidgetOnScreen(mSelLightPage))
     {
-        mSelLight.cast_cb = findChild<LLCheckBoxCtrl>("sl_cast_shadows");
-        if (!mSelLight.cast_cb) // tab/widgets not built yet
-            return;
-        mSelLight.vol_cb  = findChild<LLCheckBoxCtrl>("sl_volumetric");
-        mSelLight.cap_btn = findChild<LLButton>("sl_capture");
-        mSelLight.clr_btn = findChild<LLButton>("sl_clear");
-        mSelLight.status  = findChild<LLTextBox>("sl_status");
-        mSelLight.gobo_pattern = findChild<LLComboBox>("sl_gobo");
-        mSelLight.gobo_anim = findChild<LLComboBox>("sl_gobo_animmode");
-        mSelLight.gobo_speed = findChild<LLSliderCtrl>("sl_gobo_speed");
-        mSelLight.gobo_zoom = findChild<LLSliderCtrl>("sl_gobo_zoom");
-        mSelLight.gobo_dispersion = findChild<LLSliderCtrl>("sl_gobo_dispersion");
-        mSelLight.gobo_tint = findChild<LLColorSwatchCtrl>("sl_gobo_tint");
-        mSelLight.gobo_var1 = findChild<LLSliderCtrl>("sl_gobo_var1");
-        mSelLight.gobo_var2 = findChild<LLSliderCtrl>("sl_gobo_var2");
-        mSelLight.gobo_soft = findChild<LLSliderCtrl>("sl_gobo_soft");
-        mSelLight.gobo_invert = findChild<LLCheckBoxCtrl>("sl_gobo_invert");
+        return;
     }
     LLCheckBoxCtrl* cast_cb = mSelLight.cast_cb;
     LLCheckBoxCtrl* vol_cb  = mSelLight.vol_cb;
@@ -481,9 +482,10 @@ void ALFloaterLightBox::updateSelectedLightPanel()
         setValueIfChanged(gobo_speed, LLSD((F64)gobo.mSpeed), force_ctrl);
         setValueIfChanged(gobo_zoom, LLSD((F64)gobo.mZoom), force_ctrl);
         setValueIfChanged(gobo_dispersion, LLSD((F64)gobo.mDispersion), force_ctrl);
-        // [UIPerfC1] swatch left as the original per-frame write: LLColorSwatchCtrl::set also
-        // refreshes mPrevColor and the open colour picker, which a value compare would skip.
-        if (gobo_tint) gobo_tint->set(LLColor4(gobo.mTint), TRUE);
+        // Refresh the swatch (and an open picker) only when the model colour changes.
+        const LLColor4 tint(gobo.mTint);
+        if (gobo_tint && gobo_tint->get() != tint)
+            gobo_tint->set(tint, TRUE);
         setValueIfChanged(gobo_var1, LLSD((F64)gobo.mPatternParams.mV[0]), force_ctrl);
         setValueIfChanged(gobo_var2, LLSD((F64)gobo.mPatternParams.mV[1]), force_ctrl);
         setValueIfChanged(gobo_soft, LLSD((F64)gobo.mPatternParams.mV[2]), force_ctrl);
