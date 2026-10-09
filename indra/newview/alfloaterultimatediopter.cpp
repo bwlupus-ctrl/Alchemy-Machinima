@@ -14,6 +14,7 @@
 
 #include "aldiopterpresetbank.h" // ALScopedPresetMaterializing, AL_EXIT_AUTO_AFTER_EDIT (CR2-2)
 #include "altoolfocuspick.h"     // Phase 4 -- the eyedropper
+#include "llagent.h"
 #include "llbutton.h"
 #include "llcallbacklist.h"
 #include "llcombobox.h"
@@ -246,16 +247,18 @@ const LLColor4 RESET_NON_DEFAULT_TINT(0.95f, 0.75f, 0.25f, 1.f);
 // would mean editing renderDoF/renderUltimateDiopter/alKaleidoFocusUV's own
 // bodies, and pipeline.cpp/.h are not in this wave's named Phase 4 file
 // list. Flagged as deferred cleanup in the wave-4 handoff, the same
-// local-helper judgment used for the UI tooltip helpers. Must stay
-// byte-for-byte identical to pipeline.cpp's three copies (RenderDepthOfField,
+// local-helper judgment used for the UI tooltip helpers. Must stay logically
+// identical to pipeline.cpp's three copies (RenderDepthOfField,
 // RenderDepthOfFieldInEditMode, LLToolMgr::inBuildMode(), sLastFocusPoint).
 bool alDiopterUiDofFocusLive()
 {
     static LLCachedControl<bool> dof_in_edit_mode(
         gSavedSettings, "RenderDepthOfFieldInEditMode", false);
+    // Same conjunction as pipeline.cpp; the focus-point term is tested before
+    // inBuildMode() so the login screen (no focus point yet) never queries tools.
     return LLPipeline::RenderDepthOfField &&
-           (dof_in_edit_mode || !LLToolMgr::getInstance()->inBuildMode()) &&
-           !LLPipeline::sLastFocusPoint.isExactlyZero();
+           !LLPipeline::sLastFocusPoint.isExactlyZero() &&
+           (dof_in_edit_mode || !LLToolMgr::getInstance()->inBuildMode());
 }
 
 } // namespace

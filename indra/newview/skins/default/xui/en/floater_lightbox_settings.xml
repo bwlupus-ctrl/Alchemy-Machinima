@@ -7,6 +7,7 @@
 	min_width="420"
 	name="floater_lightbox_settings"
 	positioning="cascading"
+	single_instance="true"
 	title="Lightbox"
 	save_rect="true"
 	can_resize="true"

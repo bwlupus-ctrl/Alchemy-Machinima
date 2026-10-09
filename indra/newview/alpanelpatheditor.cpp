@@ -1285,6 +1285,12 @@ void ALPanelPathEditor::exitEditMode()
     {
         setValueIfChanged(mEditModeCheck, LLSD(false), true); // [DirFix]
     }
+    // LLToolMgr::initTools() runs only after login. A panel hidden by the
+    // login-screen UI self-test cannot own a path tool that was never created.
+    if (!ALToolPathEdit::instanceExists())
+    {
+        return;
+    }
     LLToolMgr* tm = LLToolMgr::getInstance();
     ALToolPathEdit* tool = ALToolPathEdit::getInstance();
     if (tool->endSessionFor(mEditOwner)) // [DirFix] release only our session

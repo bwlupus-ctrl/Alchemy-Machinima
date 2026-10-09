@@ -372,7 +372,10 @@ void ALPanelAvatarLightResponse::collectRows(std::vector<LLUUID>& order,
 
     // Residents in draw distance
     uuid_vec_t resident_ids;
-    LLWorld::getInstance()->getAvatars(&resident_ids);
+    if (LLWorld::instanceExists())
+    {
+        LLWorld::getInstance()->getAvatars(&resident_ids);
+    }
     for (const LLUUID& id : resident_ids)
     {
         if (id != gAgentID)

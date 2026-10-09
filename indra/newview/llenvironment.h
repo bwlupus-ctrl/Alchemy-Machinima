@@ -134,7 +134,11 @@ public:
     bool                        canAgentUpdateParcelEnvironment(LLParcel *parcel) const;
     bool                        canAgentUpdateRegionEnvironment() const;
 
-    LLSettingsDay::ptr_t        getCurrentDay() const { return mCurrentEnvironment->getDayCycle(); }
+    LLSettingsDay::ptr_t        getCurrentDay() const
+    {
+        return mCurrentEnvironment ? mCurrentEnvironment->getDayCycle()
+                                   : LLSettingsDay::ptr_t();
+    }
     LLSettingsSky::ptr_t        getCurrentSky() const;
     LLSettingsWater::ptr_t      getCurrentWater() const;
 

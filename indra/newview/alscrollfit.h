@@ -17,7 +17,8 @@
  *     // member:  ALScrollFit::Controller mScrollFit;
  *     // postBuild(), once the XML tree exists:
  *     mScrollFit.installForTabs(findChild<LLTabContainer>("tabs"), this);
- *     // onOpen(): mScrollFit.fit(this, tabs);                 (cheap, idempotent)
+ *     // onOpen(): mScrollFit.fitPage(tabs->getCurrentPanel()); (visible page only;
+ *     //           tab commits refit each page they reveal)
  *     // [SliderWheel] no wheel overrides: the scroll-through guard is global in llui.
  *
  * installForTabs does, in this order: wrap every tab without a DIRECT-child scroller
@@ -117,8 +118,8 @@ void collectTabContainerTree(LLTabContainer* tabs, std::vector<LLTabContainer*>&
 // at postBuild/onOpen/tab change.
 void fitAll(LLView* root, LLTabContainer* tabs, const StretcherMins* mins = nullptr);
 
-// Refit only the newly visible tab page. This is the tab-commit fast path;
-// install/open still use fitAll so initially hidden pages retain identical sizing.
+// Refit only the newly visible tab page. This is the tab-commit and onOpen fast path;
+// install (postBuild) still uses fitAll so initially hidden pages retain identical sizing.
 void fitPage(LLView* page, const StretcherMins* mins = nullptr);
 
 // Sizes a direct child to fill the usable area of an unwrapped tab page. The

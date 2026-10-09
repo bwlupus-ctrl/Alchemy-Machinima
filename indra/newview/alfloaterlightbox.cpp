@@ -286,7 +286,18 @@ void ALFloaterLightBox::fitScrollContent()
 void ALFloaterLightBox::onOpen(const LLSD& key)
 {
     LLFloater::onOpen(key);
-    fitScrollContent();
+    // Fit only the visible page: postBuild's installForTabs fitted every page once and
+    // each tab commit refits the page it reveals, so a whole-tree fitAll on every open
+    // (~84 ms measured by the UI self-test) only redid hidden pages.
+    LLTabContainer* tabs = findChild<LLTabContainer>("lightbox_tab_container");
+    if (LLPanel* page = tabs ? tabs->getCurrentPanel() : nullptr)
+    {
+        mScrollFit.fitPage(page);
+    }
+    else
+    {
+        fitScrollContent();
+    }
 }
 
 void ALFloaterLightBox::showTab(const std::string& tab_panel_name)

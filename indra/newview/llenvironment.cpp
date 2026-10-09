@@ -937,13 +937,18 @@ bool LLEnvironment::canEdit() const
 
 LLSettingsSky::ptr_t LLEnvironment::getCurrentSky() const
 {
+    // Null before the environment is set up (e.g. a floater opened at the login screen).
+    if (!mCurrentEnvironment)
+    {
+        return LLSettingsSky::ptr_t();
+    }
     LLSettingsSky::ptr_t psky = mCurrentEnvironment->getSky();
 
     if (!psky && mCurrentEnvironment->getEnvironmentSelection() >= ENV_EDIT)
     {
         for (int idx = 0; idx < ENV_END; ++idx)
         {
-            if (mEnvironments[idx]->getSky())
+            if (mEnvironments[idx] && mEnvironments[idx]->getSky())
             {
                 psky = mEnvironments[idx]->getSky();
                 break;
@@ -955,13 +960,17 @@ LLSettingsSky::ptr_t LLEnvironment::getCurrentSky() const
 
 LLSettingsWater::ptr_t LLEnvironment::getCurrentWater() const
 {
+    if (!mCurrentEnvironment)
+    {
+        return LLSettingsWater::ptr_t();
+    }
     LLSettingsWater::ptr_t pwater = mCurrentEnvironment->getWater();
 
     if (!pwater && mCurrentEnvironment->getEnvironmentSelection() >= ENV_EDIT)
     {
         for (int idx = 0; idx < ENV_END; ++idx)
         {
-            if (mEnvironments[idx]->getWater())
+            if (mEnvironments[idx] && mEnvironments[idx]->getWater())
             {
                 pwater = mEnvironments[idx]->getWater();
                 break;
@@ -1543,7 +1552,8 @@ LLVector4 LLEnvironment::toLightNorm(const LLVector3 vec) const
 
 LLVector3 LLEnvironment::getLightDirection() const
 {
-    LLSettingsSky::ptr_t psky = mCurrentEnvironment->getSky();
+    LLSettingsSky::ptr_t psky = mCurrentEnvironment
+        ? mCurrentEnvironment->getSky() : LLSettingsSky::ptr_t();
     if (!psky)
     {
         return LLVector3(0, 0, 1);
@@ -1553,7 +1563,8 @@ LLVector3 LLEnvironment::getLightDirection() const
 
 LLVector3 LLEnvironment::getSunDirection() const
 {
-    LLSettingsSky::ptr_t psky = mCurrentEnvironment->getSky();
+    LLSettingsSky::ptr_t psky = mCurrentEnvironment
+        ? mCurrentEnvironment->getSky() : LLSettingsSky::ptr_t();
     if (!psky)
     {
         return LLVector3(0, 0, 1);
@@ -1563,7 +1574,8 @@ LLVector3 LLEnvironment::getSunDirection() const
 
 LLVector3 LLEnvironment::getMoonDirection() const
 {
-    LLSettingsSky::ptr_t psky = mCurrentEnvironment->getSky();
+    LLSettingsSky::ptr_t psky = mCurrentEnvironment
+        ? mCurrentEnvironment->getSky() : LLSettingsSky::ptr_t();
     if (!psky)
     {
         return LLVector3(0, 0, -1);

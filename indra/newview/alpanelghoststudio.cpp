@@ -936,9 +936,10 @@ void ALPanelGhostStudio::draw()
     // Edit mode is the tool's EXPLICIT state, NOT "ALToolGhostEdit is current":
     // once a ghost is selected the proxy hands off to the stock translate/rotate
     // tool, so the ghost tool is no longer current while editing continues.
-    ALToolGhostEdit* edit_tool = ALToolGhostEdit::getInstance();
+    ALToolGhostEdit* edit_tool = ALToolGhostEdit::instanceExists()
+        ? ALToolGhostEdit::getInstance() : nullptr;
     mEditMode =
-        edit_tool->isEditModeActive() &&
+        edit_tool && edit_tool->isEditModeActive() &&
         edit_tool->editOwner() == mPlacementOwner;
     setValueIfChanged(mEditModeCheck, LLSD(mEditMode), true);
     // hint line follows the mode (diffed; tells the hands what they can do)
@@ -2885,7 +2886,17 @@ void ALPanelGhostStudio::onToggleEditMode()
 
 void ALPanelGhostStudio::exitEditMode()
 {
-    ALToolGhostEdit* tool = ALToolGhostEdit::getInstance();
+    ALToolGhostEdit* tool = ALToolGhostEdit::instanceExists()
+        ? ALToolGhostEdit::getInstance() : nullptr;
+    if (!tool)
+    {
+        mEditMode = false;
+        if (mEditModeCheck)
+        {
+            mEditModeCheck->set(false);
+        }
+        return;
+    }
     const bool owns_edit = tool->editOwner() == mPlacementOwner;
     mEditMode = false;
     if (owns_edit)
