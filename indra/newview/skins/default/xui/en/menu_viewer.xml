@@ -83,134 +83,6 @@
          parameter="camera" />
       </menu_item_call>
       <menu_item_call
-       label="Cinematic Camera..."
-       name="cinematic_camera_item_call">
-        <menu_item_call.on_click
-         function="Floater.Toggle"
-         parameter="cinematic_camera" />
-      </menu_item_call>
-      <menu_item_call
-       label="Cinematic Light Rig..."
-       name="cine_light_rig_item_call">
-        <menu_item_call.on_click
-         function="Floater.Toggle"
-         parameter="cine_light_rig" />
-      </menu_item_call>
-      <menu_item_call
-       label="Flycam Recorder..."
-       name="flycam_recorder_item_call">
-        <menu_item_call.on_click
-         function="Floater.Toggle"
-         parameter="flycam_recorder" />
-      </menu_item_call>
-      <menu_item_call
-       label="Flycam Orbit..."
-       name="flycam_orbit_item_call">
-        <menu_item_call.on_click
-         function="Floater.Toggle"
-         parameter="flycam_orbit" />
-      </menu_item_call>
-      <menu_item_call
-       label="Actor Mover..."
-       name="actor_mover_item_call">
-        <menu_item_call.on_click
-         function="Floater.Toggle"
-         parameter="actor_mover" />
-      </menu_item_call>
-      <menu_item_call
-       label="Director Console..."
-       name="director_item_call">
-        <menu_item_call.on_click
-         function="Floater.Toggle"
-         parameter="director" />
-      </menu_item_call>
-      <menu_item_call
-       label="Virtual Cam..."
-       name="vcam_manager_item_call">
-        <menu_item_call.on_click
-         function="Floater.Toggle"
-         parameter="prism_manager" />
-      </menu_item_call>
-      <menu_item_call
-       label="Temporal Capture..."
-       name="temporal_capture_item_call">
-        <menu_item_call.on_click
-         function="Floater.Toggle"
-         parameter="temporal_capture" />
-      </menu_item_call>
-      <menu_item_call
-       label="Ghost Studio..."
-       name="ghost_studio_item_call">
-        <menu_item_call.on_click
-         function="Floater.Toggle"
-         parameter="ghost_studio" />
-      </menu_item_call>
-      <menu_item_call
-       label="Exposure..."
-       name="exposure_hub_item_call">
-        <menu_item_call.on_click
-         function="Floater.Toggle"
-         parameter="exposure_hub" />
-      </menu_item_call>
-      <menu_item_call
-       label="Dance Ball..."
-       name="dance_ball_item_call">
-        <menu_item_call.on_click
-         function="Floater.Toggle"
-         parameter="dance_ball" />
-      </menu_item_call>
-      <menu_item_call
-       label="Avatar Light Response..."
-       name="avatar_light_response_item_call">
-        <menu_item_call.on_click
-         function="Floater.Toggle"
-         parameter="avatar_light_response" />
-      </menu_item_call>
-      <menu_item_call
-       label="Prop Mover..."
-       name="prop_mover_item_call">
-        <menu_item_call.on_click
-         function="Floater.Toggle"
-         parameter="prop_mover" />
-      </menu_item_call>
-      <menu_item_call
-       label="Phototools..."
-       name="phototools_item_call">
-        <menu_item_call.on_click
-         function="Floater.Toggle"
-         parameter="phototools" />
-      </menu_item_call>
-      <menu_item_call
-       label="Ultimate Diopter..."
-       name="ultimate_diopter_item_call">
-        <menu_item_call.on_click
-         function="Floater.Toggle"
-         parameter="ultimate_diopter" />
-      </menu_item_call>
-      <menu_item_check
-       label="Depth of Field Focus lock"
-       layout="topleft"
-       shortcut="alt|shift|X"
-       name="lock_focus_point">
-        <menu_item_check.on_check
-         function="CheckControl"
-         parameter="RenderFocusPointLocked" />
-        <menu_item_check.on_click
-         function="ToggleControl"
-         parameter="RenderFocusPointLocked" />
-      </menu_item_check>
-      <menu_item_check
-       label="Draw DoF Focus crosshair"
-       layout="topleft"
-       name="render_focus_point">
-        <menu_item_check.on_check
-         function="CheckControl"
-         parameter="RenderFocusPointCrosshair" />
-        <menu_item_check.on_click
-         function="ToggleControl"
-         parameter="RenderFocusPointCrosshair" />
-      </menu_item_check>
-      <menu_item_call
        label="Notifications..."
        name="Notifications"
        shortcut="alt|shift|N">
@@ -327,6 +199,243 @@
             <menu_item_call.on_click
              function="File.Quit" />
         </menu_item_call>
+    </menu>
+    <menu
+     create_jump_keys="true"
+     label="Machinima"
+     name="Machinima"
+     tear_off="true">
+      <menu_item_call
+       label="Director Console..."
+       name="director_item_call"
+       shortcut="F2">
+        <menu_item_call.on_click
+         function="Floater.Toggle"
+         parameter="director" />
+      </menu_item_call>
+
+      <menu_item_separator/>
+
+      <menu_item_call
+       label="Actor Mover..."
+       name="actor_mover_item_call">
+        <menu_item_call.on_click
+         function="Floater.Toggle"
+         parameter="actor_mover" />
+      </menu_item_call>
+      <menu_item_call
+       label="Prop Mover..."
+       name="prop_mover_item_call">
+        <menu_item_call.on_click
+         function="Floater.Toggle"
+         parameter="prop_mover" />
+      </menu_item_call>
+      <menu_item_call
+       label="Ghost Studio..."
+       name="ghost_studio_item_call">
+        <menu_item_call.on_click
+         function="Floater.Toggle"
+         parameter="ghost_studio" />
+      </menu_item_call>
+      <menu_item_call
+       label="Dance Ball..."
+       name="dance_ball_item_call">
+        <menu_item_call.on_click
+         function="Floater.Toggle"
+         parameter="dance_ball" />
+      </menu_item_call>
+
+      <menu_item_separator/>
+
+      <menu_item_call
+       label="Actor Gaze..."
+       name="actor_gaze_item_call">
+        <menu_item_call.on_click
+         function="Floater.Toggle"
+         parameter="actor_gaze" />
+      </menu_item_call>
+      <menu_item_call
+       label="Gaze Cues..."
+       name="gaze_cues_item_call">
+        <menu_item_call.on_click
+         function="Floater.Toggle"
+         parameter="gaze_cues" />
+      </menu_item_call>
+      <menu_item_call
+       label="Pose Polish..."
+       name="pose_polish_item_call">
+        <menu_item_call.on_click
+         function="Floater.Toggle"
+         parameter="pose_polish" />
+      </menu_item_call>
+      <menu_item_check
+       label="Animation Explorer"
+       name="machinima_animation_explorer"
+       use_mac_ctrl="true">
+        <menu_item_check.on_check
+         function="Floater.Visible"
+         parameter="animation_explorer" />
+        <menu_item_check.on_click
+         function="Floater.Toggle"
+         parameter="animation_explorer" />
+      </menu_item_check>
+      <menu_item_check
+       label="Poser"
+       name="machinima_poser"
+       use_mac_ctrl="true">
+        <menu_item_check.on_check
+         function="Floater.Visible"
+         parameter="fs_poser" />
+        <menu_item_check.on_click
+         function="Floater.Toggle"
+         parameter="fs_poser" />
+      </menu_item_check>
+
+      <menu_item_separator/>
+
+      <menu_item_call
+       label="Cinematic Camera..."
+       name="cinematic_camera_item_call">
+        <menu_item_call.on_click
+         function="Floater.Toggle"
+         parameter="cinematic_camera" />
+      </menu_item_call>
+      <menu_item_call
+       label="Flycam Orbit..."
+       name="flycam_orbit_item_call">
+        <menu_item_call.on_click
+         function="Floater.Toggle"
+         parameter="flycam_orbit" />
+      </menu_item_call>
+      <menu_item_call
+       label="Flycam Recorder (Takes)..."
+       name="flycam_recorder_item_call">
+        <menu_item_call.on_click
+         function="Floater.Toggle"
+         parameter="flycam_recorder" />
+      </menu_item_call>
+      <menu_item_call
+       label="Flight Model &amp; Gamepad..."
+       name="flight_model_gamepad_item_call">
+        <menu_item_call.on_click
+         function="Floater.Toggle"
+         parameter="pref_joystick" />
+      </menu_item_call>
+
+      <menu_item_separator/>
+
+      <menu_item_call
+       label="Virtual Cam (VCam)..."
+       name="vcam_manager_item_call">
+        <menu_item_call.on_click
+         function="Floater.Toggle"
+         parameter="prism_manager" />
+      </menu_item_call>
+      <menu_item_call
+       label="Ultimate Diopter..."
+       name="ultimate_diopter_item_call">
+        <menu_item_call.on_click
+         function="Floater.Toggle"
+         parameter="ultimate_diopter" />
+      </menu_item_call>
+      <menu_item_call
+       label="Phototools..."
+       name="phototools_item_call">
+        <menu_item_call.on_click
+         function="Floater.Toggle"
+         parameter="phototools" />
+      </menu_item_call>
+      <menu_item_check
+       label="Depth of Field Focus Lock"
+       layout="topleft"
+       shortcut="alt|shift|X"
+       name="lock_focus_point">
+        <menu_item_check.on_check
+         function="CheckControl"
+         parameter="RenderFocusPointLocked" />
+        <menu_item_check.on_click
+         function="ToggleControl"
+         parameter="RenderFocusPointLocked" />
+      </menu_item_check>
+      <menu_item_check
+       label="Draw DoF Focus Crosshair"
+       layout="topleft"
+       name="render_focus_point">
+        <menu_item_check.on_check
+         function="CheckControl"
+         parameter="RenderFocusPointCrosshair" />
+        <menu_item_check.on_click
+         function="ToggleControl"
+         parameter="RenderFocusPointCrosshair" />
+      </menu_item_check>
+
+      <menu_item_separator/>
+
+      <menu_item_call
+       label="Cinematic Light Rig..."
+       name="cine_light_rig_item_call">
+        <menu_item_call.on_click
+         function="Floater.Toggle"
+         parameter="cine_light_rig" />
+      </menu_item_call>
+      <menu_item_call
+       label="Lighting Cue Stack..."
+       name="cine_light_cues_item_call">
+        <menu_item_call.on_click
+         function="Floater.Toggle"
+         parameter="cine_light_cues" />
+      </menu_item_call>
+      <menu_item_call
+       label="Avatar Light Response..."
+       name="avatar_light_response_item_call">
+        <menu_item_call.on_click
+         function="Floater.Toggle"
+         parameter="avatar_light_response" />
+      </menu_item_call>
+      <menu_item_call
+       label="Exposure..."
+       name="exposure_hub_item_call">
+        <menu_item_call.on_click
+         function="Floater.Toggle"
+         parameter="exposure_hub" />
+      </menu_item_call>
+      <menu_item_call
+       label="Personal Lighting..."
+       name="machinima_adjustment_tool">
+        <menu_item_call.on_click
+         function="World.EnvSettings"
+         parameter="adjust_tool" />
+        <menu_item_call.on_enable
+         function="RLV.EnableIfNot"
+         parameter="setenv" />
+      </menu_item_call>
+      <menu_item_call
+       label="Light Intensity Presets..."
+       name="env_intensity_presets_item_call">
+        <menu_item_call.on_click
+         function="Floater.Toggle"
+         parameter="env_intensity_presets" />
+      </menu_item_call>
+
+      <menu_item_separator/>
+
+      <menu_item_call
+       label="Lightbox..."
+       name="lightbox_item_call">
+        <menu_item_call.on_click
+         function="Floater.ToggleOrBringToFront"
+         parameter="lightbox" />
+      </menu_item_call>
+
+      <menu_item_separator/>
+
+      <menu_item_call
+       label="Temporal Capture..."
+       name="temporal_capture_item_call">
+        <menu_item_call.on_click
+         function="Floater.Toggle"
+         parameter="temporal_capture" />
+      </menu_item_call>
     </menu>
     <menu
      create_jump_keys="true"

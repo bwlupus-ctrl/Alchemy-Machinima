@@ -10,7 +10,7 @@
  name="env_intensity_presets"
  save_rect="true"
  single_instance="true"
- title="LIGHT INTENSITY PRESETS"
+ title="Light Intensity Presets"
  width="300">
     <text
      follows="left|top"

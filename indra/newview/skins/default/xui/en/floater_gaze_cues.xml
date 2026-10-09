@@ -9,7 +9,7 @@
  name="floater_gaze_cues"
  save_rect="true"
  single_instance="false"
- title="GAZE CUES"
+ title="Gaze Cues"
  width="520">
   <text
    follows="left|top|right"

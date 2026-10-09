@@ -9,7 +9,7 @@
  name="pose_polish"
  save_rect="true"
  single_instance="true"
- title="POSE POLISH"
+ title="Pose Polish"
  width="360">
 
   <!-- Every control below binds directly to its ALPolish* setting via

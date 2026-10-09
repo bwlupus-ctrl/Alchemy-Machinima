@@ -9,7 +9,7 @@
  name="actor_gaze"
  save_rect="true"
  single_instance="true"
- title="ACTOR GAZE"
+ title="Actor Gaze"
  width="560">
     <scroll_container
      follows="all"

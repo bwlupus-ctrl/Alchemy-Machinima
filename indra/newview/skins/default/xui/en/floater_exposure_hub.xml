@@ -16,7 +16,7 @@
  name="exposure_hub"
  save_rect="true"
  single_instance="true"
- title="EXPOSURE"
+ title="Exposure"
  width="380">
     <tab_container
      follows="all"

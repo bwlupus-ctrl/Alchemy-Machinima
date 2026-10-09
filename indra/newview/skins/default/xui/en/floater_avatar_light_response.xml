@@ -9,7 +9,7 @@
  name="avatar_light_response"
  save_rect="true"
  single_instance="true"
- title="AVATAR LIGHT RESPONSE"
+ title="Avatar Light Response"
  tool_tip="Changes how this avatar responds to every light, on your screen only. Adjusted avatars are always rendered and animated in full."
  width="360">
     <check_box

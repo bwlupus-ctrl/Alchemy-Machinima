@@ -9,7 +9,7 @@
  name="floater_cine_light_cues"
  save_rect="true"
  single_instance="true"
- title="LIGHTING CUE STACK"
+ title="Lighting Cue Stack"
  width="640">
   <combo_box allow_text_entry="true" follows="left|top|right" height="22"
    layout="topleft" left="10" name="cue_list_name" top="28" width="278" />
