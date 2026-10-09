@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<panel height="80" layout="topleft" name="fit_card_fixture" width="350">
+    <flow_grid card_width="340" fit_cards="true" height="80" layout="topleft"
+     name="fit_card_grid" pad="8" width="340">
+        <panel height="40" layout="topleft" name="fit_card" width="340">
+            <button follows="left|top" height="18" layout="topleft" left="322"
+             name="authored_at_design_width" top="8" width="18" />
+        </panel>
+    </flow_grid>
+</panel>

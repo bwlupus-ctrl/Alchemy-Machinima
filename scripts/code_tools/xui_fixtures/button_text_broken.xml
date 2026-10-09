@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<panel height="130" layout="topleft" name="button_text_fixture" width="200">
+    <button follows="left|top" height="20" label="Far too wide" layout="topleft"
+     left="8" name="narrow_button" top="8" width="30" />
+    <button follows="left|top" height="20" label="Ten chars!" layout="topleft"
+     left="8" name="tolerance_button" top="34" width="70" />
+    <button follows="left|top" height="20" label="Hidden and very wide" layout="topleft"
+     left="8" name="hidden_button" top="60" visible="false" width="0" />
+    <button follows="left|top" height="20" label="[PLACEHOLDER]" layout="topleft"
+     left="8" name="placeholder_button" top="86" width="10" />
+</panel>

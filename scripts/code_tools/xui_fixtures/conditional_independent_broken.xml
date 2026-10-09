@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<panel height="50" layout="topleft" name="conditional_independent_fixture" width="200">
+    <!-- xui-check: independent conditional_a conditional_b -->
+    <button follows="left|top" height="20" label="A" layout="topleft"
+     left="8" name="conditional_a" top="8" visible="false" width="80" />
+    <button follows="left|top" height="20" label="B" layout="topleft"
+     left="8" name="conditional_b" top="8" visible="false" width="80" />
+</panel>

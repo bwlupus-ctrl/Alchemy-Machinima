@@ -1,0 +1,77 @@
+{
+  "host_widths": [340, 360, 346, 706, 708],
+  "grids": {
+    "cine_light_rig_flow_grid": {"fit_cards": "true"}
+  },
+  "text_replacements": {
+    "Yaw / Pitch remain pristine transforms; setup loads keep this aim.": "Setup loads preserve aim.",
+    "Scene setting; not saved in Setups": "Scene only; not in Setups"
+  },
+  "values": {
+    "Yaw / Pitch remain pristine transforms; setup loads keep this aim.": {
+      "tool_tip": "Yaw / Pitch remain pristine transforms; setup loads keep this aim."
+    },
+    "Ease s": {
+      "left": 200,
+      "width": 45
+    },
+    "Ratio": {
+      "left": 92,
+      "width": 38
+    },
+    "Ambiance": {
+      "left": 190,
+      "width": 62
+    },
+    "Master EV": {
+      "left": 180,
+      "width": 60
+    },
+    "Eye size": {
+      "width": 52
+    }
+  },
+  "widgets": {
+    "cine_anchor": {"width": 108},
+    "cine_target_object": {"left": 174, "width": 98, "follows": "left|top"},
+    "cine_reset_all": {"left": 252, "width": 70, "follows": "left|top"},
+    "cine_group_enable": {"left": 8, "width": 170, "follows": "left|top"},
+    "cine_group_status": {"left": 8, "top": 127, "width": 316, "follows": "left|right|top"},
+    "cine_group_d": {"left": 168, "width": 34, "follows": "left|top"},
+    "cine_object_target_status": {"left": 8, "top": 151, "width": 316, "follows": "left|right|top"},
+    "cine_aim_yaw_minus": {"left": 80, "width": 38, "follows": "left|top"},
+    "cine_aim_yaw_plus": {"left": 119, "width": 38, "follows": "left|top"},
+    "cine_aim_pitch_minus": {"left": 158, "width": 53, "follows": "left|top"},
+    "cine_aim_pitch_plus": {"left": 212, "width": 53, "follows": "left|top"},
+    "cine_bounce_ratio": {"left": 131, "width": 49, "follows": "left|top"},
+    "cine_bounce_ratio_reset": {"left": 181, "width": 18, "follows": "left|top"},
+    "cine_transition": {"left": 246, "width": 56, "follows": "left|top"},
+    "cine_live_probe_ambiance": {"left": 254, "width": 49, "follows": "left|top"},
+    "cine_master_ev": {"left": 240, "width": 62, "follows": "left|top"},
+    "cine_key_ev": {"left": 242, "width": 62, "follows": "left|top"},
+    "cine_fill_ev": {"left": 242, "width": 62, "follows": "left|top"},
+    "cine_rim_ev": {"left": 242, "width": 62, "follows": "left|top"},
+    "cine_bg_ev": {"left": 242, "width": 62, "follows": "left|top"},
+    "cine_night_mask_height": {"left": 206, "width": 62, "follows": "left|top"},
+    "cine_rig_rim_key_back_bias": {"width": 62, "follows": "left|top"},
+    "cine_rig_rim_fill_back_bias": {"width": 62, "follows": "left|top"},
+    "cine_rig_rim_rim_back_bias": {"width": 62, "follows": "left|top"},
+    "cine_rig_rim_bg_back_bias": {"width": 62, "follows": "left|top"},
+    "cine_catchlight_size": {"left": 62, "width": 94, "follows": "left|top"},
+    "cine_ratio": {"left": 198, "width": 88, "follows": "left|right|top"},
+    "cine_ratio_reset": {"left": 288, "width": 18, "follows": "right|top"},
+    "cine_fill_clip": {"left": 310, "width": 30, "follows": "right|top"},
+    "cine_key_cone_width": {"width": 140, "follows": "left|top"},
+    "cine_key_cone_width_reset": {"left": 196, "width": 18, "follows": "left|top"},
+    "cine_key_shaft": {"left": 216, "width": 58, "follows": "left|top"},
+    "cine_fill_cone_width": {"width": 140, "follows": "left|top"},
+    "cine_fill_cone_width_reset": {"left": 196, "width": 18, "follows": "left|top"},
+    "cine_fill_shaft": {"left": 216, "width": 58, "follows": "left|top"},
+    "cine_rim_cone_width": {"width": 140, "follows": "left|top"},
+    "cine_rim_cone_width_reset": {"left": 196, "width": 18, "follows": "left|top"},
+    "cine_rim_shaft": {"left": 216, "width": 58, "follows": "left|top"},
+    "cine_bg_cone_width": {"width": 140, "follows": "left|top"},
+    "cine_bg_cone_width_reset": {"left": 196, "width": 18, "follows": "left|top"},
+    "cine_bg_shaft": {"left": 216, "width": 58, "follows": "left|top"}
+  }
+}

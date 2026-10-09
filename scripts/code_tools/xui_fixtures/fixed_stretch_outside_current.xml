@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<panel height="50" layout="topleft" name="fixed_stretch_outside_fixture" width="200">
+    <button follows="left|right|top" height="20" label="Button" layout="topleft"
+     left="8" name="ordinary_stretch_button" top="8" width="80" />
+</panel>

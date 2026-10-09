@@ -14,6 +14,9 @@ content.  Resource-only XUI documents with no root width/height are ignored.
 Intentional sibling layering must be documented in the XML with::
 
     <!-- xui-check: allow-overlap first_widget second_widget -->
+    <!-- xui-check: exclusive alternate_a alternate_b alternate_c -->
+    <!-- xui-check: overlay empty_hint list_widget -->
+    <!-- xui-check: independent conditional_a conditional_b -->
 
 Exit status is 1 when any finding is reported, 0 otherwise, and 2 for command
 line or XML errors.  It uses only the Python standard library.
@@ -69,6 +72,10 @@ NON_WIDGETS = {
 ALLOW_RE = re.compile(
     r"^\s*xui-check:\s*allow-overlap\s+(\S+)\s+(\S+)\s*$", re.I
 )
+EXCLUSIVE_RE = re.compile(r"^\s*xui-check:\s*exclusive\s+(.+?)\s*$", re.I)
+OVERLAY_RE = re.compile(r"^\s*xui-check:\s*overlay\s+(\S+)\s+(\S+)\s*$", re.I)
+INDEPENDENT_RE = re.compile(r"^\s*xui-check:\s*independent\s+(\S+)\s+(\S+)\s*$", re.I)
+NON_STRETCH_TAGS = {"button", "icon_button", "icon", "image", "check_box", "spinner", "spin_ctrl"}
 
 
 @dataclass
@@ -153,11 +160,23 @@ class Finding:
         return {"kind": self.kind, "line": self.line, "message": self.message}
 
 
-def parse_xml(path: Path) -> tuple[Node, set[frozenset[str]]]:
+@dataclass
+class OverlapPolicy:
+    allowances: set[frozenset[str]] = field(default_factory=set)
+    exclusive_groups: list[set[str]] = field(default_factory=list)
+    overlays: set[frozenset[str]] = field(default_factory=set)
+    independents: set[frozenset[str]] = field(default_factory=set)
+
+    def excluded(self, pair: frozenset[str]) -> bool:
+        return (pair in self.allowances or pair in self.overlays
+                or any(pair.issubset(group) for group in self.exclusive_groups))
+
+
+def parse_xml(path: Path) -> tuple[Node, OverlapPolicy]:
     parser = expat.ParserCreate()
     stack: list[Node] = []
     root: Node | None = None
-    allowances: set[frozenset[str]] = set()
+    policy = OverlapPolicy()
 
     def start(tag: str, attrs: dict[str, str]) -> None:
         nonlocal root
@@ -180,7 +199,18 @@ def parse_xml(path: Path) -> tuple[Node, set[frozenset[str]]]:
     def comment(data: str) -> None:
         match = ALLOW_RE.match(data)
         if match:
-            allowances.add(frozenset(match.groups()))
+            policy.allowances.add(frozenset(match.groups()))
+        exclusive = EXCLUSIVE_RE.match(data)
+        if exclusive:
+            names = set(exclusive.group(1).split())
+            if len(names) >= 2:
+                policy.exclusive_groups.append(names)
+        overlay = OVERLAY_RE.match(data)
+        if overlay:
+            policy.overlays.add(frozenset(overlay.groups()))
+        independent = INDEPENDENT_RE.match(data)
+        if independent:
+            policy.independents.add(frozenset(independent.groups()))
 
     parser.StartElementHandler = start
     parser.EndElementHandler = end
@@ -194,7 +224,7 @@ def parse_xml(path: Path) -> tuple[Node, set[frozenset[str]]]:
     if root is None:
         raise ValueError("empty XML document")
     apply_widget_defaults(root, path)
-    return root, allowances
+    return root, policy
 
 
 def apply_widget_defaults(root: Node, path: Path) -> None:
@@ -462,6 +492,18 @@ def panel_content_height(node: Node, width: int, pad: int) -> int:
     return max(node.integer("height", 0), bottom + pad)
 
 
+def fitted_flow_card_width(node: Node) -> int:
+    """Return the width ALFlowGrid assigns to every card at runtime."""
+    assert node.rect is not None
+    pad = node.integer("pad", 8)
+    column_gap = node.integer("column_gap", 12)
+    card_width = max(1, node.integer("card_width", 340))
+    available = max(1, node.rect.width - 2 * pad)
+    columns = max(1, min(node.integer("max_columns", 4),
+                         (available + column_gap) // (card_width + column_gap)))
+    return max(1, (available - (columns - 1) * column_gap) // columns)
+
+
 def arrange_flow_grid(node: Node, local_children: list[tuple[Node, Rect]]) -> None:
     if node.rect is None:
         return
@@ -475,7 +517,7 @@ def arrange_flow_grid(node: Node, local_children: list[tuple[Node, Rect]]) -> No
     available = max(1, node.rect.width - 2 * pad)
     columns = max(1, min(node.integer("max_columns", 4),
                          (available + column_gap) // (card_width + column_gap)))
-    column_width = max(1, (available - (columns - 1) * column_gap) // columns)
+    column_width = fitted_flow_card_width(node)
     bottoms = [pad] * columns
     fit_cards = node.attrs.get("fit_cards", "false").lower() == "true"
     for child, rect in cards:
@@ -493,11 +535,14 @@ def arrange_flow_grid(node: Node, local_children: list[tuple[Node, Rect]]) -> No
     node.rect.height = max(node.rect.height, natural_height)
 
 
-def calculate(node: Node, parent_abs: Rect | None = None) -> None:
+def calculate(node: Node, parent_abs: Rect | None = None, root_width: int | None = None) -> None:
     if parent_abs is None:
-        width = node.integer("width", 0)
+        authored_width = node.integer("width", 0)
+        width = root_width if root_width is not None else authored_width
         height = node.integer("height", 0)
         node.rect = Rect(0, 0, width, height)
+        if root_width is not None:
+            node.design_size = (authored_width, height)
     assert node.rect is not None
     layout_width, layout_height = node.design_size or (node.rect.width, node.rect.height)
     layout_parent = Rect(0, 0, layout_width, layout_height)
@@ -540,8 +585,9 @@ def visible_children(node: Node) -> list[Node]:
     return [child for child in node.children if is_widget(child) and child.rect is not None]
 
 
-def participates_in_overlap(node: Node) -> bool:
-    return node.attrs.get("visible", "true").lower() != "false"
+def is_conditional(node: Node, dynamic_visibility: set[str]) -> bool:
+    return (node.attrs.get("visible", "true").lower() == "false"
+            or node.name in dynamic_visibility)
 
 
 def display_text(node: Node) -> str:
@@ -579,13 +625,13 @@ def intentional_paint_overlap(first: Node, second: Node, first_rect: Rect,
     if min(overlap_width, overlap_height) <= 3:
         # Adjacent controls commonly share up to three border pixels.
         return True
-    tags = {first.tag, second.tag}
-    if "icon" in tags:
-        icon = first if first.tag == "icon" else second
-        host = second if icon is first else first
-        assert icon.rect is not None and host.rect is not None
-        if icon.rect.inside(host.rect):
-            return True
+    for decoration, other in ((first, second), (second, first)):
+        if decoration.tag in {"icon", "image"}:
+            assert decoration.rect is not None and other.rect is not None
+            # Small decoration painted inside its host, or a containing image
+            # painted under another widget, is not a competing control.
+            if decoration.rect.inside(other.rect) or other.rect.inside(decoration.rect):
+                return True
     return False
 
 
@@ -626,6 +672,52 @@ def descendants(node: Node) -> Iterable[Node]:
         yield from descendants(child)
 
 
+def dynamic_visibility_names(source: str) -> set[str]:
+    """Map C++ visibility calls, including setVisibleIfChanged member aliases."""
+    def extract(scoped_source: str) -> set[str]:
+        aliases = dict(re.findall(
+            r"\b([A-Za-z_]\w*)\s*=\s*(?:getChild|getChildView|findChild)"
+            r"(?:<[^;>]+>)?\s*\(\s*[\"']([^\"']+)[\"']",
+            scoped_source,
+        ))
+        scoped_result: set[str] = set()
+        for alias, name in aliases.items():
+            if (re.search(rf"\b{re.escape(alias)}\s*->\s*setVisible\s*\(", scoped_source)
+                    or re.search(
+                        rf"\bsetVisibleIfChanged\s*\(\s*{re.escape(alias)}\s*,",
+                        scoped_source,
+                    )):
+                scoped_result.add(name)
+        scoped_result.update(re.findall(
+            r"(?:getChild|getChildView|findChild)(?:<[^;>]+>)?\s*\(\s*"
+            r"[\"']([^\"']+)[\"']\s*\)\s*->\s*setVisible\s*\(",
+            scoped_source,
+        ))
+        scoped_result.update(re.findall(
+            r"\bchildSetVisible\s*\(\s*[\"']([^\"']+)[\"']\s*,",
+            scoped_source,
+        ))
+        return scoped_result
+
+    # Member assignment and setVisibleIfChanged may occur in different
+    # methods, but must belong to the same C++ class.  Group method spans by
+    # their Class::method qualifier before resolving aliases.
+    method_matches = list(re.finditer(
+        r"\b([A-Za-z_]\w*)::[~A-Za-z_]\w*\s*\([^;{}]*\)\s*(?:const\s*)?\{",
+        source,
+    ))
+    if not method_matches:
+        return extract(source)
+    class_sources: dict[str, list[str]] = {}
+    for index, match in enumerate(method_matches):
+        end = method_matches[index + 1].start() if index + 1 < len(method_matches) else len(source)
+        class_sources.setdefault(match.group(1), []).append(source[match.start():end])
+    result: set[str] = set()
+    for chunks in class_sources.values():
+        result.update(extract("\n".join(chunks)))
+    return result
+
+
 class SourceIndex:
     """Small, lazy index used by the scroller ownership/wiring check."""
 
@@ -633,6 +725,7 @@ class SourceIndex:
         self.files: dict[Path, str] = {}
         self.xui_sources: dict[str, list[str]] = {}
         self.class_sources: dict[str, list[str]] = {}
+        self.panel_classes: dict[str, set[str]] = {}
         self._owner_cache: dict[tuple[str, tuple[str, ...]], list[str]] = {}
         self._visibility_cache: dict[str, set[str]] = {}
         self.all_dynamic_visibility: set[str] = set()
@@ -647,23 +740,13 @@ class SourceIndex:
                 self.xui_sources.setdefault(match.group(1), []).append(source)
             for class_name in set(re.findall(r"\b([A-Za-z_]\w*)::", source)):
                 self.class_sources.setdefault(class_name, []).append(source)
-            aliases = dict(re.findall(
-                r"\b([A-Za-z_]\w*)\s*=\s*(?:getChild|getChildView|findChild)"
-                r"(?:<[^;>]+>)?\s*\(\s*[\"']([^\"']+)[\"']",
+            for match in re.finditer(
+                r"LLPanelInjector\s*<\s*([A-Za-z_]\w*)\s*>[\s\S]{0,160}?"
+                r"\(\s*[\"']([^\"']+)[\"']\s*\)",
                 source,
-            ))
-            for alias, name in aliases.items():
-                if re.search(rf"\b{re.escape(alias)}\s*->\s*setVisible\s*\(", source):
-                    self.all_dynamic_visibility.add(name)
-            self.all_dynamic_visibility.update(re.findall(
-                r"(?:getChild|getChildView|findChild)(?:<[^;>]+>)?\s*\(\s*"
-                r"[\"']([^\"']+)[\"']\s*\)\s*->\s*setVisible\s*\(",
-                source,
-            ))
-            self.all_dynamic_visibility.update(re.findall(
-                r"\bchildSetVisible\s*\(\s*[\"']([^\"']+)[\"']\s*,",
-                source,
-            ))
+            ):
+                self.panel_classes.setdefault(match.group(2), set()).add(match.group(1))
+            self.all_dynamic_visibility.update(dynamic_visibility_names(source))
 
     def owner_sources(self, xui_name: str, scroller_names: list[str]) -> list[str]:
         cache_key = (xui_name, tuple(scroller_names))
@@ -686,35 +769,39 @@ class SourceIndex:
         self._owner_cache[cache_key] = owners
         return owners
 
-    def dynamically_visible_names(self, xui_name: str) -> set[str]:
+    def dynamically_visible_names(self, xui_name: str, panel_class: str = "") -> set[str]:
         """Names whose visibility is controlled by the owning C++ UI class."""
-        if xui_name in self._visibility_cache:
-            return self._visibility_cache[xui_name]
+        cache_key = f"{xui_name}\0{panel_class}"
+        if cache_key in self._visibility_cache:
+            return self._visibility_cache[cache_key]
         sources = self.owner_sources(xui_name, [])
+        for cpp_class in self.panel_classes.get(panel_class, set()):
+            sources.extend(self.class_sources.get(cpp_class, []))
         result: set[str] = set()
         for source in sources:
-            aliases: dict[str, str] = {}
-            for match in re.finditer(
-                r"\b([A-Za-z_]\w*)\s*=\s*(?:getChild|getChildView|findChild)"
-                r"(?:<[^;>]+>)?\s*\(\s*[\"']([^\"']+)[\"']",
-                source,
-            ):
-                aliases[match.group(1)] = match.group(2)
-            for alias, name in aliases.items():
-                if re.search(rf"\b{re.escape(alias)}\s*->\s*setVisible\s*\(", source):
-                    result.add(name)
-            for match in re.finditer(
-                r"(?:getChild|getChildView|findChild)(?:<[^;>]+>)?\s*\(\s*"
-                r"[\"']([^\"']+)[\"']\s*\)\s*->\s*setVisible\s*\(",
-                source,
-            ):
-                result.add(match.group(1))
+            result.update(dynamic_visibility_names(source))
+        # Child names are effectively global in XUI.  Preserve the checker's
+        # established cross-owner set for inline specialist panels whose C++
+        # class is not declared on their XML root.
         result.update(self.all_dynamic_visibility)
-        self._visibility_cache[xui_name] = result
+        self._visibility_cache[cache_key] = result
         return result
 
     def fits_tabs_at_runtime(self, xui_name: str) -> bool:
         return any("installForTabs" in source for source in self.owner_sources(xui_name, []))
+
+    def copies_fit_grid_height(self, panel_class: str, grid_names: list[str]) -> bool:
+        """Whether the registered panel reshape copies its fit grid's height."""
+        for cpp_class in self.panel_classes.get(panel_class, set()):
+            for source in self.class_sources.get(cpp_class, []):
+                if not any(re.search(rf'[\"\']{re.escape(name)}[\"\']', source)
+                           for name in grid_names):
+                    continue
+                if (re.search(rf"\b{re.escape(cpp_class)}::reshape\s*\(", source)
+                        and re.search(r"getRect\s*\(\s*\)\s*\.\s*getHeight\s*\(", source)
+                        and re.search(r"\bsetRect\s*\(", source)):
+                    return True
+        return False
 
 
 def scroller_wiring_findings(root: Node, path: Path, source_index: SourceIndex) -> list[Finding]:
@@ -752,12 +839,27 @@ def scroller_wiring_findings(root: Node, path: Path, source_index: SourceIndex) 
 
 def check_node(
     node: Node,
-    allowances: set[frozenset[str]],
+    overlap_policy: OverlapPolicy,
     findings: list[Finding],
     dynamic_visibility: set[str],
     runtime_tab_fit: bool,
+    copies_fit_grid_height: bool,
+    static_rules: bool = True,
 ) -> None:
     children = visible_children(node)
+    # A class-backed shared panel may use a direct fit_cards grid as its
+    # runtime-sized scroll document.  The grid owns its packed height and the
+    # panel class mirrors that height to its wrapper (panel_cine_light_rig is
+    # the in-tree example).  Do not demand a hand-authored wrapper height;
+    # still recurse into the grid/cards so fitted-width clipping is checked.
+    runtime_fitted_flow_wrapper = (
+        node.parent is None
+        and bool(node.attrs.get("class"))
+        and copies_fit_grid_height
+        and any(child.tag == "flow_grid"
+                and child.attrs.get("fit_cards", "false").lower() == "true"
+                for child in children)
+    )
 
     if "bottom" in node.explicit_attrs:
         findings.append(
@@ -779,7 +881,8 @@ def check_node(
         unscrollable: list[str] = []
         if overflow_x and not enclosed_by_scrollable_axis(node, horizontal=True):
             unscrollable.append("width")
-        if overflow_y and not enclosed_by_scrollable_axis(node, horizontal=False):
+        if (overflow_y and not runtime_fitted_flow_wrapper
+                and not enclosed_by_scrollable_axis(node, horizontal=False)):
             unscrollable.append("height")
         if unscrollable:
             findings.append(
@@ -812,12 +915,8 @@ def check_node(
 
     for index, first in enumerate(children):
         assert first.rect is not None
-        if not participates_in_overlap(first) or first.name in dynamic_visibility:
-            continue
         for second in children[index + 1 :]:
             assert second.rect is not None
-            if not participates_in_overlap(second) or second.name in dynamic_visibility:
-                continue
             if node.tag == "tab_container" and first.tag == second.tag == "panel":
                 # LLTabContainer makes exactly one page visible at a time.
                 continue
@@ -829,7 +928,12 @@ def check_node(
                 continue
             if intentional_paint_overlap(first, second, first_paint, second_paint):
                 continue
-            if frozenset((first.name, second.name)) in allowances:
+            pair = frozenset((first.name, second.name))
+            if overlap_policy.excluded(pair):
+                continue
+            if (is_conditional(first, dynamic_visibility)
+                    and is_conditional(second, dynamic_visibility)
+                    and pair not in overlap_policy.independents):
                 continue
             findings.append(
                 Finding(
@@ -851,12 +955,19 @@ def check_node(
                 or child.rect.right > node.rect.right
             )
             runtime_fitted_child = runtime_tab_fit and tab_page
+            runtime_fitted_flow_child = runtime_fitted_flow_wrapper and child.tag == "flow_grid"
             inside_scroll_document = scroll_document
+            outside_x = child.rect.x < node.rect.x or child.rect.right > node.rect.right
+            outside_y = child.rect.y < node.rect.y or child.rect.bottom > node.rect.bottom
+            if runtime_fitted_flow_child:
+                # The class copies only the packed grid HEIGHT.  Horizontal
+                # overflow remains a real finding.
+                outside_y = False
             if (
                 not runtime_fitted_child
                 and not inside_scroll_document
                 and (scroll_document_clipped or not child_is_scroll_document)
-                and not child.rect.inside(node.rect)
+                and (outside_x or outside_y)
             ):
                 findings.append(
                     Finding(
@@ -866,13 +977,64 @@ def check_node(
                     )
                 )
 
-    if node.tag == "text" and node.rect is not None:
-        value = display_text(node)
+    if static_rules and node.rect is not None:
+        flags = {part.strip().lower() for part in node.attrs.get("follows", "left|top").split("|")}
+        if "all" in flags:
+            flags.update({"left", "right", "top", "bottom"})
+        fit_card_child = bool(
+            node.parent is not None
+            and node.parent.tag in {"panel", "layout_panel"}
+            and node.parent.parent is not None
+            and node.parent.parent.tag == "flow_grid"
+            and node.parent.parent.attrs.get("fit_cards", "false").lower() == "true"
+        )
+        invalid_spinner_stretch = (
+            node.tag in {"spinner", "spin_ctrl"}
+            and {"left", "right"}.issubset(flags)
+        )
+        invalid_card_stretch = (
+            fit_card_child
+            and node.tag in {"button", "icon_button", "icon", "image", "check_box"}
+            and {"left", "right"}.issubset(flags)
+        )
+        if invalid_spinner_stretch or invalid_card_stretch:
+            findings.append(
+                Finding("invalid-stretch", node.line,
+                        f"{node.name}: {node.tag} has unsupported horizontal stretch")
+            )
+
+    if static_rules and node.tag in {"spinner", "spin_ctrl"} and node.rect is not None:
+        digits = max(0, node.integer("decimal_digits", 3))
+        formatted: list[str] = []
+        for key in ("min_val", "max_val"):
+            try:
+                formatted.append(f"{float(node.attrs.get(key, 0)):.{digits}f}")
+            except ValueError:
+                formatted.append(node.attrs.get(key, ""))
+        endpoint = max(formatted, key=len)
+        label_width = node.integer("label_width", 0) if node.attrs.get("label") else 0
+        editor_width = node.rect.width - label_width - 17
+        needed = math.ceil(len(endpoint) * 6.5)
+        if editor_width < needed:
+            findings.append(
+                Finding("spinner-value-width", node.line,
+                        f"{node.name} editor has {editor_width}px; needs about {needed}px "
+                        f"for {endpoint!r}")
+            )
+
+    if static_rules and node.tag in {"text", "button"} and node.rect is not None:
+        value = node.attrs.get("label", "") if node.tag == "button" else display_text(node)
         wraps = node.attrs.get("wrap", node.attrs.get("word_wrap", "false")).lower() == "true"
-        if value and not wraps:
+        skip_button = (node.tag == "button" and (
+            node.attrs.get("visible", "true").lower() == "false"
+            or node.rect.width <= 0
+            or bool(re.search(r"\[[^\]]*\]", value))
+        ))
+        if value and not wraps and not skip_button:
             factor = 6.5 if node.attrs.get("font") == "SansSerifSmall" else 7.5
             estimated = math.ceil(max(len(line) for line in value.splitlines()) * factor)
-            if estimated > node.rect.width:
+            limit = node.rect.width * (1.1 if node.tag == "button" else 1.0)
+            if estimated > limit:
                 findings.append(
                     Finding(
                         "text-width",
@@ -883,26 +1045,60 @@ def check_node(
                 )
 
     for child in children:
-        check_node(child, allowances, findings, dynamic_visibility, runtime_tab_fit)
+        check_node(child, overlap_policy, findings, dynamic_visibility,
+                   runtime_tab_fit, copies_fit_grid_height, static_rules)
 
 
-def check_file(path: Path, source_index: SourceIndex | None = None) -> list[Finding]:
-    root, allowances = parse_xml(path)
+def check_file(path: Path, source_index: SourceIndex | None = None,
+               dynamic_visibility_override: set[str] | None = None) -> list[Finding]:
+    root, overlap_policy = parse_xml(path)
     calculate(root)
     if root.rect is None or root.rect.width <= 0 or root.rect.height <= 0:
         return []
     findings: list[Finding] = []
-    # Visibility names are indexed once across the viewer sources.  XUI names
-    # are effectively global child identifiers in these owner classes, and
-    # this also covers inline specialist panels (for example LLPanelVolume in
-    # floater_tools.xml) whose class is not named in the XML.
-    dynamic_visibility = source_index.all_dynamic_visibility if source_index is not None else set()
+    dynamic_visibility = (dynamic_visibility_override if dynamic_visibility_override is not None
+                          else (source_index.dynamically_visible_names(
+                              path.name, root.attrs.get("class", ""))
+                                if source_index is not None else set()))
     runtime_tab_fit = source_index.fits_tabs_at_runtime(path.name) if source_index is not None else False
-    check_node(root, allowances, findings, dynamic_visibility, runtime_tab_fit)
+    grid_names = [node.name for node in (root, *descendants(root))
+                  if node.tag == "flow_grid"
+                  and node.attrs.get("fit_cards", "false").lower() == "true"]
+    explicit_height_copy = root.attrs.get("xui_check_copies_grid_height", "false").lower() == "true"
+    copies_fit_grid_height = explicit_height_copy or bool(
+        source_index is not None
+        and source_index.copies_fit_grid_height(root.attrs.get("class", ""), grid_names)
+    )
+    check_node(root, overlap_policy, findings, dynamic_visibility, runtime_tab_fit,
+               copies_fit_grid_height)
+
+    if grid_names:
+        # A 690px card is the normal single-column Director host.  Reparse so
+        # the narrow calculation's rect mutations cannot leak into this pass.
+        wide_root, wide_policy = parse_xml(path)
+        wide_grid = next(node for node in (wide_root, *descendants(wide_root))
+                         if node.tag == "flow_grid"
+                         and node.attrs.get("fit_cards", "false").lower() == "true")
+        wide_grid_width = 690 + 2 * wide_grid.integer("pad", 8)
+        wide_root_width = wide_root.integer("width", 0) + (
+            wide_grid_width - wide_grid.integer("width", wide_grid_width)
+        )
+        calculate(wide_root, root_width=wide_root_width)
+        wide_findings: list[Finding] = []
+        check_node(wide_root, wide_policy, wide_findings, dynamic_visibility,
+                   runtime_tab_fit, copies_fit_grid_height, static_rules=False)
+        findings.extend(wide_findings)
     if source_index is not None:
         findings.extend(scroller_wiring_findings(root, path, source_index))
-    findings.sort(key=lambda item: (item.line, item.kind, item.message))
-    return findings
+    # The wide pass may reproduce a width-independent finding.  Rectangles are
+    # deliberately removed from the identity while widget names remain.
+    unique: dict[tuple[str, int, str], Finding] = {}
+    for finding in findings:
+        normalized = re.sub(r"\(-?\d+,-?\d+,-?\d+,-?\d+\)", "(<rect>)", finding.message)
+        unique.setdefault((finding.kind, finding.line, normalized), finding)
+    result = list(unique.values())
+    result.sort(key=lambda item: (item.line, item.kind, item.message))
+    return result
 
 
 def default_xui_dir() -> Path:
@@ -939,19 +1135,30 @@ def selected_files(path: str | None, all_files: bool, changed: str | None) -> It
 def run_selftest(json_output: bool) -> int:
     fixture_dir = Path(__file__).with_name("xui_fixtures")
     cases = (
-        ("joystick_broken.xml", True),
-        ("joystick_current.xml", False),
+        ("joystick_broken.xml", True, "overlap"),
+        ("joystick_current.xml", False, None),
+        ("fit_card_broken.xml", True, "clipped"),
+        ("spinner_stretch_broken.xml", True, "invalid-stretch"),
+        ("spinner_value_width_broken.xml", True, "spinner-value-width"),
+        ("fixed_stretch_broken.xml", True, "invalid-stretch"),
+        ("fixed_stretch_outside_current.xml", False, None),
+        ("button_text_broken.xml", True, "text-width"),
+        ("hidden_overlap_broken.xml", True, "overlap"),
+        ("conditional_independent_broken.xml", True, "overlap"),
+        ("exclusive_overlap_broken.xml", True, "overlap"),
+        ("overlay_current.xml", False, None),
+        ("fit_card_wide_broken.xml", True, "overlap"),
     )
     reports: list[dict[str, object]] = []
     passed = True
-    for filename, expects_findings in cases:
+    for filename, expects_findings, required_kind in cases:
         path = fixture_dir / filename
         try:
             findings = check_file(path)
             overlap_count = sum(item.kind == "overlap" for item in findings)
             case_passed = bool(findings) == expects_findings
-            if expects_findings:
-                case_passed = case_passed and overlap_count > 0
+            if required_kind is not None:
+                case_passed = case_passed and any(item.kind == required_kind for item in findings)
             error = None
         except ValueError as exc:
             findings = []
@@ -972,10 +1179,37 @@ def run_selftest(json_output: bool) -> int:
         if not json_output:
             detail = f"{len(findings)} finding(s), {overlap_count} overlap(s)"
             print(f"{'PASS' if case_passed else 'FAIL'} {filename}: {detail}")
+    alias_source = (fixture_dir / "visibility_alias_fixture.cpp").read_text(encoding="utf-8")
+    alias_passed = dynamic_visibility_names(alias_source) == {"member_alternate"}
+    passed = passed and alias_passed
+    reports.append({
+        "fixture": "visibility_alias_fixture.cpp",
+        "expected": "member alias classified as C++-toggled",
+        "passed": alias_passed,
+    })
+    if not json_output:
+        print(f"{'PASS' if alias_passed else 'FAIL'} visibility_alias_fixture.cpp: "
+              "setVisibleIfChanged member alias")
+    conditional_findings = check_file(
+        fixture_dir / "conditional_alternates_current.xml",
+        dynamic_visibility_override={"conditional_a", "conditional_b"},
+    )
+    conditional_passed = not conditional_findings
+    passed = passed and conditional_passed
+    reports.append({
+        "fixture": "conditional_alternates_current.xml",
+        "expected": "0 findings for two C++-toggled siblings",
+        "count": len(conditional_findings),
+        "passed": conditional_passed,
+    })
+    if not json_output:
+        print(f"{'PASS' if conditional_passed else 'FAIL'} conditional_alternates_current.xml: "
+              f"{len(conditional_findings)} finding(s)")
     if json_output:
         print(json.dumps({"passed": passed, "fixtures": reports}, indent=2))
     elif passed:
-        print("Self-test passed: broken joystick detected; current joystick clean")
+        print("Self-test passed: overlap policy, C++ visibility, fitted-card narrow/wide, "
+              "stretch, spinner-value, and button-text rules detected")
     return 0 if passed else 1
 
 

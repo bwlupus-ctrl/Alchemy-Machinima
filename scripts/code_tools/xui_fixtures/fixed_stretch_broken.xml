@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<panel height="150" layout="topleft" name="fixed_stretch_fixture" width="216">
+  <flow_grid card_width="200" fit_cards="true" height="140" layout="topleft"
+   left="0" name="fixture_grid" pad="8" top="0" width="216">
+   <panel height="120" layout="topleft" name="fixture_card" width="200">
+    <button follows="left|right|top" height="20" label="Button" layout="topleft"
+     left="8" name="bad_button" top="8" width="80" />
+    <icon_button follows="left|right|top" height="18" layout="topleft"
+     left="8" name="bad_icon_button" top="34" width="18" />
+    <icon follows="left|right|top" height="18" layout="topleft"
+     left="8" name="bad_icon" top="60" width="18" />
+    <check_box follows="left|right|top" height="18" label="Check" layout="topleft"
+     left="8" name="bad_check" top="86" width="80" />
+   </panel>
+  </flow_grid>
+</panel>

@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<panel height="50" layout="topleft" name="hidden_overlap_fixture" width="200">
+    <button follows="left|top" height="20" label="First" layout="topleft"
+     left="8" name="visible_button" top="8" width="80" />
+    <button follows="left|top" height="20" label="Second" layout="topleft"
+     left="8" name="runtime_button" top="8" visible="false" width="80" />
+</panel>

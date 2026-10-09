@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<panel height="100" layout="topleft" name="wide_fit_fixture" width="350">
+    <flow_grid card_width="340" fit_cards="true" follows="all" height="100"
+     layout="topleft" left="0" max_columns="4" name="wide_grid" pad="8"
+     top="0" width="340">
+        <panel height="60" layout="topleft" name="wide_card" width="340">
+            <slider follows="left|right|top" height="20" layout="topleft"
+             left="8" name="wide_slider" top="8" width="100" />
+            <button follows="left|top" height="20" label="Go" layout="topleft"
+             left="200" name="wide_button" top="8" width="50" />
+        </panel>
+    </flow_grid>
+</panel>

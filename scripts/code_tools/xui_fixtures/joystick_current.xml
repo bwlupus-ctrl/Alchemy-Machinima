@@ -45,37 +45,37 @@
         X Scale
     </text>
           <spinner height="18" control_name="AvatarAxisScale1" decimal_digits="2" label_width="0" layout="topleft" max_val="50" min_val="-50" name="AvatarAxisScale1" width="70" left="180" top="315" />
-          <spinner height="18" control_name="BuildAxisScale1" decimal_digits="2" label_width="0" layout="topleft" max_val="1024" min_val="-1024" name="BuildAxisScale1" width="70" left="270" top="315" />
-          <spinner height="18" control_name="FlycamAxisScale1" decimal_digits="2" label_width="0" layout="topleft" max_val="1024" min_val="-1024" name="FlycamAxisScale1" width="70" left="360" top="315" />
+          <spinner height="18" control_name="BuildAxisScale1" decimal_digits="2" label_width="0" layout="topleft" max_val="1024" min_val="-1024" name="BuildAxisScale1" width="75" left="270" top="315" />
+          <spinner height="18" control_name="FlycamAxisScale1" decimal_digits="2" label_width="0" layout="topleft" max_val="1024" min_val="-1024" name="FlycamAxisScale1" width="75" left="360" top="315" />
           <text type="string" length="1" halign="right" layout="topleft" name="YScale" width="150" left="20" top="335" height="18">
         Y Scale
     </text>
           <spinner height="18" control_name="AvatarAxisScale2" decimal_digits="2" label_width="0" layout="topleft" max_val="50" min_val="-50" name="AvatarAxisScale2" width="70" left="180" top="335" />
-          <spinner height="18" control_name="BuildAxisScale2" decimal_digits="2" label_width="0" layout="topleft" max_val="1024" min_val="-1024" name="BuildAxisScale2" width="70" left="270" top="335" />
-          <spinner height="18" control_name="FlycamAxisScale2" decimal_digits="2" label_width="0" layout="topleft" max_val="1024" min_val="-1024" name="FlycamAxisScale2" width="70" left="360" top="335" />
+          <spinner height="18" control_name="BuildAxisScale2" decimal_digits="2" label_width="0" layout="topleft" max_val="1024" min_val="-1024" name="BuildAxisScale2" width="75" left="270" top="335" />
+          <spinner height="18" control_name="FlycamAxisScale2" decimal_digits="2" label_width="0" layout="topleft" max_val="1024" min_val="-1024" name="FlycamAxisScale2" width="75" left="360" top="335" />
           <text type="string" length="1" halign="right" layout="topleft" name="ZScale" width="150" left="20" top="355" height="18">
         Z Scale
     </text>
           <spinner height="18" control_name="AvatarAxisScale0" decimal_digits="2" label_width="0" layout="topleft" max_val="50" min_val="-50" name="AvatarAxisScale0" width="70" left="180" top="355" />
-          <spinner height="18" control_name="BuildAxisScale0" decimal_digits="2" label_width="0" layout="topleft" max_val="1024" min_val="-1024" name="BuildAxisScale0" width="70" left="270" top="355" />
-          <spinner height="18" control_name="FlycamAxisScale0" decimal_digits="2" label_width="0" layout="topleft" max_val="1024" min_val="-1024" name="FlycamAxisScale0" width="70" left="360" top="355" />
+          <spinner height="18" control_name="BuildAxisScale0" decimal_digits="2" label_width="0" layout="topleft" max_val="1024" min_val="-1024" name="BuildAxisScale0" width="75" left="270" top="355" />
+          <spinner height="18" control_name="FlycamAxisScale0" decimal_digits="2" label_width="0" layout="topleft" max_val="1024" min_val="-1024" name="FlycamAxisScale0" width="75" left="360" top="355" />
           <text type="string" length="1" halign="right" layout="topleft" name="PitchScale" width="150" left="20" top="375" height="18">
         Pitch Scale
     </text>
-          <spinner height="18" control_name="AvatarAxisScale4" decimal_digits="2" label_width="0" layout="topleft" max_val="1024" min_val="-1024" name="AvatarAxisScale4" width="70" left="180" top="375" />
-          <spinner height="18" control_name="BuildAxisScale4" decimal_digits="2" label_width="0" layout="topleft" max_val="1024" min_val="-1024" name="BuildAxisScale4" width="70" left="270" top="375" />
-          <spinner height="18" control_name="FlycamAxisScale4" decimal_digits="2" label_width="0" layout="topleft" max_val="1024" min_val="-1024" name="FlycamAxisScale4" width="70" left="360" top="375" />
+          <spinner height="18" control_name="AvatarAxisScale4" decimal_digits="2" label_width="0" layout="topleft" max_val="1024" min_val="-1024" name="AvatarAxisScale4" width="75" left="180" top="375" />
+          <spinner height="18" control_name="BuildAxisScale4" decimal_digits="2" label_width="0" layout="topleft" max_val="1024" min_val="-1024" name="BuildAxisScale4" width="75" left="270" top="375" />
+          <spinner height="18" control_name="FlycamAxisScale4" decimal_digits="2" label_width="0" layout="topleft" max_val="1024" min_val="-1024" name="FlycamAxisScale4" width="75" left="360" top="375" />
           <text type="string" length="1" halign="right" layout="topleft" name="YawScale" width="150" left="20" top="395" height="18">
         Yaw Scale
     </text>
-          <spinner height="18" control_name="AvatarAxisScale5" decimal_digits="2" label_width="0" layout="topleft" max_val="1024" min_val="-1024" name="AvatarAxisScale5" width="70" left="180" top="395" />
-          <spinner height="18" control_name="BuildAxisScale5" decimal_digits="2" label_width="0" layout="topleft" max_val="1024" min_val="-1024" name="BuildAxisScale5" width="70" left="270" top="395" />
-          <spinner height="18" control_name="FlycamAxisScale5" decimal_digits="2" label_width="0" layout="topleft" max_val="1024" min_val="-1024" name="FlycamAxisScale5" width="70" left="360" top="395" />
+          <spinner height="18" control_name="AvatarAxisScale5" decimal_digits="2" label_width="0" layout="topleft" max_val="1024" min_val="-1024" name="AvatarAxisScale5" width="75" left="180" top="395" />
+          <spinner height="18" control_name="BuildAxisScale5" decimal_digits="2" label_width="0" layout="topleft" max_val="1024" min_val="-1024" name="BuildAxisScale5" width="75" left="270" top="395" />
+          <spinner height="18" control_name="FlycamAxisScale5" decimal_digits="2" label_width="0" layout="topleft" max_val="1024" min_val="-1024" name="FlycamAxisScale5" width="75" left="360" top="395" />
           <text type="string" length="1" halign="right" layout="topleft" name="RollScale" width="150" left="20" top="415" height="18">
         Roll Scale
     </text>
-          <spinner height="18" control_name="BuildAxisScale3" decimal_digits="2" label_width="0" layout="topleft" max_val="1024" min_val="-1024" name="BuildAxisScale3" width="70" left="270" top="415" />
-          <spinner height="18" control_name="FlycamAxisScale3" decimal_digits="2" label_width="0" layout="topleft" max_val="1024" min_val="-1024" name="FlycamAxisScale3" width="70" left="360" top="415" />
+          <spinner height="18" control_name="BuildAxisScale3" decimal_digits="2" label_width="0" layout="topleft" max_val="1024" min_val="-1024" name="BuildAxisScale3" width="75" left="270" top="415" />
+          <spinner height="18" control_name="FlycamAxisScale3" decimal_digits="2" label_width="0" layout="topleft" max_val="1024" min_val="-1024" name="FlycamAxisScale3" width="75" left="360" top="415" />
           <text font="SansSerifBold" height="18" layout="topleft" left="20" name="general_deadzone_title" top="438" width="300">Dead zones</text>
           <text type="string" length="1" halign="right" layout="topleft" name="XDeadZone" width="150" left="20" top="462" height="18">
         X Dead Zone
@@ -121,7 +121,7 @@
           <text type="string" length="1" halign="right" layout="topleft" name="ZoomScale2" width="150" left="20" top="602" height="18">
         Zoom Scale
     </text>
-          <spinner height="18" control_name="FlycamAxisScale6" decimal_digits="2" label_width="0" layout="topleft" max_val="1024" min_val="-1024" name="FlycamAxisScale6" width="70" left="360" top="602" />
+          <spinner height="18" control_name="FlycamAxisScale6" decimal_digits="2" label_width="0" layout="topleft" max_val="1024" min_val="-1024" name="FlycamAxisScale6" width="75" left="360" top="602" />
           <text type="string" length="1" halign="right" layout="topleft" name="ZoomDeadZone" width="150" left="20" top="622" height="18">
         Zoom Dead Zone
     </text>
@@ -752,4 +752,3 @@
   <button follows="right|bottom" height="20" label="OK" label_selected="OK" layout="topleft" name="ok_btn" width="98" left="548" top="690" />
   <button follows="right|bottom" height="20" label="Cancel" label_selected="Cancel" layout="topleft" name="cancel_btn" width="98" left="654" top="690" />
 </floater>
-
