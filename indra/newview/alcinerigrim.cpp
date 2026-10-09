@@ -100,29 +100,10 @@ bool resolveForwardAlpha(LLGLSLShader& shader, bool hint)
     return forward_alpha;
 }
 
-// [TronT1 P2-8 fix] A previous revision force-invalidated mCanBindFast on
-// every LLGLSLShader (an sInstances walk) whenever CineRigRimTronMode/Mix/
-// ColorSource, TronEnabled, TronPalette or any of the four TronColor* swatch
-// controls changed -- meant as belt-and-braces so a fast-bound program could
-// never keep showing a stale RIG_RIM_TRON_COLOR after a palette/colour edit.
-// That is unnecessary: bindAnimated() is called, and re-reads every one of
-// those LLCachedControl values plus ALTron::palette()/isEnabledMaster()
-// fresh, on EVERY bind that can reach a Rig-Rim-capable program --
-// LLPipeline::bindDeferredShaderFast()'s fast branch calls it unconditionally
-// even when shader.mCanBindFast is already true (pipeline.cpp, right after
-// shader.bind()), and the forward-alpha path's prepare_alpha_shader()
-// (lldrawpoolalpha.cpp) calls bindGlobals() -- which also calls
-// bindAnimated() -- on every one of its own per-pass rebuilds regardless of
-// mCanBindFast. So there is no "fast bind skipped the refresh" window for
-// any of bindAnimated()'s own uniforms to go stale in: forcing every shader
-// off the fast path on a settings tick was doing (and costing: an
-// sInstances walk on every Mix slider drag tick) nothing that the next
-// regular bind wasn't already about to do on its own. This is NOT true of
-// bindGlobals()'s OWN uniforms (RIG_RIM_MODE/RIG_RIM_GLOBALS/RIG_RIM_SHADOW)
-// -- bindDeferredShaderFast's fast branch does not re-run bindGlobals(), by
-// design, so THOSE really can go stale across a fast bind; that existing
-// gain-hash / light-state invalidation (ALCineRigRim::isEnabled() ->
-// gGL.setRigRimActive(), elsewhere) is unaffected by this change.
+// bindAnimated() is refreshed directly on every fast bind. bindGlobals()'s
+// own uniforms are different: the fast path skips them, so isEnabled() below
+// tracks their settings/validity signature and invalidates cached full binds
+// only when that signature changes.
 } // namespace
 
 // [RigRim]
@@ -130,18 +111,38 @@ bool ALCineRigRim::isEnabled()
 {
     static LLCachedControl<bool> enable(gSavedSettings, "CineRigRimEnabled", false);
     static LLCachedControl<F32>  master_gain(gSavedSettings, "CineRigRimMasterGain", 1.f);
+    static LLCachedControl<F32>  smoothness(gSavedSettings, "CineRigRimSmoothness", 0.f);
+    static LLCachedControl<F32>  anti_shimmer(gSavedSettings, "CineRigRimAntiShimmer", 0.f);
+    static LLCachedControl<bool> debug_rim_only(gSavedSettings, "CineRigRimDebugRimOnly", false);
+    static LLCachedControl<U32> debug_view(gSavedSettings, "CineRigRimDebugView", 0);
     // zero gain / no lit rig slot == disabled: no work, bit-exact off path
     const bool active = enable() && master_gain() > 0.f &&
         ALCineLightRigManager::instance().enabledMask() != 0;
-    // [RigRim] Round-2 P2 fix: push the result into LLRender's cheap per-sync
-    // gate every time this is checked (bindGlobals()/paramsForVolume() both
-    // call isEnabled() at least once per frame whenever any local light or
-    // rig-rim-aware program is touched), so LLRender::syncLightState() can
-    // skip its own 8-vec4 array build/upload while off. setRigRimActive()
-    // bumps the light-state hash on a false->true transition, guaranteeing
-    // the next sync re-uploads real values instead of staying stale.
-    gGL.setRigRimActive(active);
+    const F32 mode = active ? ((debug_rim_only() || debug_view() == 1) ? 2.f : 1.f) : 0.f;
+    const LLVector4 bind_state(
+        active ? llclamp(finiteOr(master_gain, 0.f), 0.f, 4.f) : 0.f,
+        active ? llclamp(finiteOr(smoothness, 0.f), 0.f, 1.f) : 0.f,
+        active ? llclamp(finiteOr(anti_shimmer, 0.f), 0.f, 1.f) : 0.f,
+        mode);
+    if (gGL.setRigRimActive(active, bind_state))
+    {
+        // bindDeferredShaderFast() skips bindGlobals(). Invalidate every
+        // program when a bindGlobals-owned value changes. Per-frame aux/sil
+        // validity is refreshed directly by bindRigRimAux on every fast bind.
+        for (LLGLSLShader* shader : LLGLSLShader::sInstances)
+        {
+            if (shader)
+            {
+                shader->mCanBindFast = false;
+            }
+        }
+    }
     return active;
+}
+
+bool ALCineRigRim::isForwardAlphaProgram(LLGLSLShader& shader)
+{
+    return resolveForwardAlpha(shader, false);
 }
 
 // [RigRim]
@@ -166,7 +167,8 @@ S32 ALCineRigRim::modeForCurrentPass(bool forward_alpha)
         return 0;
     }
     static LLCachedControl<bool> debug_rim_only(gSavedSettings, "CineRigRimDebugRimOnly", false);
-    return debug_rim_only() ? 2 : 1;
+    static LLCachedControl<U32> debug_view(gSavedSettings, "CineRigRimDebugView", 0);
+    return (debug_rim_only() || debug_view() == 1) ? 2 : 1;
 }
 
 // [RigRim]
@@ -210,6 +212,19 @@ void ALCineRigRim::bindGlobals(LLGLSLShader& shader, bool forward_alpha)
         // a behaviour change.
         bindAnimated(shader);
         return; // the shader never reads rig_rim_globals when mode 0
+    }
+
+    // Forward alpha has a local RigRimPixel. Upload the two sampler-free
+    // quality terms here; bindRigRimAux repeats this on every fast bind so
+    // probes, mirrors and Prism remain current without an auxiliary pass.
+    if (forward_alpha)
+    {
+        static LLCachedControl<F32> smoothness(gSavedSettings, "CineRigRimSmoothness", 0.f);
+        static LLCachedControl<F32> anti_shimmer(gSavedSettings, "CineRigRimAntiShimmer", 0.f);
+        shader.uniform4f(LLShaderMgr::RIG_RIM_QUALITY,
+            llclamp(finiteOr(smoothness, 0.f), 0.f, 1.f),
+            llclamp(finiteOr(anti_shimmer, 0.f), 0.f, 1.f),
+            0.f, 0.f);
     }
 
     static LLCachedControl<F32> master_gain(gSavedSettings, "CineRigRimMasterGain", 1.f);

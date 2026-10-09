@@ -1036,6 +1036,12 @@ const std::vector<std::string>& LLFloaterDirector::sceneSettingsList()
         "CineRigRimIncludeAlpha",
         "CineRigRimIncludeProbes",
         "CineRigRimIncludeBounce",
+        "CineRigRimSmoothness", "CineRigRimAntiShimmer", "CineRigRimSilhouette",
+        "CineRigRimSilhouetteWidth", "CineRigRimSilhouetteUnits", "CineRigRimSilhouetteSoft",
+        "CineRigRimSilhouetteGap", "CineRigRimSilhouetteSeedThreshold", "CineRigRimSilhouetteSeedSoft",
+        "CineRigRimActorsOnly", "CineRigRimActorsOnlyAlpha", "CineRigRimWrapEnabled",
+        "CineRigRimWrapStrength", "CineRigRimWrapWidth", "CineRigRimWrapBlur",
+        "CineRigRimWrapSaturation", "CineRigRimWrapClamp",
         // [RigRim] P2-4: CineRigRimDebugRimOnly is deliberately NOT part of
         // scene state (Persist 0 in settings.xml) — a debug view should
         // never be saved into, or restored from, a Director scene.
@@ -1376,6 +1382,27 @@ void LLFloaterDirector::loadScene(const std::string& name)
                 {
                     ctrl->resetToDefault(true);
                 }
+            }
+        }
+    }
+    else
+    {
+        for (const std::string& setting : sceneSettingsList())
+        {
+            // A scene that already has the original Rig Rim block predates
+            // only these quality controls. Preserve the historical behaviour
+            // of every pre-existing omitted key; default only newly-added
+            // quality keys so they cannot leak from the previously loaded scene.
+            const bool new_quality_key =
+                setting == "CineRigRimSmoothness" ||
+                setting == "CineRigRimAntiShimmer" ||
+                setting.rfind("CineRigRimSilhouette", 0) == 0 ||
+                setting.rfind("CineRigRimActorsOnly", 0) == 0 ||
+                setting.rfind("CineRigRimWrap", 0) == 0;
+            if (new_quality_key && !scene["settings"].has(setting))
+            {
+                if (LLControlVariable* ctrl = gSavedSettings.getControl(setting))
+                    ctrl->resetToDefault(true);
             }
         }
     }

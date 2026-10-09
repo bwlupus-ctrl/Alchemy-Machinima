@@ -66,6 +66,15 @@ public:
     void updateTonemapper();
     void updateCAS();
     void populateLUTCombo();
+    void updateLensLookHints();
+    LLTextBox* mInfraredHint = nullptr;
+    LLButton* mInfraredEnableTag = nullptr;
+    LLTextBox* mSoftEdgeDoFHint = nullptr;
+    boost::signals2::scoped_connection mInfraredEnabledConnection;
+    boost::signals2::scoped_connection mAvatarTagConnection;
+    boost::signals2::scoped_connection mSoftEdgeEnabledConnection;
+    boost::signals2::scoped_connection mSoftEdgeBlurTypeConnection;
+    boost::signals2::scoped_connection mDoFConnection;
 
     // [BDMerge G3.3 Batch 3] Selected Light quick panel: live per-projector
     // controls that follow the currently-selected object.

@@ -884,20 +884,18 @@ void LLRender::refreshState(void)
     mDirty = false;
 }
 
-// [RigRim] Round-2 P2 fix.
-void LLRender::setRigRimActive(bool active)
+// [RigRim] Keep the fast-bind and light-state caches coherent with the rim
+// globals that are not otherwise part of LLRender's light records.
+bool LLRender::setRigRimActive(bool active, const LLVector4& bind_state)
 {
-    if (mRigRimActive != active)
+    if (mRigRimActive != active || mRigRimBindState != bind_state)
     {
         mRigRimActive = active;
-        // Bump the light-state hash so every shader's cached mLightHash
-        // mismatches on its next sync, forcing a full re-upload. Without
-        // this, a re-enable that lands between two otherwise-unchanged
-        // syncs would never refresh a shader whose light state (position,
-        // colour, etc.) hasn't itself changed -- it would keep showing the
-        // stale (zeroed) rim state indefinitely.
+        mRigRimBindState = bind_state;
         ++mLightHash;
+        return true;
     }
+    return false;
 }
 
 void LLRender::syncLightState()

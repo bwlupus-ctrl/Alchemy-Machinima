@@ -678,6 +678,12 @@ const std::vector<std::string>& ALPanelCineLightRig::settings()
         "CineRigRimIncludeProbes",
         "CineRigRimIncludeBounce",
         "CineRigRimDebugRimOnly",
+        "CineRigRimSmoothness", "CineRigRimAntiShimmer", "CineRigRimSilhouette",
+        "CineRigRimSilhouetteWidth", "CineRigRimSilhouetteUnits", "CineRigRimSilhouetteSoft",
+        "CineRigRimSilhouetteGap", "CineRigRimSilhouetteSeedThreshold", "CineRigRimSilhouetteSeedSoft",
+        "CineRigRimActorsOnly", "CineRigRimActorsOnlyAlpha", "CineRigRimWrapEnabled",
+        "CineRigRimWrapStrength", "CineRigRimWrapWidth", "CineRigRimWrapBlur",
+        "CineRigRimWrapSaturation", "CineRigRimWrapClamp", "CineRigRimDebugView",
         "CineRigRimKeyGain",
         "CineRigRimKeySharpness",
         "CineRigRimKeyWrap",
@@ -755,6 +761,9 @@ bool ALPanelCineLightRig::postBuild()
     mNightMaskDarkness = getChild<LLUICtrl>("cine_night_mask_darkness"); // [NightMaskPercent]
     mEasyNightMaskDarkness = getChild<LLUICtrl>("cine_easy_night_mask_darkness"); // [NightMaskPercent]
     mNightMaskStatus = getChild<LLTextBox>("night_mask_status");
+    mRigRimQualityStatus = getChild<LLTextBox>("cine_rimq_status");
+    mRigRimEnableTag = getChild<LLButton>("cine_rimq_enable_tag");
+    mRigRimEnableTag->setVisible(false);
     const char* const advanced_driven_names[] = {
         "cine_master_ev", "cine_master_ev_reset",
         "cine_key_ev", "cine_key_ev_reset",
@@ -824,6 +833,23 @@ bool ALPanelCineLightRig::postBuild()
         [this](LLUICtrl*, const LLSD&) { onTargetObject(); });
     mObjectTargetClear->setCommitCallback(
         [this](LLUICtrl*, const LLSD&) { onClearObjectTarget(); });
+    mRigRimEnableTag->setCommitCallback([this](LLUICtrl*, const LLSD&)
+    {
+        LLHandle<ALPanelCineLightRig> handle = getDerivedHandle<ALPanelCineLightRig>();
+        LLNotificationsUtil::add("EnableGBufferAvatarTagConfirm", LLSD(), LLSD(),
+            [handle](const LLSD& notification, const LLSD& response)
+            {
+                if (LLNotificationsUtil::getSelectedOption(notification, response) == 0)
+                {
+                    gSavedSettings.setBOOL("RenderGBufferAvatarTag", true);
+                    if (ALPanelCineLightRig* self = handle.get())
+                    {
+                        self->mRigRimEnableTag->setVisible(false);
+                    }
+                }
+                return false;
+            });
+    });
     mGroupEnable->setCommitCallback(
         [this](LLUICtrl*, const LLSD&) { onGroupEnabledCommit(); });
     for (LLCheckBoxCtrl* control : mGroupSlotChecks)
@@ -2773,6 +2799,14 @@ void ALPanelCineLightRig::draw()
     syncFixtureControls();
     syncGoboLibrary();
     updateDerivedStatus();
+    if (mRigRimStatusClock.due() && isWidgetOnScreen(mRigRimQualityStatus) &&
+        mRigRimStatusGate.changed({gPipeline.rigRimStatusRevision()}))
+    {
+        const std::string& status = gPipeline.rigRimStatus();
+        setTextIfChanged(mRigRimQualityStatus, status);
+        setVisibleIfChanged(mRigRimEnableTag,
+            status.find("NO AVATAR TAG") != std::string::npos);
+    }
     LLPanel::draw();
 }
 
@@ -2780,6 +2814,8 @@ void ALPanelCineLightRig::onVisibilityChange(bool new_visibility)
 {
     if (new_visibility)
     {
+        mRigRimStatusGate.reset();
+        mRigRimStatusClock.forceDue();
         updateAnchorList();
         syncObjectTargetControls(true);
         syncGroupControls();

@@ -1889,6 +1889,45 @@
                 <real>0.15</real>
             </array>
         </map>
+        <key>RenderInfraredEnabled</key><map><key>Comment</key><string>Enable pre-tonemap infrared film</string><key>Persist</key><integer>1</integer><key>Type</key><string>Boolean</string><key>Value</key><integer>0</integer></map>
+        <key>RenderInfraredMode</key><map><key>Comment</key><string>0 B&amp;W, 1 Aerochrome</string><key>Persist</key><integer>1</integer><key>Type</key><string>U32</string><key>Value</key><integer>0</integer></map>
+        <key>RenderInfraredStrength</key><map><key>Comment</key><string>Infrared mix 0..1</string><key>Persist</key><integer>1</integer><key>Type</key><string>F32</string><key>Value</key><real>1</real></map>
+        <key>RenderInfraredExposureEV</key><map><key>Comment</key><string>Infrared exposure -3..3 EV</string><key>Persist</key><integer>1</integer><key>Type</key><string>F32</string><key>Value</key><real>0</real></map>
+        <key>RenderInfraredFoliageEV</key><map><key>Comment</key><string>NIR foliage gain -2..3 EV</string><key>Persist</key><integer>1</integer><key>Type</key><string>F32</string><key>Value</key><real>0</real></map>
+        <key>RenderInfraredFoliageSensitivity</key><map><key>Comment</key><string>Foliage classifier sensitivity 0..1</string><key>Persist</key><integer>1</integer><key>Type</key><string>F32</string><key>Value</key><real>0.5</real></map>
+        <key>RenderInfraredDryVegetation</key><map><key>Comment</key><string>Dry vegetation weight 0..1</string><key>Persist</key><integer>1</integer><key>Type</key><string>F32</string><key>Value</key><real>0.4</real></map>
+        <key>RenderInfraredSkyDarken</key><map><key>Comment</key><string>Blue-sky darkening 0..6 stops</string><key>Persist</key><integer>1</integer><key>Type</key><string>F32</string><key>Value</key><real>2</real></map>
+        <key>RenderInfraredWaterDarken</key><map><key>Comment</key><string>Water darkening 0..6 stops</string><key>Persist</key><integer>1</integer><key>Type</key><string>F32</string><key>Value</key><real>2</real></map>
+        <key>RenderInfraredSkinEV</key><map><key>Comment</key><string>NIR skin gain -2..2 EV</string><key>Persist</key><integer>1</integer><key>Type</key><string>F32</string><key>Value</key><real>0.5</real></map>
+        <key>RenderInfraredShadowDepth</key><map><key>Comment</key><string>Irradiance shadow depth 0..1</string><key>Persist</key><integer>1</integer><key>Type</key><string>F32</string><key>Value</key><real>0.4</real></map>
+        <key>RenderInfraredRedLeak</key><map><key>Comment</key><string>Visible-red leak 0..1</string><key>Persist</key><integer>1</integer><key>Type</key><string>F32</string><key>Value</key><real>0.1</real></map>
+        <key>RenderInfraredHalation</key><map><key>Comment</key><string>Infrared halation 0..1</string><key>Persist</key><integer>1</integer><key>Type</key><string>F32</string><key>Value</key><real>0.25</real></map>
+        <key>RenderInfraredAeroFilter</key><map><key>Comment</key><string>0 #12, 1 #21, 2 #25, 3 none</string><key>Persist</key><integer>1</integer><key>Type</key><string>U32</string><key>Value</key><integer>0</integer></map>
+        <key>RenderInfraredAeroSaturation</key><map><key>Comment</key><string>Aerochrome saturation 0..2</string><key>Persist</key><integer>1</integer><key>Type</key><string>F32</string><key>Value</key><real>1.15</real></map>
+        <key>RenderInfraredDebugView</key><map><key>Comment</key><string>0 off, 1 classes, 2 NIR gain, 3 confidence</string><key>Persist</key><integer>0</integer><key>Type</key><string>U32</string><key>Value</key><integer>0</integer></map>
+        <key>RenderInfraredPresetSetsGrain</key><map><key>Comment</key><string>Allow IR presets to suggest film grain</string><key>Persist</key><integer>1</integer><key>Type</key><string>Boolean</string><key>Value</key><integer>0</integer></map>
+        <key>RenderSoftEdgeEnabled</key><map><key>Comment</key><string>Enable pre-tonemap soft edge / sweet spot</string><key>Persist</key><integer>1</integer><key>Type</key><string>Boolean</string><key>Value</key><integer>0</integer></map>
+        <key>RenderSoftEdgeBlurType</key><map><key>Comment</key><string>0 Diffusion, 1 Defocus</string><key>Persist</key><integer>1</integer><key>Type</key><string>U32</string><key>Value</key><integer>0</integer></map>
+        <key>RenderSoftEdgeShape</key><map><key>Comment</key><string>0 circle, 1 oval, 2 band</string><key>Persist</key><integer>1</integer><key>Type</key><string>U32</string><key>Value</key><integer>1</integer></map>
+        <key>RenderSoftEdgeAnchor</key><map><key>Comment</key><string>0 manual, 1 DoF focus, 2 Subject A head</string><key>Persist</key><integer>1</integer><key>Type</key><string>U32</string><key>Value</key><integer>0</integer></map>
+        <key>RenderSoftEdgeCenterX</key><map><key>Comment</key><string>Manual sweet-spot X 0..1</string><key>Persist</key><integer>1</integer><key>Type</key><string>F32</string><key>Value</key><real>0.5</real></map>
+        <key>RenderSoftEdgeCenterY</key><map><key>Comment</key><string>Manual sweet-spot Y 0..1</string><key>Persist</key><integer>1</integer><key>Type</key><string>F32</string><key>Value</key><real>0.5</real></map>
+        <key>RenderSoftEdgeSize</key><map><key>Comment</key><string>Sweet-spot size 0.05..1.5 frame heights</string><key>Persist</key><integer>1</integer><key>Type</key><string>F32</string><key>Value</key><real>0.35</real></map>
+        <key>RenderSoftEdgeAspect</key><map><key>Comment</key><string>Oval aspect 0.3..3</string><key>Persist</key><integer>1</integer><key>Type</key><string>F32</string><key>Value</key><real>1.4</real></map>
+        <key>RenderSoftEdgeAngle</key><map><key>Comment</key><string>Sweet-spot angle -90..90 degrees</string><key>Persist</key><integer>1</integer><key>Type</key><string>F32</string><key>Value</key><real>0</real></map>
+        <key>RenderSoftEdgeFeather</key><map><key>Comment</key><string>Edge feather 0.02..2</string><key>Persist</key><integer>1</integer><key>Type</key><string>F32</string><key>Value</key><real>0.4</real></map>
+        <key>RenderSoftEdgeBlur</key><map><key>Comment</key><string>Diffusion/Defocus amount 0..1</string><key>Persist</key><integer>1</integer><key>Type</key><string>F32</string><key>Value</key><real>0.5</real></map>
+        <key>RenderSoftEdgeGlow</key><map><key>Comment</key><string>Edge glow 0..2</string><key>Persist</key><integer>1</integer><key>Type</key><string>F32</string><key>Value</key><real>0.2</real></map>
+        <key>RenderSoftEdgeGlowThreshold</key><map><key>Comment</key><string>Exposed glow threshold 0.1..4</string><key>Persist</key><integer>1</integer><key>Type</key><string>F32</string><key>Value</key><real>0.8</real></map>
+        <key>RenderSoftEdgeDesaturate</key><map><key>Comment</key><string>Edge desaturation 0..1</string><key>Persist</key><integer>1</integer><key>Type</key><string>F32</string><key>Value</key><real>0</real></map>
+        <key>RenderSoftEdgeTint</key><map><key>Comment</key><string>Soft-edge tint, stored sRGB</string><key>Persist</key><integer>1</integer><key>Type</key><string>Color3</string><key>Value</key><array><real>1</real><real>0.92</real><real>0.8</real></array></map>
+        <key>RenderSoftEdgeTintAmount</key><map><key>Comment</key><string>Soft-edge tint amount 0..1</string><key>Persist</key><integer>1</integer><key>Type</key><string>F32</string><key>Value</key><real>0</real></map>
+        <key>RenderSoftEdgeShowMask</key><map><key>Comment</key><string>Replace frame with soft-edge mask debug</string><key>Persist</key><integer>0</integer><key>Type</key><string>Boolean</string><key>Value</key><integer>0</integer></map>
+        <key>RenderGradNDTintColor</key><map><key>Comment</key><string>Graduated ND tint, stored sRGB</string><key>Persist</key><integer>1</integer><key>Type</key><string>Color3</string><key>Value</key><array><real>1</real><real>1</real><real>1</real></array></map>
+        <key>RenderGradNDTintAmount</key><map><key>Comment</key><string>Graduated ND tint amount 0..1</string><key>Persist</key><integer>1</integer><key>Type</key><string>F32</string><key>Value</key><real>0</real></map>
+        <key>RenderLensFilterPreset</key><map><key>Comment</key><string>0 custom, 1 85, 2 85B, 3 85C, 4 81A, 5 80A, 6 80B, 7 80C, 8 82A</string><key>Persist</key><integer>1</integer><key>Type</key><string>U32</string><key>Value</key><integer>0</integer></map>
+        <key>RenderLensFilterMired</key><map><key>Comment</key><string>Custom full-frame filter shift -200..200 mired</string><key>Persist</key><integer>1</integer><key>Type</key><string>F32</string><key>Value</key><real>0</real></map>
+        <key>RenderLensFilterAmount</key><map><key>Comment</key><string>Full-frame warming/cooling filter amount 0..1</string><key>Persist</key><integer>1</integer><key>Type</key><string>F32</string><key>Value</key><real>0</real></map>
         <key>RenderGradNDEnabled</key>
         <map>
             <key>Comment</key>

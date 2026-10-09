@@ -191,6 +191,7 @@ LLGLSLShader            gDeferredLightProgram;
 LLGLSLShader            gDeferredMultiLightProgram[16];
 LLGLSLShader            gDeferredSpotLightProgram;
 LLGLSLShader            gDeferredMultiSpotLightProgram;
+bool                    gRigRimAuxCompiled = true;
 // [ActorMask]
 LLGLSLShader gDeferredMultiLightActorMaskProgram;
 LLGLSLShader gDeferredMultiSpotLightActorMaskProgram;
@@ -261,6 +262,12 @@ LLGLSLShader            gUltimateKaleidoProgram;
 LLGLSLShader            gVolumetricLightProgram;
 // [Cine Outline Phase 1] deferred normal/depth outline post pass
 LLGLSLShader            gCineOutlineProgram;
+LLGLSLShader            gRigRimAuxProgram;
+LLGLSLShader            gRigRimSilSeedProgram;
+LLGLSLShader            gRigRimSilDtProgram[2];
+LLGLSLShader            gRigRimWrapBlurProgram[2];
+LLGLSLShader            gRigRimWrapProgram;
+LLGLSLShader            gRigRimDebugProgram;
 // [TronT1] Tron World post pass (dark grade + world grid + pulses)
 LLGLSLShader            gTronWorldProgram;
 // [TronT3] Tron light-cycle trail ribbons (immediate-mode strips drawn inside renderTronWorld)
@@ -331,6 +338,8 @@ LLGLSLShader            gCGColorgradeLegacyGammaProgram;
 LLGLSLShader            gCGTonemapColorgradeProgram;
 LLGLSLShader            gCGTonemapColorgradeLegacyGammaProgram;
 LLGLSLShader            gOnLensFiltersProgram; // ND + polarizer pre-pass (pre-bloom)
+LLGLSLShader            gLensSoftEdgeProgram;
+bool                    gOnLensNoIR = false;
 // [RLVa:KB] - @setsphere
 LLGLSLShader            gRlvSphereProgram;
 // [/RLVa:KB]
@@ -681,6 +690,13 @@ void LLViewerShaderMgr::finalizeShaderList()
     // haze_density/(blue_density+haze_density) = 0/0 = NaN and blacks the frame
     mShaderList.push_back(&gVolumetricLightProgram);
     mShaderList.push_back(&gCineOutlineProgram);
+    if (gRigRimAuxProgram.isComplete()) mShaderList.push_back(&gRigRimAuxProgram);
+    if (gRigRimSilSeedProgram.isComplete()) mShaderList.push_back(&gRigRimSilSeedProgram);
+    for (auto& shader : gRigRimSilDtProgram) if (shader.isComplete()) mShaderList.push_back(&shader);
+    for (auto& shader : gRigRimWrapBlurProgram) if (shader.isComplete()) mShaderList.push_back(&shader);
+    if (gRigRimWrapProgram.isComplete()) mShaderList.push_back(&gRigRimWrapProgram);
+    if (gRigRimDebugProgram.isComplete()) mShaderList.push_back(&gRigRimDebugProgram);
+    if (gLensSoftEdgeProgram.isComplete()) mShaderList.push_back(&gLensSoftEdgeProgram);
     mShaderList.push_back(&gTronWorldProgram); // [TronT1]
     mShaderList.push_back(&gTronTrailProgram); // [TronT3]
     mShaderList.push_back(&gCineFisheyeProgram);
@@ -1652,9 +1668,23 @@ bool LLViewerShaderMgr::loadShadersEffects()
 bool LLViewerShaderMgr::loadShadersDeferred()
 {
     LL_PROFILE_ZONE_SCOPED;
+    gPipeline.releaseRigRimAux();
     gAvatarSilhouetteRimParityCompiled = false;
+    gRigRimAuxCompiled = true;
+    gOnLensNoIR = false;
     bool use_sun_shadow = mShaderLevel[SHADER_DEFERRED] > 1 &&
         gSavedSettings.getS32("RenderShadowDetail") > 0;
+
+    const auto log_rig_rim_samplers = [](const LLGLSLShader& shader)
+    {
+        if (shader.isComplete())
+        {
+            LL_INFOS("RigRimQ") << shader.mName
+                << " active_samplers=" << shader.mActiveTextureChannels
+                << " GL_MAX_TEXTURE_IMAGE_UNITS=" << gGLManager.mNumTextureImageUnits
+                << LL_ENDL;
+        }
+    };
 
     if (mShaderLevel[SHADER_DEFERRED] == 0)
     {
@@ -1748,6 +1778,13 @@ bool LLViewerShaderMgr::loadShadersDeferred()
         gUltimateKaleidoProgram.unload();
         gVolumetricLightProgram.unload();
         gCineOutlineProgram.unload();
+        gRigRimAuxProgram.unload();
+        gRigRimSilSeedProgram.unload();
+        for (auto& shader : gRigRimSilDtProgram) shader.unload();
+        for (auto& shader : gRigRimWrapBlurProgram) shader.unload();
+        gRigRimWrapProgram.unload();
+        gRigRimDebugProgram.unload();
+        gLensSoftEdgeProgram.unload();
         gTronWorldProgram.unload(); // [TronT1]
         gTronTrailProgram.unload(); // [TronT3]
         gDeferredProjectorVolumetricProgram.unload(); // [BDMerge G3.3]
@@ -2717,8 +2754,23 @@ bool LLViewerShaderMgr::loadShadersDeferred()
         gDeferredLightProgram.clearPermutations();
 
         add_common_permutations(&gDeferredLightProgram);
+        gDeferredLightProgram.addPermutation("RIG_RIM_AUX", "1");
 
         success = gDeferredLightProgram.createShader();
+        log_rig_rim_samplers(gDeferredLightProgram);
+        const bool rim_overflow = success &&
+            gDeferredLightProgram.mActiveTextureChannels > gGLManager.mNumTextureImageUnits;
+        if (!success || rim_overflow)
+        {
+            LL_WARNS("RigRimQ") << gDeferredLightProgram.mName
+                << " failed with RIG_RIM_AUX; retrying stock permutation" << LL_ENDL;
+            gRigRimAuxCompiled = false;
+            gDeferredLightProgram.clearPermutations();
+            add_common_permutations(&gDeferredLightProgram);
+            // A failed compile decrements mShaderLevel; restore it for the retry.
+            gDeferredLightProgram.mShaderLevel = mShaderLevel[SHADER_DEFERRED];
+            success = gDeferredLightProgram.createShader();
+        }
         llassert(success);
     }
 
@@ -2740,8 +2792,23 @@ bool LLViewerShaderMgr::loadShadersDeferred()
             gDeferredMultiLightProgram[i].addPermutation("LIGHT_COUNT", llformat("%d", i+1));
 
             add_common_permutations(&gDeferredMultiLightProgram[i]);
+            gDeferredMultiLightProgram[i].addPermutation("RIG_RIM_AUX", "1");
 
             success = gDeferredMultiLightProgram[i].createShader();
+            log_rig_rim_samplers(gDeferredMultiLightProgram[i]);
+            const bool rim_overflow = success &&
+                gDeferredMultiLightProgram[i].mActiveTextureChannels > gGLManager.mNumTextureImageUnits;
+            if (!success || rim_overflow)
+            {
+                LL_WARNS("RigRimQ") << gDeferredMultiLightProgram[i].mName
+                    << " failed with RIG_RIM_AUX; retrying stock permutation" << LL_ENDL;
+                gRigRimAuxCompiled = false;
+                gDeferredMultiLightProgram[i].clearPermutations();
+                gDeferredMultiLightProgram[i].addPermutation("LIGHT_COUNT", llformat("%d", i+1));
+                add_common_permutations(&gDeferredMultiLightProgram[i]);
+                gDeferredMultiLightProgram[i].mShaderLevel = mShaderLevel[SHADER_DEFERRED];
+                success = gDeferredMultiLightProgram[i].createShader();
+            }
             llassert(success);
         }
     }
@@ -2761,8 +2828,22 @@ bool LLViewerShaderMgr::loadShadersDeferred()
         gDeferredSpotLightProgram.mShaderLevel = mShaderLevel[SHADER_DEFERRED];
 
         add_common_permutations(&gDeferredSpotLightProgram);
+        gDeferredSpotLightProgram.addPermutation("RIG_RIM_AUX", "1");
 
         success = gDeferredSpotLightProgram.createShader();
+        log_rig_rim_samplers(gDeferredSpotLightProgram);
+        const bool rim_overflow = success &&
+            gDeferredSpotLightProgram.mActiveTextureChannels > gGLManager.mNumTextureImageUnits;
+        if (!success || rim_overflow)
+        {
+            LL_WARNS("RigRimQ") << gDeferredSpotLightProgram.mName
+                << " failed with RIG_RIM_AUX; retrying stock permutation" << LL_ENDL;
+            gRigRimAuxCompiled = false;
+            gDeferredSpotLightProgram.clearPermutations();
+            add_common_permutations(&gDeferredSpotLightProgram);
+            gDeferredSpotLightProgram.mShaderLevel = mShaderLevel[SHADER_DEFERRED];
+            success = gDeferredSpotLightProgram.createShader();
+        }
         llassert(success);
     }
 
@@ -2782,8 +2863,23 @@ bool LLViewerShaderMgr::loadShadersDeferred()
         gDeferredMultiSpotLightProgram.mShaderLevel = mShaderLevel[SHADER_DEFERRED];
 
         add_common_permutations(&gDeferredMultiSpotLightProgram);
+        gDeferredMultiSpotLightProgram.addPermutation("RIG_RIM_AUX", "1");
 
         success = gDeferredMultiSpotLightProgram.createShader();
+        log_rig_rim_samplers(gDeferredMultiSpotLightProgram);
+        const bool rim_overflow = success &&
+            gDeferredMultiSpotLightProgram.mActiveTextureChannels > gGLManager.mNumTextureImageUnits;
+        if (!success || rim_overflow)
+        {
+            LL_WARNS("RigRimQ") << gDeferredMultiSpotLightProgram.mName
+                << " failed with RIG_RIM_AUX; retrying stock permutation" << LL_ENDL;
+            gRigRimAuxCompiled = false;
+            gDeferredMultiSpotLightProgram.clearPermutations();
+            gDeferredMultiSpotLightProgram.addPermutation("MULTI_SPOTLIGHT", "1");
+            add_common_permutations(&gDeferredMultiSpotLightProgram);
+            gDeferredMultiSpotLightProgram.mShaderLevel = mShaderLevel[SHADER_DEFERRED];
+            success = gDeferredMultiSpotLightProgram.createShader();
+        }
         llassert(success);
     }
 
@@ -2814,7 +2910,26 @@ bool LLViewerShaderMgr::loadShadersDeferred()
             if (i == 0) shader.addPermutation("LIGHT_COUNT", "16");
             else shader.addPermutation("MULTI_SPOTLIGHT", "1");
             add_common_permutations(&shader);
-            const bool created = shader.createShader();
+            shader.addPermutation("RIG_RIM_AUX", "1");
+            bool created = shader.createShader();
+            LL_INFOS("RigRimQ") << shader.mName
+                << " active_samplers=" << shader.mActiveTextureChannels
+                << " GL_MAX_TEXTURE_IMAGE_UNITS=" << gGLManager.mNumTextureImageUnits << LL_ENDL;
+            const bool rim_overflow = created &&
+                shader.mActiveTextureChannels > gGLManager.mNumTextureImageUnits;
+            if (!created || rim_overflow)
+            {
+                LL_WARNS("RigRimQ") << shader.mName
+                    << " failed with RIG_RIM_AUX; retrying stock permutation" << LL_ENDL;
+                gRigRimAuxCompiled = false;
+                shader.clearPermutations();
+                shader.addPermutation("main", "actorMaskedMain");
+                if (i == 0) shader.addPermutation("LIGHT_COUNT", "16");
+                else shader.addPermutation("MULTI_SPOTLIGHT", "1");
+                add_common_permutations(&shader);
+                shader.mShaderLevel = mShaderLevel[SHADER_DEFERRED];
+                created = shader.createShader();
+            }
             LL_INFOS("ActorMask") << "[ActorMask] " << shader.mName
                 << " texture_channels=" << shader.mActiveTextureChannels
                 << " available=" << gGLManager.mNumTextureImageUnits << LL_ENDL;
@@ -4012,6 +4127,67 @@ bool LLViewerShaderMgr::loadShadersDeferred()
             LL_WARNS() << "Failed to create shader '" << gCineOutlineProgram.mName << "', disabling!" << LL_ENDL;
             success = true;
         }
+    }
+
+    // Rig Rim Quality programs are optional. A failure disables only the
+    // affected quality stage; the stock lighting chain remains available.
+    if (success)
+    {
+        auto load_optional = [&](LLGLSLShader& shader, const char* name,
+                                 const char* fragment, bool deferred) -> bool
+        {
+            shader.mName = name;
+            shader.mFeatures = LLShaderFeatures();
+            shader.mFeatures.isDeferred = deferred;
+            shader.mShaderFiles.clear();
+            shader.clearPermutations();
+            shader.mShaderFiles.push_back(make_pair("deferred/postDeferredNoTCV.glsl", GL_VERTEX_SHADER));
+            shader.mShaderFiles.push_back(make_pair(fragment, GL_FRAGMENT_SHADER));
+            shader.mShaderLevel = mShaderLevel[SHADER_DEFERRED];
+            if (!shader.createShader())
+            {
+                LL_WARNS("RigRimQ") << "Failed to create " << name << "; stage disabled" << LL_ENDL;
+                shader.unload();
+                return false;
+            }
+            return true;
+        };
+        load_optional(gRigRimAuxProgram, "Rig Rim Aux Shader", "deferred/rigRimAuxF.glsl", true);
+        load_optional(gRigRimSilSeedProgram, "Rig Rim Silhouette Seed Shader", "deferred/rigRimSilSeedF.glsl", true);
+        load_optional(gRigRimSilDtProgram[0], "Rig Rim Silhouette DT H", "deferred/rigRimSilDtF.glsl", false);
+        gRigRimSilDtProgram[1].mName = "Rig Rim Silhouette DT V";
+        gRigRimSilDtProgram[1].mFeatures = LLShaderFeatures();
+        gRigRimSilDtProgram[1].mShaderFiles.clear();
+        gRigRimSilDtProgram[1].clearPermutations();
+        gRigRimSilDtProgram[1].addPermutation("RIG_RIM_DT_VERTICAL", "1");
+        gRigRimSilDtProgram[1].mShaderFiles.push_back(make_pair("deferred/postDeferredNoTCV.glsl", GL_VERTEX_SHADER));
+        gRigRimSilDtProgram[1].mShaderFiles.push_back(make_pair("deferred/rigRimSilDtF.glsl", GL_FRAGMENT_SHADER));
+        gRigRimSilDtProgram[1].mShaderLevel = mShaderLevel[SHADER_DEFERRED];
+        if (!gRigRimSilDtProgram[1].createShader())
+        {
+            LL_WARNS("RigRimQ") << "Failed to create Rig Rim Silhouette DT V; stage disabled" << LL_ENDL;
+            gRigRimSilDtProgram[1].unload();
+        }
+        for (S32 i = 0; i < 2; ++i)
+        {
+            LLGLSLShader& shader = gRigRimWrapBlurProgram[i];
+            shader.mName = i == 0 ? "Rig Rim Wrap Downsample" : "Rig Rim Wrap Blur";
+            shader.mFeatures = LLShaderFeatures();
+            shader.mShaderFiles.clear();
+            shader.clearPermutations();
+            if (i == 0) shader.addPermutation("RIG_RIM_WRAP_DOWNSAMPLE", "1");
+            shader.mShaderFiles.push_back(make_pair("deferred/postDeferredNoTCV.glsl", GL_VERTEX_SHADER));
+            shader.mShaderFiles.push_back(make_pair("deferred/rigRimWrapBlurF.glsl", GL_FRAGMENT_SHADER));
+            shader.mShaderLevel = mShaderLevel[SHADER_DEFERRED];
+            if (!shader.createShader())
+            {
+                LL_WARNS("RigRimQ") << "Failed to create " << shader.mName
+                    << "; wrap disabled" << LL_ENDL;
+                shader.unload();
+            }
+        }
+        load_optional(gRigRimWrapProgram, "Rig Rim Wrap Shader", "deferred/rigRimWrapF.glsl", true);
+        load_optional(gRigRimDebugProgram, "Rig Rim Debug Shader", "deferred/rigRimDebugF.glsl", true);
     }
 
     // [TronT1] Tron World post pass. Same shape as the Cine Outline program:
@@ -5268,7 +5444,51 @@ bool LLViewerShaderMgr::loadShadersDeferred()
         gOnLensFiltersProgram.clearPermutations();
         gOnLensFiltersProgram.mShaderLevel = mShaderLevel[SHADER_DEFERRED];
         success = gOnLensFiltersProgram.createShader();
+        if (success)
+        {
+            LL_INFOS("LensLooks") << gOnLensFiltersProgram.mName
+                << " active_samplers=" << gOnLensFiltersProgram.mActiveTextureChannels
+                << " GL_MAX_TEXTURE_IMAGE_UNITS=" << gGLManager.mNumTextureImageUnits
+                << LL_ENDL;
+        }
+        const bool ir_overflow = success &&
+            gOnLensFiltersProgram.mActiveTextureChannels > gGLManager.mNumTextureImageUnits;
+        if (!success || ir_overflow)
+        {
+            LL_WARNS("LensLooks") << "Infrared on-lens shader "
+                << (ir_overflow ? "exceeded the texture-unit limit" : "failed")
+                << "; retrying without IR" << LL_ENDL;
+            gOnLensFiltersProgram.clearPermutations();
+            gOnLensFiltersProgram.addPermutation("ON_LENS_NO_IR", "1");
+            gOnLensFiltersProgram.mShaderLevel = mShaderLevel[SHADER_DEFERRED];
+            success = gOnLensFiltersProgram.createShader();
+            gOnLensNoIR = success;
+            if (success)
+            {
+                LL_INFOS("LensLooks") << gOnLensFiltersProgram.mName
+                    << " fallback_active_samplers=" << gOnLensFiltersProgram.mActiveTextureChannels
+                    << " GL_MAX_TEXTURE_IMAGE_UNITS=" << gGLManager.mNumTextureImageUnits
+                    << LL_ENDL;
+            }
+        }
         llassert(success);
+    }
+
+    if (success)
+    {
+        gLensSoftEdgeProgram.mName = "Lens Soft Edge Shader";
+        gLensSoftEdgeProgram.mFeatures = LLShaderFeatures();
+        gLensSoftEdgeProgram.mShaderFiles.clear();
+        gLensSoftEdgeProgram.clearPermutations();
+        gLensSoftEdgeProgram.mShaderFiles.push_back(make_pair("deferred/postDeferredNoTCV.glsl", GL_VERTEX_SHADER));
+        gLensSoftEdgeProgram.mShaderFiles.push_back(make_pair("alchemy/lensSoftEdgeF.glsl", GL_FRAGMENT_SHADER));
+        gLensSoftEdgeProgram.mShaderLevel = mShaderLevel[SHADER_DEFERRED];
+        if (!gLensSoftEdgeProgram.createShader())
+        {
+            LL_WARNS("LensLooks") << "Lens Soft Edge shader unavailable; stage disabled" << LL_ENDL;
+            gLensSoftEdgeProgram.unload();
+        }
+        success = true;
     }
 
     // [RLVa:KB] - @setsphere
@@ -5376,6 +5596,13 @@ bool LLViewerShaderMgr::loadShadersDeferred()
     gAvatarSilhouetteRimParityCompiled = success &&
         gSavedSettings.getBOOL("AvatarSilhouetteRimParity") &&
         gDeferredPBRAlphaProgram.isComplete();
+    LL_INFOS_ONCE("RigRimQ") << "RIG RIM QUALITY VERDICT="
+        << (gRigRimAuxCompiled && gRigRimAuxProgram.isComplete() ? "READY" : "FALLBACK")
+        << LL_ENDL;
+    LL_INFOS_ONCE("LensLooks") << "LENS LOOKS VERDICT="
+        << (!success ? "FAILED" : gOnLensNoIR ? "READY-NO-IR" : "READY")
+        << " soft_edge=" << (gLensSoftEdgeProgram.isComplete() ? "READY" : "DISABLED")
+        << LL_ENDL;
     return success;
 }
 

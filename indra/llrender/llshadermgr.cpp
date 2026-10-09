@@ -2152,6 +2152,20 @@ void LLShaderMgr::initAttribsAndUniforms()
     mReservedUniforms.push_back("shadow_reuse_res");
     mReservedUniforms.push_back("shadow_reuse_res_h");
     mReservedUniforms.push_back("render_debug_lighting_term");
+    mReservedUniforms.push_back("rig_rim_quality");
+    mReservedUniforms.push_back("rig_rim_sil");
+    mReservedUniforms.push_back("rig_rim_aux_params");
+    mReservedUniforms.push_back("rigRimAuxMap");
+    mReservedUniforms.push_back("rigRimSilMap");
+    mReservedUniforms.push_back("rig_rim_wrap");
+    mReservedUniforms.push_back("rig_rim_wrap2");
+    mReservedUniforms.push_back("rigRimWrapSrc");
+    mReservedUniforms.push_back("onLensAlbedoMap");
+    mReservedUniforms.push_back("lensPyramid0");
+    mReservedUniforms.push_back("lensPyramid1");
+    mReservedUniforms.push_back("lensPyramid2");
+    mReservedUniforms.push_back("lensPyramid3");
+    mReservedUniforms.push_back("lensPyramid4");
 
     llassert(mReservedUniforms.size() == END_RESERVED_UNIFORMS);
 

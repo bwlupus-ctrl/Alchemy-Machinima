@@ -191,6 +191,17 @@ No tutorial is currently available.
 
   <notification
    icon="alertmodal.tga"
+   name="EnableGBufferAvatarTagConfirm"
+   type="alertmodal">
+Enabling the avatar tag reloads rendering shaders. Continue?
+    <usetemplate
+     name="okcancelbuttons"
+     notext="Cancel"
+     yestext="OK"/>
+  </notification>
+
+  <notification
+   icon="alertmodal.tga"
    name="BadInstallation"
    type="alertmodal">
  An error occurred while updating [APP_NAME].  Please [https://www.alchemyviewer.org download the latest version] of the Viewer.

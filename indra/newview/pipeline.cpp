@@ -38,6 +38,7 @@
 #include "alavatarlightresponse.h" // [AvatarSilhouette]
 #include "alenvintensity.h" // [EnvIntensity v2] local lights EV, SSAO ceiling factor
 #include "altron.h" // [TronT1]
+#include "allenslooks.h"
 
 #include "pipeline.h"
 #include "alcinelightrig.h"
@@ -1239,6 +1240,11 @@ void LLPipeline::resizeScreenTexture()
 bool LLPipeline::allocateScreenBuffer(U32 resX, U32 resY)
 {
     LL_PROFILE_ZONE_SCOPED_CATEGORY_DISPLAY;
+    if (mRT == &mMainRT)
+    {
+        releaseRigRimAux();
+        releaseLensPyramid();
+    }
     eFBOStatus ret = doAllocateScreenBuffer(resX, resY);
 
     return ret == FBO_SUCCESS_FULLRES;
@@ -2450,11 +2456,16 @@ void LLPipeline::releaseScreenBuffers()
     mActorMaskQueries.release(); // [ActorMask]
     mActorMaskValid = false;
     mActorMaskAllocated = false;
+    releaseRigRimAux();
+    releaseLensPyramid();
     releaseSilCovers(); // [AvatarSilhouette] Detach every shared-depth cover first.
     auto release_pack = [](RenderTargetPack& rt)
     {
         rt.actorMask.release(); // [ActorMask] Before shared depth owner
         rt.actorMaskDepthSrc = 0;
+        rt.rigRimAux.release();
+        for (auto& target : rt.rigRimSil) target.release();
+        for (auto& target : rt.rigRimWrapBlur) target.release();
         rt.screen.release();
         rt.deferredScreen.release();
         rt.deferredLight.release();
@@ -12581,8 +12592,10 @@ void LLPipeline::generateLuminance(LLRenderTarget* src, LLRenderTarget* dst)
         // GLTF material preview renders its own `screen` through here).
         const F32 tron_bloom_scale =
             (mRT == &mMainRT && src == &mRT->screen) ? ALTron::frame().mBloomScale : 1.f;
+        const F32 lens_bloom_scale =
+            (mRT == &mMainRT && src == &mRT->screen) ? ALLensLooks::frame().mBloomScale : 1.f;
         gLuminanceProgram.uniform1f(night_mask_bloom_scale_s,
-            mNightMaskFrame.mBloomScale * tron_bloom_scale);
+            mNightMaskFrame.mBloomScale * tron_bloom_scale * lens_bloom_scale);
 
         mScreenTriangleVB->setBuffer();
         mScreenTriangleVB->drawArrays(LLRender::TRIANGLES, 0, 3);
@@ -14097,14 +14110,26 @@ void LLPipeline::applyOnLensFilters(LLRenderTarget* screen)
     // copies gated independently of Night Mask's state.
     static LLCachedControl<bool> gnd_enabled(gSavedSettings, "RenderGradNDEnabled", false);
     static LLCachedControl<bool> pol_enabled(gSavedSettings, "RenderPolarizerEnabled", false);
+    const ALLensLooks::InfraredParams ir = ALLensLooks::infrared();
+    static LLCachedControl<F32> grad_tint_amount(gSavedSettings, "RenderGradNDTintAmount", 0.f);
+    static LLCachedControl<F32> frame_filter_amount(gSavedSettings, "RenderLensFilterAmount", 0.f);
+    const F32 grad_amount = std::isfinite((F32)grad_tint_amount) ?
+        llclamp((F32)grad_tint_amount, 0.f, 1.f) : 0.f;
+    const F32 filter_amount = std::isfinite((F32)frame_filter_amount) ?
+        llclamp((F32)frame_filter_amount, 0.f, 1.f) : 0.f;
+    const bool ir_active = ir.enabled && ir.strength > 0.f;
+    const bool grads_active = (gnd_enabled() && grad_amount > 0.f) || filter_amount > 0.f;
     const bool night_active = mNightMaskFrame.mActive;
-    if (!gnd_enabled() && !pol_enabled() && !night_active)
+    if (!gnd_enabled() && !pol_enabled() && !night_active && !ir_active && !grads_active)
         return;
 
     // "No post-processing" snapshots must stay filter-free.
     // [TonemapLegacySky] Match colorCorrect and Night Mask's metering gate.
     const bool no_post = !colorCorrectWillApplyExposure(true);
     if (no_post)
+        return;
+    if (screen != &mRT->screen || mRT != &mMainRT || gCubeSnapshot ||
+        sPrismLensRender || sImpostorRender || sRenderingHUDs)
         return;
 
     LL_PROFILE_GPU_ZONE("on-lens filters");
@@ -14199,7 +14224,7 @@ void LLPipeline::applyOnLensFilters(LLRenderTarget* screen)
     p_glare_depth = llclamp(p_glare_depth, 0.5f, 1.f);
 
     // Nothing to do — skip the pass entirely (byte-identical, zero cost).
-    if (density <= 0.f && p_strength <= 0.f && !night_active)
+    if (density <= 0.f && p_strength <= 0.f && !night_active && !ir_active && !grads_active)
         return;
 
     // --- Night Mask -------------------------------------------------------
@@ -14230,7 +14255,7 @@ void LLPipeline::applyOnLensFilters(LLRenderTarget* screen)
     // Only needed while Night Mask actually contributes to a given sub-pass
     // (see draw_on_lens_pass below).
     const glm::mat4 night_inverse_projection =
-        night_active ? glm::inverse(glm::make_mat4(gGLLastProjection)) : glm::mat4(1.f);
+        (night_active || ir_active) ? glm::inverse(glm::make_mat4(gGLLastProjection)) : glm::mat4(1.f);
 
     // ReShade decouple: past every early-out, this pass WILL modify `screen`.
     // M8 ordering: Night Mask is a world-lighting fake, not a camera-lens
@@ -14311,6 +14336,36 @@ void LLPipeline::applyOnLensFilters(LLRenderTarget* screen)
             gOnLensFiltersProgram.bindTexture(LLShaderMgr::EXPOSURE_MAP, &mExposureMap);
             gOnLensFiltersProgram.uniform1f(LLShaderMgr::EXPOSURE, exposure);
 
+            static LLStaticHashedString s_grads("on_lens_grads");
+            static LLStaticHashedString s_grads2("on_lens_grads2");
+            static LLStaticHashedString s_ir("on_lens_ir");
+            static LLStaticHashedString s_ir2("on_lens_ir2");
+            static LLStaticHashedString s_ir3("on_lens_ir3");
+            static LLStaticHashedString s_ir4("on_lens_ir4");
+            static LLStaticHashedString s_ir5("on_lens_ir5");
+            static LLStaticHashedString s_ir_up("on_lens_ir_up");
+            const bool looks = include_gradnd_pol;
+            const LLColor3 grad = ALLensLooks::gradTintLinear();
+            const LLColor3 filter_gain = ALLensLooks::frameFilterGain();
+            gOnLensFiltersProgram.uniform4f(s_grads,grad.mV[0],grad.mV[1],grad.mV[2],looks&&gnd_enabled()?grad_amount:0.f);
+            gOnLensFiltersProgram.uniform4f(s_grads2,filter_gain.mV[0],filter_gain.mV[1],filter_gain.mV[2],looks?filter_amount:0.f);
+            gOnLensFiltersProgram.uniform4f(s_ir,looks&&ir_active?ir.strength:0.f,(F32)ir.mode,ir.exposure_gain,ir.red_leak);
+            gOnLensFiltersProgram.uniform4f(s_ir2,ir.foliage_gain,ir.sensitivity,ir.dry,ir.sky_darken);
+            gOnLensFiltersProgram.uniform4f(s_ir3,ir.water_darken,ir.skin_gain,ir.shadow_depth,ir.halation);
+            gOnLensFiltersProgram.uniform4f(s_ir4,ir.aero_b,ir.aero_g,ir.aero_saturation,(F32)ir.debug_view);
+            gOnLensFiltersProgram.uniform4f(s_ir5,ir.water_darken>0.f?1.f:0.f,ALLensLooks::frame().mTagUsable?1.f:0.f,sUnderWaterRender?1.f:0.f,0.f);
+            glm::vec3 up_view = glm::mat3(glm::make_mat4(gGLLastModelView))*glm::vec3(0.f,0.f,1.f);
+            const F32 water_delta = getRenderWaterHeight() -
+                gAgentCamera.getCameraPositionAgent().mV[VZ];
+            gOnLensFiltersProgram.uniform4f(s_ir_up,up_view.x,up_view.y,up_view.z,water_delta);
+            if (looks && ir_active)
+            {
+                gOnLensFiltersProgram.bindTexture(LLShaderMgr::ON_LENS_ALBEDO,&mRT->deferredScreen,false,LLTexUnit::TFO_POINT,0);
+                gOnLensFiltersProgram.bindTexture(LLShaderMgr::DEFERRED_SPECULAR,&mRT->deferredScreen,false,LLTexUnit::TFO_POINT,1);
+                gOnLensFiltersProgram.bindTexture(LLShaderMgr::NORMAL_MAP,&mRT->deferredScreen,false,LLTexUnit::TFO_POINT,2);
+                gOnLensFiltersProgram.uniformMatrix4fv(LLShaderMgr::NIGHT_MASK_INV_PROJ,1,false,glm::value_ptr(night_inverse_projection));
+            }
+
             gOnLensFiltersProgram.uniform4f(LLShaderMgr::GRADND_PARAMS,
                 include_gradnd_pol ? density : 0.f, angle_rad, position, softness);
             gOnLensFiltersProgram.uniform4f(LLShaderMgr::GRADND_PARAMS2,    sky_confine, sun_weight, sun_radius, flip);
@@ -14361,19 +14416,12 @@ void LLPipeline::applyOnLensFilters(LLRenderTarget* screen)
         // (bloom/flare/tonemap). Use a raw COLOR-only framebuffer blit — NOT
         // copyRenderTarget, whose shader samples deferredScreen's depth (which
         // `screen` shares), reintroducing the depth feedback loop. A blit samples no
-        // textures, so it is feedback-free. GL_COLOR_BUFFER_BIT leaves depth alone.
-        // TODO(RotoInk round-2 review, pre-existing hazard, not fixed here): a
-        // plain copyContents() blit writes colour into EVERY draw buffer
-        // currently bound on `screen`'s FBO, not just attachment 0 -- when
-        // RenderVisibleDiffuseSidecar is on, `screen`'s visible-diffuse
-        // (SRGB8_ALPHA8) and coverage (RG8) sidecar attachments also receive
-        // this filtered beauty colour. See LLPipeline::renderCineOutline and
-        // LLRenderTarget::copyColorToAttachment0 for the fix applied there;
-        // left unchanged here per review scope (out of scope for this pass).
-        screen->copyContents(mWaterDis,
+        // textures, so it is feedback-free. The attachment-0-only helper
+        // leaves depth and the sidecar draw buffers untouched.
+        screen->copyColorToAttachment0(mWaterDis,
                              0, 0, mWaterDis.getWidth(), mWaterDis.getHeight(),
                              0, 0, screen->getWidth(), screen->getHeight(),
-                             GL_COLOR_BUFFER_BIT, GL_NEAREST);
+                             GL_NEAREST);
     };
 
     if (night_active)
@@ -14390,7 +14438,7 @@ void LLPipeline::applyOnLensFilters(LLRenderTarget* screen)
         // Pass 2: GradND/Polarizer only (Night Mask already applied; forced
         // off here so it isn't double-applied). Skipped entirely when neither
         // wants to run, leaving the mask-only result as the final output.
-        if (density > 0.f || p_strength > 0.f)
+        if (density > 0.f || p_strength > 0.f || ir_active || grads_active)
         {
             draw_on_lens_pass(false, true);
         }
@@ -14515,6 +14563,67 @@ void LLPipeline::generateGlow(LLRenderTarget* src)
         mGlow[1].clear();
         mGlow[1].flush();
     }
+}
+
+void LLPipeline::applyLensSoftEdge(LLRenderTarget* screen)
+{
+    const ALLensLooks::SoftEdgeParams p = ALLensLooks::softEdge();
+    if (!p.enabled)
+    {
+        if (mLensPyramid[0].isComplete()) releaseLensPyramid();
+        return;
+    }
+    if (mRT != &mMainRT || screen != &mRT->screen || gCubeSnapshot || sPrismLensRender ||
+        sImpostorRender || sRenderingHUDs || !colorCorrectWillApplyExposure(true) ||
+        !gLensSoftEdgeProgram.isComplete() || !gBloomDownsampleProgram.isComplete() ||
+        !gBloomDownsampleFirstProgram.isComplete() || !ensureLensPyramid()) return;
+
+    // ReShade color_hdr is the visible-light scene before camera filters. If
+    // no on-lens pass captured it (Soft-Edge can run alone), capture now before
+    // Soft-Edge changes the beauty buffer. Preserve an earlier pre-IR capture.
+    static LLCachedControl<bool> reshade_decouple(gSavedSettings, "RenderReShadeDecoupleOnLens", true);
+    if (reshade_decouple() && !mReShadeRawSceneValid && mReShadeSceneRaw.getWidth() > 0)
+    {
+        mReShadeSceneRaw.copyContents(*screen,
+                                      0, 0, screen->getWidth(), screen->getHeight(),
+                                      0, 0, mReShadeSceneRaw.getWidth(), mReShadeSceneRaw.getHeight(),
+                                      GL_COLOR_BUFFER_BIT, GL_NEAREST);
+        mReShadeRawSceneValid = true;
+    }
+
+    LL_PROFILE_ZONE_NAMED_CATEGORY_PIPELINE("renderFinalize - lens soft edge");
+    { LL_PROFILE_GPU_ZONE("lens soft edge pyramid"); LLGLDisable blend(GL_BLEND); LLGLDepthTest depth(GL_FALSE,GL_FALSE);
+      for (S32 i=0;i<5;++i) { LLRenderTarget* src=i?&mLensPyramid[i-1]:screen; LLRenderTarget& dst=mLensPyramid[i];
+        LLGLSLShader& shader=i?gBloomDownsampleProgram:gBloomDownsampleFirstProgram;
+        dst.bindTarget(); shader.bind(); shader.bindTexture(LLShaderMgr::DIFFUSE_MAP,src,false,LLTexUnit::TFO_BILINEAR);
+        shader.uniform2f(LLShaderMgr::BLOOM_TEXEL_SIZE,1.f/src->getWidth(),1.f/src->getHeight());
+        mScreenTriangleVB->setBuffer(); mScreenTriangleVB->drawArrays(LLRender::TRIANGLES,0,3); shader.unbind(); dst.flush(); } }
+
+    { LL_PROFILE_GPU_ZONE("lens soft edge"); screen->bindTarget();
+      const U32 guarded[]={SL_SIDECAR_ATTACHMENT,SL_COVERAGE_ATTACHMENT,ALR_RIM_PARITY_ATTACHMENT};
+      const U32 guarded_count=llmin(screen->getNumTextures()-1,(U32)LL_ARRAY_SIZE(guarded));
+      LLScopedIndexedDrawBufferGuard guard(guarded_count>0,guarded,guarded_count);
+      gGL.setColorMask(true,p.show_mask); LLGLDepthTest depth(GL_FALSE,GL_FALSE); LLGLDisable cull(GL_CULL_FACE);
+      std::optional<LLGLEnable> over; std::optional<LLGLDisable> replace;
+      if(p.show_mask) replace.emplace(GL_BLEND); else { over.emplace(GL_BLEND); gGL.blendFunc(LLRender::BF_ONE,LLRender::BF_ONE_MINUS_SOURCE_ALPHA); }
+      gLensSoftEdgeProgram.bind();
+      const S32 sampler[]={LLShaderMgr::LENS_PYRAMID0,LLShaderMgr::LENS_PYRAMID1,LLShaderMgr::LENS_PYRAMID2,LLShaderMgr::LENS_PYRAMID3,LLShaderMgr::LENS_PYRAMID4};
+      for(S32 i=0;i<5;++i) gLensSoftEdgeProgram.bindTexture(sampler[i],&mLensPyramid[i],false,LLTexUnit::TFO_BILINEAR);
+      // The shader combines this auto-exposure sample with lens_softedge6.x
+      // (the manual RenderExposure scale) for its glow threshold.
+      gLensSoftEdgeProgram.bindTexture(LLShaderMgr::EXPOSURE_MAP,&mExposureMap);
+      static LLStaticHashedString s1("lens_softedge"),s2("lens_softedge2"),s3("lens_softedge3"),s4("lens_softedge4"),s5("lens_softedge5"),s6("lens_softedge6");
+      const LLVector2 size=LLRenderPass::actorFxScreenSize(), offset=LLRenderPass::actorFxFragOffset();
+      const LLVector2 center=ALLensLooks::frame().mCenter; const LLColor3 tint=linearColor3(p.tint);
+      gLensSoftEdgeProgram.uniform4f(s1,(F32)p.shape,p.size,p.aspect,p.angle_rad);
+      gLensSoftEdgeProgram.uniform4f(s2,center.mV[0],center.mV[1],p.feather,p.blur_type==0?p.blur:0.f);
+      gLensSoftEdgeProgram.uniform4f(s3,p.glow,p.glow_threshold,p.desaturate,p.tint_amount);
+      gLensSoftEdgeProgram.uniform4f(s4,tint.mV[0],tint.mV[1],tint.mV[2],p.show_mask?1.f:0.f);
+      gLensSoftEdgeProgram.uniform4f(s5,size.mV[0],size.mV[1],offset.mV[0],offset.mV[1]);
+      static LLCachedControl<F32> softedge_exposure(gSavedSettings, "RenderExposure", 1.f);
+      gLensSoftEdgeProgram.uniform4f(s6,std::isfinite((F32)softedge_exposure)?llclamp((F32)softedge_exposure,.5f,4.f):1.f,1.f,0.f,0.f);
+      mScreenTriangleVB->setBuffer(); mScreenTriangleVB->drawArrays(LLRender::TRIANGLES,0,3); gLensSoftEdgeProgram.unbind(); screen->flush();
+      gGL.setSceneBlendType(LLRender::BT_ALPHA); gGL.setColorMask(true,true); }
 }
 
 // HDR bloom pyramid: threshold-extract into mBloomMip[0], downsample down the
@@ -22382,6 +22491,23 @@ void LLPipeline::renderDoF(LLRenderTarget* src, LLRenderTarget* dst)
                 mRT->deferredLight.bindTarget();
 
                 gDeferredCoFProgram.bind();
+                static LLStaticHashedString s_dof_softedge("dof_softedge");
+                static LLStaticHashedString s_lens_softedge("lens_softedge");
+                static LLStaticHashedString s_lens_softedge2("lens_softedge2");
+                static LLStaticHashedString s_lens_softedge5("lens_softedge5");
+                const ALLensLooks::SoftEdgeParams soft_edge = ALLensLooks::softEdge();
+                const bool defocus = soft_edge.enabled && soft_edge.blur_type == 1 &&
+                    mRT == &mMainRT && !gCubeSnapshot && !sPrismLensRender && !sImpostorRender &&
+                    !sRenderingHUDs && colorCorrectWillApplyExposure(true);
+                gDeferredCoFProgram.uniform4f(s_dof_softedge,defocus?soft_edge.blur:0.f,0.f,0.f,0.f);
+                if (defocus)
+                {
+                    const LLVector2 center=ALLensLooks::frame().mCenter;
+                    const LLVector2 frame_size=LLRenderPass::actorFxScreenSize(), frame_offset=LLRenderPass::actorFxFragOffset();
+                    gDeferredCoFProgram.uniform4f(s_lens_softedge,(F32)soft_edge.shape,soft_edge.size,soft_edge.aspect,soft_edge.angle_rad);
+                    gDeferredCoFProgram.uniform4f(s_lens_softedge2,center.mV[0],center.mV[1],soft_edge.feather,0.f);
+                    gDeferredCoFProgram.uniform4f(s_lens_softedge5,frame_size.mV[0],frame_size.mV[1],frame_offset.mV[0],frame_offset.mV[1]);
+                }
 
                 gDeferredCoFProgram.bindTexture(LLShaderMgr::DEFERRED_DIFFUSE, src, LLTexUnit::TFO_POINT);
                 gDeferredCoFProgram.bindTexture(LLShaderMgr::DEFERRED_DEPTH, &mRT->deferredScreen, true);
@@ -22544,6 +22670,110 @@ void LLPipeline::renderFinalize()
 
     if (hdr)
     {
+        // Rig Rim light wrap and quality debug views are scene light, so they
+        // run before luminance metering just like weather.
+        static LLCachedControl<bool> rr_wrap(gSavedSettings, "CineRigRimWrapEnabled", false);
+        static LLCachedControl<F32> rr_strength(gSavedSettings, "CineRigRimWrapStrength", .5f);
+        static LLCachedControl<F32> rr_reach(gSavedSettings, "CineRigRimWrapWidth", 2.f);
+        static LLCachedControl<F32> rr_blur(gSavedSettings, "CineRigRimWrapBlur", 1.f);
+        static LLCachedControl<F32> rr_sat(gSavedSettings, "CineRigRimWrapSaturation", .7f);
+        static LLCachedControl<F32> rr_clamp(gSavedSettings, "CineRigRimWrapClamp", 4.f);
+        static LLCachedControl<F32> rr_width(gSavedSettings, "CineRigRimSilhouetteWidth", 3.f);
+        static LLCachedControl<U32> rr_units(gSavedSettings, "CineRigRimSilhouetteUnits", 0);
+        static LLCachedControl<F32> rr_soft(gSavedSettings, "CineRigRimSilhouetteSoft", .5f);
+        static LLCachedControl<F32> rr_gap(gSavedSettings, "CineRigRimSilhouetteGap", .08f);
+        static LLCachedControl<F32> rr_seed(gSavedSettings, "CineRigRimSilhouetteSeedThreshold", .02f);
+        static LLCachedControl<F32> rr_seed_soft(gSavedSettings, "CineRigRimSilhouetteSeedSoft", .5f);
+        static LLCachedControl<bool> rr_actors(gSavedSettings, "CineRigRimActorsOnly", false);
+        static LLCachedControl<U32> rr_debug(gSavedSettings, "CineRigRimDebugView", 0);
+        const auto finite_or = [](F32 value, F32 fallback)
+        {
+            return std::isfinite(value) ? value : fallback;
+        };
+        const bool rim_context = mRT == &mMainRT && !gCubeSnapshot && !sPrismLensRender &&
+            !sImpostorRender && !sRenderingHUDs && mRigRimAuxValid;
+        const bool debug_wrap = rr_debug() == 5;
+        F32 rim_subject_distance = 3.f;
+        F32 rim_h = 0.f;
+        F32 rim_texels_per_m = 0.f;
+        F32 rim_width_x = 0.f;
+        F32 rim_band_texels = 0.f;
+        const bool rim_cm = rr_units() == 0;
+        const bool need_rim_metrics = rim_context &&
+            ((rr_wrap() && rr_strength() > 0.f) || (rr_debug() >= 2 && rr_debug() <= 4));
+        if (need_rim_metrics)
+        {
+            if (LLVOAvatar* avatar = LLDirectorCast::instance().resolveSubjectA())
+            {
+                if (LLJoint* head = avatar->getJoint("mHead"))
+                {
+                    rim_subject_distance = llmax(.1f, dist_vec(head->getWorldPosition(),
+                        gAgentCamera.getCameraPositionAgent()));
+                }
+            }
+            rim_h = (F32)mMainRT.deferredScreen.getHeight();
+            rim_texels_per_m = rim_h * gGLLastProjection[5] * .25f;
+            const F32 width = llclamp(finite_or((F32)rr_width,3.f),.2f,30.f);
+            rim_width_x = rim_cm ? width*.01f : width*(rim_h/1080.f)*
+                bdmerge_snapshot_autoscale_multiplier()*.5f;
+            rim_band_texels = llmin(24.f/(1.f+llclamp(finite_or((F32)rr_soft,.5f),0.f,1.f)),
+                rim_cm ? rim_width_x*rim_texels_per_m/rim_subject_distance : rim_width_x);
+        }
+        if (rim_context && rr_wrap() && rr_strength() > 0.f && mRigRimSilValid &&
+            gRigRimWrapProgram.isComplete() && gRigRimWrapBlurProgram[0].isComplete() &&
+            gRigRimWrapBlurProgram[1].isComplete() && ensureRigRimWrap())
+        {
+            LL_PROFILE_ZONE_NAMED_CATEGORY_PIPELINE("renderFinalize - rig rim wrap");
+            const F32 blur_q = llclamp(finite_or((F32)rr_blur,1.f),0.f,3.f);
+            { LL_PROFILE_GPU_ZONE("rig rim wrap blur"); LLGLDisable b(GL_BLEND); LLGLDepthTest d(GL_FALSE,GL_FALSE);
+              mMainRT.rigRimWrapBlur[0].bindTarget(); gRigRimWrapBlurProgram[0].bind();
+              gRigRimWrapBlurProgram[0].bindTexture(LLShaderMgr::RIG_RIM_WRAP_SRC,&mRT->screen,false,LLTexUnit::TFO_BILINEAR);
+              gRigRimWrapBlurProgram[0].uniform4f(LLShaderMgr::RIG_RIM_WRAP2,0.f,0.f,0.f,0.f);
+              mScreenTriangleVB->setBuffer(); mScreenTriangleVB->drawArrays(LLRender::TRIANGLES,0,3); gRigRimWrapBlurProgram[0].unbind(); mMainRT.rigRimWrapBlur[0].flush();
+              mMainRT.rigRimWrapBlur[1].bindTarget(); gRigRimWrapBlurProgram[1].bind();
+              gRigRimWrapBlurProgram[1].bindTexture(LLShaderMgr::RIG_RIM_WRAP_SRC,&mMainRT.rigRimWrapBlur[0],false,LLTexUnit::TFO_BILINEAR);
+              gRigRimWrapBlurProgram[1].uniform4f(LLShaderMgr::RIG_RIM_WRAP2,blur_q/mMainRT.rigRimWrapBlur[0].getWidth(),0.f,0.f,0.f);
+              mScreenTriangleVB->setBuffer(); mScreenTriangleVB->drawArrays(LLRender::TRIANGLES,0,3); mMainRT.rigRimWrapBlur[1].flush();
+              mMainRT.rigRimWrapBlur[0].bindTarget();
+              gRigRimWrapBlurProgram[1].bindTexture(LLShaderMgr::RIG_RIM_WRAP_SRC,&mMainRT.rigRimWrapBlur[1],false,LLTexUnit::TFO_BILINEAR);
+              gRigRimWrapBlurProgram[1].uniform4f(LLShaderMgr::RIG_RIM_WRAP2,0.f,blur_q/mMainRT.rigRimWrapBlur[0].getHeight(),0.f,0.f);
+              mScreenTriangleVB->setBuffer(); mScreenTriangleVB->drawArrays(LLRender::TRIANGLES,0,3); gRigRimWrapBlurProgram[1].unbind(); mMainRT.rigRimWrapBlur[0].flush(); }
+            { LL_PROFILE_GPU_ZONE("rig rim wrap"); mRT->screen.bindTarget();
+              const U32 guarded[]={SL_SIDECAR_ATTACHMENT,SL_COVERAGE_ATTACHMENT,ALR_RIM_PARITY_ATTACHMENT};
+              const U32 guarded_count=llmin(mRT->screen.getNumTextures()-1,(U32)LL_ARRAY_SIZE(guarded));
+              LLScopedIndexedDrawBufferGuard guard(guarded_count>0,guarded,guarded_count);
+              gGL.setColorMask(true,false); LLGLDepthTest d(GL_FALSE,GL_FALSE); LLGLDisable c(GL_CULL_FACE);
+              std::optional<LLGLEnable> add; std::optional<LLGLDisable> replace;
+              if(debug_wrap) replace.emplace(GL_BLEND); else { add.emplace(GL_BLEND); gGL.setSceneBlendType(LLRender::BT_ADD); }
+              bindDeferredShader(gRigRimWrapProgram);
+              gRigRimWrapProgram.bindTexture(LLShaderMgr::RIG_RIM_AUX_MAP,&mMainRT.rigRimAux,false,LLTexUnit::TFO_POINT);
+              gRigRimWrapProgram.bindTexture(LLShaderMgr::RIG_RIM_SIL_MAP,&mMainRT.rigRimSil[0],false,LLTexUnit::TFO_POINT);
+              gRigRimWrapProgram.bindTexture(LLShaderMgr::RIG_RIM_WRAP_SRC,&mMainRT.rigRimWrapBlur[0],false,LLTexUnit::TFO_BILINEAR);
+              gRigRimWrapProgram.uniform4f(LLShaderMgr::RIG_RIM_SIL,rim_width_x,
+                  llclamp(finite_or((F32)rr_soft,.5f),0.f,1.f),llclamp(finite_or((F32)rr_gap,.08f),.01f,.5f),rim_cm?rim_texels_per_m:0.f);
+              gRigRimWrapProgram.uniform4f(LLShaderMgr::RIG_RIM_WRAP,llclamp(finite_or((F32)rr_strength,.5f),0.f,2.f),llclamp(finite_or((F32)rr_reach,2.f),.5f,8.f)*rim_band_texels,llclamp(finite_or((F32)rr_sat,.7f),0.f,1.f),llclamp(finite_or((F32)rr_clamp,4.f),.5f,32.f));
+              gRigRimWrapProgram.uniform4f(LLShaderMgr::RIG_RIM_WRAP2,0.f,0.f,debug_wrap?1.f:0.f,rr_actors()?1.f:0.f);
+              mScreenTriangleVB->setBuffer(); mScreenTriangleVB->drawArrays(LLRender::TRIANGLES,0,3); unbindDeferredShader(gRigRimWrapProgram); mRT->screen.flush();
+              gGL.setSceneBlendType(LLRender::BT_ALPHA); gGL.setColorMask(true,true); }
+        }
+        if (rim_context && rr_debug() >= 2 && rr_debug() <= 4 &&
+            (rr_debug()!=2 || mRigRimSilValid) && gRigRimDebugProgram.isComplete())
+        {
+            LL_PROFILE_GPU_ZONE("rig rim debug");
+            mRT->screen.bindTarget(); const U32 guarded[]={SL_SIDECAR_ATTACHMENT,SL_COVERAGE_ATTACHMENT,ALR_RIM_PARITY_ATTACHMENT};
+            const U32 guarded_count=llmin(mRT->screen.getNumTextures()-1,(U32)LL_ARRAY_SIZE(guarded));
+            LLScopedIndexedDrawBufferGuard guard(guarded_count>0,guarded,guarded_count);
+            gGL.setColorMask(true,false); LLGLDisable b(GL_BLEND); LLGLDepthTest d(GL_FALSE,GL_FALSE); bindDeferredShader(gRigRimDebugProgram);
+            gRigRimDebugProgram.bindTexture(LLShaderMgr::RIG_RIM_AUX_MAP,&mMainRT.rigRimAux,false,LLTexUnit::TFO_POINT);
+            if(mRigRimSilValid) gRigRimDebugProgram.bindTexture(LLShaderMgr::RIG_RIM_SIL_MAP,&mMainRT.rigRimSil[0],false,LLTexUnit::TFO_POINT);
+            gRigRimDebugProgram.uniform4f(LLShaderMgr::RIG_RIM_SIL,rim_width_x,
+                llclamp(finite_or((F32)rr_soft,.5f),0.f,1.f),llclamp(finite_or((F32)rr_gap,.08f),.01f,.5f),rim_cm?rim_texels_per_m:0.f);
+            gRigRimDebugProgram.uniform4f(LLShaderMgr::RIG_RIM_AUX_PARAMS,(F32)mRigRimSubjectSource,
+                llclamp(finite_or((F32)rr_seed,.02f),.002f,.2f),llclamp(finite_or((F32)rr_seed_soft,.5f),.02f,1.f),(F32)rr_debug());
+            mScreenTriangleVB->setBuffer(); mScreenTriangleVB->drawArrays(LLRender::TRIANGLES,0,3); unbindDeferredShader(gRigRimDebugProgram); mRT->screen.flush();
+            gGL.setColorMask(true,true);
+        }
+
         // Night Mask: resolve the target/anchor/smoothing ONCE this frame,
         // before generateLuminance() (B1 bloom-metering fix) and
         // applyOnLensFilters() (the darkening pass) both consume it — see the
@@ -22560,6 +22790,7 @@ void LLPipeline::renderFinalize()
         // frame, before generateLuminance() consumes it -- same B1 idiom and
         // placement as updateNightMaskAnchor() just above.
         ALTron::resolveFrame();
+        ALLensLooks::resolveFrame();
 
         generateLuminance(&mRT->screen, &mLuminanceMap);
 
@@ -22608,6 +22839,7 @@ void LLPipeline::renderFinalize()
         // those optics respect the filtered scene like a real on-lens filter.
         // Self-gates to a no-op when both filters are disabled.
         applyOnLensFilters(&mRT->screen);
+        applyLensSoftEdge(&mRT->screen);
 
         // HDR bloom runs pre-tonemap against the linear scene buffer. The pyramid
         // is generated here; the additive composite is folded into colorCorrect's
@@ -23433,6 +23665,9 @@ static void uploadDebugLightingTerm(LLGLSLShader& shader)
 
 void LLPipeline::bindDeferredShaderFast(LLGLSLShader& shader)
 {
+    // Updates the shared Rig Rim settings/validity signature before deciding
+    // whether this program may use the fast path.
+    ALCineRigRim::isEnabled();
     if (shader.mCanBindFast)
     { // was previously fully bound, use fast path
         shader.bind();
@@ -23443,6 +23678,7 @@ void LLPipeline::bindDeferredShaderFast(LLGLSLShader& shader)
         // header comment. No-op for programs that do not link
         // deferredUtil.glsl (location < 0 early-out).
         ALCineRigRim::bindAnimated(shader);
+        bindRigRimAux(shader);
         bindLightFunc(shader);
         bindShadowMaps(shader);
         // [ShadowDist P1] same slot as bindAnimated: keep a long-lived
@@ -23767,6 +24003,65 @@ void LLPipeline::bindDeferredShader(LLGLSLShader& shader, LLRenderTarget* light_
     // [RigRim] Rig Rim Light globals (no-op for programs that do not link
     // deferredUtil.glsl). Covers pointLightF / spotLightF / multiPointLightF.
     ALCineRigRim::bindGlobals(shader);
+    bindRigRimAux(shader);
+}
+
+void LLPipeline::bindRigRimAux(LLGLSLShader& shader)
+{
+    if (shader.getUniformLocation(LLShaderMgr::RIG_RIM_QUALITY) < 0) return;
+    static LLCachedControl<F32> smooth(gSavedSettings, "CineRigRimSmoothness", 0.f);
+    static LLCachedControl<F32> steady(gSavedSettings, "CineRigRimAntiShimmer", 0.f);
+    static LLCachedControl<F32> silhouette(gSavedSettings, "CineRigRimSilhouette", 0.f);
+    static LLCachedControl<F32> width(gSavedSettings, "CineRigRimSilhouetteWidth", 3.f);
+    static LLCachedControl<U32> units(gSavedSettings, "CineRigRimSilhouetteUnits", 0);
+    static LLCachedControl<F32> soft(gSavedSettings, "CineRigRimSilhouetteSoft", .5f);
+    static LLCachedControl<F32> gap(gSavedSettings, "CineRigRimSilhouetteGap", .08f);
+    static LLCachedControl<bool> actors(gSavedSettings, "CineRigRimActorsOnly", false);
+    const auto finite_or = [](F32 value, F32 fallback)
+    {
+        return std::isfinite(value) ? value : fallback;
+    };
+    const F32 smooth_value = llclamp(finite_or((F32)smooth, 0.f), 0.f, 1.f);
+    const F32 steady_value = llclamp(finite_or((F32)steady, 0.f), 0.f, 1.f);
+    if (ALCineRigRim::isForwardAlphaProgram(shader))
+    {
+        // Forward alpha constructs its quality pixel locally, so Smooth and
+        // Steady remain valid in probes, mirrors, Prism, and before/without
+        // the main-view auxiliary pass. It must never sample the aux maps.
+        shader.uniform4f(LLShaderMgr::RIG_RIM_QUALITY,
+                         smooth_value, steady_value, 0.f, 0.f);
+        shader.uniform4f(LLShaderMgr::RIG_RIM_SIL, 0.f, 0.f, 0.f, 0.f);
+        return;
+    }
+    const bool main = mRT == &mMainRT && !gCubeSnapshot && !sRenderingHUDs &&
+        !sImpostorRender && !sPrismLensRender;
+    const bool aux = main && gRigRimAuxCompiled && mRigRimAuxValid;
+    const bool sil = main && gRigRimAuxCompiled && mRigRimSilValid;
+    shader.uniform4f(LLShaderMgr::RIG_RIM_QUALITY,
+        aux ? smooth_value : 0.f,
+        aux ? steady_value : 0.f,
+        sil ? llclamp(finite_or((F32)silhouette,0.f),0.f,1.f) : 0.f,
+        aux && actors ? 1.f : 0.f);
+    if (aux || sil)
+    {
+        const F32 h = (F32)mMainRT.deferredScreen.getHeight();
+        const bool cm = units() == 0;
+        const F32 width_value = llclamp(finite_or((F32)width,3.f),.2f,30.f);
+        const F32 width_x = cm ? width_value*.01f :
+            width_value*(h/1080.f)*bdmerge_snapshot_autoscale_multiplier()*.5f;
+        const F32 texels_per_m = cm ? h*gGLProjection[5]*.25f : 0.f;
+        shader.uniform4f(LLShaderMgr::RIG_RIM_SIL, width_x,
+            llclamp(finite_or((F32)soft,.5f),0.f,1.f),
+            llclamp(finite_or((F32)gap,.08f),.01f,.5f), texels_per_m);
+    }
+    else
+    {
+        shader.uniform4f(LLShaderMgr::RIG_RIM_SIL, 0.f, 0.f, 0.f, 0.f);
+    }
+    if (aux && shader.getUniformLocation(LLShaderMgr::RIG_RIM_AUX_MAP) >= 0)
+        shader.bindTexture(LLShaderMgr::RIG_RIM_AUX_MAP, &mMainRT.rigRimAux, false, LLTexUnit::TFO_POINT);
+    if (sil && shader.getUniformLocation(LLShaderMgr::RIG_RIM_SIL_MAP) >= 0)
+        shader.bindTexture(LLShaderMgr::RIG_RIM_SIL_MAP, &mMainRT.rigRimSil[0], false, LLTexUnit::TFO_POINT);
 }
 
 
@@ -23966,6 +24261,97 @@ S32 LLPipeline::bindActorMask(LLGLSLShader& shader)
     if (mActorMaskView != ActorMaskView::MASK || !mActorMaskValid) return -1;
     return shader.bindTexture(LLShaderMgr::ACTOR_MASK_MAP, &mRT->actorMask,
                               false, LLTexUnit::TFO_POINT);
+}
+
+bool LLPipeline::ensureRigRimAux()
+{
+    LLRenderTarget& screen = mMainRT.deferredScreen;
+    if (!screen.isComplete()) return false;
+    const U32 w = screen.getWidth(), h = screen.getHeight();
+    const U32 hw = (w + 1) / 2, hh = (h + 1) / 2;
+    if (mMainRT.rigRimAux.isComplete() && mMainRT.rigRimAux.getWidth() == w &&
+        mMainRT.rigRimAux.getHeight() == h && mMainRT.rigRimSil[0].isComplete() &&
+        mMainRT.rigRimSil[0].getWidth() == hw && mMainRT.rigRimSil[0].getHeight() == hh &&
+        mMainRT.rigRimSil[1].isComplete() && mMainRT.rigRimSil[1].getWidth() == hw &&
+        mMainRT.rigRimSil[1].getHeight() == hh)
+        return true;
+    releaseRigRimAux();
+    if (!mMainRT.rigRimAux.allocate(w, h, GL_RGBA16, false) ||
+        !mMainRT.rigRimSil[0].allocate(hw, hh, GL_RGBA16F, false) ||
+        !mMainRT.rigRimSil[1].allocate(hw, hh, GL_RGBA16F, false))
+    {
+        LL_WARNS_ONCE("RigRimQ") << "Rig Rim auxiliary target allocation failed" << LL_ENDL;
+        releaseRigRimAux();
+        return false;
+    }
+    return true;
+}
+
+bool LLPipeline::ensureRigRimWrap()
+{
+    const U32 w = (mMainRT.deferredScreen.getWidth() + 3) / 4;
+    const U32 h = (mMainRT.deferredScreen.getHeight() + 3) / 4;
+    if (mMainRT.rigRimWrapBlur[0].isComplete() &&
+        mMainRT.rigRimWrapBlur[0].getWidth() == w && mMainRT.rigRimWrapBlur[0].getHeight() == h &&
+        mMainRT.rigRimWrapBlur[1].isComplete() &&
+        mMainRT.rigRimWrapBlur[1].getWidth() == w && mMainRT.rigRimWrapBlur[1].getHeight() == h)
+        return true;
+    for (auto& target : mMainRT.rigRimWrapBlur) target.release();
+    for (auto& target : mMainRT.rigRimWrapBlur)
+    {
+        if (!target.allocate(w, h, GL_R11F_G11F_B10F, false))
+        {
+            target.release();
+            if (!target.allocate(w, h, GL_RGBA16F, false))
+            {
+                for (auto& cleanup : mMainRT.rigRimWrapBlur) cleanup.release();
+                LL_WARNS_ONCE("RigRimQ") << "Rig Rim wrap target allocation failed" << LL_ENDL;
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
+void LLPipeline::releaseRigRimAux()
+{
+    mMainRT.rigRimAux.release();
+    for (auto& target : mMainRT.rigRimSil) target.release();
+    for (auto& target : mMainRT.rigRimWrapBlur) target.release();
+    mRigRimAuxValid = mRigRimSilValid = false;
+}
+
+bool LLPipeline::ensureLensPyramid()
+{
+    U32 w = (mRT->screen.getWidth() + 1) / 2, h = (mRT->screen.getHeight() + 1) / 2;
+    bool complete = true;
+    for (LLRenderTarget& target : mLensPyramid)
+    {
+        complete = complete && target.isComplete() && target.getWidth() == llmax(w, 1u) &&
+            target.getHeight() == llmax(h, 1u);
+        w = (w + 1) / 2;
+        h = (h + 1) / 2;
+    }
+    if (complete) return true;
+    releaseLensPyramid();
+    w = (mRT->screen.getWidth() + 1) / 2;
+    h = (mRT->screen.getHeight() + 1) / 2;
+    for (LLRenderTarget& target : mLensPyramid)
+    {
+        if (!target.allocate(llmax(w, 1u), llmax(h, 1u), GL_R11F_G11F_B10F, false))
+        {
+            releaseLensPyramid();
+            LL_WARNS_ONCE("LensLooks") << "Lens soft-edge pyramid allocation failed" << LL_ENDL;
+            return false;
+        }
+        w = (w + 1) / 2; h = (h + 1) / 2;
+    }
+    return true;
+}
+
+void LLPipeline::releaseLensPyramid()
+{
+    for (LLRenderTarget& target : mLensPyramid) target.release();
 }
 
 namespace
@@ -24984,6 +25370,13 @@ void LLPipeline::renderDeferredLighting(ActorMaskViewSource source)
         source == ActorMaskViewSource::MAIN && mRT == &mMainRT &&
         !gCubeSnapshot && !sRenderingHUDs && !sImpostorRender &&
         !sPrismLensRender;
+    const bool rig_rim_main = source == ActorMaskViewSource::MAIN && mRT == &mMainRT &&
+        !gCubeSnapshot && !sRenderingHUDs && !sImpostorRender && !sPrismLensRender;
+    if (source == ActorMaskViewSource::MAIN && mRT == &mMainRT)
+    {
+        mRigRimAuxValid = false;
+        mRigRimSilValid = false;
+    }
 
     // ReShade bridge: capture deferredScreen's albedo/normals for gatherFrame()
     // NOW, at the earliest point they are guaranteed fully populated and
@@ -25255,6 +25648,162 @@ void LLPipeline::renderDeferredLighting(ActorMaskViewSource source)
             }
             deferred_light_target->flush();
             unbindDeferredShader(gDeferredBlurLightProgram);
+        }
+
+        // Rig Rim Quality auxiliary and silhouette passes. Main view only;
+        // validity deliberately survives ResetActorMaskView until finalize.
+        static LLCachedControl<F32> rim_smooth(gSavedSettings, "CineRigRimSmoothness", 0.f);
+        static LLCachedControl<F32> rim_steady(gSavedSettings, "CineRigRimAntiShimmer", 0.f);
+        static LLCachedControl<F32> rim_edge(gSavedSettings, "CineRigRimSilhouette", 0.f);
+        static LLCachedControl<bool> rim_actors(gSavedSettings, "CineRigRimActorsOnly", false);
+        static LLCachedControl<bool> rim_wrap(gSavedSettings, "CineRigRimWrapEnabled", false);
+        static LLCachedControl<F32> rim_seed(gSavedSettings, "CineRigRimSilhouetteSeedThreshold", .02f);
+        static LLCachedControl<F32> rim_seed_soft(gSavedSettings, "CineRigRimSilhouetteSeedSoft", .5f);
+        static LLCachedControl<U32> rim_debug(gSavedSettings, "CineRigRimDebugView", 0);
+        static LLCachedControl<F32> rim_wrap_strength(gSavedSettings, "CineRigRimWrapStrength", .5f);
+        const bool want_aux = rim_smooth() > 0.f || rim_steady() > 0.f || rim_actors() || rim_wrap();
+        const bool want_sil = rim_edge() > 0.f || rim_wrap();
+        S32 subject_source = mRigRimSubjectSource;
+        const bool rim_enabled = ALCineRigRim::isEnabled();
+        const bool status_relevant = want_aux || want_sil || rim_debug() != 0 ||
+            !mRigRimStatus.empty();
+        if (rig_rim_main && status_relevant && mRigRimStatusFrame != gFrameCount)
+        {
+            mRigRimStatusFrame = gFrameCount;
+            subject_source = 0;
+            if (rim_actors())
+            {
+                if (LLViewerShaderMgr::gbufferAvatarTagActive()) subject_source = 1;
+                else if (mActorMaskValid && ALCineLightRigManager::anyActorOnly()) subject_source = 2;
+            }
+            mRigRimSubjectSource = subject_source;
+
+            std::string status;
+            if (rim_debug() != 0 && !rim_enabled)
+            {
+                status = "Rig Rim is off";
+            }
+            else if (rim_debug() == 5 && (!rim_wrap() || rim_wrap_strength() <= 0.f))
+            {
+                status = "Wrap debug needs Wrap enabled";
+            }
+            else if ((want_aux || want_sil) && !gRigRimAuxCompiled)
+            {
+                status = "Rim quality unavailable: shader fallback";
+            }
+            else if ((want_aux || want_sil) && !gRigRimAuxProgram.isComplete())
+            {
+                status = "Rim quality unavailable: auxiliary shader missing";
+                LL_WARNS_ONCE("RigRimQ") << status << LL_ENDL;
+            }
+            else if (want_sil && (!gRigRimSilSeedProgram.isComplete() ||
+                                  !gRigRimSilDtProgram[0].isComplete() ||
+                                  !gRigRimSilDtProgram[1].isComplete()))
+            {
+                status = "Rim silhouette unavailable: seed/distance shader missing";
+                LL_WARNS_ONCE("RigRimQ") << status << LL_ENDL;
+            }
+            else if (rim_debug() == 5 && (!gRigRimWrapProgram.isComplete() ||
+                                          !gRigRimWrapBlurProgram[0].isComplete() ||
+                                          !gRigRimWrapBlurProgram[1].isComplete()))
+            {
+                status = "Rim wrap unavailable: shader missing";
+                LL_WARNS_ONCE("RigRimQ") << status << LL_ENDL;
+            }
+            else if (rim_actors() && subject_source == 0)
+            {
+                status = "ACTORS ONLY HAS NO AVATAR TAG AND NO ACTOR MASK - RIM IS WORLD-WIDE";
+                LL_WARNS_ONCE("RigRimQ") << status << LL_ENDL;
+            }
+            else if (rim_debug() >= 2 && rim_debug() <= 4 &&
+                     (!want_aux || (rim_debug() == 2 && !want_sil)))
+            {
+                status = "debug view needs the aux pass";
+            }
+            else if (want_sil)
+            {
+                static LLCachedControl<F32> rim_width(gSavedSettings, "CineRigRimSilhouetteWidth", 3.f);
+                static LLCachedControl<U32> rim_units(gSavedSettings, "CineRigRimSilhouetteUnits", 0);
+                static LLCachedControl<F32> rim_soft(gSavedSettings, "CineRigRimSilhouetteSoft", .5f);
+                const auto finite_or = [](F32 value, F32 fallback)
+                {
+                    return std::isfinite(value) ? value : fallback;
+                };
+                F32 distance = 3.f;
+                if (LLVOAvatar* avatar = LLDirectorCast::instance().resolveSubjectA())
+                {
+                    if (LLJoint* head = avatar->getJoint("mHead"))
+                    {
+                        distance = llmax(.1f, dist_vec(head->getWorldPosition(),
+                            gAgentCamera.getCameraPositionAgent()));
+                    }
+                }
+                const F32 texels_per_m = (F32)mMainRT.deferredScreen.getHeight() * gGLProjection[5] * .25f;
+                const F32 softness = llclamp(finite_or((F32)rim_soft,.5f),0.f,1.f);
+                const F32 max_texels = 24.f / (1.f + softness);
+                const F32 width = llclamp(finite_or((F32)rim_width,3.f),.2f,30.f);
+                const F32 requested = rim_units() == 0 ?
+                    width * .01f * texels_per_m / distance :
+                    width * ((F32)mMainRT.deferredScreen.getHeight() / 1080.f) *
+                        bdmerge_snapshot_autoscale_multiplier() * .5f;
+                if (requested > max_texels && texels_per_m > 0.f)
+                {
+                    const F32 max_cm = max_texels * distance / texels_per_m * 100.f;
+                    status = llformat("Edge width clamped to %.1f cm at the subject", max_cm);
+                }
+            }
+            if (status != mRigRimStatus)
+            {
+                mRigRimStatus = status;
+                ++mRigRimStatusRevision;
+            }
+        }
+        if (rig_rim_main && (!rim_enabled || (!want_aux && !want_sil)))
+        {
+            if (mMainRT.rigRimAux.isComplete()) releaseRigRimAux();
+        }
+        else if (rig_rim_main && gRigRimAuxCompiled && (want_aux || want_sil) &&
+                 gRigRimAuxProgram.isComplete() && ensureRigRimAux())
+        {
+            LL_PROFILE_ZONE_NAMED_CATEGORY_PIPELINE("renderDeferredLighting - rig rim aux");
+            LLGLDisable no_blend(GL_BLEND);
+            LLGLDepthTest no_depth(GL_FALSE, GL_FALSE);
+            const F32 seed = std::isfinite((F32)rim_seed) ? (F32)rim_seed : .02f;
+            const F32 seed_soft = std::isfinite((F32)rim_seed_soft) ? (F32)rim_seed_soft : .5f;
+            const F32 p[4] = {(F32)subject_source, llclamp(seed,.002f,.2f), llclamp(seed_soft,.02f,1.f), 0.f};
+            {
+                LL_PROFILE_GPU_ZONE("rig rim aux");
+                mMainRT.rigRimAux.bindTarget();
+                bindDeferredShader(gRigRimAuxProgram);
+                gRigRimAuxProgram.uniform4fv(LLShaderMgr::RIG_RIM_AUX_PARAMS, 1, p);
+                if (subject_source == 2)
+                {
+                    bindActorMask(gRigRimAuxProgram);
+                    gRigRimAuxProgram.uniform1i(LLShaderMgr::ACTOR_MASK_BITS,
+                        ALCineLightRigManager::instance().liveRecipientBits());
+                }
+                mScreenTriangleVB->setBuffer(); mScreenTriangleVB->drawArrays(LLRender::TRIANGLES, 0, 3);
+                unbindDeferredShader(gRigRimAuxProgram); mMainRT.rigRimAux.flush();
+                mRigRimAuxValid = true;
+            }
+            if (want_sil && gRigRimSilSeedProgram.isComplete() &&
+                gRigRimSilDtProgram[0].isComplete() && gRigRimSilDtProgram[1].isComplete())
+            {
+                { LL_PROFILE_GPU_ZONE("rig rim sil seed");
+                  mMainRT.rigRimSil[0].bindTarget(); bindDeferredShader(gRigRimSilSeedProgram);
+                  gRigRimSilSeedProgram.bindTexture(LLShaderMgr::RIG_RIM_AUX_MAP,
+                      &mMainRT.rigRimAux,false,LLTexUnit::TFO_POINT);
+                  gRigRimSilSeedProgram.uniform4fv(LLShaderMgr::RIG_RIM_AUX_PARAMS,1,p);
+                  mScreenTriangleVB->setBuffer(); mScreenTriangleVB->drawArrays(LLRender::TRIANGLES,0,3);
+                  unbindDeferredShader(gRigRimSilSeedProgram); mMainRT.rigRimSil[0].flush(); }
+                { LL_PROFILE_GPU_ZONE("rig rim sil dt");
+                  for (S32 i=0;i<2;++i) { const S32 dst=i?0:1, src=i?1:0;
+                    mMainRT.rigRimSil[dst].bindTarget(); gRigRimSilDtProgram[i].bind();
+                    gRigRimSilDtProgram[i].bindTexture(LLShaderMgr::RIG_RIM_SIL_MAP,&mMainRT.rigRimSil[src],false,LLTexUnit::TFO_POINT);
+                    mScreenTriangleVB->setBuffer(); mScreenTriangleVB->drawArrays(LLRender::TRIANGLES,0,3);
+                    gRigRimSilDtProgram[i].unbind(); mMainRT.rigRimSil[dst].flush(); } }
+                mRigRimSilValid = true;
+            }
         }
 
         bindPrismLensTarget(*screen_target);

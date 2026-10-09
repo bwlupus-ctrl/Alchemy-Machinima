@@ -925,6 +925,20 @@ public:
         SHADOW_REUSE_RES,
         SHADOW_REUSE_RES_H,
         RENDER_DEBUG_LIGHTING_TERM,         //  "render_debug_lighting_term" int: deferred opaque lighting diagnostic
+        RIG_RIM_QUALITY,
+        RIG_RIM_SIL,
+        RIG_RIM_AUX_PARAMS,
+        RIG_RIM_AUX_MAP,
+        RIG_RIM_SIL_MAP,
+        RIG_RIM_WRAP,
+        RIG_RIM_WRAP2,
+        RIG_RIM_WRAP_SRC,
+        ON_LENS_ALBEDO,
+        LENS_PYRAMID0,
+        LENS_PYRAMID1,
+        LENS_PYRAMID2,
+        LENS_PYRAMID3,
+        LENS_PYRAMID4,
         END_RESERVED_UNIFORMS
     } eGLSLReservedUniforms;
     // clang-format on

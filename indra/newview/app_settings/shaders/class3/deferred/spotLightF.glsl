@@ -106,7 +106,20 @@ uniform vec4 rig_rim_light;
 // subject depends on; light-facing surfaces (n.l >= 0.3) stay fully shadowed.
 uniform float rig_rim_shadow;
 int rigRimMode();
-vec3 rigRimTerm(vec3 n, vec3 v, vec3 l, vec3 c_l, vec3 diffuseColor, float roughness, vec4 rim);
+// [RigRimQ] per-pixel quality inputs (deferredUtil.glsl; struct must match there)
+#ifndef RIG_RIM_PIXEL_DEFINED
+#define RIG_RIM_PIXEL_DEFINED 1
+struct RigRimPixel
+{
+    vec3  n_geo;
+    float n_len;
+    float prox;
+    float subject;
+};
+#endif
+RigRimPixel rigRimNeutralPixel(vec3 n);
+RigRimPixel rigRimLoadPixel(vec2 tc, vec3 n_sh, float z_view);
+vec3 rigRimTermEx(vec3 n, vec3 v, vec3 l, vec3 c_l, vec3 diffuseColor, float roughness, vec4 rim, RigRimPixel px);
 
 void main()
 {
@@ -165,6 +178,19 @@ void main()
     {
         discard;
     }
+
+    // [RigRimQ] quality inputs: aux / silhouette maps on RIG_RIM_AUX programs
+    // (main view only; the host zeroes rig_rim_quality elsewhere), neutral
+    // otherwise.  Mode 0 never samples anything.  Loaded AFTER the cone /
+    // attenuation discards above so clipped fragments pay nothing (review
+    // P2-8); the loader uses textureLod so the post-discard flow is safe.
+    RigRimPixel rim_px = rigRimNeutralPixel(n);
+#ifdef RIG_RIM_AUX
+    if (rigRimMode() != 0)
+    {
+        rim_px = rigRimLoadPixel(tc, n, -pos.z);
+    }
+#endif
 
     lv = proj_origin-pos.xyz;
     vec3  h, l, v = -normalize(pos);
@@ -231,7 +257,7 @@ void main()
             {
                 vec3 rim_lit = getProjectedLightDiffuseColor( l_dist, proj_tc.xy ) * dist_atten
                              * mix(shadow, 1.0, (1.0 - clamp(rig_rim_shadow, 0.0, 1.0)) * (1.0 - smoothstep(0.0, 0.3, dot(n.xyz, l))));
-                rim_color += rigRimTerm(n.xyz, v, l, rim_lit, diffuseColor, perceptualRoughness, rig_rim_light);
+                rim_color += rigRimTermEx(n.xyz, v, l, rim_lit, diffuseColor, perceptualRoughness, rig_rim_light, rim_px);
             }
         }
     }
@@ -270,7 +296,7 @@ void main()
             {
                 vec3 rim_lit = getProjectedLightDiffuseColor( l_dist, proj_tc.xy ) * dist_atten
                              * mix(shadow, 1.0, (1.0 - clamp(rig_rim_shadow, 0.0, 1.0)) * (1.0 - smoothstep(0.0, 0.3, dot(n, l))));
-                rim_color += rigRimTerm(n, v, l, rim_lit, diffuse.rgb, 1.0 - spec.a, rig_rim_light);
+                rim_color += rigRimTermEx(n, v, l, rim_lit, diffuse.rgb, 1.0 - spec.a, rig_rim_light, rim_px);
             }
         }
 

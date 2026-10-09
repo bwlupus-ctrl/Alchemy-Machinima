@@ -284,6 +284,7 @@ extern LLGLSLShader         gDeferredLightProgram;
 extern LLGLSLShader         gDeferredMultiLightProgram[LL_DEFERRED_MULTI_LIGHT_COUNT];
 extern LLGLSLShader         gDeferredSpotLightProgram;
 extern LLGLSLShader         gDeferredMultiSpotLightProgram;
+extern bool                 gRigRimAuxCompiled;
 // [ActorMask] Fullscreen-only wrappers of the unchanged stock light bodies.
 extern LLGLSLShader gDeferredMultiLightActorMaskProgram;
 extern LLGLSLShader gDeferredMultiSpotLightActorMaskProgram;
@@ -323,6 +324,12 @@ extern LLGLSLShader         gUltimateKaleidoProgram;
 extern LLGLSLShader         gVolumetricLightProgram;
 // [Cine Outline Phase 1] deferred normal/depth outline post pass
 extern LLGLSLShader         gCineOutlineProgram;
+extern LLGLSLShader         gRigRimAuxProgram;
+extern LLGLSLShader         gRigRimSilSeedProgram;
+extern LLGLSLShader         gRigRimSilDtProgram[2];
+extern LLGLSLShader         gRigRimWrapBlurProgram[2];
+extern LLGLSLShader         gRigRimWrapProgram;
+extern LLGLSLShader         gRigRimDebugProgram;
 // [TronT1] Tron World post pass (dark grade + world grid + pulses)
 extern LLGLSLShader         gTronWorldProgram;
 // [TronT3] Tron light-cycle trail ribbons (immediate-mode strips drawn inside renderTronWorld)
@@ -344,6 +351,8 @@ extern LLGLSLShader         gDeferredPostNoDoFProgram;
 extern LLGLSLShader         gExposureProgram;
 extern LLGLSLShader         gExposureProgramNoFade;
 extern LLGLSLShader         gOnLensFiltersProgram; // ND + polarizer pre-pass (pre-bloom)
+extern LLGLSLShader         gLensSoftEdgeProgram;
+extern bool                 gOnLensNoIR;
 extern LLGLSLShader         gLuminanceProgram;
 extern LLGLSLShader         gDeferredAvatarShadowProgram;
 extern LLGLSLShader         gDeferredAvatarAlphaShadowProgram;

@@ -49,6 +49,11 @@ namespace ALCineRigRim
     // and should match.)
     S32 modeForCurrentPass(bool forward_alpha);
 
+    // True for the forward-lit alpha program variants. Shared Actor FX
+    // opaque/mask variants are explicitly excluded even though they expose
+    // the same light-position uniform as their blend sibling.
+    bool isForwardAlphaProgram(LLGLSLShader& shader);
+
     // Upload RIG_RIM_MODE (+ RIG_RIM_GLOBALS when mode != 0) to a freshly
     // bound shader. Early-returns when the program does not link
     // deferredUtil.glsl (getUniformLocation(RIG_RIM_MODE) < 0). Also calls

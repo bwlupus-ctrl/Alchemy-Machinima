@@ -75,7 +75,20 @@ bool alrSilDecode(float carrier, float gbuffer_flag, out float k, out float r, o
 // deferred box-light loop.  Globals + helper live in deferredUtil.glsl.
 uniform vec4 rig_rim_light;
 int rigRimMode();
-vec3 rigRimTerm(vec3 n, vec3 v, vec3 l, vec3 c_l, vec3 diffuseColor, float roughness, vec4 rim);
+// [RigRimQ] per-pixel quality inputs (deferredUtil.glsl; struct must match there)
+#ifndef RIG_RIM_PIXEL_DEFINED
+#define RIG_RIM_PIXEL_DEFINED 1
+struct RigRimPixel
+{
+    vec3  n_geo;
+    float n_len;
+    float prox;
+    float subject;
+};
+#endif
+RigRimPixel rigRimNeutralPixel(vec3 n);
+RigRimPixel rigRimLoadPixel(vec2 tc, vec3 n_sh, float z_view);
+vec3 rigRimTermEx(vec3 n, vec3 v, vec3 l, vec3 c_l, vec3 diffuseColor, float roughness, vec4 rim, RigRimPixel px);
 
 void main()
 {
@@ -93,6 +106,15 @@ void main()
 #endif
 
     vec3 n = gb.normal;
+
+    // [RigRimQ] quality inputs (see spotLightF.glsl); mode 0 never samples.
+    RigRimPixel rim_px = rigRimNeutralPixel(n);
+#ifdef RIG_RIM_AUX
+    if (rigRimMode() != 0)
+    {
+        rim_px = rigRimLoadPixel(tc, n, -pos.z);
+    }
+#endif
 
     vec3 diffuse = gb.albedo.rgb;
     vec4 spec    = gb.specular;
@@ -139,7 +161,7 @@ void main()
         // top of the light's own contribution (mode 0 never enters).
         if (rigRimMode() != 0)
         {
-            rim_color = rigRimTerm(n.xyz, v, l, dist_atten * color, diffuseColor, perceptualRoughness, rig_rim_light);
+            rim_color = rigRimTermEx(n.xyz, v, l, dist_atten * color, diffuseColor, perceptualRoughness, rig_rim_light, rim_px);
             if (rigRimMode() == 2)
             {
                 final_color = vec3(0.0); // debug: rim only
@@ -167,7 +189,7 @@ void main()
         // fires; the helper recomputes n.l itself for the wrap term.)
         if (rigRimMode() != 0)
         {
-            rim_color = rigRimTerm(n, v, l, dist_atten * color.rgb, diffuse, 1.0 - spec.a, rig_rim_light);
+            rim_color = rigRimTermEx(n, v, l, dist_atten * color.rgb, diffuse, 1.0 - spec.a, rig_rim_light, rim_px);
         }
 
         float lit = nl * dist_atten;

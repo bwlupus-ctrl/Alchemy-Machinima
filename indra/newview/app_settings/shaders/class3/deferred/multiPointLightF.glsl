@@ -39,7 +39,20 @@ uniform vec4  light_col[LIGHT_COUNT]; // .a = falloff
 // the same count as MULTI_LIGHT / MULTI_LIGHT_COL from the fullscreen batch.
 uniform vec4  rig_rim_lights[LIGHT_COUNT];
 int rigRimMode();
-vec3 rigRimTerm(vec3 n, vec3 v, vec3 l, vec3 c_l, vec3 diffuseColor, float roughness, vec4 rim);
+// [RigRimQ] per-pixel quality inputs (deferredUtil.glsl; struct must match there)
+#ifndef RIG_RIM_PIXEL_DEFINED
+#define RIG_RIM_PIXEL_DEFINED 1
+struct RigRimPixel
+{
+    vec3  n_geo;
+    float n_len;
+    float prox;
+    float subject;
+};
+#endif
+RigRimPixel rigRimNeutralPixel(vec3 n);
+RigRimPixel rigRimLoadPixel(vec2 tc, vec3 n_sh, float z_view);
+vec3 rigRimTermEx(vec3 n, vec3 v, vec3 l, vec3 c_l, vec3 diffuseColor, float roughness, vec4 rim, RigRimPixel px);
 
 uniform vec2  screen_res;
 uniform float far_z;
@@ -96,6 +109,15 @@ void main()
 
     vec3 n = gb.normal;
 
+    // [RigRimQ] quality inputs (see spotLightF.glsl); mode 0 never samples.
+    RigRimPixel rim_px = rigRimNeutralPixel(n);
+#ifdef RIG_RIM_AUX
+    if (rigRimMode() != 0)
+    {
+        rim_px = rigRimLoadPixel(tc, n, -pos.z);
+    }
+#endif
+
     vec4 spec    = gb.specular;
     vec3 diffuse = gb.albedo.rgb;
 
@@ -143,7 +165,7 @@ void main()
                 // [RigRim] PBR branch (omni: no cone, no per-light shadow)
                 if (rigRimMode() != 0)
                 {
-                    rim_color += rigRimTerm(n.xyz, v, lv, dist_atten * lightColor, diffuseColor, perceptualRoughness, rig_rim_lights[light_idx]);
+                    rim_color += rigRimTermEx(n.xyz, v, lv, dist_atten * lightColor, diffuseColor, perceptualRoughness, rig_rim_lights[light_idx], rim_px);
                 }
             }
         }
@@ -199,7 +221,7 @@ void main()
                 {
                     vec3  rim_l     = lv / max(length(lv), 1.0e-6);
                     float rim_atten = calcLegacyDistanceAttenuation(dist, light_col[i].a);
-                    rim_color += rigRimTerm(n, v, rim_l, rim_atten * light_col[i].rgb, diffuse, 1.0 - spec.a, rig_rim_lights[i]);
+                    rim_color += rigRimTermEx(n, v, rim_l, rim_atten * light_col[i].rgb, diffuse, 1.0 - spec.a, rig_rim_lights[i], rim_px);
                 }
             }
         }

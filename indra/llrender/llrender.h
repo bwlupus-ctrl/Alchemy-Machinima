@@ -411,13 +411,10 @@ public:
 
     void syncMatrices();
     void syncLightState();
-    // [RigRim] Round-2 P2 fix: cheap per-frame gate set by ALCineRigRim
-    // (indra/newview) from its own isEnabled() check, so syncLightState()
-    // can skip building/uploading the 8-vec4 rig-rim array on every sync
-    // while Rig Rim Light is off. Forces the light-state dirty hash on a
-    // false->true transition so the very next sync always re-uploads real
-    // values instead of leaving the shader's cached rim state stale.
-    void setRigRimActive(bool active);
+    // [RigRim] Cheap per-frame gate plus the settings/validity signature used
+    // by the fast-bind invalidation. Returns true when either changes and also
+    // bumps the light-state hash so every cached program refreshes together.
+    bool setRigRimActive(bool active, const LLVector4& bind_state);
 
     void translateUI(F32 x, F32 y, F32 z);
     void scaleUI(F32 x, F32 y, F32 z);
@@ -582,6 +579,7 @@ private:
     U32 mLightHash;
     LLColor4 mAmbientLightColor;
     bool mRigRimActive = false; // [RigRim] Round-2 P2 fix, see setRigRimActive()
+    LLVector4 mRigRimBindState{0.f, 0.f, 0.f, 0.f};
 
     bool            mDirty;
     U32             mCount;

@@ -125,6 +125,38 @@
             <check_box control_name="CineLightRigNightMaskEnabled" follows="left|top" height="18" label="Enable Night Mask" layout="topleft" left="10" name="exp_nm_enabled" tool_tip="Darkens (and optionally grades) everything outside a shape centred on the target subject, faking night. Shape, distance and tint are in the Cinematic Light Rig." top="322" width="322" />
             <slider can_edit_text="true" decimal_digits="0" follows="left|top" height="18" increment="1" initial_value="85" label="Darkness %" label_width="120" layout="topleft" left="10" max_val="100" min_val="0" name="exp_nm_darkness" show_text="true" text_width="48" tool_tip="How much darker everything beyond the feather band gets. 0% = no darkening, 100% = pitch black. Same control as the Cinematic Light Rig Night Mask Darkness." top="348" wheel_adjust="true" width="300" />
             <button follows="left|top" height="18" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left="314" name="rst_CineLightRigNightMaskDarkness" tab_stop="false" tool_tip="Reset to default" top="349" width="18" />
+            <text follows="left|top" font="SansSerifBold" height="16" layout="topleft" left="10" name="exp_hdr_ir" top="384" value="Infrared Film" width="330" />
+            <check_box control_name="RenderInfraredEnabled" follows="left|top" height="18" label="Enable infrared" layout="topleft" left="10" name="exp_ir_enabled" tool_tip="Infrared film emulation before tonemapping." top="404" width="322" />
+            <text enabled_control="RenderInfraredEnabled" follows="left|top" height="15" layout="topleft" left="10" name="exp_ir_preset_label" top="431" value="Look:" width="96" />
+            <combo_box allow_text_entry="false" enabled_control="RenderInfraredEnabled" follows="left|right|top" height="20" layout="topleft" left="110" name="exp_ir_preset" top="428" width="222">
+                <combo_box.item label="Choose preset..." name="choose" value="0" />
+                <combo_box.item label="Wood 720nm Classic" name="wood" value="1" />
+                <combo_box.item label="Kodak HIE" name="hie" value="2" />
+                <combo_box.item label="Subtle 665nm" name="subtle" value="3" />
+                <combo_box.item label="Deep 850nm" name="deep" value="4" />
+                <combo_box.item label="Aerochrome #12" name="aero12" value="5" />
+                <combo_box.item label="Aerochrome Hot Pink #21" name="aero21" value="6" />
+                <combo_box.item label="Aerochrome Red #25" name="aero25" value="7" />
+            </combo_box>
+            <slider can_edit_text="true" control_name="RenderInfraredStrength" decimal_digits="2" enabled_control="RenderInfraredEnabled" follows="left|right|top" height="18" increment="0.05" label="Strength" label_width="120" layout="topleft" left="10" max_val="1" min_val="0" name="exp_ir_strength" show_text="true" text_width="48" top="454" wheel_adjust="true" width="300" />
+            <button enabled_control="RenderInfraredEnabled" follows="right|top" height="18" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left="314" name="rst_RenderInfraredStrength" tab_stop="false" tool_tip="Reset to default" top="455" width="18" />
+            <text follows="left|top" font="SansSerifBold" height="16" layout="topleft" left="10" name="exp_hdr_softedge" top="490" value="Soft Edge / Sweet Spot" width="330" />
+            <check_box control_name="RenderSoftEdgeEnabled" follows="left|top" height="18" label="Enable soft edge" layout="topleft" left="10" name="exp_softedge_enabled" tool_tip="Pre-tonemap optical sweet-spot and edge blur." top="510" width="322" />
+            <text enabled_control="RenderSoftEdgeEnabled" follows="left|top" height="15" layout="topleft" left="10" name="exp_softedge_preset_label" top="537" value="Preset:" width="96" />
+            <combo_box allow_text_entry="false" enabled_control="RenderSoftEdgeEnabled" follows="left|right|top" height="20" layout="topleft" left="110" name="exp_softedge_preset" top="534" width="222">
+                <combo_box.item label="Choose preset..." name="choose" value="0" />
+                <combo_box.item label="Vaseline Oval" name="vaseline" value="1" />
+                <combo_box.item label="Lensbaby Sweet" name="lensbaby" value="2" />
+                <combo_box.item label="Dream Sequence" name="dream" value="3" />
+                <combo_box.item label="Faux Tilt Band" name="tilt" value="4" />
+                <combo_box.item label="Vintage Portrait" name="vintage" value="5" />
+                <combo_box.item label="Nightmare Edge" name="nightmare" value="6" />
+            </combo_box>
+            <slider can_edit_text="true" control_name="RenderSoftEdgeBlur" decimal_digits="2" enabled_control="RenderSoftEdgeEnabled" follows="left|right|top" height="18" increment="0.05" label="Blur" label_width="120" layout="topleft" left="10" max_val="1" min_val="0" name="exp_softedge_blur" show_text="true" text_width="48" top="560" wheel_adjust="true" width="300" />
+            <button enabled_control="RenderSoftEdgeEnabled" follows="right|top" height="18" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" left="314" name="rst_RenderSoftEdgeBlur" tab_stop="false" tool_tip="Reset to default" top="561" width="18" />
+            <button follows="left|top" height="20" label="Filters..." layout="topleft" left="10" name="exp_filters_btn" tool_tip="Open all Lens Looks controls in the Lightbox Image tab." top="590" width="100">
+                <button.commit_callback function="Floater.ShowOrBringToFront" parameter="lightbox" />
+            </button>
         </panel>
     </tab_container>
 </floater>

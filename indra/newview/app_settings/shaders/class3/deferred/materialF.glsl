@@ -153,12 +153,26 @@ void waterClip(vec3 pos);
 
 // [RigRim] shared rim helper (deferredUtil.glsl)
 int rigRimMode();
-vec3 rigRimTerm(vec3 n, vec3 v, vec3 l, vec3 c_l, vec3 diffuseColor, float roughness, vec4 rim);
+// [RigRimQ] per-pixel quality inputs (deferredUtil.glsl; struct must match there)
+#ifndef RIG_RIM_PIXEL_DEFINED
+#define RIG_RIM_PIXEL_DEFINED 1
+struct RigRimPixel
+{
+    vec3  n_geo;
+    float n_len;
+    float prox;
+    float subject;
+};
+#endif
+RigRimPixel rigRimNeutralPixel(vec3 n);
+RigRimPixel rigRimForwardPixel(vec3 n_sh, vec3 n_geo, float n_fwidth);
+vec3 rigRimTermEx(vec3 n, vec3 v, vec3 l, vec3 c_l, vec3 diffuseColor, float roughness, vec4 rim, RigRimPixel px);
 
 // [RigRim] `rim` = this light unit's rig rim params (rig_rim_lights[i]); zero
 // for non-rig lights.  NOTE: `v` is the eye-space POSITION and `npos` the
 // normalized view vector here (legacy naming).
-vec3 calcPointLightOrSpotLight(vec3 light_col, vec3 npos, vec3 diffuse, vec4 spec, vec3 v, vec3 n, vec4 lp, vec3 ln, float la, float fa, float is_pointlight, inout float glare, float ambiance, vec4 rim
+vec3 calcPointLightOrSpotLight(vec3 light_col, vec3 npos, vec3 diffuse, vec4 spec, vec3 v, vec3 n, vec4 lp, vec3 ln, float la, float fa, float is_pointlight, inout float glare, float ambiance, vec4 rim,
+    RigRimPixel rim_px // [RigRimQ] per-pixel quality inputs
 #ifdef HAS_ACTOR_FX
     , bool sil_on, float sil_keep, float rim_keep
 #endif
@@ -268,7 +282,7 @@ vec3 calcPointLightOrSpotLight(vec3 light_col, vec3 npos, vec3 diffuse, vec4 spe
         // wrap can reach past the terminator.  Mode 0 never enters.
         if (rigRimMode() != 0)
         {
-            vec3 rim_col = rigRimTerm(n, npos, lv, (spot * spot) * dist_atten * light_col, diffuse, 1.0 - spec.a, rim);
+            vec3 rim_col = rigRimTermEx(n, npos, lv, (spot * spot) * dist_atten * light_col, diffuse, 1.0 - spec.a, rim, rim_px);
             if (rigRimMode() == 2)
             {
                 col = vec3(0.0); // debug: rim only
@@ -593,11 +607,22 @@ void main()
     vec3 npos = normalize(-pos.xyz);
     vec3 light = vec3(0, 0, 0);
 
-// [RigRim] trailing rig_rim_lights[i] argument
+    // [RigRimQ] forward-alpha local pixel (Phase 1: smooth normal + anti-shimmer
+    // only).  vary_normal is the unperturbed vertex normal.  The derivative is
+    // evaluated unconditionally at main scope (review P2-5; the BLEND
+    // permutation has no discards) and is unused unless rig_rim_mode != 0.
+    float rim_fw = length(fwidth(norm.xyz));
+    RigRimPixel rim_px = rigRimNeutralPixel(norm.xyz);
+    if (rigRimMode() != 0)
+    {
+        rim_px = rigRimForwardPixel(norm.xyz, vary_normal, rim_fw);
+    }
+
+// [RigRim] trailing rig_rim_lights[i] argument (+ [RigRimQ] rim_px)
 #ifdef HAS_ACTOR_FX
-#define LIGHT_LOOP(i) light.rgb += calcPointLightOrSpotLight(light_diffuse[i].rgb, npos, diffuse.rgb, spec, pos.xyz, norm.xyz, light_position[i], light_direction[i].xyz, light_attenuation[i].x, light_attenuation[i].y, light_attenuation[i].z, glare, light_attenuation[i].w, rig_rim_lights[i], alr_sil_on, alr_sil_keep, alr_rim_keep);
+#define LIGHT_LOOP(i) light.rgb += calcPointLightOrSpotLight(light_diffuse[i].rgb, npos, diffuse.rgb, spec, pos.xyz, norm.xyz, light_position[i], light_direction[i].xyz, light_attenuation[i].x, light_attenuation[i].y, light_attenuation[i].z, glare, light_attenuation[i].w, rig_rim_lights[i], rim_px, alr_sil_on, alr_sil_keep, alr_rim_keep);
 #else
-#define LIGHT_LOOP(i) light.rgb += calcPointLightOrSpotLight(light_diffuse[i].rgb, npos, diffuse.rgb, spec, pos.xyz, norm.xyz, light_position[i], light_direction[i].xyz, light_attenuation[i].x, light_attenuation[i].y, light_attenuation[i].z, glare, light_attenuation[i].w, rig_rim_lights[i]);
+#define LIGHT_LOOP(i) light.rgb += calcPointLightOrSpotLight(light_diffuse[i].rgb, npos, diffuse.rgb, spec, pos.xyz, norm.xyz, light_position[i], light_direction[i].xyz, light_attenuation[i].x, light_attenuation[i].y, light_attenuation[i].z, glare, light_attenuation[i].w, rig_rim_lights[i], rim_px);
 #endif
 
     LIGHT_LOOP(1)

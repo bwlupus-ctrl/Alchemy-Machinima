@@ -318,6 +318,7 @@ set(viewer_SOURCE_FILES
     alcinelightrigmanager.cpp
     alcinehaze.cpp
     alcinerigrim.cpp
+    allenslooks.cpp
     alenvintensity.cpp
     alenvintensitypresets.cpp
     alsettingsundohistory.cpp
@@ -1254,6 +1255,7 @@ set(viewer_HEADER_FILES
     alpanelatmosphericvolumes.h
     alcinehaze.h
     alcinerigrim.h
+    allenslooks.h
     alenvintensity.h
     alenvintensitypresets.h
     alsettingsundohistory.h

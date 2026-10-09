@@ -11,6 +11,7 @@
 #define AL_PANEL_CINE_LIGHT_RIG_H
 
 #include "llpanel.h"
+#include "aluirefresh.h"
 #include "lluicolor.h"
 #include "lluuid.h"
 
@@ -144,6 +145,10 @@ private:
     LLUICtrl* mEasyNightMaskDarkness = nullptr; // [NightMaskPercent]
     boost::signals2::scoped_connection mNightMaskDarknessConnection; // [NightMaskPercent]
     LLTextBox* mNightMaskStatus = nullptr;
+    LLTextBox* mRigRimQualityStatus = nullptr;
+    LLButton* mRigRimEnableTag = nullptr;
+    ALRevisionGate mRigRimStatusGate;
+    ALLiveReadoutClock mRigRimStatusClock{2.f};
     LLComboBox* mFXCombo = nullptr;
     LLLineEditor* mSeedEditor = nullptr;
     LLSpinCtrl* mFillEV = nullptr;

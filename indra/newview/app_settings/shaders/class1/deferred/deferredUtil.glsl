@@ -902,9 +902,166 @@ uniform vec4 rig_rim_globals;
 uniform vec4 rig_rim_tron;
 uniform vec4 rig_rim_tron_color;
 
+// [RigRimQ] Rig Rim Quality (doc/RIGRIM_QUALITY_CONTRACT.md).  Every term is a
+// MULTIPLY on the rim, never added light.
+//   rig_rim_quality  vec4  x Smoothness   0..1  depth-reconstructed smooth normal mix
+//                          y AntiShimmer  0..1  Toksvig softening of the grazing exponent
+//                          z Silhouette   0..1  silhouette-band gating (deferred only, Phase 1)
+//                          w ActorsOnly   0..1  subject-mask gating (deferred only, Phase 1)
+//                    vec4(0) (also the GL default of a never-uploaded uniform) is the
+//                    bit-exact OFF path: every `if (rig_rim_quality.N > 0.0)` below is
+//                    untaken and rigRimTermEx() evaluates rigRimTerm()'s statements.
+//   rig_rim_sil      vec4  x band width: metres at the subject when w > 0, else half-res texels
+//                          y band softness 0..1 (fraction of the width)
+//                          z near gap: relative depth tolerance |z - z_seed| <= gap * z_seed
+//                          w half-res texels per metre at 1 m view depth (0 = x already texels)
+//   rigRimAuxMap     sampler2D RGBA16  full-res : xy octahedral smooth normal (eye space),
+//                                                 z Toksvig |n_bar| 0..1, w subject mask 0/1
+//   rigRimSilMap     sampler2D RGBA16F half-res : xy signed OFFSET to the nearest seed in half-res
+//                                                 texels (fp16-exact integers), z seed view depth (m),
+//                                                 w Euclidean distance to the seed (half-res texels,
+//                                                 >= RIG_RIM_DT_BIG when none within RIG_RIM_DT_R).
+//                                                 Host binds it NEAREST (TFO_POINT); read with
+//                                                 textureLod(..., 0) because consumers sit in
+//                                                 non-uniform flow / after discards.
+// Both samplers are only referenced from rigRimLoadPixel(); programs that never
+// call it (forward alpha, soften, ...) leave them inactive (no texture unit).
+uniform vec4 rig_rim_quality;
+uniform vec4 rig_rim_sil;
+uniform sampler2D rigRimAuxMap;
+uniform sampler2D rigRimSilMap;
+
+// [RigRimQ] Per-pixel quality inputs.  Defined identically in every compile
+// unit that passes it across the unit boundary (GLSL 4.20 4.1.8: structures
+// with the same name / member sequence are the same type), guarded so a
+// preamble-injected copy (like GBufferInfo) would not duplicate it.
+#ifndef RIG_RIM_PIXEL_DEFINED
+#define RIG_RIM_PIXEL_DEFINED 1
+struct RigRimPixel
+{
+    vec3  n_geo;    // smooth / geometric normal, eye space, unit (neutral: the shading normal)
+    float n_len;    // Toksvig |n_bar| 0..1 (neutral 1.0)
+    float prox;     // silhouette proximity 0..1 (neutral 1.0)
+    float subject;  // subject mask 0..1 (neutral 1.0)
+};
+#endif
+
+const float RIG_RIM_DT_R   = 24.0;   // windowed DT radius, half-res texels (rigRimSilDtF.glsl)
+const float RIG_RIM_DT_BIG = 1.0e4;  // "no seed" distance sentinel
+
 int rigRimMode()
 {
     return rig_rim_mode;
+}
+
+RigRimPixel rigRimNeutralPixel(vec3 n)
+{
+    RigRimPixel px;
+    px.n_geo   = n;
+    px.n_len   = 1.0;
+    px.prox    = 1.0;
+    px.subject = 1.0;
+    return px;
+}
+
+// [RigRimQ] Forward-alpha local pixel: the interpolated vertex normal is the
+// "smooth" normal, Toksvig length from the shading normal's screen derivative
+// (|avg of two unit normals an angle fw apart| = cos(fw/2) ~ 1 - fw^2/8).  The
+// caller evaluates fwidth() itself, in uniform control flow.  Silhouette and
+// subject stay neutral (Phase 2).
+RigRimPixel rigRimForwardPixel(vec3 n_sh, vec3 n_geo, float n_fwidth)
+{
+    RigRimPixel px = rigRimNeutralPixel(n_sh);
+    float l2 = dot(n_geo, n_geo);
+    if (l2 > 1.0e-12)
+    {
+        px.n_geo = n_geo * inversesqrt(l2);
+        if (dot(px.n_geo, n_sh) < 0.0)
+        {
+            px.n_geo = -px.n_geo; // two-sided faces: follow the shading normal's side
+        }
+    }
+    px.n_len = clamp(1.0 - 0.125 * n_fwidth * n_fwidth, 0.0, 1.0);
+    return px;
+}
+
+// Octahedral normal encoding (Cigolle et al. 2014) for rigRimAuxMap.xy.
+vec2 rigRimSignNotZero(vec2 v)
+{
+    return vec2(v.x >= 0.0 ? 1.0 : -1.0, v.y >= 0.0 ? 1.0 : -1.0);
+}
+
+vec2 rigRimOctEncode(vec3 n)
+{
+    vec2 p = n.xy * (1.0 / max(abs(n.x) + abs(n.y) + abs(n.z), 1.0e-6));
+    p = (n.z <= 0.0) ? ((1.0 - abs(p.yx)) * rigRimSignNotZero(p)) : p;
+    return p * 0.5 + 0.5;
+}
+
+vec3 rigRimOctDecode(vec2 e)
+{
+    e = e * 2.0 - 1.0;
+    vec3 n = vec3(e.xy, 1.0 - abs(e.x) - abs(e.y));
+    if (n.z < 0.0)
+    {
+        n.xy = (1.0 - abs(n.yx)) * rigRimSignNotZero(n.xy);
+    }
+    float l2 = dot(n, n);
+    return l2 > 1.0e-12 ? n * inversesqrt(l2) : vec3(0.0, 0.0, 1.0);
+}
+
+// Silhouette band width in half-res texels for a pixel at view depth z_view
+// (metres, > 0).  cm mode (rig_rim_sil.w > 0) is resolution / tile invariant:
+// width_m * texels_per_metre_at_1m / z.  Clamped to the DT window so the soft
+// outer edge never reaches the sentinel; the host shows a status when the
+// subject-distance width is clamped.
+float rigRimSilBandWidth(float z_view)
+{
+    float w = max(rig_rim_sil.x, 0.0);
+    if (rig_rim_sil.w > 0.0)
+    {
+        w = w * rig_rim_sil.w / max(z_view, 0.05);
+    }
+    float soft = clamp(rig_rim_sil.y, 0.0, 1.0);
+    return min(w, RIG_RIM_DT_R / (1.0 + soft));
+}
+
+// band(dist) * near_ok(z vs seed depth): 1 inside the band on the near side of
+// the silhouette, 0 on the far (background) side and away from edges.
+float rigRimSilProx(vec2 tc, float z_view)
+{
+    vec4  s    = textureLod(rigRimSilMap, tc, 0.0); // NEAREST: offset / depth must not blend across seeds
+    if (s.w >= RIG_RIM_DT_BIG)
+    {
+        return 0.0;
+    }
+    float w    = max(rigRimSilBandWidth(z_view), 1.0e-3);
+    float soft = clamp(rig_rim_sil.y, 0.0, 1.0);
+    float band = 1.0 - smoothstep(w * (1.0 - soft), w * (1.0 + soft) + 1.0e-4, s.w);
+    float gap  = max(rig_rim_sil.z, 1.0e-4);
+    float rel  = abs(z_view - s.z) / max(s.z, 1.0e-3);
+    float near_ok = 1.0 - smoothstep(gap, 2.0 * gap, rel);
+    return band * near_ok;
+}
+
+// [RigRimQ] Deferred pixel loader (main view, RIG_RIM_AUX programs).  Each
+// sampler is touched only when its own quality component is non-zero, so the
+// host can skip the matching pre-pass and the texture is never read stale.
+RigRimPixel rigRimLoadPixel(vec2 tc, vec3 n_sh, float z_view)
+{
+    RigRimPixel px = rigRimNeutralPixel(n_sh);
+    if (rig_rim_quality.x > 0.0 || rig_rim_quality.y > 0.0 || rig_rim_quality.w > 0.0)
+    {
+        vec4 a     = textureLod(rigRimAuxMap, tc, 0.0);
+        px.n_geo   = rigRimOctDecode(a.xy);
+        px.n_len   = clamp(a.z, 0.0, 1.0);
+        px.subject = clamp(a.w, 0.0, 1.0);
+    }
+    if (rig_rim_quality.z > 0.0)
+    {
+        px.prox = rigRimSilProx(tc, z_view);
+    }
+    return px;
 }
 
 // [TronT1] Recolour a rim light's colour toward the Tron palette: keep the
@@ -976,13 +1133,96 @@ vec3 rigRimTerm(vec3 n,            // surface normal (eye space)
     return clamp(gain * c_l * (g * w_l * b) * tint, vec3(0.0), vec3(10.0));
 }
 
+// [RigRimQ] rigRimTerm() plus the quality terms.  The statements of
+// rigRimTerm() above are reproduced here in the same order; with
+// rig_rim_quality == vec4(0) every quality branch is untaken, n_r == n and
+// k_eff is untouched, so the arithmetic is identical (bit-exact off path).
+// All light paths (deferred and forward) call this; rigRimTerm() itself is
+// kept verbatim as the reference.
+vec3 rigRimTermEx(vec3 n,            // shading normal (eye space)
+                  vec3 v,            // surface -> camera, normalized
+                  vec3 l,            // surface -> light, normalized
+                  vec3 c_l,          // light colour x atten x cone/gobo x shadow
+                  vec3 diffuseColor, // for the optional surface tint
+                  float roughness,   // perceptual roughness (legacy: 1 - glossiness)
+                  vec4 rim,          // x gain, y k, z wrap, w back bias
+                  RigRimPixel px)    // quality inputs (rigRimNeutralPixel == plain rim)
+{
+    float gain = rim.x * rig_rim_globals.x;
+    if (gain <= 0.0)
+    {
+        return vec3(0.0);
+    }
+
+    // [TronT1] Tron palette tint of the rim light colour only (mode 0 = untaken).
+    if (rig_rim_tron.x > 0.5)
+    {
+        c_l = tronRimTint(c_l);
+    }
+
+    // [RigRimQ] 1. smooth normal: blend the shading normal toward the
+    // depth-reconstructed (deferred) / vertex (forward) normal.
+    vec3 n_r = n;
+    if (rig_rim_quality.x > 0.0)
+    {
+        n_r = normalize(mix(n, px.n_geo, clamp(rig_rim_quality.x, 0.0, 1.0)));
+    }
+
+    float NoV    = abs(dot(n_r, v));
+    float soften = clamp(roughness, 0.0, 1.0) * clamp(rig_rim_globals.y, 0.0, 1.0);
+    float k      = max(rim.y, 0.05);
+    float k_eff  = mix(k, min(k, 1.0), soften); // rough surfaces get a wider, softer rim
+
+    // [RigRimQ] 1. anti-shimmer: Toksvig.  Where the normals inside the pixel
+    // footprint disagree (|n_bar| < 1) the grazing exponent is softened, so a
+    // noisy normal map cannot sparkle the thin high-k rim.
+    if (rig_rim_quality.y > 0.0)
+    {
+        float len = clamp(px.n_len, 0.0, 1.0);
+        float ft  = len / max(len + k_eff * (1.0 - len), 1.0e-4);
+        k_eff     = max(k_eff * mix(1.0, ft, clamp(rig_rim_quality.y, 0.0, 1.0)), 0.05);
+    }
+
+    float g      = pow(clamp(1.0 - NoV, 0.0, 1.0), k_eff);
+
+    float wrap   = clamp(rim.z, 0.0, 1.0);
+    float w_l    = clamp((dot(n_r, l) + wrap) / (1.0 + wrap), 0.0, 1.0);
+
+    float b0     = rim.w;
+    float b1     = b0 + max(rig_rim_globals.z, 1.0e-4);
+    float b      = smoothstep(b0, b1, -dot(v, l));
+
+    vec3  tint   = mix(vec3(1.0), diffuseColor, clamp(rig_rim_globals.w, 0.0, 1.0));
+
+    vec3 rim_rgb = clamp(gain * c_l * (g * w_l * b) * tint, vec3(0.0), vec3(10.0));
+
+    // [RigRimQ] 2. silhouette-hugging band and 3. actors only: pure multiplies.
+    if (rig_rim_quality.z > 0.0)
+    {
+        rim_rgb *= mix(1.0, clamp(px.prox, 0.0, 1.0), clamp(rig_rim_quality.z, 0.0, 1.0));
+    }
+    if (rig_rim_quality.w > 0.0)
+    {
+        rim_rgb *= mix(1.0, clamp(px.subject, 0.0, 1.0), clamp(rig_rim_quality.w, 0.0, 1.0));
+    }
+    return rim_rgb;
+}
+
 // [RigRim] Forward-alpha punctual light WITH the rim term.  The rim-less
 // pbrCalcPointLightOrSpotLight() below forwards here with rim = 0, which the
 // helper early-outs on, so every existing caller keeps its exact result.
 // [AvatarLightResponse] spec_keep scales ONLY the evaluated specular term
 // (specPunc) after the BRDF; the old name forwards 1.0 (x * 1.0 is exact).
-#ifdef ALR_RIMSPLIT_PARITY
 // [AvatarSilhouette] Verbatim pre-RimSplit reference for the T21 permutation.
+// [RigRimQ] Trailing RigRimPixel so the parity check still holds with the
+// quality terms on; the px-less name below forwards a neutral pixel.
+// [RigRimQ review P2-10] No longer behind `#ifdef ALR_RIMSPLIT_PARITY`: this
+// file is compiled ONCE with the global defines (llshadermgr.cpp caches
+// fragment objects by filename), while ALR_RIMSPLIT_PARITY is a PER-PROGRAM
+// permutation (llviewershadermgr.cpp 2295 / 2382), so the guarded bodies never
+// existed and a parity build of pbralphaF / sharedActorFxPbrF could not link.
+// Unconditional definitions cost nothing: every non-parity program strips
+// them as unreferenced.
 vec3 pbrCalcPointLightOrSpotLightRimKeepRef(vec3 diffuseColor, vec3 specularColor,
                     float perceptualRoughness,
                     float metallic,
@@ -994,7 +1234,8 @@ vec3 pbrCalcPointLightOrSpotLightRimKeepRef(vec3 diffuseColor, vec3 specularColo
                     vec3 lightColor,
                     float lightSize, float falloff, float is_pointlight, float ambiance,
                     vec4 rim, // [RigRim] per-light rim params (rig_rim_lights[i])
-                    float spec_keep) // [AvatarLightResponse] 1.0 = untouched
+                    float spec_keep, // [AvatarLightResponse] 1.0 = untouched
+                    RigRimPixel px) // [RigRimQ]
 {
     vec3 color = vec3(0,0,0);
 
@@ -1028,8 +1269,8 @@ vec3 pbrCalcPointLightOrSpotLightRimKeepRef(vec3 diffuseColor, vec3 specularColo
         // weighted; forward lights carry no per-light shadow).
         if (rig_rim_mode != 0)
         {
-            vec3 rim_col = rigRimTerm(n.xyz, v, lv, spot_atten * dist_atten * lightColor,
-                                      diffuseColor, perceptualRoughness, rim);
+            vec3 rim_col = rigRimTermEx(n.xyz, v, lv, spot_atten * dist_atten * lightColor,
+                                        diffuseColor, perceptualRoughness, rim, px);
             if (rig_rim_mode == 2)
             {
                 color = vec3(0.0); // debug: rim only
@@ -1042,11 +1283,30 @@ vec3 pbrCalcPointLightOrSpotLightRimKeepRef(vec3 diffuseColor, vec3 specularColo
         final_scale = 0.9;
     return color * final_scale;
 }
-#endif
+
+vec3 pbrCalcPointLightOrSpotLightRimKeepRef(vec3 diffuseColor, vec3 specularColor,
+                    float perceptualRoughness,
+                    float metallic,
+                    vec3 n, // normal
+                    vec3 p, // pixel position
+                    vec3 v, // view vector (negative normalized pixel position)
+                    vec3 lp, // light position
+                    vec3 ld, // light direction (for spotlights)
+                    vec3 lightColor,
+                    float lightSize, float falloff, float is_pointlight, float ambiance,
+                    vec4 rim, // [RigRim] per-light rim params (rig_rim_lights[i])
+                    float spec_keep) // [AvatarLightResponse] 1.0 = untouched
+{
+    return pbrCalcPointLightOrSpotLightRimKeepRef(diffuseColor, specularColor, perceptualRoughness, metallic,
+                                                  n, p, v, lp, ld, lightColor, lightSize, falloff,
+                                                  is_pointlight, ambiance, rim, spec_keep,
+                                                  rigRimNeutralPixel(n.xyz));
+}
 
 // [AvatarSilhouette] Evaluate the raw non-rim and rim components separately.
 // final_scale is returned, never distributed, so the compatibility wrapper
 // below preserves today's add-then-multiply operation order exactly.
+// [RigRimQ] Trailing RigRimPixel; the px-less overload forwards a neutral pixel.
 void pbrCalcPointLightOrSpotLightRimSplit(vec3 diffuseColor, vec3 specularColor,
                     float perceptualRoughness,
                     float metallic,
@@ -1059,6 +1319,7 @@ void pbrCalcPointLightOrSpotLightRimSplit(vec3 diffuseColor, vec3 specularColor,
                     float lightSize, float falloff, float is_pointlight, float ambiance,
                     vec4 rim, // [RigRim] per-light rim params (rig_rim_lights[i])
                     float spec_keep, // [AvatarLightResponse] 1.0 = untouched
+                    RigRimPixel px, // [RigRimQ]
                     out vec3 nonrim, out vec3 rim_raw, out bool rim_on,
                     out float light_scale)
 {
@@ -1097,8 +1358,8 @@ void pbrCalcPointLightOrSpotLightRimSplit(vec3 diffuseColor, vec3 specularColor,
         rim_on = rig_rim_mode != 0;
         if (rim_on)
         {
-            rim_raw = rigRimTerm(n.xyz, v, lv, spot_atten * dist_atten * lightColor,
-                                diffuseColor, perceptualRoughness, rim);
+            rim_raw = rigRimTermEx(n.xyz, v, lv, spot_atten * dist_atten * lightColor,
+                                   diffuseColor, perceptualRoughness, rim, px);
             if (rig_rim_mode == 2)
             {
                 nonrim = vec3(0.0); // debug: rim only
@@ -1108,6 +1369,57 @@ void pbrCalcPointLightOrSpotLightRimSplit(vec3 diffuseColor, vec3 specularColor,
     light_scale = 1.0;
     if (classic_mode > 0)
         light_scale = 0.9;
+}
+
+void pbrCalcPointLightOrSpotLightRimSplit(vec3 diffuseColor, vec3 specularColor,
+                    float perceptualRoughness,
+                    float metallic,
+                    vec3 n, // normal
+                    vec3 p, // pixel position
+                    vec3 v, // view vector (negative normalized pixel position)
+                    vec3 lp, // light position
+                    vec3 ld, // light direction (for spotlights)
+                    vec3 lightColor,
+                    float lightSize, float falloff, float is_pointlight, float ambiance,
+                    vec4 rim, // [RigRim] per-light rim params (rig_rim_lights[i])
+                    float spec_keep, // [AvatarLightResponse] 1.0 = untouched
+                    out vec3 nonrim, out vec3 rim_raw, out bool rim_on,
+                    out float light_scale)
+{
+    pbrCalcPointLightOrSpotLightRimSplit(diffuseColor, specularColor,
+        perceptualRoughness, metallic, n, p, v, lp, ld, lightColor, lightSize,
+        falloff, is_pointlight, ambiance, rim, spec_keep, rigRimNeutralPixel(n.xyz),
+        nonrim, rim_raw, rim_on, light_scale);
+}
+
+vec3 pbrCalcPointLightOrSpotLightRimKeep(vec3 diffuseColor, vec3 specularColor,
+                    float perceptualRoughness,
+                    float metallic,
+                    vec3 n, // normal
+                    vec3 p, // pixel position
+                    vec3 v, // view vector (negative normalized pixel position)
+                    vec3 lp, // light position
+                    vec3 ld, // light direction (for spotlights)
+                    vec3 lightColor,
+                    float lightSize, float falloff, float is_pointlight, float ambiance,
+                    vec4 rim, // [RigRim] per-light rim params (rig_rim_lights[i])
+                    float spec_keep, // [AvatarLightResponse] 1.0 = untouched
+                    RigRimPixel px) // [RigRimQ]
+{
+    vec3 nonrim;
+    vec3 rim_raw;
+    bool rim_on;
+    float light_scale;
+    pbrCalcPointLightOrSpotLightRimSplit(diffuseColor, specularColor,
+        perceptualRoughness, metallic, n, p, v, lp, ld, lightColor, lightSize,
+        falloff, is_pointlight, ambiance, rim, spec_keep, px, nonrim, rim_raw,
+        rim_on, light_scale);
+    vec3 color = nonrim;
+    if (rim_on)
+    {
+        color += rim_raw;
+    }
+    return color * light_scale;
 }
 
 vec3 pbrCalcPointLightOrSpotLightRimKeep(vec3 diffuseColor, vec3 specularColor,
@@ -1123,20 +1435,10 @@ vec3 pbrCalcPointLightOrSpotLightRimKeep(vec3 diffuseColor, vec3 specularColor,
                     vec4 rim, // [RigRim] per-light rim params (rig_rim_lights[i])
                     float spec_keep) // [AvatarLightResponse] 1.0 = untouched
 {
-    vec3 nonrim;
-    vec3 rim_raw;
-    bool rim_on;
-    float light_scale;
-    pbrCalcPointLightOrSpotLightRimSplit(diffuseColor, specularColor,
-        perceptualRoughness, metallic, n, p, v, lp, ld, lightColor, lightSize,
-        falloff, is_pointlight, ambiance, rim, spec_keep, nonrim, rim_raw,
-        rim_on, light_scale);
-    vec3 color = nonrim;
-    if (rim_on)
-    {
-        color += rim_raw;
-    }
-    return color * light_scale;
+    return pbrCalcPointLightOrSpotLightRimKeep(diffuseColor, specularColor, perceptualRoughness, metallic,
+                                               n, p, v, lp, ld, lightColor, lightSize, falloff,
+                                               is_pointlight, ambiance, rim, spec_keep,
+                                               rigRimNeutralPixel(n.xyz));
 }
 
 // [AvatarLightResponse] old name: forwards spec_keep = 1.0.

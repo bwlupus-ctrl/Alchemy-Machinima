@@ -219,18 +219,32 @@ vec3 pbrBaseLightKeep(vec3 diffuseColor, vec3 specularColor, float metallic, vec
                       float perceptualRoughness, vec3 light_dir, vec3 sunlit, float scol,
                       vec3 radiance, vec3 irradiance, vec3 colorEmissive, float ao,
                       vec3 additive, vec3 atten, float spec_keep);
+// [RigRimQ] per-pixel quality inputs (deferredUtil.glsl; struct must match there)
+#ifndef RIG_RIM_PIXEL_DEFINED
+#define RIG_RIM_PIXEL_DEFINED 1
+struct RigRimPixel
+{
+    vec3  n_geo;
+    float n_len;
+    float prox;
+    float subject;
+};
+#endif
+int rigRimMode();
+RigRimPixel rigRimNeutralPixel(vec3 n);
+RigRimPixel rigRimForwardPixel(vec3 n_sh, vec3 n_geo, float n_fwidth);
 vec3 pbrCalcPointLightOrSpotLightRimKeep(vec3 diffuseColor, vec3 specularColor,
                                          float perceptualRoughness, float metallic,
                                          vec3 n, vec3 p, vec3 v, vec3 lp, vec3 ld,
                                          vec3 lightColor, float lightSize, float falloff,
                                           float is_pointlight, float ambiance,
-                                          vec4 rim, float spec_keep);
+                                          vec4 rim, float spec_keep, RigRimPixel px);
 void pbrCalcPointLightOrSpotLightRimSplit(vec3 diffuseColor, vec3 specularColor,
                                          float perceptualRoughness, float metallic,
                                          vec3 n, vec3 p, vec3 v, vec3 lp, vec3 ld,
                                          vec3 lightColor, float lightSize, float falloff,
                                          float is_pointlight, float ambiance,
-                                         vec4 rim, float spec_keep,
+                                         vec4 rim, float spec_keep, RigRimPixel px,
                                          out vec3 nonrim, out vec3 rim_raw,
                                          out bool rim_on, out float light_scale);
 #ifdef ALR_RIMSPLIT_PARITY
@@ -239,7 +253,7 @@ vec3 pbrCalcPointLightOrSpotLightRimKeepRef(vec3 diffuseColor, vec3 specularColo
                                             vec3 n, vec3 p, vec3 v, vec3 lp, vec3 ld,
                                             vec3 lightColor, float lightSize, float falloff,
                                             float is_pointlight, float ambiance,
-                                            vec4 rim, float spec_keep);
+                                            vec4 rim, float spec_keep, RigRimPixel px);
 #endif
 
 #ifdef SHARED_ACTOR_FX_SLOT_FILTER
@@ -489,6 +503,10 @@ void main()
         : material_normal_fallback;
     norm *= gl_FrontFacing ? 1.0 : -1.0;
 
+    // [RigRimQ] Toksvig input, unconditional at main scope (review P2-5); unused
+    // unless rig_rim_mode != 0, so the colour math is unchanged.
+    float rim_fw = length(fwidth(norm));
+
     vec3 light_dir = (sun_up_factor == 1) ? sun_dir : moon_dir;
     vec3 sunlit;
     vec3 amblit;
@@ -615,6 +633,13 @@ void main()
 #ifdef HAS_ACTOR_FX
     vec3 alr_rim = vec3(0.0);
 #endif
+    // [RigRimQ] forward-alpha local pixel (Phase 1: smooth normal + anti-shimmer
+    // only).  rim_fw hoisted to main scope after `norm`; mode 0 keeps neutral.
+    RigRimPixel rim_px = rigRimNeutralPixel(norm);
+    if (rigRimMode() != 0)
+    {
+        rim_px = rigRimForwardPixel(norm, vN * (gl_FrontFacing ? 1.0 : -1.0), rim_fw);
+    }
     // [RigRim] ...Rim variant carries rig_rim_lights[i]; identical result when
     // the rim params are zero / rig_rim_mode is 0.
 #ifdef HAS_ACTOR_FX
@@ -627,7 +652,7 @@ void main()
         norm, pos, v, light_position[i].xyz, light_direction[i].xyz,         \
         light_diffuse[i].rgb, light_deferred_attenuation[i].x,               \
         light_deferred_attenuation[i].y, light_attenuation[i].z,             \
-        light_attenuation[i].w, rig_rim_lights[i], alr_keep,                 \
+        light_attenuation[i].w, rig_rim_lights[i], alr_keep, rim_px,         \
         alr_nr, alr_rr, alr_ron, alr_ls);                                    \
     vec3 alr_split = alr_nr;                                                  \
     if (alr_ron) alr_split += alr_rr;                                         \
@@ -637,7 +662,7 @@ void main()
         norm, pos, v, light_position[i].xyz, light_direction[i].xyz,         \
         light_diffuse[i].rgb, light_deferred_attenuation[i].x,               \
         light_deferred_attenuation[i].y, light_attenuation[i].z,             \
-        light_attenuation[i].w, rig_rim_lights[i], alr_keep);                \
+        light_attenuation[i].w, rig_rim_lights[i], alr_keep, rim_px);        \
     alr_rimsplit_mismatch = alr_rimsplit_mismatch                            \
         || any(notEqual(floatBitsToUint(alr_split), floatBitsToUint(alr_ref))); \
     if (alrSilOn())                                                           \
@@ -654,7 +679,7 @@ void main()
             norm, pos, v, light_position[i].xyz, light_direction[i].xyz,     \
             light_diffuse[i].rgb, light_deferred_attenuation[i].x,           \
             light_deferred_attenuation[i].y, light_attenuation[i].z,         \
-            light_attenuation[i].w, rig_rim_lights[i], alr_keep);            \
+            light_attenuation[i].w, rig_rim_lights[i], alr_keep, rim_px);    \
     } }
 #else
 #define LIGHT_LOOP(i) {                                                       \
@@ -666,7 +691,7 @@ void main()
             norm, pos, v, light_position[i].xyz, light_direction[i].xyz,     \
             light_diffuse[i].rgb, light_deferred_attenuation[i].x,           \
             light_deferred_attenuation[i].y, light_attenuation[i].z,         \
-            light_attenuation[i].w, rig_rim_lights[i], alr_keep,             \
+            light_attenuation[i].w, rig_rim_lights[i], alr_keep, rim_px,     \
             alr_nr, alr_rr, alr_ron, alr_ls);                                \
         vec3 alr_whole = alr_nr;                                              \
         if (alr_ron) alr_whole += alr_rr;                                    \
@@ -680,7 +705,7 @@ void main()
             norm, pos, v, light_position[i].xyz, light_direction[i].xyz,     \
             light_diffuse[i].rgb, light_deferred_attenuation[i].x,           \
             light_deferred_attenuation[i].y, light_attenuation[i].z,         \
-            light_attenuation[i].w, rig_rim_lights[i], alr_keep);            \
+            light_attenuation[i].w, rig_rim_lights[i], alr_keep, rim_px);    \
     } }
 #endif
 #else
@@ -689,7 +714,7 @@ void main()
         norm, pos, v, light_position[i].xyz, light_direction[i].xyz,         \
         light_diffuse[i].rgb, light_deferred_attenuation[i].x,               \
         light_deferred_attenuation[i].y, light_attenuation[i].z,             \
-        light_attenuation[i].w, rig_rim_lights[i], alr_keep);
+        light_attenuation[i].w, rig_rim_lights[i], alr_keep, rim_px);
 #endif
 
     LIGHT_LOOP(1)

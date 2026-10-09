@@ -14,6 +14,8 @@
 
 #include "alfloaterexposurehub.h"
 
+#include "allenslooks.h"
+#include "llcombobox.h"
 #include "llcontrol.h"
 #include "lltabcontainer.h"
 #include "lluictrl.h"
@@ -49,6 +51,8 @@ const char* const RESET_SETTINGS[] =
     "RenderBloomThreshold",
     "RenderGradNDDensity",
     "RenderPolarizerStrength",
+    "RenderInfraredStrength",
+    "RenderSoftEdgeBlur",
     "CineLightRigNightMaskDarkness",
 };
 
@@ -102,6 +106,17 @@ bool ALFloaterExposureHub::postBuild()
             [this](LLControlVariable*, const LLSD&, const LLSD&) { syncNightMaskDarkness(); });
     }
     syncNightMaskDarkness();
+
+    getChild<LLComboBox>("exp_ir_preset")->setCommitCallback([](LLUICtrl* control, const LLSD&)
+    {
+        ALLensLooks::applyInfraredPreset(control->getValue().asInteger());
+        control->setValue(LLSD("0"));
+    });
+    getChild<LLComboBox>("exp_softedge_preset")->setCommitCallback([](LLUICtrl* control, const LLSD&)
+    {
+        ALLensLooks::applySoftEdgePreset(control->getValue().asInteger());
+        control->setValue(LLSD("0"));
+    });
 
     return LLFloater::postBuild();
 }

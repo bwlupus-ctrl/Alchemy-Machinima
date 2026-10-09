@@ -209,6 +209,7 @@ public:
     // On-lens filters (Graduated ND + Polarizer) applied to the linear HDR scene
     // before bloom/flare generation, so those optics respect the filtered scene.
     void applyOnLensFilters(LLRenderTarget* screen);
+    void applyLensSoftEdge(LLRenderTarget* screen);
     void generateGlow(LLRenderTarget* src);
     void generateBloomHDR(LLRenderTarget* src);
     void compositeBloomHDR(LLRenderTarget* scene);
@@ -650,6 +651,7 @@ public:
     void clearPrismLensDirtyScreenShaderTracking();
     void bindDeferredShaderFast(LLGLSLShader& shader);
     void bindDeferredShader(LLGLSLShader& shader, LLRenderTarget* light_target = nullptr, LLRenderTarget* depth_target = nullptr);
+    void bindRigRimAux(LLGLSLShader& shader);
     // [ShadowDist P1] Meta-derived sun-shadow uniform upload (design v6 s1.2).
     // Called from BOTH bind paths right after the shadow maps are bound. The
     // interpretation of the sampled pack's four maps (split blend; later units /
@@ -690,6 +692,17 @@ public:
     void renderDeferredLighting(ActorMaskViewSource source = ActorMaskViewSource::UNCLASSIFIED);
     ActorMaskView mActorMaskView = ActorMaskView::NONE;
     bool mActorMaskValid = false; // valid only during this lighting/forward view
+    bool mRigRimAuxValid = false;
+    bool mRigRimSilValid = false;
+    S32 mRigRimSubjectSource = 0;
+    U64 mRigRimStatusRevision = 0;
+    U32 mRigRimStatusFrame = ~0u;
+    std::string mRigRimStatus;
+    U64 rigRimStatusRevision() const { return mRigRimStatusRevision; }
+    const std::string& rigRimStatus() const { return mRigRimStatus; }
+    bool ensureRigRimAux();
+    bool ensureRigRimWrap();
+    void releaseRigRimAux();
     U64 mActorMaskViewId = 0;
     bool mActorMaskAllocated = false;
     LLActorMaskQueries mActorMaskQueries; // WP7: takeResults(), never blocking
@@ -1243,6 +1256,9 @@ public:
         LLRenderTarget          deferredScreen;
         LLRenderTarget          actorMask; // [ActorMask] R8; shared depth, never owned
         U32                     actorMaskDepthSrc = 0;
+        LLRenderTarget          rigRimAux;
+        LLRenderTarget          rigRimSil[2];
+        LLRenderTarget          rigRimWrapBlur[2];
         LLRenderTarget          silCover; // [AvatarSilhouette] RG8; shared depth, never owned
         U32                     silCoverDepthSrc = 0;
         LLRenderTarget          deferredLight;
@@ -1552,6 +1568,9 @@ public:
     // exposure map for getting average color in scene
     LLRenderTarget          mLuminanceMap;
     LLRenderTarget          mExposureMap;
+    LLRenderTarget          mLensPyramid[5];
+    bool ensureLensPyramid();
+    void releaseLensPyramid();
     LLRenderTarget          mLastExposure;
 
     // FXAA helper target

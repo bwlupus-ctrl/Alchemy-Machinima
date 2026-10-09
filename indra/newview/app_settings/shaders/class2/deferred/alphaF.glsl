@@ -83,7 +83,20 @@ vec3 linear_to_srgb(vec3 c);
 
 // [RigRim] shared rim helper (deferredUtil.glsl)
 int rigRimMode();
-vec3 rigRimTerm(vec3 n, vec3 v, vec3 l, vec3 c_l, vec3 diffuseColor, float roughness, vec4 rim);
+// [RigRimQ] per-pixel quality inputs (deferredUtil.glsl; struct must match there)
+#ifndef RIG_RIM_PIXEL_DEFINED
+#define RIG_RIM_PIXEL_DEFINED 1
+struct RigRimPixel
+{
+    vec3  n_geo;
+    float n_len;
+    float prox;
+    float subject;
+};
+#endif
+RigRimPixel rigRimNeutralPixel(vec3 n);
+RigRimPixel rigRimForwardPixel(vec3 n_sh, vec3 n_geo, float n_fwidth);
+vec3 rigRimTermEx(vec3 n, vec3 v, vec3 l, vec3 c_l, vec3 diffuseColor, float roughness, vec4 rim, RigRimPixel px);
 
 vec4 applySkyAndWaterFog(vec3 pos, vec3 additive, vec3 atten, vec4 color);
 #ifdef HAS_ACTOR_FX
@@ -120,7 +133,8 @@ void sampleReflectionProbesLegacy(inout vec3 ambenv, inout vec3 glossenv, inout 
 
 // [RigRim] `rim` = this light unit's rig rim params (rig_rim_lights[i]); zero
 // for non-rig lights.  NOTE: `v` is the eye-space POSITION here (legacy naming).
-vec3 calcPointLightOrSpotLight(vec3 light_col, vec3 diffuse, vec3 v, vec3 n, vec4 lp, vec3 ln, float la, float fa, float is_pointlight, float ambiance, vec4 rim
+vec3 calcPointLightOrSpotLight(vec3 light_col, vec3 diffuse, vec3 v, vec3 n, vec4 lp, vec3 ln, float la, float fa, float is_pointlight, float ambiance, vec4 rim,
+    RigRimPixel rim_px // [RigRimQ] per-pixel quality inputs
 #ifdef HAS_ACTOR_FX
     , bool sil_on, float sil_keep, float rim_keep
 #endif
@@ -217,7 +231,7 @@ vec3 calcPointLightOrSpotLight(vec3 light_col, vec3 diffuse, vec3 v, vec3 n, vec
         if (rigRimMode() != 0)
         {
             vec3 rim_v   = normalize(-v);
-            vec3 rim_col = rigRimTerm(n, rim_v, lv, (spot * spot) * dist_atten * light_col, diffuse, 1.0, rim);
+            vec3 rim_col = rigRimTermEx(n, rim_v, lv, (spot * spot) * dist_atten * light_col, diffuse, 1.0, rim, rim_px);
             if (rigRimMode() == 2)
             {
                 col = vec3(0.0); // debug: rim only
@@ -256,6 +270,10 @@ void main()
     waterClip(pos.xyz);
 #endif
     vec3 norm = vary_norm;
+
+    // [RigRimQ] Toksvig input, unconditional at main scope and BEFORE the alpha
+    // discards below (review P2-5); unused unless rig_rim_mode != 0.
+    float rim_fw = length(fwidth(norm));
 
     float shadow = 1.0f;
 
@@ -408,11 +426,20 @@ void main()
 
     vec4 light = vec4(0,0,0,0);
 
-   // [RigRim] trailing rig_rim_lights[i] argument
+    // [RigRimQ] forward-alpha local pixel: no normal map on this path, so the
+    // vertex normal IS the shading normal; only the Toksvig length carries
+    // information.  rim_fw hoisted to main scope; mode 0 keeps neutral.
+    RigRimPixel rim_px = rigRimNeutralPixel(norm);
+    if (rigRimMode() != 0)
+    {
+        rim_px = rigRimForwardPixel(norm, norm, rim_fw);
+    }
+
+   // [RigRim] trailing rig_rim_lights[i] argument (+ [RigRimQ] rim_px)
 #ifdef HAS_ACTOR_FX
-   #define LIGHT_LOOP(i) light.rgb += calcPointLightOrSpotLight(light_diffuse[i].rgb, diffuse_linear.rgb, pos.xyz, norm, light_position[i], light_direction[i].xyz, light_attenuation[i].x, light_attenuation[i].y, light_attenuation[i].z, light_attenuation[i].w, rig_rim_lights[i], alr_sil_on, alr_sil_keep, alr_rim_keep);
+   #define LIGHT_LOOP(i) light.rgb += calcPointLightOrSpotLight(light_diffuse[i].rgb, diffuse_linear.rgb, pos.xyz, norm, light_position[i], light_direction[i].xyz, light_attenuation[i].x, light_attenuation[i].y, light_attenuation[i].z, light_attenuation[i].w, rig_rim_lights[i], rim_px, alr_sil_on, alr_sil_keep, alr_rim_keep);
 #else
-   #define LIGHT_LOOP(i) light.rgb += calcPointLightOrSpotLight(light_diffuse[i].rgb, diffuse_linear.rgb, pos.xyz, norm, light_position[i], light_direction[i].xyz, light_attenuation[i].x, light_attenuation[i].y, light_attenuation[i].z, light_attenuation[i].w, rig_rim_lights[i]);
+   #define LIGHT_LOOP(i) light.rgb += calcPointLightOrSpotLight(light_diffuse[i].rgb, diffuse_linear.rgb, pos.xyz, norm, light_position[i], light_direction[i].xyz, light_attenuation[i].x, light_attenuation[i].y, light_attenuation[i].z, light_attenuation[i].w, rig_rim_lights[i], rim_px);
 #endif
 
     LIGHT_LOOP(1)
