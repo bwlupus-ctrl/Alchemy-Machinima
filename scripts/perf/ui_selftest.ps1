@@ -148,7 +148,9 @@ $ranked = foreach ($row in ($rows | Where-Object { $_.measure -ne 'baseline' }))
   $key = "$($row.pass)|$($row.floater)|$($row.tab_path)|$($row.measure)"
   if ($previous.ContainsKey($key)) {
     $old = [double]$previous[$key].ui_mean_ms
-    if ($old -gt 0 -and [double]$row.ui_mean_ms -gt $old * 1.2) { $reasons.Add('regression>20%') }
+    # Sub-millisecond pages jitter by ~0.05 ms run to run: require a real absolute change too.
+    if ($old -gt 0 -and [double]$row.ui_mean_ms -gt $old * 1.2 -and
+        ([double]$row.ui_mean_ms - $old) -gt 0.15) { $reasons.Add('regression>20%') }
   }
   [pscustomobject]@{
     Pass = $row.pass
