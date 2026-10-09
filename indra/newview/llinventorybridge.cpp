@@ -95,6 +95,8 @@
 
 #include <fmt/format.h>
 
+#include <tuple>
+
 void copy_slurl_to_clipboard_callback_inv(const std::string& slurl);
 
 const F32 SOUND_GAIN = 1.0f;
@@ -112,6 +114,139 @@ static bool check_category(LLInventoryModel* model,
 static bool check_item(const LLUUID& item_id,
                        LLInventoryPanel* active_panel,
                        LLInventoryFilter* filter);
+
+namespace
+{
+struct DragCategoryValidationKey
+{
+    U64 mDragSerial = 0;
+    LLUUID mCategoryID;
+    LLUUID mDestinationID;
+    const LLInventoryPanel* mDestinationPanel = nullptr;
+    const LLInventoryFilter* mFilter = nullptr;
+    S32 mFilterGeneration = 0;
+    U64 mFilterTypes = 0;
+    U64 mInventoryRevision = 0;
+    bool mIsLink = false;
+
+    bool operator<(const DragCategoryValidationKey& rhs) const
+    {
+        if (mDragSerial != rhs.mDragSerial) return mDragSerial < rhs.mDragSerial;
+        if (mCategoryID != rhs.mCategoryID) return mCategoryID < rhs.mCategoryID;
+        if (mDestinationID != rhs.mDestinationID) return mDestinationID < rhs.mDestinationID;
+        if (mDestinationPanel != rhs.mDestinationPanel)
+        {
+            return std::less<const LLInventoryPanel*>()(mDestinationPanel, rhs.mDestinationPanel);
+        }
+        if (mFilter != rhs.mFilter)
+        {
+            return std::less<const LLInventoryFilter*>()(mFilter, rhs.mFilter);
+        }
+        return std::tie(mFilterGeneration, mFilterTypes, mInventoryRevision, mIsLink)
+             < std::tie(rhs.mFilterGeneration, rhs.mFilterTypes, rhs.mInventoryRevision, rhs.mIsLink);
+    }
+};
+
+struct DragCategoryValidationResult
+{
+    bool mAccept = false;
+    bool mHasTooltip = false;
+    std::string mTooltip;
+};
+
+std::map<DragCategoryValidationKey, DragCategoryValidationResult> sDragCategoryValidationCache;
+U64 sDragCategoryValidationSerial = 0;
+U64 sDragCategoryValidationRevision = 0;
+bool sDragCategoryValidationHasRevision = false;
+std::map<LLUUID, std::pair<U64, size_t>> sFolderDescendantCountCache;
+
+bool category_items_pass(LLInventoryModel* model, const LLUUID& cat_id,
+                         bool reject_worn, bool landmarks_only,
+                         bool limit_unworn, U32 wear_limit,
+                         std::string& tooltip_msg)
+{
+    uuid_vec_t pending(1, cat_id);
+    const LLUUID trash_id = model->findCategoryUUIDForType(LLFolderType::FT_TRASH);
+    U32 total_items = 0;
+    U32 unworn_items = 0;
+    bool wear_limit_hit = false;
+    LLFindWearablesEx not_worn(false, false);
+
+    while (!pending.empty())
+    {
+        const LLUUID current_id = pending.back();
+        pending.pop_back();
+        if (current_id == trash_id)
+        {
+            continue;
+        }
+
+        LLInventoryModel::cat_array_t* categories = nullptr;
+        LLInventoryModel::item_array_t* items = nullptr;
+        model->getDirectDescendentsOf(current_id, categories, items);
+        if (categories)
+        {
+            for (LLViewerInventoryCategory* category : *categories)
+            {
+                // Match collectDescendents(EXCLUDE_TRASH): the Trash category
+                // is part of the result, but its contents are not. Test the
+                // category itself before deciding whether to descend into it.
+                if (LLFolderType::lookupIsProtectedType(category->getPreferredType()))
+                {
+                    return false;
+                }
+                if (category->getUUID() != trash_id)
+                {
+                    pending.push_back(category->getUUID());
+                }
+            }
+        }
+        if (items)
+        {
+            for (LLViewerInventoryItem* item : *items)
+            {
+                ++total_items;
+                if (reject_worn && get_is_item_worn(item->getUUID()))
+                {
+                    return false;
+                }
+                // Match the legacy test exactly: getType(), not getActualType().
+                if (landmarks_only && item->getType() != LLAssetType::AT_LANDMARK
+                    && item->getType() != LLAssetType::AT_CATEGORY)
+                {
+                    return false;
+                }
+                if (limit_unworn && !wear_limit_hit && not_worn(nullptr, item))
+                {
+                    ++unworn_items;
+                    if (total_items > wear_limit && unworn_items > wear_limit)
+                    {
+                        // Don't return yet: the legacy path rejects a nested
+                        // protected folder first, silently. Keep walking so that
+                        // case still wins (no tooltip); otherwise report the limit.
+                        wear_limit_hit = true;
+                    }
+                }
+            }
+        }
+    }
+    if (wear_limit_hit)
+    {
+        LLStringUtil::format_map_t args;
+        args["AMOUNT"] = llformat("%d", wear_limit);
+        tooltip_msg = LLTrans::getString("TooltipTooManyWearables", args);
+        return false;
+    }
+    return true;
+}
+}
+
+void clear_inventory_drag_validation_cache()
+{
+    sDragCategoryValidationCache.clear();
+    ++sDragCategoryValidationSerial;
+    sDragCategoryValidationHasRevision = false;
+}
 
 // Helper functions
 bool isAddAction(const std::string& action)
@@ -1286,6 +1421,7 @@ bool LLInvFVBridge::canMenuCut()
 // *TODO: remove this
 bool LLInvFVBridge::startDrag(EDragAndDropType* type, LLUUID* id) const
 {
+    LL_PROFILE_ZONE_SCOPED_CATEGORY_UI;
     bool rv = false;
 
     const LLInventoryObject* obj = getInventoryObject();
@@ -2535,10 +2671,18 @@ std::string LLFolderBridge::getLabelSuffix() const
     }
     else if(mShowDescendantsCount)
     {
-        LLInventoryModel::cat_array_t cat_array;
-        LLInventoryModel::item_array_t item_array;
-        gInventory.collectDescendents(getUUID(), cat_array, item_array, true);
-        auto count = item_array.size();
+        const U64 revision = gInventory.getRevision();
+        auto found = sFolderDescendantCountCache.find(getUUID());
+        if (found == sFolderDescendantCountCache.end() || found->second.first != revision)
+        {
+            LL_PROFILE_ZONE_NAMED_CATEGORY_UI("folder label - collect descendant count");
+            LLInventoryModel::cat_array_t cat_array;
+            LLInventoryModel::item_array_t item_array;
+            gInventory.collectDescendents(getUUID(), cat_array, item_array, true);
+            found = sFolderDescendantCountCache.insert_or_assign(
+                getUUID(), std::make_pair(revision, item_array.size())).first;
+        }
+        const size_t count = found->second.second;
         if (count > 0)
         {
             std::ostringstream oss;
@@ -2754,11 +2898,12 @@ bool LLFolderBridge::isClipboardPasteableAsLink() const
 
 bool LLFolderBridge::dragCategoryIntoFolder(LLInventoryCategory* inv_cat,
                                             bool drop,
-                                            std::string& tooltip_msg,
+                                            std::string& output_tooltip_msg,
                                             bool is_link,
                                             bool user_confirm,
                                             LLPointer<LLInventoryCallback> cb)
 {
+    LL_PROFILE_ZONE_SCOPED_CATEGORY_UI;
 
     LLInventoryModel* model = getInventoryModel();
 
@@ -2792,10 +2937,45 @@ bool LLFolderBridge::dragCategoryIntoFolder(LLInventoryCategory* inv_cat,
     LLToolDragAndDrop::ESource source = LLToolDragAndDrop::getInstance()->getSource();
     const bool is_agent_inventory = (model->getCategory(cat_id) != NULL)
         && (LLToolDragAndDrop::SOURCE_AGENT == source);
+    std::string hover_tooltip_msg;
+    std::string& tooltip_msg = (!drop && is_agent_inventory)
+        ? hover_tooltip_msg
+        : output_tooltip_msg;
 
     bool accept = false;
     U64 filter_types = filter->getFilterTypes();
     bool use_filter = filter_types && (filter_types&LLInventoryFilter::FILTERTYPE_DATE || (filter_types&LLInventoryFilter::FILTERTYPE_OBJECT)==0);
+
+    DragCategoryValidationKey cache_key;
+    if (!drop && is_agent_inventory)
+    {
+        const U64 revision = model->getRevision();
+        if (!sDragCategoryValidationHasRevision
+            || sDragCategoryValidationRevision != revision)
+        {
+            sDragCategoryValidationCache.clear();
+            sDragCategoryValidationRevision = revision;
+            sDragCategoryValidationHasRevision = true;
+        }
+        cache_key.mDragSerial = sDragCategoryValidationSerial;
+        cache_key.mCategoryID = cat_id;
+        cache_key.mDestinationID = mUUID;
+        cache_key.mDestinationPanel = destination_panel;
+        cache_key.mFilter = filter;
+        cache_key.mFilterGeneration = filter->getCurrentGeneration();
+        cache_key.mFilterTypes = filter_types;
+        cache_key.mInventoryRevision = revision;
+        cache_key.mIsLink = is_link;
+        const auto found = sDragCategoryValidationCache.find(cache_key);
+        if (found != sDragCategoryValidationCache.end())
+        {
+            if (found->second.mHasTooltip)
+            {
+                output_tooltip_msg = found->second.mTooltip;
+            }
+            return found->second.mAccept;
+        }
+    }
 
     if (is_agent_inventory)
     {
@@ -2938,8 +3118,11 @@ bool LLFolderBridge::dragCategoryIntoFolder(LLInventoryCategory* inv_cat,
 
         LLInventoryModel::cat_array_t descendent_categories;
         LLInventoryModel::item_array_t descendent_items;
-        if (is_movable)
+        if (is_movable && drop)
         {
+            LL_PROFILE_ZONE_NAMED_CATEGORY_UI("drag category - collect descendants");
+            // The drop path needs this materialized list below to deactivate
+            // gestures moved to Trash. Collect it once and reuse it.
             model->collectDescendents(cat_id, descendent_categories, descendent_items, false);
             for (S32 i=0; i < descendent_categories.size(); ++i)
             {
@@ -2954,6 +3137,7 @@ bool LLFolderBridge::dragCategoryIntoFolder(LLInventoryCategory* inv_cat,
         }
         if (is_movable
             && move_is_into_current_outfit
+            && drop
             && descendent_items.size() > max_items_to_wear)
         {
             LLInventoryModel::cat_array_t cats;
@@ -2974,7 +3158,17 @@ bool LLFolderBridge::dragCategoryIntoFolder(LLInventoryCategory* inv_cat,
                 tooltip_msg = LLTrans::getString("TooltipTooManyWearables",args);
             }
         }
-        if (is_movable && move_is_into_trash)
+        if (is_movable && !drop)
+        {
+            LL_PROFILE_ZONE_NAMED_CATEGORY_UI("drag category - hover subtree predicates");
+            is_movable = category_items_pass(model, cat_id,
+                                             move_is_into_trash,
+                                             move_is_into_landmarks,
+                                             move_is_into_current_outfit,
+                                             max_items_to_wear,
+                                             tooltip_msg);
+        }
+        if (is_movable && drop && move_is_into_trash)
         {
             for (LLViewerInventoryItem* item : descendent_items)
             {
@@ -2985,7 +3179,7 @@ bool LLFolderBridge::dragCategoryIntoFolder(LLInventoryCategory* inv_cat,
                 }
             }
         }
-        if (is_movable && move_is_into_landmarks)
+        if (is_movable && drop && move_is_into_landmarks)
         {
             for (LLViewerInventoryItem* item : descendent_items)
             {
@@ -3034,6 +3228,7 @@ bool LLFolderBridge::dragCategoryIntoFolder(LLInventoryCategory* inv_cat,
 
                 if (is_movable && use_filter)
                 {
+                    LL_PROFILE_ZONE_NAMED_CATEGORY_UI("drag category - cross-panel filter check");
                     // Check whether the folder being dragged from active inventory panel
                     // passes the filter of the destination panel.
                     is_movable = check_category(model, cat_id, active_panel, filter);
@@ -3301,6 +3496,17 @@ bool LLFolderBridge::dragCategoryIntoFolder(LLInventoryCategory* inv_cat,
         }
     }
 
+    if (!drop && is_agent_inventory)
+    {
+        const bool has_tooltip = !tooltip_msg.empty();
+        if (has_tooltip)
+        {
+            output_tooltip_msg = tooltip_msg;
+        }
+        sDragCategoryValidationCache.emplace(std::move(cache_key),
+            DragCategoryValidationResult{accept, has_tooltip,
+                                         has_tooltip ? tooltip_msg : std::string()});
+    }
     return accept;
 }
 
@@ -5084,6 +5290,7 @@ bool LLFolderBridge::dragOrDrop(MASK mask, bool drop,
                                 void* cargo_data,
                                 std::string& tooltip_msg)
 {
+    LL_PROFILE_ZONE_SCOPED_CATEGORY_UI;
     LLInventoryItem* inv_item = (LLInventoryItem*)cargo_data;
 
     static LLPointer<LLInventoryCallback> drop_cb = NULL;
@@ -6281,44 +6488,56 @@ bool check_category(LLInventoryModel* model,
                     LLInventoryPanel* active_panel,
                     LLInventoryFilter* filter)
 {
+    LL_PROFILE_ZONE_SCOPED_CATEGORY_UI;
     if (!model || !active_panel || !filter)
         return false;
 
-    if (!filter->checkFolder(cat_id))
+    // One DFS. The former implementation collected every subtree and then
+    // recursively repeated those same collections for each child folder.
+    uuid_vec_t pending(1, cat_id);
+    while (!pending.empty())
     {
-        return false;
-    }
-
-    LLInventoryModel::cat_array_t descendent_categories;
-    LLInventoryModel::item_array_t descendent_items;
-    model->collectDescendents(cat_id, descendent_categories, descendent_items, true);
-
-    auto num_descendent_categories = descendent_categories.size();
-    auto num_descendent_items = descendent_items.size();
-
-    if (num_descendent_categories + num_descendent_items == 0)
-    {
-        // Empty folder should be checked as any other folder view item.
-        // If we are filtering by date the folder should not pass because
-        // it doesn't have its own creation date. See LLInvFVBridge::getCreationDate().
-        return check_item(cat_id, active_panel, filter);
-    }
-
-    for (size_t i = 0; i < num_descendent_categories; ++i)
-    {
-        LLInventoryCategory* category = descendent_categories[i];
-        if(!check_category(model, category->getUUID(), active_panel, filter))
+        const LLUUID current_id = pending.back();
+        pending.pop_back();
+        if (!filter->checkFolder(current_id))
         {
             return false;
         }
-    }
 
-    for (size_t i = 0; i < num_descendent_items; ++i)
-    {
-        LLViewerInventoryItem* item = descendent_items[i];
-        if(!check_item(item->getUUID(), active_panel, filter))
+        LLInventoryModel::cat_array_t* categories = nullptr;
+        LLInventoryModel::item_array_t* items = nullptr;
+        model->getDirectDescendentsOf(current_id, categories, items);
+        if (!categories || !items)
+        {
+            // collectDescendents() treated a folder with missing child arrays
+            // as empty, then applied the item predicate to the folder itself.
+            if (!check_item(current_id, active_panel, filter))
+            {
+                return false;
+            }
+            continue;
+        }
+        if (categories->empty() && items->empty()
+            && !check_item(current_id, active_panel, filter))
         {
             return false;
+        }
+        if (categories)
+        {
+            for (LLViewerInventoryCategory* category : *categories)
+            {
+                pending.push_back(category->getUUID());
+            }
+        }
+        if (items)
+        {
+            for (LLViewerInventoryItem* item : *items)
+            {
+                if (!check_item(item->getUUID(), active_panel, filter))
+                {
+                    return false;
+                }
+            }
         }
     }
 

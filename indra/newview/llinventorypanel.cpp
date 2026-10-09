@@ -1621,6 +1621,7 @@ LLInventoryPanel::selected_items_t LLInventoryPanel::getSelectedItems() const
 
 void LLInventoryPanel::onSelectionChange(const std::deque<LLFolderViewItem*>& items, bool user_action)
 {
+    LL_PROFILE_ZONE_SCOPED_CATEGORY_UI;
     // Schedule updating the folder view context menu when all selected items become complete (STORM-373).
     mCompletionObserver->reset();
     for (std::deque<LLFolderViewItem*>::const_iterator it = items.begin(); it != items.end(); ++it)

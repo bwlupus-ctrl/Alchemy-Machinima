@@ -41,6 +41,9 @@
 
 class LLInventoryFilter;
 class LLInventoryPanel;
+
+// Clears validation derived during the current inventory drag gesture.
+void clear_inventory_drag_validation_cache();
 class LLInventoryModel;
 class LLMenuGL;
 class LLCallingCardObserver;

@@ -38,6 +38,7 @@
 
 bool LLFolderViewModelInventory::startDrag(std::vector<LLFolderViewModelItem*>& items)
 {
+    LL_PROFILE_ZONE_SCOPED_CATEGORY_UI;
     std::vector<EDragAndDropType> types;
     uuid_vec_t cargo_ids;
     std::vector<LLFolderViewModelItem*>::iterator item_it;

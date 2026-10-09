@@ -1482,35 +1482,79 @@ bool can_move_folder_to_marketplace(const LLInventoryCategory* root_folder, LLIn
 
     if (accept)
     {
-        LLInventoryModel::cat_array_t descendent_categories;
-        LLInventoryModel::item_array_t descendent_items;
-        gInventory.collectDescendents(inv_cat->getUUID(), descendent_categories, descendent_items, false);
-
-        int dragged_folder_count = static_cast<int>(descendent_categories.size()) + bundle_size;  // Note: We assume that we're moving a bunch of folders in. That might be wrong...
-        int dragged_item_count = count_copyable_items(descendent_items) + count_stock_folders(descendent_categories);
-        int dragged_stock_count = count_stock_items(descendent_items);
         int existing_item_count = 0;
         int existing_stock_count = 0;
         int existing_folder_count = 0;
+        int dragged_item_count = 0;
+        int dragged_stock_count = 0;
+        int dragged_folder_count = bundle_size; // Assume sibling cargo is folders, as before.
+
+        // Traverse each hierarchy directly instead of materializing complete
+        // category/item arrays. Counts are still resolved before selecting an
+        // error, preserving the legacy folder/item/stock tooltip priority.
+        auto scan = [&](const LLUUID& root_id, int& folder_count, int& item_count,
+                        int& stock_count)
+        {
+            uuid_vec_t pending(1, root_id);
+            const LLUUID trash_id = gInventory.findCategoryUUIDForType(LLFolderType::FT_TRASH);
+            while (!pending.empty())
+            {
+                const LLUUID current_id = pending.back();
+                pending.pop_back();
+                if (current_id == trash_id)
+                {
+                    continue;
+                }
+                LLInventoryModel::cat_array_t* categories = nullptr;
+                LLInventoryModel::item_array_t* items = nullptr;
+                gInventory.getDirectDescendentsOf(current_id, categories, items);
+                if (!categories || !items)
+                {
+                    continue;
+                }
+                for (LLViewerInventoryCategory* category : *categories)
+                {
+                    ++folder_count;
+                    if (category->getPreferredType() == LLFolderType::FT_MARKETPLACE_STOCK)
+                    {
+                        ++item_count;
+                    }
+                    pending.push_back(category->getUUID());
+                }
+                for (LLViewerInventoryItem* item : *items)
+                {
+                    if (item->getPermissions().allowOperationBy(PERM_COPY, gAgent.getID(), gAgent.getGroupID()))
+                    {
+                        ++item_count;
+                    }
+                    else
+                    {
+                        ++stock_count;
+                    }
+                }
+            }
+        };
 
         if (version_folder)
         {
-            if (!from_paste && gInventory.isObjectDescendentOf(inv_cat->getUUID(), version_folder->getUUID()))
-            {
-                // Clear those counts or they will be counted twice because we're already inside the version category
-                dragged_folder_count = 0;
-                dragged_item_count = 0;
-                dragged_stock_count = 0;
-            }
+            scan(version_folder->getUUID(), existing_folder_count,
+                 existing_item_count, existing_stock_count);
+        }
 
-            // Tally the total number of categories and items inside the root folder
-            LLInventoryModel::cat_array_t existing_categories;
-            LLInventoryModel::item_array_t existing_items;
-            gInventory.collectDescendents(version_folder->getUUID(), existing_categories, existing_items, false);
-
-            existing_folder_count += static_cast<int>(existing_categories.size());
-            existing_item_count += count_copyable_items(existing_items) + count_stock_folders(existing_categories);
-            existing_stock_count += count_stock_items(existing_items);
+        const bool already_in_version = version_folder && !from_paste
+            && gInventory.isObjectDescendentOf(inv_cat->getUUID(), version_folder->getUUID());
+        int ignored_folders = 0;
+        int ignored_items = 0;
+        int ignored_stock = 0;
+        scan(inv_cat->getUUID(),
+             already_in_version ? ignored_folders : dragged_folder_count,
+             already_in_version ? ignored_items : dragged_item_count,
+             already_in_version ? ignored_stock : dragged_stock_count);
+        if (already_in_version)
+        {
+            dragged_folder_count = 0;
+            dragged_item_count = 0;
+            dragged_stock_count = 0;
         }
 
         const unsigned int total_folder_count = existing_folder_count + dragged_folder_count;
@@ -1542,18 +1586,40 @@ bool can_move_folder_to_marketplace(const LLInventoryCategory* root_folder, LLIn
             accept = false;
         }
 
-        // Now check that each item in the folder can be moved in the marketplace
-        if (accept && check_items)
+        // Preserve collectDescendents()'s depth-first category-then-item order
+        // while stopping on the first invalid item and without retaining the
+        // whole subtree in arrays.
+        std::function<bool(const LLUUID&)> validate_marketplace_items;
+        const LLUUID trash_id = gInventory.findCategoryUUIDForType(LLFolderType::FT_TRASH);
+        validate_marketplace_items = [&](const LLUUID& category_id)
         {
-            for (S32 i=0; i < descendent_items.size(); ++i)
+            LLInventoryModel::cat_array_t* categories = nullptr;
+            LLInventoryModel::item_array_t* items = nullptr;
+            gInventory.getDirectDescendentsOf(category_id, categories, items);
+            if (!categories || !items)
             {
-                LLInventoryItem* item = descendent_items[i];
-                if (!can_move_to_marketplace(item, tooltip_msg, false))
+                return true;
+            }
+            for (LLViewerInventoryCategory* category : *categories)
+            {
+                if (category->getUUID() != trash_id
+                    && !validate_marketplace_items(category->getUUID()))
                 {
-                    accept = false;
-                    break;
+                    return false;
                 }
             }
+            for (LLViewerInventoryItem* item : *items)
+            {
+                if (!can_move_to_marketplace(item, tooltip_msg, false))
+                {
+                    return false;
+                }
+            }
+            return true;
+        };
+        if (accept && check_items && !validate_marketplace_items(inv_cat->getUUID()))
+        {
+            accept = false;
         }
     }
 
@@ -4087,5 +4153,3 @@ void LLInventoryAction::updateMarketplaceFolders()
         sMarketplaceFolders.pop_back();
     }
 }
-
-

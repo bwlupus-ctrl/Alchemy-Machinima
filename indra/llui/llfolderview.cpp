@@ -324,10 +324,16 @@ void LLFolderView::openTopLevelFolders()
 // conform show folder state works
 S32 LLFolderView::arrange( S32* unused_width, S32* unused_height )
     {
+    LL_PROFILE_ZONE_SCOPED_CATEGORY_UI;
     mMinWidth = 0;
     S32 target_height;
 
-    LLFolderViewFolder::arrange(&mMinWidth, &target_height);
+    {
+        // LLFolderViewFolder::arrange is recursive; keep one zone at its
+        // top-level caller rather than emitting a zone for every folder.
+        LL_PROFILE_ZONE_NAMED_CATEGORY_UI("LLFolderViewFolder::arrange");
+        LLFolderViewFolder::arrange(&mMinWidth, &target_height);
+    }
 
     LLRect scroll_rect = (mScrollContainer ? mScrollContainer->getContentWindowRect() : LLRect());
     reshape( llmax(scroll_rect.getWidth(), mMinWidth), ll_round(mCurHeight) );
@@ -647,6 +653,7 @@ std::set<LLFolderViewItem*> LLFolderView::getSelectionList() const
 
 bool LLFolderView::startDrag()
 {
+    LL_PROFILE_ZONE_SCOPED_CATEGORY_UI;
     std::vector<LLFolderViewModelItem*> selected_items;
     selected_items_t::iterator item_it;
 
@@ -1615,6 +1622,7 @@ bool LLFolderView::handleDragAndDrop(S32 x, S32 y, MASK mask, bool drop,
                                      EAcceptance* accept,
                                      std::string& tooltip_msg)
 {
+    LL_PROFILE_ZONE_SCOPED_CATEGORY_UI;
     mDragAndDropThisFrame = true;
     // have children handle it first
     bool handled = LLView::handleDragAndDrop(x, y, mask, drop, cargo_type, cargo_data,

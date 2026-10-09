@@ -448,6 +448,7 @@ LLInventoryModel::LLInventoryModel()
     mIsNotifyObservers(false),
     mModifyMask(LLInventoryObserver::ALL),
     mChangedItemIDs(),
+    mRevision(0),
     mBulkFecthCallbackSlot(),
     mObservers(),
     mHttpRequestFG(NULL),
@@ -2296,6 +2297,7 @@ void LLInventoryModel::notifyObservers(const LLUUID& transaction_id)
     }
 
     mIsNotifyObservers = true;
+    ++mRevision;
 // [SL:KB] - Patch: UI-Notifications | Checked: Catznip-6.5
     mTransactionId = transaction_id;
 // [/SL:KB]
@@ -5244,4 +5246,3 @@ void LLInventoryModel::FetchItemHttpHandler::processFailure(const char * const r
                       << LLCoreHttpUtil::responseToString(response) << "]" << LL_ENDL;
     gInventory.notifyObservers();
 }
-

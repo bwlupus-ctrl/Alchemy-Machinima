@@ -73,39 +73,6 @@
 // syntactic sugar
 #define callMemberFunction(object,ptrToMember)  ((object).*(ptrToMember))
 
-class LLNoPreferredType : public LLInventoryCollectFunctor
-{
-public:
-    LLNoPreferredType() {}
-    virtual ~LLNoPreferredType() {}
-    virtual bool operator()(LLInventoryCategory* cat,
-                            LLInventoryItem* item)
-    {
-        if (cat && (cat->getPreferredType() == LLFolderType::FT_NONE))
-        {
-            return true;
-        }
-        return false;
-    }
-};
-
-class LLNoPreferredTypeOrItem : public LLInventoryCollectFunctor
-{
-public:
-    LLNoPreferredTypeOrItem() {}
-    virtual ~LLNoPreferredTypeOrItem() {}
-    virtual bool operator()(LLInventoryCategory* cat,
-                            LLInventoryItem* item)
-    {
-        if (item) return true;
-        if (cat && (cat->getPreferredType() == LLFolderType::FT_NONE))
-        {
-            return true;
-        }
-        return false;
-    }
-};
-
 class LLDroppableItem : public LLInventoryCollectFunctor
 {
 public:
@@ -170,24 +137,6 @@ bool LLDropCopyableItems::operator()(
     }
     return allowed;
 }
-
-// Starts a fetch on folders and items.  This is really not used
-// as an observer in the traditional sense; we're just using it to
-// request a fetch and we don't care about when/if the response arrives.
-class LLCategoryFireAndForget : public LLInventoryFetchComboObserver
-{
-public:
-    LLCategoryFireAndForget(const uuid_vec_t& folder_ids,
-                            const uuid_vec_t& item_ids) :
-        LLInventoryFetchComboObserver(folder_ids, item_ids)
-    {}
-    ~LLCategoryFireAndForget() {}
-    virtual void done()
-    {
-        /* no-op: it's fire n forget right? */
-        LL_DEBUGS() << "LLCategoryFireAndForget::done()" << LL_ENDL;
-    }
-};
 
 class LLCategoryDropObserver : public LLInventoryFetchItemsObserver
 {
@@ -320,6 +269,8 @@ void LLToolDragAndDrop::beginDrag(EDragAndDropType type,
                                   const LLUUID& source_id,
                                   const LLUUID& object_id)
 {
+    LL_PROFILE_ZONE_SCOPED_CATEGORY_UI;
+    clear_inventory_drag_validation_cache();
     if (type == DAD_NONE)
     {
         LL_WARNS() << "Attempted to start drag without a cargo type" << LL_ENDL;
@@ -334,6 +285,11 @@ void LLToolDragAndDrop::beginDrag(EDragAndDropType type,
             LLInventoryModelBackgroundFetch::instance().start(item->getUUID(), false);
         }
     }
+    else if ((source == SOURCE_AGENT || source == SOURCE_LIBRARY) && gInventory.getCategory(cargo_id))
+    {
+        LL_PROFILE_ZONE_NAMED_CATEGORY_UI("begin drag - background category fetch");
+        LLInventoryModelBackgroundFetch::instance().start(cargo_id);
+    }
 
     mCargoTypes.clear();
     mCargoTypes.push_back(type);
@@ -346,45 +302,10 @@ void LLToolDragAndDrop::beginDrag(EDragAndDropType type,
     setMouseCapture( true );
     LLToolMgr::getInstance()->setTransientTool( this );
     mCursor = UI_CURSOR_NO;
-    if ((mCargoTypes[0] == DAD_CATEGORY)
-       && ((mSource == SOURCE_AGENT) || (mSource == SOURCE_LIBRARY)))
-    {
-        LLInventoryCategory* cat = gInventory.getCategory(cargo_id);
-        // go ahead and fire & forget the descendents if we are not
-        // dragging a protected folder.
-        if (cat)
-        {
-            LLViewerInventoryCategory::cat_array_t cats;
-            LLViewerInventoryItem::item_array_t items;
-            LLNoPreferredTypeOrItem is_not_preferred;
-            uuid_vec_t folder_ids;
-            uuid_vec_t item_ids;
-            if (is_not_preferred(cat, NULL))
-            {
-                folder_ids.push_back(cargo_id);
-            }
-            gInventory.collectDescendentsIf(
-                cargo_id,
-                cats,
-                items,
-                LLInventoryModel::EXCLUDE_TRASH,
-                is_not_preferred);
-            for (auto& cat : cats)
-            {
-                folder_ids.emplace_back(cat->getUUID());
-            }
-            for (auto& item : items)
-            {
-                item_ids.emplace_back(item->getUUID());
-            }
-            if (!folder_ids.empty() || !item_ids.empty())
-            {
-                LLCategoryFireAndForget *fetcher = new LLCategoryFireAndForget(folder_ids, item_ids);
-                fetcher->startFetch();
-                delete fetcher;
-            }
-        }
-    }
+    // The root category is queued above (and folder-view sources already did
+    // so in LLInvFVBridge::startDrag()). Enumerating the entire subtree here
+    // only built lists for a fire-and-forget fetch and was synchronous on the
+    // input thread; no cargo, permission, or drop decision used the lists.
 }
 
 void LLToolDragAndDrop::beginMultiDrag(
@@ -393,6 +314,8 @@ void LLToolDragAndDrop::beginMultiDrag(
     ESource source,
     const LLUUID& source_id)
 {
+    LL_PROFILE_ZONE_SCOPED_CATEGORY_UI;
+    clear_inventory_drag_validation_cache();
     // assert on public api is evil
     //llassert( type != DAD_NONE );
 
@@ -413,49 +336,14 @@ void LLToolDragAndDrop::beginMultiDrag(
     setMouseCapture( true );
     LLToolMgr::getInstance()->setTransientTool( this );
     mCursor = UI_CURSOR_NO;
-    if ((mSource == SOURCE_AGENT) || (mSource == SOURCE_LIBRARY))
-    {
-        // find categories (i.e. inventory folders) in the cargo.
-        LLInventoryCategory* cat = NULL;
-        auto count = llmin(cargo_ids.size(), types.size());
-        uuid_set_t cat_ids;
-        for (size_t i = 0; i < count; ++i)
-        {
-            cat = gInventory.getCategory(cargo_ids[i]);
-            if (cat)
-            {
-                LLViewerInventoryCategory::cat_array_t cats;
-                LLViewerInventoryItem::item_array_t items;
-                LLNoPreferredType is_not_preferred;
-                if (is_not_preferred(cat, NULL))
-                {
-                    cat_ids.insert(cat->getUUID());
-                }
-                gInventory.collectDescendentsIf(
-                    cat->getUUID(),
-                    cats,
-                    items,
-                    LLInventoryModel::EXCLUDE_TRASH,
-                    is_not_preferred);
-                for (auto& cat : cats)
-                {
-                    cat_ids.emplace(cat->getUUID());
-                }
-            }
-        }
-        if (!cat_ids.empty())
-        {
-            uuid_vec_t folder_ids;
-            uuid_vec_t item_ids;
-            std::back_insert_iterator<uuid_vec_t> copier(folder_ids);
-            std::copy(cat_ids.begin(), cat_ids.end(), copier);
-            LLCategoryFireAndForget fetcher(folder_ids, item_ids);
-        }
-    }
+    // The removed subtree walk was consumed solely by
+    // a fire-and-forget observer which was never started, never by the drag
+    // cargo itself. Preserve that original no-fetch behavior here.
 }
 
 void LLToolDragAndDrop::endDrag()
 {
+    clear_inventory_drag_validation_cache();
     mEndDragSignal();
     LLSelectMgr::getInstance()->unhighlightAll();
     setMouseCapture(false);
@@ -471,10 +359,16 @@ void LLToolDragAndDrop::onMouseCaptureLost()
     mSourceID.setNull();
     mObjectID.setNull();
     mCustomMsg.clear();
+    clear_inventory_drag_validation_cache();
 }
 
 bool LLToolDragAndDrop::handleMouseUp( S32 x, S32 y, MASK mask )
 {
+    LL_PROFILE_ZONE_SCOPED_CATEGORY_UI;
+    // The drop starts with a drop=false acceptance pass. It must recompute
+    // state that is not represented by the inventory revision (wear state,
+    // Marketplace state, RLV locks, settings, and the active panel).
+    clear_inventory_drag_validation_cache();
     if (hasMouseCapture())
     {
         EAcceptance acceptance = ACCEPT_NO;
@@ -556,6 +450,7 @@ ECursorType LLToolDragAndDrop::acceptanceToCursor( EAcceptance acceptance )
 
 bool LLToolDragAndDrop::handleHover( S32 x, S32 y, MASK mask )
 {
+    LL_PROFILE_ZONE_SCOPED_CATEGORY_UI;
     EAcceptance acceptance = ACCEPT_NO;
     dragOrDrop( x, y, mask, false, &acceptance );
 
@@ -604,6 +499,7 @@ void LLToolDragAndDrop::handleDeselect()
 void LLToolDragAndDrop::dragOrDrop( S32 x, S32 y, MASK mask, bool drop,
                                    EAcceptance* acceptance)
 {
+    LL_PROFILE_ZONE_SCOPED_CATEGORY_UI;
     *acceptance = ACCEPT_YES_MULTI;
 
     bool handled = false;
@@ -626,8 +522,11 @@ void LLToolDragAndDrop::dragOrDrop( S32 x, S32 y, MASK mask, bool drop,
 
     if (top_view)
     {
+        LL_PROFILE_ZONE_NAMED_CATEGORY_UI("dad - top ctrl traversal");
         handled = true;
 
+        {
+        LL_PROFILE_ZONE_NAMED_CATEGORY_UI("dad - acceptance pass");
         for (mCurItemIndex = 0; mCurItemIndex < (S32)mCargoIDs.size(); mCurItemIndex++)
         {
             S32 local_x, local_y;
@@ -657,10 +556,12 @@ void LLToolDragAndDrop::dragOrDrop( S32 x, S32 y, MASK mask, bool drop,
                 *acceptance = (EAcceptance)llmin((U32)item_acceptance, (U32)*acceptance);
             }
         }
+        }
 
         // all objects passed, go ahead and perform drop if necessary
         if (handled && drop && (U32)*acceptance >= ACCEPT_YES_COPY_SINGLE)
         {
+            LL_PROFILE_ZONE_NAMED_CATEGORY_UI("dad - drop pass");
             if ((U32)*acceptance < ACCEPT_YES_COPY_MULTI &&
                 mCargoIDs.size() > 1)
             {
@@ -702,10 +603,13 @@ void LLToolDragAndDrop::dragOrDrop( S32 x, S32 y, MASK mask, bool drop,
 
     if (!handled)
     {
+        LL_PROFILE_ZONE_NAMED_CATEGORY_UI("dad - root traversal");
         handled = true;
 
         LLRootView* root_view = gViewerWindow->getRootView();
 
+        {
+        LL_PROFILE_ZONE_NAMED_CATEGORY_UI("dad - acceptance pass");
         for (mCurItemIndex = 0; mCurItemIndex < (S32)mCargoIDs.size(); mCurItemIndex++)
         {
             EAcceptance item_acceptance = ACCEPT_NO;
@@ -735,9 +639,11 @@ void LLToolDragAndDrop::dragOrDrop( S32 x, S32 y, MASK mask, bool drop,
                 *acceptance = (EAcceptance)llmin((U32)item_acceptance, (U32)*acceptance);
             }
         }
+        }
         // all objects passed, go ahead and perform drop if necessary
         if (handled && drop && (U32)*acceptance > ACCEPT_NO_LOCKED)
         {
+            LL_PROFILE_ZONE_NAMED_CATEGORY_UI("dad - drop pass");
             if ((U32)*acceptance < ACCEPT_YES_COPY_MULTI &&
                 mCargoIDs.size() > 1)
             {
@@ -799,14 +705,17 @@ void LLToolDragAndDrop::dragOrDrop( S32 x, S32 y, MASK mask, bool drop,
 
 void LLToolDragAndDrop::dragOrDrop3D( S32 x, S32 y, MASK mask, bool drop, EAcceptance* acceptance )
 {
+    LL_PROFILE_ZONE_SCOPED_CATEGORY_UI;
     mDrop = drop;
     if (mDrop)
     {
+        LL_PROFILE_ZONE_NAMED_CATEGORY_UI("dad 3d - immediate pick");
         // don't allow drag and drop onto rigged or transparent objects
         pick(gViewerWindow->pickImmediate(x, y, false, false));
     }
     else
     {
+        LL_PROFILE_ZONE_NAMED_CATEGORY_UI("dad 3d - async pick");
         // don't allow drag and drop onto transparent objects
         gViewerWindow->pickAsync(x, y, mask, pickCallback, false, false);
     }

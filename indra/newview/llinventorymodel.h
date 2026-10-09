@@ -593,6 +593,10 @@ public:
 
     const changed_items_t& getChangedIDs() const { return mChangedItemIDs; }
     const changed_items_t& getAddedIDs() const { return mAddedItemIDs; }
+    // Monotonically increases for every observer-visible inventory change.
+    // Consumers may use this to invalidate derived inventory data without
+    // rebuilding it on every UI query.
+    U64 getRevision() const { return mRevision; }
 // [SL:KB] - Patch: UI-Notifications | Checked: Catznip-6.5
     const LLUUID& getTransactionId() const { return mTransactionId; }
 // [/SL:KB]
@@ -607,6 +611,7 @@ private:
     U32 mModifyMask;
     changed_items_t mChangedItemIDs;
     changed_items_t mAddedItemIDs;
+    U64 mRevision;
 // [SL:KB] - Patch: UI-Notifications | Checked: Catznip-6.5
     LLUUID mTransactionId;
 // [/SL:KB]
@@ -746,4 +751,3 @@ public:
 extern LLInventoryModel gInventory;
 
 #endif // LL_LLINVENTORYMODEL_H
-

@@ -2468,6 +2468,7 @@ void LLWindowWin32::gatherInput()
         std::function<void()> curFunc;
         while (mMouseQueue.tryPopBack(curFunc))
         {
+            LL_PROFILE_ZONE_NAMED_CATEGORY_WIN32("gi - mouse callback");
             curFunc();
         }
     }

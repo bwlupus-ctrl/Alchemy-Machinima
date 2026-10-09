@@ -686,6 +686,7 @@ bool LLFolderViewItem::handleRightMouseDown( S32 x, S32 y, MASK mask )
 
 bool LLFolderViewItem::handleMouseDown( S32 x, S32 y, MASK mask )
 {
+    LL_PROFILE_ZONE_SCOPED_CATEGORY_UI;
     if (LLView::childrenHandleMouseDown(x, y, mask))
     {
         return true;
@@ -725,16 +726,22 @@ bool LLFolderViewItem::handleMouseDown( S32 x, S32 y, MASK mask )
 
 bool LLFolderViewItem::handleHover( S32 x, S32 y, MASK mask )
 {
+    LL_PROFILE_ZONE_SCOPED_CATEGORY_UI;
     mIsMouseOverTitle = (y > (getRect().getHeight() - mStyle->itemHeight));
 
     if( hasMouseCapture() && isMovable() )
     {
             LLFolderView* root = getRoot();
 
-        if( (x - mDragStartX) * (x - mDragStartX) + (y - mDragStartY) * (y - mDragStartY) > DRAG_N_DROP_DISTANCE_THRESHOLD * DRAG_N_DROP_DISTANCE_THRESHOLD
+        bool drag_started = false;
+        if ((x - mDragStartX) * (x - mDragStartX) + (y - mDragStartY) * (y - mDragStartY) > DRAG_N_DROP_DISTANCE_THRESHOLD * DRAG_N_DROP_DISTANCE_THRESHOLD
             && root->getAllowDrag()
-            && root->getCurSelectedItem()
-            && root->startDrag())
+            && root->getCurSelectedItem())
+        {
+            LL_PROFILE_ZONE_NAMED_CATEGORY_UI("folder item - start drag");
+            drag_started = root->startDrag();
+        }
+        if (drag_started)
         {
                     // RN: when starting drag and drop, clear out last auto-open
                     root->autoOpenTest(NULL);
@@ -775,6 +782,7 @@ bool LLFolderViewItem::handleDoubleClick( S32 x, S32 y, MASK mask )
 
 bool LLFolderViewItem::handleMouseUp( S32 x, S32 y, MASK mask )
 {
+    LL_PROFILE_ZONE_SCOPED_CATEGORY_UI;
     if (LLView::childrenHandleMouseUp(x, y, mask))
     {
         return true;
@@ -1329,8 +1337,6 @@ void LLFolderViewFolder::addToFolder(LLFolderViewFolder* folder)
 // * Makes sure that this view and its children are the right size
 S32 LLFolderViewFolder::arrange( S32* width, S32* height )
 {
-    LL_PROFILE_ZONE_SCOPED_CATEGORY_UI;
-
     // Sort before laying out contents
     // Note that we sort from the root (CHUI-849)
     if (mAreChildrenInited)
@@ -2328,6 +2334,7 @@ bool LLFolderViewFolder::handleDragAndDrop(S32 x, S32 y, MASK mask,
                                            EAcceptance* accept,
                                            std::string& tooltip_msg)
 {
+    LL_PROFILE_ZONE_SCOPED_CATEGORY_UI;
     bool handled = false;
 
     if (isOpen())
@@ -2352,6 +2359,7 @@ bool LLFolderViewFolder::handleDragAndDropToThisFolder(MASK mask,
                                                        EAcceptance* accept,
                                                        std::string& tooltip_msg)
 {
+    LL_PROFILE_ZONE_SCOPED_CATEGORY_UI;
     if (!mAllowDrop)
     {
         *accept = ACCEPT_NO;
@@ -2720,4 +2728,3 @@ LLFolderViewItem* LLFolderViewFolder::getPreviousFromChild( LLFolderViewItem* it
 
     return result;
 }
-

@@ -1126,6 +1126,7 @@ void LLViewerWindow::handlePieMenu(S32 x, S32 y, MASK mask)
 
 bool LLViewerWindow::handleAnyMouseClick(LLWindow *window, LLCoordGL pos, MASK mask, EMouseClickType clicktype, bool down, bool& is_toolmgr_action)
 {
+    LL_PROFILE_ZONE_SCOPED_CATEGORY_UI;
     const char* buttonname = "";
     const char* buttonstatestr = "";
     S32 x = pos.mX;
@@ -1216,7 +1217,11 @@ bool LLViewerWindow::handleAnyMouseClick(LLWindow *window, LLCoordGL pos, MASK m
                 LL_INFOS() << buttonname << " Mouse " << buttonstatestr << " handled by captor " << mouse_captor->getName() << LL_ENDL;
             }
 
-            bool r = mouse_captor->handleAnyMouseClick(local_x, local_y, mask, clicktype, down);
+            bool r;
+            {
+                LL_PROFILE_ZONE_NAMED_CATEGORY_UI("mouse click - captor dispatch");
+                r = mouse_captor->handleAnyMouseClick(local_x, local_y, mask, clicktype, down);
+            }
             if (r) {
 
                 LL_DEBUGS() << "LLViewerWindow::handleAnyMouseClick viewer with mousecaptor calling updatemouseeventinfo - local_x|global x  "<< local_x << " " << x  << "local/global y " << local_y << " " << y << LL_ENDL;
@@ -1240,7 +1245,11 @@ bool LLViewerWindow::handleAnyMouseClick(LLWindow *window, LLCoordGL pos, MASK m
         }
         // Give the UI views a chance to process the click
 
-        bool r= mRootView->handleAnyMouseClick(x, y, mask, clicktype, down) ;
+        bool r;
+        {
+            LL_PROFILE_ZONE_NAMED_CATEGORY_UI("mouse click - root dispatch");
+            r = mRootView->handleAnyMouseClick(x, y, mask, clicktype, down);
+        }
         if (r)
         {
 
@@ -1270,7 +1279,13 @@ bool LLViewerWindow::handleAnyMouseClick(LLWindow *window, LLCoordGL pos, MASK m
     }
 
     // Do not allow tool manager to handle mouseclicks if we have disconnected
-    if(!gDisconnected && LLToolMgr::getInstance()->getCurrentTool()->handleAnyMouseClick( x, y, mask, clicktype, down ) )
+    bool tool_handled = false;
+    if (!gDisconnected)
+    {
+        LL_PROFILE_ZONE_NAMED_CATEGORY_UI("mouse click - tool dispatch");
+        tool_handled = LLToolMgr::getInstance()->getCurrentTool()->handleAnyMouseClick(x, y, mask, clicktype, down);
+    }
+    if (tool_handled)
     {
         LLViewerEventRecorder::instance().clear_xui();
         is_toolmgr_action = true;
@@ -1291,6 +1306,7 @@ bool LLViewerWindow::handleAnyMouseClick(LLWindow *window, LLCoordGL pos, MASK m
 
 bool LLViewerWindow::handleMouseDown(LLWindow *window,  LLCoordGL pos, MASK mask)
 {
+    LL_PROFILE_ZONE_SCOPED_CATEGORY_UI;
     mAllowMouseDragging = false;
     if (!mMouseDownTimer.getStarted())
     {
@@ -1319,6 +1335,7 @@ bool LLViewerWindow::handleDoubleClick(LLWindow *window,  LLCoordGL pos, MASK ma
 
 bool LLViewerWindow::handleMouseUp(LLWindow *window,  LLCoordGL pos, MASK mask)
 {
+    LL_PROFILE_ZONE_SCOPED_CATEGORY_UI;
     if (mMouseDownTimer.getStarted())
     {
         mMouseDownTimer.stop();
