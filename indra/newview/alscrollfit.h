@@ -36,7 +36,9 @@
 
 #include <functional>
 #include <memory>
+#include <string>
 #include <unordered_map>
+#include <utility>
 #include <vector>
 
 class LLPanel;
@@ -115,6 +117,11 @@ void collectTabContainerTree(LLTabContainer* tabs, std::vector<LLTabContainer*>&
 // at postBuild/onOpen/tab change.
 void fitAll(LLView* root, LLTabContainer* tabs, const StretcherMins* mins = nullptr);
 
+// Sizes a direct child to fill the usable area of an unwrapped tab page. The
+// child's left inset is preserved; its top edge is placed at `top_px` from the
+// page top (LLView origin y == 0 for that placement in this coordinate system).
+void fillPage(LLView* page, LLView* child, S32 top_px);
+
 // ---- (d) focus-reveal ---------------------------------------------------------------
 
 // Container-level bookkeeping on top of ALScrollFocus::install, which is itself idempotent
@@ -166,6 +173,11 @@ struct NamedScroller
 class Controller
 {
 public:
+    // Tab pages installForTabs must not wrap (by LLPanel name): group pages holding a
+    // follows="all" nested tab container, and pages hosting a self-scrolling shared
+    // panel. Call before installForTabs.
+    void setUnwrappedPages(std::vector<std::string> names) { mUnwrapped = std::move(names); }
+
     // (f) wrap + re-fit-on-tab-change + focus + fit + wheel for every tab of `tabs` AND of
     // every tab container nested below it (each nested container's panels are wrapped and
     // fitted too). One-shot per tab container: wrapping and the tab-change commit callback
@@ -192,6 +204,7 @@ private:
     // teardown, so they hold their own reference).
     std::shared_ptr<StretcherMins> mMins = std::make_shared<StretcherMins>();
     std::vector<LLTabContainer*> mTabs; // containers already wrapped + callback-installed
+    std::vector<std::string> mUnwrapped;
 };
 } // namespace ALScrollFit
 

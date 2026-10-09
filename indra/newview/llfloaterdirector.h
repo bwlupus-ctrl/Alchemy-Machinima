@@ -19,9 +19,12 @@
 #define LL_LLFLOATERDIRECTOR_H
 
 #include "alscrollfit.h" // [DirFix] D1: mScrollFit (wrap/fit/focus-reveal/wheel guard, per instance)
+#include "aluirefresh.h"
 #include "llfloater.h"
 #include "llframetimer.h"
+#include "lltimer.h"
 
+#include <functional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -29,6 +32,7 @@
 class ALPanelActorMover;
 class ALPanelAnimPreview;
 class ALPanelCineCamParams;
+class ALPanelLensGaze;
 class ALPanelPathEditor;
 class LLButton;
 class LLCheckBoxCtrl;
@@ -89,6 +93,8 @@ private:
 
     // ---- tabs ----
     void onTabChanged();                // remember the active tab (DirectorLastTabName + DirectorLastTab)
+    LLPanel* currentLeafPanel();
+    bool selectLeafTab(const std::string& name);
 
     // ---- legend popover ----
     void onToggleLegend();
@@ -168,7 +174,14 @@ private:
     void onClickBuildOtsPair();
     void onClickZolly();
     void onClickHeroArc();
-    void refreshCameraTab(const uuid_vec_t& selected); // [DirFix] D10
+    void refreshGazeSelection(const uuid_vec_t& selected);
+    void refreshSubjects();
+    void refreshPrismDependents();
+
+    // ---- launcher cards ----
+    void addLauncherCard(const std::string& id, std::function<void()> open_fn,
+                         std::function<std::string()> summary_fn);
+    void refreshLauncherCards();
 
     // ---- Takes tab ----
     // the shared ALPanelFlycamRecorder (panel_flycam_recorder.xml) is embedded
@@ -198,14 +211,17 @@ private:
 
     // left-rail tabs + legend popover
     LLTabContainer* mTabContainer = nullptr;
+    std::vector<std::pair<LLPanel*, LLTabContainer*>> mGroups;
     // [DirFix] D1: wrap + auto-fit + focus-reveal + wheel rule for every tab (incl. nested)
     ALScrollFit::Controller mScrollFit;
     // [DirFix] D8: set on tab change / open; the hidden-tab-gated refreshers (Actor FX,
     // Animate) discard their "last written" caches the first visible pass after it
     bool            mActorStyleTabDirty = true;
     bool            mAnimateTabDirty = true;
+    bool            mGroupsTabDirty = true;
     // [DirFix] D10: last cast selection pushed to the Actor Gaze floater (push on change only)
     uuid_vec_t      mLastGazePush;
+    ALPanelLensGaze* mGazePanel = nullptr;
     LLButton*       mHelpBtn = nullptr;
     LLPanel*        mLegendPanel = nullptr;
 
@@ -322,6 +338,15 @@ private:
     U64        mPrismRuntimeRevision = 0;
     bool       mHavePrismSummary = false;
     LLFrameTimer mPrismRefreshTimer;
+
+    struct LauncherCard
+    {
+        LLTextBox* mSummary = nullptr;
+        std::function<std::string()> mFn;
+    };
+    std::vector<LauncherCard> mLauncherCards;
+    ALLiveReadoutClock mLauncherClock{2.f};
+    LLTimer mBuildTimer;
 
     // Animate tab
     LLTextBox*        mAnimateHeader = nullptr;

@@ -8739,7 +8739,7 @@
     <key>DirectorLastTabName</key>
     <map>
       <key>Comment</key>
-      <string>[Director] [DirFix] Name of the last-active Director Console tab panel (e.g. move_tab); supersedes DirectorLastTab, which is still written for older builds. Restored when the console reopens.</string>
+      <string>[Director] [DirFix] Leaf sub-tab panel name (e.g. move_tab, shot_tab); supersedes DirectorLastTab, which is still written for older builds. Restored when the console reopens.</string>
       <key>Persist</key>
       <integer>1</integer>
       <key>Type</key>
@@ -8750,7 +8750,7 @@
     <key>DirectorHotkeysEnabled</key>
     <map>
       <key>Comment</key>
-      <string>[Director] Enable the machinima hotkeys (see doc/DIRECTOR_HOTKEYS.md): F2 toggle Director Console, F3 ACTION/CUT, F4 CUT, F5 Reset to marks, F6 Pose ghosts, F7 take play/pause, F8 Set marks; while the Director Console is visible and the switcher armed, 1-9 punch slots 1-9. Focused UI, tools, gestures, and modified combos win. On by default; strict visibility/arm gates leave ordinary number typing untouched.</string>
+      <string>[Director] Enable the machinima hotkeys (see doc/DIRECTOR_HOTKEYS.md): F2 toggle Director Console, F3 ACTION/CUT, F4 CUT, F5 Reset to marks, F6 Pose ghosts, F7 take play/pause, F8 Set marks; 1-9 punch camera-switcher slots, Alt+1-9 punch Anim Switchboard slots, and Esc cuts while running under their visibility/arming/focus gates. Focused UI, tools, and gestures win. On by default.</string>
       <key>Persist</key>
       <integer>1</integer>
       <key>Type</key>

@@ -273,6 +273,15 @@ void fitAll(LLView* root, LLTabContainer* tabs, const StretcherMins* mins)
     }
 }
 
+void fillPage(LLView* page, LLView* child, S32 top_px)
+{
+    if (!page || !child) return;
+    const S32 w = page->getLocalRect().getWidth() - child->getRect().mLeft;
+    const S32 h = page->getLocalRect().getHeight() - top_px;
+    child->reshape(llmax(1, w), llmax(1, h), true);
+    child->setOrigin(child->getRect().mLeft, 0);
+}
+
 // ---- FocusTracker -------------------------------------------------------------------
 
 bool FocusTracker::installed(const LLScrollContainer* sc) const
@@ -358,7 +367,11 @@ void Controller::installForTabs(LLTabContainer* tabs, LLView* root, const std::v
         mTabs.push_back(tc);
         for (S32 i = 0, count = tc->getTabCount(); i < count; ++i)
         {
-            wrapTabPanel(tc->getPanelByIndex(i), mMins.get());
+            LLPanel* page = tc->getPanelByIndex(i);
+            if (page && std::find(mUnwrapped.begin(), mUnwrapped.end(), page->getName()) == mUnwrapped.end())
+            {
+                wrapTabPanel(page, mMins.get());
+            }
         }
         // Re-fit when the active tab changes (commit fires on tab select). Appended, so
         // any XML-defined commit callback of this container is kept. The callback holds its

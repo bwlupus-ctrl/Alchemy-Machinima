@@ -33,12 +33,10 @@
 #include "alscrollfocus.h"
 #include "alscrollfit.h" // [ScrollFit] shared per-tab scroll machinery (was the lb* block here)
 #include "aluirefresh.h" // [UIPerfC1] diff-guarded Selected Light mirror
-#include "alprojectorshaftpresets.h"
 #include "alcinehaze.h"
 #include "alrotoink.h"
 #include "alpanelcinelightrig.h" // [TronT1] applyRigRimPresetByName
 #include "altron.h" // [TronT1]
-#include "allenslooks.h"
 
 #include "llagent.h" // [TronT1] gAgent.getPosGlobalFromAgent (grid origin snap)
 #include "llviewercamera.h" // [TronT1]
@@ -56,7 +54,7 @@
 #include "llcheckboxctrl.h"
 #include "llcolorswatch.h"
 #include "llbutton.h"
-#include "llnotificationsutil.h"
+#include "llfloaterreg.h"
 
 // [BDMerge G3.3 Batch 3] Selected Light quick panel plumbing.
 #include "llselectmgr.h"
@@ -148,11 +146,6 @@ ALFloaterLightBox::~ALFloaterLightBox()
     mTronTrailStyleConnection.disconnect();
     mTronTrailFogConnection.disconnect();
     mTronTrailTargetSetConnection.disconnect();
-    mInfraredEnabledConnection.disconnect();
-    mAvatarTagConnection.disconnect();
-    mSoftEdgeEnabledConnection.disconnect();
-    mSoftEdgeBlurTypeConnection.disconnect();
-    mDoFConnection.disconnect();
 }
 
 bool ALFloaterLightBox::postBuild()
@@ -167,18 +160,10 @@ bool ALFloaterLightBox::postBuild()
     mScrollFit.installForTabs(findChild<LLTabContainer>("lightbox_tab_container"), this,
         {
             { "render_settings_scroll",    "render_settings_scroll_content" },
-            { "projshaft_settings_scroll", "projshaft_settings_scroll_content" },
             { "froxel_settings_scroll",    "froxel_settings_scroll_content" },
-            { "weather_settings_scroll",   "weather_settings_scroll_content" },
             { "cinehaze_settings_scroll",  "cinehaze_settings_scroll_content" },
             { "rotoink_settings_scroll",   "rotoink_settings_scroll_content" },
             { "tron_settings_scroll",      "tron_settings_scroll_content" },
-        });
-
-    getChild<LLComboBox>("ps_preset")->setCommitCallback(
-        [](LLUICtrl* control, const LLSD&)
-        {
-            ALProjectorShaftPresets::apply(control->getValue().asInteger());
         });
 
     getChild<LLComboBox>("ch_preset_combo")->setCommitCallback(
@@ -216,39 +201,6 @@ bool ALFloaterLightBox::postBuild()
             }
             control->setValue(LLSD("custom"));
         });
-
-    mInfraredHint = getChild<LLTextBox>("ir_tag_hint");
-    mInfraredEnableTag = getChild<LLButton>("ir_enable_tag");
-    mSoftEdgeDoFHint = getChild<LLTextBox>("softedge_dof_hint");
-    getChild<LLComboBox>("ir_preset_action")->setCommitCallback([](LLUICtrl* control, const LLSD&)
-    {
-        ALLensLooks::applyInfraredPreset(control->getValue().asInteger());
-        control->setValue(LLSD("0"));
-    });
-    getChild<LLComboBox>("softedge_preset_action")->setCommitCallback([](LLUICtrl* control, const LLSD&)
-    {
-        ALLensLooks::applySoftEdgePreset(control->getValue().asInteger());
-        control->setValue(LLSD("0"));
-    });
-    mInfraredEnableTag->setCommitCallback([](LLUICtrl*, const LLSD&)
-    {
-        LLNotificationsUtil::add("EnableGBufferAvatarTagConfirm", LLSD(), LLSD(),
-            [](const LLSD& notification, const LLSD& response)
-            {
-                if (LLNotificationsUtil::getSelectedOption(notification, response) == 0)
-                {
-                    gSavedSettings.setBOOL("RenderGBufferAvatarTag", true);
-                }
-                return false;
-            });
-    });
-    auto lens_hint_signal = [this](LLControlVariable*, const LLSD&, const LLSD&) { updateLensLookHints(); };
-    mInfraredEnabledConnection = gSavedSettings.getControl("RenderInfraredEnabled")->getSignal()->connect(lens_hint_signal);
-    mAvatarTagConnection = gSavedSettings.getControl("RenderGBufferAvatarTag")->getSignal()->connect(lens_hint_signal);
-    mSoftEdgeEnabledConnection = gSavedSettings.getControl("RenderSoftEdgeEnabled")->getSignal()->connect(lens_hint_signal);
-    mSoftEdgeBlurTypeConnection = gSavedSettings.getControl("RenderSoftEdgeBlurType")->getSignal()->connect(lens_hint_signal);
-    mDoFConnection = gSavedSettings.getControl("RenderDepthOfField")->getSignal()->connect(lens_hint_signal);
-    updateLensLookHints();
 
     populateLUTCombo();
     updateTonemapper();
@@ -311,22 +263,17 @@ void ALFloaterLightBox::onOpen(const LLSD& key)
 {
     LLFloater::onOpen(key);
     fitScrollContent();
-    updateLensLookHints();
 }
 
-void ALFloaterLightBox::updateLensLookHints()
+void ALFloaterLightBox::showTab(const std::string& tab_panel_name)
 {
-    const bool ir = gSavedSettings.getBOOL("RenderInfraredEnabled");
-    const bool tag_wanted = gSavedSettings.getBOOL("RenderGBufferAvatarTag");
-    const bool tag = LLViewerShaderMgr::gbufferAvatarTagActive();
-    setVisibleIfChanged(mInfraredHint, ir && (!tag || gOnLensNoIR));
-    setVisibleIfChanged(mInfraredEnableTag, ir && !tag_wanted && !gOnLensNoIR);
-    setTextIfChanged(mInfraredHint, gOnLensNoIR ?
-        std::string("Infrared unavailable on this driver") : std::string("Skin needs avatar tag"));
-    const bool defocus = gSavedSettings.getBOOL("RenderSoftEdgeEnabled") &&
-        gSavedSettings.getU32("RenderSoftEdgeBlurType") == 1 &&
-        !gSavedSettings.getBOOL("RenderDepthOfField");
-    setVisibleIfChanged(mSoftEdgeDoFHint, defocus);
+    if (auto* lightbox = LLFloaterReg::showTypedInstance<ALFloaterLightBox>("lightbox"))
+    {
+        if (auto* tabs = lightbox->findChild<LLTabContainer>("lightbox_tab_container"))
+        {
+            tabs->selectTabByName(tab_panel_name);
+        }
+    }
 }
 
 // [SliderWheel] The Lightbox wheel rule (wheel over a slider adjusts it, except within 0.5 s of

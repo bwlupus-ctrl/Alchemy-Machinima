@@ -7,7 +7,7 @@
 	min_width="420"
 	name="floater_lightbox_settings"
 	positioning="cascading"
-	title="LIGHTBOX WORK IN PROGRESS"
+	title="Lightbox"
 	save_rect="true"
 	can_resize="true"
 	can_resize_height="true">
@@ -909,178 +909,7 @@
 					increment="0.1"
 					name="slog_ev_spinner"
 					control_name="AlchemyToneMapSLogEV" />
-				<!-- ================= Graduated ND (pre-tonemap) ================= -->
-				<view_border bevel_style="none" height="0" layout="topleft" left="0" name="gradnd_border" top_pad="10" width="500" />
-				<check_box
-					follows="left|top"
-					height="15"
-					left="10"
-					top_pad="8"
-					width="200"
-					layout="topleft"
-					label="Graduated ND (pre-tonemap)"
-					tool_tip="Native neutral-density gradient applied to linear HDR before the tonemapper — the physically-correct place to hold a blown-out sky. Off = no cost."
-					control_name="RenderGradNDEnabled" />
-				<text
-					enabled_control="RenderGradNDEnabled"
-					follows="left|top" height="15" left="30" top_pad="7" width="100" layout="topleft"
-					tool_tip="A preset overrides the sliders below. Custom exposes everything."
-					value="Preset:" />
-				<combo_box
-					enabled_control="RenderGradNDEnabled"
-					allow_text_entry="false"
-					tool_tip="A preset overrides the sliders below. Custom exposes everything."
-					control_name="RenderGradNDPreset"
-					follows="left|top" height="16" layout="topleft" left_delta="100" right="-2"
-					max_chars="128" name="gradnd_preset_combo" top_delta="-2">
-					<combo_box.item label="Custom (use sliders)" name="gnd_custom" value="0" />
-					<combo_box.item label="Sky Hold - Light (1 stop)" name="gnd_light" value="1" />
-					<combo_box.item label="Sky Hold - Strong (2.5)" name="gnd_strong" value="2" />
-					<combo_box.item label="Harsh Noon (3 stops)" name="gnd_noon" value="3" />
-					<combo_box.item label="Golden Hour (sun-weighted)" name="gnd_golden" value="4" />
-					<combo_box.item label="Optical Grad (no sky mask)" name="gnd_optical" value="5" />
-					<combo_box.item label="Low / Reflection Hold" name="gnd_low" value="6" />
-				</combo_box>
-				<text enabled_control="RenderGradNDEnabled" follows="left|top" height="15" left="30" top_pad="7" width="100" layout="topleft"
-					tool_tip="Custom: strength in stops. Each stop halves the light. 0 = off." value="Density:" />
-				<slider_bar enabled_control="RenderGradNDEnabled" top_pad="-18" height="20" increment="0.1" follows="left|top|right" layout="topleft"
-					max_val="6" min_val="0" left_delta="100" right="-55" name="gradnd_density_slider" control_name="RenderGradNDDensity" />
-				<spinner enabled_control="RenderGradNDEnabled" top_pad="-20" height="15" label_width="0" right="-1" decimal_digits="2" follows="top|right" layout="topleft"
-					max_val="6" min_val="0" width="55" increment="0.1" name="gradnd_density_spinner" control_name="RenderGradNDDensity" />
-				<text enabled_control="RenderGradNDEnabled" follows="left|top" height="15" left="30" top_pad="7" width="100" layout="topleft"
-					tool_tip="Custom: 1 = darken sky only (spares foreground); 0 = pure optical grad across the whole frame." value="Sky Confine:" />
-				<slider_bar enabled_control="RenderGradNDEnabled" top_pad="-18" height="20" increment="0.05" follows="left|top|right" layout="topleft"
-					max_val="1" min_val="0" left_delta="100" right="-55" name="gradnd_confine_slider" control_name="RenderGradNDSkyConfine" />
-				<spinner enabled_control="RenderGradNDEnabled" top_pad="-20" height="15" label_width="0" right="-1" decimal_digits="2" follows="top|right" layout="topleft"
-					max_val="1" min_val="0" width="55" increment="0.05" name="gradnd_confine_spinner" control_name="RenderGradNDSkyConfine" />
-				<text enabled_control="RenderGradNDEnabled" follows="left|top" height="15" left="30" top_pad="7" width="100" layout="topleft"
-					tool_tip="Custom: extra density toward the sun to hold the hottest sky. 0 = uniform." value="Sun Weight:" />
-				<slider_bar enabled_control="RenderGradNDEnabled" top_pad="-18" height="20" increment="0.05" follows="left|top|right" layout="topleft"
-					max_val="2" min_val="0" left_delta="100" right="-55" name="gradnd_sunw_slider" control_name="RenderGradNDSunWeight" />
-				<spinner enabled_control="RenderGradNDEnabled" top_pad="-20" height="15" label_width="0" right="-1" decimal_digits="2" follows="top|right" layout="topleft"
-					max_val="2" min_val="0" width="55" increment="0.05" name="gradnd_sunw_spinner" control_name="RenderGradNDSunWeight" />
-				<text enabled_control="RenderGradNDEnabled" follows="left|top" height="15" left="30" top_pad="7" width="100" layout="topleft"
-					tool_tip="Custom: screen-space radius over which the sun-weight boost falls off." value="Sun Radius:" />
-				<slider_bar enabled_control="RenderGradNDEnabled" top_pad="-18" height="20" increment="0.05" follows="left|top|right" layout="topleft"
-					max_val="2" min_val="0.1" left_delta="100" right="-55" name="gradnd_sunr_slider" control_name="RenderGradNDSunRadius" />
-				<spinner enabled_control="RenderGradNDEnabled" top_pad="-20" height="15" label_width="0" right="-1" decimal_digits="2" follows="top|right" layout="topleft"
-					max_val="2" min_val="0.1" width="55" increment="0.05" name="gradnd_sunr_spinner" control_name="RenderGradNDSunRadius" />
-				<text enabled_control="RenderGradNDEnabled" follows="left|top" height="15" left="30" top_pad="7" width="100" layout="topleft"
-					tool_tip="Custom: vertical position of the ND transition line. 0.5 = mid-frame." value="Position:" />
-				<slider_bar enabled_control="RenderGradNDEnabled" top_pad="-18" height="20" increment="0.02" follows="left|top|right" layout="topleft"
-					max_val="1" min_val="0" left_delta="100" right="-55" name="gradnd_pos_slider" control_name="RenderGradNDPosition" />
-				<spinner enabled_control="RenderGradNDEnabled" top_pad="-20" height="15" label_width="0" right="-1" decimal_digits="2" follows="top|right" layout="topleft"
-					max_val="1" min_val="0" width="55" increment="0.02" name="gradnd_pos_spinner" control_name="RenderGradNDPosition" />
-				<text enabled_control="RenderGradNDEnabled" follows="left|top" height="15" left="30" top_pad="7" width="100" layout="topleft"
-					tool_tip="Custom: width of the soft transition. Low = hard grad, high = gentle." value="Softness:" />
-				<slider_bar enabled_control="RenderGradNDEnabled" top_pad="-18" height="20" increment="0.01" follows="left|top|right" layout="topleft"
-					max_val="1" min_val="0.01" left_delta="100" right="-55" name="gradnd_soft_slider" control_name="RenderGradNDSoftness" />
-				<spinner enabled_control="RenderGradNDEnabled" top_pad="-20" height="15" label_width="0" right="-1" decimal_digits="2" follows="top|right" layout="topleft"
-					max_val="1" min_val="0.01" width="55" increment="0.01" name="gradnd_soft_spinner" control_name="RenderGradNDSoftness" />
-				<text enabled_control="RenderGradNDEnabled" follows="left|top" height="15" left="30" top_pad="7" width="100" layout="topleft"
-					tool_tip="Custom: tilt the ND line to match a sloped horizon (degrees)." value="Tilt (deg):" />
-				<slider_bar enabled_control="RenderGradNDEnabled" top_pad="-18" height="20" increment="0.5" follows="left|top|right" layout="topleft"
-					max_val="45" min_val="-45" left_delta="100" right="-55" name="gradnd_angle_slider" control_name="RenderGradNDAngle" />
-				<spinner enabled_control="RenderGradNDEnabled" top_pad="-20" height="15" label_width="0" right="-1" decimal_digits="1" follows="top|right" layout="topleft"
-					max_val="45" min_val="-45" width="55" increment="0.5" name="gradnd_angle_spinner" control_name="RenderGradNDAngle" />
-				<check_box enabled_control="RenderGradNDEnabled" follows="left|top" height="15" left="30" top_pad="8" width="260" layout="topleft"
-					label="Darken bottom instead (Custom)"
-					tool_tip="Custom: flip the wedge to darken the foreground/water instead of the sky."
-					control_name="RenderGradNDFlip" />
-				<text enabled_control="RenderGradNDEnabled" follows="left|top" height="15" left="30" top_pad="7" width="100" layout="topleft" value="Tint:" />
-				<color_swatch can_apply_immediately="true" control_name="RenderGradNDTintColor" enabled_control="RenderGradNDEnabled" follows="left|top" height="22" layout="topleft" left_delta="100" name="gradnd_tint_swatch" top_pad="-17" width="44" />
-				<slider can_edit_text="true" control_name="RenderGradNDTintAmount" enabled_control="RenderGradNDEnabled" follows="left|right|top" height="20" increment="0.05" layout="topleft" left="180" max_val="1" min_val="0" name="gradnd_tint_amount" show_text="true" top_pad="-22" width="198" wheel_adjust="true" />
-				<text follows="left|top" height="15" left="30" top_pad="7" width="100" layout="topleft" value="Lens Filter:" />
-				<combo_box allow_text_entry="false" control_name="RenderLensFilterPreset" follows="left|top" height="20" layout="topleft" left_delta="100" name="lens_filter_preset" top_pad="-17" width="150"><combo_box.item label="Custom" name="custom" value="0"/><combo_box.item label="85" name="85" value="1"/><combo_box.item label="85B" name="85b" value="2"/><combo_box.item label="85C" name="85c" value="3"/><combo_box.item label="81A" name="81a" value="4"/><combo_box.item label="80A" name="80a" value="5"/><combo_box.item label="80B" name="80b" value="6"/><combo_box.item label="80C" name="80c" value="7"/><combo_box.item label="82A" name="82a" value="8"/></combo_box>
-				<slider can_edit_text="true" control_name="RenderLensFilterAmount" follows="left|right|top" height="20" increment="0.05" layout="topleft" left="284" max_val="1" min_val="0" name="lens_filter_amount" show_text="true" top_pad="-20" width="94" wheel_adjust="true" />
-				<!-- ================= Polarizer (pre-tonemap) ================= -->
-				<view_border bevel_style="none" height="0" layout="topleft" left="0" name="polarizer_border" top_pad="10" width="500" />
-				<check_box
-					follows="left|top" height="15" left="10" top_pad="8" width="200" layout="topleft"
-					label="Polarizer (pre-tonemap)"
-					tool_tip="Native CPL approximation in linear HDR before the tonemapper: cuts specular glare (so the filmic curve recovers reflection detail) and deepens the sky. Off = no cost."
-					control_name="RenderPolarizerEnabled" />
-				<text enabled_control="RenderPolarizerEnabled" follows="left|top" height="15" left="30" top_pad="7" width="100" layout="topleft"
-					tool_tip="A preset overrides the sliders below. Custom exposes everything." value="Preset:" />
-				<combo_box
-					enabled_control="RenderPolarizerEnabled" allow_text_entry="false"
-					tool_tip="A preset overrides the sliders below. Custom exposes everything."
-					control_name="RenderPolarizerPreset"
-					follows="left|top" height="16" layout="topleft" left_delta="100" right="-2"
-					max_chars="128" name="polarizer_preset_combo" top_delta="-2">
-					<combo_box.item label="Custom (use sliders)" name="pol_custom" value="0" />
-					<combo_box.item label="Deep Blue Sky" name="pol_deep" value="1" />
-					<combo_box.item label="Glare Killer (water/glass)" name="pol_glare" value="2" />
-					<combo_box.item label="Landscape (sky + glare)" name="pol_landscape" value="3" />
-					<combo_box.item label="Subtle" name="pol_subtle" value="4" />
-				</combo_box>
-				<text enabled_control="RenderPolarizerEnabled" follows="left|top" height="15" left="30" top_pad="7" width="100" layout="topleft"
-					tool_tip="Custom: overall polarizer intensity. 0 = off." value="Strength:" />
-				<slider_bar enabled_control="RenderPolarizerEnabled" top_pad="-18" height="20" increment="0.05" follows="left|top|right" layout="topleft"
-					max_val="1" min_val="0" left_delta="100" right="-55" name="pol_strength_slider" control_name="RenderPolarizerStrength" />
-				<spinner enabled_control="RenderPolarizerEnabled" top_pad="-20" height="15" label_width="0" right="-1" decimal_digits="2" follows="top|right" layout="topleft"
-					max_val="1" min_val="0" width="55" increment="0.05" name="pol_strength_spinner" control_name="RenderPolarizerStrength" />
-				<text enabled_control="RenderPolarizerEnabled" follows="left|top" height="15" left="30" top_pad="7" width="100" layout="topleft"
-					tool_tip="Custom: glare knockdown in stops (bright, low-chroma, mid-depth reflections). 0 = off." value="Glare Cut:" />
-				<slider_bar enabled_control="RenderPolarizerEnabled" top_pad="-18" height="20" increment="0.05" follows="left|top|right" layout="topleft"
-					max_val="4" min_val="0" left_delta="100" right="-55" name="pol_glare_slider" control_name="RenderPolarizerGlareStrength" />
-				<spinner enabled_control="RenderPolarizerEnabled" top_pad="-20" height="15" label_width="0" right="-1" decimal_digits="2" follows="top|right" layout="topleft"
-					max_val="4" min_val="0" width="55" increment="0.05" name="pol_glare_spinner" control_name="RenderPolarizerGlareStrength" />
-				<text enabled_control="RenderPolarizerEnabled" follows="left|top" height="15" left="30" top_pad="7" width="100" layout="topleft"
-					tool_tip="Custom: HDR brightness above which a pixel counts as glare. Higher = only true specular (spares bright whites); lower = catches dimmer highlights." value="Glare Gate:" />
-				<slider_bar enabled_control="RenderPolarizerEnabled" top_pad="-18" height="20" increment="0.1" follows="left|top|right" layout="topleft"
-					max_val="8" min_val="0.5" left_delta="100" right="-55" name="pol_glarethr_slider" control_name="RenderPolarizerGlareThreshold" />
-				<spinner enabled_control="RenderPolarizerEnabled" top_pad="-20" height="15" label_width="0" right="-1" decimal_digits="2" follows="top|right" layout="topleft"
-					max_val="8" min_val="0.5" width="55" increment="0.1" name="pol_glarethr_spinner" control_name="RenderPolarizerGlareThreshold" />
-				<text enabled_control="RenderPolarizerEnabled" follows="left|top" height="15" left="30" top_pad="7" width="100" layout="topleft"
-					tool_tip="Custom: glare cut only applies nearer than this depth (spares the sky/far plane). 1 = whole scene." value="Glare Depth:" />
-				<slider_bar enabled_control="RenderPolarizerEnabled" top_pad="-18" height="20" increment="0.005" follows="left|top|right" layout="topleft"
-					max_val="1" min_val="0.5" left_delta="100" right="-55" name="pol_glaredepth_slider" control_name="RenderPolarizerGlareMaxDepth" />
-				<spinner enabled_control="RenderPolarizerEnabled" top_pad="-20" height="15" label_width="0" right="-1" decimal_digits="3" follows="top|right" layout="topleft"
-					max_val="1" min_val="0.5" width="55" increment="0.005" name="pol_glaredepth_spinner" control_name="RenderPolarizerGlareMaxDepth" />
-				<text enabled_control="RenderPolarizerEnabled" follows="left|top" height="15" left="30" top_pad="7" width="100" layout="topleft"
-					tool_tip="Custom: deepen sky saturation. 1 = none." value="Sky Sat:" />
-				<slider_bar enabled_control="RenderPolarizerEnabled" top_pad="-18" height="20" increment="0.05" follows="left|top|right" layout="topleft"
-					max_val="2.5" min_val="1" left_delta="100" right="-55" name="pol_skysat_slider" control_name="RenderPolarizerSkySaturation" />
-				<spinner enabled_control="RenderPolarizerEnabled" top_pad="-20" height="15" label_width="0" right="-1" decimal_digits="2" follows="top|right" layout="topleft"
-					max_val="2.5" min_val="1" width="55" increment="0.05" name="pol_skysat_spinner" control_name="RenderPolarizerSkySaturation" />
-				<text enabled_control="RenderPolarizerEnabled" follows="left|top" height="15" left="30" top_pad="7" width="100" layout="topleft"
-					tool_tip="Custom: darken the sky by this many stops." value="Sky Darken:" />
-				<slider_bar enabled_control="RenderPolarizerEnabled" top_pad="-18" height="20" increment="0.05" follows="left|top|right" layout="topleft"
-					max_val="1.5" min_val="0" left_delta="100" right="-55" name="pol_skydark_slider" control_name="RenderPolarizerSkyDarken" />
-				<spinner enabled_control="RenderPolarizerEnabled" top_pad="-20" height="15" label_width="0" right="-1" decimal_digits="2" follows="top|right" layout="topleft"
-					max_val="1.5" min_val="0" width="55" increment="0.05" name="pol_skydark_spinner" control_name="RenderPolarizerSkyDarken" />
-				<check_box enabled_control="RenderPolarizerEnabled" follows="left|top" height="15" left="30" top_pad="8" width="260" layout="topleft"
-					label="Auto band (ease off near sun)"
-					tool_tip="Custom: ease the sky effect off toward the sun — a screen-space proxy for the real polarized band 90 degrees from the sun."
-					control_name="RenderPolarizerAutoBand" />
-				<text enabled_control="RenderPolarizerEnabled" follows="left|top" height="15" left="30" top_pad="7" width="100" layout="topleft"
-					tool_tip="Custom: screen-space radius of the eased sky band around the sun." value="Band Radius:" />
-				<slider_bar enabled_control="RenderPolarizerEnabled" top_pad="-18" height="20" increment="0.05" follows="left|top|right" layout="topleft"
-					max_val="1.5" min_val="0.1" left_delta="100" right="-55" name="pol_bandrad_slider" control_name="RenderPolarizerBandRadius" />
-				<spinner enabled_control="RenderPolarizerEnabled" top_pad="-20" height="15" label_width="0" right="-1" decimal_digits="2" follows="top|right" layout="topleft"
-					max_val="1.5" min_val="0.1" width="55" increment="0.05" name="pol_bandrad_spinner" control_name="RenderPolarizerBandRadius" />
-				<!-- Lens Looks: fused into the second on-lens draw, before bloom. -->
-				<view_border bevel_style="none" height="0" layout="topleft" left="0" name="infrared_border" top_pad="10" width="500" />
-				<check_box control_name="RenderInfraredEnabled" follows="left|top" height="18" label="Infrared Film (pre-tonemap)" layout="topleft" left="10" name="ir_enabled" top_pad="8" width="230" tool_tip="B&amp;W IR leaves shafts, froxel fog, Atmosphere ink and projector volumetrics added later in colour in v1." />
-				<text follows="left|top" height="15" layout="topleft" left="30" top_pad="6" value="Look:" width="100" />
-				<combo_box allow_text_entry="false" enabled_control="RenderInfraredEnabled" follows="left|right|top" height="20" layout="topleft" left_delta="100" name="ir_preset_action" top_pad="-17" width="248"><combo_box.item label="Choose preset..." name="choose" value="0"/><combo_box.item label="Wood 720nm Classic" name="wood" value="1"/><combo_box.item label="Kodak HIE" name="hie" value="2"/><combo_box.item label="Subtle 665nm" name="subtle" value="3"/><combo_box.item label="Deep 850nm" name="deep" value="4"/><combo_box.item label="Aerochrome #12" name="a12" value="5"/><combo_box.item label="Aerochrome Hot Pink #21" name="a21" value="6"/><combo_box.item label="Aerochrome Red #25" name="a25" value="7"/></combo_box>
-				<text enabled_control="RenderInfraredEnabled" follows="left|top" height="15" layout="topleft" left="30" top_pad="7" value="Mode:" width="100" />
-				<combo_box allow_text_entry="false" control_name="RenderInfraredMode" enabled_control="RenderInfraredEnabled" follows="left|right|top" height="20" layout="topleft" left_delta="100" name="ir_mode" top_pad="-17" width="248"><combo_box.item label="Black &amp; white" name="bw" value="0"/><combo_box.item label="Aerochrome" name="aero" value="1"/></combo_box>
-				<text enabled_control="RenderInfraredEnabled" follows="left|top" height="15" layout="topleft" left="30" top_pad="7" value="Strength:" width="100" />
-				<slider can_edit_text="true" control_name="RenderInfraredStrength" enabled_control="RenderInfraredEnabled" follows="left|right|top" height="20" increment="0.05" layout="topleft" left_delta="100" max_val="1" min_val="0" name="ir_strength" show_text="true" top_pad="-18" width="248" wheel_adjust="true" />
-				<text enabled_control="RenderInfraredEnabled" follows="left|top" height="15" layout="topleft" left="30" name="ir_tag_hint" top_pad="6" value="Skin needs avatar tag" width="220" />
-				<button follows="left|top" height="20" label="Enable avatar tag" layout="topleft" left="252" name="ir_enable_tag" top_pad="-18" width="126" />
-				<text follows="left|top" height="30" layout="topleft" left="30" name="ir_limit_hint" top_pad="4" value="B&amp;W IR does not monochrome additions composited after on-lens in v1." width="348" word_wrap="true" />
-				<view_border bevel_style="none" height="0" layout="topleft" left="0" name="softedge_border" top_pad="10" width="500" />
-				<check_box control_name="RenderSoftEdgeEnabled" follows="left|top" height="18" label="Soft Edge / Sweet Spot (pre-tonemap)" layout="topleft" left="10" name="softedge_enabled" top_pad="8" width="280" />
-				<text follows="left|top" height="15" layout="topleft" left="30" top_pad="6" value="Preset:" width="100" />
-				<combo_box allow_text_entry="false" enabled_control="RenderSoftEdgeEnabled" follows="left|right|top" height="20" layout="topleft" left_delta="100" name="softedge_preset_action" top_pad="-17" width="248"><combo_box.item label="Choose preset..." name="choose" value="0"/><combo_box.item label="Vaseline Oval" name="vaseline" value="1"/><combo_box.item label="Lensbaby Sweet" name="lensbaby" value="2"/><combo_box.item label="Dream Sequence" name="dream" value="3"/><combo_box.item label="Faux Tilt Band" name="tilt" value="4"/><combo_box.item label="Vintage Portrait" name="vintage" value="5"/><combo_box.item label="Nightmare Edge" name="nightmare" value="6"/></combo_box>
-				<text enabled_control="RenderSoftEdgeEnabled" follows="left|top" height="15" layout="topleft" left="30" top_pad="7" value="Blur type:" width="100" />
-				<combo_box allow_text_entry="false" control_name="RenderSoftEdgeBlurType" enabled_control="RenderSoftEdgeEnabled" follows="left|right|top" height="20" layout="topleft" left_delta="100" name="softedge_blur_type" top_pad="-17" width="248"><combo_box.item label="Diffusion" name="diffusion" value="0"/><combo_box.item label="Defocus (needs DoF)" name="defocus" value="1"/></combo_box>
-				<text enabled_control="RenderSoftEdgeEnabled" follows="left|top" height="15" layout="topleft" left="30" top_pad="7" value="Blur:" width="100" />
-				<slider can_edit_text="true" control_name="RenderSoftEdgeBlur" enabled_control="RenderSoftEdgeEnabled" follows="left|right|top" height="20" increment="0.05" layout="topleft" left_delta="100" max_val="1" min_val="0" name="softedge_blur" show_text="true" top_pad="-18" width="248" wheel_adjust="true" />
-				<text enabled_control="RenderSoftEdgeEnabled" follows="left|top" height="15" layout="topleft" left="30" name="softedge_dof_hint" top_pad="6" value="Defocus needs DoF" width="348" />
+				<panel class="panel_lens_looks" filename="panel_lens_looks.xml" follows="left|top|right" layout="topleft" left="0" name="lens_looks_shared" top_pad="10" width="418"/>
             <!--<text
 				visible="false"
 				name="tonemapper_dynamic_text1"
@@ -4205,9 +4034,10 @@
 		</panel>
 		<!--Glow Panel-->
 		<panel
-			label="Glow"
+			label="Prim Glow"
 			layout="topleft"
 			name="glow_settings">
+			<text follows="left|top" font="SansSerifSmall" height="30" layout="topleft" left="5" name="glow_prim_hint" top_pad="6" width="380" word_wrap="true" value="Prim Glow: the legacy per-face Glow on objects. Scene bloom (HDR) is in Exposure &gt; Post." />
 			<!--Glow Toggle-->
 			<check_box
 				follows="left|top"
@@ -4453,378 +4283,7 @@
 			label="DoF"
 			layout="topleft"
 			name="dof_settings">
-			<!--DOF Toggle-->
-			<!--TODO: Disable sliders if disabled?-->
-			<check_box
-				follows="left|top"
-				height="15"
-				left="5"
-				top_pad="4"
-				width="80"
-				layout="topleft"
-				label="Depth of Field"
-				tool_tip="Toggles Depth of Field"
-				control_name="RenderDepthOfField" />
-			<check_box
-				follows="left|top"
-				height="15"
-				left="5"
-				top_pad="4"
-				width="80"
-				layout="topleft"
-				label="Follow Mouse"
-				tool_tip="Allows DoF's focus point to follow mouse cursor"
-				control_name="RenderFocusPointFollowsPointer"
-				enabled_control="RenderDepthOfField" />
-			<check_box
-				follows="left|top"
-				height="15"
-				left="5"
-				top_pad="4"
-				width="80"
-				layout="topleft"
-				label="Lock Focus (alt+shift+X)"
-				tool_tip="Locks the current focus point for DoF"
-				control_name="RenderFocusPointLocked"
-				enabled_control="RenderDepthOfField" />
-			<check_box
-				control_name="RenderDepthOfFieldNearBlur"
-				enabled_control="RenderDepthOfField"
-				label="Enable Foreground Blur"
-				tool_tip="This option toggles the foreground blur when using Depth of Field allowing you to blur only the background if desired."
-				name="RenderDepthOfFieldFront"
-				follows="left|top"
-				height="15"
-				left="5"
-				top_pad="4"
-				width="80"
-				layout="topleft"
-			/>
-			<!--DOF Resolution-->
-			<!--TODO: Ensure this setting is temporary? Large CoC @ Full Res has caused Login-Crashes on other viewers, even on high end GPUs!-->
-			<text
-				follows="left|top"
-				height="15"
-				left="5"
-				top_pad="4"
-				width="130"
-				layout="topleft"
-				tool_tip="What fraction of screen resolution should be used for rendering Depth of Field. NOTE: Viewer may become unresponsive if DoF becomes intense when Full Resolution is used."
-				value="DoF Resolution: " />
-			<combo_box
-				enabled_control="RenderDepthOfField"
-				allow_text_entry="false"
-				tool_tip="What fraction of screen resolution should be used for rendering Depth of Field. NOTE: Viewer may become unresponsive if DoF becomes intense when Full Resolution is used."
-				control_name="CameraDoFResScale"
-				follows="left|top"
-				height="16"
-				layout="topleft"
-				left="145"
-				max_chars="128"
-				name="dof_res_combo"
-				top_pad="-16"
-				width="120">
-				<combo_box.item
-					label="Quarter"
-					name="dof_quarterres"
-					value="0.25" />
-				<combo_box.item
-					label="Half"
-					name="dof_halfres"
-					value="0.5" />
-				<combo_box.item
-					label="Three-Quarter"
-					name="dof_threefourthres"
-					value="0.7" />
-				<combo_box.item
-					label="Full"
-					name="dof_fullres"
-					value="1.0" />
-			</combo_box>
-			<!--DOF FoV-->
-			<text
-				follows="left|top"
-				height="15"
-				left="5"
-				top_pad="8"
-				width="130"
-				layout="topleft"
-				tool_tip="Vertical FoV for DoF calculations"
-				value="Field of View:" />
-			<slider_bar
-				enabled_control="RenderDepthOfField"
-				top_pad="-18"
-				height="20"
-				increment="1"
-				follows="left|top|right"
-				layout="topleft"
-				max_val="175"
-				min_val="10"
-				left="145"
-				right="-75"
-				name="dof_fov_slider"
-				tool_tip="Vertical FoV for DoF calculations"
-				control_name="CameraFieldOfView" />
-			<spinner
-				enabled_control="RenderDepthOfField"
-				top_pad="-20"
-				height="15"
-				label_width="0"
-				right="-20"
-				decimal_digits="0"
-				follows="top|right"
-				layout="topleft"
-				max_val="175"
-				min_val="10"
-				width="55"
-				increment="1"
-				name="dof_fov_spinner"
-				tool_tip="Vertical FoV for DoF calculations"
-				control_name="CameraFieldOfView" />
-			<button
-				enabled_control="RenderDepthOfField"
-				name="dofFOV_default_btn"
-				follows="top|right"
-				layout="topleft"
-				height="22"
-				left_delta="55"
-				top_pad="-15"
-				width="18"
-				scale_image="true"
-				image_overlay="Refresh_Off"
-				image_overlay_alignment="center">
-				<button.commit_callback
-					function="LightBox.ResetControlDefault"
-					parameter="CameraFieldOfView" />
-			</button>
-			<!--Aperture-->
-			<text
-				follows="left|top"
-				height="15"
-				left="5"
-				top_pad="5"
-				width="130"
-				layout="topleft"
-				tool_tip="Simulated camera aperture f-value. Smaller f-stops result in a narrower focal range. Larger increases focal range."
-				value="Aperture (f):" />
-			<slider_bar
-				enabled_control="RenderDepthOfField"
-				top_pad="-18"
-				height="20"
-				increment=".1"
-				follows="left|top|right"
-				layout="topleft"
-				max_val="256"
-				min_val="0.5"
-				left="145"
-				right="-75"
-				name="dof_fstop_slider"
-				tool_tip="Simulated camera aperture f-value. Smaller f-stops result in a narrower focal range. Larger increases focal range."
-				control_name="CameraFNumber" />
-			<spinner
-				enabled_control="RenderDepthOfField"
-				top_pad="-20"
-				height="15"
-				label_width="0"
-				right="-20"
-				decimal_digits="1"
-				follows="top|right"
-				layout="topleft"
-				max_val="256"
-				min_val="0.5"
-				width="55"
-				increment=".1"
-				name="dof_fstop_spinner"
-				tool_tip="Simulated camera aperture f-value. Smaller f-stops result in a narrower focal range. Larger increases focal range."
-				control_name="CameraFNumber" />
-			<button
-				enabled_control="RenderDepthOfField"
-				name="dofFNumber_default_btn"
-				follows="top|right"
-				layout="topleft"
-				height="22"
-				left_delta="55"
-				top_pad="-15"
-				width="18"
-				scale_image="true"
-				image_overlay="Refresh_Off"
-				image_overlay_alignment="center">
-				<button.commit_callback
-					function="LightBox.ResetControlDefault"
-					parameter="CameraFNumber" />
-			</button>
-			<!--Focal Length-->
-			<text
-				enabled_control="RenderDepthOfField"
-				follows="left|top"
-				height="15"
-				left="5"
-				top_pad="5"
-				width="130"
-				layout="topleft"
-				tool_tip="Focal length of simulated camera."
-				value="Focal Length (mm):" />
-			<slider_bar
-				enabled_control="RenderDepthOfField"
-				top_pad="-18"
-				height="20"
-				increment="5"
-				follows="left|top|right"
-				layout="topleft"
-				max_val="600"
-				min_val="10"
-				left="145"
-				right="-75"
-				name="dof_length_slider"
-				tool_tip="Focal length of simulated camera."
-				control_name="CameraFocalLength" />
-			<spinner
-				enabled_control="RenderDepthOfField"
-				top_pad="-20"
-				height="15"
-				label_width="0"
-				right="-20"
-				decimal_digits="0"
-				follows="top|right"
-				layout="topleft"
-				max_val="600"
-				min_val="10"
-				width="55"
-				increment="5"
-				name="dof_length_spinner"
-				tool_tip="Focal length of simulated camera."
-				control_name="CameraFocalLength" />
-			<button
-				enabled_control="RenderDepthOfField"
-				name="dofFocal_default_btn"
-				follows="top|right"
-				layout="topleft"
-				height="22"
-				left_delta="55"
-				top_pad="-15"
-				width="18"
-				scale_image="true"
-				image_overlay="Refresh_Off"
-				image_overlay_alignment="center">
-				<button.commit_callback
-					function="LightBox.ResetControlDefault"
-					parameter="CameraFocalLength" />
-			</button>
-			<!--Circle of Confusion-->
-			<!--TODO: This can get dangerous on low-end machines! See DoF Resolution-->
-			<text
-				enabled_control="RenderDepthOfField"
-				follows="left|top"
-				height="15"
-				left="5"
-				top_pad="5"
-				width="130"
-				layout="topleft"
-				tool_tip="Circle of Confusion, blur intensity of out objects out of focus. This limits the amount of blur applied. High values produce softer out of focus objects, but can cause the viewer or system to become unresponsive"
-				value="CoC Maximum:" />
-			<slider_bar
-				enabled_control="RenderDepthOfField"
-				top_pad="-18"
-				height="20"
-				increment=".5"
-				follows="left|top|right"
-				layout="topleft"
-				max_val="40"
-				min_val="0"
-				left="145"
-				right="-75"
-				name="dof_coc_slider"
-				tool_tip="Circle of Confusion, blur intensity of out objects out of focus. This limits the amount of blur applied. High values produce softer out of focus objects, but can cause the viewer or system to become unresponsive"
-				control_name="CameraMaxCoF" />
-			<spinner
-				enabled_control="RenderDepthOfField"
-				top_pad="-20"
-				height="15"
-				label_width="0"
-				right="-20"
-				decimal_digits="1"
-				follows="top|right"
-				layout="topleft"
-				max_val="40"
-				min_val="0"
-				width="55"
-				increment=".5"
-				name="dof_coc_spinner"
-				tool_tip="Circle of Confusion, blur intensity of out objects out of focus. This limits the amount of blur applied. High values produce softer out of focus objects, but can cause the viewer or system to become unresponsive"
-				control_name="CameraMaxCoF" />
-			<button
-				enabled_control="RenderDepthOfField"
-				name="dofCOF_default_btn"
-				follows="top|right"
-				layout="topleft"
-				height="22"
-				left_delta="55"
-				top_pad="-15"
-				width="18"
-				scale_image="true"
-				image_overlay="Refresh_Off"
-				image_overlay_alignment="center">
-				<button.commit_callback
-					function="LightBox.ResetControlDefault"
-					parameter="CameraMaxCoF" />
-			</button>
-			<!--Focus Transition Time-->
-			<text
-				enabled_control="RenderDepthOfField"
-				follows="left|top"
-				height="15"
-				left="5"
-				top_pad="5"
-				width="130"
-				layout="topleft"
-				tool_tip="Time it takes for the camera to transition to a new focal point."
-				value="Transition Time (s):" />
-			<slider_bar
-				enabled_control="RenderDepthOfField"
-				top_pad="-18"
-				height="20"
-				increment=".1"
-				follows="left|top|right"
-				layout="topleft"
-				max_val="2"
-				min_val="0"
-				left="145"
-				right="-75"
-				name="dof_focaltime_slider"
-				tool_tip="Time it takes for the camera to transition to a new focal point."
-				control_name="CameraFocusTransitionTime" />
-			<spinner
-				enabled_control="RenderDepthOfField"
-				top_pad="-20"
-				height="15"
-				label_width="0"
-				right="-20"
-				decimal_digits="1"
-				follows="top|right"
-				layout="topleft"
-				max_val="2"
-				min_val="0"
-				width="55"
-				increment=".1"
-				name="dof_focaltime_spinner"
-				tool_tip="Time it takes for the camera to transition to a new focal point."
-				control_name="CameraFocusTransitionTime" />
-			<button
-				enabled_control="RenderDepthOfField"
-				name="dofTime_default_btn"
-				follows="top|right"
-				layout="topleft"
-				height="22"
-				left_delta="55"
-				top_pad="-15"
-				width="18"
-				scale_image="true"
-				image_overlay="Refresh_Off"
-				image_overlay_alignment="center">
-				<button.commit_callback
-					function="LightBox.ResetControlDefault"
-					parameter="CameraFocusTransitionTime" />
-			</button>
+			<panel class="panel_dof" filename="panel_dof.xml" follows="left|top|right" layout="topleft" left="0" name="dof_shared" top="0" width="418"/>
 		</panel>
 		<!--[BDMerge G3.2] Godrays Panel - thin UI, all widgets bind debug settings-->
 		<panel
@@ -5716,131 +5175,13 @@
 
 		<!--[BDMerge G3.3] Projector Shafts tab - all volumetric-cone levers-->
 		<panel follows="all" label="Proj Shafts" layout="topleft" name="projshaft_settings" can_resize="false">
-			<scroll_container follows="all" height="806" layout="topleft" left="0"
-			 name="projshaft_settings_scroll" opaque="false" reserve_scroll_corner="false" top="0" width="420">
-				<panel background_visible="false" follows="left|top|right" height="1200" layout="topleft" left="0"
-				 name="projshaft_settings_scroll_content" top="0" width="400">
-			<text follows="left|top" height="15" left="8" top_pad="12" width="384" layout="topleft" font="SansSerifBold" value="Projector Shafts (Set Lights)" />
-			<text follows="left|top" height="15" left="10" top_pad="8" width="56" layout="topleft" value="Preset:" />
-			<combo_box follows="left|top" height="22" left="70" top_pad="-19" width="254" layout="topleft" name="ps_preset" tool_tip="Apply a complete projector-shaft starting point; Froxel/Voxel Air settings are not changed.">
-				<combo_box.item label="Custom" name="ps_preset_custom" value="-1" />
-				<combo_box.item label="Fast Preview" name="ps_preset_fast" value="0" />
-				<combo_box.item label="Balanced" name="ps_preset_balanced" value="1" />
-				<combo_box.item label="Cinematic" name="ps_preset_cinematic" value="2" />
-				<combo_box.item label="Hazy Stage" name="ps_preset_hazy" value="3" />
-				<combo_box.item label="Clear Air" name="ps_preset_clear" value="4" />
-				<combo_box.item label="Searchlight" name="ps_preset_searchlight" value="5" />
-				<combo_box.item label="Dust Storm" name="ps_preset_dust_storm" value="6" />
-				<combo_box.item label="Dream Mist" name="ps_preset_dream_mist" value="7" />
-			</combo_box>
-			<check_box follows="left|top" height="16" left="12" top_pad="6" width="360" layout="topleft" label="Enable volumetric projector cones" control_name="BDMergeProjectorVolumetrics" />
-			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" value="Brightness:" />
-			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="0.01" max_val="30" increment="0.05" decimal_digits="2" show_text="true" can_edit_text="true" name="ps_BDMergeProjectorVolumetricsMultiplier_slider" control_name="BDMergeProjectorVolumetricsMultiplier" enabled_control="BDMergeProjectorVolumetrics" />
-			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="ps_reset_BDMergeProjectorVolumetricsMultiplier"><button.commit_callback function="LightBox.ResetControlDefault" parameter="BDMergeProjectorVolumetricsMultiplier" /></button>
-			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" value="Quality (samples):" />
-			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="8" max_val="64" increment="1" decimal_digits="0" show_text="true" can_edit_text="true" name="ps_BDMergeProjectorVolumetricsResolution_slider" control_name="BDMergeProjectorVolumetricsResolution" enabled_control="BDMergeProjectorVolumetrics" />
-			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="ps_reset_BDMergeProjectorVolumetricsResolution"><button.commit_callback function="LightBox.ResetControlDefault" parameter="BDMergeProjectorVolumetricsResolution" /></button>
-			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" value="Forward glow:" />
-			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="0" max_val="0.95" increment="0.01" decimal_digits="2" show_text="true" can_edit_text="true" name="ps_BDMergeProjectorVolumetricsAnisotropy_slider" control_name="BDMergeProjectorVolumetricsAnisotropy" enabled_control="BDMergeProjectorVolumetrics" />
-			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="ps_reset_BDMergeProjectorVolumetricsAnisotropy"><button.commit_callback function="LightBox.ResetControlDefault" parameter="BDMergeProjectorVolumetricsAnisotropy" /></button>
-			<text follows="left|top" height="15" left="8" top_pad="12" width="384" layout="topleft" font="SansSerifBold" value="Quality &amp; Performance" />
-			<check_box follows="left|top" height="16" left="12" top_pad="6" width="360" layout="topleft" label="Half-res march (faster)" control_name="BDMergeProjectorVolumetricsHalfRes" enabled_control="BDMergeProjectorVolumetrics" />
-			<check_box follows="left|top" height="16" left="12" top_pad="6" width="360" layout="topleft" label="Temporal accumulation (needs half-res)" control_name="BDMergeProjectorVolumetricsTemporal" enabled_control="BDMergeProjectorVolumetrics" />
-			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" value="Temporal blend:" />
-			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="0" max_val="0.98" increment="0.01" decimal_digits="2" show_text="true" can_edit_text="true" name="ps_BDMergeProjectorVolumetricsTemporalBlend_slider" control_name="BDMergeProjectorVolumetricsTemporalBlend" enabled_control="BDMergeProjectorVolumetrics" />
-			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="ps_reset_BDMergeProjectorVolumetricsTemporalBlend"><button.commit_callback function="LightBox.ResetControlDefault" parameter="BDMergeProjectorVolumetricsTemporalBlend" /></button>
-			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" value="Temporal reject:" />
-			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="0" max_val="8" increment="0.1" decimal_digits="1" show_text="true" can_edit_text="true" name="ps_BDMergeProjectorVolumetricsTemporalReject_slider" control_name="BDMergeProjectorVolumetricsTemporalReject" enabled_control="BDMergeProjectorVolumetricsTemporal" tool_tip="Reduces history where the current and reprojected shaft disagree; higher reacts faster with less ghosting." />
-			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="ps_reset_BDMergeProjectorVolumetricsTemporalReject"><button.commit_callback function="LightBox.ResetControlDefault" parameter="BDMergeProjectorVolumetricsTemporalReject" /></button>
-			<check_box follows="left|top" height="16" left="12" top_pad="6" width="360" layout="topleft" label="Track airborne beam depth" control_name="BDMergeProjectorVolumetricsTemporalBeamDepth" enabled_control="BDMergeProjectorVolumetricsTemporal" tool_tip="Reproject temporal history from the shaft's luminance-weighted mean distance instead of the wall behind it." />
-			<check_box follows="left|top" height="16" left="12" top_pad="6" width="360" layout="topleft" label="Scissor cull" control_name="BDMergeProjectorVolumetricsScissor" enabled_control="BDMergeProjectorVolumetrics" />
-			<check_box follows="left|top" height="16" left="12" top_pad="6" width="360" layout="topleft" label="Adaptive samples" control_name="BDMergeProjectorVolumetricsAdaptive" enabled_control="BDMergeProjectorVolumetrics" />
-			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" value="Min samples:" />
-			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="4" max_val="32" increment="1" decimal_digits="0" show_text="true" can_edit_text="true" name="ps_BDMergeProjectorVolumetricsMinResolution_slider" control_name="BDMergeProjectorVolumetricsMinResolution" enabled_control="BDMergeProjectorVolumetrics" />
-			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="ps_reset_BDMergeProjectorVolumetricsMinResolution"><button.commit_callback function="LightBox.ResetControlDefault" parameter="BDMergeProjectorVolumetricsMinResolution" /></button>
-			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" value="HDR clamp:" />
-			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="1" max_val="64" increment="0.5" decimal_digits="1" show_text="true" can_edit_text="true" name="ps_BDMergeProjectorVolumetricsMaxLuminance_slider" control_name="BDMergeProjectorVolumetricsMaxLuminance" enabled_control="BDMergeProjectorVolumetrics" />
-			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="ps_reset_BDMergeProjectorVolumetricsMaxLuminance"><button.commit_callback function="LightBox.ResetControlDefault" parameter="BDMergeProjectorVolumetricsMaxLuminance" /></button>
-			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" value="Dither mode:" />
-			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="0" max_val="2" increment="1" decimal_digits="0" show_text="true" can_edit_text="true" name="ps_BDMergeProjectorVolumetricsDither_slider" control_name="BDMergeProjectorVolumetricsDither" enabled_control="BDMergeProjectorVolumetrics" tool_tip="0 = off; 1 = static; 2 = always animated. Temporal anti-banding can safely cycle mode 1 while history is active." />
-			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="ps_reset_BDMergeProjectorVolumetricsDither"><button.commit_callback function="LightBox.ResetControlDefault" parameter="BDMergeProjectorVolumetricsDither" /></button>
-			<check_box follows="left|top" height="16" left="12" top_pad="6" width="360" layout="topleft" label="Temporal anti-banding (no extra samples)" control_name="BDMergeProjectorVolumetricsTemporalDither" enabled_control="BDMergeProjectorVolumetrics" tool_tip="Cycles the static march phase only while temporal accumulation can average it. Disable for an absolutely frozen sampling pattern." />
-			<text follows="left|top" height="15" left="8" top_pad="12" width="384" layout="topleft" font="SansSerifBold" value="Shadows &amp; Edges" />
-			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" value="Occluder shadows:" />
-			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="1" max_val="4" increment="1" decimal_digits="0" show_text="true" can_edit_text="true" name="ps_BDMergeProjectorVolumetricsShadowSamples_slider" control_name="BDMergeProjectorVolumetricsShadowSamples" enabled_control="BDMergeProjectorVolumetrics" />
-			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="ps_reset_BDMergeProjectorVolumetricsShadowSamples"><button.commit_callback function="LightBox.ResetControlDefault" parameter="BDMergeProjectorVolumetricsShadowSamples" /></button>
-			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" value="Cone edge feather:" />
-			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="0" max_val="0.5" increment="0.01" decimal_digits="2" show_text="true" can_edit_text="true" name="ps_BDMergeProjectorVolumetricsFeather_slider" control_name="BDMergeProjectorVolumetricsFeather" enabled_control="BDMergeProjectorVolumetrics" />
-			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="ps_reset_BDMergeProjectorVolumetricsFeather"><button.commit_callback function="LightBox.ResetControlDefault" parameter="BDMergeProjectorVolumetricsFeather" /></button>
-			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" value="Gobo shadow tint:" />
-			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="0" max_val="1" increment="0.01" decimal_digits="2" show_text="true" can_edit_text="true" name="ps_BDMergeProjectorVolumetricsShadowTint_slider" control_name="BDMergeProjectorVolumetricsShadowTint" enabled_control="BDMergeProjectorVolumetrics" />
-			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="ps_reset_BDMergeProjectorVolumetricsShadowTint"><button.commit_callback function="LightBox.ResetControlDefault" parameter="BDMergeProjectorVolumetricsShadowTint" /></button>
-			<text follows="left|top" height="15" left="8" top_pad="12" width="384" layout="topleft" font="SansSerifBold" value="Color" />
-			<text follows="left|top" height="15" left="10" top_pad="9" width="124" layout="topleft" value="Shaft tint:" />
-			<color_swatch follows="left|top" height="22" left="136" top_pad="-17" width="44" layout="topleft" can_apply_immediately="true" name="ps_tint_swatch" control_name="BDMergeProjectorVolumetricsTint" enabled_control="BDMergeProjectorVolumetrics" />
-			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="ps_reset_BDMergeProjectorVolumetricsTint"><button.commit_callback function="LightBox.ResetControlDefault" parameter="BDMergeProjectorVolumetricsTint" /></button>
-			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" value="Tint strength:" />
-			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="0" max_val="1" increment="0.01" decimal_digits="2" show_text="true" can_edit_text="true" name="ps_BDMergeProjectorVolumetricsTintStrength_slider" control_name="BDMergeProjectorVolumetricsTintStrength" enabled_control="BDMergeProjectorVolumetrics" />
-			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="ps_reset_BDMergeProjectorVolumetricsTintStrength"><button.commit_callback function="LightBox.ResetControlDefault" parameter="BDMergeProjectorVolumetricsTintStrength" /></button>
-			<text follows="left|top" height="15" left="8" top_pad="12" width="384" layout="topleft" font="SansSerifBold" value="Atmosphere" />
-			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" value="Density / haze:" />
-			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="0" max_val="4" increment="0.05" decimal_digits="2" show_text="true" can_edit_text="true" name="ps_BDMergeProjectorVolumetricsDensity_slider" control_name="BDMergeProjectorVolumetricsDensity" enabled_control="BDMergeProjectorVolumetrics" />
-			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="ps_reset_BDMergeProjectorVolumetricsDensity"><button.commit_callback function="LightBox.ResetControlDefault" parameter="BDMergeProjectorVolumetricsDensity" /></button>
-			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" value="Dust noise:" />
-			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="0" max_val="1" increment="0.01" decimal_digits="2" show_text="true" can_edit_text="true" name="ps_BDMergeProjectorVolumetricsNoiseStrength_slider" control_name="BDMergeProjectorVolumetricsNoiseStrength" enabled_control="BDMergeProjectorVolumetrics" />
-			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="ps_reset_BDMergeProjectorVolumetricsNoiseStrength"><button.commit_callback function="LightBox.ResetControlDefault" parameter="BDMergeProjectorVolumetricsNoiseStrength" /></button>
-			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" value="Noise scale:" />
-			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="0.01" max_val="2" increment="0.01" decimal_digits="2" show_text="true" can_edit_text="true" name="ps_BDMergeProjectorVolumetricsNoiseScale_slider" control_name="BDMergeProjectorVolumetricsNoiseScale" enabled_control="BDMergeProjectorVolumetrics" />
-			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="ps_reset_BDMergeProjectorVolumetricsNoiseScale"><button.commit_callback function="LightBox.ResetControlDefault" parameter="BDMergeProjectorVolumetricsNoiseScale" /></button>
-			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" value="Noise speed:" />
-			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="-2" max_val="2" increment="0.01" decimal_digits="2" show_text="true" can_edit_text="true" name="ps_BDMergeProjectorVolumetricsNoiseSpeed_slider" control_name="BDMergeProjectorVolumetricsNoiseSpeed" enabled_control="BDMergeProjectorVolumetrics" />
-			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="ps_reset_BDMergeProjectorVolumetricsNoiseSpeed"><button.commit_callback function="LightBox.ResetControlDefault" parameter="BDMergeProjectorVolumetricsNoiseSpeed" /></button>
-			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" value="Wind azimuth:" />
-			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="0" max_val="360" increment="1" decimal_digits="0" show_text="true" can_edit_text="true" name="ps_BDMergeFroxelWindAzimuth_slider" control_name="BDMergeFroxelWindAzimuth" enabled_control="BDMergeProjectorVolumetrics" tool_tip="Wind compass bearing (0=N, 90=E). Direction the dust comes FROM; by default it drifts the opposite way (0 = blows toward south). Shared by froxel air + beam dust." />
-			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="ps_reset_BDMergeFroxelWindAzimuth"><button.commit_callback function="LightBox.ResetControlDefault" parameter="BDMergeFroxelWindAzimuth" /></button>
-			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" value="Wind elevation:" />
-			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="-90" max_val="90" increment="1" decimal_digits="0" show_text="true" can_edit_text="true" name="ps_BDMergeFroxelWindElevation_slider" control_name="BDMergeFroxelWindElevation" enabled_control="BDMergeProjectorVolumetrics" tool_tip="Wind vertical tilt (-90..90). Positive = comes from above so dust settles downward; negative rises." />
-			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="ps_reset_BDMergeFroxelWindElevation"><button.commit_callback function="LightBox.ResetControlDefault" parameter="BDMergeFroxelWindElevation" /></button>
-			<check_box follows="left|top" layout="topleft" height="16" left="136" top_pad="6" width="200" label="Invert wind direction" name="ps_BDMergeFroxelWindInverted_check" control_name="BDMergeFroxelWindInverted" enabled_control="BDMergeProjectorVolumetrics" tool_tip="Invert: off = dust blows opposite the bearing (a north wind blows south); on = blows toward the bearing." />
-			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" value="Height fog:" />
-			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="0" max_val="1" increment="0.01" decimal_digits="2" show_text="true" can_edit_text="true" name="ps_BDMergeProjectorVolumetricsFogStrength_slider" control_name="BDMergeProjectorVolumetricsFogStrength" enabled_control="BDMergeProjectorVolumetrics" />
-			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="ps_reset_BDMergeProjectorVolumetricsFogStrength"><button.commit_callback function="LightBox.ResetControlDefault" parameter="BDMergeProjectorVolumetricsFogStrength" /></button>
-			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" value="Fog ground dens.:" />
-			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="0" max_val="4" increment="0.05" decimal_digits="2" show_text="true" can_edit_text="true" name="ps_BDMergeProjectorVolumetricsFogGroundDensity_slider" control_name="BDMergeProjectorVolumetricsFogGroundDensity" enabled_control="BDMergeProjectorVolumetrics" />
-			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="ps_reset_BDMergeProjectorVolumetricsFogGroundDensity"><button.commit_callback function="LightBox.ResetControlDefault" parameter="BDMergeProjectorVolumetricsFogGroundDensity" /></button>
-			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" value="Fog falloff (m):" />
-			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="0.5" max_val="256" increment="0.5" decimal_digits="1" show_text="true" can_edit_text="true" name="ps_BDMergeProjectorVolumetricsFogFalloff_slider" control_name="BDMergeProjectorVolumetricsFogFalloff" enabled_control="BDMergeProjectorVolumetrics" />
-			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="ps_reset_BDMergeProjectorVolumetricsFogFalloff"><button.commit_callback function="LightBox.ResetControlDefault" parameter="BDMergeProjectorVolumetricsFogFalloff" /></button>
-			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" value="Fog base alt (m):" />
-			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="0" max_val="4096" increment="1" decimal_digits="0" show_text="true" can_edit_text="true" name="ps_BDMergeProjectorVolumetricsFogBase_slider" control_name="BDMergeProjectorVolumetricsFogBase" enabled_control="BDMergeProjectorVolumetrics" />
-			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="ps_reset_BDMergeProjectorVolumetricsFogBase"><button.commit_callback function="LightBox.ResetControlDefault" parameter="BDMergeProjectorVolumetricsFogBase" /></button>
-			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" value="Bloom halo:" />
-			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="0" max_val="2" increment="0.01" decimal_digits="2" show_text="true" can_edit_text="true" name="ps_BDMergeProjectorVolumetricsBloomFeed_slider" control_name="BDMergeProjectorVolumetricsBloomFeed" enabled_control="BDMergeProjectorVolumetrics" />
-			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="ps_reset_BDMergeProjectorVolumetricsBloomFeed"><button.commit_callback function="LightBox.ResetControlDefault" parameter="BDMergeProjectorVolumetricsBloomFeed" /></button>
-			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" value="Shaft length (m):" />
-			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="0" max_val="64" increment="0.1" decimal_digits="1" show_text="true" can_edit_text="true" wheel_adjust="true" name="ps_BDMergeProjectorVolumetricsMaxDistance_slider" control_name="BDMergeProjectorVolumetricsMaxDistance" enabled_control="BDMergeProjectorVolumetrics" tool_tip="Maximum visible airborne beam length. 0 follows the projector's full light range; surface illumination is unchanged. Hover and scroll the mouse wheel for 0.1 m steps." />
-			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to full projector range" name="ps_reset_BDMergeProjectorVolumetricsMaxDistance"><button.commit_callback function="LightBox.ResetControlDefault" parameter="BDMergeProjectorVolumetricsMaxDistance" /></button>
-			<text follows="left|top" height="15" left="8" top_pad="12" width="384" layout="topleft" font="SansSerifBold" value="Shadow Quality (Batch 2)" />
-			<check_box follows="left|top" height="16" left="12" top_pad="6" width="360" layout="topleft" label="Soft projector shadows (contact-hardening + fill)" control_name="BDMergeSoftProjectorShadows" tool_tip="Widen the projector-shadow PCF kernel with receiver distance (sharp at contact, softer far away) and lift shadows off pure black toward a fill floor. Off = classic hard shadows." />
-			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" value="Softness:" />
-			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="0" max_val="16" increment="0.1" decimal_digits="1" show_text="true" can_edit_text="true" name="ps_BDMergeSoftShadowSoftness_slider" control_name="BDMergeSoftShadowSoftness" enabled_control="BDMergeSoftProjectorShadows" />
-			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="ps_reset_BDMergeSoftShadowSoftness"><button.commit_callback function="LightBox.ResetControlDefault" parameter="BDMergeSoftShadowSoftness" /></button>
-			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" value="Max penumbra:" />
-			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="1" max_val="16" increment="0.5" decimal_digits="1" show_text="true" can_edit_text="true" name="ps_BDMergeSoftShadowMaxPenumbra_slider" control_name="BDMergeSoftShadowMaxPenumbra" enabled_control="BDMergeSoftProjectorShadows" />
-			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="ps_reset_BDMergeSoftShadowMaxPenumbra"><button.commit_callback function="LightBox.ResetControlDefault" parameter="BDMergeSoftShadowMaxPenumbra" /></button>
-			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" value="Ambient fill:" />
-			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="0" max_val="1" increment="0.01" decimal_digits="2" show_text="true" can_edit_text="true" name="ps_BDMergeSoftShadowFill_slider" control_name="BDMergeSoftShadowFill" enabled_control="BDMergeSoftProjectorShadows" />
-			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="ps_reset_BDMergeSoftShadowFill"><button.commit_callback function="LightBox.ResetControlDefault" parameter="BDMergeSoftShadowFill" /></button>
-			<check_box follows="left|top" height="16" left="12" top_pad="6" width="360" layout="topleft" label="Also soften sun/moon shadows" control_name="BDMergeSoftShadowSun" enabled_control="BDMergeSoftProjectorShadows" tool_tip="Apply the same contact-hardening + fill to the sun/moon cascade shadows for a consistent look." />
-			<check_box follows="left|top" height="16" left="12" top_pad="8" width="360" layout="topleft" label="Gobo anisotropic/mip filtering (anti-alias)" control_name="BDMergeGoboAnisotropic" tool_tip="Trilinear-mip + anisotropic filtering on projector cookies plus a screen-space LOD clamp, so gobos stay crisp at grazing angles / distance instead of aliasing. Default on." />
-				</panel>
-			</scroll_container>
+			<panel class="panel_projector_shafts" filename="panel_projector_shafts.xml" follows="left|top|right" layout="topleft" left="0" name="projector_shafts_shared" top="0" width="352"/>
 		</panel>
 		<!--[BDMerge Froxel F5] Froxel Air tab - hybrid froxel volumetrics (world air
 		    medium) + the projector-shaft Rim Glow levers. Same compact slider+reset
 		    pattern as the Proj Shafts tab; all controls are XML-bound (control_name)
 		    with the generic LightBox.ResetControlDefault reset handler - no C++.-->
-		<panel follows="all" label="Froxel Air" layout="topleft" name="froxel_settings" can_resize="false">
+		<panel follows="all" label="Froxel Air (legacy)" layout="topleft" name="froxel_settings" can_resize="false">
 			<scroll_container follows="all" height="806" layout="topleft" left="0"
 			 name="froxel_settings_scroll" opaque="false" reserve_scroll_corner="false" top="0" width="420">
 				<panel background_visible="false" follows="left|top|right" height="674" layout="topleft" left="0"
@@ -5912,29 +5253,10 @@
 			</scroll_container>
 		</panel>
 		<panel follows="all" label="Weather" layout="topleft" name="weather_settings" can_resize="false">
-			<scroll_container follows="all" height="806" layout="topleft" left="0"
-			 name="weather_settings_scroll" opaque="false" reserve_scroll_corner="false" top="0" width="420">
-				<panel background_visible="false" follows="left|top|right" height="724" layout="topleft" left="0"
-				 name="weather_settings_scroll_content" top="0" width="400">
-			<panel
-			 class="panel_weather_settings"
-			 filename="panel_weather_settings.xml"
-			 follows="left|top|right"
-			 height="710"
-			 layout="topleft"
-			 left="10"
-			 name="weather_settings_shared"
-			 top="4"
-			 width="350" />
-				</panel>
-			</scroll_container>
+			<panel class="panel_weather_settings" filename="panel_weather_settings.xml" follows="left|top|right" layout="topleft" left="10" name="weather_settings_shared" top="4" width="350"/>
 		</panel>
 		<panel follows="all" label="Atmos Volumes" layout="topleft" name="atmospheric_volumes_settings" can_resize="false">
-			<scroll_container follows="all" height="806" layout="topleft" left="0" name="atmospheric_volumes_scroll" opaque="false" reserve_scroll_corner="false" top="0" width="420">
-				<panel background_visible="false" follows="left|top|right" height="660" layout="topleft" left="0" name="atmospheric_volumes_scroll_content" top="0" width="400">
-					<panel class="panel_atmospheric_volumes" filename="panel_atmospheric_volumes.xml" follows="left|top|right" height="650" layout="topleft" left="10" name="atmospheric_volumes_shared" top="4" width="350" />
-				</panel>
-			</scroll_container>
+			<panel class="panel_atmospheric_volumes" filename="panel_atmospheric_volumes.xml" follows="left|top|right" layout="topleft" left="10" name="atmospheric_volumes_shared" top="4" width="350"/>
 		</panel>
 		<!-- [Cine Haze] Cinematic Depth Atmosphere tab: distance / height haze that
 		     reduces contrast toward an atmosphere colour (not blur), composed after
@@ -6197,7 +5519,7 @@
 				<combo_box.item label="Focus point (DoF)" name="ri_subj_focus" value="9" />
 			</combo_box>
 			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" name="CineOutlineSubjectSource_row_label" value="Mask source:" />
-			<combo_box follows="left|top" layout="topleft" height="20" top_pad="-17" left="136" width="188" allow_text_entry="false" name="ri_subject_source_combo" control_name="CineOutlineSubjectSource" enabled_control="CineOutlineEnabled" tool_tip="Modes 1-3 only: where the subject mask comes from. Boxes = the depth slab / shapes (today). Avatar tag = the per-pixel G-buffer avatar tag (pixel-exact on opaque avatar surfaces; needs 'Avatar tag in G-buffer' (RenderGBufferAvatarTag) and HDR -- falls back to Boxes when unavailable). Tag AND boxes picks WHICH avatar; Tag OR boxes re-admits alpha-blended clothing through the box.">
+			<combo_box follows="left|top" layout="topleft" height="20" top_pad="-17" left="136" width="188" allow_text_entry="false" name="ri_subject_source_combo" control_name="CineOutlineSubjectSource" enabled_control="CineOutlineEnabled" tool_tip="Modes 1-3 only: where the subject mask comes from. Boxes = the depth slab / shapes (today). Avatar tag = the per-pixel G-buffer avatar tag (pixel-exact on opaque avatar surfaces; needs the avatar tag (click 'Enable avatar tag' in the Infrared Film row of Lightbox &gt; Image or Director &gt; Lens &gt; Filters) and HDR -- falls back to Boxes when unavailable). Tag AND boxes picks WHICH avatar; Tag OR boxes re-admits alpha-blended clothing through the box.">
 				<combo_box.item label="Boxes (depth slab / shapes)" name="ri_src_boxes" value="0" />
 				<combo_box.item label="Avatar tag (HDR only)" name="ri_src_tag" value="1" />
 				<combo_box.item label="Tag AND boxes (HDR only)" name="ri_src_tag_and" value="2" />
@@ -6811,7 +6133,7 @@
 			<check_box follows="left|top" height="16" left="12" top_pad="8" width="360" layout="topleft" label="Reject floors" name="tr_rim_reject_floors_check" control_name="TronRimRejectFloors" enabled_control="TronEnabled" tool_tip="Don't paint horizontal surfaces (the floor inside the target box) with the neon rim." />
 
 			<text follows="left|top" height="15" left="8" top_pad="14" width="384" layout="topleft" font="SansSerifBold" name="tr_suit_header" value="Tron Suit" />
-			<text follows="left|top" height="30" left="10" top_pad="4" width="380" layout="topleft" word_wrap="true" name="tr_suit_hint" font="SansSerifSmall" value="Actor FX look for cast members: Director console -> Actor Styling -> Tron Suit. Layer keeps clothing and adds seams; Cover gives the black suit." />
+			<text follows="left|top" height="30" left="10" top_pad="4" width="380" layout="topleft" word_wrap="true" name="tr_suit_hint" font="SansSerifSmall" value="Actor FX look for cast members: Director &gt; Look &gt; Actor FX &gt; Look: Tron Suit. Layer keeps clothing and adds seams; Cover gives the black suit." />
 			<check_box follows="left|top" height="16" left="12" top_pad="8" width="360" layout="topleft" label="Use Tron palette" name="tr_suit_use_palette_check" control_name="TronSuitUsePalette" tool_tip="Use the Tron palette primary colour while Tron is enabled; off (or Tron disabled) uses the cast member's own hue." />
 			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" name="tr_suit_seam_cell_label" value="Seam cell m:" />
 			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="0.02" max_val="1" increment="0.01" decimal_digits="2" show_text="true" can_edit_text="true" name="tr_suit_seam_cell_slider" control_name="TronSuitSeamCell" tool_tip="Body seam cell size in the avatar's bind frame, in metres." />
@@ -6960,20 +6282,20 @@
 			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="0.5" max_val="3" increment="0.05" decimal_digits="2" show_text="true" can_edit_text="true" name="tr_subject_ellipse_scale_slider" control_name="TronSubjectEllipseScale" enabled_control="TronEnabled" tool_tip="Subject mask box scale multiplier." />
 			<button follows="left|top" layout="topleft" height="22" left="330" top_pad="-22" width="18" scale_image="true" image_overlay="Refresh_Off" image_overlay_alignment="center" tool_tip="Reset to default value" name="tr_reset_TronSubjectEllipseScale"><button.commit_callback function="LightBox.ResetControlDefault" parameter="TronSubjectEllipseScale" /></button>
 			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" name="tr_subject_source_grid_label" value="Mask source (grid):" />
-			<combo_box follows="left|top" layout="topleft" height="20" top_pad="-17" left="136" width="188" allow_text_entry="false" name="tr_subject_source_grid_combo" control_name="TronSubjectSourceGrid" enabled_control="TronEnabled" tool_tip="Subject mask source for the grid exclusion/keep-subject terms. Needs RenderGBufferAvatarTag + HDR for the tag-based modes; forced to Boxes otherwise.">
+			<combo_box follows="left|top" layout="topleft" height="20" top_pad="-17" left="136" width="188" allow_text_entry="false" name="tr_subject_source_grid_combo" control_name="TronSubjectSourceGrid" enabled_control="TronEnabled" tool_tip="Subject mask source for the grid exclusion/keep-subject terms. Needs the avatar tag ('Enable avatar tag' button, Infrared Film row) + HDR for the tag-based modes; forced to Boxes otherwise.">
 				<combo_box.item label="Boxes" name="tr_src_boxes" value="0" />
 				<combo_box.item label="Avatar tag" name="tr_src_tag" value="1" />
 				<combo_box.item label="Tag AND boxes" name="tr_src_tagandbox" value="2" />
 				<combo_box.item label="Tag OR boxes" name="tr_src_tagorbox" value="3" />
 			</combo_box>
 			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" name="tr_subject_source_rim_label" value="Mask source (rim):" />
-			<combo_box follows="left|top" layout="topleft" height="20" top_pad="-17" left="136" width="188" allow_text_entry="false" name="tr_subject_source_rim_combo" control_name="TronSubjectSourceRim" enabled_control="TronEnabled" tool_tip="Subject mask source for the post neon rim term. Needs RenderGBufferAvatarTag + HDR for the tag-based modes; forced to Boxes otherwise.">
+			<combo_box follows="left|top" layout="topleft" height="20" top_pad="-17" left="136" width="188" allow_text_entry="false" name="tr_subject_source_rim_combo" control_name="TronSubjectSourceRim" enabled_control="TronEnabled" tool_tip="Subject mask source for the post neon rim term. Needs the avatar tag ('Enable avatar tag' button, Infrared Film row) + HDR for the tag-based modes; forced to Boxes otherwise.">
 				<combo_box.item label="Boxes" name="tr_srcrim_boxes" value="0" />
 				<combo_box.item label="Avatar tag" name="tr_srcrim_tag" value="1" />
 				<combo_box.item label="Tag AND boxes" name="tr_srcrim_tagandbox" value="2" />
 				<combo_box.item label="Tag OR boxes" name="tr_srcrim_tagorbox" value="3" />
 			</combo_box>
-			<text follows="left|top" height="15" left="10" top_pad="6" width="380" layout="topleft" name="tr_subject_source_hint" font="SansSerifSmall" value="(tag unavailable: enable RenderGBufferAvatarTag + HDR)" />
+			<text follows="left|top" height="30" left="10" top_pad="6" width="380" layout="topleft" name="tr_subject_source_hint" font="SansSerifSmall" value="(tag unavailable: click 'Enable avatar tag' in Lightbox &gt; Image; needs HDR)" word_wrap="true" />
 			<check_box follows="left|top" height="16" left="12" top_pad="8" width="360" layout="topleft" label="Invert" name="tr_subject_invert_check" control_name="TronSubjectInvert" enabled_control="TronEnabled" tool_tip="Inverts the subject mask." />
 			<text follows="left|top" height="15" left="10" top_pad="8" width="124" layout="topleft" name="tr_grid_subject_exclude_label" value="Subject exclude:" />
 			<slider follows="left|top" layout="topleft" height="20" top_pad="-16" left="136" width="188" min_val="0" max_val="1" increment="0.01" decimal_digits="2" show_text="true" can_edit_text="true" name="tr_grid_subject_exclude_slider" control_name="TronGridSubjectExclude" enabled_control="TronEnabled" tool_tip="How much the isolated subject excludes the grid." />

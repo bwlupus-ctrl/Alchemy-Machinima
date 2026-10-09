@@ -369,6 +369,11 @@ set(viewer_SOURCE_FILES
     alpanelactormover.cpp
     alpanelanimpreview.cpp
     alpanelatmosphericvolumes.cpp
+    alpanelavatarlightresponse.cpp
+    alpaneldof.cpp
+    alpanelexposurehub.cpp
+    alpanellenslooks.cpp
+    alpanelprojectorshafts.cpp
     alpanelcinelightrig.cpp
     alprobedirty.cpp # [ProbeOnDemand]
     alprojectorshaftpresets.cpp
@@ -1253,6 +1258,11 @@ set(viewer_HEADER_FILES
     alpanelactormover.h
     alpanelanimpreview.h
     alpanelatmosphericvolumes.h
+    alpanelavatarlightresponse.h
+    alpaneldof.h
+    alpanelexposurehub.h
+    alpanellenslooks.h
+    alpanelprojectorshafts.h
     alcinehaze.h
     alcinerigrim.h
     allenslooks.h

@@ -10,7 +10,7 @@
  can_resize="true"
  height="650"
  min_height="560"
- min_width="660"
+ min_width="850"
  layout="topleft"
  name="floater_director"
  title="Director Console"
@@ -126,7 +126,7 @@
      left="8"
      top="54"
      name="arming_lbl"
-     width="74">
+     width="88">
         Action fires:
     </text>
     <check_box
@@ -135,7 +135,7 @@
      height="16"
      label="Actor moves"
      layout="topleft"
-     left="84"
+     left="98"
      top="53"
      name="arm_moves_check"
      tool_tip="ACTION starts a ghost walk for every cast member (you, if the cast is empty); CUT stops them"
@@ -146,7 +146,7 @@
      height="16"
      label="Camera"
      layout="topleft"
-     left="182"
+     left="196"
      top="53"
      name="arm_camera_check"
      tool_tip="ACTION enables the cinematic camera pattern; CUT restores the enable state it changed"
@@ -157,7 +157,7 @@
      height="16"
      label="Recorder play"
      layout="topleft"
-     left="262"
+     left="276"
      top="53"
      name="arm_play_check"
      tool_tip="ACTION starts Flycam Recorder playback of the loaded take; CUT stops it. Ignored while capture is also armed"
@@ -168,7 +168,7 @@
      height="16"
      label="Recorder capture"
      layout="topleft"
-     left="370"
+     left="384"
      top="53"
      name="arm_capture_check"
      tool_tip="ACTION starts a fresh camera capture (replaces the current take); CUT stops it. Beats recorder play when both are armed"
@@ -230,6 +230,7 @@
          name="look"
          width="20" />
     </scroll_list>
+    <!-- xui-check: overlay cast_hint cast_list -->
     <text
      follows="left|top"
      height="60"
@@ -310,20 +311,9 @@
      width="180" />
 
     <!-- ============ left-rail tabs ============ -->
-    <tab_container
-     follows="all"
-     height="550"
-     layout="topleft"
-     left="196"
-     top="74"
-     name="director_tabs"
-     tab_height="22"
-     tab_width="80"
-     tab_group="1"
-     tab_position="left"
-     width="816">
-
-        <!-- ============ Move tab ============ -->
+    <tab_container follows="all" height="550" layout="topleft" left="196" top="74" name="director_tabs" tab_height="22" tab_width="100" tab_group="1" tab_position="left" width="816">
+        <panel background_visible="false" follows="all" height="548" label="Cast" layout="topleft" name="cast_group" top="0" width="713">
+            <tab_container follows="all" height="548" layout="topleft" left="0" name="cast_tabs" tab_height="22" tab_min_width="60" tab_position="top" top="0" width="713">
         <panel
          follows="all"
          background_visible="false"
@@ -499,13 +489,6 @@
                 </panel>
             </scroll_container>
         </panel>
-
-        <!-- ============ Path tab ============ -->
-        <!-- The shared path editor is taller than the console's default tab
-             viewport. At the console's default height the tab
-             viewport is shorter than that, so the editor is wrapped in a
-             scroll_container (same idiom as the Camera tab), so every path
-             control remains reachable without resizing the floater. -->
         <panel
          follows="all"
          background_visible="false"
@@ -543,38 +526,6 @@
                 </panel>
             </scroll_container>
         </panel>
-
-        <!-- ============ Ghosts tab ============ -->
-        <!-- The shared Ghost Studio panel (panel_ghost_studio.xml): the SAME
-             panel the standalone Ghost Studio floater hosts, so every overlay
-             look (Ghost through Prism) is mirrored here automatically and the
-             console remains a superset. Self-contained (it carries its own cast-source
-             picker); nothing to feed it from the console. -->
-        <panel
-         follows="all"
-         background_visible="false"
-         height="550"
-         label="Ghosts"
-         layout="topleft"
-         name="ghosts_tab"
-         top="0"
-         width="374">
-            <panel
-             class="panel_ghost_studio"
-             filename="panel_ghost_studio.xml"
-             follows="left|top|right"
-             layout="topleft"
-             left="0"
-             name="ghost_studio_panel"
-             top="8"
-             width="354" />
-        </panel>
-
-        <!-- ============ Props tab ============ -->
-        <!-- The shared Prop Mover panel (panel_prop_mover.xml): the SAME panel
-             the standalone Prop Mover floater hosts, so the console is a
-             superset. Self-contained (enrollment reads the in-world selection
-             or the object context menu); nothing to feed it from the console. -->
         <panel
          follows="all"
          background_visible="false"
@@ -594,14 +545,33 @@
              top="8"
              width="354" />
         </panel>
-
-        <!-- ============ Animate tab ============ -->
-        <!-- Top: the selected cast member's live signaled-animation list plus
-             per-actor loco / play-local tools. Bottom: an embedded spinning
-             preview (drag to orbit, wheel to zoom) that auto-plays the selected
-             row / pasted UUID on loop, plus the Animation Explorer's own
-             Capture-all / Stop / Stop and Revoke / Blacklist controls, so the
-             console does everything the standalone Explorer can. -->
+        <panel
+         follows="all"
+         background_visible="false"
+         height="550"
+         label="Ghosts"
+         layout="topleft"
+         name="ghosts_tab"
+         top="0"
+         width="374">
+            <panel
+             class="panel_ghost_studio"
+             filename="panel_ghost_studio.xml"
+             follows="left|top|right"
+             layout="topleft"
+             left="0"
+             name="ghost_studio_panel"
+             top="8"
+             width="354" />
+        </panel>
+                <panel background_visible="false" follows="all" height="525" label="Dance" layout="topleft" name="dance_tab" width="711">
+                    <button follows="left|top" height="20" label="Open Dance Ball window..." layout="topleft" left="8" name="dance_popout" top="4" width="200" />
+                    <panel class="panel_dance_ball" filename="panel_dance_ball.xml" follows="all" layout="topleft" left="0" name="director_dance_ball_panel" top="30" width="711"/>
+                </panel>
+            </tab_container>
+        </panel>
+        <panel background_visible="false" follows="all" height="548" label="Performance" layout="topleft" name="performance_group" top="0" width="713">
+            <tab_container follows="all" height="548" layout="topleft" left="0" name="performance_tabs" tab_height="22" tab_min_width="60" tab_position="top" top="0" width="713">
         <panel
          follows="all"
          background_visible="false"
@@ -667,6 +637,7 @@
                  tool_tip="Marker: the animation is actually playing right now"
                  width="28" />
             </scroll_list>
+            <!-- xui-check: overlay anim_hint anim_list -->
             <text
              follows="left|top"
              height="40"
@@ -724,7 +695,7 @@
              top="176"
              name="paste_lbl"
              width="354">
-                Play any animation on the selected member (client-side only):
+                Play any animation locally on the selected member:
             </text>
             <line_editor
              follows="left|top|right"
@@ -905,23 +876,76 @@
                 </panel>
             </scroll_container>
         </panel>
-
-        <!-- ============ Camera tab ============ -->
-        <panel
-         follows="all"
-         background_visible="false"
-         height="550"
-         label="Camera"
-         layout="topleft"
-         name="camera_tab"
-         top="0"
-         width="374">
+                <panel background_visible="false" follows="all" height="525" label="Switchboard" layout="topleft" name="switchboard_tab" width="711">
+                    <scroll_container follows="all" height="525" layout="topleft" left="0" name="switchboard_flow_scroll" opaque="false" reserve_scroll_corner="false" top="0" width="711">
+                        <flow_grid card_width="340" column_gap="12" fit_cards="true" follows="all" height="8" layout="topleft" left="0" max_columns="3" name="switchboard_flow_grid" pad="8" row_gap="12" top="0" width="695">
+                    <panel
+                     background_visible="false"
+                     border="true"
+                     follows="left|top"
+                     layout="topleft"
+                     left="0"
+                     name="anim_switcher_card"
+                     top="0"
+                     width="340">
+                        <text
+                         follows="left|top|right"
+                         font="SansSerifBold"
+                         height="16"
+                         layout="topleft"
+                         left="8"
+                         name="anim_switcher_card_title"
+                         top="6"
+                         width="324">
+                            Anim Switchboard
+                        </text>
+                        <panel
+                         class="panel_director_anim_switcher"
+                         filename="panel_director_anim_switcher.xml"
+                         follows="left|top|right"
+                         layout="topleft"
+                         left="0"
+                         name="director_anim_switcher_embedded"
+                         top="28"
+                         width="340" />
+                    </panel>
+                        </flow_grid>
+                    </scroll_container>
+                </panel>
+                <panel background_visible="false" follows="all" height="525" label="Gaze" layout="topleft" name="gaze_tab" width="711">
+                    <button follows="left|top" height="20" label="Open Actor Gaze window..." layout="topleft" left="8" name="btn_actor_gaze" top="4" tool_tip="Open Actor Gaze for camera look-at flagging, targeting, and performance controls" width="200" />
+                    <panel class="panel_lens_gaze" filename="panel_lens_gaze.xml" follows="left|top" layout="topleft" left="0" name="director_gaze_panel" top="30" width="516"/>
+                </panel>
+                <panel background_visible="false" follows="all" height="525" label="Polish" layout="topleft" name="polish_tab" width="711">
+                    <button follows="left|top" height="20" label="Open Pose Polish window..." layout="topleft" left="8" name="polish_popout" top="4" width="200" />
+                    <panel filename="panel_pose_polish.xml" follows="left|top" layout="topleft" left="0" name="director_pose_polish" top="30" width="360"/>
+                </panel>
+                <panel background_visible="false" follows="all" height="525" label="Gaze Cues" layout="topleft" name="gaze_cues_tab" width="711">
+                    <scroll_container follows="all" height="525" layout="topleft" left="0" name="gaze_cues_flow_scroll" opaque="false" reserve_scroll_corner="false" top="0" width="711">
+                        <flow_grid card_width="360" column_gap="12" fit_cards="true" follows="all" height="8" layout="topleft" left="0" max_columns="3" name="gaze_cues_flow_grid" pad="8" row_gap="12" top="0" width="695">
+                    <panel background_visible="false" border="true" follows="left|top" layout="topleft" left="0" name="card_gaze_cues" top="0" width="360">
+                        <text follows="left|top|right" font="SansSerifBold" height="16" layout="topleft" left="8" name="card_gaze_cues_title" top="6" width="344">Gaze Cues</text>
+                        <text follows="left|top|right" height="16" layout="topleft" left="8" name="card_gaze_cues_summary" text_color="LtGray_50" top="26" use_ellipses="true" width="344">-</text>
+                        <button follows="left|top" height="22" label="Open Gaze Cues..." layout="topleft" left="8" name="card_gaze_cues_open" tool_tip="Open the selected actor gaze cue stack" top="48" width="220" />
+                    </panel>
+                        </flow_grid>
+                    </scroll_container>
+                </panel>
+            </tab_container>
+        </panel>
+        <panel background_visible="false" follows="all" height="548" label="Camera" layout="topleft" name="camera_group" top="0" width="713">
+            <tab_container follows="all" height="548" layout="topleft" left="0" name="camera_tabs" tab_height="22" tab_min_width="60" tab_position="top" top="0" width="713">
+                <panel background_visible="false" follows="all" height="525" label="Shot" layout="topleft" name="shot_tab" width="711">
+                    <scroll_container follows="all" height="525" layout="topleft" left="0" name="shot_flow_scroll" opaque="false" reserve_scroll_corner="false" top="0" width="711">
+                        <flow_grid card_width="340" column_gap="12" fit_cards="true" follows="all" height="8" layout="topleft" left="0" max_columns="3" name="shot_flow_grid" pad="8" row_gap="12" top="0" width="695">
+                    <panel background_visible="false" border="true" follows="left|top" layout="topleft" left="0" name="shot_subjects_card" top="0" width="340">
+                        <text follows="left|top|right" font="SansSerifBold" height="16" layout="topleft" left="8" name="shot_subjects_card_title" top="6" width="324">Subjects</text>
             <text
              follows="left|top"
              height="14"
              layout="topleft"
              left="10"
-             top="8"
+             top="30"
              name="subject_a_text"
              tool_tip="Subject A: the CineCam / orbit anchor. Set from the cast list's right-click menu or the button"
              use_ellipses="true"
@@ -934,7 +958,7 @@
              label="Set from selection"
              layout="topleft"
              left="152"
-             top="5"
+             top="27"
              name="btn_set_a"
              width="120" />
             <button
@@ -943,7 +967,7 @@
              label="Clear"
              layout="topleft"
              left="276"
-             top="5"
+             top="27"
              name="btn_clear_a"
              width="52" />
             <text
@@ -951,7 +975,7 @@
              height="14"
              layout="topleft"
              left="10"
-             top="28"
+             top="50"
              name="subject_b_text"
              tool_tip="Subject B: the second body for Two-Shot / Over-the-Shoulder"
              use_ellipses="true"
@@ -964,7 +988,7 @@
              label="Set from selection"
              layout="topleft"
              left="152"
-             top="25"
+             top="47"
              name="btn_set_b"
              width="120" />
             <button
@@ -973,7 +997,7 @@
              label="Clear"
              layout="topleft"
              left="276"
-             top="25"
+             top="47"
              name="btn_clear_b"
              width="52" />
             <text
@@ -981,7 +1005,7 @@
              height="14"
              layout="topleft"
              left="10"
-             top="48"
+             top="70"
              name="subject_c_text"
              tool_tip="Subject C: an additional camera-switcher target mark"
              use_ellipses="true"
@@ -994,7 +1018,7 @@
              label="Set from selection"
              layout="topleft"
              left="152"
-             top="45"
+             top="67"
              name="btn_set_c"
              width="120" />
             <button
@@ -1003,7 +1027,7 @@
              label="Clear"
              layout="topleft"
              left="276"
-             top="45"
+             top="67"
              name="btn_clear_c"
              width="52" />
             <text
@@ -1011,7 +1035,7 @@
              height="14"
              layout="topleft"
              left="10"
-             top="68"
+             top="90"
              name="subject_d_text"
              tool_tip="Subject D: an additional camera-switcher target mark"
              use_ellipses="true"
@@ -1024,7 +1048,7 @@
              label="Set from selection"
              layout="topleft"
              left="152"
-             top="65"
+             top="87"
              name="btn_set_d"
              width="120" />
             <button
@@ -1033,86 +1057,10 @@
              label="Clear"
              layout="topleft"
              left="276"
-             top="65"
+             top="87"
              name="btn_clear_d"
              width="52" />
-            <button
-             follows="left|top|right"
-             height="22"
-             label="Actor Gaze..."
-             layout="topleft"
-             left="10"
-             name="btn_actor_gaze"
-             top="89"
-             tool_tip="Open Actor Gaze for camera look-at flagging, targeting, and performance controls"
-             width="344" />
-            <button
-             follows="left|top|right"
-             height="22"
-             label="Virtual Cam..."
-             layout="topleft"
-             left="10"
-             name="btn_prism_manage"
-             top="117"
-             tool_tip="Open Virtual Cam Manager for captures, displays, optics, picture rate, and performance."
-             width="344" />
-            <check_box
-             control_name="PrismLensEnabled"
-             follows="left|top"
-             height="18"
-             label="Enable Virtual Cam"
-             layout="topleft"
-             left="10"
-             name="prism_lens_enabled"
-             top="147"
-             tool_tip="Master render toggle. Captures and displays remain editable while disabled."
-             width="138" />
-            <text
-             follows="left|top|right"
-             height="18"
-             layout="topleft"
-             left="150"
-             name="prism_summary"
-             top="149"
-             tool_tip="Open Virtual Cam Manager for camera sources, faces, optics, picture FPS, and adaptive performance."
-             use_ellipses="true"
-             width="204">
-                VCam 0/8 captures | 0/16 faces
-            </text>
-            <button
-             follows="left|top|right"
-             height="22"
-             label="Ultimate Diopter..."
-             layout="topleft"
-             left="10"
-             name="btn_ultimate_diopter"
-             top="173"
-             tool_tip="Open the Ultimate Diopter lens-front diopter and halo effect controls"
-             width="344" />
-            <scroll_container
-             follows="all"
-             height="343"
-             layout="topleft"
-             left="0"
-             top="205"
-             name="camera_flow_scroll"
-             opaque="false"
-             size="15"
-             width="374">
-                <flow_grid
-                 card_width="340"
-                 column_gap="12"
-                 fit_cards="true"
-                 follows="all"
-                 height="8"
-                 layout="topleft"
-                 left="0"
-                 max_columns="4"
-                 name="camera_flow_grid"
-                 pad="8"
-                 row_gap="12"
-                 top="0"
-                 width="354">
+                    </panel>
                     <panel
                      background_visible="false"
                      border="true"
@@ -1143,6 +1091,42 @@
                          top="28"
                          width="340" />
                     </panel>
+                    <panel
+                     background_visible="false"
+                     border="true"
+                     follows="left|top"
+                     layout="topleft"
+                     left="0"
+                     name="camera_cinematic_card"
+                     top="0"
+                     width="340">
+                        <text
+                         follows="left|top|right"
+                         font="SansSerifBold"
+                         height="16"
+                         layout="topleft"
+                         left="8"
+                         name="camera_cinematic_card_title"
+                         top="6"
+                         width="324">
+                            Cinematic
+                        </text>
+                        <panel
+                         class="panel_cinecam_params"
+                         filename="panel_cinecam_params.xml"
+                         follows="left|top|right"
+                         layout="topleft"
+                         left="8"
+                         name="cinecam_params_embedded"
+                         top="28"
+                         width="320" />
+                    </panel>
+                        </flow_grid>
+                    </scroll_container>
+                </panel>
+                <panel background_visible="false" follows="all" height="525" label="Moves" layout="topleft" name="moves_tab" width="711">
+                    <scroll_container follows="all" height="525" layout="topleft" left="0" name="moves_flow_scroll" opaque="false" reserve_scroll_corner="false" top="0" width="711">
+                        <flow_grid card_width="340" column_gap="12" fit_cards="true" follows="all" height="8" layout="topleft" left="0" max_columns="3" name="moves_flow_grid" pad="8" row_gap="12" top="0" width="695">
                     <panel
                      background_visible="false"
                      border="true"
@@ -1219,13 +1203,19 @@
                          label_width="84" layout="topleft" left="174" max_val="0.95"
                          min_val="0" name="hero_arc_ramp_strength" top="198" width="154" />
                     </panel>
+                        </flow_grid>
+                    </scroll_container>
+                </panel>
+                <panel background_visible="false" follows="all" height="525" label="Operator" layout="topleft" name="operator_tab" width="711">
+                    <scroll_container follows="all" height="525" layout="topleft" left="0" name="operator_flow_scroll" opaque="false" reserve_scroll_corner="false" top="0" width="711">
+                        <flow_grid card_width="340" column_gap="12" fit_cards="true" follows="all" height="8" layout="topleft" left="0" max_columns="3" name="operator_flow_grid" pad="8" row_gap="12" top="0" width="695">
                     <panel
                      background_visible="false"
                      border="true"
                      follows="left|top"
                      layout="topleft"
                      left="0"
-                     name="anim_switcher_card"
+                     name="camera_shake_card"
                      top="0"
                      width="340">
                         <text
@@ -1234,81 +1224,27 @@
                          height="16"
                          layout="topleft"
                          left="8"
-                         name="anim_switcher_card_title"
+                         name="camera_shake_card_title"
                          top="6"
                          width="324">
-                            Anim Switchboard
-                        </text>
-                        <panel
-                         class="panel_director_anim_switcher"
-                         filename="panel_director_anim_switcher.xml"
-                         follows="left|top|right"
-                         layout="topleft"
-                         left="0"
-                         name="director_anim_switcher_embedded"
-                         top="28"
-                         width="340" />
-                    </panel>
-                    <panel
-                     background_visible="false"
-                     border="true"
-                     follows="left|top"
-                     layout="topleft"
-                     left="0"
-                     name="camera_cinematic_card"
-                     top="0"
-                     width="340">
-                        <text
-                         follows="left|top|right"
-                         font="SansSerifBold"
-                         height="16"
-                         layout="topleft"
-                         left="8"
-                         name="camera_cinematic_card_title"
-                         top="6"
-                         width="324">
-                            Cinematic
+                            Camera Shake
                         </text>
                         <panel
                          class="panel_cinecam_params"
-                         filename="panel_cinecam_params.xml"
+                         filename="panel_cinecam_operator.xml"
                          follows="left|top|right"
                          layout="topleft"
-                         left="8"
-                         name="cinecam_params_embedded"
+                         left="0"
+                         name="cinecam_operator_embedded"
                          top="28"
-                         width="320" />
+                         width="340" />
                     </panel>
-                    <panel
-                     background_visible="false"
-                     border="true"
-                     follows="left|top"
-                     layout="topleft"
-                     left="0"
-                     name="camera_flycam_orbit_card"
-                     top="0"
-                     width="340">
-                        <text
-                         follows="left|top|right"
-                         font="SansSerifBold"
-                         height="16"
-                         layout="topleft"
-                         left="8"
-                         name="camera_flycam_orbit_card_title"
-                         top="6"
-                         width="324">
-                            Flycam Orbit
-                        </text>
-                        <panel
-                         class="panel_flycam_orbit"
-                         filename="panel_flycam_orbit.xml"
-                         follows="left|top|right"
-                         layout="topleft"
-                         left="8"
-                         name="flycam_orbit_embedded"
-                         top="28"
-                         width="320" />
-                    </panel>
+                        </flow_grid>
+                    </scroll_container>
+                </panel>
+                <panel background_visible="false" follows="all" height="525" label="Frame &amp; Orbit" layout="topleft" name="frame_orbit_tab" width="711">
+                    <scroll_container follows="all" height="525" layout="topleft" left="0" name="frame_orbit_flow_scroll" opaque="false" reserve_scroll_corner="false" top="0" width="711">
+                        <flow_grid card_width="340" column_gap="12" fit_cards="true" follows="all" height="8" layout="topleft" left="0" max_columns="3" name="frame_orbit_flow_grid" pad="8" row_gap="12" top="0" width="695">
                     <panel
                      background_visible="false"
                      border="true"
@@ -1345,7 +1281,7 @@
                      follows="left|top"
                      layout="topleft"
                      left="0"
-                     name="camera_shake_card"
+                     name="camera_flycam_orbit_card"
                      top="0"
                      width="340">
                         <text
@@ -1354,30 +1290,24 @@
                          height="16"
                          layout="topleft"
                          left="8"
-                         name="camera_shake_card_title"
+                         name="camera_flycam_orbit_card_title"
                          top="6"
                          width="324">
-                            Camera Shake
+                            Flycam Orbit
                         </text>
                         <panel
-                         class="panel_cinecam_params"
-                         filename="panel_cinecam_operator.xml"
+                         class="panel_flycam_orbit"
+                         filename="panel_flycam_orbit.xml"
                          follows="left|top|right"
                          layout="topleft"
-                         left="0"
-                         name="cinecam_operator_embedded"
+                         left="8"
+                         name="flycam_orbit_embedded"
                          top="28"
-                         width="340" />
+                         width="320" />
                     </panel>
-                </flow_grid>
-            </scroll_container>
-        </panel>
-
-        <!-- ============ Takes tab ============ -->
-        <!-- Transport + controls are the shared ALPanelFlycamRecorder
-             (panel_flycam_recorder.xml), the same panel the standalone Flycam
-             Recorder floater embeds -> identical UI, one LLFlycamRecorder
-             singleton, no hand-copied widgets to drift. -->
+                        </flow_grid>
+                    </scroll_container>
+                </panel>
         <panel
          follows="all"
          background_visible="false"
@@ -1397,253 +1327,50 @@
              name="flycam_recorder_embedded"
              width="320" />
         </panel>
-
-        <!-- ============ Projector volumetrics tab ============ -->
-        <!-- Complete Director-console mirror of Lightbox > Proj Shafts. Both
-             panels bind the same renderer settings and shared quick presets. -->
-        <panel
-         follows="all"
-         background_visible="false"
-         height="550"
-         label="Shafts"
-         layout="topleft"
-         name="projector_volumetrics_tab"
-         top="0"
-         width="374">
-            <scroll_container
-             follows="all"
-             height="526"
-             layout="topleft"
-             left="0"
-             name="projector_volumetrics_scroll"
-             opaque="false"
-             reserve_scroll_corner="false"
-             top="4"
-             width="374">
-                <panel
-                 background_visible="false"
-                 follows="left|top|right"
-                 layout="topleft"
-                 left="0"
-                 name="projector_volumetrics_scroll_content"
-                 top="0"
-                 width="354">
-            <text
-             follows="left|top"
-             font="SansSerifBold"
-             height="16"
-             layout="topleft"
-             left="10"
-             top="12"
-             value="Projector Volumetrics"
-             width="330" />
-            <text follows="left|top" height="15" layout="topleft" left="12" top="42" value="Preset:" width="54" />
-            <combo_box follows="left|top" height="22" layout="topleft" left="70" name="director_ps_preset" top="36" tool_tip="Apply a complete projector-shaft starting point; Froxel/Voxel Air settings are not changed." width="254">
-                <combo_box.item label="Custom" name="director_ps_preset_custom" value="-1" />
-                <combo_box.item label="Fast Preview" name="director_ps_preset_fast" value="0" />
-                <combo_box.item label="Balanced" name="director_ps_preset_balanced" value="1" />
-                <combo_box.item label="Cinematic" name="director_ps_preset_cinematic" value="2" />
-                <combo_box.item label="Hazy Stage" name="director_ps_preset_hazy" value="3" />
-                <combo_box.item label="Clear Air" name="director_ps_preset_clear" value="4" />
-                <combo_box.item label="Searchlight" name="director_ps_preset_searchlight" value="5" />
-                <combo_box.item label="Dust Storm" name="director_ps_preset_dust_storm" value="6" />
-                <combo_box.item label="Dream Mist" name="director_ps_preset_dream_mist" value="7" />
-            </combo_box>
-            <check_box
-             control_name="BDMergeProjectorVolumetrics"
-             follows="left|top"
-             height="18"
-             label="Enable volumetric projector cones"
-             layout="topleft"
-             left="12"
-             top="66"
-             width="330" />
-            <text follows="left|top" height="16" layout="topleft" left="12" top="98" value="Brightness:" width="120" />
-            <slider can_edit_text="true" control_name="BDMergeProjectorVolumetricsMultiplier" decimal_digits="2" enabled_control="BDMergeProjectorVolumetrics" follows="left|top" height="20" increment="0.05" layout="topleft" left="136" max_val="30" min_val="0.01" name="director_ps_multiplier" show_text="true" top="94" width="188" />
-            <button commit_callback.function="Director.ResetControlDefault" commit_callback.parameter="BDMergeProjectorVolumetricsMultiplier" follows="left|top" height="18" image_overlay="Refresh_Off" layout="topleft" left="330" name="director_ps_multiplier_reset" top="95" tool_tip="Reset to default value" width="18" />
-            <text follows="left|top" height="16" layout="topleft" left="12" top="130" value="Quality (samples):" width="120" />
-            <slider can_edit_text="true" control_name="BDMergeProjectorVolumetricsResolution" decimal_digits="0" enabled_control="BDMergeProjectorVolumetrics" follows="left|top" height="20" increment="1" layout="topleft" left="136" max_val="64" min_val="8" name="director_ps_resolution" show_text="true" top="126" width="188" />
-            <button commit_callback.function="Director.ResetControlDefault" commit_callback.parameter="BDMergeProjectorVolumetricsResolution" follows="left|top" height="18" image_overlay="Refresh_Off" layout="topleft" left="330" name="director_ps_resolution_reset" top="127" tool_tip="Reset to default value" width="18" />
-            <text follows="left|top" height="16" layout="topleft" left="12" top="162" value="Forward glow:" width="120" />
-            <slider can_edit_text="true" control_name="BDMergeProjectorVolumetricsAnisotropy" decimal_digits="2" enabled_control="BDMergeProjectorVolumetrics" follows="left|top" height="20" increment="0.01" layout="topleft" left="136" max_val="0.95" min_val="0" name="director_ps_anisotropy" show_text="true" top="158" width="188" />
-            <button commit_callback.function="Director.ResetControlDefault" commit_callback.parameter="BDMergeProjectorVolumetricsAnisotropy" follows="left|top" height="18" image_overlay="Refresh_Off" layout="topleft" left="330" name="director_ps_anisotropy_reset" top="159" tool_tip="Reset to default value" width="18" />
-            <text follows="left|top" font="SansSerifBold" height="16" layout="topleft" left="10" top="190" value="Quality &amp; Performance" width="330" />
-            <check_box
-             control_name="BDMergeProjectorVolumetricsHalfRes"
-             enabled_control="BDMergeProjectorVolumetrics"
-             follows="left|top"
-             height="18"
-             label="Half-res march (faster)"
-             layout="topleft"
-             left="12"
-             top="216"
-             width="330" />
-            <check_box
-             control_name="BDMergeProjectorVolumetricsTemporal"
-             enabled_control="BDMergeProjectorVolumetrics"
-             follows="left|top"
-             height="18"
-             label="Temporal accumulation (needs half-res)"
-             layout="topleft"
-             left="12"
-             top="242"
-             width="330" />
-            <text
-             follows="left|top"
-             height="16"
-             layout="topleft"
-             left="12"
-             top="274"
-             value="Temporal blend:"
-             width="120" />
-            <slider
-             can_edit_text="true"
-             control_name="BDMergeProjectorVolumetricsTemporalBlend"
-             decimal_digits="2"
-             enabled_control="BDMergeProjectorVolumetricsTemporal"
-             follows="left|top"
-             height="20"
-             increment="0.01"
-             layout="topleft"
-             left="136"
-             max_val="0.98"
-             min_val="0"
-             name="director_projvol_temporal_blend"
-             show_text="true"
-             top="270"
-             width="188" />
-            <button commit_callback.function="Director.ResetControlDefault" commit_callback.parameter="BDMergeProjectorVolumetricsTemporalBlend" follows="left|top" height="18" image_overlay="Refresh_Off" layout="topleft" left="330" name="director_ps_temporal_blend_reset" top="271" tool_tip="Reset to default value" width="18" />
-            <text
-             follows="left|top"
-             height="16"
-             layout="topleft"
-             left="12"
-             top="306"
-             value="Temporal reject:"
-             width="120" />
-            <slider
-             can_edit_text="true"
-             control_name="BDMergeProjectorVolumetricsTemporalReject"
-             decimal_digits="1"
-             enabled_control="BDMergeProjectorVolumetricsTemporal"
-             follows="left|top"
-             height="20"
-             increment="0.1"
-             layout="topleft"
-             left="136"
-             max_val="8"
-             min_val="0"
-             name="director_projvol_temporal_reject"
-             show_text="true"
-             tool_tip="Reduces history where the current and reprojected shaft disagree."
-             top="302"
-             width="188" />
-            <button commit_callback.function="Director.ResetControlDefault" commit_callback.parameter="BDMergeProjectorVolumetricsTemporalReject" follows="left|top" height="18" image_overlay="Refresh_Off" layout="topleft" left="330" name="director_ps_temporal_reject_reset" top="303" tool_tip="Reset to default value" width="18" />
-            <check_box
-             control_name="BDMergeProjectorVolumetricsTemporalBeamDepth"
-             enabled_control="BDMergeProjectorVolumetricsTemporal"
-             follows="left|top"
-             height="18"
-             label="Track airborne beam depth"
-             layout="topleft"
-             left="12"
-             tool_tip="Reproject from the shaft's luminance-weighted mean distance instead of the wall."
-             top="338"
-             width="330" />
-            <check_box control_name="BDMergeProjectorVolumetricsScissor" enabled_control="BDMergeProjectorVolumetrics" follows="left|top" height="18" label="Scissor cull" layout="topleft" left="12" top="364" width="330" />
-            <check_box control_name="BDMergeProjectorVolumetricsAdaptive" enabled_control="BDMergeProjectorVolumetrics" follows="left|top" height="18" label="Adaptive samples" layout="topleft" left="12" top="390" width="330" />
-            <text follows="left|top" height="16" layout="topleft" left="12" top="422" value="Min samples:" width="120" />
-            <slider can_edit_text="true" control_name="BDMergeProjectorVolumetricsMinResolution" decimal_digits="0" enabled_control="BDMergeProjectorVolumetrics" follows="left|top" height="20" increment="1" layout="topleft" left="136" max_val="32" min_val="4" name="director_ps_min_resolution" show_text="true" top="418" width="188" />
-            <button commit_callback.function="Director.ResetControlDefault" commit_callback.parameter="BDMergeProjectorVolumetricsMinResolution" follows="left|top" height="18" image_overlay="Refresh_Off" layout="topleft" left="330" name="director_ps_min_resolution_reset" top="419" tool_tip="Reset to default value" width="18" />
-            <text follows="left|top" height="16" layout="topleft" left="12" top="454" value="HDR clamp:" width="120" />
-            <slider can_edit_text="true" control_name="BDMergeProjectorVolumetricsMaxLuminance" decimal_digits="1" enabled_control="BDMergeProjectorVolumetrics" follows="left|top" height="20" increment="0.5" layout="topleft" left="136" max_val="64" min_val="1" name="director_ps_max_luminance" show_text="true" top="450" width="188" />
-            <button commit_callback.function="Director.ResetControlDefault" commit_callback.parameter="BDMergeProjectorVolumetricsMaxLuminance" follows="left|top" height="18" image_overlay="Refresh_Off" layout="topleft" left="330" name="director_ps_max_luminance_reset" top="451" tool_tip="Reset to default value" width="18" />
-            <text follows="left|top" height="16" layout="topleft" left="12" top="486" value="Dither mode:" width="120" />
-            <slider can_edit_text="true" control_name="BDMergeProjectorVolumetricsDither" decimal_digits="0" enabled_control="BDMergeProjectorVolumetrics" follows="left|top" height="20" increment="1" layout="topleft" left="136" max_val="2" min_val="0" name="director_ps_dither" show_text="true" tool_tip="0 = off; 1 = static; 2 = always animated." top="482" width="188" />
-            <button commit_callback.function="Director.ResetControlDefault" commit_callback.parameter="BDMergeProjectorVolumetricsDither" follows="left|top" height="18" image_overlay="Refresh_Off" layout="topleft" left="330" name="director_ps_dither_reset" top="483" tool_tip="Reset to default value" width="18" />
-            <check_box control_name="BDMergeProjectorVolumetricsTemporalDither" enabled_control="BDMergeProjectorVolumetrics" follows="left|top" height="18" label="Temporal anti-banding (no extra samples)" layout="topleft" left="12" tool_tip="Cycles the static march phase only while temporal accumulation can average it." top="514" width="330" />
-
-            <text follows="left|top" font="SansSerifBold" height="16" layout="topleft" left="10" top="542" value="Shadows &amp; Edges" width="330" />
-            <text follows="left|top" height="16" layout="topleft" left="12" top="570" value="Occluder shadows:" width="120" />
-            <slider can_edit_text="true" control_name="BDMergeProjectorVolumetricsShadowSamples" decimal_digits="0" enabled_control="BDMergeProjectorVolumetrics" follows="left|top" height="20" increment="1" layout="topleft" left="136" max_val="4" min_val="1" name="director_ps_shadow_samples" show_text="true" top="566" width="188" />
-            <button commit_callback.function="Director.ResetControlDefault" commit_callback.parameter="BDMergeProjectorVolumetricsShadowSamples" follows="left|top" height="18" image_overlay="Refresh_Off" layout="topleft" left="330" name="director_ps_shadow_samples_reset" top="567" tool_tip="Reset to default value" width="18" />
-            <text follows="left|top" height="16" layout="topleft" left="12" top="602" value="Cone edge feather:" width="120" />
-            <slider can_edit_text="true" control_name="BDMergeProjectorVolumetricsFeather" decimal_digits="2" enabled_control="BDMergeProjectorVolumetrics" follows="left|top" height="20" increment="0.01" layout="topleft" left="136" max_val="0.5" min_val="0" name="director_ps_feather" show_text="true" top="598" width="188" />
-            <button commit_callback.function="Director.ResetControlDefault" commit_callback.parameter="BDMergeProjectorVolumetricsFeather" follows="left|top" height="18" image_overlay="Refresh_Off" layout="topleft" left="330" name="director_ps_feather_reset" top="599" tool_tip="Reset to default value" width="18" />
-            <text follows="left|top" height="16" layout="topleft" left="12" top="634" value="Gobo shadow tint:" width="120" />
-            <slider can_edit_text="true" control_name="BDMergeProjectorVolumetricsShadowTint" decimal_digits="2" enabled_control="BDMergeProjectorVolumetrics" follows="left|top" height="20" increment="0.01" layout="topleft" left="136" max_val="1" min_val="0" name="director_ps_shadow_tint" show_text="true" top="630" width="188" />
-            <button commit_callback.function="Director.ResetControlDefault" commit_callback.parameter="BDMergeProjectorVolumetricsShadowTint" follows="left|top" height="18" image_overlay="Refresh_Off" layout="topleft" left="330" name="director_ps_shadow_tint_reset" top="631" tool_tip="Reset to default value" width="18" />
-
-            <text follows="left|top" font="SansSerifBold" height="16" layout="topleft" left="10" top="666" value="Color" width="330" />
-            <text follows="left|top" height="16" layout="topleft" left="12" top="698" value="Shaft tint:" width="120" />
-            <color_swatch can_apply_immediately="true" control_name="BDMergeProjectorVolumetricsTint" enabled_control="BDMergeProjectorVolumetrics" follows="left|top" height="22" layout="topleft" left="136" name="director_ps_tint" top="690" width="44" />
-            <button commit_callback.function="Director.ResetControlDefault" commit_callback.parameter="BDMergeProjectorVolumetricsTint" follows="left|top" height="18" image_overlay="Refresh_Off" layout="topleft" left="330" name="director_ps_tint_reset" top="691" tool_tip="Reset to default value" width="18" />
-            <text follows="left|top" height="16" layout="topleft" left="12" top="726" value="Tint strength:" width="120" />
-            <slider can_edit_text="true" control_name="BDMergeProjectorVolumetricsTintStrength" decimal_digits="2" enabled_control="BDMergeProjectorVolumetrics" follows="left|top" height="20" increment="0.01" layout="topleft" left="136" max_val="1" min_val="0" name="director_ps_tint_strength" show_text="true" top="722" width="188" />
-            <button commit_callback.function="Director.ResetControlDefault" commit_callback.parameter="BDMergeProjectorVolumetricsTintStrength" follows="left|top" height="18" image_overlay="Refresh_Off" layout="topleft" left="330" name="director_ps_tint_strength_reset" top="723" tool_tip="Reset to default value" width="18" />
-
-            <text follows="left|top" font="SansSerifBold" height="16" layout="topleft" left="10" top="758" value="Atmosphere" width="330" />
-            <text follows="left|top" height="16" layout="topleft" left="12" top="786" value="Density / haze:" width="120" />
-            <slider can_edit_text="true" control_name="BDMergeProjectorVolumetricsDensity" decimal_digits="2" enabled_control="BDMergeProjectorVolumetrics" follows="left|top" height="20" increment="0.05" layout="topleft" left="136" max_val="4" min_val="0" name="director_ps_density" show_text="true" top="782" width="188" />
-            <button commit_callback.function="Director.ResetControlDefault" commit_callback.parameter="BDMergeProjectorVolumetricsDensity" follows="left|top" height="18" image_overlay="Refresh_Off" layout="topleft" left="330" name="director_ps_density_reset" top="783" tool_tip="Reset to default value" width="18" />
-            <text follows="left|top" height="16" layout="topleft" left="12" top="818" value="Dust noise:" width="120" />
-            <slider can_edit_text="true" control_name="BDMergeProjectorVolumetricsNoiseStrength" decimal_digits="2" enabled_control="BDMergeProjectorVolumetrics" follows="left|top" height="20" increment="0.01" layout="topleft" left="136" max_val="1" min_val="0" name="director_ps_noise_strength" show_text="true" top="814" width="188" />
-            <button commit_callback.function="Director.ResetControlDefault" commit_callback.parameter="BDMergeProjectorVolumetricsNoiseStrength" follows="left|top" height="18" image_overlay="Refresh_Off" layout="topleft" left="330" name="director_ps_noise_strength_reset" top="815" tool_tip="Reset to default value" width="18" />
-            <text follows="left|top" height="16" layout="topleft" left="12" top="850" value="Noise scale:" width="120" />
-            <slider can_edit_text="true" control_name="BDMergeProjectorVolumetricsNoiseScale" decimal_digits="2" enabled_control="BDMergeProjectorVolumetrics" follows="left|top" height="20" increment="0.01" layout="topleft" left="136" max_val="2" min_val="0.01" name="director_ps_noise_scale" show_text="true" top="846" width="188" />
-            <button commit_callback.function="Director.ResetControlDefault" commit_callback.parameter="BDMergeProjectorVolumetricsNoiseScale" follows="left|top" height="18" image_overlay="Refresh_Off" layout="topleft" left="330" name="director_ps_noise_scale_reset" top="847" tool_tip="Reset to default value" width="18" />
-            <text follows="left|top" height="16" layout="topleft" left="12" top="882" value="Noise speed:" width="120" />
-            <slider can_edit_text="true" control_name="BDMergeProjectorVolumetricsNoiseSpeed" decimal_digits="2" enabled_control="BDMergeProjectorVolumetrics" follows="left|top" height="20" increment="0.01" layout="topleft" left="136" max_val="2" min_val="-2" name="director_ps_noise_speed" show_text="true" top="878" width="188" />
-            <button commit_callback.function="Director.ResetControlDefault" commit_callback.parameter="BDMergeProjectorVolumetricsNoiseSpeed" follows="left|top" height="18" image_overlay="Refresh_Off" layout="topleft" left="330" name="director_ps_noise_speed_reset" top="879" tool_tip="Reset to default value" width="18" />
-            <text follows="left|top" height="16" layout="topleft" left="12" top="914" value="Wind azimuth:" width="120" />
-            <slider can_edit_text="true" control_name="BDMergeFroxelWindAzimuth" decimal_digits="0" enabled_control="BDMergeProjectorVolumetrics" follows="left|top" height="20" increment="1" layout="topleft" left="136" max_val="360" min_val="0" name="director_ps_wind_azimuth" show_text="true" tool_tip="Wind compass bearing (0=N, 90=E), shared by froxel air and beam dust." top="910" width="188" />
-            <button commit_callback.function="Director.ResetControlDefault" commit_callback.parameter="BDMergeFroxelWindAzimuth" follows="left|top" height="18" image_overlay="Refresh_Off" layout="topleft" left="330" name="director_ps_wind_azimuth_reset" top="911" tool_tip="Reset to default value" width="18" />
-            <text follows="left|top" height="16" layout="topleft" left="12" top="946" value="Wind elevation:" width="120" />
-            <slider can_edit_text="true" control_name="BDMergeFroxelWindElevation" decimal_digits="0" enabled_control="BDMergeProjectorVolumetrics" follows="left|top" height="20" increment="1" layout="topleft" left="136" max_val="90" min_val="-90" name="director_ps_wind_elevation" show_text="true" top="942" width="188" />
-            <button commit_callback.function="Director.ResetControlDefault" commit_callback.parameter="BDMergeFroxelWindElevation" follows="left|top" height="18" image_overlay="Refresh_Off" layout="topleft" left="330" name="director_ps_wind_elevation_reset" top="943" tool_tip="Reset to default value" width="18" />
-            <check_box control_name="BDMergeFroxelWindInverted" enabled_control="BDMergeProjectorVolumetrics" follows="left|top" height="18" label="Invert wind direction" layout="topleft" left="136" name="director_ps_wind_inverted" top="974" width="200" />
-            <text follows="left|top" height="16" layout="topleft" left="12" top="1002" value="Height fog:" width="120" />
-            <slider can_edit_text="true" control_name="BDMergeProjectorVolumetricsFogStrength" decimal_digits="2" enabled_control="BDMergeProjectorVolumetrics" follows="left|top" height="20" increment="0.01" layout="topleft" left="136" max_val="1" min_val="0" name="director_ps_fog_strength" show_text="true" top="998" width="188" />
-            <button commit_callback.function="Director.ResetControlDefault" commit_callback.parameter="BDMergeProjectorVolumetricsFogStrength" follows="left|top" height="18" image_overlay="Refresh_Off" layout="topleft" left="330" name="director_ps_fog_strength_reset" top="999" tool_tip="Reset to default value" width="18" />
-            <text follows="left|top" height="16" layout="topleft" left="12" top="1034" value="Fog ground dens.:" width="120" />
-            <slider can_edit_text="true" control_name="BDMergeProjectorVolumetricsFogGroundDensity" decimal_digits="2" enabled_control="BDMergeProjectorVolumetrics" follows="left|top" height="20" increment="0.05" layout="topleft" left="136" max_val="4" min_val="0" name="director_ps_fog_ground_density" show_text="true" top="1030" width="188" />
-            <button commit_callback.function="Director.ResetControlDefault" commit_callback.parameter="BDMergeProjectorVolumetricsFogGroundDensity" follows="left|top" height="18" image_overlay="Refresh_Off" layout="topleft" left="330" name="director_ps_fog_ground_density_reset" top="1031" tool_tip="Reset to default value" width="18" />
-            <text follows="left|top" height="16" layout="topleft" left="12" top="1066" value="Fog falloff (m):" width="120" />
-            <slider can_edit_text="true" control_name="BDMergeProjectorVolumetricsFogFalloff" decimal_digits="1" enabled_control="BDMergeProjectorVolumetrics" follows="left|top" height="20" increment="0.5" layout="topleft" left="136" max_val="256" min_val="0.5" name="director_ps_fog_falloff" show_text="true" top="1062" width="188" />
-            <button commit_callback.function="Director.ResetControlDefault" commit_callback.parameter="BDMergeProjectorVolumetricsFogFalloff" follows="left|top" height="18" image_overlay="Refresh_Off" layout="topleft" left="330" name="director_ps_fog_falloff_reset" top="1063" tool_tip="Reset to default value" width="18" />
-            <text follows="left|top" height="16" layout="topleft" left="12" top="1098" value="Fog base alt (m):" width="120" />
-            <slider can_edit_text="true" control_name="BDMergeProjectorVolumetricsFogBase" decimal_digits="0" enabled_control="BDMergeProjectorVolumetrics" follows="left|top" height="20" increment="1" layout="topleft" left="136" max_val="4096" min_val="0" name="director_ps_fog_base" show_text="true" top="1094" width="188" />
-            <button commit_callback.function="Director.ResetControlDefault" commit_callback.parameter="BDMergeProjectorVolumetricsFogBase" follows="left|top" height="18" image_overlay="Refresh_Off" layout="topleft" left="330" name="director_ps_fog_base_reset" top="1095" tool_tip="Reset to default value" width="18" />
-            <text follows="left|top" height="16" layout="topleft" left="12" top="1130" value="Bloom halo:" width="120" />
-            <slider can_edit_text="true" control_name="BDMergeProjectorVolumetricsBloomFeed" decimal_digits="2" enabled_control="BDMergeProjectorVolumetrics" follows="left|top" height="20" increment="0.01" layout="topleft" left="136" max_val="2" min_val="0" name="director_ps_bloom_feed" show_text="true" top="1126" width="188" />
-            <button commit_callback.function="Director.ResetControlDefault" commit_callback.parameter="BDMergeProjectorVolumetricsBloomFeed" follows="left|top" height="18" image_overlay="Refresh_Off" layout="topleft" left="330" name="director_ps_bloom_feed_reset" top="1127" tool_tip="Reset to default value" width="18" />
-            <text follows="left|top" height="16" layout="topleft" left="12" top="1162" value="Shaft length (m):" width="120" />
-            <slider can_edit_text="true" control_name="BDMergeProjectorVolumetricsMaxDistance" decimal_digits="1" enabled_control="BDMergeProjectorVolumetrics" follows="left|top" height="20" increment="0.1" layout="topleft" left="136" max_val="64" min_val="0" name="director_ps_max_distance" show_text="true" top="1158" tool_tip="Maximum visible airborne beam length. 0 follows the projector's full light range; surface illumination is unchanged. Hover and scroll the mouse wheel for 0.1 m steps." wheel_adjust="true" width="188" />
-            <button commit_callback.function="Director.ResetControlDefault" commit_callback.parameter="BDMergeProjectorVolumetricsMaxDistance" follows="left|top" height="18" image_overlay="Refresh_Off" layout="topleft" left="330" name="director_ps_max_distance_reset" top="1159" tool_tip="Reset to full projector range" width="18" />
-
-            <text follows="left|top" font="SansSerifBold" height="16" layout="topleft" left="10" top="1194" value="Shadow Quality (Batch 2)" width="330" />
-            <check_box control_name="BDMergeSoftProjectorShadows" follows="left|top" height="18" label="Soft projector shadows (contact-hardening + fill)" layout="topleft" left="12" tool_tip="Widen projector shadow softness with receiver distance and add an ambient fill floor." top="1222" width="330" />
-            <text follows="left|top" height="16" layout="topleft" left="12" top="1248" value="Softness:" width="120" />
-            <slider can_edit_text="true" control_name="BDMergeSoftShadowSoftness" decimal_digits="1" enabled_control="BDMergeSoftProjectorShadows" follows="left|top" height="20" increment="0.1" layout="topleft" left="136" max_val="16" min_val="0" name="director_ps_softness" show_text="true" top="1244" width="188" />
-            <button commit_callback.function="Director.ResetControlDefault" commit_callback.parameter="BDMergeSoftShadowSoftness" follows="left|top" height="18" image_overlay="Refresh_Off" layout="topleft" left="330" name="director_ps_softness_reset" top="1245" tool_tip="Reset to default value" width="18" />
-            <text follows="left|top" height="16" layout="topleft" left="12" top="1280" value="Max penumbra:" width="120" />
-            <slider can_edit_text="true" control_name="BDMergeSoftShadowMaxPenumbra" decimal_digits="1" enabled_control="BDMergeSoftProjectorShadows" follows="left|top" height="20" increment="0.5" layout="topleft" left="136" max_val="16" min_val="1" name="director_ps_max_penumbra" show_text="true" top="1276" width="188" />
-            <button commit_callback.function="Director.ResetControlDefault" commit_callback.parameter="BDMergeSoftShadowMaxPenumbra" follows="left|top" height="18" image_overlay="Refresh_Off" layout="topleft" left="330" name="director_ps_max_penumbra_reset" top="1277" tool_tip="Reset to default value" width="18" />
-            <text follows="left|top" height="16" layout="topleft" left="12" top="1312" value="Ambient fill:" width="120" />
-            <slider can_edit_text="true" control_name="BDMergeSoftShadowFill" decimal_digits="2" enabled_control="BDMergeSoftProjectorShadows" follows="left|top" height="20" increment="0.01" layout="topleft" left="136" max_val="1" min_val="0" name="director_ps_ambient_fill" show_text="true" top="1308" width="188" />
-            <button commit_callback.function="Director.ResetControlDefault" commit_callback.parameter="BDMergeSoftShadowFill" follows="left|top" height="18" image_overlay="Refresh_Off" layout="topleft" left="330" name="director_ps_ambient_fill_reset" top="1309" tool_tip="Reset to default value" width="18" />
-            <check_box control_name="BDMergeSoftShadowSun" enabled_control="BDMergeSoftProjectorShadows" follows="left|top" height="18" label="Also soften sun/moon shadows" layout="topleft" left="12" top="1340" width="330" />
-            <check_box control_name="BDMergeGoboAnisotropic" follows="left|top" height="18" label="Gobo anisotropic/mip filtering (anti-alias)" layout="topleft" left="12" tool_tip="Filter projector cookies so gobos stay crisp at distance and grazing angles." top="1366" width="330" />
-                </panel>
-            </scroll_container>
+            </tab_container>
         </panel>
+        <panel background_visible="false" follows="all" height="548" label="Lens" layout="topleft" name="lens_group" top="0" width="713">
+            <tab_container follows="all" height="548" layout="topleft" left="0" name="lens_tabs" tab_height="22" tab_min_width="60" tab_position="top" top="0" width="713">
+                <panel background_visible="false" follows="all" height="525" label="Focus" layout="topleft" name="focus_tab" width="711">
 
-        <!-- ============ Cinematic light rig tab ============ -->
+                    <panel class="panel_dof" filename="panel_dof.xml" follows="left|top" layout="topleft" left="0" name="director_dof_panel" top="4" width="400"/>
+                </panel>
+                <panel background_visible="false" follows="all" height="525" label="Filters" layout="topleft" name="filters_tab" width="711">
+
+                    <panel class="panel_lens_looks" filename="panel_lens_looks.xml" follows="left|top" layout="topleft" left="0" name="director_lens_looks_panel" top="4" width="400"/>
+                </panel>
+                <panel background_visible="false" follows="all" height="525" label="VCam" layout="topleft" name="vcam_tab" width="711">
+                    <scroll_container follows="all" height="525" layout="topleft" left="0" name="vcam_flow_scroll" opaque="false" reserve_scroll_corner="false" top="0" width="711">
+                        <flow_grid card_width="360" column_gap="12" fit_cards="true" follows="all" height="8" layout="topleft" left="0" max_columns="3" name="vcam_flow_grid" pad="8" row_gap="12" top="0" width="695">
+                    <panel background_visible="false" border="true" follows="left|top" layout="topleft" left="0" name="lens_vcam_card" top="0" width="360">
+                        <text follows="left|top|right" font="SansSerifBold" height="16" layout="topleft" left="8" name="lens_vcam_card_title" top="6" width="344">Virtual Cam</text>
+                        <check_box control_name="PrismLensEnabled" follows="left|top" height="18" label="Enable Virtual Cam" layout="topleft" left="8" name="prism_lens_enabled" top="28" tool_tip="Master render toggle. Captures and displays remain editable while disabled." width="138" />
+                        <text follows="left|top|right" height="18" layout="topleft" left="150" name="prism_summary" top="30" tool_tip="Open Virtual Cam Manager for camera sources, faces, optics, picture FPS, and adaptive performance." use_ellipses="true" width="202">VCam 0/8 captures | 0/16 faces</text>
+                        <button follows="left|top" height="22" label="Open Virtual Cam Manager..." layout="topleft" left="8" name="btn_prism_manage" top="52" tool_tip="Open Virtual Cam Manager for captures, displays, optics, picture rate, and performance." width="220" />
+                    </panel>
+                        </flow_grid>
+                    </scroll_container>
+                </panel>
+                <panel background_visible="false" follows="all" height="525" label="Diopter" layout="topleft" name="diopter_tab" width="711">
+                    <scroll_container follows="all" height="525" layout="topleft" left="0" name="diopter_flow_scroll" opaque="false" reserve_scroll_corner="false" top="0" width="711">
+                        <flow_grid card_width="360" column_gap="12" fit_cards="true" follows="all" height="8" layout="topleft" left="0" max_columns="3" name="diopter_flow_grid" pad="8" row_gap="12" top="0" width="695">
+                    <panel background_visible="false" border="true" follows="left|top" layout="topleft" left="0" name="card_diopter" top="0" width="360">
+                        <text follows="left|top|right" font="SansSerifBold" height="16" layout="topleft" left="8" name="card_diopter_title" top="6" width="344">Ultimate Diopter</text>
+                        <text follows="left|top|right" height="16" layout="topleft" left="8" name="card_diopter_summary" text_color="LtGray_50" top="26" use_ellipses="true" width="344">-</text>
+                        <button follows="left|top" height="22" label="Open Ultimate Diopter..." layout="topleft" left="8" name="card_diopter_open" tool_tip="Open Ultimate Diopter lens controls" top="48" width="220" />
+                    </panel>
+                        </flow_grid>
+                    </scroll_container>
+                </panel>
+            </tab_container>
+        </panel>
+        <panel background_visible="false" follows="all" height="548" label="Light" layout="topleft" name="light_group" top="0" width="713">
+            <tab_container follows="all" height="548" layout="topleft" left="0" name="light_tabs" tab_height="22" tab_min_width="60" tab_position="top" top="0" width="713">
         <panel
          follows="all"
          background_visible="false"
          height="550"
-         label="Lights"
+         label="Rig"
          layout="topleft"
          name="cine_light_rig_tab"
          top="0"
@@ -1668,117 +1395,79 @@
                  width="354" />
             </scroll_container>
         </panel>
-
-        <!-- ============ Weather tab ============ -->
-        <!-- Shared with Lightbox: one settings surface owns all controls,
-             named presets, reset, manual strike, and deferred-path feedback. -->
-        <panel
-         follows="all"
-         background_visible="false"
-         height="550"
-         label="Weather"
-         layout="topleft"
-         name="weather_tab"
-         top="0"
-         width="374">
-            <scroll_container
-             follows="all"
-             height="526"
-             layout="topleft"
-             left="0"
-             top="4"
-             name="weather_scroll"
-             opaque="false"
-             width="374">
-                <panel
-                 background_visible="false"
-                 layout="topleft"
-                 left="0"
-                 top="0"
-                 name="weather_scroll_content"
-                 width="354">
-                    <panel
-                     class="panel_weather_settings"
-                     filename="panel_weather_settings.xml"
-                     follows="left|top"
-                     layout="topleft"
-                     left="2"
-                     top="0"
-                     name="weather_settings_shared"
-                     width="350" />
+                <panel background_visible="false" follows="all" height="525" label="Exposure" layout="topleft" name="exposure_tab" width="711">
+                    <button follows="left|top" height="20" label="Open Exposure window..." layout="topleft" left="8" name="exposure_popout" top="4" width="200" />
+                    <panel class="panel_exposure_hub" filename="panel_exposure_hub.xml" follows="all" layout="topleft" left="0" name="director_exposure_panel" top="30" width="711"/>
                 </panel>
-            </scroll_container>
-        </panel>
-
-        <!-- ============ Atmospheric Volumes tab ============ -->
-        <panel
-         follows="all"
-         background_visible="false"
-         height="550"
-         label="Volumes"
-         layout="topleft"
-         name="atmospheric_volumes_tab"
-         top="0"
-         width="374">
-            <scroll_container
-             follows="all"
-             height="526"
-             layout="topleft"
-             left="0"
-             name="atmospheric_volumes_scroll"
-             opaque="false"
-             top="4"
-             width="374">
-                <panel
-                 background_visible="false"
-                 layout="topleft"
-                 left="0"
-                 name="atmospheric_volumes_scroll_content"
-                 top="0"
-                 width="354">
-                    <panel
-                     class="panel_atmospheric_volumes"
-                     filename="panel_atmospheric_volumes.xml"
-                     follows="left|top|right"
-                     layout="topleft"
-                     left="2"
-                     name="director_atmospheric_volumes_shared"
-                     top="0"
-                     width="350" />
+                <panel background_visible="false" follows="all" height="525" label="Practicals" layout="topleft" name="practicals_tab" width="711">
+                    <scroll_container follows="all" height="525" layout="topleft" left="0" name="practicals_flow_scroll" opaque="false" reserve_scroll_corner="false" top="0" width="711">
+                        <flow_grid card_width="360" column_gap="12" fit_cards="true" follows="all" height="8" layout="topleft" left="0" max_columns="3" name="practicals_flow_grid" pad="8" row_gap="12" top="0" width="695">
+                    <panel background_visible="false" border="true" follows="left|top" layout="topleft" left="0" name="card_practicals" top="0" width="360">
+                        <text follows="left|top|right" font="SansSerifBold" height="16" layout="topleft" left="8" name="card_practicals_title" top="6" width="344">Selected Light</text>
+                        <text follows="left|top|right" height="16" layout="topleft" left="8" name="card_practicals_summary" text_color="LtGray_50" top="26" use_ellipses="true" width="344">-</text>
+                        <button follows="left|top" height="22" label="Open Selected Light..." layout="topleft" left="8" name="card_practicals_open" tool_tip="Open selected-light controls in Lightbox" top="48" width="220" />
+                    </panel>
+                        </flow_grid>
+                    </scroll_container>
                 </panel>
-            </scroll_container>
+                <panel background_visible="false" follows="all" height="525" label="Actors" layout="topleft" name="actors_tab" width="711">
+                    <scroll_container follows="all" height="525" layout="topleft" left="0" name="actors_flow_scroll" opaque="false" reserve_scroll_corner="false" top="0" width="711">
+                        <flow_grid card_width="360" column_gap="12" fit_cards="true" follows="all" height="8" layout="topleft" left="0" max_columns="3" name="actors_flow_grid" pad="8" row_gap="12" top="0" width="695">
+                    <panel background_visible="false" border="true" follows="left|top" layout="topleft" left="0" name="actors_light_response_card" top="0" width="360">
+                        <text follows="left|top" font="SansSerifBold" height="16" layout="topleft" left="8" name="actors_light_response_card_title" top="6" width="200">Avatar Light Response</text>
+                        <button follows="left|top" height="22" label="Open in window..." layout="topleft" left="212" name="light_response_popout" top="3" width="140" />
+                        <panel class="panel_avatar_light_response" filename="panel_avatar_light_response.xml" follows="left|top|right" layout="topleft" left="0" name="director_light_response_panel" top="28" width="360"/>
+                    </panel>
+                    <panel background_visible="false" border="true" follows="left|top" layout="topleft" left="0" name="card_actor_mask" top="0" width="360">
+                        <text follows="left|top|right" font="SansSerifBold" height="16" layout="topleft" left="8" name="card_actor_mask_title" top="6" width="344">Actor Mask</text>
+                        <text follows="left|top|right" height="16" layout="topleft" left="8" name="card_actor_mask_summary" text_color="LtGray_50" top="26" use_ellipses="true" width="344">-</text>
+                        <button follows="left|top" height="22" label="Open Actor Mask..." layout="topleft" left="8" name="card_actor_mask_open" tool_tip="Open Actor Mask controls in Lightbox" top="48" width="220" />
+                    </panel>
+                        </flow_grid>
+                    </scroll_container>
+                </panel>
+                <panel background_visible="false" follows="all" height="525" label="Light Cues" layout="topleft" name="light_cues_tab" width="711">
+                    <scroll_container follows="all" height="525" layout="topleft" left="0" name="light_cues_flow_scroll" opaque="false" reserve_scroll_corner="false" top="0" width="711">
+                        <flow_grid card_width="360" column_gap="12" fit_cards="true" follows="all" height="8" layout="topleft" left="0" max_columns="3" name="light_cues_flow_grid" pad="8" row_gap="12" top="0" width="695">
+                    <panel background_visible="false" border="true" follows="left|top" layout="topleft" left="0" name="card_light_cues" top="0" width="360">
+                        <text follows="left|top|right" font="SansSerifBold" height="16" layout="topleft" left="8" name="card_light_cues_title" top="6" width="344">Lighting Cue Stack</text>
+                        <text follows="left|top|right" height="16" layout="topleft" left="8" name="card_light_cues_summary" text_color="LtGray_50" top="26" use_ellipses="true" width="344">-</text>
+                        <button follows="left|top" height="22" label="Open Cue Stack..." layout="topleft" left="8" name="card_light_cues_open" tool_tip="Open the lighting cue stack" top="48" width="220" />
+                    </panel>
+                        </flow_grid>
+                    </scroll_container>
+                </panel>
+            </tab_container>
         </panel>
-
-        <!-- ============ Time tab (Temporal Capture) ============ -->
-        <!-- Bottom of the rail. The shared Temporal Capture panel
-             (panel_temporal_capture.xml): the SAME panel the standalone floater
-             hosts, so the console is a superset. Self-contained + settings-backed
-             (Temporal*). "World Time Scale" slows/speeds all local cinematic
-             dynamics together while the grid stays real. Panel name kept as
-             "temporal_tab" so the icon map + tab persistence stay wired. -->
-        <panel
-         follows="all"
-         background_visible="false"
-         height="550"
-         label="Time"
-         layout="topleft"
-         name="temporal_tab"
-         top="0"
-         width="374">
-            <panel
-             class="panel_temporal_capture"
-             filename="panel_temporal_capture.xml"
-             follows="left|top|right"
-             layout="topleft"
-             left="0"
-             name="temporal_capture_panel"
-             top="8"
-             width="344" />
-        </panel>
-        <!-- ============ Actor FX tab ============ -->
-        <!-- Styles the live cast actor rather than creating an overlay clone.
-             The selector is independent of Subjects A-D and includes an
-             explicit You record. Values mirror Ghost Studio style ids/ranges. -->
+        <panel background_visible="false" follows="all" height="548" label="Look" layout="topleft" name="look_group" top="0" width="713">
+            <tab_container follows="all" height="548" layout="topleft" left="0" name="look_tabs" tab_height="22" tab_min_width="60" tab_position="top" top="0" width="713">
+                <panel background_visible="false" follows="all" height="525" label="Image" layout="topleft" name="image_tab" width="711">
+                    <scroll_container follows="all" height="525" layout="topleft" left="0" name="image_flow_scroll" opaque="false" reserve_scroll_corner="false" top="0" width="711">
+                        <flow_grid card_width="360" column_gap="12" fit_cards="true" follows="all" height="8" layout="topleft" left="0" max_columns="3" name="image_flow_grid" pad="8" row_gap="12" top="0" width="695">
+                    <panel background_visible="false" border="true" follows="left|top" layout="topleft" left="0" name="card_image" top="0" width="360">
+                        <text follows="left|top|right" font="SansSerifBold" height="16" layout="topleft" left="8" name="card_image_title" top="6" width="344">Image (tone, LUT, sharpen)</text>
+                        <text follows="left|top|right" height="16" layout="topleft" left="8" name="card_image_summary" text_color="LtGray_50" top="26" use_ellipses="true" width="344">-</text>
+                        <button follows="left|top" height="22" label="Open Lightbox Image..." layout="topleft" left="8" name="card_image_open" tool_tip="Open Image controls in Lightbox" top="48" width="220" />
+                    </panel>
+                        </flow_grid>
+                    </scroll_container>
+                </panel>
+                <panel background_visible="false" follows="all" height="525" label="Stylize" layout="topleft" name="stylize_tab" width="711">
+                    <scroll_container follows="all" height="525" layout="topleft" left="0" name="stylize_flow_scroll" opaque="false" reserve_scroll_corner="false" top="0" width="711">
+                        <flow_grid card_width="360" column_gap="12" fit_cards="true" follows="all" height="8" layout="topleft" left="0" max_columns="3" name="stylize_flow_grid" pad="8" row_gap="12" top="0" width="695">
+                    <panel background_visible="false" border="true" follows="left|top" layout="topleft" left="0" name="card_rotoink" top="0" width="360">
+                        <text follows="left|top|right" font="SansSerifBold" height="16" layout="topleft" left="8" name="card_rotoink_title" top="6" width="344">Roto Ink</text>
+                        <text follows="left|top|right" height="16" layout="topleft" left="8" name="card_rotoink_summary" text_color="LtGray_50" top="26" use_ellipses="true" width="344">-</text>
+                        <button follows="left|top" height="22" label="Open Roto Ink..." layout="topleft" left="8" name="card_rotoink_open" tool_tip="Open Roto Ink controls in Lightbox" top="48" width="220" />
+                    </panel>
+                    <panel background_visible="false" border="true" follows="left|top" layout="topleft" left="0" name="card_tron" top="0" width="360">
+                        <text follows="left|top|right" font="SansSerifBold" height="16" layout="topleft" left="8" name="card_tron_title" top="6" width="344">Tron</text>
+                        <text follows="left|top|right" height="16" layout="topleft" left="8" name="card_tron_summary" text_color="LtGray_50" top="26" use_ellipses="true" width="344">-</text>
+                        <button follows="left|top" height="22" label="Open Tron..." layout="topleft" left="8" name="card_tron_open" tool_tip="Open Tron controls in Lightbox" top="48" width="220" />
+                    </panel>
+                        </flow_grid>
+                    </scroll_container>
+                </panel>
         <panel
          follows="all"
          background_visible="false"
@@ -1815,7 +1504,7 @@
                      name="actor_style_header"
                      right="-10"
                      top="10">
-                        Live Actor Styling
+                        Actor FX
                     </text>
                     <text
                      follows="left|top|right"
@@ -1825,8 +1514,9 @@
                      name="actor_style_hint"
                      right="-10"
                      text_color="LtGray_50"
-                     top="31">
-                        Style You or a Director cast member with shared or live-exclusive cinematic looks. Client-side only.
+                     top="31"
+                     word_wrap="true">
+                        Style You or a cast member with cinematic looks. Client-side only.
                     </text>
                     <text follows="left|top" height="16" layout="topleft" left="10" top="70" width="54">
                         Actor:
@@ -1958,7 +1648,120 @@
                 </panel>
             </scroll_container>
         </panel>
-
+            </tab_container>
+        </panel>
+        <panel background_visible="false" follows="all" height="548" label="World" layout="topleft" name="world_group" top="0" width="713">
+            <tab_container follows="all" height="548" layout="topleft" left="0" name="world_tabs" tab_height="22" tab_min_width="60" tab_position="top" top="0" width="713">
+        <panel
+         follows="all"
+         background_visible="false"
+         height="550"
+         label="Weather"
+         layout="topleft"
+         name="weather_tab"
+         top="0"
+         width="374">
+            <scroll_container
+             follows="all"
+             height="526"
+             layout="topleft"
+             left="0"
+             top="4"
+             name="weather_scroll"
+             opaque="false"
+             width="374">
+                <panel
+                 background_visible="false"
+                 layout="topleft"
+                 left="0"
+                 top="0"
+                 name="weather_scroll_content"
+                 width="354">
+                    <panel
+                     class="panel_weather_settings"
+                     filename="panel_weather_settings.xml"
+                     follows="left|top"
+                     layout="topleft"
+                     left="2"
+                     top="0"
+                     name="weather_settings_shared"
+                     width="350" />
+                </panel>
+            </scroll_container>
+        </panel>
+                <panel background_visible="false" follows="all" height="525" label="Atmosphere" layout="topleft" name="atmosphere_tab" width="711">
+                    <scroll_container follows="all" height="525" layout="topleft" left="0" name="atmosphere_flow_scroll" opaque="false" reserve_scroll_corner="false" top="0" width="711">
+                        <flow_grid card_width="360" column_gap="12" fit_cards="true" follows="all" height="8" layout="topleft" left="0" max_columns="3" name="atmosphere_flow_grid" pad="8" row_gap="12" top="0" width="695">
+                    <panel background_visible="false" border="true" follows="left|top" layout="topleft" left="0" name="atmos_volumes_card" top="0" width="360">
+                        <text follows="left|top|right" font="SansSerifBold" height="16" layout="topleft" left="8" name="atmos_volumes_card_title" top="6" width="344">Atmospheric Volumes</text>
+                        <panel class="panel_atmospheric_volumes" filename="panel_atmospheric_volumes.xml" follows="left|top|right" layout="topleft" left="4" name="director_atmospheric_volumes_shared" top="28" width="350"/>
+                    </panel>
+                    <panel background_visible="false" border="true" follows="left|top" layout="topleft" left="0" name="atmos_shafts_card" top="0" width="360">
+                        <text follows="left|top|right" font="SansSerifBold" height="16" layout="topleft" left="8" name="atmos_shafts_card_title" top="6" width="344">Projector Shafts</text>
+                        <panel class="panel_projector_shafts" filename="panel_projector_shafts.xml" follows="left|top|right" layout="topleft" left="0" name="director_projector_shafts" top="28" width="352"/>
+                    </panel>
+                    <panel background_visible="false" border="true" follows="left|top" layout="topleft" left="0" name="card_haze" top="0" width="360">
+                        <text follows="left|top|right" font="SansSerifBold" height="16" layout="topleft" left="8" name="card_haze_title" top="6" width="344">Depth Haze</text>
+                        <text follows="left|top|right" height="16" layout="topleft" left="8" name="card_haze_summary" text_color="LtGray_50" top="26" use_ellipses="true" width="344">-</text>
+                        <button follows="left|top" height="22" label="Open Depth Haze..." layout="topleft" left="8" name="card_haze_open" tool_tip="Open Depth Haze controls in Lightbox" top="48" width="220" />
+                    </panel>
+                        </flow_grid>
+                    </scroll_container>
+                </panel>
+                <panel background_visible="false" follows="all" height="525" label="Shadows &amp; Probes" layout="topleft" name="shadows_probes_tab" width="711">
+                    <scroll_container follows="all" height="525" layout="topleft" left="0" name="shadows_probes_flow_scroll" opaque="false" reserve_scroll_corner="false" top="0" width="711">
+                        <flow_grid card_width="360" column_gap="12" fit_cards="true" follows="all" height="8" layout="topleft" left="0" max_columns="3" name="shadows_probes_flow_grid" pad="8" row_gap="12" top="0" width="695">
+                    <panel background_visible="false" border="true" follows="left|top" layout="topleft" left="0" name="card_shadows_probes" top="0" width="360">
+                        <text follows="left|top|right" font="SansSerifBold" height="16" layout="topleft" left="8" name="card_shadows_probes_title" top="6" width="344">Shadows &amp; Probes</text>
+                        <text follows="left|top|right" height="16" layout="topleft" left="8" name="card_shadows_probes_summary" text_color="LtGray_50" top="26" use_ellipses="true" width="344">-</text>
+                        <button follows="left|top" height="22" label="Open Shadows..." layout="topleft" left="8" name="card_shadows_probes_open" tool_tip="Open shadow and probe controls in Lightbox" top="48" width="220" />
+                    </panel>
+                        </flow_grid>
+                    </scroll_container>
+                </panel>
+            </tab_container>
+        </panel>
+        <panel background_visible="false" follows="all" height="548" label="Capture" layout="topleft" name="capture_group" top="0" width="713">
+            <tab_container follows="all" height="548" layout="topleft" left="0" name="capture_tabs" tab_height="22" tab_min_width="60" tab_position="top" top="0" width="713">
+        <panel
+         follows="all"
+         background_visible="false"
+         height="550"
+         label="Time"
+         layout="topleft"
+         name="temporal_tab"
+         top="0"
+         width="374">
+            <panel
+             class="panel_temporal_capture"
+             filename="panel_temporal_capture.xml"
+             follows="left|top|right"
+             layout="topleft"
+             left="0"
+             name="temporal_capture_panel"
+             top="8"
+             width="344" />
+        </panel>
+                <panel background_visible="false" follows="all" height="525" label="Capture settings" layout="topleft" name="capture_settings_tab" width="711">
+                    <scroll_container follows="all" height="525" layout="topleft" left="0" name="capture_settings_flow_scroll" opaque="false" reserve_scroll_corner="false" top="0" width="711">
+                        <flow_grid card_width="360" column_gap="12" fit_cards="true" follows="all" height="8" layout="topleft" left="0" max_columns="3" name="capture_settings_flow_grid" pad="8" row_gap="12" top="0" width="695">
+                    <panel background_visible="false" border="true" follows="left|top" layout="topleft" left="0" name="card_snapshot" top="0" width="360">
+                        <text follows="left|top|right" font="SansSerifBold" height="16" layout="topleft" left="8" name="card_snapshot_title" top="6" width="344">Snapshot</text>
+                        <text follows="left|top|right" height="16" layout="topleft" left="8" name="card_snapshot_summary" text_color="LtGray_50" top="26" use_ellipses="true" width="344">-</text>
+                        <button follows="left|top" height="22" label="Open Snapshot..." layout="topleft" left="8" name="card_snapshot_open" tool_tip="Open Snapshot" top="48" width="220" />
+                    </panel>
+                        </flow_grid>
+                    </scroll_container>
+                </panel>
+                <panel background_visible="false" follows="all" height="525" label="Scene options" layout="topleft" name="scene_options_tab" width="711">
+                    <text follows="left|top|right" font="SansSerifBold" height="16" layout="topleft" left="10" name="scene_hotkeys_header" top="10" width="680">Hotkeys</text>
+                    <check_box control_name="DirectorHotkeysEnabled" follows="left|top" height="18" label="Enable Director hotkeys" layout="topleft" left="10" name="scene_hotkeys_enabled" top="34" width="260"/>
+                    <text follows="left|top|right" height="96" layout="topleft" left="10" name="scene_hotkeys_list" top="60" width="680" word_wrap="true">F2 toggle console &#183; F3 ACTION / CUT &#183; F4 CUT &#183; F5 reset to marks &#183; F6 pose ghosts on/off &#183; F7 take play/pause &#183; F8 set marks &#183; 1-9 punch camera-switcher slots (console visible, switcher armed, no text focus) &#183; Alt+1-9 punch Anim Switchboard slots (console open, switchboard armed, no text focus) &#183; Esc CUT while running (console focused). F-keys work while the Director or Actor Mover is open; F2 works always.</text>
+                    <text follows="left|top|right" font="SansSerifBold" height="16" layout="topleft" left="10" name="scene_categories_header" top="170" width="680">What a scene saves</text>
+                    <text follows="left|top|right" height="130" layout="topleft" left="10" name="scene_categories_text" top="194" width="680" word_wrap="true">Cast, marks, groups and start delays, locomotion roles, subjects A-D, actor paths, per-actor gaze targets, performance and gaze cues, Actor FX styles; transport arming; camera switcher program; Flycam Orbit; Cinematic camera mode and preset; frame/lens guide; Actor Mover settings; Temporal capture modes; Virtual Cam captures/displays/gate; light rigs, Rig Rim, Roto Ink, Tron. Not saved yet: exposure/tonemap, lens looks, DoF, depth haze, projector shafts, weather, scene-light EVs, Pose Polish, Diopter.</text>
+                </panel>
+            </tab_container>
+        </panel>
     </tab_container>
 
     <!-- ============ status strip ============ -->
@@ -1986,12 +1789,13 @@
     </text>
 
     <!-- ============ legend popover (toggled by the ? button) ============ -->
+    <!-- xui-check: overlay director_tabs legend_panel -->
     <panel
      background_opaque="true"
      background_visible="true"
      border="true"
      follows="left|top"
-     height="280"
+     height="400"
      layout="topleft"
      left="210"
      name="legend_panel"
@@ -2011,7 +1815,7 @@
         </text>
         <text
          follows="left|top|right"
-         height="234"
+         height="326"
          layout="topleft"
          left="12"
          top="30"
@@ -2020,17 +1824,17 @@
          width="400">
 Status column: a walking figure means the actor is moving, a green dot means idle and in world, a gray dot means the actor is not in world (shown "(away)").
 
-AB column: A marks Subject A and B marks Subject B, the bodies the cinematic camera frames. Set them from the cast right-click menu, the Camera tab, or by double-clicking a cast row (sets Subject A).
+AB column: A marks Subject A and B marks Subject B, the bodies the cinematic camera frames. Set them from the cast right-click menu, Camera &gt; Shot, or by double-clicking a cast row (sets Subject A).
 
 M column: a flag means a mark (a saved position) is set for that actor.
 
-L column: L marks a cast member flagged for the Camera tab's local Look at camera override. The master toggle must also be on; ghosts and animesh are never affected.
+L column: L marks a cast member flagged for the local Look at camera override (Camera &gt; Shot). The master toggle must also be on; ghosts and animesh are never affected.
 
 Groups: the dot-suffix after a name is the member's group tag (set in the Group box under the list); the Move tab's Start/Stop group drive every member of a group at once.
 
 Paths: each actor's in-world path preview and its numbered nodes are drawn in a stable per-actor color, so overlapping routes stay readable.
 
-Hotkeys: F2 toggle console &#183; F3 ACTION/CUT &#183; F4 CUT &#183; F5 reset to marks &#183; F6 pose ghosts &#183; F7 take play/pause &#183; F8 set marks. While this console is visible and the switcher is armed, 1&#8211;9 punch slots 1&#8211;9. Disable via DirectorHotkeysEnabled.
+Hotkeys: see Capture &gt; Scene options.
         </text>
         <button
          follows="left|top"
@@ -2038,7 +1842,7 @@ Hotkeys: F2 toggle console &#183; F3 ACTION/CUT &#183; F4 CUT &#183; F5 reset to
          label="Close"
          layout="topleft"
          left="12"
-         top="252"
+         top="368"
          name="btn_legend_close"
          width="60" />
     </panel>

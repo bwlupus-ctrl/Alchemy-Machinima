@@ -1,0 +1,500 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<panel class="panel_dof" follows="left|top|right" height="378" layout="topleft" name="panel_dof" width="400">
+			<!--DOF Toggle-->
+			<!--TODO: Disable sliders if disabled?-->
+			<check_box
+				follows="left|top"
+				height="15"
+				left="5"
+				top_pad="4"
+				width="80"
+				layout="topleft"
+				label="Depth of Field"
+				tool_tip="Toggles Depth of Field"
+				control_name="RenderDepthOfField" />
+			<check_box
+				follows="left|top"
+				height="15"
+				left="5"
+				top_pad="4"
+				width="80"
+				layout="topleft"
+				label="Follow Mouse"
+				tool_tip="Allows DoF's focus point to follow mouse cursor"
+				control_name="RenderFocusPointFollowsPointer"
+				enabled_control="RenderDepthOfField" />
+			<check_box
+				follows="left|top"
+				height="15"
+				left="5"
+				top_pad="4"
+				width="80"
+				layout="topleft"
+				label="Lock Focus (alt+shift+X)"
+				tool_tip="Locks the current focus point for DoF"
+				control_name="RenderFocusPointLocked"
+				enabled_control="RenderDepthOfField" />
+            <check_box
+                name="FocusCrosshair"
+                layout="topleft"
+                follows="left|top"
+                left="5"
+                top_pad="4"
+                height="16"
+                width="300"
+                label="Show Focus Crosshair"
+                tool_tip="Draws a small crosshair at the current depth-of-field focus point (red while locked, yellow otherwise). Never appears in snapshots."
+                control_name="RenderFocusPointCrosshair" />
+			<check_box
+				control_name="RenderDepthOfFieldNearBlur"
+				enabled_control="RenderDepthOfField"
+				label="Enable Foreground Blur"
+				tool_tip="This option toggles the foreground blur when using Depth of Field allowing you to blur only the background if desired."
+				name="RenderDepthOfFieldFront"
+				follows="left|top"
+				height="15"
+				left="5"
+				top_pad="4"
+				width="80"
+				layout="topleft"
+			/>
+			<!--DOF Resolution-->
+			<!--TODO: Ensure this setting is temporary? Large CoC @ Full Res has caused Login-Crashes on other viewers, even on high end GPUs!-->
+			<text
+				follows="left|top"
+				height="15"
+				left="5"
+				top_pad="4"
+				width="130"
+				layout="topleft"
+				tool_tip="What fraction of screen resolution should be used for rendering Depth of Field. NOTE: Viewer may become unresponsive if DoF becomes intense when Full Resolution is used."
+				value="DoF Resolution: " />
+			<combo_box
+				enabled_control="RenderDepthOfField"
+				allow_text_entry="false"
+				tool_tip="What fraction of screen resolution should be used for rendering Depth of Field. NOTE: Viewer may become unresponsive if DoF becomes intense when Full Resolution is used."
+				control_name="CameraDoFResScale"
+				follows="left|top"
+				height="16"
+				layout="topleft"
+				left="145"
+				max_chars="128"
+				name="dof_res_combo"
+				top_pad="-16"
+				width="120">
+				<combo_box.item
+					label="Quarter"
+					name="dof_quarterres"
+					value="0.25" />
+				<combo_box.item
+					label="Half"
+					name="dof_halfres"
+					value="0.5" />
+				<combo_box.item
+					label="Three-Quarter"
+					name="dof_threefourthres"
+					value="0.7" />
+				<combo_box.item
+					label="Full"
+					name="dof_fullres"
+					value="1.0" />
+			</combo_box>
+			<!--DOF FoV-->
+			<text
+				follows="left|top"
+				height="15"
+				left="5"
+				top_pad="8"
+				width="130"
+				layout="topleft"
+				tool_tip="Vertical FoV for DoF calculations"
+				value="Field of View:" />
+			<slider_bar
+				enabled_control="RenderDepthOfField"
+				top_pad="-18"
+				height="20"
+				increment="1"
+				follows="left|top|right"
+				layout="topleft"
+				max_val="175"
+				min_val="10"
+				left="145"
+				right="-75"
+				name="dof_fov_slider"
+				tool_tip="Vertical FoV for DoF calculations"
+				control_name="CameraFieldOfView" />
+			<spinner
+				enabled_control="RenderDepthOfField"
+				top_pad="-20"
+				height="15"
+				label_width="0"
+				right="-20"
+				decimal_digits="0"
+				follows="top|right"
+				layout="topleft"
+				max_val="175"
+				min_val="10"
+				width="55"
+				increment="1"
+				name="dof_fov_spinner"
+				tool_tip="Vertical FoV for DoF calculations"
+				control_name="CameraFieldOfView" />
+			<button
+				enabled_control="RenderDepthOfField"
+				name="dofFOV_default_btn"
+				follows="top|right"
+				layout="topleft"
+				height="22"
+				left_delta="55"
+				top_pad="-15"
+				width="18"
+				scale_image="true"
+				image_overlay="Refresh_Off"
+				image_overlay_alignment="center">
+				<button.commit_callback
+					function="Machinima.ResetControl"
+					parameter="CameraFieldOfView" />
+			</button>
+			<!--Aperture-->
+			<text
+				follows="left|top"
+				height="15"
+				left="5"
+				top_pad="5"
+				width="130"
+				layout="topleft"
+				tool_tip="Simulated camera aperture f-value. Smaller f-stops result in a narrower focal range. Larger increases focal range."
+				value="Aperture (f):" />
+			<slider_bar
+				enabled_control="RenderDepthOfField"
+				top_pad="-18"
+				height="20"
+				increment=".1"
+				follows="left|top|right"
+				layout="topleft"
+				max_val="256"
+				min_val="0.5"
+				left="145"
+				right="-75"
+				name="dof_fstop_slider"
+				tool_tip="Simulated camera aperture f-value. Smaller f-stops result in a narrower focal range. Larger increases focal range."
+				control_name="CameraFNumber" />
+			<spinner
+				enabled_control="RenderDepthOfField"
+				top_pad="-20"
+				height="15"
+				label_width="0"
+				right="-20"
+				decimal_digits="1"
+				follows="top|right"
+				layout="topleft"
+				max_val="256"
+				min_val="0.5"
+				width="55"
+				increment=".1"
+				name="dof_fstop_spinner"
+				tool_tip="Simulated camera aperture f-value. Smaller f-stops result in a narrower focal range. Larger increases focal range."
+				control_name="CameraFNumber" />
+			<button
+				enabled_control="RenderDepthOfField"
+				name="dofFNumber_default_btn"
+				follows="top|right"
+				layout="topleft"
+				height="22"
+				left_delta="55"
+				top_pad="-15"
+				width="18"
+				scale_image="true"
+				image_overlay="Refresh_Off"
+				image_overlay_alignment="center">
+				<button.commit_callback
+					function="Machinima.ResetControl"
+					parameter="CameraFNumber" />
+			</button>
+			<!--Focal Length-->
+			<text
+				enabled_control="RenderDepthOfField"
+				follows="left|top"
+				height="15"
+				left="5"
+				top_pad="5"
+				width="130"
+				layout="topleft"
+				tool_tip="Focal length of simulated camera."
+				value="Focal Length (mm):" />
+			<slider_bar
+				enabled_control="RenderDepthOfField"
+				top_pad="-18"
+				height="20"
+				increment="5"
+				follows="left|top|right"
+				layout="topleft"
+				max_val="600"
+				min_val="10"
+				left="145"
+				right="-75"
+				name="dof_length_slider"
+				tool_tip="Focal length of simulated camera."
+				control_name="CameraFocalLength" />
+			<spinner
+				enabled_control="RenderDepthOfField"
+				top_pad="-20"
+				height="15"
+				label_width="0"
+				right="-20"
+				decimal_digits="0"
+				follows="top|right"
+				layout="topleft"
+				max_val="600"
+				min_val="10"
+				width="55"
+				increment="5"
+				name="dof_length_spinner"
+				tool_tip="Focal length of simulated camera."
+				control_name="CameraFocalLength" />
+			<button
+				enabled_control="RenderDepthOfField"
+				name="dofFocal_default_btn"
+				follows="top|right"
+				layout="topleft"
+				height="22"
+				left_delta="55"
+				top_pad="-15"
+				width="18"
+				scale_image="true"
+				image_overlay="Refresh_Off"
+				image_overlay_alignment="center">
+				<button.commit_callback
+					function="Machinima.ResetControl"
+					parameter="CameraFocalLength" />
+			</button>
+			<!--Circle of Confusion-->
+			<!--TODO: This can get dangerous on low-end machines! See DoF Resolution-->
+			<text
+				enabled_control="RenderDepthOfField"
+				follows="left|top"
+				height="15"
+				left="5"
+				top_pad="5"
+				width="130"
+				layout="topleft"
+				tool_tip="Circle of Confusion, blur intensity of out objects out of focus. This limits the amount of blur applied. High values produce softer out of focus objects, but can cause the viewer or system to become unresponsive"
+				value="CoC Maximum:" />
+			<slider_bar
+				enabled_control="RenderDepthOfField"
+				top_pad="-18"
+				height="20"
+				increment=".5"
+				follows="left|top|right"
+				layout="topleft"
+				max_val="40"
+				min_val="0"
+				left="145"
+				right="-75"
+				name="dof_coc_slider"
+				tool_tip="Circle of Confusion, blur intensity of out objects out of focus. This limits the amount of blur applied. High values produce softer out of focus objects, but can cause the viewer or system to become unresponsive"
+				control_name="CameraMaxCoF" />
+			<spinner
+				enabled_control="RenderDepthOfField"
+				top_pad="-20"
+				height="15"
+				label_width="0"
+				right="-20"
+				decimal_digits="1"
+				follows="top|right"
+				layout="topleft"
+				max_val="40"
+				min_val="0"
+				width="55"
+				increment=".5"
+				name="dof_coc_spinner"
+				tool_tip="Circle of Confusion, blur intensity of out objects out of focus. This limits the amount of blur applied. High values produce softer out of focus objects, but can cause the viewer or system to become unresponsive"
+				control_name="CameraMaxCoF" />
+			<button
+				enabled_control="RenderDepthOfField"
+				name="dofCOF_default_btn"
+				follows="top|right"
+				layout="topleft"
+				height="22"
+				left_delta="55"
+				top_pad="-15"
+				width="18"
+				scale_image="true"
+				image_overlay="Refresh_Off"
+				image_overlay_alignment="center">
+				<button.commit_callback
+					function="Machinima.ResetControl"
+					parameter="CameraMaxCoF" />
+			</button>
+			<!--Focus Transition Time-->
+			<text
+				enabled_control="RenderDepthOfField"
+				follows="left|top"
+				height="15"
+				left="5"
+				top_pad="5"
+				width="130"
+				layout="topleft"
+				tool_tip="Time it takes for the camera to transition to a new focal point."
+				value="Transition Time (s):" />
+			<slider_bar
+				enabled_control="RenderDepthOfField"
+				top_pad="-18"
+				height="20"
+				increment=".1"
+				follows="left|top|right"
+				layout="topleft"
+				max_val="2"
+				min_val="0"
+				left="145"
+				right="-75"
+				name="dof_focaltime_slider"
+				tool_tip="Time it takes for the camera to transition to a new focal point."
+				control_name="CameraFocusTransitionTime" />
+			<spinner
+				enabled_control="RenderDepthOfField"
+				top_pad="-20"
+				height="15"
+				label_width="0"
+				right="-20"
+				decimal_digits="1"
+				follows="top|right"
+				layout="topleft"
+				max_val="2"
+				min_val="0"
+				width="55"
+				increment=".1"
+				name="dof_focaltime_spinner"
+				tool_tip="Time it takes for the camera to transition to a new focal point."
+				control_name="CameraFocusTransitionTime" />
+			<button
+				enabled_control="RenderDepthOfField"
+				name="dofTime_default_btn"
+				follows="top|right"
+				layout="topleft"
+				height="22"
+				left_delta="55"
+				top_pad="-15"
+				width="18"
+				scale_image="true"
+				image_overlay="Refresh_Off"
+				image_overlay_alignment="center">
+				<button.commit_callback
+					function="Machinima.ResetControl"
+					parameter="CameraFocusTransitionTime" />
+			</button>
+            <text
+                name="guides_section_label"
+                layout="topleft"
+                follows="left|top"
+                left="10"
+                top_pad="14"
+                height="15"
+                width="300"
+                font="SansSerifBold">
+                Composition Guide
+            </text>
+            <check_box
+                name="ShowGuides"
+                layout="topleft"
+                follows="left|top"
+                left="5"
+                top_pad="6"
+                height="16"
+                width="300"
+                label="Show Composition Guide"
+                tool_tip="Overlays a rule-of-thirds, golden ratio, or diagonal framing guide on the 3D view. Never appears in snapshots."
+                control_name="RenderCompositionGuide" />
+            <combo_box
+                name="GuideStyle"
+                layout="topleft"
+                follows="left|top"
+                left="5"
+                top_pad="6"
+                height="23"
+                width="180"
+                control_name="RenderCompositionGuideStyle">
+                <combo_box.item
+                    name="rule_of_thirds"
+                    label="Rule of Thirds"
+                    value="rule_of_thirds" />
+                <combo_box.item
+                    name="golden_ratio_top_left"
+                    label="Golden Ratio (Top Left)"
+                    value="golden_ratio_top_left" />
+                <combo_box.item
+                    name="golden_ratio_top_right"
+                    label="Golden Ratio (Top Right)"
+                    value="golden_ratio_top_right" />
+                <combo_box.item
+                    name="golden_ratio_bottom_left"
+                    label="Golden Ratio (Bottom Left)"
+                    value="golden_ratio_bottom_left" />
+                <combo_box.item
+                    name="golden_ratio_bottom_right"
+                    label="Golden Ratio (Bottom Right)"
+                    value="golden_ratio_bottom_right" />
+                <combo_box.item
+                    name="diagonal"
+                    label="Diagonal"
+                    value="diagonal" />
+            </combo_box>
+            <color_swatch
+                name="GuideColor"
+                layout="topleft"
+                follows="right|top"
+                left_pad="10"
+                top_delta="0"
+                width="40"
+                height="23"
+                can_apply_immediately="true"
+                label=""
+                control_name="RenderCompositionGuideColor" />
+
+            <text
+                name="guide_thickness_label"
+                layout="topleft"
+                follows="left|top"
+                left="5"
+                top_pad="8"
+                height="15"
+                width="80">
+                Thickness:
+            </text>
+            <spinner
+                name="GuideThickness"
+                layout="topleft"
+                follows="left|top"
+                left_pad="4"
+                top_delta="-2"
+                height="20"
+                width="80"
+                decimal_digits="1"
+                increment="0.1"
+                min_val="0.0"
+                max_val="20.0"
+                control_name="RenderCompositionGuideWidth" />
+
+            <text
+                name="guide_opacity_label"
+                layout="topleft"
+                follows="left|top"
+                left="5"
+                top_pad="8"
+                height="15"
+                width="80">
+                Opacity:
+            </text>
+            <slider
+                name="GuideOpacity"
+                layout="topleft"
+                follows="left|top|right"
+                left_pad="4"
+                top_delta="-2"
+                height="20"
+                width="150"
+                min_val="0.0"
+                max_val="1.0"
+                decimal_digits="2"
+                control_name="RenderCompositionGuideVisibility" />
+</panel>

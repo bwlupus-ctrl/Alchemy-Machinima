@@ -16,11 +16,13 @@
 #include "indra_constants.h"        // KEY_ESCAPE / MASK_NONE, MASK_ALT
 
 #include "alfloateractorgaze.h"
+#include "alfloaterlightbox.h"
+#include "alavatarlightresponse.h"
 #include "alpanelactormover.h"      // embedded shared Actor Mover transport
 #include "alpanelanimpreview.h"     // embedded shared preview pane + own-avatar controls
 #include "alpanelcinecamparams.h"   // embedded shared panel (scene preset hooks)
+#include "alpanellensgaze.h"
 #include "alpanelpatheditor.h"      // embedded shared Actor Pathing editor
-#include "alprojectorshaftpresets.h"
 #include "alcinelightrigmanager.h"
 #include "alrotoink.h"
 #include "altron.h"
@@ -63,6 +65,7 @@
 #include "llmotion.h"               // LLMotion::setPriorityOverride (play-local priority)
 #include "llvoavatar.h"
 #include "llvoavatarself.h"         // gAgentAvatarp, isAgentAvatarValid()
+#include "llvovolume.h"
 
 #include <algorithm>
 #include <set>
@@ -76,19 +79,30 @@ constexpr char ICON_IDLE[]     = "Profile_Friend_Online";
 constexpr char ICON_GONE[]     = "Profile_Friend_Offline";
 constexpr char ICON_MARK[]     = "Flag";
 
-// left-rail tab icons (existing toolbar-icon skin assets, one family)
-constexpr char TAB_ICON_MOVE[]    = "Command_Move_Icon";
-constexpr char TAB_ICON_PATH[]    = "Command_Places_Icon";
-constexpr char TAB_ICON_GHOSTS[]  = "Command_Appearance_Icon";
-constexpr char TAB_ICON_PROPS[]   = "Command_Build_Icon";
-constexpr char TAB_ICON_ANIMATE[] = "Command_Poser_Icon";
-constexpr char TAB_ICON_CAMERA[]  = "Command_View_Icon";
-constexpr char TAB_ICON_TAKES[]   = "Command_Snapshot_Icon";
-constexpr char TAB_ICON_SHAFTS[]  = "Command_PersonalLighting_Icon";
-constexpr char TAB_ICON_LIGHTS[]  = "Command_Lightbox_Icon";
-constexpr char TAB_ICON_TEMPORAL[] = "Command_Environments_Icon"; // day-cycle/time metaphor (no clock asset ships)
-constexpr char TAB_ICON_WEATHER[]  = "Command_Water_Icon"; // rain/precipitation metaphor (distinct from Time's sky icon)
 constexpr F32 PRISM_SNAPSHOT_POLL_SECONDS = 0.25f;
+
+constexpr const char* OLD_FLAT_TABS[] = {
+    "move_tab", "path_tab", "ghosts_tab", "props_tab", "animate_tab", "camera_tab",
+    "takes_tab", "projector_volumetrics_tab", "cine_light_rig_tab", "weather_tab",
+    "atmospheric_volumes_tab", "temporal_tab", "actor_style_tab"
+};
+
+std::string migrate_tab_name(const std::string& name)
+{
+    if (name == "camera_tab") return "shot_tab";
+    if (name == "projector_volumetrics_tab" || name == "atmospheric_volumes_tab")
+    {
+        return "atmosphere_tab";
+    }
+    return name;
+}
+
+std::string legacy_tab_name(const std::string& name)
+{
+    if (name == "shot_tab") return "camera_tab";
+    if (name == "atmosphere_tab") return "projector_volumetrics_tab";
+    return name;
+}
 
 bool can_start_manual_subject_shot(std::string* reason)
 {
@@ -239,16 +253,7 @@ F32 default_locomotion_speed(S32 role)
 LLFloaterDirector::LLFloaterDirector(const LLSD& key)
 :   LLFloater(key)
 {
-    mCommitCallbackRegistrar.add(
-        "Director.ResetControlDefault",
-        [](LLUICtrl*, const LLSD& data)
-        {
-            if (LLControlVariable* control =
-                    gSavedSettings.getControl(data.asString()))
-            {
-                control->resetToDefault(true);
-            }
-        });
+    mBuildTimer.start();
 }
 
 LLFloaterDirector::~LLFloaterDirector()
@@ -273,15 +278,12 @@ void LLFloaterDirector::onClose(bool app_quitting)
     // Closing can merely hide this reusable floater, so its child panel may
     // remain alive. Explicitly release a live bullet-time cut here as well.
     ALDirectorSwitcher::instance().cancelEaseWorldTime();
+    ALAvatarLightResponse::instance().saveIfPersist();
 }
 
 bool LLFloaterDirector::postBuild()
 {
-    getChild<LLComboBox>("director_ps_preset")->setCommitCallback(
-        [](LLUICtrl* control, const LLSD&)
-        {
-            ALProjectorShaftPresets::apply(control->getValue().asInteger());
-        });
+    LL_PROFILE_ZONE_NAMED_CATEGORY_UI("Director postBuild");
 
     // ---- transport ----
     mActionBtn = getChild<LLButton>("btn_action");
@@ -310,6 +312,27 @@ bool LLFloaterDirector::postBuild()
     // ---- left-rail tabs (remember the active tab, icon each rail button) ----
     mTabContainer = getChild<LLTabContainer>("director_tabs");
     mTabContainer->setCommitCallback([this](LLUICtrl*, const LLSD&) { onTabChanged(); });
+    struct GroupInfo { const char* page; const char* tabs; const char* icon; } groups[] = {
+        { "cast_group",        "cast_tabs",        "Command_People_Icon" },
+        { "performance_group", "performance_tabs", "Command_Poser_Icon" },
+        { "camera_group",      "camera_tabs",      "Command_View_Icon" },
+        { "lens_group",        "lens_tabs",        "Command_Search_Icon" },
+        { "light_group",       "light_tabs",       "Command_PersonalLighting_Icon" },
+        { "look_group",        "look_tabs",        "Command_Lightbox_Icon" },
+        { "world_group",       "world_tabs",       "Command_Environments_Icon" },
+        { "capture_group",     "capture_tabs",     "Command_Snapshot_Icon" },
+    };
+    for (const GroupInfo& info : groups)
+    {
+        LLPanel* page = mTabContainer->getPanelByName(info.page);
+        LLTabContainer* tabs = page ? page->findChild<LLTabContainer>(info.tabs, false) : nullptr;
+        if (page && tabs)
+        {
+            mGroups.emplace_back(page, tabs);
+            mTabContainer->setTabImage(page, info.icon);
+            tabs->setCommitCallback([this](LLUICtrl*, const LLSD&) { onTabChanged(); });
+        }
+    }
     // [DirFix] D14: LLFloater::setMinimized() never toggles child visibility, so
     // the Path panel's own reveal claim cannot see an un-minimize; if the other
     // host claimed while this console was minimized, restoring it re-feeds +
@@ -318,29 +341,6 @@ bool LLFloaterDirector::postBuild()
     {
         if (!minimized.asBoolean() && mPathPanel) mPathPanel->revealFor(firstSelectedCastId());
     });
-    // per-tab icons: image overlay left of the label (existing skin assets)
-    struct { const char* panel; const char* icon; } tab_icons[] = {
-        { "move_tab",    TAB_ICON_MOVE },
-        { "path_tab",    TAB_ICON_PATH },
-        { "ghosts_tab",  TAB_ICON_GHOSTS },
-        { "actor_style_tab", TAB_ICON_GHOSTS },
-        { "props_tab",   TAB_ICON_PROPS },
-        { "animate_tab", TAB_ICON_ANIMATE },
-        { "camera_tab",  TAB_ICON_CAMERA },
-        { "takes_tab",   TAB_ICON_TAKES },
-        { "projector_volumetrics_tab", TAB_ICON_SHAFTS },
-        { "cine_light_rig_tab", TAB_ICON_LIGHTS },
-        { "weather_tab", TAB_ICON_WEATHER },
-        { "temporal_tab", TAB_ICON_TEMPORAL },
-    };
-    for (const auto& t : tab_icons)
-    {
-        if (LLPanel* panel = mTabContainer->getPanelByName(t.panel))
-        {
-            mTabContainer->setTabImage(panel, t.icon);
-        }
-    }
-
     // ---- legend popover ----
     mHelpBtn = getChild<LLButton>("btn_help");
     mLegendPanel = getChild<LLPanel>("legend_panel");
@@ -582,6 +582,20 @@ bool LLFloaterDirector::postBuild()
     mClearDBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickClearSubject(SUBJECT_D); });
     getChild<LLButton>("btn_actor_gaze")->setCommitCallback(
         [this](LLUICtrl*, const LLSD&) { onOpenActorGaze(); });
+    mGazePanel = findChild<ALPanelLensGaze>("director_gaze_panel");
+    getChild<LLButton>("dance_popout")->setCommitCallback(
+        [](LLUICtrl*, const LLSD&) { LLFloaterReg::showInstance("dance_ball"); });
+    getChild<LLButton>("polish_popout")->setCommitCallback(
+        [](LLUICtrl*, const LLSD&) { LLFloaterReg::showInstance("pose_polish"); });
+    getChild<LLButton>("exposure_popout")->setCommitCallback(
+        [](LLUICtrl*, const LLSD&) { LLFloaterReg::showInstance("exposure_hub"); });
+    getChild<LLButton>("light_response_popout")->setCommitCallback(
+        [this](LLUICtrl*, const LLSD&)
+        {
+            const LLUUID actor = firstSelectedCastId();
+            LLFloaterReg::showInstance("avatar_light_response",
+                LLSD(actor.notNull() ? actor : gAgentID));
+        });
     mPrismSummaryText = getChild<LLTextBox>("prism_summary");
     mPrismManageBtn = getChild<LLButton>("btn_prism_manage");
     mOtsPairBtn = getChild<LLButton>("btn_build_ots_pair");
@@ -595,11 +609,86 @@ bool LLFloaterDirector::postBuild()
         [this](LLUICtrl*, const LLSD&) { onClickZolly(); });
     mHeroArcBtn->setCommitCallback(
         [this](LLUICtrl*, const LLSD&) { onClickHeroArc(); });
-    getChild<LLButton>("btn_ultimate_diopter")->setCommitCallback(
-        [](LLUICtrl*, const LLSD&) { LLFloaterReg::showInstance("ultimate_diopter"); });
     // embedded shared params panel: scene files read its selected preset and
     // apply presets through it on load
     mCineCamPanel = findChild<ALPanelCineCamParams>("cinecam_params_embedded");
+
+    addLauncherCard("gaze_cues",
+        [this]
+        {
+            LLUUID actor = firstSelectedCastId();
+            if (actor.isNull()) actor = gAgentID;
+            LLFloaterReg::showInstance("gaze_cues", LLSD(actor.asString()));
+        },
+        [this]
+        {
+            LLUUID actor = firstSelectedCastId();
+            if (actor.isNull()) actor = gAgentID;
+            const S32 count = (S32)LLDirectorCast::instance().getGazeCues(actor).size();
+            return llformat("%s: %d gaze cue%s", castMemberName(actor).c_str(), count, count == 1 ? "" : "s");
+        });
+    addLauncherCard("diopter",
+        [] { LLFloaterReg::showInstance("ultimate_diopter"); },
+        []
+        {
+            static LLCachedControl<bool> enabled(gSavedSettings, "CineDiopterEnabled", false);
+            return std::string("Diopter: ") + (enabled ? "on" : "off");
+        });
+    addLauncherCard("practicals",
+        [] { ALFloaterLightBox::showTab("sellight_settings"); },
+        []
+        {
+            LLObjectSelectionHandle selection = LLSelectMgr::getInstance()->getSelection();
+            LLViewerObject* object = selection->getPrimaryObject();
+            if (!object) object = selection->getFirstRootObject();
+            LLVOVolume* volume = dynamic_cast<LLVOVolume*>(object);
+            if (!volume) return std::string(object ? "Selection is not a light" : "Select a projector in world");
+            if (!volume->getIsLight()) return std::string("Selection is not a light (or its light is off)");
+            if (volume->isLightSpotlight()) return std::string("Projector selected");
+            return std::string("Point light selected (needs a projector)");
+        });
+    addLauncherCard("actor_mask",
+        [] { ALFloaterLightBox::showTab("actor_mask_settings"); },
+        []
+        {
+            static LLCachedControl<bool> disabled(gSavedSettings, "CineLightRigActorMaskDisable", false);
+            return std::string("Actor-only lights: ") + (disabled ? "disabled" : "active");
+        });
+    addLauncherCard("light_cues",
+        [] { LLFloaterReg::showInstance("cine_light_cues"); },
+        []
+        {
+            const auto& cues = ALCineLightRigManager::instance().selected().cueList();
+            const S32 count = (S32)cues.mCues.size();
+            if (cues.mName.empty()) return llformat("%d cue%s", count, count == 1 ? "" : "s");
+            return llformat("%d cue%s \xC2\xB7 %s", count, count == 1 ? "" : "s", cues.mName.c_str());
+        });
+    addLauncherCard("image",
+        [] { ALFloaterLightBox::showTab("colortone_settings"); },
+        []
+        {
+            static LLCachedControl<S32> type(gSavedSettings, "AlchemyRenderTonemapType", 0);
+            static LLCachedControl<F32> exposure(gSavedSettings, "RenderExposure", 0.f);
+            static LLCachedControl<bool> lut(gSavedSettings, "RenderColorGrade", false);
+            static const char* labels[] = { "Khronos Neutral", "ACES", "ACES Boosted",
+                "Reinhard", "Filmic", "GT", "AgX", "AMD LPM", "S-Log3 Capture" };
+            const S32 index = llclamp((S32)type, 0, 8);
+            return llformat("%s \xC2\xB7 Exposure %.2f%s", labels[index], (F32)exposure,
+                            lut ? " \xC2\xB7 LUT" : "");
+        });
+    addLauncherCard("rotoink", [] { ALFloaterLightBox::showTab("rotoink_settings"); }, []
+        { static LLCachedControl<bool> on(gSavedSettings, "CineOutlineEnabled", false); return std::string(on ? "On" : "Off"); });
+    addLauncherCard("tron", [] { ALFloaterLightBox::showTab("tron_settings"); }, []
+        { static LLCachedControl<bool> on(gSavedSettings, "TronEnabled", false); return std::string(on ? "On" : "Off"); });
+    addLauncherCard("haze", [] { ALFloaterLightBox::showTab("cinehaze_settings"); }, []
+        { static LLCachedControl<bool> on(gSavedSettings, "CineHazeEnable", false); return std::string(on ? "On" : "Off"); });
+    addLauncherCard("shadows_probes", [] { ALFloaterLightBox::showTab("shadow_settings"); }, []
+        {
+            static LLCachedControl<S32> detail(gSavedSettings, "RenderShadowDetail", 0);
+            switch ((S32)detail) { case 1: return std::string("Sun/moon"); case 2: return std::string("Sun/moon + projectors"); default: return std::string("Off"); }
+        });
+    addLauncherCard("snapshot", [] { LLFloaterReg::showInstance("snapshot"); }, []
+        { return std::string("Stills and high-resolution frames"); });
 
     // ---- Takes tab ----
     // the transport + controls are the shared ALPanelFlycamRecorder embedded in
@@ -617,13 +706,24 @@ bool LLFloaterDirector::postBuild()
     // Props, Takes, Time), installs focus-reveal on every tab-level container (incl. the
     // nested Ghost Studio sub-tabs), fits every document from its children (the hand-typed
     // XML heights are gone) and enables wheel adjust on every slider.
+    mScrollFit.setUnwrappedPages({"cast_group", "performance_group", "camera_group", "lens_group",
+        "light_group", "look_group", "world_group", "capture_group", "dance_tab", "exposure_tab"});
     mScrollFit.installForTabs(mTabContainer, this);
+    ALScrollFit::fillPage(findChild<LLPanel>("dance_tab"),
+                          findChild<LLView>("director_dance_ball_panel"), 30);
+    ALScrollFit::fillPage(findChild<LLPanel>("exposure_tab"),
+                          findChild<LLView>("director_exposure_panel"), 30);
+
+    const F32 build_ms = mBuildTimer.getElapsedTimeF32() * 1000.f;
+    LL_INFOS("Director") << "Director build " << build_ms << " ms "
+                         << (build_ms < 250.f ? "PASS" : "LAZY-NEEDED") << LL_ENDL;
 
     return true;
 }
 
 void LLFloaterDirector::onOpen(const LLSD& key)
 {
+    mLauncherClock.forceDue();
     // pick up scenes saved by an earlier session without losing the current
     // combo selection
     if (mSceneCombo)
@@ -637,29 +737,37 @@ void LLFloaterDirector::onOpen(const LLSD& key)
     // LLFloater::onOpen below must always run.
     if (mTabContainer)
     {
-        const std::string name = gSavedSettings.getString("DirectorLastTabName");
-        const bool restored = !name.empty() && mTabContainer->selectTabByName(name);
+        const std::string name = migrate_tab_name(gSavedSettings.getString("DirectorLastTabName"));
+        bool restored = !name.empty() && selectLeafTab(name);
         if (!restored)
         {
-            const S32 last = llclamp(gSavedSettings.getS32("DirectorLastTab"),
-                                     0, mTabContainer->getTabCount() - 1);
-            mTabContainer->selectTab(last);
-            if (LLPanel* panel = mTabContainer->getCurrentPanel())
-            {
-                gSavedSettings.setString("DirectorLastTabName", panel->getName());
-            }
+            const S32 last = llclamp(gSavedSettings.getS32("DirectorLastTab"), 0, 12);
+            restored = selectLeafTab(migrate_tab_name(OLD_FLAT_TABS[last]));
         }
+        if (!restored) selectLeafTab("move_tab");
+        if (LLPanel* leaf = currentLeafPanel())
+            gSavedSettings.setString("DirectorLastTabName", leaf->getName());
 
         // [DirFix] D8: refreshers gated on tab visibility did not run while the console was
         // closed or the tab hidden; discard their caches on the first visible pass. (The
         // selectTab above fires onTabChanged, which sets these too; belt and braces.)
         mActorStyleTabDirty = true;
         mAnimateTabDirty = true;
+        mGroupsTabDirty = true;
 
         // [DirFix] D1: re-fit every tab document with the controller's recorded minimums
         // (cheap, idempotent) so the open frame is already sized from content.
         mScrollFit.fit(this, mTabContainer);
+        ALScrollFit::fillPage(findChild<LLPanel>("dance_tab"),
+                              findChild<LLView>("director_dance_ball_panel"), 30);
+        ALScrollFit::fillPage(findChild<LLPanel>("exposure_tab"),
+                              findChild<LLView>("director_exposure_panel"), 30);
     }
+
+    const uuid_vec_t selected = selectedCastIds();
+    mLastGazePush = selected;
+    ALFloaterActorGaze::updateSelection(ALFloaterActorGaze::ESelectionSource::DIRECTOR, selected);
+    if (mGazePanel) mGazePanel->setSelectedActors(selected);
 
     // [DirFix] D14: the console is visible here (openFloater shows before onOpen);
     // if the restored tab is Path, feed + claim the current cast selection NOW so
@@ -682,22 +790,57 @@ void LLFloaterDirector::onOpen(const LLSD& key)
 // ---------------------------------------------------------------------------
 // tabs + legend
 // ---------------------------------------------------------------------------
+LLPanel* LLFloaterDirector::currentLeafPanel()
+{
+    if (!mTabContainer) return nullptr;
+    LLPanel* group = mTabContainer->getCurrentPanel();
+    for (const auto& entry : mGroups)
+    {
+        if (entry.first == group) return entry.second->getCurrentPanel();
+    }
+    return nullptr;
+}
+
+bool LLFloaterDirector::selectLeafTab(const std::string& name)
+{
+    for (const auto& entry : mGroups)
+    {
+        if (LLPanel* leaf = entry.second->getPanelByName(name))
+        {
+            mTabContainer->selectTabPanel(entry.first);
+            entry.second->selectTabPanel(leaf);
+            return true;
+        }
+    }
+    return false;
+}
+
 void LLFloaterDirector::onTabChanged()
 {
+    mLauncherClock.forceDue(); // newly shown launcher summaries fill in on the next draw
     if (mTabContainer)
     {
         // [DirFix] D11: save by name AND keep writing the legacy index for one release
         // (older AlchemyTest.pre-*.exe backups read the index).
-        if (LLPanel* panel = mTabContainer->getCurrentPanel())
+        if (LLPanel* panel = currentLeafPanel())
         {
             gSavedSettings.setString("DirectorLastTabName", panel->getName());
+            const std::string legacy = legacy_tab_name(panel->getName());
+            for (S32 i = 0; i < 13; ++i)
+            {
+                if (legacy == OLD_FLAT_TABS[i])
+                {
+                    gSavedSettings.setS32("DirectorLastTab", i);
+                    break;
+                }
+            }
         }
-        gSavedSettings.setS32("DirectorLastTab", mTabContainer->getCurrentPanelIndex());
     }
     // [DirFix] D8: a tab was revealed (and another hidden): the gated refreshers re-sync on
     // their next visible pass. Only flags are written here; nothing reads layout.
     mActorStyleTabDirty = true;
     mAnimateTabDirty = true;
+    mGroupsTabDirty = true;
     // [DirFix] D14: Path tab revealed by a tab switch -> feed + claim before paint
     // (no-op store when another tab is now current).
     if (mPathPanel)
@@ -714,6 +857,26 @@ void LLFloaterDirector::onToggleLegend()
     }
 }
 
+void LLFloaterDirector::addLauncherCard(const std::string& id,
+                                        std::function<void()> open_fn,
+                                        std::function<std::string()> summary_fn)
+{
+    getChild<LLButton>("card_" + id + "_open")->setCommitCallback(
+        [open_fn = std::move(open_fn)](LLUICtrl*, const LLSD&) { open_fn(); });
+    mLauncherCards.push_back({ getChild<LLTextBox>("card_" + id + "_summary"),
+                               std::move(summary_fn) });
+}
+
+void LLFloaterDirector::refreshLauncherCards()
+{
+    LL_PROFILE_ZONE_NAMED_CATEGORY_UI("Director refreshLauncherCards");
+    if (!mLauncherClock.due()) return;
+    for (const LauncherCard& card : mLauncherCards)
+    {
+        if (isWidgetOnScreen(card.mSummary)) setTextIfChanged(card.mSummary, card.mFn());
+    }
+}
+
 void LLFloaterDirector::draw()
 {
     LL_PROFILE_ZONE_SCOPED_CATEGORY_UI; // [UIPerfC1]
@@ -726,7 +889,10 @@ void LLFloaterDirector::draw()
     refreshPathTab(selected);
     refreshActorStyleTab();     // [DirFix] D8: gated on its tab being visible (inside)
     refreshAnimateTab();        // [DirFix] D8: gated on its tab being visible (inside)
-    refreshCameraTab(selected);
+    refreshGazeSelection(selected);
+    refreshSubjects();
+    refreshPrismDependents();
+    refreshLauncherCards();
     refreshStatusStrip();
     LLFloater::draw();
     // the embedded ALPanelAnimPreview blits + spins its own dummy in its draw()
@@ -975,7 +1141,6 @@ const std::vector<std::string>& LLFloaterDirector::sceneSettingsList()
         // here so a scene remains a complete settings snapshot.
         "CineLightRigEnabled",
         "CineLightRigScaleAware",
-        "CineLightRigPower",
         "CineLightRigRadius",
         "CineLightRigMasterEV",
         "CineLightRigMasterTempMired",
@@ -2076,21 +2241,29 @@ void LLFloaterDirector::refreshGroupControls()
         mGroupAssignCombo->setTextEntry(LLStringExplicit(cast.getGroup(sel)));
     }
     const bool have_sel = sel.notNull();
-    mGroupAssignCombo->setEnabled(have_sel);
+    setEnabledIfChanged(mGroupAssignCombo, have_sel);
     setToolTipIfChanged(mGroupAssignCombo, have_sel
         ? std::string("Group tag for the selected member(s): type a new name or pick an existing one, Enter commits. Empty ungroups")
         : std::string("Select a cast member first"));
+
+    if (!mGroupsList->isInVisibleChain()) return;
+    if (mGroupsTabDirty)
+    {
+        mGroupsTabDirty = false;
+        mGroupsListSnapshot.clear();
+        mGroupDelayShownFor.clear();
+    }
 
     // group transport: Start/Stop need a picked group that still has members
     const std::string run_sel = mGroupRunCombo->getSelectedItemLabel();
     const bool have_group = !run_sel.empty()
                          && !cast.membersInGroup(run_sel).empty();
-    mGroupRunCombo->setEnabled(!names.empty());
+    setEnabledIfChanged(mGroupRunCombo, !names.empty());
     setToolTipIfChanged(mGroupRunCombo, names.empty()
         ? std::string("No groups yet: tag cast members via the Group box under the cast list")
         : std::string("The group Start/Stop act on"));
-    mGroupStartBtn->setEnabled(have_group);
-    mGroupStopBtn->setEnabled(have_group);
+    setEnabledIfChanged(mGroupStartBtn, have_group);
+    setEnabledIfChanged(mGroupStopBtn, have_group);
     const std::string need_group_tip = names.empty()
         ? std::string("No groups yet: tag cast members via the Group box under the cast list")
         : std::string("Pick a group first");
@@ -2149,10 +2322,10 @@ void LLFloaterDirector::refreshGroupControls()
         mGroupDelayShownFor = managed;
         mGroupDelaySpinner->setValue(have_managed ? cast.getGroupDelay(managed) : 0.f);
     }
-    mGroupDelaySpinner->setEnabled(have_managed);
-    mGroupRenameEditor->setEnabled(have_managed);
-    mGroupRenameBtn->setEnabled(have_managed);
-    mGroupDissolveBtn->setEnabled(have_managed);
+    setEnabledIfChanged(mGroupDelaySpinner, have_managed);
+    setEnabledIfChanged(mGroupRenameEditor, have_managed);
+    setEnabledIfChanged(mGroupRenameBtn, have_managed);
+    setEnabledIfChanged(mGroupDissolveBtn, have_managed);
     setToolTipIfChanged(mGroupDelaySpinner, have_managed
         ? llformat("Start delay for '%s' (s): ACTION and Start group launch its members this many seconds late, so groups can enter in waves. 0 = immediate. Saved with the scene", managed.c_str())
         : std::string("Select a group in the list first"));
@@ -3160,9 +3333,9 @@ void LLFloaterDirector::onClickHeroArc()
         LLCinematicCamera::MODE_ARC, true);
 }
 
-void LLFloaterDirector::refreshCameraTab(const uuid_vec_t& selected)
+void LLFloaterDirector::refreshGazeSelection(const uuid_vec_t& selected)
 {
-    LL_PROFILE_ZONE_NAMED_CATEGORY_UI("Director refreshCameraTab"); // [DirFix] D9
+    LL_PROFILE_ZONE_NAMED_CATEGORY_UI("Director refreshGazeSelection");
     // [DirFix] D10: push to the Actor Gaze floater on selection change only (the registry
     // lookup used to run every frame); a reopened gaze floater pulls on open.
     if (selected != mLastGazePush)
@@ -3170,8 +3343,14 @@ void LLFloaterDirector::refreshCameraTab(const uuid_vec_t& selected)
         mLastGazePush = selected;
         ALFloaterActorGaze::updateSelection(
             ALFloaterActorGaze::ESelectionSource::DIRECTOR, selected);
+        if (mGazePanel) mGazePanel->setSelectedActors(selected);
     }
+}
 
+void LLFloaterDirector::refreshSubjects()
+{
+    LL_PROFILE_ZONE_NAMED_CATEGORY_UI("Director refreshSubjects");
+    if (!mSubjectAText->isInVisibleChain()) return;
     LLDirectorCast& cast = LLDirectorCast::instance();
     const LLUUID a = cast.getSubjectA();
     const LLUUID b = cast.getSubjectB();
@@ -3191,7 +3370,7 @@ void LLFloaterDirector::refreshCameraTab(const uuid_vec_t& selected)
     const bool have_sel_av = avatarFromSelection().notNull();
     for (LLButton* button : { mSetABtn, mSetBBtn, mSetCBtn, mSetDBtn })
     {
-        button->setEnabled(have_sel_av);
+        setEnabledIfChanged(button, have_sel_av);
     }
     const std::string set_tip = have_sel_av
         ? std::string("Make the selected avatar this subject (adds it to the cast)")
@@ -3201,31 +3380,38 @@ void LLFloaterDirector::refreshCameraTab(const uuid_vec_t& selected)
     setToolTipIfChanged(mSetCBtn, set_tip);
     setToolTipIfChanged(mSetDBtn, set_tip);
 
-    mClearABtn->setEnabled(a.notNull());
+    setEnabledIfChanged(mClearABtn, a.notNull());
     setToolTipIfChanged(mClearABtn, a.notNull()
         ? std::string("Clear Subject A; the camera falls back to follow-target / selection / you")
         : std::string("Subject A is not set"));
-    mClearBBtn->setEnabled(b.notNull());
+    setEnabledIfChanged(mClearBBtn, b.notNull());
     setToolTipIfChanged(mClearBBtn, b.notNull()
         ? std::string("Clear Subject B; Two-Shot/OTS fall back to you + target")
         : std::string("Subject B is not set"));
-    mClearCBtn->setEnabled(c.notNull());
+    setEnabledIfChanged(mClearCBtn, c.notNull());
     setToolTipIfChanged(mClearCBtn, c.notNull()
         ? std::string("Clear Subject C")
         : std::string("Subject C is not set"));
-    mClearDBtn->setEnabled(d.notNull());
+    setEnabledIfChanged(mClearDBtn, d.notNull());
     setToolTipIfChanged(mClearDBtn, d.notNull()
         ? std::string("Clear Subject D")
         : std::string("Subject D is not set"));
 
+}
+
+void LLFloaterDirector::refreshPrismDependents()
+{
+    LL_PROFILE_ZONE_NAMED_CATEGORY_UI("Director refreshPrismDependents");
     // The Director refreshes all tab models while it is open. Avoid taking
     // Prism registry/gate snapshots every frame unless Camera is the visible
     // tab; the controls will refresh immediately when their visible chain is
     // restored.
-    if (!mOtsPairBtn->isInVisibleChain())
+    if (!mOtsPairBtn->isInVisibleChain() && !mPrismSummaryText->isInVisibleChain())
     {
         return;
     }
+
+    LLDirectorCast& cast = LLDirectorCast::instance();
 
     LLVOAvatar* live_a = cast.resolveSubjectA();
     LLVOAvatar* live_b = cast.resolveSubjectB();
@@ -3233,7 +3419,7 @@ void LLFloaterDirector::refreshCameraTab(const uuid_vec_t& selected)
         live_a->getID() != live_b->getID();
     if (!distinct_live_pair)
     {
-        mOtsPairBtn->setEnabled(false);
+        setEnabledIfChanged(mOtsPairBtn, false);
         setToolTipIfChanged(mOtsPairBtn,
             !live_a || !live_b
                 ? std::string("Set live Director Subjects A and B first")
@@ -3243,8 +3429,8 @@ void LLFloaterDirector::refreshCameraTab(const uuid_vec_t& selected)
     std::string subject_shot_reason;
     const bool can_trigger_subject_shot =
         can_start_manual_subject_shot(&subject_shot_reason);
-    mZollyBtn->setEnabled(can_trigger_subject_shot);
-    mHeroArcBtn->setEnabled(can_trigger_subject_shot);
+    setEnabledIfChanged(mZollyBtn, can_trigger_subject_shot);
+    setEnabledIfChanged(mHeroArcBtn, can_trigger_subject_shot);
     const std::string subject_shot_tip = can_trigger_subject_shot
         ? std::string("Start this one-shot move locked to Subject A's head")
         : subject_shot_reason;
@@ -3286,7 +3472,7 @@ void LLFloaterDirector::refreshCameraTab(const uuid_vec_t& selected)
             LLPrismLens::MAX_CAPTURES - 2 &&
         ots_gate.mSettings.mArmed.size() - replaceable_ots_arms <=
             LLPrismLens::MAX_CAPTURES - 2;
-    mOtsPairBtn->setEnabled(distinct_live_pair && ots_capacity);
+    setEnabledIfChanged(mOtsPairBtn, distinct_live_pair && ots_capacity);
     setToolTipIfChanged(mOtsPairBtn,
         !live_a || !live_b
             ? std::string("Set live Director Subjects A and B first")
@@ -3325,7 +3511,7 @@ void LLFloaterDirector::refreshCameraTab(const uuid_vec_t& selected)
         const bool needs_attention =
             capture_attention != 0 || display_attention != 0;
 
-        mPrismSummaryText->setText(llformat(
+        setTextIfChanged(mPrismSummaryText, llformat(
             "Prism %u/%u captures | %u/%u faces | %u live%s",
             snapshot.mCaptureCount, LLPrismLens::MAX_CAPTURES,
             snapshot.mDisplayCount, LLPrismLens::MAX_DISPLAY_BINDINGS,
