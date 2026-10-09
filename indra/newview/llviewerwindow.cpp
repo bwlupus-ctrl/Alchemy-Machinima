@@ -94,6 +94,7 @@
 #include "alchatbar.h"
 #include "aldirectorhotkeys.h"
 #include "alfloaterprogressview.h"
+#include "aluiperfselftest.h"
 #include "llaccordionctrl.h"
 // [SL:KB] - Patch: Build-DragNDrop | Checked: 2013-07-22 (Catznip-3.6)
 #include "llagentbenefits.h"
@@ -3205,6 +3206,16 @@ void LLViewerWindow::draw()
         // Draw all nested UI views.
         // No translation needed, this view is glued to 0,0
         mRootView->draw();
+
+        LL_PROFILE_PLOT("UI views drawn", LLView::sDrawnViewCount);
+        LL_PROFILE_PLOT("UI views clip-culled", LLView::sClipCulledViewCount);
+        ALUIPerfSelfTest::recordViewCounts(
+            LLView::sDrawnViewCount, LLView::sClipCulledViewCount,
+            LLView::sFindChildCallCount, LLView::sFindChildVisitedCount);
+        LLView::sDrawnViewCount = 0;
+        LLView::sClipCulledViewCount = 0;
+        LLView::sFindChildCallCount = 0;
+        LLView::sFindChildVisitedCount = 0;
 
         if (LLView::sDebugRects)
         {

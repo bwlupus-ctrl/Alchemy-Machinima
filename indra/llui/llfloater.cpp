@@ -2172,11 +2172,30 @@ void LLFloater::onClickCloseBtn(bool app_quitting)
 }
 
 
+const std::string& LLFloater::profileZoneName() const
+{
+    if (mProfileZoneName.empty())
+    {
+        mProfileZoneName = "Floater:" +
+            (mInstanceName.empty() ? getName() : mInstanceName);
+    }
+    return mProfileZoneName;
+}
+
 // virtual
 void LLFloater::draw()
 {
     LL_PROFILE_ZONE_SCOPED_CATEGORY_UI;
-    LL_PROFILE_ZONE_TEXT(getTitle().c_str(), getTitle().length());
+#if LL_PROFILER_CATEGORY_ENABLE_UI
+    LL_PROFILE_ZONE_TRANSIENT(profileZoneName().c_str());
+#endif
+#ifdef TRACY_ENABLE
+    if (TracyIsConnected)
+    {
+        const std::string title = getTitle();
+        LL_PROFILE_ZONE_TEXT(title.c_str(), title.size());
+    }
+#endif
 
     // draw background
     if( isBackgroundVisible() )
@@ -3235,6 +3254,7 @@ void LLFloaterView::adjustToFitScreen(LLFloater* floater, bool allow_partial_out
 
 void LLFloaterView::draw()
 {
+    LL_PROFILE_ZONE_SCOPED_CATEGORY_UI;
     refresh();
 
     // hide focused floater if in cycle mode, so that it can be drawn on top

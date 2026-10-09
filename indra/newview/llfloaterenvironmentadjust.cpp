@@ -27,6 +27,7 @@
 #include "llviewerprecompiledheaders.h"
 
 #include "llfloaterenvironmentadjust.h"
+#include "aluiperfselftest.h"
 
 #include "llnotificationsutil.h"
 #include "llbutton.h" // [EnvIntensity v2] Advanced toggle label
@@ -612,6 +613,21 @@ bool LLFloaterEnvironmentAdjust::postBuild()
 
 void LLFloaterEnvironmentAdjust::onOpen(const LLSD& key)
 {
+    if (ALUIPerfSelfTest::isActive() && !mSelfTestRestoreEnvironment)
+    {
+        LLEnvironment& environment = LLEnvironment::instance();
+        mSelfTestRestoreEnvironment = true;
+        mSelfTestSelectedEnvironment = environment.getSelectedEnvironment();
+        mSelfTestHadLocalEnvironment = environment.hasEnvironment(LLEnvironment::ENV_LOCAL);
+        if (mSelfTestHadLocalEnvironment)
+        {
+            mSelfTestLocalDay = environment.getEnvironmentDay(LLEnvironment::ENV_LOCAL);
+            mSelfTestLocalDayLength = environment.getEnvironmentDayLength(LLEnvironment::ENV_LOCAL);
+            mSelfTestLocalDayOffset = environment.getEnvironmentDayOffset(LLEnvironment::ENV_LOCAL);
+            mSelfTestLocalSky = environment.getEnvironmentFixedSky(LLEnvironment::ENV_LOCAL);
+            mSelfTestLocalWater = environment.getEnvironmentFixedWater(LLEnvironment::ENV_LOCAL);
+        }
+    }
     if (!mLiveSky)
     {
         LLEnvironment::instance().saveBeaconsState();
@@ -641,6 +657,32 @@ void LLFloaterEnvironmentAdjust::onClose(bool app_quitting)
     mEventConnection.disconnect();
     mLiveSky.reset();
     mLiveWater.reset();
+    if (mSelfTestRestoreEnvironment)
+    {
+        LLEnvironment& environment = LLEnvironment::instance();
+        if (!mSelfTestHadLocalEnvironment)
+        {
+            environment.clearEnvironment(LLEnvironment::ENV_LOCAL);
+        }
+        else if (mSelfTestLocalDay)
+        {
+            environment.setEnvironment(
+                LLEnvironment::ENV_LOCAL, mSelfTestLocalDay,
+                mSelfTestLocalDayLength, mSelfTestLocalDayOffset);
+        }
+        else
+        {
+            environment.setEnvironment(
+                LLEnvironment::ENV_LOCAL,
+                mSelfTestLocalSky, mSelfTestLocalWater);
+        }
+        environment.setSelectedEnvironment(
+            mSelfTestSelectedEnvironment, LLEnvironment::TRANSITION_INSTANT);
+        mSelfTestLocalDay.reset();
+        mSelfTestLocalSky.reset();
+        mSelfTestLocalWater.reset();
+        mSelfTestRestoreEnvironment = false;
+    }
     LLFloater::onClose(app_quitting);
 }
 
@@ -721,9 +763,19 @@ void LLFloaterEnvironmentAdjust::captureCurrentEnvironment()
     {
         if (environment.getEnvironmentDay(LLEnvironment::ENV_LOCAL))
         {   // We have a full day cycle in the local environment.  Freeze the sky
-            mLiveSky = environment.getEnvironmentFixedSky(LLEnvironment::ENV_LOCAL)->buildClone();
-            mLiveWater = environment.getEnvironmentFixedWater(LLEnvironment::ENV_LOCAL)->buildClone();
-            updatelocal = true;
+            LLSettingsSky::ptr_t sky = environment.getEnvironmentFixedSky(LLEnvironment::ENV_LOCAL);
+            LLSettingsWater::ptr_t water = environment.getEnvironmentFixedWater(LLEnvironment::ENV_LOCAL);
+            if (!sky || !water)
+            {
+                mLiveSky.reset();
+                mLiveWater.reset();
+            }
+            else
+            {
+                mLiveSky = sky->buildClone();
+                mLiveWater = water->buildClone();
+                updatelocal = true;
+            }
         }
         else
         {   // otherwise we can just use the sky.
@@ -733,9 +785,31 @@ void LLFloaterEnvironmentAdjust::captureCurrentEnvironment()
     }
     else
     {
-        mLiveSky = environment.getEnvironmentFixedSky(LLEnvironment::ENV_PARCEL, true)->buildClone();
-        mLiveWater = environment.getEnvironmentFixedWater(LLEnvironment::ENV_PARCEL, true)->buildClone();
+        LLSettingsSky::ptr_t sky = environment.getEnvironmentFixedSky(LLEnvironment::ENV_PARCEL, true);
+        LLSettingsWater::ptr_t water = environment.getEnvironmentFixedWater(LLEnvironment::ENV_PARCEL, true);
+        if (!sky || !water)
+        {
+            mLiveSky.reset();
+            mLiveWater.reset();
+            return;
+        }
+        mLiveSky = sky->buildClone();
+        mLiveWater = water->buildClone();
         updatelocal = true;
+    }
+
+    if (!mLiveSky || !mLiveWater)
+    {
+        mLiveSky.reset();
+        mLiveWater.reset();
+        // Preserve the old selection side effect for an existing fixed local
+        // environment even when one half is temporarily unavailable.
+        if (!updatelocal && environment.hasEnvironment(LLEnvironment::ENV_LOCAL))
+        {
+            environment.setSelectedEnvironment(
+                LLEnvironment::ENV_LOCAL, LLEnvironment::TRANSITION_INSTANT);
+        }
+        return;
     }
 
     if (updatelocal)

@@ -15,6 +15,7 @@
 #include "aldiopterpresetbank.h" // ALScopedPresetMaterializing, AL_EXIT_AUTO_AFTER_EDIT (CR2-2)
 #include "altoolfocuspick.h"     // Phase 4 -- the eyedropper
 #include "llbutton.h"
+#include "llcallbacklist.h"
 #include "llcombobox.h"
 #include "llcontrol.h"           // LLControlVariable::isDefault() -- Phase 5 reset tint
 #include "llfiltereditor.h"      // Phase 5 -- filter box
@@ -270,6 +271,15 @@ ALFloaterUltimateDiopter::ALFloaterUltimateDiopter(const LLSD& key)
     mPickOwnerId = LLUUID::generateNewID();
 }
 
+ALFloaterUltimateDiopter::~ALFloaterUltimateDiopter()
+{
+    if (mRangeIdleRegistered)
+    {
+        gIdleCallbacks.deleteFunction(rangeIdle, this);
+        mRangeIdleRegistered = false;
+    }
+}
+
 bool ALFloaterUltimateDiopter::postBuild()
 {
     mDiopterPresetCombo = findChild<LLComboBox>("diopter_preset");
@@ -429,11 +439,22 @@ void ALFloaterUltimateDiopter::onOpen(const LLSD& key)
     updateFocusReadouts();
     updateResetIndicators();
 
+    if (!mRangeIdleRegistered)
+    {
+        gIdleCallbacks.addFunction(rangeIdle, this);
+        mRangeIdleRegistered = true;
+    }
+
     LLFloater::onOpen(key);
 }
 
 void ALFloaterUltimateDiopter::onClose(bool app_quitting)
 {
+    if (mRangeIdleRegistered)
+    {
+        gIdleCallbacks.deleteFunction(rangeIdle, this);
+        mRangeIdleRegistered = false;
+    }
     ALToolFocusPick::getInstance()->cancelForOwner(mPickOwnerId);
     mActivePick = AL_PICK_NONE;
     LLFloater::onClose(app_quitting);
@@ -471,6 +492,7 @@ void ALFloaterUltimateDiopter::migrateSavedRectIfNeeded()
 
 void ALFloaterUltimateDiopter::draw()
 {
+    LL_PROFILE_ZONE_SCOPED_CATEGORY_UI;
     // [Ultimate Diopter] refresh mechanism choice (design doc §7 Phase 2
     // row: "a single control-group signal or per-frame draw() check; pick
     // the house-idiomatic cheap option and justify"): per-frame draw()
@@ -504,16 +526,24 @@ void ALFloaterUltimateDiopter::draw()
     // updateShowDepthCheckboxes(), the Show-Depth checkboxes' sync to
     // whatever CineDiopterDebugView holds right now), or a range-governed
     // setting drifting outside its currently-applied bounds via a reset or
-    // external write (checkRangeStaleness(), Codex round-2 CR2-3). All five
+    // external write (checkRangeStaleness(), Codex round-2 CR2-3, now handled
+    // by the floater's idle callback so draw never writes a setting). These
     // are cheap (a handful of cached-pointer reads/compares plus a
     // dedupe-guarded setText/setValue), matching the signature-guarded
     // pass's own per-frame cost profile.
     updateFocusReadouts();
     updateShowDepthCheckboxes();
     updateResetIndicators();
-    checkRangeStaleness();
-
     LLFloater::draw();
+}
+
+void ALFloaterUltimateDiopter::rangeIdle(void* userdata)
+{
+    ALFloaterUltimateDiopter* self = static_cast<ALFloaterUltimateDiopter*>(userdata);
+    if (self && self->getVisible())
+    {
+        self->checkRangeStaleness();
+    }
 }
 
 void ALFloaterUltimateDiopter::populateState(ALDiopterState& st) const
@@ -1387,7 +1417,7 @@ void ALFloaterUltimateDiopter::checkRangeStaleness()
     // clamp its DISPLAY to 2 m while gSavedSettings actually holds 8 m, a
     // "clamped lie" the director has no way to see. Cheap (4 settings, 4
     // slider getMin/Max calls) and safe to run unconditionally every
-    // draw(): once a slot's range is re-picked to contain the current
+    // idle callback: once a slot's range is re-picked to contain the current
     // value, this is a no-op for that slot on every subsequent frame until
     // something moves the raw value outside the newly-applied bounds again.
     for (S32 slot = 0; slot < (S32)AL_RANGE_SLOT_COUNT; ++slot)

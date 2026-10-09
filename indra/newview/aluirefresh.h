@@ -502,11 +502,9 @@ private:
 // to the widget and to every ancestor; a chain that never reaches the root view
 // (detached widget) is not on screen.
 //
-// Beyond drawChildren (clip_to_ancestors, default true): the widget's screen rect
-// must also overlap each ancestor's screen rect. drawChildren does not test this
-// because LLScrollContainer clips with a scissor instead of skipping the draw, so a
-// widget scrolled out of its container's viewport still "draws" (into nothing).
-// For refresh decisions that is exactly the case we want to treat as off screen.
+// Beyond drawChildren's active-scissor child cull (clip_to_ancestors, default
+// true), this conservative refresh test also requires overlap with every ancestor
+// rect. That approximation remains useful outside an active draw/clip-stack scope.
 inline bool isWidgetOnScreen(const LLView* view, bool clip_to_ancestors = true)
 {
     if (!view)

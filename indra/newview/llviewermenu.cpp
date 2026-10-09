@@ -401,6 +401,7 @@ void initialize_menus();
 //-----------------------------------------------------------------------------
 
 void set_merchant_SLM_menu();
+void bind_membership_label_item(LLUICtrl* item);
 
 class LLSLMMenuUpdater
 {
@@ -649,6 +650,17 @@ void init_menus()
     gMenuParcelObserver = new LLMenuParcelObserver();
 
     gSLMMenuUpdater = new LLSLMMenuUpdater();
+
+    LLUICtrl* membership_item =
+        gMenuHolder->findChild<LLMenuItemCallGL>("Membership");
+    if (membership_item)
+    {
+        bind_membership_label_item(membership_item);
+    }
+    else
+    {
+        LL_WARNS() << "Can't find 'Membership' in 'Me' menu" << LL_ENDL;
+    }
 
     gLoginMenuBarView = LLUICtrlFactory::getInstance()->createFromFile<LLMenuBarGL>("menu_login.xml", gMenuHolder, LLViewerMenuHolderGL::child_registry_t::instance());
     gLoginMenuBarView->arrangeAndClear();
@@ -10318,14 +10330,42 @@ public:
 
 class LLUpdateMembershipLabel : public view_listener_t
 {
+public:
+    void setItem(LLUICtrl* item)
+    {
+        mItem = item ? item->getHandle() : LLHandle<LLUICtrl>();
+        mLastLabel.clear();
+    }
+
+private:
     bool handleEvent(const LLSD& userdata)
     {
         const std::string label_str =  LLAgentBenefitsMgr::isCurrent("Base") ? LLTrans::getString("MembershipUpgradeText") : LLTrans::getString("MembershipPremiumText");
-        gMenuHolder->childSetLabelArg("Membership", "[Membership]", label_str);
+        if (label_str != mLastLabel)
+        {
+            if (LLUICtrl* item = mItem.get())
+            {
+                item->setLabelArg("[Membership]", label_str);
+            }
+            mLastLabel = label_str;
+        }
 
         return true;
     }
+
+    LLHandle<LLUICtrl> mItem;
+    std::string mLastLabel;
 };
+
+static LLUpdateMembershipLabel* gMembershipLabelUpdater = nullptr;
+
+void bind_membership_label_item(LLUICtrl* item)
+{
+    if (gMembershipLabelUpdater)
+    {
+        gMembershipLabelUpdater->setItem(item);
+    }
+}
 
 
 class LLToggleUIHints : public view_listener_t
@@ -10474,7 +10514,8 @@ void initialize_menus()
 
     view_listener_t::addEnable(new LLUploadCostCalculator(), "Upload.CalculateCosts");
 
-    view_listener_t::addEnable(new LLUpdateMembershipLabel(), "Membership.UpdateLabel");
+    gMembershipLabelUpdater = new LLUpdateMembershipLabel();
+    view_listener_t::addEnable(gMembershipLabelUpdater, "Membership.UpdateLabel");
 
     enable.add("Conversation.IsConversationLoggingAllowed", boost::bind(&LLFloaterIMContainer::isConversationLoggingAllowed));
 

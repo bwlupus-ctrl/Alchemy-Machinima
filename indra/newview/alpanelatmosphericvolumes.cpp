@@ -117,7 +117,12 @@ void ALPanelAtmosphericVolumes::draw()
         !gFocusMgr.childHasMouseCapture(mFeatherSlider) &&
         !gFocusMgr.childHasMouseCapture(mHeightSlider) &&
         !gFocusMgr.childHasMouseCapture(mNoiseScaleSlider) &&
-        !gFocusMgr.childHasMouseCapture(mNoiseSpeedSlider))
+        !gFocusMgr.childHasMouseCapture(mNoiseSpeedSlider) &&
+        !mDensitySlider->isWheelSettlePending() &&
+        !mFeatherSlider->isWheelSettlePending() &&
+        !mHeightSlider->isWheelSettlePending() &&
+        !mNoiseScaleSlider->isWheelSettlePending() &&
+        !mNoiseSpeedSlider->isWheelSettlePending())
     {
         flushPendingSave();
     }
@@ -128,7 +133,7 @@ void ALPanelAtmosphericVolumes::draw()
     {
         mSelected = manager_selection;
         mVolumeList->selectByValue(LLSD(mSelected));
-        refreshEditor();
+        refreshEditor(true);
     }
     LLPanel::draw();
 }
@@ -166,7 +171,7 @@ void ALPanelAtmosphericVolumes::onSelectionChanged()
     }
     mSelected = selected;
     ALLocalFogManager::instance().setSelected(selected);
-    refreshEditor();
+    refreshEditor(true);
 }
 
 void ALPanelAtmosphericVolumes::onAdd()
@@ -278,11 +283,11 @@ void ALPanelAtmosphericVolumes::onEditorCommit(LLUICtrl* source)
     refreshListRow(mSelected);
     mSeenBank = manager.volumes();
 
-    // Slider commits are previews while the thumb has capture. Persist once
-    // on release; the renderer and the other visible host still see each model
-    // revision immediately.
-    if (dynamic_cast<LLSliderCtrl*>(source) &&
-        gFocusMgr.childHasMouseCapture(source))
+    // Slider commits are previews during a drag and during a wheel gesture.
+    // The mouse-up / wheel-settle callback is the sole final commit. A keyboard
+    // or editor commit has no capture or pending settle and is flushed by the
+    // next draw pass.
+    if (dynamic_cast<LLSliderCtrl*>(source))
     {
         mSavePending = true;
     }

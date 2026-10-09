@@ -499,7 +499,10 @@ public:
     commit_signal_t* mMinimizeSignal;
 
 protected:
+    const std::string& profileZoneName() const;
+
     bool            mSaveRect;
+    mutable std::string mProfileZoneName;
     bool            mDefaultRectForGroup;
     std::string     mRectControl;
     std::string     mPosXControl;
@@ -691,5 +694,3 @@ private:
 extern LLFloaterView* gFloaterView;
 
 #endif  // LL_FLOATER_H
-
-

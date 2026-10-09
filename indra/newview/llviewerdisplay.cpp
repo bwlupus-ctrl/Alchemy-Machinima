@@ -29,6 +29,7 @@
 #include "llviewerdisplay.h"
 
 #include "alfloaterprogressview.h"
+#include "aluiperfselftest.h"
 #include "alcinelightrigmanager.h"
 #include "fsyspath.h"
 #include "llactormover.h"
@@ -101,6 +102,7 @@
 
 #include <filesystem>
 #include <iomanip>
+#include <optional>
 #include <sstream>
 // [RLVa:KB] - Checked: 2011-05-22 (RLVa-1.3.1a)
 #include "llvisualeffect.h"
@@ -201,7 +203,21 @@ void display_startup()
     if (gViewerWindow)
     gViewerWindow->setup2DRender();
     if (gViewerWindow)
-    gViewerWindow->draw();
+    {
+        // Before STATE_PRECACHE the login screen bypasses render_ui(); time
+        // its equivalent root UI draw so the login-screen harness advances.
+        std::optional<LLTimer> login_ui_draw_timer;
+        if (ALUIPerfSelfTest::isActive())
+        {
+            login_ui_draw_timer.emplace();
+        }
+        gViewerWindow->draw();
+        if (login_ui_draw_timer)
+        {
+            ALUIPerfSelfTest::recordUIDraw(
+                (F64)login_ui_draw_timer->getElapsedTimeF64() * 1000.0);
+        }
+    }
     gGL.flush();
 
     LLVertexBuffer::unbind();
@@ -1766,6 +1782,11 @@ bool setup_hud_matrices(const LLRect& screen_region)
 
 void render_ui(F32 zoom_factor, int subfield)
 {
+    std::optional<LLTimer> ui_draw_timer;
+    if (ALUIPerfSelfTest::isActive())
+    {
+        ui_draw_timer.emplace();
+    }
     LLPerfStats::RecordSceneTime T ( LLPerfStats::StatType_t::RENDER_UI ); // render time capture - Primary UI stat can have HUD time overlap (TODO)
     LL_PROFILE_ZONE_SCOPED_CATEGORY_UI; //LL_RECORD_BLOCK_TIME(FTM_RENDER_UI);
     LL_PROFILE_GPU_ZONE("ui");
@@ -1872,6 +1893,11 @@ void render_ui(F32 zoom_factor, int subfield)
     {
         set_current_modelview(saved_view);
         gGL.popMatrix();
+    }
+    if (ui_draw_timer)
+    {
+        ALUIPerfSelfTest::recordUIDraw(
+            (F64)ui_draw_timer->getElapsedTimeF64() * 1000.0);
     }
 }
 

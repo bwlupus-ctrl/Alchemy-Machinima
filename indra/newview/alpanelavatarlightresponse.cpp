@@ -424,7 +424,6 @@ void ALPanelAvatarLightResponse::collectRows(std::vector<LLUUID>& order,
 void ALPanelAvatarLightResponse::refreshRows(bool force)
 {
     LL_PROFILE_ZONE_NAMED_CATEGORY_UI("LightResponse refreshRows");
-    (void)force; // membership diffing makes forced destructive rebuilds unnecessary
     if (!mTargetList)
     {
         return;
@@ -453,7 +452,9 @@ void ALPanelAvatarLightResponse::refreshRows(bool force)
         }
         order.swap(filtered);
     }
+#if LL_PROFILER_CATEGORY_ENABLE_UI
     LL_PROFILE_ZONE_NUM(order.size());
+#endif
 
     const std::set<LLUUID> wanted(order.begin(), order.end());
     const std::set<LLUUID> shown(mRowKeys.begin(), mRowKeys.end());
@@ -480,6 +481,10 @@ void ALPanelAvatarLightResponse::refreshRows(bool force)
             {
                 kind_cell->setValue(kind);
             }
+        }
+        if (force)
+        {
+            refreshStateCells();
         }
         return;
     }

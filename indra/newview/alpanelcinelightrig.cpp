@@ -2883,6 +2883,7 @@ void ALPanelCineLightRig::onVisibilityChange(bool new_visibility)
 {
     if (new_visibility)
     {
+        syncEasyModeForSelected();
         mRigRimStatusGate.reset();
         mRigRimStatusClock.forceDue();
         mLiveProbeClock.forceDue();

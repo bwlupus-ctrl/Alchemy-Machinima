@@ -151,6 +151,17 @@ private:
     LLSettingsWater::ptr_t      mLiveWater;
     LLEnvironment::connection_t mEventConnection;
 
+    // The login-screen UI perf harness must leave the environment exactly as
+    // it found it after this floater's onOpen snapshot is closed.
+    bool                        mSelfTestRestoreEnvironment = false;
+    bool                        mSelfTestHadLocalEnvironment = false;
+    LLEnvironment::EnvSelection_t mSelfTestSelectedEnvironment = LLEnvironment::ENV_LOCAL;
+    LLSettingsDay::ptr_t        mSelfTestLocalDay;
+    LLSettingsDay::Seconds      mSelfTestLocalDayLength;
+    LLSettingsDay::Seconds      mSelfTestLocalDayOffset;
+    LLSettingsSky::ptr_t        mSelfTestLocalSky;
+    LLSettingsWater::ptr_t      mSelfTestLocalWater;
+
     // [EnvIntensity] RenderSkyAutoAdjustLegacy change -> updateGammaLabel(),
     // so the Light Intensity classic/legacy note never goes stale. Scoped:
     // disconnects automatically when the floater is destroyed.

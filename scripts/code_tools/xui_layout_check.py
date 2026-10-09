@@ -1113,14 +1113,20 @@ def changed_xui_files(revision: str) -> list[Path]:
             capture_output=True,
             text=True,
         )
+        untracked = subprocess.run(
+            ["git", "ls-files", "--others", "--exclude-standard", "indra/newview/skins"],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
     except (OSError, subprocess.CalledProcessError) as exc:
         detail = getattr(exc, "stderr", "") or str(exc)
         raise ValueError(f"git diff failed: {detail.strip()}") from exc
-    return sorted(
+    return sorted({
         Path(name)
-        for name in result.stdout.splitlines()
+        for name in result.stdout.splitlines() + untracked.stdout.splitlines()
         if name.lower().endswith(".xml") and "/xui/" in name.replace("\\", "/")
-    )
+    })
 
 
 def selected_files(path: str | None, all_files: bool, changed: str | None) -> Iterable[Path]:

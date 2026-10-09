@@ -49,6 +49,8 @@
 #include "llsdserialize.h"
 #include "llviewereventrecorder.h"
 #include "llkeyboard.h"
+#include "lllocalcliprect.h"
+#include "llfontgl.h"
 // for ui edit hack
 #include "llbutton.h"
 #include "lllineeditor.h"
@@ -58,6 +60,10 @@
 static const S32 LINE_HEIGHT = 15;
 
 S32     LLView::sDepth = 0;
+U32     LLView::sDrawnViewCount = 0;
+U32     LLView::sClipCulledViewCount = 0;
+U32     LLView::sFindChildCallCount = 0;
+U32     LLView::sFindChildVisitedCount = 0;
 bool    LLView::sDebugRects = false;
 bool    LLView::sDebugUnicode = false;
 bool    LLView::sDebugCamera = false;
@@ -1252,6 +1258,18 @@ void LLView::drawChildren()
         LLView* rootp = LLUI::getInstance()->getRootView();
         ++sDepth;
 
+        static LLUICachedControl<bool> clip_cull_enabled("UIClipCullDraw", true);
+        static LLUICachedControl<bool> clip_cull_verify("UIClipCullVerify", true);
+        constexpr S32 CLIP_CULL_MARGIN = 8;
+        LLRect local_clip;
+        bool clip_cull = false;
+        if (clip_cull_enabled && LLScreenClipRect::getCurrentClipRect(local_clip))
+        {
+            local_clip.translate(-LLFontGL::sCurOrigin.mX, -LLFontGL::sCurOrigin.mY);
+            local_clip.stretch(CLIP_CULL_MARGIN);
+            clip_cull = true;
+        }
+
         for (child_list_reverse_iter_t child_iter = mChildList.rbegin(); child_iter != mChildList.rend();)  // ++child_iter)
         {
             child_list_reverse_iter_t child = child_iter++;
@@ -1264,9 +1282,66 @@ void LLView::drawChildren()
 
             if (viewp->getVisible() && viewp->getRect().isValid())
             {
+                if (clip_cull)
+                {
+                    const bool zero_area = viewp->getRect().isEmpty();
+                    LLRect extent = viewp->getRect();
+                    if (viewp->getUseBoundingRect())
+                    {
+                        extent.unionWith(viewp->getBoundingRect());
+                    }
+                    // Zero-area grouping/badge views can paint through children elsewhere.
+                    if (!zero_area && extent.notEmpty() && !local_clip.overlaps(extent))
+                    {
+                        bool child_overlaps = false;
+                        // Bounded scan: a view with many children (e.g. an inventory folder)
+                        // is simply drawn as before rather than walked every frame.
+                        constexpr S32 MAX_OVERFLOW_SCAN = 256;
+                        S32 scanned = 0;
+                        for (LLView* childp : *viewp->getChildList())
+                        {
+                            if (++scanned > MAX_OVERFLOW_SCAN)
+                            {
+                                child_overlaps = true;
+                                break;
+                            }
+                            if (!childp->getVisible())
+                            {
+                                continue;
+                            }
+                            LLRect child_rect = childp->getRect();
+                            child_rect.translate(viewp->getRect().mLeft,
+                                                 viewp->getRect().mBottom);
+                            if (child_rect.notEmpty() && local_clip.overlaps(child_rect))
+                            {
+                                child_overlaps = true;
+                                if (clip_cull_verify)
+                                {
+                                    static U32 warned = 0;
+                                    constexpr U32 MAX_WARNINGS = 50;
+                                    if (warned < MAX_WARNINGS)
+                                    {
+                                        ++warned;
+                                        LL_WARNS("UIClipCull")
+                                        << "Refusing to cull overflowing view "
+                                        << viewp->getPathname() << LL_ENDL;
+                                    }
+                                }
+                                break;
+                            }
+                        }
+                        if (!child_overlaps)
+                        {
+                            ++sClipCulledViewCount;
+                            continue;
+                        }
+                    }
+                }
+
                 LLRect screen_rect = viewp->calcScreenRect();
                 if ( rootp->getLocalRect().overlaps(screen_rect)  && sDirtyRect.overlaps(screen_rect))
                 {
+                    ++sDrawnViewCount;
                     LLUI::pushMatrix();
                     {
                         LLUI::translate((F32)viewp->getRect().mLeft, (F32)viewp->getRect().mBottom);
@@ -1670,7 +1745,18 @@ LLView* LLView::getChildView(std::string_view name, bool recurse) const
 
 LLView* LLView::findChildView(std::string_view name, bool recurse) const
 {
-    LL_PROFILE_ZONE_SCOPED_CATEGORY_UI;
+    static thread_local U32 find_depth = 0;
+    static thread_local U32 find_nodes = 0;
+    const bool outer = find_depth == 0;
+    LL_PROFILE_ZONE_NAMED_ACTIVE(find_zone, "LLView::findChildView", outer);
+    if (outer)
+    {
+        find_nodes = 0;
+        ++sFindChildCallCount;
+    }
+    ++find_depth;
+    ++find_nodes;
+    LLView* result = nullptr;
 
     // Look for direct children *first*
     for (LLView* childp : mChildList)
@@ -1678,10 +1764,11 @@ LLView* LLView::findChildView(std::string_view name, bool recurse) const
         llassert(childp);
         if (childp->getName() == name)
         {
-            return childp;
+            result = childp;
+            break;
         }
     }
-    if (recurse)
+    if (!result && recurse)
     {
         // Look inside each child as well.
         for (LLView* childp : mChildList)
@@ -1690,11 +1777,20 @@ LLView* LLView::findChildView(std::string_view name, bool recurse) const
             LLView* viewp = childp->findChildView(name, recurse);
             if ( viewp )
             {
-                return viewp;
+                result = viewp;
+                break;
             }
         }
     }
-    return NULL;
+    --find_depth;
+    if (outer)
+    {
+        sFindChildVisitedCount += find_nodes;
+#ifdef TRACY_ENABLE
+        find_zone.Value(find_nodes);
+#endif
+    }
+    return result;
 }
 
 bool LLView::parentPointInView(S32 x, S32 y, EHitTestType type) const

@@ -105,6 +105,7 @@ public:
     bool            isAtBottom() const { return mScrollbar[VERTICAL]->isAtEnd(); }
     S32             getDocPosVertical() const { return mScrollbar[VERTICAL]->getDocPos(); }
     S32             getDocPosHorizontal() const { return mScrollbar[HORIZONTAL]->getDocPos(); }
+    void            setDocPosVertical(S32 pos);
     S32             getBorderWidth() const;
 
     // LLView functionality
@@ -132,6 +133,8 @@ protected:
     LLView*     mScrolledView;
 
 private:
+    const std::string& profileZoneName() const;
+
     // internal scrollbar handlers
     virtual void scrollHorizontal( S32 new_pos );
     virtual void scrollVertical( S32 new_pos );
@@ -155,6 +158,7 @@ private:
     U32         mMaxAutoScrollZone;
     bool        mHideScrollbar;
     bool        mIgnoreArrowKeys;
+    mutable std::string mProfileZoneName;
 };
 
 

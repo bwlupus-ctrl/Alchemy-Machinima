@@ -897,6 +897,7 @@ private:
     LLMenuGL*   mMenu;
     S32         mTargetHeight;
     bool        mQuitRequested;
+    LLFrameTimer mArrangeTimer;
 };
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

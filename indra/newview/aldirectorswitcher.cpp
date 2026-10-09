@@ -72,21 +72,59 @@ F32 finite_clamp(F32 value, F32 fallback, F32 minimum, F32 maximum)
         : fallback;
 }
 
-void latch_curve(const char* curve_key,
-                 const char* x1_key, const char* y1_key,
-                 const char* x2_key, const char* y2_key,
+void latch_curve(S32 curve_value, F32 x1, F32 y1, F32 x2, F32 y2,
                  S32& curve_id, F32 bezier[4])
 {
-    curve_id = ALCameraCurve::sanitizeId(
-        gSavedSettings.getS32(curve_key));
-    bezier[0] = ALCameraCurve::sanitizeX(
-        gSavedSettings.getF32(x1_key), 0.42f);
-    bezier[1] = ALCameraCurve::sanitizeY(
-        gSavedSettings.getF32(y1_key), 0.f);
-    bezier[2] = ALCameraCurve::sanitizeX(
-        gSavedSettings.getF32(x2_key), 0.58f);
-    bezier[3] = ALCameraCurve::sanitizeY(
-        gSavedSettings.getF32(y2_key), 1.f);
+    curve_id = ALCameraCurve::sanitizeId(curve_value);
+    bezier[0] = ALCameraCurve::sanitizeX(x1, 0.42f);
+    bezier[1] = ALCameraCurve::sanitizeY(y1, 0.f);
+    bezier[2] = ALCameraCurve::sanitizeX(x2, 0.58f);
+    bezier[3] = ALCameraCurve::sanitizeY(y2, 1.f);
+}
+
+struct SwitcherControls
+{
+    LLCachedControl<LLSD> bank{gSavedSettings, "DirectorSwitcherBank", LLSD()};
+    LLCachedControl<bool> armed{gSavedSettings, "DirectorSwitcherArmed", false};
+    LLCachedControl<bool> auto_cut{gSavedSettings, "DirectorSwitcherAuto", false};
+    LLCachedControl<bool> sequence{gSavedSettings, "DirectorSwitcherSequence", false};
+    LLCachedControl<F32> interval{gSavedSettings, "DirectorSwitcherIntervalSec", 5.f};
+    LLCachedControl<F32> jitter{gSavedSettings, "DirectorSwitcherJitterSec", 0.f};
+    LLCachedControl<U32> seed{gSavedSettings, "DirectorSwitcherSeed", 0};
+    LLCachedControl<bool> camera_enabled{gSavedSettings, "CinematicCamEnabled", false};
+    LLCachedControl<bool> ease_cuts{gSavedSettings, "DirectorSwitcherEaseCuts", false};
+    LLCachedControl<F32> ease_seconds{gSavedSettings, "DirectorSwitcherEaseSec", 0.f};
+    LLCachedControl<S32> ease_curve{gSavedSettings, "DirectorSwitcherEaseCurve", 0};
+    LLCachedControl<F32> ease_x1{gSavedSettings, "DirectorSwitcherEaseBezierX1", .42f};
+    LLCachedControl<F32> ease_y1{gSavedSettings, "DirectorSwitcherEaseBezierY1", 0.f};
+    LLCachedControl<F32> ease_x2{gSavedSettings, "DirectorSwitcherEaseBezierX2", .58f};
+    LLCachedControl<F32> ease_y2{gSavedSettings, "DirectorSwitcherEaseBezierY2", 1.f};
+    LLCachedControl<F32> ease_feather{gSavedSettings, "DirectorSwitcherEaseFeather", 0.f};
+    LLCachedControl<bool> ease_freeze{gSavedSettings, "DirectorSwitcherEaseFreeze", false};
+    LLCachedControl<F32> ease_time_factor{gSavedSettings, "DirectorSwitcherEaseTimeFactor", .15f};
+    LLCachedControl<S32> freeze_curve{gSavedSettings, "DirectorSwitcherFreezeCurve", 0};
+    LLCachedControl<F32> freeze_x1{gSavedSettings, "DirectorSwitcherFreezeBezierX1", .42f};
+    LLCachedControl<F32> freeze_y1{gSavedSettings, "DirectorSwitcherFreezeBezierY1", 0.f};
+    LLCachedControl<F32> freeze_x2{gSavedSettings, "DirectorSwitcherFreezeBezierX2", .58f};
+    LLCachedControl<F32> freeze_y2{gSavedSettings, "DirectorSwitcherFreezeBezierY2", 1.f};
+    LLCachedControl<F32> freeze_feather{gSavedSettings, "DirectorSwitcherFreezeFeather", 0.f};
+
+    LLControlVariable* camera = gSavedSettings.getControl("CinematicCamEnabled");
+    LLControlVariable* temporal_mode = gSavedSettings.getControl("TemporalMode");
+    LLControlVariable* temporal_scale = gSavedSettings.getControl("TemporalWorldScale");
+    LLControlVariable* temporal_animation = gSavedSettings.getControl("TemporalDriveAnimation");
+    LLControlVariable* temporal_objects = gSavedSettings.getControl("TemporalDriveObjects");
+    LLControlVariable* temporal_texture = gSavedSettings.getControl("TemporalDriveTextureAnim");
+    LLControlVariable* temporal_particles = gSavedSettings.getControl("TemporalDriveParticles");
+    LLControlVariable* freeze_gate = gSavedSettings.getControl("BDMergeFreezeWorld");
+    LLControlVariable* freeze_world = gSavedSettings.getControl("UseFreezeWorld");
+    LLControlVariable* freeze_time = gSavedSettings.getControl("FreezeTime");
+};
+
+SwitcherControls& controls()
+{
+    static SwitcherControls cached;
+    return cached;
 }
 
 void set_transient_control(LLControlVariable* control, const LLSD& value)
@@ -168,7 +206,7 @@ void ALDirectorSwitcher::sanitizeSlot(Slot& slot)
 std::vector<ALDirectorSwitcher::Slot> ALDirectorSwitcher::loadBank()
 {
     std::vector<Slot> bank = defaultBank();
-    const LLSD data = gSavedSettings.getLLSD("DirectorSwitcherBank");
+    const LLSD data = controls().bank;
     if (!data.isMap() ||
         data["version"].asInteger() != BANK_VERSION ||
         !data["slots"].isArray())
@@ -276,14 +314,12 @@ ALDirectorSwitcherModel::Config ALDirectorSwitcher::readConfig(
     const std::vector<Slot>& bank)
 {
     ALDirectorSwitcherModel::Config config;
-    config.mAuto = gSavedSettings.getBOOL("DirectorSwitcherAuto");
-    config.mSequence = gSavedSettings.getBOOL("DirectorSwitcherSequence");
-    config.mIntervalSeconds =
-        gSavedSettings.getF32("DirectorSwitcherIntervalSec");
-    config.mJitterSeconds =
-        gSavedSettings.getF32("DirectorSwitcherJitterSec");
-    config.mSeed =
-        static_cast<U64>(gSavedSettings.getU32("DirectorSwitcherSeed"));
+    SwitcherControls& c = controls();
+    config.mAuto = c.auto_cut;
+    config.mSequence = c.sequence;
+    config.mIntervalSeconds = c.interval;
+    config.mJitterSeconds = c.jitter;
+    config.mSeed = static_cast<U64>((U32)c.seed);
     for (S32 i = 0; i < SLOT_COUNT; ++i)
     {
         config.mEnabled[i] =
@@ -298,15 +334,15 @@ void ALDirectorSwitcher::writeCameraEnabled(bool enabled)
     {
         return;
     }
-    const bool current = gSavedSettings.getBOOL("CinematicCamEnabled");
+    SwitcherControls& c = controls();
+    const bool current = c.camera_enabled;
     if (current == enabled)
     {
         return;
     }
     // Ownership is live-session state. An armed viewer exit or crash must not
     // serialize this temporary override as the operator's CineCam preference.
-    if (LLControlVariable* control =
-            gSavedSettings.getControl("CinematicCamEnabled"))
+    if (LLControlVariable* control = c.camera)
     {
         control->setValue(LLSD(enabled), false);
     }
@@ -330,8 +366,7 @@ void ALDirectorSwitcher::enterArmed(
     F64 now, const std::vector<Slot>& bank)
 {
     mHaveEnableSnapshot = true;
-    const bool camera_enabled =
-        gSavedSettings.getBOOL("CinematicCamEnabled");
+    const bool camera_enabled = controls().camera_enabled;
     // ACTION can already own a temporary false->true enable when the operator
     // arms the switcher mid-take. Snapshot the value ACTION will restore, not
     // its temporary live value, so disarming after CUT cannot resurrect it.
@@ -340,8 +375,7 @@ void ALDirectorSwitcher::enterArmed(
             ? false : camera_enabled;
     mWroteEnable = false;
     writeCameraEnabled(true);
-    mWasCameraEnabled =
-        gSavedSettings.getBOOL("CinematicCamEnabled");
+    mWasCameraEnabled = controls().camera_enabled;
     mYieldingToFlycam = shouldYieldToFlycam();
 
     mController.reset();
@@ -364,11 +398,10 @@ void ALDirectorSwitcher::leaveArmed()
 
     if (mHaveEnableSnapshot && mWroteEnable &&
         !LLDirectorCast::instance().ownsCameraEnable() &&
-        gSavedSettings.getBOOL("CinematicCamEnabled") ==
+        controls().camera_enabled ==
             mLastWrittenEnable)
     {
-        if (LLControlVariable* control =
-                gSavedSettings.getControl("CinematicCamEnabled"))
+        if (LLControlVariable* control = controls().camera)
         {
             control->setValue(LLSD(mEnableWasEnabled), false);
         }
@@ -389,19 +422,14 @@ void ALDirectorSwitcher::leaveArmed()
 
 void ALDirectorSwitcher::startEaseWorldTime(F64 now)
 {
+    SwitcherControls& c = controls();
     latch_curve(
-        "DirectorSwitcherFreezeCurve",
-        "DirectorSwitcherFreezeBezierX1",
-        "DirectorSwitcherFreezeBezierY1",
-        "DirectorSwitcherFreezeBezierX2",
-        "DirectorSwitcherFreezeBezierY2",
+        c.freeze_curve, c.freeze_x1, c.freeze_y1, c.freeze_x2, c.freeze_y2,
         mFreezeCurveId, mFreezeBezier);
     mFreezeFeather = finite_clamp(
-        gSavedSettings.getF32("DirectorSwitcherFreezeFeather"),
+        c.freeze_feather,
         0.f, 0.f, 1.f);
-    if (!gSavedSettings.getBOOL("DirectorSwitcherArmed") ||
-        !gSavedSettings.getBOOL("DirectorSwitcherEaseCuts") ||
-        !gSavedSettings.getBOOL("DirectorSwitcherEaseFreeze") ||
+    if (!c.armed || !c.ease_cuts || !c.ease_freeze ||
         mCutEaseSeconds <= 0.f || !std::isfinite(now))
     {
         return;
@@ -414,24 +442,19 @@ void ALDirectorSwitcher::startEaseWorldTime(F64 now)
     }
 
     mEaseTargetFactor = finite_clamp(
-        gSavedSettings.getF32("DirectorSwitcherEaseTimeFactor"),
+        c.ease_time_factor,
         0.15f, 0.f, 1.f);
     if (mEaseTargetFactor >= 1.f)
     {
         return; // explicitly normal speed: do not perturb Temporal state
     }
 
-    LLControlVariable* mode = gSavedSettings.getControl("TemporalMode");
-    LLControlVariable* scale =
-        gSavedSettings.getControl("TemporalWorldScale");
-    LLControlVariable* animation =
-        gSavedSettings.getControl("TemporalDriveAnimation");
-    LLControlVariable* objects =
-        gSavedSettings.getControl("TemporalDriveObjects");
-    LLControlVariable* texture_anim =
-        gSavedSettings.getControl("TemporalDriveTextureAnim");
-    LLControlVariable* particles =
-        gSavedSettings.getControl("TemporalDriveParticles");
+    LLControlVariable* mode = c.temporal_mode;
+    LLControlVariable* scale = c.temporal_scale;
+    LLControlVariable* animation = c.temporal_animation;
+    LLControlVariable* objects = c.temporal_objects;
+    LLControlVariable* texture_anim = c.temporal_texture;
+    LLControlVariable* particles = c.temporal_particles;
     if (!mode || !scale || !animation || !objects ||
         !texture_anim || !particles)
     {
@@ -457,12 +480,9 @@ void ALDirectorSwitcher::startEaseWorldTime(F64 now)
         // LLPresentationTime, its sole writer, halts every motion controller.
         // The cut envelope uses mCutEaseTimer, not the now-paused presentation
         // clock, so this lease still reaches its guaranteed restore.
-        LLControlVariable* gate =
-            gSavedSettings.getControl("BDMergeFreezeWorld");
-        LLControlVariable* freeze =
-            gSavedSettings.getControl("UseFreezeWorld");
-        LLControlVariable* freeze_time =
-            gSavedSettings.getControl("FreezeTime");
+        LLControlVariable* gate = c.freeze_gate;
+        LLControlVariable* freeze = c.freeze_world;
+        LLControlVariable* freeze_time = c.freeze_time;
         if (!gate || !freeze || !freeze_time)
         {
             return; // fail soft: the visual camera ease still runs
@@ -497,17 +517,13 @@ void ALDirectorSwitcher::startEaseWorldTime(F64 now)
 
 void ALDirectorSwitcher::applyEaseWorldScale(F32 scale)
 {
-    LLControlVariable* world_scale =
-        gSavedSettings.getControl("TemporalWorldScale");
-    LLControlVariable* mode = gSavedSettings.getControl("TemporalMode");
-    LLControlVariable* animation =
-        gSavedSettings.getControl("TemporalDriveAnimation");
-    LLControlVariable* objects =
-        gSavedSettings.getControl("TemporalDriveObjects");
-    LLControlVariable* texture_anim =
-        gSavedSettings.getControl("TemporalDriveTextureAnim");
-    LLControlVariable* particles =
-        gSavedSettings.getControl("TemporalDriveParticles");
+    SwitcherControls& c = controls();
+    LLControlVariable* world_scale = c.temporal_scale;
+    LLControlVariable* mode = c.temporal_mode;
+    LLControlVariable* animation = c.temporal_animation;
+    LLControlVariable* objects = c.temporal_objects;
+    LLControlVariable* texture_anim = c.temporal_texture;
+    LLControlVariable* particles = c.temporal_particles;
     if (!world_scale || !mode || !animation || !objects ||
         !texture_anim || !particles)
     {
@@ -531,11 +547,9 @@ void ALDirectorSwitcher::updateEaseWorldTime(F64 now)
     {
         return;
     }
+    SwitcherControls& c = controls();
     if (!std::isfinite(now) || now < mActiveSince ||
-        !gSavedSettings.getBOOL("DirectorSwitcherArmed") ||
-        !gSavedSettings.getBOOL("DirectorSwitcherEaseCuts") ||
-        !gSavedSettings.getBOOL("DirectorSwitcherEaseFreeze") ||
-        !gSavedSettings.getBOOL("CinematicCamEnabled") ||
+        !c.armed || !c.ease_cuts || !c.ease_freeze || !c.camera_enabled ||
         mCutEaseSeconds <= 0.f)
     {
         restoreEaseWorldTime();
@@ -557,12 +571,9 @@ void ALDirectorSwitcher::updateEaseWorldTime(F64 now)
 
     if (mEaseUsesFreezeWorld)
     {
-        LLControlVariable* gate =
-            gSavedSettings.getControl("BDMergeFreezeWorld");
-        LLControlVariable* freeze =
-            gSavedSettings.getControl("UseFreezeWorld");
-        LLControlVariable* freeze_time =
-            gSavedSettings.getControl("FreezeTime");
+        LLControlVariable* gate = c.freeze_gate;
+        LLControlVariable* freeze = c.freeze_world;
+        LLControlVariable* freeze_time = c.freeze_time;
         if (!gate || !freeze || !freeze_time)
         {
             restoreEaseWorldTime();
@@ -604,24 +615,13 @@ void ALDirectorSwitcher::restoreEaseWorldTime()
         return;
     }
 
-    set_transient_control(
-        gSavedSettings.getControl("TemporalDriveAnimation"),
-        LLSD(mSavedDriveAnimation));
-    set_transient_control(
-        gSavedSettings.getControl("TemporalDriveObjects"),
-        LLSD(mSavedDriveObjects));
-    set_transient_control(
-        gSavedSettings.getControl("TemporalDriveTextureAnim"),
-        LLSD(mSavedDriveTextureAnim));
-    set_transient_control(
-        gSavedSettings.getControl("TemporalDriveParticles"),
-        LLSD(mSavedDriveParticles));
-    set_transient_control(
-        gSavedSettings.getControl("TemporalWorldScale"),
-        LLSD((F64)mSavedTemporalWorldScale));
-    set_transient_control(
-        gSavedSettings.getControl("TemporalMode"),
-        LLSD(mSavedTemporalMode));
+    SwitcherControls& c = controls();
+    set_transient_control(c.temporal_animation, LLSD(mSavedDriveAnimation));
+    set_transient_control(c.temporal_objects, LLSD(mSavedDriveObjects));
+    set_transient_control(c.temporal_texture, LLSD(mSavedDriveTextureAnim));
+    set_transient_control(c.temporal_particles, LLSD(mSavedDriveParticles));
+    set_transient_control(c.temporal_scale, LLSD((F64)mSavedTemporalWorldScale));
+    set_transient_control(c.temporal_mode, LLSD(mSavedTemporalMode));
 
     if (mEaseUsesFreezeWorld)
     {
@@ -629,15 +629,9 @@ void ALDirectorSwitcher::restoreEaseWorldTime()
         // them at the next frame boundary. Release UseFreezeWorld before its
         // gate because its listener owns avatar pause handles. FreezeTime is
         // last so an unrelated pre-existing stock freeze-frame is preserved.
-        set_transient_control(
-            gSavedSettings.getControl("UseFreezeWorld"),
-            LLSD(mSavedUseFreezeWorld));
-        set_transient_control(
-            gSavedSettings.getControl("BDMergeFreezeWorld"),
-            LLSD(mSavedBDMergeFreezeWorld));
-        set_transient_control(
-            gSavedSettings.getControl("FreezeTime"),
-            LLSD(mSavedFreezeTime));
+        set_transient_control(c.freeze_world, LLSD(mSavedUseFreezeWorld));
+        set_transient_control(c.freeze_gate, LLSD(mSavedBDMergeFreezeWorld));
+        set_transient_control(c.freeze_time, LLSD(mSavedFreezeTime));
     }
 
     mEaseWorldTimeActive = false;
@@ -704,20 +698,17 @@ bool ALDirectorSwitcher::applySlot(
     mActiveSlotConfig = next_config;
     mActiveSince =
         std::isfinite(boundary) && boundary <= now ? boundary : now;
+    SwitcherControls& c = controls();
     mCutEaseSeconds =
-        gSavedSettings.getBOOL("DirectorSwitcherEaseCuts")
-        ? llclamp(gSavedSettings.getF32("DirectorSwitcherEaseSec"),
+        c.ease_cuts
+        ? llclamp((F32)c.ease_seconds,
                   0.f, MAX_EASE_SECONDS)
         : 0.f;
     latch_curve(
-        "DirectorSwitcherEaseCurve",
-        "DirectorSwitcherEaseBezierX1",
-        "DirectorSwitcherEaseBezierY1",
-        "DirectorSwitcherEaseBezierX2",
-        "DirectorSwitcherEaseBezierY2",
+        c.ease_curve, c.ease_x1, c.ease_y1, c.ease_x2, c.ease_y2,
         mCutEaseCurveId, mCutEaseBezier);
     mCutEaseFeather = finite_clamp(
-        gSavedSettings.getF32("DirectorSwitcherEaseFeather"),
+        c.ease_feather,
         0.f, 0.f, 1.f);
     mCutEaseTimer.reset();
     if (++mCutSerial == 0)
@@ -730,9 +721,8 @@ bool ALDirectorSwitcher::applySlot(
 
 void ALDirectorSwitcher::tick(F64 now)
 {
-    static LLCachedControl<bool> armed_setting(
-        gSavedSettings, "DirectorSwitcherArmed", false);
-    const bool armed = armed_setting;
+    SwitcherControls& c = controls();
+    const bool armed = c.armed;
     if (!armed)
     {
         restoreEaseWorldTime();
@@ -764,7 +754,7 @@ void ALDirectorSwitcher::tick(F64 now)
             // Relinquish only the transient enable value still owned by this
             // switcher. An independently enabled CineCam remains untouched.
             if (mHaveEnableSnapshot && mWroteEnable && mLastWrittenEnable &&
-                gSavedSettings.getBOOL("CinematicCamEnabled"))
+                c.camera_enabled)
             {
                 writeCameraEnabled(mEnableWasEnabled);
             }
@@ -777,8 +767,7 @@ void ALDirectorSwitcher::tick(F64 now)
         mYieldingToFlycam = yield_to_flycam;
     }
 
-    const bool camera_enabled =
-        gSavedSettings.getBOOL("CinematicCamEnabled");
+    const bool camera_enabled = c.camera_enabled;
     if (now < mLastPresentationTime)
     {
         restoreEaseWorldTime();

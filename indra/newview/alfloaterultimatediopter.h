@@ -325,7 +325,7 @@ class ALFloaterUltimateDiopter final : public LLFloater
 {
 public:
     ALFloaterUltimateDiopter(const LLSD& key);
-    ~ALFloaterUltimateDiopter() override = default;
+    ~ALFloaterUltimateDiopter() override;
 
     bool postBuild() override;
     void draw() override;
@@ -533,6 +533,8 @@ private:
     // range, and clears any stale undo shadow / status text for that slot
     // (autoSelectRange() already does the latter two).
     void checkRangeStaleness();
+    static void rangeIdle(void* userdata);
+    bool mRangeIdleRegistered = false;
 
     // -----------------------------------------------------------------
     // Phase 4 -- "Show Depth" toggle + RenderFocusPointCrosshair/Locked

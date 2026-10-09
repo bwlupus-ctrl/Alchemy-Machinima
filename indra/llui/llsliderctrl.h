@@ -111,6 +111,7 @@ public:
     /*virtual*/ bool    setLabelArg( const std::string& key, const LLStringExplicit& text );
 
     bool            isMouseHeldDown() const { return mSlider->hasMouseCapture(); }
+    bool            isWheelSettlePending() const { return mSlider->isWheelSettlePending(); }
 
     virtual void    setPrecision(S32 precision);
 
@@ -203,4 +204,3 @@ private:
 };
 
 #endif  // LL_LLSLIDERCTRL_H
-

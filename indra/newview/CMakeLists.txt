@@ -245,6 +245,7 @@ set(viewer_SOURCE_FILES
     alsceneexplorermodel.cpp
     alstreaminfo.cpp
     altoolalign.cpp
+    aluiperfselftest.cpp
     alunzip.cpp
     alviewermenu.cpp
     fsfloaterposer.cpp
@@ -1237,6 +1238,7 @@ set(viewer_HEADER_FILES
     alscrollfit.h # [ScrollFit]
     alobjectpathmover.h
     alpanelghoststudio.h
+    aluiperfselftest.h
     aluirefresh.h # [GhostPanelPerf]
     alpanelpropmover.h
     altoolcrowdplace.h

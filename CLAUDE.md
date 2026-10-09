@@ -166,7 +166,8 @@ Helpers: `indra/newview/aluirefresh.h`.
 8. **Hidden tabs.** A refresher that only feeds a tab's widgets returns early while that tab is
    not in the visible chain, and is forced on the next reveal (`onVisibilityChange(true)` or the
    tab commit). Refreshers with model side effects (selection pushes, hotkey state) run
-   regardless and must stay cheap.
+   regardless and must stay cheap. Never put a model-side-effect refresher in the `draw()` of a
+   non-root child of a scroll document, because clip culling may legitimately skip that child.
 9. **Scrollers and the slider wheel.** Every slider takes the mouse wheel viewer-wide
    (`UISliderWheelAdjust`; design `doc/SLIDER_WHEEL_GLOBAL_DESIGN.md`). The scroll-through guard that
    stops a panel scroll from nudging a slider is global in llui (`indra/llui/llsliderwheel.h`):
@@ -186,6 +187,9 @@ Helpers: `indra/newview/aluirefresh.h`.
     joystick regression fixtures. `prebuild_guard` runs it as `--changed <last-built-commit>` and
     refuses findings. `UIFitDiagnostics` also warns once on each floater's first open for runtime
     overflow or a scroll document that was not fitted.
+11. **UI draw lint gate.** `prebuild_guard` runs `ui_draw_lint.py --changed`; the baseline only
+    shrinks, so new per-frame by-name lookups, settings reads, and raw widget writes must be fixed
+    or carry a reasoned inline suppression.
 
 ## ⛔ MANDATORY WORKING AGREEMENT — CONSULT CODEX (user directive, 2026-07-21)
 

@@ -664,6 +664,14 @@ public:
     // Depth in view hierarchy during rendering
     static S32  sDepth;
 
+    // Per-frame UI draw counters, reset after LLViewerWindow draws the tree.
+    static U32  sDrawnViewCount;
+    static U32  sClipCulledViewCount;
+
+    // Per-frame outer findChildView call and visited-node counters.
+    static U32  sFindChildCallCount;
+    static U32  sFindChildVisitedCount;
+
     // Draw debug rectangles around widgets to help with alignment and spacing
     static bool sDebugRects;
 

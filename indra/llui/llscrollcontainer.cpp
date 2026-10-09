@@ -32,6 +32,7 @@
 #include "llrender.h"
 #include "llcontainerview.h"
 #include "lllocalcliprect.h"
+#include "llfloater.h"
 // #include "llfolderview.h"
 #include "llscrollingpanellist.h"
 #include "llscrollbar.h"
@@ -511,6 +512,17 @@ void LLScrollContainer::calcVisibleSize( S32 *visible_width, S32 *visible_height
 }
 
 
+const std::string& LLScrollContainer::profileZoneName() const
+{
+    if (mProfileZoneName.empty())
+    {
+        const LLFloater* owner = getParentByType<LLFloater>();
+        mProfileZoneName = "Scroll:" +
+            (owner ? owner->getName() : std::string("?")) + "/" + getName();
+    }
+    return mProfileZoneName;
+}
+
 void LLScrollContainer::draw()
 {
     LL_PROFILE_ZONE_SCOPED_CATEGORY_UI;
@@ -557,7 +569,9 @@ void LLScrollContainer::draw()
         {
             // Tracy value for the existing LLScrollContainer::draw zone: this
             // makes dense scroll documents stand out without changing culling.
+#if LL_PROFILER_CATEGORY_ENABLE_UI
             LL_PROFILE_ZONE_NUM(mScrolledView->getChildCount());
+#endif
             updateScroll();
 
             // Draw the scrolled area.
@@ -573,6 +587,9 @@ void LLScrollContainer::draw()
                         mInnerRect.mRight - (show_v_scrollbar ? scrollbar_size: 0),
                         mInnerRect.mBottom + (show_h_scrollbar ? scrollbar_size : 0)
                         ));
+#if LL_PROFILER_CATEGORY_ENABLE_UI
+                LL_PROFILE_ZONE_TRANSIENT(profileZoneName().c_str());
+#endif
                 drawChild(mScrolledView);
             }
         }
@@ -846,6 +863,12 @@ void LLScrollContainer::goToTop()
 void LLScrollContainer::goToBottom()
 {
     mScrollbar[VERTICAL]->setDocPos(mScrollbar[VERTICAL]->getDocSize());
+    updateScroll();
+}
+
+void LLScrollContainer::setDocPosVertical(S32 pos)
+{
+    mScrollbar[VERTICAL]->setDocPos(pos);
     updateScroll();
 }
 

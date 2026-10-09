@@ -102,6 +102,9 @@
 
         #define LL_PROFILE_ZONE_NUM( val )              ZoneValue( val )
         #define LL_PROFILE_ZONE_TEXT( text, size )      ZoneText( text, size )
+        #define LL_PROFILE_ZONE_TRANSIENT(name_cstr)    ZoneTransientN(___tracy_transient_zone, name_cstr, true)
+        #define LL_PROFILE_ZONE_NAMED_ACTIVE(var,name,active) ZoneNamedN(var, name, active)
+        #define LL_PROFILE_PLOT(name,val)                TracyPlot(name, (int64_t)(val))
 
         #define LL_PROFILE_ZONE_ERR(name)               LL_PROFILE_ZONE_NAMED_COLOR( name, 0XFF0000  )  // RGB yellow
         #define LL_PROFILE_ZONE_INFO(name)              LL_PROFILE_ZONE_NAMED_COLOR( name, 0X00FFFF  )  // RGB cyan
@@ -124,6 +127,9 @@
 
         #define LL_PROFILE_ZONE_NUM( val )              (void)( val );                // Not supported
         #define LL_PROFILE_ZONE_TEXT( text, size )      (void)( text ); void( size ); // Not supported
+        #define LL_PROFILE_ZONE_TRANSIENT(name_cstr)
+        #define LL_PROFILE_ZONE_NAMED_ACTIVE(var,name,active)
+        #define LL_PROFILE_PLOT(name,val)                (void)(val)
 
         #define LL_PROFILE_ZONE_ERR(name)               (void)(name); // Not supported
         #define LL_PROFILE_ZONE_INFO(name)              (void)(name); // Not supported
@@ -145,6 +151,9 @@
 
         #define LL_PROFILE_ZONE_NUM( val )              ZoneValue( val )
         #define LL_PROFILE_ZONE_TEXT( text, size )      ZoneText( text, size )
+        #define LL_PROFILE_ZONE_TRANSIENT(name_cstr)    ZoneTransientN(___tracy_transient_zone, name_cstr, true)
+        #define LL_PROFILE_ZONE_NAMED_ACTIVE(var,name,active) ZoneNamedN(var, name, active)
+        #define LL_PROFILE_PLOT(name,val)                TracyPlot(name, (int64_t)(val))
 
         #define LL_PROFILE_ZONE_ERR(name)               LL_PROFILE_ZONE_NAMED_COLOR( name, 0XFF0000  )  // RGB yellow
         #define LL_PROFILE_ZONE_INFO(name)              LL_PROFILE_ZONE_NAMED_COLOR( name, 0X00FFFF  )  // RGB cyan

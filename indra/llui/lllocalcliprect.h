@@ -41,6 +41,18 @@ public:
     LLScreenClipRect(const LLRect& rect, bool enabled = true);
     virtual ~LLScreenClipRect();
 
+    // Top of the UI scissor stack in LLFontGL::sCurOrigin space (UI units,
+    // before UI scaling). Top-level views have no active clip.
+    static bool getCurrentClipRect(LLRect& out)
+    {
+        if (sClipRectStack.empty())
+        {
+            return false;
+        }
+        out = sClipRectStack.top();
+        return true;
+    }
+
 private:
     static void pushClipRect(const LLRect& rect);
     static void popClipRect();

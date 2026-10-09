@@ -3990,7 +3990,16 @@ void LLTearOffMenu::draw()
         // animate towards target height
         reshape(getRect().getWidth(), llceil(lerp((F32)getRect().getHeight(), (F32)mTargetHeight, LLSmoothInterpolation::getInterpolant(0.05f))));
     }
-    mMenu->needsArrange();
+    S32 mouse_x = 0;
+    S32 mouse_y = 0;
+    LLUI::getInstance()->getMousePositionLocal(this, &mouse_x, &mouse_y);
+    const bool interacting = hasMouseCapture() || hasFocus() ||
+        pointInView(mouse_x, mouse_y);
+    if (interacting || mArrangeTimer.getElapsedTimeF32() >= 0.25f)
+    {
+        mMenu->needsArrange();
+        mArrangeTimer.reset();
+    }
     LLFloater::draw();
 }
 

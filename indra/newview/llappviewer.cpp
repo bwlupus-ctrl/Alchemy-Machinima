@@ -26,6 +26,8 @@
 
 #include "llviewerprecompiledheaders.h"
 
+#include "aluiperfselftest.h"
+
 #include "llappviewer.h"
 #include "alcameradispatch.h"
 #include "alavatarlightresponse.h" // [AvatarLightResponse]
@@ -2066,7 +2068,16 @@ bool LLAppViewer::cleanup()
 
     // Must do this after all panels have been deleted because panels that have persistent rects
     // save their rects on delete.
-    gSavedSettings.saveToFile(gSavedSettings.getString("ClientSettingsFile"), true);
+    if (!ALUIPerfSelfTest::suppressSettingsSave())
+    {
+        gSavedSettings.saveToFile(gSavedSettings.getString("ClientSettingsFile"), true);
+    }
+    else
+    {
+        LL_INFOS("UIPerfSelfTest")
+            << "Skipping global settings save after UI performance self-test"
+            << LL_ENDL;
+    }
 
     LLUIColorTable::instance().saveUserSettings(gSavedSettings.getBOOL("ResetUserColorsOnLogout"));
 

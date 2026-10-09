@@ -44,6 +44,7 @@
 #include "llviewermedia_streamingaudio.h"
 #include "alavatarlightresponse.h" // [AvatarLightResponse]
 #include "alsettingsundohistory.h"
+#include "aluiperfselftest.h"
 #include "llaudioengine.h"
 // [SL:KB] - Patch: Control-TextParser | Checked: 2012-07-17 (Catznip-3.3)
 #include "lltextparser.h"
@@ -454,6 +455,7 @@ bool idle_startup()
     // until initialization is complete, but need to be done here for things
     // to work.
     gIdleCallbacks.callFunctions();
+    ALUIPerfSelfTest::tick();
     gViewerWindow->updateUI();
 
     LLMortician::updateClass();
@@ -924,6 +926,16 @@ bool idle_startup()
             show_connect_box = true;
         }
 
+        // The UI performance harness is deliberately login-screen-only. It
+        // must never consume saved AutoLogin credentials or command-line
+        // UserLoginInfo, even when those would normally bypass the login UI.
+        static LLCachedControl<std::string> ui_perf_selftest(
+            gSavedSettings, "UIPerfSelfTest", std::string());
+        if (!ui_perf_selftest().empty())
+        {
+            show_connect_box = true;
+        }
+
 // [RLVa:KB] - Patch: RLVa-2.1.0
         if (gSavedSettings.get<bool>(RlvSettingNames::Main))
         {
@@ -1013,6 +1025,7 @@ bool idle_startup()
             }
             do_startup_frame();
             LLStartUp::setStartupState( STATE_LOGIN_WAIT );     // Wait for user input
+            ALUIPerfSelfTest::startIfRequested();
         }
         else
         {
@@ -4258,4 +4271,3 @@ void handleLoadChatAlertSounds()
     }
 }
 // [/SL:KB]
-
