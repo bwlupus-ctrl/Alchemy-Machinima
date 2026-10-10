@@ -7,7 +7,7 @@
 #include <array>
 #include <memory>
 class LLUICtrl;class LLTextBox;class LLButton;class ALKitCard;
-struct ALKitRowMeta{std::string kind,widget,label,help,keywords,setting,unit,sub,link_to,action,mirror_setting;F32 min_val=0,max_val=0;S32 decimals=3;bool advanced=false,has_min=false,has_max=false;S32 option=-1;std::string card_id,page_key;};
+struct ALKitRowMeta{std::string kind,widget,label,help,keywords,setting,unit,sub,link_to,action,mirror_setting,default_value;F32 min_val=0,max_val=0;S32 decimals=3;bool advanced=false,has_min=false,has_max=false;S32 option=-1;std::string card_id,page_key;};
 class ALKitRow:public LLPanel
 {
 public:

@@ -4,6 +4,7 @@
 #include "alkitcard.h"
 #include "alkitbinding.h"
 #include "alkitrow.h"
+#include "alkitpresets.h"
 #include "alkitstyle.h"
 #include "alkitshell.h"
 #include "alkitswitch.h"
@@ -121,7 +122,7 @@ ALKitPage::ALKitPage(const Params& p)
     mMasterLabel(p.master_label), mMasterTooltip(p.master_tooltip), mModes(p.modes),
     mModeSetting(p.mode_setting), mModeWidget(p.mode_widget), mModeOn(p.mode_on),
     mModeAdapter(p.mode_adapter), mWhoLabel(p.who_label), mWhoPicker(p.who_picker),
-    mWhoAdapter(p.who_adapter), mPresetMode(p.preset_mode), mChipMode(p.chip_mode),
+    mWhoAdapter(p.who_adapter), mPresetMode(p.preset_mode), mPresetProvider(p.preset_provider), mChipMode(p.chip_mode),
     mLegacy(p.legacy)
 {
 
@@ -148,6 +149,19 @@ bool ALKitScroller::handleKeyHere(KEY key,MASK mask)
 {
     if(key==KEY_PAGE_UP||key==KEY_PAGE_DOWN)return false;
     return LLScrollContainer::handleKeyHere(key,mask);
+}
+
+bool ALKitSearchEditor::handleKeyHere(KEY key,MASK mask)
+{
+    if(key==KEY_PAGE_UP||key==KEY_PAGE_DOWN)return false;
+    if(mask==MASK_NONE&&(key==KEY_UP||key==KEY_DOWN||key==KEY_RETURN))
+    {
+        if(ALKitShell* shell=ALKitShell::find(this))
+        {
+            if(shell->handleSearchKey(key))return true;
+        }
+    }
+    return LLLineEditor::handleKeyHere(key,mask);
 }
 
 void ALKitDoc::draw()
@@ -192,6 +206,18 @@ bool ALKitPage::postBuild()
     mWhoContainer=makePanel(pre+"_who");
     addChild(mWhoContainer);
     S32 bar_x=ALKitStyle::PAGE_PAD_LR;
+
+    if(mPresetMode=="provider"&&!mPresetProvider.empty())
+    {
+        ALKitPresetStrip::Params preset_params;
+        preset_params.name=pre+"_presets";
+        preset_params.provider=mPresetProvider;
+        preset_params.page=mPage;
+        preset_params.rect=LLRect(bar_x,34,bar_x+334,10);
+        ALKitPresetStrip*strip=LLUICtrlFactory::create<ALKitPresetStrip>(preset_params);
+        mBar->addChild(strip);
+        bar_x+=340;
+    }
 
     if(mPresetMode=="widgets")if(ALKitPresetHost*host=findChild<ALKitPresetHost>("kit_preset_host"))
     {
@@ -300,11 +326,11 @@ bool ALKitPage::postBuild()
         syncEffectiveMode();
     }
 
-    LLLineEditor::Params lp;
+    ALKitSearchEditor::Params lp;
     lp.name=pre+"_search";
     lp.rect=LLRect(0,24,ALKitStyle::SEARCH_W,0);
     lp.label="Find a control...";
-    mSearch=LLUICtrlFactory::create<LLLineEditor>(lp);
+    mSearch=LLUICtrlFactory::create<ALKitSearchEditor>(lp);
     mSearch->setCommitCallback([this](LLUICtrl*c,const LLSD&)
     {
         setSearchText(c->getValue().asString());
@@ -462,7 +488,7 @@ bool ALKitPage::postBuild()
         LLButton*chip=makeButton(pre+"_chip_"+llformat("%d",i),mSections[i].label+" "+llformat("%d",(S32)mSections[i].cards.size()));
         chip->setCommitCallback([this,i](LLUICtrl*,const LLSD&)
         {
-            mChipIndex=i;applyModeAndChip();if(i<(S32)mSectionHeadings.size()&&mSectionHeadings[i]->getVisible())scrollToView(mSectionHeadings[i]);
+            mChipIndex=i;applyModeAndChip();saveState();if(i<(S32)mSectionHeadings.size()&&mSectionHeadings[i]->getVisible())scrollToView(mSectionHeadings[i]);
         }
         );
         mChipsContainer->addChild(chip);
@@ -472,6 +498,7 @@ bool ALKitPage::postBuild()
     if(ALKitShell*shell=ALKitShell::find(this))shell->history().watchSettings(mPage,watched);
 
     applyModeAndChip();
+    restoreState();
     reshape(getRect().getWidth(),getRect().getHeight(),true);
     return true;
 
@@ -501,6 +528,7 @@ void ALKitPage::setModeIndex(S32 index,bool explicit_user)
         mModeIndex=index;
         applyModeAndChip();
     }
+    if(explicit_user)saveState();
 }
 
 void ALKitPage::syncEffectiveMode()
@@ -773,6 +801,55 @@ void ALKitPage::resetPage()
 {
     if(mShell)mShell->history().beginGesture(ALKitHistory::MOUSE,mPage,"Reset page");
     for(auto&card:mCards)for(ALKitRow*row:card.second->rows())if(row->resettable()&&!row->cardPreset()&&!row->whoPicker())row->reset();
+}
+
+bool ALKitPage::cycleChip(S32 delta)
+{
+    if(mChips.empty())return false;
+    S32 next=mChipIndex;
+    for(S32 count=0;count<(S32)mChips.size();++count)
+    {
+        next=(next+delta+(S32)mChips.size())%(S32)mChips.size();
+        if(mChips[next]->getVisible())
+        {
+            mChipIndex=next;
+            applyModeAndChip();
+            saveState();
+            if(next<(S32)mSectionHeadings.size()&&mSectionHeadings[next]->getVisible())scrollToView(mSectionHeadings[next]);
+            return true;
+        }
+    }
+    return false;
+}
+
+void ALKitPage::saveState()
+{
+    LLSD state=gSavedSettings.getLLSD("DirectorV2PageState");
+    LLSD page=LLSD::emptyMap();
+    page["chip"]=mChipIndex;
+    page["mode"]=mModeIndex;
+    for(const auto& card:mCards)
+    {
+        page["cards"][card.first]["body"]=card.second->bodyOpen();
+        page["cards"][card.first]["more"]=card.second->moreOpen();
+    }
+    state[mPage]=page;
+    gSavedSettings.setLLSD("DirectorV2PageState",state);
+}
+
+void ALKitPage::restoreState()
+{
+    const LLSD state=gSavedSettings.getLLSD("DirectorV2PageState");
+    if(!state.has(mPage))return;
+    const LLSD& page=state[mPage];
+    if(page.has("chip"))mChipIndex=llclamp(page["chip"].asInteger(),0,llmax(0,(S32)mSections.size()-1));
+    if(page.has("mode")&&!mModeDefs.empty())setModeIndex(llclamp(page["mode"].asInteger(),0,(S32)mModeDefs.size()-1),false);
+    if(page.has("cards"))for(auto& card:mCards)if(page["cards"].has(card.first))
+    {
+        const LLSD& saved=page["cards"][card.first];
+        card.second->restoreOpenState(saved["body"].asBoolean(),saved["more"].asBoolean());
+    }
+    applyModeAndChip();
 }
 
 void ALKitPage::draw()

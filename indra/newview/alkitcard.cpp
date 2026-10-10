@@ -712,6 +712,15 @@ bool ALKitCard::revealRow(ALKitRow*row)
     return true;
 }
 
+void ALKitCard::restoreOpenState(bool body,bool more)
+{
+    mBodyOpen=body;
+    if(mOptionMore.empty())mMoreOpen=more;
+    else if(mActiveOption>=0&&mActiveOption<(S32)mOptionMore.size())mOptionMore[mActiveOption]=more;
+    if(mMore)mMore->setLabel(more?"Fewer options":"More options");
+    requestLayout();
+}
+
 void ALKitCard::draw()
 {
     LL_PROFILE_ZONE_SCOPED_CATEGORY_UI;

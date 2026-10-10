@@ -11,6 +11,7 @@
 #define AL_PANEL_CINE_LIGHT_RIG_H
 
 #include "llpanel.h"
+#include "alrigrimcontroller.h"
 #include "aluirefresh.h"
 #include "lluicolor.h"
 #include "lluuid.h"
@@ -117,7 +118,6 @@ private:
     // tint/shadow/alpha/bounce + every per-light gain/sharpness/wrap/back-bias)
     // and snaps the combo back to the sentinel. Never touches
     // CineRigRimEnabled, CineRigRimDebugRimOnly or CineRigRimIncludeProbes.
-    void onRigRimPresetSelected();
     void saveSetup();
     void deleteSetup();
     bool deleteSetupCallback(const LLSD& notification, const LLSD& response,
@@ -140,15 +140,11 @@ private:
     LLComboBox* mEasyFlarePreset = nullptr;
     LLComboBox* mNightMaskPreset = nullptr;
     LLComboBox* mEasyNightMaskPreset = nullptr;
-    LLComboBox* mRigRimPreset = nullptr; // [RigRimPreset]
     LLUICtrl* mNightMaskDarkness = nullptr; // [NightMaskPercent]
     LLUICtrl* mEasyNightMaskDarkness = nullptr; // [NightMaskPercent]
     boost::signals2::scoped_connection mNightMaskDarknessConnection; // [NightMaskPercent]
     LLTextBox* mNightMaskStatus = nullptr;
-    LLTextBox* mRigRimQualityStatus = nullptr;
-    LLButton* mRigRimEnableTag = nullptr;
-    ALRevisionGate mRigRimStatusGate;
-    ALLiveReadoutClock mRigRimStatusClock{2.f};
+    ALRigRimController mRim;
     LLComboBox* mFXCombo = nullptr;
     LLLineEditor* mSeedEditor = nullptr;
     LLSpinCtrl* mFillEV = nullptr;
@@ -209,7 +205,6 @@ private:
     LLUICtrl* mFXStop = nullptr;
     LLUICtrl* mEasyGatedControls[8] = {};   // shaft, flare, probe x3, night x3
     LLUICtrl* mEasyResetButtons[8] = {};
-    LLView* mTronTintWidgets[7] = {};
     LLView* mFlowGrid = nullptr;
     // [UIPerf] last text pushed per frame, so unchanged status lines skip the
     // LLTextBox re-parse / reflow.

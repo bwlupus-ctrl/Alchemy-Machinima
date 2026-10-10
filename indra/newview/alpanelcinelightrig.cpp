@@ -14,8 +14,12 @@
 #include "alcinelightrig.h"
 #include "alcinelightrigmanager.h"
 #include "alcinelightrigmodel.h"
+#include "alkitbinding.h"
+#include "alkithistory.h"
+#include "alkitshell.h"
 #include "aluirefresh.h" // [UIPerfC1] widget-aware value compare
 #include "llbutton.h"
+#include "llagent.h"
 #include "llcheckboxctrl.h"
 #include "llcombobox.h"
 #include "llcontrol.h"
@@ -398,84 +402,6 @@ void applyNightMaskPreset(const NightMaskPresetRow& row)
     gSavedSettings.setF32("CineLightRigNightMaskDesaturation", row.mDesaturation);
 }
 
-// [RigRimPreset] 18-preset Rig Rim table. A preset stamps the global rim
-// levers (master/soften/back-softness/tint/shadow/alpha/bounce) and every
-// per-light gain/sharpness/wrap/back-bias quad. Enabled, DebugRimOnly and
-// IncludeProbes are deliberately NOT part of any row (matches the Night Mask
-// preset's Enabled/TintColor exclusion above): the checkbox is what turns
-// Rig Rim on, "Rim only" is a debug view, and probe capture is a perf/user
-// choice, not a look. The rig's own light colours/positions/EVs are never
-// touched either -- a preset is a lighting TERM, not a re-light.
-struct RigRimPresetRow
-{
-    const char* mName;
-    F32 mMaster, mSoften, mBackSoft, mTint, mShadow;
-    bool mAlpha, mBounce;
-    F32 mKey[4];  // gain, sharpness, wrap, back bias
-    F32 mFill[4];
-    F32 mRim[4];
-    F32 mBg[4];
-};
-
-const RigRimPresetRow RIG_RIM_PRESETS[20] = {
-    // name                       Mast Sft  BSft Tint  Shdw  A  B   KEY g/k/wrap/b0                FILL                            RIM                             BG
-    { "Subtle Edge",              0.6f,0.5f,0.5f,0.25f,1.0f, true, false, {0.f,3.f,0.35f,0.f},     {0.f,3.f,0.35f,0.f},            {1.0f,4.0f,0.25f,0.10f},        {0.f,3.f,0.35f,0.f} },
-    { "Soft Portrait Wrap",       1.0f,1.0f,0.8f,0.40f,0.8f, true, true,  {0.30f,1.5f,0.60f,-0.50f},{0.25f,1.5f,0.70f,-0.50f},     {0.90f,2.0f,0.50f,-0.20f},      {0.f,3.f,0.35f,0.f} },
-    { "Strong Backlight",         1.6f,0.3f,0.35f,0.15f,0.5f,true, false, {0.f,3.f,0.35f,0.f},     {0.f,3.f,0.35f,0.f},            {2.5f,3.0f,0.40f,0.20f},        {0.f,3.f,0.35f,0.f} },
-    { "Hair Shine",               1.3f,0.15f,0.4f,0.20f,0.6f,true, false, {0.40f,6.0f,0.10f,-0.30f},{0.f,3.f,0.35f,0.f},           {2.0f,6.0f,0.15f,0.25f},        {0.f,3.f,0.35f,0.f} },
-    { "Silhouette Glow (any angle)",1.2f,0.6f,0.01f,0.10f,0.7f,true,true, {1.0f,2.5f,0.80f,-1.f},  {1.0f,2.5f,0.80f,-1.f},         {1.5f,2.5f,0.80f,-1.f},         {0.8f,2.5f,0.80f,-1.f} },
-    { "Neon / Stage",             2.5f,0.1f,0.25f,0.00f,0.4f,true, false, {0.8f,5.0f,0.20f,-0.60f},{0.8f,5.0f,0.20f,-0.60f},      {3.0f,5.0f,0.30f,0.10f},        {2.0f,5.0f,0.30f,0.10f} },
-    { "Dreamy Halo",              1.4f,1.0f,1.5f,0.30f,0.5f,true, true,  {0.5f,0.75f,0.90f,-0.80f},{0.5f,0.75f,0.90f,-0.80f},     {2.0f,0.75f,0.90f,-0.60f},      {0.6f,0.75f,0.90f,-0.60f} },
-    { "Noir Kicker",              1.5f,0.2f,0.2f,0.10f,1.0f,true, false, {0.f,3.f,0.35f,0.f},     {0.f,3.f,0.35f,0.f},            {2.2f,5.0f,0.10f,0.45f},        {0.f,3.f,0.35f,0.f} },
-    { "Two-Sided Kick",           1.4f,0.3f,0.3f,0.15f,0.6f,true, false, {0.f,3.f,0.35f,0.f},     {0.f,3.f,0.35f,0.f},            {1.8f,4.0f,0.30f,0.15f},        {1.8f,4.0f,0.30f,0.15f} },
-    { "Fashion Edge",             1.2f,0.4f,0.6f,0.35f,0.9f,true, true,  {0.9f,2.5f,0.50f,-1.f},  {0.6f,2.5f,0.50f,-1.f},         {1.2f,3.0f,0.40f,-0.30f},       {0.f,3.f,0.35f,0.f} },
-    { "Sci-Fi Hologram",          2.0f,0.0f,0.01f,0.00f,0.2f,true, false, {1.0f,1.5f,1.0f,-1.f},  {1.0f,1.5f,1.0f,-1.f},          {1.5f,1.5f,1.0f,-1.f},          {1.0f,1.5f,1.0f,-1.f} },
-    { "Candle Glow",              1.0f,0.9f,0.9f,0.60f,0.8f,true, true,  {0.8f,1.5f,0.70f,-0.70f},{0.5f,1.5f,0.70f,-0.70f},      {0.7f,1.5f,0.70f,-0.40f},       {0.f,3.f,0.35f,0.f} },
-    { "Metal Sheen",              1.3f,0.05f,0.5f,0.75f,1.0f,false,false,{1.0f,4.0f,0.20f,-0.80f},{0.6f,4.0f,0.20f,-0.80f},      {1.2f,4.0f,0.20f,-0.20f},       {0.f,3.f,0.35f,0.f} },
-    { "Skin Sheen",               0.8f,0.7f,0.7f,0.65f,1.0f,true, true,  {0.7f,2.0f,0.50f,-0.60f},{0.35f,2.0f,0.50f,-0.60f},     {0.8f,2.5f,0.40f,-0.10f},       {0.f,3.f,0.35f,0.f} },
-    { "Soft Fill Wrap",           0.9f,1.0f,1.2f,0.45f,0.9f,true, true,  {0.4f,1.0f,1.0f,-0.90f}, {0.9f,1.0f,1.0f,-0.90f},       {0.5f,1.5f,0.80f,-0.50f},       {0.f,3.f,0.35f,0.f} },
-    { "Horror Edge",              1.8f,0.2f,0.15f,0.05f,0.3f,true, false, {0.f,3.f,0.35f,0.f},    {0.f,3.f,0.35f,0.f},            {1.5f,6.0f,0.10f,0.35f},        {2.5f,6.0f,0.10f,0.35f} },
-    { "Moonlit Rim",              1.1f,0.5f,0.5f,0.20f,0.85f,true,false, {0.f,3.f,0.35f,0.f},    {0.f,3.f,0.35f,0.f},            {1.6f,3.5f,0.30f,0.30f},        {0.5f,3.5f,0.30f,0.30f} },
-    { "Glass Shell",              1.6f,0.0f,0.01f,0.00f,0.1f,true, false, {1.2f,8.0f,1.0f,-1.f},  {1.2f,8.0f,1.0f,-1.f},          {1.2f,8.0f,1.0f,-1.f},          {1.2f,8.0f,1.0f,-1.f} },
-    // [TronT1] T1 contract section 5 -- linked from the Tron Legacy Cyan /
-    // Ares Red look presets (ALTron::applyPreset). Never write
-    // CineRigRimTronMode themselves: a Rig Rim preset is a lighting term,
-    // the Tron look preset is what turns the tint on.
-    { "Tron Suit Kick",           2.2f,0.5f,0.5f,0.00f,0.4f,true, false, {0.6f,5.0f,0.20f,-0.60f},{0.f,3.f,0.35f,0.f},           {3.0f,5.0f,0.30f,0.10f},        {0.f,3.f,0.35f,0.f} },
-    { "Ares Red Backlight",       2.0f,0.5f,0.5f,0.00f,0.5f,true, false, {0.f,3.f,0.35f,0.f},     {0.f,3.f,0.35f,0.f},            {2.8f,4.0f,0.35f,0.20f},        {1.6f,4.0f,0.30f,0.20f} },
-};
-
-void applyRigRimPreset(const RigRimPresetRow& row)
-{
-    gSavedSettings.setF32("CineRigRimMasterGain", row.mMaster);
-    gSavedSettings.setF32("CineRigRimRoughnessSoften", row.mSoften);
-    gSavedSettings.setF32("CineRigRimBackSoftness", row.mBackSoft);
-    gSavedSettings.setF32("CineRigRimTint", row.mTint);
-    gSavedSettings.setF32("CineRigRimShadow", row.mShadow);
-    gSavedSettings.setBOOL("CineRigRimIncludeAlpha", row.mAlpha);
-    gSavedSettings.setBOOL("CineRigRimIncludeBounce", row.mBounce);
-
-    gSavedSettings.setF32("CineRigRimKeyGain", row.mKey[0]);
-    gSavedSettings.setF32("CineRigRimKeySharpness", row.mKey[1]);
-    gSavedSettings.setF32("CineRigRimKeyWrap", row.mKey[2]);
-    gSavedSettings.setF32("CineRigRimKeyBackBias", row.mKey[3]);
-
-    gSavedSettings.setF32("CineRigRimFillGain", row.mFill[0]);
-    gSavedSettings.setF32("CineRigRimFillSharpness", row.mFill[1]);
-    gSavedSettings.setF32("CineRigRimFillWrap", row.mFill[2]);
-    gSavedSettings.setF32("CineRigRimFillBackBias", row.mFill[3]);
-
-    gSavedSettings.setF32("CineRigRimRimGain", row.mRim[0]);
-    gSavedSettings.setF32("CineRigRimRimSharpness", row.mRim[1]);
-    gSavedSettings.setF32("CineRigRimRimWrap", row.mRim[2]);
-    gSavedSettings.setF32("CineRigRimRimBackBias", row.mRim[3]);
-
-    gSavedSettings.setF32("CineRigRimBgGain", row.mBg[0]);
-    gSavedSettings.setF32("CineRigRimBgSharpness", row.mBg[1]);
-    gSavedSettings.setF32("CineRigRimBgWrap", row.mBg[2]);
-    gSavedSettings.setF32("CineRigRimBgBackBias", row.mBg[3]);
-}
-
 void registerCineLightRigResetControl()
 {
     static bool registered = false;
@@ -760,13 +686,10 @@ bool ALPanelCineLightRig::postBuild()
     mLiveProbeManualFramesReset = getChild<LLUICtrl>("cine_live_probe_manual_frames_reset"); // [ProbeManualRate]
     mNightMaskPreset = getChild<LLComboBox>("cine_night_mask_preset");
     mEasyNightMaskPreset = getChild<LLComboBox>("cine_easy_night_mask_preset");
-    mRigRimPreset = getChild<LLComboBox>("cine_rig_rim_preset"); // [RigRimPreset]
+    mRim.attach(this);
     mNightMaskDarkness = getChild<LLUICtrl>("cine_night_mask_darkness"); // [NightMaskPercent]
     mEasyNightMaskDarkness = getChild<LLUICtrl>("cine_easy_night_mask_darkness"); // [NightMaskPercent]
     mNightMaskStatus = getChild<LLTextBox>("night_mask_status");
-    mRigRimQualityStatus = getChild<LLTextBox>("cine_rimq_status");
-    mRigRimEnableTag = getChild<LLButton>("cine_rimq_enable_tag");
-    mRigRimEnableTag->setVisible(false);
     const char* const advanced_driven_names[] = {
         "cine_master_ev", "cine_master_ev_reset",
         "cine_key_ev", "cine_key_ev_reset",
@@ -803,20 +726,10 @@ bool ALPanelCineLightRig::postBuild()
             "cine_easy_cone_feather_reset", "cine_easy_shaft_length_reset",
             "cine_easy_probe_radius_reset", "cine_easy_night_mask_darkness_reset",
         };
-        static const char* const tron_names[7] = {
-            "cine_rig_rim_tron_label", "cine_rig_rim_tron_mode",
-            "cine_rig_rim_tron_mix_label", "cine_rig_rim_tron_mix",
-            "cine_rig_rim_tron_mix_reset",
-            "cine_rig_rim_tron_color_label", "cine_rig_rim_tron_color",
-        };
         for (S32 i = 0; i < 8; ++i)
         {
             mEasyGatedControls[i] = findChild<LLUICtrl>(easy_gated_names[i]);
             mEasyResetButtons[i] = findChild<LLUICtrl>(easy_reset_names[i]);
-        }
-        for (S32 i = 0; i < 7; ++i)
-        {
-            mTronTintWidgets[i] = findChild<LLView>(tron_names[i]);
         }
     }
     mFlowGrid = findChildView("cine_light_rig_flow_grid");
@@ -836,23 +749,6 @@ bool ALPanelCineLightRig::postBuild()
         [this](LLUICtrl*, const LLSD&) { onTargetObject(); });
     mObjectTargetClear->setCommitCallback(
         [this](LLUICtrl*, const LLSD&) { onClearObjectTarget(); });
-    mRigRimEnableTag->setCommitCallback([this](LLUICtrl*, const LLSD&)
-    {
-        LLHandle<ALPanelCineLightRig> handle = getDerivedHandle<ALPanelCineLightRig>();
-        LLNotificationsUtil::add("EnableGBufferAvatarTagConfirm", LLSD(), LLSD(),
-            [handle](const LLSD& notification, const LLSD& response)
-            {
-                if (LLNotificationsUtil::getSelectedOption(notification, response) == 0)
-                {
-                    gSavedSettings.setBOOL("RenderGBufferAvatarTag", true);
-                    if (ALPanelCineLightRig* self = handle.get())
-                    {
-                        self->mRigRimEnableTag->setVisible(false);
-                    }
-                }
-                return false;
-            });
-    });
     mGroupEnable->setCommitCallback(
         [this](LLUICtrl*, const LLSD&) { onGroupEnabledCommit(); });
     for (LLCheckBoxCtrl* control : mGroupSlotChecks)
@@ -870,8 +766,6 @@ bool ALPanelCineLightRig::postBuild()
         [this](LLUICtrl*, const LLSD&) { onNightMaskPresetSelected(mNightMaskPreset); });
     mEasyNightMaskPreset->setCommitCallback(
         [this](LLUICtrl*, const LLSD&) { onNightMaskPresetSelected(mEasyNightMaskPreset); });
-    mRigRimPreset->setCommitCallback( // [RigRimPreset]
-        [this](LLUICtrl*, const LLSD&) { onRigRimPresetSelected(); });
     mSetupSave->setCommitCallback(
         [this](LLUICtrl*, const LLSD&) { saveSetup(); });
     getChild<LLButton>("cine_setup_delete")->setCommitCallback(
@@ -1023,6 +917,33 @@ bool ALPanelCineLightRig::postBuild()
     syncFixtureControls(true);
     syncGoboLibrary(true);
     updateDerivedStatus();
+    if(ALKitShell* shell=ALKitShell::find(this))
+    {
+        LLHandle<ALPanelCineLightRig> handle=getDerivedHandle<ALPanelCineLightRig>();
+        shell->history().registerContext("light_group/cine_light_rig_tab",[handle]()
+        {
+            if(!handle.get())return std::string();
+            return std::string("slot:")+std::to_string((S32)ALCineLightRigManager::instance().selectedSlot());
+        });
+        ALKitModeAdapters::add(this,"cine_rig_easy",[handle](bool desired,ALKitModeAdapters::EOrigin)
+        {
+            ALPanelCineLightRig* panel=handle.get();
+            if(!panel||!panel->mEasyModeToggle)return false;
+            panel->mEasyModeToggle->setValue(desired);
+            panel->onEasyModeCommit();
+            return panel->mEasyModeActive;
+        });
+        ALKitWhoAdapters::add("cine_rig_slot",[](const LLUUID& id)
+        {
+            if(id.isNull()||id==gAgentID)return LLSD(0);
+            const LLDirectorCast& cast=LLDirectorCast::instance();
+            if(id==cast.getSubjectA())return LLSD(1);
+            if(id==cast.getSubjectB())return LLSD(2);
+            if(id==cast.getSubjectC())return LLSD(3);
+            if(id==cast.getSubjectD())return LLSD(4);
+            return LLSD();
+        });
+    }
     return true;
 }
 
@@ -1197,20 +1118,6 @@ void ALPanelCineLightRig::populateStaticCombos()
         combo->setValue(0);
     }
 
-    // [RigRimPreset] Rig Rim presets: same sentinel / apply-and-snap-back
-    // pattern as the lens flare and Night Mask presets above.
-    if (mRigRimPreset)
-    {
-        constexpr S32 RIG_RIM_PRESET_COUNT =
-            static_cast<S32>(sizeof(RIG_RIM_PRESETS) / sizeof(RIG_RIM_PRESETS[0]));
-        mRigRimPreset->add("Choose preset...", LLSD(0));
-        for (S32 i = 0; i < RIG_RIM_PRESET_COUNT; ++i)
-        {
-            mRigRimPreset->add(
-                llformat("%d  %s", i + 1, RIG_RIM_PRESETS[i].mName), LLSD(i + 1));
-        }
-        mRigRimPreset->setValue(0);
-    }
 }
 
 std::string ALPanelCineLightRig::fixtureSettingPrefix() const
@@ -1506,8 +1413,13 @@ void ALPanelCineLightRig::onAnchorSelected()
         {
             return;
         }
-        ALCineLightRigManager::instance().setSelectedSlot(
-            static_cast<ALCineLightRigManager::Slot>(value));
+        ALKitShell* shell=ALKitShell::find(this);
+        {
+            ALKitHistory::ScopedSuspend suspend;
+            ALCineLightRigManager::instance().setSelectedSlot(
+                static_cast<ALCineLightRigManager::Slot>(value));
+        }
+        if(shell)shell->history().barrier("rig slot changed");
         mDisplayedSlot = value;
         mAnchorSelectionInitialized = true;
         mDisplayedGroupEnabled = false;
@@ -1866,38 +1778,10 @@ void ALPanelCineLightRig::onNightMaskPresetSelected(LLComboBox* source)
 // the combo back to the sentinel -- a preset is an action ("apply this
 // look"), not a persistent mode. Enable/Rim-only/Probes and the rig's own
 // light colours/positions are never touched.
-void ALPanelCineLightRig::onRigRimPresetSelected()
-{
-    if (!mRigRimPreset)
-    {
-        return;
-    }
-    const S32 index = mRigRimPreset->getSelectedValue().asInteger();
-    constexpr S32 RIG_RIM_PRESET_COUNT =
-        static_cast<S32>(sizeof(RIG_RIM_PRESETS) / sizeof(RIG_RIM_PRESETS[0]));
-    // 0 is the sentinel ("Choose preset..." / manual sliders) — nothing to
-    // stamp. Guard the upper bound too in case the combo ever desyncs from
-    // the table.
-    if (index <= 0 || index > RIG_RIM_PRESET_COUNT)
-    {
-        return;
-    }
-    applyRigRimPreset(RIG_RIM_PRESETS[index - 1]);
-    mRigRimPreset->setValue(0);
-}
-
 // [TronT1] See the header comment.
 bool ALPanelCineLightRig::applyRigRimPresetByName(const std::string& name)
 {
-    for (const RigRimPresetRow& row : RIG_RIM_PRESETS)
-    {
-        if (name == row.mName)
-        {
-            applyRigRimPreset(row);
-            return true;
-        }
-    }
-    return false;
+    return ALRigRimController::applyPresetByName(name);
 }
 
 void ALPanelCineLightRig::saveSetup()
@@ -2562,7 +2446,6 @@ void ALPanelCineLightRig::updateDerivedStatus()
     static LLCachedControl<bool> night_enabled(gSavedSettings, "CineLightRigNightMaskEnabled", false);
     static LLCachedControl<bool> hdr_enabled(gSavedSettings, "RenderHDREnabled", false);
     static LLCachedControl<S32> night_target(gSavedSettings, "CineLightRigNightMaskTarget", 0);
-    static LLCachedControl<bool> rig_rim_enabled_control(gSavedSettings, "CineRigRimEnabled", false);
     syncObjectTargetControls();
     syncEasyControls();
     ALCineLightRig& rig = ALCineLightRigManager::instance().selected();
@@ -2796,16 +2679,7 @@ void ALPanelCineLightRig::updateDerivedStatus()
     // itself is enabled. findChild every draw (cheap, same idiom as the
     // clip/shaft/hero status loop above) rather than a dedicated settings
     // signal connection for three rows.
-    {
-        const bool rig_rim_enabled = rig_rim_enabled_control;
-        for (LLView* v : mTronTintWidgets) // [UIPerf] cached in postBuild
-        {
-            if (v)
-            {
-                setVisibleIfChanged(v, rig_rim_enabled);
-            }
-        }
-    }
+    mRim.tickRefresh();
 }
 
 void ALPanelCineLightRig::reshape(S32 width, S32 height, bool called_from_parent)
@@ -2868,14 +2742,7 @@ void ALPanelCineLightRig::draw()
         syncGoboLibrary();
         updateDerivedStatus();
     }
-    if (mRigRimStatusClock.due() && isWidgetOnScreen(mRigRimQualityStatus) &&
-        mRigRimStatusGate.changed({gPipeline.rigRimStatusRevision()}))
-    {
-        const std::string& status = gPipeline.rigRimStatus();
-        setTextIfChanged(mRigRimQualityStatus, status);
-        setVisibleIfChanged(mRigRimEnableTag,
-            status.find("NO AVATAR TAG") != std::string::npos);
-    }
+    mRim.tickFrame();
     LLPanel::draw();
 }
 
@@ -2884,8 +2751,7 @@ void ALPanelCineLightRig::onVisibilityChange(bool new_visibility)
     if (new_visibility)
     {
         syncEasyModeForSelected();
-        mRigRimStatusGate.reset();
-        mRigRimStatusClock.forceDue();
+        mRim.onReveal();
         mLiveProbeClock.forceDue();
         updateAnchorList();
         syncObjectTargetControls(true);

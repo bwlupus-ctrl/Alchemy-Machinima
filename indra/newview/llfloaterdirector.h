@@ -25,7 +25,9 @@
 #include "lltimer.h"
 
 #include <functional>
+#include <boost/signals2.hpp>
 #include <string>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 
@@ -34,6 +36,8 @@ class ALPanelAnimPreview;
 class ALPanelCineCamParams;
 class ALPanelLensGaze;
 class ALPanelPathEditor;
+class ALKitShell;
+class ALKitHistory;
 class LLButton;
 class LLCheckBoxCtrl;
 class LLComboBox;
@@ -59,6 +63,12 @@ public:
     // Esc = CUT while the transport is running or counting down; stock
     // floater behavior otherwise
     bool handleKeyHere(KEY key, MASK mask) override;
+    bool handleUnicodeCharHere(llwchar uni_char) override;
+    bool hasAccelerators() const override;
+    bool handleMouseDown(S32 x,S32 y,MASK mask) override;
+    bool handleRightMouseDown(S32 x,S32 y,MASK mask) override;
+    bool handleScrollWheel(S32 x,S32 y,LLScrollDelta delta) override;
+    ALKitHistory* kitHistory();
     // [SliderWheel] [DirFix] D1's wheel overrides are retired: the scroll-through guard is global
     // in llui (indra/llui/llsliderwheel.h).
 
@@ -70,6 +80,15 @@ public:
     // the shared ALPanelAnimPreview embedded in the tab, not on this floater.
 
 private:
+    bool postBuildV2();
+    void bindChrome(LLView* root);
+    void bindPage(const std::string& page, LLView* root);
+    void bindMovePage(LLView* root);
+    void bindPathPage(LLView* root);
+    void bindActorStylePage(LLView* root);
+    void bindAnimatePage(LLView* root);
+    void bindCameraPage(LLView* root);
+    void bindLauncherPage(LLView* root);
     // ---- transport ----
     void onClickAction();               // ACTION, or CUT while counting/running
     void onClickSetMarks();
@@ -405,6 +424,14 @@ private:
     LLTextBox* mStatusStrip = nullptr;
     LLTextBox* mRecIndicator = nullptr;
     S32        mRecState = -1;       // -1 unknown, 0 idle, 1 capturing (diffing)
+    ALKitShell* mShell = nullptr;
+    bool mIsV2 = false;
+    LLTextBox* mKitUIMs = nullptr;
+    LLTimer mKitDrawTimer;
+    F32 mKitDrawEMA = 0.f;
+    ALLiveReadoutClock mKitDrawClock{2.f};
+    boost::signals2::scoped_connection mPageBuiltConnection;
+    std::unordered_set<std::string> mBoundPages;
 };
 
 #endif // LL_LLFLOATERDIRECTOR_H

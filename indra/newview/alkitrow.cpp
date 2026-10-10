@@ -64,6 +64,7 @@ ALKitRow::ALKitRow(const Params& p)
     mMeta.link_to=p.link_to;
     mMeta.action=p.action;
     mMeta.mirror_setting=p.mirror_setting;
+    mMeta.default_value=p.default_value;
     mMeta.advanced=p.advanced;
     mMeta.decimals=p.decimals.isProvided()?p.decimals:(mMeta.kind=="dial"||mMeta.kind=="arc"?0:3);
     mMeta.min_val=p.min_val;

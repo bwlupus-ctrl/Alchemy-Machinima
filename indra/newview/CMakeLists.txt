@@ -197,18 +197,22 @@ set(viewer_SOURCE_FILES
     aldirectorswitchermodel.cpp
     aldroptarget.cpp
     alflowgrid.cpp
+    alkitbar.cpp
     alkitbinding.cpp
     alkitcard.cpp
     alkithelp.cpp
     alkithistory.cpp
     alkitlazypage.cpp
     alkitpage.cpp
+    alkitpopover.cpp
     alkitpresets.cpp
     alkitrow.cpp
     alkitsearch.cpp
     alkitshell.cpp
     alkitstyle.cpp
     alkitswitch.cpp
+    alpanelrigrim.cpp
+    alrigrimcontroller.cpp
     allightrigmap.cpp
     alfloaterblocked.cpp
     alfloaterdirectory.cpp
@@ -1101,6 +1105,7 @@ set(viewer_HEADER_FILES
     aldirectorswitchermodel.h
     aldroptarget.h
     alflowgrid.h
+    alkitbar.h
     alkitbinding.h
     alkitcard.h
     alkithelp.h
@@ -1108,12 +1113,15 @@ set(viewer_HEADER_FILES
     alkitlazypage.h
     alkitmath.h
     alkitpage.h
+    alkitpopover.h
     alkitpresets.h
     alkitrow.h
     alkitsearch.h
     alkitshell.h
     alkitstyle.h
     alkitswitch.h
+    alpanelrigrim.h
+    alrigrimcontroller.h
     allightrigmap.h
     alfloaterblocked.h
     alfloaterdirectory.h

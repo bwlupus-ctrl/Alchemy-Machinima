@@ -32,6 +32,7 @@
 
 #include "llviewerprecompiledheaders.h"
 #include "llviewerwindow.h"
+#include "alkithistory.h"
 
 #include <cmath>
 
@@ -3329,6 +3330,8 @@ bool LLViewerWindow::handleKey(KEY key, MASK mask)
         LLViewerEventRecorder::instance().logKeyEvent(key,mask);
         return true;
     }
+
+    ALKitHistory::noteKey();
 
     LLFocusableElement* keyboard_focus = gFocusMgr.getKeyboardFocus();
 

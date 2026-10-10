@@ -8,6 +8,12 @@
  */
 
 #include "llviewerprecompiledheaders.h"
+#include "alkitshell.h"
+#include "alkithistory.h"
+#include "alkitpage.h"
+#include "alkitpopover.h"
+#include "alkitrow.h"
+#include "alkitstyle.h"
 
 #include "llfloaterdirector.h"
 #include "alghoststudio.h" // [AutoAnimate]
@@ -56,6 +62,7 @@
 #include "llspinctrl.h"             // group start-delay spinner (Groups section)
 #include "lltabcontainer.h"
 #include "lltextbox.h"
+#include "lltexteditor.h"
 #include "lluictrlfactory.h"
 #include "lluri.h"                  // LLURI::escape scene filenames
 #include "llviewercontrol.h"        // gSavedSettings, LLCachedControl
@@ -275,6 +282,7 @@ LLFloaterDirector::~LLFloaterDirector()
 
 void LLFloaterDirector::onClose(bool app_quitting)
 {
+    if(mShell)if(ALKitPage* page=mShell->currentKitPage())page->saveState();
     // Closing can merely hide this reusable floater, so its child panel may
     // remain alive. Explicitly release a live bullet-time cut here as well.
     ALDirectorSwitcher::instance().cancelEaseWorldTime();
@@ -284,6 +292,13 @@ void LLFloaterDirector::onClose(bool app_quitting)
 bool LLFloaterDirector::postBuild()
 {
     LL_PROFILE_ZONE_NAMED_CATEGORY_UI("Director postBuild");
+
+    mShell=findChild<ALKitShell>("director_shell");
+    mIsV2=mShell!=nullptr;
+    if(mIsV2)
+    {
+        return postBuildV2();
+    }
 
     // ---- transport ----
     mActionBtn = getChild<LLButton>("btn_action");
@@ -375,6 +390,7 @@ bool LLFloaterDirector::postBuild()
     mCastList->setCommitCallback([this](LLUICtrl*, const LLSD&)
     {
         if (mPathPanel) mPathPanel->revealFor(firstSelectedCastId());
+        if(mShell)mShell->setCastSelection(selectedCastIds());
     });
     {
         // same LLContextMenu idiom as the Animation Explorer's list menu
@@ -699,6 +715,8 @@ bool LLFloaterDirector::postBuild()
     // ---- status strip ----
     mStatusStrip = getChild<LLTextBox>("status_strip");
     mRecIndicator = getChild<LLTextBox>("rec_indicator");
+    mKitUIMs=findChild<LLTextBox>("kit_ui_ms");
+    if(mKitUIMs)mKitUIMs->setVisible(gSavedSettings.getBOOL("KitShowUIMs"));
 
     // [DirFix] D1: after every getChild and after the tab commit callback above (onTabChanged
     // and the helper's refit both stay on the commit signal; the refit is connected later,
@@ -723,9 +741,615 @@ bool LLFloaterDirector::postBuild()
     return true;
 }
 
+bool LLFloaterDirector::postBuildV2()
+{
+    bindChrome(this);
+    LLHandle<LLFloaterDirector> handle = getDerivedHandle<LLFloaterDirector>();
+    mPageBuiltConnection = mShell->setPageBuiltCallback(
+        [handle](const std::string& page, LLPanel* panel)
+        {
+            if (LLFloaterDirector* director = handle.get())
+            {
+                director->bindPage(page, panel);
+            }
+        });
+    mScrollFit.setUnwrappedPages({"cast_group", "performance_group", "camera_group", "lens_group",
+        "light_group", "look_group", "world_group", "capture_group", "move_tab", "path_tab",
+        "props_tab", "ghosts_tab", "dance_tab", "animate_tab", "switchboard_tab", "gaze_tab",
+        "polish_tab", "gaze_cues_tab", "shot_tab", "moves_tab", "operator_tab", "frame_orbit_tab",
+        "takes_tab", "vcam_tab", "focus_tab", "filters_tab", "diopter_tab", "cine_light_rig_tab",
+        "light_rim_tab", "exposure_tab", "practicals_tab", "actors_tab", "light_cues_tab", "image_tab",
+        "bloom_glow_tab", "stylize_tab", "tron_tab", "actor_style_tab", "weather_tab", "atmosphere_tab",
+        "shadows_probes_tab", "temporal_tab", "scene_options_tab"});
+    mScrollFit.installForTabs(mTabContainer, this);
+    mShell->setScrollFit(&mScrollFit);
+    if (LLPanel* initial = currentLeafPanel())
+    {
+        const std::string page = initial->getName();
+        if (LLPanel* content = mShell->ensurePageBuilt(page))
+        {
+            bindPage(page, content);
+        }
+    }
+    const F32 build_ms = mBuildTimer.getElapsedTimeF32() * 1000.f;
+    LL_INFOS("Director") << "Director v2 chrome build " << build_ms << " ms" << LL_ENDL;
+    return true;
+}
+
+void LLFloaterDirector::bindChrome(LLView* root)
+{
+    mActionBtn = root->getChild<LLButton>("btn_action");
+    mCutBtn = root->getChild<LLButton>("btn_cut");
+    mSetMarksBtn = root->getChild<LLButton>("btn_set_marks");
+    mResetMarksBtn = root->getChild<LLButton>("btn_reset_marks");
+    mActionBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickAction(); });
+    mCutBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickAction(); });
+    mSetMarksBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickSetMarks(); });
+    mResetMarksBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickResetMarks(); });
+    setDefaultBtn(mActionBtn);
+
+    mSceneCombo = root->getChild<LLComboBox>("scene_combo");
+    mSceneNameEditor = root->getChild<LLLineEditor>("scene_name_editor");
+    mSceneSaveBtn = root->getChild<LLButton>("btn_scene_save");
+    mSceneDeleteBtn = root->getChild<LLButton>("btn_scene_delete");
+    mSceneCombo->setCommitCallback([this](LLUICtrl*, const LLSD&) { onSceneSelected(); });
+    mSceneNameEditor->setCommitCallback([this](LLUICtrl*, const LLSD&) { commitSceneName(); });
+    mSceneSaveBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickSceneSave(); });
+    mSceneDeleteBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickSceneDelete(); });
+    refreshSceneList();
+
+    mTabContainer = root->getChild<LLTabContainer>("director_tabs");
+    mTabContainer->setCommitCallback([this](LLUICtrl*, const LLSD&) { onTabChanged(); });
+    struct GroupInfo { const char* page; const char* tabs; const char* icon; };
+    static const GroupInfo groups[] = {
+        { "cast_group", "cast_tabs", "Command_People_Icon" },
+        { "performance_group", "performance_tabs", "Command_Poser_Icon" },
+        { "camera_group", "camera_tabs", "Command_View_Icon" },
+        { "lens_group", "lens_tabs", "Command_Search_Icon" },
+        { "light_group", "light_tabs", "Command_PersonalLighting_Icon" },
+        { "look_group", "look_tabs", "Command_Lightbox_Icon" },
+        { "world_group", "world_tabs", "Command_Environments_Icon" },
+        { "capture_group", "capture_tabs", "Command_Snapshot_Icon" },
+    };
+    for (const GroupInfo& info : groups)
+    {
+        LLPanel* page = mTabContainer->getPanelByName(info.page);
+        LLTabContainer* tabs = page ? page->findChild<LLTabContainer>(info.tabs, false) : nullptr;
+        if (page && tabs)
+        {
+            mGroups.emplace_back(page, tabs);
+            mTabContainer->setTabImage(page, info.icon);
+            tabs->setCommitCallback([this](LLUICtrl*, const LLSD&) { onTabChanged(); });
+        }
+    }
+    setMinimizeCallback([this](LLUICtrl*, const LLSD& minimized)
+    {
+        if (!minimized.asBoolean() && mPathPanel)
+        {
+            mPathPanel->revealFor(firstSelectedCastId());
+        }
+    });
+
+    mHelpBtn = root->getChild<LLButton>("btn_help");
+    mLegendPanel = root->getChild<LLPanel>("legend_panel");
+    mHelpBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onToggleLegend(); });
+    mLegendPanel->getChild<LLButton>("btn_legend_close")->setCommitCallback(
+        [this](LLUICtrl*, const LLSD&) { mLegendPanel->setVisible(false); });
+
+    mCastList = root->getChild<LLScrollListCtrl>("cast_list");
+    mCastHint = root->getChild<LLTextBox>("cast_hint");
+    mRemoveBtn = root->getChild<LLButton>("btn_remove");
+    mFocusBtn = root->getChild<LLButton>("btn_focus");
+    mCastStatusCol = mCastList->getColumn("status")->mIndex;
+    mCastNameCol = mCastList->getColumn("name")->mIndex;
+    mCastABCol = mCastList->getColumn("ab")->mIndex;
+    mCastMarkCol = mCastList->getColumn("mark")->mIndex;
+    mCastLookCol = mCastList->getColumn("look")->mIndex;
+    root->getChild<LLButton>("btn_add_you")->setCommitCallback(
+        [this](LLUICtrl*, const LLSD&) { onClickAddYou(); });
+    root->getChild<LLButton>("btn_add_animesh")->setCommitCallback(
+        [this](LLUICtrl*, const LLSD&) { onClickAddAnimesh(); });
+    mRemoveBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onCastRemove(); });
+    mFocusBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickFocusActor(); });
+    mCastList->setRightMouseDownCallback(
+        [this](LLUICtrl* ctrl, S32 x, S32 y, MASK) { onCastRightClick(ctrl, x, y); });
+    mCastList->setDoubleClickCallback([this]() { onCastSetSubject(SUBJECT_A); });
+    mCastList->setCommitCallback([this](LLUICtrl*, const LLSD&)
+    {
+        if (mPathPanel)
+        {
+            mPathPanel->revealFor(firstSelectedCastId());
+        }
+        mShell->setCastSelection(selectedCastIds());
+    });
+    mGroupAssignCombo = root->getChild<LLComboBox>("group_assign_combo");
+    mGroupAssignCombo->setCommitCallback([this](LLUICtrl*, const LLSD&) { onCommitGroupAssign(); });
+
+    LLUICtrl::CommitCallbackRegistry::ScopedRegistrar registrar;
+    LLUICtrl::EnableCallbackRegistry::ScopedRegistrar autoanim_enables;
+    autoanim_enables.add("Director.CastHasGhostEntity", [this](LLUICtrl*, const LLSD&) { return castHasGhostEntity(); });
+    registrar.add("Director.AutoAnimToggle", [this](LLUICtrl*, const LLSD&) { onCastAutoAnim(0); });
+    registrar.add("Director.AutoAnimGo", [this](LLUICtrl*, const LLSD&) { onCastAutoAnim(1); });
+    registrar.add("Director.AutoAnimFollow", [this](LLUICtrl*, const LLSD&) { onCastAutoAnim(2); });
+    registrar.add("Director.SetSubjectA", [this](LLUICtrl*, const LLSD&) { onCastSetSubject(SUBJECT_A); });
+    registrar.add("Director.SetSubjectB", [this](LLUICtrl*, const LLSD&) { onCastSetSubject(SUBJECT_B); });
+    registrar.add("Director.SetSubjectC", [this](LLUICtrl*, const LLSD&) { onCastSetSubject(SUBJECT_C); });
+    registrar.add("Director.SetSubjectD", [this](LLUICtrl*, const LLSD&) { onCastSetSubject(SUBJECT_D); });
+    registrar.add("Director.SetMarkHere", [this](LLUICtrl*, const LLSD&) { onCastSetMarkHere(); });
+    registrar.add("Director.ResetToMark", [this](LLUICtrl*, const LLSD&) { onCastResetToMark(); });
+    registrar.add("Director.ClearLocoAnim", [this](LLUICtrl*, const LLSD&) { onCastClearLocoAnim(); });
+    registrar.add("Director.CopyUUID", [this](LLUICtrl*, const LLSD&) { onCastCopyUUID(); });
+    registrar.add("Director.LightResponse", [this](LLUICtrl*, const LLSD&)
+    {
+        LLUUID id = firstSelectedCastId();
+        if (id.isNull())
+        {
+            id = gAgentID;
+        }
+        LLFloaterReg::showInstance("avatar_light_response", LLSD(id));
+    });
+    registrar.add("Director.RemoveFromCast", [this](LLUICtrl*, const LLSD&) { onCastRemove(); });
+    registrar.add("Director.AnimCopyUUID", [this](LLUICtrl*, const LLSD&) { onAnimCopyUUID(); });
+    registrar.add("Director.AnimSetLoco", [this](LLUICtrl*, const LLSD&) { onAnimSetLoco(); });
+    registrar.add("Director.AnimPlayLocal", [this](LLUICtrl*, const LLSD&) { onAnimPlayLocal(true); });
+    registrar.add("Director.AnimStopLocal", [this](LLUICtrl*, const LLSD&) { onAnimPlayLocal(false); });
+    if (LLContextMenu* menu = LLUICtrlFactory::getInstance()->createFromFile<LLContextMenu>(
+            "menu_director_cast.xml", gMenuHolder, LLViewerMenuHolderGL::child_registry_t::instance()))
+    {
+        mCastMenuHandle = menu->getHandle();
+    }
+    if (LLContextMenu* menu = LLUICtrlFactory::getInstance()->createFromFile<LLContextMenu>(
+            "menu_director_anims.xml", gMenuHolder, LLViewerMenuHolderGL::child_registry_t::instance()))
+    {
+        mAnimMenuHandle = menu->getHandle();
+    }
+
+    mStatusStrip = root->getChild<LLTextBox>("status_strip");
+    mRecIndicator = root->getChild<LLTextBox>("rec_indicator");
+    mKitUIMs = root->findChild<LLTextBox>("kit_ui_ms");
+    if (mKitUIMs)
+    {
+        mKitUIMs->setVisible(gSavedSettings.getBOOL("KitShowUIMs"));
+    }
+}
+
+void LLFloaterDirector::bindPage(const std::string& page, LLView* root)
+{
+    if (!root || !mBoundPages.insert(page).second)
+    {
+        return;
+    }
+    // One-off mapping from the v1 leaf panels in floater_director.xml to the
+    // controls re-homed by each generated lazy page. Pages containing only
+    // setting-bound kit rows need no Director member binder.
+    using Binder = void (LLFloaterDirector::*)(LLView*);
+    struct Binding { const char* page; Binder binder; };
+    static const Binding bindings[] = {
+        { "move_tab", &LLFloaterDirector::bindMovePage },
+        { "path_tab", &LLFloaterDirector::bindPathPage },
+        { "actor_style_tab", &LLFloaterDirector::bindActorStylePage },
+        { "animate_tab", &LLFloaterDirector::bindAnimatePage },
+        { "shot_tab", &LLFloaterDirector::bindCameraPage },
+        { "moves_tab", &LLFloaterDirector::bindCameraPage },
+        { "vcam_tab", &LLFloaterDirector::bindCameraPage },
+        { "gaze_tab", &LLFloaterDirector::bindCameraPage },
+        { "dance_tab", &LLFloaterDirector::bindCameraPage },
+        { "polish_tab", &LLFloaterDirector::bindCameraPage },
+        { "exposure_tab", &LLFloaterDirector::bindCameraPage },
+        { "actors_tab", &LLFloaterDirector::bindCameraPage },
+        { "gaze_cues_tab", &LLFloaterDirector::bindLauncherPage },
+        { "diopter_tab", &LLFloaterDirector::bindLauncherPage },
+        { "practicals_tab", &LLFloaterDirector::bindLauncherPage },
+        { "actors_tab", &LLFloaterDirector::bindLauncherPage },
+        { "light_cues_tab", &LLFloaterDirector::bindLauncherPage },
+        { "image_tab", &LLFloaterDirector::bindLauncherPage },
+        { "stylize_tab", &LLFloaterDirector::bindLauncherPage },
+        { "atmosphere_tab", &LLFloaterDirector::bindLauncherPage },
+        { "shadows_probes_tab", &LLFloaterDirector::bindLauncherPage },
+    };
+    for (const Binding& binding : bindings)
+    {
+        if (page == binding.page)
+        {
+            (this->*binding.binder)(root);
+        }
+    }
+}
+
+void LLFloaterDirector::bindMovePage(LLView* root)
+{
+    mGroupRunCombo = root->findChild<LLComboBox>("group_run_combo");
+    mGroupStartBtn = root->findChild<LLButton>("btn_group_start");
+    mGroupStopBtn = root->findChild<LLButton>("btn_group_stop");
+    mGroupsList = root->findChild<LLScrollListCtrl>("groups_list");
+    mGroupDelaySpinner = root->findChild<LLSpinCtrl>("group_delay_spinner");
+    mGroupRenameEditor = root->findChild<LLLineEditor>("group_rename_editor");
+    mGroupRenameBtn = root->findChild<LLButton>("btn_group_rename");
+    mGroupDissolveBtn = root->findChild<LLButton>("btn_group_dissolve");
+    if (mGroupRunCombo && mGroupStartBtn && mGroupStopBtn && mGroupsList &&
+        mGroupDelaySpinner && mGroupRenameEditor && mGroupRenameBtn && mGroupDissolveBtn)
+    {
+        mGroupStartBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickGroup(true); });
+        mGroupStopBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickGroup(false); });
+        mGroupsList->setCommitCallback([this](LLUICtrl*, const LLSD&) { onGroupsListSelect(); });
+        mGroupDelaySpinner->setCommitCallback([this](LLUICtrl*, const LLSD&) { onCommitGroupDelay(); });
+        mGroupRenameEditor->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickGroupRename(); });
+        mGroupRenameBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickGroupRename(); });
+        mGroupDissolveBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickGroupDissolve(); });
+    }
+    mMoverPanel = root->findChild<ALPanelActorMover>("actor_mover_panel");
+}
+
+void LLFloaterDirector::bindPathPage(LLView* root)
+{
+    mPathPanel = root->findChild<ALPanelPathEditor>("path_editor");
+    if (mPathPanel)
+    {
+        mPathPanel->revealFor(firstSelectedCastId());
+    }
+}
+
+void LLFloaterDirector::bindActorStylePage(LLView* root)
+{
+    mActorStyleTarget = root->findChild<LLComboBox>("actor_style_target");
+    mActorStyleEnabled = root->findChild<LLCheckBoxCtrl>("actor_style_enabled");
+    mActorStyleMode = root->findChild<LLComboBox>("actor_style_mode");
+    mActorStyleLook = root->findChild<LLComboBox>("actor_style_look");
+    mActorStyleUseActorHue = root->findChild<LLCheckBoxCtrl>("actor_style_use_actor_hue");
+    mActorStyleHue = root->findChild<LLSliderCtrl>("actor_style_hue");
+    mActorStyleAlpha = root->findChild<LLSliderCtrl>("actor_style_alpha");
+    mActorStyleDissolveProgress = root->findChild<LLSliderCtrl>("actor_style_dissolve_progress");
+    mActorStylePixel = root->findChild<LLSliderCtrl>("actor_style_pixel");
+    mActorStyleShimmerSpeed = root->findChild<LLSliderCtrl>("actor_style_shimmer_speed");
+    mActorStyleShimmerAmount = root->findChild<LLSliderCtrl>("actor_style_shimmer_amount");
+    mActorStyleGlitch = root->findChild<LLSliderCtrl>("actor_style_glitch");
+    mActorStyleDistortion = root->findChild<LLComboBox>("actor_style_distortion");
+    mActorStyleDistortionAmount = root->findChild<LLSliderCtrl>("actor_style_distortion_amount");
+    mActorStyleBrightness = root->findChild<LLSliderCtrl>("actor_style_brightness");
+    mActorStyleEffectFps = root->findChild<LLSpinCtrl>("actor_style_effect_fps");
+    mActorStyleReset = root->findChild<LLButton>("actor_style_reset");
+    mActorStyleStatus = root->findChild<LLTextBox>("actor_style_status");
+    if (!mActorStyleTarget || !mActorStyleEnabled || !mActorStyleMode || !mActorStyleLook ||
+        !mActorStyleUseActorHue || !mActorStyleHue || !mActorStyleAlpha ||
+        !mActorStyleDissolveProgress || !mActorStylePixel || !mActorStyleShimmerSpeed ||
+        !mActorStyleShimmerAmount || !mActorStyleGlitch || !mActorStyleDistortion ||
+        !mActorStyleDistortionAmount || !mActorStyleBrightness || !mActorStyleEffectFps ||
+        !mActorStyleReset || !mActorStyleStatus)
+    {
+        return;
+    }
+    mActorStyleTarget->setCommitCallback(
+        [this](LLUICtrl*, const LLSD&) { onActorStyleTargetChanged(); });
+    for (LLUICtrl* control : {
+            static_cast<LLUICtrl*>(mActorStyleEnabled),
+            static_cast<LLUICtrl*>(mActorStyleMode),
+            static_cast<LLUICtrl*>(mActorStyleLook),
+            static_cast<LLUICtrl*>(mActorStyleUseActorHue),
+            static_cast<LLUICtrl*>(mActorStyleHue),
+            static_cast<LLUICtrl*>(mActorStyleAlpha),
+            static_cast<LLUICtrl*>(mActorStyleDissolveProgress),
+            static_cast<LLUICtrl*>(mActorStylePixel),
+            static_cast<LLUICtrl*>(mActorStyleShimmerSpeed),
+            static_cast<LLUICtrl*>(mActorStyleShimmerAmount),
+            static_cast<LLUICtrl*>(mActorStyleGlitch),
+            static_cast<LLUICtrl*>(mActorStyleDistortion),
+            static_cast<LLUICtrl*>(mActorStyleDistortionAmount),
+            static_cast<LLUICtrl*>(mActorStyleBrightness),
+            static_cast<LLUICtrl*>(mActorStyleEffectFps) })
+    {
+        control->setCommitCallback(
+            [this](LLUICtrl*, const LLSD&) { onActorStyleControlChanged(); });
+    }
+    mActorStyleReset->setCommitCallback(
+        [this](LLUICtrl*, const LLSD&) { onActorStyleReset(); });
+    mActorStyleTabDirty = true;
+}
+
+void LLFloaterDirector::bindAnimatePage(LLView* root)
+{
+    mAnimateHeader = root->findChild<LLTextBox>("animate_header");
+    mAnimList = root->findChild<LLScrollListCtrl>("anim_list");
+    mAnimHint = root->findChild<LLTextBox>("anim_hint");
+    mAnimCopyBtn = root->findChild<LLButton>("btn_anim_copy");
+    mAnimSetLocoBtn = root->findChild<LLButton>("btn_anim_setloco");
+    mAnimPlayBtn = root->findChild<LLButton>("btn_anim_play");
+    mAnimStopBtn = root->findChild<LLButton>("btn_anim_stop");
+    mPasteEditor = root->findChild<LLLineEditor>("paste_uuid_editor");
+    mPastePlayBtn = root->findChild<LLButton>("btn_paste_play");
+    mPasteStopBtn = root->findChild<LLButton>("btn_paste_stop");
+    mPasteSetLocoBtn = root->findChild<LLButton>("btn_paste_setloco");
+    mLocomotionRoleCombo = root->findChild<LLComboBox>("locomotion_role_combo");
+    mLocomotionSpeed = root->findChild<LLSpinCtrl>("locomotion_speed");
+    mLocomotionPhase = root->findChild<LLSpinCtrl>("locomotion_phase");
+    mLocomotionAllowAO = root->findChild<LLCheckBoxCtrl>("locomotion_allow_ao");
+    mLocoText = root->findChild<LLTextBox>("loco_text");
+    mClearLocoBtn = root->findChild<LLButton>("btn_clear_loco");
+    mAnimPreviewPanel = root->findChild<ALPanelAnimPreview>("anim_preview_panel");
+    if (!mAnimList || !mAnimCopyBtn || !mAnimSetLocoBtn || !mAnimPlayBtn || !mAnimStopBtn ||
+        !mPasteEditor || !mPastePlayBtn || !mPasteStopBtn || !mPasteSetLocoBtn ||
+        !mLocomotionRoleCombo || !mLocomotionSpeed || !mLocomotionPhase ||
+        !mLocomotionAllowAO || !mClearLocoBtn)
+    {
+        return;
+    }
+    mAnimPrioCol = mAnimList->getColumn("prio")->mIndex;
+    mAnimPlayingCol = mAnimList->getColumn("playing")->mIndex;
+    mLocomotionRoleCombo->setValue(LLDirectorCast::LOCO_WALK_FORWARD);
+    mAnimCopyBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onAnimCopyUUID(); });
+    mAnimSetLocoBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onAnimSetLoco(); });
+    mAnimPlayBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onAnimPlayLocal(true); });
+    mAnimStopBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onAnimPlayLocal(false); });
+    mPastePlayBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onPastePlayLocal(true); });
+    mPasteStopBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onPastePlayLocal(false); });
+    mPasteSetLocoBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onPasteSetLoco(); });
+    mClearLocoBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickClearLoco(); });
+    mLocomotionRoleCombo->setCommitCallback(
+        [this](LLUICtrl*, const LLSD&) { onLocomotionRoleChanged(); });
+    for (LLUICtrl* control : { static_cast<LLUICtrl*>(mLocomotionSpeed),
+                               static_cast<LLUICtrl*>(mLocomotionPhase),
+                               static_cast<LLUICtrl*>(mLocomotionAllowAO) })
+    {
+        control->setCommitCallback(
+            [this](LLUICtrl*, const LLSD&) { onLocomotionMetadataCommit(); });
+    }
+    mAnimList->setRightMouseDownCallback(
+        [this](LLUICtrl* ctrl, S32 x, S32 y, MASK) { onAnimRightClick(ctrl, x, y); });
+    if (LLButton* open = root->findChild<LLButton>("btn_open_animexp"))
+    {
+        open->setCommitCallback(
+            [](LLUICtrl*, const LLSD&) { LLFloaterReg::showInstance("animation_explorer"); });
+    }
+    mAnimateTabDirty = true;
+}
+
+void LLFloaterDirector::bindCameraPage(LLView* root)
+{
+    if (LLTextBox* control = root->findChild<LLTextBox>("subject_a_text"))
+    {
+        mSubjectAText = control;
+    }
+    if (LLTextBox* control = root->findChild<LLTextBox>("subject_b_text"))
+    {
+        mSubjectBText = control;
+    }
+    if (LLTextBox* control = root->findChild<LLTextBox>("subject_c_text"))
+    {
+        mSubjectCText = control;
+    }
+    if (LLTextBox* control = root->findChild<LLTextBox>("subject_d_text"))
+    {
+        mSubjectDText = control;
+    }
+    auto bind_subject = [this, root](const char* name, LLButton*& member, S32 subject, bool clear)
+    {
+        if (LLButton* control = root->findChild<LLButton>(name))
+        {
+            member = control;
+            control->setCommitCallback([this, subject, clear](LLUICtrl*, const LLSD&)
+            {
+                if (clear)
+                {
+                    onClickClearSubject(subject);
+                }
+                else
+                {
+                    onClickSetSubjectFromSelection(subject);
+                }
+            });
+        }
+    };
+    bind_subject("btn_set_a", mSetABtn, SUBJECT_A, false);
+    bind_subject("btn_set_b", mSetBBtn, SUBJECT_B, false);
+    bind_subject("btn_set_c", mSetCBtn, SUBJECT_C, false);
+    bind_subject("btn_set_d", mSetDBtn, SUBJECT_D, false);
+    bind_subject("btn_clear_a", mClearABtn, SUBJECT_A, true);
+    bind_subject("btn_clear_b", mClearBBtn, SUBJECT_B, true);
+    bind_subject("btn_clear_c", mClearCBtn, SUBJECT_C, true);
+    bind_subject("btn_clear_d", mClearDBtn, SUBJECT_D, true);
+    if (LLButton* control = root->findChild<LLButton>("btn_actor_gaze"))
+    {
+        control->setCommitCallback([this](LLUICtrl*, const LLSD&) { onOpenActorGaze(); });
+    }
+    if (ALPanelLensGaze* control = root->findChild<ALPanelLensGaze>("director_gaze_panel"))
+    {
+        mGazePanel = control;
+    }
+    if (LLButton* control = root->findChild<LLButton>("dance_popout"))
+    {
+        control->setCommitCallback([](LLUICtrl*, const LLSD&) { LLFloaterReg::showInstance("dance_ball"); });
+    }
+    if (LLButton* control = root->findChild<LLButton>("polish_popout"))
+    {
+        control->setCommitCallback([](LLUICtrl*, const LLSD&) { LLFloaterReg::showInstance("pose_polish"); });
+    }
+    if (LLButton* control = root->findChild<LLButton>("exposure_popout"))
+    {
+        control->setCommitCallback([](LLUICtrl*, const LLSD&) { LLFloaterReg::showInstance("exposure_hub"); });
+    }
+    if (LLButton* control = root->findChild<LLButton>("light_response_popout")) control->setCommitCallback([this](LLUICtrl*, const LLSD&)
+    {
+        const LLUUID actor = firstSelectedCastId();
+        LLFloaterReg::showInstance("avatar_light_response", LLSD(actor.notNull() ? actor : gAgentID));
+    });
+    if (LLTextBox* control = root->findChild<LLTextBox>("prism_summary"))
+    {
+        mPrismSummaryText = control;
+    }
+    if (LLButton* control = root->findChild<LLButton>("btn_prism_manage"))
+    {
+        mPrismManageBtn = control;
+        control->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickManagePrism(); });
+    }
+    if (LLButton* control = root->findChild<LLButton>("btn_build_ots_pair"))
+    {
+        mOtsPairBtn = control;
+        control->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickBuildOtsPair(); });
+    }
+    if (LLButton* control = root->findChild<LLButton>("btn_start_zolly"))
+    {
+        mZollyBtn = control;
+        control->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickZolly(); });
+    }
+    if (LLButton* control = root->findChild<LLButton>("btn_start_hero_arc"))
+    {
+        mHeroArcBtn = control;
+        control->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickHeroArc(); });
+    }
+    if (ALPanelCineCamParams* control = root->findChild<ALPanelCineCamParams>("cinecam_params_embedded"))
+    {
+        mCineCamPanel = control;
+    }
+    LLPanel* root_panel = dynamic_cast<LLPanel*>(root);
+    LLPanel* dance_page = root_panel && root_panel->getName() == "dance_tab_logic"
+        ? root_panel : root->findChild<LLPanel>("dance_tab_logic");
+    if (dance_page)
+    {
+        mDancePage = dance_page;
+        mDancePanelView = root->findChild<LLView>("director_dance_ball_panel");
+        ALScrollFit::fillPage(mDancePage, mDancePanelView, 30);
+    }
+    LLPanel* exposure_page = root_panel && root_panel->getName() == "exposure_tab_logic"
+        ? root_panel : root->findChild<LLPanel>("exposure_tab_logic");
+    if (exposure_page)
+    {
+        mExposurePage = exposure_page;
+        mExposurePanelView = root->findChild<LLView>("director_exposure_panel");
+        ALScrollFit::fillPage(mExposurePage, mExposurePanelView, 30);
+    }
+}
+
+void LLFloaterDirector::bindLauncherPage(LLView* root)
+{
+    if (root->findChild<LLButton>("card_gaze_cues_open"))
+    {
+        addLauncherCard("gaze_cues",
+            [this]
+            {
+                LLUUID actor = firstSelectedCastId();
+                if (actor.isNull()) actor = gAgentID;
+                LLFloaterReg::showInstance("gaze_cues", LLSD(actor.asString()));
+            },
+            [this]
+            {
+                LLUUID actor = firstSelectedCastId();
+                if (actor.isNull()) actor = gAgentID;
+                const S32 count = (S32)LLDirectorCast::instance().getGazeCues(actor).size();
+                return llformat("%s: %d gaze cue%s", castMemberName(actor).c_str(), count, count == 1 ? "" : "s");
+            });
+    }
+    if (root->findChild<LLButton>("card_diopter_open"))
+    {
+        addLauncherCard("diopter", [] { LLFloaterReg::showInstance("ultimate_diopter"); }, []
+        {
+            static LLCachedControl<bool> enabled(gSavedSettings, "CineDiopterEnabled", false);
+            return std::string("Diopter: ") + (enabled ? "on" : "off");
+        });
+    }
+    if (root->findChild<LLButton>("card_practicals_open"))
+    {
+        addLauncherCard("practicals", [] { ALFloaterLightBox::showTab("sellight_settings"); }, []
+        {
+            LLObjectSelectionHandle selection = LLSelectMgr::getInstance()->getSelection();
+            LLViewerObject* object = selection->getPrimaryObject();
+            if (!object) object = selection->getFirstRootObject();
+            LLVOVolume* volume = dynamic_cast<LLVOVolume*>(object);
+            if (!volume) return std::string(object ? "Selection is not a light" : "Select a projector in world");
+            if (!volume->getIsLight()) return std::string("Selection is not a light (or its light is off)");
+            if (volume->isLightSpotlight()) return std::string("Projector selected");
+            return std::string("Point light selected (needs a projector)");
+        });
+    }
+    if (root->findChild<LLButton>("card_actor_mask_open"))
+    {
+        addLauncherCard("actor_mask", [] { ALFloaterLightBox::showTab("actor_mask_settings"); }, []
+        {
+            static LLCachedControl<bool> disabled(gSavedSettings, "CineLightRigActorMaskDisable", false);
+            return std::string("Actor-only lights: ") + (disabled ? "disabled" : "active");
+        });
+    }
+    if (root->findChild<LLButton>("card_light_cues_open"))
+    {
+        addLauncherCard("light_cues", [] { LLFloaterReg::showInstance("cine_light_cues"); }, []
+        {
+            const auto& cues = ALCineLightRigManager::instance().selected().cueList();
+            const S32 count = (S32)cues.mCues.size();
+            if (cues.mName.empty()) return llformat("%d cue%s", count, count == 1 ? "" : "s");
+            return llformat("%d cue%s \xC2\xB7 %s", count, count == 1 ? "" : "s", cues.mName.c_str());
+        });
+    }
+    if (root->findChild<LLButton>("card_image_open"))
+    {
+        addLauncherCard("image", [] { ALFloaterLightBox::showTab("colortone_settings"); }, []
+        {
+            static LLCachedControl<S32> type(gSavedSettings, "AlchemyRenderTonemapType", 0);
+            static LLCachedControl<F32> exposure(gSavedSettings, "RenderExposure", 0.f);
+            static LLCachedControl<bool> lut(gSavedSettings, "RenderColorGrade", false);
+            static const char* labels[] = { "Khronos Neutral", "ACES", "ACES Boosted",
+                "Reinhard", "Filmic", "GT", "AgX", "AMD LPM", "S-Log3 Capture" };
+            const S32 index = llclamp((S32)type, 0, 8);
+            return llformat("%s \xC2\xB7 Exposure %.2f%s", labels[index], (F32)exposure,
+                lut ? " \xC2\xB7 LUT" : "");
+        });
+    }
+    if (root->findChild<LLButton>("card_rotoink_open"))
+    {
+        addLauncherCard("rotoink", [] { ALFloaterLightBox::showTab("rotoink_settings"); }, []
+        {
+            static LLCachedControl<bool> on(gSavedSettings, "CineOutlineEnabled", false);
+            return std::string(on ? "On" : "Off");
+        });
+    }
+    if (root->findChild<LLButton>("card_tron_open"))
+    {
+        addLauncherCard("tron", [] { ALFloaterLightBox::showTab("tron_settings"); }, []
+        {
+            static LLCachedControl<bool> on(gSavedSettings, "TronEnabled", false);
+            return std::string(on ? "On" : "Off");
+        });
+    }
+    if (root->findChild<LLButton>("card_haze_open"))
+    {
+        addLauncherCard("haze", [] { ALFloaterLightBox::showTab("cinehaze_settings"); }, []
+        {
+            static LLCachedControl<bool> on(gSavedSettings, "CineHazeEnable", false);
+            return std::string(on ? "On" : "Off");
+        });
+    }
+    if (root->findChild<LLButton>("card_shadows_probes_open"))
+    {
+        addLauncherCard("shadows_probes", [] { ALFloaterLightBox::showTab("shadow_settings"); }, []
+        {
+            static LLCachedControl<S32> detail(gSavedSettings, "RenderShadowDetail", 0);
+            switch ((S32)detail)
+            {
+                case 1: return std::string("Sun/moon");
+                case 2: return std::string("Sun/moon + projectors");
+                default: return std::string("Off");
+            }
+        });
+    }
+    if (root->findChild<LLButton>("card_snapshot_open"))
+    {
+        addLauncherCard("snapshot", [] { LLFloaterReg::showInstance("snapshot"); }, []
+        {
+            return std::string("Stills and high-resolution frames");
+        });
+    }
+}
+
 void LLFloaterDirector::onOpen(const LLSD& key)
 {
     LL_PROFILE_ZONE_NAMED_CATEGORY_UI("Director onOpen");
+    if(mIsV2&&!gSavedSettings.getBOOL("DirectorV2RectBumped")&&
+       (getRect().getWidth()<ALKitStyle::FLOATER_DEFAULT_W||getRect().getHeight()<ALKitStyle::FLOATER_DEFAULT_H))
+    {
+        LLRect rect=getRect();
+        rect.setLeftTopAndSize(rect.mLeft,rect.mTop,ALKitStyle::FLOATER_DEFAULT_W,ALKitStyle::FLOATER_DEFAULT_H);
+        setShape(rect);
+        if(gFloaterView)translateIntoRect(gFloaterView->getLocalRect());
+        gSavedSettings.setBOOL("DirectorV2RectBumped",true);
+    }
+    if(mShell)mShell->startSearchLoad();
     mLauncherClock.forceDue();
     // pick up scenes saved by an earlier session without losing the current
     // combo selection
@@ -808,6 +1432,10 @@ LLPanel* LLFloaterDirector::currentLeafPanel()
 
 bool LLFloaterDirector::selectLeafTab(const std::string& name)
 {
+    if(mIsV2&&mShell)
+    {
+        return mShell->selectPage(name);
+    }
     for (const auto& entry : mGroups)
     {
         if (LLPanel* leaf = entry.second->getPanelByName(name))
@@ -859,7 +1487,15 @@ void LLFloaterDirector::onToggleLegend()
 {
     if (mLegendPanel)
     {
-        mLegendPanel->setVisible(!mLegendPanel->getVisible());
+        if(ALKitPopover* popover=dynamic_cast<ALKitPopover*>(mLegendPanel))
+        {
+            if(popover->getVisible())popover->hide();
+            else popover->show();
+        }
+        else
+        {
+            mLegendPanel->setVisible(!mLegendPanel->getVisible());
+        }
     }
 }
 
@@ -867,10 +1503,14 @@ void LLFloaterDirector::addLauncherCard(const std::string& id,
                                         std::function<void()> open_fn,
                                         std::function<std::string()> summary_fn)
 {
-    getChild<LLButton>("card_" + id + "_open")->setCommitCallback(
-        [open_fn = std::move(open_fn)](LLUICtrl*, const LLSD&) { open_fn(); });
-    mLauncherCards.push_back({ getChild<LLTextBox>("card_" + id + "_summary"),
-                               std::move(summary_fn) });
+    LLButton* open=findChild<LLButton>("card_"+id+"_open");
+    LLTextBox* summary=findChild<LLTextBox>("card_"+id+"_summary");
+    if(!open||!summary)return;
+    open->setCommitCallback([open_fn=std::move(open_fn)](LLUICtrl*,const LLSD&)
+    {
+        open_fn();
+    });
+    mLauncherCards.push_back({summary,std::move(summary_fn)});
 }
 
 void LLFloaterDirector::refreshLauncherCards()
@@ -885,7 +1525,8 @@ void LLFloaterDirector::refreshLauncherCards()
 
 void LLFloaterDirector::draw()
 {
-    LL_PROFILE_ZONE_SCOPED_CATEGORY_UI; // [UIPerfC1]
+    LL_PROFILE_ZONE_NAMED_CATEGORY_UI("LLFloaterDirector draw");
+    if(mIsV2)mKitDrawTimer.reset();
     refreshCastList();
     refreshGroupControls();
     refreshTransport();
@@ -901,6 +1542,12 @@ void LLFloaterDirector::draw()
     refreshLauncherCards();
     refreshStatusStrip();
     LLFloater::draw();
+    if(mIsV2&&mKitUIMs)
+    {
+        const F32 elapsed=mKitDrawTimer.getElapsedTimeF32()*1000.f;
+        mKitDrawEMA=mKitDrawEMA==0.f?elapsed:lerp(mKitDrawEMA,elapsed,.1f);
+        if(mKitDrawClock.due())setTextIfChanged(mKitUIMs,llformat("UI %.1f ms",mKitDrawEMA));
+    }
     // the embedded ALPanelAnimPreview blits + spins its own dummy in its draw()
 }
 
@@ -911,6 +1558,71 @@ void LLFloaterDirector::draw()
 
 bool LLFloaterDirector::handleKeyHere(KEY key, MASK mask)
 {
+    if(mIsV2)
+    {
+        LLView* focus=dynamic_cast<LLView*>(gFocusMgr.getKeyboardFocus());
+        bool text_focus=false;
+        for(LLView* view=focus;view;view=view->getParent())
+        {
+            if(dynamic_cast<LLLineEditor*>(view)||dynamic_cast<LLTextEditor*>(view)||dynamic_cast<LLSpinCtrl*>(view))
+            {
+                text_focus=true;
+                break;
+            }
+            if(view==this)break;
+        }
+        if((mask&MASK_CONTROL)&&!(mask&MASK_SHIFT)&&!text_focus)
+        {
+            if(key=='Z')
+            {
+                mShell->history().undo();
+                return true;
+            }
+            if(key=='Y')
+            {
+                mShell->history().redo();
+                return true;
+            }
+        }
+        if(key==KEY_ESCAPE&&mask==MASK_NONE)
+        {
+            if(mShell->closePopover())return true;
+            if(!mShell->search().queryText().empty())
+            {
+                mShell->clearSearch();
+                return true;
+            }
+        }
+        if((key==KEY_PAGE_UP||key==KEY_PAGE_DOWN)&&!(mask&MASK_CONTROL))
+        {
+            const S32 delta=key==KEY_PAGE_UP?-1:1;
+            if(mask&MASK_ALT)
+            {
+                if(mShell->cycleGroup(delta))return true;
+            }
+            else if(mask&MASK_SHIFT)
+            {
+                if(mShell->cyclePage(delta))return true;
+            }
+            else if(mask==MASK_NONE&&mShell->cycleChip(delta))return true;
+        }
+        if(key==KEY_HOME&&mask==MASK_NONE)
+        {
+            for(LLView* view=focus;view;view=view->getParent())
+            {
+                if(ALKitRow* row=dynamic_cast<ALKitRow*>(view))
+                {
+                    if(row->resettable())
+                    {
+                        row->reset();
+                        return true;
+                    }
+                    break;
+                }
+                if(view==this)break;
+            }
+        }
+    }
     if (key == KEY_ESCAPE && mask == MASK_NONE)
     {
         // Esc = CUT, but ONLY while the transport is live; an idle floater
@@ -923,6 +1635,61 @@ bool LLFloaterDirector::handleKeyHere(KEY key, MASK mask)
         }
     }
     return LLFloater::handleKeyHere(key, mask);
+}
+
+bool LLFloaterDirector::handleUnicodeCharHere(llwchar uni_char)
+{
+    if(mIsV2&&uni_char=='/')
+    {
+        LLView* focus=dynamic_cast<LLView*>(gFocusMgr.getKeyboardFocus());
+        for(LLView* view=focus;view;view=view->getParent())
+        {
+            if(dynamic_cast<LLLineEditor*>(view)||dynamic_cast<LLTextEditor*>(view)||dynamic_cast<LLSpinCtrl*>(view))
+                return LLFloater::handleUnicodeCharHere(uni_char);
+            if(view==this)break;
+        }
+        if(ALKitPage* page=mShell->currentKitPage())
+        {
+            std::string prefix=page->pageKey();
+            const size_t slash=prefix.rfind('/');
+            if(slash!=std::string::npos)prefix=prefix.substr(slash+1);
+            if(prefix.size()>4&&prefix.compare(prefix.size()-4,4,"_tab")==0)prefix.erase(prefix.size()-4);
+            if(LLLineEditor* search=page->findChild<LLLineEditor>(prefix+"_search"))
+            {
+                search->setFocus(true);
+                return true;
+            }
+        }
+    }
+    return LLFloater::handleUnicodeCharHere(uni_char);
+}
+
+bool LLFloaterDirector::hasAccelerators()const
+{
+    return mIsV2;
+}
+
+ALKitHistory* LLFloaterDirector::kitHistory()
+{
+    return mShell?&mShell->history():nullptr;
+}
+
+bool LLFloaterDirector::handleMouseDown(S32 x,S32 y,MASK mask)
+{
+    if(mShell)mShell->history().beginGesture(ALKitHistory::MOUSE,mShell->currentPageKey());
+    return LLFloater::handleMouseDown(x,y,mask);
+}
+
+bool LLFloaterDirector::handleRightMouseDown(S32 x,S32 y,MASK mask)
+{
+    if(mShell)mShell->history().beginGesture(ALKitHistory::MOUSE,mShell->currentPageKey());
+    return LLFloater::handleRightMouseDown(x,y,mask);
+}
+
+bool LLFloaterDirector::handleScrollWheel(S32 x,S32 y,LLScrollDelta delta)
+{
+    if(mShell)mShell->history().beginGesture(ALKitHistory::WHEEL,mShell->currentPageKey());
+    return LLFloater::handleScrollWheel(x,y,delta);
 }
 
 //static
@@ -2212,6 +2979,10 @@ void LLFloaterDirector::onClickGroupDissolve()
 void LLFloaterDirector::refreshGroupControls()
 {
     LL_PROFILE_ZONE_NAMED_CATEGORY_UI("Director refreshGroupControls"); // [DirFix] D9
+    if (!mGroupAssignCombo || !mCastList)
+    {
+        return;
+    }
     LLDirectorCast& cast = LLDirectorCast::instance();
 
     // rebuild both combos only when the distinct-name set changed (rare)
@@ -2219,20 +2990,26 @@ void LLFloaterDirector::refreshGroupControls()
     if (names != mLastGroupNames)
     {
         mLastGroupNames = names;
-        const std::string run_sel = mGroupRunCombo->getSelectedItemLabel();
+        const std::string run_sel = mGroupRunCombo ? mGroupRunCombo->getSelectedItemLabel() : std::string();
         mGroupAssignCombo->clearRows();
-        mGroupRunCombo->clearRows();
+        if (mGroupRunCombo)
+        {
+            mGroupRunCombo->clearRows();
+        }
         // "(none)" first: the discoverable way to clear one member's tag
         // (commits as the empty name; typing nothing still works too)
         mGroupAssignCombo->add(GROUP_NONE_LABEL);
         for (const std::string& name : names)
         {
             mGroupAssignCombo->add(name);
-            mGroupRunCombo->add(name);
+            if (mGroupRunCombo)
+            {
+                mGroupRunCombo->add(name);
+            }
         }
         // keep the run combo on the group the operator had picked, when it
         // still exists; otherwise fall back to the prompt label
-        if (run_sel.empty() || !mGroupRunCombo->setSimple(LLStringExplicit(run_sel)))
+        if (mGroupRunCombo && (run_sel.empty() || !mGroupRunCombo->setSimple(LLStringExplicit(run_sel))))
         {
             mGroupRunCombo->setLabel(LLStringExplicit("Group"));
         }
@@ -2251,6 +3028,12 @@ void LLFloaterDirector::refreshGroupControls()
     setToolTipIfChanged(mGroupAssignCombo, have_sel
         ? std::string("Group tag for the selected member(s): type a new name or pick an existing one, Enter commits. Empty ungroups")
         : std::string("Select a cast member first"));
+
+    if (!mGroupsList || !mGroupRunCombo || !mGroupStartBtn || !mGroupStopBtn ||
+        !mGroupDelaySpinner || !mGroupRenameEditor || !mGroupRenameBtn || !mGroupDissolveBtn)
+    {
+        return;
+    }
 
     if (!mGroupsList->isInVisibleChain()) return;
     if (mGroupsTabDirty)
@@ -3356,6 +4139,12 @@ void LLFloaterDirector::refreshGazeSelection(const uuid_vec_t& selected)
 void LLFloaterDirector::refreshSubjects()
 {
     LL_PROFILE_ZONE_NAMED_CATEGORY_UI("Director refreshSubjects");
+    if (!mSubjectAText || !mSubjectBText || !mSubjectCText || !mSubjectDText ||
+        !mSetABtn || !mSetBBtn || !mSetCBtn || !mSetDBtn ||
+        !mClearABtn || !mClearBBtn || !mClearCBtn || !mClearDBtn)
+    {
+        return;
+    }
     if (!mSubjectAText->isInVisibleChain()) return;
     LLDirectorCast& cast = LLDirectorCast::instance();
     const LLUUID a = cast.getSubjectA();
@@ -3408,6 +4197,10 @@ void LLFloaterDirector::refreshSubjects()
 void LLFloaterDirector::refreshPrismDependents()
 {
     LL_PROFILE_ZONE_NAMED_CATEGORY_UI("Director refreshPrismDependents");
+    if (!mOtsPairBtn || !mPrismSummaryText || !mZollyBtn || !mHeroArcBtn)
+    {
+        return;
+    }
     // The Director refreshes all tab models while it is open. Avoid taking
     // Prism registry/gate snapshots every frame unless Camera is the visible
     // tab; the controls will refresh immediately when their visible chain is
