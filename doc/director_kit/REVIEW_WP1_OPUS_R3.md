@@ -161,3 +161,36 @@ None.
 - **Bar layout maths:** OK at 850/1160 for Rig, with no overlap (residual: m3).
 - **Maths:** the Side keep-side, zero-motion, out-and-back and effYaw checks are clean. **The pitch inverse is still wrong (RB1).**
 - **TUT:** green as committed, but blind to RB1.
+
+---
+
+## R3 verification (HEAD d3025d37239)
+
+**VERDICT: CLEAN.** 0 BLOCKER, 0 MAJOR. Every R3 item is fixed.
+
+**Evidence.**
+- I diffed `git show HEAD -- indra/` line by line.
+- Orchestrator harness (with the R3 near-ratio and unreachable checks) on this HEAD: **PASS, 0 failing** in all 9 checks.
+- TUT replica (the real `alkitmath_test.cpp` on a tut shim), built with MSVC `/O2` and `/Od`, `/fp:precise`: 19/19 pass, including the new test<4> and test<19>.
+
+| R3 | Status | Evidence |
+|---|---|---|
+| RB1 | FIXED as specified | `alkitmath.h:64-90` matches the R3 fix token for token: the cone clamp for \|h\|>r, then clamp each root to ±85 and score by displayed error, with distance to the captured pitch as the tie-break. The bad `NB1_FIX_RECIPE.md` is deleted. |
+| M6 | FIXED | test<4> (`alkitmath_test.cpp:45-65`) covers 19 ratios (±0.999 … ±2.5, exact ±1, ±1.0001) × current ±0/10/30/60. It checks display space for \|h\|≥r and base space below. test<19> (`:272-288`) asserts ±85 saturation inside the circle and the cone edge outside it. Base space at 0.999r passes in both builds. |
+| m1 baseline focus | FIXED | `alkitrow.cpp:26-36` `baselineEditActive`: mouse capture, or keyboard focus on a line or text editor at or under the control. Spinner, slider and combo text entry are covered through their inner line editors. A focused toggle, button or open dropdown no longer freezes the baseline. The commit hook still sets `mLastValue=now`, so Enter while still focused is correct. |
+| m2 amber | Documented | Spec WP4 acceptance (:1678): passive widget writes must refresh the Easy feather amber. |
+| m3 search collapse | FIXED | `alkitpage.cpp:614-622`: shrinks to the remaining width, hidden only below 120 px; spec §3.5 updated. Rig at page width 760: left end 394, master 400-570, search 168 px at 576. No overlap. |
+| m4 legacy ellipsis | FIXED | `alkitpage.cpp:217` `use_ellipses=true` (single-line LLTextBox). |
+| m5 compass letters | FIXED | `alcompassdial.cpp:364-365` use `4*scale`, with the same scale as `getDialGeometry`. This matches the helper and test<15>. Legacy keeps the unscaled `+6`. |
+| m6 Who timer | FIXED | The per-page `doPeriodically` is removed. The label diff now runs under the page `mReadoutClock` in draw (`alkitpage.cpp:785-789`), so a hidden page costs nothing. |
+| m7 bar padding | FIXED | `bar_x=PAGE_PAD_LR` (`alkitpage.cpp:194`). `mBarLeftEnd` derives from `bar_x`, so the master and search maths follow. |
+| m8 ledger | FIXED | WP1_STATUS R3 ledger. |
+| m9 spec | FIXED | The spec edits are committed in d3025d37239. |
+
+**New-defect sweep: nothing found.**
+- `search->reshape(0,…)` happens only while the field is hidden, so it is harmless.
+- The Who label string is built at most at 10 Hz and only while the page is drawn; the old timer did the same.
+- `hasAncestor` and `getKeyboardFocus` are used null-safely.
+- The /Zs gate passed.
+
+Note: WP1_STATUS still says "no … test executable … was run". That describes Codex's own run; the orchestrator's harness and my TUT replica cover it.
