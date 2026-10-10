@@ -22,6 +22,12 @@ public:
     static void recordViewCounts(U32 drawn, U32 culled,
                                  U32 find_calls, U32 find_visited);
 
+    // Called after the login-screen UI has been flushed and before its back
+    // buffer is swapped.  When a layout-audit shot is pending this copies only
+    // the requested floater rectangle; PNG encoding happens later in tick().
+    static void captureAfterRender();
+    static bool layoutAuditActive();
+
     // A self-test session must not serialize UI/open-state side effects.
     static bool suppressSettingsSave();
     static bool isActive();

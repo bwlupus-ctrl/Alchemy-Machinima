@@ -7437,13 +7437,13 @@
   <key>UIClipCullDraw</key>
   <map>
     <key>Comment</key>
-    <string>Skip drawing UI views that lie entirely outside the active scissor clip (content scrolled out of view). Kill switch for the clip cull; turn off to A/B or if a widget disappears.</string>
+    <string>EXPERIMENTAL, default OFF: skip drawing UI views that lie entirely outside the active scissor clip (content scrolled out of view). Measured 2026-10-09: it made a large open inventory 3x slower (17 ms vs 5.3 ms per frame), so it stays off until it beats off on an inventory stress test.</string>
     <key>Persist</key>
     <integer>1</integer>
     <key>Type</key>
     <string>Boolean</string>
     <key>Value</key>
-    <integer>1</integer>
+    <integer>0</integer>
   </map>
   <key>UIClipCullVerify</key>
   <map>
@@ -7482,6 +7482,17 @@
   <map>
     <key>Comment</key>
     <string>Repeat the login-screen UI performance self-test with UIClipCullDraw disabled, then restore its prior value.</string>
+    <key>Persist</key>
+    <integer>0</integer>
+    <key>Type</key>
+    <string>Boolean</string>
+    <key>Value</key>
+    <integer>0</integer>
+  </map>
+  <key>UILayoutAudit</key>
+  <map>
+    <key>Comment</key>
+    <string>Run runtime geometry checks and per-tab screenshots during the login-screen UI self-test. Not persisted.</string>
     <key>Persist</key>
     <integer>0</integer>
     <key>Type</key>

@@ -219,6 +219,10 @@ void display_startup()
         }
     }
     gGL.flush();
+    if (ALUIPerfSelfTest::layoutAuditActive())
+    {
+        ALUIPerfSelfTest::captureAfterRender();
+    }
 
     LLVertexBuffer::unbind();
 

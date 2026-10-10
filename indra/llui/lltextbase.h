@@ -498,6 +498,7 @@ public:
 
     S32                     getVPad() const { return mVPad; }
     S32                     getHPad() const { return mHPad; }
+    LLFontGL::HAlign        getHAlign() const { return mHAlign; }
     F32                     getLineSpacingMult() const { return mLineSpacingMult; }
     S32                     getLineSpacingPixels() const { return mLineSpacingPixels; } // only for multiline
 

@@ -1258,7 +1258,8 @@ void LLView::drawChildren()
         LLView* rootp = LLUI::getInstance()->getRootView();
         ++sDepth;
 
-        static LLUICachedControl<bool> clip_cull_enabled("UIClipCullDraw", true);
+        // Default OFF: made a large open inventory 3x slower (2026-10-09 A/B).
+        static LLUICachedControl<bool> clip_cull_enabled("UIClipCullDraw", false);
         static LLUICachedControl<bool> clip_cull_verify("UIClipCullVerify", true);
         constexpr S32 CLIP_CULL_MARGIN = 8;
         LLRect local_clip;
