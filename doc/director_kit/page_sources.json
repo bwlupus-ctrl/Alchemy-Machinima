@@ -38394,7 +38394,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/alkitshell.cpp",
-              "line": 529,
+              "line": 530,
               "class": "ALKitShell",
               "function": "layoutRoster",
               "wired_class": "ALKitShell",
@@ -40839,7 +40839,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_ghost_studio.xml",
-              "line": 16,
+              "line": 18,
               "tag": "check_box",
               "control_name": null,
               "callbacks": [],
@@ -40902,7 +40902,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_ghost_studio.xml",
-              "line": 21,
+              "line": 16,
               "tag": "check_box",
               "control_name": null,
               "callbacks": [],
@@ -46440,7 +46440,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_ghost_studio.xml",
-              "line": 387,
+              "line": 383,
               "tag": "spinner",
               "control_name": null,
               "callbacks": [],
@@ -47845,7 +47845,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_ghost_studio.xml",
-              "line": 379,
+              "line": 386,
               "tag": "spinner",
               "control_name": null,
               "callbacks": [],
@@ -47908,7 +47908,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_ghost_studio.xml",
-              "line": 380,
+              "line": 387,
               "tag": "spinner",
               "control_name": null,
               "callbacks": [],
@@ -47971,7 +47971,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_ghost_studio.xml",
-              "line": 381,
+              "line": 385,
               "tag": "spinner",
               "control_name": null,
               "callbacks": [],
@@ -48034,7 +48034,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_ghost_studio.xml",
-              "line": 382,
+              "line": 388,
               "tag": "spinner",
               "control_name": null,
               "callbacks": [],
@@ -48097,7 +48097,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_ghost_studio.xml",
-              "line": 384,
+              "line": 380,
               "tag": "spinner",
               "control_name": null,
               "callbacks": [],

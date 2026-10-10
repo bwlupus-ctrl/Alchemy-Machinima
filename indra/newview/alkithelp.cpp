@@ -5,6 +5,7 @@
 #include "alkitrow.h"
 #include "alkitstyle.h"
 #include "alkitshell.h"
+#include "aluiperfselftest.h"
 #include "llfontgl.h"
 #include "llpanel.h"
 #include "llstring.h"
@@ -39,6 +40,11 @@ void ALKitHelpStrip::draw()
     {
         font->renderUTF8(mText, 0, 0, 11, ALKitStyle::color(ALKitStyle::TEXT).get(), LLFontGL::LEFT, LLFontGL::VCENTER, LLFontGL::NORMAL,
                          LLFontGL::NO_SHADOW, S32_MAX, getRect().getWidth(), nullptr, true);
+        const S32 bottom = 11 - font->getLineHeight() / 2;
+        ALUIPerfSelfTest::recordKitText(this, mText,
+                                        LLRect(0, bottom + font->getLineHeight(),
+                                               llmin(getRect().getWidth(), font->getWidth(mText)), bottom),
+                                        this);
     }
     LLView::draw();
 }

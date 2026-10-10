@@ -16,6 +16,7 @@
 #include "alkitshell.h"
 #include "alkitstyle.h"
 #include "alkitswitch.h"
+#include "aluirefresh.h"
 
 #include "llappviewer.h"
 #include "llaccordionctrl.h"
@@ -862,6 +863,36 @@ U32 sPendingDrawn = 0;
 U32 sPendingCulled = 0;
 U32 sPendingFindCalls = 0;
 U32 sPendingFindVisited = 0;
+
+struct KitTextRun
+{
+    LLHandle<LLView> mView;
+    LLHandle<LLView> mOwner;
+    std::string      mText;
+    LLRect           mRect;
+};
+
+struct KitInteractiveRect
+{
+    LLHandle<LLView> mView;
+    LLRect           mRect;
+};
+
+U32                             sKitTextFrame = ~0u;
+std::vector<KitTextRun>         sKitTextRuns;
+std::vector<KitInteractiveRect> sKitInteractiveRects;
+std::set<const LLView*>         sKitRecordedViews;
+
+void beginKitTextFrame()
+{
+    const U32 frame = LLFrameTimer::getFrameCount();
+    if (sKitTextFrame == frame)
+        return;
+    sKitTextFrame = frame;
+    sKitTextRuns.clear();
+    sKitInteractiveRects.clear();
+    sKitRecordedViews.clear();
+}
 
 std::string csv(const std::string& value)
 {
@@ -2273,6 +2304,52 @@ private:
         bar->reshape(bar->getRect().getWidth(), bar->getRect().getHeight(), true);
     }
 
+    void auditKitTextGeometry(LLFloater* floater)
+    {
+        auto in_floater = [floater](LLView* view)
+        {
+            return view && (view == floater || view->hasAncestor(floater));
+        };
+        auto text_leaf = [this, floater](const KitTextRun& run)
+        {
+            AuditLeaf leaf = semanticLeaf(run.mView.get(), floater);
+            floater->screenRectToLocal(run.mRect, &leaf.mRect);
+            return leaf;
+        };
+        for (size_t i = 0; i < sKitTextRuns.size(); ++i)
+        {
+            LLView* first = sKitTextRuns[i].mView.get();
+            if (!in_floater(first) || sKitTextRuns[i].mText.empty())
+                continue;
+            for (size_t j = i + 1; j < sKitTextRuns.size(); ++j)
+            {
+                LLView* second = sKitTextRuns[j].mView.get();
+                if (!in_floater(second) || sKitTextRuns[i].mText == sKitTextRuns[j].mText ||
+                    !sKitTextRuns[i].mRect.overlaps(sKitTextRuns[j].mRect))
+                    continue;
+                AuditLeaf a = text_leaf(sKitTextRuns[i]);
+                AuditLeaf b = text_leaf(sKitTextRuns[j]);
+                addFinding("TEXT_ON_TEXT", a, &b,
+                           "drawn strings intersect: " + sKitTextRuns[i].mText + " / " + sKitTextRuns[j].mText);
+            }
+
+            for (const KitInteractiveRect& interactive : sKitInteractiveRects)
+            {
+                LLView* control = interactive.mView.get();
+                LLView* owner   = sKitTextRuns[i].mOwner.get();
+                if (!in_floater(control) || control == owner || control == first ||
+                    (owner && owner->hasAncestor(control)) ||
+                    first->hasAncestor(control) || !sKitTextRuns[i].mRect.overlaps(interactive.mRect))
+                    continue;
+                AuditLeaf a = text_leaf(sKitTextRuns[i]);
+                AuditLeaf b = semanticLeaf(control, floater);
+                floater->screenRectToLocal(interactive.mRect, &b.mRect);
+                addFinding("TEXT_ON_CONTROL", a, &b,
+                           "drawn text intersects an unrelated interactive control: " + sKitTextRuns[i].mText);
+            }
+        }
+    }
+
     void auditGeometry()
     {
         LLView* page = auditPageRoot();
@@ -2291,10 +2368,43 @@ private:
         if (isDirectorV2() && !mAuditStateApplied) return;
 
         auditDirectorLiveLayout();
+        if (isDirectorV2())
+            auditKitTextGeometry(floater);
 
         std::vector<LLView*> views;
         std::vector<AuditLeaf> leaves;
         collectAuditViews(page, page, views, leaves);
+
+        if (isDirectorV2())
+        {
+            std::vector<ALKitRow*> rows;
+            collectViewsOfType<ALKitRow>(page, rows);
+            for (ALKitRow* row : rows)
+            {
+                if (!visibleWithin(row, page))
+                    continue;
+                LLView* value = nullptr;
+                if (LLUICtrl* control = row->control())
+                    for (LLView* child : *control->getChildList())
+                        if (dynamic_cast<LLLineEditor*>(child) || dynamic_cast<LLTextBox*>(child))
+                        {
+                            value = child;
+                            break;
+                        }
+                if (!value)
+                    value = row->valueView();
+                if (!value || !visibleWithin(value, row))
+                    continue;
+                LLRect value_rect;
+                if (value->localRectToOtherView(value->getLocalRect(), &value_rect, row) &&
+                    !rectContained(value_rect, row->getLocalRect()))
+                {
+                    AuditLeaf item = semanticLeaf(value, floater);
+                    addFinding("VALUE_OUTSIDE_ROW", item, nullptr,
+                               "value rect lies outside its 28 px owner row");
+                }
+            }
+        }
         const LLRect floater_local = floater->getLocalRect();
         for (AuditLeaf& leaf : leaves)
         {
@@ -4138,6 +4248,99 @@ void ALUIPerfSelfTest::captureAfterRender()
 bool ALUIPerfSelfTest::layoutAuditActive()
 {
     return sLayoutAuditActive;
+}
+
+void ALUIPerfSelfTest::recordKitText(LLView* view, const std::string& text,
+                                     const LLRect& local_rect, LLView* owner)
+{
+    if (!sLayoutAuditActive || !view || text.empty() || local_rect.getWidth() <= 0 || local_rect.getHeight() <= 0)
+        return;
+    beginKitTextFrame();
+    LLRect screen;
+    view->localRectToScreen(local_rect, &screen);
+    for (const KitTextRun& run : sKitTextRuns)
+        if (run.mView.get() == view && run.mText == text && run.mRect == screen)
+            return;
+    sKitTextRuns.push_back({ view->getHandle(), owner ? owner->getHandle() : LLHandle<LLView>(), text, screen });
+}
+
+void ALUIPerfSelfTest::recordKitWidgetTree(LLView* root)
+{
+    if (!sLayoutAuditActive || !root)
+        return;
+    beginKitTextFrame();
+    std::function<void(LLView*)> visit = [&](LLView* view)
+    {
+        if (!view || !view->getVisible() || !view->isInVisibleChain() || !isWidgetOnScreen(view) ||
+            !sKitRecordedViews.insert(view).second)
+            return;
+
+        if (LLUICtrl* control = dynamic_cast<LLUICtrl*>(view))
+            if (control->hasTabStop() || dynamic_cast<LLButton*>(view) || dynamic_cast<LLLineEditor*>(view) ||
+                dynamic_cast<LLComboBox*>(view) || dynamic_cast<LLSlider*>(view) || dynamic_cast<LLSpinCtrl*>(view))
+            {
+                LLRect screen;
+                view->localRectToScreen(view->getLocalRect(), &screen);
+                sKitInteractiveRects.push_back({ view->getHandle(), screen });
+            }
+
+        std::string text;
+        const LLFontGL* font  = view->getFont();
+        LLFontGL::HAlign align = LLFontGL::LEFT;
+        S32 pad_left = 0, pad_right = 0;
+        LLView* owner = nullptr;
+        bool full_rect = false;
+        if (LLButton* button = dynamic_cast<LLButton*>(view))
+        {
+            text      = button->getCurrentLabel().getString();
+            align     = button->getHAlign();
+            pad_left  = button->getLeftHPad();
+            pad_right = button->getRightHPad();
+            owner     = button;
+        }
+        else if (LLLineEditor* editor = dynamic_cast<LLLineEditor*>(view))
+        {
+            text  = editor->getText();
+            align = editor->getHAlign();
+            editor->getTextPadding(&pad_left, &pad_right);
+            owner = editor;
+        }
+        else if (LLTextBox* box = dynamic_cast<LLTextBox*>(view))
+        {
+            text      = box->getText();
+            align     = box->getHAlign();
+            full_rect = box->getWordWrap();
+        }
+        else if (LLTextEditor* editor = dynamic_cast<LLTextEditor*>(view))
+        {
+            text      = editor->getText();
+            full_rect = true;
+        }
+
+        if (font && !text.empty())
+        {
+            const S32 available = llmax(1, view->getRect().getWidth() - pad_left - pad_right);
+            const S32 width     = full_rect ? available : llmin(available, font->getWidth(text));
+            S32 height = llmin(view->getRect().getHeight(), font->getLineHeight());
+            if (full_rect)
+            {
+                height = view->getRect().getHeight();
+                if (LLTextBox* box = dynamic_cast<LLTextBox*>(view))
+                    height = llmin(height, llmax(font->getLineHeight(), box->getTextPixelHeight()));
+            }
+            S32 left = pad_left;
+            if (align == LLFontGL::RIGHT)
+                left = view->getRect().getWidth() - pad_right - width;
+            else if (align == LLFontGL::HCENTER)
+                left = pad_left + (available - width) / 2;
+            const S32 bottom = (view->getRect().getHeight() - height) / 2;
+            recordKitText(view, text, LLRect(left, bottom + height, left + width, bottom), owner);
+        }
+
+        for (LLView* child : *view->getChildList())
+            visit(child);
+    };
+    visit(root);
 }
 
 bool ALUIPerfSelfTest::suppressSettingsSave()

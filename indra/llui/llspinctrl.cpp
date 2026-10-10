@@ -152,6 +152,20 @@ LLSpinCtrl::LLSpinCtrl(const LLSpinCtrl::Params& p)
     setUseBoundingRect( true );
 }
 
+void LLSpinCtrl::setValueColumnLayout(S32 width, S32 height, bool show_buttons)
+{
+    width            = llmax(1, width);
+    height           = llmax(1, height);
+    const S32 button = llmin(12, width / 3);
+    const S32 half   = height / 2;
+    reshape(width, height, true);
+    mUpBtn->setRect(LLRect(width - button, height, width, half));
+    mDownBtn->setRect(LLRect(width - button, half, width, 0));
+    mUpBtn->setVisible(show_buttons);
+    mDownBtn->setVisible(show_buttons);
+    mEditor->setRect(LLRect(0, height, show_buttons ? width - button - 1 : width, 0));
+}
+
 F32 clamp_precision(F32 value, S32 decimal_precision)
 {
     // pow() isn't perfect

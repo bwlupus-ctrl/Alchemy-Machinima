@@ -1,5 +1,6 @@
 #include "llviewerprecompiledheaders.h"
 #include "alkitshell.h"
+#include "aluiperfselftest.h"
 #include "alkitbar.h"
 #include "alkitbinding.h"
 #include "alkitcard.h"
@@ -589,11 +590,14 @@ void ALKitShell::refreshModeProxy()
                 mModeButtons[index]->setLabel(page->modeName(index));
             mModeButtons[index]->setToggleState(index == page->modeIndex());
             ALKitStyle::styleButton(mModeButtons[index], false);
-            mModeButtons[index]->setImageColor(index == page->modeIndex() ? ALKitStyle::color(ALKitStyle::ACTIVE_FILL)
+            mModeButtons[index]->setImageColor(index == page->modeIndex() ? ALKitStyle::color(ALKitStyle::TEXT)
                                                                           : ALKitStyle::color(ALKitStyle::INPUT_BG));
-            mModeButtons[index]->setSelectedImageColor(ALKitStyle::color(ALKitStyle::ACTIVE_FILL));
-            mModeButtons[index]->setUnselectedLabelColor(index == page->modeIndex() ? ALKitStyle::color(ALKitStyle::TEXT_STRONG)
+            mModeButtons[index]->setSelectedImageColor(ALKitStyle::color(ALKitStyle::TEXT));
+            mModeButtons[index]->setUnselectedLabelColor(index == page->modeIndex() ? ALKitStyle::color(ALKitStyle::KNOB_ON)
                                                                                     : ALKitStyle::color(ALKitStyle::LABEL));
+            mModeButtons[index]->setSelectedLabelColor(index == page->modeIndex() ? ALKitStyle::color(ALKitStyle::KNOB_ON)
+                                                                                   : ALKitStyle::color(ALKitStyle::LABEL));
+            mModeButtons[index]->setFont(ALKitStyle::sansFont("Kit12", index == page->modeIndex()));
             mModeButtons[index]->setOrigin(x + index * 86, 8);
         }
     }
@@ -602,6 +606,7 @@ void ALKitShell::refreshModeProxy()
 void ALKitShell::draw()
 {
     LL_PROFILE_ZONE_NAMED_CATEGORY_UI("ALKitShell draw");
+    ALUIPerfSelfTest::recordKitWidgetTree(this);
     auto fill_panel = [this](LLView* panel, const LLUIColor& color)
     {
         LLRect rect;

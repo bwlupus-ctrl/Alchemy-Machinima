@@ -194,6 +194,11 @@ void styleTree(LLView* root)
             return;
         if (LLButton* button = dynamic_cast<LLButton*>(view))
         {
+            // Cards own the selected/unselected palette of their segmented
+            // controls. Reapplying the generic button palette here erases
+            // that state immediately after postBuild().
+            if (name.find("_seg_") != std::string::npos || name.find("_view_") != std::string::npos)
+                return;
             const bool clear = name.rfind("kit_rail_", 0) == 0 || name.rfind("kit_tab_", 0) == 0 ||
                                name.rfind("kit_mode_seg_", 0) == 0 || name.find("_reset") != std::string::npos;
             styleButton(button, clear);
@@ -225,9 +230,10 @@ void styleTree(LLView* root)
         }
         else if (LLTextBox* text = dynamic_cast<LLTextBox*>(view))
         {
+            const bool compact_who = name.find("_who_rail_text") != std::string::npos || name.find("_who_caret") != std::string::npos;
             const bool mono = name.find("timecode") != std::string::npos || name.find("rec_indicator") != std::string::npos ||
                               name.find("_value") != std::string::npos;
-            text->setFont(mono ? monoFont() : sansFont("Kit12"));
+            text->setFont(mono ? monoFont() : sansFont(compact_who ? "Kit10" : "Kit12"));
         }
         else if (LLLineEditor* editor = dynamic_cast<LLLineEditor*>(view))
             styleEditor(editor, name.find("_value") != std::string::npos || name.find("timecode") != std::string::npos);

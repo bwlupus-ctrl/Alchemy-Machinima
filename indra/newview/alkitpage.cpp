@@ -9,6 +9,7 @@
 #include "alkitstyle.h"
 #include "alkitshell.h"
 #include "alkitswitch.h"
+#include "aluiperfselftest.h"
 #include "llbutton.h"
 #include "llcallbacklist.h"
 #include "llcombobox.h"
@@ -73,7 +74,12 @@ public:
     {
         LL_PROFILE_ZONE_SCOPED_CATEGORY_UI;
         if (const LLFontGL* f = LLFontGL::getFontSansSerifSmall())
+        {
             f->renderUTF8(mLabel, 0, 0, 8, ALKitStyle::color(ALKitStyle::MUTED).get(), LLFontGL::LEFT, LLFontGL::VCENTER);
+            const S32 bottom = 8 - f->getLineHeight() / 2;
+            ALUIPerfSelfTest::recordKitText(this, mLabel,
+                                            LLRect(0, bottom + f->getLineHeight(), f->getWidth(mLabel), bottom), this);
+        }
         LLPanel::draw();
     }
 
@@ -283,6 +289,20 @@ bool ALKitPage::postBuild()
                 mBar->addChild(c);
                 if (LLUICtrl* control = dynamic_cast<LLUICtrl*>(c))
                     control->setFocus(false);
+                if (LLComboBox* combo = dynamic_cast<LLComboBox*>(c))
+                    for (LLView* child : *combo->getChildList())
+                        if (LLLineEditor* editor = dynamic_cast<LLLineEditor*>(child))
+                        {
+                            editor->setFocus(false);
+                            editor->deselect();
+                            LLHandle<LLView> editor_handle = editor->getHandle();
+                            combo->setFocusLostCallback(
+                                [editor_handle](LLFocusableElement*)
+                                {
+                                    if (LLLineEditor* resting = dynamic_cast<LLLineEditor*>(editor_handle.get()))
+                                        resting->deselect();
+                                });
+                        }
                 c->setFollows(FOLLOWS_LEFT | FOLLOWS_TOP);
                 S32 item_width = ALKitStyle::PRESET_COMBO_W;
                 if (i != 0)
@@ -515,6 +535,35 @@ bool ALKitPage::postBuild()
         mWhoCombo = findChild<LLComboBox>(mWhoPicker);
         mWhoChip  = makeButton(pre + "_who_chip", mWhoLabel);
         mWhoChip->setImageOverlay("KitIcon_who_person_16", LLFontGL::LEFT);
+        mWhoChip->setHAlign(LLFontGL::LEFT);
+        mWhoChip->setLeftHPad(28);
+        mWhoChip->setRightHPad(16);
+        LLPanel::Params rail_tag;
+        rail_tag.name               = pre + "_who_rail_tag";
+        rail_tag.rect               = LLRect(0, 16, 30, 0);
+        rail_tag.background_visible = true;
+        rail_tag.background_opaque  = true;
+        rail_tag.bg_opaque_color    = ALKitStyle::color(ALKitStyle::ACTIVE_FILL);
+        mWhoRailTag                 = LLUICtrlFactory::create<LLPanel>(rail_tag);
+        mWhoRailTag->setMouseOpaque(false);
+        mWhoChip->addChild(mWhoRailTag);
+        LLTextBox::Params rail_text;
+        rail_text.name          = pre + "_who_rail_text";
+        rail_text.rect          = LLRect(0, 16, 30, 0);
+        rail_text.initial_value = "rail";
+        rail_text.font          = ALKitStyle::sansFont("Kit10");
+        rail_text.text_color    = ALKitStyle::color(ALKitStyle::MUTED);
+        mWhoRailText            = LLUICtrlFactory::create<LLTextBox>(rail_text);
+        mWhoRailText->setHAlign(LLFontGL::HCENTER);
+        mWhoRailText->setMouseOpaque(false);
+        mWhoRailTag->addChild(mWhoRailText);
+        rail_text.name          = pre + "_who_caret";
+        rail_text.rect          = LLRect(0, 16, 10, 0);
+        rail_text.initial_value = "\xE2\x96\xBE";
+        rail_text.text_color    = ALKitStyle::color(ALKitStyle::MUTED);
+        mWhoCaretText           = LLUICtrlFactory::create<LLTextBox>(rail_text);
+        mWhoCaretText->setMouseOpaque(false);
+        mWhoChip->addChild(mWhoCaretText);
         mWhoContainer->addChild(mWhoChip);
         if (mWhoCombo)
         {
@@ -525,9 +574,12 @@ bool ALKitPage::postBuild()
                     mWhoError = false;
                     mWhoCombo->setVisible(false);
                     if (mWhoChip)
-                        mWhoChip->setLabel("Acting on: " + mWhoCombo->getSelectedItemLabel() + "  rail  \xE2\x96\xBE");
+                    {
+                        mWhoChip->setLabel("Acting on: " + mWhoCombo->getSelectedItemLabel());
+                        reshape(getRect().getWidth(), getRect().getHeight(), false);
+                    }
                 });
-            mWhoChip->setLabel("Acting on: " + mWhoCombo->getSelectedItemLabel() + "  rail  \xE2\x96\xBE");
+            mWhoChip->setLabel("Acting on: " + mWhoCombo->getSelectedItemLabel());
         }
         if (ALKitShell* shell = ALKitShell::find(this))
             mConnections.emplace_back(shell->setCastSelectionCallback(
@@ -572,6 +624,8 @@ bool ALKitPage::postBuild()
         ALKitStyle::styleTree(mWhoContainer);
         ALKitStyle::styleTree(mBanner);
         ALKitStyle::stylePill(mWhoChip);
+        if (mWhoChip)
+            mWhoChip->setUnselectedLabelColor(ALKitStyle::color(ALKitStyle::TEXT_STRONG));
         mRestoringState = false;
         return true;
     }
@@ -673,7 +727,11 @@ bool ALKitPage::postBuild()
     restoreState();
     reshape(getRect().getWidth(), getRect().getHeight(), true);
     ALKitStyle::styleTree(this);
+    for (auto& row : mRows)
+        row.second->refreshValueEditorStyle();
     ALKitStyle::stylePill(mWhoChip);
+    if (mWhoChip)
+        mWhoChip->setUnselectedLabelColor(ALKitStyle::color(ALKitStyle::TEXT_STRONG));
     return true;
 }
 
@@ -865,11 +923,15 @@ void ALKitPage::reshape(S32 w, S32 h, bool p)
         mWhoContainer->reshape(w, ALKitStyle::WHO_H, true);
         mWhoContainer->setOrigin(0, top);
         const S32 label_x = ALKitStyle::PAGE_PAD_LR;
-        const S32 chip_x = label_x + 94;
-        const S32 chip_w = llmin(260, llmax(120, w - chip_x - 300));
+        const S32 chip_x     = label_x + 94;
+        const S32 label_w    = mWhoChip->getFont() ? mWhoChip->getFont()->getWidth(mWhoChip->getText()) : 120;
+        const S32 chip_w     = llmin(llmax(120, label_w + 82), llmax(120, w - chip_x - 24));
         mWhoLabelText->setOrigin(label_x, 7);
         mWhoChip->reshape(chip_w, 24, true);
         mWhoChip->setOrigin(chip_x, 5);
+        const S32 tag_x = llmin(chip_w - 48, 28 + label_w + 6);
+        mWhoRailTag->setOrigin(tag_x, 4);
+        mWhoCaretText->setOrigin(tag_x + 34, 4);
         mWhoHint->reshape(llmax(1, w - chip_x - chip_w - 24), 20, true);
         mWhoHint->setOrigin(chip_x + chip_w + 12, 7);
     }
@@ -1062,8 +1124,7 @@ bool ALKitPage::revealCard(ALKitCard* c, bool)
             mChipIndex = i;
             break;
         }
-    c->setVisible(true);
-    requestLayout();
+    applyModeAndChip();
     scrollToView(c);
     return true;
 }
@@ -1205,9 +1266,12 @@ void ALKitPage::draw()
                         row->pollLiveValue();
         if (mWhoCombo && mWhoChip && !mWhoError)
         {
-            const std::string label = mWhoLabel + ": " + mWhoCombo->getSelectedItemLabel() + " \xE2\x96\xBE";
+            const std::string label = "Acting on: " + mWhoCombo->getSelectedItemLabel();
             if (mWhoChip->getLabelSelected() != label)
+            {
                 mWhoChip->setLabel(label);
+                reshape(getRect().getWidth(), getRect().getHeight(), false);
+            }
         }
     }
     if (mShell)

@@ -6,6 +6,7 @@
 #include "alkitpage.h"
 #include "alkitshell.h"
 #include "aluirefresh.h"
+#include "aluiperfselftest.h"
 #include "llcallbacklist.h"
 #include "llcontrol.h"
 #include "llfocusmgr.h"
@@ -59,6 +60,38 @@ void nearEllipse(F32 cx, F32 cy, F32 rx, F32 ry, const LLColor4& c)
     }
 }
 
+void gradientDisc(F32 cx, F32 cy, F32 radius)
+{
+    const LLColor4 centre = LLColor4(0x1d / 255.f, 0x30 / 255.f, 0x49 / 255.f, 1.f);
+    const LLColor4 edge   = LLColor4(0x09 / 255.f, 0x11 / 255.f, 0x20 / 255.f, 1.f);
+    gGL.begin(LLRender::TRIANGLE_FAN);
+    gGL.color4fv(centre.mV);
+    gGL.vertex2f(cx - .12f * radius, cy + .18f * radius);
+    for (S32 i = 0; i <= 64; ++i)
+    {
+        const F32 angle = F_TWO_PI * i / 64.f;
+        gGL.color4fv(edge.mV);
+        gGL.vertex2f(cx + radius * cosf(angle), cy + radius * sinf(angle));
+    }
+    gGL.end();
+}
+
+void frontHemisphere(F32 cx, F32 cy, F32 radius)
+{
+    const LLColor4 middle = LLColor4(0x2b / 255.f, 0x4c / 255.f, 0x74 / 255.f, .62f);
+    const LLColor4 edge   = LLColor4(0x18 / 255.f, 0x30 / 255.f, 0x4f / 255.f, .32f);
+    gGL.begin(LLRender::TRIANGLE_FAN);
+    gGL.color4fv(middle.mV);
+    gGL.vertex2f(cx, cy - .24f * radius);
+    for (S32 i = 0; i <= 32; ++i)
+    {
+        const F32 angle = F_PI + F_PI * i / 32.f;
+        gGL.color4fv(edge.mV);
+        gGL.vertex2f(cx + radius * cosf(angle), cy + radius * sinf(angle));
+    }
+    gGL.end();
+}
+
 void dashedCircle(F32 cx, F32 cy, F32 r, const LLColor4& c)
 {
     for (S32 i = 0; i < 24; i += 2)
@@ -68,10 +101,16 @@ void dashedCircle(F32 cx, F32 cy, F32 r, const LLColor4& c)
     }
 }
 
-void label(const std::string& s, F32 x, F32 y, const LLColor4& c, LLFontGL::HAlign a = LLFontGL::HCENTER)
+void label(LLView* owner, const std::string& s, F32 x, F32 y, const LLColor4& c, LLFontGL::HAlign a = LLFontGL::HCENTER)
 {
     if (const LLFontGL* f = LLFontGL::getFontSansSerifSmall())
+    {
         f->renderUTF8(s, 0, ll_round(x), ll_round(y), c, a, LLFontGL::VCENTER);
+        const S32 width = f->getWidth(s);
+        const S32 left  = a == LLFontGL::LEFT ? ll_round(x) : a == LLFontGL::RIGHT ? ll_round(x) - width : ll_round(x) - width / 2;
+        const S32 bottom = ll_round(y) - f->getLineHeight() / 2;
+        ALUIPerfSelfTest::recordKitText(owner, s, LLRect(left, bottom + f->getLineHeight(), left + width, bottom), owner);
+    }
 }
 
 } // namespace
@@ -256,7 +295,7 @@ void ALLightRigMap::cancelDrag()
 }
 
 S32 ALLightRigMap::heightForWidth(S32 width) const
-{ return llclamp(ll_round(.62f * width), 180, 240) + ALKitStyle::MAP_LEGEND_H; }
+{ return llclamp(ll_round(.62f * width), 180, 240) + ALKitStyle::MAP_FOOTER_H; }
 
 void ALLightRigMap::select(S32 role)
 { mSelected = llclamp(role, 0, 3); }
@@ -267,30 +306,21 @@ void ALLightRigMap::draw()
 
     const LLRect rect = getLocalRect();
     const F32    canvas_h =
-        llmin((F32)(rect.getHeight() - ALKitStyle::MAP_LEGEND_H), (F32)llclamp(ll_round(.62f * rect.getWidth()), 180, 240));
+        llmin((F32)(rect.getHeight() - ALKitStyle::MAP_FOOTER_H), (F32)llclamp(ll_round(.62f * rect.getWidth()), 180, 240));
     mCanvasCx     = rect.getWidth() * .5f;
-    mCanvasCy     = ALKitStyle::MAP_LEGEND_H + canvas_h * .5f;
+    mCanvasCy     = ALKitStyle::MAP_FOOTER_H + canvas_h * .5f;
     mCanvasRadius = llmin(.42f * canvas_h, .30f * rect.getWidth());
 
     const LLVector3 at = LLViewerCamera::getInstance()->getAtAxis();
     if (at.mV[VX] * at.mV[VX] + at.mV[VY] * at.mV[VY] >= .0025f)
         mCameraBearing = atan2f(-at.mV[VY], -at.mV[VX]) * RAD_TO_DEG;
 
-    gl_rect_2d(0, ll_round(ALKitStyle::MAP_LEGEND_H + canvas_h), rect.getWidth(), ALKitStyle::MAP_LEGEND_H,
+    gl_rect_2d(0, ll_round(ALKitStyle::MAP_FOOTER_H + canvas_h), rect.getWidth(), ALKitStyle::MAP_FOOTER_H,
                ALKitStyle::color(ALKitStyle::LIGHTMAP_EDGE).get(), true);
-    // A few concentric fills are enough to read as the mockup's radial sphere
-    // without adding a texture or a per-frame allocation.
-    const LLColor4 edge = ALKitStyle::color(ALKitStyle::LIGHTMAP_EDGE).get();
-    const LLColor4 centre = ALKitStyle::color(ALKitStyle::LIGHTMAP_CENTRE).get();
-    for (S32 ring = 8; ring >= 0; --ring)
-    {
-        const F32 t = ring / 8.f;
-        LLColor4 shade = lerp(centre, edge, t);
-        shade.mV[VALPHA] = .88f;
-        gGL.color4fv(shade.mV);
-        gl_circle_2d(mCanvasCx, mCanvasCy, mCanvasRadius * (1.f + .35f * t), 48, true);
-    }
-    gl_rect_2d(0, ll_round(ALKitStyle::MAP_LEGEND_H + canvas_h), rect.getWidth(), ALKitStyle::MAP_LEGEND_H,
+    gradientDisc(mCanvasCx, mCanvasCy, mCanvasRadius);
+    if (mView == ALKitMath::PERSPECTIVE)
+        frontHemisphere(mCanvasCx, mCanvasCy, mCanvasRadius);
+    gl_rect_2d(0, ll_round(ALKitStyle::MAP_FOOTER_H + canvas_h), rect.getWidth(), ALKitStyle::MAP_FOOTER_H,
                ALKitStyle::color(ALKitStyle::LIGHTMAP_BORDER).get(), false);
 
     const LLColor4 track = ALKitStyle::color(ALKitStyle::ARC_TRACK).get(), dim = ALKitStyle::color(ALKitStyle::DIM).get(),
@@ -403,7 +433,7 @@ void ALLightRigMap::draw()
             gGL.color4fv(c.mV);
             gl_circle_2d(l.x, l.y, rr, 20, false);
             gl_line_2d(ll_round(l.x - rr * .51f), ll_round(l.y - rr * .51f), ll_round(l.x + rr * .51f), ll_round(l.y + rr * .51f), c);
-            label(S_OFF, l.x, l.y - rr - 7.f, c);
+            label(this, S_OFF, l.x, l.y - rr - 7.f, c);
         }
 
         else if (l.front >= .5f)
@@ -437,7 +467,8 @@ void ALLightRigMap::draw()
             gGL.color4fv((c % .6f).mV);
             gl_circle_2d(l.x, l.y, rr + 4.f, 24, false);
         }
-        label(LABEL[i], l.x + (l.x >= mCanvasCx ? rr + 4.f : -rr - 4.f), l.y, c, l.x >= mCanvasCx ? LLFontGL::LEFT : LLFontGL::RIGHT);
+        label(this, LABEL[i], l.x + (l.x >= mCanvasCx ? rr + 4.f : -rr - 4.f), l.y, c,
+              l.x >= mCanvasCx ? LLFontGL::LEFT : LLFontGL::RIGHT);
     };
 
     for (const DrawLight& l : lights)
@@ -496,8 +527,8 @@ void ALLightRigMap::draw()
     if (mView == ALKitMath::SIDE)
     {
         const F32 cam_x = mSideFrom == 0 ? mCanvasCx + mCanvasRadius : mCanvasCx - mCanvasRadius;
-        label(S_CAM, cam_x, mCanvasCy - 12.f, dim);
-        label(S_BACK, 2.f * mCanvasCx - cam_x, mCanvasCy - 12.f, dim);
+        label(this, S_CAM, cam_x, mCanvasCy - 12.f, dim);
+        label(this, S_BACK, 2.f * mCanvasCx - cam_x, mCanvasCy - 12.f, dim);
         const F32 chip_y = mCanvasCy + mCanvasRadius - 21.f;
         gl_rect_2d(8, ll_round(chip_y + 13), 126, ll_round(chip_y - 13), ALKitStyle::color(ALKitStyle::CONTROL_BG).get(), true);
         gGL.color4fv(track.mV);
@@ -508,19 +539,23 @@ void ALLightRigMap::draw()
         const F32 eye_x = mSideFrom == 0 ? 15.f : 29.f;
         gl_circle_2d(eye_x, chip_y, 1.5f, 8, false);
         dashed(eye_x, chip_y, 22.f, chip_y, 1.5f, 1.5f, dim);
-        label(mSideFrom == 0 ? S_SIDE_L : S_SIDE_R, 36.f, chip_y, ALKitStyle::color(ALKitStyle::TEXT).get(), LLFontGL::LEFT);
+        label(this, mSideFrom == 0 ? S_SIDE_L : S_SIDE_R, 36.f, chip_y, ALKitStyle::color(ALKitStyle::TEXT).get(),
+              LLFontGL::LEFT);
     }
 
     else
     {
-        label(S_CAM_L, mCanvasCx - mCanvasRadius, mCanvasCy, dim);
-        label(S_CAM_R, mCanvasCx + mCanvasRadius, mCanvasCy, dim);
-        label(S_BACK, mCanvasCx, mCanvasCy + mCanvasRadius + 8.f, dim);
-        label(S_CAM, mCanvasCx, mCanvasCy - mCanvasRadius - 8.f, dim);
+        label(this, S_CAM_L, mCanvasCx - mCanvasRadius, mCanvasCy, dim);
+        label(this, S_CAM_R, mCanvasCx + mCanvasRadius, mCanvasCy, dim);
+        label(this, S_BACK, mCanvasCx, mCanvasCy + mCanvasRadius + 8.f, dim);
+        label(this, S_CAM, mCanvasCx, mCanvasCy - mCanvasRadius - 8.f, dim);
     }
 
-    label(mView == ALKitMath::SIDE ? S_SIDE_KEY : S_OTHER_KEY, mCanvasCx, ALKitStyle::MAP_LEGEND_H + 7.f, dim);
-    label(mFooterText, rect.getWidth() - 8.f, ALKitStyle::MAP_LEGEND_H + 7.f, dim, LLFontGL::RIGHT);
+    const F32 legend_bottom = ALKitStyle::MAP_CONTROL_H + ALKitStyle::MAP_HINT_H;
+    const F32 controls_y    = ALKitStyle::MAP_HINT_H + ALKitStyle::MAP_CONTROL_H * .5f;
+    label(this, "View", 8.f, controls_y, dim, LLFontGL::LEFT);
+    label(this, mView == ALKitMath::SIDE ? S_SIDE_KEY : S_OTHER_KEY, rect.getWidth() - 8.f, controls_y, dim, LLFontGL::RIGHT);
+    label(this, mFooterText, rect.getWidth() - 8.f, ALKitStyle::MAP_HINT_H * .5f, dim, LLFontGL::RIGHT);
 
     const F32 chip_w = rect.getWidth() / 4.f;
     for (S32 i = 0; i < 4; ++i)
@@ -528,12 +563,13 @@ void ALLightRigMap::draw()
         const F32      left = i * chip_w;
         const LLColor4 c    = role_colors[i];
         if (i == mSelected)
-            gl_rect_2d(ll_round(left + 2), ALKitStyle::MAP_LEGEND_H - 2, ll_round(left + chip_w - 2), 2,
+            gl_rect_2d(ll_round(left + 2), ll_round(legend_bottom + ALKitStyle::MAP_LEGEND_H - 2),
+                       ll_round(left + chip_w - 2), ll_round(legend_bottom + 2),
                        ALKitStyle::color(ALKitStyle::ACCENT).get(), false);
         gGL.color4fv(c.mV);
-        gl_circle_2d(left + 10.f, 20.f, 4.f, 12, mOn[i]);
-        label(LABEL[i], left + 18.f, 27.f, ALKitStyle::color(ALKitStyle::TEXT).get(), LLFontGL::LEFT);
-        label(mLegendText[i], left + 18.f, 13.f, dim, LLFontGL::LEFT);
+        gl_circle_2d(left + 10.f, legend_bottom + 20.f, 4.f, 12, mOn[i]);
+        label(this, LABEL[i], left + 18.f, legend_bottom + 27.f, ALKitStyle::color(ALKitStyle::TEXT).get(), LLFontGL::LEFT);
+        label(this, mLegendText[i], left + 18.f, legend_bottom + 13.f, dim, LLFontGL::LEFT);
     }
 
     LLUICtrl::draw();
@@ -598,13 +634,16 @@ bool ALLightRigMap::handleMouseDown(S32 x, S32 y, MASK)
 {
     if (!getEnabled())
         return false;
-    if (y < ALKitStyle::MAP_LEGEND_H)
+    const S32 legend_bottom = ALKitStyle::MAP_CONTROL_H + ALKitStyle::MAP_HINT_H;
+    if (y >= legend_bottom && y < ALKitStyle::MAP_FOOTER_H)
     {
         select(llclamp((4 * x) / llmax(1, getRect().getWidth()), 0, 3));
         if (gSavedSettings.controlExists("DirectorV2SelectedLight"))
             gSavedSettings.setS32("DirectorV2SelectedLight", mSelected);
         return true;
     }
+    if (y < ALKitStyle::MAP_FOOTER_H)
+        return true;
     for (S32 n = 3; n >= 0; --n)
     {
         const S32 i  = mDrawOrder[n];

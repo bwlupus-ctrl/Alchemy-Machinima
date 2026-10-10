@@ -183,8 +183,15 @@ bool ALKitRow::postBuild()
             [this](LLFocusableElement*)
             {
                 mHovered = true;
+                styleValueEditor(true);
                 if (ALKitShell* shell = ALKitShell::find(this))
                     shell->help().showRow(this);
+            });
+        mFocusLostConnection = mControl->setFocusLostCallback(
+            [this](LLFocusableElement*)
+            {
+                mHovered = mPointerInside;
+                styleValueEditor(mHovered);
             });
 
         if (!mMeta.mirror_setting.empty())
@@ -233,13 +240,13 @@ bool ALKitRow::postBuild()
             }
     }
 
-    if (mMeta.kind == "toggle" || mMeta.kind == "number" || mMeta.kind == "dial" || mMeta.kind == "arc")
+    if (mMeta.kind == "toggle" || mMeta.kind == "dial" || mMeta.kind == "arc")
     {
         LLTextBox::Params vp;
-        vp.name       = mMeta.widget + (mMeta.kind == "toggle" ? "_state" : mMeta.kind == "number" ? "_unit" : "_value");
+        vp.name       = mMeta.widget + (mMeta.kind == "toggle" ? "_state" : "_value");
         vp.rect       = LLRect(0, 20, ALKitStyle::VALUE_W, 0);
         vp.font       = ALKitStyle::monoFont();
-        vp.text_color = ALKitStyle::color(mMeta.kind == "number" ? ALKitStyle::MUTED : ALKitStyle::TEXT);
+        vp.text_color = ALKitStyle::color(ALKitStyle::TEXT);
         mValueText    = LLUICtrlFactory::create<LLTextBox>(vp);
         addChild(mValueText);
     }
@@ -272,6 +279,7 @@ bool ALKitRow::postBuild()
     }
 
     layoutRow(getRect().getWidth());
+    styleValueEditor(false);
     return true;
 }
 
@@ -326,7 +334,7 @@ void ALKitRow::layoutRow(S32 w)
             width = height = ALKitStyle::DIAL_SIZE;
         }
         else if (mMeta.kind == "number")
-            width = ALKitStyle::NUMBER_FIELD_W;
+            width = ALKitStyle::VALUE_W;
         else if (mMeta.kind == "color")
         {
             width  = 40;
@@ -354,8 +362,32 @@ void ALKitRow::layoutRow(S32 w)
         else if (mMeta.kind == "slider" || mMeta.kind == "combo" || mMeta.kind == "text" || mMeta.kind == "readout" ||
                  mMeta.kind == "link" || mMeta.kind == "custom")
             width = span;
-        mControl->reshape(width, height, true);
-        mControl->setOrigin(x, (h - height) / 2);
+        if (LLSpinCtrl* spinner = dynamic_cast<LLSpinCtrl*>(mControl); spinner && mMeta.kind == "number")
+            spinner->setValueColumnLayout(width, height, mHovered);
+        else
+            mControl->reshape(width, height, true);
+        const S32 control_x = mMeta.kind == "number" ? x + cw + ALKitStyle::COL_GAP : x;
+        mControl->setOrigin(control_x, (h - height) / 2);
+
+        if (mMeta.kind == "slider")
+        {
+            for (LLView* child : *mControl->getChildList())
+            {
+                if (LLLineEditor* editor = dynamic_cast<LLLineEditor*>(child))
+                    editor->setRect(LLRect(width - ALKitStyle::VALUE_W, (height + 20) / 2,
+                                           width, (height - 20) / 2));
+                else if (LLTextBox* text = dynamic_cast<LLTextBox*>(child))
+                {
+                    text->setRect(LLRect(width - ALKitStyle::VALUE_W, (height + 20) / 2,
+                                         width, (height - 20) / 2));
+                    text->setRightAlign();
+                    text->setFont(ALKitStyle::monoFont());
+                }
+            }
+            // Let LLSliderCtrl recompute its track after the value child has
+            // been widened to the shared value-column width.
+            mControl->reshape(width, height, true);
+        }
     }
 
     if (mValueText)
@@ -449,8 +481,6 @@ void ALKitRow::refreshValue()
     {
         if (mMeta.kind == "toggle")
             setTextIfChanged(mValueText, value.asBoolean() ? "On" : "Off");
-        else if (mMeta.kind == "number")
-            setTextIfChanged(mValueText, mMeta.unit);
         else
             setTextIfChanged(mValueText, llformat("%.*f\xC2\xB0", mMeta.decimals, value.asReal()));
     }
@@ -536,15 +566,43 @@ bool ALKitRow::amber() const
 
 void ALKitRow::onMouseEnter(S32 x, S32 y, MASK m)
 {
-    mHovered = true;
+    mPointerInside = true;
+    mHovered       = true;
+    styleValueEditor(true);
     if (ALKitShell* shell = ALKitShell::find(this))
         shell->help().showRow(this);
     LLPanel::onMouseEnter(x, y, m);
 }
 void ALKitRow::onMouseLeave(S32 x, S32 y, MASK m)
 {
-    mHovered = false;
+    mPointerInside = false;
+    mHovered       = baselineEditActive(mControl);
+    styleValueEditor(mHovered);
     LLPanel::onMouseLeave(x, y, m);
+}
+
+void ALKitRow::styleValueEditor(bool active)
+{
+    if (!mControl || (mMeta.kind != "slider" && mMeta.kind != "number"))
+        return;
+    if (LLSpinCtrl* spinner = dynamic_cast<LLSpinCtrl*>(mControl); spinner && mMeta.kind == "number")
+        spinner->setValueColumnLayout(mControl->getRect().getWidth(), mControl->getRect().getHeight(), active);
+    for (LLView* child : *mControl->getChildList())
+    {
+        if (LLLineEditor* editor = dynamic_cast<LLLineEditor*>(child))
+        {
+            editor->setHAlign(LLFontGL::RIGHT);
+            editor->setUseBgColor(true);
+            editor->setBgColor(active ? ALKitStyle::color(ALKitStyle::INPUT_BG) : LLUIColor(LLColor4::transparent));
+            editor->setBgBorderColor(active ? ALKitStyle::color(ALKitStyle::INPUT_BORDER) : LLUIColor(LLColor4::transparent));
+            editor->setFont(ALKitStyle::monoFont());
+        }
+        else if (LLTextBox* text = dynamic_cast<LLTextBox*>(child))
+        {
+            text->setRightAlign();
+            text->setFont(ALKitStyle::monoFont());
+        }
+    }
 }
 
 void ALKitRow::draw()

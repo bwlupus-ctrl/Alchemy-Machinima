@@ -3,6 +3,7 @@
 #include "alkitrow.h"
 #include "alkitpage.h"
 #include "alkitstyle.h"
+#include "aluiperfselftest.h"
 #include "alkitswitch.h"
 #include "alkitshell.h"
 #include "allightrigmap.h"
@@ -567,7 +568,7 @@ S32 ALKitCard::heightForWidth(S32 w) const
     if (mAction)
         h += ALKitStyle::MORE_H;
     if (mRigMap)
-        h += mRigMap->heightForWidth(w - ALKitStyle::CARD_PAD_L - ALKitStyle::CARD_PAD_R) + 28;
+        h += mRigMap->heightForWidth(w - ALKitStyle::CARD_PAD_L - ALKitStyle::CARD_PAD_R);
     S32         advanced = 0;
     std::string sub;
     for (S32 i = 0; i < (S32)mRows.size(); ++i)
@@ -664,6 +665,8 @@ void ALKitCard::layoutBody(S32 w)
         mAction->setVisible(mBodyOpen);
     if (mRigMap)
         mRigMap->setVisible(mBodyOpen);
+    for (LLButton* b : mViewSegments)
+        b->setVisible(mBodyOpen);
     for (LLButton* b : mSegments)
         b->setVisible(mBodyOpen);
     if (mSelectorCombo)
@@ -699,21 +702,21 @@ void ALKitCard::layoutBody(S32 w)
         const S32 mh = mRigMap->heightForWidth(body_w);
         mRigMap->reshape(body_w, mh, true);
         mRigMap->setOrigin(ALKitStyle::CARD_PAD_L, top - mh);
+        const S32 map_bottom = top - mh;
         top -= mh;
-        S32 view_x = ALKitStyle::CARD_PAD_L;
+        S32 view_x = ALKitStyle::CARD_PAD_L + 36;
         for (S32 i = 0; i < (S32)mViewSegments.size(); ++i)
         {
             LLButton* segment = mViewSegments[i];
-            segment->reshape(44, 22, true);
-            segment->setOrigin(view_x, top - 24);
+            segment->reshape(42, 22, true);
+            segment->setOrigin(view_x, map_bottom + ALKitStyle::MAP_HINT_H + 3);
             segment->setToggleState(mRigMap->viewMode() == i);
             ALKitStyle::styleButton(segment, false);
             segment->setImageColor(mRigMap->viewMode() == i ? ALKitStyle::color(ALKitStyle::ACTIVE_FILL)
                                                              : ALKitStyle::color(ALKitStyle::INPUT_BG));
             segment->setSelectedImageColor(ALKitStyle::color(ALKitStyle::ACTIVE_FILL));
-            view_x += 44;
+            view_x += 42;
         }
-        top -= 28;
     }
 
     for (SummaryData& sum : mSummaries)
@@ -917,12 +920,22 @@ void ALKitCard::draw()
         f->renderUTF8(mTitle, 0, (F32)ALKitStyle::CARD_PAD_L, (F32)(getRect().getHeight() - 23),
                       ALKitStyle::color(ALKitStyle::TEXT_STRONG).get(), LLFontGL::LEFT, LLFontGL::VCENTER, LLFontGL::NORMAL,
                       LLFontGL::NO_SHADOW, S32_MAX, title_width, nullptr, true);
+        const S32 title_draw_width = llmin(title_width, f->getWidth(mTitle));
+        const S32 title_bottom     = getRect().getHeight() - 23 - f->getLineHeight() / 2;
+        ALUIPerfSelfTest::recordKitText(this, mTitle,
+                                        LLRect(ALKitStyle::CARD_PAD_L, title_bottom + f->getLineHeight(),
+                                               ALKitStyle::CARD_PAD_L + title_draw_width, title_bottom),
+                                        this);
         if (!mBadge.empty())
         {
             const S32 badge_x = ALKitStyle::CARD_PAD_L + llmin(title_width - 8, f->getWidth(mTitle)) + 8;
             f->renderUTF8(mBadge, 0, badge_x, getRect().getHeight() - 23,
                           ALKitStyle::color(mBadge == "NEW" ? ALKitStyle::ACCENT : ALKitStyle::MUTED).get(), LLFontGL::LEFT,
                           LLFontGL::VCENTER);
+            ALUIPerfSelfTest::recordKitText(this, mBadge,
+                                            LLRect(badge_x, title_bottom + f->getLineHeight(),
+                                                   badge_x + f->getWidth(mBadge), title_bottom),
+                                            this);
         }
     }
     if (isWidgetOnScreen(this))

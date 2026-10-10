@@ -33,8 +33,8 @@ Rig, Rim, Bloom & Glow, and Tron are the currently rolled-out kit-native pages. 
 
 - Viewer widget primitives do not expose CSS box shadows, letter-spacing, or asymmetric split-button corner radii. The implementation uses the nearest native 9-slice/focus-border treatment; no global widget renderer was changed for those cosmetic-only effects.
 - `LLScrollListCtrl` has no embedded rounded-tag cell primitive. Cast rows therefore keep their stable pastel group tag as a tinted name suffix while the list background, hover, selection, status, typography, and header/tool chrome use kit tokens.
-- The light-map backdrop is a native two-layer radial approximation rather than the browser SVG/CSS gradient. Its interaction geometry and token palette are preserved.
-- Exact raster/font metrics still require a post-build capture and mockup side-by-side; this write-only round ran the generator, `/Zs`, and static lint/parity gates but did not build.
+- The light-map backdrop is native GL vertex-colour art rather than browser SVG. It now carries the token radial sphere, lighter front hemisphere, floor/orbit lines, avatar and light glow without a per-frame texture allocation.
+- Exact raster/font metrics still require a post-build capture and mockup side-by-side. This round intentionally did not build; token, kit-page, XML, draw-lint, and scoped whitespace gates passed (the whole-worktree whitespace gate still sees unrelated pre-existing XML whitespace).
 
 ## Visual fix round ledger (2026-10-10)
 
@@ -51,3 +51,19 @@ Rig, Rim, Bloom & Glow, and Tron are the currently rolled-out kit-native pages. 
 | 9 | Existing native title integration already emits `Director › Group › Page`; native window buttons remain platform-owned. |
 | 10 | Fixed causes covered here: reversed descendants, indistinct state colours, orphan bands, audit mode no-op, map overprint, and minimum-width transport spill. Runtime-only findings require the requested post-build capture. |
 | 11 | Cheap reductions: removed two redundant full-page mode/chip/layout passes during native page construction. The remaining likely cost is eager construction/binding of every Rig card/row; deeper lazy-card work is not safe for tonight without a build/profile cycle. |
+
+## Visual fix round 2 ledger (2026-10-10)
+
+| # | Result |
+|---|---|
+| 1 | The map now reserves independent 40 px legend, 28 px View/key, and 18 px hint bands. View segments overlay only their reserved band; the key is right-aligned, the hint has its own baseline, and CAM remains inside the canvas. |
+| 2 | Reparented editable preset combos explicitly clear child-editor focus and selection, so refresh/build leaves plain text. |
+| 3 | Slider child editors are forced into the row's 52 px value column and 20 px vertical slot; numeric spinners have a compact 52 px layout with no duplicate unit label. Both are mono/right-aligned and transparent at rest; spinner arrows and the subtle field appear only on hover/focus. |
+| 4 | Card reveal now reapplies mode/chip visibility. The Lights chip therefore reveals `light_map` then `lights` in row-major order; the 340 px grid threshold still controls the two-to-one-column break. |
+| 5 | The Acting-on control measures its live cast-member label plus person icon, paints `rail` as a distinct compact inset tag with its own caret, and never stretches to the remaining band width. |
+| 6 | Easy/Advanced uses a dark unselected container and a light selected segment with dark text; card-owned segment colours are no longer overwritten by the generic style pass. |
+| 7 | The flat concentric-disc approximation was replaced by a vertex-colour radial sphere and front hemisphere using the documented light-map scene palette. |
+| 8 | Compact transport collapse now removes the optional hotkey/scene actions before the required Cast access, eliminating the 900/minimum right spill. The segment style overwrite was the cause of Rim's identical-state probe. |
+| 9 | The live audit now keeps a self-test-only registry of drawn kit text and interactive rectangles and emits `TEXT_ON_TEXT` / `TEXT_ON_CONTROL`; it also emits `VALUE_OUTSIDE_ROW` when a slider/spinner value leaves its owner row. |
+| 10 | Round-1 proof: its map key and drag hint were registered at the identical `MAP_LEGEND_H + 7` baseline, so their measured glyph rectangles intersect and produce `TEXT_ON_TEXT`; the old CAM baseline also intersected that footer region. The round-2 three-band geometry separates all three before drawing. |
+| 11 | Scope remains Director v2 only. No build or commit was performed; real screenshot confirmation is pending the caller's build/capture pass. |

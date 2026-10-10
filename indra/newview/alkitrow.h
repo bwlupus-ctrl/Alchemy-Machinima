@@ -56,6 +56,8 @@ public:
     bool                        amber() const;
     boost::signals2::connection setAmberCallback(const amber_signal_t::slot_type& s) { return mAmberSignal.connect(s); }
     bool                        resettable() const { return !!mBinding; }
+    LLTextBox*                  valueView() const { return mValueText; }
+    void                        refreshValueEditorStyle() { styleValueEditor(mHovered); }
     void                        reset()
     {
         if (mBinding)
@@ -69,13 +71,14 @@ protected:
     explicit ALKitRow(const Params&);
 
 private:
+    void         styleValueEditor(bool active);
     void         bindingChanged();
     ALKitCard*   card() const;
     ALKitRowMeta mMeta;
     std::string  mBind, mResetSettings, mDefaultValue, mLabelName;
     S32          mRowHeight  = 28;
     bool         mCardPreset = false, mWhoPicker = false, mHidden = false, mAdded = false, mFilterVisible = true, mCodeHidden = false,
-                 mHovered = false, mFlashing = false, mAmber = false, mSyncingMirror = false;
+                 mHovered = false, mPointerInside = false, mFlashing = false, mAmber = false, mSyncingMirror = false;
     LLUICtrl*    mControl = nullptr;
     std::array<LLUICtrl*, 3>           mVec{ { nullptr, nullptr, nullptr } };
     S32                                mVecCount  = 0;
@@ -84,8 +87,8 @@ private:
     LLButton*                          mReset     = nullptr;
     ALKitCard*                         mCard      = nullptr;
     std::unique_ptr<ALKitBinding>      mBinding;
-    boost::signals2::scoped_connection mBindingConnection, mFocusConnection, mMirrorConnection, mMirrorCommitConnection, mHistoryConnection,
-        mValueConnection;
+    boost::signals2::scoped_connection mBindingConnection, mFocusConnection, mFocusLostConnection, mMirrorConnection,
+        mMirrorCommitConnection, mHistoryConnection, mValueConnection;
     amber_signal_t mAmberSignal;
     LLFrameTimer   mFlashTimer;
     LLSD           mLastValue, mShownValue;

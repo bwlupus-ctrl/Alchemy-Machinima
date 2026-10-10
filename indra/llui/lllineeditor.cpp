@@ -132,6 +132,7 @@ LLLineEditor::LLLineEditor(const LLLineEditor::Params& p)
     mTextPadRight(p.text_pad_right),
     mTextLeftEdge(0),       // computed in updateTextPadding() below
     mTextRightEdge(0),      // computed in updateTextPadding() below
+    mHAlign(LLFontGL::LEFT),
     mCommitOnFocusLost( p.commit_on_focus_lost ),
     mKeystrokeOnEsc(false),
     mRevertOnEsc( p.revert_on_esc ),
@@ -2055,6 +2056,18 @@ void LLLineEditor::draw()
             text += PASSWORD_ASTERISK;
         }
         mText = text;
+    }
+
+    // Compact value fields can align at the right edge without changing the
+    // normal cursor/selection rendering or the behavior of existing editors.
+    if (mHAlign == LLFontGL::RIGHT && mScrollHPos == 0)
+    {
+        const S32 text_width = mGLFont->getWidth(mText.getWString().c_str());
+        mTextLeftEdge = llmax(mTextPadLeft, mTextRightEdge - text_width);
+    }
+    else
+    {
+        mTextLeftEdge = llclamp(mTextPadLeft, 0, getRect().getWidth());
     }
 
     // draw rectangle for the background

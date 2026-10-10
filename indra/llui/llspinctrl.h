@@ -83,6 +83,7 @@ public:
     void            setLabelColor(const LLUIColor& c)            { mTextEnabledColor = c; updateLabelColor(); }
     void            setDisabledLabelColor(const LLUIColor& c)    { mTextDisabledColor = c; updateLabelColor();}
     void            setAllowEdit(bool allow_edit);
+    void            setValueColumnLayout(S32 width, S32 height, bool show_buttons);
 
     virtual void    onTabInto();
 

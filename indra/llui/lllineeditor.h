@@ -269,6 +269,8 @@ public:
     // Manipulate left and right padding for text
     void getTextPadding(S32 *left, S32 *right);
     void setTextPadding(S32 left, S32 right);
+    void setHAlign(LLFontGL::HAlign align) { mHAlign = align; }
+    LLFontGL::HAlign getHAlign() const { return mHAlign; }
 
     // Prevalidation controls which keystrokes can affect the editor
     void            setPrevalidate(LLTextValidate::Validator validator);
@@ -377,6 +379,7 @@ protected:
     S32         mTextPadRight;              // Used to reserve space after the end of the text for children.
     S32         mTextLeftEdge;              // Pixels, cached left edge of text based on left padding and width
     S32         mTextRightEdge;             // Pixels, cached right edge of text based on right padding and width
+    LLFontGL::HAlign mHAlign;
 
     bool        mCommitOnFocusLost;
     bool        mRevertOnEsc;

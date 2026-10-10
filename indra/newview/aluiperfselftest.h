@@ -4,7 +4,12 @@
 #ifndef AL_UI_PERF_SELF_TEST_H
 #define AL_UI_PERF_SELF_TEST_H
 
+#include "llrect.h"
 #include "stdtypes.h"
+
+#include <string>
+
+class LLView;
 
 class ALUIPerfSelfTest
 {
@@ -27,6 +32,12 @@ public:
     // the requested floater rectangle; PNG encoding happens later in tick().
     static void captureAfterRender();
     static bool layoutAuditActive();
+
+    // Director-v2 draw hooks. They record exact text/control geometry only
+    // while the live layout self-test is active.
+    static void recordKitWidgetTree(LLView* root);
+    static void recordKitText(LLView* view, const std::string& text,
+                              const LLRect& local_rect, LLView* owner = nullptr);
 
     // A self-test session must not serialize UI/open-state side effects.
     static bool suppressSettingsSave();
