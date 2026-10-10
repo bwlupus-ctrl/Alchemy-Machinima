@@ -178,6 +178,7 @@ ALKitSearchEditor::ALKitSearchEditor(const Params& p) : LLLineEditor(p)
 
 void ALKitSearchEditor::draw()
 {
+    LL_PROFILE_ZONE_SCOPED_CATEGORY_UI;
     LLLineEditor::draw();
     static LLPointer<LLUIImage> search = LLUI::getUIImage("KitIcon_search_16");
     if (search)
