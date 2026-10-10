@@ -17,3 +17,10 @@
 5. **switcher_slot_N.** The dynamic label ("%d %s", alpaneldirectorswitcher.cpp:510) can still truncate. Elide it with a tooltip.
 6. **STYLE_COMBO_CARET** findings at y<0 / minimum size: these look like scroll-position artifacts. Make the probe ignore widgets scrolled out of the viewport.
 7. **Path editor trade-off (Haiku change, review it):** the accordion no longer scrolls itself, so the host path_scroll scrolls the 1160 px editor. Collapsed tabs leave blank space, and the suspend banner reserves a 52 px gap. Prefer a layout where collapsed sections shrink the document.
+
+8. Page header description is ellipsised on every tab (e.g. 'Viewer-only rain, splashes...'): wrap to 2 lines or give it the width / tooltip per mockup.
+9. Transport status line ('0 moving · CineCam: ...') clips at 900 px: elide with tooltip, keep timecode visible.
+
+10. VCam page: stats text 'Prism 0/8 captures...' crammed on the checkbox row (generated panel_dpage_camera_vcam / generator).
+11. Bottom-left rail cast hint cut off ('...Add to') - part of item 3 roster.
+

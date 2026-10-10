@@ -7,7 +7,6 @@
 
 #include "llfloaterprismmanager.h"
 
-#include "alscrollfocus.h"
 #include "alvcambonepov.h"
 #include "llbutton.h"
 #include "llcheckboxctrl.h"
@@ -20,6 +19,7 @@
 #include "llselectmgr.h"
 #include "llsliderctrl.h"
 #include "llspinctrl.h"
+#include "lltabcontainer.h"
 #include "lltextbox.h"
 #include "llviewercamera.h"
 #include "llviewermenu.h"
@@ -1570,10 +1570,13 @@ void LLFloaterPrismManager::refreshSelectionActions()
 
 void LLFloaterPrismManager::installDocumentFocusReveal()
 {
-    ALScrollFocus::install(mCaptureScroll, mCaptureDocument, mCaptureDocument);
-    ALScrollFocus::install(mPerformanceScroll, mPerformanceDocument, mPerformanceDocument);
-    ALScrollFocus::install(mEffectsScroll, mEffectsDocument, mEffectsDocument);
-    ALScrollFocus::install(mGateScroll, mGateDocument, mGateDocument);
+    // The Displays page owns a split layout, with Effects nested inside it;
+    // preserve that page and name its document explicitly. The other three
+    // pages already have direct scrollers, which installForTabs adopts.
+    mScrollFit.setUnwrappedPages({"displays_tab"});
+    mScrollFit.installForTabs(
+        getChild<LLTabContainer>("detail_tabs"), this,
+        {{"effects_scroll", "effects_document"}});
 }
 
 void LLFloaterPrismManager::revealDocumentView(

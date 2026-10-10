@@ -46,6 +46,7 @@
         <panel
          label="Main"
          layout="topleft"
+         height="617"
          name="diopter_tab_main">
             <scroll_container
              follows="all"
@@ -119,6 +120,7 @@
         <panel
          label="Shape"
          layout="topleft"
+         height="617"
          name="diopter_tab_shape">
             <scroll_container
              follows="all"
@@ -206,25 +208,25 @@
                     <slider name="diopter_poly_sides" layout="topleft" follows="left|top" left="12" top="2" height="16" width="440" label="Polygon Sides" label_width="140" min_val="3" max_val="12" increment="1" decimal_digits="0" control_name="CineDiopterPolySides" wheel_adjust="true" />
                     <button follows="left|top" height="18" layout="topleft" left="452" width="18" top="3" image_overlay="Refresh_Off" image_top_pad="0" tab_stop="false" name="rst_CineDiopterPolySides" tool_tip="Reset to default" commit_callback.function="Diopter.ResetControl" commit_callback.parameter="CineDiopterPolySides" />
                     </panel>
-                    <panel name="band_shape_7" left="0" top="394" width="526" height="40" follows="left|top" background_visible="false" border="false" visible="false" layout="topleft">
+                    <panel name="band_shape_7" left="0" top="394" width="526" height="42" follows="left|top" background_visible="false" border="false" visible="false" layout="topleft">
                     <slider name="diopter_star_points" layout="topleft" follows="left|top" left="12" top="2" height="16" width="440" label="Star Points" label_width="140" min_val="3" max_val="12" increment="1" decimal_digits="0" control_name="CineDiopterStarPoints" wheel_adjust="true" />
                     <button follows="left|top" height="18" layout="topleft" left="452" width="18" top="3" image_overlay="Refresh_Off" image_top_pad="0" tab_stop="false" name="rst_CineDiopterStarPoints" tool_tip="Reset to default" commit_callback.function="Diopter.ResetControl" commit_callback.parameter="CineDiopterStarPoints" />
                     <slider name="diopter_star_inner" layout="topleft" follows="left|top" left="12" top="22" height="16" width="440" label="Star Inner Radius" label_width="140" min_val="0.1" max_val="1" increment="0.01" decimal_digits="2" control_name="CineDiopterStarInner" wheel_adjust="true" />
                     <button follows="left|top" height="18" layout="topleft" left="452" width="18" top="23" image_overlay="Refresh_Off" image_top_pad="0" tab_stop="false" name="rst_CineDiopterStarInner" tool_tip="Reset to default" commit_callback.function="Diopter.ResetControl" commit_callback.parameter="CineDiopterStarInner" />
                     </panel>
-                    <panel name="band_shape_9" left="0" top="394" width="526" height="40" follows="left|top" background_visible="false" border="false" visible="false" layout="topleft">
+                    <panel name="band_shape_9" left="0" top="394" width="526" height="42" follows="left|top" background_visible="false" border="false" visible="false" layout="topleft">
                     <slider name="diopter_petal_count" layout="topleft" follows="left|top" left="12" top="2" height="16" width="440" label="Flower Petals" label_width="140" min_val="2" max_val="12" increment="1" decimal_digits="0" control_name="CineDiopterPetalCount" wheel_adjust="true" />
                     <button follows="left|top" height="18" layout="topleft" left="452" width="18" top="3" image_overlay="Refresh_Off" image_top_pad="0" tab_stop="false" name="rst_CineDiopterPetalCount" tool_tip="Reset to default" commit_callback.function="Diopter.ResetControl" commit_callback.parameter="CineDiopterPetalCount" />
                     <slider name="diopter_petal_depth" layout="topleft" follows="left|top" left="12" top="22" height="16" width="440" label="Petal Depth" label_width="140" min_val="0" max_val="0.9" increment="0.01" decimal_digits="2" control_name="CineDiopterPetalDepth" wheel_adjust="true" />
                     <button follows="left|top" height="18" layout="topleft" left="452" width="18" top="23" image_overlay="Refresh_Off" image_top_pad="0" tab_stop="false" name="rst_CineDiopterPetalDepth" tool_tip="Reset to default" commit_callback.function="Diopter.ResetControl" commit_callback.parameter="CineDiopterPetalDepth" />
                     </panel>
-                    <panel name="band_shape_10" left="0" top="394" width="526" height="40" follows="left|top" background_visible="false" border="false" visible="false" layout="topleft">
+                    <panel name="band_shape_10" left="0" top="394" width="526" height="42" follows="left|top" background_visible="false" border="false" visible="false" layout="topleft">
                     <slider name="diopter_blob_seed" layout="topleft" follows="left|top" left="12" top="2" height="16" width="440" label="Blob Seed" label_width="140" min_val="0" max_val="99" increment="1" decimal_digits="0" control_name="CineDiopterBlobSeed" wheel_adjust="true" />
                     <button follows="left|top" height="18" layout="topleft" left="452" width="18" top="3" image_overlay="Refresh_Off" image_top_pad="0" tab_stop="false" name="rst_CineDiopterBlobSeed" tool_tip="Reset to default" commit_callback.function="Diopter.ResetControl" commit_callback.parameter="CineDiopterBlobSeed" />
                     <slider name="diopter_blob_amt" layout="topleft" follows="left|top" left="12" top="22" height="16" width="440" label="Blob Irregularity" label_width="140" min_val="0" max_val="1" increment="0.01" decimal_digits="2" control_name="CineDiopterBlobAmt" wheel_adjust="true" />
                     <button follows="left|top" height="18" layout="topleft" left="452" width="18" top="23" image_overlay="Refresh_Off" image_top_pad="0" tab_stop="false" name="rst_CineDiopterBlobAmt" tool_tip="Reset to default" commit_callback.function="Diopter.ResetControl" commit_callback.parameter="CineDiopterBlobAmt" />
                     </panel>
-                    <panel name="band_shape_11" left="0" top="394" width="526" height="40" follows="left|top" background_visible="false" border="false" visible="false" layout="topleft">
+                    <panel name="band_shape_11" left="0" top="394" width="526" height="42" follows="left|top" background_visible="false" border="false" visible="false" layout="topleft">
                     <slider name="diopter_crescent_bite" layout="topleft" follows="left|top" left="12" top="2" height="16" width="440" label="Crescent Bite" label_width="140" min_val="0.2" max_val="1.5" increment="0.01" decimal_digits="2" control_name="CineDiopterCrescentBite" wheel_adjust="true" />
                     <button follows="left|top" height="18" layout="topleft" left="452" width="18" top="3" image_overlay="Refresh_Off" image_top_pad="0" tab_stop="false" name="rst_CineDiopterCrescentBite" tool_tip="Reset to default" commit_callback.function="Diopter.ResetControl" commit_callback.parameter="CineDiopterCrescentBite" />
                     <slider name="diopter_crescent_shift" layout="topleft" follows="left|top" left="12" top="22" height="16" width="440" label="Crescent Shift" label_width="140" min_val="0" max_val="1.5" increment="0.01" decimal_digits="2" control_name="CineDiopterCrescentShift" wheel_adjust="true" />
@@ -237,6 +239,7 @@
         <panel
          label="Focus"
          layout="topleft"
+         height="617"
          name="diopter_tab_focus">
             <scroll_container
              follows="all"
@@ -324,6 +327,7 @@
         <panel
          label="Glass"
          layout="topleft"
+         height="617"
          name="diopter_tab_glass">
             <scroll_container
              follows="all"
@@ -379,6 +383,7 @@
         <panel
          label="Halo &amp; Ghosts"
          layout="topleft"
+         height="617"
          name="diopter_tab_halo">
             <scroll_container
              follows="all"
@@ -448,6 +453,7 @@
         <panel
          label="Bokeh"
          layout="topleft"
+         height="617"
          name="diopter_tab_bokeh">
             <scroll_container
              follows="all"
@@ -479,11 +485,11 @@
                     <button follows="left|top" height="18" layout="topleft" left="452" width="18" top="58" image_overlay="Refresh_Off" image_top_pad="0" tab_stop="false" name="rst_CineDiopterBladeRotDeg" tool_tip="Reset to default" commit_callback.function="Diopter.ResetControl" commit_callback.parameter="CineDiopterBladeRotDeg" />
                     <slider name="diopter_blade_curve" layout="topleft" follows="left|top" left="12" top="77" height="16" width="440" label="Blade Curvature" label_width="140" min_val="0" max_val="1" increment="0.01" decimal_digits="2" control_name="CineDiopterBladeCurve" wheel_adjust="true" />
                     <button follows="left|top" height="18" layout="topleft" left="452" width="18" top="78" image_overlay="Refresh_Off" image_top_pad="0" tab_stop="false" name="rst_CineDiopterBladeCurve" tool_tip="Reset to default" commit_callback.function="Diopter.ResetControl" commit_callback.parameter="CineDiopterBladeCurve" />
-                    <panel name="band_bokeh_ap_2" left="0" top="97" width="526" height="20" follows="left|top" background_visible="false" border="false" visible="false" layout="topleft">
+                    <panel name="band_bokeh_ap_2" left="0" top="97" width="526" height="22" follows="left|top" background_visible="false" border="false" visible="false" layout="topleft">
                     <slider name="diopter_ap_inner" layout="topleft" follows="left|top" left="12" top="2" height="16" width="440" label="Star Inner" label_width="140" min_val="0.1" max_val="1" increment="0.01" decimal_digits="2" control_name="CineDiopterApertureInner" wheel_adjust="true" />
                     <button follows="left|top" height="18" layout="topleft" left="452" width="18" top="3" image_overlay="Refresh_Off" image_top_pad="0" tab_stop="false" name="rst_CineDiopterApertureInner" tool_tip="Reset to default" commit_callback.function="Diopter.ResetControl" commit_callback.parameter="CineDiopterApertureInner" />
                     </panel>
-                    <panel name="band_bokeh_ap_4" left="0" top="97" width="526" height="20" follows="left|top" background_visible="false" border="false" visible="false" layout="topleft">
+                    <panel name="band_bokeh_ap_4" left="0" top="97" width="526" height="22" follows="left|top" background_visible="false" border="false" visible="false" layout="topleft">
                     <slider name="diopter_anam_angle" layout="topleft" follows="left|top" left="12" top="2" height="16" width="214" label="Anamorphic Angle" label_width="70" min_val="-180" max_val="180" increment="1" decimal_digits="0" control_name="CineDiopterAnamorphAngleDeg" wheel_adjust="true" />
                     <slider name="diopter_anamorph" layout="topleft" follows="left|top" left="238" top="2" height="16" width="214" label="Anamorphic Squeeze" label_width="70" min_val="0.2" max_val="1" increment="0.01" decimal_digits="2" control_name="CineDiopterAnamorph" wheel_adjust="true" />
                     <button follows="left|top" height="18" layout="topleft" left="452" width="18" top="3" image_overlay="Refresh_Off" image_top_pad="0" tab_stop="false" name="rst_CineDiopterAnamorphAngleDeg" tool_tip="Reset to default" commit_callback.function="Diopter.ResetControl" commit_callback.parameter="CineDiopterAnamorphAngleDeg" />
@@ -508,6 +514,7 @@
         <panel
          label="Motion"
          layout="topleft"
+         height="617"
          name="diopter_tab_motion">
             <scroll_container
              follows="all"
@@ -573,7 +580,7 @@
                     <slider name="diopter_path_phase" layout="topleft" follows="left|top" left="12" top="22" height="16" width="440" label="Path Phase" label_width="140" min_val="0" max_val="6.2832" increment="0.05" decimal_digits="2" control_name="CineDiopterPathPhase" wheel_adjust="true" />
                     <button follows="left|top" height="18" layout="topleft" left="452" width="18" top="23" image_overlay="Refresh_Off" image_top_pad="0" tab_stop="false" name="rst_CineDiopterPathPhase" tool_tip="Reset to default" commit_callback.function="Diopter.ResetControl" commit_callback.parameter="CineDiopterPathPhase" />
                     </panel>
-                    <panel name="band_motion_5" left="0" top="137" width="526" height="120" follows="left|top" background_visible="false" border="false" visible="false" layout="topleft">
+                    <panel name="band_motion_5" left="0" top="137" width="526" height="122" follows="left|top" background_visible="false" border="false" visible="false" layout="topleft">
                     <slider name="diopter_stutter_rate" layout="topleft" follows="left|top" left="12" top="2" height="16" width="440" label="Stutter Rate (Hz)" label_width="140" min_val="1" max_val="30" increment="0.5" decimal_digits="1" control_name="CineDiopterStutterRate" wheel_adjust="true" />
                     <button follows="left|top" height="18" layout="topleft" left="452" width="18" top="3" image_overlay="Refresh_Off" image_top_pad="0" tab_stop="false" name="rst_CineDiopterStutterRate" tool_tip="Reset to default" commit_callback.function="Diopter.ResetControl" commit_callback.parameter="CineDiopterStutterRate" />
                     <slider name="diopter_stutter_pos" layout="topleft" follows="left|top" left="12" top="22" height="16" width="440" label="Stutter Position" label_width="140" min_val="0" max_val="1" increment="0.01" decimal_digits="2" control_name="CineDiopterStutterPos" wheel_adjust="true" />
@@ -612,11 +619,11 @@
                     <button follows="left|top" height="18" layout="topleft" left="452" width="18" top="445" image_overlay="Refresh_Off" image_top_pad="0" tab_stop="false" name="rst_CineDiopterSpinDurationS" tool_tip="Reset to default" commit_callback.function="Diopter.ResetControl" commit_callback.parameter="CineDiopterSpinDurationS" />
                     <slider name="diopter_spin_delay" layout="topleft" follows="left|top" left="12" top="464" height="16" width="440" label="Spin Delay (s)" label_width="140" min_val="0" max_val="10" increment="0.1" decimal_digits="1" control_name="CineDiopterSpinDelayS" wheel_adjust="true" />
                     <button follows="left|top" height="18" layout="topleft" left="452" width="18" top="465" image_overlay="Refresh_Off" image_top_pad="0" tab_stop="false" name="rst_CineDiopterSpinDelayS" tool_tip="Reset to default" commit_callback.function="Diopter.ResetControl" commit_callback.parameter="CineDiopterSpinDelayS" />
-                    <panel name="band_spin_0" left="0" top="484" width="526" height="20" follows="left|top" background_visible="false" border="false" visible="false" layout="topleft">
+                    <panel name="band_spin_0" left="0" top="484" width="526" height="22" follows="left|top" background_visible="false" border="false" visible="false" layout="topleft">
                     <slider name="diopter_spin_speed" layout="topleft" follows="left|top" left="12" top="2" height="16" width="440" label="Spin Rate (deg/s)" label_width="140" min_val="-180" max_val="180" increment="1" decimal_digits="0" control_name="CineDiopterSpinSpeed" wheel_adjust="true" />
                     <button follows="left|top" height="18" layout="topleft" left="452" width="18" top="3" image_overlay="Refresh_Off" image_top_pad="0" tab_stop="false" name="rst_CineDiopterSpinSpeed" tool_tip="Reset to default" commit_callback.function="Diopter.ResetControl" commit_callback.parameter="CineDiopterSpinSpeed" />
                     </panel>
-                    <panel name="band_spin_3" left="0" top="484" width="526" height="20" follows="left|top" background_visible="false" border="false" visible="false" layout="topleft">
+                    <panel name="band_spin_3" left="0" top="484" width="526" height="22" follows="left|top" background_visible="false" border="false" visible="false" layout="topleft">
                     <slider name="diopter_spin_bounce" layout="topleft" follows="left|top" left="12" top="2" height="16" width="440" label="Spin Overshoot" label_width="140" min_val="0" max_val="1" increment="0.01" decimal_digits="2" control_name="CineDiopterSpinBounce" wheel_adjust="true" />
                     <button follows="left|top" height="18" layout="topleft" left="452" width="18" top="3" image_overlay="Refresh_Off" image_top_pad="0" tab_stop="false" name="rst_CineDiopterSpinBounce" tool_tip="Reset to default" commit_callback.function="Diopter.ResetControl" commit_callback.parameter="CineDiopterSpinBounce" />
                     </panel>
@@ -627,6 +634,7 @@
         <panel
          label="Kaleido"
          layout="topleft"
+         height="617"
          name="diopter_tab_kaleido">
             <scroll_container
              follows="all"
@@ -725,35 +733,35 @@
                     <button follows="left|top" height="18" layout="topleft" left="452" width="18" top="313" image_overlay="Refresh_Off" image_top_pad="0" tab_stop="false" name="rst_CineDiopterKalFXFlow" tool_tip="Reset to default" commit_callback.function="Diopter.ResetControl" commit_callback.parameter="CineDiopterKalFXFlow" />
                     <slider name="kal_fx_freq" layout="topleft" follows="left|top" left="12" top="332" height="16" width="440" label="Subject FX Frequency" label_width="140" min_val="1" max_val="24" increment="0.5" decimal_digits="1" control_name="CineDiopterKalFXFreq" wheel_adjust="true" />
                     <button follows="left|top" height="18" layout="topleft" left="452" width="18" top="333" image_overlay="Refresh_Off" image_top_pad="0" tab_stop="false" name="rst_CineDiopterKalFXFreq" tool_tip="Reset to default" commit_callback.function="Diopter.ResetControl" commit_callback.parameter="CineDiopterKalFXFreq" />
-                    <panel name="band_kal_pattern_0" left="0" top="352" width="526" height="20" follows="left|top" background_visible="false" border="false" visible="false" layout="topleft">
+                    <panel name="band_kal_pattern_0" left="0" top="352" width="526" height="22" follows="left|top" background_visible="false" border="false" visible="false" layout="topleft">
                     <slider name="kal_seam_soften" layout="topleft" follows="left|top" left="12" top="2" height="16" width="440" label="Seam Soften" label_width="140" min_val="0" max_val="1" increment="0.01" decimal_digits="2" control_name="CineDiopterKalSeamSoften" wheel_adjust="true" tool_tip="Feathers the mirror seams (Radial Mirror pattern only)." />
                     <button follows="left|top" height="18" layout="topleft" left="452" width="18" top="3" image_overlay="Refresh_Off" image_top_pad="0" tab_stop="false" name="rst_CineDiopterKalSeamSoften" tool_tip="Reset to default" commit_callback.function="Diopter.ResetControl" commit_callback.parameter="CineDiopterKalSeamSoften" />
                     </panel>
-                    <panel name="band_kal_pattern_7" left="0" top="332" width="526" height="20" follows="left|top" background_visible="false" border="false" visible="false" layout="topleft">
+                    <panel name="band_kal_pattern_7" left="0" top="352" width="526" height="22" follows="left|top" background_visible="false" border="false" visible="false" layout="topleft">
                     <slider name="kal_star_sharp" layout="topleft" follows="left|top" left="12" top="2" height="16" width="440" label="Star Sharpness" label_width="140" min_val="0" max_val="1" increment="0.01" decimal_digits="2" control_name="CineDiopterKalStarSharp" wheel_adjust="true" />
                     <button follows="left|top" height="18" layout="topleft" left="452" width="18" top="3" image_overlay="Refresh_Off" image_top_pad="0" tab_stop="false" name="rst_CineDiopterKalStarSharp" tool_tip="Reset to default" commit_callback.function="Diopter.ResetControl" commit_callback.parameter="CineDiopterKalStarSharp" />
                     </panel>
-                    <text follows="left|top" halign="left" height="13" layout="topleft" left="12" top="358" width="502" name="hdr" font="SansSerifBold">Source &amp; Cell</text>
-                    <slider name="kal_source_angle" layout="topleft" follows="left|top" left="12" top="373" height="16" width="440" label="Source Angle (deg)" label_width="140" min_val="-180" max_val="180" increment="1" decimal_digits="0" control_name="CineDiopterKalSourceAngle" wheel_adjust="true" />
-                    <button follows="left|top" height="18" layout="topleft" left="452" width="18" top="374" image_overlay="Refresh_Off" image_top_pad="0" tab_stop="false" name="rst_CineDiopterKalSourceAngle" tool_tip="Reset to default" commit_callback.function="Diopter.ResetControl" commit_callback.parameter="CineDiopterKalSourceAngle" />
-                    <slider name="kal_source_zoom" layout="topleft" follows="left|top" left="12" top="393" height="16" width="440" label="Source Zoom" label_width="140" min_val="0.1" max_val="4" increment="0.05" decimal_digits="2" control_name="CineDiopterKalSourceZoom" wheel_adjust="true" />
-                    <button follows="left|top" height="18" layout="topleft" left="452" width="18" top="394" image_overlay="Refresh_Off" image_top_pad="0" tab_stop="false" name="rst_CineDiopterKalSourceZoom" tool_tip="Reset to default" commit_callback.function="Diopter.ResetControl" commit_callback.parameter="CineDiopterKalSourceZoom" />
-                    <slider name="kal_source_offset_x" layout="topleft" follows="left|top" left="12" top="413" height="16" width="214" label="Source Offset X" label_width="70" min_val="-0.5" max_val="0.5" increment="0.005" decimal_digits="3" control_name="CineDiopterKalSourceOffsetX" wheel_adjust="true" />
-                    <slider name="kal_source_offset_y" layout="topleft" follows="left|top" left="238" top="413" height="16" width="214" label="Source Offset Y" label_width="70" min_val="-0.5" max_val="0.5" increment="0.005" decimal_digits="3" control_name="CineDiopterKalSourceOffsetY" wheel_adjust="true" />
-                    <button follows="left|top" height="18" layout="topleft" left="452" width="18" top="414" image_overlay="Refresh_Off" image_top_pad="0" tab_stop="false" name="rst_CineDiopterKalSourceOffsetX" tool_tip="Reset to default" commit_callback.function="Diopter.ResetControl" commit_callback.parameter="CineDiopterKalSourceOffsetX" />
-                    <button follows="left|top" height="18" layout="topleft" left="472" width="18" top="414" image_overlay="Refresh_Off" image_top_pad="0" tab_stop="false" name="rst_CineDiopterKalSourceOffsetY" tool_tip="Reset to default" commit_callback.function="Diopter.ResetControl" commit_callback.parameter="CineDiopterKalSourceOffsetY" />
-                    <slider name="kal_source_spin" layout="topleft" follows="left|top" left="12" top="433" height="16" width="440" label="Source Spin (deg/s)" label_width="140" min_val="-180" max_val="180" increment="1" decimal_digits="0" control_name="CineDiopterKalSourceSpin" wheel_adjust="true" />
-                    <button follows="left|top" height="18" layout="topleft" left="452" width="18" top="434" image_overlay="Refresh_Off" image_top_pad="0" tab_stop="false" name="rst_CineDiopterKalSourceSpin" tool_tip="Reset to default" commit_callback.function="Diopter.ResetControl" commit_callback.parameter="CineDiopterKalSourceSpin" />
-                    <slider name="kal_cell_size_var" layout="topleft" follows="left|top" left="12" top="453" height="16" width="440" label="Cell Size Scatter" label_width="140" min_val="0" max_val="1" increment="0.01" decimal_digits="2" control_name="CineDiopterKalCellSizeVar" wheel_adjust="true" />
-                    <button follows="left|top" height="18" layout="topleft" left="452" width="18" top="454" image_overlay="Refresh_Off" image_top_pad="0" tab_stop="false" name="rst_CineDiopterKalCellSizeVar" tool_tip="Reset to default" commit_callback.function="Diopter.ResetControl" commit_callback.parameter="CineDiopterKalCellSizeVar" />
-                    <slider name="kal_cell_breathe" layout="topleft" follows="left|top" left="12" top="473" height="16" width="440" label="Cell Breathing" label_width="140" min_val="0" max_val="1" increment="0.01" decimal_digits="2" control_name="CineDiopterKalCellBreathe" wheel_adjust="true" />
-                    <button follows="left|top" height="18" layout="topleft" left="452" width="18" top="474" image_overlay="Refresh_Off" image_top_pad="0" tab_stop="false" name="rst_CineDiopterKalCellBreathe" tool_tip="Reset to default" commit_callback.function="Diopter.ResetControl" commit_callback.parameter="CineDiopterKalCellBreathe" />
-                    <slider name="kal_cell_subdiv" layout="topleft" follows="left|top" left="12" top="493" height="16" width="440" label="Cell Subdivide Chance" label_width="140" min_val="0" max_val="1" increment="0.01" decimal_digits="2" control_name="CineDiopterKalCellSubdiv" wheel_adjust="true" />
-                    <button follows="left|top" height="18" layout="topleft" left="452" width="18" top="494" image_overlay="Refresh_Off" image_top_pad="0" tab_stop="false" name="rst_CineDiopterKalCellSubdiv" tool_tip="Reset to default" commit_callback.function="Diopter.ResetControl" commit_callback.parameter="CineDiopterKalCellSubdiv" />
-                    <slider name="kal_cell_merge" layout="topleft" follows="left|top" left="12" top="513" height="16" width="440" label="Cell Merge Chance" label_width="140" min_val="0" max_val="1" increment="0.01" decimal_digits="2" control_name="CineDiopterKalCellMerge" wheel_adjust="true" />
-                    <button follows="left|top" height="18" layout="topleft" left="452" width="18" top="514" image_overlay="Refresh_Off" image_top_pad="0" tab_stop="false" name="rst_CineDiopterKalCellMerge" tool_tip="Reset to default" commit_callback.function="Diopter.ResetControl" commit_callback.parameter="CineDiopterKalCellMerge" />
-                    <slider name="kal_cell_tint" layout="topleft" follows="left|top" left="12" top="533" height="16" width="440" label="Cell Iridescent Tint" label_width="140" min_val="0" max_val="1" increment="0.01" decimal_digits="2" control_name="CineDiopterKalCellTint" wheel_adjust="true" />
-                    <button follows="left|top" height="18" layout="topleft" left="452" width="18" top="534" image_overlay="Refresh_Off" image_top_pad="0" tab_stop="false" name="rst_CineDiopterKalCellTint" tool_tip="Reset to default" commit_callback.function="Diopter.ResetControl" commit_callback.parameter="CineDiopterKalCellTint" />
+                    <text follows="left|top" halign="left" height="13" layout="topleft" left="12" top="380" width="502" name="hdr" font="SansSerifBold">Source &amp; Cell</text>
+                    <slider name="kal_source_angle" layout="topleft" follows="left|top" left="12" top="395" height="16" width="440" label="Source Angle (deg)" label_width="140" min_val="-180" max_val="180" increment="1" decimal_digits="0" control_name="CineDiopterKalSourceAngle" wheel_adjust="true" />
+                    <button follows="left|top" height="18" layout="topleft" left="452" width="18" top="396" image_overlay="Refresh_Off" image_top_pad="0" tab_stop="false" name="rst_CineDiopterKalSourceAngle" tool_tip="Reset to default" commit_callback.function="Diopter.ResetControl" commit_callback.parameter="CineDiopterKalSourceAngle" />
+                    <slider name="kal_source_zoom" layout="topleft" follows="left|top" left="12" top="415" height="16" width="440" label="Source Zoom" label_width="140" min_val="0.1" max_val="4" increment="0.05" decimal_digits="2" control_name="CineDiopterKalSourceZoom" wheel_adjust="true" />
+                    <button follows="left|top" height="18" layout="topleft" left="452" width="18" top="416" image_overlay="Refresh_Off" image_top_pad="0" tab_stop="false" name="rst_CineDiopterKalSourceZoom" tool_tip="Reset to default" commit_callback.function="Diopter.ResetControl" commit_callback.parameter="CineDiopterKalSourceZoom" />
+                    <slider name="kal_source_offset_x" layout="topleft" follows="left|top" left="12" top="435" height="16" width="214" label="Source Offset X" label_width="70" min_val="-0.5" max_val="0.5" increment="0.005" decimal_digits="3" control_name="CineDiopterKalSourceOffsetX" wheel_adjust="true" />
+                    <slider name="kal_source_offset_y" layout="topleft" follows="left|top" left="238" top="435" height="16" width="214" label="Source Offset Y" label_width="70" min_val="-0.5" max_val="0.5" increment="0.005" decimal_digits="3" control_name="CineDiopterKalSourceOffsetY" wheel_adjust="true" />
+                    <button follows="left|top" height="18" layout="topleft" left="452" width="18" top="436" image_overlay="Refresh_Off" image_top_pad="0" tab_stop="false" name="rst_CineDiopterKalSourceOffsetX" tool_tip="Reset to default" commit_callback.function="Diopter.ResetControl" commit_callback.parameter="CineDiopterKalSourceOffsetX" />
+                    <button follows="left|top" height="18" layout="topleft" left="472" width="18" top="436" image_overlay="Refresh_Off" image_top_pad="0" tab_stop="false" name="rst_CineDiopterKalSourceOffsetY" tool_tip="Reset to default" commit_callback.function="Diopter.ResetControl" commit_callback.parameter="CineDiopterKalSourceOffsetY" />
+                    <slider name="kal_source_spin" layout="topleft" follows="left|top" left="12" top="455" height="16" width="440" label="Source Spin (deg/s)" label_width="140" min_val="-180" max_val="180" increment="1" decimal_digits="0" control_name="CineDiopterKalSourceSpin" wheel_adjust="true" />
+                    <button follows="left|top" height="18" layout="topleft" left="452" width="18" top="456" image_overlay="Refresh_Off" image_top_pad="0" tab_stop="false" name="rst_CineDiopterKalSourceSpin" tool_tip="Reset to default" commit_callback.function="Diopter.ResetControl" commit_callback.parameter="CineDiopterKalSourceSpin" />
+                    <slider name="kal_cell_size_var" layout="topleft" follows="left|top" left="12" top="475" height="16" width="440" label="Cell Size Scatter" label_width="140" min_val="0" max_val="1" increment="0.01" decimal_digits="2" control_name="CineDiopterKalCellSizeVar" wheel_adjust="true" />
+                    <button follows="left|top" height="18" layout="topleft" left="452" width="18" top="476" image_overlay="Refresh_Off" image_top_pad="0" tab_stop="false" name="rst_CineDiopterKalCellSizeVar" tool_tip="Reset to default" commit_callback.function="Diopter.ResetControl" commit_callback.parameter="CineDiopterKalCellSizeVar" />
+                    <slider name="kal_cell_breathe" layout="topleft" follows="left|top" left="12" top="495" height="16" width="440" label="Cell Breathing" label_width="140" min_val="0" max_val="1" increment="0.01" decimal_digits="2" control_name="CineDiopterKalCellBreathe" wheel_adjust="true" />
+                    <button follows="left|top" height="18" layout="topleft" left="452" width="18" top="496" image_overlay="Refresh_Off" image_top_pad="0" tab_stop="false" name="rst_CineDiopterKalCellBreathe" tool_tip="Reset to default" commit_callback.function="Diopter.ResetControl" commit_callback.parameter="CineDiopterKalCellBreathe" />
+                    <slider name="kal_cell_subdiv" layout="topleft" follows="left|top" left="12" top="515" height="16" width="440" label="Cell Subdivide Chance" label_width="140" min_val="0" max_val="1" increment="0.01" decimal_digits="2" control_name="CineDiopterKalCellSubdiv" wheel_adjust="true" />
+                    <button follows="left|top" height="18" layout="topleft" left="452" width="18" top="516" image_overlay="Refresh_Off" image_top_pad="0" tab_stop="false" name="rst_CineDiopterKalCellSubdiv" tool_tip="Reset to default" commit_callback.function="Diopter.ResetControl" commit_callback.parameter="CineDiopterKalCellSubdiv" />
+                    <slider name="kal_cell_merge" layout="topleft" follows="left|top" left="12" top="535" height="16" width="440" label="Cell Merge Chance" label_width="140" min_val="0" max_val="1" increment="0.01" decimal_digits="2" control_name="CineDiopterKalCellMerge" wheel_adjust="true" />
+                    <button follows="left|top" height="18" layout="topleft" left="452" width="18" top="536" image_overlay="Refresh_Off" image_top_pad="0" tab_stop="false" name="rst_CineDiopterKalCellMerge" tool_tip="Reset to default" commit_callback.function="Diopter.ResetControl" commit_callback.parameter="CineDiopterKalCellMerge" />
+                    <slider name="kal_cell_tint" layout="topleft" follows="left|top" left="12" top="555" height="16" width="440" label="Cell Iridescent Tint" label_width="140" min_val="0" max_val="1" increment="0.01" decimal_digits="2" control_name="CineDiopterKalCellTint" wheel_adjust="true" />
+                    <button follows="left|top" height="18" layout="topleft" left="452" width="18" top="556" image_overlay="Refresh_Off" image_top_pad="0" tab_stop="false" name="rst_CineDiopterKalCellTint" tool_tip="Reset to default" commit_callback.function="Diopter.ResetControl" commit_callback.parameter="CineDiopterKalCellTint" />
                 </panel>
             </scroll_container>
         </panel>
@@ -761,6 +769,7 @@
         <panel
          label="Kal Anim"
          layout="topleft"
+         height="617"
          name="diopter_tab_kalanim">
             <scroll_container
              follows="all"
@@ -815,13 +824,13 @@
                     </combo_box>
                     <button follows="left|top" height="18" layout="topleft" left="452" width="18" top="2" image_overlay="Refresh_Off" image_top_pad="0" tab_stop="false" name="rst_CineDiopterKalPulseTarget" tool_tip="Reset to default" commit_callback.function="Diopter.ResetControl" commit_callback.parameter="CineDiopterKalPulseTarget" />
                     </panel>
-                    <panel name="band_kal_motion_3" left="0" top="137" width="526" height="40" follows="left|top" background_visible="false" border="false" visible="false" layout="topleft">
+                    <panel name="band_kal_motion_3" left="0" top="137" width="526" height="42" follows="left|top" background_visible="false" border="false" visible="false" layout="topleft">
                     <slider name="kal_wave_amp" layout="topleft" follows="left|top" left="12" top="2" height="16" width="440" label="Wave Amplitude" label_width="140" min_val="0" max_val="0.4" increment="0.005" decimal_digits="3" control_name="CineDiopterKalWaveAmp" wheel_adjust="true" />
                     <button follows="left|top" height="18" layout="topleft" left="452" width="18" top="3" image_overlay="Refresh_Off" image_top_pad="0" tab_stop="false" name="rst_CineDiopterKalWaveAmp" tool_tip="Reset to default" commit_callback.function="Diopter.ResetControl" commit_callback.parameter="CineDiopterKalWaveAmp" />
                     <slider name="kal_wave_freq" layout="topleft" follows="left|top" left="12" top="22" height="16" width="440" label="Wave Frequency" label_width="140" min_val="0" max_val="24" increment="0.5" decimal_digits="1" control_name="CineDiopterKalWaveFreq" wheel_adjust="true" />
                     <button follows="left|top" height="18" layout="topleft" left="452" width="18" top="23" image_overlay="Refresh_Off" image_top_pad="0" tab_stop="false" name="rst_CineDiopterKalWaveFreq" tool_tip="Reset to default" commit_callback.function="Diopter.ResetControl" commit_callback.parameter="CineDiopterKalWaveFreq" />
                     </panel>
-                    <panel name="band_kal_motion_4" left="0" top="137" width="526" height="40" follows="left|top" background_visible="false" border="false" visible="false" layout="topleft">
+                    <panel name="band_kal_motion_4" left="0" top="137" width="526" height="42" follows="left|top" background_visible="false" border="false" visible="false" layout="topleft">
                     <slider name="kal_path_fx" layout="topleft" follows="left|top" left="12" top="2" height="16" width="214" label="Path Freq X" label_width="70" min_val="0" max_val="6" increment="0.05" decimal_digits="2" control_name="CineDiopterKalPathFreqX" wheel_adjust="true" />
                     <slider name="kal_path_fy" layout="topleft" follows="left|top" left="238" top="2" height="16" width="214" label="Path Freq Y" label_width="70" min_val="0" max_val="6" increment="0.05" decimal_digits="2" control_name="CineDiopterKalPathFreqY" wheel_adjust="true" />
                     <button follows="left|top" height="18" layout="topleft" left="452" width="18" top="3" image_overlay="Refresh_Off" image_top_pad="0" tab_stop="false" name="rst_CineDiopterKalPathFreqX" tool_tip="Reset to default" commit_callback.function="Diopter.ResetControl" commit_callback.parameter="CineDiopterKalPathFreqX" />
@@ -843,11 +852,11 @@
                     <button follows="left|top" height="18" layout="topleft" left="452" width="18" top="244" image_overlay="Refresh_Off" image_top_pad="0" tab_stop="false" name="rst_CineDiopterKalSpinDuration" tool_tip="Reset to default" commit_callback.function="Diopter.ResetControl" commit_callback.parameter="CineDiopterKalSpinDuration" />
                     <slider name="kal_spin_delay" layout="topleft" follows="left|top" left="12" top="263" height="16" width="440" label="Spin Delay (s)" label_width="140" min_val="0" max_val="10" increment="0.1" decimal_digits="1" control_name="CineDiopterKalSpinDelay" wheel_adjust="true" />
                     <button follows="left|top" height="18" layout="topleft" left="452" width="18" top="264" image_overlay="Refresh_Off" image_top_pad="0" tab_stop="false" name="rst_CineDiopterKalSpinDelay" tool_tip="Reset to default" commit_callback.function="Diopter.ResetControl" commit_callback.parameter="CineDiopterKalSpinDelay" />
-                    <panel name="band_kal_spin_0" left="0" top="283" width="526" height="20" follows="left|top" background_visible="false" border="false" visible="false" layout="topleft">
+                    <panel name="band_kal_spin_0" left="0" top="283" width="526" height="22" follows="left|top" background_visible="false" border="false" visible="false" layout="topleft">
                     <slider name="kal_spin_speed" layout="topleft" follows="left|top" left="12" top="2" height="16" width="440" label="Spin Rate (deg/s)" label_width="140" min_val="-180" max_val="180" increment="1" decimal_digits="0" control_name="CineDiopterKalSpinSpeed" wheel_adjust="true" />
                     <button follows="left|top" height="18" layout="topleft" left="452" width="18" top="3" image_overlay="Refresh_Off" image_top_pad="0" tab_stop="false" name="rst_CineDiopterKalSpinSpeed" tool_tip="Reset to default" commit_callback.function="Diopter.ResetControl" commit_callback.parameter="CineDiopterKalSpinSpeed" />
                     </panel>
-                    <panel name="band_kal_spin_3" left="0" top="283" width="526" height="20" follows="left|top" background_visible="false" border="false" visible="false" layout="topleft">
+                    <panel name="band_kal_spin_3" left="0" top="283" width="526" height="22" follows="left|top" background_visible="false" border="false" visible="false" layout="topleft">
                     <slider name="kal_spin_bounce" layout="topleft" follows="left|top" left="12" top="2" height="16" width="440" label="Spin Overshoot" label_width="140" min_val="0" max_val="1" increment="0.01" decimal_digits="2" control_name="CineDiopterKalSpinBounce" wheel_adjust="true" />
                     <button follows="left|top" height="18" layout="topleft" left="452" width="18" top="3" image_overlay="Refresh_Off" image_top_pad="0" tab_stop="false" name="rst_CineDiopterKalSpinBounce" tool_tip="Reset to default" commit_callback.function="Diopter.ResetControl" commit_callback.parameter="CineDiopterKalSpinBounce" />
                     </panel>
@@ -918,6 +927,7 @@
      background_visible="false"
      border="false">
         <view_border follows="left|right|top" layout="topleft" left="0" top="0" width="552" height="1" name="footer_rule" bevel_style="in" />
+        <!-- xui-check: exclusive diopter_freeze kal_freeze rst_CineDiopterFreeze rst_CineDiopterKalFreezeTime diopter_freeze_at kal_freeze_at rst_CineDiopterFreezeAt rst_CineDiopterKalFreezeAt -->
         <check_box name="diopter_freeze" layout="topleft" follows="left|top" left="12" top="6" height="16" width="440" label="Freeze Motion (for stills)" control_name="CineDiopterFreeze" />
         <button follows="left|top" height="18" layout="topleft" left="452" width="18" top_delta="-1" image_overlay="Refresh_Off" image_top_pad="0" tab_stop="false" name="rst_CineDiopterFreeze" tool_tip="Reset to default" commit_callback.function="Diopter.ResetControl" commit_callback.parameter="CineDiopterFreeze" />
         <check_box name="kal_freeze" layout="topleft" follows="left|top" left="12" top="6" height="16" width="440" label="Freeze Motion (for stills)" control_name="CineDiopterKalFreezeTime" />

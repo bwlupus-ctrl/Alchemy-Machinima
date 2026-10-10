@@ -149,6 +149,8 @@
 #ifndef AL_ALFLOATERULTIMATEDIOPTER_H
 #define AL_ALFLOATERULTIMATEDIOPTER_H
 
+#include "alscrollfit.h"
+
 #include "llfloater.h"
 #include "aldiopterrelevance.h"
 #include "lluuid.h"
@@ -338,6 +340,8 @@ public:
     void onClose(bool app_quitting) override;
 
 private:
+    ALScrollFit::Controller mScrollFit;
+
     // One entry per sRelevance[] row, resolved once in postBuild(). A null
     // mCtrl means the row's control was not found against the CURRENT xml
     // -- logged once and the row is simply skipped on every later refresh

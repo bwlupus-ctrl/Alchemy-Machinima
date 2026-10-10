@@ -23,6 +23,7 @@
 #include "llfontgl.h"            // LLFontGL::HCENTER -- setImageOverlay()
 #include "llpanel.h"             // overlay band child panels
 #include "llsliderctrl.h"        // Phase 4 -- range-combo-governed sliders
+#include "lltabcontainer.h"
 #include "lltextbox.h"           // Phase 4 -- readout / range-status strips
 #include "lltoolmgr.h"           // LLToolMgr::inBuildMode() -- dof-focus-live predicate
 #include "lluictrl.h"
@@ -417,6 +418,7 @@ bool ALFloaterUltimateDiopter::postBuild()
     refreshRelevance(/*force=*/true);
     updateFocusReadouts();
     updateResetIndicators();
+    mScrollFit.installForTabs(findChild<LLTabContainer>("diopter_tabs"), this);
     return true;
 }
 

@@ -163,7 +163,7 @@
      top="126"
      name="postspeed_text"
      text_color="LtGray_50"
-     width="230">
+     width="220">
         Recommended post speed: 100%
     </text>
     <spinner

@@ -6,6 +6,7 @@
 #ifndef LL_LLFLOATERPRISMMANAGER_H
 #define LL_LLFLOATERPRISMMANAGER_H
 
+#include "alscrollfit.h"
 #include "llfloater.h"
 #include "llframetimer.h"
 #include "llprismlens.h"
@@ -32,6 +33,8 @@ public:
     void draw() override;
 
 private:
+    ALScrollFit::Controller mScrollFit;
+
     void pollSnapshots(bool force);
     void refreshConfiguration();
     void refreshRuntime();

@@ -104,10 +104,10 @@
    label="Dwell" label_width="38" layout="topleft" left="130" max_val="10"
    min_val="0" name="cue_dwell" top="312" width="122" />
   <spinner decimal_digits="0" follows="left|top" height="20" increment="1"
-   label="Past frames" label_width="64" layout="topleft" left="260"
+   label="Past frames" label_width="72" layout="topleft" left="260"
    max_val="300" min_val="0" name="cue_hold_frames" top="312" width="138" />
   <check_box follows="left|top" height="20" label="Thought residue"
-   layout="topleft" left="406" name="cue_residue" top="314" width="104" />
+   layout="topleft" left="402" name="cue_residue" top="314" width="112" />
 
   <text follows="left|top" font="SansSerifSmallBold" height="14"
    layout="topleft" left="10" name="quick_insert_label" top="346"

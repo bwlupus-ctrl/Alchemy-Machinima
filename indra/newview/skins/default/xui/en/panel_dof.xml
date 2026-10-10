@@ -447,6 +447,7 @@
                 top_delta="0"
                 width="40"
                 height="23"
+                label_height="0"
                 can_apply_immediately="true"
                 label=""
                 control_name="RenderCompositionGuideColor" />

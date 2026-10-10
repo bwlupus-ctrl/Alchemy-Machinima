@@ -195,7 +195,7 @@
              width="864">
                 <panel
                  follows="left|top|right"
-                  height="1028"
+                  height="1080"
                  layout="topleft"
                  left="0"
                  name="capture_settings_document"
@@ -216,7 +216,7 @@
                     <layout_stack
                      animate="false"
                      follows="left|top|right"
-                      height="988"
+                      height="1040"
                      layout="topleft"
                      left="10"
                      name="capture_mode_stack"
@@ -317,7 +317,7 @@
                              name="far_clip"
                              top="94"
                              width="150" />
-                            <text follows="left|top" height="16" layout="topleft" left="0" name="eye_offset_label" top="132" width="150">Local eye offset (metres)</text>
+                            <text follows="left|top" height="16" layout="topleft" left="0" name="eye_offset_label" top="132" width="170">Local eye offset (metres)</text>
                             <spinner decimal_digits="3" follows="left|top" height="22" increment="0.01" label="X" label_width="16" layout="topleft" left="0" max_val="64" min_val="-64" name="eye_offset_x" top="150" width="112" />
                             <spinner decimal_digits="3" follows="left|top" height="22" increment="0.01" label="Y" label_width="16" layout="topleft" left="120" max_val="64" min_val="-64" name="eye_offset_y" top="150" width="112" />
                             <spinner decimal_digits="3" follows="left|top" height="22" increment="0.01" label="Z" label_width="16" layout="topleft" left="240" max_val="64" min_val="-64" name="eye_offset_z" top="150" width="112" />
@@ -598,7 +598,7 @@
                     <button follows="left|top" height="22" label="Remove" layout="topleft" left="224" name="remove_display" top="0" width="82" />
                     <button follows="left|top" height="22" label="Locate" layout="topleft" left="312" name="locate_display" top="0" width="76" />
                     <button follows="left|top" height="22" label="Add virtual screen" layout="topleft" left="396" name="add_virtual_screen" tool_tip="Create a prim-free virtual screen for this feed at your current view. Needs no rezzed object; works in no-rez parcels." top="0" width="150" />
-                    <text follows="left|top|right" height="18" layout="topleft" left="552" name="display_actions_hint" text_color="LtGray" top="3" use_ellipses="true" width="290">Add a face, or a prim-free virtual screen. No extra scene render.</text>
+                    <text follows="left|top|right" height="18" layout="topleft" left="552" name="display_actions_hint" text_color="LtGray" tool_tip="Add a face, or a prim-free virtual screen. No extra scene render." top="3" use_ellipses="true" width="290">Virtual screens need no extra render.</text>
                 </layout_panel>
                 <layout_panel
                  auto_resize="false"
@@ -623,7 +623,7 @@
                     <spinner decimal_digits="2" follows="left|top" height="22" increment="0.05" label="B" label_width="14" layout="topleft" left="580" max_val="1" min_val="0" name="bar_blue" top="32" width="76" />
                     <check_box follows="left|top" height="18" label="Source: Gate" layout="topleft" left="674" name="display_gate_source" tool_tip="Route this monitor to the Gate program feed instead of its fixed capture" top="34" width="150" />
                     <text follows="left|top|right" height="28" layout="topleft" left="8" name="display_settings_note" text_color="LtGray" top="62" width="836" word_wrap="true">Fit bars preserve the capture aspect; Fill crops by anchor; Stretch maps the complete picture. These controls never own an FPS schedule.</text>
-                    <text follows="left|top" font="SansSerifBold" height="16" layout="topleft" left="8" name="virtual_screen_heading" top="96" width="300">Virtual screen (prim-free, selected display)</text>
+                    <text follows="left|top" font="SansSerifBold" height="16" layout="topleft" left="8" name="virtual_screen_heading" top="96" width="340">Virtual screen (prim-free, selected display)</text>
                     <slider decimal_digits="2" follows="left|top" height="18" increment="0.05" label="Height (m)" label_width="70" layout="topleft" left="8" max_val="20" min_val="0.10" name="screen_height" tool_tip="Height of the selected virtual screen in metres; width follows the aspect below" top="114" width="250" />
                     <combo_box follows="left|top" height="22" layout="topleft" left="266" name="screen_aspect" tool_tip="Screen aspect; width = height x aspect. Custom keeps the current ratio while resizing." top="112" width="96">
                         <combo_box.item label="16:9" name="screen_aspect_16_9" value="16:9" />

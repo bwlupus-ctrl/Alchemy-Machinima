@@ -243,10 +243,10 @@
      follows="left|top"
      height="16"
      layout="topleft"
-     left="170"
+     left="164"
      name="anim_slot_priority_text"
      top="201"
-     width="48">
+     width="54">
         Priority
     </text>
     <combo_box
@@ -386,10 +386,10 @@
      layout="topleft"
      left="8"
      name="anim_help_hint"
-     tool_tip="Click a slot to select it, choose Anim or Pose, then pick its animation asset or local pose file. The poser can also send either kind directly to a slot."
+     tool_tip="Fill a slot with an animation asset or a saved poser pose. Click a slot to select it, choose Anim or Pose, then pick its animation asset or local pose file. The poser can also send either kind directly to a slot."
      top="318"
      use_ellipses="true"
      width="324">
-        Fill a slot with an animation asset or a saved poser pose
+        Fill a slot with an animation or a saved pose
     </text>
 </panel>

@@ -23,8 +23,9 @@
      left="8"
      name="localfog_froxel_requirement"
      text_color="EmphasisColor"
+     tool_tip="Requires the Froxel Air master in Lightbox &gt; Froxel Air."
      top="30"
-     width="334">Requires the Froxel Air master in Lightbox &gt; Froxel Air.</text>
+     width="334">Requires Froxel Air (Lightbox &gt; Froxel Air).</text>
     <scroll_list
      draw_heading="true"
      draw_stripes="true"
