@@ -33,6 +33,234 @@ METHOD_RE = re.compile(
     r"(?P<class>[A-Za-z_]\w*)::(?P<function>~?[A-Za-z_]\w*)\s*\("
 )
 
+# A bare widget name is not ownership evidence.  These are the XUI roots that
+# actually host each v1 page (or the standalone owner for launcher pages).
+# C++ references are accepted only from the classes which own/build those
+# roots.  Same-name hits outside this scope are retained as ambiguity evidence.
+PAGE_OWNER_FILES = {
+    "move_tab": {"panel_actor_mover.xml", "floater_director.xml"},
+    "path_tab": {"panel_path_editor.xml"},
+    "props_tab": {"panel_prop_mover.xml"},
+    "ghosts_tab": {"panel_ghost_studio.xml"},
+    "dance_tab": {"panel_dance_ball.xml", "floater_director.xml"},
+    "animate_tab": {"floater_director.xml", "panel_anim_preview.xml"},
+    "switchboard_tab": {"panel_director_anim_switcher.xml"},
+    "gaze_tab": {"panel_lens_gaze.xml", "floater_director.xml"},
+    "polish_tab": {"panel_pose_polish.xml", "floater_director.xml"},
+    "gaze_cues_tab": {"floater_gaze_cues.xml"},
+    "shot_tab": {"panel_director_switcher.xml", "panel_cinecam_params.xml", "floater_director.xml"},
+    "moves_tab": {"floater_director.xml"},
+    "operator_tab": {"panel_cinecam_operator.xml", "panel_cinecam_params.xml"},
+    "frame_orbit_tab": {"panel_cinecam_frame.xml", "panel_flycam_orbit.xml", "panel_cinecam_params.xml"},
+    "takes_tab": {"panel_flycam_recorder.xml"},
+    "vcam_tab": {"floater_director.xml", "floater_prism_manager.xml"},
+    "focus_tab": {"panel_dof.xml", "floater_phototools.xml"},
+    "filters_tab": {"panel_lens_looks.xml"},
+    "diopter_tab": {"floater_ultimate_diopter.xml"},
+    "cine_light_rig_tab": {"panel_cine_light_rig.xml"},
+    "light_rim_tab": {"panel_cine_light_rig.xml"},
+    "exposure_tab": {"panel_exposure_hub.xml", "floater_director.xml"},
+    "practicals_tab": {"floater_lightbox_settings.xml"},
+    "actors_tab": {"panel_avatar_light_response.xml", "floater_lightbox_settings.xml", "floater_director.xml"},
+    "light_cues_tab": {"floater_cine_light_cues.xml"},
+    "image_tab": {"floater_lightbox_settings.xml"},
+    "bloom_glow_tab": {"floater_lightbox_settings.xml"},
+    "stylize_tab": {"floater_lightbox_settings.xml"},
+    "tron_tab": {"floater_lightbox_settings.xml"},
+    "actor_style_tab": {"floater_director.xml"},
+    "weather_tab": {"panel_weather_settings.xml"},
+    "atmosphere_tab": {"panel_atmospheric_volumes.xml", "panel_projector_shafts.xml", "floater_lightbox_settings.xml"},
+    "shadows_probes_tab": {"floater_lightbox_settings.xml"},
+    "temporal_tab": {"panel_temporal_capture.xml"},
+    "capture_settings_tab": {"floater_snapshot.xml"},
+    "scene_options_tab": {"floater_director.xml"},
+}
+
+PAGE_OWNER_CLASSES = {
+    "move_tab": {"ALPanelActorMover", "LLFloaterDirector"},
+    "path_tab": {"ALPanelPathEditor"},
+    "props_tab": {"ALPanelPropMover"},
+    "ghosts_tab": {"ALPanelGhostStudio"},
+    "dance_tab": {"ALPanelDanceBall", "LLFloaterDirector"},
+    "animate_tab": {"ALPanelAnimPreview", "LLFloaterDirector"},
+    "switchboard_tab": {"ALPanelDirectorAnimSwitcher"},
+    "gaze_tab": {"ALPanelLensGaze", "LLFloaterDirector"},
+    "polish_tab": {"ALPanelPosePolish", "LLFloaterDirector"},
+    "gaze_cues_tab": {"ALFloaterGazeCues"},
+    "shot_tab": {"ALPanelDirectorSwitcher", "ALPanelCineCamParams", "LLFloaterDirector"},
+    "moves_tab": {"LLFloaterDirector"},
+    "operator_tab": {"ALPanelCineCamParams"},
+    "frame_orbit_tab": {"ALCineCamFramePanel", "ALPanelFlycamOrbit", "ALPanelCineCamParams"},
+    "takes_tab": {"ALPanelFlycamRecorder"},
+    "vcam_tab": {"LLFloaterDirector", "ALFloaterPrismManager"},
+    "focus_tab": {"ALPanelDoF", "LLFloaterPhototools"},
+    "filters_tab": {"ALPanelLensLooks"},
+    "diopter_tab": {"ALFloaterUltimateDiopter"},
+    "cine_light_rig_tab": {"ALPanelCineLightRig"},
+    "light_rim_tab": {"ALPanelCineLightRig"},
+    "exposure_tab": {"ALPanelExposureHub", "LLFloaterDirector"},
+    "practicals_tab": {"ALFloaterLightBox"},
+    "actors_tab": {"ALPanelAvatarLightResponse", "ALFloaterLightBox", "LLFloaterDirector"},
+    "light_cues_tab": {"ALFloaterCineLightCues"},
+    "image_tab": {"ALFloaterLightBox"},
+    "bloom_glow_tab": {"ALFloaterLightBox"},
+    "stylize_tab": {"ALFloaterLightBox"},
+    "tron_tab": {"ALFloaterLightBox"},
+    "actor_style_tab": {"LLFloaterDirector"},
+    "weather_tab": {"ALPanelWeatherSettings"},
+    "atmosphere_tab": {"ALPanelAtmosphericVolumes", "ALPanelProjectorShafts", "ALFloaterLightBox"},
+    "shadows_probes_tab": {"ALFloaterLightBox"},
+    "temporal_tab": {"ALPanelTemporalCapture"},
+    "capture_settings_tab": {"LLFloaterSnapshot", "LLFloaterSnapshotBase"},
+    "scene_options_tab": {"LLFloaterDirector"},
+}
+
+WIDGET_NAME_OVERRIDES = {
+    ("light_cues_tab", "cue_timecode_check"): "cue_timecode_mode",
+}
+
+# Approved cross-page contract aliases where the mockup row omitted `s`.
+# Keep these explicit: a global same-name XUI lookup is not allowed to invent
+# the relationship.
+SETTING_OVERRIDES = {
+    ("props_tab", "end_mode_combo"): "ActorMoverEndMode",
+    ("ghosts_tab", "scale_spinner"): "TemporalWorldScale",
+}
+
+KIT_ACTION_OVERRIDES = {
+    ("dance_tab", "dance_popout"): "floater:dance_ball",
+    ("gaze_tab", "btn_actor_gaze"): "owner-command:LLFloaterDirector::onOpenActorGaze",
+    ("gaze_tab", "btn_pose_polish"): "floater:pose_polish",
+    ("actors_tab", "light_response_popout"): "floater:avatar_light_response:selected-actor",
+}
+
+
+def model_binding_override(page: str, widget: str) -> dict | None:
+    def binding(file_name: str, line: int, class_name: str, function: str, pattern: str | None = None) -> dict:
+        return {
+            "file": file_name, "line": line, "class": class_name, "function": function,
+            "wired_class": class_name, "wired_function": "postBuild",
+            "pattern": pattern, "wiring_only": False, "text": "explicit scoped model binding",
+        }
+
+    if page == "path_tab" and widget == "copy_to_combo":
+        return binding("indra/newview/alpanelpatheditor.cpp", 1536, "ALPanelPathEditor", "refreshCopyCombo")
+    if page == "move_tab" and widget == "group_run_combo":
+        return binding("indra/newview/llfloaterdirector.cpp", 2107, "LLFloaterDirector", "onClickGroup")
+    if page == "props_tab" and widget in {
+        "shuttle_sign_combo", "shuttle_distance_spin", "shuttle_speed_spin", "shuttle_slope_spin"
+    }:
+        return binding("indra/newview/alpanelpropmover.cpp", 593, "ALPanelPropMover", "onClickShuttle")
+    if page == "ghosts_tab":
+        if widget in {"source_combo", "clone_type_combo"}:
+            return binding("indra/newview/alpanelghoststudio.cpp", 1977, "ALPanelGhostStudio", "onClickAdd")
+        if widget == "formation_motion_combo":
+            return binding("indra/newview/alpanelghoststudio.cpp", 3932, "ALPanelGhostStudio", "onMotionCommit")
+        if widget.startswith(("formation_", "brigade_", "array_")) or widget in {"preserve_source_tilt_check", "crowd_copies_as_combo", "crowd_create_mode_combo"}:
+            return binding("indra/newview/alpanelghoststudio.cpp", 3510, "ALPanelGhostStudio", "updateOwnedCrowdPlacement")
+        if widget in {"strip_count_spinner", "strip_interval_spinner"}:
+            return binding("indra/newview/alpanelghoststudio.cpp", 3901, "ALPanelGhostStudio", "onClickStartStrip")
+    if page == "dance_tab":
+        if widget == "db_dancer_list":
+            return binding("indra/newview/alpaneldanceball.cpp", 867, "ALPanelDanceBall", "rebuildDancerList")
+        if widget in {"db_block_step", "db_block_keep_facing"}:
+            return binding("indra/newview/alpaneldanceball.cpp", 1491, "ALPanelDanceBall", "onBlockingNudgeYaw")
+        if widget in {"db_block_shape", "db_block_spacing", "db_block_centre"}:
+            return binding("indra/newview/alpaneldanceball.cpp", 1579, "ALPanelDanceBall", "onBlockingFormation")
+        if widget in {"db_ramp_target", "db_ramp_seconds"}:
+            return binding("indra/newview/alpaneldanceball.cpp", 1946, "ALPanelDanceBall", "onRampGo")
+        if re.fullmatch(r"db_block_[fblrud]", widget):
+            return binding("indra/newview/alpaneldanceball.cpp", 1559, "ALPanelDanceBall", "onBlockingNudge")
+    if page == "animate_tab":
+        if widget == "anim_list":
+            return binding("indra/newview/llfloaterdirector.cpp", 2992, "LLFloaterDirector", "refreshAnimateTab")
+        if widget == "paste_uuid_editor":
+            return binding("indra/newview/llfloaterdirector.cpp", 2705, "LLFloaterDirector", "pasteAnimId")
+        if widget == "animation_preview":
+            return binding("indra/newview/alpanelanimpreview.cpp", 75, "ALPanelAnimPreview", "previewAnim")
+        if widget in {"locomotion_speed", "locomotion_phase", "locomotion_allow_ao"}:
+            return binding("indra/newview/llfloaterdirector.cpp", 2875, "LLFloaterDirector", "onLocomotionMetadataCommit")
+    if page == "switchboard_tab" and re.fullmatch(r"anim_slot_\d{2}", widget):
+        return binding("indra/newview/alpaneldirectoranimswitcher.cpp", 59,
+                       "ALPanelDirectorAnimSwitcher", "onSlotButton", "anim_slot_%02d")
+    if page == "gaze_tab" and widget == "gaze_influence_slider":
+        return binding("indra/newview/alpanellensgaze.cpp", 1758, "ALPanelLensGaze", "onInfluenceSet")
+    if page == "shot_tab" and re.fullmatch(r"switcher_slot_\d{2}", widget):
+        return binding("indra/newview/alpaneldirectorswitcher.cpp", 68,
+                       "ALPanelDirectorSwitcher", "onSlotButton", "switcher_slot_%02d")
+    if page == "shot_tab" and widget in {
+        "switcher_custom_yaw", "switcher_custom_pitch", "switcher_custom_distance",
+        "switcher_custom_height", "switcher_custom_fov",
+    }:
+        return binding("indra/newview/alpaneldirectorswitcher.cpp", 375, "ALPanelDirectorSwitcher", "onCustomValue")
+    if page == "shot_tab" and widget.startswith("reset_switcher_custom_"):
+        return binding("indra/newview/alpaneldirectorswitcher.cpp", 391, "ALPanelDirectorSwitcher", "onCustomReset")
+    if page == "actor_style_tab" and widget.startswith("actor_style_"):
+        return binding("indra/newview/llfloaterdirector.cpp", 2404, "LLFloaterDirector", "onActorStyleControlChanged")
+    if page == "atmosphere_tab" and widget.startswith((
+        "localfog_center_", "localfog_size_", "localfog_rotation_"
+    )) or (page == "atmosphere_tab" and widget in {
+        "localfog_enabled", "localfog_label", "localfog_shape", "localfog_density",
+        "localfog_feather", "localfog_height_falloff", "localfog_noise_scale",
+        "localfog_noise_speed", "localfog_tint",
+    }):
+        return binding("indra/newview/alpanelatmosphericvolumes.cpp", 251, "ALPanelAtmosphericVolumes", "onEditorCommit")
+    if page == "cine_light_rig_tab" and widget == "cine_live_probe_refresh_now":
+        return binding("indra/newview/alpanelcinelightrig.cpp", 899,
+                       "LLReflectionMapManager", "requestCinematicLiveProbeRefresh")
+    if page != "cine_light_rig_tab":
+        return None
+    if widget in {"cine_group_self", "cine_group_a", "cine_group_b", "cine_group_c", "cine_group_d"}:
+        return binding("indra/newview/alpanelcinelightrig.cpp", 1601, "ALPanelCineLightRig", "onGroupSlotsCommit")
+    if re.fullmatch(r"cine_fixture_gel_[0-2]", widget):
+        return binding("indra/newview/alpanelcinelightrig.cpp", 1325, "ALPanelCineLightRig", "onFixtureValuesCommit")
+    match = re.fullmatch(r"cine_(key|fill|rim|bg)_(shaft|hero|cone_width)", widget)
+    if not match:
+        return None
+    suffix = match.group(2)
+    if suffix == "cone_width":
+        return {
+            "file": "indra/newview/alpanelcinelightrig.cpp", "line": 2348,
+            "class": "ALPanelCineLightRig", "function": "onManualConeWidthCommit",
+            "wired_class": "ALPanelCineLightRig", "wired_function": "postBuild",
+            "pattern": 'prefix + "_cone_width"', "text": "role-indexed manual cone binding",
+        }
+    function = "setShaftEnabled" if suffix == "shaft" else "setHeroEnabled"
+    line = 956 if suffix == "shaft" else 962
+    return {
+        "file": "indra/newview/alpanelcinelightrig.cpp", "line": line,
+        "class": "ALCineLightRigModel", "function": function,
+        "wired_class": "ALPanelCineLightRig", "wired_function": "postBuild",
+        "pattern": f'prefix + "_{suffix}"', "text": "role-indexed model binding",
+    }
+
+# This is deliberately checked against the settings duplicated by the data.
+# A new duplicate cannot silently acquire two writable homes.
+WRITABLE_HOMES = {
+    "ActorMoverEndMode": "move_tab",
+    "AlchemyRenderTonemapType": "exposure_tab",
+    "AlchemyToneMapAMDExposure": "exposure_tab",
+    "AlchemyToneMapSLogEV": "exposure_tab",
+    "AlchemyTonemapLegacyGammaSkies": "exposure_tab",
+    "BDMergeProjectorVolumetricsFeather": "atmosphere_tab",
+    "BDMergeProjectorVolumetricsMaxDistance": "atmosphere_tab",
+    "CineRigRimTronColorSource": "light_rim_tab",
+    "CineRigRimTronMix": "light_rim_tab",
+    "CineRigRimTronMode": "light_rim_tab",
+    "CinematicCamArcDuration": "moves_tab",
+    "CinematicCamArcGeneratorAngle": "moves_tab",
+    "CinematicCamArcHeightDrift": "moves_tab",
+    "CinematicCamFrameOffsetUp": "frame_orbit_tab",
+    "CinematicCamJoint": "frame_orbit_tab",
+    "CinematicCamUseSelected": "frame_orbit_tab",
+    "CinematicCamVertigoDirection": "moves_tab",
+    "CinematicCamVertigoDuration": "moves_tab",
+    "RenderBloomStrength": "bloom_glow_tab",
+    "RenderBloomThreshold": "bloom_glow_tab",
+    "RenderExposure": "exposure_tab",
+    "TemporalWorldScale": "temporal_tab",
+}
+
 ADAPTERS = {
     "move_tab": "ALActorMoverKitAdapter", "path_tab": "ALPathKitAdapter",
     "props_tab": "ALPropMoverKitAdapter", "ghosts_tab": "ALGhostStudioKitAdapter",
@@ -96,8 +324,8 @@ PRESENTATION_NOTES = {
     "exposure_tab": "Use `panel_exposure_hub.xml` controls as kit rows; no curve editor exists.",
     "gaze_cues_tab": "Extract the existing cue list/editor stock controls into a shared owner-token view only if inline editing is required. Embed size: full card width, 240 px preferred, 160 px minimum, 320 px maximum, no nested page scroller.",
     "light_cues_tab": "Extract the existing cue list/editor stock controls into a shared owner-token view only if inline editing is required. Embed size: full card width, 240 px preferred, 160 px minimum, 320 px maximum, no nested page scroller.",
-    "diopter_tab": "The six approved rows are launcher/summary rows, while the real editor is a 560×720 nine-tab floater. Do not invent a compact editor or embed the whole floater; data expansion is a USER DECISION.",
-    "capture_settings_tab": "The approved page has zero rows. Populate it from the Snapshot owner before conversion; control selection and scope are a USER DECISION.",
+    "diopter_tab": "The six approved rows are launcher/summary rows, while the real editor is a 560×720 nine-tab floater. Do not invent a compact editor or embed the whole floater; data expansion is PENDING USER DECISION.",
+    "capture_settings_tab": "The approved page has zero rows. Populate it from the Snapshot owner before conversion; control selection and scope are PENDING USER DECISION.",
     "cine_light_rig_tab": "Reuse the existing gobo control and light-map view under their existing contracts; no replacement editor is introduced here.",
     "ghosts_tab": "Reuse the existing preview/diagnostics controls with a 240 px maximum and visible-only, revision-driven refresh.",
 }
@@ -206,11 +434,15 @@ def scan_xui(widget_names: set[str]) -> tuple[dict[str, list[dict]], list[dict]]
                 "line": number,
                 "tag": tag_name(element.tag),
                 "control_name": element.attrib.get("control_name"),
-                "callbacks": sorted({
-                    child.attrib["function"]
-                    for child in element.iter()
-                    if tag_name(child.tag).endswith("commit_callback") and child.attrib.get("function")
-                }),
+                "callbacks": sorted(
+                    {
+                        value
+                        for child in element.iter()
+                        for key, value in child.attrib.items()
+                        if value and (key == "function" and tag_name(child.tag).endswith("commit_callback")
+                                      or key.endswith(".function"))
+                    }
+                ),
                 "root": root_info,
             }
             all_controls.append({"name": name, **item})
@@ -226,10 +458,114 @@ def source_files() -> list[Path]:
     return sorted(files)
 
 
+def printf_pattern(literal: str) -> re.Pattern[str] | None:
+    """Return a full-match regex for a printf/llformat control name."""
+    token = re.compile(r"%(?:0(?P<width>\d+))?[diu]")
+    if not token.search(literal):
+        return None
+    parts: list[str] = []
+    cursor = 0
+    for match in token.finditer(literal):
+        parts.append(re.escape(literal[cursor:match.start()]))
+        width = match.group("width")
+        parts.append(rf"\d{{{int(width)}}}" if width else r"\d+")
+        cursor = match.end()
+    parts.append(re.escape(literal[cursor:]))
+    return re.compile("".join(parts) + r"\Z")
+
+
+def setting_only_reference(line: str) -> bool:
+    if "getChild" in line or "findChild" in line:
+        return False
+    return any(marker in line for marker in (
+        "gSavedSettings", "gSavedPerAccountSettings", "LLCachedControl", "getControl(",
+        ".setBOOL(", ".setS32(", ".setU32(", ".setF32(", ".setString(",
+    ))
+
+
+def behavior_from_text(text: str, owner_class: str | None, wired_function: str | None) -> tuple[str | None, str | None]:
+    pointer = re.search(r"&([A-Za-z_]\w*)::([A-Za-z_]\w*)", text)
+    if pointer:
+        return pointer.group(1), pointer.group(2)
+    if re.search(r"\[[^]]*\]\s*\([^)]*\)\s*(?:mutable\s*)?\{", text):
+        ignored = {
+            "getChild", "findChild", "setCommitCallback", "setClickedCallback", "setValue",
+            "setEnabled", "setVisible", "bind", "llformat", "boost", "static_cast",
+            "if", "for", "while", "switch", "return", "selected", "instance", "controls",
+        }
+        body = text[text.find("{") + 1:]
+        # Prefer the terminal model call in a singleton chain, e.g.
+        # Manager::instance().selected().stopFX(), over the accessor selected().
+        singleton = re.search(r"([A-Za-z_]\w*)::instance\(\)", body)
+        if singleton:
+            statement = body[singleton.end():].split(";", 1)[0]
+            methods = [name for name in re.findall(r"\.([A-Za-z_]\w*)\s*\(", statement)
+                       if name not in ignored]
+            if methods:
+                return singleton.group(1), methods[-1]
+        qualified = re.search(r"([A-Za-z_]\w*)::([A-Za-z_]\w*)\s*\(", body)
+        if qualified and qualified.group(2) not in ignored:
+            return qualified.group(1), qualified.group(2)
+        member_calls = [name for name in re.findall(r"\.([A-Za-z_]\w*)\s*\(", body)
+                        if name not in ignored]
+        if member_calls:
+            return owner_class, member_calls[-1]
+        for match in re.finditer(r"(?<![.:>])\b([A-Za-z_]\w*)\s*\(", body):
+            function = match.group(1)
+            if function not in ignored and function != wired_function:
+                return owner_class, function
+        return owner_class, "<inline callback>"
+    singleton = re.search(r"([A-Za-z_]\w*)::instance\(\)\.([A-Za-z_]\w*)\s*\(", text)
+    if singleton:
+        return singleton.group(1), singleton.group(2)
+    return owner_class, wired_function
+
+
+def call_context(lines: list[str], start: int) -> str:
+    """Collect exactly one (possibly multiline) call expression."""
+    parts: list[str] = []
+    balance = 0
+    opened = False
+    for line in lines[start:min(len(lines), start + 40)]:
+        parts.append(line.strip())
+        # Callback bodies in this tree do not put unmatched parentheses in
+        # string literals; parenthesis balance is therefore a safer boundary
+        # than a fixed look-ahead that can consume the next callback.
+        balance += line.count("(") - line.count(")")
+        opened = opened or "(" in line
+        if opened and balance <= 0:
+            break
+    return " ".join(parts)
+
+
 def scan_cpp(widget_names: set[str]) -> dict[str, list[dict]]:
     hits: dict[str, list[dict]] = collections.defaultdict(list)
     for path in source_files():
-        lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
+        source_text = path.read_text(encoding="utf-8", errors="replace")
+        lines = source_text.splitlines()
+        string_arrays: dict[str, list[str]] = {}
+        for array_match in re.finditer(
+            r"(?:const\s+)?char\s*\*\s*const\s+(\w+)\s*\[[^]]*\]\s*=\s*\{(.*?)\};",
+            source_text,
+            re.DOTALL,
+        ):
+            string_arrays[array_match.group(1)] = STRING_RE.findall(array_match.group(2))
+        symbolic_prefixes: dict[str, tuple[str, list[str]]] = {}
+        for prefix_match in re.finditer(
+            r"(?:const\s+)?std::string\s+(\w+)\s*=\s*std::string\(\"([^\"]*)\"\)\s*\+\s*(\w+)\s*\[[^]]+\]\s*;",
+            source_text,
+            re.DOTALL,
+        ):
+            values = string_arrays.get(prefix_match.group(3), [])
+            if values:
+                symbolic_prefixes[prefix_match.group(1)] = (prefix_match.group(2), values)
+        member_widgets: dict[str, set[str]] = collections.defaultdict(set)
+        for member_match in re.finditer(
+            r"\b([A-Za-z_]\w*)\s*=\s*(?:getChild|findChild)\s*<[^>]+>\s*\(\s*\"([^\"]+)\"",
+            source_text,
+        ):
+            if member_match.group(2) in widget_names:
+                member_widgets[member_match.group(1)].add(member_match.group(2))
         current_class = ""
         current_function = ""
         pending: tuple[str, str] | None = None
@@ -251,16 +587,67 @@ def scan_cpp(widget_names: set[str]) -> dict[str, list[dict]]:
                 current_class, current_function = pending
                 method_depth = depth + 1
                 pending = None
-            for literal in STRING_RE.findall(line):
-                name = literal.replace(r'\"', '"').replace(r"\\", "\\")
-                if name in widget_names:
+            literals = [literal.replace(r'\"', '"').replace(r"\\", "\\") for literal in STRING_RE.findall(line)]
+            matches: list[tuple[str, str | None]] = []
+            callback_member = re.search(
+                r"\b([A-Za-z_]\w*)\s*->\s*set(?:Commit|Clicked|MouseUp)Callback\s*\(", line
+            )
+            if callback_member and callback_member.group(1) in member_widgets:
+                context = call_context(lines, number - 1)
+                behavior_class, behavior_function = behavior_from_text(
+                    context, current_class or None, current_function or None
+                )
+                for name in member_widgets[callback_member.group(1)]:
                     hits[name].append({
-                        "file": rel(path),
-                        "line": number,
-                        "class": current_class or None,
-                        "function": current_function or None,
+                        "file": rel(path), "line": number,
+                        "class": behavior_class, "function": behavior_function,
+                        "wired_class": current_class or None,
+                        "wired_function": current_function or None,
+                        "pattern": None, "wiring_only": False,
                         "text": line.strip(),
                     })
+            for literal in literals:
+                if literal in widget_names:
+                    matches.append((literal, None))
+                pattern = printf_pattern(literal)
+                if pattern:
+                    matches.extend((name, literal) for name in widget_names if pattern.fullmatch(name))
+            # Constant concatenations are common beside llformat-built names.
+            if len(literals) > 1 and "+" in line:
+                joined = "".join(literals)
+                if joined in widget_names:
+                    matches.append((joined, " + ".join(literals)))
+            for variable, (prefix, values) in symbolic_prefixes.items():
+                suffix_match = re.search(rf"\b{re.escape(variable)}\s*\+\s*\"([^\"]*)\"", line)
+                if suffix_match:
+                    suffix = suffix_match.group(1)
+                    matches.extend(
+                        (prefix + value + suffix, f'{prefix}{{{"|".join(values)}}}{suffix}')
+                        for value in values
+                        if prefix + value + suffix in widget_names
+                    )
+            for name, pattern_text in matches:
+                if setting_only_reference(line) or "/tests/" in rel(path):
+                    continue
+                direct_callback = "Callback" in line or "childSetAction" in line
+                context = call_context(lines, number - 1) if direct_callback else line.strip()
+                behavior_class, behavior_function = behavior_from_text(
+                    context, current_class or None, current_function or None
+                )
+                hits[name].append({
+                    "file": rel(path),
+                    "line": number,
+                    "class": behavior_class,
+                    "function": behavior_function,
+                    "wired_class": current_class or None,
+                    "wired_function": current_function or None,
+                    "pattern": pattern_text,
+                    "wiring_only": bool(
+                        ("getChild" in line or "findChild" in line)
+                        and not direct_callback
+                    ),
+                    "text": line.strip(),
+                })
             depth += opens - closes
             if method_depth is not None and depth < method_depth:
                 current_class = ""
@@ -271,20 +658,44 @@ def scan_cpp(widget_names: set[str]) -> dict[str, list[dict]]:
 
 def scan_callback_handlers(callback_names: set[str]) -> dict[str, list[dict]]:
     handlers: dict[str, list[dict]] = collections.defaultdict(list)
-    target_re = re.compile(r"&([A-Za-z_]\w*)::([A-Za-z_]\w*)")
     for path in source_files():
-        for number, line in enumerate(path.read_text(encoding="utf-8", errors="replace").splitlines(), 1):
+        lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
+        current_class = ""
+        current_function = ""
+        pending: tuple[str, str] | None = None
+        depth = 0
+        method_depth: int | None = None
+        for number, line in enumerate(lines, 1):
+            match = METHOD_RE.search(line)
+            if match and (match.group("prefix").strip() or match.group("function").lstrip("~") == match.group("class")):
+                pending = (match.group("class"), match.group("function"))
+            opens = line.count("{")
+            closes = line.count("}")
+            if pending and opens:
+                current_class, current_function = pending
+                method_depth = depth + 1
+                pending = None
             literals = set(STRING_RE.findall(line))
             for callback in sorted(literals & callback_names):
-                target = target_re.search(line)
+                context = " ".join(part.strip() for part in lines[max(0, number - 1):min(len(lines), number + 8)])
+                behavior_class, behavior_function = behavior_from_text(
+                    context, current_class or None, current_function or None
+                )
                 handlers[callback].append({
                     "callback": callback,
                     "file": rel(path),
                     "line": number,
-                    "class": target.group(1) if target else None,
-                    "function": target.group(2) if target else None,
+                    "class": behavior_class,
+                    "function": behavior_function,
+                    "wired_class": current_class or None,
+                    "wired_function": current_function or None,
                     "text": line.strip(),
                 })
+            depth += opens - closes
+            if method_depth is not None and depth < method_depth:
+                current_class = ""
+                current_function = ""
+                method_depth = None
     return dict(handlers)
 
 
@@ -356,7 +767,18 @@ def scan_settings() -> dict[str, list[dict]]:
     return dict(declarations)
 
 
-def flatten_data() -> tuple[list[dict], list[dict]]:
+def independent_row_count(data: dict) -> int:
+    """Count directly from the JSON containers, independently of flattening."""
+    return sum(
+        len(card.get("rows", []))
+        + sum(len(option.get("rows", [])) for option in card.get("opts", []))
+        for group in data["groups"]
+        for page in group["pages"]
+        for card in page.get("cards", [])
+    )
+
+
+def flatten_data() -> tuple[list[dict], list[dict], int]:
     data = json.loads(DATA.read_text(encoding="utf-8"))
     pages: list[dict] = []
     rows: list[dict] = []
@@ -371,20 +793,31 @@ def flatten_data() -> tuple[list[dict], list[dict]]:
             }
             pages.append(page_record)
             for card_index, card in enumerate(page.get("cards", [])):
-                for row_index, row in enumerate(card.get("rows", [])):
-                    rows.append({
-                        "page": page_record,
-                        "card_id": card.get("id", ""),
-                        "card_title": card.get("t", ""),
-                        "card_index": card_index,
-                        "row_index": row_index,
-                        "label": row.get("l", ""),
-                        "kind": row.get("k", ""),
-                        "widget": row.get("w", ""),
-                        "declared_setting": row.get("s"),
-                        "items": row.get("it", []),
-                    })
-    return pages, rows
+                containers = [(None, None, card.get("rows", []))]
+                containers.extend(
+                    (option_index, option.get("label", ""), option.get("rows", []))
+                    for option_index, option in enumerate(card.get("opts", []))
+                )
+                for option_index, option_label, option_rows in containers:
+                    for row_index, row in enumerate(option_rows):
+                        rows.append({
+                            "page": page_record,
+                            "card_id": card.get("id", ""),
+                            "card_title": card.get("t", ""),
+                            "card_index": card_index,
+                            "option_index": option_index,
+                            "option_label": option_label,
+                            "row_index": row_index,
+                            "label": row.get("l", ""),
+                            "kind": row.get("k", ""),
+                            "widget": row.get("w", ""),
+                            "declared_setting": row.get("s"),
+                            "items": row.get("it", []),
+                            "target": row.get("target"),
+                            "target_tab": row.get("target_tab"),
+                            "link_to": row.get("to"),
+                        })
+    return pages, rows, independent_row_count(data)
 
 
 def unique_dicts(items: list[dict], keys: tuple[str, ...]) -> list[dict]:
@@ -399,8 +832,13 @@ def unique_dicts(items: list[dict], keys: tuple[str, ...]) -> list[dict]:
 
 
 def build_index() -> dict:
-    pages, raw_rows = flatten_data()
+    pages, raw_rows, expected_rows = flatten_data()
+    if len(raw_rows) != expected_rows:
+        raise RuntimeError(
+            f"row walk is incomplete: flattened {len(raw_rows)}, JSON independently counts {expected_rows}"
+        )
     widgets = {row["widget"] for row in raw_rows if row["widget"]}
+    widgets.update(WIDGET_NAME_OVERRIDES.values())
     xui, all_controls = scan_xui(widgets)
     cpp = scan_cpp(widgets)
     callback_names = {
@@ -411,44 +849,105 @@ def build_index() -> dict:
     }
     callback_handlers = scan_callback_handlers(callback_names)
     settings = scan_settings()
+    controls_by_setting: dict[str, list[dict]] = collections.defaultdict(list)
+    for control in all_controls:
+        if control.get("control_name"):
+            controls_by_setting[control["control_name"]].append(control)
 
     page_rows: dict[str, list[dict]] = collections.defaultdict(list)
     setting_pages: dict[str, set[str]] = collections.defaultdict(set)
     resolved_rows: list[dict] = []
     for raw in raw_rows:
+        page_key = raw["page"]["key"]
         widget = raw["widget"]
-        xui_hits = xui.get(widget, []) if widget else []
-        cpp_hits = cpp.get(widget, []) if widget else []
+        match_widget = WIDGET_NAME_OVERRIDES.get((page_key, widget), widget)
+        allowed_files = PAGE_OWNER_FILES[page_key]
+        allowed_classes = PAGE_OWNER_CLASSES[page_key]
+        all_xui_hits = xui.get(match_widget, []) if match_widget else []
+        source_declared = raw["declared_setting"]
+        declared = source_declared or SETTING_OVERRIDES.get((page_key, widget))
+        if declared and (widget == "check_box" or widget.startswith("set_")):
+            all_xui_hits = [
+                {key: value for key, value in control.items() if key != "name"}
+                for control in controls_by_setting.get(declared, [])
+            ]
+        xui_hits = [hit for hit in all_xui_hits if Path(hit["file"]).name in allowed_files]
+        all_cpp_hits = cpp.get(match_widget, []) if match_widget else []
+        cpp_hits = [
+            hit for hit in all_cpp_hits
+            if hit.get("class") in allowed_classes or hit.get("wired_class") in allowed_classes
+        ]
+        model_override = model_binding_override(page_key, widget)
+        if model_override:
+            cpp_hits.append(model_override)
+        behavior_cpp_hits = [
+            hit for hit in cpp_hits
+            if not hit.get("wiring_only") and hit.get("function") != "postBuild"
+        ]
         row_callback_names = sorted({callback for hit in xui_hits for callback in hit.get("callbacks", [])})
-        row_callback_handlers = [
+        all_row_callback_handlers = [
             handler
             for callback in row_callback_names
             for handler in callback_handlers.get(callback, [])
         ]
+        # Callback names came from an in-scope XUI instance, so their registrar
+        # is behavior evidence even when the behavior lives in a model class.
+        row_callback_handlers = all_row_callback_handlers
         xml_settings = sorted({hit["control_name"] for hit in xui_hits if hit.get("control_name")})
-        declared = raw["declared_setting"]
         candidates = ([declared] if declared else []) + [item for item in xml_settings if item != declared]
         setting = declared or (xml_settings[0] if len(xml_settings) == 1 else None)
         if setting:
-            setting_pages[setting].add(raw["page"]["key"])
+            setting_pages[setting].add(page_key)
+        kit_action = None
+        if raw["kind"] == "link" and raw["link_to"]:
+            kit_action = f"link_to:{raw['link_to']}"
+        elif raw["target"]:
+            kit_action = f"floater:{raw['target']}"
+            if raw["target_tab"]:
+                kit_action += f"/{raw['target_tab']}"
+        kit_action = kit_action or KIT_ACTION_OVERRIDES.get((page_key, widget))
         reasons: list[str] = []
-        if not widget:
-            reasons.append("row has no widget name")
-        if not xui_hits:
-            reasons.append("widget not found in XUI")
-        if not cpp_hits and not row_callback_handlers and not setting:
-            reasons.append("no C++ reference or setting binding")
         if setting and setting not in settings:
             reasons.append("setting declaration not found")
         if not declared and len(xml_settings) > 1:
-            reasons.append("ambiguous XUI control_name")
+            reasons.append("multiple in-scope XUI control_name values")
+        executable = raw["kind"] in {"button", "toggle", "link"}
+        if not setting and not kit_action and raw["kind"] != "readout" and not (behavior_cpp_hits or row_callback_handlers or row_callback_names):
+            reasons.append("UNRESOLVED: no scoped owner callback, setting, model binding, or kit action")
+        elif executable and not setting and not kit_action and not row_callback_handlers and not behavior_cpp_hits and not row_callback_names:
+            reasons.append("UNRESOLVED: executable row has no scoped behavior function")
+        rejected_candidates = []
+        for hit in all_xui_hits:
+            if hit not in xui_hits:
+                rejected_candidates.append({"kind": "xui", "reason": "same widget name outside the page owner roots", **hit})
+        for hit in all_cpp_hits:
+            if hit not in cpp_hits:
+                rejected_candidates.append({"kind": "cpp", "reason": "reference is not in a class that owns/builds this page's XUI", **hit})
+        ambiguous = []
+        if not declared and len(xml_settings) > 1:
+            ambiguous = [
+                {"kind": "xui", "reason": "in-scope candidates disagree on control_name", **hit}
+                for hit in xui_hits if hit.get("control_name")
+            ]
+        notes = []
+        if match_widget != widget:
+            notes.append(f"data name `{widget}` maps to existing XUI `{match_widget}`")
+        if not source_declared and declared:
+            notes.append(f"page contract supplies omitted setting `{declared}`")
+        if widget == "check_box" and declared:
+            notes.append(f"generic data name resolved by control_name `{declared}`")
+        if widget.startswith("set_") and setting:
+            notes.append("kit-native setting row; synthetic data name does not require v1 XUI")
         row = {
             "card": raw["card_id"],
             "card_title": raw["card_title"],
+            "option_index": raw["option_index"],
+            "option_label": raw["option_label"],
             "index": raw["row_index"],
             "label": raw["label"],
             "kind": raw["kind"],
             "widget": widget or None,
+            "matched_widget": match_widget or None,
             "declared_setting": declared,
             "resolved_setting": setting,
             "setting_candidates": candidates,
@@ -457,6 +956,11 @@ def build_index() -> dict:
             "xui": xui_hits,
             "cpp": cpp_hits,
             "callback_handlers": row_callback_handlers,
+            "callbacks": row_callback_names,
+            "kit_action": kit_action,
+            "resolution_notes": notes,
+            "ambiguous": ambiguous,
+            "rejected_candidates": rejected_candidates,
             "unresolved": reasons,
         }
         resolved_rows.append(row)
@@ -539,7 +1043,16 @@ def build_index() -> dict:
                 "pages": sorted(page_set),
                 "xui_writers": writers,
                 "declarations": settings.get(setting, []),
+                "writable_home": WRITABLE_HOMES.get(setting),
             })
+    duplicate_settings = {setting for setting, page_set in setting_pages.items() if len(page_set) > 1}
+    if duplicate_settings != set(WRITABLE_HOMES):
+        missing = sorted(duplicate_settings - set(WRITABLE_HOMES))
+        stale = sorted(set(WRITABLE_HOMES) - duplicate_settings)
+        raise RuntimeError(f"writable-home table differs from data conflicts; missing={missing}, stale={stale}")
+    for setting, home in WRITABLE_HOMES.items():
+        if home not in setting_pages[setting]:
+            raise RuntimeError(f"writable home {home} is not a page containing {setting}")
     for page in output_pages:
         for row in page["rows"]:
             setting = row["resolved_setting"]
@@ -556,7 +1069,7 @@ def build_index() -> dict:
             row["other_writers"] = unique_dicts(others, ("kind", "page", "file", "line", "widget"))
 
     return {
-        "schema_version": 1,
+        "schema_version": 2,
         "source": rel(DATA),
         "classification_rule": "pure-setting iff >=90% rows are setting-bound and no row widget is referenced in C++; otherwise code-driven",
         "summary": {
@@ -564,7 +1077,9 @@ def build_index() -> dict:
             "rows": len(resolved_rows),
             "owner_roots": len({owner["file"] for page in output_pages for owner in page["owner_roots"]}),
             "unresolved_rows": all_unresolved,
+            "ambiguous_rows": sum(bool(row["ambiguous"]) for row in resolved_rows),
             "multi_page_settings": sum(len(item["pages"]) > 1 for item in conflicts),
+            "independent_json_rows": expected_rows,
         },
         "setting_conflicts": conflicts,
         "pages": output_pages,
@@ -584,9 +1099,9 @@ def render_markdown(index: dict) -> str:
         "",
         "## Summary",
         "",
-        "| Pages | Rows | Distinct owner files | Unresolved rows | Multi-page settings |",
-        "|---:|---:|---:|---:|---:|",
-        f"| {index['summary']['pages']} | {index['summary']['rows']} | {index['summary']['owner_roots']} | {index['summary']['unresolved_rows']} | {index['summary']['multi_page_settings']} |",
+        "| Pages | Rows | Distinct owner files | Unresolved rows | Ambiguous rows | Multi-page settings |",
+        "|---:|---:|---:|---:|---:|---:|",
+        f"| {index['summary']['pages']} | {index['summary']['rows']} | {index['summary']['owner_roots']} | {index['summary']['unresolved_rows']} | {index['summary']['ambiguous_rows']} | {index['summary']['multi_page_settings']} |",
         "",
         f"Classification: {index['classification_rule']}.",
         "",
@@ -633,8 +1148,10 @@ def render_markdown(index: dict) -> str:
                 for hit in row["xui"]
             ) or "—"
             cpp_text = ", ".join(
-                f"`{hit['class'] or '?'}::{hit['function'] or '?'} {hit['file']}:{hit['line']}`"
+                f"`{hit['class']}::{hit['function']} {hit['file']}:{hit['line']}`"
                 for hit in [*row["cpp"], *row["callback_handlers"]]
+                if (not hit.get("wiring_only") and hit.get("class") and hit.get("function")
+                    and hit.get("function") != "postBuild")
             ) or "—"
             other_text = ", ".join(
                 (f"page `{item['page']}`" if item["kind"] == "page" else f"`{item['root']['name'] or item['root']['tag']}` `{item['file']}:{item['line']}`")
@@ -720,7 +1237,14 @@ def page_audit_states(page: dict) -> list[tuple[str, str]]:
 def row_binding(row: dict, adapter: str) -> str:
     handlers = []
     for hit in [*row["cpp"], *row["callback_handlers"]]:
-        handler = f"`{hit['class'] or '?'}::{hit['function'] or '?'}()` (`{hit['file']}:{hit['line']}`)"
+        if (hit.get("wiring_only") or not hit.get("class") or not hit.get("function")
+                or hit.get("function") == "postBuild"):
+            continue
+        handler = f"behavior `{hit['class']}::{hit['function']}()` (`{hit['file']}:{hit['line']}`)"
+        if hit.get("wired_class") and hit.get("wired_function"):
+            wired = f"{hit['wired_class']}::{hit['wired_function']}()"
+            if wired != f"{hit['class']}::{hit['function']}()":
+                handler = f"wired in `{wired}`; {handler}"
         if handler not in handlers:
             handlers.append(handler)
     setting = row["resolved_setting"]
@@ -731,13 +1255,17 @@ def row_binding(row: dict, adapter: str) -> str:
         if handlers:
             binding += f"; `{adapter}` preserves/calls " + ", ".join(handlers)
         return binding
+    if row.get("kit_action"):
+        return f"kit-native action `{row['kit_action']}`; no duplicate widget is required"
     if handlers:
         return f"`{adapter}` command/model binding → " + ", ".join(handlers)
+    if row.get("callbacks"):
+        callbacks = ", ".join(f"`{name}`" for name in row["callbacks"])
+        return f"`{adapter}` dispatches registered XUI action {callbacks}"
     if row["kind"] == "readout":
         return "kit readout ← approved static copy; no runtime writer"
-    if row["kind"] in {"button", "link", "toggle"}:
-        return f"**USER DECISION:** register an explicit `{adapter}` command; no matching setting or C++ literal was found"
-    return "**USER DECISION:** no setting, C++ reference, or model accessor was found"
+    reason = "; ".join(row["unresolved"]) or "no proven binding"
+    return f"**UNRESOLVED:** {reason}"
 
 
 def render_page_spec(page: dict) -> str:
@@ -753,6 +1281,8 @@ def render_page_spec(page: dict) -> str:
         "## Real owners",
         "",
     ]
+    if key in {"diopter_tab", "capture_settings_tab"}:
+        lines[4:4] = ["**PENDING USER DECISION**", ""]
     if page["owner_roots"]:
         for owner in page["owner_roots"]:
             lines.append(f"- `{owner['name'] or owner['tag']}` / `{owner['tag']}` at `{owner['file']}:{owner['line']}` ({owner['matched_rows']} matching rows).")
@@ -787,12 +1317,18 @@ def render_page_spec(page: dict) -> str:
             for item in row["other_writers"]
         ) or "none"
         label = row["label"].replace("|", "\\|")
-        lines.append(f"| `{row['card']}` / `{row['widget'] or ''}` ({label}) | {evidence} | {binding} | {others} |")
+        card = row["card"] + (f" [{row['option_label']}]" if row.get("option_label") else "")
+        notes = "; ".join(row.get("resolution_notes", []))
+        if notes:
+            binding += f". Contract note: {notes}"
+        lines.append(f"| `{card}` / `{row['widget'] or ''}` ({label}) | {evidence} | {binding} | {others} |")
 
     methods: dict[tuple, set[int]] = collections.defaultdict(set)
     for row in page["rows"]:
         for hit in [*row["cpp"], *row["callback_handlers"]]:
-            methods[(hit["file"], hit.get("class") or "?", hit.get("function") or "?")].add(hit["line"])
+            if (not hit.get("wiring_only") and hit.get("class") and hit.get("function")
+                    and hit.get("function") != "postBuild"):
+                methods[(hit["file"], hit["class"], hit["function"])].add(hit["line"])
     for file_name, class_name, function_name, number in SPECIAL_EXTRACTIONS.get(key, []):
         methods[(file_name, class_name, function_name)].add(number)
     lines += ["", "## Adapter extraction", ""]
@@ -826,7 +1362,8 @@ def render_page_spec(page: dict) -> str:
         lines.append(f"| `{state}` | {description} |")
 
     unresolved = [row for row in page["rows"] if row["unresolved"]]
-    decisions = [row for row in page["rows"] if "USER DECISION" in row_binding(row, adapter)]
+    ambiguous = [row for row in page["rows"] if row.get("ambiguous")]
+    rejected = [row for row in page["rows"] if row.get("rejected_candidates")]
     lines += [
         "",
         "## Parity check",
@@ -836,22 +1373,44 @@ def render_page_spec(page: dict) -> str:
         "3. Run the bounded state manifest at 1160×720, 850×560, 1141×720, and 915×720. Non-Director owners (Lightbox, cue/Diopter/Snapshot floaters, and shared panels) are mandatory parity oracles even when no v1 Director leaf embeds them.",
         "4. Review-diff every controller extraction and prove the v1 forwarding call preserves callbacks, owner tokens, selection, history barriers, and visibility gates.",
         "",
-        "## New widget required",
-        "",
-        "None. Every approved visual kind is either a kit primitive or an existing XUI control. Missing action/model bindings below are USER DECISIONS, not permission to invent a visual class.",
-        "",
-        "## Unresolved and USER DECISION items",
+        "## Ambiguous same-name candidates (never auto-bound)",
         "",
     ]
-    if not unresolved and not decisions:
+    if not ambiguous:
+        lines.append("None.")
+    else:
+        for row in ambiguous:
+            candidates = ", ".join(
+                f"`{hit['file']}:{hit['line']}` ({hit['reason']})" for hit in row["ambiguous"][:8]
+            )
+            if len(row["ambiguous"]) > 8:
+                candidates += f", plus {len(row['ambiguous']) - 8} more recorded in `page_sources.json`"
+            lines.append(f"- `{row['widget'] or '(unnamed)'}`: {candidates}.")
+    rejected_count = sum(len(row["rejected_candidates"]) for row in rejected)
+    lines += [
+        "",
+        "## Rejected out-of-scope same-name candidates",
+        "",
+        (f"{rejected_count} candidates were rejected by the XUI-owner/class scope; exact records and reasons are in `page_sources.json`."
+         if rejected_count else "None."),
+    ]
+    lines += [
+        "",
+        "## New widget required",
+        "",
+        "None. Every approved visual kind is either a kit primitive or an existing XUI control. An unresolved binding is not permission to invent a visual class.",
+        "",
+        "## Unresolved and pending-decision items",
+        "",
+    ]
+    if key in {"diopter_tab", "capture_settings_tab"}:
+        lines.append(f"- **PENDING USER DECISION:** {PRESENTATION_NOTES[key]}")
+    if not unresolved and key not in {"diopter_tab", "capture_settings_tab"}:
         lines.append("None in the current evidence index.")
     else:
-        if key in {"diopter_tab", "capture_settings_tab"}:
-            lines.append(f"- **USER DECISION:** {PRESENTATION_NOTES[key]}")
         for row in unresolved:
             reason = "; ".join(row["unresolved"])
-            decision = " **USER DECISION required.**" if row in decisions else ""
-            lines.append(f"- `{row['widget'] or '(unnamed)'}` ({row['label']}): {reason}.{decision}")
+            lines.append(f"- `{row['widget'] or '(unnamed)'}` ({row['label']}): {reason}.")
 
     lines += [
         "",
@@ -896,6 +1455,14 @@ def main() -> int:
     md_text = render_markdown(index)
     stale = []
     outputs = [(JSON_OUT, json_text), (MD_OUT, md_text), *page_specs(index)]
+    if index["summary"]["rows"] != index["summary"]["independent_json_rows"]:
+        raise RuntimeError("flattened row count differs from independent source-data count")
+    if any("?::?()" in content for _, content in outputs):
+        raise RuntimeError("generated output contains a placeholder function")
+    rendered_unresolved = sum(content.count("**UNRESOLVED:**") for path, content in outputs
+                              if path.parent == PAGES_DIR)
+    if rendered_unresolved != index["summary"]["unresolved_rows"]:
+        raise RuntimeError("rendered unresolved count differs from source index")
     for path, content in outputs:
         if args.check:
             if not path.exists() or path.read_text(encoding="utf-8") != content:

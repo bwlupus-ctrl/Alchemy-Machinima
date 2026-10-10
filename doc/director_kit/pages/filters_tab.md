@@ -1,12 +1,12 @@
 # Filters — Director Kit page contract
 
 Page key: `filters_tab`. Evidence: [`page_sources.json`](../page_sources.json) and [`page_sources.md`](../page_sources.md).
-Computed class: **code-driven** (26/29 setting-bound rows; 5 C++-referenced rows).
+Computed class: **code-driven** (26/29 setting-bound rows; 3 C++-referenced rows).
 
 ## Real owners
 
 - `panel_lens_looks` / `panel` at `indra/newview/skins/default/xui/en/panel_lens_looks.xml:2` (27 matching rows).
-- Referencing classes: `ALPanelLensLooks` (3).
+- Referencing classes: `ALLensLooks` (2), `ALPanelLensLooks` (1), `LLNotificationsUtil` (1).
 
 Name collisions in secondary XUI files are evidence candidates, not automatic ownership. The implementation must retain only occurrences whose root and class agree with the row's behavior.
 
@@ -28,7 +28,7 @@ Use the existing XUI control types as ordinary measured kit rows. No new canvas,
 | `gradnd` / `gradnd_confine_slider` (Sky only) | `slider_bar` `indra/newview/skins/default/xui/en/panel_lens_looks.xml:44` | kit `slider` ↔ `RenderGradNDSkyConfine` `F32` | `indra/newview/skins/default/xui/en/panel_lens_looks.xml:46` `gradnd_confine_spinner` |
 | `gradnd` / `gradnd_sunw_slider` (Sun weight) | `slider_bar` `indra/newview/skins/default/xui/en/panel_lens_looks.xml:50` | kit `slider` ↔ `RenderGradNDSunWeight` `F32` | `indra/newview/skins/default/xui/en/panel_lens_looks.xml:52` `gradnd_sunw_spinner` |
 | `gradnd` / `gradnd_sunr_slider` (Sun radius) | `slider_bar` `indra/newview/skins/default/xui/en/panel_lens_looks.xml:56` | kit `slider` ↔ `RenderGradNDSunRadius` `F32` | `indra/newview/skins/default/xui/en/panel_lens_looks.xml:58` `gradnd_sunr_spinner` |
-| `gradnd` / `check_box` (Darken bottom) | none | kit `toggle` ↔ `RenderGradNDFlip` `Boolean`; `ALLensFilterKitAdapter` preserves/calls `?::?()` (`indra/llui/llcheckboxctrl.cpp:44`), `?::?()` (`indra/newview/tests/aldiopterrelevance_test.cpp:152`), `?::?()` (`indra/newview/tests/aldiopterrelevance_test.cpp:315`) | none |
+| `gradnd` / `check_box` (Darken bottom) | none | kit `toggle` ↔ `RenderGradNDFlip` `Boolean`. Contract note: generic data name resolved by control_name `RenderGradNDFlip` | none |
 | `gradnd` / `gradnd_tint_swatch` (Tint) | `color_swatch` `indra/newview/skins/default/xui/en/panel_lens_looks.xml:82` | kit `color` ↔ `RenderGradNDTintColor` `Color3` | none |
 | `gradnd` / `gradnd_tint_amount` (Tint amount) | `slider` `indra/newview/skins/default/xui/en/panel_lens_looks.xml:83` | kit `slider` ↔ `RenderGradNDTintAmount` `F32` | none |
 | `polarizer` / `polarizer_preset_combo` (Preset) | `combo_box` `indra/newview/skins/default/xui/en/panel_lens_looks.xml:101` | kit `combo` ↔ `RenderPolarizerPreset` `U32` | `indra/newview/skins/default/xui/en/panel_exposure_hub.xml:92` `exp_pol_preset` |
@@ -38,15 +38,15 @@ Use the existing XUI control types as ordinary measured kit rows. No new canvas,
 | `polarizer` / `pol_skysat_slider` (Sky saturation) | `slider_bar` `indra/newview/skins/default/xui/en/panel_lens_looks.xml:135` | kit `slider` ↔ `RenderPolarizerSkySaturation` `F32` | `indra/newview/skins/default/xui/en/panel_lens_looks.xml:137` `pol_skysat_spinner` |
 | `polarizer` / `pol_glarethr_slider` (Glare level) | `slider_bar` `indra/newview/skins/default/xui/en/panel_lens_looks.xml:123` | kit `slider` ↔ `RenderPolarizerGlareThreshold` `F32` | `indra/newview/skins/default/xui/en/panel_lens_looks.xml:125` `pol_glarethr_spinner` |
 | `polarizer` / `pol_glaredepth_slider` (Glare depth) | `slider_bar` `indra/newview/skins/default/xui/en/panel_lens_looks.xml:129` | kit `slider` ↔ `RenderPolarizerGlareMaxDepth` `F32` | `indra/newview/skins/default/xui/en/panel_lens_looks.xml:131` `pol_glaredepth_spinner` |
-| `polarizer` / `check_box` (Ease by sun) | none | kit `toggle` ↔ `RenderPolarizerAutoBand` `Boolean`; `ALLensFilterKitAdapter` preserves/calls `?::?()` (`indra/llui/llcheckboxctrl.cpp:44`), `?::?()` (`indra/newview/tests/aldiopterrelevance_test.cpp:152`), `?::?()` (`indra/newview/tests/aldiopterrelevance_test.cpp:315`) | none |
+| `polarizer` / `check_box` (Ease by sun) | none | kit `toggle` ↔ `RenderPolarizerAutoBand` `Boolean`. Contract note: generic data name resolved by control_name `RenderPolarizerAutoBand` | none |
 | `polarizer` / `pol_bandrad_slider` (Band size) | `slider_bar` `indra/newview/skins/default/xui/en/panel_lens_looks.xml:151` | kit `slider` ↔ `RenderPolarizerBandRadius` `F32` | `indra/newview/skins/default/xui/en/panel_lens_looks.xml:153` `pol_bandrad_spinner` |
 | `lens_filter` / `lens_filter_preset` (Filter) | `combo_box` `indra/newview/skins/default/xui/en/panel_lens_looks.xml:85` | kit `combo` ↔ `RenderLensFilterPreset` `U32` | none |
 | `lens_filter` / `lens_filter_amount` (Amount) | `slider` `indra/newview/skins/default/xui/en/panel_lens_looks.xml:86` | kit `slider` ↔ `RenderLensFilterAmount` `F32` | none |
-| `infrared` / `ir_preset_action` (Preset) | `combo_box` `indra/newview/skins/default/xui/en/panel_lens_looks.xml:158` | `ALLensFilterKitAdapter` command/model binding → `ALPanelLensLooks::postBuild()` (`indra/newview/alpanellenslooks.cpp:47`) | none |
+| `infrared` / `ir_preset_action` (Preset) | `combo_box` `indra/newview/skins/default/xui/en/panel_lens_looks.xml:158` | `ALLensFilterKitAdapter` command/model binding → wired in `ALPanelLensLooks::postBuild()`; behavior `ALLensLooks::applyInfraredPreset()` (`indra/newview/alpanellenslooks.cpp:47`) | none |
 | `infrared` / `ir_mode` (Mode) | `combo_box` `indra/newview/skins/default/xui/en/panel_lens_looks.xml:160` | kit `combo` ↔ `RenderInfraredMode` `U32` | none |
 | `infrared` / `ir_strength` (Strength) | `slider` `indra/newview/skins/default/xui/en/panel_lens_looks.xml:162` | kit `slider` ↔ `RenderInfraredStrength` `F32` | `indra/newview/skins/default/xui/en/panel_exposure_hub.xml:118` `exp_ir_strength` |
-| `infrared` / `ir_enable_tag` (Avatar tag) | `button` `indra/newview/skins/default/xui/en/panel_lens_looks.xml:164` | `ALLensFilterKitAdapter` command/model binding → `ALPanelLensLooks::postBuild()` (`indra/newview/alpanellenslooks.cpp:44`) | none |
-| `softedge` / `softedge_preset_action` (Preset) | `combo_box` `indra/newview/skins/default/xui/en/panel_lens_looks.xml:169` | `ALLensFilterKitAdapter` command/model binding → `ALPanelLensLooks::postBuild()` (`indra/newview/alpanellenslooks.cpp:53`) | none |
+| `infrared` / `ir_enable_tag` (Avatar tag) | `button` `indra/newview/skins/default/xui/en/panel_lens_looks.xml:164` | `ALLensFilterKitAdapter` command/model binding → wired in `ALPanelLensLooks::postBuild()`; behavior `LLNotificationsUtil::add()` (`indra/newview/alpanellenslooks.cpp:59`) | none |
+| `softedge` / `softedge_preset_action` (Preset) | `combo_box` `indra/newview/skins/default/xui/en/panel_lens_looks.xml:169` | `ALLensFilterKitAdapter` command/model binding → wired in `ALPanelLensLooks::postBuild()`; behavior `ALLensLooks::applySoftEdgePreset()` (`indra/newview/alpanellenslooks.cpp:53`) | none |
 | `softedge` / `softedge_blur_type` (Type) | `combo_box` `indra/newview/skins/default/xui/en/panel_lens_looks.xml:171` | kit `combo` ↔ `RenderSoftEdgeBlurType` `U32` | none |
 | `softedge` / `softedge_blur` (Amount) | `slider` `indra/newview/skins/default/xui/en/panel_lens_looks.xml:173` | kit `slider` ↔ `RenderSoftEdgeBlur` `F32` | `indra/newview/skins/default/xui/en/panel_exposure_hub.xml:132` `exp_softedge_blur` |
 
@@ -54,9 +54,9 @@ Use the existing XUI control types as ordinary measured kit rows. No new canvas,
 
 | Existing function | Extraction contract |
 |---|---|
-| `?::?()` — `indra/llui/llcheckboxctrl.cpp:44` | Move model-facing work into `ALLensFilterKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
-| `ALPanelLensLooks::postBuild()` — `indra/newview/alpanellenslooks.cpp:44, 47, 53` | Move model-facing work into `ALLensFilterKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
-| `?::?()` — `indra/newview/tests/aldiopterrelevance_test.cpp:152, 315` | Move model-facing work into `ALLensFilterKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
+| `ALLensLooks::applyInfraredPreset()` — `indra/newview/alpanellenslooks.cpp:47` | Move model-facing work into `ALLensFilterKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
+| `ALLensLooks::applySoftEdgePreset()` — `indra/newview/alpanellenslooks.cpp:53` | Move model-facing work into `ALLensFilterKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
+| `LLNotificationsUtil::add()` — `indra/newview/alpanellenslooks.cpp:59` | Move model-facing work into `ALLensFilterKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
 
 ## Live state and refresh
 
@@ -131,14 +131,21 @@ Manifest size: **52 states**, hard cap 256, page runtime budget 2 minutes. Each 
 3. Run the bounded state manifest at 1160×720, 850×560, 1141×720, and 915×720. Non-Director owners (Lightbox, cue/Diopter/Snapshot floaters, and shared panels) are mandatory parity oracles even when no v1 Director leaf embeds them.
 4. Review-diff every controller extraction and prove the v1 forwarding call preserves callbacks, owner tokens, selection, history barriers, and visibility gates.
 
+## Ambiguous same-name candidates (never auto-bound)
+
+None.
+
+## Rejected out-of-scope same-name candidates
+
+2 candidates were rejected by the XUI-owner/class scope; exact records and reasons are in `page_sources.json`.
+
 ## New widget required
 
-None. Every approved visual kind is either a kit primitive or an existing XUI control. Missing action/model bindings below are USER DECISIONS, not permission to invent a visual class.
+None. Every approved visual kind is either a kit primitive or an existing XUI control. An unresolved binding is not permission to invent a visual class.
 
-## Unresolved and USER DECISION items
+## Unresolved and pending-decision items
 
-- `check_box` (Darken bottom): widget not found in XUI.
-- `check_box` (Ease by sun): widget not found in XUI.
+None in the current evidence index.
 
 ## Risks
 

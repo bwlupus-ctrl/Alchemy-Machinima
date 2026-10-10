@@ -20,33 +20,32 @@ Use the existing XUI control types as ordinary measured kit rows. No new canvas,
 
 | Card / row | Existing control evidence | Required binding | Other writable homes |
 |---|---|---|---|
-| `sel` / `sl_status` (Status) | `text` `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:6347` | `ALPracticalsKitAdapter` command/model binding → `ALFloaterLightBox::postBuild()` (`indra/newview/alfloaterlightbox.cpp:264`) | none |
-| `sel` / `sl_cast_shadows` (Cast shadows) | `check_box` `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:6349` | `ALPracticalsKitAdapter` command/model binding → `ALFloaterLightBox::postBuild()` (`indra/newview/alfloaterlightbox.cpp:260`), `ALFloaterLightBox::onSelLightCastShadows()` (`indra/newview/alfloaterlightbox.cpp:83`) | none |
-| `sel` / `sl_volumetric` (Light cone) | `check_box` `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:6353` | `ALPracticalsKitAdapter` command/model binding → `ALFloaterLightBox::postBuild()` (`indra/newview/alfloaterlightbox.cpp:261`), `ALFloaterLightBox::onSelLightVolumetric()` (`indra/newview/alfloaterlightbox.cpp:84`) | none |
-| `sel` / `sl_capture` (Capture shaft) | `button` `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:6356` | `ALPracticalsKitAdapter` command/model binding → `ALFloaterLightBox::postBuild()` (`indra/newview/alfloaterlightbox.cpp:262`), `ALFloaterLightBox::onSelLightCaptureOverride()` (`indra/newview/alfloaterlightbox.cpp:85`) | none |
-| `sel` / `sl_clear` (Clear) | `button` `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:6359` | `ALPracticalsKitAdapter` command/model binding → `ALFloaterLightBox::postBuild()` (`indra/newview/alfloaterlightbox.cpp:263`), `ALFloaterLightBox::onSelLightClearOverride()` (`indra/newview/alfloaterlightbox.cpp:86`) | none |
-| `gobo` / `sl_gobo` (Pattern) | `combo_box` `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:6364` | `ALPracticalsKitAdapter` command/model binding → `ALFloaterLightBox::postBuild()` (`indra/newview/alfloaterlightbox.cpp:265`), `ALFloaterLightBox::onSelGoboChanged()` (`indra/newview/alfloaterlightbox.cpp:579`), `ALFloaterLightBox::onSelGoboChanged()` (`indra/newview/alfloaterlightbox.cpp:87`) | none |
-| `gobo` / `sl_gobo_animmode` (Animation) | `combo_box` `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:6382` | `ALPracticalsKitAdapter` command/model binding → `ALFloaterLightBox::postBuild()` (`indra/newview/alfloaterlightbox.cpp:266`), `ALFloaterLightBox::onSelGoboChanged()` (`indra/newview/alfloaterlightbox.cpp:580`), `ALFloaterLightBox::onSelGoboChanged()` (`indra/newview/alfloaterlightbox.cpp:88`) | none |
-| `gobo` / `sl_gobo_speed` (Speed) | `slider` `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:6393` | `ALPracticalsKitAdapter` command/model binding → `ALFloaterLightBox::postBuild()` (`indra/newview/alfloaterlightbox.cpp:267`), `ALFloaterLightBox::onSelGoboChanged()` (`indra/newview/alfloaterlightbox.cpp:581`), `ALFloaterLightBox::onSelGoboChanged()` (`indra/newview/alfloaterlightbox.cpp:89`) | none |
-| `gobo` / `sl_gobo_zoom` (Zoom) | `slider` `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:6397` | `ALPracticalsKitAdapter` command/model binding → `ALFloaterLightBox::postBuild()` (`indra/newview/alfloaterlightbox.cpp:268`), `ALFloaterLightBox::onSelGoboChanged()` (`indra/newview/alfloaterlightbox.cpp:582`), `ALFloaterLightBox::onSelGoboChanged()` (`indra/newview/alfloaterlightbox.cpp:90`) | none |
-| `gobo` / `sl_gobo_tint` (Gel tint) | `color_swatch` `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:6405` | `ALPracticalsKitAdapter` command/model binding → `ALFloaterLightBox::postBuild()` (`indra/newview/alfloaterlightbox.cpp:270`), `ALFloaterLightBox::onSelGoboChanged()` (`indra/newview/alfloaterlightbox.cpp:589`), `ALFloaterLightBox::onSelGoboChanged()` (`indra/newview/alfloaterlightbox.cpp:92`) | none |
-| `gobo` / `sl_gobo_soft` (Softness) | `slider` `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:6417` | `ALPracticalsKitAdapter` command/model binding → `ALFloaterLightBox::postBuild()` (`indra/newview/alfloaterlightbox.cpp:273`), `ALFloaterLightBox::onSelGoboChanged()` (`indra/newview/alfloaterlightbox.cpp:592`), `ALFloaterLightBox::onSelGoboChanged()` (`indra/newview/alfloaterlightbox.cpp:95`) | none |
-| `adv_practicals` / `sl_gobo_dispersion` (RGB dispersion) | `slider` `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:6401` | `ALPracticalsKitAdapter` command/model binding → `ALFloaterLightBox::postBuild()` (`indra/newview/alfloaterlightbox.cpp:269`), `ALFloaterLightBox::onSelGoboChanged()` (`indra/newview/alfloaterlightbox.cpp:583`), `ALFloaterLightBox::onSelGoboChanged()` (`indra/newview/alfloaterlightbox.cpp:91`) | none |
-| `adv_practicals` / `sl_gobo_var1` (Detail) | `slider` `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:6409` | `ALPracticalsKitAdapter` command/model binding → `ALFloaterLightBox::postBuild()` (`indra/newview/alfloaterlightbox.cpp:271`), `ALFloaterLightBox::onSelGoboChanged()` (`indra/newview/alfloaterlightbox.cpp:590`), `ALFloaterLightBox::onSelGoboChanged()` (`indra/newview/alfloaterlightbox.cpp:93`) | none |
-| `adv_practicals` / `sl_gobo_var2` (Thickness) | `slider` `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:6413` | `ALPracticalsKitAdapter` command/model binding → `ALFloaterLightBox::postBuild()` (`indra/newview/alfloaterlightbox.cpp:272`), `ALFloaterLightBox::onSelGoboChanged()` (`indra/newview/alfloaterlightbox.cpp:591`), `ALFloaterLightBox::onSelGoboChanged()` (`indra/newview/alfloaterlightbox.cpp:94`) | none |
-| `adv_practicals` / `sl_gobo_invert` (Invert) | `check_box` `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:6420` | `ALPracticalsKitAdapter` command/model binding → `ALFloaterLightBox::postBuild()` (`indra/newview/alfloaterlightbox.cpp:274`), `ALFloaterLightBox::onSelGoboChanged()` (`indra/newview/alfloaterlightbox.cpp:593`), `ALFloaterLightBox::onSelGoboChanged()` (`indra/newview/alfloaterlightbox.cpp:96`) | none |
-| `adv_practicals` / `open_lightbox_sellight` (Lightbox ›) | none | **USER DECISION:** register an explicit `ALPracticalsKitAdapter` command; no matching setting or C++ literal was found | none |
+| `sel` / `sl_status` (Status) | `text` `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:6347` | kit readout ← approved static copy; no runtime writer | none |
+| `sel` / `sl_cast_shadows` (Cast shadows) | `check_box` `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:6349` | `ALPracticalsKitAdapter` command/model binding → wired in `ALFloaterLightBox::ALFloaterLightBox()`; behavior `ALFloaterLightBox::onSelLightCastShadows()` (`indra/newview/alfloaterlightbox.cpp:83`) | none |
+| `sel` / `sl_volumetric` (Light cone) | `check_box` `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:6353` | `ALPracticalsKitAdapter` command/model binding → wired in `ALFloaterLightBox::ALFloaterLightBox()`; behavior `ALFloaterLightBox::onSelLightVolumetric()` (`indra/newview/alfloaterlightbox.cpp:84`) | none |
+| `sel` / `sl_capture` (Capture shaft) | `button` `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:6356` | `ALPracticalsKitAdapter` command/model binding → wired in `ALFloaterLightBox::ALFloaterLightBox()`; behavior `ALFloaterLightBox::onSelLightCaptureOverride()` (`indra/newview/alfloaterlightbox.cpp:85`) | none |
+| `sel` / `sl_clear` (Clear) | `button` `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:6359` | `ALPracticalsKitAdapter` command/model binding → wired in `ALFloaterLightBox::ALFloaterLightBox()`; behavior `ALFloaterLightBox::onSelLightClearOverride()` (`indra/newview/alfloaterlightbox.cpp:86`) | none |
+| `gobo` / `sl_gobo` (Pattern) | `combo_box` `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:6364` | `ALPracticalsKitAdapter` command/model binding → wired in `ALFloaterLightBox::ALFloaterLightBox()`; behavior `ALFloaterLightBox::onSelGoboChanged()` (`indra/newview/alfloaterlightbox.cpp:87`) | none |
+| `gobo` / `sl_gobo_animmode` (Animation) | `combo_box` `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:6382` | `ALPracticalsKitAdapter` command/model binding → wired in `ALFloaterLightBox::ALFloaterLightBox()`; behavior `ALFloaterLightBox::onSelGoboChanged()` (`indra/newview/alfloaterlightbox.cpp:88`) | none |
+| `gobo` / `sl_gobo_speed` (Speed) | `slider` `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:6393` | `ALPracticalsKitAdapter` command/model binding → wired in `ALFloaterLightBox::ALFloaterLightBox()`; behavior `ALFloaterLightBox::onSelGoboChanged()` (`indra/newview/alfloaterlightbox.cpp:89`) | none |
+| `gobo` / `sl_gobo_zoom` (Zoom) | `slider` `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:6397` | `ALPracticalsKitAdapter` command/model binding → wired in `ALFloaterLightBox::ALFloaterLightBox()`; behavior `ALFloaterLightBox::onSelGoboChanged()` (`indra/newview/alfloaterlightbox.cpp:90`) | none |
+| `gobo` / `sl_gobo_tint` (Gel tint) | `color_swatch` `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:6405` | `ALPracticalsKitAdapter` command/model binding → wired in `ALFloaterLightBox::ALFloaterLightBox()`; behavior `ALFloaterLightBox::onSelGoboChanged()` (`indra/newview/alfloaterlightbox.cpp:92`) | none |
+| `gobo` / `sl_gobo_soft` (Softness) | `slider` `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:6417` | `ALPracticalsKitAdapter` command/model binding → wired in `ALFloaterLightBox::ALFloaterLightBox()`; behavior `ALFloaterLightBox::onSelGoboChanged()` (`indra/newview/alfloaterlightbox.cpp:95`) | none |
+| `adv_practicals` / `sl_gobo_dispersion` (RGB dispersion) | `slider` `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:6401` | `ALPracticalsKitAdapter` command/model binding → wired in `ALFloaterLightBox::ALFloaterLightBox()`; behavior `ALFloaterLightBox::onSelGoboChanged()` (`indra/newview/alfloaterlightbox.cpp:91`) | none |
+| `adv_practicals` / `sl_gobo_var1` (Detail) | `slider` `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:6409` | `ALPracticalsKitAdapter` command/model binding → wired in `ALFloaterLightBox::ALFloaterLightBox()`; behavior `ALFloaterLightBox::onSelGoboChanged()` (`indra/newview/alfloaterlightbox.cpp:93`) | none |
+| `adv_practicals` / `sl_gobo_var2` (Thickness) | `slider` `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:6413` | `ALPracticalsKitAdapter` command/model binding → wired in `ALFloaterLightBox::ALFloaterLightBox()`; behavior `ALFloaterLightBox::onSelGoboChanged()` (`indra/newview/alfloaterlightbox.cpp:94`) | none |
+| `adv_practicals` / `sl_gobo_invert` (Invert) | `check_box` `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:6420` | `ALPracticalsKitAdapter` command/model binding → wired in `ALFloaterLightBox::ALFloaterLightBox()`; behavior `ALFloaterLightBox::onSelGoboChanged()` (`indra/newview/alfloaterlightbox.cpp:96`) | none |
+| `adv_practicals` / `open_lightbox_sellight` (Lightbox ›) | none | kit-native action `floater:lightbox/sellight_settings`; no duplicate widget is required | none |
 
 ## Adapter extraction
 
 | Existing function | Extraction contract |
 |---|---|
-| `ALFloaterLightBox::onSelGoboChanged()` — `indra/newview/alfloaterlightbox.cpp:87, 88, 89, 90, 91, 92, 93, 94, 95, 96, 579, 580, 581, 582, 583, 589, 590, 591, 592, 593` | Move model-facing work into `ALPracticalsKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
+| `ALFloaterLightBox::onSelGoboChanged()` — `indra/newview/alfloaterlightbox.cpp:87, 88, 89, 90, 91, 92, 93, 94, 95, 96` | Move model-facing work into `ALPracticalsKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
 | `ALFloaterLightBox::onSelLightCaptureOverride()` — `indra/newview/alfloaterlightbox.cpp:85` | Move model-facing work into `ALPracticalsKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
 | `ALFloaterLightBox::onSelLightCastShadows()` — `indra/newview/alfloaterlightbox.cpp:83` | Move model-facing work into `ALPracticalsKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
 | `ALFloaterLightBox::onSelLightClearOverride()` — `indra/newview/alfloaterlightbox.cpp:86` | Move model-facing work into `ALPracticalsKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
 | `ALFloaterLightBox::onSelLightVolumetric()` — `indra/newview/alfloaterlightbox.cpp:84` | Move model-facing work into `ALPracticalsKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
-| `ALFloaterLightBox::postBuild()` — `indra/newview/alfloaterlightbox.cpp:260, 261, 262, 263, 264, 265, 266, 267, 268, 269, 270, 271, 272, 273, 274` | Move model-facing work into `ALPracticalsKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
 
 ## Live state and refresh
 
@@ -104,13 +103,21 @@ Manifest size: **35 states**, hard cap 256, page runtime budget 2 minutes. Each 
 3. Run the bounded state manifest at 1160×720, 850×560, 1141×720, and 915×720. Non-Director owners (Lightbox, cue/Diopter/Snapshot floaters, and shared panels) are mandatory parity oracles even when no v1 Director leaf embeds them.
 4. Review-diff every controller extraction and prove the v1 forwarding call preserves callbacks, owner tokens, selection, history barriers, and visibility gates.
 
+## Ambiguous same-name candidates (never auto-bound)
+
+None.
+
+## Rejected out-of-scope same-name candidates
+
+None.
+
 ## New widget required
 
-None. Every approved visual kind is either a kit primitive or an existing XUI control. Missing action/model bindings below are USER DECISIONS, not permission to invent a visual class.
+None. Every approved visual kind is either a kit primitive or an existing XUI control. An unresolved binding is not permission to invent a visual class.
 
-## Unresolved and USER DECISION items
+## Unresolved and pending-decision items
 
-- `open_lightbox_sellight` (Lightbox ›): widget not found in XUI; no C++ reference or setting binding. **USER DECISION required.**
+None in the current evidence index.
 
 ## Risks
 

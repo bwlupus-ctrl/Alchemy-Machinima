@@ -1,14 +1,14 @@
 # Atmosphere — Director Kit page contract
 
 Page key: `atmosphere_tab`. Evidence: [`page_sources.json`](../page_sources.json) and [`page_sources.md`](../page_sources.md).
-Computed class: **code-driven** (52/80 setting-bound rows; 33 C++-referenced rows).
+Computed class: **code-driven** (52/80 setting-bound rows; 25 C++-referenced rows).
 
 ## Real owners
 
 - `panel_projector_shafts` / `panel` at `indra/newview/skins/default/xui/en/panel_projector_shafts.xml:2` (29 matching rows).
 - `panel_atmospheric_volumes` / `panel` at `indra/newview/skins/default/xui/en/panel_atmospheric_volumes.xml:6` (25 matching rows).
 - `floater_lightbox_settings` / `floater` at `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:8` (15 matching rows).
-- Referencing classes: `ALPanelAtmosphericVolumes` (23), `ALFloaterLightBox` (2).
+- Referencing classes: `ALPanelAtmosphericVolumes` (55), `ALFloaterLightBox` (2).
 
 Name collisions in secondary XUI files are evidence candidates, not automatic ownership. The implementation must retain only occurrences whose root and class agree with the row's behavior.
 
@@ -22,7 +22,7 @@ Use the existing XUI control types as ordinary measured kit rows. No new canvas,
 
 | Card / row | Existing control evidence | Required binding | Other writable homes |
 |---|---|---|---|
-| `haze_main` / `set_CineHazeEnable` (Enable haze) | none | kit `toggle` ↔ `CineHazeEnable` `Boolean` | none |
+| `haze_main` / `set_CineHazeEnable` (Enable haze) | none | kit `toggle` ↔ `CineHazeEnable` `Boolean`. Contract note: kit-native setting row; synthetic data name does not require v1 XUI | none |
 | `haze_main` / `ch_CineHazeStrength_slider` (Strength) | `slider` `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:5290` | kit `slider` ↔ `CineHazeStrength` `F32` | none |
 | `haze_main` / `ch_CineHazeDensity_slider` (Density /m) | `slider` `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:5293` | kit `slider` ↔ `CineHazeDensity` `F32` | none |
 | `haze_main` / `ch_CineHazeStartDistance_slider` (Start m) | `slider` `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:5296` | kit `slider` ↔ `CineHazeStartDistance` `F32` | none |
@@ -33,13 +33,13 @@ Use the existing XUI control types as ordinary measured kit rows. No new canvas,
 | `haze_colour` / `ch_CineHazeSunStrength_slider` (Sun strength) | `slider` `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:5327` | kit `slider` ↔ `CineHazeSunStrength` `F32` | none |
 | `haze_colour` / `ch_sun_tint_swatch` (Sun tint) | `color_swatch` `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:5324` | kit `color` ↔ `CineHazeSunTint` `Color3` | none |
 | `haze_colour` / `ch_CineHazeSunLobeWidth_slider` (Lobe width) | `slider` `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:5330` | kit `slider` ↔ `CineHazeSunLobeWidth` `F32` | none |
-| `haze_height` / `set_CineHazeHeightEnable` (Denser low) | none | kit `toggle` ↔ `CineHazeHeightEnable` `Boolean` | none |
+| `haze_height` / `set_CineHazeHeightEnable` (Denser low) | none | kit `toggle` ↔ `CineHazeHeightEnable` `Boolean`. Contract note: kit-native setting row; synthetic data name does not require v1 XUI | none |
 | `haze_height` / `ch_CineHazeReferenceHeight_slider` (Base height m) | `slider` `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:5316` | kit `slider` ↔ `CineHazeReferenceHeight` `F32` | none |
-| `haze_height` / `ch_ref_from_camera` (From camera) | `button` `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:5318` | `ALAtmosphereKitAdapter` command/model binding → `ALFloaterLightBox::onCineHazeRefFromCamera()` (`indra/newview/alfloaterlightbox.cpp:99`) | none |
+| `haze_height` / `ch_ref_from_camera` (From camera) | `button` `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:5318` | `ALAtmosphereKitAdapter` command/model binding → wired in `ALFloaterLightBox::ALFloaterLightBox()`; behavior `ALFloaterLightBox::onCineHazeRefFromCamera()` (`indra/newview/alfloaterlightbox.cpp:99`) | none |
 | `haze_height` / `ch_CineHazeHeightFalloff_slider` (Falloff /m) | `slider` `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:5320` | kit `slider` ↔ `CineHazeHeightFalloff` `F32` | none |
 | `haze_adv` / `ch_debug_combo` (Debug view) | `combo_box` `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:5334` | kit `combo` ↔ `CineHazeDebugView` `S32` | none |
-| `haze_adv` / `ch_reset_all` (Reset haze) | `button` `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:5288` | `ALAtmosphereKitAdapter` command/model binding → `ALFloaterLightBox::onCineHazePreset()` (`indra/newview/alfloaterlightbox.cpp:98`) | none |
-| `haze_adv` / `open_lightbox_haze` (Lightbox ›) | none | **USER DECISION:** register an explicit `ALAtmosphereKitAdapter` command; no matching setting or C++ literal was found | none |
+| `haze_adv` / `ch_reset_all` (Reset haze) | `button` `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:5288` | `ALAtmosphereKitAdapter` command/model binding → wired in `ALFloaterLightBox::ALFloaterLightBox()`; behavior `ALFloaterLightBox::onCineHazePreset()` (`indra/newview/alfloaterlightbox.cpp:98`) | none |
+| `haze_adv` / `open_lightbox_haze` (Lightbox ›) | none | kit-native action `floater:lightbox/cinehaze_settings`; no duplicate widget is required | none |
 | `projector_cones` / `ps_BDMergeProjectorVolumetricsMultiplier_slider` (Brightness) | `slider` `indra/newview/skins/default/xui/en/panel_projector_shafts.xml:18` | kit `slider` ↔ `BDMergeProjectorVolumetricsMultiplier` `F32` | `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:4487` `projvol_multiplier_slider` |
 | `projector_cones` / `ps_BDMergeProjectorVolumetricsDensity_slider` (Haziness) | `slider` `indra/newview/skins/default/xui/en/panel_projector_shafts.xml:67` | kit `slider` ↔ `BDMergeProjectorVolumetricsDensity` `F32` | none |
 | `projector_cones` / `ps_BDMergeProjectorVolumetricsAnisotropy_slider` (Forward glow) | `slider` `indra/newview/skins/default/xui/en/panel_projector_shafts.xml:24` | kit `slider` ↔ `BDMergeProjectorVolumetricsAnisotropy` `F32` | `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:4569` `projvol_anisotropy_slider` |
@@ -61,57 +61,60 @@ Use the existing XUI control types as ordinary measured kit rows. No new canvas,
 | `soft_shadows` / `ps_BDMergeSoftShadowSoftness_slider` (Softness) | `slider` `indra/newview/skins/default/xui/en/panel_projector_shafts.xml:106` | kit `slider` ↔ `BDMergeSoftShadowSoftness` `F32` | none |
 | `soft_shadows` / `ps_BDMergeSoftShadowMaxPenumbra_slider` (Max blur) | `slider` `indra/newview/skins/default/xui/en/panel_projector_shafts.xml:109` | kit `slider` ↔ `BDMergeSoftShadowMaxPenumbra` `F32` | none |
 | `soft_shadows` / `ps_BDMergeSoftShadowFill_slider` (Shadow fill) | `slider` `indra/newview/skins/default/xui/en/panel_projector_shafts.xml:112` | kit `slider` ↔ `BDMergeSoftShadowFill` `F32` | none |
-| `soft_shadows` / `check_box` (Sun too) | none | kit `toggle` ↔ `BDMergeSoftShadowSun` `Boolean`; `ALAtmosphereKitAdapter` preserves/calls `?::?()` (`indra/llui/llcheckboxctrl.cpp:44`), `?::?()` (`indra/newview/tests/aldiopterrelevance_test.cpp:152`), `?::?()` (`indra/newview/tests/aldiopterrelevance_test.cpp:315`) | none |
+| `soft_shadows` / `check_box` (Sun too) | none | kit `toggle` ↔ `BDMergeSoftShadowSun` `Boolean`. Contract note: generic data name resolved by control_name `BDMergeSoftShadowSun` | none |
 | `soft_shadows` / `ps_BDMergeProjectorVolumetricsShadowTint_slider` (Shadow tint) | `slider` `indra/newview/skins/default/xui/en/panel_projector_shafts.xml:56` | kit `slider` ↔ `BDMergeProjectorVolumetricsShadowTint` `F32` | none |
 | `soft_shadows` / `ps_BDMergeProjectorVolumetricsShadowSamples_slider` (Shadow taps) | `slider` `indra/newview/skins/default/xui/en/panel_projector_shafts.xml:50` | kit `slider` ↔ `BDMergeProjectorVolumetricsShadowSamples` `U32` | none |
-| `soft_shadows` / `check_box` (Gobo smoothing) | none | kit `toggle` ↔ `BDMergeGoboAnisotropic` `Boolean`; `ALAtmosphereKitAdapter` preserves/calls `?::?()` (`indra/llui/llcheckboxctrl.cpp:44`), `?::?()` (`indra/newview/tests/aldiopterrelevance_test.cpp:152`), `?::?()` (`indra/newview/tests/aldiopterrelevance_test.cpp:315`) | none |
-| `local_fog_volumes` / `localfog_volume_list` (Volumes) | `scroll_list` `indra/newview/skins/default/xui/en/panel_atmospheric_volumes.xml:36` | `ALAtmosphereKitAdapter` command/model binding → `ALPanelAtmosphericVolumes::postBuild()` (`indra/newview/alpanelatmosphericvolumes.cpp:46`) | none |
-| `local_fog_volumes` / `localfog_add` (+ Add) | `button` `indra/newview/skins/default/xui/en/panel_atmospheric_volumes.xml:43` | `ALAtmosphereKitAdapter` command/model binding → `ALPanelAtmosphericVolumes::postBuild()` (`indra/newview/alpanelatmosphericvolumes.cpp:47`) | none |
-| `local_fog_volumes` / `localfog_duplicate` (Duplicate) | `button` `indra/newview/skins/default/xui/en/panel_atmospheric_volumes.xml:44` | `ALAtmosphereKitAdapter` command/model binding → `ALPanelAtmosphericVolumes::postBuild()` (`indra/newview/alpanelatmosphericvolumes.cpp:48`) | none |
-| `local_fog_volumes` / `localfog_delete` (Delete) | `button` `indra/newview/skins/default/xui/en/panel_atmospheric_volumes.xml:45` | `ALAtmosphereKitAdapter` command/model binding → `ALPanelAtmosphericVolumes::postBuild()` (`indra/newview/alpanelatmosphericvolumes.cpp:49`) | none |
-| `local_fog_volumes` / `localfog_enabled` (Enabled) | `check_box` `indra/newview/skins/default/xui/en/panel_atmospheric_volumes.xml:46` | `ALAtmosphereKitAdapter` command/model binding → `ALPanelAtmosphericVolumes::postBuild()` (`indra/newview/alpanelatmosphericvolumes.cpp:51`) | none |
+| `soft_shadows` / `check_box` (Gobo smoothing) | none | kit `toggle` ↔ `BDMergeGoboAnisotropic` `Boolean`. Contract note: generic data name resolved by control_name `BDMergeGoboAnisotropic` | none |
+| `local_fog_volumes` / `localfog_volume_list` (Volumes) | `scroll_list` `indra/newview/skins/default/xui/en/panel_atmospheric_volumes.xml:36` | `ALAtmosphereKitAdapter` command/model binding → wired in `ALPanelAtmosphericVolumes::postBuild()`; behavior `ALPanelAtmosphericVolumes::onSelectionChanged()` (`indra/newview/alpanelatmosphericvolumes.cpp:70`) | none |
+| `local_fog_volumes` / `localfog_add` (+ Add) | `button` `indra/newview/skins/default/xui/en/panel_atmospheric_volumes.xml:43` | `ALAtmosphereKitAdapter` command/model binding → wired in `ALPanelAtmosphericVolumes::postBuild()`; behavior `ALPanelAtmosphericVolumes::onAdd()` (`indra/newview/alpanelatmosphericvolumes.cpp:72`) | none |
+| `local_fog_volumes` / `localfog_duplicate` (Duplicate) | `button` `indra/newview/skins/default/xui/en/panel_atmospheric_volumes.xml:44` | `ALAtmosphereKitAdapter` command/model binding → wired in `ALPanelAtmosphericVolumes::postBuild()`; behavior `ALPanelAtmosphericVolumes::onDuplicate()` (`indra/newview/alpanelatmosphericvolumes.cpp:74`) | none |
+| `local_fog_volumes` / `localfog_delete` (Delete) | `button` `indra/newview/skins/default/xui/en/panel_atmospheric_volumes.xml:45` | `ALAtmosphereKitAdapter` command/model binding → wired in `ALPanelAtmosphericVolumes::postBuild()`; behavior `ALPanelAtmosphericVolumes::onDelete()` (`indra/newview/alpanelatmosphericvolumes.cpp:76`) | none |
+| `local_fog_volumes` / `localfog_enabled` (Enabled) | `check_box` `indra/newview/skins/default/xui/en/panel_atmospheric_volumes.xml:46` | `ALAtmosphereKitAdapter` command/model binding → wired in `ALPanelAtmosphericVolumes::postBuild()`; behavior `ALPanelAtmosphericVolumes::onEditorCommit()` (`indra/newview/alpanelatmosphericvolumes.cpp:251`) | none |
 | `local_fog_volumes` / `localfog_froxel_requirement` (Requires) | `text` `indra/newview/skins/default/xui/en/panel_atmospheric_volumes.xml:24` | kit readout ← approved static copy; no runtime writer | none |
-| `local_fog_volumes` / `localfog_label` (Name) | `line_editor` `indra/newview/skins/default/xui/en/panel_atmospheric_volumes.xml:48` | `ALAtmosphereKitAdapter` command/model binding → `ALPanelAtmosphericVolumes::postBuild()` (`indra/newview/alpanelatmosphericvolumes.cpp:52`) | none |
-| `fog_position` / `localfog_shape` (Shape) | `combo_box` `indra/newview/skins/default/xui/en/panel_atmospheric_volumes.xml:64` | `ALAtmosphereKitAdapter` command/model binding → `ALPanelAtmosphericVolumes::postBuild()` (`indra/newview/alpanelatmosphericvolumes.cpp:62`) | none |
-| `fog_position` / `localfog_move_camera` (Move to camera) | `button` `indra/newview/skins/default/xui/en/panel_atmospheric_volumes.xml:68` | `ALAtmosphereKitAdapter` command/model binding → `ALPanelAtmosphericVolumes::postBuild()` (`indra/newview/alpanelatmosphericvolumes.cpp:50`) | none |
-| `fog_position` / `localfog_center_x` (Center X) | `spinner` `indra/newview/skins/default/xui/en/panel_atmospheric_volumes.xml:52` | `ALAtmosphereKitAdapter` command/model binding → `ALPanelAtmosphericVolumes::postBuild()` (`indra/newview/alpanelatmosphericvolumes.cpp:53`) | none |
-| `fog_position` / `localfog_center_y` (Center Y) | `spinner` `indra/newview/skins/default/xui/en/panel_atmospheric_volumes.xml:53` | `ALAtmosphereKitAdapter` command/model binding → `ALPanelAtmosphericVolumes::postBuild()` (`indra/newview/alpanelatmosphericvolumes.cpp:54`) | none |
-| `fog_position` / `localfog_center_z` (Center Z) | `spinner` `indra/newview/skins/default/xui/en/panel_atmospheric_volumes.xml:54` | `ALAtmosphereKitAdapter` command/model binding → `ALPanelAtmosphericVolumes::postBuild()` (`indra/newview/alpanelatmosphericvolumes.cpp:55`) | none |
+| `local_fog_volumes` / `localfog_label` (Name) | `line_editor` `indra/newview/skins/default/xui/en/panel_atmospheric_volumes.xml:48` | `ALAtmosphereKitAdapter` command/model binding → wired in `ALPanelAtmosphericVolumes::postBuild()`; behavior `ALPanelAtmosphericVolumes::onEditorCommit()` (`indra/newview/alpanelatmosphericvolumes.cpp:251`) | none |
+| `fog_position` / `localfog_shape` (Shape) | `combo_box` `indra/newview/skins/default/xui/en/panel_atmospheric_volumes.xml:64` | `ALAtmosphereKitAdapter` command/model binding → wired in `ALPanelAtmosphericVolumes::postBuild()`; behavior `ALPanelAtmosphericVolumes::onEditorCommit()` (`indra/newview/alpanelatmosphericvolumes.cpp:251`) | none |
+| `fog_position` / `localfog_move_camera` (Move to camera) | `button` `indra/newview/skins/default/xui/en/panel_atmospheric_volumes.xml:68` | `ALAtmosphereKitAdapter` command/model binding → wired in `ALPanelAtmosphericVolumes::postBuild()`; behavior `ALPanelAtmosphericVolumes::onMoveToCamera()` (`indra/newview/alpanelatmosphericvolumes.cpp:78`) | none |
+| `fog_position` / `localfog_center_x` (Center X) | `spinner` `indra/newview/skins/default/xui/en/panel_atmospheric_volumes.xml:52` | `ALAtmosphereKitAdapter` command/model binding → wired in `ALPanelAtmosphericVolumes::postBuild()`; behavior `ALPanelAtmosphericVolumes::onEditorCommit()` (`indra/newview/alpanelatmosphericvolumes.cpp:251`) | none |
+| `fog_position` / `localfog_center_y` (Center Y) | `spinner` `indra/newview/skins/default/xui/en/panel_atmospheric_volumes.xml:53` | `ALAtmosphereKitAdapter` command/model binding → wired in `ALPanelAtmosphericVolumes::postBuild()`; behavior `ALPanelAtmosphericVolumes::onEditorCommit()` (`indra/newview/alpanelatmosphericvolumes.cpp:251`) | none |
+| `fog_position` / `localfog_center_z` (Center Z) | `spinner` `indra/newview/skins/default/xui/en/panel_atmospheric_volumes.xml:54` | `ALAtmosphereKitAdapter` command/model binding → wired in `ALPanelAtmosphericVolumes::postBuild()`; behavior `ALPanelAtmosphericVolumes::onEditorCommit()` (`indra/newview/alpanelatmosphericvolumes.cpp:251`) | none |
 | `fog_position` / `localfog_hint` (Note) | `text` `indra/newview/skins/default/xui/en/panel_atmospheric_volumes.xml:83` | kit readout ← approved static copy; no runtime writer | none |
-| `fog_size_turn` / `localfog_size_x` (Radius X) | `spinner` `indra/newview/skins/default/xui/en/panel_atmospheric_volumes.xml:56` | `ALAtmosphereKitAdapter` command/model binding → `ALPanelAtmosphericVolumes::postBuild()` (`indra/newview/alpanelatmosphericvolumes.cpp:56`) | none |
-| `fog_size_turn` / `localfog_size_y` (Radius Y) | `spinner` `indra/newview/skins/default/xui/en/panel_atmospheric_volumes.xml:57` | `ALAtmosphereKitAdapter` command/model binding → `ALPanelAtmosphericVolumes::postBuild()` (`indra/newview/alpanelatmosphericvolumes.cpp:57`) | none |
-| `fog_size_turn` / `localfog_size_z` (Radius Z) | `spinner` `indra/newview/skins/default/xui/en/panel_atmospheric_volumes.xml:58` | `ALAtmosphereKitAdapter` command/model binding → `ALPanelAtmosphericVolumes::postBuild()` (`indra/newview/alpanelatmosphericvolumes.cpp:58`) | none |
-| `fog_size_turn` / `localfog_rotation_x` (Turn X) | `spinner` `indra/newview/skins/default/xui/en/panel_atmospheric_volumes.xml:60` | `ALAtmosphereKitAdapter` command/model binding → `ALPanelAtmosphericVolumes::postBuild()` (`indra/newview/alpanelatmosphericvolumes.cpp:59`) | none |
-| `fog_size_turn` / `localfog_rotation_y` (Turn Y) | `spinner` `indra/newview/skins/default/xui/en/panel_atmospheric_volumes.xml:61` | `ALAtmosphereKitAdapter` command/model binding → `ALPanelAtmosphericVolumes::postBuild()` (`indra/newview/alpanelatmosphericvolumes.cpp:60`) | none |
-| `fog_size_turn` / `localfog_rotation_z` (Turn Z) | `spinner` `indra/newview/skins/default/xui/en/panel_atmospheric_volumes.xml:62` | `ALAtmosphereKitAdapter` command/model binding → `ALPanelAtmosphericVolumes::postBuild()` (`indra/newview/alpanelatmosphericvolumes.cpp:61`) | none |
-| `fog_look` / `localfog_density` (Density) | `slider` `indra/newview/skins/default/xui/en/panel_atmospheric_volumes.xml:72` | `ALAtmosphereKitAdapter` command/model binding → `ALPanelAtmosphericVolumes::postBuild()` (`indra/newview/alpanelatmosphericvolumes.cpp:63`) | none |
-| `fog_look` / `localfog_feather` (Edge softness) | `slider` `indra/newview/skins/default/xui/en/panel_atmospheric_volumes.xml:74` | `ALAtmosphereKitAdapter` command/model binding → `ALPanelAtmosphericVolumes::postBuild()` (`indra/newview/alpanelatmosphericvolumes.cpp:64`) | none |
-| `fog_look` / `localfog_height_falloff` (Height falloff) | `slider` `indra/newview/skins/default/xui/en/panel_atmospheric_volumes.xml:76` | `ALAtmosphereKitAdapter` command/model binding → `ALPanelAtmosphericVolumes::postBuild()` (`indra/newview/alpanelatmosphericvolumes.cpp:65`) | none |
-| `fog_look` / `localfog_noise_scale` (Noise scale) | `slider` `indra/newview/skins/default/xui/en/panel_atmospheric_volumes.xml:78` | `ALAtmosphereKitAdapter` command/model binding → `ALPanelAtmosphericVolumes::postBuild()` (`indra/newview/alpanelatmosphericvolumes.cpp:66`) | none |
-| `fog_look` / `localfog_noise_speed` (Noise speed) | `slider` `indra/newview/skins/default/xui/en/panel_atmospheric_volumes.xml:80` | `ALAtmosphereKitAdapter` command/model binding → `ALPanelAtmosphericVolumes::postBuild()` (`indra/newview/alpanelatmosphericvolumes.cpp:67`) | none |
-| `fog_look` / `localfog_tint` (Tint) | `color_swatch` `indra/newview/skins/default/xui/en/panel_atmospheric_volumes.xml:82` | `ALAtmosphereKitAdapter` command/model binding → `ALPanelAtmosphericVolumes::postBuild()` (`indra/newview/alpanelatmosphericvolumes.cpp:68`) | none |
+| `fog_size_turn` / `localfog_size_x` (Radius X) | `spinner` `indra/newview/skins/default/xui/en/panel_atmospheric_volumes.xml:56` | `ALAtmosphereKitAdapter` command/model binding → wired in `ALPanelAtmosphericVolumes::postBuild()`; behavior `ALPanelAtmosphericVolumes::onEditorCommit()` (`indra/newview/alpanelatmosphericvolumes.cpp:251`) | none |
+| `fog_size_turn` / `localfog_size_y` (Radius Y) | `spinner` `indra/newview/skins/default/xui/en/panel_atmospheric_volumes.xml:57` | `ALAtmosphereKitAdapter` command/model binding → wired in `ALPanelAtmosphericVolumes::postBuild()`; behavior `ALPanelAtmosphericVolumes::onEditorCommit()` (`indra/newview/alpanelatmosphericvolumes.cpp:251`) | none |
+| `fog_size_turn` / `localfog_size_z` (Radius Z) | `spinner` `indra/newview/skins/default/xui/en/panel_atmospheric_volumes.xml:58` | `ALAtmosphereKitAdapter` command/model binding → wired in `ALPanelAtmosphericVolumes::postBuild()`; behavior `ALPanelAtmosphericVolumes::onEditorCommit()` (`indra/newview/alpanelatmosphericvolumes.cpp:251`) | none |
+| `fog_size_turn` / `localfog_rotation_x` (Turn X) | `spinner` `indra/newview/skins/default/xui/en/panel_atmospheric_volumes.xml:60` | `ALAtmosphereKitAdapter` command/model binding → wired in `ALPanelAtmosphericVolumes::postBuild()`; behavior `ALPanelAtmosphericVolumes::onEditorCommit()` (`indra/newview/alpanelatmosphericvolumes.cpp:251`) | none |
+| `fog_size_turn` / `localfog_rotation_y` (Turn Y) | `spinner` `indra/newview/skins/default/xui/en/panel_atmospheric_volumes.xml:61` | `ALAtmosphereKitAdapter` command/model binding → wired in `ALPanelAtmosphericVolumes::postBuild()`; behavior `ALPanelAtmosphericVolumes::onEditorCommit()` (`indra/newview/alpanelatmosphericvolumes.cpp:251`) | none |
+| `fog_size_turn` / `localfog_rotation_z` (Turn Z) | `spinner` `indra/newview/skins/default/xui/en/panel_atmospheric_volumes.xml:62` | `ALAtmosphereKitAdapter` command/model binding → wired in `ALPanelAtmosphericVolumes::postBuild()`; behavior `ALPanelAtmosphericVolumes::onEditorCommit()` (`indra/newview/alpanelatmosphericvolumes.cpp:251`) | none |
+| `fog_look` / `localfog_density` (Density) | `slider` `indra/newview/skins/default/xui/en/panel_atmospheric_volumes.xml:72` | `ALAtmosphereKitAdapter` command/model binding → wired in `ALPanelAtmosphericVolumes::postBuild()`; behavior `ALPanelAtmosphericVolumes::onEditorCommit()` (`indra/newview/alpanelatmosphericvolumes.cpp:251`) | none |
+| `fog_look` / `localfog_feather` (Edge softness) | `slider` `indra/newview/skins/default/xui/en/panel_atmospheric_volumes.xml:74` | `ALAtmosphereKitAdapter` command/model binding → wired in `ALPanelAtmosphericVolumes::postBuild()`; behavior `ALPanelAtmosphericVolumes::onEditorCommit()` (`indra/newview/alpanelatmosphericvolumes.cpp:251`) | none |
+| `fog_look` / `localfog_height_falloff` (Height falloff) | `slider` `indra/newview/skins/default/xui/en/panel_atmospheric_volumes.xml:76` | `ALAtmosphereKitAdapter` command/model binding → wired in `ALPanelAtmosphericVolumes::postBuild()`; behavior `ALPanelAtmosphericVolumes::onEditorCommit()` (`indra/newview/alpanelatmosphericvolumes.cpp:251`) | none |
+| `fog_look` / `localfog_noise_scale` (Noise scale) | `slider` `indra/newview/skins/default/xui/en/panel_atmospheric_volumes.xml:78` | `ALAtmosphereKitAdapter` command/model binding → wired in `ALPanelAtmosphericVolumes::postBuild()`; behavior `ALPanelAtmosphericVolumes::onEditorCommit()` (`indra/newview/alpanelatmosphericvolumes.cpp:251`) | none |
+| `fog_look` / `localfog_noise_speed` (Noise speed) | `slider` `indra/newview/skins/default/xui/en/panel_atmospheric_volumes.xml:80` | `ALAtmosphereKitAdapter` command/model binding → wired in `ALPanelAtmosphericVolumes::postBuild()`; behavior `ALPanelAtmosphericVolumes::onEditorCommit()` (`indra/newview/alpanelatmosphericvolumes.cpp:251`) | none |
+| `fog_look` / `localfog_tint` (Tint) | `color_swatch` `indra/newview/skins/default/xui/en/panel_atmospheric_volumes.xml:82` | `ALAtmosphereKitAdapter` command/model binding → wired in `ALPanelAtmosphericVolumes::postBuild()`; behavior `ALPanelAtmosphericVolumes::onEditorCommit()` (`indra/newview/alpanelatmosphericvolumes.cpp:251`) | none |
 | `shaft_quality` / `ps_BDMergeProjectorVolumetricsResolution_slider` (Samples) | `slider` `indra/newview/skins/default/xui/en/panel_projector_shafts.xml:21` | kit `slider` ↔ `BDMergeProjectorVolumetricsResolution` `U32` | `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:4528` `projvol_resolution_slider` |
-| `shaft_quality` / `check_box` (Half-res) | none | kit `toggle` ↔ `BDMergeProjectorVolumetricsHalfRes` `Boolean`; `ALAtmosphereKitAdapter` preserves/calls `?::?()` (`indra/llui/llcheckboxctrl.cpp:44`), `?::?()` (`indra/newview/tests/aldiopterrelevance_test.cpp:152`), `?::?()` (`indra/newview/tests/aldiopterrelevance_test.cpp:315`) | none |
-| `shaft_quality` / `check_box` (Smoothing) | none | kit `toggle` ↔ `BDMergeProjectorVolumetricsTemporal` `Boolean`; `ALAtmosphereKitAdapter` preserves/calls `?::?()` (`indra/llui/llcheckboxctrl.cpp:44`), `?::?()` (`indra/newview/tests/aldiopterrelevance_test.cpp:152`), `?::?()` (`indra/newview/tests/aldiopterrelevance_test.cpp:315`) | none |
+| `shaft_quality` / `check_box` (Half-res) | none | kit `toggle` ↔ `BDMergeProjectorVolumetricsHalfRes` `Boolean`. Contract note: generic data name resolved by control_name `BDMergeProjectorVolumetricsHalfRes` | none |
+| `shaft_quality` / `check_box` (Smoothing) | none | kit `toggle` ↔ `BDMergeProjectorVolumetricsTemporal` `Boolean`. Contract note: generic data name resolved by control_name `BDMergeProjectorVolumetricsTemporal` | none |
 | `shaft_quality` / `ps_BDMergeProjectorVolumetricsTemporalBlend_slider` (History) | `slider` `indra/newview/skins/default/xui/en/panel_projector_shafts.xml:30` | kit `slider` ↔ `BDMergeProjectorVolumetricsTemporalBlend` `F32` | none |
-| `shaft_quality` / `check_box` (Adaptive) | none | kit `toggle` ↔ `BDMergeProjectorVolumetricsAdaptive` `Boolean`; `ALAtmosphereKitAdapter` preserves/calls `?::?()` (`indra/llui/llcheckboxctrl.cpp:44`), `?::?()` (`indra/newview/tests/aldiopterrelevance_test.cpp:152`), `?::?()` (`indra/newview/tests/aldiopterrelevance_test.cpp:315`) | none |
+| `shaft_quality` / `check_box` (Adaptive) | none | kit `toggle` ↔ `BDMergeProjectorVolumetricsAdaptive` `Boolean`. Contract note: generic data name resolved by control_name `BDMergeProjectorVolumetricsAdaptive` | none |
 | `shaft_quality` / `ps_BDMergeProjectorVolumetricsTemporalReject_slider` (Anti-ghost) | `slider` `indra/newview/skins/default/xui/en/panel_projector_shafts.xml:33` | kit `slider` ↔ `BDMergeProjectorVolumetricsTemporalReject` `F32` | none |
-| `shaft_quality` / `check_box` (Track beam) | none | kit `toggle` ↔ `BDMergeProjectorVolumetricsTemporalBeamDepth` `Boolean`; `ALAtmosphereKitAdapter` preserves/calls `?::?()` (`indra/llui/llcheckboxctrl.cpp:44`), `?::?()` (`indra/newview/tests/aldiopterrelevance_test.cpp:152`), `?::?()` (`indra/newview/tests/aldiopterrelevance_test.cpp:315`) | none |
-| `shaft_quality` / `check_box` (Scissor cull) | none | kit `toggle` ↔ `BDMergeProjectorVolumetricsScissor` `Boolean`; `ALAtmosphereKitAdapter` preserves/calls `?::?()` (`indra/llui/llcheckboxctrl.cpp:44`), `?::?()` (`indra/newview/tests/aldiopterrelevance_test.cpp:152`), `?::?()` (`indra/newview/tests/aldiopterrelevance_test.cpp:315`) | none |
+| `shaft_quality` / `check_box` (Track beam) | none | kit `toggle` ↔ `BDMergeProjectorVolumetricsTemporalBeamDepth` `Boolean`. Contract note: generic data name resolved by control_name `BDMergeProjectorVolumetricsTemporalBeamDepth` | none |
+| `shaft_quality` / `check_box` (Scissor cull) | none | kit `toggle` ↔ `BDMergeProjectorVolumetricsScissor` `Boolean`. Contract note: generic data name resolved by control_name `BDMergeProjectorVolumetricsScissor` | none |
 | `shaft_quality` / `ps_BDMergeProjectorVolumetricsMinResolution_slider` (Min samples) | `slider` `indra/newview/skins/default/xui/en/panel_projector_shafts.xml:39` | kit `slider` ↔ `BDMergeProjectorVolumetricsMinResolution` `U32` | none |
 | `shaft_quality` / `ps_BDMergeProjectorVolumetricsMaxLuminance_slider` (Peak limit) | `slider` `indra/newview/skins/default/xui/en/panel_projector_shafts.xml:42` | kit `slider` ↔ `BDMergeProjectorVolumetricsMaxLuminance` `F32` | none |
 | `shaft_quality` / `ps_BDMergeProjectorVolumetricsDither_slider` (Dither) | `slider` `indra/newview/skins/default/xui/en/panel_projector_shafts.xml:45` | kit `slider` ↔ `BDMergeProjectorVolumetricsDither` `U32` | none |
-| `shaft_quality` / `check_box` (Anti-banding) | none | kit `toggle` ↔ `BDMergeProjectorVolumetricsTemporalDither` `Boolean`; `ALAtmosphereKitAdapter` preserves/calls `?::?()` (`indra/llui/llcheckboxctrl.cpp:44`), `?::?()` (`indra/newview/tests/aldiopterrelevance_test.cpp:152`), `?::?()` (`indra/newview/tests/aldiopterrelevance_test.cpp:315`) | none |
+| `shaft_quality` / `check_box` (Anti-banding) | none | kit `toggle` ↔ `BDMergeProjectorVolumetricsTemporalDither` `Boolean`. Contract note: generic data name resolved by control_name `BDMergeProjectorVolumetricsTemporalDither` | none |
 
 ## Adapter extraction
 
 | Existing function | Extraction contract |
 |---|---|
-| `?::?()` — `indra/llui/llcheckboxctrl.cpp:44` | Move model-facing work into `ALAtmosphereKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
 | `ALFloaterLightBox::onCineHazePreset()` — `indra/newview/alfloaterlightbox.cpp:98` | Move model-facing work into `ALAtmosphereKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
 | `ALFloaterLightBox::onCineHazeRefFromCamera()` — `indra/newview/alfloaterlightbox.cpp:99` | Move model-facing work into `ALAtmosphereKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
-| `ALPanelAtmosphericVolumes::postBuild()` — `indra/newview/alpanelatmosphericvolumes.cpp:46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68` | Move model-facing work into `ALAtmosphereKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
-| `?::?()` — `indra/newview/tests/aldiopterrelevance_test.cpp:152, 315` | Move model-facing work into `ALAtmosphereKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
+| `ALPanelAtmosphericVolumes::onAdd()` — `indra/newview/alpanelatmosphericvolumes.cpp:72` | Move model-facing work into `ALAtmosphereKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
+| `ALPanelAtmosphericVolumes::onDelete()` — `indra/newview/alpanelatmosphericvolumes.cpp:76` | Move model-facing work into `ALAtmosphereKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
+| `ALPanelAtmosphericVolumes::onDuplicate()` — `indra/newview/alpanelatmosphericvolumes.cpp:74` | Move model-facing work into `ALAtmosphereKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
+| `ALPanelAtmosphericVolumes::onEditorCommit()` — `indra/newview/alpanelatmosphericvolumes.cpp:251` | Move model-facing work into `ALAtmosphereKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
+| `ALPanelAtmosphericVolumes::onMoveToCamera()` — `indra/newview/alpanelatmosphericvolumes.cpp:78` | Move model-facing work into `ALAtmosphereKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
+| `ALPanelAtmosphericVolumes::onSelectionChanged()` — `indra/newview/alpanelatmosphericvolumes.cpp:70` | Move model-facing work into `ALAtmosphereKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
 
 ## Live state and refresh
 
@@ -185,25 +188,21 @@ Manifest size: **51 states**, hard cap 256, page runtime budget 2 minutes. Each 
 3. Run the bounded state manifest at 1160×720, 850×560, 1141×720, and 915×720. Non-Director owners (Lightbox, cue/Diopter/Snapshot floaters, and shared panels) are mandatory parity oracles even when no v1 Director leaf embeds them.
 4. Review-diff every controller extraction and prove the v1 forwarding call preserves callbacks, owner tokens, selection, history barriers, and visibility gates.
 
+## Ambiguous same-name candidates (never auto-bound)
+
+None.
+
+## Rejected out-of-scope same-name candidates
+
+8 candidates were rejected by the XUI-owner/class scope; exact records and reasons are in `page_sources.json`.
+
 ## New widget required
 
-None. Every approved visual kind is either a kit primitive or an existing XUI control. Missing action/model bindings below are USER DECISIONS, not permission to invent a visual class.
+None. Every approved visual kind is either a kit primitive or an existing XUI control. An unresolved binding is not permission to invent a visual class.
 
-## Unresolved and USER DECISION items
+## Unresolved and pending-decision items
 
-- `set_CineHazeEnable` (Enable haze): widget not found in XUI.
-- `set_CineHazeHeightEnable` (Denser low): widget not found in XUI.
-- `open_lightbox_haze` (Lightbox ›): widget not found in XUI; no C++ reference or setting binding. **USER DECISION required.**
-- `check_box` (Sun too): widget not found in XUI.
-- `check_box` (Gobo smoothing): widget not found in XUI.
-- `localfog_froxel_requirement` (Requires): no C++ reference or setting binding.
-- `localfog_hint` (Note): no C++ reference or setting binding.
-- `check_box` (Half-res): widget not found in XUI.
-- `check_box` (Smoothing): widget not found in XUI.
-- `check_box` (Adaptive): widget not found in XUI.
-- `check_box` (Track beam): widget not found in XUI.
-- `check_box` (Scissor cull): widget not found in XUI.
-- `check_box` (Anti-banding): widget not found in XUI.
+None in the current evidence index.
 
 ## Risks
 

@@ -1,12 +1,12 @@
 # Rim — Director Kit page contract
 
 Page key: `light_rim_tab`. Evidence: [`page_sources.json`](../page_sources.json) and [`page_sources.md`](../page_sources.md).
-Computed class: **code-driven** (24/25 setting-bound rows; 4 C++-referenced rows).
+Computed class: **code-driven** (40/41 setting-bound rows; 4 C++-referenced rows).
 
 ## Real owners
 
-- `panel_cine_light_rig` / `panel` at `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:8` (25 matching rows).
-- Referencing classes: `ALPanelCineLightRig` (4).
+- `panel_cine_light_rig` / `panel` at `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:8` (41 matching rows).
+- Referencing classes: `ALPanelCineLightRig` (4), `LLNotificationsUtil` (1).
 
 Name collisions in secondary XUI files are evidence candidates, not automatic ownership. The implementation must retain only occurrences whose root and class agree with the row's behavior.
 
@@ -31,7 +31,23 @@ Use the existing XUI control types as ordinary measured kit rows. No new canvas,
 | `rim_quality` / `cine_rimq_smooth` (Smooth) | `slider` `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:1103` | kit `slider` ↔ `CineRigRimSmoothness` `F32` | none |
 | `rim_quality` / `cine_rimq_steady` (Steady) | `slider` `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:1106` | kit `slider` ↔ `CineRigRimAntiShimmer` `F32` | none |
 | `rim_quality` / `cine_rimq_actors` (Actors only) | `check_box` `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:1098` | kit `toggle` ↔ `CineRigRimActorsOnly` `Boolean` | none |
-| `rim_quality` / `cine_rimq_enable_tag` (Avatar tag) | `button` `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:1100` | `ALRigRimKitAdapter` command/model binding → `ALPanelCineLightRig::postBuild()` (`indra/newview/alpanelcinelightrig.cpp:768`) | none |
+| `rim_quality` / `cine_rimq_enable_tag` (Avatar tag) | `button` `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:1100` | `ALRigRimKitAdapter` command/model binding → wired in `ALPanelCineLightRig::postBuild()`; behavior `LLNotificationsUtil::add()` (`indra/newview/alpanelcinelightrig.cpp:839`) | none |
+| `per_light_rim [Key]` / `cine_rig_rim_key_gain` (Strength) | `spinner` `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:1011` | kit `number` ↔ `CineRigRimKeyGain` `F32` | none |
+| `per_light_rim [Key]` / `cine_rig_rim_key_sharpness` (Sharpness) | `spinner` `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:1014` | kit `number` ↔ `CineRigRimKeySharpness` `F32` | none |
+| `per_light_rim [Key]` / `cine_rig_rim_key_wrap` (Wrap) | `spinner` `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:1017` | kit `number` ↔ `CineRigRimKeyWrap` `F32` | none |
+| `per_light_rim [Key]` / `cine_rig_rim_key_back_bias` (Back bias) | `spinner` `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:1020` | kit `number` ↔ `CineRigRimKeyBackBias` `F32` | none |
+| `per_light_rim [Fill]` / `cine_rig_rim_fill_gain` (Strength) | `spinner` `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:1025` | kit `number` ↔ `CineRigRimFillGain` `F32` | none |
+| `per_light_rim [Fill]` / `cine_rig_rim_fill_sharpness` (Sharpness) | `spinner` `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:1028` | kit `number` ↔ `CineRigRimFillSharpness` `F32` | none |
+| `per_light_rim [Fill]` / `cine_rig_rim_fill_wrap` (Wrap) | `spinner` `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:1031` | kit `number` ↔ `CineRigRimFillWrap` `F32` | none |
+| `per_light_rim [Fill]` / `cine_rig_rim_fill_back_bias` (Back bias) | `spinner` `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:1034` | kit `number` ↔ `CineRigRimFillBackBias` `F32` | none |
+| `per_light_rim [Back]` / `cine_rig_rim_rim_gain` (Strength) | `spinner` `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:1039` | kit `number` ↔ `CineRigRimRimGain` `F32` | none |
+| `per_light_rim [Back]` / `cine_rig_rim_rim_sharpness` (Sharpness) | `spinner` `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:1042` | kit `number` ↔ `CineRigRimRimSharpness` `F32` | none |
+| `per_light_rim [Back]` / `cine_rig_rim_rim_wrap` (Wrap) | `spinner` `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:1045` | kit `number` ↔ `CineRigRimRimWrap` `F32` | none |
+| `per_light_rim [Back]` / `cine_rig_rim_rim_back_bias` (Back bias) | `spinner` `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:1048` | kit `number` ↔ `CineRigRimRimBackBias` `F32` | none |
+| `per_light_rim [BG]` / `cine_rig_rim_bg_gain` (Strength) | `spinner` `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:1053` | kit `number` ↔ `CineRigRimBgGain` `F32` | none |
+| `per_light_rim [BG]` / `cine_rig_rim_bg_sharpness` (Sharpness) | `spinner` `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:1056` | kit `number` ↔ `CineRigRimBgSharpness` `F32` | none |
+| `per_light_rim [BG]` / `cine_rig_rim_bg_wrap` (Wrap) | `spinner` `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:1059` | kit `number` ↔ `CineRigRimBgWrap` `F32` | none |
+| `per_light_rim [BG]` / `cine_rig_rim_bg_back_bias` (Back bias) | `spinner` `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:1062` | kit `number` ↔ `CineRigRimBgBackBias` `F32` | none |
 | `rim_edge` / `cine_rimq_edge` (Edge) | `slider` `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:1109` | kit `slider` ↔ `CineRigRimSilhouette` `F32` | none |
 | `rim_edge` / `cine_rimq_width` (Width) | `slider` `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:1112` | kit `slider` ↔ `CineRigRimSilhouetteWidth` `F32` | none |
 | `rim_edge` / `cine_rimq_units` (Units) | `combo_box` `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:1113` | kit `combo` ↔ `CineRigRimSilhouetteUnits` `U32` | none |
@@ -40,9 +56,9 @@ Use the existing XUI control types as ordinary measured kit rows. No new canvas,
 | `rim_wrap` / `cine_rimq_wrap_reach` (Reach) | `slider` `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:1124` | kit `slider` ↔ `CineRigRimWrapWidth` `F32` | none |
 | `rim_wrap` / `cine_rimq_wrap_blur` (Blur) | `slider` `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:1127` | kit `slider` ↔ `CineRigRimWrapBlur` `F32` | none |
 | `rim_wrap` / `cine_rimq_wrap_colour` (Colour) | `slider` `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:1130` | kit `slider` ↔ `CineRigRimWrapSaturation` `F32` | none |
-| `rim_tron` / `cine_rig_rim_tron_mode` (Mode) | `combo_box` `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:1070` | kit `combo` ↔ `CineRigRimTronMode` `S32`; `ALRigRimKitAdapter` preserves/calls `ALPanelCineLightRig::postBuild()` (`indra/newview/alpanelcinelightrig.cpp:807`) | page `tron_tab`, `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:6321` `tr_rigrim_tron_mode_combo` |
-| `rim_tron` / `cine_rig_rim_tron_mix` (Mix) | `slider` `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:1081` | kit `slider` ↔ `CineRigRimTronMix` `F32`; `ALRigRimKitAdapter` preserves/calls `ALPanelCineLightRig::postBuild()` (`indra/newview/alpanelcinelightrig.cpp:808`) | page `tron_tab`, `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:6327` `tr_rigrim_tron_mix_slider` |
-| `rim_tron` / `cine_rig_rim_tron_color` (Colour) | `combo_box` `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:1086` | kit `combo` ↔ `CineRigRimTronColorSource` `S32`; `ALRigRimKitAdapter` preserves/calls `ALPanelCineLightRig::postBuild()` (`indra/newview/alpanelcinelightrig.cpp:810`) | page `tron_tab`, `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:6330` `tr_rigrim_tron_color_combo` |
+| `rim_tron` / `cine_rig_rim_tron_mode` (Mode) | `combo_box` `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:1070` | kit `combo` ↔ `CineRigRimTronMode` `S32` | page `tron_tab`, `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:6321` `tr_rigrim_tron_mode_combo` |
+| `rim_tron` / `cine_rig_rim_tron_mix` (Mix) | `slider` `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:1081` | kit `slider` ↔ `CineRigRimTronMix` `F32` | page `tron_tab`, `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:6327` `tr_rigrim_tron_mix_slider` |
+| `rim_tron` / `cine_rig_rim_tron_color` (Colour) | `combo_box` `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:1086` | kit `combo` ↔ `CineRigRimTronColorSource` `S32` | page `tron_tab`, `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:6330` `tr_rigrim_tron_color_combo` |
 | `rim_diagnostics` / `cine_rig_rim_debug` (Rim only) | `check_box` `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:953` | kit `toggle` ↔ `CineRigRimDebugRimOnly` `Boolean` | none |
 | `rim_diagnostics` / `cine_rimq_debug` (Debug view) | `combo_box` `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:1133` | kit `combo` ↔ `CineRigRimDebugView` `U32` | none |
 
@@ -50,7 +66,7 @@ Use the existing XUI control types as ordinary measured kit rows. No new canvas,
 
 | Existing function | Extraction contract |
 |---|---|
-| `ALPanelCineLightRig::postBuild()` — `indra/newview/alpanelcinelightrig.cpp:768, 807, 808, 810` | Move model-facing work into `ALRigRimKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
+| `LLNotificationsUtil::add()` — `indra/newview/alpanelcinelightrig.cpp:839` | Move model-facing work into `ALRigRimKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
 
 ## Live state and refresh
 
@@ -61,7 +77,7 @@ Use the existing XUI control types as ordinary measured kit rows. No new canvas,
 
 ## Bounded non-default audit states
 
-Manifest size: **34 states**, hard cap 256, page runtime budget 2 minutes. Each row below is applied independently from the default snapshot; there is no Cartesian product.
+Manifest size: **36 states**, hard cap 256, page runtime budget 2 minutes. Each row below is applied independently from the default snapshot; there is no Cartesian product.
 
 | State key | Exact scenario |
 |---|---|
@@ -76,6 +92,8 @@ Manifest size: **34 states**, hard cap 256, page runtime budget 2 minutes. Each 
 | `card-rim_quality-tallest-850` | Only `rim_quality` is put in its tallest local state at 850 px; all other cards stay default. |
 | `card-rim_quality-tallest-1160` | Only `rim_quality` is put in its tallest local state at 1160 px; all other cards stay default. |
 | `cine_rimq_actors-on` | Only `cine_rimq_actors` is on; dependent visibility is measured. |
+| `card-per_light_rim-tallest-850` | Only `per_light_rim` is put in its tallest local state at 850 px; all other cards stay default. |
+| `card-per_light_rim-tallest-1160` | Only `per_light_rim` is put in its tallest local state at 1160 px; all other cards stay default. |
 | `card-rim_edge-tallest-850` | Only `rim_edge` is put in its tallest local state at 850 px; all other cards stay default. |
 | `card-rim_edge-tallest-1160` | Only `rim_edge` is put in its tallest local state at 1160 px; all other cards stay default. |
 | `cine_rimq_units-option-0` | Only `cine_rimq_units` selects `cm @ subject`; other selectors remain default. |
@@ -107,11 +125,19 @@ Manifest size: **34 states**, hard cap 256, page runtime budget 2 minutes. Each 
 3. Run the bounded state manifest at 1160×720, 850×560, 1141×720, and 915×720. Non-Director owners (Lightbox, cue/Diopter/Snapshot floaters, and shared panels) are mandatory parity oracles even when no v1 Director leaf embeds them.
 4. Review-diff every controller extraction and prove the v1 forwarding call preserves callbacks, owner tokens, selection, history barriers, and visibility gates.
 
+## Ambiguous same-name candidates (never auto-bound)
+
+None.
+
+## Rejected out-of-scope same-name candidates
+
+None.
+
 ## New widget required
 
-None. Every approved visual kind is either a kit primitive or an existing XUI control. Missing action/model bindings below are USER DECISIONS, not permission to invent a visual class.
+None. Every approved visual kind is either a kit primitive or an existing XUI control. An unresolved binding is not permission to invent a visual class.
 
-## Unresolved and USER DECISION items
+## Unresolved and pending-decision items
 
 None in the current evidence index.
 

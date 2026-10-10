@@ -1,12 +1,12 @@
 # Focus — Director Kit page contract
 
 Page key: `focus_tab`. Evidence: [`page_sources.json`](../page_sources.json) and [`page_sources.md`](../page_sources.md).
-Computed class: **code-driven** (14/14 setting-bound rows; 2 C++-referenced rows).
+Computed class: **pure-setting** (14/14 setting-bound rows; 0 C++-referenced rows).
 
 ## Real owners
 
 - `panel_dof` / `panel` at `indra/newview/skins/default/xui/en/panel_dof.xml:2` (12 matching rows).
-- `floater_phototools` / `floater` at `indra/newview/skins/default/xui/en/floater_phototools.xml:25` (5 matching rows).
+- `floater_phototools` / `floater` at `indra/newview/skins/default/xui/en/floater_phototools.xml:25` (7 matching rows).
 
 Name collisions in secondary XUI files are evidence candidates, not automatic ownership. The implementation must retain only occurrences whose root and class agree with the row's behavior.
 
@@ -27,8 +27,8 @@ Use the existing XUI control types as ordinary measured kit rows. No new canvas,
 | `dof` / `RenderDepthOfFieldFront` (Near blur) | `check_box` `indra/newview/skins/default/xui/en/panel_dof.xml:53` | kit `toggle` ↔ `RenderDepthOfFieldNearBlur` `Boolean` | none |
 | `dof` / `dof_focaltime_slider` (Focus speed) | `slider_bar` `indra/newview/skins/default/xui/en/panel_dof.xml:351` | kit `slider` ↔ `CameraFocusTransitionTime` `F32` | `indra/newview/skins/default/xui/en/panel_dof.xml:367` `dof_focaltime_spinner` |
 | `dof` / `dof_fov_slider` (Field of view) | `slider_bar` `indra/newview/skins/default/xui/en/panel_dof.xml:123` | kit `slider` ↔ `CameraFieldOfView` `F32` | `indra/newview/skins/default/xui/en/panel_dof.xml:139` `dof_fov_spinner` |
-| `focus_point` / `check_box` (Lock focus) | none | kit `toggle` ↔ `RenderFocusPointLocked` `Boolean`; `ALFocusKitAdapter` preserves/calls `?::?()` (`indra/llui/llcheckboxctrl.cpp:44`), `?::?()` (`indra/newview/tests/aldiopterrelevance_test.cpp:152`), `?::?()` (`indra/newview/tests/aldiopterrelevance_test.cpp:315`) | `indra/newview/skins/default/xui/en/floater_phototools.xml:196` `FocusLock`, `indra/newview/skins/default/xui/en/floater_ultimate_diopter.xml:279` `diopter_focus_locked` |
-| `focus_point` / `check_box` (Follow mouse) | none | kit `toggle` ↔ `RenderFocusPointFollowsPointer` `Boolean`; `ALFocusKitAdapter` preserves/calls `?::?()` (`indra/llui/llcheckboxctrl.cpp:44`), `?::?()` (`indra/newview/tests/aldiopterrelevance_test.cpp:152`), `?::?()` (`indra/newview/tests/aldiopterrelevance_test.cpp:315`) | `indra/newview/skins/default/xui/en/floater_phototools.xml:207` `FocusFollowsPointer` |
+| `focus_point` / `check_box` (Lock focus) | `check_box` `indra/newview/skins/default/xui/en/floater_phototools.xml:196` | kit `toggle` ↔ `RenderFocusPointLocked` `Boolean`. Contract note: generic data name resolved by control_name `RenderFocusPointLocked` | `indra/newview/skins/default/xui/en/floater_ultimate_diopter.xml:279` `diopter_focus_locked` |
+| `focus_point` / `check_box` (Follow mouse) | `check_box` `indra/newview/skins/default/xui/en/floater_phototools.xml:207` | kit `toggle` ↔ `RenderFocusPointFollowsPointer` `Boolean`. Contract note: generic data name resolved by control_name `RenderFocusPointFollowsPointer` | none |
 | `focus_point` / `FocusCrosshair` (Show crosshair) | `check_box` `indra/newview/skins/default/xui/en/floater_phototools.xml:218`, `check_box` `indra/newview/skins/default/xui/en/panel_dof.xml:38` | kit `toggle` ↔ `RenderFocusPointCrosshair` `Boolean` | `indra/newview/skins/default/xui/en/floater_ultimate_diopter.xml:277` `diopter_focus_crosshair` |
 | `guide` / `GuideStyle` (Style) | `combo_box` `indra/newview/skins/default/xui/en/floater_phototools.xml:252`, `combo_box` `indra/newview/skins/default/xui/en/panel_dof.xml:409` | kit `combo` ↔ `RenderCompositionGuideStyle` `String` | none |
 | `guide` / `GuideColor` (Colour) | `color_swatch` `indra/newview/skins/default/xui/en/floater_phototools.xml:286`, `color_swatch` `indra/newview/skins/default/xui/en/panel_dof.xml:443` | kit `color` ↔ `RenderCompositionGuideColor` `Color3` | none |
@@ -37,10 +37,7 @@ Use the existing XUI control types as ordinary measured kit rows. No new canvas,
 
 ## Adapter extraction
 
-| Existing function | Extraction contract |
-|---|---|
-| `?::?()` — `indra/llui/llcheckboxctrl.cpp:44` | Move model-facing work into `ALFocusKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
-| `?::?()` — `indra/newview/tests/aldiopterrelevance_test.cpp:152, 315` | Move model-facing work into `ALFocusKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
+No approved widget has a C++ literal reference. `ALFocusKitAdapter` owns only explicit actions and setting signals; it must not synthesize a polling mirror.
 
 ## Live state and refresh
 
@@ -85,14 +82,21 @@ Manifest size: **22 states**, hard cap 256, page runtime budget 2 minutes. Each 
 3. Run the bounded state manifest at 1160×720, 850×560, 1141×720, and 915×720. Non-Director owners (Lightbox, cue/Diopter/Snapshot floaters, and shared panels) are mandatory parity oracles even when no v1 Director leaf embeds them.
 4. Review-diff every controller extraction and prove the v1 forwarding call preserves callbacks, owner tokens, selection, history barriers, and visibility gates.
 
+## Ambiguous same-name candidates (never auto-bound)
+
+None.
+
+## Rejected out-of-scope same-name candidates
+
+3 candidates were rejected by the XUI-owner/class scope; exact records and reasons are in `page_sources.json`.
+
 ## New widget required
 
-None. Every approved visual kind is either a kit primitive or an existing XUI control. Missing action/model bindings below are USER DECISIONS, not permission to invent a visual class.
+None. Every approved visual kind is either a kit primitive or an existing XUI control. An unresolved binding is not permission to invent a visual class.
 
-## Unresolved and USER DECISION items
+## Unresolved and pending-decision items
 
-- `check_box` (Lock focus): widget not found in XUI.
-- `check_box` (Follow mouse): widget not found in XUI.
+None in the current evidence index.
 
 ## Risks
 

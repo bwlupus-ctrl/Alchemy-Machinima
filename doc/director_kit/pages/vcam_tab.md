@@ -7,7 +7,7 @@ Computed class: **code-driven** (1/3 setting-bound rows; 2 C++-referenced rows).
 
 - `floater_director` / `floater` at `indra/newview/skins/default/xui/en/floater_director.xml:15` (3 matching rows).
 - `prism_manager` / `floater` at `indra/newview/skins/default/xui/en/floater_prism_manager.xml:10` (1 matching rows).
-- Referencing classes: `LLFloaterDirector` (2), `LLFloaterPrismManager` (1).
+- Referencing classes: `LLFloaterDirector` (3).
 
 Name collisions in secondary XUI files are evidence candidates, not automatic ownership. The implementation must retain only occurrences whose root and class agree with the row's behavior.
 
@@ -22,15 +22,14 @@ Use the existing XUI control types as ordinary measured kit rows. No new canvas,
 | Card / row | Existing control evidence | Required binding | Other writable homes |
 |---|---|---|---|
 | `lens_vcam_card` / `prism_lens_enabled` (Enable) | `check_box` `indra/newview/skins/default/xui/en/floater_director.xml:1347` | kit `toggle` ↔ `PrismLensEnabled` `Boolean` | `indra/newview/skins/default/xui/en/floater_prism_manager.xml:32` `prism_enabled` |
-| `lens_vcam_card` / `prism_summary` (Status) | `text` `indra/newview/skins/default/xui/en/floater_director.xml:1348`, `text` `indra/newview/skins/default/xui/en/floater_prism_manager.xml:42` | `ALVCamKitAdapter` command/model binding → `LLFloaterDirector::postBuild()` (`indra/newview/llfloaterdirector.cpp:599`), `LLFloaterPrismManager::postBuild()` (`indra/newview/llfloaterprismmanager.cpp:330`) | none |
-| `lens_vcam_card` / `btn_prism_manage` (Open manager) | `button` `indra/newview/skins/default/xui/en/floater_director.xml:1349` | `ALVCamKitAdapter` command/model binding → `LLFloaterDirector::postBuild()` (`indra/newview/llfloaterdirector.cpp:600`) | none |
+| `lens_vcam_card` / `prism_summary` (Status) | `text` `indra/newview/skins/default/xui/en/floater_director.xml:1348`, `text` `indra/newview/skins/default/xui/en/floater_prism_manager.xml:42` | kit readout ← approved static copy; no runtime writer | none |
+| `lens_vcam_card` / `btn_prism_manage` (Open manager) | `button` `indra/newview/skins/default/xui/en/floater_director.xml:1349` | `ALVCamKitAdapter` command/model binding → wired in `LLFloaterDirector::postBuild()`; behavior `LLFloaterDirector::onClickManagePrism()` (`indra/newview/llfloaterdirector.cpp:604`) | none |
 
 ## Adapter extraction
 
 | Existing function | Extraction contract |
 |---|---|
-| `LLFloaterDirector::postBuild()` — `indra/newview/llfloaterdirector.cpp:599, 600` | Move model-facing work into `ALVCamKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
-| `LLFloaterPrismManager::postBuild()` — `indra/newview/llfloaterprismmanager.cpp:330` | Move model-facing work into `ALVCamKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
+| `LLFloaterDirector::onClickManagePrism()` — `indra/newview/llfloaterdirector.cpp:604` | Move model-facing work into `ALVCamKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
 
 ## Live state and refresh
 
@@ -71,11 +70,19 @@ Manifest size: **18 states**, hard cap 256, page runtime budget 2 minutes. Each 
 3. Run the bounded state manifest at 1160×720, 850×560, 1141×720, and 915×720. Non-Director owners (Lightbox, cue/Diopter/Snapshot floaters, and shared panels) are mandatory parity oracles even when no v1 Director leaf embeds them.
 4. Review-diff every controller extraction and prove the v1 forwarding call preserves callbacks, owner tokens, selection, history barriers, and visibility gates.
 
+## Ambiguous same-name candidates (never auto-bound)
+
+None.
+
+## Rejected out-of-scope same-name candidates
+
+1 candidates were rejected by the XUI-owner/class scope; exact records and reasons are in `page_sources.json`.
+
 ## New widget required
 
-None. Every approved visual kind is either a kit primitive or an existing XUI control. Missing action/model bindings below are USER DECISIONS, not permission to invent a visual class.
+None. Every approved visual kind is either a kit primitive or an existing XUI control. An unresolved binding is not permission to invent a visual class.
 
-## Unresolved and USER DECISION items
+## Unresolved and pending-decision items
 
 None in the current evidence index.
 

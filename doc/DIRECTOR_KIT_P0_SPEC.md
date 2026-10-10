@@ -863,9 +863,9 @@ All are read with `static LLCachedControl` arrays.
 
 **Frames.** When the selected rig is live and no gesture is active, the display source is `selected().lastFrame().mProj[i].mOffX/Y/Z`. Those are the eased positions: `lastFrame` is built from `mCurrentLive`, and `mCurrentLive` approaches the settings target over the transition (`alcinelightrig.cpp:1937-1958`, `2954-2961`). They already contain orbit, subject-scaled effective radius and OffsetZ (`alcinelightrigmodel.h:213-235`; `alcinelightrigmodel.cpp:1585-1621`). They are display-only and are never a drag baseline.
 
-WP1 adds a read-only `mapTargetFrame()`/revision accessor on the selected rig. It computes the four **uneased settings targets** with the same sanitized settings, resolved subject scale and resolved avatar facing as `computeLive`/`computeFrame`, but allocates and mutates nothing. While dragging, only the grabbed light is drawn from that target frame plus the absolute gesture result; the other lights remain live. This makes the grabbed position agree with the values the dials target even while `mCurrentLive` catches up.
+WP1 adds a read-only `mapTargetFrame()`/revision accessor on the selected rig. It computes the four **uneased settings targets** with the same sanitized settings, resolved subject scale and resolved live avatar-or-object facing as `computeLive`/`computeFrame`, but allocates and mutates nothing. While dragging, only the grabbed light is drawn from that target frame plus the absolute gesture result; the other lights remain live. This makes the grabbed position agree with the values the dials target even while `mCurrentLive` catches up.
 
-Mirror is not valid for an object target in the present engine. `tickShared` assigns `mFacingAzimuthDeg` only for non-object targets (`alcinelightrig.cpp:2632-2647`), while `computeLive` mirrors about that value (`alcinelightrigmodel.cpp:1048-1062`). Therefore selecting an object target forces the effective transform to unmirrored, disables the Mirror row with “Mirror requires an avatar-facing target”, and the map uses the unmirrored target. It must not preserve or display a mirrored object-target result based on stale serialized facing. Switching back to an avatar restores the stored Mirror preference. This behavior is covered by an in-world test.
+Object-target Mirror remains enabled. `tickShared` default-constructs `Transforms` every tick (`alcinelightrig.cpp:2453`), resolves `root = object->getRootEdit()` in the object branch (`:2511`), but currently leaves `mFacingAzimuthDeg` at 0. WP1 makes the approximately six-line engine correction there: compute `fwd = LLVector3(1.f, 0.f, 0.f) * root->getRenderRotation()`, derive `facing = atan2(fwd.mV[VY], fwd.mV[VX]) * RAD_TO_DEG`, and publish the finite value through `transforms.mFacingAzimuthDeg`, using the same forward-axis/finite-guard rule as the avatar path at `:2637-2641`. `computeLive`, `computeFrame`, and `mapTargetFrame()` then mirror around the object's live front rather than world east. The Mirror row is never disabled for an object; a rotated-prop in-world check proves the map and emitted lights rotate together.
 
 When the rig is not producing a usable live offset, the fallback is deliberately **unmirrored**: `eff_yaw=wrap180(base+orbitYaw)`, `eff_pitch=clamp(base_pitch+orbitPitch,±85)`, `r=CineLightRigRadius`, and `z=r*sin(eff_pitch)+OffsetZ`. Draw “Unmirrored preview · rig off”. Fallback drag uses `sigma=+1` in the absolute mouse-down formula regardless of the stored Mirror setting. This is internally consistent; it does not use `F=0` with the mirror formula.
 
@@ -915,7 +915,7 @@ When the rig is not producing a usable live offset, the fallback is deliberately
 
 **Input.**
 - Mouse down on a light disc (hit radius rr + 4, topmost first) selects role i. It sets the Lights selector option, writing `DirectorV2SelectedLight`, which also moves the Rim per-light selector and the fixture role (section 5.1). Then it captures one immutable `DragStart`: pointer `(x0,y0)`; setting `baseYaw0`, `basePitch0`, `orbitYaw0`, `orbitPitch0`, `offsetZ0`; view, side and Mirror state; camera bearing; target-frame `t0,p0`; and `r0` derived above. It also captures the pointer-to-disc-centre grab offset. No hover reads a live/eased position or uses the previous hover's written value.
-- Let `sigma = -1` only for a mirrored avatar target and `+1` for unmirrored, rig-off and object-target cases. Every hover computes `baseYawNew=wrap180(baseYaw0 + sigma·wrap180(tTarget−t0))` and `basePitchNew=baseFromDisplayPitch(pTarget,orbitPitch0,offsetZ0,r0,basePitch0)`. Thus every write is a pure function of `DragStart` plus the current pointer; it is never `setting += delta`.
+- Let `sigma = -1` for any mirrored live target (avatar or object) and `+1` for unmirrored or rig-off cases. Every hover computes `baseYawNew=wrap180(baseYaw0 + sigma·wrap180(tTarget−t0))` and `basePitchNew=baseFromDisplayPitch(pTarget,orbitPitch0,offsetZ0,r0,basePitch0)`. Thus every write is a pure function of `DragStart` plus the current pointer; it is never `setting += delta`.
 - **Top-view drag:** `a0=atan2(x0−cx,−(y0−cy))`, `a=atan2(x−cx,−(y−cy))`, `tTarget=wrap180(t0+wrap180(a−a0))`, and `pTarget=p0`. This preserves the initial grab even when mouse-down is off-centre and makes zero movement an exact no-op.
 - **2.5D drag (exact projection inverse):** subtract the captured grab offset, set `u=(x−grabX−cx)/R`, `v=(y−grabY−cy)/R`, and radially clamp `(u,v)` to the unit disc. With elevation `e=24°`, choose `d=±sqrt(max(0,1−u²−v²))` on the branch continuous with captured `d0=cos(p0)cos(t0)cos(e)+sin(p0)sin(e)`; at the silhouette choose the candidate minimizing wrapped angular distance to `(t0,p0)`. Invert the view rotation: `X=u`, `Y=v cos(e)+d sin(e)`, `Z=−v sin(e)+d cos(e)`, then `pTarget=asin(clamp(Y,−1,1))`, `tTarget=atan2(X,Z)`. Feed those targets to the absolute formulas above. This exactly inverts `projectLight`, rather than integrating a per-event `dx·k`, and preserves the front/back branch.
 - **Exact elevation inverse:** define `p_disp(base,orbit,h,r)` exactly as above and `baseFromDisplayPitch(target,orbit,h,r,current)`. Solve `sin(q−target)=−h·cos(target)/r` for `q=base+orbit`, choose the valid branch closest to captured `q0=basePitch0+orbitPitch0`, then clamp the resulting base so q remains within ±85°. Both target drawing and this inverse use captured `r0`, including subject scaling.
@@ -1512,10 +1512,10 @@ Cases:
 - `projectLight` (t = 0 in 2.5D lands below the centre and is front; t = 180 is behind; Side from camera-left puts the camera on the right and t = −45 (camera-left) nearer than t = +45; Side from camera-right mirrors both);
 - `frontFactor` in Side: t = +45 and t = −45 never share a layer; `yawSideText(45)` = "R45°", `(−135)` = "L135°", `(0)` = "0°";
 - `pDisp`/`baseFromDisplayPitch` round-trip with non-zero OrbitPitch and OffsetZ at plain and subject-scaled radii, with the same captured radius supplied to display and inverse;
-- for Top, 2.5D and Side, pointer equal to mouse-down produces bit-identical base settings with Mirror off/on (Mirror-on avatar only), rig live/lagging and rig off; pressing without moving never writes a setting;
+- for Top, 2.5D and Side, pointer equal to mouse-down produces bit-identical base settings with Mirror off/on for avatars and rotated object targets, rig live/lagging and rig off; pressing without moving never writes a setting;
 - `dragSideAbsolute` keeps the light's side and exactly inverts Side projection with non-zero orbit/OffsetZ; `unproject25D` round-trips both front and back branches and preserves its branch at the silhouette;
 - feed 1,000 synthetic hover events at one fixed final pointer while a fake live display continues easing for 0.9 s: every event produces the same value as the first, the final target stays within 0.01° of the one-shot result, and there is zero accumulated drift in Top, 2.5D and Side;
-- feed 1,000 out-and-back pointer samples ending at `(x0,y0)`: all three views return to the captured base values within 0.01°; repeat at scaled/unscaled radii, non-zero orbit/OffsetZ, both Side directions and both 2.5D depth branches;
+- feed 1,000 out-and-back pointer samples ending at `(x0,y0)`: all three views return to the captured base values within 0.01°; repeat at scaled/unscaled radii, non-zero orbit/OffsetZ, both Side directions and both 2.5D depth branches. Include a Top path whose pointer travel completes a full turn: `wrap180(a−a0)` may jump by 360° after 180° because yaw is periodic, but the final value must still return within 0.01°;
 - `frontFactor` monotone;
 - `effYaw` with and without mirror (against the `computeLive` formula);
 - `dragTopAbsolute` Mirror/unmirrored sign and wrap-boundary behavior;
@@ -1586,7 +1586,7 @@ If they differ, the config tables in section 4.7 win and the generator reports t
 - `indra/llui/alcompassdial.*` (section 3.13);
 - `alflowgrid.*` (`pack=rows`, ALFlowGridItem);
 - `alscrollfit.*` (SelfSizedDocument, adoptPage);
-- `alcinelightrig.h/.cpp` (read-only `mapTargetFrame()`/revision accessor and the object-target Mirror effective-off rule only);
+- `alcinelightrig.h/.cpp` (read-only `mapTargetFrame()`/revision accessor plus the object branch's approximately six-line live-facing publication from `root->getRenderRotation()`; no other engine behavior change);
 - `indra/newview/CMakeLists.txt`;
 - `newview/tests` (`alkitmath_test.cpp`).
 
@@ -1630,7 +1630,7 @@ If they differ, the config tables in section 4.7 win and the generator reports t
 
 **Do not touch:**
 - the v1 XML;
-- `alcinelightrig*` engine logic (only the WP1 accessor exists);
+- `alcinelightrig*` engine logic (WP1's accessor and object-facing correction are the complete allowed engine delta);
 - ALDirectorHotkeys.
 
 ### WP3: generator, v2 floater, page files, index, config
@@ -1691,7 +1691,7 @@ This is the integration pass over WP1 to WP3 for the two pages. It covers:
 
 **After WP5:** review and automated foundation build may run, but v2 is not shippable and remains debug/self-test-only. Proceed directly through `DIRECTOR_KIT_ROLLOUT_SPEC.md` WP6-WP12. The single release-candidate fresh build and full 36-page in-world checklist occur only after WP12. The P0-only diagnostic checklist is:
 - Rig Easy/Advanced;
-- map drag in Top, 2.5D and both Side directions with Mirror on/off, zero-motion mouse-down, a 0.9 s transition, subject scaling, and an object target (Mirror disabled and unmirrored);
+- map drag in Top, 2.5D and both Side directions with Mirror on/off, zero-motion mouse-down, a 0.9 s transition, subject scaling, and an object target rotated away from world east (Mirror enabled and object-front-relative);
 - preset apply, undo and redo;
 - Rim presets;
 - narrow sizes;
@@ -1723,7 +1723,7 @@ This is the integration pass over WP1 to WP3 for the two pages. It covers:
 3. **Legacy pages at 850×560** are an intermediate P0 risk only. The final delivery converts them all, audits their non-default states, and requires absolute zero; `DIRECTOR_KIT_ROLLOUT_SPEC.md` is binding.
 4. **History attribution.** Background writers, scene loads, slot changes, reset-all, and external presets/cues use `ScopedSuspend` plus a generation barrier. Complete Director-owned bulk actions explicitly record one Step. Context and generation checks prevent cross-slot/cross-scene replay.
 5. **The dyn-visibility probe** is a bool loop in `draw()`. It must stay allocation-free (Opus checks it).
-6. **Mirror display.** Idle display reads already-resolved live offsets, but drag uses an uneased target frame and a mouse-down settings snapshot. Object targets are explicitly unmirrored because the engine does not refresh their facing (`alcinelightrig.cpp:2632-2647`); avatar Mirror is tested separately. Rig-off fallback is unmirrored and every drag is absolute from mouse-down.
+6. **Mirror display.** Idle display reads already-resolved live offsets, but drag uses an uneased target frame and a mouse-down settings snapshot. WP1 publishes object-front azimuth from the already-resolved root rotation, so avatar and object Mirror use the same live-offset path; the rotated-prop test detects any regression to world-east. Rig-off fallback alone is unmirrored and every drag is absolute from mouse-down.
 7. **Card-header preset reparenting** moves C++-owned combos. Pointers stay valid, but `getChild` from ALPanelCineLightRig after postBuild would miss them. Codex verifies that ALPanelCineLightRig never looks them up after postBuild.
 8. **Rect bump.** A v1 saved width of 1020 bumps once to 1160.
 9. **Search index staleness.** `gen --check` is a prebuild gate.
@@ -1756,7 +1756,7 @@ There are no open rollout choices in this specification. The binding decisions b
 - M3 -> sections 3.12 and spike S8 (text-entry focus guard and Unicode `/` path).
 - M4 -> section 3.11 (bulk `ScopedSuspend`, reachable `globalBarrier`, playback lifetime token, and scene-generation contexts).
 - M5 -> sections 6.1 and 5.1 (`settings_files.xml` plus recursive includes, setting groups, Vector3-backed vec2).
-- M6 -> section 3.14 Frames/Display transform (live idle offsets, uneased drag targets, explicit object-target Mirror disable, consistent unmirrored rig-off fallback).
+- M6 -> section 3.14 Frames/Display transform (live idle offsets, uneased drag targets, object-front-relative Mirror, consistent unmirrored rig-off fallback).
 - M7 -> section 3.14 Input/Pure maths and section 6.6 (absolute-from-mouse-down inverses, shared effective radius, exact 2.5D/Side branch tests).
 - M8 -> section 3.13 and section 6.6 (binding horizon-zero geometry and inverse).
 - M9 -> section 6.4 and `DIRECTOR_KIT_ROLLOUT_SPEC.md` section 6 (all non-default audit states and measured label errors).
@@ -1796,7 +1796,7 @@ Findings below are the R2 items that land in this P0 spec or `VCAM_MONITORS_DESI
 - M-R8 -> `VCAM_MONITORS_DESIGN.md` section 5.2 and VC1 (permission-only binding skips with report; structural failure remains atomic; Director continues a warning-success scene load).
 - M-R9 -> section 3.11 (`globalBarrier` resolves the Director at call time; presets barrier once; cue playback suspends and barriers only at start/stop).
 - M-R11 -> `VCAM_MONITORS_DESIGN.md` section 8 and VC1-VC7, plus this ledger's VCam cross-references (VC prefix and rollout WP9 ordering).
-- M-R12 -> section 3.14 Frames, section 6.6 and risk 6 (correct `alcinelightrig.cpp:2632-2647` anchor; Mirror effective-off and tested for object targets).
+- M-R12 -> section 3.14 Frames, section 6.6 and risk 6 (WP1 publishes object front from `getRenderRotation()`; Mirror stays enabled and is tested on a rotated prop).
 - MINOR 1 -> section 4.6 width proof (1160 row: 132 px gaps/padding, 320 px status).
 - MINOR 2 -> section 4.6 transport notes (`rec_indicator` preserved; only new presentation suffix collapses).
 - MINOR 3 -> `VCAM_MONITORS_DESIGN.md` VC6 (tab-name migration, last-tab and v1/v2 rect/selection carry-over tests).

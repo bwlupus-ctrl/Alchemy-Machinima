@@ -1,14 +1,14 @@
 # Frame & Orbit — Director Kit page contract
 
 Page key: `frame_orbit_tab`. Evidence: [`page_sources.json`](../page_sources.json) and [`page_sources.md`](../page_sources.md).
-Computed class: **code-driven** (29/31 setting-bound rows; 14 C++-referenced rows).
+Computed class: **code-driven** (29/31 setting-bound rows; 1 C++-referenced rows).
 
 ## Real owners
 
 - `panel_cinecam_frame` / `panel` at `indra/newview/skins/default/xui/en/panel_cinecam_frame.xml:8` (21 matching rows).
 - `panel_flycam_orbit` / `panel` at `indra/newview/skins/default/xui/en/panel_flycam_orbit.xml:13` (10 matching rows).
 - `panel_cinecam_params` / `panel` at `indra/newview/skins/default/xui/en/panel_cinecam_params.xml:10` (2 matching rows).
-- Referencing classes: `LLViewerJoystick` (7), `LLCinematicCamera` (2), `LLFloaterDirector` (1).
+- Referencing classes: `LLCinematicCamera` (1).
 
 Name collisions in secondary XUI files are evidence candidates, not automatic ownership. The implementation must retain only occurrences whose root and class agree with the row's behavior.
 
@@ -33,38 +33,32 @@ Use the existing XUI control types as ordinary measured kit rows. No new canvas,
 | `auto_reframe` / `auto_frame_compose` (Top line) | `slider` `indra/newview/skins/default/xui/en/panel_cinecam_frame.xml:112` | kit `slider` ↔ `CinematicAutoFrameComposeLine` `F32` | none |
 | `auto_reframe` / `auto_frame_distance_trim` (Dolly trim) | `spinner` `indra/newview/skins/default/xui/en/panel_cinecam_frame.xml:124` | kit `number` ↔ `CinematicAutoFrameDistanceTrim` `F32` | none |
 | `auto_reframe` / `auto_frame_vertical_trim` (Vertical trim) | `spinner` `indra/newview/skins/default/xui/en/panel_cinecam_frame.xml:136` | kit `number` ↔ `CinematicCamFrameOffsetUp` `F32` | page `operator_tab`, `indra/newview/skins/default/xui/en/panel_cinecam_operator.xml:201` `CinematicCamFrameOffsetUp` |
-| `auto_reframe` / `auto_frame_resolve` (Re-solve now) | `button` `indra/newview/skins/default/xui/en/panel_cinecam_frame.xml:147` | **USER DECISION:** register an explicit `ALFrameOrbitKitAdapter` command; no matching setting or C++ literal was found | none |
+| `auto_reframe` / `auto_frame_resolve` (Re-solve now) | `button` `indra/newview/skins/default/xui/en/panel_cinecam_frame.xml:147` | `ALFrameOrbitKitAdapter` command/model binding → behavior `LLCinematicCamera::requestAutoReframe()` (`indra/newview/alpanelcinecamparams.cpp:107`) | none |
 | `reframe_settle` / `auto_frame_settle_mode` (Settle mode) | `combo_box` `indra/newview/skins/default/xui/en/panel_cinecam_frame.xml:155` | kit `combo` ↔ `CinematicAutoFrameSettleMode` `S32` | none |
-| `reframe_settle` / `auto_frame_settle_seconds` (Settle time) | `slider` `indra/newview/skins/default/xui/en/panel_cinecam_frame.xml:171` | kit `slider` ↔ `CinematicAutoFrameSettleSeconds` `F32`; `ALFrameOrbitKitAdapter` preserves/calls `?::?()` (`indra/newview/llcinematiccamera.cpp:92`) | none |
+| `reframe_settle` / `auto_frame_settle_seconds` (Settle time) | `slider` `indra/newview/skins/default/xui/en/panel_cinecam_frame.xml:171` | kit `slider` ↔ `CinematicAutoFrameSettleSeconds` `F32` | none |
 | `reframe_settle` / `auto_frame_settle_curve` (Curve) | `combo_box` `indra/newview/skins/default/xui/en/panel_cinecam_frame.xml:197` | kit `combo` ↔ `CinematicAutoFrameSettleCurve` `S32` | none |
 | `reframe_settle` / `auto_frame_settle_max_ratio` (Max ratio) | `spinner` `indra/newview/skins/default/xui/en/panel_cinecam_frame.xml:183` | kit `number` ↔ `CinematicAutoFrameSettleMaxRatio` `F32` | none |
 | `reframe_settle` / `SettleFeather` (Feather) | `slider` `indra/newview/skins/default/xui/en/panel_cinecam_frame.xml:277` | kit `slider` ↔ `CinematicAutoFrameSettleFeather` `F32` | none |
-| `reframe_settle` / `auto_frame_settle_bezier_x1` (X1) | `spinner` `indra/newview/skins/default/xui/en/panel_cinecam_frame.xml:244` | kit `number` ↔ `CinematicAutoFrameSettleBezierX1` `F32`; `ALFrameOrbitKitAdapter` preserves/calls `?::?()` (`indra/newview/llcinematiccamera.cpp:100`) | none |
-| `reframe_settle` / `auto_frame_settle_bezier_y1` (Y1) | `spinner` `indra/newview/skins/default/xui/en/panel_cinecam_frame.xml:252` | kit `number` ↔ `CinematicAutoFrameSettleBezierY1` `F32`; `ALFrameOrbitKitAdapter` preserves/calls `?::?()` (`indra/newview/llcinematiccamera.cpp:101`) | none |
-| `reframe_settle` / `auto_frame_settle_bezier_x2` (X2) | `spinner` `indra/newview/skins/default/xui/en/panel_cinecam_frame.xml:260` | kit `number` ↔ `CinematicAutoFrameSettleBezierX2` `F32`; `ALFrameOrbitKitAdapter` preserves/calls `?::?()` (`indra/newview/llcinematiccamera.cpp:102`) | none |
-| `reframe_settle` / `auto_frame_settle_bezier_y2` (Y2) | `spinner` `indra/newview/skins/default/xui/en/panel_cinecam_frame.xml:268` | kit `number` ↔ `CinematicAutoFrameSettleBezierY2` `F32`; `ALFrameOrbitKitAdapter` preserves/calls `?::?()` (`indra/newview/llcinematiccamera.cpp:103`) | none |
-| `flycam_orbit` / `CinematicCamJoint` (Anchor joint) | `combo_box` `indra/newview/skins/default/xui/en/panel_cinecam_params.xml:343`, `combo_box` `indra/newview/skins/default/xui/en/panel_flycam_orbit.xml:48` | kit `combo` ↔ `CinematicCamJoint` `String`; `ALFrameOrbitKitAdapter` preserves/calls `?::?()` (`indra/newview/alpanelcinecamparams.cpp:132`), `LLCinematicCamera::resolveAnchor()` (`indra/newview/llcinematiccamera.cpp:756`), `LLCinematicCamera::patternBoneLock()` (`indra/newview/llcinematiccamera.cpp:786`) | none |
-| `flycam_orbit` / `CinematicCamUseSelected` (Use selected) | `check_box` `indra/newview/skins/default/xui/en/panel_cinecam_params.xml:99`, `check_box` `indra/newview/skins/default/xui/en/panel_flycam_orbit.xml:75` | kit `toggle` ↔ `CinematicCamUseSelected` `Boolean`; `ALFrameOrbitKitAdapter` preserves/calls `?::?()` (`indra/newview/alpanelcinecamparams.cpp:283`), `?::?()` (`indra/newview/llcinematiccamera.cpp:698`), `LLFloaterDirector::refreshStatusStrip()` (`indra/newview/llfloaterdirector.cpp:3567`) | page `shot_tab` |
-| `flycam_orbit` / `FlycamOrbitLevel` (Level horizon) | `check_box` `indra/newview/skins/default/xui/en/panel_flycam_orbit.xml:87` | kit `toggle` ↔ `FlycamOrbitLevel` `Boolean`; `ALFrameOrbitKitAdapter` preserves/calls `?::?()` (`indra/newview/llfloaterdirector.cpp:1102`), `LLViewerJoystick::moveFlycam()` (`indra/newview/llviewerjoystick.cpp:2276`) | none |
-| `flycam_orbit` / `FlycamOrbitZoom` (Orbit zoom) | `slider` `indra/newview/skins/default/xui/en/panel_flycam_orbit.xml:157` | kit `slider` ↔ `FlycamOrbitZoom` `F32`; `ALFrameOrbitKitAdapter` preserves/calls `?::?()` (`indra/newview/llfloaterdirector.cpp:1107`), `LLViewerJoystick::moveFlycam()` (`indra/newview/llviewerjoystick.cpp:2280`) | none |
-| `flycam_orbit` / `FlycamOrbitMaxRadius` (Max radius) | `spinner` `indra/newview/skins/default/xui/en/panel_flycam_orbit.xml:121` | kit `number` ↔ `FlycamOrbitMaxRadius` `F32`; `ALFrameOrbitKitAdapter` preserves/calls `?::?()` (`indra/newview/llfloaterdirector.cpp:1104`), `LLViewerJoystick::moveFlycam()` (`indra/newview/llviewerjoystick.cpp:2278`) | none |
-| `flycam_orbit` / `FlycamOrbitSmoothing` (Smoothing) | `slider` `indra/newview/skins/default/xui/en/panel_flycam_orbit.xml:139` | kit `slider` ↔ `FlycamOrbitSmoothing` `F32`; `ALFrameOrbitKitAdapter` preserves/calls `?::?()` (`indra/newview/llfloaterdirector.cpp:1108`), `LLViewerJoystick::moveFlycam()` (`indra/newview/llviewerjoystick.cpp:2279`) | none |
-| `flycam_orbit` / `FlycamOrbitOffsetUp` (Focus up) | `spinner` `indra/newview/skins/default/xui/en/panel_flycam_orbit.xml:174` | kit `number` ↔ `FlycamOrbitOffsetUp` `F32`; `ALFrameOrbitKitAdapter` preserves/calls `?::?()` (`indra/newview/llfloaterdirector.cpp:1105`), `LLViewerJoystick::moveFlycam()` (`indra/newview/llviewerjoystick.cpp:2281`) | none |
-| `flycam_orbit` / `FlycamOrbitMinRadius` (Min radius) | `spinner` `indra/newview/skins/default/xui/en/panel_flycam_orbit.xml:104` | kit `number` ↔ `FlycamOrbitMinRadius` `F32`; `ALFrameOrbitKitAdapter` preserves/calls `?::?()` (`indra/newview/llfloaterdirector.cpp:1103`), `LLViewerJoystick::moveFlycam()` (`indra/newview/llviewerjoystick.cpp:2277`) | none |
-| `flycam_orbit` / `FlycamOrbitOffsetLeft` (Focus left) | `spinner` `indra/newview/skins/default/xui/en/panel_flycam_orbit.xml:191` | kit `number` ↔ `FlycamOrbitOffsetLeft` `F32`; `ALFrameOrbitKitAdapter` preserves/calls `?::?()` (`indra/newview/llfloaterdirector.cpp:1106`), `LLViewerJoystick::moveFlycam()` (`indra/newview/llviewerjoystick.cpp:2282`) | none |
+| `reframe_settle` / `auto_frame_settle_bezier_x1` (X1) | `spinner` `indra/newview/skins/default/xui/en/panel_cinecam_frame.xml:244` | kit `number` ↔ `CinematicAutoFrameSettleBezierX1` `F32` | none |
+| `reframe_settle` / `auto_frame_settle_bezier_y1` (Y1) | `spinner` `indra/newview/skins/default/xui/en/panel_cinecam_frame.xml:252` | kit `number` ↔ `CinematicAutoFrameSettleBezierY1` `F32` | none |
+| `reframe_settle` / `auto_frame_settle_bezier_x2` (X2) | `spinner` `indra/newview/skins/default/xui/en/panel_cinecam_frame.xml:260` | kit `number` ↔ `CinematicAutoFrameSettleBezierX2` `F32` | none |
+| `reframe_settle` / `auto_frame_settle_bezier_y2` (Y2) | `spinner` `indra/newview/skins/default/xui/en/panel_cinecam_frame.xml:268` | kit `number` ↔ `CinematicAutoFrameSettleBezierY2` `F32` | none |
+| `flycam_orbit` / `CinematicCamJoint` (Anchor joint) | `combo_box` `indra/newview/skins/default/xui/en/panel_cinecam_params.xml:343`, `combo_box` `indra/newview/skins/default/xui/en/panel_flycam_orbit.xml:48` | kit `combo` ↔ `CinematicCamJoint` `String` | page `shot_tab` |
+| `flycam_orbit` / `CinematicCamUseSelected` (Use selected) | `check_box` `indra/newview/skins/default/xui/en/panel_cinecam_params.xml:99`, `check_box` `indra/newview/skins/default/xui/en/panel_flycam_orbit.xml:75` | kit `toggle` ↔ `CinematicCamUseSelected` `Boolean` | page `shot_tab` |
+| `flycam_orbit` / `FlycamOrbitLevel` (Level horizon) | `check_box` `indra/newview/skins/default/xui/en/panel_flycam_orbit.xml:87` | kit `toggle` ↔ `FlycamOrbitLevel` `Boolean` | none |
+| `flycam_orbit` / `FlycamOrbitZoom` (Orbit zoom) | `slider` `indra/newview/skins/default/xui/en/panel_flycam_orbit.xml:157` | kit `slider` ↔ `FlycamOrbitZoom` `F32` | none |
+| `flycam_orbit` / `FlycamOrbitMaxRadius` (Max radius) | `spinner` `indra/newview/skins/default/xui/en/panel_flycam_orbit.xml:121` | kit `number` ↔ `FlycamOrbitMaxRadius` `F32` | none |
+| `flycam_orbit` / `FlycamOrbitSmoothing` (Smoothing) | `slider` `indra/newview/skins/default/xui/en/panel_flycam_orbit.xml:139` | kit `slider` ↔ `FlycamOrbitSmoothing` `F32` | none |
+| `flycam_orbit` / `FlycamOrbitOffsetUp` (Focus up) | `spinner` `indra/newview/skins/default/xui/en/panel_flycam_orbit.xml:174` | kit `number` ↔ `FlycamOrbitOffsetUp` `F32` | none |
+| `flycam_orbit` / `FlycamOrbitMinRadius` (Min radius) | `spinner` `indra/newview/skins/default/xui/en/panel_flycam_orbit.xml:104` | kit `number` ↔ `FlycamOrbitMinRadius` `F32` | none |
+| `flycam_orbit` / `FlycamOrbitOffsetLeft` (Focus left) | `spinner` `indra/newview/skins/default/xui/en/panel_flycam_orbit.xml:191` | kit `number` ↔ `FlycamOrbitOffsetLeft` `F32` | none |
 | `flycam_orbit` / `anchor_hint` (Anchor) | `text` `indra/newview/skins/default/xui/en/panel_flycam_orbit.xml:37` | kit readout ← approved static copy; no runtime writer | none |
 
 ## Adapter extraction
 
 | Existing function | Extraction contract |
 |---|---|
-| `?::?()` — `indra/newview/alpanelcinecamparams.cpp:132, 283` | Move model-facing work into `ALFrameOrbitKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
-| `?::?()` — `indra/newview/llcinematiccamera.cpp:92, 100, 101, 102, 103, 698` | Move model-facing work into `ALFrameOrbitKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
-| `LLCinematicCamera::patternBoneLock()` — `indra/newview/llcinematiccamera.cpp:786` | Move model-facing work into `ALFrameOrbitKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
-| `LLCinematicCamera::resolveAnchor()` — `indra/newview/llcinematiccamera.cpp:756` | Move model-facing work into `ALFrameOrbitKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
-| `?::?()` — `indra/newview/llfloaterdirector.cpp:1102, 1103, 1104, 1105, 1106, 1107, 1108` | Move model-facing work into `ALFrameOrbitKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
-| `LLFloaterDirector::refreshStatusStrip()` — `indra/newview/llfloaterdirector.cpp:3567` | Move model-facing work into `ALFrameOrbitKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
-| `LLViewerJoystick::moveFlycam()` — `indra/newview/llviewerjoystick.cpp:2276, 2277, 2278, 2279, 2280, 2281, 2282` | Move model-facing work into `ALFrameOrbitKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
+| `LLCinematicCamera::requestAutoReframe()` — `indra/newview/alpanelcinecamparams.cpp:107` | Move model-facing work into `ALFrameOrbitKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
 
 ## Live state and refresh
 
@@ -166,14 +160,21 @@ Manifest size: **79 states**, hard cap 256, page runtime budget 2 minutes. Each 
 3. Run the bounded state manifest at 1160×720, 850×560, 1141×720, and 915×720. Non-Director owners (Lightbox, cue/Diopter/Snapshot floaters, and shared panels) are mandatory parity oracles even when no v1 Director leaf embeds them.
 4. Review-diff every controller extraction and prove the v1 forwarding call preserves callbacks, owner tokens, selection, history barriers, and visibility gates.
 
+## Ambiguous same-name candidates (never auto-bound)
+
+None.
+
+## Rejected out-of-scope same-name candidates
+
+14 candidates were rejected by the XUI-owner/class scope; exact records and reasons are in `page_sources.json`.
+
 ## New widget required
 
-None. Every approved visual kind is either a kit primitive or an existing XUI control. Missing action/model bindings below are USER DECISIONS, not permission to invent a visual class.
+None. Every approved visual kind is either a kit primitive or an existing XUI control. An unresolved binding is not permission to invent a visual class.
 
-## Unresolved and USER DECISION items
+## Unresolved and pending-decision items
 
-- `auto_frame_resolve` (Re-solve now): no C++ reference or setting binding. **USER DECISION required.**
-- `anchor_hint` (Anchor): no C++ reference or setting binding.
+None in the current evidence index.
 
 ## Risks
 

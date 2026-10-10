@@ -19,23 +19,23 @@ Use the existing XUI control types as ordinary measured kit rows. No new canvas,
 
 | Card / row | Existing control evidence | Required binding | Other writable homes |
 |---|---|---|---|
-| `bloom` / `set_RenderBloomHDR` (HDR bloom) | none | kit `toggle` ↔ `RenderBloomHDR` `Boolean` | none |
-| `bloom` / `set_RenderBloomStrength` (Strength) | none | kit `slider` ↔ `RenderBloomStrength` `F32` | page `exposure_tab`, `indra/newview/skins/default/xui/en/panel_exposure_hub.xml:71` `exp_bloom_strength` |
-| `bloom` / `set_RenderBloomThreshold` (Threshold) | none | kit `slider` ↔ `RenderBloomThreshold` `F32` | page `exposure_tab`, `indra/newview/skins/default/xui/en/panel_exposure_hub.xml:73` `exp_bloom_threshold` |
-| `bloom` / `set_RenderBloomKnee` (Knee) | none | kit `slider` ↔ `RenderBloomKnee` `F32` | none |
-| `bloom` / `set_RenderBloomHalation` (Halation) | none | kit `toggle` ↔ `RenderBloomHalation` `Boolean` | none |
-| `bloom` / `set_RenderBloomHalationStrength` (Halation amt) | none | kit `slider` ↔ `RenderBloomHalationStrength` `F32` | none |
-| `bloom` / `set_RenderBloomHalationTint` (Halation tint) | none | kit `color` ↔ `RenderBloomHalationTint` `Color3` | none |
-| `bloom` / `set_RenderBloomScatter` (Scatter) | none | kit `slider` ↔ `RenderBloomScatter` `F32` | none |
-| `bloom` / `set_RenderBloomMipCount` (Mip levels) | none | kit `number` ↔ `RenderBloomMipCount` `S32` | `indra/newview/skins/default/xui/en/floater_preferences_graphics_advanced.xml:738` `RenderPostProcess` |
-| `bloom` / `set_RenderBloomResolutionScale` (Resolution) | none | kit `combo` ↔ `RenderBloomResolutionScale` `S32` | none |
-| `bloom` / `set_RenderBloomAlphaGlowBoost` (Glow boost) | none | kit `number` ↔ `RenderBloomAlphaGlowBoost` `F32` | none |
-| `prim_glow` / `set_RenderGlow` (Use glow) | none | kit `toggle` ↔ `RenderGlow` `Boolean` | none |
+| `bloom` / `set_RenderBloomHDR` (HDR bloom) | none | kit `toggle` ↔ `RenderBloomHDR` `Boolean`. Contract note: kit-native setting row; synthetic data name does not require v1 XUI | none |
+| `bloom` / `set_RenderBloomStrength` (Strength) | none | kit `slider` ↔ `RenderBloomStrength` `F32`. Contract note: kit-native setting row; synthetic data name does not require v1 XUI | page `exposure_tab`, `indra/newview/skins/default/xui/en/panel_exposure_hub.xml:71` `exp_bloom_strength` |
+| `bloom` / `set_RenderBloomThreshold` (Threshold) | none | kit `slider` ↔ `RenderBloomThreshold` `F32`. Contract note: kit-native setting row; synthetic data name does not require v1 XUI | page `exposure_tab`, `indra/newview/skins/default/xui/en/panel_exposure_hub.xml:73` `exp_bloom_threshold` |
+| `bloom` / `set_RenderBloomKnee` (Knee) | none | kit `slider` ↔ `RenderBloomKnee` `F32`. Contract note: kit-native setting row; synthetic data name does not require v1 XUI | none |
+| `bloom` / `set_RenderBloomHalation` (Halation) | none | kit `toggle` ↔ `RenderBloomHalation` `Boolean`. Contract note: kit-native setting row; synthetic data name does not require v1 XUI | none |
+| `bloom` / `set_RenderBloomHalationStrength` (Halation amt) | none | kit `slider` ↔ `RenderBloomHalationStrength` `F32`. Contract note: kit-native setting row; synthetic data name does not require v1 XUI | none |
+| `bloom` / `set_RenderBloomHalationTint` (Halation tint) | none | kit `color` ↔ `RenderBloomHalationTint` `Color3`. Contract note: kit-native setting row; synthetic data name does not require v1 XUI | none |
+| `bloom` / `set_RenderBloomScatter` (Scatter) | none | kit `slider` ↔ `RenderBloomScatter` `F32`. Contract note: kit-native setting row; synthetic data name does not require v1 XUI | none |
+| `bloom` / `set_RenderBloomMipCount` (Mip levels) | none | kit `number` ↔ `RenderBloomMipCount` `S32`. Contract note: kit-native setting row; synthetic data name does not require v1 XUI | `indra/newview/skins/default/xui/en/floater_preferences_graphics_advanced.xml:738` `RenderPostProcess` |
+| `bloom` / `set_RenderBloomResolutionScale` (Resolution) | none | kit `combo` ↔ `RenderBloomResolutionScale` `S32`. Contract note: kit-native setting row; synthetic data name does not require v1 XUI | none |
+| `bloom` / `set_RenderBloomAlphaGlowBoost` (Glow boost) | none | kit `number` ↔ `RenderBloomAlphaGlowBoost` `F32`. Contract note: kit-native setting row; synthetic data name does not require v1 XUI | none |
+| `prim_glow` / `set_RenderGlow` (Use glow) | none | kit `toggle` ↔ `RenderGlow` `Boolean`. Contract note: kit-native setting row; synthetic data name does not require v1 XUI | none |
 | `prim_glow` / `glow_strength_slider` (Strength) | `slider_bar` `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:4189` | kit `slider` ↔ `RenderGlowStrength` `F32` | `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:4205` `glow_strength_spinner` |
 | `prim_glow` / `glow_width_slider` (Softness) | `slider_bar` `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:4246` | kit `slider` ↔ `RenderGlowWidth` `F32` | `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:4262` `glow_width_spinner` |
 | `prim_glow` / `glow_iteration_slider` (Iterations) | `slider_bar` `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:4075` | kit `slider` ↔ `RenderGlowIterations` `S32` | `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:4091` `glow_iteration_spinner` |
 | `prim_glow` / `glow_resPow_slider` (Resolution) | `slider_bar` `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:4132` | kit `slider` ↔ `RenderGlowResolutionPow` `S32` | `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:4148` `glow_resPow_spinner`, `indra/newview/skins/default/xui/en/floater_preferences_graphics_advanced.xml:85` `GlowResolution` |
-| `adv_bloom` / `open_lightbox_glow` (Lightbox ›) | none | **USER DECISION:** register an explicit `ALBloomGlowKitAdapter` command; no matching setting or C++ literal was found | none |
+| `adv_bloom` / `open_lightbox_glow` (Lightbox ›) | none | kit-native action `floater:lightbox/glow_settings`; no duplicate widget is required | none |
 
 ## Adapter extraction
 
@@ -79,25 +79,21 @@ Manifest size: **17 states**, hard cap 256, page runtime budget 2 minutes. Each 
 3. Run the bounded state manifest at 1160×720, 850×560, 1141×720, and 915×720. Non-Director owners (Lightbox, cue/Diopter/Snapshot floaters, and shared panels) are mandatory parity oracles even when no v1 Director leaf embeds them.
 4. Review-diff every controller extraction and prove the v1 forwarding call preserves callbacks, owner tokens, selection, history barriers, and visibility gates.
 
+## Ambiguous same-name candidates (never auto-bound)
+
+None.
+
+## Rejected out-of-scope same-name candidates
+
+3 candidates were rejected by the XUI-owner/class scope; exact records and reasons are in `page_sources.json`.
+
 ## New widget required
 
-None. Every approved visual kind is either a kit primitive or an existing XUI control. Missing action/model bindings below are USER DECISIONS, not permission to invent a visual class.
+None. Every approved visual kind is either a kit primitive or an existing XUI control. An unresolved binding is not permission to invent a visual class.
 
-## Unresolved and USER DECISION items
+## Unresolved and pending-decision items
 
-- `set_RenderBloomHDR` (HDR bloom): widget not found in XUI.
-- `set_RenderBloomStrength` (Strength): widget not found in XUI.
-- `set_RenderBloomThreshold` (Threshold): widget not found in XUI.
-- `set_RenderBloomKnee` (Knee): widget not found in XUI.
-- `set_RenderBloomHalation` (Halation): widget not found in XUI.
-- `set_RenderBloomHalationStrength` (Halation amt): widget not found in XUI.
-- `set_RenderBloomHalationTint` (Halation tint): widget not found in XUI.
-- `set_RenderBloomScatter` (Scatter): widget not found in XUI.
-- `set_RenderBloomMipCount` (Mip levels): widget not found in XUI.
-- `set_RenderBloomResolutionScale` (Resolution): widget not found in XUI.
-- `set_RenderBloomAlphaGlowBoost` (Glow boost): widget not found in XUI.
-- `set_RenderGlow` (Use glow): widget not found in XUI.
-- `open_lightbox_glow` (Lightbox ›): widget not found in XUI; no C++ reference or setting binding. **USER DECISION required.**
+None in the current evidence index.
 
 ## Risks
 

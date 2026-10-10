@@ -20,7 +20,7 @@ Use the existing XUI control types as ordinary measured kit rows. No new canvas,
 | Card / row | Existing control evidence | Required binding | Other writable homes |
 |---|---|---|---|
 | `shadow_type` / `shadowtype_combo` (Shadows) | `combo_box` `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:2483` | kit `combo` ↔ `RenderShadowDetail` `S32` | `indra/newview/skins/default/xui/en/floater_preferences_graphics_advanced.xml:834` `ShadowDetail`, `indra/newview/skins/default/xui/en/panel_performance_preferences.xml:309` `ShadowDetail` |
-| `shadow_type` / `set_RenderDeferredSSAO` (SSAO) | none | kit `toggle` ↔ `RenderDeferredSSAO` `Boolean` | `indra/newview/skins/default/xui/en/floater_preferences_graphics_advanced.xml:768` `UseSSAO` |
+| `shadow_type` / `set_RenderDeferredSSAO` (SSAO) | none | kit `toggle` ↔ `RenderDeferredSSAO` `Boolean`. Contract note: kit-native setting row; synthetic data name does not require v1 XUI | `indra/newview/skins/default/xui/en/floater_preferences_graphics_advanced.xml:768` `UseSSAO` |
 | `sharp` / `sd_near_split_slider` (Sharp range m) | `slider` `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:3386` | kit `slider` ↔ `RenderShadowNearSplitMeters` `F32` | none |
 | `sharp` / `sd_split_blend_slider` (Cascade blend) | `slider` `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:3426` | kit `slider` ↔ `RenderShadowSplitBlend` `F32` | none |
 | `soft` / `sd_soften_mode_combo` (Softening) | `combo_box` `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:3263` | kit `combo` ↔ `RenderShadowSoftenMode` `S32` | none |
@@ -39,7 +39,7 @@ Use the existing XUI control types as ordinary measured kit rows. No new canvas,
 | `projectors` / `sd_alpha_cap_combo` (Cutout range) | `combo_box` `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:3947` | kit `combo` ↔ `RenderShadowAlphaNearCascades` `S32` | none |
 | `projectors` / `sd_alpha_mode_combo` (Alpha policy) | `combo_box` `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:3892` | kit `combo` ↔ `RenderShadowAlphaMode` `S32` | none |
 | `projectors` / `sd_alpha_cutoff` (Alpha cutoff) | `spinner` `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:3926` | kit `number` ↔ `RenderShadowAlphaCutoff` `F32` | none |
-| `projectors` / `shadows_soft_projector_link` (Soft shadows) | none | **USER DECISION:** register an explicit `ALShadowProbeKitAdapter` command; no matching setting or C++ literal was found | none |
+| `projectors` / `shadows_soft_projector_link` (Soft shadows) | none | kit-native action `link_to:world_group/atmosphere_tab`; no duplicate widget is required | none |
 | `tune` / `sd_units_mode_combo` (Units) | `combo_box` `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:3473` | kit `combo` ↔ `RenderShadowUnitsMode` `S32` | none |
 | `tune` / `sd_units_scope_combo` (Units scope) | `combo_box` `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:3664` | kit `combo` ↔ `RenderShadowUnitsScope` `S32` | none |
 | `tune` / `sd_bias_mm_slider` (Bias mm) | `slider` `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:3507` | kit `slider` ↔ `RenderShadowBiasMM` `F32` | none |
@@ -57,7 +57,7 @@ Use the existing XUI control types as ordinary measured kit rows. No new canvas,
 | `tune` / `bd_shadow_res_proj` (Projector res) | `spinner` `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:4032` | kit `number` ↔ `BDMergeProjectorShadowResolution` `U32` | none |
 | `tune` / `shadow_blur_slider` (Blur size) | `slider_bar` `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:2785` | kit `slider` ↔ `RenderShadowBlurSize` `F32` | `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:2800` `shadow_blur_spinner` |
 | `tune` / `shadow_blurdist_slider` (Blur distance) | `slider_bar` `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:2838` | kit `slider` ↔ `RenderShadowBlurDistFactor` `F32` | `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:2853` `shadow_blurdist_spinner` |
-| `tune` / `open_lightbox_shadows` (Lightbox ›) | none | **USER DECISION:** register an explicit `ALShadowProbeKitAdapter` command; no matching setting or C++ literal was found | none |
+| `tune` / `open_lightbox_shadows` (Lightbox ›) | none | kit-native action `floater:lightbox/shadow_settings`; no duplicate widget is required | none |
 
 ## Adapter extraction
 
@@ -125,15 +125,21 @@ Manifest size: **41 states**, hard cap 256, page runtime budget 2 minutes. Each 
 3. Run the bounded state manifest at 1160×720, 850×560, 1141×720, and 915×720. Non-Director owners (Lightbox, cue/Diopter/Snapshot floaters, and shared panels) are mandatory parity oracles even when no v1 Director leaf embeds them.
 4. Review-diff every controller extraction and prove the v1 forwarding call preserves callbacks, owner tokens, selection, history barriers, and visibility gates.
 
+## Ambiguous same-name candidates (never auto-bound)
+
+None.
+
+## Rejected out-of-scope same-name candidates
+
+1 candidates were rejected by the XUI-owner/class scope; exact records and reasons are in `page_sources.json`.
+
 ## New widget required
 
-None. Every approved visual kind is either a kit primitive or an existing XUI control. Missing action/model bindings below are USER DECISIONS, not permission to invent a visual class.
+None. Every approved visual kind is either a kit primitive or an existing XUI control. An unresolved binding is not permission to invent a visual class.
 
-## Unresolved and USER DECISION items
+## Unresolved and pending-decision items
 
-- `set_RenderDeferredSSAO` (SSAO): widget not found in XUI.
-- `shadows_soft_projector_link` (Soft shadows): widget not found in XUI; no C++ reference or setting binding. **USER DECISION required.**
-- `open_lightbox_shadows` (Lightbox ›): widget not found in XUI; no C++ reference or setting binding. **USER DECISION required.**
+None in the current evidence index.
 
 ## Risks
 

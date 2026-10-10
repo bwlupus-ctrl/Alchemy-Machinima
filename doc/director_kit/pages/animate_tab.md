@@ -7,7 +7,7 @@ Computed class: **code-driven** (2/24 setting-bound rows; 20 C++-referenced rows
 
 - `floater_director` / `floater` at `indra/newview/skins/default/xui/en/floater_director.xml:15` (19 matching rows).
 - `panel_anim_preview` / `panel` at `indra/newview/skins/default/xui/en/panel_anim_preview.xml:17` (5 matching rows).
-- Referencing classes: `LLFloaterDirector` (16), `ALPanelAnimPreview` (4).
+- Referencing classes: `LLFloaterDirector` (29), `ALPanelAnimPreview` (8), `LLFloaterReg` (1).
 
 Name collisions in secondary XUI files are evidence candidates, not automatic ownership. The implementation must retain only occurrences whose root and class agree with the row's behavior.
 
@@ -21,37 +21,50 @@ Use the existing XUI control types as ordinary measured kit rows. No new canvas,
 
 | Card / row | Existing control evidence | Required binding | Other writable homes |
 |---|---|---|---|
-| `selected_member` / `anim_list` (Playing now) | `scroll_list` `indra/newview/skins/default/xui/en/floater_director.xml:622` | `ALAnimateKitAdapter` command/model binding → `LLFloaterDirector::postBuild()` (`indra/newview/llfloaterdirector.cpp:512`) | none |
-| `selected_member` / `btn_anim_copy` (Copy UUID) | `button` `indra/newview/skins/default/xui/en/floater_director.xml:661` | `ALAnimateKitAdapter` command/model binding → `LLFloaterDirector::postBuild()` (`indra/newview/llfloaterdirector.cpp:517`) | none |
-| `selected_member` / `btn_anim_setloco` (Set role) | `button` `indra/newview/skins/default/xui/en/floater_director.xml:670` | `ALAnimateKitAdapter` command/model binding → `LLFloaterDirector::postBuild()` (`indra/newview/llfloaterdirector.cpp:518`) | none |
-| `selected_member` / `btn_anim_play` (Play local) | `button` `indra/newview/skins/default/xui/en/floater_director.xml:679` | `ALAnimateKitAdapter` command/model binding → `LLFloaterDirector::postBuild()` (`indra/newview/llfloaterdirector.cpp:519`) | none |
-| `selected_member` / `btn_anim_stop` (Stop local) | `button` `indra/newview/skins/default/xui/en/floater_director.xml:688` | `ALAnimateKitAdapter` command/model binding → `LLFloaterDirector::postBuild()` (`indra/newview/llfloaterdirector.cpp:520`) | none |
-| `selected_member` / `anim_hint` (Hint) | `text` `indra/newview/skins/default/xui/en/floater_director.xml:648` | `ALAnimateKitAdapter` command/model binding → `LLFloaterDirector::postBuild()` (`indra/newview/llfloaterdirector.cpp:513`) | none |
+| `selected_member` / `anim_list` (Playing now) | `scroll_list` `indra/newview/skins/default/xui/en/floater_director.xml:622` | `ALAnimateKitAdapter` command/model binding → wired in `LLFloaterDirector::postBuild()`; behavior `LLFloaterDirector::refreshAnimateTab()` (`indra/newview/llfloaterdirector.cpp:2992`) | none |
+| `selected_member` / `btn_anim_copy` (Copy UUID) | `button` `indra/newview/skins/default/xui/en/floater_director.xml:661` | `ALAnimateKitAdapter` command/model binding → wired in `LLFloaterDirector::postBuild()`; behavior `LLFloaterDirector::onAnimCopyUUID()` (`indra/newview/llfloaterdirector.cpp:532`) | none |
+| `selected_member` / `btn_anim_setloco` (Set role) | `button` `indra/newview/skins/default/xui/en/floater_director.xml:670` | `ALAnimateKitAdapter` command/model binding → wired in `LLFloaterDirector::postBuild()`; behavior `LLFloaterDirector::onAnimSetLoco()` (`indra/newview/llfloaterdirector.cpp:533`) | none |
+| `selected_member` / `btn_anim_play` (Play local) | `button` `indra/newview/skins/default/xui/en/floater_director.xml:679` | `ALAnimateKitAdapter` command/model binding → wired in `LLFloaterDirector::postBuild()`; behavior `LLFloaterDirector::onAnimPlayLocal()` (`indra/newview/llfloaterdirector.cpp:534`) | none |
+| `selected_member` / `btn_anim_stop` (Stop local) | `button` `indra/newview/skins/default/xui/en/floater_director.xml:688` | `ALAnimateKitAdapter` command/model binding → wired in `LLFloaterDirector::postBuild()`; behavior `LLFloaterDirector::onAnimPlayLocal()` (`indra/newview/llfloaterdirector.cpp:535`) | none |
+| `selected_member` / `anim_hint` (Hint) | `text` `indra/newview/skins/default/xui/en/floater_director.xml:648` | kit readout ← approved static copy; no runtime writer | none |
 | `paste_uuid` / `paste_lbl` (Paste UUID) | `text` `indra/newview/skins/default/xui/en/floater_director.xml:696` | kit readout ← approved static copy; no runtime writer | none |
-| `paste_uuid` / `paste_uuid_editor` (Asset UUID) | `line_editor` `indra/newview/skins/default/xui/en/floater_director.xml:707` | `ALAnimateKitAdapter` command/model binding → `LLFloaterDirector::postBuild()` (`indra/newview/llfloaterdirector.cpp:521`) | none |
-| `paste_uuid` / `btn_paste_play` (Play local) | `button` `indra/newview/skins/default/xui/en/floater_director.xml:717` | `ALAnimateKitAdapter` command/model binding → `LLFloaterDirector::postBuild()` (`indra/newview/llfloaterdirector.cpp:522`) | none |
-| `paste_uuid` / `btn_paste_stop` (Stop local) | `button` `indra/newview/skins/default/xui/en/floater_director.xml:726` | `ALAnimateKitAdapter` command/model binding → `LLFloaterDirector::postBuild()` (`indra/newview/llfloaterdirector.cpp:523`) | none |
-| `paste_uuid` / `btn_paste_setloco` (Set role) | `button` `indra/newview/skins/default/xui/en/floater_director.xml:735` | `ALAnimateKitAdapter` command/model binding → `LLFloaterDirector::postBuild()` (`indra/newview/llfloaterdirector.cpp:524`) | none |
+| `paste_uuid` / `paste_uuid_editor` (Asset UUID) | `line_editor` `indra/newview/skins/default/xui/en/floater_director.xml:707` | `ALAnimateKitAdapter` command/model binding → wired in `LLFloaterDirector::postBuild()`; behavior `LLFloaterDirector::pasteAnimId()` (`indra/newview/llfloaterdirector.cpp:2705`) | none |
+| `paste_uuid` / `btn_paste_play` (Play local) | `button` `indra/newview/skins/default/xui/en/floater_director.xml:717` | `ALAnimateKitAdapter` command/model binding → wired in `LLFloaterDirector::postBuild()`; behavior `LLFloaterDirector::onPastePlayLocal()` (`indra/newview/llfloaterdirector.cpp:536`) | none |
+| `paste_uuid` / `btn_paste_stop` (Stop local) | `button` `indra/newview/skins/default/xui/en/floater_director.xml:726` | `ALAnimateKitAdapter` command/model binding → wired in `LLFloaterDirector::postBuild()`; behavior `LLFloaterDirector::onPastePlayLocal()` (`indra/newview/llfloaterdirector.cpp:537`) | none |
+| `paste_uuid` / `btn_paste_setloco` (Set role) | `button` `indra/newview/skins/default/xui/en/floater_director.xml:735` | `ALAnimateKitAdapter` command/model binding → wired in `LLFloaterDirector::postBuild()`; behavior `LLFloaterDirector::onPasteSetLoco()` (`indra/newview/llfloaterdirector.cpp:538`) | none |
 | `paste_uuid` / `play_local_priority_combo` (Priority) | `combo_box` `indra/newview/skins/default/xui/en/floater_director.xml:744` | kit `combo` ↔ `DirectorAnimPlayLocalPriority` `S32` | none |
-| `locomotion` / `locomotion_role_combo` (Role) | `combo_box` `indra/newview/skins/default/xui/en/floater_director.xml:770` | `ALAnimateKitAdapter` command/model binding → `LLFloaterDirector::postBuild()` (`indra/newview/llfloaterdirector.cpp:525`) | none |
-| `locomotion` / `locomotion_speed` (Travel m/s) | `spinner` `indra/newview/skins/default/xui/en/floater_director.xml:789` | `ALAnimateKitAdapter` command/model binding → `LLFloaterDirector::postBuild()` (`indra/newview/llfloaterdirector.cpp:526`) | none |
-| `locomotion` / `locomotion_phase` (Foot phase) | `spinner` `indra/newview/skins/default/xui/en/floater_director.xml:803` | `ALAnimateKitAdapter` command/model binding → `LLFloaterDirector::postBuild()` (`indra/newview/llfloaterdirector.cpp:527`) | none |
-| `locomotion` / `locomotion_allow_ao` (Allow AO) | `check_box` `indra/newview/skins/default/xui/en/floater_director.xml:813` | `ALAnimateKitAdapter` command/model binding → `LLFloaterDirector::postBuild()` (`indra/newview/llfloaterdirector.cpp:528`) | none |
-| `locomotion` / `btn_clear_loco` (Clear) | `button` `indra/newview/skins/default/xui/en/floater_director.xml:836` | `ALAnimateKitAdapter` command/model binding → `LLFloaterDirector::postBuild()` (`indra/newview/llfloaterdirector.cpp:531`) | none |
-| `locomotion` / `btn_open_animexp` (Open Explorer) | `button` `indra/newview/skins/default/xui/en/floater_director.xml:873` | `ALAnimateKitAdapter` command/model binding → `LLFloaterDirector::postBuild()` (`indra/newview/llfloaterdirector.cpp:548`) | none |
+| `locomotion` / `locomotion_role_combo` (Role) | `combo_box` `indra/newview/skins/default/xui/en/floater_director.xml:770` | `ALAnimateKitAdapter` command/model binding → wired in `LLFloaterDirector::postBuild()`; behavior `LLFloaterDirector::onLocomotionRoleChanged()` (`indra/newview/llfloaterdirector.cpp:540`) | none |
+| `locomotion` / `locomotion_speed` (Travel m/s) | `spinner` `indra/newview/skins/default/xui/en/floater_director.xml:789` | `ALAnimateKitAdapter` command/model binding → wired in `LLFloaterDirector::postBuild()`; behavior `LLFloaterDirector::onLocomotionMetadataCommit()` (`indra/newview/llfloaterdirector.cpp:2875`) | none |
+| `locomotion` / `locomotion_phase` (Foot phase) | `spinner` `indra/newview/skins/default/xui/en/floater_director.xml:803` | `ALAnimateKitAdapter` command/model binding → wired in `LLFloaterDirector::postBuild()`; behavior `LLFloaterDirector::onLocomotionMetadataCommit()` (`indra/newview/llfloaterdirector.cpp:2875`) | none |
+| `locomotion` / `locomotion_allow_ao` (Allow AO) | `check_box` `indra/newview/skins/default/xui/en/floater_director.xml:813` | `ALAnimateKitAdapter` command/model binding → wired in `LLFloaterDirector::postBuild()`; behavior `LLFloaterDirector::onLocomotionMetadataCommit()` (`indra/newview/llfloaterdirector.cpp:2875`) | none |
+| `locomotion` / `btn_clear_loco` (Clear) | `button` `indra/newview/skins/default/xui/en/floater_director.xml:836` | `ALAnimateKitAdapter` command/model binding → wired in `LLFloaterDirector::postBuild()`; behavior `LLFloaterDirector::onClickClearLoco()` (`indra/newview/llfloaterdirector.cpp:539`) | none |
+| `locomotion` / `btn_open_animexp` (Open Explorer) | `button` `indra/newview/skins/default/xui/en/floater_director.xml:873` | `ALAnimateKitAdapter` command/model binding → wired in `LLFloaterDirector::postBuild()`; behavior `LLFloaterReg::showInstance()` (`indra/newview/llfloaterdirector.cpp:548`) | none |
 | `locomotion` / `locomotion_editor_label` (Speed & phase) | `text` `indra/newview/skins/default/xui/en/floater_director.xml:760` | kit readout ← approved static copy; no runtime writer | none |
-| `anim_preview` / `animation_preview` (Preview) | `view_border` `indra/newview/skins/default/xui/en/panel_anim_preview.xml:26` | `ALAnimateKitAdapter` command/model binding → `ALPanelAnimPreview::postBuild()` (`indra/newview/alpanelanimpreview.cpp:56`) | none |
+| `anim_preview` / `animation_preview` (Preview) | `view_border` `indra/newview/skins/default/xui/en/panel_anim_preview.xml:26` | `ALAnimateKitAdapter` command/model binding → wired in `ALPanelAnimPreview::postBuild()`; behavior `ALPanelAnimPreview::previewAnim()` (`indra/newview/alpanelanimpreview.cpp:75`) | none |
 | `anim_preview` / `capture_all_check` (Capture all) | `check_box` `indra/newview/skins/default/xui/en/panel_anim_preview.xml:49` | kit `toggle` ↔ `AnimExplorerCaptureAll` `Boolean` | none |
-| `anim_preview` / `btn_anim_ex_stop` (Stop) | `button` `indra/newview/skins/default/xui/en/panel_anim_preview.xml:59` | `ALAnimateKitAdapter` command/model binding → `ALPanelAnimPreview::postBuild()` (`indra/newview/alpanelanimpreview.cpp:63`) | none |
-| `anim_preview` / `btn_anim_ex_revoke` (Stop+revoke) | `button` `indra/newview/skins/default/xui/en/panel_anim_preview.xml:68` | `ALAnimateKitAdapter` command/model binding → `ALPanelAnimPreview::postBuild()` (`indra/newview/alpanelanimpreview.cpp:64`) | none |
-| `anim_preview` / `btn_anim_ex_blacklist` (Blacklist) | `button` `indra/newview/skins/default/xui/en/panel_anim_preview.xml:77` | `ALAnimateKitAdapter` command/model binding → `ALPanelAnimPreview::postBuild()` (`indra/newview/alpanelanimpreview.cpp:65`) | none |
+| `anim_preview` / `btn_anim_ex_stop` (Stop) | `button` `indra/newview/skins/default/xui/en/panel_anim_preview.xml:59` | `ALAnimateKitAdapter` command/model binding → wired in `ALPanelAnimPreview::postBuild()`; behavior `ALPanelAnimPreview::onStop()` (`indra/newview/alpanelanimpreview.cpp:66`) | none |
+| `anim_preview` / `btn_anim_ex_revoke` (Stop+revoke) | `button` `indra/newview/skins/default/xui/en/panel_anim_preview.xml:68` | `ALAnimateKitAdapter` command/model binding → wired in `ALPanelAnimPreview::postBuild()`; behavior `ALPanelAnimPreview::onStopAndRevoke()` (`indra/newview/alpanelanimpreview.cpp:67`) | none |
+| `anim_preview` / `btn_anim_ex_blacklist` (Blacklist) | `button` `indra/newview/skins/default/xui/en/panel_anim_preview.xml:77` | `ALAnimateKitAdapter` command/model binding → wired in `ALPanelAnimPreview::postBuild()`; behavior `ALPanelAnimPreview::onBlacklist()` (`indra/newview/alpanelanimpreview.cpp:68`) | none |
 
 ## Adapter extraction
 
 | Existing function | Extraction contract |
 |---|---|
-| `ALPanelAnimPreview::postBuild()` — `indra/newview/alpanelanimpreview.cpp:56, 63, 64, 65` | Move model-facing work into `ALAnimateKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
-| `LLFloaterDirector::postBuild()` — `indra/newview/llfloaterdirector.cpp:512, 513, 517, 518, 519, 520, 521, 522, 523, 524, 525, 526, 527, 528, 531, 548` | Move model-facing work into `ALAnimateKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
+| `ALPanelAnimPreview::onBlacklist()` — `indra/newview/alpanelanimpreview.cpp:68` | Move model-facing work into `ALAnimateKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
+| `ALPanelAnimPreview::onStop()` — `indra/newview/alpanelanimpreview.cpp:66` | Move model-facing work into `ALAnimateKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
+| `ALPanelAnimPreview::onStopAndRevoke()` — `indra/newview/alpanelanimpreview.cpp:67` | Move model-facing work into `ALAnimateKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
+| `ALPanelAnimPreview::previewAnim()` — `indra/newview/alpanelanimpreview.cpp:75` | Move model-facing work into `ALAnimateKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
+| `LLFloaterDirector::onAnimCopyUUID()` — `indra/newview/llfloaterdirector.cpp:532` | Move model-facing work into `ALAnimateKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
+| `LLFloaterDirector::onAnimPlayLocal()` — `indra/newview/llfloaterdirector.cpp:534, 535` | Move model-facing work into `ALAnimateKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
+| `LLFloaterDirector::onAnimSetLoco()` — `indra/newview/llfloaterdirector.cpp:533` | Move model-facing work into `ALAnimateKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
+| `LLFloaterDirector::onClickClearLoco()` — `indra/newview/llfloaterdirector.cpp:539` | Move model-facing work into `ALAnimateKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
+| `LLFloaterDirector::onLocomotionMetadataCommit()` — `indra/newview/llfloaterdirector.cpp:2875` | Move model-facing work into `ALAnimateKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
+| `LLFloaterDirector::onLocomotionRoleChanged()` — `indra/newview/llfloaterdirector.cpp:540` | Move model-facing work into `ALAnimateKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
+| `LLFloaterDirector::onPastePlayLocal()` — `indra/newview/llfloaterdirector.cpp:536, 537` | Move model-facing work into `ALAnimateKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
+| `LLFloaterDirector::onPasteSetLoco()` — `indra/newview/llfloaterdirector.cpp:538` | Move model-facing work into `ALAnimateKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
+| `LLFloaterDirector::pasteAnimId()` — `indra/newview/llfloaterdirector.cpp:2705` | Move model-facing work into `ALAnimateKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
+| `LLFloaterDirector::refreshAnimateTab()` — `indra/newview/llfloaterdirector.cpp:2992` | Move model-facing work into `ALAnimateKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
+| `LLFloaterReg::showInstance()` — `indra/newview/llfloaterdirector.cpp:548` | Move model-facing work into `ALAnimateKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
 
 ## Live state and refresh
 
@@ -106,14 +119,21 @@ Manifest size: **32 states**, hard cap 256, page runtime budget 2 minutes. Each 
 3. Run the bounded state manifest at 1160×720, 850×560, 1141×720, and 915×720. Non-Director owners (Lightbox, cue/Diopter/Snapshot floaters, and shared panels) are mandatory parity oracles even when no v1 Director leaf embeds them.
 4. Review-diff every controller extraction and prove the v1 forwarding call preserves callbacks, owner tokens, selection, history barriers, and visibility gates.
 
+## Ambiguous same-name candidates (never auto-bound)
+
+None.
+
+## Rejected out-of-scope same-name candidates
+
+None.
+
 ## New widget required
 
-None. Every approved visual kind is either a kit primitive or an existing XUI control. Missing action/model bindings below are USER DECISIONS, not permission to invent a visual class.
+None. Every approved visual kind is either a kit primitive or an existing XUI control. An unresolved binding is not permission to invent a visual class.
 
-## Unresolved and USER DECISION items
+## Unresolved and pending-decision items
 
-- `paste_lbl` (Paste UUID): no C++ reference or setting binding.
-- `locomotion_editor_label` (Speed & phase): no C++ reference or setting binding.
+None in the current evidence index.
 
 ## Risks
 

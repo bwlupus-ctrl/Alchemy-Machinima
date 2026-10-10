@@ -6,7 +6,7 @@ Computed class: **code-driven** (68/74 setting-bound rows; 17 C++-referenced row
 ## Real owners
 
 - `floater_lightbox_settings` / `floater` at `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:8` (21 matching rows).
-- Referencing classes: `ALFloaterLightBox` (16).
+- Referencing classes: `ALFloaterLightBox` (16), `LLButton` (1).
 
 Name collisions in secondary XUI files are evidence candidates, not automatic ownership. The implementation must retain only occurrences whose root and class agree with the row's behavior.
 
@@ -22,86 +22,85 @@ Use the existing XUI control types as ordinary measured kit rows. No new canvas,
 |---|---|---|---|
 | `tonemap` / `tonemap_type_combo` (Tonemapper) | `combo_box` `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:314` | kit `combo` ↔ `AlchemyRenderTonemapType` `S32` | page `exposure_tab`, `indra/newview/skins/default/xui/en/floater_preferences_graphics_advanced.xml:1155` `TonemapType`, `indra/newview/skins/default/xui/en/panel_exposure_hub.xml:13` `exp_tonemap_type` |
 | `tonemap` / `exposure_slider` (Exposure) | `slider_bar` `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:418` | kit `slider` ↔ `RenderExposure` `F32` | page `exposure_tab`, `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:433` `exposure_spinner`, `indra/newview/skins/default/xui/en/floater_preferences_graphics_advanced.xml:1014` `RenderExposure`, `indra/newview/skins/default/xui/en/panel_exposure_hub.xml:9` `exp_exposure`, `indra/newview/skins/default/xui/en/panel_preferences_graphics1.xml:378` `RenderExposure` |
-| `tonemap` / `tm_saturation_slider` (Saturation) | `slider_bar` `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:459` | kit `slider` ↔ `AlchemyToneMapSaturation` `F32`; `ALImageLookKitAdapter` preserves/calls `ALFloaterLightBox::updateTonemapper()` (`indra/newview/alfloaterlightbox.cpp:1384`) | `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:473` `tm_saturation_spinner` |
-| `tonemap` / `tm_contrast_slider` (Contrast) | `slider_bar` `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:495` | kit `slider` ↔ `AlchemyToneMapContrast` `F32`; `ALImageLookKitAdapter` preserves/calls `ALFloaterLightBox::updateTonemapper()` (`indra/newview/alfloaterlightbox.cpp:1385`) | `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:509` `tm_contrast_spinner` |
-| `tonemap` / `exposure_link` (Exposure) | none | **USER DECISION:** register an explicit `ALImageLookKitAdapter` command; no matching setting or C++ literal was found | none |
-| `tonemap` / `exposure_default_btn` (Reset tone) | `button` `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:355` | `ALImageLookKitAdapter` command/model binding → `ALFloaterLightBox::onClickResetGroupDefault()` (`indra/newview/alfloaterlightbox.cpp:77`) | none |
-| `tonemap` / `exposure_hub_btn` (Exposure hub) | `button` `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:391` | `ALImageLookKitAdapter` command/model binding → `?::?()` (`indra/llui/llui.cpp:178`) | none |
+| `tonemap` / `tm_saturation_slider` (Saturation) | `slider_bar` `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:459` | kit `slider` ↔ `AlchemyToneMapSaturation` `F32`; `ALImageLookKitAdapter` preserves/calls behavior `ALFloaterLightBox::updateTonemapper()` (`indra/newview/alfloaterlightbox.cpp:1384`) | `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:473` `tm_saturation_spinner` |
+| `tonemap` / `tm_contrast_slider` (Contrast) | `slider_bar` `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:495` | kit `slider` ↔ `AlchemyToneMapContrast` `F32`; `ALImageLookKitAdapter` preserves/calls behavior `ALFloaterLightBox::updateTonemapper()` (`indra/newview/alfloaterlightbox.cpp:1385`) | `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:509` `tm_contrast_spinner` |
+| `tonemap` / `exposure_link` (Exposure) | none | kit-native action `link_to:light_group/exposure_tab`; no duplicate widget is required | none |
+| `tonemap` / `exposure_default_btn` (Reset tone) | `button` `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:355` | `ALImageLookKitAdapter` command/model binding → wired in `ALFloaterLightBox::ALFloaterLightBox()`; behavior `ALFloaterLightBox::onClickResetGroupDefault()` (`indra/newview/alfloaterlightbox.cpp:77`) | none |
+| `tonemap` / `exposure_hub_btn` (Exposure hub) | `button` `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:391` | kit-native action `floater:exposure_hub`; no duplicate widget is required | none |
 | `tonemap` / `tonemap_legacy_gamma_skies` (Legacy skies) | `check_box` `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:379` | kit `toggle` ↔ `AlchemyTonemapLegacyGammaSkies` `Boolean` | page `exposure_tab`, `indra/newview/skins/default/xui/en/panel_exposure_hub.xml:30` `exp_legacy_gamma_skies` |
 | `sharpen` / `cas_sharpness_slider` (Sharpen (CAS)) | `slider` `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:167` | kit `slider` ↔ `RenderCASSharpness` `F32` | `indra/newview/skins/default/xui/en/floater_preferences_graphics_advanced.xml:1129` `RenderSharpness` |
-| `grade` / `set_RenderColorGrade` (Colour grade) | none | kit `toggle` ↔ `RenderColorGrade` `Boolean` | none |
-| `grade` / `colorlut_combo` (LUT) | `combo_box` `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:51` | kit `combo` ↔ `RenderColorGradeLUT` `String`; `ALImageLookKitAdapter` preserves/calls `ALFloaterLightBox::populateLUTCombo()` (`indra/newview/alfloaterlightbox.cpp:1127`) | none |
-| `grade` / `set_RenderColorGradeLUTStrength` (LUT strength) | none | kit `slider` ↔ `RenderColorGradeLUTStrength` `F32` | none |
-| `grade` / `set_RenderColorGradeWhiteBalanceCCT` (Temperature) | none | kit `slider` ↔ `RenderColorGradeWhiteBalanceCCT` `F32` | none |
-| `grade` / `set_RenderColorGradeWhiteBalanceDuv` (Tint) | none | kit `slider` ↔ `RenderColorGradeWhiteBalanceDuv` `F32` | none |
-| `grade` / `set_RenderColorGradeLift` (Lift) | none | kit `vec3` ↔ `RenderColorGradeLift` `Vector3` | none |
-| `grade` / `set_RenderColorGradeGamma` (Gamma) | none | kit `vec3` ↔ `RenderColorGradeGamma` `Vector3` | none |
-| `grade` / `set_grade_lightbox_link` (Lightbox ›) | none | **USER DECISION:** register an explicit `ALImageLookKitAdapter` command; no matching setting or C++ literal was found | none |
-| `grade_levels` / `set_RenderColorGradeGain` (Gain) | none | kit `vec3` ↔ `RenderColorGradeGain` `Vector3` | none |
-| `grade_levels` / `set_RenderColorGradeBrightness` (Grade bright) | none | kit `slider` ↔ `RenderColorGradeBrightness` `F32` | none |
-| `grade_levels` / `set_RenderColorGradeContrast` (Grade contrast) | none | kit `slider` ↔ `RenderColorGradeContrast` `F32` | none |
-| `grade_levels` / `set_RenderColorGradeSaturation` (Grade sat) | none | kit `slider` ↔ `RenderColorGradeSaturation` `F32` | none |
-| `grade_levels` / `set_RenderColorGradeVibrance` (Vibrance) | none | kit `slider` ↔ `RenderColorGradeVibrance` `F32` | none |
-| `grade_levels` / `set_RenderColorGradeHighlights` (Highlights) | none | kit `slider` ↔ `RenderColorGradeHighlights` `F32` | none |
-| `grade_levels` / `set_RenderColorGradeShadows` (Shadows) | none | kit `slider` ↔ `RenderColorGradeShadows` `F32` | none |
-| `grade_levels` / `set_RenderColorGradeBlackPoint` (Black point) | none | kit `slider` ↔ `RenderColorGradeBlackPoint` `F32` | none |
-| `grade_levels` / `set_RenderColorGradeWhitePoint` (White point) | none | kit `slider` ↔ `RenderColorGradeWhitePoint` `F32` | none |
-| `grade_levels` / `set_RenderColorGradeHueShift` (Hue shift) | none | kit `slider` ↔ `RenderColorGradeHueShift` `F32` | none |
-| `grade_levels` / `set_RenderColorGradeCurveToe` (Curve toe) | none | kit `vec3` ↔ `RenderColorGradeCurveToe` `Color3` | none |
-| `grade_levels` / `set_RenderColorGradeCurveShoulder` (Curve shoulder) | none | kit `vec3` ↔ `RenderColorGradeCurveShoulder` `Color3` | none |
-| `grade_levels` / `set_RenderColorGradeCurveStrength` (Curve amount) | none | kit `vec3` ↔ `RenderColorGradeCurveStrength` `Color3` | none |
-| `split` / `set_RenderSplitToneAmount` (Split tone) | none | kit `slider` ↔ `RenderSplitToneAmount` `F32` | none |
-| `split` / `set_RenderSplitToneBalance` (Balance) | none | kit `slider` ↔ `RenderSplitToneBalance` `F32` | none |
-| `split` / `set_RenderSplitToneShadowTint` (Shadow tint) | none | kit `color` ↔ `RenderSplitToneShadowTint` `Color3` | none |
-| `split` / `set_RenderSplitToneHighlightTint` (Highlight tint) | none | kit `color` ↔ `RenderSplitToneHighlightTint` `Color3` | none |
-| `split` / `set_RenderSplitToneMidtoneAmount` (Midtone amt) | none | kit `slider` ↔ `RenderSplitToneMidtoneAmount` `F32` | none |
-| `split` / `set_RenderSplitToneMidtoneTint` (Midtone tint) | none | kit `color` ↔ `RenderSplitToneMidtoneTint` `Color3` | none |
-| `vignette` / `set_RenderVignetteAmount` (Amount) | none | kit `slider` ↔ `RenderVignetteAmount` `F32` | none |
-| `vignette` / `set_RenderVignetteRadius` (Radius) | none | kit `slider` ↔ `RenderVignetteRadius` `F32` | none |
-| `vignette` / `set_RenderVignetteFeather` (Feather) | none | kit `slider` ↔ `RenderVignetteFeather` `F32` | none |
-| `vignette` / `set_RenderVignetteSoft` (Edge soft) | none | kit `slider` ↔ `RenderVignetteSoft` `F32` | none |
-| `vignette` / `set_RenderVignetteColor` (Edge colour) | none | kit `color` ↔ `RenderVignetteColor` `Color3` | none |
-| `vignette` / `set_RenderVignetteMidPoint` (Mid point) | none | kit `slider` ↔ `RenderVignetteMidPoint` `F32` | none |
-| `vignette` / `set_RenderVignetteMidColor` (Mid colour) | none | kit `color` ↔ `RenderVignetteMidColor` `Color3` | none |
-| `vignette` / `set_RenderVignetteShape` (Shape) | none | kit `slider` ↔ `RenderVignetteShape` `F32` | none |
-| `vignette` / `set_RenderVignetteCenter` (Centre) | none | kit `vec2` ↔ `RenderVignetteCenter` `Vector3` | none |
-| `vignette` / `set_RenderVignetteCorrectAspect` (Fix aspect) | none | kit `toggle` ↔ `RenderVignetteCorrectAspect` `Boolean` | none |
-| `grain` / `set_RenderFilmGrainAmount` (Amount) | none | kit `slider` ↔ `RenderFilmGrainAmount` `F32` | none |
-| `grain` / `set_RenderFilmGrainSize` (Size) | none | kit `slider` ↔ `RenderFilmGrainSize` `F32` | none |
-| `grain` / `set_RenderFilmGrainRange` (Range) | none | kit `slider` ↔ `RenderFilmGrainRange` `F32` | none |
-| `grain` / `set_RenderFilmGrainStyle` (Style) | none | kit `combo` ↔ `RenderFilmGrainStyle` `S32` | none |
-| `grain` / `set_RenderFilmGrainAnimated` (Animated) | none | kit `toggle` ↔ `RenderFilmGrainAnimated` `Boolean` | none |
-| `grain` / `set_RenderFilmGrainTint` (Tint) | none | kit `color` ↔ `RenderFilmGrainTint` `Color3` | none |
-| `ca` / `set_RenderChromaticAberrationStrength` (Strength) | none | kit `slider` ↔ `RenderChromaticAberrationStrength` `F32` | none |
-| `ca` / `set_RenderChromaticAberrationFalloff` (Falloff) | none | kit `slider` ↔ `RenderChromaticAberrationFalloff` `F32` | none |
-| `ca` / `set_RenderChromaticAberrationAngle` (Angle deg) | none | kit `dial` ↔ `RenderChromaticAberrationAngle` `F32` | none |
-| `ca` / `set_RenderChromaticAberrationAnisotropy` (Stretch) | none | kit `slider` ↔ `RenderChromaticAberrationAnisotropy` `F32` | none |
-| `ca` / `set_RenderChromaticAberrationOffsetRX` (Red X) | none | kit `slider` ↔ `RenderChromaticAberrationOffsetRX` `F32` | none |
-| `ca` / `set_RenderChromaticAberrationOffsetRY` (Red Y) | none | kit `slider` ↔ `RenderChromaticAberrationOffsetRY` `F32` | none |
-| `ca` / `set_RenderChromaticAberrationOffsetBX` (Blue X) | none | kit `slider` ↔ `RenderChromaticAberrationOffsetBX` `F32` | none |
-| `ca` / `set_RenderChromaticAberrationOffsetBY` (Blue Y) | none | kit `slider` ↔ `RenderChromaticAberrationOffsetBY` `F32` | none |
-| `khronos` / `tm_khronos_desat_slider` (Desaturate) | `slider_bar` `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:531` | kit `slider` ↔ `AlchemyToneMapKhronosDesaturation` `F32`; `ALImageLookKitAdapter` preserves/calls `ALFloaterLightBox::updateTonemapper()` (`indra/newview/alfloaterlightbox.cpp:1386`) | `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:545` `tm_khronos_desat_spinner` |
-| `khronos` / `tm_khronos_knee_slider` (Knee) | `slider_bar` `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:567` | kit `slider` ↔ `AlchemyToneMapKhronosStartCompression` `F32`; `ALImageLookKitAdapter` preserves/calls `ALFloaterLightBox::updateTonemapper()` (`indra/newview/alfloaterlightbox.cpp:1387`) | `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:581` `tm_khronos_knee_spinner` |
-| `lpm` / `lpm_hdrmax_slider` (HDR max) | `slider_bar` `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:601` | kit `slider` ↔ `AlchemyToneMapAMDHDRMax` `F32`; `ALImageLookKitAdapter` preserves/calls `ALFloaterLightBox::updateTonemapper()` (`indra/newview/alfloaterlightbox.cpp:1364`) | `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:615` `lpm_hdrmax_spinner` |
-| `lpm` / `lpm_toneexp_slider` (Tone exposure) | `slider_bar` `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:635` | kit `slider` ↔ `AlchemyToneMapAMDExposure` `F32`; `ALImageLookKitAdapter` preserves/calls `ALFloaterLightBox::updateTonemapper()` (`indra/newview/alfloaterlightbox.cpp:1365`) | page `exposure_tab`, `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:649` `lpm_toneexp_spinner`, `indra/newview/skins/default/xui/en/panel_exposure_hub.xml:26` `exp_amd_exposure` |
-| `lpm` / `lpm_contrast_slider` (LPM contrast) | `slider_bar` `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:669` | kit `slider` ↔ `AlchemyToneMapAMDContrast` `F32`; `ALImageLookKitAdapter` preserves/calls `ALFloaterLightBox::updateTonemapper()` (`indra/newview/alfloaterlightbox.cpp:1366`) | `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:683` `lpm_contrast_spinner` |
-| `lpm` / `lpm_satr_slider` (Red sat) | `slider_bar` `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:703` | kit `slider` ↔ `AlchemyToneMapAMDSaturationR` `F32`; `ALImageLookKitAdapter` preserves/calls `ALFloaterLightBox::updateTonemapper()` (`indra/newview/alfloaterlightbox.cpp:1367`) | `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:717` `lpm_satr_spinner` |
-| `lpm` / `lpm_satg_slider` (Green sat) | `slider_bar` `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:737` | kit `slider` ↔ `AlchemyToneMapAMDSaturationG` `F32`; `ALImageLookKitAdapter` preserves/calls `ALFloaterLightBox::updateTonemapper()` (`indra/newview/alfloaterlightbox.cpp:1368`) | `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:751` `lpm_satg_spinner` |
-| `lpm` / `lpm_satb_slider` (Blue sat) | `slider_bar` `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:771` | kit `slider` ↔ `AlchemyToneMapAMDSaturationB` `F32`; `ALImageLookKitAdapter` preserves/calls `ALFloaterLightBox::updateTonemapper()` (`indra/newview/alfloaterlightbox.cpp:1369`) | `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:785` `lpm_satb_spinner` |
-| `slog` / `slog_curve_combo` (Log curve) | `combo_box` `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:809` | kit `combo` ↔ `AlchemyToneMapSLogCurve` `S32`; `ALImageLookKitAdapter` preserves/calls `ALFloaterLightBox::updateTonemapper()` (`indra/newview/alfloaterlightbox.cpp:1402`) | none |
-| `slog` / `slog_range_combo` (Range) | `combo_box` `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:836` | kit `combo` ↔ `AlchemyToneMapSLogRange` `S32`; `ALImageLookKitAdapter` preserves/calls `ALFloaterLightBox::updateTonemapper()` (`indra/newview/alfloaterlightbox.cpp:1403`) | none |
-| `slog` / `slog_ev_slider` (EV offset) | `slider_bar` `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:897` | kit `slider` ↔ `AlchemyToneMapSLogEV` `F32`; `ALImageLookKitAdapter` preserves/calls `ALFloaterLightBox::updateTonemapper()` (`indra/newview/alfloaterlightbox.cpp:1405`) | page `exposure_tab`, `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:911` `slog_ev_spinner`, `indra/newview/skins/default/xui/en/panel_exposure_hub.xml:28` `exp_slog_ev` |
-| `slog` / `slog_toe_slider` (Shadow toe) | `slider_bar` `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:861` | kit `slider` ↔ `AlchemyToneMapSLogToe` `F32`; `ALImageLookKitAdapter` preserves/calls `ALFloaterLightBox::updateTonemapper()` (`indra/newview/alfloaterlightbox.cpp:1404`) | `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:875` `slog_toe_spinner` |
-| `adv_image` / `set_lens_filters_link` (Lens filters) | none | **USER DECISION:** register an explicit `ALImageLookKitAdapter` command; no matching setting or C++ literal was found | none |
-| `adv_image` / `open_lightbox_image` (Lightbox ›) | none | **USER DECISION:** register an explicit `ALImageLookKitAdapter` command; no matching setting or C++ literal was found | none |
+| `grade` / `set_RenderColorGrade` (Colour grade) | none | kit `toggle` ↔ `RenderColorGrade` `Boolean`. Contract note: kit-native setting row; synthetic data name does not require v1 XUI | none |
+| `grade` / `colorlut_combo` (LUT) | `combo_box` `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:51` | kit `combo` ↔ `RenderColorGradeLUT` `String` | none |
+| `grade` / `set_RenderColorGradeLUTStrength` (LUT strength) | none | kit `slider` ↔ `RenderColorGradeLUTStrength` `F32`. Contract note: kit-native setting row; synthetic data name does not require v1 XUI | none |
+| `grade` / `set_RenderColorGradeWhiteBalanceCCT` (Temperature) | none | kit `slider` ↔ `RenderColorGradeWhiteBalanceCCT` `F32`. Contract note: kit-native setting row; synthetic data name does not require v1 XUI | none |
+| `grade` / `set_RenderColorGradeWhiteBalanceDuv` (Tint) | none | kit `slider` ↔ `RenderColorGradeWhiteBalanceDuv` `F32`. Contract note: kit-native setting row; synthetic data name does not require v1 XUI | none |
+| `grade` / `set_RenderColorGradeLift` (Lift) | none | kit `vec3` ↔ `RenderColorGradeLift` `Vector3`. Contract note: kit-native setting row; synthetic data name does not require v1 XUI | none |
+| `grade` / `set_RenderColorGradeGamma` (Gamma) | none | kit `vec3` ↔ `RenderColorGradeGamma` `Vector3`. Contract note: kit-native setting row; synthetic data name does not require v1 XUI | none |
+| `grade` / `set_grade_lightbox_link` (Lightbox ›) | none | kit-native action `floater:lightbox/colortone_settings`; no duplicate widget is required | none |
+| `grade_levels` / `set_RenderColorGradeGain` (Gain) | none | kit `vec3` ↔ `RenderColorGradeGain` `Vector3`. Contract note: kit-native setting row; synthetic data name does not require v1 XUI | none |
+| `grade_levels` / `set_RenderColorGradeBrightness` (Grade bright) | none | kit `slider` ↔ `RenderColorGradeBrightness` `F32`. Contract note: kit-native setting row; synthetic data name does not require v1 XUI | none |
+| `grade_levels` / `set_RenderColorGradeContrast` (Grade contrast) | none | kit `slider` ↔ `RenderColorGradeContrast` `F32`. Contract note: kit-native setting row; synthetic data name does not require v1 XUI | none |
+| `grade_levels` / `set_RenderColorGradeSaturation` (Grade sat) | none | kit `slider` ↔ `RenderColorGradeSaturation` `F32`. Contract note: kit-native setting row; synthetic data name does not require v1 XUI | none |
+| `grade_levels` / `set_RenderColorGradeVibrance` (Vibrance) | none | kit `slider` ↔ `RenderColorGradeVibrance` `F32`. Contract note: kit-native setting row; synthetic data name does not require v1 XUI | none |
+| `grade_levels` / `set_RenderColorGradeHighlights` (Highlights) | none | kit `slider` ↔ `RenderColorGradeHighlights` `F32`. Contract note: kit-native setting row; synthetic data name does not require v1 XUI | none |
+| `grade_levels` / `set_RenderColorGradeShadows` (Shadows) | none | kit `slider` ↔ `RenderColorGradeShadows` `F32`. Contract note: kit-native setting row; synthetic data name does not require v1 XUI | none |
+| `grade_levels` / `set_RenderColorGradeBlackPoint` (Black point) | none | kit `slider` ↔ `RenderColorGradeBlackPoint` `F32`. Contract note: kit-native setting row; synthetic data name does not require v1 XUI | none |
+| `grade_levels` / `set_RenderColorGradeWhitePoint` (White point) | none | kit `slider` ↔ `RenderColorGradeWhitePoint` `F32`. Contract note: kit-native setting row; synthetic data name does not require v1 XUI | none |
+| `grade_levels` / `set_RenderColorGradeHueShift` (Hue shift) | none | kit `slider` ↔ `RenderColorGradeHueShift` `F32`. Contract note: kit-native setting row; synthetic data name does not require v1 XUI | none |
+| `grade_levels` / `set_RenderColorGradeCurveToe` (Curve toe) | none | kit `vec3` ↔ `RenderColorGradeCurveToe` `Color3`. Contract note: kit-native setting row; synthetic data name does not require v1 XUI | none |
+| `grade_levels` / `set_RenderColorGradeCurveShoulder` (Curve shoulder) | none | kit `vec3` ↔ `RenderColorGradeCurveShoulder` `Color3`. Contract note: kit-native setting row; synthetic data name does not require v1 XUI | none |
+| `grade_levels` / `set_RenderColorGradeCurveStrength` (Curve amount) | none | kit `vec3` ↔ `RenderColorGradeCurveStrength` `Color3`. Contract note: kit-native setting row; synthetic data name does not require v1 XUI | none |
+| `split` / `set_RenderSplitToneAmount` (Split tone) | none | kit `slider` ↔ `RenderSplitToneAmount` `F32`. Contract note: kit-native setting row; synthetic data name does not require v1 XUI | none |
+| `split` / `set_RenderSplitToneBalance` (Balance) | none | kit `slider` ↔ `RenderSplitToneBalance` `F32`. Contract note: kit-native setting row; synthetic data name does not require v1 XUI | none |
+| `split` / `set_RenderSplitToneShadowTint` (Shadow tint) | none | kit `color` ↔ `RenderSplitToneShadowTint` `Color3`. Contract note: kit-native setting row; synthetic data name does not require v1 XUI | none |
+| `split` / `set_RenderSplitToneHighlightTint` (Highlight tint) | none | kit `color` ↔ `RenderSplitToneHighlightTint` `Color3`. Contract note: kit-native setting row; synthetic data name does not require v1 XUI | none |
+| `split` / `set_RenderSplitToneMidtoneAmount` (Midtone amt) | none | kit `slider` ↔ `RenderSplitToneMidtoneAmount` `F32`. Contract note: kit-native setting row; synthetic data name does not require v1 XUI | none |
+| `split` / `set_RenderSplitToneMidtoneTint` (Midtone tint) | none | kit `color` ↔ `RenderSplitToneMidtoneTint` `Color3`. Contract note: kit-native setting row; synthetic data name does not require v1 XUI | none |
+| `vignette` / `set_RenderVignetteAmount` (Amount) | none | kit `slider` ↔ `RenderVignetteAmount` `F32`. Contract note: kit-native setting row; synthetic data name does not require v1 XUI | none |
+| `vignette` / `set_RenderVignetteRadius` (Radius) | none | kit `slider` ↔ `RenderVignetteRadius` `F32`. Contract note: kit-native setting row; synthetic data name does not require v1 XUI | none |
+| `vignette` / `set_RenderVignetteFeather` (Feather) | none | kit `slider` ↔ `RenderVignetteFeather` `F32`. Contract note: kit-native setting row; synthetic data name does not require v1 XUI | none |
+| `vignette` / `set_RenderVignetteSoft` (Edge soft) | none | kit `slider` ↔ `RenderVignetteSoft` `F32`. Contract note: kit-native setting row; synthetic data name does not require v1 XUI | none |
+| `vignette` / `set_RenderVignetteColor` (Edge colour) | none | kit `color` ↔ `RenderVignetteColor` `Color3`. Contract note: kit-native setting row; synthetic data name does not require v1 XUI | none |
+| `vignette` / `set_RenderVignetteMidPoint` (Mid point) | none | kit `slider` ↔ `RenderVignetteMidPoint` `F32`. Contract note: kit-native setting row; synthetic data name does not require v1 XUI | none |
+| `vignette` / `set_RenderVignetteMidColor` (Mid colour) | none | kit `color` ↔ `RenderVignetteMidColor` `Color3`. Contract note: kit-native setting row; synthetic data name does not require v1 XUI | none |
+| `vignette` / `set_RenderVignetteShape` (Shape) | none | kit `slider` ↔ `RenderVignetteShape` `F32`. Contract note: kit-native setting row; synthetic data name does not require v1 XUI | none |
+| `vignette` / `set_RenderVignetteCenter` (Centre) | none | kit `vec2` ↔ `RenderVignetteCenter` `Vector3`. Contract note: kit-native setting row; synthetic data name does not require v1 XUI | none |
+| `vignette` / `set_RenderVignetteCorrectAspect` (Fix aspect) | none | kit `toggle` ↔ `RenderVignetteCorrectAspect` `Boolean`. Contract note: kit-native setting row; synthetic data name does not require v1 XUI | none |
+| `grain` / `set_RenderFilmGrainAmount` (Amount) | none | kit `slider` ↔ `RenderFilmGrainAmount` `F32`. Contract note: kit-native setting row; synthetic data name does not require v1 XUI | none |
+| `grain` / `set_RenderFilmGrainSize` (Size) | none | kit `slider` ↔ `RenderFilmGrainSize` `F32`. Contract note: kit-native setting row; synthetic data name does not require v1 XUI | none |
+| `grain` / `set_RenderFilmGrainRange` (Range) | none | kit `slider` ↔ `RenderFilmGrainRange` `F32`. Contract note: kit-native setting row; synthetic data name does not require v1 XUI | none |
+| `grain` / `set_RenderFilmGrainStyle` (Style) | none | kit `combo` ↔ `RenderFilmGrainStyle` `S32`. Contract note: kit-native setting row; synthetic data name does not require v1 XUI | none |
+| `grain` / `set_RenderFilmGrainAnimated` (Animated) | none | kit `toggle` ↔ `RenderFilmGrainAnimated` `Boolean`. Contract note: kit-native setting row; synthetic data name does not require v1 XUI | none |
+| `grain` / `set_RenderFilmGrainTint` (Tint) | none | kit `color` ↔ `RenderFilmGrainTint` `Color3`. Contract note: kit-native setting row; synthetic data name does not require v1 XUI | none |
+| `ca` / `set_RenderChromaticAberrationStrength` (Strength) | none | kit `slider` ↔ `RenderChromaticAberrationStrength` `F32`. Contract note: kit-native setting row; synthetic data name does not require v1 XUI | none |
+| `ca` / `set_RenderChromaticAberrationFalloff` (Falloff) | none | kit `slider` ↔ `RenderChromaticAberrationFalloff` `F32`. Contract note: kit-native setting row; synthetic data name does not require v1 XUI | none |
+| `ca` / `set_RenderChromaticAberrationAngle` (Angle deg) | none | kit `dial` ↔ `RenderChromaticAberrationAngle` `F32`. Contract note: kit-native setting row; synthetic data name does not require v1 XUI | none |
+| `ca` / `set_RenderChromaticAberrationAnisotropy` (Stretch) | none | kit `slider` ↔ `RenderChromaticAberrationAnisotropy` `F32`. Contract note: kit-native setting row; synthetic data name does not require v1 XUI | none |
+| `ca` / `set_RenderChromaticAberrationOffsetRX` (Red X) | none | kit `slider` ↔ `RenderChromaticAberrationOffsetRX` `F32`. Contract note: kit-native setting row; synthetic data name does not require v1 XUI | none |
+| `ca` / `set_RenderChromaticAberrationOffsetRY` (Red Y) | none | kit `slider` ↔ `RenderChromaticAberrationOffsetRY` `F32`. Contract note: kit-native setting row; synthetic data name does not require v1 XUI | none |
+| `ca` / `set_RenderChromaticAberrationOffsetBX` (Blue X) | none | kit `slider` ↔ `RenderChromaticAberrationOffsetBX` `F32`. Contract note: kit-native setting row; synthetic data name does not require v1 XUI | none |
+| `ca` / `set_RenderChromaticAberrationOffsetBY` (Blue Y) | none | kit `slider` ↔ `RenderChromaticAberrationOffsetBY` `F32`. Contract note: kit-native setting row; synthetic data name does not require v1 XUI | none |
+| `khronos` / `tm_khronos_desat_slider` (Desaturate) | `slider_bar` `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:531` | kit `slider` ↔ `AlchemyToneMapKhronosDesaturation` `F32`; `ALImageLookKitAdapter` preserves/calls behavior `ALFloaterLightBox::updateTonemapper()` (`indra/newview/alfloaterlightbox.cpp:1386`) | `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:545` `tm_khronos_desat_spinner` |
+| `khronos` / `tm_khronos_knee_slider` (Knee) | `slider_bar` `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:567` | kit `slider` ↔ `AlchemyToneMapKhronosStartCompression` `F32`; `ALImageLookKitAdapter` preserves/calls behavior `ALFloaterLightBox::updateTonemapper()` (`indra/newview/alfloaterlightbox.cpp:1387`) | `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:581` `tm_khronos_knee_spinner` |
+| `lpm` / `lpm_hdrmax_slider` (HDR max) | `slider_bar` `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:601` | kit `slider` ↔ `AlchemyToneMapAMDHDRMax` `F32`; `ALImageLookKitAdapter` preserves/calls behavior `ALFloaterLightBox::updateTonemapper()` (`indra/newview/alfloaterlightbox.cpp:1364`) | `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:615` `lpm_hdrmax_spinner` |
+| `lpm` / `lpm_toneexp_slider` (Tone exposure) | `slider_bar` `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:635` | kit `slider` ↔ `AlchemyToneMapAMDExposure` `F32`; `ALImageLookKitAdapter` preserves/calls behavior `ALFloaterLightBox::updateTonemapper()` (`indra/newview/alfloaterlightbox.cpp:1365`) | page `exposure_tab`, `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:649` `lpm_toneexp_spinner`, `indra/newview/skins/default/xui/en/panel_exposure_hub.xml:26` `exp_amd_exposure` |
+| `lpm` / `lpm_contrast_slider` (LPM contrast) | `slider_bar` `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:669` | kit `slider` ↔ `AlchemyToneMapAMDContrast` `F32`; `ALImageLookKitAdapter` preserves/calls behavior `ALFloaterLightBox::updateTonemapper()` (`indra/newview/alfloaterlightbox.cpp:1366`) | `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:683` `lpm_contrast_spinner` |
+| `lpm` / `lpm_satr_slider` (Red sat) | `slider_bar` `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:703` | kit `slider` ↔ `AlchemyToneMapAMDSaturationR` `F32`; `ALImageLookKitAdapter` preserves/calls behavior `ALFloaterLightBox::updateTonemapper()` (`indra/newview/alfloaterlightbox.cpp:1367`) | `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:717` `lpm_satr_spinner` |
+| `lpm` / `lpm_satg_slider` (Green sat) | `slider_bar` `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:737` | kit `slider` ↔ `AlchemyToneMapAMDSaturationG` `F32`; `ALImageLookKitAdapter` preserves/calls behavior `ALFloaterLightBox::updateTonemapper()` (`indra/newview/alfloaterlightbox.cpp:1368`) | `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:751` `lpm_satg_spinner` |
+| `lpm` / `lpm_satb_slider` (Blue sat) | `slider_bar` `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:771` | kit `slider` ↔ `AlchemyToneMapAMDSaturationB` `F32`; `ALImageLookKitAdapter` preserves/calls behavior `ALFloaterLightBox::updateTonemapper()` (`indra/newview/alfloaterlightbox.cpp:1369`) | `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:785` `lpm_satb_spinner` |
+| `slog` / `slog_curve_combo` (Log curve) | `combo_box` `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:809` | kit `combo` ↔ `AlchemyToneMapSLogCurve` `S32`; `ALImageLookKitAdapter` preserves/calls behavior `ALFloaterLightBox::updateTonemapper()` (`indra/newview/alfloaterlightbox.cpp:1402`) | none |
+| `slog` / `slog_range_combo` (Range) | `combo_box` `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:836` | kit `combo` ↔ `AlchemyToneMapSLogRange` `S32`; `ALImageLookKitAdapter` preserves/calls behavior `ALFloaterLightBox::updateTonemapper()` (`indra/newview/alfloaterlightbox.cpp:1403`) | none |
+| `slog` / `slog_ev_slider` (EV offset) | `slider_bar` `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:897` | kit `slider` ↔ `AlchemyToneMapSLogEV` `F32`; `ALImageLookKitAdapter` preserves/calls behavior `ALFloaterLightBox::updateTonemapper()` (`indra/newview/alfloaterlightbox.cpp:1405`) | page `exposure_tab`, `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:911` `slog_ev_spinner`, `indra/newview/skins/default/xui/en/panel_exposure_hub.xml:28` `exp_slog_ev` |
+| `slog` / `slog_toe_slider` (Shadow toe) | `slider_bar` `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:861` | kit `slider` ↔ `AlchemyToneMapSLogToe` `F32`; `ALImageLookKitAdapter` preserves/calls behavior `ALFloaterLightBox::updateTonemapper()` (`indra/newview/alfloaterlightbox.cpp:1404`) | `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:875` `slog_toe_spinner` |
+| `adv_image` / `set_lens_filters_link` (Lens filters) | none | kit-native action `link_to:lens_group/filters_tab`; no duplicate widget is required | none |
+| `adv_image` / `open_lightbox_image` (Lightbox ›) | none | kit-native action `floater:lightbox/colortone_settings`; no duplicate widget is required | none |
 
 ## Adapter extraction
 
 | Existing function | Extraction contract |
 |---|---|
-| `?::?()` — `indra/llui/llui.cpp:178` | Move model-facing work into `ALImageLookKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
+| `LLButton::setFloaterToggle()` — `indra/llui/llui.cpp:178` | Move model-facing work into `ALImageLookKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
 | `ALFloaterLightBox::onClickResetGroupDefault()` — `indra/newview/alfloaterlightbox.cpp:77` | Move model-facing work into `ALImageLookKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
-| `ALFloaterLightBox::populateLUTCombo()` — `indra/newview/alfloaterlightbox.cpp:1127` | Move model-facing work into `ALImageLookKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
 | `ALFloaterLightBox::updateTonemapper()` — `indra/newview/alfloaterlightbox.cpp:1364, 1365, 1366, 1367, 1368, 1369, 1384, 1385, 1386, 1387, 1402, 1403, 1404, 1405` | Move model-facing work into `ALImageLookKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
 
 ## Live state and refresh
@@ -201,65 +200,21 @@ Manifest size: **76 states**, hard cap 256, page runtime budget 2 minutes. Each 
 3. Run the bounded state manifest at 1160×720, 850×560, 1141×720, and 915×720. Non-Director owners (Lightbox, cue/Diopter/Snapshot floaters, and shared panels) are mandatory parity oracles even when no v1 Director leaf embeds them.
 4. Review-diff every controller extraction and prove the v1 forwarding call preserves callbacks, owner tokens, selection, history barriers, and visibility gates.
 
+## Ambiguous same-name candidates (never auto-bound)
+
+None.
+
+## Rejected out-of-scope same-name candidates
+
+None.
+
 ## New widget required
 
-None. Every approved visual kind is either a kit primitive or an existing XUI control. Missing action/model bindings below are USER DECISIONS, not permission to invent a visual class.
+None. Every approved visual kind is either a kit primitive or an existing XUI control. An unresolved binding is not permission to invent a visual class.
 
-## Unresolved and USER DECISION items
+## Unresolved and pending-decision items
 
-- `exposure_link` (Exposure): widget not found in XUI; no C++ reference or setting binding. **USER DECISION required.**
-- `set_RenderColorGrade` (Colour grade): widget not found in XUI.
-- `set_RenderColorGradeLUTStrength` (LUT strength): widget not found in XUI.
-- `set_RenderColorGradeWhiteBalanceCCT` (Temperature): widget not found in XUI.
-- `set_RenderColorGradeWhiteBalanceDuv` (Tint): widget not found in XUI.
-- `set_RenderColorGradeLift` (Lift): widget not found in XUI.
-- `set_RenderColorGradeGamma` (Gamma): widget not found in XUI.
-- `set_grade_lightbox_link` (Lightbox ›): widget not found in XUI; no C++ reference or setting binding. **USER DECISION required.**
-- `set_RenderColorGradeGain` (Gain): widget not found in XUI.
-- `set_RenderColorGradeBrightness` (Grade bright): widget not found in XUI.
-- `set_RenderColorGradeContrast` (Grade contrast): widget not found in XUI.
-- `set_RenderColorGradeSaturation` (Grade sat): widget not found in XUI.
-- `set_RenderColorGradeVibrance` (Vibrance): widget not found in XUI.
-- `set_RenderColorGradeHighlights` (Highlights): widget not found in XUI.
-- `set_RenderColorGradeShadows` (Shadows): widget not found in XUI.
-- `set_RenderColorGradeBlackPoint` (Black point): widget not found in XUI.
-- `set_RenderColorGradeWhitePoint` (White point): widget not found in XUI.
-- `set_RenderColorGradeHueShift` (Hue shift): widget not found in XUI.
-- `set_RenderColorGradeCurveToe` (Curve toe): widget not found in XUI.
-- `set_RenderColorGradeCurveShoulder` (Curve shoulder): widget not found in XUI.
-- `set_RenderColorGradeCurveStrength` (Curve amount): widget not found in XUI.
-- `set_RenderSplitToneAmount` (Split tone): widget not found in XUI.
-- `set_RenderSplitToneBalance` (Balance): widget not found in XUI.
-- `set_RenderSplitToneShadowTint` (Shadow tint): widget not found in XUI.
-- `set_RenderSplitToneHighlightTint` (Highlight tint): widget not found in XUI.
-- `set_RenderSplitToneMidtoneAmount` (Midtone amt): widget not found in XUI.
-- `set_RenderSplitToneMidtoneTint` (Midtone tint): widget not found in XUI.
-- `set_RenderVignetteAmount` (Amount): widget not found in XUI.
-- `set_RenderVignetteRadius` (Radius): widget not found in XUI.
-- `set_RenderVignetteFeather` (Feather): widget not found in XUI.
-- `set_RenderVignetteSoft` (Edge soft): widget not found in XUI.
-- `set_RenderVignetteColor` (Edge colour): widget not found in XUI.
-- `set_RenderVignetteMidPoint` (Mid point): widget not found in XUI.
-- `set_RenderVignetteMidColor` (Mid colour): widget not found in XUI.
-- `set_RenderVignetteShape` (Shape): widget not found in XUI.
-- `set_RenderVignetteCenter` (Centre): widget not found in XUI.
-- `set_RenderVignetteCorrectAspect` (Fix aspect): widget not found in XUI.
-- `set_RenderFilmGrainAmount` (Amount): widget not found in XUI.
-- `set_RenderFilmGrainSize` (Size): widget not found in XUI.
-- `set_RenderFilmGrainRange` (Range): widget not found in XUI.
-- `set_RenderFilmGrainStyle` (Style): widget not found in XUI.
-- `set_RenderFilmGrainAnimated` (Animated): widget not found in XUI.
-- `set_RenderFilmGrainTint` (Tint): widget not found in XUI.
-- `set_RenderChromaticAberrationStrength` (Strength): widget not found in XUI.
-- `set_RenderChromaticAberrationFalloff` (Falloff): widget not found in XUI.
-- `set_RenderChromaticAberrationAngle` (Angle deg): widget not found in XUI.
-- `set_RenderChromaticAberrationAnisotropy` (Stretch): widget not found in XUI.
-- `set_RenderChromaticAberrationOffsetRX` (Red X): widget not found in XUI.
-- `set_RenderChromaticAberrationOffsetRY` (Red Y): widget not found in XUI.
-- `set_RenderChromaticAberrationOffsetBX` (Blue X): widget not found in XUI.
-- `set_RenderChromaticAberrationOffsetBY` (Blue Y): widget not found in XUI.
-- `set_lens_filters_link` (Lens filters): widget not found in XUI; no C++ reference or setting binding. **USER DECISION required.**
-- `open_lightbox_image` (Lightbox ›): widget not found in XUI; no C++ reference or setting binding. **USER DECISION required.**
+None in the current evidence index.
 
 ## Risks
 

@@ -7,7 +7,7 @@ Computed class: **code-driven** (19/25 setting-bound rows; 7 C++-referenced rows
 
 - `panel_exposure_hub` / `panel` at `indra/newview/skins/default/xui/en/panel_exposure_hub.xml:2` (24 matching rows).
 - `floater_director` / `floater` at `indra/newview/skins/default/xui/en/floater_director.xml:15` (1 matching rows).
-- Referencing classes: `ALPanelExposureHub` (5), `LLFloaterDirector` (1).
+- Referencing classes: `ALPanelExposureHub` (4), `ALExposureSettingsHistory` (2), `LLButton` (1), `LLFloaterReg` (1), `ALFloaterLightBox` (1).
 
 Name collisions in secondary XUI files are evidence candidates, not automatic ownership. The implementation must retain only occurrences whose root and class agree with the row's behavior.
 
@@ -32,28 +32,30 @@ Use `panel_exposure_hub.xml` controls as kit rows; no curve editor exists.
 | `scene_light` / `exp_probe_spec_ev` (Probe reflect) | `slider` `indra/newview/skins/default/xui/en/panel_exposure_hub.xml:45` | kit `slider` ↔ `AlchemyEnvGIProbeSpecEV` `F32` | `indra/newview/skins/default/xui/en/floater_adjust_environment.xml:973` `env_probe_spec_ev` |
 | `scene_light` / `exp_local_include_rig` (Rig lights) | `check_box` `indra/newview/skins/default/xui/en/panel_exposure_hub.xml:51` | kit `toggle` ↔ `AlchemyEnvLocalLightIncludeRig` `Boolean` | `indra/newview/skins/default/xui/en/floater_adjust_environment.xml:869` `env_local_include_rig` |
 | `sky_settings` / `exp_sky_note` (Per-sky values) | `text` `indra/newview/skins/default/xui/en/panel_exposure_hub.xml:64` | kit readout ← approved static copy; no runtime writer | none |
-| `sky_settings` / `exp_sky_lighting_btn` (Per-sky look) | `button` `indra/newview/skins/default/xui/en/panel_exposure_hub.xml:65` | `ALExposureKitAdapter` command/model binding → `?::?()` (`indra/llui/llui.cpp:178`) | none |
+| `sky_settings` / `exp_sky_lighting_btn` (Per-sky look) | `button` `indra/newview/skins/default/xui/en/panel_exposure_hub.xml:65` | `ALExposureKitAdapter` command/model binding → wired in `LLUI::LLUI()`; behavior `LLButton::setFloaterToggle()` (`indra/llui/llui.cpp:178`) | none |
 | `exposure_main` / `exp_auto_exposure` (Auto exposure) | `check_box` `indra/newview/skins/default/xui/en/panel_exposure_hub.xml:8` | kit `toggle` ↔ `RenderDynamicExposureEnabled` `Boolean` | `indra/newview/skins/default/xui/en/floater_adjust_environment.xml:588` `env_auto_exposure` |
 | `exposure_main` / `exp_exposure` (Exposure) | `slider` `indra/newview/skins/default/xui/en/panel_exposure_hub.xml:9` | kit `slider` ↔ `RenderExposure` `F32` | page `image_tab`, `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:418` `exposure_slider`, `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:433` `exposure_spinner`, `indra/newview/skins/default/xui/en/floater_preferences_graphics_advanced.xml:1014` `RenderExposure`, `indra/newview/skins/default/xui/en/panel_preferences_graphics1.xml:378` `RenderExposure` |
 | `exposure_main` / `exp_tonemap_type` (Tone mapper) | `combo_box` `indra/newview/skins/default/xui/en/panel_exposure_hub.xml:13` | kit `combo` ↔ `AlchemyRenderTonemapType` `S32` | page `image_tab`, `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:314` `tonemap_type_combo`, `indra/newview/skins/default/xui/en/floater_preferences_graphics_advanced.xml:1155` `TonemapType` |
 | `exposure_main` / `exp_tonemap_mix` (Tone strength) | `slider` `indra/newview/skins/default/xui/en/panel_exposure_hub.xml:24` | kit `slider` ↔ `RenderTonemapMix` `F32` | `indra/newview/skins/default/xui/en/floater_preferences_graphics_advanced.xml:1208` `TonemapMix` |
-| `exposure_main` / `exp_amd_exposure` (AMD exposure) | `slider` `indra/newview/skins/default/xui/en/panel_exposure_hub.xml:26` | kit `slider` ↔ `AlchemyToneMapAMDExposure` `F32`; `ALExposureKitAdapter` preserves/calls `ALPanelExposureHub::postBuild()` (`indra/newview/alpanelexposurehub.cpp:72`) | page `image_tab`, `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:635` `lpm_toneexp_slider`, `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:649` `lpm_toneexp_spinner` |
-| `exposure_main` / `exp_slog_ev` (S-Log EV) | `slider` `indra/newview/skins/default/xui/en/panel_exposure_hub.xml:28` | kit `slider` ↔ `AlchemyToneMapSLogEV` `F32`; `ALExposureKitAdapter` preserves/calls `ALPanelExposureHub::postBuild()` (`indra/newview/alpanelexposurehub.cpp:74`) | page `image_tab`, `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:897` `slog_ev_slider`, `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:911` `slog_ev_spinner` |
+| `exposure_main` / `exp_amd_exposure` (AMD exposure) | `slider` `indra/newview/skins/default/xui/en/panel_exposure_hub.xml:26` | kit `slider` ↔ `AlchemyToneMapAMDExposure` `F32` | page `image_tab`, `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:635` `lpm_toneexp_slider`, `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:649` `lpm_toneexp_spinner` |
+| `exposure_main` / `exp_slog_ev` (S-Log EV) | `slider` `indra/newview/skins/default/xui/en/panel_exposure_hub.xml:28` | kit `slider` ↔ `AlchemyToneMapSLogEV` `F32` | page `image_tab`, `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:897` `slog_ev_slider`, `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:911` `slog_ev_spinner` |
 | `exposure_main` / `exp_legacy_gamma_skies` (Legacy gamma) | `check_box` `indra/newview/skins/default/xui/en/panel_exposure_hub.xml:30` | kit `toggle` ↔ `AlchemyTonemapLegacyGammaSkies` `Boolean` | page `image_tab`, `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:379` `tonemap_legacy_gamma_skies` |
-| `exposure_hub` / `exp_undo` (Undo) | `button` `indra/newview/skins/default/xui/en/panel_exposure_hub.xml:3` | `ALExposureKitAdapter` command/model binding → `ALPanelExposureHub::postBuild()` (`indra/newview/alpanelexposurehub.cpp:70`) | none |
-| `exposure_hub` / `exp_redo` (Redo) | `button` `indra/newview/skins/default/xui/en/panel_exposure_hub.xml:4` | `ALExposureKitAdapter` command/model binding → `ALPanelExposureHub::postBuild()` (`indra/newview/alpanelexposurehub.cpp:71`) | none |
-| `exposure_hub` / `exposure_popout` (Open window) | `button` `indra/newview/skins/default/xui/en/floater_director.xml:1399` | `ALExposureKitAdapter` command/model binding → `LLFloaterDirector::postBuild()` (`indra/newview/llfloaterdirector.cpp:590`) | none |
+| `exposure_hub` / `exp_undo` (Undo) | `button` `indra/newview/skins/default/xui/en/panel_exposure_hub.xml:3` | `ALExposureKitAdapter` command/model binding → wired in `ALPanelExposureHub::postBuild()`; behavior `ALExposureSettingsHistory::undo()` (`indra/newview/alpanelexposurehub.cpp:136`) | none |
+| `exposure_hub` / `exp_redo` (Redo) | `button` `indra/newview/skins/default/xui/en/panel_exposure_hub.xml:4` | `ALExposureKitAdapter` command/model binding → wired in `ALPanelExposureHub::postBuild()`; behavior `ALExposureSettingsHistory::redo()` (`indra/newview/alpanelexposurehub.cpp:137`) | none |
+| `exposure_hub` / `exposure_popout` (Open window) | `button` `indra/newview/skins/default/xui/en/floater_director.xml:1399` | `ALExposureKitAdapter` command/model binding → wired in `LLFloaterDirector::postBuild()`; behavior `LLFloaterReg::showInstance()` (`indra/newview/llfloaterdirector.cpp:590`) | none |
 | `glow_filters` / `exp_bloom_strength` (Bloom strength) | `slider` `indra/newview/skins/default/xui/en/panel_exposure_hub.xml:71` | kit `slider` ↔ `RenderBloomStrength` `F32` | page `bloom_glow_tab` |
 | `glow_filters` / `exp_bloom_threshold` (Threshold) | `slider` `indra/newview/skins/default/xui/en/panel_exposure_hub.xml:73` | kit `slider` ↔ `RenderBloomThreshold` `F32` | page `bloom_glow_tab` |
-| `glow_filters` / `exp_filters_btn` (All filters) | `button` `indra/newview/skins/default/xui/en/panel_exposure_hub.xml:134` | `ALExposureKitAdapter` command/model binding → `ALPanelExposureHub::postBuild()` (`indra/newview/alpanelexposurehub.cpp:131`) | none |
+| `glow_filters` / `exp_filters_btn` (All filters) | `button` `indra/newview/skins/default/xui/en/panel_exposure_hub.xml:134` | `ALExposureKitAdapter` command/model binding → wired in `ALPanelExposureHub::postBuild()`; behavior `ALFloaterLightBox::showTab()` (`indra/newview/alpanelexposurehub.cpp:131`) | none |
 
 ## Adapter extraction
 
 | Existing function | Extraction contract |
 |---|---|
-| `?::?()` — `indra/llui/llui.cpp:178` | Move model-facing work into `ALExposureKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
-| `ALPanelExposureHub::postBuild()` — `indra/newview/alpanelexposurehub.cpp:70, 71, 72, 74, 131` | Move model-facing work into `ALExposureKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
-| `LLFloaterDirector::postBuild()` — `indra/newview/llfloaterdirector.cpp:590` | Move model-facing work into `ALExposureKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
+| `LLButton::setFloaterToggle()` — `indra/llui/llui.cpp:178` | Move model-facing work into `ALExposureKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
+| `ALExposureSettingsHistory::redo()` — `indra/newview/alpanelexposurehub.cpp:137` | Move model-facing work into `ALExposureKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
+| `ALExposureSettingsHistory::undo()` — `indra/newview/alpanelexposurehub.cpp:136` | Move model-facing work into `ALExposureKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
+| `ALFloaterLightBox::showTab()` — `indra/newview/alpanelexposurehub.cpp:131` | Move model-facing work into `ALExposureKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
+| `LLFloaterReg::showInstance()` — `indra/newview/llfloaterdirector.cpp:590` | Move model-facing work into `ALExposureKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
 
 ## Live state and refresh
 
@@ -102,13 +104,21 @@ Manifest size: **26 states**, hard cap 256, page runtime budget 2 minutes. Each 
 3. Run the bounded state manifest at 1160×720, 850×560, 1141×720, and 915×720. Non-Director owners (Lightbox, cue/Diopter/Snapshot floaters, and shared panels) are mandatory parity oracles even when no v1 Director leaf embeds them.
 4. Review-diff every controller extraction and prove the v1 forwarding call preserves callbacks, owner tokens, selection, history barriers, and visibility gates.
 
+## Ambiguous same-name candidates (never auto-bound)
+
+None.
+
+## Rejected out-of-scope same-name candidates
+
+None.
+
 ## New widget required
 
-None. Every approved visual kind is either a kit primitive or an existing XUI control. Missing action/model bindings below are USER DECISIONS, not permission to invent a visual class.
+None. Every approved visual kind is either a kit primitive or an existing XUI control. An unresolved binding is not permission to invent a visual class.
 
-## Unresolved and USER DECISION items
+## Unresolved and pending-decision items
 
-- `exp_sky_note` (Per-sky values): no C++ reference or setting binding.
+None in the current evidence index.
 
 ## Risks
 

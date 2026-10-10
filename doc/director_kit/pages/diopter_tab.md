@@ -1,7 +1,9 @@
 # Diopter — Director Kit page contract
 
 Page key: `diopter_tab`. Evidence: [`page_sources.json`](../page_sources.json) and [`page_sources.md`](../page_sources.md).
-Computed class: **code-driven** (4/6 setting-bound rows; 4 C++-referenced rows).
+Computed class: **code-driven** (4/6 setting-bound rows; 1 C++-referenced rows).
+**PENDING USER DECISION**
+
 
 ## Real owners
 
@@ -13,7 +15,7 @@ Name collisions in secondary XUI files are evidence candidates, not automatic ow
 
 ## Presentation rule
 
-The six approved rows are launcher/summary rows, while the real editor is a 560×720 nine-tab floater. Do not invent a compact editor or embed the whole floater; data expansion is a USER DECISION.
+The six approved rows are launcher/summary rows, while the real editor is a 560×720 nine-tab floater. Do not invent a compact editor or embed the whole floater; data expansion is PENDING USER DECISION.
 
 ## Row bindings
 
@@ -21,19 +23,17 @@ The six approved rows are launcher/summary rows, while the real editor is a 560�
 
 | Card / row | Existing control evidence | Required binding | Other writable homes |
 |---|---|---|---|
-| `diopter_summary` / `diopter_enabled` (Enable) | `check_box` `indra/newview/skins/default/xui/en/floater_ultimate_diopter.xml:66` | kit `toggle` ↔ `CineDiopterEnabled` `Boolean`; `ALDiopterKitAdapter` preserves/calls `?::?()` (`indra/newview/aldiopterrelevance.cpp:38`), `?::?()` (`indra/newview/alfloaterultimatediopter.cpp:68`), `?::?()` (`indra/newview/tests/aldiopterrelevance_test.cpp:1128`), `?::?()` (`indra/newview/tests/aldiopterrelevance_test.cpp:1268`) | none |
-| `diopter_summary` / `diopter_preset` (Preset) | `combo_box` `indra/newview/skins/default/xui/en/floater_ultimate_diopter.xml:72` | kit `combo` ↔ `CineDiopterPreset` `U32`; `ALDiopterKitAdapter` preserves/calls `?::?()` (`indra/newview/aldiopterrelevance.cpp:47`), `ALFloaterUltimateDiopter::postBuild()` (`indra/newview/alfloaterultimatediopter.cpp:288`) | none |
-| `diopter_summary` / `diopter_blend` (Master blend) | `slider` `indra/newview/skins/default/xui/en/floater_ultimate_diopter.xml:105` | kit `slider` ↔ `CineDiopterBlend` `F32`; `ALDiopterKitAdapter` preserves/calls `?::?()` (`indra/newview/aldiopterrelevance.cpp:59`) | none |
-| `diopter_summary` / `diopter_focus_mode` (Base focus) | `combo_box` `indra/newview/skins/default/xui/en/floater_ultimate_diopter.xml:257` | kit `combo` ↔ `CineDiopterFocusMode` `U32`; `ALDiopterKitAdapter` preserves/calls `?::?()` (`indra/newview/aldiopterrelevance.cpp:260`) | none |
-| `diopter_summary` / `diopter_open_editor` (Editor) | none | **USER DECISION:** register an explicit `ALDiopterKitAdapter` command; no matching setting or C++ literal was found | none |
-| `adv_diopter` / `diopter_open_editor_adv` (Editor) | none | **USER DECISION:** register an explicit `ALDiopterKitAdapter` command; no matching setting or C++ literal was found | none |
+| `diopter_summary` / `diopter_enabled` (Enable) | `check_box` `indra/newview/skins/default/xui/en/floater_ultimate_diopter.xml:66` | kit `toggle` ↔ `CineDiopterEnabled` `Boolean` | none |
+| `diopter_summary` / `diopter_preset` (Preset) | `combo_box` `indra/newview/skins/default/xui/en/floater_ultimate_diopter.xml:72` | kit `combo` ↔ `CineDiopterPreset` `U32` | none |
+| `diopter_summary` / `diopter_blend` (Master blend) | `slider` `indra/newview/skins/default/xui/en/floater_ultimate_diopter.xml:105` | kit `slider` ↔ `CineDiopterBlend` `F32` | none |
+| `diopter_summary` / `diopter_focus_mode` (Base focus) | `combo_box` `indra/newview/skins/default/xui/en/floater_ultimate_diopter.xml:257` | kit `combo` ↔ `CineDiopterFocusMode` `U32` | none |
+| `diopter_summary` / `diopter_open_editor` (Editor) | none | kit-native action `floater:ultimate_diopter`; no duplicate widget is required | none |
+| `adv_diopter` / `diopter_open_editor_adv` (Editor) | none | kit-native action `floater:ultimate_diopter`; no duplicate widget is required | none |
 
 ## Adapter extraction
 
 | Existing function | Extraction contract |
 |---|---|
-| `?::?()` — `indra/newview/aldiopterrelevance.cpp:38, 47, 59, 260` | Move model-facing work into `ALDiopterKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
-| `?::?()` — `indra/newview/alfloaterultimatediopter.cpp:68` | Move model-facing work into `ALDiopterKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
 | `ALFloaterUltimateDiopter::applyRowState()` — `indra/newview/alfloaterultimatediopter.cpp:697` | Move model-facing work into `ALDiopterKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
 | `ALFloaterUltimateDiopter::armFocusPick/onFocusPickCommitted()` — `indra/newview/alfloaterultimatediopter.cpp:996` | Move model-facing work into `ALDiopterKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
 | `ALFloaterUltimateDiopter::initRangeCombos/syncRangesToCurrentValues()` — `indra/newview/alfloaterultimatediopter.cpp:1265` | Move model-facing work into `ALDiopterKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
@@ -42,10 +42,8 @@ The six approved rows are launcher/summary rows, while the real editor is a 560�
 | `ALFloaterUltimateDiopter::onSetFromCameraFocusClicked()` — `indra/newview/alfloaterultimatediopter.cpp:1141` | Move model-facing work into `ALDiopterKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
 | `ALFloaterUltimateDiopter::onShowDepthToggled()` — `indra/newview/alfloaterultimatediopter.cpp:1485` | Move model-facing work into `ALDiopterKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
 | `ALFloaterUltimateDiopter::populateState/buildSigKey()` — `indra/newview/alfloaterultimatediopter.cpp:552` | Move model-facing work into `ALDiopterKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
-| `ALFloaterUltimateDiopter::postBuild()` — `indra/newview/alfloaterultimatediopter.cpp:288` | Move model-facing work into `ALDiopterKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
 | `ALFloaterUltimateDiopter::refreshRelevance()` — `indra/newview/alfloaterultimatediopter.cpp:844` | Move model-facing work into `ALDiopterKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
 | `ALFloaterUltimateDiopter::updateBandPanels()` — `indra/newview/alfloaterultimatediopter.cpp:807` | Move model-facing work into `ALDiopterKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
-| `?::?()` — `indra/newview/tests/aldiopterrelevance_test.cpp:1128, 1268` | Move model-facing work into `ALDiopterKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
 
 ## Live state and refresh
 
@@ -99,15 +97,21 @@ Manifest size: **31 states**, hard cap 256, page runtime budget 2 minutes. Each 
 3. Run the bounded state manifest at 1160×720, 850×560, 1141×720, and 915×720. Non-Director owners (Lightbox, cue/Diopter/Snapshot floaters, and shared panels) are mandatory parity oracles even when no v1 Director leaf embeds them.
 4. Review-diff every controller extraction and prove the v1 forwarding call preserves callbacks, owner tokens, selection, history barriers, and visibility gates.
 
+## Ambiguous same-name candidates (never auto-bound)
+
+None.
+
+## Rejected out-of-scope same-name candidates
+
+5 candidates were rejected by the XUI-owner/class scope; exact records and reasons are in `page_sources.json`.
+
 ## New widget required
 
-None. Every approved visual kind is either a kit primitive or an existing XUI control. Missing action/model bindings below are USER DECISIONS, not permission to invent a visual class.
+None. Every approved visual kind is either a kit primitive or an existing XUI control. An unresolved binding is not permission to invent a visual class.
 
-## Unresolved and USER DECISION items
+## Unresolved and pending-decision items
 
-- **USER DECISION:** The six approved rows are launcher/summary rows, while the real editor is a 560×720 nine-tab floater. Do not invent a compact editor or embed the whole floater; data expansion is a USER DECISION.
-- `diopter_open_editor` (Editor): widget not found in XUI; no C++ reference or setting binding. **USER DECISION required.**
-- `diopter_open_editor_adv` (Editor): widget not found in XUI; no C++ reference or setting binding. **USER DECISION required.**
+- **PENDING USER DECISION:** The six approved rows are launcher/summary rows, while the real editor is a 560×720 nine-tab floater. Do not invent a compact editor or embed the whole floater; data expansion is PENDING USER DECISION.
 
 ## Risks
 

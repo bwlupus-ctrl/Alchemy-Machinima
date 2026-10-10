@@ -1,12 +1,12 @@
 # Weather — Director Kit page contract
 
 Page key: `weather_tab`. Evidence: [`page_sources.json`](../page_sources.json) and [`page_sources.md`](../page_sources.md).
-Computed class: **code-driven** (48/51 setting-bound rows; 19 C++-referenced rows).
+Computed class: **code-driven** (48/51 setting-bound rows; 3 C++-referenced rows).
 
 ## Real owners
 
 - `panel_weather_settings` / `panel` at `indra/newview/skins/default/xui/en/panel_weather_settings.xml:7` (51 matching rows).
-- Referencing classes: `LLPipeline` (16), `ALPanelWeatherSettings` (4).
+- Referencing classes: `ALPanelWeatherSettings` (4).
 
 Name collisions in secondary XUI files are evidence candidates, not automatic ownership. The implementation must retain only occurrences whose root and class agree with the row's behavior.
 
@@ -20,8 +20,8 @@ Use the existing XUI control types as ordinary measured kit rows. No new canvas,
 
 | Card / row | Existing control evidence | Required binding | Other writable homes |
 |---|---|---|---|
-| `weather_main` / `weather_deferred_note` (Requires) | `text` `indra/newview/skins/default/xui/en/panel_weather_settings.xml:11` | `ALWeatherKitAdapter` command/model binding → `ALPanelWeatherSettings::updateDeferredAvailability()` (`indra/newview/alpanelweathersettings.cpp:203`) | none |
-| `weather_main` / `weather_reset_all` (Reset all) | `button` `indra/newview/skins/default/xui/en/panel_weather_settings.xml:260` | `ALWeatherKitAdapter` command/model binding → `ALPanelWeatherSettings::postBuild()` (`indra/newview/alpanelweathersettings.cpp:137`) | none |
+| `weather_main` / `weather_deferred_note` (Requires) | `text` `indra/newview/skins/default/xui/en/panel_weather_settings.xml:11` | kit readout ← approved static copy; no runtime writer | none |
+| `weather_main` / `weather_reset_all` (Reset all) | `button` `indra/newview/skins/default/xui/en/panel_weather_settings.xml:260` | `ALWeatherKitAdapter` command/model binding → wired in `ALPanelWeatherSettings::postBuild()`; behavior `ALPanelWeatherSettings::onClickResetAll()` (`indra/newview/alpanelweathersettings.cpp:137`) | none |
 | `rain` / `weather_rain_intensity` (Intensity) | `slider` `indra/newview/skins/default/xui/en/panel_weather_settings.xml:45` | kit `slider` ↔ `AlchemyWeatherRainIntensity` `F32` | none |
 | `rain` / `weather_rain_density` (Density) | `slider` `indra/newview/skins/default/xui/en/panel_weather_settings.xml:48` | kit `slider` ↔ `AlchemyWeatherRainDensity` `F32` | none |
 | `rain` / `weather_rain_speed` (Fall speed) | `slider` `indra/newview/skins/default/xui/en/panel_weather_settings.xml:51` | kit `slider` ↔ `AlchemyWeatherRainFallSpeed` `F32` | none |
@@ -34,31 +34,31 @@ Use the existing XUI control types as ordinary measured kit rows. No new canvas,
 | `rain` / `weather_rain_layers` (Depth layers) | `slider` `indra/newview/skins/default/xui/en/panel_weather_settings.xml:69` | kit `slider` ↔ `AlchemyWeatherRainLayers` `U32` | none |
 | `rain` / `weather_rain_shutter` (Shutter) | `slider` `indra/newview/skins/default/xui/en/panel_weather_settings.xml:72` | kit `slider` ↔ `AlchemyWeatherRainVirtualShutter` `F32` | none |
 | `rain` / `weather_rain_near` (Near emphasis) | `slider` `indra/newview/skins/default/xui/en/panel_weather_settings.xml:75` | kit `slider` ↔ `AlchemyWeatherRainNearEmphasis` `F32` | none |
-| `splashes` / `weather_splash_density` (Density) | `slider` `indra/newview/skins/default/xui/en/panel_weather_settings.xml:90` | kit `slider` ↔ `AlchemyWeatherSplashDensity` `F32`; `ALWeatherKitAdapter` preserves/calls `LLPipeline::renderWeather()` (`indra/newview/pipeline.cpp:19416`) | none |
+| `splashes` / `weather_splash_density` (Density) | `slider` `indra/newview/skins/default/xui/en/panel_weather_settings.xml:90` | kit `slider` ↔ `AlchemyWeatherSplashDensity` `F32` | none |
 | `splashes` / `weather_splash_size` (Ring radius) | `slider` `indra/newview/skins/default/xui/en/panel_weather_settings.xml:93` | kit `slider` ↔ `AlchemyWeatherSplashRingSize` `F32` | none |
 | `splashes` / `weather_splash_range` (Impact range) | `slider` `indra/newview/skins/default/xui/en/panel_weather_settings.xml:102` | kit `slider` ↔ `AlchemyWeatherSplashMaxDistance` `F32` | none |
-| `splashes` / `weather_splash_lifetime` (Lifetime) | `slider` `indra/newview/skins/default/xui/en/panel_weather_settings.xml:96` | kit `slider` ↔ `AlchemyWeatherSplashLifetime` `F32`; `ALWeatherKitAdapter` preserves/calls `LLPipeline::renderWeather()` (`indra/newview/pipeline.cpp:19418`) | none |
+| `splashes` / `weather_splash_lifetime` (Lifetime) | `slider` `indra/newview/skins/default/xui/en/panel_weather_settings.xml:96` | kit `slider` ↔ `AlchemyWeatherSplashLifetime` `F32` | none |
 | `splashes` / `weather_splash_up` (Up threshold) | `slider` `indra/newview/skins/default/xui/en/panel_weather_settings.xml:99` | kit `slider` ↔ `AlchemyWeatherSplashUpThreshold` `F32` | none |
-| `wet_mist_lens` / `weather_wetness_enabled` (Wet sheen) | `check_box` `indra/newview/skins/default/xui/en/panel_weather_settings.xml:107` | kit `toggle` ↔ `AlchemyWeatherWetnessEnabled` `Boolean`; `ALWeatherKitAdapter` preserves/calls `LLPipeline::renderWeather()` (`indra/newview/pipeline.cpp:19421`) | none |
-| `wet_mist_lens` / `weather_wetness_strength` (Wetness) | `slider` `indra/newview/skins/default/xui/en/panel_weather_settings.xml:110` | kit `slider` ↔ `AlchemyWeatherWetnessStrength` `F32`; `ALWeatherKitAdapter` preserves/calls `LLPipeline::renderWeather()` (`indra/newview/pipeline.cpp:19422`) | none |
-| `wet_mist_lens` / `weather_mist_enabled` (Ground mist) | `check_box` `indra/newview/skins/default/xui/en/panel_weather_settings.xml:115` | kit `toggle` ↔ `AlchemyWeatherMistEnabled` `Boolean`; `ALWeatherKitAdapter` preserves/calls `LLPipeline::renderWeather()` (`indra/newview/pipeline.cpp:19423`) | none |
-| `wet_mist_lens` / `weather_mist_strength` (Mist strength) | `slider` `indra/newview/skins/default/xui/en/panel_weather_settings.xml:118` | kit `slider` ↔ `AlchemyWeatherMistStrength` `F32`; `ALWeatherKitAdapter` preserves/calls `LLPipeline::renderWeather()` (`indra/newview/pipeline.cpp:19424`) | none |
-| `wet_mist_lens` / `weather_mist_height` (Mist height) | `slider` `indra/newview/skins/default/xui/en/panel_weather_settings.xml:121` | kit `slider` ↔ `AlchemyWeatherMistHeight` `F32`; `ALWeatherKitAdapter` preserves/calls `LLPipeline::renderWeather()` (`indra/newview/pipeline.cpp:19425`) | none |
-| `wet_mist_lens` / `weather_lens_enabled` (Lens drops) | `check_box` `indra/newview/skins/default/xui/en/panel_weather_settings.xml:126` | kit `toggle` ↔ `AlchemyWeatherLensDropsEnabled` `Boolean`; `ALWeatherKitAdapter` preserves/calls `LLPipeline::renderWeather()` (`indra/newview/pipeline.cpp:19426`) | none |
-| `wet_mist_lens` / `weather_lens_strength` (Lens strength) | `slider` `indra/newview/skins/default/xui/en/panel_weather_settings.xml:129` | kit `slider` ↔ `AlchemyWeatherLensDropsStrength` `F32`; `ALWeatherKitAdapter` preserves/calls `LLPipeline::renderWeather()` (`indra/newview/pipeline.cpp:19427`) | none |
+| `wet_mist_lens` / `weather_wetness_enabled` (Wet sheen) | `check_box` `indra/newview/skins/default/xui/en/panel_weather_settings.xml:107` | kit `toggle` ↔ `AlchemyWeatherWetnessEnabled` `Boolean` | none |
+| `wet_mist_lens` / `weather_wetness_strength` (Wetness) | `slider` `indra/newview/skins/default/xui/en/panel_weather_settings.xml:110` | kit `slider` ↔ `AlchemyWeatherWetnessStrength` `F32` | none |
+| `wet_mist_lens` / `weather_mist_enabled` (Ground mist) | `check_box` `indra/newview/skins/default/xui/en/panel_weather_settings.xml:115` | kit `toggle` ↔ `AlchemyWeatherMistEnabled` `Boolean` | none |
+| `wet_mist_lens` / `weather_mist_strength` (Mist strength) | `slider` `indra/newview/skins/default/xui/en/panel_weather_settings.xml:118` | kit `slider` ↔ `AlchemyWeatherMistStrength` `F32` | none |
+| `wet_mist_lens` / `weather_mist_height` (Mist height) | `slider` `indra/newview/skins/default/xui/en/panel_weather_settings.xml:121` | kit `slider` ↔ `AlchemyWeatherMistHeight` `F32` | none |
+| `wet_mist_lens` / `weather_lens_enabled` (Lens drops) | `check_box` `indra/newview/skins/default/xui/en/panel_weather_settings.xml:126` | kit `toggle` ↔ `AlchemyWeatherLensDropsEnabled` `Boolean` | none |
+| `wet_mist_lens` / `weather_lens_strength` (Lens strength) | `slider` `indra/newview/skins/default/xui/en/panel_weather_settings.xml:129` | kit `slider` ↔ `AlchemyWeatherLensDropsStrength` `F32` | none |
 | `rain_cover` / `weather_rain_occlusion_extent` (Map radius) | `slider` `indra/newview/skins/default/xui/en/panel_weather_settings.xml:148` | kit `slider` ↔ `AlchemyWeatherRainOcclusionExtent` `F32` | none |
-| `rain_cover` / `weather_rain_occlusion_bias` (Vertical bias) | `slider` `indra/newview/skins/default/xui/en/panel_weather_settings.xml:151` | kit `slider` ↔ `AlchemyWeatherRainOcclusionBias` `F32`; `ALWeatherKitAdapter` preserves/calls `LLPipeline::renderWeather()` (`indra/newview/pipeline.cpp:19434`) | none |
-| `rain_cover` / `weather_rain_occlusion_softness` (Softness) | `slider` `indra/newview/skins/default/xui/en/panel_weather_settings.xml:154` | kit `slider` ↔ `AlchemyWeatherRainOcclusionSoftness` `F32`; `ALWeatherKitAdapter` preserves/calls `LLPipeline::renderWeather()` (`indra/newview/pipeline.cpp:19436`) | none |
+| `rain_cover` / `weather_rain_occlusion_bias` (Vertical bias) | `slider` `indra/newview/skins/default/xui/en/panel_weather_settings.xml:151` | kit `slider` ↔ `AlchemyWeatherRainOcclusionBias` `F32` | none |
+| `rain_cover` / `weather_rain_occlusion_softness` (Softness) | `slider` `indra/newview/skins/default/xui/en/panel_weather_settings.xml:154` | kit `slider` ↔ `AlchemyWeatherRainOcclusionSoftness` `F32` | none |
 | `rain_cover` / `weather_shelter_fade` (Fallback cover) | `check_box` `indra/newview/skins/default/xui/en/panel_weather_settings.xml:163` | kit `toggle` ↔ `AlchemyWeatherShelterFade` `Boolean` | none |
 | `rain_cover` / `weather_rain_occlusion_resolution` (Map detail) | `slider` `indra/newview/skins/default/xui/en/panel_weather_settings.xml:145` | kit `slider` ↔ `AlchemyWeatherRainOcclusionResolution` `U32` | none |
 | `rain_cover` / `weather_shelter_height` (Cover height) | `slider` `indra/newview/skins/default/xui/en/panel_weather_settings.xml:167` | kit `slider` ↔ `AlchemyWeatherShelterHeight` `F32` | none |
 | `lightning` / `weather_lightning_rate` (Strikes/min) | `slider` `indra/newview/skins/default/xui/en/panel_weather_settings.xml:180` | kit `slider` ↔ `AlchemyWeatherLightningRate` `F32` | none |
-| `lightning` / `weather_lightning_brightness` (Brightness) | `slider` `indra/newview/skins/default/xui/en/panel_weather_settings.xml:192` | kit `slider` ↔ `AlchemyWeatherLightningBrightness` `F32`; `ALWeatherKitAdapter` preserves/calls `LLPipeline::renderWeather()` (`indra/newview/pipeline.cpp:19885`) | none |
+| `lightning` / `weather_lightning_brightness` (Brightness) | `slider` `indra/newview/skins/default/xui/en/panel_weather_settings.xml:192` | kit `slider` ↔ `AlchemyWeatherLightningBrightness` `F32` | none |
 | `lightning` / `weather_flash_duration` (Flash length) | `slider` `indra/newview/skins/default/xui/en/panel_weather_settings.xml:183` | kit `slider` ↔ `AlchemyWeatherLightningFlashDuration` `F32` | none |
-| `lightning` / `weather_trigger` (Strike now) | `button` `indra/newview/skins/default/xui/en/panel_weather_settings.xml:207` | `ALWeatherKitAdapter` command/model binding → `ALPanelWeatherSettings::postBuild()` (`indra/newview/alpanelweathersettings.cpp:135`), `ALPanelWeatherSettings::updateDeferredAvailability()` (`indra/newview/alpanelweathersettings.cpp:207`) | none |
+| `lightning` / `weather_trigger` (Strike now) | `button` `indra/newview/skins/default/xui/en/panel_weather_settings.xml:207` | `ALWeatherKitAdapter` command/model binding → wired in `ALPanelWeatherSettings::postBuild()`; behavior `ALPanelWeatherSettings::onTriggerStrike()` (`indra/newview/alpanelweathersettings.cpp:135`) | none |
 | `lightning` / `weather_bolt_duration` (Bolt time) | `slider` `indra/newview/skins/default/xui/en/panel_weather_settings.xml:186` | kit `slider` ↔ `AlchemyWeatherLightningBoltDuration` `F32` | none |
-| `lightning` / `weather_lightning_ambient` (Ambient floor) | `slider` `indra/newview/skins/default/xui/en/panel_weather_settings.xml:189` | kit `slider` ↔ `AlchemyWeatherLightningAmbient` `F32`; `ALWeatherKitAdapter` preserves/calls `LLPipeline::renderWeather()` (`indra/newview/pipeline.cpp:19886`) | none |
-| `lightning` / `weather_lightning_width` (Bolt width) | `slider` `indra/newview/skins/default/xui/en/panel_weather_settings.xml:195` | kit `slider` ↔ `AlchemyWeatherLightningBoltWidth` `F32`; `ALWeatherKitAdapter` preserves/calls `LLPipeline::renderWeather()` (`indra/newview/pipeline.cpp:19884`) | none |
+| `lightning` / `weather_lightning_ambient` (Ambient floor) | `slider` `indra/newview/skins/default/xui/en/panel_weather_settings.xml:189` | kit `slider` ↔ `AlchemyWeatherLightningAmbient` `F32` | none |
+| `lightning` / `weather_lightning_width` (Bolt width) | `slider` `indra/newview/skins/default/xui/en/panel_weather_settings.xml:195` | kit `slider` ↔ `AlchemyWeatherLightningBoltWidth` `F32` | none |
 | `lightning` / `weather_lightning_height` (Bolt height) | `slider` `indra/newview/skins/default/xui/en/panel_weather_settings.xml:198` | kit `slider` ↔ `AlchemyWeatherLightningBoltHeight` `F32` | none |
 | `lightning` / `weather_lightning_min` (Minimum range) | `slider` `indra/newview/skins/default/xui/en/panel_weather_settings.xml:201` | kit `slider` ↔ `AlchemyWeatherLightningMinDistance` `F32` | none |
 | `lightning` / `weather_lightning_max` (Maximum range) | `slider` `indra/newview/skins/default/xui/en/panel_weather_settings.xml:204` | kit `slider` ↔ `AlchemyWeatherLightningMaxDistance` `F32` | none |
@@ -66,19 +66,18 @@ Use the existing XUI control types as ordinary measured kit rows. No new canvas,
 | `lightning_hq` / `weather_lightning_sheet_enabled` (Cloud sheet) | `check_box` `indra/newview/skins/default/xui/en/panel_weather_settings.xml:219` | kit `toggle` ↔ `AlchemyWeatherLightningSheetEnabled` `Boolean` | none |
 | `lightning_hq` / `weather_lightning_sheet_strength` (Sheet strength) | `slider` `indra/newview/skins/default/xui/en/panel_weather_settings.xml:223` | kit `slider` ↔ `AlchemyWeatherLightningSheetStrength` `F32` | none |
 | `lightning_hq` / `weather_lightning_corona_strength` (Corona) | `slider` `indra/newview/skins/default/xui/en/panel_weather_settings.xml:226` | kit `slider` ↔ `AlchemyWeatherLightningCoronaStrength` `F32` | none |
-| `lightning_hq` / `weather_lightning_afterglow` (Afterglow) | `slider` `indra/newview/skins/default/xui/en/panel_weather_settings.xml:240` | kit `slider` ↔ `AlchemyWeatherLightningAfterglowStrength` `F32`; `ALWeatherKitAdapter` preserves/calls `LLPipeline::renderWeather()` (`indra/newview/pipeline.cpp:19896`) | none |
+| `lightning_hq` / `weather_lightning_afterglow` (Afterglow) | `slider` `indra/newview/skins/default/xui/en/panel_weather_settings.xml:240` | kit `slider` ↔ `AlchemyWeatherLightningAfterglowStrength` `F32` | none |
 | `lightning_hq` / `weather_lightning_distance_grading` (Distance grade) | `slider` `indra/newview/skins/default/xui/en/panel_weather_settings.xml:237` | kit `slider` ↔ `AlchemyWeatherLightningDistanceGrading` `F32` | none |
 | `lightning_hq` / `weather_lightning_wet_glint_enabled` (Wet glint) | `check_box` `indra/newview/skins/default/xui/en/panel_weather_settings.xml:230` | kit `toggle` ↔ `AlchemyWeatherLightningWetGlintEnabled` `Boolean` | none |
 | `lightning_hq` / `weather_lightning_wet_glint_strength` (Glint strength) | `slider` `indra/newview/skins/default/xui/en/panel_weather_settings.xml:234` | kit `slider` ↔ `AlchemyWeatherLightningWetGlintStrength` `F32` | none |
-| `lightning_hq` / `weather_lightning_energy_ceiling` (HDR peak cap) | `slider` `indra/newview/skins/default/xui/en/panel_weather_settings.xml:243` | kit `slider` ↔ `AlchemyWeatherLightningEnergyCeiling` `F32`; `ALWeatherKitAdapter` preserves/calls `LLPipeline::renderWeather()` (`indra/newview/pipeline.cpp:19903`) | none |
+| `lightning_hq` / `weather_lightning_energy_ceiling` (HDR peak cap) | `slider` `indra/newview/skins/default/xui/en/panel_weather_settings.xml:243` | kit `slider` ↔ `AlchemyWeatherLightningEnergyCeiling` `F32` | none |
 
 ## Adapter extraction
 
 | Existing function | Extraction contract |
 |---|---|
-| `ALPanelWeatherSettings::postBuild()` — `indra/newview/alpanelweathersettings.cpp:135, 137` | Move model-facing work into `ALWeatherKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
-| `ALPanelWeatherSettings::updateDeferredAvailability()` — `indra/newview/alpanelweathersettings.cpp:203, 207` | Move model-facing work into `ALWeatherKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
-| `LLPipeline::renderWeather()` — `indra/newview/pipeline.cpp:19416, 19418, 19421, 19422, 19423, 19424, 19425, 19426, 19427, 19434, 19436, 19884, 19885, 19886, 19896, 19903` | Move model-facing work into `ALWeatherKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
+| `ALPanelWeatherSettings::onClickResetAll()` — `indra/newview/alpanelweathersettings.cpp:137` | Move model-facing work into `ALWeatherKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
+| `ALPanelWeatherSettings::onTriggerStrike()` — `indra/newview/alpanelweathersettings.cpp:135` | Move model-facing work into `ALWeatherKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
 
 ## Live state and refresh
 
@@ -124,11 +123,19 @@ Manifest size: **23 states**, hard cap 256, page runtime budget 2 minutes. Each 
 3. Run the bounded state manifest at 1160×720, 850×560, 1141×720, and 915×720. Non-Director owners (Lightbox, cue/Diopter/Snapshot floaters, and shared panels) are mandatory parity oracles even when no v1 Director leaf embeds them.
 4. Review-diff every controller extraction and prove the v1 forwarding call preserves callbacks, owner tokens, selection, history barriers, and visibility gates.
 
+## Ambiguous same-name candidates (never auto-bound)
+
+None.
+
+## Rejected out-of-scope same-name candidates
+
+16 candidates were rejected by the XUI-owner/class scope; exact records and reasons are in `page_sources.json`.
+
 ## New widget required
 
-None. Every approved visual kind is either a kit primitive or an existing XUI control. Missing action/model bindings below are USER DECISIONS, not permission to invent a visual class.
+None. Every approved visual kind is either a kit primitive or an existing XUI control. An unresolved binding is not permission to invent a visual class.
 
-## Unresolved and USER DECISION items
+## Unresolved and pending-decision items
 
 None in the current evidence index.
 

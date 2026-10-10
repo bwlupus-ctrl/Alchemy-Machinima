@@ -1,12 +1,12 @@
 # Switchboard — Director Kit page contract
 
 Page key: `switchboard_tab`. Evidence: [`page_sources.json`](../page_sources.json) and [`page_sources.md`](../page_sources.md).
-Computed class: **code-driven** (5/32 setting-bound rows; 14 C++-referenced rows).
+Computed class: **code-driven** (5/32 setting-bound rows; 26 C++-referenced rows).
 
 ## Real owners
 
 - `panel_director_anim_switcher` / `panel` at `indra/newview/skins/default/xui/en/panel_director_anim_switcher.xml:11` (32 matching rows).
-- Referencing classes: `ALPanelDirectorAnimSwitcher` (14).
+- Referencing classes: `ALPanelDirectorAnimSwitcher` (51).
 
 Name collisions in secondary XUI files are evidence candidates, not automatic ownership. The implementation must retain only occurrences whose root and class agree with the row's behavior.
 
@@ -25,39 +25,52 @@ Keep the twelve existing `anim_slot_01`…`anim_slot_12` buttons as measured kit
 | `arm_timing` / `anim_interval` (Every (s)) | `spinner` `indra/newview/skins/default/xui/en/panel_director_anim_switcher.xml:351` | kit `number` ↔ `DirectorAnimSwitcherIntervalSec` `F32` | none |
 | `arm_timing` / `anim_jitter` (Jitter (s)) | `spinner` `indra/newview/skins/default/xui/en/panel_director_anim_switcher.xml:367` | kit `number` ↔ `DirectorAnimSwitcherJitterSec` `F32` | none |
 | `arm_timing` / `anim_sequence` (Sequence) | `check_box` `indra/newview/skins/default/xui/en/panel_director_anim_switcher.xml:378` | kit `toggle` ↔ `DirectorAnimSwitcherSequence` `Boolean` | none |
-| `arm_timing` / `anim_program_status` (Status) | `text` `indra/newview/skins/default/xui/en/panel_director_anim_switcher.xml:52` | `ALAnimSwitcherKitAdapter` command/model binding → `ALPanelDirectorAnimSwitcher::postBuild()` (`indra/newview/alpaneldirectoranimswitcher.cpp:79`) | none |
+| `arm_timing` / `anim_program_status` (Status) | `text` `indra/newview/skins/default/xui/en/panel_director_anim_switcher.xml:52` | kit readout ← approved static copy; no runtime writer | none |
 | `slots` / `anim_help_hint` (How to fill) | `text` `indra/newview/skins/default/xui/en/panel_director_anim_switcher.xml:388` | kit readout ← approved static copy; no runtime writer | none |
-| `slots` / `anim_slot_01` (Slot 1) | `button` `indra/newview/skins/default/xui/en/panel_director_anim_switcher.xml:61` | **USER DECISION:** register an explicit `ALAnimSwitcherKitAdapter` command; no matching setting or C++ literal was found | none |
-| `slots` / `anim_slot_02` (Slot 2) | `button` `indra/newview/skins/default/xui/en/panel_director_anim_switcher.xml:62` | **USER DECISION:** register an explicit `ALAnimSwitcherKitAdapter` command; no matching setting or C++ literal was found | none |
-| `slots` / `anim_slot_03` (Slot 3) | `button` `indra/newview/skins/default/xui/en/panel_director_anim_switcher.xml:63` | **USER DECISION:** register an explicit `ALAnimSwitcherKitAdapter` command; no matching setting or C++ literal was found | none |
-| `slots` / `anim_slot_04` (Slot 4) | `button` `indra/newview/skins/default/xui/en/panel_director_anim_switcher.xml:64` | **USER DECISION:** register an explicit `ALAnimSwitcherKitAdapter` command; no matching setting or C++ literal was found | none |
-| `slots` / `anim_slot_05` (Slot 5) | `button` `indra/newview/skins/default/xui/en/panel_director_anim_switcher.xml:65` | **USER DECISION:** register an explicit `ALAnimSwitcherKitAdapter` command; no matching setting or C++ literal was found | none |
-| `slots` / `anim_slot_06` (Slot 6) | `button` `indra/newview/skins/default/xui/en/panel_director_anim_switcher.xml:66` | **USER DECISION:** register an explicit `ALAnimSwitcherKitAdapter` command; no matching setting or C++ literal was found | none |
-| `slots` / `anim_slot_07` (Slot 7) | `button` `indra/newview/skins/default/xui/en/panel_director_anim_switcher.xml:67` | **USER DECISION:** register an explicit `ALAnimSwitcherKitAdapter` command; no matching setting or C++ literal was found | none |
-| `slots` / `anim_slot_08` (Slot 8) | `button` `indra/newview/skins/default/xui/en/panel_director_anim_switcher.xml:68` | **USER DECISION:** register an explicit `ALAnimSwitcherKitAdapter` command; no matching setting or C++ literal was found | none |
-| `slots` / `anim_slot_09` (Slot 9) | `button` `indra/newview/skins/default/xui/en/panel_director_anim_switcher.xml:69` | **USER DECISION:** register an explicit `ALAnimSwitcherKitAdapter` command; no matching setting or C++ literal was found | none |
-| `slots` / `anim_slot_10` (Slot 10) | `button` `indra/newview/skins/default/xui/en/panel_director_anim_switcher.xml:70` | **USER DECISION:** register an explicit `ALAnimSwitcherKitAdapter` command; no matching setting or C++ literal was found | none |
-| `slots` / `anim_slot_11` (Slot 11) | `button` `indra/newview/skins/default/xui/en/panel_director_anim_switcher.xml:71` | **USER DECISION:** register an explicit `ALAnimSwitcherKitAdapter` command; no matching setting or C++ literal was found | none |
-| `slots` / `anim_slot_12` (Slot 12) | `button` `indra/newview/skins/default/xui/en/panel_director_anim_switcher.xml:72` | **USER DECISION:** register an explicit `ALAnimSwitcherKitAdapter` command; no matching setting or C++ literal was found | none |
-| `selected_slot` / `anim_slot_kind` (Kind) | `combo_box` `indra/newview/skins/default/xui/en/panel_director_anim_switcher.xml:100` | `ALAnimSwitcherKitAdapter` command/model binding → `ALPanelDirectorAnimSwitcher::postBuild()` (`indra/newview/alpaneldirectoranimswitcher.cpp:62`) | none |
-| `selected_slot` / `anim_slot_uuid` (Anim UUID) | `line_editor` `indra/newview/skins/default/xui/en/panel_director_anim_switcher.xml:135` | `ALAnimSwitcherKitAdapter` command/model binding → `ALPanelDirectorAnimSwitcher::postBuild()` (`indra/newview/alpaneldirectoranimswitcher.cpp:63`) | none |
-| `selected_slot` / `anim_from_explorer` (From Explorer) | `button` `indra/newview/skins/default/xui/en/panel_director_anim_switcher.xml:145` | `ALAnimSwitcherKitAdapter` command/model binding → `ALPanelDirectorAnimSwitcher::postBuild()` (`indra/newview/alpaneldirectoranimswitcher.cpp:65`) | none |
-| `selected_slot` / `anim_slot_label` (Label) | `line_editor` `indra/newview/skins/default/xui/en/panel_director_anim_switcher.xml:214` | `ALAnimSwitcherKitAdapter` command/model binding → `ALPanelDirectorAnimSwitcher::postBuild()` (`indra/newview/alpaneldirectoranimswitcher.cpp:69`) | none |
-| `selected_slot` / `anim_slot_target` (Target) | `combo_box` `indra/newview/skins/default/xui/en/panel_director_anim_switcher.xml:234` | `ALAnimSwitcherKitAdapter` command/model binding → `ALPanelDirectorAnimSwitcher::postBuild()` (`indra/newview/alpaneldirectoranimswitcher.cpp:70`) | none |
-| `selected_slot` / `anim_slot_reset` (Reset slot) | `button` `indra/newview/skins/default/xui/en/panel_director_anim_switcher.xml:113` | `ALAnimSwitcherKitAdapter` command/model binding → `ALPanelDirectorAnimSwitcher::postBuild()` (`indra/newview/alpaneldirectoranimswitcher.cpp:77`) | none |
-| `selected_slot` / `anim_pose_name` (Pose file) | `combo_box` `indra/newview/skins/default/xui/en/panel_director_anim_switcher.xml:167` | `ALAnimSwitcherKitAdapter` command/model binding → `ALPanelDirectorAnimSwitcher::postBuild()` (`indra/newview/alpaneldirectoranimswitcher.cpp:66`) | none |
-| `selected_slot` / `anim_pose_load_method` (Pose apply) | `combo_box` `indra/newview/skins/default/xui/en/panel_director_anim_switcher.xml:178` | `ALAnimSwitcherKitAdapter` command/model binding → `ALPanelDirectorAnimSwitcher::postBuild()` (`indra/newview/alpaneldirectoranimswitcher.cpp:67`) | none |
-| `playback` / `anim_slot_priority` (Priority) | `combo_box` `indra/newview/skins/default/xui/en/panel_director_anim_switcher.xml:257` | `ALAnimSwitcherKitAdapter` command/model binding → `ALPanelDirectorAnimSwitcher::postBuild()` (`indra/newview/alpaneldirectoranimswitcher.cpp:71`) | none |
-| `playback` / `anim_slot_speed` (Speed) | `spinner` `indra/newview/skins/default/xui/en/panel_director_anim_switcher.xml:283` | `ALAnimSwitcherKitAdapter` command/model binding → `ALPanelDirectorAnimSwitcher::postBuild()` (`indra/newview/alpaneldirectoranimswitcher.cpp:73`) | none |
-| `playback` / `anim_slot_loop` (Loop) | `check_box` `indra/newview/skins/default/xui/en/panel_director_anim_switcher.xml:293` | `ALAnimSwitcherKitAdapter` command/model binding → `ALPanelDirectorAnimSwitcher::postBuild()` (`indra/newview/alpaneldirectoranimswitcher.cpp:74`) | none |
-| `playback` / `anim_slot_snap` (Snap on cut) | `check_box` `indra/newview/skins/default/xui/en/panel_director_anim_switcher.xml:303` | `ALAnimSwitcherKitAdapter` command/model binding → `ALPanelDirectorAnimSwitcher::postBuild()` (`indra/newview/alpaneldirectoranimswitcher.cpp:75`) | none |
-| `playback` / `anim_slot_enabled` (Use in auto) | `check_box` `indra/newview/skins/default/xui/en/panel_director_anim_switcher.xml:314` | `ALAnimSwitcherKitAdapter` command/model binding → `ALPanelDirectorAnimSwitcher::postBuild()` (`indra/newview/alpaneldirectoranimswitcher.cpp:76`) | none |
+| `slots` / `anim_slot_01` (Slot 1) | `button` `indra/newview/skins/default/xui/en/panel_director_anim_switcher.xml:61` | `ALAnimSwitcherKitAdapter` command/model binding → wired in `ALPanelDirectorAnimSwitcher::postBuild()`; behavior `ALPanelDirectorAnimSwitcher::onSlotButton()` (`indra/newview/alpaneldirectoranimswitcher.cpp:59`) | none |
+| `slots` / `anim_slot_02` (Slot 2) | `button` `indra/newview/skins/default/xui/en/panel_director_anim_switcher.xml:62` | `ALAnimSwitcherKitAdapter` command/model binding → wired in `ALPanelDirectorAnimSwitcher::postBuild()`; behavior `ALPanelDirectorAnimSwitcher::onSlotButton()` (`indra/newview/alpaneldirectoranimswitcher.cpp:59`) | none |
+| `slots` / `anim_slot_03` (Slot 3) | `button` `indra/newview/skins/default/xui/en/panel_director_anim_switcher.xml:63` | `ALAnimSwitcherKitAdapter` command/model binding → wired in `ALPanelDirectorAnimSwitcher::postBuild()`; behavior `ALPanelDirectorAnimSwitcher::onSlotButton()` (`indra/newview/alpaneldirectoranimswitcher.cpp:59`) | none |
+| `slots` / `anim_slot_04` (Slot 4) | `button` `indra/newview/skins/default/xui/en/panel_director_anim_switcher.xml:64` | `ALAnimSwitcherKitAdapter` command/model binding → wired in `ALPanelDirectorAnimSwitcher::postBuild()`; behavior `ALPanelDirectorAnimSwitcher::onSlotButton()` (`indra/newview/alpaneldirectoranimswitcher.cpp:59`) | none |
+| `slots` / `anim_slot_05` (Slot 5) | `button` `indra/newview/skins/default/xui/en/panel_director_anim_switcher.xml:65` | `ALAnimSwitcherKitAdapter` command/model binding → wired in `ALPanelDirectorAnimSwitcher::postBuild()`; behavior `ALPanelDirectorAnimSwitcher::onSlotButton()` (`indra/newview/alpaneldirectoranimswitcher.cpp:59`) | none |
+| `slots` / `anim_slot_06` (Slot 6) | `button` `indra/newview/skins/default/xui/en/panel_director_anim_switcher.xml:66` | `ALAnimSwitcherKitAdapter` command/model binding → wired in `ALPanelDirectorAnimSwitcher::postBuild()`; behavior `ALPanelDirectorAnimSwitcher::onSlotButton()` (`indra/newview/alpaneldirectoranimswitcher.cpp:59`) | none |
+| `slots` / `anim_slot_07` (Slot 7) | `button` `indra/newview/skins/default/xui/en/panel_director_anim_switcher.xml:67` | `ALAnimSwitcherKitAdapter` command/model binding → wired in `ALPanelDirectorAnimSwitcher::postBuild()`; behavior `ALPanelDirectorAnimSwitcher::onSlotButton()` (`indra/newview/alpaneldirectoranimswitcher.cpp:59`) | none |
+| `slots` / `anim_slot_08` (Slot 8) | `button` `indra/newview/skins/default/xui/en/panel_director_anim_switcher.xml:68` | `ALAnimSwitcherKitAdapter` command/model binding → wired in `ALPanelDirectorAnimSwitcher::postBuild()`; behavior `ALPanelDirectorAnimSwitcher::onSlotButton()` (`indra/newview/alpaneldirectoranimswitcher.cpp:59`) | none |
+| `slots` / `anim_slot_09` (Slot 9) | `button` `indra/newview/skins/default/xui/en/panel_director_anim_switcher.xml:69` | `ALAnimSwitcherKitAdapter` command/model binding → wired in `ALPanelDirectorAnimSwitcher::postBuild()`; behavior `ALPanelDirectorAnimSwitcher::onSlotButton()` (`indra/newview/alpaneldirectoranimswitcher.cpp:59`) | none |
+| `slots` / `anim_slot_10` (Slot 10) | `button` `indra/newview/skins/default/xui/en/panel_director_anim_switcher.xml:70` | `ALAnimSwitcherKitAdapter` command/model binding → wired in `ALPanelDirectorAnimSwitcher::postBuild()`; behavior `ALPanelDirectorAnimSwitcher::onSlotButton()` (`indra/newview/alpaneldirectoranimswitcher.cpp:59`) | none |
+| `slots` / `anim_slot_11` (Slot 11) | `button` `indra/newview/skins/default/xui/en/panel_director_anim_switcher.xml:71` | `ALAnimSwitcherKitAdapter` command/model binding → wired in `ALPanelDirectorAnimSwitcher::postBuild()`; behavior `ALPanelDirectorAnimSwitcher::onSlotButton()` (`indra/newview/alpaneldirectoranimswitcher.cpp:59`) | none |
+| `slots` / `anim_slot_12` (Slot 12) | `button` `indra/newview/skins/default/xui/en/panel_director_anim_switcher.xml:72` | `ALAnimSwitcherKitAdapter` command/model binding → wired in `ALPanelDirectorAnimSwitcher::postBuild()`; behavior `ALPanelDirectorAnimSwitcher::onSlotButton()` (`indra/newview/alpaneldirectoranimswitcher.cpp:59`) | none |
+| `selected_slot` / `anim_slot_kind` (Kind) | `combo_box` `indra/newview/skins/default/xui/en/panel_director_anim_switcher.xml:100` | `ALAnimSwitcherKitAdapter` command/model binding → wired in `ALPanelDirectorAnimSwitcher::postBuild()`; behavior `ALPanelDirectorAnimSwitcher::onSlotKind()` (`indra/newview/alpaneldirectoranimswitcher.cpp:82`) | none |
+| `selected_slot` / `anim_slot_uuid` (Anim UUID) | `line_editor` `indra/newview/skins/default/xui/en/panel_director_anim_switcher.xml:135` | `ALAnimSwitcherKitAdapter` command/model binding → wired in `ALPanelDirectorAnimSwitcher::postBuild()`; behavior `ALPanelDirectorAnimSwitcher::onAnimUUID()` (`indra/newview/alpaneldirectoranimswitcher.cpp:84`) | none |
+| `selected_slot` / `anim_from_explorer` (From Explorer) | `button` `indra/newview/skins/default/xui/en/panel_director_anim_switcher.xml:145` | `ALAnimSwitcherKitAdapter` command/model binding → wired in `ALPanelDirectorAnimSwitcher::postBuild()`; behavior `ALPanelDirectorAnimSwitcher::onFromExplorer()` (`indra/newview/alpaneldirectoranimswitcher.cpp:90`) | none |
+| `selected_slot` / `anim_slot_label` (Label) | `line_editor` `indra/newview/skins/default/xui/en/panel_director_anim_switcher.xml:214` | `ALAnimSwitcherKitAdapter` command/model binding → wired in `ALPanelDirectorAnimSwitcher::postBuild()`; behavior `ALPanelDirectorAnimSwitcher::onSlotLabel()` (`indra/newview/alpaneldirectoranimswitcher.cpp:92`) | none |
+| `selected_slot` / `anim_slot_target` (Target) | `combo_box` `indra/newview/skins/default/xui/en/panel_director_anim_switcher.xml:234` | `ALAnimSwitcherKitAdapter` command/model binding → wired in `ALPanelDirectorAnimSwitcher::postBuild()`; behavior `ALPanelDirectorAnimSwitcher::onSlotTarget()` (`indra/newview/alpaneldirectoranimswitcher.cpp:94`) | none |
+| `selected_slot` / `anim_slot_reset` (Reset slot) | `button` `indra/newview/skins/default/xui/en/panel_director_anim_switcher.xml:113` | `ALAnimSwitcherKitAdapter` command/model binding → wired in `ALPanelDirectorAnimSwitcher::postBuild()`; behavior `ALPanelDirectorAnimSwitcher::onResetSlot()` (`indra/newview/alpaneldirectoranimswitcher.cpp:106`) | none |
+| `selected_slot` / `anim_pose_name` (Pose file) | `combo_box` `indra/newview/skins/default/xui/en/panel_director_anim_switcher.xml:167` | `ALAnimSwitcherKitAdapter` command/model binding → wired in `ALPanelDirectorAnimSwitcher::postBuild()`; behavior `ALPanelDirectorAnimSwitcher::onPoseName()` (`indra/newview/alpaneldirectoranimswitcher.cpp:86`) | none |
+| `selected_slot` / `anim_pose_load_method` (Pose apply) | `combo_box` `indra/newview/skins/default/xui/en/panel_director_anim_switcher.xml:178` | `ALAnimSwitcherKitAdapter` command/model binding → wired in `ALPanelDirectorAnimSwitcher::postBuild()`; behavior `ALPanelDirectorAnimSwitcher::onPoseLoadMethod()` (`indra/newview/alpaneldirectoranimswitcher.cpp:88`) | none |
+| `playback` / `anim_slot_priority` (Priority) | `combo_box` `indra/newview/skins/default/xui/en/panel_director_anim_switcher.xml:257` | `ALAnimSwitcherKitAdapter` command/model binding → wired in `ALPanelDirectorAnimSwitcher::postBuild()`; behavior `ALPanelDirectorAnimSwitcher::onSlotPriority()` (`indra/newview/alpaneldirectoranimswitcher.cpp:96`) | none |
+| `playback` / `anim_slot_speed` (Speed) | `spinner` `indra/newview/skins/default/xui/en/panel_director_anim_switcher.xml:283` | `ALAnimSwitcherKitAdapter` command/model binding → wired in `ALPanelDirectorAnimSwitcher::postBuild()`; behavior `ALPanelDirectorAnimSwitcher::onSlotSpeed()` (`indra/newview/alpaneldirectoranimswitcher.cpp:98`) | none |
+| `playback` / `anim_slot_loop` (Loop) | `check_box` `indra/newview/skins/default/xui/en/panel_director_anim_switcher.xml:293` | `ALAnimSwitcherKitAdapter` command/model binding → wired in `ALPanelDirectorAnimSwitcher::postBuild()`; behavior `ALPanelDirectorAnimSwitcher::onSlotLoop()` (`indra/newview/alpaneldirectoranimswitcher.cpp:100`) | none |
+| `playback` / `anim_slot_snap` (Snap on cut) | `check_box` `indra/newview/skins/default/xui/en/panel_director_anim_switcher.xml:303` | `ALAnimSwitcherKitAdapter` command/model binding → wired in `ALPanelDirectorAnimSwitcher::postBuild()`; behavior `ALPanelDirectorAnimSwitcher::onSlotSnap()` (`indra/newview/alpaneldirectoranimswitcher.cpp:102`) | none |
+| `playback` / `anim_slot_enabled` (Use in auto) | `check_box` `indra/newview/skins/default/xui/en/panel_director_anim_switcher.xml:314` | `ALAnimSwitcherKitAdapter` command/model binding → wired in `ALPanelDirectorAnimSwitcher::postBuild()`; behavior `ALPanelDirectorAnimSwitcher::onSlotEnabled()` (`indra/newview/alpaneldirectoranimswitcher.cpp:104`) | none |
 
 ## Adapter extraction
 
 | Existing function | Extraction contract |
 |---|---|
-| `ALPanelDirectorAnimSwitcher::postBuild()` — `indra/newview/alpaneldirectoranimswitcher.cpp:62, 63, 65, 66, 67, 69, 70, 71, 73, 74, 75, 76, 77, 79` | Move model-facing work into `ALAnimSwitcherKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
+| `ALPanelDirectorAnimSwitcher::onAnimUUID()` — `indra/newview/alpaneldirectoranimswitcher.cpp:84` | Move model-facing work into `ALAnimSwitcherKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
+| `ALPanelDirectorAnimSwitcher::onFromExplorer()` — `indra/newview/alpaneldirectoranimswitcher.cpp:90` | Move model-facing work into `ALAnimSwitcherKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
+| `ALPanelDirectorAnimSwitcher::onPoseLoadMethod()` — `indra/newview/alpaneldirectoranimswitcher.cpp:88` | Move model-facing work into `ALAnimSwitcherKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
+| `ALPanelDirectorAnimSwitcher::onPoseName()` — `indra/newview/alpaneldirectoranimswitcher.cpp:86` | Move model-facing work into `ALAnimSwitcherKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
+| `ALPanelDirectorAnimSwitcher::onResetSlot()` — `indra/newview/alpaneldirectoranimswitcher.cpp:106` | Move model-facing work into `ALAnimSwitcherKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
+| `ALPanelDirectorAnimSwitcher::onSlotButton()` — `indra/newview/alpaneldirectoranimswitcher.cpp:59` | Move model-facing work into `ALAnimSwitcherKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
+| `ALPanelDirectorAnimSwitcher::onSlotEnabled()` — `indra/newview/alpaneldirectoranimswitcher.cpp:104` | Move model-facing work into `ALAnimSwitcherKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
+| `ALPanelDirectorAnimSwitcher::onSlotKind()` — `indra/newview/alpaneldirectoranimswitcher.cpp:82` | Move model-facing work into `ALAnimSwitcherKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
+| `ALPanelDirectorAnimSwitcher::onSlotLabel()` — `indra/newview/alpaneldirectoranimswitcher.cpp:92` | Move model-facing work into `ALAnimSwitcherKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
+| `ALPanelDirectorAnimSwitcher::onSlotLoop()` — `indra/newview/alpaneldirectoranimswitcher.cpp:100` | Move model-facing work into `ALAnimSwitcherKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
+| `ALPanelDirectorAnimSwitcher::onSlotPriority()` — `indra/newview/alpaneldirectoranimswitcher.cpp:96` | Move model-facing work into `ALAnimSwitcherKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
+| `ALPanelDirectorAnimSwitcher::onSlotSnap()` — `indra/newview/alpaneldirectoranimswitcher.cpp:102` | Move model-facing work into `ALAnimSwitcherKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
+| `ALPanelDirectorAnimSwitcher::onSlotSpeed()` — `indra/newview/alpaneldirectoranimswitcher.cpp:98` | Move model-facing work into `ALAnimSwitcherKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
+| `ALPanelDirectorAnimSwitcher::onSlotTarget()` — `indra/newview/alpaneldirectoranimswitcher.cpp:94` | Move model-facing work into `ALAnimSwitcherKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
 
 ## Live state and refresh
 
@@ -125,25 +138,21 @@ Manifest size: **45 states**, hard cap 256, page runtime budget 2 minutes. Each 
 3. Run the bounded state manifest at 1160×720, 850×560, 1141×720, and 915×720. Non-Director owners (Lightbox, cue/Diopter/Snapshot floaters, and shared panels) are mandatory parity oracles even when no v1 Director leaf embeds them.
 4. Review-diff every controller extraction and prove the v1 forwarding call preserves callbacks, owner tokens, selection, history barriers, and visibility gates.
 
+## Ambiguous same-name candidates (never auto-bound)
+
+None.
+
+## Rejected out-of-scope same-name candidates
+
+None.
+
 ## New widget required
 
-None. Every approved visual kind is either a kit primitive or an existing XUI control. Missing action/model bindings below are USER DECISIONS, not permission to invent a visual class.
+None. Every approved visual kind is either a kit primitive or an existing XUI control. An unresolved binding is not permission to invent a visual class.
 
-## Unresolved and USER DECISION items
+## Unresolved and pending-decision items
 
-- `anim_help_hint` (How to fill): no C++ reference or setting binding.
-- `anim_slot_01` (Slot 1): no C++ reference or setting binding. **USER DECISION required.**
-- `anim_slot_02` (Slot 2): no C++ reference or setting binding. **USER DECISION required.**
-- `anim_slot_03` (Slot 3): no C++ reference or setting binding. **USER DECISION required.**
-- `anim_slot_04` (Slot 4): no C++ reference or setting binding. **USER DECISION required.**
-- `anim_slot_05` (Slot 5): no C++ reference or setting binding. **USER DECISION required.**
-- `anim_slot_06` (Slot 6): no C++ reference or setting binding. **USER DECISION required.**
-- `anim_slot_07` (Slot 7): no C++ reference or setting binding. **USER DECISION required.**
-- `anim_slot_08` (Slot 8): no C++ reference or setting binding. **USER DECISION required.**
-- `anim_slot_09` (Slot 9): no C++ reference or setting binding. **USER DECISION required.**
-- `anim_slot_10` (Slot 10): no C++ reference or setting binding. **USER DECISION required.**
-- `anim_slot_11` (Slot 11): no C++ reference or setting binding. **USER DECISION required.**
-- `anim_slot_12` (Slot 12): no C++ reference or setting binding. **USER DECISION required.**
+None in the current evidence index.
 
 ## Risks
 

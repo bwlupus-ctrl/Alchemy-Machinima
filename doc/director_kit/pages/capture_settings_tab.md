@@ -2,6 +2,8 @@
 
 Page key: `capture_settings_tab`. Evidence: [`page_sources.json`](../page_sources.json) and [`page_sources.md`](../page_sources.md).
 Computed class: **code-driven** (0/0 setting-bound rows; 0 C++-referenced rows).
+**PENDING USER DECISION**
+
 
 ## Real owners
 
@@ -13,7 +15,7 @@ Name collisions in secondary XUI files are evidence candidates, not automatic ow
 
 ## Presentation rule
 
-The approved page has zero rows. Populate it from the Snapshot owner before conversion; control selection and scope are a USER DECISION.
+The approved page has zero rows. Populate it from the Snapshot owner before conversion; control selection and scope are PENDING USER DECISION.
 
 ## Row bindings
 
@@ -59,13 +61,21 @@ Manifest size: **6 states**, hard cap 256, page runtime budget 2 minutes. Each r
 3. Run the bounded state manifest at 1160×720, 850×560, 1141×720, and 915×720. Non-Director owners (Lightbox, cue/Diopter/Snapshot floaters, and shared panels) are mandatory parity oracles even when no v1 Director leaf embeds them.
 4. Review-diff every controller extraction and prove the v1 forwarding call preserves callbacks, owner tokens, selection, history barriers, and visibility gates.
 
+## Ambiguous same-name candidates (never auto-bound)
+
+None.
+
+## Rejected out-of-scope same-name candidates
+
+None.
+
 ## New widget required
 
-None. Every approved visual kind is either a kit primitive or an existing XUI control. Missing action/model bindings below are USER DECISIONS, not permission to invent a visual class.
+None. Every approved visual kind is either a kit primitive or an existing XUI control. An unresolved binding is not permission to invent a visual class.
 
-## Unresolved and USER DECISION items
+## Unresolved and pending-decision items
 
-None in the current evidence index.
+- **PENDING USER DECISION:** The approved page has zero rows. Populate it from the Snapshot owner before conversion; control selection and scope are PENDING USER DECISION.
 
 ## Risks
 

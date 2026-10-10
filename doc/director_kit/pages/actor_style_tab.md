@@ -1,12 +1,12 @@
 # Actor FX — Director Kit page contract
 
 Page key: `actor_style_tab`. Evidence: [`page_sources.json`](../page_sources.json) and [`page_sources.md`](../page_sources.md).
-Computed class: **code-driven** (0/18 setting-bound rows; 17 C++-referenced rows).
+Computed class: **code-driven** (0/18 setting-bound rows; 18 C++-referenced rows).
 
 ## Real owners
 
 - `floater_director` / `floater` at `indra/newview/skins/default/xui/en/floater_director.xml:15` (18 matching rows).
-- Referencing classes: `LLFloaterDirector` (17).
+- Referencing classes: `LLFloaterDirector` (37).
 
 Name collisions in secondary XUI files are evidence candidates, not automatic ownership. The implementation must retain only occurrences whose root and class agree with the row's behavior.
 
@@ -20,30 +20,32 @@ Use the existing XUI control types as ordinary measured kit rows. No new canvas,
 
 | Card / row | Existing control evidence | Required binding | Other writable homes |
 |---|---|---|---|
-| `actor` / `actor_style_target` (Actor) | `combo_box` `indra/newview/skins/default/xui/en/floater_director.xml:1529` | `ALActorStyleKitAdapter` command/model binding → `LLFloaterDirector::postBuild()` (`indra/newview/llfloaterdirector.cpp:466`) | none |
-| `actor` / `actor_style_status` (Status) | `text` `indra/newview/skins/default/xui/en/floater_director.xml:1645` | `ALActorStyleKitAdapter` command/model binding → `LLFloaterDirector::postBuild()` (`indra/newview/llfloaterdirector.cpp:483`) | none |
-| `actor` / `actor_style_reset` (Reset style) | `button` `indra/newview/skins/default/xui/en/floater_director.xml:1644` | `ALActorStyleKitAdapter` command/model binding → `LLFloaterDirector::postBuild()` (`indra/newview/llfloaterdirector.cpp:482`) | none |
-| `actor` / `actor_style_hint` (About) | `text` `indra/newview/skins/default/xui/en/floater_director.xml:1514` | kit readout ← approved static copy; no runtime writer | none |
-| `look` / `actor_style_look` (Look) | `combo_box` `indra/newview/skins/default/xui/en/floater_director.xml:1566` | `ALActorStyleKitAdapter` command/model binding → `LLFloaterDirector::postBuild()` (`indra/newview/llfloaterdirector.cpp:469`) | none |
-| `look` / `actor_style_mode` (Render mode) | `combo_box` `indra/newview/skins/default/xui/en/floater_director.xml:1551` | `ALActorStyleKitAdapter` command/model binding → `LLFloaterDirector::postBuild()` (`indra/newview/llfloaterdirector.cpp:468`) | none |
-| `look` / `actor_style_alpha` (Opacity) | `slider` `indra/newview/skins/default/xui/en/floater_director.xml:1621` | `ALActorStyleKitAdapter` command/model binding → `LLFloaterDirector::postBuild()` (`indra/newview/llfloaterdirector.cpp:472`) | none |
-| `look` / `actor_style_dissolve_progress` (Dissolve) | `slider` `indra/newview/skins/default/xui/en/floater_director.xml:1622` | `ALActorStyleKitAdapter` command/model binding → `LLFloaterDirector::postBuild()` (`indra/newview/llfloaterdirector.cpp:473`) | none |
-| `color` / `actor_style_use_actor_hue` (Use actor hue) | `check_box` `indra/newview/skins/default/xui/en/floater_director.xml:1616` | `ALActorStyleKitAdapter` command/model binding → `LLFloaterDirector::postBuild()` (`indra/newview/llfloaterdirector.cpp:470`) | none |
-| `color` / `actor_style_hue` (Custom hue) | `slider` `indra/newview/skins/default/xui/en/floater_director.xml:1620` | `ALActorStyleKitAdapter` command/model binding → `LLFloaterDirector::postBuild()` (`indra/newview/llfloaterdirector.cpp:471`) | none |
-| `color` / `actor_style_brightness` (Brightness) | `slider` `indra/newview/skins/default/xui/en/floater_director.xml:1642` | `ALActorStyleKitAdapter` command/model binding → `LLFloaterDirector::postBuild()` (`indra/newview/llfloaterdirector.cpp:480`) | none |
-| `motion` / `actor_style_shimmer_amount` (Shimmer amt) | `slider` `indra/newview/skins/default/xui/en/floater_director.xml:1625` | `ALActorStyleKitAdapter` command/model binding → `LLFloaterDirector::postBuild()` (`indra/newview/llfloaterdirector.cpp:476`) | none |
-| `motion` / `actor_style_shimmer_speed` (Shimmer Hz) | `slider` `indra/newview/skins/default/xui/en/floater_director.xml:1624` | `ALActorStyleKitAdapter` command/model binding → `LLFloaterDirector::postBuild()` (`indra/newview/llfloaterdirector.cpp:475`) | none |
-| `motion` / `actor_style_glitch` (Glitch) | `slider` `indra/newview/skins/default/xui/en/floater_director.xml:1626` | `ALActorStyleKitAdapter` command/model binding → `LLFloaterDirector::postBuild()` (`indra/newview/llfloaterdirector.cpp:477`) | none |
-| `motion` / `actor_style_effect_fps` (Effect fps) | `spinner` `indra/newview/skins/default/xui/en/floater_director.xml:1643` | `ALActorStyleKitAdapter` command/model binding → `LLFloaterDirector::postBuild()` (`indra/newview/llfloaterdirector.cpp:481`) | none |
-| `distortion` / `actor_style_distortion` (Distortion) | `combo_box` `indra/newview/skins/default/xui/en/floater_director.xml:1630` | `ALActorStyleKitAdapter` command/model binding → `LLFloaterDirector::postBuild()` (`indra/newview/llfloaterdirector.cpp:478`) | none |
-| `distortion` / `actor_style_distortion_amount` (Amount) | `slider` `indra/newview/skins/default/xui/en/floater_director.xml:1641` | `ALActorStyleKitAdapter` command/model binding → `LLFloaterDirector::postBuild()` (`indra/newview/llfloaterdirector.cpp:479`) | none |
-| `distortion` / `actor_style_pixel` (Pixelate) | `slider` `indra/newview/skins/default/xui/en/floater_director.xml:1623` | `ALActorStyleKitAdapter` command/model binding → `LLFloaterDirector::postBuild()` (`indra/newview/llfloaterdirector.cpp:474`) | none |
+| `actor` / `actor_style_target` (Actor) | `combo_box` `indra/newview/skins/default/xui/en/floater_director.xml:1529` | `ALActorStyleKitAdapter` command/model binding → wired in `LLFloaterDirector::postBuild()`; behavior `LLFloaterDirector::onActorStyleTargetChanged()` (`indra/newview/llfloaterdirector.cpp:485`), wired in `LLFloaterDirector::postBuild()`; behavior `LLFloaterDirector::onActorStyleControlChanged()` (`indra/newview/llfloaterdirector.cpp:2404`) | none |
+| `actor` / `actor_style_status` (Status) | `text` `indra/newview/skins/default/xui/en/floater_director.xml:1645` | `ALActorStyleKitAdapter` command/model binding → wired in `LLFloaterDirector::postBuild()`; behavior `LLFloaterDirector::onActorStyleControlChanged()` (`indra/newview/llfloaterdirector.cpp:2404`) | none |
+| `actor` / `actor_style_reset` (Reset style) | `button` `indra/newview/skins/default/xui/en/floater_director.xml:1644` | `ALActorStyleKitAdapter` command/model binding → wired in `LLFloaterDirector::postBuild()`; behavior `LLFloaterDirector::onActorStyleReset()` (`indra/newview/llfloaterdirector.cpp:507`), wired in `LLFloaterDirector::postBuild()`; behavior `LLFloaterDirector::onActorStyleControlChanged()` (`indra/newview/llfloaterdirector.cpp:2404`) | none |
+| `actor` / `actor_style_hint` (About) | `text` `indra/newview/skins/default/xui/en/floater_director.xml:1514` | `ALActorStyleKitAdapter` command/model binding → wired in `LLFloaterDirector::postBuild()`; behavior `LLFloaterDirector::onActorStyleControlChanged()` (`indra/newview/llfloaterdirector.cpp:2404`) | none |
+| `look` / `actor_style_look` (Look) | `combo_box` `indra/newview/skins/default/xui/en/floater_director.xml:1566` | `ALActorStyleKitAdapter` command/model binding → wired in `LLFloaterDirector::postBuild()`; behavior `LLFloaterDirector::onActorStyleControlChanged()` (`indra/newview/llfloaterdirector.cpp:2404`) | none |
+| `look` / `actor_style_mode` (Render mode) | `combo_box` `indra/newview/skins/default/xui/en/floater_director.xml:1551` | `ALActorStyleKitAdapter` command/model binding → wired in `LLFloaterDirector::postBuild()`; behavior `LLFloaterDirector::onActorStyleControlChanged()` (`indra/newview/llfloaterdirector.cpp:2404`) | none |
+| `look` / `actor_style_alpha` (Opacity) | `slider` `indra/newview/skins/default/xui/en/floater_director.xml:1621` | `ALActorStyleKitAdapter` command/model binding → wired in `LLFloaterDirector::postBuild()`; behavior `LLFloaterDirector::onActorStyleControlChanged()` (`indra/newview/llfloaterdirector.cpp:2404`) | none |
+| `look` / `actor_style_dissolve_progress` (Dissolve) | `slider` `indra/newview/skins/default/xui/en/floater_director.xml:1622` | `ALActorStyleKitAdapter` command/model binding → wired in `LLFloaterDirector::postBuild()`; behavior `LLFloaterDirector::onActorStyleControlChanged()` (`indra/newview/llfloaterdirector.cpp:2404`) | none |
+| `color` / `actor_style_use_actor_hue` (Use actor hue) | `check_box` `indra/newview/skins/default/xui/en/floater_director.xml:1616` | `ALActorStyleKitAdapter` command/model binding → wired in `LLFloaterDirector::postBuild()`; behavior `LLFloaterDirector::onActorStyleControlChanged()` (`indra/newview/llfloaterdirector.cpp:2404`) | none |
+| `color` / `actor_style_hue` (Custom hue) | `slider` `indra/newview/skins/default/xui/en/floater_director.xml:1620` | `ALActorStyleKitAdapter` command/model binding → wired in `LLFloaterDirector::postBuild()`; behavior `LLFloaterDirector::onActorStyleControlChanged()` (`indra/newview/llfloaterdirector.cpp:2404`) | none |
+| `color` / `actor_style_brightness` (Brightness) | `slider` `indra/newview/skins/default/xui/en/floater_director.xml:1642` | `ALActorStyleKitAdapter` command/model binding → wired in `LLFloaterDirector::postBuild()`; behavior `LLFloaterDirector::onActorStyleControlChanged()` (`indra/newview/llfloaterdirector.cpp:2404`) | none |
+| `motion` / `actor_style_shimmer_amount` (Shimmer amt) | `slider` `indra/newview/skins/default/xui/en/floater_director.xml:1625` | `ALActorStyleKitAdapter` command/model binding → wired in `LLFloaterDirector::postBuild()`; behavior `LLFloaterDirector::onActorStyleControlChanged()` (`indra/newview/llfloaterdirector.cpp:2404`) | none |
+| `motion` / `actor_style_shimmer_speed` (Shimmer Hz) | `slider` `indra/newview/skins/default/xui/en/floater_director.xml:1624` | `ALActorStyleKitAdapter` command/model binding → wired in `LLFloaterDirector::postBuild()`; behavior `LLFloaterDirector::onActorStyleControlChanged()` (`indra/newview/llfloaterdirector.cpp:2404`) | none |
+| `motion` / `actor_style_glitch` (Glitch) | `slider` `indra/newview/skins/default/xui/en/floater_director.xml:1626` | `ALActorStyleKitAdapter` command/model binding → wired in `LLFloaterDirector::postBuild()`; behavior `LLFloaterDirector::onActorStyleControlChanged()` (`indra/newview/llfloaterdirector.cpp:2404`) | none |
+| `motion` / `actor_style_effect_fps` (Effect fps) | `spinner` `indra/newview/skins/default/xui/en/floater_director.xml:1643` | `ALActorStyleKitAdapter` command/model binding → wired in `LLFloaterDirector::postBuild()`; behavior `LLFloaterDirector::onActorStyleControlChanged()` (`indra/newview/llfloaterdirector.cpp:2404`) | none |
+| `distortion` / `actor_style_distortion` (Distortion) | `combo_box` `indra/newview/skins/default/xui/en/floater_director.xml:1630` | `ALActorStyleKitAdapter` command/model binding → wired in `LLFloaterDirector::postBuild()`; behavior `LLFloaterDirector::onActorStyleControlChanged()` (`indra/newview/llfloaterdirector.cpp:2404`) | none |
+| `distortion` / `actor_style_distortion_amount` (Amount) | `slider` `indra/newview/skins/default/xui/en/floater_director.xml:1641` | `ALActorStyleKitAdapter` command/model binding → wired in `LLFloaterDirector::postBuild()`; behavior `LLFloaterDirector::onActorStyleControlChanged()` (`indra/newview/llfloaterdirector.cpp:2404`) | none |
+| `distortion` / `actor_style_pixel` (Pixelate) | `slider` `indra/newview/skins/default/xui/en/floater_director.xml:1623` | `ALActorStyleKitAdapter` command/model binding → wired in `LLFloaterDirector::postBuild()`; behavior `LLFloaterDirector::onActorStyleControlChanged()` (`indra/newview/llfloaterdirector.cpp:2404`) | none |
 
 ## Adapter extraction
 
 | Existing function | Extraction contract |
 |---|---|
-| `LLFloaterDirector::postBuild()` — `indra/newview/llfloaterdirector.cpp:466, 468, 469, 470, 471, 472, 473, 474, 475, 476, 477, 478, 479, 480, 481, 482, 483` | Move model-facing work into `ALActorStyleKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
+| `LLFloaterDirector::onActorStyleControlChanged()` — `indra/newview/llfloaterdirector.cpp:2404` | Move model-facing work into `ALActorStyleKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
+| `LLFloaterDirector::onActorStyleReset()` — `indra/newview/llfloaterdirector.cpp:507` | Move model-facing work into `ALActorStyleKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
+| `LLFloaterDirector::onActorStyleTargetChanged()` — `indra/newview/llfloaterdirector.cpp:485` | Move model-facing work into `ALActorStyleKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
 
 ## Live state and refresh
 
@@ -137,13 +139,21 @@ Manifest size: **71 states**, hard cap 256, page runtime budget 2 minutes. Each 
 3. Run the bounded state manifest at 1160×720, 850×560, 1141×720, and 915×720. Non-Director owners (Lightbox, cue/Diopter/Snapshot floaters, and shared panels) are mandatory parity oracles even when no v1 Director leaf embeds them.
 4. Review-diff every controller extraction and prove the v1 forwarding call preserves callbacks, owner tokens, selection, history barriers, and visibility gates.
 
+## Ambiguous same-name candidates (never auto-bound)
+
+None.
+
+## Rejected out-of-scope same-name candidates
+
+None.
+
 ## New widget required
 
-None. Every approved visual kind is either a kit primitive or an existing XUI control. Missing action/model bindings below are USER DECISIONS, not permission to invent a visual class.
+None. Every approved visual kind is either a kit primitive or an existing XUI control. An unresolved binding is not permission to invent a visual class.
 
-## Unresolved and USER DECISION items
+## Unresolved and pending-decision items
 
-- `actor_style_hint` (About): no C++ reference or setting binding.
+None in the current evidence index.
 
 ## Risks
 
