@@ -35,6 +35,7 @@
 #include "llpatchvertexarray.h"
 
 #include "llmath.h"
+#include "llframetimer.h"
 #include "v3math.h"
 #include "llsingleton.h"
 #include "llstring.h"
@@ -153,6 +154,7 @@ public:
 
     LLViewerTexture *getDefaultWaterTexture();
     void updateWaterObjects();
+    void requestVisualWaterHeightUpdate();
 
     void waterHeightRegionInfo(std::string const& sim_name, F32 water_height);
     void shiftRegions(const LLVector3& offset);
@@ -209,6 +211,7 @@ public:
     F32 getNearbyAvatarsAndMaxGPUTime(std::vector<LLVOAvatar*> &valid_nearby_avs);
 
 private:
+    void applyPendingVisualWaterHeight();
     void clearHoleWaterObjects();
     void clearEdgeWaterObjects();
 
@@ -234,6 +237,9 @@ private:
     S32 mLastPacketsLost;
     U32 mNumOfActiveCachedObjects;
     U64MicrosecondsImplicit mSpaceTimeUSec;
+    bool mVisualWaterHeightUpdatePending;
+    bool mVisualWaterProbeResetPending;
+    LLFrameTimer mVisualWaterProbeResetTimer;
 
     ////////////////////////////
     //

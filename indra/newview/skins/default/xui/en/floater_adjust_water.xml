@@ -1,10 +1,9 @@
 <?xml version="1.0" encoding="utf-8" standalone="yes" ?>
 <!-- [BDMerge B13] Ported from Black Dragon floater_adjust_water.xml (NiranV Dean).
-     Adaptations: ComboToolbarButton_* textures (BD-only) replaced with stock
-     ComboButton_*; BD's "Water Height" RenderWaterHeightFudge row dropped
-     (separate BD feature, not present in Alchemy). -->
+     Adaptation: ComboToolbarButton_* textures (BD-only) replaced with stock
+     ComboButton_*. -->
 <floater
-height="222"
+height="250"
 layout="topleft"
 name="Edit Water"
 save_rect="true"
@@ -26,7 +25,7 @@ width="700">
 	     texture is BD-only -->
     <tab_container
 	follows="left|top"
-	height="188"
+	height="216"
 	halign="center"
 	layout="topleft"
 	tab_height="20"
@@ -41,7 +40,7 @@ width="700">
 		follows="left|top|right|bottom"
 		label="Settings"
 		layout="topleft"
-		height="180"
+		height="208"
 		left="1"
 		mouse_opaque="false"
 		name="panel_settings_water_settings"
@@ -296,6 +295,34 @@ width="700">
 			name="water_blur_multip"
 			top_pad="1"
 			width="196"/>
+			<text follows="left|top" font="SansSerif" height="16"
+			layout="topleft" left="470" name="water_height_label" top="125" width="165">
+			Custom water level (m)
+			</text>
+			<check_box control_name="RenderWaterLevelOverride" follows="left|top"
+			height="18" label="On" layout="topleft" left="640"
+			name="water_height_override" top="123"
+			tool_tip="A camera below a very high water plane is underwater (dark fog), which is expected."
+			width="40"/>
+			<slider control_name="RenderWaterLevel" decimal_digits="1" follows="left|top"
+			height="16" increment="1" layout="topleft" left="470" max_val="10000"
+			min_val="0" name="water_height_slider" top="145" width="140"/>
+			<spinner control_name="RenderWaterLevel" decimal_digits="1" follows="left|top"
+			height="20" increment="1" layout="topleft" left="615" max_val="10000"
+			min_val="0" name="water_height_value" top="143" width="65"/>
+			<button follows="left|top" font="SansSerifSmall" height="20" label="Set to camera height"
+			layout="topleft" left="470" name="set_water_height" top="168"
+			tool_tip="Sets the level to the current camera height."
+			width="130"/>
+			<button
+			follows="left|top"
+			height="20"
+			label="Reset"
+			layout="topleft"
+			left="605"
+			name="reset_water_height"
+			top="168"
+			width="75"/>
 		</panel>
 		<panel
 		border="false"
@@ -305,7 +332,8 @@ width="700">
 		mouse_opaque="false"
 		name="panel_settings_water_image"
 		top="0"
-		width="300">
+		height="208"
+		width="698">
 			<text
 			follows="left|top|right"
 			font="SansSerif"
@@ -391,7 +419,7 @@ width="700">
 			width="196" />
 
 			<text
-			follows="left|top|right"
+			follows="left|top"
 			font="SansSerif"
 			height="16"
 			layout="topleft"
@@ -445,7 +473,7 @@ width="700">
     image_selected="Toolbar_Middle_Selected"
     image_unselected="Toolbar_Middle_Off"
     layout="topleft"
-    left_pad="-7"
+    left_pad="1"
     name="save"
     top_delta="0"
     width="80"/>

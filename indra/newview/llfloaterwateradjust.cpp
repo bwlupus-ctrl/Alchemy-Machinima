@@ -4,10 +4,8 @@
  *
  * [BDMerge B13] Ported from Black Dragon (donor:
  * I:\black-dragon\indra\newview\llfloaterwateradjust.cpp, NiranV Dean).
- * Adaptations vs donor: gDragonLibrary -> gBDMergeEnvLibrary; the donor's
- * "Water Height" fudge row (RenderWaterHeightFudge +
- * LLViewerRegion::setWaterHeightLocal) is a separate BD feature absent from
- * Alchemy and was dropped; BOOL -> bool at UI enable sites.
+ * Adaptations vs donor: gDragonLibrary -> gBDMergeEnvLibrary; Water Height is
+ * a session-only absolute all-region override; BOOL -> bool at UI enable sites.
  *
  * $LicenseInfo:firstyear=2011&license=viewerlgpl$
  * Second Life Viewer Source Code
@@ -55,6 +53,7 @@
 #include "llinventorymodel.h"
 #include "llinventoryfunctions.h"
 #include "llagent.h"
+#include "llagentcamera.h"
 #include "lltrans.h"
 #include "llflyoutcombobtn.h"
 #include "lllocalbitmaps.h"
@@ -98,8 +97,22 @@ namespace
     const std::string   BTN_SAVE("save");
     const std::string   BTN_DELETE("delete");
     const std::string   BTN_IMPORT("import");
+    const std::string   FIELD_WATER_HEIGHT_OVERRIDE("water_height_override");
+    const std::string   FIELD_WATER_HEIGHT_SLIDER("water_height_slider");
+    const std::string   FIELD_WATER_HEIGHT_VALUE("water_height_value");
+    const std::string   BTN_SET_WATER_HEIGHT("set_water_height");
+    const std::string   BTN_RESET_WATER_HEIGHT("reset_water_height");
 
     const std::string   EDITOR_NAME("water_preset_combo");
+
+    void enableCustomWaterLevelControls(LLView* view)
+    {
+        view->getChildView(FIELD_WATER_HEIGHT_OVERRIDE)->setEnabled(true);
+        view->getChildView(FIELD_WATER_HEIGHT_SLIDER)->setEnabled(true);
+        view->getChildView(FIELD_WATER_HEIGHT_VALUE)->setEnabled(true);
+        view->getChildView(BTN_SET_WATER_HEIGHT)->setEnabled(true);
+        view->getChildView(BTN_RESET_WATER_HEIGHT)->setEnabled(true);
+    }
 
     const std::string   BUTTON_NAME_FLYOUT("btn_flyout");
     const std::string   XML_FLYOUTMENU_FILE("menu_save_settings_adjust.xml");
@@ -182,6 +195,16 @@ bool LLFloaterWaterAdjust::postBuild()
     getChild<LLUICtrl>(BTN_RESET)->setCommitCallback([this](LLUICtrl *, const LLSD &) { onButtonReset(); });
     getChild<LLUICtrl>(BTN_DELETE)->setCommitCallback([this](LLUICtrl *, const LLSD &) { onButtonDelete(); });
     getChild<LLUICtrl>(BTN_IMPORT)->setCommitCallback([this](LLUICtrl *, const LLSD &) { onButtonImport(); });
+    getChild<LLUICtrl>(BTN_SET_WATER_HEIGHT)->setCommitCallback([](LLUICtrl *, const LLSD &)
+    {
+        gSavedSettings.setF32("RenderWaterLevel", LLViewerRegion::sanitizeVisualWaterHeight(
+            (F32)gAgentCamera.getCameraPositionGlobal().mdV[VZ]));
+        gSavedSettings.setBOOL("RenderWaterLevelOverride", true);
+    });
+    getChild<LLUICtrl>(BTN_RESET_WATER_HEIGHT)->setCommitCallback([](LLUICtrl *, const LLSD &)
+    {
+        gSavedSettings.setBOOL("RenderWaterLevelOverride", false);
+    });
 
     mFlyoutControl = new LLFlyoutComboBtnCtrl(this, BTN_SAVE, BUTTON_NAME_FLYOUT, XML_FLYOUTMENU_FILE, false);
     mFlyoutControl->setAction([this](LLUICtrl *ctrl, const LLSD &data) { onButtonApply(ctrl, data); });
@@ -223,6 +246,7 @@ void LLFloaterWaterAdjust::refresh()
     if (!mLiveWater)
     {
         setAllChildrenEnabled(false);
+        enableCustomWaterLevelControls(this);
         return;
     }
 

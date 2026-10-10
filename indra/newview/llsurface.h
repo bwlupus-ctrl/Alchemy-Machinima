@@ -118,7 +118,7 @@ public:
     F32 getMinZ() const                             { return mMinZ; }
     F32 getMaxZ() const                             { return mMaxZ; }
 
-    void setWaterHeight(F32 height);
+    void setWaterHeight(F32 height, bool rebuild_world_water = true);
     F32 getWaterHeight() const;
 
     LLViewerTexture *getSTexture();

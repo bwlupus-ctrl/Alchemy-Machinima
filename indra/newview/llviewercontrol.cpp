@@ -997,6 +997,14 @@ void handleLocalTerrainChanged(const LLSD& newValue)
     }
 }
 
+static void handleRenderWaterLevelChanged(const LLSD&)
+{
+    if (LLWorld::instanceExists())
+    {
+        LLWorld::getInstance()->requestVisualWaterHeightUpdate();
+    }
+}
+
 // [BDMerge B3] Freeze World: freeze the whole scene (avatar animation, object
 // movement, particles) while the camera remains free. donor: Black Dragon
 // b4cfc2cb83. Runtime-only state: pause handles + FreezeTime (both Persist 0),
@@ -1116,6 +1124,8 @@ void settings_setup_listeners()
     setting_setup_signal_listener(gSavedSettings, "FirstPersonAvatarVisible", handleRenderAvatarMouselookChanged);
     setting_setup_signal_listener(gSavedSettings, "NumpadControl", handleNumpadControlChanged);
     setting_setup_signal_listener(gSavedSettings, "RenderFarClip", handleRenderFarClipChanged);
+    setting_setup_signal_listener(gSavedSettings, "RenderWaterLevel", handleRenderWaterLevelChanged);
+    setting_setup_signal_listener(gSavedSettings, "RenderWaterLevelOverride", handleRenderWaterLevelChanged);
     setting_setup_signal_listener(gSavedSettings, "RenderTerrainScale", handleTerrainScaleChanged);
     setting_setup_signal_listener(gSavedSettings, "RenderTerrainPBRScale", handlePBRTerrainScaleChanged);
     setting_setup_signal_listener(gSavedSettings, "RenderTerrainPBRDetail", handleSetShaderChanged);

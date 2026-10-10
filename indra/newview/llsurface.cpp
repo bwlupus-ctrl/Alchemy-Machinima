@@ -247,7 +247,9 @@ void LLSurface::initTextures()
         mWaterObjp = (LLVOWater *)gObjectList.createObjectViewer(LLViewerObject::LL_VO_WATER, mRegionp);
         gPipeline.createObject(mWaterObjp);
         LLVector3d water_pos_global = from_region_handle(mRegionp->getHandle());
-        water_pos_global += LLVector3d(128.0, 128.0, DEFAULT_WATER_HEIGHT);     // region doesn't have a valid water height yet
+        // The region caches the effective visual height before surface creation,
+        // so a newly discovered neighbor never flashes at the 20 m default.
+        water_pos_global += LLVector3d(128.0, 128.0, mRegionp->getWaterHeight());
         mWaterObjp->setPositionGlobal(water_pos_global);
     }
 }
@@ -1140,7 +1142,7 @@ void LLSurface::dirtySurfacePatch(LLSurfacePatch *patchp)
 }
 
 
-void LLSurface::setWaterHeight(F32 height)
+void LLSurface::setWaterHeight(F32 height, bool rebuild_world_water)
 {
     if (!mWaterObjp.isNull())
     {
@@ -1148,7 +1150,7 @@ void LLSurface::setWaterHeight(F32 height)
         bool changed = water_pos_region.mV[VZ] != height;
         water_pos_region.mV[VZ] = height;
         mWaterObjp->setPositionRegion(water_pos_region);
-        if (changed)
+        if (changed && rebuild_world_water)
         {
             LLWorld::getInstance()->updateWaterObjects();
         }
@@ -1171,4 +1173,3 @@ F32 LLSurface::getWaterHeight() const
         return DEFAULT_WATER_HEIGHT;
     }
 }
-

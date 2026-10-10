@@ -148,7 +148,9 @@ public:
     bool isAlive(); // can become false if circuit disconnects
 
     void setWaterHeight(F32 water_level);
+    bool applyVisualWaterHeight(bool rebuild_world_water = true);
     F32 getWaterHeight() const;
+    static F32 sanitizeVisualWaterHeight(F32 height);
 
     bool isVoiceEnabled() const;
 
@@ -584,6 +586,11 @@ public:
     bool    mReleaseNotesRequested;
     bool    mDead;  //if true, this region is in the process of deleting.
     bool    mPaused; //pause processing the objects in the region
+
+    // Preserve the simulator value so disabling the session override restores
+    // it exactly. All existing consumers continue to read getWaterHeight().
+    F32     mSimWaterHeight;
+    F32     mRenderWaterHeight;
 
     typedef enum
     {

@@ -33,6 +33,8 @@
 #include "llcolorswatch.h"
 #include "llxyvector.h"
 #include "llviewercontrol.h"
+#include "llagentcamera.h"
+#include "llviewerregion.h"
 
 namespace
 {
@@ -54,6 +56,20 @@ namespace
     const std::string   FIELD_WATER_SCALE_ABOVE("water_scale_above");
     const std::string   FIELD_WATER_SCALE_BELOW("water_scale_below");
     const std::string   FIELD_WATER_BLUR_MULTIP("water_blur_multip");
+    const std::string   FIELD_WATER_HEIGHT_OVERRIDE("water_height_override");
+    const std::string   FIELD_WATER_HEIGHT_SLIDER("water_height_slider");
+    const std::string   FIELD_WATER_HEIGHT_VALUE("water_height_value");
+    const std::string   BTN_SET_WATER_HEIGHT("set_water_height");
+    const std::string   BTN_RESET_WATER_HEIGHT("reset_water_height");
+
+    void enableCustomWaterLevelControls(LLView* view)
+    {
+        view->getChildView(FIELD_WATER_HEIGHT_OVERRIDE)->setEnabled(true);
+        view->getChildView(FIELD_WATER_HEIGHT_SLIDER)->setEnabled(true);
+        view->getChildView(FIELD_WATER_HEIGHT_VALUE)->setEnabled(true);
+        view->getChildView(BTN_SET_WATER_HEIGHT)->setEnabled(true);
+        view->getChildView(BTN_RESET_WATER_HEIGHT)->setEnabled(true);
+    }
 }
 
 static LLPanelInjector<LLPanelSettingsWaterMainTab> t_settings_water("panel_settings_water");
@@ -103,6 +119,16 @@ bool LLPanelSettingsWaterMainTab::postBuild()
     getChild<LLUICtrl>(FIELD_WATER_SCALE_ABOVE)->setCommitCallback([this](LLUICtrl *, const LLSD &) { onScaleAboveChanged(); });
     getChild<LLUICtrl>(FIELD_WATER_SCALE_BELOW)->setCommitCallback([this](LLUICtrl *, const LLSD &) { onScaleBelowChanged(); });
     getChild<LLUICtrl>(FIELD_WATER_BLUR_MULTIP)->setCommitCallback([this](LLUICtrl *, const LLSD &) { onBlurMultipChanged(); });
+    getChild<LLUICtrl>(BTN_SET_WATER_HEIGHT)->setCommitCallback([](LLUICtrl *, const LLSD &)
+    {
+        gSavedSettings.setF32("RenderWaterLevel", LLViewerRegion::sanitizeVisualWaterHeight(
+            (F32)gAgentCamera.getCameraPositionGlobal().mdV[VZ]));
+        gSavedSettings.setBOOL("RenderWaterLevelOverride", true);
+    });
+    getChild<LLUICtrl>(BTN_RESET_WATER_HEIGHT)->setCommitCallback([](LLUICtrl *, const LLSD &)
+    {
+        gSavedSettings.setBOOL("RenderWaterLevelOverride", false);
+    });
 
     refresh();
 
@@ -130,15 +156,16 @@ void LLPanelSettingsWaterMainTab::setEnabled(bool enabled)
 //==========================================================================
 void LLPanelSettingsWaterMainTab::refresh()
 {
+    // The custom level is a client-side setting, independent of the asset.
+    setEnabled(true);
+    setAllChildrenEnabled(mWaterSettings && getCanChangeSettings());
+    enableCustomWaterLevelControls(this);
+
     if (!mWaterSettings)
     {
-        setAllChildrenEnabled(false);
-        setEnabled(false);
         return;
     }
 
-    setEnabled(getCanChangeSettings());
-    setAllChildrenEnabled(getCanChangeSettings());
     mClrFogColor->set(mWaterSettings->getWaterFogColor());
     getChild<LLUICtrl>(FIELD_WATER_FOG_DENSITY)->setValue(mWaterSettings->getWaterFogDensity());
     getChild<LLUICtrl>(FIELD_WATER_UNDERWATER_MOD)->setValue(mWaterSettings->getFogMod());

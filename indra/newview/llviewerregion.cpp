@@ -650,10 +650,15 @@ LLViewerRegion::LLViewerRegion(const U64 &handle,
     mLastVisitedEntry(NULL),
     mInvisibilityCheckHistory(-1),
     mPaused(false),
+    mSimWaterHeight(DEFAULT_WATER_HEIGHT),
+    mRenderWaterHeight(DEFAULT_WATER_HEIGHT),
     mRegionCacheHitCount(0),
     mRegionCacheMissCount(0),
     mInterestListMode(IL_MODE_DEFAULT)
 {
+    mRenderWaterHeight = gSavedSettings.getBOOL("RenderWaterLevelOverride")
+        ? sanitizeVisualWaterHeight(gSavedSettings.getF32("RenderWaterLevel"))
+        : mSimWaterHeight;
     mWidth = region_width_meters;
     mImpl->mOriginGlobal = from_region_handle(handle);
     updateRenderMatrix();
@@ -851,12 +856,33 @@ void LLViewerRegion::sendReliableMessage()
 
 void LLViewerRegion::setWaterHeight(F32 water_level)
 {
-    mImpl->mLandp->setWaterHeight(water_level);
+    mSimWaterHeight = water_level;
+    applyVisualWaterHeight();
+}
+
+F32 LLViewerRegion::sanitizeVisualWaterHeight(F32 height)
+{
+    return llfinite(height) ? llclamp(height, 0.f, 10000.f) : DEFAULT_WATER_HEIGHT;
+}
+
+bool LLViewerRegion::applyVisualWaterHeight(bool rebuild_world_water)
+{
+    const F32 height = gSavedSettings.getBOOL("RenderWaterLevelOverride")
+        ? sanitizeVisualWaterHeight(gSavedSettings.getF32("RenderWaterLevel"))
+        : mSimWaterHeight;
+    const bool changed = mRenderWaterHeight != height;
+    mRenderWaterHeight = height;
+    mImpl->mLandp->setWaterHeight(height, rebuild_world_water);
+    if (changed)
+    {
+        dirtyHeights();
+    }
+    return changed;
 }
 
 F32 LLViewerRegion::getWaterHeight() const
 {
-    return mImpl->mLandp->getWaterHeight();
+    return mImpl->mLandp->getWaterObj() ? mRenderWaterHeight : DEFAULT_WATER_HEIGHT;
 }
 
 bool LLViewerRegion::isVoiceEnabled() const
@@ -4013,4 +4039,3 @@ U32 LLViewerRegion::getWhisperRange() const
 {
     return mWhisperRange;
 }
-

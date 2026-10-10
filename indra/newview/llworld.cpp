@@ -93,7 +93,9 @@ LLWorld::LLWorld() :
     mLastPacketsIn(0),
     mLastPacketsOut(0),
     mLastPacketsLost(0),
-    mSpaceTimeUSec(0)
+    mSpaceTimeUSec(0),
+    mVisualWaterHeightUpdatePending(false),
+    mVisualWaterProbeResetPending(false)
 {
     for (S32 i = 0; i < EDGE_WATER_OBJECTS_COUNT; i++)
     {
@@ -682,6 +684,7 @@ static LLTrace::SampleStatHandle<> sNumActiveCachedObjects("numactivecachedobjec
 void LLWorld::updateRegions(F32 max_update_time)
 {
     LL_PROFILE_ZONE_SCOPED;
+    applyPendingVisualWaterHeight();
     LLTimer update_timer;
     mNumOfActiveCachedObjects = 0;
 
@@ -747,6 +750,41 @@ void LLWorld::updateRegions(F32 max_update_time)
     }
 
     sample(sNumActiveCachedObjects, mNumOfActiveCachedObjects);
+}
+
+void LLWorld::requestVisualWaterHeightUpdate()
+{
+    mVisualWaterHeightUpdatePending = true;
+}
+
+void LLWorld::applyPendingVisualWaterHeight()
+{
+    if (mVisualWaterHeightUpdatePending)
+    {
+        bool changed = false;
+        for (LLViewerRegion* region : mActiveRegionList)
+        {
+            if (region->applyVisualWaterHeight(false))
+            {
+                changed = true;
+            }
+        }
+        if (changed)
+        {
+            // Region planes first, then exactly one hole/edge-water rebuild.
+            updateWaterObjects();
+            mVisualWaterProbeResetPending = true;
+            mVisualWaterProbeResetTimer.reset();
+        }
+        mVisualWaterHeightUpdatePending = false;
+    }
+
+    if (mVisualWaterProbeResetPending &&
+        mVisualWaterProbeResetTimer.getElapsedTimeF32() >= 0.25f)
+    {
+        gPipeline.mReflectionMapManager.reset();
+        mVisualWaterProbeResetPending = false;
+    }
 }
 
 void LLWorld::clearAllVisibleObjects()

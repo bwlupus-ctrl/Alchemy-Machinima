@@ -144,7 +144,31 @@
                             top_pad="5"
                             width="150"
                             can_edit_text="true"/>
-                    
+                    <text follows="left|top" height="16" layout="topleft" left="445"
+                            name="water_height_label" top="5" width="210">
+                        Custom water level (m)
+                    </text>
+                    <check_box control_name="RenderWaterLevelOverride" follows="left|top"
+                            height="18" label="Enable" layout="topleft" left="445"
+                            name="water_height_override" top="20"
+                            tool_tip="A camera below a very high water plane is underwater (dark fog), which is expected."
+                            width="70"/>
+                    <slider control_name="RenderWaterLevel" decimal_digits="1" follows="left|top"
+                            height="16" increment="1" layout="topleft" left="445"
+                            max_val="10000" min_val="0" name="water_height_slider"
+                            top="40" width="140"/>
+                    <spinner control_name="RenderWaterLevel" decimal_digits="1" follows="left|top"
+                            height="20" increment="1" layout="topleft" left="590"
+                            max_val="10000" min_val="0" name="water_height_value"
+                            top="38" width="65"/>
+                    <button follows="left|top" font="SansSerifSmall" height="20" label="Set to camera height"
+                            layout="topleft" left="445" name="set_water_height"
+                            tool_tip="Sets the level to the current camera height."
+                            top="63" width="130"/>
+                    <button follows="left|top" height="20" label="Reset"
+                            layout="topleft" left="580" name="reset_water_height"
+                            top="63" width="75"/>
+
         </layout_panel>
         <layout_panel
                 name="lp_bottom"

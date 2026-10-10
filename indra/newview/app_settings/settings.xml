@@ -22293,6 +22293,28 @@
       <key>Value</key>
       <integer>1</integer>
     </map>
+    <key>RenderWaterLevel</key>
+    <map>
+      <key>Comment</key>
+      <string>Session-only absolute local water level in meters</string>
+      <key>Persist</key>
+      <integer>0</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>20.0</real>
+    </map>
+    <key>RenderWaterLevelOverride</key>
+    <map>
+      <key>Comment</key>
+      <string>Use the session-only absolute local water level</string>
+      <key>Persist</key>
+      <integer>0</integer>
+      <key>Type</key>
+      <string>Boolean</string>
+      <key>Value</key>
+      <integer>0</integer>
+    </map>
     <key>RenderWaterMaterials</key>
     <map>
       <key>Comment</key>
