@@ -115,7 +115,7 @@ def conv_cards(cards, pool):
         if cd.get("enable_widget"):
             ec = take(pool, cd["enable_widget"], None)
             o["en"] = 1
-            # Kept for the IA v2 page master lookup; stripped again after apply_ia_v2.
+            # Kept for the IA v2 page master lookup and emitted in the data (WP0 snapshot).
             o["ew"] = cd["enable_widget"]
             if ec.get("control_name"):
                 o["es"] = ec["control_name"]
@@ -155,7 +155,11 @@ def apply_ia(page, spec, problems, key):
             if not c:
                 continue
             first = first or c["id"]
-            opts.append({"label": o.get("label") or c["t"], "en": c.get("en", 0), "rows": c["rows"]})
+            opt = {"label": o.get("label") or c["t"], "en": c.get("en", 0), "rows": c["rows"]}
+            for k in ("ew", "es"):
+                if c.get(k) is not None:
+                    opt[k] = c[k]
+            opts.append(opt)
         if first:
             new_cards[first] = {"id": m["id"], "t": m.get("title", m["id"]), "k": "selector",
                                 "sel_label": m.get("selector_label", ""), "opts": opts, "rows": []}
@@ -672,7 +676,6 @@ def apply_ia_v2(groups, cur_dir, problems):
         s = _apply_v2_page(pages[key], spec, key, set(pages), problems)
         print(f"  ia_v2 {key}: links={s['links']} master={s['master']} who={s['who']} "
               f"modes={s['modes']} added={s['added']}")
-    _strip_enable_keys(groups)
 
 
 def _conv_inline_row(r):
@@ -696,6 +699,7 @@ def _conv_inline_card(c):
     en = c.get("enable_widget")
     if en and not any(r.get("w") == en for r in rows):
         o["en"] = 1
+        o["ew"] = en
     return o
 
 
