@@ -49,7 +49,7 @@ public:
     void setOwner(LLView* owner);
     void beginGesture(EOrigin,const std::string&,const std::string& label=std::string());
     static void noteKey();
-    static void notePointer();
+    static void notePointer(LLView*);
     void watchSettings(const std::string&,const std::vector<std::string>&);
     void recordWidget(LLUICtrl*,const LLSD&,const LLSD&,const std::string&);
     void recordCustom(const std::string&,const std::string&,std::function<bool(bool,std::string&)>);
@@ -72,7 +72,7 @@ public:
 private:
     class GestureTimer;
     void captureSetting(const std::string&,const std::string&,const LLSD&,const LLSD&);
-    void addEntry(Entry,const std::string&);
+    void addEntry(Entry,const std::string&,const std::string& label_page=std::string());
     void finishGesture();
     bool tickGesture();
     std::string currentContext(const std::string&)const;

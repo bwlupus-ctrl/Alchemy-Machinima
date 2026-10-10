@@ -49,6 +49,25 @@ void ALKitBar::reshape(S32 width, S32 height, bool called_from_parent)
     layoutChildren();
 }
 
+void ALKitBar::setCollapsibleVisible(LLView* child, bool visible)
+{
+    if (!child)
+    {
+        return;
+    }
+    for (S32 index = 0; index < (S32)mCollapse.size(); ++index)
+    {
+        if (mCollapse[index] == child)
+        {
+            mNaturalVisible[index] = visible;
+            mCollapsed[index] = false;
+            break;
+        }
+    }
+    child->setVisible(visible);
+    layoutChildren();
+}
+
 void ALKitBar::layoutChildren()
 {
     constexpr S32 PAD = 10;

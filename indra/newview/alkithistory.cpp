@@ -88,9 +88,9 @@ void ALKitHistory::noteKey()
     sKitHistoryKeyTime=LLTimer::getTotalSeconds();
 }
 
-void ALKitHistory::notePointer()
+void ALKitHistory::notePointer(LLView* hit_view)
 {
-    sKitHistoryPointerTime=LLTimer::getTotalSeconds();
+    if(ALKitShell::find(hit_view))sKitHistoryPointerTime=LLTimer::getTotalSeconds();
 }
 
 void ALKitHistory::watchSettings(const std::string& page,const std::vector<std::string>& names)
@@ -167,25 +167,14 @@ void ALKitHistory::captureSetting(const std::string& page,const std::string& nam
     entry.key=name;
     entry.oldv=old;
     entry.newv=value;
-    std::string label=name;
-    if(ALKitShell* shell=dynamic_cast<ALKitShell*>(owner))
-    {
-        if(ALKitPage* kit_page=shell->findBuiltPage(page))
-        {
-            if(ALKitRow* row=kit_page->findRowBySetting(name))
-            {
-                label=shell->pagePathLabel(page)+" \xE2\x80\xBA "+row->meta().label;
-            }
-        }
-    }
-    addEntry(std::move(entry),label);
+    addEntry(std::move(entry),std::string(),page);
 }
 
-void ALKitHistory::addEntry(Entry entry,const std::string& label)
+void ALKitHistory::addEntry(Entry entry,const std::string& supplied_label,const std::string& label_page)
 {
     if(!mOpen)
     {
-        beginGesture(mOrigin,mPage,label);
+        beginGesture(mOrigin,mPage,supplied_label);
     }
     for(Entry& existing:mOpen->entries)
     {
@@ -193,6 +182,21 @@ void ALKitHistory::addEntry(Entry entry,const std::string& label)
         {
             existing.newv=entry.newv;
             return;
+        }
+    }
+    std::string label=supplied_label;
+    if(label.empty())
+    {
+        label=entry.key;
+        if(ALKitShell* shell=dynamic_cast<ALKitShell*>(mOwner.get()))
+        {
+            if(ALKitPage* page=shell->findBuiltPage(label_page))
+            {
+                if(ALKitRow* row=page->findRowBySetting(entry.key))
+                {
+                    label=shell->pagePathLabel(label_page)+" \xE2\x80\xBA "+row->meta().label;
+                }
+            }
         }
     }
     if(mOpen->label.empty())mOpen->label=label;

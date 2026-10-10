@@ -1129,13 +1129,13 @@ void LLViewerWindow::handlePieMenu(S32 x, S32 y, MASK mask)
 bool LLViewerWindow::handleAnyMouseClick(LLWindow *window, LLCoordGL pos, MASK mask, EMouseClickType clicktype, bool down, bool& is_toolmgr_action)
 {
     LL_PROFILE_ZONE_SCOPED_CATEGORY_UI;
-    ALKitHistory::notePointer();
     const char* buttonname = "";
     const char* buttonstatestr = "";
     S32 x = pos.mX;
     S32 y = pos.mY;
     x = ll_round((F32)x / mDisplayScale.mV[VX]);
     y = ll_round((F32)y / mDisplayScale.mV[VY]);
+    ALKitHistory::notePointer(mRootView?mRootView->childFromPoint(x,y,true):nullptr);
 
     // Handle non-consuming global keybindings, like voice
     gViewerInput.handleGlobalBindsMouse(clicktype, mask, down);

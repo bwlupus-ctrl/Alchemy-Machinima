@@ -474,7 +474,6 @@ bool ALKitShell::navigateTo(const std::string& path)
 }
 bool ALKitShell::navigateTo(const ALKitTarget& target)
 {
-    ALKitHistory::ScopedSuspend suspend;
     clearSearch();
     LLPanel* panel=ensurePageBuilt(target.page_key);
     if(!panel)return false;
@@ -514,7 +513,14 @@ bool ALKitShell::selectPage(const std::string& page_name)
     LLPanel* group=inner?dynamic_cast<LLPanel*>(inner->getParent()):nullptr;
     if(mDirectorTabs&&group)mDirectorTabs->selectTabByName(group->getName());
     if(inner)inner->selectTabByName(page_name);
-    return page->ensureBuilt()!=nullptr;
+    const bool built=page->ensureBuilt()!=nullptr;
+    syncSelection();
+    return built;
+}
+
+void ALKitShell::syncSelection()
+{
+    layoutChrome();
 }
 
 LLPanel* ALKitShell::ensurePageBuilt(const std::string& page_name)
@@ -534,13 +540,8 @@ ALKitPage* ALKitShell::currentKitPage()const
 
 ALKitPage* ALKitShell::findBuiltPage(const std::string& key)const
 {
-    for(const TabData& tab:mTabs)
-    {
-        ALKitLazyPage* lazy=findChild<ALKitLazyPage>(tab.page);
-        ALKitPage* page=lazy?findFirst<ALKitPage>(lazy):nullptr;
-        if(page&&page->pageKey()==key)return page;
-    }
-    return nullptr;
+    const auto found=mBuiltPages.find(key);
+    return found==mBuiltPages.end()?nullptr:found->second.get();
 }
 
 std::string ALKitShell::currentPageKey()const
@@ -553,6 +554,13 @@ std::string ALKitShell::pageKeyAt(S32 x,S32 y)const
 {
     ALKitPage* page=currentKitPage();
     if(!page)return "chrome";
+    if(mTabStrip)
+    {
+        S32 strip_x=0;
+        S32 strip_y=0;
+        const_cast<ALKitShell*>(this)->localPointToOtherView(x,y,&strip_x,&strip_y,mTabStrip);
+        if(mTabStrip->pointInView(strip_x,strip_y))return page->pageKey();
+    }
     S32 local_x=0;
     S32 local_y=0;
     const_cast<ALKitShell*>(this)->localPointToOtherView(x,y,&local_x,&local_y,page);
@@ -579,9 +587,11 @@ std::string ALKitShell::pagePathLabel(const std::string& key)const
 std::vector<std::string> ALKitShell::unwrappedPages()const
 {
     std::vector<std::string> pages;
-    pages.reserve(mRailData.size()+mTabs.size());
+    pages.reserve(mRailData.size()+mTabs.size()+2);
     for(const RailData& rail:mRailData)pages.push_back(rail.group);
     for(const TabData& tab:mTabs)pages.push_back(tab.page);
+    pages.push_back("dance_legacy_host");
+    pages.push_back("exposure_legacy_host");
     return pages;
 }
 
@@ -590,6 +600,11 @@ void ALKitShell::pageBuilt(const std::string&,LLPanel* panel)
     ALKitPage* page=dynamic_cast<ALKitPage*>(panel);
     if(!page)page=findFirst<ALKitPage>(panel);
     if(!page)return;
+    mBuiltPages[page->pageKey()]=page->getDerivedHandle<ALKitPage>();
+    if(page->pageKey()=="capture_group/scene_options_tab")
+    {
+        page->addBarLauncher("snapshot","Open Snapshot...");
+    }
     layoutChrome();
     std::string prefix=page->pageKey();
     const size_t slash=prefix.rfind('/');
@@ -621,6 +636,7 @@ void ALKitShell::pageBuilt(const std::string&,LLPanel* panel)
             LLHandle<ALKitPopover> popover_handle=popover->getDerivedHandle<ALKitPopover>();
             LLHandle<ALKitPage> page_handle=page->getDerivedHandle<ALKitPage>();
             LLHandle<LLComboBox> picker_handle=picker->getDerivedHandle<LLComboBox>();
+            std::vector<LLHandle<LLButton>> choice_handles;
             LLButton::Params button_params;
             button_params.rect=LLRect(10,item_height,350,0);
             button_params.name=prefix+"_who_follow";
@@ -642,6 +658,7 @@ void ALKitShell::pageBuilt(const std::string&,LLPanel* panel)
                 button_params.label=item->getColumn(0)->getValue().asString();
                 LLButton* choice=LLUICtrlFactory::create<LLButton>(button_params);
                 popover->addChild(choice);
+                choice_handles.push_back(choice->getDerivedHandle<LLButton>());
                 choice->setOrigin(10,(S32)(items.size()-index-1)*item_height+8);
                 choice->setCommitCallback([page_handle,picker_handle,popover_handle,value](LLUICtrl*,const LLSD&)
                 {
@@ -655,9 +672,34 @@ void ALKitShell::pageBuilt(const std::string&,LLPanel* panel)
                 });
                 ++index;
             }
-            who->setCommitCallback([popover_handle](LLUICtrl*,const LLSD&)
+            LLHandle<LLButton> follow_handle=follow->getDerivedHandle<LLButton>();
+            who->setCommitCallback([popover_handle,picker_handle,follow_handle,choice_handles](LLUICtrl*,const LLSD&)
             {
-                if(ALKitPopover* target=popover_handle.get())target->toggle();
+                LLComboBox* combo=picker_handle.get();
+                ALKitPopover* target=popover_handle.get();
+                if(!combo||!target)return;
+                if(!target->getVisible())
+                {
+                    if(LLButton* follow_button=follow_handle.get())
+                    {
+                        follow_button->setLabel("\xE2\x86\xBA Follow rail ("+combo->getSelectedItemLabel()+")");
+                    }
+                    const std::vector<LLScrollListItem*> current_items=combo->getAllData();
+                    S32 choice_index=0;
+                    for(LLScrollListItem* item:current_items)
+                    {
+                        if(!item||!item->getEnabled()||!item->getColumn(0))continue;
+                        if(choice_index<(S32)choice_handles.size())
+                        {
+                            if(LLButton* choice=choice_handles[choice_index].get())
+                            {
+                                choice->setLabel(item->getColumn(0)->getValue().asString());
+                            }
+                        }
+                        ++choice_index;
+                    }
+                }
+                target->toggle();
             });
         }
     }

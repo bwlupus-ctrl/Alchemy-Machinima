@@ -42,6 +42,7 @@ public:
  bool navigateTo(const std::string& path);
  bool navigateTo(const ALKitTarget&);
  bool selectPage(const std::string& page_name);
+ void syncSelection();
  LLPanel* ensurePageBuilt(const std::string& page_name);
  ALKitPage* currentKitPage()const;
  ALKitPage* findBuiltPage(const std::string&)const;
@@ -119,6 +120,7 @@ private:
  LLFrameTimer mHighlightTimer;
  LLHandle<LLView>mHighlight;
  LLHandle<LLView>mCurrentPage;
+ std::unordered_map<std::string,LLHandle<ALKitPage>>mBuiltPages;
  std::vector<boost::signals2::scoped_connection>mConnections;
 };
 #endif

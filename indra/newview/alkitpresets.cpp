@@ -67,7 +67,11 @@ std::vector<std::string> ALKitSnapshotStore::names()const
 bool ALKitSnapshotStore::save(const std::string& name)
 {
     if(name.empty())return false;
-    if(!ensureLoaded())return false;
+    if(!ensureLoaded())
+    {
+        LLNotificationsUtil::add("SystemMessageTip",LLSD().with("MESSAGE","Preset file is unreadable; saved presets were left untouched."));
+        return false;
+    }
     LLSD root=mCache;
     LLSD values=LLSD::emptyMap();
     for(const std::string& setting:mSettings)
@@ -100,7 +104,12 @@ bool ALKitSnapshotStore::load(const std::string& name)
 
 bool ALKitSnapshotStore::remove(const std::string& name)
 {
-    if(!ensureLoaded()||!mCache.has(name))return false;
+    if(!ensureLoaded())
+    {
+        LLNotificationsUtil::add("SystemMessageTip",LLSD().with("MESSAGE","Preset file is unreadable; saved presets were left untouched."));
+        return false;
+    }
+    if(!mCache.has(name))return false;
     LLSD root=mCache;
     root.erase(name);
     if(!write(root))return false;

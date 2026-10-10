@@ -10,6 +10,7 @@
 #include "llviewerprecompiledheaders.h"
 #include "alkitshell.h"
 #include "alkitbinding.h"
+#include "alkitbar.h"
 #include "alkithistory.h"
 #include "alkitpage.h"
 #include "alkitpopover.h"
@@ -909,14 +910,25 @@ void LLFloaterDirector::bindChrome(LLView* root)
     mKitUIMs = root->findChild<LLTextBox>("kit_ui_ms");
     if (mKitUIMs)
     {
-        mKitUIMs->setVisible(gSavedSettings.getBOOL("KitShowUIMs"));
+        if(ALKitBar* bar=dynamic_cast<ALKitBar*>(mKitUIMs->getParent()))
+        {
+            bar->setCollapsibleVisible(mKitUIMs,gSavedSettings.getBOOL("KitShowUIMs"));
+        }
+        else mKitUIMs->setVisible(gSavedSettings.getBOOL("KitShowUIMs"));
         LLHandle<LLFloaterDirector> handle=getDerivedHandle<LLFloaterDirector>();
         mKitUIMsConnection=ALKitSettingWatch::instance().watch("KitShowUIMs",
             [handle](const LLSD& value,const LLSD&)
             {
                 if(LLFloaterDirector* director=handle.get())
                 {
-                    if(director->mKitUIMs)director->mKitUIMs->setVisible(value.asBoolean());
+                    if(director->mKitUIMs)
+                    {
+                        if(ALKitBar* bar=dynamic_cast<ALKitBar*>(director->mKitUIMs->getParent()))
+                        {
+                            bar->setCollapsibleVisible(director->mKitUIMs,value.asBoolean());
+                        }
+                        else director->mKitUIMs->setVisible(value.asBoolean());
+                    }
                 }
             });
     }
@@ -1526,6 +1538,7 @@ void LLFloaterDirector::onTabChanged()
 {
     LL_PROFILE_ZONE_NAMED_CATEGORY_UI("Director onTabChanged");
     mLauncherClock.forceDue(); // newly shown launcher summaries fill in on the next draw
+    if(mIsV2&&mShell)mShell->syncSelection();
     if (mTabContainer)
     {
         // [DirFix] D11: save by name AND keep writing the legacy index for one release

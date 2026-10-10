@@ -175,3 +175,67 @@ Scope: `git show 3661c636e42`, which covers alkitshell/bar/popover/search/help/p
 ## Note for WP4 (not counted)
 
 The `cine_rig_easy` adapter calls `mEasyModeToggle->setValue(); onEasyModeCommit()` for every origin. The guarded `applyEasyMode(desired, origin)` refactor from sections 3.5 and 3.18 is not done. It must land before WP4's "passive (search) mode drive" trace.
+
+---
+
+# R1 verification (fix commit ee7dc25d37a)
+
+Reviewer: Opus, 2026-10-10. Scope: `git show ee7dc25d37a` (C++ only) against the R1 findings, followed by a new-bug pass over the fix diff. Before judging the binder fixes, I cross-checked every name the binders look up against the generated XUI (`floater_director_v2.xml` and the 35 `panel_dpage_*.xml` files).
+
+**VERDICT: FIX-NEEDED.** 0 BLOCKER, 4 MAJOR (1 from an incomplete R1 fix, 3 introduced by the fixes), 7 MINOR.
+
+## R1 findings
+
+| R1 | Status | Evidence |
+|---|---|---|
+| B1 | **Fixed** | `page["mode"]` is gone. Nothing restores the mode. `mRestoringState` (initialised true, cleared at both postBuild exits, `alkitpage.cpp:413/496`) turns `setModeIndex` into a pure `syncEffectiveMode()` and blocks `saveState` during the build. Remaining build-time writes are UI-only: `syncEffectiveMode`, card open state, and the who-combo `setValue`. `LLComboBox::setValue` has no control write and no commit (`llcombobox.cpp:382`). `selectPage`'s `saveState` writes only the kit's own `DirectorV2PageState`. Building a page now writes no user setting. |
+| M1 | Fixed | The anchor auto-wiring is removed from `ALKitPopover::postBuild`. In v2, `btn_help` has only the `onToggleLegend` → `ALKitPopover::toggle` path. The `if(!mIsV2)` added to the v1 body (`llfloaterdirector.cpp:364`) is inert. |
+| M2 | Fixed | `scrollFit()` returns `*mExternalScrollFit` when set. |
+| M3 | **Partially fixed** | The real names `director_dance_ball_panel`/`director_exposure_panel` are now used, and every other binder lookup resolves in the generated XUI. The one exception, `card_snapshot_open`, is absent from all pages and is skipped safely; that is a WP3 parity gap to note. But the fill still misses: see N1. |
+| M4 | Fixed | `beginGesture` coalesces same-origin, same-page WHEEL and KEY gestures (+0.5 s). `captureSetting` extends an open KEY gesture. |
+| M5 | Fixed | `notePointer()` is at the top of `LLViewerWindow::handleAnyMouseClick`, a static store. Admission is focus-in-owner and `now - max(key, pointer) ≤ 0.5`. A dropdown item click (top ctrl) now admits, because the list stays a child of the combo inside the shell. |
+| M6 | Fixed | `loadScene` takes a `ScopedSuspend` after validation (its one later `return` precedes any write), then `barrier("scene loaded")`. `resetAllCallback` runs suspended, statement order unchanged, then `globalBarrier("rig reset")`. In v1, `globalBarrier` reaches `kitHistory()` = null and does nothing. |
+| M7 | **Fixed (core)** | WP1's reveal slot is deleted, and the combo is no longer reparented. The popover offers "↺ Follow rail" plus one button per item. A pick runs `setValue+onCommit` and `setWhoPin(value)`, which saves `who_pin`. The cast-selection slot returns while pinned, and `restoreState` restores the flag. `asString()` of `LLSD(0)` is `"0"`, so pinning to You also counts as a pin. Minors are in n1. |
+| M8 | Fixed | Arm, hotkeys and cast use explicit `toggle()` slots in `buildChrome`. |
+| m1-m20 | Fixed | m1: the gesture timer is released and returns true when idle or closed, and undo/redo reset it. m2: row labels, and custom entries reverse on undo. m3: KEY gestures are extended. m4: `pageKeyAt` and the "chrome" watch set (all 6 settings exist), but see N2. m5: `label_lower`, the self-test log and Enter-on-highlight. m6: cached, but see N3. m7: atomic tmp/.bak write, a load cache, `save` refuses an unreadable store, and `load` is restricted to `mSettings`. m8: the list now matches the page (`ActorsOnlyAlpha` in, `WrapClamp` out) with asserts. m9-m20 are as listed. |
+
+## New MAJOR
+
+**N1. The Dance and Exposure hosts are still wrapped, so `fillPage` targets the auto-scroll document instead of the legacy host. (Incomplete M3.)**
+- `director_dance_ball_panel` is a direct XML child of the legacy `kit_page`, so it is re-homed into `dance_legacy_host`.
+- `adoptPage` then wraps that host. Its name is not in `mUnwrapped`: `unwrappedPages()` returns only group and page names, and `alscrollfit.cpp:179-226` re-parents every host child into `dance_legacy_host_auto_scroll_content`.
+- `bindPage` runs after `adoptPage` (slot after the lazy build), so `mDancePage = dance->getParent()` is the fitted scroll document.
+- `fillPage(doc, view, 30)` sizes the panel to the document height minus 30, while `fitPage` sizes the document from the panel. That is circular, and it repeats on every `onOpen`.
+- In v1 these two pages were deliberately unwrapped. Spec 3.17.1 requires the parent to be the legacy host.
+- Fix: have `ALKitShell::unwrappedPages()` (or the floater) also add `dance_legacy_host` and `exposure_legacy_host`. The host then stays the panel's parent and `fillPage` fills the page.
+
+**N2. Easy/Advanced proxy clicks are no longer undoable. (Regression from `pageKeyAt`, m4.)**
+- The mode segments live in `kit_tabstrip`, outside the kit page rect. `LLFloaterDirector::pageKeyAt` therefore opens the gesture as `"chrome"`.
+- `captureSetting` drops the Rig-page-watched mode setting because `page != "chrome"`.
+- Spec 3.5: "explicit user clicks … remain undoable".
+- Fix: either begin a gesture on the current page in the mode-segment commit (`shell->history().beginGesture(MOUSE, current->pageKey(), "Mode")`, as the preset strip does), or make `ALKitShell::pageKeyAt` return the current page key for points inside `mTabStrip`.
+
+**N3. The cached current page goes stale. (Regression from m6.)**
+- `currentKitPage()` now returns `mCurrentPage`, but only `layoutChrome()` updates it (`alkitshell.cpp:353`).
+- `selectPage` does not call it. So the stale page persists after `cyclePage` (Shift+PgUp/PgDn), `cycleGroup` (Alt+PgUp/PgDn), `navigateTo` (Enter or a click on a search hit on another, already-built page), and `selectLeafTab` on `onOpen` for a built page.
+- After those, Esc/clear search, `/`, PgUp/PgDn chips, the mode proxy, `runSearch` filtering, `pageKeyAt` gesture attribution and `selectPage`'s `saveState` all act on the previously laid-out page.
+- Fix: refresh the handle at the end of `selectPage` (or call `layoutChrome()` there, which also fixes the tab-strip toggle states). Also hook the inner tab containers' commit signals in `buildChrome`, so any `selectTab`, including the self-test's direct one, updates it.
+
+**N4. The undo label lookup runs about 35 full-tree `findChild` searches per setting change. (Regression from m2.)**
+- `captureSetting` → `findBuiltPage` loops every `mTabs` entry, doing a recursive `findChild<ALKitLazyPage>` over the whole shell plus a `findFirst` DFS. It does this on every admitted setting change: every frame of a slider drag. The result is then discarded when the entry coalesces.
+- This puts a cost that grows with page count on the interaction hot path, contrary to CLAUDE.md's perf rules.
+- Fix:
+  - Keep an `std::unordered_map<std::string, LLHandle<ALKitPage>>` keyed by page key, filled in `pageBuilt`.
+  - Compute the label only when `addEntry` creates a new entry. Pass a label resolver (or the row pointer) instead of a string.
+
+## New MINOR
+
+- **n1. Who popover details.**
+  - Items and the "Follow rail (…)" label are a snapshot taken at page build. The Rig anchor labels (subject names, lit glyphs) change later, so the popover shows stale names such as "Subject B - unset". Rebuild the labels when the popover opens.
+  - `restoreState`'s `mWhoCombo->setValue(who_pin)` runs before `ALPanelCineLightRig::postBuild` fills the combo, so it never takes effect. Restore only the flag.
+- **n2. Help strip colour.** `ALKitHelpStrip::draw` hard-codes `LLColor4::white`. Use the `ALKitStyle` text colour token.
+- **n3. Bar layout after a visibility change.** `ALKitBar` does not lay itself out again when external code toggles a collapsible child. For example, the new `KitShowUIMs` watch shows `kit_ui_ms` without a re-layout. Call `layoutChildren()` from the watch, or have the bar observe child visibility.
+- **n4. Corrupt preset store.** When the store is unreadable, `save` and `remove` fail silently. Notify the user, for example "Preset file is unreadable; saved presets were left untouched".
+- **n5. Admission window after clicks elsewhere.** The pointer-time admission also fires for clicks on views that do not take focus (toolbar buttons, HUD). A watched setting written by such a click within 0.5 s, while keyboard focus is still in the Director, is recorded. This is low risk; optionally require the click target to be inside the floater, using `gViewerWindow`'s last hit view.
+- **n6. Stale saved state.** The stale `selectPage` `saveState` (N3) can save one page's chip and card state under another page's key, because `saveState` keys by the stale page's own `mPage`. Fixing N3 resolves it.
+- **n7. Snapshot launcher.** `card_snapshot_open` is absent from the generated pages, so v2 loses the Snapshot launcher card. This is WP3 parity, not WP2.

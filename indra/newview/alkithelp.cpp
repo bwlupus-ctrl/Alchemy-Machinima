@@ -38,7 +38,7 @@ void ALKitHelpStrip::draw()
     const LLFontGL* font=LLFontGL::getFontSansSerif();
     if(font)
     {
-        font->renderUTF8(mText,0,0,11,LLColor4::white,LLFontGL::LEFT,LLFontGL::VCENTER,
+        font->renderUTF8(mText,0,0,11,ALKitStyle::color(ALKitStyle::TEXT).get(),LLFontGL::LEFT,LLFontGL::VCENTER,
             LLFontGL::NORMAL,LLFontGL::NO_SHADOW,S32_MAX,getRect().getWidth(),nullptr,true);
     }
     LLView::draw();

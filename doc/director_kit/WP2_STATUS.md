@@ -43,3 +43,16 @@ Audit basis: `DIRECTOR_KIT_P0_SPEC.md` sections 3.7-3.12 and 3.16-3.18, WP2 acce
 | m17 | done | Reshape no longer rereads pip settings/tokens; pip/mode labels are diffed and pips update on their signals or breakpoint change. |
 | m18 | done | Cast-roster open is read at shell build; UI-ms visibility follows its setting signal. |
 | m19, m20 | done | Esc clears then blurs search; bar collapse computes before diffed visibility, and text-entry detection is shared. |
+
+## Opus R1 verification / fix round 2
+
+| Finding | Status | Resolution |
+|---|---|---|
+| N1 | done | `dance_legacy_host` and `exposure_legacy_host` are explicit ScrollFit exceptions, so their embedded panels remain direct host children and `fillPage` is no longer circular. The other legacy hosts remain intentionally wrapped; no other WP2 `fillPage` consumer requires a direct host. |
+| N2 | done | Tab-strip gestures resolve to the current page, while page clicks, keyboard admission and search reveals all record mode-setting changes against that same current page as one coalesced step. |
+| N3 | done | Every shell selection and every floater tab commit now synchronizes the cached page and chrome state, covering key cycling, search jumps, restored tabs and direct/programmatic tab selection. |
+| N4 | done | Built kit pages are cached by page key. Coalesced setting updates return before row-label resolution, so only a newly inserted undo entry performs the O(1) page lookup and row lookup. |
+| n1-n2 | done | Who labels refresh from the live combo whenever the popover opens, restore sets only the pin flag, and the help strip uses the kit text colour token. |
+| n3-n5 | done | ALKitBar accepts external collapsible visibility changes with immediate relayout; corrupt preset saves/deletes notify without touching the file; pointer admission timestamps only hits inside a kit shell. |
+| n6-n7 | done | Selection synchronization prevents cross-page state saves. A WP2 runtime launcher is added to the Scene page bar and wired through the existing Snapshot launcher path, preserving access without touching WP3-generated XUI. |
+| Verification | static only | Scoped `git diff --check` passes. Per instruction, no build, `/Zs`, Python, generated-XUI edit, or commit was run. |
