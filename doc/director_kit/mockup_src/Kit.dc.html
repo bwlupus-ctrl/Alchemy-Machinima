@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Director building blocks</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>body{margin:0;background:#0B0C0E}a{color:#E8A33D}a:hover{color:#F3BE6A}</style>
+</helmet>
+<div style="width: 1200px; height: 760px; box-sizing: border-box; padding: 36px 40px; background: #0B0C0E; color: #E6E8EB; font-family: 'IBM Plex Sans', sans-serif; display: grid; grid-template-columns: 420px minmax(0, 1fr); column-gap: 48px">
+  <div style="display: flex; flex-direction: column; gap: 22px">
+    <div>
+      <h1 style="margin: 0; font-size: 22px; font-weight: 600">Building blocks</h1>
+      <p style="margin: 6px 0 0; font-size: 13px; color: #9BA3AE; line-height: 1.5">Every Director page is made only from these. Each becomes one reusable XUI template, so pages can't drift out of alignment.</p>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 8px">
+      <div style="font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: #8A929D">Row (all types share these columns)</div>
+      <div style="background: #1B1E23; border: 1px solid #2A2F36; border-radius: 6px; padding: 8px 8px 8px 12px; display: flex; flex-direction: column; gap: 2px">
+        <div style="display: grid; grid-template-columns: 100px minmax(0, 1fr) 52px 20px; column-gap: 6px; align-items: center; height: 28px">
+          <span style="font-size: 12px; color: #C9CED6">Intensity</span>
+          <span style="height: 4px; border-radius: 2px; background: linear-gradient(to right, #E8A33D 30%, #363C44 30%); position: relative"><span style="position: absolute; left: 30%; top: -4px; width: 12px; height: 12px; margin-left: -6px; border-radius: 6px; background: #E6E8EB"></span></span>
+          <span style="font: 500 12px 'IBM Plex Mono', monospace; text-align: right">1.20</span>
+          <span style="width: 11px; height: 11px; border: 1.5px solid #E8A33D; border-radius: 6px; justify-self: center"></span>
+        </div>
+        <div style="display: grid; grid-template-columns: 100px minmax(0, 1fr) 52px 20px; column-gap: 6px; align-items: center; height: 28px">
+          <span style="font-size: 12px; color: #C9CED6">Actors only</span>
+          <span style="width: 34px; height: 18px; border-radius: 9px; background: #E8A33D; position: relative"><span style="position: absolute; left: 18px; top: 2px; width: 14px; height: 14px; border-radius: 7px; background: #141413"></span></span>
+          <span style="font-size: 12px; color: #9BA3AE; text-align: right">On</span>
+          <span style="width: 11px; height: 11px; border: 1.5px solid #5C646F; border-radius: 6px; justify-self: center"></span>
+        </div>
+        <div style="display: grid; grid-template-columns: 100px minmax(0, 1fr) 52px 20px; column-gap: 6px; align-items: center; height: 28px">
+          <span style="font-size: 12px; color: #C9CED6">Preset</span>
+          <span style="grid-column: span 2; height: 24px; box-sizing: border-box; border: 1px solid #343A42; border-radius: 4px; background: #262A31; font-size: 12px; display: flex; align-items: center; padding: 0 8px">Soft halo</span>
+          <span style="width: 11px; height: 11px; border: 1.5px solid #5C646F; border-radius: 6px; justify-self: center"></span>
+        </div>
+        <div style="display: grid; grid-template-columns: 100px minmax(0, 1fr) 52px 20px; column-gap: 6px; align-items: center; height: 28px">
+          <span style="font-size: 12px; color: #C9CED6">Colour</span>
+          <span style="width: 40px; height: 18px; border-radius: 3px; border: 1px solid #4A515B; background: #FFF1DE"></span>
+          <span style="font: 500 12px 'IBM Plex Mono', monospace; text-align: right">5600 K</span>
+          <span style="width: 11px; height: 11px; border: 1.5px solid #5C646F; border-radius: 6px; justify-self: center"></span>
+        </div>
+        <div style="display: grid; grid-template-columns: 100px minmax(0, 1fr) 52px 20px; column-gap: 6px; align-items: center; height: 28px">
+          <span style="font-size: 12px; color: #C9CED6">Status</span>
+          <span style="grid-column: span 2; font: 500 12px 'IBM Plex Mono', monospace; color: #C9CED6">6/6 faces · 2.0 faces/s</span>
+          <span></span>
+        </div>
+      </div>
+      <div style="display: grid; grid-template-columns: 100px minmax(0, 1fr) 52px 20px; column-gap: 6px; padding: 0 8px 0 12px; font: 11px 'IBM Plex Mono', monospace; color: #E8A33D">
+        <span>label 100</span><span>control (fills)</span><span style="text-align: right">value 52</span><span>20</span>
+      </div>
+      <div style="font-size: 12px; color: #9BA3AE; line-height: 1.5">Row height 28 · column gap 6 · reset turns amber when the value isn't default · labels never wrap, they truncate with a tooltip.</div>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 8px">
+      <div style="font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: #8A929D">Card</div>
+      <div style="background: #1B1E23; border: 1px solid #2A2F36; border-radius: 6px">
+        <div style="height: 36px; display: flex; align-items: center; gap: 8px; padding: 0 8px 0 12px; border-bottom: 1px solid #2A2F36">
+          <span style="flex: 1; font-size: 13px; font-weight: 600">Key light</span>
+          <span style="width: 34px; height: 18px; border-radius: 9px; background: #E8A33D; position: relative"><span style="position: absolute; left: 18px; top: 2px; width: 14px; height: 14px; border-radius: 7px; background: #141413"></span></span>
+          <span style="width: 13px; height: 13px; border: 1.5px solid #8A929D; border-radius: 7px; margin: 0 5px"></span>
+        </div>
+        <div style="padding: 10px 12px; font-size: 12px; color: #9BA3AE">3–7 rows · then “More options (n)”</div>
+      </div>
+      <div style="font-size: 12px; color: #9BA3AE; line-height: 1.5">Header 36: title, optional enable switch, reset card. A switched-off card dims to 45% but stays editable.</div>
+    </div>
+  </div>
+
+  <div style="display: flex; flex-direction: column; gap: 26px; padding-top: 4px">
+    <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 28px">
+      <div style="display: flex; flex-direction: column; gap: 8px">
+        <div style="font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: #8A929D">Group rail</div>
+        <div style="width: 176px; background: #15171B; border: 1px solid #262A31; border-radius: 6px; padding: 8px; display: flex; flex-direction: column; gap: 2px">
+          <div style="height: 40px; border-radius: 6px; display: flex; align-items: center; padding: 0 12px; font-size: 13px; color: #C9CED6">Default</div>
+          <div style="height: 40px; border-radius: 6px; display: flex; align-items: center; padding: 0 12px; font-size: 13px; color: #E6E8EB; background: #1E2228">Hover</div>
+          <div style="height: 40px; border-radius: 6px; display: flex; align-items: center; padding: 0 12px; font-size: 13px; font-weight: 600; color: #F1F2F4; background: #262A31">Active <span style="margin-left: auto; width: 6px; height: 6px; border-radius: 3px; background: #E8A33D"></span></div>
+        </div>
+        <div style="font-size: 12px; color: #9BA3AE; line-height: 1.5">176 wide with labels; folds to 56 (icons) below 980 px window width.</div>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 8px">
+        <div style="font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: #8A929D">Page tabs</div>
+        <div style="height: 40px; display: flex; align-items: flex-end; gap: 2px; background: #15171B; border: 1px solid #262A31; border-radius: 6px; padding: 0 10px">
+          <span style="height: 32px; padding: 0 12px; display: flex; align-items: center; font-size: 13px; font-weight: 600; border-bottom: 2px solid #E8A33D">Rig</span>
+          <span style="height: 32px; padding: 0 12px; display: flex; align-items: center; font-size: 13px; color: #9BA3AE">Rim</span>
+          <span style="height: 32px; padding: 0 12px; display: flex; align-items: center; font-size: 13px; color: #9BA3AE">Exposure</span>
+        </div>
+        <div style="font-size: 12px; color: #9BA3AE; line-height: 1.5">One row only. Too many tabs scroll sideways, never wrap to a second row.</div>
+      </div>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 8px">
+      <div style="font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: #8A929D">Page width rules (no squish)</div>
+      <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px">
+        <div style="background: #15171B; border: 1px solid #262A31; border-radius: 6px; padding: 12px; display: flex; flex-direction: column; gap: 6px">
+          <div style="font: 500 13px 'IBM Plex Mono', monospace; color: #E8A33D">≥ 1100 px</div>
+          <div style="font-size: 12px; color: #C9CED6; line-height: 1.5">Rail with labels, 2 card columns, help panel on the right.</div>
+        </div>
+        <div style="background: #15171B; border: 1px solid #262A31; border-radius: 6px; padding: 12px; display: flex; flex-direction: column; gap: 6px">
+          <div style="font: 500 13px 'IBM Plex Mono', monospace; color: #E8A33D">850 – 1099 px</div>
+          <div style="font-size: 12px; color: #C9CED6; line-height: 1.5">Rail folds to icons, help becomes a one-line strip, still 2 columns.</div>
+        </div>
+        <div style="background: #15171B; border: 1px solid #262A31; border-radius: 6px; padding: 12px; display: flex; flex-direction: column; gap: 6px">
+          <div style="font: 500 13px 'IBM Plex Mono', monospace; color: #E8A33D">Card &lt; 340 px</div>
+          <div style="font-size: 12px; color: #C9CED6; line-height: 1.5">Drop to 1 column. A slider track is never shorter than 120 px.</div>
+        </div>
+      </div>
+    </div>
+
+    <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 28px">
+      <div style="display: flex; flex-direction: column; gap: 8px">
+        <div style="font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: #8A929D">Type</div>
+        <div style="display: flex; flex-direction: column; gap: 6px">
+          <div style="display: flex; align-items: baseline; gap: 12px"><span style="width: 74px; font: 11px 'IBM Plex Mono', monospace; color: #8A929D">Card 13/600</span><span style="font-size: 13px; font-weight: 600">Key light</span></div>
+          <div style="display: flex; align-items: baseline; gap: 12px"><span style="width: 74px; font: 11px 'IBM Plex Mono', monospace; color: #8A929D">Label 12</span><span style="font-size: 12px; color: #C9CED6">Elevation</span></div>
+          <div style="display: flex; align-items: baseline; gap: 12px"><span style="width: 74px; font: 11px 'IBM Plex Mono', monospace; color: #8A929D">Value 12 mono</span><span style="font: 500 12px 'IBM Plex Mono', monospace">30°</span></div>
+          <div style="display: flex; align-items: baseline; gap: 12px"><span style="width: 74px; font: 11px 'IBM Plex Mono', monospace; color: #8A929D">Note 11</span><span style="font-size: 11px; color: #9BA3AE">Updated twice a second</span></div>
+        </div>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 8px">
+        <div style="font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: #8A929D">Colour</div>
+        <div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px">
+          <div style="display: flex; flex-direction: column; gap: 4px"><span style="height: 28px; border-radius: 4px; background: #111316; border: 1px solid #2A2F36"></span><span style="font: 10px 'IBM Plex Mono', monospace; color: #9BA3AE">Window</span></div>
+          <div style="display: flex; flex-direction: column; gap: 4px"><span style="height: 28px; border-radius: 4px; background: #1B1E23; border: 1px solid #2A2F36"></span><span style="font: 10px 'IBM Plex Mono', monospace; color: #9BA3AE">Card</span></div>
+          <div style="display: flex; flex-direction: column; gap: 4px"><span style="height: 28px; border-radius: 4px; background: #E8A33D"></span><span style="font: 10px 'IBM Plex Mono', monospace; color: #9BA3AE">Accent</span></div>
+          <div style="display: flex; flex-direction: column; gap: 4px"><span style="height: 28px; border-radius: 4px; background: #E5484D"></span><span style="font: 10px 'IBM Plex Mono', monospace; color: #9BA3AE">Record only</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1200,"height":760}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

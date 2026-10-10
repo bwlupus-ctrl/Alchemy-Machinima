@@ -1,0 +1,643 @@
+{
+  "meta": {
+    "purpose": "Style token table for the Director floater UI kit, extracted from the approved HTML mockup. Every value below was read from the mockup source; none were invented.",
+    "primary_source": "mockup_src/Director.dc.html (full mockup; 'Director.dc.html:N' = line N)",
+    "other_sources": {
+      "Main.dc.html": "first approved concept look (Main.dc.html:N)",
+      "Kit.dc.html": "building blocks and measurements (Kit.dc.html:N)",
+      "VCamPage.dc.html": "VCam sub-page; NOT tokenised component by component (see meta.gaps)"
+    },
+    "reference_image": "mockup_ref/light_rig_mockup.png (screenshot of the Light > Rig page: rail with labels, tab strip, Easy/Advanced seg, Key/Fill/Back/BG chips, light map, Lights card, help pane, transport bar)",
+    "conventions": [
+      "All px values are CSS px in the mockup's 1200x760 preview frame; the floater itself is 1160x720 by default and 850x560 at minimum.",
+      "Colour keys are lower-case token names. 'hex' is the literal string in source (upper-case as written).",
+      "Shadows and overlays are written as full CSS colour-function strings copied from source (black at alpha values .45 to .65).",
+      "'source' cites the primary file and line; a few values are only in Main.dc.html or Kit.dc.html and say so.",
+      "Dynamic style strings are built in the Director script (lines 882-2823). They are cited as 'Director.dc.html:NNNN' pointing at the builder line.",
+      "The verification script verify_tokens.py checks that every hex colour, colour-function literal and NNpx value in this file appears literally in the mockup sources."
+    ],
+    "gaps": [
+      "VCamPage.dc.html has about 100 extra colours (scene render and preview art) and is only partially covered. Its chrome uses the same amber, grey and text tokens as Director; its scene colours are not tokenised.",
+      "Light-map scene art (Director.dc.html:450-470, 'rmBack*', 'rmFront*', globe gradients) is a runtime-computed diagram, not a UI component. Only the palette values it uses are listed, under colors.lightmap_scene.",
+      "Director has no literal row height for the dial and arc groups beyond the 48px dial; dial cell geometry is taken from line 1873."
+    ],
+    "ambiguities": [
+      "Rail fold breakpoint: Kit.dc.html:82 says the rail folds to icons below 980 px window width; Kit.dc.html:103 table says 850-1099 px folds; Director uses isMin (850x560) only. Use the Director behaviour (fold at minimum size) and confirm the 980 threshold.",
+      "Card columns: Kit.dc.html:97-109 says cards drop to 1 column below 340 px; Director.dc.html:365 hard-codes repeat(2, minmax(0,1fr)) at every size.",
+      "Section header size: Kit uses 11px with letter-spacing .08em (Kit.dc.html:22, 60, 76); Director uses 11px .08em for the Cast heading and help kicker (Director.dc.html:142, 713) but 10.5px weight 500 .09em for in-card sub-headings (Director.dc.html:500). Both are in the mockup; the table records both.",
+      "Note colour: Kit 'Note 11' is #9BA3AE (Kit.dc.html:120); Director notes use #8A929D (e.g. Director.dc.html:142, 193, 265). Both are recorded.",
+      "Row geometry: Kit rows have no negative margin (Kit.dc.html:24 padding 8px 8px 8px 12px on the wrapper); Director rows use margin 0 -4px and padding 0 4px (Director.dc.html:1816). Director values are used.",
+      "IBM Plex Mono weight 600 is used for the REC pill (Director.dc.html:2795) and the 'NEW' badge font weight is 600 in Sans. The Google Fonts link loads Plex Mono 400/500 and Plex Sans 400/500/600 only (Director.dc.html:12). The 600 mono weight will fall back to synthetic bold unless Plex Mono 600 is added.",
+      "Shadow for the window uses rgba(0,0,0,.55) (Director.dc.html:2021); the Light/Rig card in Main uses no shadow. Director is authoritative.",
+      "Director.dc.html:2016-2017 sets the minimum floater to 850x560 at left 175, top 60; the default is 1160x720 at left 20, top 20."
+    ]
+  },
+
+  "colors": {
+    "_note": "name -> {hex, role, source}. Roles mirror the requested list.",
+    "canvas_outside": { "hex": "#0B0C0E", "role": "page / body backdrop behind floater", "source": "Director.dc.html:14, 49" },
+    "window_bg": { "hex": "#111316", "role": "window bg (floater body)", "source": "Director.dc.html:2021 winStyle; Kit.dc.html:126 swatch 'Window'" },
+    "window_border": { "hex": "#2A2F36", "role": "window border and card border", "source": "Director.dc.html:2021, 2300" },
+    "panel_bg": { "hex": "#15171B", "role": "rail bg, header bg, tab strip bg, transport bg, popover/menu bg, help pane bg", "source": "Director.dc.html:56, 118 via 2022, 199, 712, 726, 175, 832" },
+    "rail_bg": { "hex": "#15171B", "role": "rail bg", "source": "Director.dc.html:2022 railStyle background" },
+    "rail_border": { "hex": "#262A31", "role": "rail right border, header/tab-strip bottom border, help pane left border, transport top border", "source": "Director.dc.html:2022, 56, 199, 712, 726" },
+    "hairline": { "hex": "#22262C", "role": "light separator: page-bar bottom, who-row bottom, chip-strip bottom, folded-help strip top", "source": "Director.dc.html:219, 248, 268, 706" },
+    "chip_strip_bg": { "hex": "#131518", "role": "section chip strip bg", "source": "Director.dc.html:219" },
+    "inset_bg": { "hex": "#121418", "role": "control well bg (search field, seg group, list box, who row, light-map legend strip)", "source": "Director.dc.html:211, 248, 325, 484; 1990 listStyle; 2703 searchStyle" },
+    "card_bg": { "hex": "#1B1E23", "role": "card bg, who-chip bg", "source": "Director.dc.html:2300, 2697" },
+    "card_border": { "hex": "#2A2F36", "role": "card border and card header separator", "source": "Director.dc.html:2300, 2301" },
+    "card_border_active": { "hex": "#E8A33D", "role": "card border while flashing (jump target)", "source": "Director.dc.html:2300" },
+    "subrow_bg": { "hex": "#181B1F", "role": "selector bar bg, dial cell bg", "source": "Director.dc.html:395, 1873" },
+    "subrow_border": { "hex": "#23272D", "role": "selector bar bottom border", "source": "Director.dc.html:395" },
+    "control_bg": { "hex": "#262A31", "role": "select/button bg (Save as, sel), active rail item bg, toast bg, active chip bg", "source": "Director.dc.html:24 (.sel), 296, 2073, 289, 2186" },
+    "control_border": { "hex": "#343A42", "role": "control border (buttons, selects, search, chips, menus, seg group)", "source": "Director.dc.html:24, 296, 211, 2186" },
+    "active_fill": { "hex": "#2F343B", "role": "selected seg / selected mode / selected rail-tab fill (mode seg, seg item)", "source": "Director.dc.html:2144, 2275, 1671" },
+    "divider": { "hex": "#2F343B", "role": "short 1x18 vertical divider, master-switch divider, tick-toggle border", "source": "Director.dc.html:759, 804, 315" },
+    "hover_bg": { "hex": "#1E2228", "role": "rail item hover bg, seg hover bg, chip hover", "source": "Director.dc.html:32, 38, 34" },
+    "row_hover_bg": { "hex": "#22262D", "role": "control row hover bg, dial cell hover bg", "source": "Director.dc.html:1813, 1873" },
+    "ghost_hover_bg": { "hex": "#22262C", "role": "ghost icon button hover bg", "source": "Director.dc.html:35" },
+    "result_row_hover_bg": { "hex": "#262A31", "role": "menu / result row hover (.res) bg", "source": "Director.dc.html:41" },
+    "disabled_border_dash": { "hex": "#3A4049", "role": "dashed placeholder border, switch-off track", "source": "Director.dc.html:448, 2008, 1464" },
+    "scrollbar_thumb": { "hex": "#343A42", "role": "scrollbar thumb (8px wide)", "source": "Director.dc.html:29" },
+
+    "text_primary": { "hex": "#E6E8EB", "role": "value text, active input text, primary body", "source": "Director.dc.html:24, 530, 541; Kit.dc.html:14" },
+    "text_strong": { "hex": "#F1F2F4", "role": "active rail/tab label, toast text", "source": "Director.dc.html:2073, 2095, 289" },
+    "text_label": { "hex": "#C9CED6", "role": "row label, inactive rail label, chip label, help body", "source": "Director.dc.html:1817, 2073, 2186, 712-715" },
+    "text_secondary": { "hex": "#9BA3AE", "role": "inactive tab text, crumb, icon default colour, muted row text, meta labels", "source": "Director.dc.html:112, 2095, 716; Main.dc.html:40" },
+    "text_muted": { "hex": "#8A929D", "role": "section header caps, notes, placeholder text, unfocused card reset, dim readouts", "source": "Director.dc.html:142, 166, 500" },
+    "text_disabled": { "hex": "#5C646F", "role": "reset icon when default, REC text when off, idle cast dot", "source": "Director.dc.html:1470, 2795, 2531" },
+    "text_disabled_icon": { "hex": "#4A515B", "role": "disabled icon button colour (undo/redo empty)", "source": "Director.dc.html:2389" },
+
+    "accent_amber": { "hex": "#E8A33D", "role": "accent: active underline, toggle on track, changed reset, focus ring, action button bg, needle, selection outline", "source": "Director.dc.html:2071, 2095, 2300, 2587, 1464" },
+    "accent_hover": { "hex": "#F3BE6A", "role": "accent hover / amber text on tinted button, warning banner text", "source": "Director.dc.html:428, 356 (text), Kit.dc.html:12 (link hover)" },
+    "accent_text_on": { "hex": "#141413", "role": "text and knob colour on amber (knob on, action text, confirm button text)", "source": "Director.dc.html:1464, 2587, 307" },
+    "record_red": { "hex": "#E5484D", "role": "REC on bg/border, record dot, running ACTION bg, delete confirm", "source": "Director.dc.html:2795, 822, 2587, 798" },
+    "record_text_on": { "hex": "#FFFFFF", "role": "text on red (REC on, ACTION running, Delete confirm)", "source": "Director.dc.html:2795, 2587, 798" },
+    "danger_text": { "hex": "#F2A7A9", "role": "danger menu item text, running timecode, status pill text", "source": "Director.dc.html:2500, 2751, 822" },
+    "ok_green": { "hex": "#46A758", "role": "cast Walking dot", "source": "Director.dc.html:895, 2512" },
+    "ghost_purple": { "hex": "#8E7CFF", "role": "cast Ghost dot", "source": "Director.dc.html:898" },
+    "walking_glow": { "hex": "#46A758", "role": "walking status ring (rgba .18 glow)", "source": "Director.dc.html:2512" },
+    "warn_band_border": { "hex": "#3A2F1E", "role": "master-off banner bottom border", "source": "Director.dc.html:356" },
+    "warn_band_text": { "hex": "#F3BE6A", "role": "master-off banner text", "source": "Director.dc.html:356" },
+
+    "switch_off_track": { "hex": "#3A4049", "role": "switch off track", "source": "Director.dc.html:1464" },
+    "switch_on_track": { "hex": "#E8A33D", "role": "switch on track", "source": "Director.dc.html:1464" },
+    "switch_knob_off": { "hex": "#C9CED6", "role": "switch knob when off", "source": "Director.dc.html:1465" },
+    "switch_knob_on": { "hex": "#141413", "role": "switch knob when on", "source": "Director.dc.html:1465" },
+    "slider_track_empty": { "hex": "#363C44", "role": "slider track unfilled part (CSS gradient)", "source": "Director.dc.html:19, 20" },
+    "slider_track_fill": { "hex": "#E8A33D", "role": "slider track filled part", "source": "Director.dc.html:19, 20" },
+    "slider_thumb": { "hex": "#E6E8EB", "role": "slider thumb", "source": "Director.dc.html:21, 22" },
+    "slider_focus_halo": { "hex": "#E8A33D", "role": "slider thumb focus ring (rgba .45)", "source": "Director.dc.html:23" },
+
+    "swatch_border": { "hex": "#4A515B", "role": "colour swatch border, compass bezel stroke", "source": "Director.dc.html:1965, 524" },
+    "dial_bezel_fill": { "hex": "#15171B", "role": "compass face fill", "source": "Director.dc.html:524" },
+    "dial_tick": { "hex": "#8A929D", "role": "compass ticks, arc tick", "source": "Director.dc.html:524, 527" },
+    "dial_track": { "hex": "#2F343B", "role": "arc baseline track", "source": "Director.dc.html:527" },
+    "dial_range": { "hex": "#4A515B", "role": "arc range stroke", "source": "Director.dc.html:527" },
+    "dial_needle": { "hex": "#E8A33D", "role": "dial needle and hub", "source": "Director.dc.html:524, 527" },
+    "dial_hub_inner": { "hex": "#141413", "role": "dial hub inner dot", "source": "Director.dc.html:524, 527" },
+    "dial_label_dim": { "hex": "#5C646F", "role": "compass E/S/W, arc min/max labels", "source": "Director.dc.html:524, 527" },
+
+    "tab_underline": { "hex": "#E8A33D", "role": "active page-tab underline (2px)", "source": "Director.dc.html:2095" },
+    "rail_active_dot": { "hex": "#E8A33D", "role": "active group dot (6px)", "source": "Director.dc.html:135" },
+    "pill_on_border": { "hex": "#E8A33D", "role": "chip lit border / who-chip open border / badge pinned", "source": "Director.dc.html:2186, 2697, 2694" },
+    "chip_count_lit": { "hex": "#E8A33D", "role": "chip count when section has matches", "source": "Director.dc.html:2187" },
+    "chip_hover_border": { "hex": "#4A515B", "role": "chip hover border", "source": "Director.dc.html:39" },
+    "toast_border": { "hex": "#E8A33D", "role": "toast border", "source": "Director.dc.html:289" },
+    "toast_check": { "hex": "#E8A33D", "role": "toast check mark", "source": "Director.dc.html:290" },
+    "link_button_bg": { "hex": "#E8A33D", "role": "link card / launcher button: bg is rgba(232,163,61,.12), border and text are this amber family", "source": "Director.dc.html:428, 443" },
+    "focus_outline": { "hex": "#E8A33D", "role": "keyboard focus outline 2px (offset 1px; dial offset 2px)", "source": "Director.dc.html:25, 36" },
+    "overlay_scrim": { "hex": "#111316", "role": "loading overlay scrim base (rgba .55)", "source": "Director.dc.html:80" },
+    "skeleton_mid": { "hex": "#23272E", "role": "skeleton shimmer mid", "source": "Director.dc.html:45" },
+    "spinner_track": { "hex": "#2F343B", "role": "spinner track", "source": "Director.dc.html:83" },
+    "error_red": { "hex": "#E5484D", "role": "error icon colour", "source": "Director.dc.html:90" },
+
+    "lightmap_bg_centre": { "hex": "#161D27", "role": "light-map bg radial centre", "source": "Director.dc.html:452" },
+    "lightmap_bg_edge": { "hex": "#111418", "role": "light-map bg radial edge; also map bg", "source": "Director.dc.html:452" },
+    "lightmap_border": { "hex": "#23272D", "role": "light-map frame border", "source": "Director.dc.html:452" },
+    "light_key": { "hex": "#E8A33D", "role": "Key light hue (legend, beam, dot)", "source": "Director.dc.html:1354" },
+    "light_fill": { "hex": "#7FA8E0", "role": "Fill light hue", "source": "Director.dc.html:1355" },
+    "light_back": { "hex": "#F1F2F4", "role": "Back light hue", "source": "Director.dc.html:1356" },
+    "light_bg": { "hex": "#A98BF5", "role": "BG light hue", "source": "Director.dc.html:1357" },
+    "light_off_grey": { "hex": "#8A929D", "role": "light switched off (OFF_GREY)", "source": "Director.dc.html:1598" },
+    "light_key_swatch_warm": { "hex": "#FFF1DE", "role": "colour swatch example for 5600 K key (Kit only)", "source": "Kit.dc.html:43; Main.dc.html:226" },
+    "light_fill_swatch_warm": { "hex": "#FFE0BE", "role": "colour swatch example for 4300 K fill (Kit/Main)", "source": "Main.dc.html:233" },
+    "light_back_swatch_cool": { "hex": "#E4ECFF", "role": "colour swatch example for 7000 K back (Main)", "source": "Main.dc.html:239" },
+    "light_tint_rim": { "hex": "#F2F5FF", "role": "rim tint swatch example (Main)", "source": "Main.dc.html:253" },
+
+    "lightmap_scene": {
+      "_note": "Light-map scene art colours (diagram). Listed for completeness; they are not UI tokens.",
+      "backdrop_mid": { "hex": "#1D3049", "source": "Director.dc.html:454, 457, 460" },
+      "backdrop_edge": { "hex": "#091120", "source": "Director.dc.html:454, 457" },
+      "globe_edge_top": { "hex": "#0A1322", "source": "Director.dc.html:460" },
+      "front_hemisphere_hi": { "hex": "#5A86B4", "source": "Director.dc.html:460, 463" },
+      "front_hemisphere_mid": { "hex": "#2B4C74", "source": "Director.dc.html:463" },
+      "front_hemisphere_low": { "hex": "#18304F", "source": "Director.dc.html:463" },
+      "front_hemisphere_low2": { "hex": "#21416A", "source": "Director.dc.html:460" },
+      "orbit_stroke": { "hex": "#5B7BA3", "source": "Director.dc.html:454, 460" },
+      "horizon_stroke": { "hex": "#2C4260", "source": "Director.dc.html:454" },
+      "cam_text_blue": { "hex": "#A9C1DE", "source": "Director.dc.html:457, 460" },
+      "cam_text_dim": { "hex": "#7F98B8", "source": "Director.dc.html:454, 457" },
+      "cam_glyph_grey": { "hex": "#AEB6C1", "source": "Director.dc.html:460" },
+      "cam_dark": { "hex": "#111316", "source": "Director.dc.html:460" },
+      "arc_back_fill": { "hex": "#000000", "source": "Director.dc.html:457 (black .22 overlay)" }
+    },
+
+    "shadow_base": { "hex": "#000000", "role": "shadow base colour (all shadows use black at alpha .45 to .65)", "source": "Director.dc.html:2021, 175" },
+
+    "vcam_chrome_only": "VCam page reuses the amber, card_bg and text tokens above; its scene palette is not tokenised (meta.gaps)."
+  },
+
+  "overlays_rgba": {
+    "_note": "Literal colour-function strings used in the mockup. Each is verified literally.",
+    "amber_tint_12": { "rgba": "rgba(232,163,61,.12)", "role": "launcher / link button bg", "source": "Director.dc.html:428, 443" },
+    "amber_tint_08": { "rgba": "rgba(232,163,61,.08)", "role": "master-off banner bg", "source": "Director.dc.html:356" },
+    "amber_tint_22": { "rgba": "rgba(232,163,61,.22)", "role": "card flash outer glow", "source": "Director.dc.html:2300" },
+    "amber_tint_25": { "rgba": "rgba(232,163,61,.25)", "role": "control flash ring (outer)", "source": "Director.dc.html:1790" },
+    "amber_tint_28": { "rgba": "rgba(232,163,61,.28)", "role": "control row flash bg", "source": "Director.dc.html:1813" },
+    "amber_tint_45": { "rgba": "rgba(232,163,61,.45)", "role": "slider focus halo", "source": "Director.dc.html:23" },
+    "amber_tint_70": { "rgba": "rgba(232,163,61,.7)", "role": "control row flash inset ring and dial cell flash border", "source": "Director.dc.html:1816, 1873" },
+    "red_tint_22": { "rgba": "rgba(229,72,77,.22)", "role": "ACTION running glow", "source": "Director.dc.html:2737" },
+    "green_tint_18": { "rgba": "rgba(70,167,88,.18)", "role": "walking status glow", "source": "Director.dc.html:2512" },
+    "white_faint_015": { "rgba": "rgba(255,255,255,.015)", "role": "dashed placeholder fill", "source": "Director.dc.html:2008" },
+    "scrim_55": { "rgba": "rgba(17,19,22,.55)", "role": "loading overlay scrim", "source": "Director.dc.html:80" },
+    "flip_btn_bg": { "rgba": "rgba(17,20,24,.88)", "role": "light-map side flip button bg", "source": "Director.dc.html:471" },
+    "shadow_window": { "rgba": "rgba(0,0,0,.55)", "role": "floater drop shadow", "source": "Director.dc.html:2021" },
+    "shadow_popover": { "rgba": "rgba(0,0,0,.55)", "role": "popover shadow", "source": "Director.dc.html:812, 832, 735" },
+    "shadow_menu": { "rgba": "rgba(0,0,0,.6)", "role": "menu / dropdown shadow", "source": "Director.dc.html:175, 258, 302" },
+    "shadow_toast": { "rgba": "rgba(0,0,0,.5)", "role": "toast / dialog shadow", "source": "Director.dc.html:289, 81" },
+    "shadow_dialog": { "rgba": "rgba(0,0,0,.5)", "role": "loading dialog shadow", "source": "Director.dc.html:81" },
+    "dim_black_65": { "rgba": "rgba(0,0,0,.65)", "role": "viewport shadow (runtime)", "source": "Director.dc.html:1882" }
+  },
+
+  "fonts": {
+    "_note": "family and loading. Mono is used for every numeric value and REC/timecode.",
+    "family_sans": { "value": "'IBM Plex Sans', sans-serif", "weights_loaded": [400, 500, 600], "source": "Director.dc.html:12, 49" },
+    "family_mono": { "value": "'IBM Plex Mono', monospace", "weights_loaded": [400, 500], "source": "Director.dc.html:12" },
+    "window_title": { "family": "sans", "size": "13px", "weight": 600, "letter_spacing": ".02em", "colour": "#E6E8EB", "source": "Director.dc.html:111" },
+    "crumb": { "family": "sans", "size": "12px", "weight": 400, "colour": "#9BA3AE", "source": "Director.dc.html:112" },
+    "rail_label": { "family": "sans", "size": "13px", "weight": "400 idle / 600 active", "colour": "#C9CED6 idle / #F1F2F4 active", "source": "Director.dc.html:2072, 2073" },
+    "tab": { "family": "sans", "size": "13px", "weight": "400 idle / 600 active", "colour": "#9BA3AE idle / #F1F2F4 active", "source": "Director.dc.html:2095" },
+    "card_title": { "family": "sans", "size": "13px", "weight": 600, "letter_spacing": ".01em", "colour": "inherit #E6E8EB", "source": "Director.dc.html:369" },
+    "label": { "family": "sans", "size": "12px", "weight": 400, "line_height": "20px", "colour": "#C9CED6", "source": "Director.dc.html:1817" },
+    "value_mono": { "family": "mono", "size": "12px", "weight": 500, "colour": "#E6E8EB", "source": "Director.dc.html:530, 541, 554" },
+    "value_mono_dim": { "family": "mono", "size": "11px", "weight": 500, "colour": "#8A929D", "source": "Director.dc.html:419" },
+    "note": { "family": "sans", "size": "11px", "weight": 400, "colour": "#8A929D", "source": "Director.dc.html:142, 193, 265" },
+    "note_alt": { "family": "sans", "size": "11px", "weight": 400, "colour": "#9BA3AE", "source": "Kit.dc.html:120" },
+    "section_header": { "family": "sans", "size": "11px", "weight": 400, "letter_spacing": ".08em", "transform": "uppercase", "colour": "#8A929D", "source": "Director.dc.html:142, 713; Kit.dc.html:22" },
+    "sub_heading": { "family": "sans", "size": "10.5px", "weight": 500, "letter_spacing": ".09em", "transform": "uppercase", "colour": "#8A929D", "source": "Director.dc.html:500" },
+    "badge_new": { "family": "sans", "size": "10px", "weight": 600, "letter_spacing": ".08em", "colour": "#141413", "source": "Director.dc.html:2304" },
+    "badge_plain": { "family": "sans", "size": "10px", "weight": 400, "letter_spacing": ".04em", "colour": "#C9CED6 (or #9BA3AE if collapsible)", "source": "Director.dc.html:2305" },
+    "who_badge": { "family": "sans", "size": "10px", "weight": 400, "letter_spacing": ".04em", "colour": "#9BA3AE / #E8A33D pinned", "source": "Director.dc.html:2694" },
+    "chip": { "family": "sans", "size": "12px", "weight": "400 idle / 600 lit", "colour": "#C9CED6 idle / #F1F2F4 lit", "source": "Director.dc.html:2186" },
+    "chip_count": { "family": "mono", "size": "11px", "weight": 500, "colour": "#8A929D / #E8A33D lit", "source": "Director.dc.html:2187" },
+    "seg": { "family": "sans", "size": "12px", "weight": "400 idle / 600 selected", "colour": "#9BA3AE idle / #F1F2F4 selected", "source": "Director.dc.html:2144" },
+    "cast_name": { "family": "sans", "size": "12px", "weight": 400, "colour": "#E6E8EB (#F1F2F4 selected)", "source": "Director.dc.html:158, 2513" },
+    "cast_status": { "family": "sans", "size": "10.5px", "weight": 400, "colour": "#8A929D", "source": "Director.dc.html:166" },
+    "cast_tag": { "family": "sans", "size": "inherit 10.5px", "weight": 400, "colour": "#C9CED6", "source": "Director.dc.html:169" },
+    "cast_heading": { "family": "sans", "size": "11px", "weight": 400, "letter_spacing": ".08em", "transform": "uppercase", "colour": "#8A929D; count #C9CED6", "source": "Director.dc.html:142" },
+    "select": { "family": "sans", "size": "12px", "weight": 400, "colour": "#E6E8EB", "source": "Director.dc.html:24" },
+    "select_card": { "family": "sans", "size": "11.5px", "weight": 400, "colour": "#E6E8EB", "source": "Director.dc.html:378, 503" },
+    "button_small": { "family": "sans", "size": "12px", "weight": 400, "colour": "#E6E8EB", "source": "Director.dc.html:296, 306" },
+    "button_small_11": { "family": "sans", "size": "11.5px", "weight": 400, "colour": "#C9CED6", "source": "Director.dc.html:770, 771" },
+    "button_primary_strong": { "family": "sans", "size": "12px", "weight": 600, "colour": "#141413", "source": "Director.dc.html:307, 359" },
+    "action_label": { "family": "sans", "size": "12px", "weight": 600, "letter_spacing": ".08em", "colour": "#141413 (idle) / #FFFFFF (running)", "source": "Director.dc.html:2737" },
+    "timecode": { "family": "mono", "size": "13px", "weight": 500, "colour": "#E6E8EB / #F2A7A9 running", "source": "Director.dc.html:2751" },
+    "rec_pill": { "family": "mono", "size": "10.5px", "weight": 600, "letter_spacing": ".06em", "colour": "#5C646F off / #FFFFFF on", "source": "Director.dc.html:2795" },
+    "ui_ms_chip": { "family": "sans", "size": "11px", "weight": 400, "colour": "#9BA3AE", "source": "Director.dc.html:860" },
+    "hotkey_q": { "family": "sans", "size": "13px", "weight": 600, "source": "Director.dc.html:863" },
+    "toast": { "family": "sans", "size": "12px", "weight": 400, "colour": "#F1F2F4", "source": "Director.dc.html:289" },
+    "toast_transport": { "family": "sans", "size": "11.5px", "weight": 400, "colour": "#F1F2F4", "source": "Director.dc.html:826" },
+    "help_kicker": { "family": "sans", "size": "11px", "weight": 400, "letter_spacing": ".08em", "transform": "uppercase", "colour": "#8A929D", "source": "Director.dc.html:713" },
+    "help_title": { "family": "sans", "size": "15px", "weight": 600, "line_height": "1.3", "colour": "#E6E8EB", "source": "Director.dc.html:714" },
+    "help_body": { "family": "sans", "size": "12px", "weight": 400, "line_height": "1.55", "colour": "#C9CED6", "source": "Director.dc.html:715" },
+    "help_meta": { "family": "sans", "size": "11px", "weight": 400, "colour": "#9BA3AE; value mono #E6E8EB", "source": "Director.dc.html:716-718" },
+    "help_footer": { "family": "sans", "size": "11px", "weight": 400, "line_height": "1.5", "colour": "#8A929D", "source": "Director.dc.html:722" },
+    "loading_title": { "family": "sans", "size": "14px", "weight": 600, "source": "Director.dc.html:85, 92" },
+    "loading_body": { "family": "sans", "size": "12px", "colour": "#9BA3AE", "source": "Director.dc.html:86" },
+    "error_text": { "family": "mono", "size": "12px", "colour": "#E8A33D", "source": "Director.dc.html:93" },
+    "empty_title": { "family": "sans", "size": "14px", "colour": "#C9CED6", "source": "Main.dc.html:159" },
+    "empty_body": { "family": "sans", "size": "12px", "colour": "#9BA3AE", "max_width": "380px", "source": "Main.dc.html:160" },
+    "master_label": { "family": "sans", "size": "12px", "colour": "#C9CED6", "max_width": "110px", "source": "Director.dc.html:316" },
+    "master_state": { "family": "sans", "size": "11px", "weight": 600, "width": "22px", "colour": "#E8A33D on / #8A929D off", "source": "Director.dc.html:2664" },
+    "banner_text": { "family": "sans", "size": "12px", "colour": "#F3BE6A", "source": "Director.dc.html:356" },
+    "banner_button": { "family": "sans", "size": "12px", "weight": 600, "colour": "#141413", "source": "Director.dc.html:359" },
+    "reset_confirm_title": { "family": "sans", "size": "12px", "weight": 600, "colour": "#F1F2F4", "source": "Director.dc.html:303" },
+    "reset_confirm_body": { "family": "sans", "size": "11px", "colour": "#9BA3AE", "source": "Director.dc.html:304" },
+    "legend_text": { "family": "sans", "size": "12px", "colour": "#C9CED6", "source": "Director.dc.html:816" },
+    "legend_head": { "family": "sans", "size": "11px", "lh": "1.45", "colour": "#9BA3AE", "source": "Director.dc.html:814" },
+    "legend_readout": { "family": "mono", "size": "11px", "weight": 500, "colour": "#C9CED6", "source": "Director.dc.html:478" },
+    "light_map_name": { "family": "sans", "size": "12px", "source": "Director.dc.html:1663" },
+    "dial_readout": { "family": "mono", "size": "12px", "weight": 500, "colour": "#E6E8EB", "source": "Director.dc.html:530" },
+    "scene_name": { "family": "sans", "size": "12px", "colour": "#9BA3AE (value #E6E8EB)", "source": "Main.dc.html:192" },
+    "dial_axis_label": { "family": "sans", "size": "font-size=\"6.5\" (SVG user units, no px)", "colour": "#8A929D / #5C646F", "source": "Director.dc.html:524" },
+    "dial_arc_limits": { "family": "mono", "size": "font-size=\"6\" (SVG user units)", "colour": "#5C646F", "source": "Director.dc.html:527" },
+    "map_scene_label": { "family": "sans", "size": "font-size=\"9\" (SVG user units); letter-spacing=\"1\"", "colour": "#A9C1DE / #E8A33D (CAM)", "source": "Director.dc.html:460, 457" },
+    "map_light_name": { "family": "sans", "size": "font-size=\"10\" (SVG user units), weight 600", "source": "Director.dc.html:462-470 (light glyph name text)" },
+    "map_light_off": { "family": "mono", "size": "font-size=\"7.5\" (SVG user units), weight 600, letter-spacing=\".8\"", "colour": "#9BA3AE", "source": "Director.dc.html:462-470 (OFF label)" },
+    "map_hint": { "family": "sans", "size": "11px", "colour": "#8A929D", "source": "Director.dc.html:492" }
+  },
+
+  "radii": {
+    "window": { "px": "8px", "source": "Director.dc.html:2021" },
+    "card": { "px": "6px", "source": "Director.dc.html:2300" },
+    "rail_item": { "px": "6px", "source": "Director.dc.html:2073" },
+    "rail": { "px": "0", "source": "Director.dc.html:2022 (no radius)" },
+    "popover_menu": { "px": "6px", "source": "Director.dc.html:175, 258, 812, 832, 302" },
+    "control": { "px": "4px", "source": "Director.dc.html:24 (.sel), 296, 297, 748, 770" },
+    "control_small_btn": { "px": "4px", "source": "Director.dc.html:770, 771" },
+    "seg_group": { "px": "5px", "source": "Director.dc.html:211, 398, 484" },
+    "seg_item": { "px": "3px", "source": "Director.dc.html:2144" },
+    "tab": { "px": "0", "source": "Director.dc.html:2095 (tab has no radius; the 2px underline is the indicator). Kit.dc.html:87 shows a 3px radius on its sample tab, which the mockup does not use." },
+    "chip_pill": { "px": "12px", "source": "Director.dc.html:2186" },
+    "who_chip_pill": { "px": "12px", "source": "Director.dc.html:2697" },
+    "cast_chip_pill": { "px": "13px", "source": "Director.dc.html:2730" },
+    "switch": { "px": "9px", "source": "Director.dc.html:1464" },
+    "switch_knob": { "px": "7px", "source": "Director.dc.html:1465" },
+    "dial": { "px": "24px", "source": "Director.dc.html:522, 545" },
+    "swatch": { "px": "3px", "source": "Director.dc.html:1965" },
+    "slider_thumb": { "px": "6px", "source": "Director.dc.html:21, 22" },
+    "rec_pill": { "px": "10px", "source": "Director.dc.html:2795" },
+    "toast_pill": { "px": "12px", "source": "Director.dc.html:289" },
+    "toast_transport": { "px": "11px", "source": "Director.dc.html:826" },
+    "badge": { "px": "3px", "source": "Director.dc.html:2304, 2305" },
+    "cast_tag": { "px": "3px", "source": "Director.dc.html:169" },
+    "list_item": { "px": "3px", "source": "Director.dc.html:1984" },
+    "placeholder": { "px": "4px", "source": "Director.dc.html:2008" },
+    "row_hover": { "px": "4px", "source": "Director.dc.html:1816" },
+    "dial_cell": { "px": "6px", "source": "Director.dc.html:1873" },
+    "light_map": { "px": "6px", "source": "Director.dc.html:452" },
+    "legend_chip": { "px": "4px", "source": "Director.dc.html:1664" },
+    "menu_item": { "px": "4px", "source": "Director.dc.html:2500 (menu item radius 4px); CSS .res at Director.dc.html:41 has none" },
+    "scrollbar": { "px": "4px", "source": "Director.dc.html:29" },
+    "action_btn_left": { "px": "4px 0 0 4px", "source": "Director.dc.html:2737" },
+    "action_arm_right": { "px": "0 4px 4px 0", "source": "Director.dc.html:2738" },
+    "icon_btn": { "px": "4px", "source": "Director.dc.html:2389" },
+    "tbtn": { "px": "4px", "source": "Director.dc.html:2588" }
+  },
+
+  "borders": {
+    "hairline_1px": { "value": "1px solid #262A31", "use": "panel separators (rail, header, tab strip, help pane, transport)", "source": "Director.dc.html:56, 199, 712, 726" },
+    "hairline_faint_1px": { "value": "1px solid #22262C", "use": "row-level separators (page bar, who row, chip strip)", "source": "Director.dc.html:219, 248, 268" },
+    "card_1px": { "value": "1px solid #2A2F36", "use": "card border and card header separator", "source": "Director.dc.html:2300, 2301" },
+    "control_1px": { "value": "1px solid #343A42", "use": "buttons, selects, search, chips, menus, seg group", "source": "Director.dc.html:24, 296, 211, 2186" },
+    "divider_1px": { "value": "1px solid #2F343B", "use": "vertical 18px divider in transport and master-switch left rule", "source": "Director.dc.html:759, 315" },
+    "dashed_1px": { "value": "1px dashed #3A4049", "use": "placeholder rows, empty embed", "source": "Director.dc.html:448, 2008" },
+    "amber_focus_1px": { "value": "1px solid #E8A33D", "use": "lit chip, open who-chip, toast, reset confirm, flash border", "source": "Director.dc.html:2186, 2697, 289, 302" },
+    "rec_on_1px": { "value": "1px solid #E5484D", "use": "REC pill border when recording", "source": "Director.dc.html:2795" },
+    "swatch_1px": { "value": "1px solid #4A515B", "use": "colour swatch border", "source": "Director.dc.html:1965" },
+    "dot_ring_1_5px": { "value": "1.5px solid", "use": "light legend dot ring, tab pip ring (6px pip)", "source": "Director.dc.html:1662, 205" },
+    "tab_underline_2px": { "value": "2px solid #E8A33D", "use": "active page tab underline", "source": "Director.dc.html:2095" },
+    "focus_outline_2px": { "value": "outline 2px solid #E8A33D, outline-offset 1px (controls) / 2px (dial)", "use": "keyboard focus", "source": "Director.dc.html:25, 36" },
+    "slider_focus_ring": { "value": "box-shadow 0 0 0 3px rgba(232,163,61,.45)", "use": "slider thumb focus", "source": "Director.dc.html:23" },
+    "action_arm_divider": { "value": "1px solid rgba(20,20,19,.3)", "use": "ACTION split-button left rule", "source": "Director.dc.html:2738" },
+    "selector_bar_bottom": { "value": "1px solid #23272D", "use": "per-card selector bar bottom", "source": "Director.dc.html:395" },
+    "sub_heading_top": { "value": "1px solid #262A31", "use": "top rule above a sub-heading group", "source": "Director.dc.html:2251" }
+  },
+
+  "shadows": {
+    "window": { "value": "0 20px 60px rgba(0,0,0,.55)", "source": "Director.dc.html:2021" },
+    "popover": { "value": "0 14px 36px rgba(0,0,0,.55)", "source": "Director.dc.html:812, 832, 327, 735" },
+    "menu": { "value": "0 12px 30px rgba(0,0,0,.6)", "source": "Director.dc.html:175, 258, 302" },
+    "toast": { "value": "0 8px 22px rgba(0,0,0,.5)", "source": "Director.dc.html:289" },
+    "loading_dialog": { "value": "0 16px 40px rgba(0,0,0,.5)", "source": "Director.dc.html:81" },
+    "action_running_glow": { "value": "0 0 0 3px rgba(229,72,77,.22)", "source": "Director.dc.html:2737" },
+    "card_flash": { "value": "0 0 0 3px rgba(232,163,61,.22)", "source": "Director.dc.html:2300" },
+    "legend_chip_flash": { "value": "0 0 0 2px #E8A33D, 0 0 0 5px rgba(232,163,61,.25)", "source": "Director.dc.html:1790" }
+  },
+
+  "spacing": {
+    "gutter_page": { "value": "14px 16px 16px", "use": "card scroll area padding", "source": "Director.dc.html:362" },
+    "card_grid_gap": { "value": "12px", "use": "gap between cards in 2 columns", "source": "Director.dc.html:365" },
+    "card_grid_columns": { "value": "repeat(2, minmax(0, 1fr))", "source": "Director.dc.html:365" },
+    "card_body_padding": { "value": "6px 8px 8px 12px", "source": "Director.dc.html:2329" },
+    "card_head_padding": { "value": "0 8px 0 12px", "source": "Director.dc.html:2301" },
+    "row_grid_columns": { "value": "100px minmax(0, 1fr) 52px 20px", "source": "Director.dc.html:1816" },
+    "row_column_gap": { "value": "6px", "source": "Director.dc.html:1816" },
+    "row_height_min": { "value": "28px", "source": "Director.dc.html:1816" },
+    "row_list_gap": { "value": "2px", "source": "Director.dc.html:2329" }
+  },
+
+  "components": {
+    "window_floater": {
+      "source": "Director.dc.html:2016-2021 (geometry), 109-116 (header), 49 (preview frame)",
+      "default": { "width": "1160 px (winW, Director.dc.html:2016)", "height": "720 px (winH)", "left": "20 px (winX)", "top": "20 px (winY)" },
+      "minimum": { "width": "850 px (winW)", "height": "560 px (winH)", "left": "175 px (winX)", "top": "60 px (winY)", "note": "rail folds to 56 px icons; help becomes a 30 px strip; see help_pane" },
+      "style": { "display": "flex column", "background": "#111316", "border": "1px solid #2A2F36", "radius": "8px", "overflow": "hidden", "box_shadow": "0 20px 60px rgba(0,0,0,.55)", "outline": "none" },
+      "header": { "height": "32px", "padding": "0 10px 0 14px", "gap": "10px", "bg": "#15171B", "border_bottom": "1px solid #262A31", "title": "window_title font", "crumb": "crumb font, nowrap", "buttons": "24x24, transparent, colour #9BA3AE, icon 12px stroke 1.5 (window_minimize.svg, window_close.svg)" },
+      "preview_frame": { "width": "1200px", "height": "760px", "bg": "#0B0C0E", "source": "Director.dc.html:49" }
+    },
+
+    "group_rail": {
+      "source": "Director.dc.html:118-197 (structure), 2022 (container), 2071-2073 (item styles), 135 (dot)",
+      "container": { "width_default": "176px", "width_min": "56px", "display": "flex column", "gap": "2px", "padding": "10px 8px", "bg": "#15171B", "border_right": "1px solid #262A31", "box_sizing": "border-box", "overflow": "auto hidden" },
+      "item": {
+        "height": "40px", "padding": "0 12px (0 when folded, centred)", "gap": "10px", "radius": "6px", "border": "none", "text_align": "left",
+        "icon_box": "20x20, centred, colour #E8A33D current / #9BA3AE otherwise",
+        "icon_svg": "18x18 (rail_*.svg)",
+        "label": "13px; weight 400 idle / 600 current; colour #C9CED6 idle / #F1F2F4 current"
+      },
+      "states": {
+        "default": { "bg": "transparent", "colour": "#C9CED6" },
+        "hover (non-current)": { "bg": "#1E2228", "colour": "#E6E8EB", "source": "Director.dc.html:32" },
+        "current": { "bg": "#262A31", "colour": "#F1F2F4", "weight": 600, "icon": "#E8A33D" },
+        "active_dot": { "size": "6px", "radius": "3px", "bg": "#E8A33D", "placement": "margin-left auto", "source": "Director.dc.html:135" }
+      },
+      "groups": ["Cast", "Performance", "Camera", "Lens", "Light", "Look", "World", "Capture"],
+      "cast_section": {
+        "container": "margin-top 10px; padding-top 10px; border-top 1px solid #262A31; gap 2px",
+        "heading_row": "height 24px; padding 0 0 0 8px; margin-bottom 2px",
+        "heading": "11px uppercase letter-spacing .08em colour #8A929D; count #C9CED6",
+        "tool_buttons": "22x22, radius 4px, transparent, colour #9BA3AE, icon 14px (cast_tool_*.svg); hover bg #22262C colour #E6E8EB",
+        "source": "Director.dc.html:140-151, 144"
+      },
+      "cast_row": {
+        "layout": "button: min-height 36px; width 100%; padding 3px 8px; gap 8px; radius 4px; text-align left; colour #F1F2F4 selected / #C9CED6 idle; bg #262A31 selected / transparent",
+        "selected_mark": "box-shadow inset 2px 0 0 #E8A33D",
+        "dot": "8px circle, bg = member colour (Walking #46A758, On mark #E8A33D, Idle #5C646F, Ghost #8E7CFF); walking adds box-shadow 0 0 0 3px rgba(70,167,88,.18)",
+        "name": "12px, ellipsis, nowrap",
+        "status": "10.5px #8A929D",
+        "tag_pill": "padding 0 4px; line-height 14px; radius 3px; border 1px solid #343A42; colour #C9CED6; ellipsis",
+        "badges": "focus = cast_row_framed.svg (11px, amber); look-at = cast_row_looks_at.svg (12px, #7FA8E0)",
+        "source": "Director.dc.html:153-173, 2512-2513"
+      },
+      "cast_menu": {
+        "container": "position absolute; left 6px; top 38px; width 156px; padding 4px; bg #15171B; border 1px solid #343A42; radius 6px; shadow menu",
+        "item": "height 26px; padding 0 8px; radius 4px; font 12px; colour #E6E8EB; danger colour #F2A7A9; hover bg #262A31",
+        "group_submenu": "border-top 1px solid #262A31; item height 24px; padding 0 8px 0 18px; selected colour #E8A33D",
+        "source": "Director.dc.html:175-186, 2500, 2504"
+      },
+      "fold": "At minimum size, labels and the cast list are hidden; the Cast group chip moves to the transport bar (Director.dc.html:51, 830)."
+    },
+
+    "page_tabs": {
+      "source": "Director.dc.html:199-209 (structure), 2095 (style), CSS 33",
+      "strip": "height 40px; flex none; align-items flex-end; border-bottom 1px solid #262A31; bg #15171B; tab list padding 0 16px; gap 2px; overflow-x auto, overflow-y hidden; nowrap",
+      "tab": { "height": "32px", "padding": "0 12px", "gap": "6px", "font": "13px", "idle": "colour #9BA3AE weight 400; hover colour #C9CED6", "active": "colour #F1F2F4 weight 600; border_bottom 2px solid #E8A33D", "bg": "transparent", "border": "none" },
+      "off_pip": "6px ring, border 1.5px solid #8A929D, radius 3px (shown when every card on the tab is switched off)",
+      "rule": "One row only. Too many tabs scroll sideways, never wrap (Kit.dc.html:91)."
+    },
+
+    "mode_segmented": {
+      "source": "Director.dc.html:211-215 (container), 2140-2146 (item style), CSS 38",
+      "container": "flex none; align-self center; margin 0 12px 0 8px; gap 2px; padding 2px; bg #121418; border 1px solid #343A42; radius 5px",
+      "item": "height 22px; padding 0 10px; border none; radius 3px; font 12px; white-space nowrap; idle bg transparent colour #9BA3AE weight 400; selected bg #2F343B colour #F1F2F4 weight 600, box-shadow inset 0 -2px 0 #E8A33D",
+      "hover_idle": "colour #E6E8EB; bg #1E2228",
+      "labels": "Easy / Advanced (rig mode)"
+    },
+
+    "section_chips": {
+      "source": "Director.dc.html:219-246 (structure), 2186-2187 (style), CSS 39",
+      "strip": "height 38px; flex none; gap 6px; padding 0 16px; border-bottom 1px solid #22262C; bg #131518; overflow-x auto, nowrap; align-items center",
+      "chip": "height 24px; flex none; gap 6px; padding 0 10px; radius 12px; font 12px; nowrap; border 1px solid; idle: bg transparent border #343A42 colour #C9CED6 weight 400; lit (has matches or selected): bg #262A31 border #E8A33D colour #F1F2F4 weight 600; hover (not selected): border #4A515B colour #E6E8EB",
+      "match_dot": "6px circle #E8A33D (aria: Has matches)",
+      "count": "mono 11px weight 500; colour #8A929D; lit: #E8A33D",
+      "tail_note": "'Searching all sections' 11px #8A929D; jump select width 150px (2nd tail item)",
+      "source_plus": "Director.dc.html:229-244"
+    },
+
+    "who_row": {
+      "source": "Director.dc.html:247-267 (structure), 2694-2697 (styles)",
+      "container": "height 34px; flex none; gap 10px; padding 0 16px; border-bottom 1px solid #22262C; bg #121418; z-index 7",
+      "caption": "10.5px uppercase letter-spacing .08em #8A929D nowrap",
+      "chip": "height 24px; gap 6px; padding 0 8px; radius 12px; font 12px; nowrap; bg #1B1E23; border 1px solid #343A42 (open: #E8A33D); colour #E6E8EB when named, #9BA3AE when none",
+      "chip_icon": "12px person (who_person.svg); chevron 9px (who_chevron_10.svg)",
+      "badge": "10px; letter-spacing .04em; padding 0 5px; line-height 15px; radius 3px; border 1px (pinned #E8A33D / #343A42); colour pinned #E8A33D / #9BA3AE",
+      "menu": "absolute; left 0; top 28px; width 220px; padding 4px; bg #15171B; border 1px solid #343A42; radius 6px; shadow menu; items = .res (height 26px)",
+      "hint": "11px #8A929D, ellipsis, nowrap"
+    },
+
+    "page_bar": {
+      "source": "Director.dc.html:268-352 (structure), 2650-2655, 2703, 2633",
+      "container": "height 44px; flex none; gap 6px; padding 0 16px; border-bottom 1px solid #22262C; z-index 6",
+      "preset_select": "width 160px (container); select class .sel, title shows preset name",
+      "save_as": "height 24px; flex none; padding 0 10px; border 1px solid #343A42; radius 4px; bg #262A31; colour #E6E8EB; font 12px; nowrap",
+      "icon_button": "width 26px; height 24px; flex none; padding 0; border 1px solid #343A42; radius 4px; bg transparent; display flex centre; colour #C9CED6 enabled / #4A515B disabled; cursor pointer / default (iconBtn, Director.dc.html:2389)",
+      "icon_buttons": "delete preset (trash.svg 12px), reset page (reset_arc.svg 13px), undo (undo.svg 13px), redo (redo.svg 13px)",
+      "reset_confirm": "absolute; left 0; top 30px; width 230px; padding 10px 12px; bg #15171B; border 1px solid #E8A33D; radius 6px; shadow menu; gap 8px; title 12px/600 #F1F2F4; body 11px #9BA3AE; Cancel = 24px high, padding 0 10px, border 1px #343A42, radius 4px, colour #C9CED6, transparent; Reset page = 24px, padding 0 10px, bg #E8A33D, colour #141413, 12px/600, no border",
+      "master_switch": "margin-left 6px; padding-left 10px; border-left 1px solid #2F343B; gap 6px; label 12px #C9CED6 max-width 110px ellipsis; switch 34x18 (switch_* tokens); state text 11px/600 width 22px (amber on / #8A929D off)",
+      "search": {
+        "width": "170px (container); input height 24px; padding 0 8px 0 26px; bg #121418; colour #E6E8EB; border 1px solid #343A42 (amber while a query is active); radius 4px; font 12px sans; placeholder #8A929D",
+        "icon": "12px magnifier at left 8px, top 6px (search.svg, stroke #8A929D 1.3)",
+        "results_popover": "absolute; right 0; top 30px; width 384px; max-height 420px; bg #15171B; border 1px solid #343A42; radius 6px; shadow popover; overflow hidden; header 32px (bottom border #262A31; title 12px/600 #E6E8EB; hint 11px #8A929D ellipsis; close 22x22 ghost); rows height 28px, padding 0 8px, radius 4px, font 12px, path colour #8A929D, label colour #E6E8EB (max 55%), 'More' tag 10px #8A929D border 1px #343A42 radius 3px padding 0 4px; footer 26px 11px #8A929D",
+        "source": "Director.dc.html:322-352"
+      }
+    },
+
+    "master_banner": {
+      "source": "Director.dc.html:355-361",
+      "container": "height 32px; flex none; padding 0 16px; gap 8px; border-bottom 1px solid #3A2F1E; bg rgba(232,163,61,.08); colour #F3BE6A; 12px; nowrap ellipsis",
+      "icon": "13px power glyph (master_off_power.svg)",
+      "button": "Turn on: height 22px; padding 0 10px; no border; radius 4px; bg #E8A33D; colour #141413; 12px/600"
+    },
+
+    "card": {
+      "source": "Director.dc.html:362-423 (structure), 2300-2305 (style), 2326, 2329",
+      "section": "bg #1B1E23; border 1px solid #2A2F36; radius 6px; display flex column; min-width 0; scroll-margin 60px; transition border-color .4s, box-shadow .4s; flashing: border #E8A33D and box-shadow 0 0 0 3px rgba(232,163,61,.22)",
+      "header": { "height": "36px", "flex": "none", "gap": "8px", "padding": "0 8px 0 12px", "border_bottom": "1px solid #2A2F36 (when body shown)", "title": "13px/600 letter-spacing .01em, ellipsis" },
+      "badge_new": "10px/600 letter-spacing .08em colour #141413; bg #E8A33D; border 1px solid #E8A33D; radius 3px; padding 0 5px; line-height 16px (NEW)",
+      "badge_other": "10px colour #C9CED6 (#9BA3AE if collapsible); bg #262A31; border 1px solid #343A42; radius 3px; padding 0 5px; line-height 16px",
+      "collapse_button": "height 22px; padding 0 8px; border 1px solid #343A42; radius 4px; bg transparent; colour #C9CED6; 11px (Show / Hide)",
+      "switch": "34x18 (switch_* tokens) inside header",
+      "reset_button": "24x24; no border; bg transparent; padding 0; icon 13px (reset_arc.svg); colour #E8A33D when changed, else #8A929D",
+      "body": "padding 6px 8px 8px 12px; gap 2px; opacity 1 (on) / .45 (switched off); transition opacity .15s",
+      "selector_bar": "padding 6px 8px 6px 12px; gap 8px; border-bottom 1px solid #23272D; bg #181B1F; label 11px #8A929D; segments or select inside",
+      "grid": "2 columns, gap 12px, align-items start; scroll area padding 14px 16px 16px (dc_scroll)",
+      "more_options_link": "button; align-self flex-start; margin-top 4px; height 22px; padding 0 6px; radius 4px; no border; bg transparent; colour #9BA3AE; 12px; display flex; gap 4px; caret svg 9px (viewBox 0 0 10 10, stroke currentColor 1.5) rotated 90deg when open with transition .12s; label 'More options (n)' / 'Fewer options'; hover per .ghost:hover (colour #E6E8EB, bg #22262C)",
+      "source": "Director.dc.html:680 (style), 2343-2344 (rotation and label)"
+    },
+
+    "control_row": {
+      "source": "Director.dc.html:497-535 (sub-heading and groups), 537-, 1800-1880 (rowVals), 1816-1817 (row/label styles), Main.dc.html:112-148",
+      "grid": "display grid; grid-template-columns 100px minmax(0, 1fr) 52px 20px; column-gap 6px; align-items center; min-height 28px; margin 0 -4px; padding 0 4px (list rows: padding 4px, align-items start); radius 4px",
+      "bg": "transparent; hover #22262D; flash rgba(232,163,61,.28) with inset 1px rgba(232,163,61,.7) ring",
+      "label": "12px/line-height 20px; #C9CED6 (labelHit #E8A33D); nowrap; ellipsis; truncates, tooltip via title",
+      "value_cell": "52px column; value text mono 12px/500 #E6E8EB, text-align right, nowrap (Director 1941 and Main 116/541)",
+      "reset_cell": "20px column; 20x20 button, transparent; icon 11px (reset_row.svg); colour #E8A33D when value differs from default, #5C646F otherwise",
+      "readout": "spans 2 columns; mono 12/500; colour #C9CED6 or #E8A33D when warn (Main.dc.html:141)",
+      "no_reset_cell": "20px empty span (keeps grid)",
+      "sub_heading": "height min 22px; 10.5px/500 uppercase letter-spacing .09em #8A929D; sub-groups separated by border-top 1px #262A31 with margin-top 6px, padding 8px 0 3px (first sub-group: padding 4px 0 3px)"
+    },
+
+    "slider": {
+      "source": "Director.dc.html:17-23 (CSS), 540-541 (usage), Kit.dc.html:26 (measured)",
+      "input": "appearance none; background transparent; width 100%; height 20px; margin 0; cursor pointer",
+      "track": "height 4px; radius 2px; background linear-gradient(to right, #E8A33D var(--p), #363C44 var(--p)) (--p = percent fill)",
+      "thumb": "12x12, radius 6px, bg #E6E8EB, margin-top -4px, no border",
+      "focus": "outline none; thumb box-shadow 0 0 0 3px rgba(232,163,61,.45) on focus-visible",
+      "value_text": "mono 12px/500 #E6E8EB, text-align right, nowrap, overflow hidden",
+      "min_track": "track never shorter than 120px (Kit.dc.html:108)",
+      "kit_measured": "Kit row: label 100px | track (fills) | value 52px | reset 20px; track 4px; thumb 12px (Kit.dc.html:26)"
+    },
+
+    "toggle_switch": {
+      "source": "Director.dc.html:1462-1467 (switchStyles), 633, 745, 387, 2308",
+      "track": "width 34px; height 18px; flex none; radius 9px; border none; padding 0; position relative; bg #E8A33D on / #3A4049 off",
+      "knob": "position absolute; top 2px; left 18px on / 2px off; width 14px; height 14px; radius 7px; bg #141413 on / #C9CED6 off; transition left .12s",
+      "focus": "button focus-visible: outline 2px solid #E8A33D; offset 1px (CSS line 25)",
+      "value_text": "On / Off, 12px #9BA3AE right-aligned (Main.dc.html:122)"
+    },
+
+    "select_combo": {
+      "source": "Director.dc.html:24 (.sel), 378 (card picker 22px / 11.5px), 503, 2 (page preset 160px, sel 24px)",
+      "style": "appearance none; bg #262A31; colour #E6E8EB; border 1px solid #343A42; radius 4px; height 24px; padding 0 24px 0 8px; font 12px sans; width 100%; cursor pointer; text-overflow ellipsis",
+      "card_picker": "height 22px; font-size 11.5px (inside card header or sub-heading)",
+      "caret": "10x10 svg, absolute right 8px, top 7px (6px inside card header), stroke #9BA3AE 1.4, pointer-events none (chevron_down_10.svg)",
+      "focus": "outline 2px solid #E8A33D; outline-offset 1px",
+      "wrap": "grid-column span 2 for combo rows; width 120px for card-header presets"
+    },
+
+    "number_input": {
+      "source": "Director.dc.html:748",
+      "style": "width 64px; height 22px; box-sizing border-box; padding 0 6px; bg #121418; colour #E6E8EB; border 1px solid #343A42; radius 4px; font mono 12px/500; text-align right; focus border #E8A33D (CSS line 26)"
+    },
+
+    "colour_swatch": {
+      "source": "Director.dc.html:1965, 136 region; Kit.dc.html:43",
+      "style": "width 40px; height 18px; flex none; padding 0; radius 3px; border 1px solid #4A515B; background = colour value (fallback #808080)",
+      "value_text": "mono 12px/500 #E6E8EB (Kelvin, e.g. 5600 K)"
+    },
+
+    "list_box": {
+      "source": "Director.dc.html:1984, 1990",
+      "box": "grid-column span 2; height = rows*20 + 10px; overflow-y auto; padding 4px; bg #121418; border 1px solid #343A42; radius 4px",
+      "item": "display block; width 100%; height 20px; padding 0 8px; radius 3px; font mono 12px; text-align left; nowrap ellipsis; selected bg #E8A33D colour #141413; idle transparent colour #C9CED6"
+    },
+
+    "placeholder_row": {
+      "source": "Director.dc.html:2008 (phStyle)",
+      "style": "grid-column span 2; min-height 24px (72px for lists); border 1px dashed #3A4049; radius 4px; padding 0 8px (6px 8px for lists); flex column, justify centre; font mono 11px; colour #8A929D; bg rgba(255,255,255,.015)"
+    },
+
+    "dial_compass": {
+      "source": "Director.dc.html:522-530 (wrapper, 48px dial), 524 (face), 1873-1874 (cell)",
+      "cell": "padding 4px 6px 6px 8px; radius 6px; border 1px solid #262A31; bg #181B1F; hover bg #22262D; flashed border rgba(232,163,61,.7), bg rgba(232,163,61,.28); gap 2px; min-width 0",
+      "header_row": "height 20px; gap 4px; label 12px #C9CED6 (ellipsis) + reset button 20x20 (resetBtnStyle)",
+      "dial": "48x48; radius 24px; cursor crosshair; touch-action none; focus outline 2px #E8A33D offset 2px",
+      "face": "circle r 20 fill #15171B stroke #4A515B 1.5; ticks #8A929D 1.4 at N/E/S/W; labels font-size 6.5 SVG units (N #8A929D, E/S/W #5C646F); needle 2px #E8A33D round; hub r 3 #E8A33D with r 1.2 #141413",
+      "readout": "mono 12px/500 #E6E8EB"
+    },
+
+    "dial_arc": {
+      "source": "Director.dc.html:527, 550",
+      "face": "baseline dashed #2F343B 1; arc path stroke #2F343B 2; range path stroke #4A515B 2.5 round; tick path stroke #8A929D 1.3 round; min/max labels 6px mono #5C646F at x 5 and 43, y 44; needle 2px #E8A33D from pivot (24,34); pivot r 3 #E8A33D, inner r 1.2 #141413"
+    },
+
+    "light_map_card": {
+      "source": "Director.dc.html:450-496, 1662-1671 (legend and views), 471 (flip), 1354-1357 (light hues)",
+      "map": "width 100%; aspect-ratio 320 / 205; radius 6px; bg radial-gradient(ellipse 80% 90% at 50% 45%, #161D27 0%, #111418 70%); border 1px solid #23272D; overflow hidden; user-select none; touch-action none",
+      "scene": "absolute full-bleed SVG (viewBox 0 0 320 205); beams are stroke-width 1.4 lines; light glyphs: glow circle + ring stroke-width 2 + body stroke-width 1.6; off label = 'OFF' font-size 7.5 (SVG units) mono 600 letter-spacing .8 #9BA3AE; names font-size 10 (SVG units) weight 600 in light hue",
+      "flip_button": "absolute left 6px top 6px; height 26px; padding 0 7px 0 3px; gap 4px; border 1px solid #343A42; radius 4px; bg rgba(17,20,24,.88); colour #C9CED6; 11px/500; icon 22x22 (light_map_flip_side.svg)",
+      "legend_grid": "grid 4 columns; gap 4px; each chip: padding 5px 6px; radius 4px; border 1px solid #2A2F36 (selected: light hue); bg transparent (selected #262A31); text colour #E6E8EB; dot 8px radius 4px border 1.5px (on: hue fill; off: hatched #8A929D); name 12px ellipsis; readout mono 11px/500 #C9CED6",
+      "legend_key": "near: legend_near.svg (8px solid #C9CED6); far: legend_far.svg (8px ring); off: legend_off.svg (9px slashed disc); row label 11px #9BA3AE",
+      "view_seg": "label 'View' 11px #8A929D; seg group = mode_segmented container; items Top / Side / 2.5D",
+      "hint": "11px #8A929D right-aligned, margin-top -2px"
+    },
+
+    "help_pane": {
+      "source": "Director.dc.html:711-724 (aside), 706-707 (minimum strip), 2718-2727",
+      "aside": "width 224px; flex none; box-sizing border-box; border-left 1px solid #262A31; bg #15171B; padding 16px; gap 10px; column; overflow hidden",
+      "kicker": "11px uppercase letter-spacing .08em #8A929D",
+      "title": "15px/600 line-height 1.3 word-break break-word #E6E8EB",
+      "body": "12px #C9CED6 line-height 1.55; scroll area max-height 260px",
+      "meta": "margin-top 4px; padding-top 10px; border-top 1px solid #262A31; gap 6px; 11px #9BA3AE; rows space-between; values mono #E6E8EB right, line-height 1.45",
+      "footer": "11px #8A929D line-height 1.5 (pushed to bottom by a flex spacer)",
+      "minimum_strip": "height 30px; flex none; padding 0 16px; gap 8px; border-top 1px solid #22262C; bg #15171B; 12px #9BA3AE nowrap; title 12px #E6E8EB weight 500 (max 40%)"
+    },
+
+    "transport_bar": {
+      "source": "Director.dc.html:726-863; styles 2587-2588, 2737-2738, 2749-2751, 2795-2800",
+      "container": "height 40px; flex none; align-items centre; gap 8px; padding 0 10px; bg #15171B; border-top 1px solid #262A31; position relative; z-index 8",
+      "action_split": {
+        "main": "ACTION: height 26px; min-width 92px; padding 0 12px 0 10px; radius 4px 0 0 4px; no border; bg #E8A33D (idle) / #E5484D (running); colour #141413 / #FFFFFF; 12px/600 letter-spacing .08em; gap 7px; flex centre; glyph play 10px (transport_action_play.svg) or stop 10px (transport_action_stop.svg); running adds box-shadow 0 0 0 3px rgba(229,72,77,.22)",
+        "arm": "width 22px; height 26px; radius 0 4px 4px 0; border none; border-left 1px solid rgba(20,20,19,.3); same bg/colour; chevron up 10px (armed_chevron_up.svg)",
+        "armed_panel": "absolute; left 0; bottom 34px; width 260px; padding 8px 10px 10px 12px; bg #15171B; border 1px solid #343A42; radius 6px; shadow popover; rows min-height 28px, grid minmax(0,1fr) 88px; value column flex end; number input 64x22"
+      },
+      "transport_icon_button": "tbtn: width 28px; height 26px; flex none; radius 4px; border 1px solid #343A42 (on: #E8A33D); bg transparent (on: #262A31); colour #C9CED6 (on: #E8A33D); centred; padding 0. Glyphs: play (transport_play.svg 10px), stop (transport_stop.svg 10px), set marks (transport_marks_set.svg 13px), reset to marks (transport_marks_reset.svg 13px), show paths (transport_paths.svg 14px, dashed), legend (transport_legend.svg 13px)",
+      "timecode": "mono 13px/500 #E6E8EB (running #F2A7A9); padding 0 4px; nowrap; sample 00:01:24:12",
+      "divider": "width 1px; height 18px; flex none; bg #2F343B",
+      "scene_select": "container width 130px; select class .sel; title 'Scene …'",
+      "scene_buttons": "Load / Save: height 24px; flex none; padding 0 8px; border 1px solid #343A42; radius 4px; bg transparent; colour #C9CED6; 11.5px; ghost hover bg #22262C colour #E6E8EB",
+      "scene_menu": "absolute; left 0; bottom 32px; width 230px; padding 6px; bg #15171B; border 1px solid #343A42; radius 6px; shadow popover; items height 26px, padding 0 8px, 12px #E6E8EB; Delete… #F2A7A9; confirm Delete button bg #E5484D colour #FFFFFF 12px/600 height 24px",
+      "rec_pill": "height 20px; flex none; gap 5px; padding 0 7px; radius 10px; font mono 600 10.5px letter-spacing .06em; idle: border 1px #343A42, colour #5C646F, bg transparent, dot #5C646F; on: border 1px #E5484D, colour #FFFFFF, bg #E5484D, dot #FFFFFF; dot 6px radius 3px",
+      "status": "status pill: 7px dot #E5484D + text 12px #F2A7A9 (nowrap)",
+      "toast": "height 22px; max-width 220px; radius 11px; padding 0 10px; gap 6px; bg #262A31; border 1px solid #E8A33D; 11.5px #F1F2F4; nowrap ellipsis",
+      "cast_chip": "height 26px; padding 0 8px 0 10px; radius 13px; border 1px solid #343A42 (open #E8A33D); bg transparent (open #262A31); colour #9BA3AE; 12px; gap 6px; label 'Cast' + count in #E6E8EB/600 + chevron up 9px (cast_chip_chevron_up.svg); popover width 240px, bottom 32px, right 0",
+      "ui_ms_chip": "11px #9BA3AE; border 1px solid #2F343B; radius 3px; padding 2px 6px; nowrap (text 'UI 0.4 ms')",
+      "hotkey_button": "tbtn style (28x26) with '?' 13px/600",
+      "source_ui": "Director.dc.html:860, 863"
+    },
+
+    "loading_overlay": {
+      "source": "Director.dc.html:54-106, CSS 42-46",
+      "skeleton": "background linear-gradient(90deg, #1B1E23 0%, #23272E 50%, #1B1E23 100%); background-size 840px 100%; shimmer 1.4s linear infinite; disabled under prefers-reduced-motion",
+      "scrim": "absolute full; bg rgba(17,19,22,.55); centred",
+      "dialog": "min-width 300px; max-width 460px; padding 22px 26px; gap 16px; bg #15171B; border 1px solid #2A2F36; radius 8px; shadow loading_dialog",
+      "spinner": "26x26; radius 13px; border 3px solid #2F343B; border-top-colour #E8A33D; spin .9s linear",
+      "error_icon": "26x26 colour #E5484D; 24px circle icon (error_circle.svg)",
+      "title": "14px/600", "body": "12px #9BA3AE", "error_text": "mono 12px #E8A33D word-break break-word"
+    },
+
+    "menus_and_popovers": {
+      "source": "Director.dc.html:175, 258, 735, 812, 832, 865, 327, 776",
+      "container": "bg #15171B; border 1px solid #343A42; radius 6px; shadow popover or menu; padding 4px (menus) / 6px (scene menu, cast popover) / 10px 12px (legend)",
+      "item": ".res: background transparent; hover and focus-visible bg #262A31 (CSS line 41); item height 26px; padding 0 8px; radius 4px; 12px #E6E8EB; hint text 10.5px #8A929D"
+    },
+
+    "reset_page_confirm": "See page_bar.reset_confirm"
+  },
+
+  "icons": {
+    "_note": "All icons are verbatim copies of the inline <svg> elements in Director.dc.html. Files are in icons/. The stroke, fill, width, height and viewBox attributes are as written in source. Icons with {{...}} placeholders are runtime-computed parts of the light-map and dial art; they are copied verbatim with placeholders still in place.",
+    "window_minimize.svg": { "file": "icons/window_minimize.svg", "source": "Director.dc.html:114", "size": "12x12", "viewBox": "0 0 12 12", "stroke": "currentColor", "stroke_width": "1.5", "fill": "none", "purpose": "window chrome minimise" },
+    "window_close.svg": { "file": "icons/window_close.svg", "source": "Director.dc.html:115", "size": "12x12", "viewBox": "0 0 12 12", "stroke": "currentColor", "stroke_width": "1.5", "fill": "none", "purpose": "window chrome close" },
+    "rail_cast.svg": { "file": "icons/rail_cast.svg", "source": "Director.dc.html:122", "size": "18x18", "viewBox": "0 0 24 24", "stroke": "currentColor", "stroke_width": "1.6", "linecap": "round", "fill": "none", "purpose": "group rail Cast" },
+    "rail_performance.svg": { "file": "icons/rail_performance.svg", "source": "Director.dc.html:123", "size": "18x18", "viewBox": "0 0 24 24", "stroke": "currentColor", "stroke_width": "1.6", "linecap": "round", "linejoin": "round", "fill": "none", "purpose": "group rail Performance" },
+    "rail_camera.svg": { "file": "icons/rail_camera.svg", "source": "Director.dc.html:124", "size": "18x18", "viewBox": "0 0 24 24", "stroke": "currentColor", "stroke_width": "1.6", "linejoin": "round", "fill": "none", "purpose": "group rail Camera" },
+    "rail_lens.svg": { "file": "icons/rail_lens.svg", "source": "Director.dc.html:125", "size": "18x18", "viewBox": "0 0 24 24", "stroke": "currentColor", "stroke_width": "1.6", "fill": "none", "purpose": "group rail Lens" },
+    "rail_light.svg": { "file": "icons/rail_light.svg", "source": "Director.dc.html:126", "size": "18x18", "viewBox": "0 0 24 24", "stroke": "currentColor", "stroke_width": "1.6", "linecap": "round", "fill": "none", "purpose": "group rail Light" },
+    "rail_look.svg": { "file": "icons/rail_look.svg", "source": "Director.dc.html:127", "size": "18x18", "viewBox": "0 0 24 24", "stroke": "currentColor", "stroke_width": "1.6", "linecap": "round", "fill": "none", "purpose": "group rail Look" },
+    "rail_world.svg": { "file": "icons/rail_world.svg", "source": "Director.dc.html:128", "size": "18x18", "viewBox": "0 0 24 24", "stroke": "currentColor", "stroke_width": "1.6", "fill": "none", "purpose": "group rail World" },
+    "rail_capture.svg": { "file": "icons/rail_capture.svg", "source": "Director.dc.html:129", "size": "18x18", "viewBox": "0 0 24 24", "stroke": "currentColor", "stroke_width": "1.6", "fill": "none (inner dot fill currentColor)", "purpose": "group rail Capture" },
+    "cast_tool_you.svg": { "file": "icons/cast_tool_you.svg", "source": "Director.dc.html:145", "size": "14x14", "viewBox": "0 0 16 16", "stroke": "currentColor", "stroke_width": "1.4", "linecap": "round", "fill": "none", "purpose": "cast tools: mark me" },
+    "cast_tool_animesh.svg": { "file": "icons/cast_tool_animesh.svg", "source": "Director.dc.html:146", "size": "14x14", "viewBox": "0 0 16 16", "stroke": "currentColor", "stroke_width": "1.4", "linecap": "round", "linejoin": "round", "fill": "none", "purpose": "cast tools: add animesh" },
+    "cast_tool_focus.svg": { "file": "icons/cast_tool_focus.svg", "source": "Director.dc.html:147", "size": "14x14", "viewBox": "0 0 16 16", "stroke": "currentColor", "stroke_width": "1.4", "linecap": "round", "fill": "none", "purpose": "cast tools: focus" },
+    "cast_tool_remove.svg": { "file": "icons/cast_tool_remove.svg", "source": "Director.dc.html:148", "size": "14x14", "viewBox": "0 0 16 16", "stroke": "currentColor", "stroke_width": "1.4", "linecap": "round", "fill": "none", "purpose": "cast tools: remove" },
+    "cast_row_framed.svg": { "file": "icons/cast_row_framed.svg", "source": "Director.dc.html:160", "size": "11x11", "viewBox": "0 0 16 16", "stroke": "#E8A33D", "stroke_width": "1.6", "linecap": "round", "fill": "none", "purpose": "cast row: framed badge" },
+    "cast_row_looks_at.svg": { "file": "icons/cast_row_looks_at.svg", "source": "Director.dc.html:163", "size": "12x12", "viewBox": "0 0 16 16", "stroke": "#7FA8E0", "stroke_width": "1.5", "fill": "none", "purpose": "cast row: camera looks-at badge" },
+    "search.svg": { "file": "icons/search.svg", "source": "Director.dc.html:324", "size": "12x12", "viewBox": "0 0 12 12", "stroke": "#8A929D", "stroke_width": "1.3", "fill": "none", "purpose": "find field magnifier" },
+    "error_circle.svg": { "file": "icons/error_circle.svg", "source": "Director.dc.html:90", "size": "24x24", "viewBox": "0 0 24 24", "stroke": "currentColor", "stroke_width": "1.7", "linecap": "round", "fill": "none", "purpose": "loading overlay failed state" },
+    "chevron_down_10.svg": { "file": "icons/chevron_down_10.svg", "source": "Director.dc.html:287", "size": "10x10", "viewBox": "0 0 10 10", "stroke": "#9BA3AE", "stroke_width": "1.4", "fill": "none", "purpose": "select caret" },
+    "reset_arc.svg": { "file": "icons/reset_arc.svg", "source": "Director.dc.html:390", "size": "13x13", "viewBox": "0 0 14 14", "stroke": "currentColor", "stroke_width": "1.4", "linecap": "round", "fill": "none", "purpose": "card header reset (also page reset at line 300, same geometry at 13px)" },
+    "reset_row.svg": { "file": "icons/reset_row.svg", "source": "Director.dc.html:673", "size": "11x11", "viewBox": "0 0 14 14", "stroke": "currentColor", "stroke_width": "1.5", "linecap": "round", "fill": "none", "purpose": "control row reset" },
+    "trash.svg": { "file": "icons/trash.svg", "source": "Director.dc.html:297", "size": "12x12", "viewBox": "0 0 14 14", "stroke": "currentColor", "stroke_width": "1.3", "linecap": "round", "fill": "none", "purpose": "delete saved preset" },
+    "undo.svg": { "file": "icons/undo.svg", "source": "Director.dc.html:312", "size": "13x13", "viewBox": "0 0 14 14", "stroke": "currentColor", "stroke_width": "1.4", "linecap": "round", "linejoin": "round", "fill": "none", "purpose": "undo" },
+    "redo.svg": { "file": "icons/redo.svg", "source": "Director.dc.html:313", "size": "13x13", "viewBox": "0 0 14 14", "stroke": "currentColor", "stroke_width": "1.4", "linecap": "round", "linejoin": "round", "fill": "none", "purpose": "redo" },
+    "toast_check.svg": { "file": "icons/toast_check.svg", "source": "Director.dc.html:290", "size": "10x10", "viewBox": "0 0 12 12", "stroke": "#E8A33D", "stroke_width": "1.6", "linecap": "round", "fill": "none", "purpose": "toast check" },
+    "master_off_power.svg": { "file": "icons/master_off_power.svg", "source": "Director.dc.html:357", "size": "13x13", "viewBox": "0 0 16 16", "stroke": "currentColor", "stroke_width": "1.5", "linecap": "round", "fill": "none", "purpose": "master-off banner glyph" },
+    "who_person.svg": { "file": "icons/who_person.svg", "source": "Director.dc.html:252", "size": "12x12", "viewBox": "0 0 16 16", "stroke": "currentColor", "stroke_width": "1.4", "linecap": "round", "fill": "none", "purpose": "who chip person" },
+    "who_chevron_10.svg": { "file": "icons/who_chevron_10.svg", "source": "Director.dc.html:255", "size": "9x9", "viewBox": "0 0 10 10", "stroke": "currentColor", "stroke_width": "1.5", "fill": "none", "purpose": "who chip caret" },
+    "cast_chip_chevron_up.svg": { "file": "icons/cast_chip_chevron_up.svg", "source": "Director.dc.html:830", "size": "9x9", "viewBox": "0 0 10 10", "stroke": "currentColor", "stroke_width": "1.5", "fill": "none", "purpose": "transport Cast chip caret" },
+    "armed_chevron_up.svg": { "file": "icons/armed_chevron_up.svg", "source": "Director.dc.html:733", "size": "10x10", "viewBox": "0 0 10 10", "stroke": "currentColor", "stroke_width": "1.5", "fill": "none", "purpose": "ACTION arm button caret" },
+    "transport_action_play.svg": { "file": "icons/transport_action_play.svg", "source": "Director.dc.html:729", "size": "10x10", "viewBox": "0 0 10 10", "fill": "currentColor", "purpose": "ACTION idle glyph (play triangle)" },
+    "transport_action_stop.svg": { "file": "icons/transport_action_stop.svg", "source": "Director.dc.html:730", "size": "10x10", "viewBox": "0 0 10 10", "fill": "currentColor", "purpose": "ACTION running glyph (square)" },
+    "transport_play.svg": { "file": "icons/transport_play.svg", "source": "Director.dc.html:756", "size": "10x10", "viewBox": "0 0 10 10", "fill": "currentColor", "purpose": "play take" },
+    "transport_stop.svg": { "file": "icons/transport_stop.svg", "source": "Director.dc.html:757", "size": "10x10", "viewBox": "0 0 10 10", "fill": "currentColor", "purpose": "stop take" },
+    "transport_marks_set.svg": { "file": "icons/transport_marks_set.svg", "source": "Director.dc.html:805", "size": "13x13", "viewBox": "0 0 16 16", "stroke": "currentColor", "stroke_width": "1.4", "linecap": "round", "linejoin": "round", "fill": "none", "purpose": "set marks (pin)" },
+    "transport_marks_reset.svg": { "file": "icons/transport_marks_reset.svg", "source": "Director.dc.html:806", "size": "13x13", "viewBox": "0 0 16 16", "stroke": "currentColor", "stroke_width": "1.4", "linecap": "round", "linejoin": "round", "fill": "none", "purpose": "reset to marks" },
+    "transport_paths.svg": { "file": "icons/transport_paths.svg", "source": "Director.dc.html:808", "size": "14x14", "viewBox": "0 0 16 16", "stroke": "currentColor", "stroke_width": "1.4", "linecap": "round", "stroke_dasharray": "2.2 2", "fill": "none", "purpose": "show paths" },
+    "transport_legend.svg": { "file": "icons/transport_legend.svg", "source": "Director.dc.html:810", "size": "13x13", "viewBox": "0 0 16 16", "stroke": "currentColor", "stroke_width": "1.4", "linecap": "round", "fill": "none (dots fill currentColor)", "purpose": "legend toggle" },
+    "legend_near.svg": { "file": "icons/legend_near.svg", "source": "Director.dc.html:490 (1st svg)", "size": "8x8", "viewBox": "0 0 8 8", "fill": "#C9CED6", "purpose": "light map key: near (solid)" },
+    "legend_far.svg": { "file": "icons/legend_far.svg", "source": "Director.dc.html:490 (2nd svg)", "size": "8x8", "viewBox": "0 0 8 8", "stroke": "#C9CED6", "stroke_width": "1", "fill": "#C9CED6 .35 opacity", "purpose": "light map key: far (ring)" },
+    "legend_off.svg": { "file": "icons/legend_off.svg", "source": "Director.dc.html:490 (3rd svg)", "size": "9x9", "viewBox": "0 0 9 9", "stroke": "#8A929D / #C9CED6", "stroke_width": "1 / 1.2", "fill": "#2A2F36", "purpose": "light map key: off (slashed disc)" },
+    "light_map_flip_side.svg": { "file": "icons/light_map_flip_side.svg", "source": "Director.dc.html:471", "size": "22x22", "viewBox": "0 0 22 22", "contains_placeholders": true, "purpose": "light map side-view flip button (sight/eye glyph with {{c.sd.*}} runtime transforms)" },
+    "dial_compass.svg": { "file": "icons/dial_compass.svg", "source": "Director.dc.html:524", "size": "48x48", "viewBox": "0 0 48 48", "contains_placeholders": true, "purpose": "compass dial face; {{dl.needleTf}} rotates the needle" },
+    "dial_arc.svg": { "file": "icons/dial_arc.svg", "source": "Director.dc.html:527", "size": "48x48", "viewBox": "0 0 48 48", "contains_placeholders": true, "purpose": "arc dial face; {{dl.rangePath}}, {{dl.tickPath}}, {{dl.arcMin}}, {{dl.arcMax}}, {{dl.needleTf}} are runtime" }
+  },
+
+  "not_extracted": [
+    "Light-map scene art (Director.dc.html:452-470 full SVG scene, globe, beams and glyph groups). Only palette recorded in colors.lightmap_scene.",
+    "VCamPage.dc.html component styles (separate sub-page; extra scene palette of about 100 colours not tokenised).",
+    "Scene-menu and hotkey dialog internals (Director.dc.html:774-800, 863-880): geometry recorded only where it reuses menu/popover tokens."
+  ]
+}

@@ -1,0 +1,439 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Director redesign</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#0B0C0E}
+a{color:#E8A33D}a:hover{color:#F3BE6A}
+button{font-family:inherit}
+.rng{-webkit-appearance:none;appearance:none;background:transparent;width:100%;height:20px;margin:0;cursor:pointer}
+.rng:focus{outline:none}
+.rng::-webkit-slider-runnable-track{height:4px;border-radius:2px;background:linear-gradient(to right,#E8A33D var(--p),#363C44 var(--p))}
+.rng::-moz-range-track{height:4px;border-radius:2px;background:linear-gradient(to right,#E8A33D var(--p),#363C44 var(--p))}
+.rng::-webkit-slider-thumb{-webkit-appearance:none;width:12px;height:12px;border-radius:6px;background:#E6E8EB;margin-top:-4px;border:none}
+.rng::-moz-range-thumb{width:12px;height:12px;border-radius:6px;background:#E6E8EB;border:none}
+.rng:focus-visible::-webkit-slider-thumb{box-shadow:0 0 0 3px rgba(232,163,61,.45)}
+.sel{appearance:none;-webkit-appearance:none;background:#262A31;color:#E6E8EB;border:1px solid #343A42;border-radius:4px;height:24px;padding:0 24px 0 8px;font:12px 'IBM Plex Sans',sans-serif;width:100%;cursor:pointer}
+.sel:focus-visible,.btn:focus-visible,.srch:focus-visible{outline:2px solid #E8A33D;outline-offset:1px}
+.btn{cursor:pointer}
+.scroll::-webkit-scrollbar{width:8px;height:8px}
+.scroll::-webkit-scrollbar-thumb{background:#343A42;border-radius:4px}
+.scroll::-webkit-scrollbar-track{background:transparent}
+.srch::placeholder{color:#8A929D}
+</style>
+</helmet>
+<div style="width: 1200px; height: 760px; position: relative; background: #0B0C0E; font-family: 'IBM Plex Sans', sans-serif; color: #E6E8EB; overflow: hidden">
+  <sc-if value="{{isMin}}" hint-placeholder-val="{{false}}">
+    <div style="position: absolute; left: 175px; top: 30px; font-size: 12px; color: #9BA3AE">Same window at its minimum size, 850 × 560: the rail folds to icons and the help panel moves to a strip, so the cards never squeeze.</div>
+  </sc-if>
+  <div style="{{winStyle}}">
+    <div style="height: 32px; flex: none; display: flex; align-items: center; gap: 10px; padding: 0 10px 0 14px; background: #15171B; border-bottom: 1px solid #262A31">
+      <div style="font-size: 13px; font-weight: 600; letter-spacing: .02em">Director</div>
+      <div style="font-size: 12px; color: #9BA3AE">{{crumb}}</div>
+      <div style="flex: 1"></div>
+      <button class="btn" type="button" aria-label="Minimize" style="width: 24px; height: 24px; border: none; background: transparent; color: #9BA3AE; display: flex; align-items: center; justify-content: center"><svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6h8" stroke="currentColor" stroke-width="1.5" fill="none"></path></svg></button>
+      <button class="btn" type="button" aria-label="Close" style="width: 24px; height: 24px; border: none; background: transparent; color: #9BA3AE; display: flex; align-items: center; justify-content: center"><svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M3 3l6 6M9 3l-6 6" stroke="currentColor" stroke-width="1.5" fill="none"></path></svg></button>
+    </div>
+    <div style="flex: 1; min-height: 0; display: flex">
+      <nav aria-label="Director groups" style="{{railStyle}}">
+        <sc-for list="{{groups}}" as="g" hint-placeholder-count="8">
+          <button class="btn" type="button" onClick="{{g.pick}}" aria-label="{{g.label}}" aria-current="{{g.current}}" style="{{g.style}}">
+            <span style="width: 20px; height: 20px; flex: none; display: flex; align-items: center; justify-content: center; color: {{g.iconColor}}">
+              <sc-if value="{{g.isCast}}" hint-placeholder-val="{{false}}"><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="9" cy="8" r="3.2"></circle><path d="M3.5 19c.8-3.2 3-5 5.5-5s4.7 1.8 5.5 5"></path><circle cx="16.5" cy="9" r="2.6"></circle><path d="M15.5 14.2c2.3.2 4 1.8 4.8 4.8"></path></svg></sc-if>
+              <sc-if value="{{g.isPerf}}" hint-placeholder-val="{{false}}"><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="4.5" r="2"></circle><path d="M12 7v6l-3.5 7M12 13l3.5 7M6 9.5l6-1.5 6 1.5"></path></svg></sc-if>
+              <sc-if value="{{g.isCamera}}" hint-placeholder-val="{{false}}"><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><rect x="3" y="7" width="13" height="10" rx="1.5"></rect><path d="M16 10.5l5-3v9l-5-3z"></path></svg></sc-if>
+              <sc-if value="{{g.isLens}}" hint-placeholder-val="{{false}}"><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="8.5"></circle><path d="M12 3.5l4 7.2M20.3 10.2l-8 .1M17.8 18.4l-4-7M8.2 19.8l3.9-7.1M3.7 13.6l8.1-.1M6.4 5.3l4.3 7"></path></svg></sc-if>
+              <sc-if value="{{g.isLight}}" hint-placeholder-val="{{false}}"><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M9 17.5h6M10 21h4M12 3a6 6 0 0 0-3.6 10.8c.6.5 1 1.2 1 2V16h5.2v-.2c0-.8.4-1.5 1-2A6 6 0 0 0 12 3z"></path></svg></sc-if>
+              <sc-if value="{{g.isLook}}" hint-placeholder-val="{{false}}"><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M4 7h10M18 7h2M4 12h4M12 12h8M4 17h12M20 17h0"></path><circle cx="16" cy="7" r="2"></circle><circle cx="10" cy="12" r="2"></circle><circle cx="18" cy="17" r="2"></circle></svg></sc-if>
+              <sc-if value="{{g.isWorld}}" hint-placeholder-val="{{false}}"><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="8.5"></circle><path d="M3.5 12h17M12 3.5c2.4 2.4 3.6 5.2 3.6 8.5s-1.2 6.1-3.6 8.5c-2.4-2.4-3.6-5.2-3.6-8.5s1.2-6.1 3.6-8.5z"></path></svg></sc-if>
+              <sc-if value="{{g.isCapture}}" hint-placeholder-val="{{false}}"><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="8.5"></circle><circle cx="12" cy="12" r="3.5" fill="currentColor" stroke="none"></circle></svg></sc-if>
+            </span>
+            <sc-if value="{{showRailLabels}}" hint-placeholder-val="{{true}}">
+              <span style="font-size: 13px; font-weight: {{g.weight}}">{{g.label}}</span>
+            </sc-if>
+          </button>
+        </sc-for>
+        <div style="flex: 1"></div>
+        <sc-if value="{{showRailLabels}}" hint-placeholder-val="{{true}}">
+          <div style="padding: 10px 12px; font-size: 11px; color: #8A929D; line-height: 1.5">Ctrl+1…8 jumps to a group.<br>Ctrl+Tab cycles its pages.</div>
+        </sc-if>
+      </nav>
+      <div style="flex: 1; min-width: 0; display: flex; flex-direction: column">
+        <div role="tablist" aria-label="{{groupLabel}} pages" style="height: 40px; flex: none; display: flex; align-items: flex-end; gap: 2px; padding: 0 16px; border-bottom: 1px solid #262A31; background: #15171B; overflow-x: auto" class="scroll">
+          <sc-for list="{{subs}}" as="s" hint-placeholder-count="5">
+            <button class="btn" type="button" role="tab" aria-selected="{{s.current}}" onClick="{{s.pick}}" style="{{s.style}}">{{s.label}}</button>
+          </sc-for>
+        </div>
+        <div style="height: 44px; flex: none; display: flex; align-items: center; gap: 8px; padding: 0 16px; border-bottom: 1px solid #22262C">
+          <label for="page_preset" style="font-size: 12px; color: #9BA3AE">Page preset</label>
+          <div style="width: 168px; position: relative">
+            <select id="page_preset" class="sel" value="{{preset}}" onChange="{{pickPreset}}">
+              <option value="custom">Custom</option>
+              <option value="portrait">Portrait key</option>
+              <option value="night">Night alley</option>
+              <option value="golden">Golden hour</option>
+            </select>
+            <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true" style="position: absolute; right: 8px; top: 7px; pointer-events: none"><path d="M2 3.5l3 3 3-3" stroke="#9BA3AE" stroke-width="1.4" fill="none"></path></svg>
+          </div>
+          <button class="btn" type="button" style="height: 24px; padding: 0 10px; border: 1px solid #343A42; border-radius: 4px; background: #262A31; color: #E6E8EB; font-size: 12px">Save as…</button>
+          <button class="btn" type="button" style="height: 24px; padding: 0 10px; border: 1px solid #343A42; border-radius: 4px; background: transparent; color: #C9CED6; font-size: 12px">Reset page</button>
+          <div style="flex: 1"></div>
+          <div style="position: relative; width: 200px">
+            <label for="find" style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">Find a control</label>
+            <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true" style="position: absolute; left: 8px; top: 6px"><circle cx="5" cy="5" r="3.5" stroke="#8A929D" stroke-width="1.3" fill="none"></circle><path d="M8 8l3 3" stroke="#8A929D" stroke-width="1.3"></path></svg>
+            <input id="find" class="srch" type="search" placeholder="Find a control…" value="{{query}}" onInput="{{setQuery}}" style="width: 100%; box-sizing: border-box; height: 24px; padding: 0 8px 0 26px; background: #121418; color: #E6E8EB; border: 1px solid #343A42; border-radius: 4px; font: 12px 'IBM Plex Sans', sans-serif">
+          </div>
+        </div>
+        <div class="scroll" style="flex: 1; min-height: 0; overflow-y: auto; padding: 14px 16px 16px">
+          <sc-if value="{{hasCards}}" hint-placeholder-val="{{true}}">
+            <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; align-items: start">
+              <sc-for list="{{cards}}" as="c" hint-placeholder-count="4">
+                <section aria-label="{{c.title}}" style="background: #1B1E23; border: 1px solid #2A2F36; border-radius: 6px; display: flex; flex-direction: column; min-width: 0">
+                  <div style="height: 36px; display: flex; align-items: center; gap: 8px; padding: 0 8px 0 12px; border-bottom: 1px solid #2A2F36">
+                    <div style="flex: 1; min-width: 0; font-size: 13px; font-weight: 600; letter-spacing: .01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{c.title}}</div>
+                    <sc-if value="{{c.badge}}" hint-placeholder-val="{{false}}">
+                      <span style="font-size: 11px; color: #141413; background: #E8A33D; border-radius: 3px; padding: 1px 6px; font-weight: 500">{{c.badge}}</span>
+                    </sc-if>
+                    <sc-if value="{{c.hasToggle}}" hint-placeholder-val="{{false}}">
+                      <button class="btn" type="button" aria-pressed="{{c.on}}" aria-label="{{c.toggleLabel}}" onClick="{{c.toggle}}" style="width: 34px; height: 18px; border-radius: 9px; border: none; padding: 0; position: relative; background: {{c.trackBg}}"><span style="position: absolute; top: 2px; left: {{c.knobLeft}}; width: 14px; height: 14px; border-radius: 7px; background: {{c.knobBg}}"></span></button>
+                    </sc-if>
+                    <button class="btn" type="button" aria-label="{{c.resetLabel}}" style="width: 24px; height: 24px; border: none; background: transparent; color: #8A929D; display: flex; align-items: center; justify-content: center"><svg width="13" height="13" viewBox="0 0 14 14" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M2.5 7a4.5 4.5 0 1 0 1.4-3.3"></path><path d="M2.3 1.8v2.3h2.3"></path></svg></button>
+                  </div>
+                  <div style="padding: 6px 8px 8px 12px; display: flex; flex-direction: column; gap: 2px; opacity: {{c.opacity}}">
+                    <sc-for list="{{c.rows}}" as="r" hint-placeholder-count="4">
+                      <div onMouseEnter="{{r.hover}}" onFocus="{{r.hover}}" style="display: grid; grid-template-columns: 100px minmax(0, 1fr) 52px 20px; column-gap: 6px; align-items: center; min-height: 28px; border-radius: 4px; background: {{r.rowBg}}">
+                        <label for="{{r.id}}" style="font-size: 12px; color: #C9CED6; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{r.label}}</label>
+                        <sc-if value="{{r.isSlider}}" hint-placeholder-val="{{true}}">
+                          <input id="{{r.id}}" class="rng" type="range" min="{{r.min}}" max="{{r.max}}" step="{{r.step}}" value="{{r.value}}" onInput="{{r.change}}" style="--p: {{r.pct}}%">
+                          <div style="font: 500 12px 'IBM Plex Mono', monospace; color: #E6E8EB; text-align: right; white-space: nowrap">{{r.display}}</div>
+                        </sc-if>
+                        <sc-if value="{{r.isToggle}}" hint-placeholder-val="{{false}}">
+                          <div style="display: flex; align-items: center">
+                            <button id="{{r.id}}" class="btn" type="button" aria-pressed="{{r.on}}" onClick="{{r.toggle}}" style="width: 34px; height: 18px; border-radius: 9px; border: none; padding: 0; position: relative; background: {{r.trackBg}}"><span style="position: absolute; top: 2px; left: {{r.knobLeft}}; width: 14px; height: 14px; border-radius: 7px; background: {{r.knobBg}}"></span></button>
+                          </div>
+                          <div style="font-size: 12px; color: #9BA3AE; text-align: right">{{r.display}}</div>
+                        </sc-if>
+                        <sc-if value="{{r.isCombo}}" hint-placeholder-val="{{false}}">
+                          <div style="grid-column: span 2; position: relative">
+                            <select id="{{r.id}}" class="sel" value="{{r.value}}" onChange="{{r.change}}">
+                              <sc-for list="{{r.options}}" as="o" hint-placeholder-count="3">
+                                <option value="{{o}}">{{o}}</option>
+                              </sc-for>
+                            </select>
+                            <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true" style="position: absolute; right: 8px; top: 7px; pointer-events: none"><path d="M2 3.5l3 3 3-3" stroke="#9BA3AE" stroke-width="1.4" fill="none"></path></svg>
+                          </div>
+                        </sc-if>
+                        <sc-if value="{{r.isColor}}" hint-placeholder-val="{{false}}">
+                          <div style="display: flex; align-items: center; gap: 8px">
+                            <button id="{{r.id}}" class="btn" type="button" aria-label="{{r.swatchLabel}}" style="width: 40px; height: 18px; border-radius: 3px; border: 1px solid #4A515B; background: {{r.swatch}}"></button>
+                          </div>
+                          <div style="font: 500 12px 'IBM Plex Mono', monospace; color: #E6E8EB; text-align: right">{{r.display}}</div>
+                        </sc-if>
+                        <sc-if value="{{r.isReadout}}" hint-placeholder-val="{{false}}">
+                          <div id="{{r.id}}" style="grid-column: span 2; font: 500 12px 'IBM Plex Mono', monospace; color: {{r.readColor}}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{r.display}}</div>
+                        </sc-if>
+                        <sc-if value="{{r.canReset}}" hint-placeholder-val="{{true}}">
+                          <button class="btn" type="button" aria-label="{{r.resetLabel}}" onClick="{{r.reset}}" style="width: 20px; height: 20px; border: none; background: transparent; color: {{r.resetColor}}; padding: 0; display: flex; align-items: center; justify-content: center"><svg width="11" height="11" viewBox="0 0 14 14" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2.5 7a4.5 4.5 0 1 0 1.4-3.3"></path><path d="M2.3 1.8v2.3h2.3"></path></svg></button>
+                        </sc-if>
+                        <sc-if value="{{r.noReset}}" hint-placeholder-val="{{false}}"><span></span></sc-if>
+                      </div>
+                    </sc-for>
+                    <sc-if value="{{c.hasAdv}}" hint-placeholder-val="{{false}}">
+                      <button class="btn" type="button" aria-expanded="{{c.advOpen}}" onClick="{{c.toggleAdv}}" style="margin-top: 4px; align-self: flex-start; height: 22px; padding: 0 6px; border: none; background: transparent; color: #9BA3AE; font-size: 12px; display: flex; align-items: center; gap: 4px"><svg width="9" height="9" viewBox="0 0 10 10" aria-hidden="true" style="transform: rotate({{c.advRot}}deg)"><path d="M3.5 2l3 3-3 3" stroke="currentColor" stroke-width="1.5" fill="none"></path></svg>{{c.advLabel}}</button>
+                    </sc-if>
+                  </div>
+                </section>
+              </sc-for>
+            </div>
+          </sc-if>
+          <sc-if value="{{noCards}}" hint-placeholder-val="{{false}}">
+            <div style="height: 100%; min-height: 240px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; color: #9BA3AE; text-align: center">
+              <div style="font-size: 14px; color: #C9CED6">{{emptyTitle}}</div>
+              <div style="font-size: 12px; max-width: 380px; line-height: 1.5">{{emptyText}}</div>
+            </div>
+          </sc-if>
+        </div>
+        <sc-if value="{{isMin}}" hint-placeholder-val="{{false}}">
+          <div style="height: 30px; flex: none; display: flex; align-items: center; gap: 8px; padding: 0 16px; border-top: 1px solid #22262C; background: #15171B; font-size: 12px; color: #9BA3AE; white-space: nowrap; overflow: hidden">
+            <span style="color: #E6E8EB; font-weight: 500">{{helpTitle}}</span><span style="overflow: hidden; text-overflow: ellipsis">{{helpText}}</span>
+          </div>
+        </sc-if>
+      </div>
+      <sc-if value="{{showHelp}}" hint-placeholder-val="{{true}}">
+        <aside aria-label="Control help" style="width: 224px; flex: none; border-left: 1px solid #262A31; background: #15171B; padding: 16px 16px; display: flex; flex-direction: column; gap: 10px">
+          <div style="font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: #8A929D">About this control</div>
+          <div style="font-size: 15px; font-weight: 600; line-height: 1.3">{{helpTitle}}</div>
+          <div style="font-size: 12px; color: #C9CED6; line-height: 1.55">{{helpText}}</div>
+          <sc-if value="{{hasHelpMeta}}" hint-placeholder-val="{{true}}">
+            <div style="display: flex; flex-direction: column; gap: 6px; margin-top: 4px; padding-top: 10px; border-top: 1px solid #262A31; font-size: 11px; color: #9BA3AE">
+              <div style="display: flex; justify-content: space-between; gap: 8px"><span>Default</span><span style="font-family: 'IBM Plex Mono', monospace; color: #E6E8EB">{{helpDefault}}</span></div>
+              <div style="display: flex; justify-content: space-between; gap: 8px"><span>Setting</span><span style="font-family: 'IBM Plex Mono', monospace; color: #E6E8EB; overflow: hidden; text-overflow: ellipsis">{{helpKey}}</span></div>
+            </div>
+          </sc-if>
+          <div style="flex: 1"></div>
+          <div style="font-size: 11px; color: #8A929D; line-height: 1.5">Right-click any control: copy, paste, reset, add to Quick panel.</div>
+        </aside>
+      </sc-if>
+    </div>
+    <div style="height: 40px; flex: none; display: flex; align-items: center; gap: 10px; padding: 0 12px; background: #15171B; border-top: 1px solid #262A31">
+      <button class="btn" type="button" aria-pressed="{{recOn}}" onClick="{{toggleRec}}" style="height: 26px; padding: 0 10px; border-radius: 4px; border: 1px solid {{recBorder}}; background: {{recBg}}; color: #E6E8EB; font-size: 12px; font-weight: 600; display: flex; align-items: center; gap: 6px"><span style="width: 8px; height: 8px; border-radius: 4px; background: #E5484D"></span>{{recLabel}}</button>
+      <button class="btn" type="button" aria-label="Play" style="width: 28px; height: 26px; border-radius: 4px; border: 1px solid #343A42; background: #262A31; color: #E6E8EB; display: flex; align-items: center; justify-content: center"><svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M2 1.2l7 3.8-7 3.8z" fill="currentColor"></path></svg></button>
+      <button class="btn" type="button" aria-label="Stop" style="width: 28px; height: 26px; border-radius: 4px; border: 1px solid #343A42; background: #262A31; color: #E6E8EB; display: flex; align-items: center; justify-content: center"><svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><rect x="1.5" y="1.5" width="7" height="7" fill="currentColor"></rect></svg></button>
+      <div style="font: 500 13px 'IBM Plex Mono', monospace; color: #E6E8EB; padding: 0 6px">00:01:24:12</div>
+      <div style="width: 1px; height: 18px; background: #2F343B"></div>
+      <div style="font-size: 12px; color: #9BA3AE; white-space: nowrap">Scene <span style="color: #E6E8EB">Night Alley</span></div>
+      <div style="font-size: 12px; color: #9BA3AE; white-space: nowrap">Cast <span style="color: #E6E8EB">4</span></div>
+      <div style="flex: 1"></div>
+      <div style="font-size: 11px; color: #9BA3AE; border: 1px solid #2F343B; border-radius: 3px; padding: 2px 6px; white-space: nowrap">UI 0.4 ms</div>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"windowSize":{"editor":"enum","options":["Default 1160 × 720","Minimum 850 × 560"],"default":"Default 1160 × 720"},"$preview":{"width":1200,"height":760}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { group: 4, sub: 0, vals: {}, toggles: {}, adv: {}, query: '', preset: 'custom', hover: null, rec: false };
+  }
+
+  data() {
+    const S = (id, label, min, max, step, def, unit, dec, key, help) => ({ id, kind: 'slider', label, min, max, step, def, unit, dec, key, help });
+    const T = (id, label, def, key, help) => ({ id, kind: 'toggle', label, def, key, help });
+    const C = (id, label, options, def, key, help) => ({ id, kind: 'combo', label, options, def, key, help });
+    const K = (id, label, kelvin, swatch, key, help) => ({ id, kind: 'color', label, def: kelvin, swatch, key, help });
+    const R = (id, label, text, help, warn) => ({ id, kind: 'readout', label, text, help, warn });
+    return {
+      'light/Rig': [
+        { id: 'rig', title: 'Rig', toggle: true, on: true, rows: [
+          C('rig_mode', 'Mode', ['Easy', 'Advanced'], 'Easy', 'CineLightRigEasyMode', 'Easy drives all four lights from one subject and a few looks. Advanced exposes every light on its own.'),
+          C('rig_setup', 'Setup', ['Three-point', 'Two-point', 'Rembrandt', 'Split', 'Silhouette'], 'Three-point', 'CineLightRigSetup', 'The base arrangement. Each light below starts from this setup.'),
+          C('rig_subject', 'Subject', ['Selected avatar', 'Me', 'Cast: Mara', 'Cast: Jun'], 'Selected avatar', 'CineLightRigSubject', 'Who the rig points at. The lights follow the subject as they move.'),
+          S('rig_master', 'Master', 0, 4, 0.01, 1, '', 2, 'CineLightRigMaster', 'Scales every light in the rig together, so the ratios stay the same.'),
+          S('rig_dist', 'Distance', 0.5, 8, 0.1, 2.4, ' m', 1, 'CineLightRigDistance', 'How far the lights sit from the subject. Closer is softer and falls off faster.')
+        ]},
+        { id: 'key', title: 'Key light', toggle: true, on: true, adv: [
+          S('key_bias', 'Shadow bias', 0, 1, 0.01, 0.15, '', 2, 'CineLightRigKeyShadowBias', 'Pushes the shadow off the surface to stop acne. Too high and shadows detach.')
+        ], rows: [
+          S('key_int', 'Intensity', 0, 4, 0.01, 1.2, '', 2, 'CineLightRigKeyIntensity', 'Brightness of the main light.'),
+          K('key_col', 'Colour', 5600, '#FFF1DE', 'CineLightRigKeyColor', 'Colour temperature of the key. 5600 K is daylight; lower is warmer.'),
+          S('key_az', 'Azimuth', -180, 180, 1, 35, '°', 0, 'CineLightRigKeyAzimuth', 'Angle around the subject, from the camera side.'),
+          S('key_el', 'Elevation', -30, 90, 1, 30, '°', 0, 'CineLightRigKeyElevation', 'Height of the key above the subject’s eyeline.'),
+          S('key_soft', 'Softness', 0, 1, 0.01, 0.45, '', 2, 'CineLightRigKeySoftness', 'Size of the light source. Larger is softer.')
+        ]},
+        { id: 'fill', title: 'Fill light', toggle: true, on: true, rows: [
+          S('fill_int', 'Intensity', 0, 4, 0.01, 0.3, '', 2, 'CineLightRigFillIntensity', 'Lifts the shadow side. Key ÷ fill is your contrast ratio.'),
+          K('fill_col', 'Colour', 4300, '#FFE0BE', 'CineLightRigFillColor', 'Colour temperature of the fill.'),
+          S('fill_az', 'Azimuth', -180, 180, 1, -50, '°', 0, 'CineLightRigFillAzimuth', 'Angle around the subject, usually opposite the key.'),
+          R('fill_ratio', 'Key : fill', '4 : 1  (2 stops)', 'Live contrast ratio between key and fill.')
+        ]},
+        { id: 'back', title: 'Back light', toggle: true, on: true, rows: [
+          S('back_int', 'Intensity', 0, 4, 0.01, 0.9, '', 2, 'CineLightRigRimIntensity', 'The third light of the three-point rig, behind the subject. The rim-lighting effect itself is on the Rim page.'),
+          K('back_col', 'Colour', 7000, '#E4ECFF', 'CineLightRigRimColor', 'Colour temperature of the back light.'),
+          S('back_h', 'Height', -1, 2, 0.05, 0.4, ' m', 2, 'CineLightRigRimHeight', 'Height offset above the subject’s head.')
+        ]},
+        { id: 'probe', title: 'Live probe', badge: 'Live', rows: [
+          C('probe_mode', 'Refresh', ['Off', 'Adaptive', 'Manual'], 'Adaptive', 'CineLightRigLiveProbeRefresh', 'How often the rig’s reflection probe re-captures. Adaptive spends more when things move.'),
+          R('probe_rate', 'Status', '6/6 faces · 2.0 faces/s', 'Updated twice a second, never per frame.'),
+          R('probe_fill', 'Fill', 'probe 0.65 · sky 0.40 → 0.65', 'Effective fill ambiance: the higher of the sky floor and this probe.')
+        ]}
+      ],
+      'light/Rim': [
+        { id: 'rigrim', title: 'Rig Rim', toggle: true, on: true, rows: [
+          C('rim_preset', 'Preset', ['Soft halo', 'Hard edge', 'Backlit hair', 'Neon kiss', 'Custom'], 'Soft halo', 'CineRigRimPreset', 'A full rim look. Applying it sets every value below and snaps back to Custom when you edit.'),
+          S('rim_master', 'Master', 0, 4, 0.01, 0.8, '', 2, 'CineRigRimMasterGain', 'Overall strength of the grazing-angle rim term from the rig’s own lights.'),
+          S('rim_ramp', 'Back ramp', 0, 1, 0.01, 0.55, '', 2, 'CineRigRimBackRamp', 'How much more rim the lights behind the subject give than the ones in front.'),
+          K('rim_tint', 'Tint', 6500, '#F2F5FF', 'CineRigRimTint', 'Colour multiplier on the rim only.'),
+          T('rim_only', 'Rim only', false, 'CineRigRimDebugRimOnly', 'Debug view: local lights show only their rim term.')
+        ]},
+        { id: 'rimq', title: 'Rim quality', rows: [
+          S('rimq_w', 'Width', 0.5, 10, 0.1, 3, ' cm', 1, 'CineRigRimSilhouetteWidth', 'Rim thickness at the subject, in real units, so it stays the same size at any distance.'),
+          T('rimq_smooth', 'Smooth normals', true, 'CineRigRimSmoothNormal', 'Filters the surface normal so the rim doesn’t sparkle on detailed meshes.'),
+          S('rimq_aa', 'Specular AA', 0, 1, 0.01, 0.5, '', 2, 'CineRigRimSpecAA', 'Softens rim aliasing on thin geometry like hair.'),
+          T('rimq_actors', 'Actors only', true, 'CineRigRimActorsOnly', 'Rim only on cast and avatars, not the set.'),
+          S('rimq_wrap', 'Light wrap', 0, 1, 0.01, 0.15, '', 2, 'CineRigRimWrap', 'Lets the rim bleed slightly around the silhouette, like real backlight.')
+        ]},
+        { id: 'rimshadow', title: 'Shadow and inclusion', rows: [
+          S('rims_sh', 'Rim shadow', 0, 1, 0.01, 0.7, '', 2, 'CineRigRimShadow', 'How much the rig’s shadows block the rim.'),
+          T('rims_alpha', 'Include alpha', true, 'CineRigRimIncludeAlpha', 'Rim on alpha-blended surfaces such as hair.'),
+          T('rims_bounce', 'Include bounce', false, 'CineRigRimIncludeBounce', 'Let the probe bounce contribute to the rim.')
+        ]}
+      ],
+      'lens/Focus': [
+        { id: 'focus', title: 'Focus', rows: [
+          C('f_mode', 'Mode', ['Track subject', 'Manual', 'Centre point', 'Pull to mark'], 'Track subject', 'CameraFocusMode', 'How focus is chosen. Track keeps the subject sharp as they move.'),
+          C('f_subj', 'Subject', ['Selected avatar', 'Cast: Mara', 'Cast: Jun'], 'Selected avatar', 'CameraFocusSubject', 'Who focus tracks.'),
+          R('f_dist', 'Distance', '3.20 m · tracking', 'Live focus distance.'),
+          S('f_ap', 'Aperture', 1.2, 22, 0.1, 2, '', 1, 'CameraFNumber', 'f-number. Lower means shallower depth of field.'),
+          S('f_len', 'Focal length', 12, 300, 1, 50, ' mm', 0, 'CameraFocalLength', 'Longer lenses compress space and blur the background more.')
+        ]},
+        { id: 'dof', title: 'Depth of field', toggle: true, on: true, rows: [
+          S('dof_max', 'Max blur', 0, 1, 0.01, 0.6, '', 2, 'CameraMaxCoF', 'Caps the blur size so backgrounds don’t smear.'),
+          T('dof_near', 'Near blur', true, 'RenderDoFNearBlur', 'Blur things in front of the focus plane too.'),
+          C('dof_q', 'Quality', ['Low', 'Medium', 'High', 'Cinematic'], 'High', 'CameraDoFResScale', 'Sample count. Cinematic is for final capture.')
+        ]},
+        { id: 'guides', title: 'Guides', rows: [
+          T('g_peak', 'Focus peaking', false, 'AlFocusPeaking', 'Outlines what’s in focus while you pull.'),
+          K('g_peakc', 'Peaking colour', 0, '#E8A33D', 'AlFocusPeakingColor', 'Colour of the peaking outline.'),
+          T('g_dofov', 'DoF overlay', false, 'AlDoFOverlay', 'Tints the near and far blur zones.')
+        ]}
+      ],
+      'camera/Shot': [
+        { id: 'lens', title: 'Lens', rows: [
+          S('c_len', 'Focal length', 12, 300, 1, 35, ' mm', 0, 'CameraFocalLength', 'Longer lenses compress space; shorter ones exaggerate it.'),
+          C('c_sensor', 'Sensor', ['Full frame', 'Super 35', 'Micro 4/3', 'IMAX'], 'Super 35', 'CameraSensor', 'Sensor size sets the field of view for a given lens.'),
+          R('c_fov', 'Field of view', '54.4° horizontal', 'Computed from lens and sensor.')
+        ]},
+        { id: 'frame', title: 'Framing', rows: [
+          S('c_roll', 'Roll', -45, 45, 0.5, 0, '°', 1, 'CameraRoll', 'Dutch angle.'),
+          C('c_aspect', 'Aspect', ['16:9', '1.85:1', '2.39:1', '4:3', '9:16'], '2.39:1', 'CameraAspectGuide', 'Letterbox guide for your delivery format.'),
+          T('c_thirds', 'Thirds guide', true, 'CameraThirdsGuide', 'Rule-of-thirds overlay.')
+        ]},
+        { id: 'shake', title: 'Handheld', toggle: true, on: false, rows: [
+          C('c_shake', 'Preset', ['Walk', 'Breath', 'Run', 'Vehicle'], 'Walk', 'CameraShakePreset', 'Motion profile for the handheld feel.'),
+          S('c_amt', 'Amount', 0, 1, 0.01, 0.35, '', 2, 'CameraShakeAmount', 'Strength of the camera shake.'),
+          S('c_freq', 'Frequency', 0.1, 4, 0.1, 1.2, ' Hz', 1, 'CameraShakeFrequency', 'How quickly the shake moves.')
+        ]}
+      ]
+    };
+  }
+
+  fmt(r, v) {
+    if (r.kind === 'color') return r.def ? r.def + ' K' : 'Amber';
+    const n = Number(v);
+    return (Math.abs(n) < 1e-9 ? 0 : n).toFixed(r.dec) + r.unit;
+  }
+
+  renderVals() {
+    const st = this.state;
+    const isMin = (this.props.windowSize ?? 'Default 1160 × 720').indexOf('Minimum') === 0;
+    const groupDefs = [
+      { id: 'cast', label: 'Cast', subs: ['Move', 'Path', 'Props', 'Ghosts', 'Dance'] },
+      { id: 'perf', label: 'Performance', subs: ['Animate', 'Switchboard', 'Gaze', 'Polish', 'Gaze cues'] },
+      { id: 'camera', label: 'Camera', subs: ['Shot', 'Moves', 'Operator', 'Frame & orbit', 'Takes'] },
+      { id: 'lens', label: 'Lens', subs: ['Focus', 'Filters', 'VCam', 'Diopter'] },
+      { id: 'light', label: 'Light', subs: ['Rig', 'Rim', 'Exposure', 'Practicals', 'Actors', 'Light cues'] },
+      { id: 'look', label: 'Look', subs: ['Image', 'Stylize', 'Actor FX'] },
+      { id: 'world', label: 'World', subs: ['Weather', 'Atmosphere', 'Shadows & probes'] },
+      { id: 'capture', label: 'Capture', subs: ['Time', 'Capture', 'Scene'] }
+    ];
+    const g = groupDefs[st.group];
+    const subLabel = g.subs[Math.min(st.sub, g.subs.length - 1)];
+    const key = g.id + '/' + subLabel;
+    const all = this.data();
+    const q = st.query.trim().toLowerCase();
+
+    const groups = groupDefs.map((d, i) => {
+      const cur = i === st.group;
+      return {
+        label: d.label, current: cur ? 'page' : 'false',
+        weight: cur ? 600 : 400,
+        iconColor: cur ? '#E8A33D' : '#9BA3AE',
+        isCast: d.id === 'cast', isPerf: d.id === 'perf', isCamera: d.id === 'camera', isLens: d.id === 'lens',
+        isLight: d.id === 'light', isLook: d.id === 'look', isWorld: d.id === 'world', isCapture: d.id === 'capture',
+        style: 'height: 40px; display: flex; align-items: center; gap: 10px; border: none; border-radius: 6px; text-align: left; color: ' + (cur ? '#F1F2F4' : '#C9CED6') + '; background: ' + (cur ? '#262A31' : 'transparent') + '; padding: 0 ' + (isMin ? '0; justify-content: center' : '12px') + ';',
+        pick: () => this.setState({ group: i, sub: 0, query: '', hover: null })
+      };
+    });
+
+    const subs = g.subs.map((s, i) => {
+      const cur = s === subLabel;
+      return {
+        label: s, current: cur ? 'true' : 'false',
+        style: 'height: 32px; padding: 0 12px; border: none; background: transparent; font-size: 13px; white-space: nowrap; border-bottom: 2px solid ' + (cur ? '#E8A33D' : 'transparent') + '; color: ' + (cur ? '#F1F2F4' : '#9BA3AE') + '; font-weight: ' + (cur ? 600 : 400) + ';',
+        pick: () => this.setState({ sub: i, query: '', hover: null })
+      };
+    });
+
+    const toggleVisual = (on) => ({
+      trackBg: on ? '#E8A33D' : '#3A4049', knobBg: on ? '#141413' : '#C9CED6', knobLeft: on ? '18px' : '2px'
+    });
+
+    let hoverRow = null;
+    const pageCards = (all[key] || []).map((c) => {
+      const cardOn = c.toggle ? (st.toggles[c.id + '_on'] ?? c.on) : true;
+      const advOpen = !!st.adv[c.id];
+      const raw = c.rows.concat(advOpen && c.adv ? c.adv : []);
+      const rows = raw.filter((r) => !q || r.label.toLowerCase().indexOf(q) >= 0 || c.title.toLowerCase().indexOf(q) >= 0).map((r) => {
+        const hovered = st.hover === r.id;
+        if (hovered) hoverRow = r;
+        const base = { id: r.id, label: r.label, isSlider: r.kind === 'slider', isToggle: r.kind === 'toggle', isCombo: r.kind === 'combo', isColor: r.kind === 'color', isReadout: r.kind === 'readout',
+          rowBg: hovered ? '#22262D' : 'transparent', hover: () => { if (this.state.hover !== r.id) this.setState({ hover: r.id }); } };
+        const canReset = r.kind !== 'readout';
+        base.canReset = canReset; base.noReset = !canReset;
+        base.resetLabel = 'Reset ' + r.label;
+        if (r.kind === 'slider') {
+          const v = st.vals[r.id] ?? r.def;
+          const changed = Number(v) !== Number(r.def);
+          Object.assign(base, { min: r.min, max: r.max, step: r.step, value: v, pct: ((Number(v) - r.min) / (r.max - r.min) * 100).toFixed(1), display: this.fmt(r, v),
+            resetColor: changed ? '#E8A33D' : '#5C646F',
+            change: (e) => this.setState({ vals: Object.assign({}, this.state.vals, { [r.id]: e.target.value }), preset: 'custom' }),
+            reset: () => { const nv = Object.assign({}, this.state.vals); delete nv[r.id]; this.setState({ vals: nv }); } });
+        } else if (r.kind === 'toggle') {
+          const on = st.toggles[r.id] ?? r.def;
+          Object.assign(base, toggleVisual(on), { on: on ? 'true' : 'false', display: on ? 'On' : 'Off', resetColor: on !== r.def ? '#E8A33D' : '#5C646F',
+            toggle: () => this.setState({ toggles: Object.assign({}, this.state.toggles, { [r.id]: !on }) }),
+            reset: () => { const nt = Object.assign({}, this.state.toggles); delete nt[r.id]; this.setState({ toggles: nt }); } });
+        } else if (r.kind === 'combo') {
+          const v = st.vals[r.id] ?? r.def;
+          Object.assign(base, { value: v, options: r.options, resetColor: v !== r.def ? '#E8A33D' : '#5C646F',
+            change: (e) => this.setState({ vals: Object.assign({}, this.state.vals, { [r.id]: e.target.value }) }),
+            reset: () => { const nv = Object.assign({}, this.state.vals); delete nv[r.id]; this.setState({ vals: nv }); } });
+        } else if (r.kind === 'color') {
+          Object.assign(base, { swatch: r.swatch, swatchLabel: r.label + ' colour', display: this.fmt(r), resetColor: '#5C646F', reset: () => {} });
+        } else {
+          Object.assign(base, { display: r.text, readColor: r.warn ? '#E8A33D' : '#C9CED6', reset: () => {} });
+        }
+        return base;
+      });
+      return Object.assign({ title: c.title, badge: c.badge || '', hasToggle: !!c.toggle, on: cardOn ? 'true' : 'false',
+        toggleLabel: (cardOn ? 'Turn off ' : 'Turn on ') + c.title, resetLabel: 'Reset ' + c.title,
+        opacity: cardOn ? 1 : 0.45, rows, hasAdv: !!c.adv, advOpen: advOpen ? 'true' : 'false', advRot: advOpen ? 90 : 0,
+        advLabel: advOpen ? 'Fewer options' : 'More options (' + c.adv?.length + ')',
+        toggle: () => this.setState({ toggles: Object.assign({}, this.state.toggles, { [c.id + '_on']: !cardOn }) }),
+        toggleAdv: () => this.setState({ adv: Object.assign({}, this.state.adv, { [c.id]: !advOpen }) })
+      }, toggleVisual(cardOn));
+    }).filter((c) => c.rows.length > 0);
+
+    const mocked = !!all[key];
+    const hasCards = pageCards.length > 0;
+    const winW = isMin ? 850 : 1160, winH = isMin ? 560 : 720;
+    const winX = isMin ? 175 : 20, winY = isMin ? 60 : 20;
+
+    return {
+      isMin,
+      showRailLabels: !isMin,
+      showHelp: !isMin,
+      winStyle: 'position: absolute; left: ' + winX + 'px; top: ' + winY + 'px; width: ' + winW + 'px; height: ' + winH + 'px; display: flex; flex-direction: column; background: #111316; border: 1px solid #2A2F36; border-radius: 8px; overflow: hidden; box-shadow: 0 20px 60px rgba(0,0,0,.55)',
+      railStyle: 'width: ' + (isMin ? 56 : 176) + 'px; flex: none; display: flex; flex-direction: column; gap: 2px; padding: 10px 8px; background: #15171B; border-right: 1px solid #262A31; box-sizing: border-box',
+      crumb: '›  ' + g.label + '  ›  ' + subLabel,
+      groupLabel: g.label,
+      groups, subs,
+      cards: pageCards, hasCards, noCards: !hasCards,
+      emptyTitle: mocked ? 'No controls match “' + st.query + '”' : g.label + ' › ' + subLabel + ' isn’t mocked yet',
+      emptyText: mocked ? 'Search covers every control and card on this page.' : 'It uses the same cards and rows as Light › Rig. Try Light › Rig, Light › Rim, Lens › Focus or Camera › Shot.',
+      query: st.query,
+      setQuery: (e) => this.setState({ query: e.target.value }),
+      preset: st.preset,
+      pickPreset: (e) => this.setState({ preset: e.target.value }),
+      helpTitle: hoverRow ? hoverRow.label : g.label + ' › ' + subLabel,
+      helpText: hoverRow ? hoverRow.help : 'Hover or tab to any control to see what it does, its default and the setting behind it.',
+      hasHelpMeta: !!(hoverRow && hoverRow.key),
+      helpDefault: hoverRow ? (hoverRow.kind === 'toggle' ? (hoverRow.def ? 'On' : 'Off') : hoverRow.kind === 'combo' ? hoverRow.def : hoverRow.kind === 'slider' ? this.fmt(hoverRow, hoverRow.def) : '—') : '',
+      helpKey: hoverRow ? (hoverRow.key || '') : '',
+      recOn: st.rec ? 'true' : 'false', recLabel: st.rec ? 'Recording' : 'Record',
+      recBg: st.rec ? '#3A1C1F' : '#262A31', recBorder: st.rec ? '#E5484D' : '#343A42',
+      toggleRec: () => this.setState({ rec: !this.state.rec })
+    };
+  }
+}
+</script>
+</body>
+</html>

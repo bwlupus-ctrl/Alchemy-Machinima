@@ -1,0 +1,1543 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>VCam page</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+.btn{cursor:pointer;font-family:inherit}
+.btn:focus-visible,.sel:focus-visible{outline:2px solid #E8A33D;outline-offset:1px}
+.sel{appearance:none;-webkit-appearance:none;background:#262A31;color:#E6E8EB;border:1px solid #343A42;border-radius:4px;height:24px;padding:0 24px 0 8px;font:12px 'IBM Plex Sans',sans-serif;width:100%;cursor:pointer}
+.rng{-webkit-appearance:none;appearance:none;background:transparent;width:100%;height:20px;margin:0;cursor:pointer}
+.rng:focus{outline:none}
+.rng::-webkit-slider-runnable-track{height:4px;border-radius:2px;background:linear-gradient(to right,#E8A33D var(--p),#363C44 var(--p))}
+.rng::-moz-range-track{height:4px;border-radius:2px;background:linear-gradient(to right,#E8A33D var(--p),#363C44 var(--p))}
+.rng::-webkit-slider-thumb{-webkit-appearance:none;width:12px;height:12px;border-radius:6px;background:#E6E8EB;margin-top:-4px;border:none}
+.rng::-moz-range-thumb{width:12px;height:12px;border-radius:6px;background:#E6E8EB;border:none}
+.rng:focus-visible::-webkit-slider-thumb{box-shadow:0 0 0 3px rgba(232,163,61,.45)}
+.scroll::-webkit-scrollbar{width:8px;height:8px}
+.scroll::-webkit-scrollbar-thumb{background:#343A42;border-radius:4px}
+.scroll::-webkit-scrollbar-track{background:transparent}
+</style>
+</helmet>
+<div class="scroll" style="box-sizing: border-box; width: 100%; height: 560px; overflow-x: hidden; overflow-y: auto; padding: 14px 16px 16px; background: #111316; color: #E6E8EB; font-family: 'IBM Plex Sans', sans-serif">
+
+  <!-- 0 · Master switch + live global readout -->
+  <section aria-label="Virtual Cam" style="{{cardStyle}}">
+    <div style="min-height: 36px; display: flex; align-items: center; gap: 10px; padding: 6px 8px 6px 12px; flex-wrap: wrap">
+      <button id="vc_enable" class="btn" type="button" aria-pressed="{{enableOn}}" aria-label="Enable Virtual Cam" title="Master render toggle (PrismLensEnabled). Captures and faces stay editable while it is off." onClick="{{toggleEnable}}" style="width: 34px; height: 18px; flex: none; border-radius: 9px; border: none; padding: 0; position: relative; background: {{enableTrack}}"><span style="position: absolute; top: 2px; left: {{enableKnobLeft}}; width: 14px; height: 14px; border-radius: 7px; background: {{enableKnob}}"></span></button>
+      <label for="vc_enable" style="font-size: 13px; font-weight: 600">Virtual Cam</label>
+      <div style="font: 500 12px 'IBM Plex Mono', monospace; color: #C9CED6; white-space: nowrap">{{summary}}</div>
+      <div style="flex: 1"></div>
+      <button class="btn" type="button" onClick="{{openManager}}" style="height: 22px; padding: 0 4px; border: none; background: transparent; color: #E8A33D; font-size: 12px; text-decoration: underline">Open full manager</button>
+    </div>
+    <div style="padding: 0 12px 8px; font: 500 11px 'IBM Plex Mono', monospace; color: #9BA3AE; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{perfLine}}</div>
+  </section>
+
+  <!-- 1 · Monitors: previews only, never selectors -->
+  <section aria-label="Monitors" style="{{cardStyleGap}}">
+    <div style="min-height: 36px; display: flex; align-items: center; gap: 8px; padding: 4px 12px; border-bottom: 1px solid #2A2F36; flex-wrap: wrap">
+      <div title="What each camera sends out. Drag a monitor onto a surface to show that camera there." style="font-size: 13px; font-weight: 600; letter-spacing: .01em">Monitors</div>
+      <span id="vc_view_lbl" style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">Monitor size</span>
+      <div role="radiogroup" aria-labelledby="vc_view_lbl" style="display: flex; gap: 2px">
+        <sc-for list="{{viewModes}}" as="v" hint-placeholder-count="2">
+          <button class="btn" type="button" role="radio" aria-checked="{{v.on}}" title="{{v.help}}" onClick="{{v.pick}}" style="{{v.style}}">{{v.label}}</button>
+        </sc-for>
+      </div>
+      <sc-if value="{{showPager}}" hint-placeholder-val="{{false}}">
+        <div style="display: flex; align-items: center; gap: 4px">
+          <button class="btn" type="button" aria-label="Show cameras 1 to 4" onClick="{{pagePrev}}" style="{{pagePrevStyle}}"><svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M6.5 2l-3 3 3 3" stroke="currentColor" stroke-width="1.5" fill="none"></path></svg></button>
+          <span aria-live="polite" style="font: 500 11px 'IBM Plex Mono', monospace; white-space: nowrap"><span style="{{pageAStyle}}">1–4</span><span style="color: #5C646F"> / </span><span style="{{pageBStyle}}">{{pageBLabel}}</span></span>
+          <button class="btn" type="button" aria-label="{{pageNextLabel}}" onClick="{{pageNext}}" style="{{pageNextStyle}}"><svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M3.5 2l3 3-3 3" stroke="currentColor" stroke-width="1.5" fill="none"></path></svg></button>
+        </div>
+      </sc-if>
+      <div style="flex: 1"></div>
+      <label for="vc_previews" style="font-size: 12px; color: #C9CED6">Previews</label>
+      <button id="vc_previews" class="btn" type="button" aria-pressed="{{previewsOn}}" title="One switch for every monitor. Off stops all preview rendering, which saves FPS. Faces in-world keep updating." onClick="{{togglePreviews}}" style="width: 34px; height: 18px; flex: none; border-radius: 9px; border: none; padding: 0; position: relative; background: {{prevTrack}}"><span style="position: absolute; top: 2px; left: {{prevKnobLeft}}; width: 14px; height: 14px; border-radius: 7px; background: {{prevKnob}}"></span></button>
+      <span id="vc_speed_lbl" style="font-size: 12px; color: #C9CED6; margin-left: 6px">Speed</span>
+      <div role="radiogroup" aria-labelledby="vc_speed_lbl" style="display: flex; gap: 2px">
+        <sc-for list="{{speeds}}" as="s" hint-placeholder-count="4">
+          <button class="btn" type="button" role="radio" aria-checked="{{s.on}}" title="Preview refresh rate shared by all monitors" onClick="{{s.pick}}" style="{{s.style}}">{{s.label}}</button>
+        </sc-for>
+      </div>
+    </div>
+    <div style="padding: 10px 12px 4px">
+     <div style="{{rowViewport}}">
+      <div style="{{rowTrack}}">
+      <sc-for list="{{tiles}}" as="t" hint-placeholder-count="4">
+        <figure aria-label="{{t.aria}}" title="{{t.dragHelp}}" draggable="true" onDragStart="{{t.dragStart}}" onDragEnd="{{dragEnd}}" style="{{t.figStyle}}">
+          <div style="{{t.boxStyle}}">
+            <div style="{{t.picStyle}}">
+              <div style="{{t.faceStyle}}">
+                <div style="{{t.camStyle}}">
+                  <svg viewBox="0 0 160 90" preserveAspectRatio="none" aria-hidden="true" style="display: block; width: 100%; height: 100%">
+                    <g transform="{{t.shotT}}">
+                      <sc-if value="{{t.isStreet}}" hint-placeholder-val="{{true}}">
+                        <g>
+                          <rect x="-400" y="-300" width="960" height="350" fill="#26314A"></rect>
+                          <rect x="-400" y="30" width="960" height="18" fill="#3B3A4E"></rect>
+                          <path d="M38 47 V31 H48 V26 H58 V33 H68 V22 H77 V30 H88 V24 H99 V32 H110 V27 H122 V47 Z" fill="#1F2430"></path>
+                          <rect x="-400" y="46" width="960" height="300" fill="#191B1F"></rect>
+                          <path d="M-260 -80 L62 33 L62 49 L-260 170 Z" fill="#121418"></path>
+                          <path d="M420 -80 L98 33 L98 49 L420 170 Z" fill="#15181D"></path>
+                          <rect x="14" y="26" width="4" height="4" fill="#E8A33D" opacity="0.7"></rect>
+                          <rect x="24" y="31" width="4" height="4" fill="#E8C27D" opacity="0.5"></rect>
+                          <rect x="40" y="35" width="3" height="3" fill="#E8A33D" opacity="0.6"></rect>
+                          <rect x="14" y="44" width="4" height="4" fill="#E8C27D" opacity="0.35"></rect>
+                          <rect x="138" y="27" width="4" height="4" fill="#9FC3E6" opacity="0.45"></rect>
+                          <rect x="124" y="33" width="4" height="4" fill="#E8A33D" opacity="0.6"></rect>
+                          <rect x="112" y="37" width="3" height="3" fill="#E8C27D" opacity="0.5"></rect>
+                          <path d="M-260 170 L62 49 L67 49 L-60 260 Z" fill="#25272C"></path>
+                          <path d="M420 170 L98 49 L93 49 L220 260 Z" fill="#25272C"></path>
+                          <path d="M-60 260 L67 49 L93 49 L220 260 Z" fill="#1D1F23"></path>
+                          <path d="M79.6 52 L80.4 52 L80.7 56 L79.3 56 Z" fill="#C9B45A" opacity="0.6"></path>
+                          <path d="M79.1 62 L80.9 62 L81.5 70 L78.5 70 Z" fill="#C9B45A" opacity="0.6"></path>
+                          <path d="M78 80 L82 80 L83.2 94 L76.8 94 Z" fill="#C9B45A" opacity="0.6"></path>
+                          <line x1="30" y1="70" x2="30" y2="38" stroke="#3A3F48" stroke-width="1.4"></line>
+                          <circle cx="30" cy="38" r="5" fill="#FFD9A0" opacity="{{t.lampGlow}}"></circle>
+                          <circle cx="30" cy="38" r="1.6" fill="#FFF1D6"></circle>
+                          <line x1="132" y1="70" x2="132" y2="38" stroke="#3A3F48" stroke-width="1.4"></line>
+                          <circle cx="132" cy="38" r="5" fill="#FFD9A0" opacity="0.28"></circle>
+                          <circle cx="132" cy="38" r="1.6" fill="#FFF1D6"></circle>
+                          <line x1="55" y1="54" x2="55" y2="41" stroke="#3A3F48" stroke-width="0.8"></line>
+                          <circle cx="55" cy="41" r="1" fill="#FFF1D6"></circle>
+                          <g transform="{{t.pedT}}" fill="#0C0D10"><circle cx="0" cy="-9" r="1.7"></circle><rect x="-1.5" y="-7.4" width="3" height="7.4" rx="1"></rect></g>
+                          <g transform="{{t.carT}}">
+                            <rect x="-10" y="-6" width="20" height="7" rx="2" fill="#6B2F2F"></rect>
+                            <rect x="-6.5" y="-10" width="13" height="5" rx="1.5" fill="#4A2323"></rect>
+                            <rect x="-5.5" y="-9.2" width="11" height="3" fill="#20262E"></rect>
+                            <circle cx="-7" cy="-2.2" r="1.5" fill="#FFF2C8"></circle>
+                            <circle cx="7" cy="-2.2" r="1.5" fill="#FFF2C8"></circle>
+                          </g>
+                        </g>
+                      </sc-if>
+                      <sc-if value="{{t.isClose}}" hint-placeholder-val="{{false}}">
+                        <g>
+                          <rect x="-400" y="-300" width="960" height="700" fill="#2A2420"></rect>
+                          <g transform="{{t.bokehT}}">
+                            <circle cx="22" cy="20" r="10" fill="#E8A33D" opacity="0.16"></circle>
+                            <circle cx="46" cy="58" r="6" fill="#7FA6C9" opacity="0.14"></circle>
+                            <circle cx="12" cy="74" r="12" fill="#D96C4A" opacity="0.12"></circle>
+                            <circle cx="142" cy="16" r="8" fill="#E8C27D" opacity="0.16"></circle>
+                            <circle cx="150" cy="70" r="11" fill="#6E8F7A" opacity="0.12"></circle>
+                            <circle cx="60" cy="10" r="5" fill="#E8C27D" opacity="0.12"></circle>
+                          </g>
+                          <path d="M58 92 C 62 72, 78 67, 98 65 C 118 67, 132 72, 138 92 Z" fill="#2E3644"></path>
+                          <path d="M90 66 L98 76 L106 66 Z" fill="#C9CED6" opacity="0.5"></path>
+                          <rect x="92" y="53" width="12" height="15" fill="#A8775A"></rect>
+                          <g transform="{{t.headT}}">
+                            <ellipse cx="84" cy="42" rx="2.6" ry="4.2" fill="#A8775A"></ellipse>
+                            <ellipse cx="98" cy="40" rx="15" ry="19" fill="#B98566"></ellipse>
+                            <path d="M82 38 C 80 20, 96 14, 106 18 C 116 22, 116 32, 113 38 C 108 30, 96 28, 86 34 Z" fill="#2A1C14"></path>
+                            <path d="M90 36.5 H96 M101 36.5 H107" stroke="#2A1C14" stroke-width="1.2" stroke-linecap="round"></path>
+                            <ellipse cx="93" cy="41" rx="2" ry="{{t.eyeRy}}" fill="#1B1410"></ellipse>
+                            <ellipse cx="104" cy="41" rx="2" ry="{{t.eyeRy}}" fill="#1B1410"></ellipse>
+                            <path d="M99 42 L97 48.5 L100.5 48.5" stroke="#8E5F45" stroke-width="0.9" fill="none"></path>
+                            <path d="M94 52.5 Q99 55 104 52.5" stroke="#7A3E36" stroke-width="1.1" fill="none"></path>
+                            <path d="M112 29 C 116 40, 115 50, 108 57" stroke="#F3D2A8" stroke-width="1.3" fill="none" opacity="0.7"></path>
+                          </g>
+                        </g>
+                      </sc-if>
+                      <sc-if value="{{t.isHand}}" hint-placeholder-val="{{false}}">
+                        <g>
+                          <g transform="{{t.tiltT}}">
+                            <rect x="-400" y="-300" width="960" height="362" fill="#3B2F26"></rect>
+                            <rect x="6" y="6" width="148" height="38" fill="#2A211B"></rect>
+                            <rect x="6" y="22" width="148" height="2" fill="#4A3A2E"></rect>
+                            <rect x="6" y="40" width="148" height="2" fill="#4A3A2E"></rect>
+                            <rect x="14" y="11" width="4" height="11" fill="#3E7A5A"></rect>
+                            <rect x="21" y="13" width="4" height="9" fill="#8C3B2E"></rect>
+                            <rect x="28" y="10" width="3" height="12" fill="#C9A54A"></rect>
+                            <rect x="40" y="12" width="5" height="10" fill="#5C7FA6"></rect>
+                            <rect x="49" y="11" width="3" height="11" fill="#D9D2C0"></rect>
+                            <rect x="70" y="12" width="4" height="10" fill="#8C3B2E"></rect>
+                            <rect x="16" y="28" width="4" height="12" fill="#C9A54A"></rect>
+                            <rect x="24" y="30" width="4" height="10" fill="#3E7A5A"></rect>
+                            <rect x="36" y="29" width="5" height="11" fill="#6A4C8C"></rect>
+                            <rect x="58" y="30" width="4" height="10" fill="#5C7FA6"></rect>
+                            <g fill="#14100D"><circle cx="120" cy="29" r="6"></circle><path d="M106 62 L108 42 Q120 35 132 42 L134 62 Z"></path></g>
+                            <rect x="-400" y="58" width="960" height="5" fill="#7A5236"></rect>
+                            <rect x="-400" y="62" width="960" height="300" fill="#4E3321"></rect>
+                            <rect x="60" y="49" width="5" height="9" fill="#BFD6E0" opacity="0.35"></rect>
+                            <rect x="40" y="52" width="10" height="6" rx="1" fill="#C9CED6" opacity="0.25"></rect>
+                          </g>
+                          <g transform="{{t.handT}}">
+                            <path d="M124 126 L104 72 L130 64 L190 104 L190 126 Z" fill="#263040"></path>
+                            <path d="M104 72 C 96 64, 92 58, 96 53 L111 51 C 118 53, 124 58, 130 64 Z" fill="#A8775A"></path>
+                            <rect x="93" y="38" width="13" height="15" rx="2" fill="#E6E8EB" opacity="0.92"></rect>
+                            <ellipse cx="99.5" cy="38.5" rx="6.5" ry="1.7" fill="#4A2E1E"></ellipse>
+                            <path d="M96 52 C 98 48, 102 47, 106 49" stroke="#8E5F45" stroke-width="1" fill="none"></path>
+                          </g>
+                        </g>
+                      </sc-if>
+                      <sc-if value="{{t.isOver}}" hint-placeholder-val="{{false}}">
+                        <g transform="{{t.panT}}">
+                          <rect x="-400" y="-300" width="960" height="700" fill="#2F3B2C"></rect>
+                          <rect x="-400" y="40" width="960" height="11" fill="#4A4D52"></rect>
+                          <rect x="96" y="-300" width="11" height="700" fill="#4A4D52"></rect>
+                          <line x1="-400" y1="45.5" x2="560" y2="45.5" stroke="#C9B45A" stroke-width="0.6" stroke-dasharray="4 4" opacity="0.6"></line>
+                          <rect x="-40" y="12" width="30" height="20" fill="#000000" opacity="0.25"></rect>
+                          <rect x="-43" y="9" width="30" height="20" fill="#6B5E55"></rect>
+                          <rect x="23" y="11" width="30" height="22" fill="#000000" opacity="0.25"></rect>
+                          <rect x="20" y="8" width="30" height="22" fill="#6E6158"></rect>
+                          <line x1="20" y1="19" x2="50" y2="19" stroke="#857669" stroke-width="0.8"></line>
+                          <rect x="59" y="15" width="22" height="16" fill="#000000" opacity="0.25"></rect>
+                          <rect x="56" y="12" width="22" height="16" fill="#556070"></rect>
+                          <rect x="121" y="9" width="34" height="26" fill="#000000" opacity="0.25"></rect>
+                          <rect x="118" y="6" width="34" height="26" fill="#7A6A5C"></rect>
+                          <line x1="135" y1="6" x2="135" y2="32" stroke="#918070" stroke-width="0.8"></line>
+                          <rect x="19" y="61" width="40" height="24" fill="#000000" opacity="0.25"></rect>
+                          <rect x="16" y="58" width="40" height="24" fill="#5C6168"></rect>
+                          <rect x="121" y="63" width="26" height="20" fill="#000000" opacity="0.25"></rect>
+                          <rect x="118" y="60" width="26" height="20" fill="#6E5A4C"></rect>
+                          <rect x="170" y="58" width="40" height="30" fill="#5A5F55"></rect>
+                          <rect x="-60" y="60" width="44" height="26" fill="#665A50"></rect>
+                          <circle cx="66" cy="64" r="6" fill="#22331F"></circle>
+                          <circle cx="78" cy="72" r="4.5" fill="#263A22"></circle>
+                          <circle cx="70" cy="80" r="5" fill="#22331F"></circle>
+                          <circle cx="160" cy="20" r="6" fill="#22331F"></circle>
+                          <circle cx="-8" cy="40" r="4" fill="#263A22"></circle>
+                          <ellipse cx="89" cy="58" rx="2.2" ry="1.4" fill="#000000" opacity="0.35"></ellipse>
+                          <circle cx="88" cy="56.5" r="1.6" fill="#E8A33D"></circle>
+                          <rect x="{{t.overCarX}}" y="41.5" width="7" height="3.6" rx="1" fill="#C9CED6"></rect>
+                        </g>
+                      </sc-if>
+                      <sc-if value="{{t.isOts}}" hint-placeholder-val="{{false}}">
+                        <g>
+                          <rect x="-400" y="-300" width="960" height="700" fill="#1F2630"></rect>
+                          <rect x="70" y="-300" width="16" height="700" fill="#252D38"></rect>
+                          <rect x="140" y="-300" width="22" height="700" fill="#252D38"></rect>
+                          <path d="M86 92 C 90 64, 130 64, 134 92 Z" fill="#4A3A5A"></path>
+                          <rect x="105" y="45" width="10" height="12" fill="#8C6048"></rect>
+                          <g transform="{{t.headT}}">
+                            <ellipse cx="110" cy="36" rx="10" ry="13" fill="#9C6E52"></ellipse>
+                            <path d="M99 34 C 98 22, 108 18, 114 20 C 121 22, 122 30, 121 34 C 116 28, 106 28, 99 34 Z" fill="#1A1410"></path>
+                            <ellipse cx="106" cy="37" rx="1.4" ry="{{t.eyeRy}}" fill="#1B1410"></ellipse>
+                            <ellipse cx="114" cy="37" rx="1.4" ry="{{t.eyeRy}}" fill="#1B1410"></ellipse>
+                          </g>
+                          <path d="M-60 92 L-60 30 C 0 18, 40 24, 56 46 C 62 56, 64 72, 66 92 Z" fill="#0B0C0E"></path>
+                          <circle cx="26" cy="30" r="20" fill="#0E0F12"></circle>
+                        </g>
+                      </sc-if>
+                      <sc-if value="{{t.isLens}}" hint-placeholder-val="{{false}}">
+                        <g>
+                          <rect x="-400" y="-300" width="960" height="350" fill="#2D3B4F"></rect>
+                          <rect x="-400" y="38" width="960" height="12" fill="#3F4A5C"></rect>
+                          <path d="M100 50 C 108 40, 120 38, 132 44 C 138 46, 146 48, 150 50 Z" fill="#1A222C"></path>
+                          <rect x="-400" y="50" width="960" height="300" fill="#1C2B3A"></rect>
+                          <path d="M20 60 H40 M54 66 H80 M30 74 H58 M96 70 H126 M110 80 H150" stroke="#9FC3E6" stroke-width="0.8" opacity="{{t.lampGlow}}"></path>
+                        </g>
+                      </sc-if>
+                      <sc-if value="{{t.isBlank}}" hint-placeholder-val="{{false}}">
+                        <g>
+                          <rect x="-400" y="-300" width="960" height="352" fill="#26303D"></rect>
+                          <path d="M-400 54 L-20 40 L30 46 L70 36 L120 44 L180 38 L560 52 L560 60 L-400 60 Z" fill="#1F262E"></path>
+                          <rect x="-400" y="52" width="960" height="300" fill="#181B1F"></rect>
+                          <rect x="96" y="40" width="10" height="13" fill="#2C333D"></rect>
+                          <rect x="98" y="43" width="2" height="2" fill="#E8A33D" opacity="0.7"></rect>
+                        </g>
+                      </sc-if>
+                    </g>
+                    <sc-for list="{{t.grain}}" as="d" hint-placeholder-count="3">
+                      <rect x="{{d.x}}" y="{{d.y}}" width="{{d.w}}" height="0.9" fill="{{d.c}}" opacity="{{d.o}}"></rect>
+                    </sc-for>
+                  </svg>
+                  <div style="{{t.crtStyle}}"></div>
+                </div>
+                <div style="{{t.fxStyle}}"></div>
+                <svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true" style="position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none">
+                  <rect x="0" y="{{t.rollY}}" width="100" height="10" fill="#000000" opacity="{{t.rollOp}}"></rect>
+                  <rect x="{{t.trackX}}" y="{{t.trackY}}" width="100" height="3" fill="#FFFFFF" opacity="{{t.trackOp}}"></rect>
+                  <sc-for list="{{t.staticDots}}" as="d" hint-placeholder-count="3">
+                    <rect x="{{d.x}}" y="{{d.y}}" width="{{d.w}}" height="1.2" fill="{{d.c}}" opacity="{{d.o}}"></rect>
+                  </sc-for>
+                </svg>
+              </div>
+            </div>
+            <sc-if value="{{t.showOff}}" hint-placeholder-val="{{false}}">
+              <div style="position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; text-align: center">
+                <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><rect x="4" y="3" width="2.6" height="10" rx="0.8" fill="#9BA3AE"></rect><rect x="9.4" y="3" width="2.6" height="10" rx="0.8" fill="#9BA3AE"></rect></svg>
+                <sc-if value="{{t.large}}" hint-placeholder-val="{{true}}">
+                  <div style="font-size: 11px; font-weight: 600; color: #C9CED6">{{t.offTitle}}</div>
+                  <div style="font-size: 10px; color: #8A929D">{{t.offSub}}</div>
+                </sc-if>
+              </div>
+            </sc-if>
+            <sc-if value="{{t.large}}" hint-placeholder-val="{{true}}">
+              <div style="position: absolute; left: 4px; top: 4px; padding: 1px 4px; border-radius: 3px; background: rgba(11,12,14,.72); font: 500 9px 'IBM Plex Mono', monospace; color: {{t.badgeColor}}">{{t.badge}}</div>
+              <sc-if value="{{t.editing}}" hint-placeholder-val="{{false}}">
+                <div style="position: absolute; right: 4px; top: 4px; padding: 1px 4px; border-radius: 3px; background: #E8A33D; font: 600 9px 'IBM Plex Sans', sans-serif; color: #141413; letter-spacing: .04em">EDITING</div>
+              </sc-if>
+              <div style="position: absolute; right: 4px; bottom: 3px; font: 500 9px 'IBM Plex Mono', monospace; color: #C9CED6; text-shadow: 0 0 3px #000">{{t.time}}</div>
+            </sc-if>
+            <sc-if value="{{t.compact}}" hint-placeholder-val="{{false}}">
+              <span title="{{t.state}}" style="position: absolute; left: 3px; top: 3px; width: 7px; height: 7px; border-radius: 4px; box-shadow: 0 0 0 1.5px rgba(11,12,14,.8); background: {{t.dot}}"></span>
+            </sc-if>
+          </div>
+          <figcaption style="margin-top: 4px; min-width: 0; position: relative">
+            <div style="display: flex; align-items: center; gap: 5px; min-width: 0">
+              <svg width="7" height="11" viewBox="0 0 7 11" aria-hidden="true" style="flex: none"><g fill="#5C646F"><circle cx="1.5" cy="1.5" r="1.1"></circle><circle cx="5.5" cy="1.5" r="1.1"></circle><circle cx="1.5" cy="5.5" r="1.1"></circle><circle cx="5.5" cy="5.5" r="1.1"></circle><circle cx="1.5" cy="9.5" r="1.1"></circle><circle cx="5.5" cy="9.5" r="1.1"></circle></g></svg>
+              <sc-if value="{{t.large}}" hint-placeholder-val="{{true}}">
+                <span style="width: 7px; height: 7px; flex: none; border-radius: 4px; background: {{t.dot}}"></span>
+              </sc-if>
+              <span title="{{t.fullName}}" style="{{t.nameStyle}}">{{t.name}}</span>
+              <button class="btn" type="button" aria-label="{{t.menuLabel}}" aria-haspopup="menu" aria-expanded="{{t.menuOpen}}" tabindex="{{t.tab}}" onClick="{{t.toggleMenu}}" style="margin-left: auto; flex: none; width: 18px; height: 18px; padding: 0; border: none; border-radius: 3px; background: {{t.menuBtnBg}}; color: #C9CED6; display: flex; align-items: center; justify-content: center"><svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><g fill="currentColor"><circle cx="2.5" cy="6" r="1.1"></circle><circle cx="6" cy="6" r="1.1"></circle><circle cx="9.5" cy="6" r="1.1"></circle></g></svg></button>
+            </div>
+            <sc-if value="{{t.large}}" hint-placeholder-val="{{true}}">
+              <div style="font-size: 11px; color: #C9CED6; padding-left: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis" title="{{t.feed}}">{{t.feed}}</div>
+              <div style="font: 500 10px 'IBM Plex Mono', monospace; color: {{t.stateColor}}; padding-left: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis" title="{{t.state}}">{{t.state}}</div>
+            </sc-if>
+            <sc-if value="{{t.showMenu}}" hint-placeholder-val="{{false}}">
+              <div role="menu" aria-label="{{t.menuLabel}}" style="{{t.menuStyle}}">
+                <button class="btn" type="button" role="menuitem" onClick="{{t.menuEdit}}" style="{{menuItemStyle}}">Edit settings</button>
+                <button class="btn" type="button" role="menuitem" onClick="{{t.menuSend}}" style="{{menuItemStyle}}">Send to surface…</button>
+                <sc-if value="{{t.hasFace}}" hint-placeholder-val="{{false}}">
+                  <button class="btn" type="button" role="menuitem" onClick="{{t.menuRaw}}" style="{{menuItemStyle}}">Show raw output</button>
+                </sc-if>
+              </div>
+            </sc-if>
+          </figcaption>
+        </figure>
+      </sc-for>
+      </div>
+     </div>
+    </div>
+    <div style="padding: 4px 12px 10px; font-size: 11px; color: #8A929D; line-height: 1.45">{{previewNote}}</div>
+  </section>
+
+  <!-- 2 · Which camera is being edited (explicit, separate from the monitors) -->
+  <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 14px 0 10px">
+    <span id="vc_cam_lbl" style="font-size: 12px; color: #9BA3AE">Settings for</span>
+    <div role="radiogroup" aria-labelledby="vc_cam_lbl" style="display: flex; gap: 4px; flex-wrap: wrap">
+      <sc-for list="{{camButtons}}" as="b" hint-placeholder-count="4">
+        <button class="btn" type="button" role="radio" aria-checked="{{b.on}}" title="{{b.help}}" onClick="{{b.pick}}" style="{{b.style}}"><span style="width: 6px; height: 6px; border-radius: 3px; background: {{b.dot}}"></span>{{b.label}}</button>
+      </sc-for>
+    </div>
+    <div style="width: 156px; position: relative">
+      <label for="vc_add" style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">Add a camera</label>
+      <select id="vc_add" class="sel" value="" onChange="{{addPick}}">
+        <option value="">{{addLabel}}</option>
+        <option value="object">From selected object</option>
+        <option value="virtual">Virtual cam at my view</option>
+        <option value="ots">OTS pair from Subjects A/B</option>
+        <option value="lens">Surface lens from selected face</option>
+      </select>
+      <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true" style="position: absolute; right: 8px; top: 7px; pointer-events: none"><path d="M2 3.5l3 3 3-3" stroke="#9BA3AE" stroke-width="1.4" fill="none"></path></svg>
+    </div>
+    <sc-if value="{{hasCam}}" hint-placeholder-val="{{true}}">
+      <button class="btn" type="button" onClick="{{removeCam}}" style="height: 24px; padding: 0 10px; border: 1px solid #343A42; border-radius: 4px; background: transparent; color: #C9CED6; font-size: 12px">Remove capture</button>
+    </sc-if>
+  </div>
+
+  <sc-if value="{{hasCam}}" hint-placeholder-val="{{true}}">
+    <div>
+      <!-- 3 · Signal chain: Source → Lens → Look → Output → Rate -->
+      <div role="tablist" aria-label="Camera settings, in signal order" style="display: flex; align-items: center; gap: 4px; flex-wrap: wrap; margin-bottom: 8px">
+        <sc-for list="{{chips}}" as="ch" hint-placeholder-count="5">
+          <button class="btn" type="button" role="tab" aria-selected="{{ch.current}}" onClick="{{ch.pick}}" style="{{ch.style}}"><span style="{{ch.numStyle}}">{{ch.num}}</span>{{ch.label}}</button>
+          <sc-if value="{{ch.arrow}}" hint-placeholder-val="{{true}}">
+            <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M3.5 2l3 3-3 3" stroke="#5C646F" stroke-width="1.4" fill="none"></path></svg>
+          </sc-if>
+        </sc-for>
+      </div>
+      <div style="font-size: 12px; color: #9BA3AE; margin-bottom: 10px; line-height: 1.45">{{secIntro}}</div>
+
+      <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; align-items: start">
+        <sc-for list="{{cards}}" as="c" hint-placeholder-count="2">
+          <section aria-label="{{c.title}}" style="{{c.style}}">
+            <div style="height: 36px; flex: none; display: flex; align-items: center; gap: 8px; padding: 0 8px 0 12px; border-bottom: 1px solid #2A2F36">
+              <div style="flex: 1; min-width: 0; font-size: 13px; font-weight: 600; letter-spacing: .01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{c.title}}</div>
+              <span title="{{c.scopeHelp}}" style="{{c.scopeStyle}}">{{c.scope}}</span>
+              <sc-if value="{{c.canReset}}" hint-placeholder-val="{{true}}">
+                <button class="btn" type="button" aria-label="{{c.resetLabel}}" title="{{c.resetLabel}}" onClick="{{c.resetAll}}" style="width: 24px; height: 24px; border: none; background: transparent; color: #8A929D; display: flex; align-items: center; justify-content: center"><svg width="13" height="13" viewBox="0 0 14 14" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M2.5 7a4.5 4.5 0 1 0 1.4-3.3"></path><path d="M2.3 1.8v2.3h2.3"></path></svg></button>
+              </sc-if>
+            </div>
+            <div style="padding: 6px 8px 8px 12px; display: flex; flex-direction: column; gap: 2px">
+
+              <sc-if value="{{c.isFaceList}}" hint-placeholder-val="{{false}}">
+                <div style="display: flex; flex-direction: column; gap: 4px; padding: 2px 4px 4px 0">
+                  <div role="radiogroup" aria-label="Choose what the monitor shows and which face to edit" style="display: flex; flex-direction: column; gap: 3px">
+                    <sc-for list="{{faceRows}}" as="f" hint-placeholder-count="3">
+                      <button class="btn" type="button" role="radio" aria-checked="{{f.on}}" title="{{f.help}}" onClick="{{f.pick}}" onDragOver="{{f.over}}" onDragLeave="{{f.leave}}" onDrop="{{f.drop}}" style="{{f.style}}">
+                        <span style="{{f.radio}}"></span>
+                        <span style="min-width: 0; flex: 1; display: flex; flex-direction: column; gap: 1px; text-align: left">
+                          <span style="font-size: 12px; font-weight: 600; color: #E6E8EB; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{f.name}}</span>
+                          <span style="font: 500 11px 'IBM Plex Mono', monospace; color: #9BA3AE; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{f.meta}}</span>
+                        </span>
+                        <span style="font-size: 11px; color: {{f.visColor}}; white-space: nowrap">{{f.vis}}</span>
+                      </button>
+                    </sc-for>
+                  </div>
+                  <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-top: 4px">
+                    <button class="btn" type="button" title="Bind the face you have selected in-world to this camera. No extra scene render." onClick="{{addFace}}" style="{{smallBtn}}">Add selected face</button>
+                    <div style="width: 84px; position: relative">
+                      <label for="vc_newfit" style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">Mapping for the new face</label>
+                      <select id="vc_newfit" class="sel" value="{{newFit}}" onChange="{{setNewFit}}">
+                        <option value="Fit">Fit</option>
+                        <option value="Fill">Fill</option>
+                        <option value="Stretch">Stretch</option>
+                      </select>
+                      <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true" style="position: absolute; right: 8px; top: 7px; pointer-events: none"><path d="M2 3.5l3 3 3-3" stroke="#9BA3AE" stroke-width="1.4" fill="none"></path></svg>
+                    </div>
+                    <button class="btn" type="button" title="Create a prim-free virtual screen for this feed at your current view. Needs no rezzed object; works in no-rez parcels." onClick="{{addScreen}}" style="{{smallBtn}}">Add virtual screen</button>
+                    <div style="flex: 1"></div>
+                    <span style="font: 500 11px 'IBM Plex Mono', monospace; color: #8A929D">{{faceCount}}</span>
+                  </div>
+                </div>
+              </sc-if>
+
+              <sc-for list="{{c.rows}}" as="r" hint-placeholder-count="4">
+                <div title="{{r.help}}" style="display: grid; grid-template-columns: 100px minmax(0, 1fr) 52px 20px; column-gap: 6px; align-items: center; min-height: 28px">
+                  <sc-if value="{{r.showLabel}}" hint-placeholder-val="{{true}}">
+                    <label for="{{r.id}}" style="font-size: 12px; color: #C9CED6; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{r.label}}</label>
+                  </sc-if>
+                  <sc-if value="{{r.isSlider}}" hint-placeholder-val="{{true}}">
+                    <input id="{{r.id}}" class="rng" type="range" min="{{r.min}}" max="{{r.max}}" step="{{r.step}}" value="{{r.value}}" onInput="{{r.change}}" style="--p: {{r.pct}}%" />
+                    <div style="font: 500 12px 'IBM Plex Mono', monospace; color: #E6E8EB; text-align: right; white-space: nowrap; overflow: hidden">{{r.display}}</div>
+                  </sc-if>
+                  <sc-if value="{{r.isToggle}}" hint-placeholder-val="{{false}}">
+                    <div style="display: flex; align-items: center">
+                      <button id="{{r.id}}" class="btn" type="button" aria-pressed="{{r.on}}" aria-label="{{r.label}}" onClick="{{r.toggle}}" style="width: 34px; height: 18px; border-radius: 9px; border: none; padding: 0; position: relative; background: {{r.trackBg}}"><span style="position: absolute; top: 2px; left: {{r.knobLeft}}; width: 14px; height: 14px; border-radius: 7px; background: {{r.knobBg}}"></span></button>
+                    </div>
+                    <div style="font-size: 12px; color: #9BA3AE; text-align: right">{{r.display}}</div>
+                  </sc-if>
+                  <sc-if value="{{r.isCombo}}" hint-placeholder-val="{{false}}">
+                    <div style="grid-column: span 2; position: relative">
+                      <select id="{{r.id}}" class="sel" value="{{r.value}}" onChange="{{r.change}}">
+                        <sc-for list="{{r.options}}" as="o" hint-placeholder-count="3">
+                          <option value="{{o}}">{{o}}</option>
+                        </sc-for>
+                      </select>
+                      <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true" style="position: absolute; right: 8px; top: 7px; pointer-events: none"><path d="M2 3.5l3 3 3-3" stroke="#9BA3AE" stroke-width="1.4" fill="none"></path></svg>
+                    </div>
+                  </sc-if>
+                  <sc-if value="{{r.isSeg}}" hint-placeholder-val="{{false}}">
+                    <div id="{{r.id}}" role="radiogroup" aria-label="{{r.label}}" style="grid-column: span 2; display: flex; gap: 2px; min-width: 0">
+                      <sc-for list="{{r.opts}}" as="o" hint-placeholder-count="3">
+                        <button class="btn" type="button" role="radio" aria-checked="{{o.on}}" onClick="{{o.pick}}" style="{{o.style}}">{{o.label}}</button>
+                      </sc-for>
+                    </div>
+                  </sc-if>
+                  <sc-if value="{{r.isActions}}" hint-placeholder-val="{{false}}">
+                    <div style="grid-column: 1 / span 3; display: flex; gap: 6px; flex-wrap: wrap; padding: 2px 0">
+                      <sc-for list="{{r.btns}}" as="b" hint-placeholder-count="2">
+                        <button class="btn" type="button" title="{{b.help}}" onClick="{{b.press}}" style="{{b.style}}">{{b.label}}</button>
+                      </sc-for>
+                    </div>
+                  </sc-if>
+                  <sc-if value="{{r.isReadout}}" hint-placeholder-val="{{false}}">
+                    <div id="{{r.id}}" style="grid-column: span 2; font: 500 12px 'IBM Plex Mono', monospace; color: {{r.readColor}}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{r.display}}</div>
+                  </sc-if>
+                  <sc-if value="{{r.isNote}}" hint-placeholder-val="{{false}}">
+                    <div style="grid-column: 1 / -1; font-size: 11px; color: #8A929D; line-height: 1.45; padding: 2px 0 4px">{{r.display}}</div>
+                  </sc-if>
+                  <sc-if value="{{r.canReset}}" hint-placeholder-val="{{true}}">
+                    <button class="btn" type="button" aria-label="{{r.resetLabel}}" onClick="{{r.reset}}" style="width: 20px; height: 20px; border: none; background: transparent; color: {{r.resetColor}}; padding: 0; display: flex; align-items: center; justify-content: center"><svg width="11" height="11" viewBox="0 0 14 14" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2.5 7a4.5 4.5 0 1 0 1.4-3.3"></path><path d="M2.3 1.8v2.3h2.3"></path></svg></button>
+                  </sc-if>
+                  <sc-if value="{{r.padReset}}" hint-placeholder-val="{{false}}"><span></span></sc-if>
+                </div>
+              </sc-for>
+
+              <sc-if value="{{c.hasAdv}}" hint-placeholder-val="{{false}}">
+                <button class="btn" type="button" aria-expanded="{{c.advOpen}}" onClick="{{c.toggleAdv}}" style="margin-top: 4px; align-self: flex-start; height: 22px; padding: 0 6px; border: none; background: transparent; color: #9BA3AE; font-size: 12px; display: flex; align-items: center; gap: 4px"><svg width="9" height="9" viewBox="0 0 10 10" aria-hidden="true" style="transform: rotate({{c.advRot}}deg)"><path d="M3.5 2l3 3-3 3" stroke="currentColor" stroke-width="1.5" fill="none"></path></svg>{{c.advLabel}}</button>
+              </sc-if>
+            </div>
+          </section>
+        </sc-for>
+      </div>
+    </div>
+  </sc-if>
+
+  <div role="status" style="margin-top: 12px; font-size: 12px; color: #9BA3AE">{{status}}</div>
+
+  <!-- Drop bar (stands in for the 3D world while dragging a monitor) + toast; sticks to the bottom of the page -->
+  <div style="position: sticky; bottom: 0; z-index: 5; margin: 0 -16px -16px; padding: 0 16px 12px; pointer-events: none">
+    <sc-if value="{{toast}}" hint-placeholder-val="{{false}}">
+      <div role="status" style="display: flex; justify-content: flex-end; margin-bottom: 8px">
+        <div style="pointer-events: auto; padding: 6px 12px; border-radius: 14px; background: #E8A33D; color: #141413; font-size: 12px; font-weight: 600; box-shadow: 0 4px 14px rgba(0,0,0,.45)">{{toast}}</div>
+      </div>
+    </sc-if>
+    <sc-if value="{{showDropBar}}" hint-placeholder-val="{{false}}">
+      <div role="region" aria-label="Send to surface" onDragOver="{{barOver}}" onDragLeave="{{barLeave}}" onDrop="{{barDrop}}" style="{{barStyle}}">
+        <div style="display: flex; align-items: center; gap: 10px">
+          <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="#E8A33D" stroke-width="1.6" stroke-linejoin="round"><path d="M3 8l9-5 9 5-9 5z"></path><path d="M3 8v8l9 5 9-5V8"></path><path d="M12 13v8"></path></svg>
+          <div style="min-width: 0; flex: 1">
+            <div style="font-size: 13px; font-weight: 600; color: #F1F2F4">{{barText}}</div>
+            <div style="font-size: 11px; color: #C9CED6">{{barSub}}</div>
+          </div>
+        </div>
+        <sc-if value="{{sendMode}}" hint-placeholder-val="{{false}}">
+          <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-top: 8px">
+            <button class="btn" type="button" onClick="{{sendBind}}" style="height: 24px; padding: 0 10px; border: 1px solid #E8A33D; border-radius: 4px; background: #E8A33D; color: #141413; font-size: 12px; font-weight: 600">Use selected in-world face</button>
+            <div style="width: 210px; position: relative">
+              <label for="vc_reassign" style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">Move an existing face to this camera</label>
+              <select id="vc_reassign" class="sel" value="" onChange="{{sendReassign}}">
+                <option value="">Move an existing face here…</option>
+                <sc-for list="{{reassignOpts}}" as="o" hint-placeholder-count="3">
+                  <option value="{{o.id}}">{{o.label}}</option>
+                </sc-for>
+              </select>
+              <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true" style="position: absolute; right: 8px; top: 7px; pointer-events: none"><path d="M2 3.5l3 3 3-3" stroke="#9BA3AE" stroke-width="1.4" fill="none"></path></svg>
+            </div>
+            <button class="btn" type="button" onClick="{{sendCancel}}" style="height: 24px; padding: 0 10px; border: 1px solid #343A42; border-radius: 4px; background: transparent; color: #C9CED6; font-size: 12px">Cancel</button>
+          </div>
+        </sc-if>
+      </div>
+    </sc-if>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":760,"height":560}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.timer = null;
+    // Defaults mirror the viewer: CameraSettings / BonePovSettings / CaptureRateSettings,
+    // DisplaySettings / ScreenEffects, and the Prism* settings.xml controls.
+    this.D = {
+      cam: {
+        eye_offset_x: 0, eye_offset_y: 0, eye_offset_z: 0,
+        bone_pov_anchor: 'Me', bone_pov_joint: 'Eyeline', bone_pov_aim: 'Full-follow', bone_pov_roll: 'Horizon-lock',
+        bone_pov_smoothing: 0.15, bone_pov_fov: 60, bone_pov_offset_x: 0, bone_pov_offset_y: 0, bone_pov_offset_z: 0,
+        bone_pov_trim_pitch: 0, bone_pov_trim_yaw: 0, bone_pov_scale_aware: true,
+        fov_mode: 'Fixed vertical FOV', vertical_fov: 60, near_clip: 0.05, far_clip: 256,
+        show_guide: false, guide_thirds: true, guide_uproll: true, guide_crosshair: false, guide_clipmarkers: true,
+        exposure_bias: 0, film_grain: 0, chromatic_aberration: 0, crt_scanlines: 0,
+        output_aspect: '16:9', custom_aspect: 1.778,
+        rate_mode: 'Automatic', target_fps: 30
+      },
+      face: {
+        display_gate_source: false, display_fit: 'Fit', anchor_x: 0.5, anchor_y: 0.5, bar_red: 0, bar_green: 0, bar_blue: 0,
+        screen_height: 0.9, screen_aspect: '16:9',
+        effect_scanlines: 0, effect_scanline_count: 350, effect_scanline_depth: 45, effect_scanline_sharpness: 0, effect_scanline_thickness: 50,
+        effect_pixelate: 0, effect_grayscale: 0, effect_sepia: 0, effect_chroma_bleed: 0, effect_vertical_roll: 0, effect_roll_speed: 0.2,
+        effect_tracking: 0, effect_static: 0, effect_flicker: 0, effect_interlace: 0, effect_vignette: 0, effect_dropout: 0,
+        effect_brightness: 0, effect_flip_h: false, effect_flip_v: false, effect_rotate90: false, effect_sheen: 0
+      },
+      global: {
+        adaptive_performance: true, protected_main_fps: '30 FPS', total_capture_budget: '30 attempts/s', quality_ceiling: 1, lens_zoom: 2
+      }
+    };
+    this.PRESETS = {
+      'Old CRT': { effect_scanlines: 0.6, effect_vignette: 0.4, effect_flicker: 0.15 },
+      'Broken TV': { effect_grayscale: 1, effect_static: 0.35, effect_vertical_roll: 0.5, effect_roll_speed: 0.3, effect_scanlines: 0.8, effect_dropout: 0.4 },
+      'VHS Tape': { effect_tracking: 0.45, effect_chroma_bleed: 0.6, effect_interlace: 0.3, effect_flicker: 0.2 },
+      'Security Feed': { effect_grayscale: 1, effect_scanlines: 0.4, effect_static: 0.15, effect_vignette: 0.5, effect_pixelate: 0.2 }
+    };
+    this.state = {
+      enabled: true,
+      previewsOn: true,
+      previewRate: 1,
+      sel: 'c1',
+      section: 'source',
+      adv: {},
+      g: {},
+      newFit: 'Fit',
+      tileMode: null,   // null = automatic (Large up to 4 cameras, Compact for 5-8)
+      page: 0,          // Large mode with more than 4 cameras: 0 = Cams 1-4, 1 = Cams 5-8
+      menuFor: null,    // camera id whose ⋯ menu is open
+      drag: null,       // camera id being dragged
+      send: null,       // camera id in keyboard "Send to surface…" mode
+      dropHover: '',    // 'bar' or a face id under the pointer
+      toast: '',
+      nextN: 5,
+      nextFace: 5,
+      frame: 0,
+      stamp: Date.now(),
+      status: 'Monitors are previews only. Pick the camera to edit with “Settings for”.',
+      selFace: { c1: 'raw', c2: 'f3', c3: 'raw', c4: 'raw' },
+      cams: [
+        { id: 'c1', n: 1, name: 'Street wide', shot: 'street', type: 'object', bound: 'Dolly rig (prim)', pos: '', ent: 24, obs: 23.6, v: { vertical_fov: 55, rate_mode: 'Target FPS', target_fps: 24 } },
+        { id: 'c2', n: 2, name: 'Close-up', shot: 'close', type: 'virtual', bound: '', pos: '128.4, 96.2, 23.7', ent: 24, obs: 24, v: { vertical_fov: 22, film_grain: 0.25, rate_mode: 'Target FPS', target_fps: 24 } },
+        { id: 'c3', n: 3, name: 'Hand POV', shot: 'hand', type: 'skeleton', bound: '', pos: '', ent: 15, obs: 14.8, v: { bone_pov_anchor: 'Subject A', bone_pov_joint: 'mWristRight', bone_pov_aim: 'Stabilized', bone_pov_fov: 64 } },
+        { id: 'c4', n: 4, name: 'Overhead drift', shot: 'over', type: 'virtual', bound: '', pos: '140.0, 102.5, 61.0', ent: 0, obs: 0, v: { vertical_fov: 70, exposure_bias: -0.3 } }
+      ],
+      faces: [
+        { id: 'f1', cam: 'c1', name: 'Lobby TV', kind: 'prim', aspect: 16 / 9, vis: 'Visible', v: {} },
+        { id: 'f2', cam: 'c1', name: 'Kiosk (portrait)', kind: 'prim', aspect: 9 / 16, vis: 'Visible', v: { display_fit: 'Fill', anchor_x: 0.6 } },
+        { id: 'f3', cam: 'c2', name: 'Bar monitor', kind: 'prim', aspect: 4 / 3, vis: 'Visible', v: { effect_scanlines: 0.6, effect_vignette: 0.4, effect_flicker: 0.15 } },
+        { id: 'f4', cam: 'c3', name: 'Virtual screen 1', kind: 'virtual', aspect: 16 / 9, vis: 'Offscreen', v: { display_fit: 'Fill' } }
+      ]
+    };
+  }
+
+  componentDidMount() {
+    this.schedule(this.state.enabled && this.state.previewsOn, this.state.previewRate);
+  }
+
+  componentWillUnmount() {
+    if (this.timer) clearInterval(this.timer);
+    this.timer = null;
+    if (this.toastTimer) clearTimeout(this.toastTimer);
+    if (this.dragTimer) clearTimeout(this.dragTimer);
+    this.toastTimer = null;
+    this.dragTimer = null;
+  }
+
+  showToast(text) {
+    if (this.toastTimer) clearTimeout(this.toastTimer);
+    this.setState({ toast: text });
+    this.toastTimer = setTimeout(() => { this.toastTimer = null; this.setState({ toast: '' }); }, 2400);
+  }
+
+  // ---------- drag a monitor onto a surface ----------
+  // Real build: a new LLToolDragAndDrop cargo type (Prism capture) whose drop on a
+  // prim face calls LLPrismLens::addSelectedDisplay-style binding for that face.
+  dragStart(cam, e) {
+    try { e.dataTransfer.setData('text/plain', 'vcam:' + cam.id); e.dataTransfer.effectAllowed = 'copyMove'; } catch (err) { /* older engines */ }
+    // Defer the re-render: changing the DOM inside dragstart can cancel the drag.
+    if (this.dragTimer) clearTimeout(this.dragTimer);
+    this.dragTimer = setTimeout(() => { this.dragTimer = null; this.setState({ drag: cam.id, menuFor: null, send: null }); }, 0);
+  }
+
+  dragCamId(e) {
+    if (this.state.drag) return this.state.drag;
+    try { const d = e.dataTransfer.getData('text/plain'); if (d && d.indexOf('vcam:') === 0) return d.slice(5); } catch (err) { /* ignore */ }
+    return this.state.send;
+  }
+
+  bindDropped(camId) {
+    const st = this.state;
+    const cam = st.cams.find((c) => c.id === camId);
+    if (!cam) return;
+    if (st.faces.length >= 16) {
+      this.setState({ drag: null, send: null, dropHover: '', status: 'Sixteen faces is the maximum across all cameras. Remove one first.' });
+      return;
+    }
+    const n = st.nextFace;
+    const taken = st.faces.filter((f) => f.name.indexOf('Prim face (dropped)') === 0).length;
+    const face = { id: 'f' + n, cam: cam.id, name: 'Prim face (dropped)' + (taken ? ' ' + (taken + 1) : ''), kind: 'prim', aspect: 16 / 9, vis: 'Visible', v: { display_fit: st.newFit } };
+    this.setState({
+      faces: st.faces.concat([face]), nextFace: n + 1, sel: cam.id, section: 'output',
+      selFace: Object.assign({}, st.selFace, { [cam.id]: face.id }),
+      drag: null, send: null, dropHover: '',
+      status: 'Bound ' + face.name + ' to Cam ' + cam.n + '. Its monitor now shows that face.'
+    });
+    this.showToast('Cam ' + cam.n + ' → new face');
+  }
+
+  reassignFace(faceId, camId) {
+    const st = this.state;
+    const cam = st.cams.find((c) => c.id === camId);
+    const face = st.faces.find((f) => f.id === faceId);
+    if (!cam || !face) return;
+    if (face.cam === cam.id) {
+      this.setState({ drag: null, send: null, dropHover: '', status: face.name + ' already shows Cam ' + cam.n + '.' });
+      return;
+    }
+    const from = st.cams.find((c) => c.id === face.cam);
+    const sf = Object.assign({}, st.selFace);
+    if (from && sf[from.id] === face.id) sf[from.id] = 'raw';
+    sf[cam.id] = face.id;
+    this.setState({
+      faces: st.faces.map((f) => (f.id === face.id ? Object.assign({}, f, { cam: cam.id }) : f)),
+      sel: cam.id, section: 'output', selFace: sf, drag: null, send: null, dropHover: '',
+      status: 'Moved ' + face.name + (from ? ' from Cam ' + from.n : '') + ' to Cam ' + cam.n + '. A face shows exactly one camera.'
+    });
+    this.showToast('Cam ' + cam.n + ' → ' + face.name);
+  }
+
+  // One shared preview clock: honours the master Previews switch and the shared speed.
+  schedule(on, rate) {
+    if (this.timer) clearInterval(this.timer);
+    this.timer = null;
+    if (!on) return;
+    this.timer = setInterval(() => {
+      this.setState({ frame: this.state.frame + 1, stamp: Date.now() });
+    }, Math.round(1000 / rate));
+  }
+
+  // ---------- value plumbing ----------
+  pick(obj, id, def) { return (obj && obj[id] !== undefined) ? obj[id] : def; }
+  cv(cam, id) { return this.pick(cam.v, id, this.D.cam[id]); }
+  fv(face, id) { return face ? this.pick(face.v, id, this.D.face[id]) : this.D.face[id]; }
+  gv(id) { return this.pick(this.state.g, id, this.D.global[id]); }
+
+  getV(sc, ctx, id) {
+    if (sc === 'face') return this.fv(ctx.face, id);
+    if (sc === 'global') return this.gv(id);
+    return this.cv(ctx.cam, id);
+  }
+
+  setV(sc, ctx, id, value) {
+    const st = this.state;
+    if (sc === 'global') {
+      this.setState({ g: Object.assign({}, st.g, { [id]: value }) });
+    } else if (sc === 'face') {
+      if (!ctx.face) return;
+      this.setState({ faces: st.faces.map((f) => (f.id === ctx.face.id ? Object.assign({}, f, { v: Object.assign({}, f.v, { [id]: value }) }) : f)) });
+    } else {
+      this.setState({ cams: st.cams.map((c) => (c.id === ctx.cam.id ? Object.assign({}, c, { v: Object.assign({}, c.v, { [id]: value }) }) : c)) });
+    }
+  }
+
+  setMany(sc, ctx, obj, clearKeys) {
+    const st = this.state;
+    const apply = (v) => {
+      const nv = Object.assign({}, v);
+      (clearKeys || []).forEach((k) => { delete nv[k]; });
+      return Object.assign(nv, obj);
+    };
+    if (sc === 'global') this.setState({ g: apply(st.g) });
+    else if (sc === 'face') this.setState({ faces: st.faces.map((f) => (ctx.face && f.id === ctx.face.id ? Object.assign({}, f, { v: apply(f.v) }) : f)) });
+    else this.setState({ cams: st.cams.map((c) => (c.id === ctx.cam.id ? Object.assign({}, c, { v: apply(c.v) }) : c)) });
+  }
+
+  // ---------- helpers ----------
+  rnd(n) { const x = Math.sin(n * 12.9898 + 4.1414) * 43758.5453; return x - Math.floor(x); }
+
+  fmtTime(ms) {
+    const d = new Date(ms);
+    let h = d.getHours();
+    const ap = h >= 12 ? 'PM' : 'AM';
+    h = h % 12; if (h === 0) h = 12;
+    const p = (n) => (n < 10 ? '0' : '') + n;
+    return h + ':' + p(d.getMinutes()) + ':' + p(d.getSeconds()) + ' ' + ap;
+  }
+
+  lensMm(vf) { return Math.round(24 / (2 * Math.tan(Number(vf) * Math.PI / 360))); }
+
+  aspectLabel(a) {
+    const known = [[16 / 9, '16:9'], [9 / 16, '9:16'], [4 / 3, '4:3'], [1, '1:1'], [2.39, '2.39:1']];
+    for (let i = 0; i < known.length; i++) if (Math.abs(known[i][0] - a) < 0.01) return known[i][1];
+    return a.toFixed(2) + ':1';
+  }
+
+  camAspect(cam) {
+    const a = this.cv(cam, 'output_aspect');
+    if (a === '4:3') return 4 / 3;
+    if (a === '1:1') return 1;
+    if (a === 'Custom') return Math.max(0.25, Number(this.cv(cam, 'custom_aspect')));
+    return 16 / 9;
+  }
+
+  camFov(cam) {
+    if (cam.type === 'skeleton') return Number(this.cv(cam, 'bone_pov_fov'));
+    if (this.cv(cam, 'fov_mode') === 'Follow projector') return 60;
+    return Number(this.cv(cam, 'vertical_fov'));
+  }
+
+  effectKeys() { return Object.keys(this.D.face).filter((k) => k.indexOf('effect_') === 0); }
+
+  presetName(face) {
+    const keys = this.effectKeys();
+    const val = (k) => this.fv(face, k);
+    const matches = (p) => keys.every((k) => {
+      const want = p[k] !== undefined ? p[k] : this.D.face[k];
+      return typeof want === 'number' ? Math.abs(Number(val(k)) - want) < 0.001 : val(k) === want;
+    });
+    if (matches({})) return 'Clean';
+    const names = Object.keys(this.PRESETS);
+    for (let i = 0; i < names.length; i++) if (matches(this.PRESETS[names[i]])) return names[i];
+    return 'Custom';
+  }
+
+  visibleFaces(cam) { return this.state.faces.filter((f) => f.cam === cam.id && f.vis === 'Visible'); }
+
+  // What the scheduler would give this camera right now (mock of Requested / Entitled / Observed).
+  camRates(cam) {
+    const st = this.state;
+    const req = this.cv(cam, 'rate_mode') === 'Target FPS' ? Number(this.cv(cam, 'target_fps')) : 30;
+    const reqText = this.cv(cam, 'rate_mode') === 'Target FPS' ? String(Number(this.cv(cam, 'target_fps'))) : 'Auto';
+    if (!st.enabled) return { req, reqText, ent: 0, obs: 0, mode: 'paused' };
+    if (this.visibleFaces(cam).length > 0) {
+      const ent = Math.min(req, cam.ent || req);
+      return { req, reqText, ent, obs: Math.max(0, Math.min(ent, cam.obs || ent)), mode: 'live' };
+    }
+    if (st.previewsOn) return { req, reqText, ent: st.previewRate, obs: st.previewRate, mode: 'preview' };
+    return { req, reqText, ent: 0, obs: 0, mode: 'idle' };
+  }
+
+  segStyle(on) {
+    return 'flex: 1 1 auto; min-width: 0; height: 24px; padding: 0 8px; border-radius: 4px; font-size: 12px; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; border: 1px solid ' + (on ? '#E8A33D' : '#343A42') + '; background: ' + (on ? '#2E2A22' : '#1F2329') + '; color: ' + (on ? '#F1F2F4' : '#9BA3AE') + '; font-weight: ' + (on ? 600 : 400);
+  }
+
+  btnStyle(active) {
+    return 'height: 24px; padding: 0 10px; border-radius: 4px; font-size: 12px; cursor: pointer; border: 1px solid ' + (active ? '#E8A33D' : '#343A42') + '; background: ' + (active ? '#2E2A22' : '#262A31') + '; color: #E6E8EB';
+  }
+
+  // ---------- actions ----------
+  toggleEnable() {
+    const on = !this.state.enabled;
+    this.setState({ enabled: on, status: on ? 'Virtual Cam is on.' : 'Virtual Cam is off. Nothing renders; cameras and faces stay editable.' });
+    this.schedule(on && this.state.previewsOn, this.state.previewRate);
+  }
+
+  togglePreviews() {
+    const on = !this.state.previewsOn;
+    this.setState({ previewsOn: on, status: on ? 'Monitor previews on at ' + this.state.previewRate + ' fps.' : 'Monitor previews off. No preview rendering; faces in-world keep updating.' });
+    this.schedule(on && this.state.enabled, this.state.previewRate);
+  }
+
+  setRate(rate) {
+    this.setState({ previewRate: rate, status: 'Monitor previews refresh at ' + rate + ' fps.' });
+    this.schedule(this.state.enabled && this.state.previewsOn, rate);
+  }
+
+  setType(cam, type) {
+    const vpatch = type === 'skeleton' ? {} : {};
+    this.setState({
+      cams: this.state.cams.map((c) => (c.id === cam.id ? Object.assign({}, c, { type, v: Object.assign({}, c.v, vpatch), pos: c.pos || '131.2, 98.0, 24.1', bound: c.bound || 'Unbound' }) : c)),
+      status: cam.name + ': source is now ' + (type === 'object' ? 'an object camera.' : type === 'virtual' ? 'a virtual camera (no prim).' : 'a skeleton POV (virtual camera driven by a joint).')
+    });
+  }
+
+  addCam(kind) {
+    const st = this.state;
+    if (!kind) return;
+    const need = kind === 'ots' ? 2 : 1;
+    if (st.cams.length + need > 8) {
+      this.setState({ status: 'Eight captures is the maximum (' + st.cams.length + ' used).' });
+      return;
+    }
+    const mk = (name, shot, type, extra) => Object.assign({ id: 'c' + (st.nextN + extraN), n: st.nextN + extraN, name, shot, type, bound: '', pos: '', ent: 30, obs: 30, v: {} }, extra || {});
+    let extraN = 0;
+    const added = [];
+    if (kind === 'object') added.push(mk('New object cam', 'blank', 'object', { bound: 'Selected object (prim)' }));
+    if (kind === 'virtual') added.push(mk('Virtual view', 'blank', 'virtual', { pos: '131.2, 98.0, 24.1' }));
+    if (kind === 'lens') added.push(mk('Surface lens', 'lens', 'lens', { bound: 'Selected face (aperture)' }));
+    if (kind === 'ots') {
+      added.push(mk('OTS A', 'ots', 'virtual', { pos: '129.6, 97.1, 23.9', v: { vertical_fov: 40 } }));
+      extraN = 1;
+      added.push(mk('OTS B', 'ots', 'virtual', { pos: '133.0, 99.4, 23.9', mirror: true, v: { vertical_fov: 40 } }));
+    }
+    const sf = Object.assign({}, st.selFace);
+    added.forEach((c) => { sf[c.id] = 'raw'; });
+    this.setState({
+      cams: st.cams.concat(added), sel: added[0].id, section: 'source', selFace: sf, nextN: st.nextN + added.length,
+      page: Math.floor(st.cams.length / 4), menuFor: null,
+      status: 'Added ' + added.map((c) => 'Cam ' + c.n).join(' and ') + '. It has no faces yet, so it renders only for its monitor preview.'
+    });
+  }
+
+  removeCam() {
+    const st = this.state;
+    const cam = st.cams.find((c) => c.id === st.sel);
+    if (!cam) return;
+    const rest = st.cams.filter((c) => c.id !== cam.id);
+    this.setState({
+      cams: rest, faces: st.faces.filter((f) => f.cam !== cam.id), sel: rest.length ? rest[0].id : '',
+      menuFor: null, send: st.send === cam.id ? null : st.send,
+      status: 'Removed Cam ' + cam.n + ' and its face bindings.'
+    });
+  }
+
+  addFace(cam, virtual) {
+    const st = this.state;
+    if (st.faces.length >= 16) { this.setState({ status: 'Sixteen faces is the maximum across all cameras.' }); return; }
+    const n = st.nextFace;
+    const aspects = [16 / 9, 4 / 3, 1, 2.39];
+    const face = virtual
+      ? { id: 'f' + n, cam: cam.id, name: 'Virtual screen ' + n, kind: 'virtual', aspect: 16 / 9, vis: 'Visible', v: { display_fit: st.newFit } }
+      : { id: 'f' + n, cam: cam.id, name: 'Face ' + n + ' (selected prim)', kind: 'prim', aspect: aspects[n % aspects.length], vis: 'Visible', v: { display_fit: st.newFit } };
+    this.setState({
+      faces: st.faces.concat([face]), nextFace: n + 1, selFace: Object.assign({}, st.selFace, { [cam.id]: face.id }),
+      status: 'Added ' + face.name + ' to Cam ' + cam.n + '. Its monitor now shows that face.'
+    });
+  }
+
+  removeFace(cam, face) {
+    const st = this.state;
+    this.setState({
+      faces: st.faces.filter((f) => f.id !== face.id), selFace: Object.assign({}, st.selFace, { [cam.id]: 'raw' }),
+      status: 'Removed ' + face.name + ' from Cam ' + cam.n + '.'
+    });
+  }
+
+  // ---------- one row of the 100 | control | 52 | 20 grid ----------
+  rowView(r, ctx, sc) {
+    const rs = r.sc || sc;
+    const def = this.D[rs] ? this.D[rs][r.id] : undefined;
+    const base = {
+      id: 'vc_' + r.id, label: r.label || '', help: r.help || '',
+      showLabel: !(r.kind === 'actions' || r.kind === 'note'),
+      isSlider: r.kind === 'slider', isToggle: r.kind === 'toggle', isCombo: r.kind === 'combo', isSeg: r.kind === 'seg',
+      isActions: r.kind === 'actions', isReadout: r.kind === 'readout', isNote: r.kind === 'note',
+      canReset: false, padReset: r.kind !== 'note', resetColor: '#5C646F', resetLabel: 'Reset ' + (r.label || ''),
+      min: 0, max: 1, step: 1, value: '', pct: '0', display: '', options: [], opts: [], btns: [],
+      on: 'false', trackBg: '#3A4049', knobBg: '#C9CED6', knobLeft: '2px', readColor: '#C9CED6',
+      change: null, toggle: null, reset: null
+    };
+    const clear = () => this.setMany(rs, ctx, {}, [r.id]);
+    if (r.kind === 'slider') {
+      const v = Number(this.getV(rs, ctx, r.id));
+      const changed = def !== undefined && Math.abs(v - Number(def)) > 1e-9;
+      Object.assign(base, {
+        min: r.min, max: r.max, step: r.step, value: v,
+        pct: ((v - r.min) / (r.max - r.min) * 100).toFixed(1),
+        display: (r.fmt ? r.fmt(v) : v.toFixed(r.dec) + (r.unit || '')),
+        canReset: true, padReset: false, resetColor: changed ? '#E8A33D' : '#5C646F',
+        change: (e) => { this.setV(rs, ctx, r.id, Number(e.target.value)); if (r.after) r.after(Number(e.target.value)); },
+        reset: clear
+      });
+    } else if (r.kind === 'toggle') {
+      const on = !!this.getV(rs, ctx, r.id);
+      Object.assign(base, {
+        on: on ? 'true' : 'false', display: on ? 'On' : 'Off',
+        trackBg: on ? '#E8A33D' : '#3A4049', knobBg: on ? '#141413' : '#C9CED6', knobLeft: on ? '18px' : '2px',
+        canReset: true, padReset: false, resetColor: on !== !!def ? '#E8A33D' : '#5C646F',
+        toggle: () => this.setV(rs, ctx, r.id, !on), reset: clear
+      });
+    } else if (r.kind === 'combo') {
+      const v = r.value !== undefined ? r.value : this.getV(rs, ctx, r.id);
+      Object.assign(base, {
+        value: v, options: r.options,
+        canReset: def !== undefined, padReset: def === undefined, resetColor: v !== def ? '#E8A33D' : '#5C646F',
+        change: (e) => { if (r.onPick) r.onPick(e.target.value); else this.setV(rs, ctx, r.id, e.target.value); },
+        reset: clear
+      });
+    } else if (r.kind === 'seg') {
+      const v = r.value !== undefined ? r.value : this.getV(rs, ctx, r.id);
+      Object.assign(base, {
+        canReset: def !== undefined, padReset: def === undefined, resetColor: v !== def ? '#E8A33D' : '#5C646F', reset: clear,
+        opts: r.options.map((o) => {
+          const ov = typeof o === 'object' ? o.v : o;
+          const ol = typeof o === 'object' ? o.l : o;
+          return {
+            label: ol, on: ov === v ? 'true' : 'false', style: this.segStyle(ov === v),
+            pick: () => { if (r.onPick) r.onPick(ov); else this.setV(rs, ctx, r.id, ov); }
+          };
+        })
+      });
+    } else if (r.kind === 'actions') {
+      base.btns = r.btns.map((b) => ({ label: b.label, help: b.help || '', press: b.act, style: this.btnStyle(!!b.active) }));
+    } else if (r.kind === 'readout') {
+      Object.assign(base, { display: r.text, readColor: r.warn ? '#E8A33D' : (r.ok ? '#8FD9A8' : '#C9CED6') });
+    } else if (r.kind === 'note') {
+      base.display = r.text;
+    }
+    return base;
+  }
+
+  // ---------- the five signal-chain sections ----------
+  cardsFor(cam, face) {
+    const st = this.state;
+    const sec = st.section;
+    const S = (id, label, min, max, step, unit, dec, help, o) => Object.assign({ kind: 'slider', id, label, min, max, step, unit, dec, help }, o || {});
+    const T = (id, label, help, o) => Object.assign({ kind: 'toggle', id, label, help }, o || {});
+    const C = (id, label, options, help, o) => Object.assign({ kind: 'combo', id, label, options, help }, o || {});
+    const G = (id, label, options, help, o) => Object.assign({ kind: 'seg', id, label, options, help }, o || {});
+    const A = (btns) => ({ kind: 'actions', id: 'act', btns });
+    const R = (id, label, text, help, o) => Object.assign({ kind: 'readout', id, label, text, help }, o || {});
+    const N = (text) => ({ kind: 'note', id: 'note', text });
+    const cv = (id) => this.cv(cam, id);
+    const cards = [];
+    const say = (t) => () => this.setState({ status: t });
+
+    if (sec === 'source') {
+      if (cam.type === 'lens') {
+        cards.push({ id: 'src', title: 'Source', scope: 'cam', rows: [
+          R('src_kind', 'Type', 'Surface lens', 'A Surface Lens looks through one aperture face. The type is fixed; add a camera for a different source.'),
+          R('src_bound', 'Aperture', cam.bound, 'The world face this lens looks through.'),
+          A([{ label: 'Locate aperture', help: 'Flash the aperture face in-world.', act: say('Flashing the aperture face of Cam ' + cam.n + ' in-world.') }]),
+          N('A Lens owns exactly one aperture face. Its mapping is fixed; remove the capture to remove that face.')
+        ] });
+      } else {
+        const type = cam.type;
+        const srcRows = [
+          G('src_type', 'Source', [{ v: 'object', l: 'Object' }, { v: 'virtual', l: 'Virtual' }, { v: 'skeleton', l: 'Skeleton POV' }],
+            'Object: follows an in-world prim. Virtual: a stored transform, no prim. Skeleton POV: a virtual camera driven by a cast subject’s joint.',
+            { value: type, onPick: (v) => this.setType(cam, v) }),
+          R('src_bound', type === 'object' ? 'Bound to' : type === 'virtual' ? 'Stored at' : 'Driven by',
+            type === 'object' ? cam.bound : type === 'virtual' ? cam.pos + ' (agent)' : cv('bone_pov_anchor') + ' · ' + cv('bone_pov_joint'),
+            'Where this camera’s eye comes from. It is sampled from its live render transform.')
+        ];
+        if (type === 'object') srcRows.push(N('The source is sampled from its live render transform. Prism does not hide marker geometry and does not use reflection probes.'));
+        if (type === 'virtual') srcRows.push(N('No prim is rezzed, so it works in no-rez parcels.'));
+        if (type === 'skeleton') srcRows.push(N('A prim-free camera that rides a posed skeleton: yours, a cast subject, or a clone.'));
+        cards.push({ id: 'src', title: 'Source', scope: 'cam', rows: srcRows });
+
+        if (type === 'object') {
+          cards.push({ id: 'place', title: 'Placement', scope: 'cam', rows: [
+            A([
+              { label: 'Set selected camera', help: 'Bind this camera to the object you have selected in-world.', act: say('Cam ' + cam.n + ' bound to the selected object.') },
+              { label: 'Place eye in front', help: 'Move the eye in front of the selected object.', act: say('Cam ' + cam.n + ': eye placed in front of the object.') }
+            ]),
+            N('Marker convention: local -Z looks forward and local +Y is up. Use a transparent marker or move the eye beyond visible housing.')
+          ], adv: [
+            S('eye_offset_x', 'Eye offset X', -64, 64, 0.01, ' m', 3, 'Local eye offset in metres (object cameras only).'),
+            S('eye_offset_y', 'Eye offset Y', -64, 64, 0.01, ' m', 3, 'Local eye offset in metres, +Y is up.'),
+            S('eye_offset_z', 'Eye offset Z', -64, 64, 0.01, ' m', 3, 'Local eye offset in metres, -Z looks forward.')
+          ] });
+        } else if (type === 'virtual') {
+          cards.push({ id: 'place', title: 'Placement', scope: 'cam', rows: [
+            A([{ label: 'Snap to my view', help: 'Store your current camera position and orientation as this virtual camera’s transform.', act: () => this.setState({ cams: st.cams.map((c) => (c.id === cam.id ? Object.assign({}, c, { pos: (125 + Math.random() * 10).toFixed(1) + ', ' + (95 + Math.random() * 8).toFixed(1) + ', 24.0' }) : c)), status: 'Cam ' + cam.n + ' snapped to your current view.' }) }]),
+            N('Fly your view to the shot, then Snap. The eye offset does not apply to virtual cameras.')
+          ] });
+        } else {
+          const joint = cv('bone_pov_joint');
+          const spine = ['Eyeline', 'mHead', 'mNeck', 'mChest', 'mPelvis'].indexOf(joint) >= 0;
+          cards.push({ id: 'bone', title: 'Skeleton POV', scope: 'cam', rows: [
+            C('bone_pov_anchor', 'Anchor subject', ['Me', 'Subject A', 'Subject B', 'Subject C', 'Subject D'], 'Whose skeleton the camera follows.'),
+            C('bone_pov_joint', 'POV joint', ['Eyeline', 'mHead', 'mNeck', 'mChest', 'mPelvis', 'mShoulderRight', 'mElbowRight', 'mWristRight', 'mWristLeft', 'mFootRight'],
+              'Eyeline or any joint from the anchor skeleton. Off-spine joints default to Stabilized aim.',
+              { onPick: (v) => { const onSpine = ['Eyeline', 'mHead', 'mNeck', 'mChest', 'mPelvis'].indexOf(v) >= 0; this.setMany('cam', { cam }, onSpine ? { bone_pov_joint: v } : { bone_pov_joint: v, bone_pov_aim: 'Stabilized' }); } }),
+            C('bone_pov_aim', 'Aim mode', ['Full-follow', 'Stabilized'], 'Full-follow drives orientation; Stabilized drives position only and leaves your aim untouched.'),
+            C('bone_pov_roll', 'Roll mode', ['Horizon-lock', 'Inherit roll'], 'Horizon-lock keeps the horizon level; Inherit roll copies the joint roll.'),
+            S('bone_pov_smoothing', 'Smooth (s)', 0, 10, 0.05, ' s', 2, 'Exponential position and orientation damping; zero snaps.'),
+            R('bone_pov_status', 'Status', 'Attached: ' + cv('bone_pov_anchor') + ', ' + joint + (spine ? '' : ' (off-spine)'), 'Live attachment state.', { ok: true })
+          ], adv: [
+            S('bone_pov_offset_x', 'Offset X', -64, 64, 0.01, ' m', 3, 'Offset in metres, joint-local X.'),
+            S('bone_pov_offset_y', 'Offset Y', -64, 64, 0.01, ' m', 3, 'Offset in metres, joint-local Y.'),
+            S('bone_pov_offset_z', 'Offset Z', -64, 64, 0.01, ' m', 3, 'Offset in metres, joint-local Z.'),
+            S('bone_pov_trim_pitch', 'Trim pitch', -180, 180, 0.5, '°', 1, 'Aim trim, pitch, in degrees.'),
+            S('bone_pov_trim_yaw', 'Trim yaw', -180, 180, 0.5, '°', 1, 'Aim trim, yaw, in degrees.'),
+            T('bone_pov_scale_aware', 'Clone-scale aware', 'Scale the joint point about the avatar foot and the local offset by the clone’s uniform scale.'),
+            A([{ label: 'Reset attach', help: 'Restore every skeleton attachment option to its default.', act: () => this.setMany('cam', { cam }, {}, Object.keys(this.D.cam).filter((k) => k.indexOf('bone_pov_') === 0)) }])
+          ] });
+        }
+      }
+    }
+
+    if (sec === 'lens') {
+      const fov = this.camFov(cam);
+      const rows = [R('lens_eq', 'Lens equiv.', this.lensMm(fov) + ' mm full frame · ' + fov.toFixed(1) + '° V', 'Full-frame equivalent focal length from the vertical field of view (24 mm sensor height).')];
+      if (cam.type === 'skeleton') {
+        rows.push(S('bone_pov_fov', 'FOV (attached)', 10, 150, 1, '°', 0, 'Vertical field of view while attached to the skeleton. Replaces Field of view.'));
+      } else {
+        rows.push(C('fov_mode', 'Field of view', ['Fixed vertical FOV', 'Follow projector'], 'Fixed uses Degrees below; Follow projector takes it from the projector.'));
+        if (cv('fov_mode') === 'Fixed vertical FOV') rows.push(S('vertical_fov', 'Degrees', 5, 175, 0.5, '°', 1, 'Vertical field of view in degrees.'));
+        else rows.push(R('fov_from', 'Degrees', 'From projector (60.0°)', 'The projector currently supplies the field of view.'));
+      }
+      rows.push(S('near_clip', 'Near clip', 0.01, 10, 0.01, ' m', 3, 'Near clipping plane distance.'));
+      rows.push(S('far_clip', 'Far clip', 0.2, 512, 0.1, ' m', 1, 'Far clipping plane distance.'));
+      cards.push({ id: 'optics', title: 'Optics', scope: 'cam', rows });
+      if (cam.type === 'lens') {
+        cards.push({ id: 'lenszoom', title: 'Surface lens', scope: 'global', rows: [
+          S('lens_zoom', 'Lens zoom', 1, 8, 0.1, '×', 2, 'Magnification shared by every Surface Lens (PrismLensZoom).', { sc: 'global' }),
+          N('Lens zoom applies to all lenses, not just this one.')
+        ] });
+      }
+      const gRows = [T('show_guide', 'Show guide', 'Draw a client-side wireframe frustum at this camera. No prim is rezzed; nothing is drawn while the UI is hidden (filming).')];
+      if (cv('show_guide')) {
+        gRows.push(T('guide_thirds', 'Rule of thirds', 'Subdivide the framing gate into a 3x3 grid.'));
+        gRows.push(T('guide_uproll', 'Up / roll', 'Draw an up/roll nub on the top edge of the gate so tilt reads.'));
+        gRows.push(T('guide_crosshair', 'Center crosshair', 'Draw a small crosshair at the gate centre.'));
+        gRows.push(T('guide_clipmarkers', 'Clip range markers', 'Draw the near-clip rectangle so the depth range reads.'));
+      } else {
+        gRows.push(N('Shows where this camera is and what its lens covers, so you can place it in the world.'));
+      }
+      cards.push({ id: 'guide', title: 'In-world guide', scope: 'cam', rows: gRows });
+    }
+
+    if (sec === 'look') {
+      const myFaces = st.faces.filter((f) => f.cam === cam.id);
+      cards.push({ id: 'look', title: 'Camera look', scope: 'cam', rows: [
+        S('exposure_bias', 'Exposure EV', -4, 4, 0.1, ' EV', 1, 'Exposure offset for this camera’s picture, separate from any face brightness.'),
+        S('film_grain', 'Film grain', 0, 1, 0.01, '', 2, 'Animated film grain over the picture.'),
+        S('chromatic_aberration', 'Chromatic ab.', 0, 1, 0.01, '', 2, 'Colour fringing toward the frame edges.'),
+        S('crt_scanlines', 'CRT lines', 0, 1, 0.01, '', 2, 'Scanlines baked into this camera’s picture (every face gets them).')
+      ] });
+      cards.push({ id: 'reach', title: 'Where this look goes', scope: 'cam', canReset: false, rows: [
+        R('look_feeds', 'Feeds', myFaces.length ? myFaces.map((f) => f.name).join(', ') : 'No faces yet', 'Every face bound to this camera receives this look.'),
+        N('These change the camera’s picture itself. Per-screen TV effects (roll, static, flips, a single monitor’s scanlines) belong to one face in 4 · Output.'),
+        A([{ label: 'Go to Output', help: 'Open the Output section.', act: () => this.setState({ section: 'output' }) }])
+      ] });
+    }
+
+    if (sec === 'output') {
+      const ca = this.camAspect(cam);
+      const long = Math.round(1024 * Math.min(1, Number(this.gv('quality_ceiling'))));
+      const w = ca >= 1 ? long : Math.round(long * ca);
+      const h = ca >= 1 ? Math.round(long / ca) : long;
+      const oRows = [C('output_aspect', 'Output aspect', ['16:9', '4:3', '1:1', 'Custom'], 'Shape of the picture this camera renders.')];
+      if (cv('output_aspect') === 'Custom') oRows.push(S('custom_aspect', 'Custom W/H', 0.25, 4, 0.01, '', 3, 'Width over height.'));
+      oRows.push(R('out_px', 'Picture', w + ' × ' + h + ' px (scale ' + Number(this.gv('quality_ceiling')).toFixed(2) + ')', 'Logical axes are capped at 1024 px; Quality ceiling and Adaptive scale it.'));
+      cards.push({ id: 'frame', title: 'Output frame', scope: 'cam', span: true, rows: oRows });
+      cards.push({ id: 'faces', title: 'Faces this camera feeds', scope: 'cam', span: true, canReset: false, isFaceList: true, rows: [] });
+      if (face) {
+        const fit = this.fv(face, 'display_fit');
+        const gate = !!this.fv(face, 'display_gate_source');
+        const mRows = [
+          G('display_gate_source', 'Feed from', [{ v: false, l: 'This camera' }, { v: true, l: 'Gate program' }], 'Route this face to the Gate program feed instead of its fixed camera.'),
+          C('display_fit', 'Mapping', ['Fit', 'Fill', 'Stretch'], 'Fit keeps the whole picture with bars; Fill crops by the anchor; Stretch maps the complete picture.')
+        ];
+        if (fit === 'Fill') {
+          mRows.push(S('anchor_x', 'Anchor X', 0, 1, 0.05, '', 2, 'Which part survives the crop, left to right.'));
+          mRows.push(S('anchor_y', 'Anchor Y', 0, 1, 0.05, '', 2, 'Which part survives the crop, top to bottom.'));
+        }
+        mRows.push(R('face_shape', 'Face shape', this.aspectLabel(face.aspect) + (face.kind === 'virtual' ? ' virtual screen' : ' prim face') + ' · ' + face.vis.toLowerCase(), 'The surface the picture is mapped onto.', { warn: face.vis !== 'Visible' }));
+        if (face.kind === 'virtual') {
+          mRows.push(S('screen_height', 'Height (m)', 0.1, 20, 0.05, ' m', 2, 'Height of this virtual screen in metres; width follows the aspect.'));
+          mRows.push(C('screen_aspect', 'Screen aspect', ['16:9', '4:3', '1:1', 'Custom'], 'Width = height × aspect. Custom keeps the current ratio.',
+            { onPick: (v) => { const map = { '16:9': 16 / 9, '4:3': 4 / 3, '1:1': 1 }; this.setState({ faces: st.faces.map((f) => (f.id === face.id ? Object.assign({}, f, { aspect: map[v] || f.aspect, v: Object.assign({}, f.v, { screen_aspect: v }) }) : f)) }); } }));
+        }
+        mRows.push(A([
+          { label: 'Locate', help: 'Flash this face in-world.', act: say('Flashing ' + face.name + ' in-world.') },
+          face.kind === 'virtual' ? { label: 'Reposition to my view', help: 'Move this virtual screen a few metres in front of your view, facing you.', act: say(face.name + ' moved in front of your view.') } : null,
+          { label: 'Remove face', help: 'Unbind this face from the camera.', act: () => this.removeFace(cam, face) }
+        ].filter((b) => !!b)));
+        if (gate) mRows.push(N('This face shows whatever the Gate has on air, not Cam ' + cam.n + '. The mapping and TV effects below still apply.'));
+        cards.push({ id: 'map', title: 'Face mapping · ' + face.name, scope: 'face', rows: mRows, adv: [
+          S('bar_red', 'Bar R', 0, 1, 0.05, '', 2, 'Letterbox bar colour (linear), red. Bars appear with Fit.'),
+          S('bar_green', 'Bar G', 0, 1, 0.05, '', 2, 'Letterbox bar colour (linear), green.'),
+          S('bar_blue', 'Bar B', 0, 1, 0.05, '', 2, 'Letterbox bar colour (linear), blue.')
+        ] });
+        const cur = this.presetName(face);
+        const applyPreset = (name) => () => {
+          const keys = this.effectKeys();
+          this.setMany('face', { cam, face }, name === 'Clean' ? {} : this.PRESETS[name], keys);
+          this.setState({ status: name === 'Clean' ? 'Cleared every TV effect on ' + face.name + '.' : 'Applied ' + name + ' to ' + face.name + '.' });
+        };
+        cards.push({ id: 'tv', title: 'TV effects · ' + face.name, scope: 'face', rows: [
+          A([
+            { label: 'Clean', help: 'Zero every screen effect on this face.', act: applyPreset('Clean'), active: cur === 'Clean' },
+            { label: 'Old CRT', help: 'Scanlines, vignette and a gentle flicker.', act: applyPreset('Old CRT'), active: cur === 'Old CRT' },
+            { label: 'Broken TV', help: 'Rolling monochrome picture with static and dropouts.', act: applyPreset('Broken TV'), active: cur === 'Broken TV' },
+            { label: 'VHS Tape', help: 'Tracking tears, chroma bleed and interlace shimmer.', act: applyPreset('VHS Tape'), active: cur === 'VHS Tape' },
+            { label: 'Security Feed', help: 'Grayscale, coarse pixels, scanlines and vignette.', act: applyPreset('Security Feed'), active: cur === 'Security Feed' }
+          ]),
+          S('effect_scanlines', 'Scanlines', 0, 1, 0.05, '', 2, 'Scanline strength on this face; 0 leaves the picture untouched.'),
+          S('effect_grayscale', 'Grayscale', 0, 1, 0.05, '', 2, 'Desaturate toward monochrome.'),
+          S('effect_static', 'Static Noise', 0, 1, 0.05, '', 2, 'Animated analog snow.'),
+          S('effect_vignette', 'Vignette', 0, 1, 0.05, '', 2, 'CRT-style darkening toward the edges.'),
+          S('effect_brightness', 'Brightness', -1, 1, 0.05, '', 2, 'Linear gain for this face only; separate from the camera’s Exposure EV.'),
+          T('effect_flip_h', 'Flip H', 'Mirror this face’s picture left to right.'),
+          T('effect_flip_v', 'Flip V', 'Mirror this face’s picture top to bottom.'),
+          T('effect_rotate90', 'Rotate 90', 'Quarter-turn the feed for portrait monitors (non-square faces show it stretched).')
+        ], adv: [
+          S('effect_scanline_count', 'Lines', 20, 1200, 1, '', 0, 'Dark/bright line pairs across the picture height (20–1200).'),
+          S('effect_scanline_depth', 'Darkness (%)', 0, 100, 1, '%', 0, 'Maximum gap darkening; 100 reaches black at full Scanlines.'),
+          S('effect_scanline_sharpness', 'Sharpness (%)', 0, 100, 1, '%', 0, 'Blend the soft sine into crisp-edged bands.'),
+          S('effect_scanline_thickness', 'Line thickness (%)', 10, 90, 1, '%', 0, 'Bright-line duty as a percentage of each pair.'),
+          S('effect_pixelate', 'Pixelate', 0, 1, 0.05, '', 2, 'Quantize into low-resolution blocks.'),
+          S('effect_sepia', 'Sepia Tint', 0, 1, 0.05, '', 2, 'Blend toward a warm archival sepia.'),
+          S('effect_chroma_bleed', 'Chroma Bleed', 0, 1, 0.05, '', 2, 'Horizontal colour fringing, like a worn composite signal.'),
+          S('effect_vertical_roll', 'Vertical Roll', 0, 1, 0.05, '', 2, 'Lost V-sync: the picture rolls with a dark band.'),
+          S('effect_roll_speed', 'Roll Speed', 0, 1, 0.05, '', 2, 'How fast the roll travels; only matters while Vertical Roll is above 0.'),
+          S('effect_tracking', 'VHS Tracking', 0, 1, 0.05, '', 2, 'Horizontal tearing on random rows.'),
+          S('effect_flicker', 'Flicker', 0, 1, 0.05, '', 2, 'Whole-picture brightness pulsing.'),
+          S('effect_interlace', 'Interlace', 0, 1, 0.05, '', 2, 'Alternating field-line shimmer.'),
+          S('effect_dropout', 'Dropout', 0, 1, 0.05, '', 2, 'Momentary signal loss.'),
+          S('effect_sheen', 'Sheen', 0, 1, 0.05, '', 2, 'Glossy Fresnel reflection of the room over the feed.')
+        ] });
+      } else {
+        cards.push({ id: 'rawnote', title: 'Showing the raw camera output', scope: 'cam', span: true, canReset: false, rows: [
+          N('Cam ' + cam.n + '’s monitor shows the picture before any face mapping. Pick a face above to edit its mapping and TV effects; the monitor then shows exactly what that face displays.')
+        ] });
+      }
+    }
+
+    if (sec === 'rate') {
+      const rt = this.camRates(cam);
+      const rRows = [C('rate_mode', 'Mode', ['Automatic', 'Target FPS'], 'Automatic lets the scheduler pick the cadence; Target FPS sets a ceiling. Adaptive may deliver less.')];
+      if (cv('rate_mode') === 'Target FPS') {
+        rRows.push(S('target_fps', 'Target FPS', 1, 30, 1, ' fps', 0, 'Requested ceiling for this camera.'));
+        const presets = ['5', '10', '12', '15', '20', '23.976', '24', '25', '29.97', '30'];
+        const tf = String(Number(cv('target_fps')));
+        rRows.push(C('rate_preset', 'Preset', ['Pick…'].concat(presets), 'Common delivery rates.', {
+          value: presets.indexOf(tf) >= 0 ? tf : 'Pick…',
+          onPick: (v) => { if (v !== 'Pick…') this.setMany('cam', { cam }, { target_fps: Number(v), rate_mode: 'Target FPS' }); }
+        }));
+      }
+      rRows.push(R('rate_readout', 'Req/Ent/Obs', rt.reqText + ' / ' + rt.ent.toFixed(1) + ' / ' + rt.obs.toFixed(1) + ' fps',
+        'Requested / Entitled / Observed. Every face on this camera samples the same retained picture.',
+        { warn: rt.mode === 'preview', ok: rt.mode === 'live' }));
+      rRows.push(N(rt.mode === 'preview' ? 'No visible face: this camera renders only for its monitor, at the preview speed.'
+        : rt.mode === 'idle' ? 'No visible face and previews are off: this camera is idle and costs nothing.'
+        : 'Lower picture FPS saves auxiliary scene renders. Faces still composite the retained picture every main frame.'));
+      cards.push({ id: 'rate', title: 'Picture rate', scope: 'cam', rows: rRows });
+
+      const admitted = st.cams.reduce((a, c) => a + this.camRates(c).ent, 0);
+      const budgetText = this.gv('total_capture_budget');
+      const budget = budgetText.indexOf('Adaptive') === 0 ? 30 : Number(budgetText.split(' ')[0]);
+      const previewCost = st.enabled && st.previewsOn ? st.cams.filter((c) => this.visibleFaces(c).length === 0).length * st.previewRate : 0;
+      cards.push({ id: 'perf', title: 'Performance', scope: 'global', rows: [
+        T('adaptive_performance', 'Protect main view', 'Reduce Prism scale or cadence, or suspend captures, to protect the main-view target.', { sc: 'global' }),
+        C('protected_main_fps', 'Main-view target', ['30 FPS', '45 FPS', '60 FPS'], 'Presented main-view FPS that Adaptive protects.', { sc: 'global' }),
+        C('total_capture_budget', 'Capture budget', ['Adaptive 30 / Manual every frame', '5 attempts/s', '10 attempts/s', '15 attempts/s', '20 attempts/s', '30 attempts/s'],
+          'Total capture budget: attempts per second shared by all cameras. Not a camera’s picture FPS.', { sc: 'global' }),
+        S('quality_ceiling', 'Quality ceiling', 0.25, 2, 0.25, '×', 2, 'Resolution scale ceiling for every capture.', { sc: 'global' }),
+        R('perf_admitted', 'Admitted', Math.min(admitted, budget).toFixed(1) + ' of ' + budget + ' attempts/s', 'Attempts the scheduler is admitting across all cameras right now.', { warn: admitted > budget }),
+        R('perf_preview', 'Previews', !st.previewsOn ? 'Off (no cost)' : previewCost > 0 ? 'On · ' + st.previewRate + ' fps · ' + previewCost.toFixed(1) + ' attempts/s' : 'On · ' + st.previewRate + ' fps · free', 'Monitors only cost renders for cameras with no visible face. Switch them at the top of the page.')
+      ], adv: [
+        N('Adaptive protects presented main-view FPS and fairly shares the total budget across cameras. A camera’s Target FPS stays a ceiling; Entitled and Observed may be lower.'),
+        N('Adaptive reacts to presented FPS only. It cannot attribute frame time to Prism or guarantee the target in an already slower scene.'),
+        N('One camera feeding many faces still performs one scheduled scene render. Each visible face adds a smaller composite cost, so faces are capped at 16.')
+      ] });
+    }
+
+    return cards;
+  }
+
+  // ---------- monitor tiles ----------
+  tileView(cam, idx, layout) {
+    const st = this.state;
+    const large = layout.large;
+    const fid = st.selFace[cam.id];
+    const face = fid && fid !== 'raw' ? st.faces.find((f) => f.id === fid && f.cam === cam.id) : null;
+    const f = st.frame + idx * 3;
+    const fv = (id) => (face ? this.fv(face, id) : this.D.face[id]);
+    const ca = this.camAspect(cam);
+    const fa = face ? face.aspect : ca;
+    const TA = 16 / 9;
+    const base = face ? 92 : 100;
+    let fw, fh;
+    if (fa >= TA) { fw = base; fh = base * TA / fa; } else { fh = base; fw = base * fa / TA; }
+    const bar = 'rgb(' + Math.round(fv('bar_red') * 255) + ',' + Math.round(fv('bar_green') * 255) + ',' + Math.round(fv('bar_blue') * 255) + ')';
+    const fit = fv('display_fit');
+    let cw = 100, ch = 100, cx = 0, cy = 0;
+    if (fit === 'Fit') {
+      if (ca > fa) { ch = fa / ca * 100; cy = (100 - ch) / 2; } else { cw = ca / fa * 100; cx = (100 - cw) / 2; }
+    } else if (fit === 'Fill') {
+      if (ca > fa) { cw = ca / fa * 100; cx = (100 - cw) * fv('anchor_x'); } else { ch = fa / ca * 100; cy = (100 - ch) * fv('anchor_y'); }
+    }
+    const tf = [];
+    if (fv('effect_flip_h')) tf.push('scaleX(-1)');
+    if (fv('effect_flip_v')) tf.push('scaleY(-1)');
+    if (fv('effect_rotate90')) tf.push('rotate(90deg)');
+    const bright = Math.pow(2, Number(this.cv(cam, 'exposure_bias'))) * (1 + Number(fv('effect_brightness')));
+    const filt = 'brightness(' + bright.toFixed(3) + ') grayscale(' + fv('effect_grayscale') + ') sepia(' + fv('effect_sepia') + ') blur(' + (fv('effect_pixelate') * 1.4).toFixed(2) + 'px)';
+
+    // Shot framing: camera-native W×90 frame on a 160×90 viewBox, zoomed by the FOV.
+    const refFov = { street: 55, close: 22, hand: 64, over: 70, ots: 40, lens: 50, blank: 60 }[cam.shot] || 60;
+    const fov = this.camFov(cam);
+    const k = Math.max(0.35, Math.min(4, Math.tan(refFov * Math.PI / 360) / Math.tan(fov * Math.PI / 360)));
+    const wc = 90 * ca;
+    const mirror = cam.mirror ? -1 : 1;
+    const shotT = 'translate(80 45) scale(' + (k * 160 / wc * mirror).toFixed(4) + ' ' + k.toFixed(4) + ') translate(-80 -45)';
+
+    // Camera-level grain and CRT lines.
+    const grain = [];
+    const gN = Math.round(Number(this.cv(cam, 'film_grain')) * 40);
+    for (let i = 0; i < gN; i++) grain.push({ x: (this.rnd(f * 17 + i * 3.1) * 160).toFixed(1), y: (this.rnd(f * 29 + i * 7.7) * 90).toFixed(1), w: (0.6 + this.rnd(i + f) * 1.2).toFixed(2), c: this.rnd(i * 5 + f) > 0.5 ? '#FFFFFF' : '#000000', o: '0.35' });
+    const crt = Number(this.cv(cam, 'crt_scanlines'));
+    const crtStyle = 'position: absolute; inset: 0; pointer-events: none; background-image: ' + (crt > 0 ? 'repeating-linear-gradient(to bottom, rgba(0,0,0,0) 0, rgba(0,0,0,0) 1.5px, rgba(0,0,0,' + (crt * 0.55).toFixed(2) + ') 1.5px, rgba(0,0,0,' + (crt * 0.55).toFixed(2) + ') 3px)' : 'none');
+
+    // Face-level TV effects (composite-time, per face).
+    const layers = [];
+    const sl = Number(fv('effect_scanlines'));
+    if (sl > 0) {
+      const period = Math.max(2, Math.min(8, 900 / Number(fv('effect_scanline_count'))));
+      const brightPx = period * Number(fv('effect_scanline_thickness')) / 100;
+      const a = (sl * Number(fv('effect_scanline_depth')) / 100 * 1.6).toFixed(2);
+      layers.push('repeating-linear-gradient(to bottom, rgba(0,0,0,0) 0, rgba(0,0,0,0) ' + brightPx.toFixed(2) + 'px, rgba(0,0,0,' + a + ') ' + brightPx.toFixed(2) + 'px, rgba(0,0,0,' + a + ') ' + period.toFixed(2) + 'px)');
+    }
+    const il = Number(fv('effect_interlace'));
+    if (il > 0) layers.push('repeating-linear-gradient(to bottom, rgba(255,255,255,' + (il * (f % 2 ? 0.18 : 0.06)).toFixed(2) + ') 0, rgba(255,255,255,0) 1px, rgba(255,255,255,0) 2px)');
+    const sh = Number(fv('effect_sheen'));
+    if (sh > 0) layers.push('linear-gradient(115deg, rgba(255,255,255,0) 28%, rgba(255,255,255,' + (sh * 0.3).toFixed(2) + ') 44%, rgba(255,255,255,0) 60%)');
+    const cb = Number(fv('effect_chroma_bleed')) + Number(this.cv(cam, 'chromatic_aberration')) * 0.6;
+    if (cb > 0) layers.push('linear-gradient(to right, rgba(255,40,40,' + (cb * 0.14).toFixed(2) + '), rgba(255,40,40,0) 18%, rgba(40,200,255,0) 82%, rgba(40,200,255,' + (cb * 0.14).toFixed(2) + '))');
+    const vg = Number(fv('effect_vignette'));
+    const fl = Number(fv('effect_flicker')) * 0.45 * this.rnd(f * 3 + 1);
+    const dp = this.rnd(f * 5 + idx) < Number(fv('effect_dropout')) * 0.45 ? Number(fv('effect_dropout')) * 0.85 : 0;
+    const dark = Math.min(0.92, fl + dp);
+    const fxStyle = 'position: absolute; inset: 0; pointer-events: none; background-color: rgba(0,0,0,' + dark.toFixed(2) + '); background-image: ' + (layers.length ? layers.join(', ') : 'none') + '; box-shadow: ' + (vg > 0 ? 'inset 0 0 ' + (6 + 26 * vg).toFixed(0) + 'px ' + (2 + 10 * vg).toFixed(0) + 'px rgba(0,0,0,' + (0.35 + 0.55 * vg).toFixed(2) + ')' : 'none');
+    const staticDots = [];
+    const sN = Math.round(Number(fv('effect_static')) * 80);
+    for (let i = 0; i < sN; i++) staticDots.push({ x: (this.rnd(f * 131 + i * 7 + idx) * 100).toFixed(1), y: (this.rnd(f * 71 + i * 13 + idx * 3) * 100).toFixed(1), w: (0.8 + this.rnd(i * 3 + f) * 3).toFixed(1), c: this.rnd(i * 11 + f) > 0.5 ? '#FFFFFF' : '#000000', o: '0.55' });
+    const roll = Number(fv('effect_vertical_roll'));
+    const rollY = ((f * (0.2 + Number(fv('effect_roll_speed'))) * 23) % 120) - 10;
+    const trk = Number(fv('effect_tracking'));
+
+    // State and captions.
+    const rt = this.camRates(cam);
+    const on = st.enabled && st.previewsOn;
+    const gate = face && fv('display_gate_source');
+    const preset = face ? this.presetName(face) : 'Clean';
+    const feed = face
+      ? 'Shows: ' + face.name + ' · ' + fit + (preset !== 'Clean' ? ' · ' + preset : '') + (gate ? ' · Gate' : '')
+      : 'Shows: camera output (raw)';
+    const nFaces = st.faces.filter((x) => x.cam === cam.id).length;
+    let state, stateColor, dot;
+    if (rt.mode === 'paused') { state = 'Paused · Virtual Cam off'; stateColor = '#8A929D'; dot = '#5C646F'; }
+    else if (rt.mode === 'live') { state = 'Live ' + rt.obs.toFixed(0) + '/' + rt.reqText + ' fps · ' + nFaces + (nFaces === 1 ? ' face' : ' faces'); stateColor = '#8FD9A8'; dot = '#4CC38A'; }
+    else if (rt.mode === 'preview') { state = 'Preview only · no visible face'; stateColor = '#E8A33D'; dot = '#E8A33D'; }
+    else { state = 'Idle · no visible face'; stateColor = '#8A929D'; dot = '#5C646F'; }
+
+    return {
+      aria: 'Monitor for Cam ' + cam.n + ', ' + cam.name + '. ' + feed + '. ' + state + '.',
+      boxStyle: 'position: relative; width: 100%; aspect-ratio: 16 / 9; border-radius: 4px; overflow: hidden; background: #0B0C0E; box-sizing: border-box; border: 1px solid ' + (cam.id === st.sel ? (large ? '#5A4A2E' : '#E8A33D') : '#2A2F36'),
+      large, compact: !large,
+      figStyle: 'margin: 0; min-width: 0; position: relative; cursor: grab; user-select: none; transition: opacity .15s; opacity: ' + (st.drag === cam.id ? 0.45 : 1) + (large ? '; flex: 0 0 calc((100% - 30px) / 4)' : ''),
+      dragHelp: 'Drag onto a surface to show Cam ' + cam.n + ' there',
+      dragStart: (e) => this.dragStart(cam, e),
+      fullName: 'Cam ' + cam.n + ' · ' + cam.name,
+      nameStyle: 'min-width: 0; font-size: ' + (large ? 12 : 11) + 'px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis' + (large ? '' : '; color: ' + (cam.id === st.sel ? '#E8A33D' : '#E6E8EB')),
+      menuLabel: 'More for Cam ' + cam.n,
+      menuOpen: st.menuFor === cam.id ? 'true' : 'false',
+      menuBtnBg: st.menuFor === cam.id ? '#343A42' : 'transparent',
+      showMenu: st.menuFor === cam.id,
+      menuStyle: 'position: absolute; bottom: 22px; ' + (layout.menuLeft ? 'left: 0' : 'right: 0') + '; z-index: 4; min-width: 136px; padding: 4px; border-radius: 6px; background: #22262D; border: 1px solid #343A42; box-shadow: 0 6px 18px rgba(0,0,0,.5); display: flex; flex-direction: column; gap: 1px',
+      toggleMenu: () => this.setState({ menuFor: this.state.menuFor === cam.id ? null : cam.id }),
+      menuEdit: () => this.setState({ sel: cam.id, menuFor: null, status: 'Editing Cam ' + cam.n + '.' }),
+      menuSend: () => this.setState({ send: cam.id, menuFor: null, status: 'Send Cam ' + cam.n + ' to a surface: select a prim face in-world, or move an existing face.' }),
+      menuRaw: () => this.setState({ selFace: Object.assign({}, this.state.selFace, { [cam.id]: 'raw' }), menuFor: null }),
+      hasFace: !!face,
+      tab: layout.visible ? '0' : '-1',
+      picStyle: 'position: absolute; inset: 0; transition: opacity .2s; ' + (on ? '' : 'opacity: .18; filter: grayscale(1);'),
+      faceStyle: 'position: absolute; left: ' + ((100 - fw) / 2).toFixed(2) + '%; top: ' + ((100 - fh) / 2).toFixed(2) + '%; width: ' + fw.toFixed(2) + '%; height: ' + fh.toFixed(2) + '%; overflow: hidden; background: ' + bar + (face ? '; outline: 1px solid #3A4049' : ''),
+      camStyle: 'position: absolute; left: ' + cx.toFixed(2) + '%; top: ' + cy.toFixed(2) + '%; width: ' + cw.toFixed(2) + '%; height: ' + ch.toFixed(2) + '%; overflow: hidden; filter: ' + filt + '; transform: ' + (tf.length ? tf.join(' ') : 'none'),
+      crtStyle, fxStyle, grain, staticDots,
+      rollY: rollY.toFixed(1), rollOp: (roll * 0.75).toFixed(2),
+      trackX: ((this.rnd(f * 7 + idx) - 0.5) * 8).toFixed(1), trackY: (this.rnd(f * 3 + idx * 5) * 97).toFixed(1), trackOp: (trk * 0.35).toFixed(2),
+      shotT,
+      isStreet: cam.shot === 'street', isClose: cam.shot === 'close', isHand: cam.shot === 'hand', isOver: cam.shot === 'over',
+      isOts: cam.shot === 'ots', isLens: cam.shot === 'lens', isBlank: cam.shot === 'blank',
+      carT: (() => { const p = (f * 0.12 + 0.3) % 1; return 'translate(' + (82 + p * 16).toFixed(1) + ' ' + (50 + p * 38).toFixed(1) + ') scale(' + (0.22 + p * 1.25).toFixed(3) + ')'; })(),
+      pedT: 'translate(' + (14 + (f * 1.6) % 30).toFixed(1) + ' 76) scale(1.15)',
+      lampGlow: (0.22 + 0.1 * this.rnd(f)).toFixed(2),
+      bokehT: 'translate(' + (2.5 * Math.sin(f * 0.5)).toFixed(2) + ' 0)',
+      headT: 'rotate(' + (2.2 * Math.sin(f * 0.9)).toFixed(2) + ' 98 50)',
+      eyeRy: f % 6 === 3 ? '0.4' : '1.8',
+      tiltT: 'rotate(' + (-5 + 1.6 * Math.sin(f * 0.7)).toFixed(2) + ' 80 45)',
+      handT: 'translate(' + (1.2 * Math.sin(f * 0.9)).toFixed(2) + ' ' + (2 * Math.sin(f * 1.3)).toFixed(2) + ')',
+      panT: 'translate(' + (18 * Math.sin(f * 0.15)).toFixed(2) + ' ' + (7 * Math.cos(f * 0.15)).toFixed(2) + ')',
+      overCarX: (((f * 9) % 220) - 40).toFixed(1),
+      showOff: !on,
+      offTitle: st.enabled ? 'Preview off' : 'Virtual Cam off',
+      offSub: st.enabled ? 'saving FPS' : 'nothing renders',
+      badge: on ? '● PREVIEW ' + st.previewRate + ' fps' : '❚❚ PAUSED',
+      badgeColor: on ? '#8FD9A8' : '#9BA3AE',
+      editing: cam.id === st.sel,
+      time: on ? this.fmtTime(st.stamp) : '',
+      dot, name: large ? 'Cam ' + cam.n + ' · ' + cam.name : 'Cam ' + cam.n, feed, state, stateColor
+    };
+  }
+
+  renderVals() {
+    const st = this.state;
+    const cam = st.cams.find((c) => c.id === st.sel) || st.cams[0] || null;
+    const fid = cam ? st.selFace[cam.id] : 'raw';
+    const face = cam && fid && fid !== 'raw' ? st.faces.find((f) => f.id === fid && f.cam === cam.id) || null : null;
+    const ctx = { cam, face };
+    const cardStyle = 'background: #1B1E23; border: 1px solid #2A2F36; border-radius: 6px; min-width: 0; display: flex; flex-direction: column; overflow: hidden';
+    const knob = (on) => ({ track: on ? '#E8A33D' : '#3A4049', knob: on ? '#141413' : '#C9CED6', left: on ? '18px' : '2px' });
+    const ek = knob(st.enabled);
+    const pk = knob(st.previewsOn);
+
+    const visibleCount = st.faces.filter((f) => f.vis === 'Visible').length;
+    const admitted = st.cams.reduce((a, c) => a + this.camRates(c).ent, 0);
+    const perfLine = st.enabled
+      ? 'Presented 60 FPS · render p95 4.2 ms · scale ' + Number(this.gv('quality_ceiling')).toFixed(2) + ' · admitted ' + admitted.toFixed(1) + ' attempts/s · ' + (this.gv('adaptive_performance') ? 'Adaptive: steady, protecting ' + this.gv('protected_main_fps') : 'Adaptive off')
+      : 'Virtual Cam is off. Nothing renders; cameras and faces stay editable.';
+
+    const speeds = [0.5, 1, 2, 5].map((r) => ({
+      label: r + ' fps', on: st.previewRate === r ? 'true' : 'false',
+      style: 'height: 22px; padding: 0 7px; border-radius: 4px; font-size: 11px; cursor: pointer; white-space: nowrap; border: 1px solid ' + (st.previewRate === r ? '#E8A33D' : '#343A42') + '; background: ' + (st.previewRate === r ? '#2E2A22' : '#1F2329') + '; color: ' + (st.previewRate === r ? '#F1F2F4' : '#9BA3AE') + '; opacity: ' + (st.previewsOn ? 1 : 0.6),
+      pick: () => this.setRate(r)
+    }));
+
+    const nCams = st.cams.length;
+    const noFaceCams = st.cams.filter((c) => this.visibleFaces(c).length === 0);
+    const freeN = nCams - noFaceCams.length;
+    let previewNote;
+    if (!st.enabled) previewNote = 'Virtual Cam is off, so monitors and faces are paused.';
+    else if (!st.previewsOn) previewNote = 'Previews are off: 0 of ' + nCams + ' monitors render. Faces in-world keep updating at their own picture rate.';
+    else if (noFaceCams.length) previewNote = nCams + ' monitors at ' + st.previewRate + ' fps. ' + freeN + ' reuse their camera’s last picture (free); ' + noFaceCams.length + ' (' + noFaceCams.map((c) => 'Cam ' + c.n).join(', ') + ') ' + (noFaceCams.length === 1 ? 'renders' : 'render') + ' only for the preview, about ' + (noFaceCams.length * st.previewRate).toFixed(1) + ' extra attempts/s from the shared budget. Drag a monitor onto a surface to show it there.';
+    else previewNote = nCams + ' monitors at ' + st.previewRate + ' fps, all reusing their camera’s last picture: no extra renders. Drag a monitor onto a surface to show it there.';
+
+    // One row at every camera count: Large (4 across, pages of 4) or Compact (8 across).
+    const mode = st.tileMode || (nCams > 4 ? 'compact' : 'large');
+    const large = mode === 'large';
+    const maxPage = Math.max(0, Math.ceil(nCams / 4) - 1);
+    const page = large ? Math.min(st.page, maxPage) : 0;
+    const tiles = st.cams.map((c, i) => this.tileView(c, i, {
+      large,
+      visible: !large || Math.floor(i / 4) === page,
+      menuLeft: large ? false : (i % 8) < 4
+    }));
+    const viewModes = [
+      { v: 'large', l: 'Large', help: 'Four big monitors with status; more than four scroll sideways.' },
+      { v: 'compact', l: 'Compact', help: 'Up to eight small monitors in one row; status shown as a dot.' }
+    ].map((m) => ({
+      label: m.l, help: m.help + (st.tileMode ? '' : ' (Automatic picks ' + (nCams > 4 ? 'Compact' : 'Large') + ' for ' + nCams + ' cameras.)'),
+      on: mode === m.v ? 'true' : 'false',
+      style: 'height: 22px; padding: 0 8px; border-radius: 4px; font-size: 11px; cursor: pointer; white-space: nowrap; border: 1px solid ' + (mode === m.v ? '#E8A33D' : '#343A42') + '; background: ' + (mode === m.v ? '#2E2A22' : '#1F2329') + '; color: ' + (mode === m.v ? '#F1F2F4' : '#9BA3AE'),
+      pick: () => this.setState({ tileMode: m.v, page: 0 })
+    }));
+    const pagerBtn = (enabled) => 'width: 20px; height: 20px; padding: 0; border-radius: 4px; display: flex; align-items: center; justify-content: center; border: 1px solid #343A42; background: #1F2329; color: ' + (enabled ? '#E6E8EB' : '#4A5059') + '; cursor: ' + (enabled ? 'pointer' : 'default');
+    const pageOn = 'color: #E8A33D; font-weight: 600';
+    const pageOff = 'color: #8A929D';
+
+    const camButtons = st.cams.map((c) => {
+      const on = cam && c.id === cam.id;
+      const rt = this.camRates(c);
+      return {
+        label: 'Cam ' + c.n, on: on ? 'true' : 'false', help: 'Edit Cam ' + c.n + ' · ' + c.name,
+        dot: rt.mode === 'live' ? '#4CC38A' : rt.mode === 'preview' ? '#E8A33D' : '#5C646F',
+        style: 'height: 24px; padding: 0 10px; display: flex; align-items: center; gap: 6px; border-radius: 4px; font-size: 12px; cursor: pointer; border: 1px solid ' + (on ? '#E8A33D' : '#343A42') + '; background: ' + (on ? '#2E2A22' : '#1F2329') + '; color: ' + (on ? '#F1F2F4' : '#C9CED6') + '; font-weight: ' + (on ? 600 : 400),
+        pick: () => this.setState({ sel: c.id })
+      };
+    });
+
+    const chipDefs = [
+      { id: 'source', label: 'Source' }, { id: 'lens', label: 'Lens' }, { id: 'look', label: 'Look' },
+      { id: 'output', label: 'Output' }, { id: 'rate', label: 'Rate & performance' }
+    ];
+    const chips = chipDefs.map((ch, i) => {
+      const cur = st.section === ch.id;
+      return {
+        num: String(i + 1), label: ch.label, current: cur ? 'true' : 'false', arrow: i < chipDefs.length - 1,
+        style: 'height: 26px; padding: 0 12px 0 4px; display: flex; align-items: center; gap: 6px; border-radius: 13px; font-size: 12px; cursor: pointer; border: 1px solid ' + (cur ? '#E8A33D' : '#343A42') + '; background: ' + (cur ? '#262A31' : 'transparent') + '; color: ' + (cur ? '#F1F2F4' : '#9BA3AE') + '; font-weight: ' + (cur ? 600 : 400),
+        numStyle: 'width: 18px; height: 18px; border-radius: 9px; display: flex; align-items: center; justify-content: center; font: 600 10px \'IBM Plex Mono\', monospace; background: ' + (cur ? '#E8A33D' : '#2A2F36') + '; color: ' + (cur ? '#141413' : '#9BA3AE'),
+        pick: () => this.setState({ section: ch.id })
+      };
+    });
+
+    let secIntro = '', cards = [], faceRows = [];
+    if (cam) {
+      const label = 'Cam ' + cam.n + ' (' + cam.name + ')';
+      secIntro = {
+        source: 'What ' + label + ' sees: where its eye is and what drives it.',
+        lens: 'How ' + label + ' frames it: field of view, clip range and the in-world guide.',
+        look: 'Changes to ' + label + '’s picture itself. They reach every face it feeds.',
+        output: 'Where ' + label + '’s picture goes. Choosing a face here switches its monitor to that face and opens the face’s mapping and TV effects.',
+        rate: 'How often ' + label + ' renders, plus the budget every camera shares. Cards marked All cameras are global.'
+      }[st.section];
+
+      const specs = this.cardsFor(cam, face);
+      const single = specs.length === 1;
+      cards = specs.map((card) => {
+        const key = cam.id + '.' + card.id;
+        const advOpen = !!st.adv[key];
+        const hasAdv = !!(card.adv && card.adv.length);
+        const raw = card.rows.concat(advOpen && hasAdv ? card.adv : []);
+        const sc = card.scope;
+        const scopeLabel = sc === 'global' ? 'All cameras' : sc === 'face' ? 'This face' : 'Cam ' + cam.n;
+        return {
+          title: card.title,
+          style: cardStyle + ((card.span || single) ? '; grid-column: 1 / -1' : ''),
+          scope: scopeLabel,
+          scopeHelp: sc === 'global' ? 'Global: changes here affect every camera.' : sc === 'face' ? 'Applies to the selected face only.' : 'Applies to this camera only.',
+          scopeStyle: 'flex: none; font-size: 10px; letter-spacing: .04em; text-transform: uppercase; padding: 1px 6px; border-radius: 3px; border: 1px solid ' + (sc === 'global' ? '#E8A33D' : '#343A42') + '; color: ' + (sc === 'global' ? '#E8A33D' : '#8A929D'),
+          canReset: card.canReset !== false && !card.isFaceList,
+          resetLabel: 'Reset ' + card.title,
+          resetAll: () => {
+            const ids = card.rows.concat(card.adv || []).filter((r) => r.kind !== 'actions' && r.kind !== 'note' && r.kind !== 'readout');
+            ['cam', 'face', 'global'].forEach((s) => {
+              const these = ids.filter((r) => (r.sc || sc) === s).map((r) => r.id);
+              if (these.length) this.setMany(s, ctx, {}, these);
+            });
+            this.setState({ status: 'Reset ' + card.title + '.' });
+          },
+          isFaceList: !!card.isFaceList,
+          hasAdv,
+          advOpen: advOpen ? 'true' : 'false',
+          advRot: advOpen ? 90 : 0,
+          advLabel: advOpen ? 'Fewer options' : 'More options (' + (hasAdv ? card.adv.length : 0) + ')',
+          toggleAdv: () => this.setState({ adv: Object.assign({}, this.state.adv, { [key]: !advOpen }) }),
+          rows: raw.map((r) => this.rowView(r, ctx, sc))
+        };
+      });
+
+      const radio = (on) => 'width: 12px; height: 12px; flex: none; border-radius: 6px; box-sizing: border-box; border: ' + (on ? '4px solid #E8A33D' : '1.5px solid #5C646F');
+      const dragCam = st.drag ? st.cams.find((c) => c.id === st.drag) : null;
+      const rowStyle = (on, target, hover) => 'display: flex; align-items: center; gap: 10px; width: 100%; min-height: 36px; padding: 4px 10px; border-radius: 4px; cursor: pointer; border: 1px ' + (target ? 'dashed ' : 'solid ') + (hover ? '#E8A33D' : on ? '#E8A33D' : target ? '#8A6A35' : '#2A2F36') + '; background: ' + (hover ? '#3A3222' : on ? '#22262D' : '#15171B');
+      const noop = () => {};
+      const rawOn = !face;
+      faceRows.push({
+        name: 'Camera output (raw)', meta: this.aspectLabel(this.camAspect(cam)) + ' · before any face mapping', vis: 'Monitor only', visColor: '#8A929D',
+        on: rawOn ? 'true' : 'false', radio: radio(rawOn), style: rowStyle(rawOn, false, false), help: 'Show the unmapped camera picture on the monitor.',
+        pick: () => this.setState({ selFace: Object.assign({}, this.state.selFace, { [cam.id]: 'raw' }) }),
+        over: noop, leave: noop, drop: noop
+      });
+      st.faces.filter((f) => f.cam === cam.id).forEach((f) => {
+        const on = face && face.id === f.id;
+        const p = this.presetName(f);
+        const target = !!dragCam && dragCam.id !== f.cam;
+        const hover = target && st.dropHover === f.id;
+        faceRows.push({
+          name: f.name,
+          meta: target ? 'Drop to show Cam ' + dragCam.n + ' on this face instead'
+            : (f.kind === 'virtual' ? 'Virtual screen' : 'Prim face') + ' · ' + this.aspectLabel(f.aspect) + ' · ' + this.fv(f, 'display_fit') + (p !== 'Clean' ? ' · ' + p : '') + (this.fv(f, 'display_gate_source') ? ' · Gate' : ''),
+          vis: f.vis, visColor: f.vis === 'Visible' ? '#8FD9A8' : '#8A929D',
+          on: on ? 'true' : 'false', radio: radio(on), style: rowStyle(on, target, hover), help: 'Show this face on the monitor and edit it below. Drop another camera’s monitor here to move the face to that camera.',
+          pick: () => this.setState({ selFace: Object.assign({}, this.state.selFace, { [cam.id]: f.id }), status: 'Cam ' + cam.n + '’s monitor now shows ' + f.name + '.' }),
+          over: (e) => {
+            if (!this.state.drag || this.state.drag === f.cam) return;
+            e.preventDefault();
+            try { e.dataTransfer.dropEffect = 'move'; } catch (err) { /* ignore */ }
+            if (this.state.dropHover !== f.id) this.setState({ dropHover: f.id });
+          },
+          leave: () => { if (this.state.dropHover === f.id) this.setState({ dropHover: '' }); },
+          drop: (e) => { e.preventDefault(); const id = this.dragCamId(e); if (id) this.reassignFace(f.id, id); }
+        });
+      });
+    }
+
+    return {
+      cardStyle,
+      cardStyleGap: cardStyle + '; margin-top: 12px',
+      enableOn: st.enabled ? 'true' : 'false', enableTrack: ek.track, enableKnob: ek.knob, enableKnobLeft: ek.left,
+      toggleEnable: () => this.toggleEnable(),
+      summary: 'VCam ' + st.cams.length + '/8 cameras · ' + st.faces.length + '/16 faces (' + visibleCount + ' visible)',
+      perfLine,
+      openManager: () => this.setState({ status: 'Opening the full Virtual Cam Manager (Captures, Displays, Performance, Gate).' }),
+      previewsOn: st.previewsOn ? 'true' : 'false', prevTrack: pk.track, prevKnob: pk.knob, prevKnobLeft: pk.left,
+      togglePreviews: () => this.togglePreviews(),
+      speeds, tiles, previewNote, viewModes,
+      rowViewport: large ? 'overflow: hidden' : 'overflow: visible',
+      rowTrack: large
+        ? 'display: flex; gap: 10px; align-items: flex-start; transition: transform .25s ease; transform: translateX(calc(' + (-page) + ' * (100% + 10px)))'
+        : 'display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 6px; align-items: start',
+      showPager: large && nCams > 4,
+      pageAStyle: page === 0 ? pageOn : pageOff,
+      pageBStyle: page === 1 ? pageOn : pageOff,
+      pageBLabel: nCams > 5 ? '5–' + Math.min(8, nCams) : '5',
+      pageNextLabel: 'Show cameras 5 to ' + Math.min(8, nCams),
+      pagePrevStyle: pagerBtn(page > 0),
+      pageNextStyle: pagerBtn(page < maxPage),
+      pagePrev: () => { if (page > 0) this.setState({ page: page - 1, menuFor: null }); },
+      pageNext: () => { if (page < maxPage) this.setState({ page: page + 1, menuFor: null }); },
+      menuItemStyle: 'height: 26px; padding: 0 10px; border: none; border-radius: 4px; background: transparent; color: #E6E8EB; font-size: 12px; text-align: left; white-space: nowrap',
+      dragEnd: () => {
+        if (this.dragTimer) { clearTimeout(this.dragTimer); this.dragTimer = null; }
+        this.setState({ drag: null, dropHover: '' });
+      },
+      showDropBar: !!(st.drag || st.send),
+      sendMode: !!st.send && !st.drag,
+      barStyle: (() => {
+        const hot = st.dropHover === 'bar';
+        return 'pointer-events: auto; padding: 10px 14px; border-radius: 8px; border: 2px dashed ' + (hot ? '#F3BE6A' : '#E8A33D') + '; background: ' + (hot ? '#3A3222' : 'rgba(34,30,24,.96)') + '; box-shadow: 0 -4px 18px rgba(0,0,0,.5)';
+      })(),
+      barText: (() => {
+        const c = st.cams.find((x) => x.id === (st.drag || st.send));
+        return c ? 'Drop in-world on any prim face to show Cam ' + c.n + ' there' : '';
+      })(),
+      barSub: st.drag
+        ? 'In the viewer you drop on the face itself. Here, drop on this bar to simulate it, or on a face row in 4 · Output to move that face.'
+        : 'Keyboard: select a prim face in-world, then bind it. Or move an existing face to this camera.',
+      barOver: (e) => {
+        if (!this.state.drag) return;
+        e.preventDefault();
+        try { e.dataTransfer.dropEffect = 'copy'; } catch (err) { /* ignore */ }
+        if (this.state.dropHover !== 'bar') this.setState({ dropHover: 'bar' });
+      },
+      barLeave: () => { if (this.state.dropHover === 'bar') this.setState({ dropHover: '' }); },
+      barDrop: (e) => { e.preventDefault(); const id = this.dragCamId(e); if (id) this.bindDropped(id); },
+      sendBind: () => { if (this.state.send) this.bindDropped(this.state.send); },
+      sendReassign: (e) => { const fid2 = e.target.value; e.target.value = ''; if (fid2 && this.state.send) this.reassignFace(fid2, this.state.send); },
+      sendCancel: () => this.setState({ send: null, status: 'Send to surface cancelled.' }),
+      reassignOpts: st.faces.filter((f) => f.cam !== st.send).map((f) => {
+        const owner = st.cams.find((c) => c.id === f.cam);
+        return { id: f.id, label: f.name + (owner ? ' (now Cam ' + owner.n + ')' : '') };
+      }),
+      toast: st.toast,
+      camButtons,
+      addLabel: st.cams.length >= 8 ? '8 of 8' : '+ Add camera…',
+      addPick: (e) => { const v = e.target.value; e.target.value = ''; this.addCam(v); },
+      removeCam: () => this.removeCam(),
+      hasCam: !!cam,
+      chips, secIntro, cards, faceRows,
+      smallBtn: 'height: 24px; padding: 0 10px; border: 1px solid #343A42; border-radius: 4px; background: #262A31; color: #E6E8EB; font-size: 12px',
+      newFit: st.newFit,
+      setNewFit: (e) => this.setState({ newFit: e.target.value }),
+      addFace: () => { if (cam) this.addFace(cam, false); },
+      addScreen: () => { if (cam) this.addFace(cam, true); },
+      faceCount: st.faces.length + ' of 16 faces used (all cameras)',
+      status: st.status
+    };
+  }
+}
+</script>
+</body>
+</html>
