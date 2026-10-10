@@ -369,3 +369,46 @@ Alternatively, filter by the prefixes `DirectorV2*`, `CineLightRig*`, `CineRigRi
 - For Rig, the last state at a size is `map-side-right`, which reveals `light_map` and changes the chip. Sizes 2-4 therefore use that chip as their "default".
 
 **Fix:** capture `mKitDefaultMode`/`Chip`/cards once per page (first size) and keep them across sizes.
+
+---
+
+## R2 verification (commit `723e356f682`)
+
+**Verdict: CLEAN.** `zs_check` on `aluiperfselftest.cpp` PASSes, and the ps1 parses with 0 errors under PowerShell 5.1.
+
+### N1: fixed
+
+**What changed:** `restoreSettingsSnapshot()` now skips any control that `isRestoredSetting()` rejects. The function accepts:
+- the runner overrides (including `DirectorUIV2`);
+- `UIFolderViewCull`;
+- every `mDirectorAuditSettings` key;
+- the prefixes `DirectorV2*`, `CineLightRig*`, `CineRigRim*`, `RenderCineLensFlare*`, `RenderLensFlare*` and `BDMergeProjectorVolumetrics*`.
+
+**User changes are left alone:** none of these is a login-screen setting, so `RememberUser`, `RememberPassword`, the location and the grid are untouched.
+
+**Test-touched settings are still always restored:**
+- The overrides are reset unconditionally.
+- Any other changed control in scope is reset.
+
+**Completeness check:** every setting write in the kit, Rig, Rim and light-map sources falls under those prefixes, with two exceptions:
+- `BDMergeMaxSpotShadows`, written by the Fix-it button (`alpanelcinelightrig.cpp:2441`);
+- `RenderGBufferAvatarTag`, written after a confirm dialog (`alrigrimcontroller.cpp:133`).
+
+Both are user-click paths that no audit state invokes.
+
+**Persistence:** nothing persists after finish, abort or crash, as established in R1.
+
+### N2: fixed
+
+Both legacy-compare keys now strip ` \[[^\]]*\]` from `tab_path`, after removing `@default`.
+
+### N3: fixed
+
+- `mKitPageDefaults` is keyed by `pageKey` and filled only on the first visit (`emplace` reports insertion).
+- Later sizes reuse the first visit's mode, chip and card handles.
+- The cards are the same live views across sizes; if one dies, the `dynamic_cast` guard skips it.
+
+### Regressions: none
+
+- No other lines changed.
+- The default-run identity proven in R1 still holds.
