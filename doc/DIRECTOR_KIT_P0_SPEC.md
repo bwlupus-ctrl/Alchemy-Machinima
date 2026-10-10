@@ -10,9 +10,9 @@ Branch `feature/director-kit-p0`. Written 2026-10-09 (Opus) for Codex, which imp
 - the approved mockup data: `director_mockup_data.json`, snapshotted into the repo by WP0 at `scripts/code_tools/director_kit/director_mockup_data.json`;
 - the approved mockup: `Director.dc.html` and `Kit.dc.html`. The metrics are copied into section 3.1, so Codex never needs the HTML.
 
-**Rollout:** the user has not chosen between a phased and an all-at-once rollout. **P0 is identical either way.**
-- v2 ships behind `DirectorUIV2` (default off; restart to switch).
+**Rollout:** **ALL AT ONCE.** P0 is a non-shippable foundation. After WP5, the mandatory WP6-WP12 work in `DIRECTOR_KIT_ROLLOUT_SPEC.md` converts all 36 pages back-to-back. `DirectorUIV2` remains default-off and debug/self-test-only until that document's final ship gate passes. The normal user never sees a half-converted Director.
 - v1 (`floater_director.xml` and everything it embeds) stays byte-identical, and its behaviour is unchanged.
+- v2 becomes user-visible only when all 36 pages are kit pages and the absolute-zero four-size audit passes every default and non-default state.
 
 ---
 
@@ -25,7 +25,7 @@ Branch `feature/director-kit-p0`. Written 2026-10-09 (Opus) for Codex, which imp
 2. The ALCompassDial arc mode and the new ALLightRigMap widget.
 3. The generator `director_kit_gen.py`, which writes `floater_director_v2.xml`, 36 page files and the search index.
 4. Two pages fully converted: **Light › Rig** and **Light › Rim**. ALRigRimController is extracted, and ALPanelRigRim is new.
-5. Every other page:
+5. Every other page in the non-shippable P0 test artifact:
    - a v1 page becomes a **legacy embed**;
    - a new page becomes **pure kit** if every row is pure, otherwise a **launcher page** (section 4.3).
 6. LLFloaterDirector becomes shell-agnostic: per-page binders, lazy late binding, cast-selection signal, keyboard.
@@ -34,8 +34,8 @@ Branch `feature/director-kit-p0`. Written 2026-10-09 (Opus) for Codex, which imp
    - the self-test `-DirectorV2` mode: 4 audit sizes, lazy rescan and budget evaluation;
    - TUT tests for the pure maths.
 
-**Not in P0:**
-- converting any other page;
+**Deferred only to the mandatory all-at-once continuation (WP6-WP12), not omitted from the product:**
+- converting every other page according to `DIRECTOR_KIT_ROLLOUT_SPEC.md`;
 - VCam monitor tiles, the curve editor, the slot grid and the animation picker;
 - the Quick panel;
 - new rail PNG icons (existing `Command_*` icons are used);
@@ -50,6 +50,8 @@ Branch `feature/director-kit-p0`. Written 2026-10-09 (Opus) for Codex, which imp
 - `settings.xml` entries other than the new ones in section 3.16.
 
 Codex never builds. It only edits files inside `I:\alchemy-machinima`.
+
+P0 cannot satisfy the release definition by itself. Its intermediate legacy/launcher pages exist solely for automated foundation testing and are forbidden in a shipped v2.
 
 ---
 
@@ -197,15 +199,19 @@ The output is deterministic, and the script is idempotent.
 ### 3.2 ALKitSwitch: `alkitswitch.h/.cpp`, tag `kit_switch`
 
 - `class ALKitSwitch : public LLCheckBoxCtrl`. Its Params block is `Block<Params, LLCheckBoxCtrl::Params>`, so every v1 `check_box` attribute parses.
+- Add `skins/default/xui/en/widgets/kit_switch.xml` as a copy of the structural defaults in `widgets/check_box.xml`, including the 13x13 `check_button` rect and `is_toggle="true"`. A new tag does not inherit that file automatically; the required defaults are visible at `widgets/check_box.xml:11-24`.
+- In `reshape`, expand the inner button's hit rect to the full 34x18 pill and suppress only its stock image drawing; keep `is_toggle` and its click callback. The entire visible switch, not merely the original 13x13 square, is clickable.
 - Draw: an SWITCH_W×H pill.
   - **On:** KitAccent track, KitKnobOn knob at x=18.
   - **Off:** KitSwitchOff track, KitKnobOff knob at x=2.
   - **Disabled:** 0.4 alpha.
   - **Focused:** a 1 px KitAccent focus ring.
   - The LLCheckBoxCtrl label is not drawn.
-- `void setValue(const LLSD&) override` caches `mOn` and, **only when the value flips**, fires `mFlipSignal(bool)`. Rows, cards and pages subscribe to update their state text, dimming or mode.
-- `bool isOn() const { return mOn; }` is allocation-free and used in `draw()`.
-- Space and Enter toggle it, as LLCheckBoxCtrl already does. Click toggles it and commits, and the control_name binding writes the setting as in v1.
+- `bool isOn() const` reads `mButton->getToggleState()` directly. `mButton` is the checkbox's actual value store (`llcheckboxctrl.h:144-147`), so the read is allocation-free and cannot go stale.
+- Override `setControlName`. Call the base implementation, then connect once to `mButton->getControlVariable()->getSignal()` with a scoped connection. The callback consumes the signal's `newvalue` and calls `noteState(newvalue.asBoolean())`; it does not assume callback ordering by re-reading the button. `LLCheckBoxCtrl::setControlName` binds the inner button, not the wrapper (`llcheckboxctrl.cpp:280-283`), and `LLUICtrl::controlListener` sends external setting changes to the bound control's `setValue` (`lluictrl.cpp:639-647`).
+- Override `onCommit()`. First call `noteState(mButton->getToggleState())`, then `LLCheckBoxCtrl::onCommit()`. A user click toggles the inner `LLButton` before its click callback (`llbutton.cpp:311-337`, `1050-1055`), so this observes the post-click value. `noteState` stores only the last notified bool and fires `mFlipSignal` only on a real edge; the setting signal and commit path may both arrive without double-firing.
+- `setValue()` may delegate to `LLCheckBoxCtrl::setValue()` for programmatic presentation updates, but it is not the source of flip detection. Space and Enter use the same commit path as a click.
+- `writeBoundValue(bool v)` is the passive write path: obtain the inner button's `LLControlVariable` and call `control->set(LLSD(v))`; if there is no bound control, set the inner toggle and call `noteState`. Never call `LLCheckBoxCtrl::setControlValue`, because the wrapper has no control variable and that method returns false (`lluictrl.cpp:510-517`; `llcheckboxctrl.cpp:159-166`).
 
 ### 3.3 ALKitRow: `alkitrow.h/.cpp`, tag `kit_row`
 
@@ -337,8 +343,9 @@ The enable switch is ALKitSwitch `enable_widget` (with `control_name=enable_sett
 **Enable and dimming.** When the switch is off, the body (not the header) is drawn inside `LLViewDrawContext(DIM_ALPHA)`. It stays editable. `draw()` reads `mEnable->isOn()`.
 
 **Visibility probe** (an explicit CLAUDE.md rule 1 exemption; the reviewer must confirm it):
-- `draw()` (only when `isWidgetOnScreen(this)`) computes a `U64` mask: bit i is `row[i]->control()->getVisible()` for the first 64 rows.
-- If the mask differs from `mVisMask`, it stores it and calls `requestLayout()`. That queues `doOnIdleOneTime` once per page and frame.
+- `draw()` (only when `isWidgetOnScreen(this)`) compares a pre-sized allocation-free vector of visibility bits for **all** rows; there is no 64-row cap.
+- If any bit differs, it stores the bits and calls `requestLayout()`. That queues `doOnIdleOneTime` once per page and frame through a page `LLHandle`; a destroyed floater makes the callback a no-op.
+- A row that is not effectively visible is also `setVisible(false)` during layout, and is restored when it becomes effective. Omitting it only from the height sum is insufficient because `childOverflow` skips only invisible children (`indra/llui/lluifitdiag.cpp:45-61`).
 
 It reads only member bools (O(rows)), with no lookups, strings or allocations. It is how v1 C++ that toggles widget visibility (clip labels, shadow hint, gobo preview) collapses rows.
 
@@ -365,7 +372,7 @@ It reads only member bools (O(rows)), with no lookups, strings or allocations. I
 - `page` (Mandatory, "group/page" key) and `summary`;
 - `legacy` (bool);
 - `master_widget`, `master_setting`, `master_label`, `master_tooltip`;
-- `modes` ("A|B"), `mode_setting`, `mode_widget`, `mode_on` (the option name meaning "switch on"), `mode_tooltip`;
+- `modes` ("A|B"), `mode_setting`, `mode_widget`, `mode_on` (the option name meaning "switch on"), `mode_tooltip`, `mode_adapter`;
 - `who_label`, `who_picker`, `who_adapter`;
 - `preset_mode` (`none|widgets|provider`), `preset_provider`;
 - `undo_context`;
@@ -403,8 +410,11 @@ The page dims `<P>_doc` with DIM_ALPHA while the master is off.
 - The visible control is the shell's mode proxy (section 3.7). The page subscribes to the switch's flip signal.
 - Current mode = `mode_on` if `isOn()`, otherwise the other option. Cards not listed in the current mode's `cards` are hidden. A card listed in no mode is shown in all modes.
 - `setModeIndex(i, bool explicit_user)`:
-  - **user click** (explicit): `sw->setValue(v); sw->onCommit();`, which runs the owner's commit logic (for example `onEasyModeCommit`);
-  - **search reveal** (passive): `sw->setControlValue(v)` with **no** onCommit, inside `ALKitHistory::ScopedSuspend`.
+  - resolve the registered `ALKitModeAdapter` and call its single `apply(v, origin)` function under `ALKitHistory::ScopedSuspend` for passive/search/restore origins;
+  - the adapter writes the inner switch's bound `LLControlVariable` through `ALKitSwitch::writeBoundValue`, updates the owner model, and synchronizes enabled/visible controls before returning;
+  - explicit user clicks use the same adapter with `USER` origin and remain undoable. Search reveal may switch modes, but does not create history and does not later switch the user back.
+
+For Rig, refactor `ALPanelCineLightRig::onEasyModeCommit()` into `applyEasyMode(bool desired, EModeOrigin origin)`. The existing callback only reads the toggle and delegates. Setting-signal changes (preset, scene, undo, slot restore), the shell proxy, search reveal, and initial synchronization all delegate to this same function. It is solely responsible for the setting, `mEasyModeSlot`, `mEasyModeActive`, `normalizeSelectedForEasy`, and `syncEasyControls`. This is required because Easy commits return early when `mEasyModeActive` is false (`alpanelcinelightrig.cpp:2217-2243`). The current per-frame `syncEasyModeForSelected()` at `alpanelcinelightrig.cpp:2853` becomes a revision/signal fallback, not a second state transition implementation.
 
 **Chips.**
 - `chip_mode=auto` resolves to `filter` when the count of cards visible in the current mode is ≥ 6, otherwise `anchor`.
@@ -479,6 +489,8 @@ void resetPage();                                         // one undo step; excl
 - the mode proxy (`kit_mode_seg_<i>`);
 - help (`kit_help` and `kit_help_strip`);
 - ALKitHistory, ALKitSearch, the search results popover (`kit_search_results`) and the cast popover (`kit_cast_popover`).
+
+**Lifetime.** The shell owns the search debounce/tokenizer, history gesture timer, layout coalescer, and every scoped signal connection as members; destruction cancels them. Every queued idle callback captures `LLHandle<ALKitShell>` or `LLHandle<ALKitPage>` and checks it before access. There is no static current-shell/help pointer: callers resolve the containing `ALKitShell` from their live view/floater. Who/mode adapters are stateless manager functions registered idempotently and never capture a panel `this`. These rules are mandatory because the Director has no `reuse_instance` and is destroyed on close.
 
 **Constraint layout.** `reshape()` derives everything from W×H. It is the only place shell coordinates are computed.
 - `railLabels = W ≥ BP_RAIL` and `helpPanel = W ≥ BP_FULL`. **Narrow → wide** needs `W ≥ BP + BP_HYST`; **wide → narrow** happens at `W < BP`. The current state is kept in members.
@@ -556,15 +568,17 @@ bool navigateTo(const ALKitTarget& t);                   // used by search, link
 **Index file.** `skins/default/xui/en/director_kit_index.xml`, written by the generator. This is the source of the index, a deliberate change from the plan's per-page XML parse, because the data rows are the truth. The format is:
 ```
 <?xml version="1.0" encoding="utf-8"?>
-<director_kit_index version="1"><![CDATA[
-<one entry per line, 13 TAB-separated fields, \t \n \\ escaped>
+<director_kit_index version="2" fields="15"><![CDATA[
+<one entry per line, exactly 15 TAB-separated fields, \t \n \\ escaped>
 ]]></director_kit_index>
 ```
 Fields, in order: `group_key, page_key, page_label, group_label, section_id, card_id, card_title, option_index, widget, label, kind, setting, flags(a=advanced,l=link,x=legacy), keywords, help`.
 
+The loader requires version 2 and `fields="15"`, validates exactly 15 decoded fields on every line, and rejects the whole index with a clear log message on mismatch; generator and loader share one field-count constant.
+
 **Loading** is read as text (no XML DOM) via `gDirUtilp->findSkinnedFilename(LLDir::XUI, file)`.
 - The bytes are read once on the first idle after open.
-- Lines are tokenized 400 per idle tick, via a `doOnIdleRepeating` callback that returns done.
+- Lines are tokenized 400 per idle tick by a shell-owned repeating callback carrying the shell handle; closing the floater cancels it.
 - Log `KitSearch index <n> entries <ms> ms`.
 
 **Tokens.** For each field (label, card title, keywords, help, setting, widget): lower-case, split on non-alphanumerics, and split camelCase (`CineLightRigKeyYaw` → cine light rig key yaw). Tokens are stored as interned `std::vector<U32>` ids per field.
@@ -587,8 +601,8 @@ Tie-break: current page, then group order, then data order.
 **Duplicates.** Entries with the same non-empty `setting` collapse into the best one, carrying an "also on <pages>" list.
 
 **UI.**
-- The proxy field fires `setQuery(text)`, debounced 120 ms by an `LLEventTimer` one-shot. Never in `draw()`.
-- The current kit page calls `applySearch(hits on this page)`; chips show hit dots. This ignores sections and modes and **never changes the mode setting**.
+- The proxy field fires `setQuery(text)`, debounced 120 ms by a shell-owned `LLEventTimer` one-shot. Never in `draw()`.
+- The current kit page calls `applySearch(hits on this page)`; chips show hit dots. Filtering ignores the currently selected chip. Navigating to a hit may passively select its mode, selector option, and More state through `revealRow`; the mode path is the registered adapter above, so the owner's controls remain live.
 - `kit_search_results` lists up to 12 other-page hits as "Group › Page › Card · Label", with a "More" tag for advanced. The header reads "N on this page · M elsewhere", and the footer "Showing the best 12 of K. Add a word to narrow it down."
 - Keys in the field:
   - **Enter** jumps to the top hit (`navigateTo`) and is consumed, so ACTION does not fire;
@@ -684,13 +698,17 @@ class ALKitHistory {
 public:
     enum EOrigin { MOUSE, WHEEL, KEY };
     struct Entry { bool widget; std::string key; LLHandle<LLUICtrl> ctrl; LLSD oldv, newv; };
-    struct Step  { std::string label, context, page; std::vector<Entry> entries; };
+    struct CustomEntry { std::string key; std::function<bool(bool redo, std::string& reason)> replay; };
+    struct Step  { std::string label, context, page; U64 scene_generation; std::vector<Entry> entries; std::vector<CustomEntry> custom; };
     static constexpr size_t MAX_STEPS = 200;
 
     void beginGesture(EOrigin o, const std::string& page_key);  // from LLFloaterDirector mouse/wheel overrides
     static void noteKey();                                      // one line at the top of LLViewerWindow::handleKey (static timestamp)
     void watchSettings(const std::string& page_key, const std::vector<std::string>& names);
     void recordWidget(LLUICtrl* ctrl, const LLSD& oldv, const LLSD& newv, const std::string& label);
+    void recordCustom(const std::string& key, const std::string& label,
+                      std::function<bool(bool redo, std::string& reason)> replay);
+    void barrier(const std::string& reason);                   // close gesture, clear undo/redo, increment scene generation
     bool canUndo() const; bool canRedo() const; std::string undoLabel() const; std::string redoLabel() const;
     void undo(); void redo();
     U64  revision() const;
@@ -720,15 +738,19 @@ public:
 
   Exact setting values therefore win.
 - Redo is symmetric, using `newv`.
+- Typed custom entries replay stable, fine-grained model operations. They are the only history form for Prism registry mutations and other non-setting models; a custom entry's watched settings are excluded from ordinary setting capture. A replay failure leaves the step in place and shows its reason—there is no partial fall-through to a snapshot restore.
+- A Step is valid only in the scene generation in which it was recorded. `barrier(reason)` closes/discards an open gesture, clears undo and redo, increments the generation, and logs the reason.
 
 **Who suspends:**
 - `ALPanelCineLightRig::onAnchorSelected` (a slot switch rewrites the CineLightRig settings).
 - ALKitPage passive mode switches.
 - `navigateTo`.
+- Director scene apply, `ALCineLightRigManager::resetAllToSelf`, every `setSelectedSlot` caller, and preset/cue apply paths outside the active Director gesture use `ScopedSuspend` and then `barrier(reason)`. Scene apply currently calls the rig manager at `llfloaterdirector.cpp:1664`; slot selection and reset synchronously rewrite settings at `alcinelightrigmanager.cpp:698-735`; those writes must never be left as fragmentary undo entries.
+- An in-Director preset/reset that is deliberately represented as one complete Step uses `ScopedSuspend` around the bulk writer and records the complete typed/setting entry set itself; it does not also call a barrier. External Lightbox presets and cue playback call the barrier because the Director did not initiate a complete step.
 
 Codex must verify that `ALCineLightRigManager::setSelectedSlot` writes its settings synchronously. If it defers, use `ScopedSuspend` plus a `suspendFrames(2)` latch.
 
-**Keys:** Ctrl+Z and Ctrl+Y (section 3.12).
+**Keys:** Ctrl+Z and Ctrl+Y (section 3.12). `ALKitHistory` is the only Director key-history owner; page models, including VCam, register custom entries here and never claim Ctrl+Z independently.
 
 ### 3.12 Keyboard (v2 only; Director focus only)
 
@@ -736,7 +758,7 @@ These facts are **proven** by `llviewerwindow.cpp:3436-3539`:
 - Ctrl and Alt keys reach the menu accelerators **before** the focused view, unless `gFocusMgr.keyboardFocusHasAccelerators()` is true.
 - Plain keys go to the focused view chain first.
 
-v2 therefore overrides `LLFloaterDirector::hasAccelerators()` to return `mIsV2`. Ctrl/Alt keys then go first to the focused Director chain (text editors keep their own Ctrl+Z, A, C and V), and anything unhandled falls through to the viewer menus as before.
+v2 therefore overrides `LLFloaterDirector::hasAccelerators()` to return `mIsV2`. Ctrl/Alt keys then go first to the focused Director chain, and anything unhandled falls through to the viewer menus as before. Do not assume every text control consumes undo: `LLLineEditor::handleKeyHere` only delegates selection/special keys (`lllineeditor.cpp:1809-1831`), and an unhandled key bubbles to its parent (`llview.cpp:1049-1053`).
 
 `LLFloaterDirector::handleKeyHere` (v2 branch; the v1 branch is unchanged):
 
@@ -744,8 +766,8 @@ v2 therefore overrides `LLFloaterDirector::hasAccelerators()` to return `mIsV2`.
 |---|---|
 | Esc | First close a popover, else clear search, else CUT while running or counting down, else stock |
 | Enter | ACTION via the existing default button. Text fields, spinners, combos and the search field consume Enter first. |
-| `/` | Focus the current page's search field |
-| Ctrl+Z / Ctrl+Y | `history.undo()` / `redo()`, unless a line or text editor has focus (they consume it) |
+| `/` | Implemented in `LLFloaterDirector::handleUnicodeCharHere`, not `handleKeyHere`; focus the current page's search only when focus is not a text-entry widget |
+| Ctrl+Z / Ctrl+Y | `history.undo()` / `redo()` only when focus is not an `LLLineEditor`, `LLTextEditor`, `LLSpinCtrl`, or a spin control's descendant editor |
 | PgUp / PgDn | Previous / next chip. ALKitScroller passes PgUp/PgDn up by returning false; keyboard page scrolling is dropped, the scrollbar and wheel remain. |
 | Shift+PgUp / PgDn | Previous / next page in the group |
 | Alt+PgUp / PgDn | Previous / next group |
@@ -756,6 +778,8 @@ v2 therefore overrides `LLFloaterDirector::hasAccelerators()` to return `mIsV2`.
 - Ctrl+F and Ctrl+1–9 and 0 stay with the viewer.
 - Ctrl+Shift+Z is untouched.
 - F2–F8 and the bare and Alt digits stay with ALDirectorHotkeys, which is unchanged.
+
+`/` must use the Unicode path: with keyboard focus, printable keys below 0x80 return to character handling before `handleKeyHere` (`llviewerwindow.cpp:3409-3420`) and then bubble through `handleUnicodeChar` (`llviewerwindow.cpp:3684-3693`; `llview.cpp:1103-1129`). Both the key and Unicode handlers use one `isTextEntryFocus()` helper that walks focus ancestors; `/` typed in search, a line editor, a text editor, combo editor, or spinner editor remains text. Ctrl+Shift+Z remains untouched. VCam installs no second handler.
 
 The hotkeys popover (`btn_hotkeys`) lists exactly the mockup table:
 - Enter: ACTION;
@@ -781,41 +805,36 @@ The hotkeys popover (`btn_hotkeys`) lists exactly the mockup table:
 | `min_val` / `max_val` | compass −180/180; arc −90/90 | value range |
 | `increment` | 1 | keyboard step (Shift ×10; PgUp/PgDn ±15) |
 | `wheel_step` | 5 | wheel step |
+| `wheel_adjust` | true | participate in the global slider-wheel rule; false for scrubbers |
 | `decimal_digits` | 1 | value rounding on commit |
-| `arc_zero` | `"up"` | arc needle zero direction: `up` (approved mockup) or `right` (0 = horizon); see decision U3 |
+| `kit_geometry` | false | use the new kit geometry; false preserves existing dials pixel-for-pixel |
+| `arc_zero` | `"right"` | 0 = horizon, positive = up, negative = down |
 | `show_cardinals` | true for compass | N/E/S/W letters |
 | `show_range_labels` | true for arc | min and max under the baseline ends |
 | `face_color`, `range_color`, `track_color`, `focus_color` | Kit colours | |
 
 **Value.**
-- Compass, span ≥ 360: wraps. Otherwise it clamps to [min, max].
+- Compass, span ≥ 360: wraps into `[min,max)`; otherwise it clamps to `[min,max]`.
 - Arc: clamps.
 - `setValue` clamps and wraps. `getValue` returns degrees.
 
-**Arc angle mapping** (a = needle angle; 0 = up; positive = clockwise; range [−90, 90]):
-- If min ≥ −90 and max ≤ 90: a = v (a true tilt).
-- Otherwise: a = −90 + (v − min)/(max − min)·180.
+**Arc angle mapping:** horizon mapping is binding. Details are in the binding-correction block below.
 
-The inverse is used for pointer input. With `arc_zero="right"`, a_screen = 90 − a_value_mapped (needle measured from the horizon).
-
-**Geometry** (scaled from the mockup's 48×48 viewbox to s = min(w,h)/48):
-- **Compass:** centre (w/2, h/2), r = 20s. Face circle KitDialFace with a 1.5 px KitDialRing ring. Cardinal ticks 4s long. Letters at radius 10s (N in KitMuted, the others KitFaint). Needle from the centre to r − 2.5s, 2 px, KitAccent. Hub r 3s (accent) plus r 1.2s (KitKnobOn).
-- **Arc:** centre (w/2, 14s from the bottom), r = 20s.
-  - A dashed baseline across at cy (x 2s…w−2s, dash 2/2, KitArcTrack 1 px).
-  - The half arc −90…90: `gl_arc_2d` (it exists, `llrender2dutils.cpp:848`) in KitArcTrack, 2 px.
-  - The range arc a(min)…a(max) in KitDialRing, 2.5 px.
-  - Ticks at a(min), 0 and a(max) (inner 16s, outer 20s).
-  - Range labels at (5s, cy − 10s) and (w − 5s, …), mono small, KitFaint.
-  - Needle and hub as in the compass.
-- Focus ring: 1 px `focus_color` circle at r + 2.
+**Geometry:** legacy compass geometry remains the default. Kit compass and horizon-arc geometry are in the binding-correction block below.
 
 **Input.**
-- Mouse down captures and sets the value from the point, with a 3 px dead zone at the hub. The angle is `atan2(dx, dy)`, with 0 = up and clockwise positive in LL coordinates (y up). Arc clamps a to ±90.
+- Mouse down captures and sets the value from the point, with a 3 px dead zone at the hub. Compass retains its existing inverse; arc uses the horizon inverse below.
 - Hover while captured sets and commits. Mouse up releases and commits. These are existing semantics.
 - Values outside ±180 keep their winding and move the short way.
 - Wheel: if disabled, or `wheel_adjust` is false, or `LLSliderWheel::guarded(this)` → `LLSliderWheel::keepAlive()` when guarded, then return false. Otherwise ±`wheel_step` and commit.
 - Keys (new `handleKeyHere`): Left/Down −step, Right/Up +step, Shift ×10, PgUp/PgDn ±15, Home = control default (`getControlVariable()->getDefault()` if bound). Commit after each. Return true only for these keys.
 - `setTabStop(true)`.
+
+**Binding correction (supersedes the `arc_zero`, arc mapping, arc geometry, and arc pointer bullets above).** The binding decision is horizon = 0. Add Params `wheel_adjust` (bool, default true) and `kit_geometry` (bool, default false), and change `arc_zero` default to `"right"`. Generator-created kit dials set `kit_geometry="true"`; existing Actor Mover/Ghost Studio dials leave it false and keep the current `radius=min(w,h)/2-12` geometry and outside letters exactly (`alcompassdial.cpp:71-78`).
+
+For an arc, map a true tilt value to `a=clamp(v,-90,+90)` measured counter-clockwise from the positive-x horizon: 0 points right, +90 up, -90 down. A non-tilt `[min,max]` maps linearly to `[-90,+90]`. Centre is `(6s,h/2)` and `r=min(20s,h/2-3s,w-9s)`, `s=min(w,h)/48`, so the right half-circle stays inside the widget. Draw the half arc from -90 through 0 to +90, a horizontal 0 baseline/tick to the right, the maximum label/tick above, and the minimum below; no label may extend below the widget. Needle endpoint is `(cx+r*cos(a),cy+r*sin(a))`. Pointer input uses the exact inverse `atan2(y-cy,x-cx)`, clamps to the right half, and then applies the inverse range map. This replaces the earlier up-zero centre/baseline text.
+
+Compass wrapping uses `[min_val,max_val)`, not a hard-coded signed range. In particular `cine_catchlight_angle` remains in 0..360, so 360/0 normalization does not create a false amber/default difference. The wheel returns false when `wheel_adjust=false`; otherwise it follows the global guard described above.
 
 **Binding (new).** `onCommit()` override: `if (getControlVariable()) setControlValue(LLSD(round(v, decimal_digits)));` then `LLUICtrl::onCommit()`. Existing dials have no control_name, so they are unchanged.
 
@@ -837,27 +856,15 @@ Rig-wide: `CineLightRigMirror`, `CineLightRigOrbitYaw`, `CineLightRigOrbitPitch`
 
 All are read with `static LLCachedControl` arrays.
 
-**Frames** (the real rig, proven in `alcinelightrigmodel.cpp:1057-1062, 1612-1621` and `alcinelightrig.cpp:2069-2071`):
-- A light's **world azimuth** is `eff_yaw = mirror ? wrap180(2F − (base + orbitYaw)) : wrap180(base + orbitYaw)`.
-- Its world offset direction is (cos eff_yaw, sin eff_yaw), measured from +X (east), counter-clockwise.
-- Pitch: `eff_pitch = clamp(base_pitch + orbitPitch, ±85)`.
-- F = the subject facing azimuth.
-- **The rig is NOT camera-relative.** The map makes it camera-relative for display.
+**Frames.** When the selected rig is live, the display source is `selected().lastFrame().mProj[i].mOffX/Y/Z`, not a reconstruction from settings. Those offsets already contain mirror, orbit, subject-scaled effective radius, and OffsetZ (`alcinelightrigmodel.h:213-235`; `alcinelightrigmodel.cpp:1585-1621`) and also work for object targets. The old facing-accessor proposal is deleted: object targets currently skip the avatar-facing assignment (`alcinelightrig.cpp:2491-2499`, `2632-2648`), so using it would incorrectly report a live object-target rig as off.
 
-**Engine accessor (the only engine edit; a read-only addition).**
-- In `ALCineLightRig`, store `mLastFacingDeg` and `mHaveFacing` at the existing line (`alcinelightrig.cpp:2646`, `transforms.mFacingAzimuthDeg = facing;`).
-- Add `bool lastFacingAzimuth(F32& deg) const`.
-- Reset `mHaveFacing=false` wherever `mLastFrame` is memset.
+When the rig is not producing a usable live offset, the fallback is deliberately **unmirrored**: `eff_yaw=wrap180(base+orbitYaw)`, `eff_pitch=clamp(base_pitch+orbitPitch,±85)`, `r=CineLightRigRadius`, and `z=r*sin(eff_pitch)+OffsetZ`. Draw “Unmirrored preview · rig off”. Fallback drag uses `+Δ` regardless of the Mirror setting. This is internally consistent; it does not use `F=0` with the mirror formula.
 
 **Display transform.**
 - Camera bearing φc = `atan2(−at.y, −at.x)` in degrees, from `LLViewerCamera::getInstance()->getAtAxis()`, read in `draw()`. If `|at.xy| < 0.05`, keep the previous φc (member).
-- Display yaw `t = wrap180(eff_yaw − φc)`: t = 0 points at the camera; positive t is screen-right as seen from the camera, because right = (−sin φc, cos φc), proven by the cross product.
-- When mirror is on and `!lastFacingAzimuth` (the rig is off), use F = 0 and draw the note "Mirror shown unmirrored (rig off)".
+- For a live offset `(ox,oy,oz)`, world yaw is `atan2(oy,ox)`, horizontal radius is `hypot(ox,oy)`, and display yaw is `t=wrap180(world_yaw−φc)`. For fallback, use the unmirrored values above. `t=0` points at the camera and positive t is camera-right.
 
-**Displayed elevation:**
-- r = `CineLightRigRadius`; h = per-light `OffsetZ`.
-- `p_vis = atan2(r·sin(eff_pitch) + h, r·cos(eff_pitch))`. This shows height nudges, and it is display-only.
-- The canvas footer shows "r <radius> m" (mono, KitMuted).
+**Displayed elevation:** `p_disp=atan2(oz,hypot(ox,oy))` for the live offset. Fallback uses `p_disp(base,orbit,h,r)=atan2(r·sin(clamp(base+orbit,±85))+h, r·cos(clamp(base+orbit,±85)))`. The canvas footer shows the actual live `hypot(ox,oy,oz)` distance when available, otherwise the fallback radius.
 
 **Colour:**
 - When `selected().lastFrame().mProj[i]` has a non-zero offset and `mOn`: (mSR, mSG, mSB) normalised so the max channel = 1. That is the live gel, profile and fixture colour.
@@ -895,13 +902,14 @@ All are read with `static LLCachedControl` arrays.
 - **Selected:** a ring at rr + 4, alpha 0.6, in the light colour.
 - Label: the name 11 px to the right if sx ≥ cx, otherwise to the left.
 
-**Legend** (MAP_LEGEND_H; 4 chips, each `kc_light_map_legend_<i>`): a dot (colour, or the slashed grey when off), the name, and "yaw° / pitch°" showing the **base** values (matching the dials). The yaw carries its side: "R45°" (camera-right), "L135°" (camera-left, behind), plain "0°" and "180°" on the axis; the tooltip spells it out ("Key light: 45° camera-right, pitch 35°"). Side letters come from the displayed (camera-relative) t; the number stays the base value. A click selects; the selected chip has its border in the light colour.
+**Legend** (MAP_LEGEND_H; 4 chips, each `kc_light_map_legend_<i>`): a dot (colour, or the slashed grey when off), the name, and "yaw° / pitch°" showing the **base** values (matching the dials). The yaw carries its camera-relative side: "R45°", "L135°", plain "0°" and "180°" on axis. Since R/L changes with the camera, the four cached strings are rebuilt only on the shared 10 Hz `ALLiveReadoutClock` while visible and applied with diff guards—never constructed in `draw()`. The helper is `yawSideText(t,base)` consistently in implementation and tests. A click selects; the selected chip has its border in the light colour.
 
 **Input.**
 - Mouse down on a light disc (hit radius rr + 4, topmost first) selects role i. It sets the Lights selector option, writing `DirectorV2SelectedLight`, which also moves the Rim per-light selector and the fixture role (section 5.1). Then it captures.
-- **Top-view drag:** `t_new = atan2(dx, −dy)` in degrees (dx, dy from the centre in LL coords, toward-camera = screen-down). Δ = wrap180(t_new − t_cur), and `base_yaw += mirror ? −Δ : Δ`. This is relative, so F is not needed.
-- **2.5D drag:** Δt = (x − x0)·1.1 °/px and Δp = (y − y0)·0.9 °/px (y up raises the light). `base_yaw = wrap180(base0 + (mirror ? −Δt : Δt))` and `base_pitch = clamp(p0 + Δp, −85, 85)`.
-- **Side drag:** horizontal = toward/away from the camera, vertical = height; the light keeps its side. p_new = clamp(p0 + Δp, −85, 85); f = clamp(s·(x − cx) / (R·max(0.08, cos p_new)), −1, 1); side = sign(t0) (if |t0| < 0.5 or t0 ≈ 180, use the viewing side, −s); t_new = side·acos(f); apply Δ = wrap180(t_new − t0) to base_yaw as in Top (mirror-aware). The hint line reads "Drag: ↔ toward/away from camera, ↕ height".
+- **Top-view drag:** `t_new=atan2(dx,−dy)`, `Δ=wrap180(t_new−t_cur)`, and live `base_yaw += mirror ? −Δ : Δ`; rig-off fallback always uses `+Δ`.
+- **2.5D drag:** horizontal yaw uses `Δt=sign(cos(t0))·dx·k`, preventing back-layer lights from moving opposite the pointer. Vertical motion chooses a target displayed pitch and calls the exact inverse below. Apply mirror sign only for a live mirrored frame; fallback is unmirrored.
+- **Exact elevation inverse:** define `p_disp(base,orbit,h,r)` exactly as above and `baseFromDisplayPitch(target,orbit,h,r,current)`. Solve `sin(q−target)=−h·cos(target)/r` for `q=base+orbit`, choose the valid branch closest to the current q, then clamp the resulting base so q remains within ±85°. The drag starts from the current `p_disp`; non-zero OrbitPitch/OffsetZ therefore cannot jump.
+- **Side drag:** `p_target=asin(clamp((y−cy)/R,−1,1))`, then use `baseFromDisplayPitch`. Solve `cos(t_new)=clamp((x−cx)/(s·R·max(0.08,cos(p_target))),−1,1)` and choose the `±acos` branch continuous with `t0`, preserving the light's side. Apply its yaw delta with the same live/fallback mirror rule. The hint reads "Drag: ↔ toward/away from camera, ↕ height".
 - Writes go through `gSavedSettings.setF32(<cached name>)` inside the input handler, so the dials update through their control bindings. One history gesture covers the drag.
 - **Keyboard** (when the map is focused): Left/Right yaw ∓/±1 (Shift 10); Up/Down pitch ±1 (Shift 10); `[` / `]` previous / next light; Home resets the selected light's Yaw and Pitch to their defaults.
 - The wheel is not used (returns false, so the page scrolls).
@@ -912,9 +920,10 @@ All are read with `static LLCachedControl` arrays.
 **Pure maths** goes in `alkitmath.h` (header-only, no UI includes) for the TUT test:
 - `wrap180`;
 - `arcAngle(v,min,max)` and its inverse `arcValue(a,min,max)`;
+- `pDisp(base,orbit,h,r)` and `baseFromDisplayPitch(target,orbit,h,r,current)`;
 - `projectLight(view,sideFrom,t,p,R,cx,cy,&x,&y,&depth)`;
 - `frontFactor(view,sideFrom,t)`;
-- `yawSideText(t, base)` ("R45°" / "L135°" / "0°" / "180°") and `dragSideYaw(x,cx,R,p,t0,sideFrom)`;
+- `yawSideText(t,base)` ("R45°" / "L135°" / "0°" / "180°") and `dragSideYaw(x,cx,R,p,t0,sideFrom)`;
 - `effYaw(base,orbit,mirror,F)`;
 - `dragTopDelta(dx,dy,t_cur)`;
 - `computeShellLayout(W,H,prev_state)`;
@@ -945,6 +954,10 @@ All are read with `static LLCachedControl` arrays.
 
 **ALKitScroller** (`alkitpage.cpp`): an LLScrollContainer subclass with `handleKeyHere` returning false for PgUp/PgDn (section 3.12). Everything else is inherited.
 
+`ALKitDoc` always subtracts/reserves the scroller's scrollbar width, whether or not the bar is currently visible. A content-height transition therefore cannot change document width and oscillate between one/two columns.
+
+`ALPanelCineLightRig::reshape` caches a one-shot “v2 flow grid lookup attempted” flag. When v2 intentionally has no `cine_light_rig_flow_grid`, it performs `findChildView` once and never recursively searches on later resize events; the current fallback lookup is at `alpanelcinelightrig.cpp:2811-2831`.
+
 ### 3.16 Settings, menu, colours, textures
 
 **`app_settings/settings.xml`** (each with a Comment):
@@ -962,7 +975,7 @@ All are read with `static LLCachedControl` arrays.
 | KitSearchGlobal | Boolean | 1 | 1 | Search covers all pages (off = current page only) |
 | UILayoutAuditSizes | String | "" | 0 | Self-test audit sizes ("WxH" or default/min tokens, comma list) |
 
-- **Menu.** `menu_viewer.xml`, next to the existing Director item: `<menu_item_check label="Director: new layout (restart)" name="DirectorUIV2">` with `on_check` CheckControl and `on_click` ToggleControl on `DirectorUIV2`. On toggle, show a "restart required" notification. Codex reuses an existing restart-required notification if one exists; otherwise it adds `DirectorUIV2Restart` to `notifications.xml`.
+- **Rollout exposure.** P0 adds no `menu_viewer.xml` item and no normal-user toggle. Until the all-at-once final gate, only `ui_selftest.ps1 --set DirectorUIV2 TRUE` and Debug Settings may enable v2. The menu/default rollout change belongs exclusively to `DIRECTOR_KIT_ROLLOUT_SPEC.md` WP12 after its ship gate.
 - **Registration.** `llviewerfloaterreg.cpp:776` becomes `gSavedSettings.getBOOL("DirectorUIV2") ? "floater_director_v2.xml" : "floater_director.xml"`. It is called from `LLAppViewer::init` (`llappviewer.cpp:1025`), after the settings load. Codex confirms that `initConfiguration` precedes it.
 
 ### 3.17 LLFloaterDirector (`llfloaterdirector.h/.cpp`): shell-agnostic
@@ -1021,11 +1034,12 @@ The Tron visibility uses `ALKitRow::setControlVisible`, which falls back to `set
 
 **Also in ALPanelCineLightRig postBuild:**
 - register the history context `"cine_rig_slot"` → `"slot:" + std::to_string(manager.selectedSlot())`;
+- register the stateless mode adapter `"cine_rig_easy"`, which resolves the live Rig panel handle and calls `applyEasyMode(desired, origin)` for click, setting signal, search reveal, undo, preset, scene, slot restore, and initial sync;
 - register the who adapter `"cine_rig_slot"`: a cast UUID maps to the anchor combo value:
   - null or `gAgentID` → 0;
   - Subject A–D → 1–4;
   - anything else → undefined;
-- wrap `onAnchorSelected` in `ALKitHistory::ScopedSuspend`.
+- wrap `onAnchorSelected` in `ALKitHistory::ScopedSuspend`, then call `history.barrier("rig slot changed")` after the synchronous slot write.
 
 These are inert in v1 because no shell exists.
 
@@ -1074,7 +1088,7 @@ No timestamps.
 | `page.sum` | `kit_page summary` |
 | `page.master {w,l,s}` | kit pages: `master_widget/label/setting`. Every page with `s`: `kit_lazy_page master_setting` and the rail item `master_settings` (for the on-pips) |
 | `page.who {label, pickers[0]}` | `who_label`, `who_picker`; `who_adapter` from the config |
-| `page.modes` | `modes="<options joined by |>" mode_setting mode_widget mode_on(config)`; one `<kit_page.mode name cards>` per option (card ids) |
+| `page.modes` | `modes="<options joined by |>" mode_setting mode_widget mode_on(config) mode_adapter(config)`; one `<kit_page.mode name cards>` per option (card ids) |
 | `page.sections[] {id,label,cards[idx]}` | `<kit_page.section id label cards="<ids>">` |
 | `page.pre` / `presets` / `preset_user` | from the config: `preset_mode` (+ `kit_preset_host` or `preset_provider`) |
 
@@ -1128,8 +1142,10 @@ A row is **pure** when one of these holds:
 | light_group/cine_light_rig_tab | kit (P0) |
 | light_group/light_rim_tab | kit (P0) |
 | look_group/bloom_glow_tab | pure kit (new) |
-| look_group/tron_tab | launcher (new; Lightbox `tron_settings`) |
+| look_group/tron_tab | launcher in the non-shippable P0 artifact only; WP10 replaces it with the full inline kit page |
 | the other 32 pages | legacy |
+
+This table describes only the non-shippable P0 foundation artifact. WP6 replaces this classifier/config with the 36-page matrix in `DIRECTOR_KIT_ROLLOUT_SPEC.md`; the final generator rejects every legacy or launcher page. In particular Tron becomes a full inline kit page, VCam uses its monitor design rather than the three-row v1 summary, and Capture/Gaze Cues/Light Cues/Diopter are data-complete.
 
 **Legacy page file:**
 ```xml
@@ -1138,7 +1154,7 @@ A row is **pure** when one of these holds:
   <!-- verbatim children of the v1 leaf <panel name="<page>"> from floater_director.xml, in order -->
 </kit_page>
 ```
-The verbatim copy keeps every attribute and comment of those children. The v1 leaf panel element itself is not copied; its width and height move onto the kit_page. VCam (`component`) uses v1 `vcam_tab`.
+The verbatim copy keeps every attribute and comment of those children. The v1 leaf panel element itself is not copied; its width and height move onto the kit_page. In the non-shippable P0 artifact only, VCam (`component`) uses v1 `vcam_tab`; rollout WP9 replaces it with the kit monitor page without editing v1 XML.
 
 ### 4.4 Kind mapping: data `k` + v1 tag → kit kind + control tag
 
@@ -1178,9 +1194,12 @@ The verbatim copy keeps every attribute and comment of those children. The v1 le
 ```json
 {"patterns": [
   {"template": "cine_{role}_{part}", "role": ["key","fill","rim","bg"], "part": ["clip","shaft","hero","cone_width","actor_only","actor_only_reset"]},
+  {"template": "cine_{role}_{part}", "role": ["key","fill","rim","bg"], "part": ["profile","gobo","gel","flicker"]},
   {"template": "card_{id}_{part}", "id": ["gaze_cues","diopter","practicals","actor_mask","light_cues","image","rotoink","tron","haze","shadows_probes","snapshot"], "part": ["open","summary"]}
 ]}
 ```
+
+The extractor also recognizes `prefix + "suffix"`, indexed arrays, and simple loop expansions, records the requested template type `T` from every `getChild<T>`/`findChild<T>`, and refuses an upgrade unless the generated control is compatible with `T`. The real dynamic combo lookups at `alpanelcinelightrig.cpp:1064-1074` are a mandatory fixture. The runtime self-test emits resolved name/class pairs to catch patterns static extraction cannot prove.
 
 ### 4.5 v1 hosting rules (P0 pages)
 
@@ -1214,7 +1233,7 @@ The verbatim copy keeps every attribute and comment of those children. The v1 le
         <kit_lazy_page name="move_tab" label="Move" page_file="panel_dpage_cast_move.xml"/> …
       </tab_container></panel> …
     </tab_container>
-    <kit_bar name="kit_transport" flex="status_strip" collapse_order="kit_ui_ms,take_timecode,btn_scene_delete">
+    <kit_bar name="kit_transport" flex="status_strip" collapse_order="kit_ui_ms,take_timecode,btn_scene_delete,btn_reset_marks,rec_indicator_text">
       <!-- in order; widths in px: btn_action 112, btn_cut 112 (v1, XML-hidden), btn_arm 24, btn_take_play 28,
            btn_take_stop 28, take_timecode 90, scene_combo 130, scene_name_editor 130 (v1 XML-hidden),
            btn_scene_save 50, btn_scene_delete 56, btn_set_marks 28 (icon), btn_reset_marks 28 (icon),
@@ -1232,6 +1251,17 @@ The verbatim copy keeps every attribute and comment of those children. The v1 le
 ```
 
 **Transport and chrome notes:**
+- `scene_combo` and `scene_name_editor` occupy one 130 px slot and are mutually exclusive; starting rename never adds width.
+- `status_strip` is a custom single-line ellipsizing draw, like the help strip, not an undersized non-ellipsizing `LLTextBox`.
+- `rec_indicator_text` is a collapsible 28 px text suffix: at minimum width the 50 px REC control becomes a 22 px record dot/icon, preserving state without its label.
+- Width proof (includes 10 px side padding and 8 px inter-child gaps):
+
+  | Width/state | Fixed visible children | Gaps + padding | `status_strip` remainder |
+  |---|---:|---:|---:|
+  | 1160, rail labels, normal scene combo | 708 px | 124 px | 328 px |
+  | 850, icon rail, rename editor, after collapse | 576 px | 116 px | 158 px |
+
+  The 850 row includes ACTION, Arm, Play/Stop, the one scene slot, Save, Set Marks, compact REC, Show Paths, Help, Cast, Hotkeys, and status; Timecode, Delete, Reset Marks, UI-ms, and REC text are collapsed. CUT replaces ACTION in the same slot. The audit exercises idle/ACTION, CUT, recording, and rename states.
 - `btn_take_play` and `btn_take_stop` call `LLFlycamRecorder::instance().togglePlayback()` (the same as F7) and the recorder's stop function. Codex finds the exact stop API.
 - `take_timecode` shows the playback position at 2 Hz if the recorder exposes one. Otherwise it is generated `visible="false"` and noted in the report.
 - Icon buttons use existing textures: marks `Flag`; reset to marks `Refresh_Off`; legend `Inv_Notecard` or the closest existing; hotkeys a text "?". Codex picks existing names from `textures.xml` and lists them in the report.
@@ -1247,7 +1277,7 @@ The verbatim copy keeps every attribute and comment of those children. The v1 le
   "light_group/cine_light_rig_tab": {
    "v1_sources": ["panel_cine_light_rig.xml"],
    "root_class": "panel_cine_light_rig", "root_name": "cine_light_rig_tab_logic",
-   "undo_context": "cine_rig_slot", "who_adapter": "cine_rig_slot", "mode_on": "Easy",
+   "undo_context": "cine_rig_slot", "who_adapter": "cine_rig_slot", "mode_adapter": "cine_rig_easy", "mode_on": "Easy",
    "preset": {"mode": "widgets", "combo": "cine_setup_combo", "save": "cine_setup_save", "delete": "cine_setup_delete"},
    "selector_settings": {"lights": "DirectorV2SelectedLight"},
    "card_enables": {"easy_probe": "cine_easy_probe_enable", "light_group": "cine_group_enable",
@@ -1329,7 +1359,7 @@ If a `row_overrides` key or an `after` row is not found in the data, it is a gen
 | rig_aim | Mirror, the aim nudge buttons, Shadow policy, Auto shadows, the `cine_shadow_hint` readout, and `cine_shadow_fixit` (not advanced; C++ shows and hides it) |
 | rig_bounce | as data |
 | rig_catchlight | enable `cine_catchlight`. Angle → dial (0..360, compass, no wrap problems). |
-| fixture | `cine_fixture_preset` in the header (cp). `cine_fixture_role` has `mirror_setting=DirectorV2SelectedLight`: the role follows the Lights selection, and choosing a role moves the selection. |
+| fixture | `cine_fixture_preset` in the header (cp). `cine_fixture_role` has `mirror_setting=DirectorV2SelectedLight`: the role follows the Lights selection, and choosing a role moves the selection. The adapter performs `cine_fixture_role->setValue(index); cine_fixture_role->onCommit()` inside `ALKitHistory::ScopedSuspend`, because `onFixtureRoleCommit` repopulates Kelvin/gels (`alpanelcinelightrig.cpp:925-926`); setting the value alone is forbidden. |
 | cookie | `cine_gobo_preview` gobo row; Library combo; `cine_gobo_softness` readout; Cue stack button; `cine_cookie` text (advanced) |
 | flare (combined) | `cine_flare_preset` in the header; subs Lens flare, Starburst, Flare optics, Flare colour |
 | live_probe | enable `cine_live_probe_enable`; `cine_live_probe_status` added |
@@ -1379,19 +1409,21 @@ If a `row_overrides` key or an `after` row is not found in the data, it is a gen
 2. A `kit_row` control child has any of the stripped attributes from section 4.5, or `kit_row` has the wrong number of control children for its kind.
 3. The kind ↔ control tag pair is not in the section 3.3 table.
 4. A widget name is not unique across the whole v2 tree (floater plus all page files). Duplicates already present inside v1 leaf pages are listed in `scripts/code_tools/director_kit/kit_lint_allow.json`; Codex generates that file once from v1, and it may only shrink.
-5. A `setting`, `enable_setting`, `master_setting`, `mode_setting`, `sel_setting` or `control_name` is missing from `settings.xml`, or its type does not fit the kind:
+5. A `setting`, `enable_setting`, `master_setting`, `mode_setting`, `sel_setting` or `control_name` is missing from the viewer's complete settings graph, or its type does not fit the kind. The lint loads every Global/PerAccount base in `settings_files.xml` and recursively follows each file's `Include` array; `settings.xml:6327-6330` includes `settings_alchemy.xml`, where the flare/Bloom settings live. Runtime bindings resolve through the same setting-group lookup as `LLView::findControl` (`llview.cpp:2405-2427`), not `gSavedSettings` alone:
    - slider and number: F32, S32 or U32;
    - toggle: Boolean;
    - combo: S32, U32 or String;
    - color: Color3 or Color4;
    - text: String;
-   - vec: Vector3 or Vector3D.
+   - vec2/vec3: Vector3 or Vector3D. There is no Vector2 control type (`llcontrol.h:51-66`); vec2 preserves z unchanged (for example `RenderVignetteCenter`, `settings_alchemy.xml:3435-3447`).
 6. A section or mode references an unknown card id; a card is in no section.
 7. A generated file's header sha does not match the current inputs (stale generation).
 8. `bottom=` anywhere.
 
+**Additional errors:**
+- a label whose measured configured-font width exceeds `LABEL_W`, unless it declares the two-line label form and measured row height. Length-based warnings are not a substitute;
+
 **Warnings:**
-- a label longer than 16 characters (a likely truncation at LABEL_W);
 - help text matching `Lightbox|Phototools|\btab\b|type \d|Phase \d|scaffold|deferred|bucket|allocation` (audit §14);
 - an empty help.
 
@@ -1408,9 +1440,9 @@ If a `row_overrides` key or an `after` row is not found in the data, it is a gen
 **Checks:**
 1. Every name in A is in B, or matches a `parity_allow` entry (glob) with its reason.
 2. Every control_name in A is bound by some control_name in B.
-3. **getChild check:** every literal passed to `getChild`/`findChild` in `alpanelcinelightrig.cpp`, `alrigrimcontroller.cpp`, `alpanelrigrim.cpp` and `llfloaterdirector.cpp` (chrome, plus Light pages) exists in B.
+3. **getChild check:** every literal and expanded prefix/suffix/index pattern passed to `getChild<T>`/`findChild<T>` in the page owners exists in B **and the v2 class is compatible with T**. The extractor covers the dynamic role combos at `alpanelcinelightrig.cpp:1064-1074`; a runtime self-test log of resolved name/requested-type/actual-type closes patterns static extraction cannot prove. The generator refuses a presentation upgrade matching any extracted literal or suffix pattern.
 
-It prints PASS or FAIL with the lists, and exits 1 on FAIL. P0 gate: PASS for `light_group`.
+It prints PASS or FAIL with the lists, and exits 1 on FAIL. Intermediate P0 gate: PASS for `light_group`. All-at-once gate: `director_parity.py --groups all` over every recursively expanded v1 source and all 36 kit pages.
 
 ### 6.3 `xui_layout_check.py` learns the kit
 
@@ -1425,19 +1457,20 @@ It prints PASS or FAIL with the lists, and exits 1 on FAIL. P0 gate: PASS for `l
 
 1. **Audit sizes.**
    - The new setting `UILayoutAuditSizes` holds comma tokens: `default` (the original rect), `min`, or `WxH`. When empty it is `default,min`, unchanged behaviour.
-   - The loop over `mAuditSizeIndex < 2` becomes a loop over the parsed vector. `auditSizeName()` returns the token.
+   - The loop over `mAuditSizeIndex < 2` becomes a loop over the parsed vector. `auditSizeName()` maps the input token `min` to the existing output name `minimum` (`aluiperfselftest.cpp:1320-1323`) so default-run CSV keys/directories and `-Compare` baselines do not change; explicit `WxH` tokens keep their token.
    - A `WxH` below the floater minimum is skipped with an INFO log.
 2. **Lazy rescan.**
    - In `TAB_SELECT`, after `applyChain`, if the target panel is an ALKitLazyPage that was unbuilt when tabs were collected:
      - call `collectScrollers(panel, chain, path)` and append the result, fixing `mScrollBegin`/`mScrollEnd`;
      - call `collectTabs(panel, chain, path)` and **insert** any nested TabTargets right after the current index.
    - Record the select action ms as that page's **first reveal**.
-3. **Kit measures** (when the target is the director and an ALKitShell exists), added as CSV rows:
+3. **State enumeration before geometry.** For a kit page the audit iterates every mode, chip/filter or anchor target, selector option, advanced-card open/closed, More open/closed, master state, registered custom-widget state, validation/error state, popover, and inline rename state. It applies each through the kit API, forces layout, audits, and records the state key in CSV/screenshot names. VCam adds 0/1/4/5/8 captures and every raw/display selection. A single default-visible visit is not coverage.
+4. **Kit measures** (when the target is the director and an ALKitShell exists), added as CSV rows:
    - `kit_search`: run the fixed queries `key yaw`, `rim`, `nd`, `ev`, `exposure`, `actors only`, `froxel`, `zzz`, and record the max query ms;
    - `kit_amber_storm`: `ALKitSettingWatch::debugRecomputeAll()` ms;
    - `kit_index`: the index tokenize total ms;
    - `kit_build` for every page: its build ms (from ALKitLazyPage).
-4. **`ui_selftest.ps1 -DirectorV2`:**
+5. **`ui_selftest.ps1 -DirectorV2`:**
    - sets `--set DirectorUIV2 TRUE --set UILayoutAuditSizes "1160x720,min,1141x720,915x720"`, `Floaters=director`, and implies `-Layout`;
    - after the run, evaluates and prints `DIRECTOR V2 BUDGET: PASS|FAIL` with each line:
 
@@ -1448,10 +1481,12 @@ It prints PASS or FAIL with the lists, and exits 1 on FAIL. P0 gate: PASS for `l
 | any kit page first reveal | ≤ 50 ms | 30 |
 | kit_search max | ≤ 5 ms | 2 |
 | kit_amber_storm | ≤ 2 ms | — |
-| layout findings, shell + Light › Rig + Light › Rim, all 4 sizes | 0 | — |
+| layout findings, shell + Light › Rig + Light › Rim, all states at all 4 sizes | 0 | — |
 | layout findings, legacy pages, vs a v1 baseline run at default and min (`-Compare <v1 csv>`) | 0 new | — |
 
-5. **Help and amber per-frame cost.** The self-test's existing `mFindCalls` per frame on the Rig page must equal 0 while hovering rows. Add a `hover_sweep` row for the Director Rig page, reusing the inventory hover-sweep code path.
+The legacy comparison is intermediate-only. The WP12 final run defined in `DIRECTOR_KIT_ROLLOUT_SPEC.md` replaces it with absolute zero findings for all 36 pages and every enumerated state at all four sizes.
+
+6. **Help and amber per-frame cost.** The self-test's existing `mFindCalls` per frame on the Rig page must equal 0 while hovering rows. Add a `hover_sweep` row for the Director Rig page, reusing the inventory hover-sweep code path.
 
 ### 6.5 `ui_draw_lint.py`
 
@@ -1461,10 +1496,12 @@ New kit files must report 0 new findings (`--changed <base>`). Any suppression n
 
 Cases:
 - `wrap180`;
-- `arcAngle`/`arcValue` round-trip for (−85, 85), (−180, 180) and (0, 360);
+- `arcAngle`/`arcValue` round-trip for (-85,85), (-180,180), and (0,360), including horizon 0/right, +up, -down, and in-bounds endpoints;
+- compass wrapping preserves `[min,max)` for both -180..180 and 0..360; `kit_geometry=false` reproduces legacy radius/letter positions;
 - `projectLight` (t = 0 in 2.5D lands below the centre and is front; t = 180 is behind; Side from camera-left puts the camera on the right and t = −45 (camera-left) nearer than t = +45; Side from camera-right mirrors both);
 - `frontFactor` in Side: t = +45 and t = −45 never share a layer; `yawSideText(45)` = "R45°", `(−135)` = "L135°", `(0)` = "0°";
-- `dragSideYaw` keeps the light's side and is the inverse of the Side projection at a fixed pitch;
+- `pDisp`/`baseFromDisplayPitch` round-trip with non-zero OrbitPitch and OffsetZ at scaled and unscaled radii;
+- `dragSideYaw` keeps the light's side and exactly inverts Side projection with non-zero orbit/OffsetZ; 2.5D horizontal drag has the correct sign for both front and back layers;
 - `frontFactor` monotone;
 - `effYaw` with and without mirror (against the `computeLive` formula);
 - `dragTopDelta` sign;
@@ -1524,8 +1561,10 @@ If they differ, the config tables in section 4.7 win and the generator reports t
 - `alkitstyle.*`, `alkitswitch.*`, `alkitrow.*`, `alkitcard.*` (ALKitCard plus ALKitOption);
 - `alkitpage.*` (ALKitPage, ALKitScroller, ALKitDoc, ALKitPresetHost, the page bar, chips, who row);
 - `alkitlazypage.*`, `alkitbinding.*` (bindings, registry, ALKitSettingWatch, ALKitWhoAdapters);
+- interface headers `alkithistory.h`, `alkitsearch.h` (including `Hits`), `alkithelp.h`, `alkitpresets.h`, and the shell accessor contract, plus inert stub `.cpp` implementations sufficient for ALKitPage/Row to link. WP2 replaces the stubs without changing these interfaces;
 - `allightrigmap.*`, `alkitmath.h`;
 - `scripts/code_tools/director_kit/kit_png_gen.py` and its PNGs;
+- `skins/default/xui/en/widgets/kit_switch.xml` (structural defaults copied from `check_box.xml`);
 - the `colors.xml` Kit* entries and `textures.xml` entries.
 
 **Files (modified):**
@@ -1554,8 +1593,7 @@ If they differ, the config tables in section 4.7 win and the generator reports t
 
 **Files (new):**
 - `alkitshell.*` (shell, rail, roster, tab strip, mode proxy, layout, popovers via `alkitpopover.*`, ALKitBar via `alkitbar.*`);
-- `alkitsearch.*`, `alkithelp.*`, `alkitpresets.*` (registry, SnapshotStore, preset strip);
-- `alkithistory.*`;
+- the real implementations of the WP1 interface stubs: `alkitsearch.cpp`, `alkithelp.cpp`, `alkitpresets.cpp` (registry, SnapshotStore, preset strip), and `alkithistory.cpp`;
 - `alrigrimcontroller.*`, `alpanelrigrim.*`.
 
 **Files (modified):**
@@ -1563,9 +1601,7 @@ If they differ, the config tables in section 4.7 win and the generator reports t
 - `alpanelcinelightrig.h/.cpp` (section 3.18 extraction and registrations only);
 - `llviewerfloaterreg.cpp` (one line);
 - `llviewerwindow.cpp` (one line: `ALKitHistory::noteKey();` at the top of `handleKey`, after the existing early-out guards, before menus);
-- `menu_viewer.xml` (one item);
 - `settings.xml` (section 3.16 rows);
-- `notifications.xml` (only if needed);
 - `CMakeLists.txt`.
 
 **Acceptance:**
@@ -1638,7 +1674,7 @@ This is the integration pass over WP1 to WP3 for the two pages. It covers:
 - the default-mode self-test behaviour is unchanged (no `UILayoutAuditSizes`, no DirectorV2): reviewer diff;
 - the budget evaluation prints every line in section 6.4.
 
-**After WP5:** Opus final review, then the orchestrator's prebuild guard additions, then **one fresh build** (`cxs\fresh_build.ps1`), then `ui_selftest.ps1 -DirectorV2` and the default run (the v1 regression), then the screenshot review, then the user's in-world checklist:
+**After WP5:** review and automated foundation build may run, but v2 is not shippable and remains debug/self-test-only. Proceed directly through `DIRECTOR_KIT_ROLLOUT_SPEC.md` WP6-WP12. The single release-candidate fresh build and full 36-page in-world checklist occur only after WP12. The P0-only diagnostic checklist is:
 - Rig Easy/Advanced;
 - map drag with Mirror on and off;
 - preset apply, undo and redo;
@@ -1653,13 +1689,13 @@ This is the integration pass over WP1 to WP3 for the two pages. It covers:
 | # | Question | Pass | Fallback |
 |---|---|---|---|
 | S1 | Can an LLSliderCtrl with `text_width=52` and no label put its value exactly in the 52 px value column? Can a unit suffix render without breaking edit parsing? | Value right-aligned in mono; editing shows the bare number | Slider rows show the unit in the help meta only (labels stay unchanged). No LLSliderCtrl changes in P0. |
-| S2 | ALKitSwitch subclass parse: do all v1 `check_box` attributes parse under `kit_switch`? Does `getChild<LLCheckBoxCtrl>` succeed? Is dimming via `LLViewDrawContext` alpha applied to children? | All three | Draw the dimming as a KitWindowBg overlay at alpha 0.55 over the body |
+| S2 | ALKitSwitch subclass parse and flow: do all v1 `check_box` attributes parse with `widgets/kit_switch.xml`; does `getChild<LLCheckBoxCtrl>` succeed; does a click toggle and write the setting; does external `LLControlVariable::set()` update `isOn()` and fire exactly one flip; does passive `writeBoundValue` work; is child dimming applied? | All checks | Fix the wrapper/inner-button hooks; draw dimming as a KitWindowBg overlay only if alpha inheritance fails |
 | S3 | Lazy `createFromFile<LLPanel>` into a live tab panel: do `postBuild` order, parent chain during postBuild, ALScrollFit `adoptPage`, the self-test `selectTab` safety net, and `onVisibilityChange` re-entrancy all work? What is the Rig build time? | Rig built ≤ 50 ms; no re-entrancy warnings | Build the selector's inactive options on first selection. Not allowed if a C++ `getChild` would miss them, so instead prebuild the Rig on the idle after open. |
 | S4 | Help hover and focus: zero `findChild` per frame while hovering? Do focus-received signals fire for sliders, spinners and combos? | 0 finds; signals fire | Focus help on click only |
 | S5 | Search index tokenize time and query time on the real index | ≤ 30 ms total in chunks; ≤ 5 ms per query | Drop help tokens for 1–2 letter queries (already the rule); cap results earlier |
 | S6 | `IBMPlexMono` lookup by descriptor at sizes Small and Medium; UI scale 1.25 metrics | Font resolves; rows stay 28 × scale | `getFontMonospace()` |
 | S7 | Run the v1 runtime audit at 1160×720 and 850×560 and classify the findings | A baseline CSV saved for the legacy "0 new" gate | — |
-| S8 | Accelerator precedence with `hasAccelerators()`: Ctrl+Z inside the Director; Ctrl+Z in a line editor (text undo); Ctrl+F still opens viewer search; Enter in search does not fire ACTION; 1–9 punches are suppressed while search is focused | All | Undo/Redo by buttons only; document it |
+| S8 | Accelerator precedence: Ctrl+Z/Y invokes kit history in non-text controls; Ctrl+Z/Y in `LLLineEditor`, `LLTextEditor`, and spinner editors never reaches kit history; `/` reaches `handleUnicodeCharHere` and focuses search only outside text entry; Ctrl+F remains viewer search; Enter in search does not fire ACTION; 1–9 punches are suppressed while search is focused | All | Undo/Redo by buttons only; document it |
 | S9 | Amber precision and storm: a slot switch fires about 150 signals. Total handler time? Do `setControlName` rebinding races occur? | ≤ 2 ms; no stale amber | Coalesce amber flips into one idle pass |
 | S10 | UI ms source: is a floater-draw LLTimer EMA stable enough vs Tracy? | ±0.05 ms of the Tracy zone mean | Hide the chip (it is opt-in anyway) |
 
@@ -1669,10 +1705,10 @@ This is the integration pass over WP1 to WP3 for the two pages. It covers:
 
 1. **Lazy pages vs `getChild`.** Any `getChild` on an unbuilt page creates dummy widgets. Mitigation: binders use `findChild` and run on `pageBuiltSignal`; the getChild-name gate (section 6.2).
 2. **Two Directors diverge.** v1 is frozen except for crash fixes. The binder refactor is the single shared risk: the reviewer diffs v1 call order.
-3. **Legacy pages at 850×560** get less height than v1, because of the 44 px bar and 30 px help strip. adoptPage wraps them in scrollers. Unwrapped Dance and Exposure (fillPage) may clip, so the gate is "0 new vs the v1 baseline", not an absolute 0 (decision U2).
-4. **History attribution.** Background writers (FX, cue playback) during a gesture can be journaled. Mitigations: the page-scoped watch set, the 350/500 ms settle, and `ScopedSuspend` around slot switches. **Undo context** stops cross-slot corruption.
+3. **Legacy pages at 850×560** are an intermediate P0 risk only. The final delivery converts them all, audits their non-default states, and requires absolute zero; `DIRECTOR_KIT_ROLLOUT_SPEC.md` is binding.
+4. **History attribution.** Background writers, scene loads, slot changes, reset-all, and external presets/cues use `ScopedSuspend` plus a generation barrier. Complete Director-owned bulk actions explicitly record one Step. Context and generation checks prevent cross-slot/cross-scene replay.
 5. **The dyn-visibility probe** is a bool loop in `draw()`. It must stay allocation-free (Opus checks it).
-6. **Mirror display** needs the subject facing, so the rig must be live. When it is off, the map shows unmirrored with a note.
+6. **Mirror display.** A live map reads the already-resolved `mProj[].mOffX/Y/Z`; it needs no facing accessor and works for object targets. Rig-off fallback is explicitly unmirrored and uses `+Δ` drag.
 7. **Card-header preset reparenting** moves C++-owned combos. Pointers stay valid, but `getChild` from ALPanelCineLightRig after postBuild would miss them. Codex verifies that ALPanelCineLightRig never looks them up after postBuild.
 8. **Rect bump.** A v1 saved width of 1020 bumps once to 1160.
 9. **Search index staleness.** `gen --check` is a prebuild gate.
@@ -1680,18 +1716,9 @@ This is the integration pass over WP1 to WP3 for the two pages. It covers:
 
 ---
 
-## 10. Decisions for the user (P0 runs with the recommendation if there is no answer)
+## 10. Resolved rollout decisions
 
-- **U1, phased vs all-at-once:** not needed for P0. P0 is identical either way.
-- **U2, the legacy-page audit gate:**
-  - recommended: "0 new findings vs v1" for the 32 legacy pages, and 0 absolute for the shell, Rig and Rim;
-  - the alternative, an absolute 0 on every page, pulls fixes to v1-content pages into P0.
-- **U3, arc zero direction:**
-  - the approved mockup draws pitch 0 as a needle pointing **up** (`arc_zero="up"`);
-  - a physical tilt reading would point at the horizon (`arc_zero="right"`);
-  - recommended: keep the mockup in P0. It is one attribute in the generator config to flip.
-- **U4, Light map frame:** it is **camera-relative** (front = toward the current camera), because the rig itself uses world azimuths. Confirm, or ask for a world (north-up) toggle in Top view.
-- **U5, chips on legacy pages:** they arrive when each page converts. P0 shows chips only on kit pages (Rig, Rim, Bloom & Glow).
+There are no open rollout choices in this specification. The binding decisions below govern P0 and the mandatory continuation in `DIRECTOR_KIT_ROLLOUT_SPEC.md`: all-at-once delivery, absolute-zero final audit, horizon-zero arcs, camera-relative Light map, and chips on every converted page. Intermediate legacy baselines are test scaffolding only.
 
 
 ## USER DECISIONS (2026-10-10, binding; supersede the recommendations above)
@@ -1700,3 +1727,42 @@ This is the integration pass over WP1 to WP3 for the two pages. It covers:
 - **U3 tilt arc:** HORIZON = 0 (needle sideways at 0; up positive, down negative, like a camera tilt gauge).
 - **U4 Light map:** CAMERA-RELATIVE (camera at the bottom). No north-up toggle.
 - **U5 chips:** every page gets section chips when converted (all pages, per the earlier decision).
+
+## Review R1 resolution
+
+- B1 -> `DIRECTOR_KIT_ROLLOUT_SPEC.md` sections 1-8 (36-page matrix, adapters/kinds, WP6-WP12, final ship gate) and this spec sections 0, 4.3, 6.2, 6.4, 7, 10.
+- B2 -> sections 3.2, 7 WP1, and spike S2 (`LLCheckBoxCtrl` inner-button binding, widget defaults, click/external/passive paths).
+- B3 -> sections 3.5, 3.8, 3.18, and spike S8 (one registered mode adapter and one `applyEasyMode` path for every source).
+- B4 -> `VCAM_MONITORS_DESIGN.md` section 5.4 and WP1 (fine-grained identity-preserving typed undo; `applySceneData()` forbidden).
+- B5 -> `VCAM_MONITORS_DESIGN.md` sections 4.2, 4.5, 7.1, and WP2/WP4 (CPU+GPU/scratch charge, fixed bucket, quality profile, admission and p95 gates).
+- B6 -> section 3.11, `DIRECTOR_KIT_ROLLOUT_SPEC.md` Camera/VCam row, and `VCAM_MONITORS_DESIGN.md` sections 1, 5.4, 6.1 (kit page, frozen v1 XML, sole `ALKitHistory`).
+- M1 -> `VCAM_MONITORS_DESIGN.md` section 4.2 and WP2 (visible-first two-tier cadence and Every Frame preview deadline).
+- M2 -> `VCAM_MONITORS_DESIGN.md` section 5.1 and WP5 (`SOURCE_VCAM`, no toolbar inventory lookup, real drop flag).
+- M3 -> sections 3.12 and spike S8 (text-entry focus guard and Unicode `/` path).
+- M4 -> section 3.11 (bulk `ScopedSuspend`, barriers, and scene-generation contexts).
+- M5 -> sections 6.1 and 5.1 (`settings_files.xml` plus recursive includes, setting groups, Vector3-backed vec2).
+- M6 -> section 3.14 Frames/Display transform (live emitter offsets; consistent unmirrored rig-off fallback).
+- M7 -> section 3.14 Input/Pure maths and section 6.6 (exact elevation inverse, effective radius, back-layer 2.5D sign tests).
+- M8 -> section 3.13 and section 6.6 (binding horizon-zero geometry and inverse).
+- M9 -> section 6.4 and `DIRECTOR_KIT_ROLLOUT_SPEC.md` section 6 (all non-default audit states and measured label errors).
+- M10 -> section 4.6 (850/1160 width budgets, mutually exclusive scene slot, ellipsizing status, extended collapse).
+- M11 -> section 7 WP1/WP2 (interface headers and linkable stubs precede ALKitPage dependencies).
+- M12 -> sections 3.4, 3.7, and 3.8 (handle-guarded deferred work, shell-owned timers, no static shell/panel captures).
+- M13 -> sections 4.4 and 6.2 (dynamic name expansion and requested/actual class compatibility).
+- M14 -> `VCAM_MONITORS_DESIGN.md` section 4.3 and WP3 (complete GL-state contract and same-frame HDR tonemap/sRGB transform).
+- M15 -> sections 0 and 3.16 plus `DIRECTOR_KIT_ROLLOUT_SPEC.md` sections 1 and 8 (no normal menu exposure before final gate).
+- M16 -> section 3.8 (version-2 index header and exactly 15 validated fields).
+- MIN1 -> section 6.4 (`min` maps to existing `minimum`).
+- MIN2 -> sections 3.13, 7 WP1, and 6.6 (`kit_geometry` opt-in and `wheel_adjust`; legacy dials unchanged).
+- MIN3 -> sections 3.13 and 6.6 (compass wrap honors 0..360 range).
+- MIN4 -> section 3.14 Legend/Pure maths (10 Hz diff-guarded camera-relative side labels and one helper signature).
+- MIN5 -> section 3.4 Visibility probe (all-row bit vector and actual row visibility).
+- MIN6 -> section 3.15 (one-shot missing-flow-grid lookup in v2 reshape).
+- MIN7 -> section 3.15 (`ALKitDoc` permanently reserves scrollbar width).
+- MIN8 -> section 5.1 fixture row (`setValue` plus `onCommit` under suspension).
+- MIN9 -> `VCAM_MONITORS_DESIGN.md` section 4.1 (visibility owner tokens/refcount).
+- MIN10 -> `VCAM_MONITORS_DESIGN.md` section 4.2 (`prepare()` decides visible versus preview-only).
+- MIN11 -> `VCAM_MONITORS_DESIGN.md` section 5.2 (scene restore uses the common validator and quarantines offline faces).
+- MIN12 -> `VCAM_MONITORS_DESIGN.md` section 5.2 (drop publication demand; retained output stays lifetime-fixed).
+- MIN13 -> `VCAM_MONITORS_DESIGN.md` section 4.5 (`GL_TIMESTAMP`, never nested `GL_TIME_ELAPSED`).
+- MIN14 -> `VCAM_MONITORS_DESIGN.md` section 5.1 (reserved cargo comment and `static_assert`).

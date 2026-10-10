@@ -3,11 +3,11 @@
 Status: implementation design for work after Director Kit Phase 0  
 Branch reviewed: `feature/director-kit-p0`  
 UI reference: approved `VCamPage.dc.html` mockup  
-Scope of this document: the inline Director **Lens > VCam** page, its preview engine contract, and drag-to-surface. The existing full Virtual Cam Manager remains available as an advanced/debug surface.
+Scope of this document: the inline Director **Camera > VCam** page, its preview engine contract, and drag-to-surface. The existing full Virtual Cam Manager remains available as an advanced/debug surface. The v1 Lens > VCam summary remains frozen; v2 relocates VCam under Camera.
 
 ## 1. Decision summary
 
-Build the page as a shared, build-once `ALPanelDirectorVCam` embedded in the Director floater. It owns a fixed set of eight `ALVCamMonitorTile` children, a camera selector, and the Source / Lens / Look / Output / Rate & performance editors. It does not recreate widgets or query controls by name after `postBuild()`.
+Build Camera > VCam as a full Director **kit page** in `floater_director_v2.xml`. Its root logic class is `ALPanelDirectorVCam`; inside it, `kit_page` owns kit cards/rows and a `monitor_strip` custom row with eight fixed `ALVCamMonitorTile` children. Source / Lens / Look / Output / Rate & performance remain in signal-chain order. The page does not edit or embed the frozen v1 `floater_director.xml`, recreate widgets, or query controls by name after `postBuild()`.
 
 Add one engine-side `LLPrismPreviewService` beside the existing Prism registry. It does **not** introduce a second scene renderer:
 
@@ -17,12 +17,14 @@ Add one engine-side `LLPrismPreviewService` beside the existing Prism registry. 
 - A fixed eight-cell RGBA8 preview atlas is updated from retained capture output. One cell update applies the same signal mapping and effect math used on an in-world display. The UI only samples this atlas; it never samples a live render target whose lifetime can change under it.
 - The Previews master switch removes all preview demand and schedules no atlas updates. In-world displays continue at their own picture rates. Existing retained atlas pixels may be drawn dimmed with a PAUSED badge, but they are not refreshed.
 
-The page has two independent notions of choice:
+There is exactly one persisted preview master (`PrismMonitorPreviewsEnabled`) and one shared preview speed (`PrismMonitorPreviewFPS`) for all eight tiles. The page has two independent notions of choice:
 
 1. `mSelectedCapture` chooses which camera the editor changes.
 2. `mMonitorDisplay[capture-id]` chooses what that capture's monitor shows: raw signal or one of its display bindings.
 
 Clicking a monitor never changes the edited camera. A monitor is an output view and drag source, matching the approved mockup.
+
+There is no camera map. Camera choice is the selector plus the fixed monitor strip, with a hard cap of eight captures.
 
 ## 2. What exists today
 
@@ -98,11 +100,13 @@ Introduce `ALVCamPageModel` (`alvcampagemodel.h/.cpp`) as the only mutation surf
 
 - Hold selected capture/display handles and a cached `RegistrySnapshot`, `PerformanceSnapshot`, and `GateSnapshot`.
 - Expose typed commands: `addFromSelectedObject`, `addVirtualAtView`, `addOtsPair`, `addSurfaceLens`, `removeCapture`, `bindSelectedFace`, `bindFaceTarget`, `reassignDisplay`, `setCamera`, `setRate`, `setDisplay`, and `setLabel`.
-- Open/close an undo transaction around one user gesture. Slider mouse-down/up is one transaction; a drag/drop, Add, Remove, preset, or reset is one transaction.
+- Open/close one `ALKitHistory` typed transaction around a user gesture. Slider mouse-down/up is one transaction; drag/drop, Add, Remove, preset, or reset is one transaction. The model owns no history stack and no key handler.
 - Preserve the existing validation and status strings by calling Prism registry APIs, never duplicating their rules in the panel.
 - Emit `changed(DirtyBits)` after coalescing engine signals. The panel performs widget writes only from this callback/idle work item and only while visible.
 
 This model is not a second source of truth. Handles and snapshots remain owned by `LLPrismLens`.
+
+Prism settings represented by a typed transaction are excluded from the kit page's ordinary watched-setting set for that gesture. Global pure-setting rows may use normal `ALKitSettingBinding` history; no mutation is recorded by both paths.
 
 ## 4. Monitor preview engine
 
@@ -131,7 +135,8 @@ struct TileState
     EPreviewState mState; // EMPTY, READY, HELD, THROTTLED, PAUSED, ERROR
 };
 
-void setPanelVisible(bool);
+using VisibilityOwner = U64;
+void setConsumerVisible(VisibilityOwner owner, bool visible);
 void setMonitorSelection(U32 capture_slot, const DisplayHandle&); // null = raw
 AtlasHandle atlasHandle();
 bool bindAtlas(const AtlasHandle&); // resolves/binds only on the render/UI thread
@@ -140,6 +145,8 @@ U64 revision();
 boost::signals2::connection connectChanged(...);
 }
 ```
+
+Visibility is owner-token/refcounted: inline VCam and the advanced manager each hold a token. Preview demand is visible when at least one live owner says visible; destroying an owner removes only its claim. There is no last-writer-wins `setPanelVisible(bool)` shared by two surfaces.
 
 `LLPrismPreviewService` owns one fixed 4 x 2 atlas. Each cell is 256 x 144; the texture is 1024 x 288 RGBA8, no mipmaps. It is allocated once on first visible use, reused until GL targets are released, and recreated by `onRenderTargetsReleased()`. Fixed cells mean list reorder, large/compact mode, and capture selection never allocate GPU memory. Slot identity is checked with capture generation before publishing into a cell.
 
@@ -157,29 +164,29 @@ F32  mPreviewEntitlementHz = 0.f;
 U64  mPublicationSerial = 0;
 ```
 
-At the start of `renderAuxiliaryView()`, after the adaptive update and before `prepare()` (`llprismlens.cpp:7174-7219`), the service publishes demand for every occupied capture only when all of these are true:
+At the start of `renderAuxiliaryView()`, after the adaptive update and before `prepare()` (`llprismlens.cpp:7174-7219`), the service publishes **preview intent** for every occupied capture only when all of these are true:
 
 - `PrismLensEnabled` is true.
 - `PrismMonitorPreviewsEnabled` is true.
 - the inline panel or full manager monitor strip is in the visible chain;
 - the shared preview deadline is due;
-- the capture has no prepared visible display.
+- the capture exists. Visibility is not decided here: `prepare()` resets and recomputes `mAnyDisplayVisible` (`llprismlens.cpp:2781-2805`).
 
 Refactor `prepareCameraCapture()` (`llprismlens.cpp:2774-2921`) so the source/health/FOV checks remain common, then choose target demand:
 
-1. visible display/Gate demand: use the existing required size and existing capture rate;
-2. preview-only demand: fit the capture aspect inside 256 x 144, clamp each axis to the existing minimum extent, and mark `mPreviewOnly`;
+1. visible display/Gate demand: use the existing required size and existing capture rate, and clear `mPreviewOnly`;
+2. if there is preview intent and no visible/Gate demand after display preparation: render one fixed 192 x 108 logical/physical preview bucket, preserve aspect with letterbox UVs, and mark `mPreviewOnly`;
 3. no demand: return false exactly as today.
 
-`updateCadenceEntitlements()` continues to own the single global attempt budget. For a preview-only capture its demand is:
+`updateCadenceEntitlements()` continues to own the single global attempt budget, but uses two tiers. First it performs the existing bounded max-min water fill over all visible/Gate producers. Only the remaining capacity is water-filled among preview-only captures. Low-rate previews can never reduce a visible producer's entitlement; the current low-demand-first loop is at `llprismlens.cpp:3096-3122` and must not receive mixed visible/preview inputs. For a preview-only capture its second-tier demand is:
 
 ```text
 min(shared preview FPS, capture Target FPS when Target FPS is active)
 ```
 
-Automatic mode uses the shared preview FPS. Preview demand is included in the existing max-min water filling and adaptive cadence factor; it is not a free side channel. The runtime snapshot exposes preview requested/entitled/observed values so the UI can say that 1 fps was requested but, for example, 0.5 fps was admitted.
+Automatic mode uses the shared preview FPS. Preview demand remains subordinate to the same total capacity and adaptive cadence factor; it is not a free side channel. The runtime snapshot exposes preview requested/entitled/observed values so the UI can say that 1 fps was requested but, for example, 0.5 fps was admitted.
 
-`chooseRenderSlot()` remains the only admission point and therefore the existing “one auxiliary attempt per frame” invariant remains true. Due preview-only captures use the same `mNextRenderSlot` round-robin cursor and the same overdue/attempt-age ordering (`llprismlens.cpp:3159-3249`). Do not call `renderAuxiliaryView()` a second time and do not add a panel timer that renders.
+`chooseRenderSlot()` remains the only admission point and therefore the existing “one auxiliary attempt per frame” invariant remains true. Visible/Gate due captures are considered first. Preview-only captures are considered only if none is admitted and always require their independent `mNextPreviewDueTime`, including manual Every Frame mode; they never take the unconditional automatic-producer break at `llprismlens.cpp:3185-3197`. Preview captures use a separate round-robin cursor and overdue ordering without catch-up. Do not call `renderAuxiliaryView()` a second time and do not add a panel timer that renders.
 
 On `markProduced()` (`llprismlens.cpp:3252`), increment `mPublicationSerial` and signal the preview service. A visible capture can update its atlas cell on the next shared preview deadline. A preview-only capture updates its cell from the just-produced retained output. At most one atlas cell is composited per frame; a separate `mNextAtlasSlot` gives deterministic round-robin service to retained outputs.
 
@@ -219,6 +226,10 @@ Both world composite builders and the preview service call it. `prepareDisplayFr
 
 An atlas update is a scissored two-triangle draw into one cell. It binds the retained 1024 x 1024 output once, uses the published logical region transform (`llprismlens.cpp:7763-7768`), and writes display-referred RGBA8 for LLUI. It never reads pixels back and never allocates. Animated TV effects use the same `gFrameTimeSeconds` value as the world composite (`pipeline.cpp:26747-26754`) but advance only when that monitor's shared preview deadline is serviced, as a preview running at 0.5/1/2/5 fps should.
 
+The cell update runs from `renderAuxiliaryView()` **after** the scheduled auxiliary scene-render scope has ended, at most once per frame. It opens its own `ScopedPrismRenderState` plus explicit scoped guards for render-target/FBO stack, `gGLViewport`, scissor enable/box, blend enable/factors, depth test/write, colour mask, bound shader, active/bound texture unit 0, camera id, and pipeline target pack. It explicitly binds/flushes the atlas target and restores every saved value before returning. With previews disabled or no queued cell, this branch returns before any GL mutation. WP3 tests both the beauty pass after an update and the feature-off path, as required by `CLAUDE.md`.
+
+The retained source is HDR RGBA16F (`pipeline.cpp:1840-1855`). “Display-referred RGBA8” is defined as: signal mapping/effects in linear HDR, then the same-frame main-view exposure map, active tonemap type/parameters, saturation/contrast grade, and linear-to-sRGB encoding used by the main `colorCorrect` path (`pipeline.cpp:12833-12888`, with tonemap uniforms populated in the same helper). The preview shader and main path share the tonemap-uniform pack; no independently sampled next-frame exposure is allowed. Atlas storage is sRGB-aware RGBA8 and LLUI samples it as display sRGB. Self-test reference colors cover neutral grey, highlights, and at least two tonemap operators.
+
 “Exactly that face's result” means exact signal-space mapping, bars, flips/rotation, capture Look, and TV-effect shader math from the same retained publication. It does not mean a screenshot of the face after world depth occlusion, transparency, bloom, or final main-view tonemapping; see Risks.
 
 ### 4.4 UI drawing
@@ -235,52 +246,59 @@ Add a render zone `LL_PROFILE_ZONE_NAMED_CATEGORY_DISPLAY("Prism preview atlas c
 
 ### 4.5 Performance budget and self-test
 
-The default requirement is: with eight captures requesting 1 fps, monitor preview work contributes no more than 0.3 ms to the average presented frame. Count both preview-only auxiliary renders and preview-atlas composite GPU time; do not count ordinary capture renders required by visible world displays, because those exist with previews off.
+The default requirement is: with eight captures requesting 1 fps, preview-triggered work contributes no more than 0.3 ms to the average presented frame **and does not fail the p95 frame-delta gate below**. Charge each preview-only auxiliary attempt at `max(render-thread CPU wall time, GPU elapsed time)`, from immediately before scratch acquisition through state restoration, so cull/stateSort/draw submission, spot-shadow work, driver stalls, and scratch-pool work are included. Charge an atlas update the same way. Ordinary renders required by visible world displays are excluded because they exist with previews off, but atlas work caused by the monitor is included.
+
+All preview-only scenes use the single preallocated 192x108 scratch bucket from section 4.2. Allocate/validate it when the first visibility owner appears, before demand is published; its cold allocation is separately timed and the service remains WARMING until complete. Preview work never requests aspect-specific scratch sizes and therefore adds at most one pool entry and cannot churn through/evict visible-capture exact-size packs. A later allocation/reacquire is charged to CPU time and makes that sample a failure candidate. The current exact-size eight-entry LRU allocates a full deferred pack on a miss (`pipeline.cpp:1728-1825`), which is why arbitrary fitted preview sizes are forbidden.
+
+The preview quality profile disables auxiliary spot/sun-shadow generation, SSAO, volumetrics, reflection-probe updates, and nonessential far geometry; draw distance is capped at 64 m. These gates are preview-only and the normal visible-capture path remains byte-identical.
 
 Add a `PrismPreviewBudgetController` inside the preview service:
 
-- Non-blocking timestamp-query rings measure preview-only auxiliary GPU time and atlas-composite GPU time. Results are consumed only when available; no query wait is allowed on the render thread.
-- CPU wall time and Tracy zones are recorded separately for diagnosis.
-- The rolling allowance is `0.3 ms * presented_frames` over a 2-second window. Completed measured preview work debits it. An attempt is admitted only if the remaining allowance covers its conservative predicted cost.
-- Prediction is the maximum of a cold-start seed and the capture's rolling p95. The seed is 2.0 ms for a 256 x 144 auxiliary render and 0.05 ms for an atlas update. An over-budget result raises the prediction immediately; recovery decays slowly.
+- Non-blocking `GL_TIMESTAMP` start/end query rings (`glQueryCounter`) measure preview-only auxiliary GPU time and atlas-composite GPU time. Do not use `GL_TIME_ELAPSED`: shader profiling already opens that target at `llglslshader.cpp:261-292`, and elapsed queries cannot nest. Results are consumed only when available; no render-thread wait.
+- `LLTimer` wall intervals and Tracy CPU zones cover scratch acquisition, cull, stateSort, draw submission, atlas work, and state restoration. Matching Tracy GPU zones cover both GPU spans. Record CPU and GPU per operation separately and charge `max(cpu,gpu)`.
+- The rolling allowance is `0.3 ms * presented_frames` over a 2-second window. Before admission, reserve the operation's conservative predicted charged cost; completion replaces the reservation with measured `max(cpu,gpu)`. No operation is admitted when its reservation would exceed available tokens.
+- Prediction is `max(cold_seed, rolling p95 CPU, rolling p95 GPU, largest recent charged sample)`. Seeds are 1.5 ms for a 192x108 auxiliary render and 0.05 ms for an atlas update. An overrun raises prediction immediately; recovery requires 120 clean samples and decays by at most 5% per window.
 - The controller is subordinate to the existing global Prism attempt budget and adaptive protection. Both must admit the work.
 - If budget is exhausted, preview-only renders and atlas updates are deferred without catch-up. The requested speed is a ceiling, not a promise. UI state becomes THROTTLED and shows effective preview fps.
+- Hard steady-state admission limits are charged average <= 0.300 ms/presented frame, p95 presented-frame delta <= 2.0 ms, and no charged preview operation > 4.0 ms. Crossing either tail limit immediately drops shared preview speed one step (5->2->1->0.5), then suspends preview-only renders if 0.5 still fails. These limits bound total preview cost, not just shader time.
 - If an atlas draw alone cannot fit, cells retain their last image. If the condition persists, disable effects animation first only if the UI explicitly says “held”; never switch to different effect math while claiming an exact live preview.
 
-This controller enforces the 0.3 ms admission envelope after timing is available: when completed measurements reach the rolling allowance, it admits zero further work until the window recovers. It cannot mathematically prevent an individual pass from costing more than its prediction and pushing the already-completed window over the line, nor can it bound an unknown first render on arbitrary hardware; a GPU pass cannot be pre-empted after submission. During cold start the UI and self-test report WARMING / INCONCLUSIVE, and any overrun immediately suspends further preview-only work until the rolling window recovers. The self-test is the release gate for the target hardware. This is the honest limit of the requirement.
+Cold scratch allocation/calibration is not called PASS: the UI reports WARMING and admits at most one 0.5 fps preview until it has eight samples. A GPU pass cannot be pre-empted, so an unexpected sample can exceed its reservation; that sample is still charged, triggers tail throttling/suspension, and fails the self-test if it violates the hard limit. The release claim is therefore measured and enforced on the target hardware, never inferred from GPU-only timestamps.
 
-Add non-persistent debug setting `PrismPreviewSelfTest` and console hook `LLPrismPreview::runSelfTest(seconds = 20)`. It requires the page visible, previews on at 1 fps, and eight valid captures; otherwise it logs `INCONCLUSIVE` with the missing condition. It records:
+Add non-persistent debug setting `PrismPreviewSelfTest` and console hook `LLPrismPreview::runSelfTest(seconds = 20)`. It requires the page visible, previews on at 1 fps, and eight valid captures; otherwise it logs `INCONCLUSIVE` with the missing condition. The hook runs three phases without changing user settings: 5 seconds with preview demand internally suppressed (baseline), fixed-bucket allocation/calibration until eight valid samples (WARMING), then at least 20 seconds enabled. It records presented-frame CPU wall time in both baseline and enabled phases; `p95_frame_delta_ms = p95(enabled frame ms) - p95(baseline frame ms)`. Any material camera/world/settings change restarts the baseline or makes the result INCONCLUSIVE. It records:
 
 - presented frame count and wall duration;
 - requested/admitted/produced preview-only renders per capture;
 - reused-publication atlas updates;
-- GPU sum and p95 for preview-only auxiliary and atlas work;
-- `average_ms_per_presented_frame = preview_gpu_sum / presented_frames`;
-- query coverage and any disjoint/unavailable timing interval;
+- CPU sum/p95 and GPU sum/p95 separately for preview-only auxiliary and atlas work, including scratch acquire misses;
+- charged sum (`sum(max(cpu,gpu))`), average charged ms per presented frame, p95 presented-frame delta against the rolling no-preview baseline, and maximum charged operation;
+- timestamp-query coverage, Tracy-zone sample coverage, and any disjoint/unavailable interval;
 - budget deferrals and achieved per-capture fps.
 
-Verdict is `PASS` only with at least 95% GPU-query coverage, every capture serviced at least once, and average <= 0.300 ms. It is `FAIL` above 0.300 ms and `INCONCLUSIVE` for missing/unreliable timing. Log one machine-readable line:
+Verdict is `PASS` only with at least 95% CPU and GPU coverage, every capture serviced at least once, CPU-only average <= 0.300 ms/frame, GPU-only average <= 0.300 ms/frame, charged average <= 0.300 ms/frame, p95 frame delta <= 2.0 ms, maximum CPU or GPU operation <= 4.0 ms, zero scratch reacquisitions after warm-up, and no visible-display entitlement reduction. It is `FAIL` if either CPU or GPU violates its component bound (or any combined/tail bound), and `INCONCLUSIVE` for missing/unreliable timing. Log one machine-readable line:
 
 ```text
-[VCamPreviewSelfTest] PASS avg_gpu_ms_per_frame=0.214 aux_p95_ms=1.72 atlas_p95_ms=0.04 frames=1204 coverage=0.99 deferred=7
+[VCamPreviewSelfTest] PASS avg_charged_ms_per_frame=0.214 cpu_aux_p95_ms=1.31 gpu_aux_p95_ms=1.72 frame_delta_p95_ms=1.78 max_op_ms=2.04 scratch_reacquire=0 frames=1204 cpu_coverage=1.00 gpu_coverage=0.99 deferred=7
 ```
 
-A scheduler unit test injects synthetic costs and proves: one preview-only attempt per frame, round-robin progress, no catch-up, no demand while disabled/hidden, and rolling allowance never admits work above available tokens. The in-viewer hook validates actual GPU cost.
+A scheduler unit test injects independent CPU/GPU costs and scratch misses and proves: visible-first entitlement, one total auxiliary attempt per frame, preview deadlines even in Every Frame mode, round-robin progress, no catch-up, no demand while disabled/hidden, reservations never exceed tokens, and tail violations reduce rate/suspend. The in-viewer hook asserts the CPU, GPU, scratch, average, and p95 bounds.
 
 ## 5. Drag-to-surface and Send to surface
 
 ### 5.1 Cargo and 3D dispatch
 
-Append `DAD_VCAM_FEED = 22` and increment `DAD_COUNT` in `indra/llui/llui.h:56-82`. Never renumber existing cargo values. Register it in `LLDragAndDropDictionary` (`lltooldraganddrop.cpp:211-236`) with only `DT_OBJECT -> dad3dVCamFeed`; self, avatar, land, and none reject.
+Append `DAD_VCAM_FEED = 22` and increment `DAD_COUNT` in `indra/llui/llui.h:56-82`. Never renumber existing cargo values. Beside the enum/dictionary add a comment reserving 22 for viewer-local VCam cargo and `static_assert(DAD_VCAM_FEED + 1 == DAD_COUNT, "update VCam cargo value during upstream DAD re-port")`; `llinventorypanel.h:493` is currently the only fixed array sized by `DAD_COUNT`. Register it in `LLDragAndDropDictionary` (`lltooldraganddrop.cpp:211-236`) with only `DT_OBJECT -> dad3dVCamFeed`; self, avatar, land, and none reject.
+
+Add `LLToolDragAndDrop::ESource::SOURCE_VCAM` after `SOURCE_VIEWER` (`lltooldraganddrop.h:61-68`). It is a UUID-only source: `locateInventory()` returns null immediately for `SOURCE_VCAM`, and `is_uuid_dragged = (mSource == SOURCE_PEOPLE || mSource == SOURCE_VCAM)`. Do not use `SOURCE_VIEWER`: its inventory lookup returns the toolbar's cached drag item (`lltooldraganddrop.cpp:3371-3374`), while `resetDragTool` does not clear `mDragItem` (`lltoolbarview.cpp:949-965`).
 
 `ALVCamMonitorTile::handleMouseDown/hover` starts:
 
 ```cpp
 LLToolDragAndDrop::instance().beginDrag(
-    DAD_VCAM_FEED, capture.mId, LLToolDragAndDrop::SOURCE_VIEWER);
+    DAD_VCAM_FEED, capture.mId, LLToolDragAndDrop::SOURCE_VCAM);
 ```
 
-Teach both top/root UI traversal and 3D dispatch in `LLToolDragAndDrop::dragOrDrop()` to forward a UUID pointer for `SOURCE_VIEWER && DAD_VCAM_FEED`, analogous to person UUID cargo but with the actual `drop` flag on the second pass. No inventory lookup is performed. Registry UUID lookup returns the current generation-bearing handle; removal during a drag therefore becomes a stale-cargo rejection.
+Teach both top/root UI traversal and 3D dispatch in `LLToolDragAndDrop::dragOrDrop()` to forward a UUID pointer for `SOURCE_VCAM && DAD_VCAM_FEED`, analogous to person UUID cargo. The top-view second pass must pass the actual `drop=true`; the current people branch incorrectly passes false at `lltooldraganddrop.cpp:573-595`, and the new source may not copy that bug. No inventory lookup is performed. Registry UUID lookup returns the current generation-bearing handle; removal during a drag therefore becomes a stale-cargo rejection.
 
 `dad3dVCamFeed(obj, face, mask, drop)` calls a new target-based Prism API. It returns `ACCEPT_YES_COPY_SINGLE` for a new binding, `ACCEPT_YES_SINGLE` for reassignment of an existing binding, and `ACCEPT_NO_CUSTOM` with the registry reason otherwise. Multi-drag is rejected.
 
@@ -309,7 +327,9 @@ Validation on hover and again on drop requires:
 
 The permission rule is product policy, not a simulator security boundary: bindings remain viewer-local and send no object update. Apply it to the button path as well as drag so the two affordances agree.
 
-Dropping on an unbound face creates a display with the page's “new face mapping” default. Dropping on a face already represented by a Prism display atomically changes its capture owner, preserving `DisplayHandle`, mapping, virtual/real identity, Gate subscription, and TV effects. It decrements/increments display counts, releases the old capture output only if the old capture has no display, Gate, or preview demand, bumps configuration revision once, and emits one change signal.
+Dropping on an unbound face creates a display with the page's “new face mapping” default. Dropping on a face already represented by a Prism display atomically changes its capture owner, preserving `DisplayHandle`, mapping, virtual/real identity, Gate subscription, and TV effects. It decrements/increments display counts, drops the old capture's publication demand when it has no display, Gate, or preview demand, bumps configuration revision once, and emits one change signal. It does **not** release the retained output: outputs are lifetime-fixed once allocated (`pipeline.cpp:1828-1855`) and release only on capture/resource teardown.
+
+Scene restore uses the same target validator with `ERestorePolicy::SCENE`. A live face that fails geometry, feedback, capacity, or `permModify()` rejects the entire scene apply atomically with a named binding reason. An offline object is retained as quarantined/offline; when it resolves, the same validator runs before publication and disables that binding if permission/geometry fails, with a visible reason. There is no silent grandfathering of a live unauthorized face and no partial scene load.
 
 Dropping a VCam tile on a face row calls the same `reassignDisplay(display, capture)` API. The row is an LLUI drop target; it does not invoke a world pick.
 
@@ -325,9 +345,20 @@ If there is no eligible selected face, keep the command visible but disabled wit
 
 ### 5.4 Undo
 
-Add bounded `ALPrismUndoHistory` (32 transactions). A transaction stores the before/after `LLPrismLens::sceneData()` plus selected capture/display handles and a label such as “Bind Camera 2 to face” or “Move Lobby screen to Camera 4”. Undo/redo calls the already-atomic `applySceneData()` and restores selection only if handles still exist.
+VCam uses the Director-wide `ALKitHistory`; there is no `ALPrismUndoHistory`, page-local stack, or second Ctrl+Z owner. `ALVCamPageModel::transaction()` records typed `ALKitHistory::CustomEntry` operations with stable handles and a registry scene-generation context. The VCam kit bar uses the normal page Undo/Redo buttons, and Director keyboard rules remain Ctrl+Z/Ctrl+Y; Ctrl+Shift+Z is untouched.
 
-Drag/drop, Send, Add, Remove, preset/reset, and a completed slider gesture go through `ALVCamPageModel::transaction()`. The VCam page exposes Undo/Redo buttons and claims Ctrl-Z/Ctrl-Shift-Z only while one of its controls has focus. Do not add a server object-edit undo entry: no simulator object was edited. Failed or no-op drops create no history entry.
+Full-scene snapshot replay is forbidden. Undo/redo never calls `applySceneData()`: its commit path releases every output and scratch pack, resets Gate, reconstructs captures/displays with new generations, and resets runtime history (`llprismlens.cpp:5503-5579`). Fine-grained operations are:
+
+- `setCamera`, `setRate`, `setDisplay`, `setLabel`, and Gate-subscription changes store exact before/after values and call the matching setter on the same handle;
+- bind/unbind/reassign stores capture/display handles, target object+TE, and display settings, and calls inverse `unbindDisplay`, `bindDisplayTarget`, or `reassignDisplay` without reallocating unrelated objects;
+- Add undo removes only the created stable handle (and only that capture's output if allocated); redo calls new `restoreCaptureIdentity(const RemovedCaptureRecord&)` / `restoreDisplayIdentity(...)` APIs that reuse the reserved UUID **and generation**;
+- Remove first obtains an immutable `RemovedCaptureRecord` containing the capture, owned displays, and their stable handles/generations. Undo restores that record into available registry slots while retaining those exact handles; only the restored capture may need to republish. Unrelated captures/outputs, the shared scratch pool, and Gate runtime are untouched; redo removes those same handles;
+- OTS pair uses one compound typed entry and identity-preserving restore for both captures/arms; preset/reset records affected typed settings, never a scene blob;
+- a slider gesture coalesces repeated setter calls into one before/after typed entry.
+
+The registry reserves identities referenced by undo steps; capacity UI counts live objects only, while a bounded reservation table is capped by `ALKitHistory` eviction. When a step is evicted/barriered, its reservations release. A restore precondition failure leaves the step intact and shows “Cannot undo <label>: <reason>”; it never partially restores. Director scene load, registry wholesale replacement, and logout call the history barrier.
+
+Drag/drop, Send, Add, Remove, preset/reset, and completed slider gestures use this path. Selection is restored by stable handle only after the inverse succeeds. No server object-edit undo entry is added because no simulator object was edited. Failed/no-op actions create no entry, and Gate program/on-air state is never reset by VCam undo.
 
 ## 6. Inline page and model binding
 
@@ -338,9 +369,11 @@ Add:
 - `alpaneldirectorvcam.h/.cpp` — page controller and cached widget pointers.
 - `alvcampagemodel.h/.cpp` — selection, commands, snapshots, dirty coalescing, undo integration.
 - `alvcammonitorstrip.h/.cpp` — fixed monitor layout and tile LLViews.
-- `skins/default/xui/en/panel_director_vcam.xml` — shared panel.
+- generated `skins/default/xui/en/panel_dpage_camera_vcam.xml` — Director kit page.
 
-Replace `floater_director.xml:1342-1353` with a filename-based panel embed and no hand-authored embed height. The shared panel owns its scroll document, and the Director tab/scroll fitting is installed through `ALScrollFit::Controller::installForTabs`. The monitor strip stays above the scrollable editor. No code writes a scroll-document height.
+The generated root is `<panel class="panel_director_vcam" name="vcam_tab_logic">` containing `<kit_page page="camera_group/vcam_tab" ...>`. Its first full-span card contains one `<kit_row kind="monitor_strip"><vcam_monitor_strip .../></kit_row>`; subsequent kit cards/rows are Source, Lens, Look, Output, and Rate & performance in that order. Capture/display/global rows bind through `ALKitBinding`/`ALKitWidgetBinding` and `ALVCamKitAdapter`. The kit page owns the one scroll document; no nested page scroller or hand-authored document height exists.
+
+The v1 `floater_director.xml:1342-1353` remains byte-identical. The full manager shares `ALVCamPageModel` commands/signals incrementally, not the page view instance. VCam uses the normal kit page bar/search/help/amber/chips/history, and the monitor strip enumerates audit states for 0/1/4/5/8 captures and every selector option.
 
 ### 6.2 Refresh lifecycle
 
@@ -417,9 +450,9 @@ The Add menu maps directly to current APIs:
 
 On success select the new capture (OTS selects A), assign its default label, select Source, and request a preview refresh. Capacity text is `N of 8`; OTS is disabled when only one slot remains. Remove uses the current confirmation semantics and `removeCapture()`, which removes all display bindings. Selection moves to the next surviving capture, otherwise the page shows its empty state.
 
-## 7. Not feasible as stated, and risk controls
+## 7. Feasibility boundaries and risk controls
 
-1. **An absolute 0.3 ms guarantee before measuring the GPU is not feasible.** A single new scene render has unknown cost and cannot be cancelled after submission. The implementable contract is a conservative cold-start seed, non-blocking measurement, hard rolling admission after measurement, immediate suspension on an overrun, and explicit WARMING/INCONCLUSIVE status. If “never exceed, including first use” is mandatory, the only valid alternative is no preview-only scene rendering until the user runs a calibration; cameras without visible faces would show EMPTY.
+1. **The budget is a measured admission contract, not a shader estimate.** Cold allocation/calibration is WARMING and rate-limited; the shipped PASS claim begins only with reliable CPU+GPU samples. Reservation, fixed scratch size, quality profile, rate reduction, and suspension enforce the average/tail gates in section 4.5. A submitted GPU pass cannot be pre-empted, so an unexpected overrun is charged and fails the gate rather than being hidden.
 
 2. **A monitor cannot be a literal screenshot of a world face and remain cheap/deterministic.** World depth occlusion, transparency order, bloom, and final tonemapping depend on where that face appears in the main view; an offscreen face has no such pixels. The proposed monitor is exact for the feed's signal chain through mapping and TV effects. Alternative: an opt-in “screen proof” capture of visible face pixels, which would be view-dependent, fail offscreen, and violate the simple budget model.
 
@@ -431,7 +464,7 @@ On success select the new capture (OTS selects A), assign its default label, sel
 
 6. **Atlas/context lifetime is a crash risk if raw GL names escape.** Generation-checked render-thread resolution and the existing render-target release hook are mandatory. No tile may cache an `LLRenderTarget*`.
 
-7. **Scene-snapshot undo can invalidate retained outputs.** Undo/redo is action-driven, not per-frame, and may cause captures to republish. Coalesce slider gestures and keep the history bounded. Do not run `applySceneData()` for hover previews.
+7. **Identity-preserving typed undo is mandatory.** `applySceneData()` is forbidden for undo/redo. Stable UUID+generation reservations and fine-grained inverse operations preserve unrelated outputs and Gate runtime; slider gestures coalesce and history barriers release reservations.
 
 8. **Permissions are currently looser.** Existing selected-face binding is local and does not require modify rights. Adding the requested ownership policy changes current behavior, so both manager and inline paths must move to the common validator in the same delivery.
 
@@ -441,7 +474,7 @@ These are review packages, not separately shippable partial features. Complete a
 
 ### WP1 — Registry API, labels, signals, and history
 
-Files: `llprismlens.h/.cpp`, `app_settings/settings.xml`, new `alprismundohistory.*`, tests.
+Files: `llprismlens.h/.cpp`, `app_settings/settings.xml`, `alkithistory.*`, `alvcampagemodel.*`, tests.
 
 Acceptance:
 
@@ -449,7 +482,7 @@ Acceptance:
 - Configuration/runtime/performance signals fire once per logical change on the main thread.
 - Target-based bind/reassign preserves display settings and is atomic at the 16-face cap.
 - Selection and drag validators return identical reasons.
-- Undo/redo restores Add/Remove/Bind/Reassign without stale selections or partial state.
+- Typed `ALKitHistory` undo/redo restores Add/Remove/Bind/Reassign with the same UUID+generation and no partial state; only the capture explicitly removed/restored may lose/republish its output, while unrelated outputs, scratch pool, and Gate runtime remain unchanged. No undo path calls `applySceneData()`.
 
 ### WP2 — Preview demand in the existing scheduler
 
@@ -458,8 +491,9 @@ Files: `llprismlens.h/.cpp`, new `llprismpreview.h/.cpp`, `pipeline.h/.cpp`, sch
 Acceptance:
 
 - Visible captures incur zero preview-only scene attempts.
-- An unshown capture renders at preview logical size through the existing auxiliary path and global/adaptive budget.
+- An unshown capture renders in the fixed 192x108 scratch bucket through the preview-only quality profile and global/adaptive/budget admission.
 - At most one total auxiliary attempt occurs per frame; preview-only captures make round-robin progress and never catch up in bursts.
+- Visible/Gate water-filling completes before previews receive leftover capacity; manual Every Frame previews still obey their preview deadline.
 - Previews off/hidden produces zero preview-triggered attempts while visible world faces continue.
 - Context loss/release leaves no stale handles.
 
@@ -474,6 +508,8 @@ Acceptance:
 - Face preview matches Fit/Fill/Stretch, anchor, bars, flips/rotation, and all presets/TV controls from the same publication.
 - Offline/unknown faces show OFFLINE rather than a guessed result.
 - Atlas allocates once and updates at most one cell per frame with no pixel readback.
+- Atlas updates restore complete GL/FBO/pipeline state, leave the beauty pass unchanged, and the feature-off path performs no GL mutation.
+- HDR-to-RGBA8 output matches the same-frame exposure, active tonemap, grade, and sRGB encoding contract.
 
 ### WP4 — Budget controller and diagnostics
 
@@ -481,11 +517,11 @@ Files: `llprismpreview.*`, settings, test/diagnostic registration.
 
 Acceptance:
 
-- Non-blocking GPU timing covers both preview-only auxiliary and atlas work.
-- Synthetic-cost tests prove token/admission, throttle, recovery, and no catch-up.
-- Eight-capture 1 fps hook prints PASS/FAIL/INCONCLUSIVE and all stated metrics.
-- After warm-up, measured rolling preview average does not exceed 0.300 ms/frame; if it cannot sustain 1 fps, effective fps drops and the UI says THROTTLED.
-- Tracy shows the named preview zones.
+- Non-blocking timestamp timing and CPU wall/Tracy zones cover scratch acquisition through restoration for both preview-only auxiliary and atlas work.
+- Synthetic independent CPU/GPU/scratch costs prove reservation, visible-first admission, tail throttle, recovery, and no catch-up.
+- Eight-capture 1 fps hook prints PASS/FAIL/INCONCLUSIVE and every CPU, GPU, charged, scratch, p95, maximum, coverage, and entitlement metric.
+- After warm-up, charged average is <=0.300 ms/frame, p95 frame delta <=2.0 ms, maximum operation <=4.0 ms, and scratch reacquisition is zero; otherwise shared rate drops and the UI says THROTTLED/suspended.
+- Tracy shows the named CPU and GPU preview zones.
 
 ### WP5 — Drag/drop and Send
 
@@ -493,24 +529,25 @@ Files: `indra/llui/llui.h`, `lltooldraganddrop.h/.cpp`, `alvcammonitorstrip.*`, 
 
 Acceptance:
 
-- VCam UUID cargo traverses LLUI and 3D paths without inventory lookup.
+- `SOURCE_VCAM` UUID cargo traverses LLUI and 3D paths without inventory lookup or stale toolbar cargo; the top-view drop pass receives `drop=true`.
 - Hover/drop use the same face, permission, feedback, capacity, and geometry checks as Add selected face.
 - Drop on a new face binds; drop on an existing face row/world face reassigns without losing mapping/effects.
 - Reassignment works at 16/16; a seventeenth new face does not.
 - Failed/no-op drops create no undo entry; successful drops undo/redo as one action.
 - Surface Lens drag is disabled with the documented invariant.
 
-### WP6 — Shared inline page
+### WP6 — Director kit page
 
-Files: new `alpaneldirectorvcam.*`, `alvcampagemodel.*`, `alvcammonitorstrip.*`, new `panel_director_vcam.xml`, `llfloaterdirector.h/.cpp`, `floater_director.xml`, CMake/source lists.
+Files: new `alpaneldirectorvcam.*`, `alvcampagemodel.*`, `alvcammonitorstrip.*`; generated `panel_dpage_camera_vcam.xml`, generator config/data/index; `llfloaterdirector.h/.cpp` only for shared adapter wiring; CMake/source lists. `floater_director.xml` is off-limits.
 
 Acceptance:
 
-- UI matches the approved hierarchy: master, one-row monitors, separate camera selector/Add/Remove, Source -> Lens -> Look -> Output -> Rate & performance.
+- The full `kit_page` matches the approved hierarchy: master, one-row monitor custom row, separate camera selector/Add/Remove, Source -> Lens -> Look -> Output -> Rate & performance.
 - 1-4 use large tiles and 5-8 auto-compact; monitors never select the editor camera.
 - Every row binds to the scope/API in section 6.3 and global cards are visibly labeled.
 - Widgets are built once; hidden tabs do no refresh work; reveal is current.
-- Page and tile draw paths pass `ui_draw_lint.py`; XUI passes `xui_layout_check.py` and uses `ALScrollFit`.
+- Search/help/amber/chips and the sole `ALKitHistory` work; no page-local history/key handler exists.
+- Page and tile draw paths pass `ui_draw_lint.py`; kit XUI and all non-default states pass `xui_layout_check.py`/runtime audit through the kit-owned scroller.
 - No per-frame widget lookup, setting lookup, list rebuild, string formatting, or raw widget write occurs.
 
 ### WP7 — Manager convergence and end-to-end verification
