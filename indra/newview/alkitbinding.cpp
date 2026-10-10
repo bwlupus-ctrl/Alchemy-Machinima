@@ -302,12 +302,15 @@ ALKitWhoAdapters::Adapter ALKitWhoAdapters::get(const std::string& key)
     return i == whoMap().end() ? Adapter() : i->second;
 }
 
+namespace
+{
 struct ModeAdapterEntry
 {
     LLHandle<LLView> owner;
 
     ALKitModeAdapters::Adapter adapter;
 };
+} // namespace
 
 static std::unordered_map<std::string, ModeAdapterEntry>& modeMap()
 {

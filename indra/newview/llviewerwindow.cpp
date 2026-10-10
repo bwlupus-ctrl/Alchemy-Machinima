@@ -1135,9 +1135,12 @@ bool LLViewerWindow::handleAnyMouseClick(LLWindow *window, LLCoordGL pos, MASK m
     S32 y = pos.mY;
     x = ll_round((F32)x / mDisplayScale.mV[VX]);
     y = ll_round((F32)y / mDisplayScale.mV[VY]);
+    // Only an open dropdown/top control can be a kit view here; Director views start their own gestures.
     LLUICtrl* top = gFocusMgr.getTopCtrl();
-    LLView* hit = (top && top->calcScreenRect().pointInRect(x,y)) ? top : (mRootView?mRootView->childFromPoint(x,y,true):nullptr);
-    ALKitHistory::notePointer(hit);
+    if (top && top->calcScreenRect().pointInRect(x, y))
+    {
+        ALKitHistory::notePointer(top);
+    }
 
     // Handle non-consuming global keybindings, like voice
     gViewerInput.handleGlobalBindsMouse(clicktype, mask, down);

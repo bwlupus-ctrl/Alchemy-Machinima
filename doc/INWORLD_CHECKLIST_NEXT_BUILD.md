@@ -87,3 +87,9 @@ The new Director kit code is in this build, but it is switched off. Check these 
 - [ ] **5. No new Director.** Check the menus and the Director window. You should see no new "Director v2" item and no second Director window.
 
 If any of these look different from the last build, send Claude a screenshot and the spot number.
+
+## Part 4. Three small intended changes (even with the new Director off)
+
+- [ ] **6. Mirror with an object target.** In Cine Light Rig, aim the rig at an **object**, not an avatar, and turn **Mirror** on. The mirrored lights should now mirror around the object's front, the way they do for avatars. Rotate the object and the mirror should follow. (Before, it mirrored around a fixed compass direction.)
+- [ ] **7. Mouse wheel over the Actor Mover dial.** Scrolling the wheel over the heading dial may now scroll the page instead of turning the dial, so a scroll doesn't nudge the heading by accident. Dragging and arrow keys still turn it. Say if you'd rather the wheel turned the dial.
+- [ ] **8. Light Rig Easy toggle and Rim presets.** These now run through new code. Toggle **Easy** on and off: the cards should switch, Key should be forced on when you enter Easy, and your choice should stick after a relog. Apply a couple of **Rig Rim presets**: they should look the same as before.
