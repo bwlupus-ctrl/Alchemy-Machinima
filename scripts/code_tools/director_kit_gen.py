@@ -351,6 +351,9 @@ def apply_kit_xui_style(root: ET.Element) -> None:
             for attr in ("image_unselected", "image_selected", "image_pressed"):
                 drop.set(attr, "Kit_RoundRect4")
             drop.set("image_color", "KitControlBg")
+            drop.set("image_overlay", "KitIcon_chevron_down_10_16")
+            drop.set("image_overlay_alignment", "right")
+            drop.set("pad_right", "20")
             editor = next((child for child in node if child.tag == "combo_box.combo_editor"), None)
             if editor is None:
                 editor = ET.SubElement(node, "combo_box.combo_editor")
@@ -771,7 +774,7 @@ def floater_tree(data: dict, page_files: dict[str, str], v1: ET.Element) -> ET.E
                 attrs["master_setting"] = str(master["s"])
             ET.SubElement(tc, "kit_lazy_page", attrs)
     bar = ET.SubElement(shell, "kit_bar", {"name": "kit_transport", "flex": "status_strip",
-                        "collapse_order": "kit_ui_ms,btn_reset_marks,btn_scene_delete,btn_cast_chip,status_strip"})
+                        "collapse_order": "kit_ui_ms,btn_reset_marks,btn_scene_delete,status_strip"})
     widths = {"btn_action": 92, "btn_cut": 92, "btn_arm": 22, "btn_take_play": 28, "btn_take_stop": 28,
               "take_timecode": 90, "scene_combo": 130, "scene_name_editor": 130, "btn_scene_load": 44,
               "btn_scene_save": 50,

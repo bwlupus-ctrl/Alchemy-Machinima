@@ -292,6 +292,11 @@ public:
 
     void            setBgImage(LLPointer<LLUIImage> image) { mBgImage = image; }
     void            setBgImageFocused(LLPointer<LLUIImage> image) { mBgImageFocused = image; }
+    void            setUseBgColor(bool use) { mUseBgColor = use; }
+    void            setBgColor(const LLUIColor& color) { mBgColor = color; }
+    void            setBgBorderColor(const LLUIColor& color) { mBgBorderColor = color; mDrawBgBorder = true; }
+    bool            getUseBgColor() const { return mUseBgColor; }
+    const LLUIColor& getBgColor() const { return mBgColor; }
 
     void setShowContextMenu(bool show) { mShowContextMenu = show; }
     bool getShowContextMenu() const { return mShowContextMenu; }
@@ -425,6 +430,8 @@ protected:
 
     bool        mAllowEmoji;
     bool        mUseBgColor;
+    bool        mDrawBgBorder = false;
+    LLUIColor   mBgBorderColor;
     bool        mDrawFocusBorder;
 
     LLWString   mPreeditWString;

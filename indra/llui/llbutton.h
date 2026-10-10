@@ -97,6 +97,9 @@ public:
                                 label_color_disabled,
                                 label_color_disabled_selected,
                                 image_color,
+                                image_color_selected,
+                                image_color_hover,
+                                image_color_pressed,
                                 image_color_disabled,
                                 image_overlay_color,
                                 image_overlay_selected_color,
@@ -234,6 +237,9 @@ public:
     const std::string   getLabelSelected() const { return wstring_to_utf8str(mSelectedLabel); }
 
     void            setImageColor(const LLUIColor& c);
+    void            setSelectedImageColor(const LLUIColor& c) { mSelectedImageColor = c; }
+    void            setHoverImageColor(const LLUIColor& c) { mHoverImageColor = c; }
+    void            setPressedImageColor(const LLUIColor& c) { mPressedImageColor = c; }
     /*virtual*/ void    setColor(const LLUIColor& c) override;
 
     void            setImages(const std::string &image_name, const std::string &selected_name);
@@ -246,6 +252,7 @@ public:
     void            setImageOverlay(const LLUUID& image_id, LLFontGL::HAlign alignment = LLFontGL::HCENTER, const LLColor4& color = LLColor4::white);
     LLPointer<LLUIImage> getImageOverlay() { return mImageOverlay; }
     LLFontGL::HAlign getImageOverlayHAlign() const  { return mImageOverlayAlignment; }
+    void setImageOverlaySelectedColor(const LLUIColor& color) { mImageOverlaySelectedColor = color; }
 
     void            autoResize();   // resize with label of current btn state
     void            resize(const LLUIString& label); // resize with label input
@@ -353,6 +360,9 @@ protected:
     LLUIColor                   mFlashBgColor;
 
     LLUIColor                   mImageColor;
+    LLUIColor                   mSelectedImageColor;
+    LLUIColor                   mHoverImageColor;
+    LLUIColor                   mPressedImageColor;
     LLUIColor                   mDisabledImageColor;
 
     bool                        mIsToggle;

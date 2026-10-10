@@ -135,6 +135,21 @@ LLScrollbar::~LLScrollbar()
     // Children buttons killed by parent class
 }
 
+void LLScrollbar::setStyle(LLUIImage* track_vertical, LLUIImage* track_horizontal,
+                           LLUIImage* thumb_vertical, LLUIImage* thumb_horizontal,
+                           const LLUIColor& track_color, const LLUIColor& thumb_color,
+                           const LLUIColor& bg_color)
+{
+    mTrackImageV = track_vertical;
+    mTrackImageH = track_horizontal;
+    mThumbImageV = thumb_vertical;
+    mThumbImageH = thumb_horizontal;
+    mTrackColor  = track_color;
+    mThumbColor  = thumb_color;
+    mBGColor     = bg_color;
+    mBGVisible   = true;
+}
+
 void LLScrollbar::setDocParams( S32 size, S32 pos )
 {
     mDocSize = size;

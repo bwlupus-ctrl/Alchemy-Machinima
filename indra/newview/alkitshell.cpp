@@ -66,6 +66,14 @@ bool ALKitShell::postBuild()
     mConnections.emplace_back(setPageBuiltCallback([this](const std::string& name, LLPanel* panel) { pageBuilt(name, panel); }));
     layoutChrome();
     ALKitStyle::styleTree(this);
+    ALKitStyle::stylePill(findChild<LLButton>("btn_cast_chip"));
+    for (LLButton* button : mRailButtons)
+        button->setSelectedLabelColor(ALKitStyle::color(ALKitStyle::ACCENT));
+    for (LLButton* button : mTabButtons)
+    {
+        button->setUnselectedLabelColor(ALKitStyle::color(ALKitStyle::DIM));
+        button->setSelectedLabelColor(ALKitStyle::color(ALKitStyle::TEXT_STRONG));
+    }
     return true;
 }
 
@@ -225,6 +233,7 @@ void ALKitShell::buildChrome()
         button->setRightHPad(8);
         button->setHAlign(LLFontGL::LEFT);
         button->setImageOverlay(item.icon, LLFontGL::LEFT);
+        button->setImageOverlaySelectedColor(ALKitStyle::color(ALKitStyle::ACCENT));
         button->setSelectedLabelColor(ALKitStyle::color(ALKitStyle::ACCENT));
         const std::string    group        = item.group;
         LLHandle<ALKitShell> shell_handle = getDerivedHandle<ALKitShell>();
@@ -513,7 +522,8 @@ void ALKitShell::layoutRoster()
     LLTextBox*        hint   = mRoster->findChild<LLTextBox>("cast_hint", false);
     if (header)
     {
-        header->reshape(llmax(1, width - 8), ALKitStyle::ROSTER_HDR_H, true);
+        const S32 tools_x = width - 4 - 4 * ALKitStyle::ROSTER_TOOL - 3 * 4;
+        header->reshape(llmax(1, tools_x - 8), ALKitStyle::ROSTER_HDR_H, true);
         header->setOrigin(4, height - ALKitStyle::ROSTER_HDR_H);
     }
     static const char* const tools[] = { "btn_add_you", "btn_add_animesh", "btn_focus", "btn_remove" };
@@ -578,6 +588,9 @@ void ALKitShell::refreshModeProxy()
             if (mModeButtons[index]->getLabelSelected() != page->modeName(index))
                 mModeButtons[index]->setLabel(page->modeName(index));
             mModeButtons[index]->setToggleState(index == page->modeIndex());
+            ALKitStyle::styleButton(mModeButtons[index], false);
+            mModeButtons[index]->setImageColor(index == page->modeIndex() ? ALKitStyle::color(ALKitStyle::ACTIVE_FILL)
+                                                                          : ALKitStyle::color(ALKitStyle::INPUT_BG));
             mModeButtons[index]->setOrigin(x + index * 86, 8);
         }
     }
@@ -597,6 +610,18 @@ void ALKitShell::draw()
     fill_panel(mHelpPanel, ALKitStyle::color(ALKitStyle::RAIL_BG));
     fill_panel(mHelpStrip, ALKitStyle::color(ALKitStyle::RAIL_BG));
     fill_panel(mTransport, ALKitStyle::color(ALKitStyle::RAIL_BG));
+    if (mRail)
+        gl_line_2d(mRail->getRect().mRight - 1, mRail->getRect().mBottom, mRail->getRect().mRight - 1,
+                   mRail->getRect().mTop, ALKitStyle::color(ALKitStyle::DIVIDER2).get());
+    if (mTabStrip)
+        gl_line_2d(mTabStrip->getRect().mLeft, mTabStrip->getRect().mBottom, mTabStrip->getRect().mRight,
+                   mTabStrip->getRect().mBottom, ALKitStyle::color(ALKitStyle::DIVIDER2).get());
+    if (mHelpPanel && mHelpPanel->getVisible())
+        gl_line_2d(mHelpPanel->getRect().mLeft, mHelpPanel->getRect().mBottom, mHelpPanel->getRect().mLeft,
+                   mHelpPanel->getRect().mTop, ALKitStyle::color(ALKitStyle::DIVIDER2).get());
+    if (mTransport)
+        gl_line_2d(mTransport->getRect().mLeft, mTransport->getRect().mTop - 1, mTransport->getRect().mRight,
+                   mTransport->getRect().mTop - 1, ALKitStyle::color(ALKitStyle::DIVIDER2).get());
     for (LLButton* button : mRailButtons)
     {
         if (!button || !button->getVisible() || !button->getToggleState())
@@ -929,6 +954,7 @@ void ALKitShell::pageBuilt(const std::string&, LLPanel* panel)
                     }
                     target->toggle();
                 });
+            ALKitStyle::styleTree(popover);
         }
     }
     startSearchLoad();

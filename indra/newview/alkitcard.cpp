@@ -482,7 +482,7 @@ bool ALKitCard::postBuild()
 void ALKitCard::updateResetColor()
 {
     if (mReset)
-        mReset->setImageOverlay("Refresh_Off", LLFontGL::HCENTER,
+        mReset->setImageOverlay("KitIcon_reset_arc_16", LLFontGL::HCENTER,
                                 (mAmberCount > 0 ? ALKitStyle::color(ALKitStyle::ACCENT) : ALKitStyle::color(ALKitStyle::FAINT)).get());
 }
 
@@ -526,6 +526,13 @@ void ALKitCard::syncSelector()
             mActiveOption = i;
         if (i < (S32)mOptionSwitches.size() && mOptionSwitches[i])
             mOptionSwitches[i]->setVisible(active);
+        if (i < (S32)mSegments.size())
+        {
+            mSegments[i]->setToggleState(active);
+            ALKitStyle::styleButton(mSegments[i], false);
+            mSegments[i]->setImageColor(active ? ALKitStyle::color(ALKitStyle::ACTIVE_FILL)
+                                                : ALKitStyle::color(ALKitStyle::INPUT_BG));
+        }
     }
     if (mActiveOption < (S32)mOptionSwitches.size() && mOptionSwitches[mActiveOption])
         mEnable = mOptionSwitches[mActiveOption];

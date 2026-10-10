@@ -126,6 +126,10 @@ public:
 
     S32                 getThickness() const { return mThickness; }
     void                setThickness(S32 thickness);
+    void                setStyle(LLUIImage* track_vertical, LLUIImage* track_horizontal,
+                                 LLUIImage* thumb_vertical, LLUIImage* thumb_horizontal,
+                                 const LLUIColor& track_color, const LLUIColor& thumb_color,
+                                 const LLUIColor& bg_color);
 
 private:
     void                updateThumbRect();

@@ -31,7 +31,7 @@ public:
 
 protected:
     friend class LLUICtrlFactory;
-    explicit ALKitScroller(const Params& p) : LLScrollContainer(p) {}
+    explicit ALKitScroller(const Params& p);
 };
 class ALKitSearchEditor final : public LLLineEditor
 {
@@ -41,10 +41,11 @@ public:
         Params() = default;
     };
     bool handleKeyHere(KEY key, MASK mask) override;
+    void draw() override;
 
 protected:
     friend class LLUICtrlFactory;
-    explicit ALKitSearchEditor(const Params& p) : LLLineEditor(p) {}
+    explicit ALKitSearchEditor(const Params& p);
 };
 class ALKitDoc : public LLPanel, public ALScrollFit::SelfSizedDocument
 {

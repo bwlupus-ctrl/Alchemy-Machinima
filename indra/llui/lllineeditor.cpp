@@ -1994,6 +1994,8 @@ void LLLineEditor::drawBackground()
     if (mUseBgColor)
     {
         gl_rect_2d(getLocalRect(), mBgColor % alpha, true);
+        if (mDrawBgBorder)
+            gl_rect_2d(getLocalRect(), mBgBorderColor % alpha, false);
     }
     else
     {

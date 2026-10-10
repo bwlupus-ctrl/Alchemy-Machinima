@@ -13,11 +13,25 @@ Implemented from `style_tokens.json` and the approved `Director.dc.html` renderi
 | Help / roster / transport | Help pane uses token hierarchy and sizes. Roster tools share the CAST heading. Transport uses the supplied action/play/stop/marks/legend icons, amber/red actions, mono timecode/REC, token buttons and compact responsive collapse order. |
 | Dials / light map | Compass/arc use the token face, bezel, tick, range, amber needle and IBM Plex labels. Light map uses the approved dark-blue centre/edge/frame and Key/Fill/Back/BG palette. |
 | Assets | Every supplied `<name>_16.png` and `_32.png` is registered in `textures.xml`; images remain white RGBA and are tinted by widgets/draw code. Runtime textures are cached outside draw paths. |
-| Verification probe | The Director-v2 audit writes `<capture>.style.json` once per default page × size, recording key widget role/name, background token+RGBA, IBM font descriptor/size/weight, and floater-space rect. The driver requires 36 probes at each of 9 audit sizes. |
+| Verification probe | The Director-v2 audit writes `<capture>.style.json` after each default framebuffer capture, recording measured RGB8 pixels, expected token RGB8, delta/pass, rendered text/caret/state checks, font descriptors, and floater-space rects. The driver requires and parses 36 probes at each of 9 audit sizes. |
+
+## Round 3 corrections
+
+- Every kit combo now paints the registered right-aligned chevron and reserves label padding; generated XUI carries the same contract.
+- `styleTree()` stops at stock compound widgets. It skins a kit combo/spinner/slider/list as a whole, but never overwrites checkbox/radio, spinner, scrollbar, list-header, combo, or legacy-tab child buttons. Legacy page interiors are deliberately not traversed.
+- Buttons support a separate selected tint with backward-compatible single-tint defaults. Mode segments, option segments, chips, tabs and rail controls now have visibly distinct active treatment; hover glow, pressed tint and disabled colours remain token-driven. Late-created Easy/Advanced buttons are styled in `refreshModeProxy()`.
+- Kit search/spinner/slider editors use the dark input colour; numeric editors use Plex Mono. Search paints the magnifier and reserves left padding. Kit scrollers/lists use token track/thumb colours without replacing their arrow glyphs.
+- Section chips use the pill 9-slice and live visible-card counts. Row/card reset buttons have transparent backgrounds and retain faint/amber default-state glyphs.
+- Programmatic reset/who/search/cast popover controls receive the same scoped kit styling.
+- The style probe now samples the captured framebuffer, records measured and expected RGB8 values/deltas, scans rendered text and caret pixels, compares selected/unselected pixels, and makes every mismatch fatal.
+
+## Legacy-page boundary
+
+Rig, Rim, Bloom & Glow, and Tron are the currently rolled-out kit-native pages. The other 31 legacy page interiors intentionally retain their v1 controls until WP6+; only their Director-v2 frame/chrome is kit-styled. This is why compound descendants and legacy bodies are excluded from restyling, while the PNG variance gate still proves that their controls actually rendered.
 
 ## Deliberate limitations pending runtime comparison
 
 - Viewer widget primitives do not expose CSS box shadows, letter-spacing, or asymmetric split-button corner radii. The implementation uses the nearest native 9-slice/focus-border treatment; no global widget renderer was changed for those cosmetic-only effects.
 - `LLScrollListCtrl` has no embedded rounded-tag cell primitive. Cast rows therefore keep their stable pastel group tag as a tinted name suffix while the list background, hover, selection, status, typography, and header/tool chrome use kit tokens.
 - The light-map backdrop is a native two-layer radial approximation rather than the browser SVG/CSS gradient. Its interaction geometry and token palette are preserved.
-- Exact raster/font metrics and dropdown/list internals require the orchestrator's generator, `/Zs`, lint/parity gates, build, and mockup side-by-side; none were run in this write-only round.
+- Exact raster/font metrics still require the orchestrator's generator, `/Zs`, lint/parity gates, build, and mockup side-by-side; none were run in this write-only round.

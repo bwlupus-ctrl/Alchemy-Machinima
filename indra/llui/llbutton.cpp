@@ -91,6 +91,9 @@ LLButton::Params::Params()
     label_color_disabled("label_color_disabled"),
     label_color_disabled_selected("label_color_disabled_selected"),
     image_color("image_color"),
+    image_color_selected("image_color_selected"),
+    image_color_hover("image_color_hover"),
+    image_color_pressed("image_color_pressed"),
     image_color_disabled("image_color_disabled"),
     image_overlay_color("image_overlay_color", LLColor4::white % 0.75f),
     image_overlay_disabled_color("image_overlay_disabled_color", LLColor4::white % 0.3f),
@@ -151,8 +154,11 @@ LLButton::LLButton(const LLButton::Params& p)
     mSelectedLabelColor(p.label_color_selected()),
     mDisabledLabelColor(p.label_color_disabled()),
     mDisabledSelectedLabelColor(p.label_color_disabled_selected()),
-    mImageColor(p.image_color()),
     mFlashBgColor(p.flash_color()),
+    mImageColor(p.image_color()),
+    mSelectedImageColor(p.image_color_selected.isProvided() ? p.image_color_selected() : p.image_color()),
+    mHoverImageColor(p.image_color_hover.isProvided() ? p.image_color_hover() : p.image_color()),
+    mPressedImageColor(p.image_color_pressed.isProvided() ? p.image_color_pressed() : p.image_color()),
     mDisabledImageColor(p.image_color_disabled()),
     mImageOverlay(p.image_overlay()),
     mImageOverlayColor(p.image_overlay_color()),
@@ -870,9 +876,12 @@ void LLButton::draw()
     {
         // apply automatic 50% alpha fade to disabled image
         LLColor4 disabled_color = mFadeWhenDisabled ? mDisabledImageColor.get() % 0.5f : mDisabledImageColor.get();
+        const LLColor4 enabled_color = pressed ? mPressedImageColor.get()
+                                               : (mNeedsHighlight ? mHoverImageColor.get()
+                                                                  : (selected ? mSelectedImageColor.get() : mImageColor.get()));
         if ( mScaleImage)
         {
-            imagep->draw(getLocalRect(), (enabled ? mImageColor.get() : disabled_color) % alpha  );
+            imagep->draw(getLocalRect(), (enabled ? enabled_color : disabled_color) % alpha  );
             if (mCurGlowStrength > 0.01f)
             {
                 gGL.setSceneBlendType(glow_type);
@@ -883,7 +892,7 @@ void LLButton::draw()
         else
         {
             S32 y = getLocalRect().getHeight() - imagep->getHeight();
-            imagep->draw(0, y, (enabled ? mImageColor.get() : disabled_color) % alpha);
+            imagep->draw(0, y, (enabled ? enabled_color : disabled_color) % alpha);
             if (mCurGlowStrength > 0.01f)
             {
                 gGL.setSceneBlendType(glow_type);
@@ -1214,6 +1223,11 @@ void LLButton::setImageSelected(LLPointer<LLUIImage> image)
 void LLButton::setImageColor(const LLUIColor& c)
 {
     mImageColor = c;
+    // Preserve the historical single-tint behaviour for callers that do not
+    // opt into a separate selected tint.
+    mSelectedImageColor = c;
+    mHoverImageColor = c;
+    mPressedImageColor = c;
 }
 
 void LLButton::setColor(const LLUIColor& color)

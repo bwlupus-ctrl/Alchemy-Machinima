@@ -2013,6 +2013,12 @@ private:
                     addFinding("ROSTER_SPILL", leaf, nullptr, "visible roster descendant outside roster");
             }
         }
+        LLButton* cast_chip = shell->findChild<LLButton>("btn_cast_chip"); // ui-draw-lint: allow(lookup) one-shot live layout audit
+        const bool roster_reachable = (shell->roster() && visibleWithin(shell->roster(), floater)) ||
+                                      (cast_chip && visibleWithin(cast_chip, floater));
+        if (!roster_reachable)
+            addFinding("CAST_UNREACHABLE", semanticLeaf(cast_chip ? static_cast<LLView*>(cast_chip) : shell, floater), nullptr,
+                       "neither the rail roster nor its Cast popover chip is reachable");
 
         if (mAuditPageIndex > 0)
         {
@@ -2084,10 +2090,10 @@ private:
                                    "legacy body has no visible bound leaf");
                 }
                 LLPanel* bar = page->pageBar();
-                std::vector<LLView*> chrome = { page->resetButton(), page->undoButton(), page->redoButton(), page->searchEditor() };
+                std::vector<LLView*> chrome = { page->resetButton(), page->undoButton(), page->redoButton() };
                 for (LLView* widget : chrome)
                 {
-                    if (!widget || !bar || (widget->getVisible() && !rectContained(widget->getRect(), bar->getLocalRect())))
+                    if (!widget || !bar || !visibleWithin(widget, bar) || !rectContained(widget->getRect(), bar->getLocalRect()))
                         addFinding("PAGE_CHROME", semanticLeaf(widget ? widget : page, floater), nullptr,
                                    "page-bar control is missing or outside the page bar");
                 }
@@ -2095,9 +2101,9 @@ private:
                 {
                     LLRect master_rect;
                     const bool master_ok = page->masterSwitch() && bar &&
-                        (!visibleWithin(page->masterSwitch(), bar) ||
-                         (page->masterSwitch()->localRectToOtherView(page->masterSwitch()->getLocalRect(), &master_rect, bar) &&
-                          rectContained(master_rect, bar->getLocalRect())));
+                        visibleWithin(page->masterSwitch(), bar) &&
+                        page->masterSwitch()->localRectToOtherView(page->masterSwitch()->getLocalRect(), &master_rect, bar) &&
+                        rectContained(master_rect, bar->getLocalRect());
                     if (!master_ok)
                         addFinding("PAGE_CHROME", semanticLeaf(page->masterSwitch() ? static_cast<LLView*>(page->masterSwitch()) : page,
                                                                floater), nullptr,
@@ -2108,7 +2114,8 @@ private:
                     bool preset_in_bar = false;
                     if (bar)
                         for (LLView* child : *bar->getChildList())
-                            if (dynamic_cast<LLComboBox*>(child) && rectContained(child->getRect(), bar->getLocalRect()))
+                            if (dynamic_cast<LLComboBox*>(child) && visibleWithin(child, bar) &&
+                                rectContained(child->getRect(), bar->getLocalRect()))
                             {
                                 preset_in_bar = true;
                                 break;
@@ -2614,8 +2621,6 @@ private:
                 llformat("%03u_", (U32)mAuditPageIndex) + safeComponent(auditPagePath()) + "_" +
                 llformat("%u", (U32)mCapturePositionIndex) + ".png";
         }
-        if (isDirectorV2() && mCapturePositionIndex == 0 && auditStateName() == "default")
-            writeStyleProbe();
         mCaptureFailed = false;
         mCaptureWaitFrames = 0;
         mCaptureRequested = true;
@@ -2625,7 +2630,7 @@ private:
     {
         LLFloater* floater = mFloater.get();
         ALKitShell* shell = floater ? findFirstView<ALKitShell>(floater) : nullptr;
-        if (!floater || !shell)
+        if (!floater || !shell || mCapturedImage.isNull())
             return;
         if (mAuditPageIndex > 0)
         {
@@ -2637,8 +2642,40 @@ private:
         probe["size"] = auditSizeName();
         probe["page"] = auditPagePath();
         probe["state"] = auditStateName();
+        probe["source"] = "captured framebuffer pixels compared with style_tokens.json";
+        probe["tolerance_rgb8"] = 28;
         probe["widgets"] = LLSD::emptyArray();
-        auto add = [&](const std::string& role, LLView* view, const std::string& bg_token, const LLUIColor& bg)
+        probe["checks"] = LLSD::emptyArray();
+        S32 mismatch_count = 0;
+        const S32 image_width = mCapturedImage->getWidth();
+        const S32 image_height = mCapturedImage->getHeight();
+        const S32 components = mCapturedImage->getComponents();
+        const U8* pixels = mCapturedImage->getData();
+        const LLRect floater_rect = floater->getLocalRect();
+        auto sample = [&](LLView* view, F32 x_fraction, F32 y_fraction, LLColor4U& value)
+        {
+            if (!view || !pixels || image_width <= 0 || image_height <= 0 || components < 3)
+                return false;
+            LLRect rect;
+            if (!view->localRectToOtherView(view->getLocalRect(), &rect, floater) || rect.getWidth() <= 0 || rect.getHeight() <= 0)
+                return false;
+            const F32 local_x = rect.mLeft + llclamp(x_fraction, 0.f, 1.f) * llmax(0, rect.getWidth() - 1);
+            const F32 local_y = rect.mBottom + llclamp(y_fraction, 0.f, 1.f) * llmax(0, rect.getHeight() - 1);
+            const S32 px = llclamp(llfloor(local_x * image_width / llmax(1, floater_rect.getWidth())), 0, image_width - 1);
+            const S32 py = llclamp(llfloor(local_y * image_height / llmax(1, floater_rect.getHeight())), 0, image_height - 1);
+            const U8* source = pixels + (py * image_width + px) * components;
+            value = LLColor4U(source[0], source[1], source[2], 255);
+            return true;
+        };
+        auto delta = [](const LLColor4U& actual, const LLColor4& expected)
+        {
+            S32 result = 0;
+            for (S32 component = 0; component < 3; ++component)
+                result = llmax(result, llabs((S32)actual.mV[component] - ll_round(expected.mV[component] * 255.f)));
+            return result;
+        };
+        auto addCheck = [&](const std::string& role, LLView* view, const std::string& token,
+                            const LLColor4U& actual, const LLColor4& expected, S32 tolerance)
         {
             if (!view)
                 return;
@@ -2652,11 +2689,23 @@ private:
             item["rect"].append(rect.mBottom);
             item["rect"].append(rect.mRight);
             item["rect"].append(rect.mTop);
-            item["bg_token"] = bg_token;
-            item["bg_rgba"] = LLSD::emptyArray();
-            const LLColor4 value = bg.get();
-            for (S32 component = 0; component < 4; ++component)
-                item["bg_rgba"].append(value.mV[component]);
+            item["token"] = token;
+            item["sample_rgb8"] = LLSD::emptyArray();
+            item["expected_rgb8"] = LLSD::emptyArray();
+            for (S32 component = 0; component < 3; ++component)
+            {
+                item["sample_rgb8"].append(actual.mV[component]);
+                item["expected_rgb8"].append(ll_round(expected.mV[component] * 255.f));
+            }
+            const S32 difference = delta(actual, expected);
+            item["max_delta"] = difference;
+            item["pass"] = difference <= tolerance;
+            if (difference > tolerance)
+            {
+                ++mismatch_count;
+                addFinding("STYLE_PIXEL_MISMATCH", semanticLeaf(view, floater), nullptr,
+                           role + " expected " + token + " max RGB delta=" + llformat("%d", difference));
+            }
             if (const LLFontGL* font = view->getFont())
             {
                 item["font"] = font->getFontDesc().getName();
@@ -2665,24 +2714,273 @@ private:
             }
             probe["widgets"].append(item);
         };
-        add("window", floater, "window_bg", ALKitStyle::color(ALKitStyle::WINDOW_BG));
-        add("rail", shell->findChild<LLView>("kit_rail"), "panel_bg", ALKitStyle::color(ALKitStyle::RAIL_BG)); // ui-draw-lint: allow(lookup) self-test style probe, capture-time only
-        add("tabs", shell->tabStrip(), "panel_bg", ALKitStyle::color(ALKitStyle::RAIL_BG));
-        add("transport", shell->transport(), "panel_bg", ALKitStyle::color(ALKitStyle::RAIL_BG));
-        add("action", shell->findChild<LLView>("btn_action"), "accent_amber", ALKitStyle::color(ALKitStyle::ACCENT)); // ui-draw-lint: allow(lookup) self-test style probe, capture-time only
-        add("timecode", shell->findChild<LLView>("take_timecode"), "panel_bg", ALKitStyle::color(ALKitStyle::RAIL_BG)); // ui-draw-lint: allow(lookup) self-test style probe, capture-time only
-        if (ALKitPage* page = findFirstView<ALKitPage>(auditPageRoot()))
+        auto addBackground = [&](const std::string& role, LLView* view, const std::string& token,
+                                 const LLUIColor& expected, F32 x, F32 y)
         {
-            add("page_bar", page->pageBar(), "window_bg", ALKitStyle::color(ALKitStyle::WINDOW_BG));
-            add("who", page->whoBand(), "inset_bg", ALKitStyle::color(ALKitStyle::INPUT_BG));
-            add("search", page->searchEditor(), "inset_bg", ALKitStyle::color(ALKitStyle::INPUT_BG));
-            add("master", page->masterSwitch(), "switch_on_track", ALKitStyle::color(ALKitStyle::ACCENT));
+            if (!view || !visibleWithin(view, floater))
+                return;
+            LLColor4U actual;
+            if (sample(view, x, y, actual))
+                addCheck(role, view, token, actual, expected.get(), 28);
+        };
+        addBackground("tabs", shell->tabStrip(), "panel_bg", ALKitStyle::color(ALKitStyle::RAIL_BG), .5f, .03f);
+        addBackground("transport", shell->transport(), "panel_bg", ALKitStyle::color(ALKitStyle::RAIL_BG), .5f, .08f);
+        addBackground("action", shell->findChild<LLView>("btn_action"), "accent_amber", ALKitStyle::color(ALKitStyle::ACCENT), .08f, .2f); // ui-draw-lint: allow(lookup) capture-time probe
+        auto addTextPresence = [&](const std::string& role, LLView* view, const std::string& token, const LLUIColor& expected)
+        {
+            if (!view || !visibleWithin(view, floater))
+                return;
+            bool present = false;
+            for (S32 y = 2; y < view->getRect().getHeight() - 2 && !present; ++y)
+                for (S32 x = 2; x < view->getRect().getWidth() - 2; ++x)
+                {
+                    LLColor4U actual;
+                    const F32 fx = x / (F32)llmax(1, view->getRect().getWidth() - 1);
+                    const F32 fy = y / (F32)llmax(1, view->getRect().getHeight() - 1);
+                    if (sample(view, fx, fy, actual) && delta(actual, expected.get()) <= 48)
+                    {
+                        present = true;
+                        break;
+                    }
+                }
+            LLSD check = LLSD::emptyMap();
+            check["name"] = role + "_text_colour";
+            check["token"] = token;
+            check["pass"] = present;
+            probe["checks"].append(check);
+            if (!present)
+            {
+                ++mismatch_count;
+                addFinding("STYLE_TEXT_MISSING", semanticLeaf(view, floater), nullptr,
+                           role + " has no rendered pixels matching " + token);
+            }
+        };
+        addTextPresence("action", shell->findChild<LLView>("btn_action"), "accent_text_on", ALKitStyle::color(ALKitStyle::KNOB_ON)); // ui-draw-lint: allow(lookup) capture-time probe
+        addTextPresence("timecode", shell->findChild<LLView>("take_timecode"), "text_primary", ALKitStyle::color(ALKitStyle::TEXT)); // ui-draw-lint: allow(lookup) capture-time probe
+        ALKitPage* probed_page = mAuditPageIndex > 0
+                                     ? findFirstView<ALKitPage>(mTabs[mAuditPageIndex - 1].mPanel.get())
+                                     : findFirstView<ALKitPage>(auditPageRoot());
+        if (ALKitPage* page = probed_page)
+        {
+            addBackground("page_bar", page->pageBar(), "window_bg", ALKitStyle::color(ALKitStyle::WINDOW_BG), .5f, .08f);
+            addBackground("who", page->whoBand(), "inset_bg", ALKitStyle::color(ALKitStyle::INPUT_BG), .98f, .1f);
+            addBackground("search", page->searchEditor(), "inset_bg", ALKitStyle::color(ALKitStyle::INPUT_BG), .92f, .5f);
             std::vector<ALKitCard*> cards;
             collectViewsOfType<ALKitCard>(page, cards);
             for (ALKitCard* card : cards)
                 if (card->getVisible())
-                    add("card", card, "card_bg", ALKitStyle::color(ALKitStyle::CARD_BG));
+                {
+                    LLRect card_rect;
+                    ALKitScroller* scroller = page->scroller();
+                    if (!scroller || !card->localRectToOtherView(card->getLocalRect(), &card_rect, scroller) ||
+                        card_rect.mTop <= scroller->getVisibleContentRect().mBottom ||
+                        card_rect.mBottom >= scroller->getVisibleContentRect().mTop)
+                        continue;
+                    addBackground("card", card, "card_bg", ALKitStyle::color(ALKitStyle::CARD_BG), .04f, .5f);
+                    break;
+                }
+            if (!page->legacy())
+            {
+                std::vector<LLSpinCtrl*> spinners;
+                collectViewsOfType<LLSpinCtrl>(page, spinners);
+                for (LLSpinCtrl* spinner : spinners)
+                    if (visibleWithin(spinner, floater))
+                    {
+                        for (LLView* child : *spinner->getChildList())
+                            if (LLLineEditor* editor = dynamic_cast<LLLineEditor*>(child))
+                            {
+                                addBackground("number_field", editor, "inset_bg", ALKitStyle::color(ALKitStyle::INPUT_BG), .1f, .5f);
+                                break;
+                            }
+                        break;
+                    }
+                std::vector<LLSliderCtrl*> sliders;
+                collectViewsOfType<LLSliderCtrl>(page, sliders);
+                for (LLSliderCtrl* slider : sliders)
+                    if (visibleWithin(slider, floater))
+                    {
+                        for (LLView* child : *slider->getChildList())
+                            if (LLLineEditor* editor = dynamic_cast<LLLineEditor*>(child))
+                            {
+                                addBackground("slider_value", editor, "inset_bg", ALKitStyle::color(ALKitStyle::INPUT_BG), .1f, .5f);
+                                break;
+                            }
+                        break;
+                    }
+            }
         }
+
+        std::vector<LLScrollbar*> scrollbars;
+        collectViewsOfType<LLScrollbar>(floater, scrollbars);
+        for (LLScrollbar* scrollbar : scrollbars)
+        {
+            bool kit_scrollbar = false;
+            for (LLView* parent = scrollbar->getParent(); parent && parent != floater; parent = parent->getParent())
+                if (dynamic_cast<ALKitScroller*>(parent) || parent->getName() == "cast_list")
+                {
+                    kit_scrollbar = true;
+                    break;
+                }
+            if (!kit_scrollbar || !visibleWithin(scrollbar, floater))
+                continue;
+            bool thumb_present = false;
+            for (S32 y = 2; y < scrollbar->getRect().getHeight() - 2 && !thumb_present; y += 2)
+                for (S32 x = 2; x < scrollbar->getRect().getWidth() - 2; x += 2)
+                {
+                    LLColor4U actual;
+                    const F32 fx = x / (F32)llmax(1, scrollbar->getRect().getWidth() - 1);
+                    const F32 fy = y / (F32)llmax(1, scrollbar->getRect().getHeight() - 1);
+                    if (sample(scrollbar, fx, fy, actual) && delta(actual, ALKitStyle::color(ALKitStyle::INPUT_BORDER).get()) <= 38)
+                    {
+                        thumb_present = true;
+                        break;
+                    }
+                }
+            LLSD check = LLSD::emptyMap();
+            check["name"] = "kit_scrollbar_thumb";
+            check["pass"] = thumb_present;
+            probe["checks"].append(check);
+            if (!thumb_present)
+            {
+                ++mismatch_count;
+                addFinding("STYLE_SCROLLBAR", semanticLeaf(scrollbar, floater), nullptr,
+                           "kit scrollbar has no rendered token thumb pixels");
+            }
+            break;
+        }
+
+        std::vector<LLComboBox*> combos;
+        collectViewsOfType<LLComboBox>(floater, combos);
+        S32 visible_combos = 0;
+        S32 missing_carets = 0;
+        for (LLComboBox* combo : combos)
+        {
+            if (!visibleWithin(combo, floater))
+                continue;
+            ++visible_combos;
+            LLRect rect;
+            combo->localRectToOtherView(combo->getLocalRect(), &rect, floater);
+            bool caret = false;
+            const LLColor4 expected = ALKitStyle::color(ALKitStyle::DIM).get();
+            S32 min_luma = 255;
+            S32 max_luma = 0;
+            const S32 left = llmax(rect.mLeft, rect.mRight - 20);
+            const S32 bottom = llmax(rect.mBottom + 3, (rect.mBottom + rect.mTop) / 2 - 6);
+            const S32 top = llmin(rect.mTop - 3, (rect.mBottom + rect.mTop) / 2 + 7);
+            for (S32 y = bottom; y < top; ++y)
+                for (S32 x = left; x < rect.mRight - 5; ++x)
+                {
+                    const F32 fx = (x - rect.mLeft) / (F32)llmax(1, rect.getWidth() - 1);
+                    const F32 fy = (y - rect.mBottom) / (F32)llmax(1, rect.getHeight() - 1);
+                    LLColor4U actual;
+                    if (sample(combo, fx, fy, actual))
+                    {
+                        const S32 luma = (actual.mV[0] * 3 + actual.mV[1] * 6 + actual.mV[2]) / 10;
+                        min_luma = llmin(min_luma, luma);
+                        max_luma = llmax(max_luma, luma);
+                        caret |= delta(actual, expected) <= 52;
+                    }
+                }
+            caret |= max_luma - min_luma >= 18;
+            if (!caret)
+            {
+                ++missing_carets;
+                ++mismatch_count;
+                addFinding("STYLE_COMBO_CARET", semanticLeaf(combo, floater), nullptr, "visible combo has no rendered caret pixels");
+            }
+        }
+        LLSD caret_check = LLSD::emptyMap();
+        caret_check["name"] = "visible_combo_carets";
+        caret_check["visible"] = visible_combos;
+        caret_check["missing"] = missing_carets;
+        caret_check["pass"] = missing_carets == 0;
+        probe["checks"].append(caret_check);
+
+        std::vector<LLButton*> buttons;
+        collectViewsOfType<LLButton>(floater, buttons);
+        LLButton* selected = nullptr;
+        LLButton* unselected = nullptr;
+        for (LLButton* button : buttons)
+        {
+            const std::string& name = button->getName();
+            const bool state_button = name.rfind("kit_mode_seg_", 0) == 0 || name.find("_seg_") != std::string::npos;
+            if (!state_button || !visibleWithin(button, floater))
+                continue;
+            (button->getToggleState() ? selected : unselected) = button;
+        }
+        bool states_differ = true;
+        S32 state_delta = 0;
+        if (selected && unselected)
+        {
+            LLColor4U selected_pixel, unselected_pixel;
+            if (sample(selected, .12f, .18f, selected_pixel) && sample(unselected, .12f, .18f, unselected_pixel))
+            {
+                for (S32 component = 0; component < 3; ++component)
+                    state_delta = llmax(state_delta, llabs((S32)selected_pixel.mV[component] - (S32)unselected_pixel.mV[component]));
+                states_differ = state_delta >= 10;
+            }
+            if (!states_differ)
+            {
+                ++mismatch_count;
+                addFinding("STYLE_STATE_IDENTICAL", semanticLeaf(selected, floater), nullptr,
+                           "selected and unselected controls render the same background");
+            }
+        }
+        LLSD state_check = LLSD::emptyMap();
+        state_check["name"] = "selected_unselected_differ";
+        state_check["max_delta"] = state_delta;
+        state_check["pass"] = states_differ;
+        probe["checks"].append(state_check);
+
+        if (mAuditPageIndex > 0)
+        {
+            ALKitPage* page = probed_page;
+            if (page && page->legacy() && page->legacyHost())
+            {
+                LLRect rect;
+                page->legacyHost()->localRectToOtherView(page->legacyHost()->getLocalRect(), &rect, floater);
+                S32 min_luma = 255, max_luma = 0, changed = 0;
+                LLColor4U first;
+                bool have_first = false;
+                for (S32 y = rect.mBottom + 4; y < rect.mTop - 4; y += 4)
+                    for (S32 x = rect.mLeft + 4; x < rect.mRight - 4; x += 4)
+                    {
+                        LLColor4U pixel;
+                        const F32 fx = (x - rect.mLeft) / (F32)llmax(1, rect.getWidth() - 1);
+                        const F32 fy = (y - rect.mBottom) / (F32)llmax(1, rect.getHeight() - 1);
+                        if (!sample(page->legacyHost(), fx, fy, pixel))
+                            continue;
+                        const S32 luma = (pixel.mV[0] * 3 + pixel.mV[1] * 6 + pixel.mV[2]) / 10;
+                        min_luma = llmin(min_luma, luma);
+                        max_luma = llmax(max_luma, luma);
+                        if (!have_first)
+                        {
+                            first = pixel;
+                            have_first = true;
+                        }
+                        else if (llabs((S32)pixel.mV[0] - first.mV[0]) > 6 || llabs((S32)pixel.mV[1] - first.mV[1]) > 6 ||
+                                 llabs((S32)pixel.mV[2] - first.mV[2]) > 6)
+                            ++changed;
+                    }
+                const bool body_drawn = max_luma - min_luma >= 10 && changed >= 12;
+                LLSD body_check = LLSD::emptyMap();
+                body_check["name"] = "legacy_body_pixel_variance";
+                body_check["luma_range"] = max_luma - min_luma;
+                body_check["changed_samples"] = changed;
+                body_check["pass"] = body_drawn;
+                probe["checks"].append(body_check);
+                if (!body_drawn)
+                {
+                    ++mismatch_count;
+                    addFinding("LEGACY_BODY_BLANK_PNG", semanticLeaf(page->legacyHost(), floater), nullptr,
+                               "captured legacy body has no rendered-control pixel variance");
+                    addFinding("LEGACY_BODY_UNBOUND", semanticLeaf(page->legacyHost(), floater), nullptr,
+                               "legacy descendants exist structurally but did not render into the captured body");
+                }
+            }
+        }
+        probe["mismatch_count"] = mismatch_count;
+        probe["pass"] = mismatch_count == 0;
         std::string path = mCaptureFilename;
         if (path.size() >= 4)
             path.replace(path.size() - 4, 4, ".style.json");
@@ -2694,6 +2992,8 @@ private:
     void saveCapturedImage()
     {
         if (mCapturedImage.isNull()) return;
+        if (isDirectorV2() && mCapturePositionIndex == 0 && auditStateName() == "default")
+            writeStyleProbe();
         LLPointer<LLImagePNG> png = new LLImagePNG;
         if (!png->encode(mCapturedImage, 0.f) || !png->save(mCaptureFilename))
         {

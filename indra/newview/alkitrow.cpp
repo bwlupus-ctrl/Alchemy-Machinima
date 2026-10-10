@@ -472,7 +472,7 @@ void ALKitRow::bindingChanged()
 {
     const bool now = amber();
     if (mReset)
-        mReset->setImageOverlay("Refresh_Off",
+        mReset->setImageOverlay("KitIcon_reset_row_16",
                                 LLFontGL::HCENTER,
                                 (now ? ALKitStyle::color(ALKitStyle::ACCENT) : ALKitStyle::color(ALKitStyle::FAINT)).get());
     if (now != mAmber)

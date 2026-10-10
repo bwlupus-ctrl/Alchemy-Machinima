@@ -43,11 +43,11 @@ std::vector<std::string> tokens(const std::string& value, const std::string& sep
     return out;
 }
 
-LLPanel* makePanel(const std::string& name, S32 height)
+LLPanel* makePanel(const std::string& name, S32 height, S32 width = 1)
 {
     LLPanel::Params p;
     p.name               = name;
-    p.rect               = LLRect(0, height, 1, 0);
+    p.rect               = LLRect(0, height, llmax(1, width), 0);
     p.background_visible = false;
 
     return LLUICtrlFactory::create<LLPanel>(p);
@@ -165,6 +165,25 @@ bool ALKitScroller::handleKeyHere(KEY key, MASK mask)
     return LLScrollContainer::handleKeyHere(key, mask);
 }
 
+ALKitScroller::ALKitScroller(const Params& p) : LLScrollContainer(p)
+{
+    ALKitStyle::styleScroller(this);
+}
+
+ALKitSearchEditor::ALKitSearchEditor(const Params& p) : LLLineEditor(p)
+{
+    setTextPadding(24, 6);
+    ALKitStyle::styleEditor(this);
+}
+
+void ALKitSearchEditor::draw()
+{
+    LLLineEditor::draw();
+    static LLPointer<LLUIImage> search = LLUI::getUIImage("KitIcon_search_16");
+    if (search)
+        search->draw(5, (getRect().getHeight() - 16) / 2, 16, 16, ALKitStyle::color(ALKitStyle::MUTED).get());
+}
+
 bool ALKitSearchEditor::handleKeyHere(KEY key, MASK mask)
 {
     if (key == KEY_PAGE_UP || key == KEY_PAGE_DOWN)
@@ -219,15 +238,16 @@ bool ALKitPage::postBuild()
     for (LLView* c : *getChildList())
         xml_children.push_back(c);
 
-    mBar = makePanel(pre + "_bar", ALKitStyle::BAR_H);
+    const S32 page_width = getRect().getWidth();
+    mBar = makePanel(pre + "_bar", ALKitStyle::BAR_H, page_width);
     mBar->setBackgroundVisible(true);
     mBar->setBackgroundColor(ALKitStyle::color(ALKitStyle::WINDOW_BG));
     addChild(mBar);
-    mChipsContainer = makePanel(pre + "_chips", ALKitStyle::CHIPS_H);
+    mChipsContainer = makePanel(pre + "_chips", ALKitStyle::CHIPS_H, page_width);
     mChipsContainer->setBackgroundVisible(true);
     mChipsContainer->setBackgroundColor(ALKitStyle::color(ALKitStyle::SUB_BAND));
     addChild(mChipsContainer);
-    mWhoContainer = makePanel(pre + "_who", ALKitStyle::WHO_H);
+    mWhoContainer = makePanel(pre + "_who", ALKitStyle::WHO_H, page_width);
     mWhoContainer->setBackgroundVisible(true);
     mWhoContainer->setBackgroundColor(ALKitStyle::color(ALKitStyle::INPUT_BG));
     addChild(mWhoContainer);
@@ -255,6 +275,7 @@ bool ALKitPage::postBuild()
             {
                 LLView* c = items[i];
                 mBar->addChild(c);
+                c->setFollows(FOLLOWS_LEFT | FOLLOWS_TOP);
                 S32 item_width = ALKitStyle::PRESET_COMBO_W;
                 if (i != 0)
                 {
@@ -331,6 +352,7 @@ bool ALKitPage::postBuild()
                 if (ALKitPage* page = page_handle.get())
                     page->performPageReset();
             });
+        ALKitStyle::styleTree(mResetPopover);
     }
 
     mUndo = makeButton(pre + "_undo", "");
@@ -422,7 +444,7 @@ bool ALKitPage::postBuild()
     mSearch->setCommitCallback([this](LLUICtrl* c, const LLSD&) { setSearchText(c->getValue().asString()); });
     mBar->addChild(mSearch);
 
-    mBanner = makePanel(pre + "_banner", ALKitStyle::BANNER_H);
+    mBanner = makePanel(pre + "_banner", ALKitStyle::BANNER_H, page_width);
     mBanner->setBackgroundVisible(true);
     mBanner->setBackgroundColor(ALKitStyle::color(ALKitStyle::BANNER_BG));
     LLTextBox::Params bt;
@@ -509,7 +531,11 @@ bool ALKitPage::postBuild()
         if (ALKitShell* shell = ALKitShell::find(this))
             shell->history().watchSettings(mPage, watched);
         reshape(getRect().getWidth(), getRect().getHeight(), true);
-        ALKitStyle::styleTree(this);
+        ALKitStyle::styleTree(mBar);
+        ALKitStyle::styleTree(mChipsContainer);
+        ALKitStyle::styleTree(mWhoContainer);
+        ALKitStyle::styleTree(mBanner);
+        ALKitStyle::stylePill(mWhoChip);
         mRestoringState = false;
         return true;
     }
@@ -609,6 +635,8 @@ bool ALKitPage::postBuild()
     restoreState();
     reshape(getRect().getWidth(), getRect().getHeight(), true);
     ALKitStyle::styleTree(this);
+    ALKitStyle::stylePill(mWhoChip);
+    applyModeAndChip();
     return true;
 }
 
@@ -692,19 +720,21 @@ void ALKitPage::applyModeAndChip()
             ++visible_count;
     }
     const bool filtered = mChipMode == "filter" || (mChipMode == "auto" && visible_count >= 6);
+    auto visibleInMode = [this](const std::string& id)
+    {
+        if (mModeDefs.empty())
+            return true;
+        bool listed = false;
+        for (const ModeData& mode : mModeDefs)
+            listed |= std::find(mode.cards.begin(), mode.cards.end(), id) != mode.cards.end();
+        return !listed || (mModeIndex < (S32)mModeDefs.size() &&
+                           std::find(mModeDefs[mModeIndex].cards.begin(), mModeDefs[mModeIndex].cards.end(), id) !=
+                               mModeDefs[mModeIndex].cards.end());
+    };
 
     for (auto& pair : mCards)
     {
-        bool mode = true;
-        if (!mModeDefs.empty())
-        {
-            bool listed = false;
-            for (const ModeData& m : mModeDefs)
-                listed |= std::find(m.cards.begin(), m.cards.end(), pair.first) != m.cards.end();
-            mode = !listed || (mModeIndex < (S32)mModeDefs.size() &&
-                               std::find(mModeDefs[mModeIndex].cards.begin(), mModeDefs[mModeIndex].cards.end(), pair.first) !=
-                                   mModeDefs[mModeIndex].cards.end());
-        }
+        const bool mode = visibleInMode(pair.first);
         bool section = true;
         if (filtered && !mSections.empty() && mChipIndex < (S32)mSections.size())
             section = std::find(mSections[mChipIndex].cards.begin(), mSections[mChipIndex].cards.end(), pair.first) !=
@@ -719,7 +749,7 @@ void ALKitPage::applyModeAndChip()
             for (const std::string& id : mSections[i].cards)
             {
                 auto found = mCards.find(id);
-                if (found != mCards.end() && found->second->getVisible())
+                if (found != mCards.end() && visibleInMode(id))
                 {
                     any = true;
                     break;
@@ -730,18 +760,29 @@ void ALKitPage::applyModeAndChip()
         {
             mChips[i]->setVisible(any);
             mChips[i]->setToggleState(filtered && i == mChipIndex);
-            ALKitStyle::styleButton(mChips[i], !(filtered && i == mChipIndex));
+            ALKitStyle::stylePill(mChips[i]);
+            mChips[i]->setImageColor(filtered && i == mChipIndex ? ALKitStyle::color(ALKitStyle::ACTIVE_FILL)
+                                                                  : ALKitStyle::color(ALKitStyle::CONTROL_BG));
             S32 count = 0;
             if (i < (S32)mSections.size())
                 for (const std::string& id : mSections[i].cards)
                 {
                     auto found = mCards.find(id);
-                    if (found != mCards.end() && found->second->getVisible())
+                    if (found != mCards.end() && visibleInMode(id))
                         ++count;
                 }
             if (i < (S32)mSections.size())
                 mChips[i]->setLabel(mSections[i].label + " " + llformat("%d", count));
         }
+    }
+    S32 chip_x = ALKitStyle::PAGE_PAD_LR;
+    for (LLButton* chip : mChips)
+    {
+        if (!chip->getVisible())
+            continue;
+        chip->reshape(100, 24, true);
+        chip->setOrigin(chip_x, 7);
+        chip_x += 106;
     }
     requestLayout();
 }

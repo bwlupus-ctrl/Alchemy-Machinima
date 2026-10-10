@@ -480,7 +480,9 @@ if ($DirectorV2) {
     'LEGACY_BODY_COLLAPSED', 'LEGACY_BODY_UNBOUND', 'PAGE_CHROME', 'TAB_OVERFLOW', 'TAB_LABEL_CLIPPED',
     'HELP_EMPTY', 'DIRECTOR_SPILL', 'ROSTER_SPILL', 'RAIL_ICON_LABEL_OVERLAP',
     'TRANSPORT_SPILL', 'TRANSPORT_OVERLAP', 'TRANSPORT_ORDER', 'TRANSPORT_LABEL_CLIPPED',
-    'TRANSPORT_FLEX_MIN', 'KIT_SCROLLER_EMPTY', 'KIT_SCROLLER_SPILL', 'KIT_HORIZONTAL_SCROLL', 'RAIL_GROUPS')
+    'TRANSPORT_FLEX_MIN', 'KIT_SCROLLER_EMPTY', 'KIT_SCROLLER_SPILL', 'KIT_HORIZONTAL_SCROLL', 'RAIL_GROUPS',
+    'CAST_UNREACHABLE', 'STYLE_PIXEL_MISMATCH', 'STYLE_TEXT_MISSING', 'STYLE_SCROLLBAR', 'STYLE_COMBO_CARET', 'STYLE_STATE_IDENTICAL',
+    'LEGACY_BODY_BLANK_PNG')
   $liveFindings = @($layoutRows | Where-Object finding -in $liveFindingNames)
   $screenshotMissing = [System.Collections.Generic.List[string]]::new()
   foreach ($group in @($layoutStates | Group-Object size_pass, page_index)) {
@@ -493,8 +495,18 @@ if ($DirectorV2) {
   }
   $styleProbeCount = @(Get-ChildItem -LiteralPath $shotsDest -Filter '*.style.json' -Recurse -File -ErrorAction SilentlyContinue).Count
   $styleProbeMissing = [math]::Max(0, 36 * $requiredSizes.Count - $styleProbeCount)
-  $liveChecksPass = $liveFindings.Count -eq 0 -and $screenshotMissing.Count -eq 0 -and $styleProbeMissing -eq 0
-  Write-DirectorBudgetLine 'live render checks + PNG/style probe per page/size' "$($liveFindings.Count) finding(s), $($screenshotMissing.Count) missing PNG(s), $styleProbeMissing missing probe(s)" $liveChecksPass
+  $styleProbeFailures = 0
+  foreach ($probeFile in @(Get-ChildItem -LiteralPath $shotsDest -Filter '*.style.json' -Recurse -File -ErrorAction SilentlyContinue)) {
+    try {
+      $probe = Get-Content -LiteralPath $probeFile.FullName -Raw | ConvertFrom-Json
+      if ($probe.pass -ne $true -or [int]$probe.mismatch_count -ne 0) { ++$styleProbeFailures }
+    } catch {
+      ++$styleProbeFailures
+    }
+  }
+  $liveChecksPass = $liveFindings.Count -eq 0 -and $screenshotMissing.Count -eq 0 -and
+    $styleProbeMissing -eq 0 -and $styleProbeFailures -eq 0
+  Write-DirectorBudgetLine 'live render checks + PNG/style probe per page/size' "$($liveFindings.Count) finding(s), $($screenshotMissing.Count) missing PNG(s), $styleProbeMissing missing probe(s), $styleProbeFailures failed probe(s)" $liveChecksPass
 
   $legacyRows = @($layoutRows | Where-Object {
     $_.size_pass -in @('1160x720', 'minimum') -and

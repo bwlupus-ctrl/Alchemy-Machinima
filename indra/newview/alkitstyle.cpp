@@ -7,9 +7,13 @@
 #include "llcheckboxctrl.h"
 #include "llcombobox.h"
 #include "lllineeditor.h"
+#include "llradiogroup.h"
+#include "llscrollbar.h"
+#include "llscrollcontainer.h"
 #include "llscrolllistctrl.h"
 #include "llsliderctrl.h"
 #include "llspinctrl.h"
+#include "lltabcontainer.h"
 #include "lltextbox.h"
 #include "llui.h"
 #include "lluicolortable.h"
@@ -21,7 +25,7 @@ const LLUIColor& color(EColor value)
 {
     static const char* names[COLOR_COUNT] = {
         "KitWindowBg",  "KitRailBg",    "KitSubBand",  "KitCardBg",      "KitCardBorder", "KitDivider",    "KitDivider2", "KitRowHover",
-        "KitRailHover", "KitControlBg", "KitInputBg",  "KitInputBorder", "KitTrack",      "KitSwitchOff",  "KitKnobOff",  "KitKnobOn",
+        "KitRailHover", "KitControlBg", "KitActiveFill", "KitHoverBg", "KitInputBg", "KitInputBorder", "KitTrack",      "KitSwitchOff",  "KitKnobOff",  "KitKnobOn",
         "KitAccent",    "KitAccentHi",  "KitRecord",   "KitRecordText",  "KitText",       "KitTextStrong", "KitLabel",    "KitDim",
         "KitMuted",     "KitFaint",     "KitDialRing", "KitDialFace",    "KitArcTrack",   "KitFlash",      "KitBannerBg", "KitMapKey",
         "KitMapFill",   "KitMapBack",   "KitMapBg",    "KitOffGrey",    "KitLightMapBgCentre", "KitLightMapBgEdge",
@@ -61,11 +65,17 @@ void styleButton(LLButton* button, bool transparent)
     LLPointer<LLUIImage> image = transparent ? clear : rounded;
     button->setImageUnselected(image);
     button->setImageSelected(image);
-    button->setImageHoverUnselected(image);
-    button->setImageHoverSelected(image);
-    button->setImagePressed(image);
+    button->setImageHoverUnselected(rounded);
+    button->setImageHoverSelected(rounded);
+    button->setImagePressed(rounded);
+    button->setImageDisabled(image);
+    button->setImageDisabledSelected(image);
     button->setScaleImage(true);
     button->setImageColor(transparent ? LLUIColor(LLColor4::transparent) : color(CONTROL_BG));
+    button->setSelectedImageColor(transparent ? LLUIColor(LLColor4::transparent) : color(ACTIVE_FILL));
+    button->setHoverImageColor(color(HOVER_BG));
+    button->setPressedImageColor(color(ACTIVE_FILL));
+    button->setDisabledImageColor(transparent ? LLUIColor(LLColor4::transparent) : color(INPUT_BG));
     button->setUnselectedLabelColor(color(LABEL));
     button->setSelectedLabelColor(color(TEXT_STRONG));
     button->setDisabledLabelColor(color(FAINT));
@@ -74,23 +84,125 @@ void styleButton(LLButton* button, bool transparent)
     button->setDropShadowedText(false);
 }
 
+void stylePill(LLButton* button)
+{
+    if (!button)
+        return;
+    styleButton(button, false);
+    static LLPointer<LLUIImage> pill = LLUI::getUIImage("Kit_Pill9");
+    button->setImageUnselected(pill);
+    button->setImageSelected(pill);
+    button->setImageHoverUnselected(pill);
+    button->setImageHoverSelected(pill);
+    button->setImagePressed(pill);
+    button->setImageDisabled(pill);
+    button->setImageDisabledSelected(pill);
+}
+
+void styleEditor(LLLineEditor* editor, bool mono)
+{
+    if (!editor)
+        return;
+    editor->setUseBgColor(true);
+    editor->setBgColor(color(INPUT_BG));
+    editor->setBgBorderColor(color(INPUT_BORDER));
+    editor->setFont(mono ? monoFont() : sansFont("Kit12"));
+    editor->setFgColor(color(TEXT));
+    editor->setReadOnlyFgColor(color(DIM));
+    editor->setTentativeFgColor(color(MUTED));
+    editor->setCursorColor(color(ACCENT));
+}
+
+void styleCombo(LLComboBox* combo)
+{
+    if (!combo)
+        return;
+    for (LLView* child : *combo->getChildList())
+        if (LLButton* button = dynamic_cast<LLButton*>(child))
+        {
+            styleButton(button, false);
+            button->setImageOverlay("KitIcon_chevron_down_10_16", LLFontGL::RIGHT, color(DIM).get());
+            button->setRightHPad(20);
+            break;
+        }
+}
+
+void styleScroller(LLScrollContainer* scroller)
+{
+    if (!scroller)
+        return;
+    static LLPointer<LLUIImage> track = LLUI::getUIImage("Kit_RoundRect4");
+    static LLPointer<LLUIImage> thumb = LLUI::getUIImage("Kit_Pill9");
+    for (LLView* child : *scroller->getChildList())
+        if (LLScrollbar* scrollbar = dynamic_cast<LLScrollbar*>(child))
+            scrollbar->setStyle(track, track, thumb, thumb, color(INPUT_BG), color(INPUT_BORDER), color(INPUT_BG));
+}
+
+void styleList(LLScrollListCtrl* list)
+{
+    if (!list)
+        return;
+    list->setBgWriteableColor(color(INPUT_BG).get());
+    list->setReadOnlyBgColor(color(INPUT_BG).get());
+    list->setBgSelectedColor(color(CONTROL_BG).get());
+    list->setBgStripeColor(color(WINDOW_BG).get());
+    list->setFgSelectedColor(color(TEXT_STRONG).get());
+    list->setFgUnselectedColor(color(TEXT).get());
+    list->setFgDisableColor(color(FAINT).get());
+    list->setHoveredColor(color(RAIL_HOVER).get());
+    list->setHighlightedColor(color(ACCENT).get());
+    static LLPointer<LLUIImage> track = LLUI::getUIImage("Kit_RoundRect4");
+    static LLPointer<LLUIImage> thumb = LLUI::getUIImage("Kit_Pill9");
+    for (LLView* child : *list->getChildList())
+        if (LLScrollbar* scrollbar = dynamic_cast<LLScrollbar*>(child))
+            scrollbar->setStyle(track, track, thumb, thumb, color(INPUT_BG), color(INPUT_BORDER), color(INPUT_BG));
+}
+
 void styleTree(LLView* root)
 {
     if (!root)
         return;
-    std::function<void(LLView*, bool)> visit = [&](LLView* view, bool composite_child)
+    std::function<void(LLView*)> visit = [&](LLView* view)
     {
-        const bool composite = composite_child || dynamic_cast<LLComboBox*>(view) || dynamic_cast<LLSpinCtrl*>(view) ||
-                               dynamic_cast<LLSliderCtrl*>(view) || dynamic_cast<LLCheckBoxCtrl*>(view);
         const std::string& name = view->getName();
+        if (LLComboBox* combo = dynamic_cast<LLComboBox*>(view))
+        {
+            styleCombo(combo);
+            return;
+        }
+        if (LLSpinCtrl* spinner = dynamic_cast<LLSpinCtrl*>(view))
+        {
+            for (LLView* child : *spinner->getChildList())
+                if (LLLineEditor* editor = dynamic_cast<LLLineEditor*>(child))
+                    styleEditor(editor, true);
+            return;
+        }
+        if (LLSliderCtrl* slider = dynamic_cast<LLSliderCtrl*>(view))
+        {
+            for (LLView* child : *slider->getChildList())
+                if (LLLineEditor* editor = dynamic_cast<LLLineEditor*>(child))
+                    styleEditor(editor, true);
+            return;
+        }
+        if (LLScrollListCtrl* list = dynamic_cast<LLScrollListCtrl*>(view))
+        {
+            styleList(list);
+            return;
+        }
+        if (dynamic_cast<LLCheckBoxCtrl*>(view) || dynamic_cast<LLRadioGroup*>(view) ||
+            dynamic_cast<LLScrollbar*>(view) || dynamic_cast<LLTabContainer*>(view))
+            return;
         if (LLButton* button = dynamic_cast<LLButton*>(view))
         {
             const bool clear = name.rfind("kit_rail_", 0) == 0 || name.rfind("kit_tab_", 0) == 0 ||
-                               name.rfind("kit_mode_seg_", 0) == 0;
+                               name.rfind("kit_mode_seg_", 0) == 0 || name.find("_reset") != std::string::npos;
             styleButton(button, clear);
             if (name == "btn_action")
             {
                 button->setImageColor(color(ACCENT));
+                button->setSelectedImageColor(color(ACCENT_HI));
+                button->setHoverImageColor(color(ACCENT_HI));
+                button->setPressedImageColor(color(ACTIVE_FILL));
                 button->setUnselectedLabelColor(color(KNOB_ON));
                 button->setSelectedLabelColor(color(KNOB_ON));
                 button->setFont(sansFont("Kit12", true));
@@ -98,6 +210,7 @@ void styleTree(LLView* root)
             else if (name == "btn_cut")
             {
                 button->setImageColor(color(RECORD));
+                button->setSelectedImageColor(color(RECORD));
                 button->setUnselectedLabelColor(LLUIColor(LLColor4::white));
                 button->setSelectedLabelColor(LLUIColor(LLColor4::white));
                 button->setFont(sansFont("Kit12", true));
@@ -117,28 +230,10 @@ void styleTree(LLView* root)
             text->setFont(mono ? monoFont() : sansFont("Kit12"));
         }
         else if (LLLineEditor* editor = dynamic_cast<LLLineEditor*>(view))
-        {
-            editor->setFont(name.find("spinner") != std::string::npos ? monoFont() : sansFont("Kit12"));
-            editor->setFgColor(color(TEXT));
-            editor->setReadOnlyFgColor(color(DIM));
-            editor->setTentativeFgColor(color(MUTED));
-            editor->setCursorColor(color(ACCENT));
-        }
-        else if (LLScrollListCtrl* list = dynamic_cast<LLScrollListCtrl*>(view))
-        {
-            list->setBgWriteableColor(color(INPUT_BG).get());
-            list->setReadOnlyBgColor(color(INPUT_BG).get());
-            list->setBgSelectedColor(color(CONTROL_BG).get());
-            list->setBgStripeColor(color(WINDOW_BG).get());
-            list->setFgSelectedColor(color(TEXT_STRONG).get());
-            list->setFgUnselectedColor(color(TEXT).get());
-            list->setFgDisableColor(color(FAINT).get());
-            list->setHoveredColor(color(RAIL_HOVER).get());
-            list->setHighlightedColor(color(ACCENT).get());
-        }
+            styleEditor(editor, name.find("_value") != std::string::npos || name.find("timecode") != std::string::npos);
         for (LLView* child : *view->getChildList())
-            visit(child, composite && view != root);
+            visit(child);
     };
-    visit(root, false);
+    visit(root);
 }
 } // namespace ALKitStyle
