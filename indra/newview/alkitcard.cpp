@@ -138,7 +138,9 @@ bool ALKitCard::postBuild()
 
     std::function<void(LLView*)> walk = [&](LLView* v)
     {
-        for (LLView* c : *v->getChildList())
+        std::vector<LLView*> children(v->getChildList()->begin(), v->getChildList()->end());
+        std::reverse(children.begin(), children.end());
+        for (LLView* c : children)
         {
             if (ALKitOption* o = dynamic_cast<ALKitOption*>(c))
             {
@@ -176,7 +178,12 @@ bool ALKitCard::postBuild()
             vp.rect     = LLRect(0, 22, 44, 0);
             vp.label    = labels[i];
             LLButton* b = LLUICtrlFactory::create<LLButton>(vp);
-            b->setCommitCallback([this, i](LLUICtrl*, const LLSD&) { mRigMap->setViewMode(i); });
+            b->setCommitCallback(
+                [this, i](LLUICtrl*, const LLSD&)
+                {
+                    mRigMap->setViewMode(i);
+                    requestLayout();
+                });
             addChild(b);
             mViewSegments.push_back(b);
         }
@@ -202,7 +209,7 @@ bool ALKitCard::postBuild()
                 mSubPresets.emplace_back(row, row->control());
             row->setVisible(false);
         }
-        if (mKind == "combined" && !row->meta().sub.empty() && row->meta().sub != last_sub)
+        if (mKind == "combined" && !row->meta().sub.empty() && row->meta().sub != mTitle && row->meta().sub != last_sub)
         {
             last_sub = row->meta().sub;
             LLTextBox::Params hp;
@@ -532,6 +539,9 @@ void ALKitCard::syncSelector()
             ALKitStyle::styleButton(mSegments[i], false);
             mSegments[i]->setImageColor(active ? ALKitStyle::color(ALKitStyle::ACTIVE_FILL)
                                                 : ALKitStyle::color(ALKitStyle::INPUT_BG));
+            mSegments[i]->setSelectedImageColor(ALKitStyle::color(ALKitStyle::ACTIVE_FILL));
+            mSegments[i]->setUnselectedLabelColor(active ? ALKitStyle::color(ALKitStyle::TEXT_STRONG)
+                                                         : ALKitStyle::color(ALKitStyle::MUTED));
         }
     }
     if (mActiveOption < (S32)mOptionSwitches.size() && mOptionSwitches[mActiveOption])
@@ -557,7 +567,7 @@ S32 ALKitCard::heightForWidth(S32 w) const
     if (mAction)
         h += ALKitStyle::MORE_H;
     if (mRigMap)
-        h += mRigMap->heightForWidth(w - ALKitStyle::CARD_PAD_L - ALKitStyle::CARD_PAD_R);
+        h += mRigMap->heightForWidth(w - ALKitStyle::CARD_PAD_L - ALKitStyle::CARD_PAD_R) + 28;
     S32         advanced = 0;
     std::string sub;
     for (S32 i = 0; i < (S32)mRows.size(); ++i)
@@ -628,12 +638,6 @@ void ALKitCard::layoutBody(S32 w)
         mOpen->setOrigin(header_x - 48, getRect().getHeight() - 29);
         header_x -= 48 + ALKitStyle::COL_GAP;
     }
-    for (auto it = mViewSegments.rbegin(); it != mViewSegments.rend(); ++it)
-    {
-        (*it)->reshape(44, 22, true);
-        (*it)->setOrigin(header_x - 44, getRect().getHeight() - 29);
-        header_x -= 46;
-    }
     for (auto it = mHeaderPresets.rbegin(); it != mHeaderPresets.rend(); ++it)
     {
         (*it)->reshape(ALKitStyle::CARD_PRESET_W, 22, true);
@@ -696,6 +700,20 @@ void ALKitCard::layoutBody(S32 w)
         mRigMap->reshape(body_w, mh, true);
         mRigMap->setOrigin(ALKitStyle::CARD_PAD_L, top - mh);
         top -= mh;
+        S32 view_x = ALKitStyle::CARD_PAD_L;
+        for (S32 i = 0; i < (S32)mViewSegments.size(); ++i)
+        {
+            LLButton* segment = mViewSegments[i];
+            segment->reshape(44, 22, true);
+            segment->setOrigin(view_x, top - 24);
+            segment->setToggleState(mRigMap->viewMode() == i);
+            ALKitStyle::styleButton(segment, false);
+            segment->setImageColor(mRigMap->viewMode() == i ? ALKitStyle::color(ALKitStyle::ACTIVE_FILL)
+                                                             : ALKitStyle::color(ALKitStyle::INPUT_BG));
+            segment->setSelectedImageColor(ALKitStyle::color(ALKitStyle::ACTIVE_FILL));
+            view_x += 44;
+        }
+        top -= 28;
     }
 
     for (SummaryData& sum : mSummaries)
@@ -723,7 +741,7 @@ void ALKitCard::layoutBody(S32 w)
         const bool visible = rowBranchVisible(row, this) && row->isEffectivelyVisible();
         if (!visible)
             continue;
-        if (mKind == "combined" && !row->meta().sub.empty() && row->meta().sub != sub)
+        if (mKind == "combined" && !row->meta().sub.empty() && row->meta().sub != mTitle && row->meta().sub != sub)
         {
             for (auto& heading : mHeadings)
                 if (heading.first == row)

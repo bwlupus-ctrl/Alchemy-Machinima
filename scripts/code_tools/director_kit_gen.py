@@ -560,6 +560,8 @@ def page_attrs(group: dict, page: dict, cfg: dict) -> dict[str, str]:
         attrs["preset_mode"] = "none"
     if cfg.get("undo_context"):
         attrs["undo_context"] = str(cfg["undo_context"])
+    if cfg.get("chip_mode"):
+        attrs["chip_mode"] = str(cfg["chip_mode"])
     settings = sorted({str(row["s"]) for row in all_rows(page) if row.get("s")})
     if settings:
         attrs["watch_settings"] = ",".join(settings)
@@ -774,7 +776,8 @@ def floater_tree(data: dict, page_files: dict[str, str], v1: ET.Element) -> ET.E
                 attrs["master_setting"] = str(master["s"])
             ET.SubElement(tc, "kit_lazy_page", attrs)
     bar = ET.SubElement(shell, "kit_bar", {"name": "kit_transport", "flex": "status_strip",
-                        "collapse_order": "kit_ui_ms,btn_reset_marks,btn_scene_delete,status_strip"})
+                        "collapse_order": "kit_ui_ms,btn_reset_marks,btn_scene_delete,status_strip,"
+                                          "btn_cast_chip,btn_help,btn_set_marks,show_paths_global_check"})
     widths = {"btn_action": 92, "btn_cut": 92, "btn_arm": 22, "btn_take_play": 28, "btn_take_stop": 28,
               "take_timecode": 90, "scene_combo": 130, "scene_name_editor": 130, "btn_scene_load": 44,
               "btn_scene_save": 50,

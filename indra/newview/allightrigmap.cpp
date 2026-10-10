@@ -25,7 +25,8 @@ const std::string LABEL[] = { "KEY", "FILL", "BACK", "BG" };
 
 const std::string S_OFF = "OFF", S_CAM = "CAM", S_BACK = "BACK", S_CAM_L = "CAM L", S_CAM_R = "CAM R";
 const std::string S_SIDE_L = "From cam L  \xE2\x87\x84", S_SIDE_R = "From cam R  \xE2\x87\x84";
-const std::string S_SIDE_KEY = "near / far / off", S_OTHER_KEY = "in front / behind / off";
+const std::string S_SIDE_KEY = "\xE2\x97\x8F near   \xE2\x97\x8C far   \xE2\x8A\x98 off";
+const std::string S_OTHER_KEY = "\xE2\x97\x8F in front   \xE2\x97\x8C behind   \xE2\x8A\x98 off";
 
 void dashed(F32 x0, F32 y0, F32 x1, F32 y1, F32 dash, F32 gap, const LLColor4& c)
 {
@@ -236,8 +237,6 @@ void ALLightRigMap::refreshLiveReadouts()
     if (at.mV[VX] * at.mV[VX] + at.mV[VY] * at.mV[VY] >= .0025f)
         mCameraBearing = atan2f(-at.mV[VY], -at.mV[VX]) * RAD_TO_DEG;
     const auto& live          = ALCineLightRigManager::instance().selected().lastFrame();
-    bool        selected_live = false;
-    F32         distance      = mRigRadius;
     for (S32 i = 0; i < 4; ++i)
     {
         const auto& e      = live.mProj[i];
@@ -245,14 +244,8 @@ void ALLightRigMap::refreshLiveReadouts()
         const F32   t      = usable ? ALKitMath::wrap180(atan2f(e.mOffY, e.mOffX) * RAD_TO_DEG - mCameraBearing)
                                     : ALKitMath::wrap180(mYaw[i] + mOrbitYaw - mCameraBearing);
         mLegendText[i]     = ALKitMath::yawSideText(t, mYaw[i]) + " / " + llformat("%.0f\xC2\xB0", mPitch[i]);
-        if (i == mSelected && usable)
-        {
-            selected_live = true;
-            distance      = sqrtf(e.mOffX * e.mOffX + e.mOffY * e.mOffY + e.mOffZ * e.mOffZ);
-        }
     }
-    mFooterText =
-        selected_live ? llformat("Distance %.2f m", distance) : llformat("Unmirrored preview \xC2\xB7 rig off \xC2\xB7 %.2f m", distance);
+    mFooterText = "Drag a light to aim it";
 }
 
 void ALLightRigMap::cancelDrag()
@@ -285,10 +278,18 @@ void ALLightRigMap::draw()
 
     gl_rect_2d(0, ll_round(ALKitStyle::MAP_LEGEND_H + canvas_h), rect.getWidth(), ALKitStyle::MAP_LEGEND_H,
                ALKitStyle::color(ALKitStyle::LIGHTMAP_EDGE).get(), true);
-    LLColor4 map_centre = ALKitStyle::color(ALKitStyle::LIGHTMAP_CENTRE).get();
-    map_centre.mV[VALPHA] = .72f;
-    gGL.color4fv(map_centre.mV);
-    gl_circle_2d(mCanvasCx, mCanvasCy, mCanvasRadius * 1.35f, 48, true);
+    // A few concentric fills are enough to read as the mockup's radial sphere
+    // without adding a texture or a per-frame allocation.
+    const LLColor4 edge = ALKitStyle::color(ALKitStyle::LIGHTMAP_EDGE).get();
+    const LLColor4 centre = ALKitStyle::color(ALKitStyle::LIGHTMAP_CENTRE).get();
+    for (S32 ring = 8; ring >= 0; --ring)
+    {
+        const F32 t = ring / 8.f;
+        LLColor4 shade = lerp(centre, edge, t);
+        shade.mV[VALPHA] = .88f;
+        gGL.color4fv(shade.mV);
+        gl_circle_2d(mCanvasCx, mCanvasCy, mCanvasRadius * (1.f + .35f * t), 48, true);
+    }
     gl_rect_2d(0, ll_round(ALKitStyle::MAP_LEGEND_H + canvas_h), rect.getWidth(), ALKitStyle::MAP_LEGEND_H,
                ALKitStyle::color(ALKitStyle::LIGHTMAP_BORDER).get(), false);
 
@@ -305,6 +306,17 @@ void ALLightRigMap::draw()
     }
     else
         ellipse(mCanvasCx, mCanvasCy, mCanvasRadius, mCanvasRadius * sinf(24.f * DEG_TO_RAD), track);
+
+    if (mView == ALKitMath::PERSPECTIVE)
+    {
+        // Orbit direction cues at the upper-left and lower-right edges.
+        gl_triangle_2d(ll_round(mCanvasCx - .83f * mCanvasRadius), ll_round(mCanvasCy + .36f * mCanvasRadius),
+                       ll_round(mCanvasCx - .72f * mCanvasRadius), ll_round(mCanvasCy + .40f * mCanvasRadius),
+                       ll_round(mCanvasCx - .77f * mCanvasRadius), ll_round(mCanvasCy + .27f * mCanvasRadius), track, true);
+        gl_triangle_2d(ll_round(mCanvasCx + .83f * mCanvasRadius), ll_round(mCanvasCy - .36f * mCanvasRadius),
+                       ll_round(mCanvasCx + .72f * mCanvasRadius), ll_round(mCanvasCy - .40f * mCanvasRadius),
+                       ll_round(mCanvasCx + .77f * mCanvasRadius), ll_round(mCanvasCy - .27f * mCanvasRadius), track, true);
+    }
 
     if (mView != ALKitMath::SIDE)
         gl_line_2d(ll_round(mCanvasCx), ll_round(mCanvasCy - mCanvasRadius), ll_round(mCanvasCx), ll_round(mCanvasCy + mCanvasRadius),
@@ -516,7 +528,8 @@ void ALLightRigMap::draw()
         const F32      left = i * chip_w;
         const LLColor4 c    = role_colors[i];
         if (i == mSelected)
-            gl_rect_2d(ll_round(left + 2), ALKitStyle::MAP_LEGEND_H - 2, ll_round(left + chip_w - 2), 2, c, false);
+            gl_rect_2d(ll_round(left + 2), ALKitStyle::MAP_LEGEND_H - 2, ll_round(left + chip_w - 2), 2,
+                       ALKitStyle::color(ALKitStyle::ACCENT).get(), false);
         gGL.color4fv(c.mV);
         gl_circle_2d(left + 10.f, 20.f, 4.f, 12, mOn[i]);
         label(LABEL[i], left + 18.f, 27.f, ALKitStyle::color(ALKitStyle::TEXT).get(), LLFontGL::LEFT);

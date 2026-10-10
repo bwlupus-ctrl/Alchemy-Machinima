@@ -184,6 +184,8 @@ private:
     LLPanel*                                        mChipsContainer = nullptr;
     LLPanel*                                        mWhoContainer   = nullptr;
     LLPanel*                                        mMasterBox      = nullptr;
+    LLTextBox*                                      mWhoHint        = nullptr;
+    LLTextBox*                                      mWhoLabelText   = nullptr;
     LLPanel*                                        mLegacyHost     = nullptr;
     ALKitSwitch*                                    mMaster         = nullptr;
     ALKitSwitch*                                    mModeSwitch     = nullptr;

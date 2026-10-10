@@ -4,7 +4,7 @@
   "light_group/cine_light_rig_tab": {
    "v1_sources": ["panel_cine_light_rig.xml"],
    "root_class": "panel_cine_light_rig", "root_name": "cine_light_rig_tab_logic",
-   "undo_context": "cine_rig_slot", "who_adapter": "cine_rig_slot", "mode_adapter": "cine_rig_easy", "mode_on": "Easy",
+   "undo_context": "cine_rig_slot", "who_adapter": "cine_rig_slot", "mode_adapter": "cine_rig_easy", "mode_on": "Easy", "chip_mode": "filter",
    "preset": {"mode": "widgets", "combo": "cine_setup_combo", "save": "cine_setup_save", "delete": "cine_setup_delete"},
    "selector_settings": {"lights": "DirectorV2SelectedLight"},
    "card_enables": {"easy_probe": "cine_easy_probe_enable", "light_group": "cine_group_enable",

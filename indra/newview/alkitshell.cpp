@@ -591,6 +591,9 @@ void ALKitShell::refreshModeProxy()
             ALKitStyle::styleButton(mModeButtons[index], false);
             mModeButtons[index]->setImageColor(index == page->modeIndex() ? ALKitStyle::color(ALKitStyle::ACTIVE_FILL)
                                                                           : ALKitStyle::color(ALKitStyle::INPUT_BG));
+            mModeButtons[index]->setSelectedImageColor(ALKitStyle::color(ALKitStyle::ACTIVE_FILL));
+            mModeButtons[index]->setUnselectedLabelColor(index == page->modeIndex() ? ALKitStyle::color(ALKitStyle::TEXT_STRONG)
+                                                                                    : ALKitStyle::color(ALKitStyle::LABEL));
             mModeButtons[index]->setOrigin(x + index * 86, 8);
         }
     }

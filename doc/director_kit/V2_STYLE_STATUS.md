@@ -34,4 +34,20 @@ Rig, Rim, Bloom & Glow, and Tron are the currently rolled-out kit-native pages. 
 - Viewer widget primitives do not expose CSS box shadows, letter-spacing, or asymmetric split-button corner radii. The implementation uses the nearest native 9-slice/focus-border treatment; no global widget renderer was changed for those cosmetic-only effects.
 - `LLScrollListCtrl` has no embedded rounded-tag cell primitive. Cast rows therefore keep their stable pastel group tag as a tinted name suffix while the list background, hover, selection, status, typography, and header/tool chrome use kit tokens.
 - The light-map backdrop is a native two-layer radial approximation rather than the browser SVG/CSS gradient. Its interaction geometry and token palette are preserved.
-- Exact raster/font metrics still require the orchestrator's generator, `/Zs`, lint/parity gates, build, and mockup side-by-side; none were run in this write-only round.
+- Exact raster/font metrics still require a post-build capture and mockup side-by-side; this write-only round ran the generator, `/Zs`, and static lint/parity gates but did not build.
+
+## Visual fix round ledger (2026-10-10)
+
+| # | Result |
+|---|---|
+| 1 | Fixed: widget-host order is now XUI order; Rig reads preset combo, Save as..., trash, reset, undo, redo, divider, master and search. Preset focus is explicitly cleared after reparenting. |
+| 2 | Fixed: the Who band now has a separate caps label, Acting on pill with rail marker, and the full rail-follow note. Pages without a Who picker no longer paint an orphan band. |
+| 3 | Fixed: Rig uses filtering chips for the approved Lights-only state; pills carry live counts and explicit amber selected text/fill. |
+| 4 | Fixed: mode/selector segments now set both selected and unselected colours explicitly. Audit mode changes use the user path, so Advanced is applied instead of passively preserving Easy. |
+| 5 | Fixed: card traversal restores authored Key, Fill, Back, BG and EV, Colour, paired Yaw/Pitch, Gel, Gobo, Shaft order. This also restores the 48 px paired compass/arc cells and readouts. |
+| 6 | Fixed: map has radial sphere shading, orbit cues, avatar/camera/light art, four-column legend with amber selection, non-overprinting symbolic key/hint, and Top/Side/2.5D below the map. |
+| 7 | Existing row geometry retained: values occupy the right-hand 52 px column on the same 28 px row; no additional below-row value widget is created. Runtime screenshot recheck remains required. |
+| 8 | Fixed: reversing row discovery restores section/card flow, and a combined card no longer repeats a first subheading identical to its title. |
+| 9 | Existing native title integration already emits `Director › Group › Page`; native window buttons remain platform-owned. |
+| 10 | Fixed causes covered here: reversed descendants, indistinct state colours, orphan bands, audit mode no-op, map overprint, and minimum-width transport spill. Runtime-only findings require the requested post-build capture. |
+| 11 | Cheap reductions: removed two redundant full-page mode/chip/layout passes during native page construction. The remaining likely cost is eager construction/binding of every Rig card/row; deeper lazy-card work is not safe for tonight without a build/profile cycle. |

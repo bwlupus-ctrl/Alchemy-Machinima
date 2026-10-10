@@ -1825,7 +1825,10 @@ private:
         {
             if (ALKitPage* target = dynamic_cast<ALKitPage*>(state.mView.get()))
             {
-                target->setModeIndex(state.mIndex, false);
+                // A mode state is an intentional synthetic user choice. Using
+                // PASSIVE lets page adapters preserve the current effective
+                // mode, producing byte-identical Easy/Advanced captures.
+                target->setModeIndex(state.mIndex, true);
                 applied = target->modeIndex() == state.mIndex;
             }
         }

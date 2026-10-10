@@ -247,10 +247,12 @@ bool ALKitPage::postBuild()
     mChipsContainer = makePanel(pre + "_chips", ALKitStyle::CHIPS_H, page_width);
     mChipsContainer->setBackgroundVisible(true);
     mChipsContainer->setBackgroundColor(ALKitStyle::color(ALKitStyle::SUB_BAND));
+    mChipsContainer->setVisible(false);
     addChild(mChipsContainer);
     mWhoContainer = makePanel(pre + "_who", ALKitStyle::WHO_H, page_width);
     mWhoContainer->setBackgroundVisible(true);
     mWhoContainer->setBackgroundColor(ALKitStyle::color(ALKitStyle::INPUT_BG));
+    mWhoContainer->setVisible(false);
     addChild(mWhoContainer);
     S32 bar_x = ALKitStyle::PAGE_PAD_LR;
 
@@ -272,10 +274,15 @@ bool ALKitPage::postBuild()
             std::vector<LLView*> items;
             for (LLView* c : *host->getChildList())
                 items.push_back(c);
+            // LLView exposes children frontmost-first, opposite to their XUI
+            // declaration. The preset strip follows the authored order.
+            std::reverse(items.begin(), items.end());
             for (S32 i = 0; i < (S32)items.size(); ++i)
             {
                 LLView* c = items[i];
                 mBar->addChild(c);
+                if (LLUICtrl* control = dynamic_cast<LLUICtrl*>(c))
+                    control->setFocus(false);
                 c->setFollows(FOLLOWS_LEFT | FOLLOWS_TOP);
                 S32 item_width = ALKitStyle::PRESET_COMBO_W;
                 if (i != 0)
@@ -283,6 +290,18 @@ bool ALKitPage::postBuild()
                     LLButton* button = dynamic_cast<LLButton*>(c);
                     const S32 label_width = button && button->getFont() ? button->getFont()->getWidth(button->getText()) : 24;
                     item_width = llmax(28, label_width + 18);
+                    if (button && c->getName().find("_save") != std::string::npos)
+                    {
+                        button->setLabel("Save as...");
+                        item_width = 76;
+                    }
+                    else if (button && c->getName().find("_delete") != std::string::npos)
+                    {
+                        button->setLabel("");
+                        button->setImageOverlay("KitIcon_trash_16");
+                        button->setToolTip(LLStringExplicit("Delete preset"));
+                        item_width = 28;
+                    }
                 }
                 c->reshape(item_width, 24, true);
                 c->setOrigin(bar_x, 10);
@@ -376,12 +395,18 @@ bool ALKitPage::postBuild()
         });
     mBar->addChild(mUndo);
     mBar->addChild(mRedo);
-    mUndo->reshape(52, 24, true);
-    mRedo->reshape(52, 24, true);
+    mUndo->reshape(28, 24, true);
+    mRedo->reshape(28, 24, true);
     mUndo->setOrigin(bar_x, 10);
-    bar_x += 58;
+    bar_x += 34;
     mRedo->setOrigin(bar_x, 10);
-    mBarLeftEnd = bar_x + 52;
+    mBarLeftEnd = bar_x + 28;
+    LLPanel* divider = makePanel(pre + "_bar_divider", 18, 1);
+    divider->setBackgroundVisible(true);
+    divider->setBackgroundColor(ALKitStyle::color(ALKitStyle::DIVIDER));
+    divider->setOrigin(mBarLeftEnd + 6, 13);
+    mBar->addChild(divider);
+    mBarLeftEnd += 13;
 
     if (!mMasterWidget.empty())
     {
@@ -389,11 +414,11 @@ bool ALKitPage::postBuild()
         mBar->addChild(mMasterBox);
         LLTextBox::Params master_label;
         master_label.name          = pre + "_master_label";
-        master_label.rect          = LLRect(0, 20, 90, 0);
+        master_label.rect          = LLRect(0, 20, 72, 0);
         master_label.initial_value = mMasterLabel;
         mMasterBox->addChild(LLUICtrlFactory::create<LLTextBox>(master_label));
         master_label.name          = pre + "_master_state";
-        master_label.rect          = LLRect(92, 20, 132, 0);
+        master_label.rect          = LLRect(122, 20, 150, 0);
         master_label.initial_value = "";
         mMasterState               = LLUICtrlFactory::create<LLTextBox>(master_label);
         mMasterBox->addChild(mMasterState);
@@ -471,12 +496,22 @@ bool ALKitPage::postBuild()
 
     if (!mWhoPicker.empty())
     {
+        mWhoContainer->setVisible(true);
         LLTextBox::Params who_hint;
         who_hint.name          = pre + "_who_hint";
-        who_hint.rect          = LLRect(370, 24, 620, 0);
-        who_hint.initial_value = "Choose who this page edits";
+        who_hint.rect          = LLRect(0, 24, 420, 0);
+        who_hint.initial_value = "Follows the rail: click a cast member to switch.";
         who_hint.text_color    = ALKitStyle::color(ALKitStyle::MUTED);
-        mWhoContainer->addChild(LLUICtrlFactory::create<LLTextBox>(who_hint));
+        mWhoHint = LLUICtrlFactory::create<LLTextBox>(who_hint);
+        mWhoContainer->addChild(mWhoHint);
+        who_hint.name          = pre + "_who_label";
+        who_hint.rect          = LLRect(0, 20, 92, 0);
+        std::string who_caps = mWhoLabel;
+        LLStringUtil::toUpper(who_caps);
+        who_hint.initial_value = who_caps;
+        who_hint.font          = ALKitStyle::sansFont("Kit10", true);
+        mWhoLabelText          = LLUICtrlFactory::create<LLTextBox>(who_hint);
+        mWhoContainer->addChild(mWhoLabelText);
         mWhoCombo = findChild<LLComboBox>(mWhoPicker);
         mWhoChip  = makeButton(pre + "_who_chip", mWhoLabel);
         mWhoChip->setImageOverlay("KitIcon_who_person_16", LLFontGL::LEFT);
@@ -490,9 +525,9 @@ bool ALKitPage::postBuild()
                     mWhoError = false;
                     mWhoCombo->setVisible(false);
                     if (mWhoChip)
-                        mWhoChip->setLabel(mWhoLabel + ": " + mWhoCombo->getSelectedItemLabel() + " \xE2\x96\xBE");
+                        mWhoChip->setLabel("Acting on: " + mWhoCombo->getSelectedItemLabel() + "  rail  \xE2\x96\xBE");
                 });
-            mWhoChip->setLabel(mWhoLabel + ": " + mWhoCombo->getSelectedItemLabel() + " \xE2\x96\xBE");
+            mWhoChip->setLabel("Acting on: " + mWhoCombo->getSelectedItemLabel() + "  rail  \xE2\x96\xBE");
         }
         if (ALKitShell* shell = ALKitShell::find(this))
             mConnections.emplace_back(shell->setCastSelectionCallback(
@@ -612,6 +647,8 @@ bool ALKitPage::postBuild()
     }
 
     if (mSections.size() > 1)
+    {
+        mChipsContainer->setVisible(true);
         for (S32 i = 0; i < (S32)mSections.size(); ++i)
         {
             LLButton* chip =
@@ -628,16 +665,15 @@ bool ALKitPage::postBuild()
             mChipsContainer->addChild(chip);
             mChips.push_back(chip);
         }
+    }
 
     if (ALKitShell* shell = ALKitShell::find(this))
         shell->history().watchSettings(mPage, watched);
 
-    applyModeAndChip();
     restoreState();
     reshape(getRect().getWidth(), getRect().getHeight(), true);
     ALKitStyle::styleTree(this);
     ALKitStyle::stylePill(mWhoChip);
-    applyModeAndChip();
     return true;
 }
 
@@ -764,6 +800,10 @@ void ALKitPage::applyModeAndChip()
             ALKitStyle::stylePill(mChips[i]);
             mChips[i]->setImageColor(filtered && i == mChipIndex ? ALKitStyle::color(ALKitStyle::ACTIVE_FILL)
                                                                   : ALKitStyle::color(ALKitStyle::CONTROL_BG));
+            mChips[i]->setSelectedImageColor(ALKitStyle::color(ALKitStyle::ACTIVE_FILL));
+            mChips[i]->setUnselectedLabelColor(filtered && i == mChipIndex ? ALKitStyle::color(ALKitStyle::ACCENT)
+                                                                            : ALKitStyle::color(ALKitStyle::LABEL));
+            mChips[i]->setSelectedLabelColor(ALKitStyle::color(ALKitStyle::ACCENT));
             S32 count = 0;
             if (i < (S32)mSections.size())
                 for (const std::string& id : mSections[i].cards)
@@ -824,8 +864,14 @@ void ALKitPage::reshape(S32 w, S32 h, bool p)
         top -= ALKitStyle::WHO_H;
         mWhoContainer->reshape(w, ALKitStyle::WHO_H, true);
         mWhoContainer->setOrigin(0, top);
-        mWhoChip->reshape(llmin(360, w - 2 * ALKitStyle::PAGE_PAD_LR), 24, true);
-        mWhoChip->setOrigin(ALKitStyle::PAGE_PAD_LR, 5);
+        const S32 label_x = ALKitStyle::PAGE_PAD_LR;
+        const S32 chip_x = label_x + 94;
+        const S32 chip_w = llmin(260, llmax(120, w - chip_x - 300));
+        mWhoLabelText->setOrigin(label_x, 7);
+        mWhoChip->reshape(chip_w, 24, true);
+        mWhoChip->setOrigin(chip_x, 5);
+        mWhoHint->reshape(llmax(1, w - chip_x - chip_w - 24), 20, true);
+        mWhoHint->setOrigin(chip_x + chip_w + 12, 7);
     }
     top -= ALKitStyle::BAR_H;
     if (mBar)
@@ -834,19 +880,19 @@ void ALKitPage::reshape(S32 w, S32 h, bool p)
         mBar->setOrigin(0, top);
         const S32  master_x       = mBarLeftEnd + ALKitStyle::COL_GAP;
         const S32  right          = w - ALKitStyle::PAGE_PAD_LR;
-        const bool master_fits    = mMasterBox && master_x + 170 <= w - ALKitStyle::PAGE_PAD_LR;
-        const S32  occupied_right = master_fits ? master_x + 170 : mBarLeftEnd;
+        const bool master_fits    = mMasterBox && master_x + 150 <= w - ALKitStyle::PAGE_PAD_LR;
+        const S32  occupied_right = master_fits ? master_x + 150 : mBarLeftEnd;
         const S32  search_w       = llmin(ALKitStyle::SEARCH_W, llmax(0, right - occupied_right - ALKitStyle::COL_GAP));
         const S32  search_x       = right - search_w;
         const bool search_fits    = mSearch && search_w >= 120;
         if (mMasterBox)
         {
-            mMasterBox->reshape(170, 24, true);
+            mMasterBox->reshape(150, 24, true);
             mMasterBox->setOrigin(master_x, 10);
             setVisibleIfChanged(mMasterBox, master_fits);
         }
         if (mMaster)
-            mMaster->setOrigin(136, 3);
+            mMaster->setOrigin(80, 3);
         if (mSearch)
         {
             mSearch->reshape(search_w, 24, true);

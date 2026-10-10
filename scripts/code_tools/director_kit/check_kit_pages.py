@@ -33,7 +33,7 @@ TOP_KEYS = {"version", "p0_pages", "launcher_targets", "parity_allow"}
 PAGE_REQUIRED = {"v1_sources", "root_class", "root_name", "preset",
                  "selector_settings", "card_enables", "add_rows", "label_names"}
 PAGE_OPTIONAL = {"undo_context", "who_adapter", "mode_adapter", "mode_on",
-                 "option_enables", "row_overrides"}
+                 "option_enables", "row_overrides", "chip_mode"}
 LAUNCHER_REQUIRED = {"target", "target_tab", "button_label", "help"}
 
 
@@ -182,6 +182,9 @@ def check_page(chk, key, entry, data_pages, data_names, ps_names, pages_src_cfg)
         if k_ in entry:
             chk.ok(isinstance(entry[k_], str) and entry[k_], where,
                    "%s must be a non-empty string" % k_)
+    if "chip_mode" in entry:
+        chk.ok(entry["chip_mode"] in {"auto", "filter"}, where,
+               "chip_mode must be 'auto' or 'filter'")
 
     # modes / who consistency with the data (who_adapter and mode_adapter come from config)
     if dpage.get("who"):

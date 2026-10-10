@@ -24,6 +24,7 @@ public:
     bool handleUnicodeCharHere(llwchar) override;
     S32  heightForWidth(S32 width) const;
     void setViewMode(S32 view);
+    S32  viewMode() const { return mView; }
 
 protected:
     friend class LLUICtrlFactory;
