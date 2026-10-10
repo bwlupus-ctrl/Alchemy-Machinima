@@ -187,3 +187,128 @@ Fix:
 | Transport: ACTION first, single REC, … order | present |
 | Transport: timecode always visible | wrong at ≤935 (M3) |
 | Banner when master is off | wrong (text and button shifted 31 px, B2) |
+
+
+---
+
+# R2 + style review (`5211a04581d`)
+
+Scope: Part A (the R1 blockers and majors) and Part B (the kit restyle), checked against `light_rig_mockup.png`. The layout was traced by hand; nothing was built.
+
+## Verdict: FIX-NEEDED
+
+Part A mostly holds. One structural regression remains (S5), and one new functional break (S6).
+
+Part B will still look visibly unlike the mockup. Four issues are immediately noticeable:
+- combos have no caret (S1);
+- the Easy/Advanced control renders as stock grey SL buttons (S4);
+- selected and unselected states look the same (S3);
+- `styleTree` damages composite widgets: checkboxes, spinners, scrollbar arrows and legacy tabs (S2).
+
+## Part A: runtime re-trace
+
+| R1 item | Status | Evidence |
+|---|---|---|
+| B1: construction-time builds | **Fixed** | `ensureBuilt` / `onVisibilityChange` return until `isReady()` (`alkitlazypage.cpp:32-34`, `:77-79`). `setReady()` is called last in `postBuildV2` (`llfloaterdirector.cpp:764`), after the pageBuilt binder and scroll-fit are installed. It builds only the current leaf (`alkitshell.cpp:72-88`). Later groups build on visibility, so they are registered and bound. Legacy roots are fitted from their XUI height (525) to the host, with no 1-px pass. |
+| B2: band shift | **Fixed vertically; regressed horizontally (S5)** | Bands are born at their token height (`alkitpage.cpp:46-54`, `:222-232`), so no follow-top shift remains. Bands are still **1 px wide**, so any band child that follows RIGHT is moved by `w-1` on the first reshape. |
+| B3: preset host | Named (`panel_dpage_light_cine_light_rig.xml:855`), **but see S5** | The combo is found and reparented. Its `follows="right|top"` (`widgets/combo_box.xml:6`) then moves it from x=16 to about x=771 in a 756-px bar, which is off the page. |
+| B4: group false positives | Fixed | The check returns early when the target is not an `ALKitLazyPage` (`aluiperfselftest.cpp:2021`). |
+| B5: checks vs the original build | Mostly fixed. Original = `32b7fb162ae`, the user's build. | Fail on the original as required: `LAZY_PAGE_UNATTACHED` (the construction-built pages were never in `mBuiltPages`), `LAZY_PAGE_UNSIZED`, geometric `NO_CARD`, `PAGE_CHROME` (bar items shifted +43; preset missing), `TAB_OVERFLOW` (Light needed 6×104 > 572), `TRANSPORT_FLEX_MIN` (timecode collapsed at 850), `ROSTER_SPILL` / `DIRECTOR_SPILL`, `RAIL_ICON_LABEL_OVERLAP`, `HELP_EMPTY`. **Likely still pass on the original blank Look > Image body:** `LEGACY_BODY_COLLAPSED` (the host was 576 px, above the 472 minimum) and probably `LEGACY_BODY_UNBOUND` (leaves exist inside the host rect). That page is caught only incidentally, by `UNATTACHED`. `PAGE_CHROME` also accepts *hidden* controls (`:2087-2092`). |
+| M2: breakpoint | Fixed | At 1150 the lazy page is 746 and the grid 699, which gives 2 columns. Sizes 1149/1150/1158/979/980/988 are audited. Search width at 1160 = 740 − 620 = 120 px (narrow). From 1150 to 1159 it is 110 px, so search is **hidden**. `PAGE_CHROME` does not flag that. |
+| M3: transport | Timecode is kept, **but see S6** | Required width = 20 + 836 + 120 + 17·8 = 1112. Collapsing ui_ms, reset, delete and the Cast chip gives 884 ≤ 900. At 850 `status_strip` is also collapsed. |
+| M1: stray bar | Fixed | `group_assign_combo` is hidden. |
+
+### Part A findings
+
+**S5 (BLOCKER): the preset combo is moved off the page bar.**
+- `makePanel(name, height)` still gives the bands a width of 1 (`alkitpage.cpp:50`).
+- `cine_setup_combo` inherits `follows="right|top"`, so `mBar->reshape(w,44)` in `ALKitPage::reshape` moves it by +755 at the default width.
+- The mockup's "Custom ▾" will be missing from its slot. (The `PAGE_CHROME` preset check will flag it.)
+- **Fix:** create the bands at `LLRect(0,h,w,0)` using the page's current width, *and* `setFollows(FOLLOWS_LEFT|FOLLOWS_TOP)` on every child reparented into a band. Or lay out all bar items in `reshape()`.
+
+**S6 (BLOCKER, functional): below 962 px the cast roster cannot be reached.**
+- `collapse_order` now includes `btn_cast_chip` (`floater_director_v2.xml:103`). The chip collapses once the width is ≤ 961.
+- Below 980 the rail is icon-only, so the roster lives *only* in `kit_cast_popover`, which the Cast chip opens (`alkitshell.cpp:383-399`).
+- At 850 and 900 the cast is therefore unreachable.
+- **Fix:** collapse the Cast chip only while the roster is in the rail (`mRosterOpen && mRailLabels`). Add a live check: at least one of {roster visible in the rail, Cast chip visible}.
+
+**MAJOR**
+- **Chip positions go stale.** `ALKitPage::reshape` now skips hidden chips (`:772`), but `applyModeAndChip` changes chip visibility without relaying them out. When you switch Easy → Advanced, the Setup, Gear and Probe chips appear at their unpositioned `makeButton` rect (x=0, y=0) and overlap. **Fix:** lay out the chips at the end of `applyModeAndChip`.
+- **The roster header overlaps the tools.** `cast_roster_header` is still `width-8` wide (`alkitshell.cpp:513`). The tools now sit inside it at x=72..170, which is an overlap finding in the shell kit-layout gate. **Fix:** make the header width `tools_x - 8`.
+
+## Part B: style, component by component (Light > Rig at 1160×720)
+
+| Component (style_tokens.json) | Implemented and wired at render? | What the screenshot will show vs the mockup |
+|---|---|---|
+| window_floater | Body: yes (`KitWindowBg`). Title bar: **no** | The native SL title bar remains: stock title font and stock close/minimize glyphs. The breadcrumb text is right; its font and icons are not. |
+| group_rail | Yes: transparent buttons, `RAIL_BG` fill, active `CONTROL_BG` fill and painted amber dot (`alkitshell.cpp:589-611`), Plex 13 (600 when active), white 16-px icons | Close. Missing: the 1-px right border, and the amber tint on the active icon (the overlay stays white). |
+| page_tabs | Yes: transparent, Plex 13, 2-px amber underline | Close. Idle colour uses `LABEL` (#C9CED6) instead of #9BA3AE. No bottom hairline. |
+| mode_segmented | **No** | `kit_mode_seg_*` buttons are created in `refreshModeProxy` (`alkitshell.cpp:550-569`) *after* `styleTree(this)` ran in `postBuild`. They render as **stock grey SL buttons** "Easy" / "Advanced". **S4 BLOCKER.** |
+| section_chips | Partial | `styleButton(chip, true)` is fully transparent, so there is no 12-px-radius outlined pill and no amber lit outline: the chips are bare text. `Kit_Pill9` is registered but never used in C++. |
+| who_row | Partial | The band uses `INPUT_BG`. The chip is radius 4 (`Kit_RoundRect4`), not a pill. There is no "LIT SUBJECT" uppercase caption, and the hint is static. |
+| page_bar | Partial | Reset/undo/redo are icons in rounded boxes (OK). **Preset combo is off the page (S5).** **The search field is a stock `LLLineEditor` background** with no magnifier, 120 px wide, and hidden from 1150 to 1159. The master box is wider than the mockup's. |
+| master_banner | Yes (`BANNER_BG`) | Close. No power glyph. |
+| card | Yes (`Kit_RoundRect6` outer + `Kit_RoundRect4` inner, Plex 13 bold title) | Close. Inner radius is 4, not 6. |
+| control_row | Partial | Labels are Plex 12 (OK). **Every row and card reset gets a grey rounded box** (`styleButton(..., false)`), while the mockup shows bare ↺ icons. That is dozens of boxes per page. |
+| slider | Yes on generated pages (`slider_bar` track/thumb + new `track_color` params) | Track and thumb are right. **The editable value box is a stock line-editor field in Plex *Sans*.** The mockup shows a mono value with no box: `styleTree`'s mono rule only matches `_value`, `spinner`, `timecode` and `rec`. Legacy pages keep **stock sliders**. |
+| toggle_switch | Yes (`ALKitSwitch::draw`) | Matches. |
+| select_combo | **No caret** | The generator sets `combo_box.drop_down_button image_*="Kit_RoundRect4"` (157 combos on Rig, plus the preset combo), and `styleTree` does the same. The stock `DropDown_Off` image *carried* the ▾, and `KitIcon_chevron_down_10_*` is registered but never wired. **Every combo is a blank grey box. S1 BLOCKER.** |
+| number_input (spinner, e.g. EV) | **No** | Stock line-editor background. The editor is named "SpinCtrl Editor", so it gets Sans, not Mono. **The up/down arrows vanish:** `styleTree` replaces the spin buttons' arrow images with a blank rounded rect. Part of S2. |
+| colour_swatch / list_box / placeholder_row | Not verified on Rig. `LLScrollListCtrl` colours are set. | |
+| scrollbar (`KitScrollbarThumb` token) | **No** | The page scroller and the cast list use the stock SL track and thumb. `styleTree` replaces the scrollbar arrow images with blank rounded squares. **A stock scrollbar is visible beside the Rig cards.** |
+| dial_compass / dial_arc | Yes (`ALCompassDial` kit geometry, Plex fonts) | Close. |
+| light_map_card | Yes (approximation: dark-blue radial disc, border, palette) | Close enough structurally. |
+| help_pane | Yes (Plex 11/15b/12, tokens) | Close. No left hairline. |
+| transport_bar | Yes (`Kit_RoundRect4`, icons, amber ACTION, Plex) | ACTION and ^ are two separate boxes 8 px apart, not one split button. Timecode is "00:00:00". Close otherwise. |
+| menus_and_popovers | Partial | XUI popovers draw radius 6 and run `styleTree`. **Programmatic popovers do not:** reset-confirm, who, search results and cast. They are created with `create<>` (no `postBuild`), so their Cancel/Reset and result buttons are **stock**. |
+
+### Part B blockers
+
+**S1. Combos have no caret.**
+- **Fix:** keep the `Kit_RoundRect4` background, add `image_overlay="KitIcon_chevron_down_10_16"` with `image_overlay_alignment="right"` plus a right pad on `combo_box.drop_down_button` in the generator, and do the same in `styleButton` for combo buttons. (`LLComboBox` uses the `image_unselected` width only as padding.)
+
+**S2. `styleTree` restyles the internal buttons of composite widgets.**
+- `composite` is computed but never used (`alkitstyle.cpp:84-92`), so `styleButton` runs on:
+  - `LLCheckBoxCtrl` / `LLRadioCtrl` buttons: `Checkbox_On` / `Off` become the same grey square, so **check state disappears on the 31 legacy pages**;
+  - `LLSpinCtrl` arrows;
+  - `LLScrollbar` arrows;
+  - `LLComboBox` buttons;
+  - `LLScrollListCtrl` column headers;
+  - legacy `LLTabContainer` tab buttons, which lose their selected look.
+- **Fix:** skip descendants of composite and stock containers: checkbox, radio, spinner, combo (handled by S1 instead), scrollbar, tab container, scroll list. Style only buttons that are direct kit or chrome buttons.
+
+**S3. Toggle and selected state is invisible.**
+- `styleButton` assigns the same image and the same `image_color` to the selected and unselected states (`:55-63`). Only the label colour changes, and #C9CED6 → #E6E8EB is barely different.
+- Affected:
+  - the Key/Fill/Back/BG option tabs;
+  - lit chips;
+  - legacy toggle buttons;
+  - transport toggles.
+- **Fix:**
+  - selected `image_selected` = `KitActiveFill` (#2F343B) or amber;
+  - for option tabs and the segmented control, follow the mockup's active fill and border tokens;
+  - give chips `Kit_Pill9` with a `KitControlBorder` outline, and an amber outline when lit.
+
+**S4. The mode segmented control is stock.**
+- **Fix:** style the mode buttons when they are created, as a `KitInsetBg` container with a border and a `KitActiveFill` selected item, or call `ALKitStyle::styleTree` after `refreshModeProxy` creates them.
+- Apply the same fix to the other programmatically created popovers and buttons: reset confirm, who popover, search results, and row resets created in `resolveBinding`.
+
+### Part B majors
+
+- **Text fields and scrollbars still look stock.**
+  - Search, spinner editors and slider value editors keep the stock `TextField` background. **Fix:** `setUseBgColor` / `bg_color=KitInputBg` with a border, plus a magnifier overlay on search, and match the editors by type (`LLSpinCtrl` / `LLSliderCtrl` children) to use Mono.
+  - Scrollbars need kit track and thumb images, set per instance on `ALKitScroller` and the kit lists.
+- **Legacy pages (31/35, including Look > Image) will still look mostly stock**: sliders, checkboxes and fields. With S2 they are also *broken*. Tell the user explicitly that only Rig, Rim, Bloom and Tron are restyled.
+- **The style probe is tautological.**
+  - `bg_rgba` records `ALKitStyle::color(token)`, the constant, not the widget's rendered image, colour or background (`aluiperfselftest.cpp:2668-2683`).
+  - The driver only counts files (`ui_selftest.ps1:494-497`). It cannot detect any stock-looking widget.
+  - **Fix:** probe the real `LLButton::getImageUnselected()` name and `getImageColor()`, the `LLComboBox` button overlay, line-editor bg flags, scrollbar images and fonts. Compare them to the token map, and fail on mismatch.
+- **Check for blank legacy bodies on the PNG itself.** Add a check that the body region (below the page bar) has pixel variance above a floor. This catches the original blank Look > Image whatever the cause.
+- **Performance.** `styleTree` calls `setFont` on every `LLTextBox` of every legacy page at build time. Watch `kit_build` ms (the quadratic `setText` reflow seen before).
+
+## Item 3: v1 and global safety: CLEAN
+
+- **`llslider`:** the new `track_color` and `track_highlight_color` default to `LLColor4::white`. `white % enabled_alpha` is identical to the old `LLColor4::white % alpha` / `% (0.6*alpha)` (`llslider.cpp:685-687`). Existing sliders are unchanged.
+- **`alcompassdial`:** the new fonts are used only when `mKitGeometry` is set. Legacy dials still use `SansSerifSmall`.
+- **`colors.xml` / `textures.xml`:** additions are Kit-only. The only modified existing entry is `KitSubBand`, which is Kit-scoped. `fonts.xml` only adds `Kit10-15` sizes. No `widgets/*.xml` change.
+- **`styleTree` / `styleButton`:** applied only to v2 shell, pages and popovers. v1 `floater_director.xml` is untouched.
