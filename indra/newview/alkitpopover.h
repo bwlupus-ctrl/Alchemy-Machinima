@@ -2,6 +2,7 @@
 #define AL_KIT_POPOVER_H
 
 #include "llpanel.h"
+#include "lluiimage.h"
 
 class ALKitPopover final : public LLPanel
 {
@@ -15,6 +16,7 @@ public:
     };
 
     bool postBuild() override;
+    void draw() override;
     void show();
     void hide();
     void toggle();
@@ -29,6 +31,8 @@ private:
     std::string      mAnchorName;
     std::string      mSide;
     LLHandle<LLView> mAnchor;
+    LLUIImagePtr     mOuterImage;
+    LLUIImagePtr     mInnerImage;
 };
 
 #endif

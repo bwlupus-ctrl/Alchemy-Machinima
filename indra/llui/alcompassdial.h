@@ -24,6 +24,8 @@
 #include "lluictrl.h"
 #include "lluicolor.h"
 
+class LLFontGL;
+
 class ALCompassDial : public LLUICtrl
 {
 public:
@@ -96,6 +98,8 @@ private:
     std::string mReadoutText;
     std::string mMinimumText;
     std::string mMaximumText;
+    const LLFontGL* mKitSansFont = nullptr;
+    const LLFontGL* mKitMonoFont = nullptr;
 };
 
 #endif // AL_ALCOMPASSDIAL_H

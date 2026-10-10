@@ -284,7 +284,13 @@ void ALLightRigMap::draw()
         mCameraBearing = atan2f(-at.mV[VY], -at.mV[VX]) * RAD_TO_DEG;
 
     gl_rect_2d(0, ll_round(ALKitStyle::MAP_LEGEND_H + canvas_h), rect.getWidth(), ALKitStyle::MAP_LEGEND_H,
-               ALKitStyle::color(ALKitStyle::DIAL_FACE).get(), true);
+               ALKitStyle::color(ALKitStyle::LIGHTMAP_EDGE).get(), true);
+    LLColor4 map_centre = ALKitStyle::color(ALKitStyle::LIGHTMAP_CENTRE).get();
+    map_centre.mV[VALPHA] = .72f;
+    gGL.color4fv(map_centre.mV);
+    gl_circle_2d(mCanvasCx, mCanvasCy, mCanvasRadius * 1.35f, 48, true);
+    gl_rect_2d(0, ll_round(ALKitStyle::MAP_LEGEND_H + canvas_h), rect.getWidth(), ALKitStyle::MAP_LEGEND_H,
+               ALKitStyle::color(ALKitStyle::LIGHTMAP_BORDER).get(), false);
 
     const LLColor4 track = ALKitStyle::color(ALKitStyle::ARC_TRACK).get(), dim = ALKitStyle::color(ALKitStyle::DIM).get(),
                    accent = ALKitStyle::color(ALKitStyle::ACCENT).get();

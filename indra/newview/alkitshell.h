@@ -57,6 +57,8 @@ public:
     bool                        navigateTo(const ALKitTarget&);
     bool                        selectPage(const std::string& page_name);
     void                        syncSelection();
+    void                        setReady();
+    bool                        isReady() const { return mReady; }
     LLPanel*                    ensurePageBuilt(const std::string& page_name);
     ALKitPage*                  currentKitPage() const;
     ALKitPage*                  findBuiltPage(const std::string&) const;
@@ -68,6 +70,10 @@ public:
     const std::vector<LLButton*>&  railButtons() const { return mRailButtons; }
     LLPanel*                       roster() const { return mRoster; }
     LLPanel*                       transport() const { return mTransport; }
+    LLPanel*                       tabStrip() const { return mTabStrip; }
+    const std::vector<LLButton*>&  tabButtons() const { return mTabButtons; }
+    LLButton*                      tabPrevious() const { return mTabPrev; }
+    LLButton*                      tabNext() const { return mTabNext; }
     void                        startSearchLoad();
     void                        clearSearch();
     bool                        handleSearchKey(KEY key);
@@ -148,6 +154,7 @@ private:
     bool                                                 mWideHelp      = true;
     bool                                                 mSearchStarted = false;
     bool                                                 mRosterOpen    = true;
+    bool                                                 mReady         = false;
     LLFrameTimer                                         mHighlightTimer;
     LLHandle<LLView>                                     mHighlight;
     LLHandle<LLView>                                     mCurrentPage;

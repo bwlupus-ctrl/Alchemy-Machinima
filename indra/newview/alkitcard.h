@@ -99,6 +99,7 @@ private:
     std::string mId, mTitle, mKind, mBadge, mEnableWidget, mEnableSetting, mEnableTooltip, mSelectorLabel, mSelectorSetting, mLinkTo,
         mLinkLabel, mTarget, mTargetTab, mButtonLabel, mHelp;
     bool                                            mAdvanced = false, mMoreOpen = false, mLayoutPending = false, mBodyOpen = true;
+    S32                                             mMoreCount = 0;
     S32                                             mActiveOption = 0, mAmberCount = 0;
     ALKitSwitch*                                    mEnable        = nullptr;
     ALLightRigMap*                                  mRigMap        = nullptr;

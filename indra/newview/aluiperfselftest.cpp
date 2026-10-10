@@ -15,6 +15,7 @@
 #include "alkitsearch.h"
 #include "alkitshell.h"
 #include "alkitstyle.h"
+#include "alkitswitch.h"
 
 #include "llappviewer.h"
 #include "llaccordionctrl.h"
@@ -32,6 +33,8 @@
 #include "lliconctrl.h"
 #include "llimage.h"
 #include "llimagepng.h"
+#include "llsdjson.h"
+#include "llfontregistry.h"
 #include "lllineeditor.h"
 #include "llmultisliderctrl.h"
 #include "llpanel.h"
@@ -2015,9 +2018,11 @@ private:
         {
             LLView*        lazy_root = mAuditPageIndex - 1 < mTabs.size() ? mTabs[mAuditPageIndex - 1].mPanel.get() : page_root;
             ALKitLazyPage* lazy      = dynamic_cast<ALKitLazyPage*>(lazy_root);
+            if (!lazy)
+                return;
             ALKitPage*     page      = findFirstView<ALKitPage>(lazy_root);
-            AuditLeaf      leaf      = semanticLeaf(lazy ? static_cast<LLView*>(lazy) : page_root, floater);
-            if (!lazy || !page || !page->hasAncestor(lazy) || !visibleWithin(page, lazy))
+            AuditLeaf      leaf      = semanticLeaf(lazy, floater);
+            if (!page || !page->hasAncestor(lazy) || !visibleWithin(page, lazy) || shell->findBuiltPage(page->pageKey()) != page)
                 addFinding("LAZY_PAGE_UNATTACHED", leaf, nullptr, "built page is not attached and visible");
             else
             {
@@ -2028,10 +2033,92 @@ private:
                     addFinding("LAZY_PAGE_UNSIZED", semanticLeaf(page, lazy), nullptr, "kit page does not fill lazy host");
                 std::vector<ALKitCard*> cards;
                 collectViewsOfType<ALKitCard>(page, cards);
-                const bool visible_card =
-                    std::any_of(cards.begin(), cards.end(), [page](ALKitCard* card) { return visibleWithin(card, page); });
+                ALKitScroller* scroller = page->scroller();
+                const bool visible_card = std::any_of(cards.begin(), cards.end(), [page, scroller](ALKitCard* card)
+                {
+                    if (!scroller || !visibleWithin(card, page))
+                        return false;
+                    LLRect card_rect;
+                    if (!card->localRectToOtherView(card->getLocalRect(), &card_rect, scroller))
+                        return false;
+                    const LLRect visible = scroller->getVisibleContentRect();
+                    const S32 overlap_w = llmin(card_rect.mRight, visible.mRight) - llmax(card_rect.mLeft, visible.mLeft);
+                    const S32 overlap_h = llmin(card_rect.mTop, visible.mTop) - llmax(card_rect.mBottom, visible.mBottom);
+                    return overlap_w > 0 && overlap_h >= 40;
+                });
                 if (!page->legacy() && !visible_card)
                     addFinding("LAZY_PAGE_NO_CARD", semanticLeaf(page, floater), nullptr, "built page has no visible card");
+                if (page->legacy())
+                {
+                    LLPanel* host = page->legacyHost();
+                    const S32 minimum = llmax(40, page->getRect().getHeight() - ALKitStyle::CHIPS_H - ALKitStyle::WHO_H -
+                                                     ALKitStyle::BAR_H - ALKitStyle::BANNER_H);
+                    if (!host || host->getRect().getHeight() < minimum)
+                        addFinding("LEGACY_BODY_COLLAPSED", semanticLeaf(host ? static_cast<LLView*>(host) : page, floater), nullptr,
+                                   "legacy body does not fill the page below its chrome");
+                    bool visible_leaf = false;
+                    if (host)
+                    {
+                        std::vector<LLView*> host_views;
+                        std::vector<AuditLeaf> ignored;
+                        collectAuditViews(host, host, host_views, ignored);
+                        for (LLView* view : host_views)
+                        {
+                            if (view == host || !view->getChildList()->empty() || !visibleWithin(view, host))
+                                continue;
+                            LLRect rect;
+                            if (view->localRectToOtherView(view->getLocalRect(), &rect, host))
+                            {
+                                const S32 overlap_h = llmin(rect.mTop, host->getLocalRect().mTop) -
+                                                        llmax(rect.mBottom, host->getLocalRect().mBottom);
+                                if (overlap_h >= 20)
+                                {
+                                    visible_leaf = true;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                    if (!visible_leaf)
+                        addFinding("LEGACY_BODY_UNBOUND", semanticLeaf(host ? static_cast<LLView*>(host) : page, floater), nullptr,
+                                   "legacy body has no visible bound leaf");
+                }
+                LLPanel* bar = page->pageBar();
+                std::vector<LLView*> chrome = { page->resetButton(), page->undoButton(), page->redoButton(), page->searchEditor() };
+                for (LLView* widget : chrome)
+                {
+                    if (!widget || !bar || (widget->getVisible() && !rectContained(widget->getRect(), bar->getLocalRect())))
+                        addFinding("PAGE_CHROME", semanticLeaf(widget ? widget : page, floater), nullptr,
+                                   "page-bar control is missing or outside the page bar");
+                }
+                if (page->hasMaster())
+                {
+                    LLRect master_rect;
+                    const bool master_ok = page->masterSwitch() && bar &&
+                        (!visibleWithin(page->masterSwitch(), bar) ||
+                         (page->masterSwitch()->localRectToOtherView(page->masterSwitch()->getLocalRect(), &master_rect, bar) &&
+                          rectContained(master_rect, bar->getLocalRect())));
+                    if (!master_ok)
+                        addFinding("PAGE_CHROME", semanticLeaf(page->masterSwitch() ? static_cast<LLView*>(page->masterSwitch()) : page,
+                                                               floater), nullptr,
+                                   "master switch is missing or outside the page bar");
+                }
+                if (page->hasPreset())
+                {
+                    bool preset_in_bar = false;
+                    if (bar)
+                        for (LLView* child : *bar->getChildList())
+                            if (dynamic_cast<LLComboBox*>(child) && rectContained(child->getRect(), bar->getLocalRect()))
+                            {
+                                preset_in_bar = true;
+                                break;
+                            }
+                    if (!preset_in_bar)
+                        addFinding("PAGE_CHROME", semanticLeaf(bar ? static_cast<LLView*>(bar) : page, floater), nullptr,
+                                   "preset combo is missing from the page bar");
+                }
+                if (page->whoChip() && (!page->whoBand() || !rectContained(page->whoChip()->getRect(), page->whoBand()->getLocalRect())))
+                    addFinding("PAGE_CHROME", semanticLeaf(page->whoChip(), floater), nullptr, "who chip is outside the who band");
                 if (!shell->help().hasContent())
                     addFinding("HELP_EMPTY", semanticLeaf(page, floater), nullptr, "page selection did not seed help title and body");
 
@@ -2051,6 +2138,20 @@ private:
             }
         }
 
+        if ((shell->tabPrevious() && shell->tabPrevious()->getVisible()) ||
+            (shell->tabNext() && shell->tabNext()->getVisible()))
+            addFinding("TAB_OVERFLOW", semanticLeaf(shell->tabStrip(), floater), nullptr,
+                       "approved Director tabs require overflow arrows");
+        for (LLButton* tab : shell->tabButtons())
+        {
+            if (!tab || !tab->getVisible())
+                continue;
+            if (tab->getFont() && tab->getFont()->getWidth(tab->getCurrentLabel()) + tab->getLeftHPad() + tab->getRightHPad() >
+                                      tab->getRect().getWidth() + 1)
+                addFinding("TAB_LABEL_CLIPPED", semanticLeaf(tab, floater), nullptr, "displayed tab label is clipped");
+            if (shell->tabStrip() && !rectContained(tab->getRect(), shell->tabStrip()->getLocalRect()))
+                addFinding("TAB_OVERFLOW", semanticLeaf(tab, floater), nullptr, "visible tab leaves the tab strip");
+        }
         if (mAuditPageIndex != 0)
             return;
         static const std::vector<std::string> approved_groups = { "cast_group",  "performance_group", "camera_group", "lens_group",
@@ -2092,11 +2193,21 @@ private:
             return;
         LLButton*  action         = nullptr;
         LLButton*  cut            = nullptr;
+        LLView*     timecode       = nullptr;
+        LLView*     status         = nullptr;
         for (LLView* child : *bar->getChildList())
         {
             if (child->getName() == "btn_action") action = dynamic_cast<LLButton*>(child);
             if (child->getName() == "btn_cut") cut = dynamic_cast<LLButton*>(child);
+            if (child->getName() == "take_timecode") timecode = child;
+            if (child->getName() == "status_strip") status = child;
         }
+        if (!timecode || !timecode->getVisible())
+            addFinding("TRANSPORT_FLEX_MIN", semanticLeaf(timecode ? timecode : bar, floater), nullptr,
+                       "timecode must remain visible at every approved size");
+        if (status && status->getVisible() && status->getRect().getWidth() < 120)
+            addFinding("TRANSPORT_FLEX_MIN", semanticLeaf(status, floater), nullptr,
+                       "visible status text is narrower than 120 px");
         const bool action_visible = action && action->getVisible();
         const bool cut_visible    = cut && cut->getVisible();
         for (S32 recording = 0; recording < 2; ++recording)
@@ -2503,9 +2614,81 @@ private:
                 llformat("%03u_", (U32)mAuditPageIndex) + safeComponent(auditPagePath()) + "_" +
                 llformat("%u", (U32)mCapturePositionIndex) + ".png";
         }
+        if (isDirectorV2() && mCapturePositionIndex == 0 && auditStateName() == "default")
+            writeStyleProbe();
         mCaptureFailed = false;
         mCaptureWaitFrames = 0;
         mCaptureRequested = true;
+    }
+
+    void writeStyleProbe()
+    {
+        LLFloater* floater = mFloater.get();
+        ALKitShell* shell = floater ? findFirstView<ALKitShell>(floater) : nullptr;
+        if (!floater || !shell)
+            return;
+        if (mAuditPageIndex > 0)
+        {
+            const size_t index = mAuditPageIndex - 1;
+            if (index >= mTabs.size() || !dynamic_cast<ALKitLazyPage*>(mTabs[index].mPanel.get()))
+                return;
+        }
+        LLSD probe = LLSD::emptyMap();
+        probe["size"] = auditSizeName();
+        probe["page"] = auditPagePath();
+        probe["state"] = auditStateName();
+        probe["widgets"] = LLSD::emptyArray();
+        auto add = [&](const std::string& role, LLView* view, const std::string& bg_token, const LLUIColor& bg)
+        {
+            if (!view)
+                return;
+            LLRect rect;
+            view->localRectToOtherView(view->getLocalRect(), &rect, floater);
+            LLSD item = LLSD::emptyMap();
+            item["role"] = role;
+            item["name"] = view->getName();
+            item["rect"] = LLSD::emptyArray();
+            item["rect"].append(rect.mLeft);
+            item["rect"].append(rect.mBottom);
+            item["rect"].append(rect.mRight);
+            item["rect"].append(rect.mTop);
+            item["bg_token"] = bg_token;
+            item["bg_rgba"] = LLSD::emptyArray();
+            const LLColor4 value = bg.get();
+            for (S32 component = 0; component < 4; ++component)
+                item["bg_rgba"].append(value.mV[component]);
+            if (const LLFontGL* font = view->getFont())
+            {
+                item["font"] = font->getFontDesc().getName();
+                item["font_size"] = font->getFontDesc().getSize();
+                item["font_bold"] = (font->getFontDesc().getStyle() & LLFontGL::BOLD) != 0;
+            }
+            probe["widgets"].append(item);
+        };
+        add("window", floater, "window_bg", ALKitStyle::color(ALKitStyle::WINDOW_BG));
+        add("rail", shell->findChild<LLView>("kit_rail"), "panel_bg", ALKitStyle::color(ALKitStyle::RAIL_BG)); // ui-draw-lint: allow(lookup) self-test style probe, capture-time only
+        add("tabs", shell->tabStrip(), "panel_bg", ALKitStyle::color(ALKitStyle::RAIL_BG));
+        add("transport", shell->transport(), "panel_bg", ALKitStyle::color(ALKitStyle::RAIL_BG));
+        add("action", shell->findChild<LLView>("btn_action"), "accent_amber", ALKitStyle::color(ALKitStyle::ACCENT)); // ui-draw-lint: allow(lookup) self-test style probe, capture-time only
+        add("timecode", shell->findChild<LLView>("take_timecode"), "panel_bg", ALKitStyle::color(ALKitStyle::RAIL_BG)); // ui-draw-lint: allow(lookup) self-test style probe, capture-time only
+        if (ALKitPage* page = findFirstView<ALKitPage>(auditPageRoot()))
+        {
+            add("page_bar", page->pageBar(), "window_bg", ALKitStyle::color(ALKitStyle::WINDOW_BG));
+            add("who", page->whoBand(), "inset_bg", ALKitStyle::color(ALKitStyle::INPUT_BG));
+            add("search", page->searchEditor(), "inset_bg", ALKitStyle::color(ALKitStyle::INPUT_BG));
+            add("master", page->masterSwitch(), "switch_on_track", ALKitStyle::color(ALKitStyle::ACCENT));
+            std::vector<ALKitCard*> cards;
+            collectViewsOfType<ALKitCard>(page, cards);
+            for (ALKitCard* card : cards)
+                if (card->getVisible())
+                    add("card", card, "card_bg", ALKitStyle::color(ALKitStyle::CARD_BG));
+        }
+        std::string path = mCaptureFilename;
+        if (path.size() >= 4)
+            path.replace(path.size() - 4, 4, ".style.json");
+        llofstream out(path.c_str(), std::ios::out | std::ios::trunc);
+        out << LlsdToJson(probe) << '\n';
+        out.flush();
     }
 
     void saveCapturedImage()

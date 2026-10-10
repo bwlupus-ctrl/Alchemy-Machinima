@@ -155,7 +155,7 @@ bool ALKitRow::postBuild()
 
     label.text_color = ALKitStyle::color(ALKitStyle::LABEL);
 
-    label.font = LLFontGL::getFontSansSerifSmall();
+    label.font = ALKitStyle::sansFont("Kit12");
 
     mLabel = LLUICtrlFactory::create<LLTextBox>(label);
     addChild(mLabel);
@@ -260,7 +260,7 @@ bool ALKitRow::postBuild()
         reset.label = "";
 
         mReset = LLUICtrlFactory::create<LLButton>(reset);
-        mReset->setImageOverlay("Refresh_Off");
+        mReset->setImageOverlay("KitIcon_reset_row_16");
         mReset->setCommitCallback(
             [this](LLUICtrl*, const LLSD&)
             {
@@ -348,7 +348,7 @@ void ALKitRow::layoutRow(S32 w)
         }
         else if (mMeta.kind == "button")
         {
-            const LLFontGL* f = LLFontGL::getFontSansSerifSmall();
+            const LLFontGL* f = ALKitStyle::sansFont("Kit12");
             width             = llmin(span, (f ? f->getWidth(mMeta.label) : 80) + 20);
         }
         else if (mMeta.kind == "slider" || mMeta.kind == "combo" || mMeta.kind == "text" || mMeta.kind == "readout" ||
@@ -518,7 +518,7 @@ void ALKitRow::resolveBinding()
             reset.rect  = LLRect(0, 20, 20, 0);
             reset.label = "";
             mReset      = LLUICtrlFactory::create<LLButton>(reset);
-            mReset->setImageOverlay("Refresh_Off");
+            mReset->setImageOverlay("KitIcon_reset_row_16");
             mReset->setCommitCallback(
                 [this](LLUICtrl*, const LLSD&)
                 {

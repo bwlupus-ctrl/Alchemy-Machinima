@@ -1051,6 +1051,91 @@ with the same filename but different name
   <texture name="Script_Error" file_name="script_editor/red_square.png" preload="false" />
   <texture name="Kit_RoundRect4" file_name="kit/Kit_RoundRect4.png" preload="true" scale.left="6" scale.top="10" scale.right="10" scale.bottom="6" />
   <texture name="Kit_RoundRect6" file_name="kit/Kit_RoundRect6.png" preload="true" scale.left="6" scale.top="10" scale.right="10" scale.bottom="6" />
+  <texture name="Kit_RoundRect8" file_name="kit/Kit_RoundRect8.png" preload="true" scale.left="8" scale.top="12" scale.right="12" scale.bottom="8" />
   <texture name="Kit_Pill9" file_name="kit/Kit_Pill9.png" preload="true" scale.left="9" scale.top="9" scale.right="9" scale.bottom="9" />
   <texture name="Kit_Circle" file_name="kit/Kit_Circle.png" preload="true" />
+  <texture name="Kit_SliderTrack" file_name="kit/Kit_SliderTrack.png" preload="true" scale.left="2" scale.top="2" scale.right="10" scale.bottom="2" />
+  <texture name="Kit_SliderThumb" file_name="kit/Kit_SliderThumb.png" preload="true" />
+  <texture name="KitIcon_armed_chevron_up_16" file_name="kit/icons/armed_chevron_up_16.png" preload="true" />
+  <texture name="KitIcon_armed_chevron_up_32" file_name="kit/icons/armed_chevron_up_32.png" preload="true" />
+  <texture name="KitIcon_cast_chip_chevron_up_16" file_name="kit/icons/cast_chip_chevron_up_16.png" preload="true" />
+  <texture name="KitIcon_cast_chip_chevron_up_32" file_name="kit/icons/cast_chip_chevron_up_32.png" preload="true" />
+  <texture name="KitIcon_cast_row_framed_16" file_name="kit/icons/cast_row_framed_16.png" preload="true" />
+  <texture name="KitIcon_cast_row_framed_32" file_name="kit/icons/cast_row_framed_32.png" preload="true" />
+  <texture name="KitIcon_cast_row_looks_at_16" file_name="kit/icons/cast_row_looks_at_16.png" preload="true" />
+  <texture name="KitIcon_cast_row_looks_at_32" file_name="kit/icons/cast_row_looks_at_32.png" preload="true" />
+  <texture name="KitIcon_cast_tool_animesh_16" file_name="kit/icons/cast_tool_animesh_16.png" preload="true" />
+  <texture name="KitIcon_cast_tool_animesh_32" file_name="kit/icons/cast_tool_animesh_32.png" preload="true" />
+  <texture name="KitIcon_cast_tool_focus_16" file_name="kit/icons/cast_tool_focus_16.png" preload="true" />
+  <texture name="KitIcon_cast_tool_focus_32" file_name="kit/icons/cast_tool_focus_32.png" preload="true" />
+  <texture name="KitIcon_cast_tool_remove_16" file_name="kit/icons/cast_tool_remove_16.png" preload="true" />
+  <texture name="KitIcon_cast_tool_remove_32" file_name="kit/icons/cast_tool_remove_32.png" preload="true" />
+  <texture name="KitIcon_cast_tool_you_16" file_name="kit/icons/cast_tool_you_16.png" preload="true" />
+  <texture name="KitIcon_cast_tool_you_32" file_name="kit/icons/cast_tool_you_32.png" preload="true" />
+  <texture name="KitIcon_chevron_down_10_16" file_name="kit/icons/chevron_down_10_16.png" preload="true" />
+  <texture name="KitIcon_chevron_down_10_32" file_name="kit/icons/chevron_down_10_32.png" preload="true" />
+  <texture name="KitIcon_error_circle_16" file_name="kit/icons/error_circle_16.png" preload="true" />
+  <texture name="KitIcon_error_circle_32" file_name="kit/icons/error_circle_32.png" preload="true" />
+  <texture name="KitIcon_legend_far_16" file_name="kit/icons/legend_far_16.png" preload="true" />
+  <texture name="KitIcon_legend_far_32" file_name="kit/icons/legend_far_32.png" preload="true" />
+  <texture name="KitIcon_legend_near_16" file_name="kit/icons/legend_near_16.png" preload="true" />
+  <texture name="KitIcon_legend_near_32" file_name="kit/icons/legend_near_32.png" preload="true" />
+  <texture name="KitIcon_legend_off_16" file_name="kit/icons/legend_off_16.png" preload="true" />
+  <texture name="KitIcon_legend_off_32" file_name="kit/icons/legend_off_32.png" preload="true" />
+  <texture name="KitIcon_master_off_power_16" file_name="kit/icons/master_off_power_16.png" preload="true" />
+  <texture name="KitIcon_master_off_power_32" file_name="kit/icons/master_off_power_32.png" preload="true" />
+  <texture name="KitIcon_rail_camera_16" file_name="kit/icons/rail_camera_16.png" preload="true" />
+  <texture name="KitIcon_rail_camera_32" file_name="kit/icons/rail_camera_32.png" preload="true" />
+  <texture name="KitIcon_rail_capture_16" file_name="kit/icons/rail_capture_16.png" preload="true" />
+  <texture name="KitIcon_rail_capture_32" file_name="kit/icons/rail_capture_32.png" preload="true" />
+  <texture name="KitIcon_rail_cast_16" file_name="kit/icons/rail_cast_16.png" preload="true" />
+  <texture name="KitIcon_rail_cast_32" file_name="kit/icons/rail_cast_32.png" preload="true" />
+  <texture name="KitIcon_rail_lens_16" file_name="kit/icons/rail_lens_16.png" preload="true" />
+  <texture name="KitIcon_rail_lens_32" file_name="kit/icons/rail_lens_32.png" preload="true" />
+  <texture name="KitIcon_rail_light_16" file_name="kit/icons/rail_light_16.png" preload="true" />
+  <texture name="KitIcon_rail_light_32" file_name="kit/icons/rail_light_32.png" preload="true" />
+  <texture name="KitIcon_rail_look_16" file_name="kit/icons/rail_look_16.png" preload="true" />
+  <texture name="KitIcon_rail_look_32" file_name="kit/icons/rail_look_32.png" preload="true" />
+  <texture name="KitIcon_rail_performance_16" file_name="kit/icons/rail_performance_16.png" preload="true" />
+  <texture name="KitIcon_rail_performance_32" file_name="kit/icons/rail_performance_32.png" preload="true" />
+  <texture name="KitIcon_rail_world_16" file_name="kit/icons/rail_world_16.png" preload="true" />
+  <texture name="KitIcon_rail_world_32" file_name="kit/icons/rail_world_32.png" preload="true" />
+  <texture name="KitIcon_redo_16" file_name="kit/icons/redo_16.png" preload="true" />
+  <texture name="KitIcon_redo_32" file_name="kit/icons/redo_32.png" preload="true" />
+  <texture name="KitIcon_reset_arc_16" file_name="kit/icons/reset_arc_16.png" preload="true" />
+  <texture name="KitIcon_reset_arc_32" file_name="kit/icons/reset_arc_32.png" preload="true" />
+  <texture name="KitIcon_reset_row_16" file_name="kit/icons/reset_row_16.png" preload="true" />
+  <texture name="KitIcon_reset_row_32" file_name="kit/icons/reset_row_32.png" preload="true" />
+  <texture name="KitIcon_search_16" file_name="kit/icons/search_16.png" preload="true" />
+  <texture name="KitIcon_search_32" file_name="kit/icons/search_32.png" preload="true" />
+  <texture name="KitIcon_toast_check_16" file_name="kit/icons/toast_check_16.png" preload="true" />
+  <texture name="KitIcon_toast_check_32" file_name="kit/icons/toast_check_32.png" preload="true" />
+  <texture name="KitIcon_transport_action_play_16" file_name="kit/icons/transport_action_play_16.png" preload="true" />
+  <texture name="KitIcon_transport_action_play_32" file_name="kit/icons/transport_action_play_32.png" preload="true" />
+  <texture name="KitIcon_transport_action_stop_16" file_name="kit/icons/transport_action_stop_16.png" preload="true" />
+  <texture name="KitIcon_transport_action_stop_32" file_name="kit/icons/transport_action_stop_32.png" preload="true" />
+  <texture name="KitIcon_transport_legend_16" file_name="kit/icons/transport_legend_16.png" preload="true" />
+  <texture name="KitIcon_transport_legend_32" file_name="kit/icons/transport_legend_32.png" preload="true" />
+  <texture name="KitIcon_transport_marks_reset_16" file_name="kit/icons/transport_marks_reset_16.png" preload="true" />
+  <texture name="KitIcon_transport_marks_reset_32" file_name="kit/icons/transport_marks_reset_32.png" preload="true" />
+  <texture name="KitIcon_transport_marks_set_16" file_name="kit/icons/transport_marks_set_16.png" preload="true" />
+  <texture name="KitIcon_transport_marks_set_32" file_name="kit/icons/transport_marks_set_32.png" preload="true" />
+  <texture name="KitIcon_transport_paths_16" file_name="kit/icons/transport_paths_16.png" preload="true" />
+  <texture name="KitIcon_transport_paths_32" file_name="kit/icons/transport_paths_32.png" preload="true" />
+  <texture name="KitIcon_transport_play_16" file_name="kit/icons/transport_play_16.png" preload="true" />
+  <texture name="KitIcon_transport_play_32" file_name="kit/icons/transport_play_32.png" preload="true" />
+  <texture name="KitIcon_transport_stop_16" file_name="kit/icons/transport_stop_16.png" preload="true" />
+  <texture name="KitIcon_transport_stop_32" file_name="kit/icons/transport_stop_32.png" preload="true" />
+  <texture name="KitIcon_trash_16" file_name="kit/icons/trash_16.png" preload="true" />
+  <texture name="KitIcon_trash_32" file_name="kit/icons/trash_32.png" preload="true" />
+  <texture name="KitIcon_undo_16" file_name="kit/icons/undo_16.png" preload="true" />
+  <texture name="KitIcon_undo_32" file_name="kit/icons/undo_32.png" preload="true" />
+  <texture name="KitIcon_who_chevron_10_16" file_name="kit/icons/who_chevron_10_16.png" preload="true" />
+  <texture name="KitIcon_who_chevron_10_32" file_name="kit/icons/who_chevron_10_32.png" preload="true" />
+  <texture name="KitIcon_who_person_16" file_name="kit/icons/who_person_16.png" preload="true" />
+  <texture name="KitIcon_who_person_32" file_name="kit/icons/who_person_32.png" preload="true" />
+  <texture name="KitIcon_window_close_16" file_name="kit/icons/window_close_16.png" preload="true" />
+  <texture name="KitIcon_window_close_32" file_name="kit/icons/window_close_32.png" preload="true" />
+  <texture name="KitIcon_window_minimize_16" file_name="kit/icons/window_minimize_16.png" preload="true" />
+  <texture name="KitIcon_window_minimize_32" file_name="kit/icons/window_minimize_32.png" preload="true" />
 </textures>

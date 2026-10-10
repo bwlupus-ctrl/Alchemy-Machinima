@@ -655,4 +655,11 @@
   <font_size name="Monospace" size="10.0"/>
   <font_size name="SmallLSL"  size="7"/>
   <font_size name="HugeLSL"   size="12"/>
+  <!-- Director kit CSS-pixel equivalents at the viewer's 96 dpi baseline. -->
+  <font_size name="Kit10" size="7.5"/>
+  <font_size name="Kit11" size="8.25"/>
+  <font_size name="Kit12" size="9"/>
+  <font_size name="Kit13" size="9.75"/>
+  <font_size name="Kit14" size="10.5"/>
+  <font_size name="Kit15" size="11.25"/>
 </fonts>

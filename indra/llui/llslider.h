@@ -50,7 +50,9 @@ public:
         Optional<std::string> orientation;
 
         Optional<LLUIColor> thumb_outline_color,
-                            thumb_center_color;
+                            thumb_center_color,
+                            track_color,
+                            track_highlight_color;
 
         Optional<LLUIImage*>    thumb_image,
                                 thumb_image_pressed,
@@ -170,6 +172,8 @@ private:
     LLRect      mThumbRect;
     LLUIColor   mThumbOutlineColor;
     LLUIColor   mThumbCenterColor;
+    LLUIColor   mTrackColor;
+    LLUIColor   mTrackHighlightColor;
 
     commit_signal_t*    mMouseDownSignal;
     commit_signal_t*    mMouseUpSignal;

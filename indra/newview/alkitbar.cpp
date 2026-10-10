@@ -73,6 +73,7 @@ void ALKitBar::layoutChildren()
 {
     constexpr S32 PAD = 10;
     constexpr S32 GAP = 8;
+    constexpr S32 FLEX_MIN = 120;
     for (S32 index = 0; index < (S32)mCollapse.size(); ++index)
     {
         if (!mCollapsed[index])
@@ -103,7 +104,12 @@ void ALKitBar::layoutChildren()
                 ++count;
             }
         }
-        return width + llmax(0, count) * 8;
+        if (mFlex && mFlex->getVisible())
+        {
+            width += FLEX_MIN;
+            ++count;
+        }
+        return width + llmax(0, count - 1) * GAP;
     };
 
     for (S32 index = 0; index < (S32)mCollapse.size(); ++index)
@@ -136,7 +142,9 @@ void ALKitBar::layoutChildren()
             ++visible;
         }
     }
-    const S32 flex_width = mFlex ? llmax(0, getRect().getWidth() - 2 * PAD - fixed - visible * GAP) : 0;
+    const S32 flex_width = mFlex && mFlex->getVisible()
+                               ? llmax(FLEX_MIN, getRect().getWidth() - 2 * PAD - fixed - visible * GAP)
+                               : 0;
     S32       left       = PAD;
     for (LLView* child : mChildren)
     {

@@ -57,10 +57,10 @@ CONTROL_TAGS = set(HOST_KIND) | {"kit_switch", "compass_dial", "radio_group", "p
 CUSTOM_KIND = {"check": "toggle", "slider": "slider", "spinner": "number",
                "combo": "combo", "button": "button", "line_editor": "text",
                "list": "list"}
-ICONS = {"cast": "Command_People_Icon", "perf": "Command_Poser_Icon",
-         "camera": "Command_View_Icon", "lens": "Command_Search_Icon",
-         "light": "Command_PersonalLighting_Icon", "look": "Command_Lightbox_Icon",
-         "world": "Command_Environments_Icon", "capture": "Command_Snapshot_Icon"}
+ICONS = {"cast": "KitIcon_rail_cast_16", "perf": "KitIcon_rail_performance_16",
+         "camera": "KitIcon_rail_camera_16", "lens": "KitIcon_rail_lens_16",
+         "light": "KitIcon_rail_light_16", "look": "KitIcon_rail_look_16",
+         "world": "KitIcon_rail_world_16", "capture": "KitIcon_rail_capture_16"}
 
 
 class GenError(RuntimeError):
@@ -320,6 +320,61 @@ def stripped_copy(node: ET.Element, strip_label: bool = True) -> ET.Element:
     if strip_label and clone.tag in LABEL_STRIP:
         clone.attrib.pop("label", None)
     return clone
+
+
+def apply_kit_xui_style(root: ET.Element) -> None:
+    """Stamp only generated Director-v2 controls; v1/global widget defaults stay untouched."""
+    for node in list(root.iter()):
+        if node.tag == "button":
+            for attr in ("image_unselected", "image_selected", "image_pressed",
+                         "image_hover_unselected", "image_hover_selected"):
+                node.set(attr, "Kit_RoundRect4")
+            name = node.get("name", "")
+            node.set("image_color", "KitAccent" if name == "btn_action" else
+                     "KitRecord" if name == "btn_cut" else "KitControlBg")
+            node.set("label_color", "KitKnobOn" if name == "btn_action" else
+                     "KitRecordTextOn" if name == "btn_cut" else "KitLabel")
+            node.set("label_color_selected", "KitTextStrong")
+            node.set("label_color_disabled", "KitFaint")
+            node.set("label_shadow", "false")
+        elif node.tag == "line_editor":
+            node.set("use_bg_color", "true")
+            node.set("bg_color", "KitInputBg")
+            node.set("text_color", "KitText")
+            node.set("text_readonly_color", "KitDim")
+            node.set("text_tentative_color", "KitMuted")
+            node.set("cursor_color", "KitAccent")
+        elif node.tag == "combo_box":
+            drop = next((child for child in node if child.tag == "combo_box.drop_down_button"), None)
+            if drop is None:
+                drop = ET.SubElement(node, "combo_box.drop_down_button")
+            for attr in ("image_unselected", "image_selected", "image_pressed"):
+                drop.set(attr, "Kit_RoundRect4")
+            drop.set("image_color", "KitControlBg")
+            editor = next((child for child in node if child.tag == "combo_box.combo_editor"), None)
+            if editor is None:
+                editor = ET.SubElement(node, "combo_box.combo_editor")
+            editor.set("use_bg_color", "true")
+            editor.set("bg_color", "KitInputBg")
+            editor.set("text_color", "KitText")
+        elif node.tag == "slider":
+            bar = next((child for child in node if child.tag == "slider.slider_bar"), None)
+            if bar is None:
+                bar = ET.SubElement(node, "slider.slider_bar")
+            bar.set("track_image_horizontal", "Kit_SliderTrack")
+            bar.set("track_highlight_horizontal_image", "Kit_SliderTrack")
+            bar.set("track_color", "KitSliderTrackEmpty")
+            bar.set("track_highlight_color", "KitSliderTrackFill")
+            bar.set("thumb_image", "Kit_SliderThumb")
+            bar.set("thumb_image_pressed", "Kit_SliderThumb")
+            bar.set("thumb_image_disabled", "Kit_SliderThumb")
+            bar.set("thumb_center_color", "KitSliderThumb")
+            bar.set("thumb_outline_color", "KitSliderThumb")
+        elif node.tag == "spinner":
+            node.set("text_enabled_color", "KitText")
+            node.set("text_disabled_color", "KitMuted")
+        elif node.tag == "color_swatch":
+            node.set("border_color", "KitSwatchBorder")
 
 
 def reset_setting(name: str, by_name: dict[str, ET.Element], setting: str | None) -> str | None:
@@ -583,7 +638,7 @@ def kit_page(group: dict, raw_page: dict, cfg: dict, source_paths: list[Path],
                                                cfg.get("label_names", {})))
     preset = cfg.get("preset", {})
     if preset.get("mode") == "widgets":
-        host = ET.SubElement(body, "kit_preset_host")
+        host = ET.SubElement(body, "kit_preset_host", {"name": "kit_preset_host"})
         for key in ("combo", "save", "delete"):
             name = preset.get(key)
             if not name or name not in by_name:
@@ -682,10 +737,10 @@ def copy_chrome(name: str, v1: ET.Element, *, label: bool = True) -> ET.Element:
 def floater_tree(data: dict, page_files: dict[str, str], v1: ET.Element) -> ET.Element:
     root = ET.Element("floater", {"name": "floater_director", "title": "Director", "width": "1160",
                       "height": "720", "min_width": "850", "min_height": "560", "can_resize": "true",
-                      "save_rect": "true", "single_instance": "true", "legacy_header_height": "18",
+                      "save_rect": "true", "single_instance": "true", "legacy_header_height": "30",
                       "layout": "topleft", "bg_opaque_color": "KitWindowBg", "bg_alpha_color": "KitWindowBg"})
     shell = ET.SubElement(root, "kit_shell", {"name": "director_shell", "follows": "all", "left": "0",
-                          "top": "18", "width": "1160", "height": "702", "index_file": "director_kit_index.xml"})
+                          "top": "30", "width": "1160", "height": "690", "index_file": "director_kit_index.xml"})
     for group in data.get("groups", []):
         masters = sorted({p.get("master", {}).get("s", "") for p in group.get("pages", []) if p.get("master", {}).get("s")})
         ET.SubElement(shell, "kit_shell.rail_item", {"group": group["name"], "label": group["label"],
@@ -696,8 +751,8 @@ def floater_tree(data: dict, page_files: dict[str, str], v1: ET.Element) -> ET.E
     header.text = "CAST"
     for name in ("cast_list", "cast_hint", "group_assign_combo", "btn_add_you", "btn_add_animesh", "btn_focus", "btn_remove"):
         node = copy_chrome(name, v1)
-        tool_icons = {"btn_add_you": "Command_People_Icon", "btn_add_animesh": "Inv_Object",
-                      "btn_focus": "Command_View_Icon", "btn_remove": "TrashItem_Off"}
+        tool_icons = {"btn_add_you": "KitIcon_cast_tool_you_16", "btn_add_animesh": "KitIcon_cast_tool_animesh_16",
+                      "btn_focus": "KitIcon_cast_tool_focus_16", "btn_remove": "KitIcon_cast_tool_remove_16"}
         if name in tool_icons:
             node.set("label", "")
             node.set("image_overlay", tool_icons[name])
@@ -716,8 +771,8 @@ def floater_tree(data: dict, page_files: dict[str, str], v1: ET.Element) -> ET.E
                 attrs["master_setting"] = str(master["s"])
             ET.SubElement(tc, "kit_lazy_page", attrs)
     bar = ET.SubElement(shell, "kit_bar", {"name": "kit_transport", "flex": "status_strip",
-                        "collapse_order": "kit_ui_ms,take_timecode,btn_scene_delete,btn_reset_marks"})
-    widths = {"btn_action": 112, "btn_cut": 112, "btn_arm": 24, "btn_take_play": 28, "btn_take_stop": 28,
+                        "collapse_order": "kit_ui_ms,btn_reset_marks,btn_scene_delete,btn_cast_chip,status_strip"})
+    widths = {"btn_action": 92, "btn_cut": 92, "btn_arm": 22, "btn_take_play": 28, "btn_take_stop": 28,
               "take_timecode": 90, "scene_combo": 130, "scene_name_editor": 130, "btn_scene_load": 44,
               "btn_scene_save": 50,
               "btn_scene_delete": 28, "btn_set_marks": 28, "btn_reset_marks": 28, "show_paths_global_check": 28,
@@ -726,11 +781,13 @@ def floater_tree(data: dict, page_files: dict[str, str], v1: ET.Element) -> ET.E
         node = copy_chrome(name, v1)
         node.set("image_color", "KitAccent" if name == "btn_action" else "KitRecord")
         node.set("label_color", "Black" if name == "btn_action" else "White")
-        node.set("width", str(widths[name])); node.set("height", "28"); bar.append(node)
-    for name, image in (("btn_arm", "Kit_Circle"), ("btn_take_play", "Play_Off"),
-                        ("btn_take_stop", "Stop_Off")):
+        node.set("image_overlay", "KitIcon_transport_action_play_16" if name == "btn_action" else
+                 "KitIcon_transport_action_stop_16")
+        node.set("width", str(widths[name])); node.set("height", "26"); bar.append(node)
+    for name, image in (("btn_arm", "KitIcon_armed_chevron_up_16"), ("btn_take_play", "KitIcon_transport_play_16"),
+                        ("btn_take_stop", "KitIcon_transport_stop_16")):
         ET.SubElement(bar, "button", {"name": name, "label": "", "image_overlay": image,
-                                      "width": str(widths[name]), "height": "28"})
+                                      "width": str(widths[name]), "height": "26"})
     timecode = ET.SubElement(bar, "text", {"name": "take_timecode", "width": str(widths["take_timecode"]),
                                            "height": "28"})
     timecode.text = "00:00:00"
@@ -745,12 +802,13 @@ def floater_tree(data: dict, page_files: dict[str, str], v1: ET.Element) -> ET.E
             node.set("label", "...")
         if name in {"btn_set_marks", "btn_reset_marks"}:
             node.set("label", "")
-            node.set("image_overlay", "Flag" if name == "btn_set_marks" else "Refresh_Off")
+            node.set("image_overlay", "KitIcon_transport_marks_set_16" if name == "btn_set_marks" else
+                     "KitIcon_transport_marks_reset_16")
     rec = copy_chrome("rec_indicator", v1)
     rec.set("width", "44"); rec.set("height", "28"); rec.set("halign", "center")
     bar.append(rec)
     show = copy_chrome("show_paths_global_check", v1); show.tag = "kit_switch"; show.set("label", ""); show.set("width", "28"); show.set("height", "28"); bar.append(show)
-    help_button = copy_chrome("btn_help", v1); help_button.set("label", ""); help_button.set("image_overlay", "Inv_Notecard"); help_button.set("width", "28"); help_button.set("height", "28"); bar.append(help_button)
+    help_button = copy_chrome("btn_help", v1); help_button.set("label", ""); help_button.set("image_overlay", "KitIcon_transport_legend_16"); help_button.set("width", "28"); help_button.set("height", "28"); bar.append(help_button)
     ET.SubElement(bar, "text", {"name": "status_strip", "use_ellipses": "true",
                                 "width": "320", "height": "28"})
     ET.SubElement(bar, "button", {"name": "btn_cast_chip", "label": "Cast", "width": "70", "height": "28"})
@@ -818,6 +876,7 @@ def generate(data_path: Path, config_path: Path, out_dir: Path) -> tuple[dict[Pa
         else:
             root, names = launcher_page(group, raw_page, config["launcher_targets"][key])
             hosted, kit_rows = 0, 0
+        apply_kit_xui_style(root)
         file_name = page_filename(group["name"], raw_page["name"])
         page_files[key] = file_name
         outputs[out_dir / file_name] = xml_bytes(root, note)
@@ -835,9 +894,11 @@ def generate(data_path: Path, config_path: Path, out_dir: Path) -> tuple[dict[Pa
         runtime_names = names if classification != "legacy" else set()
         names_text = ", ".join(sorted(runtime_names))
         report_lines.append(f"KITNAMES {raw_page['name']}:" + (" " + names_text if names_text else ""))
-    outputs[out_dir / "floater_director_v2.xml"] = xml_bytes(floater_tree(data, page_files, v1), note)
+    floater = floater_tree(data, page_files, v1)
+    apply_kit_xui_style(floater)
+    outputs[out_dir / "floater_director_v2.xml"] = xml_bytes(floater, note)
     outputs[out_dir / "director_kit_index.xml"] = index_bytes(data, config, classes, note, generated_rows)
-    report_lines += ["", "ICON_TEXTURES Flag Kit_Circle Refresh_Off Play_Off Stop_Off Inv_Notecard",
+    report_lines += ["", "ICON_TEXTURES KitIcon_*_16 Kit_RoundRect4 Kit_RoundRect6 Kit_Pill9 Kit_Circle Kit_SliderTrack Kit_SliderThumb",
                      "TRANSPORT take_timecode uses LLFlycamRecorder playhead at 2 Hz; generated visible",
                      "CONTROL_NAME cine_rimq_actors_alpha: data widget spelling differs; v1 setting CineRigRimActorsOnlyAlpha is authoritative"]
     report_path = REPORT if out_dir.resolve() == DEFAULT_OUT.resolve() else out_dir / "gen_report.txt"
@@ -874,7 +935,9 @@ def selftest(data_path: Path, config_path: Path, out_dir: Path) -> int:
                 continue
             legacy_count += 1
             generated = ET.fromstring(outputs[out_dir / page_filename(group["name"], page["name"])], parser=parser())
-            legacy_ok = legacy_ok and generated.tag == "kit_page" and children_canonical(generated) == children_canonical(find_named(v1, page["name"]))
+            expected_legacy = copy.deepcopy(find_named(v1, page["name"]))
+            apply_kit_xui_style(expected_legacy)
+            legacy_ok = legacy_ok and generated.tag == "kit_page" and children_canonical(generated) == children_canonical(expected_legacy)
         checks.append(("31 serialized legacy pages copy v1 children", legacy_ok and legacy_count == 31))
         dials = [node for path, payload in outputs.items() if path.name.startswith("panel_dpage_")
                  for node in ET.fromstring(payload, parser=parser()).iter("compass_dial")]

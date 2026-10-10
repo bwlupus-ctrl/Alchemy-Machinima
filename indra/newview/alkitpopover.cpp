@@ -4,8 +4,10 @@
 
 #include "alkitshell.h"
 #include "alkitrow.h"
+#include "alkitstyle.h"
 #include "lluictrl.h"
 #include "lluictrlfactory.h"
+#include "llui.h"
 
 static LLDefaultChildRegistry::Register<ALKitPopover> register_popover("kit_popover");
 
@@ -13,7 +15,12 @@ ALKitPopover::Params::Params() : anchor("anchor"), side("side", "below")
 {
 }
 
-ALKitPopover::ALKitPopover(const Params& params) : LLPanel(params), mAnchorName(params.anchor), mSide(params.side)
+ALKitPopover::ALKitPopover(const Params& params) :
+    LLPanel(params),
+    mAnchorName(params.anchor),
+    mSide(params.side),
+    mOuterImage(LLUI::getUIImage("Kit_RoundRect6")),
+    mInnerImage(LLUI::getUIImage("Kit_RoundRect6"))
 {
 }
 
@@ -70,7 +77,21 @@ bool ALKitPopover::postBuild()
                     popover->hide();
             });
     }
-    return LLPanel::postBuild();
+    const bool built = LLPanel::postBuild();
+    ALKitStyle::styleTree(this);
+    return built;
+}
+
+void ALKitPopover::draw()
+{
+    LL_PROFILE_ZONE_SCOPED_CATEGORY_UI;
+    if (mOuterImage && mInnerImage)
+    {
+        mOuterImage->draw(0, 0, getRect().getWidth(), getRect().getHeight(), ALKitStyle::color(ALKitStyle::INPUT_BORDER).get());
+        mInnerImage->draw(1, 1, llmax(1, getRect().getWidth() - 2), llmax(1, getRect().getHeight() - 2),
+                          ALKitStyle::color(ALKitStyle::RAIL_BG).get());
+    }
+    LLPanel::draw();
 }
 
 void ALKitPopover::show()

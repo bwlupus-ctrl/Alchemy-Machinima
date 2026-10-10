@@ -286,7 +286,7 @@ bool ALKitCard::postBuild()
     bp.rect  = LLRect(0, 24, 24, 0);
     bp.label = "";
     mReset   = LLUICtrlFactory::create<LLButton>(bp);
-    mReset->setImageOverlay("Refresh_Off");
+    mReset->setImageOverlay("KitIcon_reset_arc_16");
     mReset->setCommitCallback(
         [this](LLUICtrl*, const LLSD&)
         {
@@ -355,12 +355,16 @@ bool ALKitCard::postBuild()
 
     bool has_advanced = false;
     for (ALKitRow* row : mRows)
-        has_advanced |= row->meta().advanced;
+        if (row->meta().advanced)
+        {
+            has_advanced = true;
+            ++mMoreCount;
+        }
 
     if (has_advanced)
     {
         bp.name  = "kc_" + mId + "_more";
-        bp.label = "More options";
+        bp.label = "More options (" + llformat("%d", mMoreCount) + ")";
         mMore    = LLUICtrlFactory::create<LLButton>(bp);
         mMore->setCommitCallback(
             [this](LLUICtrl*, const LLSD&)
@@ -369,7 +373,7 @@ bool ALKitCard::postBuild()
                     mMoreOpen = !mMoreOpen;
                 else
                     mOptionMore[mActiveOption] = !mOptionMore[mActiveOption];
-                mMore->setLabel(moreOpen() ? "Fewer options" : "More options");
+                mMore->setLabel((moreOpen() ? "Fewer options (" : "More options (") + llformat("%d", mMoreCount) + ")");
                 requestLayout();
             });
         addChild(mMore);
@@ -528,7 +532,7 @@ void ALKitCard::syncSelector()
     if (mSelectorCombo)
         mSelectorCombo->setValue(value);
     if (mMore)
-        mMore->setLabel(moreOpen() ? "Fewer options" : "More options");
+        mMore->setLabel((moreOpen() ? "Fewer options (" : "More options (") + llformat("%d", mMoreCount) + ")");
 }
 
 S32 ALKitCard::heightForWidth(S32 w) const
@@ -822,7 +826,7 @@ bool ALKitCard::revealRow(ALKitRow* row)
         else
             mOptionMore[mActiveOption] = true;
         if (mMore)
-            mMore->setLabel("Fewer options");
+        mMore->setLabel("Fewer options (" + llformat("%d", mMoreCount) + ")");
     }
     requestLayout();
     return true;
@@ -859,7 +863,7 @@ void ALKitCard::restoreOpenState(bool body, const LLSD& more)
     else
         std::fill(mOptionMore.begin(), mOptionMore.end(), more.asBoolean());
     if (mMore)
-        mMore->setLabel(moreOpen() ? "Fewer options" : "More options");
+        mMore->setLabel((moreOpen() ? "Fewer options (" : "More options (") + llformat("%d", mMoreCount) + ")");
     requestLayout();
 }
 
@@ -882,7 +886,7 @@ void ALKitCard::draw()
         gl_line_2d(0, getRect().getHeight() - ALKitStyle::CARD_HDR_H, getRect().getWidth(), getRect().getHeight() - ALKitStyle::CARD_HDR_H,
                    ALKitStyle::color(ALKitStyle::DIVIDER).get());
     }
-    if (const LLFontGL* f = LLFontGL::getFontSansSerifSmallBold())
+    if (const LLFontGL* f = ALKitStyle::sansFont("Kit13", true))
     {
         const S32 title_width = llmax(20, getRect().getWidth() / 2 - ALKitStyle::CARD_PAD_L);
         f->renderUTF8(mTitle, 0, (F32)ALKitStyle::CARD_PAD_L, (F32)(getRect().getHeight() - 23),

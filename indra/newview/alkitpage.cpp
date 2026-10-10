@@ -43,11 +43,11 @@ std::vector<std::string> tokens(const std::string& value, const std::string& sep
     return out;
 }
 
-LLPanel* makePanel(const std::string& name)
+LLPanel* makePanel(const std::string& name, S32 height)
 {
     LLPanel::Params p;
     p.name               = name;
-    p.rect               = LLRect(0, 1, 1, 0);
+    p.rect               = LLRect(0, height, 1, 0);
     p.background_visible = false;
 
     return LLUICtrlFactory::create<LLPanel>(p);
@@ -219,11 +219,17 @@ bool ALKitPage::postBuild()
     for (LLView* c : *getChildList())
         xml_children.push_back(c);
 
-    mBar = makePanel(pre + "_bar");
+    mBar = makePanel(pre + "_bar", ALKitStyle::BAR_H);
+    mBar->setBackgroundVisible(true);
+    mBar->setBackgroundColor(ALKitStyle::color(ALKitStyle::WINDOW_BG));
     addChild(mBar);
-    mChipsContainer = makePanel(pre + "_chips");
+    mChipsContainer = makePanel(pre + "_chips", ALKitStyle::CHIPS_H);
+    mChipsContainer->setBackgroundVisible(true);
+    mChipsContainer->setBackgroundColor(ALKitStyle::color(ALKitStyle::SUB_BAND));
     addChild(mChipsContainer);
-    mWhoContainer = makePanel(pre + "_who");
+    mWhoContainer = makePanel(pre + "_who", ALKitStyle::WHO_H);
+    mWhoContainer->setBackgroundVisible(true);
+    mWhoContainer->setBackgroundColor(ALKitStyle::color(ALKitStyle::INPUT_BG));
     addChild(mWhoContainer);
     S32 bar_x = ALKitStyle::PAGE_PAD_LR;
 
@@ -249,7 +255,14 @@ bool ALKitPage::postBuild()
             {
                 LLView* c = items[i];
                 mBar->addChild(c);
-                c->reshape(i == 0 ? ALKitStyle::PRESET_COMBO_W : 28, 24, true);
+                S32 item_width = ALKitStyle::PRESET_COMBO_W;
+                if (i != 0)
+                {
+                    LLButton* button = dynamic_cast<LLButton*>(c);
+                    const S32 label_width = button && button->getFont() ? button->getFont()->getWidth(button->getText()) : 24;
+                    item_width = llmax(28, label_width + 18);
+                }
+                c->reshape(item_width, 24, true);
                 c->setOrigin(bar_x, 10);
                 bar_x += c->getRect().getWidth() + ALKitStyle::COL_GAP;
             }
@@ -271,7 +284,8 @@ bool ALKitPage::postBuild()
     }
 
     LLButton* reset = makeButton(pre + "_reset_page", "");
-    reset->setImageOverlay("Refresh_Off");
+    mResetPage = reset;
+    reset->setImageOverlay("KitIcon_reset_arc_16");
     reset->setCommitCallback([this](LLUICtrl*, const LLSD&) { resetPage(); });
     mBar->addChild(reset);
     reset->reshape(28, 24, true);
@@ -319,8 +333,12 @@ bool ALKitPage::postBuild()
             });
     }
 
-    mUndo = makeButton(pre + "_undo", "Undo");
-    mRedo = makeButton(pre + "_redo", "Redo");
+    mUndo = makeButton(pre + "_undo", "");
+    mRedo = makeButton(pre + "_redo", "");
+    mUndo->setImageOverlay("KitIcon_undo_16");
+    mRedo->setImageOverlay("KitIcon_redo_16");
+    mUndo->setToolTip(LLStringExplicit("Undo"));
+    mRedo->setToolTip(LLStringExplicit("Redo"));
     mUndo->setCommitCallback(
         [this](LLUICtrl*, const LLSD&)
         {
@@ -344,7 +362,7 @@ bool ALKitPage::postBuild()
 
     if (!mMasterWidget.empty())
     {
-        mMasterBox = makePanel(pre + "_master_box");
+        mMasterBox = makePanel(pre + "_master_box", 24);
         mBar->addChild(mMasterBox);
         LLTextBox::Params master_label;
         master_label.name          = pre + "_master_label";
@@ -404,7 +422,7 @@ bool ALKitPage::postBuild()
     mSearch->setCommitCallback([this](LLUICtrl* c, const LLSD&) { setSearchText(c->getValue().asString()); });
     mBar->addChild(mSearch);
 
-    mBanner = makePanel(pre + "_banner");
+    mBanner = makePanel(pre + "_banner", ALKitStyle::BANNER_H);
     mBanner->setBackgroundVisible(true);
     mBanner->setBackgroundColor(ALKitStyle::color(ALKitStyle::BANNER_BG));
     LLTextBox::Params bt;
@@ -438,6 +456,7 @@ bool ALKitPage::postBuild()
         mWhoContainer->addChild(LLUICtrlFactory::create<LLTextBox>(who_hint));
         mWhoCombo = findChild<LLComboBox>(mWhoPicker);
         mWhoChip  = makeButton(pre + "_who_chip", mWhoLabel);
+        mWhoChip->setImageOverlay("KitIcon_who_person_16", LLFontGL::LEFT);
         mWhoContainer->addChild(mWhoChip);
         if (mWhoCombo)
         {
@@ -490,6 +509,7 @@ bool ALKitPage::postBuild()
         if (ALKitShell* shell = ALKitShell::find(this))
             shell->history().watchSettings(mPage, watched);
         reshape(getRect().getWidth(), getRect().getHeight(), true);
+        ALKitStyle::styleTree(this);
         mRestoringState = false;
         return true;
     }
@@ -588,6 +608,7 @@ bool ALKitPage::postBuild()
     applyModeAndChip();
     restoreState();
     reshape(getRect().getWidth(), getRect().getHeight(), true);
+    ALKitStyle::styleTree(this);
     return true;
 }
 
@@ -706,7 +727,21 @@ void ALKitPage::applyModeAndChip()
             }
         mSectionHeadings[i]->setVisible(!filtered && any);
         if (i < (S32)mChips.size())
+        {
             mChips[i]->setVisible(any);
+            mChips[i]->setToggleState(filtered && i == mChipIndex);
+            ALKitStyle::styleButton(mChips[i], !(filtered && i == mChipIndex));
+            S32 count = 0;
+            if (i < (S32)mSections.size())
+                for (const std::string& id : mSections[i].cards)
+                {
+                    auto found = mCards.find(id);
+                    if (found != mCards.end() && found->second->getVisible())
+                        ++count;
+                }
+            if (i < (S32)mSections.size())
+                mChips[i]->setLabel(mSections[i].label + " " + llformat("%d", count));
+        }
     }
     requestLayout();
 }
@@ -734,6 +769,8 @@ void ALKitPage::reshape(S32 w, S32 h, bool p)
         S32 x = ALKitStyle::PAGE_PAD_LR;
         for (LLButton* b : mChips)
         {
+            if (!b->getVisible())
+                continue;
             b->reshape(100, 24, true);
             b->setOrigin(x, 7);
             x += 106;

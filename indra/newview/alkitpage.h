@@ -130,6 +130,16 @@ public:
     bool               legacy() const { return mLegacy; }
     ALKitScroller*     scroller() const { return mScroller; }
     LLPanel*           legacyHost() const { return mLegacyHost; }
+    LLPanel*           pageBar() const { return mBar; }
+    LLPanel*           whoBand() const { return mWhoContainer; }
+    LLButton*          whoChip() const { return mWhoChip; }
+    LLLineEditor*      searchEditor() const { return mSearch; }
+    ALKitSwitch*       masterSwitch() const { return mMaster; }
+    LLButton*          undoButton() const { return mUndo; }
+    LLButton*          redoButton() const { return mRedo; }
+    LLButton*          resetButton() const { return mResetPage; }
+    bool               hasMaster() const { return !mMasterWidget.empty(); }
+    bool               hasPreset() const { return mPresetMode != "none"; }
     LLComboBox*        whoCombo() const { return mWhoCombo; }
     bool               whoPinned() const { return mWhoPinned; }
     void               setWhoPin(const LLSD& value);
@@ -182,6 +192,7 @@ private:
     LLTextBox*                                      mLegacySummary  = nullptr;
     LLButton*                                       mUndo           = nullptr;
     LLButton*                                       mRedo           = nullptr;
+    LLButton*                                       mResetPage      = nullptr;
     LLButton*                                       mWhoChip        = nullptr;
     LLLineEditor*                                   mSearch         = nullptr;
     LLComboBox*                                     mWhoCombo       = nullptr;

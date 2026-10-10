@@ -11,6 +11,7 @@
 #include "llbutton.h"
 #include "llcallbacklist.h"
 #include "lleventtimer.h"
+#include "llfloater.h"
 #include "lllineeditor.h"
 #include "llrender.h"
 #include "llsliderwheel.h"
@@ -64,7 +65,26 @@ bool ALKitShell::postBuild()
     buildChrome();
     mConnections.emplace_back(setPageBuiltCallback([this](const std::string& name, LLPanel* panel) { pageBuilt(name, panel); }));
     layoutChrome();
+    ALKitStyle::styleTree(this);
     return true;
+}
+
+void ALKitShell::setReady()
+{
+    if (mReady)
+        return;
+    // XUI tab containers select their first child while the tree is still being
+    // constructed.  Deferring this transition until the floater has installed
+    // its page-built binder is what makes the first page obey the same lazy
+    // build contract as every later selection.
+    layoutChrome();
+    mReady = true;
+    LLPanel* group = mDirectorTabs ? mDirectorTabs->getCurrentPanel() : nullptr;
+    LLTabContainer* tabs = findFirst<LLTabContainer>(group);
+    ALKitLazyPage* page = tabs ? dynamic_cast<ALKitLazyPage*>(tabs->getCurrentPanel()) : nullptr;
+    if (page)
+        page->ensureBuilt();
+    syncSelection();
 }
 
 void ALKitShell::buildChrome()
@@ -203,6 +223,7 @@ void ALKitShell::buildChrome()
         LLButton* button = LLUICtrlFactory::create<LLButton>(params);
         button->setLeftHPad(12);
         button->setRightHPad(8);
+        button->setHAlign(LLFontGL::LEFT);
         button->setImageOverlay(item.icon, LLFontGL::LEFT);
         button->setSelectedLabelColor(ALKitStyle::color(ALKitStyle::ACCENT));
         const std::string    group        = item.group;
@@ -293,13 +314,13 @@ void ALKitShell::updatePips()
             if (gSavedSettings.controlExists(setting) && !gSavedSettings.getBOOL(setting))
                 off = true;
         }
-        const std::string label    = mRailLabels ? mRailData[index].label + (off ? "  \xE2\x97\x8B" : "") : std::string();
-        const std::string selected = label.empty() ? label : label + "  \xE2\x80\xA2";
+        const std::string label = mRailLabels ? mRailData[index].label + (off ? "  \xE2\x97\x8B" : "") : std::string();
         if (mRailButtons[index]->getLabelUnselected() != label)
             mRailButtons[index]->setLabelUnselected(label);
-        if (mRailButtons[index]->getLabelSelected() != selected)
-            mRailButtons[index]->setLabelSelected(selected);
+        if (mRailButtons[index]->getLabelSelected() != label)
+            mRailButtons[index]->setLabelSelected(label);
         mRailButtons[index]->setImageOverlay(mRailData[index].icon, mRailLabels ? LLFontGL::LEFT : LLFontGL::HCENTER);
+        mRailButtons[index]->setFont(ALKitStyle::sansFont("Kit13", mRailButtons[index]->getToggleState()));
     }
     for (TabData& tab : mTabs)
     {
@@ -392,9 +413,31 @@ void ALKitShell::layoutChrome()
         mCurrentPage = LLHandle<LLView>();
     }
     const std::string current_page = current_leaf ? current_leaf->getName() : std::string();
+    if (LLFloater* floater = dynamic_cast<LLFloater*>(getParent()))
+    {
+        std::string group_label = group_name;
+        for (const RailData& rail : mRailData)
+            if (rail.group == group_name)
+            {
+                group_label = rail.label;
+                break;
+            }
+        std::string page_label = current_page;
+        for (const TabData& tab : mTabs)
+            if (tab.page == current_page)
+            {
+                page_label = tab.label;
+                break;
+            }
+        const std::string title = "Director \xE2\x80\xBA " + group_label + " \xE2\x80\xBA " + page_label;
+        if (floater->getTitle() != title)
+            floater->setTitle(title);
+    }
     for (S32 index = 0; index < (S32)mRailButtons.size(); ++index)
     {
-        mRailButtons[index]->setToggleState(index < (S32)mRailData.size() && mRailData[index].group == group_name);
+        const bool selected = index < (S32)mRailData.size() && mRailData[index].group == group_name;
+        mRailButtons[index]->setToggleState(selected);
+        mRailButtons[index]->setFont(ALKitStyle::sansFont("Kit13", selected));
     }
     refreshModeProxy();
     ALKitPage* mode_page    = currentKitPage();
@@ -416,7 +459,9 @@ void ALKitShell::layoutChrome()
         }
     const bool overflow       = total_width > available;
     const S32  tabs_available = llmax(56, available - (overflow ? 56 : 0));
-    mTabOffset                = llclamp(mTabOffset, 0, llmax(0, visible_tabs - 1));
+    if (!overflow)
+        mTabOffset = 0;
+    mTabOffset = llclamp(mTabOffset, 0, llmax(0, visible_tabs - 1));
     S32 slots                 = 0;
     S32 used                  = 0;
     for (S32 index = mTabOffset; index < (S32)tab_widths.size(); ++index)
@@ -443,6 +488,7 @@ void ALKitShell::layoutChrome()
         const bool visible  = in_group && group_tab >= mTabOffset && group_tab < mTabOffset + slots;
         tab.button->setVisible(visible);
         tab.button->setToggleState(tab.page == current_page);
+        tab.button->setFont(ALKitStyle::sansFont("Kit13", tab.page == current_page));
         if (visible)
         {
             const S32 button_width = tab_widths[group_tab];
@@ -471,8 +517,8 @@ void ALKitShell::layoutRoster()
         header->setOrigin(4, height - ALKitStyle::ROSTER_HDR_H);
     }
     static const char* const tools[] = { "btn_add_you", "btn_add_animesh", "btn_focus", "btn_remove" };
-    S32                      x       = 4;
-    const S32                tools_y = height - ALKitStyle::ROSTER_HDR_H - ALKitStyle::ROSTER_TOOL - 2;
+    S32                      x       = width - 4 - 4 * ALKitStyle::ROSTER_TOOL - 3 * 4;
+    const S32                tools_y = height - ALKitStyle::ROSTER_HDR_H + 1;
     for (const char* name : tools)
         if (LLButton* button = mRoster->findChild<LLButton>(name, false))
         {
@@ -487,14 +533,13 @@ void ALKitShell::layoutRoster()
     }
     if (group)
     {
-        group->reshape(llmax(1, width - 8), 24, true);
-        group->setOrigin(4, 32);
+        group->setVisible(false);
     }
     if (list)
     {
-        const S32 list_top = llmax(58, tools_y - 4);
-        list->reshape(llmax(1, width - 8), llmax(1, list_top - 58), true);
-        list->setOrigin(4, 58);
+        const S32 list_top = llmax(34, height - ALKitStyle::ROSTER_HDR_H - 4);
+        list->reshape(llmax(1, width - 8), llmax(1, list_top - 34), true);
+        list->setOrigin(4, 34);
     }
 }
 
@@ -541,6 +586,38 @@ void ALKitShell::refreshModeProxy()
 void ALKitShell::draw()
 {
     LL_PROFILE_ZONE_NAMED_CATEGORY_UI("ALKitShell draw");
+    auto fill_panel = [this](LLView* panel, const LLUIColor& color)
+    {
+        LLRect rect;
+        if (panel && panel->getVisible() && panel->localRectToOtherView(panel->getLocalRect(), &rect, this))
+            gl_rect_2d(rect, color.get(), true);
+    };
+    fill_panel(mRail, ALKitStyle::color(ALKitStyle::RAIL_BG));
+    fill_panel(mTabStrip, ALKitStyle::color(ALKitStyle::RAIL_BG));
+    fill_panel(mHelpPanel, ALKitStyle::color(ALKitStyle::RAIL_BG));
+    fill_panel(mHelpStrip, ALKitStyle::color(ALKitStyle::RAIL_BG));
+    fill_panel(mTransport, ALKitStyle::color(ALKitStyle::RAIL_BG));
+    for (LLButton* button : mRailButtons)
+    {
+        if (!button || !button->getVisible() || !button->getToggleState())
+            continue;
+        LLRect rect;
+        if (button->localRectToOtherView(button->getLocalRect(), &rect, this))
+        {
+            gl_rect_2d(rect, ALKitStyle::color(ALKitStyle::CONTROL_BG).get(), true);
+            gGL.color4fv(ALKitStyle::color(ALKitStyle::ACCENT).get().mV);
+            gl_circle_2d((F32)rect.mRight - 13.f, (F32)(rect.mBottom + rect.mTop) * .5f, 3.f, 12, true);
+        }
+    }
+    for (LLButton* button : mTabButtons)
+    {
+        if (!button || !button->getVisible() || !button->getToggleState())
+            continue;
+        LLRect rect;
+        if (button->localRectToOtherView(button->getLocalRect(), &rect, this))
+            gl_rect_2d(rect.mLeft, rect.mBottom, rect.mRight, rect.mBottom + 2,
+                       ALKitStyle::color(ALKitStyle::ACCENT).get(), true);
+    }
     LLPanel::draw();
     LLView* view = mHighlight.get();
     if (view && mHighlightTimer.getElapsedTimeF32() < ALKitStyle::FLASH_SEC)

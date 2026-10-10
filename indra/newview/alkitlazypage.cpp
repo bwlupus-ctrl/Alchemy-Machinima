@@ -29,6 +29,9 @@ LLPanel* ALKitLazyPage::ensureBuilt()
 {
     if (mContent || mBuildAttempted)
         return mContent;
+    ALKitShell* shell = ALKitShell::find(this);
+    if (!shell || !shell->isReady())
+        return nullptr;
     mBuildAttempted = true;
     LL_PROFILE_ZONE_NAMED_CATEGORY_UI("Kit page build");
     LLTimer timer;
@@ -41,11 +44,8 @@ LLPanel* ALKitLazyPage::ensureBuilt()
     if (mContent->getParent() != this)
         addChild(mContent);
     fitContent();
-    if (ALKitShell* shell = ALKitShell::find(this))
-    {
-        shell->scrollFit().adoptPage(this, mContent);
-        shell->emitPageBuilt(getName(), mContent);
-    }
+    shell->scrollFit().adoptPage(this, mContent);
+    shell->emitPageBuilt(getName(), mContent);
     mBuildMs = timer.getElapsedTimeF64() * 1000.;
     LL_INFOS("DirectorKit") << "Kit page " << getName() << " built in " << mBuildMs << " ms" << LL_ENDL;
     return mContent;
@@ -74,7 +74,8 @@ void ALKitLazyPage::fitContent()
 
 void ALKitLazyPage::onVisibilityChange(bool visible)
 {
-    if (visible)
+    ALKitShell* shell = ALKitShell::find(this);
+    if (visible && shell && shell->isReady())
         ensureBuilt();
     LLPanel::onVisibilityChange(visible);
 }

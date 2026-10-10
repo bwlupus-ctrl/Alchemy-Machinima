@@ -2,8 +2,11 @@
 #define AL_KIT_STYLE_H
 
 #include "lluicolor.h"
+#include <string>
 
 class LLFontGL;
+class LLButton;
+class LLView;
 namespace ALKitStyle
 {
 constexpr S32 ROW_H = 28, LABEL_W = 100, VALUE_W = 52, RESET_W = 20, COL_GAP = 6, ROW_INSET = 4;
@@ -17,7 +20,7 @@ constexpr S32 SUB_FIRST_H = 26, SUB_H = 34, MORE_H = 26, SELECTOR_BAND_H = 34, T
 constexpr S32 RAIL_W = 176, RAIL_ICON_W = 56, RAIL_ITEM_H = 40, ROSTER_HDR_H = 24, ROSTER_TOOL = 22;
 constexpr S32 HELP_W = 224, HELP_STRIP_H = 30, TABSTRIP_H = 40, CHIPS_H = 38, WHO_H = 34;
 constexpr S32 BAR_H = 44, BANNER_H = 32, TRANSPORT_H = 40, SEARCH_W = 170, PRESET_COMBO_W = 160;
-constexpr S32 CARD_PRESET_W = 120, MAP_LEGEND_H = 40, BP_FULL = 1100, BP_RAIL = 980, BP_HYST = 8;
+constexpr S32 CARD_PRESET_W = 120, MAP_LEGEND_H = 40, BP_FULL = 1150, BP_RAIL = 980, BP_HYST = 8;
 constexpr S32 FLOATER_DEFAULT_W = 1160, FLOATER_DEFAULT_H = 720, FLOATER_MIN_W = 850, FLOATER_MIN_H = 560;
 constexpr F32 FLASH_SEC = 1.5f, DIM_ALPHA = .45f;
 enum EColor
@@ -58,9 +61,15 @@ enum EColor
     MAP_BACK,
     MAP_BG,
     OFF_GREY,
+    LIGHTMAP_CENTRE,
+    LIGHTMAP_EDGE,
+    LIGHTMAP_BORDER,
     COLOR_COUNT
 };
 const LLUIColor& color(EColor color);
+const LLFontGL*  sansFont(const std::string& size = "Kit12", bool bold = false);
 const LLFontGL*  monoFont();
+void             styleButton(LLButton* button, bool transparent = false);
+void             styleTree(LLView* root);
 } // namespace ALKitStyle
 #endif

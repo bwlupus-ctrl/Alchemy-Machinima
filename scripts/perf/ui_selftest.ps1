@@ -74,7 +74,7 @@ while ($true) {
   if ($DirectorV2) {
     $viewerArgs += @('--set', 'DirectorUIV2', 'TRUE',
       '--set', 'UIPerfDirectorV2', 'TRUE',
-      '--set', 'UILayoutAuditSizes', '"1160x720,900x720,min,1141x720,915x720"')
+      '--set', 'UILayoutAuditSizes', '"1160x720,1158x720,1150x720,1149x720,988x720,980x720,979x720,900x720,min"')
   }
   # The viewer resolves app_settings/ and skins/ from its working directory: always
   # start it in the exe's own folder, or it loads whatever install the caller is in.
@@ -439,7 +439,8 @@ if ($DirectorV2) {
   $kitFindings = @($layoutRows | Where-Object {
     $_.tab_path -match '^(default|.*cine_light_rig_tab|.*light_rim_tab)@'
   })
-  $requiredSizes = @('1160x720', '900x720', 'minimum', '1141x720', '915x720')
+  $requiredSizes = @('1160x720', '1158x720', '1150x720', '1149x720',
+    '988x720', '980x720', '979x720', '900x720', 'minimum')
   $coverageMissing = [System.Collections.Generic.List[string]]::new()
   foreach ($size in $requiredSizes) {
     $sizeStates = @($layoutStates | Where-Object { $_.size_pass -eq $size -and $_.applied -eq '1' })
@@ -473,12 +474,13 @@ if ($DirectorV2) {
   }
   $kitLayoutPass = $kitFindings.Count -eq 0 -and $coverageMissing.Count -eq 0
   $kitLayoutValue = "$($kitFindings.Count) finding(s), $($coverageMissing.Count) missing state capture(s)"
-  Write-DirectorBudgetLine 'layout findings shell + Light > Rig + Light > Rim, all states at all 5 sizes = 0' $kitLayoutValue $kitLayoutPass
+  Write-DirectorBudgetLine 'layout findings shell + Light > Rig + Light > Rim, all states at all 9 sizes = 0' $kitLayoutValue $kitLayoutPass
 
   $liveFindingNames = @('LAZY_PAGE_UNATTACHED', 'LAZY_PAGE_UNSIZED', 'LAZY_PAGE_NO_CARD',
+    'LEGACY_BODY_COLLAPSED', 'LEGACY_BODY_UNBOUND', 'PAGE_CHROME', 'TAB_OVERFLOW', 'TAB_LABEL_CLIPPED',
     'HELP_EMPTY', 'DIRECTOR_SPILL', 'ROSTER_SPILL', 'RAIL_ICON_LABEL_OVERLAP',
     'TRANSPORT_SPILL', 'TRANSPORT_OVERLAP', 'TRANSPORT_ORDER', 'TRANSPORT_LABEL_CLIPPED',
-    'KIT_SCROLLER_EMPTY', 'KIT_SCROLLER_SPILL', 'KIT_HORIZONTAL_SCROLL', 'RAIL_GROUPS')
+    'TRANSPORT_FLEX_MIN', 'KIT_SCROLLER_EMPTY', 'KIT_SCROLLER_SPILL', 'KIT_HORIZONTAL_SCROLL', 'RAIL_GROUPS')
   $liveFindings = @($layoutRows | Where-Object finding -in $liveFindingNames)
   $screenshotMissing = [System.Collections.Generic.List[string]]::new()
   foreach ($group in @($layoutStates | Group-Object size_pass, page_index)) {
@@ -489,8 +491,10 @@ if ($DirectorV2) {
       $screenshotMissing.Add($group.Name)
     }
   }
-  $liveChecksPass = $liveFindings.Count -eq 0 -and $screenshotMissing.Count -eq 0
-  Write-DirectorBudgetLine 'live render checks + PNG per page/size' "$($liveFindings.Count) finding(s), $($screenshotMissing.Count) missing PNG(s)" $liveChecksPass
+  $styleProbeCount = @(Get-ChildItem -LiteralPath $shotsDest -Filter '*.style.json' -Recurse -File -ErrorAction SilentlyContinue).Count
+  $styleProbeMissing = [math]::Max(0, 36 * $requiredSizes.Count - $styleProbeCount)
+  $liveChecksPass = $liveFindings.Count -eq 0 -and $screenshotMissing.Count -eq 0 -and $styleProbeMissing -eq 0
+  Write-DirectorBudgetLine 'live render checks + PNG/style probe per page/size' "$($liveFindings.Count) finding(s), $($screenshotMissing.Count) missing PNG(s), $styleProbeMissing missing probe(s)" $liveChecksPass
 
   $legacyRows = @($layoutRows | Where-Object {
     $_.size_pass -in @('1160x720', 'minimum') -and

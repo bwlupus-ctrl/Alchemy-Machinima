@@ -20,7 +20,7 @@ LLTextBox* makeText(LLPanel* parent, const std::string& name, S32 top, S32 heigh
     params.name     = name;
     params.rect     = LLRect(10, top, parent->getRect().getWidth() - 10, top - height);
     params.wrap     = wrap;
-    params.font     = LLFontGL::getFontSansSerif();
+    params.font     = ALKitStyle::sansFont("Kit12");
     LLTextBox* text = LLUICtrlFactory::create<LLTextBox>(params);
     parent->addChild(text);
     return text;
@@ -34,7 +34,7 @@ ALKitHelpStrip::ALKitHelpStrip(const LLView::Params& params) : LLView(params)
 void ALKitHelpStrip::draw()
 {
     LL_PROFILE_ZONE_SCOPED_CATEGORY_UI;
-    const LLFontGL* font = LLFontGL::getFontSansSerif();
+    const LLFontGL* font = ALKitStyle::sansFont("Kit12");
     if (font)
     {
         font->renderUTF8(mText, 0, 0, 11, ALKitStyle::color(ALKitStyle::TEXT).get(), LLFontGL::LEFT, LLFontGL::VCENTER, LLFontGL::NORMAL,
@@ -65,9 +65,14 @@ void ALKitHelp::attach(LLPanel* panel, LLPanel* strip)
     strip_params.rect = LLRect(10, 24, strip->getRect().getWidth() - 10, 2);
     mStripText        = new ALKitHelpStrip(strip_params);
     strip->addChild(mStripText);
-    mKicker->setFont(LLFontGL::getFontSansSerifSmall());
-    mTitle->setFont(LLFontGL::getFontSansSerifBig());
-    mMeta->setFont(LLFontGL::getFontSansSerifSmall());
+    mKicker->setFont(ALKitStyle::sansFont("Kit11"));
+    mKicker->setColor(ALKitStyle::color(ALKitStyle::MUTED));
+    mTitle->setFont(ALKitStyle::sansFont("Kit15", true));
+    mTitle->setColor(ALKitStyle::color(ALKitStyle::TEXT));
+    mBody->setFont(ALKitStyle::sansFont("Kit12"));
+    mBody->setReadOnlyColor(ALKitStyle::color(ALKitStyle::LABEL));
+    mMeta->setFont(ALKitStyle::sansFont("Kit11"));
+    mMeta->setColor(ALKitStyle::color(ALKitStyle::DIM));
 }
 
 void ALKitHelp::layout(S32 width, S32 height, S32 strip_width)

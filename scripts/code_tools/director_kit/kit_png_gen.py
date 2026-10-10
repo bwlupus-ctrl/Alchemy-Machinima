@@ -32,8 +32,11 @@ def main() -> None:
     OUT.mkdir(parents=True, exist_ok=True)
     write_mask("Kit_RoundRect4.png", 16, 16, 4)
     write_mask("Kit_RoundRect6.png", 16, 16, 6)
+    write_mask("Kit_RoundRect8.png", 20, 20, 8)
     write_mask("Kit_Pill9.png", 18, 18, 9)
     write_mask("Kit_Circle.png", 16, 16, 8)
+    write_mask("Kit_SliderTrack.png", 12, 4, 2)
+    write_mask("Kit_SliderThumb.png", 14, 14, 7)
 
 if __name__ == "__main__":
     main()

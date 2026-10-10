@@ -13,6 +13,7 @@
 
 #include "llfocusmgr.h"
 #include "llfontgl.h"
+#include "llfontregistry.h"
 #include "llcontrol.h"
 #include "llrender.h"
 #include "llrender2dutils.h"
@@ -90,6 +91,8 @@ ALCompassDial::ALCompassDial(const Params& p)
     }
     if (mKitGeometry)
     {
+        mKitSansFont = LLFontGL::getFont(LLFontDescriptor("IBMPlexSans", "Kit10", 0));
+        mKitMonoFont = LLFontGL::getFont(LLFontDescriptor("IBMPlexMono", "Kit10", 0));
         setTabStop(true);
     }
     char text[32];
@@ -320,7 +323,8 @@ void ALCompassDial::draw()
         }
         if (mShowRangeLabels)
         {
-            if (const LLFontGL* font = LLFontGL::getFontSansSerifSmall())
+            const LLFontGL* font = mKitGeometry ? mKitMonoFont : LLFontGL::getFontSansSerifSmall();
+            if (font)
             {
                 font->renderUTF8(mMaximumText, 0, ll_round(cx), ll_round(cy + radius - 5.f), range, LLFontGL::LEFT, LLFontGL::VCENTER);
                 font->renderUTF8(mMinimumText, 0, ll_round(cx), ll_round(cy - radius + 5.f), range, LLFontGL::LEFT, LLFontGL::VCENTER);
@@ -358,7 +362,7 @@ void ALCompassDial::draw()
     gl_circle_2d(cx, cy, 2.5f, 12, true);
 
     // cardinal letters outside the ring
-    const LLFontGL* font = LLFontGL::getFontSansSerifSmall();
+    const LLFontGL* font = mKitGeometry ? mKitSansFont : LLFontGL::getFontSansSerifSmall();
     if (font && mShowCardinals)
     {
         const F32 scale = llmin(getRect().getWidth(), getRect().getHeight()) / 48.f;

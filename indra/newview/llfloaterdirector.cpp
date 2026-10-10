@@ -761,14 +761,7 @@ bool LLFloaterDirector::postBuildV2()
     mScrollFit.setUnwrappedPages(mShell->unwrappedPages());
     mScrollFit.installForTabs(mTabContainer, this);
     mShell->setScrollFit(&mScrollFit);
-    if (LLPanel* initial = currentLeafPanel())
-    {
-        const std::string page = initial->getName();
-        if (LLPanel* content = mShell->ensurePageBuilt(page))
-        {
-            bindPage(page, content);
-        }
-    }
+    mShell->setReady();
     const F32 build_ms = mBuildTimer.getElapsedTimeF32() * 1000.f;
     LL_INFOS("Director") << "Director v2 chrome build " << build_ms << " ms" << LL_ENDL;
     return true;
@@ -4484,10 +4477,10 @@ void LLFloaterDirector::refreshStatusStrip()
     {
         queued = llformat(" \xC2\xB7 %d queued", cast.pendingStartCount());
     }
-    setTextIfChanged(mStatusStrip,                  // [UIPerfC1]
-                     llformat("%d moving%s \xC2\xB7 %s \xC2\xB7 Orbit %s",
-                              moving, queued.c_str(), cam.c_str(),
-                              orbit_enabled ? "on" : "off"));
+    const std::string status = llformat("%d moving%s \xC2\xB7 %s \xC2\xB7 Orbit %s",
+                                        moving, queued.c_str(), cam.c_str(), orbit_enabled ? "on" : "off");
+    setTextIfChanged(mStatusStrip, status); // [UIPerfC1]
+    setToolTipIfChanged(mStatusStrip, status);
 
     // REC indicator: red danger dot while capturing, muted circle when idle
     // (diffed so the color/text are only re-set on a state change)
