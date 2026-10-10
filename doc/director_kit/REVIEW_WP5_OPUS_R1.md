@@ -279,3 +279,93 @@ The perf rows (tab/steady/hover) are measured before any defaults are applied, w
 - The `-DirectorV2` argv matches 6.4.5.
 - The screenshot layout matches 6.7.1.
 - The budget prints all seven 6.4 lines, plus the 6.4.6 hover line.
+
+---
+
+## R1 verification (commit `af5acdd6529`, WP5 fixes plus WP4)
+
+**Verdict: FIX-NEEDED.** One new MAJOR and one MAJOR residual of M3 remain. All other findings are fixed. The changed files pass `zs_check` (the orchestrator ran `cl /Zs`).
+
+### Correction to B1
+
+The R1 rationale for B1 was wrong:
+- `--set` goes through `tempSetControl()`, which calls `control->setValue(value, false)` (`llappviewer.cpp`). That pushes an *unsaved* layer.
+- `saveToFile()` writes `getSaveValue()`, which reads `mValues[1]` and ignores unsaved layers (`llcontrol.cpp:345`).
+
+So `DirectorUIV2=TRUE` from `--set` could never persist. The real persistence leak in R0 was the kit code's own saved-layer writes, which R1 listed as m6:
+- the chip `saveState`;
+- `revealRow`, which writes `DirectorV2SelectedLight`;
+- the adapter's `setBOOL(CineLightRigEasyMode)`;
+- the HEAD `normalizeSelectedForEasy` EV writes.
+
+### B1 status: fixed
+
+**Verified behaviour**
+- The marker is now `UIPerfDirectorV2`, which is Persist=0 (`settings.xml`).
+- The Runner snapshots every control's active value, saved value and unsaved flag (`SaveControls`/`applyToAll`) before it touches anything.
+- Audit writes now use `setValue(…, false)` (unsaved layer).
+- `restore()` → `restoreSettingsSnapshot()` resets every changed control, and every runner override (including `DirectorUIV2`), to its original saved layer, then re-adds the original unsaved layer.
+- This runs on FINISH (which also stays save-suppressed) and on `abortForLogin` (`restore()` runs before `sSuppressSettingsSave = false`).
+- A crash path saves nothing.
+
+**Conclusion:** no setting, including `DirectorUIV2`, can persist after finish, abort or crash.
+
+### Default-run identity: holds
+
+Every new branch is gated on `isDirectorV2()` or `mDirectorV2`, which now comes from Persist=0 `UIPerfDirectorV2` (so m1 is fixed):
+- `applyKitAuditState()` returns true immediately, and the old ungated `relayoutNow` walk is gone.
+- The `!applied` early return in `auditGeometry` is gated.
+- The legacy-host `auditPageRoot` is V2-only.
+- The 2-minute page cap is gated.
+- `advanceAuditPageOrSize()` matches the old if-chain exactly.
+- `restoreDirectorAuditSettings()` at FINISH is a no-op (empty map).
+- `restore()` keeps the old `UIFolderViewCull` path when not V2.
+- `mRawPath` is additive.
+- The perf CSV and layout CSV schemas are unchanged.
+- In the ps1, every change is behind `$DirectorV2`, including `$exitFlagged`.
+
+### Per-finding status
+
+| Finding | Status | Evidence |
+|---|---|---|
+| M1 isolation | Fixed | Each state reapplies the defaults, the page's default mode and chip, and every card's captured body/More. Selector states use `page->revealRow` (which reveals the card). Map states reveal `light_map`. |
+| M2 `kit_build` | Fixed | `ALKitLazyPage::buildMs()` (set in `ensureBuilt`). Rows are split into `kit_build` and `kit_build_legacy`. The open page is measured from its own build time. |
+| M3 legacy compare | **Partial (MAJOR residual N2)** | Fixed: the legacy-host audit root makes widget paths equal v1's; `detail` is dropped from the key; sizes are normalised. |
+| M4 coverage | Fixed | The CSV has `enumerated`/`applied` columns, `auditGeometry` skips unapplied states, the ps1 requires every kind, and each page must have every enumerated state applied at all 4 sizes. |
+| m2–m9 | Fixed | Exit flags; steady/hover baseline deltas plus targets printed; hover clear plus per-sample timing; whole-state `ScopedSuspend`; full snapshot; defaults applied at OPEN; 75 min / 256 states / 2 min caps; raw-path rescan plus nested `mInitialTabs`. |
+| Q6 | Accepted | — |
+
+### New and residual findings
+
+#### N1 (MAJOR, new): the abort path reverts the user's own login-screen changes
+
+**Evidence**
+- `restoreSettingsSnapshot()` restores every control that differs from the start-of-run snapshot.
+- On `abortForLogin` this also reverts changes the user made on the login screen during the run, for example the "Remember me" setting (`RememberUser`), `RememberPassword` (`llpanellogin.cpp:410`) and the start location.
+- It also reverts anything login-click code wrote before the first `ALUIPerfSelfTest::tick()` (`llstartup.cpp:458`), and it does so *during* the login that follows.
+- On FINISH the full diff gains nothing, because saving is suppressed anyway.
+
+**Fix:** limit the restore to settings the runner can have touched:
+- the runner overrides;
+- the `mDirectorAuditSettings` keys;
+- `UIFolderViewCull`;
+- the union of the P0 kit pages' `watch_settings`, master, mode and selector settings (`ALKitPage` can expose its watched list).
+
+Alternatively, filter by the prefixes `DirectorV2*`, `CineLightRig*`, `CineRigRim*`, `RenderCineLensFlare*`, `RenderLensFlare*`, `BDMergeProjectorVolumetrics*`.
+
+#### N2 (MAJOR, residual of M3): legacy pages with coverage markers still never match
+
+**Evidence**
+- v1 `tab_path` carries `tabPath()` coverage markers (` [atmospheric_volumes]`, ` [vcam]`, ` [dof]`, ` [lens_looks]`), because v1 pages are built when tabs are collected.
+- v2 lazy pages are unbuilt at that point, so their paths carry no markers.
+- Every v1 finding on those pages therefore counts as "new" in the legacy gate.
+
+**Fix:** in both keys at `ui_selftest.ps1` (baseline and current), strip the markers with `-replace ' \[[^\]]*\]', ''`.
+
+#### N3 (MINOR): the default chip drifts across sizes
+
+**Evidence**
+- `mKitDefaultChip` and the card defaults are captured from the page's live state at each size.
+- For Rig, the last state at a size is `map-side-right`, which reveals `light_map` and changes the chip. Sizes 2-4 therefore use that chip as their "default".
+
+**Fix:** capture `mKitDefaultMode`/`Chip`/cards once per page (first size) and keep them across sizes.

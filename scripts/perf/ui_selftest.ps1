@@ -507,12 +507,12 @@ if ($DirectorV2) {
     }
     $baselineKeys = @{}
     foreach ($finding in @(Import-Csv -LiteralPath $baselineLayoutPath)) {
-      $key = "$(Normalize-LegacySize $finding.size_pass)|$($finding.tab_path -replace '@default$','')|$($finding.finding)|$(Normalize-LegacyWidget $finding.widget_a)|$(Normalize-LegacyWidget $finding.widget_b)"
+      $key = "$(Normalize-LegacySize $finding.size_pass)|$(($finding.tab_path -replace '@default$','') -replace ' \[[^\]]*\]', '')|$($finding.finding)|$(Normalize-LegacyWidget $finding.widget_a)|$(Normalize-LegacyWidget $finding.widget_b)"
       $baselineKeys[$key] = $true
     }
     $legacyNew = @($legacyRows | Where-Object {
       $size = Normalize-LegacySize $_.size_pass
-      $key = "$size|$($_.tab_path -replace '@default$','')|$($_.finding)|$(Normalize-LegacyWidget $_.widget_a)|$(Normalize-LegacyWidget $_.widget_b)"
+      $key = "$size|$(($_.tab_path -replace '@default$','') -replace ' \[[^\]]*\]', '')|$($_.finding)|$(Normalize-LegacyWidget $_.widget_a)|$(Normalize-LegacyWidget $_.widget_b)"
       -not $baselineKeys.ContainsKey($key)
     })
   }

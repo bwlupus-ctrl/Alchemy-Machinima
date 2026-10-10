@@ -524,6 +524,13 @@ struct KitCardDefault
     bool mMoreOpen = false;
 };
 
+struct KitPageDefaults
+{
+    S32 mMode = 0;
+    S32 mChip = 0;
+    std::vector<KitCardDefault> mCards;
+};
+
 struct AuditLeaf
 {
     LLView* mView = nullptr;
@@ -1442,10 +1449,25 @@ private:
         return overrides.count(name) != 0;
     }
 
+    bool isRestoredSetting(const std::string& name) const
+    {
+        if (isRunnerOverride(name) || name == "UIFolderViewCull" ||
+            mDirectorAuditSettings.count(name)) return true;
+        static const std::string prefixes[] = {
+            "DirectorV2", "CineLightRig", "CineRigRim",
+            "RenderCineLensFlare", "RenderLensFlare",
+            "BDMergeProjectorVolumetrics"
+        };
+        for (const std::string& prefix : prefixes)
+            if (name.compare(0, prefix.size(), prefix) == 0) return true;
+        return false;
+    }
+
     void restoreSettingsSnapshot()
     {
         for (const auto& entry : mSettingsSnapshot)
         {
+            if (!isRestoredSetting(entry.first)) continue;
             LLControlVariable* control = gSavedSettings.getControl(entry.first).get();
             if (!control) continue;
             const SavedControlState& saved = entry.second;
@@ -1646,9 +1668,6 @@ private:
     {
         mKitAuditStates.clear();
         mKitAuditStateIndex = 0;
-        mKitDefaultCards.clear();
-        mKitDefaultMode = 0;
-        mKitDefaultChip = 0;
         KitAuditState base;
         base.mKind = KitAuditState::BASE;
         base.mKey = "default";
@@ -1659,13 +1678,20 @@ private:
         ALKitPage* page = mAuditPageIndex == 0 ? nullptr :
             findFirstView<ALKitPage>(auditPageRoot());
         if (!page || page->legacy()) return;
-        mKitDefaultMode = page->modeIndex();
-        mKitDefaultChip = page->chipIndex();
-        mKitDefaultCards.clear();
-        std::vector<ALKitCard*> default_cards;
-        collectViewsOfType<ALKitCard>(page, default_cards);
-        for (ALKitCard* card : default_cards)
-            mKitDefaultCards.push_back({ card->getHandle(), card->bodyOpen(), card->moreOpen() });
+        auto inserted = mKitPageDefaults.emplace(page->pageKey(), KitPageDefaults());
+        KitPageDefaults& defaults = inserted.first->second;
+        if (inserted.second)
+        {
+            defaults.mMode = page->modeIndex();
+            defaults.mChip = page->chipIndex();
+            std::vector<ALKitCard*> default_cards;
+            collectViewsOfType<ALKitCard>(page, default_cards);
+            for (ALKitCard* card : default_cards)
+                defaults.mCards.push_back({ card->getHandle(), card->bodyOpen(), card->moreOpen() });
+        }
+        mKitDefaultMode = defaults.mMode;
+        mKitDefaultChip = defaults.mChip;
+        mKitDefaultCards = defaults.mCards;
         for (S32 i = 0; i < page->modeCount(); ++i)
         {
             KitAuditState state;
@@ -3322,6 +3348,7 @@ private:
     S32 mKitDefaultMode = 0;
     S32 mKitDefaultChip = 0;
     std::vector<KitCardDefault> mKitDefaultCards;
+    std::map<std::string, KitPageDefaults> mKitPageDefaults;
     bool mAuditStateApplied = false;
     std::map<std::string, LLSD> mDirectorAuditSettings;
     std::map<std::string, SavedControlState> mSettingsSnapshot;
