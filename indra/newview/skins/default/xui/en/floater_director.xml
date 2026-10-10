@@ -861,7 +861,7 @@
              left="10"
              top="328"
              name="anim_preview_panel"
-             width="344" />
+             width="354" />
             <!-- console-only: open the standalone Explorer (recent-anim list) -->
             <button
              follows="left|top"

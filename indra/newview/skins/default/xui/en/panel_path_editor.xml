@@ -4,7 +4,7 @@
 <panel
  background_visible="false"
  border="false"
- height="720"
+ height="1160"
  layout="topleft"
  name="panel_path_editor"
  width="500">
@@ -47,12 +47,12 @@
 
   <accordion
    follows="all"
-   height="680"
+   height="1066"
    layout="topleft"
    left="4"
    name="path_sections"
    single_expansion="false"
-   top="38"
+   top="90"
    width="492">
 
     <accordion_tab
@@ -82,13 +82,13 @@
          label="Pose ghosts" layout="topleft" left="208" top="119"
          name="onion_skin_check"
          tool_tip="Show styled actor copies at path anchors for blocking without playing the path"
-         width="80" />
-        <button follows="left|top" height="18" layout="topleft" left="290" width="18"
+         width="104" />
+        <button follows="left|top" height="18" layout="topleft" left="314" width="18"
          image_overlay="Refresh_Off" image_top_pad="0" name="reset_onion_skin" top="118"
          tool_tip="Reset pose ghosts to default" />
         <combo_box control_name="PathGhostStyle" follows="left|top|right" height="20"
-         layout="topleft" left="312" top="116" name="ghost_style_combo"
-         tool_tip="Appearance of path pose ghosts" width="146">
+         layout="topleft" left="336" top="116" name="ghost_style_combo"
+         tool_tip="Appearance of path pose ghosts" width="122">
           <combo_box.item label="Ghost" name="gs_ghost" value="0" />
           <combo_box.item label="Clone" name="gs_clone" value="1" />
           <combo_box.item label="Hologram" name="gs_hologram" value="2" />
@@ -139,38 +139,38 @@
          tool_tip="Reset ghost distortion to default" />
         <slider control_name="PathGhostDistortAmount" can_edit_text="true"
          decimal_digits="2" follows="left|top" height="18" increment="0.05"
-         label="Amount" label_width="48" layout="topleft" left="340"
-         max_val="1" min_val="0" name="ghost_distort_amount" top="141" width="118" />
+         label="Amount" label_width="48" layout="topleft" left="208"
+         max_val="1" min_val="0" name="ghost_distort_amount" top="164" width="250" />
         <button follows="left|top" height="18" layout="topleft" left="462" width="18"
-         image_overlay="Refresh_Off" image_top_pad="0" name="reset_ghost_distort_amount" top="141"
+         image_overlay="Refresh_Off" image_top_pad="0" name="reset_ghost_distort_amount" top="164"
          tool_tip="Reset distortion amount to default" />
         <spinner control_name="PathGhostEffectFps" decimal_digits="0" follows="left|top"
          height="18" increment="1" initial_value="0" label="FX cadence (fps)"
-         label_width="96" layout="topleft" left="8" max_val="30" min_val="0"
+         label_width="104" layout="topleft" left="8" max_val="30" min_val="0"
          name="ghost_effect_fps" tool_tip="0 is smooth; 1-30 gives stop-motion shader animation"
          top="141" width="168" />
         <button follows="left|top" height="18" layout="topleft" left="180" width="18"
          image_overlay="Refresh_Off" image_top_pad="0" name="reset_ghost_effect_fps" top="141"
          tool_tip="Reset FX cadence to default" />
 
-        <button follows="left|top" height="22" label="Add at actor" layout="topleft" left="8" top="166" name="btn_wp_add" width="112" />
-        <button follows="left|top" height="22" label="Insert after" layout="topleft" left="124" top="166" name="btn_wp_insert" width="112" />
-        <button follows="left|top" height="22" label="Delete node" layout="topleft" left="240" top="166" name="btn_wp_delete" width="112" />
-        <button follows="left|top" height="22" label="Clear path" layout="topleft" left="356" top="166" name="btn_wp_clear" width="124" />
+        <button follows="left|top" height="22" label="Add at actor" layout="topleft" left="8" top="192" name="btn_wp_add" width="112" />
+        <button follows="left|top" height="22" label="Insert after" layout="topleft" left="124" top="192" name="btn_wp_insert" width="112" />
+        <button follows="left|top" height="22" label="Delete node" layout="topleft" left="240" top="192" name="btn_wp_delete" width="112" />
+        <button follows="left|top" height="22" label="Clear path" layout="topleft" left="356" top="192" name="btn_wp_clear" width="124" />
 
-        <button follows="left|top" height="22" label="Undo" layout="topleft" left="8" top="192" name="btn_edit_undo" width="66" />
-        <button follows="left|top" height="22" label="Redo" layout="topleft" left="78" top="192" name="btn_edit_redo" width="66" />
-        <button follows="left|top" height="22" label="Reverse" layout="topleft" left="148" top="192" name="btn_edit_reverse" width="92" />
-        <button follows="left|top" height="22" label="Mirror" layout="topleft" left="244" top="192" name="btn_edit_mirror" width="90" />
-        <button follows="left|top" height="22" label="Close loop" layout="topleft" left="338" top="192" name="btn_edit_loopclose" width="142" />
+        <button follows="left|top" height="22" label="Undo" layout="topleft" left="8" top="218" name="btn_edit_undo" width="66" />
+        <button follows="left|top" height="22" label="Redo" layout="topleft" left="78" top="218" name="btn_edit_redo" width="66" />
+        <button follows="left|top" height="22" label="Reverse" layout="topleft" left="148" top="218" name="btn_edit_reverse" width="92" />
+        <button follows="left|top" height="22" label="Mirror" layout="topleft" left="244" top="218" name="btn_edit_mirror" width="90" />
+        <button follows="left|top" height="22" label="Close loop" layout="topleft" left="338" top="218" name="btn_edit_loopclose" width="142" />
 
-        <combo_box follows="left|top" height="22" layout="topleft" left="8" top="218"
+        <combo_box follows="left|top" height="22" layout="topleft" left="8" top="244"
          name="copy_to_combo" tool_tip="Cast member to copy this path onto" width="210" />
-        <button follows="left|top" height="22" label="Copy path to" layout="topleft" left="222" top="218" name="btn_copy_to" width="112" />
-        <button follows="left|top" height="22" label="Walk to Point..." layout="topleft" left="338" top="218" name="btn_walk_here" width="142" />
+        <button follows="left|top" height="22" label="Copy path to" layout="topleft" left="222" top="244" name="btn_copy_to" width="112" />
+        <button follows="left|top" height="22" label="Walk to Point..." layout="topleft" left="338" top="244" name="btn_walk_here" width="142" />
 
-        <button follows="left|top" height="24" label="Play Path" layout="topleft" left="8" top="246" name="btn_play_path" width="232" />
-        <button follows="left|top|right" height="24" label="Stop Path" layout="topleft" left="244" top="246" name="btn_stop_path" width="236" />
+        <button follows="left|top" height="24" label="Play Path" layout="topleft" left="8" top="272" name="btn_play_path" width="232" />
+        <button follows="left|top|right" height="24" label="Stop Path" layout="topleft" left="244" top="272" name="btn_stop_path" width="236" />
       </panel>
     </accordion_tab>
 
@@ -190,7 +190,7 @@
         <line_editor follows="left|top|right" height="20" layout="topleft" left="8" max_length_chars="36" name="node_anim_editor" top="92" width="450" />
         <button follows="left|top" height="18" layout="topleft" left="462" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="reset_node_anim" top="93" tool_tip="Clear node animation" />
 
-        <text follows="left|top" font="SansSerifSmallBold" height="14" layout="topleft" left="8" top="120" name="cam_lbl" width="80">Node camera</text>
+        <text follows="left|top" font="SansSerifSmallBold" height="14" layout="topleft" left="8" top="120" name="cam_lbl" width="90">Node camera</text>
         <check_box control_name="PathCameraEnabled" follows="left|top|right" height="18" label="Enable authored path camera for this session" layout="topleft" left="98" top="118" name="path_camera_enable_check" width="360" />
         <button follows="left|top" height="18" layout="topleft" left="462" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="reset_path_camera_enable" top="118" tool_tip="Reset authored camera enable" />
         <button follows="left|top" height="22" label="Capture camera here" layout="topleft" left="8" top="142" name="btn_node_setcam" width="154" />
@@ -281,7 +281,7 @@
         <text follows="left|top" font="SansSerifSmallBold" height="14" layout="topleft" left="8" top="8" name="choreo_lbl" width="150">Camera take sync</text>
         <check_box follows="left|top" height="18" label="Sync to camera take" layout="topleft" left="8" top="28" name="sync_take_check" width="208" />
         <button follows="left|top" height="18" layout="topleft" left="220" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="reset_sync_take" top="28" tool_tip="Reset camera take sync" />
-        <spinner decimal_digits="1" follows="left|top|right" height="18" increment="0.5" label="Lead/trail (s)" label_width="88" layout="topleft" left="246" max_val="60" min_val="-60" name="sync_offset_spinner" top="28" width="212" />
+        <spinner decimal_digits="1" follows="left|top" height="18" increment="0.5" label="Lead/trail (s)" label_width="88" layout="topleft" left="246" max_val="60" min_val="-60" name="sync_offset_spinner" top="28" width="212" />
         <button follows="left|top" height="18" layout="topleft" left="462" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="reset_sync_offset" top="28" tool_tip="Reset lead / trail" />
         <text follows="left|top|right" height="14" layout="topleft" left="8" top="50" name="sync_status" text_color="LtGray_50" use_ellipses="true" width="472">Off, the walk uses its own clock</text>
         <text follows="left|top" font="SansSerifSmallBold" height="14" layout="topleft" left="8" top="74" name="follow_lbl" width="70">Follow</text>
@@ -298,7 +298,7 @@
   <panel
    background_visible="true" background_opaque="true" bg_opaque_color="DkGray"
    border="true" follows="left|top|right" height="48" layout="topleft" left="4"
-   name="suspend_banner" top="18" visible="false" width="492">
+   name="suspend_banner" top="38" visible="false" width="492">
     <text follows="left|top|right" font="SansSerifSmallBold" height="14" layout="topleft" left="8" name="suspend_status" text_color="EmphasisColor" top="4" use_ellipses="true" width="476">Walk suspended &#8212; actor away</text>
     <button follows="left|top" height="22" label="Resume" layout="topleft" left="8" name="btn_suspend_resume" top="22" width="104" />
     <button follows="left|top" height="22" label="Re-anchor here" layout="topleft" left="120" name="btn_suspend_reanchor" top="22" width="210" />

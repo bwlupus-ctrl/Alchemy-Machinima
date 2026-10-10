@@ -13,15 +13,15 @@
         <!-- Instances -->
         <panel follows="left|top|right" height="214" layout="topleft" left="0" name="instances_section" top="0" width="500">
           <text follows="left|top" font="SansSerifBold" height="18" layout="topleft" left="8" name="studio_header" top="5" width="90">Instances</text>
+          <check_box follows="left|top" height="18" label="Edit ghosts" layout="topleft" left="110" name="edit_ghosts_check" top="5"
+           tool_tip="Edit ghosts in world: click a ghost to select it, drag to move it on the ground, Shift-drag to turn it, click empty ground to re-place the selection, Delete removes it. Esc (or unchecking) hands the camera back. Spinners below stay the precision path" width="120" />
           <check_box follows="top|right" height="18" initial_value="true" label="Show ghosts" layout="topleft" left="252" name="show_all_check" top="5"
            tool_tip="Master visibility: hide every ghost at once without losing the per-ghost enables. Session-only" width="112" />
-          <text follows="left|top|right" height="28" layout="topleft" left="8" mouse_opaque="false" name="studio_hint" right="-124" text_color="LtGray_50" top="25" width="242">
+          <text follows="left|top|right" height="32" layout="topleft" left="8" mouse_opaque="false" name="studio_hint" right="-8" text_color="LtGray_50" top="27" word_wrap="true">
             Styled copies of cast bodies: place, pose, multiply. Double-click a clone to show/hide; double-click a group to expand
           </text>
-          <check_box follows="top|right" height="18" label="Edit ghosts" layout="topleft" left="252" name="edit_ghosts_check" top="27"
-           tool_tip="Edit ghosts in world: click a ghost to select it, drag to move it on the ground, Shift-drag to turn it, click empty ground to re-place the selection, Delete removes it. Esc (or unchecking) hands the camera back. Spinners below stay the precision path" width="112" />
-          <scroll_list column_padding="0" draw_heading="true" follows="left|top|right" height="96" layout="topleft" left="8" multi_select="true" name="ghost_list" right="-8" top="57"
-           tool_tip="Every ghost and crowd group. Double-click a clone to toggle visibility; double-click a group header to expand or collapse its individually positionable members. Ghosts keep rendering when their source avatar is off-camera or impostored; freeze to lock a pose" width="358">
+          <scroll_list column_padding="0" draw_heading="true" follows="left|top|right" height="92" layout="topleft" left="8" multi_select="true" name="ghost_list" right="-8" top="64"
+           tool_tip="Every ghost and crowd group. Double-click a clone to toggle visibility; double-click a group header to expand or collapse its individually positionable members. Ghosts keep rendering when their source avatar is off-camera or impostored; freeze to lock a pose">
             <columns label="" name="on" width="20" />
             <columns label="Name" name="name" width="84" />
             <columns label="Kind" name="kind" width="42" />
@@ -30,20 +30,20 @@
             <columns label="Style" name="style" width="56" />
             <columns label="Pose" name="pose" width="50" />
           </scroll_list>
-          <combo_box follows="left|top" height="22" layout="topleft" left="8" name="source_combo" top="159"
+          <combo_box follows="left|top" height="22" layout="topleft" left="8" name="source_combo" top="162"
            tool_tip="Whose body the new ghost copies: you, or any cast member" width="130" />
-          <combo_box follows="left|top" height="22" initial_value="1" layout="topleft" left="144" name="clone_type_combo" top="159"
+          <combo_box follows="left|top" height="22" initial_value="1" layout="topleft" left="144" name="clone_type_combo" top="162"
            tool_tip="Persistent type for newly added ghosts" width="130">
             <combo_box.item label="Overlay ghost" name="clone_type_overlay" value="0" />
             <combo_box.item label="Entity clone" name="clone_type_entity" value="1" />
           </combo_box>
-          <button follows="left|top" height="22" label="Add" layout="topleft" left="280" name="btn_ghost_add" top="159"
+          <button follows="left|top" height="22" label="Add" layout="topleft" left="280" name="btn_ghost_add" top="162"
            tool_tip="Add the selected clone type from the chosen source" width="54" />
-          <button follows="left|top" height="22" label="Duplicate" layout="topleft" left="8" name="btn_ghost_dup" top="185"
+          <button follows="left|top" height="22" label="Duplicate" layout="topleft" left="8" name="btn_ghost_dup" top="190"
            tool_tip="Copy the selected ghost (including a frozen pose) one step to its left" width="82" />
-          <button follows="left|top" height="22" label="Delete" layout="topleft" left="96" name="btn_ghost_del" top="185"
+          <button follows="left|top" height="22" label="Delete" layout="topleft" left="96" name="btn_ghost_del" top="190"
            tool_tip="Remove the selected ghost" width="72" />
-          <button follows="left|top" height="22" label="Refresh" layout="topleft" left="174" name="btn_ghost_refresh" top="185"
+          <button follows="left|top" height="22" label="Refresh" layout="topleft" left="174" name="btn_ghost_refresh" top="190"
            tool_tip="Re-sync this entity clone to its source's current appearance and worn attachments" visible="false" width="82" />
         </panel>
 
@@ -62,38 +62,38 @@
 
         <!-- Placement -->
         <panel follows="left|top" height="282" layout="topleft" left="0" name="placement_section" top="0" width="484">
-          <text follows="left|top|right" font="SansSerifSmallBold" height="16" layout="topleft" left="8" name="place_lbl" right="-8" top="8" width="358">Placement</text>
+          <text follows="left|top|right" font="SansSerifSmallBold" height="16" layout="topleft" left="8" name="place_lbl" right="-8" top="8">Placement</text>
           <text follows="left|top" font="SansSerifSmallBold" height="18" layout="topleft" left="8" name="ghost_type" top="29" width="174">Type: No selection</text>
           <line_editor follows="left|top|right" height="22" label="Name" layout="topleft" left="188" max_length_bytes="63" name="ghost_name" right="-8" top="25"
-           tool_tip="Session-only ghost name. Duplicate names are allowed; identity remains the internal instance id" width="178" />
+           tool_tip="Session-only ghost name. Duplicate names are allowed; identity remains the internal instance id" />
           <spinner decimal_digits="2" follows="left|top" height="18" increment="0.1" label="X" label_width="12" layout="topleft" left="8" max_val="9000" min_val="-1000" name="pos_x_spinner" top="53"
            tool_tip="Ghost foot position, region coordinates (m)" width="100" />
           <spinner decimal_digits="2" follows="left|top" height="18" increment="0.1" label="Y" label_width="12" layout="topleft" left="116" max_val="9000" min_val="-1000" name="pos_y_spinner" top="53"
            tool_tip="Ghost foot position, region coordinates (m)" width="100" />
           <spinner decimal_digits="2" follows="left|top" height="18" increment="0.1" label="Z" label_width="12" layout="topleft" left="224" max_val="9000" min_val="-1000" name="pos_z_spinner" top="53"
            tool_tip="Ghost foot height, region coordinates (m)" width="100" />
-          <spinner decimal_digits="2" follows="left|top" height="18" increment="1" initial_value="0" label="Yaw (deg)" label_width="56" layout="topleft" left="8" max_val="180" min_val="-180" name="yaw_spinner" top="82"
+          <spinner decimal_digits="2" follows="left|top" height="18" increment="1" initial_value="0" label="Yaw (deg)" label_width="62" layout="topleft" left="8" max_val="180" min_val="-180" name="yaw_spinner" top="82"
            tool_tip="Exact ghost heading in degrees; stays synchronized with the live heading dial" width="140" />
-          <button follows="left|top" height="18" label="↺" layout="topleft" left="150" name="reset_yaw" top="82" tool_tip="Reset yaw to default" width="18" />
-          <compass_dial clockwise="false" follows="left|top" height="54" layout="topleft" left="154" name="heading_dial" show_readout="false" top="72"
+          <button follows="left|top" height="18" label="↺" layout="topleft" left="150" name="reset_yaw" top="82" tool_tip="Reset yaw to default" width="22" />
+          <compass_dial clockwise="false" follows="top|right" height="54" layout="topleft" name="heading_dial" right="-8" show_readout="false" top="72"
            tool_tip="Ghost heading: drag the needle to rotate the selected ghost live; mouse wheel trims 5 degrees per click" width="54" />
           <!-- scale_spinner min_val/max_val: keep in sync with GHOST_SCALE_MIN / GHOST_SCALE_MAX in alghoststudio.h
                (ALPanelGhostStudio re-applies the C++ constants over these on every refresh via setMinValue/setMaxValue) -->
           <spinner decimal_digits="4" follows="left|top" height="18" increment="0.01" initial_value="1.0" label="Scale" label_width="36" layout="topleft" left="214" max_val="150" min_val="0.05" name="scale_spinner" top="82"
-           tool_tip="Uniform size or group scale factor; the live tooltip reports the exact allowed group range" width="94" />
-          <button follows="left|top" height="18" label="↺" layout="topleft" left="310" name="reset_scale" top="82" tool_tip="Reset scale to default" width="18" />
+           tool_tip="Uniform size or group scale factor; the live tooltip reports the exact allowed group range" width="120" />
+          <button follows="left|top" height="18" label="↺" layout="topleft" left="340" name="reset_scale" top="82" tool_tip="Reset scale to default" width="22" />
           <button follows="left|top" height="22" label="Place (click ground)" layout="topleft" left="8" name="btn_place" top="132"
            tool_tip="Arm one ground click: the next click on ground/prim puts the ghost's feet there. Esc or right-click cancels" width="140" />
           <button follows="left|top" height="22" label="To actor" layout="topleft" left="154" name="btn_to_actor" top="132"
            tool_tip="Snap the ghost onto its source's current feet" width="84" />
           <button follows="left|top" height="22" label="To me" layout="topleft" left="244" name="btn_to_me" top="132"
            tool_tip="Snap the ghost onto your avatar's current feet" width="84" />
-          <text follows="left|top" height="18" layout="topleft" left="8" name="look_target_label" top="164" width="70">Face target</text>
-          <combo_box follows="left|top|right" height="22" layout="topleft" left="78" name="look_target_combo" right="-8" top="160"
-           tool_tip="Aim at the camera, you, a Director cast member, or another Ghost Studio instance" width="288" />
-          <button follows="left|top" height="22" label="Face now" layout="topleft" left="78" name="btn_face_now" top="190"
+          <text follows="left|top" height="18" layout="topleft" left="8" name="look_target_label" top="164" width="84">Face target</text>
+          <combo_box follows="left|top|right" height="22" layout="topleft" left="98" name="look_target_combo" right="-8" top="160"
+           tool_tip="Aim at the camera, you, a Director cast member, or another Ghost Studio instance" />
+          <button follows="left|top" height="22" label="Face now" layout="topleft" left="98" name="btn_face_now" top="190"
            tool_tip="Turn the selected ghost toward the chosen target once" width="90" />
-          <check_box follows="left|top" height="18" label="Keep facing" layout="topleft" left="180" name="keep_facing_check" top="192"
+          <check_box follows="left|top" height="18" label="Keep facing" layout="topleft" left="196" name="keep_facing_check" top="192"
            tool_tip="Per-instance continuous tracking; re-aims on each viewer idle tick. Turning it off leaves the last heading" width="126" />
           <button follows="left|top" height="22" label="Drop to ground" layout="topleft" left="8" name="btn_drop_ground" top="220"
            tool_tip="Set each selected ghost's feet to the viewer land height beneath it" width="108" />
@@ -114,14 +114,14 @@
 
           <panel border="false" follows="all" height="490" label="Style" layout="topleft" name="style_tab" width="500">
             <scroll_container follows="all" height="490" layout="topleft" left="0" name="style_scroll" reserve_scroll_corner="false" top="0" width="500">
-              <panel background_visible="false" follows="left|top" height="280" layout="topleft" left="0" name="style_scroll_body" top="0" width="484">
+              <panel background_visible="false" follows="left|top" height="324" layout="topleft" left="0" name="style_scroll_body" top="0" width="484">
 
         <!-- Look -->
-        <text follows="left|top|right" height="42" layout="topleft" left="8" mouse_opaque="false" name="entity_style_hint" right="-8" text_color="LtGray_50" top="28" visible="false" width="468">
+        <text follows="left|top|right" height="40" layout="topleft" left="8" mouse_opaque="false" name="entity_style_hint" right="-8" text_color="LtGray_50" top="0" visible="false" word_wrap="true">
           Style options apply to overlay ghosts. Entity clones use the avatar/deferred path and inherit their source appearance.
         </text>
-        <panel follows="left|top" height="280" layout="topleft" left="0" name="look_section" top="0" width="484">
-          <text follows="left|top|right" font="SansSerifSmallBold" height="16" layout="topleft" left="8" name="look_lbl" right="-8" top="8" width="358">Look</text>
+        <panel follows="left|top" height="280" layout="topleft" left="0" name="look_section" top="44" width="484">
+          <text follows="left|top|right" font="SansSerifSmallBold" height="16" layout="topleft" left="8" name="look_lbl" right="-8" top="8">Look</text>
           <combo_box follows="left|top" height="22" layout="topleft" left="8" name="style_combo" top="27"
            tool_tip="Overlay render look. Includes clean spectral, textured FX, graphic, material, and animated spectral styles; all honor the instance hue, alpha, pixelate, shimmer, glitch, and brightness controls." width="142">
             <combo_box.item label="Ghost" name="st_ghost" value="0" />
@@ -168,32 +168,32 @@
           <check_box follows="left|top" height="18" initial_value="true" label="Actor hue" layout="topleft" left="160" name="actor_tint_check" top="29"
            tool_tip="Tint from the source's stable path color (matches its path/ghost hue). Uncheck to pick a hue with the slider" width="98" />
           <slider decimal_digits="0" follows="left|top|right" height="18" increment="5" initial_value="200" label="Hue" label_width="74" layout="topleft" left="8" max_val="360" min_val="0" name="hue_slider" right="-32" top="55"
-           tool_tip="Tint hue (degrees) when Actor hue is off" width="358" />
-          <button follows="top|right" height="18" label="↺" layout="topleft" name="reset_hue" right="-8" top="55" tool_tip="Reset hue to default" width="18" />
+           tool_tip="Tint hue (degrees) when Actor hue is off" />
+          <button follows="top|right" height="18" label="↺" layout="topleft" name="reset_hue" right="-8" top="55" tool_tip="Reset hue to default" width="22" />
           <slider decimal_digits="2" follows="left|top|right" height="18" increment="0.05" initial_value="0.6" label="Alpha" label_width="74" layout="topleft" left="8" max_val="1" min_val="0" name="alpha_slider" right="-32" top="77"
-           tool_tip="Base opacity of the ghost" width="358" />
-          <button follows="top|right" height="18" label="↺" layout="topleft" name="reset_alpha" right="-8" top="77" tool_tip="Reset alpha to default" width="18" />
+           tool_tip="Base opacity of the ghost" />
+          <button follows="top|right" height="18" label="↺" layout="topleft" name="reset_alpha" right="-8" top="77" tool_tip="Reset alpha to default" width="22" />
           <slider decimal_digits="0" follows="left|top|right" height="18" increment="1" initial_value="0" label="Pixelate" label_width="74" layout="topleft" left="8" max_val="64" min_val="0" name="pixel_slider" right="-32" top="99"
-           tool_tip="Screen-space pixelation block size (px). 0 = off. Reads strongest on the Clone style" width="358" />
-          <button follows="top|right" height="18" label="↺" layout="topleft" name="reset_pixel" right="-8" top="99" tool_tip="Reset pixelation to default" width="18" />
+           tool_tip="Screen-space pixelation block size (px). 0 = off. Reads strongest on the Clone style" />
+          <button follows="top|right" height="18" label="↺" layout="topleft" name="reset_pixel" right="-8" top="99" tool_tip="Reset pixelation to default" width="22" />
           <slider decimal_digits="1" follows="left|top|right" height="18" increment="0.5" initial_value="1" label="Shimmer Hz" label_width="74" layout="topleft" left="8" max_val="10" min_val="0" name="shimmer_speed_slider" right="-32" top="121"
-           tool_tip="Shimmer speed (wobbles per second); only matters when Amount is above 0" width="358" />
-          <button follows="top|right" height="18" label="↺" layout="topleft" name="reset_shimmer_speed" right="-8" top="121" tool_tip="Reset shimmer speed to default" width="18" />
+           tool_tip="Shimmer speed (wobbles per second); only matters when Amount is above 0" />
+          <button follows="top|right" height="18" label="↺" layout="topleft" name="reset_shimmer_speed" right="-8" top="121" tool_tip="Reset shimmer speed to default" width="22" />
           <slider decimal_digits="2" follows="left|top|right" height="18" increment="0.05" initial_value="0" label="Amount" label_width="74" layout="topleft" left="8" max_val="1" min_val="0" name="shimmer_amount_slider" right="-32" top="143"
-           tool_tip="Shimmer depth: brightness/alpha wobble, phase-offset per ghost so crowds do not strobe together. 0 = off" width="358" />
-          <button follows="top|right" height="18" label="↺" layout="topleft" name="reset_shimmer_amount" right="-8" top="143" tool_tip="Reset shimmer amount to default" width="18" />
+           tool_tip="Shimmer depth: brightness/alpha wobble, phase-offset per ghost so crowds do not strobe together. 0 = off" />
+          <button follows="top|right" height="18" label="↺" layout="topleft" name="reset_shimmer_amount" right="-8" top="143" tool_tip="Reset shimmer amount to default" width="22" />
           <slider decimal_digits="2" follows="left|top|right" height="18" increment="0.05" initial_value="0" label="Glitch" label_width="74" layout="topleft" left="8" max_val="1" min_val="0" name="glitch_slider" right="-32" top="165"
-           tool_tip="Broken-signal effect: horizontal slices tear sideways with a chroma split. 0 = off" width="358" />
-          <button follows="top|right" height="18" label="↺" layout="topleft" name="reset_glitch" right="-8" top="165" tool_tip="Reset glitch to default" width="18" />
+           tool_tip="Broken-signal effect: horizontal slices tear sideways with a chroma split. 0 = off" />
+          <button follows="top|right" height="18" label="↺" layout="topleft" name="reset_glitch" right="-8" top="165" tool_tip="Reset glitch to default" width="22" />
           <slider decimal_digits="2" follows="left|top|right" height="18" increment="0.05" initial_value="0.5" label="Distort amt" label_width="74" layout="topleft" left="8" max_val="1" min_val="0" name="distort_amount_slider" right="-32" top="187"
-           tool_tip="Strength of the selected independent distortion" width="358" />
-          <button follows="top|right" height="18" label="↺" layout="topleft" name="reset_distort_amount" right="-8" top="187" tool_tip="Reset distortion amount" width="18" />
+           tool_tip="Strength of the selected independent distortion" />
+          <button follows="top|right" height="18" label="↺" layout="topleft" name="reset_distort_amount" right="-8" top="187" tool_tip="Reset distortion amount" width="22" />
           <slider decimal_digits="2" follows="left|top|right" height="18" increment="0.05" initial_value="1.0" label="Brightness" label_width="74" layout="topleft" left="8" max_val="1.5" min_val="0.05" name="brightness_slider" right="-32" top="209"
-           tool_tip="Output brightness: the ghost is unlit, so a clone reads fullbright in a night scene. Dial down (~0.3-0.5) to sit it into dark sets; 1 = as authored" width="358" />
-          <button follows="top|right" height="18" label="↺" layout="topleft" name="reset_brightness" right="-8" top="209" tool_tip="Reset brightness to default" width="18" />
+           tool_tip="Output brightness: the ghost is unlit, so a clone reads fullbright in a night scene. Dial down (~0.3-0.5) to sit it into dark sets; 1 = as authored" />
+          <button follows="top|right" height="18" label="↺" layout="topleft" name="reset_brightness" right="-8" top="209" tool_tip="Reset brightness to default" width="22" />
           <spinner decimal_digits="0" follows="left|top" height="18" increment="1" initial_value="0" label="Effect fps" label_width="74" layout="topleft" left="8" max_val="30" min_val="0" name="effect_fps_spinner" top="231"
            tool_tip="Per-clone shader animation cadence. 0 is smooth; 1-30 holds animated looks and distortions for stop motion. Separate from Pose fps." width="138" />
-          <button follows="left|top" height="18" label="↺" layout="topleft" left="150" name="reset_effect_fps" top="231" tool_tip="Reset Effect fps to smooth" width="18" />
+          <button follows="left|top" height="18" label="↺" layout="topleft" left="150" name="reset_effect_fps" top="231" tool_tip="Reset Effect fps to smooth" width="22" />
         </panel>
               </panel>
             </scroll_container>
@@ -205,29 +205,29 @@
 
         <!-- Pose and animation -->
         <panel follows="left|top" height="790" layout="topleft" left="0" name="pose_section" top="0" width="484">
-          <text follows="left|top|right" font="SansSerifSmallBold" height="16" layout="topleft" left="8" name="pose_lbl" right="-8" top="8" width="358">Pose &amp; Animation</text>
+          <text follows="left|top|right" font="SansSerifSmallBold" height="16" layout="topleft" left="8" name="pose_lbl" right="-8" top="8">Pose &amp; Animation</text>
           <button follows="left|top" height="22" label="Grab pose now" layout="topleft" left="8" name="btn_freeze" top="28"
            tool_tip="FREEZE: snapshot the source's current pose into this ghost (worn mesh + attachment placement). The ghost holds it while the live body keeps animating. Known limits: flexi tails/skirts keep their live physics motion, and legacy system-mesh eyeballs are not part of the ghost" width="126" />
           <button follows="left|top" height="22" label="Follow live" layout="topleft" left="140" name="btn_live" top="28"
            tool_tip="Drop the frozen pose; the ghost mirrors the source's live animation again" width="100" />
-          <check_box control_name="GhostMirrorHoldOnSourceChange" follows="left|top" height="18" label="Hold on src change" layout="topleft" left="248" name="mirror_hold_check" top="30"
-           tool_tip="MIRROR mode: keep clones playing their last bento + animesh animation through a transient source change (outfit re-rez, brief de-rez, out-of-view imposter, or AO gap) instead of stopping. A real switch to a different animation still mirrors normally. Off = faithful live mirror (a source change or full stop stops the clone too)." width="124" />
-          <check_box control_name="GhostMirrorRepeatHeldAnimesh" follows="left|top" height="18" label="Repeat held" layout="topleft" left="376" name="mirror_repeat_held_check" top="30"
-           tool_tip="Needs Hold on src change. While a clone's animesh is HELD (source detached/gone), replay each finished one-shot animesh animation so a script-retriggered tail or idle keeps cycling instead of freezing. Looping animations are untouched. Functional repetition, not seamless: a small seam per cycle, and a deliberate one-shot action will repeat too (hence off by default)." width="100" />
-          <text follows="left|top|right" height="18" layout="topleft" left="8" name="pose_status" right="-8" text_color="LtGray_50" top="54" width="358">Select a ghost</text>
-          <combo_box follows="left|top" height="22" layout="topleft" left="8" name="drive_mode_combo" top="78"
+          <check_box control_name="GhostMirrorHoldOnSourceChange" follows="left|top" height="18" label="Hold on src change" layout="topleft" left="8" name="mirror_hold_check" top="56"
+           tool_tip="MIRROR mode: keep clones playing their last bento + animesh animation through a transient source change (outfit re-rez, brief de-rez, out-of-view imposter, or AO gap) instead of stopping. A real switch to a different animation still mirrors normally. Off = faithful live mirror (a source change or full stop stops the clone too)." width="150" />
+          <check_box control_name="GhostMirrorRepeatHeldAnimesh" follows="left|top" height="18" label="Repeat held" layout="topleft" left="170" name="mirror_repeat_held_check" top="56"
+           tool_tip="Needs Hold on src change. While a clone's animesh is HELD (source detached/gone), replay each finished one-shot animesh animation so a script-retriggered tail or idle keeps cycling instead of freezing. Looping animations are untouched. Functional repetition, not seamless: a small seam per cycle, and a deliberate one-shot action will repeat too (hence off by default)." width="130" />
+          <text follows="left|top|right" height="18" layout="topleft" left="8" name="pose_status" right="-8" text_color="LtGray_50" top="80">Select a ghost</text>
+          <combo_box follows="left|top" height="22" layout="topleft" left="8" name="drive_mode_combo" top="104"
            tool_tip="Entity animation drive: mirror its source's animations, play a local animation asset, hold the current pose, or TRUE mirror (copy the source's final pose incl. gaze/IK/expressions every frame; heavier)" width="118">
             <combo_box.item label="Mirror" name="drive_mirror" value="0" />
             <combo_box.item label="Directed" name="drive_directed" value="1" />
             <combo_box.item label="Frozen" name="drive_frozen" value="2" />
             <combo_box.item label="True mirror" name="drive_true_mirror" value="3" />
           </combo_box>
-          <check_box follows="left|top" height="18" label="Chaos" layout="topleft" left="134" name="chaos_check" top="80"
+          <check_box follows="left|top" height="18" label="Chaos" layout="topleft" left="134" name="chaos_check" top="106"
            tool_tip="Deterministic per-clone position, yaw and uniform-scale variation" width="66" />
-          <slider decimal_digits="2" follows="left|top|right" height="18" increment="0.05" initial_value="0.5" layout="topleft" left="204" max_val="1" min_val="0" name="chaos_slider" right="-32" top="80"
-           tool_tip="Chaos amount (0..1); stable for this clone's instance id" width="162" />
-          <button follows="top|right" height="18" label="↺" layout="topleft" name="reset_chaos" right="-8" top="80" tool_tip="Reset chaos amount to default" width="18" />
-          <combo_box follows="left|top" height="22" layout="topleft" left="8" name="entity_look_combo" top="106"
+          <slider decimal_digits="2" follows="left|top|right" height="18" increment="0.05" initial_value="0.5" layout="topleft" left="204" max_val="1" min_val="0" name="chaos_slider" right="-32" top="106"
+           tool_tip="Chaos amount (0..1); stable for this clone's instance id" />
+          <button follows="top|right" height="18" label="↺" layout="topleft" name="reset_chaos" right="-8" top="106" tool_tip="Reset chaos amount to default" width="22" />
+          <combo_box follows="left|top" height="22" layout="topleft" left="8" name="entity_look_combo" top="132"
            tool_tip="Client-only entity render look. Apparition is scaffolded this pass; advanced shaders are deferred" width="142">
             <combo_box.item label="Normal" name="look_normal" value="0" />
             <combo_box.item label="Apparition" name="look_apparition" value="1" />
@@ -236,74 +236,74 @@
             <combo_box.item label="Toon*" name="look_toon" value="4" />
             <combo_box.item label="Silhouette*" name="look_silhouette" value="5" />
           </combo_box>
-          <spinner decimal_digits="2" follows="left|top" height="22" increment="0.05" initial_value="1" label="Anim Speed" label_width="72" layout="topleft" left="158" max_val="4" min_val="0.05" name="anim_speed_spinner" top="106"
-           tool_tip="Per-clone animation speed relative to scene tempo. Chaos adds a stable variation of up to plus/minus 15 percent" width="120" />
-          <button follows="left|top" height="18" label="↺" layout="topleft" left="280" name="reset_anim_speed" top="108" tool_tip="Reset animation speed to default" width="18" />
-          <check_box follows="left|top" height="18" initial_value="true" label="Physics" layout="topleft" left="306" name="physics_check" top="108"
-           tool_tip="Breast, belly and butt physics for each selected entity clone. Physics is calculated separately per clone; disable it for large crowds to reduce CPU cost" width="62" />
-          <combo_box follows="left|top" height="22" layout="topleft" left="8" name="anim_loop_mode_combo" top="134"
-           tool_tip="Loop re-triggers the clone-owned motion on completion; Play once lets it stop at the end. This does not rewrite baked asset metadata" width="142">
+          <spinner decimal_digits="2" follows="left|top" height="22" increment="0.05" initial_value="1" label="Anim Speed" label_width="74" layout="topleft" left="158" max_val="4" min_val="0.05" name="anim_speed_spinner" top="132"
+           tool_tip="Per-clone animation speed relative to scene tempo. Chaos adds a stable variation of up to plus/minus 15 percent" width="130" />
+          <button follows="left|top" height="18" label="↺" layout="topleft" left="292" name="reset_anim_speed" top="134" tool_tip="Reset animation speed to default" width="22" />
+          <check_box follows="left|top" height="18" initial_value="true" label="Physics" layout="topleft" left="320" name="physics_check" top="134"
+           tool_tip="Breast, belly and butt physics for each selected entity clone. Physics is calculated separately per clone; disable it for large crowds to reduce CPU cost" width="76" />
+          <combo_box follows="left|top" height="22" layout="topleft" left="8" name="anim_loop_mode_combo" top="160"
+           tool_tip="Loop re-triggers the clone-owned motion on completion; Play once lets it stop at the end. This does not rewrite baked asset metadata" width="150">
             <combo_box.item label="Loop (re-trigger)" name="anim_loop_retrigger" value="0" />
             <combo_box.item label="Play once" name="anim_play_once" value="1" />
           </combo_box>
-          <button follows="left|top" height="22" label="Pause" layout="topleft" left="158" name="btn_anim_pause" top="134"
+          <button follows="left|top" height="22" label="Pause" layout="topleft" left="166" name="btn_anim_pause" top="160"
            tool_tip="Hold each selected entity clone at its current motion time. This is the existing Frozen drive state" width="62" />
-          <button follows="left|top" height="22" label="Resume" layout="topleft" left="224" name="btn_anim_resume" top="134"
+          <button follows="left|top" height="22" label="Resume" layout="topleft" left="234" name="btn_anim_resume" top="160"
            tool_tip="Resume each selected clone in the Mirror or Directed mode it used before pausing" width="66" />
-          <button follows="left|top" height="22" label="Sync" layout="topleft" left="294" name="btn_anim_sync" top="134"
+          <button follows="left|top" height="22" label="Sync" layout="topleft" left="306" name="btn_anim_sync" top="160"
            tool_tip="Restart all selected clones together without changing speed, pause or drive mode" width="62" />
-          <combo_box follows="left|top|right" height="22" layout="topleft" left="8" name="animation_library_combo" right="-76" top="162" visible="false"
-           tool_tip="Animations in your own inventory only. Metadata loads asynchronously. Use Refresh after adding animations to inventory" width="290" />
-          <button follows="top|right" height="22" label="Refresh" layout="topleft" name="btn_anim_library_refresh" right="-8" top="162" visible="false"
+          <combo_box follows="left|top|right" height="22" layout="topleft" left="8" name="animation_library_combo" right="-76" top="190" visible="false"
+           tool_tip="Animations in your own inventory only. Metadata loads asynchronously. Use Refresh after adding animations to inventory" />
+          <button follows="top|right" height="22" label="Refresh" layout="topleft" name="btn_anim_library_refresh" right="-8" top="190" visible="false"
            tool_tip="Re-scan your inventory for animations. The list is not polled automatically" width="64" />
-          <line_editor follows="left|top|right" height="22" label="Animation UUID" layout="topleft" left="8" max_length_bytes="36" name="directed_anim_editor" right="-8" top="190" visible="false"
-           tool_tip="Animation asset UUID played only on the selected entity clone; direct UUID paste remains supported" width="358" />
-          <text follows="left|top|right" height="34" layout="topleft" left="8" name="anim_metadata_text" right="-8" text_color="LtGray_50" top="216" visible="false" width="358">Metadata pending...</text>
+          <line_editor follows="left|top|right" height="22" label="Animation UUID" layout="topleft" left="8" max_length_bytes="36" name="directed_anim_editor" right="-8" top="218" visible="false"
+           tool_tip="Animation asset UUID played only on the selected entity clone; direct UUID paste remains supported" />
+          <text follows="left|top|right" height="34" layout="topleft" left="8" name="anim_metadata_text" right="-8" text_color="LtGray_50" top="244" visible="false">Metadata pending...</text>
           <!-- [AutoAnimate] Learned performance; entity clones only. -->
-          <text follows="left|top" font="SansSerifSmallBold" height="16" layout="topleft" left="8" name="autoanim_label" top="252" width="468">AutoAnimate (learned performance)</text>
-          <check_box follows="left|top" height="18" label="AutoAnimate" layout="topleft" left="8" name="autoanim_check" top="272" width="100" />
-          <spinner decimal_digits="0" follows="left|top" height="22" increment="15" initial_value="120" label="Learn s" label_width="45" layout="topleft" left="112" max_val="600" min_val="15" name="autoanim_window_spinner" top="272" width="110" />
-          <button follows="left|top" height="18" label="&#x21BA;" layout="topleft" left="224" name="reset_autoanim_window" top="272" tool_tip="Reset learning window to 120 seconds" width="18" />
-          <button follows="left|top" height="22" label="Stop now" layout="topleft" left="248" name="btn_autoanim_stop" top="272" width="70" />
-          <button follows="left|top" height="22" label="Relearn" layout="topleft" left="322" name="btn_autoanim_relearn" top="272" width="66" />
-          <button follows="left|top" height="22" label="Reseed" layout="topleft" left="392" name="btn_autoanim_reseed" top="272" width="60" />
-          <button follows="left|top" height="22" label="Go autonomous" layout="topleft" left="8" name="btn_autoanim_go" top="298" width="110" />
-          <button follows="left|top" height="22" label="Follow source" layout="topleft" left="122" name="btn_autoanim_follow" top="298" width="100" />
-          <button follows="left|top" height="22" label="Save..." layout="topleft" left="226" name="btn_autoanim_save" top="298" width="60" />
-          <button follows="left|top" height="22" label="Load..." layout="topleft" left="290" name="btn_autoanim_load" top="298" width="60" />
-          <text follows="left|top" height="16" layout="topleft" left="8" name="autoanim_status" top="324" width="468">AutoAnimate off</text>
-          <text follows="left|top|right" font="SansSerifSmallBold" height="16" layout="topleft" left="8" name="lens_gaze_label" right="-8" top="342" width="358">Actor Gaze</text>
-          <check_box follows="left|top" height="18" label="This actor" layout="topleft" left="8" name="lens_gaze_check" top="366"
+          <text follows="left|top" font="SansSerifSmallBold" height="16" layout="topleft" left="8" name="autoanim_label" top="282" width="468">AutoAnimate (learned performance)</text>
+          <check_box follows="left|top" height="18" label="AutoAnimate" layout="topleft" left="8" name="autoanim_check" top="302" width="110" />
+          <spinner decimal_digits="0" follows="left|top" height="22" increment="15" initial_value="120" label="Learn s" label_width="45" layout="topleft" left="122" max_val="600" min_val="15" name="autoanim_window_spinner" top="300" width="110" />
+          <button follows="left|top" height="18" label="&#x21BA;" layout="topleft" left="236" name="reset_autoanim_window" top="302" tool_tip="Reset learning window to 120 seconds" width="22" />
+          <button follows="left|top" height="22" label="Stop now" layout="topleft" left="264" name="btn_autoanim_stop" top="300" width="70" />
+          <button follows="left|top" height="22" label="Relearn" layout="topleft" left="340" name="btn_autoanim_relearn" top="300" width="66" />
+          <button follows="left|top" height="22" label="Reseed" layout="topleft" left="412" name="btn_autoanim_reseed" top="300" width="64" />
+          <button follows="left|top" height="22" label="Go autonomous" layout="topleft" left="8" name="btn_autoanim_go" top="330" width="110" />
+          <button follows="left|top" height="22" label="Follow source" layout="topleft" left="122" name="btn_autoanim_follow" top="330" width="100" />
+          <button follows="left|top" height="22" label="Save..." layout="topleft" left="226" name="btn_autoanim_save" top="330" width="60" />
+          <button follows="left|top" height="22" label="Load..." layout="topleft" left="290" name="btn_autoanim_load" top="330" width="60" />
+          <text follows="left|top" height="16" layout="topleft" left="8" name="autoanim_status" top="358" width="468">AutoAnimate off</text>
+          <text follows="left|top|right" font="SansSerifSmallBold" height="16" layout="topleft" left="8" name="lens_gaze_label" right="-8" top="384">Actor Gaze</text>
+          <check_box follows="left|top" height="18" label="This actor" layout="topleft" left="8" name="lens_gaze_check" top="406"
            tool_tip="Client-only post-blend head, neck and eye tracking toward the render camera. Continues while the clone animation is frozen; camera-on-head feedback interlocks suppress it" width="116" />
-          <button follows="left|top" height="22" label="Enable selected" layout="topleft" left="134" name="btn_lens_gaze_selection" top="362"
+          <button follows="left|top" height="22" label="Enable selected" layout="topleft" left="134" name="btn_lens_gaze_selection" top="402"
            tool_tip="Enable camera gaze for every selected entity clone; overlay ghosts are ignored" width="116" />
-          <slider decimal_digits="2" follows="left|top|right" height="18" increment="0.05" initial_value="0.25" label="Torso" label_width="74" layout="topleft" left="8" max_val="1" min_val="0" name="lens_gaze_torso" right="-32" top="390"
-           tool_tip="Torso share for selected entity clones. 0 keeps the chest still; 1 lets the torso take the full gaze turn" width="358" />
-          <button follows="top|right" height="18" label="↺" layout="topleft" name="reset_lens_gaze_torso" right="-8" top="390" tool_tip="Reset torso gaze to default" width="18" />
-          <combo_box follows="left|top" height="22" layout="topleft" left="8" name="lens_gaze_target_mode" top="414"
+          <slider decimal_digits="2" follows="left|top|right" height="18" increment="0.05" initial_value="0.25" label="Torso" label_width="74" layout="topleft" left="8" max_val="1" min_val="0" name="lens_gaze_torso" right="-32" top="430"
+           tool_tip="Torso share for selected entity clones. 0 keeps the chest still; 1 lets the torso take the full gaze turn" />
+          <button follows="top|right" height="18" label="↺" layout="topleft" name="reset_lens_gaze_torso" right="-8" top="430" tool_tip="Reset torso gaze to default" width="22" />
+          <combo_box follows="left|top" height="22" layout="topleft" left="8" name="lens_gaze_target_mode" top="454"
            tool_tip="Per-clone gaze target: travel tangent, render camera, a Director cast member, or the stored world point" width="142">
             <combo_box.item label="Travel tangent" name="gaze_tangent" value="0" />
             <combo_box.item label="Camera" name="gaze_camera" value="1" />
             <combo_box.item label="Cast target" name="gaze_cast" value="2" />
             <combo_box.item label="World point" name="gaze_point" value="3" />
           </combo_box>
-          <combo_box follows="left|top|right" height="22" layout="topleft" left="158" name="lens_gaze_cast_target" right="-8" top="414"
-           tool_tip="Director cast member used by Cast target mode" width="318" />
-          <slider decimal_digits="2" follows="left|top|right" height="18" increment="0.05" initial_value="0.65" label="Head / eyes" label_width="74" layout="topleft" left="8" max_val="1" min_val="0" name="lens_gaze_head_eye" right="-32" top="442"
-           tool_tip="0 uses eyes only; 1 gives the head and neck their full share" width="468" />
-          <button follows="top|right" height="18" label="↺" layout="topleft" name="reset_lens_gaze_head_eye" right="-8" top="442" tool_tip="Reset head and eye gaze to default" width="18" />
-          <slider decimal_digits="2" follows="left|top|right" height="18" increment="0.05" initial_value="1" label="Intensity" label_width="74" layout="topleft" left="8" max_val="1" min_val="0" name="lens_gaze_intensity" right="-32" top="464"
-           tool_tip="Overall gaze strength" width="468" />
-          <button follows="top|right" height="18" label="↺" layout="topleft" name="reset_lens_gaze_intensity" right="-8" top="464" tool_tip="Reset gaze intensity to default" width="18" />
-          <slider decimal_digits="2" follows="left|top|right" height="18" increment="0.05" initial_value="0.5" label="Smoothing" label_width="74" layout="topleft" left="8" max_val="1" min_val="0" name="lens_gaze_smoothing" right="-32" top="486"
-           tool_tip="0 is snappy; 1 is very smooth" width="468" />
-          <button follows="top|right" height="18" label="↺" layout="topleft" name="reset_lens_gaze_smoothing" right="-8" top="486" tool_tip="Reset gaze smoothing to default" width="18" />
-          <text follows="left|top|right" height="34" layout="topleft" left="8" name="lens_gaze_status" right="-8" text_color="LtGray_50" top="510" width="468">Gaze off</text>
-          <text follows="left|top|right" font="SansSerifSmallBold" height="16" layout="topleft" left="8" name="rig_diagnostics_label" right="-78" top="548" width="398"
+          <combo_box follows="left|top|right" height="22" layout="topleft" left="158" name="lens_gaze_cast_target" right="-8" top="454"
+           tool_tip="Director cast member used by Cast target mode" />
+          <slider decimal_digits="2" follows="left|top|right" height="18" increment="0.05" initial_value="0.65" label="Head / eyes" label_width="74" layout="topleft" left="8" max_val="1" min_val="0" name="lens_gaze_head_eye" right="-32" top="482"
+           tool_tip="0 uses eyes only; 1 gives the head and neck their full share" />
+          <button follows="top|right" height="18" label="↺" layout="topleft" name="reset_lens_gaze_head_eye" right="-8" top="482" tool_tip="Reset head and eye gaze to default" width="22" />
+          <slider decimal_digits="2" follows="left|top|right" height="18" increment="0.05" initial_value="1" label="Intensity" label_width="74" layout="topleft" left="8" max_val="1" min_val="0" name="lens_gaze_intensity" right="-32" top="504"
+           tool_tip="Overall gaze strength" />
+          <button follows="top|right" height="18" label="↺" layout="topleft" name="reset_lens_gaze_intensity" right="-8" top="504" tool_tip="Reset gaze intensity to default" width="22" />
+          <slider decimal_digits="2" follows="left|top|right" height="18" increment="0.05" initial_value="0.5" label="Smoothing" label_width="74" layout="topleft" left="8" max_val="1" min_val="0" name="lens_gaze_smoothing" right="-32" top="526"
+           tool_tip="0 is snappy; 1 is very smooth" />
+          <button follows="top|right" height="18" label="↺" layout="topleft" name="reset_lens_gaze_smoothing" right="-8" top="526" tool_tip="Reset gaze smoothing to default" width="22" />
+          <text follows="left|top|right" height="34" layout="topleft" left="8" name="lens_gaze_status" right="-8" text_color="LtGray_50" top="550">Gaze off</text>
+          <text follows="left|top|right" font="SansSerifSmallBold" height="30" layout="topleft" left="8" name="rig_diagnostics_label" right="-100" top="592" word_wrap="true"
            tool_tip="[GhostPanelPerf] The structure part is re-sampled every 2 s while this editor is on screen. The live render/cull columns (draw pass, texture bindings, pool) are NOT polled: press Refresh to capture them.">Entity clone rig diagnostics (structure; Refresh for live state)</text>
-          <button follows="top|right" height="18" label="Refresh" layout="topleft" name="btn_rig_diag_refresh" right="-8" top="547"
+          <button follows="top|right" height="22" label="Refresh" layout="topleft" name="btn_rig_diag_refresh" right="-8" top="594"
            tool_tip="Capture the live render/cull state (draw pass, texture bindings, pool) of the selected entity clone now. It is a snapshot and does not follow the camera" width="64" />
-          <text_editor follows="left|top|right" font="Monospace" height="210" layout="topleft" left="8" max_length="32768" name="rig_diagnostics" read_only="true" right="-8" top="570" width="468" word_wrap="false">Select an entity clone to inspect rig and per-face texture state.</text_editor>
+          <text_editor follows="left|top|right" font="Monospace" height="156" layout="topleft" left="8" max_length="32768" name="rig_diagnostics" read_only="true" right="-8" top="626" word_wrap="false">Select an entity clone to inspect rig and per-face texture state.</text_editor>
         </panel>
               </panel>
             </scroll_container>
@@ -311,20 +311,20 @@
 
           <panel border="false" follows="all" height="490" label="Crowd" layout="topleft" name="crowd_tab" width="500">
             <scroll_container follows="all" height="490" layout="topleft" left="0" name="crowd_scroll" reserve_scroll_corner="false" top="0" width="500">
-              <panel background_visible="false" follows="left|top" height="604" layout="topleft" left="0" name="crowd_scroll_body" top="0" width="484">
+              <panel background_visible="false" follows="left|top" height="676" layout="topleft" left="0" name="crowd_scroll_body" top="0" width="484">
 
         <!-- Reliable crowd placement -->
-        <panel follows="left|top" height="398" layout="topleft" left="0" name="array_section" top="0" width="484">
-          <text follows="left|top|right" font="SansSerifSmallBold" height="16" layout="topleft" left="8" name="array_section_label" right="-8" top="8" width="332">Crowd Placement</text>
+        <panel follows="left|top" height="460" layout="topleft" left="0" name="array_section" top="0" width="484">
+          <text follows="left|top|right" font="SansSerifSmallBold" height="16" layout="topleft" left="8" name="array_section_label" right="-8" top="8">Crowd Placement</text>
           <spinner decimal_digits="0" follows="left|top" height="18" increment="1" initial_value="5" label="Count" label_width="40" layout="topleft" left="8" max_val="256" min_val="2" name="array_count_spinner" top="30"
-           tool_tip="Total clones in the crowd, including the selected prototype" width="78" />
-          <button follows="left|top" height="18" label="↺" layout="topleft" left="88" name="reset_array_count" top="30" tool_tip="Reset copy count to default" width="18" />
-          <spinner decimal_digits="2" follows="left|top" height="18" increment="0.1" initial_value="1.5" label="Spacing" label_width="50" layout="topleft" left="112" max_val="100" min_val="0.01" name="array_spacing_spinner" top="30"
-           tool_tip="Minimum centre-to-centre spacing in metres" width="90" />
-          <button follows="left|top" height="18" label="↺" layout="topleft" left="204" name="reset_array_spacing" top="30" tool_tip="Reset spacing to default" width="18" />
-          <button follows="left|top" height="22" label="Line" layout="topleft" left="228" name="btn_array_line" top="28"
+           tool_tip="Total clones in the crowd, including the selected prototype" width="84" />
+          <button follows="left|top" height="18" label="↺" layout="topleft" left="96" name="reset_array_count" top="30" tool_tip="Reset copy count to default" width="22" />
+          <spinner decimal_digits="2" follows="left|top" height="18" increment="0.1" initial_value="1.5" label="Spacing" label_width="50" layout="topleft" left="124" max_val="100" min_val="0.01" name="array_spacing_spinner" top="30"
+           tool_tip="Minimum centre-to-centre spacing in metres" width="130" />
+          <button follows="left|top" height="18" label="↺" layout="topleft" left="258" name="reset_array_spacing" top="30" tool_tip="Reset spacing to default" width="22" />
+          <button follows="left|top" height="22" label="Line" layout="topleft" left="288" name="btn_array_line" top="28"
            tool_tip="Choose Line and immediately preview it in world" width="48" />
-          <button follows="left|top" height="22" label="Ring" layout="topleft" left="282" name="btn_array_ring" top="28"
+          <button follows="left|top" height="22" label="Ring" layout="topleft" left="342" name="btn_array_ring" top="28"
            tool_tip="Choose Ring and immediately preview it in world" width="52" />
           <combo_box follows="left|top" height="22" initial_value="0" layout="topleft" left="8" name="array_formation_combo" top="58" width="160"
            tool_tip="Choose a precise crowd formation; the controls below adapt to this shape">
@@ -354,7 +354,7 @@
             <combo_box.item label="Ring brigade (military)" name="form_ring_brigade" value="34" />
             <combo_box.item label="Organic" name="form_organic" value="8" />
           </combo_box>
-          <combo_box enabled="false" follows="left|top" height="22" initial_value="-1" layout="topleft" left="174" name="crowd_copies_as_combo" top="58" width="160"
+          <combo_box enabled="false" follows="left|top" height="22" initial_value="-1" layout="topleft" left="176" name="crowd_copies_as_combo" top="58" width="180"
            tool_tip="Crowd copies keep the selected prototype's backing type">
             <combo_box.item label="Copies as: Select clone" name="copies_as_none" value="-1" />
             <combo_box.item label="Copies as: Overlay ghost" name="copies_as_overlay" value="0" />
@@ -367,27 +367,27 @@
             <combo_box.item label="Guide: Circle" name="guide_circle" value="1" />
             <combo_box.item label="Guide: Square" name="guide_square" value="2" />
           </combo_box>
-          <spinner decimal_digits="2" follows="left|top" height="18" increment="0.25" initial_value="6" label="Size" label_width="32" layout="topleft" left="154" max_val="1000" min_val="0.01" name="formation_guide_size_spinner" top="90"
-           tool_tip="Circle radius or square half-size in metres; a visual measuring guide, not a placement limit" width="100" />
-          <check_box follows="left|top" height="18" initial_value="false" label="Snap each to terrain" layout="topleft" left="262" name="formation_terrain_check" top="90"
+          <spinner decimal_digits="2" follows="left|top" height="18" increment="0.25" initial_value="6" label="Size" label_width="36" layout="topleft" left="154" max_val="1000" min_val="0.01" name="formation_guide_size_spinner" top="90"
+           tool_tip="Circle radius or square half-size in metres; a visual measuring guide, not a placement limit" width="110" />
+          <check_box follows="left|top" height="18" initial_value="false" label="Snap each to terrain" layout="topleft" left="272" name="formation_terrain_check" top="90"
            tool_tip="Optional: move each preview slot to land height. Leave off when placing on platforms or props" width="164" />
 
-          <spinner decimal_digits="2" follows="left|top" height="18" increment="0.05" initial_value="0.1" label="Edge gap" label_width="50" layout="topleft" left="8" max_val="20" min_val="0" name="formation_edge_gap_spinner" top="118"
-           tool_tip="Minimum clear space between clone footprints in metres" width="106" />
-          <spinner decimal_digits="2" follows="left|top" height="18" increment="0.05" initial_value="0" label="Jitter" label_width="38" layout="topleft" left="120" max_val="20" min_val="0" name="formation_jitter_spinner" top="118"
-           tool_tip="Maximum deterministic displacement in metres; clearance remains guaranteed" width="102" />
-          <spinner decimal_digits="0" follows="left|top" height="18" increment="1" initial_value="5" label="Files" label_width="32" layout="topleft" left="8" max_val="256" min_val="1" name="brigade_columns_spinner" top="118" tool_tip="Independent number of military files (columns)" visible="false" width="94" />
-          <spinner decimal_digits="0" follows="left|top" height="18" increment="1" initial_value="4" label="Ranks" label_width="36" layout="topleft" left="108" max_val="256" min_val="1" name="brigade_rows_spinner" top="118" tool_tip="Independent number of military ranks (rows); count may leave the last rank partial" visible="false" width="98" />
-          <spinner decimal_digits="2" follows="left|top" height="18" increment="0.1" initial_value="1.5" label="File gap" label_width="46" layout="topleft" left="212" max_val="100" min_val="0.01" name="brigade_file_spacing_spinner" top="118" tool_tip="Independent side-to-side spacing between files" visible="false" width="108" />
-          <spinner decimal_digits="2" follows="left|top" height="18" increment="0.1" initial_value="1.5" label="Rank gap" label_width="50" layout="topleft" left="326" max_val="100" min_val="0.01" name="brigade_rank_spacing_spinner" top="118" tool_tip="Independent front-to-back spacing between ranks" visible="false" width="116" />
+          <spinner decimal_digits="2" follows="left|top" height="18" increment="0.05" initial_value="0.1" label="Edge gap" label_width="58" layout="topleft" left="8" max_val="20" min_val="0" name="formation_edge_gap_spinner" top="118"
+           tool_tip="Minimum clear space between clone footprints in metres" width="116" />
+          <spinner decimal_digits="2" follows="left|top" height="18" increment="0.05" initial_value="0" label="Jitter" label_width="42" layout="topleft" left="132" max_val="20" min_val="0" name="formation_jitter_spinner" top="118"
+           tool_tip="Maximum deterministic displacement in metres; clearance remains guaranteed" width="108" />
 
-          <spinner decimal_digits="2" follows="left|top" height="18" increment="1" initial_value="0" label="Parameter" label_width="58" layout="topleft" left="8" max_val="256" min_val="0" name="array_parameter_spinner" top="148"
+          <spinner decimal_digits="0" follows="left|top" height="18" increment="1" initial_value="0" label="Parameter" label_width="62" layout="topleft" left="8" max_val="256" min_val="0" name="array_parameter_spinner" top="146"
            tool_tip="Formation-specific parameter" visible="false" width="142" />
-          <button follows="left|top" height="18" label="↺" layout="topleft" left="156" name="reset_array_parameter" top="148" tool_tip="Reset this formation parameter" visible="false" width="18" />
-          <spinner decimal_digits="0" follows="left|top" height="18" increment="1" initial_value="0" label="Seed" label_width="34" layout="topleft" left="182" max_val="999999" min_val="0" name="formation_seed_spinner" top="148"
-           tool_tip="Deterministic seed for Organic layouts and jitter" width="108" />
+          <button follows="left|top" height="18" label="↺" layout="topleft" left="156" name="reset_array_parameter" top="146" tool_tip="Reset this formation parameter" visible="false" width="22" />
+          <spinner decimal_digits="0" follows="left|top" height="18" increment="1" initial_value="0" label="Seed" label_width="36" layout="topleft" left="182" max_val="999999" min_val="0" name="formation_seed_spinner" top="146"
+           tool_tip="Deterministic seed for Organic layouts and jitter" width="120" />
+          <spinner decimal_digits="2" follows="left|top" height="18" increment="0.1" initial_value="1.5" label="File gap" label_width="50" layout="topleft" left="310" max_val="100" min_val="0.01" name="brigade_file_spacing_spinner" top="146" tool_tip="Independent side-to-side spacing between files" visible="false" width="108" />
+          <spinner decimal_digits="0" follows="left|top" height="18" increment="1" initial_value="5" label="Files" label_width="36" layout="topleft" left="8" max_val="256" min_val="1" name="brigade_columns_spinner" top="172" tool_tip="Independent number of military files (columns)" visible="false" width="94" />
+          <spinner decimal_digits="0" follows="left|top" height="18" increment="1" initial_value="4" label="Ranks" label_width="44" layout="topleft" left="110" max_val="256" min_val="1" name="brigade_rows_spinner" top="172" tool_tip="Independent number of military ranks (rows); count may leave the last rank partial" visible="false" width="98" />
+          <spinner decimal_digits="2" follows="left|top" height="18" increment="0.1" initial_value="1.5" label="Rank gap" label_width="56" layout="topleft" left="216" max_val="100" min_val="0.01" name="brigade_rank_spacing_spinner" top="172" tool_tip="Independent front-to-back spacing between ranks" visible="false" width="116" />
 
-          <combo_box follows="left|top" height="22" initial_value="0" layout="topleft" left="8" name="formation_facing_combo" top="176" width="142"
+          <combo_box follows="left|top" height="22" initial_value="0" layout="topleft" left="8" name="formation_facing_combo" top="200" width="162"
            tool_tip="Heading resolved once into the placement draft">
             <combo_box.item label="Rotate with formation" name="face_author" value="0" />
             <combo_box.item label="Source yaw" name="face_source" value="1" />
@@ -406,29 +406,29 @@
             <combo_box.item label="Face previous slot" name="face_chain" value="15" />
             <combo_box.item label="Animated look wave" name="face_wave" value="16" />
           </combo_box>
-          <combo_box follows="left|top" height="22" initial_value="1" layout="topleft" left="156" name="crowd_create_mode_combo" top="176" width="178"
+          <combo_box follows="left|top" height="22" initial_value="1" layout="topleft" left="178" name="crowd_create_mode_combo" top="200" width="180"
            tool_tip="Create one collapsed directing unit by default, or leave every clone separate">
             <combo_box.item label="Create: Separate" name="create_separate" value="0" />
             <combo_box.item label="Create: Rigid group" name="create_rigid" value="1" />
             <combo_box.item label="Create: Move+Face group" name="create_move_face" value="2" />
           </combo_box>
-          <button follows="left|top" height="22" label="Pick facing point" layout="topleft" left="340" name="btn_pick_facing_target" top="176"
-           tool_tip="Set the selected prototype's fixed world-facing point before previewing" width="118" />
+          <button follows="left|top" height="22" label="Pick facing point" layout="topleft" left="362" name="btn_pick_facing_target" top="200" width="120"
+           tool_tip="Set the selected prototype's fixed world-facing point before previewing" />
 
-          <spinner decimal_digits="1" follows="left|top" height="18" increment="1" initial_value="0" label="Facing offset" label_width="76" layout="topleft" left="8" max_val="180" min_val="-180" name="facing_yaw_offset_spinner" top="198"
+          <spinner decimal_digits="1" follows="left|top" height="18" increment="1" initial_value="0" label="Facing offset" label_width="88" layout="topleft" left="8" max_val="180" min_val="-180" name="facing_yaw_offset_spinner" top="228"
            tool_tip="Body facing bias, independent of the pattern's own wheel-driven rotation" width="166" />
-          <check_box follows="left|top" height="18" label="Preserve source tilt" layout="topleft" left="182" name="preserve_source_tilt_check" top="198"
+          <check_box follows="left|top" height="18" label="Preserve source tilt" layout="topleft" left="182" name="preserve_source_tilt_check" top="228"
            tool_tip="Source yaw normally extracts a pure world-Z heading; check this to reproduce the prototype's full pitch/roll instead" width="160" />
 
-          <button follows="left|top" height="22" label="Preview in world" layout="topleft" left="8" name="btn_array_build" top="228"
-           tool_tip="Show every exact clone slot without creating anything yet" width="110" />
-          <button follows="left|top" height="22" label="Confirm" layout="topleft" left="124" name="btn_crowd_confirm" top="228"
+          <button follows="left|top" height="22" label="Preview in world" layout="topleft" left="8" name="btn_array_build" top="256"
+           tool_tip="Show every exact clone slot without creating anything yet" width="120" />
+          <button follows="left|top" height="22" label="Confirm" layout="topleft" left="136" name="btn_crowd_confirm" top="256"
            tool_tip="Create the exact visible preview" width="70" />
-          <button follows="left|top" height="22" label="Unpin" layout="topleft" left="200" name="btn_crowd_unpin" top="228"
+          <button follows="left|top" height="22" label="Unpin" layout="topleft" left="212" name="btn_crowd_unpin" top="256"
            tool_tip="Return a pinned layout to following the mouse" width="62" />
-          <button follows="left|top" height="22" label="Cancel" layout="topleft" left="268" name="btn_crowd_cancel" top="228"
+          <button follows="left|top" height="22" label="Cancel" layout="topleft" left="280" name="btn_crowd_cancel" top="256"
            tool_tip="Discard the placement draft without creating clones" width="66" />
-          <combo_box control_name="GhostStudioOverlayPalette" follows="left|top" height="22" layout="topleft" left="340" name="formation_overlay_palette_combo" top="228" width="140"
+          <combo_box control_name="GhostStudioOverlayPalette" follows="left|top" height="22" layout="topleft" left="8" name="formation_overlay_palette_combo" top="284" width="170"
            tool_tip="High-contrast colours for the in-world crowd preview markers and numbers (the dark outline is always kept)">
             <combo_box.item label="Preview: Neon green" name="palette_green" value="0" />
             <combo_box.item label="Preview: Neon yellow" name="palette_yellow" value="1" />
@@ -437,46 +437,46 @@
             <combo_box.item label="Preview: Magenta" name="palette_magenta" value="4" />
           </combo_box>
 
-          <text follows="left|top" height="40" layout="topleft" left="8" name="crowd_placement_status" text_color="LtGray_50" top="258" width="450"
+          <text follows="left|top|right" height="40" layout="topleft" left="8" name="crowd_placement_status" right="-8" text_color="LtGray_50" top="312"
            word_wrap="true">Ready. Select a clone, choose a formation, then Preview in world.</text>
-          <text follows="left|top" height="38" layout="topleft" left="8" name="crowd_placement_instructions" text_color="LtGray_50" top="302" width="450"
+          <text follows="left|top|right" height="38" layout="topleft" left="8" name="crowd_placement_instructions" right="-8" text_color="LtGray_50" top="356"
            word_wrap="true">Wheel rotates · hold MMB and drag for height · click once pins · click again or Confirm creates · Alt camera · Esc cancels</text>
 
-          <combo_box follows="left|top" height="22" initial_value="1" layout="topleft" left="8" name="nameplate_mode_combo" top="346" width="124"
+          <combo_box follows="left|top" height="22" initial_value="1" layout="topleft" left="8" name="nameplate_mode_combo" top="402" width="124"
            tool_tip="Off hides clone labels; Smart shows one label for a collapsed group; All also labels expanded members">
             <combo_box.item label="Names: Off" name="names_off" value="0" />
             <combo_box.item label="Names: Smart" name="names_smart" value="1" />
             <combo_box.item label="Names: All" name="names_all" value="2" />
           </combo_box>
-          <check_box follows="left|top" height="18" label="Edit group members" layout="topleft" left="140" name="group_edit_members_check" top="348"
+          <check_box follows="left|top" height="18" label="Edit group members" layout="topleft" left="140" name="group_edit_members_check" top="404"
            tool_tip="Expand the selected group and allow member-local positioning" width="146" />
-          <combo_box follows="left|top" height="22" initial_value="1" layout="topleft" left="292" name="lock_mode_combo" top="346" width="166"
+          <combo_box follows="left|top" height="22" initial_value="1" layout="topleft" left="292" name="lock_mode_combo" top="402" width="190"
            tool_tip="Behavior of the selected existing group; this does not set how a new crowd is created">
             <combo_box.item label="Selected group: Off" name="lock_off" value="0" />
             <combo_box.item label="Selected group: Rigid" name="lock_rigid" value="1" />
             <combo_box.item label="Selected group: Move+Face" name="lock_move_face" value="2" />
           </combo_box>
-          <check_box follows="left|top" height="18" label="Pin member offset" layout="topleft" left="8" name="group_member_pinned_check" top="374"
-           tool_tip="Keep this member's edited local offset when group authoring updates" width="142" />
-          <button follows="left|top" height="22" label="Reset member" layout="topleft" left="156" name="btn_group_member_reset" top="370"
-           tool_tip="Restore this member's authored local transform inside the group" width="106" />
+          <check_box follows="left|top" height="18" label="Pin member offset" layout="topleft" left="8" name="group_member_pinned_check" top="430" width="142"
+           tool_tip="Keep this member's edited local offset when group authoring updates" />
+          <button follows="left|top" height="22" label="Reset member" layout="topleft" left="156" name="btn_group_member_reset" top="428" width="106"
+           tool_tip="Restore this member's authored local transform inside the group" />
         </panel>
 
         <!-- Time and formation motion -->
-        <panel follows="left|top" height="206" layout="topleft" left="0" name="motion_section" top="398" width="484">
-          <text follows="left|top|right" font="SansSerifSmallBold" height="16" layout="topleft" left="8" name="motion_section_label" right="-8" top="8" width="332">Freeze Strip &amp; Formation Motion</text>
-          <spinner decimal_digits="0" follows="left|top" height="18" increment="1" initial_value="8" label="Frames" label_width="44" layout="topleft" left="8" max_val="64" min_val="1" name="strip_count_spinner" top="30"
-           tool_tip="Number of successive real-time pose snapshots" width="78" />
-          <button follows="left|top" height="18" label="↺" layout="topleft" left="88" name="reset_strip_count" top="30" tool_tip="Reset frame count to default" width="18" />
-          <spinner decimal_digits="2" follows="left|top" height="18" increment="0.05" initial_value="0.25" label="Interval" label_width="48" layout="topleft" left="112" max_val="60" min_val="0.01" name="strip_interval_spinner" top="30"
-           tool_tip="Real seconds between captures. Formation and spacing come from the Crowd section" width="90" />
-          <button follows="left|top" height="18" label="↺" layout="topleft" left="204" name="reset_strip_interval" top="30" tool_tip="Reset interval to default" width="18" />
-          <button follows="left|top" height="22" label="Capture" layout="topleft" left="228" name="btn_strip_start" top="28"
-           tool_tip="Capture successive poses into the selected formation" width="54" />
-          <button follows="left|top" height="22" label="Cancel" layout="topleft" left="286" name="btn_strip_cancel" top="28"
-           tool_tip="Stop this panel's active strip and keep snapshots already captured" width="52" />
-          <text follows="left|top" height="18" layout="topleft" left="8" name="strip_status" text_color="LtGray_50" top="56" width="466">No strip capture</text>
-          <combo_box follows="left|top" height="22" layout="topleft" left="8" name="formation_motion_combo" top="82" width="112"
+        <panel follows="left|top" height="206" layout="topleft" left="0" name="motion_section" top="470" width="484">
+          <text follows="left|top|right" font="SansSerifSmallBold" height="16" layout="topleft" left="8" name="motion_section_label" right="-8" top="8">Freeze Strip &amp; Formation Motion</text>
+          <spinner decimal_digits="0" follows="left|top" height="18" increment="1" initial_value="8" label="Frames" label_width="50" layout="topleft" left="8" max_val="64" min_val="1" name="strip_count_spinner" top="30"
+           tool_tip="Number of successive real-time pose snapshots" width="90" />
+          <button follows="left|top" height="18" label="↺" layout="topleft" left="102" name="reset_strip_count" top="30" tool_tip="Reset frame count to default" width="22" />
+          <spinner decimal_digits="2" follows="left|top" height="18" increment="0.05" initial_value="0.25" label="Interval" label_width="56" layout="topleft" left="130" max_val="60" min_val="0.01" name="strip_interval_spinner" top="30"
+           tool_tip="Real seconds between captures. Formation and spacing come from the Crowd section" width="116" />
+          <button follows="left|top" height="18" label="↺" layout="topleft" left="250" name="reset_strip_interval" top="30" tool_tip="Reset interval to default" width="22" />
+          <button follows="left|top" height="22" label="Capture" layout="topleft" left="280" name="btn_strip_start" top="28"
+           tool_tip="Capture successive poses into the selected formation" width="64" />
+          <button follows="left|top" height="22" label="Cancel" layout="topleft" left="350" name="btn_strip_cancel" top="28"
+           tool_tip="Stop this panel's active strip and keep snapshots already captured" width="64" />
+          <text follows="left|top|right" height="18" layout="topleft" left="8" name="strip_status" right="-8" text_color="LtGray_50" top="56">No strip capture</text>
+          <combo_box follows="left|top" height="22" layout="topleft" left="8" name="formation_motion_combo" top="82" width="128"
            tool_tip="Continuous transform motion for the current multi-selection; Off restores authored placement">
             <combo_box.item label="Off" name="motion_off" value="0" />
             <combo_box.item label="Orbit" name="motion_orbit" value="1" />
@@ -485,21 +485,21 @@
             <combo_box.item label="Ripple" name="motion_ripple" value="4" />
             <combo_box.item label="March actor path" name="motion_path" value="5" />
           </combo_box>
-          <spinner decimal_digits="2" follows="left|top" height="18" increment="0.05" initial_value="0.2" label="Speed" label_width="38" layout="topleft" left="126" max_val="10" min_val="0" name="formation_motion_speed" top="84"
-           tool_tip="Cycles per second" width="82" />
-          <button follows="left|top" height="18" label="↺" layout="topleft" left="210" name="reset_motion_speed" top="84" tool_tip="Reset motion speed to default" width="18" />
-          <spinner decimal_digits="2" follows="left|top" height="18" increment="0.1" initial_value="1" label="Amp" label_width="30" layout="topleft" left="234" max_val="100" min_val="0" name="formation_motion_amplitude" top="84"
-           tool_tip="Orbit multiplier, breathe radial fraction, or ripple height in metres" width="70" />
-          <button follows="left|top" height="18" label="↺" layout="topleft" left="306" name="reset_motion_amplitude" top="84" tool_tip="Reset motion amplitude to default" width="18" />
+          <spinner decimal_digits="2" follows="left|top" height="18" increment="0.05" initial_value="0.2" label="Speed" label_width="40" layout="topleft" left="144" max_val="10" min_val="0" name="formation_motion_speed" top="84"
+           tool_tip="Cycles per second" width="96" />
+          <button follows="left|top" height="18" label="↺" layout="topleft" left="244" name="reset_motion_speed" top="84" tool_tip="Reset motion speed to default" width="22" />
+          <spinner decimal_digits="2" follows="left|top" height="18" increment="0.1" initial_value="1" label="Amp" label_width="34" layout="topleft" left="274" max_val="100" min_val="0" name="formation_motion_amplitude" top="84"
+           tool_tip="Orbit multiplier, breathe radial fraction, or ripple height in metres" width="104" />
+          <button follows="left|top" height="18" label="↺" layout="topleft" left="382" name="reset_motion_amplitude" top="84" tool_tip="Reset motion amplitude to default" width="22" />
           <button follows="left|top" height="22" label="Apply selection" layout="topleft" left="8" name="btn_formation_motion_apply" top="112"
            tool_tip="Snapshot the selected ghosts' authored transforms and enable this group motion; choose Off to restore them" width="116" />
           <button follows="left|top" height="22" label="Group" layout="topleft" left="130" name="btn_group_unit" top="112"
            tool_tip="Lock the selected ghosts as one directing unit" width="52" />
           <button follows="left|top" height="22" label="Ungroup" layout="topleft" left="188" name="btn_ungroup_unit" top="112"
            tool_tip="Explicitly unlock the selected unit" width="62" />
-          <spinner decimal_digits="0" follows="left|top" height="18" increment="1" initial_value="0" label="Pose fps" label_width="48" layout="topleft" left="8" max_val="30" min_val="0" name="pose_rate_spinner" top="142"
-           tool_tip="Per clone or group: 2-29 Hz holds poses for stop motion; 0 or 30 is smooth every frame" width="96" />
-          <text follows="left|top" height="40" layout="topleft" left="8" name="motion_precedence_help" text_color="LtGray_50" top="166" width="326" word_wrap="true">Motion owns position. Keep-facing owns yaw except Spin. Chaos remains a stable additive variation.</text>
+          <spinner decimal_digits="0" follows="left|top" height="18" increment="1" initial_value="0" label="Pose fps" label_width="58" layout="topleft" left="8" max_val="30" min_val="0" name="pose_rate_spinner" top="142"
+           tool_tip="Per clone or group: 2-29 Hz holds poses for stop motion; 0 or 30 is smooth every frame" width="110" />
+          <text follows="left|top|right" height="40" layout="topleft" left="8" name="motion_precedence_help" right="-8" text_color="LtGray_50" top="166" word_wrap="true">Motion owns position. Keep-facing owns yaw except Spin. Chaos remains a stable additive variation.</text>
         </panel>
               </panel>
             </scroll_container>

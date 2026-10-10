@@ -317,7 +317,7 @@
      follows="left|top"
      height="20"
      layout="topleft"
-     left="60"
+     left="70"
      top="442"
      name="hover_wave_combo"
      tool_tip="Full = plain sine (up and down); Half = rectified sine (always up from the base, a bounce/pulse feel)"
@@ -339,13 +339,13 @@
      label="Amp m"
      label_width="40"
      layout="topleft"
-     left="140"
+     left="150"
      max_val="10"
      min_val="0"
      top="442"
      name="hover_amp_spin"
      tool_tip="Hover amplitude, metres"
-     width="110" />
+     width="104" />
     <spinner
      decimal_digits="2"
      follows="left|top"
@@ -354,13 +354,13 @@
      label="Hz"
      label_width="20"
      layout="topleft"
-     left="254"
+     left="258"
      max_val="10"
      min_val="0"
      top="442"
      name="hover_freq_spin"
      tool_tip="Hover frequency, Hz (cycles per second)"
-     width="98" />
+     width="94" />
     <check_box
      follows="left|top"
      height="18"
@@ -399,7 +399,7 @@
      height="20"
      increment="1"
      label="Amp deg"
-     label_width="40"
+     label_width="56"
      layout="topleft"
      left="154"
      max_val="90"
@@ -546,7 +546,7 @@
      height="20"
      increment="5"
      label="Slope deg"
-     label_width="50"
+     label_width="62"
      layout="topleft"
      left="146"
      max_val="89"
