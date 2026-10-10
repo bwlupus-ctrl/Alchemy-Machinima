@@ -70,7 +70,9 @@ while ($true) {
             '--set', 'UIPerfSelfTestFrames', $Frames,
             '--set', 'UIPerfInventoryStress', $(if ($targets -contains 'inventory_stress') { $Inventory } else { 0 }),
             '--set', 'UIPerfSelfTestAB', $(if ($AB) { 'TRUE' } else { 'FALSE' }),
-            '--set', 'UILayoutAudit', $(if ($Layout) { 'TRUE' } else { 'FALSE' }))
+            '--set', 'UILayoutAudit', $(if ($Layout) { 'TRUE' } else { 'FALSE' }),
+            # Run at full speed when the viewer is not the focused window (session-only override).
+            '--set', 'BackgroundYieldTime', 0)
   if ($DirectorV2) {
     $viewerArgs += @('--set', 'DirectorUIV2', 'TRUE',
       '--set', 'UIPerfDirectorV2', 'TRUE',
