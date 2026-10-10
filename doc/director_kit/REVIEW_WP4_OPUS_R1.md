@@ -319,3 +319,9 @@ Verdict: **FIX-NEEDED**, with 1 finding: N3, a one-line fix. N1 and N2(a) are fi
 **Draw cost:**
 - The new work runs only on edges: the override compare and `ALKitShell::find`, which runs after the no-change early return.
 - No per-frame regression.
+
+---
+
+## R3 verification (commit `1ec18bb45a6`)
+
+**CLEAN.** N3 is fixed and contract clause 1 holds: the v1 explicit click always calls `syncEasyControls()`, as it did before WP4, and v1 passive edges still use the deferred 10 Hz refresh (alpanelcinelightrig.cpp:2158). No other code changed. WP4 has 0 BLOCKER, 0 MAJOR, and m7 (the style pass) is deferred to clang-format.
