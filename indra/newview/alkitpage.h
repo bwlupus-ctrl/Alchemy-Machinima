@@ -9,7 +9,7 @@
 #include <boost/signals2.hpp>
 #include <unordered_map>
 #include <vector>
-class ALFlowGrid;class ALKitRow;class ALKitCard;class ALKitSwitch;class ALKitShell;class ALKitPresetStrip;class LLButton;class LLComboBox;class LLLineEditor;class LLTextBox;
+class ALFlowGrid;class ALKitRow;class ALKitCard;class ALKitSwitch;class ALKitShell;class ALKitPresetStrip;class ALKitPopover;class LLButton;class LLComboBox;class LLLineEditor;class LLTextBox;
 class ALKitScroller : public LLScrollContainer
 {
 public:
@@ -45,11 +45,11 @@ public:
 protected:friend class LLUICtrlFactory;explicit ALKitPage(const Params&);
 private:
  struct SectionData{std::string id,label;std::vector<std::string>cards;};struct ModeData{std::string name;std::vector<std::string>cards;};
- void applyModeAndChip();void updateMaster();void scrollToView(LLView*);std::string prefix()const;
+ void applyModeAndChip();void updateMaster();void scrollToView(LLView*);void performPageReset();std::string prefix()const;
  std::string mPage,mSummary,mWatchSettings,mMasterWidget,mMasterSetting,mMasterLabel,mMasterTooltip,mModes,mModeSetting,mModeWidget,mModeOn,mModeAdapter,mWhoLabel,mWhoPicker,mWhoAdapter,mPresetMode,mPresetProvider,mChipMode;
- bool mLegacy=false,mLayoutPending=false,mSearching=false,mWhoError=false,mWhoPinned=false,mRestoringState=true;S32 mModeIndex=0,mChipIndex=0,mBarLeftEnd=0;U64 mHistoryRevision=~U64(0);ALLiveReadoutClock mReadoutClock{10.f};
+ bool mLegacy=false,mLayoutPending=false,mSearching=false,mWhoError=false,mWhoPinned=false,mRestoringState=true,mUpdatingModeSwitch=false;S32 mModeIndex=0,mChipIndex=0,mBarLeftEnd=0;U64 mHistoryRevision=~U64(0);ALLiveReadoutClock mReadoutClock{10.f};
  std::vector<SectionData>mSections;std::vector<ModeData>mModeDefs;std::vector<LLButton*>mChips;std::vector<LLPanel*>mSectionHeadings;
- ALKitScroller*mScroller=nullptr;ALKitDoc*mDoc=nullptr;ALFlowGrid*mGrid=nullptr;LLPanel*mBar=nullptr;LLPanel*mBanner=nullptr;LLPanel*mChipsContainer=nullptr;LLPanel*mWhoContainer=nullptr;LLPanel*mMasterBox=nullptr;LLPanel*mLegacyHost=nullptr;ALKitSwitch*mMaster=nullptr;ALKitSwitch*mModeSwitch=nullptr;ALKitShell*mShell=nullptr;LLTextBox*mMasterState=nullptr;LLTextBox*mLegacySummary=nullptr;LLButton*mUndo=nullptr;LLButton*mRedo=nullptr;LLButton*mWhoChip=nullptr;LLLineEditor*mSearch=nullptr;LLComboBox*mWhoCombo=nullptr;
+ ALKitScroller*mScroller=nullptr;ALKitDoc*mDoc=nullptr;ALFlowGrid*mGrid=nullptr;LLPanel*mBar=nullptr;LLPanel*mBanner=nullptr;LLPanel*mChipsContainer=nullptr;LLPanel*mWhoContainer=nullptr;LLPanel*mMasterBox=nullptr;LLPanel*mLegacyHost=nullptr;ALKitSwitch*mMaster=nullptr;ALKitSwitch*mModeSwitch=nullptr;ALKitShell*mShell=nullptr;ALKitPopover*mResetPopover=nullptr;LLTextBox*mMasterState=nullptr;LLTextBox*mLegacySummary=nullptr;LLButton*mUndo=nullptr;LLButton*mRedo=nullptr;LLButton*mWhoChip=nullptr;LLLineEditor*mSearch=nullptr;LLComboBox*mWhoCombo=nullptr;
  std::unordered_map<std::string,ALKitRow*>mRows;std::unordered_map<std::string,ALKitCard*>mCards;std::vector<boost::signals2::scoped_connection>mConnections;
 };
 #endif

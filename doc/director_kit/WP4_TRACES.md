@@ -11,10 +11,12 @@ These traces describe the implemented Rig/Rim paths on `feature/director-kit-p0`
 
 ## Toggle Easy -> cards
 
+**Result: TRUE.**
+
 1. The visible shell segment created by `indra/newview/alkitshell.cpp:ALKitShell::refreshModeProxy` calls `indra/newview/alkitpage.cpp:ALKitPage::setModeIndex(index, true)`.
-2. The page resolves its instance-scoped `cine_rig_easy` adapter, registered in `indra/newview/alpanelcinelightrig.cpp:ALPanelCineLightRig::postBuild`, and calls `ALPanelCineLightRig::applyEasyMode` with `USER` origin. That function owns the preference write, optional explicit normalization, effective-mode decision, and `syncEasyControls` publication.
+2. The page resolves its instance-scoped `cine_rig_easy` adapter, registered in `indra/newview/alpanelcinelightrig.cpp:ALPanelCineLightRig::postBuild`, and calls `ALPanelCineLightRig::applyEasyMode` with `USER` origin. Its re-entrancy guard and `LLCachedControl` comparison permit only a changed explicit-user preference write; the subsequent user-origin reconcile always runs `normalizeSelectedForEasy(true)` and publishes the effective mode.
 3. The hidden `cine_easy_mode` switch publishes the effective result to `indra/newview/alkitpage.cpp:ALKitPage::syncEffectiveMode`; `ALKitPage::applyModeAndChip` then shows the four Easy cards or the fifteen Advanced cards.
-4. Search reveal enters through `ALKitPage::revealCard` -> `setModeIndex(index, false)`. The adapter call is inside `ALKitHistory::ScopedSuspend`; passive entry requires an already Easy-native rig and publishes its effective result without explicit-user snapping.
+4. Setting signals and programmatic switch flips reconcile with `PASSIVE` origin and cannot write the preference. The pre-WP4 v1 passive edge still runs `normalizeSelectedForEasy(false)`, including forcing Key on. `ALKitPage::revealCard` keeps the current mode when the card is already listed there; if the card is absent, it changes display passively without a setting write or undo entry.
 
 ## Rim preset -> one undo step -> Ctrl+Z restores
 
@@ -31,15 +33,15 @@ These traces describe the implemented Rig/Rim paths on `feature/director-kit-p0`
 
 ## Page reset asks first -> one undo step
 
-1. The page-bar reset calls `indra/newview/alkitpage.cpp:ALKitPage::resetPage`, which opens `GenericAlertYesCancel` through a page handle and performs no writes on Cancel or after page destruction.
-2. On Yes, the callback opens one `Reset page` mouse gesture, then resets every resettable non-preset, non-who row across all cards.
+1. The page-bar reset calls `indra/newview/alkitpage.cpp:ALKitPage::resetPage`, which opens an `ALKitPopover` anchored to `<P>_reset_page`; Cancel only hides it.
+2. Reset hides the popover, opens one `Reset page` mouse gesture through the handle-guarded page callback, then resets every resettable non-preset, non-who row across all cards.
 3. Setting and widget records coalesce in `indra/newview/alkithistory.cpp:ALKitHistory::addEntry`; the next gesture or the settle timer closes one Step, so one Ctrl+Z restores the page reset.
 
 ## Rail selects Mara (Subject B) -> anchor slot 2 -> undo not polluted
 
 1. A rail commit reaches `indra/newview/alkitshell.h:ALKitShell::setCastSelection`; the built Rig page callback installed by `indra/newview/alkitpage.cpp:ALKitPage::postBuild` resolves `cine_rig_slot` unless its who chip is pinned.
 2. The adapter registered by `indra/newview/alpanelcinelightrig.cpp:ALPanelCineLightRig::postBuild` maps the Subject B UUID to combo value 2, then the page sets `cine_anchor` and commits it.
-3. `ALPanelCineLightRig::onAnchorSelected` wraps synchronous `ALCineLightRigManager::setSelectedSlot(SUBJECT_B)` in `ALKitHistory::ScopedSuspend`, then calls `history.barrier("rig slot changed")`.
+3. `ALPanelCineLightRig::onAnchorSelected` first returns without a barrier when the requested slot is already selected. A real change wraps synchronous `ALCineLightRigManager::setSelectedSlot(SUBJECT_B)` in `ALKitHistory::ScopedSuspend`, then calls `history.barrier("rig slot changed")`.
 4. The new context is `slot:2`; none of the synchronous slot-restoration writes enter undo, and the barrier leaves no cross-slot undo Step.
 
 ## Dynamic visibility and header presets

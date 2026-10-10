@@ -712,12 +712,31 @@ bool ALKitCard::revealRow(ALKitRow*row)
     return true;
 }
 
-void ALKitCard::restoreOpenState(bool body,bool more)
+LLSD ALKitCard::moreState()const
+{
+    if(mOptionMore.empty())return LLSD(mMoreOpen);
+    LLSD state=LLSD::emptyArray();
+    for(S32 i=0;i<(S32)mOptions.size();++i)
+    {
+        LLSD option=LLSD::emptyMap();
+        option["value"]=mOptions[i]->optionValue();
+        option["open"]=mOptionMore[i];
+        state.append(option);
+    }
+    return state;
+}
+
+void ALKitCard::restoreOpenState(bool body,const LLSD& more)
 {
     mBodyOpen=body;
-    if(mOptionMore.empty())mMoreOpen=more;
-    else std::fill(mOptionMore.begin(),mOptionMore.end(),more);
-    if(mMore)mMore->setLabel(more?"Fewer options":"More options");
+    if(mOptionMore.empty())mMoreOpen=more.asBoolean();
+    else if(more.isArray())for(LLSD::array_const_iterator it=more.beginArray();it!=more.endArray();++it)for(S32 i=0;i<(S32)mOptions.size();++i)
+    {
+        const LLSD& saved=*it;
+        if(saved["value"]==mOptions[i]->optionValue())mOptionMore[i]=saved["open"].asBoolean();
+    }
+    else std::fill(mOptionMore.begin(),mOptionMore.end(),more.asBoolean());
+    if(mMore)mMore->setLabel(moreOpen()?"Fewer options":"More options");
     requestLayout();
 }
 

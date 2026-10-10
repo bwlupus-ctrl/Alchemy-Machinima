@@ -172,6 +172,7 @@ void ALKitHistory::captureSetting(const std::string& page,const std::string& nam
 
 void ALKitHistory::addEntry(Entry entry,const std::string& supplied_label,const std::string& label_page)
 {
+    if(entry.oldv==entry.newv)return;
     if(!mOpen)
     {
         beginGesture(mOrigin,mPage,supplied_label);

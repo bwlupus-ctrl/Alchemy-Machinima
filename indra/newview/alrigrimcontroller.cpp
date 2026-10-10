@@ -179,7 +179,7 @@ void ALRigRimController::tickFrame()
     {
         const std::string& status=gPipeline.rigRimStatus();
         setTextIfChanged(mQualityStatus,status);
-        setVisibleIfChanged(mEnableTag,status.find("NO AVATAR TAG")!=std::string::npos);
+        ALKitRow::setControlVisible(mEnableTag,status.find("NO AVATAR TAG")!=std::string::npos);
     }
 }
 

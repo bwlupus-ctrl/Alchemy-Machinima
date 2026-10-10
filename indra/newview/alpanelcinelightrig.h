@@ -12,7 +12,6 @@
 
 #include "llpanel.h"
 #include "alrigrimcontroller.h"
-#include "alkitbinding.h"
 #include "aluirefresh.h"
 #include "lluicolor.h"
 #include "lluuid.h"
@@ -55,6 +54,13 @@ public:
     void reshape(S32 width, S32 height, bool called_from_parent = true) override;
 
 private:
+    enum class EasyModeOrigin
+    {
+        USER,
+        PASSIVE,
+        RESTORE
+    };
+
     static const std::vector<std::string>& settings();
 
     void populateStaticCombos();
@@ -71,8 +77,8 @@ private:
     // presence bucket. Passive re-syncs (first show, slot switch, scene load)
     // pass false and never mutate near-bucket authored EVs.
     bool normalizeSelectedForEasy(bool explicit_entry);
-    bool applyEasyMode(bool desired, ALKitModeAdapters::EOrigin origin, bool force = false);
-    bool syncEasyModeState(bool desired, ALKitModeAdapters::EOrigin origin, bool force = false);
+    bool applyEasyMode(bool desired, EasyModeOrigin origin, bool force = false);
+    bool syncEasyModeState(bool desired, EasyModeOrigin origin, bool force = false);
     void onEasyModeCommit();
     void onEasyBrightnessCommit();
     void onEasyDramaCommit();
@@ -247,6 +253,7 @@ private:
     S32 mEasyModeSlot = -1;
     bool mEasyModeActive = false;
     bool mSyncingEasyControls = false;
+    bool mApplyingEasyMode = false;
     S32 mFixtureRoleIndex = 0;
     S32 mDisplayedFixtureSlot = -1;
 };

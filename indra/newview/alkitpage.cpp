@@ -5,6 +5,7 @@
 #include "alkitbinding.h"
 #include "alkitrow.h"
 #include "alkitpresets.h"
+#include "alkitpopover.h"
 #include "alkitstyle.h"
 #include "alkitshell.h"
 #include "alkitswitch.h"
@@ -14,7 +15,6 @@
 #include "llcontrol.h"
 #include "llfontgl.h"
 #include "lllineeditor.h"
-#include "llnotificationsutil.h"
 #include "llstring.h"
 #include "lltextbox.h"
 #include "lluictrlfactory.h"
@@ -262,6 +262,42 @@ bool ALKitPage::postBuild()
     reset->setOrigin(bar_x,10);
     bar_x+=34;
 
+    if(mShell)
+    {
+        ALKitPopover::Params popover_params;
+        popover_params.name=pre+"_reset_popover";
+        popover_params.rect=LLRect(0,96,320,0);
+        popover_params.visible=false;
+        mResetPopover=LLUICtrlFactory::create<ALKitPopover>(popover_params);
+        mShell->addChild(mResetPopover);
+        mResetPopover->bindAnchor(reset);
+
+        LLTextBox::Params message_params;
+        message_params.name=pre+"_reset_message";
+        message_params.rect=LLRect(12,84,308,48);
+        message_params.initial_value="Reset every control on this page to its default?";
+        message_params.wrap=true;
+        mResetPopover->addChild(LLUICtrlFactory::create<LLTextBox>(message_params));
+
+        LLButton* cancel=makeButton(pre+"_reset_cancel","Cancel");
+        LLButton* confirm=makeButton(pre+"_reset_confirm","Reset");
+        cancel->setOrigin(140,12);
+        confirm->setOrigin(228,12);
+        mResetPopover->addChild(cancel);
+        mResetPopover->addChild(confirm);
+        LLHandle<ALKitPopover> popover_handle=mResetPopover->getDerivedHandle<ALKitPopover>();
+        LLHandle<ALKitPage> page_handle=getDerivedHandle<ALKitPage>();
+        cancel->setCommitCallback([popover_handle](LLUICtrl*,const LLSD&)
+        {
+            if(ALKitPopover* popover=popover_handle.get())popover->hide();
+        });
+        confirm->setCommitCallback([page_handle,popover_handle](LLUICtrl*,const LLSD&)
+        {
+            if(ALKitPopover* popover=popover_handle.get())popover->hide();
+            if(ALKitPage* page=page_handle.get())page->performPageReset();
+        });
+    }
+
     mUndo=makeButton(pre+"_undo","Undo");
     mRedo=makeButton(pre+"_redo","Redo");
     mUndo->setCommitCallback([this](LLUICtrl*,const LLSD&)
@@ -322,11 +358,17 @@ bool ALKitPage::postBuild()
         mBar->addChild(mModeSwitch);
         mConnections.emplace_back(mModeSwitch->setFlipCallback([this](bool requested)
         {
+            if(mUpdatingModeSwitch)return;
             if(ALKitModeAdapters::Adapter adapter=ALKitModeAdapters::get(getParent(),mModeAdapter))
             {
                 ALKitHistory::ScopedSuspend suspend;
                 const bool effective=adapter(requested,ALKitModeAdapters::PASSIVE);
-                if(effective!=requested)mModeSwitch->setValue(effective);
+                if(effective!=requested)
+                {
+                    mUpdatingModeSwitch=true;
+                    mModeSwitch->setValue(effective);
+                    mUpdatingModeSwitch=false;
+                }
             }
             syncEffectiveMode();
         }
@@ -518,6 +560,7 @@ void ALKitPage::setModeIndex(S32 index,bool explicit_user)
     if(mModeSwitch)
     {
         bool on=mModeDefs[index].name==mModeOn;
+        mUpdatingModeSwitch=true;
         if(ALKitModeAdapters::Adapter adapter=ALKitModeAdapters::get(getParent(),mModeAdapter))
         {
             if(!explicit_user)
@@ -533,6 +576,7 @@ void ALKitPage::setModeIndex(S32 index,bool explicit_user)
             mModeSwitch->writeBoundValue(on);
             mModeSwitch->setValue(on);
         }
+        mUpdatingModeSwitch=false;
         syncEffectiveMode();
     }
     else
@@ -787,7 +831,12 @@ bool ALKitPage::revealRow(ALKitRow*r,bool flash_it)
 bool ALKitPage::revealCard(ALKitCard*c,bool)
 {
     if(!c)return false;
-    for(S32 i=0;i<(S32)mModeDefs.size();++i)if(std::find(mModeDefs[i].cards.begin(),mModeDefs[i].cards.end(),c->id())!=mModeDefs[i].cards.end())
+    const auto listed_in_mode=[c](const ModeData& mode)
+    {
+        return std::find(mode.cards.begin(),mode.cards.end(),c->id())!=mode.cards.end();
+    };
+    const bool visible_in_current=mModeIndex>=0&&mModeIndex<(S32)mModeDefs.size()&&listed_in_mode(mModeDefs[mModeIndex]);
+    if(!visible_in_current)for(S32 i=0;i<(S32)mModeDefs.size();++i)if(listed_in_mode(mModeDefs[i]))
     {
         setModeIndex(i,false);
         break;
@@ -811,19 +860,14 @@ void ALKitPage::setSearchText(const std::string&q)
 
 void ALKitPage::resetPage()
 {
-    LLHandle<LLPanel> handle=getHandle();
-    LLNotificationsUtil::add("GenericAlertYesCancel",
-        LLSD().with("MESSAGE","Reset every control on this page to its default?"),LLSD(),
-        [handle](const LLSD& notification,const LLSD& response)
-        {
-            if(LLNotificationsUtil::getSelectedOption(notification,response)!=0)return false;
-            ALKitPage*page=dynamic_cast<ALKitPage*>(handle.get());
-            if(!page)return false;
-            if(page->mShell)page->mShell->history().beginGesture(ALKitHistory::MOUSE,page->mPage,"Reset page");
-            for(auto&card:page->mCards)for(ALKitRow*row:card.second->rows())
-                if(row->resettable()&&!row->cardPreset()&&!row->whoPicker())row->reset();
-            return false;
-        });
+    if(mResetPopover)mResetPopover->show();
+}
+
+void ALKitPage::performPageReset()
+{
+    if(mShell)mShell->history().beginGesture(ALKitHistory::MOUSE,mPage,"Reset page");
+    for(auto&card:mCards)for(ALKitRow*row:card.second->rows())
+        if(row->resettable()&&!row->cardPreset()&&!row->whoPicker())row->reset();
 }
 
 bool ALKitPage::cycleChip(S32 delta)
@@ -881,7 +925,7 @@ void ALKitPage::saveState()
     for(const auto& card:mCards)
     {
         page["cards"][card.first]["body"]=card.second->bodyOpen();
-        page["cards"][card.first]["more"]=card.second->moreOpen();
+        page["cards"][card.first]["more"]=card.second->moreState();
     }
     state[mPage]=page;
     gSavedSettings.setLLSD("DirectorV2PageState",state);
@@ -912,7 +956,7 @@ void ALKitPage::restoreState()
     if(page.has("cards"))for(auto& card:mCards)if(page["cards"].has(card.first))
     {
         const LLSD& saved=page["cards"][card.first];
-        card.second->restoreOpenState(saved["body"].asBoolean(),saved["more"].asBoolean());
+        card.second->restoreOpenState(saved["body"].asBoolean(),saved["more"]);
     }
     applyModeAndChip();
     mRestoringState=false;

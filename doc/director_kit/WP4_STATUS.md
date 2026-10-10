@@ -3,12 +3,14 @@
 Implementation status: **complete, awaiting orchestrator-only compile/gate execution**.
 
 - Completed the four-way `DirectorV2SelectedLight` link: Rig map, Rig Lights selector, Fixture role (two-way committed `mirror_setting`), and Rim per-light selector.
-- Kept the existing who adapter and slot history barrier, and registered the named `cine_rig_slot` context alongside the page context used by history Steps.
-- Refactored Easy mode through an event-driven writer plus a read-only state synchronizer. `CineLightRigEasyMode` is cached with `LLCachedControl`; setting-signal/draw/reveal reconciliation never writes it, while mode-adapter commits write only on an actual cached-value change. User proxy changes remain recordable; passive/search/restore reconciliation is suspended and publishes effective mode without explicit-entry snapping.
+- Kept the existing who adapter and the page-key slot context used by history Steps; removed the dead `cine_rig_slot` context registration. A same-slot anchor commit now returns before the history barrier, while a real slot change retains the barrier.
+- Easy mode has one guarded writer: explicit v1/v2 user commits write `CineLightRigEasyMode` only when its `LLCachedControl` differs. Setting signals, page build/open, draw sync, scene/preset/slot changes, search reveal, `revealCard`, and programmatic switch updates only reconcile display. Undo/redo replays the recorded user write under history suspension.
+- Restored the pre-WP4 v1 entry contract from `1af3670dc8b`: passive entry calls `normalizeSelectedForEasy(false)` (including Key EV fold/zero and Key-on), while explicit v1/v2 entry calls `normalizeSelectedForEasy(true)`. A non-Easy-ready look may display Advanced without clearing the saved preference.
 - Confirmed the constructor-time `rig_rim` provider registration, one-gesture preset application, card-header preset reparenting, active-option card reset, and dynamic visibility probe paths.
-- Added confirmation and handle safety to page reset while retaining one history gesture for the accepted reset.
+- Added an anchored page-reset confirmation popover while retaining one history gesture for the accepted reset.
+- Persisted selector-card More state per option value, routed the Rim avatar-tag edge through `ALKitRow::setControlVisible`, removed the kit binding include from the v1 panel header, and reject no-op history entries before recording.
 - Removed the expired `cine_rimq_status` and `cine_rimq_enable_tag` `pending_cpp_targets`; both are owned and wired by `ALPanelRigRim` -> `ALRigRimController`.
 - Generator page config and generated XUI/index files were not changed. The only tooling-policy change was deleting those two stale WP4 pending records from `scripts/code_tools/director_kit/gate_policy.json`.
-- No build, `/Zs`, or commit was performed. `ui_draw_lint.py --changed HEAD --json` now reports `new_errors: 0`; the three Easy-mode findings at the former 2110/2115/2116 sites are gone. Required orchestrator checks remain `director_parity.py --groups light_group` and `kit_lint.py --all` (plus its stated compile/lint harnesses).
+- No build, `/Zs`, draw lint, Python gate, or commit was performed in this fix round; those checks remain orchestrator-owned.
 
 See `doc/director_kit/WP4_TRACES.md` for the six required reviewer-walkable flows and code paths.
