@@ -7,7 +7,7 @@ Computed class: **code-driven** (0/82 setting-bound rows; 79 C++-referenced rows
 
 - `panel_dance_ball` / `panel` at `indra/newview/skins/default/xui/en/panel_dance_ball.xml:12` (81 matching rows).
 - `floater_director` / `floater` at `indra/newview/skins/default/xui/en/floater_director.xml:15` (1 matching rows).
-- Referencing classes: `ALPanelDanceBall` (154), `LLFloaterReg` (1).
+- Referencing classes: `ALPanelDanceBall` (154), `LLFloaterReg` (1), `LLFloaterDirector` (1).
 
 Name collisions in secondary XUI files are evidence candidates, not automatic ownership. The implementation must retain only occurrences whose root and class agree with the row's behavior.
 
@@ -156,7 +156,7 @@ Use the existing XUI control types as ordinary measured kit rows. No new canvas,
 | `ALPanelDanceBall::onToggleOn()` — `indra/newview/alpaneldanceball.cpp:334` | Move model-facing work into `ALDanceBallKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
 | `ALPanelDanceBall::onWaveChanged()` — `indra/newview/alpaneldanceball.cpp:384, 385, 386, 387` | Move model-facing work into `ALDanceBallKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
 | `ALPanelDanceBall::rebuildDancerList()` — `indra/newview/alpaneldanceball.cpp:867` | Move model-facing work into `ALDanceBallKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
-| `LLFloaterReg::showInstance()` — `indra/newview/llfloaterdirector.cpp:586` | Move model-facing work into `ALDanceBallKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
+| `LLFloaterReg::showInstance()` — `indra/newview/llfloaterdirector.cpp:602` | Move model-facing work into `ALDanceBallKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
 
 ## Live state and refresh
 

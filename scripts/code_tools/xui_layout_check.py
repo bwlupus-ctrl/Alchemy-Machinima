@@ -22,8 +22,11 @@ Intentional sibling layering must be documented in the XML with::
     <!-- xui-check: overlay empty_hint list_widget -->
     <!-- xui-check: independent conditional_a conditional_b -->
 
-Exit status is 1 when any finding is reported, 0 otherwise, and 2 for command
-line or XML errors.  It uses only the Python standard library.
+Exit status is 1 when any non-baselined finding is reported, 0 otherwise, and
+2 for command-line or XML errors.  Generated legacy Director pages may carry
+only the exact v1-inherited keys listed in gate_policy.json; their static
+selftest makes additions, removals, or drift fatal.  It uses only the Python
+standard library.
 """
 
 from __future__ import annotations
@@ -33,6 +36,7 @@ import json
 import math
 import re
 import subprocess
+import tempfile
 import sys
 import xml.etree.ElementTree as ElementTree
 from dataclasses import dataclass, field
@@ -277,7 +281,11 @@ def apply_widget_defaults(root: Node, path: Path) -> None:
         filename = node.attrs.get("filename") if node.tag == "panel" else None
         if filename:
             if filename not in panel_cache:
-                panel_path = path.parent / filename
+                panel_path = next(
+                    (candidate / filename for candidate in (path.parent, *path.parents)
+                     if (candidate / filename).is_file()),
+                    path.parent / filename,
+                )
                 try:
                     panel_cache[filename] = dict(ElementTree.parse(panel_path).getroot().attrib)
                 except (OSError, ElementTree.ParseError):
@@ -551,6 +559,7 @@ def arrange_flow_grid(node: Node, local_children: list[tuple[Node, Rect]]) -> No
 
 
 KIT_INDEX_NAME = "director_kit_index.xml"
+GATE_POLICY = Path(__file__).with_name("director_kit") / "gate_policy.json"
 KIT_HOSTING_TAGS = {"kit_row", "kit_preset_host", "kit_popover"}
 POSITION_ATTRS = ("left", "top", "bottom", "follows", "layout")
 GEOMETRY_ATTRS = POSITION_ATTRS + ("width", "height")
@@ -680,6 +689,37 @@ def finalize_findings(findings: list[Finding]) -> list[Finding]:
     result = list(unique.values())
     result.sort(key=lambda item: (item.line, item.kind, item.message))
     return result
+
+
+def finding_subject(finding: Finding) -> str:
+    """Stable widget/scroller identity used by the exact legacy baseline."""
+    return finding.message.split(" ", 1)[0].rstrip(":")
+
+
+def finding_key(filename: str, finding: Finding) -> str:
+    return f"{filename}|{finding.kind}|{finding_subject(finding)}"
+
+
+def legacy_v1_baseline() -> set[str]:
+    try:
+        policy = json.loads(GATE_POLICY.read_text(encoding="utf-8"))
+        entries = policy["xui_legacy_v1_findings"]
+    except (OSError, KeyError, json.JSONDecodeError, TypeError) as exc:
+        raise ValueError(f"invalid legacy XUI baseline in {GATE_POLICY}: {exc}") from exc
+    if not isinstance(entries, list) or not all(isinstance(item, str) for item in entries):
+        raise ValueError("xui_legacy_v1_findings must be a list of exact string keys")
+    if len(entries) != len(set(entries)) or any(any(ch in item for ch in "*?[]") for item in entries):
+        raise ValueError("xui_legacy_v1_findings must contain unique exact keys (no globs)")
+    return set(entries)
+
+
+def is_legacy_page(path: Path) -> bool:
+    try:
+        root = ElementTree.parse(path).getroot()
+    except (OSError, ElementTree.ParseError):
+        return False
+    kit = root if root.tag == "kit_page" else root.find(".//kit_page")
+    return kit is not None and kit.get("legacy", "false").lower() == "true"
 
 
 def calculate(node: Node, parent_abs: Rect | None = None, root_width: int | None = None) -> None:
@@ -881,10 +921,21 @@ class SourceIndex:
         self.xui_sources: dict[str, list[str]] = {}
         self.class_sources: dict[str, list[str]] = {}
         self.panel_classes: dict[str, set[str]] = {}
+        self.xui_parents: dict[str, set[str]] = {}
         self._owner_cache: dict[tuple[str, tuple[str, ...]], list[str]] = {}
         self._visibility_cache: dict[str, set[str]] = {}
         self.all_dynamic_visibility: set[str] = set()
         source_dir = repo_root / "indra" / "newview"
+        xui_dir = source_dir / "skins" / "default" / "xui" / "en"
+        for xui_path in xui_dir.glob("*.xml"):
+            try:
+                xui_root = ElementTree.parse(xui_path).getroot()
+            except (OSError, ElementTree.ParseError):
+                continue
+            for node in xui_root.iter():
+                child = node.get("page_file")
+                if child:
+                    self.xui_parents.setdefault(child, set()).add(xui_path.name)
         for path in source_dir.glob("*.cpp"):
             try:
                 self.files[path] = path.read_text(encoding="utf-8", errors="replace")
@@ -907,14 +958,22 @@ class SourceIndex:
         cache_key = (xui_name, tuple(scroller_names))
         if cache_key in self._owner_cache:
             return self._owner_cache[cache_key]
-        direct = self.xui_sources.get(xui_name, [])
+        owner_names = {xui_name}
+        pending = [xui_name]
+        while pending:
+            for parent in self.xui_parents.get(pending.pop(), set()):
+                if parent not in owner_names:
+                    owner_names.add(parent)
+                    pending.append(parent)
+        direct = [source for name in owner_names for source in self.xui_sources.get(name, [])]
         classes: set[str] = set()
         for text in direct:
-            for match in re.finditer(
-                rf'["\']{re.escape(xui_name)}["\'][\s\S]{{0,500}}?build<\s*([A-Za-z_][A-Za-z0-9_:]*)',
-                text,
-            ):
-                classes.add(match.group(1).split("::")[-1])
+            for name in owner_names:
+                for match in re.finditer(
+                    rf'["\']{re.escape(name)}["\'][\s\S]{{0,500}}?build<\s*([A-Za-z_][A-Za-z0-9_:]*)',
+                    text,
+                ):
+                    classes.add(match.group(1).split("::")[-1])
         owners = list(direct)
         for class_name in classes:
             owners.extend(self.class_sources.get(class_name, []))
@@ -1212,6 +1271,11 @@ def check_file(path: Path, source_index: SourceIndex | None = None,
     calculate(root)
     kit_findings = kit_geometry_findings(root)
     if root.rect is None or root.rect.width <= 0 or root.rect.height <= 0:
+        if any(node.legacy_kit for node in (root, *descendants(root))):
+            kit_findings.append(Finding(
+                "invalid-root", root.line,
+                f"{path.name} contains a legacy kit_page under a zero-size root; layout cannot be skipped",
+            ))
         return finalize_findings(kit_findings)
     findings: list[Finding] = list(kit_findings)
     dynamic_visibility = (dynamic_visibility_override if dynamic_visibility_override is not None
@@ -1315,6 +1379,7 @@ def run_selftest(json_output: bool) -> int:
         ("flow_rows_clipped_broken.xml", True, "clipped"),
         ("kit_legacy_position_broken.xml", True, "kit-geometry"),
         ("kit_legacy_page_broken.xml", True, "overlap"),
+        ("kit_legacy_zero_root_broken.xml", True, "invalid-root"),
     )
     reports: list[dict[str, object]] = []
     passed = True
@@ -1388,6 +1453,71 @@ def run_selftest(json_output: bool) -> int:
     if not json_output:
         print(f"{'PASS' if legacy_passed else 'FAIL'} kit_legacy_page_broken.xml: "
               f"legacy kit_page matches v1 leaf findings ({len(legacy_findings)})")
+    # Real-tree regression: each of the 31 serialized legacy pages must have
+    # the same finding keys as the v1 leaf it copied.  This prevents both
+    # wrapper-size vacuity and serialization-only drift.
+    repo = Path(__file__).resolve().parents[2]
+    xui = repo / "indra/newview/skins/default/xui/en"
+    v1_path = xui / "floater_director.xml"
+    real_ok = True
+    real_count = 0
+    matching_count = 0
+    observed_baseline: set[str] = set()
+    if v1_path.is_file():
+        v1_xml = ElementTree.parse(
+            v1_path, parser=ElementTree.XMLParser(
+                target=ElementTree.TreeBuilder(insert_comments=True))).getroot()
+        leaves = {node.get("name"): node for node in v1_xml.iter("panel") if node.get("name")}
+        with tempfile.TemporaryDirectory(prefix=".xui_legacy_parity_", dir=xui) as temp_name:
+            temp = Path(temp_name)
+            for generated_path in sorted(xui.glob("panel_dpage_*.xml")):
+                generated_xml = ElementTree.parse(generated_path).getroot()
+                kit = generated_xml if generated_xml.tag == "kit_page" else generated_xml.find(".//kit_page")
+                if kit is None or kit.get("legacy") != "true":
+                    continue
+                real_count += 1
+                page_name = str(kit.get("page", "")).rsplit("/", 1)[-1]
+                leaf = leaves.get(page_name)
+                if leaf is None:
+                    real_ok = False
+                    continue
+                leaf_path = temp / generated_path.name
+                ElementTree.ElementTree(leaf).write(leaf_path, encoding="utf-8", xml_declaration=True)
+                def keys(items, generated=False):
+                    keyed = []
+                    for item in items:
+                        subject = finding_subject(item)
+                        if generated and subject == page_name + "_content":
+                            subject = page_name
+                        keyed.append((item.kind, subject))
+                    return sorted(keyed)
+                generated_findings = check_file(generated_path)
+                pair_ok = keys(generated_findings, generated=True) == keys(check_file(leaf_path))
+                matching_count += int(pair_ok)
+                real_ok = real_ok and pair_ok
+                observed_baseline.update(finding_key(generated_path.name, item)
+                                         for item in generated_findings)
+    try:
+        declared_baseline = legacy_v1_baseline()
+        baseline_ok = observed_baseline == declared_baseline
+    except ValueError:
+        baseline_ok = False
+    source_index = SourceIndex(repo)
+    runtime_observed = {
+        finding_key(path.name, item)
+        for path in sorted(xui.glob("panel_dpage_*.xml")) if is_legacy_page(path)
+        for item in check_file(path, source_index)
+    }
+    runtime_ok = runtime_observed <= declared_baseline if baseline_ok else False
+    real_passed = real_ok and real_count == 31 and baseline_ok and runtime_ok
+    passed = passed and real_passed
+    reports.append({"fixture": "real legacy pages", "expected": "31 pages match v1 leaf findings",
+                    "count": real_count, "passed": real_passed})
+    if not json_output:
+        print(f"{'PASS' if real_passed else 'FAIL'} real legacy pages: "
+              f"{matching_count}/31 match v1 finding keys; strict baseline "
+              f"{'matches' if baseline_ok else 'differs'}; transitive wiring "
+              f"{'passes' if runtime_ok else 'differs'}")
     if json_output:
         print(json.dumps({"passed": passed, "fixtures": reports}, indent=2))
     elif passed:
@@ -1415,6 +1545,11 @@ def main() -> int:
     reports: list[dict[str, object]] = []
     source_index = SourceIndex(Path.cwd())
     try:
+        baseline = legacy_v1_baseline()
+    except ValueError as exc:
+        print(str(exc), file=sys.stderr)
+        return 2
+    try:
         files = list(selected_files(args.file, args.all, args.changed))
     except ValueError as exc:
         if args.json:
@@ -1431,6 +1566,13 @@ def main() -> int:
             else:
                 print(f"{path}: XML error: {exc}", file=sys.stderr)
             return 2
+        if is_legacy_page(path):
+            expected = {key for key in baseline if key.startswith(path.name + "|")}
+            observed = {finding_key(path.name, item) for item in findings}
+            drift = sorted(observed - expected)
+            findings = [item for item in findings if finding_key(path.name, item) not in expected]
+            findings.extend(Finding("legacy-baseline-drift", 1, f"unexpected finding key {key}")
+                            for key in drift)
         counts: dict[str, int] = {}
         for finding in findings:
             counts[finding.kind] = counts.get(finding.kind, 0) + 1

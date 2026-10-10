@@ -19,7 +19,7 @@ Use the existing XUI control types as ordinary measured kit rows. No new canvas,
 
 | Card / row | Existing control evidence | Required binding | Other writable homes |
 |---|---|---|---|
-| `scene_options` / `scene_hotkeys_enabled` (Hotkeys) | `check_box` `indra/newview/skins/default/xui/en/floater_director.xml:1758` | kit `toggle` ↔ `DirectorHotkeysEnabled` `Boolean` | `indra/newview/skins/default/xui/en/panel_dpage_capture_scene_options.xml:6` `scene_hotkeys_enabled` |
+| `scene_options` / `scene_hotkeys_enabled` (Hotkeys) | `check_box` `indra/newview/skins/default/xui/en/floater_director.xml:1758` | kit `toggle` ↔ `DirectorHotkeysEnabled` `Boolean` | `indra/newview/skins/default/xui/en/panel_dpage_capture_scene_options.xml:5` `scene_hotkeys_enabled` |
 | `scene_options` / `scene_hotkeys_list` (Shortcuts) | `text` `indra/newview/skins/default/xui/en/floater_director.xml:1759` | kit readout ← approved static copy; no runtime writer | none |
 | `scene_options` / `scene_categories_text` (Saved in file) | `text` `indra/newview/skins/default/xui/en/floater_director.xml:1761` | kit readout ← approved static copy; no runtime writer | none |
 

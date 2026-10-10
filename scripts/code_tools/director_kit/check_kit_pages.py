@@ -22,6 +22,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 REPO = os.path.abspath(os.path.join(HERE, "..", "..", ".."))
 DEFAULT_CONFIG = os.path.join(HERE, "kit_pages.json")
 DEFAULT_DATA = os.path.join(HERE, "director_mockup_data.json")
+DEFAULT_POLICY = os.path.join(HERE, "gate_policy.json")
 DEFAULT_PAGE_SOURCES = os.path.join(REPO, "doc", "director_kit", "page_sources.json")
 V1_XUI_DIR = os.path.join(REPO, "indra", "newview", "skins", "default", "xui", "en")
 
@@ -279,6 +280,9 @@ def check_page(chk, key, entry, data_pages, data_names, ps_names, pages_src_cfg)
                 elif pk_ == "mirror_setting":
                     chk.ok(isinstance(pv, str) and pv, where,
                            "row_overrides '%s'.mirror_setting must be a non-empty string" % rw)
+                elif pk_ == "shortcut_of":
+                    chk.ok(isinstance(pv, str) and re.fullmatch(r"[^/]+/[^/]+", pv) is not None,
+                           where, "row_overrides '%s'.shortcut_of must be '<page>/<row>'" % rw)
                 else:
                     chk.err(where, "row_overrides '%s' has unknown key '%s'" % (rw, pk_))
 
@@ -345,11 +349,13 @@ def main(argv=None):
     ap.add_argument("--config", default=DEFAULT_CONFIG)
     ap.add_argument("--data", default=DEFAULT_DATA)
     ap.add_argument("--page-sources", default=DEFAULT_PAGE_SOURCES)
+    ap.add_argument("--policy", default=DEFAULT_POLICY)
     args = ap.parse_args(argv)
 
     cfg = load_json(args.config, "kit_pages.json")
     data = load_json(args.data, "director_mockup_data.json")
     ps = load_json(args.page_sources, "page_sources.json")
+    policy = load_json(args.policy, "gate_policy.json")
 
     chk = Checker()
     data_pages, data_names = collect_data(data)
@@ -402,6 +408,56 @@ def main(argv=None):
         n_parity = len(pa) if isinstance(pa, dict) else 0
         print("entries: p0_pages=%d (data cards=%d, add_rows=%d) launcher_targets=%d parity_allow=%d"
               % (n_pages, n_cards, n_add, n_launch, n_parity))
+
+    policy_keys = {"version", "pending_settings", "pending_homes", "shared_writers",
+                   "same_page_mode_writers", "xui_legacy_v1_findings",
+                   "help_audit_allow", "code_kind_exceptions", "retired_cpp_targets",
+                   "pending_cpp_targets"}
+    if chk.ok(isinstance(policy, dict), "gate_policy.json", "top level must be an object"):
+        for extra in sorted(set(policy) - policy_keys):
+            chk.err("gate_policy.json", "unknown top-level key '%s'" % extra)
+        for missing in sorted(policy_keys - set(policy)):
+            chk.err("gate_policy.json", "missing top-level key '%s'" % missing)
+        chk.ok(policy.get("version") == 1 and not isinstance(policy.get("version"), bool),
+               "gate_policy.json", "version must be 1")
+        baseline = policy.get("xui_legacy_v1_findings", [])
+        if chk.ok(isinstance(baseline, list) and all(isinstance(x, str) for x in baseline),
+                  "xui_legacy_v1_findings", "must be a list of exact string keys"):
+            chk.ok(len(baseline) == len(set(baseline)), "xui_legacy_v1_findings",
+                   "keys must be unique")
+            for key in baseline:
+                chk.ok(re.fullmatch(r"panel_dpage_[^|*?\[\]]+\.xml\|[a-z-]+\|[^|*?\[\]]+", key) is not None,
+                       "xui_legacy_v1_findings", "invalid exact key '%s'" % key)
+        for section in sorted(policy_keys - {"version", "xui_legacy_v1_findings"}):
+            entries = policy.get(section, {})
+            if not chk.ok(isinstance(entries, dict), section, "must be an object"):
+                continue
+            for name, entry in entries.items():
+                where = "%s[%s]" % (section, name)
+                if not chk.ok(isinstance(entry, dict), where, "must be an object"):
+                    continue
+                required = {"reason", "citation", "expires"}
+                if section == "help_audit_allow": required.add("text")
+                if section in {"shared_writers", "same_page_mode_writers"}: required.add("attrs")
+                if section == "pending_cpp_targets": required.update({"file", "symbol"})
+                for missing in sorted(required - set(entry)):
+                    chk.err(where, "missing required key '%s'" % missing)
+                chk.ok(re.fullmatch(r"WP(?:[1-9]|1[0-2])", str(entry.get("expires", ""))) is not None,
+                       where, "expires must be WP1..WP12")
+                for field in ("reason", "citation"):
+                    chk.ok(isinstance(entry.get(field), str) and entry.get(field), where,
+                           "%s must be a non-empty string" % field)
+                if "attrs" in required:
+                    chk.ok(isinstance(entry.get("attrs"), list) and entry.get("attrs") and
+                           all(isinstance(x, str) and x for x in entry.get("attrs", [])),
+                           where, "attrs must be a non-empty string list")
+                if section == "pending_cpp_targets":
+                    chk.ok(isinstance(entry.get("file"), str) and
+                           re.fullmatch(r"indra/newview/[A-Za-z0-9_]+\.cpp", entry.get("file", "")) is not None,
+                           where, "file must name one exact indra/newview C++ source")
+                    chk.ok(isinstance(entry.get("symbol"), str) and
+                           re.fullmatch(r"[A-Za-z_]\w*", entry.get("symbol", "")) is not None,
+                           where, "symbol must name one exact C++ owner")
 
     if chk.errors:
         for e in chk.errors:

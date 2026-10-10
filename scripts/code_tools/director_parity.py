@@ -13,9 +13,8 @@ Checks (DIRECTOR_KIT_P0_SPEC.md section 6.2 unless noted):
      values (sections 3.4 and 6.1 rule 10). New selectors have no v1 combo oracle.
 
 The P0 gate is exactly ``--groups light_group`` and its v1 scope is the recursively expanded
-Director leaf tree required by P0 spec section 6.2. ``--all`` is a rollout-status command:
-it validates the two P0 pages and reports each remaining page as pending its WP7-WP11 owner,
-rather than misreporting hundreds of expected pre-conversion differences as parity defects.
+Director leaf tree required by P0 spec section 6.2. ``--all`` checks all 35 pages: unchanged
+legacy pages against their v1 leaves and converted/new pages against their declared owners.
 
 Usage::
 
@@ -55,7 +54,7 @@ V2_FLOATER = "floater_director_v2.xml"
 V1_FLOATER = XUI_DIR / "floater_director.xml"
 EXPECTED_PAGES = 35
 ROLLOUT_WP = {
-    "cast_group": "WP7", "perf_group": "WP8",
+    "cast_group": "WP7", "performance_group": "WP8",
     "camera_group": "WP9", "lens_group": "WP9",
     "light_group": "WP10", "look_group": "WP10",
     "world_group": "WP11", "capture_group": "WP11",
@@ -136,6 +135,7 @@ class GetChildRequest:
     names: tuple
     text: str
     unresolved: bool
+    owner: str = ""
 
 
 @dataclass(frozen=True)
@@ -204,6 +204,11 @@ def load_allow(paths: Paths) -> Allow:
     if not isinstance(rules, dict):
         raise ParityError("parity_allow must be an object")
     return Allow({str(k): v for k, v in rules.items()})
+
+
+def load_cpp_policy(paths: Paths) -> tuple[dict, dict]:
+    data = _load_json(paths.kit_pages.with_name("gate_policy.json"), required=False) or {}
+    return data.get("retired_cpp_targets", {}), data.get("pending_cpp_targets", {})
 
 
 def load_expansions(path: Path) -> list:
@@ -392,7 +397,11 @@ def build_v2_index(cache: XmlCache, files, kitnames: dict) -> V2Index:
             control = (element.get("control_name") or "").strip()
             if control:
                 index.controls.add(control)
+            # A lazy-page master is only the tab on/off indicator; it does not
+            # bind the page's setting. Rail metadata is likewise observational.
             for attr in ("enable_setting", "master_setting", "mode_setting", "sel_setting"):
+                if element.tag in {"kit_lazy_page", "kit_shell.rail_item"}:
+                    continue
                 bound = (element.get(attr) or "").strip()
                 if bound:
                     index.controls.add(bound)
@@ -424,18 +433,19 @@ def _balanced_args(text: str, start: int) -> Optional[str]:
     return None
 
 
-def _classify(requested: str, args: str, source: str, line: int, expansions: list) -> GetChildRequest:
+def _classify(requested: str, args: str, source: str, line: int, expansions: list,
+              owner: str = "") -> GetChildRequest:
     parts = [part.strip() for part in args.split("+")]
     literals = [LITERAL.fullmatch(part) for part in parts]
     if all(literals):
         name = "".join(match.group(1) for match in literals)
-        return GetChildRequest(source, line, requested, (name,), args, False)
+        return GetChildRequest(source, line, requested, (name,), args, False, owner)
     prefix = literals[0].group(1) if literals[0] else ""
     suffix = literals[-1].group(1) if literals[-1] else ""
     if not prefix and not suffix:
-        return GetChildRequest(source, line, requested, (), args, True)
+        return GetChildRequest(source, line, requested, (), args, True, owner)
     names = tuple(n for n in expansions if n.startswith(prefix) and n.endswith(suffix))
-    return GetChildRequest(source, line, requested, names, args, not names)
+    return GetChildRequest(source, line, requested, names, args, not names, owner)
 
 
 def extract_getchild(text: str, source: str, expansions: list,
@@ -453,6 +463,10 @@ def extract_getchild(text: str, source: str, expansions: list,
         if args is None:
             continue
         line = text.count("\n", 0, match.start()) + 1
+        method_re = re.compile(
+            r"\b([A-Za-z_]\w*)::[A-Za-z_]\w*\s*\([^;{}]*\)\s*(?:const\s*)?\{")
+        methods = list(method_re.finditer(text, 0, match.start()))
+        owner = methods[-1].group(1) if methods else ""
         names = expression_expansions.get(args.strip())
         indexed = re.fullmatch(r"(\w+)\s*\[[^\]]+\]", args.strip())
         if names is None and indexed:
@@ -480,9 +494,9 @@ def extract_getchild(text: str, source: str, expansions: list,
                     break
         if names:
             out.append(GetChildRequest(source, line, match.group(1).split("::")[-1],
-                                       tuple(names), args, False))
+                                       tuple(names), args, False, owner))
         else:
-            out.append(_classify(match.group(1).split("::")[-1], args, source, line, expansions))
+            out.append(_classify(match.group(1).split("::")[-1], args, source, line, expansions, owner))
     return out
 
 
@@ -531,11 +545,16 @@ def check_controls(a_controls: set, b_controls: set, allow: Allow, allowed: list
     return out
 
 
-def check_getchild(requests: list, tags: dict, allow: Optional[Allow] = None,
-                   allowed: Optional[list] = None) -> list:
+def check_getchild(requests: list, tags: dict, retired: Optional[dict] = None,
+                   pending: Optional[dict] = None, allowed: Optional[list] = None,
+                   pending_report: Optional[list] = None,
+                   observed_pending: Optional[set] = None) -> list:
     out = []
-    allow = allow or Allow({})
+    retired = retired or {}
+    pending = pending or {}
     allowed = allowed if allowed is not None else []
+    pending_report = pending_report if pending_report is not None else []
+    observed_pending = observed_pending if observed_pending is not None else set()
     for request in requests:
         where = f"{request.source}:{request.line} getChild<{request.requested}>"
         if request.unresolved:
@@ -544,9 +563,23 @@ def check_getchild(requests: list, tags: dict, allow: Optional[Allow] = None,
             continue
         for name in request.names:
             actual = tags.get(name)
+            policy = pending.get(name)
+            if isinstance(policy, dict):
+                expected_file = policy.get("file")
+                expected_symbol = policy.get("symbol")
+                if (request.source == expected_file and request.owner == expected_symbol
+                        and name not in observed_pending):
+                    pending_report.append({
+                        "check": "3", "subject": name,
+                        "message": (f"pending {policy.get('expires')}: {policy.get('reason')} "
+                                    f"({policy.get('citation')}); expires when "
+                                    f"{expected_file}:{expected_symbol} stops referencing it"),
+                    })
+                    observed_pending.add(name)
             if actual is None:
-                reason = allow.match(name)
-                if reason is not None:
+                if name in retired:
+                    policy = retired[name]
+                    reason = policy if isinstance(policy, str) else f"{policy.get('reason')} ({policy.get('citation')})"
                     allowed.append({"check": "3", "subject": name, "reason": reason})
                 else:
                     out.append(Finding("3", name, f"{where} name is missing from v2"))
@@ -561,6 +594,10 @@ def check_options(items: list, options: list, allow: Allow, allowed: list) -> li
     for item in items:
         values_by_selector_label.setdefault((item.selector, item.label), set()).add(item.value)
     replacement_selectors = {item.selector for item in items if item.selector}
+    option_selectors = {option.selector for option in options if option.selector}
+    selector_alias = {}
+    if len(replacement_selectors) == 1 and len(option_selectors) == 1:
+        selector_alias[next(iter(option_selectors))] = next(iter(replacement_selectors))
     out = []
     for option in options:
         if not option.value:
@@ -568,9 +605,10 @@ def check_options(items: list, options: list, allow: Allow, allowed: list) -> li
             continue
         # A new selector has no v1 combo contract to round-trip.  Check 4 is
         # only for a selector that replaces a v1 combo with the same setting.
-        if option.selector not in replacement_selectors:
+        selector = selector_alias.get(option.selector, option.selector)
+        if selector not in replacement_selectors:
             continue
-        values = values_by_selector_label.get((option.selector, option.label))
+        values = values_by_selector_label.get((selector, option.label))
         if not values:
             reason = allow.match("option:" + option.label)
             if reason is not None:
@@ -584,7 +622,8 @@ def check_options(items: list, options: list, allow: Allow, allowed: list) -> li
     return out
 
 
-def _report(label: str, pages: list, status: str, findings: list, allowed: list, counts: dict) -> dict:
+def _report(label: str, pages: list, status: str, findings: list, allowed: list,
+            pending: list, counts: dict) -> dict:
     ordered = sorted(findings, key=lambda f: (f.check, f.subject, f.message))
     return {
         "groups": label,
@@ -592,6 +631,7 @@ def _report(label: str, pages: list, status: str, findings: list, allowed: list,
         "status": status,
         "counts": counts,
         "allowed": sorted(allowed, key=lambda a: (a["check"], a["subject"])),
+        "pending": sorted(pending, key=lambda a: (a["check"], a["subject"])),
         "findings": [f.to_dict() for f in ordered],
     }
 
@@ -616,22 +656,22 @@ def evaluate(paths: Paths, groups: Optional[list], p0_scope: bool = False,
     cache = XmlCache()
 
     active = selected
-    if p0_scope and rollout_status:
-        cfg = _load_json(paths.kit_pages, required=False) or {}
-        p0_keys = {key.rsplit("/", 1)[-1] for key in cfg.get("p0_pages", {})}
-        active = [page for page in selected if str(page["key"]) in p0_keys]
-        for page in selected:
-            if str(page["key"]) in p0_keys:
-                continue
-            wp = ROLLOUT_WP.get(str(page.get("group")), "WP6+")
-            findings.append(Finding("P", str(page["key"]),
-                                    f"pending {wp}: rollout conversion/parity is not part of the P0 gate "
-                                    "(DIRECTOR_KIT_ROLLOUT_SPEC.md section 7)"))
+    cfg = _load_json(paths.kit_pages, required=False) or {}
+    p0_keys = {key.rsplit("/", 1)[-1] for key in cfg.get("p0_pages", {})}
 
     v1_widgets: list = []
     v1_items: list = []
     for page in active:
-        if p0_scope:
+        leaf = find_named(cache.root(V1_FLOATER), str(page["key"]))
+        generated_path = paths.xui_dir / page_file_name(page)
+        generated_legacy = False
+        if generated_path.is_file():
+            generated_root = cache.root(generated_path)
+            generated_legacy = any(node.tag == "kit_page" and node.get("legacy") == "true"
+                                   for node in generated_root.iter())
+        use_leaf = (p0_scope and not rollout_status and leaf is not None) or (
+            rollout_status and generated_legacy and leaf is not None)
+        if use_leaf:
             elements, _scope = scope_elements(cache, V1_FLOATER, str(page["key"]))
             v1_widgets.extend(widgets_from(elements))
             v1_items.extend(combo_items(elements))
@@ -658,13 +698,15 @@ def evaluate(paths: Paths, groups: Optional[list], p0_scope: bool = False,
     v2_floater = paths.xui_dir / V2_FLOATER
     if not v2_floater.is_file():
         status = "FAIL" if findings else "V2_NOT_GENERATED"
-        return _report(label, keys, status, findings, [], counts)
+        return _report(label, keys, status, findings, [], [], counts)
 
     page_files = []
+    page_file_by_key = {}
     for page in active:
         name = page_file_name(page)
         if (paths.xui_dir / name).is_file():
             page_files.append(paths.xui_dir / name)
+            page_file_by_key[str(page["key"])] = paths.xui_dir / name
         else:
             findings.append(Finding("0", name, "v2 page file is missing"))
     active_keys = {str(page["key"]) for page in active}
@@ -673,21 +715,52 @@ def evaluate(paths: Paths, groups: Optional[list], p0_scope: bool = False,
     counts.update(v2_names=len(index.names), kit_options=len(index.options))
 
     allowed: list = []
+    pending_report: list = []
+    observed_pending: set = set()
     findings += check_names(a_names, index.names, allow, allowed)
     findings += check_controls(a_controls, index.controls, allow, allowed)
-    requests: list = []
-    cpp_pages = active
+    retired, pending_cpp = load_cpp_policy(paths)
+    request_count = 0
+    root_owner = {
+        "panel_cine_light_rig": {"ALPanelCineLightRig"},
+        "panel_rig_rim": {"ALPanelRigRim", "ALRigRimController"},
+    }
+    for page in active:
+        page_file = page_file_by_key.get(str(page["key"]))
+        if page_file is None or str(page["key"]) not in p0_keys:
+            continue
+        page_requests = []
+        for path in cpp_sources([page]):
+            page_requests += extract_getchild(read_text(path), _rel(path), expansions, expression_expansions)
+        owner = root_owner.get(cfg.get("p0_pages", {}).get(
+            f"{page.get('group')}/{page.get('key')}", {}).get("root_class", ""))
+        if owner:
+            page_requests = [request for request in page_requests if request.owner == "" or request.owner in owner]
+        request_count += len(page_requests)
+        page_key = str(page["key"])
+        page_kitnames = load_kitnames(paths.gen_report, {page_key})
+        # A kit row's primary widget is a real hosted child in generated XUI.
+        # Do not let the generation report mask a removed/renamed child (P3);
+        # KITNAMES remains authoritative for runtime-created labels, resets,
+        # values, units, states, masters, and other kit chrome.
+        row_widgets = {node.get("widget") for node in cache.root(page_file).iter("kit_row")
+                       if node.get("widget")}
+        page_kitnames = {name: tags for name, tags in page_kitnames.items()
+                         if name not in row_widgets}
+        page_index = build_v2_index(cache, [page_file], page_kitnames)
+        findings += check_getchild(page_requests, page_index.tags, retired, pending_cpp, allowed,
+                                   pending_report, observed_pending)
     if p0_scope:
-        cfg = _load_json(paths.kit_pages, required=False) or {}
-        p0_keys = {key.rsplit("/", 1)[-1] for key in cfg.get("p0_pages", {})}
-        cpp_pages = [page for page in active if str(page["key"]) in p0_keys]
-    for path in cpp_sources(cpp_pages):
-        requests += extract_getchild(read_text(path), _rel(path), expansions, expression_expansions)
-    counts["getchild_requests"] = len(requests)
-    findings += check_getchild(requests, index.tags, allow, allowed)
+        for name, policy in sorted(pending_cpp.items()):
+            if name not in observed_pending:
+                findings.append(Finding(
+                    "3", name,
+                    f"stale pending policy: {policy.get('file')}:{policy.get('symbol')} no longer has "
+                    "the missing per-page reference; remove the entry now that WP4 landed"))
+    counts["getchild_requests"] = request_count
     findings += check_options(v1_items, index.options, allow, allowed)
     status = "FAIL" if findings else "PASS"
-    return _report(label, keys, status, findings, allowed, counts)
+    return _report(label, keys, status, findings, allowed, pending_report, counts)
 
 
 def exit_code(status: str) -> int:
@@ -704,6 +777,8 @@ def _print_text(report: dict) -> None:
         return
     print(f"v2_names={counts['v2_names']} kit_options={counts['kit_options']} "
           f"getchild_requests={counts['getchild_requests']} allowed={len(report['allowed'])}")
+    for pending in report["pending"]:
+        print(f"  PENDING [check {pending['check']}] {pending['subject']}: {pending['message']}")
     for finding in report["findings"]:
         print(f"  [check {finding['check']}] {finding['subject']}: {finding['message']}")
     print(f"{report['status']}: {len(report['findings'])} finding(s)")
@@ -803,7 +878,7 @@ def selftest() -> int:
     allowed = []
     f3a = check_getchild(extract_getchild(read_text(fx("c3_fail_missing.cpp")),
                                           "c3_fail_missing.cpp", exp_missing),
-                         idx_pass.tags, Allow({"fx_nothere": "fixture retired control"}), allowed)
+                         idx_pass.tags, {"fx_nothere": "fixture retired control"}, {}, allowed)
     expect("check 3 allow: an explicitly retired getChild target carries its reason",
            [f.subject for f in f3a] == ["fx_middle"] and allowed[0]["reason"] == "fixture retired control",
            ([f.subject for f in f3a], allowed))
@@ -825,6 +900,33 @@ def selftest() -> int:
     f4b = check_options(items, idx_opt.options, Allow({"option:Delta": "fixture"}), allowed)
     expect("check 4 allow: unmatched label allowed by option: key",
            "Delta" not in [f.subject for f in f4b] and allowed and allowed[0]["check"] == "4")
+
+    # WP3 adversarial review R1 (P1-P5).
+    label_req = [GetChildRequest("owner.cpp", 1, "LLTextBox", ("cine_radius_label",),
+                                 '"cine_radius_label"', False, "ALPanelCineLightRig")]
+    p1 = check_getchild(label_req, {}, {"cine_*_label": "glob must not apply"})
+    expect("R1 P1: getChild targets use exact retired names, never parity globs",
+           [f.subject for f in p1] == ["cine_radius_label"], [f.subject for f in p1])
+    lazy_xml = fx("r1_lazy_master.xml")
+    # Exercise the indexer without requiring another checked-in fixture.
+    lazy_root = ElementTree.Element("kit_lazy_page", {"name": "p", "master_setting": "ObservedOnly"})
+    old_root = cache.roots.get(str(lazy_xml.resolve()))
+    cache.roots[str(lazy_xml.resolve())] = lazy_root
+    p2idx = build_v2_index(cache, [lazy_xml], {})
+    if old_root is None: cache.roots.pop(str(lazy_xml.resolve()), None)
+    else: cache.roots[str(lazy_xml.resolve())] = old_root
+    expect("R1 P2: lazy-page master indicator is not a binding", "ObservedOnly" not in p2idx.controls)
+    owner_text = 'bool ALPanelCineLightRig::postBuild(){ getChild<LLTextBox>("rim_only"); return true; }'
+    owner_reqs = extract_getchild(owner_text, "owner.cpp", [])
+    expect("R1 P3: extracted getChild request carries its C++ owner",
+           len(owner_reqs) == 1 and owner_reqs[0].owner == "ALPanelCineLightRig", owner_reqs)
+    p4_direct = check_options([ComboItem("Bone Lock", "1", "v1.xml", "cam_mode_combo")],
+                              [OptionRef("Bone Lock", "0", "v2.xml", "CinematicCamMode")], allow, [])
+    expect("R1 P4: code-populated combo name aliases the sole replacement selector",
+           len(p4_direct) == 1 and p4_direct[0].subject == "Bone Lock", p4_direct)
+    p5_direct = check_names({"btn_group_dissolve"}, {"btn_group_dissolve_RENAMED"}, allow, [])
+    expect("R1 P5: legacy-page removed widget is checked under --all",
+           len(p5_direct) == 1 and p5_direct[0].subject == "btn_group_dissolve", p5_direct)
 
     # Check 0 (page count)
     expect("check 0 fail: 34 pages", len(page_count_findings(34)) == 1)

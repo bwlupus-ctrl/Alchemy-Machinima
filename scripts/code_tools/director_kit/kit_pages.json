@@ -12,6 +12,7 @@
                     "night_mask": "cine_night_mask_enable"},
    "option_enables": {"lights": {"Key": "cine_key_on", "Fill": "cine_fill_on", "Back": "cine_rim_on", "BG": "cine_bg_on"}},
    "row_overrides": {"CineGobo01": {"w": "cine_gobo_preview", "k": "gobo"},
+                     "cine_easy_drama": {"shortcut_of": "cine_light_rig_tab/cine_ratio"},
                      "cine_shadow_fixit": {"a": 0},
                      "cine_fixture_role": {"mirror_setting": "DirectorV2SelectedLight"}},
    "add_rows": [
@@ -42,20 +43,6 @@
   }
  },
  "launcher_targets": {"look_group/tron_tab": {"target": "lightbox", "target_tab": "tron_settings", "button_label": "Open Tron in Lightbox ›", "help": "Tron is edited in the Lightbox until its page is converted."}},
- "pending_settings": {
-  "DirectorV2SelectedLight": "pending WP2: DIRECTOR_KIT_P0_SPEC.md section 3.16 assigns this new setting to the kit-core/settings work"
- },
- "pending_homes": {
-  "BDMergeProjectorVolumetricsMaxDistance": "pending WP11: DIRECTOR_KIT_ROLLOUT_SPEC.md sections 5 and 7 make Atmosphere the writable home when that page is converted"
- },
- "shared_writers": {
-  "DirectorV2SelectedLight": "shared selection state, not an authored-value home (DIRECTOR_KIT_P0_SPEC.md sections 3.16 and 5.1)"
- },
- "help_audit_allow": {
-  "cine_rig_rim_tron_mode": "pending WP10 Tron conversion; current dependency location is actionable (ROLLOUT sections 7/WP10 and P0 4.3)",
-  "open_lightbox_glow": "intentional external-editor action retained by the Bloom page contract (ROLLOUT sections 4 and 6)",
-  "open_tron": "pending WP10: P0 4.3 explicitly requires the temporary Lightbox launcher"
- },
  "parity_allow": {"cine_rig_rim_preset": "replaced by the kit preset strip (provider rig_rim)",
                   "card_snapshot_open": "retired Director launcher; Snapshot remains in its standalone floater",
                   "card_snapshot_summary": "retired Director launcher; Snapshot remains in its standalone floater",

@@ -6,7 +6,7 @@ Computed class: **code-driven** (40/41 setting-bound rows; 4 C++-referenced rows
 ## Real owners
 
 - `panel_cine_light_rig` / `panel` at `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:8` (41 matching rows).
-- Referencing classes: `ALPanelCineLightRig` (4), `LLNotificationsUtil` (1).
+- Referencing classes: `ALRigRimController` (5).
 
 Name collisions in secondary XUI files are evidence candidates, not automatic ownership. The implementation must retain only occurrences whose root and class agree with the row's behavior.
 
@@ -31,7 +31,7 @@ Use the existing XUI control types as ordinary measured kit rows. No new canvas,
 | `rim_quality` / `cine_rimq_smooth` (Smooth) | `slider` `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:1103` | kit `slider` ↔ `CineRigRimSmoothness` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:36` `cine_rimq_smooth` |
 | `rim_quality` / `cine_rimq_steady` (Steady) | `slider` `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:1106` | kit `slider` ↔ `CineRigRimAntiShimmer` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:39` `cine_rimq_steady` |
 | `rim_quality` / `cine_rimq_actors` (Actors only) | `check_box` `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:1098` | kit `toggle` ↔ `CineRigRimActorsOnly` `Boolean` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:42` `cine_rimq_actors` |
-| `rim_quality` / `cine_rimq_enable_tag` (Avatar tag) | `button` `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:1100` | `ALRigRimKitAdapter` command/model binding → wired in `ALPanelCineLightRig::postBuild()`; behavior `LLNotificationsUtil::add()` (`indra/newview/alpanelcinelightrig.cpp:839`) | none |
+| `rim_quality` / `cine_rimq_enable_tag` (Avatar tag) | `button` `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:1100` | `ALRigRimKitAdapter` command/model binding → behavior `ALRigRimController::attach()` (`indra/newview/alrigrimcontroller.cpp:124`) | none |
 | `per_light_rim [Key]` / `cine_rig_rim_key_gain` (Strength) | `spinner` `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:1011` | kit `number` ↔ `CineRigRimKeyGain` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:57` `cine_rig_rim_key_gain` |
 | `per_light_rim [Key]` / `cine_rig_rim_key_sharpness` (Sharpness) | `spinner` `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:1014` | kit `number` ↔ `CineRigRimKeySharpness` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:60` `cine_rig_rim_key_sharpness` |
 | `per_light_rim [Key]` / `cine_rig_rim_key_wrap` (Wrap) | `spinner` `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:1017` | kit `number` ↔ `CineRigRimKeyWrap` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:63` `cine_rig_rim_key_wrap` |
@@ -56,9 +56,9 @@ Use the existing XUI control types as ordinary measured kit rows. No new canvas,
 | `rim_wrap` / `cine_rimq_wrap_reach` (Reach) | `slider` `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:1124` | kit `slider` ↔ `CineRigRimWrapWidth` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:134` `cine_rimq_wrap_reach` |
 | `rim_wrap` / `cine_rimq_wrap_blur` (Blur) | `slider` `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:1127` | kit `slider` ↔ `CineRigRimWrapBlur` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:137` `cine_rimq_wrap_blur` |
 | `rim_wrap` / `cine_rimq_wrap_colour` (Colour) | `slider` `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:1130` | kit `slider` ↔ `CineRigRimWrapSaturation` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:140` `cine_rimq_wrap_colour` |
-| `rim_tron` / `cine_rig_rim_tron_mode` (Mode) | `combo_box` `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:1070` | kit `combo` ↔ `CineRigRimTronMode` `S32` | page `tron_tab`, `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:6321` `tr_rigrim_tron_mode_combo`, `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:145` `cine_rig_rim_tron_mode` |
-| `rim_tron` / `cine_rig_rim_tron_mix` (Mix) | `slider` `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:1081` | kit `slider` ↔ `CineRigRimTronMix` `F32` | page `tron_tab`, `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:6327` `tr_rigrim_tron_mix_slider`, `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:152` `cine_rig_rim_tron_mix` |
-| `rim_tron` / `cine_rig_rim_tron_color` (Colour) | `combo_box` `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:1086` | kit `combo` ↔ `CineRigRimTronColorSource` `S32` | page `tron_tab`, `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:6330` `tr_rigrim_tron_color_combo`, `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:155` `cine_rig_rim_tron_color` |
+| `rim_tron` / `cine_rig_rim_tron_mode` (Mode) | `combo_box` `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:1070` | kit `combo` ↔ `CineRigRimTronMode` `S32`; `ALRigRimKitAdapter` preserves/calls behavior `ALRigRimController::attach()` (`indra/newview/alrigrimcontroller.cpp:112`) | page `tron_tab`, `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:6321` `tr_rigrim_tron_mode_combo`, `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:145` `cine_rig_rim_tron_mode` |
+| `rim_tron` / `cine_rig_rim_tron_mix` (Mix) | `slider` `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:1081` | kit `slider` ↔ `CineRigRimTronMix` `F32`; `ALRigRimKitAdapter` preserves/calls behavior `ALRigRimController::attach()` (`indra/newview/alrigrimcontroller.cpp:113`) | page `tron_tab`, `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:6327` `tr_rigrim_tron_mix_slider`, `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:152` `cine_rig_rim_tron_mix` |
+| `rim_tron` / `cine_rig_rim_tron_color` (Colour) | `combo_box` `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:1086` | kit `combo` ↔ `CineRigRimTronColorSource` `S32`; `ALRigRimKitAdapter` preserves/calls behavior `ALRigRimController::attach()` (`indra/newview/alrigrimcontroller.cpp:115`) | page `tron_tab`, `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:6330` `tr_rigrim_tron_color_combo`, `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:155` `cine_rig_rim_tron_color` |
 | `rim_diagnostics` / `cine_rig_rim_debug` (Rim only) | `check_box` `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:953` | kit `toggle` ↔ `CineRigRimDebugRimOnly` `Boolean` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:164` `cine_rig_rim_debug` |
 | `rim_diagnostics` / `cine_rimq_debug` (Debug view) | `combo_box` `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:1133` | kit `combo` ↔ `CineRigRimDebugView` `U32` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:167` `cine_rimq_debug` |
 
@@ -66,7 +66,7 @@ Use the existing XUI control types as ordinary measured kit rows. No new canvas,
 
 | Existing function | Extraction contract |
 |---|---|
-| `LLNotificationsUtil::add()` — `indra/newview/alpanelcinelightrig.cpp:839` | Move model-facing work into `ALRigRimKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
+| `ALRigRimController::attach()` — `indra/newview/alrigrimcontroller.cpp:112, 113, 115, 124` | Move model-facing work into `ALRigRimKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
 
 ## Live state and refresh
 

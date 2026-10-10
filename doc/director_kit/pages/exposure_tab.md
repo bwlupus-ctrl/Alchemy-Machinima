@@ -7,7 +7,7 @@ Computed class: **code-driven** (19/25 setting-bound rows; 7 C++-referenced rows
 
 - `panel_exposure_hub` / `panel` at `indra/newview/skins/default/xui/en/panel_exposure_hub.xml:2` (24 matching rows).
 - `floater_director` / `floater` at `indra/newview/skins/default/xui/en/floater_director.xml:15` (1 matching rows).
-- Referencing classes: `ALPanelExposureHub` (4), `ALExposureSettingsHistory` (2), `LLButton` (1), `LLFloaterReg` (1), `ALFloaterLightBox` (1).
+- Referencing classes: `ALPanelExposureHub` (4), `ALExposureSettingsHistory` (2), `LLButton` (1), `LLFloaterReg` (1), `LLFloaterDirector` (1), `ALFloaterLightBox` (1).
 
 Name collisions in secondary XUI files are evidence candidates, not automatic ownership. The implementation must retain only occurrences whose root and class agree with the row's behavior.
 
@@ -42,7 +42,7 @@ Use `panel_exposure_hub.xml` controls as kit rows; no curve editor exists.
 | `exposure_main` / `exp_legacy_gamma_skies` (Legacy gamma) | `check_box` `indra/newview/skins/default/xui/en/panel_exposure_hub.xml:30` | kit `toggle` ↔ `AlchemyTonemapLegacyGammaSkies` `Boolean` | page `image_tab`, `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:379` `tonemap_legacy_gamma_skies` |
 | `exposure_hub` / `exp_undo` (Undo) | `button` `indra/newview/skins/default/xui/en/panel_exposure_hub.xml:3` | `ALExposureKitAdapter` command/model binding → wired in `ALPanelExposureHub::postBuild()`; behavior `ALExposureSettingsHistory::undo()` (`indra/newview/alpanelexposurehub.cpp:136`) | none |
 | `exposure_hub` / `exp_redo` (Redo) | `button` `indra/newview/skins/default/xui/en/panel_exposure_hub.xml:4` | `ALExposureKitAdapter` command/model binding → wired in `ALPanelExposureHub::postBuild()`; behavior `ALExposureSettingsHistory::redo()` (`indra/newview/alpanelexposurehub.cpp:137`) | none |
-| `exposure_hub` / `exposure_popout` (Open window) | `button` `indra/newview/skins/default/xui/en/floater_director.xml:1399` | `ALExposureKitAdapter` command/model binding → wired in `LLFloaterDirector::postBuild()`; behavior `LLFloaterReg::showInstance()` (`indra/newview/llfloaterdirector.cpp:590`) | none |
+| `exposure_hub` / `exposure_popout` (Open window) | `button` `indra/newview/skins/default/xui/en/floater_director.xml:1399` | `ALExposureKitAdapter` command/model binding → wired in `LLFloaterDirector::postBuild()`; behavior `LLFloaterReg::showInstance()` (`indra/newview/llfloaterdirector.cpp:606`) | none |
 | `glow_filters` / `exp_bloom_strength` (Bloom strength) | `slider` `indra/newview/skins/default/xui/en/panel_exposure_hub.xml:71` | kit `slider` ↔ `RenderBloomStrength` `F32` | page `bloom_glow_tab`, `indra/newview/skins/default/xui/en/panel_dpage_look_bloom_glow.xml:13` `set_RenderBloomStrength` |
 | `glow_filters` / `exp_bloom_threshold` (Threshold) | `slider` `indra/newview/skins/default/xui/en/panel_exposure_hub.xml:73` | kit `slider` ↔ `RenderBloomThreshold` `F32` | page `bloom_glow_tab`, `indra/newview/skins/default/xui/en/panel_dpage_look_bloom_glow.xml:16` `set_RenderBloomThreshold` |
 | `glow_filters` / `exp_filters_btn` (All filters) | `button` `indra/newview/skins/default/xui/en/panel_exposure_hub.xml:134` | `ALExposureKitAdapter` command/model binding → wired in `ALPanelExposureHub::postBuild()`; behavior `ALFloaterLightBox::showTab()` (`indra/newview/alpanelexposurehub.cpp:131`) | none |
@@ -55,7 +55,7 @@ Use `panel_exposure_hub.xml` controls as kit rows; no curve editor exists.
 | `ALExposureSettingsHistory::redo()` — `indra/newview/alpanelexposurehub.cpp:137` | Move model-facing work into `ALExposureKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
 | `ALExposureSettingsHistory::undo()` — `indra/newview/alpanelexposurehub.cpp:136` | Move model-facing work into `ALExposureKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
 | `ALFloaterLightBox::showTab()` — `indra/newview/alpanelexposurehub.cpp:131` | Move model-facing work into `ALExposureKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
-| `LLFloaterReg::showInstance()` — `indra/newview/llfloaterdirector.cpp:590` | Move model-facing work into `ALExposureKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
+| `LLFloaterReg::showInstance()` — `indra/newview/llfloaterdirector.cpp:606` | Move model-facing work into `ALExposureKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
 
 ## Live state and refresh
 

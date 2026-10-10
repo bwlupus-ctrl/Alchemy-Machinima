@@ -96,7 +96,7 @@ PAGE_OWNER_CLASSES = {
     "filters_tab": {"ALPanelLensLooks"},
     "diopter_tab": {"ALFloaterUltimateDiopter"},
     "cine_light_rig_tab": {"ALPanelCineLightRig"},
-    "light_rim_tab": {"ALPanelCineLightRig"},
+    "light_rim_tab": {"ALPanelCineLightRig", "ALPanelRigRim", "ALRigRimController"},
     "exposure_tab": {"ALPanelExposureHub", "LLFloaterDirector"},
     "practicals_tab": {"ALFloaterLightBox"},
     "actors_tab": {"ALPanelAvatarLightResponse", "ALFloaterLightBox", "LLFloaterDirector"},
@@ -208,6 +208,14 @@ def model_binding_override(page: str, widget: str) -> dict | None:
     if page == "cine_light_rig_tab" and widget == "cine_live_probe_refresh_now":
         return binding("indra/newview/alpanelcinelightrig.cpp", 899,
                        "LLReflectionMapManager", "requestCinematicLiveProbeRefresh")
+    if page == "light_rim_tab" and widget == "cine_rimq_enable_tag":
+        return {
+            "file": "indra/newview/alrigrimcontroller.cpp", "line": 124,
+            "class": "ALRigRimController", "function": "attach",
+            "wired_class": "ALRigRimController", "wired_function": "attach",
+            "pattern": None, "wiring_only": False,
+            "text": "explicit scoped binding: confirmation callback enables the avatar tag",
+        }
     if page != "cine_light_rig_tab":
         return None
     if widget in {"cine_group_self", "cine_group_a", "cine_group_b", "cine_group_c", "cine_group_d"}:
@@ -235,17 +243,8 @@ def model_binding_override(page: str, widget: str) -> dict | None:
         "pattern": f'prefix + "_{suffix}"', "text": "role-indexed model binding",
     }
 
-# Page masters are canonical writable homes even when the same source control
-# also labels an in-page card.  The generator de-binds that card occurrence;
-# kit_lazy_page.master_setting is observation metadata for the tab/rail pip.
-PAGE_MASTER_HOMES = {
-    "CineLightRigEnabled": "cine_light_rig_tab",
-    "CineRigRimEnabled": "light_rim_tab",
-}
-
-# This is deliberately checked against the settings duplicated by the data,
-# plus the explicit page-master homes above.  A new duplicate cannot silently
-# acquire two writable homes.
+# This is deliberately checked against settings duplicated by the data.  Page
+# masters are page-owned chrome, not extra rows in the rollout's 22-home table.
 WRITABLE_HOMES = {
     "ActorMoverEndMode": "move_tab",
     "AlchemyRenderTonemapType": "exposure_tab",
@@ -269,7 +268,6 @@ WRITABLE_HOMES = {
     "RenderBloomThreshold": "bloom_glow_tab",
     "RenderExposure": "exposure_tab",
     "TemporalWorldScale": "temporal_tab",
-    **PAGE_MASTER_HOMES,
 }
 
 EXPECTED_SHORTCUTS = {
@@ -1157,7 +1155,7 @@ def build_index() -> dict:
                 "writable_home": WRITABLE_HOMES.get(setting),
             })
     duplicate_settings = {setting for setting, page_set in setting_pages.items() if len(page_set) > 1}
-    expected_homes = duplicate_settings | set(PAGE_MASTER_HOMES)
+    expected_homes = duplicate_settings
     if expected_homes != set(WRITABLE_HOMES):
         missing = sorted(expected_homes - set(WRITABLE_HOMES))
         stale = sorted(set(WRITABLE_HOMES) - expected_homes)

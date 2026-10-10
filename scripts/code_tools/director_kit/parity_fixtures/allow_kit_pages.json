@@ -1,1 +1,1 @@
-{"version": 1, "parity_allow": {"fx_legacy_*": "fixture: retired launcher name", "option:Delta": "fixture: dynamic combo value"}}
+{"version": 1, "p0_pages": {"fx_group/fixture_tab": {"root_class": "panel_fixture"}}, "parity_allow": {"fx_legacy_*": "fixture: retired launcher name", "option:Delta": "fixture: dynamic combo value"}}

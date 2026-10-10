@@ -7,7 +7,7 @@ Computed class: **code-driven** (14/123 setting-bound rows; 106 C++-referenced r
 
 - `panel_lens_gaze` / `panel` at `indra/newview/skins/default/xui/en/panel_lens_gaze.xml:7` (122 matching rows).
 - `floater_director` / `floater` at `indra/newview/skins/default/xui/en/floater_director.xml:15` (1 matching rows).
-- Referencing classes: `ALPanelLensGaze` (172), `LLFloaterDirector` (1), `LLFloaterReg` (1), `ALGazeMath` (1).
+- Referencing classes: `ALPanelLensGaze` (172), `LLFloaterDirector` (2), `LLFloaterReg` (1), `ALGazeMath` (1).
 
 Name collisions in secondary XUI files are evidence candidates, not automatic ownership. The implementation must retain only occurrences whose root and class agree with the row's behavior.
 
@@ -196,7 +196,7 @@ Use the existing XUI control types as ordinary measured kit rows. No new canvas,
 | `ALPanelLensGaze::onTorsoCommit()` — `indra/newview/alpanellensgaze.cpp:473, 570` | Move model-facing work into `ALGazeKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
 | `ALPanelLensGaze::onVariationCommit()` — `indra/newview/alpanellensgaze.cpp:517` | Move model-facing work into `ALGazeKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
 | `LLFloaterReg::toggleInstance()` — `indra/newview/alpanellensgaze.cpp:526` | Move model-facing work into `ALGazeKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
-| `LLFloaterDirector::onOpenActorGaze()` — `indra/newview/llfloaterdirector.cpp:583` | Move model-facing work into `ALGazeKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
+| `LLFloaterDirector::onOpenActorGaze()` — `indra/newview/llfloaterdirector.cpp:599` | Move model-facing work into `ALGazeKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
 
 ## Live state and refresh
 

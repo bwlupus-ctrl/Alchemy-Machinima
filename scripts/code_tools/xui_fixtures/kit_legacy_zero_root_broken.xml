@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- A kit file must never hide legacy layout beneath a zero-size wrapper. -->
+<panel name="zero_host" follows="all">
+    <kit_page name="legacy_leaf" legacy="true" width="300" height="120">
+        <button name="huge" left="0" top="0" width="5000" height="9000" label="X" />
+    </kit_page>
+</panel>

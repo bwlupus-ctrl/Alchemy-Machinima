@@ -17,7 +17,7 @@
           <text name="cine_key_clip" text_color="KitMuted"/>
         </kit_row>
       </kit_option>
-      <kit_option label="Fill" value="1" enable_widget="cine_fill_on" enable_setting="FixtureKeyOn"/>
+      <kit_option label="Fill" value="1" enable_widget="cine_fill_on" enable_setting="FixtureFillOn"/>
     </kit_card>
   </kit_page>
 </panel>

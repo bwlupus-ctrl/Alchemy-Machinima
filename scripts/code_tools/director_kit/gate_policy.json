@@ -1,0 +1,54 @@
+{
+ "version": 1,
+ "pending_settings": {
+  "DirectorV2SelectedLight": {"reason": "kit selection state is supplied by the shell/settings work", "citation": "DIRECTOR_KIT_P0_SPEC.md section 3.16", "expires": "WP2"},
+  "DirectorV2LightMapView": {"reason": "light-map view state is supplied by the shell/settings work", "citation": "DIRECTOR_KIT_P0_SPEC.md sections 3.14 and 3.16", "expires": "WP2"},
+  "DirectorV2LightMapSideFrom": {"reason": "light-map side state is supplied by the shell/settings work", "citation": "DIRECTOR_KIT_P0_SPEC.md sections 3.14 and 3.16", "expires": "WP2"}
+ },
+ "pending_homes": {
+  "BDMergeProjectorVolumetricsFeather": {"reason": "Atmosphere becomes the writable home when converted", "citation": "DIRECTOR_KIT_ROLLOUT_SPEC.md sections 5 and 7", "expires": "WP11"},
+  "BDMergeProjectorVolumetricsMaxDistance": {"reason": "Atmosphere becomes the writable home when converted", "citation": "DIRECTOR_KIT_ROLLOUT_SPEC.md sections 5 and 7", "expires": "WP11"}
+ },
+ "same_page_mode_writers": {
+  "CineLightRigMasterEV": {"attrs": ["setting"], "reason": "Easy adapter and Advanced control intentionally use different presentation steps", "citation": "DIRECTOR_KIT_P0_SPEC.md sections 3.4 and 4.4", "expires": "WP12"},
+  "CineLightRigMasterTempMired": {"attrs": ["setting"], "reason": "Easy adapter and Advanced control intentionally share one setting", "citation": "DIRECTOR_KIT_P0_SPEC.md sections 3.4 and 4.4", "expires": "WP12"},
+  "CineLightRigRatio": {"attrs": ["setting"], "reason": "Easy Drama adapter and Advanced Ratio intentionally share one setting", "citation": "DIRECTOR_KIT_P0_SPEC.md sections 3.4 and 4.4", "expires": "WP12"},
+  "CineLightRigLiveProbeEnabled": {"attrs": ["enable_setting"], "reason": "Easy and Advanced cards expose the same page-local enable", "citation": "DIRECTOR_KIT_P0_SPEC.md section 4.4", "expires": "WP12"},
+  "CineLightRigLiveProbeRadius": {"attrs": ["setting"], "reason": "Easy and Advanced rows expose the same page-local setting", "citation": "DIRECTOR_KIT_P0_SPEC.md section 4.4", "expires": "WP12"},
+  "CineLightRigLiveProbeAmbiance": {"attrs": ["setting"], "reason": "Easy and Advanced rows expose the same page-local setting", "citation": "DIRECTOR_KIT_P0_SPEC.md section 4.4", "expires": "WP12"},
+  "CineLightRigLiveProbeBounceKeep": {"attrs": ["setting"], "reason": "Easy and Advanced rows expose the same page-local setting", "citation": "DIRECTOR_KIT_P0_SPEC.md section 4.4", "expires": "WP12"},
+  "CineLightRigNightMaskEnabled": {"attrs": ["setting", "enable_setting"], "reason": "Easy row and Advanced card expose the same page-local enable", "citation": "DIRECTOR_KIT_P0_SPEC.md section 4.4", "expires": "WP12"}
+ },
+ "xui_legacy_v1_findings": [
+  "panel_dpage_cast_dance.xml|no-scroller-overflow|dance_tab_content",
+  "panel_dpage_cast_dance.xml|clipped|director_dance_ball_panel",
+  "panel_dpage_cast_ghosts.xml|no-scroller-overflow|ghosts_tab_content",
+  "panel_dpage_cast_ghosts.xml|clipped|ghost_studio_panel",
+  "panel_dpage_cast_path.xml|scroll-content-overflow|path_scroll",
+  "panel_dpage_lens_filters.xml|no-scroller-overflow|filters_tab_content",
+  "panel_dpage_lens_filters.xml|clipped|director_lens_looks_panel",
+  "panel_dpage_look_actor_style.xml|scroll-content-overflow|actor_style_scroll",
+  "panel_dpage_performance_animate.xml|scroll-content-overflow|animate_scroll",
+  "panel_dpage_performance_gaze.xml|no-scroller-overflow|gaze_tab_content",
+  "panel_dpage_performance_gaze.xml|clipped|director_gaze_panel",
+  "panel_dpage_world_weather.xml|scroll-content-overflow|weather_scroll"
+ ],
+ "shared_writers": {
+  "DirectorV2SelectedLight": {"attrs": ["sel_setting", "mirror_setting"], "reason": "shared selection state, not authored content", "citation": "DIRECTOR_KIT_P0_SPEC.md sections 3.16 and 5.1", "expires": "WP12"}
+ },
+ "help_audit_allow": {
+  "cine_rig_rim_tron_mode": {"text": "Recolours the rim toward the Tron palette: Off, palette tint, or tint plus pulse. Needs Tron enabled in Lightbox.", "reason": "temporary dependency location is actionable", "citation": "DIRECTOR_KIT_ROLLOUT_SPEC.md section 7 WP10", "expires": "WP10"},
+  "open_lightbox_glow": {"text": "Opens the full Lightbox Prim Glow tab.", "reason": "intentional external-editor action", "citation": "pages/bloom_glow_tab.md:38", "expires": "WP12"},
+  "open_tron": {"text": "Tron is edited in the Lightbox until its page is converted.", "reason": "temporary launcher required", "citation": "DIRECTOR_KIT_P0_SPEC.md section 4.3", "expires": "WP10"}
+ },
+ "code_kind_exceptions": {
+  "cine_seed": {"reason": "known v1 presentation mismatch: U32 seed is edited as text by code", "citation": "DIRECTOR_KIT_P0_SPEC.md sections 4.4 and 6.1", "expires": "WP12"}
+ },
+ "retired_cpp_targets": {
+  "cine_rig_rim_preset": {"reason": "replaced by the kit preset provider", "citation": "DIRECTOR_KIT_P0_SPEC.md section 5.2", "expires": "WP12"}
+ },
+ "pending_cpp_targets": {
+  "cine_rimq_status": {"reason": "WP4 finalizes the Rim panel ownership handoff", "citation": "DIRECTOR_KIT_P0_SPEC.md section 3.18", "expires": "WP4", "file": "indra/newview/alrigrimcontroller.cpp", "symbol": "ALRigRimController"},
+  "cine_rimq_enable_tag": {"reason": "WP4 finalizes the Rim panel ownership handoff", "citation": "DIRECTOR_KIT_P0_SPEC.md section 3.18", "expires": "WP4", "file": "indra/newview/alrigrimcontroller.cpp", "symbol": "ALRigRimController"}
+ }
+}

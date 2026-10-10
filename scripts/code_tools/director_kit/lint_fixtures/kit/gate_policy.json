@@ -1,0 +1,9 @@
+{
+  "code_kind_exceptions": {
+    "fixture_seed": {
+      "reason": "fixture code formats the U32 seed as text",
+      "citation": "kit_lint selftest clean fixture",
+      "expires": "WP12"
+    }
+  }
+}
