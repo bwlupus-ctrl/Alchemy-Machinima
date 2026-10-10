@@ -1,6 +1,9 @@
 #include "llviewerprecompiledheaders.h"
 #include "alkithistory.h"
 #include "alkitbinding.h"
+#include "alkitpage.h"
+#include "alkitrow.h"
+#include "alkitshell.h"
 #include "llcontrol.h"
 #include "lleventtimer.h"
 #include "llfloaterdirector.h"
@@ -16,6 +19,7 @@
 
 static S32 sKitHistorySuspend = 0;
 static F64 sKitHistoryKeyTime = 0.;
+static F64 sKitHistoryPointerTime = 0.;
 
 class ALKitHistory::GestureTimer final : public LLEventTimer
 {
@@ -28,8 +32,7 @@ public:
 
     bool tick() override
     {
-        mHistory->tickGesture();
-        return false;
+        return mHistory->tickGesture();
     }
 
 private:
@@ -59,6 +62,15 @@ bool ALKitHistory::suspended()
 
 void ALKitHistory::beginGesture(EOrigin o,const std::string& p,const std::string& label)
 {
+    if (mOpen && mOrigin == o && mPage == p && (o == WHEEL || o == KEY))
+    {
+        if (!label.empty() && mOpen->label.empty())
+        {
+            mOpen->label = label;
+        }
+        mCloseAt = LLTimer::getTotalSeconds() + .5;
+        return;
+    }
     finishGesture();
     mOrigin=o;
     mPage=p;
@@ -68,12 +80,17 @@ void ALKitHistory::beginGesture(EOrigin o,const std::string& p,const std::string
     mOpen->label=label;
     mOpen->scene_generation=mGeneration;
     mOpen->context=currentContext(p);
-    mCloseAt=LLTimer::getTotalSeconds()+(o==WHEEL?.5:.35);
+    mCloseAt = LLTimer::getTotalSeconds() + ((o == WHEEL || o == KEY) ? .5 : .35);
     if(!mTimer)mTimer=std::make_unique<GestureTimer>(this);
 }
 void ALKitHistory::noteKey()
 {
     sKitHistoryKeyTime=LLTimer::getTotalSeconds();
+}
+
+void ALKitHistory::notePointer()
+{
+    sKitHistoryPointerTime=LLTimer::getTotalSeconds();
 }
 
 void ALKitHistory::watchSettings(const std::string& page,const std::vector<std::string>& names)
@@ -132,20 +149,36 @@ void ALKitHistory::captureSetting(const std::string& page,const std::string& nam
     if(suspended()||mReplaying||value==old)return;
     LLView* owner=mOwner.get();
     LLView* focus=dynamic_cast<LLView*>(gFocusMgr.getKeyboardFocus());
-    const bool keyboard=owner&&focus&&(focus==owner||focus->hasAncestor(owner))&&
-        LLTimer::getTotalSeconds()-sKitHistoryKeyTime<=.5;
+    const F64 now=LLTimer::getTotalSeconds();
+    const bool owner_focus=owner&&focus&&(focus==owner||focus->hasAncestor(owner));
+    const bool keyboard=owner_focus&&now-llmax(sKitHistoryKeyTime,sKitHistoryPointerTime)<=.5;
     const bool pointer=mOpen&&(mOrigin==MOUSE||mOrigin==WHEEL);
     if(!pointer&&!keyboard)return;
     if(!mOpen)
     {
         beginGesture(KEY,page);
     }
+    else if(mOrigin==KEY&&mOpen->page==page)
+    {
+        mCloseAt=now+.5;
+    }
     if(page!=mOpen->page&&page!="chrome")return;
     Entry entry;
     entry.key=name;
     entry.oldv=old;
     entry.newv=value;
-    addEntry(std::move(entry),name);
+    std::string label=name;
+    if(ALKitShell* shell=dynamic_cast<ALKitShell*>(owner))
+    {
+        if(ALKitPage* kit_page=shell->findBuiltPage(page))
+        {
+            if(ALKitRow* row=kit_page->findRowBySetting(name))
+            {
+                label=shell->pagePathLabel(page)+" \xE2\x80\xBA "+row->meta().label;
+            }
+        }
+    }
+    addEntry(std::move(entry),label);
 }
 
 void ALKitHistory::addEntry(Entry entry,const std::string& label)
@@ -183,6 +216,11 @@ void ALKitHistory::finishGesture()
 
 bool ALKitHistory::tickGesture()
 {
+    if(!mOpen)
+    {
+        mTimer.release();
+        return true;
+    }
     const bool mouse_down=gViewerWindow&&gViewerWindow->getLeftMouseDown();
     if(mouse_down&&mOrigin==MOUSE)
     {
@@ -191,6 +229,7 @@ bool ALKitHistory::tickGesture()
     }
     if(LLTimer::getTotalSeconds()<mCloseAt)return false;
     finishGesture();
+    mTimer.release();
     return true;
 }
 
@@ -236,7 +275,7 @@ bool ALKitHistory::replay(Step& step,bool redo)
             control->set(value);
         }
     }
-    for(CustomEntry& entry:step.custom)
+    auto replay_custom=[&ok,redo](CustomEntry& entry)
     {
         std::string reason;
         if(!entry.replay(redo,reason))
@@ -245,7 +284,22 @@ bool ALKitHistory::replay(Step& step,bool redo)
             args["MESSAGE"]=reason;
             LLNotificationsUtil::add("SystemMessageTip",args);
             ok=false;
-            break;
+        }
+    };
+    if(redo)
+    {
+        for(CustomEntry& entry:step.custom)
+        {
+            replay_custom(entry);
+            if(!ok)break;
+        }
+    }
+    else
+    {
+        for(auto it=step.custom.rbegin();it!=step.custom.rend();++it)
+        {
+            replay_custom(*it);
+            if(!ok)break;
         }
     }
     mReplaying=false;
@@ -255,6 +309,7 @@ bool ALKitHistory::replay(Step& step,bool redo)
 void ALKitHistory::undo()
 {
     finishGesture();
+    mTimer.reset();
     if(!canUndo())return;
     if(!replay(mUndo.back(),false))return;
     Step s=std::move(mUndo.back());
@@ -265,6 +320,7 @@ void ALKitHistory::undo()
 void ALKitHistory::redo()
 {
     finishGesture();
+    mTimer.reset();
     if(!canRedo())return;
     if(!replay(mRedo.back(),true))return;
     Step s=std::move(mRedo.back());

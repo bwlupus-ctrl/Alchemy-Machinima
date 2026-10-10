@@ -21,6 +21,7 @@ public:
         std::string widget;
         std::string setting;
         std::string label;
+        std::string label_lower;
         std::string path;
         S32 option = -1;
         S32 score = 0;
@@ -48,6 +49,7 @@ private:
         std::string widget;
         std::string setting;
         std::string label;
+        std::string label_lower;
         std::string path;
         S32 option = -1;
         U32 order = 0;

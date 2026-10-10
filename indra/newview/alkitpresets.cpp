@@ -18,6 +18,18 @@
 
 static LLDefaultChildRegistry::Register<ALKitPresetStrip> register_preset_strip("kit_preset_strip");
 
+namespace
+{
+std::string presetPrefix(const std::string& page)
+{
+    std::string prefix=page;
+    const size_t slash=prefix.rfind('/');
+    if(slash!=std::string::npos)prefix=prefix.substr(slash+1);
+    if(prefix.size()>4&&prefix.compare(prefix.size()-4,4,"_tab")==0)prefix.erase(prefix.size()-4);
+    return prefix;
+}
+}
+
 void ALKitPresetRegistry::add(std::unique_ptr<ALKitPresetProvider> p)
 {
     if(!p)return;
@@ -42,10 +54,9 @@ ALKitSnapshotStore::ALKitSnapshotStore(std::string k,std::vector<std::string>s):
 
 std::vector<std::string> ALKitSnapshotStore::names()const
 {
-    LLSD root;
     std::vector<std::string> result;
-    if(!read(root))return result;
-    for(LLSD::map_const_iterator it=root.beginMap();it!=root.endMap();++it)
+    if(!ensureLoaded())return result;
+    for(LLSD::map_const_iterator it=mCache.beginMap();it!=mCache.endMap();++it)
     {
         result.push_back(it->first);
     }
@@ -56,8 +67,8 @@ std::vector<std::string> ALKitSnapshotStore::names()const
 bool ALKitSnapshotStore::save(const std::string& name)
 {
     if(name.empty())return false;
-    LLSD root;
-    read(root);
+    if(!ensureLoaded())return false;
+    LLSD root=mCache;
     LLSD values=LLSD::emptyMap();
     for(const std::string& setting:mSettings)
     {
@@ -68,20 +79,20 @@ bool ALKitSnapshotStore::save(const std::string& name)
     }
     root[name]=values;
     if(!write(root))return false;
+    mCache=root;
     ++mRevision;
     return true;
 }
 
 bool ALKitSnapshotStore::load(const std::string& name)
 {
-    LLSD root;
-    if(!read(root)||!root.has(name)||!root[name].isMap())return false;
-    const LLSD& values=root[name];
-    for(LLSD::map_const_iterator it=values.beginMap();it!=values.endMap();++it)
+    if(!ensureLoaded()||!mCache.has(name)||!mCache[name].isMap())return false;
+    const LLSD& values=mCache[name];
+    for(const std::string& setting:mSettings)
     {
-        if(LLControlVariable* control=gSavedSettings.getControl(it->first).get())
+        if(values.has(setting))if(LLControlVariable* control=gSavedSettings.getControl(setting).get())
         {
-            control->set(it->second);
+            control->set(values[setting]);
         }
     }
     return true;
@@ -89,10 +100,11 @@ bool ALKitSnapshotStore::load(const std::string& name)
 
 bool ALKitSnapshotStore::remove(const std::string& name)
 {
-    LLSD root;
-    if(!read(root)||!root.has(name))return false;
+    if(!ensureLoaded()||!mCache.has(name))return false;
+    LLSD root=mCache;
     root.erase(name);
     if(!write(root))return false;
+    mCache=root;
     ++mRevision;
     return true;
 }
@@ -111,6 +123,14 @@ bool ALKitSnapshotStore::read(LLSD& root)const
     return true;
 }
 
+bool ALKitSnapshotStore::ensureLoaded()const
+{
+    if(mLoaded)return mLoadValid;
+    mLoadValid=read(mCache);
+    mLoaded=true;
+    return mLoadValid;
+}
+
 bool ALKitSnapshotStore::write(const LLSD& root)const
 {
     const std::string directory=gDirUtilp->getExpandedFilename(LL_PATH_USER_SETTINGS,"director_presets");
@@ -118,8 +138,38 @@ bool ALKitSnapshotStore::write(const LLSD& root)const
     {
         LLFile::mkdir(directory);
     }
-    llofstream output(path().c_str());
-    return output&&LLSDSerialize::toPrettyXML(root,output)>0;
+    const std::string destination=path();
+    const std::string temporary=destination+".tmp";
+    const std::string backup=destination+".bak";
+    llofstream output(temporary.c_str());
+    if(!output.is_open())return false;
+    const S32 serialized=LLSDSerialize::toPrettyXML(root,output);
+    output.flush();
+    const bool succeeded=serialized>0&&output.good();
+    output.close();
+    if(!succeeded||output.fail())
+    {
+        LLFile::remove(temporary);
+        return false;
+    }
+    bool moved_existing=false;
+    if(LLFile::exists(destination))
+    {
+        LLFile::remove(backup,ENOENT);
+        if(LLFile::rename(destination,backup)!=0)
+        {
+            LLFile::remove(temporary);
+            return false;
+        }
+        moved_existing=true;
+    }
+    if(LLFile::rename(temporary,destination)!=0)
+    {
+        if(moved_existing)LLFile::rename(backup,destination);
+        LLFile::remove(temporary,ENOENT);
+        return false;
+    }
+    return true;
 }
 
 std::string ALKitSnapshotStore::path()const
@@ -152,15 +202,16 @@ bool ALKitPresetStrip::postBuild()
         LL_WARNS("DirectorKit") << "Missing preset provider " << mProviderKey << LL_ENDL;
         return true;
     }
+    const std::string prefix=presetPrefix(mPage);
     LLComboBox::Params combo_params;
-    combo_params.name = "kit_preset_combo";
+    combo_params.name = prefix+"_preset";
     combo_params.rect = LLRect(0, 24, 190, 0);
     mCombo = LLUICtrlFactory::create<LLComboBox>(combo_params);
     addChild(mCombo);
     mCombo->setCommitCallback([this](LLUICtrl*, const LLSD&) { onSelect(); });
 
     LLLineEditor::Params name_params;
-    name_params.name = "kit_preset_name";
+    name_params.name = prefix+"_preset_name";
     name_params.rect = LLRect(0, 24, 190, 0);
     name_params.visible = false;
     name_params.commit_on_focus_lost = false;
@@ -169,13 +220,13 @@ bool ALKitPresetStrip::postBuild()
     mName->setCommitCallback([this](LLUICtrl*, const LLSD&) { save(); });
 
     LLButton::Params button_params;
-    button_params.name = "kit_preset_save";
+    button_params.name = prefix+"_preset_save";
     button_params.label = "Save as...";
     button_params.rect = LLRect(196, 24, 270, 0);
     mSave = LLUICtrlFactory::create<LLButton>(button_params);
     addChild(mSave);
     mSave->setCommitCallback([this](LLUICtrl*, const LLSD&) { showSaveEditor(); });
-    button_params.name = "kit_preset_delete";
+    button_params.name = prefix+"_preset_delete";
     button_params.label = "Delete";
     button_params.rect = LLRect(276, 24, 334, 0);
     mDelete = LLUICtrlFactory::create<LLButton>(button_params);

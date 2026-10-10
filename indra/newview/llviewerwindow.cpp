@@ -1129,6 +1129,7 @@ void LLViewerWindow::handlePieMenu(S32 x, S32 y, MASK mask)
 bool LLViewerWindow::handleAnyMouseClick(LLWindow *window, LLCoordGL pos, MASK mask, EMouseClickType clicktype, bool down, bool& is_toolmgr_action)
 {
     LL_PROFILE_ZONE_SCOPED_CATEGORY_UI;
+    ALKitHistory::notePointer();
     const char* buttonname = "";
     const char* buttonstatestr = "";
     S32 x = pos.mX;

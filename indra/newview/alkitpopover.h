@@ -17,6 +17,7 @@ public:
     bool postBuild() override;
     void show();
     void hide();
+    void toggle();
     void bindAnchor(LLView* anchor);
     bool handleKeyHere(KEY key, MASK mask) override;
 

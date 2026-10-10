@@ -5,6 +5,7 @@
 #include "lldir.h"
 #include "llfile.h"
 #include "llstring.h"
+#include "aluiperfselftest.h"
 
 #include <algorithm>
 #include <cctype>
@@ -127,6 +128,8 @@ bool ALKitSearch::tokenizeBatch(U32 count)
         entry.option = fields[7].empty() ? -1 : atoi(fields[7].c_str());
         entry.widget = fields[8];
         entry.label = fields[9];
+        entry.label_lower = entry.label;
+        LLStringUtil::toLower(entry.label_lower);
         entry.setting = fields[11];
         entry.advanced = fields[12].find('a') != std::string::npos;
         entry.order = mPendingIndex;
@@ -171,6 +174,7 @@ const std::string& ALKitSearch::queryText() const
 
 ALKitSearch::Hits ALKitSearch::query(const std::string& query_text) const
 {
+    LLTimer query_timer;
     std::vector<std::string> query_tokens;
     splitTokens(query_text, query_tokens);
     Hits hits;
@@ -205,9 +209,7 @@ ALKitSearch::Hits ALKitSearch::query(const std::string& query_text) const
                 score(entry.setting_tokens, 20);
                 score(entry.widget_tokens, 20);
             }
-            std::string lower_label = entry.label;
-            LLStringUtil::toLower(lower_label);
-            if (lower_label.compare(0, query_token.size(), query_token) == 0)
+            if (entry.label_lower.compare(0, query_token.size(), query_token) == 0)
             {
                 best = 100;
             }
@@ -245,6 +247,11 @@ ALKitSearch::Hits ALKitSearch::query(const std::string& query_text) const
         const bool rhs_current = rhs.page_key == mCurrentPage;
         return lhs_current != rhs_current ? lhs_current : lhs.order < rhs.order;
     });
+    if(ALUIPerfSelfTest::isActive())
+    {
+        LL_INFOS("DirectorKit")<<"KitSearch query \""<<query_text<<"\" "
+            <<query_timer.getElapsedTimeF64()*1000.<<" ms "<<hits.size()<<LL_ENDL;
+    }
     return hits;
 }
 

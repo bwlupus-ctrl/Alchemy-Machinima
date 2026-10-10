@@ -44,7 +44,11 @@ public:
  bool selectPage(const std::string& page_name);
  LLPanel* ensurePageBuilt(const std::string& page_name);
  ALKitPage* currentKitPage()const;
+ ALKitPage* findBuiltPage(const std::string&)const;
  std::string currentPageKey()const;
+ std::string pageKeyAt(S32,S32)const;
+ std::string pagePathLabel(const std::string&)const;
+ std::vector<std::string> unwrappedPages()const;
  void startSearchLoad();
  void clearSearch();
  bool handleSearchKey(KEY key);
@@ -54,7 +58,7 @@ public:
  bool closePopover();
  void setOpenPopover(ALKitPopover*);
  boost::signals2::connection setPageBuiltCallback(const page_built_signal_t::slot_type&s){return mPageBuilt.connect(s);}boost::signals2::connection setCastSelectionCallback(const cast_signal_t::slot_type&s){return mCastSelection.connect(s);}void emitPageBuilt(const std::string&name,LLPanel*p){mPageBuilt(name,p);}void setCastSelection(const uuid_vec_t&ids){mCastSelection(ids);}
- ALScrollFit::Controller& scrollFit(){return mScrollFit;}
+ ALScrollFit::Controller& scrollFit(){return mExternalScrollFit?*mExternalScrollFit:mScrollFit;}
  void setScrollFit(ALScrollFit::Controller* controller){mExternalScrollFit=controller;}
 protected:
  friend class LLUICtrlFactory;
@@ -105,13 +109,16 @@ private:
  ALKitSearch::Hit mTopSearchHit;
  bool mHasTopSearchHit=false;
  S32 mSearchSelection=0;
+ bool mSearchSelectionMoved=false;
  LLEventTimer::weak_t mSearchDebounce;
  std::string mPendingQuery;
  bool mRailLabels=true;
  bool mWideHelp=true;
  bool mSearchStarted=false;
+ bool mRosterOpen=true;
  LLFrameTimer mHighlightTimer;
  LLHandle<LLView>mHighlight;
+ LLHandle<LLView>mCurrentPage;
  std::vector<boost::signals2::scoped_connection>mConnections;
 };
 #endif

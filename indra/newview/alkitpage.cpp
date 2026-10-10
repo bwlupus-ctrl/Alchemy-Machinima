@@ -210,7 +210,7 @@ bool ALKitPage::postBuild()
     if(mPresetMode=="provider"&&!mPresetProvider.empty())
     {
         ALKitPresetStrip::Params preset_params;
-        preset_params.name=pre+"_presets";
+        preset_params.name=pre+"_preset_strip";
         preset_params.provider=mPresetProvider;
         preset_params.page=mPage;
         preset_params.rect=LLRect(bar_x,34,bar_x+334,10);
@@ -374,12 +374,6 @@ bool ALKitPage::postBuild()
         if(mWhoCombo)
         {
             mWhoCombo->setVisible(false);
-            mWhoChip->setCommitCallback([this](LLUICtrl*,const LLSD&)
-            {
-                mWhoCombo->setVisible(true);
-                mWhoCombo->showList();
-            }
-            );
             mWhoCombo->setCommitCallback([this](LLUICtrl*,const LLSD&)
             {
                 mWhoError=false;
@@ -391,7 +385,7 @@ bool ALKitPage::postBuild()
         }
         if(ALKitShell*shell=ALKitShell::find(this))mConnections.emplace_back(shell->setCastSelectionCallback([this](const ALKitShell::uuid_vec_t&ids)
         {
-            if(!mWhoCombo)return;if(!ids.empty())if(ALKitWhoAdapters::Adapter adapter=ALKitWhoAdapters::get(mWhoAdapter))
+            if(!mWhoCombo||mWhoPinned)return;if(!ids.empty())if(ALKitWhoAdapters::Adapter adapter=ALKitWhoAdapters::get(mWhoAdapter))
             {
                 const LLSD value=adapter(ids.front());if(value.isDefined())
                 {
@@ -416,6 +410,7 @@ bool ALKitPage::postBuild()
         for(LLView*c:xml_children)if(c!=mBar&&c!=mBanner&&c!=mWhoChip&&c!=mWhoCombo&&dynamic_cast<ALKitPresetHost*>(c)==nullptr)mLegacyHost->addChild(c);
         if(ALKitShell*shell=ALKitShell::find(this))shell->history().watchSettings(mPage,watched);
         reshape(getRect().getWidth(),getRect().getHeight(),true);
+        mRestoringState=false;
         return true;
     }
 
@@ -507,6 +502,11 @@ bool ALKitPage::postBuild()
 void ALKitPage::setModeIndex(S32 index,bool explicit_user)
 {
     if(index<0||index>=(S32)mModeDefs.size())return;
+    if(mRestoringState)
+    {
+        syncEffectiveMode();
+        return;
+    }
     if(mModeSwitch)
     {
         bool on=mModeDefs[index].name==mModeOn;
@@ -824,10 +824,14 @@ bool ALKitPage::cycleChip(S32 delta)
 
 void ALKitPage::saveState()
 {
+    if(mRestoringState)return;
     LLSD state=gSavedSettings.getLLSD("DirectorV2PageState");
     LLSD page=LLSD::emptyMap();
     page["chip"]=mChipIndex;
-    page["mode"]=mModeIndex;
+    if(mWhoPinned&&mWhoCombo)
+    {
+        page["who_pin"]=mWhoCombo->getValue().asString();
+    }
     for(const auto& card:mCards)
     {
         page["cards"][card.first]["body"]=card.second->bodyOpen();
@@ -837,19 +841,35 @@ void ALKitPage::saveState()
     gSavedSettings.setLLSD("DirectorV2PageState",state);
 }
 
+void ALKitPage::setWhoPin(const LLSD& value)
+{
+    mWhoPinned=value.isDefined()&&!value.asString().empty();
+    saveState();
+}
+
 void ALKitPage::restoreState()
 {
+    mRestoringState=true;
     const LLSD state=gSavedSettings.getLLSD("DirectorV2PageState");
-    if(!state.has(mPage))return;
+    if(!state.has(mPage))
+    {
+        mRestoringState=false;
+        return;
+    }
     const LLSD& page=state[mPage];
     if(page.has("chip"))mChipIndex=llclamp(page["chip"].asInteger(),0,llmax(0,(S32)mSections.size()-1));
-    if(page.has("mode")&&!mModeDefs.empty())setModeIndex(llclamp(page["mode"].asInteger(),0,(S32)mModeDefs.size()-1),false);
+    mWhoPinned=page.has("who_pin")&&!page["who_pin"].asString().empty();
+    if(mWhoPinned&&mWhoCombo)
+    {
+        mWhoCombo->setValue(page["who_pin"]);
+    }
     if(page.has("cards"))for(auto& card:mCards)if(page["cards"].has(card.first))
     {
         const LLSD& saved=page["cards"][card.first];
         card.second->restoreOpenState(saved["body"].asBoolean(),saved["more"].asBoolean());
     }
     applyModeAndChip();
+    mRestoringState=false;
 }
 
 void ALKitPage::draw()

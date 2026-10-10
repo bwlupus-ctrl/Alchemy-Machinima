@@ -9,6 +9,7 @@
 
 #include "llviewerprecompiledheaders.h"
 #include "alkitshell.h"
+#include "alkitbinding.h"
 #include "alkithistory.h"
 #include "alkitpage.h"
 #include "alkitpopover.h"
@@ -360,8 +361,11 @@ bool LLFloaterDirector::postBuild()
     mHelpBtn = getChild<LLButton>("btn_help");
     mLegendPanel = getChild<LLPanel>("legend_panel");
     mHelpBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onToggleLegend(); });
-    mLegendPanel->getChild<LLButton>("btn_legend_close")->setCommitCallback(
-        [this](LLUICtrl*, const LLSD&) { mLegendPanel->setVisible(false); });
+    if(!mIsV2)
+    {
+        mLegendPanel->getChild<LLButton>("btn_legend_close")->setCommitCallback(
+            [this](LLUICtrl*, const LLSD&) { mLegendPanel->setVisible(false); });
+    }
 
     // ---- cast column ----
     mCastList = getChild<LLScrollListCtrl>("cast_list");
@@ -753,14 +757,7 @@ bool LLFloaterDirector::postBuildV2()
                 director->bindPage(page, panel);
             }
         });
-    mScrollFit.setUnwrappedPages({"cast_group", "performance_group", "camera_group", "lens_group",
-        "light_group", "look_group", "world_group", "capture_group", "move_tab", "path_tab",
-        "props_tab", "ghosts_tab", "dance_tab", "animate_tab", "switchboard_tab", "gaze_tab",
-        "polish_tab", "gaze_cues_tab", "shot_tab", "moves_tab", "operator_tab", "frame_orbit_tab",
-        "takes_tab", "vcam_tab", "focus_tab", "filters_tab", "diopter_tab", "cine_light_rig_tab",
-        "light_rim_tab", "exposure_tab", "practicals_tab", "actors_tab", "light_cues_tab", "image_tab",
-        "bloom_glow_tab", "stylize_tab", "tron_tab", "actor_style_tab", "weather_tab", "atmosphere_tab",
-        "shadows_probes_tab", "temporal_tab", "scene_options_tab"});
+    mScrollFit.setUnwrappedPages(mShell->unwrappedPages());
     mScrollFit.installForTabs(mTabContainer, this);
     mShell->setScrollFit(&mScrollFit);
     if (LLPanel* initial = currentLeafPanel())
@@ -778,6 +775,9 @@ bool LLFloaterDirector::postBuildV2()
 
 void LLFloaterDirector::bindChrome(LLView* root)
 {
+    // Keep this wiring in lockstep with the v1 postBuild block above: v2 calls
+    // the same callbacks against lazily re-homed controls, while v1 retains
+    // its original statement order for parity.
     mActionBtn = root->getChild<LLButton>("btn_action");
     mCutBtn = root->getChild<LLButton>("btn_cut");
     mSetMarksBtn = root->getChild<LLButton>("btn_set_marks");
@@ -910,6 +910,21 @@ void LLFloaterDirector::bindChrome(LLView* root)
     if (mKitUIMs)
     {
         mKitUIMs->setVisible(gSavedSettings.getBOOL("KitShowUIMs"));
+        LLHandle<LLFloaterDirector> handle=getDerivedHandle<LLFloaterDirector>();
+        mKitUIMsConnection=ALKitSettingWatch::instance().watch("KitShowUIMs",
+            [handle](const LLSD& value,const LLSD&)
+            {
+                if(LLFloaterDirector* director=handle.get())
+                {
+                    if(director->mKitUIMs)director->mKitUIMs->setVisible(value.asBoolean());
+                }
+            });
+    }
+    if(mShell)
+    {
+        mShell->history().watchSettings("chrome",{
+            "DirectorArmMoves","DirectorArmCamera","DirectorArmRecorderPlay",
+            "DirectorArmRecorderCapture","DirectorActionDelay","ActorMoverShowHeading"});
     }
 }
 
@@ -1016,6 +1031,24 @@ void LLFloaterDirector::bindActorStylePage(LLView* root)
         !mActorStyleDistortionAmount || !mActorStyleBrightness || !mActorStyleEffectFps ||
         !mActorStyleReset || !mActorStyleStatus)
     {
+        mActorStyleTarget = nullptr;
+        mActorStyleEnabled = nullptr;
+        mActorStyleMode = nullptr;
+        mActorStyleLook = nullptr;
+        mActorStyleUseActorHue = nullptr;
+        mActorStyleHue = nullptr;
+        mActorStyleAlpha = nullptr;
+        mActorStyleDissolveProgress = nullptr;
+        mActorStylePixel = nullptr;
+        mActorStyleShimmerSpeed = nullptr;
+        mActorStyleShimmerAmount = nullptr;
+        mActorStyleGlitch = nullptr;
+        mActorStyleDistortion = nullptr;
+        mActorStyleDistortionAmount = nullptr;
+        mActorStyleBrightness = nullptr;
+        mActorStyleEffectFps = nullptr;
+        mActorStyleReset = nullptr;
+        mActorStyleStatus = nullptr;
         return;
     }
     mActorStyleTarget->setCommitCallback(
@@ -1065,11 +1098,29 @@ void LLFloaterDirector::bindAnimatePage(LLView* root)
     mLocoText = root->findChild<LLTextBox>("loco_text");
     mClearLocoBtn = root->findChild<LLButton>("btn_clear_loco");
     mAnimPreviewPanel = root->findChild<ALPanelAnimPreview>("anim_preview_panel");
-    if (!mAnimList || !mAnimCopyBtn || !mAnimSetLocoBtn || !mAnimPlayBtn || !mAnimStopBtn ||
+    if (!mAnimateHeader || !mAnimList || !mAnimHint || !mAnimCopyBtn || !mAnimSetLocoBtn || !mAnimPlayBtn || !mAnimStopBtn ||
         !mPasteEditor || !mPastePlayBtn || !mPasteStopBtn || !mPasteSetLocoBtn ||
         !mLocomotionRoleCombo || !mLocomotionSpeed || !mLocomotionPhase ||
-        !mLocomotionAllowAO || !mClearLocoBtn)
+        !mLocomotionAllowAO || !mLocoText || !mClearLocoBtn)
     {
+        mAnimateHeader = nullptr;
+        mAnimList = nullptr;
+        mAnimHint = nullptr;
+        mAnimCopyBtn = nullptr;
+        mAnimSetLocoBtn = nullptr;
+        mAnimPlayBtn = nullptr;
+        mAnimStopBtn = nullptr;
+        mPasteEditor = nullptr;
+        mPastePlayBtn = nullptr;
+        mPasteStopBtn = nullptr;
+        mPasteSetLocoBtn = nullptr;
+        mLocomotionRoleCombo = nullptr;
+        mLocomotionSpeed = nullptr;
+        mLocomotionPhase = nullptr;
+        mLocomotionAllowAO = nullptr;
+        mLocoText = nullptr;
+        mClearLocoBtn = nullptr;
+        mAnimPreviewPanel = nullptr;
         return;
     }
     mAnimPrioCol = mAnimList->getColumn("prio")->mIndex;
@@ -1153,6 +1204,7 @@ void LLFloaterDirector::bindCameraPage(LLView* root)
     if (ALPanelLensGaze* control = root->findChild<ALPanelLensGaze>("director_gaze_panel"))
     {
         mGazePanel = control;
+        mGazePanel->setSelectedActors(selectedCastIds());
     }
     if (LLButton* control = root->findChild<LLButton>("dance_popout"))
     {
@@ -1199,21 +1251,16 @@ void LLFloaterDirector::bindCameraPage(LLView* root)
     {
         mCineCamPanel = control;
     }
-    LLPanel* root_panel = dynamic_cast<LLPanel*>(root);
-    LLPanel* dance_page = root_panel && root_panel->getName() == "dance_tab_logic"
-        ? root_panel : root->findChild<LLPanel>("dance_tab_logic");
-    if (dance_page)
+    if (LLView* dance = root->findChild<LLView>("director_dance_ball_panel"))
     {
-        mDancePage = dance_page;
-        mDancePanelView = root->findChild<LLView>("director_dance_ball_panel");
+        mDancePanelView = dance;
+        mDancePage = dynamic_cast<LLPanel*>(dance->getParent());
         ALScrollFit::fillPage(mDancePage, mDancePanelView, 30);
     }
-    LLPanel* exposure_page = root_panel && root_panel->getName() == "exposure_tab_logic"
-        ? root_panel : root->findChild<LLPanel>("exposure_tab_logic");
-    if (exposure_page)
+    if (LLView* exposure = root->findChild<LLView>("director_exposure_panel"))
     {
-        mExposurePage = exposure_page;
-        mExposurePanelView = root->findChild<LLView>("director_exposure_panel");
+        mExposurePanelView = exposure;
+        mExposurePage = dynamic_cast<LLPanel*>(exposure->getParent());
         ALScrollFit::fillPage(mExposurePage, mExposurePanelView, 30);
     }
 }
@@ -1344,7 +1391,14 @@ void LLFloaterDirector::onOpen(const LLSD& key)
        (getRect().getWidth()<ALKitStyle::FLOATER_DEFAULT_W||getRect().getHeight()<ALKitStyle::FLOATER_DEFAULT_H))
     {
         LLRect rect=getRect();
-        rect.setLeftTopAndSize(rect.mLeft,rect.mTop,ALKitStyle::FLOATER_DEFAULT_W,ALKitStyle::FLOATER_DEFAULT_H);
+        S32 width=llmax(rect.getWidth(),ALKitStyle::FLOATER_DEFAULT_W);
+        S32 height=llmax(rect.getHeight(),ALKitStyle::FLOATER_DEFAULT_H);
+        if(gFloaterView)
+        {
+            width=llmin(width,gFloaterView->getLocalRect().getWidth());
+            height=llmin(height,gFloaterView->getLocalRect().getHeight());
+        }
+        rect.setLeftTopAndSize(rect.mLeft,rect.mTop,width,height);
         setShape(rect);
         if(gFloaterView)translateIntoRect(gFloaterView->getLocalRect());
         gSavedSettings.setBOOL("DirectorV2RectBumped",true);
@@ -1444,6 +1498,26 @@ bool LLFloaterDirector::selectLeafTab(const std::string& name)
             entry.second->selectTabPanel(leaf);
             return true;
         }
+    }
+    return false;
+}
+
+std::string LLFloaterDirector::pageKeyAt(S32 x,S32 y) const
+{
+    if(!mShell)return std::string();
+    S32 shell_x=0;
+    S32 shell_y=0;
+    const_cast<LLFloaterDirector*>(this)->localPointToOtherView(x,y,&shell_x,&shell_y,mShell);
+    return mShell->pageKeyAt(shell_x,shell_y);
+}
+
+bool LLFloaterDirector::isTextEntryFocus() const
+{
+    LLView* focus=dynamic_cast<LLView*>(gFocusMgr.getKeyboardFocus());
+    for(LLView* view=focus;view;view=view->getParent())
+    {
+        if(dynamic_cast<LLLineEditor*>(view)||dynamic_cast<LLTextEditor*>(view)||dynamic_cast<LLSpinCtrl*>(view))return true;
+        if(view==this)break;
     }
     return false;
 }
@@ -1561,16 +1635,7 @@ bool LLFloaterDirector::handleKeyHere(KEY key, MASK mask)
     if(mIsV2)
     {
         LLView* focus=dynamic_cast<LLView*>(gFocusMgr.getKeyboardFocus());
-        bool text_focus=false;
-        for(LLView* view=focus;view;view=view->getParent())
-        {
-            if(dynamic_cast<LLLineEditor*>(view)||dynamic_cast<LLTextEditor*>(view)||dynamic_cast<LLSpinCtrl*>(view))
-            {
-                text_focus=true;
-                break;
-            }
-            if(view==this)break;
-        }
+        const bool text_focus=isTextEntryFocus();
         if((mask&MASK_CONTROL)&&!(mask&MASK_SHIFT)&&!text_focus)
         {
             if(key=='Z')
@@ -1591,6 +1656,14 @@ bool LLFloaterDirector::handleKeyHere(KEY key, MASK mask)
             {
                 mShell->clearSearch();
                 return true;
+            }
+            if(LLLineEditor* editor=dynamic_cast<LLLineEditor*>(focus))
+            {
+                if(editor->getName().size()>=7&&editor->getName().compare(editor->getName().size()-7,7,"_search")==0)
+                {
+                    editor->setFocus(false);
+                    return true;
+                }
             }
         }
         if((key==KEY_PAGE_UP||key==KEY_PAGE_DOWN)&&!(mask&MASK_CONTROL))
@@ -1641,13 +1714,7 @@ bool LLFloaterDirector::handleUnicodeCharHere(llwchar uni_char)
 {
     if(mIsV2&&uni_char=='/')
     {
-        LLView* focus=dynamic_cast<LLView*>(gFocusMgr.getKeyboardFocus());
-        for(LLView* view=focus;view;view=view->getParent())
-        {
-            if(dynamic_cast<LLLineEditor*>(view)||dynamic_cast<LLTextEditor*>(view)||dynamic_cast<LLSpinCtrl*>(view))
-                return LLFloater::handleUnicodeCharHere(uni_char);
-            if(view==this)break;
-        }
+        if(isTextEntryFocus())return LLFloater::handleUnicodeCharHere(uni_char);
         if(ALKitPage* page=mShell->currentKitPage())
         {
             std::string prefix=page->pageKey();
@@ -1676,19 +1743,19 @@ ALKitHistory* LLFloaterDirector::kitHistory()
 
 bool LLFloaterDirector::handleMouseDown(S32 x,S32 y,MASK mask)
 {
-    if(mShell)mShell->history().beginGesture(ALKitHistory::MOUSE,mShell->currentPageKey());
+    if(mShell)mShell->history().beginGesture(ALKitHistory::MOUSE,pageKeyAt(x,y));
     return LLFloater::handleMouseDown(x,y,mask);
 }
 
 bool LLFloaterDirector::handleRightMouseDown(S32 x,S32 y,MASK mask)
 {
-    if(mShell)mShell->history().beginGesture(ALKitHistory::MOUSE,mShell->currentPageKey());
+    if(mShell)mShell->history().beginGesture(ALKitHistory::MOUSE,pageKeyAt(x,y));
     return LLFloater::handleRightMouseDown(x,y,mask);
 }
 
 bool LLFloaterDirector::handleScrollWheel(S32 x,S32 y,LLScrollDelta delta)
 {
-    if(mShell)mShell->history().beginGesture(ALKitHistory::WHEEL,mShell->currentPageKey());
+    if(mShell)mShell->history().beginGesture(ALKitHistory::WHEEL,pageKeyAt(x,y));
     return LLFloater::handleScrollWheel(x,y,delta);
 }
 
@@ -2231,6 +2298,8 @@ void LLFloaterDirector::loadScene(const std::string& name)
         return;
     }
 
+    ALKitHistory::ScopedSuspend history_suspend;
+
     const bool has_version = scene.has("version");
     const bool malformed_version = has_version && !scene["version"].isInteger();
     const S32 version = has_version && !malformed_version
@@ -2445,6 +2514,10 @@ void LLFloaterDirector::loadScene(const std::string& name)
     if (scene["cinecam_mode"].isInteger())
     {
         gSavedSettings.setS32("CinematicCamMode", scene["cinecam_mode"].asInteger());
+    }
+    if(mShell)
+    {
+        mShell->history().barrier("scene loaded");
     }
     LL_INFOS("Director") << "Loaded scene '" << name << "'" << LL_ENDL;
 }

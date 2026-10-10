@@ -32,6 +32,8 @@ private:
     LLView* mFlex = nullptr;
     std::vector<LLView*> mChildren;
     std::vector<LLView*> mCollapse;
+    std::vector<bool> mNaturalVisible;
+    std::vector<bool> mCollapsed;
 };
 
 #endif

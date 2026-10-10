@@ -5,6 +5,8 @@
 #include "alkitpresets.h"
 #include "llpanel.h"
 
+#include <algorithm>
+
 namespace
 {
 const std::vector<std::string>& rimSettings()
@@ -14,13 +16,16 @@ const std::vector<std::string>& rimSettings()
         "CineRigRimTint","CineRigRimShadow","CineRigRimIncludeAlpha","CineRigRimIncludeBounce",
         "CineRigRimSmoothness","CineRigRimAntiShimmer","CineRigRimSilhouette",
         "CineRigRimSilhouetteWidth","CineRigRimSilhouetteUnits","CineRigRimSilhouetteSoft",
-        "CineRigRimActorsOnly","CineRigRimWrapEnabled","CineRigRimWrapStrength",
-        "CineRigRimWrapWidth","CineRigRimWrapBlur","CineRigRimWrapSaturation","CineRigRimWrapClamp",
+        "CineRigRimActorsOnly","CineRigRimActorsOnlyAlpha","CineRigRimWrapEnabled","CineRigRimWrapStrength",
+        "CineRigRimWrapWidth","CineRigRimWrapBlur","CineRigRimWrapSaturation",
         "CineRigRimKeyGain","CineRigRimKeySharpness","CineRigRimKeyWrap","CineRigRimKeyBackBias",
         "CineRigRimFillGain","CineRigRimFillSharpness","CineRigRimFillWrap","CineRigRimFillBackBias",
         "CineRigRimRimGain","CineRigRimRimSharpness","CineRigRimRimWrap","CineRigRimRimBackBias",
         "CineRigRimBgGain","CineRigRimBgSharpness","CineRigRimBgWrap","CineRigRimBgBackBias",
         "CineRigRimTronMode","CineRigRimTronMix","CineRigRimTronColorSource"};
+    llassert(settings.size()==39);
+    llassert(std::find(settings.begin(),settings.end(),"CineRigRimActorsOnlyAlpha")!=settings.end());
+    llassert(std::find(settings.begin(),settings.end(),"CineRigRimWrapClamp")==settings.end());
     return settings;
 }
 

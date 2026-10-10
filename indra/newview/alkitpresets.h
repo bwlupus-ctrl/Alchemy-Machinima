@@ -21,10 +21,14 @@ public:
 private:
     bool read(LLSD&)const;
     bool write(const LLSD&)const;
+    bool ensureLoaded()const;
     std::string path()const;
     std::string mKey;
     std::vector<std::string>mSettings;
     U64 mRevision=0;
+    mutable LLSD mCache;
+    mutable bool mLoaded=false;
+    mutable bool mLoadValid=false;
 };
 
 class LLButton;

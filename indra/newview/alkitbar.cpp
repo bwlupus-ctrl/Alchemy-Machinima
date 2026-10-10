@@ -35,6 +35,8 @@ bool ALKitBar::postBuild()
         if (LLView* child = findChild<LLView>(name))
         {
             mCollapse.push_back(child);
+            mNaturalVisible.push_back(child->getVisible());
+            mCollapsed.push_back(false);
         }
     }
     layoutChildren();
@@ -51,9 +53,13 @@ void ALKitBar::layoutChildren()
 {
     constexpr S32 PAD = 10;
     constexpr S32 GAP = 8;
-    for (LLView* child : mCollapse)
+    for (S32 index = 0; index < (S32)mCollapse.size(); ++index)
     {
-        child->setVisible(true);
+        if (!mCollapsed[index])
+        {
+            mNaturalVisible[index] = mCollapse[index]->getVisible();
+        }
+        mCollapsed[index] = false;
     }
 
     auto required_width = [this]()
@@ -62,7 +68,16 @@ void ALKitBar::layoutChildren()
         S32 count = 0;
         for (LLView* child : mChildren)
         {
-            if (child != mFlex && child->getVisible())
+            bool visible = child->getVisible();
+            for (S32 index = 0; index < (S32)mCollapse.size(); ++index)
+            {
+                if (mCollapse[index] == child)
+                {
+                    visible = mNaturalVisible[index] && !mCollapsed[index];
+                    break;
+                }
+            }
+            if (child != mFlex && visible)
             {
                 width += child->getRect().getWidth();
                 ++count;
@@ -71,13 +86,24 @@ void ALKitBar::layoutChildren()
         return width + llmax(0, count) * 8;
     };
 
-    for (LLView* child : mCollapse)
+    for (S32 index = 0; index < (S32)mCollapse.size(); ++index)
     {
         if (required_width() <= getRect().getWidth())
         {
             break;
         }
-        child->setVisible(false);
+        if (mNaturalVisible[index])
+        {
+            mCollapsed[index] = true;
+        }
+    }
+    for (S32 index = 0; index < (S32)mCollapse.size(); ++index)
+    {
+        const bool visible = mNaturalVisible[index] && !mCollapsed[index];
+        if (mCollapse[index]->getVisible() != visible)
+        {
+            mCollapse[index]->setVisible(visible);
+        }
     }
 
     S32 fixed = 0;

@@ -49,6 +49,7 @@ public:
     void setOwner(LLView* owner);
     void beginGesture(EOrigin,const std::string&,const std::string& label=std::string());
     static void noteKey();
+    static void notePointer();
     void watchSettings(const std::string&,const std::vector<std::string>&);
     void recordWidget(LLUICtrl*,const LLSD&,const LLSD&,const std::string&);
     void recordCustom(const std::string&,const std::string&,std::function<bool(bool,std::string&)>);

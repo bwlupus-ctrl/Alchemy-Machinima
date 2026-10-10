@@ -22,7 +22,6 @@ public:
     static const std::vector<std::string>& presetNames();
 
 private:
-    void onPresetSelected();
     LLComboBox* mPreset = nullptr;
     LLTextBox* mQualityStatus = nullptr;
     LLButton* mEnableTag = nullptr;

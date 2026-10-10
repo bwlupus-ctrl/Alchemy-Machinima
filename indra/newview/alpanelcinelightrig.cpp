@@ -10,6 +10,7 @@
 #include "llviewerprecompiledheaders.h"
 
 #include "alpanelcinelightrig.h"
+#include "alkithistory.h"
 
 #include "alcinelightrig.h"
 #include "alcinelightrigmanager.h"
@@ -1877,35 +1878,39 @@ bool ALPanelCineLightRig::resetAllCallback(
     {
         return false;
     }
-    for (const std::string& setting : settings())
     {
-        if (LLControlVariable* control = gSavedSettings.getControl(setting))
+        ALKitHistory::ScopedSuspend history_suspend;
+        for (const std::string& setting : settings())
         {
-            control->resetToDefault(true);
+            if (LLControlVariable* control = gSavedSettings.getControl(setting))
+            {
+                control->resetToDefault(true);
+            }
         }
+        ALCineLightRigManager& manager = ALCineLightRigManager::instance();
+        ALCineLightRig& rig = manager.selected();
+        rig.setAnchor(LLUUID::null);
+        rig.setObjectTarget(LLUUID::null);
+        rig.setGroupEnabled(false);
+        rig.setGroupSlots(0);
+        for (S32 i = 0; i < ALCineLightRigModel::LIGHT_COUNT; ++i)
+        {
+            rig.setShaftEnabled(i, false);
+            rig.setHeroEnabled(i, false);
+        }
+        manager.resetAllToSelf();
+        mAnchorSelectionInitialized = false;
+        mDisplayedSlot = -1;
+        mDisplayedObjectTargetSlot = -1;
+        mDisplayedGroupSlots = ~0u;
+        mDisplayedResolvedSlots = ~0u;
+        mSeedInitialized = false;
+        mDisplayedFixtureSlot = -1;
+        syncObjectTargetControls(true);
+        refreshAllSetupLists(
+            this, ALCineLightRig::masterSetups().front().mName);
     }
-    ALCineLightRigManager& manager = ALCineLightRigManager::instance();
-    ALCineLightRig& rig = manager.selected();
-    rig.setAnchor(LLUUID::null);
-    rig.setObjectTarget(LLUUID::null);
-    rig.setGroupEnabled(false);
-    rig.setGroupSlots(0);
-    for (S32 i = 0; i < ALCineLightRigModel::LIGHT_COUNT; ++i)
-    {
-        rig.setShaftEnabled(i, false);
-        rig.setHeroEnabled(i, false);
-    }
-    manager.resetAllToSelf();
-    mAnchorSelectionInitialized = false;
-    mDisplayedSlot = -1;
-    mDisplayedObjectTargetSlot = -1;
-    mDisplayedGroupSlots = ~0u;
-    mDisplayedResolvedSlots = ~0u;
-    mSeedInitialized = false;
-    mDisplayedFixtureSlot = -1;
-    syncObjectTargetControls(true);
-    refreshAllSetupLists(
-        this, ALCineLightRig::masterSetups().front().mName);
+    ALKitHistory::globalBarrier("rig reset");
     return false;
 }
 

@@ -58,6 +58,7 @@ const RigRimPresetRow RIG_RIM_PRESETS[20] = {
     { "Tron Suit Kick",           2.2f,0.5f,0.5f,0.00f,0.4f,true, false, {0.6f,5.0f,0.20f,-0.60f},{0.f,3.f,0.35f,0.f},           {3.0f,5.0f,0.30f,0.10f},        {0.f,3.f,0.35f,0.f} },
     { "Ares Red Backlight",       2.0f,0.5f,0.5f,0.00f,0.5f,true, false, {0.f,3.f,0.35f,0.f},     {0.f,3.f,0.35f,0.f},            {2.8f,4.0f,0.35f,0.20f},        {1.6f,4.0f,0.30f,0.20f} },
 };
+static_assert(LL_ARRAY_SIZE(RIG_RIM_PRESETS)==20,"Rig Rim preset count changed");
 
 void applyRigRimPreset(const RigRimPresetRow& row)
 {
@@ -93,12 +94,13 @@ void applyRigRimPreset(const RigRimPresetRow& row)
 
 const std::vector<std::string>& ALRigRimController::presetNames()
 {
-    static const std::vector<std::string> names={
-        "Subtle Edge","Soft Portrait Wrap","Strong Backlight","Hair Shine",
-        "Silhouette Glow (any angle)","Neon / Stage","Dreamy Halo","Noir Kicker",
-        "Two-Sided Kick","Fashion Edge","Sci-Fi Hologram","Candle Glow",
-        "Metal Sheen","Skin Sheen","Soft Fill Wrap","Horror Edge","Moonlit Rim",
-        "Glass Shell","Tron Suit Kick","Ares Red Backlight"};
+    static const std::vector<std::string> names=[]
+    {
+        std::vector<std::string> result;
+        result.reserve(LL_ARRAY_SIZE(RIG_RIM_PRESETS));
+        for(const RigRimPresetRow& row:RIG_RIM_PRESETS)result.emplace_back(row.mName);
+        return result;
+    }();
     return names;
 }
 
@@ -162,21 +164,6 @@ void ALRigRimController::attach(LLView* root)
             combo->setValue(0);
         });
     }
-}
-
-void ALRigRimController::onPresetSelected()
-{
-    if(!mPreset)
-    {
-        return;
-    }
-    const S32 index=mPreset->getSelectedValue().asInteger()-1;
-    const std::vector<std::string>& names=presetNames();
-    if(index>=0&&index<(S32)names.size())
-    {
-        applyPresetByName(names[index]);
-    }
-    mPreset->setValue(0);
 }
 
 void ALRigRimController::onReveal()

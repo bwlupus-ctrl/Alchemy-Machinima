@@ -114,6 +114,8 @@ private:
     void onTabChanged();                // remember the active tab (DirectorLastTabName + DirectorLastTab)
     LLPanel* currentLeafPanel();
     bool selectLeafTab(const std::string& name);
+    std::string pageKeyAt(S32 x,S32 y) const;
+    bool isTextEntryFocus() const;
 
     // ---- legend popover ----
     void onToggleLegend();
@@ -431,6 +433,7 @@ private:
     F32 mKitDrawEMA = 0.f;
     ALLiveReadoutClock mKitDrawClock{2.f};
     boost::signals2::scoped_connection mPageBuiltConnection;
+    boost::signals2::scoped_connection mKitUIMsConnection;
     std::unordered_set<std::string> mBoundPages;
 };
 

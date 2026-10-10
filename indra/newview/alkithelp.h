@@ -2,6 +2,7 @@
 #define AL_KIT_HELP_H
 
 #include "llhandle.h"
+#include "llview.h"
 
 #include <string>
 
@@ -11,6 +12,16 @@ class ALKitPage;
 class LLPanel;
 class LLTextBox;
 class LLTextEditor;
+
+class ALKitHelpStrip final : public LLView
+{
+public:
+    explicit ALKitHelpStrip(const LLView::Params& params);
+    void setText(const std::string& text){mText=text;}
+    void draw() override;
+private:
+    std::string mText;
+};
 
 class ALKitHelp
 {
@@ -28,6 +39,6 @@ private:
     LLTextBox*mTitle=nullptr;
     LLTextEditor*mBody=nullptr;
     LLTextBox*mMeta=nullptr;
-    LLTextBox*mStripText=nullptr;
+    ALKitHelpStrip*mStripText=nullptr;
 };
 #endif

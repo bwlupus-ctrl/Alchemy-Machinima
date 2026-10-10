@@ -30,14 +30,6 @@ bool ALKitPopover::postBuild()
         if (LLView* anchor = shell->findChild<LLView>(mAnchorName))
         {
             mAnchor = anchor->getHandle();
-            if(LLUICtrl* control=dynamic_cast<LLUICtrl*>(anchor))
-            {
-                LLHandle<ALKitPopover> handle=getDerivedHandle<ALKitPopover>();
-                control->setCommitCallback([handle](LLUICtrl*,const LLSD&)
-                {
-                    if(ALKitPopover* popover=handle.get())popover->show();
-                });
-            }
         }
     }
     if(getRect().getWidth()<=1||getRect().getHeight()<=1)
@@ -111,6 +103,18 @@ void ALKitPopover::show()
 void ALKitPopover::hide()
 {
     setVisible(false);
+}
+
+void ALKitPopover::toggle()
+{
+    if(getVisible())
+    {
+        hide();
+    }
+    else
+    {
+        show();
+    }
 }
 
 void ALKitPopover::bindAnchor(LLView* anchor)
