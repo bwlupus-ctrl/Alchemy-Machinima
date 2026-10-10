@@ -6,6 +6,7 @@
 #include "llbutton.h"
 #include "llcallbacklist.h"
 #include "alkitcard.h"
+#include "alkithistory.h"
 #include "alkitpage.h"
 #include "llfontgl.h"
 #include "lllineeditor.h"
@@ -139,7 +140,7 @@ bool ALKitRow::postBuild()
 
         mLastValue=mShownValue=mControl->getValue();
 
-        if(mBind=="code"&&mMeta.kind!="button"&&mMeta.kind!="readout")
+        if(mBind=="code"&&mMeta.kind!="button"&&mMeta.kind!="readout"&&mMeta.mirror_setting.empty())
         mHistoryConnection=mControl->setCommitCallback([this](LLUICtrl*c,const LLSD&)
         {
             LLSD now=c->getValue();if(ALKitShell*shell=ALKitShell::find(this))shell->history().recordWidget(c,mLastValue,now,mMeta.label);mLastValue=now;bindingChanged();
@@ -158,12 +159,39 @@ bool ALKitRow::postBuild()
 
         if(!mMeta.mirror_setting.empty())if(LLControlVariable*c=gSavedSettings.getControl(mMeta.mirror_setting).get())
         {
-            if(LLComboBox*combo=dynamic_cast<LLComboBox*>(mControl))combo->setCurrentByIndex(c->get().asInteger());
+            LLComboBox*combo=dynamic_cast<LLComboBox*>(mControl);
+            if(combo)
+            {
+                combo->setCurrentByIndex(c->get().asInteger());
+                mMirrorCommitConnection=combo->setCommitCallback([this,c,combo](LLUICtrl*,const LLSD&)
+                {
+                    if(mSyncingMirror)return;
+                    const S32 index=combo->getCurrentIndex();
+                    if(index>=0&&c->get().asInteger()!=index)c->set(LLSD(index));
+                });
+            }
             mMirrorConnection=c->getSignal()->connect([this](LLControlVariable*,const LLSD&v,const LLSD&)
             {
-                if(LLComboBox*combo=dynamic_cast<LLComboBox*>(mControl))combo->setCurrentByIndex(v.asInteger());
-            }
-            );
+                LLComboBox*combo=dynamic_cast<LLComboBox*>(mControl);
+                if(!combo||mSyncingMirror||combo->getCurrentIndex()==v.asInteger())return;
+                ALKitHistory::ScopedSuspend suspend;
+                mSyncingMirror=true;
+                combo->setCurrentByIndex(v.asInteger());
+                combo->onCommit();
+                mSyncingMirror=false;
+            });
+            LLHandle<LLPanel> handle=getHandle();
+            doOnIdleOneTime([handle,c]()
+            {
+                ALKitRow*row=dynamic_cast<ALKitRow*>(handle.get());
+                LLComboBox*combo=row?dynamic_cast<LLComboBox*>(row->mControl):nullptr;
+                if(!row||!combo||row->mSyncingMirror)return;
+                ALKitHistory::ScopedSuspend suspend;
+                row->mSyncingMirror=true;
+                combo->setCurrentByIndex(c->get().asInteger());
+                combo->onCommit();
+                row->mSyncingMirror=false;
+            });
         }
 
     }

@@ -42,9 +42,5 @@
  },
  "retired_cpp_targets": {
   "cine_rig_rim_preset": {"reason": "replaced by the kit preset provider", "citation": "DIRECTOR_KIT_P0_SPEC.md section 5.2", "expires": "WP12"}
- },
- "pending_cpp_targets": {
-  "cine_rimq_status": {"reason": "WP4 finalizes the Rim panel ownership handoff", "citation": "DIRECTOR_KIT_P0_SPEC.md section 3.18", "expires": "WP4", "file": "indra/newview/alrigrimcontroller.cpp", "symbol": "ALRigRimController"},
-  "cine_rimq_enable_tag": {"reason": "WP4 finalizes the Rim panel ownership handoff", "citation": "DIRECTOR_KIT_P0_SPEC.md section 3.18", "expires": "WP4", "file": "indra/newview/alrigrimcontroller.cpp", "symbol": "ALRigRimController"}
  }
 }

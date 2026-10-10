@@ -716,7 +716,7 @@ void ALKitCard::restoreOpenState(bool body,bool more)
 {
     mBodyOpen=body;
     if(mOptionMore.empty())mMoreOpen=more;
-    else if(mActiveOption>=0&&mActiveOption<(S32)mOptionMore.size())mOptionMore[mActiveOption]=more;
+    else std::fill(mOptionMore.begin(),mOptionMore.end(),more);
     if(mMore)mMore->setLabel(more?"Fewer options":"More options");
     requestLayout();
 }

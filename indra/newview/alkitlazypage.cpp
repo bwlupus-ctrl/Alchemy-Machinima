@@ -30,7 +30,8 @@ LLPanel*ALKitLazyPage::ensureBuilt()
         shell->scrollFit().adoptPage(this,mContent);
         shell->emitPageBuilt(getName(),mContent);
     }
-    LL_INFOS("DirectorKit")<<"Kit page "<<getName()<<" built in "<<timer.getElapsedTimeF64()*1000.<<" ms"<<LL_ENDL;
+    mBuildMs=timer.getElapsedTimeF64()*1000.;
+    LL_INFOS("DirectorKit")<<"Kit page "<<getName()<<" built in "<<mBuildMs<<" ms"<<LL_ENDL;
     return mContent;
 }
 

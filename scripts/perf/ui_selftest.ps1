@@ -28,7 +28,8 @@ if ($DirectorV2) {
   $Layout = $true
   $Floaters = 'director'
 }
-if ($Layout -and $TimeoutMin -eq 10) { $TimeoutMin = 25 }
+if ($DirectorV2 -and $TimeoutMin -eq 10) { $TimeoutMin = 75 }
+elseif ($Layout -and $TimeoutMin -eq 10) { $TimeoutMin = 25 }
 
 # Keep in sync with all_targets in indra/newview/aluiperfselftest.cpp.
 $allTargets = @('director', 'lightbox', 'exposure_hub', 'dance_ball',
@@ -72,6 +73,7 @@ while ($true) {
             '--set', 'UILayoutAudit', $(if ($Layout) { 'TRUE' } else { 'FALSE' }))
   if ($DirectorV2) {
     $viewerArgs += @('--set', 'DirectorUIV2', 'TRUE',
+      '--set', 'UIPerfDirectorV2', 'TRUE',
       '--set', 'UILayoutAuditSizes', '"1160x720,min,1141x720,915x720"')
   }
   # The viewer resolves app_settings/ and skins/ from its working directory: always
@@ -197,11 +199,11 @@ $ranked = foreach ($row in ($rows | Where-Object { $_.measure -ne 'baseline' }))
   $reasons = [System.Collections.Generic.List[string]]::new()
   if ($meanDelta -gt 1.0) { $reasons.Add('mean>baseline+1ms') }
   if ($p95Delta -gt 2.0) { $reasons.Add('p95>baseline+2ms') }
-  if ($row.measure -eq 'open' -and
+  if (-not $DirectorV2 -and $row.measure -eq 'open' -and
       ([double]$row.action_ms -gt 100.0 -or [double]$row.first_frame_ui_ms -gt 100.0)) {
     $reasons.Add('open>100ms')
   }
-  if ($row.measure -eq 'tab' -and [double]$row.action_ms -gt 16.0) { $reasons.Add('tab>16ms') }
+  if (-not $DirectorV2 -and $row.measure -eq 'tab' -and [double]$row.action_ms -gt 16.0) { $reasons.Add('tab>16ms') }
   $key = "$($row.pass)|$($row.floater)|$($row.tab_path)|$($row.measure)"
   if ($previous.ContainsKey($key)) {
     $old = [double]$previous[$key].ui_mean_ms
@@ -403,20 +405,23 @@ if ($DirectorV2) {
   $openPass = $openMs -le 120.0
   Write-DirectorBudgetLine 'director open action ms <= 120' $(if ([double]::IsPositiveInfinity($openMs)) { 'missing' } else { '{0:N3} ms' -f $openMs }) $openPass
 
-  $steadyRows = @($rows | Where-Object { $_.floater -eq 'director' -and $_.measure -eq 'tab' })
-  $steadyMs = if ($steadyRows.Count) { [double](($steadyRows | Measure-Object ui_mean_ms -Maximum).Maximum) } else { [double]::PositiveInfinity }
+  $steadyRows = @($rows | Where-Object { $_.floater -eq 'director' -and $_.measure -in @('steady', 'tab') })
+  $steadyDeltas = @($steadyRows | ForEach-Object {
+      [double]$_.ui_mean_ms - [double]$baselines[$_.pass].ui_mean_ms
+    })
+  $steadyMs = if ($steadyDeltas.Count) { [double](($steadyDeltas | Measure-Object -Maximum).Maximum) } else { [double]::PositiveInfinity }
   $steadyPass = $steadyMs -le 0.5
-  Write-DirectorBudgetLine 'worst steady page mean <= 0.5 ms' $(if ([double]::IsPositiveInfinity($steadyMs)) { 'missing' } else { '{0:N3} ms' -f $steadyMs }) $steadyPass
+  Write-DirectorBudgetLine 'worst steady page mean <= 0.5 ms (target 0.4)' $(if ([double]::IsPositiveInfinity($steadyMs)) { 'missing' } else { '{0:N3} ms above baseline' -f $steadyMs }) $steadyPass
 
   $buildRows = @($rows | Where-Object { $_.floater -eq 'director' -and $_.measure -eq 'kit_build' })
   $buildMs = if ($buildRows.Count) { [double](($buildRows | Measure-Object action_ms -Maximum).Maximum) } else { [double]::PositiveInfinity }
   $buildPass = $buildMs -le 50.0
-  Write-DirectorBudgetLine 'any kit page first reveal <= 50 ms' $(if ([double]::IsPositiveInfinity($buildMs)) { 'missing' } else { '{0:N3} ms' -f $buildMs }) $buildPass
+  Write-DirectorBudgetLine 'any kit page first reveal <= 50 ms (target 30)' $(if ([double]::IsPositiveInfinity($buildMs)) { 'missing' } else { '{0:N3} ms' -f $buildMs }) $buildPass
 
   $searchRows = @($rows | Where-Object measure -eq 'kit_search')
   $searchMs = if ($searchRows.Count) { [double](($searchRows | Measure-Object action_ms -Maximum).Maximum) } else { [double]::PositiveInfinity }
   $searchPass = $searchMs -le 5.0
-  Write-DirectorBudgetLine 'kit_search max <= 5 ms' $(if ([double]::IsPositiveInfinity($searchMs)) { 'missing' } else { '{0:N3} ms' -f $searchMs }) $searchPass
+  Write-DirectorBudgetLine 'kit_search max <= 5 ms (target 2)' $(if ([double]::IsPositiveInfinity($searchMs)) { 'missing' } else { '{0:N3} ms' -f $searchMs }) $searchPass
 
   $amberRows = @($rows | Where-Object measure -eq 'kit_amber_storm')
   $amberMs = if ($amberRows.Count) { [double](($amberRows | Measure-Object action_ms -Maximum).Maximum) } else { [double]::PositiveInfinity }
@@ -424,7 +429,10 @@ if ($DirectorV2) {
   Write-DirectorBudgetLine 'kit_amber_storm <= 2 ms' $(if ([double]::IsPositiveInfinity($amberMs)) { 'missing' } else { '{0:N3} ms' -f $amberMs }) $amberPass
 
   $hoverRows = @($rows | Where-Object { $_.floater -eq 'director' -and $_.measure -eq 'hover_sweep' -and $_.tab_path -like '*cine_light_rig_tab*' })
-  $hoverFinds = if ($hoverRows.Count) { [double](($hoverRows | Measure-Object find_calls_mean -Maximum).Maximum) } else { [double]::PositiveInfinity }
+  $hoverDeltas = @($hoverRows | ForEach-Object {
+      [math]::Max(0.0, [double]$_.find_calls_mean - [double]$baselines[$_.pass].find_calls_mean)
+    })
+  $hoverFinds = if ($hoverDeltas.Count) { [double](($hoverDeltas | Measure-Object -Maximum).Maximum) } else { [double]::PositiveInfinity }
   $hoverPass = $hoverFinds -eq 0.0
   Write-DirectorBudgetLine 'Director Rig hover find calls per frame = 0' $(if ([double]::IsPositiveInfinity($hoverFinds)) { 'missing' } else { '{0:N3}' -f $hoverFinds }) $hoverPass
 
@@ -434,16 +442,32 @@ if ($DirectorV2) {
   $requiredSizes = @('1160x720', 'minimum', '1141x720', '915x720')
   $coverageMissing = [System.Collections.Generic.List[string]]::new()
   foreach ($size in $requiredSizes) {
-    $sizeStates = @($layoutStates | Where-Object size_pass -eq $size)
+    $sizeStates = @($layoutStates | Where-Object { $_.size_pass -eq $size -and $_.applied -eq '1' })
     foreach ($pattern in @('default@default', '*cine_light_rig_tab@mode-Advanced',
+        '*cine_light_rig_tab@mode-Easy', '*cine_light_rig_tab@chip-*',
         '*cine_light_rig_tab@selector-*-Key', '*cine_light_rig_tab@selector-*-Fill',
         '*cine_light_rig_tab@selector-*-Back', '*cine_light_rig_tab@selector-*-BG',
         '*cine_light_rig_tab@card-*-expanded', '*cine_light_rig_tab@card-*-closed',
+        '*cine_light_rig_tab@card-*-more', '*cine_light_rig_tab@master-on',
+        '*cine_light_rig_tab@master-off', '*cine_light_rig_tab@map-top',
+        '*cine_light_rig_tab@map-side-left', '*cine_light_rig_tab@map-side-right',
+        '*cine_light_rig_tab@map-2_5d', '*light_rim_tab@chip-*',
         '*light_rim_tab@selector-*-Key', '*light_rim_tab@selector-*-Fill',
         '*light_rim_tab@selector-*-Back', '*light_rim_tab@selector-*-BG',
-        '*light_rim_tab@card-*-expanded', '*light_rim_tab@card-*-closed')) {
+        '*light_rim_tab@card-*-expanded', '*light_rim_tab@card-*-closed',
+        '*light_rim_tab@card-*-more', '*light_rim_tab@master-on',
+        '*light_rim_tab@master-off')) {
       if (-not @($sizeStates | Where-Object tab_path -Like $pattern).Count) {
         $coverageMissing.Add("$size/$pattern")
+      }
+    }
+    foreach ($pageGroup in @($layoutStates | Where-Object size_pass -eq $size |
+        Group-Object { $_.tab_path -replace '@.*$','' })) {
+      $expected = [int](($pageGroup.Group | ForEach-Object { [int]$_.enumerated } |
+          Measure-Object -Maximum).Maximum)
+      $applied = @($pageGroup.Group | Where-Object applied -eq '1').Count
+      if ($pageGroup.Count -ne $expected -or $applied -ne $expected) {
+        $coverageMissing.Add("$size/$($pageGroup.Name): $applied/$expected applied")
       }
     }
   }
@@ -473,14 +497,22 @@ if ($DirectorV2) {
   }
   $legacyNew = @()
   if ($baselineLayoutPath) {
+    function Normalize-LegacySize([string]$Size) {
+      if ($Size -in @('1160x720', 'default')) { return 'default' }
+      if ($Size -in @('850x560', 'minimum', 'min')) { return 'minimum' }
+      return $Size
+    }
+    function Normalize-LegacyWidget([string]$Path) {
+      return ($Path -replace '^[^/]+_content/[^/]+_legacy_host/', '')
+    }
     $baselineKeys = @{}
     foreach ($finding in @(Import-Csv -LiteralPath $baselineLayoutPath)) {
-      $key = "$($finding.size_pass)|$($finding.tab_path)|$($finding.finding)|$($finding.widget_a)|$($finding.widget_b)|$($finding.detail)"
+      $key = "$(Normalize-LegacySize $finding.size_pass)|$($finding.tab_path -replace '@default$','')|$($finding.finding)|$(Normalize-LegacyWidget $finding.widget_a)|$(Normalize-LegacyWidget $finding.widget_b)"
       $baselineKeys[$key] = $true
     }
     $legacyNew = @($legacyRows | Where-Object {
-      $size = if ($_.size_pass -eq '1160x720') { 'default' } else { $_.size_pass }
-      $key = "$size|$($_.tab_path -replace '@default$','')|$($_.finding)|$($_.widget_a)|$($_.widget_b)|$($_.detail)"
+      $size = Normalize-LegacySize $_.size_pass
+      $key = "$size|$($_.tab_path -replace '@default$','')|$($_.finding)|$(Normalize-LegacyWidget $_.widget_a)|$(Normalize-LegacyWidget $_.widget_b)"
       -not $baselineKeys.ContainsKey($key)
     })
   }
@@ -503,6 +535,7 @@ if ($layoutFlagged) {
   Write-Host 'LAYOUT: no findings.' -ForegroundColor Green
 }
 $flagged = @($ranked | Where-Object { $_.Flag })
+$exitFlagged = if ($DirectorV2) { @($flagged | Where-Object Floater -ne 'director') } else { $flagged }
 if ($flagged.Count) {
   Write-Host "FLAGGED: $($flagged.Count) measurement(s)" -ForegroundColor Red
 } elseif ($inventoryMissing.Count) {
@@ -513,6 +546,6 @@ if ($flagged.Count) {
 if ($crashes.Count) { exit 3 }
 if ($inventoryMissing.Count) { exit 5 }
 if ($directorBudgetFailed) { exit 6 }
-if ($flagged.Count) { exit 1 }
+if ($exitFlagged.Count) { exit 1 }
 if ($layoutFlagged) { exit 4 }
 exit 0

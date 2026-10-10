@@ -14,6 +14,7 @@
 #include "llcontrol.h"
 #include "llfontgl.h"
 #include "lllineeditor.h"
+#include "llnotificationsutil.h"
 #include "llstring.h"
 #include "lltextbox.h"
 #include "lluictrlfactory.h"
@@ -195,6 +196,7 @@ bool ALKitPage::postBuild()
 
     const std::string pre=prefix();
     std::vector<std::string>watched=tokens(mWatchSettings);
+    if(!mModeSetting.empty())watched.push_back(mModeSetting);
 
     std::vector<LLView*>xml_children;
     for(LLView*c:*getChildList())xml_children.push_back(c);
@@ -318,8 +320,14 @@ bool ALKitPage::postBuild()
         mModeSwitch=LLUICtrlFactory::create<ALKitSwitch>(sp);
         mModeSwitch->setControlName(mModeSetting,this);
         mBar->addChild(mModeSwitch);
-        mConnections.emplace_back(mModeSwitch->setFlipCallback([this](bool)
+        mConnections.emplace_back(mModeSwitch->setFlipCallback([this](bool requested)
         {
+            if(ALKitModeAdapters::Adapter adapter=ALKitModeAdapters::get(getParent(),mModeAdapter))
+            {
+                ALKitHistory::ScopedSuspend suspend;
+                const bool effective=adapter(requested,ALKitModeAdapters::PASSIVE);
+                if(effective!=requested)mModeSwitch->setValue(effective);
+            }
             syncEffectiveMode();
         }
         ));
@@ -518,9 +526,13 @@ void ALKitPage::setModeIndex(S32 index,bool explicit_user)
                 on=adapter(on,ALKitModeAdapters::PASSIVE);
             }
             else on=adapter(on,ALKitModeAdapters::USER);
+            mModeSwitch->setValue(on);
         }
-        mModeSwitch->writeBoundValue(on);
-        mModeSwitch->setValue(on);
+        else
+        {
+            mModeSwitch->writeBoundValue(on);
+            mModeSwitch->setValue(on);
+        }
         syncEffectiveMode();
     }
     else
@@ -799,8 +811,19 @@ void ALKitPage::setSearchText(const std::string&q)
 
 void ALKitPage::resetPage()
 {
-    if(mShell)mShell->history().beginGesture(ALKitHistory::MOUSE,mPage,"Reset page");
-    for(auto&card:mCards)for(ALKitRow*row:card.second->rows())if(row->resettable()&&!row->cardPreset()&&!row->whoPicker())row->reset();
+    LLHandle<LLPanel> handle=getHandle();
+    LLNotificationsUtil::add("GenericAlertYesCancel",
+        LLSD().with("MESSAGE","Reset every control on this page to its default?"),LLSD(),
+        [handle](const LLSD& notification,const LLSD& response)
+        {
+            if(LLNotificationsUtil::getSelectedOption(notification,response)!=0)return false;
+            ALKitPage*page=dynamic_cast<ALKitPage*>(handle.get());
+            if(!page)return false;
+            if(page->mShell)page->mShell->history().beginGesture(ALKitHistory::MOUSE,page->mPage,"Reset page");
+            for(auto&card:page->mCards)for(ALKitRow*row:card.second->rows())
+                if(row->resettable()&&!row->cardPreset()&&!row->whoPicker())row->reset();
+            return false;
+        });
 }
 
 bool ALKitPage::cycleChip(S32 delta)
@@ -817,6 +840,29 @@ bool ALKitPage::cycleChip(S32 delta)
             saveState();
             if(next<(S32)mSectionHeadings.size()&&mSectionHeadings[next]->getVisible())scrollToView(mSectionHeadings[next]);
             return true;
+        }
+    }
+    return false;
+}
+
+bool ALKitPage::setChipIndex(S32 index)
+{
+    if(index<0||index>=(S32)mChips.size())return false;
+    mChipIndex=index;
+    applyModeAndChip();
+    return true;
+}
+
+bool ALKitPage::revealChip(S32 index)
+{
+    if(index<0||index>=(S32)mSections.size())return false;
+    for(const std::string&id:mSections[index].cards)
+    {
+        auto found=mCards.find(id);
+        if(found!=mCards.end())
+        {
+            revealCard(found->second,false);
+            return setChipIndex(index);
         }
     }
     return false;
@@ -851,8 +897,12 @@ void ALKitPage::restoreState()
 {
     mRestoringState=true;
     const LLSD state=gSavedSettings.getLLSD("DirectorV2PageState");
+    mChipIndex=0;
+    mWhoPinned=false;
+    for(auto&card:mCards)card.second->restoreOpenState(true,false);
     if(!state.has(mPage))
     {
+        applyModeAndChip();
         mRestoringState=false;
         return;
     }

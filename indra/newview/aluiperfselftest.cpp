@@ -37,6 +37,7 @@
 #include "llscrolllistctrl.h"
 #include "llslider.h"
 #include "llsliderctrl.h"
+#include "llsdutil.h"
 #include "llspinctrl.h"
 #include "llstartup.h"
 #include "lltabcontainer.h"
@@ -420,6 +421,7 @@ struct TabTarget
     std::vector<std::pair<LLHandle<LLTabContainer>, S32>> mChain;
     LLHandle<LLPanel> mPanel;
     std::string mPath;
+    std::string mRawPath;
     size_t mScrollBegin = 0;
     size_t mScrollEnd = 0;
 };
@@ -470,6 +472,27 @@ struct AuditCoverage
     std::string mFloater;
     U32 mPageIndex = 0;
     std::string mPath;
+    U32 mEnumerated = 0;
+    bool mApplied = false;
+};
+
+struct SavedControlState
+{
+    LLSD mActive;
+    LLSD mSaved;
+    bool mUnsaved = false;
+};
+
+class SaveControls final : public LLControlGroup::ApplyFunctor
+{
+public:
+    explicit SaveControls(std::map<std::string, SavedControlState>& saved) : mSaved(saved) {}
+    void apply(const std::string& name, LLControlVariable* control) override
+    {
+        mSaved[name] = { control->get(), control->getSaveValue(), control->hasUnsavedValue() };
+    }
+private:
+    std::map<std::string, SavedControlState>& mSaved;
 };
 
 struct AuditSize
@@ -492,6 +515,13 @@ struct KitAuditState
     bool mMoreOpen = false;
     std::string mSetting;
     LLSD mValue;
+};
+
+struct KitCardDefault
+{
+    LLHandle<LLView> mCard;
+    bool mBodyOpen = true;
+    bool mMoreOpen = false;
 };
 
 struct AuditLeaf
@@ -897,6 +927,7 @@ void collectTabs(LLView* view,
                 const std::string raw_path = prefix.empty()
                     ? panel->getName() : prefix + "/" + panel->getName();
                 target.mPath = tabPath(raw_path, panel);
+                target.mRawPath = raw_path;
                 out.push_back(target);
                 collectTabs(panel, target.mChain, raw_path, out);
             }
@@ -1065,9 +1096,14 @@ public:
       mLayout(layout),
       mInventoryItems(inventory_items),
       mPriorCull(gSavedSettings.getBOOL("UIFolderViewCull")),
-      mDirectorV2(gSavedSettings.getBOOL("DirectorUIV2")),
+      mDirectorV2(gSavedSettings.getBOOL("UIPerfDirectorV2")),
       mAuditSizes(parseAuditSizes(audit_sizes))
     {
+        if (mDirectorV2)
+        {
+            SaveControls save(mSettingsSnapshot);
+            gSavedSettings.applyToAll(&save);
+        }
         static const std::vector<std::string> all_targets = {
             "director", "lightbox", "exposure_hub", "dance_ball",
             "cine_light_rig", "env_adjust_snapshot", "actor_gaze",
@@ -1215,6 +1251,7 @@ private:
         TAB_FIRST_FRAME,
         TAB_MEASURE,
         DIRECTOR_HOVER_SWEEP,
+        DIRECTOR_HOVER_CLEAR,
         SCROLL_BOTTOM,
         SCROLL_BOTTOM_MEASURE,
         SCROLL_TOP,
@@ -1395,6 +1432,35 @@ private:
             mTargets[mTargetIndex] == "director";
     }
 
+    static bool isRunnerOverride(const std::string& name)
+    {
+        static const std::set<std::string> overrides = {
+            "UIPerfSelfTest", "UIPerfSelfTestFrames", "UIPerfInventoryStress",
+            "UIPerfSelfTestAB", "UILayoutAudit", "UILayoutAuditSizes",
+            "UIPerfDirectorV2", "DirectorUIV2"
+        };
+        return overrides.count(name) != 0;
+    }
+
+    void restoreSettingsSnapshot()
+    {
+        for (const auto& entry : mSettingsSnapshot)
+        {
+            LLControlVariable* control = gSavedSettings.getControl(entry.first).get();
+            if (!control) continue;
+            const SavedControlState& saved = entry.second;
+            const bool changed = !llsd_equals(control->get(), saved.mActive) ||
+                                 !llsd_equals(control->getSaveValue(), saved.mSaved);
+            if (!changed && !isRunnerOverride(entry.first)) continue;
+            control->setValue(saved.mSaved, true); // ui-draw-lint: allow(setting-write) bounded self-test teardown restore
+            if (saved.mUnsaved && !isRunnerOverride(entry.first))
+                control->setValue(saved.mActive, false); // ui-draw-lint: allow(setting-write) bounded self-test teardown restore
+        }
+        LL_INFOS("UIPerfSelfTest")
+            << "UIPerfSelfTest restored settings; Director V2 remains session-only"
+            << LL_ENDL;
+    }
+
     void collectKitMetrics()
     {
         if (!isDirectorV2() || mKitMetricsCollected) return;
@@ -1427,6 +1493,21 @@ private:
         addMetricRow("kit", "kit_amber_storm",
                      ALKitSettingWatch::instance().debugRecomputeAll());
         mKitMetricsCollected = true;
+    }
+
+    void collectKitBuildMetrics(LLView* root)
+    {
+        if (!isDirectorV2() || !root) return;
+        std::vector<ALKitLazyPage*> pages;
+        collectViewsOfType<ALKitLazyPage>(root, pages);
+        for (ALKitLazyPage* lazy : pages)
+        {
+            if (lazy->buildMs() < 0. || !mMeasuredKitBuilds.insert(lazy).second) continue;
+            ALKitPage* page = findFirstView<ALKitPage>(lazy);
+            const std::string path = page ? page->pageKey() : lazy->getName();
+            addMetricRow(path, page && !page->legacy() ? "kit_build" : "kit_build_legacy",
+                         lazy->buildMs());
+        }
     }
 
     void prepareFloaterActions()
@@ -1504,7 +1585,9 @@ private:
             "DirectorV2PageState", "CineLightRigEasyMode",
             "DirectorV2SelectedLight", "CineLightRigEnabled",
             "CineRigRimEnabled", "DirectorV2LightMapView",
-            "DirectorV2LightMapSideFrom"
+            "DirectorV2LightMapSideFrom", "CineLightRigKeyEV",
+            "CineLightRigRimOn", "CineLightRigRimEV",
+            "CineLightRigBgOn", "CineLightRigBgEV"
         };
         for (const char* name : names)
         {
@@ -1522,11 +1605,19 @@ private:
         for (const auto& saved : mDirectorAuditSettings)
         {
             // ui-draw-lint: allow(setting-write) isolated Director self-test state
-            gSavedSettings.setLLSD(saved.first, saved.second);
+            if (LLControlVariable* control = gSavedSettings.getControl(saved.first).get())
+                control->setValue(saved.second, false); // ui-draw-lint: allow(setting-write) bounded self-test state restore
         }
         if (ALKitPage* page = findFirstView<ALKitPage>(auditPageRoot()))
         {
             page->restoreState();
+            const auto easy = mDirectorAuditSettings.find("CineLightRigEasyMode");
+            if (easy != mDirectorAuditSettings.end())
+            {
+                const std::string wanted = easy->second.asBoolean() ? "Easy" : "Advanced";
+                for (S32 i = 0; i < page->modeCount(); ++i)
+                    if (page->modeName(i) == wanted) page->setModeIndex(i, false);
+            }
             page->relayoutNow();
         }
     }
@@ -1540,11 +1631,13 @@ private:
             LLControlVariable* control = gSavedSettings.getControl(saved.first).get();
             if (!control) continue;
             // ui-draw-lint: allow(setting-write) isolated Director self-test state
-            gSavedSettings.setLLSD(saved.first, control->getDefault());
+            control->setValue(control->getDefault(), false);
         }
         if (ALKitPage* page = findFirstView<ALKitPage>(auditPageRoot()))
         {
             page->restoreState();
+            for (S32 i = 0; i < page->modeCount(); ++i)
+                if (page->modeName(i) == "Easy") page->setModeIndex(i, false);
             page->relayoutNow();
         }
     }
@@ -1553,14 +1646,26 @@ private:
     {
         mKitAuditStates.clear();
         mKitAuditStateIndex = 0;
+        mKitDefaultCards.clear();
+        mKitDefaultMode = 0;
+        mKitDefaultChip = 0;
         KitAuditState base;
         base.mKind = KitAuditState::BASE;
         base.mKey = "default";
         mKitAuditStates.push_back(base);
         if (!isDirectorV2() || mAuditPageIndex == 0) return;
 
-        ALKitPage* page = findFirstView<ALKitPage>(auditPageRoot());
+        applyDirectorAuditDefaults();
+        ALKitPage* page = mAuditPageIndex == 0 ? nullptr :
+            findFirstView<ALKitPage>(auditPageRoot());
         if (!page || page->legacy()) return;
+        mKitDefaultMode = page->modeIndex();
+        mKitDefaultChip = page->chipIndex();
+        mKitDefaultCards.clear();
+        std::vector<ALKitCard*> default_cards;
+        collectViewsOfType<ALKitCard>(page, default_cards);
+        for (ALKitCard* card : default_cards)
+            mKitDefaultCards.push_back({ card->getHandle(), card->bodyOpen(), card->moreOpen() });
         for (S32 i = 0; i < page->modeCount(); ++i)
         {
             KitAuditState state;
@@ -1580,6 +1685,8 @@ private:
             state.mKind = KitAuditState::CHIP;
             state.mKey = "chip-" + safeComponent(button->getName());
             state.mView = button->getHandle();
+            state.mIndex = atoi(button->getName().substr(
+                button->getName().rfind("_chip_") + 6).c_str());
             mKitAuditStates.push_back(state);
         }
 
@@ -1599,10 +1706,13 @@ private:
             closed.mBodyOpen = false;
             mKitAuditStates.push_back(closed);
 
-            KitAuditState more = expanded;
-            more.mKey = "card-" + safeComponent(card->id()) + "-more";
-            more.mMoreOpen = true;
-            mKitAuditStates.push_back(more);
+            if (card->hasMore())
+            {
+                KitAuditState more = expanded;
+                more.mKey = "card-" + safeComponent(card->id()) + "-more";
+                more.mMoreOpen = true;
+                mKitAuditStates.push_back(more);
+            }
         }
 
         std::vector<ALKitOption*> options;
@@ -1634,6 +1744,7 @@ private:
         }
         if (page->pageKey() == "light_group/cine_light_rig_tab")
         {
+            ALKitCard* map_card = page->findCard("light_map");
             for (S32 view = 0; view <= 2; ++view)
             {
                 KitAuditState state;
@@ -1641,6 +1752,7 @@ private:
                 state.mKey = view == 0 ? "map-top" : view == 1 ? "map-side-left" : "map-2_5d";
                 state.mSetting = "DirectorV2LightMapView";
                 state.mValue = view;
+                if (map_card) state.mView = map_card->getHandle();
                 mKitAuditStates.push_back(state);
             }
             KitAuditState side_right;
@@ -1649,26 +1761,47 @@ private:
             side_right.mSetting = "DirectorV2LightMapSideFrom";
             side_right.mValue = 1;
             side_right.mIndex = 1;
+            if (map_card) side_right.mView = map_card->getHandle();
             mKitAuditStates.push_back(side_right);
+        }
+        if (mKitAuditStates.size() > 256)
+        {
+            LL_WARNS("UILayoutAudit") << "Capping " << page->pageKey()
+                << " audit states at 256 (enumerated " << mKitAuditStates.size() << ")"
+                << LL_ENDL;
+            mKitAuditStates.resize(256);
         }
     }
 
-    void applyKitAuditState()
+    bool applyKitAuditState()
     {
+        if (!isDirectorV2()) return true;
+        ALKitHistory::ScopedSuspend suspend;
         applyDirectorAuditDefaults();
-        if (mKitAuditStateIndex >= mKitAuditStates.size()) return;
+        if (mKitAuditStateIndex >= mKitAuditStates.size()) return false;
+        ALKitPage* page = findFirstView<ALKitPage>(auditPageRoot());
+        if (page)
+        {
+            page->setModeIndex(mKitDefaultMode, false);
+            page->setChipIndex(mKitDefaultChip);
+            for (const KitCardDefault& saved : mKitDefaultCards)
+                if (ALKitCard* card = dynamic_cast<ALKitCard*>(saved.mCard.get()))
+                    card->restoreOpenState(saved.mBodyOpen, saved.mMoreOpen);
+        }
         const KitAuditState& state = mKitAuditStates[mKitAuditStateIndex];
+        bool applied = state.mKind == KitAuditState::BASE;
         if (state.mKind == KitAuditState::MODE)
         {
-            if (ALKitPage* page = dynamic_cast<ALKitPage*>(state.mView.get()))
-                page->setModeIndex(state.mIndex, false);
+            if (ALKitPage* target = dynamic_cast<ALKitPage*>(state.mView.get()))
+            {
+                target->setModeIndex(state.mIndex, false);
+                applied = target->modeIndex() == state.mIndex;
+            }
         }
         else if (state.mKind == KitAuditState::CHIP)
         {
-            if (ALKitPage* page = findFirstView<ALKitPage>(auditPageRoot()))
-                if (page->modeCount() > 1) page->setModeIndex(page->modeCount() - 1, false);
-            if (LLUICtrl* control = dynamic_cast<LLUICtrl*>(state.mView.get()))
-                control->onCommit();
+            applied = page && page->revealChip(state.mIndex) &&
+                page->chipIndex() == state.mIndex;
         }
         else if (state.mKind == KitAuditState::CARD)
         {
@@ -1677,34 +1810,37 @@ private:
                 if (ALKitPage* page = findFirstView<ALKitPage>(auditPageRoot()))
                     page->revealCard(card, false);
                 card->restoreOpenState(state.mBodyOpen, state.mMoreOpen);
+                applied = card->isInVisibleChain() &&
+                    card->bodyOpen() == state.mBodyOpen && card->moreOpen() == state.mMoreOpen;
             }
         }
         else if (state.mKind == KitAuditState::SELECTOR)
         {
             ALKitRow* row = dynamic_cast<ALKitRow*>(state.mView.get());
-            for (LLView* ancestor = row ? row->getParent() : nullptr;
-                 ancestor; ancestor = ancestor->getParent())
-            {
-                if (ALKitCard* card = dynamic_cast<ALKitCard*>(ancestor))
-                {
-                    card->revealRow(row);
-                    break;
-                }
-            }
+            applied = page && row && page->revealRow(row, false) && row->isEffectivelyVisible();
         }
         else if (state.mKind == KitAuditState::SETTING)
         {
-            ALKitHistory::ScopedSuspend suspend;
             if (state.mKey == "map-side-right")
             {
                 // ui-draw-lint: allow(setting-write) isolated Director self-test state
-                gSavedSettings.setS32("DirectorV2LightMapView", 1);
+                if (LLControlVariable* view = gSavedSettings.getControl("DirectorV2LightMapView").get()) // ui-draw-lint: allow(setting) bounded self-test state lookup
+                    view->setValue(LLSD(1), false); // ui-draw-lint: allow(setting-write) bounded self-test state application
             }
             // ui-draw-lint: allow(setting-write) isolated Director self-test state
-            gSavedSettings.setLLSD(state.mSetting, state.mValue);
+            if (LLControlVariable* control = gSavedSettings.getControl(state.mSetting).get())
+            {
+                control->setValue(state.mValue, false); // ui-draw-lint: allow(setting-write) bounded self-test state application
+                applied = llsd_equals(control->get(), state.mValue);
+            }
+            if (ALKitCard* card = dynamic_cast<ALKitCard*>(state.mView.get()))
+                applied = page && page->revealCard(card, false) && applied;
         }
-        if (ALKitPage* page = findFirstView<ALKitPage>(auditPageRoot()))
+        if (page)
             page->relayoutNow();
+        if (LLView* target = state.mView.get())
+            applied = target->isInVisibleChain() && applied;
+        return applied;
     }
 
     std::string auditSizeName() const
@@ -1738,7 +1874,14 @@ private:
     {
         if (mAuditPageIndex == 0) return mFloater.get();
         const size_t tab_index = mAuditPageIndex - 1;
-        return tab_index < mTabs.size() ? mTabs[tab_index].mPanel.get() : nullptr;
+        if (tab_index >= mTabs.size()) return nullptr;
+        LLView* root = mTabs[tab_index].mPanel.get();
+        if (isDirectorV2())
+        {
+            if (ALKitPage* page = findFirstView<ALKitPage>(root))
+                if (page->legacy() && page->legacyHost()) return page->legacyHost();
+        }
+        return root;
     }
 
     bool selectAuditPage()
@@ -1785,8 +1928,10 @@ private:
         if (isDirectorV2() && mAuditCoverageKeys.insert(coverage_key).second)
         {
             mAuditCoverage.push_back({ auditSizeName(), mTargets[mTargetIndex],
-                                      (U32)mAuditPageIndex, auditStatePath() });
+                                      (U32)mAuditPageIndex, auditStatePath(),
+                                      (U32)mKitAuditStates.size(), mAuditStateApplied });
         }
+        if (isDirectorV2() && !mAuditStateApplied) return;
 
         std::vector<LLView*> views;
         std::vector<AuditLeaf> leaves;
@@ -2151,12 +2296,28 @@ private:
         }
     }
 
+    void advanceAfterCurrentTab()
+    {
+        const TabTarget& target = mTabs[mTabIndex];
+        mScrollIndex = target.mScrollBegin;
+        if (mScrollIndex < target.mScrollEnd) mPhase = SCROLL_BOTTOM;
+        else if (++mTabIndex < mTabs.size()) mPhase = TAB_SELECT;
+        else beginAuditOrClose();
+    }
+
     void skipAuditSize()
     {
         if (++mAuditSizeIndex < mAuditSizes.size())
             mPhase = AUDIT_SIZE_PREP;
         else
             mPhase = AUDIT_RESTORE;
+    }
+
+    void advanceAuditPageOrSize()
+    {
+        if (++mAuditPageIndex <= mTabs.size()) mPhase = AUDIT_PAGE_SELECT;
+        else if (++mAuditSizeIndex < mAuditSizes.size()) mPhase = AUDIT_SIZE_PREP;
+        else mPhase = AUDIT_RESTORE;
     }
 
     void closeCurrentTarget()
@@ -2312,6 +2473,7 @@ private:
             mFloater = floater->getHandle();
             mOriginalFloaterRect = LLRect();
             prepareFloaterActions();
+            if (isDirectorV2()) applyDirectorAuditDefaults();
             mReadyWaitFrames = 0;
             mPhase = FIRST_FRAME;
             break;
@@ -2340,11 +2502,7 @@ private:
                    mReadyWaitFrames);
             if (isDirectorV2())
             {
-                if (ALKitShell* shell = findFirstView<ALKitShell>(mFloater.get()))
-                {
-                    const std::string page = shell->currentPageKey();
-                    if (!page.empty()) addMetricRow(page, "kit_build", mActionMs);
-                }
+                collectKitBuildMetrics(mFloater.get());
             }
             mPhase = isInventoryStress() ? INVENTORY_TOP : DEFAULT_MEASURE;
             break;
@@ -2551,9 +2709,17 @@ private:
                 current.mScrollEnd = mScrollers.size();
                 std::vector<TabTarget> nested;
                 collectTabs(current.mPanel.get(), current.mChain,
-                            current.mPath, nested);
+                            current.mRawPath, nested);
                 for (TabTarget& nested_target : nested)
                 {
+                    for (const auto& chain_entry : nested_target.mChain)
+                    {
+                        LLTabContainer* tabs = chain_entry.first.get();
+                        const bool known = std::any_of(mInitialTabs.begin(), mInitialTabs.end(),
+                            [tabs](const auto& saved) { return saved.first.get() == tabs; });
+                        if (tabs && !known)
+                            mInitialTabs.emplace_back(chain_entry.first, tabs->getCurrentPanelIndex());
+                    }
                     nested_target.mScrollBegin = mScrollers.size();
                     collectScrollers(nested_target.mPanel.get(), nested_target.mChain,
                                      nested_target.mPath, mScrollers);
@@ -2584,7 +2750,7 @@ private:
                        mActionMs, mFirstFrameMs);
                 if (mPendingKitBuild)
                 {
-                    addMetricRow(target.mPath, "kit_build", mActionMs);
+                    collectKitBuildMetrics(target.mPanel.get());
                     mPendingKitBuild = false;
                 }
                 if (isDirectorV2() &&
@@ -2631,16 +2797,25 @@ private:
             const S32 y = rect.mBottom + ll_round(fraction * (F32)rect.getHeight());
             LLTimer timer;
             floater->handleHover(x, y, MASK_NONE);
-            mActionMs += timer.getElapsedTimeF64() * 1000.0;
-            if (collect(mFrames))
+            const F64 hit_test_ms = timer.getElapsedTimeF64() * 1000.0;
+            FrameSample sample;
+            if (!takeFrame(sample)) break;
+            mActionMs += hit_test_ms;
+            mSamples.push_back(sample);
+            if (mSamples.size() >= mFrames)
             {
                 const F64 mean_hit_test_ms = mActionMs / (F64)mSamples.size();
                 addRow("director", target.mPath, "hover_sweep", mean_hit_test_ms);
-                mScrollIndex = target.mScrollBegin;
-                if (mScrollIndex < target.mScrollEnd) mPhase = SCROLL_BOTTOM;
-                else if (++mTabIndex < mTabs.size()) mPhase = TAB_SELECT;
-                else beginAuditOrClose();
+                floater->handleHover(-1, -1, MASK_NONE);
+                mSettleFrames = 0;
+                mPhase = DIRECTOR_HOVER_CLEAR;
             }
+            break;
+        }
+        case DIRECTOR_HOVER_CLEAR:
+        {
+            FrameSample ignored;
+            if (takeFrame(ignored) && ++mSettleFrames >= 2) advanceAfterCurrentTab();
             break;
         }
         case SCROLL_BOTTOM:
@@ -2824,7 +2999,8 @@ private:
                 break;
             }
             prepareKitAuditStates();
-            applyKitAuditState();
+            mAuditStateApplied = applyKitAuditState();
+            mAuditPageTimer.reset();
             std::vector<LLHandle<LLScrollContainer>> scrollers;
             collectAllScrollers(auditPageRoot(), scrollers);
             for (const LLHandle<LLScrollContainer>& handle : scrollers)
@@ -2839,6 +3015,13 @@ private:
         case AUDIT_PAGE_SETTLE:
         {
             FrameSample ignored;
+            if (isDirectorV2() && mAuditPageTimer.getElapsedTimeF32() >= 120.f)
+            {
+                LL_WARNS("UILayoutAudit") << "Skipping audit page after 2 minute cap: "
+                    << auditPagePath() << LL_ENDL;
+                advanceAuditPageOrSize();
+                break;
+            }
             if (takeFrame(ignored) && ++mAuditSettleFrames >= 5 &&
                 mAuditSettleTimer.getElapsedTimeF32() >= 0.3f)
             {
@@ -2889,7 +3072,7 @@ private:
             }
             if (isDirectorV2() && ++mKitAuditStateIndex < mKitAuditStates.size())
             {
-                applyKitAuditState();
+                mAuditStateApplied = applyKitAuditState();
                 std::vector<LLHandle<LLScrollContainer>> scrollers;
                 collectAllScrollers(auditPageRoot(), scrollers);
                 for (const LLHandle<LLScrollContainer>& handle : scrollers)
@@ -2898,18 +3081,7 @@ private:
                 mAuditSettleTimer.reset();
                 mPhase = AUDIT_PAGE_SETTLE;
             }
-            else if (++mAuditPageIndex <= mTabs.size())
-            {
-                mPhase = AUDIT_PAGE_SELECT;
-            }
-            else if (++mAuditSizeIndex < mAuditSizes.size())
-            {
-                mPhase = AUDIT_SIZE_PREP;
-            }
-            else
-            {
-                mPhase = AUDIT_RESTORE;
-            }
+            else advanceAuditPageOrSize();
             break;
         }
         case AUDIT_RESTORE:
@@ -2967,6 +3139,7 @@ private:
             break;
         case FINISH:
             writeResults();
+            restoreDirectorAuditSettings();
             restore();
             sActive = false;
             sLayoutAuditActive = false;
@@ -3039,11 +3212,12 @@ private:
             const std::string coverage_path = gDirUtilp->getExpandedFilename(
                 LL_PATH_LOGS, "ui_layout_audit_states.csv");
             llofstream coverage(coverage_path.c_str(), std::ios::out | std::ios::trunc);
-            coverage << "size_pass,floater,page_index,tab_path\n";
+            coverage << "size_pass,floater,page_index,tab_path,enumerated,applied\n";
             for (const AuditCoverage& state : mAuditCoverage)
             {
                 coverage << csv(state.mSizePass) << ',' << csv(state.mFloater) << ','
-                    << state.mPageIndex << ',' << csv(state.mPath) << '\n';
+                    << state.mPageIndex << ',' << csv(state.mPath) << ','
+                    << state.mEnumerated << ',' << (state.mApplied ? 1 : 0) << '\n';
             }
             coverage.flush();
         }
@@ -3088,8 +3262,12 @@ private:
                 LLFloaterReg::showInstance(saved.first, LLSD(), false);
             }
         }
-        // ui-draw-lint: allow(setting-write) one-shot self-test toggle, login screen only
-        gSavedSettings.setBOOL("UIFolderViewCull", mPriorCull);
+        if (mDirectorV2) restoreSettingsSnapshot();
+        else
+        {
+            // ui-draw-lint: allow(setting-write) one-shot self-test toggle, login screen only
+            gSavedSettings.setBOOL("UIFolderViewCull", mPriorCull);
+        }
     }
 
     std::string mRequest;
@@ -3141,9 +3319,16 @@ private:
     size_t mAuditPageIndex = 0;
     std::vector<KitAuditState> mKitAuditStates;
     size_t mKitAuditStateIndex = 0;
+    S32 mKitDefaultMode = 0;
+    S32 mKitDefaultChip = 0;
+    std::vector<KitCardDefault> mKitDefaultCards;
+    bool mAuditStateApplied = false;
     std::map<std::string, LLSD> mDirectorAuditSettings;
+    std::map<std::string, SavedControlState> mSettingsSnapshot;
+    std::set<LLView*> mMeasuredKitBuilds;
     U32 mAuditSettleFrames = 0;
     LLFrameTimer mAuditSettleTimer;
+    LLFrameTimer mAuditPageTimer;
     LLHandle<LLScrollContainer> mCaptureScroller;
     std::vector<S32> mCapturePositions;
     size_t mCapturePositionIndex = 0;

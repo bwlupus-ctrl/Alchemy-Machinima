@@ -12,6 +12,7 @@
 
 #include "llpanel.h"
 #include "alrigrimcontroller.h"
+#include "alkitbinding.h"
 #include "aluirefresh.h"
 #include "lluicolor.h"
 #include "lluuid.h"
@@ -70,6 +71,8 @@ private:
     // presence bucket. Passive re-syncs (first show, slot switch, scene load)
     // pass false and never mutate near-bucket authored EVs.
     bool normalizeSelectedForEasy(bool explicit_entry);
+    bool applyEasyMode(bool desired, ALKitModeAdapters::EOrigin origin, bool force = false);
+    bool syncEasyModeState(bool desired, ALKitModeAdapters::EOrigin origin, bool force = false);
     void onEasyModeCommit();
     void onEasyBrightnessCommit();
     void onEasyDramaCommit();
@@ -143,6 +146,7 @@ private:
     LLUICtrl* mNightMaskDarkness = nullptr; // [NightMaskPercent]
     LLUICtrl* mEasyNightMaskDarkness = nullptr; // [NightMaskPercent]
     boost::signals2::scoped_connection mNightMaskDarknessConnection; // [NightMaskPercent]
+    boost::signals2::scoped_connection mEasyModeConnection;
     LLTextBox* mNightMaskStatus = nullptr;
     ALRigRimController mRim;
     LLComboBox* mFXCombo = nullptr;

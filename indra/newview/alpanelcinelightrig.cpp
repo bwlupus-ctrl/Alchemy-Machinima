@@ -926,13 +926,11 @@ bool ALPanelCineLightRig::postBuild()
             if(!handle.get())return std::string();
             return std::string("slot:")+std::to_string((S32)ALCineLightRigManager::instance().selectedSlot());
         });
-        ALKitModeAdapters::add(this,"cine_rig_easy",[handle](bool desired,ALKitModeAdapters::EOrigin)
+        ALKitModeAdapters::add(this,"cine_rig_easy",[handle](bool desired,ALKitModeAdapters::EOrigin origin)
         {
             ALPanelCineLightRig* panel=handle.get();
             if(!panel||!panel->mEasyModeToggle)return false;
-            panel->mEasyModeToggle->setValue(desired);
-            panel->onEasyModeCommit();
-            return panel->mEasyModeActive;
+            return panel->applyEasyMode(desired,origin);
         });
         ALKitWhoAdapters::add("cine_rig_slot",[](const LLUUID& id)
         {
@@ -944,6 +942,23 @@ bool ALPanelCineLightRig::postBuild()
             if(id==cast.getSubjectD())return LLSD(4);
             return LLSD();
         });
+        shell->history().registerContext("cine_rig_slot",[]()
+        {
+            return std::string("slot:")+std::to_string((S32)ALCineLightRigManager::instance().selectedSlot());
+        });
+        if(LLControlVariable* easy=gSavedSettings.getControl("CineLightRigEasyMode").get())
+        {
+            mEasyModeConnection=easy->getSignal()->connect([handle](LLControlVariable*,const LLSD& value,const LLSD&)
+            {
+                if(ALPanelCineLightRig* panel=handle.get())
+                {
+                    ALKitHistory::ScopedSuspend suspend;
+                    panel->syncEasyModeState(value.asBoolean(),ALKitModeAdapters::PASSIVE);
+                }
+            });
+            ALKitHistory::ScopedSuspend suspend;
+            syncEasyModeState(easy->get().asBoolean(),ALKitModeAdapters::RESTORE,true);
+        }
     }
     return true;
 }
@@ -2071,8 +2086,6 @@ bool ALPanelCineLightRig::normalizeSelectedForEasy(bool explicit_entry)
 
 void ALPanelCineLightRig::syncEasyModeForSelected(bool force)
 {
-    const S32 selected = static_cast<S32>(
-        ALCineLightRigManager::instance().selectedSlot());
     // Recompute the desired mode on every call, not just on a slot change: a
     // Director scene or preset can replace the selected slot's settings in
     // place. If that makes an active-Easy instance no longer Easy-native (e.g.
@@ -2081,48 +2094,45 @@ void ALPanelCineLightRig::syncEasyModeForSelected(bool force)
     // does not zero Key EV without folding it into Master.
     static LLCachedControl<bool> easy_mode(
         gSavedSettings, "CineLightRigEasyMode", false);
-    const bool want_active = (bool)easy_mode &&
-        selectedIsEasyNative();
-    if (!force && selected == mEasyModeSlot && want_active == mEasyModeActive)
-    {
-        return;
-    }
+    syncEasyModeState((bool)easy_mode,ALKitModeAdapters::PASSIVE,force);
+}
 
-    mEasyModeSlot = selected;
-    mEasyModeActive = want_active;
-    if (mEasyModeActive)
+bool ALPanelCineLightRig::applyEasyMode(bool desired,ALKitModeAdapters::EOrigin origin,bool force)
+{
+    static LLCachedControl<bool> easy_mode(
+        gSavedSettings,"CineLightRigEasyMode",false);
+    if((bool)easy_mode!=desired)
     {
-        // First show and an instance switch both enter Easy only for an
-        // already Easy-native instance (Key EV ~ 0), so this fold is a no-op
-        // here; explicit entry via the toggle is what folds a real Key EV.
-        // If it somehow cannot be represented, stay in Advanced.
-        if (!normalizeSelectedForEasy(false))
-        {
-            mEasyModeActive = false;
-        }
+        gSavedSettings.setBOOL("CineLightRigEasyMode",desired);
     }
+    return syncEasyModeState(desired,origin,force);
+}
+
+bool ALPanelCineLightRig::syncEasyModeState(bool desired,ALKitModeAdapters::EOrigin origin,bool force)
+{
+    if (mSyncingEasyControls)
+    {
+        return mEasyModeActive;
+    }
+    const S32 selected=static_cast<S32>(ALCineLightRigManager::instance().selectedSlot());
+    const bool explicit_entry=origin==ALKitModeAdapters::USER;
+    const bool effective=desired&&(explicit_entry||selectedIsEasyNative());
+    if(!force&&selected==mEasyModeSlot&&effective==mEasyModeActive)
+    {
+        return mEasyModeActive;
+    }
+    mSyncingEasyControls=true;
+    mEasyModeSlot=selected;
+    mEasyModeActive=effective;
+    if(mEasyModeActive&&explicit_entry&&!normalizeSelectedForEasy(true))mEasyModeActive=false;
+    mSyncingEasyControls=false;
+    syncEasyControls();
+    return mEasyModeActive;
 }
 
 void ALPanelCineLightRig::onEasyModeCommit()
 {
-    if (mSyncingEasyControls)
-    {
-        return;
-    }
-    const bool desired = mEasyModeToggle->getValue().asBoolean();
-    // Record the user's preference even if this particular look cannot enter
-    // Easy, so other (Easy-native) instances still open in Easy.
-    gSavedSettings.setBOOL("CineLightRigEasyMode", desired);
-    mEasyModeSlot = static_cast<S32>(
-        ALCineLightRigManager::instance().selectedSlot());
-    mEasyModeActive = desired;
-    if (mEasyModeActive && !normalizeSelectedForEasy(true))
-    {
-        // Exposure would exceed Master EV's range (an extreme Advanced look);
-        // keep this instance in Advanced. syncEasyControls reflects it.
-        mEasyModeActive = false;
-    }
-    syncEasyControls();
+    applyEasyMode(mEasyModeToggle->getValue().asBoolean(),ALKitModeAdapters::USER);
 }
 
 void ALPanelCineLightRig::onEasyBrightnessCommit()
