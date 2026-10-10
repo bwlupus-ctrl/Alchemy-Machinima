@@ -418,6 +418,11 @@ void LLInventoryPanel::onVisibilityChange(bool new_visibility)
 
 void LLInventoryPanel::draw()
 {
+    if (mViewsInitialized == VIEWS_UNINITIALIZED)
+    {
+        initializeViewBuilding();
+    }
+
     // Select the desired item (in case it wasn't loaded when the selection was requested)
     updateSelection();
 

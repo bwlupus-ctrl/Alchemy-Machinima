@@ -62,6 +62,7 @@ static const S32 LINE_HEIGHT = 15;
 S32     LLView::sDepth = 0;
 U32     LLView::sDrawnViewCount = 0;
 U32     LLView::sClipCulledViewCount = 0;
+U32     LLView::sTreeGeneration = 0;
 U32     LLView::sFindChildCallCount = 0;
 U32     LLView::sFindChildVisitedCount = 0;
 bool    LLView::sDebugRects = false;
@@ -82,8 +83,7 @@ S32     LLView::sLastLeftXML = S32_MIN;
 S32     LLView::sLastBottomXML = S32_MIN;
 std::vector<LLViewDrawContext*> LLViewDrawContext::sDrawContextStack;
 
-LLView::DrilldownFunc LLView::sDrilldown =
-    boost::bind(&LLView::pointInView, _1, _2, _3, HIT_TEST_USE_BOUNDING_RECT);
+LLView::DrilldownFunc LLView::sDrilldown;
 
 //#if LL_DEBUG
 bool LLView::sIsDrawing = false;
@@ -260,6 +260,26 @@ void LLView::setRect(const LLRect& rect)
     updateBoundingRect();
 }
 
+void LLView::applyTransparencyType(U8 transparency_type)
+{
+    if (!getVisible())
+    {
+        mPendingTransparency = transparency_type;
+        mHasPendingTransparency = true;
+        return;
+    }
+    mHasPendingTransparency = false;
+    if (isCtrl())
+    {
+        static_cast<LLUICtrl*>(this)->setTransparencyType(
+            (LLUICtrl::ETypeTransparency)transparency_type);
+    }
+    for (LLView* child : mChildList)
+    {
+        child->applyTransparencyType(transparency_type);
+    }
+}
+
 void LLView::setUseBoundingRect( bool use_bounding_rect )
 {
     if (mUseBoundingRect != use_bounding_rect)
@@ -333,6 +353,7 @@ bool LLView::addChild(LLView* child, S32 tab_group)
 
     // add to front of child list, as normal
     mChildList.push_front(child);
+    ++sTreeGeneration;
 
     // add to tab order list
     if (tab_group != 0)
@@ -643,6 +664,11 @@ void LLView::setVisible(bool visible)
     {
         mVisible = visible;
 
+        if (visible && mHasPendingTransparency)
+        {
+            applyTransparencyType(mPendingTransparency);
+        }
+
         // notify children of visibility change if root, or part of visible hierarchy
         if (!getParent() || getParent()->isInVisibleChain())
         {
@@ -738,8 +764,9 @@ void LLView::onMouseLeave(S32 x, S32 y, MASK mask)
 
 bool LLView::visibleAndContains(S32 local_x, S32 local_y)
 {
-    return sDrilldown(this, local_x, local_y)
-        && getVisible();
+    return getVisible()
+        && (sDrilldown ? sDrilldown(this, local_x, local_y)
+                       : pointInView(local_x, local_y, HIT_TEST_USE_BOUNDING_RECT));
 }
 
 bool LLView::visibleEnabledAndContains(S32 local_x, S32 local_y)
@@ -1256,20 +1283,11 @@ void LLView::drawChildren()
     if (!mChildList.empty())
     {
         LLView* rootp = LLUI::getInstance()->getRootView();
+        S32 origin_x, origin_y;
+        localPointToScreen(0, 0, &origin_x, &origin_y);
+        const LLRect child_cull_rect = getChildCullRectScreen();
+        const bool has_child_cull = child_cull_rect.notEmpty();
         ++sDepth;
-
-        // Default OFF: made a large open inventory 3x slower (2026-10-09 A/B).
-        static LLUICachedControl<bool> clip_cull_enabled("UIClipCullDraw", false);
-        static LLUICachedControl<bool> clip_cull_verify("UIClipCullVerify", true);
-        constexpr S32 CLIP_CULL_MARGIN = 8;
-        LLRect local_clip;
-        bool clip_cull = false;
-        if (clip_cull_enabled && LLScreenClipRect::getCurrentClipRect(local_clip))
-        {
-            local_clip.translate(-LLFontGL::sCurOrigin.mX, -LLFontGL::sCurOrigin.mY);
-            local_clip.stretch(CLIP_CULL_MARGIN);
-            clip_cull = true;
-        }
 
         for (child_list_reverse_iter_t child_iter = mChildList.rbegin(); child_iter != mChildList.rend();)  // ++child_iter)
         {
@@ -1283,64 +1301,13 @@ void LLView::drawChildren()
 
             if (viewp->getVisible() && viewp->getRect().isValid())
             {
-                if (clip_cull)
-                {
-                    const bool zero_area = viewp->getRect().isEmpty();
-                    LLRect extent = viewp->getRect();
-                    if (viewp->getUseBoundingRect())
-                    {
-                        extent.unionWith(viewp->getBoundingRect());
-                    }
-                    // Zero-area grouping/badge views can paint through children elsewhere.
-                    if (!zero_area && extent.notEmpty() && !local_clip.overlaps(extent))
-                    {
-                        bool child_overlaps = false;
-                        // Bounded scan: a view with many children (e.g. an inventory folder)
-                        // is simply drawn as before rather than walked every frame.
-                        constexpr S32 MAX_OVERFLOW_SCAN = 256;
-                        S32 scanned = 0;
-                        for (LLView* childp : *viewp->getChildList())
-                        {
-                            if (++scanned > MAX_OVERFLOW_SCAN)
-                            {
-                                child_overlaps = true;
-                                break;
-                            }
-                            if (!childp->getVisible())
-                            {
-                                continue;
-                            }
-                            LLRect child_rect = childp->getRect();
-                            child_rect.translate(viewp->getRect().mLeft,
-                                                 viewp->getRect().mBottom);
-                            if (child_rect.notEmpty() && local_clip.overlaps(child_rect))
-                            {
-                                child_overlaps = true;
-                                if (clip_cull_verify)
-                                {
-                                    static U32 warned = 0;
-                                    constexpr U32 MAX_WARNINGS = 50;
-                                    if (warned < MAX_WARNINGS)
-                                    {
-                                        ++warned;
-                                        LL_WARNS("UIClipCull")
-                                        << "Refusing to cull overflowing view "
-                                        << viewp->getPathname() << LL_ENDL;
-                                    }
-                                }
-                                break;
-                            }
-                        }
-                        if (!child_overlaps)
-                        {
-                            ++sClipCulledViewCount;
-                            continue;
-                        }
-                    }
-                }
-
-                LLRect screen_rect = viewp->calcScreenRect();
-                if ( rootp->getLocalRect().overlaps(screen_rect)  && sDirtyRect.overlaps(screen_rect))
+                llassert(viewp->mParentView == this);
+                LLRect screen_rect = viewp->getRect();
+                screen_rect.translate(origin_x, origin_y);
+                const bool generally_visible = rootp->getLocalRect().overlaps(screen_rect) &&
+                                               sDirtyRect.overlaps(screen_rect);
+                if (generally_visible &&
+                    (!has_child_cull || child_cull_rect.overlaps(screen_rect)))
                 {
                     ++sDrawnViewCount;
                     LLUI::pushMatrix();
@@ -1363,6 +1330,10 @@ void LLView::drawChildren()
                         }
                     }
                     LLUI::popMatrix();
+                }
+                else if (generally_visible && has_child_cull)
+                {
+                    ++sClipCulledViewCount;
                 }
             }
 
@@ -1648,9 +1619,11 @@ void LLView::updateBoundingRect()
 
 LLRect LLView::calcScreenRect() const
 {
-    LLRect screen_rect;
-    localPointToScreen(0, 0, &screen_rect.mLeft, &screen_rect.mBottom);
-    localPointToScreen(getRect().getWidth(), getRect().getHeight(), &screen_rect.mRight, &screen_rect.mTop);
+    S32 origin_x, origin_y;
+    localPointToScreen(0, 0, &origin_x, &origin_y);
+    LLRect screen_rect = getRect();
+    screen_rect.translate(origin_x - screen_rect.mLeft,
+                          origin_y - screen_rect.mBottom);
     return screen_rect;
 }
 
@@ -1833,15 +1806,12 @@ void LLView::localPointToScreen(S32 local_x, S32 local_y, S32* screen_x, S32* sc
     *screen_x = local_x;
     *screen_y = local_y;
 
-    const LLView* cur = this;
-    do
+    for (const LLView* cur = this; cur; cur = cur->mParentView)
     {
-        LLRect cur_rect = cur->getRect();
+        const LLRect& cur_rect = cur->getRect();
         *screen_x += cur_rect.mLeft;
         *screen_y += cur_rect.mBottom;
-        cur = cur->mParentView;
     }
-    while( cur );
 }
 
 void LLView::screenRectToLocal(const LLRect& screen, LLRect* local) const

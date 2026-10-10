@@ -1283,6 +1283,12 @@ LLFolderViewFolder::LLFolderViewFolder( const LLFolderViewItem::Params& p ):
 {
 }
 
+LLRect LLFolderViewFolder::getChildCullRectScreen()
+{
+    LLFolderView* root = getRoot();
+    return root ? root->getChildCullRectScreenCached() : LLRect::null;
+}
+
 void LLFolderViewFolder::updateLabelRotation()
 {
     if (mAutoOpenCountdown != 0.f)

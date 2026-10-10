@@ -164,6 +164,7 @@ LLFolderView::Params::Params()
 LLFolderView::LLFolderView(const Params& p)
 :   LLFolderViewFolder(p),
     mScrollContainer( NULL ),
+    mChildCullRectScreen(LLRect::null),
     mPopupMenuHandle(),
     mMenuFileName(p.options_menu),
     mAllowMultiSelect(p.allow_multiselect),
@@ -699,7 +700,12 @@ void LLFolderView::draw()
     }
     else if (mShowEmptyMessage)
     {
-        mStatusTextBox->setValue(getFolderViewModel()->getStatusText(mItems.empty() && mFolders.empty()));
+        const std::string& status_text =
+            getFolderViewModel()->getStatusText(mItems.empty() && mFolders.empty());
+        if (status_text != mStatusTextBox->getText())
+        {
+            mStatusTextBox->setValue(status_text); // ui-draw-lint: allow(raw-write) guarded by exact text equality above
+        }
         mStatusTextBox->setVisible( true );
 
         // firstly reshape message textbox with current size. This is necessary to
@@ -736,6 +742,13 @@ void LLFolderView::draw()
         // TODO: consider stopping on any scroll action instead of when out of visible area
         LL_DEBUGS("Inventory") << "Renamer out of bounds, hiding" << LL_ENDL;
         finishRenamingItem();
+    }
+
+    static LLUICachedControl<bool> folder_cull("UIFolderViewCull", true);
+    mChildCullRectScreen = LLRect::null;
+    if (folder_cull && mScrollContainer && mScrollContainer->getScrolledView() == this)
+    {
+        localRectToScreen(mScrollContainer->getVisibleContentRect(), &mChildCullRectScreen);
     }
 
     // skip over LLFolderViewFolder::draw since we don't want the folder icon, label,

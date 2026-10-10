@@ -13,7 +13,11 @@
 #include "lldiriterator.h"
 #include "llerrorcontrol.h"
 #include "llfile.h"
+#include "llfloater.h"
 #include "llfloaterreg.h"
+#include "llfolderview.h"
+#include "llfolderviewitem.h"
+#include "llfolderviewmodel.h"
 #include "lliconctrl.h"
 #include "llimage.h"
 #include "llimagepng.h"
@@ -44,6 +48,301 @@
 
 namespace
 {
+class InventoryStressFilter final : public LLFolderViewFilter
+{
+public:
+    bool check(const LLFolderViewModelItem* item) override;
+    bool checkFolder(const LLFolderViewModelItem*) const override { return true; }
+    void setEmptyLookupMessage(const std::string& message) override { mEmptyMessage = message; }
+    std::string getEmptyLookupMessage(bool = false) const override { return mEmptyMessage; }
+    bool showAllResults() const override { return false; }
+    std::string::size_type getStringMatchOffset(LLFolderViewModelItem* item) const override;
+    std::string::size_type getFilterStringSize() const override { return mText.size(); }
+    bool isActive() const override { return !mText.empty(); }
+    bool isModified() const override { return mModified; }
+    void clearModified() override { mModified = false; }
+    const std::string& getName() const override { return mName; }
+    const std::string& getFilterText() override { return mText; }
+    void setModified(EFilterModified = FILTER_RESTART) override
+    {
+        ++mGeneration;
+        mFirstSuccess = mGeneration;
+        mFirstRequired = mGeneration;
+        mModified = true;
+    }
+    void resetTime(S32 timeout) override
+    {
+        mTimer.reset();
+        mTimer.setTimerExpirySec((F32)timeout / 1000.f);
+    }
+    bool isTimedOut() override { return mTimer.hasExpired(); }
+    bool isDefault() const override { return mText.empty(); }
+    bool isNotDefault() const override { return !mText.empty(); }
+    void markDefault() override {}
+    void resetDefault() override { setFilterSubString(std::string()); }
+    S32 getCurrentGeneration() const override { return mGeneration; }
+    S32 getFirstSuccessGeneration() const override { return mFirstSuccess; }
+    S32 getFirstRequiredGeneration() const override { return mFirstRequired; }
+
+    void setFilterSubString(std::string text)
+    {
+        LLStringUtil::toLower(text);
+        if (text == mText) return;
+        mText = std::move(text);
+        setModified();
+    }
+
+private:
+    std::string mName{"inventory_stress"};
+    std::string mEmptyMessage{"No matching synthetic items"};
+    std::string mText;
+    bool mModified = false;
+    S32 mGeneration = 1;
+    S32 mFirstSuccess = 1;
+    S32 mFirstRequired = 1;
+    LLTimer mTimer;
+};
+
+class InventoryStressItem final : public LLFolderViewModelItemCommon
+{
+public:
+    InventoryStressItem(std::string name, bool folder, LLFolderViewModelInterface& model)
+    : LLFolderViewModelItemCommon(model), mName(std::move(name)), mFolder(folder)
+    {
+        mSearchName = mName;
+        LLStringUtil::toLower(mSearchName);
+    }
+
+    const std::string& getName() const override { return mName; }
+    const std::string& getDisplayName() const override { return mName; }
+    const std::string& getSearchableName() const override { return mSearchName; }
+    std::string getSearchableDescription() const override { return {}; }
+    std::string getSearchableCreatorName() const override { return {}; }
+    std::string getSearchableUUIDString() const override { return {}; }
+    LLPointer<LLUIImage> getIcon() const override
+    {
+        return LLUI::getUIImage(mFolder ? "Inv_FolderClosed" : "Inv_Object");
+    }
+    LLFontGL::StyleFlags getLabelStyle() const override { return LLFontGL::NORMAL; }
+    std::string getLabelSuffix() const override { return {}; }
+    void openItem() override {}
+    void closeItem() override {}
+    void selectItem() override {}
+    void navigateToFolder(bool = false, bool = false) override {}
+    bool isFavorite() const override { return false; }
+    bool isItemRenameable() const override { return false; }
+    bool renameItem(const std::string&) override { return false; }
+    bool isItemMovable() const override { return false; }
+    void move(LLFolderViewModelItem*) override {}
+    bool isItemRemovable(bool = true) const override { return false; }
+    bool isItemInTrash() const override { return false; }
+    bool removeItem() override { return false; }
+    void removeBatch(std::vector<LLFolderViewModelItem*>&) override {}
+    bool isItemCopyable(bool = true) const override { return false; }
+    bool copyToClipboard() const override { return false; }
+    bool cutToClipboard() override { return false; }
+    bool isClipboardPasteable() const override { return false; }
+    void pasteFromClipboard() override {}
+    void pasteLinkFromClipboard() override {}
+    bool isAgentInventory() const override { return false; }
+    bool isAgentInventoryRoot() const override { return false; }
+    void buildContextMenu(LLMenuGL&, U32) override {}
+    bool hasChildren() const override { return getChildrenCount() != 0; }
+    bool dragOrDrop(MASK, bool, EDragAndDropType, void*, std::string&) override { return false; }
+    bool filter(LLFolderViewFilter& filter) override;
+    bool isFolder() const { return mFolder; }
+
+private:
+    std::string mName;
+    std::string mSearchName;
+    bool mFolder;
+};
+
+class InventoryStressSort
+{
+public:
+    bool operator()(const InventoryStressItem* lhs, const InventoryStressItem* rhs) const;
+};
+
+class InventoryStressModel final
+    : public LLFolderViewModel<InventoryStressSort, InventoryStressItem,
+                               InventoryStressItem, InventoryStressFilter>
+{
+public:
+    using base_t = LLFolderViewModel<InventoryStressSort, InventoryStressItem,
+                                     InventoryStressItem, InventoryStressFilter>;
+    InventoryStressModel() : base_t(new InventoryStressSort(), new InventoryStressFilter()) {}
+    bool startDrag(std::vector<LLFolderViewModelItem*>&) override { return false; }
+};
+
+bool InventoryStressSort::operator()(const InventoryStressItem* lhs,
+                                     const InventoryStressItem* rhs) const
+{
+    return lhs->getName() < rhs->getName();
+}
+
+bool InventoryStressFilter::check(const LLFolderViewModelItem* item)
+{
+    return mText.empty() || item->getSearchableName().find(mText) != std::string::npos;
+}
+
+std::string::size_type InventoryStressFilter::getStringMatchOffset(
+    LLFolderViewModelItem* item) const
+{
+    return mText.empty() ? std::string::npos : item->getSearchableName().find(mText);
+}
+
+bool InventoryStressItem::filter(LLFolderViewFilter& filter)
+{
+    const S32 generation = filter.getCurrentGeneration();
+    bool complete = true;
+    for (auto& child : mChildren)
+    {
+        InventoryStressItem* stress_child = static_cast<InventoryStressItem*>(child.get());
+        if (stress_child->getLastFilterGeneration() < generation)
+        {
+            complete = stress_child->filter(filter);
+        }
+        if (stress_child->passedFilter(generation))
+        {
+            mMostFilteredDescendantGeneration = generation;
+        }
+        if (!complete) break;
+    }
+    if (complete)
+    {
+        setPassedFolderFilter(!mFolder || filter.checkFolder(this), generation);
+        const bool passed = filter.check(this);
+        setPassedFilter(passed, generation, filter.getStringMatchOffset(this),
+                        filter.getFilterStringSize());
+        complete = !filter.isTimedOut();
+    }
+    return complete;
+}
+
+class InventoryStressFloater final : public LLFloater
+{
+public:
+    explicit InventoryStressFloater(U32 item_count)
+    : LLFloater(LLSD()), mModel(std::make_unique<InventoryStressModel>())
+    {
+        setName("inventory_stress");
+        setTitle("Synthetic Inventory Stress");
+        reshape(360, 520, false);
+
+        mRootItem = new InventoryStressItem("Synthetic Inventory", true, *mModel);
+        LLFolderView::Params root_params(LLUICtrlFactory::getDefaultParams<LLFolderView>());
+        root_params.name = "inventory_stress_folder_view";
+        root_params.title = "Synthetic Inventory";
+        root_params.rect = LLRect(0, 0, 330, 0);
+        root_params.parent_panel = this;
+        root_params.listener = mRootItem;
+        root_params.view_model = mModel.get();
+        root_params.root = nullptr;
+        root_params.allow_drag = false;
+        root_params.options_menu = "";
+        mFolderView = LLUICtrlFactory::create<LLFolderView>(root_params);
+
+        LLScrollContainer::Params scroll_params(
+            LLUICtrlFactory::getDefaultParams<LLFolderViewScrollContainer>());
+        scroll_params.name = "inventory_stress_scroller";
+        scroll_params.rect = LLRect(10, 485, 350, 10);
+        mScroller = LLUICtrlFactory::create<LLFolderViewScrollContainer>(scroll_params);
+        mScroller->setFollowsAll();
+        addChild(mScroller);
+        mScroller->addChild(mFolderView);
+        mFolderView->setScrollContainer(mScroller);
+        mFolderView->setFollowsAll();
+
+        LLFolderViewFolder* inbox = nullptr;
+        InventoryStressItem* inbox_model = nullptr;
+        for (U32 top = 0; top < 4; ++top)
+        {
+            auto* top_model = new InventoryStressItem(llformat("Folder %02u", top), true, *mModel);
+            mRootItem->addChild(top_model);
+            LLFolderViewFolder* top_view = addFolder(top_model, mFolderView);
+            if (top == 0) { inbox = top_view; inbox_model = top_model; }
+            for (U32 middle = 0; middle < 3; ++middle)
+            {
+                auto* middle_model = new InventoryStressItem(
+                    llformat("Folder %02u.%02u", top, middle), true, *mModel);
+                top_model->addChild(middle_model);
+                LLFolderViewFolder* middle_view = addFolder(middle_model, top_view);
+                for (U32 leaf = 0; leaf < 2; ++leaf)
+                {
+                    auto* leaf_model = new InventoryStressItem(
+                        llformat("Folder %02u.%02u.%02u", top, middle, leaf), true, *mModel);
+                    middle_model->addChild(leaf_model);
+                    addFolder(leaf_model, middle_view);
+                }
+            }
+        }
+        for (U32 index = 0; index < item_count; ++index)
+        {
+            auto* item_model = new InventoryStressItem(
+                llformat("Received item %06u alpha", index), false, *mModel);
+            inbox_model->addChild(item_model);
+            LLFolderViewItem::Params item_params(
+                LLUICtrlFactory::getDefaultParams<LLFolderViewItem>());
+            item_params.name = item_model->getName();
+            item_params.root = mFolderView;
+            item_params.listener = item_model;
+            LLFolderViewItem* item = LLUICtrlFactory::create<LLFolderViewItem>(item_params);
+            item->addToFolder(inbox);
+        }
+        mFolderView->setOpen(true);
+        mFolderView->arrangeAll();
+    }
+
+    ~InventoryStressFloater() override
+    {
+        // Folder views hold references into mModel; destroy the owned subtree
+        // while the model is still alive. LLFloater owns its chrome separately.
+        delete mScroller;
+        mScroller = nullptr;
+        mFolderView = nullptr;
+    }
+
+    LLFolderViewScrollContainer* scroller() const { return mScroller; }
+    void updateFolderView() { mFolderView->update(); }
+    bool folderViewReady() const
+    {
+        return !mFolderView->needsArrange() && mFolderView->hasVisibleChildren();
+    }
+    void setFilter(const std::string& text)
+    {
+        mModel->getFilter().setFilterSubString(text);
+        mFolderView->arrangeAll();
+    }
+    void hoverAt(F32 fraction)
+    {
+        const LLRect& rect = mScroller->getRect();
+        const S32 x = rect.mLeft + rect.getWidth() / 2;
+        const S32 y = rect.mBottom + ll_round(fraction * (F32)rect.getHeight());
+        handleHover(x, y, MASK_NONE);
+    }
+
+private:
+    LLFolderViewFolder* addFolder(InventoryStressItem* model, LLFolderViewFolder* parent)
+    {
+        LLFolderViewItem::Params params(
+            LLUICtrlFactory::getDefaultParams<LLFolderViewItem>());
+        params.name = model->getName();
+        params.root = mFolderView;
+        params.listener = model;
+        LLFolderViewFolder* folder = LLUICtrlFactory::create<LLFolderViewFolder>(params);
+        folder->setChildrenInited(true);
+        folder->addToFolder(parent);
+        folder->setOpen(true);
+        return folder;
+    }
+
+    std::unique_ptr<InventoryStressModel> mModel;
+    InventoryStressItem* mRootItem = nullptr;
+    LLFolderView* mFolderView = nullptr;
+    LLFolderViewScrollContainer* mScroller = nullptr;
+};
+
 struct FrameSample
 {
     F64 mUiMs = 0.0;
@@ -584,19 +883,20 @@ void collectAllScrollers(LLView* view,
 class Runner
 {
 public:
-    Runner(std::string request, U32 frames, bool ab, bool layout)
+    Runner(std::string request, U32 frames, bool ab, bool layout, U32 inventory_items)
     : mRequest(std::move(request)),
       mFrames(llmax<U32>(frames, 2)),
       mAB(ab),
       mLayout(layout),
-      mPriorCull(gSavedSettings.getBOOL("UIClipCullDraw"))
+      mInventoryItems(inventory_items),
+      mPriorCull(gSavedSettings.getBOOL("UIFolderViewCull"))
     {
         static const std::vector<std::string> all_targets = {
             "director", "lightbox", "exposure_hub", "dance_ball",
             "cine_light_rig", "env_adjust_snapshot", "actor_gaze",
             "avatar_light_response", "flycam_recorder", "phototools",
             "cinematic_camera", "ghost_studio", "ultimate_diopter",
-            "pose_polish"
+            "pose_polish", "inventory_stress"
         };
         if (mRequest == "all")
         {
@@ -614,7 +914,7 @@ public:
         mCullOn = mAB ? true : mPriorCull;
         if (mAB)
         {
-            gSavedSettings.setBOOL("UIClipCullDraw", true);
+            gSavedSettings.setBOOL("UIFolderViewCull", true);
         }
 
         for (const std::string& target : mTargets)
@@ -655,6 +955,11 @@ public:
             if (mOriginalFloaterRect.getWidth() > 0 && mOriginalFloaterRect.getHeight() > 0)
             {
                 floater->setShape(mOriginalFloaterRect, false);
+            }
+            if (isInventoryStress())
+            {
+                floater->closeFloater(false);
+                mFloater = LLHandle<LLFloater>();
             }
         }
         restoreInitialState();
@@ -732,6 +1037,17 @@ private:
         SCROLL_BOTTOM_MEASURE,
         SCROLL_TOP,
         SCROLL_TOP_MEASURE,
+        INVENTORY_TOP,
+        INVENTORY_TOP_MEASURE,
+        INVENTORY_MIDDLE,
+        INVENTORY_MIDDLE_MEASURE,
+        INVENTORY_BOTTOM,
+        INVENTORY_BOTTOM_MEASURE,
+        INVENTORY_SCROLL_SWEEP,
+        INVENTORY_FILTER,
+        INVENTORY_FILTER_FIRST_FRAME,
+        INVENTORY_FILTER_MEASURE,
+        INVENTORY_HOVER_SWEEP,
         AUDIT_SIZE_PREP,
         AUDIT_SIZE_SETTLE,
         AUDIT_PAGE_SELECT,
@@ -776,12 +1092,32 @@ private:
         return mSamples.size() >= wanted;
     }
 
+    bool collectInventoryTop(U32 wanted)
+    {
+        FrameSample sample;
+        if (!takeFrame(sample))
+        {
+            return false;
+        }
+        if (sample.mDrawn < 20)
+        {
+            LL_WARNS("UIPerfSelfTest")
+                << "UIPerfSelfTest ERROR abort inventory_stress: only "
+                << sample.mDrawn << " views drawn at scroll_top; expected at least 20"
+                << LL_ENDL;
+            closeCurrentTarget();
+            return false;
+        }
+        mSamples.push_back(sample);
+        return mSamples.size() >= wanted;
+    }
+
     void addRow(const std::string& floater, const std::string& path,
                 const std::string& measure, F64 action_ms = 0.0,
                 F64 first_frame_ms = 0.0)
     {
         ResultRow row;
-        row.mPass = mCullOn ? "clip_on" : "clip_off";
+        row.mPass = mCullOn ? "folder_cull_on" : "folder_cull_off";
         row.mFloater = floater;
         row.mPath = path;
         row.mMeasure = measure;
@@ -1278,7 +1614,14 @@ private:
             {
                 floater->setShape(mOriginalFloaterRect, false);
             }
-            LLFloaterReg::hideInstance(mTargets[mTargetIndex]);
+            if (isInventoryStress())
+            {
+                floater->closeFloater(false);
+            }
+            else
+            {
+                LLFloaterReg::hideInstance(mTargets[mTargetIndex]);
+            }
         }
         mFloater = LLHandle<LLFloater>();
         mCaptureRequested = false;
@@ -1301,6 +1644,17 @@ private:
         return ++mTargetIndex < (S32)mTargets.size();
     }
 
+    bool isInventoryStress() const
+    {
+        return mTargetIndex >= 0 && mTargetIndex < (S32)mTargets.size() &&
+               mTargets[mTargetIndex] == "inventory_stress";
+    }
+
+    InventoryStressFloater* inventoryStressFloater() const
+    {
+        return dynamic_cast<InventoryStressFloater*>(mFloater.get());
+    }
+
     bool step()
     {
         if (mUiFrameStall.getElapsedTimeF32() >= 10.f &&
@@ -1310,6 +1664,10 @@ private:
                 << "UIPerfSelfTest no UI frame for 10 s: window hidden or minimized"
                 << LL_ENDL;
             mUiFrameStallWarned = true;
+        }
+        if (InventoryStressFloater* stress = inventoryStressFloater())
+        {
+            stress->updateFolderView();
         }
         if (mPhase >= FIRST_FRAME && mPhase <= CLOSE && !mFloater.get())
         {
@@ -1369,7 +1727,25 @@ private:
             LL_INFOS("UIPerfSelfTest") << "UIPerfSelfTest begin " << name << LL_ENDL;
             LLError::setAlwaysFlush(prior_flush);
             LLTimer timer;
-            LLFloater* floater = LLFloaterReg::showInstance(name, LLSD(), false);
+            LLFloater* floater = nullptr;
+            if (name == "inventory_stress")
+            {
+                if (mInventoryItems == 0)
+                {
+                    LL_INFOS("UIPerfSelfTest") << "UIPerfSelfTest skip inventory_stress: "
+                        "UIPerfInventoryStress is zero" << LL_ENDL;
+                    mPhase = nextTarget() ? OPEN : NEXT_PASS;
+                    break;
+                }
+                InventoryStressFloater* stress = new InventoryStressFloater(mInventoryItems);
+                gFloaterView->addChild(stress);
+                stress->openFloater();
+                floater = stress;
+            }
+            else
+            {
+                floater = LLFloaterReg::showInstance(name, LLSD(), false);
+            }
             mActionMs = timer.getElapsedTimeF64() * 1000.0;
             if (!floater)
             {
@@ -1381,15 +1757,156 @@ private:
             mFloater = floater->getHandle();
             mOriginalFloaterRect = LLRect();
             prepareFloaterActions();
+            mReadyWaitFrames = 0;
             mPhase = FIRST_FRAME;
             break;
         }
         case FIRST_FRAME:
         {
+            if (InventoryStressFloater* stress = inventoryStressFloater();
+                stress && !stress->folderViewReady())
+            {
+                FrameSample ignored;
+                takeFrame(ignored);
+                // Never hang the runner on a fixture that never arranges.
+                if (++mReadyWaitFrames > 600)
+                {
+                    LL_WARNS("UIPerfSelfTest") << "inventory_stress: folder view not ready after 600 frames; skipping target" << LL_ENDL;
+                    mPhase = CLOSE;
+                }
+                return false;
+            }
             FrameSample sample;
             if (!takeFrame(sample)) return false;
             addRow(mTargets[mTargetIndex], "", "open", mActionMs, sample.mUiMs);
-            mPhase = DEFAULT_MEASURE;
+            mPhase = isInventoryStress() ? INVENTORY_TOP : DEFAULT_MEASURE;
+            break;
+        }
+        case INVENTORY_TOP:
+        {
+            FrameSample ignored;
+            takeFrame(ignored);
+            InventoryStressFloater* stress = inventoryStressFloater();
+            if (!stress) { abortCurrentTarget("synthetic floater type mismatch"); break; }
+            stress->scroller()->goToTop();
+            mPhase = INVENTORY_TOP_MEASURE;
+            break;
+        }
+        case INVENTORY_TOP_MEASURE:
+            if (collectInventoryTop(mFrames))
+            {
+                addRow("inventory_stress", "synthetic", "scroll_top");
+                mPhase = INVENTORY_MIDDLE;
+            }
+            break;
+        case INVENTORY_MIDDLE:
+        {
+            FrameSample ignored;
+            takeFrame(ignored);
+            InventoryStressFloater* stress = inventoryStressFloater();
+            LLScrollContainer* scroller = stress ? stress->scroller() : nullptr;
+            if (!scroller || !scroller->getScrolledView())
+            {
+                abortCurrentTarget("synthetic scroller died");
+                break;
+            }
+            const S32 overflow = llmax(0, scroller->getScrolledView()->getRect().getHeight() -
+                                         scroller->getVisibleContentRect().getHeight());
+            scroller->setDocPosVertical(overflow / 2);
+            mPhase = INVENTORY_MIDDLE_MEASURE;
+            break;
+        }
+        case INVENTORY_MIDDLE_MEASURE:
+            if (collect(mFrames))
+            {
+                addRow("inventory_stress", "synthetic", "scroll_middle");
+                mPhase = INVENTORY_BOTTOM;
+            }
+            break;
+        case INVENTORY_BOTTOM:
+        {
+            FrameSample ignored;
+            takeFrame(ignored);
+            InventoryStressFloater* stress = inventoryStressFloater();
+            if (!stress) { abortCurrentTarget("synthetic floater died"); break; }
+            stress->scroller()->goToBottom();
+            mPhase = INVENTORY_BOTTOM_MEASURE;
+            break;
+        }
+        case INVENTORY_BOTTOM_MEASURE:
+            if (collect(mFrames))
+            {
+                addRow("inventory_stress", "synthetic", "scroll_bottom");
+                mPhase = INVENTORY_SCROLL_SWEEP;
+            }
+            break;
+        case INVENTORY_SCROLL_SWEEP:
+        {
+            InventoryStressFloater* stress = inventoryStressFloater();
+            LLScrollContainer* scroller = stress ? stress->scroller() : nullptr;
+            if (!scroller || !scroller->getScrolledView())
+            {
+                abortCurrentTarget("synthetic scroller died during sweep");
+                break;
+            }
+            const S32 overflow = llmax(0, scroller->getScrolledView()->getRect().getHeight() -
+                                         scroller->getVisibleContentRect().getHeight());
+            const F32 fraction = (mFrames > 1)
+                ? (F32)mSamples.size() / (F32)(mFrames - 1) : 1.f;
+            scroller->setDocPosVertical(ll_round(fraction * (F32)overflow));
+            if (collect(mFrames))
+            {
+                addRow("inventory_stress", "synthetic", "scroll_sweep");
+                mPhase = INVENTORY_FILTER;
+            }
+            break;
+        }
+        case INVENTORY_FILTER:
+        {
+            FrameSample ignored;
+            takeFrame(ignored);
+            InventoryStressFloater* stress = inventoryStressFloater();
+            if (!stress) { abortCurrentTarget("synthetic floater died before filter"); break; }
+            LLTimer timer;
+            stress->setFilter("a");
+            mActionMs = timer.getElapsedTimeF64() * 1000.0;
+            stress->updateFolderView();
+            mPhase = INVENTORY_FILTER_FIRST_FRAME;
+            break;
+        }
+        case INVENTORY_FILTER_FIRST_FRAME:
+        {
+            FrameSample sample;
+            if (!takeFrame(sample)) break;
+            mFirstFrameMs = sample.mUiMs;
+            mPhase = INVENTORY_FILTER_MEASURE;
+            break;
+        }
+        case INVENTORY_FILTER_MEASURE:
+            if (collect(mFrames))
+            {
+                addRow("inventory_stress", "synthetic", "filter_a",
+                       mActionMs, mFirstFrameMs);
+                mActionMs = 0.0;
+                mPhase = INVENTORY_HOVER_SWEEP;
+            }
+            break;
+        case INVENTORY_HOVER_SWEEP:
+        {
+            InventoryStressFloater* stress = inventoryStressFloater();
+            if (!stress) { abortCurrentTarget("synthetic floater died during hover"); break; }
+            const F32 fraction = (mFrames > 1)
+                ? (F32)mSamples.size() / (F32)(mFrames - 1) : 1.f;
+            LLTimer timer;
+            stress->hoverAt(fraction);
+            mActionMs += timer.getElapsedTimeF64() * 1000.0;
+            if (collect(mFrames))
+            {
+                const F64 mean_hit_test_ms = mActionMs / (F64)mSamples.size();
+                addRow("inventory_stress", "synthetic", "hover_sweep",
+                       mean_hit_test_ms);
+                mPhase = CLOSE;
+            }
             break;
         }
         case DEFAULT_MEASURE:
@@ -1726,7 +2243,7 @@ private:
                 takeFrame(ignored);
                 mCullOn = false;
                 // ui-draw-lint: allow(setting-write) one-shot self-test toggle, login screen only
-                gSavedSettings.setBOOL("UIClipCullDraw", false);
+                gSavedSettings.setBOOL("UIFolderViewCull", false);
                 mSamples.clear();
                 mPhase = BASELINE;
             }
@@ -1844,13 +2361,14 @@ private:
             }
         }
         // ui-draw-lint: allow(setting-write) one-shot self-test toggle, login screen only
-        gSavedSettings.setBOOL("UIClipCullDraw", mPriorCull);
+        gSavedSettings.setBOOL("UIFolderViewCull", mPriorCull);
     }
 
     std::string mRequest;
     U32 mFrames;
     bool mAB;
     bool mLayout;
+    U32 mInventoryItems;
     bool mPriorCull;
     bool mCullOn = true;
     bool mRestored = false;
@@ -1872,6 +2390,7 @@ private:
     size_t mScrollIndex = 0;
     bool mInDefaultScroll = false;
     U32 mSettleFrames = 0;
+    U32 mReadyWaitFrames = 0;
     F64 mActionMs = 0.0;
     F64 mFirstFrameMs = 0.0;
     LLFrameTimer mUiFrameStall;
@@ -1909,10 +2428,11 @@ void ALUIPerfSelfTest::startIfRequested()
     static LLCachedControl<U32> frames(gSavedSettings, "UIPerfSelfTestFrames", 120);
     static LLCachedControl<bool> ab(gSavedSettings, "UIPerfSelfTestAB", false);
     static LLCachedControl<bool> layout(gSavedSettings, "UILayoutAudit", false);
+    static LLCachedControl<U32> inventory_items(gSavedSettings, "UIPerfInventoryStress", 0);
     sActive = true;
     sSuppressSettingsSave = true;
     sLayoutAuditActive = layout;
-    sRunner = std::make_unique<Runner>(request(), frames, ab, layout);
+    sRunner = std::make_unique<Runner>(request(), frames, ab, layout, inventory_items);
 }
 
 void ALUIPerfSelfTest::tick()

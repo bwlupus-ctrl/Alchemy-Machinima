@@ -358,6 +358,11 @@ void LLInventoryGallery::initGallery()
 
 void LLInventoryGallery::draw()
 {
+    if (mRootDirty)
+    {
+        updateRootFolder();
+    }
+
     LLPanel::draw();
     if (mGalleryCreated)
     {

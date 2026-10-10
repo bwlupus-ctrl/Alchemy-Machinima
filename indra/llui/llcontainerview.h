@@ -83,6 +83,7 @@ public:
     void setScrollContainer(LLScrollContainer* scroll) {mScrollContainer = scroll;}
 
  private:
+    LLRect getChildCullRectScreen() override;
     LLScrollContainer* mScrollContainer;
     void arrange(S32 width, S32 height, bool called_from_parent = true);
     bool mShowLabel;

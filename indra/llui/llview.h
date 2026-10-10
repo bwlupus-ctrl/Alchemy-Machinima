@@ -289,8 +289,16 @@ public:
     void    setAllChildrenEnabled(bool b, bool recursive = false);
 
     virtual void    setVisible(bool visible);
-    void            setVisibleDirect(bool visible) { mVisible = visible; }
+    void            setVisibleDirect(bool visible)
+    {
+        mVisible = visible;
+        if (visible && mHasPendingTransparency)
+        {
+            applyTransparencyType(mPendingTransparency);
+        }
+    }
     const bool&     getVisible() const          { return mVisible; }
+    void            applyTransparencyType(U8 transparency_type);
     virtual void    setEnabled(bool enabled);
     bool            getEnabled() const          { return mEnabled; }
     /// 'available' in this context means 'visible and enabled': in other
@@ -537,6 +545,11 @@ public:
     LLSD getInfo(void);
 
 protected:
+    // Optional screen-space bound on children worth drawing. A parent that
+    // knows its children are clipped by a viewport can provide that viewport
+    // once per draw; LLRect::null leaves the general cull unchanged.
+    virtual LLRect getChildCullRectScreen() { return LLRect::null; }
+
     void            drawDebugRect();
     void            drawChild(LLView* childp, S32 x_offset = 0, S32 y_offset = 0, bool force_draw = false);
     void            drawChildren();
@@ -587,6 +600,8 @@ private:
 
     LLView*     mParentView;
     child_list_t mChildList;
+    U8          mPendingTransparency = 0;
+    bool        mHasPendingTransparency = false;
 
     // location in pixels, relative to surrounding structure, bottom,left=0,0
     bool        mVisible;
@@ -667,6 +682,7 @@ public:
     // Per-frame UI draw counters, reset after LLViewerWindow draws the tree.
     static U32  sDrawnViewCount;
     static U32  sClipCulledViewCount;
+    static U32  sTreeGeneration;
 
     // Per-frame outer findChildView call and visited-node counters.
     static U32  sFindChildCallCount;

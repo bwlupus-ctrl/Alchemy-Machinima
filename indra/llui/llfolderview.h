@@ -222,6 +222,7 @@ public:
     void scrollToShowItem(LLFolderViewItem* item, const LLRect& constraint_rect);
     void setScrollContainer( LLScrollContainer* parent ) { mScrollContainer = parent; }
     LLScrollContainer* getScrollContainer() { return mScrollContainer; }
+    const LLRect& getChildCullRectScreenCached() const { return mChildCullRectScreen; }
     LLRect getVisibleRect();
 
     bool search(LLFolderViewItem* first_item, const std::string &search_string, bool backward);
@@ -271,6 +272,7 @@ private:
 
 protected:
     LLScrollContainer* mScrollContainer;  // NULL if this is not a child of a scroll container.
+    LLRect mChildCullRectScreen;
 
     void commitRename( const LLSD& data );
     void onRenamerLost();

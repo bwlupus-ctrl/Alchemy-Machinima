@@ -567,6 +567,8 @@ private:
     bool            mButtonsEnabled[BUTTON_COUNT];
     F32             mButtonScale;
     bool            mAutoFocus;
+    ETypeTransparency mAppliedTransparency { TT_DEFAULT };
+    U32               mAppliedTreeGeneration { 0 };
     LLHandle<LLFloater> mSnappedTo;
 
     LLHandle<LLFloater> mHostHandle;

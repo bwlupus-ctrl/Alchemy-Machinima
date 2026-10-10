@@ -1061,14 +1061,18 @@ AISUpdate::AISUpdate(const LLSD& update, AISAPI::COMMAND_TYPE type, const LLSD& 
         mFetchDepth = request_body["depth"].asInteger();
     }
 
-    mTaskTimer.setTimerExpirySec(AIS_TASK_EXPIRY_SECONDS);
+    mUseTimeout = type != AISAPI::UPDATECATEGORY
+        && type != AISAPI::UPDATEITEM
+        && type != AISAPI::FETCHCOF
+        && type != AISAPI::FETCHCATEGORYLINKS;
     mTaskTimer.start();
+    mTaskTimer.setTimerExpirySec(AIS_TASK_EXPIRY_SECONDS);
 
     U32 current_frame = LLFrameTimer::getFrameCount();
     if (sBatchFrameCount != current_frame)
     {
-        sBatchTimer.setTimerExpirySec(AIS_BATCH_EXPIRY_SECONDS);
         sBatchTimer.start();
+        sBatchTimer.setTimerExpirySec(AIS_BATCH_EXPIRY_SECONDS);
         sBatchFrameCount = current_frame;
     }
     parseUpdate(update);
@@ -1091,6 +1095,10 @@ void AISUpdate::clearParseResults()
 
 void AISUpdate::checkTimeout()
 {
+    if (!mUseTimeout)
+    {
+        return;
+    }
     if (mTaskTimer.hasExpired() || sBatchTimer.hasExpired())
     {
         // If we are taking too long, don't starve other tasks,
@@ -1817,4 +1825,3 @@ void AISUpdate::doUpdate()
 
     gInventory.notifyObservers();
 }
-

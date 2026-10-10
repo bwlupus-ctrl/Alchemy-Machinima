@@ -430,7 +430,10 @@ bool LLButton::postBuild()
 
 void LLButton::onVisibilityChange(bool new_visibility)
 {
-    mFontBuffer.reset();
+    if (!new_visibility)
+    {
+        mFontBuffer.reset();
+    }
     return LLUICtrl::onVisibilityChange(new_visibility);
 }
 

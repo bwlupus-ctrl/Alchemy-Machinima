@@ -3208,7 +3208,7 @@ void LLViewerWindow::draw()
         mRootView->draw();
 
         LL_PROFILE_PLOT("UI views drawn", LLView::sDrawnViewCount);
-        LL_PROFILE_PLOT("UI views clip-culled", LLView::sClipCulledViewCount);
+        LL_PROFILE_PLOT("UI views folder-culled", LLView::sClipCulledViewCount);
         ALUIPerfSelfTest::recordViewCounts(
             LLView::sDrawnViewCount, LLView::sClipCulledViewCount,
             LLView::sFindChildCallCount, LLView::sFindChildVisitedCount);

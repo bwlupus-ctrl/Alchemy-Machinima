@@ -59,9 +59,21 @@ LLContainerView::~LLContainerView()
 
 bool LLContainerView::postBuild()
 {
+    mScrollContainer = dynamic_cast<LLScrollContainer*>(getParent());
     setDisplayChildren(mDisplayChildren);
     reshape(getRect().getWidth(), getRect().getHeight(), false);
     return true;
+}
+
+LLRect LLContainerView::getChildCullRectScreen()
+{
+    if (!mScrollContainer)
+    {
+        return LLRect::null;
+    }
+    LLRect visible;
+    mScrollContainer->localRectToScreen(mScrollContainer->getContentWindowRect(), &visible);
+    return visible;
 }
 
 bool LLContainerView::addChild(LLView* child, S32 tab_group)

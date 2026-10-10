@@ -2,6 +2,7 @@ param(
   [string]$Exe = 'I:\alchemy-machinima\build-Windows-vs2026-os\newview\Release\AlchemyTest.exe',
   [string]$Floaters = 'all',
   [uint32]$Frames = 120,
+  [uint32]$Inventory = 6000,
   [switch]$AB,
   [switch]$Layout,
   [int]$TimeoutMin = 10,
@@ -28,7 +29,8 @@ if ($Layout -and $TimeoutMin -eq 10) { $TimeoutMin = 25 }
 $allTargets = @('director', 'lightbox', 'exposure_hub', 'dance_ball',
   'cine_light_rig', 'env_adjust_snapshot', 'actor_gaze',
   'avatar_light_response', 'flycam_recorder', 'phototools',
-  'cinematic_camera', 'ghost_studio', 'ultimate_diopter', 'pose_polish')
+  'cinematic_camera', 'ghost_studio', 'ultimate_diopter', 'pose_polish',
+  'inventory_stress')
 $targets = if ($Floaters -eq 'all') { $allTargets } else { @($Floaters.Split(',') | ForEach-Object { $_.Trim() } | Where-Object { $_ }) }
 
 $logsDir = Join-Path $env:APPDATA 'AlchemyMachinima\logs'
@@ -57,6 +59,7 @@ while ($true) {
   $quotedFloaters = '"' + ($targets -join ',') + '"'
   $viewerArgs = @('--set', 'UIPerfSelfTest', $quotedFloaters,
             '--set', 'UIPerfSelfTestFrames', $Frames,
+            '--set', 'UIPerfInventoryStress', $(if ($targets -contains 'inventory_stress') { $Inventory } else { 0 }),
             '--set', 'UIPerfSelfTestAB', $(if ($AB) { 'TRUE' } else { 'FALSE' }),
             '--set', 'UILayoutAudit', $(if ($Layout) { 'TRUE' } else { 'FALSE' }))
   # The viewer resolves app_settings/ and skins/ from its working directory: always
@@ -186,12 +189,12 @@ $ranked = foreach ($row in ($rows | Where-Object { $_.measure -ne 'baseline' }))
 $ranked | Sort-Object MeanDeltaMs -Descending | Format-Table -AutoSize
 
 if ($AB) {
-  Write-Host "`nClip-cull on/off mean delta (positive = off is slower):"
+  Write-Host "`nFolder-view cull on/off mean delta (positive = off is slower):"
   $on = @{}
-  foreach ($row in ($rows | Where-Object pass -eq 'clip_on')) {
+  foreach ($row in ($rows | Where-Object pass -eq 'folder_cull_on')) {
     $on["$($row.floater)|$($row.tab_path)|$($row.measure)"] = $row
   }
-  $deltas = foreach ($row in ($rows | Where-Object pass -eq 'clip_off')) {
+  $deltas = foreach ($row in ($rows | Where-Object pass -eq 'folder_cull_off')) {
     $key = "$($row.floater)|$($row.tab_path)|$($row.measure)"
     if ($on.ContainsKey($key)) {
       [pscustomobject]@{

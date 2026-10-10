@@ -372,6 +372,7 @@ protected:
 
     void updateLabelRotation();
     virtual bool isCollapsed() { return false; }
+    LLRect getChildCullRectScreen() override;
 
 public:
     typedef std::list<LLFolderViewItem*> items_t;

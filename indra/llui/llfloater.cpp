@@ -720,7 +720,11 @@ void LLFloater::openFloater(const LLSD& key)
 {
     LL_INFOS() << "Opening floater " << getName() << " full path: " << getPathname() << LL_ENDL;
 
-    LLViewerEventRecorder::instance().logVisibilityChange( getPathname(), getName(), true,"floater"); // Last param is event subtype or empty string
+    LLViewerEventRecorder& recorder = LLViewerEventRecorder::instance();
+    if (recorder.getLoggingStatus())
+    {
+        recorder.logVisibilityChange(getPathname(), getName(), true, "floater");
+    }
 
     mKey = key; // in case we need to open ourselves again
 
@@ -777,7 +781,11 @@ void LLFloater::openFloater(const LLSD& key)
 void LLFloater::closeFloater(bool app_quitting)
 {
     LL_INFOS() << "Closing floater " << getName() << LL_ENDL;
-    LLViewerEventRecorder::instance().logVisibilityChange( getPathname(), getName(), false,"floater"); // Last param is event subtype or empty string
+    LLViewerEventRecorder& recorder = LLViewerEventRecorder::instance();
+    if (recorder.getLoggingStatus())
+    {
+        recorder.logVisibilityChange(getPathname(), getName(), false, "floater");
+    }
     if (app_quitting)
     {
         LLFloater::sQuitting = true;
@@ -2303,23 +2311,18 @@ void    LLFloater::drawShadow(LLPanel* panel)
 void LLFloater::updateTransparency(LLView* view, ETypeTransparency transparency_type)
 {
     if (!view) return;
-    child_list_t children = *view->getChildList();
-    child_list_t::iterator it = children.begin();
-
-    LLUICtrl* ctrl = dynamic_cast<LLUICtrl*>(view);
-    if (ctrl)
-    {
-        ctrl->setTransparencyType(transparency_type);
-    }
-
-    for(; it != children.end(); ++it)
-    {
-        updateTransparency(*it, transparency_type);
-    }
+    view->applyTransparencyType((U8)transparency_type);
 }
 
 void LLFloater::updateTransparency(ETypeTransparency transparency_type)
 {
+    if (mAppliedTransparency == transparency_type &&
+        mAppliedTreeGeneration == LLView::sTreeGeneration)
+    {
+        return;
+    }
+    mAppliedTransparency = transparency_type;
+    mAppliedTreeGeneration = LLView::sTreeGeneration;
     updateTransparency(this, transparency_type);
 }
 
