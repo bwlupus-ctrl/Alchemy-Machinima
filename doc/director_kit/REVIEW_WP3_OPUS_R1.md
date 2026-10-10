@@ -197,3 +197,75 @@ Run, in order:
 4. `director_parity --groups light_group` (expected **red** until WP4 extracts the rim names) and `--selftest`, with P1–P5 added.
 5. `xui_layout_check --selftest`, plus the real-tree legacy regression.
 6. `review_wp3_r1/fixtures.py`: every row must read CAUGHT.
+
+---
+
+## R1 verification (Opus, on HEAD 3f9fdbeba09 "Director kit WP3 R1 fixes")
+
+**Verdict: CLEAN.** There are 0 BLOCKER, 0 MAJOR and 8 new MINOR findings. All 2 blockers and 9 majors from R1 are fixed. None of the relaxations added in rounds 1–3 hides a real defect, though four of them are coarser than they need to be (N1–N4 below).
+
+### Gate re-run (independent)
+
+- **Generator.**
+  - `gen --check` exits 0.
+  - `--selftest` re-parses all 31 legacy pages and checks the dials.
+  - Two runs into scratch directories are byte-identical (38 files; `gen_report.txt` now follows `--out-dir`).
+  - The repo tree stays clean.
+- **Config and sources.** `check_kit_pages.py` passes. `director_page_sources.py --check` passes (35 pages, 1,839 rows, 0 unresolved, 22 multi-page settings).
+- **`kit_lint`.**
+  - `--all` gives 0 errors and 4 `pending-wp` warnings; `--selftest` passes.
+  - `--release-wp N` turns entries due at or before WPN into errors: WP10 gives 2 errors, WP11 gives 4, WP12 gives 15.
+- **`director_parity`.**
+  - `--selftest` passes 40/40.
+  - `--groups light_group` passes, with 2 PENDING records and check-3 allowing only the exact name `cine_rig_rim_preset`.
+- **`xui_layout_check`.** `--selftest` passes, and 31/31 real legacy pages match their v1 finding keys.
+- **Original fixtures.** Rerunning the unmodified scratch copy of the R1 `fixtures.py`, K0 and P0 are clean and K1–K8 plus P1, P2, P4 and P5 are all CAUGHT.
+  - The original P3 now passes legitimately. WP2 (3661c636e42) moved the rim lookups out of `ALPanelCineLightRig::postBuild` into `ALRigRimController::attach`, which uses the tolerant `findChild` (`alrigrimcontroller.cpp:108-110`), so its premise no longer exists.
+  - Codex rewrote P3 inside the committed reviewer file; see N8. Q1 and Q2 below replace it.
+
+### R1 findings: status
+
+| ID | Status | Evidence |
+|---|---|---|
+| B1 | FIXED | No card carries an `enable_widget` equal to its page master. `PAGE_MASTER_HOMES` is gone (back to 22 homes). Lint rule 4 counts the kit-created names (K1 caught). |
+| B2 | FIXED | Legacy files have the sized `kit_page` as root. A zero-size root reports `invalid-root` (X3). The R1 5000×9000 probe now fails through the CLI (X5). |
+| M1 | FIXED | All 9 dials have `kit_geometry="true"` and `show_readout="false"`, with no slider-only params. Lint and the generator selftest enforce it (K8). |
+| M2 | FIXED | The index is built from the config-applied pages. `CineGobo01` is gone; `cine_gobo_preview`, the clip readouts and `cine_rimq_status` are present; `cine_shadow_fixit` is no longer flagged advanced. |
+| M3 | FIXED | Requests are scoped to their owner's page. Fresh fixtures Q1 (rim status moved to Rig) and Q2 (`cine_shadow_hint` moved to Rim) both FAIL as they should. |
+| M4 | FIXED | Check 3 honours only the exact `retired_cpp_targets` (P1 caught). |
+| M5 | FIXED | The lazy-page and rail indicators no longer count as bindings (P2 caught). |
+| M6 | FIXED | K2–K5 are all caught: code rows are writers, "Easy" means `mode_on`, pending homes are checked against the data's home row, and the same-page policy is exact per setting and attribute. |
+| M7 | FIXED | Policy moved to `gate_policy.json` with a citation and expiry per entry. `check_kit_pages` passes and validates it. |
+| M8 | FIXED | The transport uses icon overlays with empty labels and a text-node timecode. ACTION/CUT have their colours. `ICON_TEXTURES` is in the report. |
+| M9 | FIXED | `--all` runs real parity, and the Move widget removal now changes the result (P5). `performance_group` is spelled correctly. |
+| m1–m14 | FIXED or acceptable | See the remainders listed in N5 and N6. |
+
+### Fresh fixtures for the new relaxations
+
+These are in `review_wp3_r1/fixtures_r1v.py`; a further probe is `review_wp3_r1/xui_transitive_probe.py`.
+
+| ID | Planted case | Result |
+|---|---|---|
+| X1 | A new clipped child on a baselined page (Gaze) | CAUGHT, as `legacy-baseline-drift` |
+| X2 | A baselined clipped subject (`director_gaze_panel`) grows to 9000 px | **MISSED** (N1) |
+| X3 | Legacy `kit_page` root loses `width`/`height` | CAUGHT (`invalid-root`) |
+| X4 | An unreferenced copy of a legacy page | CAUGHT (`scroller-wiring` plus drift), so the transitive clearance is not blanket |
+| X5 | The R1 B2 5000×9000 probe | CAUGHT |
+| Q1 / Q2 | A C++-owned name moved to the wrong page, in either direction | CAUGHT |
+| Q3 | The PENDING WP4 name `cine_rimq_enable_tag` removed | CAUGHT; PENDING is a report-only note and masks nothing |
+| L1 | A stale `pending_settings` entry | **MISSED** (N2) |
+
+**The "20 transitive-wiring false positives" (actually 24).** `xui_transitive_probe.py` lists what the `page_file`→`floater_director_v2.xml`→`LLFloaterDirector` owner walk clears: 20 `scroller-wiring` and 4 `scroll-content-overflow` findings on legacy pages. In the runtime these really are handled. `ALKitLazyPage::ensureBuilt` → `ALScrollFit::Controller::adoptPage` (`alscrollfit.cpp:461-503`) wraps a legacy host that has no scroller, installs focus on every document container, calls `fitPage`, and enables the slider wheel. The v1 floater gets the same clearance today (17 static findings, 0 with the source index). The evidence the checker uses is indirect, though; see N3.
+
+**The 12-entry v1 baseline.** It equals exactly the static findings of the 31 legacy pages. Those findings match the v1 leaves 31/31. The baseline has no globs and no duplicates; additions fail, and removals fail in the selftest. It is acceptable as intermediate scaffolding: the rollout requires absolute zero, and WP6+ must delete entries as the pages convert.
+
+### New MINOR findings
+
+- **N1. The baseline key is too coarse.** It is `file|kind|subject`, so any growth of an already-baselined clipped or overflowing subject is masked (X2). Fix: key on the normalized message including the rect, or store the v1 rect and fail on growth.
+- **N2. `pending_settings` never goes stale.** WP2 has landed, and `DirectorV2SelectedLight`, `DirectorV2LightMapView` and `DirectorV2LightMapSideFrom` are now in `settings.xml`. Their WP2 entries stay in `gate_policy.json`, and neither `--release-wp 2` nor `check_kit_pages` flags them (L1). Fix: flag an entry whose setting now resolves, the same way parity already flags a stale `pending_cpp`; then delete the three entries.
+- **N3. Transitive clearance relies on indirect evidence.** It accepts any `.installForTabs(`/`fitAll(` text in an ancestor owner (`llfloaterdirector.cpp:764`) as proof of wiring, but the real mechanism is `adoptPage`. If `adoptPage` regressed, nothing would notice. Fix: for `kit_lazy_page` children, require `adoptPage(` evidence in `alkitlazypage.cpp` and `alscrollfit.cpp`.
+- **N4. `same_page_mode_writers` expire at WP12.** Their WP12 expiry makes `--release-wp 12` fail on a permanent, legitimate Easy/Advanced design, which is 8 of the 15 WP12 errors. Fix: before WP12, move these to a declared per-row `mode_pair` in the data/config instead of a policy that expires.
+- **N5. The Tron launcher now draws two identical buttons.** The `kind="launcher"` card creates `kc_open_launch` (`alkitcard.cpp:348-362`), and the generator still emits the `open_tron` button row. Fix: drop the row, or keep the row and use `kind="rows"`. The page is temporary (WP10).
+- **N6. The report's predicate field is a constant.** Every legacy page reports `predicate=verbatim v1 leaf`, not the spec 4.3 pure-kit planning predicate (true/false).
+- **N7. Arm and Set marks share one icon.** `btn_arm` uses the same `Flag` texture as `btn_set_marks`, so the two buttons look alike. Pick a distinct texture.
+- **N8. Codex edited the reviewer's fixture file.** It rewrote P3 in the committed `review_wp3_r1/fixtures.py`. The rewrite is technically justified (the premise changed after WP2), but implementers should add new fixtures rather than edit a reviewer's. Q1 and Q2 now cover the original intent.
