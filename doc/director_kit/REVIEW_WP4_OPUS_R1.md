@@ -255,3 +255,67 @@ Fix: give the panel a session-only display override for search, separate from th
 - No new per-frame work: the guards are member bools, and the popover exists only on demand.
 - The popover is owned by the shell and reaches the page through an `LLHandle`, so it is safe after page teardown.
 - `mUpdatingModeSwitch`/`mApplyingEasyMode` are always reset on the same path (no early returns between set and clear).
+
+---
+
+## R2 verification (commit `83bfe27837e`)
+
+Verdict: **FIX-NEEDED**, with 1 finding: N3, a one-line fix. N1 and N2(a) are fixed. N2(b) was fixed by gating the immediate refresh on the shell, and that gate over-reaches into the v1 user path.
+
+### N1: search display override
+
+**FIXED.** The override holds and is session-only.
+
+- **Reveal path.** `revealCard` → `setModeIndex(i,false,true)` (under `ScopedSuspend`) → adapter `SEARCH` → `applyEasyMode(SEARCH)`. Only `USER` writes, so this writes nothing. Then `syncEasyModeState(SEARCH)` either:
+  - refuses an Easy target on a non-native look and returns the current mode, or
+  - stores `mEasyModeOverride`.
+- **Persistence.** The next `draw` → `syncEasyModeForSelected` → `syncEasyModeState(pref,PASSIVE)` derives `displayed` from the override, so `effective` is unchanged and nothing is reverted.
+- **Session-only.** `mEasyModeOverride` is a member that is never written to settings or history.
+- **Cleared on:**
+  - a user mode click: `applyEasyMode(USER)`, first line;
+  - a preference change: `mEasyModeConnection` clears the override before syncing (undo/redo of the preference also goes through it);
+  - a slot change: `selected != mEasyModeSlot` in `syncEasyModeState`.
+- **Signal ordering checked.** On a preference change, the page flip callback fires before `mEasyModeConnection` because it was connected earlier, so it briefly evaluates the stale override. `mEasyModeConnection` then clears the override and re-syncs: `syncEasyControls` → guarded flip → `syncEffectiveMode`. The final display follows the new preference. Correct.
+
+### N2(a): passive writes under suspension
+
+**FIXED.** All non-USER `normalizeSelectedForEasy(false)` calls (PASSIVE, RESTORE, SEARCH) run under `ALKitHistory::ScopedSuspend`. This is a static counter, so it is inert in v1.
+
+### N2(b): v1 refresh timing
+
+`syncEasyModeState` now ends with `if(ALKitShell::find(this))syncEasyControls();` (`alpanelcinelightrig.cpp:2158`).
+
+- **v1 passive edges:** restored to the pre-WP4 behaviour (the deferred 10 Hz `updateDerivedStatus` refresh). Correct.
+
+### N3 (MAJOR: contract clause 1 breach; low user impact): the shell gate also drops the v1 explicit-click refresh
+
+- Before WP4, `onEasyModeCommit` always ended with `syncEasyControls()`.
+- Now the v1 USER path (`onEasyModeCommit` → `applyEasyMode(USER)` → `syncEasyModeState(USER)`) has no shell, so the immediate refresh is skipped.
+- In the standalone floater, after an Easy click:
+  - the Easy/Advanced gating (`mEasyGatedControls`, `mAdvancedDrivenControls`) and the Easy control values lag up to 100 ms, until the next `mPanelRefreshClock` tick (`:2773`/`:2787`);
+  - when normalization refuses (|Master+Key| > 16), the checkbox stays ticked during that window.
+- In R1 this path was v1-identical; this commit regressed it.
+- `WP4_STATUS` says "v1 retains its deferred 10 Hz Easy-control refresh". That is true for passive edges only.
+- **Fix:** `if(explicit_entry||mHasShell)syncEasyControls();` where `mHasShell` is a bool cached in `postBuild` from `ALKitShell::find(this)`. Caching also removes the parent walk from the edge path.
+
+### Regression sweep
+
+**Contract clauses:**
+
+| # | Clause | Result |
+|---|---|---|
+| (1) | v1 byte-identical | Passive: PASS. Explicit click: FAIL (N3). |
+| (2) | Writers limited | PASS. The writers are still `applyEasyMode(USER)`, the v1 `control_name` checkbox, history replay and the self-test restore. `SEARCH`/`PASSIVE`/`RESTORE` never write. |
+| (3) | v2 user entry normalizes | PASS. `explicit_entry` → `normalize(true)`. `syncEasyControls` runs because the shell exists. |
+| (4) | Passive Advanced display keeps the preference | PASS |
+| (5) | `revealCard` flips only when needed, passively | PASS (holds across draw). An Easy target on a non-native look refuses and the display stays. |
+| (6) | No no-op steps | PASS. The `addEntry` guard is unchanged, and the SEARCH path and passive normalize are suspended. |
+
+**Traces:**
+- 1, 3, 4, 5 and 6: code unchanged by this commit, so still TRUE.
+- 2, user path (v2): TRUE.
+- 2, step 4 (search reveal): now TRUE.
+
+**Draw cost:**
+- The new work runs only on edges: the override compare and `ALKitShell::find`, which runs after the no-change early return.
+- No per-frame regression.

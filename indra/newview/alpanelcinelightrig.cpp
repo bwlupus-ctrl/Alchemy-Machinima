@@ -2155,7 +2155,7 @@ bool ALPanelCineLightRig::syncEasyModeState(bool desired,EasyModeOrigin origin,b
         }
     }
     mSyncingEasyControls=false;
-    if(ALKitShell::find(this))syncEasyControls();
+    if(explicit_entry||ALKitShell::find(this))syncEasyControls();
     return mEasyModeActive;
 }
 
