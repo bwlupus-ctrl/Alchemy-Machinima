@@ -150,12 +150,16 @@ public:
     bool hasChildren() const override { return getChildrenCount() != 0; }
     bool dragOrDrop(MASK, bool, EDragAndDropType, void*, std::string&) override { return false; }
     bool filter(LLFolderViewFilter& filter) override;
+    void setPassedFilter(bool passed, S32 filter_generation,
+                         std::string::size_type string_offset = std::string::npos,
+                         std::string::size_type string_size = 0) override;
     bool isFolder() const { return mFolder; }
 
 private:
     std::string mName;
     std::string mSearchName;
     bool mFolder;
+    bool mPrevPassedAllFilters = false;
 };
 
 class InventoryStressSort
@@ -190,6 +194,33 @@ std::string::size_type InventoryStressFilter::getStringMatchOffset(
     LLFolderViewModelItem* item) const
 {
     return mText.empty() ? std::string::npos : item->getSearchableName().find(mText);
+}
+
+void InventoryStressItem::setPassedFilter(bool passed, S32 filter_generation,
+                                          std::string::size_type string_offset,
+                                          std::string::size_type string_size)
+{
+    const bool generation_skip = mMarkedDirtyGeneration >= 0 &&
+        mPrevPassedAllFilters &&
+        mMarkedDirtyGeneration < mRootViewModel.getFilter().getFirstSuccessGeneration();
+    const S32 last_generation = getLastFilterGeneration();
+    LLFolderViewModelItemCommon::setPassedFilter(
+        passed, filter_generation, string_offset, string_size);
+
+    const bool before = mPrevPassedAllFilters;
+    mPrevPassedAllFilters = passedFilter(filter_generation);
+    if (before != mPrevPassedAllFilters || generation_skip ||
+        (mPrevPassedAllFilters &&
+         last_generation < mRootViewModel.getFilter().getFirstRequiredGeneration()))
+    {
+        // LLFolderViewModelItemInventory has the same model-to-view contract:
+        // a filter-generation visibility change must invalidate cached folder
+        // layout. LLFolderViewModelItemCommon only records filter state.
+        if (mFolderViewItem && mFolderViewItem->getParentFolder())
+        {
+            mFolderViewItem->getParentFolder()->requestArrange();
+        }
+    }
 }
 
 bool InventoryStressItem::filter(LLFolderViewFilter& filter)
@@ -307,7 +338,30 @@ public:
     void updateFolderView() { mFolderView->update(); }
     bool folderViewReady() const
     {
-        return !mFolderView->needsArrange() && mFolderView->hasVisibleChildren();
+        const InventoryStressFilter& filter = mModel->getFilter();
+        return mFolderView->isInVisibleChain() &&
+               mScroller->getScrolledView() == mFolderView &&
+               !filter.isModified() &&
+               mRootItem->getLastFilterGeneration() >= filter.getCurrentGeneration() &&
+               !mFolderView->needsArrange() &&
+               mFolderView->hasVisibleChildren() &&
+               mFolderView->getRect().getHeight() >
+                   mScroller->getVisibleContentRect().getHeight();
+    }
+    std::string folderViewReadyStatus() const
+    {
+        const InventoryStressFilter& filter = mModel->getFilter();
+        std::ostringstream status;
+        status << "visible_chain=" << mFolderView->isInVisibleChain()
+               << " scroll_wired=" << (mScroller->getScrolledView() == mFolderView)
+               << " filter_modified=" << filter.isModified()
+               << " filter_generation=" << filter.getCurrentGeneration()
+               << " root_filter_generation=" << mRootItem->getLastFilterGeneration()
+               << " needs_arrange=" << mFolderView->needsArrange()
+               << " visible_children=" << mFolderView->hasVisibleChildren()
+               << " document_height=" << mFolderView->getRect().getHeight()
+               << " viewport_height=" << mScroller->getVisibleContentRect().getHeight();
+        return status.str();
     }
     void setFilter(const std::string& text)
     {
@@ -384,6 +438,7 @@ struct ResultRow
     F64 mFindVisited = 0.0;
     F64 mActionMs = 0.0;
     F64 mFirstFrameMs = 0.0;
+    U32 mReadyWaitFrames = 0;
 };
 
 struct LayoutFinding
@@ -911,6 +966,9 @@ public:
             }
         }
 
+        mInventoryAB = mAB && mInventoryItems > 0 &&
+            std::find(mTargets.begin(), mTargets.end(), "inventory_stress") != mTargets.end();
+
         mCullOn = mAB ? true : mPriorCull;
         if (mAB)
         {
@@ -1046,6 +1104,7 @@ private:
         INVENTORY_SCROLL_SWEEP,
         INVENTORY_FILTER,
         INVENTORY_FILTER_FIRST_FRAME,
+        INVENTORY_FILTER_SETTLE,
         INVENTORY_FILTER_MEASURE,
         INVENTORY_HOVER_SWEEP,
         AUDIT_SIZE_PREP,
@@ -1112,18 +1171,60 @@ private:
         return mSamples.size() >= wanted;
     }
 
+    bool inventoryReadyToMeasure(const char* measure)
+    {
+        InventoryStressFloater* stress = inventoryStressFloater();
+        if (!stress)
+        {
+            abortCurrentTarget("synthetic floater died while settling");
+            return false;
+        }
+        if (!stress->folderViewReady())
+        {
+            FrameSample ignored;
+            takeFrame(ignored);
+            if (++mReadyWaitFrames >= 600)
+            {
+                LL_WARNS("UIPerfSelfTest")
+                    << "inventory_stress: " << measure
+                    << " not ready after 600 frames; "
+                    << stress->folderViewReadyStatus() << "; skipping target"
+                    << LL_ENDL;
+                closeCurrentTarget();
+            }
+            return false;
+        }
+        if (!mReadyWaitLogged)
+        {
+            LL_INFOS("UIPerfSelfTest")
+                << "inventory_stress: " << measure << " settled after "
+                << mReadyWaitFrames << " frame(s)" << LL_ENDL;
+            mReadyWaitLogged = true;
+        }
+        return true;
+    }
+
+    void beginInventorySettle()
+    {
+        mReadyWaitFrames = 0;
+        mReadyWaitLogged = false;
+    }
+
     void addRow(const std::string& floater, const std::string& path,
                 const std::string& measure, F64 action_ms = 0.0,
-                F64 first_frame_ms = 0.0)
+                F64 first_frame_ms = 0.0, U32 ready_wait_frames = 0)
     {
         ResultRow row;
-        row.mPass = mCullOn ? "folder_cull_on" : "folder_cull_off";
+        row.mPass = mCullOn
+            ? (mABPass == 2 ? "folder_cull_on_2" : "folder_cull_on")
+            : "folder_cull_off";
         row.mFloater = floater;
         row.mPath = path;
         row.mMeasure = measure;
         row.mFrames = (U32)mSamples.size();
         row.mActionMs = action_ms;
         row.mFirstFrameMs = first_frame_ms;
+        row.mReadyWaitFrames = ready_wait_frames;
         if (!mSamples.empty())
         {
             std::vector<F64> times;
@@ -1769,16 +1870,20 @@ private:
                 FrameSample ignored;
                 takeFrame(ignored);
                 // Never hang the runner on a fixture that never arranges.
-                if (++mReadyWaitFrames > 600)
+                if (++mReadyWaitFrames >= 600)
                 {
-                    LL_WARNS("UIPerfSelfTest") << "inventory_stress: folder view not ready after 600 frames; skipping target" << LL_ENDL;
+                    LL_WARNS("UIPerfSelfTest")
+                        << "inventory_stress: folder view not ready after 600 frames; "
+                        << stress->folderViewReadyStatus() << "; skipping target"
+                        << LL_ENDL;
                     mPhase = CLOSE;
                 }
                 return false;
             }
             FrameSample sample;
             if (!takeFrame(sample)) return false;
-            addRow(mTargets[mTargetIndex], "", "open", mActionMs, sample.mUiMs);
+            addRow(mTargets[mTargetIndex], "", "open", mActionMs, sample.mUiMs,
+                   mReadyWaitFrames);
             mPhase = isInventoryStress() ? INVENTORY_TOP : DEFAULT_MEASURE;
             break;
         }
@@ -1789,13 +1894,16 @@ private:
             InventoryStressFloater* stress = inventoryStressFloater();
             if (!stress) { abortCurrentTarget("synthetic floater type mismatch"); break; }
             stress->scroller()->goToTop();
+            beginInventorySettle();
             mPhase = INVENTORY_TOP_MEASURE;
             break;
         }
         case INVENTORY_TOP_MEASURE:
+            if (!inventoryReadyToMeasure("scroll_top")) break;
             if (collectInventoryTop(mFrames))
             {
-                addRow("inventory_stress", "synthetic", "scroll_top");
+                addRow("inventory_stress", "synthetic", "scroll_top", 0.0, 0.0,
+                       mReadyWaitFrames);
                 mPhase = INVENTORY_MIDDLE;
             }
             break;
@@ -1813,13 +1921,16 @@ private:
             const S32 overflow = llmax(0, scroller->getScrolledView()->getRect().getHeight() -
                                          scroller->getVisibleContentRect().getHeight());
             scroller->setDocPosVertical(overflow / 2);
+            beginInventorySettle();
             mPhase = INVENTORY_MIDDLE_MEASURE;
             break;
         }
         case INVENTORY_MIDDLE_MEASURE:
+            if (!inventoryReadyToMeasure("scroll_middle")) break;
             if (collect(mFrames))
             {
-                addRow("inventory_stress", "synthetic", "scroll_middle");
+                addRow("inventory_stress", "synthetic", "scroll_middle", 0.0, 0.0,
+                       mReadyWaitFrames);
                 mPhase = INVENTORY_BOTTOM;
             }
             break;
@@ -1830,13 +1941,16 @@ private:
             InventoryStressFloater* stress = inventoryStressFloater();
             if (!stress) { abortCurrentTarget("synthetic floater died"); break; }
             stress->scroller()->goToBottom();
+            beginInventorySettle();
             mPhase = INVENTORY_BOTTOM_MEASURE;
             break;
         }
         case INVENTORY_BOTTOM_MEASURE:
+            if (!inventoryReadyToMeasure("scroll_bottom")) break;
             if (collect(mFrames))
             {
-                addRow("inventory_stress", "synthetic", "scroll_bottom");
+                addRow("inventory_stress", "synthetic", "scroll_bottom", 0.0, 0.0,
+                       mReadyWaitFrames);
                 mPhase = INVENTORY_SCROLL_SWEEP;
             }
             break;
@@ -1871,6 +1985,7 @@ private:
             stress->setFilter("a");
             mActionMs = timer.getElapsedTimeF64() * 1000.0;
             stress->updateFolderView();
+            beginInventorySettle();
             mPhase = INVENTORY_FILTER_FIRST_FRAME;
             break;
         }
@@ -1879,14 +1994,20 @@ private:
             FrameSample sample;
             if (!takeFrame(sample)) break;
             mFirstFrameMs = sample.mUiMs;
-            mPhase = INVENTORY_FILTER_MEASURE;
+            mPhase = INVENTORY_FILTER_SETTLE;
             break;
         }
+        case INVENTORY_FILTER_SETTLE:
+            if (inventoryReadyToMeasure("filter_a"))
+            {
+                mPhase = INVENTORY_FILTER_MEASURE;
+            }
+            break;
         case INVENTORY_FILTER_MEASURE:
             if (collect(mFrames))
             {
                 addRow("inventory_stress", "synthetic", "filter_a",
-                       mActionMs, mFirstFrameMs);
+                       mActionMs, mFirstFrameMs, mReadyWaitFrames);
                 mActionMs = 0.0;
                 mPhase = INVENTORY_HOVER_SWEEP;
             }
@@ -2237,13 +2358,26 @@ private:
             break;
         }
         case NEXT_PASS:
-            if (mAB && mCullOn)
+            if (mAB && mABPass == 0)
             {
                 FrameSample ignored;
                 takeFrame(ignored);
+                mABPass = 1;
                 mCullOn = false;
                 // ui-draw-lint: allow(setting-write) one-shot self-test toggle, login screen only
                 gSavedSettings.setBOOL("UIFolderViewCull", false);
+                mSamples.clear();
+                mPhase = BASELINE;
+            }
+            else if (mAB && mABPass == 1 && mInventoryAB)
+            {
+                FrameSample ignored;
+                takeFrame(ignored);
+                mABPass = 2;
+                mCullOn = true;
+                mTargets.assign(1, "inventory_stress");
+                // ui-draw-lint: allow(setting-write) one-shot self-test toggle, login screen only
+                gSavedSettings.setBOOL("UIFolderViewCull", true);
                 mSamples.clear();
                 mPhase = BASELINE;
             }
@@ -2270,7 +2404,7 @@ private:
         llofstream out(path.c_str(), std::ios::out | std::ios::trunc);
         out << "pass,floater,tab_path,measure,frames,ui_mean_ms,ui_p95_ms,ui_max_ms,"
                "views_drawn_mean,views_culled_mean,find_calls_mean,find_visited_mean,"
-               "action_ms,first_frame_ui_ms\n";
+               "action_ms,first_frame_ui_ms,ready_wait_frames\n";
         out << std::fixed << std::setprecision(4);
         for (const ResultRow& row : mRows)
         {
@@ -2279,7 +2413,8 @@ private:
                 << row.mFrames << ',' << row.mMean << ',' << row.mP95 << ','
                 << row.mMax << ',' << row.mDrawn << ',' << row.mCulled << ','
                 << row.mFindCalls << ',' << row.mFindVisited << ','
-                << row.mActionMs << ',' << row.mFirstFrameMs << '\n';
+                << row.mActionMs << ',' << row.mFirstFrameMs << ','
+                << row.mReadyWaitFrames << '\n';
         }
         out.flush();
         LL_INFOS("UIPerfSelfTest") << "UIPerfSelfTest summary: wrote "
@@ -2371,6 +2506,8 @@ private:
     U32 mInventoryItems;
     bool mPriorCull;
     bool mCullOn = true;
+    U32 mABPass = 0;
+    bool mInventoryAB = false;
     bool mRestored = false;
     Phase mPhase = WAIT_SETTLE;
     LLFrameTimer mSettle;
@@ -2391,6 +2528,7 @@ private:
     bool mInDefaultScroll = false;
     U32 mSettleFrames = 0;
     U32 mReadyWaitFrames = 0;
+    bool mReadyWaitLogged = false;
     F64 mActionMs = 0.0;
     F64 mFirstFrameMs = 0.0;
     LLFrameTimer mUiFrameStall;

@@ -32,6 +32,7 @@ $allTargets = @('director', 'lightbox', 'exposure_hub', 'dance_ball',
   'cinematic_camera', 'ghost_studio', 'ultimate_diopter', 'pose_polish',
   'inventory_stress')
 $targets = if ($Floaters -eq 'all') { $allTargets } else { @($Floaters.Split(',') | ForEach-Object { $_.Trim() } | Where-Object { $_ }) }
+$inventoryRequested = $Inventory -gt 0 -and $targets -contains 'inventory_stress'
 
 $logsDir = Join-Path $env:APPDATA 'AlchemyMachinima\logs'
 $csvPath = Join-Path $logsDir 'ui_perf_selftest.csv'
@@ -143,6 +144,27 @@ $stamp = Get-Date -Format 'yyyyMMdd_HHmmss'
 $dest = Join-Path $destDir "ui_perf_$stamp.csv"
 Copy-Item -LiteralPath $csvFile.FullName -Destination $dest
 $rows = Import-Csv -LiteralPath $dest
+$inventoryMissing = @()
+if ($inventoryRequested) {
+  $inventoryMeasures = @('open', 'scroll_top', 'scroll_middle', 'scroll_bottom',
+    'scroll_sweep', 'filter_a', 'hover_sweep')
+  $inventoryPasses = if ($AB) {
+    @('folder_cull_on', 'folder_cull_off', 'folder_cull_on_2')
+  } else {
+    @($rows | Where-Object floater -eq 'inventory_stress' | Select-Object -ExpandProperty pass -Unique)
+  }
+  if (-not $inventoryPasses.Count) { $inventoryPasses = @('(no inventory pass)') }
+  foreach ($pass in $inventoryPasses) {
+    $emitted = @($rows | Where-Object { $_.pass -eq $pass -and $_.floater -eq 'inventory_stress' } |
+      Select-Object -ExpandProperty measure -Unique)
+    foreach ($measure in $inventoryMeasures) {
+      if ($emitted -notcontains $measure) { $inventoryMissing += "$pass/$measure" }
+    }
+  }
+  if ($inventoryMissing.Count) {
+    Write-Host "INVENTORY FIXTURE INCOMPLETE: missing measure row(s): $($inventoryMissing -join ', ')" -ForegroundColor Red
+  }
+}
 $baselines = @{}
 foreach ($row in ($rows | Where-Object measure -eq 'baseline')) {
   $baselines[$row.pass] = $row
@@ -189,23 +211,49 @@ $ranked = foreach ($row in ($rows | Where-Object { $_.measure -ne 'baseline' }))
 $ranked | Sort-Object MeanDeltaMs -Descending | Format-Table -AutoSize
 
 if ($AB) {
-  Write-Host "`nFolder-view cull on/off mean delta (positive = off is slower):"
-  $on = @{}
+  Write-Host "`nFolder-view cull on/off mean delta (positive = off is slower; inventory ON is ON1/ON2 mean):"
+  $on1 = @{}
   foreach ($row in ($rows | Where-Object pass -eq 'folder_cull_on')) {
-    $on["$($row.floater)|$($row.tab_path)|$($row.measure)"] = $row
+    $on1["$($row.floater)|$($row.tab_path)|$($row.measure)"] = $row
+  }
+  $on2 = @{}
+  foreach ($row in ($rows | Where-Object pass -eq 'folder_cull_on_2')) {
+    $on2["$($row.floater)|$($row.tab_path)|$($row.measure)"] = $row
   }
   $deltas = foreach ($row in ($rows | Where-Object pass -eq 'folder_cull_off')) {
     $key = "$($row.floater)|$($row.tab_path)|$($row.measure)"
-    if ($on.ContainsKey($key)) {
+    if ($on1.ContainsKey($key)) {
+      $onMean = [double]$on1[$key].ui_mean_ms
+      $onSamples = 1
+      if ($on2.ContainsKey($key)) {
+        $onMean = ($onMean + [double]$on2[$key].ui_mean_ms) / 2.0
+        $onSamples = 2
+      }
       [pscustomobject]@{
         Floater = $row.floater
         Tab = $row.tab_path
         Measure = $row.measure
-        OffMinusOnMs = [math]::Round([double]$row.ui_mean_ms - [double]$on[$key].ui_mean_ms, 3)
+        OnSamples = $onSamples
+        OffMinusOnMs = [math]::Round([double]$row.ui_mean_ms - $onMean, 3)
       }
     }
   }
   $deltas | Sort-Object OffMinusOnMs -Descending | Format-Table -AutoSize
+  $drift = foreach ($key in $on2.Keys) {
+    if ($on1.ContainsKey($key)) {
+      $parts = $key.Split('|', 3)
+      [pscustomobject]@{
+        Floater = $parts[0]
+        Tab = $parts[1]
+        Measure = $parts[2]
+        On2MinusOn1Ms = [math]::Round([double]$on2[$key].ui_mean_ms - [double]$on1[$key].ui_mean_ms, 3)
+      }
+    }
+  }
+  if ($drift) {
+    Write-Host "`nFolder-view cull ON1 vs ON2 drift (positive = ON2 is slower):"
+    $drift | Sort-Object On2MinusOn1Ms -Descending | Format-Table -AutoSize
+  }
 }
 
 Write-Host "Saved: $dest"
@@ -328,10 +376,13 @@ if ($layoutFlagged) {
 $flagged = @($ranked | Where-Object { $_.Flag })
 if ($flagged.Count) {
   Write-Host "FLAGGED: $($flagged.Count) measurement(s)" -ForegroundColor Red
+} elseif ($inventoryMissing.Count) {
+  Write-Host 'Performance thresholds were not evaluated as successful because the inventory fixture was incomplete.' -ForegroundColor Red
 } else {
   Write-Host 'No performance thresholds flagged.' -ForegroundColor Green
 }
 if ($crashes.Count) { exit 3 }
+if ($inventoryMissing.Count) { exit 5 }
 if ($flagged.Count) { exit 1 }
 if ($layoutFlagged) { exit 4 }
 exit 0
