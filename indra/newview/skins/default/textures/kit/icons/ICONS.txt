@@ -1,0 +1,51 @@
+Director kit icons - transparent white PNGs for the viewer UI (tinted at draw time).
+Source: I:\alchemy-machinima\doc\director_kit\icons (41 exported of 44 SVG).
+Each icon has <name>_16.png (16x16) and <name>_32.png (32x32), RGBA, white on transparent.
+
+Icons:
+  armed_chevron_up
+  cast_chip_chevron_up
+  cast_row_framed
+  cast_row_looks_at
+  cast_tool_animesh
+  cast_tool_focus
+  cast_tool_remove
+  cast_tool_you
+  chevron_down_10
+  error_circle
+  legend_far
+  legend_near
+  legend_off
+  master_off_power
+  rail_camera
+  rail_capture
+  rail_cast
+  rail_lens
+  rail_light
+  rail_look
+  rail_performance
+  rail_world
+  redo
+  reset_arc
+  reset_row
+  search
+  toast_check
+  transport_action_play
+  transport_action_stop
+  transport_legend
+  transport_marks_reset
+  transport_marks_set
+  transport_paths
+  transport_play
+  transport_stop
+  trash
+  undo
+  who_chevron_10
+  who_person
+  window_close
+  window_minimize
+
+Not exported (source is a mockup template with unresolved {{...}} placeholders):
+  dial_arc
+  dial_compass
+  light_map_flip_side
