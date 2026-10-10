@@ -1135,7 +1135,9 @@ bool LLViewerWindow::handleAnyMouseClick(LLWindow *window, LLCoordGL pos, MASK m
     S32 y = pos.mY;
     x = ll_round((F32)x / mDisplayScale.mV[VX]);
     y = ll_round((F32)y / mDisplayScale.mV[VY]);
-    ALKitHistory::notePointer(mRootView?mRootView->childFromPoint(x,y,true):nullptr);
+    LLUICtrl* top = gFocusMgr.getTopCtrl();
+    LLView* hit = (top && top->calcScreenRect().pointInRect(x,y)) ? top : (mRootView?mRootView->childFromPoint(x,y,true):nullptr);
+    ALKitHistory::notePointer(hit);
 
     // Handle non-consuming global keybindings, like voice
     gViewerInput.handleGlobalBindsMouse(clicktype, mask, down);

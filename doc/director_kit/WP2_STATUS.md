@@ -56,3 +56,6 @@ Audit basis: `DIRECTOR_KIT_P0_SPEC.md` sections 3.7-3.12 and 3.16-3.18, WP2 acce
 | n3-n5 | done | ALKitBar accepts external collapsible visibility changes with immediate relayout; corrupt preset saves/deletes notify without touching the file; pointer admission timestamps only hits inside a kit shell. |
 | n6-n7 | done | Selection synchronization prevents cross-page state saves. A WP2 runtime launcher is added to the Scene page bar and wired through the existing Snapshot launcher path, preserving access without touching WP3-generated XUI. |
 | Verification | static only | Scoped `git diff --check` passes. Per instruction, no build, `/Zs`, Python, generated-XUI edit, or commit was run. |
+- **R2-M1 — done:** Passive mode changes and all `navigateTo` work are history-suspended; reveal no longer opens a Mode gesture, while explicit clicks retain their page-attributed undo step.
+- **R2-M2 — done:** Pointer admission checks the on-screen top control first, preserving combo ownership through its ancestry when a dropped list overhangs the Director, then falls back to root hit-testing.
+- **R2-M3 — done:** Removed the C++ Scene-page Snapshot launcher API and injection; WP3-generated page content remains the sole owner.

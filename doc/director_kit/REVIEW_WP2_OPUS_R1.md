@@ -239,3 +239,57 @@ Reviewer: Opus, 2026-10-10. Scope: `git show ee7dc25d37a` (C++ only) against the
 - **n5. Admission window after clicks elsewhere.** The pointer-time admission also fires for clicks on views that do not take focus (toolbar buttons, HUD). A watched setting written by such a click within 0.5 s, while keyboard focus is still in the Director, is recorded. This is low risk; optionally require the click target to be inside the floater, using `gViewerWindow`'s last hit view.
 - **n6. Stale saved state.** The stale `selectPage` `saveState` (N3) can save one page's chip and card state under another page's key, because `saveState` keys by the stale page's own `mPage`. Fixing N3 resolves it.
 - **n7. Snapshot launcher.** `card_snapshot_open` is absent from the generated pages, so v2 loses the Snapshot launcher card. This is WP3 parity, not WP2.
+
+---
+
+# R2 verification (fix commit 4fce34c9033)
+
+Reviewer: Opus, 2026-10-10. Scope: `git show 4fce34c9033` (C++), checked against N1-N4 and n1-n7, followed by a new-bug pass.
+
+**VERDICT: FIX-NEEDED.** 0 BLOCKER, 3 MAJOR (all introduced by this commit), 0 open MINOR from R1-verification.
+
+## N/n findings
+
+| Item | Status | Evidence |
+|---|---|---|
+| N1 | Fixed | `unwrappedPages()` now lists `dance_legacy_host` and `exposure_legacy_host`, which match the `<P>_legacy_host` names. `adoptPage` skips wrapping them, so the panel's parent is the host and `fillPage(host, panel, 30)` fills the page, as v1 did. |
+| N2 | Fixed | `ALKitShell::pageKeyAt` maps points inside `mTabStrip` to the current page, so mode-proxy clicks gesture on the Rig page and the USER mode write records. |
+| N3 | Fixed | `selectPage` ends with `syncSelection()` (`layoutChrome`), and `LLFloaterDirector::onTabChanged` calls it on every tab commit, including the self-test's direct `selectTab`. The `saveState` in `selectPage` now hits the page being left. |
+| N4 | Fixed | `mBuiltPages` (page key to handle) is filled in `pageBuilt`. The label is resolved only when `addEntry` creates a new entry, so coalesced updates on drag frames do no lookups. |
+| n1 | Fixed | Item and Follow-rail labels refresh on open. The dead `setValue(who_pin)` was removed. |
+| n2 | Fixed | The help strip uses `ALKitStyle::TEXT`. |
+| n3 | Fixed | `ALKitBar::setCollapsibleVisible` is used by the `KitShowUIMs` path. |
+| n4 | Fixed | Save and delete on an unreadable store now show a notification. |
+| n5 | Fixed, but regressed M5 | See R2-M2. |
+| n6 | Fixed | Resolved through N3. |
+| n7 | Not fixed as intended | See R2-M3. |
+
+## New MAJOR
+
+**R2-M1. Search-reveal mode switches and `navigateTo` now write history. This contradicts spec 3.5, 3.11 and R2-M-R2.**
+- This commit deleted the `ScopedSuspend` from passive `setModeIndex` (`alkitpage.cpp`, PASSIVE branch) and from `ALKitShell::navigateTo`.
+- It also made `revealCard` open `beginGesture(KEY, mPage, "Mode")` before the passive switch.
+- The Enter key or search-hit click supplies the admission timestamp, so a search jump that flips Easy/Advanced is now recorded as an undo Step, which also clears redo.
+- Any setting write during a page build that a search jump triggers is also recordable again (for example, Rig visibility-sync writes).
+- Spec 3.5: "Search reveal may switch modes, but does not create history." Spec 3.11, "Who suspends", lists "ALKitPage passive mode switches" and "navigateTo".
+- Fix: restore both `ScopedSuspend`s and delete the `beginGesture(KEY,…,"Mode")` line in `revealCard`. N2, user mode clicks, is already solved by `pageKeyAt`.
+
+**R2-M2. Combo picks become non-undoable again when the dropdown extends outside the Director. (Regression of M5 via n5.)**
+- `notePointer` now takes `mRootView->childFromPoint(x, y, true)` (`llviewerwindow.cpp:1138`).
+- A dropped combo list is the top control. It is a child of the combo but lies outside the combo's rect, so `childFromPoint`'s `pointInView` pruning never reaches it.
+- The hit is whatever lies under the list. Where the list overhangs the floater edge, that view is outside the shell, the pointer time is not noted, and the pick is not recorded.
+- Fix: test the top control first:
+  ```cpp
+  LLUICtrl* top = gFocusMgr.getTopCtrl();
+  LLView* hit = (top && top->calcScreenRect().pointInRect(x, y)) ? top : mRootView->childFromPoint(x, y, true);
+  ```
+  `ALKitShell::find(list)` then walks list, combo, shell.
+
+**R2-M3. The "WP2 Snapshot fallback" is out of spec and produces a dead button.**
+- `ALKitShell::pageBuilt` injects `card_snapshot_open` and `card_snapshot_summary` into the `capture_group/scene_options_tab` bar through `ALKitPage::addBarLauncher`.
+- `scene_options_tab` is not in `LLFloaterDirector::bindPage`'s table, so `bindLauncherPage` never runs and "Open Snapshot..." does nothing.
+- It is also out of scope. D2 and WP3 make the generated XUI the sole source of v1-name widgets. C++-synthesised v1 names are invisible to `kit_lint`, `director_parity` and the search index. The button is also placed with `mBarLeftEnd` arithmetic outside the bar's own layout.
+- n7 was a WP3 note: "not WP2".
+- Fix: delete `addBarLauncher` and its call. Hand the missing card to the WP3 generator, which already emits the other launcher cards, and add `scene_options_tab` (or whichever page receives it) to the binder table at that point.
+
+No other new issues: v1 paths are untouched by this commit, apart from the `notePointer` call site. Its cost is one `childFromPoint` per click, which is acceptable.

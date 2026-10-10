@@ -474,6 +474,7 @@ bool ALKitShell::navigateTo(const std::string& path)
 }
 bool ALKitShell::navigateTo(const ALKitTarget& target)
 {
+    ALKitHistory::ScopedSuspend suspend;
     clearSearch();
     LLPanel* panel=ensurePageBuilt(target.page_key);
     if(!panel)return false;
@@ -601,10 +602,6 @@ void ALKitShell::pageBuilt(const std::string&,LLPanel* panel)
     if(!page)page=findFirst<ALKitPage>(panel);
     if(!page)return;
     mBuiltPages[page->pageKey()]=page->getDerivedHandle<ALKitPage>();
-    if(page->pageKey()=="capture_group/scene_options_tab")
-    {
-        page->addBarLauncher("snapshot","Open Snapshot...");
-    }
     layoutChrome();
     std::string prefix=page->pageKey();
     const size_t slash=prefix.rfind('/');

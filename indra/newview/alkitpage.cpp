@@ -514,6 +514,7 @@ void ALKitPage::setModeIndex(S32 index,bool explicit_user)
         {
             if(!explicit_user)
             {
+                ALKitHistory::ScopedSuspend suspend;
                 on=adapter(on,ALKitModeAdapters::PASSIVE);
             }
             else on=adapter(on,ALKitModeAdapters::USER);
@@ -776,7 +777,6 @@ bool ALKitPage::revealCard(ALKitCard*c,bool)
     if(!c)return false;
     for(S32 i=0;i<(S32)mModeDefs.size();++i)if(std::find(mModeDefs[i].cards.begin(),mModeDefs[i].cards.end(),c->id())!=mModeDefs[i].cards.end())
     {
-        if(i!=mModeIndex&&mShell)mShell->history().beginGesture(ALKitHistory::KEY,mPage,"Mode");
         setModeIndex(i,false);
         break;
     }
@@ -845,22 +845,6 @@ void ALKitPage::setWhoPin(const LLSD& value)
 {
     mWhoPinned=value.isDefined()&&!value.asString().empty();
     saveState();
-}
-
-void ALKitPage::addBarLauncher(const std::string& id,const std::string& label)
-{
-    if(!mBar||findChild<LLButton>("card_"+id+"_open"))return;
-    LLButton* button=makeButton("card_"+id+"_open",label);
-    button->reshape(126,24,true);
-    button->setOrigin(mBarLeftEnd+ALKitStyle::COL_GAP,10);
-    mBar->addChild(button);
-    mBarLeftEnd+=126+ALKitStyle::COL_GAP;
-    LLTextBox::Params summary;
-    summary.name="card_"+id+"_summary";
-    summary.rect=LLRect(0,1,1,0);
-    summary.visible=false;
-    mBar->addChild(LLUICtrlFactory::create<LLTextBox>(summary));
-    reshape(getRect().getWidth(),getRect().getHeight(),true);
 }
 
 void ALKitPage::restoreState()
