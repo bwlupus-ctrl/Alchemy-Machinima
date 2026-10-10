@@ -1,10 +1,6 @@
 {
  "version": 1,
- "pending_settings": {
-  "DirectorV2SelectedLight": {"reason": "kit selection state is supplied by the shell/settings work", "citation": "DIRECTOR_KIT_P0_SPEC.md section 3.16", "expires": "WP2"},
-  "DirectorV2LightMapView": {"reason": "light-map view state is supplied by the shell/settings work", "citation": "DIRECTOR_KIT_P0_SPEC.md sections 3.14 and 3.16", "expires": "WP2"},
-  "DirectorV2LightMapSideFrom": {"reason": "light-map side state is supplied by the shell/settings work", "citation": "DIRECTOR_KIT_P0_SPEC.md sections 3.14 and 3.16", "expires": "WP2"}
- },
+ "pending_settings": {},
  "pending_homes": {
   "BDMergeProjectorVolumetricsFeather": {"reason": "Atmosphere becomes the writable home when converted", "citation": "DIRECTOR_KIT_ROLLOUT_SPEC.md sections 5 and 7", "expires": "WP11"},
   "BDMergeProjectorVolumetricsMaxDistance": {"reason": "Atmosphere becomes the writable home when converted", "citation": "DIRECTOR_KIT_ROLLOUT_SPEC.md sections 5 and 7", "expires": "WP11"}
@@ -20,18 +16,18 @@
   "CineLightRigNightMaskEnabled": {"attrs": ["setting", "enable_setting"], "reason": "Easy row and Advanced card expose the same page-local enable", "citation": "DIRECTOR_KIT_P0_SPEC.md section 4.4", "expires": "WP12"}
  },
  "xui_legacy_v1_findings": [
-  "panel_dpage_cast_dance.xml|no-scroller-overflow|dance_tab_content",
-  "panel_dpage_cast_dance.xml|clipped|director_dance_ball_panel",
-  "panel_dpage_cast_ghosts.xml|no-scroller-overflow|ghosts_tab_content",
-  "panel_dpage_cast_ghosts.xml|clipped|ghost_studio_panel",
-  "panel_dpage_cast_path.xml|scroll-content-overflow|path_scroll",
-  "panel_dpage_lens_filters.xml|no-scroller-overflow|filters_tab_content",
-  "panel_dpage_lens_filters.xml|clipped|director_lens_looks_panel",
-  "panel_dpage_look_actor_style.xml|scroll-content-overflow|actor_style_scroll",
-  "panel_dpage_performance_animate.xml|scroll-content-overflow|animate_scroll",
-  "panel_dpage_performance_gaze.xml|no-scroller-overflow|gaze_tab_content",
-  "panel_dpage_performance_gaze.xml|clipped|director_gaze_panel",
-  "panel_dpage_world_weather.xml|scroll-content-overflow|weather_scroll"
+  "panel_dpage_cast_dance.xml|no-scroller-overflow|dance_tab_content: children's union exceeds height without an enclosing scroll_container able to scroll that axis",
+  "panel_dpage_cast_dance.xml|clipped|director_dance_ball_panel (0,30,711,568) extends outside dance_tab_content (0,0,711,525)",
+  "panel_dpage_cast_ghosts.xml|no-scroller-overflow|ghosts_tab_content: children's union exceeds height without an enclosing scroll_container able to scroll that axis",
+  "panel_dpage_cast_ghosts.xml|clipped|ghost_studio_panel (0,8,354,760) extends outside ghosts_tab_content (0,0,374,550)",
+  "panel_dpage_cast_path.xml|scroll-content-overflow|path_scroll: content path_scroll_content is smaller than its children on height (not auto-fit)",
+  "panel_dpage_lens_filters.xml|no-scroller-overflow|filters_tab_content: children's union exceeds height without an enclosing scroll_container able to scroll that axis",
+  "panel_dpage_lens_filters.xml|clipped|director_lens_looks_panel (0,4,400,764) extends outside filters_tab_content (0,0,711,525)",
+  "panel_dpage_look_actor_style.xml|scroll-content-overflow|actor_style_scroll: content actor_style_scroll_content is smaller than its children on height (not auto-fit)",
+  "panel_dpage_performance_animate.xml|scroll-content-overflow|animate_scroll: content animate_scroll_content is smaller than its children on width and height (not auto-fit)",
+  "panel_dpage_performance_gaze.xml|no-scroller-overflow|gaze_tab_content: children's union exceeds height without an enclosing scroll_container able to scroll that axis",
+  "panel_dpage_performance_gaze.xml|clipped|director_gaze_panel (0,30,516,1910) extends outside gaze_tab_content (0,0,711,525)",
+  "panel_dpage_world_weather.xml|scroll-content-overflow|weather_scroll: content weather_scroll_content is smaller than its children on height (not auto-fit)"
  ],
  "shared_writers": {
   "DirectorV2SelectedLight": {"attrs": ["sel_setting", "mirror_setting"], "reason": "shared selection state, not authored content", "citation": "DIRECTOR_KIT_P0_SPEC.md sections 3.16 and 5.1", "expires": "WP12"}

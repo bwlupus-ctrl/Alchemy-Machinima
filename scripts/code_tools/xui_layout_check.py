@@ -692,12 +692,18 @@ def finalize_findings(findings: list[Finding]) -> list[Finding]:
 
 
 def finding_subject(finding: Finding) -> str:
-    """Stable widget/scroller identity used by the exact legacy baseline."""
+    """Widget/scroller identity used when comparing generated and v1 pages."""
     return finding.message.split(" ", 1)[0].rstrip(":")
 
 
 def finding_key(filename: str, finding: Finding) -> str:
-    return f"{filename}|{finding.kind}|{finding_subject(finding)}"
+    """Exact legacy finding identity, including authored/calculated geometry.
+
+    The message is intentionally not rectangle-normalized here: growth of an
+    already-baselined widget must drift the key instead of inheriting the old
+    widget's allowance.
+    """
+    return f"{filename}|{finding.kind}|{finding.message}"
 
 
 def legacy_v1_baseline() -> set[str]:
@@ -922,10 +928,12 @@ class SourceIndex:
         self.class_sources: dict[str, list[str]] = {}
         self.panel_classes: dict[str, set[str]] = {}
         self.xui_parents: dict[str, set[str]] = {}
+        self.lazy_page_files: set[str] = set()
         self._owner_cache: dict[tuple[str, tuple[str, ...]], list[str]] = {}
         self._visibility_cache: dict[str, set[str]] = {}
         self.all_dynamic_visibility: set[str] = set()
         source_dir = repo_root / "indra" / "newview"
+        self.source_dir = source_dir
         xui_dir = source_dir / "skins" / "default" / "xui" / "en"
         for xui_path in xui_dir.glob("*.xml"):
             try:
@@ -936,6 +944,8 @@ class SourceIndex:
                 child = node.get("page_file")
                 if child:
                     self.xui_parents.setdefault(child, set()).add(xui_path.name)
+                    if node.tag == "kit_lazy_page":
+                        self.lazy_page_files.add(child)
         for path in source_dir.glob("*.cpp"):
             try:
                 self.files[path] = path.read_text(encoding="utf-8", errors="replace")
@@ -1002,6 +1012,10 @@ class SourceIndex:
         return result
 
     def fits_tabs_at_runtime(self, xui_name: str) -> bool:
+        if xui_name in self.lazy_page_files:
+            lazy = self.files.get(self.source_dir / "alkitlazypage.cpp", "")
+            fit = self.files.get(self.source_dir / "alscrollfit.cpp", "")
+            return ".adoptPage(" in lazy and "Controller::adoptPage(" in fit
         return any("installForTabs" in source for source in self.owner_sources(xui_name, []))
 
     def copies_fit_grid_height(self, panel_class: str, grid_names: list[str]) -> bool:
@@ -1030,10 +1044,12 @@ def scroller_wiring_findings(root: Node, path: Path, source_index: SourceIndex) 
     # LLScrollbar::scrollByWheel MUST call LLSliderWheel::noteScroll(this) when it
     # really moves."  Ordinary LLScrollContainer wheel handling is therefore native;
     # this check requires ALScrollFit sizing/focus wiring, never the retired WheelGuard.
-    broad_fit = bool(re.search(r"(?:\.installForTabs\s*\(|ALScrollFit::fitAll\s*\()", combined))
+    lazy_hosted = path.name in source_index.lazy_page_files
+    broad_fit = (source_index.fits_tabs_at_runtime(path.name) if lazy_hosted else bool(
+        re.search(r"(?:\.installForTabs\s*\(|ALScrollFit::fitAll\s*\()", combined)))
     findings: list[Finding] = []
     for scroller in scrollers:
-        named_fit = bool(
+        named_fit = not lazy_hosted and bool(
             scroller.name in combined
             and re.search(
                 r"(?:ALScrollFit::(?:fitContainer|fitAll)|\.installForTabs|\.installNamed|\.fit)\s*\(",
@@ -1453,6 +1469,17 @@ def run_selftest(json_output: bool) -> int:
     if not json_output:
         print(f"{'PASS' if legacy_passed else 'FAIL'} kit_legacy_page_broken.xml: "
               f"legacy kit_page matches v1 leaf findings ({len(legacy_findings)})")
+    baseline_a = finding_key("fixture.xml", Finding(
+        "clipped", 1, "widget (0,0,10,10) extends outside root (0,0,5,5)"))
+    baseline_b = finding_key("fixture.xml", Finding(
+        "clipped", 1, "widget (0,0,10,9000) extends outside root (0,0,5,5)"))
+    geometry_key_passed = baseline_a != baseline_b
+    passed = passed and geometry_key_passed
+    reports.append({"fixture": "legacy baseline geometry key", "expected": "growth changes key",
+                    "passed": geometry_key_passed})
+    if not json_output:
+        print(f"{'PASS' if geometry_key_passed else 'FAIL'} legacy baseline geometry key: "
+              "baselined widget growth changes the exact key")
     # Real-tree regression: each of the 31 serialized legacy pages must have
     # the same finding keys as the v1 leaf it copied.  This prevents both
     # wrapper-size vacuity and serialization-only drift.
@@ -1503,6 +1530,27 @@ def run_selftest(json_output: bool) -> int:
     except ValueError:
         baseline_ok = False
     source_index = SourceIndex(repo)
+    lazy_probe = "panel_dpage_cast_path.xml"
+    lazy_path = source_index.source_dir / "alkitlazypage.cpp"
+    fit_path = source_index.source_dir / "alscrollfit.cpp"
+    adopt_present = source_index.fits_tabs_at_runtime(lazy_probe)
+    original_lazy = source_index.files.get(lazy_path, "")
+    original_fit = source_index.files.get(fit_path, "")
+    source_index.files[lazy_path] = original_lazy.replace(".adoptPage(", ".removedAdoptPage(")
+    missing_lazy_rejected = not source_index.fits_tabs_at_runtime(lazy_probe)
+    missing_lazy_kinds = {item.kind for item in check_file(xui / lazy_probe, source_index)}
+    source_index.files[lazy_path] = original_lazy
+    source_index.files[fit_path] = original_fit.replace("Controller::adoptPage(", "Controller::removedAdoptPage(")
+    missing_fit_rejected = not source_index.fits_tabs_at_runtime(lazy_probe)
+    source_index.files[fit_path] = original_fit
+    adopt_passed = (adopt_present and missing_lazy_rejected and missing_fit_rejected
+                    and {"scroller-wiring", "scroll-content-overflow"} <= missing_lazy_kinds)
+    passed = passed and adopt_passed
+    reports.append({"fixture": "lazy-page adoptPage wiring", "expected": "both call and implementation required",
+                    "passed": adopt_passed})
+    if not json_output:
+        print(f"{'PASS' if adopt_passed else 'FAIL'} lazy-page adoptPage wiring: "
+              "alkitlazypage.cpp call and alscrollfit.cpp implementation are both required")
     runtime_observed = {
         finding_key(path.name, item)
         for path in sorted(xui.glob("panel_dpage_*.xml")) if is_legacy_page(path)

@@ -498,6 +498,15 @@ def check_settings(tree: Tree, types: dict[str, str], pending: dict[str, object]
     return out
 
 
+def check_stale_pending_settings(types: dict[str, str], pending: dict[str, object]) -> list[Finding]:
+    """Pending is only for unresolved dependencies; resolved entries are policy rot."""
+    return [
+        Finding("gate_policy.json", 1, "error", "stale-policy",
+                f"pending_settings '{name}' is stale: the setting now exists as {types[name]}")
+        for name in sorted(set(types) & set(pending))
+    ]
+
+
 def check_cards(tree: Tree) -> list[Finding]:
     out: list[Finding] = []
     for page in tree.root.walk():
@@ -807,6 +816,7 @@ def lint(inputs: Inputs) -> Report:
         Finding("settings_files.xml", 1, "error", "setting-graph", f"settings include '{name}' is missing")
         for name in problems
     ]
+    findings += check_stale_pending_settings(types, policy["pending_settings"])
     for tree in trees:
         findings += check_tree(tree, types, inputs_sha, policy, inputs.release_wp)
     findings += check_names(trees, allow)
@@ -895,6 +905,14 @@ def run_selftest(as_json: bool) -> int:
     record("pending_setting_policy",
            len(pending) == 1 and pending[0].rule == "pending-wp" and pending[0].severity == "warn",
            "explicit missing setting is reported as pending-wp")
+    stale_pending = check_stale_pending_settings(
+        {"FixtureLanded": "S32"},
+        {"FixtureLanded": {"expires": "WP2", "reason": "fixture", "citation": "fixture"}},
+    )
+    record("R1V_N2_stale_pending_setting",
+           len(stale_pending) == 1 and stale_pending[0].severity == "error"
+           and stale_pending[0].rule == "stale-policy",
+           "a pending dependency that now resolves is an error")
 
     help_node = Node("kit_row", {"widget": "fixture_launcher", "help": "Open Lightbox."}, 8, None)
     help_tree = Tree("help_policy_fixture.xml", help_node, "fixture_tab", None)

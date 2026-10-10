@@ -624,12 +624,9 @@ def launcher_page(group: dict, page: dict, target: dict) -> tuple[ET.Element, se
     card = ET.SubElement(body, "kit_card", {"name": "kc_open", "id": "open", "title": page.get("label", ""),
                          "kind": "launcher", "target": target["target"], "target_tab": target["target_tab"],
                          "button_label": target["button_label"]})
-    widget = "open_" + page["name"].removesuffix("_tab")
-    row = ET.SubElement(card, "kit_row", {"kind": "button", "widget": widget,
-                        "label": target["button_label"], "help": target["help"],
-                        "action": f"lightbox:{target['target_tab']}", "bind": "code"})
-    ET.SubElement(row, "button", {"name": widget, "label": target["button_label"]})
-    return root, {widget, widget + "_label"}
+    # ALKitCard creates kc_open_launch for kind=launcher.  A serialized row
+    # here would draw a second, identical button.
+    return root, {"kc_open", "kc_open_launch"}
 
 
 def index_bytes(data: dict, config: dict, classes: dict[str, str], note: str,
@@ -644,11 +641,8 @@ def index_bytes(data: dict, config: dict, classes: dict[str, str], note: str,
         page = apply_config(raw_page, config.get("p0_pages", {}).get(key, {}))
         legacy = classification == "legacy"
         if classification == "launcher":
-            target = config["launcher_targets"][key]
             page = copy.deepcopy(raw_page)
-            page["cards"] = [{"id": "open", "t": page.get("label", ""), "rows": [{
-                "w": "open_" + page["name"].removesuffix("_tab"), "l": target["button_label"],
-                "k": "button", "h": target["help"]}]}]
+            page["cards"] = [{"id": "open", "t": page.get("label", ""), "rows": []}]
             page["sections"] = [{"id": "open", "cards": [0]}]
         section_for = {}
         for section in page.get("sections", []):
@@ -723,7 +717,7 @@ def floater_tree(data: dict, page_files: dict[str, str], v1: ET.Element) -> ET.E
         node.set("image_color", "KitAccent" if name == "btn_action" else "KitRecord")
         node.set("label_color", "Black" if name == "btn_action" else "White")
         node.set("width", str(widths[name])); node.set("height", "28"); bar.append(node)
-    for name, image in (("btn_arm", "Flag"), ("btn_take_play", "Play_Off"),
+    for name, image in (("btn_arm", "Kit_Circle"), ("btn_take_play", "Play_Off"),
                         ("btn_take_stop", "Stop_Off")):
         ET.SubElement(bar, "button", {"name": name, "label": "", "image_overlay": image,
                                       "width": str(widths[name]), "height": "28"})
@@ -803,15 +797,14 @@ def generate(data_path: Path, config_path: Path, out_dir: Path) -> tuple[dict[Pa
             kit_rows = sum(1 for node in root.iter("kit_row"))
         else:
             root, names = launcher_page(group, raw_page, config["launcher_targets"][key])
-            hosted, kit_rows = 0, 1
+            hosted, kit_rows = 0, 0
         file_name = page_filename(group["name"], raw_page["name"])
         page_files[key] = file_name
         outputs[out_dir / file_name] = xml_bytes(root, note)
         generated_rows[key] = {str(node.get("widget")) for node in root.iter("kit_row") if node.get("widget")}
         data_rows = sum(1 for _ in all_rows(raw_page))
-        predicate = ("verbatim v1 leaf" if classification == "legacy" else
-                     "all rows pure-setting/link" if classification == "pure kit (new)" else
-                     "explicit p0_pages" if classification == "kit (P0)" else "explicit launcher_targets")
+        pure_kit = all(is_pure_row(row) for row in all_rows(raw_page))
+        predicate = f"pure-kit-eligible:{str(pure_kit).lower()}"
         report_lines.append(f"{key}: {classification}; predicate={predicate}; rows={data_rows}; kit_rows={kit_rows}; "
                             f"hosted_v1_nodes={hosted}; upgrades={sum(x.startswith('UPGRADE') for x in details)}; "
                             f"warnings={sum(x.startswith('WARNING') for x in details)}")
@@ -824,7 +817,7 @@ def generate(data_path: Path, config_path: Path, out_dir: Path) -> tuple[dict[Pa
         report_lines.append(f"KITNAMES {raw_page['name']}:" + (" " + names_text if names_text else ""))
     outputs[out_dir / "floater_director_v2.xml"] = xml_bytes(floater_tree(data, page_files, v1), note)
     outputs[out_dir / "director_kit_index.xml"] = index_bytes(data, config, classes, note, generated_rows)
-    report_lines += ["", "ICON_TEXTURES Flag Refresh_Off Play_Off Stop_Off Inv_Notecard",
+    report_lines += ["", "ICON_TEXTURES Flag Kit_Circle Refresh_Off Play_Off Stop_Off Inv_Notecard",
                      "TRANSPORT take_timecode uses LLFlycamRecorder playhead at 2 Hz; generated visible",
                      "CONTROL_NAME cine_rimq_actors_alpha: data widget spelling differs; v1 setting CineRigRimActorsOnlyAlpha is authoritative"]
     report_path = REPORT if out_dir.resolve() == DEFAULT_OUT.resolve() else out_dir / "gen_report.txt"
@@ -867,6 +860,11 @@ def selftest(data_path: Path, config_path: Path, out_dir: Path) -> int:
                  for node in ET.fromstring(payload, parser=parser()).iter("compass_dial")]
         checks.append(("all compass dials use kit geometry without duplicate readout",
                        bool(dials) and all(node.get("kit_geometry") == "true" and node.get("show_readout") == "false" for node in dials)))
+        tron = ET.fromstring(outputs[out_dir / "panel_dpage_look_tron.xml"], parser=parser())
+        launcher_cards = [node for node in tron.iter("kit_card") if node.get("kind") == "launcher"]
+        checks.append(("launcher card owns exactly one runtime button",
+                       len(launcher_cards) == 1 and not list(tron.iter("kit_row"))
+                       and not list(tron.iter("button"))))
         checks.append(("35 page files", sum(path.name.startswith("panel_dpage_") for path in outputs) == 35))
         for label, ok in checks:
             print(("ok: " if ok else "FAIL: ") + label)

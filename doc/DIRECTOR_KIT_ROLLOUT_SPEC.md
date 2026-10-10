@@ -167,6 +167,23 @@ Convert Weather, Atmosphere, Shadows & Probes, Time, and Scene. Review Weather, 
 
 Run source generation/check, page/data lint, static/runtime parity, settings/home lint, all bounded state manifests, XUI layout self-tests, UI-draw lint, unit tests, performance gates, and default-v1 regression. Archive state manifests and failure screenshots. Only after adversarial review reaches zero findings, make one fresh build and run the 35-page in-world matrix; only then may normal v2 selection be exposed.
 
+Before running the WP12 release-mode lint, replace the temporary
+`same_page_mode_writers` policy with declared per-row `mode_pair` metadata for
+these eight intentional Easy/Advanced writer pairs (including the listed
+writer attributes):
+
+- `CineLightRigMasterEV` — `setting`
+- `CineLightRigMasterTempMired` — `setting`
+- `CineLightRigRatio` — `setting`
+- `CineLightRigLiveProbeEnabled` — `enable_setting`
+- `CineLightRigLiveProbeRadius` — `setting`
+- `CineLightRigLiveProbeAmbiance` — `setting`
+- `CineLightRigLiveProbeBounceKeep` — `setting`
+- `CineLightRigNightMaskEnabled` — `setting`, `enable_setting`
+
+The WP12 ship gate intentionally fails while any of those expiring policy
+entries remains; they describe legitimate mode pairs, not permanent waivers.
+
 ## 8. Review R2 resolution (rollout)
 
 | R2 finding | Resolution in this rewrite |
