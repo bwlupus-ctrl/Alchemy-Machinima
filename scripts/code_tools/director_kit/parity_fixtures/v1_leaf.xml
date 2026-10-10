@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes" ?>
+<!-- Parity fixture: v1 floater with a page leaf (fixture_tab) and a sibling tab that must not be scoped in. -->
+<floater name="fixture_floater" title="Fixture">
+ <tab_container name="fixture_tabs">
+  <panel name="fixture_tab" label="Fixture">
+   <slider name="fx_slider" control_name="FxSliderSetting" min_val="0" max_val="1"/>
+   <check_box name="fx_check" control_name="FxCheckSetting" label="Check"/>
+   <combo_box name="fx_combo" control_name="FxComboSetting">
+    <combo_box.item name="alpha" label="Alpha" value="1"/>
+    <combo_box.item name="gamma" label="Gamma" value="3"/>
+   </combo_box>
+   <combo_box name="fx_cine_mode" control_name="FxCineSetting">
+    <combo_box.item name="cine39" label="Cine 39" value="39"/>
+    <combo_box.item name="cine41" label="Cine 41" value="41"/>
+   </combo_box>
+   <button name="fx_check_reset" label="Reset"/>
+   <button name="fx_combo_reset" label="Reset"/>
+   <text name="fx_readout">Readout</text>
+   <panel name="fx_embed_host" filename="fx_embed.xml"/>
+  </panel>
+  <panel name="fixture_other_tab" label="Other">
+   <slider name="fx_other_only" control_name="FxOtherOnly"/>
+  </panel>
+ </tab_container>
+</floater>

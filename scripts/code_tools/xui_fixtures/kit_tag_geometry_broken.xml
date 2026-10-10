@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<panel name="light_rig_tab_logic" class="panel_cine_light_rig" width="690" height="400" follows="all">
+    <kit_page name="cine_light_rig_kit" page="light_group/cine_light_rig_tab">
+        <kit_card name="kc_demo_card" id="demo_card" title="Demo" kind="rows" left="10">
+            <kit_row name="kr_status" kind="readout" widget="demo_text" label="Status">
+                <text name="demo_text" font="SansSerifSmall"/>
+            </kit_row>
+        </kit_card>
+        <light_rig_map name="cine_light_map" selector_card="demo_card" view_setting="DirectorV2LightMapView" top="5"/>
+    </kit_page>
+</panel>

@@ -9,8 +9,12 @@ Usage::
     python scripts/code_tools/xui_layout_check.py --selftest
 
 The checker models LLView's top-left and legacy bottom-left positioning.  It
-also accounts for tab headers, scroll documents, layout stacks, and accordion
-content.  Resource-only XUI documents with no root width/height are ignored.
+also accounts for tab headers, scroll documents, layout stacks, accordion
+content, and flow grids with ``pack="rows"``.  Director kit tags (``kit_*`` and
+``light_rig_map``) are runtime-laid-out: their interiors are not positioned,
+and their hosted control geometry is checked as ``kit-geometry``.  A legacy
+``kit_page`` is checked like the v1 leaf it replaces.  Resource-only XUI
+documents with no root width/height are ignored.
 Intentional sibling layering must be documented in the XML with::
 
     <!-- xui-check: allow-overlap first_widget second_widget -->
@@ -131,6 +135,13 @@ class Node:
     rect: Rect | None = None
     design_size: tuple[int, int] | None = None
     explicit_attrs: set[str] = field(default_factory=set)
+    # Authored tag before legacy kit_page is retagged to "panel" for v1 leaf semantics.
+    source_tag: str = ""
+    legacy_kit: bool = False
+
+    def __post_init__(self) -> None:
+        if not self.source_tag:
+            self.source_tag = self.tag
 
     @property
     def name(self) -> str:
@@ -182,6 +193,10 @@ def parse_xml(path: Path) -> tuple[Node, OverlapPolicy]:
         nonlocal root
         node = Node(tag, dict(attrs), parser.CurrentLineNumber,
                     explicit_attrs=set(attrs))
+        if tag == "kit_page" and attrs.get("legacy", "false").lower() == "true":
+            # A legacy kit_page is the v1 leaf it replaces: same panel rules.
+            node.legacy_kit = True
+            node.tag = "panel"
         if stack:
             node.parent = stack[-1]
             stack[-1].children.append(node)
@@ -535,6 +550,138 @@ def arrange_flow_grid(node: Node, local_children: list[tuple[Node, Rect]]) -> No
     node.rect.height = max(node.rect.height, natural_height)
 
 
+KIT_INDEX_NAME = "director_kit_index.xml"
+KIT_HOSTING_TAGS = {"kit_row", "kit_preset_host", "kit_popover"}
+POSITION_ATTRS = ("left", "top", "bottom", "follows", "layout")
+GEOMETRY_ATTRS = POSITION_ATTRS + ("width", "height")
+
+
+def is_kit_owned(node: Node) -> bool:
+    """Kit-runtime element whose size and position the kit decides at runtime.
+
+    ``kit_shell`` is excluded: the parent positions it like a v1 widget, but
+    its interior is runtime-laid-out.  A legacy kit_page is a v1 leaf panel.
+    """
+    if node.legacy_kit or node.source_tag == "kit_shell":
+        return False
+    return node.source_tag.startswith("kit_") or node.source_tag == "light_rig_map"
+
+
+def arrange_rows_grid(node: Node) -> list[tuple[Node, Rect]]:
+    """Model ALFlowGrid ``pack="rows"``: row-major, top-aligned, hidden items skipped.
+
+    Kit-owned items have a runtime height (ALFlowGridItem::heightForWidth), so
+    they keep their column x and width but get zero height.  After a row that
+    holds one, later rows have an unknown top and are placed at the grid pad
+    with zero height, so they cannot create false overlaps.
+    """
+    assert node.rect is not None
+    pad = node.integer("pad", 8)
+    column_gap = node.integer("column_gap", 12)
+    row_gap = node.integer("row_gap", 12)
+    column_width = fitted_flow_card_width(node)
+    available = max(1, node.rect.width - 2 * pad)
+    card_width = max(1, node.integer("card_width", 340))
+    columns = max(1, min(node.integer("max_columns", 4),
+                         (available + column_gap) // (card_width + column_gap)))
+    shown = [child for child in node.children
+             if is_widget(child) and child.attrs.get("visible", "true").lower() != "false"]
+    result: list[tuple[Node, Rect]] = [
+        (child, Rect(pad, pad, 0, 0))
+        for child in node.children
+        if is_widget(child) and child.attrs.get("visible", "true").lower() == "false"
+    ]
+    top = pad
+    top_known = True
+    for start in range(0, len(shown), columns):
+        row = shown[start:start + columns]
+        heights: list[int | None] = []
+        for child in row:
+            heights.append(None if is_kit_owned(child) else local_rect(
+                child, Rect(0, 0, column_width, max(node.integer("height", 0), 1)), None).height)
+        for column, (child, height) in enumerate(zip(row, heights)):
+            x = pad + column * (column_width + column_gap)
+            if top_known:
+                result.append((child, Rect(x, top, column_width, height or 0)))
+            else:
+                result.append((child, Rect(x, pad, column_width, 0)))
+        if top_known:
+            if all(height is not None for height in heights):
+                top += max((height for height in heights if height is not None), default=0) + row_gap
+            else:
+                top_known = False
+    if shown and top_known:
+        node.rect.height = max(node.rect.height, top - row_gap + pad)
+    return result
+
+
+def kit_geometry_findings(root: Node) -> list[Finding]:
+    """Kit rules from the Director kit spec, section 6.3 (kit-geometry).
+
+    * A kit tag may not carry size or position attributes (the file root,
+      the kit_shell, and direct children of kit_bar, which may carry width and
+      height, are exempt).
+    * A hosted control (direct child of kit_row, kit_preset_host or kit_popover,
+      or any widget inside kit_shell that is not under another kit tag) may not
+      carry size or position attributes.
+    * Legacy kit_page takes width and height only.
+    Kit-owned subtrees are not laid out.  Checks use authored attributes only,
+    so widget-default merges cannot create findings.
+    """
+    findings: list[Finding] = []
+
+    def check(node: Node, attrs: tuple[str, ...]) -> None:
+        bad = [key for key in attrs if key in node.explicit_attrs]
+        if bad:
+            findings.append(Finding(
+                "kit-geometry",
+                node.line,
+                f"{node.name}: <{node.source_tag}> sets {', '.join(bad)}; "
+                "kit-owned geometry comes from the kit layout",
+            ))
+
+    def visit(node: Node, inherited: tuple[str, ...] | None, shell: bool) -> None:
+        if "." in node.tag:
+            return
+        if node.parent is None:
+            own = None
+        elif node.legacy_kit:
+            own = POSITION_ATTRS
+        elif is_kit_owned(node):
+            own = POSITION_ATTRS if node.parent.source_tag == "kit_bar" else GEOMETRY_ATTRS
+        else:
+            own = inherited
+        if own is not None and (node.legacy_kit or is_kit_owned(node)
+                                or (is_widget(node) and node.tag not in CONTAINERS)):
+            check(node, own)
+        for child in node.children:
+            if node.legacy_kit:
+                visit(child, None, False)
+            elif node.source_tag == "kit_shell" or (shell and not is_kit_owned(node)):
+                visit(child, GEOMETRY_ATTRS, True)
+            elif is_kit_owned(node) and node.source_tag == "kit_bar":
+                visit(child, POSITION_ATTRS, False)
+            elif is_kit_owned(node) and node.source_tag in KIT_HOSTING_TAGS:
+                visit(child, GEOMETRY_ATTRS, False)
+            else:
+                visit(child, None, False)
+
+    visit(root, None, False)
+    return findings
+
+
+def finalize_findings(findings: list[Finding]) -> list[Finding]:
+    # The wide pass may reproduce a width-independent finding.  Rectangles are
+    # deliberately removed from the identity while widget names remain.
+    unique: dict[tuple[str, int, str], Finding] = {}
+    for finding in findings:
+        normalized = re.sub(r"\(-?\d+,-?\d+,-?\d+,-?\d+\)", "(<rect>)", finding.message)
+        unique.setdefault((finding.kind, finding.line, normalized), finding)
+    result = list(unique.values())
+    result.sort(key=lambda item: (item.line, item.kind, item.message))
+    return result
+
+
 def calculate(node: Node, parent_abs: Rect | None = None, root_width: int | None = None) -> None:
     if parent_abs is None:
         authored_width = node.integer("width", 0)
@@ -544,12 +691,20 @@ def calculate(node: Node, parent_abs: Rect | None = None, root_width: int | None
         if root_width is not None:
             node.design_size = (authored_width, height)
     assert node.rect is not None
+    if is_kit_owned(node) or node.source_tag == "kit_shell":
+        # Runtime-laid-out: the kit positions everything inside these nodes.
+        return
+    if node.tag == "flow_grid" and node.attrs.get("pack", "masonry").lower() == "rows":
+        for child, local in arrange_rows_grid(node):
+            child.rect = local.absolute(node.rect)
+            calculate(child, node.rect)
+        return
     layout_width, layout_height = node.design_size or (node.rect.width, node.rect.height)
     layout_parent = Rect(0, 0, layout_width, layout_height)
     previous: Rect | None = None
     local_children: list[tuple[Node, Rect]] = []
     for child in node.children:
-        if not is_widget(child):
+        if not is_widget(child) or is_kit_owned(child):
             continue
         if node.tag == "tab_container" and child.tag == "panel":
             # Pages are constructed against the tab container, then every
@@ -1051,11 +1206,14 @@ def check_node(
 
 def check_file(path: Path, source_index: SourceIndex | None = None,
                dynamic_visibility_override: set[str] | None = None) -> list[Finding]:
+    if path.name == KIT_INDEX_NAME:
+        return []
     root, overlap_policy = parse_xml(path)
     calculate(root)
+    kit_findings = kit_geometry_findings(root)
     if root.rect is None or root.rect.width <= 0 or root.rect.height <= 0:
-        return []
-    findings: list[Finding] = []
+        return finalize_findings(kit_findings)
+    findings: list[Finding] = list(kit_findings)
     dynamic_visibility = (dynamic_visibility_override if dynamic_visibility_override is not None
                           else (source_index.dynamically_visible_names(
                               path.name, root.attrs.get("class", ""))
@@ -1090,15 +1248,7 @@ def check_file(path: Path, source_index: SourceIndex | None = None,
         findings.extend(wide_findings)
     if source_index is not None:
         findings.extend(scroller_wiring_findings(root, path, source_index))
-    # The wide pass may reproduce a width-independent finding.  Rectangles are
-    # deliberately removed from the identity while widget names remain.
-    unique: dict[tuple[str, int, str], Finding] = {}
-    for finding in findings:
-        normalized = re.sub(r"\(-?\d+,-?\d+,-?\d+,-?\d+\)", "(<rect>)", finding.message)
-        unique.setdefault((finding.kind, finding.line, normalized), finding)
-    result = list(unique.values())
-    result.sort(key=lambda item: (item.line, item.kind, item.message))
-    return result
+    return finalize_findings(findings)
 
 
 def default_xui_dir() -> Path:
@@ -1154,6 +1304,17 @@ def run_selftest(json_output: bool) -> int:
         ("exclusive_overlap_broken.xml", True, "overlap"),
         ("overlay_current.xml", False, None),
         ("fit_card_wide_broken.xml", True, "overlap"),
+        ("kit_page_clean_current.xml", False, None),
+        ("kit_row_stray_width_broken.xml", True, "kit-geometry"),
+        ("kit_tag_geometry_broken.xml", True, "kit-geometry"),
+        ("kit_bar_geometry_broken.xml", True, "kit-geometry"),
+        ("kit_shell_current.xml", False, None),
+        ("kit_shell_copied_width_broken.xml", True, "kit-geometry"),
+        ("director_kit_index.xml", False, None),
+        ("flow_rows_fit_current.xml", False, None),
+        ("flow_rows_clipped_broken.xml", True, "clipped"),
+        ("kit_legacy_position_broken.xml", True, "kit-geometry"),
+        ("kit_legacy_page_broken.xml", True, "overlap"),
     )
     reports: list[dict[str, object]] = []
     passed = True
@@ -1211,11 +1372,28 @@ def run_selftest(json_output: bool) -> int:
     if not json_output:
         print(f"{'PASS' if conditional_passed else 'FAIL'} conditional_alternates_current.xml: "
               f"{len(conditional_findings)} finding(s)")
+    # A legacy kit_page must report exactly what the v1 leaf it replaces reports.
+    leaf_findings = check_file(fixture_dir / "kit_legacy_leaf_v1_broken.xml")
+    legacy_findings = check_file(fixture_dir / "kit_legacy_page_broken.xml")
+    legacy_pair = [(item.kind, item.message) for item in leaf_findings]
+    legacy_passed = bool(leaf_findings) and sorted(legacy_pair) == sorted(
+        (item.kind, item.message) for item in legacy_findings)
+    passed = passed and legacy_passed
+    reports.append({
+        "fixture": "kit_legacy_page_broken.xml",
+        "expected": "same findings as kit_legacy_leaf_v1_broken.xml",
+        "count": len(legacy_findings),
+        "passed": legacy_passed,
+    })
+    if not json_output:
+        print(f"{'PASS' if legacy_passed else 'FAIL'} kit_legacy_page_broken.xml: "
+              f"legacy kit_page matches v1 leaf findings ({len(legacy_findings)})")
     if json_output:
         print(json.dumps({"passed": passed, "fixtures": reports}, indent=2))
     elif passed:
         print("Self-test passed: overlap policy, C++ visibility, fitted-card narrow/wide, "
-              "stretch, spinner-value, and button-text rules detected")
+              "stretch, spinner-value, button-text, kit geometry, kit shell, flow rows, "
+              "and legacy kit_page parity rules detected")
     return 0 if passed else 1
 
 

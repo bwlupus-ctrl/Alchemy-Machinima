@@ -1,0 +1,3 @@
+# Parity fixture: KITNAMES lines in the generator report format.
+KITNAMES fixture_tab: fx_kit_label:text, fx_kit_state:kit_switch, fx_kit_reset
+KITNAMES other_tab: fx_other_kit:text

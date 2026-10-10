@@ -1,0 +1,57 @@
+{
+ "version": 1,
+ "p0_pages": {
+  "light_group/cine_light_rig_tab": {
+   "v1_sources": ["panel_cine_light_rig.xml"],
+   "root_class": "panel_cine_light_rig", "root_name": "cine_light_rig_tab_logic",
+   "undo_context": "cine_rig_slot", "who_adapter": "cine_rig_slot", "mode_adapter": "cine_rig_easy", "mode_on": "Easy",
+   "preset": {"mode": "widgets", "combo": "cine_setup_combo", "save": "cine_setup_save", "delete": "cine_setup_delete"},
+   "selector_settings": {"lights": "DirectorV2SelectedLight"},
+   "card_enables": {"easy_probe": "cine_easy_probe_enable", "light_group": "cine_group_enable",
+                    "rig_catchlight": "cine_catchlight", "live_probe": "cine_live_probe_enable",
+                    "night_mask": "cine_night_mask_enable"},
+   "option_enables": {"lights": {"Key": "cine_key_on", "Fill": "cine_fill_on", "Back": "cine_rim_on", "BG": "cine_bg_on"}},
+   "row_overrides": {"CineGobo01": {"w": "cine_gobo_preview", "k": "gobo"},
+                     "cine_shadow_fixit": {"a": 0},
+                     "cine_fixture_role": {"mirror_setting": "DirectorV2SelectedLight"}},
+   "add_rows": [
+    {"card": "light_group", "row": {"k": "readout", "w": "cine_group_status", "l": "Status", "h": "Which subjects this rig is lighting right now."}},
+    {"card": "rig_aim", "after": "cine_auto_shadow_slots", "row": {"k": "readout", "w": "cine_shadow_hint", "l": "Shadows", "h": "Why a rig light has no shadow and what will fix it. Shown only when it matters."}},
+    {"card": "lights", "option": "Key",  "first": true, "row": {"k": "readout", "w": "cine_key_clip",  "l": "Clipping", "h": "This light is past the headroom. Lower its EV or raise Headroom."}},
+    {"card": "lights", "option": "Fill", "first": true, "row": {"k": "readout", "w": "cine_fill_clip", "l": "Clipping", "h": "This light is past the headroom. Lower its EV or raise Headroom."}},
+    {"card": "lights", "option": "Back", "first": true, "row": {"k": "readout", "w": "cine_rim_clip",  "l": "Clipping", "h": "This light is past the headroom. Lower its EV or raise Headroom."}},
+    {"card": "lights", "option": "BG",   "first": true, "row": {"k": "readout", "w": "cine_bg_clip",   "l": "Clipping", "h": "This light is past the headroom. Lower its EV or raise Headroom."}},
+    {"card": "live_probe", "after": "cine_live_probe_live_status", "row": {"k": "readout", "w": "cine_live_probe_status", "l": "Details", "h": "What the live probe is doing and what it costs."}},
+    {"card": "night_mask", "after": "cine_night_mask_target", "row": {"k": "readout", "w": "night_mask_status", "l": "Status", "h": "Who the night mask is centred on and whether it is active."}}
+   ],
+   "label_names": {}
+  },
+  "light_group/light_rim_tab": {
+   "v1_sources": ["panel_cine_light_rig.xml"],
+   "root_class": "panel_rig_rim", "root_name": "light_rim_tab_logic",
+   "preset": {"mode": "provider", "provider": "rig_rim"},
+   "selector_settings": {"per_light_rim": "DirectorV2SelectedLight"},
+   "card_enables": {"rim_wrap": "cine_rimq_wrap_enable"},
+   "add_rows": [
+    {"card": "rim_quality", "after": "cine_rimq_enable_tag", "row": {"k": "readout", "w": "cine_rimq_status", "l": "Status", "h": "Whether rim quality features are running, and what is missing."}},
+    {"card": "rim_quality", "row": {"k": "toggle", "w": "cine_rimq_actors_alpha", "l": "Alpha actors", "a": 1, "hidden": 1, "h": "Reserved for a later version."}}
+   ],
+   "label_names": {"cine_rig_rim_tron_mode": "cine_rig_rim_tron_label",
+                   "cine_rig_rim_tron_mix": "cine_rig_rim_tron_mix_label",
+                   "cine_rig_rim_tron_color": "cine_rig_rim_tron_color_label"}
+  }
+ },
+ "launcher_targets": {"look_group/tron_tab": {"target": "lightbox", "target_tab": "tron_settings", "button_label": "Open Tron in Lightbox ›", "help": "Tron is edited in the Lightbox until its page is converted."}},
+ "parity_allow": {"cine_rig_rim_preset": "replaced by the kit preset strip (provider rig_rim)",
+                  "card_snapshot_open": "retired Director launcher; Snapshot remains in its standalone floater",
+                  "card_snapshot_summary": "retired Director launcher; Snapshot remains in its standalone floater",
+                  "card_diopter_open": "retired launcher replaced by the inline Diopter summary/editor action",
+                  "card_diopter_summary": "retired launcher replaced by the inline Diopter summary rows",
+                  "card_gaze_cues_open": "retired launcher replaced by the inline Gaze Cues list/actions",
+                  "card_gaze_cues_summary": "retired launcher replaced by the inline Gaze Cues list",
+                  "card_light_cues_open": "retired launcher replaced by the inline Light Cues list/actions",
+                  "card_light_cues_summary": "retired launcher replaced by the inline Light Cues list",
+                  "cine_light_rig_flow_grid": "v1 layout container",
+                  "cine_*_card": "v1 card containers (glob)",
+                  "cine_*_label": "v1 decoration labels not referenced by C++ (glob; the referenced ones must exist)"}
+}

@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes" ?>
+<!-- Parity fixture: v2 floater whose page is reached through page_file= (embed). -->
+<floater name="fx_v2_floater">
+ <kit_lazy_page name="fixture_tab" label="Fixture" page_file="panel_dpage_fx_fixture.xml"/>
+</floater>

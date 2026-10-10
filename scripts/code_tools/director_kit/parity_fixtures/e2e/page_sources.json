@@ -1,0 +1,19 @@
+{
+ "schema_version": 2,
+ "pages": [
+  {
+   "key": "fixture_tab",
+   "group": "fx_group",
+   "owner_roots": [
+    {"file": "scripts/code_tools/director_kit/parity_fixtures/v1_leaf.xml", "tag": "floater", "name": "fixture_floater", "line": 1}
+   ],
+   "rows": [
+    {
+     "matched_widget": "fx_slider",
+     "xui": [{"file": "scripts/code_tools/director_kit/parity_fixtures/v1_leaf.xml", "tag": "slider"}],
+     "cpp": [{"file": "scripts/code_tools/director_kit/parity_fixtures/c3_pass.cpp"}]
+    }
+   ]
+  }
+ ]
+}

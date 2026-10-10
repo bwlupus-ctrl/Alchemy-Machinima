@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<floater name="director_bar_fixture" title="Director" width="800" height="100">
+    <kit_shell name="director_shell" follows="all" left="0" top="18" width="800" height="82">
+        <kit_bar name="kit_transport" flex="status_strip">
+            <button name="btn_action" width="112" height="28"/>
+            <button name="btn_cut" width="112" height="28" left="40"/>
+        </kit_bar>
+    </kit_shell>
+</floater>

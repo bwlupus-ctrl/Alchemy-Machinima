@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes" ?>
+<!-- Parity fixture: embedded panel reached through filename= from v1_leaf.xml. -->
+<panel name="fx_embed_root">
+ <slider name="fx_embedded" control_name="FxEmbedded"/>
+</panel>

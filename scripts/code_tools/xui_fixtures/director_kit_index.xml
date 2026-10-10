@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<!-- Fixture: the kit index is skipped by name, so these overlapping texts must not be reported. -->
+<floater name="director_kit_index" width="200" height="100">
+    <text name="index_alpha" left="0" top="0" width="100" height="20">Alpha</text>
+    <text name="index_beta" left="0" top="0" width="100" height="20">Beta</text>
+</floater>

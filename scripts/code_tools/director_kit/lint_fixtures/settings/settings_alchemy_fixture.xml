@@ -1,0 +1,11 @@
+<?xml version="1.0"?>
+<llsd>
+  <map>
+    <key>FixtureAlchemyFloat</key>
+    <map><key>Persist</key><integer>1</integer><key>Type</key><string>F32</string><key>Value</key><real>0.5</real></map>
+    <key>Include</key>
+    <array>
+      <string>settings_deep_fixture.xml</string>
+    </array>
+  </map>
+</llsd>

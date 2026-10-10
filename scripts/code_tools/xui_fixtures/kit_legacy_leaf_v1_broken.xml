@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<!-- v1 leaf reference for kit_legacy_page_broken.xml: both must report identical findings. -->
+<floater name="legacy_host" width="400" height="300">
+    <panel name="legacy_leaf" width="300" height="120">
+        <check_box name="c_box" left="0" top="0" width="120" height="20"/>
+        <button name="d_button" left="60" top="0" width="100" height="20" label="Go"/>
+        <line_editor name="e_edit" left="10" top="100" width="200" height="40"/>
+    </panel>
+</floater>

@@ -1,0 +1,12 @@
+<settings_files>
+  <group name="Default" path_index="2">
+    <file name="Global" file_name="settings.xml" required="true"/>
+    <file name="PerAccount" file_name="settings_per_account.xml" required="true"/>
+  </group>
+  <group name="Install" path_index="2">
+    <file name="Global" file_name="settings_install.xml" required="false"/>
+  </group>
+  <group name="Crash" path_index="1">
+    <file name="CrashSettings" file_name="settings_crash_behavior.xml" required="true"/>
+  </group>
+</settings_files>

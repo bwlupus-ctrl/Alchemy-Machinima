@@ -1,0 +1,13 @@
+<?xml version="1.0"?>
+<llsd>
+  <map>
+    <key>FixtureDeepVec</key>
+    <map><key>Persist</key><integer>1</integer><key>Type</key><string>Vector3</string><key>Value</key><array><real>0.0</real><real>0.0</real><real>0.0</real></array></map>
+    <key>FixtureComboMode</key>
+    <map><key>Persist</key><integer>1</integer><key>Type</key><string>U32</string><key>Value</key><integer>0</integer></map>
+    <key>FixtureColor</key>
+    <map><key>Persist</key><integer>1</integer><key>Type</key><string>Color4</string><key>Value</key><array><real>1.0</real><real>1.0</real><real>1.0</real><real>1.0</real></array></map>
+    <key>FixtureText</key>
+    <map><key>Persist</key><integer>1</integer><key>Type</key><string>String</string><key>Value</key><string></string></map>
+  </map>
+</llsd>

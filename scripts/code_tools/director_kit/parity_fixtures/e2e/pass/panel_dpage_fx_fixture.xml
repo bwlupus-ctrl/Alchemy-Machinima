@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes" ?>
+<!-- Parity fixture: complete v2 page for the fx_group fixture page. -->
+<panel name="fx_page">
+ <kit_option label="Alpha" value="1"/>
+ <kit_option label="Gamma" value="3"/>
+ <kit_option label="Cine 41" value="41"/>
+ <slider name="fx_slider" control_name="FxSliderSetting"/>
+ <kit_switch name="fx_check" control_name="FxCheckSetting"/>
+ <combo_box name="fx_combo" control_name="FxComboSetting"/>
+ <combo_box name="fx_cine_mode" control_name="FxCineSetting"/>
+ <button name="fx_combo_reset"/>
+ <text name="fx_readout"/>
+ <slider name="fx_embedded" control_name="FxEmbedded"/>
+ <slider name="fx_left"/>
+ <slider name="fx_right"/>
+</panel>

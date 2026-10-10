@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<!-- Legacy kit_page carrying the same children as kit_legacy_leaf_v1_broken.xml. -->
+<kit_page name="legacy_leaf" legacy="true" width="300" height="120">
+    <check_box name="c_box" left="0" top="0" width="120" height="20"/>
+    <button name="d_button" left="60" top="0" width="100" height="20" label="Go"/>
+    <line_editor name="e_edit" left="10" top="100" width="200" height="40"/>
+</kit_page>

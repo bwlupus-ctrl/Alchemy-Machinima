@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<panel name="rows_root" width="690" height="300" background_visible="false">
+    <!-- One 690 px column: two 200 px cards need 412 px, which overflows the 300 px root. -->
+    <flow_grid name="rows_grid" pack="rows" pad="0" max_columns="2" card_width="340" column_gap="12" row_gap="12" width="690" height="300">
+        <panel name="card_a" height="200"/>
+        <panel name="card_b" height="200"/>
+    </flow_grid>
+</panel>

@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<floater name="director_shell_fixture" title="Director" width="1160" height="720">
+    <kit_shell name="director_shell" follows="all" left="0" top="18" width="1160" height="702" index_file="director_kit_index.xml">
+        <panel name="kit_cast_roster" background_visible="false">
+            <text name="cast_hint" font="SansSerifSmall">Select a cast member</text>
+            <button name="btn_add_you" label="Add you"/>
+        </panel>
+        <kit_bar name="kit_transport" flex="status_strip">
+            <button name="btn_action" width="112" height="28"/>
+            <button name="btn_cut" width="112" height="28"/>
+        </kit_bar>
+        <tab_container name="director_tabs" hide_tabs="true" tab_position="left" follows="all">
+            <panel name="cast_group" label="Cast">
+                <kit_lazy_page name="move_tab" label="Move" page_file="panel_dpage_cast_move.xml"/>
+                <kit_lazy_page name="pose_tab" label="Pose" page_file="panel_dpage_cast_pose.xml"/>
+            </panel>
+        </tab_container>
+        <kit_popover name="legend_panel" anchor="btn_help" side="above" visible="false">
+            <text name="legend_body" word_wrap="true">Legend</text>
+        </kit_popover>
+    </kit_shell>
+</floater>

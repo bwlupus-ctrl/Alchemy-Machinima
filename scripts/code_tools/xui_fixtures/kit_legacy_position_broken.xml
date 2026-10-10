@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<floater name="legacy_position_fixture" width="400" height="300">
+    <kit_page name="legacy_bad" legacy="true" left="5" width="100" height="50">
+        <text name="legacy_text" left="0" top="0" width="90" height="20">Legacy</text>
+    </kit_page>
+</floater>

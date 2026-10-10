@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<floater name="director_shell_fixture" title="Director" width="1160" height="720">
+    <kit_shell name="director_shell" follows="all" left="0" top="18" width="1160" height="702" index_file="director_kit_index.xml">
+        <panel name="kit_cast_roster" background_visible="false">
+            <text name="cast_hint" font="SansSerifSmall" width="300">Select a cast member</text>
+            <button name="btn_add_you" label="Add you"/>
+        </panel>
+    </kit_shell>
+</floater>

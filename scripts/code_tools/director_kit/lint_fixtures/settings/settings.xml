@@ -1,0 +1,27 @@
+<?xml version="1.0"?>
+<llsd>
+  <map>
+    <key>DirectorV2SelectedLight</key>
+    <map><key>Persist</key><integer>1</integer><key>Type</key><string>S32</string><key>Value</key><integer>0</integer></map>
+    <key>FixtureRenderExposure</key>
+    <map><key>Persist</key><integer>1</integer><key>Type</key><string>F32</string><key>Value</key><real>0.0</real></map>
+    <key>FixtureBloomOn</key>
+    <map><key>Persist</key><integer>1</integer><key>Type</key><string>Boolean</string><key>Value</key><boolean>0</boolean></map>
+    <key>FixtureShortcutFeather</key>
+    <map><key>Persist</key><integer>1</integer><key>Type</key><string>F32</string><key>Value</key><real>0.0</real></map>
+    <key>FixtureEasyEnable</key>
+    <map><key>Persist</key><integer>1</integer><key>Type</key><string>Boolean</string><key>Value</key><boolean>0</boolean></map>
+    <key>FixtureEasyMode</key>
+    <map><key>Persist</key><integer>1</integer><key>Type</key><string>Boolean</string><key>Value</key><boolean>1</boolean></map>
+    <key>FixtureKeyOn</key>
+    <map><key>Persist</key><integer>1</integer><key>Type</key><string>Boolean</string><key>Value</key><boolean>1</boolean></map>
+    <key>FixtureMasterOn</key>
+    <map><key>Persist</key><integer>1</integer><key>Type</key><string>Boolean</string><key>Value</key><boolean>1</boolean></map>
+    <key>FixtureLegacyFloat</key>
+    <map><key>Persist</key><integer>1</integer><key>Type</key><string>F32</string><key>Value</key><real>1.0</real></map>
+    <key>Include</key>
+    <array>
+      <string>settings_alchemy_fixture.xml</string>
+    </array>
+  </map>
+</llsd>

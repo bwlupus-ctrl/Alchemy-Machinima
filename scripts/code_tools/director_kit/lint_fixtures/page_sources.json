@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "setting_conflicts": [
+    {
+      "setting": "FixtureRenderExposure",
+      "pages": ["exposure_tab", "cine_light_rig_tab"],
+      "writable_home": "exposure_tab"
+    },
+    {
+      "setting": "FixtureShortcutFeather",
+      "pages": ["atmosphere_tab", "cine_light_rig_tab"],
+      "writable_home": "atmosphere_tab"
+    }
+  ]
+}
