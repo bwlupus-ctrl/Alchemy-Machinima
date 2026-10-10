@@ -122,7 +122,7 @@ void styleCombo(LLComboBox* combo)
         {
             styleButton(button, false);
             button->setImageOverlay("KitIcon_chevron_down_10_16", LLFontGL::RIGHT, color(DIM).get());
-            button->setRightHPad(20);
+            button->setRightHPad(6);
             break;
         }
 }

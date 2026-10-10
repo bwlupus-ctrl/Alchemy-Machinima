@@ -312,3 +312,76 @@ Part B will still look visibly unlike the mockup. Four issues are immediately no
 - **`alcompassdial`:** the new fonts are used only when `mKitGeometry` is set. Legacy dials still use `SansSerifSmall`.
 - **`colors.xml` / `textures.xml`:** additions are Kit-only. The only modified existing entry is `KitSubBand`, which is Kit-scoped. `fonts.xml` only adds `Kit10-15` sizes. No `widgets/*.xml` change.
 - **`styleTree` / `styleButton`:** applied only to v2 shell, pages and popovers. v1 `floater_director.xml` is untouched.
+
+
+---
+
+# R3 pre-build (`dd978a30e24` + `f9e5e28b627`)
+
+## Verdict: FIX-FIRST (one small fix, then BUILD)
+
+Everything else is ready. The one remaining problem is where the combo caret is drawn. It breaks the run's own live gate on every combo, and on the preset combo the user will see no caret at all.
+
+**Caret position (BLOCKER).**
+- The generator writes `pad_right="20"` on `combo_box.drop_down_button` (`director_kit_gen.py:351-353`), and `styleCombo` calls `setRightHPad(20)` (`alkitstyle.cpp:414-417`).
+- `LLButton` draws a RIGHT overlay at `width - mRightHPad - overlay_w` (`llbutton.cpp:975`), so the 16-px chevron lands at W-36..W-20. The glyph itself is at about W-33..W-23.
+- **The probe is blind there.** `STYLE_COMBO_CARET` only samples x in [W-20, W-5) (`aluiperfselftest.cpp`, combo loop), so it fires on every visible combo. The gate stays red even though the carets are drawn.
+- **Text-entry combos lose the caret.** For these combos (the page-bar preset "Custom", `allow_text_entry`), the editor covers 0..W-26: `ComboButton_Off` is 22 px, plus 2×`BTN_DROP_SHADOW`. That hides almost all of the glyph, where the mockup shows a clear "Custom ▾".
+- **Fix:** use a right pad of about 6 (generator + `styleCombo`), which puts the glyph at about W-19..W-9, inside the probe window and matching the mockup. `LLButton` already reserves label space for a RIGHT overlay. Then build.
+
+## S1-S6 re-check
+
+| Item | Status |
+|---|---|
+| S1: combo caret | Wired in both the generator and runtime (`styleCombo`, the first direct `LLButton`). **Position fix above.** |
+| S2: composite damage | Fixed. `styleTree` stops at combo, spinner (styles only its editor, as mono), slider (editor), scroll list (`styleList`), checkbox/radio, scrollbar and tab container (`alkitstyle.cpp:463-489`). Checkbox state, legacy tabs and column headers are untouched. |
+| S3: identical states | Fixed for mode, option segments and chips: each sets an explicit `ACTIVE_FILL` vs `INPUT_BG`/`CONTROL_BG` (`alkitcard.cpp:529-535`, `alkitshell.cpp:591-593`, `alkitpage.cpp:764-766`). Generic `styleButton` selected = `ACTIVE_FILL` #2F343B vs `CONTROL_BG` #262A31 is only about 9 RGB apart, which is subtle (minor). |
+| S4: stock Easy/Advanced | Fixed: styled in `refreshModeProxy`. The reset-confirm and who popovers are now `styleTree`d. |
+| S5: preset combo off the bar | Fixed: bands are created at page width, so there is no first-reshape delta (`alkitpage.cpp:242-251`), and reparented preset items get LEFT\|TOP. |
+| S6: cast unreachable | Fixed: the Cast chip was removed from `collapse_order`. At 850: 1112 → 1034 → 998 → 962 → 834 ≤ 850, with timecode and Cast both visible. A `CAST_UNREACHABLE` live check was added. |
+| Chips stale / roster header | Fixed: chips are laid out at the end of `applyModeAndChip`; the header width is `tools_x - 8`. |
+
+## Framebuffer probes
+
+The probes are real.
+- `writeStyleProbe` runs in `saveCapturedImage` on `mCapturedImage`, which comes from `glReadPixels` of the floater's screen rect at display scale, origin bottom-left (`aluiperfselftest.cpp:1209-1250`).
+- The sample mapping is proportional to the floater's local rect.
+- The driver now fails on `probe.pass` / `mismatch_count`.
+
+What they would catch in the R2 build:
+- stock text fields: the `search`, `number_field` and `slider_value` backgrounds;
+- stock scrollbars: no `INPUT_BORDER` thumb pixels;
+- caret-less combos: a uniform right edge;
+- blank legacy bodies: `LEGACY_BODY_BLANK_PNG`, a real pixel-variance check, would also fail on the original blank Look > Image.
+
+Weak spots (MAJOR, not blocking):
+- `STYLE_STATE_IDENTICAL` compares the *last* selected against the *last* unselected button across mode and option segments, so it can pair unrelated widgets. It would not have flagged R2's stock Easy/Advanced, because stock selected and unselected differ. Compare pairs within the same group instead.
+- No probe samples a mode-segment or plain-button *background* against its token. A stock SL button would pass.
+- Some sample points sit close to edges or text: card at x=4% next to row labels, tabs at y=3% next to the divider line. Expect a little noise.
+
+## v1 and global safety: CLEAN
+
+- **`LLButton`:** `image_color_selected/hover/pressed` default to `image_color` when not provided (`llbutton.cpp:158-161`). `setImageColor` and `setColor` set all four. No other code writes `mImageColor`. Unconfigured buttons draw exactly as before.
+- **`LLLineEditor`:** the border only draws when `setBgBorderColor` is called (`mDrawBgBorder` defaults to false).
+- **`LLScrollbar::setStyle`:** opt-in.
+- No widget templates, colours or fonts outside the Kit set were touched.
+
+## What the Rig page will still look like vs the mockup (after the caret fix)
+
+Structurally it matches:
+- rail with icons, labels, active fill and dot;
+- underlined tabs and the Easy/Advanced segment;
+- pill chips;
+- who pill;
+- page bar with preset, Save, Delete, ↺, undo/redo, master and search with its icon;
+- 2-column cards with the map and Lights segments;
+- help pane;
+- the transport.
+
+Remaining visible differences, all minor:
+- the native SL title bar (title font, close/minimize icons);
+- stock arrow buttons on spinners and on the kit scrollbar;
+- slider values shown in inset boxes, where the mockup uses plain text;
+- Save/Delete as text buttons instead of "Save as…" and a trash icon;
+- ACTION and ^ not joined into one split button;
+- the combo dropdown list (when opened) and the reset-confirm Cancel/Reset buttons (the `_reset` name rule makes them transparent) not styled.

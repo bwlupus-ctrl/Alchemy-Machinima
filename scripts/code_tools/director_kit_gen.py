@@ -353,7 +353,7 @@ def apply_kit_xui_style(root: ET.Element) -> None:
             drop.set("image_color", "KitControlBg")
             drop.set("image_overlay", "KitIcon_chevron_down_10_16")
             drop.set("image_overlay_alignment", "right")
-            drop.set("pad_right", "20")
+            drop.set("pad_right", "6")
             editor = next((child for child in node if child.tag == "combo_box.combo_editor"), None)
             if editor is None:
                 editor = ET.SubElement(node, "combo_box.combo_editor")
