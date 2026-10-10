@@ -361,7 +361,8 @@ void ALCompassDial::draw()
     const LLFontGL* font = LLFontGL::getFontSansSerifSmall();
     if (font && mShowCardinals)
     {
-        const F32 lr = radius + (mKitGeometry ? 4.f : 6.f);
+        const F32 scale = llmin(getRect().getWidth(), getRect().getHeight()) / 48.f;
+        const F32 lr = radius + (mKitGeometry ? 4.f * scale : 6.f);
         font->renderUTF8("N", 0, ll_round(cx), ll_round(cy + lr), text,
                          LLFontGL::HCENTER, LLFontGL::VCENTER);
         font->renderUTF8("S", 0, ll_round(cx), ll_round(cy - lr), text,

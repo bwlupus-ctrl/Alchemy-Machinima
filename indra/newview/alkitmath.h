@@ -65,33 +65,27 @@ inline float baseFromDisplayPitch(float target, float orbit, float offset_z,
                                   float radius, float current)
 {
     if (radius <= 1e-6f) return clamp(current, -85.f - orbit, 85.f - orbit);
-    const float t = target * DEG_TO_RAD;
-    const float rhs = clamp(-offset_z * std::cos(t) / radius, -1.f, 1.f);
-    const float asin_rhs = std::asin(rhs);
-    auto canonical = [](float degrees)
+    // |OffsetZ| > r: only a cone of displayed pitches is reachable; clamp the pointer to its edge.
+    if (std::fabs(offset_z) > radius)
     {
-        const float wrapped = wrap180(degrees);
-        return wrapped <= -180.f ? 180.f : wrapped;
-    };
-    const float candidates[] = {
-        canonical((t + asin_rhs) * RAD_TO_DEG),
-        canonical((t + PI - asin_rhs) * RAD_TO_DEG)
-    };
+        const float lim = std::acos(radius / std::fabs(offset_z)) * RAD_TO_DEG;
+        target = offset_z < 0.f ? std::min(target, -lim) : std::max(target, lim);
+    }
+    const float t = target * DEG_TO_RAD;
+    const float asin_rhs = std::asin(clamp(-offset_z * std::cos(t) / radius, -1.f, 1.f));
+    auto canonical = [](float d) { const float w = wrap180(d); return w <= -180.f ? 180.f : w; };
+    const float candidates[] = { canonical((t + asin_rhs) * RAD_TO_DEG),
+                                 canonical((t + PI - asin_rhs) * RAD_TO_DEG) };
     const float current_q = canonical(current + orbit);
-    float best_q = current_q;
-    float best_distance = 1e9f;
-    bool found = false;
+    float best_q = clamp(current_q, -85.f, 85.f), best_err = 1e9f, best_dist = 1e9f;
     for (float q : candidates)
     {
-        if (std::cos(q * DEG_TO_RAD) <= 0.f) continue;
-        const float distance = angularDistance(q, current_q);
-        if (!found || distance < best_distance - 1e-6f ||
-            (std::fabs(distance - best_distance) <= 1e-6f && q < best_q))
-        {
-            best_q = q;
-            best_distance = distance;
-            found = true;
-        }
+        if (std::cos(q * DEG_TO_RAD) <= 0.f) continue;              // opposite ray
+        const float qc = clamp(q, -85.f, 85.f);                      // pDisp's domain
+        const float err = std::fabs(pDisp(qc, 0.f, offset_z, radius) - target);
+        const float dist = angularDistance(qc, current_q);
+        if (err < best_err - 1e-3f || (std::fabs(err - best_err) <= 1e-3f && dist < best_dist))
+        { best_q = qc; best_err = err; best_dist = dist; }
     }
     return clamp(best_q - orbit, -85.f - orbit, 85.f - orbit);
 }

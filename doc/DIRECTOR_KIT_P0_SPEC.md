@@ -337,7 +337,7 @@ The enable switch is ALKitSwitch `enable_widget` (with `control_name=enable_sett
 - **More options:** if the visible advanced count n > 0, a "More options (n)" / "Fewer options" toggle (`kc_<id>_more`) sits at the bottom. For a selector it is tracked per option.
 - **selector:** under the header, a SELECTOR_BAND_H band (KitSubBand) holds `sel_label` (KitMuted 11 px) plus segment buttons `kc_<id>_seg_<i>` (≤ 6 options) or a combo (> 6). Then the active ALKitOption's rows. Read selects the option whose `value` equals `sel_setting`; write stores that option's `value`, **never its ordinal index**. When there is no `sel_setting`, page state still stores the option `value` and resolves it back to an option.
 - **link:** for each summary, a label and the current value (formatted from the setting, updated on its signal). Then "Lives on <Group › Page>", then a button `kc_<id>_go` "Open ›" that calls `shell->navigateTo(link_to)`.
-- **launcher:** help text plus a button `kc_<id>_open` (label `button_label`). Its action is `target == "lightbox"` → `ALFloaterLightBox::showTab(target_tab)`, otherwise `LLFloaterReg::showInstance(target)`.
+- **launcher:** help text plus a button `kc_<id>_launch` (label `button_label`; distinct from the advanced-card `kc_<id>_open`). Its action is `target == "lightbox"` → `ALFloaterLightBox::showTab(target_tab)`, otherwise `LLFloaterReg::showInstance(target)`.
 - **rigmap:** the single `light_rig_map` child (section 3.14). Its height is `map->heightForWidth(body_w)`. The view segments (Top / Side / 2.5D, `kc_<id>_view_<i>`) are in the header.
 
 **Enable and dimming.** When the switch is off, the body (not the header) is drawn inside `LLViewDrawContext(DIM_ALPHA)`. It stays editable. `draw()` reads `mEnable->isOn()`.
@@ -392,8 +392,8 @@ The kit page knows its own logic class only through its parent: a logic panel is
    - `preset_mode=none`: nothing;
    - then: page reset `<P>_reset_page` (opens the confirm popover), `<P>_undo`, `<P>_redo`;
    - then: the master box `<P>_master_box` (label + ALKitSwitch `master_widget` bound to `master_setting` + state text), only if a master exists;
-   - then a spacer, then `<P>_search` (SEARCH_W line editor, placeholder "Find a control…");
-   - **legacy pages:** the summary text (ellipsized custom draw) replaces the preset area.
+   - then a spacer, then `<P>_search` (SEARCH_W line editor, placeholder "Find a control…"); it shrinks before collapsing, remains visible down to 120 px, and is hidden only when less than 120 px remains after the left cluster/master and gaps;
+   - **legacy pages:** the summary text (single-line ellipsized text) replaces the preset area.
 4. `<P>_banner` (BANNER_H, KitBannerBg): shown while the master is off. It reads "<master_label> is off. Controls stay editable." with a `<P>_master_on` "Turn on" button.
 5. **kit pages:** `<P>_scroll` (ALKitScroller, a subclass of LLScrollContainer) → `<P>_doc` (ALKitDoc: LLPanel + ALScrollFit::SelfSizedDocument) → `<P>_grid` (ALFlowGrid `pack="rows"`, `max_columns=2`, `card_width=340`, gap 12, `pad=0`). The doc pads PAGE_PAD. **The grid must never be named `cine_light_rig_flow_grid`.**
 6. **legacy pages:** `<P>_legacy_host` (LLPanel, follows all) receives every XML child of the kit_page, with rects unchanged. The kit_page's own XML `width`/`height` equal the v1 leaf size, so `topleft` coordinates resolve as in v1. The host is then reshaped to the content area and follows-flags propagate.
@@ -835,7 +835,9 @@ The hotkeys popover (`btn_hotkeys`) lists exactly the mockup table:
 - Keys (new `handleKeyHere`): Left/Down −step, Right/Up +step, Shift ×10, PgUp/PgDn ±15, Home = control default (`getControlVariable()->getDefault()` if bound). Commit after each. Return true only for these keys.
 - `setTabStop(true)`.
 
-**Binding correction (supersedes the `arc_zero`, arc mapping, arc geometry, and arc pointer bullets above).** The binding decision is horizon = 0. Add Params `wheel_adjust` (bool, default true) and `kit_geometry` (bool, default false), and change `arc_zero` default to `"right"`. Generator-created kit dials set `kit_geometry="true"`; existing Actor Mover/Ghost Studio dials leave it false and keep the current `radius=min(w,h)/2-12` geometry and outside letters exactly (`alcompassdial.cpp:71-78`).
+**Binding correction (supersedes the `arc_zero`, arc mapping, arc geometry, and arc pointer bullets above).** The binding decision is horizon = 0. Add Params `wheel_adjust` (bool, default true) and `kit_geometry` (bool, default false), and change `arc_zero` default to `"right"`. Generator-created kit dials set `kit_geometry="true"`; existing Actor Mover/Ghost Studio dials leave it false and keep their wrapping, 0.5 px dead zone, tab-stop state, key handling, `radius=min(w,h)/2-12` geometry, and outside letters exactly (`alcompassdial.cpp:71-78`). Home is a no-op for an unbound dial.
+
+**Kit compass decision.** The full compass ring is centred in the row's control column at `(w/2,h/2)`, the same control column used by the arc, with `r=min(16s,h/2-7s)` and cardinal radius `r+4s`. The `(6s,h/2)` centre below applies only to the half arc. This keeps the ring and N/E/S/W labels inside the control cell.
 
 For an arc, map a true tilt value to `a=clamp(v,-90,+90)` measured counter-clockwise from the positive-x horizon: 0 points right, +90 up, -90 down. A non-tilt `[min,max]` maps linearly to `[-90,+90]`. Centre is `(6s,h/2)` and `r=min(20s,h/2-3s,w-9s)`, `s=min(w,h)/48`, so the right half-circle stays inside the widget. Draw the half arc from -90 through 0 to +90, a horizontal 0 baseline/tick to the right, the maximum label/tick above, and the minimum below; no label may extend below the widget. Needle endpoint is `(cx+r*cos(a),cy+r*sin(a))`. Pointer input uses the exact inverse `atan2(y-cy,x-cx)`, clamps to the right half, and then applies the inverse range map. This replaces the earlier up-zero centre/baseline text.
 
@@ -918,8 +920,8 @@ When the rig is not producing a usable live offset, the fallback is deliberately
 - Let `sigma = -1` for any mirrored live target (avatar or object) and `+1` for unmirrored or rig-off cases. Every hover computes `baseYawNew=wrap180(baseYaw0 + sigma·wrap180(tTarget−t0))` and `basePitchNew=baseFromDisplayPitch(pTarget,orbitPitch0,offsetZ0,r0,basePitch0)`. Thus every write is a pure function of `DragStart` plus the current pointer; it is never `setting += delta`.
 - **Top-view drag:** `a0=atan2(x0−cx,−(y0−cy))`, `a=atan2(x−cx,−(y−cy))`, `tTarget=wrap180(t0+wrap180(a−a0))`, and `pTarget=p0`. This preserves the initial grab even when mouse-down is off-centre and makes zero movement an exact no-op.
 - **2.5D drag (exact projection inverse):** subtract the captured grab offset, set `u=(x−grabX−cx)/R`, `v=(y−grabY−cy)/R`, and radially clamp `(u,v)` to the unit disc. With elevation `e=24°`, choose `d=±sqrt(max(0,1−u²−v²))` on the branch continuous with captured `d0=cos(p0)cos(t0)cos(e)+sin(p0)sin(e)`; at the silhouette choose the candidate minimizing wrapped angular distance to `(t0,p0)`. Invert the view rotation: `X=u`, `Y=v cos(e)+d sin(e)`, `Z=−v sin(e)+d cos(e)`, then `pTarget=asin(clamp(Y,−1,1))`, `tTarget=atan2(X,Z)`. Feed those targets to the absolute formulas above. This exactly inverts `projectLight`, rather than integrating a per-event `dx·k`, and preserves the front/back branch.
-- **Exact elevation inverse:** define `p_disp(base,orbit,h,r)` exactly as above and `baseFromDisplayPitch(target,orbit,h,r,current)`. Solve `sin(q−target)=−h·cos(target)/r` for `q=base+orbit`, choose the valid branch closest to captured `q0=basePitch0+orbitPitch0`, then clamp the resulting base so q remains within ±85°. Both target drawing and this inverse use captured `r0`, including subject scaling.
-- **Side drag:** subtract the grab offset and set `pTarget=asin(clamp((y−grabY−cy)/R,−1,1))`. If `abs(cos(pTarget)) < 1e−4`, yaw is visually unobservable at the pole, so keep `tTarget=t0`; otherwise solve `cos(tTarget)=clamp((x−grabX−cx)/(s·R·cos(pTarget)),−1,1)`. Choose the `±acos` branch continuous with captured `t0` (tie-break by captured depth), then use the absolute base formulas above. Using the exact cosine, rather than an artificial denominator floor, is required for zero-motion round-trip. The hint reads "Drag: ↔ toward/away from camera, ↕ height".
+- **Exact elevation inverse:** define `p_disp(base,orbit,h,r)` exactly as above and `baseFromDisplayPitch(target,orbit,h,r,current)`. When `|h|>r`, first clamp the pointer to the reachable cone edge `sign(h)·acos(r/|h|)`. Solve `sin(q−target)=−h·cos(target)/r` for the two principal `q=base+orbit` roots, reject the opposite ray, clamp each surviving root to ±85° before scoring, choose the root with the smallest displayed-pitch error, and break displayed-error ties by wrapped distance to captured `q0=basePitch0+orbitPitch0`. Both target drawing and this inverse use captured `r0`, including subject scaling.
+- **Side drag:** subtract the grab offset and set `pTarget=asin(clamp((y−grabY−cy)/R,−1,1))`. If `abs(cos(pTarget)) < 1e−4`, yaw is visually unobservable at the pole, so keep `tTarget=t0`; otherwise solve `c=clamp((x−grabX−cx)/(s·R·cos(pTarget)),−1,1)`, recover the sign of `sin(tTarget)` from the captured depth side, and use `atan2(signed_sqrt(1−c²),c)`. This keeps the light on its captured side; the projection remains inherently ill-conditioned near the front/back axis and is checked with the documented axis tolerance. Using the exact cosine, rather than an artificial denominator floor, is required for zero-motion round-trip. The hint reads "Drag: ↔ toward/away from camera, ↕ height".
 - During capture, camera motion, transition progress, setting signals caused by the gesture, and 10 Hz display refreshes do not replace `DragStart`. A view/side change or external slot/scene/preset write cancels the gesture before applying that change.
 - Writes go through `gSavedSettings.setF32(<cached name>)` inside the input handler, so the dials update through their control bindings. One history gesture covers the drag.
 - **Keyboard** (when the map is focused): Left/Right yaw ∓/±1 (Shift 10); Up/Down pitch ±1 (Shift 10); `[` / `]` previous / next light; Home resets the selected light's Yaw and Pitch to their defaults.
@@ -1632,6 +1634,7 @@ If they differ, the config tables in section 4.7 win and the generator reports t
 - `CMakeLists.txt`.
 
 **Acceptance:**
+- the Who chip opens the WP2 cast popover; it never tries to reveal the hidden source combo in its `who_picker` row;
 - v1 postBuild call order is identical (the reviewer diffs it);
 - every v1 refresher is null-safe;
 - ALPanelCineLightRig v1 behaviour is identical: same `getChild` set minus the 3 rim names, now `findChild` in the controller; the same per-frame calls;
@@ -1672,6 +1675,7 @@ This is the integration pass over WP1 to WP3 for the two pages. It covers:
 - card-header presets reparented;
 - the dyn-visibility probe working for clip, shadow hint, gobo preview and enable tag;
 - the mode proxy driving `cine_easy_mode` explicitly (user) and passively (search).
+- passive preset/widget writes refresh the Rig Easy feather row's displayed value and amber state even when no widget commit signal fires.
 
 **Files:** the kit C++, generator config and regenerated files as needed. **No new architecture**; changes outside the two pages' needs are out of scope.
 

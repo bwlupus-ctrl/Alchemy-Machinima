@@ -45,13 +45,22 @@ template<> template<> void alkitmath_object::test<3>()
 template<> template<> void alkitmath_object::test<4>()
 {
     for (float orbit = -30.f; orbit <= 30.f; orbit += 3.f)
-    for (float offset_z = -1.f; offset_z <= 1.5001f; offset_z += .25f)
     for (float radius : {.6f, 1.f, 2.3f, 6.f})
+    for (float ratio : {-2.5f, -1.3f, -1.1f, -1.05f, -1.01f, -1.0001f, -1.f,
+                        -.999f, -.5f, 0.f, .5f, .999f,
+                         1.f, 1.0001f, 1.01f, 1.05f, 1.1f, 1.3f, 2.5f})
     for (float pitch = -85.f - orbit; pitch <= 85.f - orbit; pitch += 1.f)
+    for (float delta : {-60.f, -30.f, -10.f, 0.f, 10.f, 30.f, 60.f})
     {
+        const float offset_z = ratio * radius;
+        const float current = ALKitMath::clamp(pitch + delta, -85.f - orbit, 85.f - orbit);
         const float displayed = ALKitMath::pDisp(pitch, orbit, offset_z, radius);
-        const float round_trip = ALKitMath::baseFromDisplayPitch(displayed, orbit, offset_z, radius, pitch);
-        ensure("dense pitch inverse error < 0.01 degrees", std::fabs(round_trip - pitch) < .01f);
+        const float round_trip = ALKitMath::baseFromDisplayPitch(displayed, orbit, offset_z, radius, current);
+        const float redisplayed = ALKitMath::pDisp(round_trip, orbit, offset_z, radius);
+        if(std::fabs(offset_z)>=radius)
+            ensure("dense pitch inverse display error < 0.01 degrees",std::fabs(redisplayed-displayed)<.01f);
+        else
+            ensure("dense pitch inverse base error < 0.01 degrees",std::fabs(round_trip-pitch)<.01f);
     }
 }
 
@@ -258,5 +267,23 @@ template<> template<> void alkitmath_object::test<18>()
     ALKitMath::DragStart s;s.radius=100.f;s.canvas_radius=100.f;s.cx=s.cy=100.f;s.x0=100.f;s.y0=0.f;s.t0=s.base_yaw0=170.f;s.p0=s.base_pitch0=0.f;ALKitMath::DragResult r;
     for(int i=0;i<1000;++i){const float a=2.f*ALKitMath::PI*i/999.f;r=ALKitMath::dragTopAbsolute(s,s.cx+s.radius*std::sin(a),s.cy-s.radius*std::cos(a));}
     ensure_approximately_equals_range("full turn returns periodic base",r.yaw,s.base_yaw0,.01f);
+}
+
+template<> template<> void alkitmath_object::test<19>()
+{
+    const float radius=1.f;
+    for(float offset_z:{.5f,-.5f})
+    {
+        const float target=offset_z>0.f?89.f:-89.f;
+        const float result=ALKitMath::baseFromDisplayPitch(target,0.f,offset_z,radius,17.f);
+        ensure_approximately_equals_range("inside circle saturates at the nearer pitch bound",result,target>0.f?85.f:-85.f,.001f);
+    }
+    for(float offset_z:{2.f,-2.f})
+    {
+        const float cone=(offset_z>0.f?1.f:-1.f)*std::acos(radius/std::fabs(offset_z))*ALKitMath::RAD_TO_DEG;
+        const float result=ALKitMath::baseFromDisplayPitch(0.f,0.f,offset_z,radius,42.f);
+        ensure_approximately_equals_range("outside circle saturates at the reachable cone edge",
+            ALKitMath::pDisp(result,0.f,offset_z,radius),cone,.01f);
+    }
 }
 } // namespace tut

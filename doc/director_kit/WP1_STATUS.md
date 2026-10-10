@@ -113,10 +113,20 @@ Top-level implementation count (3.1-3.14 + maths + TUT): **16 code-complete, run
 
 ## R2 fix ledger (2026-10-10)
 
-- **BLOCKER NB1-NB2 / partial B10:** `baseFromDisplayPitch` now compares only the two canonical principal solutions on the valid cosine branch with a deterministic tie; a dense pitch × orbit × OffsetZ × radius sweep requires <0.01° error. Short-page grids are top-anchored after the viewport floor.
+- **BLOCKER NB1-NB2 / partial B10:** the R2 pitch sweep used `current=pitch` and did not exercise branch selection; its inverse claim is superseded by the R3 ledger below. Short-page grids are top-anchored after the viewport floor.
 - **MAJOR NM1-NM3 / partial M6:** Side tests use same-depth targets and explicitly prove cross-side pointers retain the captured side; row history has separate displayed and undo-baseline values, installs before binding commit observers, and adopts passive writes only outside edits; direct v1 control visibility again collapses/reveals rows.
 - **MAJOR NM4-NM6 / partial M14:** the master box follows the complete left cluster while search alone is right-aligned and collision-collapsed; one visible-page 10 Hz clock replaces all per-row timers; reset menus use a guarded `LLHandle<LLContextMenu>` and `die()`.
 - **MINOR 1-4:** WP2 now explicitly owns the Who popover instead of revealing its hidden combo; legacy summary moved into the bar; card masks are constructor-cached; option overlays are non-mouse-opaque.
-- **MINOR 5-8:** kit compass geometry keeps cardinals inside 48 px without changing legacy geometry; launcher `_launch` is recorded in the spec; `adoptPage` uses the page's typed scroller/legacy-host accessors; Side inversion uses captured-depth `atan2` rather than ill-conditioned `acos`.
+- **MINOR 5-8:** kit compass geometry keeps cardinals inside 48 px without changing legacy geometry; launcher `_launch` is recorded in the spec; `adoptPage` uses the page's typed scroller/legacy-host accessors; Side inversion uses the captured depth sign in its `atan2` branch (the projected axis remains inherently ill-conditioned and retains its tolerance).
 - **MINOR 9-11:** map-target snapshot types were audited as fixed-size arithmetic structs (the review's claimed `std::string` allocation is not present) and remain lazy to avoid off-screen frame computation; the full Side tooltip is restored; shell layout reserves the scrollbar once across the grid rather than once per card.
 - **Verification:** no build, test executable, or commit was run, per instruction. `git diff --check` is clean; the orchestrator's `/Zs` gate and standalone `alkitmath` harness remain the independent proof steps.
+
+## R3 fix ledger (2026-10-10)
+
+- **BLOCKER RB1 / partial M6:** `baseFromDisplayPitch` now clamps unreachable pointers to the reachable cone, clamps each principal root to ±85° before displayed-error scoring, and uses distance to the captured pitch only as the tie-break. The incorrect `NB1_FIX_RECIPE.md` was removed.
+- **Tests:** test 4 varies the captured/current pitch by ±10/30/60° across injective, near-radius, and outside-radius ratios, checking base space below the radius and display space at/above it; test 19 covers both ±85° saturation inside the circle and reachable-cone saturation outside it.
+- **MINOR 1-2:** history baselines freeze only during mouse capture or focused text entry, so passive writes while buttons/toggles/combos merely retain focus are adopted. WP4 acceptance records the passive widget-write amber refresh required for Easy feather.
+- **MINOR 3-4, 7:** the page bar starts at `PAGE_PAD_LR`; search shrinks to 120 px before hiding; legacy summaries use single-line ellipses. Section 3.5 records both layout rules.
+- **MINOR 5-6:** kit compass cardinal offsets use `4*scale` in the real draw; Who-chip polling shares the visible page's 10 Hz readout clock instead of owning a page timer.
+- **MINOR 8-9:** the R2 sweep and Side precision overclaims above are corrected. The `_launch`, kit-compass, Side-branch, and WP2 Who spec edits remain in the commit-ready spec together with the R3 clarifications.
+- **Verification:** no build, test executable, or commit was run, per instruction. Source review and `git diff --check` are the local checks; the orchestrator owns `/Zs`, the standalone harness, and TUT execution.

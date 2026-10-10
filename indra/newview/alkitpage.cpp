@@ -191,7 +191,7 @@ bool ALKitPage::postBuild()
     addChild(mChipsContainer);
     mWhoContainer=makePanel(pre+"_who");
     addChild(mWhoContainer);
-    S32 bar_x=0;
+    S32 bar_x=ALKitStyle::PAGE_PAD_LR;
 
     if(mPresetMode=="widgets")if(ALKitPresetHost*host=findChild<ALKitPresetHost>("kit_preset_host"))
     {
@@ -214,6 +214,7 @@ bool ALKitPage::postBuild()
         summary.name=pre+"_legacy_summary";
         summary.rect=LLRect(0,20,ALKitStyle::PRESET_COMBO_W,0);
         summary.initial_value=mSummary;
+        summary.use_ellipses=true;
         summary.text_color=ALKitStyle::color(ALKitStyle::MUTED);
         mLegacySummary=LLUICtrlFactory::create<LLTextBox>(summary);
         mBar->addChild(mLegacySummary);
@@ -361,17 +362,6 @@ bool ALKitPage::postBuild()
             }
             );
             mWhoChip->setLabel(mWhoLabel+": "+mWhoCombo->getSelectedItemLabel()+" \xE2\x96\xBE");
-            LLHandle<LLPanel>handle=getHandle();
-            doPeriodically([handle]()
-            {
-                LLPanel*p=handle.get();if(!p)return true;ALKitPage*page=dynamic_cast<ALKitPage*>(p);if(isWidgetOnScreen(page)&&page->mWhoCombo&&page->mWhoChip&&!page->mWhoError)
-                {
-                    const std::string label=page->mWhoLabel+": "+page->mWhoCombo->getSelectedItemLabel()+" \xE2\x96\xBE";
-                    if(page->mWhoChip->getLabelSelected()!=label)page->mWhoChip->setLabel(label);
-                }
-                return false;
-            }
-            ,.5f);
         }
         if(ALKitShell*shell=ALKitShell::find(this))mConnections.emplace_back(shell->setCastSelectionCallback([this](const ALKitShell::uuid_vec_t&ids)
         {
@@ -621,13 +611,15 @@ void ALKitPage::reshape(S32 w,S32 h,bool p)
         mBar->reshape(w,ALKitStyle::BAR_H,true);
         mBar->setOrigin(0,top);
         const S32 master_x=mBarLeftEnd+ALKitStyle::COL_GAP;
-        const S32 search_x=llmax(0,w-ALKitStyle::SEARCH_W-ALKitStyle::PAGE_PAD_LR);
+        const S32 right=w-ALKitStyle::PAGE_PAD_LR;
         const bool master_fits=mMasterBox&&master_x+170<=w-ALKitStyle::PAGE_PAD_LR;
         const S32 occupied_right=master_fits?master_x+170:mBarLeftEnd;
-        const bool search_fits=mSearch&&search_x>=occupied_right+ALKitStyle::COL_GAP;
+        const S32 search_w=llmin(ALKitStyle::SEARCH_W,llmax(0,right-occupied_right-ALKitStyle::COL_GAP));
+        const S32 search_x=right-search_w;
+        const bool search_fits=mSearch&&search_w>=120;
         if(mMasterBox){mMasterBox->reshape(170,24,true);mMasterBox->setOrigin(master_x,10);setVisibleIfChanged(mMasterBox,master_fits);}
         if(mMaster)mMaster->setOrigin(136,3);
-        if(mSearch){mSearch->setOrigin(search_x,10);setVisibleIfChanged(mSearch,search_fits);}
+        if(mSearch){mSearch->reshape(search_w,24,true);mSearch->setOrigin(search_x,10);setVisibleIfChanged(mSearch,search_fits);}
     }
     updateMaster();
     if(mBanner&&mBanner->getVisible())
@@ -790,6 +782,11 @@ void ALKitPage::draw()
     {
         for(const auto& card:mCards)if(card.second->getVisible())
             for(ALKitRow*row:card.second->rows())if(row->isEffectivelyVisible())row->pollLiveValue();
+        if(mWhoCombo&&mWhoChip&&!mWhoError)
+        {
+            const std::string label=mWhoLabel+": "+mWhoCombo->getSelectedItemLabel()+" \xE2\x96\xBE";
+            if(mWhoChip->getLabelSelected()!=label)mWhoChip->setLabel(label);
+        }
     }
     if(mShell)
     {

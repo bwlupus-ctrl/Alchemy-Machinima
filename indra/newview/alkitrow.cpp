@@ -8,9 +8,11 @@
 #include "alkitcard.h"
 #include "alkitpage.h"
 #include "llfontgl.h"
+#include "lllineeditor.h"
 #include "llrender2dutils.h"
 #include "llstring.h"
 #include "lltextbox.h"
+#include "lltexteditor.h"
 #include "llspinctrl.h"
 #include "llcombobox.h"
 #include "llcontrol.h"
@@ -20,6 +22,18 @@
 #include "alcompassdial.h"
 #include "alkitswitch.h"
 static LLDefaultChildRegistry::Register<ALKitRow> r("kit_row");
+
+namespace
+{
+bool baselineEditActive(const LLView* control)
+{
+    if (!control) return false;
+    if (gFocusMgr.childHasMouseCapture(control)) return true;
+    LLView* focus = dynamic_cast<LLView*>(gFocusMgr.getKeyboardFocus());
+    if (!focus || (focus != control && !focus->hasAncestor(control))) return false;
+    return dynamic_cast<LLLineEditor*>(focus) || dynamic_cast<LLTextEditor*>(focus);
+}
+}
 
 ALKitRow::Params::Params()
 :   kind("kind"), widget("widget", ""), label("label", ""), label_name("label_name", ""),
@@ -373,7 +387,7 @@ void ALKitRow::pollLiveValue()
     if(!mControl)return;
     const LLSD value=mControl->getValue();
     if(!alSameValue(value,mShownValue))refreshValue();
-    if(!alIsBeingEdited(mControl))mLastValue=value;
+    if(!baselineEditActive(mControl))mLastValue=value;
 }
 
 void ALKitRow::bindingChanged()
@@ -386,7 +400,7 @@ void ALKitRow::bindingChanged()
         mAmberSignal(now);
     }
     refreshValue();
-    if(mControl&&!alIsBeingEdited(mControl))mLastValue=mControl->getValue();
+    if(mControl&&!baselineEditActive(mControl))mLastValue=mControl->getValue();
 }
 
 void ALKitRow::resolveBinding()
