@@ -2,6 +2,43 @@
 <colors>
 
 	<!-- Named Colors -->
+	<!-- Director kit palette. Keep these names as the single C++/XUI colour authority. -->
+    <color name="KitWindowBg" value="0.067 0.075 0.086 1" />
+    <color name="KitRailBg" value="0.082 0.090 0.106 1" />
+    <color name="KitSubBand" value="0.094 0.106 0.122 1" />
+    <color name="KitCardBg" value="0.106 0.118 0.137 1" />
+    <color name="KitCardBorder" value="0.165 0.184 0.212 1" />
+    <color name="KitDivider" value="0.149 0.165 0.192 1" />
+    <color name="KitDivider2" value="0.133 0.149 0.173 1" />
+    <color name="KitRowHover" value="0.133 0.149 0.176 1" />
+    <color name="KitRailHover" value="0.118 0.133 0.157 1" />
+    <color name="KitControlBg" value="0.149 0.165 0.192 1" />
+    <color name="KitInputBg" value="0.071 0.078 0.094 1" />
+    <color name="KitInputBorder" value="0.204 0.227 0.259 1" />
+    <color name="KitTrack" value="0.212 0.235 0.267 1" />
+    <color name="KitSwitchOff" value="0.227 0.251 0.286 1" />
+    <color name="KitKnobOff" value="0.788 0.808 0.839 1" />
+    <color name="KitKnobOn" value="0.078 0.078 0.075 1" />
+    <color name="KitAccent" value="0.910 0.639 0.239 1" />
+    <color name="KitAccentHi" value="0.953 0.745 0.416 1" />
+    <color name="KitRecord" value="0.898 0.282 0.302 1" />
+    <color name="KitRecordText" value="0.949 0.655 0.663 1" />
+    <color name="KitText" value="0.902 0.910 0.922 1" />
+    <color name="KitTextStrong" value="0.945 0.949 0.957 1" />
+    <color name="KitLabel" value="0.788 0.808 0.839 1" />
+    <color name="KitDim" value="0.608 0.639 0.682 1" />
+    <color name="KitMuted" value="0.541 0.573 0.616 1" />
+    <color name="KitFaint" value="0.361 0.392 0.435 1" />
+    <color name="KitDialRing" value="0.290 0.318 0.357 1" />
+    <color name="KitDialFace" value="0.082 0.090 0.106 1" />
+    <color name="KitArcTrack" value="0.184 0.204 0.231 1" />
+    <color name="KitFlash" value="0.910 0.639 0.239 0.28" />
+    <color name="KitBannerBg" value="0.910 0.639 0.239 0.08" />
+    <color name="KitMapKey" value="0.910 0.639 0.239 1" />
+    <color name="KitMapFill" value="0.498 0.659 0.878 1" />
+    <color name="KitMapBack" value="0.945 0.949 0.957 1" />
+    <color name="KitMapBg" value="0.663 0.545 0.961 1" />
+    <color name="KitOffGrey" value="0.541 0.573 0.616 1" />
 	<color
 	 name="EmphasisColor"
 	 value="0.3 0.82 1 1" />

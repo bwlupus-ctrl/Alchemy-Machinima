@@ -23,6 +23,14 @@
 
 #include "llpanel.h"
 
+class ALFlowGridItem
+{
+public:
+    virtual ~ALFlowGridItem() = default;
+    virtual S32 heightForWidth(S32 width) const = 0;
+    virtual bool spansAllColumns() const { return false; }
+};
+
 class ALFlowGrid final : public LLPanel
 {
 public:
@@ -37,6 +45,7 @@ public:
         // pad = this grid's pad) instead of the card's declared height. Default off: grids
         // that do not opt in lay out exactly as before.
         Optional<bool> fit_cards;
+        Optional<std::string> pack;
 
         Params();
     };
@@ -47,12 +56,14 @@ public:
     void reshape(S32 width, S32 height, bool called_from_parent = true) override;
 
 private:
+    void layoutRows(S32 width, S32 height, bool called_from_parent);
     S32 mCardWidth;
     S32 mMaxColumns;
     S32 mColumnGap;
     S32 mRowGap;
     S32 mPad;
     bool mFitCards; // [DirFix]
+    bool mPackRows;
 };
 
 #endif // AL_FLOWGRID_H

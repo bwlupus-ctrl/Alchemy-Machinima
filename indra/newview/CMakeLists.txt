@@ -197,6 +197,19 @@ set(viewer_SOURCE_FILES
     aldirectorswitchermodel.cpp
     aldroptarget.cpp
     alflowgrid.cpp
+    alkitbinding.cpp
+    alkitcard.cpp
+    alkithelp.cpp
+    alkithistory.cpp
+    alkitlazypage.cpp
+    alkitpage.cpp
+    alkitpresets.cpp
+    alkitrow.cpp
+    alkitsearch.cpp
+    alkitshell.cpp
+    alkitstyle.cpp
+    alkitswitch.cpp
+    allightrigmap.cpp
     alfloaterblocked.cpp
     alfloaterdirectory.cpp
     alfloaterevent.cpp
@@ -1088,6 +1101,20 @@ set(viewer_HEADER_FILES
     aldirectorswitchermodel.h
     aldroptarget.h
     alflowgrid.h
+    alkitbinding.h
+    alkitcard.h
+    alkithelp.h
+    alkithistory.h
+    alkitlazypage.h
+    alkitmath.h
+    alkitpage.h
+    alkitpresets.h
+    alkitrow.h
+    alkitsearch.h
+    alkitshell.h
+    alkitstyle.h
+    alkitswitch.h
+    allightrigmap.h
     alfloaterblocked.h
     alfloaterdirectory.h
     alfloaterevent.h
@@ -2783,6 +2810,7 @@ if (BUILD_TESTING)
   LL_ADD_INTEGRATION_TEST(alflycamclassic "alflycamclassic.cpp" "${test_libs}" "${test_project}")
   LL_ADD_INTEGRATION_TEST(alflycamweighted "alflycamweighted.cpp;alflycamclassic.cpp" "${test_libs}" "${test_project}")
   LL_ADD_INTEGRATION_TEST(alxinputmath "" "${test_libs}" "${test_project}")
+  LL_ADD_INTEGRATION_TEST(alkitmath "" "${test_libs}" "${test_project}")
 
   # ALGazeMath is deliberately header-only, so register its TUT directly
   # instead of inventing a production .cpp solely for the per-source macro.

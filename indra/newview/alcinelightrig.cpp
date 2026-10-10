@@ -2514,6 +2514,12 @@ void ALCineLightRig::tickShared(
             root = object;
         }
 
+        const LLVector3 forward =
+            LLVector3(1.f, 0.f, 0.f) * root->getRenderRotation();
+        F32 facing = atan2f(forward.mV[VY], forward.mV[VX]) * RAD_TO_DEG;
+        if (!std::isfinite(facing)) facing = 0.f;
+        transforms.mFacingAzimuthDeg = facing;
+
         // Build an agent-space, world-axis box around the complete linkset.
         // The identity rotation makes getCenterAgent()/getExtentLocal() use
         // the same region-relative axes consumed by getPosGlobalFromAgent().
@@ -2663,6 +2669,10 @@ void ALCineLightRig::tickShared(
             ? avatar->getUniformScale() : 1.f;
     }
     globals = sanitizeGlobals(globals);
+    mMapTargetSetup = setup;
+    mMapTargetTransforms = transforms;
+    mMapTargetGlobals = globals;
+    mMapTargetDirty = true;
     const Globals unscaled_globals = globals; // [ActorMask] Before Live scaling.
     const F32 actor_bounce_ratio = globals.mBounceRatio;
     const bool actor_bounce_enabled = globals.mBounceEnabled;
@@ -3197,6 +3207,41 @@ bool ALCineLightRig::isClipped(S32 light) const
 {
     return light >= 0 && light < LIGHT_COUNT &&
            mLastFrame.mProj[light].mClipped;
+}
+
+const ALCineLightRigModel::RigFrame& ALCineLightRig::mapTargetFrame() const
+{
+    if (mMapTargetDirty)
+    {
+        ALCineLightRigModel::LightBase map_target[ALCineLightRigModel::LIGHT_COUNT];
+        ALCineLightRigModel::computeLive(mMapTargetSetup, mMapTargetTransforms, map_target);
+        ALCineLightRigModel::RigFrame frame{};
+        ALCineLightRigModel::render(mMapTargetSetup.mRadius, map_target, mMapTargetGlobals, frame);
+        auto emitter_equal = [](const ALCineLightRigModel::EmitterState& a,
+                                const ALCineLightRigModel::EmitterState& b)
+        {
+            return a.mOffX == b.mOffX && a.mOffY == b.mOffY && a.mOffZ == b.mOffZ &&
+                   a.mAimX == b.mAimX && a.mAimY == b.mAimY && a.mAimZ == b.mAimZ &&
+                   a.mSR == b.mSR && a.mSG == b.mSG && a.mSB == b.mSB &&
+                   a.mIntensity == b.mIntensity && a.mLightRadius == b.mLightRadius &&
+                   a.mFalloff == b.mFalloff && a.mFovRad == b.mFovRad &&
+                   a.mOn == b.mOn && a.mClipped == b.mClipped && a.mGobo == b.mGobo;
+        };
+        bool changed = frame.mCatchlightSizeScale != mMapTargetFrame.mCatchlightSizeScale;
+        for (S32 i = 0; i < ALCineLightRigModel::LIGHT_COUNT && !changed; ++i)
+        {
+            changed = !emitter_equal(frame.mProj[i], mMapTargetFrame.mProj[i]) ||
+                      !emitter_equal(frame.mOmni[i], mMapTargetFrame.mOmni[i]) ||
+                      frame.mDerivedShadowSoftness[i] != mMapTargetFrame.mDerivedShadowSoftness[i];
+        }
+        if (changed)
+        {
+            mMapTargetFrame = frame;
+            ++mMapTargetRevision;
+        }
+        mMapTargetDirty = false;
+    }
+    return mMapTargetFrame;
 }
 
 void ALCineLightRig::shutdown()

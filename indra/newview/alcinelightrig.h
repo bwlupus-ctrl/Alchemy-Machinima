@@ -325,6 +325,8 @@ public:
     {
         return mLastFrame;
     }
+    const ALCineLightRigModel::RigFrame& mapTargetFrame() const;
+    U64 mapTargetRevision() const { return mMapTargetRevision; }
 
     // Idempotent and safe on a partial emitter set.
     void shutdown();
@@ -486,6 +488,12 @@ private:
     LLVector4 mRigRim[ALCineLightRigModel::LIGHT_COUNT];
     F32 mLiveProbeBounceScale = 1.f;
     ALCineLightRigModel::RigFrame mLastFrame;
+    mutable ALCineLightRigModel::RigFrame mMapTargetFrame;
+    mutable U64 mMapTargetRevision = 0;
+    mutable bool mMapTargetDirty = true;
+    ALCineLightRigModel::Setup mMapTargetSetup;
+    ALCineLightRigModel::Transforms mMapTargetTransforms;
+    ALCineLightRigModel::Globals mMapTargetGlobals;
 };
 
 #endif // AL_CINE_LIGHT_RIG_H

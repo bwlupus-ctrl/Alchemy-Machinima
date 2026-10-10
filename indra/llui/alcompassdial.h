@@ -32,9 +32,17 @@ public:
         Optional<LLUIColor> ring_color,
                             tick_color,
                             needle_color,
-                            text_color;
+                            text_color,
+                            face_color,
+                            range_color,
+                            track_color,
+                            focus_color;
         Optional<bool>      clockwise;      // true: +deg turns the needle east (compass); false: west (math yaw)
         Optional<bool>      show_readout;   // secondary numeric "<n> deg" readout under the hub
+        Optional<std::string> mode, arc_zero;
+        Optional<F32> min_val, max_val, increment, wheel_step;
+        Optional<S32> decimal_digits;
+        Optional<bool> wheel_adjust, kit_geometry, show_cardinals, show_range_labels;
 
         Params();
     };
@@ -45,7 +53,9 @@ public:
     bool handleMouseUp(S32 x, S32 y, MASK mask) override;
     bool handleHover(S32 x, S32 y, MASK mask) override;
     bool handleScrollWheel(S32 x, S32 y, LLScrollDelta delta) override;
+    bool handleKeyHere(KEY key, MASK mask) override;
     void draw() override;
+    void onCommit() override;
 
     // degrees, wrapped to [-180, 180]; 0 = north
     void setValue(const LLSD& value) override;
@@ -66,8 +76,26 @@ private:
     LLUIColor mTickColor;
     LLUIColor mNeedleColor;
     LLUIColor mTextColor;
+    LLUIColor mFaceColor;
+    LLUIColor mRangeColor;
+    LLUIColor mTrackColor;
+    LLUIColor mFocusColor;
     bool      mClockwise = true;
     bool      mShowReadout = true;
+    bool      mArc = false;
+    bool      mWheelAdjust = true;
+    bool      mKitGeometry = false;
+    bool      mShowCardinals = true;
+    bool      mShowRangeLabels = false;
+    bool      mRangeProvided = false;
+    F32       mMinValue = -180.f;
+    F32       mMaxValue = 180.f;
+    F32       mIncrement = 1.f;
+    F32       mWheelStep = 5.f;
+    S32       mDecimalDigits = 1;
+    std::string mReadoutText;
+    std::string mMinimumText;
+    std::string mMaximumText;
 };
 
 #endif // AL_ALCOMPASSDIAL_H

@@ -1049,4 +1049,8 @@ with the same filename but different name
   <texture name="Script_Running" file_name="script_editor/green_square.png" preload="false" />
   <texture name="Script_NotRunning" file_name="script_editor/yellow_square.png" preload="false" />
   <texture name="Script_Error" file_name="script_editor/red_square.png" preload="false" />
+  <texture name="Kit_RoundRect4" file_name="kit/Kit_RoundRect4.png" preload="true" scale.left="6" scale.top="10" scale.right="10" scale.bottom="6" />
+  <texture name="Kit_RoundRect6" file_name="kit/Kit_RoundRect6.png" preload="true" scale.left="6" scale.top="10" scale.right="10" scale.bottom="6" />
+  <texture name="Kit_Pill9" file_name="kit/Kit_Pill9.png" preload="true" scale.left="9" scale.top="9" scale.right="9" scale.bottom="9" />
+  <texture name="Kit_Circle" file_name="kit/Kit_Circle.png" preload="true" />
 </textures>

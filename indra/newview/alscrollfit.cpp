@@ -12,6 +12,7 @@
 
 #include "llviewerprecompiledheaders.h"
 #include "alscrollfit.h"
+#include "alkitpage.h"
 
 #include "alscrollfocus.h"
 
@@ -94,6 +95,7 @@ void fitContainer(LLScrollContainer* sc, const StretcherMins* mins)
 {
     LLView* doc = scrolledView(sc);
     if (!doc) return;
+    if (dynamic_cast<SelfSizedDocument*>(doc)) return;
 
     const LLRect doc_rect = doc->getRect();
     const S32 old_h = doc_rect.getHeight();
@@ -454,5 +456,56 @@ void Controller::installForTabs(LLTabContainer* tabs, LLView* root, const std::v
     {
         enableSliderWheel(root);
     }
+}
+
+void Controller::adoptPage(LLPanel* tab_page, LLPanel* content)
+{
+    if (!tab_page || !content) return;
+    std::string prefix = tab_page->getName();
+    if (prefix.size() > 4 && prefix.compare(prefix.size() - 4, 4, "_tab") == 0)
+    {
+        prefix.resize(prefix.size() - 4);
+    }
+    ALKitPage* kit_page = dynamic_cast<ALKitPage*>(content);
+    if (!kit_page) kit_page = content->findChild<ALKitPage>(tab_page->getName());
+    if (!kit_page) kit_page = content->findChild<ALKitPage>(prefix + "_tab");
+    if (!kit_page)
+    {
+        std::function<ALKitPage*(LLView*)> find_page;
+        find_page = [&find_page](LLView* view) -> ALKitPage*
+        {
+            for (LLView* child : *view->getChildList())
+            {
+                if (ALKitPage* found = dynamic_cast<ALKitPage*>(child)) return found;
+                if (ALKitPage* found = find_page(child)) return found;
+            }
+            return nullptr;
+        };
+        kit_page = find_page(content);
+    }
+    LLScrollContainer* kit_scroller = kit_page && !kit_page->legacy()
+        ? kit_page->findChild<LLScrollContainer>(prefix + "_scroll") : nullptr;
+    if (kit_scroller)
+    {
+        if (LLView* doc = scrolledView(kit_scroller)) mFocus.install(kit_scroller, doc, doc);
+        enableSliderWheel(content);
+        return;
+    }
+
+    LLPanel* host = kit_page && kit_page->legacy()
+        ? kit_page->findChild<LLPanel>(prefix + "_legacy_host") : nullptr;
+    if (!host) return;
+    if (!hasDirectScrollContainer(host) && std::find(mUnwrapped.begin(), mUnwrapped.end(), host->getName()) == mUnwrapped.end())
+    {
+        wrapTabPanel(host, mMins.get());
+    }
+    std::vector<LLScrollContainer*> containers;
+    collectDocumentContainers(host, containers);
+    for (LLScrollContainer* sc : containers)
+    {
+        if (LLView* doc = scrolledView(sc)) mFocus.install(sc, doc, doc);
+    }
+    fitPage(tab_page);
+    enableSliderWheel(content);
 }
 } // namespace ALScrollFit

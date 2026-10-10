@@ -48,6 +48,11 @@ class LLTabContainer;
 
 namespace ALScrollFit
 {
+class SelfSizedDocument
+{
+public:
+    virtual ~SelfSizedDocument() = default;
+};
 // Gap kept below the lowest child of a scroll document.
 constexpr S32 FIT_PAD = 12;
 // ---- (a)/(b)/(c) layout -------------------------------------------------------------
@@ -200,6 +205,7 @@ public:
     // instead of the bare fitAll, which knows no minimums).
     void fit(LLView* root, LLTabContainer* tabs) { fitAll(root, tabs, mMins.get()); }
     void fitPage(LLView* page) { ALScrollFit::fitPage(page, mMins.get()); }
+    void adoptPage(LLPanel* tab_page, LLPanel* content);
     void setCommitFitEnabled(bool enabled) { *mCommitFitEnabled = enabled; }
 
     void reset() { mFocus.clear(); mMins->clear(); }
