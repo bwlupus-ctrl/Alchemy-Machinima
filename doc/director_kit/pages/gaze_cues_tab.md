@@ -1,19 +1,19 @@
 # Gaze Cues — Director Kit page contract
 
 Page key: `gaze_cues_tab`. Evidence: [`page_sources.json`](../page_sources.json) and [`page_sources.md`](../page_sources.md).
-Computed class: **code-driven** (0/3 setting-bound rows; 0 C++-referenced rows).
+Computed class: **code-driven** (0/5 setting-bound rows; 5 C++-referenced rows).
 
 ## Real owners
 
-- `floater_gaze_cues` / `floater` at `indra/newview/skins/default/xui/en/floater_gaze_cues.xml:2` (0 matching rows).
+- `floater_gaze_cues` / `floater` at `indra/newview/skins/default/xui/en/floater_gaze_cues.xml:9` (3 matching rows).
 - `floater_gaze_cues` in `indra/newview/skins/default/xui/en/floater_gaze_cues.xml:2`; `ALFloaterGazeCues` in `indra/newview/alfloatergazecues.cpp:101-663`.
-- Referencing classes: `ALFloaterGazeCues` (0).
+- Referencing classes: `ALFloaterGazeCues` (6), `LLDirectorCast` (1), `LLActorMover` (1).
 
 Name collisions in secondary XUI files are evidence candidates, not automatic ownership. The implementation must retain only occurrences whose root and class agree with the row's behavior.
 
 ## Presentation rule
 
-Extract the existing cue list/editor stock controls into a shared owner-token view only if inline editing is required. Embed size: full card width, 240 px preferred, 160 px minimum, 320 px maximum, no nested page scroller.
+Keep the cue list plus Add, Remove, Play, and Stop in Director. Selecting a row opens the existing Gaze Cues window at that cue; detailed keyframe editing remains there.
 
 ## Row bindings
 
@@ -21,9 +21,20 @@ Extract the existing cue list/editor stock controls into a shared owner-token vi
 
 | Card / row | Existing control evidence | Required binding | Other writable homes |
 |---|---|---|---|
-| `cues` / `gaze_cue_count` (Cue count) | none | kit readout ← approved static copy; no runtime writer | none |
-| `cues` / `gaze_cue_editor` (Cue editor) | none | kit-native action `floater:gaze_cues`; no duplicate widget is required | none |
-| `adv_gaze` / `gaze_cue_editor_adv` (Cue editor) | none | kit-native action `floater:gaze_cues`; no duplicate widget is required | none |
+| `cues` / `cue_list` (Cues) | `scroll_list` `indra/newview/skins/default/xui/en/floater_gaze_cues.xml:31` | `ALGazeCueKitAdapter` command/model binding → wired in `ALFloaterGazeCues::postBuild()`; behavior `ALFloaterGazeCues::onCueSelected()` (`indra/newview/alfloatergazecues.cpp:138`) | none |
+| `cues` / `btn_cue_add` (Add) | `button` `indra/newview/skins/default/xui/en/floater_gaze_cues.xml:39` | `ALGazeCueKitAdapter` command/model binding → wired in `ALFloaterGazeCues::postBuild()`; behavior `ALFloaterGazeCues::onAdd()` (`indra/newview/alfloatergazecues.cpp:140`) | none |
+| `cues` / `btn_cue_delete` (Remove) | `button` `indra/newview/skins/default/xui/en/floater_gaze_cues.xml:43` | `ALGazeCueKitAdapter` command/model binding → wired in `ALFloaterGazeCues::postBuild()`; behavior `ALFloaterGazeCues::onDelete()` (`indra/newview/alfloatergazecues.cpp:142`) | none |
+| `cues` / `gaze_cue_play` (Play) | none | `ALGazeCueKitAdapter` command/model binding → behavior `LLDirectorCast::evaluateGazeCues()` (`indra/newview/lldirectorcast.cpp:1467`) | none |
+| `cues` / `gaze_cue_stop` (Stop) | none | `ALGazeCueKitAdapter` command/model binding → behavior `LLActorMover::clearDirectorLookAtRuntime()` (`indra/newview/llactormover.cpp:6504`) | none |
+
+## Cue-list behavior decided 2026-10-10
+
+- Row format is `Time | Target | Macro`, exactly the fields built by `ALFloaterGazeCues::refreshCueList()` (`alfloatergazecues.cpp:235-262`).
+- Add reuses `onAdd()` (`alfloatergazecues.cpp:409-417`); Remove reuses `onDelete()` (`:436-452`). Both mutate through `LLDirectorCast::setGazeCues()` (`lldirectorcast.cpp:1364-1397`), which sanitizes, sorts, bumps `getGazeCueRevision()`, and clears gaze runtime.
+- Selecting a Director row opens `gaze_cues` for that actor and selects the same cue, then follows `onCueSelected()` (`alfloatergazecues.cpp:395-406`) to load the detailed editor. Detailed targets, macros, transitions, and influence keyframes remain only in that window.
+- Play is a transient selected-cue preview evaluated by the real `LLDirectorCast::evaluateGazeCues()` (`lldirectorcast.cpp:1467-1492`); Stop clears that preview through `LLActorMover::clearDirectorLookAtRuntime()` (`llactormover.cpp:6504`) and restores the live authored target. Preview never rewrites cue times or the presentation clock.
+- Refresh is event-driven: add a controller revision signal at `setGazeCues()`'s existing revision bump and subscribe while visible. Refresh once on attach/reveal, actor change, and that signal; do not call the floater's per-frame `draw()` refresh path (`alfloatergazecues.cpp:187-193`).
+- Add and Remove are one `ALKitHistory` command each, storing the actor ID and complete before/after `GazeCueList`; Remove is therefore undoable and needs no confirmation. Play and Stop each place one `ALKitHistory::globalBarrier(reason)` and history recording is suspended between them.
 
 ## Adapter extraction
 
@@ -31,8 +42,10 @@ Extract the existing cue list/editor stock controls into a shared owner-token vi
 |---|---|
 | `ALFloaterGazeCues::loadEditor()` — `indra/newview/alfloatergazecues.cpp:320` | Move model-facing work into `ALGazeCueKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
 | `ALFloaterGazeCues::loadInfluenceEditor/readInfluenceEditor()` — `indra/newview/alfloatergazecues.cpp:584` | Move model-facing work into `ALGazeCueKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
+| `ALFloaterGazeCues::onAdd()` — `indra/newview/alfloatergazecues.cpp:140` | Move model-facing work into `ALGazeCueKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
 | `ALFloaterGazeCues::onAdd/onEdit/onDelete()` — `indra/newview/alfloatergazecues.cpp:409` | Move model-facing work into `ALGazeCueKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
-| `ALFloaterGazeCues::onCueSelected()` — `indra/newview/alfloatergazecues.cpp:395` | Move model-facing work into `ALGazeCueKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
+| `ALFloaterGazeCues::onCueSelected()` — `indra/newview/alfloatergazecues.cpp:138, 395` | Move model-facing work into `ALGazeCueKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
+| `ALFloaterGazeCues::onDelete()` — `indra/newview/alfloatergazecues.cpp:142` | Move model-facing work into `ALGazeCueKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
 | `ALFloaterGazeCues::onInfluenceAdd/onInfluenceUpdate/onInfluenceDelete()` — `indra/newview/alfloatergazecues.cpp:634` | Move model-facing work into `ALGazeCueKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
 | `ALFloaterGazeCues::onQuickMacro()` — `indra/newview/alfloatergazecues.cpp:486` | Move model-facing work into `ALGazeCueKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
 | `ALFloaterGazeCues::onSetPoint/onPickObject/onClearObject()` — `indra/newview/alfloatergazecues.cpp:460` | Move model-facing work into `ALGazeCueKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
@@ -41,6 +54,8 @@ Extract the existing cue list/editor stock controls into a shared owner-token vi
 | `ALFloaterGazeCues::refreshCueList()` — `indra/newview/alfloatergazecues.cpp:235` | Move model-facing work into `ALGazeCueKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
 | `ALFloaterGazeCues::refreshEditorVisibility()` — `indra/newview/alfloatergazecues.cpp:303` | Move model-facing work into `ALGazeCueKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
 | `ALFloaterGazeCues::refreshInfluenceList()` — `indra/newview/alfloatergazecues.cpp:545` | Move model-facing work into `ALGazeCueKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
+| `LLActorMover::clearDirectorLookAtRuntime()` — `indra/newview/llactormover.cpp:6504` | Move model-facing work into `ALGazeCueKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
+| `LLDirectorCast::evaluateGazeCues()` — `indra/newview/lldirectorcast.cpp:1467` | Move model-facing work into `ALGazeCueKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
 
 ## Live state and refresh
 
@@ -51,7 +66,7 @@ Extract the existing cue list/editor stock controls into a shared owner-token vi
 
 ## Bounded non-default audit states
 
-Manifest size: **15 states**, hard cap 256, page runtime budget 2 minutes. Each row below is applied independently from the default snapshot; there is no Cartesian product.
+Manifest size: **16 states**, hard cap 256, page runtime budget 2 minutes. Each row below is applied independently from the default snapshot; there is no Cartesian product.
 
 | State key | Exact scenario |
 |---|---|
@@ -60,8 +75,9 @@ Manifest size: **15 states**, hard cap 256, page runtime budget 2 minutes. Each 
 | `size-1141x720` | Default data at the wide non-round shell size. |
 | `card-cues-tallest-850` | Only `cues` is put in its tallest local state at 850 px; all other cards stay default. |
 | `card-cues-tallest-1160` | Only `cues` is put in its tallest local state at 1160 px; all other cards stay default. |
-| `card-adv_gaze-tallest-850` | Only `adv_gaze` is put in its tallest local state at 850 px; all other cards stay default. |
-| `card-adv_gaze-tallest-1160` | Only `adv_gaze` is put in its tallest local state at 1160 px; all other cards stay default. |
+| `cue_list-empty` | `cue_list` is empty with no selection. |
+| `cue_list-one` | `cue_list` has one selected item. |
+| `cue_list-overflow` | `cue_list` has 51 items and a visible scrollbar. |
 | `actor-none` | Rail has no actor; target-dependent rows are disabled with an explicit empty state. |
 | `actor-selected` | One rail actor is selected and unpinned. |
 | `actor-pinned-rail-changes` | Page target is pinned while the rail changes to another actor. |
@@ -84,7 +100,7 @@ None.
 
 ## Rejected out-of-scope same-name candidates
 
-None.
+7 candidates were rejected by the XUI-owner/class scope; exact records and reasons are in `page_sources.json`.
 
 ## New widget required
 

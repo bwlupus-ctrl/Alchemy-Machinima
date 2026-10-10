@@ -10,9 +10,9 @@ Branch `feature/director-kit-p0`. Written 2026-10-09 (Opus) for Codex, which imp
 - the approved mockup data: `director_mockup_data.json`, snapshotted into the repo by WP0 at `scripts/code_tools/director_kit/director_mockup_data.json`;
 - the approved mockup: `Director.dc.html` and `Kit.dc.html`. The metrics are copied into section 3.1, so Codex never needs the HTML.
 
-**Rollout:** **ALL AT ONCE.** P0 is a non-shippable foundation. After WP5, the mandatory WP6-WP12 work in `DIRECTOR_KIT_ROLLOUT_SPEC.md` converts all 36 pages back-to-back. `DirectorUIV2` remains default-off and debug/self-test-only until that document's final ship gate passes. The normal user never sees a half-converted Director.
+**Rollout:** **ALL AT ONCE.** P0 is a non-shippable foundation. After WP5, the mandatory WP6-WP12 work in `DIRECTOR_KIT_ROLLOUT_SPEC.md` converts all 35 pages back-to-back. `DirectorUIV2` remains default-off and debug/self-test-only until that document's final ship gate passes. The normal user never sees a half-converted Director.
 - v1 (`floater_director.xml` and everything it embeds) stays byte-identical, and its behaviour is unchanged.
-- v2 becomes user-visible only when all 36 pages are kit pages and the absolute-zero four-size audit passes every default and non-default state.
+- v2 becomes user-visible only when all 35 pages are kit pages and the absolute-zero four-size audit passes every default and non-default state.
 
 ---
 
@@ -23,7 +23,7 @@ Branch `feature/director-kit-p0`. Written 2026-10-09 (Opus) for Codex, which imp
    - widgets: ALKitStyle, ALKitSwitch, ALKitRow, ALKitCard, ALKitOption, ALKitPage, ALKitLazyPage, ALKitShell, ALKitBar, ALKitPopover;
    - services: ALKitSearch, ALKitHelp, ALKitPresetProvider (plus SnapshotStore and the `rig_rim` adapter), ALKitBinding with ALKitSettingWatch (amber), and ALKitHistory (undo).
 2. The ALCompassDial arc mode and the new ALLightRigMap widget.
-3. The generator `director_kit_gen.py`, which writes `floater_director_v2.xml`, 36 page files and the search index.
+3. The generator `director_kit_gen.py`, which writes `floater_director_v2.xml`, 35 page files and the search index.
 4. Two pages fully converted: **Light › Rig** and **Light › Rim**. ALRigRimController is extracted, and ALPanelRigRim is new.
 5. Every other page in the non-shippable P0 test artifact:
    - a v1 page becomes a **legacy embed**;
@@ -1083,7 +1083,7 @@ No timestamps.
 | File | Content |
 |---|---|
 | `floater_director_v2.xml` | the floater, `kit_shell`, rail items, `kit_cast_roster`, `director_tabs` with the group panels, page tab containers and `kit_lazy_page`s, `kit_transport`, popovers |
-| `panel_dpage_<g>_<slug>.xml` ×36 | one per data page. `<g>` = group name without `_group`. `<slug>` = page name without `_tab` and without a leading `<g>_` (`cine_light_rig_tab` → `cine_light_rig`; `light_rim_tab` → `rim`). |
+| `panel_dpage_<g>_<slug>.xml` ×35 | one per data page. `<g>` = group name without `_group`. `<slug>` = page name without `_tab` and without a leading `<g>_` (`cine_light_rig_tab` → `cine_light_rig`; `light_rim_tab` → `rim`). |
 | `director_kit_index.xml` | the search index (section 3.8) |
 | `scripts/code_tools/director_kit/gen_report.txt` | per page: classification, rows, kit rows, hosted v1 nodes, presentation upgrades, warnings |
 
@@ -1154,9 +1154,9 @@ A row is **pure** when one of these holds:
 | light_group/light_rim_tab | kit (P0) |
 | look_group/bloom_glow_tab | pure kit (new) |
 | look_group/tron_tab | launcher in the non-shippable P0 artifact only; WP10 replaces it with the full inline kit page |
-| the other 32 pages | legacy |
+| the other 31 pages | legacy |
 
-This table describes only the non-shippable P0 foundation artifact. WP6 replaces this classifier/config with the 36-page matrix in `DIRECTOR_KIT_ROLLOUT_SPEC.md`; the final generator rejects every legacy or launcher page. In particular Tron becomes a full inline kit page, VCam uses its monitor design rather than the three-row v1 summary, and Capture/Gaze Cues/Light Cues/Diopter are data-complete.
+This table describes only the non-shippable P0 foundation artifact. WP6 replaces this classifier/config with the 35-page matrix in `DIRECTOR_KIT_ROLLOUT_SPEC.md`; the final generator rejects every legacy or launcher page. In particular Tron becomes a full inline kit page, VCam uses its monitor design rather than the three-row v1 summary, and Gaze Cues/Light Cues/Diopter are data-complete. Capture is excluded by the mockup-data generator and remains in the existing Snapshot floater.
 
 **Legacy page file:**
 ```xml
@@ -1453,7 +1453,7 @@ If a `row_overrides` key or an `after` row is not found in the data, it is a gen
 2. Every control_name in A is bound by some control_name in B.
 3. **getChild check:** every literal and expanded prefix/suffix/index pattern passed to `getChild<T>`/`findChild<T>` in the page owners exists in B **and the v2 class is compatible with T**. The extractor covers the dynamic role combos at `alpanelcinelightrig.cpp:1064-1074`; a runtime self-test log of resolved name/requested-type/actual-type closes patterns static extraction cannot prove. The generator refuses a presentation upgrade matching any extracted literal or suffix pattern.
 
-It prints PASS or FAIL with the lists, and exits 1 on FAIL. Intermediate P0 gate: PASS for `light_group`. All-at-once gate: `director_parity.py --groups all` over every recursively expanded v1 source and all 36 kit pages.
+It prints PASS or FAIL with the lists, and exits 1 on FAIL. Intermediate P0 gate: PASS for `light_group`. All-at-once gate: `director_parity.py --groups all` over every recursively expanded v1 source and all 35 kit pages.
 
 ### 6.3 `xui_layout_check.py` learns the kit
 
@@ -1495,7 +1495,7 @@ It prints PASS or FAIL with the lists, and exits 1 on FAIL. Intermediate P0 gate
 | layout findings, shell + Light › Rig + Light › Rim, all states at all 4 sizes | 0 | — |
 | layout findings, legacy pages, vs a v1 baseline run at default and min (`-Compare <v1 csv>`) | 0 new | — |
 
-The legacy comparison is intermediate-only. The WP12 final run defined in `DIRECTOR_KIT_ROLLOUT_SPEC.md` replaces it with absolute zero findings for all 36 pages and every enumerated state at all four sizes.
+The legacy comparison is intermediate-only. The WP12 final run defined in `DIRECTOR_KIT_ROLLOUT_SPEC.md` replaces it with absolute zero findings for all 35 pages and every enumerated state at all four sizes.
 
 6. **Help and amber per-frame cost.** The self-test's existing `mFindCalls` per frame on the Rig page must equal 0 while hovering rows. Add a `hover_sweep` row for the Director Rig page, reusing the inventory hover-sweep code path.
 
@@ -1638,7 +1638,7 @@ If they differ, the config tables in section 4.7 win and the generator reports t
 **Files (new):**
 - `scripts/code_tools/director_kit_gen.py`;
 - `scripts/code_tools/director_kit/kit_pages.json` (section 4.7), `cpp_name_patterns.json`, `kit_lint_allow.json`;
-- generated: `floater_director_v2.xml`, 36 `panel_dpage_*.xml`, `director_kit_index.xml`, `gen_report.txt`.
+- generated: `floater_director_v2.xml`, 35 `panel_dpage_*.xml`, `director_kit_index.xml`, `gen_report.txt`.
 
 **Files (modified):** `scripts/code_tools/director_mockup_data.py` (the WP0 patch, if not already done).
 
@@ -1689,7 +1689,7 @@ This is the integration pass over WP1 to WP3 for the two pages. It covers:
 - the default-mode self-test behaviour is unchanged (no `UILayoutAuditSizes`, no DirectorV2): reviewer diff;
 - the budget evaluation prints every line in section 6.4.
 
-**After WP5:** review and automated foundation build may run, but v2 is not shippable and remains debug/self-test-only. Proceed directly through `DIRECTOR_KIT_ROLLOUT_SPEC.md` WP6-WP12. The single release-candidate fresh build and full 36-page in-world checklist occur only after WP12. The P0-only diagnostic checklist is:
+**After WP5:** review and automated foundation build may run, but v2 is not shippable and remains debug/self-test-only. Proceed directly through `DIRECTOR_KIT_ROLLOUT_SPEC.md` WP6-WP12. The single release-candidate fresh build and full 35-page in-world checklist occur only after WP12. The P0-only diagnostic checklist is:
 - Rig Easy/Advanced;
 - map drag in Top, 2.5D and both Side directions with Mirror on/off, zero-motion mouse-down, a 0.9 s transition, subject scaling, and an object target rotated away from world east (Mirror enabled and object-front-relative);
 - preset apply, undo and redo;
@@ -1737,7 +1737,7 @@ There are no open rollout choices in this specification. The binding decisions b
 
 
 ## USER DECISIONS (2026-10-10, binding; supersede the recommendations above)
-- **Rollout: ALL AT ONCE.** The user receives the new Director only when EVERY page is a full kit page matching the mockup. P0 (WP1-WP5) is the foundation; the remaining 32 legacy-embedded pages MUST be converted to kit pages (later phases, executed back-to-back) before v2 is offered to the user. Intermediate builds are allowed for automated gates only (self-test/audit); DirectorUIV2 stays off by default until all pages pass.
+- **Rollout: ALL AT ONCE.** The user receives the new Director only when EVERY page is a full kit page matching the mockup. P0 (WP1-WP5) is the foundation; the remaining 31 legacy-embedded pages MUST be converted to kit pages (later phases, executed back-to-back) before v2 is offered to the user. Intermediate builds are allowed for automated gates only (self-test/audit); DirectorUIV2 stays off by default until all pages pass.
 - **U2 audit gate:** with all-at-once, the final gate is an ABSOLUTE 0 layout findings on every page at all 4 sizes (the "0 new vs v1" rule applies only to intermediate builds).
 - **U3 tilt arc:** HORIZON = 0 (needle sideways at 0; up positive, down negative, like a camera tilt gauge).
 - **U4 Light map:** CAMERA-RELATIVE (camera at the bottom). No north-up toggle.
@@ -1745,7 +1745,7 @@ There are no open rollout choices in this specification. The binding decisions b
 
 ## Review R1 resolution
 
-- B1 -> `DIRECTOR_KIT_ROLLOUT_SPEC.md` sections 1-8 (36-page matrix, adapters/kinds, WP6-WP12, final ship gate) and this spec sections 0, 4.3, 6.2, 6.4, 7, 10.
+- B1 -> `DIRECTOR_KIT_ROLLOUT_SPEC.md` sections 1-8 (35-page matrix, adapters/kinds, WP6-WP12, final ship gate) and this spec sections 0, 4.3, 6.2, 6.4, 7, 10.
 - B2 -> sections 3.2, 7 WP1, and spike S2 (`LLCheckBoxCtrl` inner-button binding, widget defaults, click/external/direct-`setValue`/passive paths).
 - B3 -> sections 3.5, 3.8, 3.18, and spike S8 (one page-scoped mode adapter, guarded `applyEasyMode`, and effective-mode publication for every source).
 - B4 -> `VCAM_MONITORS_DESIGN.md` section 5.4 and VC1 (fine-grained identity-preserving typed undo; `applySceneData()` forbidden).

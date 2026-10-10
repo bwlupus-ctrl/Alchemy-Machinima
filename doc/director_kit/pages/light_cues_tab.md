@@ -1,19 +1,19 @@
 # Light Cues — Director Kit page contract
 
 Page key: `light_cues_tab`. Evidence: [`page_sources.json`](../page_sources.json) and [`page_sources.md`](../page_sources.md).
-Computed class: **code-driven** (0/6 setting-bound rows; 4 C++-referenced rows).
+Computed class: **code-driven** (0/5 setting-bound rows; 5 C++-referenced rows).
 
 ## Real owners
 
-- `floater_cine_light_cues` / `floater` at `indra/newview/skins/default/xui/en/floater_cine_light_cues.xml:9` (4 matching rows).
+- `floater_cine_light_cues` / `floater` at `indra/newview/skins/default/xui/en/floater_cine_light_cues.xml:9` (5 matching rows).
 - `floater_cine_light_cues` in `indra/newview/skins/default/xui/en/floater_cine_light_cues.xml:2`; `ALFloaterCineLightCues` in `indra/newview/alfloatercinelightcues.cpp:51-403`.
-- Referencing classes: `ALFloaterCineLightCues` (7).
+- Referencing classes: `ALFloaterCineLightCues` (9).
 
 Name collisions in secondary XUI files are evidence candidates, not automatic ownership. The implementation must retain only occurrences whose root and class agree with the row's behavior.
 
 ## Presentation rule
 
-Extract the existing cue list/editor stock controls into a shared owner-token view only if inline editing is required. Embed size: full card width, 240 px preferred, 160 px minimum, 320 px maximum, no nested page scroller.
+Keep the cue list plus Add, Remove, Play, and Stop in Director. Selecting a row opens the existing Lighting Cue Stack at that cue; detailed keyframe editing remains there.
 
 ## Row bindings
 
@@ -21,24 +21,34 @@ Extract the existing cue list/editor stock controls into a shared owner-token vi
 
 | Card / row | Existing control evidence | Required binding | Other writable homes |
 |---|---|---|---|
-| `cues` / `cue_status` (Current cue) | `text` `indra/newview/skins/default/xui/en/floater_cine_light_cues.xml:85` | kit readout ← approved static copy; no runtime writer | none |
-| `cues` / `cue_back` (Back) | `button` `indra/newview/skins/default/xui/en/floater_cine_light_cues.xml:74` | `ALLightCueKitAdapter` command/model binding → wired in `ALFloaterCineLightCues::postBuild()`; behavior `ALFloaterCineLightCues::onBack()` (`indra/newview/alfloatercinelightcues.cpp:104`) | none |
-| `cues` / `cue_go` (Go) | `button` `indra/newview/skins/default/xui/en/floater_cine_light_cues.xml:76` | `ALLightCueKitAdapter` command/model binding → wired in `ALFloaterCineLightCues::postBuild()`; behavior `ALFloaterCineLightCues::onGo()` (`indra/newview/alfloatercinelightcues.cpp:102`) | none |
-| `cues` / `cue_open_stack` (Cue editor) | none | kit-native action `floater:cine_light_cues`; no duplicate widget is required | none |
-| `adv_cues` / `cue_timecode_check` (Timecode) | `check_box` `indra/newview/skins/default/xui/en/floater_cine_light_cues.xml:23` | `ALLightCueKitAdapter` command/model binding → wired in `ALFloaterCineLightCues::postBuild()`; behavior `ALFloaterCineLightCues::onTimecodeMode()` (`indra/newview/alfloatercinelightcues.cpp:95`). Contract note: data name `cue_timecode_check` maps to existing XUI `cue_timecode_mode` | none |
-| `adv_cues` / `cue_open_stack_adv` (Cue editor) | none | kit-native action `floater:cine_light_cues`; no duplicate widget is required | none |
+| `cues` / `cue_rows` (Cues) | `scroll_list` `indra/newview/skins/default/xui/en/floater_cine_light_cues.xml:27` | `ALLightCueKitAdapter` command/model binding → wired in `ALFloaterCineLightCues::postBuild()`; behavior `ALFloaterCineLightCues::onCueSelected()` (`indra/newview/alfloatercinelightcues.cpp:87`) | none |
+| `cues` / `cue_capture` (Add) | `button` `indra/newview/skins/default/xui/en/floater_cine_light_cues.xml:60` | `ALLightCueKitAdapter` command/model binding → wired in `ALFloaterCineLightCues::postBuild()`; behavior `ALFloaterCineLightCues::onCapture()` (`indra/newview/alfloatercinelightcues.cpp:89`) | none |
+| `cues` / `cue_delete` (Remove) | `button` `indra/newview/skins/default/xui/en/floater_cine_light_cues.xml:65` | `ALLightCueKitAdapter` command/model binding → wired in `ALFloaterCineLightCues::postBuild()`; behavior `ALFloaterCineLightCues::onDeleteCue()` (`indra/newview/alfloatercinelightcues.cpp:93`) | none |
+| `cues` / `cue_goto` (Play) | `button` `indra/newview/skins/default/xui/en/floater_cine_light_cues.xml:79` | `ALLightCueKitAdapter` command/model binding → wired in `ALFloaterCineLightCues::postBuild()`; behavior `ALFloaterCineLightCues::onGoto()` (`indra/newview/alfloatercinelightcues.cpp:106`) | none |
+| `cues` / `cue_release` (Stop) | `button` `indra/newview/skins/default/xui/en/floater_cine_light_cues.xml:83` | `ALLightCueKitAdapter` command/model binding → wired in `ALFloaterCineLightCues::postBuild()`; behavior `ALFloaterCineLightCues::onRelease()` (`indra/newview/alfloatercinelightcues.cpp:110`) | none |
+
+## Cue-list behavior decided 2026-10-10
+
+- Row format is `# | Label | At | Fade | Delay | Curve | Follow`, exactly the fields built by `ALFloaterCineLightCues::refreshCueRows()` (`alfloatercinelightcues.cpp:155-190`).
+- Add reuses the Capture path (`onCapture()`, `alfloatercinelightcues.cpp:307-317`); Remove reuses `onDeleteCue()` (`:339-350`); Play calls selected-cue GOTO (`onGoto(false)`, `:374-378`, model `alcinelightrig.cpp:4051`); Stop calls Release (`:381-384`, model `alcinelightrig.cpp:4059`).
+- Selecting a Director row opens `cine_light_cues` and selects the same index, then uses `onCueSelected()` (`alfloatercinelightcues.cpp:294-304`) to load the detailed editor. Keyframe/snapshot and timing fields remain only in that window.
+- Refresh is event-driven: expose the existing `cueRevision()` (`alcinelightrig.h:314`) as a controller revision signal emitted by `setCueList()`, transport start/stop, list load, and selected-rig change. Refresh once on attach/reveal and on that signal; do not call the floater's `draw()` polling path (`alfloatercinelightcues.cpp:387-392`).
+- Add and Remove are one `ALKitHistory` command each, storing the complete before/after `CueList`; Remove is therefore undoable and needs no confirmation. Play and Stop each place one `ALKitHistory::globalBarrier(reason)` and history recording is suspended between them.
 
 ## Adapter extraction
 
 | Existing function | Extraction contract |
 |---|---|
 | `ALFloaterCineLightCues::loadEditor/readEditor()` — `indra/newview/alfloatercinelightcues.cpp:241` | Move model-facing work into `ALLightCueKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
-| `ALFloaterCineLightCues::onBack()` — `indra/newview/alfloatercinelightcues.cpp:104` | Move model-facing work into `ALLightCueKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
+| `ALFloaterCineLightCues::onCapture()` — `indra/newview/alfloatercinelightcues.cpp:89` | Move model-facing work into `ALLightCueKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
+| `ALFloaterCineLightCues::onCueSelected()` — `indra/newview/alfloatercinelightcues.cpp:87` | Move model-facing work into `ALLightCueKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
 | `ALFloaterCineLightCues::onCueSelected/onCapture/onUpdate/onDeleteCue()` — `indra/newview/alfloatercinelightcues.cpp:294` | Move model-facing work into `ALLightCueKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
-| `ALFloaterCineLightCues::onGo()` — `indra/newview/alfloatercinelightcues.cpp:102` | Move model-facing work into `ALLightCueKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
+| `ALFloaterCineLightCues::onDeleteCue()` — `indra/newview/alfloatercinelightcues.cpp:93` | Move model-facing work into `ALLightCueKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
 | `ALFloaterCineLightCues::onGo/onBack/onGoto/onRelease()` — `indra/newview/alfloatercinelightcues.cpp:362` | Move model-facing work into `ALLightCueKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
+| `ALFloaterCineLightCues::onGoto()` — `indra/newview/alfloatercinelightcues.cpp:106` | Move model-facing work into `ALLightCueKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
 | `ALFloaterCineLightCues::onListLoad/onListSave/onListDelete()` — `indra/newview/alfloatercinelightcues.cpp:265` | Move model-facing work into `ALLightCueKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
-| `ALFloaterCineLightCues::onTimecodeMode()` — `indra/newview/alfloatercinelightcues.cpp:95, 353` | Move model-facing work into `ALLightCueKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
+| `ALFloaterCineLightCues::onRelease()` — `indra/newview/alfloatercinelightcues.cpp:110` | Move model-facing work into `ALLightCueKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
+| `ALFloaterCineLightCues::onTimecodeMode()` — `indra/newview/alfloatercinelightcues.cpp:353` | Move model-facing work into `ALLightCueKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
 | `ALFloaterCineLightCues::refreshCueRows()` — `indra/newview/alfloatercinelightcues.cpp:155` | Move model-facing work into `ALLightCueKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
 | `ALFloaterCineLightCues::refreshListNames()` — `indra/newview/alfloatercinelightcues.cpp:126` | Move model-facing work into `ALLightCueKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
 | `ALFloaterCineLightCues::refreshStatus()` — `indra/newview/alfloatercinelightcues.cpp:203` | Move model-facing work into `ALLightCueKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
@@ -61,9 +71,9 @@ Manifest size: **12 states**, hard cap 256, page runtime budget 2 minutes. Each 
 | `size-1141x720` | Default data at the wide non-round shell size. |
 | `card-cues-tallest-850` | Only `cues` is put in its tallest local state at 850 px; all other cards stay default. |
 | `card-cues-tallest-1160` | Only `cues` is put in its tallest local state at 1160 px; all other cards stay default. |
-| `card-adv_cues-tallest-850` | Only `adv_cues` is put in its tallest local state at 850 px; all other cards stay default. |
-| `card-adv_cues-tallest-1160` | Only `adv_cues` is put in its tallest local state at 1160 px; all other cards stay default. |
-| `cue_timecode_check-on` | Only `cue_timecode_check` is on; dependent visibility is measured. |
+| `cue_rows-empty` | `cue_rows` is empty with no selection. |
+| `cue_rows-one` | `cue_rows` has one selected item. |
+| `cue_rows-overflow` | `cue_rows` has 51 items and a visible scrollbar. |
 | `selection-deleted` | The selected model row is removed by another owner while visible. |
 | `shared-owner-other-floater` | The standalone cue floater owns edit state; Director remains read-only. |
 | `shared-owner-director` | Director owns edit state; the standalone floater mirrors without claiming. |
@@ -82,7 +92,7 @@ None.
 
 ## Rejected out-of-scope same-name candidates
 
-None.
+2 candidates were rejected by the XUI-owner/class scope; exact records and reasons are in `page_sources.json`.
 
 ## New widget required
 

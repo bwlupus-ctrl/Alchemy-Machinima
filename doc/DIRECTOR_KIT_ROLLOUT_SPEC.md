@@ -1,8 +1,8 @@
 # Director Kit: evidence-backed all-at-once rollout
 
-Status: R3-corrected rewrite for the work after `DIRECTOR_KIT_P0_SPEC.md` WP5.
+Status: R4 user decisions applied for the work after `DIRECTOR_KIT_P0_SPEC.md` WP5.
 Branch: `feature/director-kit-p0`.
-Data authority: `scripts/code_tools/director_kit/director_mockup_data.json` (36 pages, 1,839 rows: 1,509 card rows plus 330 selector-option rows).
+Data authority: `scripts/code_tools/director_kit/director_mockup_data.json` (35 pages, 1,839 rows: 1,509 card rows plus 330 selector-option rows).
 
 ## 1. Source authority and ship boundary
 
@@ -19,11 +19,11 @@ The script independently counts and then deterministically walks every card row 
 
 - [`page_sources.json`](director_kit/page_sources.json), the machine authority;
 - [`page_sources.md`](director_kit/page_sources.md), the readable evidence;
-- the 36 linked page contracts in section 3.
+- the 35 linked page contracts in section 3.
 
 `--check` fails on any stale output, an independent JSON/flattened row-count mismatch, a conflict/home-set mismatch, or any generated placeholder. A missing callback/model binding or settings declaration remains an explicit `UNRESOLVED` row with its reason; generation never converts it into a guessed binding. Bare-name hits outside the page's XUI-owner/class scope are recorded as rejected candidates, not bindings; genuine in-scope ambiguity has its own explicit list.
 
-The current evidence reports 36 pages, **1,839 rows**, 32 scoped XUI owner files (including full-editor owners whose approved rows are summaries), **0 unresolved rows**, **0 ambiguous rows**, and **22 settings** written by more than one Director page. Shot is 334 rows, Rig is 174, and Rim is 41; their selector options are part of parity, audit manifests, and completeness gates.
+The current evidence reports 35 pages, **1,839 rows**, 31 scoped XUI owner files (including full-editor owners whose approved rows are summaries), **0 unresolved rows**, **0 ambiguous rows**, and **22 settings** written by more than one Director page. Shot is 334 rows, Rig is 174, and Rim is 41; their selector options are part of parity, audit manifests, and completeness gates.
 
 ## 2. Logic and adapter contract
 
@@ -55,7 +55,7 @@ The row count, owner, class, handlers, unresolved rows, live-state contract, bou
 | Performance | [Switchboard](director_kit/pages/switchboard_tab.md) | 32 | code-driven | `panel_director_anim_switcher.xml`; `ALPanelDirectorAnimSwitcher` |
 | Performance | [Gaze](director_kit/pages/gaze_tab.md) | 123 | code-driven | `panel_lens_gaze.xml`; `ALPanelLensGaze` |
 | Performance | [Polish](director_kit/pages/polish_tab.md) | 15 | code-driven | `panel_pose_polish.xml` plus Director action |
-| Performance | [Gaze Cues](director_kit/pages/gaze_cues_tab.md) | 3 | code-driven | `floater_gaze_cues.xml`; `ALFloaterGazeCues` |
+| Performance | [Gaze Cues](director_kit/pages/gaze_cues_tab.md) | 5 | code-driven | `floater_gaze_cues.xml`; `ALFloaterGazeCues` |
 | Camera | [Shot](director_kit/pages/shot_tab.md) | 334 | code-driven | `panel_director_switcher.xml` + `panel_cinecam_params.xml`; switcher/camera classes |
 | Camera | [Moves](director_kit/pages/moves_tab.md) | 14 | code-driven | `floater_director.xml`; Director generator handlers |
 | Camera | [Operator](director_kit/pages/operator_tab.md) | 69 | code-driven | `panel_cinecam_operator.xml`; `LLCameraOperator`, `ALPanelCineCamParams` |
@@ -64,13 +64,13 @@ The row count, owner, class, handlers, unresolved rows, live-state contract, bou
 | Camera | [VCam](director_kit/pages/vcam_tab.md) | 3 | code-driven | frozen Director summary + Prism manager; `ALVCamKitAdapter` |
 | Lens | [Focus](director_kit/pages/focus_tab.md) | 14 | pure-setting | `panel_dof.xml`; direct settings |
 | Lens | [Filters](director_kit/pages/filters_tab.md) | 29 | code-driven | `panel_lens_looks.xml`; `ALPanelLensLooks` |
-| Lens | [Diopter](director_kit/pages/diopter_tab.md) | 6 | code-driven | `floater_ultimate_diopter.xml`; `ALFloaterUltimateDiopter` |
+| Lens | [Diopter](director_kit/pages/diopter_tab.md) | 5 | code-driven | `floater_ultimate_diopter.xml`; `ALFloaterUltimateDiopter` |
 | Light | [Rig](director_kit/pages/cine_light_rig_tab.md) | 174 | code-driven | `panel_cine_light_rig.xml`; `ALPanelCineLightRig` |
 | Light | [Rim](director_kit/pages/light_rim_tab.md) | 41 | code-driven | `panel_cine_light_rig.xml`; `ALPanelCineLightRig` |
 | Light | [Exposure](director_kit/pages/exposure_tab.md) | 25 | code-driven | `panel_exposure_hub.xml`; `ALPanelExposureHub` |
 | Light | [Practicals](director_kit/pages/practicals_tab.md) | 16 | code-driven | `floater_lightbox_settings.xml`; Lightbox selected-light handlers |
 | Light | [Actors](director_kit/pages/actors_tab.md) | 28 | code-driven | `panel_avatar_light_response.xml` + Lightbox; actor-response classes |
-| Light | [Light Cues](director_kit/pages/light_cues_tab.md) | 6 | code-driven | `floater_cine_light_cues.xml`; `ALFloaterCineLightCues` |
+| Light | [Light Cues](director_kit/pages/light_cues_tab.md) | 5 | code-driven | `floater_cine_light_cues.xml`; `ALFloaterCineLightCues` |
 | Look | [Image](director_kit/pages/image_tab.md) | 74 | code-driven | `floater_lightbox_settings.xml`; `ALFloaterLightBox` |
 | Look | [Bloom & Glow](director_kit/pages/bloom_glow_tab.md) | 17 | pure-setting | Lightbox controls; direct settings |
 | Look | [Roto Ink](director_kit/pages/stylize_tab.md) | 81 | code-driven | `floater_lightbox_settings.xml`; `ALFloaterLightBox` |
@@ -80,18 +80,17 @@ The row count, owner, class, handlers, unresolved rows, live-state contract, bou
 | World | [Atmosphere](director_kit/pages/atmosphere_tab.md) | 80 | code-driven | atmospheric-volume/projector panels + Lightbox; `ALPanelAtmosphericVolumes` |
 | World | [Shadows & Probes](director_kit/pages/shadows_probes_tab.md) | 39 | pure-setting | `floater_lightbox_settings.xml`; direct settings |
 | Capture | [Time](director_kit/pages/temporal_tab.md) | 16 | code-driven | `panel_temporal_capture.xml`; `ALPanelTemporalCapture` |
-| Capture | [Capture](director_kit/pages/capture_settings_tab.md) | 0 | code-driven / blocked | Snapshot floater/panels; approved data is empty |
 | Capture | [Scene](director_kit/pages/scene_options_tab.md) | 3 | code-driven | Director scene state |
 
-Count gate: exactly 36 links and page files. A zero-row page, unresolved executable row, stale source index, or unapproved page key is a hard failure.
+Count gate: exactly 35 links and page files. A zero-row page, unresolved executable row, stale source index, or unapproved page key is a hard failure.
 
 ## 4. Existing-control and custom-widget policy
 
 The invented `path_canvas`, `curve_editor`, `slot_grid`, `asset_picker`, and generic `preview_view` kinds are removed from the rollout. Path uses its waypoint list and existing buttons/spinners; cue stacks use their lists and stock editors; Switchboard and Shot use the existing slot buttons; Takes uses its recorder list/scrubber; Exposure uses its existing panel controls.
 
-An existing complex control may be extracted into an `embed` only when its page contract says so. An embed is full card width, has `minHeightForWidth()`/`preferredHeightForWidth()`, is 160–320 px high, contains no page-level scroller, clips to its measured rect, enumerates its states, and uses an owner token. Existing Ghost preview/diagnostics and an extracted cue editor are the only candidates in this snapshot.
+An existing complex control may be extracted into an `embed` only when its page contract says so. An embed is full card width, has `minHeightForWidth()`/`preferredHeightForWidth()`, is 160–320 px high, contains no page-level scroller, clips to its measured rect, enumerates its states, and uses an owner token. Existing Ghost preview/diagnostics are the only candidates in this snapshot.
 
-There are currently **no approved new widget classes**. Light Cues and Gaze Cues keep the approved summary-plus-open-button contract. The Diopter six-row launcher/summary cannot represent its 560×720 nine-tab editor, and Capture has zero rows; those two pages alone are **PENDING USER DECISION** data/model gaps. Implementation must not invent their contents.
+There are currently **no approved new widget classes**. Light Cues and Gaze Cues use stock lists and buttons; their detailed editors remain in the existing floaters. Diopter exposes its four approved everyday settings and opens the existing 560×720 editor for everything else. Capture is deliberately absent from Director v2; Snapshot remains in its existing floater.
 
 ## 5. One-home conflict resolution
 
@@ -132,7 +131,7 @@ The manifests explicitly cover the three non-default shell sizes, every card alo
 
 Parity uses the real owners in `page_sources.json`, not “v1 leaf plus filename embeds.” For each row it compares widget class/presentation kind, initial value, enabled/visible state, option/list population, commit result, reset/default/amber, and undo/redo. It invokes each extracted handler through both the old owner and the kit adapter against the same model snapshot. Runtime instrumentation records `(page, widget, requested class, actual class, owner root, adapter handler)` and is compared to static extraction.
 
-This parity explicitly instantiates Lightbox for Tron, Roto, Image, Shadows, Practicals, and its Atmosphere/Actors rows; `ALFloaterGazeCues`, `ALFloaterCineLightCues`, and `ALFloaterUltimateDiopter`; Snapshot owners for Capture; and all shared panels. A launcher card is never an oracle for controls it does not own. Two simultaneously live owners must pass owner-token, external-write synchronization, hide/reveal, and close/reopen tests.
+This parity explicitly instantiates Lightbox for Tron, Roto, Image, Shadows, Practicals, and its Atmosphere/Actors rows; `ALFloaterGazeCues`, `ALFloaterCineLightCues`, and `ALFloaterUltimateDiopter`; and all shared panels. A launcher card is never an oracle for controls it does not own. Two simultaneously live owners must pass owner-token, external-write synchronization, hide/reveal, and close/reopen tests.
 
 ## 7. Work packages after WP5
 
@@ -140,7 +139,7 @@ These are review boundaries inside one default-off delivery. Every extraction re
 
 ### WP6 — evidence, generation, adapters, and complete data
 
-Land the source-index/check gate, setting graph, one-home map, adapter/controller interfaces, owner tokens, history barrier, generated pages, and bounded audit runner. Resolve every executable unresolved row. Diopter and Capture require approved row data before this package can pass.
+Land the source-index/check gate, setting graph, one-home map, adapter/controller interfaces, owner tokens, history barrier, generated pages, and bounded audit runner. Resolve every executable unresolved row. The approved Diopter summary and both cue-list contracts are part of this package; Capture is excluded by generator configuration.
 
 ### WP7 — Cast
 
@@ -158,27 +157,27 @@ Convert all six Camera and three Lens pages and review switcher, camera params/o
 
 Convert six Light and five Look pages. Review `alfloaterlightbox.*`, `alpanelcinelightrig.*`, Exposure, avatar-light response, both cue owners, `llfloaterdirector.*` Actor FX logic, and every preset/visibility callback listed in the page contracts. Lightbox parity is mandatory. No curve editor is added.
 
-### WP11 — World and Capture
+### WP11 — World, Time, and Scene
 
-Convert Weather, Atmosphere, Shadows & Probes, Time, Capture, and Scene. Review Weather, Atmospheric Volumes, Projector Shafts, Lightbox shadow/atmosphere rows, Temporal Capture, Snapshot owners, and Director scene state. Capture cannot pass with zero approved rows.
+Convert Weather, Atmosphere, Shadows & Probes, Time, and Scene. Review Weather, Atmospheric Volumes, Projector Shafts, Lightbox shadow/atmosphere rows, Temporal Capture, and Director scene state. Snapshot stays in its existing floater and is not a Director v2 page.
 
 ### WP12 — convergence and ship gate
 
-Run source generation/check, page/data lint, static/runtime parity, settings/home lint, all bounded state manifests, XUI layout self-tests, UI-draw lint, unit tests, performance gates, and default-v1 regression. Archive state manifests and failure screenshots. Only after adversarial review reaches zero findings, make one fresh build and run the 36-page in-world matrix; only then may normal v2 selection be exposed.
+Run source generation/check, page/data lint, static/runtime parity, settings/home lint, all bounded state manifests, XUI layout self-tests, UI-draw lint, unit tests, performance gates, and default-v1 regression. Archive state manifests and failure screenshots. Only after adversarial review reaches zero findings, make one fresh build and run the 35-page in-world matrix; only then may normal v2 selection be exposed.
 
 ## 8. Review R2 resolution (rollout)
 
 | R2 finding | Resolution in this rewrite |
 |---|---|
-| N2 wrong owners/classes | `page_sources.json` replaces handwritten sources; matrix and page contracts link real Lightbox, Director, panel, cue, Diopter, and Snapshot owners. |
+| N2 wrong owners/classes | `page_sources.json` replaces handwritten sources; matrix and page contracts link real Lightbox, Director, panel, cue, and Diopter owners. Snapshot remains an external window, not a Director page. |
 | N3 invented custom kinds | Removed path canvas, curve editor, slot grid, asset picker, and generic preview inventions; existing controls or bounded embeds only. |
 | M-R6 one-home contradiction | Section 5 chooses all 22 conflicts from the complete 1,839-row walk and converts non-home Director rows to links/read-only; the generator fails on conflict/home drift. |
 | M-R7 unbounded Cartesian audit | Per-page explicit isolated manifests, 256-state hard cap, two-minute page cap, 72-minute suite cap. |
 | M-R9 external history barrier | Global lookup at preset apply and cue start/stop; recording suspended for playback duration, never barrier-per-write. |
-| M-R10 one-line code pages | All 36 page files contain row bindings, exact handler anchors, adapter extraction, refresh, states, parity, and risks. |
+| M-R10 one-line code pages | All 35 page files contain row bindings, exact handler anchors, adapter extraction, refresh, states, parity, and risks. |
 | M-R11 WP collision | Rollout remains WP6–WP12; VCam is VC1–VC7 and is ordered into WP9. |
 | Minor cue-owner collision | Both standalone cue floaters and Director adapters are named shared owners with owner-token states. |
-| Parity blind to non-Director owners | Section 6 requires Lightbox, cue/Diopter/Snapshot floaters, and shared panels as parity oracles. |
+| Parity blind to non-Director owners | Section 6 requires Lightbox, cue/Diopter floaters, and shared panels as parity oracles. |
 
 ## 9. Review R3 resolution
 
@@ -195,8 +194,15 @@ Run source generation/check, page/data lint, static/runtime parity, settings/hom
 | Minor 3 data hygiene | Generic `check_box` names resolve by declared `control_name`; `set_*` rows are kit-native settings; `cue_timecode_check` maps explicitly to `cue_timecode_mode` with a contract note. |
 | Minor 4 wide drag | The TUT list documents periodic wrap and requires a 1,000-sample full-turn out-and-back to return within 0.01°. |
 
-Diopter and Capture remain **PENDING USER DECISION**. They are the only product choices left by this revision; Light Cues and Gaze Cues keep their approved summary-plus-launcher form.
+## 10. User decisions 10/10 applied
 
-## 10. Final yes/no gate
+| Decision | Applied contract |
+|---|---|
+| Diopter | Director owns on/off, preset, strength (`CineDiopterBlend`), and focus split (`CineDiopterPower`), plus **Open full editor**. Exact defaults/ranges and real XUI/settings anchors are in `diopter_tab.md`; no pending-decision marker remains. |
+| Capture | Dropped from the generated v2 page list via `director_mockup_data.py::PAGE_EXCLUSIONS`; the generated snapshot and source contracts contain 35 pages and the old Capture contract is deleted. The dropped page had zero rows, so no setting/control was orphaned; all capture/output controls remain reachable in the existing Snapshot floater. |
+| Cue pages | Both pages contain the cue list plus Add, Remove, Play, and Stop. Select-to-edit opens the existing cue floater at the selected cue; detailed keyframes remain there. Refresh is revision-signal driven, and list edits integrate with `ALKitHistory`. |
+| Object Mirror | The R3 object-front azimuth contract is already consistent in `DIRECTOR_KIT_P0_SPEC.md` (object root render rotation, Mirror remains enabled); no change was made. |
 
-The release candidate is NO-GO unless all 36 page links exist, source `--check` is clean, the home count matches generated evidence, executable unresolved rows are zero, Capture is non-empty, Diopter has approved full-page data, every explicit state passes at its required widths, non-Director parity and owner-token tests pass, v1 behavior diffs pass, VCam VC1–VC7 evidence is complete, performance budgets pass, adversarial review has zero must-fix findings, and the same fresh build passes the in-world matrix. Otherwise `DirectorUIV2` remains debug/self-test-only.
+## 11. Final yes/no gate
+
+The release candidate is NO-GO unless all 35 page links exist, source `--check` is clean, the home count matches generated evidence, executable unresolved rows are zero, the approved Diopter and cue contracts are complete, every explicit state passes at its required widths, non-Director parity and owner-token tests pass, v1 behavior diffs pass, VCam VC1–VC7 evidence is complete, performance budgets pass, adversarial review has zero must-fix findings, and the same fresh build passes the in-world matrix. Otherwise `DirectorUIV2` remains debug/self-test-only.

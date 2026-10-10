@@ -7,7 +7,7 @@ Do not hand-edit. File and line references describe the scanned tree at generati
 
 | Pages | Rows | Distinct owner files | Unresolved rows | Ambiguous rows | Multi-page settings |
 |---:|---:|---:|---:|---:|---:|
-| 36 | 1839 | 32 | 0 | 0 | 22 |
+| 35 | 1839 | 31 | 0 | 0 | 22 |
 
 Classification: pure-setting iff >=90% rows are setting-bound and no row widget is referenced in C++; otherwise code-driven.
 
@@ -656,17 +656,19 @@ Computed logic class: **code-driven**; 13/15 rows setting-bound, 1 rows referenc
 
 ### Gaze Cues (`gaze_cues_tab`)
 
-Real owner roots: `floater_gaze_cues` in `indra/newview/skins/default/xui/en/floater_gaze_cues.xml:2` (0 matched rows).
+Real owner roots: `floater_gaze_cues` in `indra/newview/skins/default/xui/en/floater_gaze_cues.xml:9` (3 matched rows).
 
-C++ owner classes: `ALFloaterGazeCues` (0 references).
+C++ owner classes: `ALFloaterGazeCues` (6 references), `LLDirectorCast` (1 references), `LLActorMover` (1 references).
 
-Computed logic class: **code-driven**; 0/3 rows setting-bound, 0 rows referenced in C++.
+Computed logic class: **code-driven**; 0/5 rows setting-bound, 5 rows referenced in C++.
 
 | Card / row | Widget | Kind | Setting declaration | XUI definitions | C++ handlers | Other writers | Unresolved |
 |---|---|---|---|---|---|---|---|
-| `cues` / Cue count | `gaze_cue_count` | `readout` | — | — | — | — | — |
-| `cues` / Cue editor | `gaze_cue_editor` | `button` | — | — | — | — | — |
-| `adv_gaze` / Cue editor | `gaze_cue_editor_adv` | `button` | — | — | — | — | — |
+| `cues` / Cues | `cue_list` | `list` | — | `indra/newview/skins/default/xui/en/floater_gaze_cues.xml:31` `floater_gaze_cues`/scroll_list | `ALFloaterGazeCues::onCueSelected indra/newview/alfloatergazecues.cpp:138` | — | — |
+| `cues` / Add | `btn_cue_add` | `button` | — | `indra/newview/skins/default/xui/en/floater_gaze_cues.xml:39` `floater_gaze_cues`/button | `ALFloaterGazeCues::onAdd indra/newview/alfloatergazecues.cpp:140` | — | — |
+| `cues` / Remove | `btn_cue_delete` | `button` | — | `indra/newview/skins/default/xui/en/floater_gaze_cues.xml:43` `floater_gaze_cues`/button | `ALFloaterGazeCues::onDelete indra/newview/alfloatergazecues.cpp:142` | — | — |
+| `cues` / Play | `gaze_cue_play` | `button` | — | — | `LLDirectorCast::evaluateGazeCues indra/newview/lldirectorcast.cpp:1467` | — | — |
+| `cues` / Stop | `gaze_cue_stop` | `button` | — | — | `LLActorMover::clearDirectorLookAtRuntime indra/newview/llactormover.cpp:6504` | — | — |
 
 ### Shot (`shot_tab`)
 
@@ -1276,16 +1278,15 @@ Real owner roots: `ultimate_diopter` in `indra/newview/skins/default/xui/en/floa
 
 C++ owner classes: `ALFloaterUltimateDiopter` (1 references).
 
-Computed logic class: **code-driven**; 4/6 rows setting-bound, 1 rows referenced in C++.
+Computed logic class: **code-driven**; 4/5 rows setting-bound, 1 rows referenced in C++.
 
 | Card / row | Widget | Kind | Setting declaration | XUI definitions | C++ handlers | Other writers | Unresolved |
 |---|---|---|---|---|---|---|---|
-| `diopter_summary` / Enable | `diopter_enabled` | `toggle` | `Boolean` `indra/newview/app_settings/settings.xml:608` (Global) | `indra/newview/skins/default/xui/en/floater_ultimate_diopter.xml:66` `ultimate_diopter`/check_box | — | — | — |
+| `diopter_summary` / On / off | `diopter_enabled` | `toggle` | `Boolean` `indra/newview/app_settings/settings.xml:608` (Global) | `indra/newview/skins/default/xui/en/floater_ultimate_diopter.xml:66` `ultimate_diopter`/check_box | — | — | — |
 | `diopter_summary` / Preset | `diopter_preset` | `combo` | `U32` `indra/newview/app_settings/settings.xml:615` (Global) | `indra/newview/skins/default/xui/en/floater_ultimate_diopter.xml:72` `ultimate_diopter`/combo_box | — | — | — |
-| `diopter_summary` / Master blend | `diopter_blend` | `slider` | `F32` `indra/newview/app_settings/settings.xml:629` (Global) | `indra/newview/skins/default/xui/en/floater_ultimate_diopter.xml:105` `ultimate_diopter`/slider | — | — | — |
-| `diopter_summary` / Base focus | `diopter_focus_mode` | `combo` | `U32` `indra/newview/app_settings/settings.xml:846` (Global) | `indra/newview/skins/default/xui/en/floater_ultimate_diopter.xml:257` `ultimate_diopter`/combo_box | — | — | — |
-| `diopter_summary` / Editor | `diopter_open_editor` | `button` | — | — | — | — | — |
-| `adv_diopter` / Editor | `diopter_open_editor_adv` | `button` | — | — | — | — | — |
+| `diopter_summary` / Strength | `diopter_blend` | `slider` | `F32` `indra/newview/app_settings/settings.xml:629` (Global) | `indra/newview/skins/default/xui/en/floater_ultimate_diopter.xml:105` `ultimate_diopter`/slider | — | — | — |
+| `diopter_summary` / Focus split | `diopter_power` | `slider` | `F32` `indra/newview/app_settings/settings.xml:867` (Global) | `indra/newview/skins/default/xui/en/floater_ultimate_diopter.xml:287` `ultimate_diopter`/slider | — | — | — |
+| `diopter_summary` / Full editor | `diopter_open_editor` | `button` | — | — | — | — | — |
 
 ### Rig (`cine_light_rig_tab`)
 
@@ -1628,20 +1629,19 @@ Computed logic class: **code-driven**; 5/28 rows setting-bound, 22 rows referenc
 
 ### Light Cues (`light_cues_tab`)
 
-Real owner roots: `floater_cine_light_cues` in `indra/newview/skins/default/xui/en/floater_cine_light_cues.xml:9` (4 matched rows).
+Real owner roots: `floater_cine_light_cues` in `indra/newview/skins/default/xui/en/floater_cine_light_cues.xml:9` (5 matched rows).
 
-C++ owner classes: `ALFloaterCineLightCues` (7 references).
+C++ owner classes: `ALFloaterCineLightCues` (9 references).
 
-Computed logic class: **code-driven**; 0/6 rows setting-bound, 4 rows referenced in C++.
+Computed logic class: **code-driven**; 0/5 rows setting-bound, 5 rows referenced in C++.
 
 | Card / row | Widget | Kind | Setting declaration | XUI definitions | C++ handlers | Other writers | Unresolved |
 |---|---|---|---|---|---|---|---|
-| `cues` / Current cue | `cue_status` | `readout` | — | `indra/newview/skins/default/xui/en/floater_cine_light_cues.xml:85` `floater_cine_light_cues`/text | — | — | — |
-| `cues` / Back | `cue_back` | `button` | — | `indra/newview/skins/default/xui/en/floater_cine_light_cues.xml:74` `floater_cine_light_cues`/button | `ALFloaterCineLightCues::onBack indra/newview/alfloatercinelightcues.cpp:104` | — | — |
-| `cues` / Go | `cue_go` | `button` | — | `indra/newview/skins/default/xui/en/floater_cine_light_cues.xml:76` `floater_cine_light_cues`/button | `ALFloaterCineLightCues::onGo indra/newview/alfloatercinelightcues.cpp:102` | — | — |
-| `cues` / Cue editor | `cue_open_stack` | `button` | — | — | — | — | — |
-| `adv_cues` / Timecode | `cue_timecode_check` | `toggle` | — | `indra/newview/skins/default/xui/en/floater_cine_light_cues.xml:23` `floater_cine_light_cues`/check_box | `ALFloaterCineLightCues::onTimecodeMode indra/newview/alfloatercinelightcues.cpp:95` | — | — |
-| `adv_cues` / Cue editor | `cue_open_stack_adv` | `button` | — | — | — | — | — |
+| `cues` / Cues | `cue_rows` | `list` | — | `indra/newview/skins/default/xui/en/floater_cine_light_cues.xml:27` `floater_cine_light_cues`/scroll_list | `ALFloaterCineLightCues::onCueSelected indra/newview/alfloatercinelightcues.cpp:87` | — | — |
+| `cues` / Add | `cue_capture` | `button` | — | `indra/newview/skins/default/xui/en/floater_cine_light_cues.xml:60` `floater_cine_light_cues`/button | `ALFloaterCineLightCues::onCapture indra/newview/alfloatercinelightcues.cpp:89` | — | — |
+| `cues` / Remove | `cue_delete` | `button` | — | `indra/newview/skins/default/xui/en/floater_cine_light_cues.xml:65` `floater_cine_light_cues`/button | `ALFloaterCineLightCues::onDeleteCue indra/newview/alfloatercinelightcues.cpp:93` | — | — |
+| `cues` / Play | `cue_goto` | `button` | — | `indra/newview/skins/default/xui/en/floater_cine_light_cues.xml:79` `floater_cine_light_cues`/button | `ALFloaterCineLightCues::onGoto indra/newview/alfloatercinelightcues.cpp:106` | — | — |
+| `cues` / Stop | `cue_release` | `button` | — | `indra/newview/skins/default/xui/en/floater_cine_light_cues.xml:83` `floater_cine_light_cues`/button | `ALFloaterCineLightCues::onRelease indra/newview/alfloatercinelightcues.cpp:110` | — | — |
 
 ### Image (`image_tab`)
 
@@ -2249,17 +2249,6 @@ Computed logic class: **code-driven**; 8/16 rows setting-bound, 7 rows reference
 | `drive_on_clock` / Textures | `drive_texanim_check` | `toggle` | `Boolean` `indra/newview/app_settings/settings.xml:9605` (Global) | `indra/newview/skins/default/xui/en/panel_temporal_capture.xml:226` `panel_temporal_capture`/check_box | — | — | — |
 | `drive_on_clock` / Particles | `drive_particles_check` | `toggle` | `Boolean` `indra/newview/app_settings/settings.xml:9616` (Global) | `indra/newview/skins/default/xui/en/panel_temporal_capture.xml:237` `panel_temporal_capture`/check_box | — | — | — |
 | `drive_on_clock` / Camera | `drive_camera_check` | `toggle` | `Boolean` `indra/newview/app_settings/settings.xml:9627` (Global) | `indra/newview/skins/default/xui/en/panel_temporal_capture.xml:249` `panel_temporal_capture`/check_box | — | — | — |
-
-### Capture (`capture_settings_tab`)
-
-Real owner roots: `Snapshot` in `indra/newview/skins/default/xui/en/floater_snapshot.xml:9` (0 matched rows).
-
-C++ owner classes: `LLFloaterSnapshot` (0 references).
-
-Computed logic class: **code-driven**; 0/0 rows setting-bound, 0 rows referenced in C++.
-
-| Card / row | Widget | Kind | Setting declaration | XUI definitions | C++ handlers | Other writers | Unresolved |
-|---|---|---|---|---|---|---|---|
 
 ### Scene (`scene_options_tab`)
 

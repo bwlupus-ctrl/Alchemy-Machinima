@@ -3,9 +3,9 @@
   "source": "scripts/code_tools/director_kit/director_mockup_data.json",
   "classification_rule": "pure-setting iff >=90% rows are setting-bound and no row widget is referenced in C++; otherwise code-driven",
   "summary": {
-    "pages": 36,
+    "pages": 35,
     "rows": 1839,
-    "owner_roots": 32,
+    "owner_roots": 31,
     "unresolved_rows": 0,
     "ambiguous_rows": 0,
     "multi_page_settings": 22,
@@ -4413,15 +4413,15 @@
       "writable_home": null
     },
     {
-      "setting": "CineDiopterFocusMode",
+      "setting": "CineDiopterPower",
       "pages": [
         "diopter_tab"
       ],
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/floater_ultimate_diopter.xml",
-          "line": 257,
-          "widget": "diopter_focus_mode",
+          "line": 287,
+          "widget": "diopter_power",
           "root": {
             "file": "indra/newview/skins/default/xui/en/floater_ultimate_diopter.xml",
             "tag": "floater",
@@ -4433,9 +4433,9 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 846,
+          "line": 867,
           "group": "Global",
-          "type": "U32"
+          "type": "F32"
         }
       ],
       "writable_home": null
@@ -63072,31 +63072,36 @@
       "label": "Gaze Cues",
       "group": "performance_group",
       "group_label": "Performance",
-      "row_count": 3,
+      "row_count": 5,
       "owner_roots": [
         {
           "file": "indra/newview/skins/default/xui/en/floater_gaze_cues.xml",
           "tag": "floater",
           "name": "floater_gaze_cues",
-          "line": 2,
-          "class": "ALFloaterGazeCues",
-          "class_file": "indra/newview/alfloatergazecues.cpp",
-          "class_line": 101,
-          "matched_rows": 0,
-          "evidence": "full-editor owner; approved rows are summary/launcher rows"
+          "line": 9,
+          "matched_rows": 3,
+          "evidence": "row-widget match"
         }
       ],
       "owner_classes": [
         {
           "class": "ALFloaterGazeCues",
-          "reference_count": 0
+          "reference_count": 6
+        },
+        {
+          "class": "LLDirectorCast",
+          "reference_count": 1
+        },
+        {
+          "class": "LLActorMover",
+          "reference_count": 1
         }
       ],
       "classification": {
         "logic_class": "code-driven",
         "setting_bound_rows": 0,
         "setting_coverage": 0.0,
-        "cpp_referenced_rows": 0,
+        "cpp_referenced_rows": 5,
         "rule": "pure-setting iff >=90% rows have declared settings and zero rows have C++ references"
       },
       "unresolved_row_count": 0,
@@ -63107,17 +63112,209 @@
           "option_index": null,
           "option_label": null,
           "index": 0,
-          "label": "Cue count",
-          "kind": "readout",
-          "widget": "gaze_cue_count",
-          "matched_widget": "gaze_cue_count",
+          "label": "Cues",
+          "kind": "list",
+          "widget": "cue_list",
+          "matched_widget": "cue_list",
           "declared_setting": null,
           "resolved_setting": null,
           "setting_candidates": [],
           "setting_declarations": [],
           "items": [],
-          "xui": [],
-          "cpp": [],
+          "xui": [
+            {
+              "file": "indra/newview/skins/default/xui/en/floater_gaze_cues.xml",
+              "line": 31,
+              "tag": "scroll_list",
+              "control_name": null,
+              "callbacks": [],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/floater_gaze_cues.xml",
+                "tag": "floater",
+                "name": "floater_gaze_cues",
+                "line": 9
+              }
+            }
+          ],
+          "cpp": [
+            {
+              "file": "indra/newview/alfloatergazecues.cpp",
+              "line": 110,
+              "class": "ALFloaterGazeCues",
+              "function": "postBuild",
+              "wired_class": "ALFloaterGazeCues",
+              "wired_function": "postBuild",
+              "pattern": null,
+              "wiring_only": true,
+              "text": "mCueList = getChild<LLScrollListCtrl>(\"cue_list\");"
+            },
+            {
+              "file": "indra/newview/alfloatergazecues.cpp",
+              "line": 138,
+              "class": "ALFloaterGazeCues",
+              "function": "onCueSelected",
+              "wired_class": "ALFloaterGazeCues",
+              "wired_function": "postBuild",
+              "pattern": null,
+              "wiring_only": false,
+              "text": "mCueList->setCommitCallback("
+            }
+          ],
+          "callback_handlers": [],
+          "callbacks": [],
+          "kit_action": null,
+          "resolution_notes": [],
+          "ambiguous": [],
+          "rejected_candidates": [
+            {
+              "kind": "cpp",
+              "reason": "reference is not in a class that owns/builds this page's XUI",
+              "file": "indra/newview/alcinelightrig.cpp",
+              "line": 3901,
+              "class": "ALCineLightRig",
+              "function": "applyCueSceneState",
+              "wired_class": "ALCineLightRig",
+              "wired_function": "applyCueSceneState",
+              "pattern": null,
+              "wiring_only": false,
+              "text": "if (!data[\"cue_list\"].isMap() ||"
+            },
+            {
+              "kind": "cpp",
+              "reason": "reference is not in a class that owns/builds this page's XUI",
+              "file": "indra/newview/alcinelightrig.cpp",
+              "line": 3902,
+              "class": "ALCineLightRig",
+              "function": "applyCueSceneState",
+              "wired_class": "ALCineLightRig",
+              "wired_function": "applyCueSceneState",
+              "pattern": null,
+              "wiring_only": false,
+              "text": "!cueListFromLLSD(data[\"cue_list\"], cue_list))"
+            },
+            {
+              "kind": "cpp",
+              "reason": "reference is not in a class that owns/builds this page's XUI",
+              "file": "indra/newview/alcinelightrig.cpp",
+              "line": 3904,
+              "class": "ALCineLightRig",
+              "function": "applyCueSceneState",
+              "wired_class": "ALCineLightRig",
+              "wired_function": "applyCueSceneState",
+              "pattern": null,
+              "wiring_only": false,
+              "text": "if (data.has(\"cue_list\"))"
+            },
+            {
+              "kind": "cpp",
+              "reason": "reference is not in a class that owns/builds this page's XUI",
+              "file": "indra/newview/alcinelightrig.cpp",
+              "line": 4204,
+              "class": "ALCineLightRig",
+              "function": "sceneData",
+              "wired_class": "ALCineLightRig",
+              "wired_function": "sceneData",
+              "pattern": null,
+              "wiring_only": false,
+              "text": "data[\"cue_list\"] = cueListToLLSD(mCueList);"
+            },
+            {
+              "kind": "cpp",
+              "reason": "reference is not in a class that owns/builds this page's XUI",
+              "file": "indra/newview/alcinelightrigmanager.cpp",
+              "line": 192,
+              "class": null,
+              "function": null,
+              "wired_class": null,
+              "wired_function": null,
+              "pattern": null,
+              "wiring_only": false,
+              "text": "(data.has(\"cue_list\") &&"
+            },
+            {
+              "kind": "cpp",
+              "reason": "reference is not in a class that owns/builds this page's XUI",
+              "file": "indra/newview/alcinelightrigmanager.cpp",
+              "line": 193,
+              "class": null,
+              "function": null,
+              "wired_class": null,
+              "wired_function": null,
+              "pattern": null,
+              "wiring_only": false,
+              "text": "(!data[\"cue_list\"].isMap() ||"
+            },
+            {
+              "kind": "cpp",
+              "reason": "reference is not in a class that owns/builds this page's XUI",
+              "file": "indra/newview/alcinelightrigmanager.cpp",
+              "line": 194,
+              "class": null,
+              "function": null,
+              "wired_class": null,
+              "wired_function": null,
+              "pattern": null,
+              "wiring_only": false,
+              "text": "!ALCineLightRig::validateCueListData(data[\"cue_list\"]))))"
+            }
+          ],
+          "unresolved": [],
+          "other_writers": []
+        },
+        {
+          "card": "cues",
+          "card_title": "Gaze cues",
+          "option_index": null,
+          "option_label": null,
+          "index": 1,
+          "label": "Add",
+          "kind": "button",
+          "widget": "btn_cue_add",
+          "matched_widget": "btn_cue_add",
+          "declared_setting": null,
+          "resolved_setting": null,
+          "setting_candidates": [],
+          "setting_declarations": [],
+          "items": [],
+          "xui": [
+            {
+              "file": "indra/newview/skins/default/xui/en/floater_gaze_cues.xml",
+              "line": 39,
+              "tag": "button",
+              "control_name": null,
+              "callbacks": [],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/floater_gaze_cues.xml",
+                "tag": "floater",
+                "name": "floater_gaze_cues",
+                "line": 9
+              }
+            }
+          ],
+          "cpp": [
+            {
+              "file": "indra/newview/alfloatergazecues.cpp",
+              "line": 111,
+              "class": "ALFloaterGazeCues",
+              "function": "postBuild",
+              "wired_class": "ALFloaterGazeCues",
+              "wired_function": "postBuild",
+              "pattern": null,
+              "wiring_only": true,
+              "text": "mAdd = getChild<LLButton>(\"btn_cue_add\");"
+            },
+            {
+              "file": "indra/newview/alfloatergazecues.cpp",
+              "line": 140,
+              "class": "ALFloaterGazeCues",
+              "function": "onAdd",
+              "wired_class": "ALFloaterGazeCues",
+              "wired_function": "postBuild",
+              "pattern": null,
+              "wiring_only": false,
+              "text": "mAdd->setCommitCallback([this](LLUICtrl*, const LLSD&) { onAdd(); });"
+            }
+          ],
           "callback_handlers": [],
           "callbacks": [],
           "kit_action": null,
@@ -63132,21 +63329,58 @@
           "card_title": "Gaze cues",
           "option_index": null,
           "option_label": null,
-          "index": 1,
-          "label": "Cue editor",
+          "index": 2,
+          "label": "Remove",
           "kind": "button",
-          "widget": "gaze_cue_editor",
-          "matched_widget": "gaze_cue_editor",
+          "widget": "btn_cue_delete",
+          "matched_widget": "btn_cue_delete",
           "declared_setting": null,
           "resolved_setting": null,
           "setting_candidates": [],
           "setting_declarations": [],
           "items": [],
-          "xui": [],
-          "cpp": [],
+          "xui": [
+            {
+              "file": "indra/newview/skins/default/xui/en/floater_gaze_cues.xml",
+              "line": 43,
+              "tag": "button",
+              "control_name": null,
+              "callbacks": [],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/floater_gaze_cues.xml",
+                "tag": "floater",
+                "name": "floater_gaze_cues",
+                "line": 9
+              }
+            }
+          ],
+          "cpp": [
+            {
+              "file": "indra/newview/alfloatergazecues.cpp",
+              "line": 113,
+              "class": "ALFloaterGazeCues",
+              "function": "postBuild",
+              "wired_class": "ALFloaterGazeCues",
+              "wired_function": "postBuild",
+              "pattern": null,
+              "wiring_only": true,
+              "text": "mDelete = getChild<LLButton>(\"btn_cue_delete\");"
+            },
+            {
+              "file": "indra/newview/alfloatergazecues.cpp",
+              "line": 142,
+              "class": "ALFloaterGazeCues",
+              "function": "onDelete",
+              "wired_class": "ALFloaterGazeCues",
+              "wired_function": "postBuild",
+              "pattern": null,
+              "wiring_only": false,
+              "text": "mDelete->setCommitCallback([this](LLUICtrl*, const LLSD&) { onDelete(); });"
+            }
+          ],
           "callback_handlers": [],
           "callbacks": [],
-          "kit_action": "floater:gaze_cues",
+          "kit_action": null,
           "resolution_notes": [],
           "ambiguous": [],
           "rejected_candidates": [],
@@ -63154,25 +63388,71 @@
           "other_writers": []
         },
         {
-          "card": "adv_gaze",
-          "card_title": "Advanced",
+          "card": "cues",
+          "card_title": "Gaze cues",
           "option_index": null,
           "option_label": null,
-          "index": 0,
-          "label": "Cue editor",
+          "index": 3,
+          "label": "Play",
           "kind": "button",
-          "widget": "gaze_cue_editor_adv",
-          "matched_widget": "gaze_cue_editor_adv",
+          "widget": "gaze_cue_play",
+          "matched_widget": "gaze_cue_play",
           "declared_setting": null,
           "resolved_setting": null,
           "setting_candidates": [],
           "setting_declarations": [],
           "items": [],
           "xui": [],
-          "cpp": [],
+          "cpp": [
+            {
+              "file": "indra/newview/lldirectorcast.cpp",
+              "line": 1467,
+              "class": "LLDirectorCast",
+              "function": "evaluateGazeCues",
+              "pattern": null,
+              "wiring_only": false,
+              "text": "explicit selected-cue preview evaluator"
+            }
+          ],
           "callback_handlers": [],
           "callbacks": [],
-          "kit_action": "floater:gaze_cues",
+          "kit_action": null,
+          "resolution_notes": [],
+          "ambiguous": [],
+          "rejected_candidates": [],
+          "unresolved": [],
+          "other_writers": []
+        },
+        {
+          "card": "cues",
+          "card_title": "Gaze cues",
+          "option_index": null,
+          "option_label": null,
+          "index": 4,
+          "label": "Stop",
+          "kind": "button",
+          "widget": "gaze_cue_stop",
+          "matched_widget": "gaze_cue_stop",
+          "declared_setting": null,
+          "resolved_setting": null,
+          "setting_candidates": [],
+          "setting_declarations": [],
+          "items": [],
+          "xui": [],
+          "cpp": [
+            {
+              "file": "indra/newview/llactormover.cpp",
+              "line": 6504,
+              "class": "LLActorMover",
+              "function": "clearDirectorLookAtRuntime",
+              "pattern": null,
+              "wiring_only": false,
+              "text": "explicit cue-preview release path"
+            }
+          ],
+          "callback_handlers": [],
+          "callbacks": [],
+          "kit_action": null,
           "resolution_notes": [],
           "ambiguous": [],
           "rejected_candidates": [],
@@ -96161,7 +96441,7 @@
       "label": "Diopter",
       "group": "lens_group",
       "group_label": "Lens",
-      "row_count": 6,
+      "row_count": 5,
       "owner_roots": [
         {
           "file": "indra/newview/skins/default/xui/en/floater_ultimate_diopter.xml",
@@ -96181,7 +96461,7 @@
       "classification": {
         "logic_class": "code-driven",
         "setting_bound_rows": 4,
-        "setting_coverage": 0.666667,
+        "setting_coverage": 0.8,
         "cpp_referenced_rows": 1,
         "rule": "pure-setting iff >=90% rows have declared settings and zero rows have C++ references"
       },
@@ -96193,7 +96473,7 @@
           "option_index": null,
           "option_label": null,
           "index": 0,
-          "label": "Enable",
+          "label": "On / off",
           "kind": "toggle",
           "widget": "diopter_enabled",
           "matched_widget": "diopter_enabled",
@@ -96366,7 +96646,7 @@
           "option_index": null,
           "option_label": null,
           "index": 2,
-          "label": "Master blend",
+          "label": "Strength",
           "kind": "slider",
           "widget": "diopter_blend",
           "matched_widget": "diopter_blend",
@@ -96429,33 +96709,30 @@
           "option_index": null,
           "option_label": null,
           "index": 3,
-          "label": "Base focus",
-          "kind": "combo",
-          "widget": "diopter_focus_mode",
-          "matched_widget": "diopter_focus_mode",
-          "declared_setting": "CineDiopterFocusMode",
-          "resolved_setting": "CineDiopterFocusMode",
+          "label": "Focus split",
+          "kind": "slider",
+          "widget": "diopter_power",
+          "matched_widget": "diopter_power",
+          "declared_setting": "CineDiopterPower",
+          "resolved_setting": "CineDiopterPower",
           "setting_candidates": [
-            "CineDiopterFocusMode"
+            "CineDiopterPower"
           ],
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 846,
+              "line": 867,
               "group": "Global",
-              "type": "U32"
+              "type": "F32"
             }
           ],
-          "items": [
-            "Manual distance (m)",
-            "Camera focus point"
-          ],
+          "items": [],
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/floater_ultimate_diopter.xml",
-              "line": 257,
-              "tag": "combo_box",
-              "control_name": "CineDiopterFocusMode",
+              "line": 287,
+              "tag": "slider",
+              "control_name": "CineDiopterPower",
               "callbacks": [],
               "root": {
                 "file": "indra/newview/skins/default/xui/en/floater_ultimate_diopter.xml",
@@ -96476,14 +96753,14 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aldiopterrelevance.cpp",
-              "line": 260,
+              "line": 278,
               "class": null,
               "function": null,
               "wired_class": null,
               "wired_function": null,
               "pattern": null,
               "wiring_only": false,
-              "text": "{ \"diopter_focus_mode\", \"rst_CineDiopterFocusMode\", AL_TOOL_DIOPTER, SEC_FOCUS_BASE,"
+              "text": "{ \"diopter_power\", \"rst_CineDiopterPower\", AL_TOOL_DIOPTER, SEC_FOCUS_LENS,"
             }
           ],
           "unresolved": [],
@@ -96495,36 +96772,10 @@
           "option_index": null,
           "option_label": null,
           "index": 4,
-          "label": "Editor",
+          "label": "Full editor",
           "kind": "button",
           "widget": "diopter_open_editor",
           "matched_widget": "diopter_open_editor",
-          "declared_setting": null,
-          "resolved_setting": null,
-          "setting_candidates": [],
-          "setting_declarations": [],
-          "items": [],
-          "xui": [],
-          "cpp": [],
-          "callback_handlers": [],
-          "callbacks": [],
-          "kit_action": "floater:ultimate_diopter",
-          "resolution_notes": [],
-          "ambiguous": [],
-          "rejected_candidates": [],
-          "unresolved": [],
-          "other_writers": []
-        },
-        {
-          "card": "adv_diopter",
-          "card_title": "Advanced",
-          "option_index": null,
-          "option_label": null,
-          "index": 0,
-          "label": "Editor",
-          "kind": "button",
-          "widget": "diopter_open_editor_adv",
-          "matched_widget": "diopter_open_editor_adv",
           "declared_setting": null,
           "resolved_setting": null,
           "setting_candidates": [],
@@ -113634,42 +113885,42 @@
       "label": "Light Cues",
       "group": "light_group",
       "group_label": "Light",
-      "row_count": 6,
+      "row_count": 5,
       "owner_roots": [
         {
           "file": "indra/newview/skins/default/xui/en/floater_cine_light_cues.xml",
           "tag": "floater",
           "name": "floater_cine_light_cues",
           "line": 9,
-          "matched_rows": 4,
+          "matched_rows": 5,
           "evidence": "row-widget match"
         }
       ],
       "owner_classes": [
         {
           "class": "ALFloaterCineLightCues",
-          "reference_count": 7
+          "reference_count": 9
         }
       ],
       "classification": {
         "logic_class": "code-driven",
         "setting_bound_rows": 0,
         "setting_coverage": 0.0,
-        "cpp_referenced_rows": 4,
+        "cpp_referenced_rows": 5,
         "rule": "pure-setting iff >=90% rows have declared settings and zero rows have C++ references"
       },
       "unresolved_row_count": 0,
       "rows": [
         {
           "card": "cues",
-          "card_title": "Cue stack",
+          "card_title": "Light cues",
           "option_index": null,
           "option_label": null,
           "index": 0,
-          "label": "Current cue",
-          "kind": "readout",
-          "widget": "cue_status",
-          "matched_widget": "cue_status",
+          "label": "Cues",
+          "kind": "list",
+          "widget": "cue_rows",
+          "matched_widget": "cue_rows",
           "declared_setting": null,
           "resolved_setting": null,
           "setting_candidates": [],
@@ -113678,8 +113929,8 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/floater_cine_light_cues.xml",
-              "line": 85,
-              "tag": "text",
+              "line": 27,
+              "tag": "scroll_list",
               "control_name": null,
               "callbacks": [],
               "root": {
@@ -113693,14 +113944,25 @@
           "cpp": [
             {
               "file": "indra/newview/alfloatercinelightcues.cpp",
-              "line": 70,
+              "line": 60,
               "class": "ALFloaterCineLightCues",
               "function": "postBuild",
               "wired_class": "ALFloaterCineLightCues",
               "wired_function": "postBuild",
               "pattern": null,
               "wiring_only": true,
-              "text": "mStatus = getChild<LLTextBox>(\"cue_status\");"
+              "text": "mCueRows = getChild<LLScrollListCtrl>(\"cue_rows\");"
+            },
+            {
+              "file": "indra/newview/alfloatercinelightcues.cpp",
+              "line": 87,
+              "class": "ALFloaterCineLightCues",
+              "function": "onCueSelected",
+              "wired_class": "ALFloaterCineLightCues",
+              "wired_function": "postBuild",
+              "pattern": null,
+              "wiring_only": false,
+              "text": "mCueRows->setCommitCallback("
             }
           ],
           "callback_handlers": [],
@@ -113714,14 +113976,14 @@
         },
         {
           "card": "cues",
-          "card_title": "Cue stack",
+          "card_title": "Light cues",
           "option_index": null,
           "option_label": null,
           "index": 1,
-          "label": "Back",
+          "label": "Add",
           "kind": "button",
-          "widget": "cue_back",
-          "matched_widget": "cue_back",
+          "widget": "cue_capture",
+          "matched_widget": "cue_capture",
           "declared_setting": null,
           "resolved_setting": null,
           "setting_candidates": [],
@@ -113730,7 +113992,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/floater_cine_light_cues.xml",
-              "line": 74,
+              "line": 60,
               "tag": "button",
               "control_name": null,
               "callbacks": [],
@@ -113745,25 +114007,14 @@
           "cpp": [
             {
               "file": "indra/newview/alfloatercinelightcues.cpp",
-              "line": 98,
+              "line": 89,
               "class": "ALFloaterCineLightCues",
-              "function": "postBuild",
-              "wired_class": "ALFloaterCineLightCues",
-              "wired_function": "postBuild",
-              "pattern": null,
-              "wiring_only": true,
-              "text": "mBackBtn = getChild<LLButton>(\"cue_back\");"
-            },
-            {
-              "file": "indra/newview/alfloatercinelightcues.cpp",
-              "line": 104,
-              "class": "ALFloaterCineLightCues",
-              "function": "onBack",
+              "function": "onCapture",
               "wired_class": "ALFloaterCineLightCues",
               "wired_function": "postBuild",
               "pattern": null,
               "wiring_only": false,
-              "text": "mBackBtn->setCommitCallback("
+              "text": "getChild<LLButton>(\"cue_capture\")->setCommitCallback("
             }
           ],
           "callback_handlers": [],
@@ -113777,14 +114028,14 @@
         },
         {
           "card": "cues",
-          "card_title": "Cue stack",
+          "card_title": "Light cues",
           "option_index": null,
           "option_label": null,
           "index": 2,
-          "label": "Go",
+          "label": "Remove",
           "kind": "button",
-          "widget": "cue_go",
-          "matched_widget": "cue_go",
+          "widget": "cue_delete",
+          "matched_widget": "cue_delete",
           "declared_setting": null,
           "resolved_setting": null,
           "setting_candidates": [],
@@ -113793,7 +114044,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/floater_cine_light_cues.xml",
-              "line": 76,
+              "line": 65,
               "tag": "button",
               "control_name": null,
               "callbacks": [],
@@ -113808,25 +114059,25 @@
           "cpp": [
             {
               "file": "indra/newview/alfloatercinelightcues.cpp",
-              "line": 97,
+              "line": 69,
               "class": "ALFloaterCineLightCues",
               "function": "postBuild",
               "wired_class": "ALFloaterCineLightCues",
               "wired_function": "postBuild",
               "pattern": null,
               "wiring_only": true,
-              "text": "mGoBtn = getChild<LLButton>(\"cue_go\"); // [UIPerf]"
+              "text": "mDeleteCue = getChild<LLButton>(\"cue_delete\");"
             },
             {
               "file": "indra/newview/alfloatercinelightcues.cpp",
-              "line": 102,
+              "line": 93,
               "class": "ALFloaterCineLightCues",
-              "function": "onGo",
+              "function": "onDeleteCue",
               "wired_class": "ALFloaterCineLightCues",
               "wired_function": "postBuild",
               "pattern": null,
               "wiring_only": false,
-              "text": "mGoBtn->setCommitCallback("
+              "text": "mDeleteCue->setCommitCallback("
             }
           ],
           "callback_handlers": [],
@@ -113840,40 +114091,14 @@
         },
         {
           "card": "cues",
-          "card_title": "Cue stack",
+          "card_title": "Light cues",
           "option_index": null,
           "option_label": null,
           "index": 3,
-          "label": "Cue editor",
+          "label": "Play",
           "kind": "button",
-          "widget": "cue_open_stack",
-          "matched_widget": "cue_open_stack",
-          "declared_setting": null,
-          "resolved_setting": null,
-          "setting_candidates": [],
-          "setting_declarations": [],
-          "items": [],
-          "xui": [],
-          "cpp": [],
-          "callback_handlers": [],
-          "callbacks": [],
-          "kit_action": "floater:cine_light_cues",
-          "resolution_notes": [],
-          "ambiguous": [],
-          "rejected_candidates": [],
-          "unresolved": [],
-          "other_writers": []
-        },
-        {
-          "card": "adv_cues",
-          "card_title": "Advanced",
-          "option_index": null,
-          "option_label": null,
-          "index": 0,
-          "label": "Timecode",
-          "kind": "toggle",
-          "widget": "cue_timecode_check",
-          "matched_widget": "cue_timecode_mode",
+          "widget": "cue_goto",
+          "matched_widget": "cue_goto",
           "declared_setting": null,
           "resolved_setting": null,
           "setting_candidates": [],
@@ -113882,8 +114107,8 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/floater_cine_light_cues.xml",
-              "line": 23,
-              "tag": "check_box",
+              "line": 79,
+              "tag": "button",
               "control_name": null,
               "callbacks": [],
               "root": {
@@ -113897,61 +114122,123 @@
           "cpp": [
             {
               "file": "indra/newview/alfloatercinelightcues.cpp",
-              "line": 59,
+              "line": 99,
               "class": "ALFloaterCineLightCues",
               "function": "postBuild",
               "wired_class": "ALFloaterCineLightCues",
               "wired_function": "postBuild",
               "pattern": null,
               "wiring_only": true,
-              "text": "mTimecodeMode = getChild<LLCheckBoxCtrl>(\"cue_timecode_mode\");"
+              "text": "mGotoBtn = getChild<LLButton>(\"cue_goto\");"
             },
             {
               "file": "indra/newview/alfloatercinelightcues.cpp",
-              "line": 95,
+              "line": 106,
               "class": "ALFloaterCineLightCues",
-              "function": "onTimecodeMode",
+              "function": "onGoto",
               "wired_class": "ALFloaterCineLightCues",
               "wired_function": "postBuild",
               "pattern": null,
               "wiring_only": false,
-              "text": "mTimecodeMode->setCommitCallback("
+              "text": "mGotoBtn->setCommitCallback("
             }
           ],
           "callback_handlers": [],
           "callbacks": [],
           "kit_action": null,
-          "resolution_notes": [
-            "data name `cue_timecode_check` maps to existing XUI `cue_timecode_mode`"
-          ],
+          "resolution_notes": [],
           "ambiguous": [],
           "rejected_candidates": [],
           "unresolved": [],
           "other_writers": []
         },
         {
-          "card": "adv_cues",
-          "card_title": "Advanced",
+          "card": "cues",
+          "card_title": "Light cues",
           "option_index": null,
           "option_label": null,
-          "index": 1,
-          "label": "Cue editor",
+          "index": 4,
+          "label": "Stop",
           "kind": "button",
-          "widget": "cue_open_stack_adv",
-          "matched_widget": "cue_open_stack_adv",
+          "widget": "cue_release",
+          "matched_widget": "cue_release",
           "declared_setting": null,
           "resolved_setting": null,
           "setting_candidates": [],
           "setting_declarations": [],
           "items": [],
-          "xui": [],
-          "cpp": [],
+          "xui": [
+            {
+              "file": "indra/newview/skins/default/xui/en/floater_cine_light_cues.xml",
+              "line": 83,
+              "tag": "button",
+              "control_name": null,
+              "callbacks": [],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/floater_cine_light_cues.xml",
+                "tag": "floater",
+                "name": "floater_cine_light_cues",
+                "line": 9
+              }
+            }
+          ],
+          "cpp": [
+            {
+              "file": "indra/newview/alfloatercinelightcues.cpp",
+              "line": 101,
+              "class": "ALFloaterCineLightCues",
+              "function": "postBuild",
+              "wired_class": "ALFloaterCineLightCues",
+              "wired_function": "postBuild",
+              "pattern": null,
+              "wiring_only": true,
+              "text": "mReleaseBtn = getChild<LLButton>(\"cue_release\");"
+            },
+            {
+              "file": "indra/newview/alfloatercinelightcues.cpp",
+              "line": 110,
+              "class": "ALFloaterCineLightCues",
+              "function": "onRelease",
+              "wired_class": "ALFloaterCineLightCues",
+              "wired_function": "postBuild",
+              "pattern": null,
+              "wiring_only": false,
+              "text": "mReleaseBtn->setCommitCallback("
+            }
+          ],
           "callback_handlers": [],
           "callbacks": [],
-          "kit_action": "floater:cine_light_cues",
+          "kit_action": null,
           "resolution_notes": [],
           "ambiguous": [],
-          "rejected_candidates": [],
+          "rejected_candidates": [
+            {
+              "kind": "cpp",
+              "reason": "reference is not in a class that owns/builds this page's XUI",
+              "file": "indra/newview/alcinelightrig.cpp",
+              "line": 3948,
+              "class": "ALCineLightRig",
+              "function": "applyCueSceneState",
+              "wired_class": "ALCineLightRig",
+              "wired_function": "applyCueSceneState",
+              "pattern": null,
+              "wiring_only": false,
+              "text": "const bool release = data[\"cue_release\"].asBoolean();"
+            },
+            {
+              "kind": "cpp",
+              "reason": "reference is not in a class that owns/builds this page's XUI",
+              "file": "indra/newview/alcinelightrig.cpp",
+              "line": 4206,
+              "class": "ALCineLightRig",
+              "function": "sceneData",
+              "wired_class": "ALCineLightRig",
+              "wired_function": "sceneData",
+              "pattern": null,
+              "wiring_only": false,
+              "text": "data[\"cue_release\"] = mCueRelease;"
+            }
+          ],
           "unresolved": [],
           "other_writers": []
         }
@@ -142547,41 +142834,6 @@
           "other_writers": []
         }
       ]
-    },
-    {
-      "key": "capture_settings_tab",
-      "label": "Capture",
-      "group": "capture_group",
-      "group_label": "Capture",
-      "row_count": 0,
-      "owner_roots": [
-        {
-          "file": "indra/newview/skins/default/xui/en/floater_snapshot.xml",
-          "tag": "floater",
-          "name": "Snapshot",
-          "line": 9,
-          "class": "LLFloaterSnapshot",
-          "class_file": "indra/newview/llfloatersnapshot.cpp",
-          "class_line": 79,
-          "matched_rows": 0,
-          "evidence": "full-editor owner; approved rows are summary/launcher rows"
-        }
-      ],
-      "owner_classes": [
-        {
-          "class": "LLFloaterSnapshot",
-          "reference_count": 0
-        }
-      ],
-      "classification": {
-        "logic_class": "code-driven",
-        "setting_bound_rows": 0,
-        "setting_coverage": 0.0,
-        "cpp_referenced_rows": 0,
-        "rule": "pure-setting iff >=90% rows have declared settings and zero rows have C++ references"
-      },
-      "unresolved_row_count": 0,
-      "rows": []
     },
     {
       "key": "scene_options_tab",

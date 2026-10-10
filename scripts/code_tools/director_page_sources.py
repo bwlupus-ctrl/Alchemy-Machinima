@@ -72,7 +72,6 @@ PAGE_OWNER_FILES = {
     "atmosphere_tab": {"panel_atmospheric_volumes.xml", "panel_projector_shafts.xml", "floater_lightbox_settings.xml"},
     "shadows_probes_tab": {"floater_lightbox_settings.xml"},
     "temporal_tab": {"panel_temporal_capture.xml"},
-    "capture_settings_tab": {"floater_snapshot.xml"},
     "scene_options_tab": {"floater_director.xml"},
 }
 
@@ -111,7 +110,6 @@ PAGE_OWNER_CLASSES = {
     "atmosphere_tab": {"ALPanelAtmosphericVolumes", "ALPanelProjectorShafts", "ALFloaterLightBox"},
     "shadows_probes_tab": {"ALFloaterLightBox"},
     "temporal_tab": {"ALPanelTemporalCapture"},
-    "capture_settings_tab": {"LLFloaterSnapshot", "LLFloaterSnapshotBase"},
     "scene_options_tab": {"LLFloaterDirector"},
 }
 
@@ -185,6 +183,20 @@ def model_binding_override(page: str, widget: str) -> dict | None:
                        "ALPanelDirectorAnimSwitcher", "onSlotButton", "anim_slot_%02d")
     if page == "gaze_tab" and widget == "gaze_influence_slider":
         return binding("indra/newview/alpanellensgaze.cpp", 1758, "ALPanelLensGaze", "onInfluenceSet")
+    if page == "gaze_cues_tab" and widget == "gaze_cue_play":
+        return {
+            "file": "indra/newview/lldirectorcast.cpp", "line": 1467,
+            "class": "LLDirectorCast", "function": "evaluateGazeCues",
+            "pattern": None, "wiring_only": False,
+            "text": "explicit selected-cue preview evaluator",
+        }
+    if page == "gaze_cues_tab" and widget == "gaze_cue_stop":
+        return {
+            "file": "indra/newview/llactormover.cpp", "line": 6504,
+            "class": "LLActorMover", "function": "clearDirectorLookAtRuntime",
+            "pattern": None, "wiring_only": False,
+            "text": "explicit cue-preview release path",
+        }
     if page == "shot_tab" and re.fullmatch(r"switcher_slot_\d{2}", widget):
         return binding("indra/newview/alpaneldirectorswitcher.cpp", 68,
                        "ALPanelDirectorSwitcher", "onSlotButton", "switcher_slot_%02d")
@@ -279,14 +291,14 @@ ADAPTERS = {
     "tron_tab": "ALTronKitAdapter", "actor_style_tab": "ALActorStyleKitAdapter",
     "weather_tab": "ALWeatherKitAdapter", "atmosphere_tab": "ALAtmosphereKitAdapter",
     "shadows_probes_tab": "ALShadowProbeKitAdapter", "temporal_tab": "ALTemporalCaptureKitAdapter",
-    "capture_settings_tab": "ALCaptureSettingsKitAdapter", "scene_options_tab": "ALSceneOptionsKitAdapter",
+    "scene_options_tab": "ALSceneOptionsKitAdapter",
 }
 
 R2_FIRST = [
     "path_tab", "ghosts_tab", "dance_tab", "animate_tab", "switchboard_tab", "gaze_tab",
     "gaze_cues_tab", "shot_tab", "takes_tab", "diopter_tab", "exposure_tab", "practicals_tab",
     "actors_tab", "light_cues_tab", "image_tab", "stylize_tab", "tron_tab", "actor_style_tab",
-    "atmosphere_tab", "capture_settings_tab", "frame_orbit_tab", "operator_tab", "move_tab",
+    "atmosphere_tab", "frame_orbit_tab", "operator_tab", "move_tab",
 ]
 
 SPECIAL_OWNERS = {
@@ -302,18 +314,12 @@ SPECIAL_OWNERS = {
         "`ultimate_diopter` in `indra/newview/skins/default/xui/en/floater_ultimate_diopter.xml:8`; "
         "`ALFloaterUltimateDiopter` in `indra/newview/alfloaterultimatediopter.cpp:266-1565`"
     ],
-    "capture_settings_tab": [
-        "Snapshot owns capture/output behavior: `LLFloaterSnapshot`/`LLFloaterSnapshotBase` in "
-        "`indra/newview/llfloatersnapshot.cpp:79-489` and the `panel_snapshot_*.xml` panels; "
-        "the approved Director page currently has zero rows"
-    ],
 }
 
 SPECIAL_OWNER_RECORDS = {
     "gaze_cues_tab": [{"file": "indra/newview/skins/default/xui/en/floater_gaze_cues.xml", "tag": "floater", "name": "floater_gaze_cues", "line": 2, "class": "ALFloaterGazeCues", "class_file": "indra/newview/alfloatergazecues.cpp", "class_line": 101}],
     "light_cues_tab": [{"file": "indra/newview/skins/default/xui/en/floater_cine_light_cues.xml", "tag": "floater", "name": "floater_cine_light_cues", "line": 2, "class": "ALFloaterCineLightCues", "class_file": "indra/newview/alfloatercinelightcues.cpp", "class_line": 51}],
     "diopter_tab": [{"file": "indra/newview/skins/default/xui/en/floater_ultimate_diopter.xml", "tag": "floater", "name": "ultimate_diopter", "line": 8, "class": "ALFloaterUltimateDiopter", "class_file": "indra/newview/alfloaterultimatediopter.cpp", "class_line": 266}],
-    "capture_settings_tab": [{"file": "indra/newview/skins/default/xui/en/floater_snapshot.xml", "tag": "floater", "name": "Snapshot", "line": 9, "class": "LLFloaterSnapshot", "class_file": "indra/newview/llfloatersnapshot.cpp", "class_line": 79}],
 }
 
 PRESENTATION_NOTES = {
@@ -322,17 +328,16 @@ PRESENTATION_NOTES = {
     "shot_tab": "Keep the existing switcher buttons and `panel_cinecam_params.xml` controls; no slot-grid or curve editor is authorized.",
     "takes_tab": "Use the recorder's existing list, buttons, combos, sliders, and scrubber; do not create a timeline/curve editor.",
     "exposure_tab": "Use `panel_exposure_hub.xml` controls as kit rows; no curve editor exists.",
-    "gaze_cues_tab": "Extract the existing cue list/editor stock controls into a shared owner-token view only if inline editing is required. Embed size: full card width, 240 px preferred, 160 px minimum, 320 px maximum, no nested page scroller.",
-    "light_cues_tab": "Extract the existing cue list/editor stock controls into a shared owner-token view only if inline editing is required. Embed size: full card width, 240 px preferred, 160 px minimum, 320 px maximum, no nested page scroller.",
-    "diopter_tab": "The six approved rows are launcher/summary rows, while the real editor is a 560×720 nine-tab floater. Do not invent a compact editor or embed the whole floater; data expansion is PENDING USER DECISION.",
-    "capture_settings_tab": "The approved page has zero rows. Populate it from the Snapshot owner before conversion; control selection and scope are PENDING USER DECISION.",
+    "gaze_cues_tab": "Keep the cue list plus Add, Remove, Play, and Stop in Director. Selecting a row opens the existing Gaze Cues window at that cue; detailed keyframe editing remains there.",
+    "light_cues_tab": "Keep the cue list plus Add, Remove, Play, and Stop in Director. Selecting a row opens the existing Lighting Cue Stack at that cue; detailed keyframe editing remains there.",
+    "diopter_tab": "Keep only the everyday controls (on/off, preset, strength, focus split) plus Open full editor. The existing 560×720 nine-tab floater remains the detailed editor.",
     "cine_light_rig_tab": "Reuse the existing gobo control and light-map view under their existing contracts; no replacement editor is introduced here.",
     "ghosts_tab": "Reuse the existing preview/diagnostics controls with a 240 px maximum and visible-only, revision-driven refresh.",
 }
 
 ACTOR_PAGES = {"move_tab", "path_tab", "ghosts_tab", "animate_tab", "gaze_tab", "polish_tab", "gaze_cues_tab", "actors_tab", "actor_style_tab"}
 LIST_PAGES = {"path_tab", "props_tab", "ghosts_tab", "dance_tab", "animate_tab", "switchboard_tab", "gaze_tab", "gaze_cues_tab", "shot_tab", "takes_tab", "light_cues_tab", "atmosphere_tab", "vcam_tab"}
-PERMISSION_PAGES = {"props_tab", "ghosts_tab", "practicals_tab", "actors_tab", "atmosphere_tab", "vcam_tab", "capture_settings_tab"}
+PERMISSION_PAGES = {"props_tab", "ghosts_tab", "practicals_tab", "actors_tab", "atmosphere_tab", "vcam_tab"}
 
 SPECIAL_EXTRACTIONS = {
     "gaze_cues_tab": [
@@ -370,13 +375,6 @@ SPECIAL_EXTRACTIONS = {
         ("indra/newview/alfloaterultimatediopter.cpp", "ALFloaterUltimateDiopter", "onRangeComboCommit", 1360),
         ("indra/newview/alfloaterultimatediopter.cpp", "ALFloaterUltimateDiopter", "onShowDepthToggled", 1485),
         ("indra/newview/alfloaterultimatediopter.cpp", "ALFloaterUltimateDiopter", "onFilterChanged", 1531),
-    ],
-    "capture_settings_tab": [
-        ("indra/newview/llfloatersnapshot.cpp", "LLFloaterSnapshot::Impl", "getActivePanel/getImageFormat", 79),
-        ("indra/newview/llfloatersnapshot.cpp", "LLFloaterSnapshot::Impl", "getWidthSpinner/getHeightSpinner", 116),
-        ("indra/newview/llfloatersnapshot.cpp", "LLFloaterSnapshotBase::ImplBase", "updateLayout", 180),
-        ("indra/newview/llfloatersnapshot.cpp", "LLFloaterSnapshot::Impl", "updateControls", 292),
-        ("indra/newview/llfloatersnapshot.cpp", "LLFloaterSnapshotBase::ImplBase", "setStatus/setNeedRefresh", 448),
     ],
 }
 
@@ -1220,8 +1218,6 @@ def page_audit_states(page: dict) -> list[tuple[str, str]]:
             ("display-raw", "A monitor shows its raw capture."),
             ("display-selected", "A monitor shows a selected display output."),
         ])
-    if key == "capture_settings_tab":
-        states.append(("data-missing", "Approved page remains empty; audit must fail closed until rows are approved."))
     # Preserve order while removing duplicate identifiers.
     seen: set[str] = set()
     result = []
@@ -1268,6 +1264,41 @@ def row_binding(row: dict, adapter: str) -> str:
     return f"**UNRESOLVED:** {reason}"
 
 
+def decision_contract(key: str) -> list[str]:
+    if key == "diopter_tab":
+        return [
+            "", "## User-decision control contract", "",
+            "| Director label | Real widget / setting | Exact values | Default |",
+            "|---|---|---|---|",
+            "| On / off | `diopter_enabled` / `CineDiopterEnabled` (`floater_ultimate_diopter.xml:66`; read by `alfloaterultimatediopter.cpp:556`) | Boolean | off (`settings.xml:608`) |",
+            "| Preset | `diopter_preset` / `CineDiopterPreset` (`floater_ultimate_diopter.xml:72`) | U32 0-20; the 21 labels are the XUI items in order | 0, Custom (`settings.xml:615`) |",
+            "| Strength | `diopter_blend` / `CineDiopterBlend` (`floater_ultimate_diopter.xml:105`) | 0.00-1.00, step 0.01, 2 decimals | 1.00 (`settings.xml:629`) |",
+            "| Focus split | `diopter_power` / `CineDiopterPower` (`floater_ultimate_diopter.xml:287`; read by `alfloaterultimatediopter.cpp:604`) | -10.00 to +10.00 D, step 0.25, 2 decimals | +2.00 D (`settings.xml:867`) |",
+            "| Open full editor | existing `ultimate_diopter` floater registration (`llviewerfloaterreg.cpp:769`) | action only | n/a |",
+            "", "The Director labels Strength and Focus split are presentation labels only; they bind directly to the existing Master Blend and Power (+D) controls/settings above. The full editor is opened, never embedded or recreated.",
+        ]
+    if key == "light_cues_tab":
+        return [
+            "", "## Cue-list behavior decided 2026-10-10", "",
+            "- Row format is `# | Label | At | Fade | Delay | Curve | Follow`, exactly the fields built by `ALFloaterCineLightCues::refreshCueRows()` (`alfloatercinelightcues.cpp:155-190`).",
+            "- Add reuses the Capture path (`onCapture()`, `alfloatercinelightcues.cpp:307-317`); Remove reuses `onDeleteCue()` (`:339-350`); Play calls selected-cue GOTO (`onGoto(false)`, `:374-378`, model `alcinelightrig.cpp:4051`); Stop calls Release (`:381-384`, model `alcinelightrig.cpp:4059`).",
+            "- Selecting a Director row opens `cine_light_cues` and selects the same index, then uses `onCueSelected()` (`alfloatercinelightcues.cpp:294-304`) to load the detailed editor. Keyframe/snapshot and timing fields remain only in that window.",
+            "- Refresh is event-driven: expose the existing `cueRevision()` (`alcinelightrig.h:314`) as a controller revision signal emitted by `setCueList()`, transport start/stop, list load, and selected-rig change. Refresh once on attach/reveal and on that signal; do not call the floater's `draw()` polling path (`alfloatercinelightcues.cpp:387-392`).",
+            "- Add and Remove are one `ALKitHistory` command each, storing the complete before/after `CueList`; Remove is therefore undoable and needs no confirmation. Play and Stop each place one `ALKitHistory::globalBarrier(reason)` and history recording is suspended between them.",
+        ]
+    if key == "gaze_cues_tab":
+        return [
+            "", "## Cue-list behavior decided 2026-10-10", "",
+            "- Row format is `Time | Target | Macro`, exactly the fields built by `ALFloaterGazeCues::refreshCueList()` (`alfloatergazecues.cpp:235-262`).",
+            "- Add reuses `onAdd()` (`alfloatergazecues.cpp:409-417`); Remove reuses `onDelete()` (`:436-452`). Both mutate through `LLDirectorCast::setGazeCues()` (`lldirectorcast.cpp:1364-1397`), which sanitizes, sorts, bumps `getGazeCueRevision()`, and clears gaze runtime.",
+            "- Selecting a Director row opens `gaze_cues` for that actor and selects the same cue, then follows `onCueSelected()` (`alfloatergazecues.cpp:395-406`) to load the detailed editor. Detailed targets, macros, transitions, and influence keyframes remain only in that window.",
+            "- Play is a transient selected-cue preview evaluated by the real `LLDirectorCast::evaluateGazeCues()` (`lldirectorcast.cpp:1467-1492`); Stop clears that preview through `LLActorMover::clearDirectorLookAtRuntime()` (`llactormover.cpp:6504`) and restores the live authored target. Preview never rewrites cue times or the presentation clock.",
+            "- Refresh is event-driven: add a controller revision signal at `setGazeCues()`'s existing revision bump and subscribe while visible. Refresh once on attach/reveal, actor change, and that signal; do not call the floater's per-frame `draw()` refresh path (`alfloatergazecues.cpp:187-193`).",
+            "- Add and Remove are one `ALKitHistory` command each, storing the actor ID and complete before/after `GazeCueList`; Remove is therefore undoable and needs no confirmation. Play and Stop each place one `ALKitHistory::globalBarrier(reason)` and history recording is suspended between them.",
+        ]
+    return []
+
+
 def render_page_spec(page: dict) -> str:
     key = page["key"]
     adapter = ADAPTERS[key]
@@ -1281,8 +1312,6 @@ def render_page_spec(page: dict) -> str:
         "## Real owners",
         "",
     ]
-    if key in {"diopter_tab", "capture_settings_tab"}:
-        lines[4:4] = ["**PENDING USER DECISION**", ""]
     if page["owner_roots"]:
         for owner in page["owner_roots"]:
             lines.append(f"- `{owner['name'] or owner['tag']}` / `{owner['tag']}` at `{owner['file']}:{owner['line']}` ({owner['matched_rows']} matching rows).")
@@ -1322,6 +1351,8 @@ def render_page_spec(page: dict) -> str:
         if notes:
             binding += f". Contract note: {notes}"
         lines.append(f"| `{card}` / `{row['widget'] or ''}` ({label}) | {evidence} | {binding} | {others} |")
+
+    lines += decision_contract(key)
 
     methods: dict[tuple, set[int]] = collections.defaultdict(set)
     for row in page["rows"]:
@@ -1403,9 +1434,7 @@ def render_page_spec(page: dict) -> str:
         "## Unresolved and pending-decision items",
         "",
     ]
-    if key in {"diopter_tab", "capture_settings_tab"}:
-        lines.append(f"- **PENDING USER DECISION:** {PRESENTATION_NOTES[key]}")
-    if not unresolved and key not in {"diopter_tab", "capture_settings_tab"}:
+    if not unresolved:
         lines.append("None in the current evidence index.")
     else:
         for row in unresolved:

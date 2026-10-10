@@ -25,6 +25,76 @@ ICONS = {"cast_group": "cast", "performance_group": "perf", "camera_group": "cam
          "lens_group": "lens", "light_group": "light", "look_group": "look",
          "world_group": "world", "capture_group": "capture"}
 
+# Binding user decision 2026-10-10: pages listed here are excluded from the
+# generated Director data rather than deleted from the generated JSON by hand.
+# Snapshot remains available through its existing floater.
+PAGE_EXCLUSIONS = {
+    "capture_group/capture_settings_tab": "Capture page dropped; use the Snapshot floater",
+}
+
+
+def apply_user_decisions(groups, problems):
+    """Apply the small, explicit R4 page contract decided on 2026-10-10."""
+    pages = {f"{g['name']}/{p['name']}": p for g in groups for p in g["pages"]}
+
+    diopter = pages.get("lens_group/diopter_tab")
+    if diopter:
+        diopter.update({
+            "sum": "Ultimate Diopter everyday controls: on/off, preset, strength and focus split. Detailed editing stays in the full editor.",
+            "cards": [{"id": "diopter_summary", "t": "Ultimate Diopter", "k": "rows", "rows": [
+                {"w": "diopter_enabled", "k": "toggle", "l": "On / off", "h": "Master switch. Off allocates no render targets and adds no draw calls.", "s": "CineDiopterEnabled", "d": False},
+                {"w": "diopter_preset", "k": "combo", "l": "Preset", "h": "Sets the optical character while leaving framing and focus controls editable.", "s": "CineDiopterPreset", "d": 0,
+                 "it": ["Custom (start from scratch)", "Split Diopter (classic)", "Dream Spot", "Anamorphic Cinema", "Vintage Swirl", "Hand Lens (free glass)", "Halo FX - Subtle", "Halo FX - Full", "Halo FX - Half Moon", "Halo FX - Split Moon", "Halo FX - Crescent", "Halo FX - Broken Ring", "Halo FX - Handheld", "Faceted - Radial Mirror", "Concentric Echo", "Prism Split", "Heart Bokeh", "Star Dream", "Moon Bite (crescent)", "Petal Dream (flower window)", "Macro Pulse"]},
+                {"w": "diopter_blend", "k": "slider", "l": "Strength", "h": "Master A/B strength against the untouched frame. 0 shows the original image.", "s": "CineDiopterBlend", "mn": 0, "mx": 1, "st": 0.01, "dc": 2, "d": 1.0},
+                {"w": "diopter_power", "k": "slider", "l": "Focus split", "h": "Optical power in diopters; positive values pull the lens-side focus plane nearer.", "s": "CineDiopterPower", "mn": -10, "mx": 10, "st": 0.25, "dc": 2, "d": 2.0},
+                {"w": "diopter_open_editor", "k": "button", "l": "Full editor", "h": "Open the existing Ultimate Diopter window for detailed shape, glass, focus and blur editing.", "btn": "Open full editor", "target": "ultimate_diopter"},
+            ]}],
+            "sections": [{"id": "summary", "label": "Everyday controls", "cards": [0]}],
+        })
+    else:
+        problems.append("user decisions: lens_group/diopter_tab not found")
+
+    gaze = pages.get("performance_group/gaze_cues_tab")
+    if gaze:
+        gaze.update({
+            "sum": "Gaze cue list and transport for the selected actor. Detailed keyframe editing stays in the existing cue window.",
+            "cards": [{"id": "cues", "t": "Gaze cues", "k": "rows", "rows": [
+                {"w": "cue_list", "k": "list", "l": "Cues", "h": "Time | Target | Macro. Selecting a row opens the existing Gaze Cues window at that cue."},
+                {"w": "btn_cue_add", "k": "button", "l": "Add", "h": "Append a cue from the current editor defaults and select it.", "btn": "Add"},
+                {"w": "btn_cue_delete", "k": "button", "l": "Remove", "h": "Remove the selected cue as one undoable list edit.", "btn": "Remove"},
+                {"w": "gaze_cue_play", "k": "button", "l": "Play", "h": "Preview the selected cue through the real gaze-cue evaluator.", "btn": "Play"},
+                {"w": "gaze_cue_stop", "k": "button", "l": "Stop", "h": "Stop cue preview and restore the actor's live authored gaze target.", "btn": "Stop"},
+            ]}],
+            "sections": [{"id": "cues", "label": "Cues", "cards": [0]}],
+        })
+    else:
+        problems.append("user decisions: performance_group/gaze_cues_tab not found")
+
+    light = pages.get("light_group/light_cues_tab")
+    if light:
+        light.update({
+            "sum": "Lighting cue list and transport. Detailed snapshot and timing editing stays in the existing cue window.",
+            "cards": [{"id": "cues", "t": "Light cues", "k": "rows", "rows": [
+                {"w": "cue_rows", "k": "list", "l": "Cues", "h": "# | Label | At | Fade | Delay | Curve | Follow. Selecting a row opens the existing Lighting Cue Stack at that cue."},
+                {"w": "cue_capture", "k": "button", "l": "Add", "h": "Append a complete snapshot of the live rig using the editor timing.", "btn": "Add"},
+                {"w": "cue_delete", "k": "button", "l": "Remove", "h": "Remove the selected cue as one undoable list edit.", "btn": "Remove"},
+                {"w": "cue_goto", "k": "button", "l": "Play", "h": "Run the selected cue through the existing GOTO transport.", "btn": "Play"},
+                {"w": "cue_release", "k": "button", "l": "Stop", "h": "Release the current cue playback through the existing transport.", "btn": "Stop"},
+            ]}],
+            "sections": [{"id": "cues", "label": "Cues", "cards": [0]}],
+        })
+    else:
+        problems.append("user decisions: light_group/light_cues_tab not found")
+
+    for key in PAGE_EXCLUSIONS:
+        group_name, page_name = key.split("/", 1)
+        group = next((g for g in groups if g["name"] == group_name), None)
+        page = next((p for p in (group or {}).get("pages", []) if p["name"] == page_name), None)
+        if page is None:
+            problems.append(f"page exclusion {key}: not found")
+        else:
+            group["pages"].remove(page)
+
 
 def index_map(cmap):
     by_group = defaultdict(lambda: defaultdict(list))
@@ -853,6 +923,7 @@ def main():
     apply_overrides(groups, a.curated, problems)
     apply_ia_v2(groups, a.curated, problems)
     apply_inline_pages(groups, a.curated, problems)
+    apply_user_decisions(groups, problems)
     pre_path = a.curated / "presets.json"
     if pre_path.exists():
         apply_presets(groups, json.loads(pre_path.read_text(encoding="utf-8")), problems)

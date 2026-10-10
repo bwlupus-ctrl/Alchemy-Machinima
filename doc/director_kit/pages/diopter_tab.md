@@ -1,9 +1,7 @@
 # Diopter — Director Kit page contract
 
 Page key: `diopter_tab`. Evidence: [`page_sources.json`](../page_sources.json) and [`page_sources.md`](../page_sources.md).
-Computed class: **code-driven** (4/6 setting-bound rows; 1 C++-referenced rows).
-**PENDING USER DECISION**
-
+Computed class: **code-driven** (4/5 setting-bound rows; 1 C++-referenced rows).
 
 ## Real owners
 
@@ -15,7 +13,7 @@ Name collisions in secondary XUI files are evidence candidates, not automatic ow
 
 ## Presentation rule
 
-The six approved rows are launcher/summary rows, while the real editor is a 560×720 nine-tab floater. Do not invent a compact editor or embed the whole floater; data expansion is PENDING USER DECISION.
+Keep only the everyday controls (on/off, preset, strength, focus split) plus Open full editor. The existing 560×720 nine-tab floater remains the detailed editor.
 
 ## Row bindings
 
@@ -23,12 +21,23 @@ The six approved rows are launcher/summary rows, while the real editor is a 560�
 
 | Card / row | Existing control evidence | Required binding | Other writable homes |
 |---|---|---|---|
-| `diopter_summary` / `diopter_enabled` (Enable) | `check_box` `indra/newview/skins/default/xui/en/floater_ultimate_diopter.xml:66` | kit `toggle` ↔ `CineDiopterEnabled` `Boolean` | none |
+| `diopter_summary` / `diopter_enabled` (On / off) | `check_box` `indra/newview/skins/default/xui/en/floater_ultimate_diopter.xml:66` | kit `toggle` ↔ `CineDiopterEnabled` `Boolean` | none |
 | `diopter_summary` / `diopter_preset` (Preset) | `combo_box` `indra/newview/skins/default/xui/en/floater_ultimate_diopter.xml:72` | kit `combo` ↔ `CineDiopterPreset` `U32` | none |
-| `diopter_summary` / `diopter_blend` (Master blend) | `slider` `indra/newview/skins/default/xui/en/floater_ultimate_diopter.xml:105` | kit `slider` ↔ `CineDiopterBlend` `F32` | none |
-| `diopter_summary` / `diopter_focus_mode` (Base focus) | `combo_box` `indra/newview/skins/default/xui/en/floater_ultimate_diopter.xml:257` | kit `combo` ↔ `CineDiopterFocusMode` `U32` | none |
-| `diopter_summary` / `diopter_open_editor` (Editor) | none | kit-native action `floater:ultimate_diopter`; no duplicate widget is required | none |
-| `adv_diopter` / `diopter_open_editor_adv` (Editor) | none | kit-native action `floater:ultimate_diopter`; no duplicate widget is required | none |
+| `diopter_summary` / `diopter_blend` (Strength) | `slider` `indra/newview/skins/default/xui/en/floater_ultimate_diopter.xml:105` | kit `slider` ↔ `CineDiopterBlend` `F32` | none |
+| `diopter_summary` / `diopter_power` (Focus split) | `slider` `indra/newview/skins/default/xui/en/floater_ultimate_diopter.xml:287` | kit `slider` ↔ `CineDiopterPower` `F32` | none |
+| `diopter_summary` / `diopter_open_editor` (Full editor) | none | kit-native action `floater:ultimate_diopter`; no duplicate widget is required | none |
+
+## User-decision control contract
+
+| Director label | Real widget / setting | Exact values | Default |
+|---|---|---|---|
+| On / off | `diopter_enabled` / `CineDiopterEnabled` (`floater_ultimate_diopter.xml:66`; read by `alfloaterultimatediopter.cpp:556`) | Boolean | off (`settings.xml:608`) |
+| Preset | `diopter_preset` / `CineDiopterPreset` (`floater_ultimate_diopter.xml:72`) | U32 0-20; the 21 labels are the XUI items in order | 0, Custom (`settings.xml:615`) |
+| Strength | `diopter_blend` / `CineDiopterBlend` (`floater_ultimate_diopter.xml:105`) | 0.00-1.00, step 0.01, 2 decimals | 1.00 (`settings.xml:629`) |
+| Focus split | `diopter_power` / `CineDiopterPower` (`floater_ultimate_diopter.xml:287`; read by `alfloaterultimatediopter.cpp:604`) | -10.00 to +10.00 D, step 0.25, 2 decimals | +2.00 D (`settings.xml:867`) |
+| Open full editor | existing `ultimate_diopter` floater registration (`llviewerfloaterreg.cpp:769`) | action only | n/a |
+
+The Director labels Strength and Focus split are presentation labels only; they bind directly to the existing Master Blend and Power (+D) controls/settings above. The full editor is opened, never embedded or recreated.
 
 ## Adapter extraction
 
@@ -54,7 +63,7 @@ The six approved rows are launcher/summary rows, while the real editor is a 560�
 
 ## Bounded non-default audit states
 
-Manifest size: **31 states**, hard cap 256, page runtime budget 2 minutes. Each row below is applied independently from the default snapshot; there is no Cartesian product.
+Manifest size: **27 states**, hard cap 256, page runtime budget 2 minutes. Each row below is applied independently from the default snapshot; there is no Cartesian product.
 
 | State key | Exact scenario |
 |---|---|
@@ -85,10 +94,6 @@ Manifest size: **31 states**, hard cap 256, page runtime budget 2 minutes. Each 
 | `diopter_preset-option-18` | Only `diopter_preset` selects `Moon Bite (crescent)`; other selectors remain default. |
 | `diopter_preset-option-19` | Only `diopter_preset` selects `Petal Dream (flower window)`; other selectors remain default. |
 | `diopter_preset-option-20` | Only `diopter_preset` selects `Macro Pulse`; other selectors remain default. |
-| `diopter_focus_mode-option-0` | Only `diopter_focus_mode` selects `Manual distance (m)`; other selectors remain default. |
-| `diopter_focus_mode-option-1` | Only `diopter_focus_mode` selects `Camera focus point`; other selectors remain default. |
-| `card-adv_diopter-tallest-850` | Only `adv_diopter` is put in its tallest local state at 850 px; all other cards stay default. |
-| `card-adv_diopter-tallest-1160` | Only `adv_diopter` is put in its tallest local state at 1160 px; all other cards stay default. |
 
 ## Parity check
 
@@ -111,7 +116,7 @@ None. Every approved visual kind is either a kit primitive or an existing XUI co
 
 ## Unresolved and pending-decision items
 
-- **PENDING USER DECISION:** The six approved rows are launcher/summary rows, while the real editor is a 560×720 nine-tab floater. Do not invent a compact editor or embed the whole floater; data expansion is PENDING USER DECISION.
+None in the current evidence index.
 
 ## Risks
 
