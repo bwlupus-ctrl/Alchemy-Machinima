@@ -226,9 +226,9 @@ Both world composite builders and the preview service call it. `prepareDisplayFr
 
 An atlas update is a scissored two-triangle draw into one cell. It binds the retained 1024 x 1024 output once, uses the published logical region transform (`llprismlens.cpp:7763-7768`), and writes display-referred RGBA8 for LLUI. It never reads pixels back and never allocates. Animated TV effects use the same `gFrameTimeSeconds` value as the world composite (`pipeline.cpp:26747-26754`) but advance only when that monitor's shared preview deadline is serviced, as a preview running at 0.5/1/2/5 fps should.
 
-The cell update runs from `renderAuxiliaryView()` **after** the scheduled auxiliary scene-render scope has ended, at most once per frame. It opens its own `ScopedPrismRenderState` plus explicit scoped guards for render-target/FBO stack, `gGLViewport`, scissor enable/box, blend enable/factors, depth test/write, colour mask, bound shader, active/bound texture unit 0, camera id, and pipeline target pack. It explicitly binds/flushes the atlas target and restores every saved value before returning. With previews disabled or no queued cell, this branch returns before any GL mutation. WP3 tests both the beauty pass after an update and the feature-off path, as required by `CLAUDE.md`.
+The cell update runs from `renderAuxiliaryView()` **after** the scheduled auxiliary scene-render scope has ended, at most once per frame. It opens its own `ScopedPrismRenderState` plus explicit scoped guards for render-target/FBO stack, `gGLViewport`, scissor enable/box, blend enable/factors, depth test/write, colour mask, bound shader, active/bound texture unit 0, camera id, and pipeline target pack. It explicitly binds/flushes the atlas target and restores every saved value before returning. With previews disabled or no queued cell, this branch returns before any GL mutation. VC3 tests both the beauty pass after an update and the feature-off path, as required by `CLAUDE.md`.
 
-The retained source is HDR RGBA16F (`pipeline.cpp:1840-1855`). “Display-referred RGBA8” is defined as: signal mapping/effects in linear HDR, then the same-frame main-view exposure map, active tonemap type/parameters, saturation/contrast grade, and linear-to-sRGB encoding used by the main `colorCorrect` path (`pipeline.cpp:12833-12888`, with tonemap uniforms populated in the same helper). The preview shader and main path share the tonemap-uniform pack; no independently sampled next-frame exposure is allowed. Atlas storage is sRGB-aware RGBA8 and LLUI samples it as display sRGB. Self-test reference colors cover neutral grey, highlights, and at least two tonemap operators.
+The retained source is HDR RGBA16F (`pipeline.cpp:1840-1855`). `renderAuxiliaryView()` runs before the main view (`llviewerdisplay.cpp:937-939`), so “display-referred RGBA8” uses the **previous presented frame's** completed `mExposureMap`, together with the current frame's active tonemap type/parameters, saturation/contrast grade, and linear-to-sRGB encoding. It does not claim same-frame main-view metering and does not run independent preview metering. Factor `colorCorrect`'s legacy/no-post/color-grade/tonemap/type-8 permutation choice and tonemap-uniform upload into one shared helper used by the main pass and preview compositor; do not duplicate the eight-way selection at `pipeline.cpp:12833-12888`. Preview composition explicitly excludes the main view's bloom pyramid, which is bound separately in `colorCorrect` at `pipeline.cpp:12886-12907`; capture optics/effects already present in the retained HDR signal remain. Atlas storage is sRGB-aware RGBA8 and LLUI samples it as display sRGB. Self-test reference colors cover neutral grey, highlights, at least two tonemap operators, a forced exposure change proving one-presented-frame latency, and bloom-on parity with bloom excluded from the preview transform.
 
 “Exactly that face's result” means exact signal-space mapping, bars, flips/rotation, capture Look, and TV-effect shader math from the same retained publication. It does not mean a screenshot of the face after world depth occlusion, transparency, bloom, or final main-view tonemapping; see Risks.
 
@@ -248,9 +248,11 @@ Add a render zone `LL_PROFILE_ZONE_NAMED_CATEGORY_DISPLAY("Prism preview atlas c
 
 The default requirement is: with eight captures requesting 1 fps, preview-triggered work contributes no more than 0.3 ms to the average presented frame **and does not fail the p95 frame-delta gate below**. Charge each preview-only auxiliary attempt at `max(render-thread CPU wall time, GPU elapsed time)`, from immediately before scratch acquisition through state restoration, so cull/stateSort/draw submission, spot-shadow work, driver stalls, and scratch-pool work are included. Charge an atlas update the same way. Ordinary renders required by visible world displays are excluded because they exist with previews off, but atlas work caused by the monitor is included.
 
-All preview-only scenes use the single preallocated 192x108 scratch bucket from section 4.2. Allocate/validate it when the first visibility owner appears, before demand is published; its cold allocation is separately timed and the service remains WARMING until complete. Preview work never requests aspect-specific scratch sizes and therefore adds at most one pool entry and cannot churn through/evict visible-capture exact-size packs. A later allocation/reacquire is charged to CPU time and makes that sample a failure candidate. The current exact-size eight-entry LRU allocates a full deferred pack on a miss (`pipeline.cpp:1728-1825`), which is why arbitrary fitted preview sizes are forbidden.
+All preview-only scenes use one dedicated 192x108 `mPrismPreviewScratch` target pack owned by `LLPipeline`, **outside** `mPrismLensScratchPool`. New `allocatePrismPreviewScratch()`, `bindPrismPreviewScratch()` and `releasePrismPreviewScratch()` APIs never enter `acquirePrismLensScratch()` and are therefore not candidates for the eight-entry LRU's eviction loop (`pipeline.cpp:1728-1825`). Allocate/validate this pinned pack when the first visibility owner appears, before demand is published; its cold allocation is separately timed and the service remains WARMING until complete. Context loss and `releasePrismLensBuffers()` explicitly release it, and the next owner rewarms it before publishing demand. Preview work never requests an aspect-specific size. Any post-warm allocation/generation change is a scratch reacquisition and fails the zero-reacquisition gate; visible captures retain all eight ordinary pool entries.
 
-The preview quality profile disables auxiliary spot/sun-shadow generation, SSAO, volumetrics, reflection-probe updates, and nonessential far geometry; draw distance is capped at 64 m. These gates are preview-only and the normal visible-capture path remains byte-identical.
+The preview quality profile is concrete and scoped. Add `LLPipeline::sPrismPreviewRender` plus `ScopedPrismPreviewQuality`. Construct that scope in `LLPrismLens::renderAuxiliaryView()` only after `chooseRenderSlot()` identifies a preview-only request and before scratch binding/camera setup (the present render scope begins at `llprismlens.cpp:7240-7259`); destroy it before `ScopedPrismRenderState` restores the main renderer. The constructor snapshots and then overrides these render variables for the scope: `RenderShadowDetail=0`, `RenderDeferredSSAO=false`, `RenderVolumetricLighting=false`, `BDMergeProjectorVolumetrics=false`, and `RenderFarClip=min(saved,64.f)`. It also caps the local lens camera/projection far plane to `min(capture far, main far, 64 m)` at the current camera-feed and surface-lens far-plane sites (`llprismlens.cpp:7322-7345`, `7378-7430`). The destructor restores every saved value in reverse order on every early return. It does **not** write `gSavedSettings`, reload shaders, change `sReflectionProbesEnabled`, or alter the retained capture's creative settings.
+
+Every expensive call site also checks `!sPrismPreviewRender`, so cached controls/permutations cannot bypass the profile: auxiliary sun-cascade/spot-shadow work at `llprismlens.cpp:7504-7519` and the following spot-generation block; deferred SSAO/light-map dispatch and blur at `pipeline.cpp:25523-25579` (the pack-completeness predicate is `:1752-1759`); directional volumetrics at `pipeline.cpp:18933-18961`; projector volumetrics at `pipeline.cpp:20896-20901`; and a safety early-out at `LLReflectionMapManager::update()` (`llreflectionmapmanager.cpp:260`) if it is ever invoked inside the preview scope. The normal once-per-presented-frame probe update remains later at `llviewerdisplay.cpp:1200-1206`, after the preview scope has restored the flag, so preview work neither adds a probe update nor suppresses the main view's update. Probe sampling stays enabled so material appearance does not change merely because updates are frozen. Nonessential far geometry is excluded by the scoped 64 m camera/projection limit, not by mutating the user's draw-distance setting. For `sPrismPreviewRender==false`, each predicate reduces to its current expression and no saved global is changed; VC2's review diff and feature-off test prove the visible-capture and main-view paths byte-identical.
 
 Add a `PrismPreviewBudgetController` inside the preview service:
 
@@ -329,7 +331,9 @@ The permission rule is product policy, not a simulator security boundary: bindin
 
 Dropping on an unbound face creates a display with the page's “new face mapping” default. Dropping on a face already represented by a Prism display atomically changes its capture owner, preserving `DisplayHandle`, mapping, virtual/real identity, Gate subscription, and TV effects. It decrements/increments display counts, drops the old capture's publication demand when it has no display, Gate, or preview demand, bumps configuration revision once, and emits one change signal. It does **not** release the retained output: outputs are lifetime-fixed once allocated (`pipeline.cpp:1828-1855`) and release only on capture/resource teardown.
 
-Scene restore uses the same target validator with `ERestorePolicy::SCENE`. A live face that fails geometry, feedback, capacity, or `permModify()` rejects the entire scene apply atomically with a named binding reason. An offline object is retained as quarantined/offline; when it resolves, the same validator runs before publication and disables that binding if permission/geometry fails, with a visible reason. There is no silent grandfathering of a live unauthorized face and no partial scene load.
+Scene restore uses the same target validator with `ERestorePolicy::SCENE`, but permission is backward-compatible. Parse and structurally validate the complete Prism payload first. Malformed identities/schema, impossible capacity, feedback cycles, or invalid live geometry still reject the Prism replacement atomically. A live face whose **only** failure is `permModify()` does not reject the scene: omit/disable that display binding, retain its serialized identity and settings in a quarantined record with reason “Skipped on scene load: no modify permission”, and continue applying every capture and every other valid display. An offline object is retained quarantined/offline; when it resolves, the validator runs before publication and a permission failure leaves only that binding disabled with the same visible reason.
+
+`applySceneData` returns an `ApplyReport` (success, fatal reason, and skipped-binding records) rather than collapsing warnings into failure. `LLFloaterDirector::loadScene` keeps its existing all-or-nothing early return for a fatal Prism result before it mutates cast/settings (`llfloaterdirector.cpp:1478-1494`), but a successful report with permission skips continues through the Director apply (`:1520-1664`) and posts one summary: “Scene loaded; N monitor face(s) skipped for permission”, with object/face details in the log and VCam rows. Thus existing scenes remain loadable, unauthorized live faces are never published, and only permission failures are partial; structural corruption remains atomic.
 
 Dropping a VCam tile on a face row calls the same `reassignDisplay(display, capture)` API. The row is an LLUI drop target; it does not invoke a world pick.
 
@@ -352,13 +356,14 @@ Full-scene snapshot replay is forbidden. Undo/redo never calls `applySceneData()
 - `setCamera`, `setRate`, `setDisplay`, `setLabel`, and Gate-subscription changes store exact before/after values and call the matching setter on the same handle;
 - bind/unbind/reassign stores capture/display handles, target object+TE, and display settings, and calls inverse `unbindDisplay`, `bindDisplayTarget`, or `reassignDisplay` without reallocating unrelated objects;
 - Add undo removes only the created stable handle (and only that capture's output if allocated); redo calls new `restoreCaptureIdentity(const RemovedCaptureRecord&)` / `restoreDisplayIdentity(...)` APIs that reuse the reserved UUID **and generation**;
-- Remove first obtains an immutable `RemovedCaptureRecord` containing the capture, owned displays, and their stable handles/generations. Undo restores that record into available registry slots while retaining those exact handles; only the restored capture may need to republish. Unrelated captures/outputs, the shared scratch pool, and Gate runtime are untouched; redo removes those same handles;
+- Remove first obtains an immutable `RemovedCaptureRecord` containing the capture, owned displays and stable handles/generations, plus the complete Gate inverse **before** `clearSlot`: the optional `GateArmedCamera` (arm UUID, label, enabled flag and capture UUID), original arm index, whether it was Program, Preview, Warm and/or On Air, and every gate-subscribed display handle that removal will detach. This is required because `clearSlot` detaches subscribed displays at `llprismlens.cpp:6031-6037` and disarms the capture with full index/preview/on-air fixup at `:6045-6057`.
+- Undo calls new atomic `restoreCaptureIdentity(record)` followed inside the same registry transaction by `gateRearm(record)`. `gateRearm` inserts the same arm identity at its recorded index (shifting later indices), reattaches the recorded subscribed displays to the restored capture generation, restores Program/Preview/Warm indices by arm identity, and restores On Air only when the record says that arm was on air; otherwise it does not TAKE or punch the restored camera to program. If any identity, capacity, feedback or display-reattachment precondition fails, it rolls back the whole inverse and leaves the history step intact. Redo removes those same handles and repeats the normal detach/disarm behavior. Only the restored/removed capture may republish; unrelated outputs, the ordinary and pinned scratch packs, Gate arms/routing and cut serial remain unchanged.
 - OTS pair uses one compound typed entry and identity-preserving restore for both captures/arms; preset/reset records affected typed settings, never a scene blob;
 - a slider gesture coalesces repeated setter calls into one before/after typed entry.
 
 The registry reserves identities referenced by undo steps; capacity UI counts live objects only, while a bounded reservation table is capped by `ALKitHistory` eviction. When a step is evicted/barriered, its reservations release. A restore precondition failure leaves the step intact and shows “Cannot undo <label>: <reason>”; it never partially restores. Director scene load, registry wholesale replacement, and logout call the history barrier.
 
-Drag/drop, Send, Add, Remove, preset/reset, and completed slider gestures use this path. Selection is restored by stable handle only after the inverse succeeds. No server object-edit undo entry is added because no simulator object was edited. Failed/no-op actions create no entry, and Gate program/on-air state is never reset by VCam undo.
+Drag/drop, Send, Add, Remove, preset/reset, and completed slider gestures use this path. Selection is restored by stable handle only after the inverse succeeds. No server object-edit undo entry is added because no simulator object was edited. Failed/no-op actions create no entry. Tests remove/undo/redo an unarmed capture and arms at the first/middle/last index while each is Program, Preview, Warm, On Air or off air; they verify arm UUID/label/enabled/index, subscribed display handles, Program/Preview/Warm/On-Air routing, unrelated outputs, and cut serial. Gate routing changes only when it is part of the removed capture's recorded inverse.
 
 ## 6. Inline page and model binding
 
@@ -464,15 +469,15 @@ On success select the new capture (OTS selects A), assign its default label, sel
 
 6. **Atlas/context lifetime is a crash risk if raw GL names escape.** Generation-checked render-thread resolution and the existing render-target release hook are mandatory. No tile may cache an `LLRenderTarget*`.
 
-7. **Identity-preserving typed undo is mandatory.** `applySceneData()` is forbidden for undo/redo. Stable UUID+generation reservations and fine-grained inverse operations preserve unrelated outputs and Gate runtime; slider gestures coalesce and history barriers release reservations.
+7. **Identity-preserving typed undo is mandatory.** `applySceneData()` is forbidden for undo/redo. Stable UUID+generation reservations and fine-grained inverse operations preserve unrelated outputs and Gate state; Remove alone records and exactly reverses its own arm/display detachment. Slider gestures coalesce and history barriers release reservations.
 
 8. **Permissions are currently looser.** Existing selected-face binding is local and does not require modify rights. Adding the requested ownership policy changes current behavior, so both manager and inline paths must move to the common validator in the same delivery.
 
 ## 8. Work packages after Director Kit Phase 0
 
-These are review packages, not separately shippable partial features. Complete all applicable WPs, run the mandated adversarial review loop to zero must-fix, then build once and perform in-world verification.
+These are review packages, not separately shippable partial features. Complete VC1-VC7, run the mandated adversarial review loop to zero must-fix, then build once and perform in-world verification. In the rollout plan, VC1-VC5 are engine work and may be completed before rollout WP6. Rollout WP9 then consumes them in this order: VC6 (inline Director page) followed by VC7 (manager convergence and end-to-end verification). VCam uses only the VC prefix.
 
-### WP1 — Registry API, labels, signals, and history
+### VC1 — Registry API, labels, signals, and history
 
 Files: `llprismlens.h/.cpp`, `app_settings/settings.xml`, `alkithistory.*`, `alvcampagemodel.*`, tests.
 
@@ -482,22 +487,24 @@ Acceptance:
 - Configuration/runtime/performance signals fire once per logical change on the main thread.
 - Target-based bind/reassign preserves display settings and is atomic at the 16-face cap.
 - Selection and drag validators return identical reasons.
-- Typed `ALKitHistory` undo/redo restores Add/Remove/Bind/Reassign with the same UUID+generation and no partial state; only the capture explicitly removed/restored may lose/republish its output, while unrelated outputs, scratch pool, and Gate runtime remain unchanged. No undo path calls `applySceneData()`.
+- Typed `ALKitHistory` undo/redo restores Add/Remove/Bind/Reassign with the same UUID+generation and no partial state. Remove restores its exact Gate arm/index/role flags and subscribed displays; only the capture explicitly removed/restored may lose/republish its output, while unrelated outputs, scratch packs and Gate state remain unchanged. No undo path calls `applySceneData()`.
+- Old scenes with live faces that fail only `permModify()` load successfully, quarantine only those bindings, report each skip, and continue the Director scene apply; malformed/structurally invalid Prism data still rejects atomically before Director mutation.
 
-### WP2 — Preview demand in the existing scheduler
+### VC2 — Preview demand in the existing scheduler
 
 Files: `llprismlens.h/.cpp`, new `llprismpreview.h/.cpp`, `pipeline.h/.cpp`, scheduler tests.
 
 Acceptance:
 
 - Visible captures incur zero preview-only scene attempts.
-- An unshown capture renders in the fixed 192x108 scratch bucket through the preview-only quality profile and global/adaptive/budget admission.
+- An unshown capture renders in the dedicated pinned 192x108 preview target, outside the eight-entry visible-capture LRU, through the scoped preview-only quality profile and global/adaptive/budget admission.
+- The scope pushes/restores the enumerated pipeline flags and 64 m camera limit on every early return; each shadow/SSAO/volumetric/probe-update gate sees `sPrismPreviewRender`, while its false path is byte-identical.
 - At most one total auxiliary attempt occurs per frame; preview-only captures make round-robin progress and never catch up in bursts.
 - Visible/Gate water-filling completes before previews receive leftover capacity; manual Every Frame previews still obey their preview deadline.
 - Previews off/hidden produces zero preview-triggered attempts while visible world faces continue.
 - Context loss/release leaves no stale handles.
 
-### WP3 — Exact signal compositor and atlas
+### VC3 — Exact signal compositor and atlas
 
 Files: `prismLensF.glsl`, new shared shader helper and preview shaders, `llviewershadermgr.*`, `llprismlens.cpp`, `llprismpreview.cpp`, `pipeline.cpp`.
 
@@ -509,9 +516,9 @@ Acceptance:
 - Offline/unknown faces show OFFLINE rather than a guessed result.
 - Atlas allocates once and updates at most one cell per frame with no pixel readback.
 - Atlas updates restore complete GL/FBO/pipeline state, leave the beauty pass unchanged, and the feature-off path performs no GL mutation.
-- HDR-to-RGBA8 output matches the same-frame exposure, active tonemap, grade, and sRGB encoding contract.
+- HDR-to-RGBA8 output uses the previous presented frame's exposure map plus current tonemap/grade/sRGB parameters through the shared permutation helper; the one-frame exposure latency and explicit bloom exclusion match section 4.3.
 
-### WP4 — Budget controller and diagnostics
+### VC4 — Budget controller and diagnostics
 
 Files: `llprismpreview.*`, settings, test/diagnostic registration.
 
@@ -523,7 +530,7 @@ Acceptance:
 - After warm-up, charged average is <=0.300 ms/frame, p95 frame delta <=2.0 ms, maximum operation <=4.0 ms, and scratch reacquisition is zero; otherwise shared rate drops and the UI says THROTTLED/suspended.
 - Tracy shows the named CPU and GPU preview zones.
 
-### WP5 — Drag/drop and Send
+### VC5 — Drag/drop and Send
 
 Files: `indra/llui/llui.h`, `lltooldraganddrop.h/.cpp`, `alvcammonitorstrip.*`, `alvcampagemodel.*`, tests where practical.
 
@@ -536,7 +543,7 @@ Acceptance:
 - Failed/no-op drops create no undo entry; successful drops undo/redo as one action.
 - Surface Lens drag is disabled with the documented invariant.
 
-### WP6 — Director kit page
+### VC6 — Director kit page
 
 Files: new `alpaneldirectorvcam.*`, `alvcampagemodel.*`, `alvcammonitorstrip.*`; generated `panel_dpage_camera_vcam.xml`, generator config/data/index; `llfloaterdirector.h/.cpp` only for shared adapter wiring; CMake/source lists. `floater_director.xml` is off-limits.
 
@@ -549,8 +556,9 @@ Acceptance:
 - Search/help/amber/chips and the sole `ALKitHistory` work; no page-local history/key handler exists.
 - Page and tile draw paths pass `ui_draw_lint.py`; kit XUI and all non-default states pass `xui_layout_check.py`/runtime audit through the kit-owned scroller.
 - No per-frame widget lookup, setting lookup, list rebuild, string formatting, or raw widget write occurs.
+- Moving VCam from the v1 Lens group to the v2 Camera group preserves name-based `selectLeafTab` routing (`llfloaterdirector.cpp:809-821`); tests cover `migrate_tab_name`, `DirectorLastTabName`, and v1→v2/v2→v1 floater rect plus selected-tab carry-over.
 
-### WP7 — Manager convergence and end-to-end verification
+### VC7 — Manager convergence and end-to-end verification
 
 Files: `llfloaterprismmanager.h/.cpp`, `floater_prism_manager.xml` only as needed to consume shared model/signals; docs/tests.
 

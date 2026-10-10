@@ -208,9 +208,9 @@ The output is deterministic, and the script is idempotent.
   - **Focused:** a 1 px KitAccent focus ring.
   - The LLCheckBoxCtrl label is not drawn.
 - `bool isOn() const` reads `mButton->getToggleState()` directly. `mButton` is the checkbox's actual value store (`llcheckboxctrl.h:144-147`), so the read is allocation-free and cannot go stale.
-- Override `setControlName`. Call the base implementation, then connect once to `mButton->getControlVariable()->getSignal()` with a scoped connection. The callback consumes the signal's `newvalue` and calls `noteState(newvalue.asBoolean())`; it does not assume callback ordering by re-reading the button. `LLCheckBoxCtrl::setControlName` binds the inner button, not the wrapper (`llcheckboxctrl.cpp:280-283`), and `LLUICtrl::controlListener` sends external setting changes to the bound control's `setValue` (`lluictrl.cpp:639-647`).
+- Override `setControlName`. Disconnect and replace the previous scoped connection first (S9 may rebind a generated control), call the base implementation, then connect to `mButton->getControlVariable()->getSignal()`. The callback consumes the signal's `newvalue` and calls `noteState(newvalue.asBoolean())`; it does not assume callback ordering by re-reading the button. `LLCheckBoxCtrl::setControlName` binds the inner button, not the wrapper (`llcheckboxctrl.cpp:280-283`), and `LLUICtrl::controlListener` sends external setting changes to the bound control's `setValue` (`lluictrl.cpp:639-647`). A rebind leaves exactly one live connection and the old control can no longer flip this switch.
 - Override `onCommit()`. First call `noteState(mButton->getToggleState())`, then `LLCheckBoxCtrl::onCommit()`. A user click toggles the inner `LLButton` before its click callback (`llbutton.cpp:311-337`, `1050-1055`), so this observes the post-click value. `noteState` stores only the last notified bool and fires `mFlipSignal` only on a real edge; the setting signal and commit path may both arrive without double-firing.
-- `setValue()` may delegate to `LLCheckBoxCtrl::setValue()` for programmatic presentation updates, but it is not the source of flip detection. Space and Enter use the same commit path as a click.
+- Override `setValue(const LLSD&)`: call `LLCheckBoxCtrl::setValue(value)`, then call `noteState(value.asBoolean())`. This is mandatory because existing C++ writes kit-bound controls without committing: group switches at `alpanelcinelightrig.cpp:1630-1634`, shaft/hero switches at `:2583-2584`, and the per-instance Easy presentation at `:2390`; `setValueIfChanged` itself calls `setValue` and never commits (`aluirefresh.h:291-302`). `noteState` is edge-only, so a control-variable signal, this override, and `onCommit()` may all observe one change without double-firing. Space and Enter use the same commit path as a click.
 - `writeBoundValue(bool v)` is the passive write path: obtain the inner button's `LLControlVariable` and call `control->set(LLSD(v))`; if there is no bound control, set the inner toggle and call `noteState`. Never call `LLCheckBoxCtrl::setControlValue`, because the wrapper has no control variable and that method returns false (`lluictrl.cpp:510-517`; `llcheckboxctrl.cpp:159-166`).
 
 ### 3.3 ALKitRow: `alkitrow.h/.cpp`, tag `kit_row`
@@ -416,6 +416,8 @@ The page dims `<P>_doc` with DIM_ALPHA while the master is off.
 
 For Rig, refactor `ALPanelCineLightRig::onEasyModeCommit()` into `applyEasyMode(bool desired, EModeOrigin origin)`. The existing callback only reads the toggle and delegates. Setting-signal changes (preset, scene, undo, slot restore), the shell proxy, search reveal, and initial synchronization all delegate to this same function. It is solely responsible for the setting, `mEasyModeSlot`, `mEasyModeActive`, `normalizeSelectedForEasy`, and `syncEasyControls`. This is required because Easy commits return early when `mEasyModeActive` is false (`alpanelcinelightrig.cpp:2217-2243`). The current per-frame `syncEasyModeForSelected()` at `alpanelcinelightrig.cpp:2853` becomes a revision/signal fallback, not a second state transition implementation.
 
+The adapter is page-instance scoped: `ALKitPage` registers it with the page's own `LLHandle<ALPanelCineLightRig>` logic root. It never searches `LIVE_PANELS` (both standalone and Director instances register there at `alpanelcinelightrig.cpp:823-827`). `applyEasyMode` runs under the existing `mSyncingEasyControls` re-entrancy guard and returns/publishes the **effective** `mEasyModeActive`, which can differ from `desired` when `normalizeSelectedForEasy` refuses (`alpanelcinelightrig.cpp:2230-2235`). The page uses that published effective value for its Easy/Advanced card set, master banner and dimming. A switch flip caused by `setValue`, a bound-control signal, click, search reveal, or undo schedules one edge-only reconciliation from the adapter's effective value; it never blindly treats the requested setting as the page mode. The standalone panel observes the shared setting signal and updates its own instance independently, under the same guard, and must not write the setting back from passive synchronization.
+
 **Chips.**
 - `chip_mode=auto` resolves to `filter` when the count of cards visible in the current mode is ≥ 6, otherwise `anchor`.
 - **filter:** only the selected section's cards are shown.
@@ -598,7 +600,7 @@ The loader requires version 2 and `fields="15"`, validates exactly 15 decoded fi
 
 Tie-break: current page, then group order, then data order.
 
-**Duplicates.** Entries with the same non-empty `setting` collapse into the best one, carrying an "also on <pages>" list.
+**Duplicates.** The rollout's `kit_pages.json.homes` table names the sole writable home for every setting that appears on multiple pages. Search collapses entries with the same non-empty `setting` into the writable home; only generated `link` rows and explicitly read-only occurrences contribute an "also on <pages>" list. A second writable occurrence is a generator/lint error. P0's two-page data follows the same rule even before the full homes table lands.
 
 **UI.**
 - The proxy field fires `setQuery(text)`, debounced 120 ms by a shell-owned `LLEventTimer` one-shot. Never in `draw()`.
@@ -709,6 +711,7 @@ public:
     void recordCustom(const std::string& key, const std::string& label,
                       std::function<bool(bool redo, std::string& reason)> replay);
     void barrier(const std::string& reason);                   // close gesture, clear undo/redo, increment scene generation
+    static void globalBarrier(const std::string& reason);      // resolve the live Director at call time; safe no-op if absent
     bool canUndo() const; bool canRedo() const; std::string undoLabel() const; std::string redoLabel() const;
     void undo(); void redo();
     U64  revision() const;
@@ -745,8 +748,10 @@ public:
 - `ALPanelCineLightRig::onAnchorSelected` (a slot switch rewrites the CineLightRig settings).
 - ALKitPage passive mode switches.
 - `navigateTo`.
-- Director scene apply, `ALCineLightRigManager::resetAllToSelf`, every `setSelectedSlot` caller, and preset/cue apply paths outside the active Director gesture use `ScopedSuspend` and then `barrier(reason)`. Scene apply currently calls the rig manager at `llfloaterdirector.cpp:1664`; slot selection and reset synchronously rewrite settings at `alcinelightrigmanager.cpp:698-735`; those writes must never be left as fragmentary undo entries.
+- Director scene apply, `ALCineLightRigManager::resetAllToSelf`, every `setSelectedSlot` caller, and preset/cue apply paths outside the active Director gesture use `ScopedSuspend` and then a barrier. Scene apply currently calls the rig manager at `llfloaterdirector.cpp:1664`; slot selection and reset synchronously rewrite settings at `alcinelightrigmanager.cpp:698-735`; those writes must never be left as fragmentary undo entries.
 - An in-Director preset/reset that is deliberately represented as one complete Step uses `ScopedSuspend` around the bulk writer and records the complete typed/setting entry set itself; it does not also call a barrier. External Lightbox presets and cue playback call the barrier because the Director did not initiate a complete step.
+
+External writers use `ALKitHistory::globalBarrier(reason)`. It resolves `LLFloaterReg::findTypedInstance<LLFloaterDirector>("director")` at call time, obtains that floater's live shell/history if present, and calls `barrier`; it stores no static shell pointer or handle. `ALTron::applyPreset`, `ALRotoInk::applyPreset`, and each Lightbox preset apply call it once after their suspended bulk write (the Tron call path begins at `alfloaterlightbox.cpp:832`). Cue playback calls it at playback **start** and **stop**, not per cue tick. The cue player owns `std::unique_ptr<ALKitHistory::ScopedSuspend> mHistorySuspend`: create it before the start barrier, retain it across ticks, reset it before the stop barrier, and reset it on every abort/destructor/logout path. Continuous cue writes therefore cannot create or repeatedly erase history. Tests cover Director absent, closed, reopened, and playback abort.
 
 Codex must verify that `ALCineLightRigManager::setSelectedSlot` writes its settings synchronously. If it defers, use `ScopedSuspend` plus a `suspendFrames(2)` latch.
 
@@ -856,15 +861,19 @@ Rig-wide: `CineLightRigMirror`, `CineLightRigOrbitYaw`, `CineLightRigOrbitPitch`
 
 All are read with `static LLCachedControl` arrays.
 
-**Frames.** When the selected rig is live, the display source is `selected().lastFrame().mProj[i].mOffX/Y/Z`, not a reconstruction from settings. Those offsets already contain mirror, orbit, subject-scaled effective radius, and OffsetZ (`alcinelightrigmodel.h:213-235`; `alcinelightrigmodel.cpp:1585-1621`) and also work for object targets. The old facing-accessor proposal is deleted: object targets currently skip the avatar-facing assignment (`alcinelightrig.cpp:2491-2499`, `2632-2648`), so using it would incorrectly report a live object-target rig as off.
+**Frames.** When the selected rig is live and no gesture is active, the display source is `selected().lastFrame().mProj[i].mOffX/Y/Z`. Those are the eased positions: `lastFrame` is built from `mCurrentLive`, and `mCurrentLive` approaches the settings target over the transition (`alcinelightrig.cpp:1937-1958`, `2954-2961`). They already contain orbit, subject-scaled effective radius and OffsetZ (`alcinelightrigmodel.h:213-235`; `alcinelightrigmodel.cpp:1585-1621`). They are display-only and are never a drag baseline.
 
-When the rig is not producing a usable live offset, the fallback is deliberately **unmirrored**: `eff_yaw=wrap180(base+orbitYaw)`, `eff_pitch=clamp(base_pitch+orbitPitch,±85)`, `r=CineLightRigRadius`, and `z=r*sin(eff_pitch)+OffsetZ`. Draw “Unmirrored preview · rig off”. Fallback drag uses `+Δ` regardless of the Mirror setting. This is internally consistent; it does not use `F=0` with the mirror formula.
+WP1 adds a read-only `mapTargetFrame()`/revision accessor on the selected rig. It computes the four **uneased settings targets** with the same sanitized settings, resolved subject scale and resolved avatar facing as `computeLive`/`computeFrame`, but allocates and mutates nothing. While dragging, only the grabbed light is drawn from that target frame plus the absolute gesture result; the other lights remain live. This makes the grabbed position agree with the values the dials target even while `mCurrentLive` catches up.
+
+Mirror is not valid for an object target in the present engine. `tickShared` assigns `mFacingAzimuthDeg` only for non-object targets (`alcinelightrig.cpp:2632-2647`), while `computeLive` mirrors about that value (`alcinelightrigmodel.cpp:1048-1062`). Therefore selecting an object target forces the effective transform to unmirrored, disables the Mirror row with “Mirror requires an avatar-facing target”, and the map uses the unmirrored target. It must not preserve or display a mirrored object-target result based on stale serialized facing. Switching back to an avatar restores the stored Mirror preference. This behavior is covered by an in-world test.
+
+When the rig is not producing a usable live offset, the fallback is deliberately **unmirrored**: `eff_yaw=wrap180(base+orbitYaw)`, `eff_pitch=clamp(base_pitch+orbitPitch,±85)`, `r=CineLightRigRadius`, and `z=r*sin(eff_pitch)+OffsetZ`. Draw “Unmirrored preview · rig off”. Fallback drag uses `sigma=+1` in the absolute mouse-down formula regardless of the stored Mirror setting. This is internally consistent; it does not use `F=0` with the mirror formula.
 
 **Display transform.**
 - Camera bearing φc = `atan2(−at.y, −at.x)` in degrees, from `LLViewerCamera::getInstance()->getAtAxis()`, read in `draw()`. If `|at.xy| < 0.05`, keep the previous φc (member).
 - For a live offset `(ox,oy,oz)`, world yaw is `atan2(oy,ox)`, horizontal radius is `hypot(ox,oy)`, and display yaw is `t=wrap180(world_yaw−φc)`. For fallback, use the unmirrored values above. `t=0` points at the camera and positive t is camera-right.
 
-**Displayed elevation:** `p_disp=atan2(oz,hypot(ox,oy))` for the live offset. Fallback uses `p_disp(base,orbit,h,r)=atan2(r·sin(clamp(base+orbit,±85))+h, r·cos(clamp(base+orbit,±85)))`. The canvas footer shows the actual live `hypot(ox,oy,oz)` distance when available, otherwise the fallback radius.
+**Displayed elevation:** `p_disp=atan2(oz,hypot(ox,oy))` for an ordinary live offset. Fallback and the dragged target use `p_disp(base,orbit,h,r)=atan2(r·sin(clamp(base+orbit,±85))+h, r·cos(clamp(base+orbit,±85)))`. For a live rig, the target frame supplies subject-scaled `r`: `EmitterState::mLightRadius` is `effective_radius * 2.2` (`alcinelightrigmodel.cpp:1703`), so `r=mLightRadius/2.2`. Assert that this is consistent within float tolerance with `sqrt(ox²+oy²+(oz-h)²)` for the same target frame (`alcinelightrigmodel.cpp:1615-1621`). The exact same captured `r` is used to draw and invert the gesture. Rig-off fallback uses plain `CineLightRigRadius` for both. The canvas footer shows the actual live `hypot(ox,oy,oz)` distance when available, otherwise the fallback radius.
 
 **Colour:**
 - When `selected().lastFrame().mProj[i]` has a non-zero offset and `mOn`: (mSR, mSG, mSB) normalised so the max channel = 1. That is the live gel, profile and fixture colour.
@@ -905,11 +914,13 @@ When the rig is not producing a usable live offset, the fallback is deliberately
 **Legend** (MAP_LEGEND_H; 4 chips, each `kc_light_map_legend_<i>`): a dot (colour, or the slashed grey when off), the name, and "yaw° / pitch°" showing the **base** values (matching the dials). The yaw carries its camera-relative side: "R45°", "L135°", plain "0°" and "180°" on axis. Since R/L changes with the camera, the four cached strings are rebuilt only on the shared 10 Hz `ALLiveReadoutClock` while visible and applied with diff guards—never constructed in `draw()`. The helper is `yawSideText(t,base)` consistently in implementation and tests. A click selects; the selected chip has its border in the light colour.
 
 **Input.**
-- Mouse down on a light disc (hit radius rr + 4, topmost first) selects role i. It sets the Lights selector option, writing `DirectorV2SelectedLight`, which also moves the Rim per-light selector and the fixture role (section 5.1). Then it captures.
-- **Top-view drag:** `t_new=atan2(dx,−dy)`, `Δ=wrap180(t_new−t_cur)`, and live `base_yaw += mirror ? −Δ : Δ`; rig-off fallback always uses `+Δ`.
-- **2.5D drag:** horizontal yaw uses `Δt=sign(cos(t0))·dx·k`, preventing back-layer lights from moving opposite the pointer. Vertical motion chooses a target displayed pitch and calls the exact inverse below. Apply mirror sign only for a live mirrored frame; fallback is unmirrored.
-- **Exact elevation inverse:** define `p_disp(base,orbit,h,r)` exactly as above and `baseFromDisplayPitch(target,orbit,h,r,current)`. Solve `sin(q−target)=−h·cos(target)/r` for `q=base+orbit`, choose the valid branch closest to the current q, then clamp the resulting base so q remains within ±85°. The drag starts from the current `p_disp`; non-zero OrbitPitch/OffsetZ therefore cannot jump.
-- **Side drag:** `p_target=asin(clamp((y−cy)/R,−1,1))`, then use `baseFromDisplayPitch`. Solve `cos(t_new)=clamp((x−cx)/(s·R·max(0.08,cos(p_target))),−1,1)` and choose the `±acos` branch continuous with `t0`, preserving the light's side. Apply its yaw delta with the same live/fallback mirror rule. The hint reads "Drag: ↔ toward/away from camera, ↕ height".
+- Mouse down on a light disc (hit radius rr + 4, topmost first) selects role i. It sets the Lights selector option, writing `DirectorV2SelectedLight`, which also moves the Rim per-light selector and the fixture role (section 5.1). Then it captures one immutable `DragStart`: pointer `(x0,y0)`; setting `baseYaw0`, `basePitch0`, `orbitYaw0`, `orbitPitch0`, `offsetZ0`; view, side and Mirror state; camera bearing; target-frame `t0,p0`; and `r0` derived above. It also captures the pointer-to-disc-centre grab offset. No hover reads a live/eased position or uses the previous hover's written value.
+- Let `sigma = -1` only for a mirrored avatar target and `+1` for unmirrored, rig-off and object-target cases. Every hover computes `baseYawNew=wrap180(baseYaw0 + sigma·wrap180(tTarget−t0))` and `basePitchNew=baseFromDisplayPitch(pTarget,orbitPitch0,offsetZ0,r0,basePitch0)`. Thus every write is a pure function of `DragStart` plus the current pointer; it is never `setting += delta`.
+- **Top-view drag:** `a0=atan2(x0−cx,−(y0−cy))`, `a=atan2(x−cx,−(y−cy))`, `tTarget=wrap180(t0+wrap180(a−a0))`, and `pTarget=p0`. This preserves the initial grab even when mouse-down is off-centre and makes zero movement an exact no-op.
+- **2.5D drag (exact projection inverse):** subtract the captured grab offset, set `u=(x−grabX−cx)/R`, `v=(y−grabY−cy)/R`, and radially clamp `(u,v)` to the unit disc. With elevation `e=24°`, choose `d=±sqrt(max(0,1−u²−v²))` on the branch continuous with captured `d0=cos(p0)cos(t0)cos(e)+sin(p0)sin(e)`; at the silhouette choose the candidate minimizing wrapped angular distance to `(t0,p0)`. Invert the view rotation: `X=u`, `Y=v cos(e)+d sin(e)`, `Z=−v sin(e)+d cos(e)`, then `pTarget=asin(clamp(Y,−1,1))`, `tTarget=atan2(X,Z)`. Feed those targets to the absolute formulas above. This exactly inverts `projectLight`, rather than integrating a per-event `dx·k`, and preserves the front/back branch.
+- **Exact elevation inverse:** define `p_disp(base,orbit,h,r)` exactly as above and `baseFromDisplayPitch(target,orbit,h,r,current)`. Solve `sin(q−target)=−h·cos(target)/r` for `q=base+orbit`, choose the valid branch closest to captured `q0=basePitch0+orbitPitch0`, then clamp the resulting base so q remains within ±85°. Both target drawing and this inverse use captured `r0`, including subject scaling.
+- **Side drag:** subtract the grab offset and set `pTarget=asin(clamp((y−grabY−cy)/R,−1,1))`. If `abs(cos(pTarget)) < 1e−4`, yaw is visually unobservable at the pole, so keep `tTarget=t0`; otherwise solve `cos(tTarget)=clamp((x−grabX−cx)/(s·R·cos(pTarget)),−1,1)`. Choose the `±acos` branch continuous with captured `t0` (tie-break by captured depth), then use the absolute base formulas above. Using the exact cosine, rather than an artificial denominator floor, is required for zero-motion round-trip. The hint reads "Drag: ↔ toward/away from camera, ↕ height".
+- During capture, camera motion, transition progress, setting signals caused by the gesture, and 10 Hz display refreshes do not replace `DragStart`. A view/side change or external slot/scene/preset write cancels the gesture before applying that change.
 - Writes go through `gSavedSettings.setF32(<cached name>)` inside the input handler, so the dials update through their control bindings. One history gesture covers the drag.
 - **Keyboard** (when the map is focused): Left/Right yaw ∓/±1 (Shift 10); Up/Down pitch ±1 (Shift 10); `[` / `]` previous / next light; Home resets the selected light's Yaw and Pitch to their defaults.
 - The wheel is not used (returns false, so the page scrolls).
@@ -923,9 +934,9 @@ When the rig is not producing a usable live offset, the fallback is deliberately
 - `pDisp(base,orbit,h,r)` and `baseFromDisplayPitch(target,orbit,h,r,current)`;
 - `projectLight(view,sideFrom,t,p,R,cx,cy,&x,&y,&depth)`;
 - `frontFactor(view,sideFrom,t)`;
-- `yawSideText(t,base)` ("R45°" / "L135°" / "0°" / "180°") and `dragSideYaw(x,cx,R,p,t0,sideFrom)`;
+- `yawSideText(t,base)` ("R45°" / "L135°" / "0°" / "180°");
 - `effYaw(base,orbit,mirror,F)`;
-- `dragTopDelta(dx,dy,t_cur)`;
+- `dragTopAbsolute(start,pointer)`, `unproject25D(start,pointer)`, and `dragSideAbsolute(start,pointer)`;
 - `computeShellLayout(W,H,prev_state)`;
 - `packRows(widths, heights, columns)`.
 
@@ -1034,7 +1045,7 @@ The Tron visibility uses `ALKitRow::setControlVisible`, which falls back to `set
 
 **Also in ALPanelCineLightRig postBuild:**
 - register the history context `"cine_rig_slot"` → `"slot:" + std::to_string(manager.selectedSlot())`;
-- register the stateless mode adapter `"cine_rig_easy"`, which resolves the live Rig panel handle and calls `applyEasyMode(desired, origin)` for click, setting signal, search reveal, undo, preset, scene, slot restore, and initial sync;
+- register the page-scoped mode adapter `"cine_rig_easy"` with this page's logic-root handle; it calls guarded `applyEasyMode(desired, origin)` for click, setting signal, search reveal, undo, preset, scene, slot restore, and initial sync, then publishes the returned effective mode to the owning page;
 - register the who adapter `"cine_rig_slot"`: a cast UUID maps to the anchor combo value:
   - null or `gAgentID` → 0;
   - Subject A–D → 1–4;
@@ -1233,7 +1244,7 @@ The extractor also recognizes `prefix + "suffix"`, indexed arrays, and simple lo
         <kit_lazy_page name="move_tab" label="Move" page_file="panel_dpage_cast_move.xml"/> …
       </tab_container></panel> …
     </tab_container>
-    <kit_bar name="kit_transport" flex="status_strip" collapse_order="kit_ui_ms,take_timecode,btn_scene_delete,btn_reset_marks,rec_indicator_text">
+    <kit_bar name="kit_transport" flex="status_strip" collapse_order="kit_ui_ms,take_timecode,btn_scene_delete,btn_reset_marks,rec_indicator_label">
       <!-- in order; widths in px: btn_action 112, btn_cut 112 (v1, XML-hidden), btn_arm 24, btn_take_play 28,
            btn_take_stop 28, take_timecode 90, scene_combo 130, scene_name_editor 130 (v1 XML-hidden),
            btn_scene_save 50, btn_scene_delete 56, btn_set_marks 28 (icon), btn_reset_marks 28 (icon),
@@ -1253,12 +1264,12 @@ The extractor also recognizes `prefix + "suffix"`, indexed arrays, and simple lo
 **Transport and chrome notes:**
 - `scene_combo` and `scene_name_editor` occupy one 130 px slot and are mutually exclusive; starting rename never adds width.
 - `status_strip` is a custom single-line ellipsizing draw, like the help strip, not an undersized non-ellipsizing `LLTextBox`.
-- `rec_indicator_text` is a collapsible 28 px text suffix: at minimum width the 50 px REC control becomes a 22 px record dot/icon, preserving state without its label.
+- Preserve the v1 C++-referenced `rec_indicator` name and class. Rehost that same control in a 50 px `kit_rec_cluster` containing its unchanged 22 px indicator plus a new, presentation-only 28 px `rec_indicator_label`. The bar collapses only `rec_indicator_label`; it never renames, replaces or changes the class of `rec_indicator`. At minimum width the cluster therefore measures 22 px and preserves the live record state without its label, while parity continues to find the original widget.
 - Width proof (includes 10 px side padding and 8 px inter-child gaps):
 
   | Width/state | Fixed visible children | Gaps + padding | `status_strip` remainder |
   |---|---:|---:|---:|
-  | 1160, rail labels, normal scene combo | 708 px | 124 px | 328 px |
+  | 1160, rail labels, normal scene combo | 708 px | 132 px | 320 px |
   | 850, icon rail, rename editor, after collapse | 576 px | 116 px | 158 px |
 
   The 850 row includes ACTION, Arm, Play/Stop, the one scene slot, Save, Set Marks, compact REC, Show Paths, Help, Cast, Hotkeys, and status; Timecode, Delete, Reset Marks, UI-ms, and REC text are collapsed. CUT replaces ACTION in the same slot. The audit exercises idle/ACTION, CUT, recording, and rename states.
@@ -1500,11 +1511,14 @@ Cases:
 - compass wrapping preserves `[min,max)` for both -180..180 and 0..360; `kit_geometry=false` reproduces legacy radius/letter positions;
 - `projectLight` (t = 0 in 2.5D lands below the centre and is front; t = 180 is behind; Side from camera-left puts the camera on the right and t = −45 (camera-left) nearer than t = +45; Side from camera-right mirrors both);
 - `frontFactor` in Side: t = +45 and t = −45 never share a layer; `yawSideText(45)` = "R45°", `(−135)` = "L135°", `(0)` = "0°";
-- `pDisp`/`baseFromDisplayPitch` round-trip with non-zero OrbitPitch and OffsetZ at scaled and unscaled radii;
-- `dragSideYaw` keeps the light's side and exactly inverts Side projection with non-zero orbit/OffsetZ; 2.5D horizontal drag has the correct sign for both front and back layers;
+- `pDisp`/`baseFromDisplayPitch` round-trip with non-zero OrbitPitch and OffsetZ at plain and subject-scaled radii, with the same captured radius supplied to display and inverse;
+- for Top, 2.5D and Side, pointer equal to mouse-down produces bit-identical base settings with Mirror off/on (Mirror-on avatar only), rig live/lagging and rig off; pressing without moving never writes a setting;
+- `dragSideAbsolute` keeps the light's side and exactly inverts Side projection with non-zero orbit/OffsetZ; `unproject25D` round-trips both front and back branches and preserves its branch at the silhouette;
+- feed 1,000 synthetic hover events at one fixed final pointer while a fake live display continues easing for 0.9 s: every event produces the same value as the first, the final target stays within 0.01° of the one-shot result, and there is zero accumulated drift in Top, 2.5D and Side;
+- feed 1,000 out-and-back pointer samples ending at `(x0,y0)`: all three views return to the captured base values within 0.01°; repeat at scaled/unscaled radii, non-zero orbit/OffsetZ, both Side directions and both 2.5D depth branches;
 - `frontFactor` monotone;
 - `effYaw` with and without mirror (against the `computeLive` formula);
-- `dragTopDelta` sign;
+- `dragTopAbsolute` Mirror/unmirrored sign and wrap-boundary behavior;
 - `computeShellLayout`: the four widths of section 3.7 (rail, help mode, columns, track ≥ 120), including hysteresis (1141 after 1160 gives a strip; 1145 after 850 gives a strip; 1150 after 850 gives the panel);
 - `packRows` with a hidden and a spanning item.
 
@@ -1517,6 +1531,7 @@ Cases:
    - card header 36, 2 columns at gap 12, padding;
    - colours (the section 3.1 table);
    - switch shape, dial and arc geometry, map layering (front solid with glow, behind hollow and dashed, off grey and slashed);
+   - at the 48×48 minimum, compare the intentionally left-weighted arc (x=6..26) and its separate value-column text against the mockup; unused right-half dial space is not treated as a centring defect;
    - chips, who row, bar order (preset · Save as · delete · reset · undo · redo · master · search);
    - transport order;
    - the help panel and strip;
@@ -1571,7 +1586,7 @@ If they differ, the config tables in section 4.7 win and the generator reports t
 - `indra/llui/alcompassdial.*` (section 3.13);
 - `alflowgrid.*` (`pack=rows`, ALFlowGridItem);
 - `alscrollfit.*` (SelfSizedDocument, adoptPage);
-- `alcinelightrig.h/.cpp` (the facing accessor only);
+- `alcinelightrig.h/.cpp` (read-only `mapTargetFrame()`/revision accessor and the object-target Mirror effective-off rule only);
 - `indra/newview/CMakeLists.txt`;
 - `newview/tests` (`alkitmath_test.cpp`).
 
@@ -1676,7 +1691,7 @@ This is the integration pass over WP1 to WP3 for the two pages. It covers:
 
 **After WP5:** review and automated foundation build may run, but v2 is not shippable and remains debug/self-test-only. Proceed directly through `DIRECTOR_KIT_ROLLOUT_SPEC.md` WP6-WP12. The single release-candidate fresh build and full 36-page in-world checklist occur only after WP12. The P0-only diagnostic checklist is:
 - Rig Easy/Advanced;
-- map drag with Mirror on and off;
+- map drag in Top, 2.5D and both Side directions with Mirror on/off, zero-motion mouse-down, a 0.9 s transition, subject scaling, and an object target (Mirror disabled and unmirrored);
 - preset apply, undo and redo;
 - Rim presets;
 - narrow sizes;
@@ -1689,14 +1704,14 @@ This is the integration pass over WP1 to WP3 for the two pages. It covers:
 | # | Question | Pass | Fallback |
 |---|---|---|---|
 | S1 | Can an LLSliderCtrl with `text_width=52` and no label put its value exactly in the 52 px value column? Can a unit suffix render without breaking edit parsing? | Value right-aligned in mono; editing shows the bare number | Slider rows show the unit in the help meta only (labels stay unchanged). No LLSliderCtrl changes in P0. |
-| S2 | ALKitSwitch subclass parse and flow: do all v1 `check_box` attributes parse with `widgets/kit_switch.xml`; does `getChild<LLCheckBoxCtrl>` succeed; does a click toggle and write the setting; does external `LLControlVariable::set()` update `isOn()` and fire exactly one flip; does passive `writeBoundValue` work; is child dimming applied? | All checks | Fix the wrapper/inner-button hooks; draw dimming as a KitWindowBg overlay only if alpha inheritance fails |
+| S2 | ALKitSwitch subclass parse and flow: do all v1 `check_box` attributes parse with `widgets/kit_switch.xml`; does `getChild<LLCheckBoxCtrl>` succeed; do click, external `LLControlVariable::set()`, direct `setValue()`, `setValueIfChanged()`, undo and passive `writeBoundValue` each update `isOn()`/state text/amber/dimming and fire exactly one edge; does the Rig Easy adapter publish the effective card set after refusal? | All checks | Fix the wrapper/inner-button hooks and adapter publication; draw dimming as a KitWindowBg overlay only if alpha inheritance fails |
 | S3 | Lazy `createFromFile<LLPanel>` into a live tab panel: do `postBuild` order, parent chain during postBuild, ALScrollFit `adoptPage`, the self-test `selectTab` safety net, and `onVisibilityChange` re-entrancy all work? What is the Rig build time? | Rig built ≤ 50 ms; no re-entrancy warnings | Build the selector's inactive options on first selection. Not allowed if a C++ `getChild` would miss them, so instead prebuild the Rig on the idle after open. |
 | S4 | Help hover and focus: zero `findChild` per frame while hovering? Do focus-received signals fire for sliders, spinners and combos? | 0 finds; signals fire | Focus help on click only |
 | S5 | Search index tokenize time and query time on the real index | ≤ 30 ms total in chunks; ≤ 5 ms per query | Drop help tokens for 1–2 letter queries (already the rule); cap results earlier |
 | S6 | `IBMPlexMono` lookup by descriptor at sizes Small and Medium; UI scale 1.25 metrics | Font resolves; rows stay 28 × scale | `getFontMonospace()` |
 | S7 | Run the v1 runtime audit at 1160×720 and 850×560 and classify the findings | A baseline CSV saved for the legacy "0 new" gate | — |
 | S8 | Accelerator precedence: Ctrl+Z/Y invokes kit history in non-text controls; Ctrl+Z/Y in `LLLineEditor`, `LLTextEditor`, and spinner editors never reaches kit history; `/` reaches `handleUnicodeCharHere` and focuses search only outside text entry; Ctrl+F remains viewer search; Enter in search does not fire ACTION; 1–9 punches are suppressed while search is focused | All | Undo/Redo by buttons only; document it |
-| S9 | Amber precision and storm: a slot switch fires about 150 signals. Total handler time? Do `setControlName` rebinding races occur? | ≤ 2 ms; no stale amber | Coalesce amber flips into one idle pass |
+| S9 | Amber precision and storm: a slot switch fires about 150 signals. Total handler time? After `setControlName` rebind, is the old scoped connection disconnected and exactly one new connection live? | ≤ 2 ms; no stale amber; old control cannot fire | Coalesce amber flips into one idle pass |
 | S10 | UI ms source: is a floater-draw LLTimer EMA stable enough vs Tracy? | ±0.05 ms of the Tracy zone mean | Hide the chip (it is opt-in anyway) |
 
 ---
@@ -1708,7 +1723,7 @@ This is the integration pass over WP1 to WP3 for the two pages. It covers:
 3. **Legacy pages at 850×560** are an intermediate P0 risk only. The final delivery converts them all, audits their non-default states, and requires absolute zero; `DIRECTOR_KIT_ROLLOUT_SPEC.md` is binding.
 4. **History attribution.** Background writers, scene loads, slot changes, reset-all, and external presets/cues use `ScopedSuspend` plus a generation barrier. Complete Director-owned bulk actions explicitly record one Step. Context and generation checks prevent cross-slot/cross-scene replay.
 5. **The dyn-visibility probe** is a bool loop in `draw()`. It must stay allocation-free (Opus checks it).
-6. **Mirror display.** A live map reads the already-resolved `mProj[].mOffX/Y/Z`; it needs no facing accessor and works for object targets. Rig-off fallback is explicitly unmirrored and uses `+Δ` drag.
+6. **Mirror display.** Idle display reads already-resolved live offsets, but drag uses an uneased target frame and a mouse-down settings snapshot. Object targets are explicitly unmirrored because the engine does not refresh their facing (`alcinelightrig.cpp:2632-2647`); avatar Mirror is tested separately. Rig-off fallback is unmirrored and every drag is absolute from mouse-down.
 7. **Card-header preset reparenting** moves C++-owned combos. Pointers stay valid, but `getChild` from ALPanelCineLightRig after postBuild would miss them. Codex verifies that ALPanelCineLightRig never looks them up after postBuild.
 8. **Rect bump.** A v1 saved width of 1020 bumps once to 1160.
 9. **Search index staleness.** `gen --check` is a prebuild gate.
@@ -1731,25 +1746,25 @@ There are no open rollout choices in this specification. The binding decisions b
 ## Review R1 resolution
 
 - B1 -> `DIRECTOR_KIT_ROLLOUT_SPEC.md` sections 1-8 (36-page matrix, adapters/kinds, WP6-WP12, final ship gate) and this spec sections 0, 4.3, 6.2, 6.4, 7, 10.
-- B2 -> sections 3.2, 7 WP1, and spike S2 (`LLCheckBoxCtrl` inner-button binding, widget defaults, click/external/passive paths).
-- B3 -> sections 3.5, 3.8, 3.18, and spike S8 (one registered mode adapter and one `applyEasyMode` path for every source).
-- B4 -> `VCAM_MONITORS_DESIGN.md` section 5.4 and WP1 (fine-grained identity-preserving typed undo; `applySceneData()` forbidden).
-- B5 -> `VCAM_MONITORS_DESIGN.md` sections 4.2, 4.5, 7.1, and WP2/WP4 (CPU+GPU/scratch charge, fixed bucket, quality profile, admission and p95 gates).
+- B2 -> sections 3.2, 7 WP1, and spike S2 (`LLCheckBoxCtrl` inner-button binding, widget defaults, click/external/direct-`setValue`/passive paths).
+- B3 -> sections 3.5, 3.8, 3.18, and spike S8 (one page-scoped mode adapter, guarded `applyEasyMode`, and effective-mode publication for every source).
+- B4 -> `VCAM_MONITORS_DESIGN.md` section 5.4 and VC1 (fine-grained identity-preserving typed undo; `applySceneData()` forbidden).
+- B5 -> `VCAM_MONITORS_DESIGN.md` sections 4.2, 4.5, 7.1, and VC2/VC4 (CPU+GPU/scratch charge, fixed bucket, quality profile, admission and p95 gates).
 - B6 -> section 3.11, `DIRECTOR_KIT_ROLLOUT_SPEC.md` Camera/VCam row, and `VCAM_MONITORS_DESIGN.md` sections 1, 5.4, 6.1 (kit page, frozen v1 XML, sole `ALKitHistory`).
-- M1 -> `VCAM_MONITORS_DESIGN.md` section 4.2 and WP2 (visible-first two-tier cadence and Every Frame preview deadline).
-- M2 -> `VCAM_MONITORS_DESIGN.md` section 5.1 and WP5 (`SOURCE_VCAM`, no toolbar inventory lookup, real drop flag).
+- M1 -> `VCAM_MONITORS_DESIGN.md` section 4.2 and VC2 (visible-first two-tier cadence and Every Frame preview deadline).
+- M2 -> `VCAM_MONITORS_DESIGN.md` section 5.1 and VC5 (`SOURCE_VCAM`, no toolbar inventory lookup, real drop flag).
 - M3 -> sections 3.12 and spike S8 (text-entry focus guard and Unicode `/` path).
-- M4 -> section 3.11 (bulk `ScopedSuspend`, barriers, and scene-generation contexts).
+- M4 -> section 3.11 (bulk `ScopedSuspend`, reachable `globalBarrier`, playback lifetime token, and scene-generation contexts).
 - M5 -> sections 6.1 and 5.1 (`settings_files.xml` plus recursive includes, setting groups, Vector3-backed vec2).
-- M6 -> section 3.14 Frames/Display transform (live emitter offsets; consistent unmirrored rig-off fallback).
-- M7 -> section 3.14 Input/Pure maths and section 6.6 (exact elevation inverse, effective radius, back-layer 2.5D sign tests).
+- M6 -> section 3.14 Frames/Display transform (live idle offsets, uneased drag targets, explicit object-target Mirror disable, consistent unmirrored rig-off fallback).
+- M7 -> section 3.14 Input/Pure maths and section 6.6 (absolute-from-mouse-down inverses, shared effective radius, exact 2.5D/Side branch tests).
 - M8 -> section 3.13 and section 6.6 (binding horizon-zero geometry and inverse).
 - M9 -> section 6.4 and `DIRECTOR_KIT_ROLLOUT_SPEC.md` section 6 (all non-default audit states and measured label errors).
 - M10 -> section 4.6 (850/1160 width budgets, mutually exclusive scene slot, ellipsizing status, extended collapse).
 - M11 -> section 7 WP1/WP2 (interface headers and linkable stubs precede ALKitPage dependencies).
 - M12 -> sections 3.4, 3.7, and 3.8 (handle-guarded deferred work, shell-owned timers, no static shell/panel captures).
 - M13 -> sections 4.4 and 6.2 (dynamic name expansion and requested/actual class compatibility).
-- M14 -> `VCAM_MONITORS_DESIGN.md` section 4.3 and WP3 (complete GL-state contract and same-frame HDR tonemap/sRGB transform).
+- M14 -> `VCAM_MONITORS_DESIGN.md` section 4.3 and VC3 (complete GL-state contract and previous-presented-frame exposure plus current tonemap/sRGB transform).
 - M15 -> sections 0 and 3.16 plus `DIRECTOR_KIT_ROLLOUT_SPEC.md` sections 1 and 8 (no normal menu exposure before final gate).
 - M16 -> section 3.8 (version-2 index header and exactly 15 validated fields).
 - MIN1 -> section 6.4 (`min` maps to existing `minimum`).
@@ -1762,7 +1777,28 @@ There are no open rollout choices in this specification. The binding decisions b
 - MIN8 -> section 5.1 fixture row (`setValue` plus `onCommit` under suspension).
 - MIN9 -> `VCAM_MONITORS_DESIGN.md` section 4.1 (visibility owner tokens/refcount).
 - MIN10 -> `VCAM_MONITORS_DESIGN.md` section 4.2 (`prepare()` decides visible versus preview-only).
-- MIN11 -> `VCAM_MONITORS_DESIGN.md` section 5.2 (scene restore uses the common validator and quarantines offline faces).
+- MIN11 -> `VCAM_MONITORS_DESIGN.md` section 5.2 (scene restore uses the common validator, quarantines offline faces, and skips permission-only failures without rejecting existing scenes).
 - MIN12 -> `VCAM_MONITORS_DESIGN.md` section 5.2 (drop publication demand; retained output stays lifetime-fixed).
 - MIN13 -> `VCAM_MONITORS_DESIGN.md` section 4.5 (`GL_TIMESTAMP`, never nested `GL_TIME_ELAPSED`).
 - MIN14 -> `VCAM_MONITORS_DESIGN.md` section 5.1 (reserved cargo comment and `static_assert`).
+
+## Review R2 resolution
+
+Findings below are the R2 items that land in this P0 spec or `VCAM_MONITORS_DESIGN.md`; rollout-only N2, N3, M-R7, M-R10 and MINOR 6 belong to the separately owned rollout document.
+
+- N1 -> section 3.14 Frames/Displayed elevation/Input/Pure maths and section 6.6 (uneased target display while grabbed; immutable settings/pointer snapshot; exact absolute Top, 2.5D and Side inverses; shared subject-scaled radius; zero-motion and 1,000-event no-drift tests).
+- M-R1 -> sections 3.2, 3.5 and spike S2 (`setValue` observes direct C++ writes; edge-only flip reconciliation updates state text, amber, dimming and effective mode cards).
+- M-R2 -> sections 3.5 and 3.18 (page-owned Rig handle, `mSyncingEasyControls` guard, effective-mode publication, independent passive standalone synchronization).
+- M-R3 -> `VCAM_MONITORS_DESIGN.md` section 5.4 and VC1 (`RemovedCaptureRecord` stores/rearms exact Gate state and subscribed displays atomically).
+- M-R4 -> `VCAM_MONITORS_DESIGN.md` section 4.5 and VC2/VC4 (scoped enumerated preview flags/sites plus dedicated pinned 192x108 target outside the LRU).
+- M-R5 -> `VCAM_MONITORS_DESIGN.md` section 4.3 and VC3 (previous-presented-frame exposure, shared color-correction permutation helper, explicit bloom exclusion).
+- M-R6 -> section 3.8 (only configured writable homes collapse; other occurrences are links/read-only; duplicate writable homes fail generation).
+- M-R8 -> `VCAM_MONITORS_DESIGN.md` section 5.2 and VC1 (permission-only binding skips with report; structural failure remains atomic; Director continues a warning-success scene load).
+- M-R9 -> section 3.11 (`globalBarrier` resolves the Director at call time; presets barrier once; cue playback suspends and barriers only at start/stop).
+- M-R11 -> `VCAM_MONITORS_DESIGN.md` section 8 and VC1-VC7, plus this ledger's VCam cross-references (VC prefix and rollout WP9 ordering).
+- M-R12 -> section 3.14 Frames, section 6.6 and risk 6 (correct `alcinelightrig.cpp:2632-2647` anchor; Mirror effective-off and tested for object targets).
+- MINOR 1 -> section 4.6 width proof (1160 row: 132 px gaps/padding, 320 px status).
+- MINOR 2 -> section 4.6 transport notes (`rec_indicator` preserved; only new presentation suffix collapses).
+- MINOR 3 -> `VCAM_MONITORS_DESIGN.md` VC6 (tab-name migration, last-tab and v1/v2 rect/selection carry-over tests).
+- MINOR 4 -> section 3.2 and spike S9 (`setControlName` replaces the old scoped connection).
+- MINOR 5 -> section 6.7 screenshot review (48x48 left-weighted arc compared explicitly).

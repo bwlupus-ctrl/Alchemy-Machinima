@@ -1,0 +1,125 @@
+# Move — Director Kit page contract
+
+Page key: `move_tab`. Evidence: [`page_sources.json`](../page_sources.json) and [`page_sources.md`](../page_sources.md).
+Computed class: **code-driven** (8/19 setting-bound rows; 12 C++-referenced rows).
+
+## Real owners
+
+- `panel_actor_mover` / `panel` at `indra/newview/skins/default/xui/en/panel_actor_mover.xml:19` (11 matching rows).
+- `floater_director` / `floater` at `indra/newview/skins/default/xui/en/floater_director.xml:15` (8 matching rows).
+- `panel_prop_mover` / `panel` at `indra/newview/skins/default/xui/en/panel_prop_mover.xml:12` (2 matching rows).
+- `scene_explorer_filters` / `floater` at `indra/newview/skins/default/xui/en/floater_scene_explorer_filters.xml:7` (1 matching rows).
+- `panel_flycam_recorder` / `panel` at `indra/newview/skins/default/xui/en/panel_flycam_recorder.xml:17` (1 matching rows).
+- Referencing classes: `LLFloaterDirector` (8), `ALFloaterSceneExplorerFilters` (3), `ALPanelActorMover` (3), `ALPanelPropMover` (2), `ALPanelFlycamRecorder` (1).
+
+Name collisions in secondary XUI files are evidence candidates, not automatic ownership. The implementation must retain only occurrences whose root and class agree with the row's behavior.
+
+## Presentation rule
+
+Use the existing XUI control types as ordinary measured kit rows. No new canvas, curve, timeline, slot-grid, or picker class is authorized.
+
+## Row bindings
+
+`ALActorMoverKitAdapter` is the page bridge. A direct setting row remains an `ALKitSettingBinding`; a C++-referenced row routes through the named existing function below or through a controller extraction of that same function. The v1 owner is rewired to that controller in the same work package.
+
+| Card / row | Existing control evidence | Required binding | Other writable homes |
+|---|---|---|---|
+| `walk_who` / `scope_radio` (Who) | `radio_group` `indra/newview/skins/default/xui/en/floater_scene_explorer_filters.xml:272`, `radio_group` `indra/newview/skins/default/xui/en/panel_actor_mover.xml:29` | kit `combo` ↔ `ActorMoverSync` `Boolean`; `ALActorMoverKitAdapter` preserves/calls `ALFloaterSceneExplorerFilters::postBuild()` (`indra/newview/alfloatersceneexplorerfilters.cpp:79`), `ALFloaterSceneExplorerFilters::refreshFromSettings()` (`indra/newview/alfloatersceneexplorerfilters.cpp:113`), `ALFloaterSceneExplorerFilters::onCommitAny()` (`indra/newview/alfloatersceneexplorerfilters.cpp:138`), `ALPanelActorMover::postBuild()` (`indra/newview/alpanelactormover.cpp:37`) | none |
+| `walk_who` / `btn_walk` (Walk) | `button` `indra/newview/skins/default/xui/en/panel_actor_mover.xml:301` | `ALActorMoverKitAdapter` command/model binding → `ALPanelActorMover::postBuild()` (`indra/newview/alpanelactormover.cpp:45`) | none |
+| `walk_who` / `btn_stop` (Stop / Release) | `button` `indra/newview/skins/default/xui/en/panel_actor_mover.xml:310`, `button` `indra/newview/skins/default/xui/en/panel_flycam_recorder.xml:87`, `button` `indra/newview/skins/default/xui/en/panel_prop_mover.xml:222` | `ALActorMoverKitAdapter` command/model binding → `ALPanelActorMover::postBuild()` (`indra/newview/alpanelactormover.cpp:46`), `ALPanelFlycamRecorder::postBuild()` (`indra/newview/alpanelflycamrecorder.cpp:70`), `ALPanelPropMover::postBuild()` (`indra/newview/alpanelpropmover.cpp:95`) | none |
+| `straight` / `speed_slider` (Speed) | `slider` `indra/newview/skins/default/xui/en/panel_actor_mover.xml:126` | kit `slider` ↔ `ActorMoverSpeed` `F32` | `indra/newview/skins/default/xui/en/panel_actor_mover.xml:142` `speed_spinner` |
+| `straight` / `dist_slider` (Distance) | `slider` `indra/newview/skins/default/xui/en/panel_actor_mover.xml:168` | kit `slider` ↔ `ActorMoverDistance` `F32` | `indra/newview/skins/default/xui/en/panel_actor_mover.xml:184` `dist_spinner` |
+| `straight` / `heading_spinner` (Heading) | `spinner` `indra/newview/skins/default/xui/en/panel_actor_mover.xml:88` | kit `dial` ↔ `ActorMoverHeading` `F32` | none |
+| `straight` / `end_mode_combo` (End behavior) | `combo_box` `indra/newview/skins/default/xui/en/panel_actor_mover.xml:246`, `combo_box` `indra/newview/skins/default/xui/en/panel_prop_mover.xml:186` | kit `combo` ↔ `ActorMoverEndMode` `S32`; `ALActorMoverKitAdapter` preserves/calls `ALPanelPropMover::postBuild()` (`indra/newview/alpanelpropmover.cpp:59`) | page `props_tab` |
+| `straight` / `move_hint` (Note) | `text` `indra/newview/skins/default/xui/en/panel_actor_mover.xml:97` | kit readout ← approved static copy; no runtime writer | none |
+| `straight` / `cadence_slider` (Cadence) | `slider` `indra/newview/skins/default/xui/en/panel_actor_mover.xml:210` | kit `slider` ↔ `ActorMoverWalkNominal` `F32` | `indra/newview/skins/default/xui/en/panel_actor_mover.xml:226` `cadence_spinner` |
+| `custom_anim` / `custom_anim_editor` (Anim UUID) | `line_editor` `indra/newview/skins/default/xui/en/panel_actor_mover.xml:272` | kit `text` ↔ `ActorMoverCustomAnim` `String` | none |
+| `custom_anim` / `custom_anim_priority_combo` (Priority) | `combo_box` `indra/newview/skins/default/xui/en/panel_actor_mover.xml:282` | kit `combo` ↔ `ActorMoverCustomAnimPriority` `S32` | none |
+| `group_run` / `group_run_combo` (Group) | `combo_box` `indra/newview/skins/default/xui/en/floater_director.xml:381` | `ALActorMoverKitAdapter` command/model binding → `LLFloaterDirector::postBuild()` (`indra/newview/llfloaterdirector.cpp:432`) | none |
+| `group_run` / `group_delay_spinner` (Delay (s)) | `spinner` `indra/newview/skins/default/xui/en/floater_director.xml:454` | `ALActorMoverKitAdapter` command/model binding → `LLFloaterDirector::postBuild()` (`indra/newview/llfloaterdirector.cpp:441`) | none |
+| `group_run` / `btn_group_start` (Start group) | `button` `indra/newview/skins/default/xui/en/floater_director.xml:391` | `ALActorMoverKitAdapter` command/model binding → `LLFloaterDirector::postBuild()` (`indra/newview/llfloaterdirector.cpp:433`) | none |
+| `group_run` / `btn_group_stop` (Stop group) | `button` `indra/newview/skins/default/xui/en/floater_director.xml:400` | `ALActorMoverKitAdapter` command/model binding → `LLFloaterDirector::postBuild()` (`indra/newview/llfloaterdirector.cpp:434`) | none |
+| `groups` / `groups_list` (Groups) | `scroll_list` `indra/newview/skins/default/xui/en/floater_director.xml:427` | `ALActorMoverKitAdapter` command/model binding → `LLFloaterDirector::postBuild()` (`indra/newview/llfloaterdirector.cpp:440`) | none |
+| `groups` / `group_rename_editor` (Rename to) | `line_editor` `indra/newview/skins/default/xui/en/floater_director.xml:475` | `ALActorMoverKitAdapter` command/model binding → `LLFloaterDirector::postBuild()` (`indra/newview/llfloaterdirector.cpp:442`) | none |
+| `groups` / `btn_group_rename` (Rename) | `button` `indra/newview/skins/default/xui/en/floater_director.xml:486` | `ALActorMoverKitAdapter` command/model binding → `LLFloaterDirector::postBuild()` (`indra/newview/llfloaterdirector.cpp:443`) | none |
+| `groups` / `btn_group_dissolve` (Dissolve) | `button` `indra/newview/skins/default/xui/en/floater_director.xml:465` | `ALActorMoverKitAdapter` command/model binding → `LLFloaterDirector::postBuild()` (`indra/newview/llfloaterdirector.cpp:444`) | none |
+
+## Adapter extraction
+
+| Existing function | Extraction contract |
+|---|---|
+| `ALFloaterSceneExplorerFilters::onCommitAny()` — `indra/newview/alfloatersceneexplorerfilters.cpp:138` | Move model-facing work into `ALActorMoverKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
+| `ALFloaterSceneExplorerFilters::postBuild()` — `indra/newview/alfloatersceneexplorerfilters.cpp:79` | Move model-facing work into `ALActorMoverKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
+| `ALFloaterSceneExplorerFilters::refreshFromSettings()` — `indra/newview/alfloatersceneexplorerfilters.cpp:113` | Move model-facing work into `ALActorMoverKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
+| `ALPanelActorMover::postBuild()` — `indra/newview/alpanelactormover.cpp:37, 45, 46` | Move model-facing work into `ALActorMoverKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
+| `ALPanelFlycamRecorder::postBuild()` — `indra/newview/alpanelflycamrecorder.cpp:70` | Move model-facing work into `ALActorMoverKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
+| `ALPanelPropMover::postBuild()` — `indra/newview/alpanelpropmover.cpp:59, 95` | Move model-facing work into `ALActorMoverKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
+| `LLFloaterDirector::postBuild()` — `indra/newview/llfloaterdirector.cpp:432, 433, 434, 440, 441, 442, 443, 444` | Move model-facing work into `ALActorMoverKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
+
+## Live state and refresh
+
+- Cache all widget handles in `attach()`. Subscribe once to every setting's commit signal and to the existing model/controller revision or callback named above.
+- Force one diff-guarded refresh on reveal, target change, undo/redo, preset completion, and owner-token transfer. Lists refresh from a monotonic model revision; live numeric readouts are capped at 10 Hz.
+- Hidden pages unsubscribe or return before presentation writes. No per-frame setting reads, name lookups, list rebuilds, signature strings, or raw writes are permitted in `draw()`.
+- If an existing owner currently refreshes from `draw()`, the extraction adds an explicit dirty/revision signal; the adapter never calls that `draw()` path.
+
+## Bounded non-default audit states
+
+Manifest size: **31 states**, hard cap 256, page runtime budget 2 minutes. Each row below is applied independently from the default snapshot; there is no Cartesian product.
+
+| State key | Exact scenario |
+|---|---|
+| `size-850x560` | Default data at the minimum supported shell size. |
+| `size-915x720` | Default data at the narrow 16:9 shell size. |
+| `size-1141x720` | Default data at the wide non-round shell size. |
+| `card-walk_who-tallest-850` | Only `walk_who` is put in its tallest local state at 850 px; all other cards stay default. |
+| `card-walk_who-tallest-1160` | Only `walk_who` is put in its tallest local state at 1160 px; all other cards stay default. |
+| `scope_radio-option-0` | Only `scope_radio` selects `Selected actors`; other selectors remain default. |
+| `scope_radio-option-1` | Only `scope_radio` selects `Everyone`; other selectors remain default. |
+| `card-straight-tallest-850` | Only `straight` is put in its tallest local state at 850 px; all other cards stay default. |
+| `card-straight-tallest-1160` | Only `straight` is put in its tallest local state at 1160 px; all other cards stay default. |
+| `end_mode_combo-option-0` | Only `end_mode_combo` selects `Stop at end`; other selectors remain default. |
+| `end_mode_combo-option-1` | Only `end_mode_combo` selects `Loop`; other selectors remain default. |
+| `end_mode_combo-option-2` | Only `end_mode_combo` selects `Ping-pong`; other selectors remain default. |
+| `card-custom_anim-tallest-850` | Only `custom_anim` is put in its tallest local state at 850 px; all other cards stay default. |
+| `card-custom_anim-tallest-1160` | Only `custom_anim` is put in its tallest local state at 1160 px; all other cards stay default. |
+| `custom_anim_priority_combo-option-0` | Only `custom_anim_priority_combo` selects `Baked`; other selectors remain default. |
+| `custom_anim_priority_combo-option-1` | Only `custom_anim_priority_combo` selects `Pri 0 - Low`; other selectors remain default. |
+| `custom_anim_priority_combo-option-2` | Only `custom_anim_priority_combo` selects `Pri 1 - Medium`; other selectors remain default. |
+| `custom_anim_priority_combo-option-3` | Only `custom_anim_priority_combo` selects `Pri 2 - High`; other selectors remain default. |
+| `custom_anim_priority_combo-option-4` | Only `custom_anim_priority_combo` selects `Pri 3 - Higher`; other selectors remain default. |
+| `custom_anim_priority_combo-option-5` | Only `custom_anim_priority_combo` selects `Pri 4 - Highest`; other selectors remain default. |
+| `card-group_run-tallest-850` | Only `group_run` is put in its tallest local state at 850 px; all other cards stay default. |
+| `card-group_run-tallest-1160` | Only `group_run` is put in its tallest local state at 1160 px; all other cards stay default. |
+| `card-groups-tallest-850` | Only `groups` is put in its tallest local state at 850 px; all other cards stay default. |
+| `card-groups-tallest-1160` | Only `groups` is put in its tallest local state at 1160 px; all other cards stay default. |
+| `groups_list-empty` | `groups_list` is empty with no selection. |
+| `groups_list-one` | `groups_list` has one selected item. |
+| `groups_list-overflow` | `groups_list` has 51 items and a visible scrollbar. |
+| `actor-none` | Rail has no actor; target-dependent rows are disabled with an explicit empty state. |
+| `actor-selected` | One rail actor is selected and unpinned. |
+| `actor-pinned-rail-changes` | Page target is pinned while the rail changes to another actor. |
+| `actor-removed` | The active actor disappears while the page is visible. |
+
+## Parity check
+
+1. Instantiate the non-Director owner root(s) above and the kit page against the same settings/model snapshot.
+2. For every table row, compare initial value, enabled/visible state, options/list contents, commit result, reset/default, and post-undo value. Exercise every listed C++ handler through both call sites.
+3. Run the bounded state manifest at 1160×720, 850×560, 1141×720, and 915×720. Non-Director owners (Lightbox, cue/Diopter/Snapshot floaters, and shared panels) are mandatory parity oracles even when no v1 Director leaf embeds them.
+4. Review-diff every controller extraction and prove the v1 forwarding call preserves callbacks, owner tokens, selection, history barriers, and visibility gates.
+
+## New widget required
+
+None. Every approved visual kind is either a kit primitive or an existing XUI control. Missing action/model bindings below are USER DECISIONS, not permission to invent a visual class.
+
+## Unresolved and USER DECISION items
+
+- `move_hint` (Note): no C++ reference or setting binding.
+
+## Risks
+
+- A widget-name collision can select an unrelated XUI root or C++ literal; ownership must be resolved by root, class, and behavior together.
+- Extracting model work without rewiring the existing owner creates divergent v1/v2 behavior; the extraction and forwarding call are one reviewed change.
+- Duplicate writable settings must obey the rollout homes table; this page emits a link/read-only row when it is not the chosen home.
+- Shared edit models require owner tokens, and external presets/cue playback require one global history barrier at start/stop rather than per write.
+- Unresolved rows fail generation closed; they are never silently replaced with a guessed widget or command.
