@@ -293,3 +293,38 @@ Reviewer: Opus, 2026-10-10. Scope: `git show 4fce34c9033` (C++), checked against
 - Fix: delete `addBarLauncher` and its call. Hand the missing card to the WP3 generator, which already emits the other launcher cards, and add `scene_options_tab` (or whichever page receives it) to the binder table at that point.
 
 No other new issues: v1 paths are untouched by this commit, apart from the `notePointer` call site. Its cost is one `childFromPoint` per click, which is acceptable.
+
+---
+
+# R3 verification (fix commit 35d5c8e793b)
+
+Reviewer: Opus, 2026-10-10. Scope: `git show 35d5c8e793b` (alkitpage.cpp/.h, alkitshell.cpp, llviewerwindow.cpp).
+
+**VERDICT: CLEAN.** 0 BLOCKER, 0 MAJOR, 0 new MINOR.
+
+**R2-M1: fixed.**
+- `ScopedSuspend` is back in the PASSIVE branch of `ALKitPage::setModeIndex` and at the top of `ALKitShell::navigateTo`.
+- The `beginGesture(KEY,…,"Mode")` line in `revealCard` is deleted, and no other `"Mode"` gesture remains in newview.
+- Search reveal and navigation again create no history (spec 3.5 and 3.11).
+
+**N2 still holds.** A user click on a mode segment:
+1. Goes through `LLFloaterDirector::handleMouseDown`, where `pageKeyAt` maps the tab strip to the current page, giving a MOUSE gesture on the Rig page.
+2. Then `setModeIndex(i, true)` calls the USER adapter, with no suspension.
+3. `onEasyModeCommit` and `writeBoundValue` write the same setting key, and `addEntry` coalesces them by key.
+
+The result is exactly one undo Step.
+
+**R2-M2: fixed.**
+- `handleAnyMouseClick` now tests `gFocusMgr.getTopCtrl()` against `calcScreenRect()` first. That rect is in the same UI-scaled root coordinates as the divided `x, y` that LL's own top-ctrl dispatch uses.
+- So a click on a dropped combo list resolves to the list, and `ALKitShell::find` walks list → combo → shell.
+- Otherwise it falls back to `childFromPoint`, so n5 (clicks on non-focus views elsewhere) still holds.
+- The cost is one pointer test plus one `childFromPoint` per click.
+
+**R2-M3: fixed.** `ALKitPage::addBarLauncher` (definition and declaration) and its `pageBuilt` call are removed, with no remaining references. The missing `card_snapshot_open` stays a WP3 generator parity item (n7).
+
+**No regressions found.**
+- The v1 paths are unchanged.
+- The `notePointer` call site remains after the display-scale division and before the global binds.
+- N1, N3 and N4 are untouched by this commit.
+
+**WP2 is review-clean.**
