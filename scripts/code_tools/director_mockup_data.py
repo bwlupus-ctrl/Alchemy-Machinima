@@ -10,6 +10,8 @@ from the content map. Widgets that share a default XUI name (e.g. several
 map order. Keys are short to keep the file small:
   rows: l label, k kind, a advanced, h help, w widget, s setting, d default,
         mn/mx/st/dc range, it items, ty widget type
+  selector opts: label, value (the v1 combo item's LLSD value), rows; v is only
+        the matched source-item ordinal and is never written to the setting
 """
 import argparse
 import json
@@ -31,6 +33,36 @@ ICONS = {"cast_group": "cast", "performance_group": "perf", "camera_group": "cam
 PAGE_EXCLUSIONS = {
     "capture_group/capture_settings_tab": "Capture page dropped; use the Snapshot floater",
 }
+
+# Writable duplicates that are intentionally kept in an Easy card or a
+# selector's mode-specific block. The named home remains canonical for search
+# and undo attribution; kit_lint rejects every unlisted second writer.
+SHORTCUTS = {
+    ("cine_light_rig_tab", "cine_easy_cone_feather"): "atmosphere_tab/ps_BDMergeProjectorVolumetricsFeather_slider",
+    ("cine_light_rig_tab", "cine_easy_shaft_length"): "atmosphere_tab/ps_BDMergeProjectorVolumetricsMaxDistance_slider",
+    ("shot_tab", "CinematicCamJoint"): "frame_orbit_tab/CinematicCamJoint",
+    ("shot_tab", "CinematicCamVertigoDuration"): "moves_tab/zolly_duration",
+    ("shot_tab", "CinematicCamVertigoDirection"): "moves_tab/zolly_direction",
+    ("shot_tab", "CinematicCamArcDuration"): "moves_tab/hero_arc_duration",
+    ("shot_tab", "CinematicCamArcGeneratorAngle"): "moves_tab/hero_arc_angle",
+    ("shot_tab", "CinematicCamArcHeightDrift"): "moves_tab/hero_arc_height_drift",
+}
+
+
+def apply_shortcuts(groups, problems):
+    seen = set()
+    for group in groups:
+        for page in group["pages"]:
+            for card in page["cards"]:
+                rows = card.get("rows", []) + [row for option in card.get("opts", []) for row in option["rows"]]
+                for row in rows:
+                    key = (page["name"], row.get("w"))
+                    if key in SHORTCUTS:
+                        row["shortcut_of"] = SHORTCUTS[key]
+                        seen.add(key)
+    missing = sorted(set(SHORTCUTS) - seen)
+    if missing:
+        problems.append(f"shortcut rows not found: {missing}")
 
 
 def apply_user_decisions(groups, problems):
@@ -62,8 +94,8 @@ def apply_user_decisions(groups, problems):
                 {"w": "cue_list", "k": "list", "l": "Cues", "h": "Time | Target | Macro. Selecting a row opens the existing Gaze Cues window at that cue."},
                 {"w": "btn_cue_add", "k": "button", "l": "Add", "h": "Append a cue from the current editor defaults and select it.", "btn": "Add"},
                 {"w": "btn_cue_delete", "k": "button", "l": "Remove", "h": "Remove the selected cue as one undoable list edit.", "btn": "Remove"},
-                {"w": "gaze_cue_play", "k": "button", "l": "Play", "h": "Preview the selected cue through the real gaze-cue evaluator.", "btn": "Play"},
-                {"w": "gaze_cue_stop", "k": "button", "l": "Stop", "h": "Stop cue preview and restore the actor's live authored gaze target.", "btn": "Stop"},
+                {"w": "gaze_cue_play", "k": "button", "l": "Play", "h": "Preview the selected cue through the scoped Actor Mover preview owned by WP8.", "btn": "Play"},
+                {"w": "gaze_cue_stop", "k": "button", "l": "Stop", "h": "Clear the scoped cue preview and restore the actor's live authored gaze target.", "btn": "Stop"},
             ]}],
             "sections": [{"id": "cues", "label": "Cues", "cards": [0]}],
         })
@@ -145,12 +177,30 @@ def conv_row(r, pool):
             out[dst] = c[src]
     if c.get("items"):
         out["it"] = [i.get("label") if isinstance(i, dict) else i for i in c["items"]]
+        # Kept only while IA is applied. Selector options must inherit the
+        # combo's authored LLSD value, never manufacture a value from its index.
+        out["_items"] = [
+            {"label": i.get("label"), "value": _item_value(i.get("value"))}
+            if isinstance(i, dict) else {"label": i, "value": index}
+            for index, i in enumerate(c["items"])
+        ]
     if c.get("type"):
         out["ty"] = c["type"]
     return out
 
 
 import re
+
+
+def _item_value(value):
+    """Preserve a v1 combo item's scalar value in compact JSON-native form."""
+    if not isinstance(value, str):
+        return value
+    if re.fullmatch(r"[-+]?\d+", value):
+        return int(value)
+    if re.fullmatch(r"[-+]?(?:\d+\.\d*|\d*\.\d+)(?:[eE][-+]?\d+)?", value):
+        return float(value)
+    return value
 
 _DIR = re.compile(r"(heading|yaw|bearing|axis|azimuth|\bangle\b|\bfrom\b|\bto\b|offset|aim|roll)", re.I)
 _TILT = re.compile(r"(pitch|tilt|elevation|dutch|eyeline|spin|roll)", re.I)
@@ -225,7 +275,8 @@ def apply_ia(page, spec, problems, key):
             if not c:
                 continue
             first = first or c["id"]
-            opt = {"label": o.get("label") or c["t"], "en": c.get("en", 0), "rows": c["rows"]}
+            opt = {"label": o.get("label") or c["t"], "value": o.get("value", len(opts)),
+                   "en": c.get("en", 0), "rows": c["rows"]}
             for k in ("ew", "es"):
                 if c.get(k) is not None:
                     opt[k] = c[k]
@@ -511,7 +562,10 @@ def _combo_items(page, widget, key, problems):
     if row is None or not row.get("it"):
         problems.append(f"{key}: selector_binds items_from '{widget}' is not a combo row with items")
         return None
-    return [i[0] if isinstance(i, (list, tuple)) else i for i in row["it"]]
+    return row.get("_items") or [
+        {"label": i[0] if isinstance(i, (list, tuple)) else i, "value": index}
+        for index, i in enumerate(row["it"])
+    ]
 
 
 def _conv_v2_row(r):
@@ -695,13 +749,15 @@ def _apply_v2_page(page, spec, key, page_keys, problems):
 
     for sc, setting, items in binds:
         sc["sel_setting"] = setting
-        sc["it"] = items
+        labels = [item["label"] for item in items]
+        sc["it"] = labels
         for o in sc["opts"]:
-            v = _match_item(o["label"], items)
+            v = _match_item(o["label"], labels)
             if v is None:
                 problems.append(f"{key}: option '{o['label']}' of '{sc.get('id')}' matches no item")
             else:
                 o["v"] = v
+                o["value"] = items[v]["value"]
 
     for ro, title in (spec.get("rename") or {}).items():
         c = card(ro)
@@ -924,6 +980,7 @@ def main():
     apply_ia_v2(groups, a.curated, problems)
     apply_inline_pages(groups, a.curated, problems)
     apply_user_decisions(groups, problems)
+    apply_shortcuts(groups, problems)
     pre_path = a.curated / "presets.json"
     if pre_path.exists():
         apply_presets(groups, json.loads(pre_path.read_text(encoding="utf-8")), problems)
@@ -943,6 +1000,7 @@ def main():
                 pg["presets"] = [_lab(x) for x in pg["presets"]]
             for c in pg["cards"]:
                 for r in c.get("rows", []) + [x for o in c.get("opts", []) for x in o["rows"]] + c.get("summary", []):
+                    r.pop("_items", None)
                     if isinstance(r.get("it"), list):
                         r["it"] = [_lab(x) for x in r["it"]]
     data = {"groups": groups, "chrome": chrome}

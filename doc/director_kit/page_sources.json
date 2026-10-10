@@ -63087,21 +63087,13 @@
         {
           "class": "ALFloaterGazeCues",
           "reference_count": 6
-        },
-        {
-          "class": "LLDirectorCast",
-          "reference_count": 1
-        },
-        {
-          "class": "LLActorMover",
-          "reference_count": 1
         }
       ],
       "classification": {
         "logic_class": "code-driven",
         "setting_bound_rows": 0,
         "setting_coverage": 0.0,
-        "cpp_referenced_rows": 5,
+        "cpp_referenced_rows": 3,
         "rule": "pure-setting iff >=90% rows have declared settings and zero rows have C++ references"
       },
       "unresolved_row_count": 0,
@@ -63403,20 +63395,10 @@
           "setting_declarations": [],
           "items": [],
           "xui": [],
-          "cpp": [
-            {
-              "file": "indra/newview/lldirectorcast.cpp",
-              "line": 1467,
-              "class": "LLDirectorCast",
-              "function": "evaluateGazeCues",
-              "pattern": null,
-              "wiring_only": false,
-              "text": "explicit selected-cue preview evaluator"
-            }
-          ],
+          "cpp": [],
           "callback_handlers": [],
           "callbacks": [],
-          "kit_action": null,
+          "kit_action": "engine-work:WP8:LLActorMover::setGazeCuePreview",
           "resolution_notes": [],
           "ambiguous": [],
           "rejected_candidates": [],
@@ -63439,20 +63421,10 @@
           "setting_declarations": [],
           "items": [],
           "xui": [],
-          "cpp": [
-            {
-              "file": "indra/newview/llactormover.cpp",
-              "line": 6504,
-              "class": "LLActorMover",
-              "function": "clearDirectorLookAtRuntime",
-              "pattern": null,
-              "wiring_only": false,
-              "text": "explicit cue-preview release path"
-            }
-          ],
+          "cpp": [],
           "callback_handlers": [],
           "callbacks": [],
-          "kit_action": null,
+          "kit_action": "engine-work:WP8:LLActorMover::clearGazeCuePreview",
           "resolution_notes": [],
           "ambiguous": [],
           "rejected_candidates": [],
@@ -63555,6 +63527,7 @@
             "mFootRight",
             "mFootLeft"
           ],
+          "shortcut_of": "frame_orbit_tab/CinematicCamJoint",
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_cinecam_params.xml",
@@ -65414,6 +65387,7 @@
             }
           ],
           "items": [],
+          "shortcut_of": "moves_tab/zolly_duration",
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_cinecam_params.xml",
@@ -65690,6 +65664,7 @@
             "Dolly out",
             "Dolly in"
           ],
+          "shortcut_of": "moves_tab/zolly_direction",
           "xui": [],
           "cpp": [],
           "callback_handlers": [],
@@ -68044,6 +68019,7 @@
             }
           ],
           "items": [],
+          "shortcut_of": "moves_tab/hero_arc_duration",
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_cinecam_params.xml",
@@ -68317,6 +68293,7 @@
             }
           ],
           "items": [],
+          "shortcut_of": "moves_tab/hero_arc_angle",
           "xui": [],
           "cpp": [],
           "callback_handlers": [],
@@ -68383,6 +68360,7 @@
             }
           ],
           "items": [],
+          "shortcut_of": "moves_tab/hero_arc_height_drift",
           "xui": [],
           "cpp": [],
           "callback_handlers": [],
@@ -96816,12 +96794,12 @@
           "reference_count": 132
         },
         {
-          "class": "ALCineLightRigModel",
-          "reference_count": 8
+          "class": "ALCineLightRigManager",
+          "reference_count": 5
         },
         {
-          "class": "ALCineLightRigManager",
-          "reference_count": 1
+          "class": "ALCineLightRigModel",
+          "reference_count": 4
         },
         {
           "class": "LLFloaterReg",
@@ -97335,6 +97313,7 @@
             }
           ],
           "items": [],
+          "shortcut_of": "atmosphere_tab/ps_BDMergeProjectorVolumetricsFeather_slider",
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_cine_light_rig.xml",
@@ -97424,6 +97403,7 @@
             }
           ],
           "items": [],
+          "shortcut_of": "atmosphere_tab/ps_BDMergeProjectorVolumetricsMaxDistance_slider",
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_cine_light_rig.xml",
@@ -100105,7 +100085,7 @@
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
               "line": 956,
-              "class": "ALCineLightRigModel",
+              "class": "ALCineLightRigManager",
               "function": "setShaftEnabled",
               "wired_class": "ALPanelCineLightRig",
               "wired_function": "postBuild",
@@ -101023,7 +101003,7 @@
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
               "line": 956,
-              "class": "ALCineLightRigModel",
+              "class": "ALCineLightRigManager",
               "function": "setShaftEnabled",
               "wired_class": "ALPanelCineLightRig",
               "wired_function": "postBuild",
@@ -101808,7 +101788,7 @@
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
               "line": 956,
-              "class": "ALCineLightRigModel",
+              "class": "ALCineLightRigManager",
               "function": "setShaftEnabled",
               "wired_class": "ALPanelCineLightRig",
               "wired_function": "postBuild",
@@ -102593,7 +102573,7 @@
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
               "line": 956,
-              "class": "ALCineLightRigModel",
+              "class": "ALCineLightRigManager",
               "function": "setShaftEnabled",
               "wired_class": "ALPanelCineLightRig",
               "wired_function": "postBuild",

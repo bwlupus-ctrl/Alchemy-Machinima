@@ -21,7 +21,7 @@ The script independently counts and then deterministically walks every card row 
 - [`page_sources.md`](director_kit/page_sources.md), the readable evidence;
 - the 35 linked page contracts in section 3.
 
-`--check` fails on any stale output, an independent JSON/flattened row-count mismatch, a conflict/home-set mismatch, or any generated placeholder. A missing callback/model binding or settings declaration remains an explicit `UNRESOLVED` row with its reason; generation never converts it into a guessed binding. Bare-name hits outside the page's XUI-owner/class scope are recorded as rejected candidates, not bindings; genuine in-scope ambiguity has its own explicit list.
+`--check` fails on any stale output, an independent JSON/flattened row-count mismatch, a conflict/home/shortcut-set mismatch, a selector option missing `value`, a label/value pair that does not round-trip to the matching v1 combo item, or any generated placeholder. The Shot check covers all 50 `CinematicCamMode` items, including the 39→41 gap. A missing callback/model binding or settings declaration remains an explicit `UNRESOLVED` row with its reason; generation never converts it into a guessed binding. Bare-name hits outside the page's XUI-owner/class scope are recorded as rejected candidates, not bindings; genuine in-scope ambiguity has its own explicit list.
 
 The current evidence reports 35 pages, **1,839 rows**, 31 scoped XUI owner files (including full-editor owners whose approved rows are summaries), **0 unresolved rows**, **0 ambiguous rows**, and **22 settings** written by more than one Director page. Shot is 334 rows, Rig is 174, and Rim is 41; their selector options are part of parity, audit manifests, and completeness gates.
 
@@ -94,7 +94,7 @@ There are currently **no approved new widget classes**. Light Cues and Gaze Cues
 
 ## 5. One-home conflict resolution
 
-Within Director v2 exactly one page is writable for each setting below. Every occurrence on another Director page is generated as `link` or read-only state text naming the home. Existing non-Director XUI remains a compatibility writer during rollout and is a parity oracle; it is not a second Director home.
+Within Director v2 one page is the canonical writable home for each setting below. Every other occurrence is a `link`/read-only row except a declared **SHORTCUT** in an Easy card or selector mode-specific block. A shortcut binds the same setting, carries `shortcut_of=<home page/row>`, names the home in help, and is generated with the home row's kind/range/step/decimals/units. This deliberately normalizes the legacy Dolly/Arc 0.5 s lower bounds to their Moves homes' 0.1 s bounds without changing the source snapshot. Search and undo treat the home as canonical; amber/reset flow through the shared setting watch. `kit_lint` permits only the explicit shortcut rows below and rejects any other second writer or emitted metadata drift. Existing non-Director XUI remains a compatibility writer during rollout and is a parity oracle; it is not a second Director home.
 
 | Setting | Writable Director home | Non-home Director occurrence | Existing non-Director writer(s) retained for parity |
 |---|---|---|---|
@@ -103,25 +103,25 @@ Within Director v2 exactly one page is writable for each setting below. Every oc
 | `AlchemyToneMapAMDExposure` | [Exposure](director_kit/pages/exposure_tab.md) | Image | Lightbox, Exposure Hub |
 | `AlchemyToneMapSLogEV` | [Exposure](director_kit/pages/exposure_tab.md) | Image | Lightbox, Exposure Hub |
 | `AlchemyTonemapLegacyGammaSkies` | [Exposure](director_kit/pages/exposure_tab.md) | Image | Lightbox, Exposure Hub |
-| `BDMergeProjectorVolumetricsFeather` | [Atmosphere](director_kit/pages/atmosphere_tab.md) | Rig | Projector Shafts panel |
-| `BDMergeProjectorVolumetricsMaxDistance` | [Atmosphere](director_kit/pages/atmosphere_tab.md) | Rig | Projector Shafts panel, Cine Rig easy shaft length |
+| `BDMergeProjectorVolumetricsFeather` | [Atmosphere](director_kit/pages/atmosphere_tab.md), row `ps_BDMergeProjectorVolumetricsFeather_slider` | **SHORTCUT:** Rig Easy `cine_easy_cone_feather` | Projector Shafts panel |
+| `BDMergeProjectorVolumetricsMaxDistance` | [Atmosphere](director_kit/pages/atmosphere_tab.md), row `ps_BDMergeProjectorVolumetricsMaxDistance_slider` | **SHORTCUT:** Rig Easy `cine_easy_shaft_length` | Projector Shafts panel, Cine Rig easy shaft length |
 | `CineRigRimTronColorSource` | [Rim](director_kit/pages/light_rim_tab.md) | Tron | Lightbox, Cine Rig |
 | `CineRigRimTronMix` | [Rim](director_kit/pages/light_rim_tab.md) | Tron | Lightbox, Cine Rig |
 | `CineRigRimTronMode` | [Rim](director_kit/pages/light_rim_tab.md) | Tron | Lightbox, Cine Rig |
-| `CinematicCamArcDuration` | [Moves](director_kit/pages/moves_tab.md) | Shot / Arc Move selector option | Director camera move controls |
-| `CinematicCamArcGeneratorAngle` | [Moves](director_kit/pages/moves_tab.md) | Shot / Arc Move selector option | Director camera move controls |
-| `CinematicCamArcHeightDrift` | [Moves](director_kit/pages/moves_tab.md) | Shot / Arc Move selector option | Director camera move controls |
+| `CinematicCamArcDuration` | [Moves](director_kit/pages/moves_tab.md), row `hero_arc_duration` | **SHORTCUT:** Shot / Arc Move `CinematicCamArcDuration` | Director camera move controls |
+| `CinematicCamArcGeneratorAngle` | [Moves](director_kit/pages/moves_tab.md), row `hero_arc_angle` | **SHORTCUT:** Shot / Arc Move `CinematicCamArcGeneratorAngle` | Director camera move controls |
+| `CinematicCamArcHeightDrift` | [Moves](director_kit/pages/moves_tab.md), row `hero_arc_height_drift` | **SHORTCUT:** Shot / Arc Move `CinematicCamArcHeightDrift` | Director camera move controls |
 | `CinematicCamFrameOffsetUp` | [Frame & Orbit](director_kit/pages/frame_orbit_tab.md) | Operator | Cine Camera Frame, Cine Camera Operator |
-| `CinematicCamJoint` | [Frame & Orbit](director_kit/pages/frame_orbit_tab.md) | Shot / Bone Lock selector option | Cine Camera Frame/Params |
+| `CinematicCamJoint` | [Frame & Orbit](director_kit/pages/frame_orbit_tab.md), row `CinematicCamJoint` | **SHORTCUT:** Shot / Bone Lock `CinematicCamJoint` | Cine Camera Frame/Params |
 | `CinematicCamUseSelected` | [Frame & Orbit](director_kit/pages/frame_orbit_tab.md) | Shot | Cine Camera Params, Flycam Orbit |
-| `CinematicCamVertigoDirection` | [Moves](director_kit/pages/moves_tab.md) | Shot / Dolly Zoom selector option | Director camera move controls |
-| `CinematicCamVertigoDuration` | [Moves](director_kit/pages/moves_tab.md) | Shot / Dolly Zoom selector option | Director camera move controls |
+| `CinematicCamVertigoDirection` | [Moves](director_kit/pages/moves_tab.md), row `zolly_direction` | **SHORTCUT:** Shot / Dolly Zoom `CinematicCamVertigoDirection` | Director camera move controls |
+| `CinematicCamVertigoDuration` | [Moves](director_kit/pages/moves_tab.md), row `zolly_duration` | **SHORTCUT:** Shot / Dolly Zoom `CinematicCamVertigoDuration` | Director camera move controls |
 | `RenderBloomStrength` | [Bloom & Glow](director_kit/pages/bloom_glow_tab.md) | Exposure | Exposure Hub |
 | `RenderBloomThreshold` | [Bloom & Glow](director_kit/pages/bloom_glow_tab.md) | Exposure | Exposure Hub |
 | `RenderExposure` | [Exposure](director_kit/pages/exposure_tab.md) | Image | Lightbox, Exposure Hub, Display/advanced prefs |
 | `TemporalWorldScale` | [Time](director_kit/pages/temporal_tab.md) | Ghosts | Temporal Capture panel slider/spinner |
 
-Count: **22 current homes chosen**. The generator compares the exact computed duplicate-setting set with its `WRITABLE_HOMES` map and fails if either side differs. This includes all six `CinematicCam*` settings exposed by Shot selector-option rows; no snapshot-drift exception exists.
+Count: **22 current homes chosen; 8 declared shortcuts**. The generator compares the exact computed duplicate-setting set with `WRITABLE_HOMES` and the exact `(page,row)->home` shortcut set with `SHORTCUTS`; either drift fails. `CinematicCamUseSelected` remains an ordinary non-home Shot occurrence, not a shortcut.
 
 ## 6. Bounded audit and parity
 
@@ -148,6 +148,8 @@ Convert the five Cast pages and their actor/path/prop/ghost/dance controllers. R
 ### WP8 — Performance
 
 Convert Animate, Switchboard, Gaze, Polish, and Gaze Cues. Review `llfloaterdirector.*`, animation preview/switcher, gaze/polish owners, and `alfloatergazecues.*`. The standalone Gaze Cues floater remains a shared owner; no curve or slot-grid widget is added.
+
+Gaze Cues Play/Stop includes scoped engine work because the existing Director transport has `LLDirectorCast::action()`/`cut()` but no presentation-time seek (`lldirectorcast.h:415-421`), and `LLFlycamRecorder::seek(F32)` is recorder-only. WP8 adds exactly `bool LLActorMover::setGazeCuePreview(const LLUUID& actor_id, S32 cue_index);` and `void LLActorMover::clearGazeCuePreview(const LLUUID& actor_id);`, consulted before ordinary cue evaluation at `llactormover.cpp:6649-6668`. It never rewrites cue times or the global clock; invalid actor/index is a no-op/false, and Stop/removal/logout clears preview/runtime. `evaluateGazeCues()` remains a per-frame pure helper, not a command.
 
 ### WP9 — Camera, Lens, and VCam integration
 
@@ -206,3 +208,15 @@ Run source generation/check, page/data lint, static/runtime parity, settings/hom
 ## 11. Final yes/no gate
 
 The release candidate is NO-GO unless all 35 page links exist, source `--check` is clean, the home count matches generated evidence, executable unresolved rows are zero, the approved Diopter and cue contracts are complete, every explicit state passes at its required widths, non-Director parity and owner-token tests pass, v1 behavior diffs pass, VCam VC1–VC7 evidence is complete, performance budgets pass, adversarial review has zero must-fix findings, and the same fresh build passes the in-world matrix. Otherwise `DirectorUIV2` remains debug/self-test-only.
+
+## 12. Review R4 resolution
+
+| Finding | Resolution |
+|---|---|
+| M1 selector values | Every selector option has explicit `value`; Shot copies v1 values 1..39, 41..51 and `--check` round-trips labels/values. Kit reads/writes values, never indices. |
+| M2 Gaze Play/Stop | No global seek exists, so WP8 owns the exact two-method `LLActorMover` preview API above. Light Cues remains `cueGoto`/`cueRelease`. |
+| M3 one-home | Canonical-home policy now permits only 8 listed Easy/mode-block SHORTCUT rows; data carries `shortcut_of`, and search/undo stay home-canonical. |
+| Minor 1 equality | WP0 equality is scoped to unchanged pages and strips additive `ew`/`es`, option `value`, and `shortcut_of`; decision pages/exclusion are explicit transforms. |
+| Minor 2 retired launchers | P0 `parity_allow` names the eight retired Snapshot/Diopter/Gaze Cues/Light Cues launcher widgets individually; `addLauncherCard` is specified `findChild`-tolerant. |
+| Minor 3 scanner | Shaft ownership is `ALCineLightRigManager`; Shot explicitly extracts `ALPanelCineCamParams::modeTable()` at line 127 despite the `//static`/templated signature. |
+| Minor 4 Diopter | WP12 confirms the Focus split wording; history tests preset→Custom materialization, undo/redo, restored look/preset, and an uncorrupted Custom bank. |

@@ -130,6 +130,8 @@ KIT_ACTION_OVERRIDES = {
     ("gaze_tab", "btn_actor_gaze"): "owner-command:LLFloaterDirector::onOpenActorGaze",
     ("gaze_tab", "btn_pose_polish"): "floater:pose_polish",
     ("actors_tab", "light_response_popout"): "floater:avatar_light_response:selected-actor",
+    ("gaze_cues_tab", "gaze_cue_play"): "engine-work:WP8:LLActorMover::setGazeCuePreview",
+    ("gaze_cues_tab", "gaze_cue_stop"): "engine-work:WP8:LLActorMover::clearGazeCuePreview",
 }
 
 
@@ -183,20 +185,6 @@ def model_binding_override(page: str, widget: str) -> dict | None:
                        "ALPanelDirectorAnimSwitcher", "onSlotButton", "anim_slot_%02d")
     if page == "gaze_tab" and widget == "gaze_influence_slider":
         return binding("indra/newview/alpanellensgaze.cpp", 1758, "ALPanelLensGaze", "onInfluenceSet")
-    if page == "gaze_cues_tab" and widget == "gaze_cue_play":
-        return {
-            "file": "indra/newview/lldirectorcast.cpp", "line": 1467,
-            "class": "LLDirectorCast", "function": "evaluateGazeCues",
-            "pattern": None, "wiring_only": False,
-            "text": "explicit selected-cue preview evaluator",
-        }
-    if page == "gaze_cues_tab" and widget == "gaze_cue_stop":
-        return {
-            "file": "indra/newview/llactormover.cpp", "line": 6504,
-            "class": "LLActorMover", "function": "clearDirectorLookAtRuntime",
-            "pattern": None, "wiring_only": False,
-            "text": "explicit cue-preview release path",
-        }
     if page == "shot_tab" and re.fullmatch(r"switcher_slot_\d{2}", widget):
         return binding("indra/newview/alpaneldirectorswitcher.cpp", 68,
                        "ALPanelDirectorSwitcher", "onSlotButton", "switcher_slot_%02d")
@@ -239,9 +227,10 @@ def model_binding_override(page: str, widget: str) -> dict | None:
         }
     function = "setShaftEnabled" if suffix == "shaft" else "setHeroEnabled"
     line = 956 if suffix == "shaft" else 962
+    behavior_class = "ALCineLightRigManager" if suffix == "shaft" else "ALCineLightRigModel"
     return {
         "file": "indra/newview/alpanelcinelightrig.cpp", "line": line,
-        "class": "ALCineLightRigModel", "function": function,
+        "class": behavior_class, "function": function,
         "wired_class": "ALPanelCineLightRig", "wired_function": "postBuild",
         "pattern": f'prefix + "_{suffix}"', "text": "role-indexed model binding",
     }
@@ -271,6 +260,17 @@ WRITABLE_HOMES = {
     "RenderBloomThreshold": "bloom_glow_tab",
     "RenderExposure": "exposure_tab",
     "TemporalWorldScale": "temporal_tab",
+}
+
+EXPECTED_SHORTCUTS = {
+    ("cine_light_rig_tab", "cine_easy_cone_feather"): "atmosphere_tab/ps_BDMergeProjectorVolumetricsFeather_slider",
+    ("cine_light_rig_tab", "cine_easy_shaft_length"): "atmosphere_tab/ps_BDMergeProjectorVolumetricsMaxDistance_slider",
+    ("shot_tab", "CinematicCamJoint"): "frame_orbit_tab/CinematicCamJoint",
+    ("shot_tab", "CinematicCamVertigoDuration"): "moves_tab/zolly_duration",
+    ("shot_tab", "CinematicCamVertigoDirection"): "moves_tab/zolly_direction",
+    ("shot_tab", "CinematicCamArcDuration"): "moves_tab/hero_arc_duration",
+    ("shot_tab", "CinematicCamArcGeneratorAngle"): "moves_tab/hero_arc_angle",
+    ("shot_tab", "CinematicCamArcHeightDrift"): "moves_tab/hero_arc_height_drift",
 }
 
 ADAPTERS = {
@@ -340,6 +340,9 @@ LIST_PAGES = {"path_tab", "props_tab", "ghosts_tab", "dance_tab", "animate_tab",
 PERMISSION_PAGES = {"props_tab", "ghosts_tab", "practicals_tab", "actors_tab", "atmosphere_tab", "vcam_tab"}
 
 SPECIAL_EXTRACTIONS = {
+    "shot_tab": [
+        ("indra/newview/alpanelcinecamparams.cpp", "ALPanelCineCamParams", "modeTable", 127),
+    ],
     "gaze_cues_tab": [
         ("indra/newview/alfloatergazecues.cpp", "ALFloaterGazeCues", "refreshCueList", 235),
         ("indra/newview/alfloatergazecues.cpp", "ALFloaterGazeCues", "refreshCastCombo", 274),
@@ -776,8 +779,92 @@ def independent_row_count(data: dict) -> int:
     )
 
 
+def _selector_label(value: str) -> str:
+    words = re.sub(r"[^a-z0-9]+", " ", value.lower()).split()
+    return " ".join(word for word in words if word != "the")
+
+
+def _xml_scalar(value: str):
+    if re.fullmatch(r"[-+]?\d+", value):
+        return int(value)
+    if re.fullmatch(r"[-+]?(?:\d+\.\d*|\d*\.\d+)(?:[eE][-+]?\d+)?", value):
+        return float(value)
+    return value
+
+
+def validate_selector_values(data: dict) -> int:
+    """Round-trip every selector option through its real v1 combo value.
+
+    Shot is XUI-authored. Rig/Rim proxy the dynamically populated v1 fixture
+    role combo at alpanelcinelightrig.cpp:57-58,1064-1114; their presentation
+    aliases Back/Rim and BG/Bg retain the same explicit 0..3 LLSD values.
+    """
+    rig_source = (ROOT / "indra/newview/alpanelcinelightrig.cpp").read_text(encoding="utf-8")
+    role_match = re.search(
+        r"ROLE_NAMES\s*\[[^]]+\]\s*=\s*\{\s*\"Key\"\s*,\s*\"Fill\"\s*,\s*\"Rim\"\s*,\s*\"Bg\"\s*\}",
+        rig_source,
+    )
+    if not role_match or not re.search(
+            r"mFixtureRole->add\(ROLE_NAMES\[light\],\s*LLSD\(light\)\)", rig_source):
+        raise RuntimeError("cannot prove the v1 cine_fixture_role label/value population")
+    dynamic_roles = {
+        ("cine_light_rig_tab", "lights"): {"key": 0, "fill": 1, "back": 2, "bg": 3},
+        ("light_rim_tab", "per_light_rim"): {"key": 0, "fill": 1, "back": 2, "bg": 3},
+    }
+    checked = 0
+    for group in data["groups"]:
+        for page in group["pages"]:
+            for card in page.get("cards", []):
+                if card.get("k") != "selector":
+                    continue
+                source = dynamic_roles.get((page["name"], card.get("id")))
+                if source is None:
+                    setting = card.get("sel_setting")
+                    if not setting:
+                        raise RuntimeError(f"selector {page['name']}/{card.get('id')} has no value source")
+                    candidates = []
+                    for file_name in PAGE_OWNER_FILES[page["name"]]:
+                        path = XUI_DIR / file_name
+                        if not path.exists():
+                            continue
+                        root = ET.parse(path).getroot()
+                        for element in root.iter():
+                            if tag_name(element.tag) != "combo_box":
+                                continue
+                            if setting not in (element.attrib.get("name"), element.attrib.get("control_name")):
+                                continue
+                            candidates.append({
+                                _selector_label(item.attrib.get("label", "")): _xml_scalar(item.attrib["value"])
+                                for item in element
+                                if tag_name(item.tag) == "combo_box.item" and "value" in item.attrib
+                            })
+                    if len(candidates) != 1:
+                        raise RuntimeError(
+                            f"selector {page['name']}/{card.get('id')} expected one v1 combo for {setting}; got {len(candidates)}"
+                        )
+                    source = candidates[0]
+                for option in card.get("opts", []):
+                    if "value" not in option:
+                        raise RuntimeError(f"selector option {page['name']}/{card.get('id')}/{option.get('label')} has no value")
+                    label = _selector_label(option.get("label", ""))
+                    tiers = [
+                        [(source_label, value) for source_label, value in source.items() if source_label == label],
+                        [(source_label, value) for source_label, value in source.items() if source_label.startswith(label + " ")],
+                        [(source_label, value) for source_label, value in source.items() if source_label.endswith(" " + label)],
+                    ]
+                    matches = next((hits for hits in tiers if hits), [])
+                    if len(matches) != 1 or option["value"] != matches[0][1]:
+                        raise RuntimeError(
+                            f"selector option {page['name']}/{card.get('id')}/{option.get('label')} "
+                            f"value {option.get('value')!r} does not round-trip to its v1 combo item {matches!r}"
+                        )
+                    checked += 1
+    return checked
+
+
 def flatten_data() -> tuple[list[dict], list[dict], int]:
     data = json.loads(DATA.read_text(encoding="utf-8"))
+    validate_selector_values(data)
     pages: list[dict] = []
     rows: list[dict] = []
     for group_index, group in enumerate(data["groups"]):
@@ -814,6 +901,7 @@ def flatten_data() -> tuple[list[dict], list[dict], int]:
                             "target": row.get("target"),
                             "target_tab": row.get("target_tab"),
                             "link_to": row.get("to"),
+                            "shortcut_of": row.get("shortcut_of"),
                         })
     return pages, rows, independent_row_count(data)
 
@@ -834,6 +922,14 @@ def build_index() -> dict:
     if len(raw_rows) != expected_rows:
         raise RuntimeError(
             f"row walk is incomplete: flattened {len(raw_rows)}, JSON independently counts {expected_rows}"
+        )
+    actual_shortcuts = {
+        (row["page"]["key"], row["widget"]): row["shortcut_of"]
+        for row in raw_rows if row["shortcut_of"]
+    }
+    if actual_shortcuts != EXPECTED_SHORTCUTS:
+        raise RuntimeError(
+            f"shortcut table differs from data; actual={actual_shortcuts!r}, expected={EXPECTED_SHORTCUTS!r}"
         )
     widgets = {row["widget"] for row in raw_rows if row["widget"]}
     widgets.update(WIDGET_NAME_OVERRIDES.values())
@@ -951,6 +1047,7 @@ def build_index() -> dict:
             "setting_candidates": candidates,
             "setting_declarations": settings.get(setting, []) if setting else [],
             "items": raw["items"],
+            "shortcut_of": raw["shortcut_of"],
             "xui": xui_hits,
             "cpp": cpp_hits,
             "callback_handlers": row_callback_handlers,
@@ -961,6 +1058,8 @@ def build_index() -> dict:
             "rejected_candidates": rejected_candidates,
             "unresolved": reasons,
         }
+        if row["shortcut_of"] is None:
+            row.pop("shortcut_of")
         resolved_rows.append(row)
         page_rows[raw["page"]["key"]].append(row)
 
@@ -1250,6 +1349,8 @@ def row_binding(row: dict, adapter: str) -> str:
         binding = f"kit `{row['kind']}` ↔ `{setting}`{type_text}"
         if handlers:
             binding += f"; `{adapter}` preserves/calls " + ", ".join(handlers)
+        if row.get("shortcut_of"):
+            binding += f"; declared SHORTCUT of `{row['shortcut_of']}` (home remains canonical for search/undo)"
         return binding
     if row.get("kit_action"):
         return f"kit-native action `{row['kit_action']}`; no duplicate widget is required"
@@ -1275,7 +1376,8 @@ def decision_contract(key: str) -> list[str]:
             "| Strength | `diopter_blend` / `CineDiopterBlend` (`floater_ultimate_diopter.xml:105`) | 0.00-1.00, step 0.01, 2 decimals | 1.00 (`settings.xml:629`) |",
             "| Focus split | `diopter_power` / `CineDiopterPower` (`floater_ultimate_diopter.xml:287`; read by `alfloaterultimatediopter.cpp:604`) | -10.00 to +10.00 D, step 0.25, 2 decimals | +2.00 D (`settings.xml:867`) |",
             "| Open full editor | existing `ultimate_diopter` floater registration (`llviewerfloaterreg.cpp:769`) | action only | n/a |",
-            "", "The Director labels Strength and Focus split are presentation labels only; they bind directly to the existing Master Blend and Power (+D) controls/settings above. The full editor is opened, never embedded or recreated.",
+            "", "The Director labels Strength and Focus split are presentation labels only; they bind directly to the existing Master Blend and Power (+D) controls/settings above. Confirm that 'Focus split' reads naturally in the mandatory in-world WP12 check. The full editor is opened, never embedded or recreated.",
+            "", "History test: start from any non-Custom preset, edit Focus split/`CineDiopterPower` so `alDiopterHandlePresetTransition()` (`llviewerfloaterreg.cpp:597-626`) materializes Custom, then undo and verify both the prior preset and rendered look return and the saved Custom bank is byte-for-byte unchanged; redo must reproduce the edit.",
         ]
     if key == "light_cues_tab":
         return [
@@ -1292,7 +1394,8 @@ def decision_contract(key: str) -> list[str]:
             "- Row format is `Time | Target | Macro`, exactly the fields built by `ALFloaterGazeCues::refreshCueList()` (`alfloatergazecues.cpp:235-262`).",
             "- Add reuses `onAdd()` (`alfloatergazecues.cpp:409-417`); Remove reuses `onDelete()` (`:436-452`). Both mutate through `LLDirectorCast::setGazeCues()` (`lldirectorcast.cpp:1364-1397`), which sanitizes, sorts, bumps `getGazeCueRevision()`, and clears gaze runtime.",
             "- Selecting a Director row opens `gaze_cues` for that actor and selects the same cue, then follows `onCueSelected()` (`alfloatergazecues.cpp:395-406`) to load the detailed editor. Detailed targets, macros, transitions, and influence keyframes remain only in that window.",
-            "- Play is a transient selected-cue preview evaluated by the real `LLDirectorCast::evaluateGazeCues()` (`lldirectorcast.cpp:1467-1492`); Stop clears that preview through `LLActorMover::clearDirectorLookAtRuntime()` (`llactormover.cpp:6504`) and restores the live authored target. Preview never rewrites cue times or the presentation clock.",
+            "- Existing transport cannot seek gaze time: `LLDirectorCast` exposes only `action()`/`cut()` (`lldirectorcast.h:415-421`, implemented at `lldirectorcast.cpp:2498-2660`), `LLPresentationTime` has no seek/setter, and `LLFlycamRecorder::seek(F32)` (`llflycamrecorder.cpp:284`) affects only recorder playback. Therefore this is explicit **WP8 engine work**, not a call to the pure `evaluateGazeCues()` helper.",
+            "- Add exact public APIs `bool LLActorMover::setGazeCuePreview(const LLUUID& actor_id, S32 cue_index);` and `void LLActorMover::clearGazeCuePreview(const LLUUID& actor_id);`. Play calls the first; Stop calls the second. Invalid/unresolved actor or out-of-range index returns false without mutation. One preview per actor stores the cue index and preview-start presentation time; `applyDirectorLookAt()` consults it before normal track evaluation at `llactormover.cpp:6649-6668`, evaluates a one-cue copy on preview-local elapsed time, and never edits the cue list or global presentation clock. Clear/actor removal/logout restores the normal authored/track path and clears Director gaze runtime.",
             "- Refresh is event-driven: add a controller revision signal at `setGazeCues()`'s existing revision bump and subscribe while visible. Refresh once on attach/reveal, actor change, and that signal; do not call the floater's per-frame `draw()` refresh path (`alfloatergazecues.cpp:187-193`).",
             "- Add and Remove are one `ALKitHistory` command each, storing the actor ID and complete before/after `GazeCueList`; Remove is therefore undoable and needs no confirmation. Play and Stop each place one `ALKitHistory::globalBarrier(reason)` and history recording is suspended between them.",
         ]

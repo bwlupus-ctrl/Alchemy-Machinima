@@ -658,17 +658,17 @@ Computed logic class: **code-driven**; 13/15 rows setting-bound, 1 rows referenc
 
 Real owner roots: `floater_gaze_cues` in `indra/newview/skins/default/xui/en/floater_gaze_cues.xml:9` (3 matched rows).
 
-C++ owner classes: `ALFloaterGazeCues` (6 references), `LLDirectorCast` (1 references), `LLActorMover` (1 references).
+C++ owner classes: `ALFloaterGazeCues` (6 references).
 
-Computed logic class: **code-driven**; 0/5 rows setting-bound, 5 rows referenced in C++.
+Computed logic class: **code-driven**; 0/5 rows setting-bound, 3 rows referenced in C++.
 
 | Card / row | Widget | Kind | Setting declaration | XUI definitions | C++ handlers | Other writers | Unresolved |
 |---|---|---|---|---|---|---|---|
 | `cues` / Cues | `cue_list` | `list` | — | `indra/newview/skins/default/xui/en/floater_gaze_cues.xml:31` `floater_gaze_cues`/scroll_list | `ALFloaterGazeCues::onCueSelected indra/newview/alfloatergazecues.cpp:138` | — | — |
 | `cues` / Add | `btn_cue_add` | `button` | — | `indra/newview/skins/default/xui/en/floater_gaze_cues.xml:39` `floater_gaze_cues`/button | `ALFloaterGazeCues::onAdd indra/newview/alfloatergazecues.cpp:140` | — | — |
 | `cues` / Remove | `btn_cue_delete` | `button` | — | `indra/newview/skins/default/xui/en/floater_gaze_cues.xml:43` `floater_gaze_cues`/button | `ALFloaterGazeCues::onDelete indra/newview/alfloatergazecues.cpp:142` | — | — |
-| `cues` / Play | `gaze_cue_play` | `button` | — | — | `LLDirectorCast::evaluateGazeCues indra/newview/lldirectorcast.cpp:1467` | — | — |
-| `cues` / Stop | `gaze_cue_stop` | `button` | — | — | `LLActorMover::clearDirectorLookAtRuntime indra/newview/llactormover.cpp:6504` | — | — |
+| `cues` / Play | `gaze_cue_play` | `button` | — | — | — | — | — |
+| `cues` / Stop | `gaze_cue_stop` | `button` | — | — | — | — | — |
 
 ### Shot (`shot_tab`)
 
@@ -1292,7 +1292,7 @@ Computed logic class: **code-driven**; 4/5 rows setting-bound, 1 rows referenced
 
 Real owner roots: `panel_cine_light_rig` in `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:8` (173 matched rows).
 
-C++ owner classes: `ALPanelCineLightRig` (132 references), `ALCineLightRigModel` (8 references), `ALCineLightRigManager` (1 references), `LLFloaterReg` (1 references), `LLReflectionMapManager` (1 references).
+C++ owner classes: `ALPanelCineLightRig` (132 references), `ALCineLightRigManager` (5 references), `ALCineLightRigModel` (4 references), `LLFloaterReg` (1 references), `LLReflectionMapManager` (1 references).
 
 Computed logic class: **code-driven**; 122/174 rows setting-bound, 92 rows referenced in C++.
 
@@ -1348,7 +1348,7 @@ Computed logic class: **code-driven**; 122/174 rows setting-bound, 92 rows refer
 | `lights` / Pitch | `cine_key_pitch` | `arc` | `F32` `indra/newview/app_settings/settings.xml:2366` (Global) | `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:309` `panel_cine_light_rig`/slider | — | — | — |
 | `lights` / Gel | `cine_key_gel` | `combo` | `S32` `indra/newview/app_settings/settings.xml:2408` (Global) | `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:336` `panel_cine_light_rig`/combo_box | — | — | — |
 | `lights` / Gobo | `cine_key_gobo` | `combo` | `S32` `indra/newview/app_settings/settings.xml:2401` (Global) | `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:331` `panel_cine_light_rig`/combo_box | — | — | — |
-| `lights` / Shaft | `cine_key_shaft` | `custom` | — | `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:328` `panel_cine_light_rig`/check_box | `ALCineLightRigModel::setShaftEnabled indra/newview/alpanelcinelightrig.cpp:956` | — | — |
+| `lights` / Shaft | `cine_key_shaft` | `custom` | — | `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:328` `panel_cine_light_rig`/check_box | `ALCineLightRigManager::setShaftEnabled indra/newview/alpanelcinelightrig.cpp:956` | — | — |
 | `lights` / Height | `cine_key_offset_z` | `slider` | `F32` `indra/newview/app_settings/settings.xml:2373` (Global) | `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:314` `panel_cine_light_rig`/slider | — | — | — |
 | `lights` / Cone | `cine_key_cone_width` | `custom` | — | `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:326` `panel_cine_light_rig`/slider | `ALPanelCineLightRig::onManualConeWidthCommit indra/newview/alpanelcinelightrig.cpp:2348` | — | — |
 | `lights` / Hero | `cine_key_hero` | `custom` | — | `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:329` `panel_cine_light_rig`/check_box | `ALCineLightRigModel::setHeroEnabled indra/newview/alpanelcinelightrig.cpp:962` | — | — |
@@ -1364,7 +1364,7 @@ Computed logic class: **code-driven**; 122/174 rows setting-bound, 92 rows refer
 | `lights` / Pitch | `cine_fill_pitch` | `arc` | `F32` `indra/newview/app_settings/settings.xml:2506` (Global) | `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:380` `panel_cine_light_rig`/slider | — | — | — |
 | `lights` / Gel | `cine_fill_gel` | `combo` | `S32` `indra/newview/app_settings/settings.xml:2548` (Global) | `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:407` `panel_cine_light_rig`/combo_box | — | — | — |
 | `lights` / Gobo | `cine_fill_gobo` | `combo` | `S32` `indra/newview/app_settings/settings.xml:2541` (Global) | `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:402` `panel_cine_light_rig`/combo_box | — | — | — |
-| `lights` / Shaft | `cine_fill_shaft` | `custom` | — | `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:399` `panel_cine_light_rig`/check_box | `ALCineLightRigModel::setShaftEnabled indra/newview/alpanelcinelightrig.cpp:956` | — | — |
+| `lights` / Shaft | `cine_fill_shaft` | `custom` | — | `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:399` `panel_cine_light_rig`/check_box | `ALCineLightRigManager::setShaftEnabled indra/newview/alpanelcinelightrig.cpp:956` | — | — |
 | `lights` / Height | `cine_fill_offset_z` | `slider` | `F32` `indra/newview/app_settings/settings.xml:2513` (Global) | `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:385` `panel_cine_light_rig`/slider | — | — | — |
 | `lights` / Cone | `cine_fill_cone_width` | `custom` | — | `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:397` `panel_cine_light_rig`/slider | `ALPanelCineLightRig::onManualConeWidthCommit indra/newview/alpanelcinelightrig.cpp:2348` | — | — |
 | `lights` / Hero | `cine_fill_hero` | `custom` | — | `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:400` `panel_cine_light_rig`/check_box | `ALCineLightRigModel::setHeroEnabled indra/newview/alpanelcinelightrig.cpp:962` | — | — |
@@ -1378,7 +1378,7 @@ Computed logic class: **code-driven**; 122/174 rows setting-bound, 92 rows refer
 | `lights` / Pitch | `cine_rim_pitch` | `arc` | `F32` `indra/newview/app_settings/settings.xml:2646` (Global) | `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:447` `panel_cine_light_rig`/slider | — | — | — |
 | `lights` / Gel | `cine_rim_gel` | `combo` | `S32` `indra/newview/app_settings/settings.xml:2688` (Global) | `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:474` `panel_cine_light_rig`/combo_box | — | — | — |
 | `lights` / Gobo | `cine_rim_gobo` | `combo` | `S32` `indra/newview/app_settings/settings.xml:2681` (Global) | `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:469` `panel_cine_light_rig`/combo_box | — | — | — |
-| `lights` / Shaft | `cine_rim_shaft` | `custom` | — | `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:466` `panel_cine_light_rig`/check_box | `ALCineLightRigModel::setShaftEnabled indra/newview/alpanelcinelightrig.cpp:956` | — | — |
+| `lights` / Shaft | `cine_rim_shaft` | `custom` | — | `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:466` `panel_cine_light_rig`/check_box | `ALCineLightRigManager::setShaftEnabled indra/newview/alpanelcinelightrig.cpp:956` | — | — |
 | `lights` / Height | `cine_rim_offset_z` | `slider` | `F32` `indra/newview/app_settings/settings.xml:2653` (Global) | `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:452` `panel_cine_light_rig`/slider | — | — | — |
 | `lights` / Cone | `cine_rim_cone_width` | `custom` | — | `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:464` `panel_cine_light_rig`/slider | `ALPanelCineLightRig::onManualConeWidthCommit indra/newview/alpanelcinelightrig.cpp:2348` | — | — |
 | `lights` / Hero | `cine_rim_hero` | `custom` | — | `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:467` `panel_cine_light_rig`/check_box | `ALCineLightRigModel::setHeroEnabled indra/newview/alpanelcinelightrig.cpp:962` | — | — |
@@ -1392,7 +1392,7 @@ Computed logic class: **code-driven**; 122/174 rows setting-bound, 92 rows refer
 | `lights` / Pitch | `cine_bg_pitch` | `arc` | `F32` `indra/newview/app_settings/settings.xml:2786` (Global) | `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:514` `panel_cine_light_rig`/slider | — | — | — |
 | `lights` / Gel | `cine_bg_gel` | `combo` | `S32` `indra/newview/app_settings/settings.xml:2828` (Global) | `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:541` `panel_cine_light_rig`/combo_box | — | — | — |
 | `lights` / Gobo | `cine_bg_gobo` | `combo` | `S32` `indra/newview/app_settings/settings.xml:2821` (Global) | `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:536` `panel_cine_light_rig`/combo_box | — | — | — |
-| `lights` / Shaft | `cine_bg_shaft` | `custom` | — | `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:533` `panel_cine_light_rig`/check_box | `ALCineLightRigModel::setShaftEnabled indra/newview/alpanelcinelightrig.cpp:956` | — | — |
+| `lights` / Shaft | `cine_bg_shaft` | `custom` | — | `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:533` `panel_cine_light_rig`/check_box | `ALCineLightRigManager::setShaftEnabled indra/newview/alpanelcinelightrig.cpp:956` | — | — |
 | `lights` / Height | `cine_bg_offset_z` | `slider` | `F32` `indra/newview/app_settings/settings.xml:2793` (Global) | `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:519` `panel_cine_light_rig`/slider | — | — | — |
 | `lights` / Cone | `cine_bg_cone_width` | `custom` | — | `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:531` `panel_cine_light_rig`/slider | `ALPanelCineLightRig::onManualConeWidthCommit indra/newview/alpanelcinelightrig.cpp:2348` | — | — |
 | `lights` / Hero | `cine_bg_hero` | `custom` | — | `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:534` `panel_cine_light_rig`/check_box | `ALCineLightRigModel::setHeroEnabled indra/newview/alpanelcinelightrig.cpp:962` | — | — |

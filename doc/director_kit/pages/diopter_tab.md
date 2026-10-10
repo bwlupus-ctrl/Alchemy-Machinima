@@ -37,7 +37,9 @@ Keep only the everyday controls (on/off, preset, strength, focus split) plus Ope
 | Focus split | `diopter_power` / `CineDiopterPower` (`floater_ultimate_diopter.xml:287`; read by `alfloaterultimatediopter.cpp:604`) | -10.00 to +10.00 D, step 0.25, 2 decimals | +2.00 D (`settings.xml:867`) |
 | Open full editor | existing `ultimate_diopter` floater registration (`llviewerfloaterreg.cpp:769`) | action only | n/a |
 
-The Director labels Strength and Focus split are presentation labels only; they bind directly to the existing Master Blend and Power (+D) controls/settings above. The full editor is opened, never embedded or recreated.
+The Director labels Strength and Focus split are presentation labels only; they bind directly to the existing Master Blend and Power (+D) controls/settings above. Confirm that 'Focus split' reads naturally in the mandatory in-world WP12 check. The full editor is opened, never embedded or recreated.
+
+History test: start from any non-Custom preset, edit Focus split/`CineDiopterPower` so `alDiopterHandlePresetTransition()` (`llviewerfloaterreg.cpp:597-626`) materializes Custom, then undo and verify both the prior preset and rendered look return and the saved Custom bank is byte-for-byte unchanged; redo must reproduce the edit.
 
 ## Adapter extraction
 

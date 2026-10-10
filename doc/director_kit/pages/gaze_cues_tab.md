@@ -1,13 +1,13 @@
 # Gaze Cues — Director Kit page contract
 
 Page key: `gaze_cues_tab`. Evidence: [`page_sources.json`](../page_sources.json) and [`page_sources.md`](../page_sources.md).
-Computed class: **code-driven** (0/5 setting-bound rows; 5 C++-referenced rows).
+Computed class: **code-driven** (0/5 setting-bound rows; 3 C++-referenced rows).
 
 ## Real owners
 
 - `floater_gaze_cues` / `floater` at `indra/newview/skins/default/xui/en/floater_gaze_cues.xml:9` (3 matching rows).
 - `floater_gaze_cues` in `indra/newview/skins/default/xui/en/floater_gaze_cues.xml:2`; `ALFloaterGazeCues` in `indra/newview/alfloatergazecues.cpp:101-663`.
-- Referencing classes: `ALFloaterGazeCues` (6), `LLDirectorCast` (1), `LLActorMover` (1).
+- Referencing classes: `ALFloaterGazeCues` (6).
 
 Name collisions in secondary XUI files are evidence candidates, not automatic ownership. The implementation must retain only occurrences whose root and class agree with the row's behavior.
 
@@ -24,15 +24,16 @@ Keep the cue list plus Add, Remove, Play, and Stop in Director. Selecting a row 
 | `cues` / `cue_list` (Cues) | `scroll_list` `indra/newview/skins/default/xui/en/floater_gaze_cues.xml:31` | `ALGazeCueKitAdapter` command/model binding → wired in `ALFloaterGazeCues::postBuild()`; behavior `ALFloaterGazeCues::onCueSelected()` (`indra/newview/alfloatergazecues.cpp:138`) | none |
 | `cues` / `btn_cue_add` (Add) | `button` `indra/newview/skins/default/xui/en/floater_gaze_cues.xml:39` | `ALGazeCueKitAdapter` command/model binding → wired in `ALFloaterGazeCues::postBuild()`; behavior `ALFloaterGazeCues::onAdd()` (`indra/newview/alfloatergazecues.cpp:140`) | none |
 | `cues` / `btn_cue_delete` (Remove) | `button` `indra/newview/skins/default/xui/en/floater_gaze_cues.xml:43` | `ALGazeCueKitAdapter` command/model binding → wired in `ALFloaterGazeCues::postBuild()`; behavior `ALFloaterGazeCues::onDelete()` (`indra/newview/alfloatergazecues.cpp:142`) | none |
-| `cues` / `gaze_cue_play` (Play) | none | `ALGazeCueKitAdapter` command/model binding → behavior `LLDirectorCast::evaluateGazeCues()` (`indra/newview/lldirectorcast.cpp:1467`) | none |
-| `cues` / `gaze_cue_stop` (Stop) | none | `ALGazeCueKitAdapter` command/model binding → behavior `LLActorMover::clearDirectorLookAtRuntime()` (`indra/newview/llactormover.cpp:6504`) | none |
+| `cues` / `gaze_cue_play` (Play) | none | kit-native action `engine-work:WP8:LLActorMover::setGazeCuePreview`; no duplicate widget is required | none |
+| `cues` / `gaze_cue_stop` (Stop) | none | kit-native action `engine-work:WP8:LLActorMover::clearGazeCuePreview`; no duplicate widget is required | none |
 
 ## Cue-list behavior decided 2026-10-10
 
 - Row format is `Time | Target | Macro`, exactly the fields built by `ALFloaterGazeCues::refreshCueList()` (`alfloatergazecues.cpp:235-262`).
 - Add reuses `onAdd()` (`alfloatergazecues.cpp:409-417`); Remove reuses `onDelete()` (`:436-452`). Both mutate through `LLDirectorCast::setGazeCues()` (`lldirectorcast.cpp:1364-1397`), which sanitizes, sorts, bumps `getGazeCueRevision()`, and clears gaze runtime.
 - Selecting a Director row opens `gaze_cues` for that actor and selects the same cue, then follows `onCueSelected()` (`alfloatergazecues.cpp:395-406`) to load the detailed editor. Detailed targets, macros, transitions, and influence keyframes remain only in that window.
-- Play is a transient selected-cue preview evaluated by the real `LLDirectorCast::evaluateGazeCues()` (`lldirectorcast.cpp:1467-1492`); Stop clears that preview through `LLActorMover::clearDirectorLookAtRuntime()` (`llactormover.cpp:6504`) and restores the live authored target. Preview never rewrites cue times or the presentation clock.
+- Existing transport cannot seek gaze time: `LLDirectorCast` exposes only `action()`/`cut()` (`lldirectorcast.h:415-421`, implemented at `lldirectorcast.cpp:2498-2660`), `LLPresentationTime` has no seek/setter, and `LLFlycamRecorder::seek(F32)` (`llflycamrecorder.cpp:284`) affects only recorder playback. Therefore this is explicit **WP8 engine work**, not a call to the pure `evaluateGazeCues()` helper.
+- Add exact public APIs `bool LLActorMover::setGazeCuePreview(const LLUUID& actor_id, S32 cue_index);` and `void LLActorMover::clearGazeCuePreview(const LLUUID& actor_id);`. Play calls the first; Stop calls the second. Invalid/unresolved actor or out-of-range index returns false without mutation. One preview per actor stores the cue index and preview-start presentation time; `applyDirectorLookAt()` consults it before normal track evaluation at `llactormover.cpp:6649-6668`, evaluates a one-cue copy on preview-local elapsed time, and never edits the cue list or global presentation clock. Clear/actor removal/logout restores the normal authored/track path and clears Director gaze runtime.
 - Refresh is event-driven: add a controller revision signal at `setGazeCues()`'s existing revision bump and subscribe while visible. Refresh once on attach/reveal, actor change, and that signal; do not call the floater's per-frame `draw()` refresh path (`alfloatergazecues.cpp:187-193`).
 - Add and Remove are one `ALKitHistory` command each, storing the actor ID and complete before/after `GazeCueList`; Remove is therefore undoable and needs no confirmation. Play and Stop each place one `ALKitHistory::globalBarrier(reason)` and history recording is suspended between them.
 
@@ -54,8 +55,6 @@ Keep the cue list plus Add, Remove, Play, and Stop in Director. Selecting a row 
 | `ALFloaterGazeCues::refreshCueList()` — `indra/newview/alfloatergazecues.cpp:235` | Move model-facing work into `ALGazeCueKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
 | `ALFloaterGazeCues::refreshEditorVisibility()` — `indra/newview/alfloatergazecues.cpp:303` | Move model-facing work into `ALGazeCueKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
 | `ALFloaterGazeCues::refreshInfluenceList()` — `indra/newview/alfloatergazecues.cpp:545` | Move model-facing work into `ALGazeCueKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
-| `LLActorMover::clearDirectorLookAtRuntime()` — `indra/newview/llactormover.cpp:6504` | Move model-facing work into `ALGazeCueKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
-| `LLDirectorCast::evaluateGazeCues()` — `indra/newview/lldirectorcast.cpp:1467` | Move model-facing work into `ALGazeCueKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
 
 ## Live state and refresh
 

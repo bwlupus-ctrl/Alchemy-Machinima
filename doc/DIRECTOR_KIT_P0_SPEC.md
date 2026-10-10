@@ -314,7 +314,7 @@ If none applies, there is no reset button (the column stays empty).
 **Params:**
 - `id` (Mandatory), `title`, `kind` = `rows|combined|selector|link|launcher|rigmap`, `advanced` (bool), `badge` (""|"NEW"), `help`;
 - `enable_widget`, `enable_setting`, `enable_tooltip`;
-- `sel_label`, `sel_setting`;
+- `sel_label`, `sel_setting`; every `kit_option` has mandatory LLSD `value`;
 - `link_to`, `link_label`;
 - `target`, `target_tab`, `button_label`;
 - `Multiple<Summary> summary` (`<kit_card.summary setting label kind decimals unit/>`).
@@ -335,7 +335,7 @@ The enable switch is ALKitSwitch `enable_widget` (with `control_name=enable_sett
 - **rows / combined:** rows in XML order. A sub-heading row is inserted whenever `sub` changes (combined cards). `card_preset` rows whose `sub` is not the first sub are placed right-aligned on their sub-heading.
 - **Grouping:** consecutive dial/arc rows form one "aim group" of 2-up cells (each cell: label + reset on the top line, dial + value below). A single dial stays a normal 56 px row.
 - **More options:** if the visible advanced count n > 0, a "More options (n)" / "Fewer options" toggle (`kc_<id>_more`) sits at the bottom. For a selector it is tracked per option.
-- **selector:** under the header, a SELECTOR_BAND_H band (KitSubBand) holds `sel_label` (KitMuted 11 px) plus segment buttons `kc_<id>_seg_<i>` (≤ 6 options) or a combo (> 6). Then the active ALKitOption's rows. The active index comes from `sel_setting` (S32) when given, otherwise from page state.
+- **selector:** under the header, a SELECTOR_BAND_H band (KitSubBand) holds `sel_label` (KitMuted 11 px) plus segment buttons `kc_<id>_seg_<i>` (≤ 6 options) or a combo (> 6). Then the active ALKitOption's rows. Read selects the option whose `value` equals `sel_setting`; write stores that option's `value`, **never its ordinal index**. When there is no `sel_setting`, page state still stores the option `value` and resolves it back to an option.
 - **link:** for each summary, a label and the current value (formatted from the setting, updated on its signal). Then "Lives on <Group › Page>", then a button `kc_<id>_go` "Open ›" that calls `shell->navigateTo(link_to)`.
 - **launcher:** help text plus a button `kc_<id>_open` (label `button_label`). Its action is `target == "lightbox"` → `ALFloaterLightBox::showTab(target_tab)`, otherwise `LLFloaterReg::showInstance(target)`.
 - **rigmap:** the single `light_rig_map` child (section 3.14). Its height is `map->heightForWidth(body_w)`. The view segments (Top / Side / 2.5D, `kc_<id>_view_<i>`) are in the header.
@@ -600,7 +600,7 @@ The loader requires version 2 and `fields="15"`, validates exactly 15 decoded fi
 
 Tie-break: current page, then group order, then data order.
 
-**Duplicates.** The rollout's `kit_pages.json.homes` table names the sole writable home for every setting that appears on multiple pages. Search collapses entries with the same non-empty `setting` into the writable home; only generated `link` rows and explicitly read-only occurrences contribute an "also on <pages>" list. A second writable occurrence is a generator/lint error. P0's two-page data follows the same rule even before the full homes table lands.
+**Duplicates.** The rollout's `kit_pages.json.homes` table names the canonical writable home for every setting that appears on multiple pages. A declared `SHORTCUT` duplicate is permitted only inside an Easy card or selector mode-specific block and carries `shortcut_of="<home page>/<home row>"`. The generator emits the home row's kind/range/step/decimals/units for the shortcut, so the generated controls are identical even where two legacy v1 widgets had narrower presentation bounds (the Dolly/Arc v1 params use 0.5 s while their Moves homes use 0.1 s). Search and undo attribute it to the home; amber/reset observe the same setting. Generated links/read-only rows and declared shortcuts contribute "also on <pages>". `kit_lint` rejects an unlisted second writer, an invalid location, a missing/mismatched home, or emitted range/unit drift. P0's Rig data declares both Easy shortcuts and its selector values before the full homes table lands.
 
 **UI.**
 - The proxy field fires `setQuery(text)`, debounced 120 ms by a shell-owned `LLEventTimer` one-shot. Never in `draw()`.
@@ -1109,13 +1109,15 @@ No timestamps.
 |---|---|
 | `id`, `t`, `k`, `a`, `new`, `help` | `kit_card id title kind advanced badge="NEW" help`; `name="kc_<id>"` |
 | `en` + `ew` / `es` | `enable_widget` / `enable_setting`. When `ew` is missing, from config `card_enables` |
-| `opts[] {label, en, ew, es, rows}` | `<kit_option label enable_widget enable_setting>`; enables from `ew` or config `option_enables` |
+| `opts[] {label, value, en, ew, es, rows}` | `<kit_option label value enable_widget enable_setting>`; `value` is copied from the matching v1 combo item (or the declared 0..3 role value), never synthesized from option order; enables from `ew` or config `option_enables` |
 | `sel_label`, `sel_setting` | `sel_label`; `sel_setting` = data, or config `selector_settings[id]` |
 | `to`, `summary[]` | `link_to`; `<kit_card.summary setting label kind decimals unit>` |
 | `target`, `target_tab`, `target_widget`, `button_label` | launcher params |
 | `card_presets` | none (derived from `cp` rows) |
 
 **Row** (common).
+
+For every combo-backed selector, the data pipeline matches each option label to the hosted v1 combo item and copies that item's LLSD `value`. `director_page_sources.py --check` round-trips every label/value pair. Shot therefore emits `CinematicCamMode` values 1..39, 41..51 (50 options; no 40), while Rig/Rim's `DirectorV2SelectedLight` options explicitly emit 0..3. A selector implementation that reads or writes the option index fails lint and parity.
 
 | Data | XUI |
 |---|---|
@@ -1327,6 +1329,14 @@ The extractor also recognizes `prefix + "suffix"`, indexed arrays, and simple lo
  },
  "launcher_targets": {"look_group/tron_tab": {"target": "lightbox", "target_tab": "tron_settings", "button_label": "Open Tron in Lightbox ›", "help": "Tron is edited in the Lightbox until its page is converted."}},
  "parity_allow": {"cine_rig_rim_preset": "replaced by the kit preset strip (provider rig_rim)",
+                  "card_snapshot_open": "retired Director launcher; Snapshot remains in its standalone floater",
+                  "card_snapshot_summary": "retired Director launcher; Snapshot remains in its standalone floater",
+                  "card_diopter_open": "retired launcher replaced by the inline Diopter summary/editor action",
+                  "card_diopter_summary": "retired launcher replaced by the inline Diopter summary rows",
+                  "card_gaze_cues_open": "retired launcher replaced by the inline Gaze Cues list/actions",
+                  "card_gaze_cues_summary": "retired launcher replaced by the inline Gaze Cues list",
+                  "card_light_cues_open": "retired launcher replaced by the inline Light Cues list/actions",
+                  "card_light_cues_summary": "retired launcher replaced by the inline Light Cues list",
                   "cine_light_rig_flow_grid": "v1 layout container",
                   "cine_*_card": "v1 card containers (glob)",
                   "cine_*_label": "v1 decoration labels not referenced by C++ (glob; the referenced ones must exist)"}
@@ -1359,14 +1369,14 @@ If a `row_overrides` key or an `after` row is not found in the data, it is a gen
 
 | Card | Kit treatment |
 |---|---|
-| easy (combined, Easy look) | Subs "Easy look", "Beam and flare", "Easy night". `cine_easy_flare_preset` sits on the "Beam and flare" sub-heading and `cine_easy_night_mask_preset` on "Easy night". `cine_easy_cone_width` stays a slider (C++-referenced). The Easy rows are `bind=code` with the v1 `reset_settings`. |
+| easy (combined, Easy look) | Subs "Easy look", "Beam and flare", "Easy night". `cine_easy_flare_preset` sits on the "Beam and flare" sub-heading and `cine_easy_night_mask_preset` on "Easy night". `cine_easy_cone_width` stays a slider (C++-referenced). `cine_easy_cone_feather` is a declared SHORTCUT of `atmosphere_tab/ps_BDMergeProjectorVolumetricsFeather_slider`; `cine_easy_shaft_length` is a declared SHORTCUT of `atmosphere_tab/ps_BDMergeProjectorVolumetricsMaxDistance_slider`. Both retain identical range/units and their v1 callbacks. The Easy rows are `bind=code` with the v1 `reset_settings`. |
 | easy_probe | enable `cine_easy_probe_enable`, 5 rows |
 | rig_status | `cine_anchor` is a who_picker (hidden). Rows Gizmo, Target object, Clear, Target. |
 | light_group (Who's lit) | enable `cine_group_enable` (code). Five `kit_switch` code rows. Plus the `cine_group_status` readout. |
 | rig_main | the `cine_radius` label is `cine_radius_label`. Reset all is a button. |
 | rig_setups, rig_effects | as data. `cine_seed` stays a line_editor (text kind). |
 | light_map (rigmap, NEW) | `<light_rig_map name="cine_light_map" selector_card="kc_lights" view_setting="DirectorV2LightMapView"/>` |
-| lights (selector, `sel_setting` DirectorV2SelectedLight) | Options Key, Fill, Back, BG with enables `cine_{key,fill,rim,bg}_on`. The first row is the clip readout. Yaw → `compass_dial mode=compass`; Pitch → `compass_dial mode=arc`; they form a 2-up aim group. Shaft and Hero are code toggles; Cone is a code slider. |
+| lights (selector, `sel_setting` DirectorV2SelectedLight) | Options Key, Fill, Back, BG carry explicit values 0, 1, 2, 3, matching the dynamically populated v1 `cine_fixture_role` combo (`alpanelcinelightrig.cpp:1064-1114`), with enables `cine_{key,fill,rim,bg}_on`. The first row is the clip readout. Yaw → `compass_dial mode=compass`; Pitch → `compass_dial mode=arc`; they form a 2-up aim group. Shaft and Hero are code toggles; Cone is a code slider. |
 | rig_aim | Mirror, the aim nudge buttons, Shadow policy, Auto shadows, the `cine_shadow_hint` readout, and `cine_shadow_fixit` (not advanced; C++ shows and hides it) |
 | rig_bounce | as data |
 | rig_catchlight | enable `cine_catchlight`. Angle → dial (0..360, compass, no wrap problems). |
@@ -1430,6 +1440,8 @@ If a `row_overrides` key or an `after` row is not found in the data, it is a gen
 6. A section or mode references an unknown card id; a card is in no section.
 7. A generated file's header sha does not match the current inputs (stale generation).
 8. `bottom=` anywhere.
+9. A second writable setting occurrence is neither its canonical home nor a declared `shortcut_of`; a shortcut is outside an Easy card/mode-specific selector block, points at a missing/non-home row, or changes kind/range/step/decimals/unit.
+10. A selector option lacks `value`, or `director_page_sources.py --check` cannot round-trip its label/value to the matching v1 combo item/value. `CinematicCamMode` explicitly proves 39 then 41 (no 40).
 
 **Additional errors:**
 - a label whose measured configured-font width exceeds `LABEL_W`, unless it declares the two-line label form and measured row height. Length-based warnings are not a substitute;
@@ -1559,11 +1571,11 @@ The order is WP0 → WP1 → WP2 → WP3 → WP4 → WP5, run sequentially in on
    - in `apply_ia` merges, copy `ew`/`es` into each option (`opts.append({... "ew": c.get("ew"), "es": c.get("es")})`, omitting None);
    - in `_conv_inline_card`, set `o["ew"] = en` whenever it sets `en`.
 2. Run it with `--out C:\Users\xianw\cxs\director_mockup\director_mockup_data.json`, then copy the result to `scripts/code_tools/director_kit/director_mockup_data.json`.
-3. Verify with a script that removing the keys `ew`, `es` and option `ew`/`es` from the new JSON reproduces the old JSON exactly. The mockup ignores unknown keys, so the approved look is untouched.
+3. Verify against the R4 snapshot that removing only the additive `ew`, `es`, option `value`, and `shortcut_of` keys reproduces every page not named by `apply_user_decisions` or `PAGE_EXCLUSIONS` exactly; for named/excluded pages, compare after applying those two explicit transforms. This preserves the WP0 equality guarantee while documenting its only approved transforms. The mockup ignores the additive keys, so the approved look is untouched.
 4. Commit. The PY patch goes through the WP3 Opus review.
 
 **Acceptance:**
-- the equality check passes;
+- the scoped equality check passes after stripping `ew`, `es`, option `value`, and `shortcut_of` as defined above;
 - `lights.opts[*].ew` = `cine_{key,fill,rim,bg}_on`;
 - `rig_catchlight.ew` = `cine_catchlight`;
 - `rim_wrap.ew` = `cine_rimq_wrap_enable`.
@@ -1802,3 +1814,13 @@ Findings below are the R2 items that land in this P0 spec or `VCAM_MONITORS_DESI
 - MINOR 3 -> `VCAM_MONITORS_DESIGN.md` VC6 (tab-name migration, last-tab and v1/v2 rect/selection carry-over tests).
 - MINOR 4 -> section 3.2 and spike S9 (`setControlName` replaces the old scoped connection).
 - MINOR 5 -> section 6.7 screenshot review (48x48 left-weighted arc compared explicitly).
+
+## Review R4 resolution
+
+- M1 -> sections 3.4/4.2/6.1/WP0: mandatory option `value`, value-based read/write, v1 label/value round-trip check, and Shot's 1..39/41..51 mapping.
+- M2 -> rollout WP8 and generated Gaze Cues contract: the real transport has no gaze-time seek, so the exact scoped `LLActorMover` preview API is explicit engine work; Light Cues is unchanged.
+- M3 -> sections 3.8/5.1/6.1: 8 declared Easy/mode-block SHORTCUT rows, `shortcut_of` data, canonical-home search/undo, and strict lint.
+- MINOR 1 -> WP0 equality now strips additive `value`/`shortcut_of` as well as `ew`/`es` and scopes the known decision/exclusion transforms.
+- MINOR 2 -> section 4.7 lists all eight retired launcher names as narrow `parity_allow` entries.
+- MINOR 3 -> source generator attributes Shaft to `ALCineLightRigManager` and explicitly extracts `ALPanelCineCamParams::modeTable()`.
+- MINOR 4 -> Diopter contract requires the in-world label confirmation and preset-to-Custom history/Custom-bank integrity test.
