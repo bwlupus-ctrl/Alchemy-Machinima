@@ -827,7 +827,8 @@ The inverse is used for pointer input. With `arc_zero="right"`, a_screen = 90 �
 
 **Params:**
 - `selector_card` (default `kc_lights`), the Lights selector card to keep in sync;
-- `view_setting` (default `DirectorV2LightMapView`, S32: 0 Top, 1 Side, 2 2.5D; default 2).
+- `view_setting` (default `DirectorV2LightMapView`, S32: 0 Top, 1 Side, 2 2.5D; default 2);
+- `side_from_setting` (default `DirectorV2LightMapSideFrom`, S32: 0 = Side view seen from camera-left, 1 = from camera-right; default 0).
 
 **Light identity.** Role i ∈ {0 Key, 1 Fill, 2 Back, 3 BG} uses these settings (prefix `CineLightRig` + `Key|Fill|Rim|Bg`):
 - `…Yaw`, `…Pitch`, `…On`, `…OffsetZ`.
@@ -868,18 +869,24 @@ All are read with `static LLCachedControl` arrays.
 - **2.5D** (e = 24°) and **Top** (e = 90°):
   - sx = cx + X; sy = cy − Z·sin e + Y·cos e (LL y is up);
   - depth = Z·cos e + Y·sin e.
-- **Side** (camera on the right): sx = cx + Z; sy = cy + Y; depth = X.
+- **Side** (user 10/10: the old Side view did not say WHICH side you look from; Key at +45 and Fill at −45 landed on the same spot). s = +1 when seen from camera-left (camera on the right edge), −1 when seen from camera-right (camera on the left edge): sx = cx + s·Z; sy = cy + Y; depth (toward the viewer) = −s·X.
 - Chest point: (cx, cy + 0.33R) in 2.5D and Side; (cx, cy) in Top.
 
+**Which-side cues (all views; mockup v16 is the reference):**
+- Labels are camera-relative, never compass: Top and 2.5D show "CAM L" (left edge), "CAM R" (right edge), "BACK" (far edge; in 2.5D beside the back tick, never behind the avatar) and "CAM" + marker at t = 0. No N/E/S/W.
+- The avatar shows where it faces: Top = a nose wedge toward CAM; 2.5D = two eye dots on the head plus a floor wedge toward CAM; Side = a **profile** silhouette (head, nose, eye with pupil, hair at the back of the head, near arm lighter, feet pointing toward CAM) plus a short dashed amber gaze line toward CAM, mirrored when seen from camera-right.
+- Side view has a **"From cam L ⇄" chip** at the top-left of the canvas (`kc_light_map_side_from`): a 22 px mini top view (globe circle, subject with nose toward a CAM triangle at the bottom, an eye glyph on the viewing side with a dotted sight line to the subject), the text "From cam L" / "From cam R", and a swap glyph. Click toggles `side_from_setting`. Tooltip: "Side view from camera-left (the subject's right side). Solid = lights on this side, hollow = far side behind the avatar. Click to look from the other side."
+- The key under the map reads "near / far / off" in Side and "in front / behind / off" in Top and 2.5D.
+
 **Layering (front, behind, off).**
-- fr = smoothstep(−0.2, 0.2, cos t); dn = clamp(depth/R, −1, 1); underK = pitch < 0 ? min(1, −p°/40) : 0.
+- fr = smoothstep(−0.2, 0.2, cos t) in Top and 2.5D; in **Side** fr = smoothstep(−0.2, 0.2, −s·sin t) (the hidden axis there is left/right, so solid = on the viewer's side, hollow = far side behind the avatar). dn = clamp(depth/R, −1, 1); underK = pitch < 0 ? min(1, −p°/40) : 0.
 - front layer = Top view || fr ≥ 0.5.
 - Draw order:
   1. the floor ring (an ellipse with radii (R, R·sin e) in 2.5D, a circle in Top, a line in Side) and the meridian, in KitArcTrack;
   2. back-layer lights, depth-ascending;
   3. the subject silhouette (a capsule in KitDialRing; in Top a 6 px circle) and the near half of the globe shell;
   4. front-layer lights, depth-ascending;
-  5. the camera marker "CAM" (Top and 2.5D: the bottom edge at the screen projection of t = 0; Side: the right edge).
+  5. the camera marker "CAM" (Top and 2.5D: the bottom edge at the screen projection of t = 0; Side: the right edge from camera-left, the left edge from camera-right, with "BACK" on the opposite edge).
 - Light radius: rr = on ? 4.6 + 2.6fr + 0.8dn : 6.2 + 0.6dn.
 - **On, front:** solid disc (alpha (0.5 + 0.5fr)(1 − 0.35·underK)); glow disc rr + 6 with alpha 0.26·fr²·(1 − 0.5·underK); solid beam line to the chest point at alpha 0.2 + 0.45fr.
 - **On, behind:** hollow ring 1.5 px with a fill of alpha 0.35 + 0.65fr; beam dashed 3/3.
@@ -888,12 +895,13 @@ All are read with `static LLCachedControl` arrays.
 - **Selected:** a ring at rr + 4, alpha 0.6, in the light colour.
 - Label: the name 11 px to the right if sx ≥ cx, otherwise to the left.
 
-**Legend** (MAP_LEGEND_H; 4 chips, each `kc_light_map_legend_<i>`): a dot (colour, or the slashed grey when off), the name, and "yaw° / pitch°" showing the **base** values (matching the dials). A click selects; the selected chip has its border in the light colour.
+**Legend** (MAP_LEGEND_H; 4 chips, each `kc_light_map_legend_<i>`): a dot (colour, or the slashed grey when off), the name, and "yaw° / pitch°" showing the **base** values (matching the dials). The yaw carries its side: "R45°" (camera-right), "L135°" (camera-left, behind), plain "0°" and "180°" on the axis; the tooltip spells it out ("Key light: 45° camera-right, pitch 35°"). Side letters come from the displayed (camera-relative) t; the number stays the base value. A click selects; the selected chip has its border in the light colour.
 
 **Input.**
 - Mouse down on a light disc (hit radius rr + 4, topmost first) selects role i. It sets the Lights selector option, writing `DirectorV2SelectedLight`, which also moves the Rim per-light selector and the fixture role (section 5.1). Then it captures.
 - **Top-view drag:** `t_new = atan2(dx, −dy)` in degrees (dx, dy from the centre in LL coords, toward-camera = screen-down). Δ = wrap180(t_new − t_cur), and `base_yaw += mirror ? −Δ : Δ`. This is relative, so F is not needed.
-- **2.5D and Side drag:** Δt = (x − x0)·1.1 °/px and Δp = (y − y0)·0.9 °/px (y up raises the light). `base_yaw = wrap180(base0 + (mirror ? −Δt : Δt))` and `base_pitch = clamp(p0 + Δp, −85, 85)`.
+- **2.5D drag:** Δt = (x − x0)·1.1 °/px and Δp = (y − y0)·0.9 °/px (y up raises the light). `base_yaw = wrap180(base0 + (mirror ? −Δt : Δt))` and `base_pitch = clamp(p0 + Δp, −85, 85)`.
+- **Side drag:** horizontal = toward/away from the camera, vertical = height; the light keeps its side. p_new = clamp(p0 + Δp, −85, 85); f = clamp(s·(x − cx) / (R·max(0.08, cos p_new)), −1, 1); side = sign(t0) (if |t0| < 0.5 or t0 ≈ 180, use the viewing side, −s); t_new = side·acos(f); apply Δ = wrap180(t_new − t0) to base_yaw as in Top (mirror-aware). The hint line reads "Drag: ↔ toward/away from camera, ↕ height".
 - Writes go through `gSavedSettings.setF32(<cached name>)` inside the input handler, so the dials update through their control bindings. One history gesture covers the drag.
 - **Keyboard** (when the map is focused): Left/Right yaw ∓/±1 (Shift 10); Up/Down pitch ±1 (Shift 10); `[` / `]` previous / next light; Home resets the selected light's Yaw and Pitch to their defaults.
 - The wheel is not used (returns false, so the page scrolls).
@@ -904,8 +912,9 @@ All are read with `static LLCachedControl` arrays.
 **Pure maths** goes in `alkitmath.h` (header-only, no UI includes) for the TUT test:
 - `wrap180`;
 - `arcAngle(v,min,max)` and its inverse `arcValue(a,min,max)`;
-- `projectLight(view,t,p,R,cx,cy,&x,&y,&depth)`;
-- `frontFactor(t)`;
+- `projectLight(view,sideFrom,t,p,R,cx,cy,&x,&y,&depth)`;
+- `frontFactor(view,sideFrom,t)`;
+- `yawSideText(t, base)` ("R45°" / "L135°" / "0°" / "180°") and `dragSideYaw(x,cx,R,p,t0,sideFrom)`;
 - `effYaw(base,orbit,mirror,F)`;
 - `dragTopDelta(dx,dy,t_cur)`;
 - `computeShellLayout(W,H,prev_state)`;
@@ -948,6 +957,7 @@ All are read with `static LLCachedControl` arrays.
 | DirectorV2PageState | LLSD | {} | 1 | Per-page chip, card open/more state, who pin |
 | DirectorV2SelectedLight | S32 | 0 | 1 | Linked light selection (Rig Lights, Rim per-light, map, fixture role) |
 | DirectorV2LightMapView | S32 | 2 | 1 | Light map view (0 Top, 1 Side, 2 2.5D) |
+| DirectorV2LightMapSideFrom | S32 | 0 | 1 | Light map Side view seen from (0 camera-left, 1 camera-right) |
 | KitShowUIMs | Boolean | 0 | 1 | Show the Director UI ms chip |
 | KitSearchGlobal | Boolean | 1 | 1 | Search covers all pages (off = current page only) |
 | UILayoutAuditSizes | String | "" | 0 | Self-test audit sizes ("WxH" or default/min tokens, comma list) |
@@ -1452,7 +1462,9 @@ New kit files must report 0 new findings (`--changed <base>`). Any suppression n
 Cases:
 - `wrap180`;
 - `arcAngle`/`arcValue` round-trip for (−85, 85), (−180, 180) and (0, 360);
-- `projectLight` (t = 0 in 2.5D lands below the centre and is front; t = 180 is behind; Side view maps camera-right);
+- `projectLight` (t = 0 in 2.5D lands below the centre and is front; t = 180 is behind; Side from camera-left puts the camera on the right and t = −45 (camera-left) nearer than t = +45; Side from camera-right mirrors both);
+- `frontFactor` in Side: t = +45 and t = −45 never share a layer; `yawSideText(45)` = "R45°", `(−135)` = "L135°", `(0)` = "0°";
+- `dragSideYaw` keeps the light's side and is the inverse of the Side projection at a fixed pitch;
 - `frontFactor` monotone;
 - `effYaw` with and without mirror (against the `computeLive` formula);
 - `dragTopDelta` sign;
