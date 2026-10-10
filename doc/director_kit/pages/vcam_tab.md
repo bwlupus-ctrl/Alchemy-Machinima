@@ -21,7 +21,7 @@ Use the existing XUI control types as ordinary measured kit rows. No new canvas,
 
 | Card / row | Existing control evidence | Required binding | Other writable homes |
 |---|---|---|---|
-| `lens_vcam_card` / `prism_lens_enabled` (Enable) | `check_box` `indra/newview/skins/default/xui/en/floater_director.xml:1347` | kit `toggle` ↔ `PrismLensEnabled` `Boolean` | `indra/newview/skins/default/xui/en/floater_prism_manager.xml:32` `prism_enabled` |
+| `lens_vcam_card` / `prism_lens_enabled` (Enable) | `check_box` `indra/newview/skins/default/xui/en/floater_director.xml:1347` | kit `toggle` ↔ `PrismLensEnabled` `Boolean` | `indra/newview/skins/default/xui/en/floater_prism_manager.xml:32` `prism_enabled`, `indra/newview/skins/default/xui/en/panel_dpage_camera_vcam.xml:9` `prism_lens_enabled` |
 | `lens_vcam_card` / `prism_summary` (Status) | `text` `indra/newview/skins/default/xui/en/floater_director.xml:1348`, `text` `indra/newview/skins/default/xui/en/floater_prism_manager.xml:42` | kit readout ← approved static copy; no runtime writer | none |
 | `lens_vcam_card` / `btn_prism_manage` (Open manager) | `button` `indra/newview/skins/default/xui/en/floater_director.xml:1349` | `ALVCamKitAdapter` command/model binding → wired in `LLFloaterDirector::postBuild()`; behavior `LLFloaterDirector::onClickManagePrism()` (`indra/newview/llfloaterdirector.cpp:604`) | none |
 
@@ -76,7 +76,7 @@ None.
 
 ## Rejected out-of-scope same-name candidates
 
-1 candidates were rejected by the XUI-owner/class scope; exact records and reasons are in `page_sources.json`.
+4 candidates were rejected by the XUI-owner/class scope; exact records and reasons are in `page_sources.json`.
 
 ## New widget required
 

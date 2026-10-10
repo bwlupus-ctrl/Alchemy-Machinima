@@ -5,10 +5,13 @@
     <kit_page.section id="exposure_main" label="Exposure" cards="exposure_card"/>
     <kit_card id="exposure_card" title="Exposure" help="Scene exposure and offset.">
       <kit_row kind="slider" widget="FixtureRenderExposure_slider" label="Exposure" setting="FixtureRenderExposure" bind="setting" min_val="-2" max_val="2" decimals="2" unit="EV" help="Scene exposure in stops.">
-        <slider name="FixtureRenderExposure_slider" control_name="FixtureRenderExposure" min_val="-2" max_val="2" increment="0.1" decimal_digits="2"/>
+        <slider name="FixtureRenderExposure_slider" control_name="FixtureRenderExposure" min_val="-2" max_val="2" increment="0.1" decimal_digits="2" show_text="true" text_width="52"/>
       </kit_row>
       <kit_row kind="toggle" widget="FixtureBloomOn_switch" label="Bloom" setting="FixtureBloomOn" bind="setting" help="Turn bloom on.">
         <kit_switch name="FixtureBloomOn_switch" control_name="FixtureBloomOn"/>
+      </kit_row>
+      <kit_row kind="text" widget="fixture_seed" label="Seed" setting="FixtureSeed" bind="code" help="Whole-number seed formatted by the adapter.">
+        <line_editor name="fixture_seed"/>
       </kit_row>
       <kit_row kind="vec3" widget="fixture_offset" label="Offset" setting="FixtureDeepVec" help="Fixture offset."/>
       <kit_row kind="link" widget="grade_link" label="Grade" link_to="look_group/grade_tab" help="Open the grade controls."/>

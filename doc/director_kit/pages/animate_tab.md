@@ -32,7 +32,7 @@ Use the existing XUI control types as ordinary measured kit rows. No new canvas,
 | `paste_uuid` / `btn_paste_play` (Play local) | `button` `indra/newview/skins/default/xui/en/floater_director.xml:717` | `ALAnimateKitAdapter` command/model binding → wired in `LLFloaterDirector::postBuild()`; behavior `LLFloaterDirector::onPastePlayLocal()` (`indra/newview/llfloaterdirector.cpp:536`) | none |
 | `paste_uuid` / `btn_paste_stop` (Stop local) | `button` `indra/newview/skins/default/xui/en/floater_director.xml:726` | `ALAnimateKitAdapter` command/model binding → wired in `LLFloaterDirector::postBuild()`; behavior `LLFloaterDirector::onPastePlayLocal()` (`indra/newview/llfloaterdirector.cpp:537`) | none |
 | `paste_uuid` / `btn_paste_setloco` (Set role) | `button` `indra/newview/skins/default/xui/en/floater_director.xml:735` | `ALAnimateKitAdapter` command/model binding → wired in `LLFloaterDirector::postBuild()`; behavior `LLFloaterDirector::onPasteSetLoco()` (`indra/newview/llfloaterdirector.cpp:538`) | none |
-| `paste_uuid` / `play_local_priority_combo` (Priority) | `combo_box` `indra/newview/skins/default/xui/en/floater_director.xml:744` | kit `combo` ↔ `DirectorAnimPlayLocalPriority` `S32` | none |
+| `paste_uuid` / `play_local_priority_combo` (Priority) | `combo_box` `indra/newview/skins/default/xui/en/floater_director.xml:744` | kit `combo` ↔ `DirectorAnimPlayLocalPriority` `S32` | `indra/newview/skins/default/xui/en/panel_dpage_performance_animate.xml:30` `play_local_priority_combo` |
 | `locomotion` / `locomotion_role_combo` (Role) | `combo_box` `indra/newview/skins/default/xui/en/floater_director.xml:770` | `ALAnimateKitAdapter` command/model binding → wired in `LLFloaterDirector::postBuild()`; behavior `LLFloaterDirector::onLocomotionRoleChanged()` (`indra/newview/llfloaterdirector.cpp:540`) | none |
 | `locomotion` / `locomotion_speed` (Travel m/s) | `spinner` `indra/newview/skins/default/xui/en/floater_director.xml:789` | `ALAnimateKitAdapter` command/model binding → wired in `LLFloaterDirector::postBuild()`; behavior `LLFloaterDirector::onLocomotionMetadataCommit()` (`indra/newview/llfloaterdirector.cpp:2875`) | none |
 | `locomotion` / `locomotion_phase` (Foot phase) | `spinner` `indra/newview/skins/default/xui/en/floater_director.xml:803` | `ALAnimateKitAdapter` command/model binding → wired in `LLFloaterDirector::postBuild()`; behavior `LLFloaterDirector::onLocomotionMetadataCommit()` (`indra/newview/llfloaterdirector.cpp:2875`) | none |
@@ -125,7 +125,7 @@ None.
 
 ## Rejected out-of-scope same-name candidates
 
-None.
+19 candidates were rejected by the XUI-owner/class scope; exact records and reasons are in `page_sources.json`.
 
 ## New widget required
 

@@ -1,0 +1,6 @@
+// Parser-only fixture; deliberately not a product or build C++ source.
+const char* const side_names[] = { "fx_left", "fx_right" };
+for (const char* name : side_names) {
+    getChild<LLSliderCtrl>(name);
+}
+getChild<LLSliderCtrl>(bare_name);

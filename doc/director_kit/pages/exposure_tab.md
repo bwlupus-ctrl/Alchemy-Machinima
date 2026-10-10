@@ -43,8 +43,8 @@ Use `panel_exposure_hub.xml` controls as kit rows; no curve editor exists.
 | `exposure_hub` / `exp_undo` (Undo) | `button` `indra/newview/skins/default/xui/en/panel_exposure_hub.xml:3` | `ALExposureKitAdapter` command/model binding → wired in `ALPanelExposureHub::postBuild()`; behavior `ALExposureSettingsHistory::undo()` (`indra/newview/alpanelexposurehub.cpp:136`) | none |
 | `exposure_hub` / `exp_redo` (Redo) | `button` `indra/newview/skins/default/xui/en/panel_exposure_hub.xml:4` | `ALExposureKitAdapter` command/model binding → wired in `ALPanelExposureHub::postBuild()`; behavior `ALExposureSettingsHistory::redo()` (`indra/newview/alpanelexposurehub.cpp:137`) | none |
 | `exposure_hub` / `exposure_popout` (Open window) | `button` `indra/newview/skins/default/xui/en/floater_director.xml:1399` | `ALExposureKitAdapter` command/model binding → wired in `LLFloaterDirector::postBuild()`; behavior `LLFloaterReg::showInstance()` (`indra/newview/llfloaterdirector.cpp:590`) | none |
-| `glow_filters` / `exp_bloom_strength` (Bloom strength) | `slider` `indra/newview/skins/default/xui/en/panel_exposure_hub.xml:71` | kit `slider` ↔ `RenderBloomStrength` `F32` | page `bloom_glow_tab` |
-| `glow_filters` / `exp_bloom_threshold` (Threshold) | `slider` `indra/newview/skins/default/xui/en/panel_exposure_hub.xml:73` | kit `slider` ↔ `RenderBloomThreshold` `F32` | page `bloom_glow_tab` |
+| `glow_filters` / `exp_bloom_strength` (Bloom strength) | `slider` `indra/newview/skins/default/xui/en/panel_exposure_hub.xml:71` | kit `slider` ↔ `RenderBloomStrength` `F32` | page `bloom_glow_tab`, `indra/newview/skins/default/xui/en/panel_dpage_look_bloom_glow.xml:13` `set_RenderBloomStrength` |
+| `glow_filters` / `exp_bloom_threshold` (Threshold) | `slider` `indra/newview/skins/default/xui/en/panel_exposure_hub.xml:73` | kit `slider` ↔ `RenderBloomThreshold` `F32` | page `bloom_glow_tab`, `indra/newview/skins/default/xui/en/panel_dpage_look_bloom_glow.xml:16` `set_RenderBloomThreshold` |
 | `glow_filters` / `exp_filters_btn` (All filters) | `button` `indra/newview/skins/default/xui/en/panel_exposure_hub.xml:134` | `ALExposureKitAdapter` command/model binding → wired in `ALPanelExposureHub::postBuild()`; behavior `ALFloaterLightBox::showTab()` (`indra/newview/alpanelexposurehub.cpp:131`) | none |
 
 ## Adapter extraction
@@ -110,7 +110,7 @@ None.
 
 ## Rejected out-of-scope same-name candidates
 
-None.
+1 candidates were rejected by the XUI-owner/class scope; exact records and reasons are in `page_sources.json`.
 
 ## New widget required
 

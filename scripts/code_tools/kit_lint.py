@@ -15,7 +15,8 @@ printed.  An empty tree lints clean.
 
 Error rules (exit 1): kit-geometry, bottom-attr, kit-row-control, kit-kind-tag,
 setting-graph, widget-name, section-cards, setting-home, selector-value,
-generated-header.  Warning rules (exit stays 0): help-audit-term, help-empty.
+generated-header.  Warning rules (exit stays 0): help-audit-term, help-empty,
+pending-wp (only from an explicit, spec-cited kit_pages.json entry).
 Exit 2 is for command-line, XML or input errors.  Standard library only.
 
 Choices where the spec leaves room:
@@ -66,7 +67,7 @@ AUDIT_TERM_RE = re.compile(r"Lightbox|Phototools|\btab\b|type \d|Phase \d|scaffo
 
 GEOMETRY_ATTRS = ("left", "top", "width", "height", "follows", "layout")  # bottom is bottom-attr
 ROW_STRIPPED_ATTRS = ("left", "top", "bottom", "width", "height", "follows", "layout",
-                      "label_width", "text_width", "tab_group")
+                      "label_width", "tab_group")
 LABEL_STRIPPED_TAGS = ("slider", "spinner", "check_box")
 NUMERIC = ("F32", "S32", "U32")
 COMBO = ("S32", "U32", "String")
@@ -318,6 +319,19 @@ def load_allow(kit_dir: Path) -> set[str]:
     return set(json.loads(path.read_text(encoding="utf-8")).get("names", []))
 
 
+def load_policy(kit_dir: Path) -> dict:
+    path = kit_dir / "kit_pages.json"
+    if not path.is_file():
+        return {}
+    data = json.loads(path.read_text(encoding="utf-8"))
+    return {
+        "pending_settings": data.get("pending_settings", {}),
+        "pending_homes": data.get("pending_homes", {}),
+        "shared_writers": data.get("shared_writers", {}),
+        "help_audit_allow": data.get("help_audit_allow", {}),
+    }
+
+
 def sha16(path: Path) -> str | None:
     return hashlib.sha256(path.read_bytes()).hexdigest()[:16] if path.is_file() else None
 
@@ -388,12 +402,23 @@ def check_rows(tree: Tree) -> list[Finding]:
             for attr in stripped:
                 out.append(err(tree, child, "kit-row-control",
                                f"control child <{child.tag}> has stripped attribute '{attr}'"))
+            text_width = child.attrs.get("text_width")
+            if child.tag == "slider":
+                if text_width != "52":
+                    out.append(err(tree, child, "kit-row-control",
+                                   "slider control child needs text_width='52' (P0 spec 3.3)"))
+            elif text_width is not None:
+                out.append(err(tree, child, "kit-row-control",
+                               f"control child <{child.tag}> has stripped attribute 'text_width'"))
     return out
 
 
 def check_setting_ref(tree: Tree, node: Node, name: str, label: str,
-                      allowed: tuple[str, ...] | None, types: dict[str, str]) -> list[Finding]:
+                      allowed: tuple[str, ...] | None, types: dict[str, str],
+                      pending: dict[str, str]) -> list[Finding]:
     if name not in types:
+        if name in pending:
+            return [warn(tree, node, "pending-wp", f"{label} '{name}': {pending[name]}")]
         return [err(tree, node, "setting-graph", f"{label} '{name}' is not in the viewer settings graph")]
     if allowed and types[name] not in allowed:
         return [err(tree, node, "setting-graph",
@@ -401,20 +426,23 @@ def check_setting_ref(tree: Tree, node: Node, name: str, label: str,
     return []
 
 
-def check_settings(tree: Tree, types: dict[str, str]) -> list[Finding]:
+def check_settings(tree: Tree, types: dict[str, str], pending: dict[str, str]) -> list[Finding]:
     out: list[Finding] = []
     for node in tree.root.walk():
         for attr, value in node.attrs.items():
             if attr == "control_name":
-                out += check_setting_ref(tree, node, value, attr, TAG_TYPES.get(node.tag), types)
+                out += check_setting_ref(tree, node, value, attr, TAG_TYPES.get(node.tag), types, pending)
             elif attr == "setting":
-                allowed = KIND_TYPES.get(node.attrs.get("kind", "")) if node.tag == "kit_row" else None
-                out += check_setting_ref(tree, node, value, attr, allowed, types)
+                # A code-bound row uses setting only as watch/reset/amber metadata;
+                # its presentation widget is not a control-variable binding.
+                allowed = (KIND_TYPES.get(node.attrs.get("kind", ""))
+                           if node.tag == "kit_row" and node.attrs.get("bind") != "code" else None)
+                out += check_setting_ref(tree, node, value, attr, allowed, types, pending)
             elif attr in ATTR_TYPES:
-                out += check_setting_ref(tree, node, value, attr, ATTR_TYPES[attr], types)
+                out += check_setting_ref(tree, node, value, attr, ATTR_TYPES[attr], types, pending)
             elif attr in LIST_SETTING_ATTRS:
                 for name in split_list(value):
-                    out += check_setting_ref(tree, node, name, attr, None, types)
+                    out += check_setting_ref(tree, node, name, attr, None, types, pending)
         if node.tag == "kit_row" and node.attrs.get("bind") == "setting":
             controls = [child.attrs.get("control_name") for child in node.children if "control_name" in child.attrs]
             if controls != [node.attrs.get("setting")]:
@@ -453,7 +481,7 @@ def check_options(tree: Tree) -> list[Finding]:
             for node in tree.root.walk() if node.tag == "kit_option" and "value" not in node.attrs]
 
 
-def check_help(tree: Tree) -> list[Finding]:
+def check_help(tree: Tree, allow: dict[str, str]) -> list[Finding]:
     out: list[Finding] = []
     for node in tree.root.walk():
         if "help" not in node.attrs:
@@ -464,6 +492,11 @@ def check_help(tree: Tree) -> list[Finding]:
             continue
         match = AUDIT_TERM_RE.search(text)
         if match:
+            subject = node.attrs.get("widget") or node.attrs.get("name") or ""
+            if subject in allow:
+                if str(allow[subject]).lower().startswith("pending wp"):
+                    out.append(warn(tree, node, "pending-wp", str(allow[subject])))
+                continue
             out.append(warn(tree, node, "help-audit-term",
                             f"help text matches audit term '{match.group(0)}'"))
     return out
@@ -492,6 +525,10 @@ def collect_writers(trees: list[Tree]) -> dict[str, list[Writer]]:
         listed = {card_id for node in tree.root.walk() if node.tag == "kit_page.mode"
                   for card_id in split_list(node.attrs.get("cards"))}
         for node in tree.root.walk():
+            # The lazy shell reads page masters only to draw tab/rail on-pips.
+            # It cannot mutate the setting and is not a second writable home.
+            if node.tag == "kit_lazy_page":
+                continue
             row_node = node.parent if node.parent is not None and node.parent.tag == "kit_row" else None
             card = node if node.tag == "kit_card" else node.ancestor("kit_card")
             easy = node.ancestor("kit_option") is not None or (
@@ -534,14 +571,18 @@ def check_shortcut(w: Writer, home: Writer, home_page: str) -> list[Finding]:
     return out
 
 
-def check_homes(trees: list[Tree], homes: dict[str, str]) -> list[Finding]:
+def check_homes(trees: list[Tree], homes: dict[str, str], pending: dict[str, str],
+                shared: dict[str, str]) -> list[Finding]:
     out: list[Finding] = []
     writers = collect_writers(trees)
     for setting in sorted(writers):
         occurrences = sorted(writers[setting], key=lambda w: (w.tree.name, w.node.line))
+        pages = {w.page for w in occurrences}
         home_page = homes.get(setting)
         if home_page is None:
-            if len(occurrences) > 1:
+            # One-home is a cross-page authorship rule. Easy/Advanced, master,
+            # card-enable and selector occurrences on one page are one home.
+            if len(pages) > 1 and setting not in shared:
                 for w in occurrences[1:]:
                     out.append(err(w.tree, w.node, "setting-home",
                                    f"setting '{setting}' has {len(occurrences)} writers and no home "
@@ -557,8 +598,11 @@ def check_homes(trees: list[Tree], homes: dict[str, str]) -> list[Finding]:
                                    f"second writer of '{setting}' on its home page '{home_page}' (row '{w.row}')"))
         if home is None:
             first = occurrences[0]
-            out.append(err(first.tree, first.node, "setting-home",
-                           f"home page '{home_page}' has no writer of '{setting}'"))
+            if setting in pending:
+                out.append(warn(first.tree, first.node, "pending-wp", pending[setting]))
+            else:
+                out.append(err(first.tree, first.node, "setting-home",
+                               f"home page '{home_page}' has no writer of '{setting}'"))
         for w in occurrences:
             if w is home or (home is not None and w.page == home_page and not w.shortcut):
                 continue
@@ -567,17 +611,19 @@ def check_homes(trees: list[Tree], homes: dict[str, str]) -> list[Finding]:
                                f"unlisted second writer of '{setting}' on '{w.page or w.tree.name}' "
                                f"(home is '{home_page}', not a declared shortcut)"))
             elif home is None:
-                out.append(err(w.tree, w.node, "setting-home",
-                               f"shortcut of '{setting}' has no home writer on '{home_page}'"))
+                if setting not in pending:
+                    out.append(err(w.tree, w.node, "setting-home",
+                                   f"shortcut of '{setting}' has no home writer on '{home_page}'"))
             else:
                 out += check_shortcut(w, home, home_page)
     return out
 
 
-def check_tree(tree: Tree, types: dict[str, str], inputs_sha: tuple[str | None, str | None]) -> list[Finding]:
+def check_tree(tree: Tree, types: dict[str, str], inputs_sha: tuple[str | None, str | None],
+               policy: dict) -> list[Finding]:
     return (check_header(tree, inputs_sha) + check_geometry(tree) + check_bottom(tree)
-            + check_rows(tree) + check_settings(tree, types) + check_cards(tree)
-            + check_options(tree) + check_help(tree))
+            + check_rows(tree) + check_settings(tree, types, policy["pending_settings"]) + check_cards(tree)
+            + check_options(tree) + check_help(tree, policy["help_audit_allow"]))
 
 
 def lint(inputs: Inputs) -> Report:
@@ -588,15 +634,16 @@ def lint(inputs: Inputs) -> Report:
     types, problems = load_settings_graph(inputs.settings_dir)
     homes = load_homes(inputs.page_sources)
     allow = load_allow(inputs.kit_dir)
+    policy = load_policy(inputs.kit_dir)
     inputs_sha = (sha16(inputs.kit_dir / "director_mockup_data.json"), sha16(inputs.kit_dir / "kit_pages.json"))
     findings: list[Finding] = [
         Finding("settings_files.xml", 1, "error", "setting-graph", f"settings include '{name}' is missing")
         for name in problems
     ]
     for tree in trees:
-        findings += check_tree(tree, types, inputs_sha)
+        findings += check_tree(tree, types, inputs_sha, policy)
     findings += check_names(trees, allow)
-    findings += check_homes(trees, homes)
+    findings += check_homes(trees, homes, policy["pending_homes"], policy["shared_writers"])
     findings.sort(key=lambda f: (f.file, f.line, f.rule, f.message))
     return Report([tree.name for tree in trees], findings)
 
@@ -671,6 +718,28 @@ def run_selftest(as_json: bool) -> int:
             ok = any(f.rule == rule and f.severity == severity for f in report.findings)
             detail = f"{len(report.findings)} finding(s), expects {severity} {rule}"
         record(name, ok, detail)
+
+    probe_node = Node("kit_card", {}, 7, None)
+    probe_tree = Tree("policy_fixture.xml", probe_node, "fixture_tab", None)
+    pending = check_setting_ref(probe_tree, probe_node, "FixtureDeferred", "sel_setting",
+                                COMBO, {}, {"FixtureDeferred": "pending WP2: fixture citation"})
+    record("pending_setting_policy",
+           len(pending) == 1 and pending[0].rule == "pending-wp" and pending[0].severity == "warn",
+           "explicit missing setting is reported as pending-wp")
+
+    help_node = Node("kit_row", {"widget": "fixture_launcher", "help": "Open Lightbox."}, 8, None)
+    help_tree = Tree("help_policy_fixture.xml", help_node, "fixture_tab", None)
+    pending_help = check_help(help_tree, {"fixture_launcher": "pending WP10: fixture citation"})
+    allowed_help = check_help(help_tree, {"fixture_launcher": "intentional external editor"})
+    record("help_policy",
+           len(pending_help) == 1 and pending_help[0].rule == "pending-wp" and not allowed_help,
+           "pending help is reported; intentional external-editor help is explicitly allowed")
+
+    lazy_node = Node("kit_lazy_page", {"master_setting": "FixtureEnabled"}, 9, None)
+    lazy_tree = Tree("lazy_policy_fixture.xml", lazy_node, "", None)
+    record("lazy_master_observer",
+           "FixtureEnabled" not in collect_writers([lazy_tree]),
+           "lazy-page master metadata is not a writable home")
 
     with tempfile.TemporaryDirectory() as empty:
         report = lint(Inputs(Path(empty), kit, settings, homes))

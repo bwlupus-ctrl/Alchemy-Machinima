@@ -1,8 +1,15 @@
 <?xml version="1.0" encoding="utf-8" standalone="yes" ?>
 <!-- Parity fixture: selector options with a wrong value, no value, a label not in v1, and a value 40 that v1 never has (check 4). -->
 <floater name="fx_v2_options">
- <kit_option label="Alpha" value="2"/>
- <kit_option label="Gamma"/>
- <kit_option label="Delta" value="9"/>
- <kit_option label="Cine 40" value="40"/>
+ <kit_card sel_setting="FxComboSetting">
+  <kit_option label="Alpha" value="2"/>
+  <kit_option label="Gamma"/>
+  <kit_option label="Delta" value="9"/>
+ </kit_card>
+ <kit_card sel_setting="FxCineSetting">
+  <kit_option label="Cine 40" value="40"/>
+ </kit_card>
+ <kit_card sel_setting="FxNewSelector">
+  <kit_option label="Key" value="0"/>
+ </kit_card>
 </floater>

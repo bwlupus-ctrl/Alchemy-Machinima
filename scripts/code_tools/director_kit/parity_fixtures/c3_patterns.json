@@ -1,1 +1,2 @@
-{"patterns": [{"template": "fx_{side}", "side": ["left", "right"]}]}
+{"patterns": [{"template": "fx_{side}", "side": ["left", "right"]}],
+ "expressions": [{"expression": "bare_name", "names": ["fx_slider"]}]}

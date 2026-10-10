@@ -3,7 +3,7 @@
 <panel name="fail_setting_home_logic">
   <kit_page name="fail_setting_home_kit" page="light_group/cine_light_rig_tab">
     <kit_row kind="slider" widget="cine_exposure_copy" label="Exposure" setting="FixtureRenderExposure" bind="setting" min_val="-2" max_val="2" decimals="2" unit="EV" help="Copy of the exposure.">
-      <slider name="cine_exposure_copy" control_name="FixtureRenderExposure" min_val="-2" max_val="2" increment="0.1" decimal_digits="2"/>
+      <slider name="cine_exposure_copy" control_name="FixtureRenderExposure" min_val="-2" max_val="2" increment="0.1" decimal_digits="2" show_text="true" text_width="52"/>
     </kit_row>
   </kit_page>
 </panel>

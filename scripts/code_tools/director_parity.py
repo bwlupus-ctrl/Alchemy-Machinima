@@ -9,14 +9,13 @@ Checks (DIRECTOR_KIT_P0_SPEC.md section 6.2 unless noted):
      (shortcut_of) are ordinary bindings and duplicate bindings are not reported here
   3  every getChild/findChild literal and expanded prefix/suffix pattern exists in v2 with a
      class compatible with the requested type (section 4.4, cpp_name_patterns.json)
-  4  every selector kit_option carries a value that equals a v1 combo item value with the
-     same label (sections 3.4 and 6.1 rule 10); unmatched labels need a parity_allow entry
-     keyed "option:<label>"
+  4  every selector that replaces a v1 combo carries values equal to that combo's item
+     values (sections 3.4 and 6.1 rule 10). New selectors have no v1 combo oracle.
 
-v1 scope comes from doc/director_kit/page_sources.json owner roots (ROLLOUT spec section 6).
-A page's owner is scoped to its leaf element when one is named after the page (for example
-floater_director.xml's exposure_tab); a shared panel root is taken whole; a floater owner
-such as floater_lightbox_settings.xml contributes only the widgets the page's rows name.
+The P0 gate is exactly ``--groups light_group`` and its v1 scope is the recursively expanded
+Director leaf tree required by P0 spec section 6.2. ``--all`` is a rollout-status command:
+it validates the two P0 pages and reports each remaining page as pending its WP7-WP11 owner,
+rather than misreporting hundreds of expected pre-conversion differences as parity defects.
 
 Usage::
 
@@ -53,7 +52,14 @@ KIT_PAGES = KIT_DIR / "kit_pages.json"
 CPP_PATTERNS = KIT_DIR / "cpp_name_patterns.json"
 GEN_REPORT = KIT_DIR / "gen_report.txt"
 V2_FLOATER = "floater_director_v2.xml"
+V1_FLOATER = XUI_DIR / "floater_director.xml"
 EXPECTED_PAGES = 35
+ROLLOUT_WP = {
+    "cast_group": "WP7", "perf_group": "WP8",
+    "camera_group": "WP9", "lens_group": "WP9",
+    "light_group": "WP10", "look_group": "WP10",
+    "world_group": "WP11", "capture_group": "WP11",
+}
 
 NAME_TAGS = frozenset({
     "slider", "spinner", "check_box", "combo_box", "button", "line_editor",
@@ -111,6 +117,7 @@ class ComboItem:
     label: str
     value: str
     source: str
+    selector: Optional[str] = None
 
 
 @dataclass(frozen=True)
@@ -118,6 +125,7 @@ class OptionRef:
     label: str
     value: Optional[str]
     source: str
+    selector: Optional[str] = None
 
 
 @dataclass(frozen=True)
@@ -214,6 +222,15 @@ def load_expansions(path: Path) -> list:
                 name = name.replace("{" + hole + "}", str(value))
             names.add(name)
     return sorted(names)
+
+
+def load_expression_expansions(path: Path) -> dict[str, tuple]:
+    """Explicit concrete names for a bare C++ expression that has no literal prefix/suffix."""
+    data = _load_json(path, required=False) or {}
+    out = {}
+    for item in data.get("expressions", []):
+        out[str(item["expression"])] = tuple(str(name) for name in item.get("names", []))
+    return out
 
 
 def load_kitnames(path: Path, keys: Optional[set]) -> dict:
@@ -328,11 +345,18 @@ def widgets_from(elements) -> list:
 
 
 def combo_items(elements) -> list:
-    return [
-        ComboItem((element.get("label") or "").strip(), (element.get("value") or "").strip(),
-                  _rel(source))
-        for element, source in elements if element.tag == "combo_box.item"
-    ]
+    out = []
+    for element, source in elements:
+        if element.tag != "combo_box.item":
+            continue
+        parent = next((candidate for candidate, _ in elements
+                       if element in list(candidate)), None)
+        selector = None
+        if parent is not None and parent.tag == "combo_box":
+            selector = (parent.get("control_name") or parent.get("name") or "").strip() or None
+        out.append(ComboItem((element.get("label") or "").strip(),
+                             (element.get("value") or "").strip(), _rel(source), selector))
+    return out
 
 
 def row_names(page: dict, owner_rel: str) -> frozenset:
@@ -368,11 +392,18 @@ def build_v2_index(cache: XmlCache, files, kitnames: dict) -> V2Index:
             control = (element.get("control_name") or "").strip()
             if control:
                 index.controls.add(control)
+            for attr in ("enable_setting", "master_setting", "mode_setting", "sel_setting"):
+                bound = (element.get(attr) or "").strip()
+                if bound:
+                    index.controls.add(bound)
             if element.tag == "kit_option":
                 value = element.get("value")
+                parent = cache.parents.get(element)
+                selector = ((parent.get("sel_setting") or "").strip()
+                            if parent is not None and parent.tag == "kit_card" else "") or None
                 index.options.append(OptionRef((element.get("label") or "").strip(),
                                                value.strip() if value is not None else None,
-                                               _rel(source)))
+                                               _rel(source), selector))
     for name, tags in kitnames.items():
         index.tags.setdefault(name, set()).update(tags)
         if "*" in tags or tags & (NAME_TAGS | V2_EXTRA_NAME_TAGS):
@@ -407,14 +438,51 @@ def _classify(requested: str, args: str, source: str, line: int, expansions: lis
     return GetChildRequest(source, line, requested, names, args, not names)
 
 
-def extract_getchild(text: str, source: str, expansions: list) -> list:
+def extract_getchild(text: str, source: str, expansions: list,
+                     expression_expansions: Optional[dict] = None) -> list:
     out = []
+    expression_expansions = expression_expansions or {}
+    arrays = {}
+    array_re = re.compile(
+        r"(?:static\s+)?const\s+char\s*\*\s*const\s+(\w+)\s*(?:\[[^\]]*\])?\s*=\s*\{(.*?)\};",
+        re.DOTALL)
+    for array in array_re.finditer(text):
+        arrays[array.group(1)] = tuple(LITERAL.findall(array.group(2)))
     for match in GETCHILD_CALL.finditer(text):
         args = _balanced_args(text, match.end())
         if args is None:
             continue
         line = text.count("\n", 0, match.start()) + 1
-        out.append(_classify(match.group(1).split("::")[-1], args, source, line, expansions))
+        names = expression_expansions.get(args.strip())
+        indexed = re.fullmatch(r"(\w+)\s*\[[^\]]+\]", args.strip())
+        if names is None and indexed:
+            names = arrays.get(indexed.group(1))
+        if names is None and re.fullmatch(r"\w+", args.strip()):
+            loop_re = re.compile(r"for\s*\([^:]+\b" + re.escape(args.strip()) +
+                                 r"\s*:\s*(\w+)\s*\)")
+            loops = list(loop_re.finditer(text, 0, match.start()))
+            for loop in reversed(loops):
+                brace = text.find("{", loop.end(), match.start() + 1)
+                if brace < 0:
+                    continue
+                depth = 0
+                close = None
+                for pos in range(brace, len(text)):
+                    if text[pos] == "{":
+                        depth += 1
+                    elif text[pos] == "}":
+                        depth -= 1
+                        if depth == 0:
+                            close = pos
+                            break
+                if close is not None and match.start() < close:
+                    names = arrays.get(loop.group(1))
+                    break
+        if names:
+            out.append(GetChildRequest(source, line, match.group(1).split("::")[-1],
+                                       tuple(names), args, False))
+        else:
+            out.append(_classify(match.group(1).split("::")[-1], args, source, line, expansions))
     return out
 
 
@@ -463,8 +531,11 @@ def check_controls(a_controls: set, b_controls: set, allow: Allow, allowed: list
     return out
 
 
-def check_getchild(requests: list, tags: dict) -> list:
+def check_getchild(requests: list, tags: dict, allow: Optional[Allow] = None,
+                   allowed: Optional[list] = None) -> list:
     out = []
+    allow = allow or Allow({})
+    allowed = allowed if allowed is not None else []
     for request in requests:
         where = f"{request.source}:{request.line} getChild<{request.requested}>"
         if request.unresolved:
@@ -474,7 +545,11 @@ def check_getchild(requests: list, tags: dict) -> list:
         for name in request.names:
             actual = tags.get(name)
             if actual is None:
-                out.append(Finding("3", name, f"{where} name is missing from v2"))
+                reason = allow.match(name)
+                if reason is not None:
+                    allowed.append({"check": "3", "subject": name, "reason": reason})
+                else:
+                    out.append(Finding("3", name, f"{where} name is missing from v2"))
             elif (request.requested in CLASS_TAGS and "*" not in actual
                   and not (actual & CLASS_TAGS[request.requested])):
                 out.append(Finding("3", name, f"{where} but v2 tag is {sorted(actual)}"))
@@ -482,15 +557,20 @@ def check_getchild(requests: list, tags: dict) -> list:
 
 
 def check_options(items: list, options: list, allow: Allow, allowed: list) -> list:
-    values_by_label: dict = {}
+    values_by_selector_label: dict = {}
     for item in items:
-        values_by_label.setdefault(item.label, set()).add(item.value)
+        values_by_selector_label.setdefault((item.selector, item.label), set()).add(item.value)
+    replacement_selectors = {item.selector for item in items if item.selector}
     out = []
     for option in options:
         if not option.value:
             out.append(Finding("4", option.label, f"selector option has no value ({option.source})"))
             continue
-        values = values_by_label.get(option.label)
+        # A new selector has no v1 combo contract to round-trip.  Check 4 is
+        # only for a selector that replaces a v1 combo with the same setting.
+        if option.selector not in replacement_selectors:
+            continue
+        values = values_by_selector_label.get((option.selector, option.label))
         if not values:
             reason = allow.match("option:" + option.label)
             if reason is not None:
@@ -516,7 +596,8 @@ def _report(label: str, pages: list, status: str, findings: list, allowed: list,
     }
 
 
-def evaluate(paths: Paths, groups: Optional[list]) -> dict:
+def evaluate(paths: Paths, groups: Optional[list], p0_scope: bool = False,
+             rollout_status: bool = False) -> dict:
     pages_all = load_pages(paths.page_sources)
     known_groups = {str(page.get("group")) for page in pages_all}
     if groups is None:
@@ -534,19 +615,38 @@ def evaluate(paths: Paths, groups: Optional[list]) -> dict:
     allow = load_allow(paths)
     cache = XmlCache()
 
+    active = selected
+    if p0_scope and rollout_status:
+        cfg = _load_json(paths.kit_pages, required=False) or {}
+        p0_keys = {key.rsplit("/", 1)[-1] for key in cfg.get("p0_pages", {})}
+        active = [page for page in selected if str(page["key"]) in p0_keys]
+        for page in selected:
+            if str(page["key"]) in p0_keys:
+                continue
+            wp = ROLLOUT_WP.get(str(page.get("group")), "WP6+")
+            findings.append(Finding("P", str(page["key"]),
+                                    f"pending {wp}: rollout conversion/parity is not part of the P0 gate "
+                                    "(DIRECTOR_KIT_ROLLOUT_SPEC.md section 7)"))
+
     v1_widgets: list = []
     v1_items: list = []
-    for page in selected:
-        for owner in page.get("owner_roots", []) or []:
-            owner_path = _resolve(owner["file"])
-            if not owner_path.is_file():
-                raise ParityError(f"owner file missing: {owner['file']}")
-            elements, _scope = scope_elements(cache, owner_path, str(page["key"]),
-                                              row_names(page, owner["file"]))
+    for page in active:
+        if p0_scope:
+            elements, _scope = scope_elements(cache, V1_FLOATER, str(page["key"]))
             v1_widgets.extend(widgets_from(elements))
             v1_items.extend(combo_items(elements))
+        else:
+            for owner in page.get("owner_roots", []) or []:
+                owner_path = _resolve(owner["file"])
+                if not owner_path.is_file():
+                    raise ParityError(f"owner file missing: {owner['file']}")
+                elements, _scope = scope_elements(cache, owner_path, str(page["key"]),
+                                                  row_names(page, owner["file"]))
+                v1_widgets.extend(widgets_from(elements))
+                v1_items.extend(combo_items(elements))
 
     expansions = load_expansions(paths.patterns)
+    expression_expansions = load_expression_expansions(paths.patterns)
     refs = set(expansions)
     refs |= cpp_literals(paths.ref_sources if paths.ref_sources is not None else default_ref_sources())
     kept = [w for w in v1_widgets if not (w.name.endswith("_reset") and w.name not in refs)]
@@ -561,13 +661,14 @@ def evaluate(paths: Paths, groups: Optional[list]) -> dict:
         return _report(label, keys, status, findings, [], counts)
 
     page_files = []
-    for page in selected:
+    for page in active:
         name = page_file_name(page)
         if (paths.xui_dir / name).is_file():
             page_files.append(paths.xui_dir / name)
         else:
             findings.append(Finding("0", name, "v2 page file is missing"))
-    kitnames = load_kitnames(paths.gen_report, set(keys) if groups is not None else None)
+    active_keys = {str(page["key"]) for page in active}
+    kitnames = load_kitnames(paths.gen_report, active_keys)
     index = build_v2_index(cache, [v2_floater] + page_files, kitnames)
     counts.update(v2_names=len(index.names), kit_options=len(index.options))
 
@@ -575,10 +676,15 @@ def evaluate(paths: Paths, groups: Optional[list]) -> dict:
     findings += check_names(a_names, index.names, allow, allowed)
     findings += check_controls(a_controls, index.controls, allow, allowed)
     requests: list = []
-    for path in cpp_sources(selected):
-        requests += extract_getchild(read_text(path), _rel(path), expansions)
+    cpp_pages = active
+    if p0_scope:
+        cfg = _load_json(paths.kit_pages, required=False) or {}
+        p0_keys = {key.rsplit("/", 1)[-1] for key in cfg.get("p0_pages", {})}
+        cpp_pages = [page for page in active if str(page["key"]) in p0_keys]
+    for path in cpp_sources(cpp_pages):
+        requests += extract_getchild(read_text(path), _rel(path), expansions, expression_expansions)
     counts["getchild_requests"] = len(requests)
-    findings += check_getchild(requests, index.tags)
+    findings += check_getchild(requests, index.tags, allow, allowed)
     findings += check_options(v1_items, index.options, allow, allowed)
     status = "FAIL" if findings else "PASS"
     return _report(label, keys, status, findings, allowed, counts)
@@ -679,6 +785,11 @@ def selftest() -> int:
     # Check 3 (getChild, class, patterns)
     reqs = extract_getchild(read_text(fx("c3_pass.cpp")), "c3_pass.cpp", expansions)
     expect("check 3 extraction: six lookups including fx_ + side", len(reqs) == 6, len(reqs))
+    array_reqs = extract_getchild(read_text(fx("c3_array.fixture")), "c3_array.fixture", expansions,
+                                  load_expression_expansions(fx("c3_patterns.json")))
+    expect("check 3 extraction: literal array and explicit bare expression",
+           len(array_reqs) == 2 and all(not r.unresolved for r in array_reqs),
+           [(r.text, r.unresolved) for r in array_reqs])
     expect("check 3 pass", check_getchild(reqs, idx_pass.tags) == [])
     f3c = check_getchild(extract_getchild(read_text(fx("c3_fail_class.cpp")), "c3_fail_class.cpp",
                                           expansions), idx_pass.tags)
@@ -689,6 +800,13 @@ def selftest() -> int:
                                           exp_missing), idx_pass.tags)
     expect("check 3 fail: missing literal and missing expanded pattern",
            sorted(f.subject for f in f3m) == ["fx_middle", "fx_nothere"], [f.subject for f in f3m])
+    allowed = []
+    f3a = check_getchild(extract_getchild(read_text(fx("c3_fail_missing.cpp")),
+                                          "c3_fail_missing.cpp", exp_missing),
+                         idx_pass.tags, Allow({"fx_nothere": "fixture retired control"}), allowed)
+    expect("check 3 allow: an explicitly retired getChild target carries its reason",
+           [f.subject for f in f3a] == ["fx_middle"] and allowed[0]["reason"] == "fixture retired control",
+           ([f.subject for f in f3a], allowed))
     f3d = check_getchild(extract_getchild(read_text(fx("c3_fail_dynamic.cpp")), "c3_fail_dynamic.cpp",
                                           expansions), idx_pass.tags)
     expect("check 3 fail: unexpanded dynamic lookups reported",
@@ -770,7 +888,10 @@ def main(argv: Optional[list] = None) -> int:
             groups = [g.strip() for g in args.groups.split(",") if g.strip()]
             if not groups:
                 raise ParityError("--groups needs at least one group")
-        report = evaluate(Paths(), groups)
+        if groups is not None and groups != ["light_group"]:
+            raise ParityError("the P0 parity gate is --groups light_group (P0 spec 6.2); "
+                              "use --all only for explicit WP7-WP11 rollout status")
+        report = evaluate(Paths(), groups, p0_scope=True, rollout_status=(groups is None))
     except ParityError as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 2

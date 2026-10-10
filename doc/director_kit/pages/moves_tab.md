@@ -21,19 +21,19 @@ Use the existing XUI control types as ordinary measured kit rows. No new canvas,
 | Card / row | Existing control evidence | Required binding | Other writable homes |
 |---|---|---|---|
 | `ots` / `btn_build_ots_pair` (Build OTS) | `button` `indra/newview/skins/default/xui/en/floater_director.xml:1151` | `ALCameraMoveKitAdapter` command/model binding → wired in `LLFloaterDirector::postBuild()`; behavior `LLFloaterDirector::onClickBuildOtsPair()` (`indra/newview/llfloaterdirector.cpp:606`) | none |
-| `ots` / `prism_ots_shoulder` (Shoulder) | `spinner` `indra/newview/skins/default/xui/en/floater_director.xml:1156` | kit `number` ↔ `PrismOtsShoulderOffset` `F32` | none |
-| `ots` / `prism_ots_distance` (Distance) | `spinner` `indra/newview/skins/default/xui/en/floater_director.xml:1160` | kit `number` ↔ `PrismOtsCameraDistance` `F32` | none |
-| `ots` / `prism_ots_fov` (Lens FOV) | `spinner` `indra/newview/skins/default/xui/en/floater_director.xml:1164` | kit `number` ↔ `PrismOtsVerticalFovDeg` `F32` | none |
-| `ots` / `prism_ots_height_bias` (Height bias) | `spinner` `indra/newview/skins/default/xui/en/floater_director.xml:1168` | kit `number` ↔ `PrismOtsHeightBias` `F32` | none |
+| `ots` / `prism_ots_shoulder` (Shoulder) | `spinner` `indra/newview/skins/default/xui/en/floater_director.xml:1156` | kit `number` ↔ `PrismOtsShoulderOffset` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_camera_moves.xml:12` `prism_ots_shoulder` |
+| `ots` / `prism_ots_distance` (Distance) | `spinner` `indra/newview/skins/default/xui/en/floater_director.xml:1160` | kit `number` ↔ `PrismOtsCameraDistance` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_camera_moves.xml:13` `prism_ots_distance` |
+| `ots` / `prism_ots_fov` (Lens FOV) | `spinner` `indra/newview/skins/default/xui/en/floater_director.xml:1164` | kit `number` ↔ `PrismOtsVerticalFovDeg` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_camera_moves.xml:14` `prism_ots_fov` |
+| `ots` / `prism_ots_height_bias` (Height bias) | `spinner` `indra/newview/skins/default/xui/en/floater_director.xml:1168` | kit `number` ↔ `PrismOtsHeightBias` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_camera_moves.xml:15` `prism_ots_height_bias` |
 | `dolly_zoom` / `btn_start_zolly` (Start Zolly) | `button` `indra/newview/skins/default/xui/en/floater_director.xml:1170` | `ALCameraMoveKitAdapter` command/model binding → wired in `LLFloaterDirector::postBuild()`; behavior `LLFloaterDirector::onClickZolly()` (`indra/newview/llfloaterdirector.cpp:608`) | none |
-| `dolly_zoom` / `zolly_duration` (Duration) | `spinner` `indra/newview/skins/default/xui/en/floater_director.xml:1175` | kit `number` ↔ `CinematicCamVertigoDuration` `F32` | page `shot_tab`, `indra/newview/skins/default/xui/en/panel_cinecam_params.xml:517` `CinematicCamVertigoDuration` |
-| `dolly_zoom` / `zolly_direction` (Direction) | `combo_box` `indra/newview/skins/default/xui/en/floater_director.xml:1178` | kit `combo` ↔ `CinematicCamVertigoDirection` `S32` | page `shot_tab` |
+| `dolly_zoom` / `zolly_duration` (Duration) | `spinner` `indra/newview/skins/default/xui/en/floater_director.xml:1175` | kit `number` ↔ `CinematicCamVertigoDuration` `F32` | page `shot_tab`, `indra/newview/skins/default/xui/en/panel_cinecam_params.xml:517` `CinematicCamVertigoDuration`, `indra/newview/skins/default/xui/en/panel_dpage_camera_moves.xml:17` `zolly_duration` |
+| `dolly_zoom` / `zolly_direction` (Direction) | `combo_box` `indra/newview/skins/default/xui/en/floater_director.xml:1178` | kit `combo` ↔ `CinematicCamVertigoDirection` `S32` | page `shot_tab`, `indra/newview/skins/default/xui/en/panel_dpage_camera_moves.xml:18` `zolly_direction` |
 | `hero_arc` / `btn_start_hero_arc` (Start Arc) | `button` `indra/newview/skins/default/xui/en/floater_director.xml:1183` | `ALCameraMoveKitAdapter` command/model binding → wired in `LLFloaterDirector::postBuild()`; behavior `LLFloaterDirector::onClickHeroArc()` (`indra/newview/llfloaterdirector.cpp:610`) | none |
-| `hero_arc` / `hero_arc_angle` (Angle) | `spinner` `indra/newview/skins/default/xui/en/floater_director.xml:1188` | kit `number` ↔ `CinematicCamArcGeneratorAngle` `F32` | page `shot_tab` |
-| `hero_arc` / `hero_arc_duration` (Duration) | `spinner` `indra/newview/skins/default/xui/en/floater_director.xml:1192` | kit `number` ↔ `CinematicCamArcDuration` `F32` | page `shot_tab`, `indra/newview/skins/default/xui/en/panel_cinecam_params.xml:734` `CinematicCamArcDuration` |
-| `hero_arc` / `hero_arc_height_drift` (Height drift) | `spinner` `indra/newview/skins/default/xui/en/floater_director.xml:1196` | kit `number` ↔ `CinematicCamArcHeightDrift` `F32` | page `shot_tab` |
-| `hero_arc` / `hero_arc_speed_ramp` (Speed ramp) | `check_box` `indra/newview/skins/default/xui/en/floater_director.xml:1199` | kit `toggle` ↔ `CinematicCamSpeedRampEnabled` `Boolean` | none |
-| `hero_arc` / `hero_arc_ramp_strength` (Ramp strength) | `spinner` `indra/newview/skins/default/xui/en/floater_director.xml:1204` | kit `number` ↔ `CinematicCamSpeedRampStrength` `F32` | none |
+| `hero_arc` / `hero_arc_angle` (Angle) | `spinner` `indra/newview/skins/default/xui/en/floater_director.xml:1188` | kit `number` ↔ `CinematicCamArcGeneratorAngle` `F32` | page `shot_tab`, `indra/newview/skins/default/xui/en/panel_dpage_camera_moves.xml:23` `hero_arc_angle` |
+| `hero_arc` / `hero_arc_duration` (Duration) | `spinner` `indra/newview/skins/default/xui/en/floater_director.xml:1192` | kit `number` ↔ `CinematicCamArcDuration` `F32` | page `shot_tab`, `indra/newview/skins/default/xui/en/panel_cinecam_params.xml:734` `CinematicCamArcDuration`, `indra/newview/skins/default/xui/en/panel_dpage_camera_moves.xml:24` `hero_arc_duration` |
+| `hero_arc` / `hero_arc_height_drift` (Height drift) | `spinner` `indra/newview/skins/default/xui/en/floater_director.xml:1196` | kit `number` ↔ `CinematicCamArcHeightDrift` `F32` | page `shot_tab`, `indra/newview/skins/default/xui/en/panel_dpage_camera_moves.xml:25` `hero_arc_height_drift` |
+| `hero_arc` / `hero_arc_speed_ramp` (Speed ramp) | `check_box` `indra/newview/skins/default/xui/en/floater_director.xml:1199` | kit `toggle` ↔ `CinematicCamSpeedRampEnabled` `Boolean` | `indra/newview/skins/default/xui/en/panel_dpage_camera_moves.xml:26` `hero_arc_speed_ramp` |
+| `hero_arc` / `hero_arc_ramp_strength` (Ramp strength) | `spinner` `indra/newview/skins/default/xui/en/floater_director.xml:1204` | kit `number` ↔ `CinematicCamSpeedRampStrength` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_camera_moves.xml:27` `hero_arc_ramp_strength` |
 
 ## Adapter extraction
 
@@ -82,7 +82,7 @@ None.
 
 ## Rejected out-of-scope same-name candidates
 
-None.
+14 candidates were rejected by the XUI-owner/class scope; exact records and reasons are in `page_sources.json`.
 
 ## New widget required
 

@@ -235,8 +235,17 @@ def model_binding_override(page: str, widget: str) -> dict | None:
         "pattern": f'prefix + "_{suffix}"', "text": "role-indexed model binding",
     }
 
-# This is deliberately checked against the settings duplicated by the data.
-# A new duplicate cannot silently acquire two writable homes.
+# Page masters are canonical writable homes even when the same source control
+# also labels an in-page card.  The generator de-binds that card occurrence;
+# kit_lazy_page.master_setting is observation metadata for the tab/rail pip.
+PAGE_MASTER_HOMES = {
+    "CineLightRigEnabled": "cine_light_rig_tab",
+    "CineRigRimEnabled": "light_rim_tab",
+}
+
+# This is deliberately checked against the settings duplicated by the data,
+# plus the explicit page-master homes above.  A new duplicate cannot silently
+# acquire two writable homes.
 WRITABLE_HOMES = {
     "ActorMoverEndMode": "move_tab",
     "AlchemyRenderTonemapType": "exposure_tab",
@@ -260,6 +269,7 @@ WRITABLE_HOMES = {
     "RenderBloomThreshold": "bloom_glow_tab",
     "RenderExposure": "exposure_tab",
     "TemporalWorldScale": "temporal_tab",
+    **PAGE_MASTER_HOMES,
 }
 
 EXPECTED_SHORTCUTS = {
@@ -875,6 +885,7 @@ def flatten_data() -> tuple[list[dict], list[dict], int]:
                 "group": group["name"],
                 "group_label": group["label"],
                 "order": [group_index, page_index],
+                "master_setting": (page.get("master") or {}).get("s"),
             }
             pages.append(page_record)
             for card_index, card in enumerate(page.get("cards", [])):
@@ -950,6 +961,9 @@ def build_index() -> dict:
 
     page_rows: dict[str, list[dict]] = collections.defaultdict(list)
     setting_pages: dict[str, set[str]] = collections.defaultdict(set)
+    for page in pages:
+        if page["master_setting"]:
+            setting_pages[page["master_setting"]].add(page["key"])
     resolved_rows: list[dict] = []
     for raw in raw_rows:
         page_key = raw["page"]["key"]
@@ -1143,9 +1157,10 @@ def build_index() -> dict:
                 "writable_home": WRITABLE_HOMES.get(setting),
             })
     duplicate_settings = {setting for setting, page_set in setting_pages.items() if len(page_set) > 1}
-    if duplicate_settings != set(WRITABLE_HOMES):
-        missing = sorted(duplicate_settings - set(WRITABLE_HOMES))
-        stale = sorted(set(WRITABLE_HOMES) - duplicate_settings)
+    expected_homes = duplicate_settings | set(PAGE_MASTER_HOMES)
+    if expected_homes != set(WRITABLE_HOMES):
+        missing = sorted(expected_homes - set(WRITABLE_HOMES))
+        stale = sorted(set(WRITABLE_HOMES) - expected_homes)
         raise RuntimeError(f"writable-home table differs from data conflicts; missing={missing}, stale={stale}")
     for setting, home in WRITABLE_HOMES.items():
         if home not in setting_pages[setting]:
