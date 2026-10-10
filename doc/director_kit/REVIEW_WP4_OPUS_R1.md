@@ -174,3 +174,84 @@ Dynamic visibility and header presets:
   - `resetPage` and the row idle one-shot use `LLHandle`s;
   - `mMirrorConnection`, `mMirrorCommitConnection` and `mEasyModeConnection` are `scoped_connection` members, disconnected before children are deleted;
   - the `cine_rig_slot` context lambda captures nothing panel-owned.
+
+---
+
+## R1 verification (commit `9777bfe2589`)
+
+Verdict: **FIX-NEEDED**, with 0 BLOCKER, 1 MAJOR (new) and 2 MINOR (new). Every R1 finding except m7 is fixed (m7, the style pass, is deferred to clang-format).
+
+### R1 findings
+
+| ID | Status | Evidence |
+|---|---|---|
+| B1 | **FIXED** | (1) `applyEasyMode` (`alpanelcinelightrig.cpp:2103`) returns early under `mSyncingEasyControls`/`mApplyingEasyMode`, writes only for `USER`, and brackets that `setBOOL` with `mApplyingEasyMode`. (2) `syncEasyModeState` is guarded by the same flags. (3) The page flip callback is guarded by `mUpdatingModeSwitch` (`alkitpage.cpp:359`), and `setModeIndex` holds that guard across the adapter call and its `setValue`. Re-walked cases: page build/RESTORE on a non-native look keeps the preference; v1 checkbox with the v2 page built enters Easy; v2 USER entry runs `normalizeSelectedForEasy(true)`; a refusal keeps the preference. The only `CineLightRigEasyMode` writers left are `applyEasyMode(USER)`, the v1 `control_name` checkbox, history replay and the self-test restore. |
+| M1 | **FIXED** | `:2136` `normalizeSelectedForEasy(explicit_entry)` runs on every activating edge, so the passive fold and Key-on are back. |
+| M2 | **FIXED as specified** (but see N1) | `revealCard` (`alkitpage.cpp:831`) skips the mode change when the card is listed in the current mode. |
+| M3 | **FIXED** | `onAnchorSelected` returns before the suspend and barrier when the slot is unchanged. |
+| m1 | FIXED | Dead registration removed; the page-key context still applies. |
+| m2 | FIXED | `WP4_STATUS.md` rewritten. However, trace 2 step 4 is still inaccurate (N1). |
+| m3 | FIXED | `moreState()` stores and restores per option value; the legacy bool form falls back to fill. |
+| m4 | FIXED | `ALKitRow::setControlVisible` falls back to `setVisibleIfChanged` outside a row, so v1 is unchanged. |
+| m5 | FIXED | Private `EasyModeOrigin`; the kit include is gone from the v1 header. |
+| m6 | FIXED | Anchored `ALKitPopover` parented to the shell. The handle-guarded confirm calls `performPageReset`; Cancel only hides. |
+
+### Contract check
+
+| # | Clause | Result |
+|---|---|---|
+| (1) | v1 byte-identical | Behaviourally identical. Not byte-identical: see N2. |
+| (2) | Writers limited | PASS |
+| (3) | v2 user entry normalizes | PASS |
+| (4) | Passive Advanced display keeps the preference | PASS |
+| (5) | `revealCard` flips only when needed, passively | Flips only when the card is absent and writes nothing, but **does not stick**: see N1 |
+| (6) | No no-op steps | `addEntry` rejects old==new and `finishGesture` drops empty Steps, so no no-op Steps. But unsolicited Steps are possible: see N2. |
+
+### Trace re-walk
+
+- **Trace 2 (toggle Easy → cards), user path: TRUE.** Shell segment → `setModeIndex(i,true)` (guard on) → `applyEasyMode(USER)` → the guarded `setBOOL` is recorded once in the user gesture, and the panel's signal handler and flip callback both no-op → `syncEasyModeState(USER)` (no early return) → `normalize(true)` → `syncEasyControls` → `setValue` → `syncEffectiveMode` → 4 or 15 cards.
+- **Trace 2 step 4 (search reveal): FALSE.** See N1.
+- **Spot checks:**
+  - Trace 1: TRUE, code unchanged.
+  - Trace 3: TRUE. The `addEntry` guard does not affect coalescing.
+  - Trace 4: TRUE.
+  - Trace 5: TRUE via the popover. One MOUSE gesture opens on the Reset click.
+  - Trace 6: TRUE, and a same-slot rail click no longer clears undo.
+
+### New findings
+
+**N1 (MAJOR): a search reveal into the other mode is reverted on the next frame, so the revealed card disappears.**
+
+How the reveal itself works:
+- `revealCard` → `setModeIndex(i,false)` → `adapter(on,PASSIVE)`.
+- This now writes nothing (correct). `syncEasyModeState(on,PASSIVE)` sets `mEasyModeActive=on` and the page shows the other card set.
+
+What happens next:
+- On the very next `ALPanelCineLightRig::draw()` (`:2742`), `syncEasyModeForSelected()` (`:2751`) re-derives the mode from the unchanged preference: `effective = pref && native`.
+- It sees `effective != mEasyModeActive` and flips back. `syncEasyControls` → switch `setValue` → flip callback → `syncEffectiveMode`.
+
+Examples:
+- With the preference on Easy and an Easy-native look, searching an Advanced-only control (Fixture, Cookie, Flare, Night mask, Setups) shows Advanced for one frame, then Easy again. The hit card is hidden and the flash and scroll are lost.
+- In the other direction (preference Advanced, search Brightness/Drama/Warmth/Easy probe), the reveal never sticks.
+- So the WP4 requirement "mode proxy driving `cine_easy_mode` … passively (search)" and contract (5) are not met.
+- `WP4_TRACES` step 4 ("changes display passively") describes one frame only.
+
+Fix: give the panel a session-only display override for search, separate from the preference:
+- Pass a distinct `SEARCH` origin. `setModeIndex(i,false)` from `revealCard` passes `ALKitModeAdapters::SEARCH`, and the adapter maps it to a new `EasyModeOrigin::SEARCH` (it currently collapses to `PASSIVE`).
+- On `SEARCH`, store `mDisplayOverride = on` with the current slot.
+- `syncEasyModeState` uses the override instead of the preference while it is set:
+  - an Easy override still requires `selectedIsEasyNative()` and runs only `normalize(false)`;
+  - if the look is not native, refuse and leave the display unchanged.
+- Clear the override on a USER mode click, a preference signal change, or a slot change. It is never written to settings and never recorded.
+- Add a WP5 self-test case: search an Advanced-only row from Easy; after 3 frames the card is visible and `CineLightRigEasyMode` is unchanged.
+
+**N2 (MINOR): two small issues remain in the Easy sync path.**
+
+- (a) **Unsuspended passive writes.** The draw-time passive edge now runs `normalizeSelectedForEasy(false)` again (M1), writing MasterEV/KeyEV/KeyOn from `draw()`. These writes are not under `ALKitHistory::ScopedSuspend`. When a Director gesture is open, or keyboard/pointer focus in the shell is recent, `captureSetting` records them as a user Step. For example, after a slot switch into an Easy-native look with Key off, `KeyOn` false→true becomes an undoable Step the user never made. Fix: wrap the passive (non-USER) branch's `normalizeSelectedForEasy(false)` in `ALKitHistory::ScopedSuspend`. The guard is a static counter, so it is inert in v1.
+- (b) **v1 not byte-identical.** On a passive edge, v1 now calls `syncEasyControls()` immediately, inside `mSyncingEasyControls`. Before WP4 it deferred to the 10 Hz `updateDerivedStatus`. The visible effect is only ≤100 ms of earlier toggle/gating refresh; there is no state difference. Either accept it and record it in the parity notes, or skip the immediate call when there is no shell.
+
+### Draw cost and lifetime
+
+- No new per-frame work: the guards are member bools, and the popover exists only on demand.
+- The popover is owned by the shell and reaches the page through an `LLHandle`, so it is safe after page teardown.
+- `mUpdatingModeSwitch`/`mApplyingEasyMode` are always reset on the same path (no early returns between set and clear).

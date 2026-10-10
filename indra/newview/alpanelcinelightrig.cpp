@@ -930,8 +930,8 @@ bool ALPanelCineLightRig::postBuild()
         {
             ALPanelCineLightRig* panel=handle.get();
             if(!panel||!panel->mEasyModeToggle)return false;
-            return panel->applyEasyMode(desired,origin==ALKitModeAdapters::USER?
-                EasyModeOrigin::USER:EasyModeOrigin::PASSIVE);
+            return panel->applyEasyMode(desired,origin==ALKitModeAdapters::USER?EasyModeOrigin::USER:
+                origin==ALKitModeAdapters::SEARCH?EasyModeOrigin::SEARCH:EasyModeOrigin::PASSIVE);
         });
         ALKitWhoAdapters::add("cine_rig_slot",[](const LLUUID& id)
         {
@@ -950,6 +950,7 @@ bool ALPanelCineLightRig::postBuild()
                 if(ALPanelCineLightRig* panel=handle.get())
                 {
                     ALKitHistory::ScopedSuspend suspend;
+                    panel->mEasyModeOverride=-1;
                     panel->syncEasyModeState(value.asBoolean(),EasyModeOrigin::PASSIVE);
                 }
             });
@@ -2102,6 +2103,7 @@ void ALPanelCineLightRig::syncEasyModeForSelected(bool force)
 
 bool ALPanelCineLightRig::applyEasyMode(bool desired,EasyModeOrigin origin,bool force)
 {
+    if(origin==EasyModeOrigin::USER)mEasyModeOverride=-1;
     if(mSyncingEasyControls||mApplyingEasyMode)
     {
         return mEasyModeActive;
@@ -2125,7 +2127,14 @@ bool ALPanelCineLightRig::syncEasyModeState(bool desired,EasyModeOrigin origin,b
     }
     const S32 selected=static_cast<S32>(ALCineLightRigManager::instance().selectedSlot());
     const bool explicit_entry=origin==EasyModeOrigin::USER;
-    const bool effective=desired&&(explicit_entry||selectedIsEasyNative());
+    if(selected!=mEasyModeSlot)mEasyModeOverride=-1;
+    if(origin==EasyModeOrigin::SEARCH)
+    {
+        if(desired&&!selectedIsEasyNative())return mEasyModeActive;
+        mEasyModeOverride=desired;
+    }
+    const bool displayed=mEasyModeOverride<0?desired:mEasyModeOverride!=0;
+    const bool effective=displayed&&(explicit_entry||selectedIsEasyNative());
     if(!force&&!explicit_entry&&selected==mEasyModeSlot&&effective==mEasyModeActive)
     {
         return mEasyModeActive;
@@ -2133,9 +2142,20 @@ bool ALPanelCineLightRig::syncEasyModeState(bool desired,EasyModeOrigin origin,b
     mSyncingEasyControls=true;
     mEasyModeSlot=selected;
     mEasyModeActive=effective;
-    if(mEasyModeActive&&!normalizeSelectedForEasy(explicit_entry))mEasyModeActive=false;
+    if(mEasyModeActive)
+    {
+        if(explicit_entry)
+        {
+            if(!normalizeSelectedForEasy(true))mEasyModeActive=false;
+        }
+        else
+        {
+            ALKitHistory::ScopedSuspend suspend;
+            if(!normalizeSelectedForEasy(false))mEasyModeActive=false;
+        }
+    }
     mSyncingEasyControls=false;
-    syncEasyControls();
+    if(ALKitShell::find(this))syncEasyControls();
     return mEasyModeActive;
 }
 

@@ -549,7 +549,7 @@ bool ALKitPage::postBuild()
 
 }
 
-void ALKitPage::setModeIndex(S32 index,bool explicit_user)
+void ALKitPage::setModeIndex(S32 index,bool explicit_user,bool search)
 {
     if(index<0||index>=(S32)mModeDefs.size())return;
     if(mRestoringState)
@@ -566,7 +566,7 @@ void ALKitPage::setModeIndex(S32 index,bool explicit_user)
             if(!explicit_user)
             {
                 ALKitHistory::ScopedSuspend suspend;
-                on=adapter(on,ALKitModeAdapters::PASSIVE);
+                on=adapter(on,search?ALKitModeAdapters::SEARCH:ALKitModeAdapters::PASSIVE);
             }
             else on=adapter(on,ALKitModeAdapters::USER);
             mModeSwitch->setValue(on);
@@ -838,7 +838,7 @@ bool ALKitPage::revealCard(ALKitCard*c,bool)
     const bool visible_in_current=mModeIndex>=0&&mModeIndex<(S32)mModeDefs.size()&&listed_in_mode(mModeDefs[mModeIndex]);
     if(!visible_in_current)for(S32 i=0;i<(S32)mModeDefs.size();++i)if(listed_in_mode(mModeDefs[i]))
     {
-        setModeIndex(i,false);
+        setModeIndex(i,false,true);
         break;
     }
     for(S32 i=0;i<(S32)mSections.size();++i)if(std::find(mSections[i].cards.begin(),mSections[i].cards.end(),c->id())!=mSections[i].cards.end())

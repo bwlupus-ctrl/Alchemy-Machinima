@@ -58,6 +58,7 @@ private:
     {
         USER,
         PASSIVE,
+        SEARCH,
         RESTORE
     };
 
@@ -251,6 +252,7 @@ private:
     bool mRadiusCueInitialized = false;
     bool mRadiusOverCeiling = false;
     S32 mEasyModeSlot = -1;
+    S32 mEasyModeOverride = -1;
     bool mEasyModeActive = false;
     bool mSyncingEasyControls = false;
     bool mApplyingEasyMode = false;
