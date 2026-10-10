@@ -201,7 +201,10 @@ void ALKitShell::buildChrome()
         params.label     = item.label;
         params.rect      = LLRect(0, ALKitStyle::RAIL_ITEM_H, ALKitStyle::RAIL_W, 0);
         LLButton* button = LLUICtrlFactory::create<LLButton>(params);
-        button->setImageOverlay(item.icon);
+        button->setLeftHPad(12);
+        button->setRightHPad(8);
+        button->setImageOverlay(item.icon, LLFontGL::LEFT);
+        button->setSelectedLabelColor(ALKitStyle::color(ALKitStyle::ACCENT));
         const std::string    group        = item.group;
         LLHandle<ALKitShell> shell_handle = getDerivedHandle<ALKitShell>();
         button->setCommitCallback(
@@ -290,9 +293,13 @@ void ALKitShell::updatePips()
             if (gSavedSettings.controlExists(setting) && !gSavedSettings.getBOOL(setting))
                 off = true;
         }
-        const std::string label = mRailLabels ? mRailData[index].label + (off ? "  \xE2\x97\x8B" : "") : std::string();
-        if (mRailButtons[index]->getLabelSelected() != label)
-            mRailButtons[index]->setLabel(label);
+        const std::string label    = mRailLabels ? mRailData[index].label + (off ? "  \xE2\x97\x8B" : "") : std::string();
+        const std::string selected = label.empty() ? label : label + "  \xE2\x80\xA2";
+        if (mRailButtons[index]->getLabelUnselected() != label)
+            mRailButtons[index]->setLabelUnselected(label);
+        if (mRailButtons[index]->getLabelSelected() != selected)
+            mRailButtons[index]->setLabelSelected(selected);
+        mRailButtons[index]->setImageOverlay(mRailData[index].icon, mRailLabels ? LLFontGL::LEFT : LLFontGL::HCENTER);
     }
     for (TabData& tab : mTabs)
     {
@@ -369,6 +376,7 @@ void ALKitShell::layoutChrome()
             mRoster->reshape(280, 340, true);
             mRoster->setOrigin(10, 10);
         }
+        layoutRoster();
     }
     LLPanel*          current_group    = mDirectorTabs->getCurrentPanel();
     const std::string group_name       = current_group ? current_group->getName() : std::string();
@@ -389,16 +397,37 @@ void ALKitShell::layoutChrome()
         mRailButtons[index]->setToggleState(index < (S32)mRailData.size() && mRailData[index].group == group_name);
     }
     refreshModeProxy();
-    const ALKitPage* mode_page    = currentKitPage();
-    const S32        mode_width   = (mode_page ? mode_page->modeCount() : 0) * 86;
-    S32              visible_tabs = 0;
+    ALKitPage* mode_page    = currentKitPage();
+    const S32  mode_width   = (mode_page ? mode_page->modeCount() : 0) * 86;
+    S32        visible_tabs = 0;
     for (const TabData& tab : mTabs)
         if (tab.group == group_name)
             ++visible_tabs;
-    const S32  available = llmax(100, mTabStrip->getRect().getWidth() - mode_width - 16);
-    const bool overflow  = visible_tabs * 104 > available;
-    const S32  slots     = llmax(1, (available - (overflow ? 56 : 0)) / 104);
-    mTabOffset           = llclamp(mTabOffset, 0, llmax(0, visible_tabs - slots));
+    const S32        available = llmax(100, mTabStrip->getRect().getWidth() - mode_width - 16);
+    std::vector<S32> tab_widths;
+    S32              total_width = 0;
+    for (const TabData& tab : mTabs)
+        if (tab.group == group_name)
+        {
+            const S32 measured = tab.button->getFont() ? tab.button->getFont()->getWidth(tab.label) : 48;
+            const S32 compact  = llclamp(measured + 24, 56, 112);
+            tab_widths.push_back(compact);
+            total_width += compact + 4;
+        }
+    const bool overflow       = total_width > available;
+    const S32  tabs_available = llmax(56, available - (overflow ? 56 : 0));
+    mTabOffset                = llclamp(mTabOffset, 0, llmax(0, visible_tabs - 1));
+    S32 slots                 = 0;
+    S32 used                  = 0;
+    for (S32 index = mTabOffset; index < (S32)tab_widths.size(); ++index)
+    {
+        const S32 need = tab_widths[index] + (slots ? 4 : 0);
+        if (slots && used + need > tabs_available)
+            break;
+        used += need;
+        ++slots;
+    }
+    slots = llmax(1, slots);
     mTabPrev->setVisible(overflow);
     mTabNext->setVisible(overflow);
     if (overflow)
@@ -416,12 +445,56 @@ void ALKitShell::layoutChrome()
         tab.button->setToggleState(tab.page == current_page);
         if (visible)
         {
-            tab.button->reshape(100, 32, true);
+            const S32 button_width = tab_widths[group_tab];
+            tab.button->reshape(button_width, 32, true);
             tab.button->setOrigin(tab_x, 4);
-            tab_x += 104;
+            tab_x += button_width + 4;
         }
         if (in_group)
             ++group_tab;
+    }
+}
+
+void ALKitShell::layoutRoster()
+{
+    if (!mRoster)
+        return;
+    const S32         width  = mRoster->getRect().getWidth();
+    const S32         height = mRoster->getRect().getHeight();
+    LLTextBox*        header = mRoster->findChild<LLTextBox>("cast_roster_header", false);
+    LLScrollListCtrl* list   = mRoster->findChild<LLScrollListCtrl>("cast_list", false);
+    LLComboBox*       group  = mRoster->findChild<LLComboBox>("group_assign_combo", false);
+    LLTextBox*        hint   = mRoster->findChild<LLTextBox>("cast_hint", false);
+    if (header)
+    {
+        header->reshape(llmax(1, width - 8), ALKitStyle::ROSTER_HDR_H, true);
+        header->setOrigin(4, height - ALKitStyle::ROSTER_HDR_H);
+    }
+    static const char* const tools[] = { "btn_add_you", "btn_add_animesh", "btn_focus", "btn_remove" };
+    S32                      x       = 4;
+    const S32                tools_y = height - ALKitStyle::ROSTER_HDR_H - ALKitStyle::ROSTER_TOOL - 2;
+    for (const char* name : tools)
+        if (LLButton* button = mRoster->findChild<LLButton>(name, false))
+        {
+            button->reshape(ALKitStyle::ROSTER_TOOL, ALKitStyle::ROSTER_TOOL, true);
+            button->setOrigin(x, tools_y);
+            x += ALKitStyle::ROSTER_TOOL + 4;
+        }
+    if (hint)
+    {
+        hint->reshape(llmax(1, width - 8), 28, true);
+        hint->setOrigin(4, 2);
+    }
+    if (group)
+    {
+        group->reshape(llmax(1, width - 8), 24, true);
+        group->setOrigin(4, 32);
+    }
+    if (list)
+    {
+        const S32 list_top = llmax(58, tools_y - 4);
+        list->reshape(llmax(1, width - 8), llmax(1, list_top - 58), true);
+        list->setOrigin(4, 58);
     }
 }
 
@@ -563,7 +636,11 @@ bool ALKitShell::selectPage(const std::string& page_name)
 }
 
 void ALKitShell::syncSelection()
-{ layoutChrome(); }
+{
+    layoutChrome();
+    if (ALKitPage* page = currentKitPage())
+        mHelp.showPage(page);
+}
 
 LLPanel* ALKitShell::ensurePageBuilt(const std::string& page_name)
 {
@@ -644,6 +721,15 @@ std::vector<std::string> ALKitShell::unwrappedPages() const
     return pages;
 }
 
+const std::vector<std::string> ALKitShell::railGroups() const
+{
+    std::vector<std::string> groups;
+    groups.reserve(mRailData.size());
+    for (const RailData& item : mRailData)
+        groups.push_back(item.group);
+    return groups;
+}
+
 void ALKitShell::pageBuilt(const std::string&, LLPanel* panel)
 {
     ALKitPage* page = dynamic_cast<ALKitPage*>(panel);
@@ -653,6 +739,8 @@ void ALKitShell::pageBuilt(const std::string&, LLPanel* panel)
         return;
     mBuiltPages[page->pageKey()] = page->getDerivedHandle<ALKitPage>();
     layoutChrome();
+    if (page == currentKitPage())
+        mHelp.showPage(page);
     std::string  prefix = page->pageKey();
     const size_t slash  = prefix.rfind('/');
     if (slash != std::string::npos)

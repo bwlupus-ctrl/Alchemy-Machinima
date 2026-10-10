@@ -481,6 +481,12 @@ void Controller::adoptPage(LLPanel* tab_page, LLPanel* content)
         ? kit_page->scroller() : nullptr;
     if (kit_scroller)
     {
+        content->reshape(tab_page->getRect().getWidth(), tab_page->getRect().getHeight(), true);
+        content->setOrigin(0, 0);
+        content->setFollowsAll();
+        kit_page->reshape(content->getRect().getWidth(), content->getRect().getHeight(), true);
+        kit_page->setOrigin(0, 0);
+        kit_page->setFollowsAll();
         if (LLView* doc = scrolledView(kit_scroller)) mFocus.install(kit_scroller, doc, doc);
         enableSliderWheel(content);
         return;

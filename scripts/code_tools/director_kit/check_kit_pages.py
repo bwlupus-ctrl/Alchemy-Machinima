@@ -157,8 +157,8 @@ def check_page(chk, key, entry, data_pages, data_names, ps_names, pages_src_cfg)
     if key not in data_pages:
         chk.err(where, "page not found in director_mockup_data.json")
         return
-    if key.startswith("capture_group/"):
-        chk.err(where, "Capture page is dropped (USER_DECISIONS_20261010 item 2)")
+    if key == "capture_group/capture_settings_tab":
+        chk.err(where, "Empty Capture settings page is dropped (USER_DECISIONS_20261010 item 2)")
     dpage = data_pages[key]["page"]
     cards = card_map(dpage)
     rows = page_rows(dpage)
@@ -380,8 +380,8 @@ def main(argv=None):
                 w = "launcher_targets[%s]" % key
                 chk.ok(key in data_pages, w, "page not found in director_mockup_data.json")
                 chk.ok(key not in p0, w, "page is both a P0 page and a launcher page")
-                chk.ok(not key.startswith("capture_group/"), w,
-                       "Capture page is dropped (USER_DECISIONS_20261010 item 2)")
+                chk.ok(key != "capture_group/capture_settings_tab", w,
+                       "Empty Capture settings page is dropped (USER_DECISIONS_20261010 item 2)")
                 if chk.ok(isinstance(entry, dict), w, "must be an object"):
                     for extra in sorted(set(entry) - LAUNCHER_REQUIRED):
                         chk.err(w, "unknown key '%s'" % extra)

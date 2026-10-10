@@ -106,6 +106,7 @@ public:
     ALKitRow*          findRowBySetting(const std::string&) const;
     ALKitCard*         findCard(const std::string&) const;
     const std::string& pageKey() const { return mPage; }
+    const std::string& summary() const { return mSummary; }
     void               requestLayout();
     void               relayoutNow();
     void               applySearch(const ALKitSearch::Hits&);

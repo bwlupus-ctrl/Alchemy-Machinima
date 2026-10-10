@@ -6,6 +6,7 @@
 #include "aluiperfselftest.h"
 
 #include "alkitbinding.h"
+#include "alkitbar.h"
 #include "alkitcard.h"
 #include "alkithistory.h"
 #include "alkitlazypage.h"
@@ -13,6 +14,7 @@
 #include "alkitrow.h"
 #include "alkitsearch.h"
 #include "alkitshell.h"
+#include "alkitstyle.h"
 
 #include "llappviewer.h"
 #include "llaccordionctrl.h"
@@ -1942,6 +1944,214 @@ private:
         mFindings.push_back(std::move(finding));
     }
 
+    AuditLeaf semanticLeaf(LLView* view, LLView* root) const
+    {
+        AuditLeaf leaf;
+        leaf.mView = view;
+        leaf.mPath = view ? relativePath(view, root) : "<missing>";
+        if (view)
+            view->localRectToOtherView(view->getLocalRect(), &leaf.mRect, root);
+        return leaf;
+    }
+
+    bool rectContained(const LLRect& inner, const LLRect& outer) const
+    {
+        return inner.mLeft >= outer.mLeft - 1 && inner.mRight <= outer.mRight + 1 && inner.mBottom >= outer.mBottom - 1 &&
+               inner.mTop <= outer.mTop + 1;
+    }
+
+    void auditDirectorLiveLayout()
+    {
+        if (!isDirectorV2())
+            return;
+        LLFloater*  floater = mFloater.get();
+        ALKitShell* shell   = findFirstView<ALKitShell>(floater);
+        if (!floater || !shell)
+            return;
+
+        LLView*      page_root    = auditPageRoot();
+        const LLRect floater_rect = floater->getLocalRect();
+        if (page_root)
+        {
+            std::vector<LLView*>   all_views;
+            std::vector<AuditLeaf> ignored;
+            collectAuditViews(floater, floater, all_views, ignored);
+            for (LLView* view : all_views)
+            {
+                if (view == floater || !visibleWithin(view, floater))
+                    continue;
+                bool in_scroller = false;
+                for (LLView* parent = view->getParent(); parent && parent != floater; parent = parent->getParent())
+                    if (dynamic_cast<LLScrollContainer*>(parent))
+                    {
+                        in_scroller = true;
+                        break;
+                    }
+                if (in_scroller)
+                    continue;
+                AuditLeaf leaf = semanticLeaf(view, floater);
+                if (!rectContained(leaf.mRect, floater_rect))
+                    addFinding("DIRECTOR_SPILL", leaf, nullptr, "visible descendant outside floater");
+            }
+        }
+
+        if (LLPanel* roster = shell->roster(); roster && visibleWithin(roster, floater))
+        {
+            std::vector<LLView*>   roster_views;
+            std::vector<AuditLeaf> ignored;
+            collectAuditViews(roster, roster, roster_views, ignored);
+            const LLRect roster_rect = roster->getLocalRect();
+            for (LLView* view : roster_views)
+            {
+                if (view == roster || !visibleWithin(view, roster))
+                    continue;
+                AuditLeaf leaf = semanticLeaf(view, roster);
+                if (!rectContained(leaf.mRect, roster_rect))
+                    addFinding("ROSTER_SPILL", leaf, nullptr, "visible roster descendant outside roster");
+            }
+        }
+
+        if (mAuditPageIndex > 0)
+        {
+            LLView*        lazy_root = mAuditPageIndex - 1 < mTabs.size() ? mTabs[mAuditPageIndex - 1].mPanel.get() : page_root;
+            ALKitLazyPage* lazy      = dynamic_cast<ALKitLazyPage*>(lazy_root);
+            ALKitPage*     page      = findFirstView<ALKitPage>(lazy_root);
+            AuditLeaf      leaf      = semanticLeaf(lazy ? static_cast<LLView*>(lazy) : page_root, floater);
+            if (!lazy || !page || !page->hasAncestor(lazy) || !visibleWithin(page, lazy))
+                addFinding("LAZY_PAGE_UNATTACHED", leaf, nullptr, "built page is not attached and visible");
+            else
+            {
+                const LLRect& host    = lazy->getLocalRect();
+                const LLRect& content = page->getRect();
+                if (content.getWidth() != host.getWidth() || content.getHeight() != host.getHeight() || content.mLeft != 0 ||
+                    content.mBottom != 0)
+                    addFinding("LAZY_PAGE_UNSIZED", semanticLeaf(page, lazy), nullptr, "kit page does not fill lazy host");
+                std::vector<ALKitCard*> cards;
+                collectViewsOfType<ALKitCard>(page, cards);
+                const bool visible_card =
+                    std::any_of(cards.begin(), cards.end(), [page](ALKitCard* card) { return visibleWithin(card, page); });
+                if (!page->legacy() && !visible_card)
+                    addFinding("LAZY_PAGE_NO_CARD", semanticLeaf(page, floater), nullptr, "built page has no visible card");
+                if (!shell->help().hasContent())
+                    addFinding("HELP_EMPTY", semanticLeaf(page, floater), nullptr, "page selection did not seed help title and body");
+
+                std::vector<ALKitScroller*> scrollers;
+                collectViewsOfType<ALKitScroller>(page, scrollers);
+                for (ALKitScroller* scroller : scrollers)
+                {
+                    AuditLeaf scroller_leaf = semanticLeaf(scroller, floater);
+                    if (scroller->getVisibleContentRect().getHeight() <= 0)
+                        addFinding("KIT_SCROLLER_EMPTY", scroller_leaf, nullptr, "non-positive viewport height");
+                    if (!rectContained(scroller_leaf.mRect, floater_rect))
+                        addFinding("KIT_SCROLLER_SPILL", scroller_leaf, nullptr, "scroller outside floater");
+                    LLView* document = scroller->getScrolledView();
+                    if (!document || document->getRect().getWidth() > scroller->getVisibleContentRect().getWidth() + 1)
+                        addFinding("KIT_HORIZONTAL_SCROLL", scroller_leaf, nullptr, "document is wider than the scroller viewport");
+                }
+            }
+        }
+
+        if (mAuditPageIndex != 0)
+            return;
+        static const std::vector<std::string> approved_groups = { "cast_group",  "performance_group", "camera_group", "lens_group",
+                                                                  "light_group", "look_group",        "world_group",  "capture_group" };
+        if (shell->railGroups() != approved_groups)
+            addFinding("RAIL_GROUPS", semanticLeaf(shell, floater), nullptr, "rail group list differs from approved eight groups");
+        for (LLButton* button : shell->railButtons())
+        {
+            if (!button || !button->getFont() || button->getText().empty() || button->getImageOverlay().isNull())
+                continue;
+            const S32 image_width  = button->getImageOverlay()->getWidth();
+            const S32 image_height = button->getImageOverlay()->getHeight();
+            const S32 text_width = button->getFont()->getWidth(button->getText());
+            S32       image_left = button->getImageOverlayHAlign() == LLFontGL::LEFT ? button->getLeftHPad()
+                                                                                     : (button->getRect().getWidth() - image_width) / 2;
+            S32       text_left  = button->getLeftHPad();
+            S32       text_area  = button->getRect().getWidth() - button->getLeftHPad() - button->getRightHPad();
+            if (button->getImageOverlayHAlign() == LLFontGL::LEFT)
+            {
+                text_left += image_width + 4;
+                text_area -= image_width + 4;
+            }
+            if (button->getHAlign() == LLFontGL::HCENTER)
+                text_left += (text_area - text_width) / 2;
+            else if (button->getHAlign() == LLFontGL::RIGHT)
+                text_left += text_area - text_width;
+            const LLRect icon_rect(image_left, image_height, image_left + image_width, 0);
+            const LLRect label_rect(text_left, button->getRect().getHeight(), text_left + text_width, 0);
+            if (icon_rect.overlaps(label_rect))
+                addFinding("RAIL_ICON_LABEL_OVERLAP", semanticLeaf(button, floater), nullptr,
+                           "rendered icon and label rectangles intersect");
+        }
+
+        const S32 width = floater->getRect().getWidth();
+        if (width != 850 && width != 900 && width != 1160)
+            return;
+        ALKitBar* bar = dynamic_cast<ALKitBar*>(shell->transport());
+        if (!bar)
+            return;
+        LLButton*  action         = nullptr;
+        LLButton*  cut            = nullptr;
+        for (LLView* child : *bar->getChildList())
+        {
+            if (child->getName() == "btn_action") action = dynamic_cast<LLButton*>(child);
+            if (child->getName() == "btn_cut") cut = dynamic_cast<LLButton*>(child);
+        }
+        const bool action_visible = action && action->getVisible();
+        const bool cut_visible    = cut && cut->getVisible();
+        for (S32 recording = 0; recording < 2; ++recording)
+        {
+            if (action)
+                action->setVisible(!recording);
+            if (cut)
+                cut->setVisible(recording);
+            bar->reshape(bar->getRect().getWidth(), bar->getRect().getHeight(), true);
+            std::vector<LLView*> direct;
+            for (LLView* child : *bar->getChildList())
+                if (child->getVisible())
+                    direct.push_back(child);
+            std::sort(direct.begin(), direct.end(), [](LLView* a, LLView* b) { return a->getRect().mLeft < b->getRect().mLeft; });
+            S32                                     previous_right   = bar->getLocalRect().mLeft;
+            S32                                     previous_rank    = -1;
+            static const std::map<std::string, S32> declaration_rank = { { "btn_action", 0 },     { "btn_cut", 0 },
+                                                                         { "btn_arm", 1 },        { "btn_take_play", 2 },
+                                                                         { "btn_take_stop", 3 },  { "take_timecode", 4 },
+                                                                         { "scene_combo", 5 },    { "scene_name_editor", 5 },
+                                                                         { "btn_scene_load", 6 }, { "btn_scene_save", 7 },
+                                                                         { "btn_scene_delete", 8 }, { "btn_set_marks", 9 },
+                                                                         { "btn_reset_marks", 10 }, { "rec_indicator", 11 },
+                                                                         { "show_paths_global_check", 12 }, { "btn_help", 13 },
+                                                                         { "status_strip", 14 }, { "btn_cast_chip", 15 },
+                                                                         { "kit_ui_ms", 16 }, { "btn_hotkeys", 17 } };
+            for (LLView* child : direct)
+            {
+                AuditLeaf item = semanticLeaf(child, floater);
+                if (!rectContained(child->getRect(), bar->getLocalRect()))
+                    addFinding("TRANSPORT_SPILL", item, nullptr, recording ? "record state" : "idle state");
+                if (child->getRect().mLeft < previous_right)
+                    addFinding("TRANSPORT_OVERLAP", item, nullptr, recording ? "record state" : "idle state");
+                previous_right  = child->getRect().mRight;
+                const auto rank = declaration_rank.find(child->getName());
+                if (rank != declaration_rank.end())
+                {
+                    if (rank->second < previous_rank)
+                        addFinding("TRANSPORT_ORDER", item, nullptr, recording ? "record state" : "idle state");
+                    previous_rank = rank->second;
+                }
+                if (LLButton* button = dynamic_cast<LLButton*>(child);
+                    button && button->getFont() && !button->getText().empty() &&
+                    button->getFont()->getWidth(button->getText()) + button->getLeftHPad() + button->getRightHPad() >
+                        button->getRect().getWidth() + 1)
+                    addFinding("TRANSPORT_LABEL_CLIPPED", item, nullptr, recording ? "record state" : "idle state");
+            }
+        }
+        if (action)
+            action->setVisible(action_visible);
+        if (cut)
+            cut->setVisible(cut_visible);
+        bar->reshape(bar->getRect().getWidth(), bar->getRect().getHeight(), true);
+    }
+
     void auditGeometry()
     {
         LLView* page = auditPageRoot();
@@ -1958,6 +2168,8 @@ private:
                                       (U32)mKitAuditStates.size(), mAuditStateApplied });
         }
         if (isDirectorV2() && !mAuditStateApplied) return;
+
+        auditDirectorLiveLayout();
 
         std::vector<LLView*> views;
         std::vector<AuditLeaf> leaves;

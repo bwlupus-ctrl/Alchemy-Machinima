@@ -147,8 +147,11 @@ void ALKitHelp::showPage(ALKitPage* page)
     ALKitShell*       shell   = ALKitShell::find(page);
     const std::string path    = shell ? shell->pagePathLabel(page->pageKey()) : page->pageKey();
     const size_t      divider = path.rfind(" \xE2\x80\xBA ");
-    show(path, divider == std::string::npos ? path : path.substr(divider + 5), "", "");
+    show(path, divider == std::string::npos ? path : path.substr(divider + 5), page->summary(), "");
 }
+
+bool ALKitHelp::hasContent() const
+{ return mTitle && !mTitle->getText().empty() && mBody && !mBody->getText().empty(); }
 
 void ALKitHelp::show(const std::string& kicker, const std::string& title, const std::string& body, const std::string& meta)
 {

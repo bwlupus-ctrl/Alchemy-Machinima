@@ -791,6 +791,7 @@ void LLFloaterDirector::bindChrome(LLView* root)
 
     mSceneCombo = root->getChild<LLComboBox>("scene_combo");
     mSceneNameEditor = root->getChild<LLLineEditor>("scene_name_editor");
+    root->getChild<LLButton>("btn_scene_load")->setCommitCallback([this](LLUICtrl*, const LLSD&) { onSceneSelected(); });
     mSceneSaveBtn = root->getChild<LLButton>("btn_scene_save");
     mSceneDeleteBtn = root->getChild<LLButton>("btn_scene_delete");
     mSceneCombo->setCommitCallback([this](LLUICtrl*, const LLSD&) { onSceneSelected(); });
@@ -838,6 +839,7 @@ void LLFloaterDirector::bindChrome(LLView* root)
         [this](LLUICtrl*, const LLSD&) { mLegendPanel->setVisible(false); });
 
     mCastList = root->getChild<LLScrollListCtrl>("cast_list");
+    mCastRosterHeader = root->findChild<LLTextBox>("cast_roster_header");
     mCastHint = root->getChild<LLTextBox>("cast_hint");
     mRemoveBtn = root->getChild<LLButton>("btn_remove");
     mFocusBtn = root->getChild<LLButton>("btn_focus");
@@ -2583,6 +2585,9 @@ void LLFloaterDirector::refreshCastList()
     LL_PROFILE_ZONE_NAMED_CATEGORY_UI("Director refreshCastList"); // [DirFix] D9
     LLDirectorCast& cast = LLDirectorCast::instance();
     const uuid_vec_t& ids = cast.getIds();
+
+    if (mCastRosterHeader)
+        setTextIfChanged(mCastRosterHeader, llformat("CAST %d", (S32)ids.size()));
 
     mCastHint->setVisible(ids.empty());
 

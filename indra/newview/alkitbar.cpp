@@ -5,6 +5,8 @@
 #include "llstring.h"
 #include "lluictrlfactory.h"
 
+#include <algorithm>
+
 static LLDefaultChildRegistry::Register<ALKitBar> register_bar("kit_bar");
 
 ALKitBar::Params::Params() : flex("flex"), collapse_order("collapse_order")
@@ -24,10 +26,15 @@ bool ALKitBar::postBuild()
             mFlex = child;
         }
     }
+    // LLView stores children frontmost-first, the reverse of XUI declaration
+    // order. Transport semantics and visual order follow the declaration.
+    std::reverse(mChildren.begin(), mChildren.end());
     for (const std::string& name : mCollapseOrder)
     {
-        if (LLView* child = findChild<LLView>(name))
+        auto found = std::find_if(mChildren.begin(), mChildren.end(), [&name](LLView* child) { return child->getName() == name; });
+        if (found != mChildren.end())
         {
+            LLView* child = *found;
             mCollapse.push_back(child);
             mNaturalVisible.push_back(child->getVisible());
             mCollapsed.push_back(false);

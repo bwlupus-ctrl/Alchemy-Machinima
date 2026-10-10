@@ -74,7 +74,7 @@ while ($true) {
   if ($DirectorV2) {
     $viewerArgs += @('--set', 'DirectorUIV2', 'TRUE',
       '--set', 'UIPerfDirectorV2', 'TRUE',
-      '--set', 'UILayoutAuditSizes', '"1160x720,min,1141x720,915x720"')
+      '--set', 'UILayoutAuditSizes', '"1160x720,900x720,min,1141x720,915x720"')
   }
   # The viewer resolves app_settings/ and skins/ from its working directory: always
   # start it in the exe's own folder, or it loads whatever install the caller is in.
@@ -439,7 +439,7 @@ if ($DirectorV2) {
   $kitFindings = @($layoutRows | Where-Object {
     $_.tab_path -match '^(default|.*cine_light_rig_tab|.*light_rim_tab)@'
   })
-  $requiredSizes = @('1160x720', 'minimum', '1141x720', '915x720')
+  $requiredSizes = @('1160x720', '900x720', 'minimum', '1141x720', '915x720')
   $coverageMissing = [System.Collections.Generic.List[string]]::new()
   foreach ($size in $requiredSizes) {
     $sizeStates = @($layoutStates | Where-Object { $_.size_pass -eq $size -and $_.applied -eq '1' })
@@ -473,7 +473,24 @@ if ($DirectorV2) {
   }
   $kitLayoutPass = $kitFindings.Count -eq 0 -and $coverageMissing.Count -eq 0
   $kitLayoutValue = "$($kitFindings.Count) finding(s), $($coverageMissing.Count) missing state capture(s)"
-  Write-DirectorBudgetLine 'layout findings shell + Light > Rig + Light > Rim, all states at all 4 sizes = 0' $kitLayoutValue $kitLayoutPass
+  Write-DirectorBudgetLine 'layout findings shell + Light > Rig + Light > Rim, all states at all 5 sizes = 0' $kitLayoutValue $kitLayoutPass
+
+  $liveFindingNames = @('LAZY_PAGE_UNATTACHED', 'LAZY_PAGE_UNSIZED', 'LAZY_PAGE_NO_CARD',
+    'HELP_EMPTY', 'DIRECTOR_SPILL', 'ROSTER_SPILL', 'RAIL_ICON_LABEL_OVERLAP',
+    'TRANSPORT_SPILL', 'TRANSPORT_OVERLAP', 'TRANSPORT_ORDER', 'TRANSPORT_LABEL_CLIPPED',
+    'KIT_SCROLLER_EMPTY', 'KIT_SCROLLER_SPILL', 'KIT_HORIZONTAL_SCROLL', 'RAIL_GROUPS')
+  $liveFindings = @($layoutRows | Where-Object finding -in $liveFindingNames)
+  $screenshotMissing = [System.Collections.Generic.List[string]]::new()
+  foreach ($group in @($layoutStates | Group-Object size_pass, page_index)) {
+    $parts = $group.Name -split ', '
+    if ($parts.Count -lt 2) { continue }
+    $key = "$($parts[0])|director|$([int]$parts[1])"
+    if (-not $pageMap.ContainsKey($key) -or -not $pageMap[$key].Shots.Count) {
+      $screenshotMissing.Add($group.Name)
+    }
+  }
+  $liveChecksPass = $liveFindings.Count -eq 0 -and $screenshotMissing.Count -eq 0
+  Write-DirectorBudgetLine 'live render checks + PNG per page/size' "$($liveFindings.Count) finding(s), $($screenshotMissing.Count) missing PNG(s)" $liveChecksPass
 
   $legacyRows = @($layoutRows | Where-Object {
     $_.size_pass -in @('1160x720', 'minimum') -and
@@ -521,7 +538,8 @@ if ($DirectorV2) {
   Write-DirectorBudgetLine 'layout findings legacy pages vs v1 baseline = 0 new' $legacyValue $legacyPass
 
   $directorBudgetFailed = -not ($openPass -and $steadyPass -and $buildPass -and
-    $searchPass -and $amberPass -and $hoverPass -and $kitLayoutPass -and $legacyPass)
+    $searchPass -and $amberPass -and $hoverPass -and $kitLayoutPass -and
+    $liveChecksPass -and $legacyPass)
   Write-Host ("DIRECTOR V2 BUDGET: " + $(if ($directorBudgetFailed) { 'FAIL' } else { 'PASS' })) -ForegroundColor $(if ($directorBudgetFailed) { 'Red' } else { 'Green' })
 }
 if ($crashes.Count) {

@@ -11,6 +11,7 @@ public:
         Params();
     };
     LLPanel*           ensureBuilt();
+    void               reshape(S32 width, S32 height, bool called_from_parent = true) override;
     void               onVisibilityChange(bool) override;
     const std::string& masterSetting() const { return mMasterSetting; }
     F64                buildMs() const { return mBuildMs; }
@@ -20,6 +21,7 @@ protected:
     explicit ALKitLazyPage(const Params& p) : LLPanel(p), mPageFile(p.page_file), mMasterSetting(p.master_setting) {}
 
 private:
+    void        fitContent();
     std::string mPageFile, mMasterSetting;
     LLPanel*    mContent        = nullptr;
     bool        mBuildAttempted = false;

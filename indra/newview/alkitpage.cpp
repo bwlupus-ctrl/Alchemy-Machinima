@@ -800,13 +800,16 @@ void ALKitPage::relayoutNow()
     if (!mGrid || !mScroller)
         return;
     static LLCachedControl<S32> scrollbar_size(gSavedSettings, "UIScrollbarSize");
-    const S32                   sb    = llmax(0, (S32)scrollbar_size);
-    const S32                   width = llmax(1, getRect().getWidth() - 2 * ALKitStyle::PAGE_PAD_LR - sb);
+    const S32                   sb        = llmax(0, (S32)scrollbar_size);
+    const S32                   doc_width = llmax(1, mScroller->getRect().getWidth() - 2 * mScroller->getBorderWidth() - sb);
+    const S32                   width     = llmax(1, doc_width - 2 * ALKitStyle::PAGE_PAD_LR);
     mGrid->reshape(width, mGrid->getRect().getHeight(), true);
     const S32 natural  = mGrid->getRect().getHeight() + ALKitStyle::PAGE_PAD_T + ALKitStyle::PAGE_PAD_B;
     const S32 viewport = llmax(1, mScroller->getRect().getHeight() - 2 * mScroller->getBorderWidth());
     const S32 doc_h    = llmax(natural, viewport);
-    mDoc->reshape(getRect().getWidth(), doc_h, true);
+    // The document is deliberately no wider than the vertical-scroll viewport.
+    // Kit pages never scroll horizontally.
+    mDoc->reshape(doc_width, doc_h, true);
     mGrid->setOrigin(ALKitStyle::PAGE_PAD_LR, doc_h - ALKitStyle::PAGE_PAD_T - mGrid->getRect().getHeight());
 }
 

@@ -691,8 +691,17 @@ def floater_tree(data: dict, page_files: dict[str, str], v1: ET.Element) -> ET.E
         ET.SubElement(shell, "kit_shell.rail_item", {"group": group["name"], "label": group["label"],
                       "icon": ICONS[group["icon"]], "master_settings": ",".join(masters)})
     roster = ET.SubElement(shell, "panel", {"name": "kit_cast_roster", "background_visible": "false"})
+    header = ET.SubElement(roster, "text", {"name": "cast_roster_header", "font": "SansSerifSmall",
+                                            "text_color": "KitMuted"})
+    header.text = "CAST"
     for name in ("cast_list", "cast_hint", "group_assign_combo", "btn_add_you", "btn_add_animesh", "btn_focus", "btn_remove"):
-        roster.append(copy_chrome(name, v1))
+        node = copy_chrome(name, v1)
+        tool_icons = {"btn_add_you": "Command_People_Icon", "btn_add_animesh": "Inv_Object",
+                      "btn_focus": "Command_View_Icon", "btn_remove": "TrashItem_Off"}
+        if name in tool_icons:
+            node.set("label", "")
+            node.set("image_overlay", tool_icons[name])
+        roster.append(node)
     tabs = ET.SubElement(shell, "tab_container", {"name": "director_tabs", "hide_tabs": "true",
                          "tab_position": "left", "follows": "all"})
     for group in data.get("groups", []):
@@ -707,10 +716,11 @@ def floater_tree(data: dict, page_files: dict[str, str], v1: ET.Element) -> ET.E
                 attrs["master_setting"] = str(master["s"])
             ET.SubElement(tc, "kit_lazy_page", attrs)
     bar = ET.SubElement(shell, "kit_bar", {"name": "kit_transport", "flex": "status_strip",
-                        "collapse_order": "kit_ui_ms,take_timecode,btn_scene_delete,btn_reset_marks,rec_indicator_label"})
+                        "collapse_order": "kit_ui_ms,take_timecode,btn_scene_delete,btn_reset_marks"})
     widths = {"btn_action": 112, "btn_cut": 112, "btn_arm": 24, "btn_take_play": 28, "btn_take_stop": 28,
-              "take_timecode": 90, "scene_combo": 130, "scene_name_editor": 130, "btn_scene_save": 50,
-              "btn_scene_delete": 56, "btn_set_marks": 28, "btn_reset_marks": 28, "show_paths_global_check": 28,
+              "take_timecode": 90, "scene_combo": 130, "scene_name_editor": 130, "btn_scene_load": 44,
+              "btn_scene_save": 50,
+              "btn_scene_delete": 28, "btn_set_marks": 28, "btn_reset_marks": 28, "show_paths_global_check": 28,
               "btn_help": 28}
     for name in ("btn_action", "btn_cut"):
         node = copy_chrome(name, v1)
@@ -724,14 +734,21 @@ def floater_tree(data: dict, page_files: dict[str, str], v1: ET.Element) -> ET.E
     timecode = ET.SubElement(bar, "text", {"name": "take_timecode", "width": str(widths["take_timecode"]),
                                            "height": "28"})
     timecode.text = "00:00:00"
-    for name in ("scene_combo", "scene_name_editor", "btn_scene_save", "btn_scene_delete", "btn_set_marks", "btn_reset_marks"):
+    for name in ("scene_combo", "scene_name_editor"):
         node = copy_chrome(name, v1); node.set("width", str(widths[name])); node.set("height", "28"); bar.append(node)
+    ET.SubElement(bar, "button", {"name": "btn_scene_load", "label": "Load",
+                                   "tool_tip": "Load the selected scene", "width": str(widths["btn_scene_load"]),
+                                   "height": "28"})
+    for name in ("btn_scene_save", "btn_scene_delete", "btn_set_marks", "btn_reset_marks"):
+        node = copy_chrome(name, v1); node.set("width", str(widths[name])); node.set("height", "28"); bar.append(node)
+        if name == "btn_scene_delete":
+            node.set("label", "...")
         if name in {"btn_set_marks", "btn_reset_marks"}:
             node.set("label", "")
             node.set("image_overlay", "Flag" if name == "btn_set_marks" else "Refresh_Off")
-    cluster = ET.SubElement(bar, "panel", {"name": "kit_rec_cluster", "width": "50", "height": "28"})
-    rec = copy_chrome("rec_indicator", v1); rec.set("width", "22"); rec.set("height", "22"); cluster.append(rec)
-    ET.SubElement(cluster, "text", {"name": "rec_indicator_label", "width": "28", "height": "22"}).text = "REC"
+    rec = copy_chrome("rec_indicator", v1)
+    rec.set("width", "44"); rec.set("height", "28"); rec.set("halign", "center")
+    bar.append(rec)
     show = copy_chrome("show_paths_global_check", v1); show.tag = "kit_switch"; show.set("label", ""); show.set("width", "28"); show.set("height", "28"); bar.append(show)
     help_button = copy_chrome("btn_help", v1); help_button.set("label", ""); help_button.set("image_overlay", "Inv_Notecard"); help_button.set("width", "28"); help_button.set("height", "28"); bar.append(help_button)
     ET.SubElement(bar, "text", {"name": "status_strip", "use_ellipses": "true",
@@ -751,7 +768,10 @@ def floater_tree(data: dict, page_files: dict[str, str], v1: ET.Element) -> ET.E
                             "bind": "setting" if src.get("control_name") else "code"})
         row.append(child)
     legend = ET.SubElement(shell, "kit_popover", {"name": "legend_panel", "anchor": "btn_help", "side": "above", "visible": "false"})
-    legend.append(copy_chrome("legend_body", v1)); legend.append(copy_chrome("btn_legend_close", v1))
+    legend_body = copy_chrome("legend_body", v1)
+    if legend_body.text:
+        legend_body.text = legend_body.text.replace("Capture > Scene options", "the ? transport menu")
+    legend.append(legend_body); legend.append(copy_chrome("btn_legend_close", v1))
     hot = ET.SubElement(shell, "kit_popover", {"name": "kit_hotkeys_popover", "anchor": "btn_hotkeys", "side": "above", "visible": "false"})
     ET.SubElement(hot, "text", {"name": "kit_hotkeys_text", "word_wrap": "true"}).text = (
         "Enter: ACTION\nEsc: close, clear or CUT\nF8 / F5\n/: search\nCtrl+Z/Y: undo / redo\n"

@@ -1,6 +1,7 @@
 {
  "version": 1,
  "pending_settings": {},
+ "pending_cpp_targets": {},
  "pending_homes": {
   "BDMergeProjectorVolumetricsFeather": {"reason": "Atmosphere becomes the writable home when converted", "citation": "DIRECTOR_KIT_ROLLOUT_SPEC.md sections 5 and 7", "expires": "WP11"},
   "BDMergeProjectorVolumetricsMaxDistance": {"reason": "Atmosphere becomes the writable home when converted", "citation": "DIRECTOR_KIT_ROLLOUT_SPEC.md sections 5 and 7", "expires": "WP11"}

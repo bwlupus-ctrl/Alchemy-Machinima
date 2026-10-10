@@ -32,6 +32,7 @@ public:
     void showCard(ALKitCard*);
     void showPage(ALKitPage*);
     void layout(S32 width, S32 height, S32 strip_width);
+    bool hasContent() const;
 
 private:
     void              show(const std::string&, const std::string&, const std::string&, const std::string&);

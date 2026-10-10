@@ -252,6 +252,7 @@ private:
 
     // cast column
     LLScrollListCtrl* mCastList = nullptr;
+    LLTextBox*        mCastRosterHeader = nullptr;
     LLButton*         mRemoveBtn = nullptr;
     LLButton*         mFocusBtn = nullptr;
     LLTextBox*        mCastHint = nullptr;

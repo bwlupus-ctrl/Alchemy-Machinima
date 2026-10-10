@@ -64,6 +64,10 @@ public:
     std::string                 pageKeyAt(S32, S32) const;
     std::string                 pagePathLabel(const std::string&) const;
     std::vector<std::string>    unwrappedPages() const;
+    const std::vector<std::string> railGroups() const;
+    const std::vector<LLButton*>&  railButtons() const { return mRailButtons; }
+    LLPanel*                       roster() const { return mRoster; }
+    LLPanel*                       transport() const { return mTransport; }
     void                        startSearchLoad();
     void                        clearSearch();
     bool                        handleSearchKey(KEY key);
@@ -97,6 +101,7 @@ private:
     void                                                 layoutChrome();
     void                                                 refreshModeProxy();
     void                                                 updatePips();
+    void                                                 layoutRoster();
     void                                                 pageBuilt(const std::string&, LLPanel*);
     void                                                 runSearch(const std::string&);
     void                                                 queueSearch(const std::string&);
