@@ -5,6 +5,15 @@
 
 #include "aluiperfselftest.h"
 
+#include "alkitbinding.h"
+#include "alkitcard.h"
+#include "alkithistory.h"
+#include "alkitlazypage.h"
+#include "alkitpage.h"
+#include "alkitrow.h"
+#include "alkitsearch.h"
+#include "alkitshell.h"
+
 #include "llappviewer.h"
 #include "llaccordionctrl.h"
 #include "llbutton.h"
@@ -453,6 +462,36 @@ struct LayoutFinding
     LLRect mRectA;
     LLRect mRectB;
     std::string mDetail;
+};
+
+struct AuditCoverage
+{
+    std::string mSizePass;
+    std::string mFloater;
+    U32 mPageIndex = 0;
+    std::string mPath;
+};
+
+struct AuditSize
+{
+    enum Kind { DEFAULT, MINIMUM, EXPLICIT };
+    Kind mKind = DEFAULT;
+    std::string mToken;
+    S32 mWidth = 0;
+    S32 mHeight = 0;
+};
+
+struct KitAuditState
+{
+    enum Kind { BASE, MODE, CHIP, CARD, SELECTOR, SETTING };
+    Kind mKind = BASE;
+    std::string mKey;
+    LLHandle<LLView> mView;
+    S32 mIndex = 0;
+    bool mBodyOpen = true;
+    bool mMoreOpen = false;
+    std::string mSetting;
+    LLSD mValue;
 };
 
 struct AuditLeaf
@@ -935,16 +974,99 @@ void collectAllScrollers(LLView* view,
     }
 }
 
+template<typename T>
+void collectViewsOfType(LLView* view, std::vector<T*>& out)
+{
+    if (!view) return;
+    if (T* typed = dynamic_cast<T*>(view)) out.push_back(typed);
+    for (LLView* child : *view->getChildList())
+    {
+        collectViewsOfType<T>(child, out);
+    }
+}
+
+template<typename T>
+T* findFirstView(LLView* view)
+{
+    if (!view) return nullptr;
+    if (T* typed = dynamic_cast<T*>(view)) return typed;
+    for (LLView* child : *view->getChildList())
+    {
+        if (T* found = findFirstView<T>(child)) return found;
+    }
+    return nullptr;
+}
+
+std::vector<AuditSize> parseAuditSizes(const std::string& value)
+{
+    std::vector<AuditSize> sizes;
+    if (value.empty())
+    {
+        sizes.push_back({ AuditSize::DEFAULT, "default", 0, 0 });
+        sizes.push_back({ AuditSize::MINIMUM, "min", 0, 0 });
+        return sizes;
+    }
+
+    std::vector<std::string> tokens;
+    LLStringUtil::getTokens(value, tokens, ",");
+    const std::regex dimensions("^([0-9]+)[xX]([0-9]+)$");
+    for (std::string token : tokens)
+    {
+        LLStringUtil::trim(token);
+        std::string lower = token;
+        LLStringUtil::toLower(lower);
+        if (lower == "default")
+        {
+            sizes.push_back({ AuditSize::DEFAULT, "default", 0, 0 });
+        }
+        else if (lower == "min")
+        {
+            sizes.push_back({ AuditSize::MINIMUM, "min", 0, 0 });
+        }
+        else
+        {
+            std::smatch match;
+            if (!std::regex_match(token, match, dimensions))
+            {
+                LL_WARNS("UILayoutAudit") << "Ignoring invalid UILayoutAuditSizes token: "
+                    << token << LL_ENDL;
+                continue;
+            }
+            const S32 width = atoi(match[1].str().c_str());
+            const S32 height = atoi(match[2].str().c_str());
+            if (width <= 0 || height <= 0)
+            {
+                LL_WARNS("UILayoutAudit") << "Ignoring invalid UILayoutAuditSizes token: "
+                    << token << LL_ENDL;
+                continue;
+            }
+            sizes.push_back({ AuditSize::EXPLICIT,
+                llformat("%dx%d", width, height), width, height });
+        }
+    }
+    if (sizes.empty())
+    {
+        LL_WARNS("UILayoutAudit") << "UILayoutAuditSizes contained no valid tokens; "
+            "using default,minimum" << LL_ENDL;
+        sizes.push_back({ AuditSize::DEFAULT, "default", 0, 0 });
+        sizes.push_back({ AuditSize::MINIMUM, "min", 0, 0 });
+    }
+    return sizes;
+}
+
 class Runner
 {
 public:
-    Runner(std::string request, U32 frames, bool ab, bool layout, U32 inventory_items)
+    Runner(std::string request, U32 frames, bool ab, bool layout,
+           U32 inventory_items, std::string audit_sizes)
     : mRequest(std::move(request)),
       mFrames(llmax<U32>(frames, 2)),
       mAB(ab),
       mLayout(layout),
       mInventoryItems(inventory_items),
-      mPriorCull(gSavedSettings.getBOOL("UIFolderViewCull"))
+      mPriorCull(gSavedSettings.getBOOL("UIFolderViewCull")),
+      mDirectorV2(gSavedSettings.getBOOL("DirectorUIV2")),
+      mAuditSizes(parseAuditSizes(audit_sizes))
     {
         static const std::vector<std::string> all_targets = {
             "director", "lightbox", "exposure_hub", "dance_ball",
@@ -1020,6 +1142,7 @@ public:
                 mFloater = LLHandle<LLFloater>();
             }
         }
+        restoreDirectorAuditSettings();
         restoreInitialState();
         restore();
         sActive = false;
@@ -1091,6 +1214,7 @@ private:
         TAB_SELECT,
         TAB_FIRST_FRAME,
         TAB_MEASURE,
+        DIRECTOR_HOVER_SWEEP,
         SCROLL_BOTTOM,
         SCROLL_BOTTOM_MEASURE,
         SCROLL_TOP,
@@ -1250,6 +1374,61 @@ private:
         mSamples.clear();
     }
 
+    void addMetricRow(const std::string& path, const std::string& measure,
+                      F64 milliseconds)
+    {
+        ResultRow row;
+        row.mPass = mCullOn
+            ? (mABPass == 2 ? "folder_cull_on_2" : "folder_cull_on")
+            : "folder_cull_off";
+        row.mFloater = "director";
+        row.mPath = path;
+        row.mMeasure = measure;
+        row.mActionMs = milliseconds;
+        mRows.push_back(row);
+    }
+
+    bool isDirectorV2() const
+    {
+        return mDirectorV2 && mTargetIndex >= 0 &&
+            mTargetIndex < (S32)mTargets.size() &&
+            mTargets[mTargetIndex] == "director";
+    }
+
+    void collectKitMetrics()
+    {
+        if (!isDirectorV2() || mKitMetricsCollected) return;
+        ALKitShell* shell = findFirstView<ALKitShell>(mFloater.get());
+        if (!shell) return;
+
+        ALKitSearch search;
+        LLTimer index_timer;
+        if (search.load("director_kit_index.xml"))
+        {
+            while (search.tokenizeBatch(400)) {}
+        }
+        addMetricRow("kit", "kit_index", index_timer.getElapsedTimeF64() * 1000.0);
+
+        static const char* const queries[] = {
+            "key yaw", "rim", "nd", "ev", "exposure",
+            "actors only", "froxel", "zzz"
+        };
+        F64 worst_query_ms = 0.0;
+        for (const char* query : queries)
+        {
+            LLTimer query_timer;
+            const ALKitSearch::Hits hits = search.query(query);
+            const F64 elapsed = query_timer.getElapsedTimeF64() * 1000.0;
+            worst_query_ms = llmax(worst_query_ms, elapsed);
+            LL_INFOS("DirectorKit") << "KitSearch query \"" << query << "\" "
+                << elapsed << " ms " << hits.size() << LL_ENDL;
+        }
+        addMetricRow("kit", "kit_search", worst_query_ms);
+        addMetricRow("kit", "kit_amber_storm",
+                     ALKitSettingWatch::instance().debugRecomputeAll());
+        mKitMetricsCollected = true;
+    }
+
     void prepareFloaterActions()
     {
         mTabs.clear();
@@ -1297,6 +1476,7 @@ private:
                     handle, scroller->getDocPosVertical());
             }
         }
+        saveDirectorAuditSettings();
     }
 
     void restoreInitialState()
@@ -1317,9 +1497,221 @@ private:
         }
     }
 
+    void saveDirectorAuditSettings()
+    {
+        if (!isDirectorV2() || !mDirectorAuditSettings.empty()) return;
+        static const char* const names[] = {
+            "DirectorV2PageState", "CineLightRigEasyMode",
+            "DirectorV2SelectedLight", "CineLightRigEnabled",
+            "CineRigRimEnabled", "DirectorV2LightMapView",
+            "DirectorV2LightMapSideFrom"
+        };
+        for (const char* name : names)
+        {
+            if (gSavedSettings.controlExists(name))
+            {
+                mDirectorAuditSettings[name] = gSavedSettings.getLLSD(name);
+            }
+        }
+    }
+
+    void restoreDirectorAuditSettings()
+    {
+        if (mDirectorAuditSettings.empty()) return;
+        ALKitHistory::ScopedSuspend suspend;
+        for (const auto& saved : mDirectorAuditSettings)
+        {
+            // ui-draw-lint: allow(setting-write) isolated Director self-test state
+            gSavedSettings.setLLSD(saved.first, saved.second);
+        }
+        if (ALKitPage* page = findFirstView<ALKitPage>(auditPageRoot()))
+        {
+            page->restoreState();
+            page->relayoutNow();
+        }
+    }
+
+    void applyDirectorAuditDefaults()
+    {
+        if (mDirectorAuditSettings.empty()) return;
+        ALKitHistory::ScopedSuspend suspend;
+        for (const auto& saved : mDirectorAuditSettings)
+        {
+            LLControlVariable* control = gSavedSettings.getControl(saved.first).get();
+            if (!control) continue;
+            // ui-draw-lint: allow(setting-write) isolated Director self-test state
+            gSavedSettings.setLLSD(saved.first, control->getDefault());
+        }
+        if (ALKitPage* page = findFirstView<ALKitPage>(auditPageRoot()))
+        {
+            page->restoreState();
+            page->relayoutNow();
+        }
+    }
+
+    void prepareKitAuditStates()
+    {
+        mKitAuditStates.clear();
+        mKitAuditStateIndex = 0;
+        KitAuditState base;
+        base.mKind = KitAuditState::BASE;
+        base.mKey = "default";
+        mKitAuditStates.push_back(base);
+        if (!isDirectorV2() || mAuditPageIndex == 0) return;
+
+        ALKitPage* page = findFirstView<ALKitPage>(auditPageRoot());
+        if (!page || page->legacy()) return;
+        for (S32 i = 0; i < page->modeCount(); ++i)
+        {
+            KitAuditState state;
+            state.mKind = KitAuditState::MODE;
+            state.mKey = "mode-" + safeComponent(page->modeName(i));
+            state.mView = page->getHandle();
+            state.mIndex = i;
+            mKitAuditStates.push_back(state);
+        }
+
+        std::vector<LLButton*> buttons;
+        collectViewsOfType<LLButton>(page, buttons);
+        for (LLButton* button : buttons)
+        {
+            if (button->getName().find("_chip_") == std::string::npos) continue;
+            KitAuditState state;
+            state.mKind = KitAuditState::CHIP;
+            state.mKey = "chip-" + safeComponent(button->getName());
+            state.mView = button->getHandle();
+            mKitAuditStates.push_back(state);
+        }
+
+        std::vector<ALKitCard*> cards;
+        collectViewsOfType<ALKitCard>(page, cards);
+        for (ALKitCard* card : cards)
+        {
+            KitAuditState expanded;
+            expanded.mKind = KitAuditState::CARD;
+            expanded.mKey = "card-" + safeComponent(card->id()) + "-expanded";
+            expanded.mView = card->getHandle();
+            expanded.mBodyOpen = true;
+            mKitAuditStates.push_back(expanded);
+
+            KitAuditState closed = expanded;
+            closed.mKey = "card-" + safeComponent(card->id()) + "-closed";
+            closed.mBodyOpen = false;
+            mKitAuditStates.push_back(closed);
+
+            KitAuditState more = expanded;
+            more.mKey = "card-" + safeComponent(card->id()) + "-more";
+            more.mMoreOpen = true;
+            mKitAuditStates.push_back(more);
+        }
+
+        std::vector<ALKitOption*> options;
+        collectViewsOfType<ALKitOption>(page, options);
+        for (ALKitOption* option : options)
+        {
+            ALKitRow* row = findFirstView<ALKitRow>(option);
+            if (!row) continue;
+            KitAuditState state;
+            state.mKind = KitAuditState::SELECTOR;
+            state.mKey = "selector-" + safeComponent(option->getParent()->getName()) +
+                "-" + safeComponent(option->optionLabel());
+            state.mView = row->getHandle();
+            mKitAuditStates.push_back(state);
+        }
+
+        ALKitLazyPage* lazy = dynamic_cast<ALKitLazyPage*>(auditPageRoot());
+        if (lazy && !lazy->masterSetting().empty())
+        {
+            for (S32 enabled = 0; enabled <= 1; ++enabled)
+            {
+                KitAuditState state;
+                state.mKind = KitAuditState::SETTING;
+                state.mKey = std::string("master-") + (enabled ? "on" : "off");
+                state.mSetting = lazy->masterSetting();
+                state.mValue = enabled != 0;
+                mKitAuditStates.push_back(state);
+            }
+        }
+        if (page->pageKey() == "light_group/cine_light_rig_tab")
+        {
+            for (S32 view = 0; view <= 2; ++view)
+            {
+                KitAuditState state;
+                state.mKind = KitAuditState::SETTING;
+                state.mKey = view == 0 ? "map-top" : view == 1 ? "map-side-left" : "map-2_5d";
+                state.mSetting = "DirectorV2LightMapView";
+                state.mValue = view;
+                mKitAuditStates.push_back(state);
+            }
+            KitAuditState side_right;
+            side_right.mKind = KitAuditState::SETTING;
+            side_right.mKey = "map-side-right";
+            side_right.mSetting = "DirectorV2LightMapSideFrom";
+            side_right.mValue = 1;
+            side_right.mIndex = 1;
+            mKitAuditStates.push_back(side_right);
+        }
+    }
+
+    void applyKitAuditState()
+    {
+        applyDirectorAuditDefaults();
+        if (mKitAuditStateIndex >= mKitAuditStates.size()) return;
+        const KitAuditState& state = mKitAuditStates[mKitAuditStateIndex];
+        if (state.mKind == KitAuditState::MODE)
+        {
+            if (ALKitPage* page = dynamic_cast<ALKitPage*>(state.mView.get()))
+                page->setModeIndex(state.mIndex, false);
+        }
+        else if (state.mKind == KitAuditState::CHIP)
+        {
+            if (ALKitPage* page = findFirstView<ALKitPage>(auditPageRoot()))
+                if (page->modeCount() > 1) page->setModeIndex(page->modeCount() - 1, false);
+            if (LLUICtrl* control = dynamic_cast<LLUICtrl*>(state.mView.get()))
+                control->onCommit();
+        }
+        else if (state.mKind == KitAuditState::CARD)
+        {
+            if (ALKitCard* card = dynamic_cast<ALKitCard*>(state.mView.get()))
+            {
+                if (ALKitPage* page = findFirstView<ALKitPage>(auditPageRoot()))
+                    page->revealCard(card, false);
+                card->restoreOpenState(state.mBodyOpen, state.mMoreOpen);
+            }
+        }
+        else if (state.mKind == KitAuditState::SELECTOR)
+        {
+            ALKitRow* row = dynamic_cast<ALKitRow*>(state.mView.get());
+            for (LLView* ancestor = row ? row->getParent() : nullptr;
+                 ancestor; ancestor = ancestor->getParent())
+            {
+                if (ALKitCard* card = dynamic_cast<ALKitCard*>(ancestor))
+                {
+                    card->revealRow(row);
+                    break;
+                }
+            }
+        }
+        else if (state.mKind == KitAuditState::SETTING)
+        {
+            ALKitHistory::ScopedSuspend suspend;
+            if (state.mKey == "map-side-right")
+            {
+                // ui-draw-lint: allow(setting-write) isolated Director self-test state
+                gSavedSettings.setS32("DirectorV2LightMapView", 1);
+            }
+            // ui-draw-lint: allow(setting-write) isolated Director self-test state
+            gSavedSettings.setLLSD(state.mSetting, state.mValue);
+        }
+        if (ALKitPage* page = findFirstView<ALKitPage>(auditPageRoot()))
+            page->relayoutNow();
+    }
+
     std::string auditSizeName() const
     {
-        return mAuditSizeIndex == 0 ? "default" : "minimum";
+        if (mAuditSizeIndex >= mAuditSizes.size()) return "invalid";
+        const AuditSize& size = mAuditSizes[mAuditSizeIndex];
+        return size.mKind == AuditSize::MINIMUM ? "minimum" : size.mToken;
     }
 
     std::string auditPagePath() const
@@ -1327,6 +1719,19 @@ private:
         if (mAuditPageIndex == 0) return "default";
         const size_t tab_index = mAuditPageIndex - 1;
         return tab_index < mTabs.size() ? mTabs[tab_index].mPath : "invalid";
+    }
+
+    std::string auditStatePath() const
+    {
+        if (!isDirectorV2() || mKitAuditStates.empty() ||
+            mKitAuditStateIndex >= mKitAuditStates.size()) return auditPagePath();
+        return auditPagePath() + "@" + mKitAuditStates[mKitAuditStateIndex].mKey;
+    }
+
+    std::string auditStateName() const
+    {
+        return mKitAuditStates.empty() || mKitAuditStateIndex >= mKitAuditStates.size()
+            ? "default" : mKitAuditStates[mKitAuditStateIndex].mKey;
     }
 
     LLView* auditPageRoot() const
@@ -1348,14 +1753,14 @@ private:
                     const AuditLeaf* b, const std::string& detail)
     {
         const std::string key = auditSizeName() + "|" + mTargets[mTargetIndex] +
-            "|" + auditPagePath() + "|" + type + "|" + a.mPath + "|" +
+            "|" + auditStatePath() + "|" + type + "|" + a.mPath + "|" +
             (b ? b->mPath : std::string()) + "|" + detail;
         if (!mFindingKeys.insert(key).second) return;
         LayoutFinding finding;
         finding.mSizePass = auditSizeName();
         finding.mFloater = mTargets[mTargetIndex];
         finding.mPageIndex = (U32)mAuditPageIndex;
-        finding.mPath = auditPagePath();
+        finding.mPath = auditStatePath();
         finding.mFinding = type;
         finding.mWidgetA = a.mPath;
         finding.mRectA = a.mRect;
@@ -1374,7 +1779,14 @@ private:
         LLFloater* floater = mFloater.get();
         if (!page || !floater) return;
         mAuditedPages.insert(auditSizeName() + " " + mTargets[mTargetIndex] +
-                             "/" + auditPagePath());
+                             "/" + auditStatePath());
+        const std::string coverage_key = auditSizeName() + "|" +
+            mTargets[mTargetIndex] + "|" + auditStatePath();
+        if (isDirectorV2() && mAuditCoverageKeys.insert(coverage_key).second)
+        {
+            mAuditCoverage.push_back({ auditSizeName(), mTargets[mTargetIndex],
+                                      (U32)mAuditPageIndex, auditStatePath() });
+        }
 
         std::vector<LLView*> views;
         std::vector<AuditLeaf> leaves;
@@ -1668,14 +2080,46 @@ private:
 
     void requestCapture()
     {
-        const std::string size_dir = mAuditRoot + gDirUtilp->getDirDelimiter() + auditSizeName();
-        const std::string floater_dir = size_dir + gDirUtilp->getDirDelimiter() +
-            safeComponent(mTargets[mTargetIndex]);
-        LLFile::mkdir(size_dir);
-        LLFile::mkdir(floater_dir);
-        mCaptureFilename = floater_dir + gDirUtilp->getDirDelimiter() +
-            llformat("%03u_", (U32)mAuditPageIndex) + safeComponent(auditPagePath()) + "_" +
-            llformat("%u", (U32)mCapturePositionIndex) + ".png";
+        std::string size_dir;
+        std::string floater_dir;
+        if (isDirectorV2())
+        {
+            floater_dir = mAuditRoot + gDirUtilp->getDirDelimiter() + "director";
+            size_dir = floater_dir + gDirUtilp->getDirDelimiter() +
+                "audit-" + auditSizeName();
+            LLFile::mkdir(floater_dir);
+            LLFile::mkdir(size_dir);
+            if (auditPagePath().find("light_group/") == 0)
+            {
+                size_dir += gDirUtilp->getDirDelimiter() + "light_group";
+                LLFile::mkdir(size_dir);
+            }
+        }
+        else
+        {
+            size_dir = mAuditRoot + gDirUtilp->getDirDelimiter() + auditSizeName();
+            floater_dir = size_dir + gDirUtilp->getDirDelimiter() +
+                safeComponent(mTargets[mTargetIndex]);
+            LLFile::mkdir(size_dir);
+            LLFile::mkdir(floater_dir);
+        }
+        const std::string capture_dir = isDirectorV2() ? size_dir : floater_dir;
+        if (isDirectorV2())
+        {
+            std::string leaf = auditPagePath();
+            const size_t slash = leaf.rfind('/');
+            if (slash != std::string::npos) leaf = leaf.substr(slash + 1);
+            mCaptureFilename = capture_dir + gDirUtilp->getDirDelimiter() +
+                safeComponent(leaf) + "__" + llformat("%03u", (U32)mAuditPageIndex) +
+                "__" + safeComponent(auditStateName()) + "__" +
+                llformat("%u", (U32)mCapturePositionIndex) + ".png";
+        }
+        else
+        {
+            mCaptureFilename = capture_dir + gDirUtilp->getDirDelimiter() +
+                llformat("%03u_", (U32)mAuditPageIndex) + safeComponent(auditPagePath()) + "_" +
+                llformat("%u", (U32)mCapturePositionIndex) + ".png";
+        }
         mCaptureFailed = false;
         mCaptureWaitFrames = 0;
         mCaptureRequested = true;
@@ -1694,6 +2138,7 @@ private:
 
     void beginAuditOrClose()
     {
+        collectKitMetrics();
         if (mLayout && (!mAB || !mCullOn))
         {
             mAuditSizeIndex = 0;
@@ -1706,8 +2151,17 @@ private:
         }
     }
 
+    void skipAuditSize()
+    {
+        if (++mAuditSizeIndex < mAuditSizes.size())
+            mPhase = AUDIT_SIZE_PREP;
+        else
+            mPhase = AUDIT_RESTORE;
+    }
+
     void closeCurrentTarget()
     {
+        restoreDirectorAuditSettings();
         restoreInitialState();
         if (LLFloater* floater = mFloater.get())
         {
@@ -1884,6 +2338,14 @@ private:
             if (!takeFrame(sample)) return false;
             addRow(mTargets[mTargetIndex], "", "open", mActionMs, sample.mUiMs,
                    mReadyWaitFrames);
+            if (isDirectorV2())
+            {
+                if (ALKitShell* shell = findFirstView<ALKitShell>(mFloater.get()))
+                {
+                    const std::string page = shell->currentPageKey();
+                    if (!page.empty()) addMetricRow(page, "kit_build", mActionMs);
+                }
+            }
             mPhase = isInventoryStress() ? INVENTORY_TOP : DEFAULT_MEASURE;
             break;
         }
@@ -2056,7 +2518,7 @@ private:
             break;
         case TAB_SELECT:
         {
-            const TabTarget& target = mTabs[mTabIndex];
+            const TabTarget target = mTabs[mTabIndex];
             if (!target.mPanel.get())
             {
                 abortCurrentTarget("tab panel died: " + target.mPath);
@@ -2070,12 +2532,39 @@ private:
                 << mTargets[mTargetIndex] << "/" << target.mPath << LL_ENDL;
             LLError::setAlwaysFlush(prior_flush);
             LLTimer timer;
+            const bool lazy_unbuilt = isDirectorV2() &&
+                dynamic_cast<ALKitLazyPage*>(target.mPanel.get()) &&
+                !findFirstView<ALKitPage>(target.mPanel.get());
             if (!applyChain(target.mChain))
             {
                 abortCurrentTarget("tab container died: " + target.mPath);
                 break;
             }
             mActionMs = timer.getElapsedTimeF64() * 1000.0;
+            mPendingKitBuild = lazy_unbuilt;
+            if (lazy_unbuilt)
+            {
+                TabTarget& current = mTabs[mTabIndex];
+                current.mScrollBegin = mScrollers.size();
+                collectScrollers(current.mPanel.get(), current.mChain,
+                                 current.mPath, mScrollers);
+                current.mScrollEnd = mScrollers.size();
+                std::vector<TabTarget> nested;
+                collectTabs(current.mPanel.get(), current.mChain,
+                            current.mPath, nested);
+                for (TabTarget& nested_target : nested)
+                {
+                    nested_target.mScrollBegin = mScrollers.size();
+                    collectScrollers(nested_target.mPanel.get(), nested_target.mChain,
+                                     nested_target.mPath, mScrollers);
+                    nested_target.mScrollEnd = mScrollers.size();
+                }
+                if (!nested.empty())
+                {
+                    mTabs.insert(mTabs.begin() + mTabIndex + 1,
+                                 nested.begin(), nested.end());
+                }
+            }
             mPhase = TAB_FIRST_FRAME;
             break;
         }
@@ -2093,6 +2582,18 @@ private:
                 const TabTarget& target = mTabs[mTabIndex];
                 addRow(mTargets[mTargetIndex], target.mPath, "tab",
                        mActionMs, mFirstFrameMs);
+                if (mPendingKitBuild)
+                {
+                    addMetricRow(target.mPath, "kit_build", mActionMs);
+                    mPendingKitBuild = false;
+                }
+                if (isDirectorV2() &&
+                    target.mPath.find("cine_light_rig_tab") != std::string::npos)
+                {
+                    mActionMs = 0.0;
+                    mPhase = DIRECTOR_HOVER_SWEEP;
+                    break;
+                }
                 mScrollIndex = target.mScrollBegin;
                 if (mScrollIndex < target.mScrollEnd)
                 {
@@ -2108,6 +2609,40 @@ private:
                 }
             }
             break;
+        case DIRECTOR_HOVER_SWEEP:
+        {
+            const TabTarget& target = mTabs[mTabIndex];
+            LLFloater* floater = mFloater.get();
+            LLPanel* panel = target.mPanel.get();
+            if (!floater || !panel)
+            {
+                abortCurrentTarget("Director Rig panel died during hover sweep");
+                break;
+            }
+            LLRect rect;
+            if (!panel->localRectToOtherView(panel->getLocalRect(), &rect, floater))
+            {
+                abortCurrentTarget("Director Rig hover coordinates unavailable");
+                break;
+            }
+            const F32 fraction = (mFrames > 1)
+                ? (F32)mSamples.size() / (F32)(mFrames - 1) : 1.f;
+            const S32 x = rect.mLeft + rect.getWidth() / 2;
+            const S32 y = rect.mBottom + ll_round(fraction * (F32)rect.getHeight());
+            LLTimer timer;
+            floater->handleHover(x, y, MASK_NONE);
+            mActionMs += timer.getElapsedTimeF64() * 1000.0;
+            if (collect(mFrames))
+            {
+                const F64 mean_hit_test_ms = mActionMs / (F64)mSamples.size();
+                addRow("director", target.mPath, "hover_sweep", mean_hit_test_ms);
+                mScrollIndex = target.mScrollBegin;
+                if (mScrollIndex < target.mScrollEnd) mPhase = SCROLL_BOTTOM;
+                else if (++mTabIndex < mTabs.size()) mPhase = TAB_SELECT;
+                else beginAuditOrClose();
+            }
+            break;
+        }
         case SCROLL_BOTTOM:
         {
             FrameSample ignored;
@@ -2196,11 +2731,17 @@ private:
                 break;
             }
             restoreInitialState();
-            if (mAuditSizeIndex == 0)
+            if (mAuditSizeIndex >= mAuditSizes.size())
+            {
+                mPhase = AUDIT_RESTORE;
+                break;
+            }
+            const AuditSize& audit_size = mAuditSizes[mAuditSizeIndex];
+            if (audit_size.mKind == AuditSize::DEFAULT)
             {
                 floater->setShape(mOriginalFloaterRect, false);
             }
-            else
+            else if (audit_size.mKind == AuditSize::MINIMUM)
             {
                 const S32 min_width = floater->getMinWidth();
                 const S32 min_height = floater->getMinHeight();
@@ -2208,14 +2749,14 @@ private:
                 {
                     LL_INFOS("UILayoutAudit") << "UILayoutAudit minimum skipped: not resizable "
                         << mTargets[mTargetIndex] << LL_ENDL;
-                    mPhase = AUDIT_RESTORE;
+                    skipAuditSize();
                     break;
                 }
                 if (min_width <= 0 || min_height <= 0)
                 {
                     LL_INFOS("UILayoutAudit") << "UILayoutAudit minimum skipped: invalid minimum "
                         << mTargets[mTargetIndex] << LL_ENDL;
-                    mPhase = AUDIT_RESTORE;
+                    skipAuditSize();
                     break;
                 }
                 const S32 width = llmin(min_width, mOriginalFloaterRect.getWidth());
@@ -2225,10 +2766,26 @@ private:
                 {
                     LL_INFOS("UILayoutAudit") << "UILayoutAudit minimum skipped: matches original "
                         << mTargets[mTargetIndex] << LL_ENDL;
-                    mPhase = AUDIT_RESTORE;
+                    skipAuditSize();
                     break;
                 }
                 floater->reshape(width, height, false);
+            }
+            else
+            {
+                const S32 min_width = floater->getMinWidth();
+                const S32 min_height = floater->getMinHeight();
+                if (!floater->isResizable() || audit_size.mWidth < min_width ||
+                    audit_size.mHeight < min_height)
+                {
+                    LL_INFOS("UILayoutAudit") << "UILayoutAudit "
+                        << audit_size.mToken << " skipped: below floater minimum "
+                        << min_width << "x" << min_height << " "
+                        << mTargets[mTargetIndex] << LL_ENDL;
+                    skipAuditSize();
+                    break;
+                }
+                floater->reshape(audit_size.mWidth, audit_size.mHeight, false);
             }
             mAuditPageIndex = 0;
             mAuditSettleFrames = 0;
@@ -2243,6 +2800,11 @@ private:
                 mAuditSettleTimer.getElapsedTimeF32() >= 0.3f)
             {
                 mPhase = AUDIT_PAGE_SELECT;
+            }
+            else if (isDirectorV2() && mAuditSettleFrames >= 600)
+            {
+                abortCurrentTarget("layout audit size did not settle after 600 frames: " +
+                                   auditSizeName());
             }
             break;
         }
@@ -2261,6 +2823,8 @@ private:
                 abortCurrentTarget("layout audit page died: " + auditPagePath());
                 break;
             }
+            prepareKitAuditStates();
+            applyKitAuditState();
             std::vector<LLHandle<LLScrollContainer>> scrollers;
             collectAllScrollers(auditPageRoot(), scrollers);
             for (const LLHandle<LLScrollContainer>& handle : scrollers)
@@ -2283,6 +2847,11 @@ private:
                 mCapturePositionIndex = 0;
                 mAuditSettleFrames = 0;
                 mPhase = AUDIT_CAPTURE_SETTLE;
+            }
+            else if (isDirectorV2() && mAuditSettleFrames >= 600)
+            {
+                abortCurrentTarget("layout audit state did not settle after 600 frames: " +
+                                   auditStatePath());
             }
             break;
         }
@@ -2318,12 +2887,22 @@ private:
                 mPhase = AUDIT_CAPTURE_SETTLE;
                 break;
             }
-            ++mAuditPageIndex;
-            if (mAuditPageIndex <= mTabs.size())
+            if (isDirectorV2() && ++mKitAuditStateIndex < mKitAuditStates.size())
+            {
+                applyKitAuditState();
+                std::vector<LLHandle<LLScrollContainer>> scrollers;
+                collectAllScrollers(auditPageRoot(), scrollers);
+                for (const LLHandle<LLScrollContainer>& handle : scrollers)
+                    if (LLScrollContainer* scroller = handle.get()) scroller->goToTop();
+                mAuditSettleFrames = 0;
+                mAuditSettleTimer.reset();
+                mPhase = AUDIT_PAGE_SETTLE;
+            }
+            else if (++mAuditPageIndex <= mTabs.size())
             {
                 mPhase = AUDIT_PAGE_SELECT;
             }
-            else if (++mAuditSizeIndex < 2)
+            else if (++mAuditSizeIndex < mAuditSizes.size())
             {
                 mPhase = AUDIT_SIZE_PREP;
             }
@@ -2455,6 +3034,20 @@ private:
         }
         out.flush();
 
+        if (mDirectorV2)
+        {
+            const std::string coverage_path = gDirUtilp->getExpandedFilename(
+                LL_PATH_LOGS, "ui_layout_audit_states.csv");
+            llofstream coverage(coverage_path.c_str(), std::ios::out | std::ios::trunc);
+            coverage << "size_pass,floater,page_index,tab_path\n";
+            for (const AuditCoverage& state : mAuditCoverage)
+            {
+                coverage << csv(state.mSizePass) << ',' << csv(state.mFloater) << ','
+                    << state.mPageIndex << ',' << csv(state.mPath) << '\n';
+            }
+            coverage.flush();
+        }
+
         std::map<std::string, U32> by_page;
         std::map<std::string, U32> by_type;
         for (const LayoutFinding& finding : mFindings)
@@ -2505,6 +3098,8 @@ private:
     bool mLayout;
     U32 mInventoryItems;
     bool mPriorCull;
+    bool mDirectorV2 = false;
+    std::vector<AuditSize> mAuditSizes;
     bool mCullOn = true;
     U32 mABPass = 0;
     bool mInventoryAB = false;
@@ -2531,15 +3126,22 @@ private:
     bool mReadyWaitLogged = false;
     F64 mActionMs = 0.0;
     F64 mFirstFrameMs = 0.0;
+    bool mPendingKitBuild = false;
+    bool mKitMetricsCollected = false;
     LLFrameTimer mUiFrameStall;
     bool mUiFrameStallWarned = false;
     OverlapPolicy mOverlapPolicy;
     std::vector<LayoutFinding> mFindings;
     std::set<std::string> mFindingKeys;
     std::set<std::string> mAuditedPages;
+    std::vector<AuditCoverage> mAuditCoverage;
+    std::set<std::string> mAuditCoverageKeys;
     std::string mAuditRoot;
     U32 mAuditSizeIndex = 0;
     size_t mAuditPageIndex = 0;
+    std::vector<KitAuditState> mKitAuditStates;
+    size_t mKitAuditStateIndex = 0;
+    std::map<std::string, LLSD> mDirectorAuditSettings;
     U32 mAuditSettleFrames = 0;
     LLFrameTimer mAuditSettleTimer;
     LLHandle<LLScrollContainer> mCaptureScroller;
@@ -2566,11 +3168,14 @@ void ALUIPerfSelfTest::startIfRequested()
     static LLCachedControl<U32> frames(gSavedSettings, "UIPerfSelfTestFrames", 120);
     static LLCachedControl<bool> ab(gSavedSettings, "UIPerfSelfTestAB", false);
     static LLCachedControl<bool> layout(gSavedSettings, "UILayoutAudit", false);
+    static LLCachedControl<std::string> audit_sizes(
+        gSavedSettings, "UILayoutAuditSizes", std::string());
     static LLCachedControl<U32> inventory_items(gSavedSettings, "UIPerfInventoryStress", 0);
     sActive = true;
     sSuppressSettingsSave = true;
     sLayoutAuditActive = layout;
-    sRunner = std::make_unique<Runner>(request(), frames, ab, layout, inventory_items);
+    sRunner = std::make_unique<Runner>(request(), frames, ab, layout,
+                                       inventory_items, audit_sizes());
 }
 
 void ALUIPerfSelfTest::tick()

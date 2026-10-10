@@ -5,6 +5,7 @@ param(
   [uint32]$Inventory = 6000,
   [switch]$AB,
   [switch]$Layout,
+  [switch]$DirectorV2,
   [int]$TimeoutMin = 10,
   [string]$Compare
 )
@@ -23,6 +24,10 @@ if ($Floaters.Contains('"')) {
   Write-Host 'Floater list must not contain a double quote.' -ForegroundColor Red
   exit 2
 }
+if ($DirectorV2) {
+  $Layout = $true
+  $Floaters = 'director'
+}
 if ($Layout -and $TimeoutMin -eq 10) { $TimeoutMin = 25 }
 
 # Keep in sync with all_targets in indra/newview/aluiperfselftest.cpp.
@@ -37,6 +42,7 @@ $inventoryRequested = $Inventory -gt 0 -and $targets -contains 'inventory_stress
 $logsDir = Join-Path $env:APPDATA 'AlchemyMachinima\logs'
 $csvPath = Join-Path $logsDir 'ui_perf_selftest.csv'
 $layoutCsvPath = Join-Path $logsDir 'ui_layout_audit.csv'
+$layoutStatesPath = Join-Path $logsDir 'ui_layout_audit_states.csv'
 $layoutShotsPath = Join-Path $logsDir 'ui_audit'
 $logPath = Join-Path $logsDir 'Alchemy.log'
 $dumpDir = Join-Path $env:LOCALAPPDATA 'CrashDumps'
@@ -56,6 +62,7 @@ while ($true) {
       Remove-Item -LiteralPath $layoutShotsPath -Recurse -Force
     }
     Remove-Item -LiteralPath $layoutCsvPath -Force -ErrorAction SilentlyContinue
+    if ($DirectorV2) { Remove-Item -LiteralPath $layoutStatesPath -Force -ErrorAction SilentlyContinue }
   }
   $quotedFloaters = '"' + ($targets -join ',') + '"'
   $viewerArgs = @('--set', 'UIPerfSelfTest', $quotedFloaters,
@@ -63,6 +70,10 @@ while ($true) {
             '--set', 'UIPerfInventoryStress', $(if ($targets -contains 'inventory_stress') { $Inventory } else { 0 }),
             '--set', 'UIPerfSelfTestAB', $(if ($AB) { 'TRUE' } else { 'FALSE' }),
             '--set', 'UILayoutAudit', $(if ($Layout) { 'TRUE' } else { 'FALSE' }))
+  if ($DirectorV2) {
+    $viewerArgs += @('--set', 'DirectorUIV2', 'TRUE',
+      '--set', 'UILayoutAuditSizes', '"1160x720,min,1141x720,915x720"')
+  }
   # The viewer resolves app_settings/ and skins/ from its working directory: always
   # start it in the exe's own folder, or it loads whatever install the caller is in.
   $process = Start-Process -FilePath $Exe -ArgumentList $viewerArgs -WorkingDirectory (Split-Path -Parent $Exe) -PassThru
@@ -81,6 +92,7 @@ while ($true) {
 
   $csvFile = Get-Item -LiteralPath $csvPath -ErrorAction SilentlyContinue
   $layoutCsvFile = Get-Item -LiteralPath $layoutCsvPath -ErrorAction SilentlyContinue
+  $layoutStatesFile = Get-Item -LiteralPath $layoutStatesPath -ErrorAction SilentlyContinue
   $logFile = Get-Item -LiteralPath $logPath -ErrorAction SilentlyContinue
   $lastBegin = $null
   $summary = $null
@@ -92,7 +104,8 @@ while ($true) {
   }
   $complete = $summary -and (-not $lastBegin -or $summary.LineNumber -gt $lastBegin.LineNumber)
   $layoutComplete = (-not $Layout) -or
-    ($layoutCsvFile -and $layoutCsvFile.LastWriteTimeUtc -ge $startUtc)
+    ($layoutCsvFile -and $layoutCsvFile.LastWriteTimeUtc -ge $startUtc -and
+      (-not $DirectorV2 -or ($layoutStatesFile -and $layoutStatesFile.LastWriteTimeUtc -ge $startUtc)))
   if ($complete -and $layoutComplete -and $csvFile -and $csvFile.LastWriteTimeUtc -ge $startUtc) {
     if ($process.ExitCode -ne 0) {
       Write-Host "Warning: the self-test completed but the viewer exited with $($process.ExitCode) during shutdown." -ForegroundColor Yellow
@@ -264,6 +277,12 @@ if ($Layout) {
   New-Item -ItemType Directory -Path $layoutDest -Force | Out-Null
   $layoutCsvDest = Join-Path $layoutDest 'ui_layout_audit.csv'
   Copy-Item -LiteralPath $layoutCsvFile.FullName -Destination $layoutCsvDest
+  $layoutStates = @()
+  if ($DirectorV2) {
+    $layoutStatesDest = Join-Path $layoutDest 'ui_layout_audit_states.csv'
+    Copy-Item -LiteralPath $layoutStatesFile.FullName -Destination $layoutStatesDest
+    $layoutStates = @(Import-Csv -LiteralPath $layoutStatesDest)
+  }
   $shotsDest = Join-Path $layoutDest 'ui_audit'
   if (Test-Path -LiteralPath $layoutShotsPath -PathType Container) {
     Copy-Item -LiteralPath $layoutShotsPath -Destination $shotsDest -Recurse
@@ -317,9 +336,17 @@ if ($Layout) {
   foreach ($shot in $shotFiles) {
     $relativeDir = $shot.DirectoryName.Substring($shotsDest.Length).TrimStart('\')
     $parts = @($relativeDir -split '\\')
-    if ($parts.Count -lt 2 -or $shot.BaseName -notmatch '^(?<page>[0-9]{3})_(?<tab>.*)_(?<shot>[0-9]+)$') { continue }
-    $sizePass = $parts[0]
-    $floaterSafe = $parts[1]
+    if ($DirectorV2) {
+      if ($parts.Count -lt 2 -or $parts[0] -ne 'director' -or $parts[1] -notlike 'audit-*') { continue }
+      if ($shot.BaseName -notmatch '^(?<tab>.*)__(?<page>[0-9]{3})__(?<state>.*)__(?<shot>[0-9]+)$') { continue }
+      $sizePass = $parts[1].Substring(6)
+      $floaterSafe = 'director'
+    } else {
+      if ($parts.Count -lt 2) { continue }
+      if ($shot.BaseName -notmatch '^(?<page>[0-9]{3})_(?<tab>.*)_(?<shot>[0-9]+)$') { continue }
+      $sizePass = $parts[0]
+      $floaterSafe = $parts[1]
+    }
     $pageIndex = [int]$Matches.page
     $key = "$sizePass|$floaterSafe|$pageIndex"
     if (-not $pageMap.ContainsKey($key)) {
@@ -363,11 +390,113 @@ if ($Layout) {
   [System.IO.File]::WriteAllText($indexPath, $html.ToString(), [System.Text.UTF8Encoding]::new($false))
   Write-Host "Layout audit saved: $layoutDest"
 }
+$directorBudgetFailed = $false
+if ($DirectorV2) {
+  function Write-DirectorBudgetLine([string]$Name, [string]$Value, [bool]$Pass) {
+    $status = if ($Pass) { 'PASS' } else { 'FAIL' }
+    $colour = if ($Pass) { 'Green' } else { 'Red' }
+    Write-Host ("  {0}: {1} [{2}]" -f $Name, $Value, $status) -ForegroundColor $colour
+  }
+
+  $openRows = @($rows | Where-Object { $_.floater -eq 'director' -and $_.measure -eq 'open' })
+  $openMs = if ($openRows.Count) { [double](($openRows | Measure-Object action_ms -Maximum).Maximum) } else { [double]::PositiveInfinity }
+  $openPass = $openMs -le 120.0
+  Write-DirectorBudgetLine 'director open action ms <= 120' $(if ([double]::IsPositiveInfinity($openMs)) { 'missing' } else { '{0:N3} ms' -f $openMs }) $openPass
+
+  $steadyRows = @($rows | Where-Object { $_.floater -eq 'director' -and $_.measure -eq 'tab' })
+  $steadyMs = if ($steadyRows.Count) { [double](($steadyRows | Measure-Object ui_mean_ms -Maximum).Maximum) } else { [double]::PositiveInfinity }
+  $steadyPass = $steadyMs -le 0.5
+  Write-DirectorBudgetLine 'worst steady page mean <= 0.5 ms' $(if ([double]::IsPositiveInfinity($steadyMs)) { 'missing' } else { '{0:N3} ms' -f $steadyMs }) $steadyPass
+
+  $buildRows = @($rows | Where-Object { $_.floater -eq 'director' -and $_.measure -eq 'kit_build' })
+  $buildMs = if ($buildRows.Count) { [double](($buildRows | Measure-Object action_ms -Maximum).Maximum) } else { [double]::PositiveInfinity }
+  $buildPass = $buildMs -le 50.0
+  Write-DirectorBudgetLine 'any kit page first reveal <= 50 ms' $(if ([double]::IsPositiveInfinity($buildMs)) { 'missing' } else { '{0:N3} ms' -f $buildMs }) $buildPass
+
+  $searchRows = @($rows | Where-Object measure -eq 'kit_search')
+  $searchMs = if ($searchRows.Count) { [double](($searchRows | Measure-Object action_ms -Maximum).Maximum) } else { [double]::PositiveInfinity }
+  $searchPass = $searchMs -le 5.0
+  Write-DirectorBudgetLine 'kit_search max <= 5 ms' $(if ([double]::IsPositiveInfinity($searchMs)) { 'missing' } else { '{0:N3} ms' -f $searchMs }) $searchPass
+
+  $amberRows = @($rows | Where-Object measure -eq 'kit_amber_storm')
+  $amberMs = if ($amberRows.Count) { [double](($amberRows | Measure-Object action_ms -Maximum).Maximum) } else { [double]::PositiveInfinity }
+  $amberPass = $amberMs -le 2.0
+  Write-DirectorBudgetLine 'kit_amber_storm <= 2 ms' $(if ([double]::IsPositiveInfinity($amberMs)) { 'missing' } else { '{0:N3} ms' -f $amberMs }) $amberPass
+
+  $hoverRows = @($rows | Where-Object { $_.floater -eq 'director' -and $_.measure -eq 'hover_sweep' -and $_.tab_path -like '*cine_light_rig_tab*' })
+  $hoverFinds = if ($hoverRows.Count) { [double](($hoverRows | Measure-Object find_calls_mean -Maximum).Maximum) } else { [double]::PositiveInfinity }
+  $hoverPass = $hoverFinds -eq 0.0
+  Write-DirectorBudgetLine 'Director Rig hover find calls per frame = 0' $(if ([double]::IsPositiveInfinity($hoverFinds)) { 'missing' } else { '{0:N3}' -f $hoverFinds }) $hoverPass
+
+  $kitFindings = @($layoutRows | Where-Object {
+    $_.tab_path -match '^(default|.*cine_light_rig_tab|.*light_rim_tab)@'
+  })
+  $requiredSizes = @('1160x720', 'minimum', '1141x720', '915x720')
+  $coverageMissing = [System.Collections.Generic.List[string]]::new()
+  foreach ($size in $requiredSizes) {
+    $sizeStates = @($layoutStates | Where-Object size_pass -eq $size)
+    foreach ($pattern in @('default@default', '*cine_light_rig_tab@mode-Advanced',
+        '*cine_light_rig_tab@selector-*-Key', '*cine_light_rig_tab@selector-*-Fill',
+        '*cine_light_rig_tab@selector-*-Back', '*cine_light_rig_tab@selector-*-BG',
+        '*cine_light_rig_tab@card-*-expanded', '*cine_light_rig_tab@card-*-closed',
+        '*light_rim_tab@selector-*-Key', '*light_rim_tab@selector-*-Fill',
+        '*light_rim_tab@selector-*-Back', '*light_rim_tab@selector-*-BG',
+        '*light_rim_tab@card-*-expanded', '*light_rim_tab@card-*-closed')) {
+      if (-not @($sizeStates | Where-Object tab_path -Like $pattern).Count) {
+        $coverageMissing.Add("$size/$pattern")
+      }
+    }
+  }
+  $kitLayoutPass = $kitFindings.Count -eq 0 -and $coverageMissing.Count -eq 0
+  $kitLayoutValue = "$($kitFindings.Count) finding(s), $($coverageMissing.Count) missing state capture(s)"
+  Write-DirectorBudgetLine 'layout findings shell + Light > Rig + Light > Rim, all states at all 4 sizes = 0' $kitLayoutValue $kitLayoutPass
+
+  $legacyRows = @($layoutRows | Where-Object {
+    $_.size_pass -in @('1160x720', 'minimum') -and
+    $_.tab_path -notmatch '^(default|.*cine_light_rig_tab|.*light_rim_tab)@'
+  })
+  $baselineLayoutPath = $null
+  if ($Compare) {
+    $compareItem = Get-Item -LiteralPath $Compare -ErrorAction SilentlyContinue
+    if ($compareItem) {
+      $candidate = if ($compareItem.Name -eq 'ui_layout_audit.csv') {
+        $compareItem.FullName
+      } else {
+        Join-Path $compareItem.DirectoryName 'ui_layout_audit.csv'
+      }
+      if (Test-Path -LiteralPath $candidate -PathType Leaf) { $baselineLayoutPath = $candidate }
+      if (-not $baselineLayoutPath -and $compareItem.BaseName -match '^ui_perf_(?<stamp>[0-9]{8}_[0-9]{6})$') {
+        $candidate = Join-Path 'C:\Users\xianw\cxs\ui_audit' "$($Matches.stamp)\ui_layout_audit.csv"
+        if (Test-Path -LiteralPath $candidate -PathType Leaf) { $baselineLayoutPath = $candidate }
+      }
+    }
+  }
+  $legacyNew = @()
+  if ($baselineLayoutPath) {
+    $baselineKeys = @{}
+    foreach ($finding in @(Import-Csv -LiteralPath $baselineLayoutPath)) {
+      $key = "$($finding.size_pass)|$($finding.tab_path)|$($finding.finding)|$($finding.widget_a)|$($finding.widget_b)|$($finding.detail)"
+      $baselineKeys[$key] = $true
+    }
+    $legacyNew = @($legacyRows | Where-Object {
+      $size = if ($_.size_pass -eq '1160x720') { 'default' } else { $_.size_pass }
+      $key = "$size|$($_.tab_path -replace '@default$','')|$($_.finding)|$($_.widget_a)|$($_.widget_b)|$($_.detail)"
+      -not $baselineKeys.ContainsKey($key)
+    })
+  }
+  $legacyPass = [bool]$baselineLayoutPath -and $legacyNew.Count -eq 0
+  $legacyValue = if ($baselineLayoutPath) { "$($legacyNew.Count) new finding(s)" } else { 'missing -Compare layout baseline' }
+  Write-DirectorBudgetLine 'layout findings legacy pages vs v1 baseline = 0 new' $legacyValue $legacyPass
+
+  $directorBudgetFailed = -not ($openPass -and $steadyPass -and $buildPass -and
+    $searchPass -and $amberPass -and $hoverPass -and $kitLayoutPass -and $legacyPass)
+  Write-Host ("DIRECTOR V2 BUDGET: " + $(if ($directorBudgetFailed) { 'FAIL' } else { 'PASS' })) -ForegroundColor $(if ($directorBudgetFailed) { 'Red' } else { 'Green' })
+}
 if ($crashes.Count) {
   Write-Host "`nCRASHED (excluded from the numbers above):" -ForegroundColor Red
   $crashes | ForEach-Object { Write-Host "  $($_.Site)  exit $($_.ExitCode)  $($_.Dump)" -ForegroundColor Red; Write-Host ($_.Stack -replace '(?m)^', '      ') }
 }
-$layoutFlagged = $Layout -and $layoutFindingCount -gt 0
+$layoutFlagged = $Layout -and -not $DirectorV2 -and $layoutFindingCount -gt 0
 if ($layoutFlagged) {
   Write-Host "LAYOUT FLAGGED: $layoutFindingCount finding(s)" -ForegroundColor Red
 } elseif ($Layout) {
@@ -383,6 +512,7 @@ if ($flagged.Count) {
 }
 if ($crashes.Count) { exit 3 }
 if ($inventoryMissing.Count) { exit 5 }
+if ($directorBudgetFailed) { exit 6 }
 if ($flagged.Count) { exit 1 }
 if ($layoutFlagged) { exit 4 }
 exit 0
