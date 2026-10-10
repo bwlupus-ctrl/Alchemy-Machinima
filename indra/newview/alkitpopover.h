@@ -26,8 +26,8 @@ protected:
     explicit ALKitPopover(const Params& params);
 
 private:
-    std::string mAnchorName;
-    std::string mSide;
+    std::string      mAnchorName;
+    std::string      mSide;
     LLHandle<LLView> mAnchor;
 };
 

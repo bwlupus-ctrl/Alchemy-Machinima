@@ -7,18 +7,12 @@
 
 static LLDefaultChildRegistry::Register<ALKitBar> register_bar("kit_bar");
 
-ALKitBar::Params::Params()
-    : flex("flex"),
-      collapse_order("collapse_order")
+ALKitBar::Params::Params() : flex("flex"), collapse_order("collapse_order")
 {
 }
 
-ALKitBar::ALKitBar(const Params& params)
-    : LLPanel(params),
-      mFlexName(params.flex)
-{
-    LLStringUtil::getTokens(params.collapse_order, mCollapseOrder, ",");
-}
+ALKitBar::ALKitBar(const Params& params) : LLPanel(params), mFlexName(params.flex)
+{ LLStringUtil::getTokens(params.collapse_order, mCollapseOrder, ","); }
 
 bool ALKitBar::postBuild()
 {
@@ -60,7 +54,7 @@ void ALKitBar::setCollapsibleVisible(LLView* child, bool visible)
         if (mCollapse[index] == child)
         {
             mNaturalVisible[index] = visible;
-            mCollapsed[index] = false;
+            mCollapsed[index]      = false;
             break;
         }
     }
@@ -125,7 +119,7 @@ void ALKitBar::layoutChildren()
         }
     }
 
-    S32 fixed = 0;
+    S32 fixed   = 0;
     S32 visible = 0;
     for (LLView* child : mChildren)
     {
@@ -136,7 +130,7 @@ void ALKitBar::layoutChildren()
         }
     }
     const S32 flex_width = mFlex ? llmax(0, getRect().getWidth() - 2 * PAD - fixed - visible * GAP) : 0;
-    S32 left = PAD;
+    S32       left       = PAD;
     for (LLView* child : mChildren)
     {
         if (!child->getVisible())

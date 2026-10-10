@@ -26,40 +26,43 @@ namespace
 template<typename T>
 T* findFirst(LLView* root)
 {
-    if(!root)return nullptr;
-    if(T* result=dynamic_cast<T*>(root))return result;
-    for(LLView* child:*root->getChildList())if(T* result=findFirst<T>(child))return result;
+    if (!root)
+        return nullptr;
+    if (T* result = dynamic_cast<T*>(root))
+        return result;
+    for (LLView* child : *root->getChildList())
+        if (T* result = findFirst<T>(child))
+            return result;
     return nullptr;
 }
 
-}
+} // namespace
 
-ALKitShell::ALKitShell(const Params&p):LLPanel(p),mIndexFile(p.index_file)
+ALKitShell::ALKitShell(const Params& p) : LLPanel(p), mIndexFile(p.index_file)
 {
-    for(const RailItem& item:p.rail_item)
+    for (const RailItem& item : p.rail_item)
     {
-        mRailData.push_back({item.group,item.label,item.icon,item.master_settings});
+        mRailData.push_back({ item.group, item.label, item.icon, item.master_settings });
     }
     mHistory.setOwner(this);
 }
 
 ALKitShell::~ALKitShell()
 {
-    if(auto timer=mSearchDebounce.lock())delete timer.get();
+    if (auto timer = mSearchDebounce.lock())
+        delete timer.get();
 }
 
 bool ALKitShell::postBuild()
 {
-    if(!LLPanel::postBuild())return false;
-    mDirectorTabs=findChild<LLTabContainer>("director_tabs");
-    mRoster=findChild<LLPanel>("kit_cast_roster");
-    mTransport=findChild<LLPanel>("kit_transport");
-    mRosterOpen=gSavedSettings.getBOOL("DirectorV2CastRosterOpen");
+    if (!LLPanel::postBuild())
+        return false;
+    mDirectorTabs = findChild<LLTabContainer>("director_tabs");
+    mRoster       = findChild<LLPanel>("kit_cast_roster");
+    mTransport    = findChild<LLPanel>("kit_transport");
+    mRosterOpen   = gSavedSettings.getBOOL("DirectorV2CastRosterOpen");
     buildChrome();
-    mConnections.emplace_back(setPageBuiltCallback([this](const std::string& name,LLPanel* panel)
-    {
-        pageBuilt(name,panel);
-    }));
+    mConnections.emplace_back(setPageBuiltCallback([this](const std::string& name, LLPanel* panel) { pageBuilt(name, panel); }));
     layoutChrome();
     return true;
 }
@@ -67,102 +70,107 @@ bool ALKitShell::postBuild()
 void ALKitShell::buildChrome()
 {
     LLPanel::Params panel_params;
-    panel_params.mouse_opaque=false;
-    panel_params.rect=LLRect(0,1,1,0);
-    panel_params.name="kit_rail";
-    mRail=LLUICtrlFactory::create<LLPanel>(panel_params);
+    panel_params.mouse_opaque = false;
+    panel_params.rect         = LLRect(0, 1, 1, 0);
+    panel_params.name         = "kit_rail";
+    mRail                     = LLUICtrlFactory::create<LLPanel>(panel_params);
     addChild(mRail);
-    panel_params.name="kit_tabstrip";
-    mTabStrip=LLUICtrlFactory::create<LLPanel>(panel_params);
+    panel_params.name = "kit_tabstrip";
+    mTabStrip         = LLUICtrlFactory::create<LLPanel>(panel_params);
     addChild(mTabStrip);
-    panel_params.name="kit_help";
-    mHelpPanel=LLUICtrlFactory::create<LLPanel>(panel_params);
+    panel_params.name = "kit_help";
+    mHelpPanel        = LLUICtrlFactory::create<LLPanel>(panel_params);
     addChild(mHelpPanel);
-    panel_params.name="kit_help_strip";
-    mHelpStrip=LLUICtrlFactory::create<LLPanel>(panel_params);
+    panel_params.name = "kit_help_strip";
+    mHelpStrip        = LLUICtrlFactory::create<LLPanel>(panel_params);
     addChild(mHelpStrip);
-    mHelp.attach(mHelpPanel,mHelpStrip);
+    mHelp.attach(mHelpPanel, mHelpStrip);
 
     LLButton::Params arrow_params;
-    arrow_params.name="kit_tab_prev";
-    arrow_params.label="<";
-    arrow_params.rect=LLRect(0,28,24,0);
-    mTabPrev=LLUICtrlFactory::create<LLButton>(arrow_params);
+    arrow_params.name  = "kit_tab_prev";
+    arrow_params.label = "<";
+    arrow_params.rect  = LLRect(0, 28, 24, 0);
+    mTabPrev           = LLUICtrlFactory::create<LLButton>(arrow_params);
     mTabStrip->addChild(mTabPrev);
-    arrow_params.name="kit_tab_next";
-    arrow_params.label=">";
-    mTabNext=LLUICtrlFactory::create<LLButton>(arrow_params);
+    arrow_params.name  = "kit_tab_next";
+    arrow_params.label = ">";
+    mTabNext           = LLUICtrlFactory::create<LLButton>(arrow_params);
     mTabStrip->addChild(mTabNext);
-    LLHandle<ALKitShell> tab_handle=getDerivedHandle<ALKitShell>();
-    mTabPrev->setCommitCallback([tab_handle](LLUICtrl*,const LLSD&)
-    {
-        if(ALKitShell* shell=tab_handle.get())
+    LLHandle<ALKitShell> tab_handle = getDerivedHandle<ALKitShell>();
+    mTabPrev->setCommitCallback(
+        [tab_handle](LLUICtrl*, const LLSD&)
         {
-            shell->mTabOffset=llmax(0,shell->mTabOffset-1);
-            shell->layoutChrome();
-        }
-    });
-    mTabNext->setCommitCallback([tab_handle](LLUICtrl*,const LLSD&)
-    {
-        if(ALKitShell* shell=tab_handle.get())
-        {
-            ++shell->mTabOffset;
-            shell->layoutChrome();
-        }
-    });
-
-    ALKitPopover::Params search_params;
-    search_params.name="kit_search_results";
-    search_params.rect=LLRect(0,390,430,0);
-    search_params.side="below";
-    search_params.visible=false;
-    mSearchPopover=LLUICtrlFactory::create<ALKitPopover>(search_params);
-    addChild(mSearchPopover);
-    LLTextBox::Params text_params;
-    text_params.name="kit_search_header";
-    text_params.rect=LLRect(10,380,420,358);
-    mSearchHeader=LLUICtrlFactory::create<LLTextBox>(text_params);
-    mSearchPopover->addChild(mSearchHeader);
-    for(S32 index=0;index<12;++index)
-    {
-        LLButton::Params result_params;
-        result_params.name="kit_search_result_"+llformat("%d",index);
-        result_params.rect=LLRect(10,354-index*25,420,331-index*25);
-        result_params.label="";
-        LLButton*button=LLUICtrlFactory::create<LLButton>(result_params);
-        mSearchPopover->addChild(button);
-        LLHandle<ALKitShell> handle=getDerivedHandle<ALKitShell>();
-        button->setCommitCallback([handle,index](LLUICtrl*,const LLSD&)
-        {
-            if(ALKitShell* shell=handle.get())
+            if (ALKitShell* shell = tab_handle.get())
             {
-                shell->mSearchSelection=index;
-                shell->activateSearchResult();
+                shell->mTabOffset = llmax(0, shell->mTabOffset - 1);
+                shell->layoutChrome();
             }
         });
+    mTabNext->setCommitCallback(
+        [tab_handle](LLUICtrl*, const LLSD&)
+        {
+            if (ALKitShell* shell = tab_handle.get())
+            {
+                ++shell->mTabOffset;
+                shell->layoutChrome();
+            }
+        });
+
+    ALKitPopover::Params search_params;
+    search_params.name    = "kit_search_results";
+    search_params.rect    = LLRect(0, 390, 430, 0);
+    search_params.side    = "below";
+    search_params.visible = false;
+    mSearchPopover        = LLUICtrlFactory::create<ALKitPopover>(search_params);
+    addChild(mSearchPopover);
+    LLTextBox::Params text_params;
+    text_params.name = "kit_search_header";
+    text_params.rect = LLRect(10, 380, 420, 358);
+    mSearchHeader    = LLUICtrlFactory::create<LLTextBox>(text_params);
+    mSearchPopover->addChild(mSearchHeader);
+    for (S32 index = 0; index < 12; ++index)
+    {
+        LLButton::Params result_params;
+        result_params.name  = "kit_search_result_" + llformat("%d", index);
+        result_params.rect  = LLRect(10, 354 - index * 25, 420, 331 - index * 25);
+        result_params.label = "";
+        LLButton* button    = LLUICtrlFactory::create<LLButton>(result_params);
+        mSearchPopover->addChild(button);
+        LLHandle<ALKitShell> handle = getDerivedHandle<ALKitShell>();
+        button->setCommitCallback(
+            [handle, index](LLUICtrl*, const LLSD&)
+            {
+                if (ALKitShell* shell = handle.get())
+                {
+                    shell->mSearchSelection = index;
+                    shell->activateSearchResult();
+                }
+            });
         mSearchButtons.push_back(button);
     }
-    text_params.name="kit_search_footer";
-    text_params.rect=LLRect(10,48,420,20);
-    text_params.use_ellipses=true;
-    mSearchFooter=LLUICtrlFactory::create<LLTextBox>(text_params);
+    text_params.name         = "kit_search_footer";
+    text_params.rect         = LLRect(10, 48, 420, 20);
+    text_params.use_ellipses = true;
+    mSearchFooter            = LLUICtrlFactory::create<LLTextBox>(text_params);
     mSearchPopover->addChild(mSearchFooter);
 
-    if(LLButton* cast_chip=findChild<LLButton>("btn_cast_chip"))
+    if (LLButton* cast_chip = findChild<LLButton>("btn_cast_chip"))
     {
         ALKitPopover::Params params;
-        params.name="kit_cast_popover";
-        params.rect=LLRect(0,360,300,0);
-        params.side="above";
-        params.visible=false;
-        mCastPopover=LLUICtrlFactory::create<ALKitPopover>(params);
+        params.name    = "kit_cast_popover";
+        params.rect    = LLRect(0, 360, 300, 0);
+        params.side    = "above";
+        params.visible = false;
+        mCastPopover   = LLUICtrlFactory::create<ALKitPopover>(params);
         addChild(mCastPopover);
         mCastPopover->bindAnchor(cast_chip);
-        LLHandle<ALKitPopover> handle=mCastPopover->getDerivedHandle<ALKitPopover>();
-        cast_chip->setCommitCallback([handle](LLUICtrl*,const LLSD&)
-        {
-            if(ALKitPopover* popover=handle.get())popover->toggle();
-        });
+        LLHandle<ALKitPopover> handle = mCastPopover->getDerivedHandle<ALKitPopover>();
+        cast_chip->setCommitCallback(
+            [handle](LLUICtrl*, const LLSD&)
+            {
+                if (ALKitPopover* popover = handle.get())
+                    popover->toggle();
+            });
     }
 
     struct PopoverButton
@@ -170,184 +178,203 @@ void ALKitShell::buildChrome()
         const char* button;
         const char* popover;
     };
-    static const PopoverButton popover_buttons[]=
+    static const PopoverButton popover_buttons[] = { { "btn_arm", "kit_arm_popover" }, { "btn_hotkeys", "kit_hotkeys_popover" } };
+    for (const PopoverButton& binding : popover_buttons)
     {
-        {"btn_arm","kit_arm_popover"},
-        {"btn_hotkeys","kit_hotkeys_popover"}
-    };
-    for(const PopoverButton& binding:popover_buttons)
-    {
-        LLButton* button=findChild<LLButton>(binding.button);
-        ALKitPopover* popover=findChild<ALKitPopover>(binding.popover);
-        if(!button||!popover)continue;
-        LLHandle<ALKitPopover> handle=popover->getDerivedHandle<ALKitPopover>();
-        button->setCommitCallback([handle](LLUICtrl*,const LLSD&)
-        {
-            if(ALKitPopover* target=handle.get())target->toggle();
-        });
+        LLButton*     button  = findChild<LLButton>(binding.button);
+        ALKitPopover* popover = findChild<ALKitPopover>(binding.popover);
+        if (!button || !popover)
+            continue;
+        LLHandle<ALKitPopover> handle = popover->getDerivedHandle<ALKitPopover>();
+        button->setCommitCallback(
+            [handle](LLUICtrl*, const LLSD&)
+            {
+                if (ALKitPopover* target = handle.get())
+                    target->toggle();
+            });
     }
 
-    for(const RailData& item:mRailData)
+    for (const RailData& item : mRailData)
     {
         LLButton::Params params;
-        params.name="kit_rail_"+item.group;
-        params.label=item.label;
-        params.rect=LLRect(0,ALKitStyle::RAIL_ITEM_H,ALKitStyle::RAIL_W,0);
-        LLButton* button=LLUICtrlFactory::create<LLButton>(params);
+        params.name      = "kit_rail_" + item.group;
+        params.label     = item.label;
+        params.rect      = LLRect(0, ALKitStyle::RAIL_ITEM_H, ALKitStyle::RAIL_W, 0);
+        LLButton* button = LLUICtrlFactory::create<LLButton>(params);
         button->setImageOverlay(item.icon);
-        const std::string group=item.group;
-        LLHandle<ALKitShell> shell_handle=getDerivedHandle<ALKitShell>();
-        button->setCommitCallback([shell_handle,group](LLUICtrl*,const LLSD&)
-        {
-            if(ALKitShell* shell=shell_handle.get())
+        const std::string    group        = item.group;
+        LLHandle<ALKitShell> shell_handle = getDerivedHandle<ALKitShell>();
+        button->setCommitCallback(
+            [shell_handle, group](LLUICtrl*, const LLSD&)
             {
-                if(shell->mDirectorTabs)shell->mDirectorTabs->selectTabByName(group);
-                shell->layoutChrome();
-            }
-        });
+                if (ALKitShell* shell = shell_handle.get())
+                {
+                    if (shell->mDirectorTabs)
+                        shell->mDirectorTabs->selectTabByName(group);
+                    shell->layoutChrome();
+                }
+            });
         mRail->addChild(button);
         mRailButtons.push_back(button);
     }
-    if(mDirectorTabs)
+    if (mDirectorTabs)
     {
-        for(S32 group_index=0;group_index<mDirectorTabs->getTabCount();++group_index)
+        for (S32 group_index = 0; group_index < mDirectorTabs->getTabCount(); ++group_index)
         {
-            LLPanel* group=mDirectorTabs->getPanelByIndex(group_index);
-            if(!group)continue;
-            LLTabContainer* tabs=findFirst<LLTabContainer>(group);
-            if(!tabs)continue;
-            for(S32 page_index=0;page_index<tabs->getTabCount();++page_index)
+            LLPanel* group = mDirectorTabs->getPanelByIndex(group_index);
+            if (!group)
+                continue;
+            LLTabContainer* tabs = findFirst<LLTabContainer>(group);
+            if (!tabs)
+                continue;
+            for (S32 page_index = 0; page_index < tabs->getTabCount(); ++page_index)
             {
-                LLPanel* page=tabs->getPanelByIndex(page_index);
-                if(!page)continue;
+                LLPanel* page = tabs->getPanelByIndex(page_index);
+                if (!page)
+                    continue;
                 LLButton::Params params;
-                params.name="kit_tab_"+page->getName();
-                params.label=page->getLabel();
-                params.rect=LLRect(0,32,100,0);
-                LLButton* button=LLUICtrlFactory::create<LLButton>(params);
-                const std::string page_name=page->getName();
-                LLHandle<ALKitShell> shell_handle=getDerivedHandle<ALKitShell>();
-                button->setCommitCallback([shell_handle,page_name](LLUICtrl*,const LLSD&)
-                {
-                    if(ALKitShell* shell=shell_handle.get())
+                params.name                       = "kit_tab_" + page->getName();
+                params.label                      = page->getLabel();
+                params.rect                       = LLRect(0, 32, 100, 0);
+                LLButton*            button       = LLUICtrlFactory::create<LLButton>(params);
+                const std::string    page_name    = page->getName();
+                LLHandle<ALKitShell> shell_handle = getDerivedHandle<ALKitShell>();
+                button->setCommitCallback(
+                    [shell_handle, page_name](LLUICtrl*, const LLSD&)
                     {
-                        shell->selectPage(page_name);
-                        shell->layoutChrome();
-                    }
-                });
+                        if (ALKitShell* shell = shell_handle.get())
+                        {
+                            shell->selectPage(page_name);
+                            shell->layoutChrome();
+                        }
+                    });
                 mTabStrip->addChild(button);
                 mTabButtons.push_back(button);
-                ALKitLazyPage* lazy=dynamic_cast<ALKitLazyPage*>(page);
-                mTabs.push_back({group->getName(),page_name,page->getLabel(),lazy?lazy->masterSetting():std::string(),button});
+                ALKitLazyPage* lazy = dynamic_cast<ALKitLazyPage*>(page);
+                mTabs.push_back({ group->getName(), page_name, page->getLabel(), lazy ? lazy->masterSetting() : std::string(), button });
             }
         }
     }
-    for(const RailData& item:mRailData)for(const std::string& setting:LLStringUtil::getTokens(item.master_settings,","))
-    {
-        mConnections.emplace_back(ALKitSettingWatch::instance().watch(setting,
-            [handle=getDerivedHandle<ALKitShell>()](const LLSD&,const LLSD&)
-            {
-                if(ALKitShell* shell=handle.get())shell->updatePips();
-            }));
-    }
-    for(const TabData& tab:mTabs)if(!tab.master_setting.empty())
-    {
-        mConnections.emplace_back(ALKitSettingWatch::instance().watch(tab.master_setting,
-            [handle=getDerivedHandle<ALKitShell>()](const LLSD&,const LLSD&)
-            {
-                if(ALKitShell* shell=handle.get())shell->updatePips();
-            }));
-    }
+    for (const RailData& item : mRailData)
+        for (const std::string& setting : LLStringUtil::getTokens(item.master_settings, ","))
+        {
+            mConnections.emplace_back(
+                ALKitSettingWatch::instance().watch(setting,
+                                                    [handle = getDerivedHandle<ALKitShell>()](const LLSD&, const LLSD&)
+                                                    {
+                                                        if (ALKitShell* shell = handle.get())
+                                                            shell->updatePips();
+                                                    }));
+        }
+    for (const TabData& tab : mTabs)
+        if (!tab.master_setting.empty())
+        {
+            mConnections.emplace_back(
+                ALKitSettingWatch::instance().watch(tab.master_setting,
+                                                    [handle = getDerivedHandle<ALKitShell>()](const LLSD&, const LLSD&)
+                                                    {
+                                                        if (ALKitShell* shell = handle.get())
+                                                            shell->updatePips();
+                                                    }));
+        }
     updatePips();
 }
 
 void ALKitShell::updatePips()
 {
-    for(S32 index=0;index<(S32)mRailButtons.size();++index)
+    for (S32 index = 0; index < (S32)mRailButtons.size(); ++index)
     {
-        bool off=false;
-        for(const std::string& setting:LLStringUtil::getTokens(mRailData[index].master_settings,","))
+        bool off = false;
+        for (const std::string& setting : LLStringUtil::getTokens(mRailData[index].master_settings, ","))
         {
-            if(gSavedSettings.controlExists(setting)&&!gSavedSettings.getBOOL(setting))off=true;
+            if (gSavedSettings.controlExists(setting) && !gSavedSettings.getBOOL(setting))
+                off = true;
         }
-        const std::string label=mRailLabels?mRailData[index].label+(off?"  \xE2\x97\x8B":""):std::string();
-        if(mRailButtons[index]->getLabelSelected()!=label)mRailButtons[index]->setLabel(label);
+        const std::string label = mRailLabels ? mRailData[index].label + (off ? "  \xE2\x97\x8B" : "") : std::string();
+        if (mRailButtons[index]->getLabelSelected() != label)
+            mRailButtons[index]->setLabel(label);
     }
-    for(TabData& tab:mTabs)
+    for (TabData& tab : mTabs)
     {
-        const bool off=!tab.master_setting.empty()&&gSavedSettings.controlExists(tab.master_setting)&&!gSavedSettings.getBOOL(tab.master_setting);
-        const std::string label=tab.label+(off?"  \xE2\x97\x8B":"");
-        if(tab.button->getLabelSelected()!=label)tab.button->setLabel(label);
+        const bool off =
+            !tab.master_setting.empty() && gSavedSettings.controlExists(tab.master_setting) && !gSavedSettings.getBOOL(tab.master_setting);
+        const std::string label = tab.label + (off ? "  \xE2\x97\x8B" : "");
+        if (tab.button->getLabelSelected() != label)
+            tab.button->setLabel(label);
     }
 }
 
-void ALKitShell::reshape(S32 width,S32 height,bool called_from_parent)
+void ALKitShell::reshape(S32 width, S32 height, bool called_from_parent)
 {
-    LLPanel::reshape(width,height,called_from_parent);
-    const bool old_labels=mRailLabels;
-    const bool labels=mRailLabels?width>=ALKitStyle::BP_RAIL:width>=ALKitStyle::BP_RAIL+ALKitStyle::BP_HYST;
-    const bool help=mWideHelp?width>=ALKitStyle::BP_FULL:width>=ALKitStyle::BP_FULL+ALKitStyle::BP_HYST;
-    mRailLabels=labels;
-    mWideHelp=help;
+    LLPanel::reshape(width, height, called_from_parent);
+    const bool old_labels = mRailLabels;
+    const bool labels     = mRailLabels ? width >= ALKitStyle::BP_RAIL : width >= ALKitStyle::BP_RAIL + ALKitStyle::BP_HYST;
+    const bool help       = mWideHelp ? width >= ALKitStyle::BP_FULL : width >= ALKitStyle::BP_FULL + ALKitStyle::BP_HYST;
+    mRailLabels           = labels;
+    mWideHelp             = help;
     layoutChrome();
-    if(old_labels!=mRailLabels)updatePips();
+    if (old_labels != mRailLabels)
+        updatePips();
 }
 
 void ALKitShell::layoutChrome()
 {
-    if(!mDirectorTabs||!mRail||!mTabStrip||!mTransport)return;
-    const S32 width=getRect().getWidth();
-    const S32 height=getRect().getHeight();
-    const S32 rail_width=mRailLabels?ALKitStyle::RAIL_W:ALKitStyle::RAIL_ICON_W;
-    const S32 help_width=mWideHelp?ALKitStyle::HELP_W:0;
-    const S32 transport_height=ALKitStyle::TRANSPORT_H;
-    const S32 help_strip_height=mWideHelp?0:ALKitStyle::HELP_STRIP_H;
-    mTransport->reshape(width,transport_height,true);
-    mTransport->setOrigin(0,0);
-    mRail->reshape(rail_width,height-transport_height,true);
-    mRail->setOrigin(0,transport_height);
-    mTabStrip->reshape(width-rail_width-help_width,ALKitStyle::TABSTRIP_H,true);
-    mTabStrip->setOrigin(rail_width,height-ALKitStyle::TABSTRIP_H);
-    mDirectorTabs->reshape(width-rail_width-help_width,height-transport_height-ALKitStyle::TABSTRIP_H-help_strip_height,true);
-    mDirectorTabs->setOrigin(rail_width,transport_height+help_strip_height);
+    if (!mDirectorTabs || !mRail || !mTabStrip || !mTransport)
+        return;
+    const S32 width             = getRect().getWidth();
+    const S32 height            = getRect().getHeight();
+    const S32 rail_width        = mRailLabels ? ALKitStyle::RAIL_W : ALKitStyle::RAIL_ICON_W;
+    const S32 help_width        = mWideHelp ? ALKitStyle::HELP_W : 0;
+    const S32 transport_height  = ALKitStyle::TRANSPORT_H;
+    const S32 help_strip_height = mWideHelp ? 0 : ALKitStyle::HELP_STRIP_H;
+    mTransport->reshape(width, transport_height, true);
+    mTransport->setOrigin(0, 0);
+    mRail->reshape(rail_width, height - transport_height, true);
+    mRail->setOrigin(0, transport_height);
+    mTabStrip->reshape(width - rail_width - help_width, ALKitStyle::TABSTRIP_H, true);
+    mTabStrip->setOrigin(rail_width, height - ALKitStyle::TABSTRIP_H);
+    mDirectorTabs->reshape(width - rail_width - help_width, height - transport_height - ALKitStyle::TABSTRIP_H - help_strip_height, true);
+    mDirectorTabs->setOrigin(rail_width, transport_height + help_strip_height);
     mHelpPanel->setVisible(mWideHelp);
-    mHelpPanel->reshape(help_width,height-transport_height,true);
-    mHelpPanel->setOrigin(width-help_width,transport_height);
+    mHelpPanel->reshape(help_width, height - transport_height, true);
+    mHelpPanel->setOrigin(width - help_width, transport_height);
     mHelpStrip->setVisible(!mWideHelp);
-    mHelpStrip->reshape(width-rail_width,help_strip_height,true);
-    mHelpStrip->setOrigin(rail_width,transport_height);
-    mHelp.layout(help_width,height-transport_height,width-rail_width);
-    S32 y=height-transport_height-ALKitStyle::RAIL_ITEM_H;
-    for(S32 i=0;i<(S32)mRailButtons.size();++i)
+    mHelpStrip->reshape(width - rail_width, help_strip_height, true);
+    mHelpStrip->setOrigin(rail_width, transport_height);
+    mHelp.layout(help_width, height - transport_height, width - rail_width);
+    S32 y = height - transport_height - ALKitStyle::RAIL_ITEM_H;
+    for (S32 i = 0; i < (S32)mRailButtons.size(); ++i)
     {
-        LLButton* button=mRailButtons[i];
-        button->reshape(rail_width,ALKitStyle::RAIL_ITEM_H,true);
-        button->setOrigin(0,y);
-        y-=ALKitStyle::RAIL_ITEM_H;
+        LLButton* button = mRailButtons[i];
+        button->reshape(rail_width, ALKitStyle::RAIL_ITEM_H, true);
+        button->setOrigin(0, y);
+        y -= ALKitStyle::RAIL_ITEM_H;
     }
-    if(mRoster)
+    if (mRoster)
     {
-        const bool roster_in_rail=mRosterOpen&&mRailLabels&&y>=120;
+        const bool roster_in_rail = mRosterOpen && mRailLabels && y >= 120;
         mRoster->setVisible(roster_in_rail);
-        if(roster_in_rail)
+        if (roster_in_rail)
         {
-            if(mRoster->getParent()!=mRail)mRail->addChild(mRoster);
-            mRoster->reshape(rail_width,llmax(120,y),true);
-            mRoster->setOrigin(0,0);
+            if (mRoster->getParent() != mRail)
+                mRail->addChild(mRoster);
+            mRoster->reshape(rail_width, llmax(120, y), true);
+            mRoster->setOrigin(0, 0);
         }
-        else if(mCastPopover)
+        else if (mCastPopover)
         {
-            if(mRoster->getParent()!=mCastPopover)mCastPopover->addChild(mRoster);
+            if (mRoster->getParent() != mCastPopover)
+                mCastPopover->addChild(mRoster);
             mRoster->setVisible(true);
-            mRoster->reshape(280,340,true);
-            mRoster->setOrigin(10,10);
+            mRoster->reshape(280, 340, true);
+            mRoster->setOrigin(10, 10);
         }
     }
-    LLPanel* current_group=mDirectorTabs->getCurrentPanel();
-    const std::string group_name=current_group?current_group->getName():std::string();
-    LLTabContainer* current_tabs=findFirst<LLTabContainer>(current_group);
-    LLPanel* current_leaf=current_tabs?current_tabs->getCurrentPanel():nullptr;
-    ALKitPage* current_kit_page=findFirst<ALKitPage>(current_leaf);
+    LLPanel*          current_group    = mDirectorTabs->getCurrentPanel();
+    const std::string group_name       = current_group ? current_group->getName() : std::string();
+    LLTabContainer*   current_tabs     = findFirst<LLTabContainer>(current_group);
+    LLPanel*          current_leaf     = current_tabs ? current_tabs->getCurrentPanel() : nullptr;
+    ALKitPage*        current_kit_page = findFirst<ALKitPage>(current_leaf);
     if (current_kit_page)
     {
         mCurrentPage = current_kit_page->getHandle();
@@ -356,78 +383,84 @@ void ALKitShell::layoutChrome()
     {
         mCurrentPage = LLHandle<LLView>();
     }
-    const std::string current_page=current_leaf?current_leaf->getName():std::string();
-    for(S32 index=0;index<(S32)mRailButtons.size();++index)
+    const std::string current_page = current_leaf ? current_leaf->getName() : std::string();
+    for (S32 index = 0; index < (S32)mRailButtons.size(); ++index)
     {
-        mRailButtons[index]->setToggleState(index<(S32)mRailData.size()&&mRailData[index].group==group_name);
+        mRailButtons[index]->setToggleState(index < (S32)mRailData.size() && mRailData[index].group == group_name);
     }
     refreshModeProxy();
-    const ALKitPage* mode_page=currentKitPage();
-    const S32 mode_width=(mode_page?mode_page->modeCount():0)*86;
-    S32 visible_tabs=0;
-    for(const TabData& tab:mTabs)if(tab.group==group_name)++visible_tabs;
-    const S32 available=llmax(100,mTabStrip->getRect().getWidth()-mode_width-16);
-    const bool overflow=visible_tabs*104>available;
-    const S32 slots=llmax(1,(available-(overflow?56:0))/104);
-    mTabOffset=llclamp(mTabOffset,0,llmax(0,visible_tabs-slots));
+    const ALKitPage* mode_page    = currentKitPage();
+    const S32        mode_width   = (mode_page ? mode_page->modeCount() : 0) * 86;
+    S32              visible_tabs = 0;
+    for (const TabData& tab : mTabs)
+        if (tab.group == group_name)
+            ++visible_tabs;
+    const S32  available = llmax(100, mTabStrip->getRect().getWidth() - mode_width - 16);
+    const bool overflow  = visible_tabs * 104 > available;
+    const S32  slots     = llmax(1, (available - (overflow ? 56 : 0)) / 104);
+    mTabOffset           = llclamp(mTabOffset, 0, llmax(0, visible_tabs - slots));
     mTabPrev->setVisible(overflow);
     mTabNext->setVisible(overflow);
-    if(overflow)
+    if (overflow)
     {
-        mTabPrev->setOrigin(4,8);
-        mTabNext->setOrigin(available-28,8);
+        mTabPrev->setOrigin(4, 8);
+        mTabNext->setOrigin(available - 28, 8);
     }
-    S32 tab_x=overflow?32:8;
-    S32 group_tab=0;
-    for(TabData& tab:mTabs)
+    S32 tab_x     = overflow ? 32 : 8;
+    S32 group_tab = 0;
+    for (TabData& tab : mTabs)
     {
-        const bool in_group=tab.group==group_name;
-        const bool visible=in_group&&group_tab>=mTabOffset&&group_tab<mTabOffset+slots;
+        const bool in_group = tab.group == group_name;
+        const bool visible  = in_group && group_tab >= mTabOffset && group_tab < mTabOffset + slots;
         tab.button->setVisible(visible);
-        tab.button->setToggleState(tab.page==current_page);
-        if(visible)
+        tab.button->setToggleState(tab.page == current_page);
+        if (visible)
         {
-            tab.button->reshape(100,32,true);
-            tab.button->setOrigin(tab_x,4);
-            tab_x+=104;
+            tab.button->reshape(100, 32, true);
+            tab.button->setOrigin(tab_x, 4);
+            tab_x += 104;
         }
-        if(in_group)++group_tab;
+        if (in_group)
+            ++group_tab;
     }
 }
 
 void ALKitShell::refreshModeProxy()
 {
-    ALKitPage* page=currentKitPage();
-    const S32 count=page?page->modeCount():0;
-    while((S32)mModeButtons.size()<count)
+    ALKitPage* page  = currentKitPage();
+    const S32  count = page ? page->modeCount() : 0;
+    while ((S32)mModeButtons.size() < count)
     {
-        const S32 index=(S32)mModeButtons.size();
+        const S32        index = (S32)mModeButtons.size();
         LLButton::Params params;
-        params.name="kit_mode_seg_"+llformat("%d",index);
-        params.rect=LLRect(0,28,82,0);
-        LLButton* button=LLUICtrlFactory::create<LLButton>(params);
+        params.name      = "kit_mode_seg_" + llformat("%d", index);
+        params.rect      = LLRect(0, 28, 82, 0);
+        LLButton* button = LLUICtrlFactory::create<LLButton>(params);
         mTabStrip->addChild(button);
-        LLHandle<ALKitShell> handle=getDerivedHandle<ALKitShell>();
-        button->setCommitCallback([handle,index](LLUICtrl*,const LLSD&)
-        {
-            if(ALKitShell* shell=handle.get())if(ALKitPage* current=shell->currentKitPage())
+        LLHandle<ALKitShell> handle = getDerivedHandle<ALKitShell>();
+        button->setCommitCallback(
+            [handle, index](LLUICtrl*, const LLSD&)
             {
-                current->setModeIndex(index,true);
-                shell->refreshModeProxy();
-            }
-        });
+                if (ALKitShell* shell = handle.get())
+                    if (ALKitPage* current = shell->currentKitPage())
+                    {
+                        current->setModeIndex(index, true);
+                        shell->refreshModeProxy();
+                    }
+            });
         mModeButtons.push_back(button);
     }
-    S32 x=mTabStrip->getRect().getWidth()-count*86-4;
-    for(S32 index=0;index<(S32)mModeButtons.size();++index)
+    S32 x = mTabStrip->getRect().getWidth() - count * 86 - 4;
+    for (S32 index = 0; index < (S32)mModeButtons.size(); ++index)
     {
-        const bool visible=index<count;
+        const bool visible = index < count;
         mModeButtons[index]->setVisible(visible);
-        if(visible)
+        if (visible)
         {
-            if(mModeButtons[index]->getLabelSelected()!=page->modeName(index))mModeButtons[index]->setLabel(page->modeName(index));
-            mModeButtons[index]->setToggleState(index==page->modeIndex());
-            mModeButtons[index]->setOrigin(x+index*86,8);
+            if (mModeButtons[index]->getLabelSelected() != page->modeName(index))
+                mModeButtons[index]->setLabel(page->modeName(index));
+            mModeButtons[index]->setToggleState(index == page->modeIndex());
+            mModeButtons[index]->setOrigin(x + index * 86, 8);
         }
     }
 }
@@ -436,23 +469,23 @@ void ALKitShell::draw()
 {
     LL_PROFILE_ZONE_NAMED_CATEGORY_UI("ALKitShell draw");
     LLPanel::draw();
-    LLView* view=mHighlight.get();
-    if(view&&mHighlightTimer.getElapsedTimeF32()<ALKitStyle::FLASH_SEC)
+    LLView* view = mHighlight.get();
+    if (view && mHighlightTimer.getElapsedTimeF32() < ALKitStyle::FLASH_SEC)
     {
         LLRect rect;
-        if(view->localRectToOtherView(view->getLocalRect(),&rect,this))
+        if (view->localRectToOtherView(view->getLocalRect(), &rect, this))
         {
             gGL.color4fv(ALKitStyle::color(ALKitStyle::ACCENT).get().mV);
-            gl_rect_2d(rect,false);
+            gl_rect_2d(rect, false);
         }
     }
 }
 
-ALKitShell* ALKitShell::find(LLView*v)
+ALKitShell* ALKitShell::find(LLView* v)
 {
-    for(;v;v=v->getParent())
+    for (; v; v = v->getParent())
     {
-        if(auto*s=dynamic_cast<ALKitShell*>(v))
+        if (auto* s = dynamic_cast<ALKitShell*>(v))
         {
             return s;
         }
@@ -462,13 +495,14 @@ ALKitShell* ALKitShell::find(LLView*v)
 
 bool ALKitShell::navigateTo(const std::string& path)
 {
-    ALKitTarget target;
-    const size_t slash=path.find('/');
-    if(slash==std::string::npos)target.page_key=path;
+    ALKitTarget  target;
+    const size_t slash = path.find('/');
+    if (slash == std::string::npos)
+        target.page_key = path;
     else
     {
-        target.page_key=path.substr(0,slash);
-        target.widget=path.substr(slash+1);
+        target.page_key = path.substr(0, slash);
+        target.widget   = path.substr(slash + 1);
     }
     return navigateTo(target);
 }
@@ -476,228 +510,260 @@ bool ALKitShell::navigateTo(const ALKitTarget& target)
 {
     ALKitHistory::ScopedSuspend suspend;
     clearSearch();
-    LLPanel* panel=ensurePageBuilt(target.page_key);
-    if(!panel)return false;
-    if(ALKitPage* page=findFirst<ALKitPage>(panel))
+    LLPanel* panel = ensurePageBuilt(target.page_key);
+    if (!panel)
+        return false;
+    if (ALKitPage* page = findFirst<ALKitPage>(panel))
     {
-        ALKitRow* row=!target.widget.empty()?page->findRow(target.widget):page->findRowBySetting(target.setting);
-        if(row)return page->revealRow(row,true);
-        if(ALKitCard* card=page->findCard(target.card_id))return page->revealCard(card,true);
+        ALKitRow* row = !target.widget.empty() ? page->findRow(target.widget) : page->findRowBySetting(target.setting);
+        if (row)
+            return page->revealRow(row, true);
+        if (ALKitCard* card = page->findCard(target.card_id))
+            return page->revealCard(card, true);
     }
-    if(!target.widget.empty())if(LLView* view=panel->findChild<LLView>(target.widget))
-    {
-        for(LLView* ancestor=view->getParent();ancestor;ancestor=ancestor->getParent())
+    if (!target.widget.empty())
+        if (LLView* view = panel->findChild<LLView>(target.widget))
         {
-            if(LLScrollContainer* scroller=dynamic_cast<LLScrollContainer*>(ancestor))
+            for (LLView* ancestor = view->getParent(); ancestor; ancestor = ancestor->getParent())
             {
-                LLRect rect;
-                if(LLView* document=scroller->getScrolledView())
+                if (LLScrollContainer* scroller = dynamic_cast<LLScrollContainer*>(ancestor))
                 {
-                    if(view->localRectToOtherView(view->getLocalRect(),&rect,document))scroller->scrollToShowRect(rect);
+                    LLRect rect;
+                    if (LLView* document = scroller->getScrolledView())
+                    {
+                        if (view->localRectToOtherView(view->getLocalRect(), &rect, document))
+                            scroller->scrollToShowRect(rect);
+                    }
+                    break;
                 }
-                break;
             }
+            mHighlight = view->getHandle();
+            mHighlightTimer.reset();
+            return true;
         }
-        mHighlight=view->getHandle();
-        mHighlightTimer.reset();
-        return true;
-    }
     return false;
 }
 
 bool ALKitShell::selectPage(const std::string& page_name)
 {
-    if(ALKitPage* current=currentKitPage())current->saveState();
-    ALKitLazyPage* page=findChild<ALKitLazyPage>(page_name);
-    if(!page)return false;
-    LLTabContainer* inner=dynamic_cast<LLTabContainer*>(page->getParent());
-    LLPanel* group=inner?dynamic_cast<LLPanel*>(inner->getParent()):nullptr;
-    if(mDirectorTabs&&group)mDirectorTabs->selectTabByName(group->getName());
-    if(inner)inner->selectTabByName(page_name);
-    const bool built=page->ensureBuilt()!=nullptr;
+    if (ALKitPage* current = currentKitPage())
+        current->saveState();
+    ALKitLazyPage* page = findChild<ALKitLazyPage>(page_name);
+    if (!page)
+        return false;
+    LLTabContainer* inner = dynamic_cast<LLTabContainer*>(page->getParent());
+    LLPanel*        group = inner ? dynamic_cast<LLPanel*>(inner->getParent()) : nullptr;
+    if (mDirectorTabs && group)
+        mDirectorTabs->selectTabByName(group->getName());
+    if (inner)
+        inner->selectTabByName(page_name);
+    const bool built = page->ensureBuilt() != nullptr;
     syncSelection();
     return built;
 }
 
 void ALKitShell::syncSelection()
-{
-    layoutChrome();
-}
+{ layoutChrome(); }
 
 LLPanel* ALKitShell::ensurePageBuilt(const std::string& page_name)
 {
-    std::string leaf=page_name;
-    const size_t slash=leaf.rfind('/');
-    if(slash!=std::string::npos)leaf=leaf.substr(slash+1);
-    if(!selectPage(leaf))return nullptr;
-    ALKitLazyPage* page=findChild<ALKitLazyPage>(leaf);
-    return page?page->ensureBuilt():nullptr;
+    std::string  leaf  = page_name;
+    const size_t slash = leaf.rfind('/');
+    if (slash != std::string::npos)
+        leaf = leaf.substr(slash + 1);
+    if (!selectPage(leaf))
+        return nullptr;
+    ALKitLazyPage* page = findChild<ALKitLazyPage>(leaf);
+    return page ? page->ensureBuilt() : nullptr;
 }
 
-ALKitPage* ALKitShell::currentKitPage()const
+ALKitPage* ALKitShell::currentKitPage() const
+{ return dynamic_cast<ALKitPage*>(mCurrentPage.get()); }
+
+ALKitPage* ALKitShell::findBuiltPage(const std::string& key) const
 {
-    return dynamic_cast<ALKitPage*>(mCurrentPage.get());
+    const auto found = mBuiltPages.find(key);
+    return found == mBuiltPages.end() ? nullptr : found->second.get();
 }
 
-ALKitPage* ALKitShell::findBuiltPage(const std::string& key)const
+std::string ALKitShell::currentPageKey() const
 {
-    const auto found=mBuiltPages.find(key);
-    return found==mBuiltPages.end()?nullptr:found->second.get();
+    ALKitPage* page = currentKitPage();
+    return page ? page->pageKey() : std::string();
 }
 
-std::string ALKitShell::currentPageKey()const
+std::string ALKitShell::pageKeyAt(S32 x, S32 y) const
 {
-    ALKitPage* page=currentKitPage();
-    return page?page->pageKey():std::string();
-}
-
-std::string ALKitShell::pageKeyAt(S32 x,S32 y)const
-{
-    ALKitPage* page=currentKitPage();
-    if(!page)return "chrome";
-    if(mTabStrip)
+    ALKitPage* page = currentKitPage();
+    if (!page)
+        return "chrome";
+    if (mTabStrip)
     {
-        S32 strip_x=0;
-        S32 strip_y=0;
-        const_cast<ALKitShell*>(this)->localPointToOtherView(x,y,&strip_x,&strip_y,mTabStrip);
-        if(mTabStrip->pointInView(strip_x,strip_y))return page->pageKey();
+        S32 strip_x = 0;
+        S32 strip_y = 0;
+        const_cast<ALKitShell*>(this)->localPointToOtherView(x, y, &strip_x, &strip_y, mTabStrip);
+        if (mTabStrip->pointInView(strip_x, strip_y))
+            return page->pageKey();
     }
-    S32 local_x=0;
-    S32 local_y=0;
-    const_cast<ALKitShell*>(this)->localPointToOtherView(x,y,&local_x,&local_y,page);
-    return page->pointInView(local_x,local_y)?page->pageKey():"chrome";
+    S32 local_x = 0;
+    S32 local_y = 0;
+    const_cast<ALKitShell*>(this)->localPointToOtherView(x, y, &local_x, &local_y, page);
+    return page->pointInView(local_x, local_y) ? page->pageKey() : "chrome";
 }
 
-std::string ALKitShell::pagePathLabel(const std::string& key)const
+std::string ALKitShell::pagePathLabel(const std::string& key) const
 {
-    std::string leaf=key;
-    const size_t slash=leaf.rfind('/');
-    if(slash!=std::string::npos)leaf=leaf.substr(slash+1);
-    for(const TabData& tab:mTabs)if(tab.page==leaf)
-    {
-        std::string group=tab.group;
-        for(const RailData& rail:mRailData)if(rail.group==group)
+    std::string  leaf  = key;
+    const size_t slash = leaf.rfind('/');
+    if (slash != std::string::npos)
+        leaf = leaf.substr(slash + 1);
+    for (const TabData& tab : mTabs)
+        if (tab.page == leaf)
         {
-            return rail.label+" \xE2\x80\xBA "+tab.label;
+            std::string group = tab.group;
+            for (const RailData& rail : mRailData)
+                if (rail.group == group)
+                {
+                    return rail.label + " \xE2\x80\xBA " + tab.label;
+                }
+            return tab.label;
         }
-        return tab.label;
-    }
     return key;
 }
 
-std::vector<std::string> ALKitShell::unwrappedPages()const
+std::vector<std::string> ALKitShell::unwrappedPages() const
 {
     std::vector<std::string> pages;
-    pages.reserve(mRailData.size()+mTabs.size()+2);
-    for(const RailData& rail:mRailData)pages.push_back(rail.group);
-    for(const TabData& tab:mTabs)pages.push_back(tab.page);
+    pages.reserve(mRailData.size() + mTabs.size() + 2);
+    for (const RailData& rail : mRailData)
+        pages.push_back(rail.group);
+    for (const TabData& tab : mTabs)
+        pages.push_back(tab.page);
     pages.push_back("dance_legacy_host");
     pages.push_back("exposure_legacy_host");
     return pages;
 }
 
-void ALKitShell::pageBuilt(const std::string&,LLPanel* panel)
+void ALKitShell::pageBuilt(const std::string&, LLPanel* panel)
 {
-    ALKitPage* page=dynamic_cast<ALKitPage*>(panel);
-    if(!page)page=findFirst<ALKitPage>(panel);
-    if(!page)return;
-    mBuiltPages[page->pageKey()]=page->getDerivedHandle<ALKitPage>();
+    ALKitPage* page = dynamic_cast<ALKitPage*>(panel);
+    if (!page)
+        page = findFirst<ALKitPage>(panel);
+    if (!page)
+        return;
+    mBuiltPages[page->pageKey()] = page->getDerivedHandle<ALKitPage>();
     layoutChrome();
-    std::string prefix=page->pageKey();
-    const size_t slash=prefix.rfind('/');
-    if(slash!=std::string::npos)prefix=prefix.substr(slash+1);
-    if(prefix.size()>4&&prefix.compare(prefix.size()-4,4,"_tab")==0)prefix.erase(prefix.size()-4);
-    if(LLLineEditor* editor=page->findChild<LLLineEditor>(prefix+"_search"))
+    std::string  prefix = page->pageKey();
+    const size_t slash  = prefix.rfind('/');
+    if (slash != std::string::npos)
+        prefix = prefix.substr(slash + 1);
+    if (prefix.size() > 4 && prefix.compare(prefix.size() - 4, 4, "_tab") == 0)
+        prefix.erase(prefix.size() - 4);
+    if (LLLineEditor* editor = page->findChild<LLLineEditor>(prefix + "_search"))
     {
-        LLHandle<ALKitShell> handle=getDerivedHandle<ALKitShell>();
-        editor->setKeystrokeCallback([handle](LLLineEditor* line,void*)
-        {
-            if(ALKitShell* shell=handle.get())shell->queueSearch(line->getText());
-        },nullptr);
-        if(mSearchPopover)mSearchPopover->bindAnchor(editor);
+        LLHandle<ALKitShell> handle = getDerivedHandle<ALKitShell>();
+        editor->setKeystrokeCallback(
+            [handle](LLLineEditor* line, void*)
+            {
+                if (ALKitShell* shell = handle.get())
+                    shell->queueSearch(line->getText());
+            },
+            nullptr);
+        if (mSearchPopover)
+            mSearchPopover->bindAnchor(editor);
     }
-    if(LLButton* who=page->findChild<LLButton>(prefix+"_who_chip"))
+    if (LLButton* who = page->findChild<LLButton>(prefix + "_who_chip"))
     {
-        LLComboBox* picker=page->whoCombo();
-        if(picker)
+        LLComboBox* picker = page->whoCombo();
+        if (picker)
         {
-            const std::vector<LLScrollListItem*> items=picker->getAllData();
-            const S32 item_height=24;
-            ALKitPopover::Params params;
-            params.name=prefix+"_who_popover";
-            params.rect=LLRect(0,(S32)(items.size()+1)*item_height+16,360,0);
-            params.visible=false;
-            ALKitPopover* popover=LLUICtrlFactory::create<ALKitPopover>(params);
+            const std::vector<LLScrollListItem*> items       = picker->getAllData();
+            const S32                            item_height = 24;
+            ALKitPopover::Params                 params;
+            params.name           = prefix + "_who_popover";
+            params.rect           = LLRect(0, (S32)(items.size() + 1) * item_height + 16, 360, 0);
+            params.visible        = false;
+            ALKitPopover* popover = LLUICtrlFactory::create<ALKitPopover>(params);
             addChild(popover);
             popover->bindAnchor(who);
-            LLHandle<ALKitPopover> popover_handle=popover->getDerivedHandle<ALKitPopover>();
-            LLHandle<ALKitPage> page_handle=page->getDerivedHandle<ALKitPage>();
-            LLHandle<LLComboBox> picker_handle=picker->getDerivedHandle<LLComboBox>();
+            LLHandle<ALKitPopover>          popover_handle = popover->getDerivedHandle<ALKitPopover>();
+            LLHandle<ALKitPage>             page_handle    = page->getDerivedHandle<ALKitPage>();
+            LLHandle<LLComboBox>            picker_handle  = picker->getDerivedHandle<LLComboBox>();
             std::vector<LLHandle<LLButton>> choice_handles;
-            LLButton::Params button_params;
-            button_params.rect=LLRect(10,item_height,350,0);
-            button_params.name=prefix+"_who_follow";
-            button_params.label="\xE2\x86\xBA Follow rail ("+picker->getSelectedItemLabel()+")";
-            LLButton* follow=LLUICtrlFactory::create<LLButton>(button_params);
+            LLButton::Params                button_params;
+            button_params.rect  = LLRect(10, item_height, 350, 0);
+            button_params.name  = prefix + "_who_follow";
+            button_params.label = "\xE2\x86\xBA Follow rail (" + picker->getSelectedItemLabel() + ")";
+            LLButton* follow    = LLUICtrlFactory::create<LLButton>(button_params);
             popover->addChild(follow);
-            follow->setOrigin(10,(S32)items.size()*item_height+8);
-            follow->setCommitCallback([page_handle,popover_handle](LLUICtrl*,const LLSD&)
+            follow->setOrigin(10, (S32)items.size() * item_height + 8);
+            follow->setCommitCallback(
+                [page_handle, popover_handle](LLUICtrl*, const LLSD&)
+                {
+                    if (ALKitPage* target = page_handle.get())
+                        target->setWhoPin(LLSD());
+                    if (ALKitPopover* target = popover_handle.get())
+                        target->hide();
+                });
+            S32 index = 0;
+            for (LLScrollListItem* item : items)
             {
-                if(ALKitPage* target=page_handle.get())target->setWhoPin(LLSD());
-                if(ALKitPopover* target=popover_handle.get())target->hide();
-            });
-            S32 index=0;
-            for(LLScrollListItem* item:items)
-            {
-                if(!item||!item->getEnabled()||!item->getColumn(0))continue;
-                const LLSD value=item->getValue();
-                button_params.name=prefix+"_who_item_"+llformat("%d",index);
-                button_params.label=item->getColumn(0)->getValue().asString();
-                LLButton* choice=LLUICtrlFactory::create<LLButton>(button_params);
+                if (!item || !item->getEnabled() || !item->getColumn(0))
+                    continue;
+                const LLSD value    = item->getValue();
+                button_params.name  = prefix + "_who_item_" + llformat("%d", index);
+                button_params.label = item->getColumn(0)->getValue().asString();
+                LLButton* choice    = LLUICtrlFactory::create<LLButton>(button_params);
                 popover->addChild(choice);
                 choice_handles.push_back(choice->getDerivedHandle<LLButton>());
-                choice->setOrigin(10,(S32)(items.size()-index-1)*item_height+8);
-                choice->setCommitCallback([page_handle,picker_handle,popover_handle,value](LLUICtrl*,const LLSD&)
-                {
-                    if(LLComboBox* combo=picker_handle.get())
+                choice->setOrigin(10, (S32)(items.size() - index - 1) * item_height + 8);
+                choice->setCommitCallback(
+                    [page_handle, picker_handle, popover_handle, value](LLUICtrl*, const LLSD&)
                     {
-                        combo->setValue(value);
-                        combo->onCommit();
-                    }
-                    if(ALKitPage* target=page_handle.get())target->setWhoPin(value);
-                    if(ALKitPopover* target=popover_handle.get())target->hide();
-                });
+                        if (LLComboBox* combo = picker_handle.get())
+                        {
+                            combo->setValue(value);
+                            combo->onCommit();
+                        }
+                        if (ALKitPage* target = page_handle.get())
+                            target->setWhoPin(value);
+                        if (ALKitPopover* target = popover_handle.get())
+                            target->hide();
+                    });
                 ++index;
             }
-            LLHandle<LLButton> follow_handle=follow->getDerivedHandle<LLButton>();
-            who->setCommitCallback([popover_handle,picker_handle,follow_handle,choice_handles](LLUICtrl*,const LLSD&)
-            {
-                LLComboBox* combo=picker_handle.get();
-                ALKitPopover* target=popover_handle.get();
-                if(!combo||!target)return;
-                if(!target->getVisible())
+            LLHandle<LLButton> follow_handle = follow->getDerivedHandle<LLButton>();
+            who->setCommitCallback(
+                [popover_handle, picker_handle, follow_handle, choice_handles](LLUICtrl*, const LLSD&)
                 {
-                    if(LLButton* follow_button=follow_handle.get())
+                    LLComboBox*   combo  = picker_handle.get();
+                    ALKitPopover* target = popover_handle.get();
+                    if (!combo || !target)
+                        return;
+                    if (!target->getVisible())
                     {
-                        follow_button->setLabel("\xE2\x86\xBA Follow rail ("+combo->getSelectedItemLabel()+")");
-                    }
-                    const std::vector<LLScrollListItem*> current_items=combo->getAllData();
-                    S32 choice_index=0;
-                    for(LLScrollListItem* item:current_items)
-                    {
-                        if(!item||!item->getEnabled()||!item->getColumn(0))continue;
-                        if(choice_index<(S32)choice_handles.size())
+                        if (LLButton* follow_button = follow_handle.get())
                         {
-                            if(LLButton* choice=choice_handles[choice_index].get())
-                            {
-                                choice->setLabel(item->getColumn(0)->getValue().asString());
-                            }
+                            follow_button->setLabel("\xE2\x86\xBA Follow rail (" + combo->getSelectedItemLabel() + ")");
                         }
-                        ++choice_index;
+                        const std::vector<LLScrollListItem*> current_items = combo->getAllData();
+                        S32                                  choice_index  = 0;
+                        for (LLScrollListItem* item : current_items)
+                        {
+                            if (!item || !item->getEnabled() || !item->getColumn(0))
+                                continue;
+                            if (choice_index < (S32)choice_handles.size())
+                            {
+                                if (LLButton* choice = choice_handles[choice_index].get())
+                                {
+                                    choice->setLabel(item->getColumn(0)->getValue().asString());
+                                }
+                            }
+                            ++choice_index;
+                        }
                     }
-                }
-                target->toggle();
-            });
+                    target->toggle();
+                });
         }
     }
     startSearchLoad();
@@ -706,227 +772,260 @@ void ALKitShell::pageBuilt(const std::string&,LLPanel* panel)
 void ALKitShell::runSearch(const std::string& query)
 {
     mSearch.setQuery(query);
-    ALKitPage* page=currentKitPage();
-    if(!page)return;
-    if(query.empty())
+    ALKitPage* page = currentKitPage();
+    if (!page)
+        return;
+    if (query.empty())
     {
         page->clearSearch();
-        if(mSearchPopover)mSearchPopover->hide();
+        if (mSearchPopover)
+            mSearchPopover->hide();
         mSearchHits.clear();
-        mHasTopSearchHit=false;
+        mHasTopSearchHit = false;
         return;
     }
     mSearch.setCurrentPage(page->pageKey());
-    ALKitSearch::Hits hits=mSearch.query(query);
+    ALKitSearch::Hits hits = mSearch.query(query);
     ALKitSearch::Hits local;
-    for(ALKitSearch::Hit hit:hits)if(hit.page_key==page->pageKey())
-    {
-        hit.row=!hit.widget.empty()?page->findRow(hit.widget):page->findRowBySetting(hit.setting);
-        if(hit.row)local.push_back(std::move(hit));
-    }
+    for (ALKitSearch::Hit hit : hits)
+        if (hit.page_key == page->pageKey())
+        {
+            hit.row = !hit.widget.empty() ? page->findRow(hit.widget) : page->findRowBySetting(hit.setting);
+            if (hit.row)
+                local.push_back(std::move(hit));
+        }
     page->applySearch(local);
-    updateSearchResults(hits,page);
+    updateSearchResults(hits, page);
 }
 
 void ALKitShell::queueSearch(const std::string& query)
 {
-    mPendingQuery=query;
+    mPendingQuery = query;
     mSearch.setQuery(query);
-    if(auto timer=mSearchDebounce.lock())delete timer.get();
-    LLHandle<ALKitShell> handle=getDerivedHandle<ALKitShell>();
-    LLEventTimer* timer=LLEventTimer::run_after(.12f,[handle]()
-    {
-        if(ALKitShell* shell=handle.get())
-        {
-            shell->mSearchDebounce.reset();
-            shell->runSearch(shell->mPendingQuery);
-        }
-    });
-    mSearchDebounce=timer->getWeak();
+    if (auto timer = mSearchDebounce.lock())
+        delete timer.get();
+    LLHandle<ALKitShell> handle = getDerivedHandle<ALKitShell>();
+    LLEventTimer*        timer  = LLEventTimer::run_after(.12f,
+                                                          [handle]()
+                                                          {
+                                                      if (ALKitShell* shell = handle.get())
+                                                      {
+                                                          shell->mSearchDebounce.reset();
+                                                          shell->runSearch(shell->mPendingQuery);
+                                                      }
+                                                          });
+    mSearchDebounce             = timer->getWeak();
 }
 
-void ALKitShell::updateSearchResults(const ALKitSearch::Hits& hits,ALKitPage* page)
+void ALKitShell::updateSearchResults(const ALKitSearch::Hits& hits, ALKitPage* page)
 {
     mSearchHits.clear();
-    mHasTopSearchHit=!hits.empty();
-    if(mHasTopSearchHit)mTopSearchHit=hits.front();
-    S32 local_count=0;
-    S32 elsewhere=0;
-    const bool global=gSavedSettings.getBOOL("KitSearchGlobal");
-    for(const ALKitSearch::Hit& hit:hits)
+    mHasTopSearchHit = !hits.empty();
+    if (mHasTopSearchHit)
+        mTopSearchHit = hits.front();
+    S32        local_count = 0;
+    S32        elsewhere   = 0;
+    const bool global      = gSavedSettings.getBOOL("KitSearchGlobal");
+    for (const ALKitSearch::Hit& hit : hits)
     {
-        if(hit.page_key==page->pageKey())++local_count;
-        else if(global)
+        if (hit.page_key == page->pageKey())
+            ++local_count;
+        else if (global)
         {
             ++elsewhere;
-            if(mSearchHits.size()<12)mSearchHits.push_back(hit);
+            if (mSearchHits.size() < 12)
+                mSearchHits.push_back(hit);
         }
     }
-    mSearchSelection=0;
-    mSearchSelectionMoved=false;
-    if(mSearchHeader)mSearchHeader->setText(llformat("%d on this page \xC2\xB7 %d elsewhere",local_count,elsewhere));
-    for(S32 index=0;index<(S32)mSearchButtons.size();++index)
+    mSearchSelection      = 0;
+    mSearchSelectionMoved = false;
+    if (mSearchHeader)
+        mSearchHeader->setText(llformat("%d on this page \xC2\xB7 %d elsewhere", local_count, elsewhere));
+    for (S32 index = 0; index < (S32)mSearchButtons.size(); ++index)
     {
-        const bool visible=index<(S32)mSearchHits.size();
+        const bool visible = index < (S32)mSearchHits.size();
         mSearchButtons[index]->setVisible(visible);
-        if(visible)
+        if (visible)
         {
-            std::string label=mSearchHits[index].path;
-            if(mSearchHits[index].advanced)label+="  More";
+            std::string label = mSearchHits[index].path;
+            if (mSearchHits[index].advanced)
+                label += "  More";
             mSearchButtons[index]->setLabel(label);
         }
     }
-    if(mSearchFooter)mSearchFooter->setText(llformat("Showing the best %d of %d. Add a word to narrow it down.",(S32)mSearchHits.size(),elsewhere));
-    if(mSearchPopover)
+    if (mSearchFooter)
+        mSearchFooter->setText(llformat("Showing the best %d of %d. Add a word to narrow it down.", (S32)mSearchHits.size(), elsewhere));
+    if (mSearchPopover)
     {
-        if(global&&!mSearchHits.empty())mSearchPopover->show();
-        else mSearchPopover->hide();
+        if (global && !mSearchHits.empty())
+            mSearchPopover->show();
+        else
+            mSearchPopover->hide();
     }
 }
 
 bool ALKitShell::handleSearchKey(KEY key)
 {
-    if(key==KEY_RETURN&&mSearchSelectionMoved&&!mSearchHits.empty())
+    if (key == KEY_RETURN && mSearchSelectionMoved && !mSearchHits.empty())
     {
         activateSearchResult();
         return true;
     }
-    if(key==KEY_RETURN&&mHasTopSearchHit)
+    if (key == KEY_RETURN && mHasTopSearchHit)
     {
         ALKitTarget target;
-        target.page_key=mTopSearchHit.page_key;
-        target.card_id=mTopSearchHit.card_id;
-        target.widget=mTopSearchHit.widget;
-        target.setting=mTopSearchHit.setting;
-        target.option=mTopSearchHit.option;
+        target.page_key = mTopSearchHit.page_key;
+        target.card_id  = mTopSearchHit.card_id;
+        target.widget   = mTopSearchHit.widget;
+        target.setting  = mTopSearchHit.setting;
+        target.option   = mTopSearchHit.option;
         navigateTo(target);
         return true;
     }
-    if(mSearchHits.empty())return false;
-    if(key==KEY_UP)mSearchSelection=(mSearchSelection+(S32)mSearchHits.size()-1)%(S32)mSearchHits.size();
-    else if(key==KEY_DOWN)mSearchSelection=(mSearchSelection+1)%(S32)mSearchHits.size();
-    else return false;
-    mSearchSelectionMoved=true;
-    for(S32 index=0;index<(S32)mSearchButtons.size();++index)mSearchButtons[index]->setToggleState(index==mSearchSelection);
+    if (mSearchHits.empty())
+        return false;
+    if (key == KEY_UP)
+        mSearchSelection = (mSearchSelection + (S32)mSearchHits.size() - 1) % (S32)mSearchHits.size();
+    else if (key == KEY_DOWN)
+        mSearchSelection = (mSearchSelection + 1) % (S32)mSearchHits.size();
+    else
+        return false;
+    mSearchSelectionMoved = true;
+    for (S32 index = 0; index < (S32)mSearchButtons.size(); ++index)
+        mSearchButtons[index]->setToggleState(index == mSearchSelection);
     return true;
 }
 
 void ALKitShell::activateSearchResult()
 {
-    if(mSearchSelection<0||mSearchSelection>=(S32)mSearchHits.size())return;
-    const ALKitSearch::Hit& hit=mSearchHits[mSearchSelection];
-    ALKitTarget target;
-    target.page_key=hit.page_key;
-    target.card_id=hit.card_id;
-    target.widget=hit.widget;
-    target.setting=hit.setting;
-    target.option=hit.option;
+    if (mSearchSelection < 0 || mSearchSelection >= (S32)mSearchHits.size())
+        return;
+    const ALKitSearch::Hit& hit = mSearchHits[mSearchSelection];
+    ALKitTarget             target;
+    target.page_key = hit.page_key;
+    target.card_id  = hit.card_id;
+    target.widget   = hit.widget;
+    target.setting  = hit.setting;
+    target.option   = hit.option;
     navigateTo(target);
 }
 
 bool ALKitShell::cycleChip(S32 delta)
 {
-    ALKitPage* page=currentKitPage();
-    return page&&page->cycleChip(delta);
+    ALKitPage* page = currentKitPage();
+    return page && page->cycleChip(delta);
 }
 
 bool ALKitShell::cyclePage(S32 delta)
 {
-    if(!mDirectorTabs)return false;
-    LLPanel* group=mDirectorTabs->getCurrentPanel();
-    LLTabContainer* tabs=findFirst<LLTabContainer>(group);
-    if(!tabs||tabs->getTabCount()<1)return false;
-    const S32 current=tabs->getCurrentPanelIndex();
-    LLPanel* next=tabs->getPanelByIndex((current+delta+tabs->getTabCount())%tabs->getTabCount());
-    return next&&selectPage(next->getName());
+    if (!mDirectorTabs)
+        return false;
+    LLPanel*        group = mDirectorTabs->getCurrentPanel();
+    LLTabContainer* tabs  = findFirst<LLTabContainer>(group);
+    if (!tabs || tabs->getTabCount() < 1)
+        return false;
+    const S32 current = tabs->getCurrentPanelIndex();
+    LLPanel*  next    = tabs->getPanelByIndex((current + delta + tabs->getTabCount()) % tabs->getTabCount());
+    return next && selectPage(next->getName());
 }
 
 bool ALKitShell::cycleGroup(S32 delta)
 {
-    if(!mDirectorTabs||mDirectorTabs->getTabCount()<1)return false;
-    const S32 current=mDirectorTabs->getCurrentPanelIndex();
-    LLPanel* group=mDirectorTabs->getPanelByIndex((current+delta+mDirectorTabs->getTabCount())%mDirectorTabs->getTabCount());
-    if(!group)return false;
+    if (!mDirectorTabs || mDirectorTabs->getTabCount() < 1)
+        return false;
+    const S32 current = mDirectorTabs->getCurrentPanelIndex();
+    LLPanel*  group   = mDirectorTabs->getPanelByIndex((current + delta + mDirectorTabs->getTabCount()) % mDirectorTabs->getTabCount());
+    if (!group)
+        return false;
     mDirectorTabs->selectTabPanel(group);
-    LLTabContainer* tabs=findFirst<LLTabContainer>(group);
-    LLPanel* page=tabs?tabs->getCurrentPanel():nullptr;
-    return page&&selectPage(page->getName());
+    LLTabContainer* tabs = findFirst<LLTabContainer>(group);
+    LLPanel*        page = tabs ? tabs->getCurrentPanel() : nullptr;
+    return page && selectPage(page->getName());
 }
 
 void ALKitShell::startSearchLoad()
 {
-    if(mSearchStarted)return;
-    mSearchStarted=true;
-    LLHandle<ALKitShell> handle=getDerivedHandle<ALKitShell>();
-    doOnIdleOneTime([handle]()
-    {
-        if(ALKitShell* shell=handle.get())if(shell->mSearch.load(shell->mIndexFile))shell->scheduleSearchBatch();
-    });
+    if (mSearchStarted)
+        return;
+    mSearchStarted              = true;
+    LLHandle<ALKitShell> handle = getDerivedHandle<ALKitShell>();
+    doOnIdleOneTime(
+        [handle]()
+        {
+            if (ALKitShell* shell = handle.get())
+                if (shell->mSearch.load(shell->mIndexFile))
+                    shell->scheduleSearchBatch();
+        });
 }
 
 void ALKitShell::scheduleSearchBatch()
 {
-    LLHandle<ALKitShell> handle=getDerivedHandle<ALKitShell>();
-    doOnIdleOneTime([handle]()
-    {
-        if(ALKitShell* shell=handle.get())if(shell->mSearch.tokenizeBatch())shell->scheduleSearchBatch();
-    });
+    LLHandle<ALKitShell> handle = getDerivedHandle<ALKitShell>();
+    doOnIdleOneTime(
+        [handle]()
+        {
+            if (ALKitShell* shell = handle.get())
+                if (shell->mSearch.tokenizeBatch())
+                    shell->scheduleSearchBatch();
+        });
 }
 
 void ALKitShell::clearSearch()
 {
-    if(auto timer=mSearchDebounce.lock())delete timer.get();
+    if (auto timer = mSearchDebounce.lock())
+        delete timer.get();
     mSearchDebounce.reset();
     mSearch.setQuery("");
-    if(ALKitPage* page=currentKitPage())
+    if (ALKitPage* page = currentKitPage())
     {
         page->setSearchText("");
         page->clearSearch();
     }
     mSearchHits.clear();
-    mHasTopSearchHit=false;
-    if(mSearchPopover)mSearchPopover->hide();
+    mHasTopSearchHit = false;
+    if (mSearchPopover)
+        mSearchPopover->hide();
 }
 
 bool ALKitShell::closePopover()
 {
-    if(!mOpenPopover||!mOpenPopover->getVisible())return false;
+    if (!mOpenPopover || !mOpenPopover->getVisible())
+        return false;
     mOpenPopover->hide();
-    mOpenPopover=nullptr;
+    mOpenPopover = nullptr;
     return true;
 }
 
 void ALKitShell::setOpenPopover(ALKitPopover* popover)
-{
-    mOpenPopover=popover;
-}
+{ mOpenPopover = popover; }
 
-bool ALKitShell::handleMouseDown(S32 x,S32 y,MASK mask)
+bool ALKitShell::handleMouseDown(S32 x, S32 y, MASK mask)
 {
-    if(mOpenPopover&&mOpenPopover->getVisible())
+    if (mOpenPopover && mOpenPopover->getVisible())
     {
-        S32 local_x=0;
-        S32 local_y=0;
-        localPointToOtherView(x,y,&local_x,&local_y,mOpenPopover);
-        if(!mOpenPopover->pointInView(local_x,local_y))closePopover();
+        S32 local_x = 0;
+        S32 local_y = 0;
+        localPointToOtherView(x, y, &local_x, &local_y, mOpenPopover);
+        if (!mOpenPopover->pointInView(local_x, local_y))
+            closePopover();
     }
-    return LLPanel::handleMouseDown(x,y,mask);
+    return LLPanel::handleMouseDown(x, y, mask);
 }
 
-bool ALKitShell::handleScrollWheel(S32 x,S32 y,LLScrollDelta delta)
+bool ALKitShell::handleScrollWheel(S32 x, S32 y, LLScrollDelta delta)
 {
-    if(mTabStrip&&mTabNext&&mTabNext->getVisible())
+    if (mTabStrip && mTabNext && mTabNext->getVisible())
     {
-        S32 local_x=0;
-        S32 local_y=0;
-        localPointToOtherView(x,y,&local_x,&local_y,mTabStrip);
-        if(mTabStrip->pointInView(local_x,local_y)&&delta.mClicks!=0)
+        S32 local_x = 0;
+        S32 local_y = 0;
+        localPointToOtherView(x, y, &local_x, &local_y, mTabStrip);
+        if (mTabStrip->pointInView(local_x, local_y) && delta.mClicks != 0)
         {
-            mTabOffset=llmax(0,mTabOffset+(delta.mClicks>0?1:-1));
+            mTabOffset = llmax(0, mTabOffset + (delta.mClicks > 0 ? 1 : -1));
             layoutChrome();
             LLSliderWheel::noteScroll(this);
             return true;
         }
     }
-    return LLPanel::handleScrollWheel(x,y,delta);
+    return LLPanel::handleScrollWheel(x, y, delta);
 }

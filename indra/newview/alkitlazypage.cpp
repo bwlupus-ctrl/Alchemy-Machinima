@@ -5,38 +5,41 @@
 #include "lluictrlfactory.h"
 static LLDefaultChildRegistry::Register<ALKitLazyPage> r("kit_lazy_page");
 
-ALKitLazyPage::Params::Params():page_file("page_file"),master_setting("master_setting","")
+ALKitLazyPage::Params::Params() : page_file("page_file"), master_setting("master_setting", "")
 {
 }
 
-LLPanel*ALKitLazyPage::ensureBuilt()
+LLPanel* ALKitLazyPage::ensureBuilt()
 {
-    if(mContent||mBuildAttempted)return mContent;
-    mBuildAttempted=true;
+    if (mContent || mBuildAttempted)
+        return mContent;
+    mBuildAttempted = true;
     LL_PROFILE_ZONE_NAMED_CATEGORY_UI("Kit page build");
     LLTimer timer;
-    mContent=LLUICtrlFactory::getInstance()->createFromFile<LLPanel>(mPageFile,this,LLDefaultChildRegistry::instance());
-    if(!mContent)
+    mContent = LLUICtrlFactory::getInstance()->createFromFile<LLPanel>(mPageFile, this, LLDefaultChildRegistry::instance());
+    if (!mContent)
     {
-        LL_WARNS("DirectorKit")<<"Failed to build kit page "<<mPageFile<<LL_ENDL;
+        LL_WARNS("DirectorKit") << "Failed to build kit page " << mPageFile << LL_ENDL;
         return nullptr;
     }
-    mContent->reshape(getRect().getWidth(),getRect().getHeight(),true);
-    mContent->setOrigin(0,0);
+    mContent->reshape(getRect().getWidth(), getRect().getHeight(), true);
+    mContent->setOrigin(0, 0);
     mContent->setFollowsAll();
-    if(mContent->getParent()!=this)addChild(mContent);
-    if(ALKitShell*shell=ALKitShell::find(this))
+    if (mContent->getParent() != this)
+        addChild(mContent);
+    if (ALKitShell* shell = ALKitShell::find(this))
     {
-        shell->scrollFit().adoptPage(this,mContent);
-        shell->emitPageBuilt(getName(),mContent);
+        shell->scrollFit().adoptPage(this, mContent);
+        shell->emitPageBuilt(getName(), mContent);
     }
-    mBuildMs=timer.getElapsedTimeF64()*1000.;
-    LL_INFOS("DirectorKit")<<"Kit page "<<getName()<<" built in "<<mBuildMs<<" ms"<<LL_ENDL;
+    mBuildMs = timer.getElapsedTimeF64() * 1000.;
+    LL_INFOS("DirectorKit") << "Kit page " << getName() << " built in " << mBuildMs << " ms" << LL_ENDL;
     return mContent;
 }
 
 void ALKitLazyPage::onVisibilityChange(bool visible)
 {
-    if(visible)ensureBuilt();
+    if (visible)
+        ensureBuilt();
     LLPanel::onVisibilityChange(visible);
 }

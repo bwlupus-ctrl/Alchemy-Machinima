@@ -11,9 +11,10 @@ public:
     bool postBuild() override;
     void draw() override;
     void onVisibilityChange(bool visible) override;
+
 private:
     ALRigRimController mRim;
-    ALLiveReadoutClock mRefreshClock{10.f};
+    ALLiveReadoutClock mRefreshClock{ 10.f };
 };
 
 #endif

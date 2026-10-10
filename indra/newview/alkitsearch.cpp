@@ -61,14 +61,14 @@ void splitFields(const std::string& line, std::vector<std::string>& fields)
     }
     fields.push_back(unescapeField(field));
 }
-}
+} // namespace
 
 bool ALKitSearch::load(const std::string& index_file)
 {
     clear();
     mLoadTimer.reset();
     const std::string filename = gDirUtilp->findSkinnedFilename(LLDir::XUI, index_file);
-    llifstream input(filename.c_str(), std::ios::in | std::ios::binary);
+    llifstream        input(filename.c_str(), std::ios::in | std::ios::binary);
     if (!input)
     {
         LL_WARNS("DirectorKit") << "KitSearch cannot open " << filename << LL_ENDL;
@@ -83,14 +83,14 @@ bool ALKitSearch::load(const std::string& index_file)
         return false;
     }
     const size_t begin = xml.find("<![CDATA[");
-    const size_t end = xml.rfind("]]>");
+    const size_t end   = xml.rfind("]]>");
     if (begin == std::string::npos || end == std::string::npos || end < begin + 9)
     {
         LL_WARNS("DirectorKit") << "KitSearch rejected missing CDATA in " << filename << LL_ENDL;
         return false;
     }
-    std::istringstream lines(xml.substr(begin + 9, end - begin - 9));
-    std::string line;
+    std::istringstream       lines(xml.substr(begin + 9, end - begin - 9));
+    std::string              line;
     std::vector<std::string> fields;
     while (std::getline(lines, line))
     {
@@ -105,8 +105,7 @@ bool ALKitSearch::load(const std::string& index_file)
         splitFields(line, fields);
         if (fields.size() != INDEX_FIELDS)
         {
-            LL_WARNS("DirectorKit") << "KitSearch rejected index line with "
-                                     << fields.size() << " fields" << LL_ENDL;
+            LL_WARNS("DirectorKit") << "KitSearch rejected index line with " << fields.size() << " fields" << LL_ENDL;
             clear();
             return false;
         }
@@ -121,19 +120,19 @@ bool ALKitSearch::tokenizeBatch(U32 count)
     for (; mPendingIndex < end; ++mPendingIndex)
     {
         const std::vector<std::string>& fields = mPending[mPendingIndex];
-        Entry entry;
-        entry.group_key = fields[0];
-        entry.page_key = fields[1];
-        entry.card_id = fields[5];
-        entry.option = fields[7].empty() ? -1 : atoi(fields[7].c_str());
-        entry.widget = fields[8];
-        entry.label = fields[9];
+        Entry                           entry;
+        entry.group_key   = fields[0];
+        entry.page_key    = fields[1];
+        entry.card_id     = fields[5];
+        entry.option      = fields[7].empty() ? -1 : atoi(fields[7].c_str());
+        entry.widget      = fields[8];
+        entry.label       = fields[9];
         entry.label_lower = entry.label;
         LLStringUtil::toLower(entry.label_lower);
-        entry.setting = fields[11];
+        entry.setting  = fields[11];
         entry.advanced = fields[12].find('a') != std::string::npos;
-        entry.order = mPendingIndex;
-        entry.path = fields[3] + " \xE2\x80\xBA " + fields[2] + " \xE2\x80\xBA " + fields[6] + " \xC2\xB7 " + fields[9];
+        entry.order    = mPendingIndex;
+        entry.path     = fields[3] + " \xE2\x80\xBA " + fields[2] + " \xE2\x80\xBA " + fields[6] + " \xC2\xB7 " + fields[9];
         tokenize(fields[9], entry.label_tokens);
         tokenize(fields[6], entry.card_tokens);
         tokenize(fields[13], entry.keyword_tokens);
@@ -144,8 +143,8 @@ bool ALKitSearch::tokenizeBatch(U32 count)
     }
     if (mPendingIndex == mPending.size())
     {
-        LL_INFOS("DirectorKit") << "KitSearch index " << mEntries.size() << " entries "
-                                 << mLoadTimer.getElapsedTimeF64() * 1000. << " ms" << LL_ENDL;
+        LL_INFOS("DirectorKit") << "KitSearch index " << mEntries.size() << " entries " << mLoadTimer.getElapsedTimeF64() * 1000. << " ms"
+                                << LL_ENDL;
         mPending.clear();
         return false;
     }
@@ -153,28 +152,20 @@ bool ALKitSearch::tokenizeBatch(U32 count)
 }
 
 bool ALKitSearch::loading() const
-{
-    return !mPending.empty();
-}
+{ return !mPending.empty(); }
 
 void ALKitSearch::setCurrentPage(const std::string& page_key)
-{
-    mCurrentPage = page_key;
-}
+{ mCurrentPage = page_key; }
 
 void ALKitSearch::setQuery(const std::string& query)
-{
-    mQuery = query;
-}
+{ mQuery = query; }
 
 const std::string& ALKitSearch::queryText() const
-{
-    return mQuery;
-}
+{ return mQuery; }
 
 ALKitSearch::Hits ALKitSearch::query(const std::string& query_text) const
 {
-    LLTimer query_timer;
+    LLTimer                  query_timer;
     std::vector<std::string> query_tokens;
     splitTokens(query_text, query_tokens);
     Hits hits;
@@ -184,11 +175,11 @@ ALKitSearch::Hits ALKitSearch::query(const std::string& query_text) const
     }
     for (const Entry& entry : mEntries)
     {
-        S32 total = 0;
+        S32  total   = 0;
         bool matches = true;
         for (const std::string& query_token : query_tokens)
         {
-            S32 best = 0;
+            S32  best  = 0;
             auto score = [this, &query_token, &best](const std::vector<U32>& tokens, S32 value)
             {
                 for (U32 id : tokens)
@@ -224,33 +215,34 @@ ALKitSearch::Hits ALKitSearch::query(const std::string& query_text) const
         {
             Hit hit;
             hit.group_key = entry.group_key;
-            hit.page_key = entry.page_key;
-            hit.card_id = entry.card_id;
-            hit.widget = entry.widget;
-            hit.setting = entry.setting;
-            hit.label = entry.label;
-            hit.path = entry.path;
-            hit.option = entry.option;
-            hit.score = total;
-            hit.order = entry.order;
-            hit.advanced = entry.advanced;
+            hit.page_key  = entry.page_key;
+            hit.card_id   = entry.card_id;
+            hit.widget    = entry.widget;
+            hit.setting   = entry.setting;
+            hit.label     = entry.label;
+            hit.path      = entry.path;
+            hit.option    = entry.option;
+            hit.score     = total;
+            hit.order     = entry.order;
+            hit.advanced  = entry.advanced;
             hits.push_back(std::move(hit));
         }
     }
-    std::stable_sort(hits.begin(), hits.end(), [this](const Hit& lhs, const Hit& rhs)
+    std::stable_sort(hits.begin(), hits.end(),
+                     [this](const Hit& lhs, const Hit& rhs)
+                     {
+                         if (lhs.score != rhs.score)
+                         {
+                             return lhs.score > rhs.score;
+                         }
+                         const bool lhs_current = lhs.page_key == mCurrentPage;
+                         const bool rhs_current = rhs.page_key == mCurrentPage;
+                         return lhs_current != rhs_current ? lhs_current : lhs.order < rhs.order;
+                     });
+    if (ALUIPerfSelfTest::isActive())
     {
-        if (lhs.score != rhs.score)
-        {
-            return lhs.score > rhs.score;
-        }
-        const bool lhs_current = lhs.page_key == mCurrentPage;
-        const bool rhs_current = rhs.page_key == mCurrentPage;
-        return lhs_current != rhs_current ? lhs_current : lhs.order < rhs.order;
-    });
-    if(ALUIPerfSelfTest::isActive())
-    {
-        LL_INFOS("DirectorKit")<<"KitSearch query \""<<query_text<<"\" "
-            <<query_timer.getElapsedTimeF64()*1000.<<" ms "<<hits.size()<<LL_ENDL;
+        LL_INFOS("DirectorKit") << "KitSearch query \"" << query_text << "\" " << query_timer.getElapsedTimeF64() * 1000. << " ms "
+                                << hits.size() << LL_ENDL;
     }
     return hits;
 }
@@ -291,7 +283,7 @@ void ALKitSearch::tokenize(const std::string& value, std::vector<U32>& out)
 void ALKitSearch::splitTokens(const std::string& value, std::vector<std::string>& out)
 {
     std::string token;
-    char previous = 0;
+    char        previous = 0;
     for (char ch : value)
     {
         const unsigned char byte = (unsigned char)ch;

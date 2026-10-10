@@ -22,74 +22,75 @@ public:
     };
     struct Entry
     {
-        bool widget=false;
-        std::string key;
+        bool               widget = false;
+        std::string        key;
         LLHandle<LLUICtrl> ctrl;
-        LLSD oldv;
-        LLSD newv;
+        LLSD               oldv;
+        LLSD               newv;
     };
     struct CustomEntry
     {
-        std::string key;
-        std::function<bool(bool,std::string&)> replay;
+        std::string                             key;
+        std::function<bool(bool, std::string&)> replay;
     };
     struct Step
     {
-        std::string label;
-        std::string context;
-        std::string page;
-        U64 scene_generation=0;
-        std::vector<Entry> entries;
+        std::string              label;
+        std::string              context;
+        std::string              page;
+        U64                      scene_generation = 0;
+        std::vector<Entry>       entries;
         std::vector<CustomEntry> custom;
     };
-    static constexpr size_t MAX_STEPS=200;
+    static constexpr size_t MAX_STEPS = 200;
 
     ALKitHistory();
     ~ALKitHistory();
-    void setOwner(LLView* owner);
-    void beginGesture(EOrigin,const std::string&,const std::string& label=std::string());
+    void        setOwner(LLView* owner);
+    void        beginGesture(EOrigin, const std::string&, const std::string& label = std::string());
     static void noteKey();
     static void notePointer(LLView*);
-    void watchSettings(const std::string&,const std::vector<std::string>&);
-    void recordWidget(LLUICtrl*,const LLSD&,const LLSD&,const std::string&);
-    void recordCustom(const std::string&,const std::string&,std::function<bool(bool,std::string&)>);
-    void barrier(const std::string&);
+    void        watchSettings(const std::string&, const std::vector<std::string>&);
+    void        recordWidget(LLUICtrl*, const LLSD&, const LLSD&, const std::string&);
+    void        recordCustom(const std::string&, const std::string&, std::function<bool(bool, std::string&)>);
+    void        barrier(const std::string&);
     static void globalBarrier(const std::string&);
-    bool canUndo()const{return !mUndo.empty();}
-    bool canRedo()const{return !mRedo.empty();}
-    std::string undoLabel()const{return canUndo()?mUndo.back().label:std::string();}
-    std::string redoLabel()const{return canRedo()?mRedo.back().label:std::string();}
-    void undo();
-    void redo();
-    U64 revision()const{return mRevision;}
-    void registerContext(const std::string&,std::function<std::string()>);
+    bool        canUndo() const { return !mUndo.empty(); }
+    bool        canRedo() const { return !mRedo.empty(); }
+    std::string undoLabel() const { return canUndo() ? mUndo.back().label : std::string(); }
+    std::string redoLabel() const { return canRedo() ? mRedo.back().label : std::string(); }
+    void        undo();
+    void        redo();
+    U64         revision() const { return mRevision; }
+    void        registerContext(const std::string&, std::function<std::string()>);
     struct ScopedSuspend
     {
         ScopedSuspend();
         ~ScopedSuspend();
     };
     static bool suspended();
+
 private:
     class GestureTimer;
-    void captureSetting(const std::string&,const std::string&,const LLSD&,const LLSD&);
-    void addEntry(Entry,const std::string&,const std::string& label_page=std::string());
-    void finishGesture();
-    bool tickGesture();
-    std::string currentContext(const std::string&)const;
-    bool replay(Step&,bool);
-    std::vector<Step> mUndo;
-    std::vector<Step> mRedo;
-    U64 mRevision=0;
-    U64 mGeneration=0;
-    std::string mPage;
-    std::string mGestureLabel;
-    EOrigin mOrigin=MOUSE;
-    LLHandle<LLView> mOwner;
-    std::unique_ptr<Step> mOpen;
+    void                          captureSetting(const std::string&, const std::string&, const LLSD&, const LLSD&);
+    void                          addEntry(Entry, const std::string&, const std::string& label_page = std::string());
+    void                          finishGesture();
+    bool                          tickGesture();
+    std::string                   currentContext(const std::string&) const;
+    bool                          replay(Step&, bool);
+    std::vector<Step>             mUndo;
+    std::vector<Step>             mRedo;
+    U64                           mRevision   = 0;
+    U64                           mGeneration = 0;
+    std::string                   mPage;
+    std::string                   mGestureLabel;
+    EOrigin                       mOrigin = MOUSE;
+    LLHandle<LLView>              mOwner;
+    std::unique_ptr<Step>         mOpen;
     std::unique_ptr<GestureTimer> mTimer;
-    F64 mCloseAt=0.;
-    bool mReplaying=false;
-    std::unordered_map<std::string,std::vector<boost::signals2::scoped_connection>> mWatches;
-    std::unordered_map<std::string,std::function<std::string()>> mContexts;
+    F64                           mCloseAt   = 0.;
+    bool                          mReplaying = false;
+    std::unordered_map<std::string, std::vector<boost::signals2::scoped_connection>> mWatches;
+    std::unordered_map<std::string, std::function<std::string()>>                    mContexts;
 };
 #endif

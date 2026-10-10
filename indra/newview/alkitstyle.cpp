@@ -9,18 +9,15 @@ namespace ALKitStyle
 {
 const LLUIColor& color(EColor value)
 {
-    static const char* names[COLOR_COUNT] =
-    {
-        "KitWindowBg", "KitRailBg", "KitSubBand", "KitCardBg", "KitCardBorder",
-        "KitDivider", "KitDivider2", "KitRowHover", "KitRailHover", "KitControlBg",
-        "KitInputBg", "KitInputBorder", "KitTrack", "KitSwitchOff", "KitKnobOff",
-        "KitKnobOn", "KitAccent", "KitAccentHi", "KitRecord", "KitRecordText",
-        "KitText", "KitTextStrong", "KitLabel", "KitDim", "KitMuted", "KitFaint",
-        "KitDialRing", "KitDialFace", "KitArcTrack", "KitFlash", "KitBannerBg",
-        "KitMapKey", "KitMapFill", "KitMapBack", "KitMapBg", "KitOffGrey"
+    static const char* names[COLOR_COUNT] = {
+        "KitWindowBg",  "KitRailBg",    "KitSubBand",  "KitCardBg",      "KitCardBorder", "KitDivider",    "KitDivider2", "KitRowHover",
+        "KitRailHover", "KitControlBg", "KitInputBg",  "KitInputBorder", "KitTrack",      "KitSwitchOff",  "KitKnobOff",  "KitKnobOn",
+        "KitAccent",    "KitAccentHi",  "KitRecord",   "KitRecordText",  "KitText",       "KitTextStrong", "KitLabel",    "KitDim",
+        "KitMuted",     "KitFaint",     "KitDialRing", "KitDialFace",    "KitArcTrack",   "KitFlash",      "KitBannerBg", "KitMapKey",
+        "KitMapFill",   "KitMapBack",   "KitMapBg",    "KitOffGrey"
     };
     static LLUIColor colors[COLOR_COUNT];
-    static bool initialized = false;
+    static bool      initialized = false;
     if (!initialized)
     {
         for (S32 i = 0; i < COLOR_COUNT; ++i)

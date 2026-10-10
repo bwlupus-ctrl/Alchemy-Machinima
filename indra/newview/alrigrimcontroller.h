@@ -14,20 +14,20 @@ class LLView;
 class ALRigRimController
 {
 public:
-    void attach(LLView* root);
-    void onReveal();
-    void tickFrame();
-    void tickRefresh();
-    static bool applyPresetByName(const std::string& name);
+    void                                   attach(LLView* root);
+    void                                   onReveal();
+    void                                   tickFrame();
+    void                                   tickRefresh();
+    static bool                            applyPresetByName(const std::string& name);
     static const std::vector<std::string>& presetNames();
 
 private:
-    LLComboBox* mPreset = nullptr;
-    LLTextBox* mQualityStatus = nullptr;
-    LLButton* mEnableTag = nullptr;
-    LLView* mTronTintWidgets[7] = {};
-    ALRevisionGate mStatusGate;
-    ALLiveReadoutClock mStatusClock{2.f};
+    LLComboBox*        mPreset             = nullptr;
+    LLTextBox*         mQualityStatus      = nullptr;
+    LLButton*          mEnableTag          = nullptr;
+    LLView*            mTronTintWidgets[7] = {};
+    ALRevisionGate     mStatusGate;
+    ALLiveReadoutClock mStatusClock{ 2.f };
 };
 
 #endif

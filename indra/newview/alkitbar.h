@@ -28,13 +28,13 @@ protected:
 private:
     void layoutChildren();
 
-    std::string mFlexName;
+    std::string              mFlexName;
     std::vector<std::string> mCollapseOrder;
-    LLView* mFlex = nullptr;
-    std::vector<LLView*> mChildren;
-    std::vector<LLView*> mCollapse;
-    std::vector<bool> mNaturalVisible;
-    std::vector<bool> mCollapsed;
+    LLView*                  mFlex = nullptr;
+    std::vector<LLView*>     mChildren;
+    std::vector<LLView*>     mCollapse;
+    std::vector<bool>        mNaturalVisible;
+    std::vector<bool>        mCollapsed;
 };
 
 #endif

@@ -9,16 +9,11 @@
 
 static LLDefaultChildRegistry::Register<ALKitPopover> register_popover("kit_popover");
 
-ALKitPopover::Params::Params()
-    : anchor("anchor"),
-      side("side", "below")
+ALKitPopover::Params::Params() : anchor("anchor"), side("side", "below")
 {
 }
 
-ALKitPopover::ALKitPopover(const Params& params)
-    : LLPanel(params),
-      mAnchorName(params.anchor),
-      mSide(params.side)
+ALKitPopover::ALKitPopover(const Params& params) : LLPanel(params), mAnchorName(params.anchor), mSide(params.side)
 {
 }
 
@@ -32,51 +27,56 @@ bool ALKitPopover::postBuild()
             mAnchor = anchor->getHandle();
         }
     }
-    if(getRect().getWidth()<=1||getRect().getHeight()<=1)
+    if (getRect().getWidth() <= 1 || getRect().getHeight() <= 1)
     {
-        S32 width=360;
-        S32 height=180;
-        if(getName()=="legend_panel")
+        S32 width  = 360;
+        S32 height = 180;
+        if (getName() == "legend_panel")
         {
-            width=520;
-            height=420;
+            width  = 520;
+            height = 420;
         }
-        else if(getName()=="kit_hotkeys_popover")
+        else if (getName() == "kit_hotkeys_popover")
         {
-            width=340;
-            height=300;
+            width  = 340;
+            height = 300;
         }
-        reshape(width,height,true);
-        S32 top=height-10;
-        for(LLView* child:*getChildList())
+        reshape(width, height, true);
+        S32 top = height - 10;
+        for (LLView* child : *getChildList())
         {
-            S32 child_height=child->getRect().getHeight();
-            if(child_height<=1)
+            S32 child_height = child->getRect().getHeight();
+            if (child_height <= 1)
             {
-                if(dynamic_cast<ALKitRow*>(child))child_height=28;
-                else if(child->getName()=="btn_legend_close")child_height=24;
-                else child_height=height-50;
+                if (dynamic_cast<ALKitRow*>(child))
+                    child_height = 28;
+                else if (child->getName() == "btn_legend_close")
+                    child_height = 24;
+                else
+                    child_height = height - 50;
             }
-            child->reshape(width-20,child_height,true);
-            child->setOrigin(10,top-child_height);
-            top-=child_height+4;
+            child->reshape(width - 20, child_height, true);
+            child->setOrigin(10, top - child_height);
+            top -= child_height + 4;
         }
     }
-    if(LLUICtrl* close=findChild<LLUICtrl>("btn_legend_close"))
+    if (LLUICtrl* close = findChild<LLUICtrl>("btn_legend_close"))
     {
-        LLHandle<ALKitPopover> handle=getDerivedHandle<ALKitPopover>();
-        close->setCommitCallback([handle](LLUICtrl*,const LLSD&)
-        {
-            if(ALKitPopover* popover=handle.get())popover->hide();
-        });
+        LLHandle<ALKitPopover> handle = getDerivedHandle<ALKitPopover>();
+        close->setCommitCallback(
+            [handle](LLUICtrl*, const LLSD&)
+            {
+                if (ALKitPopover* popover = handle.get())
+                    popover->hide();
+            });
     }
     return LLPanel::postBuild();
 }
 
 void ALKitPopover::show()
 {
-    ALKitShell* shell = ALKitShell::find(this);
-    LLView* anchor = mAnchor.get();
+    ALKitShell* shell  = ALKitShell::find(this);
+    LLView*     anchor = mAnchor.get();
     if (!shell || !anchor)
     {
         return;
@@ -89,25 +89,23 @@ void ALKitPopover::show()
         return;
     }
 
-    const S32 width = getRect().getWidth();
+    const S32 width  = getRect().getWidth();
     const S32 height = getRect().getHeight();
-    S32 left = anchor_rect.mLeft;
-    S32 bottom = mSide == "above" ? anchor_rect.mTop + 4 : anchor_rect.mBottom - height - 4;
-    left = llclamp(left, 0, llmax(0, shell->getRect().getWidth() - width));
-    bottom = llclamp(bottom, 0, llmax(0, shell->getRect().getHeight() - height));
+    S32       left   = anchor_rect.mLeft;
+    S32       bottom = mSide == "above" ? anchor_rect.mTop + 4 : anchor_rect.mBottom - height - 4;
+    left             = llclamp(left, 0, llmax(0, shell->getRect().getWidth() - width));
+    bottom           = llclamp(bottom, 0, llmax(0, shell->getRect().getHeight() - height));
     setOrigin(left, bottom);
     setVisible(true);
     shell->setOpenPopover(this);
 }
 
 void ALKitPopover::hide()
-{
-    setVisible(false);
-}
+{ setVisible(false); }
 
 void ALKitPopover::toggle()
 {
-    if(getVisible())
+    if (getVisible())
     {
         hide();
     }
@@ -118,9 +116,7 @@ void ALKitPopover::toggle()
 }
 
 void ALKitPopover::bindAnchor(LLView* anchor)
-{
-    mAnchor=anchor?anchor->getHandle():LLHandle<LLView>();
-}
+{ mAnchor = anchor ? anchor->getHandle() : LLHandle<LLView>(); }
 
 bool ALKitPopover::handleKeyHere(KEY key, MASK mask)
 {
