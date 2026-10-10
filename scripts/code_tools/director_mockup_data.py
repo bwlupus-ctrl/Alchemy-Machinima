@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+﻿#!/usr/bin/env python3
 """Merge curated Director layouts with content-map metadata into one compact
 mockup data file (director_mockup_data.json).
 
@@ -74,7 +74,7 @@ def conv_row(r, pool):
         if c.get(src) is not None:
             out[dst] = c[src]
     if c.get("items"):
-        out["it"] = [i.get("label") if isinstance(i, dict) else i for i in c["items"]][:40]
+        out["it"] = [i.get("label") if isinstance(i, dict) else i for i in c["items"]]
     if c.get("type"):
         out["ty"] = c["type"]
     return out
@@ -113,8 +113,12 @@ def conv_cards(cards, pool):
         if cd.get("advanced"):
             o["a"] = 1
         if cd.get("enable_widget"):
-            take(pool, cd["enable_widget"], None)
+            ec = take(pool, cd["enable_widget"], None)
             o["en"] = 1
+            # Kept for the IA v2 page master lookup; stripped again after apply_ia_v2.
+            o["ew"] = cd["enable_widget"]
+            if ec.get("control_name"):
+                o["es"] = ec["control_name"]
         for key in ("target", "target_tab", "target_widget", "button_label", "help"):
             if cd.get(key):
                 o[key] = cd[key]
@@ -262,7 +266,7 @@ STRIP = {
 CARD_PRESET = {
     "cine_easy_flare_preset": "rig_flare", "cine_flare_preset": "rig_flare",
     "cine_easy_night_mask_preset": "rig_night_mask", "cine_night_mask_preset": "rig_night_mask",
-    "cine_fixture_preset": None, "exp_gnd_preset": "exposure_hub_gnd", "gradnd_preset_combo": "exposure_hub_gnd",
+    "cine_fixture_preset": "rig_fixtures", "exp_gnd_preset": "exposure_hub_gnd", "gradnd_preset_combo": "exposure_hub_gnd",
     "exp_pol_preset": "exposure_hub_pol", "polarizer_preset_combo": "exposure_hub_pol",
     "exp_ir_preset": "lens_looks_ir", "ir_preset_action": "lens_looks_ir",
     "exp_softedge_preset": "lens_looks_soft", "softedge_preset_action": "lens_looks_soft",
@@ -286,7 +290,8 @@ def apply_presets(groups, presets, problems):
     for g in groups:
         for p in g["pages"]:
             key = f"{g['name']}/{p['name']}"
-            if key in STRIP:
+            inline = p.pop("inline_presets", False)  # inline_pages presets win over the provider
+            if key in STRIP and not inline:
                 src, widgets = STRIP[key]
                 names = []
                 if src.startswith("@"):
@@ -309,6 +314,480 @@ def apply_presets(groups, presets, problems):
                     r["it"] = names or r.get("it") or []
                     c.setdefault("card_presets", 0)
                     c["card_presets"] += 1
+
+
+def apply_overrides(groups, cur_dir, problems):
+    """content_curated/overrides/*.json: real kinds/ranges/items for rows the XUI
+    extractor could only see as 'custom' (resolved from C++ by the override pass)."""
+    od = cur_dir / "overrides"
+    if not od.exists():
+        return
+    by_group = defaultdict(dict)
+    for f in sorted(od.glob("*.json")):
+        try:
+            j = json.loads(f.read_text(encoding="utf-8"))
+        except Exception as e:  # keep going; report the bad file
+            problems.append(f"overrides: {f.name} unreadable: {e}")
+            continue
+        by_group[j.get("group")].update(j.get("rows", {}))
+    keys = ("k", "l", "mn", "mx", "st", "dc", "it", "s", "h", "btn", "unit", "sample", "who")
+    applied = 0
+    for g in groups:
+        ov = by_group.get(g["name"])
+        if not ov:
+            continue
+        for p in g["pages"]:
+            for c in p["cards"]:
+                for r in c.get("rows", []) + [x for o in c.get("opts", []) for x in o["rows"]]:
+                    # Unnamed widgets share default names ("check_box"): overrides may key
+                    # them as "<widget>|<label>".
+                    o = ov.get(f"{r.get('w')}|{r.get('l')}") or ov.get(r.get("w"))
+                    if not o:
+                        continue
+                    for k in keys:
+                        if k in o and o[k] not in (None, ""):
+                            r[k] = o[k]
+                    applied += 1
+    # Line editors are real text inputs, not placeholders.
+    texts = 0
+    for g in groups:
+        for p in g["pages"]:
+            for c in p["cards"]:
+                for r in c.get("rows", []) + [x for o in c.get("opts", []) for x in o["rows"]]:
+                    if r.get("k") == "custom" and str(r.get("ty", "")).replace(" ", "_") in ("line_editor", "text_editor", "search_editor"):
+                        r["k"] = "text"
+                        texts += 1
+    print(f"overrides applied to {applied} rows; {texts} line editors -> text")
+
+
+IA2_KEYS = ("links", "master", "who", "modes", "add_rows", "remove_rows",
+            "promote_rows", "reorder", "sections", "selector_binds", "rename")
+
+
+def _as_list(x):
+    """A spec value that may be one dict, a list, or absent."""
+    if not x:
+        return []
+    return [x] if isinstance(x, dict) else list(x)
+
+
+def _row_lists(card, option=None):
+    """Row lists of a card: its own rows and every option's rows (option=None),
+    or only the named option's rows (empty when that option is missing)."""
+    if option is None:
+        return [card.get("rows", [])] + [o["rows"] for o in card.get("opts", [])]
+    return [o["rows"] for o in card.get("opts", []) if o["label"] == option]
+
+
+def _page_rows(page):
+    for c in page["cards"]:
+        for rows in _row_lists(c):
+            yield from rows
+
+
+def _find_card(page, cid):
+    return next((c for c in page["cards"] if c.get("id") == cid), None)
+
+
+def _build_sections(page, sec_list, key, problems):
+    """Sections given by card id -> page["sections"] as card-index lists."""
+    idx = {c["id"]: i for i, c in enumerate(page["cards"])}
+    placed, secs = set(), []
+    for s in sec_list:
+        ids = []
+        for cid in s.get("cards", []):
+            if cid not in idx:
+                problems.append(f"{key}: section '{s.get('id')}' references unknown card '{cid}'")
+            elif cid in placed:
+                problems.append(f"{key}: card '{cid}' in two sections")
+            else:
+                placed.add(cid)
+                ids.append(idx[cid])
+        secs.append({"id": s.get("id"), "label": s.get("label"), "cards": ids})
+    for c in page["cards"]:
+        if c["id"] not in placed:
+            problems.append(f"{key}: card '{c['id']}' is in no section")
+    page["sections"] = secs
+
+
+def _norm_item(s):
+    return str(s).lower().replace("-the-", "-").split(" (")[0].strip()
+
+
+def _match_item(label, items):
+    """Index of the combo item an option names: exact, then base name (text before
+    '('), then word prefix, then word suffix. None unless one tier gives one match."""
+    n = _norm_item(label)
+    tiers = [
+        [i for i, it in enumerate(items) if it == label],
+        [i for i, it in enumerate(items) if _norm_item(it) == n],
+        [i for i, it in enumerate(items) if _norm_item(it).startswith(n + " ")],
+        [i for i, it in enumerate(items) if _norm_item(it).endswith(" " + n)],
+    ]
+    for hits in tiers:
+        if len(hits) == 1:
+            return hits[0]
+        if len(hits) > 1:
+            return None
+    return None
+
+
+def _combo_items(page, widget, key, problems):
+    row = next((r for r in _page_rows(page) if widget in (r.get("w"), r.get("s"))), None)
+    if row is None or not row.get("it"):
+        problems.append(f"{key}: selector_binds items_from '{widget}' is not a combo row with items")
+        return None
+    return [i[0] if isinstance(i, (list, tuple)) else i for i in row["it"]]
+
+
+def _conv_v2_row(r):
+    """Schema row (label/kind/help/widget/advanced) -> mockup row keys."""
+    names = {"label": "l", "kind": "k", "help": "h", "widget": "w"}
+    out = {}
+    for k, v in r.items():
+        if k.startswith("_"):
+            continue
+        if k == "advanced":
+            if v:
+                out["a"] = 1
+        else:
+            out[names.get(k, k)] = v
+    return out
+
+
+def _set_master(page, widget, key, problems):
+    """The card header enable (en/ew) or a plain enable row becomes the page master.
+    Returns (found, setting)."""
+    for c in page["cards"]:
+        if c.get("ew") == widget:
+            c.pop("en", None)
+            return True, c.get("es")
+    for c in page["cards"]:
+        for rows in _row_lists(c):
+            for r in rows:
+                if r.get("w") == widget:
+                    rows.remove(r)
+                    return True, r.get("s")
+    problems.append(f"{key}: master widget '{widget}' not found")
+    return False, None
+
+
+def _set_who(page, spec, key, problems):
+    pickers = list(spec.get("picker_widgets") or [])
+    marked = 0
+    for w in pickers:
+        hits = [r for r in _page_rows(page) if r.get("w") == w]
+        if not hits:
+            problems.append(f"{key}: who picker '{w}' not found")
+        for r in hits:
+            r["who_picker"] = 1
+            marked += 1
+    page["who"] = {"label": spec.get("label"), "pickers": pickers}
+    return marked
+
+
+def _apply_v2_page(page, spec, key, page_keys, problems):
+    stats = {"links": 0, "master": 0, "who": 0, "modes": 0, "added": 0}
+    link_ids = {}  # replaced card id -> its link card id
+
+    def resolve(cid):
+        return link_ids.get(cid, cid)
+
+    def card(cid):
+        c = _find_card(page, resolve(cid))
+        if c is None:
+            problems.append(f"{key}: unknown card '{cid}'")
+        return c
+
+    # links: the card is swapped in place (same section slot and index) for a link card
+    for ln in _as_list(spec.get("links")):
+        cid, to = ln.get("card"), ln.get("to")
+        idx = next((i for i, c in enumerate(page["cards"]) if c.get("id") == cid), None)
+        if idx is None:
+            problems.append(f"{key}: link card '{cid}' is not on this page")
+            continue
+        if to not in page_keys:
+            problems.append(f"{key}: link '{cid}' targets unknown page '{to}'")
+            continue
+        old = page["cards"][idx]
+        summary = []
+        for w in ln.get("summary_rows") or []:
+            hit = next((r for rows in _row_lists(old) for r in rows if r.get("w") == w), None)
+            if hit is None:
+                problems.append(f"{key}: link '{cid}' summary row '{w}' is not on that card")
+            else:
+                summary.append(dict(hit))
+        link_ids[cid] = cid + "_link"
+        page["cards"][idx] = {"id": cid + "_link", "t": ln.get("label") or old.get("t"), "k": "link",
+                              "to": to, "summary": summary, "rows": []}
+        stats["links"] += 1
+
+    # selector_binds: take the combo's items now, before remove_rows deletes that row
+    binds = []
+    for sb in _as_list(spec.get("selector_binds")):
+        sc = card(sb.get("card"))
+        items = _combo_items(page, sb.get("items_from"), key, problems)
+        if sc is None or items is None:
+            continue
+        if "opts" not in sc:
+            problems.append(f"{key}: selector_binds card '{sc.get('id')}' is not a selector")
+            continue
+        binds.append((sc, sb.get("s"), items))
+
+    if spec.get("master"):
+        m = spec["master"]
+        found, setting = _set_master(page, m.get("widget"), key, problems)
+        if found:
+            page["master"] = {"w": m.get("widget"), "l": m.get("label"), "s": setting}
+            stats["master"] = 1
+
+    if spec.get("who"):
+        stats["who"] = _set_who(page, spec["who"], key, problems)
+
+    for ar in _as_list(spec.get("add_rows")):
+        c = card(ar.get("card"))
+        if c is None:
+            continue
+        row = _conv_v2_row(ar.get("row") or {})
+        row["added"] = 1
+        if row.get("w") and any(r.get("w") == row["w"] for r in _page_rows(page)):
+            problems.append(f"{key}: add_rows widget '{row['w']}' already exists on this page")
+        if ar.get("option"):
+            if "opts" not in c:
+                problems.append(f"{key}: add_rows option '{ar['option']}' on non-selector '{c.get('id')}'")
+                continue
+            opt = next((o for o in c["opts"] if o["label"] == ar["option"]), None)
+            if opt is None:  # the option does not exist yet: create it
+                opt = {"label": ar["option"], "en": 0, "rows": []}
+                c["opts"].append(opt)
+            opt["rows"].append(row)
+        else:
+            c["rows"].append(row)
+        stats["added"] += 1
+
+    for pr in _as_list(spec.get("promote_rows")):
+        c = card(pr.get("card"))
+        if c is None:
+            continue
+        hit = next((r for rows in _row_lists(c, pr.get("option"))
+                    for r in rows if r.get("w") == pr.get("w")), None)
+        if hit is None:
+            problems.append(f"{key}: promote row '{pr.get('w')}' not found on '{c.get('id')}'")
+        else:
+            hit.pop("a", None)
+
+    for rr in _as_list(spec.get("remove_rows")):
+        if rr.get("card"):
+            c = card(rr["card"])
+            scope = [c] if c is not None else []
+        else:
+            scope = page["cards"]
+        removed = 0
+        for c in scope:
+            for rows in _row_lists(c):
+                for r in list(rows):
+                    if r.get("w") == rr.get("w"):
+                        rows.remove(r)
+                        removed += 1
+        if scope and removed == 0:
+            problems.append(f"{key}: remove_rows '{rr.get('w')}' not found")
+
+    # Sections as card-id lists, snapshotted after links and before any reorder.
+    sec_list = None
+    if "sections" in page:
+        sec_list = [{"id": s.get("id"), "label": s.get("label"),
+                     "cards": [page["cards"][i]["id"] for i in s["cards"]]}
+                    for s in page["sections"]]
+    if spec.get("sections"):
+        sec_list = [{"id": s.get("id"), "label": s.get("label"),
+                     "cards": [resolve(c) for c in s.get("cards", [])]} for s in spec["sections"]]
+    if spec.get("reorder"):
+        by_id = {c["id"]: c for c in page["cards"]}
+        order = []
+        for cid in (resolve(c) for c in spec["reorder"].get("cards", [])):
+            if cid not in by_id:
+                problems.append(f"{key}: reorder card '{cid}' is not on this page")
+            elif cid in order:
+                problems.append(f"{key}: reorder card '{cid}' is listed twice")
+            else:
+                order.append(cid)
+        for c in page["cards"]:
+            if c["id"] not in order:
+                problems.append(f"{key}: card '{c['id']}' is not in reorder; kept at the end")
+                order.append(c["id"])
+        page["cards"] = [by_id[cid] for cid in order]
+    if sec_list is not None:
+        _build_sections(page, sec_list, key, problems)
+
+    for sc, setting, items in binds:
+        sc["sel_setting"] = setting
+        sc["it"] = items
+        for o in sc["opts"]:
+            v = _match_item(o["label"], items)
+            if v is None:
+                problems.append(f"{key}: option '{o['label']}' of '{sc.get('id')}' matches no item")
+            else:
+                o["v"] = v
+
+    for ro, title in (spec.get("rename") or {}).items():
+        c = card(ro)
+        if c is not None:
+            c["t"] = title
+
+    if spec.get("modes"):
+        page["modes"] = {k: v for k, v in spec["modes"].items() if not k.startswith("_")}
+        stats["modes"] = 1
+        for k, v in page["modes"].items():
+            if k == "options" or not isinstance(v, list):
+                continue
+            for cid in v:
+                if cid != "*" and _find_card(page, cid) is None:
+                    problems.append(f"{key}: modes '{k}' lists unknown card '{cid}'")
+    return stats
+
+
+def _strip_enable_keys(groups):
+    for g in groups:
+        for p in g["pages"]:
+            for c in p["cards"]:
+                c.pop("ew", None)
+                c.pop("es", None)
+
+
+def apply_ia_v2(groups, cur_dir, problems):
+    """content_curated/ia_overlay_v2.json, applied after ia_overlay.json.
+    Schema: content_curated/IA_V2_SCHEMA.md; extensions are listed in its _meta."""
+    path = cur_dir / "ia_overlay_v2.json"
+    spec_all = json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}
+    pages = {f"{g['name']}/{p['name']}": p for g in groups for p in g["pages"]}
+    for key, spec in spec_all.items():
+        if key.startswith("_"):
+            continue
+        if key not in pages:
+            problems.append(f"ia_overlay_v2 key '{key}' matches no page")
+            continue
+        for k in spec:
+            if not k.startswith("_") and k not in IA2_KEYS:
+                problems.append(f"{key}: unhandled ia_overlay_v2 key '{k}'")
+        s = _apply_v2_page(pages[key], spec, key, set(pages), problems)
+        print(f"  ia_v2 {key}: links={s['links']} master={s['master']} who={s['who']} "
+              f"modes={s['modes']} added={s['added']}")
+    _strip_enable_keys(groups)
+
+
+def _conv_inline_row(r):
+    """inline_pages.json row -> mockup row. Vec3/vec2/link kinds and bind/range_assumed kept."""
+    o = {"w": r.get("widget"), "k": r.get("kind", "custom"), "l": r.get("label") or r.get("widget")}
+    if r.get("advanced"):
+        o["a"] = 1
+    if r.get("help"):
+        o["h"] = r["help"]
+    for k in ("s", "mn", "mx", "st", "dc", "d", "it", "to", "btn", "target", "target_tab",
+              "range_assumed", "bind"):
+        if k in r:
+            o[k] = r[k]
+    classify_angle(o)
+    return o
+
+
+def _conv_inline_card(c):
+    rows = [_conv_inline_row(r) for r in c.get("rows", [])]
+    o = {"id": c["id"], "t": c.get("title") or c["id"], "k": "rows", "rows": rows}
+    en = c.get("enable_widget")
+    if en and not any(r.get("w") == en for r in rows):
+        o["en"] = 1
+    return o
+
+
+def _new_inline_page(name, entry, key, problems):
+    page = {"name": name, "label": entry.get("label") or name, "sum": entry.get("summary", ""),
+            "pre": "none", "cards": [_conv_inline_card(c) for c in entry.get("cards", [])]}
+    if "presets" in entry:
+        page["presets"] = entry["presets"]
+        page["inline_presets"] = True  # apply_presets leaves these alone (popped there)
+        if entry["presets"]:
+            page["preset_user"] = True
+    sec_list = entry.get("sections") or [{"id": "main", "label": "",
+                                          "cards": [c["id"] for c in page["cards"]]}]
+    _build_sections(page, sec_list, key, problems)
+    return page
+
+
+def _replace_inline_card(page, old_id, entry, key, problems):
+    """Swap one card for the entry's cards. New cards take the old card's slot: the
+    section with the same id as the entry gives them, else the old card's section."""
+    old_ids = [c["id"] for c in page["cards"]]
+    if old_id not in old_ids:
+        problems.append(f"{key}: replace_card '{old_id}' is not on this page")
+        return False
+    entry_sec = {cid: s.get("id") for s in entry.get("sections") or [] for cid in s.get("cards", [])}
+    secs = [{"id": s.get("id"), "label": s.get("label"), "cards": [old_ids[i] for i in s["cards"]]}
+            for s in page.get("sections", [])]
+    old_sec = next((s for s in secs if old_id in s["cards"]), None)
+    pos = old_sec["cards"].index(old_id) if old_sec else 0
+    if old_sec:
+        old_sec["cards"].pop(pos)
+    new_cards = [_conv_inline_card(c) for c in entry.get("cards", [])]
+    for c in new_cards:
+        target = next((s for s in secs if s["id"] == entry_sec.get(c["id"])), None) or old_sec
+        if target is old_sec and old_sec is not None:
+            old_sec["cards"].insert(pos, c["id"])
+            pos += 1
+        elif target is not None:
+            target["cards"].append(c["id"])
+    i = old_ids.index(old_id)
+    page["cards"][i:i + 1] = new_cards
+    if secs:
+        _build_sections(page, secs, key, problems)
+    return True
+
+
+def apply_inline_pages(groups, cur_dir, problems):
+    """content_curated/inline_pages.json (optional). Entries replace a page (replace_page),
+    replace one card of a page (replace_card), or insert a new page after one (insert_after)."""
+    path = cur_dir / "inline_pages.json"
+    if not path.exists():
+        return
+    data = json.loads(path.read_text(encoding="utf-8"))
+    entries = data.get("pages", []) if isinstance(data, dict) else data
+    n_rep = n_ins = n_card = 0
+    for e in entries:
+        g = next((g for g in groups if g["name"] == e.get("group")), None)
+        if g is None:
+            problems.append(f"inline_pages: unknown group '{e.get('group')}'")
+            continue
+        names = [p["name"] for p in g["pages"]]
+        if e.get("replace_card"):
+            key = f"{g['name']}/{e.get('replace_page')}"
+            if e.get("replace_page") not in names:
+                problems.append(f"inline_pages: replace_card page '{key}' not found")
+                continue
+            page = g["pages"][names.index(e["replace_page"])]
+            if _replace_inline_card(page, e["replace_card"], e, key, problems):
+                n_card += 1
+        elif e.get("insert_after"):
+            key = f"{g['name']}/{e.get('insert_after')}"
+            if e["insert_after"] not in names:
+                problems.append(f"inline_pages: insert_after page '{key}' not found")
+                continue
+            name = re.sub(r"[^a-z0-9]+", "_", str(e.get("label", "")).lower()).strip("_") + "_tab"
+            if name in names:
+                problems.append(f"inline_pages: page name '{g['name']}/{name}' already exists")
+                continue
+            page = _new_inline_page(name, e, f"{g['name']}/{name}", problems)
+            g["pages"].insert(names.index(e["insert_after"]) + 1, page)
+            n_ins += 1
+        else:
+            key = f"{g['name']}/{e.get('replace_page')}"
+            if e.get("replace_page") not in names:
+                problems.append(f"inline_pages: replace_page '{key}' not found")
+                continue
+            old = g["pages"][names.index(e["replace_page"])]
+            page = _new_inline_page(old["name"], e, key, problems)
+            page["pre"] = old.get("pre", "none")
+            g["pages"][names.index(e["replace_page"])] = page
+            n_rep += 1
+    print(f"inline_pages: {n_rep} pages replaced, {n_ins} inserted, {n_card} cards replaced")
 
 
 def main():
@@ -352,18 +831,53 @@ def main():
         for k in ia:
             if not any(f"{g['name']}/{p['name']}" == k for g in groups for p in g["pages"]):
                 problems.append(f"ia_overlay key '{k}' matches no page")
+    # Page moves (user 2026-10-09: "VCam is a camera and should be under camera").
+    # The moved page renders a dedicated sub-panel component (built separately).
+    PAGE_MOVES = {"lens_group/vcam_tab": ("camera_group", "VCamPage")}
+    for key, (dest, component) in PAGE_MOVES.items():
+        src_g, page_name = key.split("/")
+        sg = next((g for g in groups if g["name"] == src_g), None)
+        dg = next((g for g in groups if g["name"] == dest), None)
+        page = next((p for p in (sg or {}).get("pages", []) if p["name"] == page_name), None)
+        if page is None or dg is None:
+            problems.append(f"page move {key} -> {dest}: not found")
+            continue
+        sg["pages"].remove(page)
+        page["component"] = component
+        dg["pages"].append(page)
     apply_extras(groups, problems)
+    apply_overrides(groups, a.curated, problems)
+    apply_ia_v2(groups, a.curated, problems)
+    apply_inline_pages(groups, a.curated, problems)
     pre_path = a.curated / "presets.json"
     if pre_path.exists():
         apply_presets(groups, json.loads(pre_path.read_text(encoding="utf-8")), problems)
     for pr in problems:
         print("IA PROBLEM:", pr)
+    # Normalise item/preset lists to plain label strings (inline Lightbox pages
+    # carry [label, value] pairs and preset dicts).
+    def _lab(x):
+        if isinstance(x, dict):
+            return x.get("label") or x.get("name") or str(x.get("value", ""))
+        if isinstance(x, (list, tuple)) and x:
+            return str(x[0])
+        return x
+    for g in groups:
+        for pg in g["pages"]:
+            if isinstance(pg.get("presets"), list):
+                pg["presets"] = [_lab(x) for x in pg["presets"]]
+            for c in pg["cards"]:
+                for r in c.get("rows", []) + [x for o in c.get("opts", []) for x in o["rows"]] + c.get("summary", []):
+                    if isinstance(r.get("it"), list):
+                        r["it"] = [_lab(x) for x in r["it"]]
     data = {"groups": groups, "chrome": chrome}
     a.out.parent.mkdir(parents=True, exist_ok=True)
     a.out.write_text(json.dumps(data, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
     n_rows = sum(len(c["rows"]) for g in groups for p in g["pages"] for c in p["cards"])
+    n_opt = sum(len(o["rows"]) for g in groups for p in g["pages"] for c in p["cards"] for o in c.get("opts", []))
     print(f"wrote {a.out} ({a.out.stat().st_size} bytes): {len(groups)} groups, "
-          f"{sum(len(g['pages']) for g in groups)} pages, {n_rows} rows")
+          f"{sum(len(g['pages']) for g in groups)} pages, {n_rows} rows "
+          f"(+{n_opt} selector option rows = {n_rows + n_opt})")
     for g in groups:
         print(" ", g["label"], [p["label"] for p in g["pages"]])
 
