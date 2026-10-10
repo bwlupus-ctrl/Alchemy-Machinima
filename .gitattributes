@@ -39,3 +39,4 @@ FILES_ARE_UNICODE_UTF-16LE.txt text eol=crlf
 
 # Windows Installer Script files (normalization disabled)
 *.nsi -text
+*.webp binary
