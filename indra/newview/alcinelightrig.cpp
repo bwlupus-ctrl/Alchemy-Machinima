@@ -2669,6 +2669,8 @@ void ALCineLightRig::tickShared(
             ? avatar->getUniformScale() : 1.f;
     }
     globals = sanitizeGlobals(globals);
+    // These lazy-map snapshots are fixed-size arithmetic structs (no strings or
+    // heap ownership); retaining them avoids computing an off-screen map frame.
     mMapTargetSetup = setup;
     mMapTargetTransforms = transforms;
     mMapTargetGlobals = globals;

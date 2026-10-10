@@ -589,7 +589,11 @@ bool ALLightRigMap::handleHover(S32 x,S32 y,MASK)
         return true;
     }
     const bool side_chip=mView==ALKitMath::SIDE&&x>=8&&x<=134&&y>=mCanvasCy+mCanvasRadius-34&&y<=mCanvasCy+mCanvasRadius-8;
-    setToolTip(LLStringExplicit(side_chip?"Change the side view.":""));
+    const char*tip="";
+    if(side_chip)tip=mSideFrom==0
+        ? "Side view from camera-left (the subject's right side). Solid = lights on this side, hollow = far side behind the avatar. Click to look from the other side."
+        : "Side view from camera-right (the subject's left side). Solid = lights on this side, hollow = far side behind the avatar. Click to look from the other side.";
+    setToolTipIfChanged(this,tip);
     return LLUICtrl::handleHover(x,y,0);
 }
 

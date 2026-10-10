@@ -73,7 +73,9 @@ ALKitCard::ALKitCard(const Params& p)
     mEnableTooltip(p.enable_tooltip), mSelectorLabel(p.sel_label),
     mSelectorSetting(p.sel_setting), mLinkTo(p.link_to), mLinkLabel(p.link_label),
     mTarget(p.target), mTargetTab(p.target_tab), mButtonLabel(p.button_label),
-    mHelp(p.help), mAdvanced(p.advanced)
+    mHelp(p.help), mAdvanced(p.advanced),
+    mOuterImage(LLUI::getUIImage("Kit_RoundRect6")),
+    mInnerImage(LLUI::getUIImage("Kit_RoundRect4"))
 {
     ALKitStyle::color(ALKitStyle::WINDOW_BG);
     setName("kc_"+mId);
@@ -92,11 +94,10 @@ ALKitCard::ALKitCard(const Params& p)
 
 ALKitCard::~ALKitCard()
 {
-    if(mResetMenu)
+    if(LLContextMenu*menu=mResetMenuHandle.get())
     {
-        if(mResetMenu->getParent())mResetMenu->getParent()->removeChild(mResetMenu);
-        delete mResetMenu;
-        mResetMenu=nullptr;
+        menu->die();
+        mResetMenuHandle.markDead();
     }
 }
 
@@ -275,7 +276,8 @@ bool ALKitCard::postBuild()
         LLContextMenu::Params mp;
         mp.name="kc_"+mId+"_reset_menu";
         mp.visible=false;
-        mResetMenu=LLUICtrlFactory::create<LLContextMenu>(mp);
+        LLContextMenu*reset_menu=LLUICtrlFactory::create<LLContextMenu>(mp);
+        mResetMenuHandle=reset_menu->getHandle();
         LLMenuItemCallGL::Params ip;
         ip.name="reset_all";
         ip.label="Reset all "+mSelectorLabel+"s";
@@ -291,11 +293,11 @@ bool ALKitCard::postBuild()
             for(ALKitRow*row:mRows)if(!row->cardPreset()&&!row->whoPicker()&&row->resettable())row->reset();
         }
         ;
-        mResetMenu->addChild(LLUICtrlFactory::create<LLMenuItemCallGL>(ip));
-        gMenuHolder->addChild(mResetMenu);
+        reset_menu->addChild(LLUICtrlFactory::create<LLMenuItemCallGL>(ip));
+        gMenuHolder->addChild(reset_menu);
         mReset->setRightMouseDownCallback([this](LLUICtrl*c,S32 x,S32 y,MASK)
         {
-            LLMenuGL::showPopup(c,mResetMenu,x,y);
+            if(LLContextMenu*menu=mResetMenuHandle.get())LLMenuGL::showPopup(c,menu,x,y);
         }
         );
     }
@@ -713,12 +715,10 @@ bool ALKitCard::revealRow(ALKitRow*row)
 void ALKitCard::draw()
 {
     LL_PROFILE_ZONE_SCOPED_CATEGORY_UI;
-    LLUIImagePtr outer=LLUI::getUIImage("Kit_RoundRect6");
-    LLUIImagePtr inner=LLUI::getUIImage("Kit_RoundRect4");
-    if(outer&&inner)
+    if(mOuterImage&&mInnerImage)
     {
-        outer->draw(0,0,getRect().getWidth(),getRect().getHeight(),ALKitStyle::color(ALKitStyle::CARD_BORDER).get());
-        inner->draw(1,1,llmax(1,getRect().getWidth()-2),llmax(1,getRect().getHeight()-2),ALKitStyle::color(ALKitStyle::CARD_BG).get());
+        mOuterImage->draw(0,0,getRect().getWidth(),getRect().getHeight(),ALKitStyle::color(ALKitStyle::CARD_BORDER).get());
+        mInnerImage->draw(1,1,llmax(1,getRect().getWidth()-2),llmax(1,getRect().getHeight()-2),ALKitStyle::color(ALKitStyle::CARD_BG).get());
     }
     else
     {

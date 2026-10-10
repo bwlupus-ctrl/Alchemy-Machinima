@@ -44,10 +44,14 @@ template<> template<> void alkitmath_object::test<3>()
 
 template<> template<> void alkitmath_object::test<4>()
 {
-    for (float radius : {3.f, 5.25f})
+    for (float orbit = -30.f; orbit <= 30.f; orbit += 3.f)
+    for (float offset_z = -1.f; offset_z <= 1.5001f; offset_z += .25f)
+    for (float radius : {.6f, 1.f, 2.3f, 6.f})
+    for (float pitch = -85.f - orbit; pitch <= 85.f - orbit; pitch += 1.f)
     {
-        const float displayed = ALKitMath::pDisp(20.f, 7.f, .4f, radius);
-        ensure_approximately_equals_range("pitch inverse", ALKitMath::baseFromDisplayPitch(displayed, 7.f, .4f, radius, 20.f), 20.f, .01f);
+        const float displayed = ALKitMath::pDisp(pitch, orbit, offset_z, radius);
+        const float round_trip = ALKitMath::baseFromDisplayPitch(displayed, orbit, offset_z, radius, pitch);
+        ensure("dense pitch inverse error < 0.01 degrees", std::fabs(round_trip - pitch) < .01f);
     }
 }
 
@@ -119,7 +123,7 @@ template<> template<> void alkitmath_object::test<10>()
     for (int view : {ALKitMath::TOP, ALKitMath::PERSPECTIVE, ALKitMath::SIDE})
     for (int side : {0, 1})
     for (float sigma : {1.f, -1.f})
-    for (float target_yaw : {32.f, 148.f})
+    for (const auto yaw_pair : {std::pair<float,float>{-41.f,-70.f}, {126.f,148.f}})
     {
         ALKitMath::DragStart s;
         s.view = view;
@@ -129,7 +133,8 @@ template<> template<> void alkitmath_object::test<10>()
         s.canvas_radius = canvas_radius;
         s.cx = 150.f;
         s.cy = 140.f;
-        s.base_yaw0 = s.t0 = target_yaw > 90.f ? 126.f : -41.f;
+        s.base_yaw0 = s.t0 = yaw_pair.first;
+        const float target_yaw = yaw_pair.second;
         s.base_pitch0 = 9.f;
         s.orbit_pitch0 = 7.f;
         s.offset_z0 = .4f;
@@ -151,6 +156,21 @@ template<> template<> void alkitmath_object::test<10>()
             ALKitMath::wrap180(s.base_yaw0 + sigma * ALKitMath::wrap180(target_yaw - s.t0)), .02f);
         ensure_approximately_equals_range("moved inverse pitch", result.pitch, target_base_pitch, .02f);
     }
+
+    ALKitMath::DragStart side;
+    side.view=ALKitMath::SIDE;side.side_from=0;side.radius=world_radius;side.canvas_radius=canvas_radius;
+    side.cx=150.f;side.cy=140.f;side.base_yaw0=side.t0=-41.f;side.base_pitch0=9.f;
+    side.orbit_pitch0=7.f;side.offset_z0=.4f;side.p0=ALKitMath::pDisp(9.f,7.f,.4f,world_radius);
+    ALKitMath::projectLight(ALKitMath::SIDE,0,side.t0,side.p0,canvas_radius,side.cx,side.cy,&side.x0,&side.y0,&side.depth0);
+    float cross_x,cross_y,cross_depth;
+    ALKitMath::projectLight(ALKitMath::SIDE,0,32.f,side.p0,canvas_radius,side.cx,side.cy,&cross_x,&cross_y,&cross_depth);
+    ensure("test pointer is on opposite depth side",(cross_depth>=0.f)!=(side.depth0>=0.f));
+    const auto kept=ALKitMath::dragSideAbsolute(side,cross_x,cross_y);
+    float kept_x,kept_y,kept_depth;
+    ALKitMath::projectLight(ALKitMath::SIDE,0,kept.yaw,side.p0,canvas_radius,side.cx,side.cy,&kept_x,&kept_y,&kept_depth);
+    ensure_approximately_equals_range("kept-side solution shares projected x",kept_x,cross_x,.02f);
+    ensure_approximately_equals_range("kept-side solution shares projected y",kept_y,cross_y,.02f);
+    ensure("cross-side pointer keeps captured side",(kept_depth>=0.f)==(side.depth0>=0.f));
 }
 
 template<> template<> void alkitmath_object::test<11>()
@@ -198,7 +218,7 @@ template<> template<> void alkitmath_object::test<15>()
     ensure_approximately_equals_range("signed compass wraps",ALKitMath::wrapRange(181.f,-180.f,180.f),-179.f,.001f);
     ensure_approximately_equals_range("unsigned compass wraps",ALKitMath::wrapRange(360.f,0.f,360.f),0.f,.001f);
     const auto legacy=ALKitMath::dialGeometry(48.f,48.f,false);ensure_approximately_equals_range("legacy centre x",legacy.cx,24.f,.001f);ensure_approximately_equals_range("legacy radius",legacy.radius,12.f,.001f);ensure_approximately_equals_range("legacy letters",legacy.letter_radius,18.f,.001f);
-    const auto kit=ALKitMath::dialGeometry(48.f,48.f,true);ensure_approximately_equals_range("kit control-column centre",kit.cx,24.f,.001f);ensure_approximately_equals_range("kit radius",kit.radius,20.f,.001f);
+    const auto kit=ALKitMath::dialGeometry(48.f,48.f,true);ensure_approximately_equals_range("kit control-column centre",kit.cx,24.f,.001f);ensure_approximately_equals_range("kit radius",kit.radius,16.f,.001f);ensure("kit letters remain in cell",kit.letter_radius<=20.f);
 }
 
 template<> template<> void alkitmath_object::test<16>()

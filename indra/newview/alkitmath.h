@@ -34,7 +34,7 @@ inline float wrapRange(float value,float minimum,float maximum)
 struct DialGeometry{float cx=0.f,cy=0.f,radius=0.f,letter_radius=0.f;};
 inline DialGeometry dialGeometry(float width,float height,bool kit)
 {
-    DialGeometry g;if(kit){const float s=std::min(width,height)/48.f;g.cx=width*.5f;g.cy=height*.5f;g.radius=std::max(1.f,std::min(20.f*s,g.cy-3.f*s));g.letter_radius=g.radius+6.f*s;}else{g.cx=width*.5f;g.cy=height*.5f;g.radius=std::max(4.f,std::min(width,height)*.5f-12.f);g.letter_radius=g.radius+6.f;}return g;
+    DialGeometry g;if(kit){const float s=std::min(width,height)/48.f;g.cx=width*.5f;g.cy=height*.5f;g.radius=std::max(1.f,std::min(16.f*s,g.cy-7.f*s));g.letter_radius=g.radius+4.f*s;}else{g.cx=width*.5f;g.cy=height*.5f;g.radius=std::max(4.f,std::min(width,height)*.5f-12.f);g.letter_radius=g.radius+6.f;}return g;
 }
 
 inline float arcAngle(float value, float minimum, float maximum)
@@ -68,20 +68,32 @@ inline float baseFromDisplayPitch(float target, float orbit, float offset_z,
     const float t = target * DEG_TO_RAD;
     const float rhs = clamp(-offset_z * std::cos(t) / radius, -1.f, 1.f);
     const float asin_rhs = std::asin(rhs);
-    const float candidates[] = {
-        (t + asin_rhs) * RAD_TO_DEG - orbit,
-        (t + PI - asin_rhs) * RAD_TO_DEG - orbit,
-        (t + asin_rhs - 2.f * PI) * RAD_TO_DEG - orbit,
-        (t + PI - asin_rhs - 2.f * PI) * RAD_TO_DEG - orbit
-    };
-    float best = candidates[0];
-    float distance = angularDistance(best, current);
-    for (float candidate : candidates)
+    auto canonical = [](float degrees)
     {
-        const float d = angularDistance(candidate, current);
-        if (d < distance) { best = candidate; distance = d; }
+        const float wrapped = wrap180(degrees);
+        return wrapped <= -180.f ? 180.f : wrapped;
+    };
+    const float candidates[] = {
+        canonical((t + asin_rhs) * RAD_TO_DEG),
+        canonical((t + PI - asin_rhs) * RAD_TO_DEG)
+    };
+    const float current_q = canonical(current + orbit);
+    float best_q = current_q;
+    float best_distance = 1e9f;
+    bool found = false;
+    for (float q : candidates)
+    {
+        if (std::cos(q * DEG_TO_RAD) <= 0.f) continue;
+        const float distance = angularDistance(q, current_q);
+        if (!found || distance < best_distance - 1e-6f ||
+            (std::fabs(distance - best_distance) <= 1e-6f && q < best_q))
+        {
+            best_q = q;
+            best_distance = distance;
+            found = true;
+        }
     }
-    return clamp(best, -85.f - orbit, 85.f - orbit);
+    return clamp(best_q - orbit, -85.f - orbit, 85.f - orbit);
 }
 
 enum View { TOP = 0, SIDE = 1, PERSPECTIVE = 2 };
@@ -208,16 +220,9 @@ inline DragResult dragSideAbsolute(const DragStart& s, float x, float y)
     {
         const float side = s.side_from == 0 ? 1.f : -1.f;
         const float c = clamp((x - s.grab_x - s.cx) / (side * s.canvas_radius * std::cos(p)), -1.f, 1.f);
-        const float a = std::acos(c) * RAD_TO_DEG;
-        const float candidates[] = {a, -a};
-        float best_score = 1e9f;
-        for (float candidate : candidates)
-        {
-            const float candidate_depth = -side * std::cos(p) * std::sin(candidate * DEG_TO_RAD);
-            const float depth_penalty = ((candidate_depth >= 0.f) == (s.depth0 >= 0.f)) ? 0.f : 360.f;
-            const float score = depth_penalty + angularDistance(candidate, s.t0);
-            if (score < best_score) { best_score = score; target = candidate; }
-        }
+        const float sin_magnitude = std::sqrt(std::max(0.f, 1.f - c*c));
+        const float sin_sign = s.depth0 >= 0.f ? -side : side;
+        target = std::atan2(sin_sign * sin_magnitude, c) * RAD_TO_DEG;
     }
     return finishDrag(s, target, p * RAD_TO_DEG);
 }
@@ -232,10 +237,11 @@ inline ShellLayout computeShellLayout(int width, int, const ShellLayout& previou
     out.help = out.help_panel ? 224 : 0;
     out.main = std::max(0, width - out.rail - out.help);
     const int content = std::max(0, out.main - 32);
-    out.columns = (content - 12) / 2 >= 340 ? 2 : 1;
-    const int card = out.columns == 2 ? (content - 12) / 2 : content;
-    // Row insets, card padding, scrollbar reservation, label/value/reset and three gaps.
-    out.track = card - 8 - 20 - 16 - 100 - 52 - 20 - 18;
+    const int usable = std::max(0, content - 16);
+    out.columns = (usable - 12) / 2 >= 340 ? 2 : 1;
+    const int card = out.columns == 2 ? (usable - 12) / 2 : usable;
+    // Row insets, card padding, label/value/reset and three gaps.
+    out.track = card - 8 - 20 - 100 - 52 - 20 - 18;
     return out;
 }
 

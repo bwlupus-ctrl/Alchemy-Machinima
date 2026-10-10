@@ -461,14 +461,8 @@ void Controller::installForTabs(LLTabContainer* tabs, LLView* root, const std::v
 void Controller::adoptPage(LLPanel* tab_page, LLPanel* content)
 {
     if (!tab_page || !content) return;
-    std::string prefix = tab_page->getName();
-    if (prefix.size() > 4 && prefix.compare(prefix.size() - 4, 4, "_tab") == 0)
-    {
-        prefix.resize(prefix.size() - 4);
-    }
     ALKitPage* kit_page = dynamic_cast<ALKitPage*>(content);
     if (!kit_page) kit_page = content->findChild<ALKitPage>(tab_page->getName());
-    if (!kit_page) kit_page = content->findChild<ALKitPage>(prefix + "_tab");
     if (!kit_page)
     {
         std::function<ALKitPage*(LLView*)> find_page;
@@ -484,7 +478,7 @@ void Controller::adoptPage(LLPanel* tab_page, LLPanel* content)
         kit_page = find_page(content);
     }
     LLScrollContainer* kit_scroller = kit_page && !kit_page->legacy()
-        ? kit_page->findChild<LLScrollContainer>(prefix + "_scroll") : nullptr;
+        ? kit_page->scroller() : nullptr;
     if (kit_scroller)
     {
         if (LLView* doc = scrolledView(kit_scroller)) mFocus.install(kit_scroller, doc, doc);
@@ -492,8 +486,7 @@ void Controller::adoptPage(LLPanel* tab_page, LLPanel* content)
         return;
     }
 
-    LLPanel* host = kit_page && kit_page->legacy()
-        ? kit_page->findChild<LLPanel>(prefix + "_legacy_host") : nullptr;
+    LLPanel* host = kit_page && kit_page->legacy() ? kit_page->legacyHost() : nullptr;
     if (!host) return;
     if (!hasDirectScrollContainer(host) && std::find(mUnwrapped.begin(), mUnwrapped.end(), host->getName()) == mUnwrapped.end())
     {

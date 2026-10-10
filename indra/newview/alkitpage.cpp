@@ -208,6 +208,19 @@ bool ALKitPage::postBuild()
         host->setVisible(false);
     }
 
+    if(mLegacy&&!mSummary.empty())
+    {
+        LLTextBox::Params summary;
+        summary.name=pre+"_legacy_summary";
+        summary.rect=LLRect(0,20,ALKitStyle::PRESET_COMBO_W,0);
+        summary.initial_value=mSummary;
+        summary.text_color=ALKitStyle::color(ALKitStyle::MUTED);
+        mLegacySummary=LLUICtrlFactory::create<LLTextBox>(summary);
+        mBar->addChild(mLegacySummary);
+        mLegacySummary->setOrigin(bar_x,12);
+        bar_x+=ALKitStyle::PRESET_COMBO_W+ALKitStyle::COL_GAP;
+    }
+
     LLButton*reset=makeButton(pre+"_reset_page","");
     reset->setImageOverlay("Refresh_Off");
     reset->setCommitCallback([this](LLUICtrl*,const LLSD&)
@@ -239,6 +252,7 @@ bool ALKitPage::postBuild()
     mUndo->setOrigin(bar_x,10);
     bar_x+=58;
     mRedo->setOrigin(bar_x,10);
+    mBarLeftEnd=bar_x+52;
 
     if(!mMasterWidget.empty())
     {
@@ -384,15 +398,6 @@ bool ALKitPage::postBuild()
         mLegacyHost=LLUICtrlFactory::create<LLPanel>(hp);
         addChild(mLegacyHost);
         for(LLView*c:xml_children)if(c!=mBar&&c!=mBanner&&c!=mWhoChip&&c!=mWhoCombo&&dynamic_cast<ALKitPresetHost*>(c)==nullptr)mLegacyHost->addChild(c);
-        if(!mSummary.empty())
-        {
-            LLTextBox::Params summary;
-            summary.name=pre+"_legacy_summary";
-            summary.rect=LLRect(ALKitStyle::PAGE_PAD_LR,24,getRect().getWidth()-ALKitStyle::PAGE_PAD_LR,0);
-            summary.initial_value=mSummary;
-            summary.text_color=ALKitStyle::color(ALKitStyle::MUTED);
-            mLegacyHost->addChild(LLUICtrlFactory::create<LLTextBox>(summary));
-        }
         if(ALKitShell*shell=ALKitShell::find(this))shell->history().watchSettings(mPage,watched);
         reshape(getRect().getWidth(),getRect().getHeight(),true);
         return true;
@@ -615,9 +620,14 @@ void ALKitPage::reshape(S32 w,S32 h,bool p)
     {
         mBar->reshape(w,ALKitStyle::BAR_H,true);
         mBar->setOrigin(0,top);
-        if(mMasterBox){mMasterBox->reshape(170,24,true);mMasterBox->setOrigin(llmax(0,w-ALKitStyle::SEARCH_W-270),10);}
+        const S32 master_x=mBarLeftEnd+ALKitStyle::COL_GAP;
+        const S32 search_x=llmax(0,w-ALKitStyle::SEARCH_W-ALKitStyle::PAGE_PAD_LR);
+        const bool master_fits=mMasterBox&&master_x+170<=w-ALKitStyle::PAGE_PAD_LR;
+        const S32 occupied_right=master_fits?master_x+170:mBarLeftEnd;
+        const bool search_fits=mSearch&&search_x>=occupied_right+ALKitStyle::COL_GAP;
+        if(mMasterBox){mMasterBox->reshape(170,24,true);mMasterBox->setOrigin(master_x,10);setVisibleIfChanged(mMasterBox,master_fits);}
         if(mMaster)mMaster->setOrigin(136,3);
-        if(mSearch)mSearch->setOrigin(llmax(0,w-ALKitStyle::SEARCH_W-ALKitStyle::PAGE_PAD_LR),10);
+        if(mSearch){mSearch->setOrigin(search_x,10);setVisibleIfChanged(mSearch,search_fits);}
     }
     updateMaster();
     if(mBanner&&mBanner->getVisible())
@@ -649,8 +659,9 @@ void ALKitPage::relayoutNow()
     mGrid->reshape(width,mGrid->getRect().getHeight(),true);
     const S32 natural=mGrid->getRect().getHeight()+ALKitStyle::PAGE_PAD_T+ALKitStyle::PAGE_PAD_B;
     const S32 viewport=llmax(1,mScroller->getRect().getHeight()-2*mScroller->getBorderWidth());
-    mDoc->reshape(getRect().getWidth(),llmax(natural,viewport),true);
-    mGrid->setOrigin(ALKitStyle::PAGE_PAD_LR,ALKitStyle::PAGE_PAD_B);
+    const S32 doc_h=llmax(natural,viewport);
+    mDoc->reshape(getRect().getWidth(),doc_h,true);
+    mGrid->setOrigin(ALKitStyle::PAGE_PAD_LR,doc_h-ALKitStyle::PAGE_PAD_T-mGrid->getRect().getHeight());
 }
 
 void ALKitPage::requestLayout()
@@ -775,6 +786,11 @@ void ALKitPage::resetPage()
 void ALKitPage::draw()
 {
     LL_PROFILE_ZONE_SCOPED_CATEGORY_UI;
+    if(mReadoutClock.due())
+    {
+        for(const auto& card:mCards)if(card.second->getVisible())
+            for(ALKitRow*row:card.second->rows())if(row->isEffectivelyVisible())row->pollLiveValue();
+    }
     if(mShell)
     {
         const U64 revision=mShell->history().revision();

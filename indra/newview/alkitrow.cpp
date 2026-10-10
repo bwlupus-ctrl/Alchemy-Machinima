@@ -64,8 +64,6 @@ bool ALKitRow::postBuild()
     if(!LLPanel::postBuild()) return false;
 
     mControl=findChild<LLUICtrl>(mMeta.widget);
-    if(mControl)mCodeHidden=!mControl->getVisible();
-
     if(!mControl&&mMeta.kind=="link")
     {
         LLButton::Params p;
@@ -124,9 +122,7 @@ bool ALKitRow::postBuild()
     if(mControl)
     {
 
-        mLastValue=mControl->getValue();
-
-        resolveBinding();
+        mLastValue=mShownValue=mControl->getValue();
 
         if(mBind=="code"&&mMeta.kind!="button"&&mMeta.kind!="readout")
         mHistoryConnection=mControl->setCommitCallback([this](LLUICtrl*c,const LLSD&)
@@ -134,6 +130,10 @@ bool ALKitRow::postBuild()
             LLSD now=c->getValue();if(ALKitShell*shell=ALKitShell::find(this))shell->history().recordWidget(c,mLastValue,now,mMeta.label);mLastValue=now;bindingChanged();
         }
         );
+
+        // History must precede the binding's commit observer so it sees the
+        // pre-commit baseline for code-bound/default-value rows.
+        resolveBinding();
 
         mFocusConnection=mControl->setFocusReceivedCallback([this](LLFocusableElement*)
         {
@@ -162,27 +162,6 @@ bool ALKitRow::postBuild()
         vp.text_color=ALKitStyle::color(mMeta.kind=="number"?ALKitStyle::MUTED:ALKitStyle::TEXT);
         mValueText=LLUICtrlFactory::create<LLTextBox>(vp);
         addChild(mValueText);
-        LLHandle<LLPanel>handle=getHandle();
-        doPeriodically([handle]()
-        {
-            LLPanel*panel=handle.get();
-            if(!panel)return true;
-            ALKitRow*row=dynamic_cast<ALKitRow*>(panel);
-            if(isWidgetOnScreen(row)&&row->mControl&&row->mControl->getValue()!=row->mLastValue)row->bindingChanged();
-            return false;
-        },.1f);
-    }
-    else if(mControl)
-    {
-        LLHandle<LLPanel>handle=getHandle();
-        doPeriodically([handle]()
-        {
-            LLPanel*panel=handle.get();
-            if(!panel)return true;
-            ALKitRow*row=dynamic_cast<ALKitRow*>(panel);
-            if(isWidgetOnScreen(row)&&row->mControl->getValue()!=row->mLastValue)row->bindingChanged();
-            return false;
-        },.1f);
     }
 
     if(ALKitSwitch* sw=dynamic_cast<ALKitSwitch*>(mControl))mValueConnection=sw->setFlipCallback([this](bool)
@@ -352,7 +331,9 @@ ALKitCard*ALKitRow::card()const
 bool ALKitRow::isEffectivelyVisible()const
 {
     ALKitCard*owner=card();
-    return !mHidden&&!mWhoPicker&&mFilterVisible&&!mCodeHidden&&(!mMeta.advanced||!owner||owner->moreOpen());
+    const bool composite=mMeta.kind=="link"||mMeta.kind=="vec2"||mMeta.kind=="vec3";
+    const bool control_visible=!mControl||mControl->getVisible()||composite;
+    return !mHidden&&!mWhoPicker&&mFilterVisible&&!mCodeHidden&&control_visible&&(!mMeta.advanced||!owner||owner->moreOpen());
 }
 
 bool ALKitRow::setControlVisible(LLView*c,bool v)
@@ -362,8 +343,9 @@ bool ALKitRow::setControlVisible(LLView*c,bool v)
     {
         if(row->mControl==c)
         {
-            if(row->mCodeHidden==!v)return false;
+            if(row->mCodeHidden==!v&&c->getVisible()==v)return false;
             row->mCodeHidden=!v;
+            c->setVisible(v);
             if(ALKitCard*card=row->card())card->requestLayout();
             return true;
         }
@@ -375,11 +357,23 @@ bool ALKitRow::setControlVisible(LLView*c,bool v)
 
 void ALKitRow::refreshValue()
 {
-    if(!mValueText||!mControl)return;
-    if(mMeta.kind=="toggle")mValueText->setText(LLStringExplicit(mControl->getValue().asBoolean()?"On":"Off"));
-    else if(mMeta.kind=="number")mValueText->setText(LLStringExplicit(mMeta.unit));
-    else mValueText->setText(LLStringExplicit(llformat("%.*f\xC2\xB0",mMeta.decimals,mControl->getValue().asReal())));
-    mLastValue=mControl->getValue();
+    if(!mControl)return;
+    const LLSD value=mControl->getValue();
+    if(mValueText)
+    {
+        if(mMeta.kind=="toggle")setTextIfChanged(mValueText,value.asBoolean()?"On":"Off");
+        else if(mMeta.kind=="number")setTextIfChanged(mValueText,mMeta.unit);
+        else setTextIfChanged(mValueText,llformat("%.*f\xC2\xB0",mMeta.decimals,value.asReal()));
+    }
+    mShownValue=value;
+}
+
+void ALKitRow::pollLiveValue()
+{
+    if(!mControl)return;
+    const LLSD value=mControl->getValue();
+    if(!alSameValue(value,mShownValue))refreshValue();
+    if(!alIsBeingEdited(mControl))mLastValue=value;
 }
 
 void ALKitRow::bindingChanged()
@@ -392,7 +386,7 @@ void ALKitRow::bindingChanged()
         mAmberSignal(now);
     }
     refreshValue();
-    if(mControl)mLastValue=mControl->getValue();
+    if(mControl&&!alIsBeingEdited(mControl))mLastValue=mControl->getValue();
 }
 
 void ALKitRow::resolveBinding()

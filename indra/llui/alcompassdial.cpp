@@ -146,7 +146,7 @@ void ALCompassDial::getDialGeometry(F32& cx, F32& cy, F32& radius) const
         else
         {
             cx = r.getWidth() * .5f;
-            radius = llmax(1.f, llmin(20.f * scale, cy - 3.f * scale));
+            radius = llmax(1.f, llmin(16.f * scale, cy - 7.f * scale));
         }
         return;
     }
@@ -361,7 +361,7 @@ void ALCompassDial::draw()
     const LLFontGL* font = LLFontGL::getFontSansSerifSmall();
     if (font && mShowCardinals)
     {
-        const F32 lr = radius + 6.f;
+        const F32 lr = radius + (mKitGeometry ? 4.f : 6.f);
         font->renderUTF8("N", 0, ll_round(cx), ll_round(cy + lr), text,
                          LLFontGL::HCENTER, LLFontGL::VCENTER);
         font->renderUTF8("S", 0, ll_round(cx), ll_round(cy - lr), text,
