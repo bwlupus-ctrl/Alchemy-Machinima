@@ -65,6 +65,7 @@ bool allCapturesLive(const std::vector<LLPrismLens::RemovedCaptureRecord>& recor
 bool restoreCaptureSet(std::vector<LLPrismLens::RemovedCaptureRecord> records,
                        std::string& reason)
 {
+    LLPrismLens::ScopedRevisionSignals signals;
     std::sort(records.begin(), records.end(),
         [](const LLPrismLens::RemovedCaptureRecord& left,
            const LLPrismLens::RemovedCaptureRecord& right)
@@ -92,6 +93,7 @@ bool swapCaptureSets(const std::vector<LLPrismLens::RemovedCaptureRecord>& expec
                      const std::vector<LLPrismLens::RemovedCaptureRecord>& desired,
                      std::string& reason)
 {
+    LLPrismLens::ScopedRevisionSignals signals;
     if (!allCapturesLive(expected))
     {
         reason = "the camera set changed";
@@ -325,7 +327,7 @@ void ALVCamPageModel::recordAddedCapture(
             }
             if (!ok && reason.empty()) reason = "the registry changed";
             return ok;
-        }, {});
+        }, {}, true);
     mHistory.commitGesture();
 }
 
@@ -349,7 +351,7 @@ void ALVCamPageModel::recordAddedDisplay(
                 ? LLPrismLens::restoreDisplayIdentity(record, &reason)
                 : LLPrismLens::removeDisplay(record.mDefinition.mHandle, &reason);
             return ok;
-        }, {});
+        }, {}, true);
     mHistory.commitGesture();
 }
 
@@ -439,7 +441,7 @@ bool ALVCamPageModel::addOtsPair(std::string* reason)
             return redo
                 ? swapCaptureSets(old_records, new_records, failure)
                 : swapCaptureSets(new_records, old_records, failure);
-        }, {});
+        }, {}, true);
     mHistory.commitGesture();
     selectAfterAdd(first);
     return true;
@@ -494,7 +496,7 @@ bool ALVCamPageModel::removeCapture(
             }
             if (!ok && failure.empty()) failure = "the registry changed";
             return ok;
-        }, {});
+        }, {}, true);
     mHistory.commitGesture();
     mSelectedCapture = LLPrismLens::CaptureHandle();
     mSelectedDisplay = LLPrismLens::DisplayHandle();
@@ -573,7 +575,7 @@ LLPrismLens::ERegistryResult ALVCamPageModel::reassignDisplay(
             return LLPrismLens::reassignDisplay(
                        display, redo ? capture : old_capture, &failure) ==
                    LLPrismLens::ERegistryResult::OK;
-        }, {});
+        }, {}, true);
     mHistory.commitGesture();
     return result;
 }

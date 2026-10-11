@@ -66,12 +66,12 @@ RevisionSignal sPrismPerformanceChanged;
 std::string sanitizeCaptureLabel(const std::string& value)
 {
     // The wide-string round trip replaces malformed UTF-8 before byte-bounding.
-    std::string label = utf8str_trim(
-        wstring_to_utf8str(utf8str_to_wstring(value)));
+    std::string label = wstring_to_utf8str(utf8str_to_wstring(value));
     label.erase(std::remove_if(label.begin(), label.end(), [](unsigned char c)
     {
         return c < 0x20 || c == 0x7f;
     }), label.end());
+    label = utf8str_trim(label);
     return utf8str_truncate(label, 64);
 }
 
@@ -1675,47 +1675,65 @@ ESurfaceValidation validateSurfaceGeometry(
     return ESurfaceValidation::VALID;
 }
 
-bool validateDisplaySurfaceTarget(LLViewerObject* object, S32 te,
-                                  SurfaceGeometryCache& cache,
-                                  bool& permission_only_failure,
-                                  std::string& reason)
+enum class EDisplayTargetValidation
 {
-    permission_only_failure = false;
+    VALID,
+    TRANSIENT,
+    INVALID,
+    PERMISSION
+};
+
+EDisplayTargetValidation validateDisplaySurfaceTarget(
+    LLViewerObject* object, S32 te, SurfaceGeometryCache& cache,
+    std::string& reason)
+{
+    if (!object || object->isDead())
+    {
+        reason = "Display object is not currently available.";
+        return EDisplayTargetValidation::TRANSIENT;
+    }
     LLVOVolume* volume = dynamic_cast<LLVOVolume*>(object);
     LLDrawable* drawable = object ? object->mDrawable.get() : nullptr;
     LLVolume* volume_data = volume ? volume->getVolume() : nullptr;
-    if (!object || object->isDead() || object->isHUDAttachment() ||
-        !volume || te < 0 || te >= object->getNumTEs() ||
-        !drawable || te >= drawable->getNumFaces() ||
-        !volume_data || te >= volume_data->getNumVolumeFaces() ||
-        !drawable->getFace(te))
+    if (object->isHUDAttachment() || !volume)
     {
         reason = "Select exactly one valid, non-HUD volume face.";
-        return false;
+        return EDisplayTargetValidation::INVALID;
+    }
+    // Permission is independent of render geometry and must win even when a
+    // never-drawn/offscreen face has not built drawable data yet.
+    LLViewerObject* root = object->getRootEdit();
+    if (!root || !root->permModify())
+    {
+        reason = "You need modify permission on the selected object's root.";
+        return EDisplayTargetValidation::PERMISSION;
+    }
+    if (te < 0 || te >= object->getNumTEs() || !drawable ||
+        te >= drawable->getNumFaces() || !volume_data ||
+        te >= volume_data->getNumVolumeFaces() || !drawable->getFace(te))
+    {
+        reason = "Display face geometry is still loading.";
+        return EDisplayTargetValidation::TRANSIENT;
     }
     if (volume->isRiggedMesh() || volume->isAnimatedObject() ||
         drawable->getFace(te)->isState(LLFace::RIGGED))
     {
         reason = "Requires a static, flat face (prim or mesh).";
-        return false;
+        return EDisplayTargetValidation::INVALID;
     }
     PrismFrame frame;
     SurfaceGeometry geometry;
-    if (validateSurfaceGeometry(volume, te, frame, cache, geometry, reason) !=
-        ESurfaceValidation::VALID)
+    const ESurfaceValidation validation = validateSurfaceGeometry(
+        volume, te, frame, cache, geometry, reason);
+    if (validation != ESurfaceValidation::VALID)
     {
         if (reason.empty()) reason = "Selected face is not ready for Prism use.";
-        return false;
-    }
-    LLViewerObject* root = object->getRootEdit();
-    if (!root || !root->permModify())
-    {
-        permission_only_failure = true;
-        reason = "You need modify permission on the selected object's root.";
-        return false;
+        return validation == ESurfaceValidation::TRANSIENT
+            ? EDisplayTargetValidation::TRANSIENT
+            : EDisplayTargetValidation::INVALID;
     }
     reason.clear();
-    return true;
+    return EDisplayTargetValidation::VALID;
 }
 
 struct PrismInstance
@@ -1772,6 +1790,7 @@ struct PrismDisplay
     LLPrismLens::DisplaySettings mSettings;
     LLPrismLens::DisplayRuntimeState mRuntime;
     bool mQuarantined = false;
+    bool mPermissionQuarantined = false;
     std::string mQuarantineReason;
     PrismFrame mFrame;
     SurfaceGeometryCache mSurfaceCache;
@@ -1954,10 +1973,9 @@ public:
             status.mReason = "A surface lens owns exactly one display face.";
             return status;
         }
-        bool permission_only_failure = false;
-        if (!validateDisplaySurfaceTarget(
-                object, te, mSelectionSurfaceCache,
-                permission_only_failure, status.mReason))
+        if (validateDisplaySurfaceTarget(
+                object, te, mSelectionSurfaceCache, status.mReason) !=
+            EDisplayTargetValidation::VALID)
         {
             status.mResult = LLPrismLens::ERegistryResult::INVALID_SELECTION;
             return status;
@@ -2576,13 +2594,27 @@ public:
         lens.mPreviewOnly = false;
         lens.mRuntime.mPreviewOnly = false;
         lens.mRuntime.mActivity = LLPrismLens::EActivityState::IDLE;
+        PrismDisplay* owned_display = nullptr;
         for (PrismDisplay& display : mDisplays)
         {
             if (!display.mOccupied || display.mCaptureSlot != slot) continue;
             display.mFrame = PrismFrame();
             display.mFrame.mFrame = gFrameCount;
+            if (display.mCaptureGeneration == lens.mHandle.mGeneration)
+                owned_display = &display;
         }
         resetFrame(lens, gFrameCount);
+        if (owned_display && owned_display->mQuarantined &&
+            !revalidateQuarantinedDisplay(*owned_display))
+        {
+            lens.mRuntime.mHealth = LLPrismLens::ECaptureHealth::LENS_SURFACE_OFFLINE;
+            lens.mRuntime.mReason = owned_display->mQuarantineReason;
+            owned_display->mRuntime.mVisibility =
+                LLPrismLens::EDisplayVisibility::UNKNOWN;
+            owned_display->mRuntime.mVisibilityReason =
+                "Quarantined lens display is not rendered.";
+            return false;
+        }
         PrismFrame& mFrame = lens.mFrame;
         const S32 mTE = lens.mTE;
         const auto reject = [this, slot](const std::string& reject_reason)
@@ -2872,6 +2904,75 @@ public:
         return true;
     }
 
+    bool revalidateQuarantinedDisplay(PrismDisplay& display)
+    {
+        if (!display.mQuarantined || display.mSettings.mVirtual) return true;
+        if (display.mCaptureSlot >= LLPrismLens::MAX_CAPTURES ||
+            !mLenses[display.mCaptureSlot].mOccupied ||
+            display.mCaptureGeneration !=
+                mLenses[display.mCaptureSlot].mHandle.mGeneration)
+        {
+            display.mRuntime.mHealth = LLPrismLens::EDisplayHealth::OFFLINE;
+            display.mRuntime.mHealthReason = display.mQuarantineReason;
+            return false;
+        }
+
+        LLViewerObject* object = gObjectList.findObject(display.mObjectId);
+        if (!object)
+        {
+            display.mRuntime.mHealth = LLPrismLens::EDisplayHealth::OFFLINE;
+            display.mRuntime.mHealthReason = display.mQuarantineReason;
+            return false;
+        }
+
+        // A permission quarantine is a cached verdict. Poll only the cheap
+        // permission prerequisite; do not rescan surface geometry every
+        // composite until that prerequisite changes.
+        if (display.mPermissionQuarantined)
+        {
+            LLViewerObject* root = object->getRootEdit();
+            if (!root || !root->permModify())
+            {
+                display.mRuntime.mHealth = LLPrismLens::EDisplayHealth::INVALID;
+                display.mRuntime.mHealthReason = display.mQuarantineReason;
+                return false;
+            }
+        }
+
+        const PrismInstance& capture = mLenses[display.mCaptureSlot];
+        if (capture.mMode == LLPrismLens::ECaptureMode::SURFACE_LENS &&
+            (capture.mObjectId != display.mObjectId || capture.mTE != display.mTE))
+        {
+            display.mRuntime.mHealth = LLPrismLens::EDisplayHealth::INVALID;
+            display.mRuntime.mHealthReason =
+                "A surface lens may revalidate only its owned display face.";
+            return false;
+        }
+
+        std::string validation_reason;
+        const EDisplayTargetValidation validation = validateDisplaySurfaceTarget(
+            object, display.mTE, display.mSurfaceCache, validation_reason);
+        if (validation != EDisplayTargetValidation::VALID)
+        {
+            display.mPermissionQuarantined =
+                validation == EDisplayTargetValidation::PERMISSION;
+            display.mQuarantineReason = display.mPermissionQuarantined
+                ? "Skipped on scene load: no modify permission"
+                : validation_reason;
+            display.mRuntime.mHealth =
+                validation == EDisplayTargetValidation::TRANSIENT
+                    ? LLPrismLens::EDisplayHealth::OFFLINE
+                    : LLPrismLens::EDisplayHealth::INVALID;
+            display.mRuntime.mHealthReason = display.mQuarantineReason;
+            return false;
+        }
+
+        display.mQuarantined = false;
+        display.mPermissionQuarantined = false;
+        display.mQuarantineReason.clear();
+        return true;
+    }
+
     bool prepareDisplayFrame(PrismDisplay& display, const S32 viewport[4],
                              const glm::mat4& main_projection,
                              const glm::mat4& main_modelview)
@@ -2890,28 +2991,7 @@ public:
         SurfaceGeometry geometry;
         if (display.mQuarantined && !display.mSettings.mVirtual)
         {
-            LLViewerObject* object = gObjectList.findObject(display.mObjectId);
-            if (!object || display.mCaptureSlot >= LLPrismLens::MAX_CAPTURES ||
-                !mLenses[display.mCaptureSlot].mOccupied)
-            {
-                display.mRuntime.mHealth = LLPrismLens::EDisplayHealth::OFFLINE;
-                display.mRuntime.mHealthReason = display.mQuarantineReason;
-                return false;
-            }
-            const LLPrismLens::ActionStatus status = displayTargetStatus(
-                mLenses[display.mCaptureSlot].mHandle, object, display.mTE,
-                &display.mHandle);
-            if (!status.allowed())
-            {
-                display.mRuntime.mHealth = LLPrismLens::EDisplayHealth::INVALID;
-                display.mRuntime.mHealthReason = status.mReason;
-                if (status.mReason.find("modify permission") != std::string::npos)
-                    display.mQuarantineReason =
-                        "Skipped on scene load: no modify permission";
-                return false;
-            }
-            display.mQuarantined = false;
-            display.mQuarantineReason.clear();
+            if (!revalidateQuarantinedDisplay(display)) return false;
         }
         if (display.mSettings.mVirtual)
         {
@@ -4920,6 +5000,8 @@ public:
             removed.mDefinition.mRuntime = display.mRuntime;
             removed.mDefinition.mGateSubscribed = false;
             removed.mDefinition.mQuarantined = display.mQuarantined;
+            removed.mDefinition.mPermissionQuarantined =
+                display.mPermissionQuarantined;
             removed.mDefinition.mQuarantineReason = display.mQuarantineReason;
             record.mOwnedDisplays.push_back(removed);
         }
@@ -4937,6 +5019,24 @@ public:
             record.mWasOnAir = mGate.mOnAirArmIndex == index;
             record.mGateWasActive = mGateSettings.mActive;
             record.mGateCutSerial = mGate.mCutSerial;
+            record.mGatePostRemovalCutSerial = mGate.mCutSerial;
+            if (record.mWasOnAir && mGateSettings.mArmed.size() > 1)
+            {
+                std::vector<LLPrismLens::GateArmedCamera> remaining =
+                    mGateSettings.mArmed;
+                remaining.erase(remaining.begin() + index);
+                const S32 preferred = llmin(
+                    index, static_cast<S32>(remaining.size()) - 1);
+                const S32 replacement =
+                    mGateSettings.mMode == LLPrismLens::EGateMode::AUTO_CYCLE
+                        ? LLPrismLens::gateClampEnabledIndex(remaining, preferred)
+                        : preferred;
+                if (replacement >= 0 &&
+                    findCaptureById(remaining[replacement].mCaptureId) >= 0)
+                {
+                    ++record.mGatePostRemovalCutSerial;
+                }
+            }
             break;
         }
         if (reason) reason->clear();
@@ -4963,22 +5063,6 @@ public:
             if (reason) *reason = "That face is already a Prism display.";
             return false;
         }
-        if (!definition.mSettings.mVirtual)
-        {
-            LLViewerObject* object = gObjectList.findObject(
-                definition.mDisplayObjectId);
-            if (object)
-            {
-                const LLPrismLens::ActionStatus status = displayTargetStatus(
-                    definition.mCapture, object,
-                    definition.mDisplayTextureEntry, nullptr);
-                if (!status.allowed())
-                {
-                    if (reason) *reason = status.mReason;
-                    return false;
-                }
-            }
-        }
         if (!validDisplaySettings(definition.mSettings, reason))
             return false;
         PrismDisplay display;
@@ -4992,7 +5076,42 @@ public:
         display.mRuntime = definition.mRuntime;
         display.mGateSubscribed = definition.mGateSubscribed;
         display.mQuarantined = definition.mQuarantined;
+        display.mPermissionQuarantined = definition.mPermissionQuarantined;
         display.mQuarantineReason = definition.mQuarantineReason;
+        if (!definition.mSettings.mVirtual)
+        {
+            LLViewerObject* object = gObjectList.findObject(
+                definition.mDisplayObjectId);
+            if (!object)
+            {
+                display.mQuarantined = true;
+                display.mPermissionQuarantined = false;
+                display.mQuarantineReason =
+                    "Offline restored display; awaiting validation.";
+            }
+            else
+            {
+                std::string validation_reason;
+                const EDisplayTargetValidation validation =
+                    validateDisplaySurfaceTarget(
+                        object, definition.mDisplayTextureEntry,
+                        display.mSurfaceCache, validation_reason);
+                display.mQuarantined =
+                    validation != EDisplayTargetValidation::VALID;
+                display.mPermissionQuarantined =
+                    validation == EDisplayTargetValidation::PERMISSION;
+                if (display.mQuarantined)
+                {
+                    display.mQuarantineReason = display.mPermissionQuarantined
+                        ? "Skipped on restore: no modify permission"
+                        : validation_reason;
+                }
+                else
+                {
+                    display.mQuarantineReason.clear();
+                }
+            }
+        }
         mDisplays[freeDisplaySlot()] = display;
         ++mLenses[capture_slot].mDisplayCount;
         mNextGeneration = llmax(mNextGeneration, definition.mHandle.mGeneration + 1);
@@ -5006,11 +5125,18 @@ public:
     {
         const LLPrismLens::CaptureDefinition& definition = record.mCapture;
         if (definition.mSlot >= LLPrismLens::MAX_CAPTURES ||
-            mLenses[definition.mSlot].mOccupied ||
             findCaptureById(definition.mHandle.mId) >= 0 ||
             count() >= LLPrismLens::MAX_CAPTURES)
         {
-            if (reason) *reason = "The saved capture identity or slot is unavailable.";
+            if (reason) *reason = "The saved capture identity or capacity is unavailable.";
+            return false;
+        }
+        const S32 fallback_slot = freeCaptureSlot();
+        const U32 restore_slot = !mLenses[definition.mSlot].mOccupied
+            ? definition.mSlot : static_cast<U32>(fallback_slot);
+        if (fallback_slot < 0)
+        {
+            if (reason) *reason = "No free capture slot is available.";
             return false;
         }
         U32 free_displays = LLPrismLens::MAX_DISPLAY_BINDINGS - displayCount();
@@ -5039,22 +5165,6 @@ public:
                 {
                     if (reason) *reason = "A camera source cannot display its own feed.";
                     return false;
-                }
-                LLViewerObject* object = gObjectList.findObject(
-                    display.mDisplayObjectId);
-                if (object)
-                {
-                    SurfaceGeometryCache validation_cache;
-                    bool permission_only_failure = false;
-                    std::string validation_reason;
-                    if (!validateDisplaySurfaceTarget(
-                            object, display.mDisplayTextureEntry,
-                            validation_cache, permission_only_failure,
-                            validation_reason))
-                    {
-                        if (reason) *reason = validation_reason;
-                        return false;
-                    }
                 }
             }
             const std::string key = display.mDisplayObjectId.asString() + ":" +
@@ -5113,7 +5223,7 @@ public:
         capture.mRate = definition.mRate;
         capture.mRuntime = definition.mRuntime;
         capture.mNextDueTime = LLTimer::getTotalSeconds();
-        mLenses[definition.mSlot] = capture;
+        mLenses[restore_slot] = capture;
         mNextGeneration = llmax(mNextGeneration, definition.mHandle.mGeneration + 1);
 
         for (const LLPrismLens::RemovedDisplayRecord& removed : record.mOwnedDisplays)
@@ -5122,21 +5232,57 @@ public:
             PrismDisplay display;
             display.mOccupied = true;
             display.mHandle = source.mHandle;
-            display.mCaptureSlot = definition.mSlot;
+            display.mCaptureSlot = restore_slot;
             display.mCaptureGeneration = definition.mHandle.mGeneration;
             display.mObjectId = source.mDisplayObjectId;
             display.mTE = source.mDisplayTextureEntry;
             display.mSettings = source.mSettings;
             display.mRuntime = source.mRuntime;
             display.mQuarantined = source.mQuarantined;
+            display.mPermissionQuarantined = source.mPermissionQuarantined;
             display.mQuarantineReason = source.mQuarantineReason;
+            if (!source.mSettings.mVirtual)
+            {
+                LLViewerObject* object = gObjectList.findObject(
+                    source.mDisplayObjectId);
+                if (!object)
+                {
+                    display.mQuarantined = true;
+                    display.mPermissionQuarantined = false;
+                    display.mQuarantineReason =
+                        "Offline restored display; awaiting validation.";
+                }
+                else
+                {
+                    std::string validation_reason;
+                    const EDisplayTargetValidation validation =
+                        validateDisplaySurfaceTarget(
+                            object, source.mDisplayTextureEntry,
+                            display.mSurfaceCache, validation_reason);
+                    display.mQuarantined =
+                        validation != EDisplayTargetValidation::VALID;
+                    display.mPermissionQuarantined =
+                        validation == EDisplayTargetValidation::PERMISSION;
+                    if (display.mQuarantined)
+                    {
+                        display.mQuarantineReason =
+                            display.mPermissionQuarantined
+                                ? "Skipped on restore: no modify permission"
+                                : validation_reason;
+                    }
+                    else
+                    {
+                        display.mQuarantineReason.clear();
+                    }
+                }
+            }
             mDisplays[freeDisplaySlot()] = display;
-            ++mLenses[definition.mSlot].mDisplayCount;
+            ++mLenses[restore_slot].mDisplayCount;
             mNextGeneration = llmax(mNextGeneration, source.mHandle.mGeneration + 1);
             if (definition.mMode == LLPrismLens::ECaptureMode::SURFACE_LENS)
             {
-                mLenses[definition.mSlot].mObjectId = source.mDisplayObjectId;
-                mLenses[definition.mSlot].mTE = source.mDisplayTextureEntry;
+                mLenses[restore_slot].mObjectId = source.mDisplayObjectId;
+                mLenses[restore_slot].mTE = source.mDisplayTextureEntry;
             }
         }
 
@@ -5153,25 +5299,26 @@ public:
             shift(mGate.mOnAirArmIndex);
             mGateSettings.mArmed.insert(
                 mGateSettings.mArmed.begin() + index, record.mGateArm);
-            const auto indexForArm = [this](const LLUUID& id)
+            if (record.mWasPreview)
             {
-                if (id.isNull()) return -1;
-                for (S32 candidate = 0;
-                     candidate < static_cast<S32>(mGateSettings.mArmed.size());
-                     ++candidate)
-                    if (mGateSettings.mArmed[candidate].mArmId == id)
-                        return candidate;
-                return -1;
-            };
-            mGateSettings.mProgramArmIndex = indexForArm(record.mProgramArmId);
-            mGateSettings.mPreviewArmIndex = indexForArm(record.mPreviewArmId);
-            mGate.mWarmArmIndex = indexForArm(record.mWarmArmId);
-            mGate.mOnAirArmIndex = indexForArm(record.mOnAirArmId);
-            mGateSettings.mActive = record.mGateWasActive;
-            mGate.mCutSerial = record.mGateCutSerial;
-            if (mGate.mOnAirArmIndex >= 0)
-                mGate.mController.manualPunch(
-                    mGate.mOnAirArmIndex, LLTimer::getTotalSeconds());
+                mGateSettings.mPreviewArmIndex = index;
+            }
+            if (record.mWasWarm)
+            {
+                mGate.mWarmArmIndex = index;
+            }
+            if (record.mWasOnAir && record.mWasProgram &&
+                mGate.mCutSerial == record.mGatePostRemovalCutSerial)
+            {
+                mGate.mOnAirArmIndex = index;
+                mGateSettings.mProgramArmIndex = index;
+                if (mGateSettings.mActive)
+                {
+                    const F64 now = LLTimer::getTotalSeconds();
+                    mGate.mController.manualPunch(index, now);
+                    mGate.mNextCutTime = now + mGateSettings.mIntervalSeconds;
+                }
+            }
         }
         routeGateDisplays();
         ++mRevision;
@@ -5235,6 +5382,7 @@ public:
             out.mRuntime = display.mRuntime;
             out.mGateSubscribed = display.mGateSubscribed;
             out.mQuarantined = display.mQuarantined;
+            out.mPermissionQuarantined = display.mPermissionQuarantined;
             out.mQuarantineReason = display.mQuarantineReason;
         }
         return result;
@@ -5589,6 +5737,7 @@ public:
             LLPrismLens::DisplaySettings mSettings;
             bool mGateSubscribed = false;
             bool mQuarantined = false;
+            bool mPermissionQuarantined = false;
             std::string mQuarantineReason;
         };
         const auto fail = [reason](const std::string& message)
@@ -5926,6 +6075,19 @@ public:
                 ? sanitizeCaptureLabel(item["label"].asString()) : std::string();
             if (parsed.mLabel.empty())
             {
+                if (have_parsed_gate)
+                {
+                    for (const LLPrismLens::GateArmedCamera& armed :
+                         parsed_gate.mArmed)
+                    {
+                        if (armed.mCaptureId == parsed.mId &&
+                            LLPrismLens::isOtsPairArmLabel(armed.mLabel))
+                        {
+                            parsed.mLabel = armed.mLabel;
+                            break;
+                        }
+                    }
+                }
                 U32 ordinal = 1;
                 for (const ParsedCapture& existing : parsed_captures)
                 {
@@ -5934,9 +6096,12 @@ public:
                          existing.mCamera.mVirtual == parsed.mCamera.mVirtual))
                         ++ordinal;
                 }
-                parsed.mLabel = parsed.mMode == LLPrismLens::ECaptureMode::SURFACE_LENS
-                    ? llformat("Surface Lens %u", ordinal)
-                    : llformat(parsed.mCamera.mVirtual ? "Virtual %u" : "Camera %u", ordinal);
+                if (parsed.mLabel.empty())
+                {
+                    parsed.mLabel = parsed.mMode == LLPrismLens::ECaptureMode::SURFACE_LENS
+                        ? llformat("Surface Lens %u", ordinal)
+                        : llformat(parsed.mCamera.mVirtual ? "Virtual %u" : "Camera %u", ordinal);
+                }
             }
             parsed_captures.push_back(parsed);
         }
@@ -6111,24 +6276,31 @@ public:
                 {
                     parsed.mQuarantined = true;
                     parsed.mQuarantineReason = "Offline scene display; awaiting validation.";
+                    LLPrismLens::SkippedBinding skipped;
+                    skipped.mHandle.mId = parsed.mId;
+                    skipped.mObjectId = parsed.mObjectId;
+                    skipped.mTextureEntry = parsed.mTE;
+                    skipped.mReason = parsed.mQuarantineReason;
+                    report.mSkippedBindings.push_back(skipped);
                 }
                 else
                 {
                     SurfaceGeometryCache validation_cache;
-                    bool permission_only_failure = false;
                     std::string validation_reason;
-                    if (!validateDisplaySurfaceTarget(
+                    const EDisplayTargetValidation validation =
+                        validateDisplaySurfaceTarget(
                             object, parsed.mTE, validation_cache,
-                            permission_only_failure, validation_reason) &&
-                        !permission_only_failure)
-                    {
-                        return fail(validation_reason);
-                    }
-                    if (permission_only_failure)
+                            validation_reason);
+                    if (validation != EDisplayTargetValidation::VALID)
                     {
                         parsed.mQuarantined = true;
-                        parsed.mQuarantineReason =
-                            "Skipped on scene load: no modify permission";
+                        parsed.mPermissionQuarantined =
+                            validation == EDisplayTargetValidation::PERMISSION;
+                        parsed.mQuarantineReason = parsed.mPermissionQuarantined
+                            ? "Skipped on scene load: no modify permission"
+                            : (validation_reason.empty()
+                                ? "Offline scene display; awaiting validation."
+                                : validation_reason);
                         LLPrismLens::SkippedBinding skipped;
                         skipped.mHandle.mId = parsed.mId;
                         skipped.mObjectId = parsed.mObjectId;
@@ -6269,6 +6441,7 @@ public:
             display.mSettings = parsed.mSettings;
             display.mGateSubscribed = parsed.mGateSubscribed;
             display.mQuarantined = parsed.mQuarantined;
+            display.mPermissionQuarantined = parsed.mPermissionQuarantined;
             display.mQuarantineReason = parsed.mQuarantineReason;
             if (!parsed.mGateSubscribed)
             {
@@ -6800,6 +6973,7 @@ private:
         if (count() == 0)
         {
             resetRuntimeHistory();
+            gPipeline.releasePrismLensBuffers();
         }
         ++mRevision;
         ++mRuntimeRevision;
@@ -7282,10 +7456,10 @@ struct ScopedPrismRenderState
     LLGLDepthTest mDepthState;
 };
 
-class ScopedPrismRevisionSignals
+class PrismRevisionSignalScopeState
 {
 public:
-    ScopedPrismRevisionSignals()
+    static void enter()
     {
         assert_main_thread();
         if (sDepth++ == 0)
@@ -7297,7 +7471,7 @@ public:
         }
     }
 
-    ~ScopedPrismRevisionSignals()
+    static void leave()
     {
         if (--sDepth != 0) return;
         PrismLensRegistry& registry = PrismLensRegistry::instance();
@@ -7340,14 +7514,26 @@ private:
     static F64 sLastRateLimitedEmission;
 };
 
-U32 ScopedPrismRevisionSignals::sDepth = 0;
-U64 ScopedPrismRevisionSignals::sConfigurationBefore = 0;
-U64 ScopedPrismRevisionSignals::sRuntimeBefore = 0;
-U64 ScopedPrismRevisionSignals::sPerformanceBefore = 0;
-U64 ScopedPrismRevisionSignals::sPendingRuntime = 0;
-U64 ScopedPrismRevisionSignals::sPendingPerformance = 0;
-F64 ScopedPrismRevisionSignals::sLastRateLimitedEmission = 0.0;
+U32 PrismRevisionSignalScopeState::sDepth = 0;
+U64 PrismRevisionSignalScopeState::sConfigurationBefore = 0;
+U64 PrismRevisionSignalScopeState::sRuntimeBefore = 0;
+U64 PrismRevisionSignalScopeState::sPerformanceBefore = 0;
+U64 PrismRevisionSignalScopeState::sPendingRuntime = 0;
+U64 PrismRevisionSignalScopeState::sPendingPerformance = 0;
+F64 PrismRevisionSignalScopeState::sLastRateLimitedEmission = 0.0;
+
+using ScopedPrismRevisionSignals = LLPrismLens::ScopedRevisionSignals;
 } // anonymous namespace
+
+LLPrismLens::ScopedRevisionSignals::ScopedRevisionSignals()
+{
+    PrismRevisionSignalScopeState::enter();
+}
+
+LLPrismLens::ScopedRevisionSignals::~ScopedRevisionSignals()
+{
+    PrismRevisionSignalScopeState::leave();
+}
 
 namespace LLPrismLens
 {
@@ -7422,18 +7608,21 @@ bool buildOtsPairFromSubjects(CaptureHandle* ots_a, CaptureHandle* ots_b,
             old_ots_capture_ids.insert(armed.mCaptureId);
         }
     }
-    std::vector<CaptureHandle> old_ots_captures;
+    std::vector<RemovedCaptureRecord> old_ots_records;
     for (U32 index = 0; index < registry.mCaptureCount; ++index)
     {
         const CaptureDefinition& capture = registry.mCaptures[index];
         if (old_ots_capture_ids.count(capture.mHandle.mId) != 0)
         {
-            old_ots_captures.push_back(capture.mHandle);
+            RemovedCaptureRecord removed;
+            if (!captureRemovalRecord(capture.mHandle, removed, reason))
+                return false;
+            old_ots_records.push_back(removed);
         }
     }
 
     const U32 retained_capture_count = registry.mCaptureCount -
-        static_cast<U32>(old_ots_captures.size());
+        static_cast<U32>(old_ots_records.size());
     const std::size_t retained_arm_count = gate.mSettings.mArmed.size() -
         old_ots_arm_ids.size();
     if (retained_capture_count > MAX_CAPTURES - 2)
@@ -7507,23 +7696,44 @@ bool buildOtsPairFromSubjects(CaptureHandle* ots_a, CaptureHandle* ots_b,
     camera_b.mVirtualPos = eye_b;
     camera_b.mVirtualRot = rot_b;
 
-    // The arm labels are the builder's ownership marker. Snapshot the complete
-    // Prism configuration before replacing those captures so any failure while
-    // creating the fresh pair restores the prior pair and all Gate routing.
-    const LLSD rollback_scene = sceneData();
-    for (const LLUUID& arm_id : old_ots_arm_ids)
+    // The arm labels are the builder's ownership marker. Preserve the exact
+    // capture/display identities so rollback neither regenerates handles nor
+    // depends on transient world geometry.
+    std::stable_sort(old_ots_records.begin(), old_ots_records.end(),
+        [](const RemovedCaptureRecord& left,
+           const RemovedCaptureRecord& right)
+        {
+            return !left.mWasOnAir && right.mWasOnAir;
+        });
+    for (const RemovedCaptureRecord& removed : old_ots_records)
     {
-        gateDisarm(arm_id, nullptr);
-    }
-    for (const CaptureHandle& capture : old_ots_captures)
-    {
-        removeCapture(capture);
+        removeCapture(removed.mCapture.mHandle);
     }
 
+    CaptureHandle handle_a;
+    CaptureHandle handle_b;
     const auto fail_and_rollback = [&](const std::string& failure)
     {
         std::string rollback_failure;
-        const bool restored = applySceneData(rollback_scene, &rollback_failure);
+        if (handle_b.mId.notNull()) removeCapture(handle_b);
+        if (handle_a.mId.notNull()) removeCapture(handle_a);
+        std::sort(old_ots_records.begin(), old_ots_records.end(),
+            [](const RemovedCaptureRecord& left,
+               const RemovedCaptureRecord& right)
+            {
+                return left.mGateArmIndex < right.mGateArmIndex;
+            });
+        bool restored = true;
+        for (const RemovedCaptureRecord& removed : old_ots_records)
+        {
+            std::string restore_reason;
+            if (!restoreCaptureIdentity(removed, &restore_reason))
+            {
+                restored = false;
+                if (!rollback_failure.empty()) rollback_failure += "; ";
+                rollback_failure += restore_reason;
+            }
+        }
         if (reason)
         {
             *reason = failure;
@@ -7535,8 +7745,6 @@ bool buildOtsPairFromSubjects(CaptureHandle* ots_a, CaptureHandle* ots_b,
         return false;
     };
 
-    CaptureHandle handle_a;
-    CaptureHandle handle_b;
     LLUUID arm_a;
     std::string failure;
     if (addVirtualCamera(&handle_a, eye_a, rot_a, &failure) != ERegistryResult::OK)

@@ -503,6 +503,7 @@ struct DisplayDefinition
     DisplayRuntimeState mRuntime;
     bool mGateSubscribed = false;
     bool mQuarantined = false;
+    bool mPermissionQuarantined = false;
     std::string mQuarantineReason;
 };
 
@@ -540,6 +541,7 @@ struct RemovedCaptureRecord
     bool mWasOnAir = false;
     bool mGateWasActive = false;
     U64 mGateCutSerial = 0;
+    U64 mGatePostRemovalCutSerial = 0;
     LLUUID mProgramArmId;
     LLUUID mPreviewArmId;
     LLUUID mWarmArmId;
@@ -556,6 +558,19 @@ struct RegistrySnapshot
     U32 mDisplayCount = 0;
     std::array<CaptureDefinition, MAX_CAPTURES> mCaptures;
     std::array<DisplayDefinition, MAX_DISPLAY_BINDINGS> mDisplays;
+};
+
+// Coalesces nested registry mutations into one publication per revision kind.
+// This is public so higher-level multi-capture operations can wrap the
+// individually-scoped registry calls without exposing registry internals.
+class ScopedRevisionSignals
+{
+public:
+    ScopedRevisionSignals();
+    ~ScopedRevisionSignals();
+
+    ScopedRevisionSignals(const ScopedRevisionSignals&) = delete;
+    ScopedRevisionSignals& operator=(const ScopedRevisionSignals&) = delete;
 };
 
 enum class EDesignationResult

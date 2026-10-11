@@ -117,7 +117,7 @@ void ALKitHistory::recordCustom(const std::string& key, const std::string& label
         return;
     if (!mOpen)
         beginGesture(KEY, mPage, label);
-    mOpen->custom.push_back({ key, {}, std::move(fn), {} });
+    mOpen->custom.push_back({ key, {}, std::move(fn), {}, false });
     if (mOpen->label.empty())
         mOpen->label = label;
 }
@@ -126,14 +126,16 @@ void ALKitHistory::recordCustom(
     const std::string& key, const std::string& label,
     std::function<bool(bool, std::string&)> prepare,
     std::function<bool(bool, std::string&)> replay,
-    std::function<void()> release)
+    std::function<void()> release,
+    bool discard_on_prepare_failure)
 {
     if (suspended() || mReplaying)
         return;
     if (!mOpen)
         beginGesture(KEY, mPage, label);
     mOpen->custom.push_back(
-        { key, std::move(prepare), std::move(replay), std::move(release) });
+        { key, std::move(prepare), std::move(replay), std::move(release),
+          discard_on_prepare_failure });
     if (mOpen->label.empty())
         mOpen->label = label;
 }
@@ -295,8 +297,9 @@ std::string ALKitHistory::currentContext(const std::string& page) const
     return found == mContexts.end() ? std::string() : found->second();
 }
 
-bool ALKitHistory::replay(Step& step, bool redo)
+bool ALKitHistory::replay(Step& step, bool redo, bool* discard)
 {
+    if (discard) *discard = false;
     if (step.scene_generation != mGeneration)
         return false;
     const std::string context = currentContext(step.page);
@@ -318,12 +321,13 @@ bool ALKitHistory::replay(Step& step, bool redo)
         LLNotificationsUtil::add("SystemMessageTip", args);
         ok = false;
     };
-    const auto prepare_custom = [&fail, redo](CustomEntry& entry)
+    const auto prepare_custom = [&fail, redo, discard](CustomEntry& entry)
     {
         if (!entry.prepare) return true;
         std::string reason;
         if (entry.prepare(redo, reason)) return true;
         fail(reason);
+        if (discard && entry.discard_on_prepare_failure) *discard = true;
         return false;
     };
     if (redo)
@@ -400,8 +404,19 @@ void ALKitHistory::undo()
     mTimer.reset();
     if (!canUndo())
         return;
-    if (!replay(mUndo.back(), false))
+    bool discard = false;
+    if (!replay(mUndo.back(), false, &discard))
+    {
+        if (discard)
+        {
+            Step& failed = mUndo.back();
+            for (CustomEntry& entry : failed.custom)
+                if (entry.release) entry.release();
+            mUndo.pop_back();
+            ++mRevision;
+        }
         return;
+    }
     Step s = std::move(mUndo.back());
     mUndo.pop_back();
     mRedo.push_back(std::move(s));
@@ -413,8 +428,19 @@ void ALKitHistory::redo()
     mTimer.reset();
     if (!canRedo())
         return;
-    if (!replay(mRedo.back(), true))
+    bool discard = false;
+    if (!replay(mRedo.back(), true, &discard))
+    {
+        if (discard)
+        {
+            Step& failed = mRedo.back();
+            for (CustomEntry& entry : failed.custom)
+                if (entry.release) entry.release();
+            mRedo.pop_back();
+            ++mRevision;
+        }
         return;
+    }
     Step s = std::move(mRedo.back());
     mRedo.pop_back();
     mUndo.push_back(std::move(s));
