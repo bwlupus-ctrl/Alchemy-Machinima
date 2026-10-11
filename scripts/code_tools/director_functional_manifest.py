@@ -827,6 +827,8 @@ def synthetic_entries(xi, settings, csv_pairs, page_meta, presets, preset_writte
                         e, "RUN", "", [], test,
                         {"setting": RIG_RIM_SENTINEL, "type": "F32", "value": pick[1]},
                         {"snapshot_settings": preset_written})
+                    e["oracle_pre_value"] = default_master if default_master != pick[1] else (
+                        pick[1] + 0.25)
                     e["notes"] = [
                         "Select the built-in '%s' from the strip; sentinel %s must equal %s." % (pick[0], RIG_RIM_SENTINEL, pick[1]),
                         "The preset does not write CineRigRimEnabled; a disabled Rim master makes the result visually inert, not a failure.",
@@ -876,6 +878,7 @@ def synthetic_entries(xi, settings, csv_pairs, page_meta, presets, preset_writte
             finish_synthetic(e, "RUN", "", [], {"preset": pick[0], "id": pick[0]},
                              {"setting": RIG_RIM_SENTINEL, "type": "F32", "value": pick[1]},
                              {"snapshot_settings": preset_written})
+            e["oracle_pre_value"] = default_master if default_master != pick[1] else (pick[1] + 0.25)
             out.append(e)
     return out
 

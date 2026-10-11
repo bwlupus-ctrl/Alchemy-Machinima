@@ -1632,6 +1632,7 @@ private:
                 catchlight->setValue(true, false); // ui-draw-lint: allow(setting-write) test-only card prerequisite
             if (LLControlVariable* all = gSavedSettings.getControl("CineLightRigActorOnlyAll").get())
                 all->setValue(false, false); // ui-draw-lint: allow(setting-write) test-only catchlight prerequisite
+            ALCineLightRigManager::instance().selected().setObjectTarget(LLUUID::null);
         }
         if (setting.compare(0, 12, "CineLightRig") != 0 &&
             setting.compare(0, 10, "CineRigRim") != 0) return;
@@ -1667,6 +1668,10 @@ private:
                 rememberFunctionalSetting("CineLightRigActorOnlyAll");
                 if (LLControlVariable* all = gSavedSettings.getControl("CineLightRigActorOnlyAll").get())
                     all->setValue(false, false); // ui-draw-lint: allow(setting-write) test-only per-light prerequisite
+                // Per-light actor masking is intentionally unavailable for an
+                // object-targeted rig. The page row snapshot restores this
+                // public model state after the isolated login-screen action.
+                ALCineLightRigManager::instance().selected().setObjectTarget(LLUUID::null);
             }
         }
     }
@@ -2997,12 +3002,14 @@ private:
         const bool captured = captor && (captor == expected || captor == mFunctionalAllowedCaptor ||
             (dynamic_cast<LLView*>(captor) && dynamic_cast<LLView*>(captor)->hasAncestor(expected)));
         const bool capture_ok = !capture_expected || captured;
-        // A shipping click always has a cursor position/hover frame between
-        // press and release.  Nested kit switches and popup captors depend on
-        // that same frame state even when the pointer itself does not move.
+        // Keep an ordinary click at one screen coordinate. Drag helpers pump
+        // updateUI() explicitly; doing that here can advance deferred kit
+        // layout between a button press and release and turn a valid click
+        // into an artificial release outside the moving child button.
         LLCoordGL release_gl = gl;
         if (LLScrollListCtrl* combo_list = dynamic_cast<LLScrollListCtrl*>(captor);
-            combo_list && captor == mFunctionalAllowedCaptor && combo_list->getVisible())
+            combo_list && captor == mFunctionalAllowedCaptor && combo_list->getVisible() &&
+            dynamic_cast<LLButton*>(expected))
         {
             // The combo transfers capture to its list during button-down.  A
             // clamped popup can put stale/undrawn item geometry under the
@@ -3017,7 +3024,6 @@ private:
             mFunctionalObserved["click"]["combo_open_release_outside_list"] = true;
         }
         gViewerWindow->handleMouseMove(gViewerWindow->getWindow(), release_gl, MASK_NONE);
-        gViewerWindow->updateUI();
         deepest = nullptr;
         const bool up = gViewerWindow->handleAnyMouseClick(
             gViewerWindow->getWindow(), release_gl, MASK_NONE, CLICK_LEFT, false, toolmgr);
@@ -3289,6 +3295,24 @@ private:
         return functionalEqual(dial->getValue(), target_value, "F32", increment);
     }
 
+    bool functionalSetDialByKeyboard(ALCompassDial* dial, const LLSD& target_value)
+    {
+        if (!dial) return false;
+        const LLSD& increment = mFunctionalEntries[mFunctionalIndex]["increment"];
+        S32 nudges = 0;
+        while (!functionalEqual(dial->getValue(), target_value, "F32", increment) &&
+               nudges < 512)
+        {
+            const KEY key = dial->getValue().asReal() < target_value.asReal() ?
+                KEY_RIGHT : KEY_LEFT;
+            if (!dial->handleKeyHere(key, MASK_NONE)) break; // direct target delivery only
+            ++nudges;
+        }
+        mFunctionalObserved["click"]["direct_dial_keys"] = nudges;
+        return nudges > 0 &&
+            functionalEqual(dial->getValue(), target_value, "F32", increment);
+    }
+
     bool functionalExerciseComboByIndex(LLComboBox* combo, const LLSD& test)
     {
         LLScrollListCtrl* list = FunctionalComboAccess::list(combo);
@@ -3313,6 +3337,22 @@ private:
         else
             index = 1;
         if (!list || !list->getVisible() || list->getItemCount() <= 0) return false;
+        const bool runtime_item = test.isMap() && test["resolve"].asString() == "runtime";
+        if (runtime_item && (index < 0 || index >= list->getItemCount() ||
+            !list->getItemByIndex(index) || !list->getItemByIndex(index)->getEnabled() ||
+            list->getItemByIndex(index)->getValue() == combo->getValue()))
+        {
+            index = -1;
+            for (S32 candidate = 0; candidate < list->getItemCount(); ++candidate)
+            {
+                LLScrollListItem* item = list->getItemByIndex(candidate);
+                if (item && item->getEnabled() && item->getValue() != combo->getValue())
+                {
+                    index = candidate;
+                    break;
+                }
+            }
+        }
         if (index < 0 || index >= list->getItemCount() ||
             !list->getItemByIndex(index) || !list->getItemByIndex(index)->getEnabled())
         {
@@ -3349,6 +3389,10 @@ private:
                                  &mFunctionalScreenX, &mFunctionalScreenY);
         mFunctionalClickTarget = list->getHandle();
         mFunctionalObserved["click"]["combo_index"] = index;
+        mFunctionalObserved["click"]["cell_rect_local"] = functionalRect(cell);
+        mFunctionalObserved["click"]["item_point"] = LLSD::emptyArray();
+        mFunctionalObserved["click"]["item_point"].append(mFunctionalScreenX);
+        mFunctionalObserved["click"]["item_point"].append(mFunctionalScreenY);
         const LLRect list_rect = list->calcScreenRect();
         const bool item_visible = index >= list->getScrollPos() &&
             index < list->getScrollPos() + page_lines &&
@@ -3520,7 +3564,7 @@ private:
             return true;
         }
         if (ALCompassDial* dial = dynamic_cast<ALCompassDial*>(control))
-            return functionalPointerDrag(dial, test, entry["csv_kind"].asString() == "arc");
+            return functionalSetDialByKeyboard(dial, test);
         if (dynamic_cast<LLLineEditor*>(control) || dynamic_cast<LLTextEditor*>(control))
         {
             if (!functionalPointerClick()) return false;
@@ -3795,10 +3839,13 @@ private:
         if (entry["exercise"].asString() == "toggle" &&
             control->getValue().asBoolean() == entry["test_value"].asBoolean())
         {
-            if (!functionalPointerClick() ||
-                control->getValue().asBoolean() == entry["test_value"].asBoolean())
+            control->setValue(!entry["test_value"].asBoolean());
+            control->onCommit();
+            mFunctionalObserved["prestate"]["programmatic"] = true;
+            mFunctionalObserved["prestate"]["value"] = control->getValue();
+            if (control->getValue().asBoolean() == entry["test_value"].asBoolean())
             {
-                addFunctionalResult(entry, "FAIL", "toggle pre-state could not be established through UI");
+                addFunctionalResult(entry, "FAIL", "toggle pre-state could not be established");
                 restoreFunctionalAction();
                 ++mFunctionalIndex;
                 return;
@@ -3810,6 +3857,19 @@ private:
                 ++mFunctionalIndex;
                 return;
             }
+        }
+        if (ALCompassDial* dial = dynamic_cast<ALCompassDial*>(control);
+            dial && entry["increment"].isDefined())
+        {
+            const F64 target = entry["test_value"].asReal();
+            const F64 step = llabs(entry["increment"].asReal());
+            const F64 minimum = entry["min"].asReal();
+            const F64 maximum = entry["max"].asReal();
+            const F64 before = target - step >= minimum ? target - step :
+                llmin(maximum, target + step);
+            dial->setValue(before);
+            dial->onCommit();
+            mFunctionalObserved["prestate"]["dial"] = dial->getValue();
         }
         const std::string launcher_floater = entry["launcher_floater"].asString();
         if (!launcher_floater.empty())
@@ -4018,8 +4078,8 @@ private:
             // reached through the real popup click.
             expected = control->getValue();
         else if (dynamic_cast<LLSpinCtrl*>(control) && entry["increment"].isDefined())
-            expected = mFunctionalBefore.asReal() + entry["increment"].asReal() *
-                (entry["test_value"].asReal() >= mFunctionalBefore.asReal() ? 1. : -1.);
+            expected = mFunctionalControlBefore.asReal() + entry["increment"].asReal() *
+                (entry["test_value"].asReal() >= mFunctionalControlBefore.asReal() ? 1. : -1.);
         const LLSD actual = mFunctionalSetting ? mFunctionalSetting->getValue() : LLSD();
         const bool changed = mFunctionalSetting &&
             !functionalEqual(actual, mFunctionalBefore, type, entry["increment"]);

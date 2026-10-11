@@ -377,7 +377,8 @@ def prepare_manifest(path: Path, repo: Path, output: Path) -> tuple[int, int, in
                 prereqs.append({"setting": "CineLightRigEasyMode", "value": True,
                                 "source": "ALPanelCineLightRig::syncDerivedStatus easy controls"})
                 seen.add(("CineLightRigEasyMode", True))
-            elif re.match(r"^cine_(key|fill|rim|bg)_", widget) and \
+            elif (re.match(r"^cine_(key|fill|rim|bg)_", widget) or
+                  widget in {"cine_ratio", "cine_ratio_lock"}) and \
                     ("CineLightRigEasyMode", False) not in seen:
                 prereqs.append({"setting": "CineLightRigEasyMode", "value": False,
                                 "source": "ALPanelCineLightRig::syncDerivedStatus advanced controls"})
