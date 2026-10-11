@@ -135,6 +135,13 @@ TEMPORAL_PRESET_ORACLES = {
     ("v2", "temporal_tab", "btn_double"):   (2.0, 1, 1.0),
 }
 
+# A one-increment target (1.01) is not pointer-reachable on the compact 0..8
+# temporal slider: it rounds to the same pixel as 1.0.  The minimum is both a
+# real drag target and an exact, layout-independent setting oracle.
+POINTER_SLIDER_ENDPOINT_TESTS = {
+    ("v2", "temporal_tab", "scale_slider"): 0.0,
+}
+
 
 # ---------------------------------------------------------------- helpers
 
@@ -578,6 +585,10 @@ def build_csv_entry(idx, r, v, xi, settings, page_meta):
     elif exercise == "select_item":
         test_value, test_resolved = combo_test(default, items, stype)
 
+    pointer_endpoint = POINTER_SLIDER_ENDPOINT_TESTS.get((v, r["page"], name))
+    if pointer_endpoint is not None:
+        test_value = test_resolved = pointer_endpoint
+
     cb = r[v + "_callbacks"]
     owner = owner_from_evidence(r[v + "_evidence"])
     action, reason, hazards = classify({
@@ -673,6 +684,8 @@ def build_csv_entry(idx, r, v, xi, settings, page_meta):
             "temporal_mode": mode,
             "restore": {"snapshot_settings": ["TemporalWorldScale", "TemporalMode"]},
         })
+    if pointer_endpoint is not None:
+        entry["pointer_drag"] = True
     if items:
         entry["options"] = [{"label": a, "value": b} for a, b in items]
     if test_resolved is not None and test_resolved != test_value:

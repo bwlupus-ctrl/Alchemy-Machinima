@@ -1228,6 +1228,11 @@ bool LLViewerWindow::handleAnyMouseClick(LLWindow *window, LLCoordGL pos, MASK m
             bool r;
             {
                 LL_PROFILE_ZONE_NAMED_CATEGORY_UI("mouse click - captor dispatch");
+                // Captor dispatch bypasses LLView's child traversal, so mirror
+                // its optional diagnostic hook for input-test attribution.
+                if (LLView::sMouseHandlerRecorder)
+                    if (LLView* captor_view = dynamic_cast<LLView*>(mouse_captor))
+                        LLView::sMouseHandlerRecorder(captor_view);
                 r = mouse_captor->handleAnyMouseClick(local_x, local_y, mask, clicktype, down);
             }
             if (r) {

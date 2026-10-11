@@ -116,6 +116,10 @@ public:
     virtual bool    handleScrollHWheel(S32 x, S32 y, LLScrollDelta delta);
     virtual void    draw();
 
+    // Exposed for input-test drivers that must begin a synthetic drag on the
+    // same thumb pixels a user would grab.
+    const LLRect&   getThumbRect() const { return mThumbRect; }
+
     // [EnvIntensity v2] accessor for LLSliderCtrl's gated wheel forwarding
     F32             getWheelFineDiv() const { return mWheelFineDiv; }
     // [SliderWheel] Runtime override of the wheel_adjust param = explicit ON / OFF (replaces the

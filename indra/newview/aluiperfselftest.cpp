@@ -2942,7 +2942,14 @@ private:
         deepest = nullptr;
         const bool up = gViewerWindow->handleAnyMouseClick(
             gViewerWindow->getWindow(), gl, MASK_NONE, CLICK_LEFT, false, toolmgr);
-        const std::string up_path = LLView::sMouseHandlerMessage;
+        const std::string up_path = deepest ? deepest->getPathname() :
+            LLView::sMouseHandlerMessage;
+        // Opening a combo transfers capture from its button to its list.  The
+        // opening up is outside the list: LLScrollListCtrl performs the
+        // release/callback, then legitimately returns false because no child
+        // handled that coordinate.  It was still delivered and completed.
+        const bool allowed_captor_up = !up && captor && captor == mFunctionalAllowedCaptor &&
+            deepest == dynamic_cast<LLView*>(captor) && !gFocusMgr.getMouseCapture();
         const bool handler = down_deepest == expected ||
             (down_deepest && down_deepest->hasAncestor(expected));
         mFunctionalObserved["click"]["down_handler"] = down_path;
@@ -2952,6 +2959,8 @@ private:
         mFunctionalObserved["click"]["capture_after"] = gFocusMgr.getMouseCapture() ? "set" : LLSD();
         mFunctionalObserved["click"]["target"] = expected->getPathname();
         mFunctionalObserved["click"]["handler_exact"] = handler;
+        if (allowed_captor_up)
+            mFunctionalObserved["click"]["up_delivered_to_allowed_captor"] = true;
         LLMouseHandler* stuck = gFocusMgr.getMouseCapture();
         if (stuck && stuck == mFunctionalAllowedCaptor)
             stuck = nullptr; // combo button handed capture to its own dropdown list (llcombobox.cpp:818-820)
@@ -2971,7 +2980,93 @@ private:
         }
         mFunctionalLastClickReason = handler ? std::string() :
             "real dispatch was handled outside target: " + down_path;
-        return down && up && handler && capture_ok;
+        return down && (up || allowed_captor_up) && handler && capture_ok;
+    }
+
+    bool functionalPointerDrag(LLSlider* slider, const LLSD& target_value)
+    {
+        if (!slider || !gViewerWindow) return false;
+        const LLRect local = slider->getLocalRect();
+        const LLRect thumb = slider->getThumbRect();
+        const S32 half_thumb = thumb.getWidth() / 2;
+        const S32 left_edge = local.mLeft + half_thumb;
+        const S32 right_edge = local.mRight - half_thumb;
+        const F32 range = slider->getMaxValue() - slider->getMinValue();
+        const F32 ratio = range > 0.f ? llclamp(
+            ((F32)target_value.asReal() - slider->getMinValue()) / range, 0.f, 1.f) : 0.f;
+        const S32 start_x = thumb.getCenterX();
+        const S32 local_y = thumb.getCenterY();
+        const S32 end_x = left_edge + ll_round(ratio * (F32)(right_edge - left_edge));
+        S32 start_screen_x = 0, start_screen_y = 0, end_screen_x = 0, end_screen_y = 0;
+        slider->localPointToScreen(start_x, local_y, &start_screen_x, &start_screen_y);
+        slider->localPointToScreen(end_x, local_y, &end_screen_x, &end_screen_y);
+        mFunctionalClickTarget = slider->getHandle();
+
+        std::string reason;
+        mFunctionalScreenX = start_screen_x; mFunctionalScreenY = start_screen_y;
+        if (!functionalPreDispatch(slider, reason))
+        {
+            mFunctionalLastClickReason = reason;
+            return false;
+        }
+        mFunctionalScreenX = end_screen_x; mFunctionalScreenY = end_screen_y;
+        if (!functionalPreDispatch(slider, reason))
+        {
+            mFunctionalLastClickReason = reason;
+            return false;
+        }
+
+        const LLVector2 scale = gViewerWindow->getDisplayScale();
+        LLCoordGL start(ll_round((F32)start_screen_x * scale.mV[VX]),
+                        ll_round((F32)start_screen_y * scale.mV[VY]));
+        LLCoordGL end(ll_round((F32)end_screen_x * scale.mV[VX]),
+                      ll_round((F32)end_screen_y * scale.mV[VY]));
+        gViewerWindow->handleMouseMove(gViewerWindow->getWindow(), start, MASK_NONE);
+        LLView* deepest = nullptr;
+        struct RecorderGuard
+        {
+            explicit RecorderGuard(LLView*& deepest)
+            {
+                LLView::sMouseHandlerRecorder = [&deepest](LLView* view)
+                    { if (!deepest) deepest = view; };
+                LLView::sDebugMouseHandling = true;
+            }
+            ~RecorderGuard()
+            {
+                LLView::sDebugMouseHandling = false;
+                LLView::sMouseHandlerRecorder = {};
+            }
+        } recorder(deepest);
+        bool toolmgr = false;
+        const bool down = gViewerWindow->handleAnyMouseClick(
+            gViewerWindow->getWindow(), start, MASK_NONE, CLICK_LEFT, true, toolmgr);
+        const std::string down_path = LLView::sMouseHandlerMessage;
+        LLView* down_deepest = deepest;
+        const bool captured = gFocusMgr.getMouseCapture() == slider;
+        gViewerWindow->handleMouseMove(gViewerWindow->getWindow(), end, MASK_NONE);
+        deepest = nullptr;
+        const bool up = gViewerWindow->handleAnyMouseClick(
+            gViewerWindow->getWindow(), end, MASK_NONE, CLICK_LEFT, false, toolmgr);
+        const std::string up_path = deepest ? deepest->getPathname() :
+            LLView::sMouseHandlerMessage;
+        const bool handler = down_deepest == slider ||
+            (down_deepest && down_deepest->hasAncestor(slider));
+        mFunctionalObserved["click"]["down_handler"] = down_path;
+        mFunctionalObserved["click"]["up_handler"] = up_path;
+        mFunctionalObserved["click"]["real_drag"] = true;
+        mFunctionalObserved["click"]["handler_exact"] = handler;
+        mFunctionalObserved["click"]["drag_start_x"] = start_screen_x;
+        mFunctionalObserved["click"]["drag_end_x"] = end_screen_x;
+        if (LLMouseHandler* stuck = gFocusMgr.getMouseCapture())
+        {
+            LLView* stuck_view = dynamic_cast<LLView*>(stuck);
+            mFunctionalLastClickReason = "capture after slider drag: " +
+                (stuck_view ? functionalViewPath(stuck_view) : std::string("<non-view mouse handler>"));
+            return false;
+        }
+        mFunctionalLastClickReason = handler ? std::string() :
+            "real slider drag was handled outside target";
+        return down && up && captured && handler;
     }
 
     bool functionalPointerDrag(ALCompassDial* dial)
@@ -3298,7 +3393,14 @@ private:
             if (!focus_exact()) return false;
             return gViewerWindow->handleKey(KEY_RETURN, MASK_NONE);
         }
-        if (dynamic_cast<LLSliderCtrl*>(control) || dynamic_cast<LLSpinCtrl*>(control))
+        if (LLSliderCtrl* slider_ctrl = dynamic_cast<LLSliderCtrl*>(control))
+        {
+            if (!entry["pointer_drag"].asBoolean())
+                return functionalPointerClick();
+            LLSlider* slider = findFirstView<LLSlider>(slider_ctrl);
+            return functionalPointerDrag(slider, test);
+        }
+        if (dynamic_cast<LLSpinCtrl*>(control))
             return functionalPointerClick();
         control->setValue(test);
         control->onCommit();
@@ -3894,7 +3996,12 @@ private:
                 assertion_failure = "switch setting/drawn state, mouse capture, or pointer/refocus ring disagrees";
         }
         else if (LLButton* button = dynamic_cast<LLButton*>(control))
-            expected_ok = expected_ok && !button->isFocusRingVisible() && !button->hasMouseCapture();
+        {
+            // A mouse-clicked tab-stop button legitimately retains focus; only
+            // keyboard-origin focus-ring policy belongs in a visual test.
+            mFunctionalObserved["button"]["focus_ring"] = button->isFocusRingVisible();
+            expected_ok = expected_ok && !button->hasMouseCapture();
+        }
         const bool spinner_fits = functionalSpinnerTextFits(control);
         expected_ok = expected_ok && spinner_fits;
         if (!spinner_fits)
