@@ -19,12 +19,14 @@
 #include "aluirefresh.h"
 #include "alcinerigrim.h"
 #include "alcinelightrigmanager.h"
+#include "aldiopterpresetbank.h"
 
 #include "llappviewer.h"
 #include "llaccordionctrl.h"
 #include "llbutton.h"
 #include "llcheckboxctrl.h"
 #include "llcombobox.h"
+#include "llcolorswatch.h"
 #include "lldir.h"
 #include "lldiriterator.h"
 #include "llerrorcontrol.h"
@@ -35,6 +37,7 @@
 #include "llfolderview.h"
 #include "llfolderviewitem.h"
 #include "llfolderviewmodel.h"
+#include "llfocusmgr.h"
 #include "lliconctrl.h"
 #include "llimage.h"
 #include "llimagepng.h"
@@ -42,8 +45,11 @@
 #include "llfontregistry.h"
 #include "lllineeditor.h"
 #include "llmultisliderctrl.h"
+#include "llnotifications.h"
 #include "llpanel.h"
+#include "llpresentationtime.h"
 #include "llradiogroup.h"
+#include "llrender.h"
 #include "llscrollcontainer.h"
 #include "llscrolllistctrl.h"
 #include "llslider.h"
@@ -58,10 +64,12 @@
 #include "llviewerwindow.h"
 #include "llversioninfo.h"
 #include "llview.h"
+#include "pipeline.h"
 
 #include <algorithm>
 #include <cctype>
 #include <filesystem>
+#include <fstream>
 #include <iomanip>
 #include <memory>
 #include <numeric>
@@ -86,6 +94,23 @@ public:
         using member_t = std::string LLUICtrl::*;
         const member_t member = &FunctionalControlAccess::mFunctionName;
         return control->*member;
+    }
+};
+
+class FunctionalLineEditorAccess : public LLLineEditor
+{
+public:
+    static S32 textLeft(const LLLineEditor* editor)
+    {
+        using member_t = S32 LLLineEditor::*;
+        const member_t member = &FunctionalLineEditorAccess::mTextLeftEdge;
+        return editor->*member;
+    }
+    static S32 textRight(const LLLineEditor* editor)
+    {
+        using member_t = S32 LLLineEditor::*;
+        const member_t member = &FunctionalLineEditorAccess::mTextRightEdge;
+        return editor->*member;
     }
 };
 
@@ -518,6 +543,13 @@ struct SavedControlState
     LLSD mActive;
     LLSD mSaved;
     bool mUnsaved = false;
+};
+
+struct FunctionalDiskSnapshot
+{
+    std::filesystem::path mRoot;
+    bool mExisted = false;
+    std::map<std::filesystem::path, std::string> mFiles;
 };
 
 class SaveControls final : public LLControlGroup::ApplyFunctor
@@ -1213,6 +1245,7 @@ public:
             mFunctional = true;
             mFunctionalManifestPath = mRequest.substr(functional_prefix.size());
             mRequest = "director";
+            captureFunctionalUserFiles();
         }
         if (mDirectorV2 || mFunctional)
         {
@@ -1293,9 +1326,15 @@ public:
                 mFloater = LLHandle<LLFloater>();
             }
         }
+        if (mFunctional) restoreFunctionalAction();
         restoreDirectorAuditSettings();
         restoreInitialState();
         restore();
+        if (mFunctional)
+        {
+            restoreFunctionalRigState(false);
+            restoreFunctionalUserFiles();
+        }
         sActive = false;
         sSuppressSettingsSave = false;
         sLayoutAuditActive = false;
@@ -1397,6 +1436,56 @@ private:
         return false;
     }
 
+    void captureFunctionalUserFiles()
+    {
+        std::set<std::filesystem::path> roots;
+        roots.insert(std::filesystem::path(
+            gDirUtilp->getExpandedFilename(LL_PATH_USER_SETTINGS, "")));
+        const std::string account = gDirUtilp->getExpandedFilename(LL_PATH_PER_SL_ACCOUNT, "");
+        if (!account.empty()) roots.insert(std::filesystem::path(account));
+        for (const std::filesystem::path& root : roots)
+        {
+            FunctionalDiskSnapshot snapshot;
+            snapshot.mRoot = root;
+            std::error_code error;
+            snapshot.mExisted = std::filesystem::is_directory(root, error);
+            if (snapshot.mExisted)
+            {
+                for (std::filesystem::recursive_directory_iterator it(root, error), end;
+                     !error && it != end; it.increment(error))
+                {
+                    if (!it->is_regular_file(error)) continue;
+                    std::ifstream input(it->path(), std::ios::binary);
+                    if (!input.good()) continue;
+                    snapshot.mFiles[std::filesystem::relative(it->path(), root, error)] =
+                        std::string(std::istreambuf_iterator<char>(input),
+                                    std::istreambuf_iterator<char>());
+                }
+            }
+            mFunctionalUserFiles.push_back(std::move(snapshot));
+        }
+    }
+
+    void restoreFunctionalUserFiles()
+    {
+        if (mFunctionalUserFilesRestored) return;
+        mFunctionalUserFilesRestored = true;
+        for (const FunctionalDiskSnapshot& snapshot : mFunctionalUserFiles)
+        {
+            std::error_code error;
+            std::filesystem::remove_all(snapshot.mRoot, error);
+            if (!snapshot.mExisted) continue;
+            std::filesystem::create_directories(snapshot.mRoot, error);
+            for (const auto& saved : snapshot.mFiles)
+            {
+                const std::filesystem::path path = snapshot.mRoot / saved.first;
+                std::filesystem::create_directories(path.parent_path(), error);
+                std::ofstream output(path, std::ios::binary | std::ios::trunc);
+                output.write(saved.second.data(), static_cast<std::streamsize>(saved.second.size()));
+            }
+        }
+    }
+
     static void functionalVisibleFloaters(LLView* view, std::set<LLFloater*>& out)
     {
         if (!view || !view->getVisible() || !view->isInVisibleChain()) return;
@@ -1404,13 +1493,56 @@ private:
         for (LLView* child : *view->getChildList()) functionalVisibleFloaters(child, out);
     }
 
+    void rememberFunctionalSetting(const std::string& name)
+    {
+        if (name.empty() || mFunctionalRestore.count(name)) return;
+        if (LLControlVariable* control = gSavedSettings.getControl(name).get())
+            mFunctionalRestore[name] = {
+                control->get(), control->getSaveValue(), control->hasUnsavedValue()
+            };
+    }
+
+    static bool functionalSetControl(LLControlVariable* control, bool value)
+    {
+        if (!control) return false;
+        control->setValue(value, false); // ui-draw-lint: allow(setting-write) bounded functional prerequisite
+        return control->get().asBoolean() == value;
+    }
+
     static S32 functionalLightIndex(const std::string& setting)
     {
-        if (setting.find("Key") != std::string::npos) return 0;
-        if (setting.find("Fill") != std::string::npos) return 1;
-        if (setting.find("Rim") != std::string::npos) return 2;
-        if (setting.find("Bg") != std::string::npos) return 3;
+        // Match the light token after the Rig/Rim namespace, not the namespace
+        // itself ("CineRigRimBg" used to be mistaken for the Rim light).
+        static const std::pair<const char*, S32> suffixes[] = {
+            { "Back", 2 }, { "Fill", 1 }, { "Key", 0 }, { "Rim", 2 }, { "Bg", 3 }
+        };
+        const size_t prefix = setting.compare(0, 12, "CineLightRig") == 0 ? 12 :
+                              setting.compare(0, 10, "CineRigRim") == 0 ? 10 :
+                              std::string::npos;
+        if (prefix == std::string::npos) return -1;
+        for (const auto& suffix : suffixes)
+            if (setting.compare(prefix, strlen(suffix.first), suffix.first) == 0)
+                return suffix.second;
         return -1;
+    }
+
+    static bool functionalLightIndexSelfTest()
+    {
+        static const char* const names[] = { "Key", "Fill", "Rim", "Bg" };
+        for (S32 i = 0; i < 4; ++i)
+            if (functionalLightIndex(std::string("CineLightRig") + names[i] + "EV") != i ||
+                functionalLightIndex(std::string("CineRigRim") + names[i] + "Gain") != i)
+                return false;
+        return functionalLightIndex("CineLightRigBackEV") == 2 &&
+               functionalLightIndex("CineRigRimBackGain") == 2;
+    }
+
+    static void functionalTickRig()
+    {
+        // LLAppViewer::idle() returns before this engine tick at login.  The
+        // manager is intentionally avatar-safe, so run the same update here.
+        ALCineLightRigManager::instance().tick(
+            LLPresentationTime::currentFrame().presentation_time);
     }
 
     // ui-draw-lint: allow-function(setting,setting-write) isolated test-only selector setup
@@ -1442,7 +1574,12 @@ private:
                 setting->get(), setting->getSaveValue(), setting->hasUnsavedValue()});
             setting->setValue(value, false); // ui-draw-lint: allow(setting-write) test-only consumer prerequisite
         };
-        if (consumer == "rim_render_active") force("CineLightRigEnabled", true);
+        if (consumer == "rim_bind_gain")
+        {
+            force("CineLightRigEnabled", true);
+            force("CineRigRimEnabled", true);
+            functionalTickRig();
+        }
         if (consumer == "weather_rain_intensity")
         {
             if (entry["expect"]["setting"].asString() != "AlchemyWeatherEnabled")
@@ -1471,14 +1608,42 @@ private:
     LLSD functionalConsumerValue(const LLSD& entry)
     {
         const std::string consumer = entry["consumer"].asString();
+        if (consumer == "rim_render_active" || consumer == "rim_bind_gain" ||
+            consumer == "light_rig_enabled_mask" || consumer == "catchlight_enabled" ||
+            consumer == "selected_light_values" || consumer == "selected_rim_values")
+            functionalTickRig();
         if (consumer == "rim_render_active") return ALCineRigRim::isEnabled();
         if (consumer == "rim_bind_gain")
         {
-            const F32 gain = gSavedSettings.getF32("CineRigRimMasterGain");
-            return llclamp(std::isfinite(gain) ? gain : 0.f, 0.f, 4.f);
+            const bool active = ALCineRigRim::isEnabled();
+            const F32 gain = llclamp(gSavedSettings.getF32("CineRigRimMasterGain"), 0.f, 4.f);
+            const F32 smooth = llclamp(gSavedSettings.getF32("CineRigRimSmoothness"), 0.f, 1.f);
+            const F32 shimmer = llclamp(gSavedSettings.getF32("CineRigRimAntiShimmer"), 0.f, 1.f);
+            const bool debug = gSavedSettings.getBOOL("CineRigRimDebugRimOnly") ||
+                               gSavedSettings.getU32("CineRigRimDebugView") == 1;
+            const LLVector4 expected_bind(active ? gain : 0.f, active ? smooth : 0.f,
+                                          active ? shimmer : 0.f,
+                                          active ? (debug ? 2.f : 1.f) : 0.f);
+            // setRigRimActive() returns false only when both the renderer-facing
+            // active bit and complete bind vector already match.  Probe after
+            // isEnabled() has had the one chance to publish them.
+            const bool mismatched = gGL.setRigRimActive(active, expected_bind);
+            return mismatched ? LLSD(-1.0) : LLSD(active ? gain : 0.f);
         }
         if (consumer == "light_rig_enabled_mask")
             return static_cast<S32>(ALCineLightRigManager::instance().enabledMask());
+        if (consumer.compare(0, 19, "selected_rig_light_") == 0)
+        {
+            const S32 index = entry["rig_light_index"].asInteger();
+            if (index < 0 || index >= ALCineLightRigModel::LIGHT_COUNT) return LLSD();
+            const ALCineLightRigParamBlob blob = ALCineLightRigParamBlob::fromSettings(
+                &ALCineLightRigManager::instance().selected());
+            const std::string field = consumer.substr(19);
+            if (field == "shaft") return blob.mShaftEnabled[index];
+            if (field == "hero") return blob.mHeroEnabled[index];
+            if (field == "cone_width")
+                return ALCineLightRigModel::easyConeWidthFromBeam(blob.mLights[index].mBeam);
+        }
         if (consumer == "catchlight_enabled")
             return ALCineLightRigParamBlob::fromSettings(
                 &ALCineLightRigManager::instance().selected()).mCatchlight;
@@ -1499,14 +1664,31 @@ private:
             {
                 const ALCineLightRigParamBlob blob = ALCineLightRigParamBlob::fromSettings(
                     &ALCineLightRigManager::instance().selected());
-                value["value"] = consumer == "selected_light_values"
-                    ? LLSD(blob.mLights[index].mEV) : LLSD(blob.mLights[index].mRimGain);
+                const ALCineLightRigParamBlob::Light& light = blob.mLights[index];
+                LLSD displayed = LLSD::emptyMap();
+                if (consumer == "selected_light_values")
+                {
+                    displayed["ev"] = light.mEV;
+                    displayed["shaft"] = blob.mShaftEnabled[index];
+                    displayed["cone_width"] =
+                        ALCineLightRigModel::easyConeWidthFromBeam(light.mBeam);
+                    displayed["hero"] = blob.mHeroEnabled[index];
+                }
+                else
+                {
+                    displayed["gain"] = light.mRimGain;
+                    displayed["sharpness"] = light.mRimSharpness;
+                    displayed["wrap"] = light.mRimWrap;
+                    displayed["back_bias"] = light.mRimBackBias;
+                }
+                value["value"] = displayed;
             }
             return value;
         }
         return LLSD();
     }
 
+    // ui-draw-lint: allow-function(lookup) isolated test-only displayed-value observation
     bool functionalConsumerExpected(const LLSD& entry, const LLSD& value)
     {
         const std::string consumer = entry["consumer"].asString();
@@ -1533,8 +1715,62 @@ private:
             return expected.asBoolean() ? (static_cast<U32>(value.asInteger()) & bit) != 0
                                         : (static_cast<U32>(value.asInteger()) & bit) == 0;
         }
+        if (consumer.compare(0, 19, "selected_rig_light_") == 0)
+        {
+            LLUICtrl* control = mFunctionalControl.get();
+            return control && functionalEqual(
+                value, control->getValue(),
+                entry["widget_type"].asString() == "toggle" ? "Boolean" : "S32",
+                entry["increment"]);
+        }
         if (consumer == "selected_light_values" || consumer == "selected_rim_values")
-            return value["selected"].asInteger() == expected.asInteger() && value["value"].isDefined();
+        {
+            const S32 index = expected.asInteger();
+            if (value["selected"].asInteger() != index || !value["value"].isMap()) return false;
+            const ALCineLightRigParamBlob blob = ALCineLightRigParamBlob::fromSettings(
+                &ALCineLightRigManager::instance().selected());
+            if (index < 0 || index >= ALCineLightRigModel::LIGHT_COUNT) return false;
+            const auto& light = blob.mLights[index];
+            const LLSD& shown = value["value"];
+            static const char* const prefixes[] = { "key", "fill", "rim", "bg" };
+            const std::string prefix = prefixes[index];
+            if (consumer == "selected_light_values")
+            {
+                LLUICtrl* ev = mFunctionalPageRoot->findChild<LLUICtrl>(
+                    "cine_" + prefix + "_ev", true);
+                LLUICtrl* shaft = mFunctionalPageRoot->findChild<LLUICtrl>(
+                    "cine_" + prefix + "_shaft", true);
+                LLUICtrl* cone = mFunctionalPageRoot->findChild<LLUICtrl>(
+                    "cine_" + prefix + "_cone_width", true);
+                LLUICtrl* hero = mFunctionalPageRoot->findChild<LLUICtrl>(
+                    "cine_" + prefix + "_hero", true);
+                return ev && shaft && cone && hero && ev->isInVisibleChain() &&
+                       functionalEqual(ev->getValue(), light.mEV, "F32") &&
+                       shaft->getValue().asBoolean() == blob.mShaftEnabled[index] &&
+                       cone->getValue().asInteger() ==
+                           ALCineLightRigModel::easyConeWidthFromBeam(light.mBeam) &&
+                       hero->getValue().asBoolean() == blob.mHeroEnabled[index] &&
+                       functionalEqual(shown["ev"], light.mEV, "F32") &&
+                       shown["shaft"].asBoolean() == blob.mShaftEnabled[index] &&
+                       shown["cone_width"].asInteger() ==
+                           ALCineLightRigModel::easyConeWidthFromBeam(light.mBeam) &&
+                       shown["hero"].asBoolean() == blob.mHeroEnabled[index];
+            }
+            const std::string rim_prefix = "cine_rig_rim_" + prefix + "_";
+            LLUICtrl* gain = mFunctionalPageRoot->findChild<LLUICtrl>(rim_prefix + "gain", true);
+            LLUICtrl* sharpness = mFunctionalPageRoot->findChild<LLUICtrl>(rim_prefix + "sharpness", true);
+            LLUICtrl* wrap = mFunctionalPageRoot->findChild<LLUICtrl>(rim_prefix + "wrap", true);
+            LLUICtrl* bias = mFunctionalPageRoot->findChild<LLUICtrl>(rim_prefix + "back_bias", true);
+            return functionalEqual(shown["gain"], light.mRimGain, "F32") &&
+                   functionalEqual(shown["sharpness"], light.mRimSharpness, "F32") &&
+                   functionalEqual(shown["wrap"], light.mRimWrap, "F32") &&
+                   functionalEqual(shown["back_bias"], light.mRimBackBias, "F32") &&
+                   gain && sharpness && wrap && bias && gain->isInVisibleChain() &&
+                   functionalEqual(gain->getValue(), light.mRimGain, "F32") &&
+                   functionalEqual(sharpness->getValue(), light.mRimSharpness, "F32") &&
+                   functionalEqual(wrap->getValue(), light.mRimWrap, "F32") &&
+                   functionalEqual(bias->getValue(), light.mRimBackBias, "F32");
+        }
         return false;
     }
 
@@ -1584,6 +1820,130 @@ private:
         return page->findChild<LLUICtrl>(name, true);
     }
 
+    static std::string functionalRedirectFloater(const LLSD& entry)
+    {
+        const std::string xui = entry["xui_file"].asString();
+        if (xui.find("floater_ultimate_diopter.xml") != std::string::npos) return "ultimate_diopter";
+        if (xui.find("floater_cine_light_cues.xml") != std::string::npos) return "cine_light_cues";
+        if (xui.find("floater_gaze_cues.xml") != std::string::npos) return "gaze_cues";
+        if (xui.find("floater_lightbox_settings.xml") != std::string::npos) return "lightbox";
+        return {};
+    }
+
+    static std::string functionalLauncherName(const LLSD& entry)
+    {
+        const std::string page = entry["page"].asString();
+        if (page == "diopter_tab") return "card_diopter_open";
+        if (page == "gaze_cues_tab") return "card_gaze_cues_open";
+        if (page == "light_cues_tab") return "card_light_cues_open";
+        if (page == "actors_tab") return "card_actor_mask_open";
+        if (page == "practicals_tab") return "card_practicals_open";
+        if (page == "image_tab") return "card_image_open";
+        if (page == "atmosphere_tab") return "card_haze_open";
+        if (page == "shadows_probes_tab") return "card_shadows_probes_open";
+        if (page == "stylize_tab") return "card_rotoink_open";
+        if (page == "tron_tab") return "kc_open_launch";
+        return {};
+    }
+
+    // ui-draw-lint: allow-function(lookup) isolated test-only redirect target lookup
+    bool openFunctionalRedirect(const LLSD& entry, LLView*& page)
+    {
+        if (!functionalHazard(entry, "v2_launcher_redirect")) return true;
+        const std::string launcher_name = functionalLauncherName(entry);
+        const std::string floater_name = functionalRedirectFloater(entry);
+        LLUICtrl* launcher = launcher_name.empty() || !page ? nullptr :
+            page->findChild<LLUICtrl>(launcher_name, true);
+        if (!launcher || floater_name.empty()) return false;
+        revealFunctionalControl(launcher);
+        std::string reason;
+        if (!functionalReachable(launcher, reason) || !functionalPointerClick()) return false;
+        LLFloater* target = LLFloaterReg::findInstance(floater_name);
+        if (!target || !target->getVisible()) return false;
+        mFunctionalRedirectFloater = target->getHandle();
+        page = target;
+        revealFunctionalAncestors(page->findChildView(entry["widget_name"].asString(), true));
+        return true;
+    }
+
+    // ui-draw-lint: allow-function(setting,lookup) isolated test-only prerequisite setup
+    bool prepareFunctionalPrerequisite(const LLSD& entry, LLUICtrl* control)
+    {
+        bool ok = true;
+        const LLSD& prerequisites = entry["enabled_control"];
+        if (prerequisites.isArray())
+        {
+            for (LLSD::array_const_iterator it = prerequisites.beginArray();
+                 it != prerequisites.endArray(); ++it)
+            {
+                const std::string name = (*it).isMap() ?
+                    (*it)["setting"].asString() : it->asString();
+                const bool value = !(*it).isMap() || !(*it).has("value") ||
+                    (*it)["value"].asBoolean();
+                rememberFunctionalSetting(name);
+                ok = functionalSetControl(gSavedSettings.getControl(name).get(), value) && ok;
+            }
+        }
+        // XUI enabled_control bindings are live control variables.  Walking
+        // the tested control and every parent catches nested panel/card gates
+        // even when the generated manifest is stale.
+        for (LLView* view = control; view; view = view->getParent())
+        {
+            if (LLUICtrl* ui = dynamic_cast<LLUICtrl*>(view))
+            {
+                if (LLControlVariable* gate = ui->getEnabledControlVariable())
+                {
+                    rememberFunctionalSetting(gate->getName());
+                    ok = functionalSetControl(gate, true) && ok;
+                }
+            }
+        }
+        return ok;
+    }
+
+    static bool functionalSpinnerTextFits(LLUICtrl* control)
+    {
+        LLSpinCtrl* spinner = dynamic_cast<LLSpinCtrl*>(control);
+        if (!spinner || !spinner->getVisible()) return true;
+        LLLineEditor* editor = findFirstView<LLLineEditor>(spinner);
+        return editor && !editor->getText().empty() && editor->getRect().getWidth() > 0 &&
+               FunctionalLineEditorAccess::textRight(editor) >
+                   FunctionalLineEditorAccess::textLeft(editor);
+    }
+
+    static bool functionalFocusRing(LLView* view)
+    {
+        if (ALKitSwitch* sw = dynamic_cast<ALKitSwitch*>(view))
+            return sw->isFocusRingVisible();
+        if (LLButton* button = dynamic_cast<LLButton*>(view))
+            return button->isFocusRingVisible();
+        return false;
+    }
+
+    static bool functionalAnyFocusRing(LLView* view)
+    {
+        if (!view || !view->isInVisibleChain()) return false;
+        if (functionalFocusRing(view)) return true;
+        for (LLView* child : *view->getChildList())
+            if (functionalAnyFocusRing(child)) return true;
+        return false;
+    }
+
+    static LLUICtrl* functionalFirstKitControl(LLView* view)
+    {
+        if (!view || !view->isInVisibleChain()) return nullptr;
+        if (view->getEnabled())
+        {
+            if (ALKitSwitch* sw = dynamic_cast<ALKitSwitch*>(view)) return sw;
+            if (LLButton* button = dynamic_cast<LLButton*>(view))
+                for (LLView* parent = button->getParent(); parent; parent = parent->getParent())
+                    if (dynamic_cast<ALKitPage*>(parent)) return button;
+        }
+        for (LLView* child : *view->getChildList())
+            if (LLUICtrl* found = functionalFirstKitControl(child)) return found;
+        return nullptr;
+    }
+
     void addFunctionalResult(const LLSD& entry, const std::string& status,
                              const std::string& reason, const std::string& observed = {})
     {
@@ -1616,46 +1976,158 @@ private:
         const LLSD& entries = root["entries"];
         for (LLSD::array_const_iterator it = entries.beginArray(); it != entries.endArray(); ++it)
             if ((*it)["version"].asString() == version) mFunctionalEntries.push_back(*it);
+        if (!functionalLightIndexSelfTest())
+        {
+            LLSD failure;
+            failure["page"] = "selftest";
+            failure["widget_name"] = "functionalLightIndex";
+            failure["widget_type"] = "unit";
+            failure["exercise"] = "map 4 Rig + 4 Rim light suffixes";
+            addFunctionalResult(failure, "FAIL", "per-light suffix mapping unit check failed");
+        }
         return !mFunctionalEntries.empty();
+    }
+
+    void runFunctionalKeyboardAssertion()
+    {
+        mFunctionalGlobalAssertionsDone = true;
+        if (!mDirectorV2) return;
+        LLSD assertion;
+        assertion["page"] = "director";
+        assertion["widget_name"] = "keyboard_tab_focus";
+        assertion["widget_type"] = "focus";
+        assertion["exercise"] = "Tab";
+        LLFloater* director = mFloater.get();
+        LLUICtrl* first = director ? functionalFirstKitControl(director) : nullptr;
+        if (first) first->setFocus(true);
+        LLView* before = dynamic_cast<LLView*>(gFocusMgr.getKeyboardFocus());
+        if (director && before) director->handleKeyHere(KEY_TAB, MASK_NONE);
+        LLView* after = dynamic_cast<LLView*>(gFocusMgr.getKeyboardFocus());
+        const bool ring = director && before && after && after != before &&
+            functionalFocusRing(after) && !functionalFocusRing(before);
+        addFunctionalResult(assertion, ring ? "PASS" : "FAIL",
+            ring ? "Tab exposes a kit focus ring" :
+                              "Tab from a focused kit control did not move to the next kit focus ring");
+
+        LLSD masking;
+        masking["page"] = "director";
+        masking["widget_name"] = "masking_count_positive";
+        masking["widget_type"] = "gate";
+        masking["exercise"] = "in-world actor-only projector";
+        addFunctionalResult(masking, "SKIP",
+            "positive masking-count sub-check requires a logged-in avatar so the rig can create an actor-only projector; zero-count banner checks still run at login");
     }
 
     void prepareFunctionalRestore(const LLSD& entry)
     {
         mFunctionalRestore.clear();
-        auto remember = [this](const std::string& name)
-        {
-            if (name.empty() || mFunctionalRestore.count(name)) return;
-            if (LLControlVariable* control = gSavedSettings.getControl(name).get())
-                mFunctionalRestore[name] = {
-                    control->get(), control->getSaveValue(), control->hasUnsavedValue()
-                };
-        };
-        remember(entry["expect"]["setting"].asString());
-        remember(entry["setting"].asString());
+        rememberFunctionalSetting(entry["expect"]["setting"].asString());
+        rememberFunctionalSetting(entry["setting"].asString());
+        rememberFunctionalSetting("DirectorV2SelectedLight");
+        if (entry["page"].asString() == "weather_tab")
+            rememberFunctionalSetting("AlchemyWeatherEnabled");
         const LLSD& settings = entry["restore"]["snapshot_settings"];
         if (settings.isArray())
             for (LLSD::array_const_iterator it = settings.beginArray(); it != settings.endArray(); ++it)
-                remember(it->asString());
+                rememberFunctionalSetting(it->asString());
+        if (entry["probe"].asString() == "preset_strip" ||
+            !entry["provider"].asString().empty() || settings.isArray() ||
+            entry["snapshot_all"].asBoolean())
+        {
+            // Presets/providers are allowed to touch broad state.  Snapshot
+            // the entire control group at the entry boundary so order cannot
+            // leak into the next row.
+            SaveControls save(mFunctionalRestore);
+            gSavedSettings.applyToAll(&save);
+        }
+        if (entry["snapshot_rig"].asBoolean() ||
+            entry["page"].asString() == "cine_light_rig_tab" ||
+            entry["page"].asString() == "light_rim_tab")
+        {
+            mFunctionalRigRowSnapshot = ALCineLightRigManager::instance().sceneData();
+        }
     }
 
     // ui-draw-lint: allow-function(setting-write,raw-write) isolated test-only typed restore
     void restoreFunctionalAction()
     {
+        if (LLUICtrl* secondary = mFunctionalSecondaryControl.get();
+            secondary && mFunctionalSecondaryBefore.isDefined())
+        {
+            secondary->setValue(mFunctionalSecondaryBefore);
+            secondary->onCommit();
+        }
         if (LLUICtrl* control = mFunctionalControl.get();
-            control && mFunctionalControlBefore.isDefined())
-            control->setValue(mFunctionalControlBefore);
+            control && mFunctionalOriginalControlValue.isDefined())
+        {
+            if (!mFunctionalSetting &&
+                mFunctionalExercise == "toggle" &&
+                control->getValue().asBoolean() !=
+                    mFunctionalOriginalControlValue.asBoolean())
+            {
+                functionalPointerClick();
+            }
+            control->setValue(mFunctionalOriginalControlValue);
+        }
+        // Restore auto-Custom preset selectors before their owned settings,
+        // and keep every write under the materializing guard.  Otherwise an
+        // alphabetical restore of CineDiopter* edits a preset-owned value
+        // while the selector is non-Custom and snapshots the preset to disk.
+        ALScopedPresetMaterializing preset_guard;
+        static const char* const preset_selectors[] = {
+            "CineDiopterPreset", "CineDiopterKalPreset"
+        };
+        for (const char* name : preset_selectors)
+        {
+            const auto found = mFunctionalRestore.find(name);
+            if (found == mFunctionalRestore.end()) continue;
+            if (LLControlVariable* control = gSavedSettings.getControl(name).get())
+            {
+                control->setValue(found->second.mSaved, true); // ui-draw-lint: allow(setting-write) bounded functional selector restore
+                if (found->second.mUnsaved)
+                    control->setValue(found->second.mActive, false); // ui-draw-lint: allow(setting-write) bounded functional selector restore
+            }
+        }
         for (const auto& saved : mFunctionalRestore)
+        {
+            if (saved.first == "CineDiopterPreset" ||
+                saved.first == "CineDiopterKalPreset") continue;
             if (LLControlVariable* control = gSavedSettings.getControl(saved.first).get())
             {
                 control->setValue(saved.second.mSaved, true); // ui-draw-lint: allow(setting-write) bounded functional saved-value restore
                 if (saved.second.mUnsaved)
                     control->setValue(saved.second.mActive, false); // ui-draw-lint: allow(setting-write) bounded functional active-value restore
             }
+        }
+        if (mFunctionalRigRowSnapshot.isMap())
+            ALCineLightRigManager::instance().applySceneData(mFunctionalRigRowSnapshot);
+        if (gFloaterView && !mFunctionalFloatersBefore.empty())
+        {
+            std::set<LLFloater*> open;
+            functionalVisibleFloaters(gFloaterView, open);
+            for (LLFloater* floater : open)
+                if (!mFunctionalFloatersBefore.count(floater) && floater != mFloater.get())
+                    floater->closeFloater(false);
+        }
+        if (mFunctionalLauncherWasOpen)
+            if (LLFloater* floater = mFunctionalLauncherFloater.get())
+                floater->openFloater(floater->getKey());
         mFunctionalRestore.clear();
         mFunctionalControl = LLHandle<LLUICtrl>();
         mFunctionalSetting = nullptr;
         mFunctionalPageRoot = nullptr;
+        if (LLFloater* redirected = mFunctionalRedirectFloater.get())
+            redirected->closeFloater(false);
+        mFunctionalRedirectFloater = LLHandle<LLFloater>();
         mFunctionalControlBefore = LLSD();
+        mFunctionalOriginalControlValue = LLSD();
+        mFunctionalSecondaryControl = LLHandle<LLUICtrl>();
+        mFunctionalSecondaryBefore = LLSD();
+        mFunctionalRigRowSnapshot = LLSD();
+        mFunctionalLauncherFloater = LLHandle<LLFloater>();
+        mFunctionalLauncherWasOpen = false;
+        mFunctionalExercise.clear();
+        mFunctionalGatePrepared = false;
     }
 
     bool functionalReachable(LLUICtrl* control, std::string& reason)
@@ -1710,9 +2182,16 @@ private:
         ALKitPage* page = dynamic_cast<ALKitPage*>(mFunctionalPageRoot);
         if (!page) page = findFirstView<ALKitPage>(mFunctionalPageRoot);
         ALKitCard* card = nullptr;
+        ALKitRow* row = nullptr;
         for (LLView* parent = control->getParent(); parent; parent = parent->getParent())
+        {
+            if (!row) row = dynamic_cast<ALKitRow*>(parent);
             if ((card = dynamic_cast<ALKitCard*>(parent))) break;
-        if (page && card) page->revealCard(card, false);
+        }
+        // Card-level reveal is essential: it opens a collapsed body, the
+        // advanced "More" section, and the row's per-light option.
+        if (card && row) card->revealRow(row);
+        else if (page && card) page->revealCard(card, false);
         if (page && !control->isInVisibleChain())
         {
             for (S32 mode = 0; mode < page->modeCount(); ++mode)
@@ -1739,7 +2218,29 @@ private:
         const std::string exercise = entry["exercise"].asString();
         const LLSD& test = entry["test_value"];
         if (exercise == "toggle" || exercise == "click")
-            return functionalPointerClick();
+        {
+            if (!functionalPointerClick()) return false;
+            const std::string confirm = entry["confirm_notification"].asString();
+            if (!confirm.empty())
+            {
+                bool responded = false;
+                if (LLNotificationChannelPtr channel =
+                        LLNotifications::instance().getChannel("Visible"))
+                {
+                    channel->forEachNotification(
+                        [&responded, &confirm](LLNotificationPtr note)
+                        {
+                            if (!responded && note && note->getName() == confirm)
+                            {
+                                note->respondWithDefault();
+                                responded = true;
+                            }
+                        });
+                }
+                return responded;
+            }
+            return true;
+        }
         if (exercise == "select_item")
         {
             if (LLComboBox* combo = dynamic_cast<LLComboBox*>(control))
@@ -1765,6 +2266,14 @@ private:
                 return selected;
             }
         }
+        if (LLColorSwatchCtrl* swatch = dynamic_cast<LLColorSwatchCtrl*>(control))
+        {
+            // This is the picker commit path: publish the chosen colour via
+            // the swatch, without manufacturing a modal floater.
+            swatch->setValue(test);
+            swatch->onCommit();
+            return true;
+        }
         control->setValue(test);
         control->onCommit();
         return true;
@@ -1789,6 +2298,100 @@ private:
         return clicked;
     }
 
+    // ui-draw-lint: allow-function(setting,lookup) isolated test-only gate assertion
+    bool prepareFunctionalRimGate(const LLSD& entry)
+    {
+        const bool rim_gate = entry["consumer"].asString() == "rim_render_active";
+        const bool weather_gate = mDirectorV2 &&
+            entry["expect"]["setting"].asString() == "AlchemyWeatherEnabled";
+        if (!rim_gate && !weather_gate) return true;
+        if (!mFunctionalGatePrepared)
+        {
+            prepareFunctionalRestore(entry);
+            auto force = [this](const std::string& name, const LLSD& value)
+            {
+                LLControlVariable* setting = gSavedSettings.getControl(name).get();
+                if (!setting) return;
+                if (!mFunctionalRestore.count(name))
+                    mFunctionalRestore[name] = { setting->get(), setting->getSaveValue(),
+                                                 setting->hasUnsavedValue() };
+                setting->setValue(value, false); // ui-draw-lint: allow(setting-write) isolated Rim gate precondition
+            };
+            if (rim_gate)
+            {
+                if (!mFunctionalRigRowSnapshot.isMap())
+                    mFunctionalRigRowSnapshot = ALCineLightRigManager::instance().sceneData();
+                LLSD disabled = mFunctionalRigRowSnapshot;
+                LLSD& instances = disabled["instances"];
+                if (instances.isArray())
+                    for (LLSD::array_iterator it = instances.beginArray();
+                         it != instances.endArray(); ++it)
+                        (*it)["CineLightRigEnabled"] = false;
+                ALCineLightRigManager::instance().applySceneData(disabled);
+                force("CineRigRimEnabled", true);
+                force("CineRigRimMasterGain", 1.f);
+                functionalTickRig();
+                ALCineRigRim::isEnabled();
+            }
+            else
+                force("AlchemyWeatherEnabled", false);
+            mFunctionalPageRoot = functionalPage(entry);
+            mFunctionalGatePrepared = true;
+            return false; // allow a normal frame to update the page banner
+        }
+        ALKitPage* page = findFirstView<ALKitPage>(mFunctionalPageRoot);
+        const std::string prefix = rim_gate ? "light_rim" : "weather";
+        LLPanel* banner = page ? page->findChild<LLPanel>(prefix + "_gate_banner", true) : nullptr;
+        LLButton* turn_on = page ? page->findChild<LLButton>(prefix + "_gate_on", true) : nullptr;
+        const bool predicate_off = rim_gate ? !ALCineRigRim::isEnabled() :
+                                             !gSavedSettings.getBOOL("AlchemyWeatherEnabled");
+        if (!predicate_off || (mDirectorV2 && (!banner || !banner->getVisible() || !turn_on)))
+        {
+            addFunctionalResult(entry, "FAIL",
+                prefix + " gate precondition failed: banner/predicate disagree");
+            restoreFunctionalAction();
+            ++mFunctionalIndex;
+            return false;
+        }
+        LLUICtrl* enable_control = turn_on;
+        if (rim_gate && !mDirectorV2 && mFloater.get())
+            enable_control = mFloater.get()->findChild<LLUICtrl>("cine_enabled", true);
+        if (!enable_control)
+        {
+            addFunctionalResult(entry, "FAIL", prefix + " gate has no user-clickable master control");
+            restoreFunctionalAction();
+            ++mFunctionalIndex;
+            return false;
+        }
+        revealFunctionalControl(enable_control);
+        LLUICtrl* tested_control = mFunctionalControl.get();
+        mFunctionalControl = enable_control->getDerivedHandle<LLUICtrl>();
+        std::string reason;
+        const bool gate_clicked = functionalReachable(enable_control, reason) && functionalPointerClick();
+        mFunctionalControl = tested_control ? tested_control->getDerivedHandle<LLUICtrl>() : LLHandle<LLUICtrl>();
+        if (!gate_clicked)
+        {
+            addFunctionalResult(entry, "FAIL", prefix + " gate Turn on is not user-clickable");
+            restoreFunctionalAction();
+            ++mFunctionalIndex;
+            return false;
+        }
+        if (rim_gate) functionalTickRig();
+        const bool enabled = rim_gate ?
+            (gSavedSettings.getBOOL("CineLightRigEnabled") && ALCineRigRim::isEnabled()) :
+            gSavedSettings.getBOOL("AlchemyWeatherEnabled");
+        if (!enabled)
+        {
+            addFunctionalResult(entry, "FAIL",
+                prefix + " gate Turn on did not enable its master/render predicate");
+            restoreFunctionalAction();
+            ++mFunctionalIndex;
+            return false;
+        }
+        return true;
+    }
+
+    // ui-draw-lint: allow-function(lookup,raw-write,setting-write) isolated login-only functional pre-state
     void beginFunctionalEntry()
     {
         const LLSD& entry = mFunctionalEntries[mFunctionalIndex];
@@ -1811,7 +2414,8 @@ private:
         }
         const bool dangerous = functionalHazard(entry, "file_picker") ||
             functionalHazard(entry, "destructive") || functionalHazard(entry, "logout") ||
-            functionalHazard(entry, "delete");
+            functionalHazard(entry, "delete") || functionalHazard(entry, "rename") ||
+            functionalHazard(entry, "export_import") || functionalHazard(entry, "save_disk");
         if (dangerous)
         {
             const std::string reason = entry["reason"].asString();
@@ -1820,10 +2424,20 @@ private:
             ++mFunctionalIndex;
             return;
         }
-        prepareFunctionalRestore(entry);
+        if (!prepareFunctionalRimGate(entry)) return;
+        if (!mFunctionalGatePrepared) prepareFunctionalRestore(entry);
         prepareFunctionalSelector(entry);
         prepareFunctionalConsumerGate(entry);
         mFunctionalPageRoot = functionalPage(entry);
+        if (!openFunctionalRedirect(entry, mFunctionalPageRoot))
+        {
+            const std::string skip_reason = entry["skip_reason"].asString();
+            addFunctionalResult(entry, skip_reason.empty() ? "FAIL" : "SKIP",
+                skip_reason.empty() ? "launcher did not open its target floater/panel" : skip_reason);
+            restoreFunctionalAction();
+            ++mFunctionalIndex;
+            return;
+        }
         LLUICtrl* control = functionalControl(mFunctionalPageRoot, entry);
         if (action == "EXPECT_MISSING")
         {
@@ -1843,6 +2457,13 @@ private:
             return;
         }
         revealFunctionalControl(control);
+        if (!prepareFunctionalPrerequisite(entry, control))
+        {
+            addFunctionalResult(entry, "FAIL", "enabled_control prerequisite could not be established");
+            restoreFunctionalAction();
+            ++mFunctionalIndex;
+            return;
+        }
         std::string reachability;
         if (!functionalReachable(control, reachability))
         {
@@ -1854,6 +2475,8 @@ private:
             return;
         }
         mFunctionalControl = control->getDerivedHandle<LLUICtrl>();
+        mFunctionalOriginalControlValue = control->getValue();
+        mFunctionalExercise = entry["exercise"].asString();
         if (!prepareFunctionalAlternate(entry))
         {
             addFunctionalResult(entry, "FAIL", "selector alternate state was not reachable");
@@ -1868,14 +2491,78 @@ private:
             ++mFunctionalIndex;
             return;
         }
+        const std::string reset_widget = entry["reset_widget"].asString();
+        if (!reset_widget.empty())
+        {
+            LLUICtrl* target = mFunctionalPageRoot->findChild<LLUICtrl>(reset_widget, true);
+            if (!target)
+            {
+                addFunctionalResult(entry, "FAIL", "reset target control not found");
+                restoreFunctionalAction();
+                ++mFunctionalIndex;
+                return;
+            }
+            mFunctionalSecondaryControl = target->getDerivedHandle<LLUICtrl>();
+            mFunctionalSecondaryBefore = target->getValue();
+            target->setValue(entry["reset_pre_value"]);
+            target->onCommit();
+        }
+        if (entry["reset_prestate"].isMap())
+        {
+            for (LLSD::map_const_iterator it = entry["reset_prestate"].beginMap();
+                 it != entry["reset_prestate"].endMap(); ++it)
+            {
+                rememberFunctionalSetting(it->first);
+                if (LLControlVariable* setting = gSavedSettings.getControl(it->first).get())
+                    setting->setValue(it->second, false); // ui-draw-lint: allow(setting-write) reset-all pre-state
+            }
+        }
+        if (entry["consumer"].asString() == "selected_rig_light_cone_width" &&
+            functionalEqual(control->getValue(), entry["test_value"], "S32"))
+        {
+            control->setValue(entry["test_value"].asInteger() == 0 ? 1 : 0);
+            control->onCommit();
+        }
+        if (entry["exercise"].asString() == "toggle" &&
+            control->getValue().asBoolean() == entry["test_value"].asBoolean())
+        {
+            // Establish !target through the widget itself, then make the test
+            // click's expected value derive from that actual pre-state.
+            if (!functionalPointerClick() ||
+                control->getValue().asBoolean() == entry["test_value"].asBoolean())
+            {
+                addFunctionalResult(entry, "FAIL", "toggle pre-state could not be established through UI");
+                restoreFunctionalAction();
+                ++mFunctionalIndex;
+                return;
+            }
+            if (!functionalReachable(control, reachability))
+            {
+                addFunctionalResult(entry, "FAIL", reachability);
+                restoreFunctionalAction();
+                ++mFunctionalIndex;
+                return;
+            }
+        }
+        const std::string launcher_floater = entry["launcher_floater"].asString();
+        if (!launcher_floater.empty())
+        {
+            if (LLFloater* existing = LLFloaterReg::findInstance(launcher_floater))
+            {
+                mFunctionalLauncherFloater = existing->getHandle();
+                mFunctionalLauncherWasOpen = existing->getVisible();
+                if (mFunctionalLauncherWasOpen) existing->closeFloater(false);
+            }
+        }
         mFunctionalControlBefore = control->getValue();
-        if (LLUICtrl::commit_signal_t* signal = FunctionalControlAccess::commitSignal(control))
-            mFunctionalHadHandler = signal->num_slots() != 0;
-        else
-            mFunctionalHadHandler = false;
         const std::string& function_name = FunctionalControlAccess::functionName(control);
-        if (!function_name.empty() && !LLUICtrl::CommitCallbackRegistry::getValue(function_name))
-            mFunctionalHadHandler = false;
+        mFunctionalHandlerName.clear();
+        if (!function_name.empty() && LLUICtrl::CommitCallbackRegistry::getValue(function_name))
+            mFunctionalHandlerName = function_name;
+        else if (!entry["owner"].asString().empty())
+            mFunctionalHandlerName = entry["owner"].asString();
+        else if (!entry["expect"]["callback"].asString().empty())
+            mFunctionalHandlerName = entry["expect"]["callback"].asString();
         const std::string setting = entry["expect"]["setting"].asString();
         mFunctionalSetting = gSavedSettings.getControl(setting).get();
         mFunctionalBefore = mFunctionalSetting ? mFunctionalSetting->getValue() : LLSD();
@@ -1884,22 +2571,27 @@ private:
         mFunctionalVisibleBefore = before.str();
         mFunctionalConsumerBefore = functionalConsumerValue(entry);
         mFunctionalFloatersBefore.clear();
-        functionalVisibleFloaters(control->getRootView(), mFunctionalFloatersBefore);
+        functionalVisibleFloaters(gFloaterView ? static_cast<LLView*>(gFloaterView) :
+                                  control->getRootView(), mFunctionalFloatersBefore);
         mFunctionalActionWorked = exerciseFunctional(entry, control);
         mFunctionalPending = true;
     }
 
+    // ui-draw-lint: allow-function(setting,lookup) isolated test-only assertion
     void finishFunctionalEntry()
     {
         const LLSD& entry = mFunctionalEntries[mFunctionalIndex];
         LLUICtrl* control = mFunctionalControl.get();
-        const LLSD expected = entry["expect"]["value"];
+        LLSD expected = entry["expect"]["value"];
         const std::string type = entry["expect"]["type"].asString();
+        if (entry["exercise"].asString() == "toggle")
+            expected = !mFunctionalBefore.asBoolean();
         const LLSD actual = mFunctionalSetting ? mFunctionalSetting->getValue() : LLSD();
         const bool changed = mFunctionalSetting &&
             !functionalEqual(actual, mFunctionalBefore, type, entry["increment"]);
         bool observable = false;
         bool expected_ok = true;
+        std::string assertion_failure;
         if (entry["expect"].has("setting"))
         {
             expected_ok = mFunctionalSetting &&
@@ -1910,26 +2602,56 @@ private:
         {
             std::ostringstream after;
             functionalVisibleState(mFunctionalPageRoot, after, control);
-            // The control's pre-existing signal must contain an owner slot.
-            // The test never adds a slot, so an unbound control cannot pass
-            // merely because exerciseFunctional() invoked onCommit().
-            observable = mFunctionalHadHandler &&
-                (mFunctionalActionWorked || after.str() != mFunctionalVisibleBefore);
+            const bool owner_state_changed = after.str() != mFunctionalVisibleBefore;
+            // History/undo and the test's own call are deliberately ignored.
+            // A commit-only PASS requires a named registry/binder/provider
+            // owner and a side effect outside the exercised widget.
+            observable = !mFunctionalHandlerName.empty() && owner_state_changed;
         }
         const LLSD consumer_after = functionalConsumerValue(entry);
         if (entry["consumer"].isDefined())
         {
             observable = observable && consumer_after != mFunctionalConsumerBefore;
-            expected_ok = expected_ok && functionalConsumerExpected(entry, consumer_after);
+            const bool consumer_ok = functionalConsumerExpected(entry, consumer_after);
+            expected_ok = expected_ok && consumer_ok;
+            if (!consumer_ok)
+                assertion_failure = "engine consumer '" + entry["consumer"].asString() +
+                    "' did not match the exercised UI state";
         }
         if (entry["probe"].asString() == "selector_segment")
         {
             std::ostringstream after;
             functionalVisibleState(mFunctionalPageRoot, after, control);
             expected_ok = expected_ok && after.str() != mFunctionalVisibleBefore;
+            if (after.str() == mFunctionalVisibleBefore)
+                assertion_failure = "selector changed no displayed page values";
         }
-        const bool modal = functionalHazard(entry, "modal") ||
-            functionalHazard(entry, "opens_color_picker");
+        if (entry["probe"].asString() == "gaze_reset")
+        {
+            LLUICtrl* target = mFunctionalSecondaryControl.get();
+            const bool reset_ok = target && functionalEqual(
+                target->getValue(), entry["reset_value"],
+                entry["reset_type"].asString(), entry["increment"]);
+            observable = reset_ok;
+            expected_ok = expected_ok && reset_ok;
+            if (!reset_ok) assertion_failure = "reset did not restore the target control's default";
+        }
+        if (entry["reset_defaults"].isMap())
+        {
+            bool defaults_ok = true;
+            for (LLSD::map_const_iterator it = entry["reset_defaults"].beginMap();
+                 it != entry["reset_defaults"].endMap(); ++it)
+            {
+                LLControlVariable* setting = gSavedSettings.getControl(it->first).get();
+                defaults_ok = defaults_ok && setting && llsd_equals(setting->get(), it->second);
+            }
+            observable = defaults_ok;
+            expected_ok = expected_ok && defaults_ok;
+            if (!defaults_ok) assertion_failure = "Reset all left one or more settings away from defaults";
+        }
+        const bool modal = functionalHazard(entry, "modal") &&
+            !dynamic_cast<LLColorSwatchCtrl*>(control) &&
+            entry["probe"].asString() != "launcher";
         if (modal)
         {
             std::set<LLFloater*> after;
@@ -1946,23 +2668,90 @@ private:
             observable = opened;
             expected_ok = expected_ok && opened;
         }
+        if (entry["probe"].asString() == "launcher")
+        {
+            std::set<LLFloater*> after;
+            functionalVisibleFloaters(gFloaterView, after);
+            bool opened = false;
+            for (LLFloater* floater : after)
+                opened = opened || !mFunctionalFloatersBefore.count(floater);
+            observable = opened;
+            expected_ok = expected_ok && opened;
+            if (!opened) assertion_failure = "launcher did not open a floater";
+        }
         if (ALKitSwitch* sw = dynamic_cast<ALKitSwitch*>(control))
         {
             const bool setting_value = mFunctionalSetting
                 ? mFunctionalSetting->getValue().asBoolean() : control->getValue().asBoolean();
-            expected_ok = expected_ok && sw->isOn() == control->getValue().asBoolean() &&
+            bool switch_ok = sw->isOn() == control->getValue().asBoolean() &&
                 sw->isOn() == setting_value && !sw->isFocusRingVisible() && !sw->hasMouseCapture();
             if (LLButton* button = findFirstView<LLButton>(sw))
-                expected_ok = expected_ok && !button->isFocusRingVisible() && !button->hasMouseCapture();
+                switch_ok = switch_ok && !button->isFocusRingVisible() && !button->hasMouseCapture();
+            gFocusMgr.setKeyboardFocus(nullptr);
+            if (LLFloater* director = mFloater.get()) director->setFocus(true);
+            switch_ok = switch_ok && !sw->isFocusRingVisible();
+            expected_ok = expected_ok && switch_ok;
+            if (!switch_ok)
+                assertion_failure = "switch setting/drawn state, mouse capture, or pointer/refocus ring disagrees";
         }
         else if (LLButton* button = dynamic_cast<LLButton*>(control))
             expected_ok = expected_ok && !button->isFocusRingVisible() && !button->hasMouseCapture();
+        const bool spinner_fits = functionalSpinnerTextFits(control);
+        expected_ok = expected_ok && spinner_fits;
+        if (!spinner_fits)
+            assertion_failure = "spinner editor text is empty or its cached right edge does not fit";
+
+        if (mDirectorV2)
+        {
+            ALKitPage* page = findFirstView<ALKitPage>(mFunctionalPageRoot);
+            const std::string page_name = entry["page"].asString();
+            std::string prefix;
+            bool gate_expected = false;
+            if (page_name == "light_rim_tab")
+            {
+                prefix = "light_rim";
+                gate_expected = ALCineLightRigManager::instance().enabledMask() == 0;
+            }
+            else if (page_name == "weather_tab")
+            {
+                prefix = "weather";
+                gate_expected = !gSavedSettings.getBOOL("AlchemyWeatherEnabled");
+            }
+            else if (page_name == "atmosphere_tab" || page_name == "cine_light_rig_tab")
+            {
+                prefix = page_name == "atmosphere_tab" ? "atmosphere" : "cine_light_rig";
+                gate_expected = gPipeline.actorOnlyVolumetricLightCount() > 0;
+            }
+            if (page && !prefix.empty())
+            {
+                LLPanel* banner = page->findChild<LLPanel>(prefix + "_gate_banner", true);
+                const bool banner_ok = banner && banner->getVisible() == gate_expected;
+                expected_ok = expected_ok && banner_ok;
+                if (!banner_ok)
+                    assertion_failure = prefix + " banner visibility disagrees with its gate predicate";
+                if (banner &&
+                    (page_name == "atmosphere_tab" || page_name == "cine_light_rig_tab"))
+                {
+                    const U32 count = gPipeline.actorOnlyVolumetricLightCount();
+                    LLTextBox* text = banner->findChild<LLTextBox>(prefix + "_gate_text", true);
+                    const bool count_ok = (count == 0 && !banner->getVisible()) ||
+                        (count > 0 && banner->getVisible() && text &&
+                         text->getValue().asString().find(
+                             llformat("%u light(s)", count)) != std::string::npos);
+                    expected_ok = expected_ok && count_ok;
+                    if (!count_ok)
+                        assertion_failure = "masking banner count disagrees with actorOnlyVolumetricLightCount()";
+                }
+            }
+        }
         const std::string observed = "value=" + functionalValue(actual) +
-            "; consumer=" + functionalValue(consumer_after);
+            "; consumer=" + functionalValue(consumer_after) +
+            "; handler=" + mFunctionalHandlerName;
         std::string reason;
         if (!mFunctionalActionWorked) reason = "action could not be applied";
         else if (!observable) reason = "no observable effect";
-        else if (!expected_ok) reason = "observed value/state did not match manifest";
+        else if (!expected_ok) reason = assertion_failure.empty() ?
+            "observed value/state did not match manifest" : assertion_failure;
         const bool known_gap = entry["known_gap"].asBoolean();
         if (known_gap && reason.empty()) reason = "known gap remains marked UNWIRED";
         addFunctionalResult(entry, known_gap ? "KNOWN_GAP" :
@@ -1989,6 +2778,59 @@ private:
             << mFunctionalResults.size() << " rows to " << path << LL_ENDL;
     }
 
+    // ui-draw-lint: allow-function(setting) one-shot login-only safety snapshot
+    void captureFunctionalRigState()
+    {
+        mFunctionalRigSnapshot = ALCineLightRigManager::instance().sceneData();
+        if (LLControlVariable* shadows =
+                gSavedSettings.getControl("BDMergeMaxSpotShadows").get())
+        {
+            mFunctionalShadowSnapshot = {
+                shadows->get(), shadows->getSaveValue(), shadows->hasUnsavedValue()
+            };
+            mFunctionalHaveShadowSnapshot = true;
+        }
+    }
+
+    // Restore the manager cache before settings saving resumes.  Calling the
+    // real shutdown here is intentional: it exercises the later viewer-quit
+    // path while saves are suppressed and proves that it persists the same
+    // selected slot and all five original instance blobs.
+    // ui-draw-lint: allow-function(setting,setting-write) one-shot login-only exact safety restore
+    void restoreFunctionalRigState(bool report)
+    {
+        if (!mFunctionalRigSnapshot.isMap() || mFunctionalRigRestored) return;
+        mFunctionalRigRestored = true;
+        ALCineLightRigManager& manager = ALCineLightRigManager::instance();
+        manager.applySceneData(mFunctionalRigSnapshot);
+        manager.shutdown();
+        if (mFunctionalHaveShadowSnapshot)
+        {
+            if (LLControlVariable* shadows =
+                    gSavedSettings.getControl("BDMergeMaxSpotShadows").get())
+            {
+                shadows->setValue(mFunctionalShadowSnapshot.mSaved, true); // ui-draw-lint: allow(setting-write) exact self-test global restore
+                if (mFunctionalShadowSnapshot.mUnsaved)
+                    shadows->setValue(mFunctionalShadowSnapshot.mActive, false); // ui-draw-lint: allow(setting-write) exact self-test global restore
+            }
+        }
+        const LLSD persisted = gSavedSettings.getLLSD("CineLightRigInstances");
+        const bool exact = persisted["selected_slot"].asInteger() ==
+                mFunctionalRigSnapshot["selected_slot"].asInteger() &&
+            llsd_equals(persisted["instances"], mFunctionalRigSnapshot["instances"]);
+        if (report)
+        {
+            LLSD assertion;
+            assertion["page"] = "cine_light_rig_tab";
+            assertion["widget_name"] = "rig_shutdown_restore";
+            assertion["widget_type"] = "state";
+            assertion["exercise"] = "shutdown";
+            addFunctionalResult(assertion, exact ? "PASS" : "FAIL",
+                exact ? "shutdown persisted the original selected slot and all five rig slots" :
+                        "shutdown did not persist the original full rig-slot snapshot");
+        }
+    }
+
     bool functionalStep()
     {
         FrameSample ignored;
@@ -2005,6 +2847,7 @@ private:
                 addFunctionalResult(failure, "FAIL", "manifest missing, invalid, or empty");
                 mFunctionalIndex = mFunctionalEntries.size();
             }
+            captureFunctionalRigState();
             LLFloater* floater = LLFloaterReg::showInstance("director", LLSD(), false);
             if (floater) mFloater = floater->getHandle();
             else
@@ -2018,12 +2861,15 @@ private:
             return false;
         }
         if (mFunctionalPending) finishFunctionalEntry();
+        else if (!mFunctionalGlobalAssertionsDone) runFunctionalKeyboardAssertion();
         else if (mFunctionalIndex < mFunctionalEntries.size()) beginFunctionalEntry();
         else
         {
-            writeFunctionalResults();
             restoreFunctionalAction();
             restore();
+            restoreFunctionalRigState(true);
+            restoreFunctionalUserFiles();
+            writeFunctionalResults();
             sActive = false;
             sSuppressSettingsSave = false;
             LLAppViewer::instance()->requestQuit();
@@ -4890,6 +5736,8 @@ private:
     bool mFunctionalLoaded = false;
     bool mFunctionalPending = false;
     bool mFunctionalActionWorked = false;
+    bool mFunctionalGlobalAssertionsDone = false;
+    bool mFunctionalGatePrepared = false;
     std::string mFunctionalManifestPath;
     std::vector<LLSD> mFunctionalEntries;
     std::vector<FunctionalResult> mFunctionalResults;
@@ -4900,13 +5748,27 @@ private:
     S32 mFunctionalRootY = 0;
     LLHandle<LLUICtrl> mFunctionalControl;
     LLSD mFunctionalControlBefore;
-    bool mFunctionalHadHandler = false;
+    LLSD mFunctionalOriginalControlValue;
+    LLHandle<LLUICtrl> mFunctionalSecondaryControl;
+    LLSD mFunctionalSecondaryBefore;
+    std::string mFunctionalExercise;
+    std::string mFunctionalHandlerName;
     LLControlVariable* mFunctionalSetting = nullptr;
     LLSD mFunctionalBefore;
     LLSD mFunctionalConsumerBefore;
     std::string mFunctionalVisibleBefore;
     std::map<std::string, SavedControlState> mFunctionalRestore;
     std::set<LLFloater*> mFunctionalFloatersBefore;
+    LLHandle<LLFloater> mFunctionalRedirectFloater;
+    LLHandle<LLFloater> mFunctionalLauncherFloater;
+    bool mFunctionalLauncherWasOpen = false;
+    LLSD mFunctionalRigSnapshot;
+    LLSD mFunctionalRigRowSnapshot;
+    SavedControlState mFunctionalShadowSnapshot;
+    bool mFunctionalHaveShadowSnapshot = false;
+    bool mFunctionalRigRestored = false;
+    std::vector<FunctionalDiskSnapshot> mFunctionalUserFiles;
+    bool mFunctionalUserFilesRestored = false;
     std::vector<AuditSize> mAuditSizes;
     bool mCullOn = true;
     U32 mABPass = 0;

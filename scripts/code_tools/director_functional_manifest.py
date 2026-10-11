@@ -17,6 +17,7 @@ Outputs:
 Stdlib only. Run as:  python -I scripts/code_tools/director_functional_manifest.py
 """
 
+import argparse
 import collections
 import csv
 import hashlib
@@ -759,6 +760,12 @@ def synthetic_entries(xi, settings, csv_pairs, page_meta, presets, preset_writte
             add_toggle_setting("weather_tab", "", el.get("name") or "weather_enabled",
                                "AlchemyWeatherEnabled", "panel_weather_settings.xml",
                                "weather_master", version, "Cinematic weather master")
+        rain = xi.find_by_control("panel_weather_settings.xml", "AlchemyWeatherRainEnabled")
+        if rain is not None:
+            add_toggle_setting("weather_tab", "weather_rain_group",
+                               rain.get("name") or "weather_rain_enabled",
+                               "AlchemyWeatherRainEnabled", "panel_weather_settings.xml",
+                               "rain_gate", version, "Rain enabled")
     rr = xi.find("panel_cine_light_rig.xml", "cine_rig_rim_preset")
     if rr is not None and presets:
         default_master = settings.get(RIG_RIM_SENTINEL, {}).get("default")
@@ -879,6 +886,14 @@ def write_md(entries, meta, skip_rows, page_order, page_meta, synth):
 # ---------------------------------------------------------------- main
 
 def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--json-output", default=JSON_PATH,
+                        help="generated JSON path (default: checked-in manifest)")
+    parser.add_argument("--markdown-output", default=MD_PATH,
+                        help="generated Markdown path (default: checked-in report)")
+    args = parser.parse_args()
+    json_path = os.path.abspath(args.json_output)
+    markdown_path = os.path.abspath(args.markdown_output)
     rows = load_csv()
     settings = load_settings()
     xi = XuiIndex()
@@ -943,16 +958,17 @@ def main():
     }
     doc = {"meta": meta, "entries": entries}
 
-    os.makedirs(OUT_DIR, exist_ok=True)
-    with open(JSON_PATH, "w", encoding="utf-8", newline="\n") as f:
+    os.makedirs(os.path.dirname(json_path), exist_ok=True)
+    os.makedirs(os.path.dirname(markdown_path), exist_ok=True)
+    with open(json_path, "w", encoding="utf-8", newline="\n") as f:
         json.dump(doc, f, indent=1, ensure_ascii=True)
         f.write("\n")
-    with open(JSON_PATH, encoding="utf-8") as f:
+    with open(json_path, encoding="utf-8") as f:
         check = json.load(f)
     assert len(check["entries"]) == len(entries)
 
     md = write_md(entries, meta, skip_rows, page_order, page_meta, synth)
-    with open(MD_PATH, "w", encoding="utf-8", newline="\n") as f:
+    with open(markdown_path, "w", encoding="utf-8", newline="\n") as f:
         f.write(md)
 
     cnt = collections.Counter((e["version"], bucket(e)) for e in entries)
@@ -960,7 +976,7 @@ def main():
     for v in VERSIONS:
         print(v, {a: cnt[(v, a)] for a in ACTION_ORDER})
     print("warnings=%d" % len(xi.warnings))
-    print("wrote", rel(JSON_PATH), rel(MD_PATH))
+    print("wrote", rel(json_path), rel(markdown_path))
 
 
 if __name__ == "__main__":

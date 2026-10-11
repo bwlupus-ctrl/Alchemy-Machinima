@@ -58,12 +58,12 @@ void ALKitSwitch::draw()
 
     if (isFocusRingVisible())
     {
-        const LLColor4 c = ALKitStyle::color(ALKitStyle::ACCENT).get();
+        const LLColor4 c = ALKitStyle::color(ALKitStyle::TEXT).get() % .7f;
         gGL.color4fv(c.mV);
-        gl_line_2d(9, ALKitStyle::SWITCH_H, 25, ALKitStyle::SWITCH_H, c);
-        gl_line_2d(9, 0, 25, 0, c);
-        gl_arc_2d(9.f, 9.f, 9.f, 20, false, F_PI_BY_TWO, F_PI + F_PI_BY_TWO);
-        gl_arc_2d(25.f, 9.f, 9.f, 20, false, -F_PI_BY_TWO, F_PI_BY_TWO);
+        gl_line_2d(9, ALKitStyle::SWITCH_H + 2, 25, ALKitStyle::SWITCH_H + 2, c);
+        gl_line_2d(9, -2, 25, -2, c);
+        gl_arc_2d(9.f, 9.f, 11.f, 20, false, F_PI_BY_TWO, F_PI + F_PI_BY_TWO);
+        gl_arc_2d(25.f, 9.f, 11.f, 20, false, -F_PI_BY_TWO, F_PI_BY_TWO);
     }
 }
 

@@ -453,11 +453,13 @@ void LLButton::dirtyRect()
 
 bool LLButton::handleUnicodeCharHere(llwchar uni_char)
 {
-    showFocusRingFromKeyboard();
     bool handled = false;
     if(' ' == uni_char
         && !gKeyboard->getKeyRepeated(' '))
     {
+        if (hasFocus())
+            showFocusRingFromKeyboard();
+
         if (mIsToggle)
         {
             toggleState();
@@ -472,10 +474,12 @@ bool LLButton::handleUnicodeCharHere(llwchar uni_char)
 
 bool LLButton::handleKeyHere(KEY key, MASK mask )
 {
-    showFocusRingFromKeyboard();
     bool handled = false;
     if( mCommitOnReturn && KEY_RETURN == key && mask == MASK_NONE && !gKeyboard->getKeyRepeated(key))
     {
+        if (hasFocus())
+            showFocusRingFromKeyboard();
+
         if (mIsToggle)
         {
             toggleState();

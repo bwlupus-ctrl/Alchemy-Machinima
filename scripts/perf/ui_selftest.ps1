@@ -59,6 +59,92 @@ $python = 'C:\Program Files\NVIDIA Corporation\Nsight Systems 2026.1.3\host-wind
 if (-not (Test-Path -LiteralPath $python)) { $python = 'python' }
 $crashes = [System.Collections.Generic.List[object]]::new()
 
+function Get-DirectoryByteManifest([string]$Root) {
+  $result = @{}
+  if (-not (Test-Path -LiteralPath $Root -PathType Container)) { return $result }
+  $prefix = [System.IO.Path]::GetFullPath($Root).TrimEnd('\') + '\'
+  foreach ($file in @(Get-ChildItem -LiteralPath $Root -File -Recurse -Force)) {
+    $relative = $file.FullName.Substring($prefix.Length)
+    $result[$relative] = (Get-FileHash -LiteralPath $file.FullName -Algorithm SHA256).Hash
+  }
+  return $result
+}
+
+function New-FunctionalSettingsBackup {
+  $appRoot = [System.IO.Path]::GetFullPath((Join-Path $env:APPDATA 'AlchemyMachinima'))
+  $targets = [System.Collections.Generic.List[string]]::new()
+  $targets.Add((Join-Path $appRoot 'user_settings'))
+  if (Test-Path -LiteralPath $appRoot -PathType Container) {
+    foreach ($settingsFile in @(Get-ChildItem -LiteralPath $appRoot -File -Recurse -Force `
+        -Filter 'settings_per_account.xml' -ErrorAction SilentlyContinue)) {
+      $parent = $settingsFile.Directory.FullName
+      if ($targets -notcontains $parent) { $targets.Add($parent) }
+    }
+  }
+  $backupRoot = Join-Path ([System.IO.Path]::GetTempPath()) `
+    ('alchemy_functional_settings_' + [guid]::NewGuid().ToString('N'))
+  New-Item -ItemType Directory -Path $backupRoot | Out-Null
+  $records = [System.Collections.Generic.List[object]]::new()
+  for ($index = 0; $index -lt $targets.Count; ++$index) {
+    $target = [System.IO.Path]::GetFullPath($targets[$index])
+    $appPrefix = $appRoot.TrimEnd('\') + '\'
+    if (-not $target.StartsWith($appPrefix, [System.StringComparison]::OrdinalIgnoreCase)) {
+      throw "Refusing to back up settings path outside $appRoot`: $target"
+    }
+    $copy = Join-Path $backupRoot $index
+    $existed = Test-Path -LiteralPath $target -PathType Container
+    if ($existed) {
+      New-Item -ItemType Directory -Path $copy | Out-Null
+      Get-ChildItem -LiteralPath $target -Force | Copy-Item -Destination $copy -Recurse -Force
+    }
+    $records.Add([pscustomobject]@{
+      Target = $target; Copy = $copy; Existed = $existed
+      Manifest = $(if ($existed) { Get-DirectoryByteManifest $target } else { @{} })
+    })
+  }
+  return [pscustomobject]@{ Root = $backupRoot; AppRoot = $appRoot; Records = $records }
+}
+
+function Restore-FunctionalSettingsBackup($Backup) {
+  $differences = [System.Collections.Generic.List[string]]::new()
+  try {
+    $appPrefix = $Backup.AppRoot.TrimEnd('\') + '\'
+    foreach ($record in $Backup.Records) {
+      $target = [System.IO.Path]::GetFullPath($record.Target)
+      if (-not $target.StartsWith($appPrefix, [System.StringComparison]::OrdinalIgnoreCase) -or
+          $target -eq $Backup.AppRoot) {
+        throw "Refusing to restore unsafe settings path: $target"
+      }
+      if (Test-Path -LiteralPath $target) { Remove-Item -LiteralPath $target -Recurse -Force }
+      if ($record.Existed) {
+        New-Item -ItemType Directory -Path $target -Force | Out-Null
+        Get-ChildItem -LiteralPath $record.Copy -Force | Copy-Item -Destination $target -Recurse -Force
+      }
+      $actual = if ($record.Existed) { Get-DirectoryByteManifest $target } else { @{} }
+      $allNames = @($record.Manifest.Keys) + @($actual.Keys) | Sort-Object -Unique
+      foreach ($name in $allNames) {
+        if (-not $record.Manifest.ContainsKey($name)) { $differences.Add("created after restore: $target\$name") }
+        elseif (-not $actual.ContainsKey($name)) { $differences.Add("missing after restore: $target\$name") }
+        elseif ($record.Manifest[$name] -ne $actual[$name]) { $differences.Add("byte mismatch after restore: $target\$name") }
+      }
+      if (-not $record.Existed -and (Test-Path -LiteralPath $target)) {
+        $differences.Add("directory created after restore: $target")
+      }
+    }
+    if ($differences.Count) {
+      $differences | ForEach-Object { Write-Host $_ -ForegroundColor Red }
+      throw "Functional settings restore verification failed with $($differences.Count) difference(s)."
+    }
+    Write-Host "Functional settings restored and byte-verified ($($Backup.Records.Count) folder(s))."
+    # Only a verified restore may drop the backup; on any failure it stays for manual recovery.
+    Remove-Item -LiteralPath $Backup.Root -Recurse -Force -ErrorAction SilentlyContinue
+  } catch {
+    Write-Host "SETTINGS RESTORE FAILED. Backup kept at: $($Backup.Root)" -ForegroundColor Red
+    foreach ($record in $Backup.Records) { Write-Host "  $($record.Copy) -> $($record.Target)" -ForegroundColor Red }
+    throw
+  }
+}
+
 if ($Functional) {
   if ($Floaters -eq 'all') { $Floaters = 'director' }
   if ($Floaters -ne 'director') {
@@ -66,53 +152,78 @@ if ($Functional) {
     exit 2
   }
   $repoRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..\..'))
-  $manifestPath = Join-Path $repoRoot 'doc\director_kit\functional\functional_manifest.json'
   $functionalCsvPath = Join-Path $logsDir 'functional.csv'
-  if (-not (Test-Path -LiteralPath $manifestPath -PathType Leaf)) {
-    Write-Host "Functional manifest not found: $manifestPath" -ForegroundColor Red
+  $consumerPath = Join-Path $repoRoot 'doc\director_kit\functional\consumers.json'
+  if (-not (Test-Path -LiteralPath $consumerPath -PathType Leaf)) {
+    Write-Host "Functional consumer oracle not found: $consumerPath" -ForegroundColor Red
     exit 2
   }
   $stamp = Get-Date -Format 'yyyyMMdd_HHmmss'
   $runDir = Join-Path $repoRoot "doc\director_kit\run_functional_$stamp"
   New-Item -ItemType Directory -Path $runDir -Force | Out-Null
+  $generatedManifestPath = Join-Path $runDir 'manifest_generated.json'
+  $generatedMarkdownPath = Join-Path $runDir 'manifest_generated.md'
+  $manifestPath = Join-Path $runDir 'manifest_merged.json'
+  $generator = Join-Path $repoRoot 'scripts\code_tools\director_functional_manifest.py'
+  $report = Join-Path $PSScriptRoot 'functional_report.py'
+  & $python -I $generator --json-output $generatedManifestPath --markdown-output $generatedMarkdownPath
+  if ($LASTEXITCODE -ne 0) {
+    Write-Host 'Functional manifest coverage generation failed.' -ForegroundColor Red
+    exit 2
+  }
+  & $python -I $report --prepare-manifest $generatedManifestPath --prepared-output $manifestPath --repo-root $repoRoot
+  if ($LASTEXITCODE -ne 0) {
+    Write-Host 'Functional manifest R4 prerequisite enrichment failed.' -ForegroundColor Red
+    exit 2
+  }
   $destCsv = Join-Path $runDir 'functional.csv'
   $summaryPath = Join-Path $runDir 'summary.md'
   $versions = if ($Both) { @($false, $true) } else { @([bool]$DirectorV2) }
   $allRows = [System.Collections.Generic.List[object]]::new()
   foreach ($useV2 in $versions) {
-    Remove-Item -LiteralPath $functionalCsvPath -Force -ErrorAction SilentlyContinue
-    $request = '"functional|' + $manifestPath + '"'
-    $viewerArgs = @('--set', 'UIPerfSelfTest', $request,
-      '--set', 'UIPerfSelfTestFrames', 2,
-      '--set', 'UIPerfInventoryStress', 0,
-      '--set', 'UIPerfSelfTestAB', 'FALSE',
-      '--set', 'UILayoutAudit', 'FALSE',
-      '--set', 'DirectorUIV2', $(if ($useV2) { 'TRUE' } else { 'FALSE' }),
-      '--set', 'UIPerfDirectorV2', $(if ($useV2) { 'TRUE' } else { 'FALSE' }),
-      '--set', 'BackgroundYieldTime', 0)
-    $process = Start-Process -FilePath $Exe -ArgumentList $viewerArgs `
-      -WorkingDirectory (Split-Path -Parent $Exe) -PassThru
-    $null = $process.Handle
-    $startUtc = $process.StartTime.ToUniversalTime()
-    $deadline = [DateTime]::UtcNow.AddMinutes($TimeoutMin)
-    while (-not $process.HasExited -and [DateTime]::UtcNow -lt $deadline) {
-      Start-Sleep -Milliseconds 500
-      $process.Refresh()
+    $process = $null
+    $settingsBackup = New-FunctionalSettingsBackup
+    try {
+      Remove-Item -LiteralPath $functionalCsvPath -Force -ErrorAction SilentlyContinue
+      $request = '"functional|' + $manifestPath + '"'
+      $viewerArgs = @('--set', 'UIPerfSelfTest', $request,
+        '--set', 'UIPerfSelfTestFrames', 2,
+        '--set', 'UIPerfInventoryStress', 0,
+        '--set', 'UIPerfSelfTestAB', 'FALSE',
+        '--set', 'UILayoutAudit', 'FALSE',
+        '--set', 'DirectorUIV2', $(if ($useV2) { 'TRUE' } else { 'FALSE' }),
+        '--set', 'UIPerfDirectorV2', $(if ($useV2) { 'TRUE' } else { 'FALSE' }),
+        '--set', 'BackgroundYieldTime', 0)
+      $process = Start-Process -FilePath $Exe -ArgumentList $viewerArgs `
+        -WorkingDirectory (Split-Path -Parent $Exe) -PassThru
+      $null = $process.Handle
+      $startUtc = $process.StartTime.ToUniversalTime()
+      $deadline = [DateTime]::UtcNow.AddMinutes($TimeoutMin)
+      while (-not $process.HasExited -and [DateTime]::UtcNow -lt $deadline) {
+        Start-Sleep -Milliseconds 500
+        $process.Refresh()
+      }
+      if (-not $process.HasExited) {
+        Stop-Process -Id $process.Id -Force
+        Write-Host "Functional self-test timed out after $TimeoutMin minutes for $(if ($useV2) {'v2'} else {'v1'}); killed only PID $($process.Id)." -ForegroundColor Red
+        exit 2
+      }
+      $functionalCsv = Get-Item -LiteralPath $functionalCsvPath -ErrorAction SilentlyContinue
+      if (-not $functionalCsv -or $functionalCsv.LastWriteTimeUtc -lt $startUtc) {
+        Write-Host "Functional self-test exited $($process.ExitCode) without a fresh functional.csv." -ForegroundColor Red
+        exit 2
+      }
+      foreach ($row in @(Import-Csv -LiteralPath $functionalCsv.FullName)) { $allRows.Add($row) }
+    } finally {
+      # Ctrl+C or an error can leave the detached viewer running; stop it so it can't write after the restore.
+      if ($process -and -not $process.HasExited) {
+        Stop-Process -Id $process.Id -Force -ErrorAction SilentlyContinue
+        $process.WaitForExit(15000) | Out-Null
+      }
+      Restore-FunctionalSettingsBackup $settingsBackup
     }
-    if (-not $process.HasExited) {
-      Stop-Process -Id $process.Id -Force
-      Write-Host "Functional self-test timed out after $TimeoutMin minutes for $(if ($useV2) {'v2'} else {'v1'}); killed only PID $($process.Id)." -ForegroundColor Red
-      exit 2
-    }
-    $functionalCsv = Get-Item -LiteralPath $functionalCsvPath -ErrorAction SilentlyContinue
-    if (-not $functionalCsv -or $functionalCsv.LastWriteTimeUtc -lt $startUtc) {
-      Write-Host "Functional self-test exited $($process.ExitCode) without a fresh functional.csv." -ForegroundColor Red
-      exit 2
-    }
-    foreach ($row in @(Import-Csv -LiteralPath $functionalCsv.FullName)) { $allRows.Add($row) }
   }
   $allRows | Export-Csv -LiteralPath $destCsv -NoTypeInformation -Encoding utf8
-  $report = Join-Path $PSScriptRoot 'functional_report.py'
   & $python -I $report $destCsv -o $summaryPath
   $rows = @(Import-Csv -LiteralPath $destCsv)
   $failures = @($rows | Where-Object { $_.'PASS/FAIL/SKIP' -in @('FAIL', 'KNOWN_GAP') })

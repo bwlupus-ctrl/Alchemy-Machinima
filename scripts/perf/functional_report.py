@@ -5,12 +5,372 @@ from __future__ import annotations
 
 import argparse
 import csv
+import json
+import re
 from collections import Counter, defaultdict
 from pathlib import Path
+import xml.etree.ElementTree as ET
 
 
 KEY = ("page", "control", "kind", "action", "expected")
 FAIL_STATUSES = {"FAIL", "KNOWN_GAP"}
+
+
+def _llsd_pairs(element: ET.Element | None):
+    children = list(element) if element is not None else []
+    return [(children[i].text or "", children[i + 1])
+            for i in range(len(children) - 1) if children[i].tag == "key"]
+
+
+def _llsd_value(element: ET.Element):
+    text = (element.text or "").strip()
+    if element.tag == "boolean":
+        return text.lower() in {"1", "true"}
+    if element.tag == "integer":
+        return int(text)
+    if element.tag == "real":
+        return float(text)
+    if element.tag == "array":
+        return [_llsd_value(child) for child in element]
+    return text
+
+
+def load_setting_defaults(repo: Path) -> dict[str, object]:
+    result: dict[str, object] = {}
+    base = repo / "indra/newview/app_settings"
+    for name in ("settings.xml", "settings_alchemy.xml",
+                 "settings_per_account.xml", "settings_per_account_alchemy.xml"):
+        path = base / name
+        if not path.exists():
+            continue
+        root = ET.parse(path).getroot()
+        for setting, body in _llsd_pairs(root.find("map")):
+            fields = dict(_llsd_pairs(body if body.tag == "map" else None))
+            if setting not in result and "Value" in fields:
+                result[setting] = _llsd_value(fields["Value"])
+    return result
+
+
+def _function_body(text: str, qualified: str) -> str:
+    """Return a conservative C++ function body for a qualified method."""
+    match = re.search(r"\b" + re.escape(qualified) + r"\s*\([^;{}]*\)\s*(?:const\s*)?\{", text)
+    if not match:
+        return ""
+    start = text.find("{", match.start())
+    depth = 0
+    for pos in range(start, len(text)):
+        if text[pos] == "{":
+            depth += 1
+        elif text[pos] == "}":
+            depth -= 1
+            if depth == 0:
+                return text[start:pos + 1]
+    return ""
+
+
+def _handler_hazards(row: dict[str, object], cpp_text: str,
+                     body_cache: dict[str, str]) -> tuple[set[str], bool]:
+    """Resolve a button's installed callback and scan it fail-closed."""
+    owner = str(row.get("owner") or "")
+    widget = str(row.get("widget_name") or "")
+    bodies: list[str] = []
+    resolved = False
+    def body_for(name: str) -> str:
+        if name not in body_cache:
+            body_cache[name] = _function_body(cpp_text, name)
+        return body_cache[name]
+
+    owner_body = body_for(owner) if owner else ""
+    if owner_body and (not widget or f'"{widget}"' in owner_body):
+        at = owner_body.find(f'"{widget}"')
+        direct_start = owner_body.rfind("getChild", 0, at + 1)
+        window = owner_body[max(0, direct_start if direct_start >= 0 else at - 80):at + 500]
+        assignment_window = owner_body[max(0, at - 160):at + 120]
+        member_match = re.search(
+            r"([A-Za-z_]\w*)\s*=\s*getChild(?:<[^>]+>)?\s*\(\s*\"" +
+            re.escape(widget) + r"\"\s*\)", assignment_window)
+        if member_match:
+            callback_at = owner_body.find(member_match.group(1) + "->set", at)
+            if callback_at >= 0:
+                window = owner_body[callback_at:callback_at + 500]
+        handlers = set(re.findall(r"&([A-Za-z_]\w*::[A-Za-z_]\w*)", window))
+        owner_class = owner.split("::", 1)[0] if "::" in owner else ""
+        if owner_class:
+            handlers.update(owner_class + "::" + name for name in
+                            re.findall(r"\b(on[A-Z][A-Za-z0-9_]*)\s*\(", window))
+        if handlers:
+            resolved = True
+            for handler in handlers:
+                body = body_for(handler)
+                if body:
+                    bodies.append(body)
+        elif "setCommitCallback" in window or "setClickedCallback" in window:
+            # Inline lambdas still have their complete call text in this window.
+            resolved = True
+            bodies.append(window)
+    callback = str(row.get("callbacks") or "")
+    if callback:
+        body = body_for(callback)
+        if body:
+            resolved = True
+            bodies.append(body)
+
+    combined = "\n".join(bodies)
+    hazards: set[str] = set()
+    rules = {
+        "file_picker": r"\b(?:LLFilePicker|LLFilePickerReplyThread|LLFloaterFilePicker|getOpenFile|getSaveFile)\b",
+        "delete": r"\b(?:LLFile::remove|remove_all|DeleteFile|delete[A-Z]\w*|remove[A-Z]\w*)\b",
+        "rename": r"\b(?:LLFile::rename|std::filesystem::rename|rename[A-Z]\w*)\b",
+        "export_import": r"\b(?:export\w*|import\w*)\s*\(",
+        "save_disk": r"\b(?:llofstream|ofstream|save[A-Z]\w*|writePreset|write[A-Z]\w*File)\b",
+        "logout": r"\b(?:requestQuit|forceDisconnect|logout|disconnectFromGrid)\b",
+    }
+    for tag, pattern in rules.items():
+        if re.search(pattern, combined, re.I):
+            hazards.add(tag)
+    return hazards, resolved
+
+
+def _merge_required_consumers(document: dict[str, object], repo: Path) -> int:
+    oracle_path = repo / "doc/director_kit/functional/consumers.json"
+    oracle = json.loads(oracle_path.read_text(encoding="utf-8"))
+    rows = document["entries"]
+    by_key = {(r.get("version"), r.get("page"), r.get("widget_name")): r for r in rows}
+    missing: list[str] = []
+    for required in oracle.get("required", []):
+        key = (required["version"], required["page"], required["widget_name"])
+        row = by_key.get(key)
+        if row is None:
+            missing.append(":".join(key))
+            continue
+        row["consumer"] = required["consumer"]
+    merged_missing = [":".join((r["version"], r["page"], r["widget_name"]))
+                      for r in oracle.get("required", [])
+                      if by_key.get((r["version"], r["page"], r["widget_name"]), {}).get("consumer") != r["consumer"]]
+    if missing or merged_missing:
+        raise SystemExit("required consumer merge failed: " + ", ".join(sorted(set(missing + merged_missing))))
+    return len(oracle.get("required", []))
+
+
+def prepare_manifest(path: Path, repo: Path, output: Path) -> tuple[int, int, int, int]:
+    """Enrich the generated plan from XUI and owner refresh patterns.
+
+    This deliberately runs after director_functional_manifest.py: that script
+    remains the coverage oracle, while this pass records every enable-chain
+    prerequisite and the bounded R4 action probes.
+    """
+    document = json.loads(path.read_text(encoding="utf-8"))
+    rows = document["entries"]
+    required_consumers = _merge_required_consumers(document, repo)
+    defaults = load_setting_defaults(repo)
+    xui_cache: dict[Path, tuple[ET.Element, dict[ET.Element, ET.Element]]] = {}
+    cpp_sources = {p: p.read_text(encoding="utf-8", errors="replace")
+                   for p in (repo / "indra/newview").glob("*.cpp")}
+    cpp_text = "\n".join(cpp_sources.values())
+
+    owner_rules = (
+        (re.compile(r"^(Tron|tr_)", re.I), "TronEnabled"),
+        (re.compile(r"^(CineOutline|ri_)", re.I), "CineOutlineEnabled"),
+        (re.compile(r"^(CineHaze|ch_)", re.I), "CineHazeEnable"),
+        (re.compile(r"^(AlchemyWeather|weather_)", re.I), "AlchemyWeatherEnabled"),
+        (re.compile(r"^(CineRigRim|cine_rig_rim_)", re.I), "CineLightRigEnabled"),
+        (re.compile(r"^(CineLightRig|cine_)", re.I), "CineLightRigEnabled"),
+    )
+    unresolved: list[str] = []
+    unresolved_hazards: list[str] = []
+    hazard_rows = 0
+    body_cache: dict[str, str] = {}
+
+    gaze_targets = {
+        "eye_target": ("gaze_eye_target_combo", -1),
+        "intensity": ("gaze_intensity_slider", 1.0),
+        "blend": ("gaze_blend_slider", 0.7), "torso": ("gaze_torso_slider", 0.25),
+        "smoothing": ("gaze_smoothing_slider", 0.5),
+        "eyeline_yaw": ("gaze_eyeline_yaw_slider", 0.0),
+        "eyeline_pitch": ("gaze_eyeline_pitch_slider", 0.0),
+        "camera_roll": ("gaze_camera_roll_slider", defaults.get("DirectorGazeCameraRoll", 0.0)),
+        "ease_acquire": ("gaze_ease_acquire_spinner", defaults.get("DirectorGazeEaseAcquireSec", 0.2)),
+        "ease_release": ("gaze_ease_release_spinner", defaults.get("DirectorGazeEaseReleaseSec", 0.35)),
+        "deadzone": ("gaze_deadzone_spinner", defaults.get("BDMergeGazeDeadZone", 2.0)),
+        "priority": ("gaze_priority_combo", defaults.get("DirectorGazePriority", 2)),
+        "ik_lean": ("gaze_ik_lean_combo", -1),
+        "anim_priority": ("gaze_anim_priority_combo", defaults.get("DirectorGazeAnimationPriority", 3)),
+        "composition": ("gaze_composition_combo", defaults.get("DirectorGazeComposition", 0)),
+        "composition_mix": ("gaze_composition_mix_slider", defaults.get("DirectorGazeCompositionMix", 0.5)),
+        "chest_share": ("gaze_chest_share_slider", defaults.get("DirectorGazeChestShare", 0.5)),
+        "range_preset": ("gaze_range_preset_combo", -1),
+        "limit_mode": ("gaze_limit_mode_combo", defaults.get("DirectorGazeLimitMode", 0)),
+        "exaggerate": ("gaze_exaggerate_slider", defaults.get("DirectorGazeExaggerate", 1.0)),
+        "lean_curve": ("gaze_lean_curve_combo", defaults.get("DirectorGazeLeanCurve", 0)),
+        "lean_threshold": ("gaze_lean_threshold_spinner", defaults.get("DirectorGazeLeanThresholdDeg", 15.0)),
+        "lean_softness": ("gaze_lean_softness_spinner", defaults.get("DirectorGazeLeanSoftnessDeg", 10.0)),
+        "lean_max": ("gaze_lean_max_spinner", defaults.get("DirectorGazeLeanMaxDeg", 12.0)),
+        "limit_profile": ("gaze_limit_eye_yaw_spinner", 35.0),
+        "persona_dom": ("gaze_persona_dom_slider", 0.0),
+        "persona_aff": ("gaze_persona_aff_slider", 0.0),
+        "persona_anx": ("gaze_persona_anx_slider", 0.0),
+        "microlife": ("gaze_microlife_slider", defaults.get("DirectorGazeMicroLife", 0.5)),
+        "variation": ("gaze_variation_slider", defaults.get("DirectorGazeVariation", 0.2)),
+        "break_frequency": ("gaze_break_freq_slider", defaults.get("DirectorGazeBreakFrequency", 0.1)),
+    }
+    launchers = {
+        "btn_actor_gaze": "actor_gaze", "btn_pose_polish": "pose_polish",
+        "btn_gaze_cues": "gaze_cues", "polish_popout": "pose_polish",
+        "dance_popout": "dance_ball",
+        "light_response_popout": "avatar_light_response",
+        "btn_open_animexp": "animation_explorer",
+    }
+    reset_all = {
+        "weather_reset_all": ("AlchemyWeather", "AlchemyWeatherEnabled", "WeatherConfirmResetAll"),
+        "ri_reset_all": ("CineOutline", "CineOutlineEnabled", ""),
+        "tr_reset_all": ("Tron", "TronEnabled", ""),
+        "ch_reset_all": ("CineHaze", "CineHazeEnable", ""),
+    }
+
+    for row in rows:
+        prereqs: list[dict[str, object]] = []
+        seen: set[tuple[str, bool]] = set()
+        xui_name = row.get("xui_file", "")
+        xui_path = repo / xui_name if xui_name else None
+        element = None
+        if xui_path and xui_path.exists():
+            if xui_path not in xui_cache:
+                root = ET.parse(xui_path).getroot()
+                xui_cache[xui_path] = (root, {child: parent for parent in root.iter() for child in parent})
+            root, parents = xui_cache[xui_path]
+            element = next((e for e in root.iter() if e.get("name") == row.get("widget_name")), None)
+            current = element
+            while current is not None:
+                for attr, value in (("enabled_control", True), ("disabled_control", False),
+                                    ("enable_setting", True), ("master_setting", True)):
+                    setting = current.get(attr)
+                    if setting and setting != row.get("setting") and (setting, value) not in seen:
+                        prereqs.append({"setting": setting, "value": value,
+                                        "source": f"xui:{xui_path.name}:{attr}"})
+                        seen.add((setting, value))
+                current = parents.get(current)
+
+        widget = row.get("widget_name", "")
+        key = row.get("setting") or widget
+        for pattern, master in owner_rules:
+            if pattern.search(key) and master != row.get("setting") and (master, True) not in seen:
+                prereqs.append({"setting": master, "value": True, "source": "owner refresh family"})
+                seen.add((master, True))
+        light_gate = re.match(r"^CineLightRig(Key|Fill|Rim|Bg)(?!On$)", row.get("setting") or "")
+        if light_gate:
+            master = f"CineLightRig{light_gate.group(1)}On"
+            if (master, True) not in seen:
+                prereqs.append({"setting": master, "value": True,
+                                "source": "ALPanelCineLightRig per-light refresh gate"})
+                seen.add((master, True))
+        if widget == "weather_trigger" and ("AlchemyWeatherLightningEnabled", True) not in seen:
+            prereqs.append({"setting": "AlchemyWeatherLightningEnabled", "value": True,
+                            "source": "ALPanelWeatherSettings::updateDeferredAvailability"})
+            seen.add(("AlchemyWeatherLightningEnabled", True))
+        if row.get("consumer") == "rim_render_active" and ("CineLightRigEnabled", True) not in seen:
+            prereqs.append({"setting": "CineLightRigEnabled", "value": True,
+                            "source": "ALCineRigRim::isEnabled"})
+        row["enabled_control"] = prereqs
+
+        if widget.startswith("reset_gaze_"):
+            suffix = widget.removeprefix("reset_gaze_")
+            if suffix in gaze_targets:
+                target, value = gaze_targets[suffix]
+                row.update(action="RUN", reason="", known_gap=False, probe="gaze_reset",
+                           reset_widget=target, reset_value=value,
+                           reset_pre_value=(0 if value != 0 else 1),
+                           reset_type="S32" if isinstance(value, int) and not isinstance(value, bool) else "F32",
+                           owner="ALPanelLensGaze::postBuild")
+        if widget in launchers:
+            row.update(action="RUN", reason="", known_gap=False, probe="launcher",
+                       launcher_floater=launchers[widget],
+                       owner=row.get("owner") or "LLFloaterDirector::bindPage")
+        if widget == "am_reset_CineLightRigActorMaskBias":
+            value = defaults.get("CineLightRigActorMaskBias", -8.0)
+            row.update(action="RUN", reason="", known_gap=False,
+                       reset_widget="am_bias_slider", reset_value=value,
+                       reset_pre_value=value + 1.0, reset_type="F32",
+                       probe="gaze_reset", owner="LightBox.ResetControlDefault")
+        if widget == "db_on":
+            row.update(action="RUN", reason="", known_gap=False, exercise="toggle",
+                       owner="ALPanelDanceBall::postBuild")
+        if widget in reset_all:
+            prefix, master, notification = reset_all[widget]
+            group = {name: value for name, value in defaults.items() if name.startswith(prefix)}
+            row.update(action="RUN", reason="", known_gap=False, snapshot_all=True,
+                       reset_defaults=group, reset_prestate={master: not bool(defaults.get(master, False))},
+                       owner=row.get("owner") or "setting-only reset-all")
+            if notification:
+                row["confirm_notification"] = notification
+
+        multiwrite = (row.get("probe") == "preset_strip" or row.get("provider") or
+                      "preset" in widget.lower() or "apply_" in widget.lower() or
+                      widget in reset_all or row.get("probe") == "launcher")
+        if multiwrite:
+            row["snapshot_all"] = True
+            row["snapshot_rig"] = ("rig" in widget.lower() or row.get("page") in
+                                   {"cine_light_rig_tab", "light_rim_tab", "tron_tab"})
+
+        match = re.fullmatch(r"cine_(key|fill|rim|bg)_(shaft|hero|cone_width)", widget)
+        if match:
+            index = {"key": 0, "fill": 1, "rim": 2, "bg": 3}[match.group(1)]
+            field = match.group(2)
+            row.update(known_gap=False, owner="ALPanelCineLightRig::bindLightRigPage",
+                       consumer="selected_rig_light_" + field, rig_light_index=index,
+                       snapshot_rig=True)
+            row["expect"] = {"ui": "selected rig slot state changes in widget units"}
+
+        if row.get("action") == "DEFER_INWORLD" and row.get("reason") == \
+                "page acts on in-world actor/object/selection":
+            missing = "a logged-in avatar"
+            if row.get("page") in {"props_tab", "ghosts_tab", "actors_tab"}:
+                missing = "a logged-in object or actor selection"
+            elif row.get("page") in {"dance_tab", "animate_tab", "moves_tab"}:
+                missing = "a logged-in avatar and populated animation state"
+            row["reason"] = f"{widget}: requires {missing}"
+
+        # Record owner-controlled gates found close to a widget reference.
+        if not prereqs and widget:
+            pos = cpp_text.find(f'"{widget}"')
+            if pos >= 0:
+                window = cpp_text[max(0, pos - 800):pos + 1600]
+                if "setEnabled" in window:
+                    gates = re.findall(r'getBOOL\("([A-Za-z0-9_]+)"\)', window)
+                    for gate in gates:
+                        if gate != row.get("setting") and (gate, True) not in seen:
+                            prereqs.append({"setting": gate, "value": True,
+                                            "source": "C++ owner setEnabled/getBOOL"})
+                            seen.add((gate, True))
+                    if not gates:
+                        unresolved.append(f"{row['version']}:{row['page']}:{widget}: owner setEnabled has no literal setting")
+
+        if row.get("exercise") == "click" and row.get("widget_type") == "button":
+            hazards, handler_resolved = _handler_hazards(row, cpp_text, body_cache)
+            if hazards:
+                row["hazards"] = sorted(set(row.get("hazards", [])) | hazards)
+                hazard_rows += 1
+                if row.get("action") == "RUN":
+                    row["action"] = "SKIP"
+                    row["reason"] = "resolved handler hazard: " + ", ".join(sorted(hazards))
+                    row["known_gap"] = False
+            elif not handler_resolved and row.get("action") == "RUN":
+                row["action"] = "SKIP"
+                row["reason"] = "unresolved handler: hazard unknown"
+                row["known_gap"] = False
+                unresolved_hazards.append(f"{row['version']}:{row['page']}:{widget}")
+
+    document.setdefault("meta", {})["r4_enable_unresolved"] = sorted(set(unresolved))
+    document["meta"]["r4_enabled_control_rows"] = sum(bool(r["enabled_control"]) for r in rows)
+    document["meta"]["r5_required_consumers"] = required_consumers
+    document["meta"]["r5_total_consumers"] = sum(bool(r.get("consumer")) for r in rows)
+    document["meta"]["r5_hazard_skip_rows"] = hazard_rows
+    document["meta"]["r5_unresolved_handler_skips"] = sorted(set(unresolved_hazards))
+    if document["meta"]["r5_total_consumers"] < required_consumers:
+        raise SystemExit(f"consumer preflight failed: expected at least {required_consumers}, got {document['meta']['r5_total_consumers']}")
+    output.parent.mkdir(parents=True, exist_ok=True)
+    output.write_text(json.dumps(document, indent=1, ensure_ascii=True) + "\n", encoding="utf-8")
+    return (document["meta"]["r4_enabled_control_rows"], len(set(unresolved)),
+            document["meta"]["r5_total_consumers"], len(set(unresolved_hazards)))
 
 
 def csv_path(value: str) -> Path:
@@ -77,6 +437,14 @@ def render(rows: list[dict[str, str]], title: str) -> list[str]:
     total = Counter(row["PASS/FAIL/SKIP"] for row in rows)
     lines += ["", f"Total: {total['PASS']} PASS, {total['FAIL']} FAIL, "
              f"{total['KNOWN_GAP']} KNOWN_GAP (failing), {total['SKIP']} SKIP.", ""]
+    skip_reasons = Counter((row["ui_version"], row["reason"].strip()) for row in rows
+                           if row["PASS/FAIL/SKIP"] == "SKIP")
+    if skip_reasons:
+        lines += ["## Explicit skips", "", "| UI | Reason | Count |",
+                  "|---|---|---:|"]
+        for (version, reason), count in sorted(skip_reasons.items()):
+            lines.append(f"| {version} | {reason} | {count} |")
+        lines.append("")
     versions = sorted({row["ui_version"] for row in rows})
     if {"v1", "v2"}.issubset(versions):
         lines += compare([r for r in rows if r["ui_version"] == "v1"],
@@ -89,10 +457,28 @@ def render(rows: list[dict[str, str]], title: str) -> list[str]:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("left", help="functional.csv or its run directory")
+    parser.add_argument("left", nargs="?", help="functional.csv or its run directory")
     parser.add_argument("right", nargs="?", help="optional comparison CSV/run directory")
     parser.add_argument("-o", "--output", help="write Markdown here (default: stdout)")
+    parser.add_argument("--prepare-manifest", type=Path,
+                        help="enrich a generated functional manifest for the R4 runner")
+    parser.add_argument("--prepared-output", type=Path,
+                        help="write the merged manifest here; never modifies the input")
+    parser.add_argument("--repo-root", type=Path,
+                        help="repository root for --prepare-manifest")
     args = parser.parse_args()
+    if args.prepare_manifest:
+        if not args.repo_root:
+            parser.error("--prepare-manifest requires --repo-root")
+        if not args.prepared_output:
+            parser.error("--prepare-manifest requires --prepared-output")
+        enabled, unresolved, consumers, unknown = prepare_manifest(
+            args.prepare_manifest, args.repo_root, args.prepared_output)
+        print(f"R5 manifest: {enabled} prerequisite row(s), {unresolved} unresolved owner gate(s), "
+              f"{consumers} consumers, {unknown} unresolved-handler SKIP row(s)")
+        return 0
+    if not args.left:
+        parser.error("left is required unless --prepare-manifest is used")
     left = load(args.left)
     right = load(args.right) if args.right else []
     lines = render(left, csv_path(args.left).parent.name)
