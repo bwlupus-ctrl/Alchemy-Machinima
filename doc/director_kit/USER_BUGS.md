@@ -22,3 +22,6 @@ The user is using the client: log only, don't act until the next session.
 
 9. **CRITICAL: Weather can't be turned on; user: 'This entire UI has the look but nothing actually works.'** (v2, 9:13 PM build). Legacy pages hosted in v2 (e.g. World › Weather, panel_weather_settings.xml) appear not to be wired to their C++ owners (the v2 lazy build may instantiate legacy panels without the v1 binders/postBuild wiring), and kit pages don't commit (#4/#6/#7). Unknown yet: whether v1 (DirectorUIV2 off) is still fine. The 10/10 Haiku sweep changed only geometry (names/bindings verified identical) but MUST be confirmed functionally. ROOT PROCESS GAP: no functional test. NEXT SESSION FIRST: build a functional self-test (for every page in v1 and v2: toggle each checkbox/switch, pick a combo item, nudge each slider/spinner; assert the bound setting changed or the commit callback fired, then restore) and make it a build gate before any further styling.
 
+
+KNOWN-GOOD (user 10/10, 9:13 PM build): the standalone Cine Light Rig FLOATER works. So the v1 Light Rig panel/engine are fine, and the failures are in how v2 hosts/binds controls (kit pages + legacy pages inside v2). Use the standalone floater as the reference when diagnosing.
+
