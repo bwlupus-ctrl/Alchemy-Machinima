@@ -148,18 +148,41 @@ void prism_preview_policy_object::test<7>()
 template<> template<>
 void prism_preview_policy_object::test<8>()
 {
-    set_test_name("synthetic tail costs throttle, suspend, and recover");
+    set_test_name("tail suspension admits one timed runtime probe and recovers");
     PrismPreviewBudgetController budget;
     for (U32 frame = 1; frame <= 120; ++frame)
         budget.noteFrame(frame, frame / 60.0, 16.0, false);
+    budget.noteFrame(121, 121.0 / 60.0, 25.0, true);
+    for (U32 frame = 122; frame <= 140; ++frame)
+        budget.noteFrame(frame, frame / 60.0, 16.0, false);
+    ensure("one cold preview-frame hitch is not replayed on baseline frames",
+           !budget.throttled());
+    budget.complete(PrismPreviewBudgetController::EOperation::AUXILIARY,
+                    0.0, 4.5, 1.0, true);
+    ensure("the cold calibration sample does not throttle", !budget.throttled());
+    for (U32 warmup = 0; warmup < 6; ++warmup)
+        budget.complete(PrismPreviewBudgetController::EOperation::ATLAS,
+                        0.0, 0.02, 0.03, true);
     for (U32 violation = 0; violation < 4; ++violation)
         budget.complete(PrismPreviewBudgetController::EOperation::AUXILIARY,
                         0.0, 4.5, 1.0, true);
     ensure("repeated 0.5-fps tail failure suspends", budget.suspended());
-    for (U32 clean = 0; clean < 120; ++clean)
-        budget.complete(PrismPreviewBudgetController::EOperation::ATLAS,
-                        0.0, 0.02, 0.03, true);
-    ensure("120 clean samples resume at throttled rate",
+    F64 reservation = 0.0;
+    ensure("ordinary work is rejected while suspended",
+           !budget.reserve(PrismPreviewBudgetController::EOperation::ATLAS,
+                           reservation));
+    for (U32 frame = 141; frame <= 320; ++frame)
+        budget.noteFrame(frame, frame / 60.0, 16.0, false);
+    ensure("one probe is admitted after the suspension interval",
+           budget.reserve(PrismPreviewBudgetController::EOperation::ATLAS,
+                          reservation));
+    F64 second_reservation = 0.0;
+    ensure("a second probe cannot overlap the admitted probe",
+           !budget.reserve(PrismPreviewBudgetController::EOperation::ATLAS,
+                           second_reservation));
+    budget.complete(PrismPreviewBudgetController::EOperation::ATLAS,
+                    reservation, 0.02, 0.03, true);
+    ensure("a clean admitted probe resumes at the lowest rate",
            !budget.suspended() && budget.effectiveRate(5.f) <= 0.5f);
 }
 

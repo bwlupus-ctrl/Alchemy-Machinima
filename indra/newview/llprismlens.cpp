@@ -8252,23 +8252,14 @@ void renderAuxiliaryView()
     const U32 render_width = output_width;
     const U32 render_height = output_height;
     bool produced = false;
+    const auto render_scheduled_update = [&]() -> bool
     {
-        LL_PROFILE_ZONE_NAMED_CATEGORY_DISPLAY("Prism one scheduled auxiliary update");
-        LL_PROFILE_GPU_ZONE("Prism preview-only auxiliary update");
-        std::optional<LLPrismPreviewOperation> preview_budget;
-        if (preview_only)
-        {
-            preview_budget.emplace(
-                PrismPreviewBudgetController::EOperation::AUXILIARY,
-                scheduled_capture->mHandle);
-            if (!preview_budget->admitted()) return;
-        }
         ScopedActivePrismSlot active_slot(registry, slot);
         ScopedPrismRenderState scoped_state;
         if (!scoped_state.isValid())
         {
             registry.deferRetry(slot, 1);
-            return;
+            return false;
         }
         std::optional<ScopedPrismPreviewQuality> preview_quality;
         if (preview_only)
@@ -8284,7 +8275,7 @@ void renderAuxiliaryView()
         if (!scratch_ready)
         {
             registry.deferRetry(slot, 30);
-            return;
+            return false;
         }
         LLPipeline::sPrismLensRender = true;
         LLPipeline::sUseOcclusion = 0;
@@ -8293,14 +8284,14 @@ void renderAuxiliaryView()
         if (!scratch_rt)
         {
             registry.deferRetry(slot, 5);
-            return;
+            return false;
         }
         gPipeline.mRT = scratch_rt;
 
         const PrismInstance* capture = registry.capture(slot);
         if (!capture)
         {
-            return;
+            return false;
         }
         LLViewerCamera lens_camera = main_camera;
         glm::mat4 prism_projection;
@@ -8331,7 +8322,7 @@ void renderAuxiliaryView()
                     source->isAnimatedObject())
                 {
                     registry.deferRetry(slot, 5);
-                    return;
+                    return false;
                 }
                 rotation = source_object->getRenderRotation();
                 camera_eye = source_object->getRenderPosition() +
@@ -8345,7 +8336,7 @@ void renderAuxiliaryView()
                 right.normVec() <= F_ALMOST_ZERO)
             {
                 registry.deferRetry(slot, 5);
-                return;
+                return false;
             }
             up = right % forward;
             up.normVec();
@@ -8364,7 +8355,7 @@ void renderAuxiliaryView()
                 far_clip < near_clip + 0.1f)
             {
                 registry.deferRetry(slot, 5);
-                return;
+                return false;
             }
             lens_camera.setOrigin(camera_eye);
             lens_camera.setNear(near_clip);
@@ -8419,7 +8410,7 @@ void renderAuxiliaryView()
                 near_clip <= 0.f || far_clip <= near_clip)
             {
                 registry.deferRetry(slot, 5);
-                return;
+                return false;
             }
             const F32 left = glm::dot(vr, va) * near_clip / eye_distance;
             const F32 right = glm::dot(vr, vb) * near_clip / eye_distance;
@@ -8430,7 +8421,7 @@ void renderAuxiliaryView()
                 right <= left || top <= bottom)
             {
                 registry.deferRetry(slot, 5);
-                return;
+                return false;
             }
             F32 h_half = atanf(llmax(fabsf(left), fabsf(right)) / near_clip);
             F32 v_half = atanf(llmax(fabsf(bottom), fabsf(top)) / near_clip);
@@ -8483,7 +8474,7 @@ void renderAuxiliaryView()
             // Avoid starving the other retained lenses if VRAM allocation keeps
             // failing for this slot.
             registry.invalidateOutput(slot, 30);
-            return;
+            return false;
         }
 
         LLViewerCamera::instance() = lens_camera;
@@ -8511,7 +8502,7 @@ void renderAuxiliaryView()
         if (!scoped_state.activateClipUniforms())
         {
             registry.deferRetry(slot, 1);
-            return;
+            return false;
         }
 
         // Mark actual auxiliary work at the last responsible moment: camera,
@@ -8664,6 +8655,22 @@ void renderAuxiliaryView()
             render_width == output_width && render_height == output_height
                 ? GL_NEAREST : GL_LINEAR);
         produced = true;
+        return true;
+    };
+    if (preview_only)
+    {
+        LL_PROFILE_ZONE_NAMED_CATEGORY_DISPLAY("Prism preview-only auxiliary update");
+        LL_PROFILE_GPU_ZONE("Prism preview-only auxiliary update");
+        LLPrismPreviewOperation preview_budget(
+            PrismPreviewBudgetController::EOperation::AUXILIARY,
+            scheduled_capture->mHandle);
+        if (!preview_budget.admitted() || !render_scheduled_update()) return;
+    }
+    else
+    {
+        LL_PROFILE_ZONE_NAMED_CATEGORY_DISPLAY("Prism visible auxiliary update");
+        LL_PROFILE_GPU_ZONE("Prism visible auxiliary update");
+        if (!render_scheduled_update()) return;
     }
 
     // Publish only after the scoped camera/matrix/viewport/target/uniform

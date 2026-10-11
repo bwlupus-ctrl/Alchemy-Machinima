@@ -60,7 +60,8 @@ void PrismPreviewBudgetController::noteFrame(
         mBaselineFrames[mBaselineCursor++ % SAMPLE_COUNT] = frame_ms;
         mBaselineCount = llmin(mBaselineCount + 1, SAMPLE_COUNT);
     }
-    if (mBaselineCount >= 8 && mPreviewCount >= 8)
+    if (preview_work && mBaselineCount >= WARMUP_SAMPLES &&
+        mPreviewCount >= WARMUP_SAMPLES)
     {
         mStats.mFrameDeltaP95Ms =
             percentile95(mPreviewFrames, mPreviewCount) -
@@ -72,10 +73,16 @@ void PrismPreviewBudgetController::noteFrame(
 bool PrismPreviewBudgetController::reserve(EOperation operation,
                                             F64& reservation_ms)
 {
+    bool probe_reservation = false;
     if (mSuspended)
     {
-        ++mStats.mDeferrals;
-        return false;
+        if (!probeDue() || mProbeInFlight)
+        {
+            ++mStats.mDeferrals;
+            return false;
+        }
+        mProbeInFlight = true;
+        probe_reservation = true;
     }
     const F64 seed = operation == EOperation::AUXILIARY ? 1.5 : 0.05;
     F64 recent_max = 0.0;
@@ -96,6 +103,7 @@ bool PrismPreviewBudgetController::reserve(EOperation operation,
     }
     if (charged + mReservedMs + reservation_ms > allowance)
     {
+        if (probe_reservation) mProbeInFlight = false;
         ++mStats.mDeferrals;
         return false;
     }
@@ -107,7 +115,22 @@ void PrismPreviewBudgetController::tailViolation()
 {
     mCleanSamples = 0;
     if (mRateStep < 3) ++mRateStep;
-    else mSuspended = true;
+    else
+    {
+        mSuspended = true;
+        mProbeInFlight = false;
+        mSuspendedAt = mNow;
+    }
+}
+
+bool PrismPreviewBudgetController::probeDue() const
+{
+    return mSuspended && mNow - mSuspendedAt >= SUSPENSION_PROBE_SECONDS;
+}
+
+bool PrismPreviewBudgetController::canAttempt() const
+{
+    return !mSuspended || (probeDue() && !mProbeInFlight);
 }
 
 void PrismPreviewBudgetController::complete(
@@ -131,6 +154,27 @@ void PrismPreviewBudgetController::complete(
     }
     mStats.mChargedMs += charged;
     ++mStats.mOperations;
+    ++mStats.mCpuSamples;
+    mStats.mCpuMsByOperation[operation_index] += cpu_ms;
+    ++mStats.mOperationsByType[operation_index];
+    if (gpu_valid)
+    {
+        mStats.mGpuMsByOperation[operation_index] += gpu_ms;
+        ++mStats.mGpuSamplesByType[operation_index];
+    }
+    const U32 operation_sample =
+        mOperationSampleCursor[operation_index]++ % SAMPLE_COUNT;
+    mCpuOperationSamples[operation_index][operation_sample] = cpu_ms;
+    mGpuOperationSamples[operation_index][operation_sample] =
+        gpu_valid ? gpu_ms : 0.0;
+    mOperationSampleCount[operation_index] = llmin(
+        mOperationSampleCount[operation_index] + 1, SAMPLE_COUNT);
+    mStats.mCpuP95MsByOperation[operation_index] = percentile95(
+        mCpuOperationSamples[operation_index],
+        mOperationSampleCount[operation_index]);
+    mStats.mGpuP95MsByOperation[operation_index] = percentile95(
+        mGpuOperationSamples[operation_index],
+        mOperationSampleCount[operation_index]);
     mStats.mCpuP95Ms = percentile95(mCpuSamples, mSampleCount);
     mStats.mGpuP95Ms = percentile95(mGpuSamples, mSampleCount);
     mStats.mMaxOperationMs = llmax(mStats.mMaxOperationMs, charged);
@@ -147,10 +191,19 @@ void PrismPreviewBudgetController::complete(
             ++rolling_frames;
         }
     }
-    if (charged > LLPrismPreviewPolicy::MAX_OPERATION_MS ||
+    const bool violation = mSampleCount >= WARMUP_SAMPLES &&
+        (charged > LLPrismPreviewPolicy::MAX_OPERATION_MS ||
         (rolling_frames > 0 && rolling_charge / rolling_frames >
-            LLPrismPreviewPolicy::BUDGET_MS_PER_FRAME))
+            LLPrismPreviewPolicy::BUDGET_MS_PER_FRAME));
+    if (violation)
         tailViolation();
+    else if (mSuspended && mProbeInFlight)
+    {
+        mSuspended = false;
+        mProbeInFlight = false;
+        mRateStep = 3;
+        mCleanSamples = 0;
+    }
     else if (++mCleanSamples >= 120)
     {
         mCleanSamples = 0;
@@ -163,10 +216,10 @@ void PrismPreviewBudgetController::complete(
 
 F32 PrismPreviewBudgetController::effectiveRate(F32 requested) const
 {
-    if (mSuspended) return 0.f;
+    if (mSuspended) return probeDue() && !mProbeInFlight ? llmin(requested, 0.5f) : 0.f;
     static constexpr F32 steps[] = { 5.f, 2.f, 1.f, 0.5f };
     const F32 ceiling = steps[llmin(mRateStep, 3u)];
-    const F32 warming = mStats.mGpuSamples < 8 ? 0.5f : ceiling;
+    const F32 warming = mSampleCount < WARMUP_SAMPLES ? 0.5f : ceiling;
     return llmin(requested, warming);
 }
 
@@ -190,15 +243,28 @@ LLPrismPreviewOperation::~LLPrismPreviewOperation()
 
 bool LLPrismPreviewService::beginOperation(
     PrismPreviewBudgetController::EOperation operation,
-    const LLPrismLens::CaptureHandle&, F64& reservation_ms, S32& query_slot)
+    const LLPrismLens::CaptureHandle& capture, F64& reservation_ms, S32& query_slot)
 {
     pollQueries();
+    const U32 capture_slot = LLPrismLens::captureSlot(capture);
+    if (mSelfTestPhase == ESelfTestPhase::ENABLED &&
+        operation == PrismPreviewBudgetController::EOperation::AUXILIARY &&
+        capture_slot < mSelfTestRequested.size())
+    {
+        ++mSelfTestRequested[capture_slot];
+    }
     if (!mBudget.reserve(operation, reservation_ms))
     {
         markChanged();
         return false;
     }
     mLastPreviewWorkFrame = gFrameCount;
+    if (mSelfTestPhase == ESelfTestPhase::ENABLED &&
+        operation == PrismPreviewBudgetController::EOperation::AUXILIARY &&
+        capture_slot < mSelfTestAdmitted.size())
+    {
+        ++mSelfTestAdmitted[capture_slot];
+    }
     query_slot = -1;
     if (glQueryCounter)
     {
@@ -212,6 +278,7 @@ bool LLPrismPreviewService::beginOperation(
                 glGenQueries(1, &query.mEnd);
             }
             glQueryCounter(query.mStart, GL_TIMESTAMP);
+            query.mBudgetGeneration = mBudgetGeneration;
             query_slot = static_cast<S32>(i);
             break;
         }
@@ -238,7 +305,29 @@ void LLPrismPreviewService::endOperation(
     {
         mBudget.complete(operation, reservation_ms, cpu_ms, 0.0, false);
         if (mSelfTestPhase == ESelfTestPhase::ENABLED)
+        {
+            recordSelfTestOperation(operation, cpu_ms, 0.0, false);
             mSelfTestMaxOperationMs = llmax(mSelfTestMaxOperationMs, cpu_ms);
+        }
+    }
+}
+
+void LLPrismPreviewService::recordSelfTestOperation(
+    PrismPreviewBudgetController::EOperation operation,
+    F64 cpu_ms, F64 gpu_ms, bool gpu_valid)
+{
+    const U32 operation_index =
+        operation == PrismPreviewBudgetController::EOperation::AUXILIARY ? 0u : 1u;
+    U32& cpu_count = mSelfTestCpuSampleCount[operation_index];
+    mSelfTestCpuSamples[operation_index][
+        mSelfTestCpuSampleCursor[operation_index]++ % 128] = cpu_ms;
+    cpu_count = llmin(cpu_count + 1, 128u);
+    if (gpu_valid)
+    {
+        U32& gpu_count = mSelfTestGpuSampleCount[operation_index];
+        mSelfTestGpuSamples[operation_index][
+            mSelfTestGpuSampleCursor[operation_index]++ % 128] = gpu_ms;
+        gpu_count = llmin(gpu_count + 1, 128u);
     }
 }
 
@@ -256,11 +345,19 @@ void LLPrismPreviewService::pollQueries()
         glGetQueryObjectui64v(query.mEnd, GL_QUERY_RESULT, &end);
         const F64 gpu_ms = end >= start
             ? static_cast<F64>(end - start) / 1000000.0 : 0.0;
-        mBudget.complete(query.mOperation, query.mReservationMs,
-                         query.mCpuMs, gpu_ms, end >= start);
-        if (mSelfTestPhase == ESelfTestPhase::ENABLED)
+        if (query.mBudgetGeneration == mBudgetGeneration)
+        {
+            mBudget.complete(query.mOperation, query.mReservationMs,
+                             query.mCpuMs, gpu_ms, end >= start);
+        }
+        if (query.mBudgetGeneration == mBudgetGeneration &&
+            mSelfTestPhase == ESelfTestPhase::ENABLED)
+        {
+            recordSelfTestOperation(query.mOperation, query.mCpuMs,
+                                    gpu_ms, end >= start);
             mSelfTestMaxOperationMs = llmax(
                 mSelfTestMaxOperationMs, llmax(query.mCpuMs, gpu_ms));
+        }
         query.mPending = false;
     }
 }
@@ -271,7 +368,15 @@ void LLPrismPreviewService::runSelfTest(F32 seconds)
     mSelfTestPhase = ESelfTestPhase::BASELINE;
     mSelfTestPhaseStarted = LLTimer::getTotalSeconds();
     mSelfTestStartStats = mBudget.stats();
+    mSelfTestConfigurationRevision = LLPrismLens::configurationRevision();
+    mSelfTestVisibleEntitlement.fill(0.f);
+    mSelfTestRequested.fill(0);
+    mSelfTestAdmitted.fill(0);
     mSelfTestProduced.fill(0);
+    mSelfTestBaselineFrameCount = 0;
+    mSelfTestEnabledFrameCount = 0;
+    mSelfTestBaselineFrameCursor = 0;
+    mSelfTestEnabledFrameCursor = 0;
     LL_INFOS("VCamPreviewSelfTest") << "[VCamPreviewSelfTest] WARMING phase=baseline" << LL_ENDL;
 }
 
@@ -291,13 +396,20 @@ void LLPrismPreviewService::tickSelfTest()
         gSavedSettings, "PrismMonitorPreviewsEnabled", true);
     static LLCachedControl<F32> preview_fps(
         gSavedSettings, "PrismMonitorPreviewFPS", 1.f);
-    if (!previews_enabled || !anyVisibleConsumer() || demand_count != 8 ||
-        fabsf(static_cast<F32>(preview_fps) - 1.f) > 0.001f)
+    const char* missing = nullptr;
+    if (!previews_enabled) missing = "previews_disabled";
+    else if (!anyVisibleConsumer()) missing = "page_hidden";
+    else if (demand_count != 8) missing = "eight_valid_captures_required";
+    else if (fabsf(static_cast<F32>(preview_fps) - 1.f) > 0.001f)
+        missing = "preview_fps_not_one";
+    else if (LLPrismLens::configurationRevision() != mSelfTestConfigurationRevision)
+        missing = "configuration_changed";
+    if (missing)
     {
         LL_INFOS("VCamPreviewSelfTest")
             << "[VCamPreviewSelfTest] INCONCLUSIVE cpu_ms=0 gpu_ms=0 charged_ms=0 "
                "scratch_reacquire=0 p95_frame_delta_ms=0 max_op_ms=0 "
-               "cpu_coverage=0 gpu_coverage=0 entitlement=0 reason=prerequisites"
+               "cpu_coverage=0 gpu_coverage=0 reason=" << missing
             << LL_ENDL;
         mSelfTestPhase = ESelfTestPhase::IDLE;
         return;
@@ -308,46 +420,178 @@ void LLPrismPreviewService::tickSelfTest()
     {
         mSelfTestPhase = ESelfTestPhase::WARMING;
         mSelfTestPhaseStarted = now;
+        const LLPrismLens::RegistrySnapshot snapshot =
+            LLPrismLens::registrySnapshot();
+        for (const LLPrismLens::CaptureDefinition& capture : snapshot.mCaptures)
+        {
+            if (capture.mSlot < mSelfTestVisibleEntitlement.size() &&
+                !capture.mRuntime.mPreviewOnly)
+            {
+                mSelfTestVisibleEntitlement[capture.mSlot] =
+                    capture.mRuntime.mCadenceEntitlementHz;
+            }
+        }
     }
     if (mSelfTestPhase == ESelfTestPhase::WARMING &&
-        mBudget.stats().mGpuSamples >= mSelfTestStartStats.mGpuSamples + 8)
+        !mBudget.warming())
     {
         mSelfTestPhase = ESelfTestPhase::ENABLED;
         mSelfTestPhaseStarted = now;
         mSelfTestStartStats = mBudget.stats();
+        mSelfTestRequested.fill(0);
+        mSelfTestAdmitted.fill(0);
+        mSelfTestProduced.fill(0);
+        mSelfTestCpuSampleCount.fill(0);
+        mSelfTestGpuSampleCount.fill(0);
+        mSelfTestCpuSampleCursor.fill(0);
+        mSelfTestGpuSampleCursor.fill(0);
         mSelfTestMaxOperationMs = 0.0;
+    }
+    else if (mSelfTestPhase == ESelfTestPhase::WARMING &&
+             now - mSelfTestPhaseStarted >= 30.0)
+    {
+        LL_INFOS("VCamPreviewSelfTest")
+            << "[VCamPreviewSelfTest] INCONCLUSIVE cpu_coverage=0 gpu_coverage=0 reason="
+            << (mBudget.suspended() ? "budget_suspended" : "warmup_timeout_no_samples")
+            << LL_ENDL;
+        mSelfTestPhase = ESelfTestPhase::IDLE;
+        return;
     }
     if (mSelfTestPhase != ESelfTestPhase::ENABLED ||
         now - mSelfTestPhaseStarted < mSelfTestSeconds) return;
     const auto& stats = mBudget.stats();
     const U32 operations = stats.mOperations - mSelfTestStartStats.mOperations;
+    const U32 cpu_samples = stats.mCpuSamples - mSelfTestStartStats.mCpuSamples;
     const U32 gpu_samples = stats.mGpuSamples - mSelfTestStartStats.mGpuSamples;
     const U32 frames = stats.mPresentedFrames - mSelfTestStartStats.mPresentedFrames;
     const F64 cpu = stats.mCpuMs - mSelfTestStartStats.mCpuMs;
     const F64 gpu = stats.mGpuMs - mSelfTestStartStats.mGpuMs;
     const F64 charged = stats.mChargedMs - mSelfTestStartStats.mChargedMs;
     const F64 avg = frames ? charged / frames : 0.0;
-    bool covered = operations > 0 && gpu_samples * 100 >= operations * 95;
+    const F64 cpu_avg = frames ? cpu / frames : 0.0;
+    const F64 gpu_avg = frames ? gpu / frames : 0.0;
+    const auto self_test_frame_p95 = [](const std::array<F64, 512>& samples,
+                                        U32 count)
+    {
+        if (count == 0) return 0.0;
+        std::array<F64, 512> ordered = samples;
+        std::sort(ordered.begin(), ordered.begin() + count);
+        return ordered[llmin(count - 1,
+            static_cast<U32>(ceil(0.95 * count)) - 1)];
+    };
+    const F64 frame_delta_p95 = self_test_frame_p95(
+        mSelfTestEnabledFrames, mSelfTestEnabledFrameCount) -
+        self_test_frame_p95(mSelfTestBaselineFrames, mSelfTestBaselineFrameCount);
+    const bool frame_covered = mSelfTestBaselineFrameCount >= 8 &&
+        mSelfTestEnabledFrameCount >= 8;
+    const F64 cpu_coverage = operations
+        ? static_cast<F64>(cpu_samples) / operations : 0.0;
+    const F64 gpu_coverage = operations
+        ? static_cast<F64>(gpu_samples) / operations : 0.0;
+    const bool covered = operations > 0 && cpu_coverage >= 0.95 &&
+        gpu_coverage >= 0.95;
     bool serviced = true;
     for (U32 count : mSelfTestProduced) serviced = serviced && count > 0;
-    const bool pass = covered && serviced && avg <= 0.300 &&
-        stats.mFrameDeltaP95Ms <= 2.0 && mSelfTestMaxOperationMs <= 4.0 &&
-        stats.mScratchReacquisitions == mSelfTestStartStats.mScratchReacquisitions;
+    bool visible_entitlement_preserved = true;
+    F64 visible_entitlement_before = 0.0;
+    F64 visible_entitlement_after = 0.0;
+    for (F32 entitlement : mSelfTestVisibleEntitlement)
+        visible_entitlement_before += entitlement;
+    const LLPrismLens::RegistrySnapshot final_snapshot =
+        LLPrismLens::registrySnapshot();
+    for (const LLPrismLens::CaptureDefinition& capture : final_snapshot.mCaptures)
+    {
+        if (capture.mSlot < mSelfTestVisibleEntitlement.size() &&
+            mSelfTestVisibleEntitlement[capture.mSlot] > 0.f)
+        {
+            visible_entitlement_after += capture.mRuntime.mCadenceEntitlementHz;
+            if (capture.mRuntime.mCadenceEntitlementHz + 0.001f <
+                mSelfTestVisibleEntitlement[capture.mSlot])
+            {
+                visible_entitlement_preserved = false;
+            }
+        }
+    }
+    const bool bounds_pass = cpu_avg <= 0.300 && gpu_avg <= 0.300 &&
+        avg <= 0.300 && frame_delta_p95 <= 2.0 &&
+        mSelfTestMaxOperationMs <= 4.0 &&
+        stats.mScratchReacquisitions == mSelfTestStartStats.mScratchReacquisitions &&
+        visible_entitlement_preserved;
+    const bool pass = covered && frame_covered && serviced && bounds_pass;
+    const char* verdict = !bounds_pass || (covered && frame_covered && !serviced)
+        ? "FAIL" : (pass ? "PASS" : "INCONCLUSIVE");
+    const char* reason = pass || !bounds_pass ||
+        (covered && frame_covered && !serviced)
+        ? "none"
+        : (operations == 0 ? "no_preview_operations"
+           : (!frame_covered ? "presented_frame_coverage"
+           : (!glQueryCounter ? "gpu_timestamps_unavailable"
+              : "gpu_timestamp_coverage")));
+    const auto self_test_p95 = [](const std::array<F64, 128>& samples,
+                                  U32 count)
+    {
+        if (count == 0) return 0.0;
+        std::array<F64, 128> ordered = samples;
+        std::sort(ordered.begin(), ordered.begin() + count);
+        return ordered[llmin(count - 1,
+            static_cast<U32>(ceil(0.95 * count)) - 1)];
+    };
+    const F64 cpu_aux_p95 = self_test_p95(
+        mSelfTestCpuSamples[0], mSelfTestCpuSampleCount[0]);
+    const F64 gpu_aux_p95 = self_test_p95(
+        mSelfTestGpuSamples[0], mSelfTestGpuSampleCount[0]);
+    const F64 cpu_atlas_p95 = self_test_p95(
+        mSelfTestCpuSamples[1], mSelfTestCpuSampleCount[1]);
+    const F64 gpu_atlas_p95 = self_test_p95(
+        mSelfTestGpuSamples[1], mSelfTestGpuSampleCount[1]);
     LL_INFOS("VCamPreviewSelfTest") << "[VCamPreviewSelfTest] "
-        << (covered ? (pass ? "PASS" : "FAIL") : "INCONCLUSIVE")
+        << verdict
         << " cpu_ms=" << cpu << " gpu_ms=" << gpu
         << " charged_ms=" << charged << " avg_charged_ms_per_frame=" << avg
+        << " avg_cpu_ms_per_frame=" << cpu_avg
+        << " avg_gpu_ms_per_frame=" << gpu_avg
         << " scratch_reacquire="
         << (stats.mScratchReacquisitions - mSelfTestStartStats.mScratchReacquisitions)
-        << " p95_frame_delta_ms=" << stats.mFrameDeltaP95Ms
-        << " cpu_p95_ms=" << stats.mCpuP95Ms << " gpu_p95_ms=" << stats.mGpuP95Ms
+        << " p95_frame_delta_ms=" << frame_delta_p95
+        << " cpu_p95_ms=" << llmax(cpu_aux_p95, cpu_atlas_p95)
+        << " gpu_p95_ms=" << llmax(gpu_aux_p95, gpu_atlas_p95)
+        << " cpu_aux_p95_ms=" << cpu_aux_p95
+        << " gpu_aux_p95_ms=" << gpu_aux_p95
+        << " cpu_atlas_p95_ms=" << cpu_atlas_p95
+        << " gpu_atlas_p95_ms=" << gpu_atlas_p95
+        << " cpu_aux_ms="
+        << (stats.mCpuMsByOperation[0] - mSelfTestStartStats.mCpuMsByOperation[0])
+        << " gpu_aux_ms="
+        << (stats.mGpuMsByOperation[0] - mSelfTestStartStats.mGpuMsByOperation[0])
+        << " cpu_atlas_ms="
+        << (stats.mCpuMsByOperation[1] - mSelfTestStartStats.mCpuMsByOperation[1])
+        << " gpu_atlas_ms="
+        << (stats.mGpuMsByOperation[1] - mSelfTestStartStats.mGpuMsByOperation[1])
+        << " atlas_updates="
+        << (stats.mOperationsByType[1] - mSelfTestStartStats.mOperationsByType[1])
         << " max_op_ms=" << mSelfTestMaxOperationMs << " frames=" << frames
-        << " cpu_coverage=" << (operations ? 1.0 : 0.0)
-        << " gpu_coverage=" << (operations ? static_cast<F64>(gpu_samples) / operations : 0.0)
+        << " cpu_coverage=" << cpu_coverage
+        << " gpu_coverage=" << gpu_coverage
+        << " tracy_coverage=" << cpu_coverage
+        << " frame_coverage=" << (frame_covered ? 1 : 0)
+        << " timing_unavailable_operations=" << (operations - gpu_samples)
         << " coverage=" << (covered ? 1 : 0)
-        << " entitlement=" << mBudget.effectiveRate(1.f)
+        << " visible_entitlement_preserved=" << (visible_entitlement_preserved ? 1 : 0)
+        << " visible_entitlement_before_hz=" << visible_entitlement_before
+        << " visible_entitlement_after_hz=" << visible_entitlement_after
+        << " reason=" << reason
         << " deferred=" << (stats.mDeferrals - mSelfTestStartStats.mDeferrals)
-        << LL_ENDL;
+        << " duration_s=" << (now - mSelfTestPhaseStarted);
+    for (U32 slot = 0; slot < mSelfTestProduced.size(); ++slot)
+    {
+        LL_CONT << " c" << slot << "_requested=" << mSelfTestRequested[slot]
+                << " c" << slot << "_admitted=" << mSelfTestAdmitted[slot]
+                << " c" << slot << "_produced=" << mSelfTestProduced[slot]
+                << " c" << slot << "_achieved_fps="
+                << (now > mSelfTestPhaseStarted
+                    ? mSelfTestProduced[slot] / (now - mSelfTestPhaseStarted) : 0.0);
+    }
+    LL_CONT << LL_ENDL;
     mSelfTestPhase = ESelfTestPhase::IDLE;
 }
 
@@ -441,6 +685,8 @@ void LLPrismPreviewService::setConsumerVisible(VisibilityOwner owner, bool visib
         {
             if (entry.mVisible == visible) return;
             entry.mVisible = visible;
+            mBudget.reset();
+            ++mBudgetGeneration;
             markChanged();
             return;
         }
@@ -449,6 +695,8 @@ void LLPrismPreviewService::setConsumerVisible(VisibilityOwner owner, bool visib
     if (empty)
     {
         *empty = VisibilityEntry{ owner, visible };
+        mBudget.reset();
+        ++mBudgetGeneration;
         markChanged();
         return;
     }
@@ -464,6 +712,8 @@ void LLPrismPreviewService::releaseConsumer(VisibilityOwner owner)
         if (entry.mOwner == owner)
         {
             entry = VisibilityEntry{};
+            mBudget.reset();
+            ++mBudgetGeneration;
             markChanged();
             return;
         }
@@ -512,8 +762,9 @@ LLPrismPreviewService::TilePublication LLPrismPreviewService::tileState(
             if (!healthy) tile.mState = ETileState::OFFLINE;
             else if (!previews_enabled || activity == LLPrismLens::EActivityState::PAUSED)
                 tile.mState = ETileState::PAUSED;
+            else if (mBudget.warming()) tile.mState = ETileState::WARMING;
             else if (mBudget.throttled() ||
-                     activity == LLPrismLens::EActivityState::THROTTLED)
+                      activity == LLPrismLens::EActivityState::THROTTLED)
                 tile.mState = ETileState::THROTTLED;
             else if (entry.mPublicationSerial > tile.mPublicationSerial &&
                      tile.mState != ETileState::FAILED &&
@@ -547,13 +798,34 @@ bool LLPrismPreviewService::prepareFrame()
 {
     static LLCachedControl<bool> previews_enabled(
         gSavedSettings, "PrismMonitorPreviewsEnabled", true);
+    static LLCachedControl<F32> preview_fps(
+        gSavedSettings, "PrismMonitorPreviewFPS", 1.f);
     const bool enabled = previews_enabled;
+    const F32 configured_fps = preview_fps;
     tickSelfTest();
+    const F64 frame_ms = static_cast<F64>(gFrameIntervalSeconds) * 1000.0;
+    if (mSelfTestPhase == ESelfTestPhase::BASELINE)
+    {
+        mSelfTestBaselineFrames[mSelfTestBaselineFrameCursor++ % 512] = frame_ms;
+        mSelfTestBaselineFrameCount = llmin(mSelfTestBaselineFrameCount + 1, 512u);
+    }
+    else if (mSelfTestPhase == ESelfTestPhase::ENABLED)
+    {
+        mSelfTestEnabledFrames[mSelfTestEnabledFrameCursor++ % 512] = frame_ms;
+        mSelfTestEnabledFrameCount = llmin(mSelfTestEnabledFrameCount + 1, 512u);
+    }
+    if (enabled != mLastPreviewsEnabled ||
+        fabsf(configured_fps - mLastPreviewFps) > 0.001f)
+    {
+        mBudget.reset();
+        ++mBudgetGeneration;
+        mLastPreviewFps = configured_fps;
+    }
     if (enabled)
     {
         pollQueries();
         mBudget.noteFrame(gFrameCount, LLTimer::getTotalSeconds(),
-            static_cast<F64>(gFrameIntervalSeconds) * 1000.0,
+            frame_ms,
             mLastPreviewWorkFrame != std::numeric_limits<U32>::max() &&
                 mLastPreviewWorkFrame + 1 == gFrameCount);
     }
@@ -561,9 +833,8 @@ bool LLPrismPreviewService::prepareFrame()
     {
         mLastPreviewsEnabled = enabled;
         const F64 now = LLTimer::getTotalSeconds();
-        static LLCachedControl<F32> preview_fps(
-            gSavedSettings, "PrismMonitorPreviewFPS", 1.f);
-        const F64 next = now + 1.0 / llclamp(static_cast<F64>(preview_fps()), 0.5, 5.0);
+        const F64 next = now + 1.0 /
+            llclamp(static_cast<F64>(configured_fps), 0.5, 5.0);
         mNextAtlasDue.fill(next);
         if (!enabled)
         {
@@ -573,7 +844,7 @@ bool LLPrismPreviewService::prepareFrame()
         markChanged();
     }
     if (!enabled || !anyVisibleConsumer() || !anyDemand() ||
-        mSelfTestPhase == ESelfTestPhase::BASELINE || mBudget.suspended())
+        mSelfTestPhase == ESelfTestPhase::BASELINE || !mBudget.canAttempt())
     {
         return false;
     }
@@ -616,12 +887,22 @@ bool LLPrismPreviewService::isDemanded(
 }
 
 F32 LLPrismPreviewService::requestedHz(
-    const LLPrismLens::CaptureRateSettings& rate) const
+    const LLPrismLens::CaptureRateSettings& rate)
 {
     static LLCachedControl<F32> preview_fps(
         gSavedSettings, "PrismMonitorPreviewFPS", 1.f);
     const F32 requested = LLPrismPreviewPolicy::requestedHz(
         preview_fps, rate.mMode, rate.mTargetFps);
+    if (mBudget.warming())
+    {
+        if (mWarmupGrantFrame != gFrameCount)
+        {
+            mWarmupGrantFrame = gFrameCount;
+            mWarmupGrantUsed = false;
+        }
+        if (mWarmupGrantUsed) return 0.f;
+        mWarmupGrantUsed = true;
+    }
     return mBudget.effectiveRate(requested);
 }
 
@@ -651,7 +932,7 @@ bool LLPrismPreviewService::hasPendingAtlasUpdate() const
 {
     static LLCachedControl<bool> previews_enabled(
         gSavedSettings, "PrismMonitorPreviewsEnabled", true);
-    if (!previews_enabled || !anyVisibleConsumer() || mBudget.suspended()) return false;
+    if (!previews_enabled || !anyVisibleConsumer() || !mBudget.canAttempt()) return false;
     const F64 now = LLTimer::getTotalSeconds();
     for (U32 slot = 0; slot < mDemand.size(); ++slot)
     {
@@ -810,16 +1091,17 @@ void LLPrismPreviewService::updateAtlas()
     if (cell >= mDemand.size()) return;
 
     DemandEntry& entry = mDemand[cell];
+    static LLCachedControl<F32> preview_fps(
+        gSavedSettings, "PrismMonitorPreviewFPS", 1.f);
     LLPrismPreviewOperation budget_operation(
         PrismPreviewBudgetController::EOperation::ATLAS, entry.mCapture);
     if (!budget_operation.admitted())
     {
-        markChanged();
+        const F32 effective_fps = llmax(0.5f, mBudget.effectiveRate(preview_fps));
+        mNextAtlasDue[cell] = now + 1.0 / static_cast<F64>(effective_fps);
         return;
     }
     LL_PROFILE_GPU_ZONE("Prism preview atlas composite");
-    static LLCachedControl<F32> preview_fps(
-        gSavedSettings, "PrismMonitorPreviewFPS", 1.f);
     const F32 effective_fps = mBudget.effectiveRate(preview_fps);
     mNextAtlasDue[cell] = now +
         1.0 / llclamp(static_cast<F64>(effective_fps), 0.5, 5.0);
@@ -982,11 +1264,16 @@ void LLPrismPreviewService::onRenderTargetsReleased()
     mScratchWarmed = false;
     for (QueryEntry& query : mQueries)
     {
-        // The GL context owns deletion during target teardown. Forget names
-        // before the next context lazily allocates a fresh ring.
-        if (query.mPending)
+        if (query.mPending && query.mBudgetGeneration == mBudgetGeneration)
             mBudget.complete(query.mOperation, query.mReservationMs,
                              query.mCpuMs, 0.0, false);
+        if (gGLManager.mInited && glDeleteQueries)
+        {
+            if (query.mStart != 0) glDeleteQueries(1, &query.mStart);
+            if (query.mEnd != 0) glDeleteQueries(1, &query.mEnd);
+        }
+        // With no live context the old namespace is already gone; only then is
+        // forgetting the names correct.
         query = QueryEntry{};
     }
 }

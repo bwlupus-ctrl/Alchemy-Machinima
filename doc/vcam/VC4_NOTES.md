@@ -16,3 +16,12 @@
 
 - Per request, no configure, build, executable test, commit, fetch, or upstream operation was run.
 - Static verification: settings XML parse, symbol/call-site sweeps for removed identity/history APIs, `git diff --check`, and LF/trailing-whitespace checks.
+
+## Fix round
+
+- Tail enforcement now waits for eight calibration samples, evaluates frame-tail violations only when a new preview frame sample arrives, ignores cold warm-up for enforcement, and recovers suspension through one timed, budgeted probe at 0.5 fps. Visibility and preview-setting changes reset the controller.
+- Warm-up admits at most one 0.5 fps preview scheduling grant per frame, uses CPU samples when timestamp queries are unavailable, exposes `WARMING` tiles, and has an explicit 30-second timeout instead of hanging.
+- Self-test output identifies missing prerequisites, reports per-capture requested/admitted/produced counts and achieved fps, measures real CPU/GPU coverage, and gates PASS on the CPU-only, GPU-only, charged, tail, scratch, servicing, and visible-entitlement requirements.
+- Deferred atlas cells advance their deadlines without a duplicate revision notification. Atlas timing includes its compositor and `ScopedPreviewAtlasGL` restoration; the caller's outer `ScopedPrismRenderState` restoration is intentionally outside that operation measurement.
+- Timestamp-query names are deleted while the GL context is live and are only forgotten after true context loss. Visible and preview-only auxiliary renders now have distinct, accurately named Tracy CPU/GPU scopes.
+- Per request, this fix round did not configure, build, run executable tests, commit, fetch, or contact an upstream. Verification was static only.
