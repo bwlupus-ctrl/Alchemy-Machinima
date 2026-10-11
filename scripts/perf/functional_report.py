@@ -354,6 +354,57 @@ def prepare_manifest(path: Path, repo: Path, output: Path) -> tuple[int, int, in
             prereqs.append({"setting": "AlchemyWeatherLightningEnabled", "value": True,
                             "source": "ALPanelWeatherSettings::updateDeferredAvailability"})
             seen.add(("AlchemyWeatherLightningEnabled", True))
+
+        # Code-bound light-rig rows have live prerequisites/oracles that XUI
+        # control_name scanning cannot infer.
+        group_slots = {
+            "cine_group_self": 0, "cine_group_a": 1, "cine_group_b": 2,
+            "cine_group_c": 3, "cine_group_d": 4,
+        }
+        if row.get("page") == "cine_light_rig_tab" and widget in group_slots:
+            row["consumer"] = "rig_group_slots"
+            row["rig_group_index"] = group_slots[widget]
+        if row.get("page") == "cine_light_rig_tab" and widget in {
+                "cine_fixture_kelvin", "cine_fixture_source_size",
+                "cine_fixture_gel_0", "cine_fixture_gel_1", "cine_fixture_gel_2"}:
+            row["enable_widget"] = "cine_fixture_mode"
+
+        # Easy controls are callback-owned and deliberately inert outside Easy
+        # mode; advanced per-light controls are disabled while Easy is active.
+        if row.get("page") == "cine_light_rig_tab":
+            if widget.startswith("cine_easy_") and widget != "cine_easy_mode" and \
+                    ("CineLightRigEasyMode", True) not in seen:
+                prereqs.append({"setting": "CineLightRigEasyMode", "value": True,
+                                "source": "ALPanelCineLightRig::syncDerivedStatus easy controls"})
+                seen.add(("CineLightRigEasyMode", True))
+            elif re.match(r"^cine_(key|fill|rim|bg)_", widget) and \
+                    ("CineLightRigEasyMode", False) not in seen:
+                prereqs.append({"setting": "CineLightRigEasyMode", "value": False,
+                                "source": "ALPanelCineLightRig::syncDerivedStatus advanced controls"})
+                seen.add(("CineLightRigEasyMode", False))
+            if widget in {"cine_key_actor_only", "cine_fill_actor_only",
+                          "cine_rim_actor_only", "cine_bg_actor_only",
+                          "cine_catchlight_actor_only"} and \
+                    ("CineLightRigActorOnlyAll", False) not in seen:
+                prereqs.append({"setting": "CineLightRigActorOnlyAll", "value": False,
+                                "source": "ALPanelCineLightRig::syncActorOnlyControls"})
+                seen.add(("CineLightRigActorOnlyAll", False))
+            if widget == "cine_fill_ev" and ("CineLightRigRatioLock", False) not in seen:
+                prereqs.append({"setting": "CineLightRigRatioLock", "value": False,
+                                "source": "ALPanelCineLightRig::syncDerivedStatus fill EV gate"})
+                seen.add(("CineLightRigRatioLock", False))
+
+        # The who-picker's backing combo is intentionally hidden; the visible
+        # interaction is the cast rail/chip, covered by selector probes.
+        if row.get("page") == "cine_light_rig_tab" and widget == "cine_anchor":
+            row["action"] = "NO_EXERCISE"
+            row["reason"] = "hidden who-picker backing combo; visible cast rail is tested separately"
+        if row.get("page") == "cine_light_rig_tab" and widget == "cine_gobo_library":
+            row["action"] = "NO_EXERCISE"
+            row["reason"] = "login run has no inventory-backed gobo item; populated library requires in-world inventory"
+        if row.get("page") == "cine_light_rig_tab" and widget == "cine_night_mask_tint_color":
+            row["action"] = "NO_EXERCISE"
+            row["reason"] = "modal color-picker selection has no public non-modal harness API; open/close safety is covered"
         if row.get("consumer") == "rim_render_active" and ("CineLightRigEnabled", True) not in seen:
             prereqs.append({"setting": "CineLightRigEnabled", "value": True,
                             "source": "ALCineRigRim::isEnabled"})

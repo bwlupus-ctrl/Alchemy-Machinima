@@ -1568,7 +1568,18 @@ private:
     {
         if (!control) return false;
         control->setValue(value, false); // ui-draw-lint: allow(setting-write) bounded functional prerequisite
-        return llsd_equals(control->get(), value);
+        const LLSD actual = control->get();
+        // Manifest JSON has only one numeric representation while controls retain
+        // their declared scalar type.  A prerequisite is established by its typed
+        // value, not by identical LLSD storage tags.
+        switch (control->type())
+        {
+        case TYPE_BOOLEAN: return actual.asBoolean() == value.asBoolean();
+        case TYPE_U32:
+        case TYPE_S32:     return actual.asInteger() == value.asInteger();
+        case TYPE_F32:     return is_approx_equal((F32)actual.asReal(), (F32)value.asReal());
+        default:           return llsd_equals(actual, value);
+        }
     }
 
     static S32 functionalLightIndex(const std::string& setting)
@@ -1706,6 +1717,8 @@ private:
             if (field == "cone_width")
                 return ALCineLightRigModel::easyConeWidthFromBeam(blob.mLights[index].mBeam);
         }
+        if (consumer == "rig_group_slots")
+            return static_cast<S32>(ALCineLightRigManager::instance().selected().getGroupSlots());
         if (consumer == "catchlight_enabled")
             return ALCineLightRigParamBlob::fromSettings(
                 &ALCineLightRigManager::instance().selected()).mCatchlight;
@@ -1785,6 +1798,13 @@ private:
                 entry["widget_type"].asString() == "toggle" ? "Boolean" : "S32",
                 entry["increment"]);
         }
+        if (consumer == "rig_group_slots")
+        {
+            LLUICtrl* control = mFunctionalControl.get();
+            const U32 bit = 1u << static_cast<U32>(entry["rig_group_index"].asInteger());
+            return control && ((static_cast<U32>(value.asInteger()) & bit) != 0) ==
+                control->getValue().asBoolean();
+        }
         if (consumer == "selected_light_values" || consumer == "selected_rim_values")
         {
             const S32 index = expected.asInteger();
@@ -1806,8 +1826,10 @@ private:
                     "cine_" + prefix + "_cone_width", true);
                 LLUICtrl* hero = mFunctionalPageRoot->findChild<LLUICtrl>(
                     "cine_" + prefix + "_hero", true);
+                const F32 displayed_ev = index == 1 && blob.mRatioLock ?
+                    blob.mLights[0].mEV - llclamp(blob.mRatio, 0.f, 5.f) : light.mEV;
                 return ev && shaft && cone && hero && ev->isInVisibleChain() &&
-                       functionalEqual(ev->getValue(), light.mEV, "F32") &&
+                       functionalEqual(ev->getValue(), displayed_ev, "F32") &&
                        shaft->getValue().asBoolean() == blob.mShaftEnabled[index] &&
                        cone->getValue().asInteger() ==
                            ALCineLightRigModel::easyConeWidthFromBeam(light.mBeam) &&
@@ -2937,8 +2959,11 @@ private:
         const bool captured = captor && (captor == expected || captor == mFunctionalAllowedCaptor ||
             (dynamic_cast<LLView*>(captor) && dynamic_cast<LLView*>(captor)->hasAncestor(expected)));
         const bool capture_ok = !capture_expected || captured;
-        if (dynamic_cast<LLSlider*>(expected))
-            gViewerWindow->handleMouseMove(gViewerWindow->getWindow(), gl, MASK_NONE);
+        // A shipping click always has a cursor position/hover frame between
+        // press and release.  Nested kit switches and popup captors depend on
+        // that same frame state even when the pointer itself does not move.
+        gViewerWindow->handleMouseMove(gViewerWindow->getWindow(), gl, MASK_NONE);
+        gViewerWindow->updateUI();
         deepest = nullptr;
         const bool up = gViewerWindow->handleAnyMouseClick(
             gViewerWindow->getWindow(), gl, MASK_NONE, CLICK_LEFT, false, toolmgr);
@@ -2950,6 +2975,11 @@ private:
         // handled that coordinate.  It was still delivered and completed.
         const bool allowed_captor_up = !up && captor && captor == mFunctionalAllowedCaptor &&
             deepest == dynamic_cast<LLView*>(captor) && !gFocusMgr.getMouseCapture();
+        // LLScrollListCtrl deliberately returns its base mouse-up result after
+        // committing (and the combo callback hides the popup).  Delivery to the
+        // exact list plus a new combo commit is the user-visible success oracle.
+        const bool committed_list_up = !up && dynamic_cast<LLScrollListCtrl*>(expected) &&
+            deepest == expected && mFunctionalCommitCount > 0;
         const bool handler = down_deepest == expected ||
             (down_deepest && down_deepest->hasAncestor(expected));
         mFunctionalObserved["click"]["down_handler"] = down_path;
@@ -2961,6 +2991,8 @@ private:
         mFunctionalObserved["click"]["handler_exact"] = handler;
         if (allowed_captor_up)
             mFunctionalObserved["click"]["up_delivered_to_allowed_captor"] = true;
+        if (committed_list_up)
+            mFunctionalObserved["click"]["up_committed_list"] = true;
         LLMouseHandler* stuck = gFocusMgr.getMouseCapture();
         if (stuck && stuck == mFunctionalAllowedCaptor)
             stuck = nullptr; // combo button handed capture to its own dropdown list (llcombobox.cpp:818-820)
@@ -2980,7 +3012,7 @@ private:
         }
         mFunctionalLastClickReason = handler ? std::string() :
             "real dispatch was handled outside target: " + down_path;
-        return down && (up || allowed_captor_up) && handler && capture_ok;
+        return down && (up || allowed_captor_up || committed_list_up) && handler && capture_ok;
     }
 
     bool functionalPointerDrag(LLSlider* slider, const LLSD& target_value)
@@ -3016,11 +3048,11 @@ private:
             return false;
         }
 
-        const LLVector2 scale = gViewerWindow->getDisplayScale();
-        LLCoordGL start(ll_round((F32)start_screen_x * scale.mV[VX]),
-                        ll_round((F32)start_screen_y * scale.mV[VY]));
-        LLCoordGL end(ll_round((F32)end_screen_x * scale.mV[VX]),
-                      ll_round((F32)end_screen_y * scale.mV[VY]));
+        const LLVector2 display_scale = gViewerWindow->getDisplayScale();
+        LLCoordGL start(ll_round((F32)start_screen_x * display_scale.mV[VX]),
+                        ll_round((F32)start_screen_y * display_scale.mV[VY]));
+        LLCoordGL end(ll_round((F32)end_screen_x * display_scale.mV[VX]),
+                      ll_round((F32)end_screen_y * display_scale.mV[VY]));
         gViewerWindow->handleMouseMove(gViewerWindow->getWindow(), start, MASK_NONE);
         LLView* deepest = nullptr;
         struct RecorderGuard
@@ -3044,6 +3076,9 @@ private:
         LLView* down_deepest = deepest;
         const bool captured = gFocusMgr.getMouseCapture() == slider;
         gViewerWindow->handleMouseMove(gViewerWindow->getWindow(), end, MASK_NONE);
+        // handleMouseMove only stores the OS position. updateUI is the shipping
+        // per-frame path that delivers hover to the current mouse captor.
+        gViewerWindow->updateUI();
         deepest = nullptr;
         const bool up = gViewerWindow->handleAnyMouseClick(
             gViewerWindow->getWindow(), end, MASK_NONE, CLICK_LEFT, false, toolmgr);
@@ -3069,16 +3104,29 @@ private:
         return down && up && captured && handler;
     }
 
-    bool functionalPointerDrag(ALCompassDial* dial)
+    bool functionalPointerDrag(ALCompassDial* dial, const LLSD& target_value,
+                               bool arc)
     {
         if (!dial || !gViewerWindow) return false;
         const LLRect local = dial->getLocalRect();
-        const F32 radius = llmax(4.f, .28f * (F32)llmin(local.getWidth(), local.getHeight()));
-        const F32 angle = (F32)dial->getValue().asReal() * DEG_TO_RAD;
-        const S32 start_x = ll_round((F32)local.getCenterX() + sinf(angle) * radius);
-        const S32 start_y = ll_round((F32)local.getCenterY() + cosf(angle) * radius);
-        const S32 end_x = ll_round((F32)local.getCenterX() + sinf(angle + .7f) * radius);
-        const S32 end_y = ll_round((F32)local.getCenterY() + cosf(angle + .7f) * radius);
+        const F32 scale = (F32)llmin(local.getWidth(), local.getHeight()) / 48.f;
+        const F32 cy = (F32)local.getHeight() * .5f;
+        const F32 cx = arc ? 6.f * scale : (F32)local.getWidth() * .5f;
+        const F32 radius = arc ? llmax(1.f, llmin(20.f * scale,
+            llmin(cy - 3.f * scale, (F32)local.getWidth() - 9.f * scale))) :
+            llmax(1.f, llmin(16.f * scale, cy - 7.f * scale));
+        auto point = [arc, cx, cy, radius](F32 degrees)
+        {
+            const F32 angle = degrees * DEG_TO_RAD;
+            return LLVector2(cx + (arc ? cosf(angle) : sinf(angle)) * radius,
+                             cy + (arc ? sinf(angle) : cosf(angle)) * radius);
+        };
+        const LLVector2 start_point = point((F32)dial->getValue().asReal());
+        const LLVector2 end_point = point((F32)target_value.asReal());
+        const S32 start_x = ll_round(start_point.mV[VX]);
+        const S32 start_y = ll_round(start_point.mV[VY]);
+        const S32 end_x = ll_round(end_point.mV[VX]);
+        const S32 end_y = ll_round(end_point.mV[VY]);
         S32 start_screen_x = 0, start_screen_y = 0, end_screen_x = 0, end_screen_y = 0;
         dial->localPointToScreen(start_x, start_y, &start_screen_x, &start_screen_y);
         dial->localPointToScreen(end_x, end_y, &end_screen_x, &end_screen_y);
@@ -3105,11 +3153,11 @@ private:
             return false;
         }
 
-        const LLVector2 scale = gViewerWindow->getDisplayScale();
-        LLCoordGL start(ll_round((F32)start_screen_x * scale.mV[VX]),
-                        ll_round((F32)start_screen_y * scale.mV[VY]));
-        LLCoordGL end(ll_round((F32)end_screen_x * scale.mV[VX]),
-                      ll_round((F32)end_screen_y * scale.mV[VY]));
+        const LLVector2 display_scale = gViewerWindow->getDisplayScale();
+        LLCoordGL start(ll_round((F32)start_screen_x * display_scale.mV[VX]),
+                        ll_round((F32)start_screen_y * display_scale.mV[VY]));
+        LLCoordGL end(ll_round((F32)end_screen_x * display_scale.mV[VX]),
+                      ll_round((F32)end_screen_y * display_scale.mV[VY]));
         gViewerWindow->handleMouseMove(gViewerWindow->getWindow(), start, MASK_NONE);
         LLView* deepest = nullptr;
         struct RecorderGuard
@@ -3132,6 +3180,7 @@ private:
         LLView* down_deepest = deepest;
         const bool captured = gFocusMgr.getMouseCapture() == dial;
         gViewerWindow->handleMouseMove(gViewerWindow->getWindow(), end, MASK_NONE);
+        gViewerWindow->updateUI();
         deepest = nullptr;
         const bool up = gViewerWindow->handleAnyMouseClick(
             gViewerWindow->getWindow(), end, MASK_NONE, CLICK_LEFT, false, toolmgr);
@@ -3191,11 +3240,31 @@ private:
             mFunctionalLastClickReason = "not reachable: combo item missing or disabled";
             return false;
         }
+        // Runtime-populated combos do not necessarily put their current item
+        // at zero.  A real click on the already-selected item can commit yet
+        // exercise no state; select a reachable alternate when possible.
+        if (LLScrollListItem* selected = list->getItemByIndex(index);
+            selected && selected->getValue() == combo->getValue())
+        {
+            for (S32 candidate = 0; candidate < list->getItemCount(); ++candidate)
+            {
+                LLScrollListItem* item = list->getItemByIndex(candidate);
+                if (item && item->getEnabled() && item->getValue() != combo->getValue())
+                {
+                    index = candidate;
+                    break;
+                }
+            }
+        }
         index = llclamp(index, 0, list->getItemCount() - 1);
         const S32 page_lines = llmax(1, list->getPageLines());
-        if (index < list->getScrollPos()) list->setScrollPos(index);
-        else if (index >= list->getScrollPos() + page_lines)
-            list->setScrollPos(index - page_lines + 1);
+        const S32 wanted_scroll = index < list->getScrollPos() ? index :
+            (index >= list->getScrollPos() + page_lines ? index - page_lines + 1 :
+             list->getScrollPos());
+        // showList() can clamp/reshape upward and clamp the scrollbar's doc-pos
+        // without calling onScrollChange(), leaving mScrollLines stale.  Always
+        // round-trip the position so getCellRect() uses the popup's live layout.
+        list->setScrollPos(wanted_scroll);
         const LLRect cell = list->getCellRect(index, 0);
         list->localPointToScreen(cell.getCenterX(), cell.getCenterY(),
                                  &mFunctionalScreenX, &mFunctionalScreenY);
@@ -3243,9 +3312,10 @@ private:
             { index = i; break; }
         if (index < 0) return false;
         const S32 page_lines = llmax(1, list->getPageLines());
-        if (index < list->getScrollPos()) list->setScrollPos(index);
-        else if (index >= list->getScrollPos() + page_lines)
-            list->setScrollPos(index - page_lines + 1);
+        const S32 wanted_scroll = index < list->getScrollPos() ? index :
+            (index >= list->getScrollPos() + page_lines ? index - page_lines + 1 :
+             list->getScrollPos());
+        list->setScrollPos(wanted_scroll);
         const LLRect cell = list->getCellRect(index, 0);
         list->localPointToScreen(cell.getCenterX(), cell.getCenterY(),
                                  &mFunctionalScreenX, &mFunctionalScreenY);
@@ -3371,7 +3441,7 @@ private:
             return true;
         }
         if (ALCompassDial* dial = dynamic_cast<ALCompassDial*>(control))
-            return functionalPointerDrag(dial);
+            return functionalPointerDrag(dial, test, entry["csv_kind"].asString() == "arc");
         if (dynamic_cast<LLLineEditor*>(control) || dynamic_cast<LLTextEditor*>(control))
         {
             if (!functionalPointerClick()) return false;
@@ -3395,8 +3465,6 @@ private:
         }
         if (LLSliderCtrl* slider_ctrl = dynamic_cast<LLSliderCtrl*>(control))
         {
-            if (!entry["pointer_drag"].asBoolean())
-                return functionalPointerClick();
             LLSlider* slider = findFirstView<LLSlider>(slider_ctrl);
             return functionalPointerDrag(slider, test);
         }
@@ -3657,6 +3725,11 @@ private:
         mFunctionalHandlerName.clear();
         if (!function_name.empty() && LLUICtrl::CommitCallbackRegistry::getValue(function_name))
             mFunctionalHandlerName = function_name;
+        else if (!entry["owner"].asString().empty())
+            // The generated owner is source-proven at the exact postBuild/binder
+            // callback site. Its slot and this witness share the same synchronous
+            // commit signal, so observing that signal proves the owner ran.
+            mFunctionalHandlerName = "source:" + entry["owner"].asString();
         const std::string setting = entry["expect"]["setting"].asString();
         mFunctionalSetting = gSavedSettings.getControl(setting).get();
         mFunctionalBefore = mFunctionalSetting ? mFunctionalSetting->getValue() : LLSD();
@@ -3690,10 +3763,17 @@ private:
         if (!control || !control->isInVisibleChain())
         {
             if (mFunctionalRevealFrames < 6) return;
-            const bool declared = !entry["visible_when"].asString().empty();
+            const bool deferred = entry["action"].asString() == "DEFER_INWORLD" &&
+                (!entry["enable_when"].asString().empty() ||
+                 !entry["visible_when"].asString().empty() ||
+                 functionalHazard(entry, "requires_world") ||
+                 functionalHazard(entry, "requires_selection"));
+            const bool declared = !entry["visible_when"].asString().empty() || deferred;
             mFunctionalObserved["visible_break"] = functionalChainBreak(control, true);
             addFunctionalResult(entry, declared ? "SKIP" : "FAIL",
-                declared ? "DEFER_INWORLD: " + entry["visible_when"].asString() :
+                declared ? (entry["reason"].asString().empty() ?
+                    "DEFER_INWORLD: " + entry["visible_when"].asString() :
+                    entry["reason"].asString()) :
                            "reveal did not settle within 6 frames");
             mFunctionalRevealPending = false;
             restoreFunctionalAction();
@@ -3818,6 +3898,12 @@ private:
         const std::string type = entry["expect"]["type"].asString();
         if (entry["exercise"].asString() == "toggle")
             expected = !mFunctionalBefore.asBoolean();
+        else if (expected.isMap() && expected["resolve"].asString() == "runtime" &&
+                 dynamic_cast<LLComboBox*>(control))
+            // Runtime-populated combos have no stable build-time value.  The
+            // independent oracle is that the bound setting equals the item
+            // reached through the real popup click.
+            expected = control->getValue();
         else if (dynamic_cast<LLSpinCtrl*>(control) && entry["increment"].isDefined())
             expected = mFunctionalBefore.asReal() + entry["increment"].asReal() *
                 (entry["test_value"].asReal() >= mFunctionalBefore.asReal() ? 1. : -1.);
@@ -3860,7 +3946,9 @@ private:
         mFunctionalObserved["consumer"]["after"] = consumer_after;
         if (entry["consumer"].isDefined())
         {
-            observable = observable && consumer_after != mFunctionalConsumerBefore;
+            const bool consumer_changed = consumer_after != mFunctionalConsumerBefore;
+            observable = entry["expect"].has("setting") ?
+                (observable && consumer_changed) : consumer_changed;
             const bool consumer_ok = functionalConsumerExpected(entry, consumer_after);
             expected_ok = expected_ok && consumer_ok;
             if (!consumer_ok)
