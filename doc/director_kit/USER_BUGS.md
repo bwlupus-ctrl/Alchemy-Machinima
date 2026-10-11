@@ -29,3 +29,5 @@ KNOWN-GOOD (user 10/10, 9:13 PM build): the standalone Cine Light Rig FLOATER wo
 
    - USER: rain is broken in BOTH directors (v1 and v2), so it's render-side and not the Director UI. The custom water level change is the prime suspect.
 
+11. **Projector volumetrics won't show after light masking is turned OFF** (9:13 PM build). Earlier this week a patch stopped volumetric projectors from showing when light masking (Actor Mask / actor-only lighting) was on. Now, with masking off, the projector volumetrics still don't render. Suspect: that gate keys on a stale/sticky state or a different setting than the user's masking toggle, or never re-enables. Read-only diag: doc/PROJECTOR_VOLUMETRIC_DIAG.md.
+
