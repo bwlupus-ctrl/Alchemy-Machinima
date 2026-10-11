@@ -25,3 +25,11 @@
 - Deferred atlas cells advance their deadlines without a duplicate revision notification. Atlas timing includes its compositor and `ScopedPreviewAtlasGL` restoration; the caller's outer `ScopedPrismRenderState` restoration is intentionally outside that operation measurement.
 - Timestamp-query names are deleted while the GL context is live and are only forgotten after true context loss. Visible and preview-only auxiliary renders now have distinct, accurately named Tracy CPU/GPU scopes.
 - Per request, this fix round did not configure, build, run executable tests, commit, fetch, or contact an upstream. Verification was static only.
+
+## Fix round 2
+
+- Simplified the adaptive controller to the 5 -> 2 -> 1 -> 0.5 fps ladder. The first three operations and their preview frames are excluded from statistics and prediction; decisions require 20 fresh samples, windows reset after a rate change, and recovery requires 20 clean samples at the current rate.
+- Spec deviation: there is no full suspension state. The 0.5-fps floor remains THROTTLED and admission guarantees at most one budget-overrun sample every two seconds, preventing a silent preview freeze and removing timed-probe machinery.
+- Page visibility no longer resets the controller. Preview setting changes and render-target/context loss remain explicit reset points.
+- The self-test is ticked before Prism/deferred/capture early-outs, reports exact missing prerequisites, uses snapshot-safe counters, measures CPU/GPU coverage against admitted operations, and no longer claims CPU coverage as Tracy coverage.
+- Policy tests now interleave presented frames with reserve/complete calls and cover a cold allocation, sustained overload to the live floor, and clean recovery. Per request, no build, executable test, commit, fetch, or upstream operation was run.

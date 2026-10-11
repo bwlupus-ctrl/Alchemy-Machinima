@@ -126,64 +126,87 @@ void prism_preview_policy_object::test<6>()
 template<> template<>
 void prism_preview_policy_object::test<7>()
 {
-    set_test_name("synthetic CPU/GPU reservations charge the independent maximum");
+    set_test_name("cold operations are excluded from runtime-interleaved statistics");
     PrismPreviewBudgetController budget;
-    budget.noteFrame(1, 0.0, 16.0, false);
-    F64 early_reservation = 0.0;
-    ensure("reservation cannot exceed accumulated tokens",
-           !budget.reserve(PrismPreviewBudgetController::EOperation::AUXILIARY,
-                           early_reservation));
-    for (U32 frame = 1; frame <= 20; ++frame)
-        budget.noteFrame(frame, frame / 60.0, 16.0, false);
-    F64 reservation = 0.0;
-    ensure("auxiliary seed reserves within accumulated tokens",
-           budget.reserve(PrismPreviewBudgetController::EOperation::AUXILIARY,
-                          reservation));
-    budget.complete(PrismPreviewBudgetController::EOperation::AUXILIARY,
-                    reservation, 0.4, 1.2, true);
+    U32 frame = 0;
+    F64 now = 0.0;
+    bool preview_work = false;
+    const auto advance = [&]()
+    {
+        ++frame;
+        now += 1.0 / 60.0;
+        budget.noteFrame(frame, now, 16.0, preview_work);
+        preview_work = false;
+    };
+    const auto operation = [&](F64 cpu_ms, F64 gpu_ms)
+    {
+        for (U32 i = 0; i < 120; ++i) advance();
+        F64 reservation = 0.0;
+        ensure("scheduled operation is admitted",
+               budget.reserve(PrismPreviewBudgetController::EOperation::AUXILIARY,
+                              reservation));
+        budget.complete(PrismPreviewBudgetController::EOperation::AUXILIARY,
+                        reservation, cpu_ms, gpu_ms, true);
+        preview_work = true;
+    };
+
+    operation(12.0, 8.0);
+    operation(0.2, 0.3);
+    operation(0.2, 0.3);
+    advance();
+    ensure_equals("three cold operations contribute no samples",
+                  budget.stats().mOperations, 0u);
+    ensure_equals("cold frames are excluded from presented statistics",
+                  budget.stats().mPresentedFrames, 0u);
+    operation(0.4, 1.2);
+    advance();
+    ensure_equals("the first warm operation is counted", budget.stats().mOperations, 1u);
     ensure("GPU dominates charged cost",
            std::fabs(budget.stats().mChargedMs - 1.2) < 0.001);
+    ensure("the cold allocation did not poison admission prediction",
+           budget.effectiveRate(5.f) == 5.f);
 }
 
 template<> template<>
 void prism_preview_policy_object::test<8>()
 {
-    set_test_name("tail suspension admits one timed runtime probe and recovers");
+    set_test_name("sustained overload reaches a live floor and clean samples recover");
     PrismPreviewBudgetController budget;
-    for (U32 frame = 1; frame <= 120; ++frame)
-        budget.noteFrame(frame, frame / 60.0, 16.0, false);
-    budget.noteFrame(121, 121.0 / 60.0, 25.0, true);
-    for (U32 frame = 122; frame <= 140; ++frame)
-        budget.noteFrame(frame, frame / 60.0, 16.0, false);
-    ensure("one cold preview-frame hitch is not replayed on baseline frames",
-           !budget.throttled());
-    budget.complete(PrismPreviewBudgetController::EOperation::AUXILIARY,
-                    0.0, 4.5, 1.0, true);
-    ensure("the cold calibration sample does not throttle", !budget.throttled());
-    for (U32 warmup = 0; warmup < 6; ++warmup)
-        budget.complete(PrismPreviewBudgetController::EOperation::ATLAS,
-                        0.0, 0.02, 0.03, true);
-    for (U32 violation = 0; violation < 4; ++violation)
+    U32 frame = 0;
+    F64 now = 0.0;
+    bool preview_work = false;
+    const auto operation = [&](F64 charged_ms)
+    {
+        for (U32 i = 0; i < 121; ++i)
+        {
+            ++frame;
+            now += 1.0 / 60.0;
+            budget.noteFrame(frame, now, 16.0, preview_work);
+            preview_work = false;
+        }
+        F64 reservation = 0.0;
+        ensure("floor cadence keeps admitting samples",
+               budget.reserve(PrismPreviewBudgetController::EOperation::AUXILIARY,
+                              reservation));
         budget.complete(PrismPreviewBudgetController::EOperation::AUXILIARY,
-                        0.0, 4.5, 1.0, true);
-    ensure("repeated 0.5-fps tail failure suspends", budget.suspended());
-    F64 reservation = 0.0;
-    ensure("ordinary work is rejected while suspended",
-           !budget.reserve(PrismPreviewBudgetController::EOperation::ATLAS,
-                           reservation));
-    for (U32 frame = 141; frame <= 320; ++frame)
-        budget.noteFrame(frame, frame / 60.0, 16.0, false);
-    ensure("one probe is admitted after the suspension interval",
-           budget.reserve(PrismPreviewBudgetController::EOperation::ATLAS,
-                          reservation));
-    F64 second_reservation = 0.0;
-    ensure("a second probe cannot overlap the admitted probe",
-           !budget.reserve(PrismPreviewBudgetController::EOperation::ATLAS,
-                           second_reservation));
-    budget.complete(PrismPreviewBudgetController::EOperation::ATLAS,
-                    reservation, 0.02, 0.03, true);
-    ensure("a clean admitted probe resumes at the lowest rate",
-           !budget.suspended() && budget.effectiveRate(5.f) <= 0.5f);
+                        reservation, charged_ms, 0.0, false);
+        preview_work = true;
+    };
+
+    operation(9.0); // cold allocation
+    operation(0.2);
+    operation(0.2);
+    for (U32 step = 0; step < 3; ++step)
+    {
+        for (U32 sample = 0; sample < 20; ++sample) operation(4.5);
+    }
+    ensure("overload reaches the 0.5-fps floor",
+           std::fabs(budget.effectiveRate(5.f) - 0.5f) < 0.001f);
+    ensure("the floor never stops attempts", budget.canAttempt());
+
+    for (U32 sample = 0; sample < 20; ++sample) operation(0.2);
+    ensure("twenty fresh clean samples recover one rate step",
+           std::fabs(budget.effectiveRate(5.f) - 1.f) < 0.001f);
 }
 
 template<> template<>
@@ -193,5 +216,28 @@ void prism_preview_policy_object::test<9>()
     PrismPreviewBudgetController budget;
     budget.noteScratchReacquisition();
     ensure_equals("scratch miss is exposed", budget.stats().mScratchReacquisitions, 1u);
+}
+
+template<> template<>
+void prism_preview_policy_object::test<10>()
+{
+    set_test_name("over-budget admission guarantees one sample per floor interval");
+    PrismPreviewBudgetController budget;
+    budget.noteFrame(1, 0.0, 16.0, false);
+    F64 reservation = 0.0;
+    ensure("the first starved operation is admitted",
+           budget.reserve(PrismPreviewBudgetController::EOperation::AUXILIARY,
+                          reservation));
+    budget.complete(PrismPreviewBudgetController::EOperation::AUXILIARY,
+                    reservation, 8.0, 0.0, false);
+
+    budget.noteFrame(2, 1.0, 16.0, false);
+    ensure("another over-budget operation waits for the floor interval",
+           !budget.reserve(PrismPreviewBudgetController::EOperation::AUXILIARY,
+                           reservation));
+    budget.noteFrame(3, 2.0, 16.0, false);
+    ensure("a fresh sample is admitted after two seconds",
+           budget.reserve(PrismPreviewBudgetController::EOperation::AUXILIARY,
+                          reservation));
 }
 } // namespace tut

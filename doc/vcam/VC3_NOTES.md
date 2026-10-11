@@ -21,3 +21,9 @@
 - Generation reuse clears monitor selection and tile state. Tile queries derive PAUSED/THROTTLED from current runtime flags and expose EMPTY, READY, HELD, ERROR, and SHADER_UNAVAILABLE states; `connectChanged` reports service revisions. Visibility overflow now warns and ignores the extra owner.
 - The AO regression runs the production target/readiness decision before checking the real neutral clear color. The main color-correct pass retains its original `pow` AgX expression and no longer repeats the preview helper's tonemap/color-grade uploads.
 - Per request, the fix round did not configure, build, commit, fetch, or contact an upstream. Static verification covers scoped diffs, exact render-size call sites, absence of raw texture-unit calls in the atlas guard, `git diff --check`, and LF checks. `prismSignalF.glsl` and `prismLensF.glsl` were not changed.
+
+## Fix round 2
+
+- RAW Surface Lens previews now derive their logical aspect from the prepared surface basis instead of the fixed 192x108 render target. Selected FILL faces keep the face boundary as the atlas letterbox boundary so capture pixels do not leak into its bars.
+- Turning Prism off now rebases the preview service together with the lens resource release. Successful atlas composites publish READY, terminal FAILED/SHADER_UNAVAILABLE states win over warming/throttling overlays, and a target release publishes EMPTY when the atlas no longer exists.
+- Per request, this round was reviewed statically only: no configure, build, executable test, commit, fetch, or upstream operation was run.

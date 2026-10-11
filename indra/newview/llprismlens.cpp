@@ -8173,6 +8173,9 @@ void renderAuxiliaryView()
     const bool render_context_available =
         !LLPipeline::sPrismLensRender && LLPipeline::sRenderDeferred && !gCubeSnapshot;
 
+    LLPrismPreviewService::instance().tickSelfTest(
+        enabled, LLPipeline::sRenderDeferred, has_captures);
+
     // This is the controller's sole per-frame update site. It runs before any
     // prepare/scheduling work so all three captures share one coherent decision.
     prismAdaptiveController().updateFrame(
@@ -8184,6 +8187,7 @@ void renderAuxiliaryView()
         if (was_enabled)
         {
             registry.releaseRenderResources();
+            LLPrismPreviewService::instance().onRenderTargetsReleased();
         }
         was_enabled = false;
         return;
@@ -8767,9 +8771,17 @@ static bool buildSignalCompositeState(U32 capture_slot,
     // is not anamorphically stretched; bars are neutral black.
     if (!display)
     {
-        const F32 raw_aspect = capture->mMode == ECaptureMode::CAMERA_FEED
-            ? capture->mCamera.mOutputAspect
-            : static_cast<F32>(output_width) / static_cast<F32>(output_height);
+        F32 raw_aspect = capture->mCamera.mOutputAspect;
+        if (capture->mMode == ECaptureMode::SURFACE_LENS)
+        {
+            const F32 surface_u = capture->mFrame.mWorldSurfaceUEdge.magVec();
+            const F32 surface_v = capture->mFrame.mWorldSurfaceVEdge.magVec();
+            raw_aspect = std::isfinite(surface_u) && std::isfinite(surface_v) &&
+                         surface_u > F_ALMOST_ZERO && surface_v > F_ALMOST_ZERO
+                ? surface_u / surface_v
+                : static_cast<F32>(output_width) /
+                    static_cast<F32>(output_height);
+        }
         centerCompositeInAspect(raw_aspect, display_aspect, state);
         return true;
     }
@@ -9394,6 +9406,17 @@ bool buildPreviewCompositeState(const CaptureHandle& capture_handle,
     {
         // A selected face is itself a display-shaped result. Preserve that
         // shape inside the fixed 16:9 atlas cell just as raw capture does.
+        // FILL maps the face edges to an interior capture range; composing
+        // that affine crop with the outer fit would otherwise expose more
+        // capture pixels where the face's bars belong. Use the face bounds
+        // for the atlas fit so those pixels are rejected as letterbox bars.
+        if (display->mSettings.mFitMode == EFitMode::FILL)
+        {
+            state.mDisplayToCaptureScale[0] = 1.f;
+            state.mDisplayToCaptureScale[1] = 1.f;
+            state.mDisplayToCaptureOffset[0] = 0.f;
+            state.mDisplayToCaptureOffset[1] = 0.f;
+        }
         centerCompositeInAspect(display_aspect, cell_aspect, state);
     }
     state.mScissor[2] = 256;

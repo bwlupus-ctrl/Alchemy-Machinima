@@ -121,6 +121,7 @@ public:
         std::array<U32, 2> mOperationsByType{};
         std::array<U32, 2> mGpuSamplesByType{};
         U32 mOperations = 0;
+        U32 mAdmittedOperations = 0;
         U32 mCpuSamples = 0;
         U32 mGpuSamples = 0;
         U32 mDeferrals = 0;
@@ -136,27 +137,27 @@ public:
     void noteScratchReacquisition()
     {
         ++mStats.mScratchReacquisitions;
-        tailViolation();
     }
     F32 effectiveRate(F32 requested) const;
-    bool warming() const { return mSampleCount < WARMUP_SAMPLES; }
+    bool warming() const { return mColdCompletions < COLD_OPERATIONS; }
     bool canAttempt() const;
-    bool throttled() const { return mRateStep > 0 || mSuspended; }
-    bool suspended() const { return mSuspended; }
+    bool throttled() const { return mRateStep > 0; }
     const Stats& stats() const { return mStats; }
 
 private:
     static constexpr U32 SAMPLE_COUNT = 128;
     static constexpr U32 FRAME_COUNT = 512;
-    static constexpr U32 WARMUP_SAMPLES = 8;
-    static constexpr F64 SUSPENSION_PROBE_SECONDS = 2.0;
+    static constexpr U32 COLD_OPERATIONS = 3;
+    static constexpr U32 DECISION_SAMPLES = 20;
+    static constexpr F64 FLOOR_INTERVAL_SECONDS = 2.0;
     F64 percentile95(const std::array<F64, SAMPLE_COUNT>& values,
                      U32 count) const;
-    void tailViolation();
-    bool probeDue() const;
+    void clearDecisionWindow();
+    void stepDown();
     std::array<F64, SAMPLE_COUNT> mCpuSamples{};
     std::array<F64, SAMPLE_COUNT> mGpuSamples{};
     std::array<F64, SAMPLE_COUNT> mChargedSamples{};
+    std::array<U32, SAMPLE_COUNT> mSampleFrameSpans{};
     std::array<std::array<F64, SAMPLE_COUNT>, 2> mCpuOperationSamples{};
     std::array<std::array<F64, SAMPLE_COUNT>, 2> mGpuOperationSamples{};
     std::array<U32, 2> mOperationSampleCursor{};
@@ -172,15 +173,17 @@ private:
     U32 mBaselineCount = 0;
     U32 mPreviewCursor = 0;
     U32 mPreviewCount = 0;
+    U32 mFramesSinceSample = 0;
     U32 mCurrentFrame = 0;
     F64 mNow = 0.0;
     F64 mReservedMs = 0.0;
     std::array<F64, 2> mPredictionMs{ 1.5, 0.05 };
     U32 mRateStep = 0;
     U32 mCleanSamples = 0;
-    bool mSuspended = false;
-    bool mProbeInFlight = false;
-    F64 mSuspendedAt = 0.0;
+    U32 mColdAdmissions = 0;
+    U32 mColdCompletions = 0;
+    bool mSkipColdPreviewFrame = false;
+    F64 mLastFloorAdmissionAt = -FLOOR_INTERVAL_SECONDS;
     Stats mStats;
 };
 
@@ -257,15 +260,15 @@ public:
                       const LLPrismLens::CaptureHandle& capture,
                       F64 reservation_ms, S32 query_slot, F64 cpu_ms);
     bool budgetThrottled() const { return mBudget.throttled(); }
-    bool budgetSuspended() const { return mBudget.suspended(); }
     void runSelfTest(F32 seconds = 20.f);
+    void tickSelfTest(bool prism_enabled, bool deferred_rendering,
+                      bool has_captures);
 
 private:
     LLPrismPreviewService() = default;
     void pollQueries();
     void recordSelfTestOperation(PrismPreviewBudgetController::EOperation operation,
                                  F64 cpu_ms, F64 gpu_ms, bool gpu_valid);
-    void tickSelfTest();
     void markChanged();
 
     struct DemandEntry
