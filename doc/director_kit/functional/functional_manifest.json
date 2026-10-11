@@ -139898,12 +139898,21 @@
    "exercise": "click",
    "test_value": null,
    "expect": {
+    "setting": "TemporalWorldScale",
+    "type": "F32",
+    "value": 0.0,
     "callback": "ALPanelTemporalCapture::postBuild",
     "commit": true
    },
    "restore": {
-    "note": "close any floater opened; undo state the action creates"
+    "snapshot_settings": [
+     "TemporalWorldScale",
+     "TemporalMode"
+    ]
    },
+   "probe": "temporal_preset",
+   "oracle_pre_value": 1.0,
+   "temporal_mode": 1,
    "setting": null,
    "setting_source": null,
    "setting_type": null,
@@ -139984,12 +139993,21 @@
    "exercise": "click",
    "test_value": null,
    "expect": {
+    "setting": "TemporalWorldScale",
+    "type": "F32",
+    "value": 0.25,
     "callback": "ALPanelTemporalCapture::postBuild",
     "commit": true
    },
    "restore": {
-    "note": "close any floater opened; undo state the action creates"
+    "snapshot_settings": [
+     "TemporalWorldScale",
+     "TemporalMode"
+    ]
    },
+   "probe": "temporal_preset",
+   "oracle_pre_value": 1.0,
+   "temporal_mode": 1,
    "setting": null,
    "setting_source": null,
    "setting_type": null,
@@ -140070,12 +140088,21 @@
    "exercise": "click",
    "test_value": null,
    "expect": {
+    "setting": "TemporalWorldScale",
+    "type": "F32",
+    "value": 0.5,
     "callback": "ALPanelTemporalCapture::postBuild",
     "commit": true
    },
    "restore": {
-    "note": "close any floater opened; undo state the action creates"
+    "snapshot_settings": [
+     "TemporalWorldScale",
+     "TemporalMode"
+    ]
    },
+   "probe": "temporal_preset",
+   "oracle_pre_value": 1.0,
+   "temporal_mode": 1,
    "setting": null,
    "setting_source": null,
    "setting_type": null,
@@ -140156,12 +140183,21 @@
    "exercise": "click",
    "test_value": null,
    "expect": {
+    "setting": "TemporalWorldScale",
+    "type": "F32",
+    "value": 1.0,
     "callback": "ALPanelTemporalCapture::postBuild",
     "commit": true
    },
    "restore": {
-    "note": "close any floater opened; undo state the action creates"
+    "snapshot_settings": [
+     "TemporalWorldScale",
+     "TemporalMode"
+    ]
    },
+   "probe": "temporal_preset",
+   "oracle_pre_value": 0.5,
+   "temporal_mode": 0,
    "setting": null,
    "setting_source": null,
    "setting_type": null,
@@ -140242,12 +140278,21 @@
    "exercise": "click",
    "test_value": null,
    "expect": {
+    "setting": "TemporalWorldScale",
+    "type": "F32",
+    "value": 2.0,
     "callback": "ALPanelTemporalCapture::postBuild",
     "commit": true
    },
    "restore": {
-    "note": "close any floater opened; undo state the action creates"
+    "snapshot_settings": [
+     "TemporalWorldScale",
+     "TemporalMode"
+    ]
    },
+   "probe": "temporal_preset",
+   "oracle_pre_value": 1.0,
+   "temporal_mode": 1,
    "setting": null,
    "setting_source": null,
    "setting_type": null,
@@ -140682,18 +140727,14 @@
    "csv_kind": "toggle",
    "wiring_status": "WIRED_SETTING",
    "resolution": "xui",
-   "action": "RUN",
-   "reason": "",
+   "action": "NO_EXERCISE",
+   "reason": "reserved: camera deliberately stays real-time in this version",
    "known_gap": false,
    "suspect": false,
    "hazards": [],
    "exercise": "toggle",
-   "test_value": true,
-   "expect": {
-    "setting": "TemporalDriveCamera",
-    "type": "Boolean",
-    "value": true
-   },
+   "test_value": null,
+   "expect": null,
    "restore": {
     "setting": "TemporalDriveCamera",
     "value": false

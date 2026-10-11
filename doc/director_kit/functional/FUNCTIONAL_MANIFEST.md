@@ -18,7 +18,7 @@ Inputs: `wiring_table.csv` sha256 `e77739d4bff88c68` (1765 interactive rows); 35
 | Version | RUN | RUN (known gap) | DEFER_INWORLD | SKIP | EXPECT_MISSING | NO_EXERCISE | Total |
 |---|---:|---:|---:|---:|---:|---:|---:|
 | v1 | 1387 | 35 | 214 | 44 | 89 | 1 | 1770 |
-| v2 | 1410 | 36 | 214 | 44 | 82 | 1 | 1787 |
+| v2 | 1409 | 36 | 214 | 44 | 82 | 2 | 1787 |
 
 Suspect (V2_SUSPECT_FLOATER_SCOPED) entries are RUN and flagged `suspect`: 96.
 
@@ -59,7 +59,7 @@ Suspect (V2_SUSPECT_FLOATER_SCOPED) entries are RUN and flagged `suspect`: 96.
 | weather_tab (Weather) | world_group | 51 | 0 | 0 | 1 | 0 | 0 | 51 | 0 | 0 | 1 | 0 | 0 |
 | atmosphere_tab (Atmosphere) | world_group | 72 | 1 | 1 | 2 | 1 | 0 | 72 | 1 | 1 | 2 | 1 | 0 |
 | shadows_probes_tab (Shadows) | world_group | 37 | 0 | 0 | 0 | 2 | 0 | 37 | 0 | 0 | 0 | 2 | 0 |
-| temporal_tab (Time) | capture_group | 13 | 0 | 0 | 0 | 0 | 0 | 13 | 0 | 0 | 0 | 0 | 0 |
+| temporal_tab (Time) | capture_group | 13 | 0 | 0 | 0 | 0 | 0 | 12 | 0 | 0 | 0 | 0 | 1 |
 | scene_options_tab (Scene) | capture_group | 1 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 0 | 0 | 0 | 0 |
 
 ## Special probes
@@ -156,4 +156,3 @@ Selector segments (both v2 cards, 8 total) expect `DirectorV2SelectedLight` to e
 
 
 > NOTE (orchestrator, 10/10; applied): SUSPECTS_RESOLVED.md shows FlycamOperatorModeBlendTime / FlycamOperatorSimulationHz ARE present in v2 (operator page injects ALPanelCineCamParams, panel_dpage_camera_operator.xml:10). The two entries now use normal setting assertions. Also treat all 104 former V2_SUSPECT entries as WIRED (resolved).
-

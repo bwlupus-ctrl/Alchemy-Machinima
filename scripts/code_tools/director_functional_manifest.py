@@ -116,6 +116,25 @@ SELECTION_TOKENS = {"selected", "pick", "target", "anchor", "avatar", "actor",
 
 RIG_RIM_SENTINEL = "CineRigRimMasterGain"
 
+# Deliberately non-interactive controls whose settings exist only as reserved
+# schema.  Keep this narrow and versioned: dynamically disabled controls are
+# still handled by explicit enable_when/visible_when prerequisites.
+DECLARED_NON_INTERACTIVE = {
+    ("v2", "temporal_tab", "drive_camera_check"):
+        "reserved: camera deliberately stays real-time in this version",
+}
+
+# The temporal preset buttons are callback-owned rather than setting-bound.
+# Give each real click an exact two-setting oracle and a deliberately different
+# scale pre-state so even Realtime has to produce an observable transition.
+TEMPORAL_PRESET_ORACLES = {
+    ("v2", "temporal_tab", "btn_freeze"):   (0.0, 1, 1.0),
+    ("v2", "temporal_tab", "btn_quarter"):  (0.25, 1, 1.0),
+    ("v2", "temporal_tab", "btn_half"):     (0.5, 1, 1.0),
+    ("v2", "temporal_tab", "btn_realtime"): (1.0, 0, 0.5),
+    ("v2", "temporal_tab", "btn_double"):   (2.0, 1, 1.0),
+}
+
 
 # ---------------------------------------------------------------- helpers
 
@@ -565,6 +584,10 @@ def build_csv_entry(idx, r, v, xi, settings, page_meta):
         "status": status, "exercise": exercise, "etype": etype, "name": name,
         "label": label, "page": r["page"], "reset_of": reset_of, "version": v,
     })
+    if (v, r["page"], name) in DECLARED_NON_INTERACTIVE:
+        action = "NO_EXERCISE"
+        reason = DECLARED_NON_INTERACTIVE[(v, r["page"], name)]
+        hazards = []
     suspect = status == "V2_SUSPECT_FLOATER_SCOPED"
     known_gap = status == "UNWIRED"
     if v == "v2" and r["v2_source"].startswith("redirect"):
@@ -590,6 +613,8 @@ def build_csv_entry(idx, r, v, xi, settings, page_meta):
          "reset_of": reset_of, "callbacks": cb, "owner": owner, "known_gap": known_gap,
          "hazards": hazards, "relocated_to": r.get(v + "_relocated_to", "")}
     expect = build_expect(c, test_resolved)
+    if (v, r["page"], name) in DECLARED_NON_INTERACTIVE:
+        expect = None
 
     if action in ("SKIP", "NO_EXERCISE", "EXPECT_MISSING"):
         test_value = test_resolved = None
@@ -637,6 +662,17 @@ def build_csv_entry(idx, r, v, xi, settings, page_meta):
         "owner": owner or None,
         "evidence": r[v + "_evidence"] or None,
     })
+    temporal_oracle = TEMPORAL_PRESET_ORACLES.get((v, r["page"], name))
+    if temporal_oracle:
+        scale, mode, pre_scale = temporal_oracle
+        entry.update({
+            "probe": "temporal_preset",
+            "expect": {"setting": "TemporalWorldScale", "type": "F32", "value": scale,
+                       "callback": owner, "commit": True},
+            "oracle_pre_value": pre_scale,
+            "temporal_mode": mode,
+            "restore": {"snapshot_settings": ["TemporalWorldScale", "TemporalMode"]},
+        })
     if items:
         entry["options"] = [{"label": a, "value": b} for a, b in items]
     if test_resolved is not None and test_resolved != test_value:

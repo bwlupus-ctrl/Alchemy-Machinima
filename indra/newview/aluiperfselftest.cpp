@@ -2166,6 +2166,9 @@ private:
     void addFunctionalResult(const LLSD& entry, const std::string& status,
                              const std::string& reason, const std::string& observed = {})
     {
+        // Every row owns and tears down only the input state it created.  Do
+        // this before serializing diagnostics so a cleanup is itself visible.
+        functionalResetInputState();
         FunctionalResult row;
         row.mPage = entry["page"].asString();
         row.mControl = entry["widget_name"].asString();
@@ -2327,6 +2330,10 @@ private:
     // ui-draw-lint: allow-function(setting-write,raw-write) isolated test-only typed restore
     void restoreFunctionalAction()
     {
+        // addFunctionalResult() normally ended the row already.  This second
+        // guard also covers shutdown and any future restore-only failure path.
+        functionalResetInputState();
+        functionalBeginInputState();
         for (auto& saved : mFunctionalRevealWidgetValues)
             if (LLUICtrl* control = saved.first.get())
             {
@@ -2398,6 +2405,7 @@ private:
         if (mFunctionalIndex < mFunctionalEntries.size() &&
             mFunctionalEntries[mFunctionalIndex]["probe"].asString() == "exposure_history")
             ALExposureSettingsHistory::clear();
+        functionalResetInputState();
         mFunctionalRestore.clear();
         mFunctionalControl = LLHandle<LLUICtrl>();
         mFunctionalSetting = nullptr;
@@ -2535,6 +2543,118 @@ private:
         return host && functionalOwningFloater(layer) == host;
     }
 
+    static bool functionalRelatedView(LLView* view, LLView* root)
+    {
+        return view && root &&
+            (view == root || view->hasAncestor(root) || root->hasAncestor(view));
+    }
+
+    static std::string functionalViewPath(LLView* view)
+    {
+        return view ? view->getPathname() : std::string("<none>");
+    }
+
+    void functionalBeginInputState()
+    {
+        if (mFunctionalInputStateActive) return;
+        LLView* focus = dynamic_cast<LLView*>(gFocusMgr.getKeyboardFocus());
+        mFunctionalFocusBefore = focus ? focus->getHandle() : LLHandle<LLView>();
+        mFunctionalFocusWasNull = focus == nullptr;
+        mFunctionalInputStateActive = true;
+        mFunctionalOpenedCombos.clear();
+    }
+
+    void functionalTrackCombo(LLComboBox* combo)
+    {
+        if (!combo) return;
+        functionalBeginInputState();
+        const LLHandle<LLView> handle = combo->getHandle();
+        if (std::none_of(mFunctionalOpenedCombos.begin(), mFunctionalOpenedCombos.end(),
+                         [combo](const LLHandle<LLView>& saved) { return saved.get() == combo; }))
+            mFunctionalOpenedCombos.push_back(handle);
+    }
+
+    void functionalResetInputState()
+    {
+        if (!mFunctionalInputStateActive && mFunctionalOpenedCombos.empty())
+        {
+            mFunctionalAllowedCaptor = nullptr;
+            return;
+        }
+
+        bool closed_popup = false;
+        bool released_capture = false;
+        bool released_top = false;
+        bool restored_focus = false;
+        std::vector<LLView*> owned;
+        for (const LLHandle<LLView>& handle : mFunctionalOpenedCombos)
+        {
+            LLComboBox* combo = dynamic_cast<LLComboBox*>(handle.get());
+            if (!combo) continue;
+            owned.push_back(combo);
+            LLScrollListCtrl* list = FunctionalComboAccess::list(combo);
+            if (list) owned.push_back(list);
+            if (list && gFocusMgr.getMouseCapture() == list)
+            {
+                gFocusMgr.setMouseCapture(nullptr);
+                released_capture = true;
+            }
+            if (list && list->getVisible())
+            {
+                combo->hideList();
+                closed_popup = true;
+            }
+        }
+
+        LLView* control = mFunctionalControl.get();
+        LLView* click_target = mFunctionalClickTarget.get();
+        auto harness_owned = [&](LLView* view)
+        {
+            if (functionalRelatedView(view, control) || functionalRelatedView(view, click_target))
+                return true;
+            return std::any_of(owned.begin(), owned.end(),
+                [view](LLView* root) { return functionalRelatedView(view, root); });
+        };
+
+        // A modal opened by an action is not harness-owned input residue.  It
+        // must be handled by that row's modal oracle, never silently cleared.
+        if (LLMouseHandler* capture = gFocusMgr.getMouseCapture())
+        {
+            LLView* capture_view = dynamic_cast<LLView*>(capture);
+            if (capture_view && !dynamic_cast<LLModalDialog*>(capture_view) &&
+                harness_owned(capture_view))
+            {
+                gFocusMgr.setMouseCapture(nullptr);
+                released_capture = true;
+            }
+        }
+        if (LLUICtrl* top = gFocusMgr.getTopCtrl(); top &&
+            !dynamic_cast<LLModalDialog*>(top) && harness_owned(top))
+        {
+            gFocusMgr.setTopCtrl(nullptr);
+            released_top = true;
+        }
+        if (LLView* focus = dynamic_cast<LLView*>(gFocusMgr.getKeyboardFocus());
+            focus && harness_owned(focus))
+        {
+            LLView* prior = mFunctionalFocusBefore.get();
+            gFocusMgr.setKeyboardFocus(mFunctionalFocusWasNull ? nullptr : prior);
+            restored_focus = true;
+        }
+        if (closed_popup || released_capture || released_top || restored_focus)
+        {
+            mFunctionalObserved["input_reset"]["closed_popup"] = closed_popup;
+            mFunctionalObserved["input_reset"]["released_capture"] = released_capture;
+            mFunctionalObserved["input_reset"]["released_top_ctrl"] = released_top;
+            mFunctionalObserved["input_reset"]["restored_focus"] = restored_focus;
+        }
+        mFunctionalOpenedCombos.clear();
+        mFunctionalFocusBefore = LLHandle<LLView>();
+        mFunctionalFocusWasNull = false;
+        mFunctionalInputStateActive = false;
+        mFunctionalAllowedCaptor = nullptr;
+    }
+
     // ui-draw-lint: allow-function(lookup) bounded login-only input safety preflight
     bool functionalPreDispatch(LLView* expected, std::string& reason)
     {
@@ -2547,45 +2667,43 @@ private:
         if (!host) host = functionalOwningFloater(expected);
         if (!host) host = mFloater.get();
 
+        auto blocked = [&](const std::string& condition, const std::string& path)
+        {
+            mFunctionalObserved["pre_dispatch_block"]["condition"] = condition;
+            mFunctionalObserved["pre_dispatch_block"]["path"] = path;
+            reason = "foreign modal/captor present: " + condition + " " + path;
+            return false;
+        };
+
         if (LLMouseHandler* capture = gFocusMgr.getMouseCapture();
             capture && !(capture == mFunctionalAllowedCaptor && capture == dynamic_cast<LLMouseHandler*>(expected)))
         {
             LLView* capture_view = dynamic_cast<LLView*>(capture);
             if (!capture_view || !functionalOwnedInputLayer(capture_view, expected, host))
-            {
-                reason = "foreign modal/captor present";
-                return false;
-            }
+                return blocked("mouse capture", capture_view ? functionalViewPath(capture_view) :
+                    std::string("<non-view mouse handler:") + capture->getName() + ">");
             // A capture from even our own floater changes dispatch. It is only
             // legitimate while a drag is already in progress, never before down.
-            reason = "foreign modal/captor present";
-            return false;
+            return blocked("pre-existing host mouse capture", functionalViewPath(capture_view));
         }
         if (LLModalDialog::activeCount() > 0 && !dynamic_cast<LLModalDialog*>(host))
         {
-            reason = "foreign modal/captor present";
-            return false;
+            LLView* modal_view = dynamic_cast<LLView*>(gFocusMgr.getKeyboardFocus());
+            while (modal_view && !dynamic_cast<LLModalDialog*>(modal_view))
+                modal_view = modal_view->getParent();
+            return blocked("active modal", functionalViewPath(modal_view));
         }
         LLUICtrl* top = gFocusMgr.getTopCtrl();
         if (top && !(top == expected || top->hasAncestor(expected) ||
                      expected->hasAncestor(top)))
-        {
-            reason = "foreign modal/captor present";
-            return false;
-        }
+            return blocked("top control", functionalViewPath(top));
         // Menus and the progress view sit in front of the Floater View in real dispatch
         // (main_view.xml) and take the click/Return before the target; never inject then.
         if (gMenuHolder && gMenuHolder->hasVisibleMenu())
-        {
-            reason = "foreign modal/captor present: open menu";
-            return false;
-        }
+            return blocked("open menu", functionalViewPath(gMenuHolder));
         if (LLProgressView* progress = gViewerWindow->getProgressView();
             progress && progress->isInVisibleChain())
-        {
-            reason = "foreign modal/captor present: progress view";
-            return false;
-        }
+            return blocked("progress view", functionalViewPath(progress));
 
         LLRootView* root = gViewerWindow->getRootView();
         if (LLPanelLogin* login = root ? findFirstView<LLPanelLogin>(root) : nullptr)
@@ -2615,10 +2733,7 @@ private:
                     if (popup && popup->isInVisibleChain() &&
                         !(popup == expected || popup->hasAncestor(expected) ||
                           expected->hasAncestor(popup)))
-                    {
-                        reason = "foreign modal/captor present";
-                        return false;
-                    }
+                        return blocked("popup holder entry", functionalViewPath(popup));
                     if ((resolved = functionalResolveInView(popup, mFunctionalScreenX,
                                                             mFunctionalScreenY)))
                         break;
@@ -2819,7 +2934,7 @@ private:
         LLMouseHandler* captor = gFocusMgr.getMouseCapture();
         const bool capture_expected = dynamic_cast<LLButton*>(expected) ||
             dynamic_cast<LLSlider*>(expected);
-        const bool captured = captor && (captor == expected ||
+        const bool captured = captor && (captor == expected || captor == mFunctionalAllowedCaptor ||
             (dynamic_cast<LLView*>(captor) && dynamic_cast<LLView*>(captor)->hasAncestor(expected)));
         const bool capture_ok = !capture_expected || captured;
         if (dynamic_cast<LLSlider*>(expected))
@@ -2842,8 +2957,16 @@ private:
             stuck = nullptr; // combo button handed capture to its own dropdown list (llcombobox.cpp:818-820)
         if (stuck)
         {
-            gFocusMgr.setMouseCapture(nullptr);
-            mFunctionalLastClickReason = "stuck capture";
+            LLView* stuck_view = dynamic_cast<LLView*>(stuck);
+            if (stuck_view && !dynamic_cast<LLModalDialog*>(stuck_view) &&
+                functionalRelatedView(stuck_view, expected))
+            {
+                gFocusMgr.setMouseCapture(nullptr);
+                mFunctionalLastClickReason = "stuck target capture: " + functionalViewPath(stuck_view);
+            }
+            else
+                mFunctionalLastClickReason = "foreign capture after dispatch: " +
+                    (stuck_view ? functionalViewPath(stuck_view) : std::string("<non-view mouse handler>"));
             return false;
         }
         mFunctionalLastClickReason = handler ? std::string() :
@@ -2926,8 +3049,16 @@ private:
             stuck = nullptr; // combo button handed capture to its own dropdown list (llcombobox.cpp:818-820)
         if (stuck)
         {
-            gFocusMgr.setMouseCapture(nullptr);
-            mFunctionalLastClickReason = "stuck capture";
+            LLView* stuck_view = dynamic_cast<LLView*>(stuck);
+            if (stuck_view && !dynamic_cast<LLModalDialog*>(stuck_view) &&
+                functionalRelatedView(stuck_view, dial))
+            {
+                gFocusMgr.setMouseCapture(nullptr);
+                mFunctionalLastClickReason = "stuck target capture: " + functionalViewPath(stuck_view);
+            }
+            else
+                mFunctionalLastClickReason = "foreign capture after dispatch: " +
+                    (stuck_view ? functionalViewPath(stuck_view) : std::string("<non-view mouse handler>"));
             return false;
         }
         mFunctionalLastClickReason = handler ? std::string() :
@@ -2935,16 +3066,72 @@ private:
         return down && up && captured && handler;
     }
 
+    bool functionalExerciseComboByIndex(LLComboBox* combo, const LLSD& test)
+    {
+        LLScrollListCtrl* list = FunctionalComboAccess::list(combo);
+        const bool owns_list = list && !list->getVisible();
+        if (owns_list) functionalTrackCombo(combo);
+        if (!functionalPointerClick()) return false;
+        mFunctionalObserved["combo"]["open_click"] = mFunctionalObserved["click"];
+        S32 index = -1;
+        if (test.isMap() && test.has("item_index"))
+            index = test["item_index"].asInteger();
+        else if (test.isMap() && (test.has("value") || test.has("id")))
+        {
+            const LLSD wanted = test.has("value") ? test["value"] : test["id"];
+            for (S32 i = 0; list && i < list->getItemCount(); ++i)
+                if (LLScrollListItem* item = list->getItemByIndex(i);
+                    item && item->getEnabled() && item->getValue() == wanted)
+                {
+                    index = i;
+                    break;
+                }
+        }
+        else
+            index = 1;
+        if (!list || !list->getVisible() || list->getItemCount() <= 0) return false;
+        if (index < 0 || index >= list->getItemCount() ||
+            !list->getItemByIndex(index) || !list->getItemByIndex(index)->getEnabled())
+        {
+            mFunctionalLastClickReason = "not reachable: combo item missing or disabled";
+            return false;
+        }
+        index = llclamp(index, 0, list->getItemCount() - 1);
+        const S32 page_lines = llmax(1, list->getPageLines());
+        if (index < list->getScrollPos()) list->setScrollPos(index);
+        else if (index >= list->getScrollPos() + page_lines)
+            list->setScrollPos(index - page_lines + 1);
+        const LLRect cell = list->getCellRect(index, 0);
+        list->localPointToScreen(cell.getCenterX(), cell.getCenterY(),
+                                 &mFunctionalScreenX, &mFunctionalScreenY);
+        mFunctionalClickTarget = list->getHandle();
+        mFunctionalObserved["click"]["combo_index"] = index;
+        const LLRect list_rect = list->calcScreenRect();
+        const bool item_visible = index >= list->getScrollPos() &&
+            index < list->getScrollPos() + page_lines &&
+            list_rect.pointInRect(mFunctionalScreenX, mFunctionalScreenY);
+        mFunctionalObserved["click"]["list_rect"] = functionalRect(list_rect);
+        mFunctionalObserved["click"]["list_item_visible"] = item_visible;
+        if (!item_visible)
+        {
+            mFunctionalLastClickReason = "not reachable: combo item outside list scroll window";
+            return false;
+        }
+        return functionalPointerClick();
+    }
+
     bool functionalSelectComboValue(LLComboBox* combo, const LLSD& value)
     {
         LLScrollListCtrl* list = combo ? FunctionalComboAccess::list(combo) : nullptr;
+        const bool owns_list = list && !list->getVisible();
+        if (owns_list) functionalTrackCombo(combo);
         mFunctionalAllowedCaptor = list;
         const bool ok = functionalSelectComboValueImpl(combo, value);
         mFunctionalAllowedCaptor = nullptr;
-        if (combo && list && list->getVisible())
-            combo->hideList(); // never leave the dropdown open for the next row
-        if (list && gFocusMgr.getMouseCapture() == list)
+        if (owns_list && list && gFocusMgr.getMouseCapture() == list)
             gFocusMgr.setMouseCapture(nullptr);
+        if (owns_list && combo && list && list->getVisible())
+            combo->hideList();
         return ok;
     }
 
@@ -2952,6 +3139,7 @@ private:
     {
         std::string reason;
         if (!combo || !functionalReachable(combo, reason) || !functionalPointerClick()) return false;
+        mFunctionalObserved["combo"]["open_click"] = mFunctionalObserved["click"];
         LLScrollListCtrl* list = FunctionalComboAccess::list(combo);
         if (!list || !list->getVisible()) return false;
         S32 index = -1;
@@ -3061,33 +3249,17 @@ private:
         {
             if (LLComboBox* combo = dynamic_cast<LLComboBox*>(control))
             {
-                if (!functionalPointerClick()) return false;
-                LLScrollListCtrl* list = FunctionalComboAccess::list(combo);
-                S32 index = test.isMap() && test.has("item_index") ?
-                    test["item_index"].asInteger() : 1;
-                if (!list || !list->getVisible() || list->getItemCount() <= 0) return false;
-                index = llclamp(index, 0, list->getItemCount() - 1);
-                const S32 page_lines = llmax(1, list->getPageLines());
-                if (index < list->getScrollPos()) list->setScrollPos(index);
-                else if (index >= list->getScrollPos() + page_lines)
-                    list->setScrollPos(index - page_lines + 1);
-                const LLRect cell = list->getCellRect(index, 0);
-                list->localPointToScreen(cell.getCenterX(), cell.getCenterY(),
-                                         &mFunctionalScreenX, &mFunctionalScreenY);
-                mFunctionalClickTarget = list->getHandle();
-                mFunctionalObserved["click"]["combo_index"] = index;
-                const LLRect list_rect = list->calcScreenRect();
-                const bool item_visible = index >= list->getScrollPos() &&
-                    index < list->getScrollPos() + page_lines &&
-                    list_rect.pointInRect(mFunctionalScreenX, mFunctionalScreenY);
-                mFunctionalObserved["click"]["list_rect"] = functionalRect(list_rect);
-                mFunctionalObserved["click"]["list_item_visible"] = item_visible;
-                if (!item_visible)
-                {
-                    mFunctionalLastClickReason = "not reachable: combo item outside list scroll window";
-                    return false;
-                }
-                return functionalPointerClick();
+                LLScrollListCtrl* combo_list = FunctionalComboAccess::list(combo);
+                const bool owns_list = combo_list && !combo_list->getVisible();
+                if (owns_list) functionalTrackCombo(combo);
+                mFunctionalAllowedCaptor = combo_list;
+                const bool ok = functionalExerciseComboByIndex(combo, test);
+                mFunctionalAllowedCaptor = nullptr;
+                if (owns_list && combo_list && gFocusMgr.getMouseCapture() == combo_list)
+                    gFocusMgr.setMouseCapture(nullptr);
+                if (owns_list && combo_list && combo_list->getVisible())
+                    combo->hideList();
+                return ok;
             }
             if (LLRadioGroup* radio = dynamic_cast<LLRadioGroup*>(control))
             {
@@ -3454,7 +3626,11 @@ private:
     void beginFunctionalEntry()
     {
         const LLSD& entry = mFunctionalEntries[mFunctionalIndex];
-        if (!mFunctionalGatePrepared) mFunctionalObserved = LLSD::emptyMap();
+        if (!mFunctionalGatePrepared)
+        {
+            mFunctionalObserved = LLSD::emptyMap();
+            functionalBeginInputState();
+        }
         const std::string action = entry["action"].asString();
         if (action == "NO_EXERCISE")
         {
@@ -3596,6 +3772,18 @@ private:
             expected_ok = expected_ok && after.str() != mFunctionalVisibleBefore;
             if (after.str() == mFunctionalVisibleBefore)
                 assertion_failure = "selector changed no displayed page values";
+        }
+        if (entry["probe"].asString() == "temporal_preset")
+        {
+            LLControlVariable* mode = gSavedSettings.getControl("TemporalMode").get();
+            const S32 actual_mode = mode ? mode->getValue().asInteger() : -1;
+            const S32 expected_mode = entry["temporal_mode"].asInteger();
+            const bool mode_ok = mode && actual_mode == expected_mode;
+            mFunctionalObserved["temporal_mode"]["expected"] = expected_mode;
+            mFunctionalObserved["temporal_mode"]["actual"] = actual_mode;
+            expected_ok = expected_ok && mode_ok;
+            if (!mode_ok)
+                assertion_failure = "temporal preset did not set the expected mode";
         }
         if (entry["probe"].asString() == "gaze_reset")
         {
@@ -6802,6 +6990,10 @@ private:
     bool mFunctionalFailureShotPending = false;
     U32 mFunctionalShotWaitFrames = 0;
     LLHandle<LLPanel> mFunctionalLoginPanel;
+    LLHandle<LLView> mFunctionalFocusBefore;
+    std::vector<LLHandle<LLView>> mFunctionalOpenedCombos;
+    bool mFunctionalFocusWasNull = false;
+    bool mFunctionalInputStateActive = false;
     LLMouseHandler* mFunctionalAllowedCaptor = nullptr;
     S32 mFunctionalRevealFrames = 0;
     S32 mFunctionalGateFrames = 0;
