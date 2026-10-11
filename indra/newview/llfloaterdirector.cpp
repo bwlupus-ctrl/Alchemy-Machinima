@@ -2320,7 +2320,8 @@ void LLFloaterDirector::loadScene(const std::string& name)
     ALKitHistory::ScopedSuspend history_suspend;
 
     const bool has_version = scene.has("version");
-    U32 prism_skipped_bindings = 0;
+    U32 prism_offline_bindings = 0;
+    U32 prism_permission_bindings = 0;
     const bool malformed_version = has_version && !scene["version"].isInteger();
     const S32 version = has_version && !malformed_version
         ? scene["version"].asInteger() : 1;
@@ -2352,11 +2353,11 @@ void LLFloaterDirector::loadScene(const std::string& name)
         }
         if (!prism_report.mSkippedBindings.empty())
         {
-            prism_skipped_bindings = static_cast<U32>(
-                prism_report.mSkippedBindings.size());
             for (const LLPrismLens::SkippedBinding& skipped :
                  prism_report.mSkippedBindings)
             {
+                if (skipped.mPermissionFailure) ++prism_permission_bindings;
+                else ++prism_offline_bindings;
                 LL_WARNS("Director") << skipped.mReason << ": object "
                     << skipped.mObjectId << " face " << skipped.mTextureEntry
                     << LL_ENDL;
@@ -2553,12 +2554,13 @@ void LLFloaterDirector::loadScene(const std::string& name)
     {
         mShell->history().barrier("scene loaded");
     }
-    if (prism_skipped_bindings > 0)
+    if (prism_permission_bindings > 0 || prism_offline_bindings > 0)
     {
         LLSD args;
         args["MESSAGE"] = llformat(
-            "Scene loaded; %u monitor face(s) skipped for permission",
-            prism_skipped_bindings);
+            "Scene loaded; %u monitor face(s) skipped for permission; "
+            "%u offline face(s) retained for retry",
+            prism_permission_bindings, prism_offline_bindings);
         LLNotificationsUtil::add("SystemMessageTip", args);
     }
     LL_INFOS("Director") << "Loaded scene '" << name << "'" << LL_ENDL;

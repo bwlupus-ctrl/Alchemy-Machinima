@@ -33,16 +33,7 @@ private:
 };
 
 ALKitHistory::ALKitHistory()  = default;
-ALKitHistory::~ALKitHistory()
-{
-    if (mOpen)
-    {
-        for (CustomEntry& entry : mOpen->custom)
-            if (entry.release) entry.release();
-    }
-    releaseSteps(mUndo);
-    releaseSteps(mRedo);
-}
+ALKitHistory::~ALKitHistory() = default;
 
 void ALKitHistory::setOwner(LLView* owner)
 { mOwner = owner ? owner->getHandle() : LLHandle<LLView>(); }
@@ -117,59 +108,17 @@ void ALKitHistory::recordCustom(const std::string& key, const std::string& label
         return;
     if (!mOpen)
         beginGesture(KEY, mPage, label);
-    mOpen->custom.push_back({ key, {}, std::move(fn), {}, false });
+    mOpen->custom.push_back({ key, std::move(fn) });
     if (mOpen->label.empty())
         mOpen->label = label;
-}
-
-void ALKitHistory::recordCustom(
-    const std::string& key, const std::string& label,
-    std::function<bool(bool, std::string&)> prepare,
-    std::function<bool(bool, std::string&)> replay,
-    std::function<void()> release,
-    bool discard_on_prepare_failure)
-{
-    if (suspended() || mReplaying)
-        return;
-    if (!mOpen)
-        beginGesture(KEY, mPage, label);
-    mOpen->custom.push_back(
-        { key, std::move(prepare), std::move(replay), std::move(release),
-          discard_on_prepare_failure });
-    if (mOpen->label.empty())
-        mOpen->label = label;
-}
-
-void ALKitHistory::commitGesture()
-{
-    finishGesture();
-    mTimer.reset();
-}
-
-void ALKitHistory::cancelGesture()
-{
-    if (mOpen)
-    {
-        for (CustomEntry& entry : mOpen->custom)
-            if (entry.release) entry.release();
-    }
-    mOpen.reset();
-    mTimer.reset();
-}
-
-void ALKitHistory::releaseSteps(std::vector<Step>& steps)
-{
-    for (Step& step : steps)
-        for (CustomEntry& entry : step.custom)
-            if (entry.release) entry.release();
-    steps.clear();
 }
 
 void ALKitHistory::barrier(const std::string& reason)
 {
-    cancelGesture();
-    releaseSteps(mUndo);
-    releaseSteps(mRedo);
+    mOpen.reset();
+    mTimer.reset();
+    mUndo.clear();
+    mRedo.clear();
     ++mGeneration;
     ++mRevision;
     LL_INFOS("DirectorKit") << "History barrier: " << reason << LL_ENDL;
@@ -259,13 +208,8 @@ void ALKitHistory::finishGesture()
     {
         mUndo.push_back(std::move(*mOpen));
         if (mUndo.size() > MAX_STEPS)
-        {
-            Step& evicted = mUndo.front();
-            for (CustomEntry& entry : evicted.custom)
-                if (entry.release) entry.release();
             mUndo.erase(mUndo.begin());
-        }
-        releaseSteps(mRedo);
+        mRedo.clear();
         ++mRevision;
     }
     mOpen.reset();
@@ -297,9 +241,8 @@ std::string ALKitHistory::currentContext(const std::string& page) const
     return found == mContexts.end() ? std::string() : found->second();
 }
 
-bool ALKitHistory::replay(Step& step, bool redo, bool* discard)
+bool ALKitHistory::replay(Step& step, bool redo)
 {
-    if (discard) *discard = false;
     if (step.scene_generation != mGeneration)
         return false;
     const std::string context = currentContext(step.page);
@@ -313,38 +256,6 @@ bool ALKitHistory::replay(Step& step, bool redo, bool* discard)
     ScopedSuspend guard;
     mReplaying = true;
     bool ok    = true;
-    const auto fail = [&step, redo, &ok](const std::string& reason)
-    {
-        LLSD args;
-        args["MESSAGE"] = std::string("Cannot ") + (redo ? "redo " : "undo ") +
-            step.label + ": " + reason;
-        LLNotificationsUtil::add("SystemMessageTip", args);
-        ok = false;
-    };
-    const auto prepare_custom = [&fail, redo, discard](CustomEntry& entry)
-    {
-        if (!entry.prepare) return true;
-        std::string reason;
-        if (entry.prepare(redo, reason)) return true;
-        fail(reason);
-        if (discard && entry.discard_on_prepare_failure) *discard = true;
-        return false;
-    };
-    if (redo)
-    {
-        for (CustomEntry& entry : step.custom)
-            if (!prepare_custom(entry)) break;
-    }
-    else
-    {
-        for (auto it = step.custom.rbegin(); it != step.custom.rend(); ++it)
-            if (!prepare_custom(*it)) break;
-    }
-    if (!ok)
-    {
-        mReplaying = false;
-        return false;
-    }
     for (auto it = step.entries.rbegin(); it != step.entries.rend(); ++it)
     {
         Entry&      entry = *it;
@@ -368,12 +279,15 @@ bool ALKitHistory::replay(Step& step, bool redo, bool* discard)
                 control->set(value);
             }
     }
-    auto replay_custom = [&fail, redo](CustomEntry& entry)
+    auto replay_custom = [&ok, redo](CustomEntry& entry)
     {
         std::string reason;
         if (!entry.replay(redo, reason))
         {
-            fail(reason);
+            LLSD args;
+            args["MESSAGE"] = reason;
+            LLNotificationsUtil::add("SystemMessageTip", args);
+            ok = false;
         }
     };
     if (redo)
@@ -404,19 +318,8 @@ void ALKitHistory::undo()
     mTimer.reset();
     if (!canUndo())
         return;
-    bool discard = false;
-    if (!replay(mUndo.back(), false, &discard))
-    {
-        if (discard)
-        {
-            Step& failed = mUndo.back();
-            for (CustomEntry& entry : failed.custom)
-                if (entry.release) entry.release();
-            mUndo.pop_back();
-            ++mRevision;
-        }
+    if (!replay(mUndo.back(), false))
         return;
-    }
     Step s = std::move(mUndo.back());
     mUndo.pop_back();
     mRedo.push_back(std::move(s));
@@ -428,19 +331,8 @@ void ALKitHistory::redo()
     mTimer.reset();
     if (!canRedo())
         return;
-    bool discard = false;
-    if (!replay(mRedo.back(), true, &discard))
-    {
-        if (discard)
-        {
-            Step& failed = mRedo.back();
-            for (CustomEntry& entry : failed.custom)
-                if (entry.release) entry.release();
-            mRedo.pop_back();
-            ++mRevision;
-        }
+    if (!replay(mRedo.back(), true))
         return;
-    }
     Step s = std::move(mRedo.back());
     mRedo.pop_back();
     mUndo.push_back(std::move(s));

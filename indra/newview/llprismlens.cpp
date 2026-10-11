@@ -1370,6 +1370,8 @@ struct SurfaceGeometry
 struct SurfaceGeometryCache
 {
     bool mValid = false;
+    bool mRejected = false;
+    std::string mRejectedReason;
     const LLVOVolume* mObject = nullptr;
     const LLVolume* mVolume = nullptr;
     const LLVector4a* mPositions = nullptr;
@@ -1396,6 +1398,31 @@ struct SurfaceGeometryCache
             mNumVertices == face.mNumVertices && mNumIndices == face.mNumIndices &&
             mSculptLevel == volume->getSculptLevel() && mDetail == volume->getDetail() &&
             now >= mValidatedAt && now < mRevalidateAt;
+    }
+
+    bool rejectedSourceMatches(const LLVOVolume* object, const LLVolume* volume,
+                               const LLVolumeFace& face, S32 te) const
+    {
+        return mRejected && mObject == object && mVolume == volume &&
+            mPositions == face.mPositions && mTexCoords == face.mTexCoords &&
+            mIndices == face.mIndices && mTextureEntry == te &&
+            mNumVertices == face.mNumVertices && mNumIndices == face.mNumIndices &&
+            mSculptLevel == volume->getSculptLevel() && mDetail == volume->getDetail();
+    }
+
+    void rememberSource(const LLVOVolume* object, const LLVolume* volume,
+                        const LLVolumeFace& face, S32 te)
+    {
+        mObject = object;
+        mVolume = volume;
+        mPositions = face.mPositions;
+        mTexCoords = face.mTexCoords;
+        mIndices = face.mIndices;
+        mTextureEntry = te;
+        mNumVertices = face.mNumVertices;
+        mNumIndices = face.mNumIndices;
+        mSculptLevel = volume->getSculptLevel();
+        mDetail = volume->getDetail();
     }
 };
 
@@ -1522,6 +1549,18 @@ ESurfaceValidation validateSurfaceGeometry(
     }
 
     const F64 now = LLTimer::getTotalSeconds();
+    if (drawable->isState(LLDrawable::REBUILD_VOLUME))
+    {
+        // A live object update is the invalid-quarantine invalidation signal.
+        // Pointer/count checks below cover completed LOD/asset replacement.
+        cache.mRejected = false;
+        cache.mRejectedReason.clear();
+    }
+    if (cache.rejectedSourceMatches(object, volume, volume_face, te))
+    {
+        reject_reason = cache.mRejectedReason;
+        return ESurfaceValidation::INVALID;
+    }
     if (cache.matches(object, volume, volume_face, te, now))
     {
         if (applyCachedSurfaceGeometry(cache, surface_matrix, *model_matrix,
@@ -1536,6 +1575,14 @@ ESurfaceValidation validateSurfaceGeometry(
     // The bounded periodic revalidation also catches rare in-place volume edits
     // without paying an O(vertices + triangles) scan on every display every frame.
     cache.mValid = false;
+    cache.mRejected = false;
+    cache.rememberSource(object, volume, volume_face, te);
+    const auto reject_invalid = [&cache, &reject_reason]()
+    {
+        cache.mRejected = true;
+        cache.mRejectedReason = reject_reason;
+        return ESurfaceValidation::INVALID;
+    };
     std::vector<LLVector3>& surface_positions = cache.mSurfacePositions;
     std::vector<LLVector3>& world_positions = cache.mWorldPositions;
     surface_positions.clear();
@@ -1558,7 +1605,7 @@ ESurfaceValidation validateSurfaceGeometry(
         if (!surface.isFinite() || !world.isFinite())
         {
             reject_reason = "designated face contains non-finite geometry";
-            return ESurfaceValidation::INVALID;
+            return reject_invalid();
         }
         surface_positions.push_back(surface);
         world_positions.push_back(world);
@@ -1583,7 +1630,7 @@ ESurfaceValidation validateSurfaceGeometry(
             ic >= world_positions.size())
         {
             reject_reason = "designated volume face contains an invalid triangle index";
-            return ESurfaceValidation::INVALID;
+            return reject_invalid();
         }
         LLVector3 normal = (world_positions[ib] - world_positions[ia]) %
                            (world_positions[ic] - world_positions[ia]);
@@ -1597,7 +1644,7 @@ ESurfaceValidation validateSurfaceGeometry(
     if (!found_plane)
     {
         reject_reason = "designated face is degenerate";
-        return ESurfaceValidation::INVALID;
+        return reject_invalid();
     }
 
     const F32 diagonal = (max_corner - min_corner).magVec();
@@ -1608,7 +1655,7 @@ ESurfaceValidation validateSurfaceGeometry(
         if (fabsf((position - center) * plane_normal) > planar_tolerance)
         {
             reject_reason = "designated face is materially non-planar";
-            return ESurfaceValidation::INVALID;
+            return reject_invalid();
         }
     }
     for (S32 i = 0; i + 2 < volume_face.mNumIndices; i += 3)
@@ -1620,7 +1667,7 @@ ESurfaceValidation validateSurfaceGeometry(
             ic >= world_positions.size())
         {
             reject_reason = "designated volume face contains an invalid triangle index";
-            return ESurfaceValidation::INVALID;
+            return reject_invalid();
         }
         LLVector3 normal = (world_positions[ib] - world_positions[ia]) %
                            (world_positions[ic] - world_positions[ia]);
@@ -1628,7 +1675,7 @@ ESurfaceValidation validateSurfaceGeometry(
             fabsf(normal * plane_normal) < PLANAR_NORMAL_COS)
         {
             reject_reason = "designated face triangle normals are non-planar";
-            return ESurfaceValidation::INVALID;
+            return reject_invalid();
         }
     }
 
@@ -1637,7 +1684,7 @@ ESurfaceValidation validateSurfaceGeometry(
                                   surface_matrix, *model_matrix,
                                   planar_tolerance, local_basis, frame, reject_reason))
     {
-        return ESurfaceValidation::INVALID;
+        return reject_invalid();
     }
 
     LLVector3 uv_plane_normal =
@@ -1645,7 +1692,7 @@ ESurfaceValidation validateSurfaceGeometry(
     if (uv_plane_normal.normVec() <= F_ALMOST_ZERO)
     {
         reject_reason = "designated face has a degenerate UV plane";
-        return ESurfaceValidation::INVALID;
+        return reject_invalid();
     }
 
     cache.mObject = object;
@@ -1667,6 +1714,8 @@ ESurfaceValidation validateSurfaceGeometry(
     cache.mLocalBasis = local_basis;
     cache.mPlaneToUvSign = plane_normal * uv_plane_normal < 0.f ? -1.f : 1.f;
     cache.mValid = true;
+    cache.mRejected = false;
+    cache.mRejectedReason.clear();
 
     geometry.mFace = face;
     geometry.mCenter = frame.mWorldSurfaceOrigin +
@@ -1797,6 +1846,20 @@ struct PrismDisplay
     std::string mQuarantineReason;
     PrismFrame mFrame;
     SurfaceGeometryCache mSurfaceCache;
+};
+
+// Private, short-lived transaction state for the OTS replacement operation.
+// It is deliberately not an identity/history API: the snapshot exists only on
+// the buildOtsPairFromSubjects() stack and is consumed on immediate failure.
+struct OtsDisplayRollback
+{
+    LLPrismLens::DisplayDefinition mDefinition;
+};
+
+struct OtsCaptureRollback
+{
+    LLPrismLens::CaptureDefinition mCapture;
+    std::vector<OtsDisplayRollback> mOwnedDisplays;
 };
 
 struct PrismGateRuntime
@@ -4965,8 +5028,8 @@ public:
         return true;
     }
 
-    bool captureRemovalRecord(const LLPrismLens::CaptureHandle& handle,
-                              LLPrismLens::RemovedCaptureRecord& record,
+    bool captureOtsRollbackRecord(const LLPrismLens::CaptureHandle& handle,
+                              OtsCaptureRollback& record,
                               std::string* reason) const
     {
         const S32 slot = findCapture(handle);
@@ -4975,7 +5038,7 @@ public:
             if (reason) *reason = "That capture handle is stale.";
             return false;
         }
-        record = LLPrismLens::RemovedCaptureRecord();
+        record = OtsCaptureRollback();
         const PrismInstance& capture = mLenses[slot];
         record.mCapture.mSlot = static_cast<U32>(slot);
         record.mCapture.mHandle = capture.mHandle;
@@ -4986,15 +5049,6 @@ public:
         record.mCapture.mRate = capture.mRate;
         record.mCapture.mRuntime = capture.mRuntime;
         record.mCapture.mDisplayCount = capture.mDisplayCount;
-        const auto armIdAt = [this](S32 index)
-        {
-            return index >= 0 && index < static_cast<S32>(mGateSettings.mArmed.size())
-                ? mGateSettings.mArmed[index].mArmId : LLUUID::null;
-        };
-        record.mProgramArmId = armIdAt(mGateSettings.mProgramArmIndex);
-        record.mPreviewArmId = armIdAt(mGateSettings.mPreviewArmIndex);
-        record.mWarmArmId = armIdAt(mGate.mWarmArmIndex);
-        record.mOnAirArmId = armIdAt(mGate.mOnAirArmIndex);
         for (const PrismDisplay& display : mDisplays)
         {
             if (!display.mOccupied || display.mCaptureSlot != static_cast<U32>(slot) ||
@@ -5002,10 +5056,9 @@ public:
                 continue;
             if (display.mGateSubscribed)
             {
-                record.mSubscribedDisplays.push_back(display.mHandle);
                 continue;
             }
-            LLPrismLens::RemovedDisplayRecord removed;
+            OtsDisplayRollback removed;
             removed.mDefinition.mHandle = display.mHandle;
             removed.mDefinition.mCapture = capture.mHandle;
             removed.mDefinition.mDisplayObjectId = display.mObjectId;
@@ -5019,122 +5072,11 @@ public:
             removed.mDefinition.mQuarantineReason = display.mQuarantineReason;
             record.mOwnedDisplays.push_back(removed);
         }
-        for (S32 index = 0;
-             index < static_cast<S32>(mGateSettings.mArmed.size()); ++index)
-        {
-            if (mGateSettings.mArmed[index].mCaptureId != capture.mHandle.mId)
-                continue;
-            record.mHadGateArm = true;
-            record.mGateArm = mGateSettings.mArmed[index];
-            record.mGateArmIndex = index;
-            record.mWasProgram = mGateSettings.mProgramArmIndex == index;
-            record.mWasPreview = mGateSettings.mPreviewArmIndex == index;
-            record.mWasWarm = mGate.mWarmArmIndex == index;
-            record.mWasOnAir = mGate.mOnAirArmIndex == index;
-            record.mGateWasActive = mGateSettings.mActive;
-            record.mGateCutSerial = mGate.mCutSerial;
-            record.mGatePostRemovalCutSerial = mGate.mCutSerial;
-            if (record.mWasOnAir && mGateSettings.mArmed.size() > 1)
-            {
-                std::vector<LLPrismLens::GateArmedCamera> remaining =
-                    mGateSettings.mArmed;
-                remaining.erase(remaining.begin() + index);
-                const S32 preferred = llmin(
-                    index, static_cast<S32>(remaining.size()) - 1);
-                const S32 replacement =
-                    mGateSettings.mMode == LLPrismLens::EGateMode::AUTO_CYCLE
-                        ? LLPrismLens::gateClampEnabledIndex(remaining, preferred)
-                        : preferred;
-                if (replacement >= 0 &&
-                    findCaptureById(remaining[replacement].mCaptureId) >= 0)
-                {
-                    ++record.mGatePostRemovalCutSerial;
-                }
-            }
-            break;
-        }
         if (reason) reason->clear();
         return true;
     }
 
-    bool restoreDisplayIdentity(const LLPrismLens::RemovedDisplayRecord& record,
-                                std::string* reason)
-    {
-        const LLPrismLens::DisplayDefinition& definition = record.mDefinition;
-        const S32 capture_slot = findCapture(definition.mCapture);
-        if (capture_slot < 0 || findDisplay(definition.mHandle) >= 0 ||
-            freeDisplaySlot() < 0)
-        {
-            if (reason) *reason = capture_slot < 0
-                ? "The display's capture no longer exists."
-                : "The saved display identity or capacity is unavailable.";
-            return false;
-        }
-        if (!definition.mSettings.mVirtual &&
-            findDisplayIdentity(definition.mDisplayObjectId,
-                                definition.mDisplayTextureEntry) >= 0)
-        {
-            if (reason) *reason = "That face is already a Prism display.";
-            return false;
-        }
-        if (!validDisplaySettings(definition.mSettings, reason))
-            return false;
-        PrismDisplay display;
-        display.mOccupied = true;
-        display.mHandle = definition.mHandle;
-        display.mCaptureSlot = static_cast<U32>(capture_slot);
-        display.mCaptureGeneration = definition.mCapture.mGeneration;
-        display.mObjectId = definition.mDisplayObjectId;
-        display.mTE = definition.mDisplayTextureEntry;
-        display.mSettings = definition.mSettings;
-        display.mRuntime = definition.mRuntime;
-        display.mGateSubscribed = definition.mGateSubscribed;
-        display.mQuarantined = definition.mQuarantined;
-        display.mPermissionQuarantined = definition.mPermissionQuarantined;
-        display.mQuarantineReason = definition.mQuarantineReason;
-        if (!definition.mSettings.mVirtual)
-        {
-            LLViewerObject* object = gObjectList.findObject(
-                definition.mDisplayObjectId);
-            if (!object)
-            {
-                display.mQuarantined = true;
-                display.mPermissionQuarantined = false;
-                display.mQuarantineReason =
-                    "Offline restored display; awaiting validation.";
-            }
-            else
-            {
-                std::string validation_reason;
-                const EDisplayTargetValidation validation =
-                    validateDisplaySurfaceTarget(
-                        object, definition.mDisplayTextureEntry,
-                        display.mSurfaceCache, validation_reason);
-                display.mQuarantined =
-                    validation != EDisplayTargetValidation::VALID;
-                display.mPermissionQuarantined =
-                    validation == EDisplayTargetValidation::PERMISSION;
-                if (display.mQuarantined)
-                {
-                    display.mQuarantineReason = display.mPermissionQuarantined
-                        ? "Skipped on restore: no modify permission"
-                        : validation_reason;
-                }
-                else
-                {
-                    display.mQuarantineReason.clear();
-                }
-            }
-        }
-        mDisplays[freeDisplaySlot()] = display;
-        ++mLenses[capture_slot].mDisplayCount;
-        mNextGeneration = llmax(mNextGeneration, definition.mHandle.mGeneration + 1);
-        ++mRevision;
-        if (reason) reason->clear();
-        return true;
-    }
-
-    bool restoreCaptureIdentity(const LLPrismLens::RemovedCaptureRecord& record,
+    bool restoreOtsRollback(const OtsCaptureRollback& record,
                                 std::string* reason)
     {
         const LLPrismLens::CaptureDefinition& definition = record.mCapture;
@@ -5160,7 +5102,7 @@ public:
             return false;
         }
         std::set<std::string> targets;
-        for (const LLPrismLens::RemovedDisplayRecord& removed : record.mOwnedDisplays)
+        for (const OtsDisplayRollback& removed : record.mOwnedDisplays)
         {
             const LLPrismLens::DisplayDefinition& display = removed.mDefinition;
             if (findDisplay(display.mHandle) >= 0 ||
@@ -5189,44 +5131,6 @@ public:
                 return false;
             }
         }
-        if (record.mHadGateArm)
-        {
-            if (mGateSettings.mArmed.size() >= LLPrismLens::MAX_CAPTURES ||
-                record.mGateArmIndex < 0 ||
-                record.mGateArmIndex > static_cast<S32>(mGateSettings.mArmed.size()))
-            {
-                if (reason) *reason = "The saved Gate arm index or capacity is unavailable.";
-                return false;
-            }
-            for (const LLPrismLens::GateArmedCamera& arm : mGateSettings.mArmed)
-            {
-                if (arm.mArmId == record.mGateArm.mArmId ||
-                    arm.mCaptureId == definition.mHandle.mId)
-                {
-                    if (reason) *reason = "The saved Gate arm identity is already in use.";
-                    return false;
-                }
-            }
-        }
-        for (const LLPrismLens::DisplayHandle& handle : record.mSubscribedDisplays)
-        {
-            const S32 subscribed_slot = findDisplay(handle);
-            if (subscribed_slot < 0)
-            {
-                if (reason) *reason = "A subscribed display needed by the saved Gate state is missing.";
-                return false;
-            }
-            if (LLPrismLens::gateFeedbackResult(
-                    definition.mCameraObjectId,
-                    mDisplays[subscribed_slot].mObjectId, true) !=
-                LLPrismLens::ERegistryResult::OK)
-            {
-                if (reason) *reason =
-                    "Restoring this Gate route would create camera feedback.";
-                return false;
-            }
-        }
-
         PrismInstance capture;
         capture.mOccupied = true;
         capture.mHandle = definition.mHandle;
@@ -5240,7 +5144,7 @@ public:
         mLenses[restore_slot] = capture;
         mNextGeneration = llmax(mNextGeneration, definition.mHandle.mGeneration + 1);
 
-        for (const LLPrismLens::RemovedDisplayRecord& removed : record.mOwnedDisplays)
+        for (const OtsDisplayRollback& removed : record.mOwnedDisplays)
         {
             const LLPrismLens::DisplayDefinition& source = removed.mDefinition;
             PrismDisplay display;
@@ -5300,46 +5204,30 @@ public:
             }
         }
 
-        if (record.mHadGateArm)
-        {
-            const S32 index = record.mGateArmIndex;
-            const auto shift = [index](S32& value)
-            {
-                if (value >= index) ++value;
-            };
-            shift(mGateSettings.mProgramArmIndex);
-            shift(mGateSettings.mPreviewArmIndex);
-            shift(mGate.mWarmArmIndex);
-            shift(mGate.mOnAirArmIndex);
-            mGateSettings.mArmed.insert(
-                mGateSettings.mArmed.begin() + index, record.mGateArm);
-            if (record.mWasPreview)
-            {
-                mGateSettings.mPreviewArmIndex = index;
-            }
-            if (record.mWasWarm)
-            {
-                mGate.mWarmArmIndex = index;
-            }
-            if (record.mWasOnAir && record.mWasProgram &&
-                mGate.mCutSerial == record.mGatePostRemovalCutSerial)
-            {
-                mGate.mOnAirArmIndex = index;
-                mGateSettings.mProgramArmIndex = index;
-                if (mGateSettings.mActive)
-                {
-                    const F64 now = LLTimer::getTotalSeconds();
-                    mGate.mController.manualPunch(index, now);
-                    mGate.mNextCutTime = now + mGateSettings.mIntervalSeconds;
-                }
-            }
-        }
+        ++mRevision;
+        ++mRuntimeRevision;
+        if (reason) reason->clear();
+        return true;
+    }
+
+    void restoreOtsGateRollback(const LLPrismLens::GateSnapshot& snapshot)
+    {
+        mGateSettings = snapshot.mSettings;
+        mGate.mOnAirArmIndex = snapshot.mOnAirArmIndex;
+        mGate.mWarmArmIndex = snapshot.mWarmArmIndex;
+        mGate.mCutSerial = snapshot.mCutSerial;
+        mGate.mReason = snapshot.mReason;
+        mGate.mPendingTake = false;
+        mGate.mController.reset();
+        if (mGate.mOnAirArmIndex >= 0)
+            mGate.mController.manualPunch(
+                mGate.mOnAirArmIndex, LLTimer::getTotalSeconds());
+        mGate.mNextCutTime = LLTimer::getTotalSeconds() +
+            mGateSettings.mIntervalSeconds;
         routeGateDisplays();
         ++mRevision;
         ++mRuntimeRevision;
         ++mGate.mGateRevision;
-        if (reason) reason->clear();
-        return true;
     }
 
     U64 configurationRevision() const { return mRevision; }
@@ -6295,6 +6183,7 @@ public:
                     skipped.mObjectId = parsed.mObjectId;
                     skipped.mTextureEntry = parsed.mTE;
                     skipped.mReason = parsed.mQuarantineReason;
+                    skipped.mPermissionFailure = false;
                     report.mSkippedBindings.push_back(skipped);
                 }
                 else
@@ -6320,6 +6209,8 @@ public:
                         skipped.mObjectId = parsed.mObjectId;
                         skipped.mTextureEntry = parsed.mTE;
                         skipped.mReason = parsed.mQuarantineReason;
+                        skipped.mPermissionFailure =
+                            parsed.mPermissionQuarantined;
                         report.mSkippedBindings.push_back(skipped);
                     }
                 }
@@ -7622,14 +7513,15 @@ bool buildOtsPairFromSubjects(CaptureHandle* ots_a, CaptureHandle* ots_b,
             old_ots_capture_ids.insert(armed.mCaptureId);
         }
     }
-    std::vector<RemovedCaptureRecord> old_ots_records;
+    std::vector<OtsCaptureRollback> old_ots_records;
     for (U32 index = 0; index < registry.mCaptureCount; ++index)
     {
         const CaptureDefinition& capture = registry.mCaptures[index];
         if (old_ots_capture_ids.count(capture.mHandle.mId) != 0)
         {
-            RemovedCaptureRecord removed;
-            if (!captureRemovalRecord(capture.mHandle, removed, reason))
+            OtsCaptureRollback removed;
+            if (!PrismLensRegistry::instance().captureOtsRollbackRecord(
+                    capture.mHandle, removed, reason))
                 return false;
             old_ots_records.push_back(removed);
         }
@@ -7713,13 +7605,7 @@ bool buildOtsPairFromSubjects(CaptureHandle* ots_a, CaptureHandle* ots_b,
     // The arm labels are the builder's ownership marker. Preserve the exact
     // capture/display identities so rollback neither regenerates handles nor
     // depends on transient world geometry.
-    std::stable_sort(old_ots_records.begin(), old_ots_records.end(),
-        [](const RemovedCaptureRecord& left,
-           const RemovedCaptureRecord& right)
-        {
-            return !left.mWasOnAir && right.mWasOnAir;
-        });
-    for (const RemovedCaptureRecord& removed : old_ots_records)
+    for (const OtsCaptureRollback& removed : old_ots_records)
     {
         removeCapture(removed.mCapture.mHandle);
     }
@@ -7731,23 +7617,19 @@ bool buildOtsPairFromSubjects(CaptureHandle* ots_a, CaptureHandle* ots_b,
         std::string rollback_failure;
         if (handle_b.mId.notNull()) removeCapture(handle_b);
         if (handle_a.mId.notNull()) removeCapture(handle_a);
-        std::sort(old_ots_records.begin(), old_ots_records.end(),
-            [](const RemovedCaptureRecord& left,
-               const RemovedCaptureRecord& right)
-            {
-                return left.mGateArmIndex < right.mGateArmIndex;
-            });
         bool restored = true;
-        for (const RemovedCaptureRecord& removed : old_ots_records)
+        for (const OtsCaptureRollback& removed : old_ots_records)
         {
             std::string restore_reason;
-            if (!restoreCaptureIdentity(removed, &restore_reason))
+            if (!PrismLensRegistry::instance().restoreOtsRollback(
+                    removed, &restore_reason))
             {
                 restored = false;
                 if (!rollback_failure.empty()) rollback_failure += "; ";
                 rollback_failure += restore_reason;
             }
         }
+        PrismLensRegistry::instance().restoreOtsGateRollback(gate);
         if (reason)
         {
             *reason = failure;
@@ -7953,27 +7835,6 @@ bool removeCapture(const CaptureHandle& capture)
 {
     ScopedPrismRevisionSignals signals;
     return PrismLensRegistry::instance().removeCapture(capture);
-}
-
-bool captureRemovalRecord(const CaptureHandle& capture,
-                          RemovedCaptureRecord& record, std::string* reason)
-{
-    return PrismLensRegistry::instance().captureRemovalRecord(
-        capture, record, reason);
-}
-
-bool restoreCaptureIdentity(const RemovedCaptureRecord& record,
-                            std::string* reason)
-{
-    ScopedPrismRevisionSignals signals;
-    return PrismLensRegistry::instance().restoreCaptureIdentity(record, reason);
-}
-
-bool restoreDisplayIdentity(const RemovedDisplayRecord& record,
-                            std::string* reason)
-{
-    ScopedPrismRevisionSignals signals;
-    return PrismLensRegistry::instance().restoreDisplayIdentity(record, reason);
 }
 
 U64 configurationRevision()
@@ -8394,6 +8255,15 @@ void renderAuxiliaryView()
     bool produced = false;
     {
         LL_PROFILE_ZONE_NAMED_CATEGORY_DISPLAY("Prism one scheduled auxiliary update");
+        LL_PROFILE_GPU_ZONE("Prism preview-only auxiliary update");
+        std::optional<LLPrismPreviewOperation> preview_budget;
+        if (preview_only)
+        {
+            preview_budget.emplace(
+                PrismPreviewBudgetController::EOperation::AUXILIARY,
+                scheduled_capture->mHandle);
+            if (!preview_budget->admitted()) return;
+        }
         ScopedActivePrismSlot active_slot(registry, slot);
         ScopedPrismRenderState scoped_state;
         if (!scoped_state.isValid())

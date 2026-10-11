@@ -110,4 +110,53 @@ void prism_preview_policy_object::test<6>()
     ensure("tiny remainder is discarded",
            remaining == 0.f && entitlement[0] == 0.f);
 }
+
+template<> template<>
+void prism_preview_policy_object::test<7>()
+{
+    set_test_name("synthetic CPU/GPU reservations charge the independent maximum");
+    PrismPreviewBudgetController budget;
+    budget.noteFrame(1, 0.0, 16.0, false);
+    F64 early_reservation = 0.0;
+    ensure("reservation cannot exceed accumulated tokens",
+           !budget.reserve(PrismPreviewBudgetController::EOperation::AUXILIARY,
+                           early_reservation));
+    for (U32 frame = 1; frame <= 20; ++frame)
+        budget.noteFrame(frame, frame / 60.0, 16.0, false);
+    F64 reservation = 0.0;
+    ensure("auxiliary seed reserves within accumulated tokens",
+           budget.reserve(PrismPreviewBudgetController::EOperation::AUXILIARY,
+                          reservation));
+    budget.complete(PrismPreviewBudgetController::EOperation::AUXILIARY,
+                    reservation, 0.4, 1.2, true);
+    ensure("GPU dominates charged cost",
+           std::fabs(budget.stats().mChargedMs - 1.2) < 0.001);
+}
+
+template<> template<>
+void prism_preview_policy_object::test<8>()
+{
+    set_test_name("synthetic tail costs throttle, suspend, and recover");
+    PrismPreviewBudgetController budget;
+    for (U32 frame = 1; frame <= 120; ++frame)
+        budget.noteFrame(frame, frame / 60.0, 16.0, false);
+    for (U32 violation = 0; violation < 4; ++violation)
+        budget.complete(PrismPreviewBudgetController::EOperation::AUXILIARY,
+                        0.0, 4.5, 1.0, true);
+    ensure("repeated 0.5-fps tail failure suspends", budget.suspended());
+    for (U32 clean = 0; clean < 120; ++clean)
+        budget.complete(PrismPreviewBudgetController::EOperation::ATLAS,
+                        0.0, 0.02, 0.03, true);
+    ensure("120 clean samples resume at throttled rate",
+           !budget.suspended() && budget.effectiveRate(5.f) <= 0.5f);
+}
+
+template<> template<>
+void prism_preview_policy_object::test<9>()
+{
+    set_test_name("synthetic scratch reacquisition is independently counted");
+    PrismPreviewBudgetController budget;
+    budget.noteScratchReacquisition();
+    ensure_equals("scratch miss is exposed", budget.stats().mScratchReacquisitions, 1u);
+}
 } // namespace tut

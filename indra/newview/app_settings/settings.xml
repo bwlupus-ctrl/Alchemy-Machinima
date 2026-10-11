@@ -29494,6 +29494,13 @@
     <key>Type</key><string>F32</string>
     <key>Value</key><real>1.0</real>
   </map>
+  <key>PrismPreviewSelfTest</key>
+  <map>
+    <key>Comment</key><string>One-shot eight-capture VCam preview budget self-test. Requires a visible consumer, previews enabled, and 1 fps. Not persisted.</string>
+    <key>Persist</key><integer>0</integer>
+    <key>Type</key><string>Boolean</string>
+    <key>Value</key><integer>0</integer>
+  </map>
   <key>PrismOtsShoulderOffset</key>
   <map>
     <key>Comment</key><string>Reciprocal OTS camera lateral shoulder offset in meters.</string>

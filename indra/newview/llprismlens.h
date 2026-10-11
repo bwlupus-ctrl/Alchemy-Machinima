@@ -513,6 +513,7 @@ struct SkippedBinding
     LLUUID mObjectId;
     S32 mTextureEntry = -1;
     std::string mReason;
+    bool mPermissionFailure = false;
 };
 
 struct ApplyReport
@@ -521,32 +522,6 @@ struct ApplyReport
     std::string mFatalReason;
     std::vector<SkippedBinding> mSkippedBindings;
     operator bool() const { return mSuccess; }
-};
-
-struct RemovedDisplayRecord
-{
-    DisplayDefinition mDefinition;
-};
-
-struct RemovedCaptureRecord
-{
-    CaptureDefinition mCapture;
-    std::vector<RemovedDisplayRecord> mOwnedDisplays;
-    bool mHadGateArm = false;
-    GateArmedCamera mGateArm;
-    S32 mGateArmIndex = -1;
-    bool mWasProgram = false;
-    bool mWasPreview = false;
-    bool mWasWarm = false;
-    bool mWasOnAir = false;
-    bool mGateWasActive = false;
-    U64 mGateCutSerial = 0;
-    U64 mGatePostRemovalCutSerial = 0;
-    LLUUID mProgramArmId;
-    LLUUID mPreviewArmId;
-    LLUUID mWarmArmId;
-    LLUUID mOnAirArmId;
-    std::vector<DisplayHandle> mSubscribedDisplays;
 };
 
 struct RegistrySnapshot
@@ -735,13 +710,6 @@ bool gateOnAirCameraEye(LLVector3& out_agent,
 bool removeDisplay(const DisplayHandle& binding,
                    std::string* reason = nullptr);
 bool removeCapture(const CaptureHandle& capture);
-bool captureRemovalRecord(const CaptureHandle& capture,
-                          RemovedCaptureRecord& record,
-                          std::string* reason = nullptr);
-bool restoreCaptureIdentity(const RemovedCaptureRecord& record,
-                            std::string* reason = nullptr);
-bool restoreDisplayIdentity(const RemovedDisplayRecord& record,
-                            std::string* reason = nullptr);
 U64 configurationRevision();
 U64 runtimeRevision();
 U64 performanceRevision();

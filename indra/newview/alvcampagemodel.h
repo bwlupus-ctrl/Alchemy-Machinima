@@ -12,7 +12,6 @@
 #include <boost/signals2.hpp>
 #include <memory>
 
-class ALKitHistory;
 class LLViewerObject;
 
 class ALVCamPageModel
@@ -30,7 +29,7 @@ public:
     };
     using changed_signal_t = boost::signals2::signal<void(U32)>;
 
-    explicit ALVCamPageModel(ALKitHistory& history);
+    ALVCamPageModel();
     ~ALVCamPageModel();
 
     const LLPrismLens::RegistrySnapshot& registry() const { return mRegistry; }
@@ -89,12 +88,6 @@ private:
         const LLPrismLens::CaptureHandle& handle) const;
     const LLPrismLens::DisplayDefinition* findDisplay(
         const LLPrismLens::DisplayHandle& handle) const;
-    void recordAddedCapture(const std::string& label,
-                            const LLPrismLens::RemovedCaptureRecord& record);
-    void recordAddedDisplay(const std::string& label,
-                            const LLPrismLens::RemovedDisplayRecord& record);
-
-    ALKitHistory& mHistory;
     LLPrismLens::RegistrySnapshot mRegistry;
     LLPrismLens::PerformanceSnapshot mPerformance;
     LLPrismLens::GateSnapshot mGate;

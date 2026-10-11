@@ -31,10 +31,7 @@ public:
     struct CustomEntry
     {
         std::string                             key;
-        std::function<bool(bool, std::string&)> prepare;
         std::function<bool(bool, std::string&)> replay;
-        std::function<void()>                   release;
-        bool                                    discard_on_prepare_failure = false;
     };
     struct Step
     {
@@ -56,13 +53,6 @@ public:
     void        watchSettings(const std::string&, const std::vector<std::string>&);
     void        recordWidget(LLUICtrl*, const LLSD&, const LLSD&, const std::string&);
     void        recordCustom(const std::string&, const std::string&, std::function<bool(bool, std::string&)>);
-    void        recordCustom(const std::string&, const std::string&,
-                             std::function<bool(bool, std::string&)> prepare,
-                             std::function<bool(bool, std::string&)> replay,
-                             std::function<void()> release,
-                             bool discard_on_prepare_failure = false);
-    void        commitGesture();
-    void        cancelGesture();
     void        barrier(const std::string&);
     static void globalBarrier(const std::string&);
     bool        canUndo() const { return !mUndo.empty(); }
@@ -87,8 +77,7 @@ private:
     void                          finishGesture();
     bool                          tickGesture();
     std::string                   currentContext(const std::string&) const;
-    bool                          replay(Step&, bool, bool* discard = nullptr);
-    static void                   releaseSteps(std::vector<Step>&);
+    bool                          replay(Step&, bool);
     std::vector<Step>             mUndo;
     std::vector<Step>             mRedo;
     U64                           mRevision   = 0;
