@@ -2547,7 +2547,8 @@ private:
         if (!host) host = functionalOwningFloater(expected);
         if (!host) host = mFloater.get();
 
-        if (LLMouseHandler* capture = gFocusMgr.getMouseCapture())
+        if (LLMouseHandler* capture = gFocusMgr.getMouseCapture();
+            capture && !(capture == mFunctionalAllowedCaptor && capture == dynamic_cast<LLMouseHandler*>(expected)))
         {
             LLView* capture_view = dynamic_cast<LLView*>(capture);
             if (!capture_view || !functionalOwnedInputLayer(capture_view, expected, host))
@@ -2837,6 +2838,8 @@ private:
         mFunctionalObserved["click"]["target"] = expected->getPathname();
         mFunctionalObserved["click"]["handler_exact"] = handler;
         LLMouseHandler* stuck = gFocusMgr.getMouseCapture();
+        if (stuck && stuck == mFunctionalAllowedCaptor)
+            stuck = nullptr; // combo button handed capture to its own dropdown list (llcombobox.cpp:818-820)
         if (stuck)
         {
             gFocusMgr.setMouseCapture(nullptr);
@@ -2919,6 +2922,8 @@ private:
         mFunctionalObserved["click"]["real_drag"] = true;
         mFunctionalObserved["click"]["handler_exact"] = handler;
         LLMouseHandler* stuck = gFocusMgr.getMouseCapture();
+        if (stuck && stuck == mFunctionalAllowedCaptor)
+            stuck = nullptr; // combo button handed capture to its own dropdown list (llcombobox.cpp:818-820)
         if (stuck)
         {
             gFocusMgr.setMouseCapture(nullptr);
@@ -2931,6 +2936,19 @@ private:
     }
 
     bool functionalSelectComboValue(LLComboBox* combo, const LLSD& value)
+    {
+        LLScrollListCtrl* list = combo ? FunctionalComboAccess::list(combo) : nullptr;
+        mFunctionalAllowedCaptor = list;
+        const bool ok = functionalSelectComboValueImpl(combo, value);
+        mFunctionalAllowedCaptor = nullptr;
+        if (combo && list && list->getVisible())
+            combo->hideList(); // never leave the dropdown open for the next row
+        if (list && gFocusMgr.getMouseCapture() == list)
+            gFocusMgr.setMouseCapture(nullptr);
+        return ok;
+    }
+
+    bool functionalSelectComboValueImpl(LLComboBox* combo, const LLSD& value)
     {
         std::string reason;
         if (!combo || !functionalReachable(combo, reason) || !functionalPointerClick()) return false;
@@ -6784,6 +6802,7 @@ private:
     bool mFunctionalFailureShotPending = false;
     U32 mFunctionalShotWaitFrames = 0;
     LLHandle<LLPanel> mFunctionalLoginPanel;
+    LLMouseHandler* mFunctionalAllowedCaptor = nullptr;
     S32 mFunctionalRevealFrames = 0;
     S32 mFunctionalGateFrames = 0;
     std::string mFunctionalManifestPath;
