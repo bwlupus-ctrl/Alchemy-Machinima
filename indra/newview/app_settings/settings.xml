@@ -29480,6 +29480,20 @@
     <key>Type</key><string>Boolean</string>
     <key>Value</key><integer>0</integer>
   </map>
+  <key>PrismMonitorPreviewsEnabled</key>
+  <map>
+    <key>Comment</key><string>Enable Director VCam monitor preview demand. In-world Prism displays continue when disabled.</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>Boolean</string>
+    <key>Value</key><integer>1</integer>
+  </map>
+  <key>PrismMonitorPreviewFPS</key>
+  <map>
+    <key>Comment</key><string>Shared Director VCam monitor preview rate. UI/API values are restricted to 0.5, 1, 2, or 5 fps.</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>F32</string>
+    <key>Value</key><real>1.0</real>
+  </map>
   <key>PrismOtsShoulderOffset</key>
   <map>
     <key>Comment</key><string>Reciprocal OTS camera lateral shoulder offset in meters.</string>

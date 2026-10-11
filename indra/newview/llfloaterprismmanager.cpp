@@ -5,6 +5,8 @@
 
 #include "llviewerprecompiledheaders.h"
 
+#include "alvcampagemodel.h"
+
 #include "llfloaterprismmanager.h"
 
 #include "alvcambonepov.h"
@@ -1925,17 +1927,7 @@ void LLFloaterPrismManager::onPlaceEyeInFront()
 // basis (X=at, Y=left, Z=up) differs from the -Z/+Y camera convention.
 static void prismCurrentViewTransform(LLVector3& pos, LLQuaternion& rot)
 {
-    const LLViewerCamera& cam = LLViewerCamera::instance();
-    pos = cam.getOrigin();
-    LLVector3 forward = cam.getAtAxis();
-    LLVector3 up = cam.getUpAxis();
-    LLVector3 right = forward % up;
-    // Re-orthonormalize defensively; the camera axes are already orthonormal.
-    up = right % forward;
-    forward.normVec();
-    up.normVec();
-    right.normVec();
-    rot = LLQuaternion(right, up, -forward); // constructor normalizes
+    ALVCamPageModel::currentViewTransform(pos, rot);
 }
 
 void LLFloaterPrismManager::onSnapVirtualCameraToView()

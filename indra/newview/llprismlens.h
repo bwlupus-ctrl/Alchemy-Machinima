@@ -14,7 +14,9 @@
 #include "v3math.h"
 
 #include <array>
+#include <boost/signals2/connection.hpp>
 #include <cmath>
+#include <functional>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -22,6 +24,7 @@
 class LLFace;
 class LLPlane;
 class LLRenderTarget;
+class LLViewerObject;
 namespace LLPrismLens
 {
 // A capture owns an auxiliary render target. A display binding owns only a
@@ -478,6 +481,7 @@ struct CaptureDefinition
 {
     U32 mSlot = MAX_CAPTURES;
     CaptureHandle mHandle;
+    std::string mLabel;
     ECaptureMode mMode = ECaptureMode::SURFACE_LENS;
     LLUUID mCameraObjectId;
     CameraSettings mCamera;
@@ -495,6 +499,49 @@ struct DisplayDefinition
     DisplaySettings mSettings;
     DisplayRuntimeState mRuntime;
     bool mGateSubscribed = false;
+    bool mQuarantined = false;
+    std::string mQuarantineReason;
+};
+
+struct SkippedBinding
+{
+    DisplayHandle mHandle;
+    LLUUID mObjectId;
+    S32 mTextureEntry = -1;
+    std::string mReason;
+};
+
+struct ApplyReport
+{
+    bool mSuccess = false;
+    std::string mFatalReason;
+    std::vector<SkippedBinding> mSkippedBindings;
+    operator bool() const { return mSuccess; }
+};
+
+struct RemovedDisplayRecord
+{
+    DisplayDefinition mDefinition;
+};
+
+struct RemovedCaptureRecord
+{
+    CaptureDefinition mCapture;
+    std::vector<RemovedDisplayRecord> mOwnedDisplays;
+    bool mHadGateArm = false;
+    GateArmedCamera mGateArm;
+    S32 mGateArmIndex = -1;
+    bool mWasProgram = false;
+    bool mWasPreview = false;
+    bool mWasWarm = false;
+    bool mWasOnAir = false;
+    bool mGateWasActive = false;
+    U64 mGateCutSerial = 0;
+    LLUUID mProgramArmId;
+    LLUUID mPreviewArmId;
+    LLUUID mWarmArmId;
+    LLUUID mOnAirArmId;
+    std::vector<DisplayHandle> mSubscribedDisplays;
 };
 
 struct RegistrySnapshot
@@ -582,6 +629,9 @@ struct CompositeState
 ActionStatus addCameraSelectionStatus();
 ActionStatus addLensSelectionStatus();
 ActionStatus addDisplaySelectionStatus(const CaptureHandle& capture);
+ActionStatus displayTargetStatus(const CaptureHandle& capture,
+                                 LLViewerObject* object, S32 te,
+                                 const DisplayHandle* reassigning = nullptr);
 ActionStatus setCameraSelectionStatus(const CaptureHandle& capture);
 ERegistryResult addCameraCaptureFromSelectedObject(
     CaptureHandle* capture, std::string* reason = nullptr);
@@ -604,6 +654,13 @@ ERegistryResult addSurfaceLensFromSelectedFace(
 ERegistryResult addSelectedDisplay(const CaptureHandle& capture, EFitMode fit,
                                    DisplayHandle* binding,
                                    std::string* reason = nullptr);
+ERegistryResult bindDisplayTarget(const CaptureHandle& capture,
+                                  LLViewerObject* object, S32 te, EFitMode fit,
+                                  DisplayHandle* binding,
+                                  std::string* reason = nullptr);
+ERegistryResult reassignDisplay(const DisplayHandle& binding,
+                                const CaptureHandle& capture,
+                                std::string* reason = nullptr);
 // Prim-free screen: allocate a faceless display bound to `capture`, drawn as a
 // viewer quad at the stored world transform (AGENT space; right = local +X, up =
 // local +Y) with width/height in metres, instead of a selected prim face. No
@@ -635,6 +692,8 @@ bool setVirtualCameraPosition(const CaptureHandle& capture,
 bool setCaptureRateSettings(const CaptureHandle& capture,
                             const CaptureRateSettings& settings,
                             std::string* reason = nullptr);
+bool setCaptureLabel(const CaptureHandle& capture, const std::string& label,
+                     std::string* reason = nullptr);
 bool setDisplaySettings(const DisplayHandle& binding,
                         const DisplaySettings& settings,
                         std::string* reason = nullptr);
@@ -658,12 +717,28 @@ bool gateOnAirCameraEye(LLVector3& out_agent,
 bool removeDisplay(const DisplayHandle& binding,
                    std::string* reason = nullptr);
 bool removeCapture(const CaptureHandle& capture);
+bool captureRemovalRecord(const CaptureHandle& capture,
+                          RemovedCaptureRecord& record,
+                          std::string* reason = nullptr);
+bool restoreCaptureIdentity(const RemovedCaptureRecord& record,
+                            std::string* reason = nullptr);
+bool restoreDisplayIdentity(const RemovedDisplayRecord& record,
+                            std::string* reason = nullptr);
 U64 configurationRevision();
 U64 runtimeRevision();
+U64 performanceRevision();
 RegistrySnapshot registrySnapshot();
 PerformanceSnapshot performanceSnapshot();
 LLSD sceneData();
-bool applySceneData(const LLSD& data, std::string* reason = nullptr);
+ApplyReport applySceneData(const LLSD& data, std::string* reason = nullptr);
+
+using revision_connection_t = boost::signals2::connection;
+revision_connection_t connectConfigurationChanged(
+    const std::function<void(U64)>& callback);
+revision_connection_t connectRuntimeChanged(
+    const std::function<void(U64)>& callback);
+revision_connection_t connectPerformanceChanged(
+    const std::function<void(U64)>& callback);
 
 // Compatibility surface for the original Director Prism Lens controls.
 EDesignationResult selectedFaceStatus(std::string* reason = nullptr);

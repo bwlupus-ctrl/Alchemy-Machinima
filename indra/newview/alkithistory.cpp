@@ -33,7 +33,16 @@ private:
 };
 
 ALKitHistory::ALKitHistory()  = default;
-ALKitHistory::~ALKitHistory() = default;
+ALKitHistory::~ALKitHistory()
+{
+    if (mOpen)
+    {
+        for (CustomEntry& entry : mOpen->custom)
+            if (entry.release) entry.release();
+    }
+    releaseSteps(mUndo);
+    releaseSteps(mRedo);
+}
 
 void ALKitHistory::setOwner(LLView* owner)
 { mOwner = owner ? owner->getHandle() : LLHandle<LLView>(); }
@@ -108,17 +117,57 @@ void ALKitHistory::recordCustom(const std::string& key, const std::string& label
         return;
     if (!mOpen)
         beginGesture(KEY, mPage, label);
-    mOpen->custom.push_back({ key, std::move(fn) });
+    mOpen->custom.push_back({ key, {}, std::move(fn), {} });
     if (mOpen->label.empty())
         mOpen->label = label;
 }
 
-void ALKitHistory::barrier(const std::string& reason)
+void ALKitHistory::recordCustom(
+    const std::string& key, const std::string& label,
+    std::function<bool(bool, std::string&)> prepare,
+    std::function<bool(bool, std::string&)> replay,
+    std::function<void()> release)
 {
+    if (suspended() || mReplaying)
+        return;
+    if (!mOpen)
+        beginGesture(KEY, mPage, label);
+    mOpen->custom.push_back(
+        { key, std::move(prepare), std::move(replay), std::move(release) });
+    if (mOpen->label.empty())
+        mOpen->label = label;
+}
+
+void ALKitHistory::commitGesture()
+{
+    finishGesture();
+    mTimer.reset();
+}
+
+void ALKitHistory::cancelGesture()
+{
+    if (mOpen)
+    {
+        for (CustomEntry& entry : mOpen->custom)
+            if (entry.release) entry.release();
+    }
     mOpen.reset();
     mTimer.reset();
-    mUndo.clear();
-    mRedo.clear();
+}
+
+void ALKitHistory::releaseSteps(std::vector<Step>& steps)
+{
+    for (Step& step : steps)
+        for (CustomEntry& entry : step.custom)
+            if (entry.release) entry.release();
+    steps.clear();
+}
+
+void ALKitHistory::barrier(const std::string& reason)
+{
+    cancelGesture();
+    releaseSteps(mUndo);
+    releaseSteps(mRedo);
     ++mGeneration;
     ++mRevision;
     LL_INFOS("DirectorKit") << "History barrier: " << reason << LL_ENDL;
@@ -208,8 +257,13 @@ void ALKitHistory::finishGesture()
     {
         mUndo.push_back(std::move(*mOpen));
         if (mUndo.size() > MAX_STEPS)
+        {
+            Step& evicted = mUndo.front();
+            for (CustomEntry& entry : evicted.custom)
+                if (entry.release) entry.release();
             mUndo.erase(mUndo.begin());
-        mRedo.clear();
+        }
+        releaseSteps(mRedo);
         ++mRevision;
     }
     mOpen.reset();
@@ -256,6 +310,37 @@ bool ALKitHistory::replay(Step& step, bool redo)
     ScopedSuspend guard;
     mReplaying = true;
     bool ok    = true;
+    const auto fail = [&step, redo, &ok](const std::string& reason)
+    {
+        LLSD args;
+        args["MESSAGE"] = std::string("Cannot ") + (redo ? "redo " : "undo ") +
+            step.label + ": " + reason;
+        LLNotificationsUtil::add("SystemMessageTip", args);
+        ok = false;
+    };
+    const auto prepare_custom = [&fail, redo](CustomEntry& entry)
+    {
+        if (!entry.prepare) return true;
+        std::string reason;
+        if (entry.prepare(redo, reason)) return true;
+        fail(reason);
+        return false;
+    };
+    if (redo)
+    {
+        for (CustomEntry& entry : step.custom)
+            if (!prepare_custom(entry)) break;
+    }
+    else
+    {
+        for (auto it = step.custom.rbegin(); it != step.custom.rend(); ++it)
+            if (!prepare_custom(*it)) break;
+    }
+    if (!ok)
+    {
+        mReplaying = false;
+        return false;
+    }
     for (auto it = step.entries.rbegin(); it != step.entries.rend(); ++it)
     {
         Entry&      entry = *it;
@@ -279,15 +364,12 @@ bool ALKitHistory::replay(Step& step, bool redo)
                 control->set(value);
             }
     }
-    auto replay_custom = [&ok, redo](CustomEntry& entry)
+    auto replay_custom = [&fail, redo](CustomEntry& entry)
     {
         std::string reason;
         if (!entry.replay(redo, reason))
         {
-            LLSD args;
-            args["MESSAGE"] = reason;
-            LLNotificationsUtil::add("SystemMessageTip", args);
-            ok = false;
+            fail(reason);
         }
     };
     if (redo)

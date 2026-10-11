@@ -2320,6 +2320,7 @@ void LLFloaterDirector::loadScene(const std::string& name)
     ALKitHistory::ScopedSuspend history_suspend;
 
     const bool has_version = scene.has("version");
+    U32 prism_skipped_bindings = 0;
     const bool malformed_version = has_version && !scene["version"].isInteger();
     const S32 version = has_version && !malformed_version
         ? scene["version"].asInteger() : 1;
@@ -2338,7 +2339,9 @@ void LLFloaterDirector::loadScene(const std::string& name)
         // settings, or CineCam state. A malformed payload leaves the live scene
         // and retained Prism outputs wholly untouched.
         std::string prism_reason;
-        if (!LLPrismLens::applySceneData(scene, &prism_reason))
+        const LLPrismLens::ApplyReport prism_report =
+            LLPrismLens::applySceneData(scene, &prism_reason);
+        if (!prism_report)
         {
             LL_WARNS("Director") << "Rejected Prism data in scene '" << name
                                  << "': " << prism_reason << LL_ENDL;
@@ -2346,6 +2349,18 @@ void LLFloaterDirector::loadScene(const std::string& name)
             args["MESSAGE"] = "Scene was not loaded: " + prism_reason;
             LLNotificationsUtil::add("SystemMessageTip", args);
             return;
+        }
+        if (!prism_report.mSkippedBindings.empty())
+        {
+            prism_skipped_bindings = static_cast<U32>(
+                prism_report.mSkippedBindings.size());
+            for (const LLPrismLens::SkippedBinding& skipped :
+                 prism_report.mSkippedBindings)
+            {
+                LL_WARNS("Director") << skipped.mReason << ": object "
+                    << skipped.mObjectId << " face " << skipped.mTextureEntry
+                    << LL_ENDL;
+            }
         }
     }
     else if (version != 1)
@@ -2537,6 +2552,14 @@ void LLFloaterDirector::loadScene(const std::string& name)
     if(mShell)
     {
         mShell->history().barrier("scene loaded");
+    }
+    if (prism_skipped_bindings > 0)
+    {
+        LLSD args;
+        args["MESSAGE"] = llformat(
+            "Scene loaded; %u monitor face(s) skipped for permission",
+            prism_skipped_bindings);
+        LLNotificationsUtil::add("SystemMessageTip", args);
     }
     LL_INFOS("Director") << "Loaded scene '" << name << "'" << LL_ENDL;
 }
