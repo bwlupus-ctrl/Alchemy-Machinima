@@ -40,6 +40,36 @@ JSON_PATH = os.path.join(OUT_DIR, "functional_manifest.json")
 MD_PATH = os.path.join(OUT_DIR, "FUNCTIONAL_MANIFEST.md")
 VERSIONS = ("v1", "v2")
 
+# The row host is explicit so the viewer never guesses from a page name.  The
+# launcher records mirror LLFloaterDirector::bindPage launchers.
+LAUNCHER_HOSTS = {
+    "diopter_tab": ("ultimate_diopter", "", "diopter_tab", "card_diopter_open"),
+    "practicals_tab": ("lightbox", "sellight_settings", "practicals_tab", "card_practicals_open"),
+    "actors_tab": ("lightbox", "actor_mask_settings", "actors_tab", "card_actor_mask_open"),
+    "light_cues_tab": ("cine_light_cues", "", "light_cues_tab", "card_light_cues_open"),
+    "image_tab": ("lightbox", "colortone_settings", "image_tab", "card_image_open"),
+    "bloom_glow_tab": ("lightbox", "glow_settings", "image_tab", "card_image_open"),
+    "stylize_tab": ("lightbox", "rotoink_settings", "stylize_tab", "card_rotoink_open"),
+    "tron_tab": ("lightbox", "tron_settings", "stylize_tab", "card_tron_open"),
+    "atmosphere_tab": ("lightbox", "cinehaze_settings", "atmosphere_tab", "card_haze_open"),
+    "shadows_probes_tab": ("lightbox", "shadow_settings", "shadows_probes_tab", "card_shadows_probes_open"),
+}
+
+
+def host_for(version, page):
+    if version == "v1" and page == "light_rim_tab":
+        return {"floater": "director", "page_view": "cine_light_rig_tab",
+                "via": "tab", "alias_of": "light_rim_tab"}
+    if page in LAUNCHER_HOSTS:
+        floater, tab, launcher_page, widget = LAUNCHER_HOSTS[page]
+        host = {"floater": floater, "via": "launcher",
+                "launcher": {"floater": "director", "page_view": launcher_page,
+                             "widget": widget}}
+        if tab:
+            host["tab"] = tab
+        return host
+    return {"floater": "director", "page_view": page, "via": "tab"}
+
 # XUI tag -> widget type used for exercise selection.
 CONTROL_TYPE = {
     "check_box": "toggle", "kit_switch": "toggle", "menu_item_check": "toggle",
@@ -442,7 +472,7 @@ def classify(c):
 def base_entry(page_meta, page, version, source):
     label, group = page_meta.get(page, ("", ""))
     return {"page": page, "page_label": label, "group": group, "version": version,
-            "source": source}
+            "source": source, "host": host_for(version, page)}
 
 
 def build_expect(c, test_resolved):

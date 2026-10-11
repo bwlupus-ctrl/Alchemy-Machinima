@@ -74,6 +74,7 @@ bool    LLView::sDebugRectsShowNames = true;
 bool    LLView::sDebugKeys = false;
 bool    LLView::sDebugMouseHandling = false;
 std::string LLView::sMouseHandlerMessage;
+std::function<void(LLView*)> LLView::sMouseHandlerRecorder;
 bool    LLView::sForceReshape = false;
 std::set<LLView*> LLView::sPreviewHighlightedElements;
 bool LLView::sHighlightingDiffs = false;
@@ -829,6 +830,7 @@ LLView* LLView::childrenHandleMouseEvent(const METHOD& method, S32 x, S32 y, XDA
 
             // This is NOT event recording related
             viewp->logMouseEvent();
+            if (sMouseHandlerRecorder) sMouseHandlerRecorder(viewp);
 
             return viewp;
         }
@@ -854,6 +856,7 @@ LLView* LLView::childrenHandleToolTip(S32 x, S32 y, MASK mask)
         {
             // This is NOT event recording related
             viewp->logMouseEvent();
+            if (sMouseHandlerRecorder) sMouseHandlerRecorder(viewp);
             return viewp;
         }
     }
@@ -913,6 +916,7 @@ LLView* LLView::childrenHandleHover(S32 x, S32 y, MASK mask)
         {
             // This is NOT event recording related
             viewp->logMouseEvent();
+            if (sMouseHandlerRecorder) sMouseHandlerRecorder(viewp);
             return viewp;
         }
     }

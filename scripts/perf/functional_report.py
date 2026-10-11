@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import csv
 import json
+import itertools
 import re
 from collections import Counter, defaultdict
 from pathlib import Path
@@ -32,6 +33,8 @@ def _llsd_value(element: ET.Element):
         return float(text)
     if element.tag == "array":
         return [_llsd_value(child) for child in element]
+    if element.tag == "map":
+        return {key: _llsd_value(value) for key, value in _llsd_pairs(element)}
     return text
 
 
@@ -131,9 +134,30 @@ def _handler_hazards(row: dict[str, object], cpp_text: str,
     return hazards, resolved
 
 
+def _owner_enable_index(cpp_sources: dict[Path, str]) -> dict[str, tuple[str, str]]:
+    """Resolve getChild member -> setEnabled expression without proximity windows."""
+    result: dict[str, tuple[str, str]] = {}
+    assignment = re.compile(
+        r"(?:this->)?([A-Za-z_]\w*)\s*=\s*(?:getChild|findChild)(?:<[^>]+>)?\s*\(\s*\"([^\"]+)\"")
+    for path, text in cpp_sources.items():
+        enables: dict[str, str] = {}
+        for member, expression in re.findall(
+                r"setEnabledIfChanged\s*\(\s*([A-Za-z_]\w*)\s*,\s*([^;\n]+)", text):
+            enables.setdefault(member, expression.rstrip(") "))
+        for member, expression in re.findall(
+                r"([A-Za-z_]\w*)\s*->\s*setEnabled\s*\(\s*([^;\n]+)", text):
+            enables.setdefault(member, expression.rstrip(") "))
+        for match in assignment.finditer(text):
+            if match.group(1) in enables:
+                result.setdefault(match.group(2), (enables[match.group(1)], path.name))
+    return result
+
+
 def _merge_required_consumers(document: dict[str, object], repo: Path) -> int:
     oracle_path = repo / "doc/director_kit/functional/consumers.json"
     oracle = json.loads(oracle_path.read_text(encoding="utf-8"))
+    if len(oracle.get("required", [])) != 47:
+        raise SystemExit("consumer oracle must contain exactly 47 required rows")
     rows = document["entries"]
     by_key = {(r.get("version"), r.get("page"), r.get("widget_name")): r for r in rows}
     missing: list[str] = []
@@ -167,6 +191,10 @@ def prepare_manifest(path: Path, repo: Path, output: Path) -> tuple[int, int, in
     cpp_sources = {p: p.read_text(encoding="utf-8", errors="replace")
                    for p in (repo / "indra/newview").glob("*.cpp")}
     cpp_text = "\n".join(cpp_sources.values())
+    owner_enable = _owner_enable_index(cpp_sources)
+    cinecam_text = cpp_sources.get(repo / "indra/newview/alpanelcinecamparams.cpp", "")
+    cinecam_modes = {panel: int(mode) for mode, panel in re.findall(
+        r'\{\s*(\d+)\s*,\s*"(panel_mode_[^"]+)"', cinecam_text)}
 
     owner_rules = (
         (re.compile(r"^(Tron|tr_)", re.I), "TronEnabled"),
@@ -229,10 +257,11 @@ def prepare_manifest(path: Path, repo: Path, output: Path) -> tuple[int, int, in
 
     for row in rows:
         prereqs: list[dict[str, object]] = []
-        seen: set[tuple[str, bool]] = set()
+        seen: set[tuple[str, object]] = set()
         xui_name = row.get("xui_file", "")
         xui_path = repo / xui_name if xui_name else None
         element = None
+        ancestor_names: list[str] = []
         if xui_path and xui_path.exists():
             if xui_path not in xui_cache:
                 root = ET.parse(xui_path).getroot()
@@ -241,6 +270,8 @@ def prepare_manifest(path: Path, repo: Path, output: Path) -> tuple[int, int, in
             element = next((e for e in root.iter() if e.get("name") == row.get("widget_name")), None)
             current = element
             while current is not None:
+                if current.get("name"):
+                    ancestor_names.append(current.get("name", ""))
                 for attr, value in (("enabled_control", True), ("disabled_control", False),
                                     ("enable_setting", True), ("master_setting", True)):
                     setting = current.get(attr)
@@ -250,19 +281,75 @@ def prepare_manifest(path: Path, repo: Path, output: Path) -> tuple[int, int, in
                         seen.add((setting, value))
                 current = parents.get(current)
 
+        reveal: list[dict[str, object]] = []
+        mode_panel = next((name for name in ancestor_names if name in cinecam_modes), "")
+        if mode_panel:
+            reveal.append({"selector": "CinematicCamMode",
+                           "value": cinecam_modes[mode_panel]})
+        weather_groups = {
+            "weather_rain_group": "rain", "weather_surface_group": "surface",
+            "weather_occlusion_group": "occlusion",
+            "weather_lightning_group": "lightning",
+        }
+        weather_group = next((name for name in ancestor_names if name in weather_groups), "")
+        if weather_group:
+            reveal.append({"selector": "weather_control_group",
+                           "value": weather_groups[weather_group]})
+        row["reveal"] = reveal
+
         widget = row.get("widget_name", "")
         key = row.get("setting") or widget
+        if widget.startswith("switcher_ease_bezier_"):
+            prereqs.append({"setting": "DirectorSwitcherEaseCurve", "value": 100,
+                            "source": "ALPanelDirectorSwitcher::updateCurveControlsEnabled"})
+            seen.add(("DirectorSwitcherEaseCurve", 100))
+        elif widget.startswith("switcher_freeze_bezier_"):
+            prereqs.append({"setting": "DirectorSwitcherFreezeCurve", "value": 100,
+                            "source": "ALPanelDirectorSwitcher::updateCurveControlsEnabled"})
+            seen.add(("DirectorSwitcherFreezeCurve", 100))
+        if (widget.startswith("switcher_custom_") and widget != "switcher_custom_enabled") or \
+                widget.startswith("reset_switcher_custom_"):
+            row["enable_widget"] = "switcher_custom_enabled"
         for pattern, master in owner_rules:
             if pattern.search(key) and master != row.get("setting") and (master, True) not in seen:
                 prereqs.append({"setting": master, "value": True, "source": "owner refresh family"})
                 seen.add((master, True))
-        light_gate = re.match(r"^CineLightRig(Key|Fill|Rim|Bg)(?!On$)", row.get("setting") or "")
+        light_gate = re.match(r"^CineLightRig(Key|Fill|Rim|Bg|Catchlight|Bounce)(?!On$|Enabled$)",
+                              row.get("setting") or "")
         if light_gate:
-            master = f"CineLightRig{light_gate.group(1)}On"
-            if (master, True) not in seen:
+            suffix = light_gate.group(1)
+            master = (f"CineLightRig{suffix}On" if suffix in {"Key", "Fill", "Rim", "Bg"}
+                      else f"CineLightRig{suffix}" if suffix == "Catchlight"
+                      else "CineLightRigBounceEnabled")
+            if master != row.get("setting") and (master, True) not in seen:
                 prereqs.append({"setting": master, "value": True,
                                 "source": "ALPanelCineLightRig per-light refresh gate"})
                 seen.add((master, True))
+        enable_expr, enable_source = owner_enable.get(widget, ("", ""))
+        if enable_expr:
+            for negated, gate in re.findall(r'(!?)\s*(?:gSavedSettings\.)?getBOOL\(\"([A-Za-z0-9_]+)\"\)', enable_expr):
+                value = not bool(negated)
+                if gate != row.get("setting") and (gate, value) not in seen:
+                    prereqs.append({"setting": gate, "value": value,
+                                    "source": f"{enable_source}: owner setEnabled expression"})
+                    seen.add((gate, value))
+            source_text = cpp_sources.get(repo / "indra/newview" / enable_source, "")
+            for variable in re.findall(r'\b([A-Za-z_]\w*)\b', enable_expr):
+                cached = re.search(r'LLCachedControl\s*<\s*bool\s*>\s+' + re.escape(variable) +
+                                   r'\s*\([^;]*\"([A-Za-z0-9_]+)\"', source_text)
+                if cached:
+                    value = not bool(re.search(r'!\s*' + re.escape(variable) + r'\b', enable_expr))
+                    gate = cached.group(1)
+                    if gate != row.get("setting") and (gate, value) not in seen:
+                        prereqs.append({"setting": gate, "value": value,
+                                        "source": f"{enable_source}: LLCachedControl in owner gate"})
+                        seen.add((gate, value))
+            world = re.search(r'\b(isAgentAvatarValid|gAgentAvatarp|getSelection|mActor|path|entity|have|inst|selected|crowd_active)\b', enable_expr)
+            if world and not prereqs:
+                row["enable_when"] = f"{enable_source}: {enable_expr.strip()}"
+                row["action"] = "DEFER_INWORLD"
+                row["reason"] = f"{widget}: requires world prerequisite ({world.group(1)})"
+                row["hazards"] = sorted(set(row.get("hazards", [])) | {"requires_world"})
         if widget == "weather_trigger" and ("AlchemyWeatherLightningEnabled", True) not in seen:
             prereqs.append({"setting": "AlchemyWeatherLightningEnabled", "value": True,
                             "source": "ALPanelWeatherSettings::updateDeferredAvailability"})
@@ -271,6 +358,46 @@ def prepare_manifest(path: Path, repo: Path, output: Path) -> tuple[int, int, in
             prereqs.append({"setting": "CineLightRigEnabled", "value": True,
                             "source": "ALCineRigRim::isEnabled"})
         row["enabled_control"] = prereqs
+
+        temporal_presets = {
+            "btn_freeze": (0.0, 1.0), "btn_quarter": (0.25, 1.0),
+            "btn_half": (0.5, 1.0), "btn_realtime": (1.0, 0.5),
+            "btn_double": (2.0, 1.0),
+        }
+        if row.get("page") == "temporal_tab" and widget in temporal_presets:
+            expected, pre_value = temporal_presets[widget]
+            row["setting"] = "TemporalWorldScale"
+            row["expect"] = {"setting": "TemporalWorldScale", "type": "F32",
+                             "value": expected, "commit": True,
+                             "callback": row.get("owner", "")}
+            row["oracle_pre_value"] = pre_value
+            row.pop("effect_kind", None)
+        if row.get("page") == "exposure_tab" and widget in {"exp_undo", "exp_redo"}:
+            row["probe"] = "exposure_history"
+            row.pop("effect_kind", None)
+        if row.get("page") == "exposure_tab" and widget == "exp_filters_btn":
+            row["probe"] = "launcher"
+            row["launcher_floater"] = "lightbox"
+            row.pop("effect_kind", None)
+        if widget == "btn_reset_mode":
+            default = defaults.get("CinematicCamOrbitRadius")
+            if isinstance(default, (int, float)):
+                row["reset_defaults"] = {"CinematicCamOrbitRadius": default}
+                row["reset_prestate"] = {
+                    "CinematicCamMode": 2,
+                    "CinematicCamOrbitRadius": default + 1.0,
+                }
+                row["snapshot_all"] = True
+                row.pop("effect_kind", None)
+        if widget == "switcher_reset_slots" and "DirectorSwitcherBank" in defaults:
+            stock = defaults["DirectorSwitcherBank"]
+            altered = json.loads(json.dumps(stock))
+            if isinstance(altered, list) and altered and isinstance(altered[0], dict):
+                altered[0]["label"] = "Harness non-default"
+                row["reset_defaults"] = {"DirectorSwitcherBank": stock}
+                row["reset_prestate"] = {"DirectorSwitcherBank": altered}
+                row["snapshot_all"] = True
+                row.pop("effect_kind", None)
 
         if widget.startswith("reset_gaze_"):
             suffix = widget.removeprefix("reset_gaze_")
@@ -330,7 +457,7 @@ def prepare_manifest(path: Path, repo: Path, output: Path) -> tuple[int, int, in
             row["reason"] = f"{widget}: requires {missing}"
 
         # Record owner-controlled gates found close to a widget reference.
-        if not prereqs and widget:
+        if not prereqs and widget and not row.get("enable_widget"):
             pos = cpp_text.find(f'"{widget}"')
             if pos >= 0:
                 window = cpp_text[max(0, pos - 800):pos + 1600]
@@ -342,7 +469,17 @@ def prepare_manifest(path: Path, repo: Path, output: Path) -> tuple[int, int, in
                                             "source": "C++ owner setEnabled/getBOOL"})
                             seen.add((gate, True))
                     if not gates:
-                        unresolved.append(f"{row['version']}:{row['page']}:{widget}: owner setEnabled has no literal setting")
+                        expression = next(iter(re.findall(
+                            r'(?:setEnabledIfChanged\s*\([^,]+,|->setEnabled\s*\()\s*([^;\n]+)',
+                            window)), "")
+                        world = re.search(r'\b(isAgentAvatarValid|gAgentAvatarp|getSelection|mActor|path|entity|have|inst|selected|crowd_active)\b', expression)
+                        if world:
+                            row["enable_when"] = f"owner refresh: {expression.strip()}"
+                            row["action"] = "DEFER_INWORLD"
+                            row["reason"] = f"{widget}: requires world prerequisite ({world.group(1)})"
+                            row["hazards"] = sorted(set(row.get("hazards", [])) | {"requires_world"})
+                        else:
+                            unresolved.append(f"{row['version']}:{row['page']}:{widget}: owner setEnabled has no literal setting")
 
         if row.get("exercise") == "click" and row.get("widget_type") == "button":
             hazards, handler_resolved = _handler_hazards(row, cpp_text, body_cache)
@@ -358,6 +495,11 @@ def prepare_manifest(path: Path, repo: Path, output: Path) -> tuple[int, int, in
                 row["reason"] = "unresolved handler: hazard unknown"
                 row["known_gap"] = False
                 unresolved_hazards.append(f"{row['version']}:{row['page']}:{widget}")
+            elif (handler_resolved and row.get("action") == "RUN" and
+                  not row.get("setting") and not row.get("consumer") and
+                  not row.get("reset_defaults") and
+                  row.get("probe") not in {"launcher", "exposure_history"}):
+                row["effect_kind"] = "side_effect_only"
 
     document.setdefault("meta", {})["r4_enable_unresolved"] = sorted(set(unresolved))
     document["meta"]["r4_enabled_control_rows"] = sum(bool(r["enabled_control"]) for r in rows)
@@ -394,6 +536,16 @@ def load(value: str) -> list[dict[str, str]]:
                      - {"PASS", "FAIL", "SKIP", "KNOWN_GAP"})
     if unknown:
         raise SystemExit(f"{path}: unknown status values: {', '.join(unknown)}")
+    malformed = []
+    for row in rows:
+        try:
+            observed = json.loads(row.get("observed", ""))
+            if not isinstance(observed, dict):
+                malformed.append(f"{row['ui_version']}:{row['page']}:{row['control']}")
+        except (TypeError, json.JSONDecodeError):
+            malformed.append(f"{row['ui_version']}:{row['page']}:{row['control']}")
+    if malformed:
+        raise SystemExit(f"{path}: {len(malformed)} row(s) lack structured observed JSON")
     return rows
 
 
@@ -431,12 +583,39 @@ def compare(left: list[dict[str, str]], right: list[dict[str, str]],
 
 def render(rows: list[dict[str, str]], title: str) -> list[str]:
     lines = [f"# Director functional self-test: {title}", "",
-             "| UI | Page | PASS | FAIL | GAP | SKIP |", "|---|---|---:|---:|---:|---:|"]
+             "| UI | Page | PASS | EXPECT_MISSING | FAIL | GAP | SKIP |", "|---|---|---:|---:|---:|---:|---:|"]
     for (version, page), count in sorted(counts(rows).items()):
-        lines.append(f"| {version} | {page} | {count['PASS']} | {count['FAIL']} | {count['KNOWN_GAP']} | {count['SKIP']} |")
+        page_rows = [row for row in rows if row["ui_version"] == version and row["page"] == page]
+        missing = sum(row["PASS/FAIL/SKIP"] == "PASS" and "MISSING" in row.get("expected", "")
+                      for row in page_rows)
+        lines.append(f"| {version} | {page} | {count['PASS'] - missing} | {missing} | {count['FAIL']} | {count['KNOWN_GAP']} | {count['SKIP']} |")
     total = Counter(row["PASS/FAIL/SKIP"] for row in rows)
-    lines += ["", f"Total: {total['PASS']} PASS, {total['FAIL']} FAIL, "
-             f"{total['KNOWN_GAP']} KNOWN_GAP (failing), {total['SKIP']} SKIP.", ""]
+    missing_total = sum(row["PASS/FAIL/SKIP"] == "PASS" and "MISSING" in row.get("expected", "")
+                        for row in rows)
+    lines += ["", f"Total: {total['PASS'] - missing_total} interactive/state PASS, "
+              f"{missing_total} EXPECT_MISSING, {total['FAIL']} FAIL, "
+              f"{total['KNOWN_GAP']} KNOWN_GAP (failing), {total['SKIP']} SKIP.", ""]
+    reasons = Counter((row["ui_version"], row["PASS/FAIL/SKIP"], row["reason"] or "(none)")
+                      for row in rows if row["PASS/FAIL/SKIP"] != "PASS")
+    if reasons:
+        lines += ["## Reasons", "", "| UI | Status | Reason | Count |",
+                  "|---|---|---|---:|"]
+        for (version, status, reason), count in sorted(reasons.items()):
+            lines.append(f"| {version} | {status} | {reason.replace('|', '/')} | {count} |")
+        lines.append("")
+    breaks = Counter()
+    for row in rows:
+        observed = json.loads(row["observed"])
+        for field in ("visible_break", "enabled_break"):
+            value = observed.get(field)
+            if isinstance(value, dict) and value.get("path"):
+                breaks[(row["ui_version"], row["page"], field, value["path"])] += 1
+    if breaks:
+        lines += ["## First chain break points", "",
+                  "| UI | Page | Chain | Path | Count |", "|---|---|---|---|---:|"]
+        for (version, page, field, path), count in sorted(breaks.items()):
+            lines.append(f"| {version} | {page} | {field} | {path.replace('|', '/')} | {count} |")
+        lines.append("")
     skip_reasons = Counter((row["ui_version"], row["reason"].strip()) for row in rows
                            if row["PASS/FAIL/SKIP"] == "SKIP")
     if skip_reasons:
@@ -455,6 +634,97 @@ def render(rows: list[dict[str, str]], title: str) -> list[str]:
     return lines
 
 
+def budget_status(rows: list[dict[str, str]], budget_path: Path | None,
+                  dry_reveal: bool = False) -> tuple[list[str], bool, dict]:
+    lines = ["## Harness v2 budget", "",
+             "| UI | Toggle | Slider | Spinner | Combo | Button | Interactive PASS / RUN | Floor |",
+             "|---|---:|---:|---:|---:|---:|---:|---|"]
+    failed = False
+    kind_alias = {"toggle": "toggle", "slider": "slider", "spinner": "spinner",
+                  "combo": "combo", "button": "button"}
+    for version in sorted({row["ui_version"] for row in rows}):
+        version_rows = [row for row in rows if row["ui_version"] == version]
+        run = [row for row in version_rows if
+               json.loads(row["observed"]).get("manifest_action") == "RUN" and
+               "MISSING" not in row.get("expected", "") and row["kind"] not in {"state", "focus", "gate", "sentinel", "unit", "file", "floater"}]
+        passes = []
+        for row in run:
+            observed = json.loads(row["observed"])
+            if (row["PASS/FAIL/SKIP"] == "PASS" and
+                    observed.get("click", {}).get("commits", 0) >= 1 and
+                    not observed.get("effect", {}).get("programmatic", False) and
+                    observed.get("effect", {}).get("category") != "B"):
+                passes.append(row)
+        counts_by_kind = Counter(kind_alias.get(row["kind"], row["kind"]) for row in passes)
+        present_kinds = {kind_alias[row["kind"]] for row in run if row["kind"] in kind_alias}
+        ratio = len(passes) / len(run) if run else 0.0
+        floor = all(counts_by_kind[kind] >= 1 for kind in present_kinds) and ratio >= .60
+        failed |= not floor and not dry_reveal
+        lines.append(f"| {version} | {counts_by_kind['toggle']} | {counts_by_kind['slider']} | "
+                     f"{counts_by_kind['spinner']} | {counts_by_kind['combo']} | {counts_by_kind['button']} | "
+                     f"{len(passes)} / {len(run)} ({ratio:.1%}) | "
+                     f"{'NOT RUN (DryReveal)' if dry_reveal else ('PASS' if floor else 'FAIL')} |")
+
+    current: dict[str, dict[str, int]] = defaultdict(dict)
+    budgeted_skips = [r for r in rows if r["PASS/FAIL/SKIP"] == "SKIP" and
+                      json.loads(r["observed"]).get("manifest_action") in
+                      {"SKIP", "NO_EXERCISE", "DEFER_INWORLD"}]
+    for (version, page), group in itertools.groupby(
+            sorted((r["ui_version"], r["page"]) for r in budgeted_skips)):
+        current[version][page] = sum(1 for _ in group)
+    if budget_path:
+        frozen = json.loads(budget_path.read_text(encoding="utf-8"))
+        increases = []
+        for version, pages in current.items():
+            for page, count in pages.items():
+                allowed = int(frozen.get(version, {}).get(page, 0))
+                if count > allowed:
+                    increases.append(f"{version}/{page}: {count} > {allowed}")
+        failed |= bool(increases)
+        lines += ["", "Defer budget: " + ("FAIL — " + "; ".join(increases) if increases else "PASS (no page increased).")]
+    lines.append("")
+    return lines, failed, {version: dict(pages) for version, pages in current.items()}
+
+
+def annotate_failure_shots(rows: list[dict[str, str]], run_dir: Path) -> tuple[int, str]:
+    shots = run_dir / "functional_shots"
+    if not shots.is_dir():
+        return 0, ""
+    try:
+        from PIL import Image, ImageDraw
+    except ImportError:
+        return 0, "Pillow unavailable; screenshots were copied without rectangle overlays."
+    annotated = 0
+    for row in rows:
+        if row["PASS/FAIL/SKIP"] != "FAIL":
+            continue
+        safe = re.sub(r"[^A-Za-z0-9_-]", "_", row["control"])[:80] or "row"
+        candidates = sorted((shots / row["ui_version"] / row["page"]).glob(safe + "__*.png"))
+        if not candidates:
+            continue
+        observed = json.loads(row["observed"])
+        rects = observed.get("rect", {})
+        floater = rects.get("floater")
+        if not (isinstance(floater, list) and len(floater) == 4):
+            continue
+        for path in candidates:
+            with Image.open(path) as source:
+                image = source.convert("RGB")
+            draw = ImageDraw.Draw(image)
+            for name, colour in (("ctrl", "#ff4040"), ("target", "#40e0ff")):
+                rect = rects.get(name)
+                if not (isinstance(rect, list) and len(rect) == 4):
+                    continue
+                left = rect[0] - floater[0]
+                right = rect[2] - floater[0]
+                top = image.height - (rect[3] - floater[1])
+                bottom = image.height - (rect[1] - floater[1])
+                draw.rectangle((left, top, right, bottom), outline=colour, width=2)
+            image.save(path)
+            annotated += 1
+    return annotated, ""
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("left", nargs="?", help="functional.csv or its run directory")
@@ -466,6 +736,14 @@ def main() -> int:
                         help="write the merged manifest here; never modifies the input")
     parser.add_argument("--repo-root", type=Path,
                         help="repository root for --prepare-manifest")
+    parser.add_argument("--pages", help="comma-separated page filter")
+    parser.add_argument("--rows", help="control-name regular expression")
+    parser.add_argument("--version", choices=("v1", "v2", "both"))
+    parser.add_argument("--defer-budget", type=Path)
+    parser.add_argument("--update-budget", action="store_true",
+                        help="write a proposed budget beside the report (never rewrites tracked inputs)")
+    parser.add_argument("--dry-reveal", action="store_true",
+                        help="report reveal-only results without enforcing the click PASS floor")
     args = parser.parse_args()
     if args.prepare_manifest:
         if not args.repo_root:
@@ -480,8 +758,23 @@ def main() -> int:
     if not args.left:
         parser.error("left is required unless --prepare-manifest is used")
     left = load(args.left)
+    pages = {p.strip() for p in (args.pages or "").split(",") if p.strip()}
+    row_re = re.compile(args.rows) if args.rows else None
+    if pages:
+        left = [row for row in left if row["page"] in pages]
+    if row_re:
+        left = [row for row in left if row_re.search(row["control"])]
+    if args.version and args.version != "both":
+        left = [row for row in left if row["ui_version"] == args.version]
     right = load(args.right) if args.right else []
     lines = render(left, csv_path(args.left).parent.name)
+    annotated, shot_note = annotate_failure_shots(left, csv_path(args.left).parent)
+    if annotated or shot_note:
+        lines += ["", "## Failure screenshots", "",
+                  f"Annotated {annotated} screenshot(s)." + (f" {shot_note}" if shot_note else "")]
+    budget_lines, budget_failed, proposed_budget = budget_status(
+        left, args.defer_budget, args.dry_reveal)
+    lines += [""] + budget_lines
     if args.right:
         lines += [""] + compare(left, right,
                                  csv_path(args.left).parent.name,
@@ -489,11 +782,19 @@ def main() -> int:
     text = "\n".join(lines).rstrip() + "\n"
     if args.output:
         Path(args.output).write_text(text, encoding="utf-8", newline="\n")
+        if args.update_budget:
+            candidate = Path(args.output).with_name("defer_budget.proposed.json")
+            candidate.write_text(json.dumps(proposed_budget, indent=2, sort_keys=True) + "\n",
+                                 encoding="utf-8", newline="\n")
     else:
         print(text, end="")
     failed = any(row["PASS/FAIL/SKIP"] in FAIL_STATUSES for row in left)
+    failed = failed or budget_failed
     if args.right:
         failed = failed or any(row["PASS/FAIL/SKIP"] in FAIL_STATUSES for row in right)
+    if args.dry_reveal:
+        print("DRY REVEAL: NOT A FUNCTIONAL RESULT")
+        return 3
     return 1 if failed else 0
 
 

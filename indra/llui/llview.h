@@ -707,6 +707,9 @@ public:
     static bool sDebugKeys;
     static bool sDebugMouseHandling;
     static std::string sMouseHandlerMessage;
+    // Optional test/diagnostic observer. Empty in production; invoked only
+    // after a child has actually accepted a mouse/hover/tooltip event.
+    static std::function<void(LLView*)> sMouseHandlerRecorder;
     static S32  sSelectID;
     static std::set<LLView*> sPreviewHighlightedElements;   // DEV-16869
     static bool sHighlightingDiffs;                         // DEV-16869

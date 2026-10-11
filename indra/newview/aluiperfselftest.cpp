@@ -17,12 +17,15 @@
 #include "alkitstyle.h"
 #include "alkitswitch.h"
 #include "aluirefresh.h"
+#include "alcompassdial.h"
+#include "alsettingsundohistory.h"
 #include "alcinerigrim.h"
 #include "alcinelightrigmanager.h"
 #include "aldiopterpresetbank.h"
 
 #include "llappviewer.h"
 #include "llaccordionctrl.h"
+#include "llaccordionctrltab.h"
 #include "llbutton.h"
 #include "llcheckboxctrl.h"
 #include "llcombobox.h"
@@ -45,11 +48,17 @@
 #include "llfontregistry.h"
 #include "lllineeditor.h"
 #include "llmultisliderctrl.h"
+#include "llmodaldialog.h"
 #include "llnotifications.h"
 #include "llpanel.h"
+#include "llpanellogin.h"
 #include "llpresentationtime.h"
+#include "llpopupview.h"
+#include "llprogressview.h"
+#include "llviewermenu.h"
 #include "llradiogroup.h"
 #include "llrender.h"
+#include "llrootview.h"
 #include "llscrollcontainer.h"
 #include "llscrolllistctrl.h"
 #include "llslider.h"
@@ -113,6 +122,35 @@ public:
         return editor->*member;
     }
 };
+
+class FunctionalCheckBoxAccess : public LLCheckBoxCtrl
+{
+public:
+    static LLButton* button(LLCheckBoxCtrl* control)
+    {
+        using member_t = LLButton* LLCheckBoxCtrl::*;
+        const member_t member = &FunctionalCheckBoxAccess::mButton;
+        return control ? control->*member : nullptr;
+    }
+};
+
+class FunctionalComboAccess : public LLComboBox
+{
+public:
+    static LLButton* button(LLComboBox* control)
+    {
+        using member_t = LLButton* LLComboBox::*;
+        const member_t member = &FunctionalComboAccess::mButton;
+        return control ? control->*member : nullptr;
+    }
+    static LLScrollListCtrl* list(LLComboBox* control)
+    {
+        using member_t = LLScrollListCtrl* LLComboBox::*;
+        const member_t member = &FunctionalComboAccess::mList;
+        return control ? control->*member : nullptr;
+    }
+};
+
 
 class InventoryStressFilter final : public LLFolderViewFilter
 {
@@ -1243,7 +1281,24 @@ public:
         if (mRequest.compare(0, functional_prefix.size(), functional_prefix) == 0)
         {
             mFunctional = true;
-            mFunctionalManifestPath = mRequest.substr(functional_prefix.size());
+            std::vector<std::string> fields;
+            LLStringUtil::getTokens(mRequest.substr(functional_prefix.size()), fields, "|");
+            if (!fields.empty()) mFunctionalManifestPath = fields.front();
+            for (size_t i = 1; i < fields.size(); ++i)
+            {
+                const size_t equals = fields[i].find('=');
+                const std::string key = fields[i].substr(0, equals);
+                const std::string value = equals == std::string::npos ? "" : fields[i].substr(equals + 1);
+                if (key == "pages") LLStringUtil::getTokens(value, mFunctionalPageFilters, ",");
+                else if (key == "rows" && !value.empty())
+                {
+                    try { mFunctionalRowFilter = std::regex(value); mFunctionalHaveRowFilter = true; }
+                    catch (const std::regex_error&) { mFunctionalFilterError = "invalid rows regex"; }
+                }
+                else if (key == "version") mFunctionalVersionFilter = value;
+                else if (key == "shots") mFunctionalShots = value == "1";
+                else if (key == "dry_reveal") mFunctionalDryReveal = value == "1";
+            }
             mRequest = "director";
             captureFunctionalUserFiles();
         }
@@ -1345,7 +1400,8 @@ public:
     void captureAfterRender()
     {
         if (!mCaptureRequested || mCapturedImage.notNull()) return;
-        LLFloater* floater = mFloater.get();
+        LLFloater* floater = mFunctional && mFunctionalHostFloater.get() ?
+            mFunctionalHostFloater.get() : mFloater.get();
         if (!floater || !gViewerWindow) return;
 
         LLRect screen = floater->calcScreenRect();
@@ -1417,14 +1473,20 @@ private:
     }
 
     static void functionalVisibleState(LLView* view, std::ostringstream& out,
-                                       const LLView* excluded = nullptr)
+                                       const LLView* excluded = nullptr,
+                                       const ALKitRow* excluded_row = nullptr)
     {
+        if (excluded && !excluded_row)
+            for (const LLView* parent = excluded->getParent(); parent; parent = parent->getParent())
+                if ((excluded_row = dynamic_cast<const ALKitRow*>(parent))) break;
         if (!view || view == excluded || !view->getVisible() || !view->isInVisibleChain()) return;
+        if (excluded_row && view->hasAncestor(excluded_row) && dynamic_cast<LLTextBox*>(view)) return;
         out << view->getName() << ':';
         if (LLUICtrl* control = dynamic_cast<LLUICtrl*>(view))
             out << functionalValue(control->getValue());
         out << ';';
-        for (LLView* child : *view->getChildList()) functionalVisibleState(child, out, excluded);
+        for (LLView* child : *view->getChildList())
+            functionalVisibleState(child, out, excluded, excluded_row);
     }
 
     static bool functionalHazard(const LLSD& entry, const std::string& wanted)
@@ -1502,11 +1564,11 @@ private:
             };
     }
 
-    static bool functionalSetControl(LLControlVariable* control, bool value)
+    static bool functionalSetControl(LLControlVariable* control, const LLSD& value)
     {
         if (!control) return false;
         control->setValue(value, false); // ui-draw-lint: allow(setting-write) bounded functional prerequisite
-        return control->get().asBoolean() == value;
+        return llsd_equals(control->get(), value);
     }
 
     static S32 functionalLightIndex(const std::string& setting)
@@ -1776,9 +1838,20 @@ private:
 
     static void revealFunctionalAncestors(LLView* view)
     {
-        for (LLView* child = view; child && child->getParent(); child = child->getParent())
+        std::vector<LLView*> ancestors;
+        for (LLView* child = view; child; child = child->getParent()) ancestors.push_back(child);
+        for (auto it = ancestors.rbegin(); it != ancestors.rend(); ++it)
+        {
+            LLView* child = *it;
+            if (ALKitLazyPage* lazy = dynamic_cast<ALKitLazyPage*>(child)) lazy->ensureBuilt();
+            if (LLAccordionCtrlTab* accordion = dynamic_cast<LLAccordionCtrlTab*>(child))
+            {
+                accordion->setDisplayChildren(true);
+                accordion->changeOpenClose(true);
+            }
             if (LLTabContainer* tabs = dynamic_cast<LLTabContainer*>(child->getParent()))
                 if (LLPanel* panel = dynamic_cast<LLPanel*>(child)) tabs->selectTabPanel(panel);
+        }
     }
 
     // ui-draw-lint: allow-function(lookup) isolated test-only manifest page lookup
@@ -1786,7 +1859,10 @@ private:
     {
         LLFloater* floater = mFloater.get();
         if (!floater) return nullptr;
-        const std::string page_name = entry["page"].asString();
+        std::string page_name = entry["host"]["page_view"].asString();
+        if (entry["host"]["via"].asString() == "launcher")
+            page_name = entry["host"]["launcher"]["page_view"].asString();
+        if (page_name.empty()) page_name = entry["page"].asString();
         if (mDirectorV2)
         {
             ALKitShell* shell = findFirstView<ALKitShell>(floater);
@@ -1849,20 +1925,77 @@ private:
     // ui-draw-lint: allow-function(lookup) isolated test-only redirect target lookup
     bool openFunctionalRedirect(const LLSD& entry, LLView*& page)
     {
-        if (!functionalHazard(entry, "v2_launcher_redirect")) return true;
-        const std::string launcher_name = functionalLauncherName(entry);
-        const std::string floater_name = functionalRedirectFloater(entry);
+        const LLSD& host = entry["host"];
+        if (host["via"].asString() != "launcher") return true;
+        const std::string launcher_name = host["launcher"]["widget"].asString();
+        const std::string floater_name = host["floater"].asString();
         LLUICtrl* launcher = launcher_name.empty() || !page ? nullptr :
             page->findChild<LLUICtrl>(launcher_name, true);
-        if (!launcher || floater_name.empty()) return false;
+        if (!launcher || floater_name.empty())
+        {
+            mFunctionalRedirectReason = "launcher: control " + launcher_name + " missing";
+            return false;
+        }
+        std::set<LLFloater*> visible_before;
+        functionalVisibleFloaters(gFloaterView, visible_before);
+        for (LLFloater* floater : visible_before)
+            if (floater->getInstanceName() == floater_name)
+            {
+                mFunctionalLauncherFloater = floater->getHandle();
+                mFunctionalLauncherWasOpen = true;
+                floater->closeFloater(false);
+            }
+        visible_before.clear();
+        functionalVisibleFloaters(gFloaterView, visible_before);
         revealFunctionalControl(launcher);
         std::string reason;
-        if (!functionalReachable(launcher, reason) || !functionalPointerClick()) return false;
-        LLFloater* target = LLFloaterReg::findInstance(floater_name);
-        if (!target || !target->getVisible()) return false;
+        if (!functionalReachable(launcher, reason) || !functionalPointerClick())
+        {
+            mFunctionalRedirectReason = "launcher: not clickable (" +
+                (mFunctionalLastClickReason.empty() ? reason : mFunctionalLastClickReason) + ")";
+            return false;
+        }
+        std::set<LLFloater*> visible_after;
+        functionalVisibleFloaters(gFloaterView, visible_after);
+        std::vector<LLFloater*> added;
+        for (LLFloater* floater : visible_after)
+            if (!visible_before.count(floater)) added.push_back(floater);
+        LLFloater* target = nullptr;
+        for (LLFloater* floater : added)
+            if (floater->getInstanceName() == floater_name) target = floater;
+        mFunctionalObserved["launcher"]["new_count"] = static_cast<S32>(added.size());
+        mFunctionalObserved["launcher"]["click_accepted"] = true;
+        if (added.size() != 1 || !target)
+        {
+            mFunctionalRedirectReason = added.empty() ? "launcher: no new floater" :
+                "launcher: wrong floater " + added.front()->getInstanceName();
+            return false;
+        }
         mFunctionalRedirectFloater = target->getHandle();
+        target->setMinimized(false);
+        target->setFrontmost(true);
+        mFunctionalHostFloater = target->getHandle();
         page = target;
-        revealFunctionalAncestors(page->findChildView(entry["widget_name"].asString(), true));
+        const std::string tab_name = host["tab"].asString();
+        if (!tab_name.empty())
+        {
+            LLView* tab = target->findChildView(tab_name, true);
+            if (!tab)
+            {
+                mFunctionalRedirectReason = "launcher: tab " + tab_name + " missing";
+                return false;
+            }
+            revealFunctionalAncestors(tab);
+            LLTabContainer* tabs = dynamic_cast<LLTabContainer*>(tab->getParent());
+            if (!tabs || tabs->getCurrentPanel() != tab)
+            {
+                mFunctionalRedirectReason = "launcher: tab " + tab_name + " not current";
+                return false;
+            }
+            page = tab;
+        }
+        mFunctionalObserved["launcher"]["floater"] = floater_name;
+        mFunctionalObserved["launcher"]["tab"] = tab_name;
         return true;
     }
 
@@ -1870,6 +2003,20 @@ private:
     bool prepareFunctionalPrerequisite(const LLSD& entry, LLUICtrl* control)
     {
         bool ok = true;
+        const std::string enable_widget = entry["enable_widget"].asString();
+        if (!enable_widget.empty() && mFunctionalPageRoot)
+        {
+            LLCheckBoxCtrl* gate = mFunctionalPageRoot->findChild<LLCheckBoxCtrl>(enable_widget, true);
+            if (!gate) ok = false;
+            else if (!gate->getValue().asBoolean() && gate->isInVisibleChain())
+            {
+                mFunctionalRevealWidgetValues.emplace_back(gate->getDerivedHandle<LLUICtrl>(),
+                                                            gate->getValue());
+                std::string reason;
+                ok = functionalReachable(gate, reason) && functionalPointerClick() &&
+                    gate->getValue().asBoolean() && ok;
+            }
+        }
         const LLSD& prerequisites = entry["enabled_control"];
         if (prerequisites.isArray())
         {
@@ -1878,8 +2025,8 @@ private:
             {
                 const std::string name = (*it).isMap() ?
                     (*it)["setting"].asString() : it->asString();
-                const bool value = !(*it).isMap() || !(*it).has("value") ||
-                    (*it)["value"].asBoolean();
+                const LLSD value = !(*it).isMap() || !(*it).has("value") ?
+                    LLSD(true) : (*it)["value"];
                 rememberFunctionalSetting(name);
                 ok = functionalSetControl(gSavedSettings.getControl(name).get(), value) && ok;
             }
@@ -1944,6 +2091,78 @@ private:
         return nullptr;
     }
 
+    static LLButton* functionalVerifiedTabButton(LLTabContainer* tabs)
+    {
+        if (!tabs) return nullptr;
+        // Tab buttons are direct children created one-for-one with mTabList.
+        // Match both the panel title and direct membership so a page button can
+        // never be mistaken for the sentinel target.
+        for (S32 panel_index = 0; panel_index < tabs->getTabCount(); ++panel_index)
+        {
+            const std::string title = tabs->getPanelTitle(panel_index);
+            for (LLView* child : *tabs->getChildList())
+            {
+                LLButton* button = dynamic_cast<LLButton*>(child);
+                if (button && button->getParent() == tabs &&
+                    (button->getLabelSelected() == title ||
+                     button->getLabelUnselected() == title) &&
+                    button->isInVisibleChain() && button->isInEnabledChain())
+                    return button;
+            }
+        }
+        return nullptr;
+    }
+
+    static LLTabContainer* functionalFirstVisibleTabs(LLView* view)
+    {
+        if (!view) return nullptr;
+        if (LLTabContainer* tabs = dynamic_cast<LLTabContainer*>(view);
+            tabs && tabs->isInVisibleChain() && tabs->isInEnabledChain()) return tabs;
+        for (LLView* child : *view->getChildList())
+            if (LLTabContainer* found = functionalFirstVisibleTabs(child)) return found;
+        return nullptr;
+    }
+
+    void runFunctionalSentinel()
+    {
+        mFunctionalSentinelDone = true;
+        LLSD assertion;
+        assertion["version"] = mDirectorV2 ? "v2" : "v1";
+        assertion["page"] = "director";
+        assertion["widget_name"] = "real_dispatch_sentinel";
+        assertion["widget_type"] = "sentinel";
+        assertion["exercise"] = "click verified navigation control";
+        LLFloater* director = mFloater.get();
+        LLButton* nav = nullptr;
+        if (mDirectorV2)
+        {
+            ALKitShell* shell = director ? findFirstView<ALKitShell>(director) : nullptr;
+            if (shell) shell->selectPage("temporal_tab");
+            LLButton* candidate = shell ? shell->findChild<LLButton>("kit_tab_temporal_tab", true) : nullptr; // ui-draw-lint: allow(lookup) test-only one-shot sentinel at run start
+            if (shell && candidate && candidate->getParent() == shell->tabStrip() &&
+                std::find(shell->tabButtons().begin(), shell->tabButtons().end(), candidate) !=
+                    shell->tabButtons().end())
+                nav = candidate;
+        }
+        else
+        {
+            LLTabContainer* tabs = director ? functionalFirstVisibleTabs(director) : nullptr;
+            nav = functionalVerifiedTabButton(tabs);
+        }
+        std::string reason;
+        bool ok = gPipeline.hasRenderDebugFeatureMask(LLPipeline::RENDER_DEBUG_FEATURE_UI) &&
+            nav && functionalReachable(nav, reason) && functionalPointerClick();
+        addFunctionalResult(assertion, ok ? "PASS" : "FAIL",
+            ok ? "real dispatch channel accepted a verified navigation click" :
+                 "injection channel broken: " + (mFunctionalLastClickReason.empty() ? reason : mFunctionalLastClickReason));
+        mFunctionalObserved = LLSD::emptyMap();
+        if (!ok)
+        {
+            mFunctionalInjectionBroken = true;
+            mFunctionalIndex = mFunctionalEntries.size();
+        }
+    }
+
     void addFunctionalResult(const LLSD& entry, const std::string& status,
                              const std::string& reason, const std::string& observed = {})
     {
@@ -1953,14 +2172,54 @@ private:
         row.mKind = entry["widget_type"].asString();
         row.mAction = entry["exercise"].asString();
         row.mExpected = functionalValue(entry["expect"]);
-        row.mObserved = observed;
+        LLSD diagnostics = mFunctionalObserved.isMap() ? mFunctionalObserved : LLSD::emptyMap();
+        diagnostics["host"]["floater"] = entry["host"]["floater"].asString().empty() ?
+            "director" : entry["host"]["floater"].asString();
+        diagnostics["host"]["page"] = entry["page"].asString();
+        diagnostics["host"]["frontmost"] = gFloaterView && mFunctionalHostFloater.get() &&
+            gFloaterView->getFrontmost() == mFunctionalHostFloater.get();
+        diagnostics["manifest_action"] = entry["action"].asString();
+        if (!observed.empty()) diagnostics["detail"] = observed;
+        if (!diagnostics.has("reveal")) diagnostics["reveal"] = LLSD::emptyArray();
+        if (!diagnostics.has("click")) diagnostics["click"] = LLSD::emptyMap();
+        row.mObserved = LlsdToJson(diagnostics);
         row.mStatus = status;
         row.mReason = reason;
         mFunctionalResults.push_back(std::move(row));
+        if (status == "FAIL" && mFunctionalShots)
+        {
+            const std::string quota_key = entry["version"].asString() + "/" +
+                entry["page"].asString() + "/" + reason;
+            if (mFunctionalShotQuota[quota_key]++ < 2)
+            {
+                auto safe = [](std::string value)
+                {
+                    for (char& ch : value) if (!std::isalnum(static_cast<unsigned char>(ch)) && ch != '-' && ch != '_') ch = '_';
+                    if (value.size() > 80) value.resize(80);
+                    return value.empty() ? std::string("row") : value;
+                };
+                const std::filesystem::path folder = std::filesystem::path(
+                    gDirUtilp->getExpandedFilename(LL_PATH_LOGS, "functional_shots")) /
+                    entry["version"].asString() / entry["page"].asString();
+                std::error_code error;
+                std::filesystem::create_directories(folder, error);
+                mCaptureFilename = (folder / (safe(entry["widget_name"].asString()) + "__" +
+                    safe(reason) + ".png")).string();
+                mCapturedImage = nullptr;
+                mCaptureFailed = false;
+                mCaptureRequested = true;
+                mFunctionalFailureShotPending = true;
+            }
+        }
+        LL_INFOS("UIFunctionalSelfTest") << entry["version"].asString() << ' '
+            << entry["page"].asString() << '/' << entry["widget_name"].asString()
+            << " status=" << status << " reason=" << reason
+            << " observed=" << mFunctionalResults.back().mObserved << LL_ENDL;
     }
 
     bool loadFunctionalManifest()
     {
+        if (!mFunctionalFilterError.empty()) return false;
         llifstream stream(mFunctionalManifestPath.c_str(), std::ios::binary);
         if (!stream.is_open()) return false;
         std::ostringstream buffer;
@@ -1975,7 +2234,16 @@ private:
         const std::string version = mDirectorV2 ? "v2" : "v1";
         const LLSD& entries = root["entries"];
         for (LLSD::array_const_iterator it = entries.beginArray(); it != entries.endArray(); ++it)
-            if ((*it)["version"].asString() == version) mFunctionalEntries.push_back(*it);
+        {
+            if ((*it)["version"].asString() != version) continue;
+            if (!mFunctionalVersionFilter.empty() && mFunctionalVersionFilter != "both" &&
+                mFunctionalVersionFilter != version) continue;
+            if (!mFunctionalPageFilters.empty() && std::find(mFunctionalPageFilters.begin(),
+                    mFunctionalPageFilters.end(), (*it)["page"].asString()) == mFunctionalPageFilters.end()) continue;
+            if (mFunctionalHaveRowFilter && !std::regex_search((*it)["widget_name"].asString(),
+                                                               mFunctionalRowFilter)) continue;
+            mFunctionalEntries.push_back(*it);
+        }
         if (!functionalLightIndexSelfTest())
         {
             LLSD failure;
@@ -2001,9 +2269,12 @@ private:
         LLUICtrl* first = director ? functionalFirstKitControl(director) : nullptr;
         if (first) first->setFocus(true);
         LLView* before = dynamic_cast<LLView*>(gFocusMgr.getKeyboardFocus());
-        if (director && before) director->handleKeyHere(KEY_TAB, MASK_NONE);
+        const bool focus_verified = director && first && before == first &&
+            (before == director || before->hasAncestor(director));
+        if (focus_verified) director->handleKeyHere(KEY_TAB, MASK_NONE);
         LLView* after = dynamic_cast<LLView*>(gFocusMgr.getKeyboardFocus());
-        const bool ring = director && before && after && after != before &&
+        const bool ring = focus_verified && after &&
+            (after == director || after->hasAncestor(director)) && after != before &&
             functionalFocusRing(after) && !functionalFocusRing(before);
         addFunctionalResult(assertion, ring ? "PASS" : "FAIL",
             ring ? "Tab exposes a kit focus ring" :
@@ -2024,6 +2295,10 @@ private:
         rememberFunctionalSetting(entry["expect"]["setting"].asString());
         rememberFunctionalSetting(entry["setting"].asString());
         rememberFunctionalSetting("DirectorV2SelectedLight");
+        const LLSD& reveals = entry["reveal"];
+        if (reveals.isArray())
+            for (LLSD::array_const_iterator it = reveals.beginArray(); it != reveals.endArray(); ++it)
+                rememberFunctionalSetting((*it)["selector"].asString());
         if (entry["page"].asString() == "weather_tab")
             rememberFunctionalSetting("AlchemyWeatherEnabled");
         const LLSD& settings = entry["restore"]["snapshot_settings"];
@@ -2051,6 +2326,13 @@ private:
     // ui-draw-lint: allow-function(setting-write,raw-write) isolated test-only typed restore
     void restoreFunctionalAction()
     {
+        for (auto& saved : mFunctionalRevealWidgetValues)
+            if (LLUICtrl* control = saved.first.get())
+            {
+                control->setValue(saved.second);
+                control->onCommit();
+            }
+        mFunctionalRevealWidgetValues.clear();
         if (LLUICtrl* secondary = mFunctionalSecondaryControl.get();
             secondary && mFunctionalSecondaryBefore.isDefined())
         {
@@ -2112,13 +2394,16 @@ private:
         if (mFunctionalLauncherWasOpen)
             if (LLFloater* floater = mFunctionalLauncherFloater.get())
                 floater->openFloater(floater->getKey());
+        if (mFunctionalIndex < mFunctionalEntries.size() &&
+            mFunctionalEntries[mFunctionalIndex]["probe"].asString() == "exposure_history")
+            ALExposureSettingsHistory::clear();
         mFunctionalRestore.clear();
         mFunctionalControl = LLHandle<LLUICtrl>();
         mFunctionalSetting = nullptr;
         mFunctionalPageRoot = nullptr;
         if (LLFloater* redirected = mFunctionalRedirectFloater.get())
-            redirected->closeFloater(false);
-        mFunctionalRedirectFloater = LLHandle<LLFloater>();
+            if (!mFunctionalFailureShotPending) redirected->closeFloater(false);
+        if (!mFunctionalFailureShotPending) mFunctionalRedirectFloater = LLHandle<LLFloater>();
         mFunctionalControlBefore = LLSD();
         mFunctionalOriginalControlValue = LLSD();
         mFunctionalSecondaryControl = LLHandle<LLUICtrl>();
@@ -2128,6 +2413,232 @@ private:
         mFunctionalLauncherWasOpen = false;
         mFunctionalExercise.clear();
         mFunctionalGatePrepared = false;
+        mFunctionalRevealPending = false;
+        mFunctionalClickTarget = LLHandle<LLView>();
+        if (!mFunctionalFailureShotPending) mFunctionalHostFloater = LLHandle<LLFloater>();
+        mFunctionalRedirectReason.clear();
+        mFunctionalCommitConnection.disconnect();
+        mFunctionalCommitCount = 0;
+        mFunctionalHandlerRunCount = 0;
+        mFunctionalObserved = LLSD::emptyMap();
+        mFunctionalLastClickReason.clear();
+    }
+
+    static void functionalCollectButtons(LLView* view, std::vector<LLButton*>& buttons)
+    {
+        if (!view) return;
+        if (LLButton* button = dynamic_cast<LLButton*>(view)) buttons.push_back(button);
+        for (LLView* child : *view->getChildList()) functionalCollectButtons(child, buttons);
+    }
+
+    LLView* functionalClickTarget(LLUICtrl* control)
+    {
+        if (LLCheckBoxCtrl* box = dynamic_cast<LLCheckBoxCtrl*>(control))
+            return FunctionalCheckBoxAccess::button(box);
+        if (LLComboBox* combo = dynamic_cast<LLComboBox*>(control))
+            return FunctionalComboAccess::button(combo);
+        if (LLSpinCtrl* spin = dynamic_cast<LLSpinCtrl*>(control))
+        {
+            std::vector<LLButton*> buttons;
+            functionalCollectButtons(spin, buttons);
+            if (buttons.empty()) return spin;
+            const bool up = mFunctionalEntries[mFunctionalIndex]["test_value"].asReal() >=
+                control->getValue().asReal();
+            return up ? *std::max_element(buttons.begin(), buttons.end(), [](LLButton* a, LLButton* b)
+                    { return a->getRect().getCenterY() < b->getRect().getCenterY(); }) :
+                *std::min_element(buttons.begin(), buttons.end(), [](LLButton* a, LLButton* b)
+                    { return a->getRect().getCenterY() < b->getRect().getCenterY(); });
+        }
+        if (LLSliderCtrl* slider = dynamic_cast<LLSliderCtrl*>(control))
+            if (LLSlider* track = findFirstView<LLSlider>(slider)) return track;
+        if (LLRadioGroup* radio = dynamic_cast<LLRadioGroup*>(control))
+        {
+            std::vector<LLCheckBoxCtrl*> items;
+            std::function<void(LLView*)> collect = [&](LLView* view)
+            {
+                if (LLCheckBoxCtrl* item = dynamic_cast<LLCheckBoxCtrl*>(view)) items.push_back(item);
+                for (LLView* child : *view->getChildList()) collect(child);
+            };
+            collect(radio);
+            S32 index = mFunctionalEntries[mFunctionalIndex]["test_value"]["item_index"].asInteger();
+            if (index >= 0 && index < static_cast<S32>(items.size()))
+                return FunctionalCheckBoxAccess::button(items[index]);
+        }
+        return control;
+    }
+
+    static LLSD functionalRect(const LLRect& rect)
+    {
+        LLSD result = LLSD::emptyArray();
+        result.append(rect.mLeft); result.append(rect.mBottom);
+        result.append(rect.mRight); result.append(rect.mTop);
+        return result;
+    }
+
+    static LLSD functionalChainBreak(LLView* control, bool visible)
+    {
+        for (LLView* view = control; view; view = view->getParent())
+        {
+            const bool ok = visible ? view->getVisible() : view->getEnabled();
+            if (!ok)
+            {
+                LLSD result = LLSD::emptyMap();
+                result["path"] = view->getPathname();
+                result["class"] = typeid(*view).name();
+                return result;
+            }
+        }
+        return LLSD();
+    }
+
+    static LLFloater* functionalOwningFloater(LLView* view)
+    {
+        for (; view; view = view->getParent())
+            if (LLFloater* floater = dynamic_cast<LLFloater*>(view)) return floater;
+        return nullptr;
+    }
+
+    // ui-draw-lint: allow-function(lookup) bounded login-only non-dispatching hit-test
+    static LLView* functionalResolveInView(LLView* parent, S32 screen_x, S32 screen_y)
+    {
+        if (!parent || !parent->getVisible() || !parent->getEnabled()) return nullptr;
+        for (LLView* child : *parent->getChildList())
+        {
+            S32 local_x = 0;
+            S32 local_y = 0;
+            child->screenPointToLocal(screen_x, screen_y, &local_x, &local_y);
+            if (!child->getVisible() || !child->getEnabled() ||
+                !child->pointInView(local_x, local_y, LLView::HIT_TEST_USE_BOUNDING_RECT))
+                continue;
+            if (LLView* deeper = functionalResolveInView(child, screen_x, screen_y))
+                return deeper;
+            // This is the non-mutating equivalent of the dispatch fall-through:
+            // transparent holders do not win; controls and explicit blockers do.
+            if (child->getMouseOpaque() || child->blockMouseEvent(local_x, local_y))
+                return child;
+        }
+        S32 local_x = 0;
+        S32 local_y = 0;
+        parent->screenPointToLocal(screen_x, screen_y, &local_x, &local_y);
+        if (parent->pointInView(local_x, local_y, LLView::HIT_TEST_USE_BOUNDING_RECT) &&
+            (parent->getMouseOpaque() || parent->blockMouseEvent(local_x, local_y)))
+            return parent;
+        return nullptr;
+    }
+
+    bool functionalOwnedInputLayer(LLView* layer, LLView* expected, LLFloater* host) const
+    {
+        if (!layer) return true;
+        if (layer == expected || layer->hasAncestor(expected) || expected->hasAncestor(layer))
+            return true;
+        return host && functionalOwningFloater(layer) == host;
+    }
+
+    // ui-draw-lint: allow-function(lookup) bounded login-only input safety preflight
+    bool functionalPreDispatch(LLView* expected, std::string& reason)
+    {
+        if (!expected || !gViewerWindow)
+        {
+            reason = "not reachable: missing click target";
+            return false;
+        }
+        LLFloater* host = mFunctionalHostFloater.get();
+        if (!host) host = functionalOwningFloater(expected);
+        if (!host) host = mFloater.get();
+
+        if (LLMouseHandler* capture = gFocusMgr.getMouseCapture())
+        {
+            LLView* capture_view = dynamic_cast<LLView*>(capture);
+            if (!capture_view || !functionalOwnedInputLayer(capture_view, expected, host))
+            {
+                reason = "foreign modal/captor present";
+                return false;
+            }
+            // A capture from even our own floater changes dispatch. It is only
+            // legitimate while a drag is already in progress, never before down.
+            reason = "foreign modal/captor present";
+            return false;
+        }
+        if (LLModalDialog::activeCount() > 0 && !dynamic_cast<LLModalDialog*>(host))
+        {
+            reason = "foreign modal/captor present";
+            return false;
+        }
+        LLUICtrl* top = gFocusMgr.getTopCtrl();
+        if (top && !(top == expected || top->hasAncestor(expected) ||
+                     expected->hasAncestor(top)))
+        {
+            reason = "foreign modal/captor present";
+            return false;
+        }
+        // Menus and the progress view sit in front of the Floater View in real dispatch
+        // (main_view.xml) and take the click/Return before the target; never inject then.
+        if (gMenuHolder && gMenuHolder->hasVisibleMenu())
+        {
+            reason = "foreign modal/captor present: open menu";
+            return false;
+        }
+        if (LLProgressView* progress = gViewerWindow->getProgressView();
+            progress && progress->isInVisibleChain())
+        {
+            reason = "foreign modal/captor present: progress view";
+            return false;
+        }
+
+        LLRootView* root = gViewerWindow->getRootView();
+        if (LLPanelLogin* login = root ? findFirstView<LLPanelLogin>(root) : nullptr)
+        {
+            const LLRect login_rect = login->calcScreenRect();
+            mFunctionalObserved["rect"]["login_forbidden"] = functionalRect(login_rect);
+            if (login->isInVisibleChain() &&
+                login_rect.pointInRect(mFunctionalScreenX, mFunctionalScreenY))
+            {
+                reason = "not reachable: login panel forbidden zone";
+                return false;
+            }
+        }
+        if (!host || !host->calcScreenRect().pointInRect(mFunctionalScreenX, mFunctionalScreenY))
+        {
+            reason = "not reachable: outside Director/redirect floater";
+            return false;
+        }
+
+        LLView* resolved = nullptr;
+        if (top)
+            resolved = functionalResolveInView(top, mFunctionalScreenX, mFunctionalScreenY);
+        if (!resolved && root)
+        {
+            if (LLPopupView* holder = root->findChild<LLPopupView>("popup_holder", true))
+            {
+                for (const LLHandle<LLView>& handle : holder->getCurrentPopups())
+                {
+                    LLView* popup = handle.get();
+                    if (popup && popup->isInVisibleChain() &&
+                        !(popup == expected || popup->hasAncestor(expected) ||
+                          expected->hasAncestor(popup)))
+                    {
+                        reason = "foreign modal/captor present";
+                        return false;
+                    }
+                    if ((resolved = functionalResolveInView(popup, mFunctionalScreenX,
+                                                            mFunctionalScreenY)))
+                        break;
+                }
+            }
+        }
+        // Resolve from the root in real dispatch order (no Floater View pre-pass).
+        if (!resolved && root)
+            resolved = functionalResolveInView(root, mFunctionalScreenX, mFunctionalScreenY);
+
+        mFunctionalObserved["click"]["preflight_resolved"] =
+            resolved ? resolved->getPathname() : "<none>";
+        if (!resolved || !(resolved == expected || resolved->hasAncestor(expected)))
+        {
+            reason = "not reachable: " +
+                (resolved ? resolved->getPathname() : std::string("<none>"));
+            return false;
+        }
+        return true;
     }
 
     bool functionalReachable(LLUICtrl* control, std::string& reason)
@@ -2135,11 +2646,13 @@ private:
         if (!control->isInVisibleChain())
         {
             reason = "not reachable: hidden";
+            mFunctionalObserved["visible_break"] = functionalChainBreak(control, true);
             return false;
         }
         if (!control->isInEnabledChain())
         {
             reason = "not reachable: disabled-by-parent";
+            mFunctionalObserved["enabled_break"] = functionalChainBreak(control, false);
             return false;
         }
         control->onUpdateScrollToChild(control);
@@ -2157,24 +2670,58 @@ private:
             reason = "not reachable: hidden";
             return false;
         }
-        LLView* root = control->getRootView();
-        S32 screen_x = 0, screen_y = 0, root_x = 0, root_y = 0;
-        control->localPointToScreen(control->getLocalRect().getCenterX(),
-                                    control->getLocalRect().getCenterY(),
-                                    &screen_x, &screen_y);
-        root->screenPointToLocal(screen_x, screen_y, &root_x, &root_y);
-        LLView* hit = root->childFromPoint(root_x, root_y, true);
-        if (!hit || (hit != control && !hit->hasAncestor(control)))
+        LLView* target = functionalClickTarget(control);
+        if (!target || !target->isInVisibleChain() || !target->isInEnabledChain())
         {
-            reason = "not reachable: covered";
+            reason = "not reachable: target hidden or disabled";
             return false;
         }
-        mFunctionalRoot = root;
-        mFunctionalRootX = root_x;
-        mFunctionalRootY = root_y;
-        return true;
+        S32 local_x = target->getLocalRect().getCenterX();
+        const S32 local_y = target->getLocalRect().getCenterY();
+        if (dynamic_cast<LLSlider*>(target))
+        {
+            const LLSD& entry = mFunctionalEntries[mFunctionalIndex];
+            const F64 low = entry["min"].isDefined() ? entry["min"].asReal() : 0.;
+            const F64 high = entry["max"].isDefined() ? entry["max"].asReal() : 1.;
+            const F64 ratio = high > low ? llclamp((entry["test_value"].asReal() - low) / (high - low), 0.05, 0.95) : .75;
+            local_x = target->getLocalRect().mLeft + ll_round((F32)(target->getLocalRect().getWidth() * ratio));
+        }
+        target->localPointToScreen(local_x, local_y, &mFunctionalScreenX, &mFunctionalScreenY);
+        mFunctionalClickTarget = target->getHandle();
+        mFunctionalObserved["rect"]["ctrl"] = functionalRect(control->calcScreenRect());
+        mFunctionalObserved["rect"]["target"] = functionalRect(target->calcScreenRect());
+        mFunctionalObserved["rect"]["point"] = LLSD::emptyArray();
+        mFunctionalObserved["rect"]["point"].append(mFunctionalScreenX);
+        mFunctionalObserved["rect"]["point"].append(mFunctionalScreenY);
+        LLFloater* host = nullptr;
+        LLScrollContainer* viewport = nullptr;
+        for (LLView* parent = target; parent; parent = parent->getParent())
+        {
+            if (!viewport) viewport = dynamic_cast<LLScrollContainer*>(parent);
+            if (!host) host = dynamic_cast<LLFloater*>(parent);
+        }
+        bool on_screen = true;
+        if (viewport)
+        {
+            const LLRect rect = viewport->calcScreenRect();
+            mFunctionalObserved["rect"]["viewport"] = functionalRect(rect);
+            on_screen = on_screen && rect.pointInRect(mFunctionalScreenX, mFunctionalScreenY);
+        }
+        if (host)
+        {
+            const LLRect rect = host->calcScreenRect();
+            mFunctionalObserved["rect"]["floater"] = functionalRect(rect);
+            on_screen = on_screen && rect.pointInRect(mFunctionalScreenX, mFunctionalScreenY);
+        }
+        if (!on_screen)
+        {
+            reason = "not on screen";
+            return false;
+        }
+        return functionalPreDispatch(target, reason);
     }
 
+    // ui-draw-lint: allow-function(lookup) bounded six-frame test-only reveal/selector settlement
     void revealFunctionalControl(LLUICtrl* control)
     {
         if (!control) return;
@@ -2188,28 +2735,275 @@ private:
             if (!row) row = dynamic_cast<ALKitRow*>(parent);
             if ((card = dynamic_cast<ALKitCard*>(parent))) break;
         }
-        // Card-level reveal is essential: it opens a collapsed body, the
-        // advanced "More" section, and the row's per-light option.
-        if (card && row) card->revealRow(row);
-        else if (page && card) page->revealCard(card, false);
-        if (page && !control->isInVisibleChain())
+        if (page)
         {
-            for (S32 mode = 0; mode < page->modeCount(); ++mode)
+            page->setSearchText("");
+            if (card) page->revealCard(card, false);
+        }
+        // Both calls are required: revealCard establishes mode/chip state and
+        // revealRow establishes body/More/option state. Layout is idle-deferred.
+        if (card && row) card->revealRow(row);
+        const LLSD& reveals = mFunctionalEntries[mFunctionalIndex]["reveal"];
+        if (reveals.isArray())
+        {
+            for (LLSD::array_const_iterator it = reveals.beginArray(); it != reveals.endArray(); ++it)
             {
-                page->setModeIndex(mode, false, true);
-                if (control->isInVisibleChain()) break;
+                const std::string selector_name = (*it)["selector"].asString();
+                LLComboBox* selector = mFunctionalPageRoot ?
+                    mFunctionalPageRoot->findChild<LLComboBox>(selector_name, true) : nullptr;
+                if (selector && selector->getValue() != (*it)["value"])
+                {
+                    const bool already_saved = std::any_of(mFunctionalRevealWidgetValues.begin(),
+                        mFunctionalRevealWidgetValues.end(), [selector](const auto& saved)
+                            { return saved.first.get() == selector; });
+                    if (!already_saved) mFunctionalRevealWidgetValues.emplace_back(
+                        selector->getDerivedHandle<LLUICtrl>(), selector->getValue());
+                    functionalSelectComboValue(selector, (*it)["value"]);
+                }
+                LLSD action = LLSD::emptyMap();
+                action["selector"] = selector_name;
+                action["value"] = (*it)["value"];
+                mFunctionalObserved["reveal"].append(action);
             }
+        }
+        LLFloater* host = nullptr;
+        for (LLView* parent = control; parent && !host; parent = parent->getParent())
+            host = dynamic_cast<LLFloater*>(parent);
+        if (host)
+        {
+            host->setMinimized(false);
+            if (gFloaterView) gFloaterView->adjustToFitScreen(host, false);
+            host->setFrontmost(true);
+            mFunctionalHostFloater = host->getHandle();
         }
     }
 
     bool functionalPointerClick()
     {
-        if (!mFunctionalRoot) return false;
-        const bool down = mFunctionalRoot->handleMouseDown(
-            mFunctionalRootX, mFunctionalRootY, MASK_NONE);
-        const bool up = mFunctionalRoot->handleMouseUp(
-            mFunctionalRootX, mFunctionalRootY, MASK_NONE);
-        return down && up;
+        LLView* expected = mFunctionalClickTarget.get();
+        if (!expected || !gViewerWindow) return false;
+        std::string preflight;
+        if (!functionalPreDispatch(expected, preflight))
+        {
+            mFunctionalLastClickReason = preflight;
+            return false;
+        }
+        LLCoordGL gl(ll_round((F32)mFunctionalScreenX * gViewerWindow->getDisplayScale().mV[VX]),
+                     ll_round((F32)mFunctionalScreenY * gViewerWindow->getDisplayScale().mV[VY]));
+        gViewerWindow->handleMouseMove(gViewerWindow->getWindow(), gl, MASK_NONE);
+        LLView* deepest = nullptr;
+        struct RecorderGuard
+        {
+            explicit RecorderGuard(LLView*& deepest)
+            {
+                LLView::sMouseHandlerRecorder = [&deepest](LLView* view)
+                    { if (!deepest) deepest = view; };
+                LLView::sDebugMouseHandling = true;
+            }
+            ~RecorderGuard()
+            {
+                LLView::sDebugMouseHandling = false;
+                LLView::sMouseHandlerRecorder = {};
+            }
+        } recorder(deepest);
+        bool toolmgr = false;
+        const bool down = gViewerWindow->handleAnyMouseClick(
+            gViewerWindow->getWindow(), gl, MASK_NONE, CLICK_LEFT, true, toolmgr);
+        const std::string down_path = LLView::sMouseHandlerMessage;
+        LLView* down_deepest = deepest;
+        LLMouseHandler* captor = gFocusMgr.getMouseCapture();
+        const bool capture_expected = dynamic_cast<LLButton*>(expected) ||
+            dynamic_cast<LLSlider*>(expected);
+        const bool captured = captor && (captor == expected ||
+            (dynamic_cast<LLView*>(captor) && dynamic_cast<LLView*>(captor)->hasAncestor(expected)));
+        const bool capture_ok = !capture_expected || captured;
+        if (dynamic_cast<LLSlider*>(expected))
+            gViewerWindow->handleMouseMove(gViewerWindow->getWindow(), gl, MASK_NONE);
+        deepest = nullptr;
+        const bool up = gViewerWindow->handleAnyMouseClick(
+            gViewerWindow->getWindow(), gl, MASK_NONE, CLICK_LEFT, false, toolmgr);
+        const std::string up_path = LLView::sMouseHandlerMessage;
+        const bool handler = down_deepest == expected ||
+            (down_deepest && down_deepest->hasAncestor(expected));
+        mFunctionalObserved["click"]["down_handler"] = down_path;
+        mFunctionalObserved["click"]["up_handler"] = up_path;
+        mFunctionalObserved["click"]["capture_expected"] = capture_expected;
+        mFunctionalObserved["click"]["captor_ok"] = capture_ok;
+        mFunctionalObserved["click"]["capture_after"] = gFocusMgr.getMouseCapture() ? "set" : LLSD();
+        mFunctionalObserved["click"]["target"] = expected->getPathname();
+        mFunctionalObserved["click"]["handler_exact"] = handler;
+        LLMouseHandler* stuck = gFocusMgr.getMouseCapture();
+        if (stuck)
+        {
+            gFocusMgr.setMouseCapture(nullptr);
+            mFunctionalLastClickReason = "stuck capture";
+            return false;
+        }
+        mFunctionalLastClickReason = handler ? std::string() :
+            "real dispatch was handled outside target: " + down_path;
+        return down && up && handler && capture_ok;
+    }
+
+    bool functionalPointerDrag(ALCompassDial* dial)
+    {
+        if (!dial || !gViewerWindow) return false;
+        const LLRect local = dial->getLocalRect();
+        const F32 radius = llmax(4.f, .28f * (F32)llmin(local.getWidth(), local.getHeight()));
+        const F32 angle = (F32)dial->getValue().asReal() * DEG_TO_RAD;
+        const S32 start_x = ll_round((F32)local.getCenterX() + sinf(angle) * radius);
+        const S32 start_y = ll_round((F32)local.getCenterY() + cosf(angle) * radius);
+        const S32 end_x = ll_round((F32)local.getCenterX() + sinf(angle + .7f) * radius);
+        const S32 end_y = ll_round((F32)local.getCenterY() + cosf(angle + .7f) * radius);
+        S32 start_screen_x = 0, start_screen_y = 0, end_screen_x = 0, end_screen_y = 0;
+        dial->localPointToScreen(start_x, start_y, &start_screen_x, &start_screen_y);
+        dial->localPointToScreen(end_x, end_y, &end_screen_x, &end_screen_y);
+        mFunctionalClickTarget = dial->getHandle();
+        std::string reason;
+        mFunctionalScreenX = start_screen_x; mFunctionalScreenY = start_screen_y;
+        if (!functionalPreDispatch(dial, reason))
+        {
+            mFunctionalLastClickReason = reason;
+            return false;
+        }
+        mFunctionalScreenX = end_screen_x; mFunctionalScreenY = end_screen_y;
+        if (!functionalPreDispatch(dial, reason))
+        {
+            mFunctionalLastClickReason = reason;
+            return false;
+        }
+
+        // The final check before the only down event is for its exact point.
+        mFunctionalScreenX = start_screen_x; mFunctionalScreenY = start_screen_y;
+        if (!functionalPreDispatch(dial, reason))
+        {
+            mFunctionalLastClickReason = reason;
+            return false;
+        }
+
+        const LLVector2 scale = gViewerWindow->getDisplayScale();
+        LLCoordGL start(ll_round((F32)start_screen_x * scale.mV[VX]),
+                        ll_round((F32)start_screen_y * scale.mV[VY]));
+        LLCoordGL end(ll_round((F32)end_screen_x * scale.mV[VX]),
+                      ll_round((F32)end_screen_y * scale.mV[VY]));
+        gViewerWindow->handleMouseMove(gViewerWindow->getWindow(), start, MASK_NONE);
+        LLView* deepest = nullptr;
+        struct RecorderGuard
+        {
+            explicit RecorderGuard(LLView*& deepest)
+            {
+                LLView::sMouseHandlerRecorder = [&deepest](LLView* view)
+                    { if (!deepest) deepest = view; };
+                LLView::sDebugMouseHandling = true;
+            }
+            ~RecorderGuard()
+            {
+                LLView::sDebugMouseHandling = false;
+                LLView::sMouseHandlerRecorder = {};
+            }
+        } recorder(deepest);
+        bool toolmgr = false;
+        const bool down = gViewerWindow->handleAnyMouseClick(
+            gViewerWindow->getWindow(), start, MASK_NONE, CLICK_LEFT, true, toolmgr);
+        LLView* down_deepest = deepest;
+        const bool captured = gFocusMgr.getMouseCapture() == dial;
+        gViewerWindow->handleMouseMove(gViewerWindow->getWindow(), end, MASK_NONE);
+        deepest = nullptr;
+        const bool up = gViewerWindow->handleAnyMouseClick(
+            gViewerWindow->getWindow(), end, MASK_NONE, CLICK_LEFT, false, toolmgr);
+        const bool handler = down_deepest == dial ||
+            (down_deepest && down_deepest->hasAncestor(dial));
+        mFunctionalObserved["click"]["real_drag"] = true;
+        mFunctionalObserved["click"]["handler_exact"] = handler;
+        LLMouseHandler* stuck = gFocusMgr.getMouseCapture();
+        if (stuck)
+        {
+            gFocusMgr.setMouseCapture(nullptr);
+            mFunctionalLastClickReason = "stuck capture";
+            return false;
+        }
+        mFunctionalLastClickReason = handler ? std::string() :
+            "real drag was handled outside target";
+        return down && up && captured && handler;
+    }
+
+    bool functionalSelectComboValue(LLComboBox* combo, const LLSD& value)
+    {
+        std::string reason;
+        if (!combo || !functionalReachable(combo, reason) || !functionalPointerClick()) return false;
+        LLScrollListCtrl* list = FunctionalComboAccess::list(combo);
+        if (!list || !list->getVisible()) return false;
+        S32 index = -1;
+        for (S32 i = 0; i < list->getItemCount(); ++i)
+            if (LLScrollListItem* item = list->getItemByIndex(i); item && item->getValue() == value)
+            { index = i; break; }
+        if (index < 0) return false;
+        const S32 page_lines = llmax(1, list->getPageLines());
+        if (index < list->getScrollPos()) list->setScrollPos(index);
+        else if (index >= list->getScrollPos() + page_lines)
+            list->setScrollPos(index - page_lines + 1);
+        const LLRect cell = list->getCellRect(index, 0);
+        list->localPointToScreen(cell.getCenterX(), cell.getCenterY(),
+                                 &mFunctionalScreenX, &mFunctionalScreenY);
+        mFunctionalClickTarget = list->getHandle();
+        const LLRect list_rect = list->calcScreenRect();
+        const bool item_visible = index >= list->getScrollPos() &&
+            index < list->getScrollPos() + page_lines &&
+            list_rect.pointInRect(mFunctionalScreenX, mFunctionalScreenY);
+        mFunctionalObserved["click"]["list_rect"] = functionalRect(list_rect);
+        mFunctionalObserved["click"]["list_item_visible"] = item_visible;
+        if (!item_visible)
+        {
+            mFunctionalLastClickReason = "not reachable: combo item outside list scroll window";
+            return false;
+        }
+        return functionalPointerClick();
+    }
+
+    bool probeFunctionalEnable(LLUICtrl* control)
+    {
+        if (!control || control->isInEnabledChain()) return true;
+        LLView* scope = control->getParent();
+        std::vector<LLCheckBoxCtrl*> candidates;
+        std::function<void(LLView*)> collect = [&](LLView* view)
+        {
+            if (candidates.size() >= 3) return;
+            if (LLCheckBoxCtrl* box = dynamic_cast<LLCheckBoxCtrl*>(view);
+                box && box != control && box->isInVisibleChain() && box->isInEnabledChain())
+                candidates.push_back(box);
+            for (LLView* child : *view->getChildList()) collect(child);
+        };
+        if (scope) collect(scope);
+        for (LLCheckBoxCtrl* candidate : candidates)
+        {
+            const LLSD* manifest = nullptr;
+            for (const LLSD& row : mFunctionalEntries)
+            {
+                if (row["page"].asString() ==
+                        mFunctionalEntries[mFunctionalIndex]["page"].asString() &&
+                    row["widget_name"].asString() == candidate->getName())
+                {
+                    manifest = &row;
+                    break;
+                }
+            }
+            const bool pure_setting = manifest &&
+                (*manifest)["action"].asString() == "RUN" &&
+                (*manifest)["hazards"].size() == 0 &&
+                !(*manifest)["expect"]["setting"].asString().empty() &&
+                (*manifest)["effect_kind"].asString() != "side_effect_only";
+            if (!pure_setting) continue;
+            mFunctionalRevealWidgetValues.emplace_back(candidate->getDerivedHandle<LLUICtrl>(),
+                                                       candidate->getValue());
+            std::string reason;
+            const bool clicked = functionalReachable(candidate, reason) && functionalPointerClick();
+            LLSD probe = LLSD::emptyMap();
+            probe["widget"] = candidate->getPathname();
+            probe["clicked"] = clicked;
+            probe["enabled"] = control->isInEnabledChain();
+            mFunctionalObserved["enable_probe"].append(probe);
+            if (control->isInEnabledChain()) return true;
+        }
+        return control->isInEnabledChain();
     }
 
     // ui-draw-lint: allow-function(setting-write,raw-write) isolated test-only input exercise
@@ -2245,37 +3039,76 @@ private:
         {
             if (LLComboBox* combo = dynamic_cast<LLComboBox*>(control))
             {
-                bool selected = false;
-                if (test.isMap() && test.has("id"))
-                    selected = combo->setSelectedByValue(test["id"], true);
-                if (!selected)
+                if (!functionalPointerClick()) return false;
+                LLScrollListCtrl* list = FunctionalComboAccess::list(combo);
+                S32 index = test.isMap() && test.has("item_index") ?
+                    test["item_index"].asInteger() : 1;
+                if (!list || !list->getVisible() || list->getItemCount() <= 0) return false;
+                index = llclamp(index, 0, list->getItemCount() - 1);
+                const S32 page_lines = llmax(1, list->getPageLines());
+                if (index < list->getScrollPos()) list->setScrollPos(index);
+                else if (index >= list->getScrollPos() + page_lines)
+                    list->setScrollPos(index - page_lines + 1);
+                const LLRect cell = list->getCellRect(index, 0);
+                list->localPointToScreen(cell.getCenterX(), cell.getCenterY(),
+                                         &mFunctionalScreenX, &mFunctionalScreenY);
+                mFunctionalClickTarget = list->getHandle();
+                mFunctionalObserved["click"]["combo_index"] = index;
+                const LLRect list_rect = list->calcScreenRect();
+                const bool item_visible = index >= list->getScrollPos() &&
+                    index < list->getScrollPos() + page_lines &&
+                    list_rect.pointInRect(mFunctionalScreenX, mFunctionalScreenY);
+                mFunctionalObserved["click"]["list_rect"] = functionalRect(list_rect);
+                mFunctionalObserved["click"]["list_item_visible"] = item_visible;
+                if (!item_visible)
                 {
-                    S32 index = test.isMap() && test.has("item_index")
-                        ? test["item_index"].asInteger() : 1;
-                    if (index >= combo->getItemCount()) index = combo->getItemCount() - 1;
-                    selected = index >= 0 && combo->setCurrentByIndex(index);
+                    mFunctionalLastClickReason = "not reachable: combo item outside list scroll window";
+                    return false;
                 }
-                if (selected) combo->onCommit();
-                return selected;
+                return functionalPointerClick();
             }
             if (LLRadioGroup* radio = dynamic_cast<LLRadioGroup*>(control))
             {
-                const S32 index = test.isMap() ? test["item_index"].asInteger() : test.asInteger();
-                const bool selected = radio->selectNthItem(index);
-                if (selected) radio->onCommit();
-                return selected;
+                return functionalPointerClick();
             }
         }
         if (LLColorSwatchCtrl* swatch = dynamic_cast<LLColorSwatchCtrl*>(control))
         {
-            // This is the picker commit path: publish the chosen colour via
-            // the swatch, without manufacturing a modal floater.
+            if (!functionalPointerClick()) return false;
             swatch->setValue(test);
             swatch->onCommit();
+            mFunctionalObserved["click"]["programmatic_picker_commit"] = true;
+            mFunctionalObserved["effect"]["programmatic"] = true;
             return true;
         }
+        if (ALCompassDial* dial = dynamic_cast<ALCompassDial*>(control))
+            return functionalPointerDrag(dial);
+        if (dynamic_cast<LLLineEditor*>(control) || dynamic_cast<LLTextEditor*>(control))
+        {
+            if (!functionalPointerClick()) return false;
+            auto focus_exact = [this, control]()
+            {
+                const bool exact = gFocusMgr.getKeyboardFocus() == control;
+                mFunctionalObserved["keyboard"]["focus_exact"] = exact;
+                if (!exact) mFunctionalLastClickReason = "focus not on target";
+                return exact;
+            };
+            if (!focus_exact() || !gViewerWindow->handleKey('A', MASK_CONTROL)) return false;
+            const std::string typed = test.asString();
+            for (unsigned char ch : typed)
+            {
+                if (!focus_exact() || !gViewerWindow->handleUnicodeChar(ch, MASK_NONE)) return false;
+            }
+            // Re-check immediately before Return; no frame or callback may
+            // redirect it to the login form or an alert.
+            if (!focus_exact()) return false;
+            return gViewerWindow->handleKey(KEY_RETURN, MASK_NONE);
+        }
+        if (dynamic_cast<LLSliderCtrl*>(control) || dynamic_cast<LLSpinCtrl*>(control))
+            return functionalPointerClick();
         control->setValue(test);
         control->onCommit();
+        mFunctionalObserved["effect"]["programmatic"] = true;
         return true;
     }
 
@@ -2337,18 +3170,31 @@ private:
                 force("AlchemyWeatherEnabled", false);
             mFunctionalPageRoot = functionalPage(entry);
             mFunctionalGatePrepared = true;
+            mFunctionalGateFrames = 0;
             return false; // allow a normal frame to update the page banner
         }
+        ++mFunctionalGateFrames;
         ALKitPage* page = findFirstView<ALKitPage>(mFunctionalPageRoot);
         const std::string prefix = rim_gate ? "light_rim" : "weather";
         LLPanel* banner = page ? page->findChild<LLPanel>(prefix + "_gate_banner", true) : nullptr;
         LLButton* turn_on = page ? page->findChild<LLButton>(prefix + "_gate_on", true) : nullptr;
         const bool predicate_off = rim_gate ? !ALCineRigRim::isEnabled() :
                                              !gSavedSettings.getBOOL("AlchemyWeatherEnabled");
-        if (!predicate_off || (mDirectorV2 && (!banner || !banner->getVisible() || !turn_on)))
+        mFunctionalObserved["gate"]["predicate_off"] = predicate_off;
+        mFunctionalObserved["gate"]["banner_exists"] = banner != nullptr;
+        mFunctionalObserved["gate"]["banner_visible"] = banner && banner->getVisible();
+        mFunctionalObserved["gate"]["button_exists"] = turn_on != nullptr;
+        mFunctionalObserved["gate"]["settle_frames"] = mFunctionalGateFrames;
+        if (mDirectorV2 && predicate_off && banner && !banner->getVisible() &&
+            mFunctionalGateFrames < 6) return false;
+        std::string gate_failure;
+        if (!predicate_off) gate_failure = prefix + " gate predicate was not forced off";
+        else if (mDirectorV2 && !banner) gate_failure = prefix + " gate banner is missing";
+        else if (mDirectorV2 && !banner->getVisible()) gate_failure = prefix + " gate banner did not draw within 6 frames";
+        else if (mDirectorV2 && !turn_on) gate_failure = prefix + " gate Turn on button is missing";
+        if (!gate_failure.empty())
         {
-            addFunctionalResult(entry, "FAIL",
-                prefix + " gate precondition failed: banner/predicate disagree");
+            addFunctionalResult(entry, "FAIL", gate_failure);
             restoreFunctionalAction();
             ++mFunctionalIndex;
             return false;
@@ -2371,7 +3217,8 @@ private:
         mFunctionalControl = tested_control ? tested_control->getDerivedHandle<LLUICtrl>() : LLHandle<LLUICtrl>();
         if (!gate_clicked)
         {
-            addFunctionalResult(entry, "FAIL", prefix + " gate Turn on is not user-clickable");
+            addFunctionalResult(entry, "FAIL", prefix + " gate Turn on is not user-clickable: " +
+                (mFunctionalLastClickReason.empty() ? reason : mFunctionalLastClickReason));
             restoreFunctionalAction();
             ++mFunctionalIndex;
             return false;
@@ -2391,85 +3238,28 @@ private:
         return true;
     }
 
-    // ui-draw-lint: allow-function(lookup,raw-write,setting-write) isolated login-only functional pre-state
-    void beginFunctionalEntry()
+    // ui-draw-lint: allow-function(lookup,raw-write,setting-write) one-shot test-only post-reveal exercise setup
+    void continueFunctionalEntry(const LLSD& entry, LLUICtrl* control)
     {
-        const LLSD& entry = mFunctionalEntries[mFunctionalIndex];
-        const std::string action = entry["action"].asString();
-        if (action == "NO_EXERCISE")
+        if (entry["probe"].asString() == "exposure_history")
         {
-            const std::string reason = entry["reason"].asString();
-            addFunctionalResult(entry, reason.empty() ? "FAIL" : "SKIP",
-                reason.empty() ? "NO_EXERCISE lacks an explicit manifest reason" : reason);
-            ++mFunctionalIndex;
-            return;
-        }
-        if (action == "SKIP" || action == "DEFER_INWORLD")
-        {
-            std::string reason = entry["reason"].asString();
-            addFunctionalResult(entry, reason.empty() ? "FAIL" : "SKIP",
-                                reason.empty() ? "manifest SKIP lacks explicit reason" : reason);
-            ++mFunctionalIndex;
-            return;
-        }
-        const bool dangerous = functionalHazard(entry, "file_picker") ||
-            functionalHazard(entry, "destructive") || functionalHazard(entry, "logout") ||
-            functionalHazard(entry, "delete") || functionalHazard(entry, "rename") ||
-            functionalHazard(entry, "export_import") || functionalHazard(entry, "save_disk");
-        if (dangerous)
-        {
-            const std::string reason = entry["reason"].asString();
-            addFunctionalResult(entry, reason.empty() ? "FAIL" : "SKIP",
-                reason.empty() ? "hazard requires an explicit manifest skip reason" : reason);
-            ++mFunctionalIndex;
-            return;
-        }
-        if (!prepareFunctionalRimGate(entry)) return;
-        if (!mFunctionalGatePrepared) prepareFunctionalRestore(entry);
-        prepareFunctionalSelector(entry);
-        prepareFunctionalConsumerGate(entry);
-        mFunctionalPageRoot = functionalPage(entry);
-        if (!openFunctionalRedirect(entry, mFunctionalPageRoot))
-        {
-            const std::string skip_reason = entry["skip_reason"].asString();
-            addFunctionalResult(entry, skip_reason.empty() ? "FAIL" : "SKIP",
-                skip_reason.empty() ? "launcher did not open its target floater/panel" : skip_reason);
-            restoreFunctionalAction();
-            ++mFunctionalIndex;
-            return;
-        }
-        LLUICtrl* control = functionalControl(mFunctionalPageRoot, entry);
-        if (action == "EXPECT_MISSING")
-        {
-            const bool page_open = mFunctionalPageRoot != nullptr;
-            addFunctionalResult(entry, page_open && !control ? "PASS" : "FAIL",
-                !page_open ? "page did not open; absence is unproven" :
-                (control ? "control unexpectedly present" : "expected missing control"));
-            restoreFunctionalAction();
-            ++mFunctionalIndex;
-            return;
-        }
-        if (!control)
-        {
-            addFunctionalResult(entry, "FAIL", "no observable effect", "control not found");
-            restoreFunctionalAction();
-            ++mFunctionalIndex;
-            return;
-        }
-        revealFunctionalControl(control);
-        if (!prepareFunctionalPrerequisite(entry, control))
-        {
-            addFunctionalResult(entry, "FAIL", "enabled_control prerequisite could not be established");
-            restoreFunctionalAction();
-            ++mFunctionalIndex;
-            return;
+            rememberFunctionalSetting("RenderExposure");
+            if (LLControlVariable* exposure = gSavedSettings.getControl("RenderExposure").get()) // ui-draw-lint: allow(setting) test-only per-row oracle setup
+            {
+                const F32 original = (F32)exposure->getValue().asReal();
+                {
+                    ALExposureSettingsHistory::ScopedBatch batch("Functional harness witness");
+                    exposure->setValue(original + .125f, false); // ui-draw-lint: allow(setting-write) bounded history oracle
+                }
+                if (entry["widget_name"].asString() == "exp_redo")
+                    ALExposureSettingsHistory::undo();
+            }
         }
         std::string reachability;
+        if (!control->isInEnabledChain()) probeFunctionalEnable(control);
         if (!functionalReachable(control, reachability))
         {
-            const std::string skip_reason = entry["skip_reason"].asString();
-            addFunctionalResult(entry, skip_reason.empty() ? "FAIL" : "SKIP",
-                skip_reason.empty() ? reachability : skip_reason);
+            addFunctionalResult(entry, "FAIL", reachability);
             restoreFunctionalAction();
             ++mFunctionalIndex;
             return;
@@ -2477,6 +3267,13 @@ private:
         mFunctionalControl = control->getDerivedHandle<LLUICtrl>();
         mFunctionalOriginalControlValue = control->getValue();
         mFunctionalExercise = entry["exercise"].asString();
+        if (mFunctionalDryReveal)
+        {
+            addFunctionalResult(entry, "PASS", "dry reveal: visible, enabled, on-screen click target resolved");
+            restoreFunctionalAction();
+            ++mFunctionalIndex;
+            return;
+        }
         if (!prepareFunctionalAlternate(entry))
         {
             addFunctionalResult(entry, "FAIL", "selector alternate state was not reachable");
@@ -2517,6 +3314,13 @@ private:
                     setting->setValue(it->second, false); // ui-draw-lint: allow(setting-write) reset-all pre-state
             }
         }
+        if (entry["oracle_pre_value"].isDefined())
+        {
+            const std::string oracle_setting = entry["expect"]["setting"].asString();
+            rememberFunctionalSetting(oracle_setting);
+            if (LLControlVariable* setting = gSavedSettings.getControl(oracle_setting).get())
+                setting->setValue(entry["oracle_pre_value"], false); // ui-draw-lint: allow(setting-write) bounded button oracle
+        }
         if (entry["consumer"].asString() == "selected_rig_light_cone_width" &&
             functionalEqual(control->getValue(), entry["test_value"], "S32"))
         {
@@ -2526,8 +3330,6 @@ private:
         if (entry["exercise"].asString() == "toggle" &&
             control->getValue().asBoolean() == entry["test_value"].asBoolean())
         {
-            // Establish !target through the widget itself, then make the test
-            // click's expected value derive from that actual pre-state.
             if (!functionalPointerClick() ||
                 control->getValue().asBoolean() == entry["test_value"].asBoolean())
             {
@@ -2559,13 +3361,10 @@ private:
         mFunctionalHandlerName.clear();
         if (!function_name.empty() && LLUICtrl::CommitCallbackRegistry::getValue(function_name))
             mFunctionalHandlerName = function_name;
-        else if (!entry["owner"].asString().empty())
-            mFunctionalHandlerName = entry["owner"].asString();
-        else if (!entry["expect"]["callback"].asString().empty())
-            mFunctionalHandlerName = entry["expect"]["callback"].asString();
         const std::string setting = entry["expect"]["setting"].asString();
         mFunctionalSetting = gSavedSettings.getControl(setting).get();
         mFunctionalBefore = mFunctionalSetting ? mFunctionalSetting->getValue() : LLSD();
+        mFunctionalHistoryBefore = ALExposureSettingsHistory::revision();
         std::ostringstream before;
         functionalVisibleState(mFunctionalPageRoot, before, control);
         mFunctionalVisibleBefore = before.str();
@@ -2573,8 +3372,141 @@ private:
         mFunctionalFloatersBefore.clear();
         functionalVisibleFloaters(gFloaterView ? static_cast<LLView*>(gFloaterView) :
                                   control->getRootView(), mFunctionalFloatersBefore);
+        mFunctionalCommitCount = 0;
+        mFunctionalHandlerRunCount = 0;
+        mFunctionalCommitConnection = control->setCommitCallback(
+            [this](LLUICtrl*, const LLSD&)
+            {
+                ++mFunctionalCommitCount;
+                if (!mFunctionalHandlerName.empty()) ++mFunctionalHandlerRunCount;
+            });
         mFunctionalActionWorked = exerciseFunctional(entry, control);
         mFunctionalPending = true;
+    }
+
+    void settleFunctionalReveal()
+    {
+        const LLSD& entry = mFunctionalEntries[mFunctionalIndex];
+        LLUICtrl* control = mFunctionalControl.get();
+        ++mFunctionalRevealFrames;
+        mFunctionalObserved["frames"]["reveal"] = mFunctionalRevealFrames;
+        if (control) revealFunctionalControl(control);
+        if (!control || !control->isInVisibleChain())
+        {
+            if (mFunctionalRevealFrames < 6) return;
+            const bool declared = !entry["visible_when"].asString().empty();
+            mFunctionalObserved["visible_break"] = functionalChainBreak(control, true);
+            addFunctionalResult(entry, declared ? "SKIP" : "FAIL",
+                declared ? "DEFER_INWORLD: " + entry["visible_when"].asString() :
+                           "reveal did not settle within 6 frames");
+            mFunctionalRevealPending = false;
+            restoreFunctionalAction();
+            ++mFunctionalIndex;
+            return;
+        }
+        if (mFunctionalRevealFrames < 1) return;
+        mFunctionalRevealPending = false;
+        if (entry["action"].asString() == "DEFER_INWORLD")
+        {
+            const bool predicate = !entry["enable_when"].asString().empty() ||
+                !entry["visible_when"].asString().empty() ||
+                functionalHazard(entry, "requires_world") || functionalHazard(entry, "requires_selection");
+            addFunctionalResult(entry, predicate && !entry["reason"].asString().empty() ? "SKIP" : "FAIL",
+                predicate ? entry["reason"].asString() :
+                    "DEFER_INWORLD lacks enable_when/visible_when or a world hazard");
+            restoreFunctionalAction();
+            ++mFunctionalIndex;
+            return;
+        }
+        if (!prepareFunctionalPrerequisite(entry, control))
+        {
+            addFunctionalResult(entry, "FAIL", "enable chain prerequisite could not be established");
+            restoreFunctionalAction();
+            ++mFunctionalIndex;
+            return;
+        }
+        continueFunctionalEntry(entry, control);
+    }
+
+    // ui-draw-lint: allow-function(lookup,raw-write,setting-write) isolated login-only functional pre-state
+    void beginFunctionalEntry()
+    {
+        const LLSD& entry = mFunctionalEntries[mFunctionalIndex];
+        if (!mFunctionalGatePrepared) mFunctionalObserved = LLSD::emptyMap();
+        const std::string action = entry["action"].asString();
+        if (action == "NO_EXERCISE")
+        {
+            const std::string reason = entry["reason"].asString();
+            addFunctionalResult(entry, reason.empty() ? "FAIL" : "SKIP",
+                reason.empty() ? "NO_EXERCISE lacks an explicit manifest reason" : reason);
+            ++mFunctionalIndex;
+            return;
+        }
+        if (action == "SKIP")
+        {
+            std::string reason = entry["reason"].asString();
+            addFunctionalResult(entry, reason.empty() ? "FAIL" : "SKIP",
+                                reason.empty() ? "manifest SKIP lacks explicit reason" : reason);
+            ++mFunctionalIndex;
+            return;
+        }
+        const bool dangerous = functionalHazard(entry, "file_picker") ||
+            functionalHazard(entry, "destructive") || functionalHazard(entry, "logout") ||
+            functionalHazard(entry, "delete") || functionalHazard(entry, "rename") ||
+            functionalHazard(entry, "export_import") || functionalHazard(entry, "save_disk");
+        if (dangerous)
+        {
+            const std::string reason = entry["reason"].asString();
+            addFunctionalResult(entry, reason.empty() ? "FAIL" : "SKIP",
+                reason.empty() ? "hazard requires an explicit manifest skip reason" : reason);
+            ++mFunctionalIndex;
+            return;
+        }
+        if (!prepareFunctionalRimGate(entry)) return;
+        if (!mFunctionalGatePrepared) prepareFunctionalRestore(entry);
+        prepareFunctionalSelector(entry);
+        prepareFunctionalConsumerGate(entry);
+        mFunctionalPageRoot = functionalPage(entry);
+        if (!openFunctionalRedirect(entry, mFunctionalPageRoot))
+        {
+            addFunctionalResult(entry, "FAIL", mFunctionalRedirectReason.empty() ?
+                "launcher: target did not open" : mFunctionalRedirectReason);
+            restoreFunctionalAction();
+            ++mFunctionalIndex;
+            return;
+        }
+        LLUICtrl* control = functionalControl(mFunctionalPageRoot, entry);
+        if (action == "EXPECT_MISSING")
+        {
+            const bool page_open = mFunctionalPageRoot != nullptr;
+            addFunctionalResult(entry, page_open && !control ? "PASS" : "FAIL",
+                !page_open ? "page did not open; absence is unproven" :
+                (control ? "control unexpectedly present" : "expected missing control"));
+            restoreFunctionalAction();
+            ++mFunctionalIndex;
+            return;
+        }
+        if (!control)
+        {
+            addFunctionalResult(entry, "FAIL", "control not found in " +
+                entry["host"]["floater"].asString() + "/" +
+                (entry["host"]["tab"].asString().empty() ?
+                    entry["host"]["page_view"].asString() : entry["host"]["tab"].asString()));
+            restoreFunctionalAction();
+            ++mFunctionalIndex;
+            return;
+        }
+        revealFunctionalControl(control);
+        if (!prepareFunctionalPrerequisite(entry, control))
+        {
+            addFunctionalResult(entry, "FAIL", "enabled_control prerequisite could not be established");
+            restoreFunctionalAction();
+            ++mFunctionalIndex;
+            return;
+        }
+        mFunctionalControl = control->getDerivedHandle<LLUICtrl>();
+        mFunctionalRevealFrames = 0;
+        mFunctionalRevealPending = true;
     }
 
     // ui-draw-lint: allow-function(setting,lookup) isolated test-only assertion
@@ -2586,10 +3518,14 @@ private:
         const std::string type = entry["expect"]["type"].asString();
         if (entry["exercise"].asString() == "toggle")
             expected = !mFunctionalBefore.asBoolean();
+        else if (dynamic_cast<LLSpinCtrl*>(control) && entry["increment"].isDefined())
+            expected = mFunctionalBefore.asReal() + entry["increment"].asReal() *
+                (entry["test_value"].asReal() >= mFunctionalBefore.asReal() ? 1. : -1.);
         const LLSD actual = mFunctionalSetting ? mFunctionalSetting->getValue() : LLSD();
         const bool changed = mFunctionalSetting &&
             !functionalEqual(actual, mFunctionalBefore, type, entry["increment"]);
         bool observable = false;
+        bool owner_state_changed = false;
         bool expected_ok = true;
         std::string assertion_failure;
         if (entry["expect"].has("setting"))
@@ -2602,13 +3538,26 @@ private:
         {
             std::ostringstream after;
             functionalVisibleState(mFunctionalPageRoot, after, control);
-            const bool owner_state_changed = after.str() != mFunctionalVisibleBefore;
+            owner_state_changed = after.str() != mFunctionalVisibleBefore;
             // History/undo and the test's own call are deliberately ignored.
             // A commit-only PASS requires a named registry/binder/provider
             // owner and a side effect outside the exercised widget.
             observable = !mFunctionalHandlerName.empty() && owner_state_changed;
         }
         const LLSD consumer_after = functionalConsumerValue(entry);
+        mFunctionalObserved["click"]["commits"] = mFunctionalCommitCount;
+        mFunctionalObserved["owner"]["handler"] = mFunctionalHandlerName;
+        mFunctionalObserved["owner"]["resolved"] = !mFunctionalHandlerName.empty();
+        mFunctionalObserved["owner"]["instrumented_runs"] = mFunctionalHandlerRunCount;
+        mFunctionalObserved["owner"]["state_changed"] = owner_state_changed;
+        mFunctionalObserved["setting"]["name"] = entry["expect"]["setting"].asString();
+        mFunctionalObserved["setting"]["before"] = mFunctionalBefore;
+        mFunctionalObserved["setting"]["after"] = actual;
+        mFunctionalObserved["widget"]["before"] = mFunctionalControlBefore;
+        mFunctionalObserved["widget"]["after"] = control ? control->getValue() : LLSD();
+        mFunctionalObserved["consumer"]["name"] = entry["consumer"].asString();
+        mFunctionalObserved["consumer"]["before"] = mFunctionalConsumerBefore;
+        mFunctionalObserved["consumer"]["after"] = consumer_after;
         if (entry["consumer"].isDefined())
         {
             observable = observable && consumer_after != mFunctionalConsumerBefore;
@@ -2635,6 +3584,18 @@ private:
             observable = reset_ok;
             expected_ok = expected_ok && reset_ok;
             if (!reset_ok) assertion_failure = "reset did not restore the target control's default";
+        }
+        if (entry["probe"].asString() == "exposure_history")
+        {
+            const U64 history_after = ALExposureSettingsHistory::revision();
+            const bool history_changed = history_after != mFunctionalHistoryBefore;
+            mFunctionalObserved["history"]["before"] = llformat(
+                "%llu", static_cast<unsigned long long>(mFunctionalHistoryBefore));
+            mFunctionalObserved["history"]["after"] = llformat(
+                "%llu", static_cast<unsigned long long>(history_after));
+            observable = history_changed;
+            expected_ok = expected_ok && history_changed;
+            if (!history_changed) assertion_failure = "exposure history revision did not change";
         }
         if (entry["reset_defaults"].isMap())
         {
@@ -2668,16 +3629,44 @@ private:
             observable = opened;
             expected_ok = expected_ok && opened;
         }
-        if (entry["probe"].asString() == "launcher")
+        if (dynamic_cast<LLColorSwatchCtrl*>(control))
         {
             std::set<LLFloater*> after;
             functionalVisibleFloaters(gFloaterView, after);
             bool opened = false;
             for (LLFloater* floater : after)
-                opened = opened || !mFunctionalFloatersBefore.count(floater);
-            observable = opened;
-            expected_ok = expected_ok && opened;
-            if (!opened) assertion_failure = "launcher did not open a floater";
+                if (!mFunctionalFloatersBefore.count(floater))
+                {
+                    opened = true;
+                    floater->closeFloater(false);
+                }
+            mFunctionalObserved["effect"]["picker_opened"] = opened;
+            const bool setting_oracle = mFunctionalSetting &&
+                functionalEqual(actual, expected, type, entry["increment"]);
+            mFunctionalObserved["effect"]["setting_oracle"] = setting_oracle;
+            observable = observable && setting_oracle;
+            expected_ok = expected_ok && opened && setting_oracle;
+            if (!opened) assertion_failure = "color swatch click did not open a picker floater";
+            else if (!setting_oracle) assertion_failure = "color swatch programmatic commit lacks a matching setting oracle";
+        }
+        if (entry["probe"].asString() == "launcher")
+        {
+            std::set<LLFloater*> after;
+            functionalVisibleFloaters(gFloaterView, after);
+            std::vector<LLFloater*> opened;
+            for (LLFloater* floater : after)
+                if (!mFunctionalFloatersBefore.count(floater)) opened.push_back(floater);
+            const std::string wanted = entry["launcher_floater"].asString();
+            const bool exact = opened.size() == 1 &&
+                (wanted.empty() || opened.front()->getInstanceName() == wanted);
+            mFunctionalObserved["launcher"]["new_count"] = static_cast<S32>(opened.size());
+            mFunctionalObserved["launcher"]["expected_floater"] = wanted;
+            if (!opened.empty()) mFunctionalObserved["launcher"]["actual_floater"] =
+                opened.front()->getInstanceName();
+            observable = exact;
+            expected_ok = expected_ok && exact;
+            if (!exact) assertion_failure = opened.empty() ? "launcher: no new floater" :
+                "launcher: wrong floater " + opened.front()->getInstanceName();
         }
         if (ALKitSwitch* sw = dynamic_cast<ALKitSwitch*>(control))
         {
@@ -2748,8 +3737,32 @@ private:
             "; consumer=" + functionalValue(consumer_after) +
             "; handler=" + mFunctionalHandlerName;
         std::string reason;
-        if (!mFunctionalActionWorked) reason = "action could not be applied";
-        else if (!observable) reason = "no observable effect";
+        mFunctionalObserved["effect"]["external_delta"] = observable;
+        if (!observable && mFunctionalCommitCount > 0 &&
+            entry["effect_kind"].asString() == "side_effect_only" &&
+            !mFunctionalHandlerName.empty() && mFunctionalHandlerRunCount > 0)
+        {
+            observable = true;
+            mFunctionalObserved["effect"]["category"] = "B";
+            mFunctionalObserved["effect"]["result"] = "owner_ran";
+        }
+        if (!mFunctionalActionWorked) reason = mFunctionalLastClickReason.empty() ?
+            "action could not be applied" : mFunctionalLastClickReason;
+        else if (mFunctionalCommitCount == 0)
+        {
+            mFunctionalObserved["effect"]["category"] = "C";
+            reason = "category C: click handled but no commit";
+        }
+        else if (!observable && mFunctionalHandlerName.empty())
+        {
+            mFunctionalObserved["effect"]["category"] = "D";
+            reason = "category D: commit fired but owner is unresolved";
+        }
+        else if (!observable)
+        {
+            mFunctionalObserved["effect"]["category"] = "A";
+            reason = "category A: commit fired but the external oracle did not move";
+        }
         else if (!expected_ok) reason = assertion_failure.empty() ?
             "observed value/state did not match manifest" : assertion_failure;
         const bool known_gap = entry["known_gap"].asBoolean();
@@ -2836,6 +3849,16 @@ private:
         FrameSample ignored;
         takeFrame(ignored);
         if (mSettle.getElapsedTimeF32() < 3.f) return false;
+        if (mFunctionalFailureShotPending)
+        {
+            if (mCaptureRequested) return false;
+            if (mCapturedImage.notNull()) saveCapturedImage();
+            if (LLFloater* redirected = mFunctionalRedirectFloater.get()) redirected->closeFloater(false);
+            mFunctionalRedirectFloater = LLHandle<LLFloater>();
+            mFunctionalFailureShotPending = false;
+            mFunctionalHostFloater = LLHandle<LLFloater>();
+            return false;
+        }
         if (!mFunctionalLoaded)
         {
             mFunctionalLoaded = true;
@@ -2861,6 +3884,8 @@ private:
             return false;
         }
         if (mFunctionalPending) finishFunctionalEntry();
+        else if (mFunctionalRevealPending) settleFunctionalReveal();
+        else if (!mFunctionalSentinelDone) runFunctionalSentinel();
         else if (!mFunctionalGlobalAssertionsDone) runFunctionalKeyboardAssertion();
         else if (mFunctionalIndex < mFunctionalEntries.size()) beginFunctionalEntry();
         else
@@ -5737,15 +6762,32 @@ private:
     bool mFunctionalPending = false;
     bool mFunctionalActionWorked = false;
     bool mFunctionalGlobalAssertionsDone = false;
+    bool mFunctionalSentinelDone = false;
+    bool mFunctionalInjectionBroken = false;
     bool mFunctionalGatePrepared = false;
+    bool mFunctionalRevealPending = false;
+    bool mFunctionalShots = false;
+    bool mFunctionalDryReveal = false;
+    bool mFunctionalHaveRowFilter = false;
+    bool mFunctionalFailureShotPending = false;
+    S32 mFunctionalRevealFrames = 0;
+    S32 mFunctionalGateFrames = 0;
     std::string mFunctionalManifestPath;
+    std::string mFunctionalVersionFilter;
+    std::string mFunctionalFilterError;
+    std::string mFunctionalLastClickReason;
+    std::string mFunctionalRedirectReason;
+    std::vector<std::string> mFunctionalPageFilters;
+    std::map<std::string, S32> mFunctionalShotQuota;
+    std::regex mFunctionalRowFilter;
     std::vector<LLSD> mFunctionalEntries;
     std::vector<FunctionalResult> mFunctionalResults;
     size_t mFunctionalIndex = 0;
     LLView* mFunctionalPageRoot = nullptr;
-    LLView* mFunctionalRoot = nullptr;
-    S32 mFunctionalRootX = 0;
-    S32 mFunctionalRootY = 0;
+    S32 mFunctionalScreenX = 0;
+    S32 mFunctionalScreenY = 0;
+    LLHandle<LLView> mFunctionalClickTarget;
+    LLHandle<LLFloater> mFunctionalHostFloater;
     LLHandle<LLUICtrl> mFunctionalControl;
     LLSD mFunctionalControlBefore;
     LLSD mFunctionalOriginalControlValue;
@@ -5753,6 +6795,12 @@ private:
     LLSD mFunctionalSecondaryBefore;
     std::string mFunctionalExercise;
     std::string mFunctionalHandlerName;
+    boost::signals2::connection mFunctionalCommitConnection;
+    S32 mFunctionalCommitCount = 0;
+    S32 mFunctionalHandlerRunCount = 0;
+    U64 mFunctionalHistoryBefore = 0;
+    LLSD mFunctionalObserved = LLSD::emptyMap();
+    std::vector<std::pair<LLHandle<LLUICtrl>, LLSD>> mFunctionalRevealWidgetValues;
     LLControlVariable* mFunctionalSetting = nullptr;
     LLSD mFunctionalBefore;
     LLSD mFunctionalConsumerBefore;

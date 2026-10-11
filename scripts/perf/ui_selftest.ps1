@@ -8,6 +8,12 @@ param(
   [switch]$Functional,
   [switch]$DirectorV2,
   [switch]$Both,
+  [ValidateSet('', 'v1', 'v2', 'both')][string]$Version = '',
+  [string]$Pages = '',
+  [string]$Rows = '',
+  [switch]$Shots,
+  [switch]$DryReveal,
+  [switch]$UpdateBudget,
   [int]$TimeoutMin = 10,
   [string]$Compare
 )
@@ -32,6 +38,18 @@ if ($DirectorV2 -and -not $Functional) {
 }
 if ($Both -and -not $Functional) {
   Write-Host '-Both is only valid with -Functional.' -ForegroundColor Red
+  exit 2
+}
+if ($Version -and -not $Functional) {
+  Write-Host '-Version is only valid with -Functional.' -ForegroundColor Red
+  exit 2
+}
+if ($Version) {
+  $Both = $Version -eq 'both'
+  $DirectorV2 = $Version -eq 'v2'
+}
+if ($Rows.Contains('|') -or $Pages.Contains('|')) {
+  Write-Host '-Rows and -Pages must not contain the request separator |.' -ForegroundColor Red
   exit 2
 }
 if ($Functional -and $TimeoutMin -eq 10) { $TimeoutMin = 5 }
@@ -153,6 +171,7 @@ if ($Functional) {
   }
   $repoRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..\..'))
   $functionalCsvPath = Join-Path $logsDir 'functional.csv'
+  $functionalShotsPath = Join-Path $logsDir 'functional_shots'
   $consumerPath = Join-Path $repoRoot 'doc\director_kit\functional\consumers.json'
   if (-not (Test-Path -LiteralPath $consumerPath -PathType Leaf)) {
     Write-Host "Functional consumer oracle not found: $consumerPath" -ForegroundColor Red
@@ -179,13 +198,29 @@ if ($Functional) {
   $destCsv = Join-Path $runDir 'functional.csv'
   $summaryPath = Join-Path $runDir 'summary.md'
   $versions = if ($Both) { @($false, $true) } else { @([bool]$DirectorV2) }
+  if (Test-Path -LiteralPath $functionalShotsPath) {
+    $resolvedLogs = [System.IO.Path]::GetFullPath($logsDir).TrimEnd('\') + '\'
+    $resolvedShots = [System.IO.Path]::GetFullPath($functionalShotsPath)
+    if (-not $resolvedShots.StartsWith($resolvedLogs, [System.StringComparison]::OrdinalIgnoreCase)) {
+      throw "Refusing to clear functional screenshot path outside logs: $resolvedShots"
+    }
+    Remove-Item -LiteralPath $functionalShotsPath -Recurse -Force
+  }
   $allRows = [System.Collections.Generic.List[object]]::new()
   foreach ($useV2 in $versions) {
     $process = $null
     $settingsBackup = New-FunctionalSettingsBackup
     try {
       Remove-Item -LiteralPath $functionalCsvPath -Force -ErrorAction SilentlyContinue
-      $request = '"functional|' + $manifestPath + '"'
+      $requestFields = [System.Collections.Generic.List[string]]::new()
+      $requestFields.Add('functional')
+      $requestFields.Add($manifestPath)
+      if ($Pages) { $requestFields.Add('pages=' + $Pages) }
+      if ($Rows) { $requestFields.Add('rows=' + $Rows) }
+      $requestFields.Add('version=' + $(if ($Both) { 'both' } elseif ($useV2) { 'v2' } else { 'v1' }))
+      $requestFields.Add('shots=' + $(if ($Shots -or $Pages) { '1' } else { '0' }))
+      $requestFields.Add('dry_reveal=' + $(if ($DryReveal) { '1' } else { '0' }))
+      $request = '"' + ($requestFields -join '|') + '"'
       $viewerArgs = @('--set', 'UIPerfSelfTest', $request,
         '--set', 'UIPerfSelfTestFrames', 2,
         '--set', 'UIPerfInventoryStress', 0,
@@ -224,7 +259,18 @@ if ($Functional) {
     }
   }
   $allRows | Export-Csv -LiteralPath $destCsv -NoTypeInformation -Encoding utf8
-  & $python -I $report $destCsv -o $summaryPath
+  if (Test-Path -LiteralPath $functionalShotsPath -PathType Container) {
+    Copy-Item -LiteralPath $functionalShotsPath -Destination (Join-Path $runDir 'functional_shots') -Recurse
+  }
+  $reportArgs = @('-I', $report, $destCsv, '-o', $summaryPath,
+    '--defer-budget', (Join-Path $repoRoot 'doc\director_kit\functional\defer_budget.json'))
+  if ($Pages) { $reportArgs += @('--pages', $Pages) }
+  if ($Rows) { $reportArgs += @('--rows', $Rows) }
+  if ($Version) { $reportArgs += @('--version', $Version) }
+  if ($UpdateBudget) { $reportArgs += '--update-budget' }
+  if ($DryReveal) { $reportArgs += '--dry-reveal' }
+  & $python @reportArgs
+  $reportExit = $LASTEXITCODE
   $rows = @(Import-Csv -LiteralPath $destCsv)
   $failures = @($rows | Where-Object { $_.'PASS/FAIL/SKIP' -in @('FAIL', 'KNOWN_GAP') })
   $skipsWithoutReason = @($rows | Where-Object { $_.'PASS/FAIL/SKIP' -eq 'SKIP' -and -not $_.reason })
@@ -233,11 +279,22 @@ if ($Functional) {
     @($rows | Where-Object { $_.'PASS/FAIL/SKIP' -eq 'PASS' }).Count,
     $failures.Count,
     @($rows | Where-Object { $_.'PASS/FAIL/SKIP' -eq 'SKIP' }).Count)
+  if ($DryReveal) {
+    Write-Host 'DRY REVEAL: NOT A FUNCTIONAL RESULT' -ForegroundColor Yellow
+    exit 3
+  }
   if ($skipsWithoutReason.Count) {
     Write-Host "$($skipsWithoutReason.Count) SKIP row(s) lack a manifest reason." -ForegroundColor Red
     exit 1
   }
-  if ($failures.Count) { exit 1 }
+  $sentinelFailures = @($rows | Where-Object {
+    $_.control -eq 'real_dispatch_sentinel' -and $_.'PASS/FAIL/SKIP' -eq 'FAIL'
+  })
+  if ($sentinelFailures.Count) {
+    Write-Host 'Functional real-dispatch sentinel failed; the interaction channel is broken.' -ForegroundColor Red
+    exit 2
+  }
+  if ($failures.Count -or $reportExit -ne 0) { exit 1 }
   exit 0
 }
 
