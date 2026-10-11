@@ -16,3 +16,5 @@ The user is using the client: log only, don't act until the next session.
 
 6. **Rim page: choosing a preset does nothing** (v2). Selecting a Rig Rim preset from the Rim page preset menu doesn't apply it. Check the rig_rim preset provider wiring (WP4: ALRigRimController / applyRigRimPresetByName, the kit preset strip commit -> provider apply), and whether it's the same click/commit routing failure as #4. HIGH priority.
 
+7. **Rim on/off toggle does nothing** (v2): the Rim page master switch (CineRigRimEnabled, page-master home per WP3) doesn't turn rim lighting on or off. Same suspected root cause as #1/#4/#6 (v2 control commit / binding not reaching the setting). HIGH priority.
+
