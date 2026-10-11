@@ -2209,6 +2209,7 @@ private:
                 mCaptureFailed = false;
                 mCaptureRequested = true;
                 mFunctionalFailureShotPending = true;
+                mFunctionalShotWaitFrames = 0;
             }
         }
         LL_INFOS("UIFunctionalSelfTest") << entry["version"].asString() << ' '
@@ -2590,12 +2591,9 @@ private:
         {
             const LLRect login_rect = login->calcScreenRect();
             mFunctionalObserved["rect"]["login_forbidden"] = functionalRect(login_rect);
-            if (login->isInVisibleChain() &&
-                login_rect.pointInRect(mFunctionalScreenX, mFunctionalScreenY))
-            {
-                reason = "not reachable: login panel forbidden zone";
-                return false;
-            }
+            // The login panel spans the whole window at the login screen, so a rect test
+            // forbids everything; instead the resolved handler must never be inside it (below).
+            mFunctionalLoginPanel = login->getHandle();
         }
         if (!host || !host->calcScreenRect().pointInRect(mFunctionalScreenX, mFunctionalScreenY))
         {
@@ -2632,6 +2630,12 @@ private:
 
         mFunctionalObserved["click"]["preflight_resolved"] =
             resolved ? resolved->getPathname() : "<none>";
+        if (LLPanel* login = mFunctionalLoginPanel.get())
+            if (resolved && (resolved == login || resolved->hasAncestor(login)))
+            {
+                reason = "not reachable: login panel forbidden";
+                return false;
+            }
         if (!resolved || !(resolved == expected || resolved->hasAncestor(expected)))
         {
             reason = "not reachable: " +
@@ -3851,7 +3855,15 @@ private:
         if (mSettle.getElapsedTimeF32() < 3.f) return false;
         if (mFunctionalFailureShotPending)
         {
-            if (mCaptureRequested) return false;
+            // The after-render capture hook may never fire (e.g. at the login screen):
+            // give up after a bounded wait instead of stalling the whole run.
+            if (mCaptureRequested && ++mFunctionalShotWaitFrames < 120) return false;
+            if (mCaptureRequested)
+            {
+                LL_WARNS("UIFunctionalSelfTest") << "Failure screenshot not captured; skipping " << mCaptureFilename << LL_ENDL;
+                mCaptureRequested = false;
+                mCapturedImage = nullptr;
+            }
             if (mCapturedImage.notNull()) saveCapturedImage();
             if (LLFloater* redirected = mFunctionalRedirectFloater.get()) redirected->closeFloater(false);
             mFunctionalRedirectFloater = LLHandle<LLFloater>();
@@ -6770,6 +6782,8 @@ private:
     bool mFunctionalDryReveal = false;
     bool mFunctionalHaveRowFilter = false;
     bool mFunctionalFailureShotPending = false;
+    U32 mFunctionalShotWaitFrames = 0;
+    LLHandle<LLPanel> mFunctionalLoginPanel;
     S32 mFunctionalRevealFrames = 0;
     S32 mFunctionalGateFrames = 0;
     std::string mFunctionalManifestPath;
