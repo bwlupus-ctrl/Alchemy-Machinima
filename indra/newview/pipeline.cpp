@@ -108,6 +108,7 @@
 #include "llpresentationtime.h"
 #include "allocalfogmanager.h"
 #include "llprismlens.h"
+#include "llprismpreview.h"
 #include "llreshadebridge.h"
 #include "llresmgr.h"
 #include "llselectmgr.h"
@@ -651,6 +652,7 @@ bool    LLPipeline::sDistortionRender = false;
 bool    LLPipeline::sImpostorRender = false;
 bool    LLPipeline::sImpostorRenderAlphaDepthPass = false;
 bool    LLPipeline::sPrismLensRender = false;
+bool    LLPipeline::sPrismPreviewRender = false;
 bool    LLPipeline::sUnderWaterRender = false;
 bool    LLPipeline::sTextureBindTest = false;
 bool    LLPipeline::sRenderAttachedLights = true;
@@ -1825,6 +1827,62 @@ bool LLPipeline::acquirePrismLensScratch(U32 width, U32 height)
     return true;
 }
 
+bool LLPipeline::allocatePrismPreviewScratch()
+{
+    LL_PROFILE_ZONE_NAMED_CATEGORY_DISPLAY("VCam allocate pinned preview scratch");
+    constexpr U32 width = LLPrismPreviewPolicy::WIDTH;
+    constexpr U32 height = LLPrismPreviewPolicy::HEIGHT;
+    PrismLensScratch& entry = mPrismPreviewScratch;
+    const bool complete = entry.width == width && entry.height == height &&
+        entry.rt.deferredScreen.isComplete() && entry.rt.screen.isComplete() &&
+        entry.rt.deferredLight.isComplete() && entry.waterDis.isComplete() &&
+        entry.waterExclusionMask.isComplete();
+    if (complete) return true;
+
+    release_prism_scratch_entry(entry);
+    RenderTargetPack& rt = entry.rt;
+    if (!rt.deferredScreen.allocate(width, height, GL_SRGB8_ALPHA8, true) ||
+        !addDeferredAttachments(rt.deferredScreen) ||
+        !rt.screen.allocate(width, height, GL_RGBA16F) ||
+        !rt.deferredLight.allocate(width, height, GL_RGBA16F) ||
+        !entry.waterDis.allocate(width, height, GL_RGBA16F, true) ||
+        !entry.waterExclusionMask.allocate(width, height, GL_R8, true))
+    {
+        release_prism_scratch_entry(entry);
+        return false;
+    }
+    rt.deferredScreen.shareDepthBuffer(rt.screen);
+    rt.width = width;
+    rt.height = height;
+    entry.width = width;
+    entry.height = height;
+    return true;
+}
+
+bool LLPipeline::bindPrismPreviewScratch()
+{
+    if (mPrismPreviewScratch.width != LLPrismPreviewPolicy::WIDTH ||
+        mPrismPreviewScratch.height != LLPrismPreviewPolicy::HEIGHT ||
+        !mPrismPreviewScratch.rt.deferredScreen.isComplete() ||
+        !mPrismPreviewScratch.rt.screen.isComplete() ||
+        !mPrismPreviewScratch.rt.deferredLight.isComplete())
+    {
+        mActivePrismLensScratch = nullptr;
+        return false;
+    }
+    mActivePrismLensScratch = &mPrismPreviewScratch;
+    return true;
+}
+
+void LLPipeline::releasePrismPreviewScratch()
+{
+    if (mActivePrismLensScratch == &mPrismPreviewScratch)
+    {
+        mActivePrismLensScratch = nullptr;
+    }
+    release_prism_scratch_entry(mPrismPreviewScratch);
+}
+
 bool LLPipeline::allocatePrismLensOutput(U32 slot, U32 width, U32 height)
 {
     LL_PROFILE_ZONE_SCOPED_CATEGORY_DISPLAY;
@@ -1901,6 +1959,7 @@ void LLPipeline::releasePrismLensBuffers()
     {
         release_prism_scratch_entry(entry);
     }
+    releasePrismPreviewScratch();
     // The pool is gone; nothing may keep rendering into a released entry.
     mActivePrismLensScratch = nullptr;
 }
@@ -18933,6 +18992,7 @@ bool LLPipeline::shouldRunRotoInkAt(S32 layer) const
 void LLPipeline::renderVolumetric(LLRenderTarget* src, LLRenderTarget* dst)
 {
     if (RenderVolumetricLighting && RenderShadowDetail > 0 && !gCubeSnapshot &&
+        !sPrismPreviewRender &&
         gVolumetricLightProgram.isComplete())
     {
         LL_PROFILE_GPU_ZONE("renderVolumetric");
@@ -20894,6 +20954,7 @@ void LLPipeline::renderProjectorVolumetric(LLRenderTarget* target, bool aux_dire
     mProjVolShaftSrc = nullptr;
 
     if (!BDMergeProjectorVolumetrics || RenderShadowDetail <= 0 || gCubeSnapshot ||
+        sPrismPreviewRender ||
         !gDeferredProjectorVolumetricProgram.isComplete())
     {
         mProjVolHistoryValid = false; // effect off -> stale history can't be reused
@@ -24189,6 +24250,7 @@ void LLPipeline::releaseSilCovers()
     release(mHeroProbeRT);
     release(mProbeCaptureRT);
     for (auto& entry : mPrismLensScratchPool) release(entry.rt);
+    release(mPrismPreviewScratch.rt);
     mSilCoverValid = false;
 }
 
@@ -24240,6 +24302,7 @@ void LLPipeline::releaseActorMasks()
     release(mHeroProbeRT);
     release(mProbeCaptureRT); // [ProbeCost]
     for (auto& entry : mPrismLensScratchPool) release(entry.rt);
+    release(mPrismPreviewScratch.rt);
     mActorMaskQueries.release();
     mActorMaskAllocated = false;
     mActorMaskValid = false;
@@ -25549,8 +25612,22 @@ void LLPipeline::renderDeferredLighting(ActorMaskViewSource source)
         tc_moon = mat * tc_moon;
         mTransformedMoonDir.set(tc_moon);
 
-        if ((RenderDeferredSSAO && !gCubeSnapshot) || RenderShadowDetail > 0 ||
-            debugLightingTerm() != 0)
+        // The pinned preview pack is reused. Seed its AO/direct-light map to
+        // neutral white on every preview before the SSAO/shadow dispatch gates,
+        // so a sentinel or a previous preview can never darken this capture.
+        if (sPrismPreviewRender)
+        {
+            const std::array<F32, 4> neutral_ao = LLPrismPreviewPolicy::neutralAO();
+            bindPrismLensTarget(*deferred_light_target);
+            glClearColor(neutral_ao[0], neutral_ao[1], neutral_ao[2], neutral_ao[3]);
+            deferred_light_target->clear(GL_COLOR_BUFFER_BIT);
+            deferred_light_target->flush();
+            glClearColor(0.f, 0.f, 0.f, 0.f);
+        }
+
+        if (!sPrismPreviewRender &&
+            ((RenderDeferredSSAO && !gCubeSnapshot) || RenderShadowDetail > 0 ||
+             debugLightingTerm() != 0))
         {
             LL_PROFILE_GPU_ZONE("sun program");
             bindPrismLensTarget(*deferred_light_target);
@@ -25583,7 +25660,7 @@ void LLPipeline::renderDeferredLighting(ActorMaskViewSource source)
 
         // Cascade colours and raw R/G are producer diagnostics; preserve the
         // sun pass exactly instead of running the normal two-pass light blur.
-        if (RenderDeferredSSAO && !gCubeSnapshot &&
+        if (RenderDeferredSSAO && !gCubeSnapshot && !sPrismPreviewRender &&
             debugLightingTerm() != 2 && debugLightingTerm() != 7)
         {
             // soften direct lighting lightmap

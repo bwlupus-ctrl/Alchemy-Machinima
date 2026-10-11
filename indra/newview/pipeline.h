@@ -173,6 +173,9 @@ public:
     // UVs (softenLightV.glsl -> deferredUtil.glsl), so any physical/render
     // size mismatch mis-addresses the entire lighting pass.
     bool acquirePrismLensScratch(U32 width, U32 height);
+    bool allocatePrismPreviewScratch();
+    bool bindPrismPreviewScratch();
+    void releasePrismPreviewScratch();
     bool allocatePrismLensOutput(U32 slot, U32 width, U32 height);
     void bindPrismLensTarget(LLRenderTarget& target);
     LLRenderTarget& getWaterDisTarget();
@@ -1227,6 +1230,7 @@ public:
     static bool             sImpostorRender;
     static bool             sImpostorRenderAlphaDepthPass;
     static bool             sPrismLensRender;
+    static bool             sPrismPreviewRender;
     static bool             sUnderWaterRender;
     static bool             sRenderGlow;
     static bool             sTextureBindTest;
@@ -1359,6 +1363,9 @@ public:
         LLRenderTarget   waterExclusionMask;
     };
     PrismLensScratch  mPrismLensScratchPool[LLPrismLens::MAX_CAPTURES];
+    // Pinned preview-only pack. It never participates in the visible-capture
+    // size-keyed LRU and remains exactly 192x108 for its whole GL lifetime.
+    PrismLensScratch  mPrismPreviewScratch;
     PrismLensScratch* mActivePrismLensScratch = nullptr;   // set only during a prism aux render
     LLRenderTarget mPrismLensOutput[LLPrismLens::MAX_CAPTURES];
 

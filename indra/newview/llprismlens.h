@@ -313,6 +313,9 @@ struct CaptureRuntimeState
     F32 mEffectiveFarClip = 0.f;
     F32 mEffectiveResolutionScale = 0.f;
     F32 mCadenceEntitlementHz = 0.f;
+    F32 mPreviewRequestedHz = 0.f;
+    F32 mPreviewEntitlementHz = 0.f;
+    bool mPreviewOnly = false;
     F32 mObservedPublicationHz = 0.f;
     F32 mOutputAgeSeconds = 0.f;
 };

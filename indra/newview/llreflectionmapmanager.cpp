@@ -259,6 +259,13 @@ static bool check_priority(LLReflectionMap* a, LLReflectionMap* b)
 // helper class to seed octree with probes
 void LLReflectionMapManager::update()
 {
+    // Preview-only scene renders freeze probe production but retain probe
+    // sampling. The normal pre-swap update runs after the preview scope has
+    // restored this flag, so it remains once per presented frame.
+    if (LLPipeline::sPrismPreviewRender)
+    {
+        return;
+    }
     // [ProbeBeforePresent] updateProbeFace() marks actual capture work so the
     // optional submission kick happens once after every face/filter/copy in
     // this manager step, rather than once in the middle of each face.

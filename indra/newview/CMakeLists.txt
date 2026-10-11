@@ -859,6 +859,7 @@ set(viewer_SOURCE_FILES
     llpreviewtexture.cpp
     llprismgate.cpp
     llprismlens.cpp
+    llprismpreview.cpp
     llproductinforequest.cpp
     llprogressview.cpp
     llrecentpeople.cpp
@@ -1777,6 +1778,7 @@ set(viewer_HEADER_FILES
     llpreviewtexture.h
     llprismgate.h
     llprismlens.h
+    llprismpreview.h
     llproductinforequest.h
     llprogressview.h
     llrecentpeople.h
@@ -2900,6 +2902,13 @@ if (BUILD_TESTING)
   # Bone POV math and selection normalization are pure/header-only, so their
   # regression tests need no viewer singleton or avatar fixture.
   LL_ADD_INTEGRATION_TEST(alvcambonepov
+    ""
+    "${test_libs}"
+    "${test_project}"
+  )
+
+  # Header-only preview scheduler policy: no renderer/GL fixture required.
+  LL_ADD_INTEGRATION_TEST(llprismpreviewpolicy
     ""
     "${test_libs}"
     "${test_project}"

@@ -6,6 +6,7 @@
 #include "llviewerprecompiledheaders.h"
 
 #include "llprismlens.h"
+#include "llprismpreview.h"
 #include "llprismgate.h"
 
 #include "aldirectorswitchermodel.h"
@@ -46,6 +47,7 @@
 #include <functional>
 #include <limits>
 #include <map>
+#include <optional>
 #include <set>
 #include <string>
 #include <vector>
@@ -1744,10 +1746,15 @@ struct PrismInstance
     F64 mLastAttemptTime = 0.0;
     F64 mLastProducedTime = 0.0;
     F64 mNextDueTime = 0.0;
+    F64 mNextPreviewDueTime = 0.0;
     U32 mPublicationSamples = 0;
     F64 mPublicationWindowStart = 0.0;
     F32 mRequestedHz = 0.f;
     F32 mEntitlementHz = 0.f;
+    F32 mPreviewEntitlementHz = 0.f;
+    bool mPreviewDemanded = false;
+    bool mPreviewOnly = false;
+    U64 mPublicationSerial = 0;
     F32 mOutputUvScale[2] = { 1.f, 1.f };
     F32 mOutputUvOffset[2] = { 0.f, 0.f };
     SurfaceGeometryCache mSurfaceCache;
@@ -2397,6 +2404,7 @@ public:
             lens.mLastProducedTime = 0.0;
             lens.mRetryAfterTime = 0.0;
             lens.mPublicationSamples = 0;
+            lens.mPublicationSerial = 0;
             lens.mPublicationWindowStart = 0.0;
             lens.mFrame.mProduced = false;
             lens.mRuntime.mOutput = LLPrismLens::EOutputState::EMPTY;
@@ -2434,8 +2442,12 @@ public:
             capture.mLastProducedTime = 0.0;
             capture.mRetryAfterTime = 0.0;
             capture.mPublicationSamples = 0;
+            capture.mPublicationSerial = 0;
             capture.mPublicationWindowStart = 0.0;
             capture.mFrame.mProduced = false;
+            capture.mPreviewOnly = false;
+            capture.mRuntime.mPreviewOnly = false;
+            capture.mNextPreviewDueTime = LLTimer::getTotalSeconds();
             capture.mRuntime.mOutput = LLPrismLens::EOutputState::EMPTY;
             capture.mRuntime.mActivity = !prismEnabled()
                 ? LLPrismLens::EActivityState::PAUSED
@@ -2518,6 +2530,33 @@ public:
         }
     }
 
+    void updatePreviewIntent(bool service_active)
+    {
+        LLPrismPreviewService& previews = LLPrismPreviewService::instance();
+        const F64 now = LLTimer::getTotalSeconds();
+        for (PrismInstance& capture : mLenses)
+        {
+            if (!capture.mOccupied) continue;
+            const bool demanded = service_active && previews.isDemanded(capture.mHandle);
+            if (demanded && !capture.mPreviewDemanded)
+            {
+                capture.mNextPreviewDueTime = now;
+            }
+            else if (!demanded && capture.mPreviewDemanded)
+            {
+                // Disabled/hidden previews discard phase and backlog. Re-enable
+                // starts at the current time and can never catch up in a burst.
+                capture.mNextPreviewDueTime = 0.0;
+                capture.mPreviewEntitlementHz = 0.f;
+                capture.mRuntime.mPreviewRequestedHz = 0.f;
+                capture.mRuntime.mPreviewEntitlementHz = 0.f;
+                capture.mPreviewOnly = false;
+                capture.mRuntime.mPreviewOnly = false;
+            }
+            capture.mPreviewDemanded = demanded;
+        }
+    }
+
     bool prepare(U32 slot, const S32 viewport[4], const glm::mat4& main_projection,
                   const glm::mat4& main_modelview, const LLViewerCamera& main_camera)
     {
@@ -2534,6 +2573,8 @@ public:
 
         PrismInstance& lens = mLenses[slot];
         lens.mAnyDisplayVisible = false;
+        lens.mPreviewOnly = false;
+        lens.mRuntime.mPreviewOnly = false;
         lens.mRuntime.mActivity = LLPrismLens::EActivityState::IDLE;
         for (PrismDisplay& display : mDisplays)
         {
@@ -2617,6 +2658,27 @@ public:
             keep_normal = -keep_normal;
         }
 
+        const auto prepare_preview_only = [&]()
+        {
+            if (!lens.mPreviewDemanded) return false;
+            mFrame.mLensRect.mX = 0;
+            mFrame.mLensRect.mY = 0;
+            mFrame.mLensRect.mWidth = LLPrismPreviewPolicy::WIDTH;
+            mFrame.mLensRect.mHeight = LLPrismPreviewPolicy::HEIGHT;
+            mFrame.mResolutionScale = 1.f;
+            mFrame.mTargetWidth = LLPrismPreviewPolicy::WIDTH;
+            mFrame.mTargetHeight = LLPrismPreviewPolicy::HEIGHT;
+            mFrame.mFragmentClipPlane = LLPlane(
+                center + keep_normal * LENS_PLANE_EPSILON, keep_normal);
+            mFrame.mResolvedFace = face;
+            mFrame.mPrepared = true;
+            lens.mPreviewOnly = true;
+            lens.mRuntime.mPreviewOnly = true;
+            lens.mRuntime.mEffectiveResolutionScale = 1.f;
+            lens.mRuntime.mActivity = LLPrismLens::EActivityState::WAITING;
+            return true;
+        };
+
         const glm::mat4 main_view_projection = main_projection * main_modelview;
 
         F32 projected_min_x = std::numeric_limits<F32>::max();
@@ -2693,7 +2755,7 @@ public:
         if (!projected)
         {
             // Entirely behind the near plane (or beyond the far plane).
-            return false;
+            return prepare_preview_only();
         }
 
         const F32 projected_width = projected_max_x - projected_min_x;
@@ -2704,11 +2766,11 @@ public:
         {
             // Camera distance and clipping can make an otherwise valid lens tiny.
             // Keep the registry entry and retained output; simply skip this frame.
-            return false;
+            return prepare_preview_only();
         }
         if (!visible)
         {
-            return false;
+            return prepare_preview_only();
         }
 
         const S32 viewport_right = viewport[0] + viewport[2];
@@ -2723,7 +2785,7 @@ public:
             width * height < MIN_VISIBLE_AREA)
         {
             // This is a transient visibility condition, not an invalid designation.
-            return false;
+            return prepare_preview_only();
         }
 
         mFrame.mLensRect.mX = left;
@@ -2739,6 +2801,8 @@ public:
         mFrame.mResolvedFace = face;
         mFrame.mPrepared = true;
         lens.mAnyDisplayVisible = true;
+        lens.mPreviewOnly = false;
+        lens.mRuntime.mPreviewOnly = false;
         lens.mRuntime.mActivity = LLPrismLens::EActivityState::WAITING;
         setLensDisplayRuntime(
             slot, LLPrismLens::EDisplayHealth::READY,
@@ -2998,6 +3062,8 @@ public:
         PrismInstance& capture = mLenses[slot];
         resetFrame(capture, gFrameCount);
         capture.mAnyDisplayVisible = false;
+        capture.mPreviewOnly = false;
+        capture.mRuntime.mPreviewOnly = false;
         capture.mRuntime.mActivity = LLPrismLens::EActivityState::IDLE;
         capture.mRuntime.mEffectiveResolutionScale = prismAppliedResolutionScale();
 
@@ -3101,7 +3167,26 @@ public:
         }
         if (!capture.mAnyDisplayVisible)
         {
-            return false;
+            if (!capture.mPreviewDemanded)
+            {
+                return false;
+            }
+            PrismFrame& frame = capture.mFrame;
+            frame.mFrame = gFrameCount;
+            std::memcpy(frame.mMainViewport, viewport, sizeof(frame.mMainViewport));
+            makeDebugRect(viewport, frame.mDebugRect);
+            frame.mResolutionScale = 1.f;
+            frame.mTargetWidth = LLPrismPreviewPolicy::WIDTH;
+            frame.mTargetHeight = LLPrismPreviewPolicy::HEIGHT;
+            frame.mPrepared = true;
+            capture.mPreviewOnly = true;
+            capture.mRuntime.mPreviewOnly = true;
+            capture.mRuntime.mEffectiveResolutionScale = 1.f;
+            capture.mRuntime.mEffectiveFarClip = llmin(
+                capture.mRuntime.mEffectiveFarClip,
+                LLPrismPreviewPolicy::MAX_FAR_CLIP);
+            capture.mRuntime.mActivity = LLPrismLens::EActivityState::WAITING;
+            return true;
         }
 
         // One canonical aspect belongs to the producer. Sibling faces never
@@ -3278,10 +3363,11 @@ public:
         }
         capacity = llclamp(capacity, 0.f, frame_opportunities);
 
-        bool active[LLPrismLens::MAX_CAPTURES] = {};
-        F32 demand[LLPrismLens::MAX_CAPTURES] = {};
-        F32 entitlement[LLPrismLens::MAX_CAPTURES] = {};
-        U32 active_count = 0;
+        std::array<bool, LLPrismLens::MAX_CAPTURES> visible_active{};
+        std::array<bool, LLPrismLens::MAX_CAPTURES> preview_active{};
+        std::array<F32, LLPrismLens::MAX_CAPTURES> demand{};
+        std::array<F32, LLPrismLens::MAX_CAPTURES> entitlement{};
+        LLPrismPreviewService& previews = LLPrismPreviewService::instance();
         for (U32 slot = 0; slot < LLPrismLens::MAX_CAPTURES; ++slot)
         {
             PrismInstance& capture = mLenses[slot];
@@ -3297,48 +3383,40 @@ public:
                 capture.mRuntime.mOutputAgeSeconds = capture.mLastProducedTime > 0.0
                     ? static_cast<F32>(llmax(0.0, now - capture.mLastProducedTime)) : 0.f;
             }
-            if (!capture.mOccupied || !capture.mAnyDisplayVisible ||
+            if (!capture.mOccupied ||
+                (!capture.mAnyDisplayVisible && !capture.mPreviewOnly) ||
                 !capture.mFrame.mPrepared || now < capture.mRetryAfterTime)
             {
                 capture.mRequestedHz = 0.f;
                 capture.mEntitlementHz = 0.f;
+                capture.mPreviewEntitlementHz = 0.f;
                 capture.mRuntime.mCadenceEntitlementHz = 0.f;
+                capture.mRuntime.mPreviewRequestedHz = 0.f;
+                capture.mRuntime.mPreviewEntitlementHz = 0.f;
                 continue;
             }
-            active[slot] = true;
-            ++active_count;
-            demand[slot] = capture.mRate.mMode == LLPrismLens::EOutputRateMode::TARGET_FPS
-                ? capture.mRate.mTargetFps : capacity;
+            if (capture.mPreviewOnly)
+            {
+                preview_active[slot] = true;
+                demand[slot] = previews.requestedHz(capture.mRate);
+                capture.mRuntime.mPreviewRequestedHz = demand[slot];
+            }
+            else
+            {
+                visible_active[slot] = true;
+                demand[slot] = capture.mRate.mMode == LLPrismLens::EOutputRateMode::TARGET_FPS
+                    ? capture.mRate.mTargetFps : capacity;
+                capture.mRuntime.mPreviewRequestedHz = 0.f;
+            }
             capture.mRequestedHz = demand[slot];
         }
 
-        // Bounded max-min water filling. A low requested rate is satisfied first;
-        // the remainder is shared fairly by producers that can still use it.
-        F32 remaining = capacity;
-        U32 remaining_count = active_count;
-        bool assigned[LLPrismLens::MAX_CAPTURES] = {};
-        while (remaining_count > 0 && remaining > 0.f)
-        {
-            const F32 share = remaining / static_cast<F32>(remaining_count);
-            bool fixed_one = false;
-            for (U32 slot = 0; slot < LLPrismLens::MAX_CAPTURES; ++slot)
-            {
-                if (!active[slot] || assigned[slot] || demand[slot] > share) continue;
-                entitlement[slot] = demand[slot];
-                remaining = llmax(0.f, remaining - entitlement[slot]);
-                assigned[slot] = true;
-                --remaining_count;
-                fixed_one = true;
-            }
-            if (!fixed_one)
-            {
-                for (U32 slot = 0; slot < LLPrismLens::MAX_CAPTURES; ++slot)
-                {
-                    if (active[slot] && !assigned[slot]) entitlement[slot] = share;
-                }
-                break;
-            }
-        }
+        // Strict tiers: visible/Gate producers finish their bounded max-min
+        // water fill before preview-only producers see any leftover capacity.
+        F32 remaining = LLPrismPreviewPolicy::waterFillTier(
+            visible_active, demand, capacity, entitlement);
+        LLPrismPreviewPolicy::waterFillTier(
+            preview_active, demand, remaining, entitlement);
 
         for (U32 slot = 0; slot < LLPrismLens::MAX_CAPTURES; ++slot)
         {
@@ -3346,17 +3424,23 @@ public:
             const F32 previous_entitlement = capture.mEntitlementHz;
             capture.mEntitlementHz = entitlement[slot];
             capture.mRuntime.mCadenceEntitlementHz = entitlement[slot];
-            if (active[slot])
+            capture.mPreviewEntitlementHz = preview_active[slot]
+                ? entitlement[slot] : 0.f;
+            capture.mRuntime.mPreviewEntitlementHz = capture.mPreviewEntitlementHz;
+            const bool active = visible_active[slot] || preview_active[slot];
+            if (active)
             {
+                F64& deadline = capture.mPreviewOnly
+                    ? capture.mNextPreviewDueTime : capture.mNextDueTime;
                 if (entitlement[slot] > previous_entitlement + 0.001f &&
-                    entitlement[slot] > 0.f && capture.mNextDueTime > now)
+                    entitlement[slot] > 0.f && deadline > now)
                 {
                     // A first, tiny recovery entitlement can create a very
                     // distant deadline. Pull only a future deadline toward the
                     // newly admitted period; never make it overdue or grant
                     // catch-up credit.
-                    capture.mNextDueTime = llmin(
-                        capture.mNextDueTime,
+                    deadline = llmin(
+                        deadline,
                         now + 1.0 / static_cast<F64>(entitlement[slot]));
                 }
                 if (adaptive() && capacity <= 0.f)
@@ -3369,7 +3453,7 @@ public:
                         ? LLPrismLens::EActivityState::THROTTLED
                         : LLPrismLens::EActivityState::WAITING;
                 }
-                if (capture.mNextDueTime <= 0.0) capture.mNextDueTime = now;
+                if (deadline <= 0.0) deadline = now;
             }
         }
         ++mPerformanceRevision;
@@ -3381,10 +3465,9 @@ public:
         updateCadenceEntitlements(now);
         closeAttemptWindow(now);
         const bool every_frame = prismManualEveryFrameMode();
-        // The zero-Hz manual setting is a frame token, not an estimated rate.
-        // Even if this entry point is reached twice in one presented frame it
-        // may admit at most one auxiliary attempt.
-        if (every_frame && mLastEveryFrameAttemptFrame == gFrameCount)
+        // Admission is a presented-frame token for both visible and preview
+        // tiers. A second invocation can never create a second attempt.
+        if (mLastAuxiliaryAttemptFrame == gFrameCount)
         {
             return -1;
         }
@@ -3392,55 +3475,79 @@ public:
         F64 best_overdue = -std::numeric_limits<F64>::max();
         F64 best_attempt_age = -1.0;
         U64 best_area = 0;
-        for (U32 offset = 0; offset < LLPrismLens::MAX_CAPTURES; ++offset)
+        const auto choose_tier = [&](bool preview_tier)
         {
-            const U32 slot = (mNextRenderSlot + offset) % LLPrismLens::MAX_CAPTURES;
-            const PrismInstance& capture = mLenses[slot];
-            if (!capture.mOccupied || !capture.mAnyDisplayVisible ||
-                !capture.mFrame.mPrepared || now < capture.mRetryAfterTime)
+            const U32 cursor = preview_tier ? mNextPreviewRenderSlot : mNextRenderSlot;
+            for (U32 offset = 0; offset < LLPrismLens::MAX_CAPTURES; ++offset)
             {
-                continue;
-            }
-            if (every_frame)
-            {
-                // Automatic producers are eligible on every global frame token.
-                // Target-FPS producers retain an independent monotonic deadline,
-                // so the token cannot make a 5-FPS camera publish at 30 FPS.
-                if (capture.mRate.mMode == LLPrismLens::EOutputRateMode::TARGET_FPS &&
-                    now < capture.mNextDueTime)
+                const U32 slot = (cursor + offset) % LLPrismLens::MAX_CAPTURES;
+                const PrismInstance& capture = mLenses[slot];
+                if (!capture.mOccupied || capture.mPreviewOnly != preview_tier ||
+                    !capture.mFrame.mPrepared || now < capture.mRetryAfterTime)
                 {
                     continue;
                 }
-                best_slot = static_cast<S32>(slot);
-                break; // deterministic round robin among currently due captures
+                const F64 deadline = preview_tier
+                    ? capture.mNextPreviewDueTime : capture.mNextDueTime;
+                if (preview_tier)
+                {
+                    // Preview deadlines are mandatory even under the global
+                    // Manual Every Frame token.
+                    if (capture.mPreviewEntitlementHz <= 0.f || now < deadline) continue;
+                }
+                else if (every_frame)
+                {
+                    // Automatic visible producers are eligible on every frame
+                    // token; Target FPS retains its independent deadline.
+                    if (capture.mRate.mMode == LLPrismLens::EOutputRateMode::TARGET_FPS &&
+                        now < deadline) continue;
+                    best_slot = static_cast<S32>(slot);
+                    return;
+                }
+                else if (capture.mEntitlementHz <= 0.f || now < deadline)
+                {
+                    continue;
+                }
+
+                const F64 overdue = now - deadline;
+                const F64 attempt_age = capture.mLastAttemptTime > 0.0
+                    ? now - capture.mLastAttemptTime
+                    : std::numeric_limits<F64>::max();
+                const U64 area = static_cast<U64>(capture.mFrame.mTargetWidth) *
+                                 static_cast<U64>(capture.mFrame.mTargetHeight);
+                if (best_slot < 0 || overdue > best_overdue ||
+                    (overdue == best_overdue && attempt_age > best_attempt_age) ||
+                    (overdue == best_overdue && attempt_age == best_attempt_age &&
+                     area > best_area))
+                {
+                    best_slot = static_cast<S32>(slot);
+                    best_overdue = overdue;
+                    best_attempt_age = attempt_age;
+                    best_area = area;
+                }
             }
-            if (capture.mEntitlementHz <= 0.f || now < capture.mNextDueTime)
-            {
-                continue;
-            }
-            const F64 overdue = now - capture.mNextDueTime;
-            const F64 attempt_age = capture.mLastAttemptTime > 0.0
-                ? now - capture.mLastAttemptTime : std::numeric_limits<F64>::max();
-            const U64 area = static_cast<U64>(capture.mFrame.mTargetWidth) *
-                             static_cast<U64>(capture.mFrame.mTargetHeight);
-            if (best_slot < 0 || overdue > best_overdue ||
-                (overdue == best_overdue && attempt_age > best_attempt_age) ||
-                (overdue == best_overdue && attempt_age == best_attempt_age &&
-                 area > best_area))
-            {
-                best_slot = static_cast<S32>(slot);
-                best_overdue = overdue;
-                best_attempt_age = attempt_age;
-                best_area = area;
-            }
+        };
+        choose_tier(false);
+        if (best_slot < 0)
+        {
+            best_overdue = -std::numeric_limits<F64>::max();
+            best_attempt_age = -1.0;
+            best_area = 0;
+            choose_tier(true);
         }
         if (best_slot >= 0)
         {
             PrismInstance& capture = mLenses[best_slot];
             capture.mLastAttemptTime = now;
-            if (every_frame)
+            if (capture.mPreviewOnly)
             {
-                mLastEveryFrameAttemptFrame = gFrameCount;
+                capture.mNextPreviewDueTime = LLPrismPreviewPolicy::advanceDeadline(
+                    now, capture.mPreviewEntitlementHz);
+                mNextPreviewRenderSlot = (static_cast<U32>(best_slot) + 1) %
+                                         LLPrismLens::MAX_CAPTURES;
+            }
+            else if (every_frame)
+            {
                 if (capture.mRate.mMode == LLPrismLens::EOutputRateMode::TARGET_FPS)
                 {
                     const F64 period = 1.0 / llmax(1.f, capture.mRate.mTargetFps);
@@ -3460,8 +3567,12 @@ public:
                 // extra period was missed, discard backlog instead of catching up.
                 capture.mNextDueTime = phase_next <= now ? now + period : phase_next;
             }
-            mNextRenderSlot = (static_cast<U32>(best_slot) + 1) %
-                              LLPrismLens::MAX_CAPTURES;
+            if (!capture.mPreviewOnly)
+            {
+                mNextRenderSlot = (static_cast<U32>(best_slot) + 1) %
+                                  LLPrismLens::MAX_CAPTURES;
+            }
+            mLastAuxiliaryAttemptFrame = gFrameCount;
             if (mAttemptWindowStart <= 0.0) mAttemptWindowStart = now;
             ++mAttemptSamples;
         }
@@ -3490,6 +3601,9 @@ public:
                 lens.mPublicationWindowStart = now;
             }
             ++lens.mPublicationSamples;
+            ++lens.mPublicationSerial;
+            LLPrismPreviewService::instance().notePublication(
+                lens.mHandle, lens.mPublicationSerial);
             closePublicationWindow(lens, now);
             lens.mRuntime.mOutput = LLPrismLens::EOutputState::CURRENT;
             const bool cadence_throttled = lens.mRequestedHz > 0.f &&
@@ -6120,6 +6234,7 @@ public:
         for (U32 slot = 0; slot < LLPrismLens::MAX_CAPTURES; ++slot)
             gPipeline.releasePrismLensOutput(slot);
         gPipeline.releasePrismLensBuffers();
+        LLPrismPreviewService::instance().clearDemand();
         mGateSettings = LLPrismLens::GateSettings();
         mGate = PrismGateRuntime();
         for (PrismInstance& capture : mLenses) capture = PrismInstance();
@@ -6462,6 +6577,11 @@ private:
             hashRuntimeValue(hash, quantizedRuntimeFloat(
                 capture.mRuntime.mCadenceEntitlementHz, 0.1f));
             hashRuntimeValue(hash, quantizedRuntimeFloat(
+                capture.mRuntime.mPreviewRequestedHz, 0.1f));
+            hashRuntimeValue(hash, quantizedRuntimeFloat(
+                capture.mRuntime.mPreviewEntitlementHz, 0.1f));
+            hashRuntimeValue(hash, capture.mRuntime.mPreviewOnly ? 1u : 0u);
+            hashRuntimeValue(hash, quantizedRuntimeFloat(
                 capture.mRuntime.mObservedPublicationHz, 0.1f));
         }
         for (const PrismDisplay& display : mDisplays)
@@ -6499,7 +6619,8 @@ private:
         mAttemptSamples = 0;
         mAttemptWindowStart = 0.0;
         mNextRenderSlot = 0;
-        mLastEveryFrameAttemptFrame = std::numeric_limits<U32>::max();
+        mNextPreviewRenderSlot = 0;
+        mLastAuxiliaryAttemptFrame = std::numeric_limits<U32>::max();
         ++mPerformanceRevision;
     }
 
@@ -6634,7 +6755,9 @@ private:
         {
             return;
         }
-        const LLUUID removed_capture_id = mLenses[slot].mHandle.mId;
+        const LLPrismLens::CaptureHandle removed_capture = mLenses[slot].mHandle;
+        const LLUUID removed_capture_id = removed_capture.mId;
+        LLPrismPreviewService::instance().setDemand(removed_capture, false);
         if (mActiveSlot == static_cast<S32>(slot))
         {
             mActiveSlot = -1;
@@ -6797,7 +6920,8 @@ private:
     U32 mAttemptSamples = 0;
     F64 mAttemptWindowStart = 0.0;
     U32 mNextRenderSlot = 0;
-    U32 mLastEveryFrameAttemptFrame = std::numeric_limits<U32>::max();
+    U32 mNextPreviewRenderSlot = 0;
+    U32 mLastAuxiliaryAttemptFrame = std::numeric_limits<U32>::max();
     S32 mActiveSlot = -1;
     S32 mLastRenderedSlot = -1;
 };
@@ -7953,6 +8077,7 @@ void onRenderTargetsReleased()
     ScopedPrismRevisionSignals signals;
     prismAdaptiveController().forceReset();
     PrismLensRegistry::instance().onRenderTargetsReleased();
+    LLPrismPreviewService::instance().onRenderTargetsReleased();
 }
 
 void renderAuxiliaryView()
@@ -7995,6 +8120,12 @@ void renderAuxiliaryView()
 
     registry.updateGate(LLTimer::getTotalSeconds());
 
+    // Publish future-page demand only after adaptive protection has updated and
+    // before preparation recomputes display visibility. Warming the pinned pack
+    // is also gated by master enable, page visibility, and actual demand.
+    registry.updatePreviewIntent(
+        LLPrismPreviewService::instance().prepareFrame());
+
     S32 main_viewport[4];
     std::memcpy(main_viewport, gGLViewport, sizeof(main_viewport));
     const glm::mat4 main_projection = get_current_projection();
@@ -8020,6 +8151,8 @@ void renderAuxiliaryView()
     }
 
     const U32 slot = static_cast<U32>(render_slot);
+    const PrismInstance* scheduled_capture = registry.capture(slot);
+    const bool preview_only = scheduled_capture && scheduled_capture->mPreviewOnly;
     const PrismFrame* frame_ptr = registry.frame(slot);
     if (!frame_ptr || frame_ptr->mTargetWidth == 0 || frame_ptr->mTargetHeight == 0)
     {
@@ -8040,10 +8173,18 @@ void renderAuxiliaryView()
             registry.deferRetry(slot, 1);
             return;
         }
+        std::optional<ScopedPrismPreviewQuality> preview_quality;
+        if (preview_only)
+        {
+            preview_quality.emplace();
+        }
         // Acquire an EXACT-SIZE scratch pack (physical == render) from the
         // size-keyed pool; the deferred fullscreen shaders sample the G-buffer
         // with normalized [0,1] UVs, so no sub-rect/logical-extent is allowed.
-        if (!gPipeline.acquirePrismLensScratch(render_width, render_height))
+        const bool scratch_ready = preview_only
+            ? gPipeline.bindPrismPreviewScratch()
+            : gPipeline.acquirePrismLensScratch(render_width, render_height);
+        if (!scratch_ready)
         {
             registry.deferRetry(slot, 30);
             return;
@@ -8115,7 +8256,10 @@ void renderAuxiliaryView()
             const F32 fov = capture->mRuntime.mEffectiveVerticalFovRad;
             const F32 aspect = capture->mCamera.mOutputAspect;
             const F32 near_clip = capture->mCamera.mNearClip;
-            const F32 far_clip = llmin(capture->mCamera.mFarClip, main_camera.getFar());
+            const F32 far_clip = preview_only
+                ? llmin(llmin(capture->mCamera.mFarClip, main_camera.getFar()),
+                        LLPrismPreviewPolicy::MAX_FAR_CLIP)
+                : llmin(capture->mCamera.mFarClip, main_camera.getFar());
             if (!std::isfinite(fov) || !std::isfinite(aspect) ||
                 !std::isfinite(near_clip) || !std::isfinite(far_clip) ||
                 fov < 5.f * DEG_TO_RAD || fov > 175.f * DEG_TO_RAD ||
@@ -8171,7 +8315,9 @@ void renderAuxiliaryView()
             const glm::vec3 vc = pc - eye;
             const F32 eye_distance = -glm::dot(vn, va);
             const F32 near_clip = main_camera.getNear();
-            const F32 far_clip = main_camera.getFar();
+            const F32 far_clip = preview_only
+                ? llmin(main_camera.getFar(), LLPrismPreviewPolicy::MAX_FAR_CLIP)
+                : main_camera.getFar();
             if (!std::isfinite(eye_distance) || eye_distance <= CLIP_EPSILON ||
                 near_clip <= 0.f || far_clip <= near_clip)
             {
@@ -8296,7 +8442,8 @@ void renderAuxiliaryView()
         // and the block is skipped while the controls are engaged (superseded there). Note: the
         // LEGACY shader path has no uv-bounds guard, so with this switch forced on, aux pixels
         // beyond the main-fitted cascades sample clamp-to-edge; the units path guards them.
-        if (LLPipeline::sRenderDeferred && LLPipeline::RenderShadowDetail > 0 &&
+        if (!LLPipeline::sPrismPreviewRender && LLPipeline::sRenderDeferred &&
+            LLPipeline::RenderShadowDetail > 0 &&
             LLPipeline::PrismSunCascadeReexpress && !gPipeline.mShadowEngaged)
         {
             const glm::mat4 inv_view_aux_sun = glm::inverse(get_current_modelview());
@@ -8311,7 +8458,8 @@ void renderAuxiliaryView()
                     gPipeline.mShadowModelview[i] * inv_view_aux_sun;
             }
         }
-        if (LLPipeline::sRenderDeferred && LLPipeline::RenderShadowDetail > 1)
+        if (!LLPipeline::sPrismPreviewRender && LLPipeline::sRenderDeferred &&
+            LLPipeline::RenderShadowDetail > 1)
         {
             // --- [Prism spot shadows Stage 1] re-express resident MAIN-view
             // maps in aux view space. A spot shadow map's content is rendered
@@ -8401,7 +8549,10 @@ void renderAuxiliaryView()
         // shared main-view volumetric state, so this aux pass - which precedes the
         // main view - cannot disturb the main view's temporal accumulation. No
         // feedProjectorVolumetricBloom() here: the aux builds no HDR bloom pyramid.
-        gPipeline.renderProjectorVolumetric(&rt.screen, /*aux_direct=*/true);
+        if (!LLPipeline::sPrismPreviewRender)
+        {
+            gPipeline.renderProjectorVolumetric(&rt.screen, /*aux_direct=*/true);
+        }
 
         // renderDeferredLighting() flushes the scratch HDR screen. Copy the
         // finished beauty while all copy-related GL mutations remain covered by
