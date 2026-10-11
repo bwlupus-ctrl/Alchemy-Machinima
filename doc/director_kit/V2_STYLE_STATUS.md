@@ -36,6 +36,21 @@ Rig, Rim, Bloom & Glow, and Tron are the currently rolled-out kit-native pages. 
 - The light-map backdrop is native GL vertex-colour art rather than browser SVG. It now carries the token radial sphere, lighter front hemisphere, floor/orbit lines, avatar and light glow without a per-frame texture allocation.
 - Exact raster/font metrics still require a post-build capture and mockup side-by-side. This round intentionally did not build; token, kit-page, XML, draw-lint, and scoped whitespace gates passed (the whole-worktree whitespace gate still sees unrelated pre-existing XML whitespace).
 
+## Visual fix round 4 ledger (2026-10-10)
+
+| # | Result |
+|---|---|
+| 1 | Number rows now keep their dark numeric field and spinner arrows visible at rest; the Rig EV setting remains bound through its generated `control_name`, so disabled Easy-mode state no longer looks like an empty row. |
+| 2 | The Acting-on pill budgets the measured name, person icon, rail tag and caret independently. Its right text padding protects the tag even if the available band becomes narrower. |
+| 3 | The blue preset highlight came from editable `LLComboBox::onFocusLost()` selecting its editor after programmatic selection. The kit installs a deferred editor focus-loss deselect, disables select-all-on-commit, and audits every resting line editor. |
+| 4 | Compass and arc tokens are now 60 px in 94 px bordered mini-cells, with the existing mono degree readout beside each dial. Card preset width is 160 px, removing the Fixture preset truncation. |
+| 5 | The 51 Rig overlaps were the three Light-map view buttons intentionally occupying the map's reserved footer in 17 states. That composite relationship is now excluded; arbitrary sibling overlap remains fatal. |
+| 6 | Transport fit read the flex item's stale hidden state from the prior narrow pass, then restored it after measuring; that undercount pushed Cast and `?` outside every page. Measurement now uses natural/collapsed state consistently, with the same padding as layout. |
+| 7 | The v2 Path host restores the runtime-shrunk Nodes & Playback panel to its authored 304 px, containing Play/Stop without changing `panel_path_editor.xml`. |
+| 8 | Text audit records only non-empty, visible, on-screen, positive-alpha runs; glyph width uses the font's drawn text width, and rectangles are clipped to the widget and enclosing scroller viewport. Findings require more than 2 px in both axes and different text widgets. |
+| 9 | A control's own label/descendant text is excluded from `TEXT_ON_CONTROL`; unrelated interactive areas remain fatal. The calibration fixture's expected Rig positive is the round-1 light-map key/drag-hint intersection; a 2 px edge touch is expected clean. |
+| 10 | Scope is v2 kit code and self-test only. Legacy v1 XUI is unchanged; no build or commit was performed. |
+
 ## Visual fix round ledger (2026-10-10)
 
 | # | Result |
@@ -64,6 +79,6 @@ Rig, Rim, Bloom & Glow, and Tron are the currently rolled-out kit-native pages. 
 | 6 | Easy/Advanced uses a dark unselected container and a light selected segment with dark text; card-owned segment colours are no longer overwritten by the generic style pass. |
 | 7 | The flat concentric-disc approximation was replaced by a vertex-colour radial sphere and front hemisphere using the documented light-map scene palette. |
 | 8 | Compact transport collapse now removes the optional hotkey/scene actions before the required Cast access, eliminating the 900/minimum right spill. The segment style overwrite was the cause of Rim's identical-state probe. |
-| 9 | The live audit now keeps a self-test-only registry of drawn kit text and interactive rectangles and emits `TEXT_ON_TEXT` / `TEXT_ON_CONTROL`; it also emits `VALUE_OUTSIDE_ROW` when a slider/spinner value leaves its owner row. |
-| 10 | Round-1 proof: its map key and drag hint were registered at the identical `MAP_LEGEND_H + 7` baseline, so their measured glyph rectangles intersect and produce `TEXT_ON_TEXT`; the old CAM baseline also intersected that footer region. The round-2 three-band geometry separates all three before drawing. |
+| 9 | The live audit now keeps a self-test-only registry of drawn kit text and interactive rectangles and emits `TEXT_OVERLAP` / `TEXT_ON_CONTROL`; it also emits `VALUE_OUTSIDE_ROW` when a slider/spinner value leaves its owner row. |
+| 10 | Round-1 proof: its map key and drag hint were registered at the identical `MAP_LEGEND_H + 7` baseline, so their measured glyph rectangles intersect and produce `TEXT_OVERLAP`; the old CAM baseline also intersected that footer region. The round-2 three-band geometry separates all three before drawing. |
 | 11 | Scope remains Director v2 only. No build or commit was performed; real screenshot confirmation is pending the caller's build/capture pass. |

@@ -24,3 +24,6 @@
 10. VCam page: stats text 'Prism 0/8 captures...' crammed on the checkbox row (generated panel_dpage_camera_vcam / generator).
 11. Bottom-left rail cast hint cut off ('...Add to') - part of item 3 roster.
 
+
+12. xui_layout_check.py does not model accordion_tab header (25) + padding (2+2) in fit_panel (llaccordionctrltab.cpp:960) -> missed the Path Play/Stop clip. Teach the checker; add a selftest fixture.
+

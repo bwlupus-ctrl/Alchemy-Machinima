@@ -953,6 +953,15 @@ def selftest(data_path: Path, config_path: Path, out_dir: Path) -> int:
                  for node in ET.fromstring(payload, parser=parser()).iter("compass_dial")]
         checks.append(("all compass dials use kit geometry without duplicate readout",
                        bool(dials) and all(node.get("kit_geometry") == "true" and node.get("show_readout") == "false" for node in dials)))
+        rig = ET.fromstring(outputs[out_dir / "panel_dpage_light_cine_light_rig.xml"], parser=parser())
+        rig_ev_rows = [node for node in rig.iter("kit_row") if node.get("widget") in {
+            "cine_key_ev", "cine_fill_ev", "cine_rim_ev", "cine_bg_ev", "cine_catchlight_ev"}]
+        checks.append(("Rig EV rows retain setting-bound numeric spinners",
+                       len(rig_ev_rows) == 5 and all(
+                           row.get("kind") == "number" and row.get("bind") == "setting" and
+                           len(list(row)) == 1 and list(row)[0].tag == "spinner" and
+                           list(row)[0].get("control_name") == row.get("setting")
+                           for row in rig_ev_rows)))
         tron = ET.fromstring(outputs[out_dir / "panel_dpage_look_tron.xml"], parser=parser())
         launcher_cards = [node for node in tron.iter("kit_card") if node.get("kind") == "launcher"]
         checks.append(("launcher card owns exactly one runtime button",

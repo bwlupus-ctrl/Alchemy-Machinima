@@ -64,6 +64,41 @@ LLButton* makeButton(const std::string& name, const std::string& label)
     return LLUICtrlFactory::create<LLButton>(p);
 }
 
+void stabilizeComboEditors(LLView* root)
+{
+    if (!root)
+        return;
+    if (LLComboBox* combo = dynamic_cast<LLComboBox*>(root))
+        for (LLView* child : *combo->getChildList())
+            if (LLLineEditor* editor = dynamic_cast<LLLineEditor*>(child))
+            {
+                editor->setSelectAllonCommit(false);
+                editor->setFocus(false);
+                editor->deselect();
+                LLHandle<LLView> editor_handle = editor->getHandle();
+                editor->setFocusLostCallback(
+                    [editor_handle](LLFocusableElement*)
+                    {
+                        doOnIdleOneTime(
+                            [editor_handle]()
+                            {
+                                if (LLLineEditor* resting = dynamic_cast<LLLineEditor*>(editor_handle.get());
+                                    resting && !resting->hasFocus())
+                                    resting->deselect();
+                            });
+                    });
+                doOnIdleOneTime(
+                    [editor_handle]()
+                    {
+                        if (LLLineEditor* resting = dynamic_cast<LLLineEditor*>(editor_handle.get());
+                            resting && !resting->hasFocus())
+                            resting->deselect();
+                    });
+            }
+    for (LLView* child : *root->getChildList())
+        stabilizeComboEditors(child);
+}
+
 class SectionHeading final : public LLPanel, public ALFlowGridItem
 {
 public:
@@ -289,20 +324,6 @@ bool ALKitPage::postBuild()
                 mBar->addChild(c);
                 if (LLUICtrl* control = dynamic_cast<LLUICtrl*>(c))
                     control->setFocus(false);
-                if (LLComboBox* combo = dynamic_cast<LLComboBox*>(c))
-                    for (LLView* child : *combo->getChildList())
-                        if (LLLineEditor* editor = dynamic_cast<LLLineEditor*>(child))
-                        {
-                            editor->setFocus(false);
-                            editor->deselect();
-                            LLHandle<LLView> editor_handle = editor->getHandle();
-                            combo->setFocusLostCallback(
-                                [editor_handle](LLFocusableElement*)
-                                {
-                                    if (LLLineEditor* resting = dynamic_cast<LLLineEditor*>(editor_handle.get()))
-                                        resting->deselect();
-                                });
-                        }
                 c->setFollows(FOLLOWS_LEFT | FOLLOWS_TOP);
                 S32 item_width = ALKitStyle::PRESET_COMBO_W;
                 if (i != 0)
@@ -537,7 +558,7 @@ bool ALKitPage::postBuild()
         mWhoChip->setImageOverlay("KitIcon_who_person_16", LLFontGL::LEFT);
         mWhoChip->setHAlign(LLFontGL::LEFT);
         mWhoChip->setLeftHPad(28);
-        mWhoChip->setRightHPad(16);
+        mWhoChip->setRightHPad(58);
         LLPanel::Params rail_tag;
         rail_tag.name               = pre + "_who_rail_tag";
         rail_tag.rect               = LLRect(0, 16, 30, 0);
@@ -626,6 +647,7 @@ bool ALKitPage::postBuild()
         ALKitStyle::stylePill(mWhoChip);
         if (mWhoChip)
             mWhoChip->setUnselectedLabelColor(ALKitStyle::color(ALKitStyle::TEXT_STRONG));
+        stabilizeComboEditors(this);
         mRestoringState = false;
         return true;
     }
@@ -732,6 +754,7 @@ bool ALKitPage::postBuild()
     ALKitStyle::stylePill(mWhoChip);
     if (mWhoChip)
         mWhoChip->setUnselectedLabelColor(ALKitStyle::color(ALKitStyle::TEXT_STRONG));
+    stabilizeComboEditors(this);
     return true;
 }
 
@@ -900,6 +923,11 @@ void ALKitPage::updateMaster()
 void ALKitPage::reshape(S32 w, S32 h, bool p)
 {
     LLPanel::reshape(w, h, p);
+    // The v1 Path accordion fits its panel four pixels shorter at runtime.
+    // Correct only the embedded v2 instance; the shared v1 XUI remains untouched.
+    if (mLegacy && mPage == "cast_group/path_tab")
+        if (LLPanel* playback = findChild<LLPanel>("nodes_playback_panel"))
+            playback->reshape(playback->getRect().getWidth(), llmax(304, playback->getRect().getHeight()), true);
     S32 top = h;
     if (!mChips.empty())
     {
@@ -925,11 +953,12 @@ void ALKitPage::reshape(S32 w, S32 h, bool p)
         const S32 label_x = ALKitStyle::PAGE_PAD_LR;
         const S32 chip_x     = label_x + 94;
         const S32 label_w    = mWhoChip->getFont() ? mWhoChip->getFont()->getWidth(mWhoChip->getText()) : 120;
-        const S32 chip_w     = llmin(llmax(120, label_w + 82), llmax(120, w - chip_x - 24));
+        const S32 content_w  = 28 + label_w + 6 + 30 + 4 + 10 + 8;
+        const S32 chip_w     = llmin(llmax(120, content_w), llmax(120, w - chip_x - 8));
         mWhoLabelText->setOrigin(label_x, 7);
         mWhoChip->reshape(chip_w, 24, true);
         mWhoChip->setOrigin(chip_x, 5);
-        const S32 tag_x = llmin(chip_w - 48, 28 + label_w + 6);
+        const S32 tag_x = llmin(28 + label_w + 6, chip_w - 52);
         mWhoRailTag->setOrigin(tag_x, 4);
         mWhoCaretText->setOrigin(tag_x + 34, 4);
         mWhoHint->reshape(llmax(1, w - chip_x - chip_w - 24), 20, true);

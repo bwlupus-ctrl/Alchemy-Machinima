@@ -365,7 +365,7 @@ void ALKitRow::layoutRow(S32 w)
                  mMeta.kind == "link" || mMeta.kind == "custom")
             width = span;
         if (LLSpinCtrl* spinner = dynamic_cast<LLSpinCtrl*>(mControl); spinner && mMeta.kind == "number")
-            spinner->setValueColumnLayout(width, height, mHovered);
+            spinner->setValueColumnLayout(width, height, true);
         else
             mControl->reshape(width, height, true);
         const S32 control_x = mMeta.kind == "number" ? x + cw + ALKitStyle::COL_GAP : x;
@@ -588,15 +588,17 @@ void ALKitRow::styleValueEditor(bool active)
     if (!mControl || (mMeta.kind != "slider" && mMeta.kind != "number"))
         return;
     if (LLSpinCtrl* spinner = dynamic_cast<LLSpinCtrl*>(mControl); spinner && mMeta.kind == "number")
-        spinner->setValueColumnLayout(mControl->getRect().getWidth(), mControl->getRect().getHeight(), active);
+        spinner->setValueColumnLayout(mControl->getRect().getWidth(), mControl->getRect().getHeight(), true);
     for (LLView* child : *mControl->getChildList())
     {
         if (LLLineEditor* editor = dynamic_cast<LLLineEditor*>(child))
         {
             editor->setHAlign(LLFontGL::RIGHT);
             editor->setUseBgColor(true);
-            editor->setBgColor(active ? ALKitStyle::color(ALKitStyle::INPUT_BG) : LLUIColor(LLColor4::transparent));
-            editor->setBgBorderColor(active ? ALKitStyle::color(ALKitStyle::INPUT_BORDER) : LLUIColor(LLColor4::transparent));
+            const bool field_visible = active || mMeta.kind == "number";
+            editor->setBgColor(field_visible ? ALKitStyle::color(ALKitStyle::INPUT_BG) : LLUIColor(LLColor4::transparent));
+            editor->setBgBorderColor(field_visible ? ALKitStyle::color(ALKitStyle::INPUT_BORDER)
+                                                   : LLUIColor(LLColor4::transparent));
             editor->setFont(ALKitStyle::monoFont());
         }
         else if (LLTextBox* text = dynamic_cast<LLTextBox*>(child))
@@ -610,6 +612,11 @@ void ALKitRow::styleValueEditor(bool active)
 void ALKitRow::draw()
 {
     LL_PROFILE_ZONE_SCOPED_CATEGORY_UI;
+    if (mMeta.kind == "dial" || mMeta.kind == "arc")
+    {
+        gl_rect_2d(getLocalRect(), ALKitStyle::color(ALKitStyle::CARD_BG).get(), true);
+        gl_rect_2d(getLocalRect(), ALKitStyle::color(ALKitStyle::CARD_BORDER).get(), false);
+    }
     if (mHovered)
         gl_rect_2d(getLocalRect(), ALKitStyle::color(ALKitStyle::ROW_HOVER).get(), true);
     if (mAdded)

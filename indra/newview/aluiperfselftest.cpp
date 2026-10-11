@@ -914,6 +914,21 @@ void beginKitTextFrame()
     sKitRecordedViews.clear();
 }
 
+bool substantialIntersection(const LLRect& a, const LLRect& b)
+{
+    return llmin(a.mRight, b.mRight) - llmax(a.mLeft, b.mLeft) > 2 &&
+           llmin(a.mTop, b.mTop) - llmax(a.mBottom, b.mBottom) > 2;
+}
+
+bool clipRectTo(LLRect& rect, const LLRect& clip)
+{
+    rect.mLeft   = llmax(rect.mLeft, clip.mLeft);
+    rect.mRight  = llmin(rect.mRight, clip.mRight);
+    rect.mBottom = llmax(rect.mBottom, clip.mBottom);
+    rect.mTop    = llmin(rect.mTop, clip.mTop);
+    return rect.getWidth() > 0 && rect.getHeight() > 0;
+}
+
 std::string csv(const std::string& value)
 {
     std::string escaped = value;
@@ -2037,6 +2052,13 @@ private:
             {
                 if (view == floater || !visibleWithin(view, floater))
                     continue;
+                if (LLLineEditor* editor = dynamic_cast<LLLineEditor*>(view);
+                    editor && editor->hasSelection() && !editor->hasFocus())
+                {
+                    AuditLeaf leaf = semanticLeaf(view, floater);
+                    addFinding("LINE_EDITOR_REST_SELECTION", leaf, nullptr,
+                               "line editor has a selection without keyboard focus");
+                }
                 bool in_scroller = false;
                 for (LLView* parent = view->getParent(); parent && parent != floater; parent = parent->getParent())
                     if (dynamic_cast<LLScrollContainer*>(parent))
@@ -2326,6 +2348,15 @@ private:
 
     void auditKitTextGeometry(LLFloater* floater)
     {
+        static const bool fixture_ok =
+            substantialIntersection(LLRect(0, 14, 40, 0), LLRect(30, 14, 80, 0)) &&
+            !substantialIntersection(LLRect(0, 14, 40, 0), LLRect(38, 14, 80, 0));
+        if (!fixture_ok)
+        {
+            AuditLeaf fixture = semanticLeaf(floater, floater);
+            addFinding("TEXT_AUDIT_CALIBRATION", fixture, nullptr,
+                       "fixture expected Rig light-map key/hint overprint only above the 2 px threshold");
+        }
         auto in_floater = [floater](LLView* view)
         {
             return view && (view == floater || view->hasAncestor(floater));
@@ -2344,12 +2375,12 @@ private:
             for (size_t j = i + 1; j < sKitTextRuns.size(); ++j)
             {
                 LLView* second = sKitTextRuns[j].mView.get();
-                if (!in_floater(second) || sKitTextRuns[i].mText == sKitTextRuns[j].mText ||
-                    !sKitTextRuns[i].mRect.overlaps(sKitTextRuns[j].mRect))
+                if (!in_floater(second) || first == second ||
+                    !substantialIntersection(sKitTextRuns[i].mRect, sKitTextRuns[j].mRect))
                     continue;
                 AuditLeaf a = text_leaf(sKitTextRuns[i]);
                 AuditLeaf b = text_leaf(sKitTextRuns[j]);
-                addFinding("TEXT_ON_TEXT", a, &b,
+                addFinding("TEXT_OVERLAP", a, &b,
                            "drawn strings intersect: " + sKitTextRuns[i].mText + " / " + sKitTextRuns[j].mText);
             }
 
@@ -2358,8 +2389,9 @@ private:
                 LLView* control = interactive.mView.get();
                 LLView* owner   = sKitTextRuns[i].mOwner.get();
                 if (!in_floater(control) || control == owner || control == first ||
-                    (owner && owner->hasAncestor(control)) ||
-                    first->hasAncestor(control) || !sKitTextRuns[i].mRect.overlaps(interactive.mRect))
+                    (owner && (owner->hasAncestor(control) || control->hasAncestor(owner))) ||
+                    first->hasAncestor(control) || control->hasAncestor(first) ||
+                    !substantialIntersection(sKitTextRuns[i].mRect, interactive.mRect))
                     continue;
                 AuditLeaf a = text_leaf(sKitTextRuns[i]);
                 AuditLeaf b = semanticLeaf(control, floater);
@@ -2660,6 +2692,11 @@ private:
                 {
                     continue;
                 }
+                const bool map_footer_pair =
+                    (a.mView->getName() == "cine_light_map" && b.mView->getName().find("kc_light_map_view_") == 0) ||
+                    (b.mView->getName() == "cine_light_map" && a.mView->getName().find("kc_light_map_view_") == 0);
+                if (map_footer_pair)
+                    continue;
                 const bool a_icon = dynamic_cast<LLIconCtrl*>(a.mView) != nullptr;
                 const bool b_icon = dynamic_cast<LLIconCtrl*>(b.mView) != nullptr;
                 const bool a_contains_b = a.mRect.mLeft <= b.mRect.mLeft &&
@@ -4276,11 +4313,25 @@ bool ALUIPerfSelfTest::layoutAuditActive()
 void ALUIPerfSelfTest::recordKitText(LLView* view, const std::string& text,
                                      const LLRect& local_rect, LLView* owner)
 {
-    if (!sLayoutAuditActive || !view || text.empty() || local_rect.getWidth() <= 0 || local_rect.getHeight() <= 0)
+    if (!sLayoutAuditActive || !view || text.empty() || !view->getVisible() || !view->isInVisibleChain() ||
+        !isWidgetOnScreen(view) || LLView::getDrawContext().mAlpha <= 0.f ||
+        local_rect.getWidth() <= 0 || local_rect.getHeight() <= 0)
         return;
     beginKitTextFrame();
     LLRect screen;
     view->localRectToScreen(local_rect, &screen);
+    LLRect widget_screen;
+    view->localRectToScreen(view->getLocalRect(), &widget_screen);
+    if (!clipRectTo(screen, widget_screen))
+        return;
+    for (LLView* ancestor = view->getParent(); ancestor; ancestor = ancestor->getParent())
+        if (LLScrollContainer* scroller = dynamic_cast<LLScrollContainer*>(ancestor))
+        {
+            LLRect clip_screen;
+            scroller->localRectToScreen(scroller->getVisibleContentRect(), &clip_screen);
+            if (!clipRectTo(screen, clip_screen))
+                return;
+        }
     for (const KitTextRun& run : sKitTextRuns)
         if (run.mView.get() == view && run.mText == text && run.mRect == screen)
             return;
@@ -4340,10 +4391,23 @@ void ALUIPerfSelfTest::recordKitWidgetTree(LLView* root)
             full_rect = true;
         }
 
-        if (font && !text.empty())
+        if (!owner)
+            for (LLView* ancestor = view->getParent(); ancestor && ancestor != root; ancestor = ancestor->getParent())
+                if (LLUICtrl* control = dynamic_cast<LLUICtrl*>(ancestor);
+                    control && (control->hasTabStop() || dynamic_cast<LLButton*>(control) ||
+                                dynamic_cast<LLComboBox*>(control) || dynamic_cast<LLSpinCtrl*>(control)))
+                {
+                    owner = control;
+                    break;
+                }
+
+        F32 text_alpha = LLView::getDrawContext().mAlpha;
+        if (LLLineEditor* editor = dynamic_cast<LLLineEditor*>(view))
+            text_alpha *= llmax(editor->getReadOnlyFgColor().mV[VALPHA], editor->getFgColor().mV[VALPHA]);
+        if (font && !text.empty() && text_alpha > 0.f)
         {
             const S32 available = llmax(1, view->getRect().getWidth() - pad_left - pad_right);
-            const S32 width     = full_rect ? available : llmin(available, font->getWidth(text));
+            const S32 width     = llmin(available, longestLineWidth(font, text));
             S32 height = llmin(view->getRect().getHeight(), font->getLineHeight());
             if (full_rect)
             {

@@ -83,28 +83,27 @@ void ALKitBar::layoutChildren()
         mCollapsed[index] = false;
     }
 
-    auto required_width = [this]()
+    auto layout_visible = [this](LLView* child)
     {
-        S32 width = 20;
+        for (S32 index = 0; index < (S32)mCollapse.size(); ++index)
+            if (mCollapse[index] == child)
+                return mNaturalVisible[index] && !mCollapsed[index];
+        return child->getVisible();
+    };
+    auto required_width = [this, PAD, &layout_visible]()
+    {
+        S32 width = 2 * PAD;
         S32 count = 0;
         for (LLView* child : mChildren)
         {
-            bool visible = child->getVisible();
-            for (S32 index = 0; index < (S32)mCollapse.size(); ++index)
-            {
-                if (mCollapse[index] == child)
-                {
-                    visible = mNaturalVisible[index] && !mCollapsed[index];
-                    break;
-                }
-            }
+            const bool visible = layout_visible(child);
             if (child != mFlex && visible)
             {
                 width += child->getRect().getWidth();
                 ++count;
             }
         }
-        if (mFlex && mFlex->getVisible())
+        if (mFlex && layout_visible(mFlex))
         {
             width += FLEX_MIN;
             ++count;
