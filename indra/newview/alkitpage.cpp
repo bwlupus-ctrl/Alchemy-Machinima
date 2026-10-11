@@ -101,6 +101,12 @@ void stabilizeComboEditors(LLView* root)
         stabilizeComboEditors(child);
 }
 
+std::string whoChipLabel(const LLComboBox* combo)
+{
+    const std::string subject = combo ? combo->getSelectedItemLabel() : std::string();
+    return "Acting on: " + (subject.empty() ? std::string("Me") : subject);
+}
+
 class SectionHeading final : public LLPanel, public ALFlowGridItem
 {
 public:
@@ -631,11 +637,11 @@ bool ALKitPage::postBuild()
                     mWhoCombo->setVisible(false);
                     if (mWhoChip)
                     {
-                        mWhoChip->setLabel("Acting on: " + mWhoCombo->getSelectedItemLabel());
+                        mWhoChip->setLabel(whoChipLabel(mWhoCombo));
                         reshape(getRect().getWidth(), getRect().getHeight(), false);
                     }
                 });
-            mWhoChip->setLabel("Acting on: " + mWhoCombo->getSelectedItemLabel());
+            mWhoChip->setLabel(whoChipLabel(mWhoCombo));
         }
         if (ALKitShell* shell = ALKitShell::find(this))
             mConnections.emplace_back(shell->setCastSelectionCallback(
@@ -1373,8 +1379,8 @@ void ALKitPage::draw()
                         row->pollLiveValue();
         if (mWhoCombo && mWhoChip && !mWhoError)
         {
-            const std::string label = "Acting on: " + mWhoCombo->getSelectedItemLabel();
-            if (mWhoChip->getLabelSelected() != label)
+            const std::string label = whoChipLabel(mWhoCombo);
+            if (mWhoChip->getLabelUnselected() != label)
             {
                 mWhoChip->setLabel(label); // ui-draw-lint: allow(raw-write) change-gated on label, readout clock throttled
                 reshape(getRect().getWidth(), getRect().getHeight(), false);

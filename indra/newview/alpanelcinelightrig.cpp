@@ -71,6 +71,16 @@ const char* const ROLE_ON_SETTINGS[ALCineLightRigModel::LIGHT_COUNT] = {
 };
 std::vector<ALPanelCineLightRig*> LIVE_PANELS;
 
+void clearKitComboSelection(LLComboBox* combo)
+{
+    if (!combo)
+        return;
+    // The combo's own text-entry child (LLComboBox has no public accessor for it).
+    for (LLView* child : *combo->getChildList())
+        if (LLLineEditor* editor = dynamic_cast<LLLineEditor*>(child))
+            editor->deselect();
+}
+
 // [UIPerfC1] Per-role fixture settings, resolved ONCE to control pointers instead of a
 // string concat + by-name gSavedSettings lookup per field per frame (syncFixtureControls,
 // syncGoboLibrary, syncEasyControls all run from draw()). Indexed [role][field]; the role
@@ -1680,6 +1690,8 @@ void ALPanelCineLightRig::refreshSetupList(const std::string& select_name,
     if (!select_name.empty() &&
         mSetupCombo->setSelectedByValue(select_name, true))
     {
+        if (ALKitShell::find(this))
+            clearKitComboSelection(mSetupCombo);
         return;
     }
     if (allow_empty)
@@ -1691,6 +1703,8 @@ void ALPanelCineLightRig::refreshSetupList(const std::string& select_name,
         mSetupCombo->setSelectedByValue(
             ALCineLightRig::masterSetups().front().mName, true);
     }
+    if (ALKitShell::find(this))
+        clearKitComboSelection(mSetupCombo);
 }
 
 //static
@@ -1727,6 +1741,8 @@ void ALPanelCineLightRig::onSetupSelected()
         ALCineLightRigManager::instance().selected().loadSetup(name))
     {
         mSetupCombo->setValue(name);
+        if (ALKitShell::find(this))
+            clearKitComboSelection(mSetupCombo);
         syncEasyModeForSelected(true);
     }
 }

@@ -142,9 +142,11 @@ void ALCompassDial::getDialGeometry(F32& cx, F32& cy, F32& radius) const
         cy = r.getHeight() * .5f;
         if (mArc)
         {
-            cx = 6.f * scale;
+            // Match the kit's 48-unit half-dial: pivot (24,34), r=20.
+            cx = r.getWidth() * .5f;
+            cy = r.getHeight() - 34.f * scale;
             radius = llmax(1.f, llmin(20.f * scale,
-                llmin(cy - 3.f * scale, r.getWidth() - 9.f * scale)));
+                llmin(cx - 4.f * scale, r.getWidth() - cx - 4.f * scale)));
         }
         else
         {
@@ -172,7 +174,7 @@ void ALCompassDial::setValueFromPoint(S32 x, S32 y)
     }
     if (mArc)
     {
-        const F32 angle = llclamp(atan2f(dy, dx) * RAD_TO_DEG, -90.f, 90.f);
+        const F32 angle = llclamp(atan2f(dx, dy) * RAD_TO_DEG, -90.f, 90.f);
         const bool tilt = mMinValue >= -90.f && mMaxValue <= 90.f && mMinValue <= 0.f && mMaxValue >= 0.f;
         setValue(tilt ? llclamp(angle, mMinValue, mMaxValue)
                       : mMinValue + (mMaxValue - mMinValue) * (angle + 90.f) / 180.f);
@@ -297,7 +299,7 @@ void ALCompassDial::draw()
         {
             const F32 a0 = (-90.f + i * 180.f / 24.f) * DEG_TO_RAD;
             const F32 a1 = (-90.f + (i + 1) * 180.f / 24.f) * DEG_TO_RAD;
-            gl_triangle_2d(ll_round(cx), ll_round(cy), ll_round(cx + radius*cosf(a0)), ll_round(cy + radius*sinf(a0)), ll_round(cx + radius*cosf(a1)), ll_round(cy + radius*sinf(a1)), face, true);
+            gl_triangle_2d(ll_round(cx), ll_round(cy), ll_round(cx + radius*sinf(a0)), ll_round(cy + radius*cosf(a0)), ll_round(cx + radius*sinf(a1)), ll_round(cy + radius*cosf(a1)), face, true);
         }
         const LLColor4 track = mTrackColor.get() % alpha;
         const LLColor4 range = mRangeColor.get() % alpha;
@@ -309,12 +311,12 @@ void ALCompassDial::draw()
         {
             const F32 a0 = (-90.f + i * 180.f / segments) * DEG_TO_RAD;
             const F32 a1 = (-90.f + (i + 1) * 180.f / segments) * DEG_TO_RAD;
-            gl_line_2d(ll_round(cx + radius*cosf(a0)), ll_round(cy + radius*sinf(a0)),
-                       ll_round(cx + radius*cosf(a1)), ll_round(cy + radius*sinf(a1)), track);
+            gl_line_2d(ll_round(cx + radius*sinf(a0)), ll_round(cy + radius*cosf(a0)),
+                       ll_round(cx + radius*sinf(a1)), ll_round(cy + radius*cosf(a1)), track);
         }
-        gl_line_2d(ll_round(cx), ll_round(cy), ll_round(cx + radius), ll_round(cy), track);
-        gl_line_2d(ll_round(cx), ll_round(cy), ll_round(cx + (radius-3.f)*cosf(angle)),
-                   ll_round(cy + (radius-3.f)*sinf(angle)), needle);
+        gl_line_2d(ll_round(cx - radius), ll_round(cy), ll_round(cx + radius), ll_round(cy), track);
+        gl_line_2d(ll_round(cx), ll_round(cy), ll_round(cx + (radius-3.f)*sinf(angle)),
+                   ll_round(cy + (radius-3.f)*cosf(angle)), needle);
         gGL.color4fv(needle.mV); gl_circle_2d(cx, cy, 2.5f, 12, true);
         if (hasFocus())
         {
@@ -326,8 +328,9 @@ void ALCompassDial::draw()
             const LLFontGL* font = mKitGeometry ? mKitMonoFont : LLFontGL::getFontSansSerifSmall();
             if (font)
             {
-                font->renderUTF8(mMaximumText, 0, ll_round(cx), ll_round(cy + radius - 5.f), range, LLFontGL::LEFT, LLFontGL::VCENTER);
-                font->renderUTF8(mMinimumText, 0, ll_round(cx), ll_round(cy - radius + 5.f), range, LLFontGL::LEFT, LLFontGL::VCENTER);
+                const S32 label_y = ll_round(cy - .4f * radius);
+                font->renderUTF8(mMinimumText, 0, ll_round(cx - .85f * radius), label_y, range, LLFontGL::HCENTER, LLFontGL::VCENTER);
+                font->renderUTF8(mMaximumText, 0, ll_round(cx + .85f * radius), label_y, range, LLFontGL::HCENTER, LLFontGL::VCENTER);
             }
         }
         LLUICtrl::draw(); return;
