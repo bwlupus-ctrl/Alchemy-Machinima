@@ -44,6 +44,7 @@ VERSIONS = ("v1", "v2")
 # launcher records mirror LLFloaterDirector::bindPage launchers.
 LAUNCHER_HOSTS = {
     "diopter_tab": ("ultimate_diopter", "", "diopter_tab", "card_diopter_open"),
+    "gaze_cues_tab": ("gaze_cues", "", "gaze_cues_tab", "card_gaze_cues_open"),
     "practicals_tab": ("lightbox", "sellight_settings", "practicals_tab", "card_practicals_open"),
     "actors_tab": ("lightbox", "actor_mask_settings", "actors_tab", "card_actor_mask_open"),
     "light_cues_tab": ("cine_light_cues", "", "light_cues_tab", "card_light_cues_open"),
@@ -53,6 +54,14 @@ LAUNCHER_HOSTS = {
     "tron_tab": ("lightbox", "tron_settings", "stylize_tab", "card_tron_open"),
     "atmosphere_tab": ("lightbox", "cinehaze_settings", "atmosphere_tab", "card_haze_open"),
     "shadows_probes_tab": ("lightbox", "shadow_settings", "shadows_probes_tab", "card_shadows_probes_open"),
+}
+
+# Redirected pages can draw controls from several tabs in the same target
+# floater.  The source panel identifies the tab more precisely than the broad
+# Director page name.
+LIGHTBOX_TAB_BY_XUI = {
+    "panel_projector_shafts.xml": "projshaft_settings",
+    "panel_atmospheric_volumes.xml": "atmospheric_volumes_settings",
 }
 
 
@@ -371,7 +380,15 @@ def number_test(default, lo, hi, step, stype):
             step = 1.0 if integer else max(0.1, abs(d) * 0.1)
     if integer:
         step = max(1.0, float(round(step)))
-    for cand in (d + step, d - step):
+    anchor = lo if lo is not None else 0.0
+    # Sliders quantize to an increment grid anchored at min_val. Defaults in
+    # legacy settings are sometimes off that grid (for example .325 with a
+    # .01 step, or 45 with a 4-unit step); default +/- step is then impossible
+    # to reach by pointer or arrow keys. Emit an actual grid point.
+    candidates = []
+    for raw in (d + step, d - step):
+        candidates.append(anchor + round((raw - anchor) / step) * step)
+    for cand in candidates:
         if lo is not None and cand < lo - 1e-12:
             continue
         if hi is not None and cand > hi + 1e-12:
@@ -653,6 +670,14 @@ def build_csv_entry(idx, r, v, xi, settings, page_meta):
         restore = {"note": "close any floater opened; undo state the action creates"}
 
     entry = base_entry(page_meta, r["page"], v, "csv:%d" % idx)
+    if v == "v2" and r["page"] in LAUNCHER_HOSTS and \
+            not r["v2_source"].startswith("redirect"):
+        # Actors/Atmosphere contain native v2 controls as well as a launcher;
+        # only rows explicitly sourced through redirect belong in Lightbox.
+        entry["host"] = {"floater": "director", "page_view": r["page"],
+                         "via": "tab"}
+    elif entry["host"].get("floater") == "lightbox" and base in LIGHTBOX_TAB_BY_XUI:
+        entry["host"]["tab"] = LIGHTBOX_TAB_BY_XUI[base]
     entry.update({
         "id": "%s:%s:%s:%d" % (v, r["page"], name, idx),
         "csv_index": idx,

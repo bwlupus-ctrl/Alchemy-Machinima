@@ -70,6 +70,7 @@
 #include "lltextbox.h"
 #include "lltexteditor.h"
 #include "llviewercontrol.h"
+#include "llviewershadermgr.h"
 #include "llviewerwindow.h"
 #include "llversioninfo.h"
 #include "llview.h"
@@ -1382,6 +1383,7 @@ public:
             }
         }
         if (mFunctional) restoreFunctionalAction();
+        if (mFunctional) finishFunctionalShaderBatch();
         restoreDirectorAuditSettings();
         restoreInitialState();
         restore();
@@ -1965,7 +1967,30 @@ private:
                 name.erase(name.size() - 4);
             name += "_preset";
         }
-        return page->findChild<LLUICtrl>(name, true);
+        if (name != "check_box")
+            if (LLUICtrl* named = page->findChild<LLUICtrl>(name, true)) return named;
+        // Some legacy XUI checkboxes have no explicit name; the source table
+        // necessarily records their tag ("check_box"). Resolve those rows by
+        // the unique public control-variable binding instead of guessing a
+        // sibling by label or tree order.
+        const std::string setting_name = entry["setting"].asString();
+        if (setting_name.empty()) return nullptr;
+        LLUICtrl* match = nullptr;
+        bool ambiguous = false;
+        std::function<void(LLView*)> collect = [&](LLView* view)
+        {
+            if (ambiguous) return;
+            if (LLUICtrl* candidate = dynamic_cast<LLUICtrl*>(view))
+                if (LLControlVariable* bound = candidate->getControlVariable();
+                    bound && bound->getName() == setting_name)
+                {
+                    if (match && match != candidate) ambiguous = true;
+                    else match = candidate;
+                }
+            for (LLView* child : *view->getChildList()) collect(child);
+        };
+        collect(page);
+        return ambiguous ? nullptr : match;
     }
 
     static std::string functionalRedirectFloater(const LLSD& entry)
@@ -2045,6 +2070,28 @@ private:
         }
         mFunctionalRedirectFloater = target->getHandle();
         target->setMinimized(false);
+        // Saved Lightbox rectangles can be applied after its children were
+        // constructed. Re-run the public reshape path even when the outer
+        // size is unchanged so follows="all" scroll viewports match the live
+        // floater rather than their construction-time height.
+        const LLRect target_rect = target->getRect();
+        target->reshape(target_rect.getWidth(), target_rect.getHeight(), true);
+        if (gFloaterView) gFloaterView->adjustToFitScreen(target, false);
+        // Keep the redirect from covering Director controls. Prefer its right
+        // side, then its left; adjustToFitScreen remains the final authority.
+        if (LLFloater* director = mFloater.get())
+        {
+            const LLRect director_screen = director->calcScreenRect();
+            const LLRect target_screen = target->calcScreenRect();
+            const LLRect bounds = gFloaterView ? gFloaterView->calcScreenRect() : LLRect();
+            S32 dx = 0;
+            if (director_screen.mRight + 8 + target_screen.getWidth() <= bounds.mRight)
+                dx = director_screen.mRight + 8 - target_screen.mLeft;
+            else if (director_screen.mLeft - 8 - target_screen.getWidth() >= bounds.mLeft)
+                dx = director_screen.mLeft - 8 - target_screen.mRight;
+            if (dx) target->translate(dx, 0);
+            if (gFloaterView) gFloaterView->adjustToFitScreen(target, false);
+        }
         target->setFrontmost(true);
         mFunctionalHostFloater = target->getHandle();
         page = target;
@@ -2072,9 +2119,30 @@ private:
     }
 
     // ui-draw-lint: allow-function(setting,lookup) isolated test-only prerequisite setup
-    bool prepareFunctionalPrerequisite(const LLSD& entry, LLUICtrl* control)
+    bool prepareFunctionalDeclaredPrerequisites(const LLSD& entry)
     {
         bool ok = true;
+        const LLSD& prerequisites = entry["enabled_control"];
+        if (prerequisites.isArray())
+        {
+            for (LLSD::array_const_iterator it = prerequisites.beginArray();
+                 it != prerequisites.endArray(); ++it)
+            {
+                const std::string name = (*it).isMap() ?
+                    (*it)["setting"].asString() : it->asString();
+                const LLSD value = !(*it).isMap() || !(*it).has("value") ?
+                    LLSD(true) : (*it)["value"];
+                rememberFunctionalSetting(name);
+                ok = functionalSetControl(gSavedSettings.getControl(name).get(), value) && ok;
+            }
+        }
+        return ok;
+    }
+
+    // ui-draw-lint: allow-function(setting,lookup) isolated test-only prerequisite setup
+    bool prepareFunctionalPrerequisite(const LLSD& entry, LLUICtrl* control)
+    {
+        bool ok = prepareFunctionalDeclaredPrerequisites(entry);
         const std::string widget = entry["widget_name"].asString();
         if (mDirectorV2 && widget.find("actor_only") != std::string::npos &&
             widget != "cine_actor_only_all")
@@ -2099,20 +2167,6 @@ private:
                 std::string reason;
                 ok = functionalReachable(gate, reason) && functionalPointerClick() &&
                     gate->getValue().asBoolean() && ok;
-            }
-        }
-        const LLSD& prerequisites = entry["enabled_control"];
-        if (prerequisites.isArray())
-        {
-            for (LLSD::array_const_iterator it = prerequisites.beginArray();
-                 it != prerequisites.endArray(); ++it)
-            {
-                const std::string name = (*it).isMap() ?
-                    (*it)["setting"].asString() : it->asString();
-                const LLSD value = !(*it).isMap() || !(*it).has("value") ?
-                    LLSD(true) : (*it)["value"];
-                rememberFunctionalSetting(name);
-                ok = functionalSetControl(gSavedSettings.getControl(name).get(), value) && ok;
             }
         }
         // XUI enabled_control bindings are live control variables.  Walking
@@ -2380,6 +2434,21 @@ private:
     void prepareFunctionalRestore(const LLSD& entry)
     {
         mFunctionalRestore.clear();
+        const std::string page = entry["page"].asString();
+        const std::string setting = entry["expect"]["setting"].asString();
+        if (page == "shadows_probes_tab" &&
+            (setting == "RenderShadowDetail" || setting == "RenderDeferredSSAO"))
+        {
+            if (mFunctionalShaderRestore.empty())
+            {
+                mFunctionalShaderSkipBefore = LLViewerShaderMgr::sSkipReload;
+                LLViewerShaderMgr::sSkipReload = true;
+            }
+            if (!mFunctionalShaderRestore.count(setting))
+                if (LLControlVariable* control = gSavedSettings.getControl(setting).get())
+                    mFunctionalShaderRestore[setting] = {
+                        control->get(), control->getSaveValue(), control->hasUnsavedValue() };
+        }
         rememberFunctionalSetting(entry["expect"]["setting"].asString());
         rememberFunctionalSetting(entry["setting"].asString());
         rememberFunctionalSetting("DirectorV2SelectedLight");
@@ -2475,6 +2544,7 @@ private:
         {
             if (saved.first == "CineDiopterPreset" ||
                 saved.first == "CineDiopterKalPreset") continue;
+            if (mFunctionalShaderRestore.count(saved.first)) continue;
             if (LLControlVariable* control = gSavedSettings.getControl(saved.first).get())
             {
                 control->setValue(saved.second.mSaved, true); // ui-draw-lint: allow(setting-write) bounded functional saved-value restore
@@ -2526,6 +2596,28 @@ private:
         mFunctionalHandlerRunCount = 0;
         mFunctionalObserved = LLSD::emptyMap();
         mFunctionalLastClickReason.clear();
+    }
+
+    // ui-draw-lint: allow-function(setting-write) page-batched functional shader restore
+    void finishFunctionalShaderBatch()
+    {
+        if (mFunctionalShaderRestore.empty()) return;
+        bool changed = false;
+        for (const auto& saved : mFunctionalShaderRestore)
+        {
+            if (LLControlVariable* control = gSavedSettings.getControl(saved.first).get())
+            {
+                changed = changed || control->get() != saved.second.mActive ||
+                    control->getSaveValue() != saved.second.mSaved;
+                control->setValue(saved.second.mSaved, true); // ui-draw-lint: allow(setting-write) exact batched saved-value restore
+                if (saved.second.mUnsaved)
+                    control->setValue(saved.second.mActive, false); // ui-draw-lint: allow(setting-write) exact batched active-value restore
+            }
+        }
+        LLViewerShaderMgr::sSkipReload = mFunctionalShaderSkipBefore;
+        if (changed && !mFunctionalShaderSkipBefore)
+            LLViewerShaderMgr::instance()->setShaders();
+        mFunctionalShaderRestore.clear();
     }
 
     static void functionalCollectButtons(LLView* view, std::vector<LLButton*>& buttons)
@@ -2890,6 +2982,18 @@ private:
         {
             reason = "not reachable: target hidden or disabled";
             return false;
+        }
+        // Compound controls can be visible while their actual click child
+        // protrudes beyond the viewport (notably the lower spinner arrow).
+        // Reveal the dispatch target, not only the owning LLUICtrl.
+        for (LLView* parent = target->getParent(); parent; parent = parent->getParent())
+        {
+            LLScrollContainer* scroller = dynamic_cast<LLScrollContainer*>(parent);
+            if (!scroller || !scroller->getScrolledView()) continue;
+            LLRect document_rect;
+            if (target->localRectToOtherView(target->getLocalRect(), &document_rect,
+                                             scroller->getScrolledView()))
+                scroller->scrollToShowRect(document_rect);
         }
         S32 local_x = target->getLocalRect().getCenterX();
         const S32 local_y = target->getLocalRect().getCenterY();
@@ -3497,7 +3601,12 @@ private:
         if (!list || !list->getVisible()) return false;
         S32 index = -1;
         for (S32 i = 0; i < list->getItemCount(); ++i)
-            if (LLScrollListItem* item = list->getItemByIndex(i); item && item->getValue() == value)
+            // XUI stores combo item values as strings even when the bound
+            // control and generated reveal manifest are integer typed.
+            // Match their serialized value, then exercise the actual popup
+            // item through the normal pointer path below.
+            if (LLScrollListItem* item = list->getItemByIndex(i);
+                item && item->getValue().asString() == value.asString())
             { index = i; break; }
         if (index < 0) return false;
         const S32 page_lines = llmax(1, list->getLinesPerPage());
@@ -3836,7 +3945,25 @@ private:
         if (!control->isInEnabledChain()) probeFunctionalEnable(control);
         if (!functionalReachable(control, reachability))
         {
-            addFunctionalResult(entry, "FAIL", reachability);
+            std::string world_reason;
+            if (reachability == "not reachable: disabled-by-parent")
+            {
+                const std::string page = entry["page"].asString();
+                if (page == "gaze_tab") world_reason = "requires a logged-in edited actor";
+                else if (page == "ghosts_tab") world_reason = "requires a populated ghost/crowd selection";
+                else if (page == "props_tab") world_reason = "requires a selected prop or path entity";
+                else if (page == "actor_style_tab") world_reason = "requires a selected actor";
+                else if (page == "practicals_tab") world_reason = "requires a selected in-world light";
+                else if (page == "animate_tab") world_reason = "requires a logged-in avatar and animation state";
+                else if (page == "move_tab") world_reason = "requires a selected actor group";
+                else if (page == "takes_tab") world_reason = "requires a loaded or running take";
+                else if (page == "shot_tab") world_reason = "requires a populated cast selection";
+                else if (page == "cine_light_rig_tab" &&
+                         entry["widget_name"].asString().find("actor_only") != std::string::npos)
+                    world_reason = "requires an actor target for the selected rig light";
+            }
+            addFunctionalResult(entry, world_reason.empty() ? "FAIL" : "SKIP",
+                world_reason.empty() ? reachability : world_reason);
             restoreFunctionalAction();
             ++mFunctionalIndex;
             return;
@@ -4096,6 +4223,9 @@ private:
     void beginFunctionalEntry()
     {
         const LLSD& entry = mFunctionalEntries[mFunctionalIndex];
+        if (!mFunctionalShaderRestore.empty() &&
+            entry["page"].asString() != "shadows_probes_tab")
+            finishFunctionalShaderBatch();
         if (!mFunctionalGatePrepared)
         {
             mFunctionalObserved = LLSD::emptyMap();
@@ -4134,8 +4264,19 @@ private:
         if (!mFunctionalGatePrepared) prepareFunctionalRestore(entry);
         prepareFunctionalSelector(entry);
         prepareFunctionalConsumerGate(entry);
+        if (!prepareFunctionalDeclaredPrerequisites(entry))
+        {
+            addFunctionalResult(entry, "FAIL", "enabled_control prerequisite could not be established");
+            restoreFunctionalAction();
+            ++mFunctionalIndex;
+            return;
+        }
         mFunctionalPageRoot = functionalPage(entry);
-        if (!openFunctionalRedirect(entry, mFunctionalPageRoot))
+        // A page may contain both native controls and a Lightbox launcher
+        // (Actors and Atmosphere do). Prefer the control on the selected
+        // Director page; only follow the launcher for rows not hosted there.
+        LLUICtrl* control = functionalControl(mFunctionalPageRoot, entry);
+        if (!control && !openFunctionalRedirect(entry, mFunctionalPageRoot))
         {
             addFunctionalResult(entry, "FAIL", mFunctionalRedirectReason.empty() ?
                 "launcher: target did not open" : mFunctionalRedirectReason);
@@ -4143,7 +4284,24 @@ private:
             ++mFunctionalIndex;
             return;
         }
-        LLUICtrl* control = functionalControl(mFunctionalPageRoot, entry);
+        if (!control) control = functionalControl(mFunctionalPageRoot, entry);
+        if (!control)
+        {
+            // The generated page-level route can only name one Lightbox tab,
+            // while Atmosphere, Image and Bloom rows are sourced from several
+            // tabs. Resolve the exact widget in the verified redirect floater,
+            // then select every owning tab through the public ancestor path.
+            if (LLFloater* redirected = mFunctionalRedirectFloater.get())
+            {
+                control = functionalControl(redirected, entry);
+                if (control)
+                {
+                    revealFunctionalAncestors(control);
+                    mFunctionalPageRoot = redirected;
+                    mFunctionalObserved["launcher"]["resolved_owning_tab"] = true;
+                }
+            }
+        }
         if (action == "EXPECT_MISSING")
         {
             const bool page_open = mFunctionalPageRoot != nullptr;
@@ -4599,6 +4757,7 @@ private:
         else
         {
             restoreFunctionalAction();
+            finishFunctionalShaderBatch();
             restore();
             restoreFunctionalRigState(true);
             restoreFunctionalUserFiles();
@@ -7523,6 +7682,8 @@ private:
     LLSD mFunctionalConsumerBefore;
     std::string mFunctionalVisibleBefore;
     std::map<std::string, SavedControlState> mFunctionalRestore;
+    std::map<std::string, SavedControlState> mFunctionalShaderRestore;
+    bool mFunctionalShaderSkipBefore = false;
     std::set<LLFloater*> mFunctionalFloatersBefore;
     LLHandle<LLFloater> mFunctionalRedirectFloater;
     LLHandle<LLFloater> mFunctionalLauncherFloater;

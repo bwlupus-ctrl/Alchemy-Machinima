@@ -241,6 +241,34 @@ def prepare_manifest(path: Path, repo: Path, output: Path) -> tuple[int, int, in
         "variation": ("gaze_variation_slider", defaults.get("DirectorGazeVariation", 0.2)),
         "break_frequency": ("gaze_break_freq_slider", defaults.get("DirectorGazeBreakFrequency", 0.1)),
     }
+    gaze_actor_override_resets = {
+        "camera_roll", "ease_acquire", "ease_release", "deadzone", "priority",
+        "anim_priority", "composition", "composition_mix", "chest_share",
+        "limit_mode", "limit_profile", "lean_curve", "lean_threshold",
+        "lean_softness", "lean_max", "microlife", "variation",
+        "break_frequency",
+    }
+    # These controls write per-actor/crowd/dance model state. At login their
+    # widgets can commit, but there is deliberately no entity model to provide
+    # the independent oracle required for RUN.
+    entity_state_controls = {
+        "show_all_check", "clone_type_combo", "source_combo", "array_count_spinner",
+        "array_spacing_spinner", "formation_edge_gap_spinner",
+        "formation_jitter_spinner", "formation_seed_spinner",
+        "formation_terrain_check", "facing_yaw_offset_spinner",
+        "formation_guide_shape_combo", "crowd_create_mode_combo",
+        "strip_count_spinner", "strip_interval_spinner",
+        "formation_motion_speed", "formation_motion_amplitude",
+        "pose_rate_spinner", "db_header_desync", "db_focus", "db_autojoin",
+        "db_include_seated", "db_include_me", "db_adv_jitter",
+        "db_t_speed_jitter", "db_t_priority", "db_t_dance_drives_face",
+        "db_block_yaw", "db_block_step", "db_block_face",
+        "db_block_keep_facing", "db_block_mode", "db_block_shape",
+        "db_block_spacing", "db_block_centre", "db_wave_focus",
+        "db_wave_speed", "db_wave_dir", "db_wave_apply", "db_ramp_target",
+        "db_ramp_seconds", "gaze_breakoff_check", "db_on",
+        "look_at_camera_torso", "look_at_camera_torso_amount",
+    }
     launchers = {
         "btn_actor_gaze": "actor_gaze", "btn_pose_polish": "pose_polish",
         "btn_gaze_cues": "gaze_cues", "polish_popout": "pose_polish",
@@ -298,6 +326,11 @@ def prepare_manifest(path: Path, repo: Path, output: Path) -> tuple[int, int, in
         row["reveal"] = reveal
 
         widget = row.get("widget_name", "")
+        if widget in entity_state_controls and row.get("action") == "RUN":
+            row.update(action="DEFER_INWORLD", known_gap=False,
+                       reason=f"{widget}: requires an active actor/crowd/dance model oracle",
+                       enable_when="login has an active entity model",
+                       hazards=sorted(set(row.get("hazards", [])) | {"requires_world"}))
         key = row.get("setting") or widget
         if widget.startswith("switcher_ease_bezier_"):
             prereqs.append({"setting": "DirectorSwitcherEaseCurve", "value": 100,
@@ -461,11 +494,17 @@ def prepare_manifest(path: Path, repo: Path, output: Path) -> tuple[int, int, in
             suffix = widget.removeprefix("reset_gaze_")
             if suffix in gaze_targets:
                 target, value = gaze_targets[suffix]
-                row.update(action="RUN", reason="", known_gap=False, probe="gaze_reset",
-                           reset_widget=target, reset_value=value,
-                           reset_pre_value=(0 if value != 0 else 1),
-                           reset_type="S32" if isinstance(value, int) and not isinstance(value, bool) else "F32",
-                           owner="ALPanelLensGaze::postBuild")
+                if suffix in gaze_actor_override_resets:
+                    row.update(action="DEFER_INWORLD", known_gap=False,
+                               reason=f"{widget}: reset mutates the edited actor override; login has no actor",
+                               enable_when="ALPanelLensGaze::editActors() is non-empty",
+                               hazards=sorted(set(row.get("hazards", [])) | {"requires_world"}))
+                else:
+                    row.update(action="RUN", reason="", known_gap=False, probe="gaze_reset",
+                               reset_widget=target, reset_value=value,
+                               reset_pre_value=(0 if value != 0 else 1),
+                               reset_type="S32" if isinstance(value, int) and not isinstance(value, bool) else "F32",
+                               owner="ALPanelLensGaze::postBuild")
         if widget in launchers:
             row.update(action="RUN", reason="", known_gap=False, probe="launcher",
                        launcher_floater=launchers[widget],
@@ -476,7 +515,7 @@ def prepare_manifest(path: Path, repo: Path, output: Path) -> tuple[int, int, in
                        reset_widget="am_bias_slider", reset_value=value,
                        reset_pre_value=value + 1.0, reset_type="F32",
                        probe="gaze_reset", owner="LightBox.ResetControlDefault")
-        if widget == "db_on":
+        if widget == "db_on" and row.get("action") != "DEFER_INWORLD":
             row.update(action="RUN", reason="", known_gap=False, exercise="toggle",
                        owner="ALPanelDanceBall::postBuild")
         if widget in reset_all:

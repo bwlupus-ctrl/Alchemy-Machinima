@@ -113,8 +113,13 @@ inline void install(LLScrollContainer* scroller, LLView* document, LLView* paren
                         // Keyboard focus still needs the normal reveal for Tab navigation.
                         // Combos/sliders/lists take focus before (or outside) the capture, so
                         // also treat any focus arriving while the left button is down as pointer focus.
-                        if (!*token && (gFocusMgr.childHasMouseCapture(child) ||
-                                        (gViewerWindow && gViewerWindow->getLeftMouseDown())))
+                        // Pointer focus must never synchronously move a pressed control.
+                        // This applies to legacy scroll containers too: several combo,
+                        // checkbox and button implementations take focus after mouse-down,
+                        // and moving the document before mouse-up cancels the real click.
+                        // Tab focus arrives with neither condition and still reveals.
+                        if (gFocusMgr.childHasMouseCapture(child) ||
+                            (gViewerWindow && gViewerWindow->getLeftMouseDown()))
                         {
                             return;
                         }
