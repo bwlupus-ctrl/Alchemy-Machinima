@@ -132,7 +132,6 @@ public:
                                 scale_image,
                                 commit_on_return,
                                 commit_on_capture_lost,
-                                commit_on_original_rect,
                                 display_pressed_state;
 
         Optional<F32>               hover_glow_amount;
@@ -322,7 +321,6 @@ protected:
     commit_signal_t*            mHeldDownSignal;
 
     S32                         mMouseDownFrame;
-    LLRect                      mMouseDownScreenRect;
     S32                         mMouseHeldDownCount;    // Counter for parameter passed to held-down callback
     F32                         mHeldDownDelay;         // seconds, after which held-down callbacks get called
     S32                         mHeldDownFrameDelay;    // frames, after which held-down callbacks get called
@@ -403,7 +401,6 @@ protected:
 
     bool                        mCommitOnReturn;
     bool                        mCommitOnCaptureLost;
-    bool                        mCommitOnOriginalRect;
     bool                        mFadeWhenDisabled;
     bool                        mForcePressedState;
     bool                        mDisplayPressedState;

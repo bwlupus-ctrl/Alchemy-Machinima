@@ -111,7 +111,6 @@ LLButton::Params::Params()
     hover_glow_amount("hover_glow_amount"),
     commit_on_return("commit_on_return", true),
     commit_on_capture_lost("commit_on_capture_lost", false),
-    commit_on_original_rect("commit_on_original_rect", false),
     display_pressed_state("display_pressed_state", true),
     use_draw_context_alpha("use_draw_context_alpha", true),
     draw_focus_border("draw_focus_border", true),
@@ -183,7 +182,6 @@ LLButton::LLButton(const LLButton::Params& p)
     mHoverGlowStrength(p.hover_glow_amount),
     mCommitOnReturn(p.commit_on_return),
     mCommitOnCaptureLost(p.commit_on_capture_lost),
-    mCommitOnOriginalRect(p.commit_on_original_rect),
     mFadeWhenDisabled(false),
     mForcePressedState(false),
     mDisplayPressedState(p.display_pressed_state),
@@ -502,7 +500,6 @@ bool LLButton::handleMouseDown(S32 x, S32 y, MASK mask)
     if (!childrenHandleMouseDown(x, y, mask))
     {
         // Route future Mouse messages here preemptively.  (Release on mouse up.)
-        mMouseDownScreenRect = calcScreenRect();
         gFocusMgr.setMouseCapture( this );
 
         if (hasTabStop() && !getIsChrome())
@@ -565,11 +562,7 @@ bool LLButton::handleMouseUp(S32 x, S32 y, MASK mask)
 
         // DO THIS AT THE VERY END to allow the button to be destroyed as a result of being clicked.
         // If mouseup in the widget, it's been clicked
-        S32 screen_x = 0;
-        S32 screen_y = 0;
-        localPointToScreen(x, y, &screen_x, &screen_y);
-        if (pointInView(x, y) ||
-            (mCommitOnOriginalRect && mMouseDownScreenRect.pointInRect(screen_x, screen_y)))
+        if (pointInView(x, y))
         {
             if (getSoundFlags() & MOUSE_UP)
             {

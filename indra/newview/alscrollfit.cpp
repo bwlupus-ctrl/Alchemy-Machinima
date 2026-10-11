@@ -345,7 +345,10 @@ bool FocusTracker::install(LLScrollContainer* sc, LLView* document, LLView* pare
 {
     LL_PROFILE_ZONE_NAMED_CATEGORY_UI("ALScrollFocus install");
     if (!sc || installed(sc)) return false;
-    ALScrollFocus::install(sc, document, parent);
+    // ALKitScroller owns a pointer-driven v2 page. Its button captures before
+    // taking focus, so synchronous focus reveal would move the pressed control.
+    // Legacy/stock scrollers retain their existing focus-reveal behaviour.
+    ALScrollFocus::install(sc, document, parent, !dynamic_cast<ALKitScroller*>(sc));
     mDone.push_back(sc);
     return true;
 }

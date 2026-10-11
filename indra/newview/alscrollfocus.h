@@ -10,6 +10,7 @@
 #ifndef AL_SCROLLFOCUS_H
 #define AL_SCROLLFOCUS_H
 
+#include "llfocusmgr.h"
 #include "llscrollcontainer.h"
 
 #include <algorithm>
@@ -32,7 +33,7 @@ namespace detail
 struct Entry
 {
     const LLScrollContainer* scroller;
-    std::weak_ptr<void> token;
+    std::weak_ptr<bool> token;
 };
 using Registry = std::unordered_map<const LLView*, std::vector<Entry>>;
 
@@ -44,7 +45,8 @@ inline Registry& registry()
 
 // Returns the token the new slot must own, or nullptr when (control, scroller) already
 // has a live scroll-focus slot.
-inline std::shared_ptr<void> claim(const LLView* control, const LLScrollContainer* scroller)
+inline std::shared_ptr<bool> claim(const LLView* control, const LLScrollContainer* scroller,
+                                   bool reveal_pointer_focus)
 {
     Registry& reg = registry();
     static size_t prune_at = 256;
@@ -69,13 +71,17 @@ inline std::shared_ptr<void> claim(const LLView* control, const LLScrollContaine
         }
         if (it->scroller == scroller)
         {
+            if (std::shared_ptr<bool> existing_token = it->token.lock())
+            {
+                *existing_token = *existing_token && reveal_pointer_focus;
+            }
             return nullptr;
         }
         ++it;
     }
-    std::shared_ptr<void> token = std::make_shared<char>(0);
-    v.push_back({scroller, token});
-    return token;
+    std::shared_ptr<bool> slot_token = std::make_shared<bool>(reveal_pointer_focus);
+    v.push_back({scroller, slot_token});
+    return slot_token;
 }
 } // namespace detail
 
@@ -84,7 +90,8 @@ inline std::shared_ptr<void> claim(const LLView* control, const LLScrollContaine
 // the focused control inside the visible viewport. [ScrollFit] Idempotent per
 // (control, scroller): a control that already has a scroll-focus slot for this
 // scroller is skipped, so repeated or overlapping installs never stack callbacks.
-inline void install(LLScrollContainer* scroller, LLView* document, LLView* parent)
+inline void install(LLScrollContainer* scroller, LLView* document, LLView* parent,
+                    bool reveal_pointer_focus = true)
 {
     if (!scroller || !document || !parent)
     {
@@ -95,11 +102,18 @@ inline void install(LLScrollContainer* scroller, LLView* document, LLView* paren
     {
         if (LLUICtrl* control = dynamic_cast<LLUICtrl*>(child))
         {
-            if (std::shared_ptr<void> token = detail::claim(control, scroller))
+            if (std::shared_ptr<bool> token = detail::claim(control, scroller, reveal_pointer_focus))
             {
                 control->setFocusReceivedCallback(
                     [scroller, document, child, token](LLFocusableElement*)
                     {
+                        // Kit controls take focus after their button captures the mouse.
+                        // Revealing then moves the document between press and release.
+                        // Keyboard focus still needs the normal reveal for Tab navigation.
+                        if (!*token && gFocusMgr.childHasMouseCapture(child))
+                        {
+                            return;
+                        }
                         const LLRect local_rect(0, child->getRect().getHeight(),
                                                 child->getRect().getWidth(), 0);
                         LLRect document_rect;
@@ -110,7 +124,7 @@ inline void install(LLScrollContainer* scroller, LLView* document, LLView* paren
                     });
             }
         }
-        install(scroller, document, child);
+        install(scroller, document, child, reveal_pointer_focus);
     }
 }
 

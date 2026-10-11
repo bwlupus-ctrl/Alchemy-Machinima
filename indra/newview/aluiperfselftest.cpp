@@ -3032,6 +3032,10 @@ private:
             }
         } recorder(deepest);
         bool toolmgr = false;
+        // Capture geometry after all preflight/hover work and immediately before
+        // the down event. A pointer click must not move its target before mouse-up.
+        const LLRect rect_before_down = expected->calcScreenRect();
+        mFunctionalObserved["click"]["rect_before_down"] = functionalRect(rect_before_down);
         const bool down = gViewerWindow->handleAnyMouseClick(
             gViewerWindow->getWindow(), gl, MASK_NONE, CLICK_LEFT, true, toolmgr);
         const std::string down_path = LLView::sMouseHandlerMessage;
@@ -3066,7 +3070,10 @@ private:
         gViewerWindow->handleMouseMove(gViewerWindow->getWindow(), release_gl, MASK_NONE);
         // Diagnose clicks that are handled but don't commit: did the target move between
         // down and up (e.g. a scroll-to-focus jump), or did something else take the capture?
-        mFunctionalObserved["click"]["rect_before_up"] = functionalRect(expected->calcScreenRect());
+        const LLRect rect_before_up = expected->calcScreenRect();
+        const bool target_stable = rect_before_up == rect_before_down;
+        mFunctionalObserved["click"]["rect_before_up"] = functionalRect(rect_before_up);
+        mFunctionalObserved["click"]["layout_stable"] = target_stable;
         {
             LLMouseHandler* captor_before_up = gFocusMgr.getMouseCapture();
             LLView* captor_view = dynamic_cast<LLView*>(captor_before_up);
@@ -3117,6 +3124,11 @@ private:
             else
                 mFunctionalLastClickReason = "foreign capture after dispatch: " +
                     (stuck_view ? functionalViewPath(stuck_view) : std::string("<non-view mouse handler>"));
+            return false;
+        }
+        if (!target_stable)
+        {
+            mFunctionalLastClickReason = "target moved during click (layout shift)";
             return false;
         }
         mFunctionalLastClickReason = handler ? std::string() :
