@@ -702,6 +702,31 @@ def build_csv_entry(idx, r, v, xi, settings, page_meta):
         entry["test_value_resolved"] = test_resolved
     if r.get("v2_loss") and v == "v2" and r["v2_loss"] not in ("", "0"):
         entry["probe"] = "v2_loss"
+    if v == "v2":
+        # These code-bound controls do not own a setting with the widget's
+        # name.  Point each functional row at state its shipping callback
+        # actually writes (alpanelcinelightrig.cpp).
+        code_oracles = {
+            "cine_easy_rim": ("CineLightRigRimEV", "F32", -2.5, -1.0),
+            "cine_easy_bg": ("CineLightRigBgOn", "Boolean", True, False),
+            "cine_easy_cone_width": ("CineLightRigKeyBeam", "S32", 0, 2),
+            "cine_easy_flare_preset": ("RenderCineLensFlarePreset", "S32", 1, 0),
+            "cine_easy_night_mask_preset": ("CineLightRigNightMaskShape", "S32", 1, 0),
+        }
+        if name in code_oracles:
+            oracle_setting, oracle_type, oracle_value, oracle_pre_value = code_oracles[name]
+            entry["expect"] = {"setting": oracle_setting, "type": oracle_type,
+                               "value": oracle_value, "callback": owner,
+                               "commit": True}
+            entry["oracle_pre_value"] = oracle_pre_value
+            entry["restore"] = {"setting": oracle_setting,
+                                "value": settings.get(oracle_setting, {}).get("default")}
+        if name == "cine_fixture_role":
+            # Selecting Fill must refresh the role-owned fixture editors.  Give
+            # that role a distinct Kelvin witness so visible-state comparison
+            # proves onFixtureRoleCommit updated the panel's selected fixture.
+            entry["reset_prestate"] = {"CineLightRigFillKelvin": 6500.0}
+            entry["probe"] = "fixture_role"
     if name in ("FlycamOperatorModeBlendTime", "FlycamOperatorSimulationHz") and v == "v2":
         entry["probe"] = "operator_v2_missing"
     if suspect:

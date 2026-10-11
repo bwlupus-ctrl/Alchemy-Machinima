@@ -394,6 +394,12 @@ def prepare_manifest(path: Path, repo: Path, output: Path) -> tuple[int, int, in
                 prereqs.append({"setting": "CineLightRigRatioLock", "value": False,
                                 "source": "ALPanelCineLightRig::syncDerivedStatus fill EV gate"})
                 seen.add(("CineLightRigRatioLock", False))
+        if row.get("version") == "v2" and row.get("page") == "light_rim_tab" and \
+                widget.startswith("cine_rig_rim_tron_") and \
+                ("CineRigRimEnabled", True) not in seen:
+            prereqs.append({"setting": "CineRigRimEnabled", "value": True,
+                            "source": "ALRigRimController::tickRefresh visibility gate"})
+            seen.add(("CineRigRimEnabled", True))
 
         # The who-picker's backing combo is intentionally hidden; the visible
         # interaction is the cast rail/chip, covered by selector probes.

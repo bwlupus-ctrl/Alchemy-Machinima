@@ -1624,6 +1624,15 @@ private:
         if (!mDirectorV2 || entry["probe"].asString() == "selector_segment") return;
         const std::string setting = entry["expect"]["setting"].asString();
         const std::string widget = entry["widget_name"].asString();
+        if (entry["page"].asString() == "light_rim_tab" &&
+            widget.compare(0, 18, "cine_rig_rim_tron_") == 0)
+        {
+            // ALRigRimController::tickRefresh owns this subtree's visibility.
+            // Establish its master before the lazy page's first refresh; doing
+            // it after reveal can miss the six-frame settlement window.
+            rememberFunctionalSetting("CineRigRimEnabled");
+            functionalSetControl(gSavedSettings.getControl("CineRigRimEnabled").get(), true);
+        }
         if (widget.compare(0, 16, "cine_catchlight_") == 0)
         {
             rememberFunctionalSetting("CineLightRigCatchlight");
@@ -2066,6 +2075,18 @@ private:
     bool prepareFunctionalPrerequisite(const LLSD& entry, LLUICtrl* control)
     {
         bool ok = true;
+        const std::string widget = entry["widget_name"].asString();
+        if (mDirectorV2 && widget.find("actor_only") != std::string::npos &&
+            widget != "cine_actor_only_all")
+        {
+            // Opening/selecting the lazy Rig page can reload its slot after
+            // prepareFunctionalSelector().  Re-establish the two documented
+            // Actor-only gates now that the real page exists.
+            rememberFunctionalSetting("CineLightRigActorOnlyAll");
+            ok = functionalSetControl(
+                gSavedSettings.getControl("CineLightRigActorOnlyAll").get(), false) && ok;
+            ALCineLightRigManager::instance().selected().setObjectTarget(LLUUID::null);
+        }
         const std::string enable_widget = entry["enable_widget"].asString();
         if (!enable_widget.empty() && mFunctionalPageRoot)
         {
@@ -2421,6 +2442,15 @@ private:
                 functionalPointerClick();
             }
             control->setValue(mFunctionalOriginalControlValue);
+            if (mDirectorV2 &&
+                mFunctionalEntries[mFunctionalIndex]["widget_name"].asString() ==
+                "cine_fixture_role")
+            {
+                // The role is code-owned panel state.  Restore through its
+                // public commit path so later fixture rows address the role
+                // shown by the combo instead of the previously exercised one.
+                control->onCommit();
+            }
         }
         // Restore auto-Custom preset selectors before their owned settings,
         // and keep every write under the materializing guard.  Otherwise an
@@ -2863,6 +2893,16 @@ private:
         }
         S32 local_x = target->getLocalRect().getCenterX();
         const S32 local_y = target->getLocalRect().getCenterY();
+        if (ALKitSwitch* kit_switch = mDirectorV2 ?
+                dynamic_cast<ALKitSwitch*>(control) : nullptr)
+        {
+            // Exercise the visible knob, not the midpoint of the custom-drawn
+            // track.  The child button spans the switch, while the user-facing
+            // affordance is centred at x=9/25 (alkitswitch.cpp).
+            local_x = llclamp(kit_switch->isOn() ? 25 : 9,
+                              target->getLocalRect().mLeft + 1,
+                              target->getLocalRect().mRight - 1);
+        }
         if (dynamic_cast<LLSlider*>(target))
         {
             const LLSD& entry = mFunctionalEntries[mFunctionalIndex];
@@ -3362,16 +3402,19 @@ private:
         // Runtime-populated combos do not necessarily put their current item
         // at zero.  A real click on the already-selected item can commit yet
         // exercise no state; select a reachable alternate when possible.
-        if (LLScrollListItem* selected = list->getItemByIndex(index);
-            selected && selected->getValue() == combo->getValue())
+        if (runtime_item || !mDirectorV2)
         {
-            for (S32 candidate = 0; candidate < list->getItemCount(); ++candidate)
+            if (LLScrollListItem* selected = list->getItemByIndex(index);
+                selected && selected->getValue() == combo->getValue())
             {
-                LLScrollListItem* item = list->getItemByIndex(candidate);
-                if (item && item->getEnabled() && item->getValue() != combo->getValue())
+                for (S32 candidate = 0; candidate < list->getItemCount(); ++candidate)
                 {
-                    index = candidate;
-                    break;
+                    LLScrollListItem* item = list->getItemByIndex(candidate);
+                    if (item && item->getEnabled() && item->getValue() != combo->getValue())
+                    {
+                        index = candidate;
+                        break;
+                    }
                 }
             }
         }
@@ -3843,17 +3886,31 @@ private:
         // The pre-state must hold for the bound SETTING as well as the widget: a prerequisite
         // may already have written the setting while the widget hasn't resynced yet.
         bool toggle_setting_at_target = false;
-        if (entry["exercise"].asString() == "toggle" && entry["expect"]["setting"].isString())
+        LLControlVariable* toggle_setting = nullptr;
+        if (mDirectorV2 && entry["exercise"].asString() == "toggle" &&
+            entry["expect"]["setting"].isString())
             if (LLControlVariable* bound = gSavedSettings.getControl(entry["expect"]["setting"].asString()).get()) // ui-draw-lint: allow(setting) test-only toggle pre-state
+            {
+                toggle_setting = bound;
                 toggle_setting_at_target = bound->getValue().asBoolean() == entry["test_value"].asBoolean();
+            }
         if (entry["exercise"].asString() == "toggle" &&
             (control->getValue().asBoolean() == entry["test_value"].asBoolean() || toggle_setting_at_target))
         {
-            control->setValue(!entry["test_value"].asBoolean());
-            control->onCommit();
+            const bool pre_value = !entry["test_value"].asBoolean();
+            if (toggle_setting)
+                toggle_setting->setValue(pre_value, false); // ui-draw-lint: allow(setting-write) bounded toggle pre-state
+            else
+            {
+                control->setValue(pre_value);
+                control->onCommit();
+            }
             mFunctionalObserved["prestate"]["programmatic"] = true;
             mFunctionalObserved["prestate"]["value"] = control->getValue();
-            if (control->getValue().asBoolean() == entry["test_value"].asBoolean())
+            const bool setting_ready = !toggle_setting ||
+                toggle_setting->getValue().asBoolean() == pre_value;
+            if (control->getValue().asBoolean() == entry["test_value"].asBoolean() ||
+                !setting_ready)
             {
                 addFunctionalResult(entry, "FAIL", "toggle pre-state could not be established");
                 restoreFunctionalAction();
@@ -3867,6 +3924,40 @@ private:
                 ++mFunctionalIndex;
                 return;
             }
+        }
+        if (LLComboBox* combo = dynamic_cast<LLComboBox*>(control);
+            mDirectorV2 && combo && entry["exercise"].asString() == "select_item" &&
+            entry["test_value"].isMap() &&
+            entry["test_value"]["resolve"].asString() != "runtime" &&
+            entry["test_value"].has("item_index"))
+        {
+            const S32 target_index = entry["test_value"]["item_index"].asInteger();
+            if (combo->getCurrentIndex() == target_index)
+            {
+                for (LLScrollListItem* item : combo->getAllData())
+                {
+                    if (!item || !item->getEnabled() || item->getValue() == combo->getValue())
+                        continue;
+                    combo->setSelectedByValue(item->getValue(), true);
+                    combo->onCommit();
+                    mFunctionalObserved["prestate"]["combo_index"] = combo->getCurrentIndex();
+                    break;
+                }
+            }
+        }
+        if (LLSliderCtrl* slider_ctrl = dynamic_cast<LLSliderCtrl*>(control);
+            mDirectorV2 && slider_ctrl && entry["exercise"].asString() == "set_value" &&
+            is_approx_equal((F32)slider_ctrl->getValue().asReal(),
+                            (F32)entry["test_value"].asReal()))
+        {
+            const F64 target = entry["test_value"].asReal();
+            const F64 step = entry["increment"].isDefined() ?
+                llabs(entry["increment"].asReal()) : 0.01;
+            const F64 alternate = target - step >= entry["min"].asReal() ?
+                target - step : llmin(entry["max"].asReal(), target + step);
+            slider_ctrl->setValue((F32)alternate);
+            slider_ctrl->onCommit();
+            mFunctionalObserved["prestate"]["slider"] = slider_ctrl->getValue();
         }
         if (ALCompassDial* dial = dynamic_cast<ALCompassDial*>(control);
             dial && entry["increment"].isDefined())
