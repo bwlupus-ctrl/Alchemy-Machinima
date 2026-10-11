@@ -3064,6 +3064,15 @@ private:
             mFunctionalObserved["click"]["combo_open_release_outside_list"] = true;
         }
         gViewerWindow->handleMouseMove(gViewerWindow->getWindow(), release_gl, MASK_NONE);
+        // Diagnose clicks that are handled but don't commit: did the target move between
+        // down and up (e.g. a scroll-to-focus jump), or did something else take the capture?
+        mFunctionalObserved["click"]["rect_before_up"] = functionalRect(expected->calcScreenRect());
+        {
+            LLMouseHandler* captor_before_up = gFocusMgr.getMouseCapture();
+            LLView* captor_view = dynamic_cast<LLView*>(captor_before_up);
+            mFunctionalObserved["click"]["captor_before_up"] = !captor_before_up ? LLSD("<none>") :
+                LLSD(captor_view ? captor_view->getPathname() : std::string("<non-view>"));
+        }
         deepest = nullptr;
         const bool up = gViewerWindow->handleAnyMouseClick(
             gViewerWindow->getWindow(), release_gl, MASK_NONE, CLICK_LEFT, false, toolmgr);
