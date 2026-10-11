@@ -1623,6 +1623,16 @@ private:
     {
         if (!mDirectorV2 || entry["probe"].asString() == "selector_segment") return;
         const std::string setting = entry["expect"]["setting"].asString();
+        const std::string widget = entry["widget_name"].asString();
+        if (widget.compare(0, 16, "cine_catchlight_") == 0)
+        {
+            rememberFunctionalSetting("CineLightRigCatchlight");
+            rememberFunctionalSetting("CineLightRigActorOnlyAll");
+            if (LLControlVariable* catchlight = gSavedSettings.getControl("CineLightRigCatchlight").get())
+                catchlight->setValue(true, false); // ui-draw-lint: allow(setting-write) test-only card prerequisite
+            if (LLControlVariable* all = gSavedSettings.getControl("CineLightRigActorOnlyAll").get())
+                all->setValue(false, false); // ui-draw-lint: allow(setting-write) test-only catchlight prerequisite
+        }
         if (setting.compare(0, 12, "CineLightRig") != 0 &&
             setting.compare(0, 10, "CineRigRim") != 0) return;
         const S32 index = functionalLightIndex(setting);
@@ -1632,6 +1642,32 @@ private:
             mFunctionalRestore.emplace("DirectorV2SelectedLight",
                 SavedControlState{selected->get(), selected->getSaveValue(), selected->hasUnsavedValue()});
             selected->setValue(index, false); // ui-draw-lint: allow(setting-write) test-only selector reveal before input
+        }
+        if (setting.compare(0, 12, "CineLightRig") == 0)
+        {
+            static const char* const role_on[] = {
+                "CineLightRigKeyOn", "CineLightRigFillOn",
+                "CineLightRigRimOn", "CineLightRigBgOn"
+            };
+            if (index >= 0 && index < 4)
+            {
+                rememberFunctionalSetting(role_on[index]);
+                if (LLControlVariable* enabled = gSavedSettings.getControl(role_on[index]).get())
+                    enabled->setValue(true, false); // ui-draw-lint: allow(setting-write) test-only selected-light prerequisite
+            }
+            if (widget.compare(0, 10, "cine_easy_") != 0)
+            {
+                rememberFunctionalSetting("CineLightRigEasyMode");
+                if (LLControlVariable* easy = gSavedSettings.getControl("CineLightRigEasyMode").get())
+                    easy->setValue(false, false); // ui-draw-lint: allow(setting-write) test-only advanced-control prerequisite
+            }
+            if (widget.find("actor_only") != std::string::npos &&
+                widget != "cine_actor_only_all")
+            {
+                rememberFunctionalSetting("CineLightRigActorOnlyAll");
+                if (LLControlVariable* all = gSavedSettings.getControl("CineLightRigActorOnlyAll").get())
+                    all->setValue(false, false); // ui-draw-lint: allow(setting-write) test-only per-light prerequisite
+            }
         }
     }
 
@@ -2443,6 +2479,8 @@ private:
         mFunctionalLauncherFloater = LLHandle<LLFloater>();
         mFunctionalLauncherWasOpen = false;
         mFunctionalExercise.clear();
+        mFunctionalSettingName.clear();
+        mFunctionalDynamicSetting = false;
         mFunctionalGatePrepared = false;
         mFunctionalRevealPending = false;
         mFunctionalClickTarget = LLHandle<LLView>();
@@ -2962,11 +3000,27 @@ private:
         // A shipping click always has a cursor position/hover frame between
         // press and release.  Nested kit switches and popup captors depend on
         // that same frame state even when the pointer itself does not move.
-        gViewerWindow->handleMouseMove(gViewerWindow->getWindow(), gl, MASK_NONE);
+        LLCoordGL release_gl = gl;
+        if (LLScrollListCtrl* combo_list = dynamic_cast<LLScrollListCtrl*>(captor);
+            combo_list && captor == mFunctionalAllowedCaptor && combo_list->getVisible())
+        {
+            // The combo transfers capture to its list during button-down.  A
+            // clamped popup can put stale/undrawn item geometry under the
+            // button, so release just outside the list exactly as a user can
+            // before making the second, item-selection click.
+            const LLRect items = combo_list->getItemListRect();
+            S32 release_x = 0, release_y = 0;
+            combo_list->localPointToScreen(items.mLeft - 2, items.mBottom - 2,
+                                           &release_x, &release_y);
+            release_gl.set(ll_round((F32)release_x * gViewerWindow->getDisplayScale().mV[VX]),
+                           ll_round((F32)release_y * gViewerWindow->getDisplayScale().mV[VY]));
+            mFunctionalObserved["click"]["combo_open_release_outside_list"] = true;
+        }
+        gViewerWindow->handleMouseMove(gViewerWindow->getWindow(), release_gl, MASK_NONE);
         gViewerWindow->updateUI();
         deepest = nullptr;
         const bool up = gViewerWindow->handleAnyMouseClick(
-            gViewerWindow->getWindow(), gl, MASK_NONE, CLICK_LEFT, false, toolmgr);
+            gViewerWindow->getWindow(), release_gl, MASK_NONE, CLICK_LEFT, false, toolmgr);
         const std::string up_path = deepest ? deepest->getPathname() :
             LLView::sMouseHandlerMessage;
         // Opening a combo transfers capture from its button to its list.  The
@@ -3101,7 +3155,20 @@ private:
         }
         mFunctionalLastClickReason = handler ? std::string() :
             "real slider drag was handled outside target";
-        return down && up && captured && handler;
+        if (!(down && up && captured && handler)) return false;
+        S32 nudges = 0;
+        while (!functionalEqual(slider->getValue(), target_value, "F32", slider->getIncrement()) &&
+               nudges < 512)
+        {
+            const KEY key = slider->getValue().asReal() < target_value.asReal() ?
+                KEY_RIGHT : KEY_LEFT;
+            // Deliver straight to the slider (never window key routing): no keystroke can reach
+            // the login panel, a menu or the world camera.
+            if (!slider->handleKeyHere(key, MASK_NONE)) break;
+            ++nudges;
+        }
+        if (nudges) mFunctionalObserved["click"]["keyboard_nudges"] = nudges;
+        return functionalEqual(slider->getValue(), target_value, "F32", slider->getIncrement());
     }
 
     bool functionalPointerDrag(ALCompassDial* dial, const LLSD& target_value,
@@ -3207,7 +3274,19 @@ private:
         }
         mFunctionalLastClickReason = handler ? std::string() :
             "real drag was handled outside target";
-        return down && up && captured && handler;
+        if (!(down && up && captured && handler)) return false;
+        S32 nudges = 0;
+        const LLSD& increment = mFunctionalEntries[mFunctionalIndex]["increment"];
+        while (!functionalEqual(dial->getValue(), target_value, "F32", increment) &&
+               nudges < 512)
+        {
+            const KEY key = dial->getValue().asReal() < target_value.asReal() ?
+                KEY_RIGHT : KEY_LEFT;
+            if (!dial->handleKeyHere(key, MASK_NONE)) break; // direct, never window key routing
+            ++nudges;
+        }
+        if (nudges) mFunctionalObserved["click"]["keyboard_nudges"] = nudges;
+        return functionalEqual(dial->getValue(), target_value, "F32", increment);
     }
 
     bool functionalExerciseComboByIndex(LLComboBox* combo, const LLSD& test)
@@ -3257,7 +3336,7 @@ private:
             }
         }
         index = llclamp(index, 0, list->getItemCount() - 1);
-        const S32 page_lines = llmax(1, list->getPageLines());
+        const S32 page_lines = llmax(1, list->getLinesPerPage());
         const S32 wanted_scroll = index < list->getScrollPos() ? index :
             (index >= list->getScrollPos() + page_lines ? index - page_lines + 1 :
              list->getScrollPos());
@@ -3311,7 +3390,7 @@ private:
             if (LLScrollListItem* item = list->getItemByIndex(i); item && item->getValue() == value)
             { index = i; break; }
         if (index < 0) return false;
-        const S32 page_lines = llmax(1, list->getPageLines());
+        const S32 page_lines = llmax(1, list->getLinesPerPage());
         const S32 wanted_scroll = index < list->getScrollPos() ? index :
             (index >= list->getScrollPos() + page_lines ? index - page_lines + 1 :
              list->getScrollPos());
@@ -3493,6 +3572,28 @@ private:
         const bool clicked = reachable && functionalPointerClick();
         mFunctionalControl = target_control->getDerivedHandle<LLUICtrl>();
         return clicked;
+    }
+
+    std::string functionalOracleSetting(const LLSD& entry, LLUICtrl* control)
+    {
+        std::string setting = entry["expect"]["setting"].asString();
+        if (!setting.empty()) return setting;
+        const std::string widget = entry["widget_name"].asString();
+        if (widget.compare(0, 13, "cine_fixture_") != 0 || !mFunctionalPageRoot)
+            return {};
+        LLComboBox* role = mFunctionalPageRoot->findChild<LLComboBox>("cine_fixture_role", true);
+        static const char* const roles[] = { "Key", "Fill", "Rim", "Bg" };
+        const S32 index = role ? llclamp(role->getValue().asInteger(), 0, 3) : 0;
+        std::string suffix;
+        if (widget == "cine_fixture_mode") suffix = "FixtureMode";
+        else if (widget == "cine_fixture_preset") suffix = "FixturePreset";
+        else if (widget == "cine_fixture_kelvin") suffix = "Kelvin";
+        else if (widget == "cine_fixture_source_size") suffix = "SourceSizeM";
+        else if (widget.compare(0, 17, "cine_fixture_gel_") == 0)
+            suffix = "GelSlot" + widget.substr(17);
+        if (suffix.empty()) return {};
+        mFunctionalDynamicSetting = true;
+        return std::string("CineLightRig") + roles[index] + suffix;
     }
 
     // ui-draw-lint: allow-function(setting,lookup) isolated test-only gate assertion
@@ -3730,8 +3831,10 @@ private:
             // callback site. Its slot and this witness share the same synchronous
             // commit signal, so observing that signal proves the owner ran.
             mFunctionalHandlerName = "source:" + entry["owner"].asString();
-        const std::string setting = entry["expect"]["setting"].asString();
-        mFunctionalSetting = gSavedSettings.getControl(setting).get();
+        mFunctionalDynamicSetting = false;
+        mFunctionalSettingName = functionalOracleSetting(entry, control);
+        rememberFunctionalSetting(mFunctionalSettingName);
+        mFunctionalSetting = gSavedSettings.getControl(mFunctionalSettingName).get();
         mFunctionalBefore = mFunctionalSetting ? mFunctionalSetting->getValue() : LLSD();
         mFunctionalHistoryBefore = ALExposureSettingsHistory::revision();
         std::ostringstream before;
@@ -3780,7 +3883,10 @@ private:
             ++mFunctionalIndex;
             return;
         }
-        if (mFunctionalRevealFrames < 1) return;
+        // Selector/card changes and scroll-to-child layout are idle-deferred.
+        // One complete frame after the first reveal keeps the down/up gesture
+        // on the same final control rect instead of the shell beneath it.
+        if (mFunctionalRevealFrames < 2) return;
         mFunctionalRevealPending = false;
         if (entry["action"].asString() == "DEFER_INWORLD")
         {
@@ -3895,7 +4001,14 @@ private:
         const LLSD& entry = mFunctionalEntries[mFunctionalIndex];
         LLUICtrl* control = mFunctionalControl.get();
         LLSD expected = entry["expect"]["value"];
-        const std::string type = entry["expect"]["type"].asString();
+        std::string type = entry["expect"]["type"].asString();
+        if (mFunctionalDynamicSetting)
+        {
+            expected = control ? control->getValue() : LLSD();
+            if (dynamic_cast<LLCheckBoxCtrl*>(control)) type = "Boolean";
+            else if (dynamic_cast<LLComboBox*>(control)) type = "S32";
+            else type = "F32";
+        }
         if (entry["exercise"].asString() == "toggle")
             expected = !mFunctionalBefore.asBoolean();
         else if (expected.isMap() && expected["resolve"].asString() == "runtime" &&
@@ -3914,7 +4027,7 @@ private:
         bool owner_state_changed = false;
         bool expected_ok = true;
         std::string assertion_failure;
-        if (entry["expect"].has("setting"))
+        if (!mFunctionalSettingName.empty())
         {
             expected_ok = mFunctionalSetting &&
                 functionalEqual(actual, expected, type, entry["increment"]);
@@ -3936,7 +4049,7 @@ private:
         mFunctionalObserved["owner"]["resolved"] = !mFunctionalHandlerName.empty();
         mFunctionalObserved["owner"]["instrumented_runs"] = mFunctionalHandlerRunCount;
         mFunctionalObserved["owner"]["state_changed"] = owner_state_changed;
-        mFunctionalObserved["setting"]["name"] = entry["expect"]["setting"].asString();
+        mFunctionalObserved["setting"]["name"] = mFunctionalSettingName;
         mFunctionalObserved["setting"]["before"] = mFunctionalBefore;
         mFunctionalObserved["setting"]["after"] = actual;
         mFunctionalObserved["widget"]["before"] = mFunctionalControlBefore;
@@ -7215,6 +7328,8 @@ private:
     LLSD mFunctionalSecondaryBefore;
     std::string mFunctionalExercise;
     std::string mFunctionalHandlerName;
+    std::string mFunctionalSettingName;
+    bool mFunctionalDynamicSetting = false;
     boost::signals2::connection mFunctionalCommitConnection;
     S32 mFunctionalCommitCount = 0;
     S32 mFunctionalHandlerRunCount = 0;

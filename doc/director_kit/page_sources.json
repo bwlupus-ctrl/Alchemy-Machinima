@@ -110643,6 +110643,19 @@
                 "name": "cine_light_rig_tab_logic",
                 "line": 3
               }
+            },
+            {
+              "kind": "cpp",
+              "reason": "reference is not in a class that owns/builds this page's XUI",
+              "file": "indra/newview/aluiperfselftest.cpp",
+              "line": 1665,
+              "class": null,
+              "function": null,
+              "wired_class": null,
+              "wired_function": null,
+              "pattern": null,
+              "wiring_only": false,
+              "text": "widget != \"cine_actor_only_all\")"
             }
           ],
           "unresolved": [],
@@ -111064,6 +111077,19 @@
                 "name": "cine_light_rig_tab_logic",
                 "line": 3
               }
+            },
+            {
+              "kind": "cpp",
+              "reason": "reference is not in a class that owns/builds this page's XUI",
+              "file": "indra/newview/aluiperfselftest.cpp",
+              "line": 3584,
+              "class": null,
+              "function": null,
+              "wired_class": null,
+              "wired_function": null,
+              "pattern": null,
+              "wiring_only": true,
+              "text": "LLComboBox* role = mFunctionalPageRoot->findChild<LLComboBox>(\"cine_fixture_role\", true);"
             }
           ],
           "unresolved": [],
@@ -111143,6 +111169,19 @@
                 "name": "cine_light_rig_tab_logic",
                 "line": 3
               }
+            },
+            {
+              "kind": "cpp",
+              "reason": "reference is not in a class that owns/builds this page's XUI",
+              "file": "indra/newview/aluiperfselftest.cpp",
+              "line": 3588,
+              "class": null,
+              "function": null,
+              "wired_class": null,
+              "wired_function": null,
+              "pattern": null,
+              "wiring_only": false,
+              "text": "if (widget == \"cine_fixture_mode\") suffix = \"FixtureMode\";"
             }
           ],
           "unresolved": [],
@@ -111236,6 +111275,19 @@
                 "name": "cine_light_rig_tab_logic",
                 "line": 3
               }
+            },
+            {
+              "kind": "cpp",
+              "reason": "reference is not in a class that owns/builds this page's XUI",
+              "file": "indra/newview/aluiperfselftest.cpp",
+              "line": 3589,
+              "class": null,
+              "function": null,
+              "wired_class": null,
+              "wired_function": null,
+              "pattern": null,
+              "wiring_only": false,
+              "text": "else if (widget == \"cine_fixture_preset\") suffix = \"FixturePreset\";"
             }
           ],
           "unresolved": [],
@@ -111315,6 +111367,19 @@
                 "name": "cine_light_rig_tab_logic",
                 "line": 3
               }
+            },
+            {
+              "kind": "cpp",
+              "reason": "reference is not in a class that owns/builds this page's XUI",
+              "file": "indra/newview/aluiperfselftest.cpp",
+              "line": 3590,
+              "class": null,
+              "function": null,
+              "wired_class": null,
+              "wired_function": null,
+              "pattern": null,
+              "wiring_only": false,
+              "text": "else if (widget == \"cine_fixture_kelvin\") suffix = \"Kelvin\";"
             }
           ],
           "unresolved": [],
@@ -111394,6 +111459,19 @@
                 "name": "cine_light_rig_tab_logic",
                 "line": 3
               }
+            },
+            {
+              "kind": "cpp",
+              "reason": "reference is not in a class that owns/builds this page's XUI",
+              "file": "indra/newview/aluiperfselftest.cpp",
+              "line": 3591,
+              "class": null,
+              "function": null,
+              "wired_class": null,
+              "wired_function": null,
+              "pattern": null,
+              "wiring_only": false,
+              "text": "else if (widget == \"cine_fixture_source_size\") suffix = \"SourceSizeM\";"
             }
           ],
           "unresolved": [],
@@ -120324,7 +120402,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 3618,
+              "line": 3719,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -143157,7 +143235,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 1656,
+              "line": 1692,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -143170,7 +143248,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 1725,
+              "line": 1761,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -143183,7 +143261,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 1776,
+              "line": 1812,
               "class": null,
               "function": null,
               "wired_class": null,

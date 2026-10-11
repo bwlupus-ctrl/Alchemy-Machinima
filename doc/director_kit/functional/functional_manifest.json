@@ -72814,11 +72814,11 @@
    "suspect": true,
    "hazards": [],
    "exercise": "set_value",
-   "test_value": 1.15,
+   "test_value": 1.0,
    "expect": {
     "setting": "CineLightRigNightMaskDarkness",
     "type": "F32",
-    "value": 1.15,
+    "value": 0.99,
     "callback": "ALPanelCineLightRig::postBuild",
     "commit": true
    },
@@ -81414,11 +81414,11 @@
    "suspect": true,
    "hazards": [],
    "exercise": "set_value",
-   "test_value": 1.15,
+   "test_value": 1.0,
    "expect": {
     "setting": "CineLightRigNightMaskDarkness",
     "type": "F32",
-    "value": 1.15,
+    "value": 0.99,
     "callback": "ALPanelCineLightRig::postBuild",
     "commit": true
    },

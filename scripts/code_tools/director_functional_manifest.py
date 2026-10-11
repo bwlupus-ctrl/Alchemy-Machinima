@@ -142,6 +142,13 @@ POINTER_SLIDER_ENDPOINT_TESTS = {
     ("v2", "temporal_tab", "scale_slider"): 0.0,
 }
 
+# These two controls display whole-percent darkness but deliberately store the
+# inverse 0..1 brightness floor (alpanelcinelightrig.cpp:964-995).
+TRANSFORMED_VALUE_TESTS = {
+    ("v2", "cine_light_rig_tab", "cine_easy_night_mask_darkness"): (1.0, 0.99),
+    ("v2", "cine_light_rig_tab", "cine_night_mask_darkness"): (1.0, 0.99),
+}
+
 
 # ---------------------------------------------------------------- helpers
 
@@ -588,6 +595,9 @@ def build_csv_entry(idx, r, v, xi, settings, page_meta):
     pointer_endpoint = POINTER_SLIDER_ENDPOINT_TESTS.get((v, r["page"], name))
     if pointer_endpoint is not None:
         test_value = test_resolved = pointer_endpoint
+    transformed = TRANSFORMED_VALUE_TESTS.get((v, r["page"], name))
+    if transformed is not None:
+        test_value, test_resolved = transformed
 
     cb = r[v + "_callbacks"]
     owner = owner_from_evidence(r[v + "_evidence"])
