@@ -27,3 +27,5 @@ KNOWN-GOOD (user 10/10, 9:13 PM build): the standalone Cine Light Rig FLOATER wo
 
 10. **Weather rain: switched on but NO visible effect** (9:13 PM build). This is likely RENDER-side, not UI. PRIME SUSPECT: the 10/10 custom water level change (02422bd48fd + minors: LLViewerRegion/LLSurface water-height plumbing, getWaterHeight no-water-object guard, once-per-frame water updates). The weather/rain code may read the water height (underwater camera suppression, rain floor/splash level) and now get a different value even with the override OFF. Compare with AlchemyTest.pre-kitp0.exe (4:02 PM build, which already had the water feature) and the pre-invstress build (no water feature). Also check whether it happens in v1 (DirectorUIV2 off). Asked the user: v1 or v2? Custom water level off?
 
+   - USER: rain is broken in BOTH directors (v1 and v2), so it's render-side and not the Director UI. The custom water level change is the prime suspect.
+
