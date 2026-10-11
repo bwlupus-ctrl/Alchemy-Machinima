@@ -495,7 +495,8 @@ def row_element(row: dict, by_name: dict[str, ET.Element], by_control: dict[str,
                      ("who_picker", "who_picker"), ("hidden", "hidden")):
         if row.get(src):
             attrs[dst] = "true"
-    for src, dst in (("mn", "min_val"), ("mx", "max_val"), ("dc", "decimals")):
+    for src, dst in (("mn", "min_val"), ("mx", "max_val"), ("dc", "decimals"),
+                     ("row_height", "row_height")):
         if src in row:
             attrs[dst] = scalar(row[src])
     if bind == "code" and "d" in row:
@@ -699,6 +700,7 @@ def index_bytes(data: dict, config: dict, classes: dict[str, str], note: str,
         key = f"{group['name']}/{raw_page['name']}"
         classification = classes[key]
         page = apply_config(raw_page, config.get("p0_pages", {}).get(key, {}))
+        page = apply_config(page, config.get("layout_overrides", {}).get(key, {}))
         legacy = classification == "legacy"
         if classification == "launcher":
             page = copy.deepcopy(raw_page)
@@ -756,6 +758,8 @@ def floater_tree(data: dict, page_files: dict[str, str], v1: ET.Element) -> ET.E
     header.text = "CAST"
     for name in ("cast_list", "cast_hint", "group_assign_combo", "btn_add_you", "btn_add_animesh", "btn_focus", "btn_remove"):
         node = copy_chrome(name, v1)
+        if name == "cast_hint":
+            node.set("clip", "true")
         tool_icons = {"btn_add_you": "KitIcon_cast_tool_you_16", "btn_add_animesh": "KitIcon_cast_tool_animesh_16",
                       "btn_focus": "KitIcon_cast_tool_focus_16", "btn_remove": "KitIcon_cast_tool_remove_16"}
         if name in tool_icons:
@@ -777,7 +781,7 @@ def floater_tree(data: dict, page_files: dict[str, str], v1: ET.Element) -> ET.E
             ET.SubElement(tc, "kit_lazy_page", attrs)
     bar = ET.SubElement(shell, "kit_bar", {"name": "kit_transport", "flex": "status_strip",
                         "collapse_order": "kit_ui_ms,btn_reset_marks,btn_scene_delete,status_strip,"
-                                          "btn_cast_chip,btn_help,btn_set_marks,show_paths_global_check"})
+                                          "btn_help,btn_set_marks,show_paths_global_check"})
     widths = {"btn_action": 92, "btn_cut": 92, "btn_arm": 22, "btn_take_play": 28, "btn_take_stop": 28,
               "take_timecode": 90, "scene_combo": 130, "scene_name_editor": 130, "btn_scene_load": 44,
               "btn_scene_save": 50,

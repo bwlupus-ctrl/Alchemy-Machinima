@@ -539,7 +539,8 @@ void ALKitShell::layoutRoster()
         }
     if (hint)
     {
-        hint->reshape(llmax(1, width - 8), 28, true);
+        const S32 hint_height = width < 180 ? 44 : 28;
+        hint->reshape(llmax(1, width - 8), hint_height, true);
         hint->setOrigin(4, 2);
     }
     if (group)
@@ -548,9 +549,10 @@ void ALKitShell::layoutRoster()
     }
     if (list)
     {
-        const S32 list_top = llmax(34, height - ALKitStyle::ROSTER_HDR_H - 4);
-        list->reshape(llmax(1, width - 8), llmax(1, list_top - 34), true);
-        list->setOrigin(4, 34);
+        const S32 list_bottom = hint ? hint->getRect().mTop + 4 : 34;
+        const S32 list_top = llmax(list_bottom + 1, height - ALKitStyle::ROSTER_HDR_H - 4);
+        list->reshape(llmax(1, width - 8), llmax(1, list_top - list_bottom), true);
+        list->setOrigin(4, list_bottom);
     }
 }
 
@@ -821,13 +823,14 @@ std::string ALKitShell::pagePathLabel(const std::string& key) const
 std::vector<std::string> ALKitShell::unwrappedPages() const
 {
     std::vector<std::string> pages;
-    pages.reserve(mRailData.size() + mTabs.size() + 2);
+    pages.reserve(mRailData.size() + mTabs.size() + 3);
     for (const RailData& rail : mRailData)
         pages.push_back(rail.group);
     for (const TabData& tab : mTabs)
         pages.push_back(tab.page);
     pages.push_back("dance_legacy_host");
     pages.push_back("exposure_legacy_host");
+    pages.push_back("ghosts_legacy_host");
     return pages;
 }
 

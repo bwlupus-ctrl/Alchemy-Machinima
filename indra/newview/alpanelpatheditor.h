@@ -31,6 +31,7 @@
 
 class LLButton;
 class LLAccordionCtrl;
+class LLAccordionCtrlTab;
 class LLCheckBoxCtrl;
 class LLComboBox;
 class LLLineEditor;
@@ -74,6 +75,8 @@ private:
     bool ownsEdit() const;
     bool ownsTool() const;
     void installOwnerHooks();
+    void requestDocumentLayout();
+    void layoutDocument();
 
     void refreshHeader();
     void refreshList();
@@ -166,7 +169,7 @@ private:
     std::unordered_set<const LLView*> mOwnerHooked; // [DirFix] idempotent focus hooks
     bool   mEditMode = false;   // our transient tool is armed
     bool   mSuspendShown = false;   // banner visibility last set (avoid churn)
-    S32    mAccordionNormalHeight = 0;
+    bool   mDocumentLayoutPending = false;
 
     // change-diffing snapshot so the list only rebuilds when the geometry/
     // summary of a node actually changed

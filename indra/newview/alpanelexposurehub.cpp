@@ -147,6 +147,22 @@ bool ALPanelExposureHub::postBuild()
     return LLPanel::postBuild();
 }
 
+void ALPanelExposureHub::reshape(S32 width, S32 height, bool called_from_parent)
+{
+    LLPanel::reshape(width, height, called_from_parent);
+    constexpr S32 BUTTON_TOP = 4;
+    constexpr S32 TABS_TOP = 28;
+    if (mUndo)
+        mUndo->setOrigin(4, llmax(0, height - BUTTON_TOP - mUndo->getRect().getHeight()));
+    if (mRedo)
+        mRedo->setOrigin(68, llmax(0, height - BUTTON_TOP - mRedo->getRect().getHeight()));
+    if (mTabs)
+    {
+        mTabs->reshape(width, llmax(1, height - TABS_TOP), true);
+        mTabs->setOrigin(0, 0);
+    }
+}
+
 void ALPanelExposureHub::onVisibilityChange(bool new_visibility)
 {
     if (new_visibility)

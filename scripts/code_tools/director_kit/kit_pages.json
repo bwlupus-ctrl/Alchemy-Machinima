@@ -42,6 +42,7 @@
                    "cine_rig_rim_tron_color": "cine_rig_rim_tron_color_label"}
   }
  },
+ "layout_overrides": {"look_group/bloom_glow_tab": {"row_overrides": {"set_RenderBloomMipCount": {"row_height": 32}}}},
  "launcher_targets": {"look_group/tron_tab": {"target": "lightbox", "target_tab": "tron_settings", "button_label": "Open Tron in Lightbox ›", "help": "Tron is edited in the Lightbox until its page is converted."}},
  "parity_allow": {"cine_rig_rim_preset": "replaced by the kit preset strip (provider rig_rim)",
                   "card_snapshot_open": "retired Director launcher; Snapshot remains in its standalone floater",

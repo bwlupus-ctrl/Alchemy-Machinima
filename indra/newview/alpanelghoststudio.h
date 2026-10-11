@@ -23,6 +23,7 @@
 #include "llpanel.h"
 #include "alghoststudio.h"
 
+#include "alscrollfit.h"
 #include "aluirefresh.h"            // [GhostPanelPerf] revision gates + live clocks
 #include "lluuid.h"
 #include "llframetimer.h"
@@ -51,10 +52,13 @@ public:
     ~ALPanelGhostStudio() override;
 
     bool postBuild() override;
+    void reshape(S32 width, S32 height, bool called_from_parent = true) override;
     void draw() override;
     void onVisibilityChange(bool new_visibility) override;
 
 private:
+    ALScrollFit::Controller mScrollFit;
+
     // ---- refreshers ----
     // [GhostPanelPerf] draw() only consults revisions / clocks and runs diff-guarded
     // writes (CLAUDE.md "UI PANELS MUST NOT DO WORK IN draw()"; aluirefresh.h).

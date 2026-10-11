@@ -412,7 +412,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_actor_mover.xml",
-          "line": 272,
+          "line": 262,
           "widget": "custom_anim_editor",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_actor_mover.xml",
@@ -440,7 +440,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_actor_mover.xml",
-          "line": 282,
+          "line": 272,
           "widget": "custom_anim_priority_combo",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_actor_mover.xml",
@@ -468,7 +468,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_actor_mover.xml",
-          "line": 168,
+          "line": 158,
           "widget": "dist_slider",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_actor_mover.xml",
@@ -479,7 +479,7 @@
         },
         {
           "file": "indra/newview/skins/default/xui/en/panel_actor_mover.xml",
-          "line": 184,
+          "line": 174,
           "widget": "dist_spinner",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_actor_mover.xml",
@@ -508,7 +508,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_actor_mover.xml",
-          "line": 246,
+          "line": 236,
           "widget": "end_mode_combo",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_actor_mover.xml",
@@ -536,7 +536,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_actor_mover.xml",
-          "line": 88,
+          "line": 78,
           "widget": "heading_spinner",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_actor_mover.xml",
@@ -564,7 +564,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_actor_mover.xml",
-          "line": 126,
+          "line": 116,
           "widget": "speed_slider",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_actor_mover.xml",
@@ -575,7 +575,7 @@
         },
         {
           "file": "indra/newview/skins/default/xui/en/panel_actor_mover.xml",
-          "line": 142,
+          "line": 132,
           "widget": "speed_spinner",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_actor_mover.xml",
@@ -603,7 +603,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_actor_mover.xml",
-          "line": 210,
+          "line": 200,
           "widget": "cadence_slider",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_actor_mover.xml",
@@ -614,7 +614,7 @@
         },
         {
           "file": "indra/newview/skins/default/xui/en/panel_actor_mover.xml",
-          "line": 226,
+          "line": 216,
           "widget": "cadence_spinner",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_actor_mover.xml",
@@ -4459,7 +4459,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/floater_ultimate_diopter.xml",
-          "line": 105,
+          "line": 106,
           "widget": "diopter_blend",
           "root": {
             "file": "indra/newview/skins/default/xui/en/floater_ultimate_diopter.xml",
@@ -4487,7 +4487,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/floater_ultimate_diopter.xml",
-          "line": 66,
+          "line": 67,
           "widget": "diopter_enabled",
           "root": {
             "file": "indra/newview/skins/default/xui/en/floater_ultimate_diopter.xml",
@@ -4515,7 +4515,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/floater_ultimate_diopter.xml",
-          "line": 287,
+          "line": 290,
           "widget": "diopter_power",
           "root": {
             "file": "indra/newview/skins/default/xui/en/floater_ultimate_diopter.xml",
@@ -4543,7 +4543,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/floater_ultimate_diopter.xml",
-          "line": 72,
+          "line": 73,
           "widget": "diopter_preset",
           "root": {
             "file": "indra/newview/skins/default/xui/en/floater_ultimate_diopter.xml",
@@ -25194,7 +25194,7 @@
         },
         {
           "file": "indra/newview/skins/default/xui/en/panel_dof.xml",
-          "line": 489,
+          "line": 490,
           "widget": "GuideOpacity",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dof.xml",
@@ -25233,7 +25233,7 @@
         },
         {
           "file": "indra/newview/skins/default/xui/en/panel_dof.xml",
-          "line": 465,
+          "line": 466,
           "widget": "GuideThickness",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dof.xml",
@@ -25440,7 +25440,7 @@
         },
         {
           "file": "indra/newview/skins/default/xui/en/floater_ultimate_diopter.xml",
-          "line": 277,
+          "line": 280,
           "widget": "diopter_focus_crosshair",
           "root": {
             "file": "indra/newview/skins/default/xui/en/floater_ultimate_diopter.xml",
@@ -25518,7 +25518,7 @@
         },
         {
           "file": "indra/newview/skins/default/xui/en/floater_ultimate_diopter.xml",
-          "line": 279,
+          "line": 282,
           "widget": "diopter_focus_locked",
           "root": {
             "file": "indra/newview/skins/default/xui/en/floater_ultimate_diopter.xml",
@@ -31982,7 +31982,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_actor_mover.xml",
-              "line": 301,
+              "line": 290,
               "tag": "button",
               "control_name": null,
               "callbacks": [],
@@ -32045,7 +32045,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_actor_mover.xml",
-              "line": 310,
+              "line": 299,
               "tag": "button",
               "control_name": null,
               "callbacks": [],
@@ -32187,7 +32187,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_actor_mover.xml",
-              "line": 126,
+              "line": 116,
               "tag": "slider",
               "control_name": "ActorMoverSpeed",
               "callbacks": [],
@@ -32211,7 +32211,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_actor_mover.xml",
-              "line": 142,
+              "line": 132,
               "widget": "speed_spinner",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_actor_mover.xml",
@@ -32249,7 +32249,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_actor_mover.xml",
-              "line": 168,
+              "line": 158,
               "tag": "slider",
               "control_name": "ActorMoverDistance",
               "callbacks": [],
@@ -32273,7 +32273,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_actor_mover.xml",
-              "line": 184,
+              "line": 174,
               "widget": "dist_spinner",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_actor_mover.xml",
@@ -32311,7 +32311,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_actor_mover.xml",
-              "line": 88,
+              "line": 78,
               "tag": "spinner",
               "control_name": "ActorMoverHeading",
               "callbacks": [],
@@ -32364,7 +32364,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_actor_mover.xml",
-              "line": 246,
+              "line": 236,
               "tag": "combo_box",
               "control_name": "ActorMoverEndMode",
               "callbacks": [],
@@ -32451,7 +32451,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_actor_mover.xml",
-              "line": 97,
+              "line": 87,
               "tag": "text",
               "control_name": null,
               "callbacks": [],
@@ -32500,7 +32500,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_actor_mover.xml",
-              "line": 210,
+              "line": 200,
               "tag": "slider",
               "control_name": "ActorMoverWalkNominal",
               "callbacks": [],
@@ -32524,7 +32524,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_actor_mover.xml",
-              "line": 226,
+              "line": 216,
               "widget": "cadence_spinner",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_actor_mover.xml",
@@ -32562,7 +32562,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_actor_mover.xml",
-              "line": 272,
+              "line": 262,
               "tag": "line_editor",
               "control_name": "ActorMoverCustomAnim",
               "callbacks": [],
@@ -32618,7 +32618,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_actor_mover.xml",
-              "line": 282,
+              "line": 272,
               "tag": "combo_box",
               "control_name": "ActorMoverCustomAnimPriority",
               "callbacks": [],
@@ -32684,7 +32684,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 983,
+              "line": 987,
               "class": "LLFloaterDirector",
               "function": "bindMovePage",
               "wired_class": "LLFloaterDirector",
@@ -32785,7 +32785,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 987,
+              "line": 991,
               "class": "LLFloaterDirector",
               "function": "bindMovePage",
               "wired_class": "LLFloaterDirector",
@@ -32796,7 +32796,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 997,
+              "line": 1001,
               "class": "LLFloaterDirector",
               "function": "onCommitGroupDelay",
               "wired_class": "LLFloaterDirector",
@@ -32886,7 +32886,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 984,
+              "line": 988,
               "class": "LLFloaterDirector",
               "function": "bindMovePage",
               "wired_class": "LLFloaterDirector",
@@ -32897,7 +32897,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 994,
+              "line": 998,
               "class": "LLFloaterDirector",
               "function": "onClickGroup",
               "wired_class": "LLFloaterDirector",
@@ -32987,7 +32987,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 985,
+              "line": 989,
               "class": "LLFloaterDirector",
               "function": "bindMovePage",
               "wired_class": "LLFloaterDirector",
@@ -32998,7 +32998,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 995,
+              "line": 999,
               "class": "LLFloaterDirector",
               "function": "onClickGroup",
               "wired_class": "LLFloaterDirector",
@@ -33092,7 +33092,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 986,
+              "line": 990,
               "class": "LLFloaterDirector",
               "function": "bindMovePage",
               "wired_class": "LLFloaterDirector",
@@ -33103,7 +33103,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 996,
+              "line": 1000,
               "class": "LLFloaterDirector",
               "function": "onGroupsListSelect",
               "wired_class": "LLFloaterDirector",
@@ -33193,7 +33193,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 988,
+              "line": 992,
               "class": "LLFloaterDirector",
               "function": "bindMovePage",
               "wired_class": "LLFloaterDirector",
@@ -33204,7 +33204,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 998,
+              "line": 1002,
               "class": "LLFloaterDirector",
               "function": "onClickGroupRename",
               "wired_class": "LLFloaterDirector",
@@ -33294,7 +33294,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 989,
+              "line": 993,
               "class": "LLFloaterDirector",
               "function": "bindMovePage",
               "wired_class": "LLFloaterDirector",
@@ -33305,7 +33305,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 999,
+              "line": 1003,
               "class": "LLFloaterDirector",
               "function": "onClickGroupRename",
               "wired_class": "LLFloaterDirector",
@@ -33395,7 +33395,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 990,
+              "line": 994,
               "class": "LLFloaterDirector",
               "function": "bindMovePage",
               "wired_class": "LLFloaterDirector",
@@ -33406,7 +33406,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1000,
+              "line": 1004,
               "class": "LLFloaterDirector",
               "function": "onClickGroupDissolve",
               "wired_class": "LLFloaterDirector",
@@ -33507,7 +33507,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 140,
+              "line": 141,
               "class": "ALPanelPathEditor",
               "function": "postBuild",
               "wired_class": "ALPanelPathEditor",
@@ -33678,7 +33678,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 81,
+              "line": 82,
               "class": "ALPanelPathEditor",
               "function": "postBuild",
               "wired_class": "ALPanelPathEditor",
@@ -33689,7 +33689,7 @@
             },
             {
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 148,
+              "line": 159,
               "class": "ALPanelPathEditor",
               "function": "onListSelect",
               "wired_class": "ALPanelPathEditor",
@@ -33741,7 +33741,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 82,
+              "line": 83,
               "class": "ALPanelPathEditor",
               "function": "postBuild",
               "wired_class": "ALPanelPathEditor",
@@ -33752,7 +33752,7 @@
             },
             {
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 149,
+              "line": 160,
               "class": "ALPanelPathEditor",
               "function": "onClickAdd",
               "wired_class": "ALPanelPathEditor",
@@ -33804,7 +33804,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 83,
+              "line": 84,
               "class": "ALPanelPathEditor",
               "function": "postBuild",
               "wired_class": "ALPanelPathEditor",
@@ -33815,7 +33815,7 @@
             },
             {
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 150,
+              "line": 161,
               "class": "ALPanelPathEditor",
               "function": "onClickInsert",
               "wired_class": "ALPanelPathEditor",
@@ -33867,7 +33867,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 84,
+              "line": 85,
               "class": "ALPanelPathEditor",
               "function": "postBuild",
               "wired_class": "ALPanelPathEditor",
@@ -33878,7 +33878,7 @@
             },
             {
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 151,
+              "line": 162,
               "class": "ALPanelPathEditor",
               "function": "onClickDelete",
               "wired_class": "ALPanelPathEditor",
@@ -33930,7 +33930,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 85,
+              "line": 86,
               "class": "ALPanelPathEditor",
               "function": "postBuild",
               "wired_class": "ALPanelPathEditor",
@@ -33941,7 +33941,7 @@
             },
             {
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 152,
+              "line": 163,
               "class": "ALPanelPathEditor",
               "function": "onClickClear",
               "wired_class": "ALPanelPathEditor",
@@ -33993,7 +33993,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 88,
+              "line": 89,
               "class": "ALPanelPathEditor",
               "function": "postBuild",
               "wired_class": "ALPanelPathEditor",
@@ -34004,7 +34004,7 @@
             },
             {
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 154,
+              "line": 165,
               "class": "ALPanelPathEditor",
               "function": "onClickUndo",
               "wired_class": "ALPanelPathEditor",
@@ -34056,7 +34056,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 89,
+              "line": 90,
               "class": "ALPanelPathEditor",
               "function": "postBuild",
               "wired_class": "ALPanelPathEditor",
@@ -34067,7 +34067,7 @@
             },
             {
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 155,
+              "line": 166,
               "class": "ALPanelPathEditor",
               "function": "onClickRedo",
               "wired_class": "ALPanelPathEditor",
@@ -34119,7 +34119,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 90,
+              "line": 91,
               "class": "ALPanelPathEditor",
               "function": "postBuild",
               "wired_class": "ALPanelPathEditor",
@@ -34130,7 +34130,7 @@
             },
             {
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 156,
+              "line": 167,
               "class": "ALPanelPathEditor",
               "function": "onClickReverse",
               "wired_class": "ALPanelPathEditor",
@@ -34182,7 +34182,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 91,
+              "line": 92,
               "class": "ALPanelPathEditor",
               "function": "postBuild",
               "wired_class": "ALPanelPathEditor",
@@ -34193,7 +34193,7 @@
             },
             {
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 157,
+              "line": 168,
               "class": "ALPanelPathEditor",
               "function": "onClickMirror",
               "wired_class": "ALPanelPathEditor",
@@ -34245,7 +34245,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 92,
+              "line": 93,
               "class": "ALPanelPathEditor",
               "function": "postBuild",
               "wired_class": "ALPanelPathEditor",
@@ -34256,7 +34256,7 @@
             },
             {
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 158,
+              "line": 169,
               "class": "ALPanelPathEditor",
               "function": "onClickLoopClose",
               "wired_class": "ALPanelPathEditor",
@@ -34308,7 +34308,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 94,
+              "line": 95,
               "class": "ALPanelPathEditor",
               "function": "postBuild",
               "wired_class": "ALPanelPathEditor",
@@ -34319,7 +34319,7 @@
             },
             {
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 160,
+              "line": 171,
               "class": "ALPanelPathEditor",
               "function": "onClickPlayPath",
               "wired_class": "ALPanelPathEditor",
@@ -34371,7 +34371,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 95,
+              "line": 96,
               "class": "ALPanelPathEditor",
               "function": "postBuild",
               "wired_class": "ALPanelPathEditor",
@@ -34382,7 +34382,7 @@
             },
             {
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 161,
+              "line": 172,
               "class": "ALPanelPathEditor",
               "function": "onClickStopPath",
               "wired_class": "ALPanelPathEditor",
@@ -34434,7 +34434,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 93,
+              "line": 94,
               "class": "ALPanelPathEditor",
               "function": "postBuild",
               "wired_class": "ALPanelPathEditor",
@@ -34445,7 +34445,7 @@
             },
             {
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 159,
+              "line": 170,
               "class": "ALPanelPathEditor",
               "function": "onClickWalkHere",
               "wired_class": "ALPanelPathEditor",
@@ -34502,7 +34502,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 96,
+              "line": 97,
               "class": "ALPanelPathEditor",
               "function": "postBuild",
               "wired_class": "ALPanelPathEditor",
@@ -34565,7 +34565,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 97,
+              "line": 98,
               "class": "ALPanelPathEditor",
               "function": "postBuild",
               "wired_class": "ALPanelPathEditor",
@@ -34576,7 +34576,7 @@
             },
             {
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 162,
+              "line": 173,
               "class": "ALPanelPathEditor",
               "function": "onClickCopyTo",
               "wired_class": "ALPanelPathEditor",
@@ -34666,7 +34666,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 226,
+              "line": 237,
               "class": "ALPanelPathEditor",
               "function": "postBuild",
               "wired_class": "ALPanelPathEditor",
@@ -34737,7 +34737,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 228,
+              "line": 239,
               "class": "ALPanelPathEditor",
               "function": "postBuild",
               "wired_class": "ALPanelPathEditor",
@@ -34798,7 +34798,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 229,
+              "line": 240,
               "class": "ALPanelPathEditor",
               "function": "postBuild",
               "wired_class": "ALPanelPathEditor",
@@ -34859,7 +34859,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 227,
+              "line": 238,
               "class": "ALPanelPathEditor",
               "function": "postBuild",
               "wired_class": "ALPanelPathEditor",
@@ -34911,7 +34911,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 98,
+              "line": 99,
               "class": "ALPanelPathEditor",
               "function": "postBuild",
               "wired_class": "ALPanelPathEditor",
@@ -34922,7 +34922,7 @@
             },
             {
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 164,
+              "line": 175,
               "class": "ALPanelPathEditor",
               "function": "onNodeHeightCommit",
               "wired_class": "ALPanelPathEditor",
@@ -34933,7 +34933,7 @@
             },
             {
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 230,
+              "line": 241,
               "class": "ALPanelPathEditor",
               "function": "postBuild",
               "wired_class": "ALPanelPathEditor",
@@ -34985,7 +34985,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 99,
+              "line": 100,
               "class": "ALPanelPathEditor",
               "function": "postBuild",
               "wired_class": "ALPanelPathEditor",
@@ -34996,7 +34996,7 @@
             },
             {
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 165,
+              "line": 176,
               "class": "ALPanelPathEditor",
               "function": "onNodeDwellCommit",
               "wired_class": "ALPanelPathEditor",
@@ -35007,7 +35007,7 @@
             },
             {
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 231,
+              "line": 242,
               "class": "ALPanelPathEditor",
               "function": "postBuild",
               "wired_class": "ALPanelPathEditor",
@@ -35059,7 +35059,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 100,
+              "line": 101,
               "class": "ALPanelPathEditor",
               "function": "postBuild",
               "wired_class": "ALPanelPathEditor",
@@ -35070,7 +35070,7 @@
             },
             {
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 166,
+              "line": 177,
               "class": "ALPanelPathEditor",
               "function": "onNodeSpeedCommit",
               "wired_class": "ALPanelPathEditor",
@@ -35081,7 +35081,7 @@
             },
             {
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 232,
+              "line": 243,
               "class": "ALPanelPathEditor",
               "function": "postBuild",
               "wired_class": "ALPanelPathEditor",
@@ -35133,7 +35133,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 101,
+              "line": 102,
               "class": "ALPanelPathEditor",
               "function": "postBuild",
               "wired_class": "ALPanelPathEditor",
@@ -35144,7 +35144,7 @@
             },
             {
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 167,
+              "line": 178,
               "class": "ALPanelPathEditor",
               "function": "onNodeCornerRadiusCommit",
               "wired_class": "ALPanelPathEditor",
@@ -35155,7 +35155,7 @@
             },
             {
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 233,
+              "line": 244,
               "class": "ALPanelPathEditor",
               "function": "postBuild",
               "wired_class": "ALPanelPathEditor",
@@ -35207,7 +35207,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 102,
+              "line": 103,
               "class": "ALPanelPathEditor",
               "function": "postBuild",
               "wired_class": "ALPanelPathEditor",
@@ -35218,7 +35218,7 @@
             },
             {
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 169,
+              "line": 180,
               "class": "ALPanelPathEditor",
               "function": "onNodeAnimCommit",
               "wired_class": "ALPanelPathEditor",
@@ -35229,7 +35229,7 @@
             },
             {
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 234,
+              "line": 245,
               "class": "ALPanelPathEditor",
               "function": "postBuild",
               "wired_class": "ALPanelPathEditor",
@@ -35281,7 +35281,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 126,
+              "line": 127,
               "class": "ALPanelPathEditor",
               "function": "postBuild",
               "wired_class": "ALPanelPathEditor",
@@ -35292,7 +35292,7 @@
             },
             {
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 193,
+              "line": 204,
               "class": "ALPanelPathEditor",
               "function": "onClickSetCam",
               "wired_class": "ALPanelPathEditor",
@@ -35344,7 +35344,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 127,
+              "line": 128,
               "class": "ALPanelPathEditor",
               "function": "postBuild",
               "wired_class": "ALPanelPathEditor",
@@ -35355,7 +35355,7 @@
             },
             {
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 194,
+              "line": 205,
               "class": "ALPanelPathEditor",
               "function": "onClickClearCam",
               "wired_class": "ALPanelPathEditor",
@@ -35410,7 +35410,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 129,
+              "line": 130,
               "class": "ALPanelPathEditor",
               "function": "postBuild",
               "wired_class": "ALPanelPathEditor",
@@ -35421,7 +35421,7 @@
             },
             {
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 196,
+              "line": 207,
               "class": "ALPanelPathEditor",
               "function": "onCamTransitionCommit",
               "wired_class": "ALPanelPathEditor",
@@ -35432,7 +35432,7 @@
             },
             {
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 236,
+              "line": 247,
               "class": "ALPanelPathEditor",
               "function": "postBuild",
               "wired_class": "ALPanelPathEditor",
@@ -35484,7 +35484,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 128,
+              "line": 129,
               "class": "ALPanelPathEditor",
               "function": "postBuild",
               "wired_class": "ALPanelPathEditor",
@@ -35495,7 +35495,7 @@
             },
             {
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 195,
+              "line": 206,
               "class": "ALPanelPathEditor",
               "function": "onClickPreview",
               "wired_class": "ALPanelPathEditor",
@@ -35547,7 +35547,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 130,
+              "line": 131,
               "class": "ALPanelPathEditor",
               "function": "postBuild",
               "wired_class": "ALPanelPathEditor",
@@ -35599,7 +35599,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 103,
+              "line": 104,
               "class": "ALPanelPathEditor",
               "function": "postBuild",
               "wired_class": "ALPanelPathEditor",
@@ -35610,7 +35610,7 @@
             },
             {
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 171,
+              "line": 182,
               "class": "ALPanelPathEditor",
               "function": "onPathSpeedCommit",
               "wired_class": "ALPanelPathEditor",
@@ -35621,7 +35621,7 @@
             },
             {
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 237,
+              "line": 248,
               "class": "ALPanelPathEditor",
               "function": "postBuild",
               "wired_class": "ALPanelPathEditor",
@@ -35673,7 +35673,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 104,
+              "line": 105,
               "class": "ALPanelPathEditor",
               "function": "postBuild",
               "wired_class": "ALPanelPathEditor",
@@ -35684,7 +35684,7 @@
             },
             {
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 172,
+              "line": 183,
               "class": "ALPanelPathEditor",
               "function": "onPathCadenceCommit",
               "wired_class": "ALPanelPathEditor",
@@ -35695,7 +35695,7 @@
             },
             {
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 238,
+              "line": 249,
               "class": "ALPanelPathEditor",
               "function": "postBuild",
               "wired_class": "ALPanelPathEditor",
@@ -35747,7 +35747,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 106,
+              "line": 107,
               "class": "ALPanelPathEditor",
               "function": "postBuild",
               "wired_class": "ALPanelPathEditor",
@@ -35758,7 +35758,7 @@
             },
             {
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 174,
+              "line": 185,
               "class": "ALPanelPathEditor",
               "function": "onPathEaseInCommit",
               "wired_class": "ALPanelPathEditor",
@@ -35769,7 +35769,7 @@
             },
             {
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 240,
+              "line": 251,
               "class": "ALPanelPathEditor",
               "function": "postBuild",
               "wired_class": "ALPanelPathEditor",
@@ -35821,7 +35821,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 107,
+              "line": 108,
               "class": "ALPanelPathEditor",
               "function": "postBuild",
               "wired_class": "ALPanelPathEditor",
@@ -35832,7 +35832,7 @@
             },
             {
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 175,
+              "line": 186,
               "class": "ALPanelPathEditor",
               "function": "onPathEaseOutCommit",
               "wired_class": "ALPanelPathEditor",
@@ -35843,7 +35843,7 @@
             },
             {
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 241,
+              "line": 252,
               "class": "ALPanelPathEditor",
               "function": "postBuild",
               "wired_class": "ALPanelPathEditor",
@@ -35895,7 +35895,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 105,
+              "line": 106,
               "class": "ALPanelPathEditor",
               "function": "postBuild",
               "wired_class": "ALPanelPathEditor",
@@ -35906,7 +35906,7 @@
             },
             {
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 173,
+              "line": 184,
               "class": "ALPanelPathEditor",
               "function": "onPathTensionCommit",
               "wired_class": "ALPanelPathEditor",
@@ -35917,7 +35917,7 @@
             },
             {
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 239,
+              "line": 250,
               "class": "ALPanelPathEditor",
               "function": "postBuild",
               "wired_class": "ALPanelPathEditor",
@@ -36009,7 +36009,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 108,
+              "line": 109,
               "class": "ALPanelPathEditor",
               "function": "postBuild",
               "wired_class": "ALPanelPathEditor",
@@ -36020,7 +36020,7 @@
             },
             {
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 176,
+              "line": 187,
               "class": "ALPanelPathEditor",
               "function": "onPathGroundFollowCommit",
               "wired_class": "ALPanelPathEditor",
@@ -36031,7 +36031,7 @@
             },
             {
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 242,
+              "line": 253,
               "class": "ALPanelPathEditor",
               "function": "postBuild",
               "wired_class": "ALPanelPathEditor",
@@ -36083,7 +36083,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 109,
+              "line": 110,
               "class": "ALPanelPathEditor",
               "function": "postBuild",
               "wired_class": "ALPanelPathEditor",
@@ -36094,7 +36094,7 @@
             },
             {
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 177,
+              "line": 188,
               "class": "ALPanelPathEditor",
               "function": "onPathPitchCommit",
               "wired_class": "ALPanelPathEditor",
@@ -36105,7 +36105,7 @@
             },
             {
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 243,
+              "line": 254,
               "class": "ALPanelPathEditor",
               "function": "postBuild",
               "wired_class": "ALPanelPathEditor",
@@ -36157,7 +36157,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 110,
+              "line": 111,
               "class": "ALPanelPathEditor",
               "function": "postBuild",
               "wired_class": "ALPanelPathEditor",
@@ -36168,7 +36168,7 @@
             },
             {
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 178,
+              "line": 189,
               "class": "ALPanelPathEditor",
               "function": "onPathAirborneCommit",
               "wired_class": "ALPanelPathEditor",
@@ -36179,7 +36179,7 @@
             },
             {
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 244,
+              "line": 255,
               "class": "ALPanelPathEditor",
               "function": "postBuild",
               "wired_class": "ALPanelPathEditor",
@@ -36236,7 +36236,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 111,
+              "line": 112,
               "class": "ALPanelPathEditor",
               "function": "postBuild",
               "wired_class": "ALPanelPathEditor",
@@ -36247,7 +36247,7 @@
             },
             {
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 179,
+              "line": 190,
               "class": "ALPanelPathEditor",
               "function": "onPathEndCommit",
               "wired_class": "ALPanelPathEditor",
@@ -36258,7 +36258,7 @@
             },
             {
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 245,
+              "line": 256,
               "class": "ALPanelPathEditor",
               "function": "postBuild",
               "wired_class": "ALPanelPathEditor",
@@ -36318,7 +36318,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 113,
+              "line": 114,
               "class": "ALPanelPathEditor",
               "function": "postBuild",
               "wired_class": "ALPanelPathEditor",
@@ -36329,7 +36329,7 @@
             },
             {
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 180,
+              "line": 191,
               "class": "ALPanelPathEditor",
               "function": "onPathShapeCommit",
               "wired_class": "ALPanelPathEditor",
@@ -36340,7 +36340,7 @@
             },
             {
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 246,
+              "line": 257,
               "class": "ALPanelPathEditor",
               "function": "postBuild",
               "wired_class": "ALPanelPathEditor",
@@ -36392,7 +36392,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 114,
+              "line": 115,
               "class": "ALPanelPathEditor",
               "function": "postBuild",
               "wired_class": "ALPanelPathEditor",
@@ -36403,7 +36403,7 @@
             },
             {
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 181,
+              "line": 192,
               "class": "ALPanelPathEditor",
               "function": "onClickCenterPrimitive",
               "wired_class": "ALPanelPathEditor",
@@ -36455,7 +36455,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 115,
+              "line": 116,
               "class": "ALPanelPathEditor",
               "function": "postBuild",
               "wired_class": "ALPanelPathEditor",
@@ -36466,7 +36466,7 @@
             },
             {
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 182,
+              "line": 193,
               "class": "ALPanelPathEditor",
               "function": "onClickFitHalfArc",
               "wired_class": "ALPanelPathEditor",
@@ -36518,7 +36518,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 116,
+              "line": 117,
               "class": "ALPanelPathEditor",
               "function": "postBuild",
               "wired_class": "ALPanelPathEditor",
@@ -36529,7 +36529,7 @@
             },
             {
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 183,
+              "line": 194,
               "class": "ALPanelPathEditor",
               "function": "onClickFitSine",
               "wired_class": "ALPanelPathEditor",
@@ -36621,7 +36621,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 117,
+              "line": 118,
               "class": "ALPanelPathEditor",
               "function": "postBuild",
               "wired_class": "ALPanelPathEditor",
@@ -36632,7 +36632,7 @@
             },
             {
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 184,
+              "line": 195,
               "class": "ALPanelPathEditor",
               "function": "onPrimitiveCommit",
               "wired_class": "ALPanelPathEditor",
@@ -36643,7 +36643,7 @@
             },
             {
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 247,
+              "line": 258,
               "class": "ALPanelPathEditor",
               "function": "postBuild",
               "wired_class": "ALPanelPathEditor",
@@ -36654,7 +36654,7 @@
             },
             {
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 247,
+              "line": 258,
               "class": "ALPanelPathEditor",
               "function": "postBuild",
               "wired_class": "ALPanelPathEditor",
@@ -36665,7 +36665,7 @@
             },
             {
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 519,
+              "line": 581,
               "class": "ALPanelPathEditor",
               "function": "onResetControl",
               "wired_class": "ALPanelPathEditor",
@@ -36744,7 +36744,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 118,
+              "line": 119,
               "class": "ALPanelPathEditor",
               "function": "postBuild",
               "wired_class": "ALPanelPathEditor",
@@ -36755,7 +36755,7 @@
             },
             {
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 185,
+              "line": 196,
               "class": "ALPanelPathEditor",
               "function": "onPrimitiveCommit",
               "wired_class": "ALPanelPathEditor",
@@ -36766,7 +36766,7 @@
             },
             {
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 248,
+              "line": 259,
               "class": "ALPanelPathEditor",
               "function": "postBuild",
               "wired_class": "ALPanelPathEditor",
@@ -36777,7 +36777,7 @@
             },
             {
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 248,
+              "line": 259,
               "class": "ALPanelPathEditor",
               "function": "postBuild",
               "wired_class": "ALPanelPathEditor",
@@ -36788,7 +36788,7 @@
             },
             {
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 523,
+              "line": 585,
               "class": "ALPanelPathEditor",
               "function": "onResetControl",
               "wired_class": "ALPanelPathEditor",
@@ -36867,7 +36867,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 119,
+              "line": 120,
               "class": "ALPanelPathEditor",
               "function": "postBuild",
               "wired_class": "ALPanelPathEditor",
@@ -36878,7 +36878,7 @@
             },
             {
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 186,
+              "line": 197,
               "class": "ALPanelPathEditor",
               "function": "onPrimitiveCommit",
               "wired_class": "ALPanelPathEditor",
@@ -36889,7 +36889,7 @@
             },
             {
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 249,
+              "line": 260,
               "class": "ALPanelPathEditor",
               "function": "postBuild",
               "wired_class": "ALPanelPathEditor",
@@ -36968,7 +36968,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 120,
+              "line": 121,
               "class": "ALPanelPathEditor",
               "function": "postBuild",
               "wired_class": "ALPanelPathEditor",
@@ -36979,7 +36979,7 @@
             },
             {
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 187,
+              "line": 198,
               "class": "ALPanelPathEditor",
               "function": "onPrimitiveCommit",
               "wired_class": "ALPanelPathEditor",
@@ -36990,7 +36990,7 @@
             },
             {
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 250,
+              "line": 261,
               "class": "ALPanelPathEditor",
               "function": "postBuild",
               "wired_class": "ALPanelPathEditor",
@@ -37069,7 +37069,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 124,
+              "line": 125,
               "class": "ALPanelPathEditor",
               "function": "postBuild",
               "wired_class": "ALPanelPathEditor",
@@ -37080,7 +37080,7 @@
             },
             {
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 191,
+              "line": 202,
               "class": "ALPanelPathEditor",
               "function": "onPrimitiveCommit",
               "wired_class": "ALPanelPathEditor",
@@ -37091,7 +37091,7 @@
             },
             {
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 254,
+              "line": 265,
               "class": "ALPanelPathEditor",
               "function": "postBuild",
               "wired_class": "ALPanelPathEditor",
@@ -37102,7 +37102,7 @@
             },
             {
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 254,
+              "line": 265,
               "class": "ALPanelPathEditor",
               "function": "postBuild",
               "wired_class": "ALPanelPathEditor",
@@ -37113,7 +37113,7 @@
             },
             {
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 547,
+              "line": 609,
               "class": "ALPanelPathEditor",
               "function": "onResetControl",
               "wired_class": "ALPanelPathEditor",
@@ -37192,7 +37192,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 121,
+              "line": 122,
               "class": "ALPanelPathEditor",
               "function": "postBuild",
               "wired_class": "ALPanelPathEditor",
@@ -37203,7 +37203,7 @@
             },
             {
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 188,
+              "line": 199,
               "class": "ALPanelPathEditor",
               "function": "onPrimitiveCommit",
               "wired_class": "ALPanelPathEditor",
@@ -37214,7 +37214,7 @@
             },
             {
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 251,
+              "line": 262,
               "class": "ALPanelPathEditor",
               "function": "postBuild",
               "wired_class": "ALPanelPathEditor",
@@ -37293,7 +37293,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 122,
+              "line": 123,
               "class": "ALPanelPathEditor",
               "function": "postBuild",
               "wired_class": "ALPanelPathEditor",
@@ -37304,7 +37304,7 @@
             },
             {
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 189,
+              "line": 200,
               "class": "ALPanelPathEditor",
               "function": "onPrimitiveCommit",
               "wired_class": "ALPanelPathEditor",
@@ -37315,7 +37315,7 @@
             },
             {
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 252,
+              "line": 263,
               "class": "ALPanelPathEditor",
               "function": "postBuild",
               "wired_class": "ALPanelPathEditor",
@@ -37394,7 +37394,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 123,
+              "line": 124,
               "class": "ALPanelPathEditor",
               "function": "postBuild",
               "wired_class": "ALPanelPathEditor",
@@ -37405,7 +37405,7 @@
             },
             {
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 190,
+              "line": 201,
               "class": "ALPanelPathEditor",
               "function": "onPrimitiveCommit",
               "wired_class": "ALPanelPathEditor",
@@ -37416,7 +37416,7 @@
             },
             {
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 253,
+              "line": 264,
               "class": "ALPanelPathEditor",
               "function": "postBuild",
               "wired_class": "ALPanelPathEditor",
@@ -37495,7 +37495,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 133,
+              "line": 134,
               "class": "ALPanelPathEditor",
               "function": "postBuild",
               "wired_class": "ALPanelPathEditor",
@@ -37506,7 +37506,7 @@
             },
             {
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 203,
+              "line": 214,
               "class": "ALPanelPathEditor",
               "function": "onSyncOffsetCommit",
               "wired_class": "ALPanelPathEditor",
@@ -37517,7 +37517,7 @@
             },
             {
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 256,
+              "line": 267,
               "class": "ALPanelPathEditor",
               "function": "postBuild",
               "wired_class": "ALPanelPathEditor",
@@ -37569,7 +37569,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 134,
+              "line": 135,
               "class": "ALPanelPathEditor",
               "function": "postBuild",
               "wired_class": "ALPanelPathEditor",
@@ -37626,7 +37626,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 135,
+              "line": 136,
               "class": "ALPanelPathEditor",
               "function": "postBuild",
               "wired_class": "ALPanelPathEditor",
@@ -37637,7 +37637,7 @@
             },
             {
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 204,
+              "line": 215,
               "class": "ALPanelPathEditor",
               "function": "onFollowCommit",
               "wired_class": "ALPanelPathEditor",
@@ -37648,7 +37648,7 @@
             },
             {
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 257,
+              "line": 268,
               "class": "ALPanelPathEditor",
               "function": "postBuild",
               "wired_class": "ALPanelPathEditor",
@@ -37700,7 +37700,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 137,
+              "line": 138,
               "class": "ALPanelPathEditor",
               "function": "postBuild",
               "wired_class": "ALPanelPathEditor",
@@ -37711,7 +37711,7 @@
             },
             {
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 206,
+              "line": 217,
               "class": "ALPanelPathEditor",
               "function": "onFollowOffsetCommit",
               "wired_class": "ALPanelPathEditor",
@@ -37722,7 +37722,7 @@
             },
             {
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 258,
+              "line": 269,
               "class": "ALPanelPathEditor",
               "function": "postBuild",
               "wired_class": "ALPanelPathEditor",
@@ -37774,7 +37774,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 136,
+              "line": 137,
               "class": "ALPanelPathEditor",
               "function": "postBuild",
               "wired_class": "ALPanelPathEditor",
@@ -37785,7 +37785,7 @@
             },
             {
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 205,
+              "line": 216,
               "class": "ALPanelPathEditor",
               "function": "onStopFollow",
               "wired_class": "ALPanelPathEditor",
@@ -37837,7 +37837,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 138,
+              "line": 139,
               "class": "ALPanelPathEditor",
               "function": "postBuild",
               "wired_class": "ALPanelPathEditor",
@@ -37874,7 +37874,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_path_editor.xml",
-              "line": 303,
+              "line": 304,
               "tag": "button",
               "control_name": null,
               "callbacks": [],
@@ -37889,7 +37889,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 143,
+              "line": 144,
               "class": "ALPanelPathEditor",
               "function": "postBuild",
               "wired_class": "ALPanelPathEditor",
@@ -37900,7 +37900,7 @@
             },
             {
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 198,
+              "line": 209,
               "class": "ALPanelPathEditor",
               "function": "onClickResume",
               "wired_class": "ALPanelPathEditor",
@@ -37937,7 +37937,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_path_editor.xml",
-              "line": 304,
+              "line": 305,
               "tag": "button",
               "control_name": null,
               "callbacks": [],
@@ -37952,7 +37952,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 144,
+              "line": 145,
               "class": "ALPanelPathEditor",
               "function": "postBuild",
               "wired_class": "ALPanelPathEditor",
@@ -37963,7 +37963,7 @@
             },
             {
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 199,
+              "line": 210,
               "class": "ALPanelPathEditor",
               "function": "onClickReanchor",
               "wired_class": "ALPanelPathEditor",
@@ -38000,7 +38000,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_path_editor.xml",
-              "line": 305,
+              "line": 306,
               "tag": "button",
               "control_name": null,
               "callbacks": [],
@@ -38015,7 +38015,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 145,
+              "line": 146,
               "class": "ALPanelPathEditor",
               "function": "postBuild",
               "wired_class": "ALPanelPathEditor",
@@ -38026,7 +38026,7 @@
             },
             {
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 200,
+              "line": 211,
               "class": "ALPanelPathEditor",
               "function": "onClickCancelSuspend",
               "wired_class": "ALPanelPathEditor",
@@ -38433,7 +38433,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 837,
+              "line": 840,
               "class": "LLFloaterDirector",
               "function": "bindChrome",
               "wired_class": "LLFloaterDirector",
@@ -38446,7 +38446,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 848,
+              "line": 851,
               "class": "LLFloaterDirector",
               "function": "onCastRemove",
               "wired_class": "LLFloaterDirector",
@@ -39390,7 +39390,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_actor_mover.xml",
-              "line": 310,
+              "line": 299,
               "tag": "button",
               "control_name": null,
               "callbacks": [],
@@ -39718,7 +39718,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_actor_mover.xml",
-              "line": 246,
+              "line": 236,
               "tag": "combo_box",
               "control_name": "ActorMoverEndMode",
               "callbacks": [],
@@ -39739,7 +39739,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_actor_mover.xml",
-              "line": 246,
+              "line": 236,
               "widget": "end_mode_combo",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_actor_mover.xml",
@@ -40865,7 +40865,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 442,
+              "line": 443,
               "class": "ALPanelGhostStudio",
               "function": "onShowAllToggle",
               "wired_class": "ALPanelGhostStudio",
@@ -40928,7 +40928,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 443,
+              "line": 444,
               "class": "ALPanelGhostStudio",
               "function": "onToggleEditMode",
               "wired_class": "ALPanelGhostStudio",
@@ -40996,7 +40996,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 444,
+              "line": 445,
               "class": "ALPanelGhostStudio",
               "function": "onListSelect",
               "wired_class": "ALPanelGhostStudio",
@@ -41007,7 +41007,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 445,
+              "line": 446,
               "class": "ALPanelGhostStudio",
               "function": "onListMouseUp",
               "wired_class": "ALPanelGhostStudio",
@@ -41122,7 +41122,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 450,
+              "line": 451,
               "class": "ALPanelGhostStudio",
               "function": "onClickDuplicate",
               "wired_class": "ALPanelGhostStudio",
@@ -41185,7 +41185,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 451,
+              "line": 452,
               "class": "ALPanelGhostStudio",
               "function": "onClickDelete",
               "wired_class": "ALPanelGhostStudio",
@@ -41248,7 +41248,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 452,
+              "line": 453,
               "class": "ALPanelGhostStudio",
               "function": "onClickRefresh",
               "wired_class": "ALPanelGhostStudio",
@@ -41445,7 +41445,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 448,
+              "line": 449,
               "class": "ALPanelGhostStudio",
               "function": "onClickAdd",
               "wired_class": "ALPanelGhostStudio",
@@ -41508,7 +41508,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 515,
+              "line": 516,
               "class": "ALPanelGhostStudio",
               "function": "onClickDuplicateInPlace",
               "wired_class": "ALPanelGhostStudio",
@@ -41571,7 +41571,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 516,
+              "line": 517,
               "class": "ALPanelGhostStudio",
               "function": "onClickCopyTransform",
               "wired_class": "ALPanelGhostStudio",
@@ -41634,7 +41634,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 517,
+              "line": 518,
               "class": "ALPanelGhostStudio",
               "function": "onClickPasteTransform",
               "wired_class": "ALPanelGhostStudio",
@@ -41697,7 +41697,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 449,
+              "line": 450,
               "class": "ALPanelGhostStudio",
               "function": "onNameCommit",
               "wired_class": "ALPanelGhostStudio",
@@ -41760,7 +41760,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 454,
+              "line": 455,
               "class": "ALPanelGhostStudio",
               "function": "onPosCommit",
               "wired_class": "ALPanelGhostStudio",
@@ -41823,7 +41823,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 455,
+              "line": 456,
               "class": "ALPanelGhostStudio",
               "function": "onPosCommit",
               "wired_class": "ALPanelGhostStudio",
@@ -41886,7 +41886,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 456,
+              "line": 457,
               "class": "ALPanelGhostStudio",
               "function": "onPosCommit",
               "wired_class": "ALPanelGhostStudio",
@@ -41949,7 +41949,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 461,
+              "line": 462,
               "class": "ALPanelGhostStudio",
               "function": "onYawCommit",
               "wired_class": "ALPanelGhostStudio",
@@ -41960,7 +41960,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 645,
+              "line": 646,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -42032,7 +42032,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 462,
+              "line": 463,
               "class": "ALPanelGhostStudio",
               "function": "onScaleCommit",
               "wired_class": "ALPanelGhostStudio",
@@ -42043,7 +42043,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 646,
+              "line": 647,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -42179,7 +42179,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 509,
+              "line": 510,
               "class": "ALPanelGhostStudio",
               "function": "onClickPlace",
               "wired_class": "ALPanelGhostStudio",
@@ -42242,7 +42242,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 510,
+              "line": 511,
               "class": "ALPanelGhostStudio",
               "function": "onClickToActor",
               "wired_class": "ALPanelGhostStudio",
@@ -42305,7 +42305,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 511,
+              "line": 512,
               "class": "ALPanelGhostStudio",
               "function": "onClickToMe",
               "wired_class": "ALPanelGhostStudio",
@@ -42368,7 +42368,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 512,
+              "line": 513,
               "class": "ALPanelGhostStudio",
               "function": "onClickDrop",
               "wired_class": "ALPanelGhostStudio",
@@ -42431,7 +42431,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 513,
+              "line": 514,
               "class": "ALPanelGhostStudio",
               "function": "onClickAlignFeet",
               "wired_class": "ALPanelGhostStudio",
@@ -42499,7 +42499,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 518,
+              "line": 519,
               "class": "ALPanelGhostStudio",
               "function": "onLookTargetCommit",
               "wired_class": "ALPanelGhostStudio",
@@ -42562,7 +42562,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 520,
+              "line": 521,
               "class": "ALPanelGhostStudio",
               "function": "onClickFaceNow",
               "wired_class": "ALPanelGhostStudio",
@@ -42625,7 +42625,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 522,
+              "line": 523,
               "class": "ALPanelGhostStudio",
               "function": "onKeepFacingCommit",
               "wired_class": "ALPanelGhostStudio",
@@ -42688,7 +42688,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 514,
+              "line": 515,
               "class": "ALPanelGhostStudio",
               "function": "onClickUpright",
               "wired_class": "ALPanelGhostStudio",
@@ -42780,7 +42780,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 525,
+              "line": 526,
               "class": "ALPanelGhostStudio",
               "function": "onStyleCommit",
               "wired_class": "ALPanelGhostStudio",
@@ -42853,7 +42853,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 533,
+              "line": 534,
               "class": "ALPanelGhostStudio",
               "function": "onDistortCommit",
               "wired_class": "ALPanelGhostStudio",
@@ -42916,7 +42916,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 534,
+              "line": 535,
               "class": "ALPanelGhostStudio",
               "function": "onDistortAmountCommit",
               "wired_class": "ALPanelGhostStudio",
@@ -42927,7 +42927,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 662,
+              "line": 663,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -43042,7 +43042,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 526,
+              "line": 527,
               "class": "ALPanelGhostStudio",
               "function": "onActorTintToggle",
               "wired_class": "ALPanelGhostStudio",
@@ -43105,7 +43105,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 527,
+              "line": 528,
               "class": "ALPanelGhostStudio",
               "function": "onHueCommit",
               "wired_class": "ALPanelGhostStudio",
@@ -43116,7 +43116,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 656,
+              "line": 657,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -43179,7 +43179,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 528,
+              "line": 529,
               "class": "ALPanelGhostStudio",
               "function": "onAlphaCommit",
               "wired_class": "ALPanelGhostStudio",
@@ -43190,7 +43190,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 657,
+              "line": 658,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -43253,7 +43253,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 535,
+              "line": 536,
               "class": "ALPanelGhostStudio",
               "function": "onBrightnessCommit",
               "wired_class": "ALPanelGhostStudio",
@@ -43264,7 +43264,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 663,
+              "line": 664,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -43327,7 +43327,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 531,
+              "line": 532,
               "class": "ALPanelGhostStudio",
               "function": "onPixelCommit",
               "wired_class": "ALPanelGhostStudio",
@@ -43338,7 +43338,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 658,
+              "line": 659,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -43401,7 +43401,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 530,
+              "line": 531,
               "class": "ALPanelGhostStudio",
               "function": "onShimmerAmountCommit",
               "wired_class": "ALPanelGhostStudio",
@@ -43412,7 +43412,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 660,
+              "line": 661,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -43475,7 +43475,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 529,
+              "line": 530,
               "class": "ALPanelGhostStudio",
               "function": "onShimmerSpeedCommit",
               "wired_class": "ALPanelGhostStudio",
@@ -43486,7 +43486,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 659,
+              "line": 660,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -43549,7 +43549,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 532,
+              "line": 533,
               "class": "ALPanelGhostStudio",
               "function": "onGlitchCommit",
               "wired_class": "ALPanelGhostStudio",
@@ -43560,7 +43560,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 661,
+              "line": 662,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -43623,7 +43623,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 536,
+              "line": 537,
               "class": "ALPanelGhostStudio",
               "function": "onEffectFpsCommit",
               "wired_class": "ALPanelGhostStudio",
@@ -43634,7 +43634,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 647,
+              "line": 648,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -43697,7 +43697,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 539,
+              "line": 540,
               "class": "ALPanelGhostStudio",
               "function": "onClickFreeze",
               "wired_class": "ALPanelGhostStudio",
@@ -43789,7 +43789,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 540,
+              "line": 541,
               "class": "ALPanelGhostStudio",
               "function": "onClickLive",
               "wired_class": "ALPanelGhostStudio",
@@ -43857,7 +43857,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 479,
+              "line": 480,
               "class": "ALPanelGhostStudio",
               "function": "onDriveModeCommit",
               "wired_class": "ALPanelGhostStudio",
@@ -44070,7 +44070,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 464,
+              "line": 465,
               "class": "ALPanelGhostStudio",
               "function": "onChaosCommit",
               "wired_class": "ALPanelGhostStudio",
@@ -44081,7 +44081,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 664,
+              "line": 665,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -44144,7 +44144,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 465,
+              "line": 466,
               "class": "ALPanelGhostStudio",
               "function": "onAnimSpeedCommit",
               "wired_class": "ALPanelGhostStudio",
@@ -44155,7 +44155,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 648,
+              "line": 649,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -44225,7 +44225,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 537,
+              "line": 538,
               "class": "ALPanelGhostStudio",
               "function": "onEntityLookCommit",
               "wired_class": "ALPanelGhostStudio",
@@ -44288,7 +44288,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 476,
+              "line": 477,
               "class": "ALPanelGhostStudio",
               "function": "onPhysicsCommit",
               "wired_class": "ALPanelGhostStudio",
@@ -44354,7 +44354,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 489,
+              "line": 490,
               "class": "ALPanelGhostStudio",
               "function": "onLoopModeCommit",
               "wired_class": "ALPanelGhostStudio",
@@ -44417,7 +44417,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 477,
+              "line": 478,
               "class": "ALPanelGhostStudio",
               "function": "onClickAnimPause",
               "wired_class": "ALPanelGhostStudio",
@@ -44480,7 +44480,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 478,
+              "line": 479,
               "class": "ALPanelGhostStudio",
               "function": "onClickAnimResume",
               "wired_class": "ALPanelGhostStudio",
@@ -44543,7 +44543,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 490,
+              "line": 491,
               "class": "ALPanelGhostStudio",
               "function": "onClickAnimSync",
               "wired_class": "ALPanelGhostStudio",
@@ -44606,7 +44606,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 480,
+              "line": 481,
               "class": "ALPanelGhostStudio",
               "function": "onDirectedAnimCommit",
               "wired_class": "ALPanelGhostStudio",
@@ -44674,7 +44674,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 481,
+              "line": 482,
               "class": "ALPanelGhostStudio",
               "function": "onAnimationLibraryCommit",
               "wired_class": "ALPanelGhostStudio",
@@ -44737,7 +44737,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 482,
+              "line": 483,
               "class": "ALGhostStudio",
               "function": "scanAnimLibrary",
               "wired_class": "ALPanelGhostStudio",
@@ -44852,7 +44852,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 468,
+              "line": 469,
               "class": "ALPanelGhostStudio",
               "function": "onAutoAnimWindow",
               "wired_class": "ALPanelGhostStudio",
@@ -44863,7 +44863,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 649,
+              "line": 650,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -44926,7 +44926,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 472,
+              "line": 473,
               "class": "ALPanelGhostStudio",
               "function": "onAutoAnimAction",
               "wired_class": "ALPanelGhostStudio",
@@ -44989,7 +44989,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 473,
+              "line": 474,
               "class": "ALPanelGhostStudio",
               "function": "onAutoAnimAction",
               "wired_class": "ALPanelGhostStudio",
@@ -45052,7 +45052,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 469,
+              "line": 470,
               "class": "ALPanelGhostStudio",
               "function": "onAutoAnimAction",
               "wired_class": "ALPanelGhostStudio",
@@ -45115,7 +45115,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 470,
+              "line": 471,
               "class": "ALPanelGhostStudio",
               "function": "onAutoAnimAction",
               "wired_class": "ALPanelGhostStudio",
@@ -45230,7 +45230,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 471,
+              "line": 472,
               "class": "ALPanelGhostStudio",
               "function": "onAutoAnimAction",
               "wired_class": "ALPanelGhostStudio",
@@ -45293,7 +45293,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 474,
+              "line": 475,
               "class": "ALPanelGhostStudio",
               "function": "onAutoAnimFile",
               "wired_class": "ALPanelGhostStudio",
@@ -45356,7 +45356,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 475,
+              "line": 476,
               "class": "ALPanelGhostStudio",
               "function": "onAutoAnimFile",
               "wired_class": "ALPanelGhostStudio",
@@ -45419,7 +45419,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 493,
+              "line": 494,
               "class": "ALPanelGhostStudio",
               "function": "onClickLensGazeSelection",
               "wired_class": "ALPanelGhostStudio",
@@ -45487,7 +45487,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 497,
+              "line": 498,
               "class": "ALPanelGhostStudio",
               "function": "onLensGazeSettingsCommit",
               "wired_class": "ALPanelGhostStudio",
@@ -45555,7 +45555,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 499,
+              "line": 500,
               "class": "ALPanelGhostStudio",
               "function": "onLensGazeSettingsCommit",
               "wired_class": "ALPanelGhostStudio",
@@ -45618,7 +45618,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 495,
+              "line": 496,
               "class": "ALPanelGhostStudio",
               "function": "onLensGazeTorsoCommit",
               "wired_class": "ALPanelGhostStudio",
@@ -45629,7 +45629,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 665,
+              "line": 666,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -45692,7 +45692,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 501,
+              "line": 502,
               "class": "ALPanelGhostStudio",
               "function": "onLensGazeSettingsCommit",
               "wired_class": "ALPanelGhostStudio",
@@ -45703,7 +45703,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 666,
+              "line": 667,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -45766,7 +45766,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 503,
+              "line": 504,
               "class": "ALPanelGhostStudio",
               "function": "onLensGazeSettingsCommit",
               "wired_class": "ALPanelGhostStudio",
@@ -45777,7 +45777,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 667,
+              "line": 668,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -45840,7 +45840,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 505,
+              "line": 506,
               "class": "ALPanelGhostStudio",
               "function": "onLensGazeSettingsCommit",
               "wired_class": "ALPanelGhostStudio",
@@ -45851,7 +45851,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 668,
+              "line": 669,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -45966,7 +45966,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 544,
+              "line": 545,
               "class": "ALPanelGhostStudio",
               "function": "onClickArray",
               "wired_class": "ALPanelGhostStudio",
@@ -46029,7 +46029,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 546,
+              "line": 547,
               "class": "ALPanelGhostStudio",
               "function": "onClickArray",
               "wired_class": "ALPanelGhostStudio",
@@ -46118,7 +46118,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 548,
+              "line": 549,
               "class": "ALPanelGhostStudio",
               "function": "onFormationCommit",
               "wired_class": "ALPanelGhostStudio",
@@ -46192,7 +46192,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 650,
+              "line": 651,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -46266,7 +46266,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 651,
+              "line": 652,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -46672,7 +46672,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 591,
+              "line": 592,
               "class": "ALGhostStudio",
               "function": "getCrowdPlacementDraft",
               "wired_class": "ALPanelGhostStudio",
@@ -46735,7 +46735,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 616,
+              "line": 617,
               "class": "ALPanelGhostStudio",
               "function": "onClickPickFacingTarget",
               "wired_class": "ALPanelGhostStudio",
@@ -47129,7 +47129,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 636,
+              "line": 637,
               "class": "ALPanelGhostStudio",
               "function": "onNameplateModeCommit",
               "wired_class": "ALPanelGhostStudio",
@@ -47259,7 +47259,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 606,
+              "line": 607,
               "class": "ALPanelGhostStudio",
               "function": "onClickBuildArray",
               "wired_class": "ALPanelGhostStudio",
@@ -47322,7 +47322,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 607,
+              "line": 608,
               "class": "ALPanelGhostStudio",
               "function": "onClickCrowdConfirm",
               "wired_class": "ALPanelGhostStudio",
@@ -47385,7 +47385,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 609,
+              "line": 610,
               "class": "ALPanelGhostStudio",
               "function": "onClickCrowdUnpin",
               "wired_class": "ALPanelGhostStudio",
@@ -47448,7 +47448,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 611,
+              "line": 612,
               "class": "ALPanelGhostStudio",
               "function": "onClickCrowdCancel",
               "wired_class": "ALPanelGhostStudio",
@@ -47615,7 +47615,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 630,
+              "line": 631,
               "class": "ALPanelGhostStudio",
               "function": "onGroupEditMembersCommit",
               "wired_class": "ALPanelGhostStudio",
@@ -47682,7 +47682,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 620,
+              "line": 621,
               "class": "ALGhostStudio",
               "function": "getCrowdPlacementDraft",
               "wired_class": "ALPanelGhostStudio",
@@ -47745,7 +47745,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 632,
+              "line": 633,
               "class": "ALPanelGhostStudio",
               "function": "onGroupMemberPinnedCommit",
               "wired_class": "ALPanelGhostStudio",
@@ -47808,7 +47808,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 634,
+              "line": 635,
               "class": "ALPanelGhostStudio",
               "function": "onClickGroupMemberReset",
               "wired_class": "ALPanelGhostStudio",
@@ -48123,7 +48123,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 549,
+              "line": 550,
               "class": "ALPanelGhostStudio",
               "function": "captureFormationParameter",
               "wired_class": "ALPanelGhostStudio",
@@ -48197,7 +48197,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 652,
+              "line": 653,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -48271,7 +48271,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 653,
+              "line": 654,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -48345,7 +48345,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 613,
+              "line": 614,
               "class": "ALPanelGhostStudio",
               "function": "onClickStartStrip",
               "wired_class": "ALPanelGhostStudio",
@@ -48408,7 +48408,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 614,
+              "line": 615,
               "class": "ALPanelGhostStudio",
               "function": "onClickCancelStrip",
               "wired_class": "ALPanelGhostStudio",
@@ -48593,7 +48593,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 654,
+              "line": 655,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -48667,7 +48667,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 655,
+              "line": 656,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -48741,7 +48741,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 615,
+              "line": 616,
               "class": "ALPanelGhostStudio",
               "function": "onMotionCommit",
               "wired_class": "ALPanelGhostStudio",
@@ -48804,7 +48804,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 638,
+              "line": 639,
               "class": "ALPanelGhostStudio",
               "function": "onPoseRateCommit",
               "wired_class": "ALPanelGhostStudio",
@@ -48867,7 +48867,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 618,
+              "line": 619,
               "class": "ALPanelGhostStudio",
               "function": "onClickGroup",
               "wired_class": "ALPanelGhostStudio",
@@ -48930,7 +48930,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 619,
+              "line": 620,
               "class": "ALPanelGhostStudio",
               "function": "onClickUngroup",
               "wired_class": "ALPanelGhostStudio",
@@ -49033,7 +49033,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 541,
+              "line": 542,
               "class": "ALPanelGhostStudio",
               "function": "onClickRigDiagRefresh",
               "wired_class": "ALPanelGhostStudio",
@@ -49375,7 +49375,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1216,
+              "line": 1220,
               "class": "LLFloaterDirector",
               "function": "bindCameraPage",
               "wired_class": "LLFloaterDirector",
@@ -54400,7 +54400,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1091,
+              "line": 1095,
               "class": "LLFloaterDirector",
               "function": "bindAnimatePage",
               "wired_class": "LLFloaterDirector",
@@ -54501,7 +54501,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1093,
+              "line": 1097,
               "class": "LLFloaterDirector",
               "function": "bindAnimatePage",
               "wired_class": "LLFloaterDirector",
@@ -54512,7 +54512,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1136,
+              "line": 1140,
               "class": "LLFloaterDirector",
               "function": "onAnimCopyUUID",
               "wired_class": "LLFloaterDirector",
@@ -54602,7 +54602,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1094,
+              "line": 1098,
               "class": "LLFloaterDirector",
               "function": "bindAnimatePage",
               "wired_class": "LLFloaterDirector",
@@ -54613,7 +54613,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1137,
+              "line": 1141,
               "class": "LLFloaterDirector",
               "function": "onAnimSetLoco",
               "wired_class": "LLFloaterDirector",
@@ -54703,7 +54703,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1095,
+              "line": 1099,
               "class": "LLFloaterDirector",
               "function": "bindAnimatePage",
               "wired_class": "LLFloaterDirector",
@@ -54714,7 +54714,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1138,
+              "line": 1142,
               "class": "LLFloaterDirector",
               "function": "onAnimPlayLocal",
               "wired_class": "LLFloaterDirector",
@@ -54804,7 +54804,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1096,
+              "line": 1100,
               "class": "LLFloaterDirector",
               "function": "bindAnimatePage",
               "wired_class": "LLFloaterDirector",
@@ -54815,7 +54815,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1139,
+              "line": 1143,
               "class": "LLFloaterDirector",
               "function": "onAnimPlayLocal",
               "wired_class": "LLFloaterDirector",
@@ -54894,7 +54894,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1092,
+              "line": 1096,
               "class": "LLFloaterDirector",
               "function": "bindAnimatePage",
               "wired_class": "LLFloaterDirector",
@@ -55029,7 +55029,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1097,
+              "line": 1101,
               "class": "LLFloaterDirector",
               "function": "bindAnimatePage",
               "wired_class": "LLFloaterDirector",
@@ -55130,7 +55130,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1098,
+              "line": 1102,
               "class": "LLFloaterDirector",
               "function": "bindAnimatePage",
               "wired_class": "LLFloaterDirector",
@@ -55141,7 +55141,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1140,
+              "line": 1144,
               "class": "LLFloaterDirector",
               "function": "onPastePlayLocal",
               "wired_class": "LLFloaterDirector",
@@ -55231,7 +55231,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1099,
+              "line": 1103,
               "class": "LLFloaterDirector",
               "function": "bindAnimatePage",
               "wired_class": "LLFloaterDirector",
@@ -55242,7 +55242,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1141,
+              "line": 1145,
               "class": "LLFloaterDirector",
               "function": "onPastePlayLocal",
               "wired_class": "LLFloaterDirector",
@@ -55332,7 +55332,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1100,
+              "line": 1104,
               "class": "LLFloaterDirector",
               "function": "bindAnimatePage",
               "wired_class": "LLFloaterDirector",
@@ -55343,7 +55343,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1142,
+              "line": 1146,
               "class": "LLFloaterDirector",
               "function": "onPasteSetLoco",
               "wired_class": "LLFloaterDirector",
@@ -55524,7 +55524,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1101,
+              "line": 1105,
               "class": "LLFloaterDirector",
               "function": "bindAnimatePage",
               "wired_class": "LLFloaterDirector",
@@ -55535,7 +55535,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1144,
+              "line": 1148,
               "class": "LLFloaterDirector",
               "function": "onLocomotionRoleChanged",
               "wired_class": "LLFloaterDirector",
@@ -55614,7 +55614,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1102,
+              "line": 1106,
               "class": "LLFloaterDirector",
               "function": "bindAnimatePage",
               "wired_class": "LLFloaterDirector",
@@ -55704,7 +55704,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1103,
+              "line": 1107,
               "class": "LLFloaterDirector",
               "function": "bindAnimatePage",
               "wired_class": "LLFloaterDirector",
@@ -55794,7 +55794,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1104,
+              "line": 1108,
               "class": "LLFloaterDirector",
               "function": "bindAnimatePage",
               "wired_class": "LLFloaterDirector",
@@ -55895,7 +55895,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1106,
+              "line": 1110,
               "class": "LLFloaterDirector",
               "function": "bindAnimatePage",
               "wired_class": "LLFloaterDirector",
@@ -55906,7 +55906,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1143,
+              "line": 1147,
               "class": "LLFloaterDirector",
               "function": "onClickClearLoco",
               "wired_class": "LLFloaterDirector",
@@ -55985,7 +55985,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1155,
+              "line": 1159,
               "class": "LLFloaterDirector",
               "function": "bindAnimatePage",
               "wired_class": "LLFloaterDirector",
@@ -60406,7 +60406,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1207,
+              "line": 1211,
               "class": "LLFloaterDirector",
               "function": "bindCameraPage",
               "wired_class": "LLFloaterDirector",
@@ -65708,7 +65708,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1220,
+              "line": 1224,
               "class": "LLFloaterDirector",
               "function": "bindCameraPage",
               "wired_class": "LLFloaterDirector",
@@ -70593,7 +70593,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 140,
+              "line": 141,
               "class": "ALPanelPathEditor",
               "function": "postBuild",
               "wired_class": "ALPanelPathEditor",
@@ -70881,7 +70881,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 140,
+              "line": 141,
               "class": "ALPanelPathEditor",
               "function": "postBuild",
               "wired_class": "ALPanelPathEditor",
@@ -77428,7 +77428,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/alpanelpatheditor.cpp",
-              "line": 140,
+              "line": 141,
               "class": "ALPanelPathEditor",
               "function": "postBuild",
               "wired_class": "ALPanelPathEditor",
@@ -84396,7 +84396,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpaneldirectorswitcher.cpp",
-              "line": 90,
+              "line": 91,
               "class": "ALPanelDirectorSwitcher",
               "function": "postBuild",
               "wired_class": "ALPanelDirectorSwitcher",
@@ -84470,7 +84470,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1199,
+              "line": 1203,
               "class": "LLFloaterDirector",
               "function": "bindCameraPage",
               "wired_class": "LLFloaterDirector",
@@ -84560,7 +84560,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1203,
+              "line": 1207,
               "class": "LLFloaterDirector",
               "function": "bindCameraPage",
               "wired_class": "LLFloaterDirector",
@@ -84650,7 +84650,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1200,
+              "line": 1204,
               "class": "LLFloaterDirector",
               "function": "bindCameraPage",
               "wired_class": "LLFloaterDirector",
@@ -84740,7 +84740,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1204,
+              "line": 1208,
               "class": "LLFloaterDirector",
               "function": "bindCameraPage",
               "wired_class": "LLFloaterDirector",
@@ -84830,7 +84830,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1201,
+              "line": 1205,
               "class": "LLFloaterDirector",
               "function": "bindCameraPage",
               "wired_class": "LLFloaterDirector",
@@ -84920,7 +84920,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1205,
+              "line": 1209,
               "class": "LLFloaterDirector",
               "function": "bindCameraPage",
               "wired_class": "LLFloaterDirector",
@@ -85010,7 +85010,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1202,
+              "line": 1206,
               "class": "LLFloaterDirector",
               "function": "bindCameraPage",
               "wired_class": "LLFloaterDirector",
@@ -85100,7 +85100,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1206,
+              "line": 1210,
               "class": "LLFloaterDirector",
               "function": "bindCameraPage",
               "wired_class": "LLFloaterDirector",
@@ -85168,7 +85168,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpaneldirectorswitcher.cpp",
-              "line": 65,
+              "line": 66,
               "class": "ALPanelDirectorSwitcher",
               "function": "postBuild",
               "wired_class": "ALPanelDirectorSwitcher",
@@ -85231,7 +85231,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpaneldirectorswitcher.cpp",
-              "line": 65,
+              "line": 66,
               "class": "ALPanelDirectorSwitcher",
               "function": "postBuild",
               "wired_class": "ALPanelDirectorSwitcher",
@@ -85294,7 +85294,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpaneldirectorswitcher.cpp",
-              "line": 65,
+              "line": 66,
               "class": "ALPanelDirectorSwitcher",
               "function": "postBuild",
               "wired_class": "ALPanelDirectorSwitcher",
@@ -85357,7 +85357,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpaneldirectorswitcher.cpp",
-              "line": 65,
+              "line": 66,
               "class": "ALPanelDirectorSwitcher",
               "function": "postBuild",
               "wired_class": "ALPanelDirectorSwitcher",
@@ -85420,7 +85420,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpaneldirectorswitcher.cpp",
-              "line": 65,
+              "line": 66,
               "class": "ALPanelDirectorSwitcher",
               "function": "postBuild",
               "wired_class": "ALPanelDirectorSwitcher",
@@ -85483,7 +85483,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpaneldirectorswitcher.cpp",
-              "line": 65,
+              "line": 66,
               "class": "ALPanelDirectorSwitcher",
               "function": "postBuild",
               "wired_class": "ALPanelDirectorSwitcher",
@@ -85546,7 +85546,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpaneldirectorswitcher.cpp",
-              "line": 65,
+              "line": 66,
               "class": "ALPanelDirectorSwitcher",
               "function": "postBuild",
               "wired_class": "ALPanelDirectorSwitcher",
@@ -85609,7 +85609,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpaneldirectorswitcher.cpp",
-              "line": 65,
+              "line": 66,
               "class": "ALPanelDirectorSwitcher",
               "function": "postBuild",
               "wired_class": "ALPanelDirectorSwitcher",
@@ -85672,7 +85672,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpaneldirectorswitcher.cpp",
-              "line": 65,
+              "line": 66,
               "class": "ALPanelDirectorSwitcher",
               "function": "postBuild",
               "wired_class": "ALPanelDirectorSwitcher",
@@ -85735,7 +85735,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpaneldirectorswitcher.cpp",
-              "line": 65,
+              "line": 66,
               "class": "ALPanelDirectorSwitcher",
               "function": "postBuild",
               "wired_class": "ALPanelDirectorSwitcher",
@@ -85798,7 +85798,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpaneldirectorswitcher.cpp",
-              "line": 65,
+              "line": 66,
               "class": "ALPanelDirectorSwitcher",
               "function": "postBuild",
               "wired_class": "ALPanelDirectorSwitcher",
@@ -85861,7 +85861,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpaneldirectorswitcher.cpp",
-              "line": 65,
+              "line": 66,
               "class": "ALPanelDirectorSwitcher",
               "function": "postBuild",
               "wired_class": "ALPanelDirectorSwitcher",
@@ -85924,7 +85924,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpaneldirectorswitcher.cpp",
-              "line": 91,
+              "line": 92,
               "class": "ALPanelDirectorSwitcher",
               "function": "onResetSlots",
               "wired_class": "ALPanelDirectorSwitcher",
@@ -86026,7 +86026,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpaneldirectorswitcher.cpp",
-              "line": 72,
+              "line": 73,
               "class": "ALPanelDirectorSwitcher",
               "function": "postBuild",
               "wired_class": "ALPanelDirectorSwitcher",
@@ -86037,7 +86037,7 @@
             },
             {
               "file": "indra/newview/alpaneldirectorswitcher.cpp",
-              "line": 139,
+              "line": 140,
               "class": "ALPanelDirectorSwitcher",
               "function": "onSlotMode",
               "wired_class": "ALPanelDirectorSwitcher",
@@ -86089,7 +86089,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpaneldirectorswitcher.cpp",
-              "line": 71,
+              "line": 72,
               "class": "ALPanelDirectorSwitcher",
               "function": "postBuild",
               "wired_class": "ALPanelDirectorSwitcher",
@@ -86100,7 +86100,7 @@
             },
             {
               "file": "indra/newview/alpaneldirectorswitcher.cpp",
-              "line": 137,
+              "line": 138,
               "class": "ALPanelDirectorSwitcher",
               "function": "onSlotEnabled",
               "wired_class": "ALPanelDirectorSwitcher",
@@ -86152,7 +86152,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpaneldirectorswitcher.cpp",
-              "line": 77,
+              "line": 78,
               "class": "ALPanelDirectorSwitcher",
               "function": "postBuild",
               "wired_class": "ALPanelDirectorSwitcher",
@@ -86163,7 +86163,7 @@
             },
             {
               "file": "indra/newview/alpaneldirectorswitcher.cpp",
-              "line": 141,
+              "line": 142,
               "class": "ALPanelDirectorSwitcher",
               "function": "onSlotLabel",
               "wired_class": "ALPanelDirectorSwitcher",
@@ -86221,7 +86221,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpaneldirectorswitcher.cpp",
-              "line": 74,
+              "line": 75,
               "class": "ALPanelDirectorSwitcher",
               "function": "postBuild",
               "wired_class": "ALPanelDirectorSwitcher",
@@ -86232,7 +86232,7 @@
             },
             {
               "file": "indra/newview/alpaneldirectorswitcher.cpp",
-              "line": 143,
+              "line": 144,
               "class": "ALPanelDirectorSwitcher",
               "function": "onSlotSubject",
               "wired_class": "ALPanelDirectorSwitcher",
@@ -86289,7 +86289,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpaneldirectorswitcher.cpp",
-              "line": 76,
+              "line": 77,
               "class": "ALPanelDirectorSwitcher",
               "function": "postBuild",
               "wired_class": "ALPanelDirectorSwitcher",
@@ -86300,7 +86300,7 @@
             },
             {
               "file": "indra/newview/alpaneldirectorswitcher.cpp",
-              "line": 145,
+              "line": 146,
               "class": "ALPanelDirectorSwitcher",
               "function": "onSlotSubject",
               "wired_class": "ALPanelDirectorSwitcher",
@@ -86352,7 +86352,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpaneldirectorswitcher.cpp",
-              "line": 79,
+              "line": 80,
               "class": "ALPanelDirectorSwitcher",
               "function": "postBuild",
               "wired_class": "ALPanelDirectorSwitcher",
@@ -86363,7 +86363,7 @@
             },
             {
               "file": "indra/newview/alpaneldirectorswitcher.cpp",
-              "line": 147,
+              "line": 148,
               "class": "ALPanelDirectorSwitcher",
               "function": "onCustomEnabled",
               "wired_class": "ALPanelDirectorSwitcher",
@@ -86415,7 +86415,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpaneldirectorswitcher.cpp",
-              "line": 87,
+              "line": 88,
               "class": "ALPanelDirectorSwitcher",
               "function": "postBuild",
               "wired_class": "ALPanelDirectorSwitcher",
@@ -86426,7 +86426,7 @@
             },
             {
               "file": "indra/newview/alpaneldirectorswitcher.cpp",
-              "line": 156,
+              "line": 157,
               "class": "ALPanelDirectorSwitcher",
               "function": "onCaptureCurrentView",
               "wired_class": "ALPanelDirectorSwitcher",
@@ -86518,7 +86518,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpaneldirectorswitcher.cpp",
-              "line": 80,
+              "line": 81,
               "class": "ALPanelDirectorSwitcher",
               "function": "postBuild",
               "wired_class": "ALPanelDirectorSwitcher",
@@ -86581,7 +86581,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpaneldirectorswitcher.cpp",
-              "line": 81,
+              "line": 82,
               "class": "ALPanelDirectorSwitcher",
               "function": "postBuild",
               "wired_class": "ALPanelDirectorSwitcher",
@@ -86644,7 +86644,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpaneldirectorswitcher.cpp",
-              "line": 83,
+              "line": 84,
               "class": "ALPanelDirectorSwitcher",
               "function": "postBuild",
               "wired_class": "ALPanelDirectorSwitcher",
@@ -86707,7 +86707,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpaneldirectorswitcher.cpp",
-              "line": 84,
+              "line": 85,
               "class": "ALPanelDirectorSwitcher",
               "function": "postBuild",
               "wired_class": "ALPanelDirectorSwitcher",
@@ -86770,7 +86770,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpaneldirectorswitcher.cpp",
-              "line": 85,
+              "line": 86,
               "class": "ALPanelDirectorSwitcher",
               "function": "postBuild",
               "wired_class": "ALPanelDirectorSwitcher",
@@ -86833,7 +86833,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpaneldirectorswitcher.cpp",
-              "line": 159,
+              "line": 160,
               "class": "ALPanelDirectorSwitcher",
               "function": "postBuild",
               "wired_class": "ALPanelDirectorSwitcher",
@@ -86896,7 +86896,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpaneldirectorswitcher.cpp",
-              "line": 160,
+              "line": 161,
               "class": "ALPanelDirectorSwitcher",
               "function": "postBuild",
               "wired_class": "ALPanelDirectorSwitcher",
@@ -86959,7 +86959,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpaneldirectorswitcher.cpp",
-              "line": 161,
+              "line": 162,
               "class": "ALPanelDirectorSwitcher",
               "function": "postBuild",
               "wired_class": "ALPanelDirectorSwitcher",
@@ -87022,7 +87022,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpaneldirectorswitcher.cpp",
-              "line": 162,
+              "line": 163,
               "class": "ALPanelDirectorSwitcher",
               "function": "postBuild",
               "wired_class": "ALPanelDirectorSwitcher",
@@ -87085,7 +87085,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpaneldirectorswitcher.cpp",
-              "line": 163,
+              "line": 164,
               "class": "ALPanelDirectorSwitcher",
               "function": "postBuild",
               "wired_class": "ALPanelDirectorSwitcher",
@@ -87538,7 +87538,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpaneldirectorswitcher.cpp",
-              "line": 199,
+              "line": 200,
               "class": "ALPanelDirectorSwitcher",
               "function": "updateCurveControlsEnabled",
               "wired_class": "ALPanelDirectorSwitcher",
@@ -87599,7 +87599,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpaneldirectorswitcher.cpp",
-              "line": 199,
+              "line": 200,
               "class": "ALPanelDirectorSwitcher",
               "function": "updateCurveControlsEnabled",
               "wired_class": "ALPanelDirectorSwitcher",
@@ -87660,7 +87660,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpaneldirectorswitcher.cpp",
-              "line": 200,
+              "line": 201,
               "class": "ALPanelDirectorSwitcher",
               "function": "updateCurveControlsEnabled",
               "wired_class": "ALPanelDirectorSwitcher",
@@ -87721,7 +87721,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpaneldirectorswitcher.cpp",
-              "line": 200,
+              "line": 201,
               "class": "ALPanelDirectorSwitcher",
               "function": "updateCurveControlsEnabled",
               "wired_class": "ALPanelDirectorSwitcher",
@@ -87964,7 +87964,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpaneldirectorswitcher.cpp",
-              "line": 203,
+              "line": 204,
               "class": "ALPanelDirectorSwitcher",
               "function": "updateCurveControlsEnabled",
               "wired_class": "ALPanelDirectorSwitcher",
@@ -88025,7 +88025,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpaneldirectorswitcher.cpp",
-              "line": 203,
+              "line": 204,
               "class": "ALPanelDirectorSwitcher",
               "function": "updateCurveControlsEnabled",
               "wired_class": "ALPanelDirectorSwitcher",
@@ -88086,7 +88086,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpaneldirectorswitcher.cpp",
-              "line": 204,
+              "line": 205,
               "class": "ALPanelDirectorSwitcher",
               "function": "updateCurveControlsEnabled",
               "wired_class": "ALPanelDirectorSwitcher",
@@ -88147,7 +88147,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpaneldirectorswitcher.cpp",
-              "line": 204,
+              "line": 205,
               "class": "ALPanelDirectorSwitcher",
               "function": "updateCurveControlsEnabled",
               "wired_class": "ALPanelDirectorSwitcher",
@@ -88254,7 +88254,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1242,
+              "line": 1246,
               "class": "LLFloaterDirector",
               "function": "bindCameraPage",
               "wired_class": "LLFloaterDirector",
@@ -88656,7 +88656,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1247,
+              "line": 1251,
               "class": "LLFloaterDirector",
               "function": "bindCameraPage",
               "wired_class": "LLFloaterDirector",
@@ -88925,7 +88925,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1252,
+              "line": 1256,
               "class": "LLFloaterDirector",
               "function": "bindCameraPage",
               "wired_class": "LLFloaterDirector",
@@ -90710,7 +90710,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1956,
+              "line": 1967,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -95283,7 +95283,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1944,
+              "line": 1955,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -95346,7 +95346,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1949,
+              "line": 1960,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -95409,7 +95409,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1946,
+              "line": 1957,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -95472,7 +95472,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1950,
+              "line": 1961,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -95535,7 +95535,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1947,
+              "line": 1958,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -95598,7 +95598,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1945,
+              "line": 1956,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -95661,7 +95661,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1948,
+              "line": 1959,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -96588,7 +96588,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_actor_mover.xml",
-              "line": 310,
+              "line": 299,
               "tag": "button",
               "control_name": null,
               "callbacks": [],
@@ -97655,7 +97655,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1233,
+              "line": 1237,
               "class": "LLFloaterDirector",
               "function": "bindCameraPage",
               "wired_class": "LLFloaterDirector",
@@ -97758,7 +97758,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1237,
+              "line": 1241,
               "class": "LLFloaterDirector",
               "function": "bindCameraPage",
               "wired_class": "LLFloaterDirector",
@@ -98294,7 +98294,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/floater_ultimate_diopter.xml",
-              "line": 279,
+              "line": 282,
               "tag": "check_box",
               "control_name": "RenderFocusPointLocked",
               "callbacks": [],
@@ -98324,7 +98324,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/floater_ultimate_diopter.xml",
-              "line": 279,
+              "line": 282,
               "widget": "diopter_focus_locked",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/floater_ultimate_diopter.xml",
@@ -98464,7 +98464,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/floater_ultimate_diopter.xml",
-              "line": 277,
+              "line": 280,
               "widget": "diopter_focus_crosshair",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/floater_ultimate_diopter.xml",
@@ -98646,7 +98646,7 @@
             },
             {
               "file": "indra/newview/skins/default/xui/en/panel_dof.xml",
-              "line": 465,
+              "line": 466,
               "tag": "spinner",
               "control_name": "RenderCompositionGuideWidth",
               "callbacks": [],
@@ -98708,7 +98708,7 @@
             },
             {
               "file": "indra/newview/skins/default/xui/en/panel_dof.xml",
-              "line": 489,
+              "line": 490,
               "tag": "slider",
               "control_name": "RenderCompositionGuideVisibility",
               "callbacks": [],
@@ -100579,7 +100579,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/floater_ultimate_diopter.xml",
-              "line": 66,
+              "line": 67,
               "tag": "check_box",
               "control_name": "CineDiopterEnabled",
               "callbacks": [],
@@ -100615,7 +100615,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/alfloaterultimatediopter.cpp",
-              "line": 68,
+              "line": 69,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -100677,7 +100677,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/floater_ultimate_diopter.xml",
-              "line": 72,
+              "line": 73,
               "tag": "combo_box",
               "control_name": "CineDiopterPreset",
               "callbacks": [],
@@ -100692,7 +100692,7 @@
           "cpp": [
             {
               "file": "indra/newview/alfloaterultimatediopter.cpp",
-              "line": 288,
+              "line": 289,
               "class": "ALFloaterUltimateDiopter",
               "function": "postBuild",
               "wired_class": "ALFloaterUltimateDiopter",
@@ -100752,7 +100752,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/floater_ultimate_diopter.xml",
-              "line": 105,
+              "line": 106,
               "tag": "slider",
               "control_name": "CineDiopterBlend",
               "callbacks": [],
@@ -100815,7 +100815,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/floater_ultimate_diopter.xml",
-              "line": 287,
+              "line": 290,
               "tag": "slider",
               "control_name": "CineDiopterPower",
               "callbacks": [],
@@ -120367,7 +120367,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1224,
+              "line": 1228,
               "class": "LLFloaterDirector",
               "function": "bindCameraPage",
               "wired_class": "LLFloaterDirector",
@@ -122421,7 +122421,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1228,
+              "line": 1232,
               "class": "LLFloaterReg",
               "function": "showInstance",
               "wired_class": "LLFloaterDirector",
@@ -141317,7 +141317,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1016,
+              "line": 1020,
               "class": "LLFloaterDirector",
               "function": "bindActorStylePage",
               "wired_class": "LLFloaterDirector",
@@ -141328,7 +141328,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1061,
+              "line": 1065,
               "class": "LLFloaterDirector",
               "function": "onActorStyleTargetChanged",
               "wired_class": "LLFloaterDirector",
@@ -141418,7 +141418,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1033,
+              "line": 1037,
               "class": "LLFloaterDirector",
               "function": "bindActorStylePage",
               "wired_class": "LLFloaterDirector",
@@ -141519,7 +141519,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1032,
+              "line": 1036,
               "class": "LLFloaterDirector",
               "function": "bindActorStylePage",
               "wired_class": "LLFloaterDirector",
@@ -141530,7 +141530,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1083,
+              "line": 1087,
               "class": "LLFloaterDirector",
               "function": "onActorStyleReset",
               "wired_class": "LLFloaterDirector",
@@ -141727,7 +141727,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1019,
+              "line": 1023,
               "class": "LLFloaterDirector",
               "function": "bindActorStylePage",
               "wired_class": "LLFloaterDirector",
@@ -141820,7 +141820,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1018,
+              "line": 1022,
               "class": "LLFloaterDirector",
               "function": "bindActorStylePage",
               "wired_class": "LLFloaterDirector",
@@ -141910,7 +141910,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1022,
+              "line": 1026,
               "class": "LLFloaterDirector",
               "function": "bindActorStylePage",
               "wired_class": "LLFloaterDirector",
@@ -142000,7 +142000,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1023,
+              "line": 1027,
               "class": "LLFloaterDirector",
               "function": "bindActorStylePage",
               "wired_class": "LLFloaterDirector",
@@ -142090,7 +142090,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1020,
+              "line": 1024,
               "class": "LLFloaterDirector",
               "function": "bindActorStylePage",
               "wired_class": "LLFloaterDirector",
@@ -142180,7 +142180,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1021,
+              "line": 1025,
               "class": "LLFloaterDirector",
               "function": "bindActorStylePage",
               "wired_class": "LLFloaterDirector",
@@ -142270,7 +142270,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1030,
+              "line": 1034,
               "class": "LLFloaterDirector",
               "function": "bindActorStylePage",
               "wired_class": "LLFloaterDirector",
@@ -142360,7 +142360,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1026,
+              "line": 1030,
               "class": "LLFloaterDirector",
               "function": "bindActorStylePage",
               "wired_class": "LLFloaterDirector",
@@ -142450,7 +142450,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1025,
+              "line": 1029,
               "class": "LLFloaterDirector",
               "function": "bindActorStylePage",
               "wired_class": "LLFloaterDirector",
@@ -142540,7 +142540,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1027,
+              "line": 1031,
               "class": "LLFloaterDirector",
               "function": "bindActorStylePage",
               "wired_class": "LLFloaterDirector",
@@ -142630,7 +142630,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1031,
+              "line": 1035,
               "class": "LLFloaterDirector",
               "function": "bindActorStylePage",
               "wired_class": "LLFloaterDirector",
@@ -142730,7 +142730,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1028,
+              "line": 1032,
               "class": "LLFloaterDirector",
               "function": "bindActorStylePage",
               "wired_class": "LLFloaterDirector",
@@ -142820,7 +142820,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1029,
+              "line": 1033,
               "class": "LLFloaterDirector",
               "function": "bindActorStylePage",
               "wired_class": "LLFloaterDirector",
@@ -142910,7 +142910,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1024,
+              "line": 1028,
               "class": "LLFloaterDirector",
               "function": "bindActorStylePage",
               "wired_class": "LLFloaterDirector",
@@ -148007,7 +148007,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_atmospheric_volumes.xml",
-              "line": 36,
+              "line": 37,
               "tag": "scroll_list",
               "control_name": null,
               "callbacks": [],
@@ -148070,7 +148070,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_atmospheric_volumes.xml",
-              "line": 43,
+              "line": 44,
               "tag": "button",
               "control_name": null,
               "callbacks": [],
@@ -148133,7 +148133,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_atmospheric_volumes.xml",
-              "line": 44,
+              "line": 45,
               "tag": "button",
               "control_name": null,
               "callbacks": [],
@@ -148196,7 +148196,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_atmospheric_volumes.xml",
-              "line": 45,
+              "line": 46,
               "tag": "button",
               "control_name": null,
               "callbacks": [],
@@ -148259,7 +148259,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_atmospheric_volumes.xml",
-              "line": 46,
+              "line": 47,
               "tag": "check_box",
               "control_name": null,
               "callbacks": [],
@@ -148373,7 +148373,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_atmospheric_volumes.xml",
-              "line": 48,
+              "line": 49,
               "tag": "line_editor",
               "control_name": null,
               "callbacks": [],
@@ -148450,7 +148450,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_atmospheric_volumes.xml",
-              "line": 64,
+              "line": 65,
               "tag": "combo_box",
               "control_name": null,
               "callbacks": [],
@@ -148524,7 +148524,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_atmospheric_volumes.xml",
-              "line": 68,
+              "line": 69,
               "tag": "button",
               "control_name": null,
               "callbacks": [],
@@ -148587,7 +148587,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_atmospheric_volumes.xml",
-              "line": 52,
+              "line": 53,
               "tag": "spinner",
               "control_name": null,
               "callbacks": [],
@@ -148650,7 +148650,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_atmospheric_volumes.xml",
-              "line": 53,
+              "line": 54,
               "tag": "spinner",
               "control_name": null,
               "callbacks": [],
@@ -148713,7 +148713,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_atmospheric_volumes.xml",
-              "line": 54,
+              "line": 55,
               "tag": "spinner",
               "control_name": null,
               "callbacks": [],
@@ -148776,7 +148776,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_atmospheric_volumes.xml",
-              "line": 83,
+              "line": 84,
               "tag": "text",
               "control_name": null,
               "callbacks": [],
@@ -148816,7 +148816,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_atmospheric_volumes.xml",
-              "line": 56,
+              "line": 57,
               "tag": "spinner",
               "control_name": null,
               "callbacks": [],
@@ -148879,7 +148879,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_atmospheric_volumes.xml",
-              "line": 57,
+              "line": 58,
               "tag": "spinner",
               "control_name": null,
               "callbacks": [],
@@ -148942,7 +148942,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_atmospheric_volumes.xml",
-              "line": 58,
+              "line": 59,
               "tag": "spinner",
               "control_name": null,
               "callbacks": [],
@@ -149005,7 +149005,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_atmospheric_volumes.xml",
-              "line": 60,
+              "line": 61,
               "tag": "spinner",
               "control_name": null,
               "callbacks": [],
@@ -149068,7 +149068,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_atmospheric_volumes.xml",
-              "line": 61,
+              "line": 62,
               "tag": "spinner",
               "control_name": null,
               "callbacks": [],
@@ -149131,7 +149131,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_atmospheric_volumes.xml",
-              "line": 62,
+              "line": 63,
               "tag": "spinner",
               "control_name": null,
               "callbacks": [],
@@ -149194,7 +149194,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_atmospheric_volumes.xml",
-              "line": 72,
+              "line": 73,
               "tag": "slider",
               "control_name": null,
               "callbacks": [],
@@ -149268,7 +149268,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_atmospheric_volumes.xml",
-              "line": 74,
+              "line": 75,
               "tag": "slider",
               "control_name": null,
               "callbacks": [],
@@ -149342,7 +149342,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_atmospheric_volumes.xml",
-              "line": 76,
+              "line": 77,
               "tag": "slider",
               "control_name": null,
               "callbacks": [],
@@ -149416,7 +149416,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_atmospheric_volumes.xml",
-              "line": 78,
+              "line": 79,
               "tag": "slider",
               "control_name": null,
               "callbacks": [],
@@ -149490,7 +149490,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_atmospheric_volumes.xml",
-              "line": 80,
+              "line": 81,
               "tag": "slider",
               "control_name": null,
               "callbacks": [],
@@ -149564,7 +149564,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_atmospheric_volumes.xml",
-              "line": 82,
+              "line": 83,
               "tag": "color_swatch",
               "control_name": null,
               "callbacks": [],
@@ -153085,7 +153085,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 539,
+              "line": 540,
               "class": "ALPanelGhostStudio",
               "function": "onClickFreeze",
               "wired_class": "ALPanelGhostStudio",

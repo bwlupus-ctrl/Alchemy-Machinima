@@ -714,6 +714,7 @@ void LLFloaterPrismManager::onOpen(const LLSD& key)
 
 void LLFloaterPrismManager::draw()
 {
+    LL_PROFILE_ZONE_SCOPED_CATEGORY_UI;
     pollSnapshots(false);
     LLFloater::draw();
 }

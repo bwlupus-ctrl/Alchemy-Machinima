@@ -16,8 +16,10 @@
 #include "llactormover.h"
 #include "llagent.h"                 // gAgent camera origin <-> global (Set camera here)
 #include "llaccordionctrl.h"
+#include "llaccordionctrltab.h"
 #include "llavatarnamecache.h"
 #include "llbutton.h"
+#include "llcallbacklist.h"
 #include "llcheckboxctrl.h"
 #include "llcombobox.h"
 #include "lldirectorcast.h"          // names + Subject A for "face target" (UI reads engine)
@@ -75,7 +77,6 @@ ALPanelPathEditor::~ALPanelPathEditor()
 bool ALPanelPathEditor::postBuild()
 {
     mAccordion     = getChild<LLAccordionCtrl>("path_sections");
-    mAccordionNormalHeight = mAccordion->getRect().getHeight();
     mHeader        = getChild<LLTextBox>("path_header");
     mEditModeCheck = getChild<LLCheckBoxCtrl>("edit_mode_check");
     mList          = getChild<LLScrollListCtrl>("waypoint_list");
@@ -143,6 +144,16 @@ bool ALPanelPathEditor::postBuild()
     mResumeBtn        = getChild<LLButton>("btn_suspend_resume");
     mReanchorBtn      = getChild<LLButton>("btn_suspend_reanchor");
     mCancelSuspendBtn = getChild<LLButton>("btn_suspend_cancel");
+
+    LLHandle<ALPanelPathEditor> layout_handle = getDerivedHandle<ALPanelPathEditor>();
+    for (LLView* child : *mAccordion->getChildList())
+        if (LLAccordionCtrlTab* tab = dynamic_cast<LLAccordionCtrlTab*>(child))
+            tab->setDropDownStateChangedCallback(
+                [layout_handle](LLUICtrl*, const LLSD&)
+                {
+                    if (ALPanelPathEditor* panel = layout_handle.get())
+                        panel->requestDocumentLayout();
+                });
 
     mEditModeCheck->setCommitCallback([this](LLUICtrl*, const LLSD&) { onToggleEditMode(); });
     mList->setCommitCallback([this](LLUICtrl*, const LLSD&) { onListSelect(); });
@@ -263,7 +274,58 @@ bool ALPanelPathEditor::postBuild()
         mColorSwatch->setBackgroundOpaque(true);    // show the solid per-actor color
     }
     installOwnerHooks(); // [DirFix] static XML controls; reveal retries idempotently
+    requestDocumentLayout();
     return true;
+}
+
+void ALPanelPathEditor::requestDocumentLayout()
+{
+    if (mDocumentLayoutPending)
+        return;
+    mDocumentLayoutPending = true;
+    LLHandle<ALPanelPathEditor> handle = getDerivedHandle<ALPanelPathEditor>();
+    doOnIdleOneTime(
+        [handle]()
+        {
+            if (ALPanelPathEditor* panel = handle.get())
+            {
+                panel->mDocumentLayoutPending = false;
+                panel->layoutDocument();
+            }
+        });
+}
+
+void ALPanelPathEditor::layoutDocument()
+{
+    if (!mAccordion)
+        return;
+
+    mAccordion->arrange();
+    S32 accordion_height = 4;
+    for (LLView* child : *mAccordion->getChildList())
+        if (LLAccordionCtrlTab* tab = dynamic_cast<LLAccordionCtrlTab*>(child); tab && tab->getVisible())
+            accordion_height += tab->getRect().getHeight();
+
+    constexpr S32 NORMAL_TOP = 38;
+    constexpr S32 BANNER_TOP = 90;
+    constexpr S32 BOTTOM_PAD = 4;
+    const S32 accordion_top = mSuspendShown ? BANNER_TOP : NORMAL_TOP;
+    const S32 panel_height = accordion_top + accordion_height + BOTTOM_PAD;
+
+    LLView* document = getParent();
+    const S32 document_top = document ? document->getRect().getHeight() - getRect().mTop : 0;
+    const S32 document_bottom = llmax(0, getRect().mBottom);
+    LLPanel::reshape(getRect().getWidth(), panel_height, true);
+    mAccordion->reshape(mAccordion->getRect().getWidth(), accordion_height, false);
+    mAccordion->setOrigin(mAccordion->getRect().mLeft, BOTTOM_PAD);
+    mAccordion->arrange();
+
+    if (document && document->getName() == "path_scroll_content")
+    {
+        document->reshape(document->getRect().getWidth(),
+                          document_top + panel_height + document_bottom, true);
+        setOrigin(getRect().mLeft, document_bottom);
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -1033,23 +1095,7 @@ void ALPanelPathEditor::refreshSuspendBanner()
             mHint->setVisible(!suspended);
         }
 
-        // The banner occupies the same top band as the normal hint. Move the
-        // accordion below its actual bottom edge while suspended, then restore
-        // the full-height layout when the walk resumes.
-        S32 accordion_height = mAccordionNormalHeight;
-        if (suspended)
-        {
-            constexpr S32 BANNER_GAP = 4;
-            const S32 normal_top =
-                mAccordion->getRect().mBottom + mAccordionNormalHeight;
-            const S32 clear_top =
-                mSuspendBanner->getRect().mBottom - BANNER_GAP;
-            accordion_height -= llmax(0, normal_top - clear_top);
-            accordion_height = llmax(1, accordion_height);
-        }
-        mAccordion->reshape(
-            mAccordion->getRect().getWidth(), accordion_height, false);
-        mAccordion->arrange();
+        requestDocumentLayout();
     }
     if (!suspended)
     {

@@ -730,14 +730,17 @@ bool LLFloaterDirector::postBuild()
     // nested Ghost Studio sub-tabs), fits every document from its children (the hand-typed
     // XML heights are gone) and enables wheel adjust on every slider.
     mScrollFit.setUnwrappedPages({"cast_group", "performance_group", "camera_group", "lens_group",
-        "light_group", "look_group", "world_group", "capture_group", "dance_tab", "exposure_tab"});
+        "light_group", "look_group", "world_group", "capture_group", "dance_tab", "exposure_tab", "ghosts_tab"});
     mScrollFit.installForTabs(mTabContainer, this);
     mDancePage = findChild<LLPanel>("dance_tab");
     mDancePanelView = findChild<LLView>("director_dance_ball_panel");
     mExposurePage = findChild<LLPanel>("exposure_tab");
     mExposurePanelView = findChild<LLView>("director_exposure_panel");
+    mGhostPage = findChild<LLPanel>("ghosts_tab");
+    mGhostPanelView = findChild<LLView>("ghost_studio_panel");
     ALScrollFit::fillPage(mDancePage, mDancePanelView, 30);
     ALScrollFit::fillPage(mExposurePage, mExposurePanelView, 30);
+    ALScrollFit::fillPage(mGhostPage, mGhostPanelView, 8);
 
     const F32 build_ms = mBuildTimer.getElapsedTimeF32() * 1000.f;
     LL_INFOS("Director") << "Director build " << build_ms << " ms "
@@ -956,6 +959,7 @@ void LLFloaterDirector::bindPage(const std::string& page, LLView* root)
         { "vcam_tab", &LLFloaterDirector::bindCameraPage },
         { "gaze_tab", &LLFloaterDirector::bindCameraPage },
         { "dance_tab", &LLFloaterDirector::bindCameraPage },
+        { "ghosts_tab", &LLFloaterDirector::bindCameraPage },
         { "polish_tab", &LLFloaterDirector::bindCameraPage },
         { "exposure_tab", &LLFloaterDirector::bindCameraPage },
         { "actors_tab", &LLFloaterDirector::bindCameraPage },
@@ -1270,6 +1274,12 @@ void LLFloaterDirector::bindCameraPage(LLView* root)
         mExposurePage = dynamic_cast<LLPanel*>(exposure->getParent());
         ALScrollFit::fillPage(mExposurePage, mExposurePanelView, 30);
     }
+    if (LLView* ghosts = root->findChild<LLView>("ghost_studio_panel"))
+    {
+        mGhostPanelView = ghosts;
+        mGhostPage = dynamic_cast<LLPanel*>(ghosts->getParent());
+        ALScrollFit::fillPage(mGhostPage, mGhostPanelView, 8);
+    }
 }
 
 void LLFloaterDirector::bindLauncherPage(LLView* root)
@@ -1452,6 +1462,7 @@ void LLFloaterDirector::onOpen(const LLSD& key)
         // two opt-in unwrapped shared panels filled without another tree fit.
         ALScrollFit::fillPage(mDancePage, mDancePanelView, 30);
         ALScrollFit::fillPage(mExposurePage, mExposurePanelView, 30);
+        ALScrollFit::fillPage(mGhostPage, mGhostPanelView, 8);
     }
 
     const uuid_vec_t selected = selectedCastIds();

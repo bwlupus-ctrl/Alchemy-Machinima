@@ -48,6 +48,7 @@
 #include "llstartup.h"
 #include "lltabcontainer.h"
 #include "lltextbox.h"
+#include "lltexteditor.h"
 #include "llviewercontrol.h"
 #include "llviewerwindow.h"
 #include "llview.h"
@@ -680,6 +681,25 @@ bool visibleWithin(LLView* view, LLView* page)
         }
     }
     return false;
+}
+
+bool intersectsScrollViewports(LLView* view, LLFloater* floater)
+{
+    for (LLView* cursor = view->getParent(); cursor && cursor != floater;
+         cursor = cursor->getParent())
+    {
+        LLScrollContainer* scroller = dynamic_cast<LLScrollContainer*>(cursor);
+        if (!scroller || !scroller->getScrolledView())
+            continue;
+        LLRect rect;
+        if (!view->localRectToOtherView(view->getLocalRect(), &rect, scroller))
+            return false;
+        const LLRect visible = scroller->getVisibleContentRect();
+        if (llmin(rect.mRight, visible.mRight) <= llmax(rect.mLeft, visible.mLeft) ||
+            llmin(rect.mTop, visible.mTop) <= llmax(rect.mBottom, visible.mBottom))
+            return false;
+    }
+    return true;
 }
 
 std::string relativePath(LLView* view, LLView* page)
@@ -2968,11 +2988,14 @@ private:
         S32 missing_carets = 0;
         for (LLComboBox* combo : combos)
         {
-            if (!visibleWithin(combo, floater))
+            if (!visibleWithin(combo, floater) || !intersectsScrollViewports(combo, floater))
                 continue;
-            ++visible_combos;
             LLRect rect;
             combo->localRectToOtherView(combo->getLocalRect(), &rect, floater);
+            if (rect.mRight <= 0 || rect.mLeft >= floater->getLocalRect().mRight ||
+                rect.mTop <= 0 || rect.mBottom >= floater->getLocalRect().mTop)
+                continue;
+            ++visible_combos;
             bool caret = false;
             const LLColor4 expected = ALKitStyle::color(ALKitStyle::DIM).get();
             S32 min_luma = 255;

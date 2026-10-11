@@ -21,10 +21,10 @@ Keep only the everyday controls (on/off, preset, strength, focus split) plus Ope
 
 | Card / row | Existing control evidence | Required binding | Other writable homes |
 |---|---|---|---|
-| `diopter_summary` / `diopter_enabled` (On / off) | `check_box` `indra/newview/skins/default/xui/en/floater_ultimate_diopter.xml:66` | kit `toggle` ↔ `CineDiopterEnabled` `Boolean` | none |
-| `diopter_summary` / `diopter_preset` (Preset) | `combo_box` `indra/newview/skins/default/xui/en/floater_ultimate_diopter.xml:72` | kit `combo` ↔ `CineDiopterPreset` `U32` | none |
-| `diopter_summary` / `diopter_blend` (Strength) | `slider` `indra/newview/skins/default/xui/en/floater_ultimate_diopter.xml:105` | kit `slider` ↔ `CineDiopterBlend` `F32` | none |
-| `diopter_summary` / `diopter_power` (Focus split) | `slider` `indra/newview/skins/default/xui/en/floater_ultimate_diopter.xml:287` | kit `slider` ↔ `CineDiopterPower` `F32` | none |
+| `diopter_summary` / `diopter_enabled` (On / off) | `check_box` `indra/newview/skins/default/xui/en/floater_ultimate_diopter.xml:67` | kit `toggle` ↔ `CineDiopterEnabled` `Boolean` | none |
+| `diopter_summary` / `diopter_preset` (Preset) | `combo_box` `indra/newview/skins/default/xui/en/floater_ultimate_diopter.xml:73` | kit `combo` ↔ `CineDiopterPreset` `U32` | none |
+| `diopter_summary` / `diopter_blend` (Strength) | `slider` `indra/newview/skins/default/xui/en/floater_ultimate_diopter.xml:106` | kit `slider` ↔ `CineDiopterBlend` `F32` | none |
+| `diopter_summary` / `diopter_power` (Focus split) | `slider` `indra/newview/skins/default/xui/en/floater_ultimate_diopter.xml:290` | kit `slider` ↔ `CineDiopterPower` `F32` | none |
 | `diopter_summary` / `diopter_open_editor` (Full editor) | none | kit-native action `floater:ultimate_diopter`; no duplicate widget is required | none |
 
 ## User-decision control contract

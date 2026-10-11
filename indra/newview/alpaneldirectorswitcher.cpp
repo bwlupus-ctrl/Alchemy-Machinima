@@ -19,6 +19,7 @@
 #include "llcombobox.h"
 #include "llcontrol.h"
 #include "lllineeditor.h"
+#include "llstring.h"
 #include "llspinctrl.h"
 #include "lltextbox.h"
 #include "llviewercontrol.h"
@@ -507,7 +508,24 @@ void ALPanelDirectorSwitcher::refreshButtons()
         const std::string label = displayLabel(entry);
         const std::string mode_label =
             LLCinematicCamera::modeName(entry.mMode);
-        button->setLabel(llformat("%d %s", slot + 1, label.c_str()));
+        const std::string full_label = llformat("%d %s", slot + 1, label.c_str());
+        std::string display_label = full_label;
+        if (const LLFontGL* font = button->getFont())
+        {
+            const S32 available = llmax(1, button->getRect().getWidth() -
+                                            button->getLeftHPad() - button->getRightHPad());
+            if (font->getWidth(full_label) > available)
+            {
+                const LLWString wide = utf8str_to_wstring(full_label);
+                const F32 dots_width = static_cast<F32>(font->getWidth("..."));
+                const S32 count = font->maxDrawableChars(wide.c_str(),
+                                                         llmax(1.f, (F32)available - dots_width),
+                                                         (S32)wide.size(), LLFontGL::ANYWHERE);
+                display_label = wstring_to_utf8str(wide.substr(0, llmax(0, count))) + "...";
+            }
+        }
+        button->setUseEllipses(true);
+        button->setLabel(display_label);
         button->setToolTip(LLStringExplicit(llformat(
             "Slot %d: %s (%s). Click to select it; while armed, also cut to it. "
             "Use in auto only controls automatic selection.",

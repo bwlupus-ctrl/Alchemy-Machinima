@@ -357,7 +357,9 @@ void ALKitRow::layoutRow(S32 w)
         else if (mMeta.kind == "button")
         {
             const LLFontGL* f = ALKitStyle::sansFont("Kit12");
-            width             = llmin(span, (f ? f->getWidth(mMeta.label) : 80) + 20);
+            const LLButton* button = dynamic_cast<LLButton*>(mControl);
+            const std::string label = button ? button->getText() : mMeta.label;
+            width = llmin(span, (f ? f->getWidth(label) : 80) + 20);
         }
         else if (mMeta.kind == "slider" || mMeta.kind == "combo" || mMeta.kind == "text" || mMeta.kind == "readout" ||
                  mMeta.kind == "link" || mMeta.kind == "custom")

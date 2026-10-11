@@ -239,6 +239,8 @@ private:
     LLView*         mDancePanelView = nullptr;
     LLPanel*        mExposurePage = nullptr;
     LLView*         mExposurePanelView = nullptr;
+    LLPanel*        mGhostPage = nullptr;
+    LLView*         mGhostPanelView = nullptr;
     // [DirFix] D8: set on tab change / open; the hidden-tab-gated refreshers (Actor FX,
     // Animate) discard their "last written" caches the first visible pass after it
     bool            mActorStyleTabDirty = true;

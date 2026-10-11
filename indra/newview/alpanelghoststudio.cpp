@@ -12,7 +12,7 @@
 #include "alpanelghoststudio.h"
 #include "llviewermenufile.h" // [AutoAnimate]
 #include "llfilepicker.h" // [AutoAnimate]
-#include "alscrollfocus.h"
+#include "alscrollfit.h"
 
 #include "alcompassdial.h"          // live direct-manipulation heading control
 #include "alghostanimassetindex.h"
@@ -431,13 +431,14 @@ bool ALPanelGhostStudio::postBuild()
     tabs->addTabPanel(style_tab);
     tabs->addTabPanel(crowd_tab);
 
-    // The shared panel is hosted both standalone and in Director. Keep Tab
-    // focus visible in either viewport without giving the host another wheel
-    // owner around these tab-local documents.
-    ALScrollFocus::install(this, "place_scroll", "place_scroll_body");
-    ALScrollFocus::install(this, "style_scroll", "style_scroll_body");
-    ALScrollFocus::install(this, "pose_scroll", "pose_scroll_body");
-    ALScrollFocus::install(this, "crowd_scroll", "crowd_scroll_body");
+    // The shared panel is hosted both standalone and in Director. These named
+    // documents own their scrolling in both hosts; the controller fits them and
+    // installs the same focus-reveal behavior as the former focus-only calls.
+    mScrollFit.installForTabs(tabs, this,
+                              { { "place_scroll", "place_scroll_body" },
+                                { "style_scroll", "style_scroll_body" },
+                                { "pose_scroll", "pose_scroll_body" },
+                                { "crowd_scroll", "crowd_scroll_body" } });
 
     mShowAllCheck->setCommitCallback([this](LLUICtrl*, const LLSD&) { onShowAllToggle(); });
     mEditModeCheck->setCommitCallback([this](LLUICtrl*, const LLSD&) { onToggleEditMode(); });
@@ -678,6 +679,18 @@ bool ALPanelGhostStudio::postBuild()
     mShowAllCheck->set(ALGhostStudio::instance().getShowAll());
     mNameplateMode->setValue(gSavedSettings.getS32("GhostStudioNameplateMode"));
     return true;
+}
+
+void ALPanelGhostStudio::reshape(S32 width, S32 height, bool called_from_parent)
+{
+    LLPanel::reshape(width, height, called_from_parent);
+    if (LLTabContainer* tabs = findChild<LLTabContainer>("ghost_studio_tabs"))
+    {
+        constexpr S32 TABS_TOP = 214;
+        constexpr S32 STATUS_HEIGHT = 26;
+        tabs->reshape(width, llmax(1, height - TABS_TOP - STATUS_HEIGHT), true);
+        tabs->setOrigin(0, STATUS_HEIGHT);
+    }
 }
 
 void ALPanelGhostStudio::onVisibilityChange(bool new_visibility)

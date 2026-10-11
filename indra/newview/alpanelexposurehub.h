@@ -22,6 +22,7 @@ public:
     ~ALPanelExposureHub() override = default;
 
     bool postBuild() override;
+    void reshape(S32 width, S32 height, bool called_from_parent = true) override;
     void onVisibilityChange(bool new_visibility) override;
 
 private:

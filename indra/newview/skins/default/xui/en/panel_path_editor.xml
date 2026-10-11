@@ -47,12 +47,12 @@
 
   <accordion
    follows="all"
-   height="1066"
+   height="1118"
    layout="topleft"
    left="4"
    name="path_sections"
    single_expansion="false"
-   top="90"
+   top="38"
    width="492">
 
     <accordion_tab
@@ -295,6 +295,7 @@
     </accordion_tab>
   </accordion>
 
+  <!-- xui-check: allow-overlap path_sections suspend_banner -->
   <panel
    background_visible="true" background_opaque="true" bg_opaque_color="DkGray"
    border="true" follows="left|top|right" height="48" layout="topleft" left="4"
