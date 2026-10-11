@@ -18,3 +18,5 @@ The user is using the client: log only, don't act until the next session.
 
 7. **Rim on/off toggle does nothing** (v2): the Rim page master switch (CineRigRimEnabled, page-master home per WP3) doesn't turn rim lighting on or off. Same suspected root cause as #1/#4/#6 (v2 control commit / binding not reaching the setting). HIGH priority.
 
+8. **The VCam page redesign was NEVER BUILT** (user 10/10). v2 Camera › VCam is still the legacy launcher card + the old Virtual Cam Manager window (mockup_ref/user_vcam_current_20261010.webp). The approved design (mockup_ref/vcam_mockup.png; doc/VCAM_MONITORS_DESIGN.md, work packages VC1-VC7) is NOT implemented: monitors strip with 1 fps previews, ONE master Previews toggle + shared speed, Large/Compact, drag-to-surface, per-camera chips (Cam 1..8, + Add camera, Remove), the signal-chain steps Source › Lens › Look › Output › Rate & performance, and the status line. The user expected it. Schedule it explicitly with the user (it was planned after the kit foundation).
+
