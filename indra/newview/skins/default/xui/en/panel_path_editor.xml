@@ -58,7 +58,7 @@
     <accordion_tab
      expanded="true"
      fit_panel="true"
-     height="304"
+     height="333"
      layout="topleft"
      name="nodes_playback_tab"
      title="Nodes &amp; Playback">
@@ -201,7 +201,7 @@
         </combo_box>
         <button follows="left|top" height="18" layout="topleft" left="360" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="reset_node_cam_transition" top="144" tool_tip="Reset camera transition to Ease" />
         <button follows="left|top|right" height="22" label="Preview shot" layout="topleft" left="382" top="142" name="btn_node_preview" width="98" />
-        <text follows="left|top|right" height="28" layout="topleft" left="8" top="170" name="node_cam_status" text_color="LtGray_50" use_ellipses="true" width="472">Select a waypoint to author its camera</text>
+        <text follows="left|top|right" height="28" layout="topleft" left="8" top="166" name="node_cam_status" text_color="LtGray_50" use_ellipses="true" width="472">Select a waypoint to author its camera</text>
       </panel>
     </accordion_tab>
 

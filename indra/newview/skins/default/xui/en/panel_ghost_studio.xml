@@ -11,7 +11,7 @@
  width="500">
 
         <!-- Instances -->
-        <panel follows="left|top|right" height="214" layout="topleft" left="0" name="instances_section" top="0" width="500">
+        <panel follows="left|top|right" height="214" layout="topleft" left="0" name="instances_section" top="28" width="500">
           <text follows="left|top" font="SansSerifBold" height="18" layout="topleft" left="8" name="studio_header" top="5" width="90">Instances</text>
           <check_box follows="left|top" height="18" label="Edit ghosts" layout="topleft" left="110" name="edit_ghosts_check" top="5"
            tool_tip="Edit ghosts in world: click a ghost to select it, drag to move it on the ground, Shift-drag to turn it, click empty ground to re-place the selection, Delete removes it. Esc (or unchecking) hands the camera back. Spinners below stay the precision path" width="120" />
@@ -49,12 +49,12 @@
 
         <tab_container
          follows="all"
-         height="520"
+         height="518"
          layout="topleft"
          left="0"
          name="ghost_studio_tabs"
          tab_position="top"
-         top="214"
+         top="242"
          width="500">
           <panel border="false" follows="all" height="490" label="Place" layout="topleft" name="place_tab" width="500">
             <scroll_container follows="all" height="490" layout="topleft" left="0" name="place_scroll" reserve_scroll_corner="false" top="0" width="500">
@@ -507,7 +507,7 @@
         </tab_container>
 
         <!-- Status -->
-        <panel follows="left|bottom|right" height="26" layout="topleft" left="0" name="status_section" top="734" width="500">
+        <panel follows="left|top|right" height="26" layout="topleft" left="0" name="status_section" top="0" width="500">
           <text follows="left|top|right" height="18" layout="topleft" left="8" name="studio_status" right="-8" text_color="LtGray_50" top="4" width="358">0 ghosts</text>
         </panel>
 </panel>
