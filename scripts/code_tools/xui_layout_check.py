@@ -142,6 +142,9 @@ class Node:
     # Authored tag before legacy kit_page is retagged to "panel" for v1 leaf semantics.
     source_tag: str = ""
     legacy_kit: bool = False
+    # True for the accordion_tab child that LLAccordionCtrlTab reshapes to the
+    # fit_panel rectangle (see accordion_fit_rect).
+    fit_panel_container: bool = False
 
     def __post_init__(self) -> None:
         if not self.source_tag:
@@ -486,6 +489,58 @@ def arrange_stack(node: Node, local_children: list[tuple[Node, Rect]]) -> None:
             cursor += dimension + spacing
 
 
+ACCORDION_HEADER_HEIGHT = 25  # llaccordionctrltab.cpp HEADER_HEIGHT
+
+
+def _xml_flag(node: Node, key: str, default: bool) -> bool:
+    raw = node.attrs.get(key)
+    if raw is None:
+        return default
+    return raw.strip().lower() not in {"false", "0"}
+
+
+def accordion_fit_child(tab: Node) -> Node | None:
+    """Return the child LLAccordionCtrlTab resizes as its fit_panel, if any.
+
+    llaccordionctrltab.cpp findContainerView() (~:645) picks the first visible
+    child that is not the header.  reshape() (~:426) returns early when the tab
+    is collapsed (display_children = XML "expanded"), and fit_panel (default
+    true, ~:354) selects adjustContainerPanel(childRect) (~:977) instead of the
+    scrollbar path.
+    """
+    if not _xml_flag(tab, "expanded", True) or not _xml_flag(tab, "fit_panel", True):
+        return None
+    for child in tab.children:
+        if is_widget(child) and child.attrs.get("visible", "true").lower() != "false":
+            return child
+    return None
+
+
+def accordion_fit_rect(tab: Node) -> Rect:
+    """Return the fit_panel rectangle in tab-local top-left coordinates.
+
+    llaccordionctrltab.cpp reshape() (~:440-446) and adjustContainerPanel()
+    (~:960-962):
+        left   = padding_left
+        top    = getHeaderHeight() + padding_top
+        width  = tab_width - padding_left - padding_right
+        height = tab_height - getHeaderHeight() - padding_top - padding_bottom
+    getHeaderHeight() (~:674) is HEADER_HEIGHT (25) when header_visible (default
+    true), else 0.  Paddings default to 2 (Params ~:341-344).  The header_height
+    param is not read by the layout code, so the constant is used.  With the
+    defaults the fit panel is the tab height minus 29, starting 27 px down.
+    """
+    assert tab.rect is not None
+    header = ACCORDION_HEADER_HEIGHT if _xml_flag(tab, "header_visible", True) else 0
+    left = tab.integer("padding_left", 2)
+    right = tab.integer("padding_right", 2)
+    top = tab.integer("padding_top", 2)
+    bottom = tab.integer("padding_bottom", 2)
+    return Rect(left, header + top,
+                tab.rect.width - left - right,
+                tab.rect.height - header - top - bottom)
+
+
 def arrange_accordion(node: Node, local_children: list[tuple[Node, Rect]]) -> None:
     if node.rect is None:
         return
@@ -498,6 +553,19 @@ def arrange_accordion(node: Node, local_children: list[tuple[Node, Rect]]) -> No
         rect.y = cursor
         if not rect.width:
             rect.width = node.rect.width
+        if "height" not in child.explicit_attrs and not _xml_flag(child, "expanded", True):
+            # A collapsed tab is header-only (llaccordionctrltab.cpp ~:407).
+            rect.height = ACCORDION_HEADER_HEIGHT
+        fit = accordion_fit_child(child) if "height" not in child.explicit_attrs else None
+        if fit is not None:
+            # An unauthored tab height is not known to the checker; at runtime
+            # the tab tracks its fit panel: max(panel height, 10) + header +
+            # padding_top + padding_bottom (llaccordionctrltab.cpp notifyParent
+            # "size_changes", ~:770).
+            top_pad = child.integer("padding_top", 2)
+            bottom_pad = child.integer("padding_bottom", 2)
+            header = ACCORDION_HEADER_HEIGHT if _xml_flag(child, "header_visible", True) else 0
+            rect.height = max(fit.integer("height", 0), 10) + header + top_pad + bottom_pad
         cursor += rect.height + spacing
 
 
@@ -749,6 +817,7 @@ def calculate(node: Node, parent_abs: Rect | None = None, root_width: int | None
     layout_parent = Rect(0, 0, layout_width, layout_height)
     previous: Rect | None = None
     local_children: list[tuple[Node, Rect]] = []
+    fit_child = accordion_fit_child(node) if node.tag == "accordion_tab" else None
     for child in node.children:
         if not is_widget(child) or is_kit_owned(child):
             continue
@@ -758,6 +827,14 @@ def calculate(node: Node, parent_abs: Rect | None = None, root_width: int | None
             design = local_rect(child, layout_parent, None)
             local = tab_page_rect(node)
             child.design_size = (design.width, design.height)
+        elif child is fit_child:
+            # The authored panel is laid out at its XML size, then the tab
+            # reshapes it to the fit rectangle; follows= anchoring applies
+            # through the design_size path below (LLView::reshape).
+            design = local_rect(child, layout_parent, previous)
+            child.design_size = (design.width, design.height)
+            child.fit_panel_container = True
+            local = accordion_fit_rect(node)
         else:
             local = local_rect(child, layout_parent, previous)
             if node.design_size is not None:
@@ -1111,7 +1188,10 @@ def check_node(
         unscrollable: list[str] = []
         if overflow_x and not enclosed_by_scrollable_axis(node, horizontal=True):
             unscrollable.append("width")
-        if (overflow_y and not runtime_fitted_flow_wrapper
+        # A fit_panel accordion container has no scroller at runtime; its
+        # bottom overflow is reported once, as accordion-clip, by the parent
+        # clipped loop below.
+        if (overflow_y and not runtime_fitted_flow_wrapper and not node.fit_panel_container
                 and not enclosed_by_scrollable_axis(node, horizontal=False)):
             unscrollable.append("height")
         if unscrollable:
@@ -1193,19 +1273,40 @@ def check_node(
                 # The class copies only the packed grid HEIGHT.  Horizontal
                 # overflow remains a real finding.
                 outside_y = False
+            if node.tag == "accordion":
+                # LLAccordionCtrl owns a vertical scrollbar (llaccordionctrl.cpp
+                # ~:246-249), so stacked tabs past its height scroll.  Width
+                # overflow is still clipped.
+                outside_y = False
+            if node.tag == "accordion_tab" and not _xml_flag(node, "expanded", True):
+                # A collapsed tab hides its panel (llaccordionctrltab.cpp
+                # postBuild ~:735 setVisible(mDisplayChildren)); nothing paints.
+                outside_x = outside_y = False
             if (
                 not runtime_fitted_child
                 and not inside_scroll_document
                 and (scroll_document_clipped or not child_is_scroll_document)
                 and (outside_x or outside_y)
             ):
-                findings.append(
-                    Finding(
-                        "clipped",
-                        child.line,
-                        f"{child.name} {child.rect} extends outside {node.name} {node.rect}",
+                if node.fit_panel_container and node.parent is not None:
+                    findings.append(
+                        Finding(
+                            "accordion-clip",
+                            child.line,
+                            f"{child.name} {child.rect} extends outside fit_panel {node.name} "
+                            f"{node.rect}: accordion_tab {node.parent.name} height "
+                            f"{node.parent.rect.height} leaves {node.rect.height} after the "
+                            "header and padding (llaccordionctrltab.cpp reshape)",
+                        )
                     )
-                )
+                else:
+                    findings.append(
+                        Finding(
+                            "clipped",
+                            child.line,
+                            f"{child.name} {child.rect} extends outside {node.name} {node.rect}",
+                        )
+                    )
 
     if static_rules and node.rect is not None:
         flags = {part.strip().lower() for part in node.attrs.get("follows", "left|top").split("|")}
@@ -1396,6 +1497,8 @@ def run_selftest(json_output: bool) -> int:
         ("kit_legacy_position_broken.xml", True, "kit-geometry"),
         ("kit_legacy_page_broken.xml", True, "overlap"),
         ("kit_legacy_zero_root_broken.xml", True, "invalid-root"),
+        ("accordion_fit_broken.xml", True, "accordion-clip"),
+        ("accordion_fit_current.xml", False, None),
     )
     reports: list[dict[str, object]] = []
     passed = True

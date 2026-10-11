@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes" ?>
+<!-- Fixed Path editor: the accordion_tab is 333 high, so the runtime fit_panel is
+     333 - 25 - 2 - 2 = 304 high and content to y=296 fits. -->
+<panel name="accordion_fit_current" width="500" height="370">
+  <accordion name="path_sections" follows="all" left="4" top="4" width="492" height="350">
+    <accordion_tab name="nodes_playback_tab" title="Nodes and Playback" left="0" height="333" width="488">
+      <panel name="nodes_playback_panel" follows="all" left="0" top="0" width="488" height="304" layout="topleft">
+        <button name="play_button" label="Play" left="8" top="278" width="60" height="18" layout="topleft"/>
+        <button name="stop_button" label="Stop" left="72" top="278" width="60" height="18" layout="topleft"/>
+      </panel>
+    </accordion_tab>
+  </accordion>
+</panel>
