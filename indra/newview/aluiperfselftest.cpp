@@ -3385,7 +3385,9 @@ private:
         // round-trip the position so getCellRect() uses the popup's live layout.
         list->setScrollPos(wanted_scroll);
         const LLRect cell = list->getCellRect(index, 0);
-        list->localPointToScreen(cell.getCenterX(), cell.getCenterY(),
+        // getCellRect's width comes from the column, which is unsized (-2) for combo lists
+        // (llscrolllistctrl.cpp:1887): click the middle of the item area instead of its edge.
+        list->localPointToScreen(list->getItemListRect().getCenterX(), cell.getCenterY(),
                                  &mFunctionalScreenX, &mFunctionalScreenY);
         mFunctionalClickTarget = list->getHandle();
         mFunctionalObserved["click"]["combo_index"] = index;
@@ -3440,7 +3442,9 @@ private:
              list->getScrollPos());
         list->setScrollPos(wanted_scroll);
         const LLRect cell = list->getCellRect(index, 0);
-        list->localPointToScreen(cell.getCenterX(), cell.getCenterY(),
+        // getCellRect's width comes from the column, which is unsized (-2) for combo lists
+        // (llscrolllistctrl.cpp:1887): click the middle of the item area instead of its edge.
+        list->localPointToScreen(list->getItemListRect().getCenterX(), cell.getCenterY(),
                                  &mFunctionalScreenX, &mFunctionalScreenY);
         mFunctionalClickTarget = list->getHandle();
         const LLRect list_rect = list->calcScreenRect();
@@ -3836,8 +3840,14 @@ private:
             control->setValue(entry["test_value"].asInteger() == 0 ? 1 : 0);
             control->onCommit();
         }
+        // The pre-state must hold for the bound SETTING as well as the widget: a prerequisite
+        // may already have written the setting while the widget hasn't resynced yet.
+        bool toggle_setting_at_target = false;
+        if (entry["exercise"].asString() == "toggle" && entry["expect"]["setting"].isString())
+            if (LLControlVariable* bound = gSavedSettings.getControl(entry["expect"]["setting"].asString()).get()) // ui-draw-lint: allow(setting) test-only toggle pre-state
+                toggle_setting_at_target = bound->getValue().asBoolean() == entry["test_value"].asBoolean();
         if (entry["exercise"].asString() == "toggle" &&
-            control->getValue().asBoolean() == entry["test_value"].asBoolean())
+            (control->getValue().asBoolean() == entry["test_value"].asBoolean() || toggle_setting_at_target))
         {
             control->setValue(!entry["test_value"].asBoolean());
             control->onCommit();
