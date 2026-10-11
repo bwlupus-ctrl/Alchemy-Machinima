@@ -65,6 +65,7 @@ public:
         SOURCE_NOTECARD,
         SOURCE_LIBRARY,
         SOURCE_VIEWER,
+        SOURCE_VCAM,
         SOURCE_PEOPLE
     };
 
@@ -172,6 +173,8 @@ protected:
         MASK mask, bool drop);
     EAcceptance dad3dMeshObject(LLViewerObject* obj, S32 face,
                                    MASK mask, bool drop);
+    EAcceptance dad3dVCamFeed(LLViewerObject* obj, S32 face,
+                              MASK mask, bool drop);
 //  EAcceptance dad3dTextureSelf(LLViewerObject* obj, S32 face,
 //                               MASK mask, bool drop);
     EAcceptance dad3dWearItem(LLViewerObject* obj, S32 face,

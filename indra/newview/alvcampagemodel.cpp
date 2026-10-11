@@ -9,6 +9,7 @@
 #include "llcallbacklist.h"
 #include "llselectmgr.h"
 #include "llviewercamera.h"
+#include "llviewerobjectlist.h"
 
 namespace
 {
@@ -289,6 +290,12 @@ LLPrismLens::ERegistryResult ALVCamPageModel::bindSelectedFace(
     return result;
 }
 
+LLPrismLens::ActionStatus ALVCamPageModel::bindSelectedFaceStatus(
+    const LLPrismLens::CaptureHandle& capture) const
+{
+    return LLPrismLens::addDisplaySelectionStatus(capture);
+}
+
 LLPrismLens::ERegistryResult ALVCamPageModel::bindFaceTarget(
     const LLPrismLens::CaptureHandle& capture, LLViewerObject* object, S32 te,
     LLPrismLens::EFitMode fit, std::string* reason)
@@ -305,6 +312,161 @@ LLPrismLens::ERegistryResult ALVCamPageModel::reassignDisplay(
     const LLPrismLens::CaptureHandle& capture, std::string* reason)
 {
     return LLPrismLens::reassignDisplay(display, capture, reason);
+}
+
+LLPrismLens::ActionStatus ALVCamPageModel::reassignDisplayStatus(
+    const LLPrismLens::DisplayHandle& display,
+    const LLPrismLens::CaptureHandle& capture)
+{
+    LLPrismLens::ActionStatus status;
+    const LLPrismLens::RegistrySnapshot snapshot =
+        LLPrismLens::registrySnapshot();
+    const LLPrismLens::DisplayDefinition* display_definition = nullptr;
+    const LLPrismLens::CaptureDefinition* old_capture = nullptr;
+    const LLPrismLens::CaptureDefinition* destination_capture = nullptr;
+    for (U32 index = 0; index < snapshot.mCaptureCount; ++index)
+    {
+        const LLPrismLens::CaptureDefinition& candidate =
+            snapshot.mCaptures[index];
+        if (sameCapture(candidate.mHandle, capture))
+            destination_capture = &candidate;
+    }
+    for (U32 index = 0; index < snapshot.mDisplayCount; ++index)
+    {
+        const LLPrismLens::DisplayDefinition& candidate =
+            snapshot.mDisplays[index];
+        if (sameDisplay(candidate.mHandle, display))
+        {
+            display_definition = &candidate;
+            break;
+        }
+    }
+    if (!destination_capture || !display_definition)
+    {
+        status.mResult = LLPrismLens::ERegistryResult::STALE_HANDLE;
+        status.mReason = display_definition
+            ? "That capture no longer exists." : "That display handle is stale.";
+        return status;
+    }
+    if (destination_capture->mMode ==
+        LLPrismLens::ECaptureMode::SURFACE_LENS)
+    {
+        status.mResult = LLPrismLens::ERegistryResult::INVALID_CONFIGURATION;
+        status.mReason = "A surface lens owns exactly one display face.";
+        return status;
+    }
+    if (sameCapture(display_definition->mCapture, capture))
+    {
+        status.mResult = LLPrismLens::ERegistryResult::DUPLICATE;
+        status.mReason = "That display already uses this capture.";
+        return status;
+    }
+    for (U32 index = 0; index < snapshot.mCaptureCount; ++index)
+    {
+        const LLPrismLens::CaptureDefinition& candidate =
+            snapshot.mCaptures[index];
+        if (sameCapture(candidate.mHandle, display_definition->mCapture))
+        {
+            old_capture = &candidate;
+            break;
+        }
+    }
+    if (!old_capture)
+    {
+        status.mResult = LLPrismLens::ERegistryResult::STALE_HANDLE;
+        status.mReason = "The display's capture is no longer valid.";
+        return status;
+    }
+    if (old_capture->mMode == LLPrismLens::ECaptureMode::SURFACE_LENS)
+    {
+        status.mResult = LLPrismLens::ERegistryResult::INVALID_CONFIGURATION;
+        status.mReason =
+            "A Surface Lens aperture cannot be moved to another capture.";
+        return status;
+    }
+    if (display_definition->mGateSubscribed)
+    {
+        status.mResult = LLPrismLens::ERegistryResult::INVALID_CONFIGURATION;
+        status.mReason =
+            "A Gate-subscribed display must be changed to a fixed feed before reassignment.";
+        return status;
+    }
+    if (display_definition->mSettings.mVirtual)
+    {
+        status.mResult = LLPrismLens::ERegistryResult::OK;
+        return status;
+    }
+    LLViewerObject* object = gObjectList.findObject(
+        display_definition->mDisplayObjectId);
+    return LLPrismLens::displayTargetStatus(
+        capture, object, display_definition->mDisplayTextureEntry, &display);
+}
+
+ALVCamPageModel::FaceDropStatus ALVCamPageModel::faceDropStatus(
+    const LLUUID& capture_id, LLViewerObject* object, S32 te)
+{
+    FaceDropStatus result;
+    const LLPrismLens::RegistrySnapshot snapshot =
+        LLPrismLens::registrySnapshot();
+    for (U32 index = 0; index < snapshot.mCaptureCount; ++index)
+    {
+        if (snapshot.mCaptures[index].mHandle.mId == capture_id)
+        {
+            result.mCapture = snapshot.mCaptures[index].mHandle;
+            break;
+        }
+    }
+    if (result.mCapture.mId.isNull())
+    {
+        result.mAction.mResult = LLPrismLens::ERegistryResult::STALE_HANDLE;
+        result.mAction.mReason = "That capture no longer exists.";
+        return result;
+    }
+    if (object)
+    {
+        for (U32 index = 0; index < snapshot.mDisplayCount; ++index)
+        {
+            const LLPrismLens::DisplayDefinition& candidate =
+                snapshot.mDisplays[index];
+            if (!candidate.mSettings.mVirtual &&
+                candidate.mDisplayObjectId == object->getID() &&
+                candidate.mDisplayTextureEntry == te)
+            {
+                result.mExistingDisplay = candidate.mHandle;
+                result.mReassignment = true;
+                result.mAction = reassignDisplayStatus(
+                    candidate.mHandle, result.mCapture);
+                return result;
+            }
+        }
+    }
+    result.mAction = LLPrismLens::displayTargetStatus(
+        result.mCapture, object, te, nullptr);
+    return result;
+}
+
+LLPrismLens::ERegistryResult ALVCamPageModel::dropOnFace(
+    const LLUUID& capture_id, LLViewerObject* object, S32 te,
+    LLPrismLens::EFitMode fit, bool* reassigned, std::string* reason)
+{
+    if (reassigned) *reassigned = false;
+    const FaceDropStatus status = faceDropStatus(capture_id, object, te);
+    if (!status.mAction.allowed())
+    {
+        if (reason) *reason = status.mAction.mReason;
+        return status.mAction.mResult;
+    }
+    if (status.mReassignment)
+    {
+        const LLPrismLens::ERegistryResult result = LLPrismLens::reassignDisplay(
+            status.mExistingDisplay, status.mCapture, reason);
+        if (result == LLPrismLens::ERegistryResult::OK && reassigned)
+            *reassigned = true;
+        return result;
+    }
+    LLPrismLens::DisplayHandle display;
+    return LLPrismLens::bindDisplayTarget(
+        status.mCapture, object, te, fit, &display, reason);
 }
 
 LLPrismLens::ERegistryResult ALVCamPageModel::addVirtualScreen(

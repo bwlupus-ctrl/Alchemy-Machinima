@@ -211,6 +211,7 @@ set(viewer_SOURCE_FILES
     alkitshell.cpp
     alkitstyle.cpp
     alkitswitch.cpp
+    alvcammonitorstrip.cpp
     alvcampagemodel.cpp
     alpanelrigrim.cpp
     alrigrimcontroller.cpp
@@ -1122,6 +1123,7 @@ set(viewer_HEADER_FILES
     alkitshell.h
     alkitstyle.h
     alkitswitch.h
+    alvcammonitorstrip.h
     alvcampagemodel.h
     alpanelrigrim.h
     alrigrimcontroller.h

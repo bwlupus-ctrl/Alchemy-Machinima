@@ -17,6 +17,14 @@ class LLViewerObject;
 class ALVCamPageModel
 {
 public:
+    struct FaceDropStatus
+    {
+        LLPrismLens::ActionStatus mAction;
+        LLPrismLens::CaptureHandle mCapture;
+        LLPrismLens::DisplayHandle mExistingDisplay;
+        bool mReassignment = false;
+    };
+
     enum DirtyBits : U32
     {
         DIRTY_NONE = 0,
@@ -57,12 +65,23 @@ public:
     LLPrismLens::ERegistryResult bindSelectedFace(
         const LLPrismLens::CaptureHandle& capture, LLPrismLens::EFitMode fit,
         std::string* reason = nullptr);
+    LLPrismLens::ActionStatus bindSelectedFaceStatus(
+        const LLPrismLens::CaptureHandle& capture) const;
     LLPrismLens::ERegistryResult bindFaceTarget(
         const LLPrismLens::CaptureHandle& capture, LLViewerObject* object,
         S32 te, LLPrismLens::EFitMode fit, std::string* reason = nullptr);
     LLPrismLens::ERegistryResult reassignDisplay(
         const LLPrismLens::DisplayHandle& display,
         const LLPrismLens::CaptureHandle& capture,
+        std::string* reason = nullptr);
+    static LLPrismLens::ActionStatus reassignDisplayStatus(
+        const LLPrismLens::DisplayHandle& display,
+        const LLPrismLens::CaptureHandle& capture);
+    static FaceDropStatus faceDropStatus(const LLUUID& capture_id,
+                                         LLViewerObject* object, S32 te);
+    static LLPrismLens::ERegistryResult dropOnFace(
+        const LLUUID& capture_id, LLViewerObject* object, S32 te,
+        LLPrismLens::EFitMode fit, bool* reassigned = nullptr,
         std::string* reason = nullptr);
     LLPrismLens::ERegistryResult addVirtualScreen(
         const LLPrismLens::CaptureHandle& capture, const LLVector3& pos,

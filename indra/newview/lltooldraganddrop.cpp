@@ -27,6 +27,9 @@
 #include "llviewerprecompiledheaders.h"
 #include "lltooldraganddrop.h"
 
+#include "alvcampagemodel.h"
+#include "alvcammonitorstrip.h"
+
 // library headers
 #include "llnotificationsutil.h"
 #include <vector>
@@ -230,6 +233,9 @@ LLToolDragAndDrop::LLDragAndDropDictionary::LLDragAndDropDictionary()
     addEntry(DAD_LINK,          new DragAndDropEntry(&LLToolDragAndDrop::dad3dNULL, &LLToolDragAndDrop::dad3dNULL,                  &LLToolDragAndDrop::dad3dNULL,                  &LLToolDragAndDrop::dad3dNULL,                      &LLToolDragAndDrop::dad3dNULL));
     addEntry(DAD_MESH,          new DragAndDropEntry(&LLToolDragAndDrop::dad3dNULL, &LLToolDragAndDrop::dad3dNULL,                  &LLToolDragAndDrop::dad3dGiveInventory,         &LLToolDragAndDrop::dad3dMeshObject,                &LLToolDragAndDrop::dad3dNULL));
     addEntry(DAD_SETTINGS,      new DragAndDropEntry(&LLToolDragAndDrop::dad3dNULL, &LLToolDragAndDrop::dad3dNULL,                  &LLToolDragAndDrop::dad3dGiveInventory,         &LLToolDragAndDrop::dad3dUpdateInventory,           &LLToolDragAndDrop::dad3dNULL));
+    // DAD_VCAM_FEED (22) is viewer-local UUID cargo. Only world object faces
+    // accept it; it is never interpreted as inventory.
+    addEntry(DAD_VCAM_FEED,     new DragAndDropEntry(&LLToolDragAndDrop::dad3dNULL, &LLToolDragAndDrop::dad3dNULL,                  &LLToolDragAndDrop::dad3dNULL,                  &LLToolDragAndDrop::dad3dVCamFeed,                  &LLToolDragAndDrop::dad3dNULL));
 
     // TODO: animation on self could play it?  edit it?
     // TODO: gesture on self could play it?  edit it?
@@ -277,7 +283,9 @@ void LLToolDragAndDrop::beginDrag(EDragAndDropType type,
         return;
     }
 
-    if (type != DAD_CATEGORY)
+    // VCam cargo is a registry UUID, never an inventory UUID. In particular,
+    // do not let a coincidentally matching inventory item trigger a fetch.
+    if (type != DAD_CATEGORY && source != SOURCE_VCAM)
     {
         LLViewerInventoryItem* item = gInventory.getItem(cargo_id);
         if (item && !item->isFinished())
@@ -516,9 +524,11 @@ void LLToolDragAndDrop::dragOrDrop( S32 x, S32 y, MASK mask, bool drop,
         sOperationId++;
     }
 
-    // For people drag and drop we don't need an actual inventory object,
-    // instead we need the current cargo id, which should be a person id.
-    bool is_uuid_dragged = (mSource == SOURCE_PEOPLE);
+    // People and VCam drags carry UUIDs rather than inventory objects. VCam is
+    // kept as an explicit source/type pair so no other viewer cargo can inherit
+    // the UUID-only path accidentally.
+    const bool is_uuid_dragged = (mSource == SOURCE_PEOPLE ||
+                                  mSource == SOURCE_VCAM);
 
     if (top_view)
     {
@@ -542,7 +552,9 @@ void LLToolDragAndDrop::dragOrDrop( S32 x, S32 y, MASK mask, bool drop,
                                                     &item_acceptance,
                                                     mToolTipMsg);
             }
-            else if (is_uuid_dragged)
+            else if (is_uuid_dragged &&
+                     (mSource != SOURCE_VCAM ||
+                      mCargoTypes[mCurItemIndex] == DAD_VCAM_FEED))
             {
                 handled = handled && top_view->handleDragAndDrop(local_x, local_y, mask, false,
                                                     mCargoTypes[mCurItemIndex],
@@ -585,9 +597,11 @@ void LLToolDragAndDrop::dragOrDrop( S32 x, S32 y, MASK mask, bool drop,
                                                         &item_acceptance,
                                                         mToolTipMsg);
                 }
-                else if (is_uuid_dragged)
+                else if (is_uuid_dragged &&
+                         (mSource != SOURCE_VCAM ||
+                          mCargoTypes[mCurItemIndex] == DAD_VCAM_FEED))
                 {
-                    handled = handled && top_view->handleDragAndDrop(local_x, local_y, mask, false,
+                    handled = handled && top_view->handleDragAndDrop(local_x, local_y, mask, true,
                                                         mCargoTypes[mCurItemIndex],
                                                         (void*)&mCargoIDs[mCurItemIndex],
                                                         &item_acceptance,
@@ -625,7 +639,9 @@ void LLToolDragAndDrop::dragOrDrop( S32 x, S32 y, MASK mask, bool drop,
                                                     &item_acceptance,
                                                     mToolTipMsg);
             }
-            else if (is_uuid_dragged)
+            else if (is_uuid_dragged &&
+                     (mSource != SOURCE_VCAM ||
+                      mCargoTypes[mCurItemIndex] == DAD_VCAM_FEED))
             {
                 handled = handled && root_view->handleDragAndDrop(x, y, mask, false,
                                                     mCargoTypes[mCurItemIndex],
@@ -665,7 +681,9 @@ void LLToolDragAndDrop::dragOrDrop( S32 x, S32 y, MASK mask, bool drop,
                                               &item_acceptance,
                                               mToolTipMsg);
                 }
-                else if (is_uuid_dragged)
+                else if (is_uuid_dragged &&
+                         (mSource != SOURCE_VCAM ||
+                          mCargoTypes[mCurItemIndex] == DAD_VCAM_FEED))
                 {
                     handled = handled && root_view->handleDragAndDrop(x, y, mask, true,
                                               mCargoTypes[mCurItemIndex],
@@ -2275,6 +2293,49 @@ EAcceptance LLToolDragAndDrop::dad3dNULL(
     return ACCEPT_NO;
 }
 
+EAcceptance LLToolDragAndDrop::dad3dVCamFeed(
+    LLViewerObject* obj, S32 face, MASK, bool drop)
+{
+    if (mSource != SOURCE_VCAM ||
+        mCargoIDs.size() != 1 ||
+        mCurItemIndex < 0 ||
+        mCurItemIndex >= static_cast<S32>(mCargoIDs.size()))
+    {
+        mCustomMsg = "A VCam feed must be dragged one at a time.";
+        return ACCEPT_NO_CUSTOM;
+    }
+
+    const LLUUID& capture_id = mCargoIDs[mCurItemIndex];
+    const ALVCamPageModel::FaceDropStatus status =
+        ALVCamPageModel::faceDropStatus(capture_id, obj, face);
+    if (!status.mAction.allowed())
+    {
+        mCustomMsg = status.mAction.mReason;
+        return ACCEPT_NO_CUSTOM;
+    }
+
+    const EAcceptance accepted = status.mReassignment
+        ? ACCEPT_YES_SINGLE : ACCEPT_YES_COPY_SINGLE;
+    if (!drop)
+    {
+        mCustomMsg.clear();
+        return accepted;
+    }
+
+    bool reassigned = false;
+    std::string reason;
+    const LLPrismLens::ERegistryResult result = ALVCamPageModel::dropOnFace(
+        capture_id, obj, face, ALVCamMonitorStrip::activeDragFitMode(),
+        &reassigned, &reason);
+    if (result != LLPrismLens::ERegistryResult::OK)
+    {
+        mCustomMsg = reason;
+        return ACCEPT_NO_CUSTOM;
+    }
+    mCustomMsg.clear();
+    return reassigned ? ACCEPT_YES_SINGLE : ACCEPT_YES_COPY_SINGLE;
+}
+
 EAcceptance LLToolDragAndDrop::dad3dRezAttachmentFromInv(
     LLViewerObject* obj, S32 face, MASK mask, bool drop)
 {
@@ -3331,8 +3392,8 @@ LLInventoryObject* LLToolDragAndDrop::locateInventory(
     item = NULL;
     cat = NULL;
 
-    if (mCargoIDs.empty()
-        || (mSource == SOURCE_PEOPLE)) ///< There is no inventory item for people drag and drop.
+    if (mCargoIDs.empty() || mSource == SOURCE_PEOPLE ||
+        mSource == SOURCE_VCAM) ///< UUID-only sources have no inventory item.
     {
         return NULL;
     }

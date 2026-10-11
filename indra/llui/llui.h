@@ -77,9 +77,14 @@ enum EDragAndDropType
     DAD_MATERIAL        = 19,
     DAD_GLTF            = 20,
     DAD_GLTF_BIN        = 21,
+    // Reserved for viewer-local VCam UUID cargo. Never renumber on re-port.
+    DAD_VCAM_FEED       = 22,
 
-    DAD_COUNT           = 22,   // number of types in this enum
+    DAD_COUNT           = 23,   // number of types in this enum
 };
+
+static_assert(DAD_VCAM_FEED + 1 == DAD_COUNT,
+              "update VCam cargo value during upstream DAD re-port");
 
 // Reasons for drags to be denied.
 // ordered by priority for multi-drag
