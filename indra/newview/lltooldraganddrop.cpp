@@ -601,7 +601,9 @@ void LLToolDragAndDrop::dragOrDrop( S32 x, S32 y, MASK mask, bool drop,
                          (mSource != SOURCE_VCAM ||
                           mCargoTypes[mCurItemIndex] == DAD_VCAM_FEED))
                 {
-                    handled = handled && top_view->handleDragAndDrop(local_x, local_y, mask, true,
+                    // Only VCam cargo gets the real drop pass; people cargo keeps its old behaviour.
+                    handled = handled && top_view->handleDragAndDrop(local_x, local_y, mask,
+                                                        mSource == SOURCE_VCAM,
                                                         mCargoTypes[mCurItemIndex],
                                                         (void*)&mCargoIDs[mCurItemIndex],
                                                         &item_acceptance,

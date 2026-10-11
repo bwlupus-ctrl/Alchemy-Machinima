@@ -884,9 +884,9 @@ bool LLToolBarView::handleDragTool( S32 x, S32 y, const LLUUID& uuid, LLAssetTyp
 
 bool LLToolBarView::handleDropTool( void* cargo_data, EDragAndDropType cargo_type, S32 x, S32 y, LLToolBar* toolbar)
 {
-    if (cargo_type == DAD_PERSON)
+    if (cargo_type == DAD_PERSON || cargo_type == DAD_VCAM_FEED)
     {
-        // DAD_PERSON means that cargo_data contains an uuid, not an LLInventoryObject
+        // These cargo types carry a UUID, not an LLInventoryObject.
         resetDragTool(NULL);
         return false;
     }
