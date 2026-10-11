@@ -10,3 +10,7 @@
 3. **The Eye catchlight doesn't work** (user report; feature-level. Check the binding/setting path of the Rig catchlight row in v2 vs v1, and whether the engine applies it).
 
 The user is using the client: log only, don't act until the next session.
+
+4. **Lights card Key / Fill / Back / BG tabs don't switch the panel** (screenshot mockup_ref/user_bug_lights_tabs_20261010.png): clicking Back leaves Key highlighted and the content unchanged (Key's values shown); Back only gets a white focus outline (likely the same sticky-state bug as #1, or the option tab's click isn't routed to ALKitCard option selection / DirectorV2SelectedLight). Core function broken - HIGH priority.
+5. Same screenshot: EV spinner still empty (see #2); the Pitch arc dial draws only half an arc with its -85/85 labels crowding the dial edge; the arc dial does not match the mockup's half-dial.
+
