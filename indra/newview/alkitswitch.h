@@ -17,6 +17,7 @@ public:
     void                        setControlName(const std::string& name, LLView* context) override;
     void                        onCommit() override;
     bool                        isOn() const { return mButton->getToggleState(); }
+    bool                        isFocusRingVisible() const;
     void                        writeBoundValue(bool value);
     boost::signals2::connection setFlipCallback(const flip_signal_t::slot_type& slot) { return mFlipSignal.connect(slot); }
 

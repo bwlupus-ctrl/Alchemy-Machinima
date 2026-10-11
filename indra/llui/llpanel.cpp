@@ -200,6 +200,7 @@ LLPanel::ctrl_list_t LLPanel::getCtrlList() const
 
 void LLPanel::draw()
 {
+    LL_PROFILE_ZONE_SCOPED_CATEGORY_UI;
     // draw background
     if( mBgVisible )
     {
@@ -302,6 +303,10 @@ bool LLPanel::handleKeyHere( KEY key, MASK mask )
             }
         }
     }
+
+    if (handled)
+        if (LLButton* focused_button = dynamic_cast<LLButton*>(gFocusMgr.getKeyboardFocus()))
+            focused_button->showFocusRingFromKeyboard();
 
     // If RETURN was pressed and something has focus, call onCommit()
     if (!handled && cur_focus && key == KEY_RETURN && mask == MASK_NONE)

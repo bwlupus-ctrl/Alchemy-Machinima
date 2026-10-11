@@ -1,5 +1,6 @@
 #include "llviewerprecompiledheaders.h"
 #include "alkitcard.h"
+#include "alkitbinding.h"
 #include "alkitrow.h"
 #include "alkitpage.h"
 #include "alkitstyle.h"
@@ -434,7 +435,7 @@ bool ALKitCard::postBuild()
                 [this, i](LLUICtrl*, const LLSD&)
                 {
                     if (!mSelectorSetting.empty())
-                        gSavedSettings.setLLSD(mSelectorSetting, mOptions[i]->optionValue());
+                        alKitSetTypedControl(gSavedSettings, mSelectorSetting, mOptions[i]->optionValue());
                     else
                     {
                         mActiveOption = i;
@@ -459,7 +460,7 @@ bool ALKitCard::postBuild()
             [this](LLUICtrl* c, const LLSD&)
             {
                 if (!mSelectorSetting.empty())
-                    gSavedSettings.setLLSD(mSelectorSetting, c->getValue());
+                    alKitSetTypedControl(gSavedSettings, mSelectorSetting, c->getValue());
                 else
                 {
                     for (S32 i = 0; i < (S32)mOptions.size(); ++i)
@@ -526,12 +527,22 @@ void ALKitCard::syncSelector()
         return;
     const LLSD value =
         gSavedSettings.controlExists(mSelectorSetting) ? gSavedSettings.getLLSD(mSelectorSetting) : mOptions[mActiveOption]->optionValue();
+    S32 matched = -1;
+    for (S32 i = 0; i < (S32)mOptions.size(); ++i)
+        if (mOptions[i]->optionValue() == value)
+        {
+            matched = i;
+            break;
+        }
+    // A stale/corrupt selector value must not make every option disappear.
+    // Keep the last valid option (the first option during initial build).
+    if (matched < 0)
+        matched = llclamp(mActiveOption, 0, (S32)mOptions.size() - 1);
+    mActiveOption = matched;
     for (S32 i = 0; i < (S32)mOptions.size(); ++i)
     {
-        const bool active = mOptions[i]->optionValue() == value;
+        const bool active = i == matched;
         mOptions[i]->setVisible(active);
-        if (active)
-            mActiveOption = i;
         if (i < (S32)mOptionSwitches.size() && mOptionSwitches[i])
             mOptionSwitches[i]->setVisible(active);
         if (i < (S32)mSegments.size())
@@ -548,7 +559,7 @@ void ALKitCard::syncSelector()
     if (mActiveOption < (S32)mOptionSwitches.size() && mOptionSwitches[mActiveOption])
         mEnable = mOptionSwitches[mActiveOption];
     if (mSelectorCombo)
-        mSelectorCombo->setValue(value);
+        mSelectorCombo->setValue(mOptions[matched]->optionValue());
     if (mMore)
         mMore->setLabel((moreOpen() ? "Fewer options (" : "More options (") + llformat("%d", mMoreCount) + ")");
 }
@@ -843,7 +854,7 @@ bool ALKitCard::revealRow(ALKitRow* row)
             {
                 mActiveOption = i;
                 if (!mSelectorSetting.empty())
-                    gSavedSettings.setLLSD(mSelectorSetting, mOptions[i]->optionValue());
+                    alKitSetTypedControl(gSavedSettings, mSelectorSetting, mOptions[i]->optionValue());
                 syncSelector();
                 break;
             }

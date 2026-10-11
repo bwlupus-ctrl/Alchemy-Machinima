@@ -11,6 +11,7 @@
 #include <vector>
 
 class LLControlVariable;
+class LLControlGroup;
 class LLUICtrl;
 class LLView;
 class LLUUID;
@@ -146,4 +147,9 @@ public:
     static void    add(LLView*, const std::string&, Adapter);
     static Adapter get(LLView*, const std::string&);
 };
+
+// LLControlGroup::setLLSD() accepts only controls declared as TYPE_LLSD.
+// Kit metadata carries values as LLSD, so convert to the declared control
+// type before writing a typed saved setting.
+bool alKitSetTypedControl(LLControlGroup& group, const std::string& name, const LLSD& value);
 #endif

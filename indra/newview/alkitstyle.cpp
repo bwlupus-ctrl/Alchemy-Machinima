@@ -81,6 +81,7 @@ void styleButton(LLButton* button, bool transparent)
     button->setDisabledLabelColor(color(FAINT));
     button->setFont(sansFont("Kit12"));
     button->setHoverGlowStrength(.08f);
+    button->setKeyboardOnlyFocusBorder(true);
     button->setDropShadowedText(false);
 }
 

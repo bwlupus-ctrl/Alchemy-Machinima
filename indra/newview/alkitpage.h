@@ -162,6 +162,7 @@ private:
     };
     void        applyModeAndChip();
     void        updateMaster();
+    bool        updateGateStatus();
     void        scrollToView(LLView*);
     void        performPageReset();
     std::string prefix() const;
@@ -181,6 +182,7 @@ private:
     ALFlowGrid*                                     mGrid           = nullptr;
     LLPanel*                                        mBar            = nullptr;
     LLPanel*                                        mBanner         = nullptr;
+    LLPanel*                                        mGateBanner     = nullptr;
     LLPanel*                                        mChipsContainer = nullptr;
     LLPanel*                                        mWhoContainer   = nullptr;
     LLPanel*                                        mMasterBox      = nullptr;
@@ -190,15 +192,18 @@ private:
     LLTextBox*                                      mWhoCaretText   = nullptr;
     LLPanel*                                        mWhoRailTag     = nullptr;
     LLPanel*                                        mLegacyHost     = nullptr;
+    LLPanel*                                        mPathPlayback   = nullptr;
     ALKitSwitch*                                    mMaster         = nullptr;
     ALKitSwitch*                                    mModeSwitch     = nullptr;
     ALKitShell*                                     mShell          = nullptr;
     ALKitPopover*                                   mResetPopover   = nullptr;
     LLTextBox*                                      mMasterState    = nullptr;
+    LLTextBox*                                      mGateText       = nullptr;
     LLTextBox*                                      mLegacySummary  = nullptr;
     LLButton*                                       mUndo           = nullptr;
     LLButton*                                       mRedo           = nullptr;
     LLButton*                                       mResetPage      = nullptr;
+    LLButton*                                       mGateButton     = nullptr;
     LLButton*                                       mWhoChip        = nullptr;
     LLLineEditor*                                   mSearch         = nullptr;
     LLComboBox*                                     mWhoCombo       = nullptr;

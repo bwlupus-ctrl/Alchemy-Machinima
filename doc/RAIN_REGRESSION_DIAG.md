@@ -1,0 +1,8 @@
+# Rain regression diagnosis
+**Finding/confidence:** HIGH that `02422bd48fd` is not causal; MEDIUM that the observed “RAIN on/no effect” is the independent master gate/profile state.
+**Causal chain:** `settings.xml:29061-73` defaults `AlchemyWeatherEnabled=0` but `AlchemyWeatherRainEnabled=1`, so Rain can display checked while `pipeline.cpp:18978-94` returns before every weather pass.
+With the master on, rain intensity reaches `pipeline.cpp:19242-44,19360-74`; the shader depth-marches to the scene surface (`weatherRainF.glsl:240-301`) and splashes use deferred position/normal (`weatherSurfaceF.glsl:305-423`)—neither reads water height or particles.
+Water override OFF preserves simulator height (`llviewerregion.cpp:869-88`); its no-water-object fallback is the pre-existing 20 m behavior (`llsurface.cpp:1164-74`) and only affects general underwater state (`llviewercamera.cpp:718-38`), which does not gate `renderWeather()` (`pipeline.cpp:22667-69`).
+The only post-water weather-file change, `b89fc3ab3d5`, moves label/slider geometry; `weather_enabled`/`weather_rain_enabled` names, `control_name`s, defaults, and visibility are unchanged.
+**Minimal fix:** restore/enable `AlchemyWeatherEnabled` in the affected build profile; harden both Director Rain actions to enable the master too (or show Rain as effectively off while the master is off)—do not change water plumbing.
+**Verify:** fresh login, ALM/deferred on, set master+Rain on and intensity >0; confirm rain, repeat override OFF/ON at 0/20/4096 m, then master OFF must be the only all-weather suppression; if master ON still fails, check “Weather Rain Shader” compile/completeness logs.

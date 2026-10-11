@@ -143138,7 +143138,47 @@
           "kit_action": null,
           "resolution_notes": [],
           "ambiguous": [],
-          "rejected_candidates": [],
+          "rejected_candidates": [
+            {
+              "kind": "cpp",
+              "reason": "reference is not in a class that owns/builds this page's XUI",
+              "file": "indra/newview/aluiperfselftest.cpp",
+              "line": 1446,
+              "class": null,
+              "function": null,
+              "wired_class": null,
+              "wired_function": null,
+              "pattern": null,
+              "wiring_only": false,
+              "text": "if (consumer == \"weather_rain_intensity\")"
+            },
+            {
+              "kind": "cpp",
+              "reason": "reference is not in a class that owns/builds this page's XUI",
+              "file": "indra/newview/aluiperfselftest.cpp",
+              "line": 1485,
+              "class": null,
+              "function": null,
+              "wired_class": null,
+              "wired_function": null,
+              "pattern": null,
+              "wiring_only": false,
+              "text": "if (consumer == \"weather_rain_intensity\")"
+            },
+            {
+              "kind": "cpp",
+              "reason": "reference is not in a class that owns/builds this page's XUI",
+              "file": "indra/newview/aluiperfselftest.cpp",
+              "line": 1519,
+              "class": null,
+              "function": null,
+              "wired_class": null,
+              "wired_function": null,
+              "pattern": null,
+              "wiring_only": false,
+              "text": "if (consumer == \"weather_rain_intensity\")"
+            }
+          ],
           "unresolved": [],
           "other_writers": []
         },

@@ -3,6 +3,7 @@
 #include "alflowgrid.h"
 #include "alkitcard.h"
 #include "alkitbinding.h"
+#include "alcinelightrigmanager.h"
 #include "alkitrow.h"
 #include "alkitpresets.h"
 #include "alkitpopover.h"
@@ -20,6 +21,7 @@
 #include "lltextbox.h"
 #include "lluictrlfactory.h"
 #include "llviewercontrol.h"
+#include "pipeline.h"
 #include "aluirefresh.h"
 #include <algorithm>
 
@@ -535,6 +537,39 @@ bool ALKitPage::postBuild()
     turn->setOrigin(370, 4);
     addChild(mBanner);
 
+    std::string gate_text;
+    if (mPage == "light_group/light_rim_tab")
+        gate_text = "Light Rig is off: rim has no effect";
+    else if (mPage == "world_group/weather_tab")
+        gate_text = "Weather is off";
+    else if (mPage == "world_group/atmosphere_tab" || mPage == "light_group/cine_light_rig_tab")
+        gate_text = "Light masking is on: projector volumetrics hidden";
+    if (!gate_text.empty())
+    {
+        mGateBanner = makePanel(pre + "_gate_banner", ALKitStyle::BANNER_H, page_width);
+        mGateBanner->setBackgroundVisible(true);
+        mGateBanner->setBackgroundColor(ALKitStyle::color(ALKitStyle::BANNER_BG));
+        LLTextBox::Params gate;
+        gate.name          = pre + "_gate_text";
+        gate.rect          = LLRect(10, 24, page_width - 10, 0);
+        gate.initial_value = gate_text;
+        mGateText          = LLUICtrlFactory::create<LLTextBox>(gate);
+        mGateBanner->addChild(mGateText);
+        if (mPage == "light_group/light_rim_tab" || mPage == "world_group/weather_tab")
+        {
+            mGateButton = makeButton(pre + "_gate_on", "Turn on");
+            if (mPage == "light_group/light_rim_tab")
+                mGateButton->setCommitCallback(
+                    [](LLUICtrl*, const LLSD&) { gSavedSettings.setBOOL("CineLightRigEnabled", true); });
+            else
+                mGateButton->setCommitCallback(
+                    [](LLUICtrl*, const LLSD&) { gSavedSettings.setBOOL("AlchemyWeatherEnabled", true); });
+            mGateBanner->addChild(mGateButton);
+            mGateButton->setOrigin(370, 4);
+        }
+        addChild(mGateBanner);
+    }
+
     if (!mWhoPicker.empty())
     {
         mWhoContainer->setVisible(true);
@@ -635,8 +670,11 @@ bool ALKitPage::postBuild()
         mLegacyHost           = LLUICtrlFactory::create<LLPanel>(hp);
         addChild(mLegacyHost);
         for (LLView* c : xml_children)
-            if (c != mBar && c != mBanner && c != mWhoChip && c != mWhoCombo && dynamic_cast<ALKitPresetHost*>(c) == nullptr)
+            if (c != mBar && c != mBanner && c != mGateBanner && c != mWhoChip && c != mWhoCombo &&
+                dynamic_cast<ALKitPresetHost*>(c) == nullptr)
                 mLegacyHost->addChild(c);
+        if (mPage == "cast_group/path_tab")
+            mPathPlayback = mLegacyHost->findChild<LLPanel>("nodes_playback_panel");
         if (ALKitShell* shell = ALKitShell::find(this))
             shell->history().watchSettings(mPage, watched);
         reshape(getRect().getWidth(), getRect().getHeight(), true);
@@ -644,6 +682,7 @@ bool ALKitPage::postBuild()
         ALKitStyle::styleTree(mChipsContainer);
         ALKitStyle::styleTree(mWhoContainer);
         ALKitStyle::styleTree(mBanner);
+        ALKitStyle::styleTree(mGateBanner);
         ALKitStyle::stylePill(mWhoChip);
         if (mWhoChip)
             mWhoChip->setUnselectedLabelColor(ALKitStyle::color(ALKitStyle::TEXT_STRONG));
@@ -920,14 +959,38 @@ void ALKitPage::updateMaster()
         setTextIfChanged(mMasterState, on ? "On" : "Off");
 }
 
+bool ALKitPage::updateGateStatus()
+{
+    if (!mGateBanner)
+        return false;
+
+    bool show = false;
+    if (mPage == "light_group/light_rim_tab")
+        show = ALCineLightRigManager::instance().enabledMask() == 0;
+    else if (mPage == "world_group/weather_tab")
+    {
+        static LLCachedControl<bool> weather_enabled(gSavedSettings, "AlchemyWeatherEnabled", false);
+        show = !weather_enabled;
+    }
+    else
+    {
+        const U32 hidden = gPipeline.actorOnlyVolumetricLightCount();
+        show = hidden > 0;
+        if (show)
+            setTextIfChanged(mGateText, llformat("Light masking is on: projector volumetrics hidden for %u light(s)", hidden));
+    }
+    const bool changed = mGateBanner->getVisible() != show;
+    setVisibleIfChanged(mGateBanner, show);
+    return changed;
+}
+
 void ALKitPage::reshape(S32 w, S32 h, bool p)
 {
     LLPanel::reshape(w, h, p);
     // The v1 Path accordion fits its panel four pixels shorter at runtime.
     // Correct only the embedded v2 instance; the shared v1 XUI remains untouched.
-    if (mLegacy && mPage == "cast_group/path_tab")
-        if (LLPanel* playback = findChild<LLPanel>("nodes_playback_panel"))
-            playback->reshape(playback->getRect().getWidth(), llmax(304, playback->getRect().getHeight()), true);
+    if (mPathPlayback)
+        mPathPlayback->reshape(mPathPlayback->getRect().getWidth(), llmax(304, mPathPlayback->getRect().getHeight()), true);
     S32 top = h;
     if (!mChips.empty())
     {
@@ -992,11 +1055,26 @@ void ALKitPage::reshape(S32 w, S32 h, bool p)
         }
     }
     updateMaster();
+    updateGateStatus();
     if (mBanner && mBanner->getVisible())
     {
         top -= ALKitStyle::BANNER_H;
         mBanner->reshape(w, ALKitStyle::BANNER_H, true);
         mBanner->setOrigin(0, top);
+    }
+    if (mGateBanner && mGateBanner->getVisible())
+    {
+        top -= ALKitStyle::BANNER_H;
+        mGateBanner->reshape(w, ALKitStyle::BANNER_H, true);
+        mGateBanner->setOrigin(0, top);
+        if (mGateText)
+        {
+            const S32 button_space = mGateButton ? 100 : 0;
+            mGateText->reshape(llmax(1, w - 20 - button_space), 24, true);
+            mGateText->setOrigin(10, 4);
+        }
+        if (mGateButton)
+            mGateButton->setOrigin(w - 90, 4);
     }
     if (mScroller)
     {
@@ -1298,7 +1376,7 @@ void ALKitPage::draw()
             const std::string label = "Acting on: " + mWhoCombo->getSelectedItemLabel();
             if (mWhoChip->getLabelSelected() != label)
             {
-                mWhoChip->setLabel(label);
+                mWhoChip->setLabel(label); // ui-draw-lint: allow(raw-write) change-gated on label, readout clock throttled
                 reshape(getRect().getWidth(), getRect().getHeight(), false);
             }
         }
@@ -1316,5 +1394,7 @@ void ALKitPage::draw()
         }
     }
     updateMaster();
+    if (updateGateStatus())
+        reshape(getRect().getWidth(), getRect().getHeight(), true);
     LLPanel::draw();
 }

@@ -163,7 +163,9 @@ void LLSpinCtrl::setValueColumnLayout(S32 width, S32 height, bool show_buttons)
     mDownBtn->setRect(LLRect(width - button, half, width, 0));
     mUpBtn->setVisible(show_buttons);
     mDownBtn->setVisible(show_buttons);
-    mEditor->setRect(LLRect(0, height, show_buttons ? width - button - 1 : width, 0));
+    const S32 editor_width = llmax(1, show_buttons ? width - button - 1 : width);
+    mEditor->reshape(editor_width, height, true);
+    mEditor->setOrigin(0, 0);
 }
 
 F32 clamp_precision(F32 value, S32 decimal_precision)

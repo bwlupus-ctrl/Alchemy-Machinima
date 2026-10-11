@@ -398,6 +398,7 @@ public:
     static void  toggleVolumetricShaft(const LLUUID& id);
     static bool  isVolumetricShaftEnabled(const LLUUID& id);
     static void  clearVolumetricShafts();
+    U32          actorOnlyVolumetricLightCount();
 
     // [BDMerge G3.3 Batch 3] Session-only per-projector "cast shadows" opt-OUT.
     // A projector whose object UUID is in this set still lights the scene but is

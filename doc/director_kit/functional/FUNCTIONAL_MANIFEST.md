@@ -17,8 +17,8 @@ Inputs: `wiring_table.csv` sha256 `e77739d4bff88c68` (1765 interactive rows); 35
 
 | Version | RUN | RUN (known gap) | DEFER_INWORLD | SKIP | EXPECT_MISSING | NO_EXERCISE | Total |
 |---|---:|---:|---:|---:|---:|---:|---:|
-| v1 | 1387 | 35 | 214 | 43 | 89 | 1 | 1769 |
-| v2 | 1408 | 36 | 214 | 43 | 84 | 1 | 1786 |
+| v1 | 1387 | 35 | 214 | 44 | 89 | 1 | 1770 |
+| v2 | 1410 | 36 | 214 | 44 | 82 | 1 | 1787 |
 
 Suspect (V2_SUSPECT_FLOATER_SCOPED) entries are RUN and flagged `suspect`: 96.
 
@@ -38,9 +38,9 @@ Suspect (V2_SUSPECT_FLOATER_SCOPED) entries are RUN and flagged `suspect`: 96.
 | gaze_cues_tab (Gaze Cues) | performance_group | 0 | 0 | 2 | 1 | 2 | 0 | 0 | 0 | 2 | 1 | 2 | 0 |
 | shot_tab (Shot) | camera_group | 288 | 16 | 5 | 5 | 14 | 0 | 285 | 16 | 5 | 5 | 17 | 0 |
 | moves_tab (Moves) | camera_group | 11 | 0 | 3 | 0 | 0 | 0 | 11 | 0 | 3 | 0 | 0 | 0 |
-| operator_tab (Operator) | camera_group | 69 | 0 | 0 | 0 | 0 | 0 | 67 | 0 | 0 | 0 | 2 | 0 |
+| operator_tab (Operator) | camera_group | 69 | 0 | 0 | 0 | 0 | 0 | 69 | 0 | 0 | 0 | 0 | 0 |
 | frame_orbit_tab (Frame & Orbit) | camera_group | 30 | 0 | 0 | 0 | 0 | 0 | 30 | 0 | 0 | 0 | 0 | 0 |
-| takes_tab (Takes) | camera_group | 14 | 0 | 2 | 3 | 0 | 0 | 14 | 0 | 2 | 3 | 0 | 0 |
+| takes_tab (Takes) | camera_group | 13 | 0 | 2 | 4 | 0 | 0 | 13 | 0 | 2 | 4 | 0 | 0 |
 | vcam_tab (VCam) | camera_group | 2 | 0 | 0 | 0 | 0 | 0 | 2 | 0 | 0 | 0 | 0 | 0 |
 | focus_tab (Focus) | lens_group | 14 | 0 | 0 | 0 | 0 | 0 | 14 | 0 | 0 | 0 | 0 | 0 |
 | filters_tab (Filters) | lens_group | 28 | 0 | 1 | 0 | 0 | 0 | 28 | 0 | 1 | 0 | 0 | 0 |
@@ -56,7 +56,7 @@ Suspect (V2_SUSPECT_FLOATER_SCOPED) entries are RUN and flagged `suspect`: 96.
 | stylize_tab (Roto Ink) | look_group | 78 | 0 | 0 | 1 | 2 | 0 | 78 | 0 | 0 | 1 | 2 | 0 |
 | tron_tab (Tron) | look_group | 124 | 3 | 0 | 3 | 2 | 0 | 124 | 3 | 0 | 3 | 2 | 0 |
 | actor_style_tab (Actor FX) | look_group | 15 | 0 | 1 | 0 | 0 | 0 | 15 | 0 | 1 | 0 | 0 | 0 |
-| weather_tab (Weather) | world_group | 50 | 0 | 0 | 1 | 0 | 0 | 50 | 0 | 0 | 1 | 0 | 0 |
+| weather_tab (Weather) | world_group | 51 | 0 | 0 | 1 | 0 | 0 | 51 | 0 | 0 | 1 | 0 | 0 |
 | atmosphere_tab (Atmosphere) | world_group | 72 | 1 | 1 | 2 | 1 | 0 | 72 | 1 | 1 | 2 | 1 | 0 |
 | shadows_probes_tab (Shadows) | world_group | 37 | 0 | 0 | 0 | 2 | 0 | 37 | 0 | 0 | 0 | 2 | 0 |
 | temporal_tab (Time) | capture_group | 13 | 0 | 0 | 0 | 0 | 0 | 13 | 0 | 0 | 0 | 0 | 0 |
@@ -90,9 +90,9 @@ Suspect (V2_SUSPECT_FLOATER_SCOPED) entries are RUN and flagged `suspect`: 96.
 | page_master | v1 | light_rim_tab | cine_rig_rim_enable | toggle | CineRigRimEnabled = true |
 | weather_master | v1 | weather_tab | weather_enabled | toggle | AlchemyWeatherEnabled = true |
 | weather_master | v2 | weather_tab | weather_enabled | toggle | AlchemyWeatherEnabled = true |
+| rain_gate | v1 | weather_tab | weather_rain_enabled | toggle | AlchemyWeatherRainEnabled = false; effective rain intensity = 0 |
+| rain_gate | v2 | weather_tab | weather_rain_enabled | toggle | AlchemyWeatherRainEnabled = false; effective rain intensity = 0 |
 | preset_strip | v1 | light_rim_tab | cine_rig_rim_preset | select_item | CineRigRimMasterGain = 0.6 |
-| operator_v2_missing | v2 | operator_tab | FlycamOperatorModeBlendTime | set_value | MISSING in v2 |
-| operator_v2_missing | v2 | operator_tab | FlycamOperatorSimulationHz | set_value | MISSING in v2 |
 
 Selector segments (both v2 cards, 8 total) expect `DirectorV2SelectedLight` to equal 0 to 3 in turn. Synthetic rows are programmatic (ALKitCard, ALKitPage, ALKitPresets) and have no CSV row.
 
@@ -100,6 +100,7 @@ Selector segments (both v2 cards, 8 total) expect `DirectorV2SelectedLight` to e
 
 | Page | Widget | Label | Version(s) | Reason |
 |---|---|---|---|---|
+| takes_tab | btn_load | Load file | v1,v2 | opens a native file picker that cannot be safely automated at login |
 | move_tab | btn_group_rename | Rename | v1,v2 | destructive (rename) in action name or label |
 | move_tab | btn_group_dissolve | Dissolve | v1,v2 | destructive (dissolve) in action name or label |
 | path_tab | btn_wp_delete | Delete node | v1,v2 | destructive (delete) in action name or label |
@@ -154,5 +155,5 @@ Selector segments (both v2 cards, 8 total) expect `DirectorV2SelectedLight` to e
 - Coverage check: every interactive CSV row yields one entry per version (verified by the script before writing).
 
 
-> NOTE (orchestrator, 10/10): SUSPECTS_RESOLVED.md shows FlycamOperatorModeBlendTime / FlycamOperatorSimulationHz ARE present in v2 (operator page injects ALPanelCineCamParams, panel_dpage_camera_operator.xml:10). Change those two probes from EXPECT_MISSING to normal setting assertions before running. Also treat all 104 former V2_SUSPECT entries as WIRED (resolved).
+> NOTE (orchestrator, 10/10; applied): SUSPECTS_RESOLVED.md shows FlycamOperatorModeBlendTime / FlycamOperatorSimulationHz ARE present in v2 (operator page injects ALPanelCineCamParams, panel_dpage_camera_operator.xml:10). The two entries now use normal setting assertions. Also treat all 104 former V2_SUSPECT entries as WIRED (resolved).
 

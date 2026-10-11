@@ -17,14 +17,18 @@
 #include "alkitstyle.h"
 #include "alkitswitch.h"
 #include "aluirefresh.h"
+#include "alcinerigrim.h"
+#include "alcinelightrigmanager.h"
 
 #include "llappviewer.h"
 #include "llaccordionctrl.h"
 #include "llbutton.h"
+#include "llcheckboxctrl.h"
 #include "llcombobox.h"
 #include "lldir.h"
 #include "lldiriterator.h"
 #include "llerrorcontrol.h"
+#include "llenvironment.h"
 #include "llfile.h"
 #include "llfloater.h"
 #include "llfloaterreg.h"
@@ -39,6 +43,7 @@
 #include "lllineeditor.h"
 #include "llmultisliderctrl.h"
 #include "llpanel.h"
+#include "llradiogroup.h"
 #include "llscrollcontainer.h"
 #include "llscrolllistctrl.h"
 #include "llslider.h"
@@ -51,6 +56,7 @@
 #include "lltexteditor.h"
 #include "llviewercontrol.h"
 #include "llviewerwindow.h"
+#include "llversioninfo.h"
 #include "llview.h"
 
 #include <algorithm>
@@ -65,6 +71,24 @@
 
 namespace
 {
+class FunctionalControlAccess : public LLUICtrl
+{
+public:
+    static commit_signal_t* commitSignal(LLUICtrl* control)
+    {
+        using member_t = commit_signal_t* LLUICtrl::*;
+        const member_t member = &FunctionalControlAccess::mCommitSignal;
+        return control ? control->*member : nullptr;
+    }
+
+    static const std::string& functionName(LLUICtrl* control)
+    {
+        using member_t = std::string LLUICtrl::*;
+        const member_t member = &FunctionalControlAccess::mFunctionName;
+        return control->*member;
+    }
+};
+
 class InventoryStressFilter final : public LLFolderViewFilter
 {
 public:
@@ -457,6 +481,12 @@ struct ResultRow
     F64 mActionMs = 0.0;
     F64 mFirstFrameMs = 0.0;
     U32 mReadyWaitFrames = 0;
+};
+
+struct FunctionalResult
+{
+    std::string mPage, mControl, mKind, mAction, mExpected, mObserved;
+    std::string mStatus, mReason;
 };
 
 struct LayoutFinding
@@ -1177,7 +1207,14 @@ public:
       mDirectorV2(gSavedSettings.getBOOL("UIPerfDirectorV2")),
       mAuditSizes(parseAuditSizes(audit_sizes))
     {
-        if (mDirectorV2)
+        static const std::string functional_prefix = "functional|";
+        if (mRequest.compare(0, functional_prefix.size(), functional_prefix) == 0)
+        {
+            mFunctional = true;
+            mFunctionalManifestPath = mRequest.substr(functional_prefix.size());
+            mRequest = "director";
+        }
+        if (mDirectorV2 || mFunctional)
         {
             SaveControls save(mSettingsSnapshot);
             gSavedSettings.applyToAll(&save);
@@ -1264,7 +1301,7 @@ public:
         sLayoutAuditActive = false;
     }
 
-    bool tick() { return step(); }
+    bool tick() { return mFunctional ? functionalStep() : step(); }
 
     void captureAfterRender()
     {
@@ -1318,6 +1355,683 @@ public:
     }
 
 private:
+    static std::string functionalValue(const LLSD& value)
+    {
+        return value.isDefined() ? LlsdToJson(value) : std::string();
+    }
+
+    static bool functionalEqual(const LLSD& actual, const LLSD& expected,
+                                const std::string& type, const LLSD& increment = LLSD())
+    {
+        if (type == "Boolean") return actual.asBoolean() == expected.asBoolean();
+        if (type == "S32" || type == "U32") return actual.asInteger() == expected.asInteger();
+        if (type == "F32" || type == "F64")
+        {
+            const F64 a = actual.asReal();
+            const F64 b = expected.asReal();
+            const F64 step = increment.isDefined() ? llabs(increment.asReal()) : 0.0;
+            const F64 epsilon = llmax(1e-9, llmax(llabs(b) * 1e-7, step * 1e-4));
+            return std::isfinite(a) && std::isfinite(b) && llabs(a - b) <= epsilon;
+        }
+        if (type == "String") return actual.asString() == expected.asString();
+        return actual == expected;
+    }
+
+    static void functionalVisibleState(LLView* view, std::ostringstream& out,
+                                       const LLView* excluded = nullptr)
+    {
+        if (!view || view == excluded || !view->getVisible() || !view->isInVisibleChain()) return;
+        out << view->getName() << ':';
+        if (LLUICtrl* control = dynamic_cast<LLUICtrl*>(view))
+            out << functionalValue(control->getValue());
+        out << ';';
+        for (LLView* child : *view->getChildList()) functionalVisibleState(child, out, excluded);
+    }
+
+    static bool functionalHazard(const LLSD& entry, const std::string& wanted)
+    {
+        const LLSD& hazards = entry["hazards"];
+        if (!hazards.isArray()) return false;
+        for (LLSD::array_const_iterator it = hazards.beginArray(); it != hazards.endArray(); ++it)
+            if (it->asString() == wanted) return true;
+        return false;
+    }
+
+    static void functionalVisibleFloaters(LLView* view, std::set<LLFloater*>& out)
+    {
+        if (!view || !view->getVisible() || !view->isInVisibleChain()) return;
+        if (LLFloater* floater = dynamic_cast<LLFloater*>(view)) out.insert(floater);
+        for (LLView* child : *view->getChildList()) functionalVisibleFloaters(child, out);
+    }
+
+    static S32 functionalLightIndex(const std::string& setting)
+    {
+        if (setting.find("Key") != std::string::npos) return 0;
+        if (setting.find("Fill") != std::string::npos) return 1;
+        if (setting.find("Rim") != std::string::npos) return 2;
+        if (setting.find("Bg") != std::string::npos) return 3;
+        return -1;
+    }
+
+    // ui-draw-lint: allow-function(setting,setting-write) isolated test-only selector setup
+    void prepareFunctionalSelector(const LLSD& entry)
+    {
+        if (!mDirectorV2 || entry["probe"].asString() == "selector_segment") return;
+        const std::string setting = entry["expect"]["setting"].asString();
+        if (setting.compare(0, 12, "CineLightRig") != 0 &&
+            setting.compare(0, 10, "CineRigRim") != 0) return;
+        const S32 index = functionalLightIndex(setting);
+        if (index < 0) return;
+        if (LLControlVariable* selected = gSavedSettings.getControl("DirectorV2SelectedLight").get())
+        {
+            mFunctionalRestore.emplace("DirectorV2SelectedLight",
+                SavedControlState{selected->get(), selected->getSaveValue(), selected->hasUnsavedValue()});
+            selected->setValue(index, false); // ui-draw-lint: allow(setting-write) test-only selector reveal before input
+        }
+    }
+
+    // ui-draw-lint: allow-function(setting-write) isolated test-only consumer setup
+    void prepareFunctionalConsumerGate(const LLSD& entry)
+    {
+        const std::string consumer = entry["consumer"].asString();
+        auto force = [this](const std::string& name, const LLSD& value)
+        {
+            LLControlVariable* setting = gSavedSettings.getControl(name).get();
+            if (!setting) return;
+            mFunctionalRestore.emplace(name, SavedControlState{
+                setting->get(), setting->getSaveValue(), setting->hasUnsavedValue()});
+            setting->setValue(value, false); // ui-draw-lint: allow(setting-write) test-only consumer prerequisite
+        };
+        if (consumer == "rim_render_active") force("CineLightRigEnabled", true);
+        if (consumer == "weather_rain_intensity")
+        {
+            if (entry["expect"]["setting"].asString() != "AlchemyWeatherEnabled")
+                force("AlchemyWeatherEnabled", true);
+            if (entry["expect"]["setting"].asString() != "AlchemyWeatherRainEnabled")
+                force("AlchemyWeatherRainEnabled", true);
+        }
+    }
+
+    static F32 functionalWeatherCloudFactor()
+    {
+        F32 factor = 1.f;
+        if (LLSettingsSky::ptr_t sky = LLEnvironment::instance().getCurrentSky())
+        {
+            const F32 cloud_raw = sky->getCloudShadow();
+            const F32 cloud = llclamp(std::isfinite(cloud_raw) ? cloud_raw : 1.f, 0.f, 1.f);
+            const F32 coupling_raw = gSavedSettings.getF32("AlchemyWeatherEEPCoupling");
+            const F32 coupling = llclamp(
+                std::isfinite(coupling_raw) ? coupling_raw : 0.35f, 0.f, 1.f);
+            factor = lerp(1.f, cloud, coupling);
+        }
+        return factor;
+    }
+
+    // ui-draw-lint: allow-function(setting) isolated test-only consumer observation
+    LLSD functionalConsumerValue(const LLSD& entry)
+    {
+        const std::string consumer = entry["consumer"].asString();
+        if (consumer == "rim_render_active") return ALCineRigRim::isEnabled();
+        if (consumer == "rim_bind_gain")
+        {
+            const F32 gain = gSavedSettings.getF32("CineRigRimMasterGain");
+            return llclamp(std::isfinite(gain) ? gain : 0.f, 0.f, 4.f);
+        }
+        if (consumer == "light_rig_enabled_mask")
+            return static_cast<S32>(ALCineLightRigManager::instance().enabledMask());
+        if (consumer == "catchlight_enabled")
+            return ALCineLightRigParamBlob::fromSettings(
+                &ALCineLightRigManager::instance().selected()).mCatchlight;
+        if (consumer == "weather_rain_intensity")
+        {
+            if (!gSavedSettings.getBOOL("AlchemyWeatherEnabled") ||
+                !gSavedSettings.getBOOL("AlchemyWeatherRainEnabled")) return 0.0;
+            const F32 intensity = gSavedSettings.getF32("AlchemyWeatherRainIntensity");
+            return llclamp(std::isfinite(intensity) ? intensity : 0.55f, 0.f, 1.f) *
+                functionalWeatherCloudFactor();
+        }
+        if (consumer == "selected_light_values" || consumer == "selected_rim_values")
+        {
+            const S32 index = gSavedSettings.getS32("DirectorV2SelectedLight");
+            LLSD value = LLSD::emptyMap();
+            value["selected"] = index;
+            if (index >= 0 && index < ALCineLightRigModel::LIGHT_COUNT)
+            {
+                const ALCineLightRigParamBlob blob = ALCineLightRigParamBlob::fromSettings(
+                    &ALCineLightRigManager::instance().selected());
+                value["value"] = consumer == "selected_light_values"
+                    ? LLSD(blob.mLights[index].mEV) : LLSD(blob.mLights[index].mRimGain);
+            }
+            return value;
+        }
+        return LLSD();
+    }
+
+    bool functionalConsumerExpected(const LLSD& entry, const LLSD& value)
+    {
+        const std::string consumer = entry["consumer"].asString();
+        if (consumer.empty()) return true;
+        const LLSD& expected = entry["expect"]["value"];
+        if (consumer == "rim_render_active" || consumer == "catchlight_enabled")
+            return value.asBoolean() == expected.asBoolean();
+        if (consumer == "rim_bind_gain")
+            return functionalEqual(value, expected, "F32", entry["increment"]);
+        if (consumer == "weather_rain_intensity")
+        {
+            const std::string setting = entry["expect"]["setting"].asString();
+            if (setting == "AlchemyWeatherEnabled" || setting == "AlchemyWeatherRainEnabled")
+                return expected.asBoolean() ? value.asReal() > 0.0 : value.asReal() == 0.0;
+            const F32 configured = (F32)expected.asReal();
+            const LLSD expected_consumer = llclamp(
+                std::isfinite(configured) ? configured : 0.55f, 0.f, 1.f) *
+                functionalWeatherCloudFactor();
+            return functionalEqual(value, expected_consumer, "F32", entry["increment"]);
+        }
+        if (consumer == "light_rig_enabled_mask")
+        {
+            const U32 bit = 1u << static_cast<U32>(ALCineLightRigManager::instance().selectedSlot());
+            return expected.asBoolean() ? (static_cast<U32>(value.asInteger()) & bit) != 0
+                                        : (static_cast<U32>(value.asInteger()) & bit) == 0;
+        }
+        if (consumer == "selected_light_values" || consumer == "selected_rim_values")
+            return value["selected"].asInteger() == expected.asInteger() && value["value"].isDefined();
+        return false;
+    }
+
+    static void revealFunctionalAncestors(LLView* view)
+    {
+        for (LLView* child = view; child && child->getParent(); child = child->getParent())
+            if (LLTabContainer* tabs = dynamic_cast<LLTabContainer*>(child->getParent()))
+                if (LLPanel* panel = dynamic_cast<LLPanel*>(child)) tabs->selectTabPanel(panel);
+    }
+
+    // ui-draw-lint: allow-function(lookup) isolated test-only manifest page lookup
+    LLView* functionalPage(const LLSD& entry)
+    {
+        LLFloater* floater = mFloater.get();
+        if (!floater) return nullptr;
+        const std::string page_name = entry["page"].asString();
+        if (mDirectorV2)
+        {
+            ALKitShell* shell = findFirstView<ALKitShell>(floater);
+            if (!shell || !shell->selectPage(page_name)) return nullptr;
+            return shell->ensurePageBuilt(page_name);
+        }
+        LLView* page = floater->findChildView(page_name, true);
+        if (page) revealFunctionalAncestors(page);
+        return page;
+    }
+
+    // ui-draw-lint: allow-function(lookup) isolated test-only manifest control lookup
+    LLUICtrl* functionalControl(LLView* page, const LLSD& entry)
+    {
+        if (!page) return nullptr;
+        std::string name = entry["widget_name"].asString();
+        if (entry["probe"].asString() == "selector_segment")
+        {
+            const size_t colon = name.find(':');
+            if (colon != std::string::npos)
+                name = name.substr(0, colon) + "_seg_" +
+                    llformat("%d", entry["test_value"].asInteger());
+        }
+        else if (entry["probe"].asString() == "preset_strip" && mDirectorV2)
+        {
+            name = entry["page"].asString();
+            if (name.size() > 4 && name.compare(name.size() - 4, 4, "_tab") == 0)
+                name.erase(name.size() - 4);
+            name += "_preset";
+        }
+        return page->findChild<LLUICtrl>(name, true);
+    }
+
+    void addFunctionalResult(const LLSD& entry, const std::string& status,
+                             const std::string& reason, const std::string& observed = {})
+    {
+        FunctionalResult row;
+        row.mPage = entry["page"].asString();
+        row.mControl = entry["widget_name"].asString();
+        row.mKind = entry["widget_type"].asString();
+        row.mAction = entry["exercise"].asString();
+        row.mExpected = functionalValue(entry["expect"]);
+        row.mObserved = observed;
+        row.mStatus = status;
+        row.mReason = reason;
+        mFunctionalResults.push_back(std::move(row));
+    }
+
+    bool loadFunctionalManifest()
+    {
+        llifstream stream(mFunctionalManifestPath.c_str(), std::ios::binary);
+        if (!stream.is_open()) return false;
+        std::ostringstream buffer;
+        buffer << stream.rdbuf();
+        LLSD root;
+        std::string error;
+        if (!LlsdFromJsonString(buffer.str(), root, &error))
+        {
+            LL_WARNS("UIFunctionalSelfTest") << "Manifest parse failed: " << error << LL_ENDL;
+            return false;
+        }
+        const std::string version = mDirectorV2 ? "v2" : "v1";
+        const LLSD& entries = root["entries"];
+        for (LLSD::array_const_iterator it = entries.beginArray(); it != entries.endArray(); ++it)
+            if ((*it)["version"].asString() == version) mFunctionalEntries.push_back(*it);
+        return !mFunctionalEntries.empty();
+    }
+
+    void prepareFunctionalRestore(const LLSD& entry)
+    {
+        mFunctionalRestore.clear();
+        auto remember = [this](const std::string& name)
+        {
+            if (name.empty() || mFunctionalRestore.count(name)) return;
+            if (LLControlVariable* control = gSavedSettings.getControl(name).get())
+                mFunctionalRestore[name] = {
+                    control->get(), control->getSaveValue(), control->hasUnsavedValue()
+                };
+        };
+        remember(entry["expect"]["setting"].asString());
+        remember(entry["setting"].asString());
+        const LLSD& settings = entry["restore"]["snapshot_settings"];
+        if (settings.isArray())
+            for (LLSD::array_const_iterator it = settings.beginArray(); it != settings.endArray(); ++it)
+                remember(it->asString());
+    }
+
+    // ui-draw-lint: allow-function(setting-write,raw-write) isolated test-only typed restore
+    void restoreFunctionalAction()
+    {
+        if (LLUICtrl* control = mFunctionalControl.get();
+            control && mFunctionalControlBefore.isDefined())
+            control->setValue(mFunctionalControlBefore);
+        for (const auto& saved : mFunctionalRestore)
+            if (LLControlVariable* control = gSavedSettings.getControl(saved.first).get())
+            {
+                control->setValue(saved.second.mSaved, true); // ui-draw-lint: allow(setting-write) bounded functional saved-value restore
+                if (saved.second.mUnsaved)
+                    control->setValue(saved.second.mActive, false); // ui-draw-lint: allow(setting-write) bounded functional active-value restore
+            }
+        mFunctionalRestore.clear();
+        mFunctionalControl = LLHandle<LLUICtrl>();
+        mFunctionalSetting = nullptr;
+        mFunctionalPageRoot = nullptr;
+        mFunctionalControlBefore = LLSD();
+    }
+
+    bool functionalReachable(LLUICtrl* control, std::string& reason)
+    {
+        if (!control->isInVisibleChain())
+        {
+            reason = "not reachable: hidden";
+            return false;
+        }
+        if (!control->isInEnabledChain())
+        {
+            reason = "not reachable: disabled-by-parent";
+            return false;
+        }
+        control->onUpdateScrollToChild(control);
+        for (LLView* parent = control->getParent(); parent; parent = parent->getParent())
+        {
+            LLScrollContainer* scroller = dynamic_cast<LLScrollContainer*>(parent);
+            if (!scroller || !scroller->getScrolledView()) continue;
+            LLRect document_rect;
+            if (control->localRectToOtherView(control->getLocalRect(), &document_rect,
+                                              scroller->getScrolledView()))
+                scroller->scrollToShowRect(document_rect);
+        }
+        if (!control->isInVisibleChain())
+        {
+            reason = "not reachable: hidden";
+            return false;
+        }
+        LLView* root = control->getRootView();
+        S32 screen_x = 0, screen_y = 0, root_x = 0, root_y = 0;
+        control->localPointToScreen(control->getLocalRect().getCenterX(),
+                                    control->getLocalRect().getCenterY(),
+                                    &screen_x, &screen_y);
+        root->screenPointToLocal(screen_x, screen_y, &root_x, &root_y);
+        LLView* hit = root->childFromPoint(root_x, root_y, true);
+        if (!hit || (hit != control && !hit->hasAncestor(control)))
+        {
+            reason = "not reachable: covered";
+            return false;
+        }
+        mFunctionalRoot = root;
+        mFunctionalRootX = root_x;
+        mFunctionalRootY = root_y;
+        return true;
+    }
+
+    void revealFunctionalControl(LLUICtrl* control)
+    {
+        if (!control) return;
+        revealFunctionalAncestors(control);
+        ALKitPage* page = dynamic_cast<ALKitPage*>(mFunctionalPageRoot);
+        if (!page) page = findFirstView<ALKitPage>(mFunctionalPageRoot);
+        ALKitCard* card = nullptr;
+        for (LLView* parent = control->getParent(); parent; parent = parent->getParent())
+            if ((card = dynamic_cast<ALKitCard*>(parent))) break;
+        if (page && card) page->revealCard(card, false);
+        if (page && !control->isInVisibleChain())
+        {
+            for (S32 mode = 0; mode < page->modeCount(); ++mode)
+            {
+                page->setModeIndex(mode, false, true);
+                if (control->isInVisibleChain()) break;
+            }
+        }
+    }
+
+    bool functionalPointerClick()
+    {
+        if (!mFunctionalRoot) return false;
+        const bool down = mFunctionalRoot->handleMouseDown(
+            mFunctionalRootX, mFunctionalRootY, MASK_NONE);
+        const bool up = mFunctionalRoot->handleMouseUp(
+            mFunctionalRootX, mFunctionalRootY, MASK_NONE);
+        return down && up;
+    }
+
+    // ui-draw-lint: allow-function(setting-write,raw-write) isolated test-only input exercise
+    bool exerciseFunctional(const LLSD& entry, LLUICtrl* control)
+    {
+        const std::string exercise = entry["exercise"].asString();
+        const LLSD& test = entry["test_value"];
+        if (exercise == "toggle" || exercise == "click")
+            return functionalPointerClick();
+        if (exercise == "select_item")
+        {
+            if (LLComboBox* combo = dynamic_cast<LLComboBox*>(control))
+            {
+                bool selected = false;
+                if (test.isMap() && test.has("id"))
+                    selected = combo->setSelectedByValue(test["id"], true);
+                if (!selected)
+                {
+                    S32 index = test.isMap() && test.has("item_index")
+                        ? test["item_index"].asInteger() : 1;
+                    if (index >= combo->getItemCount()) index = combo->getItemCount() - 1;
+                    selected = index >= 0 && combo->setCurrentByIndex(index);
+                }
+                if (selected) combo->onCommit();
+                return selected;
+            }
+            if (LLRadioGroup* radio = dynamic_cast<LLRadioGroup*>(control))
+            {
+                const S32 index = test.isMap() ? test["item_index"].asInteger() : test.asInteger();
+                const bool selected = radio->selectNthItem(index);
+                if (selected) radio->onCommit();
+                return selected;
+            }
+        }
+        control->setValue(test);
+        control->onCommit();
+        return true;
+    }
+
+    // ui-draw-lint: allow-function(lookup) isolated test-only selector alternate lookup
+    bool prepareFunctionalAlternate(const LLSD& entry)
+    {
+        if (entry["probe"].asString() != "selector_segment") return true;
+        const S32 target = entry["test_value"].asInteger();
+        const std::string base = entry["widget_name"].asString().substr(
+            0, entry["widget_name"].asString().find(':'));
+        LLUICtrl* other = mFunctionalPageRoot->findChild<LLUICtrl>(
+            base + "_seg_" + llformat("%d", target == 0 ? 1 : 0), true); // ui-draw-lint: allow(lookup) test-only selector precondition
+        if (!other) return false;
+        LLUICtrl* target_control = mFunctionalControl.get();
+        mFunctionalControl = other->getDerivedHandle<LLUICtrl>();
+        std::string reason;
+        const bool reachable = functionalReachable(other, reason);
+        const bool clicked = reachable && functionalPointerClick();
+        mFunctionalControl = target_control->getDerivedHandle<LLUICtrl>();
+        return clicked;
+    }
+
+    void beginFunctionalEntry()
+    {
+        const LLSD& entry = mFunctionalEntries[mFunctionalIndex];
+        const std::string action = entry["action"].asString();
+        if (action == "NO_EXERCISE")
+        {
+            const std::string reason = entry["reason"].asString();
+            addFunctionalResult(entry, reason.empty() ? "FAIL" : "SKIP",
+                reason.empty() ? "NO_EXERCISE lacks an explicit manifest reason" : reason);
+            ++mFunctionalIndex;
+            return;
+        }
+        if (action == "SKIP" || action == "DEFER_INWORLD")
+        {
+            std::string reason = entry["reason"].asString();
+            addFunctionalResult(entry, reason.empty() ? "FAIL" : "SKIP",
+                                reason.empty() ? "manifest SKIP lacks explicit reason" : reason);
+            ++mFunctionalIndex;
+            return;
+        }
+        const bool dangerous = functionalHazard(entry, "file_picker") ||
+            functionalHazard(entry, "destructive") || functionalHazard(entry, "logout") ||
+            functionalHazard(entry, "delete");
+        if (dangerous)
+        {
+            const std::string reason = entry["reason"].asString();
+            addFunctionalResult(entry, reason.empty() ? "FAIL" : "SKIP",
+                reason.empty() ? "hazard requires an explicit manifest skip reason" : reason);
+            ++mFunctionalIndex;
+            return;
+        }
+        prepareFunctionalRestore(entry);
+        prepareFunctionalSelector(entry);
+        prepareFunctionalConsumerGate(entry);
+        mFunctionalPageRoot = functionalPage(entry);
+        LLUICtrl* control = functionalControl(mFunctionalPageRoot, entry);
+        if (action == "EXPECT_MISSING")
+        {
+            const bool page_open = mFunctionalPageRoot != nullptr;
+            addFunctionalResult(entry, page_open && !control ? "PASS" : "FAIL",
+                !page_open ? "page did not open; absence is unproven" :
+                (control ? "control unexpectedly present" : "expected missing control"));
+            restoreFunctionalAction();
+            ++mFunctionalIndex;
+            return;
+        }
+        if (!control)
+        {
+            addFunctionalResult(entry, "FAIL", "no observable effect", "control not found");
+            restoreFunctionalAction();
+            ++mFunctionalIndex;
+            return;
+        }
+        revealFunctionalControl(control);
+        std::string reachability;
+        if (!functionalReachable(control, reachability))
+        {
+            const std::string skip_reason = entry["skip_reason"].asString();
+            addFunctionalResult(entry, skip_reason.empty() ? "FAIL" : "SKIP",
+                skip_reason.empty() ? reachability : skip_reason);
+            restoreFunctionalAction();
+            ++mFunctionalIndex;
+            return;
+        }
+        mFunctionalControl = control->getDerivedHandle<LLUICtrl>();
+        if (!prepareFunctionalAlternate(entry))
+        {
+            addFunctionalResult(entry, "FAIL", "selector alternate state was not reachable");
+            restoreFunctionalAction();
+            ++mFunctionalIndex;
+            return;
+        }
+        if (!functionalReachable(control, reachability))
+        {
+            addFunctionalResult(entry, "FAIL", reachability);
+            restoreFunctionalAction();
+            ++mFunctionalIndex;
+            return;
+        }
+        mFunctionalControlBefore = control->getValue();
+        if (LLUICtrl::commit_signal_t* signal = FunctionalControlAccess::commitSignal(control))
+            mFunctionalHadHandler = signal->num_slots() != 0;
+        else
+            mFunctionalHadHandler = false;
+        const std::string& function_name = FunctionalControlAccess::functionName(control);
+        if (!function_name.empty() && !LLUICtrl::CommitCallbackRegistry::getValue(function_name))
+            mFunctionalHadHandler = false;
+        const std::string setting = entry["expect"]["setting"].asString();
+        mFunctionalSetting = gSavedSettings.getControl(setting).get();
+        mFunctionalBefore = mFunctionalSetting ? mFunctionalSetting->getValue() : LLSD();
+        std::ostringstream before;
+        functionalVisibleState(mFunctionalPageRoot, before, control);
+        mFunctionalVisibleBefore = before.str();
+        mFunctionalConsumerBefore = functionalConsumerValue(entry);
+        mFunctionalFloatersBefore.clear();
+        functionalVisibleFloaters(control->getRootView(), mFunctionalFloatersBefore);
+        mFunctionalActionWorked = exerciseFunctional(entry, control);
+        mFunctionalPending = true;
+    }
+
+    void finishFunctionalEntry()
+    {
+        const LLSD& entry = mFunctionalEntries[mFunctionalIndex];
+        LLUICtrl* control = mFunctionalControl.get();
+        const LLSD expected = entry["expect"]["value"];
+        const std::string type = entry["expect"]["type"].asString();
+        const LLSD actual = mFunctionalSetting ? mFunctionalSetting->getValue() : LLSD();
+        const bool changed = mFunctionalSetting &&
+            !functionalEqual(actual, mFunctionalBefore, type, entry["increment"]);
+        bool observable = false;
+        bool expected_ok = true;
+        if (entry["expect"].has("setting"))
+        {
+            expected_ok = mFunctionalSetting &&
+                functionalEqual(actual, expected, type, entry["increment"]);
+            observable = changed;
+        }
+        else
+        {
+            std::ostringstream after;
+            functionalVisibleState(mFunctionalPageRoot, after, control);
+            // The control's pre-existing signal must contain an owner slot.
+            // The test never adds a slot, so an unbound control cannot pass
+            // merely because exerciseFunctional() invoked onCommit().
+            observable = mFunctionalHadHandler &&
+                (mFunctionalActionWorked || after.str() != mFunctionalVisibleBefore);
+        }
+        const LLSD consumer_after = functionalConsumerValue(entry);
+        if (entry["consumer"].isDefined())
+        {
+            observable = observable && consumer_after != mFunctionalConsumerBefore;
+            expected_ok = expected_ok && functionalConsumerExpected(entry, consumer_after);
+        }
+        if (entry["probe"].asString() == "selector_segment")
+        {
+            std::ostringstream after;
+            functionalVisibleState(mFunctionalPageRoot, after, control);
+            expected_ok = expected_ok && after.str() != mFunctionalVisibleBefore;
+        }
+        const bool modal = functionalHazard(entry, "modal") ||
+            functionalHazard(entry, "opens_color_picker");
+        if (modal)
+        {
+            std::set<LLFloater*> after;
+            functionalVisibleFloaters(control ? control->getRootView() : nullptr, after);
+            bool opened = false;
+            for (LLFloater* floater : after)
+            {
+                if (!mFunctionalFloatersBefore.count(floater))
+                {
+                    opened = true;
+                    floater->closeFloater();
+                }
+            }
+            observable = opened;
+            expected_ok = expected_ok && opened;
+        }
+        if (ALKitSwitch* sw = dynamic_cast<ALKitSwitch*>(control))
+        {
+            const bool setting_value = mFunctionalSetting
+                ? mFunctionalSetting->getValue().asBoolean() : control->getValue().asBoolean();
+            expected_ok = expected_ok && sw->isOn() == control->getValue().asBoolean() &&
+                sw->isOn() == setting_value && !sw->isFocusRingVisible() && !sw->hasMouseCapture();
+            if (LLButton* button = findFirstView<LLButton>(sw))
+                expected_ok = expected_ok && !button->isFocusRingVisible() && !button->hasMouseCapture();
+        }
+        else if (LLButton* button = dynamic_cast<LLButton*>(control))
+            expected_ok = expected_ok && !button->isFocusRingVisible() && !button->hasMouseCapture();
+        const std::string observed = "value=" + functionalValue(actual) +
+            "; consumer=" + functionalValue(consumer_after);
+        std::string reason;
+        if (!mFunctionalActionWorked) reason = "action could not be applied";
+        else if (!observable) reason = "no observable effect";
+        else if (!expected_ok) reason = "observed value/state did not match manifest";
+        const bool known_gap = entry["known_gap"].asBoolean();
+        if (known_gap && reason.empty()) reason = "known gap remains marked UNWIRED";
+        addFunctionalResult(entry, known_gap ? "KNOWN_GAP" :
+            (reason.empty() ? "PASS" : "FAIL"), reason, observed);
+        restoreFunctionalAction();
+        mFunctionalPending = false;
+        ++mFunctionalIndex;
+    }
+
+    void writeFunctionalResults()
+    {
+        const std::string path = gDirUtilp->getExpandedFilename(LL_PATH_LOGS, "functional.csv");
+        llofstream out(path.c_str(), std::ios::out | std::ios::trunc);
+        out << "build,ui_version,page,control,kind,action,expected,observed,PASS/FAIL/SKIP,reason\n";
+        const std::string build = LLVersionInfo::instance().getVersion();
+        const std::string version = mDirectorV2 ? "v2" : "v1";
+        for (const FunctionalResult& row : mFunctionalResults)
+            out << csv(build) << ',' << csv(version) << ',' << csv(row.mPage) << ','
+                << csv(row.mControl) << ',' << csv(row.mKind) << ',' << csv(row.mAction) << ','
+                << csv(row.mExpected) << ',' << csv(row.mObserved) << ',' << csv(row.mStatus) << ','
+                << csv(row.mReason) << '\n';
+        out.flush();
+        LL_INFOS("UIFunctionalSelfTest") << "UIFunctionalSelfTest summary complete: wrote "
+            << mFunctionalResults.size() << " rows to " << path << LL_ENDL;
+    }
+
+    bool functionalStep()
+    {
+        FrameSample ignored;
+        takeFrame(ignored);
+        if (mSettle.getElapsedTimeF32() < 3.f) return false;
+        if (!mFunctionalLoaded)
+        {
+            mFunctionalLoaded = true;
+            if (!loadFunctionalManifest())
+            {
+                LLSD failure;
+                failure["page"] = "manifest"; failure["widget_name"] = mFunctionalManifestPath;
+                failure["widget_type"] = "file"; failure["exercise"] = "load";
+                addFunctionalResult(failure, "FAIL", "manifest missing, invalid, or empty");
+                mFunctionalIndex = mFunctionalEntries.size();
+            }
+            LLFloater* floater = LLFloaterReg::showInstance("director", LLSD(), false);
+            if (floater) mFloater = floater->getHandle();
+            else
+            {
+                LLSD failure;
+                failure["page"] = "director"; failure["widget_name"] = "director";
+                failure["widget_type"] = "floater"; failure["exercise"] = "open";
+                addFunctionalResult(failure, "FAIL", "director floater did not open");
+                mFunctionalIndex = mFunctionalEntries.size();
+            }
+            return false;
+        }
+        if (mFunctionalPending) finishFunctionalEntry();
+        else if (mFunctionalIndex < mFunctionalEntries.size()) beginFunctionalEntry();
+        else
+        {
+            writeFunctionalResults();
+            restoreFunctionalAction();
+            restore();
+            sActive = false;
+            sSuppressSettingsSave = false;
+            LLAppViewer::instance()->requestQuit();
+            return true;
+        }
+        return false;
+    }
+
     enum Phase
     {
         WAIT_SETTLE,
@@ -1522,6 +2236,7 @@ private:
 
     bool isRestoredSetting(const std::string& name) const
     {
+        if (mFunctional) return true;
         if (isRunnerOverride(name) || name == "UIFolderViewCull" ||
             mDirectorAuditSettings.count(name)) return true;
         static const std::string prefixes[] = {
@@ -4156,7 +4871,7 @@ private:
                 LLFloaterReg::showInstance(saved.first, LLSD(), false);
             }
         }
-        if (mDirectorV2) restoreSettingsSnapshot();
+        if (mDirectorV2 || mFunctional) restoreSettingsSnapshot();
         else
         {
             // ui-draw-lint: allow(setting-write) one-shot self-test toggle, login screen only
@@ -4171,6 +4886,27 @@ private:
     U32 mInventoryItems;
     bool mPriorCull;
     bool mDirectorV2 = false;
+    bool mFunctional = false;
+    bool mFunctionalLoaded = false;
+    bool mFunctionalPending = false;
+    bool mFunctionalActionWorked = false;
+    std::string mFunctionalManifestPath;
+    std::vector<LLSD> mFunctionalEntries;
+    std::vector<FunctionalResult> mFunctionalResults;
+    size_t mFunctionalIndex = 0;
+    LLView* mFunctionalPageRoot = nullptr;
+    LLView* mFunctionalRoot = nullptr;
+    S32 mFunctionalRootX = 0;
+    S32 mFunctionalRootY = 0;
+    LLHandle<LLUICtrl> mFunctionalControl;
+    LLSD mFunctionalControlBefore;
+    bool mFunctionalHadHandler = false;
+    LLControlVariable* mFunctionalSetting = nullptr;
+    LLSD mFunctionalBefore;
+    LLSD mFunctionalConsumerBefore;
+    std::string mFunctionalVisibleBefore;
+    std::map<std::string, SavedControlState> mFunctionalRestore;
+    std::set<LLFloater*> mFunctionalFloatersBefore;
     std::vector<AuditSize> mAuditSizes;
     bool mCullOn = true;
     U32 mABPass = 0;

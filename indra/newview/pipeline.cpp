@@ -21735,6 +21735,35 @@ bool LLPipeline::isVolumetricShaftEnabled(const LLUUID& id)
     return !sVolumetricShaftObjects.empty() && sVolumetricShaftObjects.count(id) != 0;
 }
 
+U32 LLPipeline::actorOnlyVolumetricLightCount()
+{
+    if (!ALCineLightRigManager::anyActorOnly() || sVolumetricShaftObjects.empty())
+        return 0;
+
+    U32 count = 0;
+    for (U32 i = 0; i < bdmergeMaxSpotShadows(); ++i)
+    {
+        LLDrawable* drawablep = mShadowSpotLight[i];
+        if (!drawablep)
+            continue;
+        LLRenderTarget* shadow_target = getSpotShadowTarget(i);
+        if (!shadow_target || shadow_target->getWidth() == 0)
+            continue;
+        LLVOVolume* volume = drawablep->getVOVolume();
+        if (!volume || !ALCineLightRigManager::instance().actorOnlyBits(volume->getID()))
+            continue;
+        if (isVolumetricShaftEnabled(volume->getID()))
+        {
+            ++count;
+            continue;
+        }
+        LLViewerObject* root = volume->getRootEdit();
+        if (root && isVolumetricShaftEnabled(root->getID()))
+            ++count;
+    }
+    return count;
+}
+
 void LLPipeline::clearVolumetricShafts()
 {
     sVolumetricShaftObjects.clear();

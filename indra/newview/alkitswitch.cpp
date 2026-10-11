@@ -23,6 +23,8 @@ ALKitSwitch::ALKitSwitch(const Params& p) : LLCheckBoxCtrl(p)
     mLastState = isOn();
 
     mHaveState = true;
+
+    mButton->setKeyboardOnlyFocusBorder(true);
 }
 
 void ALKitSwitch::reshape(S32 w, S32 h, bool from_parent)
@@ -39,11 +41,12 @@ void ALKitSwitch::draw()
 {
     LL_PROFILE_ZONE_SCOPED_CATEGORY_UI;
 
-    const F32 alpha = getEnabled() ? 1.f : .4f;
-
-    const LLColor4 track = (isOn() ? ALKitStyle::color(ALKitStyle::ACCENT) : ALKitStyle::color(ALKitStyle::SWITCH_OFF)).get() % alpha;
-
-    const LLColor4 knob = (isOn() ? ALKitStyle::color(ALKitStyle::KNOB_ON) : ALKitStyle::color(ALKitStyle::KNOB_OFF)).get() % alpha;
+    const bool value = isOn();
+    const bool enabled = getEnabled();
+    const LLColor4 track = (enabled ? (value ? ALKitStyle::color(ALKitStyle::ACCENT) : ALKitStyle::color(ALKitStyle::SWITCH_OFF))
+                                    : ALKitStyle::color(ALKitStyle::INPUT_BG)).get();
+    const LLColor4 knob = (enabled ? (value ? ALKitStyle::color(ALKitStyle::KNOB_ON) : ALKitStyle::color(ALKitStyle::KNOB_OFF))
+                                   : ALKitStyle::color(ALKitStyle::FAINT)).get();
 
     gGL.color4fv(track.mV);
     gl_rect_2d(9, ALKitStyle::SWITCH_H, 25, 0, track, true);
@@ -51,17 +54,22 @@ void ALKitSwitch::draw()
     gl_circle_2d(25.f, 9.f, 9.f, 20, true);
 
     gGL.color4fv(knob.mV);
-    gl_circle_2d(isOn() ? 25.f : 9.f, 9.f, 7.f, 20, true);
+    gl_circle_2d(value ? 25.f : 9.f, 9.f, 7.f, 20, true);
 
-    if (hasFocus() || mButton->hasFocus())
+    if (isFocusRingVisible())
     {
-        const LLColor4 c = ALKitStyle::color(ALKitStyle::ACCENT).get() % alpha;
+        const LLColor4 c = ALKitStyle::color(ALKitStyle::ACCENT).get();
         gGL.color4fv(c.mV);
-        gl_circle_2d(9.f, 9.f, 9.f, 20, false);
-        gl_circle_2d(25.f, 9.f, 9.f, 20, false);
-        gl_line_2d(9, 18, 25, 18, c);
+        gl_line_2d(9, ALKitStyle::SWITCH_H, 25, ALKitStyle::SWITCH_H, c);
         gl_line_2d(9, 0, 25, 0, c);
+        gl_arc_2d(9.f, 9.f, 9.f, 20, false, F_PI_BY_TWO, F_PI + F_PI_BY_TWO);
+        gl_arc_2d(25.f, 9.f, 9.f, 20, false, -F_PI_BY_TWO, F_PI_BY_TWO);
     }
+}
+
+bool ALKitSwitch::isFocusRingVisible() const
+{
+    return mButton && mButton->isFocusRingVisible();
 }
 
 void ALKitSwitch::noteState(bool value)

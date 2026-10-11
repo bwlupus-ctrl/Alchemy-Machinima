@@ -5,7 +5,9 @@ param(
   [uint32]$Inventory = 6000,
   [switch]$AB,
   [switch]$Layout,
+  [switch]$Functional,
   [switch]$DirectorV2,
+  [switch]$Both,
   [int]$TimeoutMin = 10,
   [string]$Compare
 )
@@ -24,11 +26,16 @@ if ($Floaters.Contains('"')) {
   Write-Host 'Floater list must not contain a double quote.' -ForegroundColor Red
   exit 2
 }
-if ($DirectorV2) {
+if ($DirectorV2 -and -not $Functional) {
   $Layout = $true
   $Floaters = 'director'
 }
-if ($DirectorV2 -and $TimeoutMin -eq 10) { $TimeoutMin = 75 }
+if ($Both -and -not $Functional) {
+  Write-Host '-Both is only valid with -Functional.' -ForegroundColor Red
+  exit 2
+}
+if ($Functional -and $TimeoutMin -eq 10) { $TimeoutMin = 5 }
+elseif ($DirectorV2 -and $TimeoutMin -eq 10) { $TimeoutMin = 75 }
 elseif ($Layout -and $TimeoutMin -eq 10) { $TimeoutMin = 25 }
 
 # Keep in sync with all_targets in indra/newview/aluiperfselftest.cpp.
@@ -51,6 +58,77 @@ $dumpTool = Join-Path $PSScriptRoot 'dumpstack.py'
 $python = 'C:\Program Files\NVIDIA Corporation\Nsight Systems 2026.1.3\host-windows-x64\python\bin\python.exe'
 if (-not (Test-Path -LiteralPath $python)) { $python = 'python' }
 $crashes = [System.Collections.Generic.List[object]]::new()
+
+if ($Functional) {
+  if ($Floaters -eq 'all') { $Floaters = 'director' }
+  if ($Floaters -ne 'director') {
+    Write-Host '-Functional is intentionally scoped to -Floaters director.' -ForegroundColor Red
+    exit 2
+  }
+  $repoRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..\..'))
+  $manifestPath = Join-Path $repoRoot 'doc\director_kit\functional\functional_manifest.json'
+  $functionalCsvPath = Join-Path $logsDir 'functional.csv'
+  if (-not (Test-Path -LiteralPath $manifestPath -PathType Leaf)) {
+    Write-Host "Functional manifest not found: $manifestPath" -ForegroundColor Red
+    exit 2
+  }
+  $stamp = Get-Date -Format 'yyyyMMdd_HHmmss'
+  $runDir = Join-Path $repoRoot "doc\director_kit\run_functional_$stamp"
+  New-Item -ItemType Directory -Path $runDir -Force | Out-Null
+  $destCsv = Join-Path $runDir 'functional.csv'
+  $summaryPath = Join-Path $runDir 'summary.md'
+  $versions = if ($Both) { @($false, $true) } else { @([bool]$DirectorV2) }
+  $allRows = [System.Collections.Generic.List[object]]::new()
+  foreach ($useV2 in $versions) {
+    Remove-Item -LiteralPath $functionalCsvPath -Force -ErrorAction SilentlyContinue
+    $request = '"functional|' + $manifestPath + '"'
+    $viewerArgs = @('--set', 'UIPerfSelfTest', $request,
+      '--set', 'UIPerfSelfTestFrames', 2,
+      '--set', 'UIPerfInventoryStress', 0,
+      '--set', 'UIPerfSelfTestAB', 'FALSE',
+      '--set', 'UILayoutAudit', 'FALSE',
+      '--set', 'DirectorUIV2', $(if ($useV2) { 'TRUE' } else { 'FALSE' }),
+      '--set', 'UIPerfDirectorV2', $(if ($useV2) { 'TRUE' } else { 'FALSE' }),
+      '--set', 'BackgroundYieldTime', 0)
+    $process = Start-Process -FilePath $Exe -ArgumentList $viewerArgs `
+      -WorkingDirectory (Split-Path -Parent $Exe) -PassThru
+    $null = $process.Handle
+    $startUtc = $process.StartTime.ToUniversalTime()
+    $deadline = [DateTime]::UtcNow.AddMinutes($TimeoutMin)
+    while (-not $process.HasExited -and [DateTime]::UtcNow -lt $deadline) {
+      Start-Sleep -Milliseconds 500
+      $process.Refresh()
+    }
+    if (-not $process.HasExited) {
+      Stop-Process -Id $process.Id -Force
+      Write-Host "Functional self-test timed out after $TimeoutMin minutes for $(if ($useV2) {'v2'} else {'v1'}); killed only PID $($process.Id)." -ForegroundColor Red
+      exit 2
+    }
+    $functionalCsv = Get-Item -LiteralPath $functionalCsvPath -ErrorAction SilentlyContinue
+    if (-not $functionalCsv -or $functionalCsv.LastWriteTimeUtc -lt $startUtc) {
+      Write-Host "Functional self-test exited $($process.ExitCode) without a fresh functional.csv." -ForegroundColor Red
+      exit 2
+    }
+    foreach ($row in @(Import-Csv -LiteralPath $functionalCsv.FullName)) { $allRows.Add($row) }
+  }
+  $allRows | Export-Csv -LiteralPath $destCsv -NoTypeInformation -Encoding utf8
+  $report = Join-Path $PSScriptRoot 'functional_report.py'
+  & $python -I $report $destCsv -o $summaryPath
+  $rows = @(Import-Csv -LiteralPath $destCsv)
+  $failures = @($rows | Where-Object { $_.'PASS/FAIL/SKIP' -in @('FAIL', 'KNOWN_GAP') })
+  $skipsWithoutReason = @($rows | Where-Object { $_.'PASS/FAIL/SKIP' -eq 'SKIP' -and -not $_.reason })
+  Write-Host "Functional results: $runDir"
+  Write-Host ("PASS {0} / FAIL-or-GAP {1} / SKIP {2}" -f
+    @($rows | Where-Object { $_.'PASS/FAIL/SKIP' -eq 'PASS' }).Count,
+    $failures.Count,
+    @($rows | Where-Object { $_.'PASS/FAIL/SKIP' -eq 'SKIP' }).Count)
+  if ($skipsWithoutReason.Count) {
+    Write-Host "$($skipsWithoutReason.Count) SKIP row(s) lack a manifest reason." -ForegroundColor Red
+    exit 1
+  }
+  if ($failures.Count) { exit 1 }
+  exit 0
+}
 
 while ($true) {
   if ($Layout) {

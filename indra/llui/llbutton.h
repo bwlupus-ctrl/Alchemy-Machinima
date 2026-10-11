@@ -278,6 +278,9 @@ public:
     void            setDropShadowedText(bool b);
 
     void            setHoverGlowStrength(F32 strength) { mHoverGlowStrength = strength; }
+    void            setKeyboardOnlyFocusBorder(bool keyboard_only) { mKeyboardOnlyFocusBorder = keyboard_only; }
+    void            showFocusRingFromKeyboard() { if (mKeyboardOnlyFocusBorder) mKeyboardFocusVisible = true; }
+    bool            isFocusRingVisible() const;
 
     void            setImageUnselected(LLPointer<LLUIImage> image);
     void            setImageSelected(LLPointer<LLUIImage> image);
@@ -401,6 +404,8 @@ protected:
     bool                        mFadeWhenDisabled;
     bool                        mForcePressedState;
     bool                        mDisplayPressedState;
+    bool                        mKeyboardOnlyFocusBorder;
+    bool                        mKeyboardFocusVisible;
 
     LLFrameTimer                mFrameTimer;
     LLFlashTimer *              mFlashingTimer;

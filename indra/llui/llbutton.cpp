@@ -185,6 +185,8 @@ LLButton::LLButton(const LLButton::Params& p)
     mFadeWhenDisabled(false),
     mForcePressedState(false),
     mDisplayPressedState(p.display_pressed_state),
+    mKeyboardOnlyFocusBorder(false),
+    mKeyboardFocusVisible(false),
     mLastDrawCharsCount(0),
     mMouseDownSignal(NULL),
     mMouseUpSignal(NULL),
@@ -451,6 +453,7 @@ void LLButton::dirtyRect()
 
 bool LLButton::handleUnicodeCharHere(llwchar uni_char)
 {
+    showFocusRingFromKeyboard();
     bool handled = false;
     if(' ' == uni_char
         && !gKeyboard->getKeyRepeated(' '))
@@ -469,6 +472,7 @@ bool LLButton::handleUnicodeCharHere(llwchar uni_char)
 
 bool LLButton::handleKeyHere(KEY key, MASK mask )
 {
+    showFocusRingFromKeyboard();
     bool handled = false;
     if( mCommitOnReturn && KEY_RETURN == key && mask == MASK_NONE && !gKeyboard->getKeyRepeated(key))
     {
@@ -487,6 +491,8 @@ bool LLButton::handleKeyHere(KEY key, MASK mask )
 
 bool LLButton::handleMouseDown(S32 x, S32 y, MASK mask)
 {
+    if (mKeyboardOnlyFocusBorder)
+        mKeyboardFocusVisible = false;
     if (!childrenHandleMouseDown(x, y, mask))
     {
         // Route future Mouse messages here preemptively.  (Release on mouse up.)
@@ -577,6 +583,8 @@ bool LLButton::handleMouseUp(S32 x, S32 y, MASK mask)
 
 bool    LLButton::handleRightMouseDown(S32 x, S32 y, MASK mask)
 {
+    if (mKeyboardOnlyFocusBorder)
+        mKeyboardFocusVisible = false;
     if (mHandleRightMouse && !childrenHandleRightMouseDown(x, y, mask))
     {
         // Route future Mouse messages here preemptively.  (Release on mouse up.)
@@ -854,7 +862,7 @@ void LLButton::draw()
         label_color = ll::ui::SearchableControl::getHighlightFontColor();
 
     // overlay with keyboard focus border
-    if (hasFocus() && mDrawFocusBorder)
+    if (isFocusRingVisible())
     {
         drawBorder(imagep, gFocusMgr.getFocusColor() % alpha, gFocusMgr.getFocusFlashWidth());
     }
@@ -1313,6 +1321,12 @@ void LLButton::onMouseCaptureLost()
         LLUICtrl::onCommit();
     }
     resetMouseDownTimer();
+}
+
+bool LLButton::isFocusRingVisible() const
+{
+    return hasFocus() && mDrawFocusBorder &&
+           (!mKeyboardOnlyFocusBorder || mKeyboardFocusVisible);
 }
 
 //-------------------------------------------------------------------------

@@ -43,6 +43,48 @@ bool valuesEqual(const LLSD& a, const LLSD& b, F64 scale)
 
 } // namespace
 
+bool alKitSetTypedControl(LLControlGroup& group, const std::string& name, const LLSD& value)
+{
+    LLControlVariable* control = group.getControl(name).get();
+    if (!control || !value.isDefined())
+        return false;
+
+    switch (control->type())
+    {
+        case TYPE_S32:
+            control->set(LLSD(value.asInteger()));
+            break;
+        case TYPE_U32:
+            control->set(LLSD(static_cast<LLSD::Integer>(static_cast<U32>(value.asInteger()))));
+            break;
+        case TYPE_F32:
+            control->set(LLSD(value.asReal()));
+            break;
+        case TYPE_BOOLEAN:
+            if (value.isString())
+            {
+                bool converted = false;
+                LLStringUtil::convertToBOOL(value.asString(), converted);
+                control->set(LLSD(converted));
+            }
+            else
+            {
+                control->set(LLSD(value.asBoolean()));
+            }
+            break;
+        case TYPE_STRING:
+            control->set(LLSD(value.asString()));
+            break;
+        case TYPE_LLSD:
+            control->set(value);
+            break;
+        default:
+            control->set(value);
+            break;
+    }
+    return true;
+}
+
 bool ALKitBinding::isDefault(S32 decimals) const
 { return valuesEqual(get(), getDefault(), pow(10., decimals)); }
 
@@ -61,8 +103,7 @@ LLSD ALKitSettingBinding::getDefault() const
 
 void ALKitSettingBinding::set(const LLSD& v)
 {
-    if (control())
-        control()->set(v);
+    alKitSetTypedControl(gSavedSettings, mName, v);
 }
 
 boost::signals2::connection ALKitSettingBinding::connectChanged(std::function<void()> cb)
