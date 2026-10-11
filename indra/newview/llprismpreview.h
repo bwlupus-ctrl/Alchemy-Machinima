@@ -11,6 +11,8 @@
 #include "llrendertarget.h"
 #include "lltimer.h"
 
+#include <boost/signals2.hpp>
+
 #include <array>
 #include <cmath>
 #include <limits>
@@ -29,14 +31,17 @@ inline std::array<F32, 4> neutralAO()
     return { 1.f, 1.f, 1.f, 1.f };
 }
 
-// This is the production AO seed decision as a pure operation so the renderer
-// and regression test exercise the same stale-attachment replacement path.
-inline void seedPreviewAO(bool preview_render, std::array<F32, 4>& attachment)
+// Keep the target-bind and neutral-clear decision in one production operation.
+// Tests provide a fake reused attachment; the renderer supplies the real FBO
+// bind and clear callbacks.
+template <typename BindTarget, typename ClearTarget>
+inline bool clearPreviewAO(bool preview_render, bool target_complete,
+                           BindTarget bind_target, ClearTarget clear_target)
 {
-    if (preview_render)
-    {
-        attachment = neutralAO();
-    }
+    if (!preview_render || !target_complete) return false;
+    bind_target();
+    clear_target(neutralAO());
+    return true;
 }
 
 inline F32 requestedHz(F32 shared_hz, LLPrismLens::EOutputRateMode mode,
@@ -51,25 +56,6 @@ inline F32 requestedHz(F32 shared_hz, LLPrismLens::EOutputRateMode mode,
 inline F64 advanceDeadline(F64 now, F32 entitlement_hz)
 {
     return now + 1.0 / static_cast<F64>(llmax(0.01f, entitlement_hz));
-}
-
-// Fit a producer aspect into the lifetime-fixed 16:9 preview pack. The
-// retained publication exposes only this logical rectangle, avoiding an
-// anamorphic stretch for non-16:9 cameras and Surface Lenses.
-inline void letterboxExtent(F32 aspect, U32& width, U32& height)
-{
-    width = WIDTH;
-    height = HEIGHT;
-    if (!std::isfinite(aspect) || aspect <= 0.f) return;
-    const F32 pack_aspect = static_cast<F32>(WIDTH) / static_cast<F32>(HEIGHT);
-    if (aspect > pack_aspect)
-    {
-        height = llmax(1u, static_cast<U32>(ll_round(static_cast<F32>(WIDTH) / aspect)));
-    }
-    else if (aspect < pack_aspect)
-    {
-        width = llmax(1u, static_cast<U32>(ll_round(static_cast<F32>(HEIGHT) * aspect)));
-    }
 }
 
 // Pure bounded max-min tier. Production invokes this once for visible/Gate
@@ -189,11 +175,16 @@ public:
 
     enum class ETileState : U8
     {
+        EMPTY,
+        READY,
+        HELD,
         LIVE,
         PREVIEW,
         PAUSED,
         OFFLINE,
-        THROTTLED
+        THROTTLED,
+        FAILED, // not ERROR: wingdi.h macro
+        SHADER_UNAVAILABLE
     };
 
     struct AtlasHandle
@@ -205,7 +196,7 @@ public:
     {
         AtlasHandle mAtlas;
         LLRectf mCellUV;
-        ETileState mState = ETileState::OFFLINE;
+        ETileState mState = ETileState::EMPTY;
         F64 mTimestamp = 0.0;
         U64 mPublicationSerial = 0;
     };
@@ -223,6 +214,9 @@ public:
     bool bindAtlas(const AtlasHandle& handle, S32 texture_channel = 0);
     TilePublication tileState(const LLPrismLens::CaptureHandle& capture) const;
     U64 revision() const { return mRevision; }
+    using changed_signal_t = boost::signals2::signal<void(U64)>;
+    boost::signals2::connection connectChanged(
+        const changed_signal_t::slot_type& slot);
     bool hasPendingAtlasUpdate() const;
 
     bool prepareFrame();
@@ -251,6 +245,7 @@ private:
     LLPrismPreviewService() = default;
     void pollQueries();
     void tickSelfTest();
+    void markChanged();
 
     struct DemandEntry
     {
@@ -277,6 +272,7 @@ private:
     LLRenderTarget mAtlas;
     U64 mAtlasGeneration = 1;
     U64 mRevision = 1;
+    changed_signal_t mChanged;
     U32 mNextAtlasSlot = 0;
     U32 mLastAtlasFrame = std::numeric_limits<U32>::max();
     F64 mScratchRetryAfter = 0.0;
@@ -323,6 +319,8 @@ private:
 
 namespace LLPrismPreview
 {
+boost::signals2::connection connectChanged(
+    const LLPrismPreviewService::changed_signal_t::slot_type& slot);
 void runSelfTest(F32 seconds = 20.f);
 }
 

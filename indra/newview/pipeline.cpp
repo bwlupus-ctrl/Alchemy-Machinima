@@ -12967,9 +12967,9 @@ void LLPipeline::uploadPrismPreviewColorCorrectUniforms(LLGLSLShader& shader) co
             static LLCachedControl<F32> curve(gSavedSettings, "RenderTonemapAgxContrast", 1.25f);
             static LLCachedControl<F32> white_setting(gSavedSettings, "RenderTonemapAgxWhite", 16.29f);
             const F32 crossover = 0.18f;
-            const F32 toe = ((1.f / crossover) - 1.f) * powf(crossover, curve());
-            const F32 denom = powf(crossover, curve()) + toe;
-            const F32 slope = (curve() * powf(crossover, curve() - 1.f) * toe) /
+            const F32 toe = ((1.f / crossover) - 1.f) * pow(crossover, curve());
+            const F32 denom = pow(crossover, curve()) + toe;
+            const F32 slope = (curve() * pow(crossover, curve() - 1.f) * toe) /
                               (denom * denom);
             F32 width = llmax(2.f, white_setting()) - crossover;
             width = width * width / (1.f - crossover) * slope;
@@ -13766,10 +13766,6 @@ void LLPipeline::colorCorrect(LLRenderTarget* src, LLRenderTarget* dst,
                 default:
                     break;
             }
-            // VC3 keeps preview and main tonemap uploads on this single final
-            // path. This deliberately follows the existing calculations so
-            // the shared helper owns the effective values seen by both passes.
-            uploadPrismPreviewColorCorrectUniforms(*shader);
         }
 
         // Color correction LUT
@@ -13912,10 +13908,6 @@ void LLPipeline::colorCorrect(LLRenderTarget* src, LLRenderTarget* dst,
             shader->uniform3fv(LLShaderMgr::COLOR_GRADE_CURVE_INV_RANGE, 1, curve_inv_range);
             shader->uniform3fv(LLShaderMgr::COLOR_GRADE_CURVE_STRENGTH,  1, curve_strength_arr);
         }
-
-        // The same effective color-grade upload is used by the atlas shader.
-        if (color_grade)
-            cglut_channel = uploadPrismPreviewColorGradeUniforms(*shader);
 
         mScreenTriangleVB->setBuffer();
         mScreenTriangleVB->drawArrays(LLRender::TRIANGLES, 0, 3);
@@ -25740,13 +25732,17 @@ void LLPipeline::renderDeferredLighting(ActorMaskViewSource source)
         // so a sentinel or a previous preview can never darken this capture.
         if (sPrismPreviewRender)
         {
-            std::array<F32, 4> neutral_ao = { 0.f, 0.f, 0.f, 0.f };
-            LLPrismPreviewPolicy::seedPreviewAO(sPrismPreviewRender, neutral_ao);
-            bindPrismLensTarget(*deferred_light_target);
-            glClearColor(neutral_ao[0], neutral_ao[1], neutral_ao[2], neutral_ao[3]);
-            deferred_light_target->clear(GL_COLOR_BUFFER_BIT);
-            deferred_light_target->flush();
-            glClearColor(0.f, 0.f, 0.f, 0.f);
+            LLPrismPreviewPolicy::clearPreviewAO(
+                sPrismPreviewRender, deferred_light_target->isComplete(),
+                [&]() { bindPrismLensTarget(*deferred_light_target); },
+                [&](const std::array<F32, 4>& neutral_ao)
+                {
+                    glClearColor(neutral_ao[0], neutral_ao[1],
+                                 neutral_ao[2], neutral_ao[3]);
+                    deferred_light_target->clear(GL_COLOR_BUFFER_BIT);
+                    deferred_light_target->flush();
+                    glClearColor(0.f, 0.f, 0.f, 0.f);
+                });
         }
 
         if (!sPrismPreviewRender &&

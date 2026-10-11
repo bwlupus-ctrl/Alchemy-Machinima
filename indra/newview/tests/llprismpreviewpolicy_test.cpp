@@ -77,7 +77,23 @@ void prism_preview_policy_object::test<4>()
 {
     set_test_name("stale AO sentinel is replaced by neutral white");
     std::array<F32, 4> reused_ao = { 0.13f, 0.27f, 0.41f, 0.f };
-    LLPrismPreviewPolicy::seedPreviewAO(true, reused_ao);
+    bool target_bound = false;
+    ensure("an incomplete target cannot enter the clear path",
+           !LLPrismPreviewPolicy::clearPreviewAO(
+               true, false,
+               [&]() { target_bound = true; },
+               [&](const std::array<F32, 4>& clear_color)
+               { reused_ao = clear_color; }));
+    ensure("a skipped clear preserves the stale attachment sentinel",
+           !target_bound && reused_ao[0] == 0.13f && reused_ao[1] == 0.27f &&
+           reused_ao[2] == 0.41f && reused_ao[3] == 0.f);
+    const bool clear = LLPrismPreviewPolicy::clearPreviewAO(
+        true, true,
+        [&]() { target_bound = true; },
+        [&](const std::array<F32, 4>& clear_color)
+        { reused_ao = clear_color; });
+    ensure("preview path requests an attachment clear", clear);
+    ensure("preview path binds the target before clearing", target_bound);
     ensure("all stale channels are neutral",
            reused_ao[0] == 1.f && reused_ao[1] == 1.f &&
            reused_ao[2] == 1.f && reused_ao[3] == 1.f);
@@ -86,13 +102,9 @@ void prism_preview_policy_object::test<4>()
 template<> template<>
 void prism_preview_policy_object::test<5>()
 {
-    set_test_name("preview logical extent preserves producer aspect");
-    U32 width = 0;
-    U32 height = 0;
-    LLPrismPreviewPolicy::letterboxExtent(1.f, width, height);
-    ensure("square capture is pillarboxed", width == 108 && height == 108);
-    LLPrismPreviewPolicy::letterboxExtent(2.f, width, height);
-    ensure("wide capture is letterboxed", width == 192 && height == 96);
+    set_test_name("preview render pack is always the pinned 192 by 108");
+    ensure("physical preview width is fixed", LLPrismPreviewPolicy::WIDTH == 192);
+    ensure("physical preview height is fixed", LLPrismPreviewPolicy::HEIGHT == 108);
 }
 
 template<> template<>

@@ -13,3 +13,11 @@
 
 - Per request, no configure, build, executable test, commit, fetch, or upstream operation was run. Static verification covered `git diff --check`, symbol/call-site review, shader-stage linkage review, and LF checks.
 - No intentional VC3 behavior deviation. VC4's GPU/CPU budget controller and measured self-test remain outside this package; VC3 exposes timestamps/state and preserves the required one-cell-per-frame ceiling.
+
+## Fix round
+
+- Preview-only camera and Surface Lens renders now always use the full pinned 192x108 scratch/output extent. Producer and selected-face aspect are centered only by the atlas composite UV mapping; no aspect-sized deferred pack is requested.
+- `ScopedPreviewAtlasGL` now snapshots and restores the active unit and unit-0 binding exclusively through `LLRender`. Render-target release rebases lens/publication/atlas serials together, invalidates atlas handles, marks retained tiles stale, and makes the first new publication eligible.
+- Generation reuse clears monitor selection and tile state. Tile queries derive PAUSED/THROTTLED from current runtime flags and expose EMPTY, READY, HELD, ERROR, and SHADER_UNAVAILABLE states; `connectChanged` reports service revisions. Visibility overflow now warns and ignores the extra owner.
+- The AO regression runs the production target/readiness decision before checking the real neutral clear color. The main color-correct pass retains its original `pow` AgX expression and no longer repeats the preview helper's tonemap/color-grade uploads.
+- Per request, the fix round did not configure, build, commit, fetch, or contact an upstream. Static verification covers scoped diffs, exact render-size call sites, absence of raw texture-unit calls in the atlas guard, `git diff --check`, and LF checks. `prismSignalF.glsl` and `prismLensF.glsl` were not changed.

@@ -195,7 +195,7 @@ bool LLPrismPreviewService::beginOperation(
     pollQueries();
     if (!mBudget.reserve(operation, reservation_ms))
     {
-        ++mRevision;
+        markChanged();
         return false;
     }
     mLastPreviewWorkFrame = gFrameCount;
@@ -353,6 +353,12 @@ void LLPrismPreviewService::tickSelfTest()
 
 namespace LLPrismPreview
 {
+boost::signals2::connection connectChanged(
+    const LLPrismPreviewService::changed_signal_t::slot_type& slot)
+{
+    return LLPrismPreviewService::instance().connectChanged(slot);
+}
+
 void runSelfTest(F32 seconds)
 {
     LLPrismPreviewService::instance().runSelfTest(seconds);
@@ -363,6 +369,18 @@ LLPrismPreviewService& LLPrismPreviewService::instance()
 {
     static LLPrismPreviewService service;
     return service;
+}
+
+boost::signals2::connection LLPrismPreviewService::connectChanged(
+    const changed_signal_t::slot_type& slot)
+{
+    return mChanged.connect(slot);
+}
+
+void LLPrismPreviewService::markChanged()
+{
+    ++mRevision;
+    mChanged(mRevision);
 }
 
 void LLPrismPreviewService::setDemand(const LLPrismLens::CaptureHandle& capture,
@@ -382,13 +400,20 @@ void LLPrismPreviewService::setDemand(const LLPrismLens::CaptureHandle& capture,
     DemandEntry& entry = mDemand[slot];
     const bool same_publication = entry.mCapture.mId == capture.mId &&
         entry.mCapture.mGeneration == capture.mGeneration;
-    if (!same_publication) mNextAtlasDue[slot] = 0.0;
+    const bool changed = !same_publication || entry.mDemanded != demanded;
+    if (!same_publication)
+    {
+        mNextAtlasDue[slot] = 0.0;
+        mSelection[slot] = LLPrismLens::DisplayHandle{};
+        mTiles[slot] = TilePublication{};
+    }
     entry = demanded
         ? DemandEntry{ capture, true,
                        same_publication ? entry.mPublicationSerial : 0,
                        same_publication ? entry.mAtlasSerial : 0,
                        same_publication ? entry.mPreviewQuality : false }
         : DemandEntry{};
+    if (changed) markChanged();
 }
 
 void LLPrismPreviewService::clearDemand()
@@ -398,7 +423,7 @@ void LLPrismPreviewService::clearDemand()
         selection = LLPrismLens::DisplayHandle{};
     for (TilePublication& tile : mTiles) tile = TilePublication{};
     mNextAtlasDue.fill(0.0);
-    ++mRevision;
+    markChanged();
 }
 
 void LLPrismPreviewService::setPageVisible(bool visible)
@@ -414,7 +439,9 @@ void LLPrismPreviewService::setConsumerVisible(VisibilityOwner owner, bool visib
     {
         if (entry.mOwner == owner)
         {
+            if (entry.mVisible == visible) return;
             entry.mVisible = visible;
+            markChanged();
             return;
         }
         if (!empty && entry.mOwner == 0) empty = &entry;
@@ -422,9 +449,12 @@ void LLPrismPreviewService::setConsumerVisible(VisibilityOwner owner, bool visib
     if (empty)
     {
         *empty = VisibilityEntry{ owner, visible };
+        markChanged();
         return;
     }
-    llassert_always(false && "LLPrismPreviewService visibility owner table full");
+    LL_WARNS("PrismPreview")
+        << "Visibility owner table is full; ignoring owner " << owner
+        << LL_ENDL;
 }
 
 void LLPrismPreviewService::releaseConsumer(VisibilityOwner owner)
@@ -434,6 +464,7 @@ void LLPrismPreviewService::releaseConsumer(VisibilityOwner owner)
         if (entry.mOwner == owner)
         {
             entry = VisibilityEntry{};
+            markChanged();
             return;
         }
     }
@@ -448,7 +479,7 @@ void LLPrismPreviewService::setMonitorSelection(
     if (entry.mPublicationSerial > 0)
         entry.mAtlasSerial = entry.mPublicationSerial - 1;
     mNextAtlasDue[capture_slot] = 0.0;
-    ++mRevision;
+    markChanged();
 }
 
 bool LLPrismPreviewService::bindAtlas(const AtlasHandle& handle,
@@ -475,8 +506,19 @@ LLPrismPreviewService::TilePublication LLPrismPreviewService::tileState(
             TilePublication tile = mTiles[slot];
             static LLCachedControl<bool> previews_enabled(
                 gSavedSettings, "PrismMonitorPreviewsEnabled", true);
-            if (!previews_enabled) tile.mState = ETileState::PAUSED;
-            else if (mBudget.throttled()) tile.mState = ETileState::THROTTLED;
+            LLPrismLens::EActivityState activity = LLPrismLens::EActivityState::IDLE;
+            bool healthy = false;
+            LLPrismLens::previewTileActivity(entry.mCapture, activity, healthy);
+            if (!healthy) tile.mState = ETileState::OFFLINE;
+            else if (!previews_enabled || activity == LLPrismLens::EActivityState::PAUSED)
+                tile.mState = ETileState::PAUSED;
+            else if (mBudget.throttled() ||
+                     activity == LLPrismLens::EActivityState::THROTTLED)
+                tile.mState = ETileState::THROTTLED;
+            else if (entry.mPublicationSerial > tile.mPublicationSerial &&
+                     tile.mState != ETileState::FAILED &&
+                     tile.mState != ETileState::SHADER_UNAVAILABLE)
+                tile.mState = ETileState::HELD;
             return tile;
         }
     }
@@ -528,7 +570,7 @@ bool LLPrismPreviewService::prepareFrame()
             for (DemandEntry& entry : mDemand)
                 entry.mAtlasSerial = entry.mPublicationSerial;
         }
-        ++mRevision;
+        markChanged();
     }
     if (!enabled || !anyVisibleConsumer() || !anyDemand() ||
         mSelfTestPhase == ESelfTestPhase::BASELINE || mBudget.suspended())
@@ -599,6 +641,7 @@ void LLPrismPreviewService::notePublication(
                 const U32 slot = LLPrismLens::captureSlot(capture);
                 if (slot < mSelfTestProduced.size()) ++mSelfTestProduced[slot];
             }
+            markChanged();
             return;
         }
     }
@@ -635,7 +678,10 @@ struct ScopedPreviewAtlasGL
           mCamera(LLViewerCamera::sCurCameraID), mPipelineRT(gPipeline.mRT),
           mScissor(glIsEnabled(GL_SCISSOR_TEST)),
           mBlend(glIsEnabled(GL_BLEND)), mDepth(glIsEnabled(GL_DEPTH_TEST)),
-          mFramebufferSrgb(glIsEnabled(GL_FRAMEBUFFER_SRGB))
+          mFramebufferSrgb(glIsEnabled(GL_FRAMEBUFFER_SRGB)),
+          mActiveTextureUnit(gGL.getCurrentTexUnitIndex()),
+          mTexture0(gGL.getTexUnit(0)->getCurrTexture()),
+          mTexture0Type(gGL.getTexUnit(0)->getCurrType())
     {
         std::memcpy(mViewport, gGLViewport, sizeof(mViewport));
         glGetIntegerv(GL_SCISSOR_BOX, mScissorBox);
@@ -646,15 +692,26 @@ struct ScopedPreviewAtlasGL
         glGetIntegerv(GL_DEPTH_FUNC, &mDepthFunc);
         glGetBooleanv(GL_DEPTH_WRITEMASK, &mDepthMask);
         glGetBooleanv(GL_COLOR_WRITEMASK, mColorMask);
-        glGetIntegerv(GL_ACTIVE_TEXTURE, &mActiveTexture);
-        glActiveTexture(GL_TEXTURE0);
-        glGetIntegerv(GL_TEXTURE_BINDING_2D, &mTexture0);
+        gGL.getTexUnit(0)->activate();
     }
     ~ScopedPreviewAtlasGL()
     {
-        glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, mTexture0);
-        glActiveTexture(mActiveTexture);
+        LLTexUnit* texture0 = gGL.getTexUnit(0);
+        if (mTexture0 != 0)
+        {
+            if (texture0->getCurrTexture() != mTexture0 ||
+                texture0->getCurrType() != mTexture0Type)
+            {
+                if (texture0->getCurrType() != LLTexUnit::TT_NONE)
+                    texture0->unbind(texture0->getCurrType());
+                texture0->bindManual(mTexture0Type, mTexture0);
+            }
+        }
+        else if (texture0->getCurrType() != LLTexUnit::TT_NONE)
+        {
+            texture0->unbind(texture0->getCurrType());
+        }
+        gGL.getTexUnit(mActiveTextureUnit)->activate();
         if (mShader && mShader->isComplete()) mShader->bind();
         else LLGLSLShader::unbind();
         setEnabled(GL_SCISSOR_TEST, mScissor);
@@ -685,7 +742,8 @@ struct ScopedPreviewAtlasGL
     GLint mScissorBox[4], mBlendSrcRgb, mBlendDstRgb;
     GLint mBlendSrcAlpha, mBlendDstAlpha, mDepthFunc;
     GLboolean mDepthMask, mColorMask[4];
-    GLint mActiveTexture, mTexture0;
+    U32 mActiveTextureUnit, mTexture0;
+    LLTexUnit::eTextureType mTexture0Type;
 };
 
 void uploadSignalUniforms(LLGLSLShader& shader,
@@ -756,7 +814,7 @@ void LLPrismPreviewService::updateAtlas()
         PrismPreviewBudgetController::EOperation::ATLAS, entry.mCapture);
     if (!budget_operation.admitted())
     {
-        ++mRevision;
+        markChanged();
         return;
     }
     LL_PROFILE_GPU_ZONE("Prism preview atlas composite");
@@ -777,7 +835,7 @@ void LLPrismPreviewService::updateAtlas()
         tile.mTimestamp = LLTimer::getTotalSeconds();
         tile.mPublicationSerial = entry.mPublicationSerial;
         entry.mAtlasSerial = entry.mPublicationSerial;
-        ++mRevision;
+        markChanged();
         mNextAtlasSlot = (cell + 1) % mDemand.size();
         return;
     }
@@ -786,12 +844,12 @@ void LLPrismPreviewService::updateAtlas()
     LLGLSLShader& shader = gPrismPreviewProgram[permutation];
     if (!shader.isComplete())
     {
-        mTiles[cell].mState = ETileState::OFFLINE;
+        mTiles[cell].mState = ETileState::SHADER_UNAVAILABLE;
         mTiles[cell].mTimestamp = LLTimer::getTotalSeconds();
         mTiles[cell].mPublicationSerial = entry.mPublicationSerial;
         entry.mAtlasSerial = entry.mPublicationSerial;
         mNextAtlasSlot = (cell + 1) % mDemand.size();
-        ++mRevision;
+        markChanged();
         return;
     }
 
@@ -800,7 +858,12 @@ void LLPrismPreviewService::updateAtlas()
     {
         // Shader writes explicit display-sRGB code values, so use non-decoding
         // RGBA8 storage; LLUI consumes those values as display pixels.
-        if (!mAtlas.allocate(ATLAS_WIDTH, ATLAS_HEIGHT, GL_RGBA8)) return;
+        if (!mAtlas.allocate(ATLAS_WIDTH, ATLAS_HEIGHT, GL_RGBA8))
+        {
+            mTiles[cell].mState = ETileState::FAILED;
+            markChanged();
+            return;
+        }
         ++mAtlasGeneration;
     }
 
@@ -890,18 +953,31 @@ void LLPrismPreviewService::updateAtlas()
     else tile.mState = entry.mPreviewQuality ? ETileState::PREVIEW : ETileState::LIVE;
     tile.mTimestamp = LLTimer::getTotalSeconds();
     tile.mPublicationSerial = entry.mPublicationSerial;
-    ++mRevision;
+    markChanged();
     mNextAtlasSlot = (cell + 1) % mDemand.size();
 }
 
 void LLPrismPreviewService::onRenderTargetsReleased()
 {
-    // No GL name or LLRenderTarget pointer escapes the pipeline. Publication
-    // serials are invalid until their captures publish again in the new context.
-    for (DemandEntry& entry : mDemand) entry.mPublicationSerial = 0;
+    // Lens publication serials restart at zero in the paired registry callback.
+    // Rebase both service serials to the same origin and invalidate every tile,
+    // so publication 1 is immediately eligible in the new GL generation.
+    for (U32 slot = 0; slot < mDemand.size(); ++slot)
+    {
+        DemandEntry& entry = mDemand[slot];
+        entry.mPublicationSerial = 0;
+        entry.mAtlasSerial = 0;
+        entry.mPreviewQuality = false;
+        mNextAtlasDue[slot] = 0.0;
+        TilePublication& tile = mTiles[slot];
+        tile.mAtlas = AtlasHandle{};
+        tile.mState = tile.mPublicationSerial != 0
+            ? ETileState::HELD : ETileState::EMPTY;
+        tile.mPublicationSerial = 0;
+    }
     mAtlas.release();
     ++mAtlasGeneration;
-    ++mRevision;
+    markChanged();
     mScratchRetryAfter = 0.0;
     mScratchWarmed = false;
     for (QueryEntry& query : mQueries)

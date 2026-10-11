@@ -2511,6 +2511,11 @@ public:
             {
                 continue;
             }
+            if (capture.mPublicationSerial != 0)
+            {
+                capture.mPublicationSerial = 0;
+                changed = true;
+            }
             const bool owned_publication = capture.mHasOutput ||
                 capture.mOutputWidth != 0 || capture.mOutputHeight != 0 ||
                 capture.mRuntime.mOutput == LLPrismLens::EOutputState::CURRENT ||
@@ -2526,7 +2531,6 @@ public:
             capture.mLastProducedTime = 0.0;
             capture.mRetryAfterTime = 0.0;
             capture.mPublicationSamples = 0;
-            capture.mPublicationSerial = 0;
             capture.mPublicationWindowStart = 0.0;
             capture.mFrame.mProduced = false;
             capture.mPreviewOnly = false;
@@ -2764,12 +2768,8 @@ public:
             mFrame.mLensRect.mWidth = LLPrismPreviewPolicy::WIDTH;
             mFrame.mLensRect.mHeight = LLPrismPreviewPolicy::HEIGHT;
             mFrame.mResolutionScale = 1.f;
-            const F32 surface_width = mFrame.mWorldSurfaceUEdge.magVec();
-            const F32 surface_height = mFrame.mWorldSurfaceVEdge.magVec();
-            const F32 surface_aspect = surface_height > F_ALMOST_ZERO
-                ? surface_width / surface_height : 16.f / 9.f;
-            LLPrismPreviewPolicy::letterboxExtent(
-                surface_aspect, mFrame.mTargetWidth, mFrame.mTargetHeight);
+            mFrame.mTargetWidth = LLPrismPreviewPolicy::WIDTH;
+            mFrame.mTargetHeight = LLPrismPreviewPolicy::HEIGHT;
             mFrame.mFragmentClipPlane = LLPlane(
                 center + keep_normal * LENS_PLANE_EPSILON, keep_normal);
             mFrame.mResolvedFace = face;
@@ -3326,9 +3326,8 @@ public:
             std::memcpy(frame.mMainViewport, viewport, sizeof(frame.mMainViewport));
             makeDebugRect(viewport, frame.mDebugRect);
             frame.mResolutionScale = 1.f;
-            LLPrismPreviewPolicy::letterboxExtent(
-                capture.mCamera.mOutputAspect, frame.mTargetWidth,
-                frame.mTargetHeight);
+            frame.mTargetWidth = LLPrismPreviewPolicy::WIDTH;
+            frame.mTargetHeight = LLPrismPreviewPolicy::HEIGHT;
             frame.mPrepared = true;
             capture.mPreviewOnly = true;
             capture.mRuntime.mPreviewOnly = true;
@@ -8681,6 +8680,43 @@ void renderAuxiliaryView()
     }
 }
 
+static void centerCompositeInAspect(F32 content_aspect, F32 container_aspect,
+                                    CompositeState& state)
+{
+    if (!std::isfinite(content_aspect) || !std::isfinite(container_aspect) ||
+        content_aspect <= F_ALMOST_ZERO || container_aspect <= F_ALMOST_ZERO)
+    {
+        return;
+    }
+
+    F32 outer_scale[2] = { 1.f, 1.f };
+    F32 outer_offset[2] = { 0.f, 0.f };
+    if (container_aspect > content_aspect)
+    {
+        const F32 fraction = content_aspect / container_aspect;
+        outer_scale[0] = 1.f / fraction;
+        outer_offset[0] = -0.5f * (1.f - fraction) / fraction;
+    }
+    else if (container_aspect < content_aspect)
+    {
+        const F32 fraction = container_aspect / content_aspect;
+        outer_scale[1] = 1.f / fraction;
+        outer_offset[1] = -0.5f * (1.f - fraction) / fraction;
+    }
+    else
+    {
+        return;
+    }
+
+    for (U32 axis = 0; axis < 2; ++axis)
+    {
+        state.mDisplayToCaptureOffset[axis] +=
+            outer_offset[axis] * state.mDisplayToCaptureScale[axis];
+        state.mDisplayToCaptureScale[axis] *= outer_scale[axis];
+    }
+    state.mLetterbox = 1;
+}
+
 static bool buildSignalCompositeState(U32 capture_slot,
                                       const PrismDisplay* display,
                                       F32 display_aspect,
@@ -8727,23 +8763,7 @@ static bool buildSignalCompositeState(U32 capture_slot,
         const F32 raw_aspect = capture->mMode == ECaptureMode::CAMERA_FEED
             ? capture->mCamera.mOutputAspect
             : static_cast<F32>(output_width) / static_cast<F32>(output_height);
-        if (std::isfinite(display_aspect) && std::isfinite(raw_aspect) &&
-            display_aspect > F_ALMOST_ZERO && raw_aspect > F_ALMOST_ZERO)
-        {
-            state.mLetterbox = 1;
-            if (display_aspect > raw_aspect)
-            {
-                const F32 fraction = raw_aspect / display_aspect;
-                state.mDisplayToCaptureScale[0] = 1.f / fraction;
-                state.mDisplayToCaptureOffset[0] = -0.5f * (1.f - fraction) / fraction;
-            }
-            else
-            {
-                const F32 fraction = display_aspect / raw_aspect;
-                state.mDisplayToCaptureScale[1] = 1.f / fraction;
-                state.mDisplayToCaptureOffset[1] = -0.5f * (1.f - fraction) / fraction;
-            }
-        }
+        centerCompositeInAspect(raw_aspect, display_aspect, state);
         return true;
     }
 
@@ -9305,6 +9325,7 @@ bool buildPreviewCompositeState(const CaptureHandle& capture_handle,
         return false;
     }
 
+    const F32 cell_aspect = display_aspect;
     const PrismDisplay* display = nullptr;
     if (!display_handle.mId.isNull())
     {
@@ -9361,6 +9382,12 @@ bool buildPreviewCompositeState(const CaptureHandle& capture_handle,
     {
         offline = true;
         return false;
+    }
+    if (display)
+    {
+        // A selected face is itself a display-shaped result. Preserve that
+        // shape inside the fixed 16:9 atlas cell just as raw capture does.
+        centerCompositeInAspect(display_aspect, cell_aspect, state);
     }
     state.mScissor[2] = 256;
     state.mScissor[3] = 144;
