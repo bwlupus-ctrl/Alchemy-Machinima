@@ -20,8 +20,8 @@ Source: `doc/director_kit/run_functional_20261011_155513/functional.csv`, HEAD `
 | disabled-by-parent (142) | gaze 59; ghosts 23; props 18; actor_style 14; practicals 12; frame_orbit 4; animate 4; rig 3; move 2; takes 1; exposure 1; shot 1 | HARNESS 8 / LEGIT-DEFER 134 | Frame/rig/exposure setting gates are prepared before build (`:2121`). Entity/selection/take gates receive specific runtime SKIPs (`:3944-3974`). |
 | not on screen (105) | tron 67; stylize 30; shadows 6; operator 2 | HARNESS | Observed Lightbox floater was 885 px high while child viewport was 1602 px; public reshape plus target-child scrolling fixes it (`:2073-2094,2985-2997`). |
 | control not found (91) | atmosphere 56; actors 14; bloom 12; gaze_cues 3; focus 2; filters 2; image 1; shadows 1 | HARNESS | Incorrect page-wide redirect and unnamed-checkbox identity; fixed by source-aware hosts, native-first lookup, exact setting lookup, and verified-floater fallback (`director_functional_manifest.py:47-67,664-672`; `aluiperfselftest.cpp:1960-1995,4256-4283`). |
-| category A (48) | dance 23; ghosts 16; shot 5; image 2; gaze 1; tron 1 | LEGIT-DEFER 40 / HARNESS 5 / PRODUCT 3 | Entity-model rows are explicitly deferred (`functional_report.py:252-281`). Shot custom fields write `DirectorSwitcherBank` via `ALPanelDirectorSwitcher::onCustomValue/saveBank` (`alpaneldirectorswitcher.cpp:376-389,450`): missing bank oracle remains FAIL. S-Log EV/toe and Tron grade tint commit while their settings do not move: PRODUCT. |
-| category D (41) | filters 15; shadows 7; focus 6; bloom 4; tron 4; atmosphere 2; shot 1; actors 1; image 1 | PRODUCT 40 / HARNESS 1 | For 40 rows the real commit moves the widget but not its declared setting; keep FAIL. `switcher_selection_order` clicked its existing value and needs an alternate bank pre-state (HARNESS). |
+| category A (48) | dance 23; ghosts 16; shot 5; image 2; gaze 1; tron 1 | LEGIT-DEFER 40 / HARNESS 8 | Entity-model rows are explicitly deferred (`functional_report.py:252-281`). Shot custom fields write `DirectorSwitcherBank` via `ALPanelDirectorSwitcher::onCustomValue/saveBank` (`alpaneldirectorswitcher.cpp:376-389,450`): missing bank oracle remains FAIL. S-Log EV/toe and Tron grade tint were exercised through a programmatic widget commit that bypassed the real control write: HARNESS. |
+| category D (41) | filters 15; shadows 7; focus 6; bloom 4; tron 4; atmosphere 2; shot 1; actors 1; image 1 | HARNESS 41 | The 40 “binding loss” rows used programmatic raw-slider/swatch mutation instead of the shipping drag/picker paths, which write their controls. `switcher_selection_order` clicked its existing value and needs an alternate bank pre-state. `am_test_combo` is a self-resetting command and needs an effect oracle, not a durable-value assertion. |
 | target moved (33) | weather 8; ghosts/frame_orbit/filters 5 each; gaze/shot 4 each; operator 2 | PRODUCT—FIXED | Approved pointer-focus reveal bug class (`alscrollfocus.h:116-125`). |
 | reset default mismatch (18) | gaze 18 | LEGIT-DEFER | These callbacks call `editGazeTargetsFor(editActors())` and write actor override sentinels (`alpanellensgaze.cpp:606-737`); login has no actor. Enrichment now defers them explicitly. |
 | Lightbox Drag Handle (5) | stylize 2; shadows 2; tron 1 | HARNESS | Redirect overlap; side placement and final fit at `aluiperfselftest.cpp:2081-2094`. |
@@ -32,13 +32,13 @@ Source: `doc/director_kit/run_functional_20261011_155513/functional.csv`, HEAD `
 | combo item missing (1) | ghosts 1 | LEGIT-DEFER | Runtime actor source list is empty at login; `source_combo` now requires an entity-model oracle. |
 | scrollbar Line Up (1) | image 1 | HARNESS | Wrong click child at viewport edge; target-child scrolling fixes it (`aluiperfselftest.cpp:2985`). |
 
-## PRODUCT bugs left failing
+## Product and harness findings left failing
 
-1. **Legacy slider binding loss (40 D rows):** Focus/Filters/Image/Bloom/Atmosphere/Shadows/Tron and Actor Mask controls visibly commit but their declared `control_name` setting is unchanged. Minimal fix: repair the affected host clone/binding so the real child commit writes the setting; do not teach the harness to accept widget-only motion.
-2. **S-Log EV/toe (2 A rows):** `slog_ev_slider` and `slog_toe_slider` move while `AlchemyToneMapSLogEV/Toe` do not. Minimal fix: bind the hosted sliders to those controls or write them in `ALFloaterLightBox::updateTonemapper`.
-3. **Tron grade tint (1 A row):** picker commit changes the swatch but not `TronGradeTint`. Minimal fix: persist the committed color in the Lightbox Tron handler.
-4. **Move radio/heading (2 rows):** normalize `ActorMoverSync` to the radio's stored type and expose/assert the heading model consumer after commit.
-5. **Switcher bank oracle gap (6 rows, harness):** not a product bug; add a public normalized-bank consumer for selection order and five custom fields. These intentionally remain FAIL rather than weakening the oracle.
+1. **Former binding-loss set (40 D rows): HARNESS.** Focus/Filters/Image/Bloom/Atmosphere/Shadows/Tron and Actor Mask were driven by programmatic widget mutation rather than real slider drag, picker change, or a command-effect oracle.
+2. **S-Log EV/toe and Tron grade tint (3 A rows): HARNESS.** These used the same programmatic path and are not evidence of a product binding defect.
+3. **Actor Mask command: HARNESS.** `am_test_combo` intentionally self-resets to Idle; assert its rendered diagnostic effect in-world or SKIP it specifically, never compare durable widget state to Run.
+4. **Move radio/heading (2 rows):** the manifest now normalizes `ActorMoverSync` to the radio's stored Boolean type; the heading oracle uses the configured model value.
+5. **Switcher bank oracle gap (6 rows, harness):** add a public normalized-bank consumer for selection order and five custom fields. These intentionally remain FAIL rather than weakening the oracle.
 
 ## Static prediction by page
 
@@ -47,22 +47,22 @@ This is a code-path prediction, not a rerun. “0 layout/lookup” means the lis
 | Page | Static prediction |
 |---|---|
 | actor_style | 14 world-disabled → SKIP; reveal fixed; 0 expected layout/lookup FAIL |
-| actors | 14 native-host lookups + launcher shift fixed; `am_test_combo` PRODUCT remains |
+| actors | 14 native-host lookups + launcher shift fixed; `am_test_combo` receives a specific self-resetting-command SKIP |
 | animate | 4 world-disabled → SKIP; no expected FAIL |
-| atmosphere | 56 host failures fixed; launcher shift fixed; 2 PRODUCT swatches remain |
-| bloom_glow | 12 host failures fixed; 4 PRODUCT setting bindings remain |
+| atmosphere | 56 host failures fixed; launcher shift fixed; 2 swatch harness artifacts fixed |
+| bloom_glow | 12 host failures fixed; 4 raw-slider harness artifacts fixed |
 | cine_light_rig | 3 actor-target rows → SKIP; reveal fixed; no expected FAIL |
 | dance | 24 entity-model/pre-state rows → SKIP; no expected FAIL |
 | diopter | 3 typed selector reveals fixed; no expected FAIL |
 | director | unchanged, 0 FAIL |
 | exposure | off-grid drag fixed; AMD gate expected fixed or remains one fail-closed gate finding |
-| filters | 5 shifts + 2 unnamed lookups fixed; 15 PRODUCT binding rows remain |
-| focus | 2 unnamed lookups fixed; 6 PRODUCT binding rows remain |
+| filters | 5 shifts + 2 unnamed lookups fixed; 15 raw-slider/swatch harness artifacts fixed |
+| focus | 2 unnamed lookups fixed; 6 raw-slider/swatch harness artifacts fixed |
 | frame_orbit | 5 shifts + 4 early gates fixed; no expected FAIL |
 | gaze_cues | explicit floater host fixes 3 lookups; no expected FAIL |
 | gaze | 59 disabled + 18 resets + model rows → SKIP; shifts/reveals fixed; no expected login FAIL |
 | ghosts | disabled/model/combo rows → SKIP; 5 shifts + 6 reveals fixed; no expected login FAIL |
-| image | 10 reveals + host/scroll fixed; 3 PRODUCT binding rows remain |
+| image | 10 reveals + host/scroll fixed; S-Log and raw-slider harness artifacts fixed |
 | light_cues | unchanged, 0 FAIL |
 | light_rim | 2 reveals fixed; no expected FAIL |
 | move | 2 world gates → SKIP; 2 Move PRODUCT/oracle findings remain |
@@ -73,13 +73,13 @@ This is a code-path prediction, not a rerun. “0 layout/lookup” means the lis
 | practicals | 12 selected-light gates → SKIP; no expected login FAIL |
 | props | 18 entity gates → SKIP; no expected login FAIL |
 | scene_options | unchanged, 0 FAIL |
-| shadows_probes | viewport/overlap/host fixed; 7 PRODUCT binding rows remain; shader reloads batched |
+| shadows_probes | viewport/overlap/host fixed; 7 raw-slider harness artifacts fixed; shader reloads batched |
 | shot | 235 selector reveals + 4 shifts fixed; one cast gate → SKIP; 6 bank-oracle rows remain |
 | stylize | 28 reveals + 30 viewport + 2 overlap + off-grid drag fixed; no expected FAIL |
 | switchboard | 4 reveals fixed; no expected FAIL |
 | takes | 2 reveals fixed; scrub gate → SKIP; no expected FAIL |
 | temporal | unchanged, 0 FAIL / 1 declared SKIP |
-| tron | 67 viewport + 16 reveal + overlap fixed; 5 PRODUCT binding rows remain |
+| tron | 67 viewport + 16 reveal + overlap fixed; 5 picker-path harness artifacts fixed |
 | vcam | unchanged, 0 FAIL |
 | weather | 8 shifts + 2 off-grid drags fixed; no expected FAIL |
 

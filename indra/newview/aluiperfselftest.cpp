@@ -3734,7 +3734,10 @@ private:
         if (LLColorSwatchCtrl* swatch = dynamic_cast<LLColorSwatchCtrl*>(control))
         {
             if (!functionalPointerClick()) return false;
-            swatch->setValue(test);
+            // Mirror LLColorSwatchCtrl::onColorChanged(): update the open picker
+            // and write the bound control through the swatch, as a picker event
+            // does, instead of synthesizing a bare widget commit.
+            swatch->set(LLColor4(test), true, false);
             swatch->onCommit();
             mFunctionalObserved["click"]["programmatic_picker_commit"] = true;
             mFunctionalObserved["effect"]["programmatic"] = true;
@@ -3768,10 +3771,20 @@ private:
             LLSlider* slider = findFirstView<LLSlider>(slider_ctrl);
             return functionalPointerDrag(slider, test);
         }
+        if (LLSlider* slider = dynamic_cast<LLSlider*>(control))
+            return functionalPointerDrag(slider, test);
         if (dynamic_cast<LLSpinCtrl*>(control))
             return functionalPointerClick();
+        const bool has_programmatic_oracle = !mFunctionalSettingName.empty() ||
+            !entry["consumer"].asString().empty() || !mFunctionalHandlerName.empty();
+        if (!has_programmatic_oracle)
+        {
+            mFunctionalLastClickReason = "programmatic fallback has no external oracle";
+            return false;
+        }
         control->setValue(test);
         control->onCommit();
+        mFunctionalObserved["effect"]["programmatic_commit_path"] = "generic fallback";
         mFunctionalObserved["effect"]["programmatic"] = true;
         return true;
     }

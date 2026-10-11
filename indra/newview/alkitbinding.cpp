@@ -5,6 +5,8 @@
 #include "lluictrl.h"
 #include "llviewercontrol.h"
 #include "lltimer.h"
+#include "v3color.h"
+#include "v4color.h"
 
 namespace
 {
@@ -77,6 +79,12 @@ bool alKitSetTypedControl(LLControlGroup& group, const std::string& name, const 
             break;
         case TYPE_LLSD:
             control->set(value);
+            break;
+        case TYPE_COL3:
+            control->set(LLColor3(value).getValue());
+            break;
+        case TYPE_COL4:
+            control->set(LLColor4(value).getValue());
             break;
         default:
             control->set(value);

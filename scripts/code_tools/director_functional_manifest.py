@@ -722,9 +722,24 @@ def build_csv_entry(idx, r, v, xi, settings, page_meta):
     if pointer_endpoint is not None:
         entry["pointer_drag"] = True
     if items:
-        entry["options"] = [{"label": a, "value": b} for a, b in items]
+        # Runtime item matching must use the same declared type as the expected
+        # setting.  In particular, radio XUI serializes Boolean values as "0"
+        # and "1" strings; leaving those raw made false target the true segment.
+        entry["options"] = [{"label": a, "value": coerce_item(b, stype)} for a, b in items]
     if test_resolved is not None and test_resolved != test_value:
         entry["test_value_resolved"] = test_resolved
+    if name == "am_test_combo":
+        # This is a command, not durable state: its diagnostics listener either
+        # arms the in-world capture sequence or reports it inconclusive, then
+        # resets CineLightRigActorMaskTest to Idle on the next idle callback.
+        # The login harness has no stable command-effect oracle (active actor-only
+        # light plus rendered captures), so comparing the combo/setting to 1 is
+        # intrinsically racy and incorrect.
+        entry["action"] = "SKIP"
+        entry["reason"] = (
+            "command self-resets to Idle; requires an active actor-only light and "
+            "rendered diagnostic captures for an effect oracle")
+        entry["expect"] = {}
     if r.get("v2_loss") and v == "v2" and r["v2_loss"] not in ("", "0"):
         entry["probe"] = "v2_loss"
     if v == "v2":

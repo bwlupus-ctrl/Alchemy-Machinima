@@ -17,8 +17,8 @@ Inputs: `wiring_table.csv` sha256 `e77739d4bff88c68` (1765 interactive rows); 35
 
 | Version | RUN | RUN (known gap) | DEFER_INWORLD | SKIP | EXPECT_MISSING | NO_EXERCISE | Total |
 |---|---:|---:|---:|---:|---:|---:|---:|
-| v1 | 1387 | 35 | 214 | 44 | 89 | 1 | 1770 |
-| v2 | 1409 | 36 | 214 | 44 | 82 | 2 | 1787 |
+| v1 | 1386 | 35 | 214 | 45 | 89 | 1 | 1770 |
+| v2 | 1408 | 36 | 214 | 45 | 82 | 2 | 1787 |
 
 Suspect (V2_SUSPECT_FLOATER_SCOPED) entries are RUN and flagged `suspect`: 96.
 
@@ -49,7 +49,7 @@ Suspect (V2_SUSPECT_FLOATER_SCOPED) entries are RUN and flagged `suspect`: 96.
 | light_rim_tab (Rim) | light_group | 42 | 0 | 1 | 0 | 0 | 0 | 47 | 0 | 1 | 0 | 0 | 0 |
 | exposure_tab (Exposure) | light_group | 23 | 1 | 0 | 0 | 0 | 0 | 23 | 1 | 0 | 0 | 0 | 0 |
 | practicals_tab (Practicals) | light_group | 12 | 0 | 1 | 1 | 1 | 0 | 12 | 0 | 1 | 1 | 1 | 0 |
-| actors_tab (Actors) | light_group | 16 | 0 | 8 | 1 | 1 | 0 | 16 | 0 | 8 | 1 | 1 | 0 |
+| actors_tab (Actors) | light_group | 15 | 0 | 8 | 2 | 1 | 0 | 15 | 0 | 8 | 2 | 1 | 0 |
 | light_cues_tab (Light Cues) | light_group | 0 | 0 | 4 | 1 | 0 | 0 | 0 | 0 | 4 | 1 | 0 | 0 |
 | image_tab (Image) | look_group | 20 | 2 | 0 | 0 | 52 | 0 | 20 | 2 | 0 | 0 | 52 | 0 |
 | bloom_glow_tab (Bloom & Glow) | look_group | 7 | 0 | 0 | 0 | 10 | 0 | 16 | 1 | 0 | 0 | 0 | 0 |
@@ -135,6 +135,7 @@ Selector segments (both v2 cards, 8 total) expect `DirectorV2SelectedLight` to e
 | cine_light_rig_tab | cine_clear_object | Clear | v1,v2 | destructive (clear) in action name or label |
 | cine_light_rig_tab | cine_reset_all | Reset all | v1,v2 | destructive (reset all) in action name or label |
 | practicals_tab | sl_clear | Clear | v1,v2 | destructive (clear) in action name or label |
+| actors_tab | am_test_combo | Isolation test | v1,v2 | command self-resets to Idle; requires an active actor-only light and rendered diagnostic captures for an effect oracle |
 | actors_tab | btn_reset_all | Reset all... | v1,v2 | destructive (reset all) in action name or label |
 | light_cues_tab | cue_delete | Remove | v1,v2 | destructive (delete, remove) in action name or label |
 | stylize_tab | ri_reset_all | Reset all | v1,v2 | destructive (reset all) in action name or label |

@@ -4205,12 +4205,16 @@ const uuid_vec_t& LLActorMover::getRoster()
     return LLDirectorCast::instance().getIds();
 }
 
+F32 LLActorMover::configuredHeading() const
+{
+    return gSavedSettings.getF32("ActorMoverHeading");
+}
+
 // ---------------------------------------------------------------------------
 void LLActorMover::start(const LLUUID& actor_id)
 {
     static LLCachedControl<F32> speed(gSavedSettings, "ActorMoverSpeed", 1.0f);
     static LLCachedControl<F32> distance(gSavedSettings, "ActorMoverDistance", 6.f);
-    static LLCachedControl<F32> heading(gSavedSettings, "ActorMoverHeading", 0.f);      // deg, rel facing
     static LLCachedControl<S32> end_mode(gSavedSettings, "ActorMoverEndMode", 0);
     static LLCachedControl<F32> nominal(gSavedSettings, "ActorMoverWalkNominal", 3.0f); // anim design speed
 
@@ -4302,7 +4306,7 @@ void LLActorMover::start(const LLUUID& actor_id)
 
     // travel bearing = actor's current facing plus the heading trim
     LLVector3 at = LLVector3(1.f, 0.f, 0.f) * av->getRenderRotation();
-    const F32 yaw = atan2f(at.mV[VY], at.mV[VX]) + (F32)heading * DEG_TO_RAD;
+    const F32 yaw = atan2f(at.mV[VY], at.mV[VX]) + configuredHeading() * DEG_TO_RAD;
 
     Move mv;
     mv.mOrigin   = av->getBaseRootPosition();   // rendered pose, incl. a prior move ([ClientHeight] base: offset re-added in applyOverride)
@@ -13430,7 +13434,6 @@ void LLActorMover::renderHeadingPreview(bool depth_aware)
     }
 
     static LLCachedControl<F32> distance(gSavedSettings, "ActorMoverDistance", 6.f);
-    static LLCachedControl<F32> heading(gSavedSettings, "ActorMoverHeading", 0.f);
     // pose/blocking ghosts: styled copies of the actor at every path node.
     // Opt-in, default off, so the overlay pass adds nothing per frame unless
     // the director asks for it. Renderer precedence: the true 3D model ghost
@@ -13636,7 +13639,7 @@ void LLActorMover::renderHeadingPreview(bool depth_aware)
         {
             // ---- upgraded straight heading arrow (no path set) ----
             LLVector3 at = LLVector3(1.f, 0.f, 0.f) * av->getRenderRotation();
-            const F32 yaw = atan2f(at.mV[VY], at.mV[VX]) + (F32)heading * DEG_TO_RAD;
+            const F32 yaw = atan2f(at.mV[VY], at.mV[VX]) + configuredHeading() * DEG_TO_RAD;
             const LLVector3 dir(cosf(yaw), sinf(yaw), 0.f);
 
             LLVector3 origin = av->getRootJoint()->getWorldPosition();

@@ -60,6 +60,11 @@ class LLActorMover
 public:
     static LLActorMover& instance();
 
+    // Public model-side witness for Director functional consumers.  This is
+    // the configured bearing read by start() and the heading-preview renderer,
+    // not a UI widget echo.
+    F32 configuredHeading() const;
+
     // -----------------------------------------------------------------------
     // Actor pathing (P1): a 3D polyline the actor walks with natural curved
     // turning, arc-length constant ground speed, ease in/out, dwell, and
