@@ -11,6 +11,7 @@
 #define AL_SCROLLFOCUS_H
 
 #include "llfocusmgr.h"
+#include "llviewerwindow.h"
 #include "llscrollcontainer.h"
 
 #include <algorithm>
@@ -110,7 +111,10 @@ inline void install(LLScrollContainer* scroller, LLView* document, LLView* paren
                         // Kit controls take focus after their button captures the mouse.
                         // Revealing then moves the document between press and release.
                         // Keyboard focus still needs the normal reveal for Tab navigation.
-                        if (!*token && gFocusMgr.childHasMouseCapture(child))
+                        // Combos/sliders/lists take focus before (or outside) the capture, so
+                        // also treat any focus arriving while the left button is down as pointer focus.
+                        if (!*token && (gFocusMgr.childHasMouseCapture(child) ||
+                                        (gViewerWindow && gViewerWindow->getLeftMouseDown())))
                         {
                             return;
                         }
