@@ -328,6 +328,13 @@ public:
     // callers (like colorCorrect itself) that also need them for shader
     // selection.
     bool colorCorrectWillApplyExposure(bool apply_tonemap, bool* out_legacy_gamma = nullptr, bool* out_no_post = nullptr) const;
+    // Shared by the main color-correct pass and VC3 atlas shaders. Indices map
+    // directly to gPrismPreviewProgram[8].
+    U32 colorCorrectPermutation(bool apply_tonemap, bool apply_color_grade) const;
+    // Uploads the same live exposure/tonemap/grade controls used by
+    // colorCorrect, but never binds bloom/post-effect inputs.
+    void uploadPrismPreviewColorCorrectUniforms(LLGLSLShader& shader) const;
+    S32 uploadPrismPreviewColorGradeUniforms(LLGLSLShader& shader);
     // [TronT0] Pure-move refactor: the signed EXPOSURE selector renderCineOutline
     // used to compute inline (RenderExposure / -(RenderExposure * SLog3 EV
     // scale) / 0, see the call site for the full contract), now shared so the

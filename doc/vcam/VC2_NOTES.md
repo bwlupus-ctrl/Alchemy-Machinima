@@ -14,4 +14,12 @@
 ## Verification and deviations
 
 - Per request, no configure, build, executable test, commit, fetch, or upstream operation was run. Static verification used symbol/anchor review, `git diff --check`, trailing-whitespace checks, and LF checks.
-- No VC2 behavior deviation. Atlas composition and measured timestamp/token budget diagnostics remain VC3/VC4 work as assigned by section 8; preview scene attempts already remain subordinate to the existing global capture budget and adaptive controller.
+- Atlas composition and measured timestamp/token budget diagnostics remain VC3/VC4 work as assigned by section 8; preview scene attempts already remain subordinate to the existing global capture budget and adaptive controller.
+
+## VC3 review follow-ups
+
+- Surface-Lens preview culling now receives the same scoped far plane as its projection (`indra/newview/llprismlens.cpp:8591`).
+- The stale-AO regression invokes the production `seedPreviewAO` decision, and the renderer uses that same function before clearing the reused attachment (`indra/newview/tests/llprismpreviewpolicy_test.cpp:80`, `indra/newview/pipeline.cpp:25744`).
+- Preview-only logical extents preserve non-16:9 producer aspect inside the fixed pack (`indra/newview/llprismpreview.h:55`, `indra/newview/llprismlens.cpp:2708`, `:3266`).
+- Pinned-pack allocation now occurs inside `ScopedPrismRenderState` and retries back off for one second (`indra/newview/llprismpreview.cpp:181`, `indra/newview/llprismlens.cpp:8413`).
+- Null demand is rejected, visibility-owner overflow asserts, sub-epsilon entitlement is discarded, and preview-quality publications are excluded from both world composite builders (`indra/newview/llprismpreview.cpp:28`, `:93`, `indra/newview/llprismpreview.h:19`, `indra/newview/llprismlens.cpp:8968`, `:9235`).

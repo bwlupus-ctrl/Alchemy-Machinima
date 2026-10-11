@@ -271,6 +271,9 @@ extern LLGLSLShader         gPostScreenSpaceReflectionProgram;
 // Deferred rendering shaders
 extern LLGLSLShader         gDeferredImpostorProgram;
 extern LLGLSLShader         gPrismLensProgram;
+// Same eight legacy/color-grade/tonemap permutations selected by colorCorrect.
+// Preview variants intentionally omit HAS_POST_EFFECTS/BLOOM_COMPOSITE.
+extern LLGLSLShader         gPrismPreviewProgram[8];
 extern LLGLSLShader         gDeferredDiffuseProgram;
 extern LLGLSLShader         gDeferredDiffuseAlphaMaskProgram;
 extern LLGLSLShader         gDeferredNonIndexedDiffuseAlphaMaskProgram;

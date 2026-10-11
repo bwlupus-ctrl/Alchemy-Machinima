@@ -77,9 +77,37 @@ void prism_preview_policy_object::test<4>()
 {
     set_test_name("stale AO sentinel is replaced by neutral white");
     std::array<F32, 4> reused_ao = { 0.13f, 0.27f, 0.41f, 0.f };
-    reused_ao = LLPrismPreviewPolicy::neutralAO();
+    LLPrismPreviewPolicy::seedPreviewAO(true, reused_ao);
     ensure("all stale channels are neutral",
            reused_ao[0] == 1.f && reused_ao[1] == 1.f &&
            reused_ao[2] == 1.f && reused_ao[3] == 1.f);
+}
+
+template<> template<>
+void prism_preview_policy_object::test<5>()
+{
+    set_test_name("preview logical extent preserves producer aspect");
+    U32 width = 0;
+    U32 height = 0;
+    LLPrismPreviewPolicy::letterboxExtent(1.f, width, height);
+    ensure("square capture is pillarboxed", width == 108 && height == 108);
+    LLPrismPreviewPolicy::letterboxExtent(2.f, width, height);
+    ensure("wide capture is letterboxed", width == 192 && height == 96);
+}
+
+template<> template<>
+void prism_preview_policy_object::test<6>()
+{
+    set_test_name("sub-epsilon capacity grants no preview attempt");
+    std::array<bool, LLPrismLens::MAX_CAPTURES> preview{};
+    std::array<F32, LLPrismLens::MAX_CAPTURES> demand{};
+    std::array<F32, LLPrismLens::MAX_CAPTURES> entitlement{};
+    preview[0] = true;
+    demand[0] = 1.f;
+    const F32 remaining = LLPrismPreviewPolicy::waterFillTier(
+        preview, demand, LLPrismPreviewPolicy::ENTITLEMENT_EPSILON * 0.5f,
+        entitlement);
+    ensure("tiny remainder is discarded",
+           remaining == 0.f && entitlement[0] == 0.f);
 }
 } // namespace tut

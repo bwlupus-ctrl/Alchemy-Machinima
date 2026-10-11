@@ -1757,6 +1757,9 @@ struct PrismInstance
     U32 mGateWatchW = 0;
     U32 mGateWatchH = 0;
     bool mHasOutput = false;
+    // Preview-sized publications are valid atlas sources but never world
+    // display sources. A visible capture must publish a full-quality frame.
+    bool mOutputPreviewQuality = false;
     U32 mOutputWidth = 0;
     U32 mOutputHeight = 0;
     U32 mLastRenderedFrame = 0;
@@ -2698,8 +2701,12 @@ public:
             mFrame.mLensRect.mWidth = LLPrismPreviewPolicy::WIDTH;
             mFrame.mLensRect.mHeight = LLPrismPreviewPolicy::HEIGHT;
             mFrame.mResolutionScale = 1.f;
-            mFrame.mTargetWidth = LLPrismPreviewPolicy::WIDTH;
-            mFrame.mTargetHeight = LLPrismPreviewPolicy::HEIGHT;
+            const F32 surface_width = mFrame.mWorldSurfaceUEdge.magVec();
+            const F32 surface_height = mFrame.mWorldSurfaceVEdge.magVec();
+            const F32 surface_aspect = surface_height > F_ALMOST_ZERO
+                ? surface_width / surface_height : 16.f / 9.f;
+            LLPrismPreviewPolicy::letterboxExtent(
+                surface_aspect, mFrame.mTargetWidth, mFrame.mTargetHeight);
             mFrame.mFragmentClipPlane = LLPlane(
                 center + keep_normal * LENS_PLANE_EPSILON, keep_normal);
             mFrame.mResolvedFace = face;
@@ -3256,8 +3263,9 @@ public:
             std::memcpy(frame.mMainViewport, viewport, sizeof(frame.mMainViewport));
             makeDebugRect(viewport, frame.mDebugRect);
             frame.mResolutionScale = 1.f;
-            frame.mTargetWidth = LLPrismPreviewPolicy::WIDTH;
-            frame.mTargetHeight = LLPrismPreviewPolicy::HEIGHT;
+            LLPrismPreviewPolicy::letterboxExtent(
+                capture.mCamera.mOutputAspect, frame.mTargetWidth,
+                frame.mTargetHeight);
             frame.mPrepared = true;
             capture.mPreviewOnly = true;
             capture.mRuntime.mPreviewOnly = true;
@@ -3498,6 +3506,11 @@ public:
         LLPrismPreviewPolicy::waterFillTier(
             preview_active, demand, remaining, entitlement);
 
+        for (F32& hz : entitlement)
+        {
+            if (hz <= LLPrismPreviewPolicy::ENTITLEMENT_EPSILON) hz = 0.f;
+        }
+
         for (U32 slot = 0; slot < LLPrismLens::MAX_CAPTURES; ++slot)
         {
             PrismInstance& capture = mLenses[slot];
@@ -3670,6 +3683,7 @@ public:
         {
             lens.mFrame.mProduced = true;
             lens.mHasOutput = true;
+            lens.mOutputPreviewQuality = lens.mPreviewOnly;
             lens.mOutputWidth = output_width;
             lens.mOutputHeight = output_height;
             lens.mLastRenderedFrame = gFrameCount;
@@ -3683,7 +3697,7 @@ public:
             ++lens.mPublicationSamples;
             ++lens.mPublicationSerial;
             LLPrismPreviewService::instance().notePublication(
-                lens.mHandle, lens.mPublicationSerial);
+                lens.mHandle, lens.mPublicationSerial, lens.mPreviewOnly);
             closePublicationWindow(lens, now);
             lens.mRuntime.mOutput = LLPrismLens::EOutputState::CURRENT;
             const bool cadence_throttled = lens.mRequestedHz > 0.f &&
@@ -8355,6 +8369,12 @@ void renderAuxiliaryView()
     const S32 render_slot = registry.chooseRenderSlot();
     if (render_slot < 0)
     {
+        LLPrismPreviewService& preview_service = LLPrismPreviewService::instance();
+        if (preview_service.hasPendingAtlasUpdate())
+        {
+            ScopedPrismRenderState atlas_state;
+            if (atlas_state.isValid()) preview_service.updateAtlas();
+        }
         return;
     }
 
@@ -8390,7 +8410,7 @@ void renderAuxiliaryView()
         // size-keyed pool; the deferred fullscreen shaders sample the G-buffer
         // with normalized [0,1] UVs, so no sub-rect/logical-extent is allowed.
         const bool scratch_ready = preview_only
-            ? gPipeline.bindPrismPreviewScratch()
+            ? LLPrismPreviewService::instance().ensureScratchReady()
             : gPipeline.acquirePrismLensScratch(render_width, render_height);
         if (!scratch_ready)
         {
@@ -8567,6 +8587,8 @@ void renderAuxiliaryView()
                                 LLVector3(-vr.x, -vr.y, -vr.z),
                                 LLVector3(vu.x, vu.y, vu.z));
             lens_camera.setAspect(cull_aspect);
+            lens_camera.setNear(near_clip);
+            lens_camera.setFar(far_clip);
             lens_camera.setViewHeightInPixels(static_cast<S32>(render_height));
             lens_camera.setViewNoBroadcast(2.f * v_half);
             LLVector3 keep_normal;
@@ -8781,6 +8803,148 @@ void renderAuxiliaryView()
     {
         registry.markProduced(slot, output_width, output_height);
     }
+    LLPrismPreviewService& preview_service = LLPrismPreviewService::instance();
+    if (preview_service.hasPendingAtlasUpdate())
+    {
+        ScopedPrismRenderState atlas_state;
+        if (atlas_state.isValid()) preview_service.updateAtlas();
+    }
+}
+
+static bool buildSignalCompositeState(U32 capture_slot,
+                                      const PrismDisplay* display,
+                                      F32 display_aspect,
+                                      CompositeState& state)
+{
+    PrismLensRegistry& registry = PrismLensRegistry::instance();
+    const PrismInstance* capture = registry.capture(capture_slot);
+    if (!capture || !capture->mHasOutput) return false;
+    LLRenderTarget& output = gPipeline.mPrismLensOutput[capture_slot];
+    U32 output_width = 0;
+    U32 output_height = 0;
+    F32 output_uv_scale[2];
+    F32 output_uv_offset[2];
+    if (!output.isComplete() ||
+        !registry.getOutputRegion(capture_slot, output_width, output_height) ||
+        !registry.getOutputOrientation(capture_slot, output_uv_scale, output_uv_offset) ||
+        output_width == 0 || output_height == 0 ||
+        output_width > output.getWidth() || output_height > output.getHeight())
+    {
+        return false;
+    }
+
+    state.mCaptureSlot = capture_slot;
+    state.mOpticsParams[0] = capture->mCamera.mOptics.mChromaticAberration;
+    state.mOpticsParams[1] = capture->mCamera.mOptics.mFilmGrain;
+    state.mOpticsParams[2] = capture->mCamera.mOptics.mCRTScanlines;
+    state.mOpticsParams[3] = capture->mCamera.mOptics.mExposureBias;
+    std::memcpy(state.mRetainedOrientationScale, output_uv_scale,
+                sizeof(state.mRetainedOrientationScale));
+    std::memcpy(state.mRetainedOrientationOffset, output_uv_offset,
+                sizeof(state.mRetainedOrientationOffset));
+    state.mTextureRegionScale[0] = static_cast<F32>(output_width - 1u) /
+                                   static_cast<F32>(output.getWidth());
+    state.mTextureRegionScale[1] = static_cast<F32>(output_height - 1u) /
+                                   static_cast<F32>(output.getHeight());
+    state.mTextureRegionOffset[0] = 0.5f / static_cast<F32>(output.getWidth());
+    state.mTextureRegionOffset[1] = 0.5f / static_cast<F32>(output.getHeight());
+
+    // Raw has no authored display settings. It only centres the producer's
+    // canonical aspect inside the 16:9 cell so the preview-only logical region
+    // is not anamorphically stretched; bars are neutral black.
+    if (!display)
+    {
+        const F32 raw_aspect = capture->mMode == ECaptureMode::CAMERA_FEED
+            ? capture->mCamera.mOutputAspect
+            : static_cast<F32>(output_width) / static_cast<F32>(output_height);
+        if (std::isfinite(display_aspect) && std::isfinite(raw_aspect) &&
+            display_aspect > F_ALMOST_ZERO && raw_aspect > F_ALMOST_ZERO)
+        {
+            state.mLetterbox = 1;
+            if (display_aspect > raw_aspect)
+            {
+                const F32 fraction = raw_aspect / display_aspect;
+                state.mDisplayToCaptureScale[0] = 1.f / fraction;
+                state.mDisplayToCaptureOffset[0] = -0.5f * (1.f - fraction) / fraction;
+            }
+            else
+            {
+                const F32 fraction = display_aspect / raw_aspect;
+                state.mDisplayToCaptureScale[1] = 1.f / fraction;
+                state.mDisplayToCaptureOffset[1] = -0.5f * (1.f - fraction) / fraction;
+            }
+        }
+        return true;
+    }
+
+    const ScreenEffects& effects = display->mSettings.mEffects;
+    state.mScreenEffect0[0] = effects.mScanlines;
+    state.mScreenEffect0[1] = effects.mScanlineCount;
+    state.mScreenEffect0[2] = effects.mPixelate;
+    state.mScreenEffect0[3] = effects.mGrayscale;
+    state.mScreenEffect1[0] = effects.mSepia;
+    state.mScreenEffect1[1] = effects.mStatic;
+    state.mScreenEffect1[2] = effects.mVerticalRoll;
+    state.mScreenEffect1[3] = effects.mRollSpeed;
+    state.mScreenEffect2[0] = effects.mTracking;
+    state.mScreenEffect2[1] = effects.mFlicker;
+    state.mScreenEffect2[2] = effects.mChromaBleed;
+    state.mScreenEffect2[3] = effects.mVignette;
+    state.mScreenEffect3[0] = effects.mInterlace;
+    state.mScreenEffect3[1] = effects.mDropout;
+    state.mScreenEffect3[2] = effects.mBrightness;
+    state.mScreenEffect4[0] = effects.mFlipH ? 1.f : 0.f;
+    state.mScreenEffect4[1] = effects.mFlipV ? 1.f : 0.f;
+    state.mScreenEffect4[2] = effects.mRotate90 ? 1.f : 0.f;
+    state.mScreenEffect4[3] = effects.mSheen;
+    state.mScreenEffect5[0] = effects.mScanlineDepth;
+    state.mScreenEffect5[1] = effects.mScanlineSharpness;
+    state.mScreenEffect5[2] = effects.mScanlineThickness;
+
+    const F32 capture_aspect = capture->mMode == ECaptureMode::CAMERA_FEED
+        ? capture->mCamera.mOutputAspect
+        : static_cast<F32>(output_width) / static_cast<F32>(output_height);
+    if (capture->mMode == ECaptureMode::CAMERA_FEED &&
+        std::isfinite(display_aspect) && std::isfinite(capture_aspect) &&
+        display_aspect > F_ALMOST_ZERO && capture_aspect > F_ALMOST_ZERO)
+    {
+        const F32 anchor_x = display->mSettings.mAnchor[0];
+        const F32 anchor_y = display->mSettings.mAnchor[1];
+        if (display->mSettings.mFitMode == EFitMode::FIT)
+        {
+            state.mLetterbox = 1;
+            if (display_aspect > capture_aspect)
+            {
+                const F32 fraction = capture_aspect / display_aspect;
+                state.mDisplayToCaptureScale[0] = 1.f / fraction;
+                state.mDisplayToCaptureOffset[0] = -anchor_x * (1.f - fraction) / fraction;
+            }
+            else
+            {
+                const F32 fraction = display_aspect / capture_aspect;
+                state.mDisplayToCaptureScale[1] = 1.f / fraction;
+                state.mDisplayToCaptureOffset[1] = -anchor_y * (1.f - fraction) / fraction;
+            }
+        }
+        else if (display->mSettings.mFitMode == EFitMode::FILL)
+        {
+            if (display_aspect > capture_aspect)
+            {
+                const F32 crop = capture_aspect / display_aspect;
+                state.mDisplayToCaptureScale[1] = crop;
+                state.mDisplayToCaptureOffset[1] = anchor_y * (1.f - crop);
+            }
+            else
+            {
+                const F32 crop = display_aspect / capture_aspect;
+                state.mDisplayToCaptureScale[0] = crop;
+                state.mDisplayToCaptureOffset[0] = anchor_x * (1.f - crop);
+            }
+        }
+    }
+    std::memcpy(state.mBarColorLinear, display->mSettings.mBarColorLinear,
+                sizeof(state.mBarColorLinear));
+    return true;
 }
 
 U32 getCompositeStates(LLRenderTarget* screen_target, CompositeState* states,
@@ -8801,7 +8965,7 @@ U32 getCompositeStates(LLRenderTarget* screen_target, CompositeState* states,
          capture_slot < MAX_CAPTURES && state_count < capacity; ++capture_slot)
     {
         const PrismInstance* capture = registry.capture(capture_slot);
-        if (!capture || !capture->mHasOutput) continue;
+        if (!capture || !capture->mHasOutput || capture->mOutputPreviewQuality) continue;
         LLRenderTarget& output = gPipeline.mPrismLensOutput[capture_slot];
         U32 output_width = 0;
         U32 output_height = 0;
@@ -8970,6 +9134,11 @@ U32 getCompositeStates(LLRenderTarget* screen_target, CompositeState* states,
             }
             std::memcpy(state.mBarColorLinear, display->mSettings.mBarColorLinear,
                         sizeof(state.mBarColorLinear));
+            // Final signal fields come from the same VC3 builder used by raw/
+            // face atlas composition. The preceding legacy packing is retained
+            // temporarily only to keep this review diff localized.
+            if (!buildSignalCompositeState(capture_slot, display,
+                                           display_aspect, state)) continue;
 
             if (is_virtual)
             {
@@ -9063,7 +9232,7 @@ U32 getAuxCompositeStates(LLRenderTarget* screen_target, CompositeState* states,
          capture_slot < MAX_CAPTURES && state_count < capacity; ++capture_slot)
     {
         const PrismInstance* capture = registry.capture(capture_slot);
-        if (!capture || !capture->mHasOutput) continue;
+        if (!capture || !capture->mHasOutput || capture->mOutputPreviewQuality) continue;
         LLRenderTarget& output = gPipeline.mPrismLensOutput[capture_slot];
         U32 output_width = 0;
         U32 output_height = 0;
@@ -9221,6 +9390,8 @@ U32 getAuxCompositeStates(LLRenderTarget* screen_target, CompositeState* states,
             }
             std::memcpy(state.mBarColorLinear, display->mSettings.mBarColorLinear,
                         sizeof(state.mBarColorLinear));
+            if (!buildSignalCompositeState(capture_slot, display,
+                                           display_aspect, state)) continue;
 
             // Full aux-target scissor (see header note): the main-view lens-rect
             // scissor math is invalid in the aux camera's viewport.
@@ -9233,6 +9404,131 @@ U32 getAuxCompositeStates(LLRenderTarget* screen_target, CompositeState* states,
         }
     }
     return state_count;
+}
+
+bool buildPreviewCompositeState(const CaptureHandle& capture_handle,
+                                const DisplayHandle& display_handle,
+                                F32 display_aspect,
+                                CompositeState& state,
+                                bool& offline)
+{
+    offline = false;
+    state = CompositeState();
+    PrismLensRegistry& registry = PrismLensRegistry::instance();
+    U32 capture_slot = MAX_CAPTURES;
+    const PrismInstance* capture = nullptr;
+    for (U32 slot = 0; slot < MAX_CAPTURES; ++slot)
+    {
+        const PrismInstance* candidate = registry.capture(slot);
+        if (candidate && candidate->mHandle.mId == capture_handle.mId &&
+            candidate->mHandle.mGeneration == capture_handle.mGeneration)
+        {
+            capture_slot = slot;
+            capture = candidate;
+            break;
+        }
+    }
+    if (!capture || !capture->mHasOutput ||
+        !gPipeline.mPrismLensOutput[capture_slot].isComplete())
+    {
+        offline = true;
+        return false;
+    }
+
+    const PrismDisplay* display = nullptr;
+    if (!display_handle.mId.isNull())
+    {
+        for (U32 slot = 0; slot < MAX_DISPLAY_BINDINGS; ++slot)
+        {
+            const PrismDisplay* candidate = registry.display(slot);
+            if (candidate && candidate->mHandle.mId == display_handle.mId &&
+                candidate->mHandle.mGeneration == display_handle.mGeneration &&
+                candidate->mCaptureSlot == capture_slot &&
+                candidate->mCaptureGeneration == capture->mHandle.mGeneration)
+            {
+                display = candidate;
+                break;
+            }
+        }
+        if (!display)
+        {
+            offline = true;
+            return false;
+        }
+
+        const PrismFrame& frame = display->mFrame;
+        const F32 basis_u = frame.mWorldSurfaceUEdge.magVec();
+        const F32 basis_v = frame.mWorldSurfaceVEdge.magVec();
+        // A real face without a previously resolved geometry cache cannot be
+        // reproduced exactly. Never manufacture the missing aspect/sheen basis.
+        if ((!display->mSettings.mVirtual && !display->mSurfaceCache.mValid) ||
+            !std::isfinite(basis_u) || !std::isfinite(basis_v) ||
+            basis_u <= F_ALMOST_ZERO || basis_v <= F_ALMOST_ZERO)
+        {
+            offline = true;
+            return false;
+        }
+        const LLVector3 corners[4] = {
+            frame.mWorldSurfaceOrigin,
+            frame.mWorldSurfaceOrigin + frame.mWorldSurfaceUEdge,
+            frame.mWorldSurfaceOrigin + frame.mWorldSurfaceUEdge + frame.mWorldSurfaceVEdge,
+            frame.mWorldSurfaceOrigin + frame.mWorldSurfaceVEdge };
+        for (U32 corner = 0; corner < 4; ++corner)
+        {
+            std::memcpy(state.mVirtualCorners[corner], corners[corner].mV,
+                        sizeof(state.mVirtualCorners[corner]));
+        }
+        std::memcpy(state.mSurfaceOrigin, frame.mSurfaceOrigin.mV,
+                    sizeof(state.mSurfaceOrigin));
+        std::memcpy(state.mSurfaceUDual, frame.mSurfaceUDual.mV,
+                    sizeof(state.mSurfaceUDual));
+        std::memcpy(state.mSurfaceVDual, frame.mSurfaceVDual.mV,
+                    sizeof(state.mSurfaceVDual));
+        display_aspect = basis_u / basis_v;
+    }
+
+    if (!buildSignalCompositeState(capture_slot, display, display_aspect, state))
+    {
+        offline = true;
+        return false;
+    }
+    state.mScissor[2] = 256;
+    state.mScissor[3] = 144;
+    return true;
+}
+
+bool previewTileActivity(const CaptureHandle& capture_handle,
+                         EActivityState& activity,
+                         bool& healthy)
+{
+    PrismLensRegistry& registry = PrismLensRegistry::instance();
+    for (U32 slot = 0; slot < MAX_CAPTURES; ++slot)
+    {
+        const PrismInstance* capture = registry.capture(slot);
+        if (capture && capture->mHandle.mId == capture_handle.mId &&
+            capture->mHandle.mGeneration == capture_handle.mGeneration)
+        {
+            activity = capture->mRuntime.mActivity;
+            healthy = capture->mRuntime.mHealth == ECaptureHealth::READY;
+            return true;
+        }
+    }
+    activity = EActivityState::IDLE;
+    healthy = false;
+    return false;
+}
+
+U32 captureSlot(const CaptureHandle& capture_handle)
+{
+    PrismLensRegistry& registry = PrismLensRegistry::instance();
+    for (U32 slot = 0; slot < MAX_CAPTURES; ++slot)
+    {
+        const PrismInstance* capture = registry.capture(slot);
+        if (capture && capture->mHandle.mId == capture_handle.mId &&
+            capture->mHandle.mGeneration == capture_handle.mGeneration)
+            return slot;
+    }
+    return MAX_CAPTURES;
 }
 
 bool getActiveClipPlane(LLPlane& plane)

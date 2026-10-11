@@ -799,6 +799,19 @@ U32 getCompositeStates(LLRenderTarget* screen_target, CompositeState* states,
 U32 getAuxCompositeStates(LLRenderTarget* screen_target, CompositeState* states,
                           U32 capacity);
 
+// VC3 monitor compositor. Raw uses a null display handle. A selected real
+// face must have a resolved basis; otherwise offline is returned and callers
+// draw a slate rather than guessing an aspect or sheen input.
+bool buildPreviewCompositeState(const CaptureHandle& capture,
+                                const DisplayHandle& display,
+                                F32 display_aspect,
+                                CompositeState& state,
+                                bool& offline);
+bool previewTileActivity(const CaptureHandle& capture,
+                         EActivityState& activity,
+                         bool& healthy);
+U32 captureSlot(const CaptureHandle& capture);
+
 // Plane whose non-negative half-space is behind the lens, in agent space.
 bool getActiveClipPlane(LLPlane& plane);
 

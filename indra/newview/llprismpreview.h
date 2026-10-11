@@ -7,18 +7,33 @@
 #define LL_LLPRISMPREVIEW_H
 
 #include "llprismlens.h"
+#include "llrect.h"
+#include "llrendertarget.h"
 
 #include <array>
+#include <cmath>
+#include <limits>
 
 namespace LLPrismPreviewPolicy
 {
 constexpr U32 WIDTH = 192;
 constexpr U32 HEIGHT = 108;
 constexpr F32 MAX_FAR_CLIP = 64.f;
+constexpr F32 ENTITLEMENT_EPSILON = 0.001f;
 
 inline std::array<F32, 4> neutralAO()
 {
     return { 1.f, 1.f, 1.f, 1.f };
+}
+
+// This is the production AO seed decision as a pure operation so the renderer
+// and regression test exercise the same stale-attachment replacement path.
+inline void seedPreviewAO(bool preview_render, std::array<F32, 4>& attachment)
+{
+    if (preview_render)
+    {
+        attachment = neutralAO();
+    }
 }
 
 inline F32 requestedHz(F32 shared_hz, LLPrismLens::EOutputRateMode mode,
@@ -33,6 +48,25 @@ inline F32 requestedHz(F32 shared_hz, LLPrismLens::EOutputRateMode mode,
 inline F64 advanceDeadline(F64 now, F32 entitlement_hz)
 {
     return now + 1.0 / static_cast<F64>(llmax(0.01f, entitlement_hz));
+}
+
+// Fit a producer aspect into the lifetime-fixed 16:9 preview pack. The
+// retained publication exposes only this logical rectangle, avoiding an
+// anamorphic stretch for non-16:9 cameras and Surface Lenses.
+inline void letterboxExtent(F32 aspect, U32& width, U32& height)
+{
+    width = WIDTH;
+    height = HEIGHT;
+    if (!std::isfinite(aspect) || aspect <= 0.f) return;
+    const F32 pack_aspect = static_cast<F32>(WIDTH) / static_cast<F32>(HEIGHT);
+    if (aspect > pack_aspect)
+    {
+        height = llmax(1u, static_cast<U32>(ll_round(static_cast<F32>(WIDTH) / aspect)));
+    }
+    else if (aspect < pack_aspect)
+    {
+        width = llmax(1u, static_cast<U32>(ll_round(static_cast<F32>(HEIGHT) * aspect)));
+    }
 }
 
 // Pure bounded max-min tier. Production invokes this once for visible/Gate
@@ -50,7 +84,7 @@ inline F32 waterFillTier(const std::array<bool, LLPrismLens::MAX_CAPTURES>& acti
     }
 
     F32 remaining = llmax(0.f, capacity);
-    while (remaining_count > 0 && remaining > 0.f)
+    while (remaining_count > 0 && remaining > ENTITLEMENT_EPSILON)
     {
         const F32 share = remaining / static_cast<F32>(remaining_count);
         bool fixed_one = false;
@@ -72,7 +106,7 @@ inline F32 waterFillTier(const std::array<bool, LLPrismLens::MAX_CAPTURES>& acti
             remaining = 0.f;
         }
     }
-    return remaining;
+    return remaining > ENTITLEMENT_EPSILON ? remaining : 0.f;
 }
 } // namespace LLPrismPreviewPolicy
 
@@ -83,6 +117,29 @@ public:
 
     static LLPrismPreviewService& instance();
 
+    enum class ETileState : U8
+    {
+        LIVE,
+        PREVIEW,
+        PAUSED,
+        OFFLINE,
+        THROTTLED
+    };
+
+    struct AtlasHandle
+    {
+        U64 mGeneration = 0;
+    };
+
+    struct TilePublication
+    {
+        AtlasHandle mAtlas;
+        LLRectf mCellUV;
+        ETileState mState = ETileState::OFFLINE;
+        F64 mTimestamp = 0.0;
+        U64 mPublicationSerial = 0;
+    };
+
     // Future VC6 page contract. Visibility is owner-scoped so the inline page
     // and advanced manager cannot hide one another's previews.
     void setDemand(const LLPrismLens::CaptureHandle& capture, bool demanded);
@@ -90,11 +147,25 @@ public:
     void setPageVisible(bool visible);
     void setConsumerVisible(VisibilityOwner owner, bool visible);
     void releaseConsumer(VisibilityOwner owner);
+    void setMonitorSelection(U32 capture_slot,
+                             const LLPrismLens::DisplayHandle& display);
+    AtlasHandle atlasHandle() const { return AtlasHandle{ mAtlasGeneration }; }
+    bool bindAtlas(const AtlasHandle& handle, S32 texture_channel = 0);
+    TilePublication tileState(const LLPrismLens::CaptureHandle& capture) const;
+    U64 revision() const { return mRevision; }
+    bool hasPendingAtlasUpdate() const;
 
     bool prepareFrame();
+    // Called only after ScopedPrismRenderState is live. Failed cold allocation
+    // is rate-limited so a low-memory viewer does not churn FBOs every frame.
+    bool ensureScratchReady();
     bool isDemanded(const LLPrismLens::CaptureHandle& capture) const;
     F32 requestedHz(const LLPrismLens::CaptureRateSettings& rate) const;
-    void notePublication(const LLPrismLens::CaptureHandle& capture, U64 serial);
+    void notePublication(const LLPrismLens::CaptureHandle& capture, U64 serial,
+                         bool preview_quality);
+    // Called once from renderAuxiliaryView after its scene-render scope ended.
+    // It performs at most one queued cell update.
+    void updateAtlas();
     void onRenderTargetsReleased();
 
 private:
@@ -105,6 +176,8 @@ private:
         LLPrismLens::CaptureHandle mCapture;
         bool mDemanded = false;
         U64 mPublicationSerial = 0;
+        U64 mAtlasSerial = 0;
+        bool mPreviewQuality = false;
     };
     struct VisibilityEntry
     {
@@ -117,6 +190,16 @@ private:
 
     std::array<DemandEntry, LLPrismLens::MAX_CAPTURES> mDemand;
     std::array<VisibilityEntry, 4> mVisibility;
+    std::array<LLPrismLens::DisplayHandle, LLPrismLens::MAX_CAPTURES> mSelection;
+    std::array<TilePublication, LLPrismLens::MAX_CAPTURES> mTiles;
+    std::array<F64, LLPrismLens::MAX_CAPTURES> mNextAtlasDue{};
+    LLRenderTarget mAtlas;
+    U64 mAtlasGeneration = 1;
+    U64 mRevision = 1;
+    U32 mNextAtlasSlot = 0;
+    U32 mLastAtlasFrame = std::numeric_limits<U32>::max();
+    F64 mScratchRetryAfter = 0.0;
+    bool mLastPreviewsEnabled = true;
 };
 
 // Installed only for a preview-only scene attempt and nested inside the full

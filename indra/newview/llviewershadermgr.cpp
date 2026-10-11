@@ -173,6 +173,7 @@ LLGLSLShader            gPostScreenSpaceReflectionProgram;
 // Deferred rendering shaders
 LLGLSLShader            gDeferredImpostorProgram;
 LLGLSLShader            gPrismLensProgram;
+LLGLSLShader            gPrismPreviewProgram[8];
 LLGLSLShader            gDeferredDiffuseProgram;
 LLGLSLShader            gDeferredDiffuseAlphaMaskProgram;
 LLGLSLShader            gDeferredSkinnedDiffuseAlphaMaskProgram;
@@ -1815,6 +1816,7 @@ bool LLViewerShaderMgr::loadShadersDeferred()
 
         gDeferredHighlightProgram.unload();
         gPrismLensProgram.unload();
+        for (LLGLSLShader& shader : gPrismPreviewProgram) shader.unload();
 
         gNormalMapGenProgram.unload();
         gDeferredGenBrdfLutProgram.unload();
@@ -1876,11 +1878,45 @@ bool LLViewerShaderMgr::loadShadersDeferred()
     gPrismLensProgram.mShaderFiles.clear();
     gPrismLensProgram.clearPermutations();
     gPrismLensProgram.mShaderFiles.push_back(make_pair("deferred/prismLensV.glsl", GL_VERTEX_SHADER));
+    gPrismLensProgram.mShaderFiles.push_back(make_pair("deferred/prismSignalF.glsl", GL_FRAGMENT_SHADER));
     gPrismLensProgram.mShaderFiles.push_back(make_pair("deferred/prismLensF.glsl", GL_FRAGMENT_SHADER));
     gPrismLensProgram.mShaderLevel = mShaderLevel[SHADER_DEFERRED];
     if (!gPrismLensProgram.createShader())
     {
         LL_WARNS("Shader") << "Prism Lens composite shader failed to load; Prism Lens disabled. Deferred rendering unaffected." << LL_ENDL;
+    }
+
+    // Preview shader availability is fail-open for the world compositor but
+    // all-or-nothing for monitors: a partial permutation family is unloaded so
+    // the service can publish OFFLINE instead of silently changing the grade.
+    bool preview_shaders_ok = true;
+    for (U32 permutation = 0; permutation < 8; ++permutation)
+    {
+        LLGLSLShader& shader = gPrismPreviewProgram[permutation];
+        shader.mName = llformat("Prism Preview Shader %u", permutation);
+        shader.mFeatures.isDeferred = true;
+        shader.mFeatures.hasSrgb = true;
+        shader.mFeatures.hasTonemap = permutation >= 4;
+        shader.mFeatures.hasColorGrade = permutation == 2 || permutation == 3 ||
+                                           permutation == 6 || permutation == 7;
+        shader.mShaderFiles.clear();
+        shader.clearPermutations();
+        shader.mShaderFiles.push_back(make_pair("deferred/prismPreviewV.glsl", GL_VERTEX_SHADER));
+        shader.mShaderFiles.push_back(make_pair("deferred/prismSignalF.glsl", GL_FRAGMENT_SHADER));
+        shader.mShaderFiles.push_back(make_pair("deferred/prismPreviewF.glsl", GL_FRAGMENT_SHADER));
+        if (shader.mFeatures.hasTonemap) shader.addPermutation("TONEMAP", "1");
+        if (shader.mFeatures.hasColorGrade) shader.addPermutation("COLOR_GRADE", "1");
+        if (permutation == 1 || permutation == 3 || permutation == 5 || permutation == 7)
+        {
+            shader.addPermutation("LEGACY_GAMMA", "1");
+        }
+        shader.mShaderLevel = mShaderLevel[SHADER_DEFERRED];
+        preview_shaders_ok = shader.createShader() && preview_shaders_ok;
+    }
+    if (!preview_shaders_ok)
+    {
+        for (LLGLSLShader& shader : gPrismPreviewProgram) shader.unload();
+        LL_WARNS("Shader") << "Prism preview shader family unavailable; world Prism remains enabled." << LL_ENDL;
     }
 
     if (success)
