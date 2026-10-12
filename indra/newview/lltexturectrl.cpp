@@ -542,8 +542,9 @@ bool LLFloaterTexturePicker::handleKeyHere(KEY key, MASK mask)
 
 void LLFloaterTexturePicker::onOpen(const LLSD& key)
 {
-    mPickerFinalized = false;
-    mVCamLiveApplied = false;
+    // mPickerFinalized/mVCamLiveApplied are per picker session: they are reset
+    // in onClose, not here, because openFloater() re-runs onOpen when the
+    // swatch is clicked while the picker is already open.
     if (sLastPickerMode != 0
         && (mLocalTextureEnabled || sLastPickerMode != 1)
         && (mBakeTextureEnabled || sLastPickerMode != 2)
@@ -561,6 +562,8 @@ void LLFloaterTexturePicker::onClose(bool app_quitting)
         mOnFloaterCommitCallback(LLTextureCtrl::TEXTURE_CANCEL, PICKER_VCAM,
             mOriginalImageAssetID, LLUUID::null, mOriginalVCamCaptureID);
     }
+    mPickerFinalized = false;
+    mVCamLiveApplied = false;
     if (mOwner && mOnFloaterCloseCallback)
     {
         mOnFloaterCloseCallback();
