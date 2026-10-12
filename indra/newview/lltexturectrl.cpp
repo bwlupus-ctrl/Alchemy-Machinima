@@ -2479,7 +2479,9 @@ bool LLTextureCtrl::handleDragAndDrop(S32 x, S32 y, MASK mask,
         allow_dnd = is_texture || is_mesh || is_material;
     }
 
-    if (getEnabled() && allow_dnd && allowDrop(item, cargo_type, tooltip_msg))
+    // mStandardEnabled, not getEnabled(): the swatch stays enabled for the viewer-local VCam
+    // source even when the slot itself isn't editable; inventory drops must still be refused then.
+    if (mStandardEnabled && getEnabled() && allow_dnd && allowDrop(item, cargo_type, tooltip_msg))
     {
         if (drop)
         {
