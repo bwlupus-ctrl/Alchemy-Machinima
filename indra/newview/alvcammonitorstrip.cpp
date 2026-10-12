@@ -616,8 +616,11 @@ void ALVCamCameraSelector::draw()
     LLUICtrl::draw();
 }
 
-bool ALVCamCameraSelector::handleMouseDown(S32 x, S32, MASK)
+bool ALVCamCameraSelector::handleMouseDown(S32 x, S32 y, MASK mask)
 {
+    // The "+ Add camera" combo and "Remove capture" button are children:
+    // give them the click first (this override used to swallow it).
+    if (LLUICtrl::handleMouseDown(x, y, mask)) return true;
     if (mItems.empty() || x >= mChipWidth) return false;
     const S32 index = llclamp(x * static_cast<S32>(mItems.size()) /
                               llmax(1, mChipWidth), 0,
