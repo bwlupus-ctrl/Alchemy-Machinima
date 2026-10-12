@@ -282,6 +282,76 @@ void ALFloaterLightBox::fitScrollContent()
     mScrollFit.fit(this, findChild<LLTabContainer>("lightbox_tab_container"));
 }
 
+void ALFloaterLightBox::reshape(S32 width, S32 height, bool called_from_parent)
+{
+    LLFloater::reshape(width, height, called_from_parent);
+    // Saved floater sizes are applied after XUI construction.  Reassert the
+    // tab-local scroller invariant for both named and auto-wrapped pages.
+    if (findChild<LLTabContainer>("lightbox_tab_container"))
+    {
+        fitScrollContent();
+    }
+}
+
+void ALFloaterLightBox::reflowVisibleRows(const char* scroller_name)
+{
+    LLScrollContainer* scroller = findChild<LLScrollContainer>(scroller_name);
+    LLView* document = scroller ? ALScrollFit::scrolledView(scroller) : nullptr;
+    if (!document) return;
+
+    auto& layout = mRowLayouts[scroller_name];
+    if (layout.empty())
+    {
+        for (LLView* child : *document->getChildList())
+            if (child) layout.emplace_back(child, child->getRect());
+    }
+
+    struct Row
+    {
+        S32 center = 0;
+        std::vector<const std::pair<LLView*, LLRect>*> items;
+    };
+    std::vector<Row> rows;
+    for (const auto& item : layout)
+    {
+        const S32 center = item.second.getCenterY();
+        auto row = std::find_if(rows.begin(), rows.end(), [center](const Row& candidate)
+            { return llabs(candidate.center - center) <= 5; });
+        if (row == rows.end())
+        {
+            rows.push_back({ center, { &item } });
+        }
+        else
+        {
+            row->items.push_back(&item);
+        }
+    }
+    std::sort(rows.begin(), rows.end(), [](const Row& lhs, const Row& rhs)
+        { return lhs.center > rhs.center; });
+
+    S32 shift = 0;
+    for (size_t index = 0; index < rows.size(); ++index)
+    {
+        Row& row = rows[index];
+        bool visible = false;
+        S32 row_height = 1;
+        for (const auto* item : row.items)
+        {
+            item->first->setOrigin(item->second.mLeft, item->second.mBottom + shift);
+            visible = visible || item->first->getVisible();
+            row_height = llmax(row_height, item->second.getHeight());
+        }
+        if (!visible)
+        {
+            const S32 stride = index + 1 < rows.size()
+                ? llmax(1, row.center - rows[index + 1].center)
+                : row_height + 4;
+            shift += stride;
+        }
+    }
+    ALScrollFit::fitContainer(scroller);
+}
+
 // [LightboxWheel]
 void ALFloaterLightBox::onOpen(const LLSD& key)
 {
@@ -670,6 +740,7 @@ void ALFloaterLightBox::updateRotoInkDepthMode()
     {
         if (LLView* v = findChild<LLView>(name)) v->setVisible(metric);
     }
+    reflowVisibleRows("rotoink_settings_scroll");
 }
 
 // [RotoInk Anim] Contract A.8. Same findChild+setVisible idiom as
@@ -814,6 +885,7 @@ void ALFloaterLightBox::updateRotoInkAnimVisibility()
     set_row("CineOutlineSubjectScreenCY", "ri_subject_screen_cy_slider", mode78);
     set_row("CineOutlineSubjectScreenRX", "ri_subject_screen_rx_slider", mode78);
     set_row("CineOutlineSubjectScreenRY", "ri_subject_screen_ry_slider", mode78);
+    reflowVisibleRows("rotoink_settings_scroll");
 }
 
 // [TronT1] Tron tab: "reset" (all controls to default) or an ALTron look-
@@ -891,9 +963,8 @@ void ALFloaterLightBox::onTronApplyRigRimPreset()
 }
 
 // [TronT1] Contract section 7. Same findChild+setVisible idiom as
-// updateRotoInkAnimVisibility()/updateRotoInkDepthMode(); hidden rows leave
-// blank space in the scroll area rather than reflowing what follows (same
-// as every other mode-dependent group on the Roto Ink tab above).
+// updateRotoInkAnimVisibility()/updateRotoInkDepthMode(); the final row-layout
+// pass packs the remaining visible rows, matching the Director kit layout rule.
 void ALFloaterLightBox::updateTronVisibility()
 {
     const bool scene_layer   = (gSavedSettings.getS32("TronLayer") == 0);
@@ -1120,6 +1191,7 @@ void ALFloaterLightBox::updateTronVisibility()
     const bool trail_single_target_visible = trail_on && (trail_set == 0);
     if (LLView* v = findChild<LLView>("tr_trail_target_label")) v->setVisible(trail_single_target_visible);
     if (LLView* v = findChild<LLView>("tr_trail_target_combo")) v->setVisible(trail_single_target_visible);
+    reflowVisibleRows("tron_settings_scroll");
 }
 
 void ALFloaterLightBox::populateLUTCombo()

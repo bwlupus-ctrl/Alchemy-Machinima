@@ -25,6 +25,8 @@
 #include "aldirectoranimswitcher.h"
 #include "aldiopterpresetbank.h"
 #include "allocalfogmanager.h"
+#include "alpanelpatheditor.h"
+#include "alghoststudio.h"
 
 #include "llagent.h"
 #include "llappviewer.h"
@@ -2305,11 +2307,14 @@ private:
     bool prepareFunctionalDeclaredPrerequisites(const LLSD& entry)
     {
         bool ok = true;
-        const LLSD& prerequisites = entry["enabled_control"];
-        if (prerequisites.isArray())
+        const LLSD* prerequisite_sets[] = {
+            &entry["enabled_control"], &entry["reveal_settings"]
+        };
+        for (const LLSD* prerequisites : prerequisite_sets)
         {
-            for (LLSD::array_const_iterator it = prerequisites.beginArray();
-                 it != prerequisites.endArray(); ++it)
+            if (!prerequisites->isArray()) continue;
+            for (LLSD::array_const_iterator it = prerequisites->beginArray();
+                 it != prerequisites->endArray(); ++it)
             {
                 const std::string name = (*it).isMap() ?
                     (*it)["setting"].asString() : it->asString();
@@ -2327,6 +2332,59 @@ private:
     {
         bool ok = prepareFunctionalDeclaredPrerequisites(entry);
         const std::string widget = entry["widget_name"].asString();
+        const std::string prerequisite = entry["prereq"].asString();
+        if (mInWorld && (prerequisite == "ghost_selected_entity" ||
+                         prerequisite == "ghost_selected_formation") &&
+            gAgentAvatarp && mFunctionalGhostFixture.isNull())
+        {
+            ALGhostStudio& studio = ALGhostStudio::instance();
+            mFunctionalGhostSelectionBefore = studio.getSelected();
+            ALGhostStudio::Instance* instance = prerequisite == "ghost_selected_entity"
+                ? studio.spawnEntityClone(gAgentAvatarp->getID(), "Functional fixture")
+                : studio.addInstance(gAgentAvatarp->getID());
+            if (instance)
+            {
+                mFunctionalGhostFixture = instance->mId;
+                studio.setSelected(instance->mId);
+                if (prerequisite == "ghost_selected_entity")
+                    studio.setInstanceDriveMode(instance->mId, ALGhostStudio::DRIVE_DIRECTED);
+            }
+            ok = instance != nullptr && ok;
+        }
+        if (mInWorld && prerequisite == "path_actor_edit_2_waypoints" &&
+            gAgentAvatarp && !mFunctionalHaveActorPathBefore)
+        {
+            LLActorMover& mover = LLActorMover::instance();
+            mFunctionalActorMoverId = gAgentAvatarp->getID();
+            mFunctionalActorPathBefore = mover.pathSceneData(mFunctionalActorMoverId);
+            mFunctionalActorPathWalkingBefore = mover.isPathWalking(mFunctionalActorMoverId);
+            mFunctionalHaveActorPathBefore = true;
+            mover.stop(mFunctionalActorMoverId);
+            mover.clearPath(mFunctionalActorMoverId);
+            const LLVector3d origin = gAgent.getPositionGlobal();
+            mover.appendWaypointAt(mFunctionalActorMoverId, origin);
+            mover.appendWaypointAt(mFunctionalActorMoverId,
+                                   origin + LLVector3d(2.0, 0.0, 0.0));
+            mover.setEditNode(0);
+            if (ALPanelPathEditor* panel = findFirstView<ALPanelPathEditor>(mFunctionalPageRoot))
+            {
+                mFunctionalPathPanel = panel->getDerivedHandle<ALPanelPathEditor>();
+                mFunctionalPathTargetBefore = panel->getTargetActor();
+                LLCheckBoxCtrl* edit = panel->findChild<LLCheckBoxCtrl>("edit_mode_check", true);
+                if (edit)
+                {
+                    mFunctionalPathEditCheck = edit->getDerivedHandle<LLCheckBoxCtrl>();
+                    mFunctionalPathEditBefore = edit->getValue().asBoolean();
+                }
+                panel->setTargetActor(mFunctionalActorMoverId);
+                if (edit)
+                {
+                    edit->setValue(true); // ui-draw-lint: allow(raw-write) test-only one-shot path fixture
+                    edit->onCommit();
+                }
+            }
+            if (widget == "btn_stop_path") mover.start(mFunctionalActorMoverId);
+        }
         if (mDirectorV2 && widget.find("actor_only") != std::string::npos &&
             widget != "cine_actor_only_all")
         {
@@ -2753,7 +2811,35 @@ private:
                                          mFunctionalActorPathBefore);
             else
                 mover.clearPath(mFunctionalActorMoverId);
+            if (mFunctionalActorPathWalkingBefore && mFunctionalActorPathBefore.isMap())
+                mover.start(mFunctionalActorMoverId);
             mFunctionalHaveActorPathBefore = false;
+            mFunctionalActorPathWalkingBefore = false;
+        }
+        if (ALPanelPathEditor* panel = mFunctionalPathPanel.get())
+        {
+            panel->exitEditMode();
+            panel->setTargetActor(mFunctionalPathTargetBefore);
+            if (mFunctionalPathEditBefore && mFunctionalPathTargetBefore.notNull())
+            {
+                if (LLCheckBoxCtrl* edit = mFunctionalPathEditCheck.get())
+                {
+                    edit->setValue(true); // ui-draw-lint: allow(raw-write) test-only path fixture restore
+                    edit->onCommit();
+                }
+            }
+        }
+        mFunctionalPathPanel = LLHandle<ALPanelPathEditor>();
+        mFunctionalPathEditCheck = LLHandle<LLCheckBoxCtrl>();
+        mFunctionalPathTargetBefore.setNull();
+        mFunctionalPathEditBefore = false;
+        if (mFunctionalGhostFixture.notNull())
+        {
+            ALGhostStudio& studio = ALGhostStudio::instance();
+            studio.removeInstance(mFunctionalGhostFixture);
+            studio.setSelected(mFunctionalGhostSelectionBefore);
+            mFunctionalGhostFixture.setNull();
+            mFunctionalGhostSelectionBefore.setNull();
         }
         if (mFunctionalHaveActorStyleBefore)
         {
@@ -2865,8 +2951,14 @@ private:
         if (LLRadioGroup* radio = dynamic_cast<LLRadioGroup*>(control))
         {
             const LLSD original = radio->getValue();
-            const LLSD wanted = mFunctionalEntries[mFunctionalIndex]["test_value"]["value"];
-            if (!radio->setSelectedByValue(wanted, true)) return control;
+            S32 wanted_index = mFunctionalEntries[mFunctionalIndex]["test_value"]["item_index"].asInteger();
+            if (wanted_index < 0 || wanted_index >= radio->getItemCount() ||
+                wanted_index == radio->getSelectedIndex())
+            {
+                wanted_index = radio->getItemCount() > 1
+                    ? (radio->getSelectedIndex() + 1) % radio->getItemCount() : -1;
+            }
+            if (wanted_index < 0 || !radio->setSelectedIndex(wanted_index, true)) return control;
             std::vector<LLCheckBoxCtrl*> items;
             std::function<void(LLView*)> collect = [&](LLView* view)
             {
@@ -3255,7 +3347,14 @@ private:
             LLRect document_rect;
             if (target->localRectToOtherView(target->getLocalRect(), &document_rect,
                                              scroller->getScrolledView()))
+            {
                 scroller->scrollToShowRect(document_rect);
+                // Minimal reveal is insufficient when a viewport or host is clipped.
+                // Put the target at the top of the usable page before the on-screen
+                // oracle, which also makes the click deterministic across window sizes.
+                scroller->setDocPosVertical(llmax(0,
+                    scroller->getScrolledViewRect().getHeight() - document_rect.mTop));
+            }
         }
         S32 local_x = target->getLocalRect().getCenterX();
         S32 local_y = target->getLocalRect().getCenterY();
@@ -4388,6 +4487,7 @@ private:
             LLActorMover& mover = LLActorMover::instance();
             mFunctionalActorMoverId = gAgentAvatarp->getID();
             mFunctionalActorPathBefore = mover.pathSceneData(mFunctionalActorMoverId);
+            mFunctionalActorPathWalkingBefore = mover.isPathWalking(mFunctionalActorMoverId);
             mFunctionalHaveActorPathBefore = true;
             mover.stop(mFunctionalActorMoverId);
             mover.clearPath(mFunctionalActorMoverId);
@@ -4883,24 +4983,30 @@ private:
         }
         if (entry["exercise"].asString() == "toggle")
             expected = !mFunctionalBefore.asBoolean();
+        else if (dynamic_cast<LLRadioGroup*>(control))
+            expected = control->getValue();
         else if (expected.isMap() && expected["resolve"].asString() == "runtime" &&
                  dynamic_cast<LLComboBox*>(control))
             // Runtime-populated combos have no stable build-time value.  The
             // independent oracle is that the bound setting equals the item
             // reached through the real popup click.
             expected = control->getValue();
-        else if (dynamic_cast<LLSpinCtrl*>(control) && entry["increment"].isDefined())
+        else if (LLSpinCtrl* spinner = dynamic_cast<LLSpinCtrl*>(control);
+                 spinner && entry["increment"].isDefined())
         {
             const F64 minimum = entry["min"].asReal();
             const F64 maximum = entry["max"].asReal();
             const F64 increment = llabs(entry["increment"].asReal());
-            const F64 before = mFunctionalBefore.asReal();
+            const F64 before = mFunctionalControlBefore.asReal();
+            const F64 scale = std::pow(10.0, spinner->getPrecision());
+            // LLSpinCtrl parses the precision-clamped editor text, then adds one
+            // increment and clamps precision again (onUpBtn/onDownBtn).
+            const F64 current = scale > 0.0
+                ? ll_round(static_cast<F32>(before) * scale) / scale : before;
             const F64 direction = entry["test_value"].asReal() >= before ? 1.0 : -1.0;
-            const F64 stepped = before + direction * increment;
-            const F64 snapped = increment > 0.0
-                ? minimum + ll_round((stepped - minimum) / increment) * increment
-                : stepped;
-            expected = llclamp(snapped, minimum, maximum);
+            const F64 stepped = current + direction * increment;
+            const F64 rounded = scale > 0.0 ? ll_round(stepped * scale) / scale : stepped;
+            expected = llclamp(rounded, minimum, maximum);
         }
         const LLSD actual = mFunctionalSetting ? mFunctionalSetting->getValue() : LLSD();
         const bool changed = mFunctionalSetting &&
@@ -4911,7 +5017,8 @@ private:
         std::string assertion_failure;
         if (dynamic_cast<LLSpinCtrl*>(control))
         {
-            const F64 before = mFunctionalBefore.asReal();
+            const F64 before = mFunctionalSetting
+                ? mFunctionalBefore.asReal() : mFunctionalControlBefore.asReal();
             const bool default_in_range = before >= entry["min"].asReal() &&
                 before <= entry["max"].asReal();
             mFunctionalObserved["spinner"]["default_in_range"] = default_in_range;
@@ -4921,8 +5028,19 @@ private:
         }
         if (!mFunctionalSettingName.empty())
         {
-            expected_ok = expected_ok && mFunctionalSetting &&
-                functionalEqual(actual, expected, type, entry["increment"]);
+            bool setting_matches = mFunctionalSetting != nullptr;
+            if (setting_matches && dynamic_cast<LLColorSwatchCtrl*>(control) &&
+                type == "Color3" && actual.isArray() && expected.isArray())
+            {
+                setting_matches = actual.size() >= 3 && expected.size() >= 3;
+                for (S32 channel = 0; setting_matches && channel < 3; ++channel)
+                    setting_matches = functionalEqual(actual[channel], expected[channel], "F32");
+            }
+            else if (setting_matches)
+            {
+                setting_matches = functionalEqual(actual, expected, type, entry["increment"]);
+            }
+            expected_ok = expected_ok && setting_matches;
             observable = changed;
         }
         else
@@ -5318,6 +5436,37 @@ private:
                         assertion_failure = "masking banner count disagrees with actorOnlyVolumetricLightCount()";
                 }
             }
+        }
+        if (LLFloater* host = mFunctionalHostFloater.get();
+            host && host->getInstanceName() == "lightbox")
+        {
+            bool scroll_rects_inside = true;
+            LLTabContainer* tabs = host->findChild<LLTabContainer>("lightbox_tab_container", true);
+            std::function<void(LLView*)> inspect_tabs = [&](LLView* root)
+            {
+                if (!root) return;
+                if (LLTabContainer* tab_container = dynamic_cast<LLTabContainer*>(root))
+                {
+                    for (S32 index = 0; index < tab_container->getTabCount(); ++index)
+                    {
+                        LLPanel* panel = tab_container->getPanelByIndex(index);
+                        if (!panel) continue;
+                        const LLRect panel_rect = panel->getLocalRect();
+                        for (LLView* child : *panel->getChildList())
+                            if (LLScrollContainer* scroller = dynamic_cast<LLScrollContainer*>(child))
+                                scroll_rects_inside = scroll_rects_inside &&
+                                    panel_rect.contains(scroller->getRect());
+                        inspect_tabs(panel);
+                    }
+                    return;
+                }
+                for (LLView* child : *root->getChildList()) inspect_tabs(child);
+            };
+            inspect_tabs(tabs);
+            mFunctionalObserved["lightbox"]["scroll_rects_inside_tabs"] = scroll_rects_inside;
+            expected_ok = expected_ok && scroll_rects_inside;
+            if (!scroll_rects_inside)
+                assertion_failure = "Lightbox tab scroll container extends outside its tab panel";
         }
         const std::string observed = "value=" + functionalValue(actual) +
             "; consumer=" + functionalValue(consumer_after) +
@@ -8629,6 +8778,13 @@ private:
     LLUUID mFunctionalActorMoverId;
     LLSD mFunctionalActorPathBefore;
     bool mFunctionalHaveActorPathBefore = false;
+    bool mFunctionalActorPathWalkingBefore = false;
+    LLHandle<ALPanelPathEditor> mFunctionalPathPanel;
+    LLHandle<LLCheckBoxCtrl> mFunctionalPathEditCheck;
+    LLUUID mFunctionalPathTargetBefore;
+    bool mFunctionalPathEditBefore = false;
+    LLUUID mFunctionalGhostFixture;
+    LLUUID mFunctionalGhostSelectionBefore;
     LLDirectorCast::ActorStyle mFunctionalActorStyleBefore;
     bool mFunctionalHaveActorStyleBefore = false;
     S32 mFunctionalAnimSwitcherSlot = 0;

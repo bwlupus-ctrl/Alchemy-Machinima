@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<panel name="spinner_increment_precision_broken" width="240" height="80">
+  <spinner name="quarter_step" left="8" top="8" width="180" height="22"
+           min_val="0" max_val="10" increment="0.25" decimal_digits="1" />
+</panel>

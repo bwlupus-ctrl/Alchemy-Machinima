@@ -773,6 +773,89 @@ def prepare_manifest(path: Path, repo: Path, output: Path) -> tuple[int, int, in
         row["reveal"] = reveal
 
         widget = row.get("widget_name", "")
+        if row.get("page") == "path_tab":
+            row["prereq"] = "path_actor_edit_2_waypoints"
+        elif widget == "animation_library_combo":
+            row["prereq"] = "ghost_selected_entity"
+        elif widget == "array_parameter_spinner":
+            row["prereq"] = "ghost_selected_formation"
+        reveal_settings: list[dict[str, object]] = []
+        reveal_driver: tuple[str, object] | None = None
+        if widget.startswith("tm_"):
+            reveal_driver = ("AlchemyRenderTonemapType", 0)
+        elif widget.startswith("lpm_"):
+            reveal_driver = ("AlchemyRenderTonemapType", 7)
+        elif widget == "ri_match_reach_slider":
+            reveal_driver = ("CineOutlineInkColorMode", 1)
+        elif widget == "ri_metric_thr_slider":
+            reveal_driver = ("CineOutlineDepthMode", 1)
+        elif widget in {"ri_color2_swatch", "ri_color2_speed_slider", "ri_color2_length_slider"}:
+            reveal_driver = ("CineOutlineColor2Mode", 1)
+        elif widget in {"ri_subject_invert_check", "ri_subject_targetset_combo",
+                        "ri_subject_max_spinner", "ri_subject_shape_combo",
+                        "ri_subject_target_color_check"}:
+            reveal_driver = ("CineOutlineSubjectMode", 3)
+        elif widget == "ri_subject_source_combo":
+            reveal_driver = ("CineOutlineSubjectMode", 1)
+        elif widget in {"ri_subject_near_slider", "ri_subject_far_slider"}:
+            reveal_driver = ("CineOutlineSubjectMode", 4)
+        elif widget.startswith("ri_subject_screen_"):
+            reveal_driver = ("CineOutlineSubjectMode", 7)
+        elif widget in {"ri_pattern_size_slider", "ri_pattern_ratio_slider",
+                        "ri_pattern_drift_slider"}:
+            reveal_driver = ("CineOutlinePatternType", 1)
+        elif widget in {"ri_hatch_angle_slider", "ri_hatch_reach_slider", "ri_hatch_cross_check"}:
+            reveal_driver = ("CineOutlinePatternType", 4)
+        elif widget == "ri_motion_shape_slider":
+            reveal_driver = ("CineOutlineMotionStyle", 6)
+        elif widget == "ri_motion_angle_slider":
+            reveal_driver = ("CineOutlineMotionStyle", 3)
+        elif widget == "ri_motion2_shape_slider":
+            reveal_driver = ("CineOutlineMotion2Style", 6)
+        elif widget == "ri_motion2_angle_slider":
+            reveal_driver = ("CineOutlineMotion2Style", 3)
+        elif widget == "ri_motion_phase_slider":
+            reveal_driver = ("CineOutlineMotionTempo", 1.0)
+        elif widget.startswith("tr_trace_"):
+            reveal_settings.append({"setting": "TronTraceEnabled", "value": True,
+                                    "source": "ALFloaterLightBox::updateTronVisibility"})
+            if widget in {"tr_trace_pulse_speed_slider", "tr_trace_pulse_length_slider",
+                          "tr_trace_seed_slider"}:
+                reveal_driver = ("TronTracePulseAmount", 1.0)
+        elif widget.startswith("tr_rim_scan_"):
+            reveal_settings.append({"setting": "TronRimEnabled", "value": True,
+                                    "source": "ALFloaterLightBox::updateTronVisibility"})
+            reveal_driver = ("TronRimScanAmount", 1.0)
+        elif widget == "tr_trail_width_slider":
+            reveal_settings.append({"setting": "TronTrailEnabled", "value": True,
+                                    "source": "ALFloaterLightBox::updateTronVisibility"})
+            reveal_driver = ("TronTrailStyle", 1)
+        elif widget == "tr_subject_target_combo":
+            reveal_settings.append({"setting": "TronRimEnabled", "value": True,
+                                    "source": "ALFloaterLightBox::updateTronVisibility subject group"})
+            reveal_driver = ("TronSubjectTargetSet", 0)
+        elif widget in {"FlycamWeightedPreset", "FlycamWeightedWeight"}:
+            reveal_driver = ("FlycamFlightModel", 2)
+        elif widget == "diopter_blend":
+            reveal_driver = ("CineDiopterToolMode", 0)
+        elif widget == "diopter_power":
+            reveal_settings.append({"setting": "CineDiopterToolMode", "value": 0,
+                                    "source": "ALDiopterRelevance tool gate"})
+            reveal_driver = ("CineDiopterLensFocusMode", 0)
+        if reveal_driver:
+            reveal_settings.append({"setting": reveal_driver[0], "value": reveal_driver[1],
+                                    "source": "functional visibility prerequisite"})
+        row["reveal_settings"] = reveal_settings
+        if widget in {"anim_pose_name", "anim_pose_load_method"}:
+            row["reveal"].append({"selector": "anim_slot_kind", "value": 1})
+        elif widget == "gaze_cast_combo":
+            row["reveal"].append({"selector": "gaze_target_combo", "value": 2})
+        elif widget == "gaze_composition_mix_slider":
+            row["reveal"].append({"selector": "gaze_composition_combo", "value": 2})
+        elif widget == "array_parameter_spinner":
+            row["reveal"].append({"selector": "array_formation_combo", "value": 2})
+        elif widget == "animation_library_combo":
+            row["reveal"].append({"selector": "drive_mode_combo", "value": 1})
         if widget in {"anim_switcher_armed", "anim_switcher_auto",
                       "btn_anim_play", "btn_paste_play"}:
             row.update(
@@ -784,6 +867,10 @@ def prepare_manifest(path: Path, repo: Path, output: Path) -> tuple[int, int, in
             row["hazards"] = sorted(set(row.get("hazards", [])) | {"agent_send"})
         if widget in inworld_unprovisioned:
             row["inworld_known_gap_reason"] = inworld_unprovisioned[widget]
+        if widget in {"groups_list", "prop_list", "node_list",
+                      "db_playlist_list", "localfog_volume_list"}:
+            row["inworld_known_gap_reason"] = \
+                "in-world fixture gap: list has no safe viewer-local item to select"
         if row.get("page") == "props_tab" and widget == "btn_stop":
             row["inworld_known_gap_reason"] = \
                 "in-world design: prop Stop requires an enrolled prop path; the harness creates none"
@@ -975,6 +1062,16 @@ def prepare_manifest(path: Path, repo: Path, output: Path) -> tuple[int, int, in
                             "source": "ALCineRigRim::isEnabled"})
         row["enabled_control"] = prereqs
 
+        confirmed_wired = {
+            "db_mode", "db_t_speed", "db_t_desync", "gaze_enable_check",
+            "gaze_deadzone_spinner", "gaze_composition_combo", "gaze_range_preset_combo",
+            "gaze_blinks_check", "gaze_break_freq_slider", "switcher_custom_enabled",
+            "shake_preset_combo", "ir_preset_action", "cine_easy_rim", "cine_easy_bg",
+            "cine_easy_cone_width", "cine_easy_flare_preset", "cine_easy_night_mask_preset",
+            "cine_seed_randomize", "cine_aim_reset", "cine_fixture_mode",
+            "cine_fixture_preset", "cine_fixture_kelvin", "cine_open_cues",
+            "cine_flare_preset", "cine_night_mask_preset",
+        }
         temporal_presets = {
             "btn_freeze": (0.0, 1.0), "btn_quarter": (0.25, 1.0),
             "btn_half": (0.5, 1.0), "btn_realtime": (1.0, 0.5),
@@ -1170,6 +1267,11 @@ def prepare_manifest(path: Path, repo: Path, output: Path) -> tuple[int, int, in
                     # but a successful commit/visible change can never PASS.
                     row["no_state_oracle"] = True
                     row["known_gap"] = False
+        # These exact rows completed their real in-world action and oracle in
+        # run_functional_20261012_122652; an older UNWIRED classification must
+        # not overwrite that evidence during enrichment.
+        if widget in confirmed_wired:
+            row["known_gap"] = False
 
     document.setdefault("meta", {})["r4_enable_unresolved"] = sorted(set(unresolved))
     document["meta"]["r4_enabled_control_rows"] = sum(bool(r["enabled_control"]) for r in rows)

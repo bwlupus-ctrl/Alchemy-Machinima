@@ -420,7 +420,7 @@
         <text follows="left|top" halign="left" height="14" layout="topleft" left="12" top="2" width="304" name="lbl" font="SansSerifBold">
             Fly Hover (drone wander)
         </text>
-        <spinner top="22" control_name="CinematicCamHoverDistance" decimal_digits="1" follows="left|top" height="16" increment="0.25"
+        <spinner top="22" control_name="CinematicCamHoverDistance" decimal_digits="2" follows="left|top" height="16" increment="0.25"
          label="Dist" label_width="30" layout="topleft" left="12" max_val="15" min_val="0.5"
          name="CinematicCamHoverDistance" tool_tip="Mean distance from the subject (m)" width="81" />
         <button top="22" left="94" follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" name="reset_CinematicCamHoverDistance" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamHoverDistance" />
@@ -706,10 +706,10 @@
          label="Time" label_width="32" layout="topleft" max_val="3" min_val="0.05"
          name="CinematicCamWhipDuration" tool_tip="Whip duration (s). Toggle the mode off/on to retrigger" width="83" />
         <button top="22" left="292" follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" name="reset_CinematicCamWhipDuration" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamWhipDuration" />
-        <spinner top="44" control_name="CinematicCamWhipDistance" decimal_digits="1" follows="left|top" height="16" increment="0.25"
+        <spinner top="44" control_name="CinematicCamWhipDistance" decimal_digits="2" follows="left|top" height="16" increment="0.25"
          label="Dist" label_width="30" layout="topleft" left="12" max_val="15" min_val="0.5"
-         name="CinematicCamWhipDistance" tool_tip="Distance from the subject (m)" width="79" />
-        <button top="44" left="92" follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" name="reset_CinematicCamWhipDistance" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamWhipDistance" />
+         name="CinematicCamWhipDistance" tool_tip="Distance from the subject (m)" width="80" />
+        <button top="44" left="93" follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" name="reset_CinematicCamWhipDistance" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamWhipDistance" />
         <spinner top="44" left="110" control_name="CinematicCamWhipHeight" decimal_digits="1" follows="left|top" height="16" increment="0.1"
          label="Ht" label_width="20" layout="topleft" max_val="5" min_val="-2"
          name="CinematicCamWhipHeight" tool_tip="Height above the subject (m)" width="71" />
@@ -733,10 +733,10 @@
          label="Time" label_width="32" layout="topleft" max_val="60" min_val="0.5"
          name="CinematicCamArcDuration" tool_tip="Arc duration (s)" width="83" />
         <button top="22" left="292" follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" name="reset_CinematicCamArcDuration" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamArcDuration" />
-        <spinner top="44" control_name="CinematicCamArcDistance" decimal_digits="1" follows="left|top" height="16" increment="0.25"
+        <spinner top="44" control_name="CinematicCamArcDistance" decimal_digits="2" follows="left|top" height="16" increment="0.25"
          label="Dist" label_width="30" layout="topleft" left="12" max_val="15" min_val="0.5"
-         name="CinematicCamArcDistance" tool_tip="Distance from the subject (m)" width="79" />
-        <button top="44" left="92" follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" name="reset_CinematicCamArcDistance" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamArcDistance" />
+         name="CinematicCamArcDistance" tool_tip="Distance from the subject (m)" width="80" />
+        <button top="44" left="93" follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" name="reset_CinematicCamArcDistance" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamArcDistance" />
         <spinner top="44" left="110" control_name="CinematicCamArcHeight" decimal_digits="1" follows="left|top" height="16" increment="0.1"
          label="Ht" label_width="20" layout="topleft" max_val="5" min_val="-2"
          name="CinematicCamArcHeight" tool_tip="Height above the subject (m)" width="71" />
@@ -821,7 +821,7 @@
          label="Pad x" label_width="38" layout="topleft" max_val="3" min_val="0.5"
          name="CinematicCamTwoShotPad" tool_tip="Camera distance as a multiple of the pair's separation" width="89" />
         <button top="22" left="198" follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" name="reset_CinematicCamTwoShotPad" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamTwoShotPad" />
-        <spinner top="22" control_name="CinematicCamTwoShotMinDist" decimal_digits="1" follows="left|top" height="16" increment="0.25"
+        <spinner top="22" control_name="CinematicCamTwoShotMinDist" decimal_digits="2" follows="left|top" height="16" increment="0.25"
          label="Min" label_width="28" layout="topleft" left="216" max_val="20" min_val="0.5"
          name="CinematicCamTwoShotMinDist" tool_tip="Minimum camera distance (m)" width="79" />
         <button top="22" left="296" follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" name="reset_CinematicCamTwoShotMinDist" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamTwoShotMinDist" />
@@ -905,10 +905,10 @@
          label="R start" label_width="50" layout="topleft" left="12" max_val="30" min_val="0.3"
          name="CinematicCamSpiralStartRadius" tool_tip="Start radius (m)" width="93" />
         <button top="22" left="106" follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" name="reset_CinematicCamSpiralStartRadius" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamSpiralStartRadius" />
-        <spinner top="22" left="124" control_name="CinematicCamSpiralEndRadius" decimal_digits="1" follows="left|top" height="16" increment="0.25"
+        <spinner top="22" left="124" control_name="CinematicCamSpiralEndRadius" decimal_digits="2" follows="left|top" height="16" increment="0.25"
          label="R end" label_width="38" layout="topleft" max_val="30" min_val="0.3"
-         name="CinematicCamSpiralEndRadius" tool_tip="End radius (m)" width="87" />
-        <button top="22" left="212" follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" name="reset_CinematicCamSpiralEndRadius" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamSpiralEndRadius" />
+         name="CinematicCamSpiralEndRadius" tool_tip="End radius (m)" width="88" />
+        <button top="22" left="213" follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" name="reset_CinematicCamSpiralEndRadius" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamSpiralEndRadius" />
         <spinner top="44" left="12" control_name="CinematicCamSpiralSpeed" decimal_digits="0" follows="left|top" height="16" increment="5"
          label="deg/s" label_width="36" layout="topleft" max_val="180" min_val="-180"
          name="CinematicCamSpiralSpeed" tool_tip="Turn speed (deg/s); negative reverses" width="83" />
@@ -959,10 +959,10 @@
         <text follows="left|top" halign="left" height="14" layout="topleft" left="12" top="2" width="304" name="lbl" font="SansSerifBold">
             Barrel Roll (held frame, rolling)
         </text>
-        <spinner top="22" control_name="CinematicCamBarrelDistance" decimal_digits="1" follows="left|top" height="16" increment="0.25"
+        <spinner top="22" control_name="CinematicCamBarrelDistance" decimal_digits="2" follows="left|top" height="16" increment="0.25"
          label="Dist" label_width="30" layout="topleft" left="12" max_val="15" min_val="0.3"
-         name="CinematicCamBarrelDistance" tool_tip="Frontal distance from the subject (m)" width="79" />
-        <button top="22" left="92" follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" name="reset_CinematicCamBarrelDistance" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamBarrelDistance" />
+         name="CinematicCamBarrelDistance" tool_tip="Frontal distance from the subject (m)" width="80" />
+        <button top="22" left="93" follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" name="reset_CinematicCamBarrelDistance" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamBarrelDistance" />
         <spinner top="22" left="110" control_name="CinematicCamBarrelHeight" decimal_digits="1" follows="left|top" height="16" increment="0.1"
          label="Ht" label_width="20" layout="topleft" max_val="10" min_val="-2"
          name="CinematicCamBarrelHeight" tool_tip="Height above the subject (m)" width="71" />
@@ -995,7 +995,7 @@
          label="R0" label_width="22" layout="topleft" left="12" max_val="30" min_val="0.3"
          name="CinematicCamCorkStartRadius" tool_tip="Start orbit radius (m)" width="73" />
         <button top="22" left="86" follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" name="reset_CinematicCamCorkStartRadius" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamCorkStartRadius" />
-        <spinner top="22" left="104" control_name="CinematicCamCorkEndRadius" decimal_digits="1" follows="left|top" height="16" increment="0.25"
+        <spinner top="22" left="104" control_name="CinematicCamCorkEndRadius" decimal_digits="2" follows="left|top" height="16" increment="0.25"
          label="R1" label_width="22" layout="topleft" max_val="30" min_val="0.3"
          name="CinematicCamCorkEndRadius" tool_tip="End orbit radius (m)" width="73" />
         <button top="22" left="178" follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" name="reset_CinematicCamCorkEndRadius" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamCorkEndRadius" />
@@ -1096,10 +1096,10 @@
          label="Near" label_width="34" layout="topleft" left="12" max_val="15" min_val="0.2"
          name="CinematicCamFisheyeNear" tool_tip="Nearest distance to the face (m)" width="79" />
         <button top="22" left="92" follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" name="reset_CinematicCamFisheyeNear" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamFisheyeNear" />
-        <spinner top="22" left="110" control_name="CinematicCamFisheyeFar" decimal_digits="1" follows="left|top" height="16" increment="0.25"
+        <spinner top="22" left="110" control_name="CinematicCamFisheyeFar" decimal_digits="2" follows="left|top" height="16" increment="0.25"
          label="Far" label_width="26" layout="topleft" max_val="30" min_val="0.3"
-         name="CinematicCamFisheyeFar" tool_tip="Farthest distance before/after the lunge (m)" width="71" />
-        <button top="22" left="182" follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" name="reset_CinematicCamFisheyeFar" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamFisheyeFar" />
+         name="CinematicCamFisheyeFar" tool_tip="Farthest distance before/after the lunge (m)" width="76" />
+        <button top="22" left="187" follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" name="reset_CinematicCamFisheyeFar" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamFisheyeFar" />
         <spinner top="22" left="200" control_name="CinematicCamFisheyeFov" decimal_digits="2" follows="left|top" height="16" increment="0.05"
          label="Fov" label_width="28" layout="topleft" max_val="4" min_val="0.5"
          name="CinematicCamFisheyeFov" tool_tip="Constant FOV multiplier (above 1 = wide)" width="79" />
@@ -1108,10 +1108,10 @@
          label="Ht" label_width="20" layout="topleft" left="12" max_val="5" min_val="-5"
          name="CinematicCamFisheyeHeight" tool_tip="Height relative to the focus point (m)" width="67" />
         <button top="44" left="80" follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" name="reset_CinematicCamFisheyeHeight" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamFisheyeHeight" />
-        <spinner top="44" left="98" control_name="CinematicCamFisheyeDuration" decimal_digits="1" follows="left|top" height="16" increment="0.25"
+        <spinner top="44" left="98" control_name="CinematicCamFisheyeDuration" decimal_digits="2" follows="left|top" height="16" increment="0.25"
          label="Time" label_width="32" layout="topleft" max_val="30" min_val="0.25"
-         name="CinematicCamFisheyeDuration" tool_tip="Seconds for the push-and-recoil (s)" width="79" />
-        <button top="44" left="178" follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" name="reset_CinematicCamFisheyeDuration" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamFisheyeDuration" />
+         name="CinematicCamFisheyeDuration" tool_tip="Seconds for the push-and-recoil (s)" width="82" />
+        <button top="44" left="181" follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" name="reset_CinematicCamFisheyeDuration" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamFisheyeDuration" />
         <combo_box top="42" left="196" control_name="CinematicCamFisheyeEndMode" follows="left|top" height="20" layout="topleft"
          name="CinematicCamFisheyeEndMode"
          tool_tip="What happens when the lunge finishes" width="81">
@@ -1131,10 +1131,10 @@
          label="Ht" label_width="20" layout="topleft" left="12" max_val="2" min_val="0.05"
          name="CinematicCamSkimmerHeight" tool_tip="Camera height above the ground (m)" width="67" />
         <button top="36" left="80" follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" name="reset_CinematicCamSkimmerHeight" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamSkimmerHeight" />
-        <spinner top="36" left="98" control_name="CinematicCamSkimmerDistance" decimal_digits="1" follows="left|top" height="16" increment="0.25"
+        <spinner top="36" left="98" control_name="CinematicCamSkimmerDistance" decimal_digits="2" follows="left|top" height="16" increment="0.25"
          label="Dist" label_width="30" layout="topleft" max_val="20" min_val="0.5"
-         name="CinematicCamSkimmerDistance" tool_tip="Lateral distance from the subject (m)" width="79" />
-        <button top="36" left="178" follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" name="reset_CinematicCamSkimmerDistance" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamSkimmerDistance" />
+         name="CinematicCamSkimmerDistance" tool_tip="Lateral distance from the subject (m)" width="80" />
+        <button top="36" left="179" follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" name="reset_CinematicCamSkimmerDistance" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamSkimmerDistance" />
         <spinner top="36" left="196" control_name="CinematicCamSkimmerLength" decimal_digits="0" follows="left|top" height="16" increment="1"
          label="Len" label_width="26" layout="topleft" max_val="50" min_val="1"
          name="CinematicCamSkimmerLength" tool_tip="Lateral track length (m)" width="73" />
@@ -1162,10 +1162,10 @@
          label="End" label_width="28" layout="topleft" max_val="100" min_val="0.5"
          name="CinematicCamBoostEndHeight" tool_tip="End height at the top of the launch (m)" width="78" />
         <button top="36" left="189" follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" name="reset_CinematicCamBoostEndHeight" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamBoostEndHeight" />
-        <spinner top="36" left="207" control_name="CinematicCamBoostDistance" decimal_digits="1" follows="left|top" height="16" increment="0.25"
+        <spinner top="36" left="207" control_name="CinematicCamBoostDistance" decimal_digits="2" follows="left|top" height="16" increment="0.25"
          label="Dist" label_width="30" layout="topleft" max_val="20" min_val="0.3"
-         name="CinematicCamBoostDistance" tool_tip="Frontal distance from the subject (m)" width="75" />
-        <button top="36" left="283" follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" name="reset_CinematicCamBoostDistance" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamBoostDistance" />
+         name="CinematicCamBoostDistance" tool_tip="Frontal distance from the subject (m)" width="80" />
+        <button top="36" left="288" follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" name="reset_CinematicCamBoostDistance" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamBoostDistance" />
         <spinner top="58" control_name="CinematicCamBoostDuration" decimal_digits="1" follows="left|top" height="16" increment="0.5"
          label="Time" label_width="32" layout="topleft" left="12" max_val="60" min_val="0.5"
          name="CinematicCamBoostDuration" tool_tip="Seconds for the accelerating rise (s)" width="77" />
@@ -1296,10 +1296,10 @@
         <text follows="left|top" halign="left" height="14" layout="topleft" left="12" top="2" width="304" name="lbl" font="SansSerifBold">
             Tilt Whip (percussive vertical whips)
         </text>
-        <spinner top="22" control_name="CinematicCamTiltWhipDistance" decimal_digits="1" follows="left|top" height="16" increment="0.25"
+        <spinner top="22" control_name="CinematicCamTiltWhipDistance" decimal_digits="2" follows="left|top" height="16" increment="0.25"
          label="Dist" label_width="30" layout="topleft" left="12" max_val="15" min_val="0.3"
-         name="CinematicCamTiltWhipDistance" tool_tip="Frontal distance from the subject (m)" width="79" />
-        <button top="22" left="92" follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" name="reset_CinematicCamTiltWhipDistance" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamTiltWhipDistance" />
+         name="CinematicCamTiltWhipDistance" tool_tip="Frontal distance from the subject (m)" width="80" />
+        <button top="22" left="93" follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" name="reset_CinematicCamTiltWhipDistance" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamTiltWhipDistance" />
         <spinner top="22" left="110" control_name="CinematicCamTiltWhipHeight" decimal_digits="1" follows="left|top" height="16" increment="0.1"
          label="Ht" label_width="20" layout="topleft" max_val="10" min_val="-2"
          name="CinematicCamTiltWhipHeight" tool_tip="Height above the subject (m)" width="67" />
@@ -1308,10 +1308,10 @@
          label="Amp" label_width="30" layout="topleft" max_val="80" min_val="0"
          name="CinematicCamTiltWhipAmplitude" tool_tip="Pitch whip amplitude (deg)" width="79" />
         <button top="22" left="276" follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" name="reset_CinematicCamTiltWhipAmplitude" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamTiltWhipAmplitude" />
-        <spinner top="44" control_name="CinematicCamTiltWhipPeriod" decimal_digits="1" follows="left|top" height="16" increment="0.25"
+        <spinner top="44" control_name="CinematicCamTiltWhipPeriod" decimal_digits="2" follows="left|top" height="16" increment="0.25"
          label="Period" label_width="43" layout="topleft" left="12" max_val="30" min_val="0.25"
-         name="CinematicCamTiltWhipPeriod" tool_tip="Seconds between whip hits (s)" width="91" />
-        <button top="44" left="104" follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" name="reset_CinematicCamTiltWhipPeriod" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamTiltWhipPeriod" />
+         name="CinematicCamTiltWhipPeriod" tool_tip="Seconds between whip hits (s)" width="93" />
+        <button top="44" left="106" follows="left|top" height="16" width="12" image_overlay="Refresh_Off" image_top_pad="0" layout="topleft" name="reset_CinematicCamTiltWhipPeriod" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamTiltWhipPeriod" />
         <spinner top="44" left="122" control_name="CinematicCamTiltWhipSnap" decimal_digits="1" follows="left|top" height="16" increment="0.5"
          label="Snap" label_width="34" layout="topleft" max_val="20" min_val="0"
          name="CinematicCamTiltWhipSnap" tool_tip="Attack sharpness (higher = snappier settle)" width="83" />
@@ -1344,7 +1344,7 @@
     <panel name="panel_mode_parallax" left="0" top="135" width="320" height="98" follows="left|top" background_visible="false" border="false" visible="false" layout="topleft">
         <text follows="left|top" halign="left" height="14" layout="topleft" left="12" top="2" width="304" name="lbl" font="SansSerifBold">Parallax Slide (straight truck)</text>
         <spinner top="22" control_name="CinematicCamParallaxLength" decimal_digits="1" follows="left|top" height="16" increment="0.5" label="Length" label_width="43" layout="topleft" left="12" max_val="50" min_val="0.1" name="CinematicCamParallaxLength" tool_tip="Total rail length (m)" width="93" /><button top="22" left="106" follows="left|top" height="16" width="12" image_overlay="Refresh_Off" layout="topleft" name="reset_CinematicCamParallaxLength" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamParallaxLength" />
-        <spinner top="22" left="124" control_name="CinematicCamParallaxDistance" decimal_digits="1" follows="left|top" height="16" increment="0.25" label="Dist" label_width="30" layout="topleft" max_val="20" min_val="0.3" name="CinematicCamParallaxDistance" tool_tip="Rail distance from subject (m)" width="79" /><button top="22" left="204" follows="left|top" height="16" width="12" image_overlay="Refresh_Off" layout="topleft" name="reset_CinematicCamParallaxDistance" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamParallaxDistance" />
+        <spinner top="22" left="124" control_name="CinematicCamParallaxDistance" decimal_digits="2" follows="left|top" height="16" increment="0.25" label="Dist" label_width="30" layout="topleft" max_val="20" min_val="0.3" name="CinematicCamParallaxDistance" tool_tip="Rail distance from subject (m)" width="80" /><button top="22" left="205" follows="left|top" height="16" width="12" image_overlay="Refresh_Off" layout="topleft" name="reset_CinematicCamParallaxDistance" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamParallaxDistance" />
         <spinner top="22" control_name="CinematicCamParallaxHeight" decimal_digits="1" follows="left|top" height="16" increment="0.1" label="Ht" label_width="20" layout="topleft" left="222" max_val="10" min_val="-2" name="CinematicCamParallaxHeight" tool_tip="Camera height (m)" width="71" /><button top="22" left="294" follows="left|top" height="16" width="12" image_overlay="Refresh_Off" layout="topleft" name="reset_CinematicCamParallaxHeight" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamParallaxHeight" />
         <spinner top="44" left="12" control_name="CinematicCamParallaxDuration" decimal_digits="1" follows="left|top" height="16" increment="0.5" label="Time" label_width="30" layout="topleft" max_val="120" min_val="0.5" name="CinematicCamParallaxDuration" tool_tip="One-shot duration (s)" width="81" /><button top="44" left="94" follows="left|top" height="16" width="12" image_overlay="Refresh_Off" layout="topleft" name="reset_CinematicCamParallaxDuration" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamParallaxDuration" />
         <spinner top="44" left="112" control_name="CinematicCamParallaxHeading" decimal_digits="0" follows="left|top" height="16" increment="5" label="Head" label_width="34" layout="topleft" max_val="180" min_val="-180" name="CinematicCamParallaxHeading" tool_tip="Facing-relative rail heading (deg)" width="85" /><button top="44" left="198" follows="left|top" height="16" width="12" image_overlay="Refresh_Off" layout="topleft" name="reset_CinematicCamParallaxHeading" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamParallaxHeading" />
@@ -1371,9 +1371,9 @@
     <panel name="panel_mode_cable" left="0" top="135" width="320" height="98" follows="left|top" background_visible="false" border="false" visible="false" layout="topleft">
         <text follows="left|top" halign="left" height="14" layout="topleft" left="12" top="2" width="304" name="lbl" font="SansSerifBold">Cable Cam / Fly-by</text>
         <spinner top="22" control_name="CinematicCamCableLength" decimal_digits="1" follows="left|top" height="16" increment="0.5" label="Length" label_width="43" layout="topleft" left="12" max_val="100" min_val="1" name="CinematicCamCableLength" tool_tip="Straight pass length (m)" width="93" /><button top="22" left="106" follows="left|top" height="16" width="12" image_overlay="Refresh_Off" layout="topleft" name="reset_CinematicCamCableLength" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamCableLength" />
-        <spinner top="22" left="124" control_name="CinematicCamCableMissDistance" decimal_digits="1" follows="left|top" height="16" increment="0.25" label="Miss" label_width="30" layout="topleft" max_val="20" min_val="-20" name="CinematicCamCableMissDistance" tool_tip="Side offset of chord from subject (m)" width="81" /><button top="22" left="206" follows="left|top" height="16" width="12" image_overlay="Refresh_Off" layout="topleft" name="reset_CinematicCamCableMissDistance" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamCableMissDistance" />
+        <spinner top="22" left="124" control_name="CinematicCamCableMissDistance" decimal_digits="2" follows="left|top" height="16" increment="0.25" label="Miss" label_width="30" layout="topleft" max_val="20" min_val="-20" name="CinematicCamCableMissDistance" tool_tip="Side offset of chord from subject (m)" width="86" /><button top="22" left="211" follows="left|top" height="16" width="12" image_overlay="Refresh_Off" layout="topleft" name="reset_CinematicCamCableMissDistance" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamCableMissDistance" />
         <spinner top="22" control_name="CinematicCamCableHeight" decimal_digits="1" follows="left|top" height="16" increment="0.1" label="Ht" label_width="20" layout="topleft" left="224" max_val="20" min_val="-2" name="CinematicCamCableHeight" tool_tip="Pass height (m)" width="71" /><button top="22" left="296" follows="left|top" height="16" width="12" image_overlay="Refresh_Off" layout="topleft" name="reset_CinematicCamCableHeight" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamCableHeight" />
-        <spinner top="44" left="12" control_name="CinematicCamCableDuration" decimal_digits="1" follows="left|top" height="16" increment="0.25" label="Time" label_width="30" layout="topleft" max_val="60" min_val="0.5" name="CinematicCamCableDuration" tool_tip="One-shot pass duration (s)" width="81" /><button top="44" left="94" follows="left|top" height="16" width="12" image_overlay="Refresh_Off" layout="topleft" name="reset_CinematicCamCableDuration" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamCableDuration" />
+        <spinner top="44" left="12" control_name="CinematicCamCableDuration" decimal_digits="2" follows="left|top" height="16" increment="0.25" label="Time" label_width="30" layout="topleft" max_val="60" min_val="0.5" name="CinematicCamCableDuration" tool_tip="One-shot pass duration (s)" width="81" /><button top="44" left="94" follows="left|top" height="16" width="12" image_overlay="Refresh_Off" layout="topleft" name="reset_CinematicCamCableDuration" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamCableDuration" />
         <spinner top="44" left="112" control_name="CinematicCamCableHeading" decimal_digits="0" follows="left|top" height="16" increment="5" label="Head" label_width="34" layout="topleft" max_val="180" min_val="-180" name="CinematicCamCableHeading" tool_tip="Facing-relative path heading (deg)" width="85" /><button top="44" left="198" follows="left|top" height="16" width="12" image_overlay="Refresh_Off" layout="topleft" name="reset_CinematicCamCableHeading" tool_tip="Reset to default" commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamCableHeading" />
     </panel>
 

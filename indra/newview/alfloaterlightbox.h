@@ -37,7 +37,9 @@
 #include "lluuid.h" // [UIPerfC1] mSelLightLastId
 #include "alscrollfit.h" // [ScrollFit] mScrollFit (per-instance wheel guard + focus tracker)
 #include "aluirefresh.h"
+#include <map>
 #include <string>
+#include <vector>
 
 class LLButton;
 class LLCheckBoxCtrl;
@@ -55,14 +57,17 @@ public:
     static void showTab(const std::string& tab_panel_name);
     bool postBuild() override;
     virtual void draw() override;
+    void reshape(S32 width, S32 height, bool called_from_parent = true) override;
     // [LightboxWheel] re-fit every tab's scroll content on open (cheap, idempotent)
     void onOpen(const LLSD& key) override;
 
   private:
     // [LightboxWheel] Fits every scroll container's content panel to its children.
     void fitScrollContent();
+    void reflowVisibleRows(const char* scroller_name);
     // [ScrollFit] shared per-tab scroll machinery state (focus installs + wheel guard).
     ALScrollFit::Controller mScrollFit;
+    std::map<std::string, std::vector<std::pair<LLView*, LLRect>>> mRowLayouts;
 
     void onClickResetControlDefault(const LLSD& userdata);
     void onClickResetGroupDefault(const LLSD& userdata);

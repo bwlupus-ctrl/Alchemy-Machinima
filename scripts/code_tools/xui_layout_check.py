@@ -32,6 +32,7 @@ standard library.
 from __future__ import annotations
 
 import argparse
+import decimal
 import json
 import math
 import re
@@ -1336,6 +1337,19 @@ def check_node(
 
     if static_rules and node.tag in {"spinner", "spin_ctrl"} and node.rect is not None:
         digits = max(0, node.integer("decimal_digits", 3))
+        increment = node.attrs.get("increment")
+        if increment is not None:
+            try:
+                normalized = decimal.Decimal(increment).normalize()
+                required_digits = max(0, -normalized.as_tuple().exponent)
+            except decimal.InvalidOperation:
+                required_digits = 0
+            if required_digits > digits:
+                findings.append(
+                    Finding("spinner-increment-precision", node.line,
+                            f"{node.name} increment {increment} needs {required_digits} "
+                            f"decimal digits, but decimal_digits is {digits}")
+                )
         formatted: list[str] = []
         for key in ("min_val", "max_val"):
             try:
@@ -1477,6 +1491,7 @@ def run_selftest(json_output: bool) -> int:
         ("fit_card_broken.xml", True, "clipped"),
         ("spinner_stretch_broken.xml", True, "invalid-stretch"),
         ("spinner_value_width_broken.xml", True, "spinner-value-width"),
+        ("spinner_increment_precision_broken.xml", True, "spinner-increment-precision"),
         ("fixed_stretch_broken.xml", True, "invalid-stretch"),
         ("fixed_stretch_outside_current.xml", False, None),
         ("button_text_broken.xml", True, "text-width"),

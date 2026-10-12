@@ -78,6 +78,7 @@ public:
     virtual void    resetDirty() { mInitialValue = getValueF32(); }
 
     virtual void    setPrecision(S32 precision);
+    S32             getPrecision() const { return mPrecision; }
 
     void            setLabel(const LLStringExplicit& label);
     void            setLabelColor(const LLUIColor& c)            { mTextEnabledColor = c; updateLabelColor(); }

@@ -264,6 +264,21 @@ void fitAll(LLView* root, LLTabContainer* tabs, const StretcherMins* mins)
     collectTabContainerTree(tabs, all_tabs);
     for (LLTabContainer* tc : all_tabs)
     {
+        for (S32 i = 0, count = tc->getTabCount(); i < count; ++i)
+        {
+            LLPanel* page = tc->getPanelByIndex(i);
+            if (!page) continue;
+            for (LLView* child : *page->getChildList())
+            {
+                if (LLScrollContainer* sc = dynamic_cast<LLScrollContainer*>(child))
+                {
+                    // A named XML scroller may have been constructed before its tab
+                    // received its final saved-floater geometry.  Follows flags only
+                    // propagate later deltas, so establish the tab-local invariant now.
+                    sc->setShape(page->getLocalRect());
+                }
+            }
+        }
         collectTabContainers(tc, containers);
     }
     if (root)
@@ -298,6 +313,12 @@ void fitPage(LLView* page, const StretcherMins* mins)
             if (!child) continue;
             if (LLScrollContainer* sc = dynamic_cast<LLScrollContainer*>(child))
             {
+                if (direct_tab_page)
+                {
+                    // Keep named and auto-wrapped scrollers under the same rule
+                    // for the main page and every visible nested tab page.
+                    sc->setShape(root->getLocalRect());
+                }
                 LLView* document = scrolledView(sc);
                 // A direct tab-page scroller accepts any document type, just
                 // like collectTabContainers(). Deeper document scrollers keep
