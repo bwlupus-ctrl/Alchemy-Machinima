@@ -61,6 +61,10 @@ public:
     static void resetFields();
     static void getFields(LLPointer<LLCredential>& credential, bool& remember_user, bool& remember_psswrd);
 
+    // Select a remembered login exactly as the username combo does. This
+    // intentionally never exposes the credential or authenticator to callers.
+    static bool selectSavedUser(const std::string& username);
+
     static bool isCredentialSet() { return sCredentialSet; }
 
     static bool areCredentialFieldsDirty();

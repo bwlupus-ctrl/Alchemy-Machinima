@@ -11,19 +11,31 @@ scripts/perf/ui_selftest.ps1 -Functional -InWorld -Account 5kvideoeye
 
 ## Login and credential boundary
 
-The script launches the viewer with `--autologin`. That option sets
-`AutoLogin`; `LLStartUp` loads the last remembered `LLCredential` through the
-viewer's security API. The harness neither opens `bin_conf.dat` nor reads,
-prints, types, stores, or passes a password. The existing login-screen
-self-test interlock initially shows the login UI; the in-world runner resumes
-`STATE_LOGIN_CLEANUP` only when `AutoLogin` is set, using the credential already
-held by `LLStartUp`.
+The script launches the viewer with `--autologin` to enable the normal login
+path, but it does not accept the last-used account. At `STATE_LOGIN_WAIT`, the
+in-world bootstrap searches the viewer security API's `login_list`, normalizing
+spaces, dots, underscores, case, and a trailing `Resident`. It selects the
+saved `5kvideoeye` entry through `LLPanelLogin`, exactly like choosing that row
+in the username combo (`loadFromCredentialMap`/`setFields`), and only then
+resumes `STATE_LOGIN_CLEANUP`. If the entry is absent or has no remembered
+authenticator, the run writes `FAIL: authorized account not saved` and exits
+before any login attempt; it never falls back to the default credential.
+
+The harness never reads, prints, types, stores, or passes a password.
+Authenticator presence is checked inside the existing login-panel
+implementation, and only the viewer-owned `LLCredential` follows the normal
+login path. During this self-test only, `LLStartUp` skips both protected-store
+writes that normally update the saved-users map and default/last-used
+credential. The wrapper never copies, hashes or decodes `bin_conf.dat`; the
+viewer re-salts that file on every exit, so a byte check would prove nothing.
 
 After `STATE_STARTED`, the runner gets the avatar name from
 `LLAvatarNameCache` and requires `5kvideoeye`, case-insensitively, also accepting
-the legacy forms `5kvideoeye Resident` and `5kvideoeye.Resident`. A mismatch
-writes `FAIL: wrong account`, starts the normal `requestQuit()` logout path, and
-makes the wrapper exit non-zero from the fresh FAIL row. A 120-second login
+the legacy forms `5kvideoeye Resident`, `5kvideoeye.Resident`, and
+`5kvideoeye_resident`. A mismatch writes the unchanged `FAIL: wrong account`,
+starts the normal `requestQuit()` logout path, and makes the wrapper exit
+non-zero from the fresh FAIL row. The account PASS or mismatch FAIL row's
+observed JSON records `user_name` and `legacy_name` only. A 120-second login
 timeout does the same; it never retries authentication.
 
 The test waits for an agent region, a valid fully loaded self avatar, 120
@@ -72,8 +84,8 @@ the created camera, bindings, and all row edits are removed.
 The C++ settings/rig snapshots are restored before normal quit. The PowerShell
 wrapper separately backs up and byte-verifies only `settings*.xml` beneath
 `user_settings` and `%APPDATA%\AlchemyMachinima\5kvideoeye_resident`; it never
-copies `bin_conf.dat` and never replaces those directories, so chat/IM logs and
-other files created during the run survive. Output is the usual
+touches `bin_conf.dat` and never replaces those
+directories, so chat/IM logs and other files created during the run survive. Output is the usual
 `functional.csv` and `summary.md`; CSV rows include `inworld=true`.
 
 An in-viewer wall-clock watchdog defaults to 12 minutes (the wrapper passes

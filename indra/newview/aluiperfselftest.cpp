@@ -4890,7 +4890,23 @@ private:
         LLStringUtil::trim(expected);
         LLStringUtil::toLower(expected);
         return value == expected || value == expected + " resident" ||
-            value == expected + ".resident";
+            value == expected + ".resident" || value == expected + "_resident";
+    }
+
+    void recordFunctionalAccountResult(const LLAvatarName& avatar_name,
+                                       const std::string& status,
+                                       const std::string& reason)
+    {
+        mFunctionalObserved = LLSD::emptyMap();
+        mFunctionalObserved["account"]["user_name"] = avatar_name.getUserName();
+        mFunctionalObserved["account"]["legacy_name"] = avatar_name.getLegacyName();
+        LLSD account;
+        account["page"] = "login";
+        account["widget_name"] = "inworld_account";
+        account["widget_type"] = "state";
+        account["exercise"] = "saved authorized credential";
+        addFunctionalResult(account, status, reason);
+        mFunctionalObserved = LLSD::emptyMap();
     }
 
     void restoreFunctionalVCamState()
@@ -5019,8 +5035,13 @@ private:
                 if (!gSavedSettings.getBOOL("AutoLogin")) // ui-draw-lint: allow(setting) test-only one-shot login check
                     return finishFunctionalInWorldFailure(
                         "saved-credential auto-login was not enabled");
-                // LLStartUp already loaded the remembered credential. Resume
-                // its ordinary auto-login path without inspecting that object.
+                // Use the same saved-user lookup and field population as a
+                // username-combo selection. No credential data leaves the
+                // login panel, and failure cannot fall back to the last user.
+                if (!LLPanelLogin::selectSavedUser(mFunctionalAccount))
+                    return finishFunctionalInWorldFailure(
+                        "authorized account not saved",
+                        "inworld_account", "saved authorized credential");
                 LLStartUp::setStartupState(STATE_LOGIN_CLEANUP);
             }
             if (LLStartUp::getStartupState() != STATE_STARTED)
@@ -5045,7 +5066,22 @@ private:
                 }
                 if (!functionalAccountMatches(avatar_name.getUserName(), mFunctionalAccount) &&
                     !functionalAccountMatches(avatar_name.getLegacyName(), mFunctionalAccount))
-                    return finishFunctionalInWorldFailure("wrong account");
+                {
+                    recordFunctionalAccountResult(avatar_name, "FAIL", "wrong account");
+                    restoreFunctionalAction();
+                    restoreFunctionalVCamState();
+                    restore();
+                    restoreFunctionalRigState(false);
+                    restoreFunctionalUserFiles();
+                    writeFunctionalResults();
+                    sActive = false;
+                    // Keep settings saves suppressed: the wrong account's
+                    // per-account folder may not be in the wrapper's backup.
+                    LLAppViewer::instance()->requestQuit();
+                    return true;
+                }
+                recordFunctionalAccountResult(
+                    avatar_name, "PASS", "authorized account verified");
                 mFunctionalAccountVerified = true;
                 // AO off for the run: gaze turns can make the AO send simulator requests
                 // (llactormover.cpp ~6317). Per-account settings files are byte-restored by
@@ -8355,6 +8391,11 @@ void ALUIPerfSelfTest::recordKitWidgetTree(LLView* root)
 bool ALUIPerfSelfTest::suppressSettingsSave()
 {
     return sSuppressSettingsSave;
+}
+
+bool ALUIPerfSelfTest::suppressCredentialSave()
+{
+    return sActive && sRunner && sRunner->inWorld();
 }
 
 bool ALUIPerfSelfTest::isActive()

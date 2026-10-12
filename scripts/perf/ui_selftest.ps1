@@ -205,6 +205,10 @@ function Restore-FunctionalSettingsBackup($Backup) {
         elseif ($record.Manifest[$name] -ne $actual[$name]) { $differences.Add("byte mismatch after restore: $target\$name") }
       }
     }
+    # The protected credential store (bin_conf.dat) is never copied, hashed or
+    # decoded: the viewer re-salts it on every exit, so a byte check proves
+    # nothing. The in-viewer suppressCredentialSave gate skips the last-user
+    # write instead (llstartup.cpp STATE_LOGIN_CLEANUP).
     if ($differences.Count) {
       $differences | ForEach-Object { Write-Host $_ -ForegroundColor Red }
       throw "Functional settings restore verification failed with $($differences.Count) difference(s)."
@@ -305,9 +309,9 @@ if ($Functional) {
         '--set', 'UIPerfDirectorV2', $(if ($useV2) { 'TRUE' } else { 'FALSE' }),
         '--set', 'BackgroundYieldTime', 0)
       if ($InWorld) {
-        # --autologin asks the viewer credential store to use the last saved
-        # login. The harness never receives a password and verifies the avatar
-        # name after STATE_STARTED before it allows any functional interaction.
+        # --autologin enables the normal viewer login path. The in-viewer hook
+        # selects 5kvideoeye from the saved-users combo before that path runs;
+        # the wrapper never receives a credential or password.
         $viewerArgs += @('--autologin', '--set', 'UILayoutAuditSizes', $request)
       }
       $process = Start-Process -FilePath $Exe -ArgumentList $viewerArgs `

@@ -41,6 +41,7 @@ public:
 
     // A self-test session must not serialize UI/open-state side effects.
     static bool suppressSettingsSave();
+    static bool suppressCredentialSave();
     static bool isActive();
 };
 

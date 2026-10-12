@@ -1126,7 +1126,7 @@ bool idle_startup()
         if (gUserCredential.notNull())
         {
             userid = gUserCredential->userID();
-            if (gRememberUser)
+            if (gRememberUser && !ALUIPerfSelfTest::suppressCredentialSave())
             {
                 gSecAPIHandler->addToCredentialMap("login_list", gUserCredential, gRememberPassword);
                 // Legacy viewers use this method to store user credentials, newer viewers

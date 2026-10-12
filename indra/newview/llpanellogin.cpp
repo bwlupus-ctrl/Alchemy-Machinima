@@ -77,6 +77,8 @@
 
 #include "llsdserialize.h"
 
+#include <algorithm>
+
 LLPanelLogin *LLPanelLogin::sInstance = NULL;
 bool LLPanelLogin::sCapslockDidNotification = false;
 bool LLPanelLogin::sCredentialSet = false;
@@ -95,6 +97,23 @@ LLPointer<LLCredential> load_user_credentials(std::string &user_key)
         // legacy (or legacy^2, since it also tries to load from settings)
         return gSecAPIHandler->loadCredential(LLGridManager::getInstance()->getGrid());
     }
+}
+
+static std::string normalized_login_name(std::string name)
+{
+    LLStringUtil::trim(name);
+    LLStringUtil::toLower(name);
+    name.erase(std::remove_if(name.begin(), name.end(), [](unsigned char character)
+    {
+        return character == ' ' || character == '_' || character == '.';
+    }), name.end());
+    static const std::string resident("resident");
+    if (name.size() > resident.size() &&
+        name.compare(name.size() - resident.size(), resident.size(), resident) == 0)
+    {
+        name.erase(name.size() - resident.size());
+    }
+    return name;
 }
 
 class LLLoginLocationAutoHandler : public LLCommandHandler
@@ -704,6 +723,63 @@ void LLPanelLogin::getFields(LLPointer<LLCredential>& credential,
 
     remember_psswrd = sInstance->getChild<LLUICtrl>("remember_password")->getValue();
     remember_user = sInstance->getChild<LLUICtrl>("remember_name")->getValue();
+}
+
+// static
+bool LLPanelLogin::selectSavedUser(const std::string& username)
+{
+    if (!sInstance || gSecAPIHandler.isNull())
+    {
+        return false;
+    }
+
+    const std::string grid = LLGridManager::getInstance()->getGrid();
+    if (!gSecAPIHandler->hasCredentialMap("login_list", grid))
+    {
+        return false;
+    }
+
+    const std::string wanted = normalized_login_name(username);
+    LLSecAPIHandler::credential_map_t credentials;
+    gSecAPIHandler->loadCredentialMap("login_list", grid, credentials);
+    for (const auto& saved : credentials)
+    {
+        LLPointer<LLCredential> credential = saved.second;
+        if (credential.isNull() ||
+            (normalized_login_name(saved.first) != wanted &&
+             normalized_login_name(credential->userID()) != wanted &&
+             normalized_login_name(getUserName(credential)) != wanted))
+        {
+            continue;
+        }
+
+        LLComboBox* username_combo = sInstance->getChild<LLComboBox>("username_combo");
+        if (!username_combo->setSelectedByValue(LLSD(saved.first), true))
+        {
+            return false;
+        }
+        credential = gSecAPIHandler->loadFromCredentialMap(
+            "login_list", grid, saved.first);
+        if (credential.isNull())
+        {
+            return false;
+        }
+        // setFields() is the ordinary combo-selection path. It keeps the
+        // authenticator inside the viewer credential and exposes only whether
+        // the password field received its fixed asterisk filler.
+        setFields(credential);
+        sInstance->mPasswordModified = false;
+        if (sInstance->mPasswordLength == 0)
+        {
+            continue;
+        }
+        sInstance->getChild<LLUICtrl>("remember_name")->setValue(true);
+        LLUICtrl* remember_password = sInstance->getChild<LLUICtrl>("remember_password");
+        remember_password->setEnabled(true);
+        remember_password->setValue(true);
+        return true;
+    }
+    return false;
 }
 
 
@@ -1425,6 +1501,7 @@ void LLPanelLogin::collapseGridPanel(bool collapse)
 
 void LLPanelLogin::draw()
 {
+    LL_PROFILE_ZONE_SCOPED_CATEGORY_UI;
     LLPanel::draw();
 
     // Workaround for the black screen issue (see #5607)
