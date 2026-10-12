@@ -174,6 +174,7 @@ LLGLSLShader            gPostScreenSpaceReflectionProgram;
 LLGLSLShader            gDeferredImpostorProgram;
 LLGLSLShader            gPrismLensProgram;
 LLGLSLShader            gPrismProjectorFeedProgram[8];
+LLGLSLShader            gPrismProjectorLookProgram[8];
 LLGLSLShader            gPrismPreviewProgram[8];
 LLGLSLShader            gDeferredDiffuseProgram;
 LLGLSLShader            gDeferredDiffuseAlphaMaskProgram;
@@ -688,6 +689,8 @@ void LLViewerShaderMgr::finalizeShaderList()
     mShaderList.push_back(&gDeferredSoftenProgram);
     mShaderList.push_back(&gPrismLensProgram);
     for (LLGLSLShader& shader : gPrismProjectorFeedProgram)
+        mShaderList.push_back(&shader);
+    for (LLGLSLShader& shader : gPrismProjectorLookProgram)
         mShaderList.push_back(&shader);
     // [BDMerge G3.2] atmospherics uniforms (blue_density etc.) are pushed to
     // registered shaders only - without this the volumetric shader computes
@@ -1820,6 +1823,7 @@ bool LLViewerShaderMgr::loadShadersDeferred()
         gDeferredHighlightProgram.unload();
         gPrismLensProgram.unload();
         for (LLGLSLShader& shader : gPrismProjectorFeedProgram) shader.unload();
+        for (LLGLSLShader& shader : gPrismProjectorLookProgram) shader.unload();
         for (LLGLSLShader& shader : gPrismPreviewProgram) shader.unload();
 
         gNormalMapGenProgram.unload();
@@ -1917,10 +1921,27 @@ bool LLViewerShaderMgr::loadShadersDeferred()
         }
         shader.mShaderLevel = mShaderLevel[SHADER_DEFERRED];
         projector_feed_shaders_ok = shader.createShader() && projector_feed_shaders_ok;
+
+        LLGLSLShader& look_shader = gPrismProjectorLookProgram[permutation];
+        look_shader.mName = llformat("Prism Projector Look Shader %u", permutation);
+        look_shader.mFeatures = shader.mFeatures;
+        look_shader.mShaderFiles.clear();
+        look_shader.clearPermutations();
+        look_shader.mShaderFiles.push_back(make_pair("deferred/prismPreviewV.glsl", GL_VERTEX_SHADER));
+        look_shader.mShaderFiles.push_back(make_pair("deferred/prismSignalF.glsl", GL_FRAGMENT_SHADER));
+        look_shader.mShaderFiles.push_back(make_pair("deferred/prismProjectorFeedF.glsl", GL_FRAGMENT_SHADER));
+        if (look_shader.mFeatures.hasTonemap) look_shader.addPermutation("TONEMAP", "1");
+        if (look_shader.mFeatures.hasColorGrade) look_shader.addPermutation("COLOR_GRADE", "1");
+        if (permutation == 1 || permutation == 3 || permutation == 5 || permutation == 7)
+            look_shader.addPermutation("LEGACY_GAMMA", "1");
+        look_shader.addPermutation("PROJECTOR_LOOK", "1");
+        look_shader.mShaderLevel = mShaderLevel[SHADER_DEFERRED];
+        projector_feed_shaders_ok = look_shader.createShader() && projector_feed_shaders_ok;
     }
     if (!projector_feed_shaders_ok)
     {
         for (LLGLSLShader& shader : gPrismProjectorFeedProgram) shader.unload();
+        for (LLGLSLShader& shader : gPrismProjectorLookProgram) shader.unload();
         LL_WARNS("Shader") << "Prism projector feed shader family unavailable; projector bindings will use their no-signal policy." << LL_ENDL;
     }
 

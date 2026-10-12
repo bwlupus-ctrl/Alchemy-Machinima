@@ -242,20 +242,25 @@ public:
         LLPrismLens::ProjectorHandle mHandle;
         std::string mName;
         std::string mMeta;
+        bool mSelected = false;
     };
     void setItems(const std::vector<Item>& items);
     void draw() override;
     bool handleMouseDown(S32 x, S32 y, MASK mask) override;
+    bool handleScrollWheel(S32 x, S32 y, LLScrollDelta delta) override;
 protected:
     friend class LLUICtrlFactory;
     explicit ALVCamProjectorList(const Params& p);
 private:
     S32 rowAt(S32 y) const;
+    void setScrollOffset(S32 offset);
     std::vector<Item> mItems;
+    S32 mScrollOffset = 0;
     const LLFontGL* mFont = nullptr;
     LLColor4 mBorderColor;
     LLColor4 mTextColor;
     LLColor4 mMutedColor;
+    LLColor4 mAccentColor;
 };
 
 #endif

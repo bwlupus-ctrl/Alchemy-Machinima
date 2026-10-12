@@ -2110,7 +2110,10 @@ void LLPipeline::preparePrismProjectorFeeds(U32 capture_slot)
         }
 
         const U32 permutation = colorCorrectPermutation(true, true);
-        LLGLSLShader& shader = gPrismProjectorFeedProgram[permutation];
+        const LLPrismLens::ProjectorLook& look = feed.mSettings.mLook;
+        LLGLSLShader& shader = look.hasFeedEffects()
+            ? gPrismProjectorLookProgram[permutation]
+            : gPrismProjectorFeedProgram[permutation];
         if (!shader.isComplete()) continue;
 
         prepared->mTarget.bindTarget();
@@ -2185,6 +2188,29 @@ void LLPipeline::preparePrismProjectorFeeds(U32 capture_slot)
         shader.uniform1f(sEffectTime, fmodf(gFrameTimeSeconds, 3600.f));
         shader.uniform1i(sFollowExposure,
             feed.mSettings.mFollowMainExposure ? 1 : 0);
+        if (look.hasFeedEffects())
+        {
+            static const LLStaticHashedString sLookWarp("projectorLookWarp");
+            static const LLStaticHashedString sLookFilm("projectorLookFilm");
+            static const LLStaticHashedString sLookGlow("projectorLookGlow");
+            static const LLStaticHashedString sLookLampGel("projectorLookLampGel");
+            const F32 look_warp[4] = {
+                look.mKeystoneH, look.mKeystoneV, look.mHotspot,
+                fmodf(gFrameTimeSeconds, 3600.f) };
+            const F32 look_film[4] = {
+                look.mDust, look.mScratches, look.mBurn, look.mGrain };
+            const F32 look_glow[4] = {
+                look.mHalation, 1.f / target_width, 1.f / target_height, 0.f };
+            LLColor3 lamp_gel = LLPrismLens::projectorKelvinRgb(
+                look.mLampKelvin);
+            lamp_gel.mV[0] *= look.mGelTint.mV[0];
+            lamp_gel.mV[1] *= look.mGelTint.mV[1];
+            lamp_gel.mV[2] *= look.mGelTint.mV[2];
+            shader.uniform4fv(sLookWarp, 1, look_warp);
+            shader.uniform4fv(sLookFilm, 1, look_film);
+            shader.uniform4fv(sLookGlow, 1, look_glow);
+            shader.uniform3fv(sLookLampGel, 1, lamp_gel.mV);
+        }
         LLColor3 sheen_sky(0.f, 0.f, 0.f);
         LLColor3 sheen_ground(0.f, 0.f, 0.f);
         if (const LLSettingsSky::ptr_t sky =
@@ -27691,6 +27717,54 @@ void LLPipeline::bindProjectorCookie(LLGLSLShader& shader,
         // retains only the texture-path tint/animation/dispersion controls.
         gobo.mPattern = -1;
     }
+    const F64 projector_time = std::fmod(
+        LLPresentationTime::currentFrame().presentation_time, 3600.0);
+    LLVector4 gobo_pattern_params = gobo.mPatternParams;
+    if (prepared)
+    {
+        const LLPrismLens::ProjectorLook& look = feed.mSettings.mLook;
+        if (look.mShutterFlicker > 0.f)
+        {
+            const F32 phase = static_cast<F32>(projector_time) *
+                look.mShutterHz * F_TWO_PI;
+            const F32 shutter = 1.f - look.mShutterFlicker *
+                (0.5f + 0.5f * sinf(phase)) * 0.45f;
+            gobo.mTint *= shutter;
+        }
+
+        F32 uv_scale_x = 1.f;
+        F32 uv_scale_y = 1.f;
+        if (look.mThrowMode == LLPrismLens::EProjectorThrow::CAMERA_FOV &&
+            feed.mCameraVerticalFovRad > 0.f && feed.mCameraAspect > 0.f)
+        {
+            const F32 light_fov = volume->getSpotLightParams().mV[VX];
+            const LLVector3 light_scale = volume->getScale();
+            const F32 light_aspect = light_scale.mV[VY] > F_ALMOST_ZERO
+                ? light_scale.mV[VX] / light_scale.mV[VY] : 1.f;
+            const F32 light_tan = tanf(light_fov * 0.5f);
+            const F32 camera_tan = tanf(feed.mCameraVerticalFovRad * 0.5f);
+            uv_scale_y = llclamp(light_tan / camera_tan, 0.05f, 20.f);
+            uv_scale_x = llclamp(
+                light_tan * light_aspect /
+                    (camera_tan * feed.mCameraAspect), 0.05f, 20.f);
+        }
+
+        F32 weave_x = 0.f;
+        F32 weave_y = 0.f;
+        if (look.mGateWeave > 0.f)
+        {
+            const F32 t = static_cast<F32>(projector_time);
+            weave_x = sinf(t * 7.13f) * look.mGateWeave * 0.006f;
+            weave_y = sinf(t * 11.71f + 1.7f) * look.mGateWeave * 0.004f;
+        }
+        if (weave_x != 0.f || weave_y != 0.f ||
+            uv_scale_x != 1.f || uv_scale_y != 1.f)
+        {
+            gobo.mPattern = -2;
+            gobo_pattern_params.set(weave_x, weave_y,
+                                    uv_scale_x, uv_scale_y);
+        }
+    }
     const F32 gobo_anim[4] = {
         static_cast<F32>(gobo.mAnimMode), gobo.mSpeed,
         gobo.mZoom, gobo.mDispersion
@@ -27698,11 +27772,10 @@ void LLPipeline::bindProjectorCookie(LLGLSLShader& shader,
     const F32 gobo_tint[3] = {
         gobo.mTint.mV[0], gobo.mTint.mV[1], gobo.mTint.mV[2] };
     const F32 gobo_pp[4] = {
-        gobo.mPatternParams.mV[0], gobo.mPatternParams.mV[1],
-        gobo.mPatternParams.mV[2], gobo.mPatternParams.mV[3]
+        gobo_pattern_params.mV[0], gobo_pattern_params.mV[1],
+        gobo_pattern_params.mV[2], gobo_pattern_params.mV[3]
     };
-    shader.uniform1f(LLShaderMgr::GOBO_TIME, static_cast<F32>(std::fmod(
-        LLPresentationTime::currentFrame().presentation_time, 3600.0)));
+    shader.uniform1f(LLShaderMgr::GOBO_TIME, static_cast<F32>(projector_time));
     shader.uniform1i(LLShaderMgr::GOBO_PATTERN, gobo.mPattern);
     shader.uniform4fv(LLShaderMgr::GOBO_ANIM_PARAMS, 1, gobo_anim);
     shader.uniform3fv(LLShaderMgr::GOBO_TINT, 1, gobo_tint);

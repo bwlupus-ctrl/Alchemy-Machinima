@@ -10,6 +10,27 @@ out vec4 frag_color;
 vec4 prismSignalSample(vec2 surface_uv, vec3 eye_pos, vec3 eye_normal);
 vec3 linear_to_srgb(vec3 color);
 uniform int projectorFollowMainExposure;
+#ifdef PROJECTOR_LOOK
+// Uploaded only by the non-default look program family. The default family is
+// the pre-look shader and receives no additional uniforms.
+uniform vec4 projectorLookWarp;    // keystone H/V, hotspot, time seed
+uniform vec4 projectorLookFilm;    // dust, scratches, burn, grain
+uniform vec4 projectorLookGlow;    // halation, texel X/Y, reserved
+uniform vec3 projectorLookLampGel; // D65-normalized lamp RGB * gel
+
+float projectorHash(vec2 p)
+{
+    return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+}
+
+vec2 projectorKeystone(vec2 uv)
+{
+    vec2 p = uv - vec2(0.5);
+    vec2 divisor = vec2(1.0 + projectorLookWarp.x * p.y * 1.5,
+                        1.0 + projectorLookWarp.y * p.x * 1.5);
+    return p / divisor + vec2(0.5);
+}
+#endif
 #ifdef TONEMAP
 vec3 applyExposure(vec3 color);
 vec3 applyToneMap(vec3 color);
@@ -39,7 +60,29 @@ vec3 projectorLegacyGamma(vec3 color)
 
 void main()
 {
-    vec4 color = prismSignalSample(prism_uv, prism_eye_pos, prism_eye_normal);
+    vec2 sample_uv = prism_uv;
+#ifdef PROJECTOR_LOOK
+    sample_uv = projectorKeystone(sample_uv);
+    if (any(lessThan(sample_uv, vec2(0.0))) ||
+        any(greaterThan(sample_uv, vec2(1.0))))
+    {
+        frag_color = vec4(0.0, 0.0, 0.0, 1.0);
+        return;
+    }
+#endif
+    vec4 color = prismSignalSample(sample_uv, prism_eye_pos, prism_eye_normal);
+#ifdef PROJECTOR_LOOK
+    if (projectorLookGlow.x > 0.001)
+    {
+        vec2 tap = projectorLookGlow.yz * 2.0;
+        vec3 blur = prismSignalSample(sample_uv + vec2(tap.x, 0.0), prism_eye_pos, prism_eye_normal).rgb;
+        blur += prismSignalSample(sample_uv - vec2(tap.x, 0.0), prism_eye_pos, prism_eye_normal).rgb;
+        blur += prismSignalSample(sample_uv + vec2(0.0, tap.y), prism_eye_pos, prism_eye_normal).rgb;
+        blur += prismSignalSample(sample_uv - vec2(0.0, tap.y), prism_eye_pos, prism_eye_normal).rgb;
+        blur *= 0.25;
+        color.rgb += max(blur - vec3(0.7), vec3(0.0)) * projectorLookGlow.x * 0.35;
+    }
+#endif
 #ifdef TONEMAP
     if (projectorFollowMainExposure != 0)
     {
@@ -60,6 +103,28 @@ void main()
 #endif
 #ifdef COLOR_GRADE
     if (tonemap_type != 8) color.rgb = applySplitToning(color.rgb);
+#endif
+#ifdef PROJECTOR_LOOK
+    vec2 centred = sample_uv - vec2(0.5);
+    float radius2 = dot(centred, centred) * 2.0;
+    color.rgb *= 1.0 + projectorLookWarp.z * (0.35 - 0.45 * radius2);
+
+    float seed = floor(projectorLookWarp.w * 12.0);
+    float dust_cell = projectorHash(floor(sample_uv * vec2(180.0, 120.0)) + seed);
+    float dust = step(0.997 - projectorLookFilm.x * 0.012, dust_cell);
+    color.rgb *= 1.0 - dust * projectorLookFilm.x * 0.75;
+
+    float scratch_cell = projectorHash(vec2(floor(sample_uv.x * 420.0), floor(seed * 0.25)));
+    float scratch = step(0.998 - projectorLookFilm.y * 0.02, scratch_cell);
+    color.rgb *= 1.0 - scratch * projectorLookFilm.y * 0.65;
+
+    float edge = smoothstep(0.2, 0.5, max(abs(centred.x), abs(centred.y)));
+    color.rgb *= mix(vec3(1.0), vec3(0.52, 0.26, 0.10),
+                     edge * projectorLookFilm.z * 0.75);
+
+    float grain = projectorHash(sample_uv * vec2(913.7, 527.3) + seed) - 0.5;
+    color.rgb += grain * projectorLookFilm.w * 0.12;
+    color.rgb *= projectorLookLampGel;
 #endif
     color.rgb = linear_to_srgb(color.rgb);
 #ifdef LEGACY_GAMMA

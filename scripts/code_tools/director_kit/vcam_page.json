@@ -103,7 +103,57 @@
       {"l": "Face capacity", "k": "readout", "w": "vc_face_count", "h": "Faces used across all cameras.", "bind": "code"}
     ]},
     {"id": "projectors", "t": "Projectors", "k": "rows", "badge": "CAM n", "rows": [
-      {"l": "Projectors", "k": "custom", "w": "vc_projector_list", "h": "Projector lights using this camera. Remove clears only the viewer-local feed.", "custom_tag": "vcam_projector_list", "bind": "code", "row_height": 150}
+      {"l": "Projectors", "k": "custom", "w": "vc_projector_list", "h": "Projector lights using this camera. Select a row to edit it; Remove clears only the viewer-local feed.", "custom_tag": "vcam_projector_list", "bind": "code", "row_height": 150}
+    ]},
+    {"id": "projector", "t": "Projector", "k": "rows", "badge": "PROJECTOR n", "show_if": "selected_projector", "rows": [
+      {"l": "Look preset", "k": "combo", "w": "vc_proj_look", "h": "Apply only the projector look fields. Editing any look field makes this Custom.", "it": ["Custom", "Clean digital", "Cinema xenon", "16mm home movie", "Old slide projector", "Worn film reel"], "iv": [-1,0,1,2,3,4], "bind": "code"},
+      {"l": "Framing", "k": "segmented", "w": "vc_proj_fit", "h": "Fit keeps the whole picture, Fill crops by the anchor, and Stretch maps the complete picture.", "it": ["Fit", "Fill", "Stretch"], "iv": [0,1,2], "bind": "code"},
+      {"l": "Anchor X", "k": "slider", "w": "vc_proj_anchor_x", "h": "Horizontal crop anchor for the projected feed.", "mn": 0, "mx": 1, "st": 0.05, "dc": 2, "bind": "code"},
+      {"l": "Anchor Y", "k": "slider", "w": "vc_proj_anchor_y", "h": "Vertical crop anchor for the projected feed.", "mn": 0, "mx": 1, "st": 0.05, "dc": 2, "bind": "code"},
+      {"l": "Flip H", "k": "toggle", "w": "vc_proj_flip_h", "h": "Mirror the projected picture left to right.", "bind": "code"},
+      {"l": "Flip V", "k": "toggle", "w": "vc_proj_flip_v", "h": "Mirror the projected picture top to bottom.", "bind": "code"},
+      {"l": "Rotate", "k": "segmented", "w": "vc_proj_rotate", "h": "Rotate the projected picture in quarter turns.", "it": ["0", "90", "180", "270"], "iv": [0,1,2,3], "bind": "code"},
+      {"l": "Keystone H", "k": "slider", "w": "vc_proj_keystone_h", "h": "Horizontal trapezoid correction.", "mn": -1, "mx": 1, "st": 0.01, "dc": 2, "bind": "code"},
+      {"l": "Keystone V", "k": "slider", "w": "vc_proj_keystone_v", "h": "Vertical trapezoid correction.", "mn": -1, "mx": 1, "st": 0.01, "dc": 2, "bind": "code"},
+      {"l": "Throw", "k": "segmented", "w": "vc_proj_throw", "h": "Lock projected size to neither FOV, the projector light's FOV, or the camera's FOV.", "it": ["Off", "Light FOV", "Camera FOV"], "iv": [0,1,2], "bind": "code"},
+      {"l": "Brightness (feed EV)", "k": "slider", "w": "vc_proj_brightness", "h": "Exposure offset applied to this projector feed.", "mn": -4, "mx": 4, "st": 0.1, "dc": 1, "unit": "EV", "bind": "code"},
+      {"l": "Follow main exposure", "k": "toggle", "w": "vc_proj_follow_exposure", "h": "Follow the main view's exposure while lighting the projection.", "bind": "code"},
+      {"l": "Lamp colour", "k": "slider", "w": "vc_proj_lamp_kelvin", "h": "Projector lamp colour temperature; 6500 K is neutral.", "mn": 2700, "mx": 10000, "st": 100, "dc": 0, "unit": "K", "bind": "code"},
+      {"l": "Gel tint", "k": "color", "w": "vc_proj_gel_tint", "h": "Colour gel multiplied into the projector lamp.", "bind": "code"},
+      {"l": "Hot spot", "k": "slider", "w": "vc_proj_hotspot", "h": "Centre brightness and edge falloff of the lamp.", "mn": 0, "mx": 1, "st": 0.01, "dc": 2, "bind": "code"},
+      {"l": "Shutter flicker", "k": "slider", "w": "vc_proj_shutter_flicker", "h": "Film shutter strobe strength.", "mn": 0, "mx": 1, "st": 0.01, "dc": 2, "bind": "code"},
+      {"l": "Shutter rate", "k": "slider", "w": "vc_proj_shutter_rate", "h": "Film shutter rate.", "mn": 12, "mx": 48, "st": 1, "dc": 0, "unit": "Hz", "bind": "code"},
+      {"l": "Gate weave", "k": "slider", "w": "vc_proj_gate_weave", "h": "Mechanical frame wobble.", "mn": 0, "mx": 1, "st": 0.01, "dc": 2, "bind": "code"},
+      {"l": "Grain", "k": "slider", "w": "vc_proj_grain", "h": "Film grain in the projected picture.", "mn": 0, "mx": 1, "st": 0.01, "dc": 2, "bind": "code"},
+      {"l": "Dust", "k": "slider", "w": "vc_proj_dust", "h": "Dust specks in the film gate.", "mn": 0, "mx": 1, "st": 0.01, "dc": 2, "bind": "code"},
+      {"l": "Scratches", "k": "slider", "w": "vc_proj_scratches", "h": "Vertical film scratches.", "mn": 0, "mx": 1, "st": 0.01, "dc": 2, "bind": "code"},
+      {"l": "Burn", "k": "slider", "w": "vc_proj_burn", "h": "Film burn-in and edge burn.", "mn": 0, "mx": 1, "st": 0.01, "dc": 2, "bind": "code"},
+      {"l": "Halation", "k": "slider", "w": "vc_proj_halation", "h": "Glow bleeding around projected highlights.", "mn": 0, "mx": 1, "st": 0.01, "dc": 2, "bind": "code"},
+      {"l": "Resolution", "k": "segmented", "w": "vc_proj_resolution", "h": "Resolution of the projector cookie.", "it": ["256", "512", "1024"], "iv": [256,512,1024], "bind": "code"},
+      {"l": "When camera is off", "k": "combo", "w": "vc_proj_no_signal", "h": "Choose the no-signal picture used while the camera is unavailable.", "it": ["Projector's own cookie", "Black", "White"], "iv": [0,1,2], "bind": "code"},
+      {"l": "Keep the light's gobo", "k": "toggle", "w": "vc_proj_keep_gobo", "h": "Keep the projector light's existing gobo while the VCam feed is attached.", "bind": "code"}
+    ]},
+    {"id": "projector_tv", "t": "More effects (TV)", "k": "rows", "badge": "PROJECTOR n", "show_if": "selected_projector", "rows": [
+      {"l": "Presets", "k": "combo", "w": "vc_proj_tv_preset", "h": "Apply Clean, Old CRT, Broken TV, VHS Tape, or Security Feed to this projector.", "it": ["Pick...", "Clean", "Old CRT", "Broken TV", "VHS Tape", "Security Feed"], "iv": ["", "clean", "crt", "broken", "vhs", "security"], "bind": "code"},
+      {"l": "Scanlines", "k": "slider", "w": "vc_proj_tv_scan", "h": "Scanline strength on this projector.", "mn": 0, "mx": 1, "st": 0.05, "dc": 2, "bind": "code"},
+      {"l": "Grayscale", "k": "slider", "w": "vc_proj_tv_gray", "h": "Desaturate toward monochrome.", "mn": 0, "mx": 1, "st": 0.05, "dc": 2, "bind": "code"},
+      {"l": "Static Noise", "k": "slider", "w": "vc_proj_tv_static", "h": "Animated analog snow.", "mn": 0, "mx": 1, "st": 0.05, "dc": 2, "bind": "code"},
+      {"l": "Vignette", "k": "slider", "w": "vc_proj_tv_vignette", "h": "CRT-style edge darkening.", "mn": 0, "mx": 1, "st": 0.05, "dc": 2, "bind": "code"},
+      {"l": "Brightness", "k": "slider", "w": "vc_proj_tv_brightness", "h": "Linear TV-effect gain, separate from projector feed EV.", "mn": -1, "mx": 1, "st": 0.05, "dc": 2, "bind": "code"},
+      {"l": "Lines", "k": "slider", "w": "vc_proj_tv_lines", "h": "Dark/bright line pairs across the picture height.", "mn": 20, "mx": 1200, "st": 1, "dc": 0, "bind": "code", "a": 1},
+      {"l": "Darkness", "k": "slider", "w": "vc_proj_tv_dark", "h": "Maximum scanline gap darkening.", "mn": 0, "mx": 100, "st": 1, "dc": 0, "unit": "%", "bind": "code", "a": 1},
+      {"l": "Sharpness", "k": "slider", "w": "vc_proj_tv_sharp", "h": "Blend soft scanlines into crisp-edged bands.", "mn": 0, "mx": 100, "st": 1, "dc": 0, "unit": "%", "bind": "code", "a": 1},
+      {"l": "Line thickness", "k": "slider", "w": "vc_proj_tv_thick", "h": "Bright-line duty within each pair.", "mn": 10, "mx": 90, "st": 1, "dc": 0, "unit": "%", "bind": "code", "a": 1},
+      {"l": "Pixelate", "k": "slider", "w": "vc_proj_tv_pixel", "h": "Quantize into low-resolution blocks.", "mn": 0, "mx": 1, "st": 0.05, "dc": 2, "bind": "code", "a": 1},
+      {"l": "Sepia Tint", "k": "slider", "w": "vc_proj_tv_sepia", "h": "Blend toward archival sepia.", "mn": 0, "mx": 1, "st": 0.05, "dc": 2, "bind": "code", "a": 1},
+      {"l": "Chroma Bleed", "k": "slider", "w": "vc_proj_tv_chroma", "h": "Horizontal composite-signal colour fringing.", "mn": 0, "mx": 1, "st": 0.05, "dc": 2, "bind": "code", "a": 1},
+      {"l": "Vertical Roll", "k": "slider", "w": "vc_proj_tv_vroll", "h": "Lost V-sync roll and dark band.", "mn": 0, "mx": 1, "st": 0.05, "dc": 2, "bind": "code", "a": 1},
+      {"l": "Roll Speed", "k": "slider", "w": "vc_proj_tv_roll_speed", "h": "How fast the vertical roll travels.", "mn": 0, "mx": 1, "st": 0.05, "dc": 2, "bind": "code", "a": 1},
+      {"l": "VHS Tracking", "k": "slider", "w": "vc_proj_tv_tracking", "h": "Horizontal tearing on random rows.", "mn": 0, "mx": 1, "st": 0.05, "dc": 2, "bind": "code", "a": 1},
+      {"l": "Flicker", "k": "slider", "w": "vc_proj_tv_flicker", "h": "Whole-picture TV brightness pulsing.", "mn": 0, "mx": 1, "st": 0.05, "dc": 2, "bind": "code", "a": 1},
+      {"l": "Interlace", "k": "slider", "w": "vc_proj_tv_interlace", "h": "Alternating field-line shimmer.", "mn": 0, "mx": 1, "st": 0.05, "dc": 2, "bind": "code", "a": 1},
+      {"l": "Dropout", "k": "slider", "w": "vc_proj_tv_dropout", "h": "Momentary signal loss.", "mn": 0, "mx": 1, "st": 0.05, "dc": 2, "bind": "code", "a": 1},
+      {"l": "Sheen", "k": "slider", "w": "vc_proj_tv_sheen", "h": "Glossy Fresnel reflection over the feed.", "mn": 0, "mx": 1, "st": 0.05, "dc": 2, "bind": "code", "a": 1}
     ]},
     {"id": "face_mapping", "t": "Face mapping", "k": "rows", "badge": "THIS FACE", "rows": [
       {"l": "Feed from", "k": "segmented", "w": "vc_face_feed", "h": "Route this face to this camera or the Gate program feed.", "it": ["This camera", "Gate program"], "iv": [0,1], "bind": "code"},
@@ -172,7 +222,7 @@
     {"id": "source", "label": "1 Source", "cards": [0,1,2,3,4,5]},
     {"id": "lens", "label": "2 Lens", "cards": [0,1,2,6,7,8]},
     {"id": "look", "label": "3 Look", "cards": [0,1,2,9,10]},
-    {"id": "output", "label": "4 Output", "cards": [0,1,2,11,12,13,14,15,16]},
-    {"id": "rate", "label": "5 Rate & performance", "cards": [0,1,2,17,18]}
+    {"id": "output", "label": "4 Output", "cards": [0,1,2,11,12,13,14,15,16,17,18]},
+    {"id": "rate", "label": "5 Rate & performance", "cards": [0,1,2,19,20]}
   ]
 }

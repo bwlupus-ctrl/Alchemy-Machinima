@@ -12,6 +12,7 @@
 #include "llfontgl.h"
 #include "llrender.h"
 #include "llrender2dutils.h"
+#include "llsliderwheel.h"
 #include "lltooldraganddrop.h"
 #include "lluictrlfactory.h"
 #include "llwindow.h"
@@ -42,6 +43,7 @@ constexpr S32 FACE_ROW_HEIGHT = 32;
 constexpr S32 FACE_SCROLLBAR_WIDTH = 10;
 constexpr S32 PICKER_ROW_HEIGHT = 35;
 constexpr S32 PROJECTOR_ROW_HEIGHT = 36;
+constexpr S32 PROJECTOR_SCROLLBAR_WIDTH = 10;
 
 struct MonitorHeaderLayout
 {
@@ -823,7 +825,8 @@ ALVCamProjectorList::ALVCamProjectorList(const Params& p)
       mFont(LLFontGL::getFontSansSerifSmall()),
       mBorderColor(ALKitStyle::color(ALKitStyle::CARD_BORDER).get()),
       mTextColor(ALKitStyle::color(ALKitStyle::TEXT).get()),
-      mMutedColor(ALKitStyle::color(ALKitStyle::MUTED).get())
+      mMutedColor(ALKitStyle::color(ALKitStyle::MUTED).get()),
+      mAccentColor(ALKitStyle::color(ALKitStyle::ACCENT).get())
 {
     setMouseOpaque(true);
 }
@@ -831,37 +834,92 @@ ALVCamProjectorList::ALVCamProjectorList(const Params& p)
 void ALVCamProjectorList::setItems(const std::vector<Item>& items)
 {
     mItems = items;
+    setScrollOffset(mScrollOffset);
 }
 
 S32 ALVCamProjectorList::rowAt(S32 y) const
 {
-    const S32 row = (getRect().getHeight() - y) / PROJECTOR_ROW_HEIGHT;
+    const S32 row = mScrollOffset +
+        (getRect().getHeight() - y) / PROJECTOR_ROW_HEIGHT;
     return row >= 0 && row < static_cast<S32>(mItems.size()) ? row : -1;
+}
+
+void ALVCamProjectorList::setScrollOffset(S32 offset)
+{
+    const S32 visible_rows = llmax(1, getRect().getHeight() / PROJECTOR_ROW_HEIGHT);
+    mScrollOffset = llclamp(offset, 0,
+        llmax(0, static_cast<S32>(mItems.size()) - visible_rows));
 }
 
 void ALVCamProjectorList::draw()
 {
     LL_PROFILE_ZONE_SCOPED_CATEGORY_UI;
-    for (U32 row = 0; row < mItems.size(); ++row)
+    const S32 paint_rows = llmax(1,
+        (getRect().getHeight() + PROJECTOR_ROW_HEIGHT - 1) / PROJECTOR_ROW_HEIGHT);
+    const S32 visible_rows = llmax(1, getRect().getHeight() / PROJECTOR_ROW_HEIGHT);
+    const S32 end = llmin(static_cast<S32>(mItems.size()),
+                          mScrollOffset + paint_rows);
+    const S32 content_right = getRect().getWidth() - PROJECTOR_SCROLLBAR_WIDTH - 2;
+    for (S32 row = mScrollOffset; row < end; ++row)
     {
-        const S32 top = getRect().getHeight() - static_cast<S32>(row) * PROJECTOR_ROW_HEIGHT;
-        const LLRect rect(0, top, getRect().getWidth(), top - PROJECTOR_ROW_HEIGHT);
-        gl_rect_2d(rect, mBorderColor, false);
+        const S32 top = getRect().getHeight() -
+            (row - mScrollOffset) * PROJECTOR_ROW_HEIGHT;
+        const LLRect rect(0, top, content_right, top - PROJECTOR_ROW_HEIGHT);
+        if (mItems[row].mSelected)
+            gl_rect_2d(rect, LLColor4(mAccentColor.mV[0], mAccentColor.mV[1],
+                                      mAccentColor.mV[2], .18f), true);
+        gl_rect_2d(rect, mItems[row].mSelected ? mAccentColor : mBorderColor, false);
         drawText(mFont, mItems[row].mName, 7, top - 15, mTextColor,
-                 llmax(1, getRect().getWidth() - 78));
+                 llmax(1, content_right - 78));
         drawText(mFont, mItems[row].mMeta, 7, top - 29, mMutedColor,
-                 llmax(1, getRect().getWidth() - 78));
-        drawText(mFont, "Remove", getRect().getWidth() - 61, top - 22,
+                 llmax(1, content_right - 78));
+        drawText(mFont, "Remove", content_right - 61, top - 22,
                  mTextColor, 55);
+    }
+    if (static_cast<S32>(mItems.size()) > visible_rows)
+    {
+        const S32 track_left = getRect().getWidth() - PROJECTOR_SCROLLBAR_WIDTH;
+        const S32 thumb_height = llmax(18, getRect().getHeight() * visible_rows /
+                                           static_cast<S32>(mItems.size()));
+        const S32 max_offset = static_cast<S32>(mItems.size()) - visible_rows;
+        const S32 travel = getRect().getHeight() - thumb_height;
+        const S32 thumb_top = getRect().getHeight() -
+            (max_offset ? mScrollOffset * travel / max_offset : 0);
+        gl_rect_2d(LLRect(track_left, getRect().getHeight(), getRect().getWidth(), 0),
+                   LLColor4(0.f, 0.f, 0.f, .18f), true);
+        gl_rect_2d(LLRect(track_left + 1, thumb_top, getRect().getWidth() - 1,
+                          thumb_top - thumb_height), mBorderColor, true);
     }
     LLUICtrl::draw();
 }
 
 bool ALVCamProjectorList::handleMouseDown(S32 x, S32 y, MASK)
 {
+    const S32 content_right = getRect().getWidth() - PROJECTOR_SCROLLBAR_WIDTH - 2;
+    const S32 visible_rows = llmax(1, getRect().getHeight() / PROJECTOR_ROW_HEIGHT);
+    if (x >= getRect().getWidth() - PROJECTOR_SCROLLBAR_WIDTH &&
+        static_cast<S32>(mItems.size()) > visible_rows)
+    {
+        const S32 max_offset = llmax(0, static_cast<S32>(mItems.size()) - visible_rows);
+        setScrollOffset((getRect().getHeight() - y) * max_offset /
+                        llmax(1, getRect().getHeight()));
+        return true;
+    }
     const S32 row = rowAt(y);
-    if (row < 0 || x < getRect().getWidth() - 70) return false;
-    setValue(mItems[row].mHandle.mId);
+    if (row < 0) return false;
+    LLSD value;
+    value["action"] = x >= content_right - 70 ? "remove" : "select";
+    value["projector"] = mItems[row].mHandle.mId;
+    setValue(value);
     onCommit();
+    return true;
+}
+
+bool ALVCamProjectorList::handleScrollWheel(S32, S32, LLScrollDelta delta)
+{
+    const S32 before = mScrollOffset;
+    setScrollOffset(mScrollOffset + delta.mClicks);
+    if (mScrollOffset == before) return false;
+    LLSliderWheel::noteScroll(this);
     return true;
 }

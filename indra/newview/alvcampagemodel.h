@@ -17,6 +17,23 @@ class LLViewerObject;
 class ALVCamPageModel
 {
 public:
+    enum class EProjectorLookPreset : S32
+    {
+        CUSTOM = -1,
+        CLEAN_DIGITAL,
+        CINEMA_XENON,
+        HOME_MOVIE_16MM,
+        OLD_SLIDE_PROJECTOR,
+        WORN_FILM_REEL,
+        COUNT
+    };
+
+    struct ProjectorLookPreset
+    {
+        const char* mName;
+        LLPrismLens::ProjectorLook mLook;
+    };
+
     struct FaceDropStatus
     {
         LLPrismLens::ActionStatus mAction;
@@ -54,10 +71,12 @@ public:
     const LLPrismLens::GateSnapshot& gate() const { return mGate; }
     const LLPrismLens::CaptureHandle& selectedCapture() const { return mSelectedCapture; }
     const LLPrismLens::DisplayHandle& selectedDisplay() const { return mSelectedDisplay; }
+    const LLPrismLens::ProjectorHandle& selectedProjector() const { return mSelectedProjector; }
     LLPrismLens::DisplayHandle monitorDisplay(U32 capture_slot) const;
 
     void setSelectedCapture(const LLPrismLens::CaptureHandle& capture);
     void setSelectedDisplay(const LLPrismLens::DisplayHandle& display);
+    void setSelectedProjector(const LLPrismLens::ProjectorHandle& projector);
     bool setMonitorDisplay(const LLPrismLens::CaptureHandle& capture,
                            const LLPrismLens::DisplayHandle& display);
     boost::signals2::connection connectChanged(const changed_signal_t::slot_type& slot);
@@ -128,10 +147,17 @@ public:
         const LLPrismLens::ProjectorHandle& binding,
         const LLPrismLens::CaptureHandle& capture,
         std::string* reason = nullptr);
-    bool setProjector(
+    bool setProjectorSettings(
         const LLPrismLens::ProjectorHandle& binding,
         const LLPrismLens::ProjectorSettings& settings,
         std::string* reason = nullptr);
+    bool setProjectorLook(
+        const LLPrismLens::ProjectorHandle& binding,
+        EProjectorLookPreset preset, std::string* reason = nullptr);
+    static const std::array<ProjectorLookPreset,
+        static_cast<size_t>(EProjectorLookPreset::COUNT)>& projectorLookPresets();
+    static EProjectorLookPreset projectorLookPreset(
+        const LLPrismLens::ProjectorLook& look);
     LLPrismLens::ERegistryResult setProjectorGateSubscribed(
         const LLPrismLens::ProjectorHandle& binding, bool subscribed,
         std::string* reason = nullptr);
@@ -148,11 +174,14 @@ private:
         const LLPrismLens::CaptureHandle& handle) const;
     const LLPrismLens::DisplayDefinition* findDisplay(
         const LLPrismLens::DisplayHandle& handle) const;
+    const LLPrismLens::ProjectorDefinition* findProjector(
+        const LLPrismLens::ProjectorHandle& handle) const;
     LLPrismLens::RegistrySnapshot mRegistry;
     LLPrismLens::PerformanceSnapshot mPerformance;
     LLPrismLens::GateSnapshot mGate;
     LLPrismLens::CaptureHandle mSelectedCapture;
     LLPrismLens::DisplayHandle mSelectedDisplay;
+    LLPrismLens::ProjectorHandle mSelectedProjector;
     std::array<LLPrismLens::DisplayHandle, LLPrismLens::MAX_CAPTURES>
         mMonitorDisplay;
     U32 mDirty = DIRTY_ALL;

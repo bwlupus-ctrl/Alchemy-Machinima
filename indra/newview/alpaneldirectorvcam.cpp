@@ -56,6 +56,12 @@ bool sameDisplay(const LLPrismLens::DisplayHandle& a,
     return a.mId == b.mId && a.mGeneration == b.mGeneration;
 }
 
+bool sameProjector(const LLPrismLens::ProjectorHandle& a,
+                   const LLPrismLens::ProjectorHandle& b)
+{
+    return a.mId == b.mId && a.mGeneration == b.mGeneration;
+}
+
 const char* tileBadge(LLPrismPreviewService::ETileState state)
 {
     using State = LLPrismPreviewService::ETileState;
@@ -286,6 +292,15 @@ const LLPrismLens::DisplayDefinition* ALPanelDirectorVCam::selectedDisplay() con
     return nullptr;
 }
 
+const LLPrismLens::ProjectorDefinition* ALPanelDirectorVCam::selectedProjector() const
+{
+    for (U32 i = 0; i < mModel.registry().mProjectorCount; ++i)
+        if (sameProjector(mModel.registry().mProjectors[i].mHandle,
+                          mModel.selectedProjector()))
+            return &mModel.registry().mProjectors[i];
+    return nullptr;
+}
+
 void ALPanelDirectorVCam::onModelChanged(U32 dirty)
 {
     if (mModel.pageVisible()) refresh(dirty);
@@ -329,6 +344,7 @@ void ALPanelDirectorVCam::refresh(U32 dirty)
         mModel.setSelectedCapture(registry.mCaptures[0].mHandle);
     const LLPrismLens::CaptureDefinition* capture = selectedCapture();
     const LLPrismLens::DisplayDefinition* display = selectedDisplay();
+    const LLPrismLens::ProjectorDefinition* selected_projector = selectedProjector();
     const LLPrismLens::PerformanceSnapshot& perf = mModel.performance();
 
     U32 visible_faces = 0;
@@ -437,6 +453,7 @@ void ALPanelDirectorVCam::refresh(U32 dirty)
     mFaceList->setItems(faces);
     mFaceList->setMovePick(mMoveTargetCapture.mId.notNull());
     std::vector<ALVCamProjectorList::Item> projectors;
+    U32 selected_projector_number = 0;
     if (capture)
         for (U32 index = 0; index < registry.mProjectorCount; ++index)
         {
@@ -446,15 +463,82 @@ void ALPanelDirectorVCam::refresh(U32 dirty)
                 ? ("Projector " + projector.mObjectId.asString().substr(0, 8))
                 : llformat("Rig %u light %u", projector.mRigSlot + 1,
                            projector.mRigLight + 1);
+            const bool selected = sameProjector(projector.mHandle,
+                                                mModel.selectedProjector());
             projectors.push_back({projector.mHandle, name,
-                projector.mQuarantined ? projector.mQuarantineReason : "Viewer-local feed"});
+                projector.mQuarantined ? projector.mQuarantineReason : "Viewer-local feed",
+                selected});
+            if (selected) selected_projector_number = static_cast<U32>(projectors.size());
         }
     mProjectorList->setItems(projectors);
     if (ALKitCard* projector_card = mKitPage->findCard("projectors"))
         projector_card->setCodeVisible(!projectors.empty());
+    const std::string projector_badge = selected_projector_number
+        ? llformat("PROJECTOR %u", selected_projector_number) : "PROJECTOR";
+    for (const char* id : { "projector", "projector_tv" })
+        if (ALKitCard* projector_card = mKitPage->findCard(id))
+        {
+            projector_card->setBadge(projector_badge);
+            projector_card->setCodeVisible(selected_projector != nullptr);
+        }
     updateCardState(capture != nullptr, display != nullptr,
                     capture ? llformat("CAM %u · %s", capture->mSlot + 1,
                                        capture->mLabel.c_str()) : std::string());
+
+    if (selected_projector)
+    {
+        const LLPrismLens::ProjectorSettings& settings = selected_projector->mSettings;
+        const LLPrismLens::ProjectorLook& look = settings.mLook;
+        const LLPrismLens::ScreenEffects& effect = settings.mEffects;
+        setValueIfChanged(control("vc_proj_look"), static_cast<S32>(
+            ALVCamPageModel::projectorLookPreset(look)));
+        setValueIfChanged(control("vc_proj_fit"), static_cast<S32>(settings.mFitMode));
+        setValueIfChanged(control("vc_proj_anchor_x"), settings.mAnchor[0]);
+        setValueIfChanged(control("vc_proj_anchor_y"), settings.mAnchor[1]);
+        setValueIfChanged(control("vc_proj_flip_h"), settings.mFlipH);
+        setValueIfChanged(control("vc_proj_flip_v"), settings.mFlipV);
+        setValueIfChanged(control("vc_proj_rotate"), static_cast<S32>(settings.mRotate));
+        setValueIfChanged(control("vc_proj_keystone_h"), look.mKeystoneH);
+        setValueIfChanged(control("vc_proj_keystone_v"), look.mKeystoneV);
+        setValueIfChanged(control("vc_proj_throw"), static_cast<S32>(look.mThrowMode));
+        setValueIfChanged(control("vc_proj_brightness"), settings.mFeedEV);
+        setValueIfChanged(control("vc_proj_follow_exposure"), settings.mFollowMainExposure);
+        setValueIfChanged(control("vc_proj_lamp_kelvin"), look.mLampKelvin);
+        setValueIfChanged(control("vc_proj_gel_tint"),
+            LLColor4(look.mGelTint, 1.f).getValue());
+        setValueIfChanged(control("vc_proj_hotspot"), look.mHotspot);
+        setValueIfChanged(control("vc_proj_shutter_flicker"), look.mShutterFlicker);
+        setValueIfChanged(control("vc_proj_shutter_rate"), look.mShutterHz);
+        setValueIfChanged(control("vc_proj_gate_weave"), look.mGateWeave);
+        setValueIfChanged(control("vc_proj_grain"), look.mGrain);
+        setValueIfChanged(control("vc_proj_dust"), look.mDust);
+        setValueIfChanged(control("vc_proj_scratches"), look.mScratches);
+        setValueIfChanged(control("vc_proj_burn"), look.mBurn);
+        setValueIfChanged(control("vc_proj_halation"), look.mHalation);
+        setValueIfChanged(control("vc_proj_resolution"), static_cast<S32>(settings.mResolution));
+        setValueIfChanged(control("vc_proj_no_signal"), static_cast<S32>(settings.mNoSignal));
+        setValueIfChanged(control("vc_proj_keep_gobo"), settings.mKeepGobo);
+        setValueIfChanged(control("vc_proj_tv_preset"), LLSD());
+        setValueIfChanged(control("vc_proj_tv_scan"), effect.mScanlines);
+        setValueIfChanged(control("vc_proj_tv_gray"), effect.mGrayscale);
+        setValueIfChanged(control("vc_proj_tv_static"), effect.mStatic);
+        setValueIfChanged(control("vc_proj_tv_vignette"), effect.mVignette);
+        setValueIfChanged(control("vc_proj_tv_brightness"), effect.mBrightness);
+        setValueIfChanged(control("vc_proj_tv_lines"), 100.f + 500.f * effect.mScanlineCount);
+        setValueIfChanged(control("vc_proj_tv_dark"), effect.mScanlineDepth * 100.f);
+        setValueIfChanged(control("vc_proj_tv_sharp"), effect.mScanlineSharpness * 100.f);
+        setValueIfChanged(control("vc_proj_tv_thick"), effect.mScanlineThickness * 100.f);
+        setValueIfChanged(control("vc_proj_tv_pixel"), effect.mPixelate);
+        setValueIfChanged(control("vc_proj_tv_sepia"), effect.mSepia);
+        setValueIfChanged(control("vc_proj_tv_chroma"), effect.mChromaBleed);
+        setValueIfChanged(control("vc_proj_tv_vroll"), effect.mVerticalRoll);
+        setValueIfChanged(control("vc_proj_tv_roll_speed"), effect.mRollSpeed);
+        setValueIfChanged(control("vc_proj_tv_tracking"), effect.mTracking);
+        setValueIfChanged(control("vc_proj_tv_flicker"), effect.mFlicker);
+        setValueIfChanged(control("vc_proj_tv_interlace"), effect.mInterlace);
+        setValueIfChanged(control("vc_proj_tv_dropout"), effect.mDropout);
+        setValueIfChanged(control("vc_proj_tv_sheen"), effect.mSheen);
+    }
 
     setEnabledIfChanged(control("vc_remove_face"), display && capture &&
         capture->mMode != LLPrismLens::ECaptureMode::SURFACE_LENS);
@@ -838,12 +922,17 @@ void ALPanelDirectorVCam::onControl(LLUICtrl* source)
     }
     else if (name == "vc_projector_list")
     {
-        const LLUUID id = value.asUUID();
+        const LLUUID id = value["projector"].asUUID();
         for (U32 index = 0; index < mModel.registry().mProjectorCount; ++index)
         {
             const LLPrismLens::ProjectorDefinition& projector =
                 mModel.registry().mProjectors[index];
             if (projector.mHandle.mId != id) continue;
+            if (value["action"].asString() == "select")
+            {
+                mModel.setSelectedProjector(projector.mHandle);
+                break;
+            }
             std::string reason;
             if (!mModel.removeProjector(projector.mHandle, &reason)) setStatus(reason);
             else setStatus("Projector feed removed.", false);
@@ -1002,6 +1091,8 @@ void ALPanelDirectorVCam::onControl(LLUICtrl* source)
         mModel.setRate(capture->mHandle, rate);
         source->setValue(LLSD(0));
     }
+    else if (name.rfind("vc_proj_", 0) == 0)
+        commitProjector(name, value);
     else if (name.rfind("vc_tv_", 0) == 0 || name.rfind("vc_face_", 0) == 0 ||
              name.rfind("vc_anchor_", 0) == 0 || name.rfind("vc_bar_", 0) == 0 ||
              name.rfind("vc_screen_", 0) == 0)
@@ -1147,6 +1238,114 @@ void ALPanelDirectorVCam::commitDisplay(const std::string& name, const LLSD& val
     }
     else changed = false;
     if (changed) mModel.setDisplay(display->mHandle, settings);
+}
+
+void ALPanelDirectorVCam::commitProjector(const std::string& name,
+                                          const LLSD& value)
+{
+    const LLPrismLens::ProjectorDefinition* projector = selectedProjector();
+    if (!projector) return;
+    if (name == "vc_proj_look")
+    {
+        const S32 preset = value.asInteger();
+        if (preset >= 0)
+        {
+            std::string reason;
+            if (!mModel.setProjectorLook(projector->mHandle,
+                    static_cast<ALVCamPageModel::EProjectorLookPreset>(preset),
+                    &reason))
+                setStatus(reason);
+        }
+        return;
+    }
+
+    LLPrismLens::ProjectorSettings settings = projector->mSettings;
+    LLPrismLens::ProjectorLook& look = settings.mLook;
+    LLPrismLens::ScreenEffects& effect = settings.mEffects;
+    bool changed = true;
+    if (name == "vc_proj_fit") settings.mFitMode =
+        static_cast<LLPrismLens::EFitMode>(llclamp(value.asInteger(), 0, 2));
+    else if (name == "vc_proj_anchor_x") settings.mAnchor[0] = static_cast<F32>(value.asReal());
+    else if (name == "vc_proj_anchor_y") settings.mAnchor[1] = static_cast<F32>(value.asReal());
+    else if (name == "vc_proj_flip_h") settings.mFlipH = value.asBoolean();
+    else if (name == "vc_proj_flip_v") settings.mFlipV = value.asBoolean();
+    else if (name == "vc_proj_rotate") settings.mRotate = static_cast<U8>(llclamp(value.asInteger(), 0, 3));
+    else if (name == "vc_proj_keystone_h") look.mKeystoneH = static_cast<F32>(value.asReal());
+    else if (name == "vc_proj_keystone_v") look.mKeystoneV = static_cast<F32>(value.asReal());
+    else if (name == "vc_proj_throw") look.mThrowMode =
+        static_cast<LLPrismLens::EProjectorThrow>(llclamp(value.asInteger(), 0, 2));
+    else if (name == "vc_proj_brightness") settings.mFeedEV = static_cast<F32>(value.asReal());
+    else if (name == "vc_proj_follow_exposure") settings.mFollowMainExposure = value.asBoolean();
+    else if (name == "vc_proj_lamp_kelvin") look.mLampKelvin = static_cast<F32>(value.asReal());
+    else if (name == "vc_proj_gel_tint") look.mGelTint = LLColor3(value);
+    else if (name == "vc_proj_hotspot") look.mHotspot = static_cast<F32>(value.asReal());
+    else if (name == "vc_proj_shutter_flicker") look.mShutterFlicker = static_cast<F32>(value.asReal());
+    else if (name == "vc_proj_shutter_rate") look.mShutterHz = static_cast<F32>(value.asReal());
+    else if (name == "vc_proj_gate_weave") look.mGateWeave = static_cast<F32>(value.asReal());
+    else if (name == "vc_proj_grain") look.mGrain = static_cast<F32>(value.asReal());
+    else if (name == "vc_proj_dust") look.mDust = static_cast<F32>(value.asReal());
+    else if (name == "vc_proj_scratches") look.mScratches = static_cast<F32>(value.asReal());
+    else if (name == "vc_proj_burn") look.mBurn = static_cast<F32>(value.asReal());
+    else if (name == "vc_proj_halation") look.mHalation = static_cast<F32>(value.asReal());
+    else if (name == "vc_proj_resolution") settings.mResolution = static_cast<U16>(value.asInteger());
+    else if (name == "vc_proj_no_signal") settings.mNoSignal =
+        static_cast<LLPrismLens::ENoSignal>(llclamp(value.asInteger(), 0, 2));
+    else if (name == "vc_proj_keep_gobo") settings.mKeepGobo = value.asBoolean();
+    else if (name == "vc_proj_tv_scan") effect.mScanlines = static_cast<F32>(value.asReal());
+    else if (name == "vc_proj_tv_gray") effect.mGrayscale = static_cast<F32>(value.asReal());
+    else if (name == "vc_proj_tv_static") effect.mStatic = static_cast<F32>(value.asReal());
+    else if (name == "vc_proj_tv_vignette") effect.mVignette = static_cast<F32>(value.asReal());
+    else if (name == "vc_proj_tv_brightness") effect.mBrightness = static_cast<F32>(value.asReal());
+    else if (name == "vc_proj_tv_lines") effect.mScanlineCount =
+        (static_cast<F32>(value.asReal()) - 100.f) / 500.f;
+    else if (name == "vc_proj_tv_dark") effect.mScanlineDepth = static_cast<F32>(value.asReal()) / 100.f;
+    else if (name == "vc_proj_tv_sharp") effect.mScanlineSharpness = static_cast<F32>(value.asReal()) / 100.f;
+    else if (name == "vc_proj_tv_thick") effect.mScanlineThickness = static_cast<F32>(value.asReal()) / 100.f;
+    else if (name == "vc_proj_tv_pixel") effect.mPixelate = static_cast<F32>(value.asReal());
+    else if (name == "vc_proj_tv_sepia") effect.mSepia = static_cast<F32>(value.asReal());
+    else if (name == "vc_proj_tv_chroma") effect.mChromaBleed = static_cast<F32>(value.asReal());
+    else if (name == "vc_proj_tv_vroll") effect.mVerticalRoll = static_cast<F32>(value.asReal());
+    else if (name == "vc_proj_tv_roll_speed") effect.mRollSpeed = static_cast<F32>(value.asReal());
+    else if (name == "vc_proj_tv_tracking") effect.mTracking = static_cast<F32>(value.asReal());
+    else if (name == "vc_proj_tv_flicker") effect.mFlicker = static_cast<F32>(value.asReal());
+    else if (name == "vc_proj_tv_interlace") effect.mInterlace = static_cast<F32>(value.asReal());
+    else if (name == "vc_proj_tv_dropout") effect.mDropout = static_cast<F32>(value.asReal());
+    else if (name == "vc_proj_tv_sheen") effect.mSheen = static_cast<F32>(value.asReal());
+    else if (name == "vc_proj_tv_preset")
+    {
+        const std::string preset = value.asString();
+        effect = LLPrismLens::ScreenEffects();
+        if (preset == "crt")
+        {
+            effect.mScanlines = .6f; effect.mScanlineCount = .5f;
+            effect.mVignette = .4f; effect.mFlicker = .15f;
+        }
+        else if (preset == "broken")
+        {
+            effect.mGrayscale = 1.f; effect.mStatic = .35f;
+            effect.mVerticalRoll = .5f; effect.mRollSpeed = .3f;
+            effect.mScanlines = .8f; effect.mDropout = .4f;
+        }
+        else if (preset == "vhs")
+        {
+            effect.mTracking = .45f; effect.mChromaBleed = .6f;
+            effect.mInterlace = .3f; effect.mFlicker = .2f;
+        }
+        else if (preset == "security")
+        {
+            effect.mGrayscale = 1.f; effect.mScanlines = .4f;
+            effect.mStatic = .15f; effect.mVignette = .5f;
+            effect.mPixelate = .2f;
+        }
+    }
+    else changed = false;
+
+    if (changed)
+    {
+        std::string reason;
+        if (!mModel.setProjectorSettings(projector->mHandle, settings, &reason))
+            setStatus(reason);
+    }
 }
 
 void ALPanelDirectorVCam::showMonitorMenu(U32 slot, S32 x, S32 y)

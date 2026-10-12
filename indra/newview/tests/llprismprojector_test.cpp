@@ -79,4 +79,75 @@ void prism_projector_object::test<5>()
     ensure_equals("fixed projector storage", snapshot.mProjectors.size(),
                   static_cast<std::size_t>(LLPrismLens::MAX_PROJECTOR_BINDINGS));
 }
+
+template<> template<>
+void prism_projector_object::test<6>()
+{
+    set_test_name("projector look LLSD round trip preserves every field");
+    LLPrismLens::ProjectorLook source;
+    source.mKeystoneH = -0.25f;
+    source.mKeystoneV = 0.5f;
+    source.mShutterFlicker = 0.35f;
+    source.mShutterHz = 18.f;
+    source.mGateWeave = 0.4f;
+    source.mHotspot = 0.6f;
+    source.mLampKelvin = 3400.f;
+    source.mGelTint = LLColor3(0.8f, 0.7f, 0.6f);
+    source.mDust = 0.1f;
+    source.mScratches = 0.2f;
+    source.mBurn = 0.3f;
+    source.mGrain = 0.4f;
+    source.mHalation = 0.5f;
+    source.mThrowMode = LLPrismLens::EProjectorThrow::CAMERA_FOV;
+    LLPrismLens::ProjectorLook result;
+    ensure("look parses", LLPrismLens::projectorLookFromLLSD(
+        LLPrismLens::projectorLookToLLSD(source), result));
+    ensure_equals("keystone H", result.mKeystoneH, source.mKeystoneH);
+    ensure_equals("keystone V", result.mKeystoneV, source.mKeystoneV);
+    ensure_equals("shutter", result.mShutterFlicker, source.mShutterFlicker);
+    ensure_equals("shutter Hz", result.mShutterHz, source.mShutterHz);
+    ensure_equals("weave", result.mGateWeave, source.mGateWeave);
+    ensure_equals("hotspot", result.mHotspot, source.mHotspot);
+    ensure_equals("Kelvin", result.mLampKelvin, source.mLampKelvin);
+    ensure("gel", result.mGelTint == source.mGelTint);
+    ensure_equals("dust", result.mDust, source.mDust);
+    ensure_equals("scratches", result.mScratches, source.mScratches);
+    ensure_equals("burn", result.mBurn, source.mBurn);
+    ensure_equals("grain", result.mGrain, source.mGrain);
+    ensure_equals("halation", result.mHalation, source.mHalation);
+    ensure("throw", result.mThrowMode == source.mThrowMode);
+}
+
+template<> template<>
+void prism_projector_object::test<7>()
+{
+    set_test_name("default look is a strict feed and bind no-op");
+    LLPrismLens::ProjectorLook look;
+    ensure("all contract defaults", look.isDefault());
+    ensure("default selects legacy feed shader", !look.hasFeedEffects());
+    ensure("throw defaults off",
+           look.mThrowMode == LLPrismLens::EProjectorThrow::OFF);
+}
+
+template<> template<>
+void prism_projector_object::test<8>()
+{
+    set_test_name("6500 Kelvin is exact identity");
+    ensure("D65 identity",
+           LLPrismLens::projectorKelvinRgb(6500.f) == LLColor3(1.f, 1.f, 1.f));
+}
+
+template<> template<>
+void prism_projector_object::test<9>()
+{
+    set_test_name("zero keystone is exact identity");
+    F32 u = 0.f;
+    F32 v = 0.f;
+    bool inside = false;
+    LLPrismLens::projectorKeystoneUv(0.173f, 0.827f, 0.f, 0.f,
+                                     u, v, inside);
+    ensure("inside", inside);
+    ensure_equals("U identity", u, 0.173f);
+    ensure_equals("V identity", v, 0.827f);
+}
 }

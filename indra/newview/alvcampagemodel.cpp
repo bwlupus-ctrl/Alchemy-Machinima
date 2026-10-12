@@ -27,6 +27,31 @@ bool sameDisplay(const LLPrismLens::DisplayHandle& left,
     return left.mId == right.mId && left.mGeneration == right.mGeneration;
 }
 
+bool sameProjector(const LLPrismLens::ProjectorHandle& left,
+                   const LLPrismLens::ProjectorHandle& right)
+{
+    return left.mId == right.mId && left.mGeneration == right.mGeneration;
+}
+
+bool sameLook(const LLPrismLens::ProjectorLook& left,
+              const LLPrismLens::ProjectorLook& right)
+{
+    return left.mKeystoneH == right.mKeystoneH &&
+           left.mKeystoneV == right.mKeystoneV &&
+           left.mShutterFlicker == right.mShutterFlicker &&
+           left.mShutterHz == right.mShutterHz &&
+           left.mGateWeave == right.mGateWeave &&
+           left.mHotspot == right.mHotspot &&
+           left.mLampKelvin == right.mLampKelvin &&
+           left.mGelTint == right.mGelTint &&
+           left.mDust == right.mDust &&
+           left.mScratches == right.mScratches &&
+           left.mBurn == right.mBurn &&
+           left.mGrain == right.mGrain &&
+           left.mHalation == right.mHalation &&
+           left.mThrowMode == right.mThrowMode;
+}
+
 }
 
 void ALVCamPageModel::currentViewTransform(LLVector3& position,
@@ -125,6 +150,14 @@ void ALVCamPageModel::refreshNow(U32 dirty)
                          !sameCapture(display->mCapture, mSelectedCapture)))
             mSelectedDisplay = LLPrismLens::DisplayHandle();
     }
+    if (mSelectedProjector.mId.notNull())
+    {
+        const LLPrismLens::ProjectorDefinition* projector =
+            findProjector(mSelectedProjector);
+        if (!projector || (mSelectedCapture.mId.notNull() &&
+                           !sameCapture(projector->mCapture, mSelectedCapture)))
+            mSelectedProjector = LLPrismLens::ProjectorHandle();
+    }
     for (U32 slot = 0; slot < LLPrismLens::MAX_CAPTURES; ++slot)
     {
         if (mMonitorDisplay[slot].mId.isNull()) continue;
@@ -163,12 +196,30 @@ const LLPrismLens::DisplayDefinition* ALVCamPageModel::findDisplay(
     return nullptr;
 }
 
+const LLPrismLens::ProjectorDefinition* ALVCamPageModel::findProjector(
+    const LLPrismLens::ProjectorHandle& handle) const
+{
+    for (U32 index = 0; index < mRegistry.mProjectorCount; ++index)
+        if (sameProjector(mRegistry.mProjectors[index].mHandle, handle))
+            return &mRegistry.mProjectors[index];
+    return nullptr;
+}
+
 void ALVCamPageModel::setSelectedCapture(
     const LLPrismLens::CaptureHandle& capture)
 {
     if (sameCapture(mSelectedCapture, capture)) return;
     mSelectedCapture = capture;
     mSelectedDisplay = LLPrismLens::DisplayHandle();
+    mSelectedProjector = LLPrismLens::ProjectorHandle();
+    markDirty(DIRTY_SELECTION);
+}
+
+void ALVCamPageModel::setSelectedProjector(
+    const LLPrismLens::ProjectorHandle& projector)
+{
+    if (sameProjector(mSelectedProjector, projector)) return;
+    mSelectedProjector = projector;
     markDirty(DIRTY_SELECTION);
 }
 
@@ -211,6 +262,7 @@ void ALVCamPageModel::selectAfterAdd(
 {
     mSelectedCapture = capture;
     mSelectedDisplay = LLPrismLens::DisplayHandle();
+    mSelectedProjector = LLPrismLens::ProjectorHandle();
     refreshNow(DIRTY_CONFIGURATION | DIRTY_RUNTIME | DIRTY_SELECTION);
 }
 
@@ -273,6 +325,7 @@ bool ALVCamPageModel::removeCapture(
     }
     mSelectedCapture = LLPrismLens::CaptureHandle();
     mSelectedDisplay = LLPrismLens::DisplayHandle();
+    mSelectedProjector = LLPrismLens::ProjectorHandle();
     refreshNow(DIRTY_CONFIGURATION | DIRTY_RUNTIME | DIRTY_SELECTION);
     const LLPrismLens::CaptureDefinition* next = nullptr;
     for (U32 index = 0; index < mRegistry.mCaptureCount; ++index)
@@ -730,11 +783,89 @@ LLPrismLens::ERegistryResult ALVCamPageModel::reassignProjector(
     return LLPrismLens::reassignProjector(binding, capture, reason);
 }
 
-bool ALVCamPageModel::setProjector(
+bool ALVCamPageModel::setProjectorSettings(
     const LLPrismLens::ProjectorHandle& binding,
     const LLPrismLens::ProjectorSettings& settings, std::string* reason)
 {
     return LLPrismLens::setProjectorSettings(binding, settings, reason);
+}
+
+const std::array<ALVCamPageModel::ProjectorLookPreset,
+    static_cast<size_t>(ALVCamPageModel::EProjectorLookPreset::COUNT)>&
+ALVCamPageModel::projectorLookPresets()
+{
+    static const std::array<ProjectorLookPreset,
+        static_cast<size_t>(EProjectorLookPreset::COUNT)> presets = []
+    {
+        std::array<ProjectorLookPreset,
+            static_cast<size_t>(EProjectorLookPreset::COUNT)> result{};
+        result[0] = { "Clean digital", LLPrismLens::ProjectorLook() };
+
+        result[1] = { "Cinema xenon", LLPrismLens::ProjectorLook() };
+        result[1].mLook.mLampKelvin = 6000.f;
+        result[1].mLook.mHotspot = .25f;
+        result[1].mLook.mShutterFlicker = .05f;
+        result[1].mLook.mHalation = .15f;
+        result[1].mLook.mGrain = .05f;
+
+        result[2] = { "16mm home movie", LLPrismLens::ProjectorLook() };
+        result[2].mLook.mLampKelvin = 3400.f;
+        result[2].mLook.mHotspot = .45f;
+        result[2].mLook.mShutterFlicker = .35f;
+        result[2].mLook.mShutterHz = 18.f;
+        result[2].mLook.mGateWeave = .35f;
+        result[2].mLook.mDust = .3f;
+        result[2].mLook.mScratches = .2f;
+        result[2].mLook.mGrain = .35f;
+        result[2].mLook.mHalation = .25f;
+
+        result[3] = { "Old slide projector", LLPrismLens::ProjectorLook() };
+        result[3].mLook.mLampKelvin = 3000.f;
+        result[3].mLook.mHotspot = .6f;
+        result[3].mLook.mKeystoneV = .15f;
+        result[3].mLook.mDust = .15f;
+        result[3].mLook.mBurn = .2f;
+        result[3].mLook.mHalation = .2f;
+
+        result[4] = { "Worn film reel", LLPrismLens::ProjectorLook() };
+        result[4].mLook.mLampKelvin = 3800.f;
+        result[4].mLook.mShutterFlicker = .25f;
+        result[4].mLook.mGateWeave = .25f;
+        result[4].mLook.mDust = .5f;
+        result[4].mLook.mScratches = .5f;
+        result[4].mLook.mBurn = .35f;
+        result[4].mLook.mGrain = .45f;
+        return result;
+    }();
+    return presets;
+}
+
+ALVCamPageModel::EProjectorLookPreset ALVCamPageModel::projectorLookPreset(
+    const LLPrismLens::ProjectorLook& look)
+{
+    const auto& presets = projectorLookPresets();
+    for (size_t index = 0; index < presets.size(); ++index)
+        if (sameLook(look, presets[index].mLook))
+            return static_cast<EProjectorLookPreset>(index);
+    return EProjectorLookPreset::CUSTOM;
+}
+
+bool ALVCamPageModel::setProjectorLook(
+    const LLPrismLens::ProjectorHandle& binding,
+    EProjectorLookPreset preset, std::string* reason)
+{
+    const S32 index = static_cast<S32>(preset);
+    const auto& presets = projectorLookPresets();
+    const LLPrismLens::ProjectorDefinition* definition = findProjector(binding);
+    if (!definition || index < 0 || index >= static_cast<S32>(presets.size()))
+    {
+        if (reason) *reason = definition
+            ? "Choose a projector look preset." : "That projector no longer exists.";
+        return false;
+    }
+    LLPrismLens::ProjectorSettings settings = definition->mSettings;
+    settings.mLook = presets[index].mLook;
+    return setProjectorSettings(binding, settings, reason);
 }
 
 LLPrismLens::ERegistryResult ALVCamPageModel::setProjectorGateSubscribed(
@@ -748,7 +879,10 @@ LLPrismLens::ERegistryResult ALVCamPageModel::setProjectorGateSubscribed(
 bool ALVCamPageModel::removeProjector(
     const LLPrismLens::ProjectorHandle& binding, std::string* reason)
 {
-    return LLPrismLens::removeProjector(binding, reason);
+    const bool removed = LLPrismLens::removeProjector(binding, reason);
+    if (removed && sameProjector(mSelectedProjector, binding))
+        mSelectedProjector = LLPrismLens::ProjectorHandle();
+    return removed;
 }
 
 bool ALVCamPageModel::setLabel(const LLPrismLens::CaptureHandle& capture,

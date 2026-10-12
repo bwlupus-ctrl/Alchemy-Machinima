@@ -965,10 +965,11 @@ def synthetic_entries(xi, settings, csv_pairs, page_meta, presets, preset_writte
         "vc_quality_ceiling": "PrismLensResolutionScale",
     }
     kind_type = {"toggle": "toggle", "slider": "slider", "number": "spinner",
-                 "combo": "combo", "segmented": "radio", "button": "button"}
+                 "combo": "combo", "segmented": "radio", "button": "button",
+                 "color": "color"}
     custom_type = {"vcam_monitor_header": "button", "vcam_monitor_strip": "button", "vcam_monitor_pager": "button",
                    "vcam_monitor_tile": "button", "vcam_camera_selector": "button",
-                   "vcam_face_list": "list"}
+                   "vcam_face_list": "list", "vcam_projector_list": "list"}
     for card in vcam["cards"]:
         for row in card.get("rows", []):
             widget = row.get("w", "")
@@ -982,6 +983,8 @@ def synthetic_entries(xi, settings, csv_pairs, page_meta, presets, preset_writte
             test = None
             if exercise == "toggle":
                 test = bool_test(default)
+            elif etype == "color":
+                test = color_test(default, "Color4")
             elif exercise == "set_value":
                 test = number_test(default, row.get("mn"), row.get("mx"), row.get("st"),
                                    sinfo.get("type", "F32"))

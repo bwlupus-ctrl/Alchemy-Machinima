@@ -51,8 +51,10 @@ private:
     ALKitRow* row(const std::string& name) const;
     const LLPrismLens::CaptureDefinition* selectedCapture() const;
     const LLPrismLens::DisplayDefinition* selectedDisplay() const;
+    const LLPrismLens::ProjectorDefinition* selectedProjector() const;
     void commitCamera(const std::string& name, const LLSD& value);
     void commitDisplay(const std::string& name, const LLSD& value);
+    void commitProjector(const std::string& name, const LLSD& value);
 
     ALVCamPageModel mModel;
     ALKitPage* mKitPage = nullptr;

@@ -4449,6 +4449,7 @@ public:
     static bool validProjectorSettings(
         const LLPrismLens::ProjectorSettings& settings, std::string* reason)
     {
+        const LLPrismLens::ProjectorLook& look = settings.mLook;
         if (settings.mFitMode != LLPrismLens::EFitMode::FIT &&
             settings.mFitMode != LLPrismLens::EFitMode::FILL &&
             settings.mFitMode != LLPrismLens::EFitMode::STRETCH)
@@ -4466,10 +4467,30 @@ public:
              settings.mResolution != 1024) ||
             (settings.mNoSignal != LLPrismLens::ENoSignal::OWN_COOKIE &&
              settings.mNoSignal != LLPrismLens::ENoSignal::BLACK &&
-             settings.mNoSignal != LLPrismLens::ENoSignal::WHITE))
+             settings.mNoSignal != LLPrismLens::ENoSignal::WHITE) ||
+            settings.mRotate > 3 ||
+            !std::isfinite(look.mKeystoneH) || look.mKeystoneH < -1.f || look.mKeystoneH > 1.f ||
+            !std::isfinite(look.mKeystoneV) || look.mKeystoneV < -1.f || look.mKeystoneV > 1.f ||
+            !std::isfinite(look.mShutterFlicker) || look.mShutterFlicker < 0.f || look.mShutterFlicker > 1.f ||
+            !std::isfinite(look.mShutterHz) || look.mShutterHz < 12.f || look.mShutterHz > 48.f ||
+            !std::isfinite(look.mGateWeave) || look.mGateWeave < 0.f || look.mGateWeave > 1.f ||
+            !std::isfinite(look.mHotspot) || look.mHotspot < 0.f || look.mHotspot > 1.f ||
+            !std::isfinite(look.mLampKelvin) || look.mLampKelvin < 2700.f || look.mLampKelvin > 10000.f ||
+            !std::isfinite(look.mGelTint.mV[0]) ||
+            !std::isfinite(look.mGelTint.mV[1]) ||
+            !std::isfinite(look.mGelTint.mV[2]) || look.mGelTint.mV[0] < 0.f ||
+            look.mGelTint.mV[1] < 0.f || look.mGelTint.mV[2] < 0.f ||
+            !std::isfinite(look.mDust) || look.mDust < 0.f || look.mDust > 1.f ||
+            !std::isfinite(look.mScratches) || look.mScratches < 0.f || look.mScratches > 1.f ||
+            !std::isfinite(look.mBurn) || look.mBurn < 0.f || look.mBurn > 1.f ||
+            !std::isfinite(look.mGrain) || look.mGrain < 0.f || look.mGrain > 1.f ||
+            !std::isfinite(look.mHalation) || look.mHalation < 0.f || look.mHalation > 1.f ||
+            (look.mThrowMode != LLPrismLens::EProjectorThrow::OFF &&
+             look.mThrowMode != LLPrismLens::EProjectorThrow::LIGHT_FOV &&
+             look.mThrowMode != LLPrismLens::EProjectorThrow::CAMERA_FOV))
         {
             if (reason)
-                *reason = "Projector settings require anchor 0-1, feed EV -4 to +4, and resolution 256, 512, or 1024.";
+                *reason = "Projector settings or look fields are outside their supported ranges.";
             return false;
         }
         return true;
@@ -5461,6 +5482,10 @@ public:
         std::memcpy(feed.mUvOffset, capture.mOutputUvOffset,
                     sizeof(feed.mUvOffset));
         feed.mGeneration = capture.mPublicationSerial;
+        feed.mCameraVerticalFovRad = capture.mRuntime.mEffectiveVerticalFovRad;
+        if (!(feed.mCameraVerticalFovRad > 0.f))
+            feed.mCameraVerticalFovRad = capture.mCamera.mFixedVerticalFovRad;
+        feed.mCameraAspect = capture.mCamera.mOutputAspect;
         feed.mSettings = projector.mSettings;
         return true;
     }
@@ -5489,6 +5514,10 @@ public:
                 capture.mHandle.mGeneration != projector.mCaptureGeneration)
                 return true;
             feed.mCapture = capture.mHandle;
+            feed.mCameraVerticalFovRad = capture.mRuntime.mEffectiveVerticalFovRad;
+            if (!(feed.mCameraVerticalFovRad > 0.f))
+                feed.mCameraVerticalFovRad = capture.mCamera.mFixedVerticalFovRad;
+            feed.mCameraAspect = capture.mCamera.mOutputAspect;
             if (!capture.mHasOutput || capture.mOutputPreviewQuality ||
                 !gPipeline.mPrismLensOutput[projector.mCaptureSlot].isComplete())
                 return true;
@@ -6217,6 +6246,9 @@ public:
                 default: settings["no_signal"] = "own_cookie"; break;
             }
             settings["keep_gobo"] = projector.mSettings.mKeepGobo;
+            settings["flip_h"] = projector.mSettings.mFlipH;
+            settings["flip_v"] = projector.mSettings.mFlipV;
+            settings["rotate"] = projector.mSettings.mRotate;
             const LLPrismLens::ScreenEffects& fx =
                 projector.mSettings.mEffects;
             LLSD effects = LLSD::emptyMap();
@@ -6243,6 +6275,8 @@ public:
             effects["rotate90"] = fx.mRotate90;
             effects["sheen"] = fx.mSheen;
             settings["screen_effects"] = effects;
+            settings["look"] = LLPrismLens::projectorLookToLLSD(
+                projector.mSettings.mLook);
             item["settings"] = settings;
             result["prism_projectors"].append(item);
         }
@@ -6966,6 +7000,13 @@ public:
                 parsed.mSettings.mNoSignal = LLPrismLens::ENoSignal::WHITE;
             else return fail("Unknown Prism projector no-signal policy.");
             parsed.mSettings.mKeepGobo = settings["keep_gobo"].asBoolean();
+            if (settings.has("flip_h"))
+                parsed.mSettings.mFlipH = settings["flip_h"].asBoolean();
+            if (settings.has("flip_v"))
+                parsed.mSettings.mFlipV = settings["flip_v"].asBoolean();
+            if (settings.has("rotate"))
+                parsed.mSettings.mRotate = static_cast<U8>(
+                    settings["rotate"].asInteger());
             if (settings.has("screen_effects") &&
                 settings["screen_effects"].isMap())
             {
@@ -7003,6 +7044,12 @@ public:
                 if (effects.has("flip_v")) fx.mFlipV = effects["flip_v"].asBoolean();
                 if (effects.has("rotate90")) fx.mRotate90 = effects["rotate90"].asBoolean();
                 fx.clampAndValidate();
+            }
+            if (settings.has("look") && settings["look"].isMap())
+            {
+                if (!LLPrismLens::projectorLookFromLLSD(
+                        settings["look"], parsed.mSettings.mLook))
+                    return fail("Invalid Prism projector look block.");
             }
             std::string settings_reason;
             if (!validProjectorSettings(parsed.mSettings, &settings_reason))
@@ -8381,6 +8428,111 @@ LLPrismLens::ScopedRevisionSignals::~ScopedRevisionSignals()
 
 namespace LLPrismLens
 {
+LLColor3 projectorKelvinRgb(F32 kelvin)
+{
+    kelvin = llclamp(kelvin, 2700.f, 10000.f);
+    if (kelvin == 6500.f) return LLColor3(1.f, 1.f, 1.f);
+
+    const auto approximate = [](F32 temperature)
+    {
+        const F32 t = temperature / 100.f;
+        const F32 r = t <= 66.f ? 255.f
+            : 329.698727446f * powf(t - 60.f, -0.1332047592f);
+        const F32 g = t <= 66.f
+            ? 99.4708025861f * logf(t) - 161.1195681661f
+            : 288.1221695283f * powf(t - 60.f, -0.0755148492f);
+        const F32 b = t >= 66.f ? 255.f : (t <= 19.f ? 0.f
+            : 138.5177312231f * logf(t - 10.f) - 305.0447927307f);
+        return LLColor3(llclamp(r, 0.f, 255.f), llclamp(g, 0.f, 255.f),
+                        llclamp(b, 0.f, 255.f));
+    };
+    const LLColor3 rgb = approximate(kelvin);
+    const LLColor3 neutral = approximate(6500.f);
+    return LLColor3(rgb.mV[0] / neutral.mV[0],
+                    rgb.mV[1] / neutral.mV[1],
+                    rgb.mV[2] / neutral.mV[2]);
+}
+
+void projectorKeystoneUv(F32 u, F32 v, F32 horizontal, F32 vertical,
+                         F32& warped_u, F32& warped_v, bool& inside)
+{
+    const F32 x = u - 0.5f;
+    const F32 y = v - 0.5f;
+    const F32 dx = 1.f + llclamp(horizontal, -1.f, 1.f) * y * 1.5f;
+    const F32 dy = 1.f + llclamp(vertical, -1.f, 1.f) * x * 1.5f;
+    warped_u = x / dx + 0.5f;
+    warped_v = y / dy + 0.5f;
+    inside = warped_u >= 0.f && warped_u <= 1.f &&
+             warped_v >= 0.f && warped_v <= 1.f;
+}
+
+LLSD projectorLookToLLSD(const ProjectorLook& look)
+{
+    LLSD data = LLSD::emptyMap();
+    data["keystone_h"] = look.mKeystoneH;
+    data["keystone_v"] = look.mKeystoneV;
+    data["shutter_flicker"] = look.mShutterFlicker;
+    data["shutter_hz"] = look.mShutterHz;
+    data["gate_weave"] = look.mGateWeave;
+    data["hotspot"] = look.mHotspot;
+    data["lamp_kelvin"] = look.mLampKelvin;
+    LLSD gel = LLSD::emptyArray();
+    gel.append(look.mGelTint.mV[0]);
+    gel.append(look.mGelTint.mV[1]);
+    gel.append(look.mGelTint.mV[2]);
+    data["gel_tint"] = gel;
+    data["dust"] = look.mDust;
+    data["scratches"] = look.mScratches;
+    data["burn"] = look.mBurn;
+    data["grain"] = look.mGrain;
+    data["halation"] = look.mHalation;
+    data["throw_mode"] = look.mThrowMode == EProjectorThrow::LIGHT_FOV
+        ? "light_fov" : (look.mThrowMode == EProjectorThrow::CAMERA_FOV
+        ? "camera_fov" : "off");
+    return data;
+}
+
+bool projectorLookFromLLSD(const LLSD& data, ProjectorLook& look)
+{
+    if (!data.isMap()) return false;
+    ProjectorLook parsed;
+    const auto read = [&data](const char* key, F32& value)
+    {
+        if (data.has(key) && (data[key].isReal() || data[key].isInteger()))
+            value = static_cast<F32>(data[key].asReal());
+    };
+    read("keystone_h", parsed.mKeystoneH);
+    read("keystone_v", parsed.mKeystoneV);
+    read("shutter_flicker", parsed.mShutterFlicker);
+    read("shutter_hz", parsed.mShutterHz);
+    read("gate_weave", parsed.mGateWeave);
+    read("hotspot", parsed.mHotspot);
+    read("lamp_kelvin", parsed.mLampKelvin);
+    read("dust", parsed.mDust);
+    read("scratches", parsed.mScratches);
+    read("burn", parsed.mBurn);
+    read("grain", parsed.mGrain);
+    read("halation", parsed.mHalation);
+    if (data.has("gel_tint"))
+    {
+        const LLSD& gel = data["gel_tint"];
+        if (!gel.isArray() || gel.size() != 3) return false;
+        parsed.mGelTint = LLColor3(static_cast<F32>(gel[0].asReal()),
+                                   static_cast<F32>(gel[1].asReal()),
+                                   static_cast<F32>(gel[2].asReal()));
+    }
+    if (data.has("throw_mode"))
+    {
+        const std::string mode = data["throw_mode"].asString();
+        if (mode == "off") parsed.mThrowMode = EProjectorThrow::OFF;
+        else if (mode == "light_fov") parsed.mThrowMode = EProjectorThrow::LIGHT_FOV;
+        else if (mode == "camera_fov") parsed.mThrowMode = EProjectorThrow::CAMERA_FOV;
+        else return false;
+    }
+    look = parsed;
+    return true;
+}
+
 ActionStatus addCameraSelectionStatus()
 {
     return PrismLensRegistry::instance().cameraSelectionStatus();
@@ -10498,6 +10650,20 @@ bool buildProjectorCompositeState(const ProjectorHandle& projector_handle,
     display.mSettings.mAnchor[0] = definition->mSettings.mAnchor[0];
     display.mSettings.mAnchor[1] = definition->mSettings.mAnchor[1];
     display.mSettings.mEffects = definition->mSettings.mEffects;
+    display.mSettings.mEffects.mFlipH =
+        display.mSettings.mEffects.mFlipH != definition->mSettings.mFlipH;
+    display.mSettings.mEffects.mFlipV =
+        display.mSettings.mEffects.mFlipV != definition->mSettings.mFlipV;
+    U8 rotate = definition->mSettings.mRotate;
+    if (display.mSettings.mEffects.mRotate90) rotate = (rotate + 1) & 3;
+    display.mSettings.mEffects.mRotate90 = (rotate & 1) != 0;
+    if (rotate >= 2)
+    {
+        display.mSettings.mEffects.mFlipH =
+            !display.mSettings.mEffects.mFlipH;
+        display.mSettings.mEffects.mFlipV =
+            !display.mSettings.mEffects.mFlipV;
+    }
     display.mSettings.mBarColorLinear[0] = 0.f;
     display.mSettings.mBarColorLinear[1] = 0.f;
     display.mSettings.mBarColorLinear[2] = 0.f;

@@ -314,8 +314,22 @@ float goboAnimIntensity()
 vec4 sampleGobo(vec2 uv, float lod)
 {
     vec2 animated_uv = animatedGoboUV(uv);
+    // Camera-feed-only marker. Existing texture gobos remain -1 and therefore
+    // keep their original UVs. xy is gate weave; zw maps the light cone to the
+    // capture camera FOV without another sampler or uniform.
+    if (gobo_pattern == -2)
+    {
+        animated_uv = (animated_uv - vec2(0.5)) * gobo_pattern_params.zw +
+                      vec2(0.5) + gobo_pattern_params.xy;
+    }
     vec4 col;
-    if (gobo_pattern >= 0)
+    if (gobo_pattern == -2 &&
+        (any(lessThan(animated_uv, vec2(0.0))) ||
+         any(greaterThan(animated_uv, vec2(1.0)))))
+    {
+        col = vec4(0.0);
+    }
+    else if (gobo_pattern >= 0)
     {
         col = proceduralGobo(gobo_pattern, animated_uv, gobo_pattern_params);
     }

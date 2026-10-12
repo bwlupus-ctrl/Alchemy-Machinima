@@ -11,6 +11,7 @@
 #include "llquaternion.h"
 #include "llsd.h"
 #include "lluuid.h"
+#include "v3color.h"
 #include "v3math.h"
 
 #include <array>
@@ -113,6 +114,13 @@ enum class ENoSignal : U8
     OWN_COOKIE,
     BLACK,
     WHITE
+};
+
+enum class EProjectorThrow : U8
+{
+    OFF,
+    LIGHT_FOV,
+    CAMERA_FOV
 };
 
 enum class EOutputState : U8
@@ -502,6 +510,44 @@ struct DisplaySettings
     F32          mHeight = 0.9f;   // metres
 };
 
+struct ProjectorLook
+{
+    F32 mKeystoneH = 0.f;
+    F32 mKeystoneV = 0.f;
+    F32 mShutterFlicker = 0.f;
+    F32 mShutterHz = 24.f;
+    F32 mGateWeave = 0.f;
+    F32 mHotspot = 0.f;
+    F32 mLampKelvin = 6500.f;
+    LLColor3 mGelTint = LLColor3(1.f, 1.f, 1.f);
+    F32 mDust = 0.f;
+    F32 mScratches = 0.f;
+    F32 mBurn = 0.f;
+    F32 mGrain = 0.f;
+    F32 mHalation = 0.f;
+    EProjectorThrow mThrowMode = EProjectorThrow::OFF;
+
+    bool isDefault() const
+    {
+        return mKeystoneH == 0.f && mKeystoneV == 0.f &&
+               mShutterFlicker == 0.f && mShutterHz == 24.f &&
+               mGateWeave == 0.f && mHotspot == 0.f &&
+               mLampKelvin == 6500.f &&
+               mGelTint == LLColor3(1.f, 1.f, 1.f) &&
+               mDust == 0.f && mScratches == 0.f && mBurn == 0.f &&
+               mGrain == 0.f && mHalation == 0.f &&
+               mThrowMode == EProjectorThrow::OFF;
+    }
+
+    bool hasFeedEffects() const
+    {
+        return mKeystoneH != 0.f || mKeystoneV != 0.f || mHotspot != 0.f ||
+               mLampKelvin != 6500.f || mGelTint != LLColor3(1.f, 1.f, 1.f) ||
+               mDust != 0.f || mScratches != 0.f || mBurn != 0.f ||
+               mGrain != 0.f || mHalation != 0.f;
+    }
+};
+
 struct ProjectorSettings
 {
     EFitMode mFitMode = EFitMode::FIT;
@@ -511,8 +557,20 @@ struct ProjectorSettings
     U16 mResolution = 512;
     ENoSignal mNoSignal = ENoSignal::OWN_COOKIE;
     bool mKeepGobo = false;
+    bool mFlipH = false;
+    bool mFlipV = false;
+    U8 mRotate = 0; // clockwise quarter turns: 0, 1, 2, 3
     ScreenEffects mEffects;
+    ProjectorLook mLook;
 };
+
+// CPU mirrors of the shader's two identity-sensitive transforms. Keeping
+// these tiny helpers public makes the contract testable without a GL context.
+LLColor3 projectorKelvinRgb(F32 kelvin);
+void projectorKeystoneUv(F32 u, F32 v, F32 horizontal, F32 vertical,
+                         F32& warped_u, F32& warped_v, bool& inside);
+LLSD projectorLookToLLSD(const ProjectorLook& look);
+bool projectorLookFromLLSD(const LLSD& data, ProjectorLook& look);
 
 struct ProjectorRuntimeState
 {
@@ -577,6 +635,8 @@ struct ProjectorFeed
     F32 mUvScale[2] = { 1.f, 1.f };
     F32 mUvOffset[2] = { 0.f, 0.f };
     U64 mGeneration = 0;
+    F32 mCameraVerticalFovRad = 0.f;
+    F32 mCameraAspect = 1.f;
     ProjectorSettings mSettings;
 };
 
