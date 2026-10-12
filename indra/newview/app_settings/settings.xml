@@ -8737,7 +8737,7 @@
       <integer>0</integer>
     </map>
     <key>DirectorUIV2</key>
-    <map><key>Comment</key><string>Use the new Director kit layout after restart.</string><key>Persist</key><integer>1</integer><key>Type</key><string>Boolean</string><key>Value</key><integer>0</integer></map>
+    <map><key>Comment</key><string>Use the new Director kit layout after restart.</string><key>Persist</key><integer>1</integer><key>Type</key><string>Boolean</string><key>Value</key><integer>1</integer></map>
     <key>DirectorV2RectBumped</key>
     <map><key>Comment</key><string>One-time saved-rectangle migration for Director kit.</string><key>Persist</key><integer>1</integer><key>Type</key><string>Boolean</string><key>Value</key><integer>0</integer></map>
     <key>DirectorV2CastRosterOpen</key>
