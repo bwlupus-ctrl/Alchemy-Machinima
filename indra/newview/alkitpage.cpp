@@ -914,9 +914,10 @@ void ALKitPage::applyModeAndChip(bool request_layout)
 
     for (auto& pair : mCards)
     {
-        const bool mode = visibleInMode(pair.first);
+        // While searching, every card with a hit shows regardless of mode/chip (pre-existing behaviour).
+        const bool mode = mSearching || visibleInMode(pair.first);
         bool section = true;
-        if (filtered && !mSections.empty() && mChipIndex < (S32)mSections.size())
+        if (!mSearching && filtered && !mSections.empty() && mChipIndex < (S32)mSections.size())
             section = std::find(mSections[mChipIndex].cards.begin(), mSections[mChipIndex].cards.end(), pair.first) !=
                       mSections[mChipIndex].cards.end();
         const bool search = visibleInSearch(pair.second);

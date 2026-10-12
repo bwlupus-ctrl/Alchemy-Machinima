@@ -714,7 +714,7 @@ void ALPanelDirectorVCam::updateCardState(bool have_capture, bool have_display,
                                           const std::string& camera_label)
 {
     if (!mKitPage) return;
-    const char* camera_cards[] = { "source", "placement", "skeleton", "optics", "guide",
+    const char* camera_cards[] = { "source", "placement", "optics", "guide",
         "camera_look", "look_goes", "output_frame", "faces", "picture_rate" };
     const std::string badge = camera_label.empty() ? "CAMERA" : camera_label;
     for (const char* id : camera_cards)
@@ -723,6 +723,13 @@ void ALPanelDirectorVCam::updateCardState(bool have_capture, bool have_display,
             card->setBadge(badge);
             card->setCodeVisible(have_capture);
         }
+    // The skeleton card's visibility depends on the camera type and is set once per refresh in
+    // refresh(); only force it hidden here when there is no camera (avoids a show/hide flip).
+    if (ALKitCard* skeleton = mKitPage->findCard("skeleton"))
+    {
+        skeleton->setBadge(badge);
+        if (!have_capture) skeleton->setCodeVisible(false);
+    }
     for (const char* id : { "face_mapping", "tv_effects" })
         if (ALKitCard* card = mKitPage->findCard(id)) card->setCodeVisible(have_display);
     if (ALKitCard* raw = mKitPage->findCard("raw_output"))

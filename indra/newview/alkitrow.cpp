@@ -246,7 +246,7 @@ bool ALKitRow::postBuild()
             }
     }
 
-    if (mMeta.kind == "segmented")
+    if (mMeta.kind == "segmented" && mControl)
     {
         std::vector<LLView*> segments(mControl->getChildList()->begin(),
                                       mControl->getChildList()->end());

@@ -625,8 +625,10 @@ bool ALVCamFaceList::handleMouseDown(S32 x, S32 y, MASK)
 
 bool ALVCamFaceList::handleScrollWheel(S32, S32, LLScrollDelta delta)
 {
+    // Only consume the wheel when the list actually scrolled; otherwise let the page scroll.
+    const S32 before = mScrollOffset;
     setScrollOffset(mScrollOffset + delta.mClicks);
-    return true;
+    return mScrollOffset != before;
 }
 
 bool ALVCamFaceList::handleDragAndDrop(
