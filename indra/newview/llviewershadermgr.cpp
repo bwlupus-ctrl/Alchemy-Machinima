@@ -1899,6 +1899,7 @@ bool LLViewerShaderMgr::loadShadersDeferred()
     // Keep the family aligned with colorCorrectPermutation() so legacy gamma,
     // tonemap and colour-grade choices match the visible monitor signal.
     bool projector_feed_shaders_ok = true;
+    bool projector_look_shaders_ok = true;
     for (U32 permutation = 0; permutation < 8; ++permutation)
     {
         LLGLSLShader& shader = gPrismProjectorFeedProgram[permutation];
@@ -1936,13 +1937,18 @@ bool LLViewerShaderMgr::loadShadersDeferred()
             look_shader.addPermutation("LEGACY_GAMMA", "1");
         look_shader.addPermutation("PROJECTOR_LOOK", "1");
         look_shader.mShaderLevel = mShaderLevel[SHADER_DEFERRED];
-        projector_feed_shaders_ok = look_shader.createShader() && projector_feed_shaders_ok;
+        projector_look_shaders_ok = look_shader.createShader() &&
+                                    projector_look_shaders_ok;
     }
     if (!projector_feed_shaders_ok)
     {
         for (LLGLSLShader& shader : gPrismProjectorFeedProgram) shader.unload();
-        for (LLGLSLShader& shader : gPrismProjectorLookProgram) shader.unload();
         LL_WARNS("Shader") << "Prism projector feed shader family unavailable; projector bindings will use their no-signal policy." << LL_ENDL;
+    }
+    if (!projector_look_shaders_ok)
+    {
+        for (LLGLSLShader& shader : gPrismProjectorLookProgram) shader.unload();
+        LL_WARNS_ONCE("Shader") << "Prism projector look shader family unavailable; projector feeds will fall back to the default feed shader with look effects disabled." << LL_ENDL;
     }
 
     // Preview shader availability is fail-open for the world compositor but

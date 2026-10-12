@@ -169,6 +169,25 @@ bool ALPanelDirectorVCam::postBuild()
     if (!LLPanel::postBuild()) return false;
     mKitPage = findChild<ALKitPage>("vcam_kit");
     collectControls(this);
+    static const char* const projector_control_names[PROJ_CONTROL_COUNT] = {
+        "vc_proj_look", "vc_proj_fit", "vc_proj_anchor_x", "vc_proj_anchor_y",
+        "vc_proj_flip_h", "vc_proj_flip_v", "vc_proj_rotate",
+        "vc_proj_keystone_h", "vc_proj_keystone_v", "vc_proj_throw",
+        "vc_proj_brightness", "vc_proj_follow_exposure", "vc_proj_lamp_kelvin",
+        "vc_proj_gel_tint", "vc_proj_hotspot", "vc_proj_shutter_flicker",
+        "vc_proj_shutter_rate", "vc_proj_gate_weave", "vc_proj_grain",
+        "vc_proj_dust", "vc_proj_scratches", "vc_proj_burn", "vc_proj_halation",
+        "vc_proj_resolution", "vc_proj_no_signal", "vc_proj_keep_gobo",
+        "vc_proj_tv_preset", "vc_proj_tv_scan", "vc_proj_tv_gray",
+        "vc_proj_tv_static", "vc_proj_tv_vignette", "vc_proj_tv_brightness",
+        "vc_proj_tv_lines", "vc_proj_tv_dark", "vc_proj_tv_sharp",
+        "vc_proj_tv_thick", "vc_proj_tv_pixel", "vc_proj_tv_sepia",
+        "vc_proj_tv_chroma", "vc_proj_tv_vroll", "vc_proj_tv_roll_speed",
+        "vc_proj_tv_tracking", "vc_proj_tv_flicker", "vc_proj_tv_interlace",
+        "vc_proj_tv_dropout", "vc_proj_tv_sheen"
+    };
+    for (U32 index = 0; index < PROJ_CONTROL_COUNT; ++index)
+        mProjectorControls[index] = control(projector_control_names[index]);
     mMonitorStrip = findChild<ALVCamMonitorStrip>("vc_monitor_strip");
     mMonitorHeader = findChild<ALVCamMonitorHeader>("vc_monitor_header");
     mMonitorPager = findChild<ALVCamMonitorPager>("vc_monitor_pager");
@@ -490,54 +509,54 @@ void ALPanelDirectorVCam::refresh(U32 dirty)
         const LLPrismLens::ProjectorSettings& settings = selected_projector->mSettings;
         const LLPrismLens::ProjectorLook& look = settings.mLook;
         const LLPrismLens::ScreenEffects& effect = settings.mEffects;
-        setValueIfChanged(control("vc_proj_look"), static_cast<S32>(
+        setValueIfChanged(projectorControl(PROJ_LOOK), static_cast<S32>(
             ALVCamPageModel::projectorLookPreset(look)));
-        setValueIfChanged(control("vc_proj_fit"), static_cast<S32>(settings.mFitMode));
-        setValueIfChanged(control("vc_proj_anchor_x"), settings.mAnchor[0]);
-        setValueIfChanged(control("vc_proj_anchor_y"), settings.mAnchor[1]);
-        setValueIfChanged(control("vc_proj_flip_h"), settings.mFlipH);
-        setValueIfChanged(control("vc_proj_flip_v"), settings.mFlipV);
-        setValueIfChanged(control("vc_proj_rotate"), static_cast<S32>(settings.mRotate));
-        setValueIfChanged(control("vc_proj_keystone_h"), look.mKeystoneH);
-        setValueIfChanged(control("vc_proj_keystone_v"), look.mKeystoneV);
-        setValueIfChanged(control("vc_proj_throw"), static_cast<S32>(look.mThrowMode));
-        setValueIfChanged(control("vc_proj_brightness"), settings.mFeedEV);
-        setValueIfChanged(control("vc_proj_follow_exposure"), settings.mFollowMainExposure);
-        setValueIfChanged(control("vc_proj_lamp_kelvin"), look.mLampKelvin);
-        setValueIfChanged(control("vc_proj_gel_tint"),
+        setValueIfChanged(projectorControl(PROJ_FIT), static_cast<S32>(settings.mFitMode));
+        setValueIfChanged(projectorControl(PROJ_ANCHOR_X), settings.mAnchor[0]);
+        setValueIfChanged(projectorControl(PROJ_ANCHOR_Y), settings.mAnchor[1]);
+        setValueIfChanged(projectorControl(PROJ_FLIP_H), settings.mFlipH);
+        setValueIfChanged(projectorControl(PROJ_FLIP_V), settings.mFlipV);
+        setValueIfChanged(projectorControl(PROJ_ROTATE), static_cast<S32>(settings.mRotate));
+        setValueIfChanged(projectorControl(PROJ_KEYSTONE_H), look.mKeystoneH);
+        setValueIfChanged(projectorControl(PROJ_KEYSTONE_V), look.mKeystoneV);
+        setValueIfChanged(projectorControl(PROJ_THROW), static_cast<S32>(look.mThrowMode));
+        setValueIfChanged(projectorControl(PROJ_BRIGHTNESS), settings.mFeedEV);
+        setValueIfChanged(projectorControl(PROJ_FOLLOW_EXPOSURE), settings.mFollowMainExposure);
+        setValueIfChanged(projectorControl(PROJ_LAMP_KELVIN), look.mLampKelvin);
+        setValueIfChanged(projectorControl(PROJ_GEL_TINT),
             LLColor4(look.mGelTint, 1.f).getValue());
-        setValueIfChanged(control("vc_proj_hotspot"), look.mHotspot);
-        setValueIfChanged(control("vc_proj_shutter_flicker"), look.mShutterFlicker);
-        setValueIfChanged(control("vc_proj_shutter_rate"), look.mShutterHz);
-        setValueIfChanged(control("vc_proj_gate_weave"), look.mGateWeave);
-        setValueIfChanged(control("vc_proj_grain"), look.mGrain);
-        setValueIfChanged(control("vc_proj_dust"), look.mDust);
-        setValueIfChanged(control("vc_proj_scratches"), look.mScratches);
-        setValueIfChanged(control("vc_proj_burn"), look.mBurn);
-        setValueIfChanged(control("vc_proj_halation"), look.mHalation);
-        setValueIfChanged(control("vc_proj_resolution"), static_cast<S32>(settings.mResolution));
-        setValueIfChanged(control("vc_proj_no_signal"), static_cast<S32>(settings.mNoSignal));
-        setValueIfChanged(control("vc_proj_keep_gobo"), settings.mKeepGobo);
-        setValueIfChanged(control("vc_proj_tv_preset"), LLSD());
-        setValueIfChanged(control("vc_proj_tv_scan"), effect.mScanlines);
-        setValueIfChanged(control("vc_proj_tv_gray"), effect.mGrayscale);
-        setValueIfChanged(control("vc_proj_tv_static"), effect.mStatic);
-        setValueIfChanged(control("vc_proj_tv_vignette"), effect.mVignette);
-        setValueIfChanged(control("vc_proj_tv_brightness"), effect.mBrightness);
-        setValueIfChanged(control("vc_proj_tv_lines"), 100.f + 500.f * effect.mScanlineCount);
-        setValueIfChanged(control("vc_proj_tv_dark"), effect.mScanlineDepth * 100.f);
-        setValueIfChanged(control("vc_proj_tv_sharp"), effect.mScanlineSharpness * 100.f);
-        setValueIfChanged(control("vc_proj_tv_thick"), effect.mScanlineThickness * 100.f);
-        setValueIfChanged(control("vc_proj_tv_pixel"), effect.mPixelate);
-        setValueIfChanged(control("vc_proj_tv_sepia"), effect.mSepia);
-        setValueIfChanged(control("vc_proj_tv_chroma"), effect.mChromaBleed);
-        setValueIfChanged(control("vc_proj_tv_vroll"), effect.mVerticalRoll);
-        setValueIfChanged(control("vc_proj_tv_roll_speed"), effect.mRollSpeed);
-        setValueIfChanged(control("vc_proj_tv_tracking"), effect.mTracking);
-        setValueIfChanged(control("vc_proj_tv_flicker"), effect.mFlicker);
-        setValueIfChanged(control("vc_proj_tv_interlace"), effect.mInterlace);
-        setValueIfChanged(control("vc_proj_tv_dropout"), effect.mDropout);
-        setValueIfChanged(control("vc_proj_tv_sheen"), effect.mSheen);
+        setValueIfChanged(projectorControl(PROJ_HOTSPOT), look.mHotspot);
+        setValueIfChanged(projectorControl(PROJ_SHUTTER_FLICKER), look.mShutterFlicker);
+        setValueIfChanged(projectorControl(PROJ_SHUTTER_RATE), look.mShutterHz);
+        setValueIfChanged(projectorControl(PROJ_GATE_WEAVE), look.mGateWeave);
+        setValueIfChanged(projectorControl(PROJ_GRAIN), look.mGrain);
+        setValueIfChanged(projectorControl(PROJ_DUST), look.mDust);
+        setValueIfChanged(projectorControl(PROJ_SCRATCHES), look.mScratches);
+        setValueIfChanged(projectorControl(PROJ_BURN), look.mBurn);
+        setValueIfChanged(projectorControl(PROJ_HALATION), look.mHalation);
+        setValueIfChanged(projectorControl(PROJ_RESOLUTION), static_cast<S32>(settings.mResolution));
+        setValueIfChanged(projectorControl(PROJ_NO_SIGNAL), static_cast<S32>(settings.mNoSignal));
+        setValueIfChanged(projectorControl(PROJ_KEEP_GOBO), settings.mKeepGobo);
+        setValueIfChanged(projectorControl(PROJ_TV_PRESET), LLSD());
+        setValueIfChanged(projectorControl(PROJ_TV_SCAN), effect.mScanlines);
+        setValueIfChanged(projectorControl(PROJ_TV_GRAY), effect.mGrayscale);
+        setValueIfChanged(projectorControl(PROJ_TV_STATIC), effect.mStatic);
+        setValueIfChanged(projectorControl(PROJ_TV_VIGNETTE), effect.mVignette);
+        setValueIfChanged(projectorControl(PROJ_TV_BRIGHTNESS), effect.mBrightness);
+        setValueIfChanged(projectorControl(PROJ_TV_LINES), 100.f + 500.f * effect.mScanlineCount);
+        setValueIfChanged(projectorControl(PROJ_TV_DARK), effect.mScanlineDepth * 100.f);
+        setValueIfChanged(projectorControl(PROJ_TV_SHARP), effect.mScanlineSharpness * 100.f);
+        setValueIfChanged(projectorControl(PROJ_TV_THICK), effect.mScanlineThickness * 100.f);
+        setValueIfChanged(projectorControl(PROJ_TV_PIXEL), effect.mPixelate);
+        setValueIfChanged(projectorControl(PROJ_TV_SEPIA), effect.mSepia);
+        setValueIfChanged(projectorControl(PROJ_TV_CHROMA), effect.mChromaBleed);
+        setValueIfChanged(projectorControl(PROJ_TV_VROLL), effect.mVerticalRoll);
+        setValueIfChanged(projectorControl(PROJ_TV_ROLL_SPEED), effect.mRollSpeed);
+        setValueIfChanged(projectorControl(PROJ_TV_TRACKING), effect.mTracking);
+        setValueIfChanged(projectorControl(PROJ_TV_FLICKER), effect.mFlicker);
+        setValueIfChanged(projectorControl(PROJ_TV_INTERLACE), effect.mInterlace);
+        setValueIfChanged(projectorControl(PROJ_TV_DROPOUT), effect.mDropout);
+        setValueIfChanged(projectorControl(PROJ_TV_SHEEN), effect.mSheen);
     }
 
     setEnabledIfChanged(control("vc_remove_face"), display && capture &&
@@ -1202,6 +1221,11 @@ void ALPanelDirectorVCam::commitDisplay(const std::string& name, const LLSD& val
     else if (name == "vc_tv_preset")
     {
         const std::string preset = value.asString();
+        if (preset != "crt" && preset != "broken" && preset != "vhs" &&
+            preset != "security")
+        {
+            return;
+        }
         effect = LLPrismLens::ScreenEffects();
         if (preset == "crt")
         {
@@ -1314,6 +1338,11 @@ void ALPanelDirectorVCam::commitProjector(const std::string& name,
     else if (name == "vc_proj_tv_preset")
     {
         const std::string preset = value.asString();
+        if (preset != "crt" && preset != "broken" && preset != "vhs" &&
+            preset != "security")
+        {
+            return;
+        }
         effect = LLPrismLens::ScreenEffects();
         if (preset == "crt")
         {

@@ -185,6 +185,8 @@ public:
     void releasePrismLensOutputs();
     bool ensurePrismProjectorFeed(const LLPrismLens::ProjectorHandle& handle,
                                   U32 width, U32 height);
+    void dirtyPrismProjectorFeed(const LLPrismLens::ProjectorHandle& handle);
+    void prepareDirtyPrismProjectorFeeds();
     void releasePrismProjectorFeed(const LLPrismLens::ProjectorHandle& handle);
     void releasePrismProjectorFeeds();
     void preparePrismProjectorFeeds(U32 capture_slot);
@@ -1389,6 +1391,7 @@ public:
         U64 mSourceGeneration = 0;
         U32 mProducedFrame = 0;
         bool mValid = false;
+        bool mDirty = true;
     };
     PrismProjectorPreparedFeed
         mPrismProjectorFeed[LLPrismLens::MAX_PROJECTOR_BINDINGS];

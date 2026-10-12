@@ -15,6 +15,13 @@ defaults, so pre-look scenes retain the old feed and bind paths. A completely
 default `ProjectorLook` selects the original projector-feed shader family and
 does not add a pass or a uniform upload.
 
+Look deserialization is recovery-oriented: finite numeric fields are clamped to
+their contract ranges, malformed numeric values keep their defaults, and a
+malformed `gel_tint` defaults to white. The enclosing look value must still be
+an LLSD map, so structurally malformed Prism scene data remains rejected. The
+pure look LLSD, Kelvin, and keystone helpers are inline in `llprismlens.h`, which
+keeps the header-only projector test target link-complete.
+
 ## Rendering
 
 Static look work remains one RGBA8 conversion pass followed by the existing mip
@@ -25,6 +32,15 @@ scratches, edge burn, and grain are analytic hashes seeded from presentation
 time. Halation is a gated four-tap highlight blur in the same pass; no texture or
 intermediate target is allocated. The existing Tracy CPU/GPU zone remains
 `VCam projector feed prep`.
+
+Settings edits now dirty the prepared feed without releasing its last good
+cookie. The next normal Prism frame recomposites directly from the retained
+capture output, even when that camera does not publish again. The target is
+reallocated only when `ensurePrismProjectorFeed()` observes an actual size
+change (currently the resolution setting/aspect result), so slider drags do no
+allocation and never fall through to no-signal. The look shader family is
+loaded independently; if it is incomplete, it is unloaded and the base feed
+shader runs with look effects disabled while ordinary projectors stay online.
 
 Shutter flicker, gate weave, and CAMERA_FOV throw are bind-time arithmetic only.
 They reuse the existing gobo time, tint, pattern, and pattern-parameter uniforms:

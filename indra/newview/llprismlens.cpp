@@ -4510,9 +4510,7 @@ public:
         if (!validProjectorSettings(settings, reason)) return false;
         mProjectors[slot].mSettings = settings;
         mProjectors[slot].mSettings.mEffects.clampAndValidate();
-        gPipeline.releasePrismProjectorFeed(handle);
-        gPipeline.ensurePrismProjectorFeed(handle, settings.mResolution,
-                                           settings.mResolution);
+        gPipeline.dirtyPrismProjectorFeed(handle);
         ++mRevision;
         if (reason) reason->clear();
         return true;
@@ -7045,7 +7043,7 @@ public:
                 if (effects.has("rotate90")) fx.mRotate90 = effects["rotate90"].asBoolean();
                 fx.clampAndValidate();
             }
-            if (settings.has("look") && settings["look"].isMap())
+            if (settings.has("look"))
             {
                 if (!LLPrismLens::projectorLookFromLLSD(
                         settings["look"], parsed.mSettings.mLook))
@@ -8428,111 +8426,6 @@ LLPrismLens::ScopedRevisionSignals::~ScopedRevisionSignals()
 
 namespace LLPrismLens
 {
-LLColor3 projectorKelvinRgb(F32 kelvin)
-{
-    kelvin = llclamp(kelvin, 2700.f, 10000.f);
-    if (kelvin == 6500.f) return LLColor3(1.f, 1.f, 1.f);
-
-    const auto approximate = [](F32 temperature)
-    {
-        const F32 t = temperature / 100.f;
-        const F32 r = t <= 66.f ? 255.f
-            : 329.698727446f * powf(t - 60.f, -0.1332047592f);
-        const F32 g = t <= 66.f
-            ? 99.4708025861f * logf(t) - 161.1195681661f
-            : 288.1221695283f * powf(t - 60.f, -0.0755148492f);
-        const F32 b = t >= 66.f ? 255.f : (t <= 19.f ? 0.f
-            : 138.5177312231f * logf(t - 10.f) - 305.0447927307f);
-        return LLColor3(llclamp(r, 0.f, 255.f), llclamp(g, 0.f, 255.f),
-                        llclamp(b, 0.f, 255.f));
-    };
-    const LLColor3 rgb = approximate(kelvin);
-    const LLColor3 neutral = approximate(6500.f);
-    return LLColor3(rgb.mV[0] / neutral.mV[0],
-                    rgb.mV[1] / neutral.mV[1],
-                    rgb.mV[2] / neutral.mV[2]);
-}
-
-void projectorKeystoneUv(F32 u, F32 v, F32 horizontal, F32 vertical,
-                         F32& warped_u, F32& warped_v, bool& inside)
-{
-    const F32 x = u - 0.5f;
-    const F32 y = v - 0.5f;
-    const F32 dx = 1.f + llclamp(horizontal, -1.f, 1.f) * y * 1.5f;
-    const F32 dy = 1.f + llclamp(vertical, -1.f, 1.f) * x * 1.5f;
-    warped_u = x / dx + 0.5f;
-    warped_v = y / dy + 0.5f;
-    inside = warped_u >= 0.f && warped_u <= 1.f &&
-             warped_v >= 0.f && warped_v <= 1.f;
-}
-
-LLSD projectorLookToLLSD(const ProjectorLook& look)
-{
-    LLSD data = LLSD::emptyMap();
-    data["keystone_h"] = look.mKeystoneH;
-    data["keystone_v"] = look.mKeystoneV;
-    data["shutter_flicker"] = look.mShutterFlicker;
-    data["shutter_hz"] = look.mShutterHz;
-    data["gate_weave"] = look.mGateWeave;
-    data["hotspot"] = look.mHotspot;
-    data["lamp_kelvin"] = look.mLampKelvin;
-    LLSD gel = LLSD::emptyArray();
-    gel.append(look.mGelTint.mV[0]);
-    gel.append(look.mGelTint.mV[1]);
-    gel.append(look.mGelTint.mV[2]);
-    data["gel_tint"] = gel;
-    data["dust"] = look.mDust;
-    data["scratches"] = look.mScratches;
-    data["burn"] = look.mBurn;
-    data["grain"] = look.mGrain;
-    data["halation"] = look.mHalation;
-    data["throw_mode"] = look.mThrowMode == EProjectorThrow::LIGHT_FOV
-        ? "light_fov" : (look.mThrowMode == EProjectorThrow::CAMERA_FOV
-        ? "camera_fov" : "off");
-    return data;
-}
-
-bool projectorLookFromLLSD(const LLSD& data, ProjectorLook& look)
-{
-    if (!data.isMap()) return false;
-    ProjectorLook parsed;
-    const auto read = [&data](const char* key, F32& value)
-    {
-        if (data.has(key) && (data[key].isReal() || data[key].isInteger()))
-            value = static_cast<F32>(data[key].asReal());
-    };
-    read("keystone_h", parsed.mKeystoneH);
-    read("keystone_v", parsed.mKeystoneV);
-    read("shutter_flicker", parsed.mShutterFlicker);
-    read("shutter_hz", parsed.mShutterHz);
-    read("gate_weave", parsed.mGateWeave);
-    read("hotspot", parsed.mHotspot);
-    read("lamp_kelvin", parsed.mLampKelvin);
-    read("dust", parsed.mDust);
-    read("scratches", parsed.mScratches);
-    read("burn", parsed.mBurn);
-    read("grain", parsed.mGrain);
-    read("halation", parsed.mHalation);
-    if (data.has("gel_tint"))
-    {
-        const LLSD& gel = data["gel_tint"];
-        if (!gel.isArray() || gel.size() != 3) return false;
-        parsed.mGelTint = LLColor3(static_cast<F32>(gel[0].asReal()),
-                                   static_cast<F32>(gel[1].asReal()),
-                                   static_cast<F32>(gel[2].asReal()));
-    }
-    if (data.has("throw_mode"))
-    {
-        const std::string mode = data["throw_mode"].asString();
-        if (mode == "off") parsed.mThrowMode = EProjectorThrow::OFF;
-        else if (mode == "light_fov") parsed.mThrowMode = EProjectorThrow::LIGHT_FOV;
-        else if (mode == "camera_fov") parsed.mThrowMode = EProjectorThrow::CAMERA_FOV;
-        else return false;
-    }
-    look = parsed;
-    return true;
-}
-
 ActionStatus addCameraSelectionStatus()
 {
     return PrismLensRegistry::instance().cameraSelectionStatus();
@@ -9368,6 +9261,12 @@ void renderAuxiliaryView()
     if (!render_context_available)
     {
         return;
+    }
+
+    {
+        ScopedPrismRenderState projector_feed_state;
+        if (projector_feed_state.isValid())
+            gPipeline.prepareDirtyPrismProjectorFeeds();
     }
 
     registry.updateGate(LLTimer::getTotalSeconds());

@@ -2014,6 +2014,7 @@ bool LLPipeline::ensurePrismProjectorFeed(
         prepared->mSourceGeneration = 0;
         prepared->mProducedFrame = 0;
         prepared->mValid = false;
+        prepared->mDirty = true;
     }
     if (prepared->mTarget.isComplete() &&
         prepared->mTarget.getWidth() == width &&
@@ -2026,9 +2027,46 @@ bool LLPipeline::ensurePrismProjectorFeed(
     prepared->mSourceGeneration = 0;
     prepared->mProducedFrame = 0;
     prepared->mValid = false;
+    prepared->mDirty = true;
     return prepared->mTarget.allocate(width, height, GL_RGBA8, false, false,
                                       LLTexUnit::TT_TEXTURE,
                                       LLTexUnit::TMG_AUTO);
+}
+
+void LLPipeline::dirtyPrismProjectorFeed(
+    const LLPrismLens::ProjectorHandle& handle)
+{
+    for (PrismProjectorPreparedFeed& prepared : mPrismProjectorFeed)
+    {
+        if (prepared.mHandle.mId == handle.mId &&
+            prepared.mHandle.mGeneration == handle.mGeneration)
+        {
+            // Keep the last good cookie bound until the retained capture is
+            // recomposited. In particular, do not invalidate or reallocate it.
+            prepared.mDirty = true;
+            return;
+        }
+    }
+}
+
+void LLPipeline::prepareDirtyPrismProjectorFeeds()
+{
+    bool has_dirty_feed = false;
+    for (const PrismProjectorPreparedFeed& prepared : mPrismProjectorFeed)
+    {
+        if (prepared.mHandle.mId.notNull() && prepared.mDirty)
+        {
+            has_dirty_feed = true;
+            break;
+        }
+    }
+    if (!has_dirty_feed) return;
+
+    // The capture outputs are retained independently of publication cadence.
+    // Walk the bounded slot set so a static camera can immediately recompose a
+    // changed look/framing/effect without publishing another capture frame.
+    for (U32 slot = 0; slot < LLPrismLens::MAX_CAPTURES; ++slot)
+        preparePrismProjectorFeeds(slot);
 }
 
 void LLPipeline::releasePrismProjectorFeed(
@@ -2044,6 +2082,7 @@ void LLPipeline::releasePrismProjectorFeed(
             prepared.mSourceGeneration = 0;
             prepared.mProducedFrame = 0;
             prepared.mValid = false;
+            prepared.mDirty = true;
             return;
         }
     }
@@ -2058,6 +2097,7 @@ void LLPipeline::releasePrismProjectorFeeds()
         prepared.mSourceGeneration = 0;
         prepared.mProducedFrame = 0;
         prepared.mValid = false;
+        prepared.mDirty = true;
     }
 }
 
@@ -2104,14 +2144,17 @@ void LLPipeline::preparePrismProjectorFeeds(U32 capture_slot)
                 break;
             }
         }
-        if (!prepared || prepared->mSourceGeneration == feed.mGeneration)
+        if (!prepared || (!prepared->mDirty &&
+                          prepared->mSourceGeneration == feed.mGeneration))
         {
             continue;
         }
 
         const U32 permutation = colorCorrectPermutation(true, true);
         const LLPrismLens::ProjectorLook& look = feed.mSettings.mLook;
-        LLGLSLShader& shader = look.hasFeedEffects()
+        const bool apply_look = look.hasFeedEffects() &&
+            gPrismProjectorLookProgram[permutation].isComplete();
+        LLGLSLShader& shader = apply_look
             ? gPrismProjectorLookProgram[permutation]
             : gPrismProjectorFeedProgram[permutation];
         if (!shader.isComplete()) continue;
@@ -2188,7 +2231,7 @@ void LLPipeline::preparePrismProjectorFeeds(U32 capture_slot)
         shader.uniform1f(sEffectTime, fmodf(gFrameTimeSeconds, 3600.f));
         shader.uniform1i(sFollowExposure,
             feed.mSettings.mFollowMainExposure ? 1 : 0);
-        if (look.hasFeedEffects())
+        if (apply_look)
         {
             static const LLStaticHashedString sLookWarp("projectorLookWarp");
             static const LLStaticHashedString sLookFilm("projectorLookFilm");
@@ -2249,6 +2292,7 @@ void LLPipeline::preparePrismProjectorFeeds(U32 capture_slot)
         prepared->mSourceGeneration = feed.mGeneration;
         prepared->mProducedFrame = gFrameCount;
         prepared->mValid = true;
+        prepared->mDirty = false;
     }
 }
 

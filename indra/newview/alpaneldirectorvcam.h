@@ -10,6 +10,7 @@
 #include "llpanel.h"
 #include "llframetimer.h"
 
+#include <array>
 #include <boost/signals2.hpp>
 #include <unordered_map>
 #include <vector>
@@ -35,6 +36,22 @@ public:
     void onVisibilityChange(bool visible) override;
 
 private:
+    enum EProjectorControl : U32
+    {
+        PROJ_LOOK, PROJ_FIT, PROJ_ANCHOR_X, PROJ_ANCHOR_Y, PROJ_FLIP_H,
+        PROJ_FLIP_V, PROJ_ROTATE, PROJ_KEYSTONE_H, PROJ_KEYSTONE_V,
+        PROJ_THROW, PROJ_BRIGHTNESS, PROJ_FOLLOW_EXPOSURE, PROJ_LAMP_KELVIN,
+        PROJ_GEL_TINT, PROJ_HOTSPOT, PROJ_SHUTTER_FLICKER, PROJ_SHUTTER_RATE,
+        PROJ_GATE_WEAVE, PROJ_GRAIN, PROJ_DUST, PROJ_SCRATCHES, PROJ_BURN,
+        PROJ_HALATION, PROJ_RESOLUTION, PROJ_NO_SIGNAL, PROJ_KEEP_GOBO,
+        PROJ_TV_PRESET, PROJ_TV_SCAN, PROJ_TV_GRAY, PROJ_TV_STATIC,
+        PROJ_TV_VIGNETTE, PROJ_TV_BRIGHTNESS, PROJ_TV_LINES, PROJ_TV_DARK,
+        PROJ_TV_SHARP, PROJ_TV_THICK, PROJ_TV_PIXEL, PROJ_TV_SEPIA,
+        PROJ_TV_CHROMA, PROJ_TV_VROLL, PROJ_TV_ROLL_SPEED, PROJ_TV_TRACKING,
+        PROJ_TV_FLICKER, PROJ_TV_INTERLACE, PROJ_TV_DROPOUT, PROJ_TV_SHEEN,
+        PROJ_CONTROL_COUNT
+    };
+
     void collectControls(LLView* root);
     void onModelChanged(U32 dirty);
     void refresh(U32 dirty = ALVCamPageModel::DIRTY_ALL);
@@ -48,6 +65,10 @@ private:
     void updateCardState(bool have_capture, bool have_display,
                          const std::string& camera_label);
     LLUICtrl* control(const std::string& name) const;
+    LLUICtrl* projectorControl(EProjectorControl control) const
+    {
+        return mProjectorControls[control];
+    }
     ALKitRow* row(const std::string& name) const;
     const LLPrismLens::CaptureDefinition* selectedCapture() const;
     const LLPrismLens::DisplayDefinition* selectedDisplay() const;
@@ -65,6 +86,7 @@ private:
     ALVCamFaceList* mFaceList = nullptr;
     ALVCamProjectorList* mProjectorList = nullptr;
     std::unordered_map<std::string, LLUICtrl*> mControls;
+    std::array<LLUICtrl*, PROJ_CONTROL_COUNT> mProjectorControls{};
     std::unordered_map<std::string, ALKitRow*> mRows;
     std::vector<boost::signals2::scoped_connection> mConnections;
     LLHandle<LLContextMenu> mMonitorMenu;

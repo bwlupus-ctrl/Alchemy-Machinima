@@ -147,7 +147,25 @@ void prism_projector_object::test<9>()
     LLPrismLens::projectorKeystoneUv(0.173f, 0.827f, 0.f, 0.f,
                                      u, v, inside);
     ensure("inside", inside);
-    ensure_equals("U identity", u, 0.173f);
-    ensure_equals("V identity", v, 0.827f);
+    ensure_approximately_equals("U identity", u, 0.173f, 20);
+    ensure_approximately_equals("V identity", v, 0.827f, 20);
+}
+
+template<> template<>
+void prism_projector_object::test<10>()
+{
+    set_test_name("look persistence clamps values and defaults malformed gel");
+    LLSD data = LLSD::emptyMap();
+    data["keystone_h"] = 9.f;
+    data["shutter_hz"] = 1.f;
+    data["dust"] = -2.f;
+    data["gel_tint"] = "not a colour";
+    LLPrismLens::ProjectorLook look;
+    ensure("look parses", LLPrismLens::projectorLookFromLLSD(data, look));
+    ensure_equals("keystone clamps", look.mKeystoneH, 1.f);
+    ensure_equals("shutter rate clamps", look.mShutterHz, 12.f);
+    ensure_equals("dust clamps", look.mDust, 0.f);
+    ensure("malformed gel defaults white",
+           look.mGelTint == LLColor3(1.f, 1.f, 1.f));
 }
 }
