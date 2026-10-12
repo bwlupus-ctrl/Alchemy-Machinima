@@ -4887,7 +4887,7 @@ private:
         }
         const LLPrismLens::CaptureHandle capture =
             mFunctionalVCamModel->selectedCapture();
-        mFunctionalVCamModel->setLabel(capture, "Virtual at my view", &reason);
+        mFunctionalVCamModel->setLabel(capture, "Virtual at my view", &reason); // ui-draw-lint: allow(raw-write) test-only one-shot in-world setup
 
         LLVOVolume* nearest = nullptr;
         F32 nearest_distance = 20.f;
@@ -4972,7 +4972,7 @@ private:
                 LLStartUp::getStartupState() == STATE_LOGIN_WAIT)
             {
                 mFunctionalAutoLoginStarted = true;
-                if (!gSavedSettings.getBOOL("AutoLogin"))
+                if (!gSavedSettings.getBOOL("AutoLogin")) // ui-draw-lint: allow(setting) test-only one-shot login check
                     return finishFunctionalInWorldFailure(
                         "saved-credential auto-login was not enabled");
                 // LLStartUp already loaded the remembered credential. Resume
