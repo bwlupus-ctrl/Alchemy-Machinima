@@ -30,6 +30,7 @@
 
 #include "llfloaterreg.h"
 #include "llviewerfloaterreg.h"
+#include "alpanelcinecamparams.h" // alRegisterMachinimaResetControl()
 
 // [Ultimate Diopter] Diopter.ResetControl commit-callback registration and
 // preset materialization (LLPipeline::materializeDiopterPreset)
@@ -374,6 +375,11 @@ LLFloaterOpenHandler gFloaterOpenHandler;
 
 void LLViewerFloaterReg::registerFloaters()
 {
+    // Machinima.ResetControl / Machinima.AutoFrameResolve must exist before ANY
+    // panel's XUI builds: XUI-only panels (e.g. panel_cinecam_frame) have no
+    // constructor to register them, and a lazily built Director page can be
+    // the first to load them.
+    alRegisterMachinimaResetControl();
     if (gNonInteractive)
     {
         return;
