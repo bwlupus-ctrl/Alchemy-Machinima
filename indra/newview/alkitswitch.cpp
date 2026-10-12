@@ -13,17 +13,17 @@ ALKitSwitch::ALKitSwitch(const Params& p) : LLCheckBoxCtrl(p)
 {
     ALKitStyle::color(ALKitStyle::WINDOW_BG);
 
-    mButton->setRect(LLRect(0, ALKitStyle::SWITCH_H, ALKitStyle::SWITCH_W, 0));
+    // LLCheckBoxCtrl normally hit-tests a child-derived bounding rect.  Layout
+    // moves controls with setOrigin(), which moves mRect but does not refresh
+    // that cached bounding rect.  A kit switch paints strictly inside mRect,
+    // so use that live rect for owner hit-testing as well.
+    setUseBoundingRect(false);
 
     if (mLabel)
     {
         mLabel->setVisible(false);
     }
 
-    // LLCheckBoxCtrl computed its bounding rect before this class replaced the
-    // stock button geometry.  Re-run the normal checkbox layout once so every
-    // kit switch (including card-header enables) has hit bounds matching the
-    // painted switch, rather than requiring individual owners to repair it.
     reshape(getRect().getWidth(), getRect().getHeight(), false);
 
     mLastState = isOn();
@@ -37,10 +37,25 @@ void ALKitSwitch::reshape(S32 w, S32 h, bool from_parent)
 {
     LLCheckBoxCtrl::reshape(w, h, from_parent);
 
-    mButton->setRect(LLRect(0, ALKitStyle::SWITCH_H, ALKitStyle::SWITCH_W, 0));
+    // Painting and pointer dispatch share this one live local rectangle.  Do
+    // this after the stock checkbox layout, which otherwise expands its child
+    // button from the hidden label's cached bounds.
+    mButton->setRect(getLocalRect());
 
     if (mLabel)
         mLabel->setVisible(false);
+
+    updateBoundingRect();
+}
+
+LLRect ALKitSwitch::drawnTrackRect() const
+{
+    return getLocalRect();
+}
+
+LLRect ALKitSwitch::clickableRect() const
+{
+    return mButton ? mButton->getRect() : LLRect();
 }
 
 void ALKitSwitch::draw()
@@ -54,22 +69,29 @@ void ALKitSwitch::draw()
     const LLColor4 knob = (enabled ? (value ? ALKitStyle::color(ALKitStyle::KNOB_ON) : ALKitStyle::color(ALKitStyle::KNOB_OFF))
                                    : ALKitStyle::color(ALKitStyle::FAINT)).get();
 
+    const LLRect track_rect = drawnTrackRect();
+    const F32 radius = .5f * llmin(track_rect.getWidth(), track_rect.getHeight());
+    const F32 center_y = .5f * (track_rect.mBottom + track_rect.mTop);
+    const F32 left_x = track_rect.mLeft + radius;
+    const F32 right_x = track_rect.mRight - radius;
+
     gGL.color4fv(track.mV);
-    gl_rect_2d(9, ALKitStyle::SWITCH_H, 25, 0, track, true);
-    gl_circle_2d(9.f, 9.f, 9.f, 20, true);
-    gl_circle_2d(25.f, 9.f, 9.f, 20, true);
+    gl_rect_2d(ll_round(left_x), track_rect.mTop, ll_round(right_x), track_rect.mBottom, track, true);
+    gl_circle_2d(left_x, center_y, radius, 20, true);
+    gl_circle_2d(right_x, center_y, radius, 20, true);
 
     gGL.color4fv(knob.mV);
-    gl_circle_2d(value ? 25.f : 9.f, 9.f, 7.f, 20, true);
+    gl_circle_2d(value ? right_x : left_x, center_y, llmax(0.f, radius - ALKitStyle::SWITCH_INSET), 20, true);
 
     if (isFocusRingVisible())
     {
         const LLColor4 c = ALKitStyle::color(ALKitStyle::TEXT).get() % .7f;
         gGL.color4fv(c.mV);
-        gl_line_2d(9, ALKitStyle::SWITCH_H + 2, 25, ALKitStyle::SWITCH_H + 2, c);
-        gl_line_2d(9, -2, 25, -2, c);
-        gl_arc_2d(9.f, 9.f, 11.f, 20, false, F_PI_BY_TWO, F_PI + F_PI_BY_TWO);
-        gl_arc_2d(25.f, 9.f, 11.f, 20, false, -F_PI_BY_TWO, F_PI_BY_TWO);
+        gl_line_2d(ll_round(left_x), track_rect.mTop - 1, ll_round(right_x), track_rect.mTop - 1, c);
+        gl_line_2d(ll_round(left_x), track_rect.mBottom + 1, ll_round(right_x), track_rect.mBottom + 1, c);
+        const F32 focus_radius = llmax(0.f, radius - 1.f);
+        gl_arc_2d(left_x, center_y, focus_radius, 20, false, F_PI_BY_TWO, F_PI + F_PI_BY_TWO);
+        gl_arc_2d(right_x, center_y, focus_radius, 20, false, -F_PI_BY_TWO, F_PI_BY_TWO);
     }
 }
 

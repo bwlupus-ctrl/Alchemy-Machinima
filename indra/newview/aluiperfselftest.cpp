@@ -2663,6 +2663,35 @@ private:
         return control;
     }
 
+    static bool functionalKitSwitchGeometry(LLView* view, std::string& bad_switch)
+    {
+        if (!view) return true;
+        if (ALKitSwitch* kit_switch = dynamic_cast<ALKitSwitch*>(view))
+        {
+            const LLRect drawn = kit_switch->drawnTrackRect();
+            if (kit_switch->getUseBoundingRect() || drawn.isEmpty() ||
+                !kit_switch->getLocalRect().contains(drawn) ||
+                !kit_switch->clickableRect().contains(drawn))
+            {
+                bad_switch = kit_switch->getPathname();
+                return false;
+            }
+        }
+        for (LLView* child : *view->getChildList())
+            if (!functionalKitSwitchGeometry(child, bad_switch)) return false;
+        return true;
+    }
+
+    bool functionalKitCardSwitchGeometry(std::string& bad_switch)
+    {
+        if (!mDirectorV2 || !mFunctionalPageRoot) return true;
+        std::vector<ALKitCard*> cards;
+        collectViewsOfType<ALKitCard>(mFunctionalPageRoot, cards);
+        for (ALKitCard* card : cards)
+            if (!functionalKitSwitchGeometry(card, bad_switch)) return false;
+        return true;
+    }
+
     static LLSD functionalRect(const LLRect& rect)
     {
         LLSD result = LLSD::emptyArray();
@@ -2950,6 +2979,15 @@ private:
 
     bool functionalReachable(LLUICtrl* control, std::string& reason)
     {
+        std::string bad_switch;
+        if ((dynamic_cast<ALKitSwitch*>(control) &&
+             !functionalKitSwitchGeometry(control, bad_switch)) ||
+            !functionalKitCardSwitchGeometry(bad_switch))
+        {
+            reason = "drawn switch not clickable";
+            mFunctionalObserved["switch_geometry_failure"] = bad_switch;
+            return false;
+        }
         if (!control->isInVisibleChain())
         {
             reason = "not reachable: hidden";
@@ -2996,16 +3034,22 @@ private:
                 scroller->scrollToShowRect(document_rect);
         }
         S32 local_x = target->getLocalRect().getCenterX();
-        const S32 local_y = target->getLocalRect().getCenterY();
+        S32 local_y = target->getLocalRect().getCenterY();
         if (ALKitSwitch* kit_switch = mDirectorV2 ?
                 dynamic_cast<ALKitSwitch*>(control) : nullptr)
         {
-            // Exercise the visible knob, not the midpoint of the custom-drawn
-            // track.  The child button spans the switch, while the user-facing
-            // affordance is centred at x=9/25 (alkitswitch.cpp).
-            local_x = llclamp(kit_switch->isOn() ? 25 : 9,
-                              target->getLocalRect().mLeft + 1,
-                              target->getLocalRect().mRight - 1);
+            LLRect drawn_in_target;
+            if (!kit_switch->localRectToOtherView(kit_switch->drawnTrackRect(),
+                                                  &drawn_in_target, target) ||
+                !target->getLocalRect().contains(drawn_in_target))
+            {
+                reason = "drawn switch not clickable";
+                return false;
+            }
+            // Exercise the centre of the pixels the user sees, not the owner
+            // widget's independently derived bounds.
+            local_x = drawn_in_target.getCenterX();
+            local_y = drawn_in_target.getCenterY();
         }
         if (dynamic_cast<LLSlider*>(target))
         {
