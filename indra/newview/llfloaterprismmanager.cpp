@@ -35,8 +35,6 @@
 
 namespace
 {
-constexpr F32 SNAPSHOT_POLL_SECONDS = 0.25f;
-constexpr F32 AGE_REFRESH_SECONDS = 1.f;
 constexpr U32 GATE_ARM_LIMIT = LLPrismLens::MAX_CAPTURES;
 constexpr const char* BONE_EYELINE_VALUE = "__eyeline__";
 
@@ -608,7 +606,7 @@ bool LLFloaterPrismManager::postBuild()
             LLPrismLens::CameraSettings settings = capture->mCamera;
             settings.mBonePov = LLPrismLens::BonePovSettings();
             std::string reason;
-            if (LLPrismLens::setCameraSettings(capture->mHandle, settings, &reason))
+            if (mPageModel.setCamera(capture->mHandle, settings, &reason))
             {
                 setStatus("Reset the skeleton attachment to defaults.");
                 invalidateRegistrySnapshot();
@@ -697,85 +695,77 @@ bool LLFloaterPrismManager::postBuild()
 
     installDocumentFocusReveal();
     // The control is useful before a cast subject resolves, and must never be
-    // empty. The real skeleton replaces this fallback during snapshot polling.
+    // empty. The real skeleton replaces this fallback on a model refresh.
     refreshBoneJointChoices(true);
     setStatus("Ready. Select a capture or add one from the current world selection.");
-    pollSnapshots(true);
+    mPageModelConnection = mPageModel.connectChanged(
+        [this](U32 dirty) { onModelChanged(dirty); });
+    mPageModel.refreshNow(ALVCamPageModel::DIRTY_ALL);
     return true;
 }
 
 void LLFloaterPrismManager::onOpen(const LLSD& key)
 {
     LLFloater::onOpen(key);
-    if (!mHaveRegistrySnapshot ||
-        mRefreshTimer.getElapsedTimeF32() >= SNAPSHOT_POLL_SECONDS)
-    {
-        pollSnapshots(true);
-    }
+    mPageModel.setPageVisible(true);
+    mPageModel.refreshNow(ALVCamPageModel::DIRTY_ALL);
+}
+
+void LLFloaterPrismManager::onVisibilityChange(bool visible)
+{
+    LLFloater::onVisibilityChange(visible);
+    mPageModel.setPageVisible(visible);
 }
 
 void LLFloaterPrismManager::draw()
 {
     LL_PROFILE_ZONE_SCOPED_CATEGORY_UI;
-    pollSnapshots(false);
     LLFloater::draw();
 }
 
-void LLFloaterPrismManager::pollSnapshots(bool force)
+void LLFloaterPrismManager::onModelChanged(U32 dirty)
 {
-    if (!force && mRefreshTimer.getElapsedTimeF32() < SNAPSHOT_POLL_SECONDS)
-    {
-        return;
-    }
+    const bool configuration_changed =
+        (dirty & ALVCamPageModel::DIRTY_CONFIGURATION) != 0;
+    const bool runtime_changed =
+        (dirty & ALVCamPageModel::DIRTY_RUNTIME) != 0;
+    const bool performance_changed =
+        (dirty & ALVCamPageModel::DIRTY_PERFORMANCE) != 0;
+    const bool selection_changed =
+        (dirty & ALVCamPageModel::DIRTY_SELECTION) != 0;
 
-    LLPrismLens::RegistrySnapshot registry = LLPrismLens::registrySnapshot();
-    LLPrismLens::PerformanceSnapshot performance = LLPrismLens::performanceSnapshot();
-    LLPrismLens::GateSnapshot gate = LLPrismLens::gateSnapshot();
-    const bool configuration_changed = force || !mHaveRegistrySnapshot ||
-        registry.mConfigurationRevision != mConfigurationRevision;
-    const bool runtime_changed = force || !mHaveRegistrySnapshot ||
-        registry.mRuntimeRevision != mRuntimeRevision;
-    const bool performance_changed = force || !mHavePerformanceSnapshot ||
-        performance.mRevision != mPerformanceRevision;
-    const bool gate_changed = force || !mHaveRegistrySnapshot ||
-        registry.mGateRevision != mGateRevision;
-    const bool age_due = force || mAgeRefreshTimer.getElapsedTimeF32() >= AGE_REFRESH_SECONDS;
-
-    mRegistrySnapshot = registry;
-    mPerformanceSnapshot = performance;
-    mGateSnapshot = gate;
+    mRegistrySnapshot = mPageModel.registry();
+    mPerformanceSnapshot = mPageModel.performance();
+    mGateSnapshot = mPageModel.gate();
     mHaveRegistrySnapshot = true;
     mHavePerformanceSnapshot = true;
-    mConfigurationRevision = registry.mConfigurationRevision;
-    mRuntimeRevision = registry.mRuntimeRevision;
-    mPerformanceRevision = performance.mRevision;
-    mGateRevision = registry.mGateRevision;
+
+    if (mPageModel.selectedCapture().mId.notNull())
+    {
+        mSelectedCapture = mPageModel.selectedCapture();
+        mSelectedDisplay = mPageModel.selectedDisplay();
+    }
 
     if (configuration_changed)
     {
         refreshConfiguration();
     }
-    else if (runtime_changed || age_due)
+    else if (runtime_changed)
     {
         refreshRuntime();
     }
-    if (configuration_changed || performance_changed || age_due)
+    if (configuration_changed || performance_changed)
     {
         refreshPerformance();
     }
-    if (configuration_changed || runtime_changed || gate_changed)
+    if (configuration_changed || runtime_changed)
     {
         refreshGateEditor();
     }
-    refreshSelectionActions();
-    // Cast slots can resolve or swap avatars without changing Prism's own
-    // configuration revision, so independently watch the selected skeleton.
-    refreshBoneJointChoices(false);
-
-    mRefreshTimer.reset();
-    if (age_due)
+    if (configuration_changed || runtime_changed || selection_changed)
     {
-        mAgeRefreshTimer.reset();
+        refreshSelectionActions();
+        refreshBoneJointChoices(false);
     }
 }
 
@@ -1517,8 +1507,8 @@ void LLFloaterPrismManager::refreshSelectionActions()
 
     // Surface the Add-Display reject reason on the status line so a greyed
     // "Add selected face" is actionable without hovering for the tooltip --
-    // but deduplicated: this method polls ~4x/sec, and re-issuing the same
-    // reason every tick would clobber transient success/error messages set by
+    // but deduplicated: coalesced model signals can repeat a refresh, and
+    // re-issuing the same reason would clobber transient messages set by
     // the button handlers. Show the reason once on change only; clear the
     // tracker when the action is allowed (or no Camera Feed capture is
     // selected) so a later identical rejection is displayed again.
@@ -1546,7 +1536,7 @@ void LLFloaterPrismManager::refreshSelectionActions()
     }
     // The suppress flag lives for exactly one refresh: the handler that sets
     // it triggers this method synchronously via invalidateRegistrySnapshot(),
-    // so it can never leak into a later, user-driven poll.
+    // so it can never leak into a later, user-driven refresh.
     mSuppressSelectionRejectOnce = false;
     setActionState(mPlaceEyeButton,
         capture && capture->mMode == LLPrismLens::ECaptureMode::CAMERA_FEED &&
@@ -1603,6 +1593,7 @@ void LLFloaterPrismManager::onCaptureSelectionChanged()
         {
             mSelectedCapture = capture.mHandle;
             mSelectedDisplay = LLPrismLens::DisplayHandle();
+            mPageModel.setSelectedCapture(mSelectedCapture);
             rebuildDisplayList();
             refreshCaptureEditor();
             refreshDisplayEditor();
@@ -1614,6 +1605,7 @@ void LLFloaterPrismManager::onCaptureSelectionChanged()
     }
     mSelectedCapture = LLPrismLens::CaptureHandle();
     mSelectedDisplay = LLPrismLens::DisplayHandle();
+    mPageModel.setSelectedCapture(mSelectedCapture);
     refreshConfiguration();
     refreshGateEditor();
 }
@@ -1629,6 +1621,7 @@ void LLFloaterPrismManager::onDisplaySelectionChanged()
              display.mGateSubscribed))
         {
             mSelectedDisplay = display.mHandle;
+            mPageModel.setSelectedDisplay(mSelectedDisplay);
             refreshDisplayEditor();
             refreshGateEditor();
             refreshSelectionActions();
@@ -1636,6 +1629,7 @@ void LLFloaterPrismManager::onDisplaySelectionChanged()
         }
     }
     mSelectedDisplay = LLPrismLens::DisplayHandle();
+    mPageModel.setSelectedDisplay(mSelectedDisplay);
     refreshDisplayEditor();
     refreshSelectionActions();
 }
@@ -1783,13 +1777,12 @@ void LLFloaterPrismManager::onCommitGateSettings()
 
 void LLFloaterPrismManager::onAddCamera()
 {
-    LLPrismLens::CaptureHandle capture;
     std::string reason;
     const LLPrismLens::ERegistryResult result =
-        LLPrismLens::addCameraCaptureFromSelectedObject(&capture, &reason);
+        mPageModel.addFromSelectedObject(&reason);
     if (result == LLPrismLens::ERegistryResult::OK)
     {
-        mSelectedCapture = capture;
+        mSelectedCapture = mPageModel.selectedCapture();
         mSelectedDisplay = LLPrismLens::DisplayHandle();
         setStatus("Added a Camera Feed capture from the selected object.");
         // The new Camera Feed is now the selected capture while the selection
@@ -1802,25 +1795,24 @@ void LLFloaterPrismManager::onAddCamera()
         revealDocumentView(mCaptureTitle, mCaptureDocument, mCaptureScroll);
         return;
     }
-    setStatus("Could not add camera: " + reason);
+    setStatus(reason);
 }
 
 void LLFloaterPrismManager::onAddLens()
 {
-    LLPrismLens::CaptureHandle capture;
     std::string reason;
     const LLPrismLens::ERegistryResult result =
-        LLPrismLens::addSurfaceLensFromSelectedFace(&capture, &reason);
+        mPageModel.addSurfaceLens(&reason);
     if (result == LLPrismLens::ERegistryResult::OK)
     {
-        mSelectedCapture = capture;
+        mSelectedCapture = mPageModel.selectedCapture();
         mSelectedDisplay = LLPrismLens::DisplayHandle();
         setStatus("Added a Surface Lens capture from the selected face.");
         invalidateRegistrySnapshot();
         revealDocumentView(mCaptureTitle, mCaptureDocument, mCaptureScroll);
         return;
     }
-    setStatus("Could not add lens: " + reason);
+    setStatus(reason);
 }
 
 void LLFloaterPrismManager::onRemoveCapture()
@@ -1830,7 +1822,6 @@ void LLFloaterPrismManager::onRemoveCapture()
     {
         return;
     }
-
     const LLPrismLens::CaptureHandle handle = capture->mHandle;
     LLSD args;
     args["MESSAGE"] = llformat(
@@ -1851,7 +1842,8 @@ void LLFloaterPrismManager::onRemoveCapture()
             {
                 return;
             }
-            if (LLPrismLens::removeCapture(handle))
+            std::string reason;
+            if (self->mPageModel.removeCapture(handle, &reason))
             {
                 self->mSelectedCapture = LLPrismLens::CaptureHandle();
                 self->mSelectedDisplay = LLPrismLens::DisplayHandle();
@@ -1860,7 +1852,7 @@ void LLFloaterPrismManager::onRemoveCapture()
             }
             else
             {
-                self->setStatus("The capture changed before it could be removed. Refresh and try again.");
+                self->setStatus(reason);
                 self->invalidateRegistrySnapshot();
             }
         });
@@ -1901,7 +1893,7 @@ void LLFloaterPrismManager::onPlaceEyeInFront()
     settings.mLocalEyeOffset.mV[VZ] =
         -(0.5f * source->getScale().mV[VZ] + settings.mNearClip + 0.01f);
     std::string reason;
-    if (LLPrismLens::setCameraSettings(capture->mHandle, settings, &reason))
+    if (mPageModel.setCamera(capture->mHandle, settings, &reason))
     {
         setStatus("Placed the eye just beyond the camera marker's front (-Z) face.");
         invalidateRegistrySnapshot();
@@ -1955,7 +1947,7 @@ void LLFloaterPrismManager::onSnapVirtualCameraToView()
     settings.mVirtualRot = rot;
     settings.mFovMode = LLPrismLens::EFovMode::FIXED;
     std::string reason;
-    if (LLPrismLens::setCameraSettings(capture->mHandle, settings, &reason))
+    if (mPageModel.setCamera(capture->mHandle, settings, &reason))
     {
         setStatus(stabilized_bone
             ? "Snapped operator aim; the attached skeleton continues to own camera position."
@@ -1968,17 +1960,12 @@ void LLFloaterPrismManager::onSnapVirtualCameraToView()
 
 void LLFloaterPrismManager::onNewVirtualCamera()
 {
-    LLVector3 pos;
-    LLQuaternion rot;
-    prismCurrentViewTransform(pos, rot);
-
-    LLPrismLens::CaptureHandle capture;
     std::string reason;
     const LLPrismLens::ERegistryResult result =
-        LLPrismLens::addVirtualCamera(&capture, pos, rot, &reason);
+        mPageModel.addVirtualAtView(&reason);
     if (result == LLPrismLens::ERegistryResult::OK)
     {
-        mSelectedCapture = capture;
+        mSelectedCapture = mPageModel.selectedCapture();
         mSelectedDisplay = LLPrismLens::DisplayHandle();
         setStatus("Created a prim-free virtual camera at your current view.");
         // Like onAddCamera(): the new capture is selected while the world
@@ -1988,7 +1975,7 @@ void LLFloaterPrismManager::onNewVirtualCamera()
         revealDocumentView(mCaptureTitle, mCaptureDocument, mCaptureScroll);
         return;
     }
-    setStatus("Could not create virtual camera: " + reason);
+    setStatus(reason);
 }
 
 void LLFloaterPrismManager::onCommitCameraSettings(bool commit_bone_joint)
@@ -2079,13 +2066,13 @@ void LLFloaterPrismManager::onCommitCameraSettings(bool commit_bone_joint)
     }
 
     std::string reason;
-    if (LLPrismLens::setCameraSettings(capture->mHandle, settings, &reason))
+    if (mPageModel.setCamera(capture->mHandle, settings, &reason))
     {
         setStatus("Updated camera optics. The retained output will refresh without changing its bindings.");
         invalidateRegistrySnapshot();
         return;
     }
-    setStatus("Camera settings were rejected: " + reason);
+    setStatus(reason);
     refreshCaptureEditor();
 }
 
@@ -2104,13 +2091,13 @@ void LLFloaterPrismManager::onCommitRateSettings()
     settings.mTargetFps = static_cast<F32>(mTargetFpsSpinner->getValue().asReal());
 
     std::string reason;
-    if (LLPrismLens::setCaptureRateSettings(capture->mHandle, settings, &reason))
+    if (mPageModel.setRate(capture->mHandle, settings, &reason))
     {
         setStatus("Updated the producer's picture rate; every linked face inherits it.");
         invalidateRegistrySnapshot();
         return;
     }
-    setStatus("Picture rate was rejected: " + reason);
+    setStatus(reason);
     refreshCaptureEditor();
 }
 
@@ -2131,14 +2118,33 @@ void LLFloaterPrismManager::onAddDisplay()
     {
         return;
     }
-    LLPrismLens::DisplayHandle display;
+    const LLPrismLens::CaptureHandle capture_handle = capture->mHandle;
+    std::set<LLUUID> existing_displays;
+    for (U32 index = 0; index < mRegistrySnapshot.mDisplayCount; ++index)
+    {
+        existing_displays.insert(mRegistrySnapshot.mDisplays[index].mHandle.mId);
+    }
     std::string reason;
-    const LLPrismLens::ERegistryResult result = LLPrismLens::addSelectedDisplay(
-        capture->mHandle, fitModeFromValue(mNewDisplayFitCombo->getValue()),
-        &display, &reason);
+    const LLPrismLens::ERegistryResult result = mPageModel.bindSelectedFace(
+        capture_handle, fitModeFromValue(mNewDisplayFitCombo->getValue()),
+        &reason);
     if (result == LLPrismLens::ERegistryResult::OK)
     {
-        mSelectedDisplay = display;
+        mPageModel.refreshNow(ALVCamPageModel::DIRTY_CONFIGURATION |
+                              ALVCamPageModel::DIRTY_RUNTIME);
+        for (U32 index = 0; index < mRegistrySnapshot.mDisplayCount; ++index)
+        {
+            const LLPrismLens::DisplayDefinition& candidate =
+                mRegistrySnapshot.mDisplays[index];
+            if (existing_displays.find(candidate.mHandle.mId) ==
+                    existing_displays.end() &&
+                sameHandle(candidate.mCapture, capture_handle))
+            {
+                mSelectedDisplay = candidate.mHandle;
+                mPageModel.setSelectedDisplay(mSelectedDisplay);
+                break;
+            }
+        }
         setStatus("Linked the selected face to this capture; no extra scene render was created.");
         // The still-selected face is now a bound display, so the synchronous
         // refresh below would immediately surface its DUPLICATE reject over
@@ -2148,7 +2154,7 @@ void LLFloaterPrismManager::onAddDisplay()
         invalidateRegistrySnapshot();
         return;
     }
-    setStatus("Could not add display: " + reason);
+    setStatus(reason);
 }
 
 void LLFloaterPrismManager::onAddVirtualScreen()
@@ -2159,6 +2165,7 @@ void LLFloaterPrismManager::onAddVirtualScreen()
         setStatus("Select a Camera Feed capture first, then add a virtual screen.");
         return;
     }
+    const LLPrismLens::CaptureHandle capture_handle = capture->mHandle;
 
     // Place the screen a few metres in front of the current view, facing the
     // viewer. prismCurrentViewTransform() returns the view origin and an
@@ -2178,13 +2185,31 @@ void LLFloaterPrismManager::onAddVirtualScreen()
     if (!std::isfinite(aspect) || aspect <= 0.f) aspect = 16.f / 9.f;
     const F32 width = height * aspect;
 
-    LLPrismLens::DisplayHandle display;
+    std::set<LLUUID> existing_displays;
+    for (U32 index = 0; index < mRegistrySnapshot.mDisplayCount; ++index)
+    {
+        existing_displays.insert(mRegistrySnapshot.mDisplays[index].mHandle.mId);
+    }
     std::string reason;
-    const LLPrismLens::ERegistryResult result = LLPrismLens::addVirtualDisplay(
-        capture->mHandle, pos, rot, width, height, &display, &reason);
+    const LLPrismLens::ERegistryResult result = mPageModel.addVirtualScreen(
+        capture_handle, pos, rot, width, height, &reason);
     if (result == LLPrismLens::ERegistryResult::OK)
     {
-        mSelectedDisplay = display;
+        mPageModel.refreshNow(ALVCamPageModel::DIRTY_CONFIGURATION |
+                              ALVCamPageModel::DIRTY_RUNTIME);
+        for (U32 index = 0; index < mRegistrySnapshot.mDisplayCount; ++index)
+        {
+            const LLPrismLens::DisplayDefinition& candidate =
+                mRegistrySnapshot.mDisplays[index];
+            if (existing_displays.find(candidate.mHandle.mId) ==
+                    existing_displays.end() &&
+                sameHandle(candidate.mCapture, capture_handle))
+            {
+                mSelectedDisplay = candidate.mHandle;
+                mPageModel.setSelectedDisplay(mSelectedDisplay);
+                break;
+            }
+        }
         setStatus("Created a prim-free virtual screen at your current view (no prim needed).");
         // The selected Camera Feed capture is unchanged, so the synchronous
         // refresh below would re-surface any "select a face" Add-Display reject
@@ -2194,7 +2219,7 @@ void LLFloaterPrismManager::onAddVirtualScreen()
         invalidateRegistrySnapshot();
         return;
     }
-    setStatus("Could not add virtual screen: " + reason);
+    setStatus(reason);
 }
 
 void LLFloaterPrismManager::onRemoveDisplay()
@@ -2212,7 +2237,7 @@ void LLFloaterPrismManager::onRemoveDisplay()
         invalidateRegistrySnapshot();
         return;
     }
-    setStatus("Could not remove display: " + reason);
+    setStatus(reason);
 }
 
 void LLFloaterPrismManager::onLocateDisplay()
@@ -2253,13 +2278,13 @@ void LLFloaterPrismManager::onCommitDisplaySettings()
     settings.mBarColorLinear[2] = static_cast<F32>(mBarBlueSpinner->getValue().asReal());
 
     std::string reason;
-    if (LLPrismLens::setDisplaySettings(display->mHandle, settings, &reason))
+    if (mPageModel.setDisplay(display->mHandle, settings, &reason))
     {
         setStatus("Updated only this face's mapping; the shared capture was not re-rendered.");
         invalidateRegistrySnapshot();
         return;
     }
-    setStatus("Display settings were rejected: " + reason);
+    setStatus(reason);
     refreshDisplayEditor();
 }
 
@@ -2311,13 +2336,13 @@ void LLFloaterPrismManager::onCommitVirtualScreenSize()
     settings.mWidth = height * ratio;
 
     std::string reason;
-    if (LLPrismLens::setDisplaySettings(display->mHandle, settings, &reason))
+    if (mPageModel.setDisplay(display->mHandle, settings, &reason))
     {
         setStatus("Resized the virtual screen; the shared capture was not re-rendered.");
         invalidateRegistrySnapshot();
         return;
     }
-    setStatus("Virtual screen size was rejected: " + reason);
+    setStatus(reason);
     refreshDisplayEditor();
 }
 
@@ -2345,13 +2370,13 @@ void LLFloaterPrismManager::onRepositionVirtualScreen()
     settings.mRot = rot;
 
     std::string reason;
-    if (LLPrismLens::setDisplaySettings(display->mHandle, settings, &reason))
+    if (mPageModel.setDisplay(display->mHandle, settings, &reason))
     {
         setStatus("Repositioned the virtual screen to your current view.");
         invalidateRegistrySnapshot();
         return;
     }
-    setStatus("Could not reposition virtual screen: " + reason);
+    setStatus(reason);
 }
 
 void LLFloaterPrismManager::onCommitDisplayEffects()
@@ -2369,13 +2394,13 @@ void LLFloaterPrismManager::onCommitDisplayEffects()
     settings.mEffects = effectsFromUI();
 
     std::string reason;
-    if (LLPrismLens::setDisplaySettings(mSelectedDisplay, settings, &reason))
+    if (mPageModel.setDisplay(mSelectedDisplay, settings, &reason))
     {
         setStatus("Updated only this face's screen effects; the shared capture was not re-rendered.");
         invalidateRegistrySnapshot();
         return;
     }
-    setStatus("Screen effects were rejected: " + reason);
+    setStatus(reason);
     refreshDisplayEditor();
 }
 
@@ -2492,6 +2517,5 @@ void LLFloaterPrismManager::setStatus(const std::string& message)
 
 void LLFloaterPrismManager::invalidateRegistrySnapshot()
 {
-    mHaveRegistrySnapshot = false;
-    pollSnapshots(true);
+    mPageModel.refreshNow(ALVCamPageModel::DIRTY_ALL);
 }

@@ -7,8 +7,8 @@
 #define LL_LLFLOATERPRISMMANAGER_H
 
 #include "alscrollfit.h"
+#include "alvcampagemodel.h"
 #include "llfloater.h"
-#include "llframetimer.h"
 #include "llprismlens.h"
 
 class LLButton;
@@ -30,12 +30,15 @@ public:
 
     bool postBuild() override;
     void onOpen(const LLSD& key) override;
+    void onVisibilityChange(bool visible) override;
     void draw() override;
 
 private:
     ALScrollFit::Controller mScrollFit;
+    ALVCamPageModel mPageModel;
+    boost::signals2::scoped_connection mPageModelConnection;
 
-    void pollSnapshots(bool force);
+    void onModelChanged(U32 dirty);
     void refreshConfiguration();
     void refreshRuntime();
     void refreshPerformance();
@@ -97,10 +100,6 @@ private:
     LLPrismLens::GateSnapshot mGateSnapshot;
     bool mHaveRegistrySnapshot = false;
     bool mHavePerformanceSnapshot = false;
-    U64 mConfigurationRevision = 0;
-    U64 mRuntimeRevision = 0;
-    U64 mPerformanceRevision = 0;
-    U64 mGateRevision = 0;
     LLVOAvatar* mBoneJointAvatar = nullptr;
     LLUUID mBoneJointAvatarId;
     U32 mBoneJointSkeletonSerial = 0;
@@ -110,11 +109,9 @@ private:
     // Retains a scene's named selection while only the static fallback list is
     // available, so first avatar resolve can restore a Bento/extra joint.
     std::string mBoneJointPreferredValue;
-    LLFrameTimer mRefreshTimer;
-    LLFrameTimer mAgeRefreshTimer;
     // Last Add-Display reject reason surfaced through the status line by
-    // refreshSelectionActions(). That poll runs ~4x/sec, so the reason is shown
-    // only when it CHANGES; identical re-polls leave any transient
+    // refreshSelectionActions(). Model signals can coalesce, so the reason is
+    // shown only when it CHANGES; identical refreshes leave any transient
     // success/error message from a button handler untouched. Cleared when the
     // action becomes allowed (or no Camera Feed capture is selected) so a later
     // identical rejection is displayed again.
