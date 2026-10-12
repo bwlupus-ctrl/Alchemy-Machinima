@@ -197,7 +197,7 @@
      left="320" name="reset_CinematicCamSmoothing" tool_tip="Reset smoothing" top="411" width="12" />
     <spinner control_name="CinematicCamFrameOffsetUp" decimal_digits="2"
      follows="left|top" height="18" increment="0.05" label="Frame up (meters)"
-     label_width="126" layout="topleft" left="12" max_val="3" min_val="-3"
+     label_width="126" layout="topleft" left="12" max_val="20" min_val="-20"
      name="CinematicCamFrameOffsetUp" top="434"
      tool_tip="Raise or lower the subject framing point. Not used by Bone Lock." width="304" />
     <button commit_callback.function="Machinima.ResetControl" commit_callback.parameter="CinematicCamFrameOffsetUp"
