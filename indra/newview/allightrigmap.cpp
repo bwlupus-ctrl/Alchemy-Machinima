@@ -16,6 +16,7 @@
 #include "lluictrlfactory.h"
 #include "llviewercamera.h"
 #include "llviewercontrol.h"
+#include <initializer_list>
 static LLDefaultChildRegistry::Register<ALLightRigMap> r("light_rig_map");
 
 namespace
@@ -111,6 +112,17 @@ void label(LLView* owner, const std::string& s, F32 x, F32 y, const LLColor4& c,
         const S32 bottom = ll_round(y) - f->getLineHeight() / 2;
         ALUIPerfSelfTest::recordKitText(owner, s, LLRect(left, bottom + f->getLineHeight(), left + width, bottom), owner);
     }
+}
+
+LLRect labelBounds(const std::string& text, F32 x, F32 y, LLFontGL::HAlign align, S32 padding = 0)
+{
+    const LLFontGL* font = LLFontGL::getFontSansSerifSmall();
+    if (!font)
+        return LLRect();
+    const S32 width  = font->getWidth(text);
+    const S32 left   = align == LLFontGL::LEFT ? ll_round(x) : align == LLFontGL::RIGHT ? ll_round(x) - width : ll_round(x) - width / 2;
+    const S32 bottom = ll_round(y) - font->getLineHeight() / 2;
+    return LLRect(left - padding, bottom + font->getLineHeight() + padding, left + width + padding, bottom - padding);
 }
 
 } // namespace
@@ -433,7 +445,6 @@ void ALLightRigMap::draw()
             gGL.color4fv(c.mV);
             gl_circle_2d(l.x, l.y, rr, 20, false);
             gl_line_2d(ll_round(l.x - rr * .51f), ll_round(l.y - rr * .51f), ll_round(l.x + rr * .51f), ll_round(l.y + rr * .51f), c);
-            label(this, S_OFF, l.x, l.y - rr - 7.f, c);
         }
 
         else if (l.front >= .5f)
@@ -467,8 +478,6 @@ void ALLightRigMap::draw()
             gGL.color4fv((c % .6f).mV);
             gl_circle_2d(l.x, l.y, rr + 4.f, 24, false);
         }
-        label(this, LABEL[i], l.x + (l.x >= mCanvasCx ? rr + 4.f : -rr - 4.f), l.y, c,
-              l.x >= mCanvasCx ? LLFontGL::LEFT : LLFontGL::RIGHT);
     };
 
     for (const DrawLight& l : lights)
@@ -524,11 +533,112 @@ void ALLightRigMap::draw()
         if (mView == ALKitMath::TOP || !mOn[l.i] || l.front >= .5f)
             paint(l);
 
+    struct LabelCandidate
+    {
+        F32              x;
+        F32              y;
+        LLFontGL::HAlign align;
+    };
+    std::vector<LLRect> map_labels;
+    map_labels.reserve(12);
+    const S32 label_floor = ALKitStyle::MAP_CONTROL_H + ALKitStyle::MAP_HINT_H + ALKitStyle::MAP_LEGEND_H + 2;
+    const S32 label_ceiling = rect.getHeight() - 2;
+    if (mView == ALKitMath::SIDE)
+    {
+        const S32 side_chip_y = ll_round(mCanvasCy + mCanvasRadius - 21.f);
+        map_labels.emplace_back(5, side_chip_y + 16, 129, side_chip_y - 16);
+    }
+    auto label_is_clear = [&](const LLRect& bounds, S32 owner_role, bool avoid_markers)
+    {
+        if (bounds.mLeft < 2 || bounds.mRight > rect.getWidth() - 2 || bounds.mBottom < label_floor || bounds.mTop > label_ceiling)
+            return false;
+        for (const LLRect& placed : map_labels)
+            if (bounds.overlaps(placed))
+                return false;
+        if (avoid_markers)
+            for (const DrawLight& other : lights)
+                if (other.i != owner_role)
+                {
+                    const S32 radius = llceil(other.rr) + 3;
+                    if (bounds.overlaps(LLRect(ll_round(other.x) - radius, ll_round(other.y) + radius,
+                                               ll_round(other.x) + radius, ll_round(other.y) - radius)))
+                        return false;
+                }
+        if (mView != ALKitMath::TOP &&
+            bounds.overlaps(LLRect(ll_round(mCanvasCx) - 22, ll_round(mCanvasCy) + 42,
+                                   ll_round(mCanvasCx) + 22, ll_round(mCanvasCy) - 42)))
+            return false;
+        return true;
+    };
+    auto place_label = [&](const std::string& text, const LLColor4& color, S32 owner_role,
+                           std::initializer_list<LabelCandidate> candidates, bool avoid_markers, bool required)
+    {
+        for (const LabelCandidate& candidate : candidates)
+        {
+            const LLRect bounds = labelBounds(text, candidate.x, candidate.y, candidate.align, 3);
+            if (!label_is_clear(bounds, owner_role, avoid_markers))
+                continue;
+            label(this, text, candidate.x, candidate.y, color, candidate.align);
+            map_labels.push_back(bounds);
+            return true;
+        }
+        if (required && candidates.size() > 0)
+        {
+            const LabelCandidate& fallback = *candidates.begin();
+            for (S32 distance = 14; distance <= 56; distance += 14)
+            {
+                const S32 offsets[4][2] = { { 0, distance }, { 0, -distance }, { distance, 0 }, { -distance, 0 } };
+                for (const auto& offset : offsets)
+                {
+                    const LabelCandidate alternate{ fallback.x + offset[0], fallback.y + offset[1], fallback.align };
+                    const LLRect bounds = labelBounds(text, alternate.x, alternate.y, alternate.align, 3);
+                    if (!label_is_clear(bounds, owner_role, avoid_markers))
+                        continue;
+                    label(this, text, alternate.x, alternate.y, color, alternate.align);
+                    map_labels.push_back(bounds);
+                    return true;
+                }
+            }
+            label(this, text, fallback.x, fallback.y, color, fallback.align);
+            map_labels.push_back(labelBounds(text, fallback.x, fallback.y, fallback.align, 3));
+            return true;
+        }
+        return false;
+    };
+
+    for (const DrawLight& light : lights)
+    {
+        const bool right = light.x >= mCanvasCx;
+        const F32  outer_x = light.x + (right ? light.rr + 5.f : -light.rr - 5.f);
+        const F32  inner_x = light.x + (right ? -light.rr - 5.f : light.rr + 5.f);
+        const LLFontGL::HAlign outer_align = right ? LLFontGL::LEFT : LLFontGL::RIGHT;
+        const LLFontGL::HAlign inner_align = right ? LLFontGL::RIGHT : LLFontGL::LEFT;
+        place_label(LABEL[light.i], light.color, light.i,
+                    { { outer_x, light.y, outer_align }, { inner_x, light.y, inner_align },
+                      { light.x, light.y + light.rr + 9.f, LLFontGL::HCENTER },
+                      { light.x, light.y - light.rr - 9.f, LLFontGL::HCENTER } },
+                    true, true);
+        if (!mOn[light.i])
+            place_label(S_OFF, light.color, light.i,
+                        { { light.x, light.y - light.rr - 9.f, LLFontGL::HCENTER },
+                          { light.x, light.y + light.rr + 9.f, LLFontGL::HCENTER },
+                          { outer_x, light.y - 13.f, outer_align }, { outer_x, light.y + 13.f, outer_align },
+                          { inner_x, light.y - 13.f, inner_align }, { inner_x, light.y + 13.f, inner_align } },
+                        true, true);
+    }
+
     if (mView == ALKitMath::SIDE)
     {
         const F32 cam_x = mSideFrom == 0 ? mCanvasCx + mCanvasRadius : mCanvasCx - mCanvasRadius;
-        label(this, S_CAM, cam_x, mCanvasCy - 12.f, dim);
-        label(this, S_BACK, 2.f * mCanvasCx - cam_x, mCanvasCy - 12.f, dim);
+        const F32 back_x = 2.f * mCanvasCx - cam_x;
+        place_label(S_CAM, dim, -1,
+                    { { cam_x, mCanvasCy - 12.f, LLFontGL::HCENTER },
+                      { cam_x, mCanvasCy - 27.f, LLFontGL::HCENTER },
+                      { cam_x, mCanvasCy + 12.f, LLFontGL::HCENTER } }, false, false);
+        place_label(S_BACK, dim, -1,
+                    { { back_x, mCanvasCy - 12.f, LLFontGL::HCENTER },
+                      { back_x, mCanvasCy - 27.f, LLFontGL::HCENTER },
+                      { back_x, mCanvasCy + 12.f, LLFontGL::HCENTER } }, false, false);
         const F32 chip_y = mCanvasCy + mCanvasRadius - 21.f;
         gl_rect_2d(8, ll_round(chip_y + 13), 126, ll_round(chip_y - 13), ALKitStyle::color(ALKitStyle::CONTROL_BG).get(), true);
         gGL.color4fv(track.mV);
@@ -545,10 +655,20 @@ void ALLightRigMap::draw()
 
     else
     {
-        label(this, S_CAM_L, mCanvasCx - mCanvasRadius, mCanvasCy, dim);
-        label(this, S_CAM_R, mCanvasCx + mCanvasRadius, mCanvasCy, dim);
-        label(this, S_BACK, mCanvasCx, mCanvasCy + mCanvasRadius + 8.f, dim);
-        label(this, S_CAM, mCanvasCx, mCanvasCy - mCanvasRadius - 8.f, dim);
+        place_label(S_CAM_L, dim, -1,
+                    { { mCanvasCx - mCanvasRadius, mCanvasCy, LLFontGL::HCENTER },
+                      { mCanvasCx - mCanvasRadius, mCanvasCy + 15.f, LLFontGL::HCENTER } }, false, false);
+        place_label(S_CAM_R, dim, -1,
+                    { { mCanvasCx + mCanvasRadius, mCanvasCy, LLFontGL::HCENTER },
+                      { mCanvasCx + mCanvasRadius, mCanvasCy + 15.f, LLFontGL::HCENTER } }, false, false);
+        place_label(S_BACK, dim, -1,
+                    { { mCanvasCx, mCanvasCy + mCanvasRadius + 8.f, LLFontGL::HCENTER },
+                      { mCanvasCx - 34.f, mCanvasCy + mCanvasRadius + 8.f, LLFontGL::HCENTER },
+                      { mCanvasCx + 34.f, mCanvasCy + mCanvasRadius + 8.f, LLFontGL::HCENTER } }, false, false);
+        place_label(S_CAM, dim, -1,
+                    { { mCanvasCx, mCanvasCy - mCanvasRadius - 8.f, LLFontGL::HCENTER },
+                      { mCanvasCx - 30.f, mCanvasCy - mCanvasRadius - 8.f, LLFontGL::HCENTER },
+                      { mCanvasCx + 30.f, mCanvasCy - mCanvasRadius - 8.f, LLFontGL::HCENTER } }, false, false);
     }
 
     const F32 legend_bottom = ALKitStyle::MAP_CONTROL_H + ALKitStyle::MAP_HINT_H;

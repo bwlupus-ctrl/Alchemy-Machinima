@@ -1355,7 +1355,7 @@ void ALPanelCineLightRig::updateAnchorList()
         std::string label(subject_names[i]);
         if (i > 0)
         {
-            std::string resolved_name("unset");
+            std::string resolved_name("not set");
             if (subject_ids[i].notNull())
             {
                 const LLDirectorCast::CastMember* member =
@@ -1363,19 +1363,11 @@ void ALPanelCineLightRig::updateAnchorList()
                 resolved_name = member && !member->mLastName.empty()
                     ? member->mLastName : subject_ids[i].asString();
             }
-            label += " - " + resolved_name;
+            label += " \xE2\x80\x93 " + resolved_name;
         }
         if (manager.at(slot).getObjectTarget().notNull())
         {
             label += " (object)";
-        }
-        if (manager.isSlotLit(slot))
-        {
-            label = "\xE2\x97\x8F " + label; // filled circle: lit
-        }
-        else if (manager.isSlotEnabled(slot))
-        {
-            label = "\xE2\x97\x8B " + label; // hollow circle: enabled/dark
         }
         ids.push_back(subject_ids[i]);
         labels.push_back(label);

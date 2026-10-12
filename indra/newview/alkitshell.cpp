@@ -894,7 +894,7 @@ void ALKitShell::pageBuilt(const std::string&, LLPanel* panel)
             LLButton::Params                button_params;
             button_params.rect  = LLRect(10, item_height, 350, 0);
             button_params.name  = prefix + "_who_follow";
-            button_params.label = "\xE2\x86\xBA Follow rail (" + picker->getSelectedItemLabel() + ")";
+            button_params.label = "Follow cast selection (" + picker->getSelectedItemLabel() + ")";
             LLButton* follow    = LLUICtrlFactory::create<LLButton>(button_params);
             popover->addChild(follow);
             follow->setOrigin(10, (S32)items.size() * item_height + 8);
@@ -945,7 +945,7 @@ void ALKitShell::pageBuilt(const std::string&, LLPanel* panel)
                     {
                         if (LLButton* follow_button = follow_handle.get())
                         {
-                            follow_button->setLabel("\xE2\x86\xBA Follow rail (" + combo->getSelectedItemLabel() + ")");
+                            follow_button->setLabel("Follow cast selection (" + combo->getSelectedItemLabel() + ")");
                         }
                         const std::vector<LLScrollListItem*> current_items = combo->getAllData();
                         S32                                  choice_index  = 0;

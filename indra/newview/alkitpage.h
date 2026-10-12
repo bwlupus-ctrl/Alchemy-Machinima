@@ -188,9 +188,7 @@ private:
     LLPanel*                                        mMasterBox      = nullptr;
     LLTextBox*                                      mWhoHint        = nullptr;
     LLTextBox*                                      mWhoLabelText   = nullptr;
-    LLTextBox*                                      mWhoRailText    = nullptr;
     LLTextBox*                                      mWhoCaretText   = nullptr;
-    LLPanel*                                        mWhoRailTag     = nullptr;
     LLPanel*                                        mLegacyHost     = nullptr;
     LLPanel*                                        mPathPlayback   = nullptr;
     ALKitSwitch*                                    mMaster         = nullptr;
