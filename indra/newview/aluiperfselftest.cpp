@@ -2403,6 +2403,14 @@ private:
                         id, LLVector3d(10.0 + fixture_index * 4.0, 10.0, 20.0));
                     LLActorMover::instance().appendWaypointAt(
                         id, LLVector3d(12.0 + fixture_index * 4.0, 10.0, 20.0));
+                    // Distinct per-fixture path speed and node yaw so the owner
+                    // oracles can tell which prop/node the panel actually shows.
+                    LLActorMover::Path& path = LLActorMover::instance().editPath(id);
+                    path.mSpeed = 1.25f + 1.5f * static_cast<F32>(fixture_index);
+                    for (size_t node = 0; node < path.mNodes.size(); ++node)
+                        path.mNodes[node].mYawOffset = (10.f + 20.f * fixture_index +
+                            5.f * static_cast<F32>(node)) * DEG_TO_RAD;
+                    path.markDirty();
                 }
             }
             if (prop_list)
@@ -2433,6 +2441,14 @@ private:
                 prop_list->setSelectedByValue(mFunctionalPropFixtures.front(), true);
                 prop_list->onCommit();
             }
+            // Sentinels (no commit): only the owner's selection handler
+            // (refreshNodePane) can replace them with the selected path's values.
+            if (LLSpinCtrl* speed = mFunctionalPageRoot
+                    ? mFunctionalPageRoot->findChild<LLSpinCtrl>("path_speed_spin", true) : nullptr)
+                speed->setValue(LLSD(-1.0));
+            if (LLSpinCtrl* skid = mFunctionalPageRoot
+                    ? mFunctionalPageRoot->findChild<LLSpinCtrl>("node_skid_spin", true) : nullptr)
+                skid->setValue(LLSD(-999.0));
             LLScrollListCtrl* fixture_list = dynamic_cast<LLScrollListCtrl*>(control);
             ok = prop_list && fixture_list && fixture_list->getItemCount() >= 2 && ok;
         }
@@ -5248,19 +5264,45 @@ private:
                     selected < static_cast<S32>(playlist.size()) &&
                     rename->getText() == playlist[selected].mLabel;
             }
-            else if (widget_name == "prop_list")
+            else if (widget_name == "prop_list" || widget_name == "node_list")
             {
+                // Owner oracle: the panel's own detail controls must show the
+                // clicked prop's path (distinct per fixture) / the clicked
+                // node's yaw. The prep step left sentinels that only the
+                // selection handler (refreshNodePane) replaces.
+                LLScrollListCtrl* props = mFunctionalPageRoot
+                    ? mFunctionalPageRoot->findChild<LLScrollListCtrl>("prop_list", true) : nullptr;
                 LLScrollListCtrl* nodes = mFunctionalPageRoot
                     ? mFunctionalPageRoot->findChild<LLScrollListCtrl>("node_list", true) : nullptr;
-                owner_ok = owner_ok && nodes && nodes->getItemCount() == 2;
-            }
-            else if (widget_name == "node_list")
-            {
-                const LLActorMover::Path* path = mFunctionalPropFixtures.empty() ? nullptr :
-                    LLActorMover::instance().getPath(mFunctionalPropFixtures.front());
-                const S32 selected = mFunctionalListExpected.asInteger();
-                owner_ok = owner_ok && path && selected >= 0 &&
-                    selected < static_cast<S32>(path->mNodes.size());
+                LLSpinCtrl* speed = mFunctionalPageRoot
+                    ? mFunctionalPageRoot->findChild<LLSpinCtrl>("path_speed_spin", true) : nullptr;
+                LLSpinCtrl* skid = mFunctionalPageRoot
+                    ? mFunctionalPageRoot->findChild<LLSpinCtrl>("node_skid_spin", true) : nullptr;
+                const LLUUID prop_id = props ? props->getSelectedValue().asUUID() : LLUUID::null;
+                const bool is_fixture = std::find(mFunctionalPropFixtures.begin(),
+                    mFunctionalPropFixtures.end(), prop_id) != mFunctionalPropFixtures.end();
+                const LLActorMover::Path* path = is_fixture
+                    ? LLActorMover::instance().getPath(prop_id) : nullptr;
+                owner_ok = owner_ok && path && nodes && speed &&
+                    nodes->getItemCount() == static_cast<S32>(path->mNodes.size()) &&
+                    std::fabs(speed->getValueF32() - path->mSpeed) < 0.01f;
+                if (widget_name == "prop_list")
+                {
+                    LLScrollListItem* clicked = control
+                        ? static_cast<LLScrollListCtrl*>(control)->getFirstSelected() : nullptr;
+                    owner_ok = owner_ok && clicked && clicked->getValue().asUUID() == prop_id;
+                }
+                else
+                {
+                    const S32 selected = mFunctionalListExpected.asInteger();
+                    LLScrollListItem* clicked = nodes ? nodes->getFirstSelected() : nullptr;
+                    owner_ok = owner_ok && skid && clicked && selected >= 0 &&
+                        selected < static_cast<S32>(path->mNodes.size()) &&
+                        clicked->getValue().asInteger() == selected &&
+                        std::fabs(skid->getValueF32() -
+                                  path->mNodes[selected].mYawOffset * RAD_TO_DEG) < 0.05f;
+                }
+                mFunctionalObserved["list"]["prop_fixture_selected"] = is_fixture;
             }
             mFunctionalObserved["list"]["selected_expected"] = selected_expected;
             mFunctionalObserved["list"]["owner_oracle"] = owner_ok;
