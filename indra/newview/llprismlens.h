@@ -555,6 +555,7 @@ struct ProjectorSettings
     EFitMode mFitMode = EFitMode::FIT;
     F32 mAnchor[2] = { 0.5f, 0.5f };
     F32 mFeedEV = 0.f;
+    F32 mLampPowerEV = 0.f;
     bool mFollowMainExposure = true;
     U16 mResolution = 512;
     ENoSignal mNoSignal = ENoSignal::OWN_COOKIE;
@@ -564,7 +565,37 @@ struct ProjectorSettings
     U8 mRotate = 0; // clockwise quarter turns: 0, 1, 2, 3
     ScreenEffects mEffects;
     ProjectorLook mLook;
+
+    bool isLampPowerIdentity() const { return mLampPowerEV == 0.f; }
+    F32 lampPowerScale() const
+    {
+        return isLampPowerIdentity() ? 1.f : std::exp2(mLampPowerEV);
+    }
 };
+
+inline LLSD projectorLampPowerToLLSD(const ProjectorSettings& settings)
+{
+    LLSD data = LLSD::emptyMap();
+    data["lamp_power_ev"] = settings.mLampPowerEV;
+    return data;
+}
+
+inline bool projectorLampPowerFromLLSD(const LLSD& data,
+                                       ProjectorSettings& settings)
+{
+    settings.mLampPowerEV = 0.f;
+    if (!data.isMap() || !data.has("lamp_power_ev")) return data.isMap();
+    const LLSD& value = data["lamp_power_ev"];
+    if (!value.isReal() && !value.isInteger()) return false;
+    const F32 lamp_power_ev = static_cast<F32>(value.asReal());
+    if (!std::isfinite(lamp_power_ev) || lamp_power_ev < -2.f ||
+        lamp_power_ev > 8.f)
+    {
+        return false;
+    }
+    settings.mLampPowerEV = lamp_power_ev;
+    return true;
+}
 
 // CPU mirrors of the shader's two identity-sensitive transforms. Keeping
 // these tiny helpers public makes the contract testable without a GL context.

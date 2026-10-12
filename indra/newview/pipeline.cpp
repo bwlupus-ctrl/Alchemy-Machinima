@@ -20984,7 +20984,8 @@ void LLPipeline::renderFroxelVolumetrics(LLRenderTarget* target)
             }
 
             // Side-effect-free geometry + cookie upload; slot passed in directly.
-            setupSpotLightVolumetric(gFroxelInjectProgram, drawablep, (S32)i);
+            const F32 lamp_power_scale = setupSpotLightVolumetric(
+                gFroxelInjectProgram, drawablep, (S32)i);
 
             // Per-projector override, resolved exactly like the per-cone loop so the
             // grid beam honors the same captured art-direction (brightness/feather/g/
@@ -21011,7 +21012,8 @@ void LLPipeline::renderFroxelVolumetrics(LLRenderTarget* target)
                 sFroxelProjVolMaxDistance, llclamp(e_max_dist, 0.f, 64.f));
             // [EnvIntensity v2] per-emitter Local lights EV folded into ONE scale used
             // for both the light colour and the shaft-tint term (exactly once).
-            const F32 ls = light_scale * ALEnvIntensity::localLightEVScale(volume);
+            const F32 ls = light_scale * ALEnvIntensity::localLightEVScale(volume) *
+                lamp_power_scale;
             LLColor3 col = volume->getLightLinearColor() * ls;
             if (e_tintStr > 0.f) // shaft tint lerp (no-op at TintStrength 0), same as per-cone
             {
@@ -21836,7 +21838,8 @@ void LLPipeline::renderProjectorVolumetric(LLRenderTarget* target, bool aux_dire
 
         // Side-effect-free geometry + cookie upload; slot passed in directly
         // (NO mTargetShadowSpotLight priority reshuffle - R1).
-        setupSpotLightVolumetric(gDeferredProjectorVolumetricProgram, drawablep, (S32)i);
+        const F32 lamp_power_scale = setupSpotLightVolumetric(
+            gDeferredProjectorVolumetricProgram, drawablep, (S32)i);
 
         // Remaining per-cone override levers (brightness/feather/g/density/tint).
         const F32 e_mult     = has_ov ? ov.multiplier   : BDMergeProjectorVolumetricsMultiplier;
@@ -21876,7 +21879,8 @@ void LLPipeline::renderProjectorVolumetric(LLRenderTarget* target, bool aux_dire
 
         // [EnvIntensity v2] per-emitter Local lights EV folded into ONE scale used
         // for both the light colour and the shaft-tint term (exactly once).
-        const F32 ls = light_scale * ALEnvIntensity::localLightEVScale(volume);
+        const F32 ls = light_scale * ALEnvIntensity::localLightEVScale(volume) *
+            lamp_power_scale;
         LLColor3  col = volume->getLightLinearColor() * ls;
         // [Phase 2 item 2 / Batch 1 C] Shaft tint (global or per-projector override):
         // pull the shaft color toward the art-direction tint so it can differ from
@@ -26744,10 +26748,12 @@ void LLPipeline::renderDeferredLighting(ActorMaskViewSource source)
 
                     sVisibleLightCount++;
 
-                    setupSpotLight(gDeferredSpotLightProgram, drawablep);
+                    const F32 lamp_power_scale = setupSpotLight(
+                        gDeferredSpotLightProgram, drawablep);
 
                     // send light color to shader in linear space
-                    const F32 ls = light_scale * ALEnvIntensity::localLightEVScale(volume); // [EnvIntensity v2]
+                    const F32 ls = light_scale * ALEnvIntensity::localLightEVScale(volume) *
+                        lamp_power_scale; // [EnvIntensity v2]
                     LLColor3 col = volume->getLightLinearColor() * ls;
 
                     gDeferredSpotLightProgram.uniform3fv(LLShaderMgr::LIGHT_CENTER, 1, c);
@@ -26846,10 +26852,12 @@ void LLPipeline::renderDeferredLighting(ActorMaskViewSource source)
                     glm::vec3 tc(center);
                     tc = mul_mat4_vec3(mat, tc);
 
-                    setupSpotLight(gDeferredMultiSpotLightProgram, drawablep);
+                    const F32 lamp_power_scale = setupSpotLight(
+                        gDeferredMultiSpotLightProgram, drawablep);
 
                     // send light color to shader in linear space
-                    const F32 ls = light_scale * ALEnvIntensity::localLightEVScale(volume); // [EnvIntensity v2]
+                    const F32 ls = light_scale * ALEnvIntensity::localLightEVScale(volume) *
+                        lamp_power_scale; // [EnvIntensity v2]
                     LLColor3 col = volume->getLightLinearColor() * ls;
 
                     gDeferredMultiSpotLightProgram.uniform3fv(LLShaderMgr::LIGHT_CENTER, 1, glm::value_ptr(tc));
@@ -26981,8 +26989,9 @@ void LLPipeline::renderDeferredLighting(ActorMaskViewSource source)
                             if (bindActorMask(shader) < 0) break;
                             LLVOVolume* volume = drawable->getVOVolume();
                             const glm::vec3 tc = mul_mat4_vec3(mat, glm::vec3(drawable->getPositionAgent()));
-                            setupSpotLight(shader, drawable);
-                            const F32 ls = light_scale * ALEnvIntensity::localLightEVScale(volume);
+                            const F32 lamp_power_scale = setupSpotLight(shader, drawable);
+                            const F32 ls = light_scale * ALEnvIntensity::localLightEVScale(volume) *
+                                lamp_power_scale;
                             const LLColor3 color = volume->getLightLinearColor() * ls;
                             shader.uniform1i(LLShaderMgr::ACTOR_MASK_BITS, group.first);
                             shader.uniform3fv(LLShaderMgr::LIGHT_CENTER, 1, glm::value_ptr(tc));
@@ -27676,9 +27685,9 @@ void LLPipeline::doWaterExclusionMask()
     glClearColor(0, 0, 0, 0);
 }
 
-void LLPipeline::bindProjectorCookie(LLGLSLShader& shader,
-                                     LLVOVolume* volume, F32 focus,
-                                     F32 proj_range, bool surface)
+F32 LLPipeline::bindProjectorCookie(LLGLSLShader& shader,
+                                    LLVOVolume* volume, F32 focus,
+                                    F32 proj_range, bool surface)
 {
     LLPrismLens::ProjectorFeed feed;
     const bool has_binding = LLPrismLens::projectorFeedFor(volume, feed);
@@ -27824,9 +27833,10 @@ void LLPipeline::bindProjectorCookie(LLGLSLShader& shader,
     shader.uniform4fv(LLShaderMgr::GOBO_ANIM_PARAMS, 1, gobo_anim);
     shader.uniform3fv(LLShaderMgr::GOBO_TINT, 1, gobo_tint);
     shader.uniform4fv(LLShaderMgr::GOBO_PATTERN_PARAMS, 1, gobo_pp);
+    return has_binding ? feed.mSettings.lampPowerScale() : 1.f;
 }
 
-void LLPipeline::setupSpotLight(LLGLSLShader& shader, LLDrawable* drawablep)
+F32 LLPipeline::setupSpotLight(LLGLSLShader& shader, LLDrawable* drawablep)
 {
     //construct frustum
     LLVOVolume* volume = drawablep->getVOVolume();
@@ -27988,12 +27998,14 @@ void LLPipeline::setupSpotLight(LLGLSLShader& shader, LLDrawable* drawablep)
     // make sure we didn't end up targeting the same spot light with both shadow maps
     llassert(mTargetShadowSpotLight[0] != mTargetShadowSpotLight[1] || mTargetShadowSpotLight[0].isNull());
 
-    bindProjectorCookie(shader, volume, focus, proj_range, true);
+    const F32 lamp_power_scale = bindProjectorCookie(
+        shader, volume, focus, proj_range, true);
 
     // [RigRim] covers both gDeferredSpotLightProgram and
     // gDeferredMultiSpotLightProgram (both surface spot loops call this).
     // Not uploaded by setupSpotLightVolumetric: the volumetric march has no rim.
     shader.uniform4fv(LLShaderMgr::RIG_RIM_LIGHT, 1, ALCineRigRim::paramsForVolume(volume).mV);
+    return lamp_power_scale;
 }
 
 // [BDMerge G3.3] Side-effect-free variant of setupSpotLight for the finalize-stage
@@ -28005,7 +28017,7 @@ void LLPipeline::setupSpotLight(LLGLSLShader& shader, LLDrawable* drawablep)
 // it from renderFinalize would double-apply the swap and corrupt next-frame shadow
 // slot assignment. Uses get_current_modelview() (== gGLModelView, the camera view
 // matrix) so proj_mat is consistent with getPosition()'s view-space reconstruction.
-void LLPipeline::setupSpotLightVolumetric(LLGLSLShader& shader, LLDrawable* drawablep, S32 slot)
+F32 LLPipeline::setupSpotLightVolumetric(LLGLSLShader& shader, LLDrawable* drawablep, S32 slot)
 {
     //construct frustum
     LLVOVolume* volume = drawablep->getVOVolume();
@@ -28124,7 +28136,7 @@ void LLPipeline::setupSpotLightVolumetric(LLGLSLShader& shader, LLDrawable* draw
         shader.uniform1f(LLShaderMgr::PROJECTOR_SHADOW_FADE, 1.f);
     }
 
-    bindProjectorCookie(shader, volume, focus, proj_range, false);
+    return bindProjectorCookie(shader, volume, focus, proj_range, false);
 }
 
 void LLPipeline::unbindDeferredShader(LLGLSLShader &shader)

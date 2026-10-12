@@ -568,6 +568,7 @@
      min_val="0.1"
      top="588"
      name="shuttle_distance_spin"
+     initial_value="5"
      tool_tip="Total shuttle travel distance, metres, from the prop's current position"
      width="150" />
     <spinner
@@ -583,6 +584,7 @@
      min_val="0.05"
      top="588"
      name="shuttle_speed_spin"
+     initial_value="1"
      tool_tip="Shuttle drive speed, metres per second"
      width="115" />
     <button

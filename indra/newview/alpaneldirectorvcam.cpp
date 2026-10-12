@@ -173,7 +173,8 @@ bool ALPanelDirectorVCam::postBuild()
         "vc_proj_look", "vc_proj_fit", "vc_proj_anchor_x", "vc_proj_anchor_y",
         "vc_proj_flip_h", "vc_proj_flip_v", "vc_proj_rotate",
         "vc_proj_keystone_h", "vc_proj_keystone_v", "vc_proj_throw",
-        "vc_proj_brightness", "vc_proj_follow_exposure", "vc_proj_lamp_kelvin",
+        "vc_proj_brightness", "vc_proj_lamp_power", "vc_proj_follow_exposure",
+        "vc_proj_lamp_kelvin",
         "vc_proj_gel_tint", "vc_proj_hotspot", "vc_proj_shutter_flicker",
         "vc_proj_shutter_rate", "vc_proj_gate_weave", "vc_proj_grain",
         "vc_proj_dust", "vc_proj_scratches", "vc_proj_burn", "vc_proj_halation",
@@ -521,6 +522,7 @@ void ALPanelDirectorVCam::refresh(U32 dirty)
         setValueIfChanged(projectorControl(PROJ_KEYSTONE_V), look.mKeystoneV);
         setValueIfChanged(projectorControl(PROJ_THROW), static_cast<S32>(look.mThrowMode));
         setValueIfChanged(projectorControl(PROJ_BRIGHTNESS), settings.mFeedEV);
+        setValueIfChanged(projectorControl(PROJ_LAMP_POWER), settings.mLampPowerEV);
         setValueIfChanged(projectorControl(PROJ_FOLLOW_EXPOSURE), settings.mFollowMainExposure);
         setValueIfChanged(projectorControl(PROJ_LAMP_KELVIN), look.mLampKelvin);
         setValueIfChanged(projectorControl(PROJ_GEL_TINT),
@@ -1234,8 +1236,9 @@ void ALPanelDirectorVCam::commitDisplay(const std::string& name, const LLSD& val
     else if (name == "vc_tv_preset")
     {
         const std::string preset = value.asString();
-        if (preset != "crt" && preset != "broken" && preset != "vhs" &&
-            preset != "security")
+        // "clean" is a real preset: it resets every TV effect.
+        if (preset != "clean" && preset != "crt" && preset != "broken" &&
+            preset != "vhs" && preset != "security")
         {
             return;
         }
@@ -1312,6 +1315,7 @@ void ALPanelDirectorVCam::commitProjector(const std::string& name,
     else if (name == "vc_proj_throw") look.mThrowMode =
         static_cast<LLPrismLens::EProjectorThrow>(llclamp(value.asInteger(), 0, 2));
     else if (name == "vc_proj_brightness") settings.mFeedEV = static_cast<F32>(value.asReal());
+    else if (name == "vc_proj_lamp_power") settings.mLampPowerEV = static_cast<F32>(value.asReal());
     else if (name == "vc_proj_follow_exposure") settings.mFollowMainExposure = value.asBoolean();
     else if (name == "vc_proj_lamp_kelvin") look.mLampKelvin = static_cast<F32>(value.asReal());
     else if (name == "vc_proj_gel_tint") look.mGelTint = LLColor3(value);
@@ -1351,8 +1355,9 @@ void ALPanelDirectorVCam::commitProjector(const std::string& name,
     else if (name == "vc_proj_tv_preset")
     {
         const std::string preset = value.asString();
-        if (preset != "crt" && preset != "broken" && preset != "vhs" &&
-            preset != "security")
+        // "clean" is a real preset: it resets every TV effect.
+        if (preset != "clean" && preset != "crt" && preset != "broken" &&
+            preset != "vhs" && preset != "security")
         {
             return;
         }
@@ -1379,6 +1384,8 @@ void ALPanelDirectorVCam::commitProjector(const std::string& name,
             effect.mStatic = .15f; effect.mVignette = .5f;
             effect.mPixelate = .2f;
         }
+        if (LLUICtrl* preset_control = control("vc_proj_tv_preset"))
+            preset_control->setValue(LLSD());
     }
     else changed = false;
 

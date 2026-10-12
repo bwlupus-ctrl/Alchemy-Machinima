@@ -132,7 +132,9 @@ enum class ENoSignal : U8 { OWN_COOKIE, BLACK, WHITE };
 struct ProjectorHandle { LLUUID mId; U64 mGeneration = 0; };
 struct ProjectorSettings {
     EFitMode mFitMode = EFitMode::FIT; F32 mAnchor[2] = {0.5f, 0.5f};
-    F32 mFeedEV = 0.f; bool mFollowMainExposure = true; U16 mResolution = 512; // 256/512/1024
+    F32 mFeedEV = 0.f;      // -6..+6, applied while preparing the LDR feed
+    F32 mLampPowerEV = 0.f; // -2..+8, viewer-only HDR light multiplier
+    bool mFollowMainExposure = true; U16 mResolution = 512; // 256/512/1024
     ENoSignal mNoSignal = ENoSignal::OWN_COOKIE; bool mKeepGobo = false;         // keep tint/flicker
     ScreenEffects mEffects;                                                       // reuse, default zero
 };
@@ -183,7 +185,7 @@ so probes re-dirty on bind/unbind but do not churn per video frame. Optional set
   projectors* (up to 12 lit projectors in draw distance, nearest first, name + distance), *Light Rig* (slots with
   live projectors: "Rig A Key"...), *Cancel*.
 - **Output section**: new card "Projectors this camera feeds" after `faces` (rows: name, health, Fit, Feed EV,
-  Resolution, No-signal, Remove). Projector rows accept tile drops (reassign) like face rows.
+  Lamp power EV, Resolution, No-signal, Remove). Projector rows accept tile drops (reassign) like face rows.
 - **Lightbox** projector section: "Camera feed" combo (None / CAM 1..8) beside the gobo controls.
 - **Light Rig** card per light: "Project camera" combo (RIG_LIGHT target, keyed by slot+light, survives emitter
   re-creation).

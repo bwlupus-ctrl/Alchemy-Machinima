@@ -191,7 +191,7 @@
         <button follows="left|top" height="18" layout="topleft" left="462" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="reset_node_anim" top="93" tool_tip="Clear node animation" />
 
         <text follows="left|top" font="SansSerifSmallBold" height="14" layout="topleft" left="8" top="120" name="cam_lbl" width="90">Node camera</text>
-        <check_box control_name="PathCameraEnabled" follows="left|top|right" height="18" label="Enable authored path camera for this session" layout="topleft" left="98" top="118" name="path_camera_enable_check" width="360" />
+        <check_box control_name="PathCameraEnabled" follows="left|top|right" height="18" label="Enable authored path camera" layout="topleft" left="98" top="118" name="path_camera_enable_check" width="360" />
         <button follows="left|top" height="18" layout="topleft" left="462" width="18" image_overlay="Refresh_Off" image_top_pad="0" name="reset_path_camera_enable" top="118" tool_tip="Reset authored camera enable" />
         <button follows="left|top" height="22" label="Capture camera here" layout="topleft" left="8" top="142" name="btn_node_setcam" width="154" />
         <button follows="left|top" height="22" label="Clear camera" layout="topleft" left="166" top="142" name="btn_node_clearcam" width="114" />

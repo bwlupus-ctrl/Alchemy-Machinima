@@ -8,6 +8,8 @@
 #include "../test/lltut.h"
 #include "../llprismlens.h"
 
+#include <limits>
+
 namespace tut
 {
 struct prism_projector_data {};
@@ -248,5 +250,33 @@ void prism_projector_object::test<15>()
         binding, true, true, false, true, true);
     ensure("restored spotlight leaves quarantine",
            !binding.mQuarantined && binding.mQuarantineReason.empty());
+}
+
+template<> template<>
+void prism_projector_object::test<16>()
+{
+    set_test_name("projector lamp power persistence and validation");
+    LLPrismLens::ProjectorSettings source;
+    source.mLampPowerEV = 7.5f;
+    LLPrismLens::ProjectorSettings result;
+    ensure("lamp power parses", LLPrismLens::projectorLampPowerFromLLSD(
+        LLPrismLens::projectorLampPowerToLLSD(source), result));
+    ensure_equals("lamp power round trips", result.mLampPowerEV,
+                  source.mLampPowerEV);
+    ensure("non-zero lamp power is not identity", !result.isLampPowerIdentity());
+
+    LLSD invalid = LLSD::emptyMap();
+    invalid["lamp_power_ev"] = 8.1f;
+    ensure("out-of-range lamp power is rejected",
+           !LLPrismLens::projectorLampPowerFromLLSD(invalid, result));
+    invalid["lamp_power_ev"] = std::numeric_limits<F32>::infinity();
+    ensure("non-finite lamp power is rejected",
+           !LLPrismLens::projectorLampPowerFromLLSD(invalid, result));
+
+    LLPrismLens::ProjectorSettings legacy;
+    legacy.mLampPowerEV = 4.f;
+    ensure("old scene without lamp power parses",
+           LLPrismLens::projectorLampPowerFromLLSD(LLSD::emptyMap(), legacy));
+    ensure_equals("old scene defaults lamp power", legacy.mLampPowerEV, 0.f);
 }
 }

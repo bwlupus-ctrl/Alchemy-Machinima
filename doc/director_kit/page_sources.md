@@ -157,7 +157,7 @@ Computed logic class: **code-driven**; 1/33 rows setting-bound, 32 rows referenc
 | `props_enroll` / Enroll object | `btn_enroll` | `button` | — | `indra/newview/skins/default/xui/en/panel_prop_mover.xml:36` `panel_prop_mover`/button | `ALPanelPropMover::onEnrollSelected indra/newview/alpanelpropmover.cpp:89` | — | — |
 | `props_enroll` / Props | `prop_list` | `list` | — | `indra/newview/skins/default/xui/en/panel_prop_mover.xml:58` `panel_prop_mover`/scroll_list | `ALPanelPropMover::onSelectProp indra/newview/alpanelpropmover.cpp:86` | — | — |
 | `props_enroll` / Remove | `btn_remove` | `button` | — | `indra/newview/skins/default/xui/en/panel_prop_mover.xml:46` `panel_prop_mover`/button | `ALPanelPropMover::onRemoveProp indra/newview/alpanelpropmover.cpp:90` | — | — |
-| `props_enroll` / Status | `status_text` | `readout` | — | `indra/newview/skins/default/xui/en/panel_prop_mover.xml:605` `panel_prop_mover`/text | — | — | — |
+| `props_enroll` / Status | `status_text` | `readout` | — | `indra/newview/skins/default/xui/en/panel_prop_mover.xml:607` `panel_prop_mover`/text | — | — | — |
 | `prop_path` / Nodes | `node_list` | `list` | — | `indra/newview/skins/default/xui/en/panel_prop_mover.xml:115` `panel_prop_mover`/scroll_list | `ALPanelPropMover::onSelectNode indra/newview/alpanelpropmover.cpp:87` | — | — |
 | `prop_path` / Add node | `btn_node_add` | `button` | — | `indra/newview/skins/default/xui/en/panel_prop_mover.xml:83` `panel_prop_mover`/button | `ALPanelPropMover::onAddNode indra/newview/alpanelpropmover.cpp:91` | — | — |
 | `prop_path` / Delete node | `btn_node_del` | `button` | — | `indra/newview/skins/default/xui/en/panel_prop_mover.xml:93` `panel_prop_mover`/button | `ALPanelPropMover::onDeleteNode indra/newview/alpanelpropmover.cpp:92` | — | — |
@@ -180,11 +180,11 @@ Computed logic class: **code-driven**; 1/33 rows setting-bound, 32 rows referenc
 | `rock` / Speed (Hz) | `rock_freq_spin` | `number` | — | `indra/newview/skins/default/xui/en/panel_prop_mover.xml:423` `panel_prop_mover`/spinner | `ALPanelPropMover::onCommitEffects indra/newview/alpanelpropmover.cpp:114` | — | — |
 | `spin` / Axis | `spin_axis_combo` | `combo` | — | `indra/newview/skins/default/xui/en/panel_prop_mover.xml:455` `panel_prop_mover`/combo_box | `ALPanelPropMover::onCommitEffects indra/newview/alpanelpropmover.cpp:116` | — | — |
 | `spin` / Deg/s | `spin_speed_spin` | `number` | — | `indra/newview/skins/default/xui/en/panel_prop_mover.xml:483` `panel_prop_mover`/spinner | `ALPanelPropMover::onCommitEffects indra/newview/alpanelpropmover.cpp:117` | — | — |
-| `shuttle` / Shuttle | `btn_shuttle` | `button` | — | `indra/newview/skins/default/xui/en/panel_prop_mover.xml:595` `panel_prop_mover`/button | `ALPanelPropMover::onClickShuttle indra/newview/alpanelpropmover.cpp:120` | — | — |
+| `shuttle` / Shuttle | `btn_shuttle` | `button` | — | `indra/newview/skins/default/xui/en/panel_prop_mover.xml:597` `panel_prop_mover`/button | `ALPanelPropMover::onClickShuttle indra/newview/alpanelpropmover.cpp:120` | — | — |
 | `shuttle` / Axis | `shuttle_axis_combo` | `combo` | — | `indra/newview/skins/default/xui/en/panel_prop_mover.xml:505` `panel_prop_mover`/combo_box | `ALPanelPropMover::onCommitShuttleAxis indra/newview/alpanelpropmover.cpp:119` | — | — |
 | `shuttle` / Direction | `shuttle_sign_combo` | `combo` | — | `indra/newview/skins/default/xui/en/panel_prop_mover.xml:531` `panel_prop_mover`/combo_box | `ALPanelPropMover::onClickShuttle indra/newview/alpanelpropmover.cpp:593` | — | — |
 | `shuttle` / Distance (m) | `shuttle_distance_spin` | `number` | — | `indra/newview/skins/default/xui/en/panel_prop_mover.xml:570` `panel_prop_mover`/spinner | `ALPanelPropMover::onClickShuttle indra/newview/alpanelpropmover.cpp:593` | — | — |
-| `shuttle` / Speed (m/s) | `shuttle_speed_spin` | `number` | — | `indra/newview/skins/default/xui/en/panel_prop_mover.xml:585` `panel_prop_mover`/spinner | `ALPanelPropMover::onClickShuttle indra/newview/alpanelpropmover.cpp:593` | — | — |
+| `shuttle` / Speed (m/s) | `shuttle_speed_spin` | `number` | — | `indra/newview/skins/default/xui/en/panel_prop_mover.xml:586` `panel_prop_mover`/spinner | `ALPanelPropMover::onClickShuttle indra/newview/alpanelpropmover.cpp:593` | — | — |
 | `shuttle` / Slope (deg) | `shuttle_slope_spin` | `arc` | — | `indra/newview/skins/default/xui/en/panel_prop_mover.xml:555` `panel_prop_mover`/spinner | `ALPanelPropMover::onClickShuttle indra/newview/alpanelpropmover.cpp:593` | — | — |
 
 ### Ghosts (`ghosts_tab`)
@@ -410,11 +410,11 @@ Computed logic class: **code-driven**; 0/82 rows setting-bound, 79 rows referenc
 | `wave` / Direction | `db_wave_dir` | `combo` | — | `indra/newview/skins/default/xui/en/panel_dance_ball.xml:971` `panel_dance_ball`/combo_box | `ALPanelDanceBall::onWaveChanged indra/newview/alpaneldanceball.cpp:386` | — | — |
 | `wave` / Apply on | `db_wave_apply` | `combo` | — | `indra/newview/skins/default/xui/en/panel_dance_ball.xml:994` `panel_dance_ball`/combo_box | `ALPanelDanceBall::onWaveChanged indra/newview/alpaneldanceball.cpp:387` | — | — |
 | `speed_ramp` / Target | `db_ramp_target` | `number` | — | `indra/newview/skins/default/xui/en/panel_dance_ball.xml:1024` `panel_dance_ball`/spinner | `ALPanelDanceBall::onRampGo indra/newview/alpaneldanceball.cpp:1946` | — | — |
-| `speed_ramp` / Seconds | `db_ramp_seconds` | `number` | — | `indra/newview/skins/default/xui/en/panel_dance_ball.xml:1039` `panel_dance_ball`/spinner | `ALPanelDanceBall::onRampGo indra/newview/alpaneldanceball.cpp:1946` | — | — |
-| `speed_ramp` / Go | `db_ramp_go` | `button` | — | `indra/newview/skins/default/xui/en/panel_dance_ball.xml:1049` `panel_dance_ball`/button | `ALPanelDanceBall::onRampGo indra/newview/alpaneldanceball.cpp:388` | — | — |
-| `session` / Export... | `db_export` | `button` | — | `indra/newview/skins/default/xui/en/panel_dance_ball.xml:1070` `panel_dance_ball`/button | `ALPanelDanceBall::onExport indra/newview/alpaneldanceball.cpp:389` | — | — |
-| `session` / Import... | `db_import` | `button` | — | `indra/newview/skins/default/xui/en/panel_dance_ball.xml:1080` `panel_dance_ball`/button | `ALPanelDanceBall::onImport indra/newview/alpaneldanceball.cpp:390` | — | — |
-| `session` / Note | `db_session_note` | `readout` | — | `indra/newview/skins/default/xui/en/panel_dance_ball.xml:1090` `panel_dance_ball`/text | — | — | — |
+| `speed_ramp` / Seconds | `db_ramp_seconds` | `number` | — | `indra/newview/skins/default/xui/en/panel_dance_ball.xml:1040` `panel_dance_ball`/spinner | `ALPanelDanceBall::onRampGo indra/newview/alpaneldanceball.cpp:1946` | — | — |
+| `speed_ramp` / Go | `db_ramp_go` | `button` | — | `indra/newview/skins/default/xui/en/panel_dance_ball.xml:1050` `panel_dance_ball`/button | `ALPanelDanceBall::onRampGo indra/newview/alpaneldanceball.cpp:388` | — | — |
+| `session` / Export... | `db_export` | `button` | — | `indra/newview/skins/default/xui/en/panel_dance_ball.xml:1071` `panel_dance_ball`/button | `ALPanelDanceBall::onExport indra/newview/alpaneldanceball.cpp:389` | — | — |
+| `session` / Import... | `db_import` | `button` | — | `indra/newview/skins/default/xui/en/panel_dance_ball.xml:1081` `panel_dance_ball`/button | `ALPanelDanceBall::onImport indra/newview/alpaneldanceball.cpp:390` | — | — |
+| `session` / Note | `db_session_note` | `readout` | — | `indra/newview/skins/default/xui/en/panel_dance_ball.xml:1091` `panel_dance_ball`/text | — | — | — |
 
 ### Animate (`animate_tab`)
 

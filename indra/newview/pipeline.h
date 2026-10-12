@@ -689,13 +689,13 @@ public:
     // range, snapped to exactly 0.25 when within float noise of the default so
     // the stock frusta / shader arithmetic stay bit-identical.
     static F32 effectiveShadowSplitBlend();
-    void bindProjectorCookie(LLGLSLShader& shader, LLVOVolume* volume,
-                             F32 focus, F32 proj_range, bool surface);
-    void setupSpotLight(LLGLSLShader& shader, LLDrawable* drawablep);
+    F32 bindProjectorCookie(LLGLSLShader& shader, LLVOVolume* volume,
+                            F32 focus, F32 proj_range, bool surface);
+    F32 setupSpotLight(LLGLSLShader& shader, LLDrawable* drawablep);
     // [BDMerge G3.3] side-effect-free variant of setupSpotLight for the
     // finalize-stage volumetric pass: uploads only geometry + cookie (NO
     // mTargetShadowSpotLight priority reshuffle - R1), shadow slot passed in.
-    void setupSpotLightVolumetric(LLGLSLShader& shader, LLDrawable* drawablep, S32 slot);
+    F32 setupSpotLightVolumetric(LLGLSLShader& shader, LLDrawable* drawablep, S32 slot);
 
     void unbindDeferredShader(LLGLSLShader& shader);
 

@@ -3,7 +3,7 @@
 User request (10/12): make the VCam projector "more projector-like", with a Projector card exposing every setting, new creative effects and presets. No undo. Viewer-local. Empty states hide.
 
 ## Existing settings (llprismlens.h ProjectorSettings, already persisted)
-mFitMode (FIT/FILL/STRETCH), mAnchor[2], mFeedEV, mFollowMainExposure, mResolution (256/512/1024), mNoSignal (ENoSignal), mKeepGobo, mEffects (ScreenEffects: flips/rotation + all TV effects, same as display faces).
+mFitMode (FIT/FILL/STRETCH), mAnchor[2], mFeedEV (-6..+6), mLampPowerEV (-2..+8, default 0), mFollowMainExposure, mResolution (256/512/1024), mNoSignal (ENoSignal), mKeepGobo, mEffects (ScreenEffects: flips/rotation + all TV effects, same as display faces). Lamp power is a viewer-only `2^EV` multiplier on the bound projector light's surface and volumetric contribution; it never changes or updates the object.
 If ScreenEffects does NOT contain flip H / flip V / rotate (0/90/180/270), add them to ProjectorSettings as mFlipH, mFlipV, mRotate (U8 quarter turns).
 
 ## NEW: struct ProjectorLook (member ProjectorSettings::mLook), persisted in the scene LLSD under "look"; missing key => defaults (old scenes identical)

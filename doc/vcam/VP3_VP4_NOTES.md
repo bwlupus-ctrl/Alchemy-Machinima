@@ -10,6 +10,7 @@
 ## Pipeline binding
 
 - `bindProjectorCookie()` is shared by deferred spot and multi-spot surface lighting, BDMerge projector shafts, and froxel injection through the two existing setup functions. Cine rig emitter volumes therefore use the same seam whenever they have an object binding.
+- The same binding lookup returns the lamp-power multiplier (`2^EV`) for the surface-light colour and both volumetric paths. Unbound lights return the exact identity multiplier and perform no additional lookup or allocation.
 - A valid prepared feed replaces only `projectionMap`; focus/ambient mip behavior and shadow-map selection remain unchanged. Feed cookies use trilinear or anisotropic mip filtering and `proj_lod` derives from the prepared width.
 - The feed texture always beats a procedural gobo. `mKeepGobo` optionally retains texture-path tint, animation/flicker, zoom, and dispersion while forcing `gobo_pattern = -1`; otherwise those controls are neutral. Before a prepared frame, OWN_COOKIE executes the legacy path, while BLACK/WHITE use the configured fallback.
 - With no registry binding, the helper performs the former bind/filter/uniform sequence unchanged. No additional texture bind or shader uniform is issued.

@@ -39327,7 +39327,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_prop_mover.xml",
-              "line": 605,
+              "line": 607,
               "tag": "text",
               "control_name": null,
               "callbacks": [],
@@ -41397,7 +41397,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_prop_mover.xml",
-              "line": 595,
+              "line": 597,
               "tag": "button",
               "control_name": null,
               "callbacks": [],
@@ -41660,7 +41660,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_prop_mover.xml",
-              "line": 585,
+              "line": 586,
               "tag": "spinner",
               "control_name": null,
               "callbacks": [],
@@ -55683,7 +55683,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_dance_ball.xml",
-              "line": 1039,
+              "line": 1040,
               "tag": "spinner",
               "control_name": null,
               "callbacks": [],
@@ -55760,7 +55760,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_dance_ball.xml",
-              "line": 1049,
+              "line": 1050,
               "tag": "button",
               "control_name": null,
               "callbacks": [],
@@ -55876,7 +55876,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_dance_ball.xml",
-              "line": 1070,
+              "line": 1071,
               "tag": "button",
               "control_name": null,
               "callbacks": [],
@@ -55939,7 +55939,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_dance_ball.xml",
-              "line": 1080,
+              "line": 1081,
               "tag": "button",
               "control_name": null,
               "callbacks": [],
@@ -56002,7 +56002,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/panel_dance_ball.xml",
-              "line": 1090,
+              "line": 1091,
               "tag": "text",
               "control_name": null,
               "callbacks": [],
@@ -92528,7 +92528,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1965,
+              "line": 1970,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -97101,7 +97101,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1953,
+              "line": 1958,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -97164,7 +97164,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1958,
+              "line": 1963,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -97227,7 +97227,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1955,
+              "line": 1960,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -97290,7 +97290,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1959,
+              "line": 1964,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -97353,7 +97353,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1956,
+              "line": 1961,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -97416,7 +97416,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1954,
+              "line": 1959,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -97479,7 +97479,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1957,
+              "line": 1962,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -131098,6 +131098,19 @@
                 "name": "bloom_glow_tab_logic",
                 "line": 3
               }
+            },
+            {
+              "kind": "cpp",
+              "reason": "reference is not in a class that owns/builds this page's XUI",
+              "file": "indra/newview/llfloaterdirector.cpp",
+              "line": 1342,
+              "class": null,
+              "function": null,
+              "wired_class": null,
+              "wired_function": null,
+              "pattern": null,
+              "wiring_only": true,
+              "text": "if (LLButton* glow = root->findChild<LLButton>(\"open_lightbox_glow\"))"
             }
           ],
           "unresolved": [],
@@ -155265,7 +155278,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_prop_mover.xml",
-              "line": 605,
+              "line": 607,
               "tag": "text",
               "control_name": null,
               "callbacks": [],

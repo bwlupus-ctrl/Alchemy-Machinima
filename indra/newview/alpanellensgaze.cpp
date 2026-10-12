@@ -1245,20 +1245,24 @@ void ALPanelLensGaze::refreshControls()
     const bool point_mode = (detail_mode == LLActorMover::GAZE_POINT);
     const bool obj_mode = (detail_mode == LLActorMover::GAZE_OBJECT);
     setVisibleIfChanged(mCast, cast_mode);
-    setEnabledIfChanged(mCast, have_slot && slot_enabled && cast_mode && mCast->getItemCount() > 0);
+    // Target detail follows the same gate as the Head/Eyes target combos
+    // (procedural gaze OR aim-at-camera), else a chosen mode can't be set.
+    setEnabledIfChanged(mCast, target_editable && cast_mode && mCast->getItemCount() > 0);
     setVisibleIfChanged(mSetPoint, point_mode);
-    setEnabledIfChanged(mSetPoint, have_slot && slot_enabled && point_mode);
+    setEnabledIfChanged(mSetPoint, target_editable && point_mode);
     setVisibleIfChanged(mPickObject, obj_mode);
-    setEnabledIfChanged(mPickObject, have_slot && slot_enabled && obj_mode);
+    setEnabledIfChanged(mPickObject, target_editable && obj_mode);
     setVisibleIfChanged(mClearObject, obj_mode);
-    setEnabledIfChanged(mClearObject, have_slot && slot_enabled && obj_mode);
+    setEnabledIfChanged(mClearObject, target_editable && obj_mode);
 
     LLUICtrl* authored[] = {
         mBlend, mTorso, mIntensity, mSmoothing, mEyelineYaw, mEyelinePitch
     };
     for (LLUICtrl* control : authored)
     {
-        setEnabledIfChanged(control, have_actor && enabled);
+        // These overrides also feed the look-at-camera path (onBlendCommit):
+        // editable with procedural gaze OR aim-at-camera.
+        setEnabledIfChanged(control, have_actor && (enabled || (have_slot && slot_enabled)));
     }
 
     auto sync_slider = [](LLSliderCtrl* control, F32 value)

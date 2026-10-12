@@ -797,14 +797,14 @@
              width="124" />
             <text follows="left|top" font="SansSerifBold" height="16" layout="topleft"
              left="6" name="db_block_rotate_title" top="164" width="60">Rotate</text>
-            <button follows="left|top" height="22" label="-15°" layout="topleft"
+            <button follows="left|top" height="22" label="- Step" layout="topleft"
              left="6" name="db_block_yaw_minus" top="184" width="58" />
             <slider can_edit_text="true" decimal_digits="0" follows="left|top|right"
              height="20" increment="1" layout="topleft" left="68" max_val="180"
              min_val="-180" name="db_block_yaw" show_text="true"
              tool_tip="Set one yaw value on every selected dancer" top="185"
              wheel_adjust="true" width="176" />
-            <button follows="right|top" height="22" label="+15°" layout="topleft"
+            <button follows="right|top" height="22" label="+ Step" layout="topleft"
              left="248" name="db_block_yaw_plus" top="184" width="58" />
             <spinner decimal_digits="0" follows="right|top" height="20" increment="1"
              label="Step" label_width="30" layout="topleft" left="312" max_val="15"
@@ -1023,6 +1023,7 @@
              min_val="0.25"
              name="db_ramp_target"
              tool_tip="Speed to ramp to. 1 is normal."
+             value="1"
              top="137"
              width="116" />
             <spinner

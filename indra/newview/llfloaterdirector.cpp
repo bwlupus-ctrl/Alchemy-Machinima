@@ -1337,6 +1337,11 @@ void LLFloaterDirector::bindLauncherPage(LLView* root)
             return llformat("%d cue%s \xC2\xB7 %s", count, count == 1 ? "" : "s", cues.mName.c_str());
         });
     }
+    // Bloom/Glow page "Open Lightbox glow settings" row (kit action
+    // lightbox:glow_settings): kit_row action metadata is not dispatched.
+    if (LLButton* glow = root->findChild<LLButton>("open_lightbox_glow"))
+        glow->setClickedCallback([](LLUICtrl*, const LLSD&)
+            { ALFloaterLightBox::showTab("glow_settings"); });
     if (root->findChild<LLButton>("card_image_open"))
     {
         addLauncherCard("image", [] { ALFloaterLightBox::showTab("colortone_settings"); }, []

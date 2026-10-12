@@ -4648,7 +4648,9 @@ public:
             settings.mAnchor[0] < 0.f || settings.mAnchor[0] > 1.f ||
             settings.mAnchor[1] < 0.f || settings.mAnchor[1] > 1.f ||
             !std::isfinite(settings.mFeedEV) ||
-            settings.mFeedEV < -4.f || settings.mFeedEV > 4.f ||
+            settings.mFeedEV < -6.f || settings.mFeedEV > 6.f ||
+            !std::isfinite(settings.mLampPowerEV) ||
+            settings.mLampPowerEV < -2.f || settings.mLampPowerEV > 8.f ||
             (settings.mResolution != 256 && settings.mResolution != 512 &&
              settings.mResolution != 1024) ||
             (settings.mNoSignal != LLPrismLens::ENoSignal::OWN_COOKIE &&
@@ -6461,6 +6463,7 @@ public:
             anchor.append(projector.mSettings.mAnchor[1]);
             settings["anchor"] = anchor;
             settings["feed_ev"] = projector.mSettings.mFeedEV;
+            settings["lamp_power_ev"] = projector.mSettings.mLampPowerEV;
             settings["follow_main_exposure"] =
                 projector.mSettings.mFollowMainExposure;
             settings["resolution"] = projector.mSettings.mResolution;
@@ -7272,6 +7275,9 @@ public:
                 static_cast<F32>(settings["anchor"][1].asReal());
             parsed.mSettings.mFeedEV =
                 static_cast<F32>(settings["feed_ev"].asReal());
+            if (!LLPrismLens::projectorLampPowerFromLLSD(
+                    settings, parsed.mSettings))
+                return fail("Invalid Prism projector lamp power.");
             parsed.mSettings.mFollowMainExposure =
                 settings["follow_main_exposure"].asBoolean();
             parsed.mSettings.mResolution =
