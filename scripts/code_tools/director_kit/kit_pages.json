@@ -1,6 +1,12 @@
 {
  "version": 1,
  "p0_pages": {
+  "camera_group/vcam_tab": {
+   "v1_sources": [],
+   "root_class": "panel_director_vcam", "root_name": "vcam_tab_logic",
+   "chip_mode": "filter", "no_history": true,
+   "label_names": {}
+  },
   "light_group/cine_light_rig_tab": {
    "v1_sources": ["panel_cine_light_rig.xml"],
    "root_class": "panel_cine_light_rig", "root_name": "cine_light_rig_tab_logic",

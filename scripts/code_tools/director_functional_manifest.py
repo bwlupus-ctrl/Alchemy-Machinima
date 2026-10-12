@@ -35,6 +35,7 @@ SETTINGS_DIR = os.path.join(REPO, "indra", "newview", "app_settings")
 SETTINGS_FILES = ("settings.xml", "settings_alchemy.xml",
                   "settings_per_account.xml", "settings_per_account_alchemy.xml")
 RIM_PRESET_CPP = os.path.join(REPO, "indra", "newview", "alrigrimcontroller.cpp")
+VCAM_PAGE_JSON = os.path.join(HERE, "director_kit", "vcam_page.json")
 OUT_DIR = os.path.join(REPO, "doc", "director_kit", "functional")
 JSON_PATH = os.path.join(OUT_DIR, "functional_manifest.json")
 MD_PATH = os.path.join(OUT_DIR, "FUNCTIONAL_MANIFEST.md")
@@ -87,6 +88,9 @@ CONTROL_TYPE = {
     "scroll_list": "list", "button": "button", "icon_button": "button",
     "line_editor": "text", "text_editor": "text", "color_swatch": "color",
     "texture_picker": "gobo", "viewport": "viewport",
+    "vcam_monitor_strip": "button", "vcam_monitor_pager": "button",
+    "vcam_monitor_tile": "button", "vcam_camera_selector": "button",
+    "vcam_face_list": "list",
 }
 # CSV kind -> widget type (fallback when the XUI element is not found).
 KIND_TO_TYPE = {
@@ -105,7 +109,7 @@ EXERCISE = {
 # Pages whose actions operate on an in-world avatar/object/selection.
 WORLD_PAGES = {"move_tab", "path_tab", "props_tab", "ghosts_tab", "dance_tab",
                "animate_tab", "actors_tab", "gaze_tab", "polish_tab",
-               "gaze_cues_tab", "moves_tab"}
+               "gaze_cues_tab", "moves_tab", "vcam_tab"}
 # Token sets, matched after splitting names on _, camelCase and punctuation.
 DESTRUCTIVE_TOKENS = {"clear", "delete", "remove", "dissolve", "wipe", "purge",
                       "erase", "discard", "forget", "save", "export", "upload",
@@ -945,6 +949,98 @@ def synthetic_entries(xi, settings, csv_pairs, page_meta, presets, preset_writte
                              {"snapshot_settings": preset_written})
             e["oracle_pre_value"] = default_master if default_master != pick[1] else (pick[1] + 0.25)
             out.append(e)
+    # VCam is a code-bound, no-history kit page whose complete row inventory is
+    # generated from vcam_page.json rather than the legacy wiring CSV.  Import
+    # that same source here so every interactive row and every signal-chain chip
+    # remains part of the functional click plan as the page evolves.
+    with open(VCAM_PAGE_JSON, encoding="utf-8") as f:
+        vcam = json.load(f)
+    vcam_settings = {
+        "vc_previews": "PrismMonitorPreviewsEnabled",
+        "vc_preview_speed": "PrismMonitorPreviewFPS",
+        "vc_lens_zoom": "PrismLensZoom",
+        "vc_protect": "PrismAdaptivePerformance",
+        "vc_main_fps": "PrismProtectedMainFPS",
+        "vc_capture_budget": "PrismCaptureRefreshCeilingHz",
+        "vc_quality_ceiling": "PrismLensResolutionScale",
+    }
+    kind_type = {"toggle": "toggle", "slider": "slider", "number": "spinner",
+                 "combo": "combo", "segmented": "radio", "button": "button"}
+    custom_type = {"vcam_monitor_strip": "button", "vcam_monitor_pager": "button",
+                   "vcam_monitor_tile": "button", "vcam_camera_selector": "button",
+                   "vcam_face_list": "list"}
+    for card in vcam["cards"]:
+        for row in card.get("rows", []):
+            widget = row.get("w", "")
+            etype = custom_type.get(row.get("custom_tag"), kind_type.get(row.get("k")))
+            if not widget or not etype:
+                continue
+            exercise = EXERCISE.get(etype, "none")
+            setting = vcam_settings.get(widget)
+            sinfo = settings.get(setting, {}) if setting else {}
+            default = sinfo.get("default", row.get("d"))
+            test = None
+            if exercise == "toggle":
+                test = bool_test(default)
+            elif exercise == "set_value":
+                test = number_test(default, row.get("mn"), row.get("mx"), row.get("st"),
+                                   sinfo.get("type", "F32"))
+            elif exercise == "select_item":
+                values = row.get("iv", row.get("it", []))
+                labels = row.get("it", [])
+                items = list(zip(labels, values))
+                test, _resolved = combo_test(default, items, sinfo.get("type", ""))
+            elif exercise == "click":
+                test = True
+            c = {"status": "WIRED_CPP", "exercise": exercise, "etype": etype,
+                 "name": widget, "label": row.get("l", ""), "page": "vcam_tab",
+                 "reset_of": None, "version": "v2"}
+            action, reason, hazards = classify(c)
+            if widget == "vc_add_camera":
+                action, reason, hazards = ("DEFER_INWORLD",
+                    "camera creation needs a live view or in-world selection", ["requires_world"])
+            if widget == "vc_remove_capture":
+                action, reason, hazards = "SKIP", "destructive (remove capture)", ["requires_world"]
+            expect = ({"setting": setting, "type": sinfo.get("type", ""), "value":
+                       test.get("value") if isinstance(test, dict) and "value" in test else test}
+                      if setting else {"ui": "VCam owner-installed handler fires"})
+            if action in ("SKIP", "NO_EXERCISE"):
+                test, expect = None, None
+            e = base_entry(page_meta, "vcam_tab", "v2", "vcam_page.json")
+            e.update({"id": "v2:vcam_tab:%s:vcam" % widget, "csv_index": None,
+                      "card": card["id"], "card_title": card["t"],
+                      "row_label": row.get("l", ""),
+                      "xui_file": "indra/newview/skins/default/xui/en/panel_dpage_camera_vcam.xml",
+                      "xui_line": None, "widget_name": widget, "widget_type": etype,
+                      "csv_kind": row.get("k", ""), "wiring_status": "WIRED_CPP",
+                      "resolution": "generated_vcam", "exercise": exercise,
+                      "setting": setting, "setting_source": "vcam adapter" if setting else None,
+                      "setting_type": sinfo.get("type"), "default": default,
+                      "min": row.get("mn"), "max": row.get("mx"), "increment": row.get("st"),
+                      "callbacks": "ALPanelDirectorVCam::onControl", "owner": "ALPanelDirectorVCam",
+                      "evidence": "scripts/code_tools/director_kit/vcam_page.json",
+                      "probe": "vcam_row", "known_gap": False, "suspect": False})
+            finish_synthetic(e, action, reason, hazards, test, expect,
+                             {"setting": setting, "value": default} if setting else
+                             {"ui": "restore VCam row pre-test state"})
+            out.append(e)
+    for index, section in enumerate(vcam.get("sections", [])):
+        label = section.get("label", section.get("id", ""))
+        widget = "vcam_chip_%d" % index
+        e = base_entry(page_meta, "vcam_tab", "v2", "vcam_page.json:sections")
+        e.update({"id": "v2:vcam_tab:%s:vcam" % widget, "csv_index": None,
+                  "card": "signal_chain", "card_title": "Signal chain", "row_label": label,
+                  "xui_file": "indra/newview/skins/default/xui/en/panel_dpage_camera_vcam.xml",
+                  "xui_line": None, "widget_name": widget, "widget_type": "button",
+                  "csv_kind": "chip", "wiring_status": "WIRED_CPP", "resolution": "kit",
+                  "exercise": "click", "setting": None, "setting_source": None,
+                  "setting_type": None, "default": None, "min": None, "max": None,
+                  "increment": None, "callbacks": "ALKitPage::setChipIndex",
+                  "owner": "ALKitPage", "evidence": "vcam_page.json sections",
+                  "probe": "vcam_step_chip", "known_gap": False, "suspect": False})
+        finish_synthetic(e, "RUN", "", [], True,
+                         {"ui": "matching VCam signal-chain section is visible"}, None)
+        out.append(e)
     return out
 
 
@@ -1035,7 +1131,7 @@ def write_md(entries, meta, skip_rows, page_order, page_meta, synth):
     w("- Setting min, max and increment come from the XUI element only. Settings XML carries no range.")
     w("- v2 launcher stubs (`v2_launcher_redirect`) host their controls in the v1 owner floater that they open; test them through the launcher.")
     w("- XUI lookup warnings: %d (widgets whose CSV name has no named XUI element, usually unnamed `check_box`/`slider` rows, or settings-only names). The setting still comes from the CSV; the full list is in `meta.warnings` of the JSON." % meta["warning_count"])
-    w("- Coverage check: every interactive CSV row yields one entry per version (verified by the script before writing).")
+    w("- Coverage check: every interactive CSV row yields one entry per version, except v2 VCam whose complete generated JSON inventory replaces its three legacy CSV rows (verified by the script before writing).")
     w("")
     return "\n".join(lines) + "\n"
 
@@ -1072,13 +1168,16 @@ def main():
         if r["interactive"] != "Y":
             continue
         for v in VERSIONS:
+            if r["page"] == "vcam_tab" and v == "v2":
+                continue  # complete v2 coverage comes from vcam_page.json below
             entries.append(build_csv_entry(idx, r, v, xi, settings, page_meta))
 
     synth = synthetic_entries(xi, settings, csv_pairs, page_meta, presets, preset_written)
     entries.extend(synth)
 
     # Coverage check: every interactive CSV row must appear once per version.
-    expected = {(i, v) for i, r in enumerate(rows) if r["interactive"] == "Y" for v in VERSIONS}
+    expected = {(i, v) for i, r in enumerate(rows) if r["interactive"] == "Y" for v in VERSIONS
+                if not (r["page"] == "vcam_tab" and v == "v2")}
     got = [(e["csv_index"], e["version"]) for e in entries if e.get("csv_index") is not None]
     if len(got) != len(set(got)) or set(got) != expected:
         sys.exit("coverage check failed: expected %d csv entries, got %d" % (len(expected), len(got)))

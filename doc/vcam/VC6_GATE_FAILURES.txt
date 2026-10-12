@@ -1,0 +1,80 @@
+﻿=== kit gen --check
+indra\newview\skins\default\xui\en\panel_dpage_camera_vcam.xml
+indra\newview\skins\default\xui\en\floater_director_v2.xml
+scripts\code_tools\director_kit\gen_report.txt
+=== kit_lint --all
+panel_dpage_camera_operator.xml:1: error: generated-header: missing GENERATED header with the mockup and kit_pages.json sha256 values
+panel_dpage_camera_shot.xml:1: error: generated-header: missing GENERATED header with the mockup and kit_pages.json sha256 values
+panel_dpage_camera_takes.xml:1: error: generated-header: missing GENERATED header with the mockup and kit_pages.json sha256 values
+panel_dpage_camera_vcam.xml:1: error: generated-header: missing GENERATED header with the mockup and kit_pages.json sha256 values
+panel_dpage_camera_vcam.xml:22: error: kit-kind-tag: unknown kit_row kind 'segmented'
+panel_dpage_camera_vcam.xml:34: error: kit-kind-tag: unknown kit_row kind 'segmented'
+panel_dpage_camera_vcam.xml:359: error: kit-kind-tag: unknown kit_row kind 'segmented'
+panel_dpage_capture_scene_options.xml:1: error: generated-header: missing GENERATED header with the mockup and kit_pages.json sha256 values
+panel_dpage_capture_temporal.xml:1: error: generated-header: missing GENERATED header with the mockup and kit_pages.json sha256 values
+panel_dpage_cast_dance.xml:1: error: generated-header: missing GENERATED header with the mockup and kit_pages.json sha256 values
+panel_dpage_cast_ghosts.xml:1: error: generated-header: missing GENERATED header with the mockup and kit_pages.json sha256 values
+panel_dpage_cast_move.xml:1: error: generated-header: missing GENERATED header with the mockup and kit_pages.json sha256 values
+panel_dpage_cast_path.xml:1: error: generated-header: missing GENERATED header with the mockup and kit_pages.json sha256 values
+panel_dpage_cast_props.xml:1: error: generated-header: missing GENERATED header with the mockup and kit_pages.json sha256 values
+panel_dpage_lens_diopter.xml:1: error: generated-header: missing GENERATED header with the mockup and kit_pages.json sha256 values
+panel_dpage_lens_filters.xml:1: error: generated-header: missing GENERATED header with the mockup and kit_pages.json sha256 values
+panel_dpage_lens_focus.xml:1: error: generated-header: missing GENERATED header with the mockup and kit_pages.json sha256 values
+panel_dpage_light_actors.xml:1: error: generated-header: missing GENERATED header with the mockup and kit_pages.json sha256 values
+panel_dpage_light_cine_light_rig.xml:1: error: generated-header: missing GENERATED header with the mockup and kit_pages.json sha256 values
+panel_dpage_light_cine_light_rig.xml:54: warn: pending-wp: pending WP11: Atmosphere becomes the writable home when converted (DIRECTOR_KIT_ROLLOUT_SPEC.md sections 5 and 7)
+panel_dpage_light_cine_light_rig.xml:59: warn: pending-wp: pending WP11: Atmosphere becomes the writable home when converted (DIRECTOR_KIT_ROLLOUT_SPEC.md sections 5 and 7)
+panel_dpage_light_cues.xml:1: error: generated-header: missing GENERATED header with the mockup and kit_pages.json sha256 values
+panel_dpage_light_exposure.xml:1: error: generated-header: missing GENERATED header with the mockup and kit_pages.json sha256 values
+panel_dpage_light_practicals.xml:1: error: generated-header: missing GENERATED header with the mockup and kit_pages.json sha256 values
+panel_dpage_light_rim.xml:1: error: generated-header: missing GENERATED header with the mockup and kit_pages.json sha256 values
+panel_dpage_light_rim.xml:174: warn: pending-wp: pending WP10: temporary dependency location is actionable (DIRECTOR_KIT_ROLLOUT_SPEC.md section 7 WP10)
+panel_dpage_look_actor_style.xml:1: error: generated-header: missing GENERATED header with the mockup and kit_pages.json sha256 values
+panel_dpage_look_bloom_glow.xml:1: error: generated-header: missing GENERATED header with the mockup and kit_pages.json sha256 values
+panel_dpage_look_image.xml:1: error: generated-header: missing GENERATED header with the mockup and kit_pages.json sha256 values
+panel_dpage_look_stylize.xml:1: error: generated-header: missing GENERATED header with the mockup and kit_pages.json sha256 values
+panel_dpage_look_tron.xml:1: error: generated-header: missing GENERATED header with the mockup and kit_pages.json sha256 values
+panel_dpage_performance_animate.xml:1: error: generated-header: missing GENERATED header with the mockup and kit_pages.json sha256 values
+panel_dpage_performance_gaze.xml:1: error: generated-header: missing GENERATED header with the mockup and kit_pages.json sha256 values
+panel_dpage_performance_gaze_cues.xml:1: error: generated-header: missing GENERATED header with the mockup and kit_pages.json sha256 values
+panel_dpage_performance_polish.xml:1: error: generated-header: missing GENERATED header with the mockup and kit_pages.json sha256 values
+panel_dpage_performance_switchboard.xml:1: error: generated-header: missing GENERATED header with the mockup and kit_pages.json sha256 values
+panel_dpage_world_atmosphere.xml:1: error: generated-header: missing GENERATED header with the mockup and kit_pages.json sha256 values
+panel_dpage_world_shadows_probes.xml:1: error: generated-header: missing GENERATED header with the mockup and kit_pages.json sha256 values
+panel_dpage_world_weather.xml:1: error: generated-header: missing GENERATED header with the mockup and kit_pages.json sha256 values
+kit_lint: 39 error(s), 3 warning(s) in 36 kit file(s)
+=== xui_layout_check --selftest
+PASS joystick_broken.xml: 83 finding(s), 39 overlap(s)
+PASS joystick_current.xml: 0 finding(s), 0 overlap(s)
+PASS fit_card_broken.xml: 2 finding(s), 0 overlap(s)
+PASS spinner_stretch_broken.xml: 1 finding(s), 0 overlap(s)
+PASS spinner_value_width_broken.xml: 1 finding(s), 0 overlap(s)
+PASS fixed_stretch_broken.xml: 4 finding(s), 0 overlap(s)
+PASS fixed_stretch_outside_current.xml: 0 finding(s), 0 overlap(s)
+PASS button_text_broken.xml: 1 finding(s), 0 overlap(s)
+PASS hidden_overlap_broken.xml: 1 finding(s), 1 overlap(s)
+PASS conditional_independent_broken.xml: 1 finding(s), 1 overlap(s)
+PASS exclusive_overlap_broken.xml: 2 finding(s), 2 overlap(s)
+PASS overlay_current.xml: 0 finding(s), 0 overlap(s)
+PASS fit_card_wide_broken.xml: 1 finding(s), 1 overlap(s)
+PASS kit_page_clean_current.xml: 0 finding(s), 0 overlap(s)
+PASS kit_row_stray_width_broken.xml: 1 finding(s), 0 overlap(s)
+PASS kit_tag_geometry_broken.xml: 2 finding(s), 0 overlap(s)
+PASS kit_bar_geometry_broken.xml: 1 finding(s), 0 overlap(s)
+PASS kit_shell_current.xml: 0 finding(s), 0 overlap(s)
+PASS kit_shell_copied_width_broken.xml: 1 finding(s), 0 overlap(s)
+PASS director_kit_index.xml: 0 finding(s), 0 overlap(s)
+PASS flow_rows_fit_current.xml: 0 finding(s), 0 overlap(s)
+PASS flow_rows_clipped_broken.xml: 2 finding(s), 0 overlap(s)
+PASS kit_legacy_position_broken.xml: 1 finding(s), 0 overlap(s)
+PASS kit_legacy_page_broken.xml: 3 finding(s), 1 overlap(s)
+PASS kit_legacy_zero_root_broken.xml: 1 finding(s), 0 overlap(s)
+PASS accordion_fit_broken.xml: 2 finding(s), 0 overlap(s)
+PASS accordion_fit_current.xml: 0 finding(s), 0 overlap(s)
+PASS visibility_alias_fixture.cpp: setVisibleIfChanged member alias
+PASS conditional_alternates_current.xml: 0 finding(s)
+PASS kit_legacy_page_broken.xml: legacy kit_page matches v1 leaf findings (3)
+PASS legacy baseline geometry key: baselined widget growth changes the exact key
+PASS lazy-page adoptPage wiring: alkitlazypage.cpp call and alscrollfit.cpp implementation are both required
+FAIL real legacy pages: 30/31 match v1 finding keys; strict baseline matches; transitive wiring passes
+=== compile

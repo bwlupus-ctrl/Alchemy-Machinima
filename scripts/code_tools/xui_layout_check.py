@@ -1583,7 +1583,7 @@ def run_selftest(json_output: bool) -> int:
     if not json_output:
         print(f"{'PASS' if geometry_key_passed else 'FAIL'} legacy baseline geometry key: "
               "baselined widget growth changes the exact key")
-    # Real-tree regression: each of the 31 serialized legacy pages must have
+    # Real-tree regression: each of the 30 serialized legacy pages must have
     # the same finding keys as the v1 leaf it copied.  This prevents both
     # wrapper-size vacuity and serialization-only drift.
     repo = Path(__file__).resolve().parents[2]
@@ -1660,13 +1660,13 @@ def run_selftest(json_output: bool) -> int:
         for item in check_file(path, source_index)
     }
     runtime_ok = runtime_observed <= declared_baseline if baseline_ok else False
-    real_passed = real_ok and real_count == 31 and baseline_ok and runtime_ok
+    real_passed = real_ok and real_count == 30 and baseline_ok and runtime_ok
     passed = passed and real_passed
-    reports.append({"fixture": "real legacy pages", "expected": "31 pages match v1 leaf findings",
+    reports.append({"fixture": "real legacy pages", "expected": "30 pages match v1 leaf findings",
                     "count": real_count, "passed": real_passed})
     if not json_output:
         print(f"{'PASS' if real_passed else 'FAIL'} real legacy pages: "
-              f"{matching_count}/31 match v1 finding keys; strict baseline "
+              f"{matching_count}/30 match v1 finding keys; strict baseline "
               f"{'matches' if baseline_ok else 'differs'}; transitive wiring "
               f"{'passes' if runtime_ok else 'differs'}")
     if json_output:

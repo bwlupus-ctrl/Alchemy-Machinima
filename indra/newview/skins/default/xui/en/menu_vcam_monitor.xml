@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes" ?>
+<context_menu layout="topleft" name="VCamMonitorMenu">
+  <menu_item_call label="Edit settings" name="edit_settings">
+    <menu_item_call.on_click function="VCam.Edit" />
+  </menu_item_call>
+  <menu_item_call label="Send to surface..." name="send_to_surface">
+    <menu_item_call.on_click function="VCam.Send" />
+  </menu_item_call>
+  <menu_item_call label="Show raw output" name="show_raw">
+    <menu_item_call.on_click function="VCam.Raw" />
+  </menu_item_call>
+  <menu_item_call label="Next bound face" name="next_bound_face">
+    <menu_item_call.on_click function="VCam.NextDisplay" />
+  </menu_item_call>
+</context_menu>

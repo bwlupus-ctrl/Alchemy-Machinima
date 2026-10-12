@@ -362,7 +362,7 @@ void ALKitRow::layoutRow(S32 w)
             width = llmin(span, (f ? f->getWidth(label) : 80) + 20);
         }
         else if (mMeta.kind == "slider" || mMeta.kind == "combo" || mMeta.kind == "text" || mMeta.kind == "readout" ||
-                 mMeta.kind == "link" || mMeta.kind == "custom")
+                 mMeta.kind == "link" || mMeta.kind == "custom" || mMeta.kind == "segmented")
             width = span;
         if (LLSpinCtrl* spinner = dynamic_cast<LLSpinCtrl*>(mControl); spinner && mMeta.kind == "number")
             spinner->setValueColumnLayout(width, height, true);

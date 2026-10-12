@@ -10,6 +10,7 @@
 #include "llselectmgr.h"
 #include "llviewercamera.h"
 #include "llviewerobjectlist.h"
+#include "llprismpreview.h"
 
 namespace
 {
@@ -53,7 +54,8 @@ ALVCamPageModel::ALVCamPageModel()
         [this](U64) { markDirty(DIRTY_PERFORMANCE); });
     mSelectionConnection = LLSelectMgr::getInstance()->mUpdateSignal.connect(
         [this]() { markDirty(DIRTY_SELECTION); });
-    refreshNow();
+    mPreviewConnection = LLPrismPreview::connectChanged(
+        [this](U64) { markDirty(DIRTY_PREVIEW); });
 }
 
 ALVCamPageModel::~ALVCamPageModel()
@@ -70,6 +72,7 @@ boost::signals2::connection ALVCamPageModel::connectChanged(
 void ALVCamPageModel::markDirty(U32 dirty)
 {
     mDirty |= dirty;
+    if (!mPageVisible) return;
     if (mIdleQueued) return;
     mIdleQueued = true;
     const std::weak_ptr<bool> alive(mAlive);
@@ -81,11 +84,20 @@ void ALVCamPageModel::markDirty(U32 dirty)
     });
 }
 
+void ALVCamPageModel::setPageVisible(bool visible)
+{
+    if (mPageVisible == visible) return;
+    mPageVisible = visible;
+    if (visible)
+        refreshNow(mDirty ? mDirty : DIRTY_ALL);
+}
+
 void ALVCamPageModel::onIdleRefresh(const std::weak_ptr<bool>& alive)
 {
     const std::shared_ptr<bool> token = alive.lock();
     if (!token || !*token) return;
     mIdleQueued = false;
+    if (!mPageVisible) return;
     refreshNow(mDirty);
 }
 

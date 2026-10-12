@@ -1,0 +1,177 @@
+{
+  "name": "vcam_tab",
+  "label": "VCam",
+  "sum": "Extra virtual cameras fed from captures or camera feeds, managed in Virtual Cam Manager.",
+  "pre": "none",
+  "master": {"w": "vc_enable", "l": "Virtual Cam", "s": "PrismLensEnabled"},
+  "cards": [
+    {"id": "vcam_master", "t": "Virtual Cam", "k": "rows", "badge": "ALL CAMERAS", "rows": [
+      {"l": "Status", "k": "readout", "w": "vc_summary", "h": "VCam camera, face and visible-face counts.", "bind": "code"},
+      {"l": "Performance", "k": "readout", "w": "vc_perf", "h": "Presented FPS, render p95, scale, admitted attempts and Adaptive state.", "bind": "code"},
+      {"l": "Open full manager", "k": "button", "w": "vc_open_manager", "h": "Open the full Virtual Cam Manager.", "btn": "Open full manager", "bind": "code"}
+    ]},
+    {"id": "monitors", "t": "Monitors", "k": "rows", "badge": "ALL CAMERAS", "rows": [
+      {"l": "Size", "k": "segmented", "w": "vc_monitor_size", "h": "Large pages cameras 1-4 and 5-8. Compact shows up to eight in one row.", "it": ["Large", "Compact"], "iv": [0, 1], "bind": "code"},
+      {"l": "Pages", "k": "custom", "w": "vc_monitor_pager", "h": "Show cameras 1-4 or 5-8 in Large mode.", "custom_tag": "vcam_monitor_pager", "bind": "code", "show_if": "large_and_more_than_four"},
+      {"l": "Previews", "k": "toggle", "w": "vc_previews", "h": "One switch for every monitor. Off stops all preview rendering, which saves FPS. Faces in-world keep updating.", "kw": "preview monitor render fps", "d": 1, "ty": "check", "bind": "code"},
+      {"l": "Speed", "k": "segmented", "w": "vc_preview_speed", "h": "Preview refresh rate shared by all monitors.", "kw": "preview fps speed", "d": 1.0, "it": ["0.5 fps", "1 fps", "2 fps", "5 fps"], "iv": [0.5, 1, 2, 5], "bind": "code"},
+      {"l": "Monitors", "k": "custom", "w": "vc_monitor_strip", "h": "What each camera sends out. Drag a monitor onto a surface to show that camera there.", "custom_tag": "vcam_monitor_strip", "bind": "code", "row_height": 170},
+      {"l": "Monitor tile", "k": "custom", "w": "vc_monitor_tile_manifest", "h": "Eight fixed atlas-backed PREVIEW, LIVE, PAUSED, THROTTLED, OFFLINE, or WARMING tile slots with timestamp, camera, Shows, status, drag handle, and menu.", "custom_tag": "vcam_monitor_tile", "bind": "code", "show_if": "never"},
+      {"l": "Preview cost", "k": "readout", "w": "vc_monitor_footer", "h": "How monitor previews reuse retained pictures and consume the shared attempt budget.", "bind": "code"}
+    ]},
+    {"id": "camera_selector", "t": "Settings for", "k": "rows", "badge": "CAMERA", "rows": [
+      {"l": "Settings for", "k": "custom", "w": "vc_camera_selector", "h": "Choose the camera edited below. Monitor clicks never change this selection.", "custom_tag": "vcam_camera_selector", "bind": "code", "row_height": 36},
+      {"l": "Add camera", "k": "combo", "w": "vc_add_camera", "h": "Add from selected object, Virtual at my view, OTS pair, or Surface lens.", "it": ["+ Add camera...", "From selected object", "Virtual at my view", "OTS pair", "Surface lens"], "iv": ["", "object", "virtual", "ots", "lens"], "bind": "code"},
+      {"l": "Remove capture", "k": "button", "w": "vc_remove_capture", "h": "Remove this camera and all of its face bindings.", "btn": "Remove capture", "bind": "code"}
+    ]},
+    {"id": "source", "t": "Source", "k": "rows", "badge": "CAM n", "rows": [
+      {"l": "Source", "k": "readout", "w": "vc_source_type", "h": "Object, Virtual, Skeleton POV, or Surface Lens. Add a camera to choose a different source type.", "bind": "code"},
+      {"l": "Bound to", "k": "readout", "w": "vc_source_bound", "h": "The object, stored transform, or skeleton driver used by this camera.", "bind": "code"},
+      {"l": "Object source note", "k": "readout", "w": "vc_source_note_object", "h": "Object cameras follow the selected camera object.", "bind": "code", "show_if": "object"},
+      {"l": "Virtual source note", "k": "readout", "w": "vc_source_note_virtual", "h": "Virtual cameras store a position and rotation and need no prim.", "bind": "code", "show_if": "virtual"},
+      {"l": "Skeleton source note", "k": "readout", "w": "vc_source_note_skeleton", "h": "Skeleton POV follows a cast subject or you.", "bind": "code", "show_if": "skeleton"},
+      {"l": "Type", "k": "readout", "w": "vc_lens_type", "h": "A Surface Lens looks through one aperture face. The type is fixed; add a camera for a different source.", "bind": "code", "show_if": "surface_lens"},
+      {"l": "Aperture", "k": "readout", "w": "vc_lens_aperture", "h": "The world face this lens looks through.", "bind": "code", "show_if": "surface_lens"},
+      {"l": "Locate aperture", "k": "button", "w": "vc_lens_locate", "h": "Flash the aperture face in-world.", "btn": "Locate aperture", "bind": "code", "show_if": "surface_lens"},
+      {"l": "Surface Lens note", "k": "readout", "w": "vc_lens_note", "h": "A Lens owns exactly one aperture face. Its mapping is fixed; remove the capture to remove that face.", "bind": "code", "show_if": "surface_lens"}
+    ]},
+    {"id": "placement", "t": "Placement", "k": "rows", "badge": "CAM n", "rows": [
+      {"l": "Set selected camera", "k": "button", "w": "vc_set_selected_camera", "h": "Bind this camera to the object you have selected in-world.", "btn": "Set selected camera", "bind": "code", "show_if": "object"},
+      {"l": "Place eye in front", "k": "readout", "w": "vc_place_eye_front", "h": "Info only: no existing model command safely derives an eye offset from arbitrary selected-object geometry.", "bind": "code", "show_if": "object"},
+      {"l": "Marker convention", "k": "readout", "w": "vc_placement_note", "h": "Local -Z looks forward and local +Y is up. Use a transparent marker or move the eye beyond visible housing.", "bind": "code", "show_if": "object"},
+      {"l": "Eye offset X", "k": "slider", "w": "vc_eye_x", "h": "Local eye offset in metres (object cameras only).", "mn": -64, "mx": 64, "st": 0.01, "dc": 3, "unit": "m", "bind": "code", "a": 1, "show_if": "object"},
+      {"l": "Eye offset Y", "k": "slider", "w": "vc_eye_y", "h": "Local eye offset in metres, +Y is up.", "mn": -64, "mx": 64, "st": 0.01, "dc": 3, "unit": "m", "bind": "code", "a": 1, "show_if": "object"},
+      {"l": "Eye offset Z", "k": "slider", "w": "vc_eye_z", "h": "Local eye offset in metres, -Z looks forward.", "mn": -64, "mx": 64, "st": 0.01, "dc": 3, "unit": "m", "bind": "code", "a": 1, "show_if": "object"},
+      {"l": "Snap to my view", "k": "button", "w": "vc_snap_view", "h": "Store your current camera position and orientation as this virtual camera's transform.", "btn": "Snap to my view", "bind": "code", "show_if": "virtual"},
+      {"l": "Virtual placement note", "k": "readout", "w": "vc_virtual_note", "h": "Fly your view to the shot, then Snap. The eye offset does not apply to virtual cameras.", "bind": "code", "show_if": "virtual"}
+    ]},
+    {"id": "skeleton", "t": "Skeleton POV", "k": "rows", "badge": "CAM n", "rows": [
+      {"l": "Anchor subject", "k": "combo", "w": "vc_bone_anchor", "h": "Whose skeleton the camera follows.", "it": ["Me", "Subject A", "Subject B", "Subject C", "Subject D"], "iv": [0,1,2,3,4], "bind": "code"},
+      {"l": "POV joint", "k": "combo", "w": "vc_bone_joint", "h": "Eyeline or any joint from the anchor skeleton. Off-spine joints default to Stabilized aim.", "it": ["Eyeline", "mHead", "mNeck", "mChest", "mPelvis", "mShoulderRight", "mElbowRight", "mWristRight", "mWristLeft", "mFootRight"], "iv": ["", "mHead", "mNeck", "mChest", "mPelvis", "mShoulderRight", "mElbowRight", "mWristRight", "mWristLeft", "mFootRight"], "bind": "code"},
+      {"l": "Aim mode", "k": "combo", "w": "vc_bone_aim", "h": "Full-follow drives orientation; Stabilized drives position only and leaves your aim untouched.", "it": ["Full-follow", "Stabilized"], "iv": [0,1], "bind": "code"},
+      {"l": "Roll mode", "k": "combo", "w": "vc_bone_roll", "h": "Horizon-lock keeps the horizon level; Inherit roll copies the joint roll.", "it": ["Horizon-lock", "Inherit roll"], "iv": [0,1], "bind": "code"},
+      {"l": "Smooth", "k": "slider", "w": "vc_bone_smooth", "h": "Exponential position and orientation damping; zero snaps.", "mn": 0, "mx": 10, "st": 0.05, "dc": 2, "unit": "s", "bind": "code"},
+      {"l": "Status", "k": "readout", "w": "vc_bone_status", "h": "Live attachment state.", "bind": "code"},
+      {"l": "Offset X", "k": "slider", "w": "vc_bone_x", "h": "Offset in metres, joint-local X.", "mn": -64, "mx": 64, "st": 0.01, "dc": 3, "unit": "m", "bind": "code", "a": 1},
+      {"l": "Offset Y", "k": "slider", "w": "vc_bone_y", "h": "Offset in metres, joint-local Y.", "mn": -64, "mx": 64, "st": 0.01, "dc": 3, "unit": "m", "bind": "code", "a": 1},
+      {"l": "Offset Z", "k": "slider", "w": "vc_bone_z", "h": "Offset in metres, joint-local Z.", "mn": -64, "mx": 64, "st": 0.01, "dc": 3, "unit": "m", "bind": "code", "a": 1},
+      {"l": "Trim pitch", "k": "slider", "w": "vc_bone_pitch", "h": "Aim trim, pitch, in degrees.", "mn": -180, "mx": 180, "st": 0.5, "dc": 1, "unit": "deg", "bind": "code", "a": 1},
+      {"l": "Trim yaw", "k": "slider", "w": "vc_bone_yaw", "h": "Aim trim, yaw, in degrees.", "mn": -180, "mx": 180, "st": 0.5, "dc": 1, "unit": "deg", "bind": "code", "a": 1},
+      {"l": "Clone-scale aware", "k": "toggle", "w": "vc_bone_scale", "h": "Scale the joint point about the avatar foot and the local offset by the clone's uniform scale.", "bind": "code", "a": 1},
+      {"l": "Reset attach", "k": "button", "w": "vc_bone_reset", "h": "Restore every skeleton attachment option to its default.", "btn": "Reset attach", "bind": "code", "a": 1}
+    ]},
+    {"id": "optics", "t": "Optics", "k": "rows", "badge": "CAM n", "rows": [
+      {"l": "Lens equiv.", "k": "readout", "w": "vc_lens_equiv", "h": "Full-frame equivalent focal length from the vertical field of view (24 mm sensor height).", "bind": "code"},
+      {"l": "Field of view", "k": "combo", "w": "vc_fov_mode", "h": "Fixed uses Degrees below; Follow projector takes it from the projector.", "it": ["Fixed vertical FOV", "Follow projector"], "iv": [0,1], "bind": "code", "show_if": "not_skeleton"},
+      {"l": "Degrees", "k": "slider", "w": "vc_fov_deg", "h": "Vertical field of view in degrees.", "mn": 5, "mx": 175, "st": 0.5, "dc": 1, "unit": "deg", "bind": "code", "show_if": "fixed_fov"},
+      {"l": "Degrees", "k": "readout", "w": "vc_fov_projector", "h": "The projector currently supplies the field of view.", "bind": "code", "show_if": "projector_fov"},
+      {"l": "FOV (attached)", "k": "slider", "w": "vc_fov_attached", "h": "Vertical field of view while attached to the skeleton. Replaces Field of view.", "mn": 10, "mx": 150, "st": 1, "dc": 0, "unit": "deg", "bind": "code", "show_if": "skeleton"},
+      {"l": "Near clip", "k": "slider", "w": "vc_near_clip", "h": "Near clipping plane distance.", "mn": 0.01, "mx": 10, "st": 0.01, "dc": 3, "unit": "m", "bind": "code"},
+      {"l": "Far clip", "k": "slider", "w": "vc_far_clip", "h": "Far clipping plane distance.", "mn": 0.2, "mx": 512, "st": 0.1, "dc": 1, "unit": "m", "bind": "code"}
+    ]},
+    {"id": "surface_lens", "t": "Surface lens", "k": "rows", "badge": "ALL CAMERAS", "rows": [
+      {"l": "Lens zoom", "k": "slider", "w": "vc_lens_zoom", "h": "Magnification shared by every Surface Lens (PrismLensZoom).", "kw": "surface lens zoom magnify", "d": 2.0, "mn": 1, "mx": 8, "st": 0.1, "dc": 2, "unit": "x", "bind": "code"},
+      {"l": "Lens zoom note", "k": "readout", "w": "vc_lens_zoom_note", "h": "Lens zoom applies to all lenses, not just this one.", "bind": "code"}
+    ]},
+    {"id": "guide", "t": "In-world guide", "k": "rows", "badge": "CAM n", "rows": [
+      {"l": "Show guide", "k": "toggle", "w": "vc_guide_show", "h": "Draw a client-side wireframe frustum at this camera. No prim is rezzed; nothing is drawn while the UI is hidden (filming).", "bind": "code"},
+      {"l": "Rule of thirds", "k": "toggle", "w": "vc_guide_thirds", "h": "Subdivide the framing gate into a 3x3 grid.", "bind": "code", "show_if": "guide_on"},
+      {"l": "Up / roll", "k": "toggle", "w": "vc_guide_up", "h": "Draw an up/roll nub on the top edge of the gate so tilt reads.", "bind": "code", "show_if": "guide_on"},
+      {"l": "Center crosshair", "k": "toggle", "w": "vc_guide_cross", "h": "Draw a small crosshair at the gate centre.", "bind": "code", "show_if": "guide_on"},
+      {"l": "Clip range markers", "k": "toggle", "w": "vc_guide_clip", "h": "Draw the near-clip rectangle so the depth range reads.", "bind": "code", "show_if": "guide_on"},
+      {"l": "Guide note", "k": "readout", "w": "vc_guide_note", "h": "Shows where this camera is and what its lens covers, so you can place it in the world.", "bind": "code", "show_if": "guide_off"}
+    ]},
+    {"id": "camera_look", "t": "Camera look", "k": "rows", "badge": "CAM n", "rows": [
+      {"l": "Exposure EV", "k": "slider", "w": "vc_exposure", "h": "Exposure offset for this camera's picture, separate from any face brightness.", "mn": -4, "mx": 4, "st": 0.1, "dc": 1, "unit": "EV", "bind": "code"},
+      {"l": "Film grain", "k": "slider", "w": "vc_grain", "h": "Animated film grain over the picture.", "mn": 0, "mx": 1, "st": 0.01, "dc": 2, "bind": "code"},
+      {"l": "Chromatic ab.", "k": "slider", "w": "vc_chromatic", "h": "Colour fringing toward the frame edges.", "mn": 0, "mx": 1, "st": 0.01, "dc": 2, "bind": "code"},
+      {"l": "CRT lines", "k": "slider", "w": "vc_camera_crt", "h": "Scanlines baked into this camera's picture (every face gets them).", "mn": 0, "mx": 1, "st": 0.01, "dc": 2, "bind": "code"}
+    ]},
+    {"id": "look_goes", "t": "Where this look goes", "k": "rows", "badge": "CAM n", "rows": [
+      {"l": "Feeds", "k": "readout", "w": "vc_look_feeds", "h": "Every face bound to this camera receives this look.", "bind": "code"},
+      {"l": "Look note", "k": "readout", "w": "vc_look_note", "h": "These change the camera's picture itself. Per-screen TV effects belong to one face in 4 Output.", "bind": "code"},
+      {"l": "Go to Output", "k": "button", "w": "vc_go_output", "h": "Open the Output section.", "btn": "Go to Output", "bind": "code"}
+    ]},
+    {"id": "output_frame", "t": "Output frame", "k": "rows", "badge": "CAM n", "rows": [
+      {"l": "Output aspect", "k": "combo", "w": "vc_output_aspect", "h": "Shape of the picture this camera renders.", "it": ["16:9", "4:3", "1:1", "Custom"], "iv": [1.7777778, 1.3333333, 1, -1], "bind": "code"},
+      {"l": "Custom W/H", "k": "slider", "w": "vc_output_custom", "h": "Width over height.", "mn": 0.25, "mx": 4, "st": 0.01, "dc": 3, "bind": "code", "show_if": "custom_aspect"},
+      {"l": "Picture", "k": "readout", "w": "vc_output_picture", "h": "Logical axes are capped at 1024 px; Quality ceiling and Adaptive scale it.", "bind": "code"}
+    ]},
+    {"id": "faces", "t": "Faces this camera feeds", "k": "rows", "badge": "CAM n", "rows": [
+      {"l": "Faces", "k": "custom", "w": "vc_face_list", "h": "Choose raw camera output or a bound face. Drop another camera's monitor on a face row to move it.", "custom_tag": "vcam_face_list", "bind": "code", "row_height": 150},
+      {"l": "Add selected face", "k": "button", "w": "vc_add_face", "h": "Bind the selected in-world prim face to this camera.", "btn": "Add selected face", "bind": "code"},
+      {"l": "Mapping for new face", "k": "combo", "w": "vc_new_face_fit", "h": "Default mapping used for a newly bound face.", "it": ["Fit", "Fill", "Stretch"], "iv": [0,1,2], "bind": "code"},
+      {"l": "Add virtual screen", "k": "button", "w": "vc_add_screen", "h": "Add a viewer-local virtual screen in front of your view.", "btn": "Add virtual screen", "bind": "code"},
+      {"l": "Face capacity", "k": "readout", "w": "vc_face_count", "h": "Faces used across all cameras.", "bind": "code"}
+    ]},
+    {"id": "face_mapping", "t": "Face mapping", "k": "rows", "badge": "THIS FACE", "rows": [
+      {"l": "Feed from", "k": "segmented", "w": "vc_face_feed", "h": "Route this face to this camera or the Gate program feed.", "it": ["This camera", "Gate program"], "iv": [0,1], "bind": "code"},
+      {"l": "Mapping", "k": "combo", "w": "vc_face_fit", "h": "Fit keeps the whole picture with bars; Fill crops by the anchor; Stretch maps the complete picture.", "it": ["Fit", "Fill", "Stretch"], "iv": [0,1,2], "bind": "code"},
+      {"l": "Anchor X", "k": "slider", "w": "vc_anchor_x", "h": "Which part survives the crop, left to right.", "mn": 0, "mx": 1, "st": 0.05, "dc": 2, "bind": "code", "show_if": "fill"},
+      {"l": "Anchor Y", "k": "slider", "w": "vc_anchor_y", "h": "Which part survives the crop, top to bottom.", "mn": 0, "mx": 1, "st": 0.05, "dc": 2, "bind": "code", "show_if": "fill"},
+      {"l": "Face shape", "k": "readout", "w": "vc_face_shape", "h": "The surface the picture is mapped onto.", "bind": "code"},
+      {"l": "Height", "k": "slider", "w": "vc_screen_height", "h": "Height of this virtual screen in metres; width follows the aspect.", "mn": 0.1, "mx": 20, "st": 0.05, "dc": 2, "unit": "m", "bind": "code", "show_if": "virtual_face"},
+      {"l": "Screen aspect", "k": "combo", "w": "vc_screen_aspect", "h": "Width = height x aspect. Custom keeps the current ratio.", "it": ["16:9", "4:3", "1:1", "Custom"], "iv": [1.7777778,1.3333333,1,-1], "bind": "code", "show_if": "virtual_face"},
+      {"l": "Locate", "k": "button", "w": "vc_face_locate", "h": "Flash this face in-world.", "btn": "Locate", "bind": "code"},
+      {"l": "Reposition to my view", "k": "button", "w": "vc_screen_reposition", "h": "Move this virtual screen a few metres in front of your view, facing you.", "btn": "Reposition to my view", "bind": "code", "show_if": "virtual_face"},
+      {"l": "Remove face", "k": "button", "w": "vc_remove_face", "h": "Unbind this face from the camera.", "btn": "Remove face", "bind": "code"},
+      {"l": "Gate note", "k": "readout", "w": "vc_gate_note", "h": "This face shows whatever the Gate has on air. Mapping and TV effects still apply.", "bind": "code", "show_if": "gate_feed"},
+      {"l": "Bar R", "k": "slider", "w": "vc_bar_r", "h": "Letterbox bar colour (linear), red. Bars appear with Fit.", "mn": 0, "mx": 1, "st": 0.05, "dc": 2, "bind": "code", "a": 1},
+      {"l": "Bar G", "k": "slider", "w": "vc_bar_g", "h": "Letterbox bar colour (linear), green.", "mn": 0, "mx": 1, "st": 0.05, "dc": 2, "bind": "code", "a": 1},
+      {"l": "Bar B", "k": "slider", "w": "vc_bar_b", "h": "Letterbox bar colour (linear), blue.", "mn": 0, "mx": 1, "st": 0.05, "dc": 2, "bind": "code", "a": 1}
+    ]},
+    {"id": "tv_effects", "t": "TV effects", "k": "rows", "badge": "THIS FACE", "rows": [
+      {"l": "Presets", "k": "combo", "w": "vc_tv_preset", "h": "Apply Clean, Old CRT, Broken TV, VHS Tape, or Security Feed to this face.", "it": ["Pick...", "Clean", "Old CRT", "Broken TV", "VHS Tape", "Security Feed"], "iv": ["", "clean", "crt", "broken", "vhs", "security"], "bind": "code"},
+      {"l": "Scanlines", "k": "slider", "w": "vc_tv_scan", "h": "Scanline strength on this face; 0 leaves the picture untouched.", "mn": 0, "mx": 1, "st": 0.05, "dc": 2, "bind": "code"},
+      {"l": "Grayscale", "k": "slider", "w": "vc_tv_gray", "h": "Desaturate toward monochrome.", "mn": 0, "mx": 1, "st": 0.05, "dc": 2, "bind": "code"},
+      {"l": "Static Noise", "k": "slider", "w": "vc_tv_static", "h": "Animated analog snow.", "mn": 0, "mx": 1, "st": 0.05, "dc": 2, "bind": "code"},
+      {"l": "Vignette", "k": "slider", "w": "vc_tv_vignette", "h": "CRT-style darkening toward the edges.", "mn": 0, "mx": 1, "st": 0.05, "dc": 2, "bind": "code"},
+      {"l": "Brightness", "k": "slider", "w": "vc_tv_brightness", "h": "Linear gain for this face only; separate from the camera's Exposure EV.", "mn": -1, "mx": 1, "st": 0.05, "dc": 2, "bind": "code"},
+      {"l": "Flip H", "k": "toggle", "w": "vc_tv_flip_h", "h": "Mirror this face's picture left to right.", "bind": "code"},
+      {"l": "Flip V", "k": "toggle", "w": "vc_tv_flip_v", "h": "Mirror this face's picture top to bottom.", "bind": "code"},
+      {"l": "Rotate 90", "k": "toggle", "w": "vc_tv_rotate", "h": "Quarter-turn the feed for portrait monitors.", "bind": "code"},
+      {"l": "Lines", "k": "slider", "w": "vc_tv_lines", "h": "Dark/bright line pairs across the picture height (20-1200).", "mn": 20, "mx": 1200, "st": 1, "dc": 0, "bind": "code", "a": 1},
+      {"l": "Darkness", "k": "slider", "w": "vc_tv_dark", "h": "Maximum gap darkening; 100 reaches black at full Scanlines.", "mn": 0, "mx": 100, "st": 1, "dc": 0, "unit": "%", "bind": "code", "a": 1},
+      {"l": "Sharpness", "k": "slider", "w": "vc_tv_sharp", "h": "Blend the soft sine into crisp-edged bands.", "mn": 0, "mx": 100, "st": 1, "dc": 0, "unit": "%", "bind": "code", "a": 1},
+      {"l": "Line thickness", "k": "slider", "w": "vc_tv_thick", "h": "Bright-line duty as a percentage of each pair.", "mn": 10, "mx": 90, "st": 1, "dc": 0, "unit": "%", "bind": "code", "a": 1},
+      {"l": "Pixelate", "k": "slider", "w": "vc_tv_pixel", "h": "Quantize into low-resolution blocks.", "mn": 0, "mx": 1, "st": 0.05, "dc": 2, "bind": "code", "a": 1},
+      {"l": "Sepia Tint", "k": "slider", "w": "vc_tv_sepia", "h": "Blend toward a warm archival sepia.", "mn": 0, "mx": 1, "st": 0.05, "dc": 2, "bind": "code", "a": 1},
+      {"l": "Chroma Bleed", "k": "slider", "w": "vc_tv_chroma", "h": "Horizontal colour fringing, like a worn composite signal.", "mn": 0, "mx": 1, "st": 0.05, "dc": 2, "bind": "code", "a": 1},
+      {"l": "Vertical Roll", "k": "slider", "w": "vc_tv_vroll", "h": "Lost V-sync: the picture rolls with a dark band.", "mn": 0, "mx": 1, "st": 0.05, "dc": 2, "bind": "code", "a": 1},
+      {"l": "Roll Speed", "k": "slider", "w": "vc_tv_roll_speed", "h": "How fast the roll travels; only matters while Vertical Roll is above 0.", "mn": 0, "mx": 1, "st": 0.05, "dc": 2, "bind": "code", "a": 1},
+      {"l": "VHS Tracking", "k": "slider", "w": "vc_tv_tracking", "h": "Horizontal tearing on random rows.", "mn": 0, "mx": 1, "st": 0.05, "dc": 2, "bind": "code", "a": 1},
+      {"l": "Flicker", "k": "slider", "w": "vc_tv_flicker", "h": "Whole-picture brightness pulsing.", "mn": 0, "mx": 1, "st": 0.05, "dc": 2, "bind": "code", "a": 1},
+      {"l": "Interlace", "k": "slider", "w": "vc_tv_interlace", "h": "Alternating field-line shimmer.", "mn": 0, "mx": 1, "st": 0.05, "dc": 2, "bind": "code", "a": 1},
+      {"l": "Dropout", "k": "slider", "w": "vc_tv_dropout", "h": "Momentary signal loss.", "mn": 0, "mx": 1, "st": 0.05, "dc": 2, "bind": "code", "a": 1},
+      {"l": "Sheen", "k": "slider", "w": "vc_tv_sheen", "h": "Glossy Fresnel reflection of the room over the feed.", "mn": 0, "mx": 1, "st": 0.05, "dc": 2, "bind": "code", "a": 1}
+    ]},
+    {"id": "raw_output", "t": "Showing the raw camera output", "k": "rows", "badge": "CAM n", "rows": [
+      {"l": "Raw output", "k": "readout", "w": "vc_raw_note", "h": "The monitor shows the picture before face mapping. Pick a face above to edit mapping and TV effects.", "bind": "code"}
+    ]},
+    {"id": "picture_rate", "t": "Picture rate", "k": "rows", "badge": "CAM n", "rows": [
+      {"l": "Mode", "k": "combo", "w": "vc_rate_mode", "h": "Automatic lets the scheduler pick the cadence; Target FPS sets a ceiling. Adaptive may deliver less.", "it": ["Automatic", "Target FPS"], "iv": [0,1], "bind": "code"},
+      {"l": "Target FPS", "k": "slider", "w": "vc_target_fps", "h": "Requested ceiling for this camera.", "mn": 1, "mx": 30, "st": 1, "dc": 0, "unit": "fps", "bind": "code", "show_if": "target_fps"},
+      {"l": "Preset", "k": "combo", "w": "vc_rate_preset", "h": "Common delivery rates.", "it": ["Pick...", "5", "10", "12", "15", "20", "23.976", "24", "25", "29.97", "30"], "iv": [0,5,10,12,15,20,23.976,24,25,29.97,30], "bind": "code", "show_if": "target_fps"},
+      {"l": "Req/Ent/Obs/Age", "k": "readout", "w": "vc_rate_readout", "h": "Requested / Entitled / Observed / output age. Every face samples the same retained picture.", "bind": "code"},
+      {"l": "Rate note", "k": "readout", "w": "vc_rate_note", "h": "Lower picture FPS saves auxiliary scene renders. Faces still composite the retained picture every main frame.", "bind": "code"}
+    ]},
+    {"id": "performance", "t": "Performance", "k": "rows", "badge": "ALL CAMERAS", "rows": [
+      {"l": "Protect main view", "k": "toggle", "w": "vc_protect", "h": "Reduce Prism scale or cadence, or suspend captures, to protect the main-view target.", "d": 1, "bind": "code"},
+      {"l": "Main-view target", "k": "combo", "w": "vc_main_fps", "h": "Presented main-view FPS that Adaptive protects.", "d": 30, "it": ["30 FPS", "45 FPS", "60 FPS"], "iv": [30,45,60], "bind": "code"},
+      {"l": "Capture budget", "k": "combo", "w": "vc_capture_budget", "h": "Total capture budget: attempts per second shared by all cameras. Not a camera's picture FPS.", "d": 30, "it": ["Adaptive 30 / Manual every frame", "5 attempts/s", "10 attempts/s", "15 attempts/s", "20 attempts/s", "30 attempts/s"], "iv": [0,5,10,15,20,30], "bind": "code"},
+      {"l": "Quality ceiling", "k": "slider", "w": "vc_quality_ceiling", "h": "Resolution scale ceiling for every capture.", "d": 1.0, "mn": 0.25, "mx": 2, "st": 0.25, "dc": 2, "unit": "x", "bind": "code"},
+      {"l": "Admitted", "k": "readout", "w": "vc_admitted", "h": "Attempts the scheduler is admitting across all cameras right now.", "bind": "code"},
+      {"l": "Previews", "k": "readout", "w": "vc_preview_cost", "h": "Monitors only cost renders for cameras with no visible face.", "bind": "code"},
+      {"l": "Adaptive note", "k": "readout", "w": "vc_performance_note_1", "h": "Adaptive protects presented main-view FPS and fairly shares the total budget across cameras.", "bind": "code", "a": 1},
+      {"l": "Presented FPS note", "k": "readout", "w": "vc_performance_note_2", "h": "Adaptive reacts to presented FPS only and cannot guarantee the target in an already slower scene.", "bind": "code", "a": 1},
+      {"l": "Face cost note", "k": "readout", "w": "vc_performance_note_3", "h": "One camera feeding many faces still performs one scheduled scene render. Faces are capped at 16.", "bind": "code", "a": 1}
+    ]}
+  ],
+  "sections": [
+    {"id": "source", "label": "1 Source", "cards": [0,1,2,3,4,5]},
+    {"id": "lens", "label": "2 Lens", "cards": [0,1,2,6,7,8]},
+    {"id": "look", "label": "3 Look", "cards": [0,1,2,9,10]},
+    {"id": "output", "label": "4 Output", "cards": [0,1,2,11,12,13,14,15]},
+    {"id": "rate", "label": "5 Rate & performance", "cards": [0,1,2,16,17]}
+  ]
+}

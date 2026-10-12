@@ -32,8 +32,9 @@ public:
         DIRTY_RUNTIME = 1 << 1,
         DIRTY_PERFORMANCE = 1 << 2,
         DIRTY_SELECTION = 1 << 3,
+        DIRTY_PREVIEW = 1 << 4,
         DIRTY_ALL = DIRTY_CONFIGURATION | DIRTY_RUNTIME |
-                    DIRTY_PERFORMANCE | DIRTY_SELECTION
+                    DIRTY_PERFORMANCE | DIRTY_SELECTION | DIRTY_PREVIEW
     };
     using changed_signal_t = boost::signals2::signal<void(U32)>;
 
@@ -52,6 +53,8 @@ public:
     bool setMonitorDisplay(const LLPrismLens::CaptureHandle& capture,
                            const LLPrismLens::DisplayHandle& display);
     boost::signals2::connection connectChanged(const changed_signal_t::slot_type& slot);
+    void setPageVisible(bool visible);
+    bool pageVisible() const { return mPageVisible; }
     void refreshNow(U32 dirty = DIRTY_ALL);
     static void currentViewTransform(LLVector3& position,
                                      LLQuaternion& rotation);
@@ -116,11 +119,13 @@ private:
         mMonitorDisplay;
     U32 mDirty = DIRTY_ALL;
     bool mIdleQueued = false;
+    bool mPageVisible = false;
     std::shared_ptr<bool> mAlive;
     boost::signals2::scoped_connection mConfigurationConnection;
     boost::signals2::scoped_connection mRuntimeConnection;
     boost::signals2::scoped_connection mPerformanceConnection;
     boost::signals2::scoped_connection mSelectionConnection;
+    boost::signals2::scoped_connection mPreviewConnection;
     changed_signal_t mChanged;
 };
 

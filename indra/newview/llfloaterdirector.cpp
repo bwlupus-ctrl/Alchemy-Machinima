@@ -99,6 +99,13 @@ constexpr const char* OLD_FLAT_TABS[] = {
 std::string migrate_tab_name(const std::string& name)
 {
     if (name == "camera_tab") return "shot_tab";
+    // VCam moved from the v1 Lens group to the v2 Camera group.  Persisted
+    // leaf names remain canonical; also accept qualified names written by
+    // short-lived development builds.
+    if (name == "lens_group/vcam_tab" || name == "camera_group/vcam_tab")
+    {
+        return "vcam_tab";
+    }
     if (name == "projector_volumetrics_tab" || name == "atmospheric_volumes_tab")
     {
         return "atmosphere_tab";
@@ -956,7 +963,6 @@ void LLFloaterDirector::bindPage(const std::string& page, LLView* root)
         { "animate_tab", &LLFloaterDirector::bindAnimatePage },
         { "shot_tab", &LLFloaterDirector::bindCameraPage },
         { "moves_tab", &LLFloaterDirector::bindCameraPage },
-        { "vcam_tab", &LLFloaterDirector::bindCameraPage },
         { "gaze_tab", &LLFloaterDirector::bindCameraPage },
         { "dance_tab", &LLFloaterDirector::bindCameraPage },
         { "ghosts_tab", &LLFloaterDirector::bindCameraPage },
