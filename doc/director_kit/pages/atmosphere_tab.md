@@ -35,10 +35,10 @@ Use the existing XUI control types as ordinary measured kit rows. No new canvas,
 | `haze_colour` / `ch_CineHazeSunLobeWidth_slider` (Lobe width) | `slider` `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:5330` | kit `slider` ↔ `CineHazeSunLobeWidth` `F32` | none |
 | `haze_height` / `set_CineHazeHeightEnable` (Denser low) | none | kit `toggle` ↔ `CineHazeHeightEnable` `Boolean`. Contract note: kit-native setting row; synthetic data name does not require v1 XUI | none |
 | `haze_height` / `ch_CineHazeReferenceHeight_slider` (Base height m) | `slider` `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:5316` | kit `slider` ↔ `CineHazeReferenceHeight` `F32` | none |
-| `haze_height` / `ch_ref_from_camera` (From camera) | `button` `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:5318` | `ALAtmosphereKitAdapter` command/model binding → wired in `ALFloaterLightBox::ALFloaterLightBox()`; behavior `ALFloaterLightBox::onCineHazeRefFromCamera()` (`indra/newview/alfloaterlightbox.cpp:99`) | none |
+| `haze_height` / `ch_ref_from_camera` (From camera) | `button` `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:5318` | `ALAtmosphereKitAdapter` command/model binding → wired in `ALFloaterLightBox::ALFloaterLightBox()`; behavior `ALFloaterLightBox::onCineHazeRefFromCamera()` (`indra/newview/alfloaterlightbox.cpp:100`) | none |
 | `haze_height` / `ch_CineHazeHeightFalloff_slider` (Falloff /m) | `slider` `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:5320` | kit `slider` ↔ `CineHazeHeightFalloff` `F32` | none |
 | `haze_adv` / `ch_debug_combo` (Debug view) | `combo_box` `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:5334` | kit `combo` ↔ `CineHazeDebugView` `S32` | none |
-| `haze_adv` / `ch_reset_all` (Reset haze) | `button` `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:5288` | `ALAtmosphereKitAdapter` command/model binding → wired in `ALFloaterLightBox::ALFloaterLightBox()`; behavior `ALFloaterLightBox::onCineHazePreset()` (`indra/newview/alfloaterlightbox.cpp:98`) | none |
+| `haze_adv` / `ch_reset_all` (Reset haze) | `button` `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:5288` | `ALAtmosphereKitAdapter` command/model binding → wired in `ALFloaterLightBox::ALFloaterLightBox()`; behavior `ALFloaterLightBox::onCineHazePreset()` (`indra/newview/alfloaterlightbox.cpp:99`) | none |
 | `haze_adv` / `open_lightbox_haze` (Lightbox ›) | none | kit-native action `floater:lightbox/cinehaze_settings`; no duplicate widget is required | none |
 | `projector_cones` / `ps_BDMergeProjectorVolumetricsMultiplier_slider` (Brightness) | `slider` `indra/newview/skins/default/xui/en/panel_projector_shafts.xml:18` | kit `slider` ↔ `BDMergeProjectorVolumetricsMultiplier` `F32` | `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:4487` `projvol_multiplier_slider` |
 | `projector_cones` / `ps_BDMergeProjectorVolumetricsDensity_slider` (Haziness) | `slider` `indra/newview/skins/default/xui/en/panel_projector_shafts.xml:67` | kit `slider` ↔ `BDMergeProjectorVolumetricsDensity` `F32` | none |
@@ -107,8 +107,8 @@ Use the existing XUI control types as ordinary measured kit rows. No new canvas,
 
 | Existing function | Extraction contract |
 |---|---|
-| `ALFloaterLightBox::onCineHazePreset()` — `indra/newview/alfloaterlightbox.cpp:98` | Move model-facing work into `ALAtmosphereKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
-| `ALFloaterLightBox::onCineHazeRefFromCamera()` — `indra/newview/alfloaterlightbox.cpp:99` | Move model-facing work into `ALAtmosphereKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
+| `ALFloaterLightBox::onCineHazePreset()` — `indra/newview/alfloaterlightbox.cpp:99` | Move model-facing work into `ALAtmosphereKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
+| `ALFloaterLightBox::onCineHazeRefFromCamera()` — `indra/newview/alfloaterlightbox.cpp:100` | Move model-facing work into `ALAtmosphereKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
 | `ALPanelAtmosphericVolumes::onAdd()` — `indra/newview/alpanelatmosphericvolumes.cpp:72` | Move model-facing work into `ALAtmosphereKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
 | `ALPanelAtmosphericVolumes::onDelete()` — `indra/newview/alpanelatmosphericvolumes.cpp:76` | Move model-facing work into `ALAtmosphereKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
 | `ALPanelAtmosphericVolumes::onDuplicate()` — `indra/newview/alpanelatmosphericvolumes.cpp:74` | Move model-facing work into `ALAtmosphereKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
@@ -194,7 +194,7 @@ None.
 
 ## Rejected out-of-scope same-name candidates
 
-24 candidates were rejected by the XUI-owner/class scope; exact records and reasons are in `page_sources.json`.
+26 candidates were rejected by the XUI-owner/class scope; exact records and reasons are in `page_sources.json`.
 
 ## New widget required
 

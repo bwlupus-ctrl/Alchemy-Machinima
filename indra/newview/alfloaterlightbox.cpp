@@ -62,6 +62,7 @@
 #include "pipeline.h"
 #include "llviewershadermgr.h" // [TronT1] LLViewerShaderMgr::gbufferAvatarTagActive()
 #include <algorithm> // [RotoInk Anim] std::clamp (updateRotoInkAnimVisibility)
+#include <limits>
 #include <vector>
 #include "llslider.h" // [LightboxWheel]
 #include "lltabcontainer.h" // [LightboxWheel]
@@ -299,11 +300,12 @@ void ALFloaterLightBox::reflowVisibleRows(const char* scroller_name)
     LLView* document = scroller ? ALScrollFit::scrolledView(scroller) : nullptr;
     if (!document) return;
 
-    auto& layout = mRowLayouts[scroller_name];
-    if (layout.empty())
+    RowLayout& layout = mRowLayouts[scroller_name];
+    if (layout.mItems.empty())
     {
+        layout.mDocumentHeight = document->getRect().getHeight();
         for (LLView* child : *document->getChildList())
-            if (child) layout.emplace_back(child, child->getRect());
+            if (child) layout.mItems.emplace_back(child, child->getRect());
     }
 
     struct Row
@@ -312,7 +314,7 @@ void ALFloaterLightBox::reflowVisibleRows(const char* scroller_name)
         std::vector<const std::pair<LLView*, LLRect>*> items;
     };
     std::vector<Row> rows;
-    for (const auto& item : layout)
+    for (const auto& item : layout.mItems)
     {
         const S32 center = item.second.getCenterY();
         auto row = std::find_if(rows.begin(), rows.end(), [center](const Row& candidate)
@@ -330,6 +332,7 @@ void ALFloaterLightBox::reflowVisibleRows(const char* scroller_name)
         { return lhs.center > rhs.center; });
 
     S32 shift = 0;
+    const S32 document_shift = document->getRect().getHeight() - layout.mDocumentHeight;
     for (size_t index = 0; index < rows.size(); ++index)
     {
         Row& row = rows[index];
@@ -337,7 +340,8 @@ void ALFloaterLightBox::reflowVisibleRows(const char* scroller_name)
         S32 row_height = 1;
         for (const auto* item : row.items)
         {
-            item->first->setOrigin(item->second.mLeft, item->second.mBottom + shift);
+            item->first->setOrigin(item->second.mLeft,
+                item->second.mBottom + document_shift + shift);
             visible = visible || item->first->getVisible();
             row_height = llmax(row_height, item->second.getHeight());
         }
@@ -349,7 +353,66 @@ void ALFloaterLightBox::reflowVisibleRows(const char* scroller_name)
             shift += stride;
         }
     }
-    ALScrollFit::fitContainer(scroller);
+    ALScrollFit::fitContainer(scroller, nullptr, true);
+}
+
+bool ALFloaterLightBox::runReflowSelfTest()
+{
+    constexpr const char* SCROLLER = "rotoink_settings_scroll";
+    LLScrollContainer* scroller = findChild<LLScrollContainer>(SCROLLER);
+    LLView* document = scroller ? ALScrollFit::scrolledView(scroller) : nullptr;
+    if (!document) return false;
+
+    reflowVisibleRows(SCROLLER);
+    RowLayout& layout = mRowLayouts[SCROLLER];
+    if (layout.mItems.empty()) return false;
+
+    struct SavedItem
+    {
+        LLView* mView = nullptr;
+        LLRect mRect;
+        bool mVisible = false;
+    };
+    std::vector<SavedItem> saved;
+    saved.reserve(layout.mItems.size());
+    S32 first_top = std::numeric_limits<S32>::min();
+    S32 trailing_center = std::numeric_limits<S32>::max();
+    for (const auto& item : layout.mItems)
+    {
+        saved.push_back({ item.first, item.first->getRect(), item.first->getVisible() });
+        if (item.first->getVisible())
+        {
+            first_top = llmax(first_top, item.first->getRect().mTop);
+            trailing_center = llmin(trailing_center, item.second.getCenterY());
+        }
+    }
+    if (first_top == std::numeric_limits<S32>::min() ||
+        trailing_center == std::numeric_limits<S32>::max()) return false;
+
+    const S32 original_height = document->getRect().getHeight();
+    const S32 original_top_distance = document->getRect().mTop - first_top;
+    for (const auto& item : layout.mItems)
+        if (llabs(item.second.getCenterY() - trailing_center) <= 5)
+            item.first->setVisible(false);
+
+    bool stable = true;
+    for (S32 pass = 0; pass < 3; ++pass)
+    {
+        reflowVisibleRows(SCROLLER);
+        S32 current_first_top = std::numeric_limits<S32>::min();
+        for (const auto& item : layout.mItems)
+            if (item.first->getVisible())
+                current_first_top = llmax(current_first_top, item.first->getRect().mTop);
+        stable = stable && current_first_top != std::numeric_limits<S32>::min() &&
+            document->getRect().mTop - current_first_top == original_top_distance;
+    }
+
+    for (const SavedItem& item : saved) item.mView->setVisible(item.mVisible);
+    reflowVisibleRows(SCROLLER);
+    bool restored = document->getRect().getHeight() == original_height;
+    for (const SavedItem& item : saved)
+        restored = restored && item.mView->getRect() == item.mRect;
+    return stable && restored;
 }
 
 // [LightboxWheel]

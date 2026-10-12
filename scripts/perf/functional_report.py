@@ -867,8 +867,7 @@ def prepare_manifest(path: Path, repo: Path, output: Path) -> tuple[int, int, in
             row["hazards"] = sorted(set(row.get("hazards", [])) | {"agent_send"})
         if widget in inworld_unprovisioned:
             row["inworld_known_gap_reason"] = inworld_unprovisioned[widget]
-        if widget in {"groups_list", "prop_list", "node_list",
-                      "db_playlist_list", "localfog_volume_list"}:
+        if widget == "groups_list":
             row["inworld_known_gap_reason"] = \
                 "in-world fixture gap: list has no safe viewer-local item to select"
         if row.get("page") == "props_tab" and widget == "btn_stop":

@@ -91,7 +91,7 @@ void collectDocumentContainers(LLView* root, std::vector<LLScrollContainer*>& ou
     }
 }
 
-void fitContainer(LLScrollContainer* sc, const StretcherMins* mins)
+void fitContainer(LLScrollContainer* sc, const StretcherMins* mins, bool visible_only)
 {
     LLView* doc = scrolledView(sc);
     if (!doc) return;
@@ -103,8 +103,8 @@ void fitContainer(LLScrollContainer* sc, const StretcherMins* mins)
     S32 need = 1;
     for (LLView* child : *doc->getChildList())
     {
-        if (!child) continue;
-        any = true; // visibility ignored on purpose: rows toggled at runtime keep their slot
+        if (!child || (visible_only && !child->getVisible())) continue;
+        any = true;
         const LLRect& r = child->getRect();
         if (child->followsTop() && !child->followsBottom())
         {

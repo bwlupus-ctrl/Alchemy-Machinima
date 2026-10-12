@@ -90,8 +90,11 @@ LLScrollContainer* wrapTabPanel(LLPanel* tab, StretcherMins* mins = nullptr);
 // not recorded): the document is at least (top gap + bottom gap + natural height + FIT_PAD)
 // tall, so a follows="all" panel that filled a tab is never collapsed when the document is
 // later shrunk. Idempotent: refitting a fitted document changes nothing.
-// Child visibility is ignored on purpose (runtime-toggled rows keep their slot).
-void fitContainer(LLScrollContainer* sc, const StretcherMins* mins = nullptr);
+// Child visibility is ignored by default (runtime-toggled rows keep their slot). Callers
+// that deliberately reflow hidden rows may pass visible_only so a hidden trailing row does
+// not keep the document artificially tall.
+void fitContainer(LLScrollContainer* sc, const StretcherMins* mins = nullptr,
+                  bool visible_only = false);
 
 // [DirFix] H2: sizes a PANEL (not a scroll document) to its own direct children, e.g. a flow
 // grid card (title band + embedded shared panel). Same follows rules as fitContainer, with

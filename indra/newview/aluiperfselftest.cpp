@@ -22,9 +22,12 @@
 #include "alvcampagemodel.h"
 #include "alcinerigrim.h"
 #include "alcinelightrigmanager.h"
+#include "aldanceball.h"
+#include "alfloaterlightbox.h"
 #include "aldirectoranimswitcher.h"
 #include "aldiopterpresetbank.h"
 #include "allocalfogmanager.h"
+#include "alobjectpathmover.h"
 #include "alpanelpatheditor.h"
 #include "alghoststudio.h"
 
@@ -2327,7 +2330,7 @@ private:
         return ok;
     }
 
-    // ui-draw-lint: allow-function(setting,lookup) isolated test-only prerequisite setup
+    // ui-draw-lint: allow-function(setting,lookup,raw-write) isolated test-only prerequisite setup
     bool prepareFunctionalPrerequisite(const LLSD& entry, LLUICtrl* control)
     {
         bool ok = prepareFunctionalDeclaredPrerequisites(entry);
@@ -2384,6 +2387,90 @@ private:
                 }
             }
             if (widget == "btn_stop_path") mover.start(mFunctionalActorMoverId);
+        }
+        if (mInWorld && (widget == "prop_list" || widget == "node_list"))
+        {
+            LLScrollListCtrl* prop_list = mFunctionalPageRoot
+                ? mFunctionalPageRoot->findChild<LLScrollListCtrl>("prop_list", true) : nullptr;
+            if (mFunctionalPropFixtures.empty())
+            {
+                for (S32 fixture_index = 0; fixture_index < 2; ++fixture_index)
+                {
+                    const LLUUID id = LLUUID::generateNewID();
+                    mFunctionalPropFixtures.push_back(id);
+                    ALObjectPathMover::toggleTarget(id);
+                    LLActorMover::instance().appendWaypointAt(
+                        id, LLVector3d(10.0 + fixture_index * 4.0, 10.0, 20.0));
+                    LLActorMover::instance().appendWaypointAt(
+                        id, LLVector3d(12.0 + fixture_index * 4.0, 10.0, 20.0));
+                }
+            }
+            if (prop_list)
+                for (S32 fixture_index = 0;
+                     fixture_index < static_cast<S32>(mFunctionalPropFixtures.size());
+                     ++fixture_index)
+                {
+                    const LLUUID& id = mFunctionalPropFixtures[fixture_index];
+                    bool present = false;
+                    for (LLScrollListItem* item : prop_list->getAllData())
+                        present = present || (item && item->getValue().asUUID() == id);
+                    if (!present)
+                    {
+                        LLSD row;
+                        row["value"] = id;
+                        row["columns"][0]["column"] = "name";
+                        row["columns"][0]["value"] = llformat(
+                            "Functional prop %d", fixture_index + 1);
+                        row["columns"][1]["column"] = "nodes";
+                        row["columns"][1]["value"] = 2;
+                        row["columns"][2]["column"] = "state";
+                        row["columns"][2]["value"] = "away";
+                        prop_list->addElement(row, ADD_BOTTOM);
+                    }
+                }
+            if (widget == "node_list" && prop_list && !mFunctionalPropFixtures.empty())
+            {
+                prop_list->setSelectedByValue(mFunctionalPropFixtures.front(), true);
+                prop_list->onCommit();
+            }
+            LLScrollListCtrl* fixture_list = dynamic_cast<LLScrollListCtrl*>(control);
+            ok = prop_list && fixture_list && fixture_list->getItemCount() >= 2 && ok;
+        }
+        if (mInWorld && widget == "db_playlist_list")
+        {
+            LLScrollListCtrl* list = dynamic_cast<LLScrollListCtrl*>(control);
+            if (!mFunctionalDanceBefore.isMap())
+            {
+                ALDanceBall& ball = ALDanceBall::instance();
+                mFunctionalDanceBefore = ball.exportSession();
+                ball.addAnimation(LLUUID::generateNewID(), "Functional dance A");
+                ball.addAnimation(LLUUID::generateNewID(), "Functional dance B");
+            }
+            if (list && list->getItemCount() < 2)
+            {
+                list->clearRows();
+                const auto& playlist = ALDanceBall::instance().playlist();
+                for (S32 index = 0; index < static_cast<S32>(playlist.size()); ++index)
+                {
+                    LLSD row;
+                    row["id"] = index;
+                    row["columns"][0]["column"] = "name";
+                    row["columns"][0]["value"] = playlist[index].mLabel;
+                    list->addElement(row, ADD_BOTTOM);
+                }
+            }
+            ok = list && list->getItemCount() >= 2 && ok;
+        }
+        if (mInWorld && widget == "localfog_volume_list" &&
+            !mFunctionalHaveLocalFogBefore)
+        {
+            ALLocalFogManager& manager = ALLocalFogManager::instance();
+            mFunctionalLocalFogBefore = manager.volumes();
+            mFunctionalLocalFogSelectedBefore = manager.selectedVolume();
+            mFunctionalHaveLocalFogBefore = true;
+            manager.volumes()[0].mLabel = "Functional fog A";
+            manager.volumes()[1].mLabel = "Functional fog B";
+            manager.touchBank();
         }
         if (mDirectorV2 && widget.find("actor_only") != std::string::npos &&
             widget != "cine_actor_only_all")
@@ -2847,6 +2934,14 @@ private:
                                                      mFunctionalActorStyleBefore);
             mFunctionalHaveActorStyleBefore = false;
         }
+        for (const LLUUID& id : mFunctionalPropFixtures)
+            if (ALObjectPathMover::isTarget(id)) ALObjectPathMover::toggleTarget(id);
+        mFunctionalPropFixtures.clear();
+        if (mFunctionalDanceBefore.isMap())
+        {
+            ALDanceBall::instance().importSession(mFunctionalDanceBefore);
+            mFunctionalDanceBefore = LLSD();
+        }
         if (mFunctionalHaveLocalFogBefore)
         {
             ALLocalFogManager& manager = ALLocalFogManager::instance();
@@ -2878,6 +2973,8 @@ private:
             if (!mFunctionalFailureShotPending) redirected->closeFloater(false);
         if (!mFunctionalFailureShotPending) mFunctionalRedirectFloater = LLHandle<LLFloater>();
         mFunctionalControlBefore = LLSD();
+        mFunctionalRadioExpected = LLSD();
+        mFunctionalListExpected = LLSD();
         mFunctionalOriginalControlValue = LLSD();
         mFunctionalSecondaryControl = LLHandle<LLUICtrl>();
         mFunctionalSecondaryBefore = LLSD();
@@ -2959,6 +3056,7 @@ private:
                     ? (radio->getSelectedIndex() + 1) % radio->getItemCount() : -1;
             }
             if (wanted_index < 0 || !radio->setSelectedIndex(wanted_index, true)) return control;
+            mFunctionalRadioExpected = radio->getValue();
             std::vector<LLCheckBoxCtrl*> items;
             std::function<void(LLView*)> collect = [&](LLView* view)
             {
@@ -4079,6 +4177,42 @@ private:
         return control->isInEnabledChain();
     }
 
+    bool functionalExerciseListByIndex(LLScrollListCtrl* list, const LLSD& test)
+    {
+        if (!list || list->getItemCount() < 1) return false;
+        S32 index = test.isMap() && test.has("item_index")
+            ? test["item_index"].asInteger() : 1;
+        if (list->getName() == "prop_list" && !mFunctionalPropFixtures.empty())
+        {
+            const LLUUID& wanted = mFunctionalPropFixtures.back();
+            for (S32 candidate = 0; candidate < list->getItemCount(); ++candidate)
+                if (LLScrollListItem* fixture = list->getItemByIndex(candidate);
+                    fixture && fixture->getValue().asUUID() == wanted)
+                {
+                    index = candidate;
+                    break;
+                }
+        }
+        else if (list->getName() == "db_playlist_list")
+        {
+            index = list->getItemCount() - 1;
+        }
+        index = llclamp(index, 0, list->getItemCount() - 1);
+        if (LLScrollListItem* selected = list->getFirstSelected();
+            selected && list->getItemIndex(selected) == index && list->getItemCount() > 1)
+            index = (index + 1) % list->getItemCount();
+        LLScrollListItem* item = list->getItemByIndex(index);
+        if (!item || !item->getEnabled()) return false;
+        mFunctionalListExpected = item->getValue();
+        const S32 page_lines = llmax(1, list->getLinesPerPage());
+        list->setScrollPos(index >= page_lines ? index - page_lines + 1 : 0);
+        const LLRect cell = list->getCellRect(index, 0);
+        list->localPointToScreen(cell.getCenterX(), cell.getCenterY(),
+                                 &mFunctionalScreenX, &mFunctionalScreenY);
+        mFunctionalClickTarget = list->getHandle();
+        return functionalPointerClick();
+    }
+
     // ui-draw-lint: allow-function(setting-write,raw-write) isolated test-only input exercise
     bool exerciseFunctional(const LLSD& entry, LLUICtrl* control)
     {
@@ -4142,6 +4276,10 @@ private:
             if (LLRadioGroup* radio = dynamic_cast<LLRadioGroup*>(control))
             {
                 return functionalPointerClick();
+            }
+            if (LLScrollListCtrl* list = dynamic_cast<LLScrollListCtrl*>(control))
+            {
+                return functionalExerciseListByIndex(list, test);
             }
         }
         if (LLColorSwatchCtrl* swatch = dynamic_cast<LLColorSwatchCtrl*>(control))
@@ -5006,7 +5144,7 @@ private:
         if (entry["exercise"].asString() == "toggle")
             expected = !mFunctionalBefore.asBoolean();
         else if (dynamic_cast<LLRadioGroup*>(control))
-            expected = control->getValue();
+            expected = mFunctionalRadioExpected;
         else if (expected.isMap() && expected["resolve"].asString() == "runtime" &&
                  dynamic_cast<LLComboBox*>(control))
             // Runtime-populated combos have no stable build-time value.  The
@@ -5037,15 +5175,31 @@ private:
         bool owner_state_changed = false;
         bool expected_ok = true;
         std::string assertion_failure;
-        if (dynamic_cast<LLSpinCtrl*>(control))
+        if (LLSpinCtrl* spinner = dynamic_cast<LLSpinCtrl*>(control))
         {
             const F64 before = mFunctionalSetting
                 ? mFunctionalBefore.asReal() : mFunctionalControlBefore.asReal();
             const bool default_in_range = before >= entry["min"].asReal() &&
                 before <= entry["max"].asReal();
+            const F64 display_scale = std::pow(10.0, spinner->getPrecision());
+            const F64 scaled_increment = llabs(entry["increment"].asReal()) * display_scale;
+            const bool increment_representable =
+                std::fabs(scaled_increment - std::round(scaled_increment)) <= 1e-4;
+            const bool display_matches_setting = !mFunctionalSetting ||
+                std::round(mFunctionalControlBefore.asReal() * display_scale) ==
+                    std::round(mFunctionalBefore.asReal() * display_scale);
             mFunctionalObserved["spinner"]["default_in_range"] = default_in_range;
-            expected_ok = expected_ok && default_in_range;
-            if (!default_in_range)
+            mFunctionalObserved["spinner"]["increment_representable"] =
+                increment_representable;
+            mFunctionalObserved["spinner"]["display_matches_setting_before"] =
+                display_matches_setting;
+            expected_ok = expected_ok && default_in_range && increment_representable &&
+                display_matches_setting;
+            if (!display_matches_setting)
+                assertion_failure = "spinner display was stale before the exercise";
+            else if (!increment_representable)
+                assertion_failure = "spinner increment is not representable at its runtime precision";
+            else if (!default_in_range)
                 assertion_failure = "spinner default is outside the manifest range";
         }
         if (!mFunctionalSettingName.empty())
@@ -5074,6 +5228,46 @@ private:
             // A commit-only PASS requires a named registry/binder/provider
             // owner and a side effect outside the exercised widget.
             observable = !mFunctionalHandlerName.empty() && owner_state_changed;
+        }
+        if (LLScrollListCtrl* list = dynamic_cast<LLScrollListCtrl*>(control))
+        {
+            const bool selected_expected = mFunctionalListExpected.isDefined() &&
+                list->getSelectedValue() == mFunctionalListExpected;
+            bool owner_ok = selected_expected;
+            if (widget_name == "localfog_volume_list")
+                owner_ok = owner_ok && ALLocalFogManager::instance().selectedVolume() ==
+                    mFunctionalListExpected.asInteger();
+            else if (widget_name == "db_playlist_list")
+            {
+                LLLineEditor* rename = mFunctionalPageRoot
+                    ? mFunctionalPageRoot->findChild<LLLineEditor>("db_rename_edit", true)
+                    : nullptr;
+                const S32 selected = mFunctionalListExpected.asInteger();
+                const auto& playlist = ALDanceBall::instance().playlist();
+                owner_ok = owner_ok && rename && selected >= 0 &&
+                    selected < static_cast<S32>(playlist.size()) &&
+                    rename->getText() == playlist[selected].mLabel;
+            }
+            else if (widget_name == "prop_list")
+            {
+                LLScrollListCtrl* nodes = mFunctionalPageRoot
+                    ? mFunctionalPageRoot->findChild<LLScrollListCtrl>("node_list", true) : nullptr;
+                owner_ok = owner_ok && nodes && nodes->getItemCount() == 2;
+            }
+            else if (widget_name == "node_list")
+            {
+                const LLActorMover::Path* path = mFunctionalPropFixtures.empty() ? nullptr :
+                    LLActorMover::instance().getPath(mFunctionalPropFixtures.front());
+                const S32 selected = mFunctionalListExpected.asInteger();
+                owner_ok = owner_ok && path && selected >= 0 &&
+                    selected < static_cast<S32>(path->mNodes.size());
+            }
+            mFunctionalObserved["list"]["selected_expected"] = selected_expected;
+            mFunctionalObserved["list"]["owner_oracle"] = owner_ok;
+            observable = owner_ok;
+            expected_ok = expected_ok && owner_ok;
+            if (!owner_ok) assertion_failure =
+                "list selection or its viewer-local owner oracle did not match the clicked row";
         }
         const LLSD consumer_after = functionalConsumerValue(entry);
         mFunctionalObserved["click"]["commits"] = mFunctionalCommitCount;
@@ -5499,6 +5693,12 @@ private:
             expected_ok = expected_ok && scroll_rects_inside;
             if (!scroll_rects_inside)
                 assertion_failure = "Lightbox tab scroll container extends outside its tab panel";
+            ALFloaterLightBox* lightbox = dynamic_cast<ALFloaterLightBox*>(host);
+            const bool reflow_stable = lightbox && lightbox->runReflowSelfTest();
+            mFunctionalObserved["lightbox"]["hidden_row_reflow_stable"] = reflow_stable;
+            expected_ok = expected_ok && reflow_stable;
+            if (!reflow_stable)
+                assertion_failure = "Lightbox hidden-row reflow drifted or did not restore exactly";
         }
         const std::string observed = "value=" + functionalValue(actual) +
             "; consumer=" + functionalValue(consumer_after) +
@@ -8863,6 +9063,10 @@ private:
     LLHandle<LLFloater> mFunctionalHostFloater;
     LLHandle<LLUICtrl> mFunctionalControl;
     LLSD mFunctionalControlBefore;
+    LLSD mFunctionalRadioExpected;
+    LLSD mFunctionalListExpected;
+    LLSD mFunctionalDanceBefore;
+    std::vector<LLUUID> mFunctionalPropFixtures;
     LLUUID mFunctionalRigProjectorCapture;
     LLSD mFunctionalOriginalControlValue;
     LLHandle<LLUICtrl> mFunctionalSecondaryControl;

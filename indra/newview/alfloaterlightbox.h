@@ -60,6 +60,9 @@ public:
     void reshape(S32 width, S32 height, bool called_from_parent = true) override;
     // [LightboxWheel] re-fit every tab's scroll content on open (cheap, idempotent)
     void onOpen(const LLSD& key) override;
+    // Functional harness regression: repeated hidden-row reflow must be idempotent and
+    // restoring visibility must restore the exact starting layout.
+    bool runReflowSelfTest();
 
   private:
     // [LightboxWheel] Fits every scroll container's content panel to its children.
@@ -67,7 +70,12 @@ public:
     void reflowVisibleRows(const char* scroller_name);
     // [ScrollFit] shared per-tab scroll machinery state (focus installs + wheel guard).
     ALScrollFit::Controller mScrollFit;
-    std::map<std::string, std::vector<std::pair<LLView*, LLRect>>> mRowLayouts;
+    struct RowLayout
+    {
+        S32 mDocumentHeight = 0;
+        std::vector<std::pair<LLView*, LLRect>> mItems;
+    };
+    std::map<std::string, RowLayout> mRowLayouts;
 
     void onClickResetControlDefault(const LLSD& userdata);
     void onClickResetGroupDefault(const LLSD& userdata);
