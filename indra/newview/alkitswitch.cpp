@@ -20,6 +20,12 @@ ALKitSwitch::ALKitSwitch(const Params& p) : LLCheckBoxCtrl(p)
         mLabel->setVisible(false);
     }
 
+    // LLCheckBoxCtrl computed its bounding rect before this class replaced the
+    // stock button geometry.  Re-run the normal checkbox layout once so every
+    // kit switch (including card-header enables) has hit bounds matching the
+    // painted switch, rather than requiring individual owners to repair it.
+    reshape(getRect().getWidth(), getRect().getHeight(), false);
+
     mLastState = isOn();
 
     mHaveState = true;

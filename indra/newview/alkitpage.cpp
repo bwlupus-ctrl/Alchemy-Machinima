@@ -1233,6 +1233,21 @@ bool ALKitPage::revealRow(ALKitRow* r, bool flash_it)
     for (auto& c : mCards)
         if (std::find(c.second->rows().begin(), c.second->rows().end(), r) != c.second->rows().end())
         {
+            // A card can belong to both Easy and Advanced while individual
+            // rows in it are Advanced-only or disabled by Easy mode.  Card
+            // membership alone therefore cannot reveal such a row (for
+            // example Rig's Fill EV in the shared Lights card).
+            LLUICtrl* control = r->findChild<LLUICtrl>(r->meta().widget, true);
+            const bool needs_advanced = r->meta().advanced || (control && !control->getEnabled());
+            if (needs_advanced)
+                for (S32 i = 0; i < (S32)mModeDefs.size(); ++i)
+                    if (mModeDefs[i].name == "Advanced" &&
+                        std::find(mModeDefs[i].cards.begin(), mModeDefs[i].cards.end(), c.first) !=
+                            mModeDefs[i].cards.end())
+                    {
+                        setModeIndex(i, !mSearching, mSearching);
+                        break;
+                    }
             c.second->revealRow(r);
             return revealCard(c.second, flash_it);
         }
@@ -1252,7 +1267,11 @@ bool ALKitPage::revealCard(ALKitCard* c, bool)
         for (S32 i = 0; i < (S32)mModeDefs.size(); ++i)
             if (listed_in_mode(mModeDefs[i]))
             {
-                setModeIndex(i, false, true);
+                // Search deliberately displays cross-mode hits without
+                // rewriting mode-owned settings.  Other callers asked for an
+                // actual reveal, so use the normal user transition and do not
+                // return true while leaving the requested card hidden.
+                setModeIndex(i, !mSearching, mSearching);
                 break;
             }
     for (S32 i = 0; i < (S32)mSections.size(); ++i)
