@@ -1,6 +1,6 @@
 {"patterns": [
   {"template": "cine_{role}_{part}", "role": ["key", "fill", "rim", "bg"], "part": ["clip", "shaft", "hero", "cone_width", "actor_only", "actor_only_reset"]},
-  {"template": "cine_{role}_{part}", "role": ["key", "fill", "rim", "bg"], "part": ["profile", "gobo", "gel", "flicker"]},
+  {"template": "cine_{role}_{part}", "role": ["key", "fill", "rim", "bg"], "part": ["profile", "gobo", "gel", "flicker", "projector_feed"]},
   {"template": "card_{id}_{part}", "id": ["gaze_cues", "diopter", "practicals", "actor_mask", "light_cues", "image", "rotoink", "tron", "haze", "shadows_probes", "snapshot"], "part": ["open", "summary"]}
 ],
 "expressions": [

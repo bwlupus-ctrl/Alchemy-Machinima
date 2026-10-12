@@ -4,12 +4,12 @@
   "classification_rule": "pure-setting iff >=90% rows are setting-bound and no row widget is referenced in C++; otherwise code-driven",
   "summary": {
     "pages": 35,
-    "rows": 1839,
+    "rows": 1843,
     "owner_roots": 31,
-    "unresolved_rows": 0,
+    "unresolved_rows": 4,
     "ambiguous_rows": 0,
     "multi_page_settings": 22,
-    "independent_json_rows": 1839
+    "independent_json_rows": 1843
   },
   "setting_conflicts": [
     {
@@ -5086,7 +5086,7 @@
         },
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-          "line": 559,
+          "line": 619,
           "widget": "cine_actor_only_all",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
@@ -5125,7 +5125,7 @@
         },
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-          "line": 539,
+          "line": 599,
           "widget": "cine_auto_shadow_slots",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
@@ -5164,7 +5164,7 @@
         },
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-          "line": 506,
+          "line": 551,
           "widget": "cine_bg_actor_only",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
@@ -5203,7 +5203,7 @@
         },
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-          "line": 448,
+          "line": 493,
           "widget": "cine_bg_ev",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
@@ -5242,7 +5242,7 @@
         },
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-          "line": 492,
+          "line": 537,
           "widget": "cine_bg_flicker",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
@@ -5281,7 +5281,7 @@
         },
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-          "line": 498,
+          "line": 543,
           "widget": "cine_bg_flicker_amount",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
@@ -5320,7 +5320,7 @@
         },
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-          "line": 463,
+          "line": 508,
           "widget": "cine_bg_gel",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
@@ -5359,7 +5359,7 @@
         },
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-          "line": 469,
+          "line": 514,
           "widget": "cine_bg_gobo",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
@@ -5398,7 +5398,7 @@
         },
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-          "line": 479,
+          "line": 524,
           "widget": "cine_bg_offset_z",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
@@ -5437,7 +5437,7 @@
         },
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-          "line": 460,
+          "line": 505,
           "widget": "cine_bg_pitch",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
@@ -5476,7 +5476,7 @@
         },
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-          "line": 451,
+          "line": 496,
           "widget": "cine_bg_profile",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
@@ -5515,7 +5515,7 @@
         },
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-          "line": 503,
+          "line": 548,
           "widget": "cine_bg_shadow_soft",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
@@ -5554,7 +5554,7 @@
         },
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-          "line": 457,
+          "line": 502,
           "widget": "cine_bg_yaw",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
@@ -5593,7 +5593,7 @@
         },
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-          "line": 550,
+          "line": 610,
           "widget": "cine_bounce",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
@@ -5632,7 +5632,7 @@
         },
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-          "line": 556,
+          "line": 616,
           "widget": "cine_bounce_lights_set",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
@@ -5671,7 +5671,7 @@
         },
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-          "line": 553,
+          "line": 613,
           "widget": "cine_bounce_ratio",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
@@ -5710,7 +5710,7 @@
         },
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-          "line": 573,
+          "line": 633,
           "widget": "cine_catchlight_actor_only",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
@@ -5749,7 +5749,7 @@
         },
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-          "line": 570,
+          "line": 630,
           "widget": "cine_catchlight_angle",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
@@ -5788,7 +5788,7 @@
         },
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-          "line": 564,
+          "line": 624,
           "widget": "cine_catchlight_ev",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
@@ -5827,7 +5827,7 @@
         },
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-          "line": 567,
+          "line": 627,
           "widget": "cine_catchlight_size",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
@@ -5866,7 +5866,7 @@
         },
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-          "line": 635,
+          "line": 695,
           "widget": "cine_cookie",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
@@ -6050,7 +6050,7 @@
         },
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-          "line": 374,
+          "line": 389,
           "widget": "cine_fill_actor_only",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
@@ -6089,7 +6089,7 @@
         },
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-          "line": 316,
+          "line": 331,
           "widget": "cine_fill_ev",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
@@ -6128,7 +6128,7 @@
         },
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-          "line": 360,
+          "line": 375,
           "widget": "cine_fill_flicker",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
@@ -6167,7 +6167,7 @@
         },
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-          "line": 366,
+          "line": 381,
           "widget": "cine_fill_flicker_amount",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
@@ -6206,7 +6206,7 @@
         },
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-          "line": 331,
+          "line": 346,
           "widget": "cine_fill_gel",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
@@ -6245,7 +6245,7 @@
         },
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-          "line": 337,
+          "line": 352,
           "widget": "cine_fill_gobo",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
@@ -6284,7 +6284,7 @@
         },
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-          "line": 347,
+          "line": 362,
           "widget": "cine_fill_offset_z",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
@@ -6323,7 +6323,7 @@
         },
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-          "line": 328,
+          "line": 343,
           "widget": "cine_fill_pitch",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
@@ -6362,7 +6362,7 @@
         },
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-          "line": 319,
+          "line": 334,
           "widget": "cine_fill_profile",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
@@ -6401,7 +6401,7 @@
         },
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-          "line": 371,
+          "line": 386,
           "widget": "cine_fill_shadow_soft",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
@@ -6440,7 +6440,7 @@
         },
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-          "line": 325,
+          "line": 340,
           "widget": "cine_fill_yaw",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
@@ -7019,7 +7019,7 @@
         },
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-          "line": 747,
+          "line": 807,
           "widget": "cine_live_probe_ambiance",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
@@ -7080,7 +7080,7 @@
         },
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-          "line": 750,
+          "line": 810,
           "widget": "cine_live_probe_bounce_keep",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
@@ -7141,7 +7141,7 @@
         },
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-          "line": 773,
+          "line": 833,
           "widget": "cine_live_probe_gizmo",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
@@ -7180,7 +7180,7 @@
         },
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-          "line": 779,
+          "line": 839,
           "widget": "cine_live_probe_manual_faces",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
@@ -7219,7 +7219,7 @@
         },
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-          "line": 782,
+          "line": 842,
           "widget": "cine_live_probe_manual_frames",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
@@ -7258,7 +7258,7 @@
         },
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-          "line": 776,
+          "line": 836,
           "widget": "cine_live_probe_offset",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
@@ -7319,7 +7319,7 @@
         },
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-          "line": 744,
+          "line": 804,
           "widget": "cine_live_probe_radius",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
@@ -7358,7 +7358,7 @@
         },
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-          "line": 753,
+          "line": 813,
           "widget": "cine_live_probe_refresh",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
@@ -7419,7 +7419,7 @@
         },
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-          "line": 733,
+          "line": 793,
           "widget": "cine_live_probe_target",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
@@ -7586,7 +7586,7 @@
         },
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-          "line": 512,
+          "line": 572,
           "widget": "cine_mirror",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
@@ -7625,7 +7625,7 @@
         },
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-          "line": 850,
+          "line": 910,
           "widget": "cine_night_mask_desaturation",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
@@ -7664,7 +7664,7 @@
         },
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-          "line": 801,
+          "line": 861,
           "widget": "cine_night_mask_distance",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
@@ -7764,7 +7764,7 @@
         },
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-          "line": 806,
+          "line": 866,
           "widget": "cine_night_mask_feather",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
@@ -7803,7 +7803,7 @@
         },
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-          "line": 834,
+          "line": 894,
           "widget": "cine_night_mask_gizmo",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
@@ -7842,7 +7842,7 @@
         },
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-          "line": 837,
+          "line": 897,
           "widget": "cine_night_mask_height",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
@@ -7881,7 +7881,7 @@
         },
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-          "line": 811,
+          "line": 871,
           "widget": "cine_night_mask_shape",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
@@ -7920,7 +7920,7 @@
         },
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-          "line": 820,
+          "line": 880,
           "widget": "cine_night_mask_target",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
@@ -7959,7 +7959,7 @@
         },
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-          "line": 847,
+          "line": 907,
           "widget": "cine_night_mask_tint_color",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
@@ -7998,7 +7998,7 @@
         },
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-          "line": 842,
+          "line": 902,
           "widget": "cine_night_mask_tint_strength",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
@@ -8193,7 +8193,7 @@
         },
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-          "line": 308,
+          "line": 323,
           "widget": "cine_ratio",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
@@ -8232,7 +8232,7 @@
         },
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-          "line": 313,
+          "line": 328,
           "widget": "cine_ratio_lock",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
@@ -8271,7 +8271,7 @@
         },
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-          "line": 440,
+          "line": 470,
           "widget": "cine_rim_actor_only",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
@@ -8310,7 +8310,7 @@
         },
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-          "line": 382,
+          "line": 412,
           "widget": "cine_rim_ev",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
@@ -8349,7 +8349,7 @@
         },
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-          "line": 426,
+          "line": 456,
           "widget": "cine_rim_flicker",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
@@ -8388,7 +8388,7 @@
         },
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-          "line": 432,
+          "line": 462,
           "widget": "cine_rim_flicker_amount",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
@@ -8427,7 +8427,7 @@
         },
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-          "line": 397,
+          "line": 427,
           "widget": "cine_rim_gel",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
@@ -8466,7 +8466,7 @@
         },
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-          "line": 403,
+          "line": 433,
           "widget": "cine_rim_gobo",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
@@ -8505,7 +8505,7 @@
         },
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-          "line": 413,
+          "line": 443,
           "widget": "cine_rim_offset_z",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
@@ -8544,7 +8544,7 @@
         },
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-          "line": 394,
+          "line": 424,
           "widget": "cine_rim_pitch",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
@@ -8583,7 +8583,7 @@
         },
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-          "line": 385,
+          "line": 415,
           "widget": "cine_rim_profile",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
@@ -8622,7 +8622,7 @@
         },
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-          "line": 437,
+          "line": 467,
           "widget": "cine_rim_shadow_soft",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
@@ -8661,7 +8661,7 @@
         },
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-          "line": 391,
+          "line": 421,
           "widget": "cine_rim_yaw",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
@@ -8700,7 +8700,7 @@
         },
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-          "line": 530,
+          "line": 590,
           "widget": "cine_shadow_mode",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
@@ -24921,7 +24921,7 @@
         },
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-          "line": 657,
+          "line": 717,
           "widget": "cine_flare_rig_intensity",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
@@ -24960,7 +24960,7 @@
         },
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-          "line": 662,
+          "line": 722,
           "widget": "cine_flare_release",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
@@ -24999,7 +24999,7 @@
         },
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-          "line": 652,
+          "line": 712,
           "widget": "cine_flare_rig_strength",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
@@ -25038,7 +25038,7 @@
         },
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-          "line": 667,
+          "line": 727,
           "widget": "cine_flare_threshold",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
@@ -26287,7 +26287,7 @@
         },
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-          "line": 701,
+          "line": 761,
           "widget": "cine_flare_arc",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
@@ -26326,7 +26326,7 @@
         },
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-          "line": 696,
+          "line": 756,
           "widget": "cine_flare_circle",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
@@ -26365,7 +26365,7 @@
         },
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-          "line": 711,
+          "line": 771,
           "widget": "cine_flare_ghost_chroma",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
@@ -26404,7 +26404,7 @@
         },
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-          "line": 716,
+          "line": 776,
           "widget": "cine_flare_halo_chroma",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
@@ -26443,7 +26443,7 @@
         },
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-          "line": 686,
+          "line": 746,
           "widget": "cine_flare_iris",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
@@ -26482,7 +26482,7 @@
         },
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-          "line": 647,
+          "line": 707,
           "widget": "cine_flare_master",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
@@ -26521,7 +26521,7 @@
         },
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-          "line": 691,
+          "line": 751,
           "widget": "cine_flare_ring",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
@@ -26560,7 +26560,7 @@
         },
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-          "line": 726,
+          "line": 786,
           "widget": "cine_flare_src_color",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
@@ -26599,7 +26599,7 @@
         },
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-          "line": 672,
+          "line": 732,
           "widget": "cine_flare_starburst",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
@@ -26638,7 +26638,7 @@
         },
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-          "line": 683,
+          "line": 743,
           "widget": "cine_flare_starburst_length",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
@@ -26677,7 +26677,7 @@
         },
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-          "line": 680,
+          "line": 740,
           "widget": "cine_flare_starburst_sharpness",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
@@ -26716,7 +26716,7 @@
         },
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-          "line": 677,
+          "line": 737,
           "widget": "cine_flare_starburst_spikes",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
@@ -26755,7 +26755,7 @@
         },
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-          "line": 721,
+          "line": 781,
           "widget": "cine_flare_streak_tip",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
@@ -26794,7 +26794,7 @@
         },
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-          "line": 706,
+          "line": 766,
           "widget": "cine_flare_warp",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
@@ -56241,7 +56241,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 4685,
+              "line": 4704,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -56318,7 +56318,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 4686,
+              "line": 4705,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -56395,7 +56395,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 4687,
+              "line": 4706,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -98294,7 +98294,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 2145,
+              "line": 2153,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -98307,7 +98307,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 2148,
+              "line": 2156,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -98398,7 +98398,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 2145,
+              "line": 2153,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -98411,7 +98411,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 2148,
+              "line": 2156,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -99362,7 +99362,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 2145,
+              "line": 2153,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -99375,7 +99375,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 2148,
+              "line": 2156,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -99989,7 +99989,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 2145,
+              "line": 2153,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -100002,7 +100002,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 2148,
+              "line": 2156,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -100960,7 +100960,7 @@
       "label": "Rig",
       "group": "light_group",
       "group_label": "Light",
-      "row_count": 174,
+      "row_count": 178,
       "owner_roots": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_cine_light_rig.xml",
@@ -100996,11 +100996,11 @@
       "classification": {
         "logic_class": "code-driven",
         "setting_bound_rows": 122,
-        "setting_coverage": 0.701149,
+        "setting_coverage": 0.685393,
         "cpp_referenced_rows": 92,
         "rule": "pure-setting iff >=90% rows have declared settings and zero rows have C++ references"
       },
-      "unresolved_row_count": 0,
+      "unresolved_row_count": 4,
       "rows": [
         {
           "card": "easy",
@@ -101044,7 +101044,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 672,
+              "line": 673,
               "class": "ALPanelCineLightRig",
               "function": "postBuild",
               "wired_class": "ALPanelCineLightRig",
@@ -101055,7 +101055,7 @@
             },
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 816,
+              "line": 830,
               "class": "ALPanelCineLightRig",
               "function": "onEasyBrightnessCommit",
               "wired_class": "ALPanelCineLightRig",
@@ -101169,7 +101169,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 673,
+              "line": 674,
               "class": "ALPanelCineLightRig",
               "function": "postBuild",
               "wired_class": "ALPanelCineLightRig",
@@ -101180,7 +101180,7 @@
             },
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 818,
+              "line": 832,
               "class": "ALPanelCineLightRig",
               "function": "onEasyDramaCommit",
               "wired_class": "ALPanelCineLightRig",
@@ -101229,7 +101229,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 308,
+              "line": 323,
               "widget": "cine_ratio",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
@@ -101282,7 +101282,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 676,
+              "line": 677,
               "class": "ALPanelCineLightRig",
               "function": "postBuild",
               "wired_class": "ALPanelCineLightRig",
@@ -101293,7 +101293,7 @@
             },
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 824,
+              "line": 838,
               "class": "ALPanelCineLightRig",
               "function": "onEasyWarmthCommit",
               "wired_class": "ALPanelCineLightRig",
@@ -101391,7 +101391,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 674,
+              "line": 675,
               "class": "ALPanelCineLightRig",
               "function": "postBuild",
               "wired_class": "ALPanelCineLightRig",
@@ -101402,7 +101402,7 @@
             },
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 820,
+              "line": 834,
               "class": "ALPanelCineLightRig",
               "function": "onEasyRimCommit",
               "wired_class": "ALPanelCineLightRig",
@@ -101475,7 +101475,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 675,
+              "line": 676,
               "class": "ALPanelCineLightRig",
               "function": "postBuild",
               "wired_class": "ALPanelCineLightRig",
@@ -101486,7 +101486,7 @@
             },
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 822,
+              "line": 836,
               "class": "ALPanelCineLightRig",
               "function": "onEasyBgCommit",
               "wired_class": "ALPanelCineLightRig",
@@ -101558,7 +101558,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 677,
+              "line": 678,
               "class": "ALPanelCineLightRig",
               "function": "postBuild",
               "wired_class": "ALPanelCineLightRig",
@@ -101569,7 +101569,7 @@
             },
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 826,
+              "line": 840,
               "class": "ALPanelCineLightRig",
               "function": "onEasyConeWidthCommit",
               "wired_class": "ALPanelCineLightRig",
@@ -101647,7 +101647,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 678,
+              "line": 679,
               "class": "ALPanelCineLightRig",
               "function": "postBuild",
               "wired_class": "ALPanelCineLightRig",
@@ -101658,7 +101658,7 @@
             },
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 828,
+              "line": 842,
               "class": "ALPanelCineLightRig",
               "function": "onEasyConeFeatherCommit",
               "wired_class": "ALPanelCineLightRig",
@@ -101753,7 +101753,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 729,
+              "line": 742,
               "class": "ALPanelCineLightRig",
               "function": "postBuild",
               "wired_class": "ALPanelCineLightRig",
@@ -101870,7 +101870,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 668,
+              "line": 669,
               "class": "ALPanelCineLightRig",
               "function": "postBuild",
               "wired_class": "ALPanelCineLightRig",
@@ -101881,7 +101881,7 @@
             },
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 729,
+              "line": 742,
               "class": "ALPanelCineLightRig",
               "function": "postBuild",
               "wired_class": "ALPanelCineLightRig",
@@ -101892,7 +101892,7 @@
             },
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 774,
+              "line": 788,
               "class": "ALPanelCineLightRig",
               "function": "onFlarePresetSelected",
               "wired_class": "ALPanelCineLightRig",
@@ -101969,7 +101969,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 731,
+              "line": 744,
               "class": "ALPanelCineLightRig",
               "function": "postBuild",
               "wired_class": "ALPanelCineLightRig",
@@ -102083,7 +102083,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 702,
+              "line": 715,
               "class": "ALPanelCineLightRig",
               "function": "postBuild",
               "wired_class": "ALPanelCineLightRig",
@@ -102094,7 +102094,7 @@
             },
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 732,
+              "line": 745,
               "class": "ALPanelCineLightRig",
               "function": "postBuild",
               "wired_class": "ALPanelCineLightRig",
@@ -102105,7 +102105,7 @@
             },
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 912,
+              "line": 926,
               "class": "ALPanelCineLightRig",
               "function": "onNightMaskDarknessCommit",
               "wired_class": "ALPanelCineLightRig",
@@ -102180,7 +102180,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 699,
+              "line": 712,
               "class": "ALPanelCineLightRig",
               "function": "postBuild",
               "wired_class": "ALPanelCineLightRig",
@@ -102191,7 +102191,7 @@
             },
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 732,
+              "line": 745,
               "class": "ALPanelCineLightRig",
               "function": "postBuild",
               "wired_class": "ALPanelCineLightRig",
@@ -102202,7 +102202,7 @@
             },
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 778,
+              "line": 792,
               "class": "ALPanelCineLightRig",
               "function": "onNightMaskPresetSelected",
               "wired_class": "ALPanelCineLightRig",
@@ -102279,7 +102279,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 731,
+              "line": 744,
               "class": "ALPanelCineLightRig",
               "function": "postBuild",
               "wired_class": "ALPanelCineLightRig",
@@ -102340,7 +102340,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 744,
+              "line": 804,
               "widget": "cine_live_probe_radius",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
@@ -102442,7 +102442,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 747,
+              "line": 807,
               "widget": "cine_live_probe_ambiance",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
@@ -102544,7 +102544,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 750,
+              "line": 810,
               "widget": "cine_live_probe_bounce_keep",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
@@ -102652,7 +102652,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 733,
+              "line": 793,
               "widget": "cine_live_probe_target",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
@@ -102705,7 +102705,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 730,
+              "line": 743,
               "class": "ALPanelCineLightRig",
               "function": "postBuild",
               "wired_class": "ALPanelCineLightRig",
@@ -102766,7 +102766,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 773,
+              "line": 833,
               "widget": "cine_live_probe_gizmo",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
@@ -102893,7 +102893,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 652,
+              "line": 653,
               "class": "ALPanelCineLightRig",
               "function": "postBuild",
               "wired_class": "ALPanelCineLightRig",
@@ -102904,7 +102904,7 @@
             },
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 757,
+              "line": 771,
               "class": "ALPanelCineLightRig",
               "function": "onAnchorSelected",
               "wired_class": "ALPanelCineLightRig",
@@ -102972,7 +102972,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 653,
+              "line": 654,
               "class": "ALPanelCineLightRig",
               "function": "postBuild",
               "wired_class": "ALPanelCineLightRig",
@@ -102983,7 +102983,7 @@
             },
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 759,
+              "line": 773,
               "class": "ALPanelCineLightRig",
               "function": "onTargetObject",
               "wired_class": "ALPanelCineLightRig",
@@ -103051,7 +103051,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 654,
+              "line": 655,
               "class": "ALPanelCineLightRig",
               "function": "postBuild",
               "wired_class": "ALPanelCineLightRig",
@@ -103062,7 +103062,7 @@
             },
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 761,
+              "line": 775,
               "class": "ALPanelCineLightRig",
               "function": "onClearObjectTarget",
               "wired_class": "ALPanelCineLightRig",
@@ -103130,7 +103130,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 655,
+              "line": 656,
               "class": "ALPanelCineLightRig",
               "function": "postBuild",
               "wired_class": "ALPanelCineLightRig",
@@ -103198,7 +103198,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 659,
+              "line": 660,
               "class": "ALPanelCineLightRig",
               "function": "postBuild",
               "wired_class": "ALPanelCineLightRig",
@@ -103277,7 +103277,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 659,
+              "line": 660,
               "class": "ALPanelCineLightRig",
               "function": "postBuild",
               "wired_class": "ALPanelCineLightRig",
@@ -103356,7 +103356,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 659,
+              "line": 660,
               "class": "ALPanelCineLightRig",
               "function": "postBuild",
               "wired_class": "ALPanelCineLightRig",
@@ -103435,7 +103435,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 660,
+              "line": 661,
               "class": "ALPanelCineLightRig",
               "function": "postBuild",
               "wired_class": "ALPanelCineLightRig",
@@ -103514,7 +103514,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 660,
+              "line": 661,
               "class": "ALPanelCineLightRig",
               "function": "postBuild",
               "wired_class": "ALPanelCineLightRig",
@@ -103758,7 +103758,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 705,
+              "line": 718,
               "class": "ALPanelCineLightRig",
               "function": "postBuild",
               "wired_class": "ALPanelCineLightRig",
@@ -104178,7 +104178,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 801,
+              "line": 815,
               "class": "ALPanelCineLightRig",
               "function": "resetAll",
               "wired_class": "ALPanelCineLightRig",
@@ -104572,7 +104572,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 669,
+              "line": 670,
               "class": "ALPanelCineLightRig",
               "function": "postBuild",
               "wired_class": "ALPanelCineLightRig",
@@ -104653,7 +104653,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 726,
+              "line": 739,
               "class": "ALPanelCineLightRig",
               "function": "postBuild",
               "wired_class": "ALPanelCineLightRig",
@@ -104664,7 +104664,7 @@
             },
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 784,
+              "line": 798,
               "class": "ALCineLightRigManager",
               "function": "stopFX",
               "wired_class": "ALPanelCineLightRig",
@@ -104699,7 +104699,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 4339,
+              "line": 4358,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -104712,7 +104712,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 5001,
+              "line": 5020,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -104767,7 +104767,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 849,
+              "line": 863,
               "class": "ALPanelCineLightRig",
               "function": "onManualCommit",
               "wired_class": "ALPanelCineLightRig",
@@ -104857,7 +104857,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 670,
+              "line": 671,
               "class": "ALPanelCineLightRig",
               "function": "postBuild",
               "wired_class": "ALPanelCineLightRig",
@@ -104868,7 +104868,7 @@
             },
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 808,
+              "line": 822,
               "class": "ALPanelCineLightRig",
               "function": "commitSeed",
               "wired_class": "ALPanelCineLightRig",
@@ -104936,7 +104936,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 810,
+              "line": 824,
               "class": "ALPanelCineLightRig",
               "function": "randomizeSeed",
               "wired_class": "ALPanelCineLightRig",
@@ -105013,7 +105013,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 706,
+              "line": 719,
               "class": "ALPanelCineLightRig",
               "function": "postBuild",
               "wired_class": "ALPanelCineLightRig",
@@ -105103,7 +105103,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 1015,
+              "line": 1029,
               "class": "ALPanelCineLightRig",
               "function": "populateStaticCombos",
               "wired_class": "ALPanelCineLightRig",
@@ -105349,7 +105349,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 1017,
+              "line": 1031,
               "class": "ALPanelCineLightRig",
               "function": "populateStaticCombos",
               "wired_class": "ALPanelCineLightRig",
@@ -105439,7 +105439,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 1016,
+              "line": 1030,
               "class": "ALPanelCineLightRig",
               "function": "populateStaticCombos",
               "wired_class": "ALPanelCineLightRig",
@@ -105520,7 +105520,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 856,
+              "line": 870,
               "class": "ALPanelCineLightRig",
               "function": "postBuild",
               "wired_class": "ALPanelCineLightRig",
@@ -105676,7 +105676,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 858,
+              "line": 872,
               "class": "ALPanelCineLightRig",
               "function": "postBuild",
               "wired_class": "ALPanelCineLightRig",
@@ -105754,7 +105754,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 857,
+              "line": 871,
               "class": "ALPanelCineLightRig",
               "function": "postBuild",
               "wired_class": "ALPanelCineLightRig",
@@ -105841,7 +105841,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 1019,
+              "line": 1033,
               "class": "ALPanelCineLightRig",
               "function": "populateStaticCombos",
               "wired_class": "ALPanelCineLightRig",
@@ -106126,6 +106126,60 @@
         {
           "card": "lights",
           "card_title": "Lights",
+          "option_index": 0,
+          "option_label": "Key",
+          "index": 14,
+          "label": "Projector feed",
+          "kind": "combo",
+          "widget": "cine_key_projector_feed",
+          "matched_widget": "cine_key_projector_feed",
+          "declared_setting": null,
+          "resolved_setting": null,
+          "setting_candidates": [],
+          "setting_declarations": [],
+          "items": [
+            "None",
+            "Cam 1",
+            "Cam 2",
+            "Cam 3",
+            "Cam 4",
+            "Cam 5",
+            "Cam 6",
+            "Cam 7",
+            "Cam 8"
+          ],
+          "xui": [],
+          "cpp": [],
+          "callback_handlers": [],
+          "callbacks": [],
+          "kit_action": null,
+          "resolution_notes": [],
+          "ambiguous": [],
+          "rejected_candidates": [
+            {
+              "kind": "xui",
+              "reason": "same widget name outside the page owner roots",
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
+              "line": 303,
+              "tag": "combo_box",
+              "control_name": null,
+              "callbacks": [],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
+                "tag": "panel",
+                "name": "cine_light_rig_tab_logic",
+                "line": 3
+              }
+            }
+          ],
+          "unresolved": [
+            "UNRESOLVED: no scoped owner callback, setting, model binding, or kit action"
+          ],
+          "other_writers": []
+        },
+        {
+          "card": "lights",
+          "card_title": "Lights",
           "option_index": 1,
           "option_label": "Fill",
           "index": 0,
@@ -106165,7 +106219,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 711,
+              "line": 724,
               "class": "ALPanelCineLightRig",
               "function": "postBuild",
               "wired_class": "ALPanelCineLightRig",
@@ -106185,7 +106239,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 308,
+              "line": 323,
               "tag": "slider",
               "control_name": "CineLightRigRatio",
               "callbacks": [],
@@ -106202,7 +106256,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 308,
+              "line": 323,
               "widget": "cine_ratio",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
@@ -106255,7 +106309,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 710,
+              "line": 723,
               "class": "ALPanelCineLightRig",
               "function": "postBuild",
               "wired_class": "ALPanelCineLightRig",
@@ -106275,7 +106329,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 313,
+              "line": 328,
               "tag": "kit_switch",
               "control_name": "CineLightRigRatioLock",
               "callbacks": [],
@@ -106292,7 +106346,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 313,
+              "line": 328,
               "widget": "cine_ratio_lock",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
@@ -106345,7 +106399,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 671,
+              "line": 672,
               "class": "ALPanelCineLightRig",
               "function": "postBuild",
               "wired_class": "ALPanelCineLightRig",
@@ -106356,7 +106410,7 @@
             },
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 707,
+              "line": 720,
               "class": "ALPanelCineLightRig",
               "function": "postBuild",
               "wired_class": "ALPanelCineLightRig",
@@ -106376,7 +106430,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 316,
+              "line": 331,
               "tag": "spinner",
               "control_name": "CineLightRigFillEV",
               "callbacks": [],
@@ -106393,7 +106447,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 316,
+              "line": 331,
               "widget": "cine_fill_ev",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
@@ -106446,7 +106500,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 1015,
+              "line": 1029,
               "class": "ALPanelCineLightRig",
               "function": "populateStaticCombos",
               "wired_class": "ALPanelCineLightRig",
@@ -106466,7 +106520,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 319,
+              "line": 334,
               "tag": "combo_box",
               "control_name": "CineLightRigFillProfile",
               "callbacks": [],
@@ -106483,7 +106537,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 319,
+              "line": 334,
               "widget": "cine_fill_profile",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
@@ -106544,7 +106598,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 325,
+              "line": 340,
               "tag": "compass_dial",
               "control_name": "CineLightRigFillYaw",
               "callbacks": [],
@@ -106561,7 +106615,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 325,
+              "line": 340,
               "widget": "cine_fill_yaw",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
@@ -106622,7 +106676,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 328,
+              "line": 343,
               "tag": "compass_dial",
               "control_name": "CineLightRigFillPitch",
               "callbacks": [],
@@ -106639,7 +106693,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 328,
+              "line": 343,
               "widget": "cine_fill_pitch",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
@@ -106692,7 +106746,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 1017,
+              "line": 1031,
               "class": "ALPanelCineLightRig",
               "function": "populateStaticCombos",
               "wired_class": "ALPanelCineLightRig",
@@ -106712,7 +106766,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 331,
+              "line": 346,
               "tag": "combo_box",
               "control_name": "CineLightRigFillGel",
               "callbacks": [],
@@ -106729,7 +106783,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 331,
+              "line": 346,
               "widget": "cine_fill_gel",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
@@ -106782,7 +106836,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 1016,
+              "line": 1030,
               "class": "ALPanelCineLightRig",
               "function": "populateStaticCombos",
               "wired_class": "ALPanelCineLightRig",
@@ -106802,7 +106856,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 337,
+              "line": 352,
               "tag": "combo_box",
               "control_name": "CineLightRigFillGobo",
               "callbacks": [],
@@ -106819,7 +106873,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 337,
+              "line": 352,
               "widget": "cine_fill_gobo",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
@@ -106863,7 +106917,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 856,
+              "line": 870,
               "class": "ALPanelCineLightRig",
               "function": "postBuild",
               "wired_class": "ALPanelCineLightRig",
@@ -106893,7 +106947,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 344,
+              "line": 359,
               "tag": "kit_switch",
               "control_name": null,
               "callbacks": [],
@@ -106958,7 +107012,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 347,
+              "line": 362,
               "tag": "slider",
               "control_name": "CineLightRigFillOffsetZ",
               "callbacks": [],
@@ -106975,7 +107029,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 347,
+              "line": 362,
               "widget": "cine_fill_offset_z",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
@@ -107019,7 +107073,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 858,
+              "line": 872,
               "class": "ALPanelCineLightRig",
               "function": "postBuild",
               "wired_class": "ALPanelCineLightRig",
@@ -107049,7 +107103,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 352,
+              "line": 367,
               "tag": "slider",
               "control_name": null,
               "callbacks": [],
@@ -107097,7 +107151,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 857,
+              "line": 871,
               "class": "ALPanelCineLightRig",
               "function": "postBuild",
               "wired_class": "ALPanelCineLightRig",
@@ -107127,7 +107181,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 357,
+              "line": 372,
               "tag": "kit_switch",
               "control_name": null,
               "callbacks": [],
@@ -107184,7 +107238,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 1019,
+              "line": 1033,
               "class": "ALPanelCineLightRig",
               "function": "populateStaticCombos",
               "wired_class": "ALPanelCineLightRig",
@@ -107204,7 +107258,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 360,
+              "line": 375,
               "tag": "combo_box",
               "control_name": "CineLightRigFillFlicker",
               "callbacks": [],
@@ -107221,7 +107275,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 360,
+              "line": 375,
               "widget": "cine_fill_flicker",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
@@ -107282,7 +107336,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 366,
+              "line": 381,
               "tag": "slider",
               "control_name": "CineLightRigFillFlickerAmount",
               "callbacks": [],
@@ -107299,7 +107353,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 366,
+              "line": 381,
               "widget": "cine_fill_flicker_amount",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
@@ -107360,7 +107414,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 371,
+              "line": 386,
               "tag": "spinner",
               "control_name": "CineLightRigFillShadowSoft",
               "callbacks": [],
@@ -107377,7 +107431,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 371,
+              "line": 386,
               "widget": "cine_fill_shadow_soft",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
@@ -107438,7 +107492,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 374,
+              "line": 389,
               "tag": "kit_switch",
               "control_name": "CineLightRigFillActorOnly",
               "callbacks": [],
@@ -107455,7 +107509,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 374,
+              "line": 389,
               "widget": "cine_fill_actor_only",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
@@ -107465,6 +107519,60 @@
               }
             }
           ]
+        },
+        {
+          "card": "lights",
+          "card_title": "Lights",
+          "option_index": 1,
+          "option_label": "Fill",
+          "index": 16,
+          "label": "Projector feed",
+          "kind": "combo",
+          "widget": "cine_fill_projector_feed",
+          "matched_widget": "cine_fill_projector_feed",
+          "declared_setting": null,
+          "resolved_setting": null,
+          "setting_candidates": [],
+          "setting_declarations": [],
+          "items": [
+            "None",
+            "Cam 1",
+            "Cam 2",
+            "Cam 3",
+            "Cam 4",
+            "Cam 5",
+            "Cam 6",
+            "Cam 7",
+            "Cam 8"
+          ],
+          "xui": [],
+          "cpp": [],
+          "callback_handlers": [],
+          "callbacks": [],
+          "kit_action": null,
+          "resolution_notes": [],
+          "ambiguous": [],
+          "rejected_candidates": [
+            {
+              "kind": "xui",
+              "reason": "same widget name outside the page owner roots",
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
+              "line": 392,
+              "tag": "combo_box",
+              "control_name": null,
+              "callbacks": [],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
+                "tag": "panel",
+                "name": "cine_light_rig_tab_logic",
+                "line": 3
+              }
+            }
+          ],
+          "unresolved": [
+            "UNRESOLVED: no scoped owner callback, setting, model binding, or kit action"
+          ],
+          "other_writers": []
         },
         {
           "card": "lights",
@@ -107508,7 +107616,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 708,
+              "line": 721,
               "class": "ALPanelCineLightRig",
               "function": "postBuild",
               "wired_class": "ALPanelCineLightRig",
@@ -107528,7 +107636,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 382,
+              "line": 412,
               "tag": "spinner",
               "control_name": "CineLightRigRimEV",
               "callbacks": [],
@@ -107545,7 +107653,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 382,
+              "line": 412,
               "widget": "cine_rim_ev",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
@@ -107598,7 +107706,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 1015,
+              "line": 1029,
               "class": "ALPanelCineLightRig",
               "function": "populateStaticCombos",
               "wired_class": "ALPanelCineLightRig",
@@ -107618,7 +107726,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 385,
+              "line": 415,
               "tag": "combo_box",
               "control_name": "CineLightRigRimProfile",
               "callbacks": [],
@@ -107635,7 +107743,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 385,
+              "line": 415,
               "widget": "cine_rim_profile",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
@@ -107696,7 +107804,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 391,
+              "line": 421,
               "tag": "compass_dial",
               "control_name": "CineLightRigRimYaw",
               "callbacks": [],
@@ -107713,7 +107821,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 391,
+              "line": 421,
               "widget": "cine_rim_yaw",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
@@ -107774,7 +107882,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 394,
+              "line": 424,
               "tag": "compass_dial",
               "control_name": "CineLightRigRimPitch",
               "callbacks": [],
@@ -107791,7 +107899,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 394,
+              "line": 424,
               "widget": "cine_rim_pitch",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
@@ -107844,7 +107952,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 1017,
+              "line": 1031,
               "class": "ALPanelCineLightRig",
               "function": "populateStaticCombos",
               "wired_class": "ALPanelCineLightRig",
@@ -107864,7 +107972,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 397,
+              "line": 427,
               "tag": "combo_box",
               "control_name": "CineLightRigRimGel",
               "callbacks": [],
@@ -107881,7 +107989,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 397,
+              "line": 427,
               "widget": "cine_rim_gel",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
@@ -107934,7 +108042,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 1016,
+              "line": 1030,
               "class": "ALPanelCineLightRig",
               "function": "populateStaticCombos",
               "wired_class": "ALPanelCineLightRig",
@@ -107954,7 +108062,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 403,
+              "line": 433,
               "tag": "combo_box",
               "control_name": "CineLightRigRimGobo",
               "callbacks": [],
@@ -107971,7 +108079,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 403,
+              "line": 433,
               "widget": "cine_rim_gobo",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
@@ -108015,7 +108123,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 856,
+              "line": 870,
               "class": "ALPanelCineLightRig",
               "function": "postBuild",
               "wired_class": "ALPanelCineLightRig",
@@ -108045,7 +108153,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 410,
+              "line": 440,
               "tag": "kit_switch",
               "control_name": null,
               "callbacks": [],
@@ -108110,7 +108218,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 413,
+              "line": 443,
               "tag": "slider",
               "control_name": "CineLightRigRimOffsetZ",
               "callbacks": [],
@@ -108127,7 +108235,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 413,
+              "line": 443,
               "widget": "cine_rim_offset_z",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
@@ -108171,7 +108279,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 858,
+              "line": 872,
               "class": "ALPanelCineLightRig",
               "function": "postBuild",
               "wired_class": "ALPanelCineLightRig",
@@ -108201,7 +108309,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 418,
+              "line": 448,
               "tag": "slider",
               "control_name": null,
               "callbacks": [],
@@ -108249,7 +108357,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 857,
+              "line": 871,
               "class": "ALPanelCineLightRig",
               "function": "postBuild",
               "wired_class": "ALPanelCineLightRig",
@@ -108279,7 +108387,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 423,
+              "line": 453,
               "tag": "kit_switch",
               "control_name": null,
               "callbacks": [],
@@ -108336,7 +108444,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 1019,
+              "line": 1033,
               "class": "ALPanelCineLightRig",
               "function": "populateStaticCombos",
               "wired_class": "ALPanelCineLightRig",
@@ -108356,7 +108464,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 426,
+              "line": 456,
               "tag": "combo_box",
               "control_name": "CineLightRigRimFlicker",
               "callbacks": [],
@@ -108373,7 +108481,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 426,
+              "line": 456,
               "widget": "cine_rim_flicker",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
@@ -108434,7 +108542,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 432,
+              "line": 462,
               "tag": "slider",
               "control_name": "CineLightRigRimFlickerAmount",
               "callbacks": [],
@@ -108451,7 +108559,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 432,
+              "line": 462,
               "widget": "cine_rim_flicker_amount",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
@@ -108512,7 +108620,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 437,
+              "line": 467,
               "tag": "spinner",
               "control_name": "CineLightRigRimShadowSoft",
               "callbacks": [],
@@ -108529,7 +108637,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 437,
+              "line": 467,
               "widget": "cine_rim_shadow_soft",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
@@ -108590,7 +108698,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 440,
+              "line": 470,
               "tag": "kit_switch",
               "control_name": "CineLightRigRimActorOnly",
               "callbacks": [],
@@ -108607,7 +108715,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 440,
+              "line": 470,
               "widget": "cine_rim_actor_only",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
@@ -108617,6 +108725,60 @@
               }
             }
           ]
+        },
+        {
+          "card": "lights",
+          "card_title": "Lights",
+          "option_index": 2,
+          "option_label": "Back",
+          "index": 14,
+          "label": "Projector feed",
+          "kind": "combo",
+          "widget": "cine_rim_projector_feed",
+          "matched_widget": "cine_rim_projector_feed",
+          "declared_setting": null,
+          "resolved_setting": null,
+          "setting_candidates": [],
+          "setting_declarations": [],
+          "items": [
+            "None",
+            "Cam 1",
+            "Cam 2",
+            "Cam 3",
+            "Cam 4",
+            "Cam 5",
+            "Cam 6",
+            "Cam 7",
+            "Cam 8"
+          ],
+          "xui": [],
+          "cpp": [],
+          "callback_handlers": [],
+          "callbacks": [],
+          "kit_action": null,
+          "resolution_notes": [],
+          "ambiguous": [],
+          "rejected_candidates": [
+            {
+              "kind": "xui",
+              "reason": "same widget name outside the page owner roots",
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
+              "line": 473,
+              "tag": "combo_box",
+              "control_name": null,
+              "callbacks": [],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
+                "tag": "panel",
+                "name": "cine_light_rig_tab_logic",
+                "line": 3
+              }
+            }
+          ],
+          "unresolved": [
+            "UNRESOLVED: no scoped owner callback, setting, model binding, or kit action"
+          ],
+          "other_writers": []
         },
         {
           "card": "lights",
@@ -108660,7 +108822,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 709,
+              "line": 722,
               "class": "ALPanelCineLightRig",
               "function": "postBuild",
               "wired_class": "ALPanelCineLightRig",
@@ -108680,7 +108842,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 448,
+              "line": 493,
               "tag": "spinner",
               "control_name": "CineLightRigBgEV",
               "callbacks": [],
@@ -108697,7 +108859,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 448,
+              "line": 493,
               "widget": "cine_bg_ev",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
@@ -108750,7 +108912,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 1015,
+              "line": 1029,
               "class": "ALPanelCineLightRig",
               "function": "populateStaticCombos",
               "wired_class": "ALPanelCineLightRig",
@@ -108770,7 +108932,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 451,
+              "line": 496,
               "tag": "combo_box",
               "control_name": "CineLightRigBgProfile",
               "callbacks": [],
@@ -108787,7 +108949,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 451,
+              "line": 496,
               "widget": "cine_bg_profile",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
@@ -108848,7 +109010,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 457,
+              "line": 502,
               "tag": "compass_dial",
               "control_name": "CineLightRigBgYaw",
               "callbacks": [],
@@ -108865,7 +109027,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 457,
+              "line": 502,
               "widget": "cine_bg_yaw",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
@@ -108926,7 +109088,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 460,
+              "line": 505,
               "tag": "compass_dial",
               "control_name": "CineLightRigBgPitch",
               "callbacks": [],
@@ -108943,7 +109105,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 460,
+              "line": 505,
               "widget": "cine_bg_pitch",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
@@ -108996,7 +109158,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 1017,
+              "line": 1031,
               "class": "ALPanelCineLightRig",
               "function": "populateStaticCombos",
               "wired_class": "ALPanelCineLightRig",
@@ -109016,7 +109178,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 463,
+              "line": 508,
               "tag": "combo_box",
               "control_name": "CineLightRigBgGel",
               "callbacks": [],
@@ -109033,7 +109195,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 463,
+              "line": 508,
               "widget": "cine_bg_gel",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
@@ -109086,7 +109248,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 1016,
+              "line": 1030,
               "class": "ALPanelCineLightRig",
               "function": "populateStaticCombos",
               "wired_class": "ALPanelCineLightRig",
@@ -109106,7 +109268,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 469,
+              "line": 514,
               "tag": "combo_box",
               "control_name": "CineLightRigBgGobo",
               "callbacks": [],
@@ -109123,7 +109285,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 469,
+              "line": 514,
               "widget": "cine_bg_gobo",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
@@ -109167,7 +109329,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 856,
+              "line": 870,
               "class": "ALPanelCineLightRig",
               "function": "postBuild",
               "wired_class": "ALPanelCineLightRig",
@@ -109197,7 +109359,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 476,
+              "line": 521,
               "tag": "kit_switch",
               "control_name": null,
               "callbacks": [],
@@ -109262,7 +109424,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 479,
+              "line": 524,
               "tag": "slider",
               "control_name": "CineLightRigBgOffsetZ",
               "callbacks": [],
@@ -109279,7 +109441,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 479,
+              "line": 524,
               "widget": "cine_bg_offset_z",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
@@ -109323,7 +109485,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 858,
+              "line": 872,
               "class": "ALPanelCineLightRig",
               "function": "postBuild",
               "wired_class": "ALPanelCineLightRig",
@@ -109353,7 +109515,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 484,
+              "line": 529,
               "tag": "slider",
               "control_name": null,
               "callbacks": [],
@@ -109401,7 +109563,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 857,
+              "line": 871,
               "class": "ALPanelCineLightRig",
               "function": "postBuild",
               "wired_class": "ALPanelCineLightRig",
@@ -109431,7 +109593,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 489,
+              "line": 534,
               "tag": "kit_switch",
               "control_name": null,
               "callbacks": [],
@@ -109488,7 +109650,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 1019,
+              "line": 1033,
               "class": "ALPanelCineLightRig",
               "function": "populateStaticCombos",
               "wired_class": "ALPanelCineLightRig",
@@ -109508,7 +109670,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 492,
+              "line": 537,
               "tag": "combo_box",
               "control_name": "CineLightRigBgFlicker",
               "callbacks": [],
@@ -109525,7 +109687,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 492,
+              "line": 537,
               "widget": "cine_bg_flicker",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
@@ -109586,7 +109748,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 498,
+              "line": 543,
               "tag": "slider",
               "control_name": "CineLightRigBgFlickerAmount",
               "callbacks": [],
@@ -109603,7 +109765,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 498,
+              "line": 543,
               "widget": "cine_bg_flicker_amount",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
@@ -109664,7 +109826,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 503,
+              "line": 548,
               "tag": "spinner",
               "control_name": "CineLightRigBgShadowSoft",
               "callbacks": [],
@@ -109681,7 +109843,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 503,
+              "line": 548,
               "widget": "cine_bg_shadow_soft",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
@@ -109742,7 +109904,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 506,
+              "line": 551,
               "tag": "kit_switch",
               "control_name": "CineLightRigBgActorOnly",
               "callbacks": [],
@@ -109759,7 +109921,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 506,
+              "line": 551,
               "widget": "cine_bg_actor_only",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
@@ -109769,6 +109931,60 @@
               }
             }
           ]
+        },
+        {
+          "card": "lights",
+          "card_title": "Lights",
+          "option_index": 3,
+          "option_label": "BG",
+          "index": 14,
+          "label": "Projector feed",
+          "kind": "combo",
+          "widget": "cine_bg_projector_feed",
+          "matched_widget": "cine_bg_projector_feed",
+          "declared_setting": null,
+          "resolved_setting": null,
+          "setting_candidates": [],
+          "setting_declarations": [],
+          "items": [
+            "None",
+            "Cam 1",
+            "Cam 2",
+            "Cam 3",
+            "Cam 4",
+            "Cam 5",
+            "Cam 6",
+            "Cam 7",
+            "Cam 8"
+          ],
+          "xui": [],
+          "cpp": [],
+          "callback_handlers": [],
+          "callbacks": [],
+          "kit_action": null,
+          "resolution_notes": [],
+          "ambiguous": [],
+          "rejected_candidates": [
+            {
+              "kind": "xui",
+              "reason": "same widget name outside the page owner roots",
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
+              "line": 554,
+              "tag": "combo_box",
+              "control_name": null,
+              "callbacks": [],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
+                "tag": "panel",
+                "name": "cine_light_rig_tab_logic",
+                "line": 3
+              }
+            }
+          ],
+          "unresolved": [
+            "UNRESOLVED: no scoped owner callback, setting, model binding, or kit action"
+          ],
+          "other_writers": []
         },
         {
           "card": "rig_aim",
@@ -109820,7 +110036,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 512,
+              "line": 572,
               "tag": "kit_switch",
               "control_name": "CineLightRigMirror",
               "callbacks": [],
@@ -109837,7 +110053,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 512,
+              "line": 572,
               "widget": "cine_mirror",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
@@ -109881,7 +110097,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 787,
+              "line": 801,
               "class": "ALPanelCineLightRig",
               "function": "adjustAim",
               "wired_class": "ALPanelCineLightRig",
@@ -109901,7 +110117,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 515,
+              "line": 575,
               "tag": "button",
               "control_name": null,
               "callbacks": [],
@@ -109949,7 +110165,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 790,
+              "line": 804,
               "class": "ALPanelCineLightRig",
               "function": "adjustAim",
               "wired_class": "ALPanelCineLightRig",
@@ -109969,7 +110185,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 518,
+              "line": 578,
               "tag": "button",
               "control_name": null,
               "callbacks": [],
@@ -110017,7 +110233,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 793,
+              "line": 807,
               "class": "ALPanelCineLightRig",
               "function": "adjustAim",
               "wired_class": "ALPanelCineLightRig",
@@ -110037,7 +110253,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 521,
+              "line": 581,
               "tag": "button",
               "control_name": null,
               "callbacks": [],
@@ -110085,7 +110301,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 796,
+              "line": 810,
               "class": "ALPanelCineLightRig",
               "function": "adjustAim",
               "wired_class": "ALPanelCineLightRig",
@@ -110105,7 +110321,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 524,
+              "line": 584,
               "tag": "button",
               "control_name": null,
               "callbacks": [],
@@ -110153,7 +110369,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 799,
+              "line": 813,
               "class": "ALPanelCineLightRig",
               "function": "resetAim",
               "wired_class": "ALPanelCineLightRig",
@@ -110173,7 +110389,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 527,
+              "line": 587,
               "tag": "button",
               "control_name": null,
               "callbacks": [],
@@ -110242,7 +110458,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 530,
+              "line": 590,
               "tag": "combo_box",
               "control_name": "CineLightRigShadowMode",
               "callbacks": [],
@@ -110259,7 +110475,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 530,
+              "line": 590,
               "widget": "cine_shadow_mode",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
@@ -110320,7 +110536,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 539,
+              "line": 599,
               "tag": "kit_switch",
               "control_name": "CineLightRigAutoShadowSlots",
               "callbacks": [],
@@ -110337,7 +110553,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 539,
+              "line": 599,
               "widget": "cine_auto_shadow_slots",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
@@ -110381,7 +110597,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 718,
+              "line": 731,
               "class": "ALPanelCineLightRig",
               "function": "postBuild",
               "wired_class": "ALPanelCineLightRig",
@@ -110392,7 +110608,7 @@
             },
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 812,
+              "line": 826,
               "class": "ALPanelCineLightRig",
               "function": "onClickShadowFixIt",
               "wired_class": "ALPanelCineLightRig",
@@ -110412,7 +110628,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 545,
+              "line": 605,
               "tag": "button",
               "control_name": null,
               "callbacks": [],
@@ -110477,7 +110693,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 550,
+              "line": 610,
               "tag": "kit_switch",
               "control_name": "CineLightRigBounceEnabled",
               "callbacks": [],
@@ -110494,7 +110710,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 550,
+              "line": 610,
               "widget": "cine_bounce",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
@@ -110555,7 +110771,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 553,
+              "line": 613,
               "tag": "spinner",
               "control_name": "CineLightRigBounceRatio",
               "callbacks": [],
@@ -110572,7 +110788,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 553,
+              "line": 613,
               "widget": "cine_bounce_ratio",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
@@ -110625,7 +110841,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 889,
+              "line": 903,
               "class": "ALPanelCineLightRig",
               "function": "postBuild",
               "wired_class": "ALPanelCineLightRig",
@@ -110645,7 +110861,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 556,
+              "line": 616,
               "tag": "kit_switch",
               "control_name": "CineLightRigBounceLightsSet",
               "callbacks": [],
@@ -110662,7 +110878,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 556,
+              "line": 616,
               "widget": "cine_bounce_lights_set",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
@@ -110715,7 +110931,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 891,
+              "line": 905,
               "class": "ALPanelCineLightRig",
               "function": "postBuild",
               "wired_class": "ALPanelCineLightRig",
@@ -110735,7 +110951,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 559,
+              "line": 619,
               "tag": "kit_switch",
               "control_name": "CineLightRigActorOnlyAll",
               "callbacks": [],
@@ -110750,7 +110966,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 1796,
+              "line": 1804,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -110763,7 +110979,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 2323,
+              "line": 2331,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -110778,7 +110994,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 559,
+              "line": 619,
               "widget": "cine_actor_only_all",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
@@ -110839,7 +111055,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 564,
+              "line": 624,
               "tag": "spinner",
               "control_name": "CineLightRigCatchlightEV",
               "callbacks": [],
@@ -110856,7 +111072,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 564,
+              "line": 624,
               "widget": "cine_catchlight_ev",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
@@ -110917,7 +111133,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 567,
+              "line": 627,
               "tag": "spinner",
               "control_name": "CineLightRigCatchlightSize",
               "callbacks": [],
@@ -110934,7 +111150,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 567,
+              "line": 627,
               "widget": "cine_catchlight_size",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
@@ -110995,7 +111211,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 570,
+              "line": 630,
               "tag": "compass_dial",
               "control_name": "CineLightRigCatchlightAngle",
               "callbacks": [],
@@ -111012,7 +111228,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 570,
+              "line": 630,
               "widget": "cine_catchlight_angle",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
@@ -111065,7 +111281,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 891,
+              "line": 905,
               "class": "ALPanelCineLightRig",
               "function": "postBuild",
               "wired_class": "ALPanelCineLightRig",
@@ -111085,7 +111301,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 573,
+              "line": 633,
               "tag": "kit_switch",
               "control_name": "CineLightRigCatchlightActorOnly",
               "callbacks": [],
@@ -111102,7 +111318,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 573,
+              "line": 633,
               "widget": "cine_catchlight_actor_only",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
@@ -111151,7 +111367,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 680,
+              "line": 681,
               "class": "ALPanelCineLightRig",
               "function": "postBuild",
               "wired_class": "ALPanelCineLightRig",
@@ -111162,7 +111378,7 @@
             },
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 830,
+              "line": 844,
               "class": "ALPanelCineLightRig",
               "function": "onFixtureRoleCommit",
               "wired_class": "ALPanelCineLightRig",
@@ -111182,7 +111398,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 578,
+              "line": 638,
               "tag": "combo_box",
               "control_name": null,
               "callbacks": [],
@@ -111197,7 +111413,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 2692,
+              "line": 2700,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -111210,7 +111426,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 4114,
+              "line": 4133,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -111256,7 +111472,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 681,
+              "line": 682,
               "class": "ALPanelCineLightRig",
               "function": "postBuild",
               "wired_class": "ALPanelCineLightRig",
@@ -111267,7 +111483,7 @@
             },
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 832,
+              "line": 846,
               "class": "ALPanelCineLightRig",
               "function": "onFixtureModeCommit",
               "wired_class": "ALPanelCineLightRig",
@@ -111287,7 +111503,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 584,
+              "line": 644,
               "tag": "kit_switch",
               "control_name": null,
               "callbacks": [],
@@ -111302,7 +111518,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 4118,
+              "line": 4137,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -111362,7 +111578,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 682,
+              "line": 683,
               "class": "ALPanelCineLightRig",
               "function": "postBuild",
               "wired_class": "ALPanelCineLightRig",
@@ -111373,7 +111589,7 @@
             },
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 834,
+              "line": 848,
               "class": "ALPanelCineLightRig",
               "function": "onFixturePresetCommit",
               "wired_class": "ALPanelCineLightRig",
@@ -111393,7 +111609,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 587,
+              "line": 647,
               "tag": "combo_box",
               "control_name": null,
               "callbacks": [],
@@ -111408,7 +111624,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 4119,
+              "line": 4138,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -111454,7 +111670,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 683,
+              "line": 684,
               "class": "ALPanelCineLightRig",
               "function": "postBuild",
               "wired_class": "ALPanelCineLightRig",
@@ -111465,7 +111681,7 @@
             },
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 836,
+              "line": 850,
               "class": "ALPanelCineLightRig",
               "function": "onFixtureValuesCommit",
               "wired_class": "ALPanelCineLightRig",
@@ -111485,7 +111701,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 593,
+              "line": 653,
               "tag": "spinner",
               "control_name": null,
               "callbacks": [],
@@ -111500,7 +111716,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 4120,
+              "line": 4139,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -111546,7 +111762,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 684,
+              "line": 685,
               "class": "ALPanelCineLightRig",
               "function": "postBuild",
               "wired_class": "ALPanelCineLightRig",
@@ -111557,7 +111773,7 @@
             },
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 838,
+              "line": 852,
               "class": "ALPanelCineLightRig",
               "function": "onFixtureValuesCommit",
               "wired_class": "ALPanelCineLightRig",
@@ -111577,7 +111793,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 596,
+              "line": 656,
               "tag": "spinner",
               "control_name": null,
               "callbacks": [],
@@ -111592,7 +111808,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 4121,
+              "line": 4140,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -111658,7 +111874,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 685,
+              "line": 686,
               "class": "ALPanelCineLightRig",
               "function": "postBuild",
               "wired_class": "ALPanelCineLightRig",
@@ -111689,7 +111905,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 599,
+              "line": 659,
               "tag": "combo_box",
               "control_name": null,
               "callbacks": [],
@@ -111757,7 +111973,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 686,
+              "line": 687,
               "class": "ALPanelCineLightRig",
               "function": "postBuild",
               "wired_class": "ALPanelCineLightRig",
@@ -111788,7 +112004,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 605,
+              "line": 665,
               "tag": "combo_box",
               "control_name": null,
               "callbacks": [],
@@ -111856,7 +112072,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 687,
+              "line": 688,
               "class": "ALPanelCineLightRig",
               "function": "postBuild",
               "wired_class": "ALPanelCineLightRig",
@@ -111887,7 +112103,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 611,
+              "line": 671,
               "tag": "combo_box",
               "control_name": null,
               "callbacks": [],
@@ -111921,7 +112137,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 1298,
+              "line": 1418,
               "class": "ALPanelCineLightRig",
               "function": "syncGoboLibrary",
               "wired_class": "ALPanelCineLightRig",
@@ -111941,7 +112157,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 242,
+              "line": 243,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -112012,7 +112228,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 688,
+              "line": 689,
               "class": "ALPanelCineLightRig",
               "function": "postBuild",
               "wired_class": "ALPanelCineLightRig",
@@ -112023,7 +112239,7 @@
             },
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 845,
+              "line": 859,
               "class": "ALPanelCineLightRig",
               "function": "onGoboLibraryCommit",
               "wired_class": "ALPanelCineLightRig",
@@ -112043,7 +112259,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 622,
+              "line": 682,
               "tag": "combo_box",
               "control_name": null,
               "callbacks": [],
@@ -112091,7 +112307,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 690,
+              "line": 691,
               "class": "ALPanelCineLightRig",
               "function": "postBuild",
               "wired_class": "ALPanelCineLightRig",
@@ -112111,7 +112327,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 629,
+              "line": 689,
               "tag": "text",
               "control_name": null,
               "callbacks": [],
@@ -112159,7 +112375,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 847,
+              "line": 861,
               "class": "LLFloaterReg",
               "function": "showInstance",
               "wired_class": "ALPanelCineLightRig",
@@ -112179,7 +112395,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 632,
+              "line": 692,
               "tag": "button",
               "control_name": null,
               "callbacks": [],
@@ -112244,7 +112460,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 635,
+              "line": 695,
               "tag": "line_editor",
               "control_name": "CineLightRigCookieUUID",
               "callbacks": [],
@@ -112261,7 +112477,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 635,
+              "line": 695,
               "widget": "cine_cookie",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
@@ -112325,7 +112541,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 667,
+              "line": 668,
               "class": "ALPanelCineLightRig",
               "function": "postBuild",
               "wired_class": "ALPanelCineLightRig",
@@ -112336,7 +112552,7 @@
             },
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 772,
+              "line": 786,
               "class": "ALPanelCineLightRig",
               "function": "onFlarePresetSelected",
               "wired_class": "ALPanelCineLightRig",
@@ -112356,7 +112572,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 640,
+              "line": 700,
               "tag": "combo_box",
               "control_name": null,
               "callbacks": [],
@@ -112421,7 +112637,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 647,
+              "line": 707,
               "tag": "slider",
               "control_name": "RenderLensFlareMaster",
               "callbacks": [],
@@ -112438,7 +112654,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 647,
+              "line": 707,
               "widget": "cine_flare_master",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
@@ -112499,7 +112715,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 652,
+              "line": 712,
               "tag": "slider",
               "control_name": "RenderCineLensFlareStrength",
               "callbacks": [],
@@ -112516,7 +112732,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 652,
+              "line": 712,
               "widget": "cine_flare_rig_strength",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
@@ -112577,7 +112793,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 657,
+              "line": 717,
               "tag": "slider",
               "control_name": "RenderCineLensFlareIntensity",
               "callbacks": [],
@@ -112594,7 +112810,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 657,
+              "line": 717,
               "widget": "cine_flare_rig_intensity",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
@@ -112655,7 +112871,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 662,
+              "line": 722,
               "tag": "slider",
               "control_name": "RenderCineLensFlareRelease",
               "callbacks": [],
@@ -112672,7 +112888,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 662,
+              "line": 722,
               "widget": "cine_flare_release",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
@@ -112733,7 +112949,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 667,
+              "line": 727,
               "tag": "slider",
               "control_name": "RenderCineLensFlareThreshold",
               "callbacks": [],
@@ -112750,7 +112966,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 667,
+              "line": 727,
               "widget": "cine_flare_threshold",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
@@ -112811,7 +113027,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 672,
+              "line": 732,
               "tag": "slider",
               "control_name": "RenderLensFlareStarburst",
               "callbacks": [],
@@ -112828,7 +113044,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 672,
+              "line": 732,
               "widget": "cine_flare_starburst",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
@@ -112889,7 +113105,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 677,
+              "line": 737,
               "tag": "spinner",
               "control_name": "RenderLensFlareStarburstSpikes",
               "callbacks": [],
@@ -112906,7 +113122,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 677,
+              "line": 737,
               "widget": "cine_flare_starburst_spikes",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
@@ -112967,7 +113183,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 680,
+              "line": 740,
               "tag": "spinner",
               "control_name": "RenderLensFlareStarburstSharpness",
               "callbacks": [],
@@ -112984,7 +113200,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 680,
+              "line": 740,
               "widget": "cine_flare_starburst_sharpness",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
@@ -113045,7 +113261,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 683,
+              "line": 743,
               "tag": "spinner",
               "control_name": "RenderLensFlareStarburstLength",
               "callbacks": [],
@@ -113062,7 +113278,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 683,
+              "line": 743,
               "widget": "cine_flare_starburst_length",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
@@ -113123,7 +113339,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 686,
+              "line": 746,
               "tag": "slider",
               "control_name": "RenderLensFlareIris",
               "callbacks": [],
@@ -113140,7 +113356,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 686,
+              "line": 746,
               "widget": "cine_flare_iris",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
@@ -113201,7 +113417,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 691,
+              "line": 751,
               "tag": "slider",
               "control_name": "RenderLensFlareRing",
               "callbacks": [],
@@ -113218,7 +113434,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 691,
+              "line": 751,
               "widget": "cine_flare_ring",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
@@ -113279,7 +113495,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 696,
+              "line": 756,
               "tag": "slider",
               "control_name": "RenderLensFlareCircle",
               "callbacks": [],
@@ -113296,7 +113512,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 696,
+              "line": 756,
               "widget": "cine_flare_circle",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
@@ -113357,7 +113573,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 701,
+              "line": 761,
               "tag": "slider",
               "control_name": "RenderLensFlareArc",
               "callbacks": [],
@@ -113374,7 +113590,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 701,
+              "line": 761,
               "widget": "cine_flare_arc",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
@@ -113435,7 +113651,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 706,
+              "line": 766,
               "tag": "slider",
               "control_name": "RenderLensFlareWarp",
               "callbacks": [],
@@ -113452,7 +113668,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 706,
+              "line": 766,
               "widget": "cine_flare_warp",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
@@ -113513,7 +113729,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 711,
+              "line": 771,
               "tag": "slider",
               "control_name": "RenderLensFlareGhostChroma",
               "callbacks": [],
@@ -113530,7 +113746,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 711,
+              "line": 771,
               "widget": "cine_flare_ghost_chroma",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
@@ -113591,7 +113807,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 716,
+              "line": 776,
               "tag": "slider",
               "control_name": "RenderLensFlareHaloChroma",
               "callbacks": [],
@@ -113608,7 +113824,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 716,
+              "line": 776,
               "widget": "cine_flare_halo_chroma",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
@@ -113669,7 +113885,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 721,
+              "line": 781,
               "tag": "slider",
               "control_name": "RenderLensFlareStreakTipAmount",
               "callbacks": [],
@@ -113686,7 +113902,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 721,
+              "line": 781,
               "widget": "cine_flare_streak_tip",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
@@ -113747,7 +113963,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 726,
+              "line": 786,
               "tag": "slider",
               "control_name": "RenderLensFlareSrcColorAmount",
               "callbacks": [],
@@ -113764,7 +113980,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 726,
+              "line": 786,
               "widget": "cine_flare_src_color",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
@@ -113831,7 +114047,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 733,
+              "line": 793,
               "tag": "combo_box",
               "control_name": "CineLightRigLiveProbeTarget",
               "callbacks": [],
@@ -113872,7 +114088,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 733,
+              "line": 793,
               "widget": "cine_live_probe_target",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
@@ -113933,7 +114149,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 744,
+              "line": 804,
               "tag": "spinner",
               "control_name": "CineLightRigLiveProbeRadius",
               "callbacks": [],
@@ -113974,7 +114190,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 744,
+              "line": 804,
               "widget": "cine_live_probe_radius",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
@@ -114035,7 +114251,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 747,
+              "line": 807,
               "tag": "spinner",
               "control_name": "CineLightRigLiveProbeAmbiance",
               "callbacks": [],
@@ -114076,7 +114292,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 747,
+              "line": 807,
               "widget": "cine_live_probe_ambiance",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
@@ -114137,7 +114353,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 750,
+              "line": 810,
               "tag": "spinner",
               "control_name": "CineLightRigLiveProbeBounceKeep",
               "callbacks": [],
@@ -114178,7 +114394,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 750,
+              "line": 810,
               "widget": "cine_live_probe_bounce_keep",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
@@ -114245,7 +114461,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 753,
+              "line": 813,
               "tag": "combo_box",
               "control_name": "CineLightRigLiveProbeRefresh",
               "callbacks": [],
@@ -114260,7 +114476,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 4343,
+              "line": 4362,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -114273,7 +114489,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 5010,
+              "line": 5029,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -114288,7 +114504,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 753,
+              "line": 813,
               "widget": "cine_live_probe_refresh",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
@@ -114332,7 +114548,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 693,
+              "line": 706,
               "class": "ALPanelCineLightRig",
               "function": "postBuild",
               "wired_class": "ALPanelCineLightRig",
@@ -114343,7 +114559,7 @@
             },
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 804,
+              "line": 818,
               "class": "ALPanelCineLightRig",
               "function": "requestCinematicLiveProbeRefresh",
               "wired_class": "ALPanelCineLightRig",
@@ -114374,7 +114590,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 764,
+              "line": 824,
               "tag": "button",
               "control_name": null,
               "callbacks": [],
@@ -114422,7 +114638,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 692,
+              "line": 705,
               "class": "ALPanelCineLightRig",
               "function": "postBuild",
               "wired_class": "ALPanelCineLightRig",
@@ -114442,7 +114658,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 767,
+              "line": 827,
               "tag": "text",
               "control_name": null,
               "callbacks": [],
@@ -114507,7 +114723,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 773,
+              "line": 833,
               "tag": "kit_switch",
               "control_name": "CineLightRigLiveProbeGizmo",
               "callbacks": [],
@@ -114548,7 +114764,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 773,
+              "line": 833,
               "widget": "cine_live_probe_gizmo",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
@@ -114609,7 +114825,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 776,
+              "line": 836,
               "tag": "spinner",
               "control_name": "CineLightRigLiveProbeOffsetZ",
               "callbacks": [],
@@ -114626,7 +114842,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 776,
+              "line": 836,
               "widget": "cine_live_probe_offset",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
@@ -114679,7 +114895,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 694,
+              "line": 707,
               "class": "ALPanelCineLightRig",
               "function": "postBuild",
               "wired_class": "ALPanelCineLightRig",
@@ -114699,7 +114915,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 779,
+              "line": 839,
               "tag": "spinner",
               "control_name": "CineLightRigLiveProbeManualFaces",
               "callbacks": [],
@@ -114716,7 +114932,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 779,
+              "line": 839,
               "widget": "cine_live_probe_manual_faces",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
@@ -114769,7 +114985,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 695,
+              "line": 708,
               "class": "ALPanelCineLightRig",
               "function": "postBuild",
               "wired_class": "ALPanelCineLightRig",
@@ -114789,7 +115005,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 782,
+              "line": 842,
               "tag": "spinner",
               "control_name": "CineLightRigLiveProbeManualFrames",
               "callbacks": [],
@@ -114806,7 +115022,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 782,
+              "line": 842,
               "widget": "cine_live_probe_manual_frames",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
@@ -114858,7 +115074,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 785,
+              "line": 845,
               "tag": "text",
               "control_name": null,
               "callbacks": [],
@@ -114913,7 +115129,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 698,
+              "line": 711,
               "class": "ALPanelCineLightRig",
               "function": "postBuild",
               "wired_class": "ALPanelCineLightRig",
@@ -114924,7 +115140,7 @@
             },
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 776,
+              "line": 790,
               "class": "ALPanelCineLightRig",
               "function": "onNightMaskPresetSelected",
               "wired_class": "ALPanelCineLightRig",
@@ -114944,7 +115160,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 790,
+              "line": 850,
               "tag": "combo_box",
               "control_name": null,
               "callbacks": [],
@@ -115001,7 +115217,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 701,
+              "line": 714,
               "class": "ALPanelCineLightRig",
               "function": "postBuild",
               "wired_class": "ALPanelCineLightRig",
@@ -115012,7 +115228,7 @@
             },
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 910,
+              "line": 924,
               "class": "ALPanelCineLightRig",
               "function": "onNightMaskDarknessCommit",
               "wired_class": "ALPanelCineLightRig",
@@ -115032,7 +115248,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 796,
+              "line": 856,
               "tag": "slider",
               "control_name": null,
               "callbacks": [],
@@ -115097,7 +115313,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 801,
+              "line": 861,
               "tag": "slider",
               "control_name": "CineLightRigNightMaskDistance",
               "callbacks": [],
@@ -115114,7 +115330,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 801,
+              "line": 861,
               "widget": "cine_night_mask_distance",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
@@ -115175,7 +115391,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 806,
+              "line": 866,
               "tag": "slider",
               "control_name": "CineLightRigNightMaskFeather",
               "callbacks": [],
@@ -115192,7 +115408,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 806,
+              "line": 866,
               "widget": "cine_night_mask_feather",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
@@ -115257,7 +115473,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 811,
+              "line": 871,
               "tag": "combo_box",
               "control_name": "CineLightRigNightMaskShape",
               "callbacks": [],
@@ -115274,7 +115490,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 811,
+              "line": 871,
               "widget": "cine_night_mask_shape",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
@@ -115341,7 +115557,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 820,
+              "line": 880,
               "tag": "combo_box",
               "control_name": "CineLightRigNightMaskTarget",
               "callbacks": [],
@@ -115358,7 +115574,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 820,
+              "line": 880,
               "widget": "cine_night_mask_target",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
@@ -115419,7 +115635,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 834,
+              "line": 894,
               "tag": "kit_switch",
               "control_name": "CineLightRigNightMaskGizmo",
               "callbacks": [],
@@ -115436,7 +115652,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 834,
+              "line": 894,
               "widget": "cine_night_mask_gizmo",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
@@ -115497,7 +115713,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 837,
+              "line": 897,
               "tag": "slider",
               "control_name": "CineLightRigNightMaskHeightOffset",
               "callbacks": [],
@@ -115514,7 +115730,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 837,
+              "line": 897,
               "widget": "cine_night_mask_height",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
@@ -115575,7 +115791,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 842,
+              "line": 902,
               "tag": "slider",
               "control_name": "CineLightRigNightMaskTintStrength",
               "callbacks": [],
@@ -115592,7 +115808,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 842,
+              "line": 902,
               "widget": "cine_night_mask_tint_strength",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
@@ -115653,7 +115869,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 847,
+              "line": 907,
               "tag": "color_swatch",
               "control_name": "CineLightRigNightMaskTintColor",
               "callbacks": [],
@@ -115670,7 +115886,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 847,
+              "line": 907,
               "widget": "cine_night_mask_tint_color",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
@@ -115731,7 +115947,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 850,
+              "line": 910,
               "tag": "slider",
               "control_name": "CineLightRigNightMaskDesaturation",
               "callbacks": [],
@@ -115748,7 +115964,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-              "line": 850,
+              "line": 910,
               "widget": "cine_night_mask_desaturation",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
@@ -120556,7 +120772,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 4249,
+              "line": 4268,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -141822,7 +142038,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 4384,
+              "line": 4403,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -141835,7 +142051,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 5071,
+              "line": 5133,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -143415,7 +143631,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 1827,
+              "line": 1835,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -143428,7 +143644,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 1896,
+              "line": 1904,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -143441,7 +143657,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 1986,
+              "line": 1994,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -148147,7 +148363,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 2145,
+              "line": 2153,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -148160,7 +148376,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 2148,
+              "line": 2156,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -148322,7 +148538,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 2145,
+              "line": 2153,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -148335,7 +148551,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 2148,
+              "line": 2156,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -150097,7 +150313,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 2145,
+              "line": 2153,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -150110,7 +150326,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 2148,
+              "line": 2156,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -150174,7 +150390,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 2145,
+              "line": 2153,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -150187,7 +150403,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 2148,
+              "line": 2156,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -150300,7 +150516,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 2145,
+              "line": 2153,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -150313,7 +150529,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 2148,
+              "line": 2156,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -150426,7 +150642,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 2145,
+              "line": 2153,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -150439,7 +150655,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 2148,
+              "line": 2156,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -150503,7 +150719,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 2145,
+              "line": 2153,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -150516,7 +150732,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 2148,
+              "line": 2156,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -150727,7 +150943,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 2145,
+              "line": 2153,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -150740,7 +150956,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 2148,
+              "line": 2156,
               "class": null,
               "function": null,
               "wired_class": null,

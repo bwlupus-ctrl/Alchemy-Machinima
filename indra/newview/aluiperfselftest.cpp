@@ -1745,6 +1745,14 @@ private:
         if (!mDirectorV2 || entry["probe"].asString() == "selector_segment") return;
         const std::string setting = entry["expect"]["setting"].asString();
         const std::string widget = entry["widget_name"].asString();
+        if (entry["probe"].asString() == "rig_projector_binding")
+        {
+            rememberFunctionalSetting("CineLightRigEnabled");
+            rememberFunctionalSetting("CineLightRigKeyOn");
+            functionalSetControl(gSavedSettings.getControl("CineLightRigEnabled").get(), true);
+            functionalSetControl(gSavedSettings.getControl("CineLightRigKeyOn").get(), true);
+            functionalTickRig();
+        }
         if (entry["page"].asString() == "light_rim_tab" &&
             widget.compare(0, 18, "cine_rig_rim_tron_") == 0)
         {
@@ -3979,6 +3987,17 @@ private:
         const LLSD& test = entry["test_value"];
         if (entry["probe"].asString() == "vc_face_list")
             return functionalPointerClick();
+        if (entry["probe"].asString() == "vcam_test_pattern")
+        {
+            LLView* item = control ? control->findChild<LLView>(
+                "vc_source_type_item_3", true) : nullptr;
+            if (!item) return false;
+            const LLRect rect = item->getLocalRect();
+            item->localPointToScreen(rect.getCenterX(), rect.getCenterY(),
+                                     &mFunctionalScreenX, &mFunctionalScreenY);
+            mFunctionalClickTarget = item->getHandle();
+            return functionalPointerClick();
+        }
         if (exercise == "toggle" || exercise == "click")
         {
             if (!functionalPointerClick()) return false;
@@ -5058,6 +5077,49 @@ private:
             observable = selected;
             expected_ok = expected_ok && selected;
             if (!selected) assertion_failure = "camera selector did not move the selected capture handle";
+        }
+        if (entry["probe"].asString() == "vcam_test_pattern" && mFunctionalVCamModel)
+        {
+            mFunctionalVCamModel->refreshNow();
+            const LLPrismLens::CaptureHandle selected =
+                mFunctionalVCamModel->selectedCapture();
+            const LLPrismLens::CaptureDefinition* capture = nullptr;
+            for (const LLPrismLens::CaptureDefinition& candidate :
+                 mFunctionalVCamModel->registry().mCaptures)
+                if (candidate.mHandle.mId == selected.mId &&
+                    candidate.mHandle.mGeneration == selected.mGeneration)
+                {
+                    capture = &candidate;
+                    break;
+                }
+            const bool pattern = capture && capture->mCamera.mTestPattern;
+            mFunctionalObserved["vcam"]["test_pattern"] = pattern;
+            observable = pattern;
+            expected_ok = expected_ok && pattern;
+            if (!pattern) assertion_failure =
+                "selected capture source is not the test pattern";
+        }
+        if (entry["probe"].asString() == "rig_projector_binding" &&
+            mFunctionalVCamModel)
+        {
+            mFunctionalVCamModel->refreshNow();
+            const U8 rig_slot = static_cast<U8>(
+                ALCineLightRigManager::instance().selectedSlot());
+            const LLUUID capture_id = mFunctionalVCamModel->selectedCapture().mId;
+            bool bound = false;
+            for (const LLPrismLens::ProjectorDefinition& projector :
+                 mFunctionalVCamModel->registry().mProjectors)
+                if (LLPrismLens::sameRigProjectorIdentity(projector, rig_slot, 0) &&
+                    projector.mCapture.mId == capture_id)
+                {
+                    bound = true;
+                    break;
+                }
+            mFunctionalObserved["vcam"]["rig_projector_binding"] = bound;
+            observable = bound;
+            expected_ok = expected_ok && bound;
+            if (!bound) assertion_failure =
+                "stable rig-light projector binding is absent from the registry";
         }
         if (entry["probe"].asString() == "actor_mover_active")
         {

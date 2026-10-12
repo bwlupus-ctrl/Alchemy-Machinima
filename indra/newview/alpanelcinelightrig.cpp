@@ -15,6 +15,7 @@
 #include "alcinelightrig.h"
 #include "alcinelightrigmanager.h"
 #include "alcinelightrigmodel.h"
+#include "llprismlens.h"
 #include "alkitbinding.h"
 #include "alkithistory.h"
 #include "alkitshell.h"
@@ -688,6 +689,18 @@ bool ALPanelCineLightRig::postBuild()
     mGoboLibrary = getChild<LLComboBox>("cine_gobo_library");
     mGoboPreview = getChild<LLIconCtrl>("cine_gobo_preview");
     mGoboSoftness = getChild<LLTextBox>("cine_gobo_softness");
+    for (S32 light = 0; light < ALCineLightRigModel::LIGHT_COUNT; ++light)
+    {
+        mProjectorFeeds[light] = findChild<LLComboBox>(
+            std::string("cine_") + ROLE_WIDGET_NAMES[light] +
+            "_projector_feed");
+        if (mProjectorFeeds[light])
+        {
+            mProjectorFeeds[light]->setCommitCallback(
+                [this, light](LLUICtrl*, const LLSD&)
+                { onProjectorFeedCommit(light); });
+        }
+    }
     mLiveProbeStatus = getChild<LLTextBox>("cine_live_probe_status");
     mLiveProbeLiveStatus = getChild<LLTextBox>("cine_live_probe_live_status");
     mLiveProbeRefreshNow = getChild<LLButton>("cine_live_probe_refresh_now"); // [LiveProbeRefresh]
@@ -753,6 +766,7 @@ bool ALPanelCineLightRig::postBuild()
     populateStaticCombos();
     updateAnchorList();
     refreshSetupList();
+    syncProjectorFeeds(true);
 
     mAnchorCombo->setCommitCallback(
         [this](LLUICtrl*, const LLSD&) { onAnchorSelected(); });
@@ -1142,6 +1156,112 @@ void ALPanelCineLightRig::populateStaticCombos()
         combo->setValue(0);
     }
 
+}
+
+void ALPanelCineLightRig::syncProjectorFeeds(bool force)
+{
+    const LLPrismLens::RegistrySnapshot snapshot =
+        LLPrismLens::registrySnapshot();
+    const U64 revision = snapshot.mConfigurationRevision;
+    const U8 rig_slot = static_cast<U8>(
+        ALCineLightRigManager::instance().selectedSlot());
+    if (!force && revision == mProjectorFeedRevision &&
+        mProjectorFeedRigSlot == static_cast<S32>(rig_slot))
+    {
+        return;
+    }
+    mProjectorFeedRevision = revision;
+    mProjectorFeedRigSlot = static_cast<S32>(rig_slot);
+    U32 camera_count = 0;
+    for (U32 index = 0; index < snapshot.mCaptureCount; ++index)
+        if (snapshot.mCaptures[index].mMode ==
+            LLPrismLens::ECaptureMode::CAMERA_FEED)
+            ++camera_count;
+    for (S32 light = 0; light < ALCineLightRigModel::LIGHT_COUNT; ++light)
+    {
+        LLComboBox* combo = mProjectorFeeds[light];
+        if (!combo) continue;
+        setVisibleIfChanged(combo->getParent(), camera_count != 0);
+        combo->removeall();
+        combo->add("None", LLUUID::null);
+        U32 camera_ordinal = 0;
+        for (U32 index = 0; index < snapshot.mCaptureCount; ++index)
+        {
+            const LLPrismLens::CaptureDefinition& capture =
+                snapshot.mCaptures[index];
+            if (capture.mMode == LLPrismLens::ECaptureMode::CAMERA_FEED)
+                combo->add(llformat("Cam %u", ++camera_ordinal),
+                           capture.mHandle.mId);
+        }
+        LLUUID selected;
+        for (U32 index = 0; index < snapshot.mProjectorCount; ++index)
+        {
+            const LLPrismLens::ProjectorDefinition& projector =
+                snapshot.mProjectors[index];
+            if (projector.mTarget == LLPrismLens::EProjectorTarget::RIG_LIGHT &&
+                projector.mRigSlot == rig_slot &&
+                projector.mRigLight == static_cast<U8>(light))
+            {
+                selected = projector.mCapture.mId;
+                break;
+            }
+        }
+        combo->setValue(selected);
+    }
+}
+
+void ALPanelCineLightRig::onProjectorFeedCommit(S32 light)
+{
+    if (light < 0 || light >= ALCineLightRigModel::LIGHT_COUNT ||
+        !mProjectorFeeds[light])
+    {
+        return;
+    }
+    const LLPrismLens::RegistrySnapshot snapshot =
+        LLPrismLens::registrySnapshot();
+    const U8 rig_slot = static_cast<U8>(
+        ALCineLightRigManager::instance().selectedSlot());
+    LLPrismLens::ProjectorHandle existing;
+    for (U32 index = 0; index < snapshot.mProjectorCount; ++index)
+    {
+        const LLPrismLens::ProjectorDefinition& projector =
+            snapshot.mProjectors[index];
+        if (projector.mTarget == LLPrismLens::EProjectorTarget::RIG_LIGHT &&
+            projector.mRigSlot == rig_slot &&
+            projector.mRigLight == static_cast<U8>(light))
+        {
+            existing = projector.mHandle;
+            break;
+        }
+    }
+    const LLUUID capture_id = mProjectorFeeds[light]->getValue().asUUID();
+    if (capture_id.isNull())
+    {
+        if (existing.mId.notNull()) LLPrismLens::removeProjector(existing);
+        syncProjectorFeeds(true);
+        return;
+    }
+    LLPrismLens::CaptureHandle capture;
+    for (U32 index = 0; index < snapshot.mCaptureCount; ++index)
+    {
+        if (snapshot.mCaptures[index].mHandle.mId == capture_id)
+        {
+            capture = snapshot.mCaptures[index].mHandle;
+            break;
+        }
+    }
+    if (capture.mId.isNull())
+    {
+        syncProjectorFeeds(true);
+        return;
+    }
+    if (existing.mId.notNull())
+        LLPrismLens::reassignProjector(existing, capture);
+    else
+        LLPrismLens::bindRigProjector(
+            capture, rig_slot, static_cast<U8>(light),
+            LLPrismLens::ProjectorSettings(), nullptr);
+    syncProjectorFeeds(true);
 }
 
 std::string ALPanelCineLightRig::fixtureSettingPrefix() const
@@ -2792,6 +2912,7 @@ void ALPanelCineLightRig::draw()
         syncSeedEditor();
         syncFixtureControls();
         syncGoboLibrary();
+        syncProjectorFeeds();
         updateDerivedStatus();
     }
     mRim.tickFrame();
@@ -2810,6 +2931,7 @@ void ALPanelCineLightRig::onVisibilityChange(bool new_visibility)
         syncGroupControls();
         syncFixtureControls(true);
         syncGoboLibrary(true);
+        syncProjectorFeeds(true);
         refreshSetupList(mSetupCombo
             ? mSetupCombo->getSelectedValue().asString() : std::string(),
             true);

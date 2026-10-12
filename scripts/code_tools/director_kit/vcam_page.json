@@ -22,7 +22,7 @@
       {"l": "", "k": "custom", "w": "vc_camera_selector", "h": "Choose the camera edited below, add a camera, or remove the selected capture in one row. Monitor clicks never change this selection.", "custom_tag": "vcam_camera_selector", "bind": "code", "row_height": 36}
     ]},
     {"id": "source", "t": "Source", "k": "rows", "badge": "CAM n", "rows": [
-      {"l": "Source", "k": "segmented", "w": "vc_source_type", "h": "Choose Object, Virtual, or Skeleton POV. Surface Lens captures keep their fixed source.", "it": ["Object", "Virtual", "Skeleton POV"], "iv": [0,1,2], "bind": "code"},
+      {"l": "Source", "k": "segmented", "w": "vc_source_type", "h": "Choose Object, Virtual, Skeleton POV, or the local 512 px test pattern. Surface Lens captures keep their fixed source.", "it": ["Object", "Virtual", "Skeleton POV", "Test pattern"], "iv": [0,1,2,3], "bind": "code"},
       {"l": "Bound to", "k": "readout", "w": "vc_source_bound", "h": "The object, stored transform, or skeleton driver used by this camera.", "bind": "code"},
       {"l": "Object source note", "k": "readout", "w": "vc_source_note_object", "h": "Object cameras follow the selected camera object.", "bind": "code", "show_if": "object"},
       {"l": "Virtual source note", "k": "readout", "w": "vc_source_note_virtual", "h": "Virtual cameras store a position and rotation and need no prim.", "bind": "code", "show_if": "virtual"},

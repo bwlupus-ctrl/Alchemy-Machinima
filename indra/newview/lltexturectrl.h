@@ -499,6 +499,9 @@ private:
     bool mVCamEnabled = false;
     bool mStandardSourcesEnabled = true;
     LLUUID mVCamCaptureID;
+    LLUUID mOriginalVCamCaptureID;
+    bool mVCamSelectionInitialized = false;
+    bool mPickerFinalized = false;
     boost::signals2::scoped_connection mVCamConfigurationConnection;
     boost::signals2::scoped_connection mVCamPreviewConnection;
 

@@ -96,6 +96,8 @@ private:
     void onFixturePresetCommit();
     void onFixtureValuesCommit();
     void syncGoboLibrary(bool force = false);
+    void syncProjectorFeeds(bool force = false);
+    void onProjectorFeedCommit(S32 light);
     void onGoboLibraryCommit();
     void onManualCommit();
     void applyManualLock();
@@ -176,6 +178,9 @@ private:
     LLComboBox* mGoboLibrary = nullptr;
     LLIconCtrl* mGoboPreview = nullptr;
     LLTextBox* mGoboSoftness = nullptr;
+    LLComboBox* mProjectorFeeds[4] = {};
+    U64 mProjectorFeedRevision = 0;
+    S32 mProjectorFeedRigSlot = -1;
     std::vector<LLUICtrl*> mAdvancedDrivenControls;
     LLTextBox* mClipStatus[4] = {};
     LLCheckBoxCtrl* mShaftControls[4] = {};

@@ -168,4 +168,66 @@ void prism_projector_object::test<10>()
     ensure("malformed gel defaults white",
            look.mGelTint == LLColor3(1.f, 1.f, 1.f));
 }
+
+template<> template<>
+void prism_projector_object::test<11>()
+{
+    set_test_name("rig projector identity survives emitter rebuilds");
+    LLPrismLens::ProjectorDefinition binding;
+    binding.mTarget = LLPrismLens::EProjectorTarget::RIG_LIGHT;
+    binding.mRigSlot = 2;
+    binding.mRigLight = 0;
+    binding.mObjectId.generate();
+    const LLUUID old_emitter = binding.mObjectId;
+    binding.mObjectId.generate();
+    ensure("emitter pointer identity changed", binding.mObjectId != old_emitter);
+    ensure("stable rig role still resolves",
+           LLPrismLens::sameRigProjectorIdentity(binding, 2, 0));
+    ensure("another role does not alias",
+           !LLPrismLens::sameRigProjectorIdentity(binding, 2, 1));
+}
+
+template<> template<>
+void prism_projector_object::test<12>()
+{
+    set_test_name("rig identity rejects stale slots and lights");
+    ensure("last valid identity",
+           LLPrismLens::validRigProjectorIdentity(4, 3, 5, 4));
+    ensure("stale rig slot",
+           !LLPrismLens::validRigProjectorIdentity(5, 0, 5, 4));
+    ensure("stale light role",
+           !LLPrismLens::validRigProjectorIdentity(0, 4, 5, 4));
+}
+
+template<> template<>
+void prism_projector_object::test<13>()
+{
+    set_test_name("display reassignment retains output used by projectors");
+    ensure("projector keeps retained output",
+           LLPrismLens::captureOutputRequired(0, 1));
+    ensure("empty capture releases output",
+           !LLPrismLens::captureOutputRequired(0, 0));
+}
+
+template<> template<>
+void prism_projector_object::test<14>()
+{
+    set_test_name("Gate projector follows its own subscription on capture delete");
+    ensure("fixed projector is deleted",
+           LLPrismLens::removeProjectorWithCapture(true, false));
+    ensure("Gate projector survives its current route deletion",
+           !LLPrismLens::removeProjectorWithCapture(true, true));
+}
+
+template<> template<>
+void prism_projector_object::test<15>()
+{
+    set_test_name("loaded non-projector target is quarantined, not scene-fatal");
+    ensure("loaded point light is quarantined",
+           LLPrismLens::quarantineLoadedProjectorTarget(
+               true, true, false, true, false));
+    ensure("valid projector remains ready",
+           !LLPrismLens::quarantineLoadedProjectorTarget(
+               true, true, false, true, true));
+}
 }

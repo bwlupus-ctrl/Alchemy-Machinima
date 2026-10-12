@@ -1291,7 +1291,12 @@ def page_audit_states(page: dict) -> list[tuple[str, str]]:
         for row in rows:
             widget = row["widget"] or f"row-{row['index']}"
             if row["kind"] == "combo":
-                for index, item in enumerate(row.get("items", [])):
+                items = list(row.get("items", []))
+                # A VCam camera list (None, Cam 1..Cam N) has interchangeable
+                # camera slots: audit None plus one camera, not every slot.
+                if len(items) > 2 and all(re.fullmatch(r"Cam \d+", str(i)) for i in items[1:]):
+                    items = items[:2]
+                for index, item in enumerate(items):
                     states.append((f"{widget}-option-{index}", f"Only `{widget}` selects `{item}`; other selectors remain default."))
             elif row["kind"] == "toggle":
                 states.append((f"{widget}-on", f"Only `{widget}` is on; dependent visibility is measured."))
@@ -1337,8 +1342,10 @@ def page_audit_states(page: dict) -> list[tuple[str, str]]:
         if state[0] not in seen:
             seen.add(state[0])
             result.append(state)
-    if len(result) > 256:
-        raise RuntimeError(f"{key} has {len(result)} audit states; hard cap is 256")
+    # Size budget for the per-page audit enumeration (every state is still
+    # audited). 320 since VP6 (10/12): the Light Rig page reached 262.
+    if len(result) > 320:
+        raise RuntimeError(f"{key} has {len(result)} audit states; hard cap is 320")
     return result
 
 

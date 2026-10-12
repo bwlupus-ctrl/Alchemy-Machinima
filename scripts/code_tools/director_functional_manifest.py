@@ -1004,6 +1004,11 @@ def synthetic_entries(xi, settings, csv_pairs, page_meta, presets, preset_writte
                     "camera creation needs a live view or in-world selection", ["requires_world"])
             if widget == "vc_remove_capture":
                 action, reason, hazards = "SKIP", "destructive (remove capture)", ["requires_world"]
+            if widget == "vc_source_type":
+                action, reason, hazards = ("DEFER_INWORLD",
+                    "test-pattern source needs the isolated in-world VCam fixture",
+                    ["requires_world"])
+                test = {"item_index": 3, "label": "Test pattern", "value": 3}
             expect = ({"setting": setting, "type": sinfo.get("type", ""), "value":
                        test.get("value") if isinstance(test, dict) and "value" in test else test}
                       if setting else {"ui": "VCam owner-installed handler fires"})
@@ -1022,11 +1027,40 @@ def synthetic_entries(xi, settings, csv_pairs, page_meta, presets, preset_writte
                       "min": row.get("mn"), "max": row.get("mx"), "increment": row.get("st"),
                       "callbacks": "ALPanelDirectorVCam::onControl", "owner": "ALPanelDirectorVCam",
                       "evidence": "scripts/code_tools/director_kit/vcam_page.json",
-                      "probe": "vcam_row", "known_gap": False, "suspect": False})
+                      "probe": "vcam_test_pattern" if widget == "vc_source_type" else "vcam_row",
+                      "known_gap": False, "suspect": False})
+            if widget == "vc_source_type":
+                e["inworld_allowed"] = True
+                expect = {"state": "selected capture source is test pattern"}
             finish_synthetic(e, action, reason, hazards, test, expect,
                              {"setting": setting, "value": default} if setting else
                              {"ui": "restore VCam row pre-test state"})
             out.append(e)
+    # The rig feed combo is generated from director_mockup_data.json rather than
+    # vcam_page.json.  Keep an explicit row with a registry oracle so a commit
+    # can never PASS merely because its handler ran.
+    e = base_entry(page_meta, "cine_light_rig_tab", "v2",
+                   "synthetic:rig_projector_feed")
+    e.update({"id": "v2:cine_light_rig_tab:cine_key_projector_feed:synthetic",
+              "csv_index": None, "card": "cine_light_role_selector",
+              "card_title": "Key", "row_label": "Projector feed",
+              "xui_file": "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
+              "xui_line": None, "widget_name": "cine_key_projector_feed",
+              "widget_type": "combo", "csv_kind": "combo",
+              "wiring_status": "WIRED_CPP", "resolution": "generated_rig",
+              "exercise": "select_item", "setting": None,
+              "setting_source": "VCam projector registry", "setting_type": None,
+              "default": None, "min": None, "max": None, "increment": None,
+              "callbacks": "ALPanelCineLightRig::onProjectorFeedCommit",
+              "owner": "ALPanelCineLightRig",
+              "evidence": "scripts/code_tools/director_kit/director_mockup_data.json",
+              "probe": "rig_projector_binding", "inworld_allowed": True})
+    finish_synthetic(e, "DEFER_INWORLD",
+                     "rig projector binding needs the isolated in-world VCam fixture",
+                     ["requires_world"], {"item_index": 1, "resolve": "runtime"},
+                     {"state": "stable rig-light registry binding is present"},
+                     {"state": "isolated VCam fixture is restored after the run"})
+    out.append(e)
     for index, section in enumerate(vcam.get("sections", [])):
         label = section.get("label", section.get("id", ""))
         widget = "vcam_chip_%d" % index

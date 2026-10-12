@@ -275,6 +275,7 @@ struct CameraSettings
     // forward and (0,1,0)*mVirtualRot == view up). mLocalEyeOffset is NOT applied
     // to a virtual camera (offset is an object-rig convenience only).
     bool         mVirtual  = false; // objectless: use stored transform, not mCameraObjectId
+    bool         mTestPattern = false; // objectless, static local SMPTE/orientation source
     LLVector3    mVirtualPos;       // stored eye position, AGENT space
     LLQuaternion mVirtualRot;       // stored orientation (fwd = local -Z, up = local +Y)
 
@@ -733,6 +734,40 @@ struct ProjectorDefinition
     std::string mQuarantineReason;
 };
 
+inline bool validRigProjectorIdentity(U8 rig_slot, U8 rig_light,
+                                      U8 rig_count, U8 light_count)
+{
+    return rig_slot < rig_count && rig_light < light_count;
+}
+
+inline bool sameRigProjectorIdentity(const ProjectorDefinition& projector,
+                                     U8 rig_slot, U8 rig_light)
+{
+    return projector.mTarget == EProjectorTarget::RIG_LIGHT &&
+           projector.mRigSlot == rig_slot && projector.mRigLight == rig_light;
+}
+
+inline bool captureOutputRequired(U32 display_count, U32 projector_count)
+{
+    return display_count != 0 || projector_count != 0;
+}
+
+inline bool removeProjectorWithCapture(bool owns_removed_capture,
+                                       bool gate_subscribed)
+{
+    return owns_removed_capture && !gate_subscribed;
+}
+
+inline bool quarantineLoadedProjectorTarget(bool object_present,
+                                            bool live_volume,
+                                            bool hud_attachment,
+                                            bool light,
+                                            bool spotlight)
+{
+    return !object_present || !live_volume || hud_attachment ||
+           !light || !spotlight;
+}
+
 // Registry-facing description of the retained producer. VP3 converts this
 // signal into the pipeline-owned opaque, mipmapped cookie; callers never retain
 // the source target pointer or change registry/target identity.
@@ -923,6 +958,11 @@ ERegistryResult bindProjector(const CaptureHandle& capture,
                               const ProjectorSettings& settings,
                               ProjectorHandle* binding,
                               std::string* reason = nullptr);
+ERegistryResult bindRigProjector(const CaptureHandle& capture,
+                                 U8 rig_slot, U8 rig_light,
+                                 const ProjectorSettings& settings,
+                                 ProjectorHandle* binding,
+                                 std::string* reason = nullptr);
 ERegistryResult reassignProjector(const ProjectorHandle& binding,
                                   const CaptureHandle& capture,
                                   std::string* reason = nullptr);

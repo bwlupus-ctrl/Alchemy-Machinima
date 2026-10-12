@@ -10,6 +10,7 @@
 #include "llprismgate.h"
 
 #include "aldirectorswitchermodel.h"
+#include "alcinelightrigmanager.h"
 #include "lldirectorcast.h"
 
 #include "llappviewer.h"
@@ -115,6 +116,77 @@ constexpr U32 MIN_TARGET_EXTENT = 64;
 constexpr U32 MAX_TARGET_EXTENT = 1024;
 constexpr F64 SURFACE_CACHE_REVALIDATE_SECONDS = 4.0;
 constexpr F64 SURFACE_CACHE_REVALIDATE_JITTER_SECONDS = 1.0;
+constexpr U32 TEST_PATTERN_SIZE = 512;
+
+const U8* testPatternPixels()
+{
+    static std::array<U8, TEST_PATTERN_SIZE * TEST_PATTERN_SIZE * 4> pixels{};
+    static bool generated = false;
+    if (generated) return pixels.data();
+    static const U8 bars[7][3] = {
+        {191, 191, 191}, {191, 191, 0}, {0, 191, 191}, {0, 191, 0},
+        {191, 0, 191}, {191, 0, 0}, {0, 0, 191}
+    };
+    for (U32 y = 0; y < TEST_PATTERN_SIZE; ++y)
+    {
+        for (U32 x = 0; x < TEST_PATTERN_SIZE; ++x)
+        {
+            U8* pixel = &pixels[(y * TEST_PATTERN_SIZE + x) * 4];
+            if (y >= 170)
+            {
+                const U32 bar = llmin(6u, x * 7u / TEST_PATTERN_SIZE);
+                pixel[0] = bars[bar][0]; pixel[1] = bars[bar][1];
+                pixel[2] = bars[bar][2];
+            }
+            else
+            {
+                const bool checker = ((x / 32u) ^ (y / 32u)) & 1u;
+                pixel[0] = pixel[1] = pixel[2] = checker ? 36 : 12;
+            }
+            pixel[3] = 255;
+        }
+    }
+    const auto white = [](S32 x, S32 y)
+    {
+        if (x < 0 || y < 0 || x >= static_cast<S32>(TEST_PATTERN_SIZE) ||
+            y >= static_cast<S32>(TEST_PATTERN_SIZE)) return;
+        U8* pixel = &pixels[(y * TEST_PATTERN_SIZE + x) * 4];
+        pixel[0] = pixel[1] = pixel[2] = pixel[3] = 255;
+    };
+    // Strong top and left orientation arrows.
+    for (S32 d = -3; d <= 3; ++d)
+    {
+        for (S32 y = 360; y < 486; ++y) white(256 + d, y);
+        for (S32 i = 0; i < 42; ++i)
+        {
+            white(256 - i + d, 486 - i);
+            white(256 + i + d, 486 - i);
+            white(24 + i, 256 + d);
+            white(24 + i, 256 - i + d);
+            white(24 + i, 256 + i + d);
+        }
+    }
+    // Tiny allocation-free 5x7 label: TOP-LEFT.
+    static const U8 glyphs[8][7] = {
+        {31,4,4,4,4,4,4}, {14,17,17,17,17,17,14},
+        {30,17,17,30,16,16,16}, {0,0,0,31,0,0,0},
+        {16,16,16,16,16,16,31}, {31,16,16,30,16,16,31},
+        {31,16,16,30,16,16,16}, {31,4,4,4,4,4,4}
+    };
+    S32 pen_x = 12;
+    for (const auto& glyph : glyphs)
+    {
+        for (S32 row = 0; row < 7; ++row)
+            for (S32 col = 0; col < 5; ++col)
+                if (glyph[row] & (1u << (4 - col)))
+                    for (S32 yy = 0; yy < 3; ++yy)
+                        for (S32 xx = 0; xx < 3; ++xx)
+                            white(pen_x + col * 3 + xx, 496 - row * 3 - yy);
+        pen_x += 18;
+    }
+    generated = true;
+    return pixels.data();
+}
 
 LLVector3 otsSubjectBase(LLVOAvatar* avatar)
 {
@@ -1859,6 +1931,20 @@ struct PrismProjector
     U32 mBoundFrame = 0;
 };
 
+LLVOVolume* resolveRigProjector(U8 rig_slot, U8 rig_light)
+{
+    if (rig_slot >= ALCineLightRigManager::SLOT_COUNT ||
+        rig_light >= ALCineLightRigModel::LIGHT_COUNT)
+    {
+        return nullptr;
+    }
+    const ALCineLightRigManager::Slot slot =
+        static_cast<ALCineLightRigManager::Slot>(rig_slot);
+    const LLUUID emitter_id =
+        ALCineLightRigManager::instance().at(slot).projectorId(rig_light);
+    return dynamic_cast<LLVOVolume*>(gObjectList.findObject(emitter_id));
+}
+
 // Private, short-lived transaction state for the OTS replacement operation.
 // It is deliberately not an identity/history API: the snapshot exists only on
 // the buildOtsPairFromSubjects() stack and is consumed on immediate failure.
@@ -2211,6 +2297,74 @@ public:
         return LLPrismLens::ERegistryResult::OK;
     }
 
+    LLPrismLens::ERegistryResult bindRigProjector(
+        const LLPrismLens::CaptureHandle& capture_handle, U8 rig_slot,
+        U8 rig_light, const LLPrismLens::ProjectorSettings& settings,
+        LLPrismLens::ProjectorHandle* handle, std::string* reason)
+    {
+        if (!validProjectorSettings(settings, reason))
+            return LLPrismLens::ERegistryResult::INVALID_CONFIGURATION;
+        const S32 capture_slot = findCapture(capture_handle);
+        if (capture_slot < 0)
+        {
+            if (reason) *reason = "That capture no longer exists.";
+            return LLPrismLens::ERegistryResult::STALE_HANDLE;
+        }
+        if (mLenses[capture_slot].mMode !=
+            LLPrismLens::ECaptureMode::CAMERA_FEED)
+        {
+            if (reason) *reason = "Only Camera Feed captures can feed a projector.";
+            return LLPrismLens::ERegistryResult::INVALID_CONFIGURATION;
+        }
+        if (rig_slot >= ALCineLightRigManager::SLOT_COUNT ||
+            rig_light >= ALCineLightRigModel::LIGHT_COUNT)
+        {
+            if (reason) *reason = "That rig light identity is invalid.";
+            return LLPrismLens::ERegistryResult::INVALID_SELECTION;
+        }
+        for (const PrismProjector& existing : mProjectors)
+        {
+            if (existing.mOccupied &&
+                existing.mTarget == LLPrismLens::EProjectorTarget::RIG_LIGHT &&
+                existing.mRigSlot == rig_slot && existing.mRigLight == rig_light)
+            {
+                if (reason) *reason = "That rig light already has a VCam feed.";
+                return LLPrismLens::ERegistryResult::DUPLICATE;
+            }
+        }
+        const S32 projector_slot = freeProjectorSlot();
+        U64 generation = 0;
+        if (projector_slot < 0 || !allocateGeneration(generation))
+        {
+            if (reason) *reason = "VCam projector capacity or handle generation exhausted.";
+            return LLPrismLens::ERegistryResult::AT_CAPACITY;
+        }
+        PrismProjector projector;
+        projector.mOccupied = true;
+        projector.mHandle.mId.generate();
+        projector.mHandle.mGeneration = generation;
+        projector.mCaptureSlot = static_cast<U32>(capture_slot);
+        projector.mCaptureGeneration = mLenses[capture_slot].mHandle.mGeneration;
+        projector.mTarget = LLPrismLens::EProjectorTarget::RIG_LIGHT;
+        projector.mRigSlot = rig_slot;
+        projector.mRigLight = rig_light;
+        projector.mSettings = settings;
+        projector.mSettings.mEffects.clampAndValidate();
+        projector.mRuntime.mHealth = resolveRigProjector(rig_slot, rig_light)
+            ? LLPrismLens::EDisplayHealth::READY
+            : LLPrismLens::EDisplayHealth::OFFLINE;
+        projector.mBoundFrame = gFrameCount;
+        mProjectors[projector_slot] = projector;
+        ++mLenses[capture_slot].mProjectorCount;
+        gPipeline.ensurePrismProjectorFeed(projector.mHandle,
+                                           settings.mResolution,
+                                           settings.mResolution);
+        ++mRevision;
+        if (handle) *handle = projector.mHandle;
+        if (reason) reason->clear();
+        return LLPrismLens::ERegistryResult::OK;
+    }
+
     LLPrismLens::ERegistryResult reassignProjector(
         const LLPrismLens::ProjectorHandle& projector_handle,
         const LLPrismLens::CaptureHandle& capture_handle,
@@ -2226,13 +2380,16 @@ public:
             return LLPrismLens::ERegistryResult::STALE_HANDLE;
         }
         PrismProjector& projector = mProjectors[projector_slot];
-        LLViewerObject* object = gObjectList.findObject(projector.mObjectId);
-        const LLPrismLens::ActionStatus status = projectorTargetStatus(
-            capture_handle, object, &projector_handle);
-        if (!status.allowed())
+        if (projector.mTarget == LLPrismLens::EProjectorTarget::OBJECT)
         {
-            if (reason) *reason = status.mReason;
-            return status.mResult;
+            LLViewerObject* object = gObjectList.findObject(projector.mObjectId);
+            const LLPrismLens::ActionStatus status = projectorTargetStatus(
+                capture_handle, object, &projector_handle);
+            if (!status.allowed())
+            {
+                if (reason) *reason = status.mReason;
+                return status.mResult;
+            }
         }
         if (projector.mCaptureSlot == static_cast<U32>(capture_slot) &&
             projector.mCaptureGeneration ==
@@ -2284,6 +2441,7 @@ public:
         capture.mMode = LLPrismLens::ECaptureMode::CAMERA_FEED;
         capture.mLabel = defaultLabel(capture.mMode, false);
         capture.mCameraObjectId = object_id;
+        capture.mCamera.mTestPattern = false;
         capture.mRuntime.mActivity = LLPrismLens::EActivityState::IDLE;
         capture.mNextDueTime = LLTimer::getTotalSeconds();
         mLenses[slot] = capture;
@@ -2517,8 +2675,9 @@ public:
         }
         if (mLenses[old_capture_slot].mDisplayCount > 0)
             --mLenses[old_capture_slot].mDisplayCount;
-        if (mLenses[old_capture_slot].mDisplayCount == 0 &&
-            mLenses[old_capture_slot].mProjectorCount == 0)
+        if (!LLPrismLens::captureOutputRequired(
+                mLenses[old_capture_slot].mDisplayCount,
+                mLenses[old_capture_slot].mProjectorCount))
         {
             suppressOutput(old_capture_slot);
         }
@@ -3427,7 +3586,7 @@ public:
         // forbidden -- there is no spotlight object to read). The non-virtual
         // path below is byte-identical to before.
         F32 vertical_fov = capture.mCamera.mFixedVerticalFovRad;
-        if (capture.mCamera.mVirtual)
+        if (!capture.mCamera.mTestPattern && capture.mCamera.mVirtual)
         {
             if (!capture.mCamera.mVirtualPos.isFinite() ||
                 !capture.mCamera.mVirtualRot.isFinite())
@@ -3511,8 +3670,10 @@ public:
             std::memcpy(frame.mMainViewport, viewport, sizeof(frame.mMainViewport));
             makeDebugRect(viewport, frame.mDebugRect);
             frame.mResolutionScale = 1.f;
-            frame.mTargetWidth = LLPrismPreviewPolicy::WIDTH;
-            frame.mTargetHeight = LLPrismPreviewPolicy::HEIGHT;
+            frame.mTargetWidth = capture.mCamera.mTestPattern
+                ? TEST_PATTERN_SIZE : LLPrismPreviewPolicy::WIDTH;
+            frame.mTargetHeight = capture.mCamera.mTestPattern
+                ? TEST_PATTERN_SIZE : LLPrismPreviewPolicy::HEIGHT;
             frame.mPrepared = true;
             capture.mPreviewOnly = true;
             capture.mRuntime.mPreviewOnly = true;
@@ -3526,7 +3687,8 @@ public:
 
         // One canonical aspect belongs to the producer. Sibling faces never
         // allocate additional targets; they apply Fit/Fill/Stretch at composite.
-        const F32 aspect = capture.mCamera.mOutputAspect;
+        const F32 aspect = capture.mCamera.mTestPattern
+            ? 1.f : capture.mCamera.mOutputAspect;
         F32 ideal_width = static_cast<F32>(required_width);
         F32 ideal_height = static_cast<F32>(required_height);
         if (ideal_width / ideal_height < aspect)
@@ -3552,10 +3714,14 @@ public:
         std::memcpy(frame.mMainViewport, viewport, sizeof(frame.mMainViewport));
         makeDebugRect(viewport, frame.mDebugRect);
         frame.mResolutionScale = prismAppliedResolutionScale();
-        frame.mTargetWidth = llclamp(static_cast<U32>(ll_round(ideal_width)),
-                                     MIN_TARGET_EXTENT, MAX_TARGET_EXTENT);
-        frame.mTargetHeight = llclamp(static_cast<U32>(ll_round(ideal_height)),
-                                      MIN_TARGET_EXTENT, MAX_TARGET_EXTENT);
+        frame.mTargetWidth = capture.mCamera.mTestPattern
+            ? TEST_PATTERN_SIZE
+            : llclamp(static_cast<U32>(ll_round(ideal_width)),
+                      MIN_TARGET_EXTENT, MAX_TARGET_EXTENT);
+        frame.mTargetHeight = capture.mCamera.mTestPattern
+            ? TEST_PATTERN_SIZE
+            : llclamp(static_cast<U32>(ll_round(ideal_height)),
+                      MIN_TARGET_EXTENT, MAX_TARGET_EXTENT);
         frame.mPrepared = true;
         return true;
     }
@@ -4092,6 +4258,9 @@ public:
             }
         }
         capture.mCameraObjectId = object_id;
+        capture.mCamera.mVirtual = false;
+        capture.mCamera.mTestPattern = false;
+        capture.mCamera.mBonePov.mEnabled = false;
         suppressOutput(static_cast<U32>(slot));
         ++mRevision;
         if (reason) reason->clear();
@@ -4207,9 +4376,15 @@ public:
         // than rejected. For a non-virtual capture `corrected` == `settings`, so
         // the object-anchored path stays byte-identical.
         LLPrismLens::CameraSettings corrected = settings;
-        if (corrected.mVirtual)
+        if (corrected.mVirtual || corrected.mTestPattern)
         {
             corrected.mFovMode = LLPrismLens::EFovMode::FIXED;
+        }
+        if (corrected.mTestPattern)
+        {
+            corrected.mVirtual = false;
+            corrected.mBonePov.mEnabled = false;
+            corrected.mOutputAspect = 1.f;
         }
         if (!validCameraSettings(corrected, reason)) return false;
         if (!corrected.mVirtual &&
@@ -5331,13 +5506,18 @@ public:
         LLPrismLens::EDisplayHealth health = LLPrismLens::EDisplayHealth::READY;
         const char* reason = "";
         bool quarantined = false;
-        LLViewerObject* object = gObjectList.findObject(projector.mObjectId);
+        LLViewerObject* object = projector.mTarget ==
+                LLPrismLens::EProjectorTarget::RIG_LIGHT
+            ? resolveRigProjector(projector.mRigSlot, projector.mRigLight)
+            : gObjectList.findObject(projector.mObjectId);
         LLVOVolume* volume = object
             ? dynamic_cast<LLVOVolume*>(object) : nullptr;
         if (!object || object->isDead())
         {
             health = LLPrismLens::EDisplayHealth::OFFLINE;
-            reason = "Projector object is outside the local object list.";
+            reason = projector.mTarget == LLPrismLens::EProjectorTarget::RIG_LIGHT
+                ? "Rig projector emitter is rebuilding or offline."
+                : "Projector object is outside the local object list.";
             quarantined = true;
         }
         else if (!volume || object->isHUDAttachment())
@@ -5397,8 +5577,11 @@ public:
             demanded = true;
             U32 width = projector.mSettings.mResolution;
             U32 height = projector.mSettings.mResolution;
-            LLVOVolume* volume = dynamic_cast<LLVOVolume*>(
-                gObjectList.findObject(projector.mObjectId));
+            LLVOVolume* volume = projector.mTarget ==
+                    LLPrismLens::EProjectorTarget::RIG_LIGHT
+                ? resolveRigProjector(projector.mRigSlot, projector.mRigLight)
+                : dynamic_cast<LLVOVolume*>(
+                    gObjectList.findObject(projector.mObjectId));
             if (volume)
             {
                 const LLVector3 scale = volume->getScale();
@@ -5443,9 +5626,16 @@ public:
         const LLUUID& id = volume->getID();
         for (PrismProjector& projector : mProjectors)
         {
+            const bool matches_object = projector.mTarget ==
+                    LLPrismLens::EProjectorTarget::OBJECT &&
+                projector.mObjectId == id;
+            LLVOVolume* rig_volume = projector.mTarget ==
+                    LLPrismLens::EProjectorTarget::RIG_LIGHT
+                ? resolveRigProjector(projector.mRigSlot, projector.mRigLight)
+                : nullptr;
             if (projector.mOccupied &&
-                projector.mTarget == LLPrismLens::EProjectorTarget::OBJECT &&
-                projector.mObjectId == id && !projector.mQuarantined)
+                (matches_object || rig_volume == volume) &&
+                !projector.mQuarantined)
             {
                 projector.mRuntime.mLastConsumedFrame = gFrameCount;
                 return;
@@ -5495,9 +5685,15 @@ public:
         if (!volume) return false;
         for (PrismProjector& projector : mProjectors)
         {
+            const bool matches_object = projector.mTarget ==
+                    LLPrismLens::EProjectorTarget::OBJECT &&
+                projector.mObjectId == volume->getID();
+            LLVOVolume* rig_volume = projector.mTarget ==
+                    LLPrismLens::EProjectorTarget::RIG_LIGHT
+                ? resolveRigProjector(projector.mRigSlot, projector.mRigLight)
+                : nullptr;
             if (!projector.mOccupied ||
-                projector.mTarget != LLPrismLens::EProjectorTarget::OBJECT ||
-                projector.mObjectId != volume->getID())
+                (!matches_object && rig_volume != volume))
             {
                 continue;
             }
@@ -6050,6 +6246,7 @@ public:
                 // No quat<->LLSD helper exists here; hand-serialize pos (3-array)
                 // and rot (4-array x,y,z,w), mirroring local_eye_offset above.
                 item["virtual"] = capture.mCamera.mVirtual;
+                item["test_pattern"] = capture.mCamera.mTestPattern;
                 LLSD virtual_pos = LLSD::emptyArray();
                 virtual_pos.append(capture.mCamera.mVirtualPos.mV[VX]);
                 virtual_pos.append(capture.mCamera.mVirtualPos.mV[VY]);
@@ -6217,8 +6414,14 @@ public:
                 ? (gate_hint_slot >= 0
                     ? mLenses[gate_hint_slot].mHandle.mId : LLUUID::null)
                 : mLenses[projector.mCaptureSlot].mHandle.mId;
-            item["target"] = "object";
+            item["target"] = projector.mTarget ==
+                LLPrismLens::EProjectorTarget::RIG_LIGHT ? "rig" : "object";
             item["object_id"] = projector.mObjectId;
+            if (projector.mTarget == LLPrismLens::EProjectorTarget::RIG_LIGHT)
+            {
+                item["rig_slot"] = projector.mRigSlot;
+                item["rig_light"] = projector.mRigLight;
+            }
             item["gate_source"] = projector.mGateSubscribed;
             LLSD settings = LLSD::emptyMap();
             switch (projector.mSettings.mFitMode)
@@ -6322,6 +6525,10 @@ public:
             U64 mGeneration = 0;
             LLUUID mCaptureId;
             LLUUID mObjectId;
+            LLPrismLens::EProjectorTarget mTarget =
+                LLPrismLens::EProjectorTarget::OBJECT;
+            U8 mRigSlot = 0;
+            U8 mRigLight = 0;
             LLPrismLens::ProjectorSettings mSettings;
             bool mGateSubscribed = false;
             bool mQuarantined = false;
@@ -6392,6 +6599,7 @@ public:
         std::set<std::string> display_identities;
         std::set<LLUUID> projector_ids;
         std::set<LLUUID> projector_objects;
+        std::set<U32> projector_rig_targets;
         for (LLSD::array_const_iterator it = captures_data.beginArray();
              it != captures_data.endArray(); ++it)
         {
@@ -6516,6 +6724,8 @@ public:
                 // "Null UUID is intentionally unbound" path above).
                 if (item.has("virtual"))
                     parsed.mCamera.mVirtual = item["virtual"].asBoolean();
+                if (item.has("test_pattern"))
+                    parsed.mCamera.mTestPattern = item["test_pattern"].asBoolean();
                 if (item.has("virtual_pos") && is_numeric_array(item["virtual_pos"], 3))
                 {
                     parsed.mCamera.mVirtualPos.setVec(
@@ -6657,10 +6867,16 @@ public:
                         settings.mScaleAware = bone["scale_aware"].asBoolean();
                     }
                 }
-                // A virtual camera cannot follow a projector; soft-correct a
-                // stale mode to FIXED so the scene loads instead of failing.
-                if (parsed.mCamera.mVirtual)
+                // Objectless and procedural cameras cannot follow a projector;
+                // soft-correct a stale mode so the scene remains loadable.
+                if (parsed.mCamera.mVirtual || parsed.mCamera.mTestPattern)
                     parsed.mCamera.mFovMode = LLPrismLens::EFovMode::FIXED;
+                if (parsed.mCamera.mTestPattern)
+                {
+                    parsed.mCamera.mVirtual = false;
+                    parsed.mCamera.mBonePov.mEnabled = false;
+                    parsed.mCamera.mOutputAspect = 1.f;
+                }
 
                 std::string camera_reason;
                 if (!validCameraSettings(parsed.mCamera, &camera_reason)) return fail(camera_reason);
@@ -6689,14 +6905,18 @@ public:
                 {
                     if (existing.mMode == parsed.mMode &&
                         (parsed.mMode != LLPrismLens::ECaptureMode::CAMERA_FEED ||
-                         existing.mCamera.mVirtual == parsed.mCamera.mVirtual))
+                         (existing.mCamera.mVirtual == parsed.mCamera.mVirtual &&
+                          existing.mCamera.mTestPattern ==
+                              parsed.mCamera.mTestPattern)))
                         ++ordinal;
                 }
                 if (parsed.mLabel.empty())
                 {
                     parsed.mLabel = parsed.mMode == LLPrismLens::ECaptureMode::SURFACE_LENS
                         ? llformat("Surface Lens %u", ordinal)
-                        : llformat(parsed.mCamera.mVirtual ? "Virtual %u" : "Camera %u", ordinal);
+                        : llformat(parsed.mCamera.mTestPattern ? "Test Pattern %u" :
+                                   parsed.mCamera.mVirtual ? "Virtual %u" : "Camera %u",
+                                   ordinal);
                 }
             }
             parsed_captures.push_back(parsed);
@@ -6914,7 +7134,7 @@ public:
                 (!item["generation"].isInteger() &&
                  !item["generation"].isString()) ||
                 !item.has("capture_id") || !item.has("target") ||
-                !item.has("object_id") || !item.has("settings") ||
+                !item.has("settings") ||
                 !item["settings"].isMap())
             {
                 return fail("A Prism projector binding is missing required fields.");
@@ -6939,7 +7159,8 @@ public:
                     parsed.mGeneration = static_cast<U64>(generation);
             }
             parsed.mCaptureId = item["capture_id"].asUUID();
-            parsed.mObjectId = item["object_id"].asUUID();
+            parsed.mObjectId = item.has("object_id")
+                ? item["object_id"].asUUID() : LLUUID::null;
             parsed.mGateSubscribed = item.has("gate_source") &&
                 item["gate_source"].asBoolean();
             if (parsed.mId.isNull() || parsed.mGeneration == 0 ||
@@ -6960,11 +7181,38 @@ public:
                     capture->mMode != LLPrismLens::ECaptureMode::CAMERA_FEED)
                     return fail("Only Camera Feed captures can feed a projector.");
             }
-            if (item["target"].asString() != "object" ||
-                parsed.mObjectId.isNull())
-                return fail("VP1 supports object projector targets only.");
-            if (!projector_objects.insert(parsed.mObjectId).second)
-                return fail("A projector light may have only one VCam feed.");
+            const std::string target = item["target"].asString();
+            if (target == "object")
+            {
+                if (parsed.mObjectId.isNull())
+                    return fail("An object projector target needs an object ID.");
+                if (!projector_objects.insert(parsed.mObjectId).second)
+                    return fail("A projector light may have only one VCam feed.");
+            }
+            else if (target == "rig")
+            {
+                if (!item.has("rig_slot") || !item["rig_slot"].isInteger() ||
+                    !item.has("rig_light") || !item["rig_light"].isInteger())
+                    return fail("A rig projector target is missing its stable identity.");
+                const S32 rig_slot = item["rig_slot"].asInteger();
+                const S32 rig_light = item["rig_light"].asInteger();
+                if (rig_slot < 0 ||
+                    rig_slot >= ALCineLightRigManager::SLOT_COUNT ||
+                    rig_light < 0 ||
+                    rig_light >= ALCineLightRigModel::LIGHT_COUNT)
+                    return fail("A rig projector target has an invalid identity.");
+                parsed.mTarget = LLPrismLens::EProjectorTarget::RIG_LIGHT;
+                parsed.mRigSlot = static_cast<U8>(rig_slot);
+                parsed.mRigLight = static_cast<U8>(rig_light);
+                const U32 identity = static_cast<U32>(rig_slot) *
+                    ALCineLightRigModel::LIGHT_COUNT + rig_light;
+                if (!projector_rig_targets.insert(identity).second)
+                    return fail("A rig light may have only one VCam feed.");
+            }
+            else
+            {
+                return fail("Unknown Prism projector target kind.");
+            }
 
             const LLSD& settings = item["settings"];
             if (!settings.has("fit") || !settings.has("anchor") ||
@@ -7053,18 +7301,25 @@ public:
             if (!validProjectorSettings(parsed.mSettings, &settings_reason))
                 return fail(settings_reason);
 
-            LLViewerObject* object = gObjectList.findObject(parsed.mObjectId);
+            LLViewerObject* object = parsed.mTarget ==
+                    LLPrismLens::EProjectorTarget::RIG_LIGHT
+                ? resolveRigProjector(parsed.mRigSlot, parsed.mRigLight)
+                : gObjectList.findObject(parsed.mObjectId);
             if (!object || object->isDead())
             {
                 parsed.mQuarantined = true;
                 parsed.mQuarantineReason =
-                    "Offline scene projector; awaiting validation.";
+                    parsed.mTarget == LLPrismLens::EProjectorTarget::RIG_LIGHT
+                        ? "Rig projector emitter is rebuilding or offline."
+                        : "Offline scene projector; awaiting validation.";
             }
             else
             {
                 LLVOVolume* volume = dynamic_cast<LLVOVolume*>(object);
-                if (!volume || object->isHUDAttachment() ||
-                    !volume->getIsLight() || !volume->isLightSpotlight())
+                if (LLPrismLens::quarantineLoadedProjectorTarget(
+                        true, volume != nullptr, object->isHUDAttachment(),
+                        volume && volume->getIsLight(),
+                        volume && volume->isLightSpotlight()))
                 {
                     parsed.mQuarantined = true;
                     parsed.mQuarantineReason =
@@ -7231,6 +7486,9 @@ public:
             projector.mHandle.mId = parsed.mId;
             projector.mHandle.mGeneration = parsed.mGeneration;
             projector.mObjectId = parsed.mObjectId;
+            projector.mTarget = parsed.mTarget;
+            projector.mRigSlot = parsed.mRigSlot;
+            projector.mRigLight = parsed.mRigLight;
             projector.mSettings = parsed.mSettings;
             projector.mGateSubscribed = parsed.mGateSubscribed;
             projector.mQuarantined = parsed.mQuarantined;
@@ -7832,7 +8090,8 @@ private:
                 projector.mCaptureGeneration == removed_capture.mGeneration)
             {
                 gPipeline.releasePrismProjectorFeed(projector.mHandle);
-                if (projector.mGateSubscribed)
+                if (!LLPrismLens::removeProjectorWithCapture(
+                        true, projector.mGateSubscribed))
                 {
                     projector.mCaptureSlot = LLPrismLens::MAX_CAPTURES;
                     projector.mCaptureGeneration = 0;
@@ -8717,6 +8976,17 @@ ERegistryResult bindProjector(const CaptureHandle& capture,
         capture, object, settings, binding, reason);
 }
 
+ERegistryResult bindRigProjector(const CaptureHandle& capture,
+                                 U8 rig_slot, U8 rig_light,
+                                 const ProjectorSettings& settings,
+                                 ProjectorHandle* binding,
+                                 std::string* reason)
+{
+    ScopedPrismRevisionSignals signals;
+    return PrismLensRegistry::instance().bindRigProjector(
+        capture, rig_slot, rig_light, settings, binding, reason);
+}
+
 ERegistryResult reassignProjector(const ProjectorHandle& binding,
                                   const CaptureHandle& capture,
                                   std::string* reason)
@@ -8920,7 +9190,8 @@ void renderCameraGuides()
     for (U32 i = 0; i < snapshot.mCaptureCount; ++i)
     {
         const CaptureDefinition& def = snapshot.mCaptures[i];
-        if (def.mMode == ECaptureMode::CAMERA_FEED && def.mCamera.mShowGuide)
+        if (def.mMode == ECaptureMode::CAMERA_FEED &&
+            !def.mCamera.mTestPattern && def.mCamera.mShowGuide)
         {
             any_guide = true;
             break;
@@ -8942,7 +9213,8 @@ void renderCameraGuides()
     for (U32 i = 0; i < snapshot.mCaptureCount; ++i)
     {
         const CaptureDefinition& def = snapshot.mCaptures[i];
-        if (def.mMode != ECaptureMode::CAMERA_FEED || !def.mCamera.mShowGuide)
+        if (def.mMode != ECaptureMode::CAMERA_FEED ||
+            def.mCamera.mTestPattern || !def.mCamera.mShowGuide)
         {
             continue;
         }
@@ -9335,6 +9607,33 @@ void renderAuxiliaryView()
         {
             preview_quality.emplace();
         }
+        const PrismInstance* capture = registry.capture(slot);
+        if (!capture)
+        {
+            return false;
+        }
+        if (capture->mCamera.mTestPattern)
+        {
+            LL_PROFILE_ZONE_NAMED_CATEGORY_DISPLAY("VCam test pattern upload");
+            if (!gPipeline.allocatePrismLensOutput(
+                    slot, TEST_PATTERN_SIZE, TEST_PATTERN_SIZE))
+            {
+                registry.invalidateOutput(slot, 30);
+                return false;
+            }
+            if (!capture->mHasOutput)
+            {
+                LLRenderTarget& output = gPipeline.mPrismLensOutput[slot];
+                gGL.getTexUnit(0)->bindManual(output.getUsage(),
+                                              output.getTexture(0));
+                glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0,
+                    TEST_PATTERN_SIZE, TEST_PATTERN_SIZE, GL_RGBA,
+                    GL_UNSIGNED_BYTE, testPatternPixels());
+                gGL.getTexUnit(0)->unbind(output.getUsage());
+            }
+            produced = true;
+            return true;
+        }
         // Acquire an EXACT-SIZE scratch pack (physical == render) from the
         // size-keyed pool; the deferred fullscreen shaders sample the G-buffer
         // with normalized [0,1] UVs, so no sub-rect/logical-extent is allowed.
@@ -9357,11 +9656,6 @@ void renderAuxiliaryView()
         }
         gPipeline.mRT = scratch_rt;
 
-        const PrismInstance* capture = registry.capture(slot);
-        if (!capture)
-        {
-            return false;
-        }
         LLViewerCamera lens_camera = main_camera;
         glm::mat4 prism_projection;
         glm::mat4 prism_modelview;

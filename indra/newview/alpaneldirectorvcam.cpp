@@ -571,18 +571,27 @@ void ALPanelDirectorVCam::refresh(U32 dirty)
         const LLPrismLens::CameraSettings& camera = capture->mCamera;
         const LLPrismLens::BonePovSettings& bone = camera.mBonePov;
         const bool surface = capture->mMode == LLPrismLens::ECaptureMode::SURFACE_LENS;
-        const bool skeleton = !surface && bone.mEnabled;
-        const bool virtual_camera = !surface && camera.mVirtual && !skeleton;
-        const bool object_camera = !surface && !camera.mVirtual;
+        const bool test_pattern = !surface && camera.mTestPattern;
+        const bool skeleton = !surface && !test_pattern && bone.mEnabled;
+        const bool virtual_camera = !surface && !test_pattern && camera.mVirtual && !skeleton;
+        const bool object_camera = !surface && !test_pattern && !camera.mVirtual;
         const bool fixed_fov = camera.mFovMode == LLPrismLens::EFovMode::FIXED;
         if (ALKitCard* skeleton_card = mKitPage->findCard("skeleton"))
-            skeleton_card->setCodeVisible(!surface && camera.mVirtual);
+            skeleton_card->setCodeVisible(!surface && !test_pattern && camera.mVirtual);
+        static const char* const CAMERA_CONTROL_CARDS[] = {
+            "placement", "optics", "guide", "camera_look", "output_frame"
+        };
+        for (const char* card_id : CAMERA_CONTROL_CARDS)
+            if (ALKitCard* card = mKitPage->findCard(card_id))
+                card->setCodeVisible(!test_pattern);
         setValueIfChanged(control("vc_source_bound"), surface ? "Surface aperture" :
+            test_pattern ? "Local SMPTE orientation pattern" :
             skeleton ? ("Driven by " + bone.mCustomJoint) :
             virtual_camera ? llformat("Stored at %.1f, %.1f, %.1f", camera.mVirtualPos.mV[0],
                                       camera.mVirtualPos.mV[1], camera.mVirtualPos.mV[2]) :
             capture->mCameraObjectId.asString());
-        setValueIfChanged(control("vc_source_type"), skeleton ? 2 : virtual_camera ? 1 : 0);
+        setValueIfChanged(control("vc_source_type"), test_pattern ? 3 :
+            skeleton ? 2 : virtual_camera ? 1 : 0);
         setEnabledIfChanged(control("vc_source_type"), !surface);
         if (surface)
         {
@@ -1093,10 +1102,11 @@ void ALPanelDirectorVCam::onControl(LLUICtrl* source)
         }
         else
         {
-            if (!settings.mVirtual)
+            settings.mTestPattern = source_type == 3;
+            if (!settings.mTestPattern && !settings.mVirtual)
                 ALVCamPageModel::currentViewTransform(settings.mVirtualPos, settings.mVirtualRot);
-            settings.mVirtual = true;
-            settings.mBonePov.mEnabled = source_type == 2;
+            settings.mVirtual = !settings.mTestPattern;
+            settings.mBonePov.mEnabled = !settings.mTestPattern && source_type == 2;
             std::string reason;
             if (!mModel.setCamera(capture->mHandle, settings, &reason)) setStatus(reason);
         }
