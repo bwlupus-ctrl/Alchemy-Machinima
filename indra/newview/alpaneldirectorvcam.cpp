@@ -978,7 +978,12 @@ void ALPanelDirectorVCam::onControl(LLUICtrl* source)
         else if (action == "ots") mModel.addOtsPair(&reason);
         else if (action == "lens") mModel.addSurfaceLens(&reason);
         if (!reason.empty()) setStatus(reason);
-        source->setValue(LLSD());
+        // Snap back to "+ Add camera..." (item 0). Its value is undefined, so
+        // setValue(LLSD()) matched nothing and the last choice stayed shown.
+        if (LLComboBox* add_combo = dynamic_cast<LLComboBox*>(source))
+            add_combo->selectFirstItem();
+        else
+            source->setValue(LLSD());
     }
     else if (name == "vc_remove_capture" && capture)
     {
