@@ -17,6 +17,7 @@ param(
   [switch]$DryReveal,
   [switch]$UpdateBudget,
   [int]$TimeoutMin = 10,
+  [int]$InWorldWatchdogMin = 12,
   [string]$Compare
 )
 
@@ -79,7 +80,15 @@ if ($Rows.Contains('|') -or $Pages.Contains('|')) {
 if ($Functional -and $TimeoutMin -eq 10) { $TimeoutMin = 5 }
 elseif ($DirectorV2 -and $TimeoutMin -eq 10) { $TimeoutMin = 75 }
 elseif ($Layout -and $TimeoutMin -eq 10) { $TimeoutMin = 25 }
-if ($InWorld -and $TimeoutMin -eq 5) { $TimeoutMin = 15 }
+if ($InWorld -and $TimeoutMin -eq 5) { $TimeoutMin = 18 }
+if ($InWorld -and $InWorldWatchdogMin -lt 1) {
+  Write-Host '-InWorldWatchdogMin must be at least 1.' -ForegroundColor Red
+  exit 2
+}
+if ($InWorld -and $TimeoutMin -le $InWorldWatchdogMin) {
+  Write-Host '-TimeoutMin must be later than the in-viewer watchdog.' -ForegroundColor Red
+  exit 2
+}
 
 # Keep in sync with all_targets in indra/newview/aluiperfselftest.cpp.
 $allTargets = @('director', 'lightbox', 'exposure_hub', 'dance_ball',
@@ -106,7 +115,8 @@ function Get-DirectoryByteManifest([string]$Root) {
   $result = @{}
   if (-not (Test-Path -LiteralPath $Root -PathType Container)) { return $result }
   $prefix = [System.IO.Path]::GetFullPath($Root).TrimEnd('\') + '\'
-  foreach ($file in @(Get-ChildItem -LiteralPath $Root -File -Recurse -Force)) {
+  foreach ($file in @(Get-ChildItem -LiteralPath $Root -File -Recurse -Force |
+      Where-Object { $_.Name -like 'settings*.xml' })) {
     $relative = $file.FullName.Substring($prefix.Length)
     $result[$relative] = (Get-FileHash -LiteralPath $file.FullName -Algorithm SHA256).Hash
   }
@@ -145,7 +155,12 @@ function New-FunctionalSettingsBackup {
     $existed = Test-Path -LiteralPath $target -PathType Container
     if ($existed) {
       New-Item -ItemType Directory -Path $copy | Out-Null
-      Get-ChildItem -LiteralPath $target -Force | Copy-Item -Destination $copy -Recurse -Force
+      $manifest = Get-DirectoryByteManifest $target
+      foreach ($relative in $manifest.Keys) {
+        $copyPath = Join-Path $copy $relative
+        New-Item -ItemType Directory -Path (Split-Path -Parent $copyPath) -Force | Out-Null
+        Copy-Item -LiteralPath (Join-Path $target $relative) -Destination $copyPath -Force
+      }
     }
     $records.Add([pscustomobject]@{
       Target = $target; Copy = $copy; Existed = $existed
@@ -165,10 +180,22 @@ function Restore-FunctionalSettingsBackup($Backup) {
           $target -eq $Backup.AppRoot) {
         throw "Refusing to restore unsafe settings path: $target"
       }
-      if (Test-Path -LiteralPath $target) { Remove-Item -LiteralPath $target -Recurse -Force }
       if ($record.Existed) {
         New-Item -ItemType Directory -Path $target -Force | Out-Null
-        Get-ChildItem -LiteralPath $record.Copy -Force | Copy-Item -Destination $target -Recurse -Force
+      }
+      # Restore only settings XML. Chat/IM transcripts and any other files
+      # created during the live account session must remain untouched.
+      foreach ($file in @(Get-ChildItem -LiteralPath $target -File -Recurse -Force `
+          -ErrorAction SilentlyContinue | Where-Object { $_.Name -like 'settings*.xml' })) {
+        $relative = $file.FullName.Substring($target.TrimEnd('\').Length + 1)
+        if (-not $record.Manifest.ContainsKey($relative)) {
+          Remove-Item -LiteralPath $file.FullName -Force
+        }
+      }
+      foreach ($relative in $record.Manifest.Keys) {
+        $destination = Join-Path $target $relative
+        New-Item -ItemType Directory -Path (Split-Path -Parent $destination) -Force | Out-Null
+        Copy-Item -LiteralPath (Join-Path $record.Copy $relative) -Destination $destination -Force
       }
       $actual = if ($record.Existed) { Get-DirectoryByteManifest $target } else { @{} }
       $allNames = @($record.Manifest.Keys) + @($actual.Keys) | Sort-Object -Unique
@@ -176,9 +203,6 @@ function Restore-FunctionalSettingsBackup($Backup) {
         if (-not $record.Manifest.ContainsKey($name)) { $differences.Add("created after restore: $target\$name") }
         elseif (-not $actual.ContainsKey($name)) { $differences.Add("missing after restore: $target\$name") }
         elseif ($record.Manifest[$name] -ne $actual[$name]) { $differences.Add("byte mismatch after restore: $target\$name") }
-      }
-      if (-not $record.Existed -and (Test-Path -LiteralPath $target)) {
-        $differences.Add("directory created after restore: $target")
       }
     }
     if ($differences.Count) {
@@ -193,6 +217,20 @@ function Restore-FunctionalSettingsBackup($Backup) {
     foreach ($record in $Backup.Records) { Write-Host "  $($record.Copy) -> $($record.Target)" -ForegroundColor Red }
     throw
   }
+}
+
+function Wait-NormalExitBeforeHardKill($Process, [string]$Description, [int]$GraceSeconds = 60) {
+  Write-Host "$Description; waiting $GraceSeconds seconds for normal logout/exit." -ForegroundColor Yellow
+  $graceDeadline = [DateTime]::UtcNow.AddSeconds($GraceSeconds)
+  while (-not $Process.HasExited -and [DateTime]::UtcNow -lt $graceDeadline) {
+    Start-Sleep -Milliseconds 500
+    $Process.Refresh()
+  }
+  if ($Process.HasExited) { return $false }
+  Write-Host "HARD KILL: normal-exit grace expired; forcibly stopping only PID $($Process.Id)." -ForegroundColor Red
+  Stop-Process -Id $Process.Id -Force
+  $Process.WaitForExit(15000) | Out-Null
+  return $true
 }
 
 if ($Functional) {
@@ -255,6 +293,7 @@ if ($Functional) {
       if ($InWorld) {
         $requestFields[0] = 'functional-inworld'
         $requestFields.Add('account=5kvideoeye')
+        $requestFields.Add('watchdog_seconds=' + ($InWorldWatchdogMin * 60))
       }
       $request = '"' + ($requestFields -join '|') + '"'
       $viewerArgs = @('--set', 'UIPerfSelfTest', $(if ($InWorld) { '"inworld-bootstrap"' } else { $request }),
@@ -281,9 +320,9 @@ if ($Functional) {
         $process.Refresh()
       }
       if (-not $process.HasExited) {
-        Stop-Process -Id $process.Id -Force
-        Write-Host "Functional self-test timed out after $TimeoutMin minutes for $(if ($useV2) {'v2'} else {'v1'}); killed only PID $($process.Id)." -ForegroundColor Red
-        exit 2
+        $hardKilled = Wait-NormalExitBeforeHardKill $process `
+          "Functional self-test wrapper timeout after $TimeoutMin minutes for $(if ($useV2) {'v2'} else {'v1'})"
+        if ($hardKilled) { exit 2 }
       }
       $functionalCsv = Get-Item -LiteralPath $functionalCsvPath -ErrorAction SilentlyContinue
       if (-not $functionalCsv -or $functionalCsv.LastWriteTimeUtc -lt $startUtc) {
@@ -377,9 +416,9 @@ while ($true) {
     $process.Refresh()
   }
   if (-not $process.HasExited) {
-    Stop-Process -Id $process.Id -Force
-    Write-Host "UI self-test timed out after $TimeoutMin minutes; killed only PID $($process.Id)." -ForegroundColor Red
-    exit 2
+    $hardKilled = Wait-NormalExitBeforeHardKill $process `
+      "UI self-test wrapper timeout after $TimeoutMin minutes"
+    if ($hardKilled) { exit 2 }
   }
 
   $csvFile = Get-Item -LiteralPath $csvPath -ErrorAction SilentlyContinue

@@ -5315,6 +5315,15 @@ void LLAppViewer::idle()
         gGLActive = false;
     }
 
+    // Login-screen tests are ticked by idle_startup(). Once an authorized
+    // in-world test reaches STATE_STARTED, idle_startup() is no longer called.
+    // Keep the active-runner check as the zero-cost gate for normal sessions.
+    if (LLStartUp::getStartupState() >= STATE_STARTED &&
+        ALUIPerfSelfTest::isActive())
+    {
+        ALUIPerfSelfTest::tick();
+    }
+
 
     F32 yaw = 0.f;              // radians
 

@@ -16,6 +16,53 @@ import xml.etree.ElementTree as ET
 KEY = ("inworld", "page", "control", "kind", "action", "expected")
 FAIL_STATUSES = {"FAIL", "KNOWN_GAP"}
 
+# In-world execution is allow-listed by source owner, never inferred from the
+# absence of a hazard. These owners are limited to viewer-local Director
+# models/controllers documented in functional/INWORLD_MODE.md.
+INWORLD_LOCAL_OWNERS = {
+    "ALPanelCineLightRig", "ALRigRimController", "ALPanelRigRim",
+    "ALFloaterLightBox", "ALPanelLensLooks", "ALPanelExposureHub",
+    "ALPanelWeatherSettings", "ALPanelAtmosphericVolumes",
+    "ALPanelLensGaze", "ALFloaterGazeCues", "ALPanelGhostStudio",
+    "ALPanelDanceBall", "ALPanelDirectorAnimSwitcher", "ALPanelAnimPreview",
+    "ALPanelPropMover", "ALPanelActorMover", "ALPanelPathEditor",
+    "ALObjectPathMover", "ALPanelDirectorVCam", "ALVCamPageModel", "ALKitPage",
+    "ALPanelCineCamParams", "ALPanelDirectorSwitcher",
+    "ALPanelFlycamRecorder", "LLFlycamRecorder", "ALPanelTemporalCapture",
+}
+INWORLD_EXCLUDED_CONTROLS = {"vc_lens_locate", "vc_face_locate"}
+INWORLD_VETTED_OWNER_PAGES = {
+    "LLPipeline::renderWeather": {"weather_tab"},
+    "LLPipeline::renderFinalize": {"exposure_tab", "shadows_probes_tab"},
+    "LLFloaterDirector::postBuild": {
+        "actors_tab", "actor_style_tab", "animate_tab", "dance_tab",
+        "frame_orbit_tab", "gaze_tab", "move_tab", "moves_tab", "shot_tab",
+    },
+    "LLFloaterDirector::sceneSettingsList": {"switchboard_tab"},
+}
+
+
+def _inworld_local_effect(row: dict[str, object]) -> tuple[bool, str]:
+    """Return an explicit viewer-local authorization, not a hazard guess."""
+    widget = str(row.get("widget_name") or "")
+    if widget in INWORLD_EXCLUDED_CONTROLS:
+        return False, "object selection is sent to the simulator"
+
+    owner = str(row.get("owner") or "")
+    callback = str(row.get("callbacks") or "")
+    if row.get("setting") and not owner and not callback:
+        return True, "pure setting write"
+
+    page = str(row.get("page") or "")
+    if page in INWORLD_VETTED_OWNER_PAGES.get(owner, set()):
+        return True, "vetted viewer-local owner/page: " + owner
+
+    witnesses = {value.split("::", 1)[0] for value in (owner, callback) if value}
+    local = sorted(witnesses & INWORLD_LOCAL_OWNERS)
+    if local:
+        return True, "viewer-local owner: " + ", ".join(local)
+    return False, "no vetted viewer-local owner"
+
 
 def _llsd_pairs(element: ET.Element | None):
     children = list(element) if element is not None else []
@@ -593,6 +640,9 @@ def prepare_manifest(path: Path, repo: Path, output: Path) -> tuple[int, int, in
 
         if row.get("exercise") not in {"", "none", None} and row.get("action") not in {
                 "SKIP", "NO_EXERCISE", "EXPECT_MISSING"}:
+            inworld_allowed, inworld_evidence = _inworld_local_effect(row)
+            row["inworld_allowed"] = inworld_allowed
+            row["inworld_allow_evidence"] = inworld_evidence
             legacy_button_scan = (row.get("exercise") == "click" and
                                   row.get("widget_type") == "button")
             hazards, handler_resolved = _handler_hazards(row, cpp_text, body_cache)

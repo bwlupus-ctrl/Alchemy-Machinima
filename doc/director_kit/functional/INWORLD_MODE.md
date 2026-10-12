@@ -22,32 +22,35 @@ held by `LLStartUp`.
 After `STATE_STARTED`, the runner gets the avatar name from
 `LLAvatarNameCache` and requires `5kvideoeye`, case-insensitively, also accepting
 the legacy forms `5kvideoeye Resident` and `5kvideoeye.Resident`. A mismatch
-writes `FAIL: wrong account`, sends the viewer logout request, and exits with
-status 1 immediately. A 120-second login timeout does the same; it never retries
-authentication.
+writes `FAIL: wrong account`, starts the normal `requestQuit()` logout path, and
+makes the wrapper exit non-zero from the fresh FAIL row. A 120-second login
+timeout does the same; it never retries authentication.
 
 The test waits for an agent region, a valid fully loaded self avatar, 120
 consecutive frames, and at least three settled seconds before opening Director.
 
 ## Fail-closed interaction safety
 
-Manifest preparation resolves installed handlers and scans them before the
-viewer can click a row. An unresolved in-world handler is skipped as
-`in-world: hazard unknown`. Besides the existing file, delete, rename,
-import/export, save, and logout hazards, the in-world deny-list covers:
+Manifest preparation sets `inworld_allowed` only for a pure setting binding
+with no owner/callback, or for one of the explicit source-owner families below.
+Handler scanning remains defense in depth, but the absence of a detected hazard
+never grants permission. Every other executable row is skipped as
+`in-world: not on the viewer-local allow-list`.
 
-- `gMessageSystem` and reliable/message sends;
-- `LLAgent` send methods;
-- `LLViewerObject::sendXxx` and `LLSelectMgr::sendXxx`;
-- parcel update/buy/claim/deed/release sends;
-- chat, IM, voice, rez/create/duplicate/delete/take/return, give/pay/buy,
-  teleport/sit/stand, attach/detach/wear/take-off, uploads, group/friend actions,
-  and comparable world-action handlers.
+| Allowed owner family | Locality evidence |
+|---|---|
+| Light Rig / Rim: `ALPanelCineLightRig`, `ALRigRimController`, `ALPanelRigRim` | `alcinelightrig.cpp:688-699,1359-1381` writes viewer settings and builds client render-light state. |
+| Lightbox / looks / exposure / weather / atmosphere: `ALFloaterLightBox`, `ALPanelLensLooks`, `ALPanelExposureHub`, `ALPanelWeatherSettings`, `ALPanelAtmosphericVolumes` | `alfloaterlightbox.cpp:209-250,1172-1224` binds and writes viewer controls; the listed panels expose those render settings. |
+| Gaze: `ALPanelLensGaze`, `ALFloaterGazeCues` | `lldirectorcast.cpp:1225-1246` updates only the Director cast gaze model. |
+| Ghost clones: `ALPanelGhostStudio` | `lldirectorcast.cpp:1225-1246` shows the cast state is an in-process model; Ghost Studio consumes client clone state. |
+| Dance Ball / local animation: `ALPanelDanceBall`, `ALPanelDirectorAnimSwitcher`, `ALPanelAnimPreview` | `aldanceball.cpp:1329-1336` and `aldirectoranimswitcher.cpp:418-425` call local avatar motion APIs. |
+| Props mover / Path: `ALPanelPropMover`, `ALPanelActorMover`, `ALPanelPathEditor`, `ALObjectPathMover` | `alobjectpathmover.cpp:46-58` applies drawable transforms and marks them moved locally. |
+| VCam page model: `ALPanelDirectorVCam`, `ALVCamPageModel`, `ALKitPage` | `alpaneldirectorvcam.cpp:990-998` changes the local capture model; `vc_lens_locate` and `vc_face_locate` are explicitly excluded because `alpaneldirectorvcam.cpp:999-1015` selects an object. |
+| Camera / frame / orbit: `ALPanelCineCamParams`, `ALPanelDirectorSwitcher`, `ALPanelFlycamRecorder`, `LLFlycamRecorder`, `ALPanelTemporalCapture` | `alpanelcinecamparams.cpp:462-477` writes camera settings; local animation dispatch is independently evidenced at `llfloaterdirector.cpp:3726-3738`. |
+| Exact vetted owner/page pairs | `LLPipeline::renderWeather` on `weather_tab`; `LLPipeline::renderFinalize` on `exposure_tab`/`shadows_probes_tab`; `LLFloaterDirector::postBuild` only on `actors_tab`, `actor_style_tab`, `animate_tab`, `dance_tab`, `frame_orbit_tab`, `gaze_tab`, `move_tab`, `moves_tab`, and `shot_tab`; `LLFloaterDirector::sceneSettingsList` only on `switchboard_tab`. Evidence: `alfloaterlightbox.cpp:1172-1224`, `lldirectorcast.cpp:1225-1246`, and `llfloaterdirector.cpp:3726-3738`. |
 
-Rows tagged by that scan are skipped as
-`in-world: server-side action denied`. Keyboard input continues to use the
-existing focus-guarded injection path. The final `requestQuit()` is intentional
-normal logout after all state has been restored.
+Keyboard input continues to use the focus-guarded injection path. The final
+`requestQuit()` is intentional normal logout after all state has been restored.
 
 ## In-world coverage and restoration
 
@@ -67,6 +70,14 @@ Projector cards. Otherwise those card rows are skipped with
 the created camera, bindings, and all row edits are removed.
 
 The C++ settings/rig snapshots are restored before normal quit. The PowerShell
-wrapper separately backs up and byte-verifies restoration of both
-`user_settings` and `%APPDATA%\AlchemyMachinima\5kvideoeye_resident`. Output is
-the usual `functional.csv` and `summary.md`; CSV rows include `inworld=true`.
+wrapper separately backs up and byte-verifies only `settings*.xml` beneath
+`user_settings` and `%APPDATA%\AlchemyMachinima\5kvideoeye_resident`; it never
+copies `bin_conf.dat` and never replaces those directories, so chat/IM logs and
+other files created during the run survive. Output is the usual
+`functional.csv` and `summary.md`; CSV rows include `inworld=true`.
+
+An in-viewer wall-clock watchdog defaults to 12 minutes (the wrapper passes
+`watchdog_seconds` from `-InWorldWatchdogMin`). It restores test state, writes
+the partial CSV, and requests normal logout. The wrapper timeout defaults to 18
+minutes, then allows a further 60-second normal-exit grace before reporting any
+last-resort hard kill explicitly.

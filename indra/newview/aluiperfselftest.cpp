@@ -1313,6 +1313,12 @@ public:
                 else if (key == "shots") mFunctionalShots = value == "1";
                 else if (key == "dry_reveal") mFunctionalDryReveal = value == "1";
                 else if (key == "account") mFunctionalAccount = value;
+                else if (key == "watchdog_seconds")
+                {
+                    S32 seconds = 0;
+                    if (LLStringUtil::convertToS32(value, seconds) && seconds > 0)
+                        mFunctionalWatchdogSeconds = seconds;
+                }
             }
             mRequest = "director";
             captureFunctionalUserFiles();
@@ -1516,6 +1522,14 @@ private:
         return false;
     }
 
+    static bool functionalSettingsFile(const std::filesystem::path& path)
+    {
+        std::string name = path.filename().string();
+        LLStringUtil::toLower(name);
+        return name.compare(0, 8, "settings") == 0 && name.size() >= 4 &&
+            name.compare(name.size() - 4, 4, ".xml") == 0;
+    }
+
     void captureFunctionalUserFiles()
     {
         std::set<std::filesystem::path> roots;
@@ -1534,7 +1548,8 @@ private:
                 for (std::filesystem::recursive_directory_iterator it(root, error), end;
                      !error && it != end; it.increment(error))
                 {
-                    if (!it->is_regular_file(error)) continue;
+                    if (!it->is_regular_file(error) ||
+                        !functionalSettingsFile(it->path())) continue;
                     std::ifstream input(it->path(), std::ios::binary);
                     if (!input.good()) continue;
                     snapshot.mFiles[std::filesystem::relative(it->path(), root, error)] =
@@ -1553,8 +1568,24 @@ private:
         for (const FunctionalDiskSnapshot& snapshot : mFunctionalUserFiles)
         {
             std::error_code error;
-            std::filesystem::remove_all(snapshot.mRoot, error);
-            if (!snapshot.mExisted) continue;
+            // Never replace the account directory: chat/IM transcripts and
+            // other user data may have been created while the test was live.
+            // Remove only settings XML files absent from the original snapshot.
+            if (std::filesystem::is_directory(snapshot.mRoot, error))
+            {
+                for (std::filesystem::recursive_directory_iterator it(snapshot.mRoot, error), end;
+                     !error && it != end; it.increment(error))
+                {
+                    if (!it->is_regular_file(error) ||
+                        !functionalSettingsFile(it->path())) continue;
+                    std::error_code file_error;
+                    const std::filesystem::path relative =
+                        std::filesystem::relative(it->path(), snapshot.mRoot, file_error);
+                    if (!file_error && snapshot.mFiles.find(relative) == snapshot.mFiles.end())
+                        std::filesystem::remove(it->path(), file_error);
+                }
+            }
+            if (!snapshot.mExisted && snapshot.mFiles.empty()) continue;
             std::filesystem::create_directories(snapshot.mRoot, error);
             for (const auto& saved : snapshot.mFiles)
             {
@@ -4314,6 +4345,15 @@ private:
             ++mFunctionalIndex;
             return;
         }
+        if (mInWorld && (!entry["inworld_allowed"].asBoolean() ||
+                         entry["widget_name"].asString() == "vc_lens_locate" ||
+                         entry["widget_name"].asString() == "vc_face_locate"))
+        {
+            addFunctionalResult(entry, "SKIP",
+                "in-world: not on the viewer-local allow-list");
+            ++mFunctionalIndex;
+            return;
+        }
         if (action == "SKIP")
         {
             std::string reason = entry["reason"].asString();
@@ -4939,13 +4979,15 @@ private:
         return true;
     }
 
-    bool finishFunctionalInWorldFailure(const std::string& reason)
+    bool finishFunctionalInWorldFailure(const std::string& reason,
+                                        const std::string& widget = "inworld_account",
+                                        const std::string& exercise = "saved-credential auto-login")
     {
         LLSD failure;
         failure["page"] = "login";
-        failure["widget_name"] = "inworld_account";
+        failure["widget_name"] = widget;
         failure["widget_type"] = "state";
-        failure["exercise"] = "saved-credential auto-login";
+        failure["exercise"] = exercise;
         addFunctionalResult(failure, "FAIL", reason);
         restoreFunctionalAction();
         restoreFunctionalVCamState();
@@ -4955,17 +4997,14 @@ private:
         writeFunctionalResults();
         sActive = false;
         sSuppressSettingsSave = false;
-        // Failure is required to be non-zero. fastQuit still sends the grid's
-        // logout request, but cannot leave a wrong account resident while the
-        // wrapper waits for a normal confirmation/timeout path.
-        LLAppViewer::instance()->fastQuit(1);
+        // The wrapper converts this fresh FAIL row to a non-zero harness exit.
+        // requestQuit deliberately uses the standard LogoutRequest/Reply path.
+        LLAppViewer::instance()->requestQuit();
         return true;
     }
 
     bool functionalStep()
     {
-        FrameSample ignored;
-        takeFrame(ignored);
         if (mInWorld && !mFunctionalWorldReady)
         {
             if (!mFunctionalAutoLoginStarted &&
@@ -4979,15 +5018,37 @@ private:
                 // its ordinary auto-login path without inspecting that object.
                 LLStartUp::setStartupState(STATE_LOGIN_CLEANUP);
             }
-            if (mFunctionalLoginTimer.getElapsedTimeF32() >= 120.f)
-                return finishFunctionalInWorldFailure("login timeout (no retry)");
-            if (LLStartUp::getStartupState() != STATE_STARTED) return false;
+            if (LLStartUp::getStartupState() != STATE_STARTED)
+            {
+                if (mFunctionalLoginTimer.getElapsedTimeF32() >= 120.f)
+                    return finishFunctionalInWorldFailure("login timeout (no retry)");
+                return false;
+            }
 
-            LLAvatarName avatar_name;
-            if (!LLAvatarNameCache::get(gAgentID, &avatar_name)) return false;
-            if (!functionalAccountMatches(avatar_name.getUserName(), mFunctionalAccount) &&
-                !functionalAccountMatches(avatar_name.getLegacyName(), mFunctionalAccount))
-                return finishFunctionalInWorldFailure("wrong account");
+            // This is intentionally the first work performed on the first
+            // STATE_STARTED tick. No floater, setting, or VCam is touched until
+            // the logged-in account has been positively verified.
+            if (!mFunctionalAccountVerified)
+            {
+                LLAvatarName avatar_name;
+                if (!LLAvatarNameCache::get(gAgentID, &avatar_name))
+                {
+                    if (mFunctionalLoginTimer.getElapsedTimeF32() >= 120.f)
+                        return finishFunctionalInWorldFailure(
+                            "login timeout (account name unavailable; no retry)");
+                    return false;
+                }
+                if (!functionalAccountMatches(avatar_name.getUserName(), mFunctionalAccount) &&
+                    !functionalAccountMatches(avatar_name.getLegacyName(), mFunctionalAccount))
+                    return finishFunctionalInWorldFailure("wrong account");
+                mFunctionalAccountVerified = true;
+            }
+
+            if (mFunctionalWatchdog.getElapsedTimeF32() >=
+                    static_cast<F32>(mFunctionalWatchdogSeconds))
+                return finishFunctionalInWorldFailure(
+                    "in-world wall-clock watchdog expired",
+                    "inworld_watchdog", "bounded in-world run");
 
             const bool settled = gAgent.getRegion() && isAgentAvatarValid() &&
                 gAgentAvatarp->isFullyLoaded();
@@ -5005,6 +5066,13 @@ private:
             if (!prepareFunctionalInWorld())
                 return finishFunctionalInWorldFailure("in-world VCam setup failed");
         }
+        if (mInWorld && mFunctionalWatchdog.getElapsedTimeF32() >=
+                static_cast<F32>(mFunctionalWatchdogSeconds))
+            return finishFunctionalInWorldFailure("in-world wall-clock watchdog expired",
+                "inworld_watchdog", "bounded in-world run");
+
+        FrameSample ignored;
+        takeFrame(ignored);
         if (mSettle.getElapsedTimeF32() < 3.f) return false;
         if (mFunctionalFailureShotPending)
         {
@@ -7927,6 +7995,7 @@ private:
     bool mFunctional = false;
     bool mInWorld = false;
     bool mFunctionalAutoLoginStarted = false;
+    bool mFunctionalAccountVerified = false;
     bool mFunctionalWorldReady = false;
     bool mFunctionalInWorldPrepared = false;
     bool mFunctionalHaveProjector = false;
@@ -7934,7 +8003,9 @@ private:
     bool mFunctionalVCamRestored = false;
     U32 mFunctionalWorldFrames = 0;
     std::string mFunctionalAccount;
+    S32 mFunctionalWatchdogSeconds = 12 * 60;
     LLFrameTimer mFunctionalLoginTimer;
+    LLFrameTimer mFunctionalWatchdog;
     LLFrameTimer mFunctionalWorldSettle;
     LLSD mFunctionalVCamSnapshot;
     std::unique_ptr<ALVCamPageModel> mFunctionalVCamModel;
