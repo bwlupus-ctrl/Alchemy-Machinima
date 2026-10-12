@@ -864,7 +864,7 @@ void ALKitPage::rebindRows()
         entry.second->resolveBinding();
 }
 
-void ALKitPage::applyModeAndChip()
+void ALKitPage::applyModeAndChip(bool request_layout)
 {
     S32 visible_count = 0;
     for (const auto& pair : mCards)
@@ -879,7 +879,15 @@ void ALKitPage::applyModeAndChip()
                                   std::find(mModeDefs[mModeIndex].cards.begin(), mModeDefs[mModeIndex].cards.end(), pair.first) !=
                                       mModeDefs[mModeIndex].cards.end());
         }
-        if (visible)
+        bool search = !mSearching;
+        if (!search)
+            for (ALKitRow* row : pair.second->rows())
+                if (row->filterVisible())
+                {
+                    search = true;
+                    break;
+                }
+        if (visible && search && pair.second->codeVisible())
             ++visible_count;
     }
     const bool filtered = mChipMode == "filter" || (mChipMode == "auto" && visible_count >= 6);
@@ -894,6 +902,15 @@ void ALKitPage::applyModeAndChip()
                            std::find(mModeDefs[mModeIndex].cards.begin(), mModeDefs[mModeIndex].cards.end(), id) !=
                                mModeDefs[mModeIndex].cards.end());
     };
+    auto visibleInSearch = [this](const ALKitCard* card)
+    {
+        if (!mSearching)
+            return true;
+        for (ALKitRow* row : card->rows())
+            if (row->filterVisible())
+                return true;
+        return false;
+    };
 
     for (auto& pair : mCards)
     {
@@ -902,7 +919,8 @@ void ALKitPage::applyModeAndChip()
         if (filtered && !mSections.empty() && mChipIndex < (S32)mSections.size())
             section = std::find(mSections[mChipIndex].cards.begin(), mSections[mChipIndex].cards.end(), pair.first) !=
                       mSections[mChipIndex].cards.end();
-        pair.second->setVisible(mode && section && pair.second->codeVisible());
+        const bool search = visibleInSearch(pair.second);
+        pair.second->setVisible(mode && section && search && pair.second->codeVisible());
     }
 
     for (S32 i = 0; i < (S32)mSectionHeadings.size(); ++i)
@@ -912,7 +930,8 @@ void ALKitPage::applyModeAndChip()
             for (const std::string& id : mSections[i].cards)
             {
                 auto found = mCards.find(id);
-                if (found != mCards.end() && visibleInMode(id) && found->second->codeVisible())
+                if (found != mCards.end() && visibleInMode(id) && visibleInSearch(found->second) &&
+                    found->second->codeVisible())
                 {
                     any = true;
                     break;
@@ -935,11 +954,16 @@ void ALKitPage::applyModeAndChip()
                 for (const std::string& id : mSections[i].cards)
                 {
                     auto found = mCards.find(id);
-                    if (found != mCards.end() && visibleInMode(id))
+                    if (found != mCards.end() && visibleInMode(id) && visibleInSearch(found->second) &&
+                        found->second->codeVisible())
                         ++count;
                 }
             if (i < (S32)mSections.size())
-                mChips[i]->setLabel(mSections[i].label + " " + llformat("%d", count));
+            {
+                const std::string label = mSections[i].label + " " + llformat("%d", count);
+                if (mChips[i]->getLabelUnselected() != label)
+                    mChips[i]->setLabel(label); // ui-draw-lint: allow(raw-write) change-gated chip count
+            }
         }
     }
     S32 chip_x = ALKitStyle::PAGE_PAD_LR;
@@ -951,7 +975,8 @@ void ALKitPage::applyModeAndChip()
         chip->setOrigin(chip_x, 7);
         chip_x += 106;
     }
-    requestLayout();
+    if (request_layout)
+        requestLayout();
 }
 
 void ALKitPage::updateMaster()
@@ -1099,6 +1124,9 @@ void ALKitPage::relayoutNow()
 {
     if (!mGrid || !mScroller)
         return;
+    // Code visibility is persistent state. Combine it with all page filters
+    // before every layout, including layouts requested directly by a card.
+    applyModeAndChip(false);
     static LLCachedControl<S32> scrollbar_size(gSavedSettings, "UIScrollbarSize");
     const S32                   sb        = llmax(0, (S32)scrollbar_size);
     const S32                   doc_width = llmax(1, mScroller->getRect().getWidth() - 2 * mScroller->getBorderWidth() - sb);
@@ -1174,21 +1202,7 @@ void ALKitPage::applySearch(const ALKitSearch::Hits& hits)
     for (const auto& h : hits)
         if (h.row)
             h.row->setFilterVisible(true);
-    for (auto& c : mCards)
-    {
-        bool any = false;
-        for (ALKitRow* r : c.second->rows())
-            for (const auto& h : hits)
-                if (h.row == r)
-                {
-                    any = true;
-                    break;
-                }
-        c.second->setVisible(any);
-    }
-    for (LLPanel* h : mSectionHeadings)
-        h->setVisible(false);
-    requestLayout();
+    applyModeAndChip();
 }
 
 void ALKitPage::clearSearch()

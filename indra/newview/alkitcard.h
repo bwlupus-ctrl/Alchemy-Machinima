@@ -70,8 +70,8 @@ public:
     bool                          spansAllColumns() const override { return false; }
     const std::string&            id() const { return mId; }
     const std::string&            title() const { return mTitle; }
-    void                          setBadge(const std::string& badge) { mBadge = badge; }
-    void                          setCodeVisible(bool visible) { mCodeHidden = !visible; }
+    bool                          setBadge(const std::string& badge);
+    bool                          setCodeVisible(bool visible);
     bool                          codeVisible() const { return !mCodeHidden; }
     const std::string&            helpText() const { return mHelp; }
     bool                          hasMore() const { return mMore != nullptr; }

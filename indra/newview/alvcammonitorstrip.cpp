@@ -7,6 +7,8 @@
 #include "alvcammonitorstrip.h"
 
 #include "alkitstyle.h"
+#include "llbutton.h"
+#include "llcombobox.h"
 #include "llfontgl.h"
 #include "llrender.h"
 #include "llrender2dutils.h"
@@ -32,7 +34,8 @@ static LLDefaultChildRegistry::Register<ALVCamFaceList>
 namespace
 {
 LLPrismLens::EFitMode sActiveDragFit = LLPrismLens::EFitMode::FIT;
-constexpr S32 MOUSE_DRAG_SLOP = 2;
+constexpr S32 FACE_ROW_HEIGHT = 32;
+constexpr S32 FACE_SCROLLBAR_WIDTH = 10;
 
 bool sameCapture(const LLPrismLens::CaptureHandle& left,
                  const LLPrismLens::CaptureHandle& right)
@@ -265,23 +268,26 @@ bool ALVCamMonitorStrip::handleMouseDown(S32 x, S32 y, MASK)
         onCommit();
         return true;
     }
-    mMouseDownX = x;
-    mMouseDownY = y;
     mMouseDownSlot = slot;
+    S32 screen_x = 0;
+    S32 screen_y = 0;
+    localPointToScreen(x, y, &screen_x, &screen_y);
+    LLToolDragAndDrop::instance().setDragStart(screen_x, screen_y);
     gFocusMgr.setMouseCapture(this);
     return true;
 }
 
 bool ALVCamMonitorStrip::handleHover(S32 x, S32 y, MASK mask)
 {
+    S32 screen_x = 0;
+    S32 screen_y = 0;
+    localPointToScreen(x, y, &screen_x, &screen_y);
     if (mMouseDownSlot >= 0 && gFocusMgr.getMouseCapture() == this &&
-        (abs(x - mMouseDownX) > MOUSE_DRAG_SLOP ||
-         abs(y - mMouseDownY) > MOUSE_DRAG_SLOP))
+        LLToolDragAndDrop::instance().isOverThreshold(screen_x, screen_y))
     {
         std::string reason;
         const S32 slot = mMouseDownSlot;
         mMouseDownSlot = -1;
-        gFocusMgr.setMouseCapture(nullptr);
         if (!beginDragFromTile(mTiles[slot].mCapture, mNewFaceFit, &reason))
         {
             setToolTip(LLStringExplicit(reason));
@@ -290,7 +296,11 @@ bool ALVCamMonitorStrip::handleHover(S32 x, S32 y, MASK mask)
             value["reason"] = reason;
             setValue(value);
             onCommit();
+            // Keep capture until mouse-up so the transient rejection tooltip
+            // can be cleared at the actual end of the attempted drag.
+            return true;
         }
+        gFocusMgr.setMouseCapture(nullptr);
         return true;
     }
     return LLUICtrl::handleHover(x, y, mask);
@@ -298,10 +308,11 @@ bool ALVCamMonitorStrip::handleHover(S32 x, S32 y, MASK mask)
 
 bool ALVCamMonitorStrip::handleMouseUp(S32, S32, MASK)
 {
-    if (mMouseDownSlot < 0) return false;
+    const bool handled = gFocusMgr.getMouseCapture() == this || mMouseDownSlot >= 0;
     mMouseDownSlot = -1;
+    setToolTip(LLStringUtil::null);
     if (gFocusMgr.getMouseCapture() == this) gFocusMgr.setMouseCapture(nullptr);
-    return true;
+    return handled;
 }
 
 bool ALVCamMonitorStrip::handleRightMouseDown(S32 x, S32 y, MASK)
@@ -445,6 +456,33 @@ ALVCamCameraSelector::ALVCamCameraSelector(const Params& p)
 {
 }
 
+bool ALVCamCameraSelector::postBuild()
+{
+    if (!LLUICtrl::postBuild())
+        return false;
+
+    LLComboBox::Params add_params;
+    add_params.name = "vc_add_camera";
+    add_params.rect = LLRect(0, 24, 112, 0);
+    mAdd = LLUICtrlFactory::create<LLComboBox>(add_params);
+    mAdd->add("+ Add camera...", LLSD());
+    mAdd->add("From selected object", LLSD("object"));
+    mAdd->add("Virtual at my view", LLSD("virtual"));
+    mAdd->add("OTS pair", LLSD("ots"));
+    mAdd->add("Surface lens", LLSD("lens"));
+    addChild(mAdd);
+
+    LLButton::Params remove_params;
+    remove_params.name = "vc_remove_capture";
+    remove_params.rect = LLRect(0, 24, 106, 0);
+    remove_params.label = "Remove capture";
+    mRemove = LLUICtrlFactory::create<LLButton>(remove_params);
+    ALKitStyle::styleButton(mRemove, false);
+    addChild(mRemove);
+    reshape(getRect().getWidth(), getRect().getHeight(), true);
+    return true;
+}
+
 void ALVCamCameraSelector::setItems(
     const std::vector<Item>& items, const LLPrismLens::CaptureHandle& selected)
 {
@@ -452,12 +490,37 @@ void ALVCamCameraSelector::setItems(
     mSelected = selected;
 }
 
+void ALVCamCameraSelector::setActionsEnabled(bool can_add, bool can_remove)
+{
+    if (mAdd) mAdd->setEnabled(can_add);
+    if (mRemove) mRemove->setEnabled(can_remove);
+}
+
+void ALVCamCameraSelector::reshape(S32 width, S32 height, bool called_from_parent)
+{
+    LLUICtrl::reshape(width, height, called_from_parent);
+    const S32 gap = 6;
+    const S32 remove_width = llmin(106, width / 4);
+    const S32 add_width = llmin(112, width / 4);
+    mChipWidth = llmax(1, width - add_width - remove_width - gap * 2);
+    if (mAdd)
+    {
+        mAdd->reshape(add_width, 24, true);
+        mAdd->setOrigin(mChipWidth + gap, (height - 24) / 2);
+    }
+    if (mRemove)
+    {
+        mRemove->reshape(remove_width, 24, true);
+        mRemove->setOrigin(mChipWidth + gap * 2 + add_width, (height - 24) / 2);
+    }
+}
+
 void ALVCamCameraSelector::draw()
 {
     LL_PROFILE_ZONE_NAMED_CATEGORY_UI("Director VCam camera selector");
     if (mItems.empty())
         drawText(mFont, "Add a camera to start", 4, 8, mMutedColor);
-    const S32 width = llmax(1, getRect().getWidth() / llmax(1, static_cast<S32>(mItems.size())));
+    const S32 width = llmax(1, mChipWidth / llmax(1, static_cast<S32>(mItems.size())));
     for (S32 i = 0; i < static_cast<S32>(mItems.size()); ++i)
     {
         const bool selected = sameCapture(mItems[i].mHandle, mSelected);
@@ -470,9 +533,9 @@ void ALVCamCameraSelector::draw()
 
 bool ALVCamCameraSelector::handleMouseDown(S32 x, S32, MASK)
 {
-    if (mItems.empty()) return false;
+    if (mItems.empty() || x >= mChipWidth) return false;
     const S32 index = llclamp(x * static_cast<S32>(mItems.size()) /
-                              llmax(1, getRect().getWidth()), 0,
+                              llmax(1, mChipWidth), 0,
                               static_cast<S32>(mItems.size()) - 1);
     setValue(LLSD(mItems[index].mHandle.mId));
     onCommit();
@@ -491,34 +554,78 @@ ALVCamFaceList::ALVCamFaceList(const Params& p)
 void ALVCamFaceList::setItems(const std::vector<Item>& items)
 {
     mItems = items;
+    setScrollOffset(mScrollOffset);
 }
 
 S32 ALVCamFaceList::rowAt(S32 y) const
 {
-    const S32 row = (getRect().getHeight() - 1 - y) / 32;
+    const S32 row = mScrollOffset + (getRect().getHeight() - 1 - y) / FACE_ROW_HEIGHT;
     return row >= 0 && row < static_cast<S32>(mItems.size()) ? row : -1;
+}
+
+void ALVCamFaceList::setScrollOffset(S32 offset)
+{
+    const S32 visible_rows = llmax(1, getRect().getHeight() / FACE_ROW_HEIGHT);
+    mScrollOffset = llclamp(offset, 0, llmax(0, static_cast<S32>(mItems.size()) - visible_rows));
 }
 
 void ALVCamFaceList::draw()
 {
     LL_PROFILE_ZONE_NAMED_CATEGORY_UI("Director VCam face list");
-    for (S32 i = 0; i < static_cast<S32>(mItems.size()); ++i)
+    const S32 visible_rows = llmax(1, (getRect().getHeight() + FACE_ROW_HEIGHT - 1) / FACE_ROW_HEIGHT);
+    const S32 end = llmin(static_cast<S32>(mItems.size()), mScrollOffset + visible_rows);
+    const S32 content_right = getRect().getWidth() - FACE_SCROLLBAR_WIDTH - 2;
+    for (S32 i = mScrollOffset; i < end; ++i)
     {
-        const S32 top = getRect().getHeight() - i * 32;
-        LLRect rect(0, top, getRect().getWidth(), top - 30);
+        const S32 top = getRect().getHeight() - (i - mScrollOffset) * FACE_ROW_HEIGHT;
+        LLRect rect(0, top, content_right, top - 30);
         gl_rect_2d(rect, mItems[i].mSelected ? mAccentColor : mBorderColor, false);
         drawText(mFont, mItems[i].mName, 7, top - 13, mTextColor);
         drawText(mFont, mItems[i].mMeta, 150, top - 13, mMutedColor);
     }
+    if (static_cast<S32>(mItems.size()) > visible_rows)
+    {
+        const S32 track_left = getRect().getWidth() - FACE_SCROLLBAR_WIDTH;
+        const S32 thumb_height = llmax(18, getRect().getHeight() * visible_rows /
+                                           static_cast<S32>(mItems.size()));
+        const S32 max_offset = static_cast<S32>(mItems.size()) - visible_rows;
+        const S32 travel = getRect().getHeight() - thumb_height;
+        const S32 thumb_top = getRect().getHeight() -
+            (max_offset ? mScrollOffset * travel / max_offset : 0);
+        gl_rect_2d(LLRect(track_left, getRect().getHeight(), getRect().getWidth(), 0),
+                   LLColor4(0.f, 0.f, 0.f, .18f), true);
+        gl_rect_2d(LLRect(track_left + 1, thumb_top, getRect().getWidth() - 1,
+                          thumb_top - thumb_height), mBorderColor, true);
+    }
+    if (mMovePick)
+    {
+        gl_rect_2d(getLocalRect(), mAccentColor, false);
+        drawText(mFont, "PICK A FACE TO MOVE", llmax(7, content_right - 132),
+                 getRect().getHeight() - 13, mAccentColor);
+    }
     LLUICtrl::draw();
 }
 
-bool ALVCamFaceList::handleMouseDown(S32, S32 y, MASK)
+bool ALVCamFaceList::handleMouseDown(S32 x, S32 y, MASK)
 {
+    if (x >= getRect().getWidth() - FACE_SCROLLBAR_WIDTH)
+    {
+        const S32 visible_rows = llmax(1, getRect().getHeight() / FACE_ROW_HEIGHT);
+        const S32 max_offset = llmax(0, static_cast<S32>(mItems.size()) - visible_rows);
+        setScrollOffset((getRect().getHeight() - y) * max_offset /
+                        llmax(1, getRect().getHeight()));
+        return true;
+    }
     const S32 row = rowAt(y);
     if (row < 0) return false;
     setValue(mItems[row].mRaw ? LLSD() : LLSD(mItems[row].mHandle.mId));
     onCommit();
+    return true;
+}
+
+bool ALVCamFaceList::handleScrollWheel(S32, S32, LLScrollDelta delta)
+{
+    setScrollOffset(mScrollOffset + delta.mClicks);
     return true;
 }
 

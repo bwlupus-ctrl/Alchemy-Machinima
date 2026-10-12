@@ -16,6 +16,8 @@
 #include "lltexteditor.h"
 #include "llspinctrl.h"
 #include "llcombobox.h"
+#include "llcheckboxctrl.h"
+#include "llradiogroup.h"
 #include "llcontrol.h"
 #include "llviewercontrol.h"
 #include "lluictrlfactory.h"
@@ -242,6 +244,24 @@ bool ALKitRow::postBuild()
                         row->mSyncingMirror = false;
                     });
             }
+    }
+
+    if (mMeta.kind == "segmented")
+    {
+        std::vector<LLView*> segments(mControl->getChildList()->begin(),
+                                      mControl->getChildList()->end());
+        std::sort(segments.begin(), segments.end(),
+            [](const LLView* left, const LLView* right)
+            {
+                return left->getRect().mLeft < right->getRect().mLeft;
+            });
+        for (LLView* segment : segments)
+        {
+            if (LLCheckBoxCtrl* item = dynamic_cast<LLCheckBoxCtrl*>(segment))
+                mSegmentLabels.push_back(item->getLabel());
+            segment->setVisible(false);
+        }
+        mControl->setMouseOpaque(false);
     }
 
     if (mMeta.kind == "toggle" || mMeta.kind == "dial" || mMeta.kind == "arc")
@@ -481,6 +501,16 @@ bool ALKitRow::isEffectivelyVisible() const
     return !mHidden && !mWhoPicker && mFilterVisible && !mCodeHidden && control_visible && (!mMeta.advanced || !owner || owner->moreOpen());
 }
 
+bool ALKitRow::setControlVisible(bool visible)
+{
+    if (mCodeHidden == !visible)
+        return false;
+    mCodeHidden = !visible;
+    if (ALKitCard* owner = card())
+        owner->requestLayout();
+    return true;
+}
+
 bool ALKitRow::setControlVisible(LLView* c, bool v)
 {
     if (!c)
@@ -490,13 +520,9 @@ bool ALKitRow::setControlVisible(LLView* c, bool v)
         {
             if (row->mControl == c)
             {
-                if (row->mCodeHidden == !v && c->getVisible() == v)
-                    return false;
-                row->mCodeHidden = !v;
+                const bool changed = row->setControlVisible(v);
                 c->setVisible(v);
-                if (ALKitCard* card = row->card())
-                    card->requestLayout();
-                return true;
+                return changed;
             }
         }
     if (c->getVisible() == v)
@@ -614,6 +640,26 @@ void ALKitRow::onMouseLeave(S32 x, S32 y, MASK m)
     LLPanel::onMouseLeave(x, y, m);
 }
 
+bool ALKitRow::handleMouseDown(S32 x, S32 y, MASK mask)
+{
+    if (mMeta.kind == "segmented" && mControl && mControl->getEnabled() &&
+        mControl->getRect().pointInRect(x, y))
+    {
+        LLRadioGroup* group = dynamic_cast<LLRadioGroup*>(mControl);
+        const S32 count = static_cast<S32>(mSegmentLabels.size());
+        if (group && count)
+        {
+            const S32 index = llclamp((x - mControl->getRect().mLeft) * count /
+                                          llmax(1, mControl->getRect().getWidth()),
+                                      0, count - 1);
+            group->setSelectedIndex(index);
+            group->onCommit();
+            return true;
+        }
+    }
+    return LLPanel::handleMouseDown(x, y, mask);
+}
+
 void ALKitRow::styleValueEditor(bool active)
 {
     if (!mControl || (mMeta.kind != "slider" && mMeta.kind != "number"))
@@ -668,4 +714,27 @@ void ALKitRow::draw()
         }
     }
     LLPanel::draw();
+    if (mMeta.kind == "segmented" && mControl && !mSegmentLabels.empty())
+    {
+        const LLRect control_rect = mControl->getRect();
+        const S32 count = static_cast<S32>(mSegmentLabels.size());
+        const S32 selected = dynamic_cast<LLRadioGroup*>(mControl)
+            ? static_cast<LLRadioGroup*>(mControl)->getSelectedIndex() : -1;
+        const LLFontGL* font = ALKitStyle::sansFont("Kit12");
+        for (S32 index = 0; index < count; ++index)
+        {
+            const S32 left = control_rect.mLeft + index * control_rect.getWidth() / count;
+            const S32 right = control_rect.mLeft + (index + 1) * control_rect.getWidth() / count;
+            const LLRect segment(left, control_rect.mTop, right - 1, control_rect.mBottom);
+            gl_rect_2d(segment, ALKitStyle::color(index == selected ? ALKitStyle::ACTIVE_FILL
+                                                                    : ALKitStyle::INPUT_BG).get(), true);
+            gl_rect_2d(segment, ALKitStyle::color(ALKitStyle::INPUT_BORDER).get(), false);
+            if (font)
+                font->renderUTF8(mSegmentLabels[index], 0,
+                    (left + right) / 2,
+                    control_rect.getCenterY(),
+                    ALKitStyle::color(index == selected ? ALKitStyle::TEXT_STRONG : ALKitStyle::MUTED).get(),
+                    LLFontGL::HCENTER, LLFontGL::VCENTER);
+        }
+    }
 }

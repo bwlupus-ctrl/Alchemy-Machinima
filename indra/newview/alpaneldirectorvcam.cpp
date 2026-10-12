@@ -39,6 +39,11 @@ static LLPanelInjector<ALPanelDirectorVCam>
 namespace
 {
 constexpr LLPrismPreviewService::VisibilityOwner VCAM_PAGE_PREVIEW_OWNER = 2;
+bool setRowControlVisible(ALKitRow* row, bool visible)
+{
+    return row && row->setControlVisible(visible);
+}
+
 bool sameCapture(const LLPrismLens::CaptureHandle& a,
                  const LLPrismLens::CaptureHandle& b)
 {
@@ -357,7 +362,9 @@ void ALPanelDirectorVCam::refresh(U32 dirty)
         tile.mCapture = item.mHandle;
         tile.mPublication = LLPrismPreviewService::instance().tileState(item.mHandle);
         const bool editing = sameCapture(item.mHandle, mModel.selectedCapture());
-        if (item.mRuntime.mActivity == LLPrismLens::EActivityState::LIVE)
+        if (item.mRuntime.mActivity == LLPrismLens::EActivityState::IDLE)
+            tile.mBadge = std::string(editing ? "EDITING - " : "") + "OFFLINE";
+        else if (item.mRuntime.mActivity == LLPrismLens::EActivityState::LIVE)
             tile.mBadge = llformat("%sLIVE %.1f/%.1f fps", editing ? "EDITING · " : "",
                 item.mRuntime.mObservedPublicationHz,
                 item.mRate.mMode == LLPrismLens::EOutputRateMode::TARGET_FPS
@@ -368,7 +375,8 @@ void ALPanelDirectorVCam::refresh(U32 dirty)
                 gSavedSettings.getF32("PrismMonitorPreviewFPS"));
         else
             tile.mBadge = std::string(editing ? "EDITING · " : "") + tileBadge(tile.mPublication.mState);
-        if (!gSavedSettings.getBOOL("PrismMonitorPreviewsEnabled"))
+        if (!gSavedSettings.getBOOL("PrismMonitorPreviewsEnabled") &&
+            item.mRuntime.mActivity != LLPrismLens::EActivityState::IDLE)
             tile.mBadge = std::string(editing ? "EDITING · " : "") + "PAUSED";
         tile.mTimestamp = tile.mPublication.mTimestamp > 0.0
             ? clockText(tile.mPublication.mTimestamp) : "--:--";
@@ -392,18 +400,21 @@ void ALPanelDirectorVCam::refresh(U32 dirty)
                 item.mDisplayCount, item.mDisplayCount == 1 ? "" : "s");
         else if (item.mRuntime.mActivity == LLPrismLens::EActivityState::WAITING)
             tile.mStatus = "Preview only · no visible face";
+        else if (item.mRuntime.mActivity == LLPrismLens::EActivityState::IDLE)
+            tile.mStatus = "Offline - not producing";
         else
             tile.mStatus = std::string(activityText(item.mRuntime.mActivity)) +
                 " · no visible face";
         tile.mVisible = true;
     }
     mCameraSelector->setItems(cameras, mModel.selectedCapture());
+    mCameraSelector->setActionsEnabled(registry.mCaptureCount < 8, capture != nullptr);
     mMonitorStrip->setTiles(tiles, monitor_slot_span, mCompact, mLargePage);
     mMonitorStrip->setNewFaceFit(mNewFaceFit);
     if (mMonitorPager)
     {
         mMonitorPager->setPage(mLargePage, monitor_slot_span);
-        setVisibleIfChanged(row("vc_monitor_pager"), !mCompact && monitor_slot_span > 4);
+        setRowControlVisible(row("vc_monitor_pager"), !mCompact && monitor_slot_span > 4);
     }
 
     std::vector<ALVCamFaceList::Item> faces;
@@ -422,12 +433,11 @@ void ALPanelDirectorVCam::refresh(U32 dirty)
         }
     }
     mFaceList->setItems(faces);
+    mFaceList->setMovePick(mMoveTargetCapture.mId.notNull());
     updateCardState(capture != nullptr, display != nullptr,
                     capture ? llformat("CAM %u · %s", capture->mSlot + 1,
                                        capture->mLabel.c_str()) : std::string());
 
-    setEnabledIfChanged(control("vc_remove_capture"), capture != nullptr);
-    setEnabledIfChanged(control("vc_add_camera"), registry.mCaptureCount < 8);
     setEnabledIfChanged(control("vc_remove_face"), display && capture &&
         capture->mMode != LLPrismLens::ECaptureMode::SURFACE_LENS);
     setEnabledIfChanged(control("vc_face_locate"), display && !display->mSettings.mVirtual);
@@ -445,10 +455,7 @@ void ALPanelDirectorVCam::refresh(U32 dirty)
         const bool object_camera = !surface && !camera.mVirtual;
         const bool fixed_fov = camera.mFovMode == LLPrismLens::EFovMode::FIXED;
         if (ALKitCard* skeleton_card = mKitPage->findCard("skeleton"))
-        {
             skeleton_card->setCodeVisible(!surface && camera.mVirtual);
-            mKitPage->requestLayout();
-        }
         setValueIfChanged(control("vc_source_bound"), surface ? "Surface aperture" :
             skeleton ? ("Driven by " + bone.mCustomJoint) :
             virtual_camera ? llformat("Stored at %.1f, %.1f, %.1f", camera.mVirtualPos.mV[0],
@@ -471,31 +478,31 @@ void ALPanelDirectorVCam::refresh(U32 dirty)
                     aperture->mDisplayTextureEntry))
                 : LLSD("Aperture unavailable"));
         }
-        setVisibleIfChanged(row("vc_source_note_object"), object_camera);
-        setVisibleIfChanged(row("vc_source_note_virtual"), virtual_camera);
-        setVisibleIfChanged(row("vc_source_note_skeleton"), skeleton);
-        setVisibleIfChanged(row("vc_set_selected_camera"), object_camera);
-        setVisibleIfChanged(row("vc_place_eye_front"), object_camera);
-        setVisibleIfChanged(row("vc_placement_note"), object_camera);
-        setVisibleIfChanged(row("vc_eye_x"), object_camera);
-        setVisibleIfChanged(row("vc_eye_y"), object_camera);
-        setVisibleIfChanged(row("vc_eye_z"), object_camera);
-        setVisibleIfChanged(row("vc_snap_view"), virtual_camera);
-        setVisibleIfChanged(row("vc_virtual_note"), virtual_camera);
-        setVisibleIfChanged(row("vc_lens_type"), surface);
-        setVisibleIfChanged(row("vc_lens_aperture"), surface);
-        setVisibleIfChanged(row("vc_lens_locate"), surface);
-        setVisibleIfChanged(row("vc_lens_note"), surface);
-        setVisibleIfChanged(row("vc_fov_mode"), !skeleton);
-        setVisibleIfChanged(row("vc_fov_deg"), !skeleton && fixed_fov);
-        setVisibleIfChanged(row("vc_fov_projector"), !skeleton && !fixed_fov);
-        setVisibleIfChanged(row("vc_fov_attached"), skeleton);
-        setVisibleIfChanged(row("vc_guide_thirds"), camera.mShowGuide);
-        setVisibleIfChanged(row("vc_guide_up"), camera.mShowGuide);
-        setVisibleIfChanged(row("vc_guide_cross"), camera.mShowGuide);
-        setVisibleIfChanged(row("vc_guide_clip"), camera.mShowGuide);
-        setVisibleIfChanged(row("vc_guide_note"), !camera.mShowGuide);
-        setVisibleIfChanged(row("vc_output_custom"), mCustomAspect);
+        setRowControlVisible(row("vc_source_note_object"), object_camera);
+        setRowControlVisible(row("vc_source_note_virtual"), virtual_camera);
+        setRowControlVisible(row("vc_source_note_skeleton"), skeleton);
+        setRowControlVisible(row("vc_set_selected_camera"), object_camera);
+        setRowControlVisible(row("vc_place_eye_front"), object_camera);
+        setRowControlVisible(row("vc_placement_note"), object_camera);
+        setRowControlVisible(row("vc_eye_x"), object_camera);
+        setRowControlVisible(row("vc_eye_y"), object_camera);
+        setRowControlVisible(row("vc_eye_z"), object_camera);
+        setRowControlVisible(row("vc_snap_view"), virtual_camera);
+        setRowControlVisible(row("vc_virtual_note"), virtual_camera);
+        setRowControlVisible(row("vc_lens_type"), surface);
+        setRowControlVisible(row("vc_lens_aperture"), surface);
+        setRowControlVisible(row("vc_lens_locate"), surface);
+        setRowControlVisible(row("vc_lens_note"), surface);
+        setRowControlVisible(row("vc_fov_mode"), !skeleton);
+        setRowControlVisible(row("vc_fov_deg"), !skeleton && fixed_fov);
+        setRowControlVisible(row("vc_fov_projector"), !skeleton && !fixed_fov);
+        setRowControlVisible(row("vc_fov_attached"), skeleton);
+        setRowControlVisible(row("vc_guide_thirds"), camera.mShowGuide);
+        setRowControlVisible(row("vc_guide_up"), camera.mShowGuide);
+        setRowControlVisible(row("vc_guide_cross"), camera.mShowGuide);
+        setRowControlVisible(row("vc_guide_clip"), camera.mShowGuide);
+        setRowControlVisible(row("vc_guide_note"), !camera.mShowGuide);
+        setRowControlVisible(row("vc_output_custom"), mCustomAspect);
 
         setValueIfChanged(control("vc_eye_x"), camera.mLocalEyeOffset.mV[0]);
         setValueIfChanged(control("vc_eye_y"), camera.mLocalEyeOffset.mV[1]);
@@ -546,8 +553,8 @@ void ALPanelDirectorVCam::refresh(U32 dirty)
         setValueIfChanged(control("vc_rate_readout"), llformat("%.1f / %.1f / %.1f fps - age %.2fs",
             capture->mRate.mTargetFps, capture->mRuntime.mCadenceEntitlementHz,
             capture->mRuntime.mObservedPublicationHz, capture->mRuntime.mOutputAgeSeconds));
-        setVisibleIfChanged(row("vc_target_fps"), capture->mRate.mMode == LLPrismLens::EOutputRateMode::TARGET_FPS);
-        setVisibleIfChanged(row("vc_rate_preset"), capture->mRate.mMode == LLPrismLens::EOutputRateMode::TARGET_FPS);
+        setRowControlVisible(row("vc_target_fps"), capture->mRate.mMode == LLPrismLens::EOutputRateMode::TARGET_FPS);
+        setRowControlVisible(row("vc_rate_preset"), capture->mRate.mMode == LLPrismLens::EOutputRateMode::TARGET_FPS);
     }
 
     if (display)
@@ -562,13 +569,13 @@ void ALPanelDirectorVCam::refresh(U32 dirty)
             ? llformat("%.2f x %.2f m virtual screen · %s", settings.mWidth,
                        settings.mHeight, visibility)
             : llformat("Prim face %d · %s", display->mDisplayTextureEntry, visibility));
-        setVisibleIfChanged(row("vc_anchor_x"), settings.mFitMode == LLPrismLens::EFitMode::FILL);
-        setVisibleIfChanged(row("vc_anchor_y"), settings.mFitMode == LLPrismLens::EFitMode::FILL);
-        setVisibleIfChanged(row("vc_screen_reposition"), settings.mVirtual);
-        setVisibleIfChanged(row("vc_screen_height"), settings.mVirtual);
-        setVisibleIfChanged(row("vc_screen_aspect"), settings.mVirtual);
-        setVisibleIfChanged(row("vc_gate_note"), display->mGateSubscribed);
-        setVisibleIfChanged(row("vc_raw_note"), false);
+        setRowControlVisible(row("vc_anchor_x"), settings.mFitMode == LLPrismLens::EFitMode::FILL);
+        setRowControlVisible(row("vc_anchor_y"), settings.mFitMode == LLPrismLens::EFitMode::FILL);
+        setRowControlVisible(row("vc_screen_reposition"), settings.mVirtual);
+        setRowControlVisible(row("vc_screen_height"), settings.mVirtual);
+        setRowControlVisible(row("vc_screen_aspect"), settings.mVirtual);
+        setRowControlVisible(row("vc_gate_note"), display->mGateSubscribed);
+        setRowControlVisible(row("vc_raw_note"), false);
         setValueIfChanged(control("vc_anchor_x"), settings.mAnchor[0]);
         setValueIfChanged(control("vc_anchor_y"), settings.mAnchor[1]);
         setValueIfChanged(control("vc_screen_height"), settings.mHeight);
@@ -601,13 +608,13 @@ void ALPanelDirectorVCam::refresh(U32 dirty)
     }
     else
     {
-        setVisibleIfChanged(row("vc_anchor_x"), false);
-        setVisibleIfChanged(row("vc_anchor_y"), false);
-        setVisibleIfChanged(row("vc_screen_reposition"), false);
-        setVisibleIfChanged(row("vc_screen_height"), false);
-        setVisibleIfChanged(row("vc_screen_aspect"), false);
-        setVisibleIfChanged(row("vc_gate_note"), false);
-        setVisibleIfChanged(row("vc_raw_note"), capture != nullptr);
+        setRowControlVisible(row("vc_anchor_x"), false);
+        setRowControlVisible(row("vc_anchor_y"), false);
+        setRowControlVisible(row("vc_screen_reposition"), false);
+        setRowControlVisible(row("vc_screen_height"), false);
+        setRowControlVisible(row("vc_screen_aspect"), false);
+        setRowControlVisible(row("vc_gate_note"), false);
+        setRowControlVisible(row("vc_raw_note"), capture != nullptr);
     }
 
     mMonitorHeader->setState(mCompact,
@@ -669,7 +676,7 @@ void ALPanelDirectorVCam::setStatus(const std::string& text, bool warning)
     if (LLUICtrl* status = control("vc_status"))
     {
         setValueIfChanged(status, text);
-        setVisibleIfChanged(row("vc_status"), !text.empty());
+        setRowControlVisible(row("vc_status"), !text.empty());
         if (LLTextBox* line = dynamic_cast<LLTextBox*>(status))
             line->setColor(ALKitStyle::color(warning ? ALKitStyle::RECORD : ALKitStyle::TEXT));
     }
@@ -681,7 +688,7 @@ void ALPanelDirectorVCam::clearStatus()
     mStatus.clear();
     mStatusWarning = false;
     if (LLUICtrl* status = control("vc_status")) setValueIfChanged(status, LLSD());
-    setVisibleIfChanged(row("vc_status"), false);
+    setRowControlVisible(row("vc_status"), false);
 }
 
 void ALPanelDirectorVCam::setAspectValue(const std::string& name, F32 ratio)
@@ -720,7 +727,6 @@ void ALPanelDirectorVCam::updateCardState(bool have_capture, bool have_display,
         if (ALKitCard* card = mKitPage->findCard(id)) card->setCodeVisible(have_display);
     if (ALKitCard* raw = mKitPage->findCard("raw_output"))
         raw->setCodeVisible(have_capture && !have_display);
-    mKitPage->requestLayout();
 }
 
 void ALPanelDirectorVCam::onControl(LLUICtrl* source)
@@ -775,6 +781,34 @@ void ALPanelDirectorVCam::onControl(LLUICtrl* source)
         for (U32 i = 0; i < mModel.registry().mDisplayCount; ++i)
             if (mModel.registry().mDisplays[i].mHandle.mId == id)
                 selected = mModel.registry().mDisplays[i].mHandle;
+        if (mMoveTargetCapture.mId.notNull())
+        {
+            if (selected.mId.isNull())
+            {
+                mMoveTargetCapture = {};
+                mFaceList->setMovePick(false);
+                setStatus("Move cancelled.", false);
+                return;
+            }
+            const LLPrismLens::ActionStatus status =
+                ALVCamPageModel::reassignDisplayStatus(selected, mMoveTargetCapture);
+            if (!status.allowed())
+            {
+                setStatus(status.mReason);
+                return;
+            }
+            std::string reason;
+            if (LLPrismLens::reassignDisplay(selected, mMoveTargetCapture, &reason) !=
+                LLPrismLens::ERegistryResult::OK)
+            {
+                setStatus(reason);
+                return;
+            }
+            mMoveTargetCapture = {};
+            mFaceList->setMovePick(false);
+            setStatus("Moved the selected face to this camera.", false);
+            return;
+        }
         mModel.setSelectedDisplay(selected);
     }
     else if (name == "vc_add_camera")
@@ -1134,7 +1168,9 @@ void ALPanelDirectorVCam::onMonitorMenu(const std::string& action,
     else if (action == "move")
     {
         if (mKitPage) mKitPage->setChipIndex(3);
-        setStatus("Drag this monitor onto a face row to move that existing face.", false);
+        mMoveTargetCapture = mMenuCapture;
+        mFaceList->setMovePick(true);
+        setStatus("Pick a face row to move it to this camera. Pick raw output to cancel.", false);
     }
     else if (action == "display")
     {

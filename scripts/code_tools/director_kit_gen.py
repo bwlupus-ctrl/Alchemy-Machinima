@@ -190,8 +190,9 @@ def flatten_pages(data: dict) -> list[tuple[dict, dict]]:
 def validate_data(data: dict) -> None:
     pages = flatten_pages(data)
     row_count = sum(1 for _group, page in pages for _row in all_rows(page))
-    if len(pages) != 35 or row_count != 1961:
-        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 35/1961")
+    # 1959: VCam "Settings for" selector + Add camera + Remove capture merged into one row (mockup, 10/11).
+    if len(pages) != 35 or row_count != 1959:
+        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 35/1959")
     shortcuts: set[tuple[str, str, str]] = set()
     for _group, page in pages:
         for card in page.get("cards", []):
@@ -487,6 +488,17 @@ def scalar(value) -> str:
     if isinstance(value, bool):
         return "true" if value else "false"
     return str(value)
+
+
+def validate_vcam_page(page: dict) -> None:
+    """Keep the mockup's Settings-for selector/actions as one custom row."""
+    rows = [row for card in page.get("cards", []) for row in card.get("rows", [])]
+    selector = [row for row in rows if row.get("w") == "vc_camera_selector"]
+    if len(selector) != 1 or selector[0].get("custom_tag") != "vcam_camera_selector":
+        raise GenError("VCam requires exactly one custom vc_camera_selector row")
+    obsolete = {row.get("w") for row in rows} & {"vc_add_camera", "vc_remove_capture"}
+    if obsolete:
+        raise GenError("VCam add/remove actions are integrated into vc_camera_selector")
 
 
 def row_element(row: dict, by_name: dict[str, ET.Element], by_control: dict[str, list[ET.Element]],
@@ -884,6 +896,7 @@ def generate(data_path: Path, config_path: Path, out_dir: Path) -> tuple[dict[Pa
     data = json.loads(data_path.read_text(encoding="utf-8"))
     if VCAM_DATA.exists():
         vcam = json.loads(VCAM_DATA.read_text(encoding="utf-8"))
+        validate_vcam_page(vcam)
         for group in data.get("groups", []):
             if group.get("name") == "camera_group":
                 group["pages"] = [vcam if page.get("name") == "vcam_tab" else page

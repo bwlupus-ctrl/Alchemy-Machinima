@@ -19,9 +19,7 @@
       {"l": "Preview cost", "k": "readout", "w": "vc_monitor_footer", "h": "How monitor previews reuse retained pictures and consume the shared attempt budget.", "bind": "code"}
     ]},
     {"id": "camera_selector", "t": "Settings for", "k": "rows", "badge": "CAMERA", "rows": [
-      {"l": "Settings for", "k": "custom", "w": "vc_camera_selector", "h": "Choose the camera edited below. Monitor clicks never change this selection.", "custom_tag": "vcam_camera_selector", "bind": "code", "row_height": 36},
-      {"l": "Add camera", "k": "combo", "w": "vc_add_camera", "h": "Add from selected object, Virtual at my view, OTS pair, or Surface lens.", "it": ["+ Add camera...", "From selected object", "Virtual at my view", "OTS pair", "Surface lens"], "iv": ["", "object", "virtual", "ots", "lens"], "bind": "code"},
-      {"l": "Remove capture", "k": "button", "w": "vc_remove_capture", "h": "Remove this camera and all of its face bindings.", "btn": "Remove capture", "bind": "code"}
+      {"l": "", "k": "custom", "w": "vc_camera_selector", "h": "Choose the camera edited below, add a camera, or remove the selected capture in one row. Monitor clicks never change this selection.", "custom_tag": "vcam_camera_selector", "bind": "code", "row_height": 36}
     ]},
     {"id": "source", "t": "Source", "k": "rows", "badge": "CAM n", "rows": [
       {"l": "Source", "k": "segmented", "w": "vc_source_type", "h": "Choose Object, Virtual, or Skeleton POV. Surface Lens captures keep their fixed source.", "it": ["Object", "Virtual", "Skeleton POV"], "iv": [0,1,2], "bind": "code"},

@@ -6,6 +6,7 @@
 #include <boost/signals2.hpp>
 #include <array>
 #include <memory>
+#include <vector>
 class LLUICtrl;
 class LLTextBox;
 class LLButton;
@@ -36,10 +37,12 @@ public:
     void        draw() override;
     void        onMouseEnter(S32, S32, MASK) override;
     void        onMouseLeave(S32, S32, MASK) override;
+    bool        handleMouseDown(S32, S32, MASK) override;
     S32         heightForWidth(S32) const;
     void        layoutRow(S32);
     void        layoutDialCell(S32);
     bool        isEffectivelyVisible() const;
+    bool        setControlVisible(bool visible);
     static bool setControlVisible(LLView*, bool);
     void        resolveBinding();
     void        refreshValue();
@@ -48,6 +51,7 @@ public:
     const ALKitRowMeta& meta() const { return mMeta; }
     LLUICtrl*           control() const { return mControl; }
     void                setFilterVisible(bool v) { mFilterVisible = v; }
+    bool                filterVisible() const { return mFilterVisible; }
     void                flash()
     {
         mFlashTimer.start();
@@ -82,6 +86,7 @@ private:
                  mHovered = false, mPointerInside = false, mFlashing = false, mAmber = false, mSyncingMirror = false;
     LLUICtrl*    mControl = nullptr;
     std::array<LLUICtrl*, 3>           mVec{ { nullptr, nullptr, nullptr } };
+    std::vector<std::string>            mSegmentLabels;
     S32                                mVecCount  = 0;
     LLTextBox*                         mLabel     = nullptr;
     LLTextBox*                         mValueText = nullptr;

@@ -64,6 +64,12 @@
 - Large monitor mode keeps four tiles plus the 1–4/5–8 pager; Compact shows all eight. Tiles now use publication timestamps, PAUSED when previews are off, editing/rate badges, status dots, and a drag handle; dragging begins only after mouse slop.
 - Action feedback has its own six-second status row. Invalid surface binds and Surface Lens drag attempts show their reason, and the tile menu now has bind/move/cancel plus explicit raw/bound-face display choices at the clicked ellipsis.
 - Camera and face empty states hide inapplicable cards. Source is a real Object/Virtual/Skeleton POV selector, Bone POV has an enable control, and reset never enables attachment on a non-virtual camera.
+
+## Fix round 2
+
+- Kit card and row code visibility is now persistent layout state and is combined with mode, chip, search, advanced, and branch filtering on every relayout. VCam conditional rows use that API, and unchanged card labels/visibility no longer schedule full-page layout work.
+- The face list now wheel-scrolls with a visible scrollbar and offset-aware selection/drop hit testing. Segmented rows draw and click as button segments, Settings for is one selector/action row, monitor drags use the viewer drag threshold, and rejected-drag tooltips clear on mouse-up.
+- Non-producing cameras read OFFLINE. Move existing face now enters a cancellable face-pick state and reassigns the chosen display through the existing validated registry path.
 - Face selection is authoritative for the editors and list highlight, while monitor display choice remains independent. Face names use one global numbering scheme; aspect combos select presets by tolerance and fall back to Custom.
 - TV presets now match the full manager values. Dynamic card badges use the real camera slot/label, and the monitor menu is destroyed with its owning panel.
 - Added isolated migration coverage for qualified VCam names and `DirectorLastTabName`/legacy-index restoration. No build was run in this fix round, per request.

@@ -843,6 +843,24 @@ void ALKitCard::requestLayout()
         });
 }
 
+bool ALKitCard::setBadge(const std::string& badge)
+{
+    if (mBadge == badge)
+        return false;
+    mBadge = badge;
+    requestLayout();
+    return true;
+}
+
+bool ALKitCard::setCodeVisible(bool visible)
+{
+    if (mCodeHidden == !visible)
+        return false;
+    mCodeHidden = !visible;
+    requestLayout();
+    return true;
+}
+
 bool ALKitCard::revealRow(ALKitRow* row)
 {
     if (!row || std::find(mRows.begin(), mRows.end(), row) == mRows.end())

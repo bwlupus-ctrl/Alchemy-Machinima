@@ -15,6 +15,8 @@
 #include <vector>
 
 class LLFontGL;
+class LLButton;
+class LLComboBox;
 
 class ALVCamMonitorHeader : public LLUICtrl
 {
@@ -96,8 +98,6 @@ private:
     LLColor4 mTextColor;
     LLColor4 mMutedColor;
     LLPrismPreviewService* mPreviewService = nullptr;
-    S32 mMouseDownX = 0;
-    S32 mMouseDownY = 0;
     S32 mMouseDownSlot = -1;
 };
 
@@ -130,7 +130,10 @@ public:
         Params() = default;
     };
     struct Item { LLPrismLens::CaptureHandle mHandle; std::string mLabel; bool mLive = false; };
+    bool postBuild() override;
     void setItems(const std::vector<Item>& items, const LLPrismLens::CaptureHandle& selected);
+    void setActionsEnabled(bool can_add, bool can_remove);
+    void reshape(S32 width, S32 height, bool called_from_parent = true) override;
     void draw() override;
     bool handleMouseDown(S32 x, S32 y, MASK mask) override;
 protected:
@@ -144,6 +147,9 @@ private:
     LLColor4 mMutedColor;
     LLColor4 mAccentColor;
     LLColor4 mBorderColor;
+    LLComboBox* mAdd = nullptr;
+    LLButton* mRemove = nullptr;
+    S32 mChipWidth = 1;
 };
 
 class ALVCamFaceList : public LLUICtrl
@@ -162,8 +168,10 @@ public:
         bool mSelected = false;
     };
     void setItems(const std::vector<Item>& items);
+    void setMovePick(bool active) { mMovePick = active; }
     void draw() override;
     bool handleMouseDown(S32 x, S32 y, MASK mask) override;
+    bool handleScrollWheel(S32 x, S32 y, LLScrollDelta delta) override;
     bool handleDragAndDrop(S32 x, S32 y, MASK mask, bool drop,
                            EDragAndDropType cargo_type, void* cargo_data,
                            EAcceptance* accept, std::string& tooltip_msg) override;
@@ -172,7 +180,10 @@ protected:
     explicit ALVCamFaceList(const Params& p);
 private:
     S32 rowAt(S32 y) const;
+    void setScrollOffset(S32 offset);
     std::vector<Item> mItems;
+    S32 mScrollOffset = 0;
+    bool mMovePick = false;
     const LLFontGL* mFont = nullptr;
     LLColor4 mTextColor;
     LLColor4 mMutedColor;

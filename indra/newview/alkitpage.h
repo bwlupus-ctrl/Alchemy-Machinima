@@ -160,7 +160,7 @@ private:
         std::string              name;
         std::vector<std::string> cards;
     };
-    void        applyModeAndChip();
+    void        applyModeAndChip(bool request_layout = true);
     void        updateMaster();
     bool        updateGateStatus();
     void        scrollToView(LLView*);

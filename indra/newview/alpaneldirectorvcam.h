@@ -65,6 +65,7 @@ private:
     std::vector<boost::signals2::scoped_connection> mConnections;
     LLHandle<LLContextMenu> mMonitorMenu;
     LLPrismLens::CaptureHandle mMenuCapture;
+    LLPrismLens::CaptureHandle mMoveTargetCapture;
     std::vector<LLPrismLens::DisplayHandle> mMenuDisplays;
     std::array<LLPrismLens::CaptureHandle, LLPrismLens::MAX_CAPTURES> mPreviewDemand;
     LLPrismLens::EFitMode mNewFaceFit = LLPrismLens::EFitMode::FIT;
