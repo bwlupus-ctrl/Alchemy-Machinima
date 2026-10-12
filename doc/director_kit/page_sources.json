@@ -121716,7 +121716,7 @@
             },
             {
               "file": "indra/newview/alfloaterlightbox.cpp",
-              "line": 712,
+              "line": 725,
               "class": "ALFloaterLightBox",
               "function": "onSelGoboChanged",
               "wired_class": "ALFloaterLightBox",
@@ -121802,7 +121802,7 @@
             },
             {
               "file": "indra/newview/alfloaterlightbox.cpp",
-              "line": 713,
+              "line": 726,
               "class": "ALFloaterLightBox",
               "function": "onSelGoboChanged",
               "wired_class": "ALFloaterLightBox",
@@ -121880,7 +121880,7 @@
             },
             {
               "file": "indra/newview/alfloaterlightbox.cpp",
-              "line": 714,
+              "line": 727,
               "class": "ALFloaterLightBox",
               "function": "onSelGoboChanged",
               "wired_class": "ALFloaterLightBox",
@@ -121958,7 +121958,7 @@
             },
             {
               "file": "indra/newview/alfloaterlightbox.cpp",
-              "line": 715,
+              "line": 728,
               "class": "ALFloaterLightBox",
               "function": "onSelGoboChanged",
               "wired_class": "ALFloaterLightBox",
@@ -122036,7 +122036,7 @@
             },
             {
               "file": "indra/newview/alfloaterlightbox.cpp",
-              "line": 722,
+              "line": 735,
               "class": "ALFloaterLightBox",
               "function": "onSelGoboChanged",
               "wired_class": "ALFloaterLightBox",
@@ -122114,7 +122114,7 @@
             },
             {
               "file": "indra/newview/alfloaterlightbox.cpp",
-              "line": 725,
+              "line": 738,
               "class": "ALFloaterLightBox",
               "function": "onSelGoboChanged",
               "wired_class": "ALFloaterLightBox",
@@ -122192,7 +122192,7 @@
             },
             {
               "file": "indra/newview/alfloaterlightbox.cpp",
-              "line": 716,
+              "line": 729,
               "class": "ALFloaterLightBox",
               "function": "onSelGoboChanged",
               "wired_class": "ALFloaterLightBox",
@@ -122270,7 +122270,7 @@
             },
             {
               "file": "indra/newview/alfloaterlightbox.cpp",
-              "line": 723,
+              "line": 736,
               "class": "ALFloaterLightBox",
               "function": "onSelGoboChanged",
               "wired_class": "ALFloaterLightBox",
@@ -122348,7 +122348,7 @@
             },
             {
               "file": "indra/newview/alfloaterlightbox.cpp",
-              "line": 724,
+              "line": 737,
               "class": "ALFloaterLightBox",
               "function": "onSelGoboChanged",
               "wired_class": "ALFloaterLightBox",
@@ -122426,7 +122426,7 @@
             },
             {
               "file": "indra/newview/alfloaterlightbox.cpp",
-              "line": 726,
+              "line": 739,
               "class": "ALFloaterLightBox",
               "function": "onSelGoboChanged",
               "wired_class": "ALFloaterLightBox",
@@ -124970,7 +124970,7 @@
           "cpp": [
             {
               "file": "indra/newview/alfloaterlightbox.cpp",
-              "line": 1519,
+              "line": 1532,
               "class": "ALFloaterLightBox",
               "function": "updateTonemapper",
               "wired_class": "ALFloaterLightBox",
@@ -125044,7 +125044,7 @@
           "cpp": [
             {
               "file": "indra/newview/alfloaterlightbox.cpp",
-              "line": 1520,
+              "line": 1533,
               "class": "ALFloaterLightBox",
               "function": "updateTonemapper",
               "wired_class": "ALFloaterLightBox",
@@ -125446,7 +125446,7 @@
           "cpp": [
             {
               "file": "indra/newview/alfloaterlightbox.cpp",
-              "line": 1262,
+              "line": 1275,
               "class": "ALFloaterLightBox",
               "function": "populateLUTCombo",
               "wired_class": "ALFloaterLightBox",
@@ -127314,7 +127314,7 @@
           "cpp": [
             {
               "file": "indra/newview/alfloaterlightbox.cpp",
-              "line": 1521,
+              "line": 1534,
               "class": "ALFloaterLightBox",
               "function": "updateTonemapper",
               "wired_class": "ALFloaterLightBox",
@@ -127388,7 +127388,7 @@
           "cpp": [
             {
               "file": "indra/newview/alfloaterlightbox.cpp",
-              "line": 1522,
+              "line": 1535,
               "class": "ALFloaterLightBox",
               "function": "updateTonemapper",
               "wired_class": "ALFloaterLightBox",
@@ -127462,7 +127462,7 @@
           "cpp": [
             {
               "file": "indra/newview/alfloaterlightbox.cpp",
-              "line": 1499,
+              "line": 1512,
               "class": "ALFloaterLightBox",
               "function": "updateTonemapper",
               "wired_class": "ALFloaterLightBox",
@@ -127536,7 +127536,7 @@
           "cpp": [
             {
               "file": "indra/newview/alfloaterlightbox.cpp",
-              "line": 1500,
+              "line": 1513,
               "class": "ALFloaterLightBox",
               "function": "updateTonemapper",
               "wired_class": "ALFloaterLightBox",
@@ -127626,7 +127626,7 @@
           "cpp": [
             {
               "file": "indra/newview/alfloaterlightbox.cpp",
-              "line": 1501,
+              "line": 1514,
               "class": "ALFloaterLightBox",
               "function": "updateTonemapper",
               "wired_class": "ALFloaterLightBox",
@@ -127700,7 +127700,7 @@
           "cpp": [
             {
               "file": "indra/newview/alfloaterlightbox.cpp",
-              "line": 1502,
+              "line": 1515,
               "class": "ALFloaterLightBox",
               "function": "updateTonemapper",
               "wired_class": "ALFloaterLightBox",
@@ -127774,7 +127774,7 @@
           "cpp": [
             {
               "file": "indra/newview/alfloaterlightbox.cpp",
-              "line": 1503,
+              "line": 1516,
               "class": "ALFloaterLightBox",
               "function": "updateTonemapper",
               "wired_class": "ALFloaterLightBox",
@@ -127848,7 +127848,7 @@
           "cpp": [
             {
               "file": "indra/newview/alfloaterlightbox.cpp",
-              "line": 1504,
+              "line": 1517,
               "class": "ALFloaterLightBox",
               "function": "updateTonemapper",
               "wired_class": "ALFloaterLightBox",
@@ -127927,7 +127927,7 @@
           "cpp": [
             {
               "file": "indra/newview/alfloaterlightbox.cpp",
-              "line": 1537,
+              "line": 1550,
               "class": "ALFloaterLightBox",
               "function": "updateTonemapper",
               "wired_class": "ALFloaterLightBox",
@@ -127991,7 +127991,7 @@
           "cpp": [
             {
               "file": "indra/newview/alfloaterlightbox.cpp",
-              "line": 1538,
+              "line": 1551,
               "class": "ALFloaterLightBox",
               "function": "updateTonemapper",
               "wired_class": "ALFloaterLightBox",
@@ -128052,7 +128052,7 @@
           "cpp": [
             {
               "file": "indra/newview/alfloaterlightbox.cpp",
-              "line": 1540,
+              "line": 1553,
               "class": "ALFloaterLightBox",
               "function": "updateTonemapper",
               "wired_class": "ALFloaterLightBox",
@@ -128142,7 +128142,7 @@
           "cpp": [
             {
               "file": "indra/newview/alfloaterlightbox.cpp",
-              "line": 1539,
+              "line": 1552,
               "class": "ALFloaterLightBox",
               "function": "updateTonemapper",
               "wired_class": "ALFloaterLightBox",
@@ -129736,7 +129736,7 @@
           "cpp": [
             {
               "file": "indra/newview/alfloaterlightbox.cpp",
-              "line": 905,
+              "line": 918,
               "class": "ALFloaterLightBox",
               "function": "updateRotoInkAnimVisibility",
               "wired_class": "ALFloaterLightBox",
@@ -130103,7 +130103,7 @@
           "cpp": [
             {
               "file": "indra/newview/alfloaterlightbox.cpp",
-              "line": 910,
+              "line": 923,
               "class": "ALFloaterLightBox",
               "function": "updateRotoInkAnimVisibility",
               "wired_class": "ALFloaterLightBox",
@@ -130409,7 +130409,7 @@
           "cpp": [
             {
               "file": "indra/newview/alfloaterlightbox.cpp",
-              "line": 793,
+              "line": 806,
               "class": "ALFloaterLightBox",
               "function": "updateRotoInkDepthMode",
               "wired_class": "ALFloaterLightBox",
@@ -130470,7 +130470,7 @@
           "cpp": [
             {
               "file": "indra/newview/alfloaterlightbox.cpp",
-              "line": 796,
+              "line": 809,
               "class": "ALFloaterLightBox",
               "function": "updateRotoInkDepthMode",
               "wired_class": "ALFloaterLightBox",
@@ -130785,7 +130785,7 @@
           "cpp": [
             {
               "file": "indra/newview/alfloaterlightbox.cpp",
-              "line": 919,
+              "line": 932,
               "class": "ALFloaterLightBox",
               "function": "updateRotoInkAnimVisibility",
               "wired_class": "ALFloaterLightBox",
@@ -130846,7 +130846,7 @@
           "cpp": [
             {
               "file": "indra/newview/alfloaterlightbox.cpp",
-              "line": 922,
+              "line": 935,
               "class": "ALFloaterLightBox",
               "function": "updateRotoInkAnimVisibility",
               "wired_class": "ALFloaterLightBox",
@@ -130907,7 +130907,7 @@
           "cpp": [
             {
               "file": "indra/newview/alfloaterlightbox.cpp",
-              "line": 923,
+              "line": 936,
               "class": "ALFloaterLightBox",
               "function": "updateRotoInkAnimVisibility",
               "wired_class": "ALFloaterLightBox",
@@ -131083,7 +131083,7 @@
           "cpp": [
             {
               "file": "indra/newview/alfloaterlightbox.cpp",
-              "line": 937,
+              "line": 950,
               "class": "ALFloaterLightBox",
               "function": "updateRotoInkAnimVisibility",
               "wired_class": "ALFloaterLightBox",
@@ -131296,7 +131296,7 @@
           "cpp": [
             {
               "file": "indra/newview/alfloaterlightbox.cpp",
-              "line": 931,
+              "line": 944,
               "class": "ALFloaterLightBox",
               "function": "updateRotoInkAnimVisibility",
               "wired_class": "ALFloaterLightBox",
@@ -131366,7 +131366,7 @@
           "cpp": [
             {
               "file": "indra/newview/alfloaterlightbox.cpp",
-              "line": 932,
+              "line": 945,
               "class": "ALFloaterLightBox",
               "function": "updateRotoInkAnimVisibility",
               "wired_class": "ALFloaterLightBox",
@@ -131427,7 +131427,7 @@
           "cpp": [
             {
               "file": "indra/newview/alfloaterlightbox.cpp",
-              "line": 933,
+              "line": 946,
               "class": "ALFloaterLightBox",
               "function": "updateRotoInkAnimVisibility",
               "wired_class": "ALFloaterLightBox",
@@ -131492,7 +131492,7 @@
           "cpp": [
             {
               "file": "indra/newview/alfloaterlightbox.cpp",
-              "line": 934,
+              "line": 947,
               "class": "ALFloaterLightBox",
               "function": "updateRotoInkAnimVisibility",
               "wired_class": "ALFloaterLightBox",
@@ -131553,7 +131553,7 @@
           "cpp": [
             {
               "file": "indra/newview/alfloaterlightbox.cpp",
-              "line": 935,
+              "line": 948,
               "class": "ALFloaterLightBox",
               "function": "updateRotoInkAnimVisibility",
               "wired_class": "ALFloaterLightBox",
@@ -131614,7 +131614,7 @@
           "cpp": [
             {
               "file": "indra/newview/alfloaterlightbox.cpp",
-              "line": 943,
+              "line": 956,
               "class": "ALFloaterLightBox",
               "function": "updateRotoInkAnimVisibility",
               "wired_class": "ALFloaterLightBox",
@@ -131675,7 +131675,7 @@
           "cpp": [
             {
               "file": "indra/newview/alfloaterlightbox.cpp",
-              "line": 944,
+              "line": 957,
               "class": "ALFloaterLightBox",
               "function": "updateRotoInkAnimVisibility",
               "wired_class": "ALFloaterLightBox",
@@ -131883,7 +131883,7 @@
           "cpp": [
             {
               "file": "indra/newview/alfloaterlightbox.cpp",
-              "line": 947,
+              "line": 960,
               "class": "ALFloaterLightBox",
               "function": "updateRotoInkAnimVisibility",
               "wired_class": "ALFloaterLightBox",
@@ -131944,7 +131944,7 @@
           "cpp": [
             {
               "file": "indra/newview/alfloaterlightbox.cpp",
-              "line": 948,
+              "line": 961,
               "class": "ALFloaterLightBox",
               "function": "updateRotoInkAnimVisibility",
               "wired_class": "ALFloaterLightBox",
@@ -132005,7 +132005,7 @@
           "cpp": [
             {
               "file": "indra/newview/alfloaterlightbox.cpp",
-              "line": 949,
+              "line": 962,
               "class": "ALFloaterLightBox",
               "function": "updateRotoInkAnimVisibility",
               "wired_class": "ALFloaterLightBox",
@@ -132066,7 +132066,7 @@
           "cpp": [
             {
               "file": "indra/newview/alfloaterlightbox.cpp",
-              "line": 950,
+              "line": 963,
               "class": "ALFloaterLightBox",
               "function": "updateRotoInkAnimVisibility",
               "wired_class": "ALFloaterLightBox",
@@ -132526,7 +132526,7 @@
           "cpp": [
             {
               "file": "indra/newview/alfloaterlightbox.cpp",
-              "line": 878,
+              "line": 891,
               "class": "ALFloaterLightBox",
               "function": "updateRotoInkAnimVisibility",
               "wired_class": "ALFloaterLightBox",
@@ -132587,7 +132587,7 @@
           "cpp": [
             {
               "file": "indra/newview/alfloaterlightbox.cpp",
-              "line": 881,
+              "line": 894,
               "class": "ALFloaterLightBox",
               "function": "updateRotoInkAnimVisibility",
               "wired_class": "ALFloaterLightBox",
@@ -132648,7 +132648,7 @@
           "cpp": [
             {
               "file": "indra/newview/alfloaterlightbox.cpp",
-              "line": 891,
+              "line": 904,
               "class": "ALFloaterLightBox",
               "function": "updateRotoInkAnimVisibility",
               "wired_class": "ALFloaterLightBox",
@@ -132709,7 +132709,7 @@
           "cpp": [
             {
               "file": "indra/newview/alfloaterlightbox.cpp",
-              "line": 893,
+              "line": 906,
               "class": "ALFloaterLightBox",
               "function": "updateRotoInkAnimVisibility",
               "wired_class": "ALFloaterLightBox",
@@ -132770,7 +132770,7 @@
           "cpp": [
             {
               "file": "indra/newview/alfloaterlightbox.cpp",
-              "line": 894,
+              "line": 907,
               "class": "ALFloaterLightBox",
               "function": "updateRotoInkAnimVisibility",
               "wired_class": "ALFloaterLightBox",
@@ -132831,7 +132831,7 @@
           "cpp": [
             {
               "file": "indra/newview/alfloaterlightbox.cpp",
-              "line": 895,
+              "line": 908,
               "class": "ALFloaterLightBox",
               "function": "updateRotoInkAnimVisibility",
               "wired_class": "ALFloaterLightBox",
@@ -133174,7 +133174,7 @@
           "cpp": [
             {
               "file": "indra/newview/alfloaterlightbox.cpp",
-              "line": 859,
+              "line": 872,
               "class": "ALFloaterLightBox",
               "function": "updateRotoInkAnimVisibility",
               "wired_class": "ALFloaterLightBox",
@@ -133235,7 +133235,7 @@
           "cpp": [
             {
               "file": "indra/newview/alfloaterlightbox.cpp",
-              "line": 860,
+              "line": 873,
               "class": "ALFloaterLightBox",
               "function": "updateRotoInkAnimVisibility",
               "wired_class": "ALFloaterLightBox",
@@ -133578,7 +133578,7 @@
           "cpp": [
             {
               "file": "indra/newview/alfloaterlightbox.cpp",
-              "line": 866,
+              "line": 879,
               "class": "ALFloaterLightBox",
               "function": "updateRotoInkAnimVisibility",
               "wired_class": "ALFloaterLightBox",
@@ -133639,7 +133639,7 @@
           "cpp": [
             {
               "file": "indra/newview/alfloaterlightbox.cpp",
-              "line": 867,
+              "line": 880,
               "class": "ALFloaterLightBox",
               "function": "updateRotoInkAnimVisibility",
               "wired_class": "ALFloaterLightBox",
@@ -133896,7 +133896,7 @@
           "cpp": [
             {
               "file": "indra/newview/alfloaterlightbox.cpp",
-              "line": 872,
+              "line": 885,
               "class": "ALFloaterLightBox",
               "function": "updateRotoInkAnimVisibility",
               "wired_class": "ALFloaterLightBox",
@@ -134215,7 +134215,7 @@
           "cpp": [
             {
               "file": "indra/newview/alfloaterlightbox.cpp",
-              "line": 976,
+              "line": 989,
               "class": "ALFloaterLightBox",
               "function": "onTronPaletteSelected",
               "wired_class": "ALFloaterLightBox",
@@ -135218,7 +135218,7 @@
           "cpp": [
             {
               "file": "indra/newview/alfloaterlightbox.cpp",
-              "line": 1053,
+              "line": 1066,
               "class": "ALFloaterLightBox",
               "function": "updateTronVisibility",
               "wired_class": "ALFloaterLightBox",
@@ -135279,7 +135279,7 @@
           "cpp": [
             {
               "file": "indra/newview/alfloaterlightbox.cpp",
-              "line": 1054,
+              "line": 1067,
               "class": "ALFloaterLightBox",
               "function": "updateTronVisibility",
               "wired_class": "ALFloaterLightBox",
@@ -135340,7 +135340,7 @@
           "cpp": [
             {
               "file": "indra/newview/alfloaterlightbox.cpp",
-              "line": 1055,
+              "line": 1068,
               "class": "ALFloaterLightBox",
               "function": "updateTronVisibility",
               "wired_class": "ALFloaterLightBox",
@@ -135401,7 +135401,7 @@
           "cpp": [
             {
               "file": "indra/newview/alfloaterlightbox.cpp",
-              "line": 1061,
+              "line": 1074,
               "class": "ALFloaterLightBox",
               "function": "updateTronVisibility",
               "wired_class": "ALFloaterLightBox",
@@ -135462,7 +135462,7 @@
           "cpp": [
             {
               "file": "indra/newview/alfloaterlightbox.cpp",
-              "line": 1056,
+              "line": 1069,
               "class": "ALFloaterLightBox",
               "function": "updateTronVisibility",
               "wired_class": "ALFloaterLightBox",
@@ -135523,7 +135523,7 @@
           "cpp": [
             {
               "file": "indra/newview/alfloaterlightbox.cpp",
-              "line": 1057,
+              "line": 1070,
               "class": "ALFloaterLightBox",
               "function": "updateTronVisibility",
               "wired_class": "ALFloaterLightBox",
@@ -135584,7 +135584,7 @@
           "cpp": [
             {
               "file": "indra/newview/alfloaterlightbox.cpp",
-              "line": 1058,
+              "line": 1071,
               "class": "ALFloaterLightBox",
               "function": "updateTronVisibility",
               "wired_class": "ALFloaterLightBox",
@@ -135645,7 +135645,7 @@
           "cpp": [
             {
               "file": "indra/newview/alfloaterlightbox.cpp",
-              "line": 1059,
+              "line": 1072,
               "class": "ALFloaterLightBox",
               "function": "updateTronVisibility",
               "wired_class": "ALFloaterLightBox",
@@ -135706,7 +135706,7 @@
           "cpp": [
             {
               "file": "indra/newview/alfloaterlightbox.cpp",
-              "line": 1060,
+              "line": 1073,
               "class": "ALFloaterLightBox",
               "function": "updateTronVisibility",
               "wired_class": "ALFloaterLightBox",
@@ -135816,7 +135816,7 @@
           "cpp": [
             {
               "file": "indra/newview/alfloaterlightbox.cpp",
-              "line": 1069,
+              "line": 1082,
               "class": "ALFloaterLightBox",
               "function": "updateTronVisibility",
               "wired_class": "ALFloaterLightBox",
@@ -135877,7 +135877,7 @@
           "cpp": [
             {
               "file": "indra/newview/alfloaterlightbox.cpp",
-              "line": 1070,
+              "line": 1083,
               "class": "ALFloaterLightBox",
               "function": "updateTronVisibility",
               "wired_class": "ALFloaterLightBox",
@@ -135938,7 +135938,7 @@
           "cpp": [
             {
               "file": "indra/newview/alfloaterlightbox.cpp",
-              "line": 1071,
+              "line": 1084,
               "class": "ALFloaterLightBox",
               "function": "updateTronVisibility",
               "wired_class": "ALFloaterLightBox",
@@ -135999,7 +135999,7 @@
           "cpp": [
             {
               "file": "indra/newview/alfloaterlightbox.cpp",
-              "line": 1084,
+              "line": 1097,
               "class": "ALFloaterLightBox",
               "function": "updateTronVisibility",
               "wired_class": "ALFloaterLightBox",
@@ -136060,7 +136060,7 @@
           "cpp": [
             {
               "file": "indra/newview/alfloaterlightbox.cpp",
-              "line": 1072,
+              "line": 1085,
               "class": "ALFloaterLightBox",
               "function": "updateTronVisibility",
               "wired_class": "ALFloaterLightBox",
@@ -136121,7 +136121,7 @@
           "cpp": [
             {
               "file": "indra/newview/alfloaterlightbox.cpp",
-              "line": 1073,
+              "line": 1086,
               "class": "ALFloaterLightBox",
               "function": "updateTronVisibility",
               "wired_class": "ALFloaterLightBox",
@@ -136182,7 +136182,7 @@
           "cpp": [
             {
               "file": "indra/newview/alfloaterlightbox.cpp",
-              "line": 1074,
+              "line": 1087,
               "class": "ALFloaterLightBox",
               "function": "updateTronVisibility",
               "wired_class": "ALFloaterLightBox",
@@ -136243,7 +136243,7 @@
           "cpp": [
             {
               "file": "indra/newview/alfloaterlightbox.cpp",
-              "line": 1075,
+              "line": 1088,
               "class": "ALFloaterLightBox",
               "function": "updateTronVisibility",
               "wired_class": "ALFloaterLightBox",
@@ -136304,7 +136304,7 @@
           "cpp": [
             {
               "file": "indra/newview/alfloaterlightbox.cpp",
-              "line": 1076,
+              "line": 1089,
               "class": "ALFloaterLightBox",
               "function": "updateTronVisibility",
               "wired_class": "ALFloaterLightBox",
@@ -136365,7 +136365,7 @@
           "cpp": [
             {
               "file": "indra/newview/alfloaterlightbox.cpp",
-              "line": 1077,
+              "line": 1090,
               "class": "ALFloaterLightBox",
               "function": "updateTronVisibility",
               "wired_class": "ALFloaterLightBox",
@@ -136426,7 +136426,7 @@
           "cpp": [
             {
               "file": "indra/newview/alfloaterlightbox.cpp",
-              "line": 1078,
+              "line": 1091,
               "class": "ALFloaterLightBox",
               "function": "updateTronVisibility",
               "wired_class": "ALFloaterLightBox",
@@ -136487,7 +136487,7 @@
           "cpp": [
             {
               "file": "indra/newview/alfloaterlightbox.cpp",
-              "line": 1079,
+              "line": 1092,
               "class": "ALFloaterLightBox",
               "function": "updateTronVisibility",
               "wired_class": "ALFloaterLightBox",
@@ -136551,7 +136551,7 @@
           "cpp": [
             {
               "file": "indra/newview/alfloaterlightbox.cpp",
-              "line": 1080,
+              "line": 1093,
               "class": "ALFloaterLightBox",
               "function": "updateTronVisibility",
               "wired_class": "ALFloaterLightBox",
@@ -136612,7 +136612,7 @@
           "cpp": [
             {
               "file": "indra/newview/alfloaterlightbox.cpp",
-              "line": 1081,
+              "line": 1094,
               "class": "ALFloaterLightBox",
               "function": "updateTronVisibility",
               "wired_class": "ALFloaterLightBox",
@@ -136677,7 +136677,7 @@
           "cpp": [
             {
               "file": "indra/newview/alfloaterlightbox.cpp",
-              "line": 1082,
+              "line": 1095,
               "class": "ALFloaterLightBox",
               "function": "updateTronVisibility",
               "wired_class": "ALFloaterLightBox",
@@ -136738,7 +136738,7 @@
           "cpp": [
             {
               "file": "indra/newview/alfloaterlightbox.cpp",
-              "line": 1083,
+              "line": 1096,
               "class": "ALFloaterLightBox",
               "function": "updateTronVisibility",
               "wired_class": "ALFloaterLightBox",
@@ -136799,7 +136799,7 @@
           "cpp": [
             {
               "file": "indra/newview/alfloaterlightbox.cpp",
-              "line": 1183,
+              "line": 1196,
               "class": "ALFloaterLightBox",
               "function": "updateTronVisibility",
               "wired_class": "ALFloaterLightBox",
@@ -136860,7 +136860,7 @@
           "cpp": [
             {
               "file": "indra/newview/alfloaterlightbox.cpp",
-              "line": 1184,
+              "line": 1197,
               "class": "ALFloaterLightBox",
               "function": "updateTronVisibility",
               "wired_class": "ALFloaterLightBox",
@@ -136921,7 +136921,7 @@
           "cpp": [
             {
               "file": "indra/newview/alfloaterlightbox.cpp",
-              "line": 1185,
+              "line": 1198,
               "class": "ALFloaterLightBox",
               "function": "updateTronVisibility",
               "wired_class": "ALFloaterLightBox",
@@ -136975,7 +136975,7 @@
           "cpp": [
             {
               "file": "indra/newview/alfloaterlightbox.cpp",
-              "line": 1085,
+              "line": 1098,
               "class": "ALFloaterLightBox",
               "function": "updateTronVisibility",
               "wired_class": "ALFloaterLightBox",
@@ -137042,7 +137042,7 @@
           "cpp": [
             {
               "file": "indra/newview/alfloaterlightbox.cpp",
-              "line": 1085,
+              "line": 1098,
               "class": "ALFloaterLightBox",
               "function": "updateTronVisibility",
               "wired_class": "ALFloaterLightBox",
@@ -137116,7 +137116,7 @@
           "cpp": [
             {
               "file": "indra/newview/alfloaterlightbox.cpp",
-              "line": 1110,
+              "line": 1123,
               "class": "ALFloaterLightBox",
               "function": "updateTronVisibility",
               "wired_class": "ALFloaterLightBox",
@@ -137177,7 +137177,7 @@
           "cpp": [
             {
               "file": "indra/newview/alfloaterlightbox.cpp",
-              "line": 1094,
+              "line": 1107,
               "class": "ALFloaterLightBox",
               "function": "updateTronVisibility",
               "wired_class": "ALFloaterLightBox",
@@ -137238,7 +137238,7 @@
           "cpp": [
             {
               "file": "indra/newview/alfloaterlightbox.cpp",
-              "line": 1095,
+              "line": 1108,
               "class": "ALFloaterLightBox",
               "function": "updateTronVisibility",
               "wired_class": "ALFloaterLightBox",
@@ -137299,7 +137299,7 @@
           "cpp": [
             {
               "file": "indra/newview/alfloaterlightbox.cpp",
-              "line": 1096,
+              "line": 1109,
               "class": "ALFloaterLightBox",
               "function": "updateTronVisibility",
               "wired_class": "ALFloaterLightBox",
@@ -137360,7 +137360,7 @@
           "cpp": [
             {
               "file": "indra/newview/alfloaterlightbox.cpp",
-              "line": 1097,
+              "line": 1110,
               "class": "ALFloaterLightBox",
               "function": "updateTronVisibility",
               "wired_class": "ALFloaterLightBox",
@@ -137426,7 +137426,7 @@
           "cpp": [
             {
               "file": "indra/newview/alfloaterlightbox.cpp",
-              "line": 1098,
+              "line": 1111,
               "class": "ALFloaterLightBox",
               "function": "updateTronVisibility",
               "wired_class": "ALFloaterLightBox",
@@ -137491,7 +137491,7 @@
           "cpp": [
             {
               "file": "indra/newview/alfloaterlightbox.cpp",
-              "line": 1099,
+              "line": 1112,
               "class": "ALFloaterLightBox",
               "function": "updateTronVisibility",
               "wired_class": "ALFloaterLightBox",
@@ -137552,7 +137552,7 @@
           "cpp": [
             {
               "file": "indra/newview/alfloaterlightbox.cpp",
-              "line": 1100,
+              "line": 1113,
               "class": "ALFloaterLightBox",
               "function": "updateTronVisibility",
               "wired_class": "ALFloaterLightBox",
@@ -137662,7 +137662,7 @@
           "cpp": [
             {
               "file": "indra/newview/alfloaterlightbox.cpp",
-              "line": 1117,
+              "line": 1130,
               "class": "ALFloaterLightBox",
               "function": "updateTronVisibility",
               "wired_class": "ALFloaterLightBox",
@@ -137723,7 +137723,7 @@
           "cpp": [
             {
               "file": "indra/newview/alfloaterlightbox.cpp",
-              "line": 1120,
+              "line": 1133,
               "class": "ALFloaterLightBox",
               "function": "updateTronVisibility",
               "wired_class": "ALFloaterLightBox",
@@ -137784,7 +137784,7 @@
           "cpp": [
             {
               "file": "indra/newview/alfloaterlightbox.cpp",
-              "line": 1118,
+              "line": 1131,
               "class": "ALFloaterLightBox",
               "function": "updateTronVisibility",
               "wired_class": "ALFloaterLightBox",
@@ -137845,7 +137845,7 @@
           "cpp": [
             {
               "file": "indra/newview/alfloaterlightbox.cpp",
-              "line": 1119,
+              "line": 1132,
               "class": "ALFloaterLightBox",
               "function": "updateTronVisibility",
               "wired_class": "ALFloaterLightBox",
@@ -137906,7 +137906,7 @@
           "cpp": [
             {
               "file": "indra/newview/alfloaterlightbox.cpp",
-              "line": 1121,
+              "line": 1134,
               "class": "ALFloaterLightBox",
               "function": "updateTronVisibility",
               "wired_class": "ALFloaterLightBox",
@@ -137967,7 +137967,7 @@
           "cpp": [
             {
               "file": "indra/newview/alfloaterlightbox.cpp",
-              "line": 1122,
+              "line": 1135,
               "class": "ALFloaterLightBox",
               "function": "updateTronVisibility",
               "wired_class": "ALFloaterLightBox",
@@ -138028,7 +138028,7 @@
           "cpp": [
             {
               "file": "indra/newview/alfloaterlightbox.cpp",
-              "line": 1123,
+              "line": 1136,
               "class": "ALFloaterLightBox",
               "function": "updateTronVisibility",
               "wired_class": "ALFloaterLightBox",
@@ -138089,7 +138089,7 @@
           "cpp": [
             {
               "file": "indra/newview/alfloaterlightbox.cpp",
-              "line": 1124,
+              "line": 1137,
               "class": "ALFloaterLightBox",
               "function": "updateTronVisibility",
               "wired_class": "ALFloaterLightBox",
@@ -138150,7 +138150,7 @@
           "cpp": [
             {
               "file": "indra/newview/alfloaterlightbox.cpp",
-              "line": 1141,
+              "line": 1154,
               "class": "ALFloaterLightBox",
               "function": "updateTronVisibility",
               "wired_class": "ALFloaterLightBox",
@@ -138211,7 +138211,7 @@
           "cpp": [
             {
               "file": "indra/newview/alfloaterlightbox.cpp",
-              "line": 1131,
+              "line": 1144,
               "class": "ALFloaterLightBox",
               "function": "updateTronVisibility",
               "wired_class": "ALFloaterLightBox",
@@ -138272,7 +138272,7 @@
           "cpp": [
             {
               "file": "indra/newview/alfloaterlightbox.cpp",
-              "line": 1132,
+              "line": 1145,
               "class": "ALFloaterLightBox",
               "function": "updateTronVisibility",
               "wired_class": "ALFloaterLightBox",
@@ -138333,7 +138333,7 @@
           "cpp": [
             {
               "file": "indra/newview/alfloaterlightbox.cpp",
-              "line": 1133,
+              "line": 1146,
               "class": "ALFloaterLightBox",
               "function": "updateTronVisibility",
               "wired_class": "ALFloaterLightBox",
@@ -138443,7 +138443,7 @@
           "cpp": [
             {
               "file": "indra/newview/alfloaterlightbox.cpp",
-              "line": 1148,
+              "line": 1161,
               "class": "ALFloaterLightBox",
               "function": "updateTronVisibility",
               "wired_class": "ALFloaterLightBox",
@@ -138504,7 +138504,7 @@
           "cpp": [
             {
               "file": "indra/newview/alfloaterlightbox.cpp",
-              "line": 1149,
+              "line": 1162,
               "class": "ALFloaterLightBox",
               "function": "updateTronVisibility",
               "wired_class": "ALFloaterLightBox",
@@ -138565,7 +138565,7 @@
           "cpp": [
             {
               "file": "indra/newview/alfloaterlightbox.cpp",
-              "line": 1153,
+              "line": 1166,
               "class": "ALFloaterLightBox",
               "function": "updateTronVisibility",
               "wired_class": "ALFloaterLightBox",
@@ -138626,7 +138626,7 @@
           "cpp": [
             {
               "file": "indra/newview/alfloaterlightbox.cpp",
-              "line": 1162,
+              "line": 1175,
               "class": "ALFloaterLightBox",
               "function": "updateTronVisibility",
               "wired_class": "ALFloaterLightBox",
@@ -138687,7 +138687,7 @@
           "cpp": [
             {
               "file": "indra/newview/alfloaterlightbox.cpp",
-              "line": 1163,
+              "line": 1176,
               "class": "ALFloaterLightBox",
               "function": "updateTronVisibility",
               "wired_class": "ALFloaterLightBox",
@@ -138748,7 +138748,7 @@
           "cpp": [
             {
               "file": "indra/newview/alfloaterlightbox.cpp",
-              "line": 1150,
+              "line": 1163,
               "class": "ALFloaterLightBox",
               "function": "updateTronVisibility",
               "wired_class": "ALFloaterLightBox",
@@ -138809,7 +138809,7 @@
           "cpp": [
             {
               "file": "indra/newview/alfloaterlightbox.cpp",
-              "line": 1151,
+              "line": 1164,
               "class": "ALFloaterLightBox",
               "function": "updateTronVisibility",
               "wired_class": "ALFloaterLightBox",
@@ -138870,7 +138870,7 @@
           "cpp": [
             {
               "file": "indra/newview/alfloaterlightbox.cpp",
-              "line": 1152,
+              "line": 1165,
               "class": "ALFloaterLightBox",
               "function": "updateTronVisibility",
               "wired_class": "ALFloaterLightBox",
@@ -138935,7 +138935,7 @@
           "cpp": [
             {
               "file": "indra/newview/alfloaterlightbox.cpp",
-              "line": 1154,
+              "line": 1167,
               "class": "ALFloaterLightBox",
               "function": "updateTronVisibility",
               "wired_class": "ALFloaterLightBox",
@@ -138996,7 +138996,7 @@
           "cpp": [
             {
               "file": "indra/newview/alfloaterlightbox.cpp",
-              "line": 1155,
+              "line": 1168,
               "class": "ALFloaterLightBox",
               "function": "updateTronVisibility",
               "wired_class": "ALFloaterLightBox",
@@ -139404,7 +139404,7 @@
           "cpp": [
             {
               "file": "indra/newview/alfloaterlightbox.cpp",
-              "line": 1203,
+              "line": 1216,
               "class": "ALFloaterLightBox",
               "function": "updateTronVisibility",
               "wired_class": "ALFloaterLightBox",
@@ -139474,7 +139474,7 @@
           "cpp": [
             {
               "file": "indra/newview/alfloaterlightbox.cpp",
-              "line": 1204,
+              "line": 1217,
               "class": "ALFloaterLightBox",
               "function": "updateTronVisibility",
               "wired_class": "ALFloaterLightBox",
@@ -139535,7 +139535,7 @@
           "cpp": [
             {
               "file": "indra/newview/alfloaterlightbox.cpp",
-              "line": 1206,
+              "line": 1219,
               "class": "ALFloaterLightBox",
               "function": "updateTronVisibility",
               "wired_class": "ALFloaterLightBox",
@@ -139596,7 +139596,7 @@
           "cpp": [
             {
               "file": "indra/newview/alfloaterlightbox.cpp",
-              "line": 1231,
+              "line": 1244,
               "class": "ALFloaterLightBox",
               "function": "updateTronVisibility",
               "wired_class": "ALFloaterLightBox",
@@ -139657,7 +139657,7 @@
           "cpp": [
             {
               "file": "indra/newview/alfloaterlightbox.cpp",
-              "line": 1239,
+              "line": 1252,
               "class": "ALFloaterLightBox",
               "function": "updateTronVisibility",
               "wired_class": "ALFloaterLightBox",
@@ -139718,7 +139718,7 @@
           "cpp": [
             {
               "file": "indra/newview/alfloaterlightbox.cpp",
-              "line": 1210,
+              "line": 1223,
               "class": "ALFloaterLightBox",
               "function": "updateTronVisibility",
               "wired_class": "ALFloaterLightBox",
@@ -139783,7 +139783,7 @@
           "cpp": [
             {
               "file": "indra/newview/alfloaterlightbox.cpp",
-              "line": 1207,
+              "line": 1220,
               "class": "ALFloaterLightBox",
               "function": "updateTronVisibility",
               "wired_class": "ALFloaterLightBox",
@@ -139844,7 +139844,7 @@
           "cpp": [
             {
               "file": "indra/newview/alfloaterlightbox.cpp",
-              "line": 1205,
+              "line": 1218,
               "class": "ALFloaterLightBox",
               "function": "updateTronVisibility",
               "wired_class": "ALFloaterLightBox",
@@ -139905,7 +139905,7 @@
           "cpp": [
             {
               "file": "indra/newview/alfloaterlightbox.cpp",
-              "line": 1208,
+              "line": 1221,
               "class": "ALFloaterLightBox",
               "function": "updateTronVisibility",
               "wired_class": "ALFloaterLightBox",
@@ -139966,7 +139966,7 @@
           "cpp": [
             {
               "file": "indra/newview/alfloaterlightbox.cpp",
-              "line": 1209,
+              "line": 1222,
               "class": "ALFloaterLightBox",
               "function": "updateTronVisibility",
               "wired_class": "ALFloaterLightBox",
@@ -140027,7 +140027,7 @@
           "cpp": [
             {
               "file": "indra/newview/alfloaterlightbox.cpp",
-              "line": 1211,
+              "line": 1224,
               "class": "ALFloaterLightBox",
               "function": "updateTronVisibility",
               "wired_class": "ALFloaterLightBox",
@@ -140088,7 +140088,7 @@
           "cpp": [
             {
               "file": "indra/newview/alfloaterlightbox.cpp",
-              "line": 1212,
+              "line": 1225,
               "class": "ALFloaterLightBox",
               "function": "updateTronVisibility",
               "wired_class": "ALFloaterLightBox",
@@ -140149,7 +140149,7 @@
           "cpp": [
             {
               "file": "indra/newview/alfloaterlightbox.cpp",
-              "line": 1213,
+              "line": 1226,
               "class": "ALFloaterLightBox",
               "function": "updateTronVisibility",
               "wired_class": "ALFloaterLightBox",
@@ -140210,7 +140210,7 @@
           "cpp": [
             {
               "file": "indra/newview/alfloaterlightbox.cpp",
-              "line": 1214,
+              "line": 1227,
               "class": "ALFloaterLightBox",
               "function": "updateTronVisibility",
               "wired_class": "ALFloaterLightBox",
@@ -140271,7 +140271,7 @@
           "cpp": [
             {
               "file": "indra/newview/alfloaterlightbox.cpp",
-              "line": 1215,
+              "line": 1228,
               "class": "ALFloaterLightBox",
               "function": "updateTronVisibility",
               "wired_class": "ALFloaterLightBox",
@@ -140335,7 +140335,7 @@
           "cpp": [
             {
               "file": "indra/newview/alfloaterlightbox.cpp",
-              "line": 1216,
+              "line": 1229,
               "class": "ALFloaterLightBox",
               "function": "updateTronVisibility",
               "wired_class": "ALFloaterLightBox",
@@ -140396,7 +140396,7 @@
           "cpp": [
             {
               "file": "indra/newview/alfloaterlightbox.cpp",
-              "line": 1247,
+              "line": 1260,
               "class": "ALFloaterLightBox",
               "function": "updateTronVisibility",
               "wired_class": "ALFloaterLightBox",
@@ -140457,7 +140457,7 @@
           "cpp": [
             {
               "file": "indra/newview/alfloaterlightbox.cpp",
-              "line": 1217,
+              "line": 1230,
               "class": "ALFloaterLightBox",
               "function": "updateTronVisibility",
               "wired_class": "ALFloaterLightBox",
@@ -140518,7 +140518,7 @@
           "cpp": [
             {
               "file": "indra/newview/alfloaterlightbox.cpp",
-              "line": 1218,
+              "line": 1231,
               "class": "ALFloaterLightBox",
               "function": "updateTronVisibility",
               "wired_class": "ALFloaterLightBox",
@@ -140579,7 +140579,7 @@
           "cpp": [
             {
               "file": "indra/newview/alfloaterlightbox.cpp",
-              "line": 1219,
+              "line": 1232,
               "class": "ALFloaterLightBox",
               "function": "updateTronVisibility",
               "wired_class": "ALFloaterLightBox",
@@ -140640,7 +140640,7 @@
           "cpp": [
             {
               "file": "indra/newview/alfloaterlightbox.cpp",
-              "line": 1220,
+              "line": 1233,
               "class": "ALFloaterLightBox",
               "function": "updateTronVisibility",
               "wired_class": "ALFloaterLightBox",
@@ -140701,7 +140701,7 @@
           "cpp": [
             {
               "file": "indra/newview/alfloaterlightbox.cpp",
-              "line": 1221,
+              "line": 1234,
               "class": "ALFloaterLightBox",
               "function": "updateTronVisibility",
               "wired_class": "ALFloaterLightBox",
@@ -140762,7 +140762,7 @@
           "cpp": [
             {
               "file": "indra/newview/alfloaterlightbox.cpp",
-              "line": 1222,
+              "line": 1235,
               "class": "ALFloaterLightBox",
               "function": "updateTronVisibility",
               "wired_class": "ALFloaterLightBox",
@@ -140823,7 +140823,7 @@
           "cpp": [
             {
               "file": "indra/newview/alfloaterlightbox.cpp",
-              "line": 1223,
+              "line": 1236,
               "class": "ALFloaterLightBox",
               "function": "updateTronVisibility",
               "wired_class": "ALFloaterLightBox",
@@ -140877,7 +140877,7 @@
           "cpp": [
             {
               "file": "indra/newview/alfloaterlightbox.cpp",
-              "line": 1224,
+              "line": 1237,
               "class": "ALFloaterLightBox",
               "function": "updateTronVisibility",
               "wired_class": "ALFloaterLightBox",
@@ -140960,7 +140960,7 @@
           "cpp": [
             {
               "file": "indra/newview/alfloaterlightbox.cpp",
-              "line": 1173,
+              "line": 1186,
               "class": "ALFloaterLightBox",
               "function": "updateTronVisibility",
               "wired_class": "ALFloaterLightBox",
@@ -141027,7 +141027,7 @@
           "cpp": [
             {
               "file": "indra/newview/alfloaterlightbox.cpp",
-              "line": 1192,
+              "line": 1205,
               "class": "ALFloaterLightBox",
               "function": "updateTronVisibility",
               "wired_class": "ALFloaterLightBox",
@@ -141088,7 +141088,7 @@
           "cpp": [
             {
               "file": "indra/newview/alfloaterlightbox.cpp",
-              "line": 1174,
+              "line": 1187,
               "class": "ALFloaterLightBox",
               "function": "updateTronVisibility",
               "wired_class": "ALFloaterLightBox",
@@ -141153,7 +141153,7 @@
           "cpp": [
             {
               "file": "indra/newview/alfloaterlightbox.cpp",
-              "line": 1175,
+              "line": 1188,
               "class": "ALFloaterLightBox",
               "function": "updateTronVisibility",
               "wired_class": "ALFloaterLightBox",
@@ -141214,7 +141214,7 @@
           "cpp": [
             {
               "file": "indra/newview/alfloaterlightbox.cpp",
-              "line": 1176,
+              "line": 1189,
               "class": "ALFloaterLightBox",
               "function": "updateTronVisibility",
               "wired_class": "ALFloaterLightBox",
@@ -141275,7 +141275,7 @@
           "cpp": [
             {
               "file": "indra/newview/alfloaterlightbox.cpp",
-              "line": 1177,
+              "line": 1190,
               "class": "ALFloaterLightBox",
               "function": "updateTronVisibility",
               "wired_class": "ALFloaterLightBox",
@@ -141336,7 +141336,7 @@
           "cpp": [
             {
               "file": "indra/newview/alfloaterlightbox.cpp",
-              "line": 1178,
+              "line": 1191,
               "class": "ALFloaterLightBox",
               "function": "updateTronVisibility",
               "wired_class": "ALFloaterLightBox",
@@ -141402,7 +141402,7 @@
           "cpp": [
             {
               "file": "indra/newview/alfloaterlightbox.cpp",
-              "line": 1179,
+              "line": 1192,
               "class": "ALFloaterLightBox",
               "function": "updateTronVisibility",
               "wired_class": "ALFloaterLightBox",
@@ -141468,7 +141468,7 @@
           "cpp": [
             {
               "file": "indra/newview/alfloaterlightbox.cpp",
-              "line": 1180,
+              "line": 1193,
               "class": "ALFloaterLightBox",
               "function": "updateTronVisibility",
               "wired_class": "ALFloaterLightBox",
@@ -141529,7 +141529,7 @@
           "cpp": [
             {
               "file": "indra/newview/alfloaterlightbox.cpp",
-              "line": 1182,
+              "line": 1195,
               "class": "ALFloaterLightBox",
               "function": "updateTronVisibility",
               "wired_class": "ALFloaterLightBox",

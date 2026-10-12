@@ -389,8 +389,11 @@ bool ALFloaterLightBox::runReflowSelfTest()
     if (first_top == std::numeric_limits<S32>::min() ||
         trailing_center == std::numeric_limits<S32>::max()) return false;
 
+    // Child rects are document-local: measure the first row's distance from
+    // the document's own top (its height), never from its rect in the
+    // scroller's coordinates, which moves when the document is refitted.
     const S32 original_height = document->getRect().getHeight();
-    const S32 original_top_distance = document->getRect().mTop - first_top;
+    const S32 original_top_distance = original_height - first_top;
     for (const auto& item : layout.mItems)
         if (llabs(item.second.getCenterY() - trailing_center) <= 5)
             item.first->setVisible(false);
@@ -403,8 +406,15 @@ bool ALFloaterLightBox::runReflowSelfTest()
         for (const auto& item : layout.mItems)
             if (item.first->getVisible())
                 current_first_top = llmax(current_first_top, item.first->getRect().mTop);
-        stable = stable && current_first_top != std::numeric_limits<S32>::min() &&
-            document->getRect().mTop - current_first_top == original_top_distance;
+        const S32 top_distance = document->getRect().getHeight() - current_first_top;
+        if (current_first_top == std::numeric_limits<S32>::min() ||
+            top_distance != original_top_distance)
+        {
+            LL_WARNS("UIFunctionalSelfTest") << "Lightbox reflow drift: pass " << pass
+                << " top distance " << top_distance << " expected " << original_top_distance
+                << " doc height " << document->getRect().getHeight() << LL_ENDL;
+            stable = false;
+        }
     }
 
     for (const SavedItem& item : saved) item.mView->setVisible(item.mVisible);
@@ -412,6 +422,9 @@ bool ALFloaterLightBox::runReflowSelfTest()
     bool restored = document->getRect().getHeight() == original_height;
     for (const SavedItem& item : saved)
         restored = restored && item.mView->getRect() == item.mRect;
+    if (!restored)
+        LL_WARNS("UIFunctionalSelfTest") << "Lightbox reflow restore mismatch: doc height "
+            << document->getRect().getHeight() << " expected " << original_height << LL_ENDL;
     return stable && restored;
 }
 
