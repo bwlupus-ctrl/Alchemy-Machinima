@@ -30,6 +30,7 @@ PICK: MATERIAL
 PICK: TEXTURE
     </floater.string>
 
+    <!-- xui-check: overlay preview_widget Multiple -->
     <view
      left="4"
      top="20"

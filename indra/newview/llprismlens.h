@@ -564,9 +564,9 @@ struct ProjectorDefinition
     std::string mQuarantineReason;
 };
 
-// VP1/VP2 intentionally expose the retained producer rather than a prepared
-// projector cookie. VP3 may convert it and VP4 may bind it without changing
-// registry callers or target identity.
+// Registry-facing description of the retained producer. VP3 converts this
+// signal into the pipeline-owned opaque, mipmapped cookie; callers never retain
+// the source target pointer or change registry/target identity.
 struct ProjectorFeed
 {
     ProjectorHandle mProjector;
@@ -831,6 +831,7 @@ ApplyReport applySceneData(const LLSD& data, std::string* reason = nullptr);
 // use; auxiliary and cube/probe renders never keep a camera alive.
 void markProjectorConsumed(const LLVOVolume* volume);
 bool getProjectorFeed(const ProjectorHandle& binding, ProjectorFeed& feed);
+bool projectorFeedFor(const LLVOVolume* volume, ProjectorFeed& feed);
 
 using revision_connection_t = boost::signals2::connection;
 revision_connection_t connectConfigurationChanged(
@@ -889,6 +890,10 @@ bool buildPreviewCompositeState(const CaptureHandle& capture,
                                 F32 display_aspect,
                                 CompositeState& state,
                                 bool& offline);
+bool buildProjectorCompositeState(const ProjectorHandle& projector,
+                                  CompositeState& state,
+                                  U32& target_width,
+                                  U32& target_height);
 bool previewTileActivity(const CaptureHandle& capture,
                          EActivityState& activity,
                          bool& healthy);

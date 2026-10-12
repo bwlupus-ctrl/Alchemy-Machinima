@@ -1978,6 +1978,252 @@ void LLPipeline::releasePrismLensOutputs()
     {
         releasePrismLensOutput(slot);
     }
+    releasePrismProjectorFeeds();
+}
+
+bool LLPipeline::ensurePrismProjectorFeed(
+    const LLPrismLens::ProjectorHandle& handle, U32 width, U32 height)
+{
+    if (handle.mId.isNull() || handle.mGeneration == 0 || width == 0 ||
+        height == 0 || width > 1024 || height > 1024)
+    {
+        return false;
+    }
+
+    PrismProjectorPreparedFeed* prepared = nullptr;
+    for (PrismProjectorPreparedFeed& candidate : mPrismProjectorFeed)
+    {
+        if (candidate.mHandle.mId == handle.mId &&
+            candidate.mHandle.mGeneration == handle.mGeneration)
+        {
+            prepared = &candidate;
+            break;
+        }
+        if (!prepared && candidate.mHandle.mId.isNull())
+        {
+            prepared = &candidate;
+        }
+    }
+    if (!prepared) return false;
+
+    if (prepared->mHandle.mId != handle.mId ||
+        prepared->mHandle.mGeneration != handle.mGeneration)
+    {
+        prepared->mTarget.release();
+        prepared->mHandle = handle;
+        prepared->mSourceGeneration = 0;
+        prepared->mProducedFrame = 0;
+        prepared->mValid = false;
+    }
+    if (prepared->mTarget.isComplete() &&
+        prepared->mTarget.getWidth() == width &&
+        prepared->mTarget.getHeight() == height)
+    {
+        return true;
+    }
+
+    prepared->mTarget.release();
+    prepared->mSourceGeneration = 0;
+    prepared->mProducedFrame = 0;
+    prepared->mValid = false;
+    return prepared->mTarget.allocate(width, height, GL_RGBA8, false, false,
+                                      LLTexUnit::TT_TEXTURE,
+                                      LLTexUnit::TMG_AUTO);
+}
+
+void LLPipeline::releasePrismProjectorFeed(
+    const LLPrismLens::ProjectorHandle& handle)
+{
+    for (PrismProjectorPreparedFeed& prepared : mPrismProjectorFeed)
+    {
+        if (prepared.mHandle.mId == handle.mId &&
+            prepared.mHandle.mGeneration == handle.mGeneration)
+        {
+            prepared.mTarget.release();
+            prepared.mHandle = LLPrismLens::ProjectorHandle();
+            prepared.mSourceGeneration = 0;
+            prepared.mProducedFrame = 0;
+            prepared.mValid = false;
+            return;
+        }
+    }
+}
+
+void LLPipeline::releasePrismProjectorFeeds()
+{
+    for (PrismProjectorPreparedFeed& prepared : mPrismProjectorFeed)
+    {
+        prepared.mTarget.release();
+        prepared.mHandle = LLPrismLens::ProjectorHandle();
+        prepared.mSourceGeneration = 0;
+        prepared.mProducedFrame = 0;
+        prepared.mValid = false;
+    }
+}
+
+void LLPipeline::preparePrismProjectorFeeds(U32 capture_slot)
+{
+    if (capture_slot >= LLPrismLens::MAX_CAPTURES) return;
+
+    const LLPrismLens::RegistrySnapshot snapshot =
+        LLPrismLens::registrySnapshot();
+    if (snapshot.mProjectorCount == 0) return;
+
+    LL_PROFILE_ZONE_NAMED_CATEGORY_DISPLAY("VCam projector feed prep");
+    LL_PROFILE_GPU_ZONE("VCam projector feed prep");
+
+    for (U32 index = 0; index < snapshot.mProjectorCount; ++index)
+    {
+        const LLPrismLens::ProjectorDefinition& definition =
+            snapshot.mProjectors[index];
+        LLPrismLens::ProjectorFeed feed;
+        if (!LLPrismLens::getProjectorFeed(definition.mHandle, feed) ||
+            feed.mOutput != &mPrismLensOutput[capture_slot])
+        {
+            continue;
+        }
+
+        LLPrismLens::CompositeState state;
+        U32 target_width = 0;
+        U32 target_height = 0;
+        if (!LLPrismLens::buildProjectorCompositeState(
+                definition.mHandle, state, target_width, target_height) ||
+            !ensurePrismProjectorFeed(definition.mHandle,
+                                      target_width, target_height))
+        {
+            continue;
+        }
+
+        PrismProjectorPreparedFeed* prepared = nullptr;
+        for (PrismProjectorPreparedFeed& candidate : mPrismProjectorFeed)
+        {
+            if (candidate.mHandle.mId == definition.mHandle.mId &&
+                candidate.mHandle.mGeneration == definition.mHandle.mGeneration)
+            {
+                prepared = &candidate;
+                break;
+            }
+        }
+        if (!prepared || prepared->mSourceGeneration == feed.mGeneration)
+        {
+            continue;
+        }
+
+        const U32 permutation = colorCorrectPermutation(true, true);
+        LLGLSLShader& shader = gPrismProjectorFeedProgram[permutation];
+        if (!shader.isComplete()) continue;
+
+        prepared->mTarget.bindTarget();
+        glViewport(0, 0, target_width, target_height);
+        const S32 target_viewport[4] = {
+            0, 0, static_cast<S32>(target_width),
+            static_cast<S32>(target_height) };
+        std::memcpy(gGLViewport, target_viewport, sizeof(gGLViewport));
+        LLGLDisable projector_feed_scissor(GL_SCISSOR_TEST);
+        LLGLDisable projector_feed_srgb(GL_FRAMEBUFFER_SRGB);
+        LLGLDepthTest projector_feed_depth(GL_FALSE, GL_FALSE);
+        glDisable(GL_BLEND);
+        gGL.setColorMask(true, true, true, true);
+        glClearColor(0.f, 0.f, 0.f, 1.f);
+        prepared->mTarget.clear();
+
+        shader.bind();
+        const S32 signal_channel =
+            shader.enableTexture(LLShaderMgr::PRISM_LENS_MAP);
+        if (signal_channel >= 0)
+        {
+            feed.mOutput->bindTexture(0, signal_channel,
+                                      LLTexUnit::TFO_BILINEAR);
+        }
+        const S32 exposure_channel =
+            shader.enableTexture(LLShaderMgr::EXPOSURE_MAP);
+        if (exposure_channel >= 0)
+        {
+            mExposureMap.bindTexture(0, exposure_channel,
+                                     LLTexUnit::TFO_POINT);
+        }
+
+        static const LLStaticHashedString sDisplayScale("displayToCaptureScale");
+        static const LLStaticHashedString sDisplayOffset("displayToCaptureOffset");
+        static const LLStaticHashedString sOrientationScale("retainedOrientationScale");
+        static const LLStaticHashedString sOrientationOffset("retainedOrientationOffset");
+        static const LLStaticHashedString sRegionScale("textureRegionScale");
+        static const LLStaticHashedString sRegionOffset("textureRegionOffset");
+        static const LLStaticHashedString sLetterbox("letterbox");
+        static const LLStaticHashedString sBars("barColorLinear");
+        static const LLStaticHashedString sFeather("edgeFeather");
+        static const LLStaticHashedString sOptics("prismLensOptics");
+        static const LLStaticHashedString sEffect0("screenEffect0");
+        static const LLStaticHashedString sEffect1("screenEffect1");
+        static const LLStaticHashedString sEffect2("screenEffect2");
+        static const LLStaticHashedString sEffect3("screenEffect3");
+        static const LLStaticHashedString sEffect4("screenEffect4");
+        static const LLStaticHashedString sEffect5("screenEffect5");
+        static const LLStaticHashedString sEffectTime("screenEffectTime");
+        static const LLStaticHashedString sFollowExposure("projectorFollowMainExposure");
+        static const LLStaticHashedString sSheenSky("prismEnvSheenSky");
+        static const LLStaticHashedString sSheenGround("prismEnvSheenGround");
+        static const LLStaticHashedString sWorldOrigin("previewWorldOrigin");
+        static const LLStaticHashedString sWorldU("previewWorldUEdge");
+        static const LLStaticHashedString sWorldV("previewWorldVEdge");
+        shader.uniform2fv(sDisplayScale, 1, state.mDisplayToCaptureScale);
+        shader.uniform2fv(sDisplayOffset, 1, state.mDisplayToCaptureOffset);
+        shader.uniform2fv(sOrientationScale, 1, state.mRetainedOrientationScale);
+        shader.uniform2fv(sOrientationOffset, 1, state.mRetainedOrientationOffset);
+        shader.uniform2fv(sRegionScale, 1, state.mTextureRegionScale);
+        shader.uniform2fv(sRegionOffset, 1, state.mTextureRegionOffset);
+        shader.uniform1i(sLetterbox, state.mLetterbox);
+        shader.uniform3fv(sBars, 1, state.mBarColorLinear);
+        shader.uniform1f(sFeather, state.mEdgeFeather);
+        shader.uniform4fv(sOptics, 1, state.mOpticsParams);
+        shader.uniform4fv(sEffect0, 1, state.mScreenEffect0);
+        shader.uniform4fv(sEffect1, 1, state.mScreenEffect1);
+        shader.uniform4fv(sEffect2, 1, state.mScreenEffect2);
+        shader.uniform4fv(sEffect3, 1, state.mScreenEffect3);
+        shader.uniform4fv(sEffect4, 1, state.mScreenEffect4);
+        shader.uniform4fv(sEffect5, 1, state.mScreenEffect5);
+        shader.uniform1f(sEffectTime, fmodf(gFrameTimeSeconds, 3600.f));
+        shader.uniform1i(sFollowExposure,
+            feed.mSettings.mFollowMainExposure ? 1 : 0);
+        LLColor3 sheen_sky(0.f, 0.f, 0.f);
+        LLColor3 sheen_ground(0.f, 0.f, 0.f);
+        if (const LLSettingsSky::ptr_t sky =
+                LLEnvironment::instance().getCurrentSky())
+        {
+            const LLColor3 ambient = sky->getAmbientColor();
+            sheen_sky = ambient * 1.5f + sky->getBlueHorizon() * 0.4f;
+            sheen_ground = ambient * 0.5f;
+        }
+        const F32 origin[3] = { 0.f, 0.f, 0.f };
+        const F32 edge_u[3] = { 1.f, 0.f, 0.f };
+        const F32 edge_v[3] = { 0.f, 1.f, 0.f };
+        shader.uniform3fv(sSheenSky, 1, sheen_sky.mV);
+        shader.uniform3fv(sSheenGround, 1, sheen_ground.mV);
+        shader.uniform3fv(sWorldOrigin, 1, origin);
+        shader.uniform3fv(sWorldU, 1, edge_u);
+        shader.uniform3fv(sWorldV, 1, edge_v);
+        uploadPrismPreviewColorCorrectUniforms(shader);
+        const S32 color_grade_channel =
+            uploadPrismPreviewColorGradeUniforms(shader);
+
+        LLVertexBuffer::unbind();
+        gGL.begin(LLRender::TRIANGLES);
+        gGL.vertex3f(-1.f, -1.f, 0.f);
+        gGL.vertex3f(3.f, -1.f, 0.f);
+        gGL.vertex3f(-1.f, 3.f, 0.f);
+        gGL.end();
+        shader.disableTexture(LLShaderMgr::EXPOSURE_MAP);
+        shader.disableTexture(LLShaderMgr::PRISM_LENS_MAP);
+        if (color_grade_channel >= 0)
+        {
+            gGL.getTexUnit(color_grade_channel)->unbind(
+                LLTexUnit::TT_TEXTURE_3D);
+        }
+        prepared->mTarget.flush();
+        prepared->mSourceGeneration = feed.mGeneration;
+        prepared->mProducedFrame = gFrameCount;
+        prepared->mValid = true;
+    }
 }
 
 // must be even to avoid a stripe in the horizontal shadow blur
@@ -10337,6 +10583,12 @@ void LLPipeline::appendCinematicProbeLightSignature(
         const LLVector3& spot = light->getSpotLightParams();
         sig.addAbs3(spot.mV, 0.00436f); // FOV (rad), focus, ambiance
         sig.addExact(light->getLightTextureID());
+        LLPrismLens::ProjectorFeed projector_feed;
+        if (LLPrismLens::projectorFeedFor(light, projector_feed))
+        {
+            sig.addExact(projector_feed.mCapture.mId);
+            sig.addExact(projector_feed.mCapture.mGeneration);
+        }
         sig.addExact(LLPipeline::isProjectorNoShadow(light->getID()));
 
         // Everything setupSpotLight uploads from the per-object gobo override.
@@ -27354,6 +27606,109 @@ void LLPipeline::doWaterExclusionMask()
     glClearColor(0, 0, 0, 0);
 }
 
+void LLPipeline::bindProjectorCookie(LLGLSLShader& shader,
+                                     LLVOVolume* volume, F32 focus,
+                                     F32 proj_range, bool surface)
+{
+    LLPrismLens::ProjectorFeed feed;
+    const bool has_binding = LLPrismLens::projectorFeedFor(volume, feed);
+    PrismProjectorPreparedFeed* prepared = nullptr;
+    if (has_binding && feed.mGeneration != 0)
+    {
+        for (PrismProjectorPreparedFeed& candidate : mPrismProjectorFeed)
+        {
+            if (candidate.mHandle.mId == feed.mProjector.mId &&
+                candidate.mHandle.mGeneration == feed.mProjector.mGeneration &&
+                candidate.mValid && candidate.mTarget.isComplete() &&
+                candidate.mSourceGeneration == feed.mGeneration)
+            {
+                prepared = &candidate;
+                break;
+            }
+        }
+    }
+
+    // OWN_COOKIE is deliberately the literal legacy path until the first
+    // converted frame exists. With no binding this entire branch is the old
+    // implementation, including its binds, filters and uniform values.
+    const bool override_cookie = prepared || (has_binding &&
+        feed.mSettings.mNoSignal != LLPrismLens::ENoSignal::OWN_COOKIE);
+    LLViewerTexture* img = nullptr;
+    if (!override_cookie)
+    {
+        img = volume->getLightTexture();
+        if (img == NULL) img = LLViewerFetchedTexture::sWhiteImagep;
+    }
+    else if (!prepared)
+    {
+        img = feed.mSettings.mNoSignal == LLPrismLens::ENoSignal::BLACK
+            ? LLViewerTexture::sBlackImagep.get()
+            : LLViewerFetchedTexture::sWhiteImagep.get();
+    }
+
+    S32 channel = shader.enableTexture(LLShaderMgr::DEFERRED_PROJECTION);
+    if (channel > -1)
+    {
+        F32 lod_range = 0.f;
+        if (prepared)
+        {
+            prepared->mTarget.bindTexture(0, channel,
+                BDMergeGoboAnisotropic ? LLTexUnit::TFO_ANISOTROPIC
+                                        : LLTexUnit::TFO_TRILINEAR);
+            lod_range = logf(static_cast<F32>(prepared->mTarget.getWidth())) /
+                        logf(2.f);
+        }
+        else if (img)
+        {
+            gGL.getTexUnit(channel)->bind(img);
+            if (surface && BDMergeGoboAnisotropic)
+            {
+                gGL.getTexUnit(channel)->setTextureFilteringOption(
+                    LLTexUnit::TFO_ANISOTROPIC);
+            }
+            lod_range = logf(static_cast<F32>(img->getWidth())) / logf(2.f);
+        }
+        if (prepared || img)
+        {
+            shader.uniform1f(LLShaderMgr::PROJECTOR_FOCUS, focus);
+            shader.uniform1f(LLShaderMgr::PROJECTOR_LOD, lod_range);
+            shader.uniform1f(LLShaderMgr::PROJECTOR_AMBIENT_LOD,
+                llclamp((proj_range-focus)/proj_range*lod_range, 0.f, 1.f));
+        }
+    }
+
+    if (surface)
+    {
+        shader.uniform1i(LLShaderMgr::GOBO_ANISO,
+            BDMergeGoboAnisotropic ? 1 : 0);
+    }
+
+    GoboOverride gobo = getGoboOverride(volume->getID());
+    if (override_cookie)
+    {
+        if (!feed.mSettings.mKeepGobo) gobo = GoboOverride();
+        // A camera feed always wins over a procedural pattern. mKeepGobo
+        // retains only the texture-path tint/animation/dispersion controls.
+        gobo.mPattern = -1;
+    }
+    const F32 gobo_anim[4] = {
+        static_cast<F32>(gobo.mAnimMode), gobo.mSpeed,
+        gobo.mZoom, gobo.mDispersion
+    };
+    const F32 gobo_tint[3] = {
+        gobo.mTint.mV[0], gobo.mTint.mV[1], gobo.mTint.mV[2] };
+    const F32 gobo_pp[4] = {
+        gobo.mPatternParams.mV[0], gobo.mPatternParams.mV[1],
+        gobo.mPatternParams.mV[2], gobo.mPatternParams.mV[3]
+    };
+    shader.uniform1f(LLShaderMgr::GOBO_TIME, static_cast<F32>(std::fmod(
+        LLPresentationTime::currentFrame().presentation_time, 3600.0)));
+    shader.uniform1i(LLShaderMgr::GOBO_PATTERN, gobo.mPattern);
+    shader.uniform4fv(LLShaderMgr::GOBO_ANIM_PARAMS, 1, gobo_anim);
+    shader.uniform3fv(LLShaderMgr::GOBO_TINT, 1, gobo_tint);
+    shader.uniform4fv(LLShaderMgr::GOBO_PATTERN_PARAMS, 1, gobo_pp);
+}
+
 void LLPipeline::setupSpotLight(LLGLSLShader& shader, LLDrawable* drawablep)
 {
     //construct frustum
@@ -27516,61 +27871,7 @@ void LLPipeline::setupSpotLight(LLGLSLShader& shader, LLDrawable* drawablep)
     // make sure we didn't end up targeting the same spot light with both shadow maps
     llassert(mTargetShadowSpotLight[0] != mTargetShadowSpotLight[1] || mTargetShadowSpotLight[0].isNull());
 
-    LLViewerTexture* img = volume->getLightTexture();
-
-    if (img == NULL)
-    {
-        img = LLViewerFetchedTexture::sWhiteImagep;
-    }
-
-    S32 channel = shader.enableTexture(LLShaderMgr::DEFERRED_PROJECTION);
-
-    if (channel > -1)
-    {
-        if (img)
-        {
-            gGL.getTexUnit(channel)->bind(img);
-
-            // [BDMerge Batch 2] Feature 2: gobo/cookie mip + anisotropic filtering.
-            // Force a trilinear (mipmapped) min filter + anisotropic filter state on
-            // the cookie texture so a projected gobo viewed at a grazing angle or from
-            // far away samples coarser mips instead of aliasing. Requires the cookie to
-            // carry a mip chain (fetched projector textures do); if it has none this
-            // safely degrades to plain LINEAR (no regression). The matching shader-side
-            // LOD clamp (goboLod, gated by gobo_aniso) actually selects those mips.
-            if (BDMergeGoboAnisotropic)
-            {
-                gGL.getTexUnit(channel)->setTextureFilteringOption(LLTexUnit::TFO_ANISOTROPIC);
-            }
-
-            F32 lod_range = logf((F32)img->getWidth())/logf(2.f);
-
-            shader.uniform1f(LLShaderMgr::PROJECTOR_FOCUS, focus);
-            shader.uniform1f(LLShaderMgr::PROJECTOR_LOD, lod_range);
-            shader.uniform1f(LLShaderMgr::PROJECTOR_AMBIENT_LOD, llclamp((proj_range-focus)/proj_range*lod_range, 0.f, 1.f));
-        }
-    }
-
-    // Tell the cookie samplers (deferredUtil::goboLod) whether to clamp the
-    // focus LOD up to the screen-space minification LOD. Only the surface
-    // projector programs get this; the volumetric march leaves it at 0.
-    shader.uniform1i(LLShaderMgr::GOBO_ANISO, BDMergeGoboAnisotropic ? 1 : 0);
-
-    const GoboOverride gobo = getGoboOverride(volume->getID());
-    const F32 gobo_anim[4] = {
-        (F32)gobo.mAnimMode, gobo.mSpeed, gobo.mZoom, gobo.mDispersion
-    };
-    const F32 gobo_tint[3] = { gobo.mTint.mV[0], gobo.mTint.mV[1], gobo.mTint.mV[2] };
-    const F32 gobo_pp[4] = {
-        gobo.mPatternParams.mV[0], gobo.mPatternParams.mV[1],
-        gobo.mPatternParams.mV[2], gobo.mPatternParams.mV[3]
-    };
-    shader.uniform1f(LLShaderMgr::GOBO_TIME, static_cast<F32>(std::fmod(
-        LLPresentationTime::currentFrame().presentation_time, 3600.0)));
-    shader.uniform1i(LLShaderMgr::GOBO_PATTERN, gobo.mPattern);
-    shader.uniform4fv(LLShaderMgr::GOBO_ANIM_PARAMS, 1, gobo_anim);
-    shader.uniform3fv(LLShaderMgr::GOBO_TINT, 1, gobo_tint);
-    shader.uniform4fv(LLShaderMgr::GOBO_PATTERN_PARAMS, 1, gobo_pp);
+    bindProjectorCookie(shader, volume, focus, proj_range, true);
 
     // [RigRim] covers both gDeferredSpotLightProgram and
     // gDeferredMultiSpotLightProgram (both surface spot loops call this).
@@ -27706,44 +28007,7 @@ void LLPipeline::setupSpotLightVolumetric(LLGLSLShader& shader, LLDrawable* draw
         shader.uniform1f(LLShaderMgr::PROJECTOR_SHADOW_FADE, 1.f);
     }
 
-    LLViewerTexture* img = volume->getLightTexture();
-
-    if (img == NULL)
-    {
-        img = LLViewerFetchedTexture::sWhiteImagep;
-    }
-
-    S32 channel = shader.enableTexture(LLShaderMgr::DEFERRED_PROJECTION);
-
-    if (channel > -1)
-    {
-        if (img)
-        {
-            gGL.getTexUnit(channel)->bind(img);
-
-            F32 lod_range = logf((F32)img->getWidth())/logf(2.f);
-
-            shader.uniform1f(LLShaderMgr::PROJECTOR_FOCUS, focus);
-            shader.uniform1f(LLShaderMgr::PROJECTOR_LOD, lod_range);
-            shader.uniform1f(LLShaderMgr::PROJECTOR_AMBIENT_LOD, llclamp((proj_range-focus)/proj_range*lod_range, 0.f, 1.f));
-        }
-    }
-
-    const GoboOverride gobo = getGoboOverride(volume->getID());
-    const F32 gobo_anim[4] = {
-        (F32)gobo.mAnimMode, gobo.mSpeed, gobo.mZoom, gobo.mDispersion
-    };
-    const F32 gobo_tint[3] = { gobo.mTint.mV[0], gobo.mTint.mV[1], gobo.mTint.mV[2] };
-    const F32 gobo_pp[4] = {
-        gobo.mPatternParams.mV[0], gobo.mPatternParams.mV[1],
-        gobo.mPatternParams.mV[2], gobo.mPatternParams.mV[3]
-    };
-    shader.uniform1f(LLShaderMgr::GOBO_TIME, static_cast<F32>(std::fmod(
-        LLPresentationTime::currentFrame().presentation_time, 3600.0)));
-    shader.uniform1i(LLShaderMgr::GOBO_PATTERN, gobo.mPattern);
-    shader.uniform4fv(LLShaderMgr::GOBO_ANIM_PARAMS, 1, gobo_anim);
-    shader.uniform3fv(LLShaderMgr::GOBO_TINT, 1, gobo_tint);
-    shader.uniform4fv(LLShaderMgr::GOBO_PATTERN_PARAMS, 1, gobo_pp);
+    bindProjectorCookie(shader, volume, focus, proj_range, false);
 }
 
 void LLPipeline::unbindDeferredShader(LLGLSLShader &shader)

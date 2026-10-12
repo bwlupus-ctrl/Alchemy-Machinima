@@ -173,6 +173,7 @@ LLGLSLShader            gPostScreenSpaceReflectionProgram;
 // Deferred rendering shaders
 LLGLSLShader            gDeferredImpostorProgram;
 LLGLSLShader            gPrismLensProgram;
+LLGLSLShader            gPrismProjectorFeedProgram[8];
 LLGLSLShader            gPrismPreviewProgram[8];
 LLGLSLShader            gDeferredDiffuseProgram;
 LLGLSLShader            gDeferredDiffuseAlphaMaskProgram;
@@ -686,6 +687,8 @@ void LLViewerShaderMgr::finalizeShaderList()
     mShaderList.push_back(&gHazeWaterProgram);
     mShaderList.push_back(&gDeferredSoftenProgram);
     mShaderList.push_back(&gPrismLensProgram);
+    for (LLGLSLShader& shader : gPrismProjectorFeedProgram)
+        mShaderList.push_back(&shader);
     // [BDMerge G3.2] atmospherics uniforms (blue_density etc.) are pushed to
     // registered shaders only - without this the volumetric shader computes
     // haze_density/(blue_density+haze_density) = 0/0 = NaN and blacks the frame
@@ -1816,6 +1819,7 @@ bool LLViewerShaderMgr::loadShadersDeferred()
 
         gDeferredHighlightProgram.unload();
         gPrismLensProgram.unload();
+        for (LLGLSLShader& shader : gPrismProjectorFeedProgram) shader.unload();
         for (LLGLSLShader& shader : gPrismPreviewProgram) shader.unload();
 
         gNormalMapGenProgram.unload();
@@ -1884,6 +1888,40 @@ bool LLViewerShaderMgr::loadShadersDeferred()
     if (!gPrismLensProgram.createShader())
     {
         LL_WARNS("Shader") << "Prism Lens composite shader failed to load; Prism Lens disabled. Deferred rendering unaffected." << LL_ENDL;
+    }
+
+    // The projector conversion uses the same display transform and colour
+    // pipeline as monitor previews, but writes a dedicated mipmapped cookie.
+    // Keep the family aligned with colorCorrectPermutation() so legacy gamma,
+    // tonemap and colour-grade choices match the visible monitor signal.
+    bool projector_feed_shaders_ok = true;
+    for (U32 permutation = 0; permutation < 8; ++permutation)
+    {
+        LLGLSLShader& shader = gPrismProjectorFeedProgram[permutation];
+        shader.mName = llformat("Prism Projector Feed Shader %u", permutation);
+        shader.mFeatures.isDeferred = true;
+        shader.mFeatures.hasSrgb = true;
+        shader.mFeatures.hasTonemap = permutation >= 4;
+        shader.mFeatures.hasColorGrade = permutation == 2 || permutation == 3 ||
+                                          permutation == 6 || permutation == 7;
+        shader.mShaderFiles.clear();
+        shader.clearPermutations();
+        shader.mShaderFiles.push_back(make_pair("deferred/prismPreviewV.glsl", GL_VERTEX_SHADER));
+        shader.mShaderFiles.push_back(make_pair("deferred/prismSignalF.glsl", GL_FRAGMENT_SHADER));
+        shader.mShaderFiles.push_back(make_pair("deferred/prismProjectorFeedF.glsl", GL_FRAGMENT_SHADER));
+        if (shader.mFeatures.hasTonemap) shader.addPermutation("TONEMAP", "1");
+        if (shader.mFeatures.hasColorGrade) shader.addPermutation("COLOR_GRADE", "1");
+        if (permutation == 1 || permutation == 3 || permutation == 5 || permutation == 7)
+        {
+            shader.addPermutation("LEGACY_GAMMA", "1");
+        }
+        shader.mShaderLevel = mShaderLevel[SHADER_DEFERRED];
+        projector_feed_shaders_ok = shader.createShader() && projector_feed_shaders_ok;
+    }
+    if (!projector_feed_shaders_ok)
+    {
+        for (LLGLSLShader& shader : gPrismProjectorFeedProgram) shader.unload();
+        LL_WARNS("Shader") << "Prism projector feed shader family unavailable; projector bindings will use their no-signal policy." << LL_ENDL;
     }
 
     // Preview shader availability is fail-open for the world compositor but

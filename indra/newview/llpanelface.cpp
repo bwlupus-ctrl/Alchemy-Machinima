@@ -577,6 +577,7 @@ void LLPanelFace::onVisibilityChange(bool new_visibility)
 
 void LLPanelFace::draw()
 {
+    LL_PROFILE_ZONE_SCOPED_CATEGORY_UI;
     updateCopyTexButton();
 
     // grab media name/title and update the UI widget

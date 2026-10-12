@@ -1289,6 +1289,19 @@ void probe_gather_light(LLDrawable* drawable, LLVOVolume* light, F32 light_scale
     s.mSpot = light->isLightSpotlight();
     probe_copy3(s.mSpotParams, light->getSpotLightParams().mV);
     s.mTexId = light->getLightTextureID();
+    LLPrismLens::ProjectorFeed projector_feed;
+    if (LLPrismLens::projectorFeedFor(light, projector_feed))
+    {
+        // LightSample deliberately stays viewer-agnostic. Fold the capture
+        // identity into its existing structural texture key so bind/unbind or
+        // reassignment dirties probes, while video publications do not churn it.
+        s.mTexId = projector_feed.mCapture.mId;
+        for (S32 byte = 0; byte < 8; ++byte)
+        {
+            s.mTexId.mData[8 + byte] ^= static_cast<U8>(
+                (projector_feed.mCapture.mGeneration >> (byte * 8)) & 0xffu);
+        }
+    }
     s.mNoShadow = LLPipeline::isProjectorNoShadow(light->getID());
     const LLPipeline::GoboOverride gobo = LLPipeline::getGoboOverride(light->getID());
     s.mGobo.mPattern = gobo.mPattern;

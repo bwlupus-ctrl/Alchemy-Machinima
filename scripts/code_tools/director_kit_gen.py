@@ -191,8 +191,9 @@ def validate_data(data: dict) -> None:
     pages = flatten_pages(data)
     row_count = sum(1 for _group, page in pages for _row in all_rows(page))
     # 1959: VCam "Settings for" selector + Add camera + Remove capture merged into one row (mockup, 10/11).
-    if len(pages) != 35 or row_count != 1959:
-        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 35/1959")
+    # 1960: + VCam Output 'Projectors' row (VP5, 10/12).
+    if len(pages) != 35 or row_count != 1960:
+        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 35/1960")
     shortcuts: set[tuple[str, str, str]] = set()
     for _group, page in pages:
         for card in page.get("cards", []):

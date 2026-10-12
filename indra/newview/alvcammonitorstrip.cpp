@@ -753,6 +753,7 @@ S32 ALVCamTexturePickerList::rowAt(S32 y) const
 
 void ALVCamTexturePickerList::draw()
 {
+    LL_PROFILE_ZONE_SCOPED_CATEGORY_UI;
     if (!mCount)
     {
         drawText(mFont, "No VCam cameras - add one in Director > Camera > VCam",
@@ -840,6 +841,7 @@ S32 ALVCamProjectorList::rowAt(S32 y) const
 
 void ALVCamProjectorList::draw()
 {
+    LL_PROFILE_ZONE_SCOPED_CATEGORY_UI;
     for (U32 row = 0; row < mItems.size(); ++row)
     {
         const S32 top = getRect().getHeight() - static_cast<S32>(row) * PROJECTOR_ROW_HEIGHT;

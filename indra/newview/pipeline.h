@@ -183,6 +183,11 @@ public:
     void releasePrismLensBuffers();
     void releasePrismLensOutput(U32 slot);
     void releasePrismLensOutputs();
+    bool ensurePrismProjectorFeed(const LLPrismLens::ProjectorHandle& handle,
+                                  U32 width, U32 height);
+    void releasePrismProjectorFeed(const LLPrismLens::ProjectorHandle& handle);
+    void releasePrismProjectorFeeds();
+    void preparePrismProjectorFeeds(U32 capture_slot);
     bool allocateShadowBuffer(U32 resX, U32 resY);
 
     // rebuild all LLVOVolume render batches
@@ -682,6 +687,8 @@ public:
     // range, snapped to exactly 0.25 when within float noise of the default so
     // the stock frusta / shader arithmetic stay bit-identical.
     static F32 effectiveShadowSplitBlend();
+    void bindProjectorCookie(LLGLSLShader& shader, LLVOVolume* volume,
+                             F32 focus, F32 proj_range, bool surface);
     void setupSpotLight(LLGLSLShader& shader, LLDrawable* drawablep);
     // [BDMerge G3.3] side-effect-free variant of setupSpotLight for the
     // finalize-stage volumetric pass: uploads only geometry + cookie (NO
@@ -1375,6 +1382,16 @@ public:
     PrismLensScratch  mPrismPreviewScratch;
     PrismLensScratch* mActivePrismLensScratch = nullptr;   // set only during a prism aux render
     LLRenderTarget mPrismLensOutput[LLPrismLens::MAX_CAPTURES];
+    struct PrismProjectorPreparedFeed
+    {
+        LLPrismLens::ProjectorHandle mHandle;
+        LLRenderTarget mTarget;
+        U64 mSourceGeneration = 0;
+        U32 mProducedFrame = 0;
+        bool mValid = false;
+    };
+    PrismProjectorPreparedFeed
+        mPrismProjectorFeed[LLPrismLens::MAX_PROJECTOR_BINDINGS];
 
     // Auxiliary render path binds through this; null whenever no acquired
     // scratch pack is active (callers must bail rather than render).

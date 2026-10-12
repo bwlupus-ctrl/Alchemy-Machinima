@@ -773,6 +773,7 @@ void LLPanelVolume::refresh()
 
 void LLPanelVolume::draw()
 {
+    LL_PROFILE_ZONE_SCOPED_CATEGORY_UI;
     LLPanel::draw();
 }
 
