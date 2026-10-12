@@ -27,3 +27,8 @@
 
 - Per request, no configure, build, executable test, commit, fetch, or upstream operation was performed. Static verification covered every `projectionMap` producer/bind site, declaration/definition parity, `git diff --check`, LF-only files, shader-family registration/unload, and ownership exclusions.
 - Runtime acceptance still requires the VP8 visual/readback/performance gates: mip0/last-mip/alpha/FIT-bar readback, ALM/context-loss reallocation, orientation and monitor color match, wall/focus/shaft behavior, no-binding image diff, and the <= 0.1 ms 512-class Tracy measurement.
+
+## Surface projection with shafts disabled
+
+- Root cause: the auxiliary capture published with `copyContents()`, which reads the source FBO's persistent current read buffer. The enabled volumetric pass incidentally rebound `rt.screen` and reset that buffer to beauty attachment 0; its disabled early-out did not, so a VCam projector could prepare its cookie from a non-beauty attachment.
+- Projector-owned publications now use `copyContentsFromAttachment(rt.screen, 0, ...)`, explicitly selecting beauty regardless of `BDMergeProjectorVolumetrics`. Captures with no projector binding retain the original copy path and GL call stream.

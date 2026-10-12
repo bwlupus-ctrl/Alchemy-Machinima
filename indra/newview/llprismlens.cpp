@@ -10050,13 +10050,20 @@ void renderAuxiliaryView()
         // renderDeferredLighting() flushes the scratch HDR screen. Copy the
         // finished beauty while all copy-related GL mutations remain covered by
         // the complete state scope; publish only after that scope closes.
-        gPipeline.mPrismLensOutput[slot].copyContents(
-            rt.screen,
+        const U32 copy_filter =
+            render_width == output_width && render_height == output_height
+                ? GL_NEAREST : GL_LINEAR;
+        // copyContents() consumes the source FBO's persistent read-buffer
+        // selection. The enabled projector-volumetric pass happened to rebind
+        // rt.screen and reset that selection to attachment 0; its disabled
+        // early-out did not. Always copy the beauty attachment explicitly so
+        // every consumer (projectors, monitors, face displays) is independent
+        // of the shafts setting.
+        gPipeline.mPrismLensOutput[slot].copyContentsFromAttachment(
+            rt.screen, 0,
             0, 0, render_width, render_height,
             0, 0, output_width, output_height,
-            GL_COLOR_BUFFER_BIT,
-            render_width == output_width && render_height == output_height
-                ? GL_NEAREST : GL_LINEAR);
+            GL_COLOR_BUFFER_BIT, copy_filter);
         produced = true;
         return true;
     };
