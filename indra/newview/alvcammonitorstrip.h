@@ -39,6 +39,18 @@ private:
     LLColor4 mBorderColor;
 };
 
+// Manifest-only placeholder for the "vcam_monitor_tile" XUI tag. It needs its OWN Params type:
+// LLUICtrlFactory::registerWidget deliberately crashes if one Params type is registered under
+// two tag names (lluictrlfactory.cpp:262-267).
+class ALVCamMonitorTileInfo : public LLUICtrl
+{
+public:
+    struct Params : public LLInitParam::Block<Params, LLUICtrl::Params> { Params() = default; };
+protected:
+    friend class LLUICtrlFactory;
+    explicit ALVCamMonitorTileInfo(const Params& p) : LLUICtrl(p) {}
+};
+
 class ALVCamMonitorStrip : public LLUICtrl
 {
 public:

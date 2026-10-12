@@ -22,7 +22,7 @@ static LLDefaultChildRegistry::Register<ALVCamMonitorStrip>
     r_vcam_monitor_strip("vcam_monitor_strip");
 static LLDefaultChildRegistry::Register<ALVCamMonitorHeader>
     r_vcam_monitor_header("vcam_monitor_header");
-static LLDefaultChildRegistry::Register<ALVCamMonitorStrip>
+static LLDefaultChildRegistry::Register<ALVCamMonitorTileInfo>
     r_vcam_monitor_tile("vcam_monitor_tile");
 static LLDefaultChildRegistry::Register<ALVCamMonitorPager>
     r_vcam_monitor_pager("vcam_monitor_pager");
