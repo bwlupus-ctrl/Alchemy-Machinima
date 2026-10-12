@@ -1488,7 +1488,7 @@ void LLFloaterPrismManager::refreshSelectionActions()
             LLPrismLens::addDisplaySelectionStatus(capture->mHandle);
         can_add_display = display_status.allowed();
         add_display_reason = display_status.allowed()
-            ? "Link the exactly-one selected face to this retained Camera Feed output"
+            ? "Show this retained Camera Feed viewer-locally on the exactly-one selected face"
             : display_status.mReason;
     }
     setActionState(mSetCameraButton, can_set_camera, set_camera_reason);
@@ -2145,7 +2145,7 @@ void LLFloaterPrismManager::onAddDisplay()
                 break;
             }
         }
-        setStatus("Linked the selected face to this capture; no extra scene render was created.");
+        setStatus("Linked the selected face viewer-locally; the object was not modified.");
         // The still-selected face is now a bound display, so the synchronous
         // refresh below would immediately surface its DUPLICATE reject over
         // this confirmation. Swallow that one surfacing (see the flag's

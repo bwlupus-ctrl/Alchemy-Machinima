@@ -1728,8 +1728,7 @@ enum class EDisplayTargetValidation
 {
     VALID,
     TRANSIENT,
-    INVALID,
-    PERMISSION
+    INVALID
 };
 
 EDisplayTargetValidation validateDisplaySurfaceTarget(
@@ -1748,14 +1747,6 @@ EDisplayTargetValidation validateDisplaySurfaceTarget(
     {
         reason = "Select exactly one valid, non-HUD volume face.";
         return EDisplayTargetValidation::INVALID;
-    }
-    // Permission is independent of render geometry and must win even when a
-    // never-drawn/offscreen face has not built drawable data yet.
-    LLViewerObject* root = object->getRootEdit();
-    if (!root || !root->permModify())
-    {
-        reason = "You need modify permission on the selected object's root.";
-        return EDisplayTargetValidation::PERMISSION;
     }
     if (te < 0 || te >= object->getNumTEs() || !drawable ||
         te >= drawable->getNumFaces() || !volume_data ||
@@ -1842,7 +1833,6 @@ struct PrismDisplay
     LLPrismLens::DisplaySettings mSettings;
     LLPrismLens::DisplayRuntimeState mRuntime;
     bool mQuarantined = false;
-    bool mPermissionQuarantined = false;
     std::string mQuarantineReason;
     PrismFrame mFrame;
     SurfaceGeometryCache mSurfaceCache;
@@ -2995,20 +2985,6 @@ public:
             return false;
         }
 
-        // A permission quarantine is a cached verdict. Poll only the cheap
-        // permission prerequisite; do not rescan surface geometry every
-        // composite until that prerequisite changes.
-        if (display.mPermissionQuarantined)
-        {
-            LLViewerObject* root = object->getRootEdit();
-            if (!root || !root->permModify())
-            {
-                display.mRuntime.mHealth = LLPrismLens::EDisplayHealth::INVALID;
-                display.mRuntime.mHealthReason = display.mQuarantineReason;
-                return false;
-            }
-        }
-
         const PrismInstance& capture = mLenses[display.mCaptureSlot];
         if (capture.mMode == LLPrismLens::ECaptureMode::SURFACE_LENS &&
             (capture.mObjectId != display.mObjectId || capture.mTE != display.mTE))
@@ -3024,11 +3000,7 @@ public:
             object, display.mTE, display.mSurfaceCache, validation_reason);
         if (validation != EDisplayTargetValidation::VALID)
         {
-            display.mPermissionQuarantined =
-                validation == EDisplayTargetValidation::PERMISSION;
-            display.mQuarantineReason = display.mPermissionQuarantined
-                ? "Skipped on scene load: no modify permission"
-                : validation_reason;
+            display.mQuarantineReason = validation_reason;
             display.mRuntime.mHealth =
                 validation == EDisplayTargetValidation::TRANSIENT
                     ? LLPrismLens::EDisplayHealth::OFFLINE
@@ -3038,7 +3010,6 @@ public:
         }
 
         display.mQuarantined = false;
-        display.mPermissionQuarantined = false;
         display.mQuarantineReason.clear();
         return true;
     }
@@ -5066,8 +5037,6 @@ public:
             removed.mDefinition.mRuntime = display.mRuntime;
             removed.mDefinition.mGateSubscribed = false;
             removed.mDefinition.mQuarantined = display.mQuarantined;
-            removed.mDefinition.mPermissionQuarantined =
-                display.mPermissionQuarantined;
             removed.mDefinition.mQuarantineReason = display.mQuarantineReason;
             record.mOwnedDisplays.push_back(removed);
         }
@@ -5156,7 +5125,6 @@ public:
             display.mSettings = source.mSettings;
             display.mRuntime = source.mRuntime;
             display.mQuarantined = source.mQuarantined;
-            display.mPermissionQuarantined = source.mPermissionQuarantined;
             display.mQuarantineReason = source.mQuarantineReason;
             if (!source.mSettings.mVirtual)
             {
@@ -5165,7 +5133,6 @@ public:
                 if (!object)
                 {
                     display.mQuarantined = true;
-                    display.mPermissionQuarantined = false;
                     display.mQuarantineReason =
                         "Offline restored display; awaiting validation.";
                 }
@@ -5178,14 +5145,9 @@ public:
                             display.mSurfaceCache, validation_reason);
                     display.mQuarantined =
                         validation != EDisplayTargetValidation::VALID;
-                    display.mPermissionQuarantined =
-                        validation == EDisplayTargetValidation::PERMISSION;
                     if (display.mQuarantined)
                     {
-                        display.mQuarantineReason =
-                            display.mPermissionQuarantined
-                                ? "Skipped on restore: no modify permission"
-                                : validation_reason;
+                        display.mQuarantineReason = validation_reason;
                     }
                     else
                     {
@@ -5283,7 +5245,6 @@ public:
             out.mRuntime = display.mRuntime;
             out.mGateSubscribed = display.mGateSubscribed;
             out.mQuarantined = display.mQuarantined;
-            out.mPermissionQuarantined = display.mPermissionQuarantined;
             out.mQuarantineReason = display.mQuarantineReason;
         }
         return result;
@@ -5638,7 +5599,6 @@ public:
             LLPrismLens::DisplaySettings mSettings;
             bool mGateSubscribed = false;
             bool mQuarantined = false;
-            bool mPermissionQuarantined = false;
             std::string mQuarantineReason;
         };
         const auto fail = [reason](const std::string& message)
@@ -6182,7 +6142,6 @@ public:
                     skipped.mObjectId = parsed.mObjectId;
                     skipped.mTextureEntry = parsed.mTE;
                     skipped.mReason = parsed.mQuarantineReason;
-                    skipped.mPermissionFailure = false;
                     report.mSkippedBindings.push_back(skipped);
                 }
                 else
@@ -6196,20 +6155,14 @@ public:
                     if (validation != EDisplayTargetValidation::VALID)
                     {
                         parsed.mQuarantined = true;
-                        parsed.mPermissionQuarantined =
-                            validation == EDisplayTargetValidation::PERMISSION;
-                        parsed.mQuarantineReason = parsed.mPermissionQuarantined
-                            ? "Skipped on scene load: no modify permission"
-                            : (validation_reason.empty()
-                                ? "Offline scene display; awaiting validation."
-                                : validation_reason);
+                        parsed.mQuarantineReason = validation_reason.empty()
+                            ? "Offline scene display; awaiting validation."
+                            : validation_reason;
                         LLPrismLens::SkippedBinding skipped;
                         skipped.mHandle.mId = parsed.mId;
                         skipped.mObjectId = parsed.mObjectId;
                         skipped.mTextureEntry = parsed.mTE;
                         skipped.mReason = parsed.mQuarantineReason;
-                        skipped.mPermissionFailure =
-                            parsed.mPermissionQuarantined;
                         report.mSkippedBindings.push_back(skipped);
                     }
                 }
@@ -6345,7 +6298,6 @@ public:
             display.mSettings = parsed.mSettings;
             display.mGateSubscribed = parsed.mGateSubscribed;
             display.mQuarantined = parsed.mQuarantined;
-            display.mPermissionQuarantined = parsed.mPermissionQuarantined;
             display.mQuarantineReason = parsed.mQuarantineReason;
             if (!parsed.mGateSubscribed)
             {

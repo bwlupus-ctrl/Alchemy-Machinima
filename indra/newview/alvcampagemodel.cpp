@@ -27,13 +27,6 @@ bool sameDisplay(const LLPrismLens::DisplayHandle& left,
     return left.mId == right.mId && left.mGeneration == right.mGeneration;
 }
 
-void clarifyFaceDropReason(LLPrismLens::ActionStatus& status)
-{
-    if (status.mReason ==
-        "You need modify permission on the selected object's root.")
-        status.mReason = "You can't modify this object.";
-}
-
 }
 
 void ALVCamPageModel::currentViewTransform(LLVector3& position,
@@ -466,14 +459,12 @@ ALVCamPageModel::FaceDropStatus ALVCamPageModel::faceDropStatus(
                 result.mReassignment = true;
                 result.mAction = reassignDisplayStatus(
                     candidate.mHandle, result.mCapture);
-                clarifyFaceDropReason(result.mAction);
                 return result;
             }
         }
     }
     result.mAction = LLPrismLens::displayTargetStatus(
         result.mCapture, object, te, nullptr);
-    clarifyFaceDropReason(result.mAction);
     return result;
 }
 

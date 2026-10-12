@@ -12,10 +12,10 @@ Root cause: after step 4, the strip cleared global mouse capture. That invoked `
 ## World hover and validation
 
 5. Unhandled UI drag traversal enters `dragOrDrop3D()` (`lltooldraganddrop.cpp:722-740`). Hover queues an asynchronous pick; drop uses an immediate pick.
-6. `pick()` classifies the target and passes `pick_info.mObjectFace` as the TE/face index for `DT_OBJECT` (`lltooldraganddrop.cpp:754-833`, specifically line 812). VCAM's dictionary entry (`lltooldraganddrop.cpp:238`) sends objects to `dad3dVCamFeed`; none/avatar/land targets now return custom face-only explanations.
+6. `pick()` classifies the target and passes `pick_info.mObjectFace` as the TE/face index for `DT_OBJECT` (`lltooldraganddrop.cpp`). For VCam cargo it preserves a picked non-HUD attachment as an object instead of remapping it to its avatar, allowing static, non-rigged attachment faces through the normal geometry validator. VCAM's dictionary entry sends objects to `dad3dVCamFeed`; none/avatar/land targets return custom face-only explanations.
 7. `dad3dVCamFeed()` (`lltooldraganddrop.cpp:2308`) calls `ALVCamPageModel::faceDropStatus()` at line 2322. Rejection text is copied to `mCustomMsg`, becomes the hover tooltip through `acceptanceToCursor(ACCEPT_NO_CUSTOM)`, and selects the no-drop cursor.
 8. `faceDropStatus()` (`alvcampagemodel.cpp:425`) rejects disabled Virtual Cam at lines 429-431, resolves the capture, detects an existing binding on the hit object/TE for reassignment, then calls `reassignDisplayStatus()` or `LLPrismLens::displayTargetStatus()` (`alvcampagemodel.cpp:467-476`).
-9. `displayTargetStatus()` (`llprismlens.cpp:2024`) rejects Surface Lens sources, invalid/non-flat/loading faces, self-display, duplicates, and the 16-face cap (line 2067). `validateDisplaySurfaceTarget()` checks root `permModify()` at line 1755; the VCAM page model translates that validator result into the direct hover text `You can't modify this object.`
+9. `displayTargetStatus()` rejects Surface Lens sources, invalid/non-flat/loading faces, self-display, duplicates, and the 16-face cap. `validateDisplaySurfaceTarget()` deliberately performs no ownership or `permModify()` check: the display is drawn only by this viewer and does not change the target object's prim, TE, or material. Static, non-rigged world volume geometry is still required for a stable compositor surface frame; avatars, rigged/animated faces, and HUD faces are therefore rejected for technical rather than permission reasons (`indra/newview/llprismlens.cpp`).
 
 ## Drop mutation
 

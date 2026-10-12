@@ -503,7 +503,6 @@ struct DisplayDefinition
     DisplayRuntimeState mRuntime;
     bool mGateSubscribed = false;
     bool mQuarantined = false;
-    bool mPermissionQuarantined = false;
     std::string mQuarantineReason;
 };
 
@@ -513,7 +512,6 @@ struct SkippedBinding
     LLUUID mObjectId;
     S32 mTextureEntry = -1;
     std::string mReason;
-    bool mPermissionFailure = false;
 };
 
 struct ApplyReport

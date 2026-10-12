@@ -780,7 +780,11 @@ void LLToolDragAndDrop::pick(const LLPickInfo& pick_info)
             return;
         }
 
-        if (hit_obj->isAttachment() && !hit_obj->isHUDAttachment())
+        // VCam bindings are viewer-local face identities. Preserve a picked
+        // attachment object so its static, non-rigged face can pass through the
+        // same geometry validator as any other visible object face.
+        if (hit_obj->isAttachment() && !hit_obj->isHUDAttachment() &&
+            mSource != SOURCE_VCAM)
         {
             LLVOAvatar* avatar = LLVOAvatar::findAvatarFromAttachment( hit_obj );
             if (!avatar)
@@ -2351,7 +2355,7 @@ EAcceptance LLToolDragAndDrop::dad3dVCamFeed(
 EAcceptance LLToolDragAndDrop::dad3dVCamNoTarget(
     LLViewerObject*, S32, MASK, bool)
 {
-    mCustomMsg = "Drop this VCam feed on a modifiable object face.";
+    mCustomMsg = "Drop this VCam feed on a visible, static object face.";
     return ACCEPT_NO_CUSTOM;
 }
 
