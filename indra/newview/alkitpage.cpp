@@ -460,6 +460,10 @@ bool ALKitPage::postBuild()
     if (!mMasterWidget.empty())
     {
         mMasterBox = makePanel(pre + "_master_box", 24);
+        // This is a layout holder, not a control.  If left mouse-opaque it
+        // becomes the fallback handler whenever the switch bounding rect is
+        // stale (the page master is not laid out through ALKitRow).
+        mMasterBox->setMouseOpaque(false);
         mBar->addChild(mMasterBox);
         LLTextBox::Params master_label;
         master_label.name          = pre + "_master_label";
@@ -1078,7 +1082,13 @@ void ALKitPage::reshape(S32 w, S32 h, bool p)
             setVisibleIfChanged(mMasterBox, master_fits);
         }
         if (mMaster)
+        {
+            // LLCheckBoxCtrl uses a child-derived bounding rect.  Recompute it
+            // after ALKitSwitch has replaced the stock button geometry so the
+            // complete painted switch remains hittable.
+            mMaster->reshape(ALKitStyle::SWITCH_W, ALKitStyle::SWITCH_H, true);
             mMaster->setOrigin(80, 3);
+        }
         if (mSearch)
         {
             mSearch->reshape(search_w, 24, true);

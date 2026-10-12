@@ -37,6 +37,30 @@ LLPrismLens::EFitMode sActiveDragFit = LLPrismLens::EFitMode::FIT;
 constexpr S32 FACE_ROW_HEIGHT = 32;
 constexpr S32 FACE_SCROLLBAR_WIDTH = 10;
 
+struct MonitorHeaderLayout
+{
+    S32 mSizeLeft;
+    S32 mSizeRight;
+    S32 mPreviewLeft;
+    S32 mPreviewRight;
+    S32 mSpeedLabelLeft;
+    S32 mSpeedLeft;
+};
+
+MonitorHeaderLayout monitorHeaderLayout(S32 width)
+{
+    constexpr S32 size_left = 34;
+    constexpr S32 speed_label_width = 42;
+    const S32 speed_controls_width = llclamp(width / 4, 80, 160);
+    const S32 speed_left = llmax(1, width - speed_controls_width);
+    const S32 speed_label_left = llmax(1, speed_left - speed_label_width);
+    const S32 preview_right = llmax(1, speed_label_left - 6);
+    const S32 size_right = llmin(180, llmax(110, preview_right - 110));
+    const S32 preview_left = llmax(size_right + 8, preview_right - 102);
+    return {size_left, size_right, preview_left, preview_right,
+            speed_label_left, speed_left};
+}
+
 bool sameCapture(const LLPrismLens::CaptureHandle& left,
                  const LLPrismLens::CaptureHandle& right)
 {
@@ -61,12 +85,11 @@ bool currentCapture(const LLUUID& id, LLPrismLens::CaptureHandle& capture,
 }
 
 void drawText(const LLFontGL* font, const std::string& text,
-              S32 x, S32 y, const LLColor4& color)
+              S32 x, S32 y, const LLColor4& color, S32 max_pixels = S32_MAX)
 {
     if (font) font->renderUTF8(text, 0, static_cast<F32>(x), static_cast<F32>(y), color, LLFontGL::LEFT,
-                              LLFontGL::BASELINE, LLFontGL::NORMAL,
-                              LLFontGL::DROP_SHADOW_SOFT, S32_MAX, S32_MAX,
-                              nullptr, false);
+                              LLFontGL::BASELINE, LLFontGL::NORMAL, LLFontGL::DROP_SHADOW_SOFT,
+                              S32_MAX, llmax(1, max_pixels), nullptr, max_pixels != S32_MAX);
 }
 }
 
@@ -91,32 +114,44 @@ void ALVCamMonitorHeader::draw()
 {
     LL_PROFILE_ZONE_SCOPED_CATEGORY_UI;
     const S32 w = getRect().getWidth();
-    const S32 size_right = w * 3 / 10;
-    const S32 preview_right = w * 5 / 10;
+    const MonitorHeaderLayout layout = monitorHeaderLayout(w);
     const S32 h = getRect().getHeight();
     drawText(mFont, "Size", 3, 8, mMutedColor);
-    const S32 size_left = 34;
-    const S32 size_width = llmax(1, size_right - size_left);
+    const S32 size_width = llmax(1, layout.mSizeRight - layout.mSizeLeft);
     for (S32 index = 0; index < 2; ++index)
     {
-        LLRect rect(size_left + index * size_width / 2, h,
-                    size_left + (index + 1) * size_width / 2 - 2, 0);
+        LLRect rect(layout.mSizeLeft + index * size_width / 2, h,
+                    layout.mSizeLeft + (index + 1) * size_width / 2 - 2, 0);
         gl_rect_2d(rect, index == static_cast<S32>(mCompact) ? mAccentColor : mBorderColor, false);
-        drawText(mFont, index ? "Compact" : "Large", rect.mLeft + 5, 8, mTextColor);
+        drawText(mFont, index ? "Compact" : "Large", rect.mLeft + 5, 8, mTextColor,
+                 rect.getWidth() - 10);
     }
-    drawText(mFont, mPreviews ? "Previews  ON" : "Previews  OFF",
-             size_right + 7, 8, mPreviews ? mAccentColor : mMutedColor);
-    drawText(mFont, "Speed", preview_right + 3, 8, mMutedColor);
+    const S32 preview_switch_left = layout.mPreviewRight - ALKitStyle::SWITCH_W;
+    drawText(mFont, "Previews", layout.mPreviewLeft, 8, mTextColor,
+             preview_switch_left - layout.mPreviewLeft - 4);
+    const LLColor4 preview_track = (mPreviews ? mAccentColor :
+        ALKitStyle::color(ALKitStyle::SWITCH_OFF).get());
+    const LLColor4 preview_knob = ALKitStyle::color(mPreviews ? ALKitStyle::KNOB_ON :
+        ALKitStyle::KNOB_OFF).get();
+    gGL.color4fv(preview_track.mV);
+    gl_rect_2d(preview_switch_left + 9, 21, preview_switch_left + 25, 3,
+               preview_track, true);
+    gl_circle_2d(static_cast<F32>(preview_switch_left + 9), 12.f, 9.f, 20, true);
+    gl_circle_2d(static_cast<F32>(preview_switch_left + 25), 12.f, 9.f, 20, true);
+    gGL.color4fv(preview_knob.mV);
+    gl_circle_2d(static_cast<F32>(preview_switch_left + (mPreviews ? 25 : 9)),
+                 12.f, 7.f, 20, true);
+    drawText(mFont, "Speed", layout.mSpeedLabelLeft, 8, mMutedColor);
     const F32 speeds[] = { .5f, 1.f, 2.f, 5.f };
     const char* labels[] = { "0.5", "1", "2", "5" };
-    const S32 speed_left = preview_right + 42;
-    const S32 speed_width = llmax(1, w - speed_left);
+    const S32 speed_width = llmax(1, w - layout.mSpeedLeft);
     for (S32 index = 0; index < 4; ++index)
     {
-        LLRect rect(speed_left + index * speed_width / 4, h,
-                    speed_left + (index + 1) * speed_width / 4 - 2, 0);
+        LLRect rect(layout.mSpeedLeft + index * speed_width / 4, h,
+                    layout.mSpeedLeft + (index + 1) * speed_width / 4 - 2, 0);
         gl_rect_2d(rect, fabsf(mSpeed - speeds[index]) < .01f ? mAccentColor : mBorderColor, false);
-        drawText(mFont, labels[index], rect.mLeft + 5, 8, mTextColor);
+        drawText(mFont, labels[index], rect.mLeft + 5, 8, mTextColor,
+                 rect.getWidth() - 10);
     }
     LLUICtrl::draw();
 }
@@ -124,15 +159,15 @@ void ALVCamMonitorHeader::draw()
 bool ALVCamMonitorHeader::handleMouseDown(S32 x, S32, MASK)
 {
     const S32 w = getRect().getWidth();
-    const S32 size_right = w * 3 / 10;
-    const S32 preview_right = w * 5 / 10;
+    const MonitorHeaderLayout layout = monitorHeaderLayout(w);
     LLSD action;
-    if (x < size_right)
+    if (x >= layout.mSizeLeft && x < layout.mSizeRight)
     {
         action["action"] = "size";
-        action["value"] = x >= 34 + llmax(1, size_right - 34) / 2;
+        action["value"] = x >= layout.mSizeLeft +
+            llmax(1, layout.mSizeRight - layout.mSizeLeft) / 2;
     }
-    else if (x < preview_right)
+    else if (x >= layout.mPreviewLeft && x < layout.mPreviewRight)
     {
         action["action"] = "previews";
         action["value"] = !mPreviews;
@@ -140,9 +175,9 @@ bool ALVCamMonitorHeader::handleMouseDown(S32 x, S32, MASK)
     else
     {
         const F32 speeds[] = { .5f, 1.f, 2.f, 5.f };
-        const S32 speed_left = preview_right + 42;
-        if (x < speed_left) return false;
-        const S32 index = llclamp((x - speed_left) * 4 / llmax(1, w - speed_left), 0, 3);
+        if (x < layout.mSpeedLeft) return false;
+        const S32 index = llclamp((x - layout.mSpeedLeft) * 4 /
+                                      llmax(1, w - layout.mSpeedLeft), 0, 3);
         action["action"] = "speed";
         action["value"] = speeds[index];
     }
@@ -176,9 +211,10 @@ LLRect ALVCamMonitorStrip::tileRect(S32 visible_index) const
 {
     const S32 columns = mCompact ? 8 : 4;
     const S32 gap = mCompact ? 4 : 8;
-    const S32 width = llmax(1, (getRect().getWidth() - gap * (columns - 1)) / columns);
-    const S32 left = visible_index * (width + gap);
-    return LLRect(left, getRect().getHeight(), left + width, 0);
+    const S32 available = llmax(columns, getRect().getWidth() - gap * (columns - 1));
+    const S32 left = visible_index * gap + available * visible_index / columns;
+    const S32 right = visible_index * gap + available * (visible_index + 1) / columns;
+    return LLRect(left, getRect().getHeight(), llmin(getRect().getWidth(), right), 0);
 }
 
 S32 ALVCamMonitorStrip::tileAt(S32 x, S32 y) const
@@ -196,14 +232,24 @@ void ALVCamMonitorStrip::draw()
     LL_PROFILE_ZONE_NAMED_CATEGORY_UI("Director VCam monitor tile");
     const U32 start = mCompact ? 0 : mLargePage * 4;
     const U32 end = llmin(mCount, start + (mCompact ? 8u : 4u));
+    if (start >= end)
+    {
+        drawText(mFont, "Add a camera to see monitor previews.", 4,
+                 getRect().getHeight() / 2, mMutedColor, getRect().getWidth() - 8);
+        LLUICtrl::draw();
+        return;
+    }
     for (U32 slot = start; slot < end; ++slot)
     {
         const Tile& tile = mTiles[slot];
         if (!tile.mVisible) continue;
-        LLRect rect = tileRect(static_cast<S32>(slot - start));
-        gl_rect_2d(rect, mBorderColor, false);
-        LLRect picture(rect.mLeft + 2, rect.mTop - 2, rect.mRight - 2,
-                       rect.mBottom + (mCompact ? 42 : 58));
+        const LLRect rect = tileRect(static_cast<S32>(slot - start));
+        const S32 picture_width = llmax(1, rect.getWidth() - 4);
+        const S32 caption_height = mCompact ? 24 : 54;
+        const S32 picture_height = llmin(llmax(1, rect.getHeight() - caption_height),
+                                         llmax(1, picture_width * 9 / 16));
+        const LLRect picture(rect.mLeft + 2, rect.mTop - 2, rect.mRight - 2,
+                             rect.mTop - 2 - picture_height);
         const LLRectf& uv = tile.mPublication.mCellUV;
         if (tile.mPublication.mAtlas.mGeneration &&
             mPreviewService->bindAtlas(tile.mPublication.mAtlas))
@@ -221,8 +267,7 @@ void ALVCamMonitorStrip::draw()
         }
         else
             gl_rect_2d(picture, LLColor4(0.08f, 0.09f, 0.11f, 1.f), true);
-        drawText(mFont, tile.mBadge, picture.mLeft + 12, picture.mTop - 13,
-                 LLColor4(0.56f, 0.85f, 0.66f, 1.f));
+        gl_rect_2d(picture, mBorderColor, false);
         LLColor4 status_dot(0.56f, 0.85f, 0.66f, 1.f);
         if (tile.mBadge.find("PAUSED") != std::string::npos ||
             tile.mPublication.mState == LLPrismPreviewService::ETileState::PAUSED ||
@@ -235,19 +280,36 @@ void ALVCamMonitorStrip::draw()
                  tile.mPublication.mState == LLPrismPreviewService::ETileState::FAILED ||
                  tile.mPublication.mState == LLPrismPreviewService::ETileState::SHADER_UNAVAILABLE)
             status_dot = LLColor4(0.90f, 0.28f, 0.24f, 1.f);
-        gGL.color4fv(status_dot.mV);
-        gl_circle_2d(static_cast<F32>(picture.mLeft + 6), static_cast<F32>(picture.mTop - 9),
-                     2.5f, 10, true);
-        if (!mCompact) drawText(mFont, tile.mTimestamp, picture.mRight - 70,
-                                picture.mBottom + 4, mTextColor);
-        drawText(mFont, tile.mName, rect.mLeft + 4, picture.mBottom - 13, mTextColor);
         if (!mCompact)
         {
-            drawText(mFont, tile.mShows, rect.mLeft + 4, picture.mBottom - 28, mMutedColor);
-            drawText(mFont, tile.mStatus, rect.mLeft + 4, picture.mBottom - 43, mMutedColor);
+            drawText(mFont, tile.mBadge, picture.mLeft + 4, picture.mTop - 13,
+                     LLColor4(0.56f, 0.85f, 0.66f, 1.f), picture.getWidth() - 8);
+            drawText(mFont, tile.mTimestamp, picture.mRight - 70,
+                     picture.mBottom + 4, mTextColor, 66);
         }
-        drawText(mFont, "::::", rect.mLeft + 4, rect.mBottom + 4, mMutedColor);
-        drawText(mFont, "...", rect.mRight - 18, picture.mBottom - 13, mMutedColor);
+        else
+        {
+            gGL.color4fv(status_dot.mV);
+            gl_circle_2d(static_cast<F32>(picture.mLeft + 6),
+                         static_cast<F32>(picture.mTop - 7), 2.5f, 10, true);
+        }
+        const S32 name_y = picture.mBottom - 13;
+        gGL.color4fv(status_dot.mV);
+        if (!mCompact)
+            gl_circle_2d(static_cast<F32>(rect.mLeft + 24), static_cast<F32>(name_y + 3),
+                         2.5f, 10, true);
+        drawText(mFont, "::::", rect.mLeft + 4, name_y, mMutedColor, 18);
+        const S32 name_left = rect.mLeft + (mCompact ? 24 : 30);
+        drawText(mFont, tile.mName, name_left, name_y, mTextColor,
+                 llmax(1, rect.mRight - 22 - name_left));
+        drawText(mFont, "...", rect.mRight - 18, name_y, mMutedColor, 16);
+        if (!mCompact)
+        {
+            drawText(mFont, tile.mShows, rect.mLeft + 12, picture.mBottom - 28,
+                     mMutedColor, rect.getWidth() - 16);
+            drawText(mFont, tile.mStatus, rect.mLeft + 12, picture.mBottom - 43,
+                     status_dot, rect.getWidth() - 16);
+        }
     }
     LLUICtrl::draw();
 }
@@ -426,15 +488,16 @@ void ALVCamMonitorPager::setPage(U32 page, U32 count)
 {
     mPage = llmin(page, 1u);
     mCount = count;
+    const std::string second = count == 5 ? "5" : llformat("5-%u", count);
     mLabel = count > 4
-        ? llformat(mPage ? "<  1-4 / 5-%u" : "1-4 / 5-%u  >", count)
-        : "1-4";
+        ? (mPage ? "<  1-4 / " + second : "1-4 / " + second + "  >")
+        : llformat("1-%u", llmax(1u, count));
 }
 
 void ALVCamMonitorPager::draw()
 {
     LL_PROFILE_ZONE_NAMED_CATEGORY_UI("Director VCam monitor pager");
-    drawText(mFont, mLabel, 4, 7, mTextColor);
+    drawText(mFont, mLabel, 4, 7, mTextColor, getRect().getWidth() - 8);
     LLUICtrl::draw();
 }
 
