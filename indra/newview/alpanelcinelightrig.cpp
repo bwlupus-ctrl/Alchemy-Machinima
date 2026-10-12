@@ -1164,7 +1164,14 @@ void ALPanelCineLightRig::syncProjectorFeeds(bool force)
 {
     static LLCachedControl<bool> prism_enabled(
         gSavedSettings, "PrismLensEnabled", false);
-    if (!prism_enabled) return;
+    if (!prism_enabled)
+    {
+        // Empty state hides the control: no fake static "Cam N" items.
+        for (LLComboBox* combo : mProjectorFeeds)
+            if (combo) ALKitRow::setControlVisible(combo, false);
+        mProjectorFeedRevision = 0;
+        return;
+    }
     const U8 rig_slot = static_cast<U8>(
         ALCineLightRigManager::instance().selectedSlot());
     const U64 revision = LLPrismLens::configurationRevision();

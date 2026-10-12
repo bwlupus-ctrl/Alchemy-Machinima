@@ -2143,7 +2143,11 @@ void LLTextureCtrl::setLabel(const std::string& label)
 
 void LLTextureCtrl::showPicker(bool take_focus)
 {
-    if (mVCamTarget != EVCamTextureTarget::NONE && mVCamOpenCallback)
+    // Latch the VCam original once per picker session: clicking the swatch
+    // again while the picker is open must not re-snapshot live-applied state.
+    LLFloater* open_picker = mFloaterHandle.get();
+    if (mVCamTarget != EVCamTextureTarget::NONE && mVCamOpenCallback &&
+        !(open_picker && open_picker->getVisible()))
         mVCamOpenCallback();
     // show hourglass cursor when loading inventory window
     // because inventory construction is slooow

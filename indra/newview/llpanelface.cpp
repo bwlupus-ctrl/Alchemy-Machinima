@@ -3453,7 +3453,11 @@ void LLPanelFace::onVCamTexture(bool restore, const LLUUID& capture_id)
                 break;
             }
         }
-        LLUUID wanted_id = restore && target.mBound ? target.mCaptureId : capture_id;
+        // Restore is driven only by the per-face snapshot: an originally
+        // unbound face goes back to unbound, never to the picker's id.
+        LLUUID wanted_id = restore
+            ? (target.mBound ? target.mCaptureId : LLUUID::null)
+            : capture_id;
         LLPrismLens::CaptureHandle wanted;
         if (!restore && wanted_id == capture_id) wanted = requested_capture;
         else if (wanted_id.notNull())

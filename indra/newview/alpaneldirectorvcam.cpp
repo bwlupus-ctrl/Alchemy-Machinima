@@ -1103,8 +1103,10 @@ void ALPanelDirectorVCam::onControl(LLUICtrl* source)
         else
         {
             settings.mTestPattern = source_type == 3;
+            // Keep a stored virtual transform across a Test detour; start at the
+            // current view when none was ever stored (Object -> Test -> Virtual).
             if (!settings.mTestPattern && !settings.mVirtual &&
-                !capture->mCamera.mTestPattern)
+                (!capture->mCamera.mTestPattern || settings.mVirtualPos.isExactlyZero()))
                 ALVCamPageModel::currentViewTransform(settings.mVirtualPos, settings.mVirtualRot);
             settings.mVirtual = !settings.mTestPattern;
             settings.mBonePov.mEnabled = !settings.mTestPattern && source_type == 2;

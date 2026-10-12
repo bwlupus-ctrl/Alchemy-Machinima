@@ -5518,16 +5518,23 @@ public:
         const char* reason = "";
         bool quarantined = false;
         const bool was_quarantined = projector.mQuarantined;
-        const std::string old_quarantine_reason = projector.mQuarantineReason;
         LLViewerObject* object = projector.mTarget ==
                 LLPrismLens::EProjectorTarget::RIG_LIGHT
             ? resolveRigProjector(projector.mRigSlot, projector.mRigLight)
             : gObjectList.findObject(projector.mObjectId);
         if (projector.mTarget == LLPrismLens::EProjectorTarget::RIG_LIGHT)
+        {
+            // resolveRigProjectorState() resets the quarantine fields when the
+            // emitter exists; the final quarantine decision is made below, so
+            // keep the previous values or an unlit emitter flips every frame.
+            std::string saved_reason = std::move(projector.mQuarantineReason);
             LLPrismLens::resolveRigProjectorState(
                 projector, ALCineLightRigManager::SLOT_COUNT,
                 ALCineLightRigModel::LIGHT_COUNT,
                 object ? object->getID() : LLUUID::null);
+            projector.mQuarantined = was_quarantined;
+            projector.mQuarantineReason = std::move(saved_reason);
+        }
         LLVOVolume* volume = object
             ? dynamic_cast<LLVOVolume*>(object) : nullptr;
         if (!object || object->isDead())
@@ -5552,7 +5559,7 @@ public:
         }
         const bool changed = projector.mRuntime.mHealth != health ||
             projector.mRuntime.mReason != reason ||
-            was_quarantined != quarantined || old_quarantine_reason != reason;
+            was_quarantined != quarantined || projector.mQuarantineReason != reason;
         if (changed)
         {
             if (quarantined)
