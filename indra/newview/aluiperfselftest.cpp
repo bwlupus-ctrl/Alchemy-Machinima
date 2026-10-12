@@ -4347,7 +4347,12 @@ private:
         }
         if (mInWorld && (!entry["inworld_allowed"].asBoolean() ||
                          entry["widget_name"].asString() == "vc_lens_locate" ||
-                         entry["widget_name"].asString() == "vc_face_locate"))
+                         entry["widget_name"].asString() == "vc_face_locate" ||
+                         // Anim explorer: stop/revoke message the simulator; blacklist
+                         // writes the account's asset_blocklist.
+                         entry["widget_name"].asString() == "btn_anim_ex_stop" ||
+                         entry["widget_name"].asString() == "btn_anim_ex_revoke" ||
+                         entry["widget_name"].asString() == "btn_anim_ex_blacklist"))
         {
             addFunctionalResult(entry, "SKIP",
                 "in-world: not on the viewer-local allow-list");
@@ -5042,6 +5047,11 @@ private:
                     !functionalAccountMatches(avatar_name.getLegacyName(), mFunctionalAccount))
                     return finishFunctionalInWorldFailure("wrong account");
                 mFunctionalAccountVerified = true;
+                // AO off for the run: gaze turns can make the AO send simulator requests
+                // (llactormover.cpp ~6317). Per-account settings files are byte-restored by
+                // the wrapper after the viewer exits, so the user's AO setting comes back.
+                if (gSavedPerAccountSettings.controlExists("AlchemyAOEnable")) // ui-draw-lint: allow(setting) test-only one-shot in-world setup
+                    gSavedPerAccountSettings.setBOOL("AlchemyAOEnable", false); // ui-draw-lint: allow(setting-write) test-only one-shot in-world setup
             }
 
             if (mFunctionalWatchdog.getElapsedTimeF32() >=

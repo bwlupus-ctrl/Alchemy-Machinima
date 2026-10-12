@@ -24,13 +24,14 @@ INWORLD_LOCAL_OWNERS = {
     "ALFloaterLightBox", "ALPanelLensLooks", "ALPanelExposureHub",
     "ALPanelWeatherSettings", "ALPanelAtmosphericVolumes",
     "ALPanelLensGaze", "ALFloaterGazeCues", "ALPanelGhostStudio",
-    "ALPanelDanceBall", "ALPanelDirectorAnimSwitcher", "ALPanelAnimPreview",
+    "ALPanelDanceBall", "ALPanelDirectorAnimSwitcher",  # NOT ALPanelAnimPreview: stop/revoke send to the simulator, blacklist writes the account asset_blocklist
     "ALPanelPropMover", "ALPanelActorMover", "ALPanelPathEditor",
     "ALObjectPathMover", "ALPanelDirectorVCam", "ALVCamPageModel", "ALKitPage",
     "ALPanelCineCamParams", "ALPanelDirectorSwitcher",
     "ALPanelFlycamRecorder", "LLFlycamRecorder", "ALPanelTemporalCapture",
 }
-INWORLD_EXCLUDED_CONTROLS = {"vc_lens_locate", "vc_face_locate"}
+INWORLD_EXCLUDED_CONTROLS = {"vc_lens_locate", "vc_face_locate",
+                             "btn_anim_ex_stop", "btn_anim_ex_revoke", "btn_anim_ex_blacklist"}
 INWORLD_VETTED_OWNER_PAGES = {
     "LLPipeline::renderWeather": {"weather_tab"},
     "LLPipeline::renderFinalize": {"exposure_tab", "shadows_probes_tab"},
@@ -174,7 +175,11 @@ def _handler_hazards(row: dict[str, object], cpp_text: str,
     hazards: set[str] = set()
     rules = {
         "file_picker": r"\b(?:LLFilePicker|LLFilePickerReplyThread|LLFloaterFilePicker|getOpenFile|getSaveFile)\b",
-        "delete": r"\b(?:LLFile::remove|remove_all|DeleteFile|delete[A-Z]\w*|remove[A-Z]\w*)\b",
+        # Explicit user-data deletes only: the old delete[A-Z]\w* / remove[A-Z]\w* (matched
+        # case-insensitively) flagged removeChild/removeObserver etc. and failed good controls.
+        "delete": r"\b(?:LLFile::remove|remove_all|DeleteFile|removeItem|removeCategory|purgeObject|purgeDescendents"
+                  r"|deleteItem|deleteObject|deletePreset|removePreset|deleteScene|removeScene|deleteTake|removeTake"
+                  r"|deleteGhost|removeGhost|deleteNode|removeNode|deleteCue|removeCue|deleteSlot|clearSlot)\b",
         "rename": r"\b(?:LLFile::rename|std::filesystem::rename|rename[A-Z]\w*)\b",
         "export_import": r"\b(?:export\w*|import\w*)\s*\(",
         "save_disk": r"\b(?:llofstream|ofstream|save[A-Z]\w*|writePreset|write[A-Z]\w*File)\b",

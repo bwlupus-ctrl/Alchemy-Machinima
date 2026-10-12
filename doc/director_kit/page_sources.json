@@ -56236,7 +56236,21 @@
           "kit_action": null,
           "resolution_notes": [],
           "ambiguous": [],
-          "rejected_candidates": [],
+          "rejected_candidates": [
+            {
+              "kind": "cpp",
+              "reason": "reference is not in a class that owns/builds this page's XUI",
+              "file": "indra/newview/aluiperfselftest.cpp",
+              "line": 4353,
+              "class": null,
+              "function": null,
+              "wired_class": null,
+              "wired_function": null,
+              "pattern": null,
+              "wiring_only": false,
+              "text": "entry[\"widget_name\"].asString() == \"btn_anim_ex_stop\" ||"
+            }
+          ],
           "unresolved": [],
           "other_writers": []
         },
@@ -56299,7 +56313,21 @@
           "kit_action": null,
           "resolution_notes": [],
           "ambiguous": [],
-          "rejected_candidates": [],
+          "rejected_candidates": [
+            {
+              "kind": "cpp",
+              "reason": "reference is not in a class that owns/builds this page's XUI",
+              "file": "indra/newview/aluiperfselftest.cpp",
+              "line": 4354,
+              "class": null,
+              "function": null,
+              "wired_class": null,
+              "wired_function": null,
+              "pattern": null,
+              "wiring_only": false,
+              "text": "entry[\"widget_name\"].asString() == \"btn_anim_ex_revoke\" ||"
+            }
+          ],
           "unresolved": [],
           "other_writers": []
         },
@@ -56362,7 +56390,21 @@
           "kit_action": null,
           "resolution_notes": [],
           "ambiguous": [],
-          "rejected_candidates": [],
+          "rejected_candidates": [
+            {
+              "kind": "cpp",
+              "reason": "reference is not in a class that owns/builds this page's XUI",
+              "file": "indra/newview/aluiperfselftest.cpp",
+              "line": 4355,
+              "class": null,
+              "function": null,
+              "wired_class": null,
+              "wired_function": null,
+              "pattern": null,
+              "wiring_only": false,
+              "text": "entry[\"widget_name\"].asString() == \"btn_anim_ex_blacklist\"))"
+            }
+          ],
           "unresolved": [],
           "other_writers": []
         }
