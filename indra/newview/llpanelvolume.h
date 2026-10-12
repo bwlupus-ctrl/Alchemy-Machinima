@@ -30,6 +30,7 @@
 #include "v3math.h"
 #include "llpanel.h"
 #include "llpointer.h"
+#include "llprismlens.h"
 #include "llvolume.h"
 #include "lltextureentry.h"
 
@@ -86,7 +87,8 @@ public:
 
     void        onLightCancelTexture(const LLSD& data);
     void        onLightSelectTexture(const LLSD& data);
-    void        onVCamProjector(const LLUUID& capture_id);
+    void        snapshotVCamProjector();
+    void        onVCamProjector(bool restore, const LLUUID& capture_id);
     void        refreshVCamProjectorLabel(LLViewerObject* object);
 
     static void    setLightTextureID(const LLUUID &asset_id, const LLUUID &item_id, LLVOVolume* volobjp);
@@ -152,6 +154,11 @@ protected:
     LLColor4        mLightSavedColor;
     LLPointer<LLViewerObject> mObject;
     LLPointer<LLViewerObject> mRootObject;
+    LLUUID                    mVCamProjectorTarget;
+    LLUUID                    mVCamProjectorOriginalCapture;
+    LLPrismLens::ProjectorSettings mVCamProjectorOriginalSettings;
+    bool                      mVCamProjectorOriginallyBound = false;
+    bool                      mVCamProjectorOriginalGateSubscribed = false;
 
     LLTextBox*      mLabelPhysicsShapeType = nullptr;
     LLComboBox*     mComboPhysicsShapeType = nullptr;

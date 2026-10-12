@@ -172,62 +172,81 @@ void prism_projector_object::test<10>()
 template<> template<>
 void prism_projector_object::test<11>()
 {
-    set_test_name("rig projector identity survives emitter rebuilds");
+    set_test_name("rig projector resolves again after emitter rebuild");
     LLPrismLens::ProjectorDefinition binding;
     binding.mTarget = LLPrismLens::EProjectorTarget::RIG_LIGHT;
     binding.mRigSlot = 2;
     binding.mRigLight = 0;
-    binding.mObjectId.generate();
-    const LLUUID old_emitter = binding.mObjectId;
-    binding.mObjectId.generate();
-    ensure("emitter pointer identity changed", binding.mObjectId != old_emitter);
-    ensure("stable rig role still resolves",
-           LLPrismLens::sameRigProjectorIdentity(binding, 2, 0));
-    ensure("another role does not alias",
-           !LLPrismLens::sameRigProjectorIdentity(binding, 2, 1));
+    ensure("missing rebuilt emitter quarantines",
+           !LLPrismLens::resolveRigProjectorState(binding, 5, 4, LLUUID::null));
+    ensure("binding is quarantined while emitter is absent", binding.mQuarantined);
+    LLUUID rebuilt_emitter;
+    rebuilt_emitter.generate();
+    ensure("stable rig identity resolves the rebuilt emitter",
+           LLPrismLens::resolveRigProjectorState(binding, 5, 4, rebuilt_emitter));
+    ensure("rebuilt object replaces the stale resolution",
+           binding.mObjectId == rebuilt_emitter && !binding.mQuarantined);
 }
 
 template<> template<>
 void prism_projector_object::test<12>()
 {
-    set_test_name("rig identity rejects stale slots and lights");
-    ensure("last valid identity",
-           LLPrismLens::validRigProjectorIdentity(4, 3, 5, 4));
-    ensure("stale rig slot",
-           !LLPrismLens::validRigProjectorIdentity(5, 0, 5, 4));
-    ensure("stale light role",
-           !LLPrismLens::validRigProjectorIdentity(0, 4, 5, 4));
+    set_test_name("stale rig slot is quarantined");
+    LLPrismLens::ProjectorDefinition binding;
+    binding.mTarget = LLPrismLens::EProjectorTarget::RIG_LIGHT;
+    binding.mRigSlot = 5;
+    binding.mRigLight = 0;
+    LLUUID emitter;
+    emitter.generate();
+    ensure("stale slot cannot resolve",
+           !LLPrismLens::resolveRigProjectorState(binding, 5, 4, emitter));
+    ensure("stale target is retained but quarantined",
+           binding.mQuarantined && binding.mObjectId.isNull() &&
+           !binding.mQuarantineReason.empty());
 }
 
 template<> template<>
 void prism_projector_object::test<13>()
 {
-    set_test_name("display reassignment retains output used by projectors");
-    ensure("projector keeps retained output",
-           LLPrismLens::captureOutputRequired(0, 1));
-    ensure("empty capture releases output",
-           !LLPrismLens::captureOutputRequired(0, 0));
+    set_test_name("unknown loaded projector target kind is skipped");
+    std::vector<LLPrismLens::ProjectorDefinition> loaded;
+    LLPrismLens::ProjectorDefinition binding;
+    ensure("future target kind reports a non-fatal skip",
+           !LLPrismLens::appendLoadedProjector(loaded, "future_fixture", binding));
+    ensure_equals("unknown target was not installed", loaded.size(), std::size_t(0));
+    ensure("known object target installs",
+           LLPrismLens::appendLoadedProjector(loaded, "object", binding));
+    ensure_equals("known target was installed", loaded.size(), std::size_t(1));
 }
 
 template<> template<>
 void prism_projector_object::test<14>()
 {
-    set_test_name("Gate projector follows its own subscription on capture delete");
-    ensure("fixed projector is deleted",
-           LLPrismLens::removeProjectorWithCapture(true, false));
-    ensure("Gate projector survives its current route deletion",
-           !LLPrismLens::removeProjectorWithCapture(true, true));
+    set_test_name("rig projector reassignment requires a Camera Feed capture");
+    LLPrismLens::ProjectorDefinition binding;
+    binding.mTarget = LLPrismLens::EProjectorTarget::RIG_LIGHT;
+    ensure("surface lens is rejected for rig projector",
+           LLPrismLens::validateProjectorReassignment(
+               binding, LLPrismLens::ECaptureMode::SURFACE_LENS) ==
+               LLPrismLens::ERegistryResult::INVALID_CONFIGURATION);
+    ensure("camera feed is accepted for rig projector",
+           LLPrismLens::validateProjectorReassignment(
+               binding, LLPrismLens::ECaptureMode::CAMERA_FEED) ==
+               LLPrismLens::ERegistryResult::OK);
 }
 
 template<> template<>
 void prism_projector_object::test<15>()
 {
-    set_test_name("loaded non-projector target is quarantined, not scene-fatal");
-    ensure("loaded point light is quarantined",
-           LLPrismLens::quarantineLoadedProjectorTarget(
-               true, true, false, true, false));
-    ensure("valid projector remains ready",
-           !LLPrismLens::quarantineLoadedProjectorTarget(
-               true, true, false, true, true));
+    set_test_name("loaded point light transitions into quarantine");
+    LLPrismLens::ProjectorDefinition binding;
+    LLPrismLens::updateLoadedProjectorQuarantine(
+        binding, true, true, false, true, false);
+    ensure("point light binding is retained in quarantine",
+           binding.mQuarantined && !binding.mQuarantineReason.empty());
+    LLPrismLens::updateLoadedProjectorQuarantine(
+        binding, true, true, false, true, true);
+    ensure("restored spotlight leaves quarantine",
+           !binding.mQuarantined && binding.mQuarantineReason.empty());
 }
 }

@@ -542,6 +542,8 @@ bool LLFloaterTexturePicker::handleKeyHere(KEY key, MASK mask)
 
 void LLFloaterTexturePicker::onOpen(const LLSD& key)
 {
+    mPickerFinalized = false;
+    mVCamLiveApplied = false;
     if (sLastPickerMode != 0
         && (mLocalTextureEnabled || sLastPickerMode != 1)
         && (mBakeTextureEnabled || sLastPickerMode != 2)
@@ -552,8 +554,7 @@ void LLFloaterTexturePicker::onOpen(const LLSD& key)
 
 void LLFloaterTexturePicker::onClose(bool app_quitting)
 {
-    if (!app_quitting && !mPickerFinalized && mVCamSelectionInitialized &&
-        mVCamCaptureID != mOriginalVCamCaptureID &&
+    if (!app_quitting && mOwner && !mPickerFinalized && mVCamLiveApplied &&
         mOnFloaterCommitCallback)
     {
         mVCamCaptureID = mOriginalVCamCaptureID;
@@ -1117,17 +1118,19 @@ void LLFloaterTexturePicker::onBtnNone(void* userdata)
 void LLFloaterTexturePicker::onBtnCancel(void* userdata)
 {
     LLFloaterTexturePicker* self = (LLFloaterTexturePicker*) userdata;
+    const bool image_changed = self->mImageAssetID != self->mOriginalImageAssetID;
     self->setImageID( self->mOriginalImageAssetID );
     self->mPickerFinalized = true;
     if (self->mOnFloaterCommitCallback)
     {
-        const LLPickerSource source =
-            self->mModeSelector->getValue().asInteger() == PICKER_VCAM ||
-            self->mVCamCaptureID != self->mOriginalVCamCaptureID
-                ? PICKER_VCAM : PICKER_UNKNOWN;
-        self->mOnFloaterCommitCallback(LLTextureCtrl::TEXTURE_CANCEL, source,
-            self->mOriginalImageAssetID, LLUUID::null,
-            source == PICKER_VCAM ? self->mOriginalVCamCaptureID : LLUUID::null);
+        if (self->mVCamLiveApplied)
+            self->mOnFloaterCommitCallback(LLTextureCtrl::TEXTURE_CANCEL,
+                PICKER_VCAM, self->mOriginalImageAssetID, LLUUID::null,
+                self->mOriginalVCamCaptureID);
+        if (image_changed)
+            self->mOnFloaterCommitCallback(LLTextureCtrl::TEXTURE_CANCEL,
+                PICKER_UNKNOWN, self->mOriginalImageAssetID, LLUUID::null,
+                LLUUID::null);
     }
     self->mViewModel->resetDirty();
     self->closeFloater();
@@ -1419,6 +1422,7 @@ void LLFloaterTexturePicker::onVCamCommit()
     if (childGetValue("apply_immediate_check").asBoolean() &&
         mOnFloaterCommitCallback)
     {
+        mVCamLiveApplied = true;
         mOnFloaterCommitCallback(LLTextureCtrl::TEXTURE_CHANGE, PICKER_VCAM,
                                  LLUUID::null, LLUUID::null, mVCamCaptureID);
     }
@@ -2139,6 +2143,8 @@ void LLTextureCtrl::setLabel(const std::string& label)
 
 void LLTextureCtrl::showPicker(bool take_focus)
 {
+    if (mVCamTarget != EVCamTextureTarget::NONE && mVCamOpenCallback)
+        mVCamOpenCallback();
     // show hourglass cursor when loading inventory window
     // because inventory construction is slooow
     getWindow()->setCursor(UI_CURSOR_WAIT);
@@ -2393,10 +2399,12 @@ void LLTextureCtrl::setAllowLocalTexture(bool b)
 }
 
 void LLTextureCtrl::setVCamTarget(EVCamTextureTarget target,
-                                  vcam_commit_callback_t callback)
+                                  vcam_commit_callback_t callback,
+                                  vcam_open_callback_t open_callback)
 {
     mVCamTarget = target;
     mVCamCommitCallback = std::move(callback);
+    mVCamOpenCallback = std::move(open_callback);
     LLFloaterTexturePicker* picker =
         dynamic_cast<LLFloaterTexturePicker*>(mFloaterHandle.get());
     if (picker)

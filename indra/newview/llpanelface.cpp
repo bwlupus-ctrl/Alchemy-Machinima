@@ -95,6 +95,7 @@
 #include "llsdutil.h"
 #include "llsdserialize.h"
 #include "llinventorymodel.h"
+#include "llviewerobjectlist.h"
 
 using namespace std::literals;
 
@@ -445,8 +446,9 @@ bool LLPanelFace::postBuild()
     mTextureCtrl->setImmediateFilterPermMask(PERM_NONE);
     mTextureCtrl->setDnDFilterPermMask(PERM_COPY | PERM_TRANSFER);
     mTextureCtrl->setVCamTarget(EVCamTextureTarget::FACE,
-        [this](LLTextureCtrl::ETexturePickOp, const LLUUID& capture_id)
-        { onVCamTexture(capture_id); });
+        [this](LLTextureCtrl::ETexturePickOp op, const LLUUID& capture_id)
+        { onVCamTexture(op == LLTextureCtrl::TEXTURE_CANCEL, capture_id); },
+        [this]() { snapshotVCamFaces(); });
 
     mShinyTextureCtrl = getChild<LLTextureCtrl>("shinytexture control");
     mShinyTextureCtrl->setDefaultImageAssetID(DEFAULT_OBJECT_SPECULAR);
@@ -3385,16 +3387,107 @@ void LLPanelFace::onCommitTexture()
     sendTexture();
 }
 
-void LLPanelFace::onVCamTexture(const LLUUID& capture_id)
+void LLPanelFace::snapshotVCamFaces()
 {
-    std::string reason;
-    if (capture_id.isNull())
+    struct Collector final : LLSelectedTEFunctor
     {
-        ALVCamPageModel::clearSelectedFaces(&reason);
+        std::vector<VCamFaceBindingSnapshot>& mTargets;
+        explicit Collector(std::vector<VCamFaceBindingSnapshot>& targets)
+            : mTargets(targets) {}
+        bool apply(LLViewerObject* object, S32 te) override
+        {
+            if (object)
+            {
+                VCamFaceBindingSnapshot target;
+                target.mObjectId = object->getID();
+                target.mTextureEntry = te;
+                mTargets.push_back(target);
+            }
+            return true;
+        }
+    } collector(mVCamFaceBindings);
+    mVCamFaceBindings.clear();
+    LLSelectMgr::getInstance()->getSelection()->applyToTEs(&collector);
+    const LLPrismLens::RegistrySnapshot registry = LLPrismLens::registrySnapshot();
+    for (VCamFaceBindingSnapshot& target : mVCamFaceBindings)
+        for (U32 index = 0; index < registry.mDisplayCount; ++index)
+        {
+            const LLPrismLens::DisplayDefinition& display = registry.mDisplays[index];
+            if (!display.mSettings.mVirtual &&
+                display.mDisplayObjectId == target.mObjectId &&
+                display.mDisplayTextureEntry == target.mTextureEntry)
+            {
+                target.mCaptureId = display.mCapture.mId;
+                target.mSettings = display.mSettings;
+                target.mBound = true;
+                target.mGateSubscribed = display.mGateSubscribed;
+                break;
+            }
+        }
+}
+
+void LLPanelFace::onVCamTexture(bool restore, const LLUUID& capture_id)
+{
+    const LLPrismLens::RegistrySnapshot registry = LLPrismLens::registrySnapshot();
+    LLPrismLens::CaptureHandle requested_capture;
+    if (!restore && capture_id.notNull())
+        for (U32 index = 0; index < registry.mCaptureCount; ++index)
+            if (registry.mCaptures[index].mHandle.mId == capture_id)
+            {
+                requested_capture = registry.mCaptures[index].mHandle;
+                break;
+            }
+    std::string reason;
+    LLPrismLens::ScopedRevisionSignals signals;
+    for (const VCamFaceBindingSnapshot& target : mVCamFaceBindings)
+    {
+        const LLPrismLens::DisplayDefinition* current = nullptr;
+        for (U32 index = 0; index < registry.mDisplayCount; ++index)
+        {
+            const LLPrismLens::DisplayDefinition& display = registry.mDisplays[index];
+            if (!display.mSettings.mVirtual &&
+                display.mDisplayObjectId == target.mObjectId &&
+                display.mDisplayTextureEntry == target.mTextureEntry)
+            {
+                current = &display;
+                break;
+            }
+        }
+        LLUUID wanted_id = restore && target.mBound ? target.mCaptureId : capture_id;
+        LLPrismLens::CaptureHandle wanted;
+        if (!restore && wanted_id == capture_id) wanted = requested_capture;
+        else if (wanted_id.notNull())
+            for (U32 index = 0; index < registry.mCaptureCount; ++index)
+                if (registry.mCaptures[index].mHandle.mId == wanted_id)
+                {
+                    wanted = registry.mCaptures[index].mHandle;
+                    break;
+                }
+        if (wanted_id.isNull())
+        {
+            if (current) LLPrismLens::removeDisplay(current->mHandle, &reason);
+            continue;
+        }
+        if (wanted.mId.isNull()) continue;
+        LLPrismLens::DisplayHandle binding;
+        if (current)
+        {
+            binding = current->mHandle;
+            if (current->mCapture.mId != wanted.mId)
+                LLPrismLens::reassignDisplay(current->mHandle, wanted, &reason);
+        }
+        else if (LLViewerObject* object = gObjectList.findObject(target.mObjectId))
+            LLPrismLens::bindDisplayTarget(wanted, object, target.mTextureEntry,
+                restore ? target.mSettings.mFitMode : LLPrismLens::EFitMode::FIT,
+                &binding, &reason);
+        if (restore && binding.mId.notNull())
+        {
+            LLPrismLens::setDisplaySettings(binding, target.mSettings, &reason);
+            LLPrismLens::setDisplayGateSubscribed(
+                binding, target.mGateSubscribed, nullptr, &reason);
+        }
     }
-    else if (ALVCamPageModel::applyToSelectedFaces(
-                 capture_id, LLPrismLens::EFitMode::FIT, &reason) !=
-             LLPrismLens::ERegistryResult::OK)
+    if (!reason.empty() && !restore)
     {
         LLSD args;
         args["MESSAGE"] = reason;

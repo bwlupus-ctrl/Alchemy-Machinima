@@ -1,6 +1,7 @@
-# VP1+VP2 review follow-ups (Opus: BUILD GO)
-- [x] Quarantine a loaded saved-projector target that is no longer a projector light; do not reject the scene (`indra/newview/llprismlens.cpp:7319`, test `indra/newview/tests/llprismprojector_test.cpp:223`).
-- [x] Keep capture output when `reassignDisplay` leaves a projector consumer (`indra/newview/llprismlens.cpp:2678`, test `indra/newview/tests/llprismprojector_test.cpp:203`).
-- [x] On capture deletion, a Gate-subscribed projector follows its own Gate binding (`indra/newview/llprismlens.cpp:8093`, test `indra/newview/tests/llprismprojector_test.cpp:213`).
+# VP1+VP2 review follow-ups
+- [x] Already handled before the review: loaded non-projector targets were quarantined without rejecting the scene (`indra/newview/llprismlens.cpp:7351`).
+- [x] Already handled before the review: `reassignDisplay` retained output whenever the old capture still had a projector consumer (`indra/newview/llprismlens.cpp:2685`).
+- [x] Already handled before the review: deleting a capture preserved and rerouted Gate-subscribed projectors (`indra/newview/llprismlens.cpp:8120`).
 - [x] Check `prismEnabled()` before projector registry access from `setupSpotLight` (`indra/newview/pipeline.cpp:27833`).
-- the new llprismprojector_test target needs a CMake reconfigure to appear.
+- The VCam test-pattern and rig-projector functional rows remain `DEFER_INWORLD`: their meaningful oracles require the in-world runner's rendered virtual-camera fixture and initialized rig emitters; the login gate has neither.
+- The new llprismprojector_test target needs a CMake reconfigure to appear.

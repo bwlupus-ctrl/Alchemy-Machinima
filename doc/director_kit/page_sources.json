@@ -56255,7 +56255,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 4804,
+              "line": 4826,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -56332,7 +56332,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 4805,
+              "line": 4827,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -56409,7 +56409,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 4806,
+              "line": 4828,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -101058,7 +101058,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 673,
+              "line": 674,
               "class": "ALPanelCineLightRig",
               "function": "postBuild",
               "wired_class": "ALPanelCineLightRig",
@@ -101069,7 +101069,7 @@
             },
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 830,
+              "line": 832,
               "class": "ALPanelCineLightRig",
               "function": "onEasyBrightnessCommit",
               "wired_class": "ALPanelCineLightRig",
@@ -101183,7 +101183,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 674,
+              "line": 675,
               "class": "ALPanelCineLightRig",
               "function": "postBuild",
               "wired_class": "ALPanelCineLightRig",
@@ -101194,7 +101194,7 @@
             },
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 832,
+              "line": 834,
               "class": "ALPanelCineLightRig",
               "function": "onEasyDramaCommit",
               "wired_class": "ALPanelCineLightRig",
@@ -101296,7 +101296,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 677,
+              "line": 678,
               "class": "ALPanelCineLightRig",
               "function": "postBuild",
               "wired_class": "ALPanelCineLightRig",
@@ -101307,7 +101307,7 @@
             },
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 838,
+              "line": 840,
               "class": "ALPanelCineLightRig",
               "function": "onEasyWarmthCommit",
               "wired_class": "ALPanelCineLightRig",
@@ -101405,7 +101405,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 675,
+              "line": 676,
               "class": "ALPanelCineLightRig",
               "function": "postBuild",
               "wired_class": "ALPanelCineLightRig",
@@ -101416,7 +101416,7 @@
             },
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 834,
+              "line": 836,
               "class": "ALPanelCineLightRig",
               "function": "onEasyRimCommit",
               "wired_class": "ALPanelCineLightRig",
@@ -101489,7 +101489,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 676,
+              "line": 677,
               "class": "ALPanelCineLightRig",
               "function": "postBuild",
               "wired_class": "ALPanelCineLightRig",
@@ -101500,7 +101500,7 @@
             },
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 836,
+              "line": 838,
               "class": "ALPanelCineLightRig",
               "function": "onEasyBgCommit",
               "wired_class": "ALPanelCineLightRig",
@@ -101572,7 +101572,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 678,
+              "line": 679,
               "class": "ALPanelCineLightRig",
               "function": "postBuild",
               "wired_class": "ALPanelCineLightRig",
@@ -101583,7 +101583,7 @@
             },
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 840,
+              "line": 842,
               "class": "ALPanelCineLightRig",
               "function": "onEasyConeWidthCommit",
               "wired_class": "ALPanelCineLightRig",
@@ -101661,7 +101661,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 679,
+              "line": 680,
               "class": "ALPanelCineLightRig",
               "function": "postBuild",
               "wired_class": "ALPanelCineLightRig",
@@ -101672,7 +101672,7 @@
             },
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 842,
+              "line": 844,
               "class": "ALPanelCineLightRig",
               "function": "onEasyConeFeatherCommit",
               "wired_class": "ALPanelCineLightRig",
@@ -101767,7 +101767,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 742,
+              "line": 743,
               "class": "ALPanelCineLightRig",
               "function": "postBuild",
               "wired_class": "ALPanelCineLightRig",
@@ -101884,7 +101884,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 669,
+              "line": 670,
               "class": "ALPanelCineLightRig",
               "function": "postBuild",
               "wired_class": "ALPanelCineLightRig",
@@ -101895,7 +101895,7 @@
             },
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 742,
+              "line": 743,
               "class": "ALPanelCineLightRig",
               "function": "postBuild",
               "wired_class": "ALPanelCineLightRig",
@@ -101906,7 +101906,7 @@
             },
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 788,
+              "line": 790,
               "class": "ALPanelCineLightRig",
               "function": "onFlarePresetSelected",
               "wired_class": "ALPanelCineLightRig",
@@ -101983,7 +101983,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 744,
+              "line": 745,
               "class": "ALPanelCineLightRig",
               "function": "postBuild",
               "wired_class": "ALPanelCineLightRig",
@@ -102097,7 +102097,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 715,
+              "line": 716,
               "class": "ALPanelCineLightRig",
               "function": "postBuild",
               "wired_class": "ALPanelCineLightRig",
@@ -102108,7 +102108,7 @@
             },
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 745,
+              "line": 746,
               "class": "ALPanelCineLightRig",
               "function": "postBuild",
               "wired_class": "ALPanelCineLightRig",
@@ -102119,7 +102119,7 @@
             },
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 926,
+              "line": 928,
               "class": "ALPanelCineLightRig",
               "function": "onNightMaskDarknessCommit",
               "wired_class": "ALPanelCineLightRig",
@@ -102194,7 +102194,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 712,
+              "line": 713,
               "class": "ALPanelCineLightRig",
               "function": "postBuild",
               "wired_class": "ALPanelCineLightRig",
@@ -102205,7 +102205,7 @@
             },
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 745,
+              "line": 746,
               "class": "ALPanelCineLightRig",
               "function": "postBuild",
               "wired_class": "ALPanelCineLightRig",
@@ -102216,7 +102216,7 @@
             },
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 792,
+              "line": 794,
               "class": "ALPanelCineLightRig",
               "function": "onNightMaskPresetSelected",
               "wired_class": "ALPanelCineLightRig",
@@ -102293,7 +102293,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 744,
+              "line": 745,
               "class": "ALPanelCineLightRig",
               "function": "postBuild",
               "wired_class": "ALPanelCineLightRig",
@@ -102719,7 +102719,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 743,
+              "line": 744,
               "class": "ALPanelCineLightRig",
               "function": "postBuild",
               "wired_class": "ALPanelCineLightRig",
@@ -102907,7 +102907,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 653,
+              "line": 654,
               "class": "ALPanelCineLightRig",
               "function": "postBuild",
               "wired_class": "ALPanelCineLightRig",
@@ -102918,7 +102918,7 @@
             },
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 771,
+              "line": 773,
               "class": "ALPanelCineLightRig",
               "function": "onAnchorSelected",
               "wired_class": "ALPanelCineLightRig",
@@ -102986,7 +102986,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 654,
+              "line": 655,
               "class": "ALPanelCineLightRig",
               "function": "postBuild",
               "wired_class": "ALPanelCineLightRig",
@@ -102997,7 +102997,7 @@
             },
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 773,
+              "line": 775,
               "class": "ALPanelCineLightRig",
               "function": "onTargetObject",
               "wired_class": "ALPanelCineLightRig",
@@ -103065,7 +103065,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 655,
+              "line": 656,
               "class": "ALPanelCineLightRig",
               "function": "postBuild",
               "wired_class": "ALPanelCineLightRig",
@@ -103076,7 +103076,7 @@
             },
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 775,
+              "line": 777,
               "class": "ALPanelCineLightRig",
               "function": "onClearObjectTarget",
               "wired_class": "ALPanelCineLightRig",
@@ -103144,7 +103144,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 656,
+              "line": 657,
               "class": "ALPanelCineLightRig",
               "function": "postBuild",
               "wired_class": "ALPanelCineLightRig",
@@ -103212,7 +103212,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 660,
+              "line": 661,
               "class": "ALPanelCineLightRig",
               "function": "postBuild",
               "wired_class": "ALPanelCineLightRig",
@@ -103291,7 +103291,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 660,
+              "line": 661,
               "class": "ALPanelCineLightRig",
               "function": "postBuild",
               "wired_class": "ALPanelCineLightRig",
@@ -103370,7 +103370,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 660,
+              "line": 661,
               "class": "ALPanelCineLightRig",
               "function": "postBuild",
               "wired_class": "ALPanelCineLightRig",
@@ -103449,7 +103449,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 661,
+              "line": 662,
               "class": "ALPanelCineLightRig",
               "function": "postBuild",
               "wired_class": "ALPanelCineLightRig",
@@ -103528,7 +103528,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 661,
+              "line": 662,
               "class": "ALPanelCineLightRig",
               "function": "postBuild",
               "wired_class": "ALPanelCineLightRig",
@@ -103772,7 +103772,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 718,
+              "line": 719,
               "class": "ALPanelCineLightRig",
               "function": "postBuild",
               "wired_class": "ALPanelCineLightRig",
@@ -104192,7 +104192,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 815,
+              "line": 817,
               "class": "ALPanelCineLightRig",
               "function": "resetAll",
               "wired_class": "ALPanelCineLightRig",
@@ -104586,7 +104586,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 670,
+              "line": 671,
               "class": "ALPanelCineLightRig",
               "function": "postBuild",
               "wired_class": "ALPanelCineLightRig",
@@ -104667,7 +104667,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 739,
+              "line": 740,
               "class": "ALPanelCineLightRig",
               "function": "postBuild",
               "wired_class": "ALPanelCineLightRig",
@@ -104678,7 +104678,7 @@
             },
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 798,
+              "line": 800,
               "class": "ALCineLightRigManager",
               "function": "stopFX",
               "wired_class": "ALPanelCineLightRig",
@@ -104726,7 +104726,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 5138,
+              "line": 5160,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -104781,7 +104781,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 863,
+              "line": 865,
               "class": "ALPanelCineLightRig",
               "function": "onManualCommit",
               "wired_class": "ALPanelCineLightRig",
@@ -104871,7 +104871,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 671,
+              "line": 672,
               "class": "ALPanelCineLightRig",
               "function": "postBuild",
               "wired_class": "ALPanelCineLightRig",
@@ -104882,7 +104882,7 @@
             },
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 822,
+              "line": 824,
               "class": "ALPanelCineLightRig",
               "function": "commitSeed",
               "wired_class": "ALPanelCineLightRig",
@@ -104950,7 +104950,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 824,
+              "line": 826,
               "class": "ALPanelCineLightRig",
               "function": "randomizeSeed",
               "wired_class": "ALPanelCineLightRig",
@@ -105027,7 +105027,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 719,
+              "line": 720,
               "class": "ALPanelCineLightRig",
               "function": "postBuild",
               "wired_class": "ALPanelCineLightRig",
@@ -105117,7 +105117,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 1029,
+              "line": 1031,
               "class": "ALPanelCineLightRig",
               "function": "populateStaticCombos",
               "wired_class": "ALPanelCineLightRig",
@@ -105363,7 +105363,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 1031,
+              "line": 1033,
               "class": "ALPanelCineLightRig",
               "function": "populateStaticCombos",
               "wired_class": "ALPanelCineLightRig",
@@ -105453,7 +105453,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 1030,
+              "line": 1032,
               "class": "ALPanelCineLightRig",
               "function": "populateStaticCombos",
               "wired_class": "ALPanelCineLightRig",
@@ -105534,7 +105534,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 870,
+              "line": 872,
               "class": "ALPanelCineLightRig",
               "function": "postBuild",
               "wired_class": "ALPanelCineLightRig",
@@ -105690,7 +105690,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 872,
+              "line": 874,
               "class": "ALPanelCineLightRig",
               "function": "postBuild",
               "wired_class": "ALPanelCineLightRig",
@@ -105768,7 +105768,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 871,
+              "line": 873,
               "class": "ALPanelCineLightRig",
               "function": "postBuild",
               "wired_class": "ALPanelCineLightRig",
@@ -105855,7 +105855,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 1033,
+              "line": 1035,
               "class": "ALPanelCineLightRig",
               "function": "populateStaticCombos",
               "wired_class": "ALPanelCineLightRig",
@@ -106233,7 +106233,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 724,
+              "line": 725,
               "class": "ALPanelCineLightRig",
               "function": "postBuild",
               "wired_class": "ALPanelCineLightRig",
@@ -106323,7 +106323,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 723,
+              "line": 724,
               "class": "ALPanelCineLightRig",
               "function": "postBuild",
               "wired_class": "ALPanelCineLightRig",
@@ -106413,7 +106413,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 672,
+              "line": 673,
               "class": "ALPanelCineLightRig",
               "function": "postBuild",
               "wired_class": "ALPanelCineLightRig",
@@ -106424,7 +106424,7 @@
             },
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 720,
+              "line": 721,
               "class": "ALPanelCineLightRig",
               "function": "postBuild",
               "wired_class": "ALPanelCineLightRig",
@@ -106514,7 +106514,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 1029,
+              "line": 1031,
               "class": "ALPanelCineLightRig",
               "function": "populateStaticCombos",
               "wired_class": "ALPanelCineLightRig",
@@ -106760,7 +106760,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 1031,
+              "line": 1033,
               "class": "ALPanelCineLightRig",
               "function": "populateStaticCombos",
               "wired_class": "ALPanelCineLightRig",
@@ -106850,7 +106850,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 1030,
+              "line": 1032,
               "class": "ALPanelCineLightRig",
               "function": "populateStaticCombos",
               "wired_class": "ALPanelCineLightRig",
@@ -106931,7 +106931,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 870,
+              "line": 872,
               "class": "ALPanelCineLightRig",
               "function": "postBuild",
               "wired_class": "ALPanelCineLightRig",
@@ -107087,7 +107087,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 872,
+              "line": 874,
               "class": "ALPanelCineLightRig",
               "function": "postBuild",
               "wired_class": "ALPanelCineLightRig",
@@ -107165,7 +107165,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 871,
+              "line": 873,
               "class": "ALPanelCineLightRig",
               "function": "postBuild",
               "wired_class": "ALPanelCineLightRig",
@@ -107252,7 +107252,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 1033,
+              "line": 1035,
               "class": "ALPanelCineLightRig",
               "function": "populateStaticCombos",
               "wired_class": "ALPanelCineLightRig",
@@ -107630,7 +107630,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 721,
+              "line": 722,
               "class": "ALPanelCineLightRig",
               "function": "postBuild",
               "wired_class": "ALPanelCineLightRig",
@@ -107720,7 +107720,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 1029,
+              "line": 1031,
               "class": "ALPanelCineLightRig",
               "function": "populateStaticCombos",
               "wired_class": "ALPanelCineLightRig",
@@ -107966,7 +107966,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 1031,
+              "line": 1033,
               "class": "ALPanelCineLightRig",
               "function": "populateStaticCombos",
               "wired_class": "ALPanelCineLightRig",
@@ -108056,7 +108056,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 1030,
+              "line": 1032,
               "class": "ALPanelCineLightRig",
               "function": "populateStaticCombos",
               "wired_class": "ALPanelCineLightRig",
@@ -108137,7 +108137,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 870,
+              "line": 872,
               "class": "ALPanelCineLightRig",
               "function": "postBuild",
               "wired_class": "ALPanelCineLightRig",
@@ -108293,7 +108293,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 872,
+              "line": 874,
               "class": "ALPanelCineLightRig",
               "function": "postBuild",
               "wired_class": "ALPanelCineLightRig",
@@ -108371,7 +108371,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 871,
+              "line": 873,
               "class": "ALPanelCineLightRig",
               "function": "postBuild",
               "wired_class": "ALPanelCineLightRig",
@@ -108458,7 +108458,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 1033,
+              "line": 1035,
               "class": "ALPanelCineLightRig",
               "function": "populateStaticCombos",
               "wired_class": "ALPanelCineLightRig",
@@ -108836,7 +108836,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 722,
+              "line": 723,
               "class": "ALPanelCineLightRig",
               "function": "postBuild",
               "wired_class": "ALPanelCineLightRig",
@@ -108926,7 +108926,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 1029,
+              "line": 1031,
               "class": "ALPanelCineLightRig",
               "function": "populateStaticCombos",
               "wired_class": "ALPanelCineLightRig",
@@ -109172,7 +109172,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 1031,
+              "line": 1033,
               "class": "ALPanelCineLightRig",
               "function": "populateStaticCombos",
               "wired_class": "ALPanelCineLightRig",
@@ -109262,7 +109262,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 1030,
+              "line": 1032,
               "class": "ALPanelCineLightRig",
               "function": "populateStaticCombos",
               "wired_class": "ALPanelCineLightRig",
@@ -109343,7 +109343,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 870,
+              "line": 872,
               "class": "ALPanelCineLightRig",
               "function": "postBuild",
               "wired_class": "ALPanelCineLightRig",
@@ -109499,7 +109499,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 872,
+              "line": 874,
               "class": "ALPanelCineLightRig",
               "function": "postBuild",
               "wired_class": "ALPanelCineLightRig",
@@ -109577,7 +109577,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 871,
+              "line": 873,
               "class": "ALPanelCineLightRig",
               "function": "postBuild",
               "wired_class": "ALPanelCineLightRig",
@@ -109664,7 +109664,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 1033,
+              "line": 1035,
               "class": "ALPanelCineLightRig",
               "function": "populateStaticCombos",
               "wired_class": "ALPanelCineLightRig",
@@ -110111,7 +110111,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 801,
+              "line": 803,
               "class": "ALPanelCineLightRig",
               "function": "adjustAim",
               "wired_class": "ALPanelCineLightRig",
@@ -110179,7 +110179,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 804,
+              "line": 806,
               "class": "ALPanelCineLightRig",
               "function": "adjustAim",
               "wired_class": "ALPanelCineLightRig",
@@ -110247,7 +110247,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 807,
+              "line": 809,
               "class": "ALPanelCineLightRig",
               "function": "adjustAim",
               "wired_class": "ALPanelCineLightRig",
@@ -110315,7 +110315,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 810,
+              "line": 812,
               "class": "ALPanelCineLightRig",
               "function": "adjustAim",
               "wired_class": "ALPanelCineLightRig",
@@ -110383,7 +110383,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 813,
+              "line": 815,
               "class": "ALPanelCineLightRig",
               "function": "resetAim",
               "wired_class": "ALPanelCineLightRig",
@@ -110611,7 +110611,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 731,
+              "line": 732,
               "class": "ALPanelCineLightRig",
               "function": "postBuild",
               "wired_class": "ALPanelCineLightRig",
@@ -110622,7 +110622,7 @@
             },
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 826,
+              "line": 828,
               "class": "ALPanelCineLightRig",
               "function": "onClickShadowFixIt",
               "wired_class": "ALPanelCineLightRig",
@@ -110855,7 +110855,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 903,
+              "line": 905,
               "class": "ALPanelCineLightRig",
               "function": "postBuild",
               "wired_class": "ALPanelCineLightRig",
@@ -110945,7 +110945,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 905,
+              "line": 907,
               "class": "ALPanelCineLightRig",
               "function": "postBuild",
               "wired_class": "ALPanelCineLightRig",
@@ -111295,7 +111295,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 905,
+              "line": 907,
               "class": "ALPanelCineLightRig",
               "function": "postBuild",
               "wired_class": "ALPanelCineLightRig",
@@ -111381,7 +111381,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 681,
+              "line": 682,
               "class": "ALPanelCineLightRig",
               "function": "postBuild",
               "wired_class": "ALPanelCineLightRig",
@@ -111392,7 +111392,7 @@
             },
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 844,
+              "line": 846,
               "class": "ALPanelCineLightRig",
               "function": "onFixtureRoleCommit",
               "wired_class": "ALPanelCineLightRig",
@@ -111486,7 +111486,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 682,
+              "line": 683,
               "class": "ALPanelCineLightRig",
               "function": "postBuild",
               "wired_class": "ALPanelCineLightRig",
@@ -111497,7 +111497,7 @@
             },
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 846,
+              "line": 848,
               "class": "ALPanelCineLightRig",
               "function": "onFixtureModeCommit",
               "wired_class": "ALPanelCineLightRig",
@@ -111592,7 +111592,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 683,
+              "line": 684,
               "class": "ALPanelCineLightRig",
               "function": "postBuild",
               "wired_class": "ALPanelCineLightRig",
@@ -111603,7 +111603,7 @@
             },
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 848,
+              "line": 850,
               "class": "ALPanelCineLightRig",
               "function": "onFixturePresetCommit",
               "wired_class": "ALPanelCineLightRig",
@@ -111684,7 +111684,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 684,
+              "line": 685,
               "class": "ALPanelCineLightRig",
               "function": "postBuild",
               "wired_class": "ALPanelCineLightRig",
@@ -111695,7 +111695,7 @@
             },
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 850,
+              "line": 852,
               "class": "ALPanelCineLightRig",
               "function": "onFixtureValuesCommit",
               "wired_class": "ALPanelCineLightRig",
@@ -111776,7 +111776,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 685,
+              "line": 686,
               "class": "ALPanelCineLightRig",
               "function": "postBuild",
               "wired_class": "ALPanelCineLightRig",
@@ -111787,7 +111787,7 @@
             },
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 852,
+              "line": 854,
               "class": "ALPanelCineLightRig",
               "function": "onFixtureValuesCommit",
               "wired_class": "ALPanelCineLightRig",
@@ -111888,7 +111888,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 686,
+              "line": 687,
               "class": "ALPanelCineLightRig",
               "function": "postBuild",
               "wired_class": "ALPanelCineLightRig",
@@ -111987,7 +111987,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 687,
+              "line": 688,
               "class": "ALPanelCineLightRig",
               "function": "postBuild",
               "wired_class": "ALPanelCineLightRig",
@@ -112086,7 +112086,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 688,
+              "line": 689,
               "class": "ALPanelCineLightRig",
               "function": "postBuild",
               "wired_class": "ALPanelCineLightRig",
@@ -112151,7 +112151,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 1418,
+              "line": 1425,
               "class": "ALPanelCineLightRig",
               "function": "syncGoboLibrary",
               "wired_class": "ALPanelCineLightRig",
@@ -112171,7 +112171,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 243,
+              "line": 244,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -112242,7 +112242,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 689,
+              "line": 690,
               "class": "ALPanelCineLightRig",
               "function": "postBuild",
               "wired_class": "ALPanelCineLightRig",
@@ -112253,7 +112253,7 @@
             },
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 859,
+              "line": 861,
               "class": "ALPanelCineLightRig",
               "function": "onGoboLibraryCommit",
               "wired_class": "ALPanelCineLightRig",
@@ -112321,7 +112321,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 691,
+              "line": 692,
               "class": "ALPanelCineLightRig",
               "function": "postBuild",
               "wired_class": "ALPanelCineLightRig",
@@ -112389,7 +112389,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 861,
+              "line": 863,
               "class": "LLFloaterReg",
               "function": "showInstance",
               "wired_class": "ALPanelCineLightRig",
@@ -112555,7 +112555,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 668,
+              "line": 669,
               "class": "ALPanelCineLightRig",
               "function": "postBuild",
               "wired_class": "ALPanelCineLightRig",
@@ -112566,7 +112566,7 @@
             },
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 786,
+              "line": 788,
               "class": "ALPanelCineLightRig",
               "function": "onFlarePresetSelected",
               "wired_class": "ALPanelCineLightRig",
@@ -114503,7 +114503,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 5147,
+              "line": 5169,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -114562,7 +114562,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 706,
+              "line": 707,
               "class": "ALPanelCineLightRig",
               "function": "postBuild",
               "wired_class": "ALPanelCineLightRig",
@@ -114573,7 +114573,7 @@
             },
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 818,
+              "line": 820,
               "class": "ALPanelCineLightRig",
               "function": "requestCinematicLiveProbeRefresh",
               "wired_class": "ALPanelCineLightRig",
@@ -114652,7 +114652,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 705,
+              "line": 706,
               "class": "ALPanelCineLightRig",
               "function": "postBuild",
               "wired_class": "ALPanelCineLightRig",
@@ -114909,7 +114909,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 707,
+              "line": 708,
               "class": "ALPanelCineLightRig",
               "function": "postBuild",
               "wired_class": "ALPanelCineLightRig",
@@ -114999,7 +114999,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 708,
+              "line": 709,
               "class": "ALPanelCineLightRig",
               "function": "postBuild",
               "wired_class": "ALPanelCineLightRig",
@@ -115143,7 +115143,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 711,
+              "line": 712,
               "class": "ALPanelCineLightRig",
               "function": "postBuild",
               "wired_class": "ALPanelCineLightRig",
@@ -115154,7 +115154,7 @@
             },
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 790,
+              "line": 792,
               "class": "ALPanelCineLightRig",
               "function": "onNightMaskPresetSelected",
               "wired_class": "ALPanelCineLightRig",
@@ -115231,7 +115231,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 714,
+              "line": 715,
               "class": "ALPanelCineLightRig",
               "function": "postBuild",
               "wired_class": "ALPanelCineLightRig",
@@ -115242,7 +115242,7 @@
             },
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 924,
+              "line": 926,
               "class": "ALPanelCineLightRig",
               "function": "onNightMaskDarknessCommit",
               "wired_class": "ALPanelCineLightRig",
@@ -142065,7 +142065,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 5251,
+              "line": 5283,
               "class": null,
               "function": null,
               "wired_class": null,

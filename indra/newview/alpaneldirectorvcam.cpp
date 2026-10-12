@@ -1103,7 +1103,8 @@ void ALPanelDirectorVCam::onControl(LLUICtrl* source)
         else
         {
             settings.mTestPattern = source_type == 3;
-            if (!settings.mTestPattern && !settings.mVirtual)
+            if (!settings.mTestPattern && !settings.mVirtual &&
+                !capture->mCamera.mTestPattern)
                 ALVCamPageModel::currentViewTransform(settings.mVirtualPos, settings.mVirtualRot);
             settings.mVirtual = !settings.mTestPattern;
             settings.mBonePov.mEnabled = !settings.mTestPattern && source_type == 2;

@@ -2380,6 +2380,13 @@ public:
             return LLPrismLens::ERegistryResult::STALE_HANDLE;
         }
         PrismProjector& projector = mProjectors[projector_slot];
+        if (LLPrismLens::validateProjectorReassignment(
+                projector, mLenses[capture_slot].mMode) !=
+            LLPrismLens::ERegistryResult::OK)
+        {
+            if (reason) *reason = "Only Camera Feed captures can feed a projector.";
+            return LLPrismLens::ERegistryResult::INVALID_CONFIGURATION;
+        }
         if (projector.mTarget == LLPrismLens::EProjectorTarget::OBJECT)
         {
             LLViewerObject* object = gObjectList.findObject(projector.mObjectId);
@@ -3586,7 +3593,11 @@ public:
         // forbidden -- there is no spotlight object to read). The non-virtual
         // path below is byte-identical to before.
         F32 vertical_fov = capture.mCamera.mFixedVerticalFovRad;
-        if (!capture.mCamera.mTestPattern && capture.mCamera.mVirtual)
+        if (capture.mCamera.mTestPattern)
+        {
+            // The local generator is intentionally objectless.
+        }
+        else if (capture.mCamera.mVirtual)
         {
             if (!capture.mCamera.mVirtualPos.isFinite() ||
                 !capture.mCamera.mVirtualRot.isFinite())
@@ -5506,10 +5517,17 @@ public:
         LLPrismLens::EDisplayHealth health = LLPrismLens::EDisplayHealth::READY;
         const char* reason = "";
         bool quarantined = false;
+        const bool was_quarantined = projector.mQuarantined;
+        const std::string old_quarantine_reason = projector.mQuarantineReason;
         LLViewerObject* object = projector.mTarget ==
                 LLPrismLens::EProjectorTarget::RIG_LIGHT
             ? resolveRigProjector(projector.mRigSlot, projector.mRigLight)
             : gObjectList.findObject(projector.mObjectId);
+        if (projector.mTarget == LLPrismLens::EProjectorTarget::RIG_LIGHT)
+            LLPrismLens::resolveRigProjectorState(
+                projector, ALCineLightRigManager::SLOT_COUNT,
+                ALCineLightRigModel::LIGHT_COUNT,
+                object ? object->getID() : LLUUID::null);
         LLVOVolume* volume = object
             ? dynamic_cast<LLVOVolume*>(object) : nullptr;
         if (!object || object->isDead())
@@ -5534,7 +5552,7 @@ public:
         }
         const bool changed = projector.mRuntime.mHealth != health ||
             projector.mRuntime.mReason != reason ||
-            projector.mQuarantined != quarantined;
+            was_quarantined != quarantined || old_quarantine_reason != reason;
         if (changed)
         {
             if (quarantined)
@@ -6027,6 +6045,7 @@ public:
             out.mCamera = capture.mCamera;
             out.mRate = capture.mRate;
             out.mRuntime = capture.mRuntime;
+            out.mRuntime.mHasOutput = capture.mHasOutput;
             out.mDisplayCount = capture.mDisplayCount;
             out.mProjectorCount = capture.mProjectorCount;
         }
@@ -7129,6 +7148,17 @@ public:
              it != projectors_data.endArray(); ++it)
         {
             const LLSD& item = *it;
+            if (item.isMap() && item.has("target"))
+            {
+                const std::string candidate_target = item["target"].asString();
+                if (LLPrismLens::loadedProjectorTarget(candidate_target) ==
+                    LLPrismLens::ELoadedProjectorTarget::SKIP)
+                {
+                    LL_WARNS("PrismLens") << "Skipping unknown projector target kind '"
+                        << candidate_target << "' while loading scene data." << LL_ENDL;
+                    continue;
+                }
+            }
             if (!item.isMap() || !item.has("binding_id") ||
                 !item.has("generation") ||
                 (!item["generation"].isInteger() &&
@@ -7182,14 +7212,16 @@ public:
                     return fail("Only Camera Feed captures can feed a projector.");
             }
             const std::string target = item["target"].asString();
-            if (target == "object")
+            const LLPrismLens::ELoadedProjectorTarget target_kind =
+                LLPrismLens::loadedProjectorTarget(target);
+            if (target_kind == LLPrismLens::ELoadedProjectorTarget::OBJECT)
             {
                 if (parsed.mObjectId.isNull())
                     return fail("An object projector target needs an object ID.");
                 if (!projector_objects.insert(parsed.mObjectId).second)
                     return fail("A projector light may have only one VCam feed.");
             }
-            else if (target == "rig")
+            else if (target_kind == LLPrismLens::ELoadedProjectorTarget::RIG_LIGHT)
             {
                 if (!item.has("rig_slot") || !item["rig_slot"].isInteger() ||
                     !item.has("rig_light") || !item["rig_light"].isInteger())
@@ -7211,7 +7243,7 @@ public:
             }
             else
             {
-                return fail("Unknown Prism projector target kind.");
+                llassert(false);
             }
 
             const LLSD& settings = item["settings"];
@@ -7316,17 +7348,12 @@ public:
             else
             {
                 LLVOVolume* volume = dynamic_cast<LLVOVolume*>(object);
-                if (LLPrismLens::quarantineLoadedProjectorTarget(
-                        true, volume != nullptr, object->isHUDAttachment(),
-                        volume && volume->getIsLight(),
-                        volume && volume->isLightSpotlight()))
-                {
-                    parsed.mQuarantined = true;
-                    parsed.mQuarantineReason =
-                        "Scene projector target is no longer a projector light.";
-                }
+                LLPrismLens::updateLoadedProjectorQuarantine(
+                    parsed, true, volume != nullptr, object->isHUDAttachment(),
+                    volume && volume->getIsLight(),
+                    volume && volume->isLightSpotlight());
             }
-            parsed_projectors.push_back(parsed);
+            LLPrismLens::appendLoadedProjector(parsed_projectors, target, parsed);
         }
 
         std::vector<LLUUID> gate_capture_ids;

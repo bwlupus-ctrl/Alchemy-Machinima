@@ -197,7 +197,9 @@ public:
     bool            getAllowLocalTexture() const                    { return mAllowLocalTexture; }
 
     using vcam_commit_callback_t = std::function<void(ETexturePickOp, const LLUUID&)>;
-    void setVCamTarget(EVCamTextureTarget target, vcam_commit_callback_t callback);
+    using vcam_open_callback_t = std::function<void()>;
+    void setVCamTarget(EVCamTextureTarget target, vcam_commit_callback_t callback,
+                       vcam_open_callback_t open_callback = {});
     void setVCamOverride(const LLUUID& capture_id, const std::string& label);
 
     const LLUUID&   getImageItemID() { return mImageItemID; }
@@ -302,6 +304,7 @@ private:
     bool                        mAllowLocalTexture;
     EVCamTextureTarget          mVCamTarget = EVCamTextureTarget::NONE;
     vcam_commit_callback_t      mVCamCommitCallback;
+    vcam_open_callback_t        mVCamOpenCallback;
     std::string                 mVCamOverrideLabel;
     LLUUID                      mVCamCaptureID;
     bool                        mStandardEnabled = true;
@@ -501,6 +504,7 @@ private:
     LLUUID mVCamCaptureID;
     LLUUID mOriginalVCamCaptureID;
     bool mVCamSelectionInitialized = false;
+    bool mVCamLiveApplied = false;
     bool mPickerFinalized = false;
     boost::signals2::scoped_connection mVCamConfigurationConnection;
     boost::signals2::scoped_connection mVCamPreviewConnection;

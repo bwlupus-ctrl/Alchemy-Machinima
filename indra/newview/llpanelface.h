@@ -32,10 +32,12 @@
 #include "llgltfmaterial.h"
 #include "llmaterial.h"
 #include "llmaterialmgr.h"
+#include "llprismlens.h"
 #include "lltextureentry.h"
 #include "llselectmgr.h"
 
 #include <memory>
+#include <vector>
 
 class LLButton;
 class LLCheckBoxCtrl;
@@ -168,7 +170,8 @@ protected:
     void onCommitTexture();
     void onCancelTexture();
     void onSelectTexture();
-    void onVCamTexture(const LLUUID& capture_id);
+    void snapshotVCamFaces();
+    void onVCamTexture(bool restore, const LLUUID& capture_id);
     void refreshVCamTextureLabel();
     void onCommitSpecularTexture(const LLSD& data);
     void onCancelSpecularTexture(const LLSD& data);
@@ -280,6 +283,18 @@ protected:
     static F32 valueGlow(LLViewerObject* object, S32 face);
 
 private:
+    struct VCamFaceBindingSnapshot
+    {
+        LLUUID mObjectId;
+        LLUUID mCaptureId;
+        LLPrismLens::DisplaySettings mSettings;
+        S32 mTextureEntry = -1;
+        bool mBound = false;
+        bool mGateSubscribed = false;
+    };
+
+    std::vector<VCamFaceBindingSnapshot> mVCamFaceBindings;
+
     bool isAlpha() const { return mIsAlpha; }
 
     // Convenience funcs to keep the visual flack to a minimum

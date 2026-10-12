@@ -343,6 +343,7 @@ struct CaptureRuntimeState
     bool mPreviewOnly = false;
     F32 mObservedPublicationHz = 0.f;
     F32 mOutputAgeSeconds = 0.f;
+    bool mHasOutput = false;
 };
 
 struct DisplayRuntimeState
@@ -733,6 +734,66 @@ struct ProjectorDefinition
     bool mQuarantined = false;
     std::string mQuarantineReason;
 };
+
+enum class ELoadedProjectorTarget : U8
+{
+    OBJECT,
+    RIG_LIGHT,
+    SKIP
+};
+
+inline ELoadedProjectorTarget loadedProjectorTarget(const std::string& target)
+{
+    if (target == "object") return ELoadedProjectorTarget::OBJECT;
+    if (target == "rig") return ELoadedProjectorTarget::RIG_LIGHT;
+    return ELoadedProjectorTarget::SKIP;
+}
+
+template<typename ProjectorContainer, typename Projector>
+bool appendLoadedProjector(ProjectorContainer& projectors,
+                           const std::string& target,
+                           const Projector& projector)
+{
+    if (loadedProjectorTarget(target) == ELoadedProjectorTarget::SKIP)
+        return false;
+    projectors.push_back(projector);
+    return true;
+}
+
+template<typename Projector>
+bool resolveRigProjectorState(Projector& projector, U8 rig_count, U8 light_count,
+                              const LLUUID& resolved_emitter)
+{
+    if (projector.mTarget != EProjectorTarget::RIG_LIGHT) return false;
+    const bool valid = projector.mRigSlot < rig_count &&
+        projector.mRigLight < light_count && resolved_emitter.notNull();
+    projector.mObjectId = valid ? resolved_emitter : LLUUID::null;
+    projector.mQuarantined = !valid;
+    projector.mQuarantineReason = valid ? std::string() :
+        (projector.mRigSlot >= rig_count || projector.mRigLight >= light_count
+            ? "Rig projector identity is stale."
+            : "Rig projector emitter is rebuilding or offline.");
+    return valid;
+}
+
+template<typename Projector>
+void updateLoadedProjectorQuarantine(Projector& projector, bool object_present,
+                                     bool live_volume, bool hud_attachment,
+                                     bool light, bool spotlight)
+{
+    projector.mQuarantined = !object_present || !live_volume || hud_attachment ||
+        !light || !spotlight;
+    projector.mQuarantineReason = projector.mQuarantined
+        ? "Scene projector target is no longer a projector light." : std::string();
+}
+
+template<typename Projector>
+ERegistryResult validateProjectorReassignment(const Projector&,
+                                               ECaptureMode capture_mode)
+{
+    return capture_mode == ECaptureMode::CAMERA_FEED
+        ? ERegistryResult::OK : ERegistryResult::INVALID_CONFIGURATION;
+}
 
 inline bool validRigProjectorIdentity(U8 rig_slot, U8 rig_light,
                                       U8 rig_count, U8 light_count)

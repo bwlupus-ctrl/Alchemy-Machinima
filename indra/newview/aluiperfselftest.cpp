@@ -4577,6 +4577,28 @@ private:
             }
         }
         if (LLComboBox* combo = dynamic_cast<LLComboBox*>(control);
+            entry["probe"].asString() == "rig_projector_binding" && combo)
+        {
+            const std::vector<LLScrollListItem*> items = combo->getAllData();
+            mFunctionalRigProjectorCapture = items.size() > 1 && items[1]
+                ? items[1]->getValue().asUUID() : LLUUID::null;
+            mFunctionalRigProjectorAbsentBefore = mFunctionalRigProjectorCapture.notNull();
+            const U8 rig_slot = static_cast<U8>(
+                ALCineLightRigManager::instance().selectedSlot());
+            const LLPrismLens::RegistrySnapshot registry = LLPrismLens::registrySnapshot();
+            for (U32 index = 0; index < registry.mProjectorCount; ++index)
+                if (LLPrismLens::sameRigProjectorIdentity(
+                        registry.mProjectors[index], rig_slot, 0))
+                {
+                    mFunctionalRigProjectorAbsentBefore = false;
+                    break;
+                }
+            mFunctionalObserved["prestate"]["rig_projector_absent"] =
+                mFunctionalRigProjectorAbsentBefore;
+            mFunctionalObserved["prestate"]["rig_projector_capture"] =
+                mFunctionalRigProjectorCapture;
+        }
+        if (LLComboBox* combo = dynamic_cast<LLComboBox*>(control);
             mDirectorV2 && combo && entry["exercise"].asString() == "select_item" &&
             entry["test_value"].isMap() &&
             entry["test_value"]["resolve"].asString() != "runtime" &&
@@ -5211,11 +5233,19 @@ private:
                     break;
                 }
             const bool pattern = capture && capture->mCamera.mTestPattern;
+            const bool ready = capture &&
+                capture->mRuntime.mHealth == LLPrismLens::ECaptureHealth::READY;
+            const bool current = capture &&
+                capture->mRuntime.mOutput == LLPrismLens::EOutputState::CURRENT &&
+                capture->mRuntime.mHasOutput;
             mFunctionalObserved["vcam"]["test_pattern"] = pattern;
-            observable = pattern;
-            expected_ok = expected_ok && pattern;
-            if (!pattern) assertion_failure =
-                "selected capture source is not the test pattern";
+            mFunctionalObserved["vcam"]["health_ready"] = ready;
+            mFunctionalObserved["vcam"]["output_current"] = current;
+            observable = pattern && ready && current;
+            expected_ok = expected_ok && observable;
+            if (!pattern) assertion_failure = "selected capture source is not the test pattern";
+            else if (!ready) assertion_failure = "test-pattern capture did not become READY";
+            else if (!current) assertion_failure = "test-pattern capture produced no current output";
         }
         if (entry["probe"].asString() == "rig_projector_binding" &&
             mFunctionalVCamModel)
@@ -5223,7 +5253,7 @@ private:
             mFunctionalVCamModel->refreshNow();
             const U8 rig_slot = static_cast<U8>(
                 ALCineLightRigManager::instance().selectedSlot());
-            const LLUUID capture_id = mFunctionalVCamModel->selectedCapture().mId;
+            const LLUUID capture_id = mFunctionalRigProjectorCapture;
             bool bound = false;
             for (const LLPrismLens::ProjectorDefinition& projector :
                  mFunctionalVCamModel->registry().mProjectors)
@@ -5234,9 +5264,11 @@ private:
                     break;
                 }
             mFunctionalObserved["vcam"]["rig_projector_binding"] = bound;
-            observable = bound;
-            expected_ok = expected_ok && bound;
-            if (!bound) assertion_failure =
+            observable = mFunctionalRigProjectorAbsentBefore && bound;
+            expected_ok = expected_ok && observable;
+            if (!mFunctionalRigProjectorAbsentBefore) assertion_failure =
+                "rig-light projector binding was already present before the click";
+            else if (!bound) assertion_failure =
                 "stable rig-light projector binding is absent from the registry";
         }
         if (entry["probe"].asString() == "actor_mover_active")
@@ -8798,6 +8830,7 @@ private:
     bool mFunctionalSentinelDone = false;
     bool mFunctionalInjectionBroken = false;
     bool mFunctionalGatePrepared = false;
+    bool mFunctionalRigProjectorAbsentBefore = false;
     bool mFunctionalRevealPending = false;
     bool mFunctionalShots = false;
     bool mFunctionalDryReveal = false;
@@ -8830,6 +8863,7 @@ private:
     LLHandle<LLFloater> mFunctionalHostFloater;
     LLHandle<LLUICtrl> mFunctionalControl;
     LLSD mFunctionalControlBefore;
+    LLUUID mFunctionalRigProjectorCapture;
     LLSD mFunctionalOriginalControlValue;
     LLHandle<LLUICtrl> mFunctionalSecondaryControl;
     LLSD mFunctionalSecondaryBefore;

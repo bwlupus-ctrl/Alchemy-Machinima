@@ -85,6 +85,7 @@
 #include "llmeshrepository.h"
 
 #include "llvoavatarself.h"
+#include "llviewerobjectlist.h"
 
 #include <boost/bind.hpp>
 
@@ -154,8 +155,9 @@ bool    LLPanelVolume::postBuild()
         mLightTextureCtrl->setOnSelectCallback(boost::bind(&LLPanelVolume::onLightSelectTexture, this, _2));
         mLightTextureCtrl->setCommitCallback(boost::bind(onCommitLight, boost::placeholders::_1, this));
         mLightTextureCtrl->setVCamTarget(EVCamTextureTarget::PROJECTOR,
-            [this](LLTextureCtrl::ETexturePickOp, const LLUUID& capture_id)
-            { onVCamProjector(capture_id); });
+            [this](LLTextureCtrl::ETexturePickOp op, const LLUUID& capture_id)
+            { onVCamProjector(op == LLTextureCtrl::TEXTURE_CANCEL, capture_id); },
+            [this]() { snapshotVCamProjector(); });
 
         mLightIntensity = getChild<LLSpinCtrl>("Light Intensity");
         mLightIntensity->setValidateBeforeCommit(precommitValidate);
@@ -1057,12 +1059,37 @@ void LLPanelVolume::onLightSelectTexture(const LLSD& data)
     setLightTextureID(id, mLightTextureCtrl->getImageItemID(), volobjp);
 }
 
-void LLPanelVolume::onVCamProjector(const LLUUID& capture_id)
+void LLPanelVolume::snapshotVCamProjector()
 {
-    LLViewerObject* object = mObject.get();
+    mVCamProjectorTarget = mObject.notNull() ? mObject->getID() : LLUUID::null;
+    mVCamProjectorOriginalCapture.setNull();
+    mVCamProjectorOriginallyBound = false;
+    mVCamProjectorOriginalGateSubscribed = false;
+    const LLPrismLens::RegistrySnapshot snapshot = LLPrismLens::registrySnapshot();
+    for (U32 index = 0; index < snapshot.mProjectorCount; ++index)
+    {
+        const LLPrismLens::ProjectorDefinition& binding = snapshot.mProjectors[index];
+        if (binding.mTarget == LLPrismLens::EProjectorTarget::OBJECT &&
+            binding.mObjectId == mVCamProjectorTarget)
+        {
+            mVCamProjectorOriginalCapture = binding.mCapture.mId;
+            mVCamProjectorOriginalSettings = binding.mSettings;
+            mVCamProjectorOriginallyBound = true;
+            mVCamProjectorOriginalGateSubscribed = binding.mGateSubscribed;
+            break;
+        }
+    }
+}
+
+void LLPanelVolume::onVCamProjector(bool restore, const LLUUID& capture_id)
+{
+    LLViewerObject* object = gObjectList.findObject(mVCamProjectorTarget);
     if (!object) return;
+    const LLUUID wanted_capture = restore
+        ? (mVCamProjectorOriginallyBound ? mVCamProjectorOriginalCapture : LLUUID::null)
+        : capture_id;
     std::string reason;
-    if (capture_id.isNull())
+    if (wanted_capture.isNull())
     {
         const LLPrismLens::RegistrySnapshot snapshot = LLPrismLens::registrySnapshot();
         bool removed = false;
@@ -1070,7 +1097,7 @@ void LLPanelVolume::onVCamProjector(const LLUUID& capture_id)
         {
             const LLPrismLens::ProjectorDefinition& binding = snapshot.mProjectors[index];
             if (binding.mTarget == LLPrismLens::EProjectorTarget::OBJECT &&
-                binding.mObjectId == object->getID())
+                binding.mObjectId == mVCamProjectorTarget)
             {
                 removed = LLPrismLens::removeProjector(binding.mHandle, &reason);
                 break;
@@ -1086,15 +1113,15 @@ void LLPanelVolume::onVCamProjector(const LLUUID& capture_id)
         {
             const LLPrismLens::ProjectorDefinition& binding = snapshot.mProjectors[index];
             if (binding.mTarget == LLPrismLens::EProjectorTarget::OBJECT &&
-                binding.mObjectId == object->getID() &&
-                binding.mCapture.mId == capture_id)
+                binding.mObjectId == mVCamProjectorTarget &&
+                binding.mCapture.mId == wanted_capture)
             {
                 already_bound = true;
                 break;
             }
         }
         if (!already_bound &&
-            ALVCamPageModel::dropOnProjector(capture_id, object, nullptr, &reason) !=
+            ALVCamPageModel::dropOnProjector(wanted_capture, object, nullptr, &reason) !=
                 LLPrismLens::ERegistryResult::OK)
         {
             LLSD args;
@@ -1102,7 +1129,24 @@ void LLPanelVolume::onVCamProjector(const LLUUID& capture_id)
             LLNotificationsUtil::add("GenericAlert", args);
         }
     }
-    refreshVCamProjectorLabel(object);
+    if (restore && mVCamProjectorOriginallyBound)
+    {
+        const LLPrismLens::RegistrySnapshot restored = LLPrismLens::registrySnapshot();
+        for (U32 index = 0; index < restored.mProjectorCount; ++index)
+        {
+            const LLPrismLens::ProjectorDefinition& binding = restored.mProjectors[index];
+            if (binding.mTarget == LLPrismLens::EProjectorTarget::OBJECT &&
+                binding.mObjectId == mVCamProjectorTarget)
+            {
+                LLPrismLens::setProjectorSettings(
+                    binding.mHandle, mVCamProjectorOriginalSettings, &reason);
+                LLPrismLens::setProjectorGateSubscribed(
+                    binding.mHandle, mVCamProjectorOriginalGateSubscribed, &reason);
+                break;
+            }
+        }
+    }
+    refreshVCamProjectorLabel(mObject.get());
 }
 
 void LLPanelVolume::refreshVCamProjectorLabel(LLViewerObject* object)

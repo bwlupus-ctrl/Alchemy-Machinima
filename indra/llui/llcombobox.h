@@ -244,6 +244,7 @@ public:
     void            updateSelection();
     virtual void    showList();
     virtual void    hideList();
+    bool            isListVisible() const { return mList && mList->getVisible(); }
 
     virtual void    onTextEntry(LLLineEditor* line_editor);
 

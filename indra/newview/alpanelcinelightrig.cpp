@@ -47,6 +47,7 @@
 #include "llviewerobject.h"
 #include "llvoavatar.h"
 #include "pipeline.h"
+#include "alkitrow.h"
 
 #include <algorithm>
 #include <cmath>
@@ -766,7 +767,8 @@ bool ALPanelCineLightRig::postBuild()
     populateStaticCombos();
     updateAnchorList();
     refreshSetupList();
-    syncProjectorFeeds(true);
+    if (gSavedSettings.getBOOL("PrismLensEnabled"))
+        syncProjectorFeeds(true);
 
     mAnchorCombo->setCommitCallback(
         [this](LLUICtrl*, const LLSD&) { onAnchorSelected(); });
@@ -1160,17 +1162,22 @@ void ALPanelCineLightRig::populateStaticCombos()
 
 void ALPanelCineLightRig::syncProjectorFeeds(bool force)
 {
-    const LLPrismLens::RegistrySnapshot snapshot =
-        LLPrismLens::registrySnapshot();
-    const U64 revision = snapshot.mConfigurationRevision;
+    static LLCachedControl<bool> prism_enabled(
+        gSavedSettings, "PrismLensEnabled", false);
+    if (!prism_enabled) return;
     const U8 rig_slot = static_cast<U8>(
         ALCineLightRigManager::instance().selectedSlot());
+    const U64 revision = LLPrismLens::configurationRevision();
     if (!force && revision == mProjectorFeedRevision &&
         mProjectorFeedRigSlot == static_cast<S32>(rig_slot))
     {
         return;
     }
-    mProjectorFeedRevision = revision;
+    for (LLComboBox* combo : mProjectorFeeds)
+        if (combo && combo->isListVisible()) return;
+    const LLPrismLens::RegistrySnapshot snapshot =
+        LLPrismLens::registrySnapshot();
+    mProjectorFeedRevision = snapshot.mConfigurationRevision;
     mProjectorFeedRigSlot = static_cast<S32>(rig_slot);
     U32 camera_count = 0;
     for (U32 index = 0; index < snapshot.mCaptureCount; ++index)
@@ -1181,7 +1188,7 @@ void ALPanelCineLightRig::syncProjectorFeeds(bool force)
     {
         LLComboBox* combo = mProjectorFeeds[light];
         if (!combo) continue;
-        setVisibleIfChanged(combo->getParent(), camera_count != 0);
+        ALKitRow::setControlVisible(combo, camera_count != 0);
         combo->removeall();
         combo->add("None", LLUUID::null);
         U32 camera_ordinal = 0;
