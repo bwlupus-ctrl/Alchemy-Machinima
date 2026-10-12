@@ -666,6 +666,11 @@ def kit_page(group: dict, raw_page: dict, cfg: dict, source_paths: list[Path],
                           "side_from_setting": "DirectorV2LightMapSideFrom"})
             names.add("cine_light_map")
         for row in card.get("rows", []):
+            # A show_if value of "never" marks manifest-only metadata. Unlike
+            # runtime conditions, it must not create a row: ALKitCard owns row
+            # visibility during layout and would otherwise reveal it.
+            if row.get("show_if") == "never":
+                continue
             card_node.append(row_element(row, by_name, by_control, referenced, report, names,
                                          cfg.get("label_names", {})))
         for option_index, option in enumerate(card.get("opts", [])):
@@ -684,6 +689,8 @@ def kit_page(group: dict, raw_page: dict, cfg: dict, source_paths: list[Path],
                 option_attrs["enable_setting"] = str(option_setting)
             option_node = ET.SubElement(card_node, "kit_option", option_attrs)
             for row in option.get("rows", []):
+                if row.get("show_if") == "never":
+                    continue
                 option_node.append(row_element(row, by_name, by_control, referenced, report, names,
                                                cfg.get("label_names", {})))
     preset = cfg.get("preset", {})
@@ -740,6 +747,7 @@ def index_bytes(data: dict, config: dict, classes: dict[str, str], note: str,
     def esc(value) -> str:
         return str(value or "").replace("\\", "\\\\").replace("\t", "\\t").replace("\n", "\\n")
     indexed_rows: dict[str, set[str]] = defaultdict(set)
+    manifest_only_rows: dict[str, set[str]] = defaultdict(set)
     for group, raw_page in flatten_pages(data):
         key = f"{group['name']}/{raw_page['name']}"
         classification = classes[key]
@@ -767,11 +775,14 @@ def index_bytes(data: dict, config: dict, classes: dict[str, str], note: str,
                     raise GenError("internal index field count error")
                 lines.append("\t".join(esc(value) for value in fields))
                 indexed_rows[key].add(str(row.get("w", "")))
+                if row.get("show_if") == "never":
+                    manifest_only_rows[key].add(str(row.get("w", "")))
     for key, widgets in generated_rows.items():
-        if classes[key] != "legacy" and indexed_rows.get(key, set()) != widgets:
+        runtime_indexed = indexed_rows.get(key, set()) - manifest_only_rows.get(key, set())
+        if classes[key] != "legacy" and runtime_indexed != widgets:
             raise GenError(f"search index/generated row drift on {key}: "
-                           f"index-only={sorted(indexed_rows.get(key, set()) - widgets)}, "
-                           f"page-only={sorted(widgets - indexed_rows.get(key, set()))}")
+                           f"index-only={sorted(runtime_indexed - widgets)}, "
+                           f"page-only={sorted(widgets - runtime_indexed)}")
     payload = "\n".join(lines) + "\n"
     return (f'<?xml version="1.0" encoding="utf-8"?>\n<!-- {note} -->\n'
             f'<director_kit_index version="2" fields="{INDEX_FIELDS}"><![CDATA[\n{payload}]]>'

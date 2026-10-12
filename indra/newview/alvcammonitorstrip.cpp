@@ -39,6 +39,7 @@ constexpr S32 FACE_SCROLLBAR_WIDTH = 10;
 
 struct MonitorHeaderLayout
 {
+    S32 mSizeLabelLeft;
     S32 mSizeLeft;
     S32 mSizeRight;
     S32 mPreviewLeft;
@@ -49,15 +50,19 @@ struct MonitorHeaderLayout
 
 MonitorHeaderLayout monitorHeaderLayout(S32 width)
 {
-    constexpr S32 size_left = 34;
-    constexpr S32 speed_label_width = 42;
-    const S32 speed_controls_width = llclamp(width / 4, 80, 160);
+    // Keep the controls at their useful pill widths and align the complete
+    // group to the right. Proportional widths made both segmented controls
+    // expand into long empty bars on wide cards.
+    constexpr S32 speed_controls_width = 196;
+    constexpr S32 size_controls_width = 130;
     const S32 speed_left = llmax(1, width - speed_controls_width);
-    const S32 speed_label_left = llmax(1, speed_left - speed_label_width);
-    const S32 preview_right = llmax(1, speed_label_left - 6);
-    const S32 size_right = llmin(180, llmax(110, preview_right - 110));
-    const S32 preview_left = llmax(size_right + 8, preview_right - 102);
-    return {size_left, size_right, preview_left, preview_right,
+    const S32 speed_label_left = llmax(1, speed_left - 42);
+    const S32 preview_right = llmax(1, speed_label_left - 10);
+    const S32 preview_left = llmax(1, preview_right - 100);
+    const S32 size_right = llmax(1, preview_left - 10);
+    const S32 size_left = llmax(1, size_right - size_controls_width);
+    const S32 size_label_left = llmax(1, size_left - 34);
+    return {size_label_left, size_left, size_right, preview_left, preview_right,
             speed_label_left, speed_left};
 }
 
@@ -116,7 +121,7 @@ void ALVCamMonitorHeader::draw()
     const S32 w = getRect().getWidth();
     const MonitorHeaderLayout layout = monitorHeaderLayout(w);
     const S32 h = getRect().getHeight();
-    drawText(mFont, "Size", 3, 8, mMutedColor);
+    drawText(mFont, "Size", layout.mSizeLabelLeft, 8, mMutedColor);
     const S32 size_width = llmax(1, layout.mSizeRight - layout.mSizeLeft);
     for (S32 index = 0; index < 2; ++index)
     {
@@ -143,7 +148,7 @@ void ALVCamMonitorHeader::draw()
                  12.f, 7.f, 20, true);
     drawText(mFont, "Speed", layout.mSpeedLabelLeft, 8, mMutedColor);
     const F32 speeds[] = { .5f, 1.f, 2.f, 5.f };
-    const char* labels[] = { "0.5", "1", "2", "5" };
+    const char* labels[] = { "0.5 fps", "1 fps", "2 fps", "5 fps" };
     const S32 speed_width = llmax(1, w - layout.mSpeedLeft);
     for (S32 index = 0; index < 4; ++index)
     {
@@ -319,7 +324,14 @@ bool ALVCamMonitorStrip::handleMouseDown(S32 x, S32 y, MASK)
     const S32 slot = tileAt(x, y);
     if (slot < 0) return false;
     const LLRect rect = tileRect(mCompact ? slot : slot - static_cast<S32>(mLargePage * 4));
-    if (x > rect.mRight - 28)
+    const S32 picture_width = llmax(1, rect.getWidth() - 4);
+    const S32 caption_height = mCompact ? 24 : 54;
+    const S32 picture_height = llmin(llmax(1, rect.getHeight() - caption_height),
+                                     llmax(1, picture_width * 9 / 16));
+    const S32 name_y = rect.mTop - 2 - picture_height - 13;
+    const LLRect menu_rect(rect.mRight - 26, name_y + 17,
+                           rect.mRight, name_y - 5);
+    if (menu_rect.pointInRect(x, y))
     {
         LLSD value;
         value["action"] = "menu";
@@ -362,7 +374,9 @@ bool ALVCamMonitorStrip::handleHover(S32 x, S32 y, MASK mask)
             // can be cleared at the actual end of the attempted drag.
             return true;
         }
-        gFocusMgr.setMouseCapture(nullptr);
+        // beginDrag() transfers capture from this strip to the drag tool.
+        // Clearing global capture here would immediately call the tool's
+        // onMouseCaptureLost() and erase its VCAM cargo.
         return true;
     }
     return LLUICtrl::handleHover(x, y, mask);

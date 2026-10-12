@@ -10,6 +10,7 @@
 #include "llselectmgr.h"
 #include "llviewercamera.h"
 #include "llviewerobjectlist.h"
+#include "llviewercontrol.h"
 #include "llprismpreview.h"
 
 namespace
@@ -24,6 +25,13 @@ bool sameDisplay(const LLPrismLens::DisplayHandle& left,
                  const LLPrismLens::DisplayHandle& right)
 {
     return left.mId == right.mId && left.mGeneration == right.mGeneration;
+}
+
+void clarifyFaceDropReason(LLPrismLens::ActionStatus& status)
+{
+    if (status.mReason ==
+        "You need modify permission on the selected object's root.")
+        status.mReason = "You can't modify this object.";
 }
 
 }
@@ -418,6 +426,16 @@ ALVCamPageModel::FaceDropStatus ALVCamPageModel::faceDropStatus(
     const LLUUID& capture_id, LLViewerObject* object, S32 te)
 {
     FaceDropStatus result;
+    static LLCachedControl<bool> prism_enabled(
+        gSavedSettings, "PrismLensEnabled", false);
+    if (!prism_enabled)
+    {
+        result.mAction.mResult =
+            LLPrismLens::ERegistryResult::INVALID_CONFIGURATION;
+        result.mAction.mReason =
+            "Turn on Virtual Cam before assigning a monitor to a surface.";
+        return result;
+    }
     const LLPrismLens::RegistrySnapshot snapshot =
         LLPrismLens::registrySnapshot();
     for (U32 index = 0; index < snapshot.mCaptureCount; ++index)
@@ -448,12 +466,14 @@ ALVCamPageModel::FaceDropStatus ALVCamPageModel::faceDropStatus(
                 result.mReassignment = true;
                 result.mAction = reassignDisplayStatus(
                     candidate.mHandle, result.mCapture);
+                clarifyFaceDropReason(result.mAction);
                 return result;
             }
         }
     }
     result.mAction = LLPrismLens::displayTargetStatus(
         result.mCapture, object, te, nullptr);
+    clarifyFaceDropReason(result.mAction);
     return result;
 }
 

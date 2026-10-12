@@ -131,12 +131,22 @@ void ALKitHelp::showRow(ALKitRow* row)
         detail += "\nUnit " + meta.unit;
     if (!meta.setting.empty())
         detail += "\nSetting " + meta.setting;
-    if (!meta.widget.empty())
+    // Custom rows use implementation-oriented widget names. Their authored
+    // help text is the useful user-facing explanation.
+    if (!meta.widget.empty() && meta.kind != "custom")
         detail += "\nWidget " + meta.widget;
     if (meta.advanced)
         detail += "\nIn More options";
     ALKitShell* shell = ALKitShell::find(row);
-    show(shell ? shell->pagePathLabel(meta.page_key) : meta.page_key, meta.label, meta.help, detail);
+    std::string title = meta.label;
+    if (title.empty())
+        for (LLView* view = row->getParent(); view; view = view->getParent())
+            if (ALKitCard* owner = dynamic_cast<ALKitCard*>(view))
+            {
+                title = owner->title();
+                break;
+            }
+    show(shell ? shell->pagePathLabel(meta.page_key) : meta.page_key, title, meta.help, detail);
 }
 
 void ALKitHelp::showCard(ALKitCard* card)

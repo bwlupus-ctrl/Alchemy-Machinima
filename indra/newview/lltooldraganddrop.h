@@ -175,6 +175,9 @@ protected:
                                    MASK mask, bool drop);
     EAcceptance dad3dVCamFeed(LLViewerObject* obj, S32 face,
                               MASK mask, bool drop);
+    EAcceptance dad3dVCamNoTarget(LLViewerObject*, S32, MASK, bool);
+    EAcceptance dad3dVCamAvatar(LLViewerObject*, S32, MASK, bool);
+    EAcceptance dad3dVCamLand(LLViewerObject*, S32, MASK, bool);
 //  EAcceptance dad3dTextureSelf(LLViewerObject* obj, S32 face,
 //                               MASK mask, bool drop);
     EAcceptance dad3dWearItem(LLViewerObject* obj, S32 face,

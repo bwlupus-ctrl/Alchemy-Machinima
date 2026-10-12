@@ -235,7 +235,7 @@ LLToolDragAndDrop::LLDragAndDropDictionary::LLDragAndDropDictionary()
     addEntry(DAD_SETTINGS,      new DragAndDropEntry(&LLToolDragAndDrop::dad3dNULL, &LLToolDragAndDrop::dad3dNULL,                  &LLToolDragAndDrop::dad3dGiveInventory,         &LLToolDragAndDrop::dad3dUpdateInventory,           &LLToolDragAndDrop::dad3dNULL));
     // DAD_VCAM_FEED (22) is viewer-local UUID cargo. Only world object faces
     // accept it; it is never interpreted as inventory.
-    addEntry(DAD_VCAM_FEED,     new DragAndDropEntry(&LLToolDragAndDrop::dad3dNULL, &LLToolDragAndDrop::dad3dNULL,                  &LLToolDragAndDrop::dad3dNULL,                  &LLToolDragAndDrop::dad3dVCamFeed,                  &LLToolDragAndDrop::dad3dNULL));
+    addEntry(DAD_VCAM_FEED,     new DragAndDropEntry(&LLToolDragAndDrop::dad3dVCamNoTarget, &LLToolDragAndDrop::dad3dVCamAvatar,            &LLToolDragAndDrop::dad3dVCamAvatar,            &LLToolDragAndDrop::dad3dVCamFeed,                  &LLToolDragAndDrop::dad3dVCamLand));
 
     // TODO: animation on self could play it?  edit it?
     // TODO: gesture on self could play it?  edit it?
@@ -765,7 +765,17 @@ void LLToolDragAndDrop::pick(const LLPickInfo& pick_info)
         // don't allow drag and drop on grass, trees, etc.
         if (pick_info.mPickType == LLPickInfo::PICK_FLORA)
         {
-            mCursor = UI_CURSOR_NO;
+            if (mSource == SOURCE_VCAM)
+            {
+                mCustomMsg =
+                    "VCam feeds can only be dropped on static object faces, not foliage.";
+                mLastAccept = ACCEPT_NO_CUSTOM;
+                mCursor = acceptanceToCursor(mLastAccept);
+            }
+            else
+            {
+                mCursor = UI_CURSOR_NO;
+            }
             gViewerWindow->getWindow()->setCursor( mCursor );
             return;
         }
@@ -2336,6 +2346,27 @@ EAcceptance LLToolDragAndDrop::dad3dVCamFeed(
     }
     mCustomMsg.clear();
     return reassigned ? ACCEPT_YES_SINGLE : ACCEPT_YES_COPY_SINGLE;
+}
+
+EAcceptance LLToolDragAndDrop::dad3dVCamNoTarget(
+    LLViewerObject*, S32, MASK, bool)
+{
+    mCustomMsg = "Drop this VCam feed on a modifiable object face.";
+    return ACCEPT_NO_CUSTOM;
+}
+
+EAcceptance LLToolDragAndDrop::dad3dVCamAvatar(
+    LLViewerObject*, S32, MASK, bool)
+{
+    mCustomMsg = "VCam feeds can only be dropped on object faces, not avatars.";
+    return ACCEPT_NO_CUSTOM;
+}
+
+EAcceptance LLToolDragAndDrop::dad3dVCamLand(
+    LLViewerObject*, S32, MASK, bool)
+{
+    mCustomMsg = "VCam feeds can only be dropped on object faces, not land.";
+    return ACCEPT_NO_CUSTOM;
 }
 
 EAcceptance LLToolDragAndDrop::dad3dRezAttachmentFromInv(
