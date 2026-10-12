@@ -31,8 +31,17 @@ INWORLD_LOCAL_OWNERS = {
     "ALPanelCineCamParams", "ALPanelDirectorSwitcher",
     "ALPanelFlycamRecorder", "LLFlycamRecorder", "ALPanelTemporalCapture",
 }
+# btn_enroll: its handler reads the LLSelectMgr primary object, and any selection
+# (even of a viewer-only object) broadcasts PointAt + AGENT_STATE_EDITING
+# (llselectmgr.cpp:679,8049; llhudeffectpointat.cpp:254; llagent.cpp:2312-2315).
+# db_from_explorer: Animation Explorer sends ObjectSelect/ObjectDeselect for
+# non-avatar animation sources (animationexplorer.cpp:540-556).
 INWORLD_EXCLUDED_CONTROLS = {"vc_lens_locate", "vc_face_locate",
-                             "btn_anim_ex_stop", "btn_anim_ex_revoke", "btn_anim_ex_blacklist"}
+                             "btn_anim_ex_stop", "btn_anim_ex_revoke", "btn_anim_ex_blacklist",
+                             "btn_enroll", "db_from_explorer",
+                             # opens Animation Explorer (ObjectSelect for sources);
+                             # ghost edit mode selects its proxy volume (PointAt).
+                             "btn_open_animexp", "edit_ghosts_check"}
 INWORLD_VETTED_OWNER_PAGES = {
     "LLPipeline::renderWeather": {"weather_tab"},
     "LLPipeline::renderFinalize": {"exposure_tab", "shadows_probes_tab"},
@@ -457,6 +466,14 @@ def _handler_hazards(row: dict[str, object], cpp_sources: dict[Path, str],
         "agent_send": r"\b(?:sendAnimationRequest|(?:gAgent|LLAgent\w*)\b[^;{}]{0,80}?\bsend[A-Z]\w*)\b",
         "object_send": r"\bLLViewerObject\w*\b[^;{}]{0,80}?\bsend[A-Z]\w*\b",
         "selection_send": r"\bLLSelectMgr\w*\b[^;{}]{0,80}?\bsend[A-Z]\w*\b",
+        # Any selection (even of a viewer-only object) broadcasts PointAt +
+        # AGENT_STATE_EDITING; Animation Explorer sends ObjectSelect to name
+        # animation sources; ghost edit mode selects its proxy volume.
+        "selection_broadcast": (r"\b(?:selectObjectOnly|selectObjectAndFamily|selectProxy"
+                                r"|selectHighlightedObjects|selectionSetObject\w*)\b"
+                                r"|\bLLSelectMgr\w*\b[^;{}]{0,80}?\bselect[A-Z]\w*\b"
+                                r"|\"animation_explorer\""
+                                r"|\bALToolGhostEdit\w*\b[^;{}]{0,80}?\bsetEdit\w*"),
         "parcel_send": r"\bLLViewerParcel\w*\b[^;{}]{0,80}?\b(?:send|update|claim|deed|buy|release)[A-Z]\w*\b",
         "chat_im_voice": r"\b(?:sendChat|sendIM|sendInstantMessage|send_chat_from_viewer|send_improved_im|startCall|startVoice|speak|shout)\w*\b",
         "world_action": r"\b(?:rez|duplicate|delete|take|return|give|pay|buy|teleport|sit|stand|attach|detach|wear|takeOff|upload|invite|eject|ban|friend|estate|updateRegion|setRegion|updateParcel|setParcel|claimParcel|releaseParcel)\w*\s*\(",
@@ -837,8 +854,12 @@ def prepare_manifest(path: Path, repo: Path, output: Path) -> tuple[int, int, in
         elif widget in {"FlycamWeightedPreset", "FlycamWeightedWeight"}:
             reveal_driver = ("FlycamFlightModel", 2)
         elif widget == "diopter_blend":
+            reveal_settings.append({"setting": "CineDiopterEnabled", "value": True,
+                                    "source": "ALDiopterRelevance master gate"})
             reveal_driver = ("CineDiopterToolMode", 0)
         elif widget == "diopter_power":
+            reveal_settings.append({"setting": "CineDiopterEnabled", "value": True,
+                                    "source": "ALDiopterRelevance master gate"})
             reveal_settings.append({"setting": "CineDiopterToolMode", "value": 0,
                                     "source": "ALDiopterRelevance tool gate"})
             reveal_driver = ("CineDiopterLensFocusMode", 0)
@@ -1154,6 +1175,33 @@ def prepare_manifest(path: Path, repo: Path, output: Path) -> tuple[int, int, in
         if widget == "db_on" and row.get("action") != "DEFER_INWORLD":
             row.update(action="RUN", reason="", known_gap=False, exercise="toggle",
                        owner="ALPanelDanceBall::postBuild")
+        if row.get("page") == "dance_tab" and row.get("action") == "DEFER_INWORLD":
+            row.update(probe="dance_owner", known_gap=False)
+            row.pop("no_state_oracle", None)
+        if row.get("page") == "props_tab" and widget in {
+                "btn_enroll", "prop_list", "node_list", "btn_node_add",
+                "btn_drive", "btn_stop", "btn_stop_all"}:
+            row.update(probe="prop_owner", known_gap=False)
+            row.pop("no_state_oracle", None)
+        if widget == "waypoint_list":
+            row.update(probe="path_selection", known_gap=False)
+            row.pop("no_state_oracle", None)
+        if widget in {"show_all_check", "edit_ghosts_check"}:
+            row.update(probe="ghost_owner", known_gap=False)
+            row.pop("no_state_oracle", None)
+        if widget == "gaze_slot_you":
+            row.update(probe="gaze_slot", known_gap=False)
+            row.pop("no_state_oracle", None)
+        if widget in {"gaze_cast_combo", "reset_gaze_target"}:
+            row.update(probe="gaze_cast_target", known_gap=False,
+                       gaze_cast_mode=1 if widget == "reset_gaze_target" else 2)
+            row.pop("no_state_oracle", None)
+        if widget == "localfog_volume_list":
+            row.update(probe="list_owner", known_gap=False)
+            row.pop("no_state_oracle", None)
+        if row.get("page") == "takes_tab" and widget == "btn_stop":
+            row.update(probe="flycam_stop", known_gap=False)
+            row.pop("no_state_oracle", None)
         if widget in reset_all:
             prefix, master, notification = reset_all[widget]
             group = {name: value for name, value in defaults.items() if name.startswith(prefix)}
@@ -1256,6 +1304,9 @@ def prepare_manifest(path: Path, repo: Path, output: Path) -> tuple[int, int, in
                       "cine_fx_stop", "cine_live_probe_refresh", "vc_snap_view",
                       "vc_face_list", "vc_camera_selector", "actor_mover_active",
                       "actor_style_reset", "exposure_history", "launcher",
+                      "dance_owner", "prop_owner", "path_selection", "ghost_owner",
+                      "gaze_slot", "gaze_cast_target", "list_owner",
+                      "flycam_stop",
                   }):
                 row["reason"] = f"{widget}: no independent state oracle"
                 if row.get("action") == "RUN":
@@ -1527,6 +1578,10 @@ bool Fixture::postBuild()
     }
     getChild<LLButton>("transitive_danger")->setCommitCallback(
         [this](LLUICtrl*, const LLSD&) { adjustAim(); });
+    getChild<LLButton>("select_danger")->setCommitCallback(
+        [this](LLUICtrl*, const LLSD&) { onPickProp(); });
+    getChild<LLButton>("explorer_danger")->setCommitCallback(
+        [](LLUICtrl*, const LLSD&) { LLFloaterReg::showInstance("animation_explorer"); });
     mCenter[VX] = getChild<LLSpinCtrl>("localfog_center_x");
     const auto editor_commit = [this](LLUICtrl*, const LLSD&) { onEditorCommit(); };
     for (S32 axis = 0; axis < 3; ++axis)
@@ -1537,6 +1592,7 @@ void Fixture::onSafe() {}
 void Fixture::onClickShadowFixIt() { gMessageSystem->sendReliable(host); }
 void Fixture::adjustAim() { gAgent.sendReliableMessage(); }
 void Fixture::onEditorCommit() { sendAnimationRequest(id, true); }
+void Fixture::onPickProp() { LLSelectMgr::getInstance()->selectObjectOnly(prop); }
 '''
     sources = {Path("fixture.cpp"): source}
 
@@ -1567,6 +1623,12 @@ void Fixture::onEditorCommit() { sendAnimationRequest(id, true); }
 
     localfog, hazards, resolved = scan("localfog_center_x")
     assert resolved and "agent_send" in hazards and localfog["inworld_allowed"] is False
+
+    select, hazards, resolved = scan("select_danger")
+    assert resolved and "selection_broadcast" in hazards and select["inworld_allowed"] is False
+
+    explorer, hazards, resolved = scan("explorer_danger")
+    assert resolved and "selection_broadcast" in hazards and explorer["inworld_allowed"] is False
 
 
 def main() -> int:

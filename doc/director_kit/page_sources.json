@@ -32144,6 +32144,19 @@
               "pattern": null,
               "wiring_only": false,
               "text": "getChild<LLButton>(\"btn_stop\")->setClickedCallback(boost::bind(&ALPanelPropMover::onStop, this));"
+            },
+            {
+              "kind": "cpp",
+              "reason": "reference is not in a class that owns/builds this page's XUI",
+              "file": "indra/newview/aluiperfselftest.cpp",
+              "line": 2573,
+              "class": null,
+              "function": null,
+              "wired_class": null,
+              "wired_function": null,
+              "pattern": null,
+              "wiring_only": false,
+              "text": "if (widget == \"btn_stop\" || widget == \"btn_stop_all\")"
             }
           ],
           "unresolved": [],
@@ -34071,7 +34084,21 @@
           "kit_action": null,
           "resolution_notes": [],
           "ambiguous": [],
-          "rejected_candidates": [],
+          "rejected_candidates": [
+            {
+              "kind": "cpp",
+              "reason": "reference is not in a class that owns/builds this page's XUI",
+              "file": "indra/newview/aluiperfselftest.cpp",
+              "line": 2379,
+              "class": null,
+              "function": null,
+              "wired_class": null,
+              "wired_function": null,
+              "pattern": null,
+              "wiring_only": false,
+              "text": "if (widget == \"btn_edit_redo\") mover.undoPath(mFunctionalActorMoverId);"
+            }
+          ],
           "unresolved": [],
           "other_writers": []
         },
@@ -34391,7 +34418,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 2389,
+              "line": 2452,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -35173,7 +35200,21 @@
           "kit_action": null,
           "resolution_notes": [],
           "ambiguous": [],
-          "rejected_candidates": [],
+          "rejected_candidates": [
+            {
+              "kind": "cpp",
+              "reason": "reference is not in a class that owns/builds this page's XUI",
+              "file": "indra/newview/aluiperfselftest.cpp",
+              "line": 2389,
+              "class": null,
+              "function": null,
+              "wired_class": null,
+              "wired_function": null,
+              "pattern": null,
+              "wiring_only": false,
+              "text": "if (widget == \"node_corner_radius_spinner\")"
+            }
+          ],
           "unresolved": [],
           "other_writers": []
         },
@@ -35450,7 +35491,21 @@
           "kit_action": null,
           "resolution_notes": [],
           "ambiguous": [],
-          "rejected_candidates": [],
+          "rejected_candidates": [
+            {
+              "kind": "cpp",
+              "reason": "reference is not in a class that owns/builds this page's XUI",
+              "file": "indra/newview/aluiperfselftest.cpp",
+              "line": 2380,
+              "class": null,
+              "function": null,
+              "wired_class": null,
+              "wired_function": null,
+              "pattern": null,
+              "wiring_only": false,
+              "text": "if (widget == \"node_cam_transition_combo\" || widget == \"btn_node_preview\")"
+            }
+          ],
           "unresolved": [],
           "other_writers": []
         },
@@ -35513,7 +35568,21 @@
           "kit_action": null,
           "resolution_notes": [],
           "ambiguous": [],
-          "rejected_candidates": [],
+          "rejected_candidates": [
+            {
+              "kind": "cpp",
+              "reason": "reference is not in a class that owns/builds this page's XUI",
+              "file": "indra/newview/aluiperfselftest.cpp",
+              "line": 2380,
+              "class": null,
+              "function": null,
+              "wired_class": null,
+              "wired_function": null,
+              "pattern": null,
+              "wiring_only": false,
+              "text": "if (widget == \"node_cam_transition_combo\" || widget == \"btn_node_preview\")"
+            }
+          ],
           "unresolved": [],
           "other_writers": []
         },
@@ -36421,7 +36490,21 @@
           "kit_action": null,
           "resolution_notes": [],
           "ambiguous": [],
-          "rejected_candidates": [],
+          "rejected_candidates": [
+            {
+              "kind": "cpp",
+              "reason": "reference is not in a class that owns/builds this page's XUI",
+              "file": "indra/newview/aluiperfselftest.cpp",
+              "line": 2395,
+              "class": null,
+              "function": null,
+              "wired_class": null,
+              "wired_function": null,
+              "pattern": null,
+              "wiring_only": false,
+              "text": "const bool primitive_control = widget == \"btn_primitive_center\" ||"
+            }
+          ],
           "unresolved": [],
           "other_writers": []
         },
@@ -36687,6 +36770,19 @@
             {
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
+              "file": "indra/newview/aluiperfselftest.cpp",
+              "line": 2396,
+              "class": null,
+              "function": null,
+              "wired_class": null,
+              "wired_function": null,
+              "pattern": null,
+              "wiring_only": false,
+              "text": "widget == \"primitive_radius_x\" || widget == \"primitive_radius_y\" ||"
+            },
+            {
+              "kind": "cpp",
+              "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llactormover.cpp",
               "line": 1875,
               "class": "LLActorMover",
@@ -36810,6 +36906,19 @@
             {
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
+              "file": "indra/newview/aluiperfselftest.cpp",
+              "line": 2396,
+              "class": null,
+              "function": null,
+              "wired_class": null,
+              "wired_function": null,
+              "pattern": null,
+              "wiring_only": false,
+              "text": "widget == \"primitive_radius_x\" || widget == \"primitive_radius_y\" ||"
+            },
+            {
+              "kind": "cpp",
+              "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llactormover.cpp",
               "line": 1876,
               "class": "LLActorMover",
@@ -36911,6 +37020,19 @@
             {
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
+              "file": "indra/newview/aluiperfselftest.cpp",
+              "line": 2397,
+              "class": null,
+              "function": null,
+              "wired_class": null,
+              "wired_function": null,
+              "pattern": null,
+              "wiring_only": false,
+              "text": "widget == \"primitive_start_deg\" || widget == \"primitive_sweep_deg\" ||"
+            },
+            {
+              "kind": "cpp",
+              "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llactormover.cpp",
               "line": 1877,
               "class": "LLActorMover",
@@ -37009,6 +37131,19 @@
           "resolution_notes": [],
           "ambiguous": [],
           "rejected_candidates": [
+            {
+              "kind": "cpp",
+              "reason": "reference is not in a class that owns/builds this page's XUI",
+              "file": "indra/newview/aluiperfselftest.cpp",
+              "line": 2397,
+              "class": null,
+              "function": null,
+              "wired_class": null,
+              "wired_function": null,
+              "pattern": null,
+              "wiring_only": false,
+              "text": "widget == \"primitive_start_deg\" || widget == \"primitive_sweep_deg\" ||"
+            },
             {
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
@@ -37135,6 +37270,32 @@
             {
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
+              "file": "indra/newview/aluiperfselftest.cpp",
+              "line": 2398,
+              "class": null,
+              "function": null,
+              "wired_class": null,
+              "wired_function": null,
+              "pattern": null,
+              "wiring_only": false,
+              "text": "widget == \"primitive_rise\" || widget == \"primitive_yaw_deg\" ||"
+            },
+            {
+              "kind": "cpp",
+              "reason": "reference is not in a class that owns/builds this page's XUI",
+              "file": "indra/newview/aluiperfselftest.cpp",
+              "line": 2402,
+              "class": null,
+              "function": null,
+              "wired_class": null,
+              "wired_function": null,
+              "pattern": null,
+              "wiring_only": false,
+              "text": "const S32 shape = widget == \"primitive_rise\""
+            },
+            {
+              "kind": "cpp",
+              "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llactormover.cpp",
               "line": 1882,
               "class": "LLActorMover",
@@ -37233,6 +37394,19 @@
           "resolution_notes": [],
           "ambiguous": [],
           "rejected_candidates": [
+            {
+              "kind": "cpp",
+              "reason": "reference is not in a class that owns/builds this page's XUI",
+              "file": "indra/newview/aluiperfselftest.cpp",
+              "line": 2398,
+              "class": null,
+              "function": null,
+              "wired_class": null,
+              "wired_function": null,
+              "pattern": null,
+              "wiring_only": false,
+              "text": "widget == \"primitive_rise\" || widget == \"primitive_yaw_deg\" ||"
+            },
             {
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
@@ -37337,6 +37511,19 @@
             {
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
+              "file": "indra/newview/aluiperfselftest.cpp",
+              "line": 2399,
+              "class": null,
+              "function": null,
+              "wired_class": null,
+              "wired_function": null,
+              "pattern": null,
+              "wiring_only": false,
+              "text": "widget == \"primitive_pitch_deg\" || widget == \"primitive_roll_deg\";"
+            },
+            {
+              "kind": "cpp",
+              "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llactormover.cpp",
               "line": 1880,
               "class": "LLActorMover",
@@ -37438,6 +37625,19 @@
             {
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
+              "file": "indra/newview/aluiperfselftest.cpp",
+              "line": 2399,
+              "class": null,
+              "function": null,
+              "wired_class": null,
+              "wired_function": null,
+              "pattern": null,
+              "wiring_only": false,
+              "text": "widget == \"primitive_pitch_deg\" || widget == \"primitive_roll_deg\";"
+            },
+            {
+              "kind": "cpp",
+              "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llactormover.cpp",
               "line": 1881,
               "class": "LLActorMover",
@@ -37535,7 +37735,21 @@
           "kit_action": null,
           "resolution_notes": [],
           "ambiguous": [],
-          "rejected_candidates": [],
+          "rejected_candidates": [
+            {
+              "kind": "cpp",
+              "reason": "reference is not in a class that owns/builds this page's XUI",
+              "file": "indra/newview/aluiperfselftest.cpp",
+              "line": 2383,
+              "class": null,
+              "function": null,
+              "wired_class": null,
+              "wired_function": null,
+              "pattern": null,
+              "wiring_only": false,
+              "text": "if (widget == \"sync_offset_spinner\")"
+            }
+          ],
           "unresolved": [],
           "other_writers": []
         },
@@ -37740,7 +37954,21 @@
           "kit_action": null,
           "resolution_notes": [],
           "ambiguous": [],
-          "rejected_candidates": [],
+          "rejected_candidates": [
+            {
+              "kind": "cpp",
+              "reason": "reference is not in a class that owns/builds this page's XUI",
+              "file": "indra/newview/aluiperfselftest.cpp",
+              "line": 2418,
+              "class": null,
+              "function": null,
+              "wired_class": null,
+              "wired_function": null,
+              "pattern": null,
+              "wiring_only": false,
+              "text": "if (widget == \"follow_offset_spinner\" || widget == \"btn_stop_following\")"
+            }
+          ],
           "unresolved": [],
           "other_writers": []
         },
@@ -37803,7 +38031,21 @@
           "kit_action": null,
           "resolution_notes": [],
           "ambiguous": [],
-          "rejected_candidates": [],
+          "rejected_candidates": [
+            {
+              "kind": "cpp",
+              "reason": "reference is not in a class that owns/builds this page's XUI",
+              "file": "indra/newview/aluiperfselftest.cpp",
+              "line": 2418,
+              "class": null,
+              "function": null,
+              "wired_class": null,
+              "wired_function": null,
+              "pattern": null,
+              "wiring_only": false,
+              "text": "if (widget == \"follow_offset_spinner\" || widget == \"btn_stop_following\")"
+            }
+          ],
           "unresolved": [],
           "other_writers": []
         },
@@ -38228,7 +38470,34 @@
           "kit_action": null,
           "resolution_notes": [],
           "ambiguous": [],
-          "rejected_candidates": [],
+          "rejected_candidates": [
+            {
+              "kind": "cpp",
+              "reason": "reference is not in a class that owns/builds this page's XUI",
+              "file": "indra/newview/aluiperfselftest.cpp",
+              "line": 2554,
+              "class": null,
+              "function": null,
+              "wired_class": null,
+              "wired_function": null,
+              "pattern": null,
+              "wiring_only": false,
+              "text": "if (widget != \"btn_enroll\")"
+            },
+            {
+              "kind": "cpp",
+              "reason": "reference is not in a class that owns/builds this page's XUI",
+              "file": "indra/newview/aluiperfselftest.cpp",
+              "line": 5474,
+              "class": null,
+              "function": null,
+              "wired_class": null,
+              "wired_function": null,
+              "pattern": null,
+              "wiring_only": false,
+              "text": "entry[\"widget_name\"].asString() == \"btn_enroll\" ||"
+            }
+          ],
           "unresolved": [],
           "other_writers": []
         },
@@ -38300,7 +38569,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 2391,
+              "line": 2454,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -38313,7 +38582,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 2394,
+              "line": 2457,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -38326,7 +38595,33 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 4201,
+              "line": 2519,
+              "class": null,
+              "function": null,
+              "wired_class": null,
+              "wired_function": null,
+              "pattern": null,
+              "wiring_only": false,
+              "text": "widget != \"prop_list\" && widget != \"node_list\" && !mFunctionalPropObject)"
+            },
+            {
+              "kind": "cpp",
+              "reason": "reference is not in a class that owns/builds this page's XUI",
+              "file": "indra/newview/aluiperfselftest.cpp",
+              "line": 2562,
+              "class": null,
+              "function": null,
+              "wired_class": null,
+              "wired_function": null,
+              "pattern": null,
+              "wiring_only": false,
+              "text": "\"prop_list\", true);"
+            },
+            {
+              "kind": "cpp",
+              "reason": "reference is not in a class that owns/builds this page's XUI",
+              "file": "indra/newview/aluiperfselftest.cpp",
+              "line": 4643,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -38339,7 +38634,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 5267,
+              "line": 5764,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -38352,7 +38647,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 5274,
+              "line": 5771,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -38365,7 +38660,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 5289,
+              "line": 5786,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -38373,6 +38668,19 @@
               "pattern": null,
               "wiring_only": false,
               "text": "if (widget_name == \"prop_list\")"
+            },
+            {
+              "kind": "cpp",
+              "reason": "reference is not in a class that owns/builds this page's XUI",
+              "file": "indra/newview/aluiperfselftest.cpp",
+              "line": 5925,
+              "class": null,
+              "function": null,
+              "wired_class": null,
+              "wired_function": null,
+              "pattern": null,
+              "wiring_only": false,
+              "text": "widget_name != \"prop_list\" && widget_name != \"node_list\")"
             }
           ],
           "unresolved": [],
@@ -39086,7 +39394,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 2391,
+              "line": 2454,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -39099,7 +39407,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 2439,
+              "line": 2502,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -39112,7 +39420,20 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 5267,
+              "line": 2519,
+              "class": null,
+              "function": null,
+              "wired_class": null,
+              "wired_function": null,
+              "pattern": null,
+              "wiring_only": false,
+              "text": "widget != \"prop_list\" && widget != \"node_list\" && !mFunctionalPropObject)"
+            },
+            {
+              "kind": "cpp",
+              "reason": "reference is not in a class that owns/builds this page's XUI",
+              "file": "indra/newview/aluiperfselftest.cpp",
+              "line": 5764,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -39125,7 +39446,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 5276,
+              "line": 5773,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -39133,6 +39454,19 @@
               "pattern": null,
               "wiring_only": true,
               "text": "? mFunctionalPageRoot->findChild<LLScrollListCtrl>(\"node_list\", true) : nullptr;"
+            },
+            {
+              "kind": "cpp",
+              "reason": "reference is not in a class that owns/builds this page's XUI",
+              "file": "indra/newview/aluiperfselftest.cpp",
+              "line": 5925,
+              "class": null,
+              "function": null,
+              "wired_class": null,
+              "wired_function": null,
+              "pattern": null,
+              "wiring_only": false,
+              "text": "widget_name != \"prop_list\" && widget_name != \"node_list\")"
             }
           ],
           "unresolved": [],
@@ -39358,7 +39692,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 2450,
+              "line": 2513,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -39371,7 +39705,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 5280,
+              "line": 5777,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -39629,6 +39963,19 @@
               "pattern": null,
               "wiring_only": false,
               "text": "mStopBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onStop(); });"
+            },
+            {
+              "kind": "cpp",
+              "reason": "reference is not in a class that owns/builds this page's XUI",
+              "file": "indra/newview/aluiperfselftest.cpp",
+              "line": 2573,
+              "class": null,
+              "function": null,
+              "wired_class": null,
+              "wired_function": null,
+              "pattern": null,
+              "wiring_only": false,
+              "text": "if (widget == \"btn_stop\" || widget == \"btn_stop_all\")"
             }
           ],
           "unresolved": [],
@@ -39734,7 +40081,21 @@
           "kit_action": null,
           "resolution_notes": [],
           "ambiguous": [],
-          "rejected_candidates": [],
+          "rejected_candidates": [
+            {
+              "kind": "cpp",
+              "reason": "reference is not in a class that owns/builds this page's XUI",
+              "file": "indra/newview/aluiperfselftest.cpp",
+              "line": 2573,
+              "class": null,
+              "function": null,
+              "wired_class": null,
+              "wired_function": null,
+              "pattern": null,
+              "wiring_only": false,
+              "text": "if (widget == \"btn_stop\" || widget == \"btn_stop_all\")"
+            }
+          ],
           "unresolved": [],
           "other_writers": []
         },
@@ -39802,7 +40163,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 2447,
+              "line": 2510,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -39815,7 +40176,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 5278,
+              "line": 5775,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -41069,7 +41430,21 @@
           "kit_action": null,
           "resolution_notes": [],
           "ambiguous": [],
-          "rejected_candidates": [],
+          "rejected_candidates": [
+            {
+              "kind": "cpp",
+              "reason": "reference is not in a class that owns/builds this page's XUI",
+              "file": "indra/newview/aluiperfselftest.cpp",
+              "line": 5888,
+              "class": null,
+              "function": null,
+              "wired_class": null,
+              "wired_function": null,
+              "pattern": null,
+              "wiring_only": false,
+              "text": "const bool show_all = widget_name == \"show_all_check\";"
+            }
+          ],
           "unresolved": [],
           "other_writers": []
         },
@@ -41132,7 +41507,21 @@
           "kit_action": null,
           "resolution_notes": [],
           "ambiguous": [],
-          "rejected_candidates": [],
+          "rejected_candidates": [
+            {
+              "kind": "cpp",
+              "reason": "reference is not in a class that owns/builds this page's XUI",
+              "file": "indra/newview/aluiperfselftest.cpp",
+              "line": 5479,
+              "class": null,
+              "function": null,
+              "wired_class": null,
+              "wired_function": null,
+              "pattern": null,
+              "wiring_only": false,
+              "text": "entry[\"widget_name\"].asString() == \"edit_ghosts_check\"))"
+            }
+          ],
           "unresolved": [],
           "other_writers": []
         },
@@ -49401,7 +49790,21 @@
           "kit_action": null,
           "resolution_notes": [],
           "ambiguous": [],
-          "rejected_candidates": [],
+          "rejected_candidates": [
+            {
+              "kind": "cpp",
+              "reason": "reference is not in a class that owns/builds this page's XUI",
+              "file": "indra/newview/aluiperfselftest.cpp",
+              "line": 5841,
+              "class": null,
+              "function": null,
+              "wired_class": null,
+              "wired_function": null,
+              "pattern": null,
+              "wiring_only": false,
+              "text": "if (widget_name == \"db_on\") owner_ok = ball.enabled() == control->getValue().asBoolean();"
+            }
+          ],
           "unresolved": [],
           "other_writers": []
         },
@@ -49516,7 +49919,21 @@
           "kit_action": null,
           "resolution_notes": [],
           "ambiguous": [],
-          "rejected_candidates": [],
+          "rejected_candidates": [
+            {
+              "kind": "cpp",
+              "reason": "reference is not in a class that owns/builds this page's XUI",
+              "file": "indra/newview/aluiperfselftest.cpp",
+              "line": 5842,
+              "class": null,
+              "function": null,
+              "wired_class": null,
+              "wired_function": null,
+              "pattern": null,
+              "wiring_only": false,
+              "text": "else if (widget_name == \"db_header_desync\")"
+            }
+          ],
           "unresolved": [],
           "other_writers": []
         },
@@ -49663,7 +50080,21 @@
           "kit_action": null,
           "resolution_notes": [],
           "ambiguous": [],
-          "rejected_candidates": [],
+          "rejected_candidates": [
+            {
+              "kind": "cpp",
+              "reason": "reference is not in a class that owns/builds this page's XUI",
+              "file": "indra/newview/aluiperfselftest.cpp",
+              "line": 2696,
+              "class": null,
+              "function": null,
+              "wired_class": null,
+              "wired_function": null,
+              "pattern": null,
+              "wiring_only": false,
+              "text": "\"db_dancer_list\", true))"
+            }
+          ],
           "unresolved": [],
           "other_writers": []
         },
@@ -49726,7 +50157,21 @@
           "kit_action": null,
           "resolution_notes": [],
           "ambiguous": [],
-          "rejected_candidates": [],
+          "rejected_candidates": [
+            {
+              "kind": "cpp",
+              "reason": "reference is not in a class that owns/builds this page's XUI",
+              "file": "indra/newview/aluiperfselftest.cpp",
+              "line": 2620,
+              "class": null,
+              "function": null,
+              "wired_class": null,
+              "wired_function": null,
+              "pattern": null,
+              "wiring_only": false,
+              "text": "if ((widget == \"db_add_ghosts\" || widget == \"db_add_selected\") &&"
+            }
+          ],
           "unresolved": [],
           "other_writers": []
         },
@@ -49789,7 +50234,21 @@
           "kit_action": null,
           "resolution_notes": [],
           "ambiguous": [],
-          "rejected_candidates": [],
+          "rejected_candidates": [
+            {
+              "kind": "cpp",
+              "reason": "reference is not in a class that owns/builds this page's XUI",
+              "file": "indra/newview/aluiperfselftest.cpp",
+              "line": 2633,
+              "class": null,
+              "function": null,
+              "wired_class": null,
+              "wired_function": null,
+              "pattern": null,
+              "wiring_only": false,
+              "text": "if (widget == \"db_add_cast\")"
+            }
+          ],
           "unresolved": [],
           "other_writers": []
         },
@@ -49852,7 +50311,21 @@
           "kit_action": null,
           "resolution_notes": [],
           "ambiguous": [],
-          "rejected_candidates": [],
+          "rejected_candidates": [
+            {
+              "kind": "cpp",
+              "reason": "reference is not in a class that owns/builds this page's XUI",
+              "file": "indra/newview/aluiperfselftest.cpp",
+              "line": 2620,
+              "class": null,
+              "function": null,
+              "wired_class": null,
+              "wired_function": null,
+              "pattern": null,
+              "wiring_only": false,
+              "text": "if ((widget == \"db_add_ghosts\" || widget == \"db_add_selected\") &&"
+            }
+          ],
           "unresolved": [],
           "other_writers": []
         },
@@ -49978,7 +50451,21 @@
           "kit_action": null,
           "resolution_notes": [],
           "ambiguous": [],
-          "rejected_candidates": [],
+          "rejected_candidates": [
+            {
+              "kind": "cpp",
+              "reason": "reference is not in a class that owns/builds this page's XUI",
+              "file": "indra/newview/aluiperfselftest.cpp",
+              "line": 2691,
+              "class": null,
+              "function": null,
+              "wired_class": null,
+              "wired_function": null,
+              "pattern": null,
+              "wiring_only": false,
+              "text": "if (widget == \"db_exclude\")"
+            }
+          ],
           "unresolved": [],
           "other_writers": []
         },
@@ -50041,7 +50528,34 @@
           "kit_action": null,
           "resolution_notes": [],
           "ambiguous": [],
-          "rejected_candidates": [],
+          "rejected_candidates": [
+            {
+              "kind": "cpp",
+              "reason": "reference is not in a class that owns/builds this page's XUI",
+              "file": "indra/newview/aluiperfselftest.cpp",
+              "line": 2630,
+              "class": null,
+              "function": null,
+              "wired_class": null,
+              "wired_function": null,
+              "pattern": null,
+              "wiring_only": false,
+              "text": "if (widget == \"db_include_me\" || widget == \"db_add_nearby\")"
+            },
+            {
+              "kind": "cpp",
+              "reason": "reference is not in a class that owns/builds this page's XUI",
+              "file": "indra/newview/aluiperfselftest.cpp",
+              "line": 2632,
+              "class": null,
+              "function": null,
+              "wired_class": null,
+              "wired_function": null,
+              "pattern": null,
+              "wiring_only": false,
+              "text": "if (widget == \"db_add_nearby\") ball.setIncludeSelf(true);"
+            }
+          ],
           "unresolved": [],
           "other_writers": []
         },
@@ -50171,7 +50685,21 @@
           "kit_action": null,
           "resolution_notes": [],
           "ambiguous": [],
-          "rejected_candidates": [],
+          "rejected_candidates": [
+            {
+              "kind": "cpp",
+              "reason": "reference is not in a class that owns/builds this page's XUI",
+              "file": "indra/newview/aluiperfselftest.cpp",
+              "line": 5844,
+              "class": null,
+              "function": null,
+              "wired_class": null,
+              "wired_function": null,
+              "pattern": null,
+              "wiring_only": false,
+              "text": "else if (widget_name == \"db_focus\")"
+            }
+          ],
           "unresolved": [],
           "other_writers": []
         },
@@ -50234,7 +50762,21 @@
           "kit_action": null,
           "resolution_notes": [],
           "ambiguous": [],
-          "rejected_candidates": [],
+          "rejected_candidates": [
+            {
+              "kind": "cpp",
+              "reason": "reference is not in a class that owns/builds this page's XUI",
+              "file": "indra/newview/aluiperfselftest.cpp",
+              "line": 5846,
+              "class": null,
+              "function": null,
+              "wired_class": null,
+              "wired_function": null,
+              "pattern": null,
+              "wiring_only": false,
+              "text": "else if (widget_name == \"db_autojoin\") owner_ok = ball.autoJoin() == control->getValue().asBoolean();"
+            }
+          ],
           "unresolved": [],
           "other_writers": []
         },
@@ -50297,7 +50839,21 @@
           "kit_action": null,
           "resolution_notes": [],
           "ambiguous": [],
-          "rejected_candidates": [],
+          "rejected_candidates": [
+            {
+              "kind": "cpp",
+              "reason": "reference is not in a class that owns/builds this page's XUI",
+              "file": "indra/newview/aluiperfselftest.cpp",
+              "line": 5847,
+              "class": null,
+              "function": null,
+              "wired_class": null,
+              "wired_function": null,
+              "pattern": null,
+              "wiring_only": false,
+              "text": "else if (widget_name == \"db_include_seated\") owner_ok = ball.includeSeated() == control->getValue().asBoolean();"
+            }
+          ],
           "unresolved": [],
           "other_writers": []
         },
@@ -50360,7 +50916,34 @@
           "kit_action": null,
           "resolution_notes": [],
           "ambiguous": [],
-          "rejected_candidates": [],
+          "rejected_candidates": [
+            {
+              "kind": "cpp",
+              "reason": "reference is not in a class that owns/builds this page's XUI",
+              "file": "indra/newview/aluiperfselftest.cpp",
+              "line": 2630,
+              "class": null,
+              "function": null,
+              "wired_class": null,
+              "wired_function": null,
+              "pattern": null,
+              "wiring_only": false,
+              "text": "if (widget == \"db_include_me\" || widget == \"db_add_nearby\")"
+            },
+            {
+              "kind": "cpp",
+              "reason": "reference is not in a class that owns/builds this page's XUI",
+              "file": "indra/newview/aluiperfselftest.cpp",
+              "line": 5848,
+              "class": null,
+              "function": null,
+              "wired_class": null,
+              "wired_function": null,
+              "pattern": null,
+              "wiring_only": false,
+              "text": "else if (widget_name == \"db_include_me\") owner_ok = ball.includeSelf() == control->getValue().asBoolean();"
+            }
+          ],
           "unresolved": [],
           "other_writers": []
         },
@@ -50536,7 +51119,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 2455,
+              "line": 2579,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -50549,7 +51132,20 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 4212,
+              "line": 2713,
+              "class": null,
+              "function": null,
+              "wired_class": null,
+              "wired_function": null,
+              "pattern": null,
+              "wiring_only": false,
+              "text": "\"db_playlist_list\", true); playlist)"
+            },
+            {
+              "kind": "cpp",
+              "reason": "reference is not in a class that owns/builds this page's XUI",
+              "file": "indra/newview/aluiperfselftest.cpp",
+              "line": 4654,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -50562,7 +51158,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 5256,
+              "line": 5753,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -50570,6 +51166,19 @@
               "pattern": null,
               "wiring_only": false,
               "text": "else if (widget_name == \"db_playlist_list\")"
+            },
+            {
+              "kind": "cpp",
+              "reason": "reference is not in a class that owns/builds this page's XUI",
+              "file": "indra/newview/aluiperfselftest.cpp",
+              "line": 5826,
+              "class": null,
+              "function": null,
+              "wired_class": null,
+              "wired_function": null,
+              "pattern": null,
+              "wiring_only": false,
+              "text": "widget_name != \"db_playlist_list\")"
             }
           ],
           "unresolved": [],
@@ -50634,7 +51243,34 @@
           "kit_action": null,
           "resolution_notes": [],
           "ambiguous": [],
-          "rejected_candidates": [],
+          "rejected_candidates": [
+            {
+              "kind": "cpp",
+              "reason": "reference is not in a class that owns/builds this page's XUI",
+              "file": "indra/newview/aluiperfselftest.cpp",
+              "line": 2663,
+              "class": null,
+              "function": null,
+              "wired_class": null,
+              "wired_function": null,
+              "pattern": null,
+              "wiring_only": false,
+              "text": "if (widget == \"db_from_explorer\" && !mInWorld)"
+            },
+            {
+              "kind": "cpp",
+              "reason": "reference is not in a class that owns/builds this page's XUI",
+              "file": "indra/newview/aluiperfselftest.cpp",
+              "line": 5475,
+              "class": null,
+              "function": null,
+              "wired_class": null,
+              "wired_function": null,
+              "pattern": null,
+              "wiring_only": false,
+              "text": "entry[\"widget_name\"].asString() == \"db_from_explorer\" ||"
+            }
+          ],
           "unresolved": [],
           "other_writers": []
         },
@@ -50697,7 +51333,21 @@
           "kit_action": null,
           "resolution_notes": [],
           "ambiguous": [],
-          "rejected_candidates": [],
+          "rejected_candidates": [
+            {
+              "kind": "cpp",
+              "reason": "reference is not in a class that owns/builds this page's XUI",
+              "file": "indra/newview/aluiperfselftest.cpp",
+              "line": 2649,
+              "class": "LLClipboard",
+              "function": "hasContents",
+              "wired_class": null,
+              "wired_function": null,
+              "pattern": null,
+              "wiring_only": false,
+              "text": "if (widget == \"db_paste_uuid\" && !LLClipboard::instance().hasContents() &&"
+            }
+          ],
           "unresolved": [],
           "other_writers": []
         },
@@ -50886,7 +51536,21 @@
           "kit_action": null,
           "resolution_notes": [],
           "ambiguous": [],
-          "rejected_candidates": [],
+          "rejected_candidates": [
+            {
+              "kind": "cpp",
+              "reason": "reference is not in a class that owns/builds this page's XUI",
+              "file": "indra/newview/aluiperfselftest.cpp",
+              "line": 2728,
+              "class": null,
+              "function": null,
+              "wired_class": null,
+              "wired_function": null,
+              "pattern": null,
+              "wiring_only": false,
+              "text": "const S32 index = widget == \"db_pl_up\" ? 1 : 0;"
+            }
+          ],
           "unresolved": [],
           "other_writers": []
         },
@@ -51017,7 +51681,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 5259,
+              "line": 5756,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -51152,7 +51816,47 @@
           "kit_action": null,
           "resolution_notes": [],
           "ambiguous": [],
-          "rejected_candidates": [],
+          "rejected_candidates": [
+            {
+              "kind": "cpp",
+              "reason": "reference is not in a class that owns/builds this page's XUI",
+              "file": "indra/newview/aluiperfselftest.cpp",
+              "line": 2640,
+              "class": null,
+              "function": null,
+              "wired_class": null,
+              "wired_function": null,
+              "pattern": null,
+              "wiring_only": false,
+              "text": "if (widget == \"db_play_selected\" || widget == \"db_play_all\")"
+            },
+            {
+              "kind": "cpp",
+              "reason": "reference is not in a class that owns/builds this page's XUI",
+              "file": "indra/newview/aluiperfselftest.cpp",
+              "line": 5836,
+              "class": null,
+              "function": null,
+              "wired_class": null,
+              "wired_function": null,
+              "pattern": null,
+              "wiring_only": false,
+              "text": "if (widget_name == \"db_reshuffle\" || widget_name == \"db_play_selected\" ||"
+            },
+            {
+              "kind": "cpp",
+              "reason": "reference is not in a class that owns/builds this page's XUI",
+              "file": "indra/newview/aluiperfselftest.cpp",
+              "line": 5866,
+              "class": null,
+              "function": null,
+              "wired_class": null,
+              "wired_function": null,
+              "pattern": null,
+              "wiring_only": false,
+              "text": "else if (widget_name == \"db_play_selected\" || widget_name == \"db_play_all\")"
+            }
+          ],
           "unresolved": [],
           "other_writers": []
         },
@@ -51215,7 +51919,47 @@
           "kit_action": null,
           "resolution_notes": [],
           "ambiguous": [],
-          "rejected_candidates": [],
+          "rejected_candidates": [
+            {
+              "kind": "cpp",
+              "reason": "reference is not in a class that owns/builds this page's XUI",
+              "file": "indra/newview/aluiperfselftest.cpp",
+              "line": 2640,
+              "class": null,
+              "function": null,
+              "wired_class": null,
+              "wired_function": null,
+              "pattern": null,
+              "wiring_only": false,
+              "text": "if (widget == \"db_play_selected\" || widget == \"db_play_all\")"
+            },
+            {
+              "kind": "cpp",
+              "reason": "reference is not in a class that owns/builds this page's XUI",
+              "file": "indra/newview/aluiperfselftest.cpp",
+              "line": 5837,
+              "class": null,
+              "function": null,
+              "wired_class": null,
+              "wired_function": null,
+              "pattern": null,
+              "wiring_only": false,
+              "text": "widget_name == \"db_play_all\" || widget_name == \"db_ramp_go\")"
+            },
+            {
+              "kind": "cpp",
+              "reason": "reference is not in a class that owns/builds this page's XUI",
+              "file": "indra/newview/aluiperfselftest.cpp",
+              "line": 5866,
+              "class": null,
+              "function": null,
+              "wired_class": null,
+              "wired_function": null,
+              "pattern": null,
+              "wiring_only": false,
+              "text": "else if (widget_name == \"db_play_selected\" || widget_name == \"db_play_all\")"
+            }
+          ],
           "unresolved": [],
           "other_writers": []
         },
@@ -51471,7 +52215,21 @@
           "kit_action": null,
           "resolution_notes": [],
           "ambiguous": [],
-          "rejected_candidates": [],
+          "rejected_candidates": [
+            {
+              "kind": "cpp",
+              "reason": "reference is not in a class that owns/builds this page's XUI",
+              "file": "indra/newview/aluiperfselftest.cpp",
+              "line": 5864,
+              "class": null,
+              "function": null,
+              "wired_class": null,
+              "wired_function": null,
+              "pattern": null,
+              "wiring_only": false,
+              "text": "else if (widget_name == \"db_freeze\") owner_ok = ball.frozen() == control->getValue().asBoolean();"
+            }
+          ],
           "unresolved": [],
           "other_writers": []
         },
@@ -51597,7 +52355,34 @@
           "kit_action": null,
           "resolution_notes": [],
           "ambiguous": [],
-          "rejected_candidates": [],
+          "rejected_candidates": [
+            {
+              "kind": "cpp",
+              "reason": "reference is not in a class that owns/builds this page's XUI",
+              "file": "indra/newview/aluiperfselftest.cpp",
+              "line": 2645,
+              "class": null,
+              "function": null,
+              "wired_class": null,
+              "wired_function": null,
+              "pattern": null,
+              "wiring_only": false,
+              "text": "if (widget == \"db_stop_all\") ball.setEnabled(true);"
+            },
+            {
+              "kind": "cpp",
+              "reason": "reference is not in a class that owns/builds this page's XUI",
+              "file": "indra/newview/aluiperfselftest.cpp",
+              "line": 5865,
+              "class": null,
+              "function": null,
+              "wired_class": null,
+              "wired_function": null,
+              "pattern": null,
+              "wiring_only": false,
+              "text": "else if (widget_name == \"db_stop_all\") owner_ok = !ball.enabled();"
+            }
+          ],
           "unresolved": [],
           "other_writers": []
         },
@@ -51723,7 +52508,21 @@
           "kit_action": null,
           "resolution_notes": [],
           "ambiguous": [],
-          "rejected_candidates": [],
+          "rejected_candidates": [
+            {
+              "kind": "cpp",
+              "reason": "reference is not in a class that owns/builds this page's XUI",
+              "file": "indra/newview/aluiperfselftest.cpp",
+              "line": 5849,
+              "class": null,
+              "function": null,
+              "wired_class": null,
+              "wired_function": null,
+              "pattern": null,
+              "wiring_only": false,
+              "text": "else if (widget_name == \"db_adv_jitter\")"
+            }
+          ],
           "unresolved": [],
           "other_writers": []
         },
@@ -51912,7 +52711,34 @@
           "kit_action": null,
           "resolution_notes": [],
           "ambiguous": [],
-          "rejected_candidates": [],
+          "rejected_candidates": [
+            {
+              "kind": "cpp",
+              "reason": "reference is not in a class that owns/builds this page's XUI",
+              "file": "indra/newview/aluiperfselftest.cpp",
+              "line": 5836,
+              "class": null,
+              "function": null,
+              "wired_class": null,
+              "wired_function": null,
+              "pattern": null,
+              "wiring_only": false,
+              "text": "if (widget_name == \"db_reshuffle\" || widget_name == \"db_play_selected\" ||"
+            },
+            {
+              "kind": "cpp",
+              "reason": "reference is not in a class that owns/builds this page's XUI",
+              "file": "indra/newview/aluiperfselftest.cpp",
+              "line": 5869,
+              "class": null,
+              "function": null,
+              "wired_class": null,
+              "wired_function": null,
+              "pattern": null,
+              "wiring_only": false,
+              "text": "else if (widget_name == \"db_reshuffle\")"
+            }
+          ],
           "unresolved": [],
           "other_writers": []
         },
@@ -52038,7 +52864,21 @@
           "kit_action": null,
           "resolution_notes": [],
           "ambiguous": [],
-          "rejected_candidates": [],
+          "rejected_candidates": [
+            {
+              "kind": "cpp",
+              "reason": "reference is not in a class that owns/builds this page's XUI",
+              "file": "indra/newview/aluiperfselftest.cpp",
+              "line": 5851,
+              "class": null,
+              "function": null,
+              "wired_class": null,
+              "wired_function": null,
+              "pattern": null,
+              "wiring_only": false,
+              "text": "else if (widget_name == \"db_t_speed_jitter\")"
+            }
+          ],
           "unresolved": [],
           "other_writers": []
         },
@@ -52106,7 +52946,21 @@
           "kit_action": null,
           "resolution_notes": [],
           "ambiguous": [],
-          "rejected_candidates": [],
+          "rejected_candidates": [
+            {
+              "kind": "cpp",
+              "reason": "reference is not in a class that owns/builds this page's XUI",
+              "file": "indra/newview/aluiperfselftest.cpp",
+              "line": 5853,
+              "class": null,
+              "function": null,
+              "wired_class": null,
+              "wired_function": null,
+              "pattern": null,
+              "wiring_only": false,
+              "text": "else if (widget_name == \"db_t_priority\") owner_ok = ball.timing().mPriority == control->getValue().asInteger();"
+            }
+          ],
           "unresolved": [],
           "other_writers": []
         },
@@ -52169,7 +53023,21 @@
           "kit_action": null,
           "resolution_notes": [],
           "ambiguous": [],
-          "rejected_candidates": [],
+          "rejected_candidates": [
+            {
+              "kind": "cpp",
+              "reason": "reference is not in a class that owns/builds this page's XUI",
+              "file": "indra/newview/aluiperfselftest.cpp",
+              "line": 5854,
+              "class": null,
+              "function": null,
+              "wired_class": null,
+              "wired_function": null,
+              "pattern": null,
+              "wiring_only": false,
+              "text": "else if (widget_name == \"db_t_dance_drives_face\")"
+            }
+          ],
           "unresolved": [],
           "other_writers": []
         },
@@ -53990,7 +54858,21 @@
           "kit_action": null,
           "resolution_notes": [],
           "ambiguous": [],
-          "rejected_candidates": [],
+          "rejected_candidates": [
+            {
+              "kind": "cpp",
+              "reason": "reference is not in a class that owns/builds this page's XUI",
+              "file": "indra/newview/aluiperfselftest.cpp",
+              "line": 5856,
+              "class": null,
+              "function": null,
+              "wired_class": null,
+              "wired_function": null,
+              "pattern": null,
+              "wiring_only": false,
+              "text": "else if (widget_name == \"db_wave_focus\")"
+            }
+          ],
           "unresolved": [],
           "other_writers": []
         },
@@ -54053,7 +54935,21 @@
           "kit_action": null,
           "resolution_notes": [],
           "ambiguous": [],
-          "rejected_candidates": [],
+          "rejected_candidates": [
+            {
+              "kind": "cpp",
+              "reason": "reference is not in a class that owns/builds this page's XUI",
+              "file": "indra/newview/aluiperfselftest.cpp",
+              "line": 5858,
+              "class": null,
+              "function": null,
+              "wired_class": null,
+              "wired_function": null,
+              "pattern": null,
+              "wiring_only": false,
+              "text": "else if (widget_name == \"db_wave_speed\")"
+            }
+          ],
           "unresolved": [],
           "other_writers": []
         },
@@ -54119,7 +55015,21 @@
           "kit_action": null,
           "resolution_notes": [],
           "ambiguous": [],
-          "rejected_candidates": [],
+          "rejected_candidates": [
+            {
+              "kind": "cpp",
+              "reason": "reference is not in a class that owns/builds this page's XUI",
+              "file": "indra/newview/aluiperfselftest.cpp",
+              "line": 5860,
+              "class": null,
+              "function": null,
+              "wired_class": null,
+              "wired_function": null,
+              "pattern": null,
+              "wiring_only": false,
+              "text": "else if (widget_name == \"db_wave_dir\")"
+            }
+          ],
           "unresolved": [],
           "other_writers": []
         },
@@ -54186,7 +55096,21 @@
           "kit_action": null,
           "resolution_notes": [],
           "ambiguous": [],
-          "rejected_candidates": [],
+          "rejected_candidates": [
+            {
+              "kind": "cpp",
+              "reason": "reference is not in a class that owns/builds this page's XUI",
+              "file": "indra/newview/aluiperfselftest.cpp",
+              "line": 5862,
+              "class": null,
+              "function": null,
+              "wired_class": null,
+              "wired_function": null,
+              "pattern": null,
+              "wiring_only": false,
+              "text": "else if (widget_name == \"db_wave_apply\")"
+            }
+          ],
           "unresolved": [],
           "other_writers": []
         },
@@ -54375,7 +55299,47 @@
           "kit_action": null,
           "resolution_notes": [],
           "ambiguous": [],
-          "rejected_candidates": [],
+          "rejected_candidates": [
+            {
+              "kind": "cpp",
+              "reason": "reference is not in a class that owns/builds this page's XUI",
+              "file": "indra/newview/aluiperfselftest.cpp",
+              "line": 5833,
+              "class": null,
+              "function": null,
+              "wired_class": null,
+              "wired_function": null,
+              "pattern": null,
+              "wiring_only": false,
+              "text": "if (widget_name == \"db_ramp_go\")"
+            },
+            {
+              "kind": "cpp",
+              "reason": "reference is not in a class that owns/builds this page's XUI",
+              "file": "indra/newview/aluiperfselftest.cpp",
+              "line": 5837,
+              "class": null,
+              "function": null,
+              "wired_class": null,
+              "wired_function": null,
+              "pattern": null,
+              "wiring_only": false,
+              "text": "widget_name == \"db_play_all\" || widget_name == \"db_ramp_go\")"
+            },
+            {
+              "kind": "cpp",
+              "reason": "reference is not in a class that owns/builds this page's XUI",
+              "file": "indra/newview/aluiperfselftest.cpp",
+              "line": 5871,
+              "class": null,
+              "function": null,
+              "wired_class": null,
+              "wired_function": null,
+              "pattern": null,
+              "wiring_only": false,
+              "text": "else if (widget_name == \"db_ramp_go\")"
+            }
+          ],
           "unresolved": [],
           "other_writers": []
         },
@@ -56258,6 +57222,19 @@
                 "name": "animate_tab_content",
                 "line": 3
               }
+            },
+            {
+              "kind": "cpp",
+              "reason": "reference is not in a class that owns/builds this page's XUI",
+              "file": "indra/newview/aluiperfselftest.cpp",
+              "line": 5478,
+              "class": null,
+              "function": null,
+              "wired_class": null,
+              "wired_function": null,
+              "pattern": null,
+              "wiring_only": false,
+              "text": "entry[\"widget_name\"].asString() == \"btn_open_animexp\" ||"
             }
           ],
           "unresolved": [],
@@ -56495,7 +57472,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 4980,
+              "line": 5469,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -56572,7 +57549,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 4981,
+              "line": 5470,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -56649,14 +57626,14 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 4982,
+              "line": 5471,
               "class": null,
               "function": null,
               "wired_class": null,
               "wired_function": null,
               "pattern": null,
               "wiring_only": false,
-              "text": "entry[\"widget_name\"].asString() == \"btn_anim_ex_blacklist\"))"
+              "text": "entry[\"widget_name\"].asString() == \"btn_anim_ex_blacklist\" ||"
             }
           ],
           "unresolved": [],
@@ -58756,7 +59733,21 @@
           "kit_action": null,
           "resolution_notes": [],
           "ambiguous": [],
-          "rejected_candidates": [],
+          "rejected_candidates": [
+            {
+              "kind": "cpp",
+              "reason": "reference is not in a class that owns/builds this page's XUI",
+              "file": "indra/newview/aluiperfselftest.cpp",
+              "line": 2738,
+              "class": null,
+              "function": null,
+              "wired_class": null,
+              "wired_function": null,
+              "pattern": null,
+              "wiring_only": false,
+              "text": "\"gaze_edit_actor\", true);"
+            }
+          ],
           "unresolved": [],
           "other_writers": []
         },
@@ -59500,7 +60491,34 @@
           "kit_action": null,
           "resolution_notes": [],
           "ambiguous": [],
-          "rejected_candidates": [],
+          "rejected_candidates": [
+            {
+              "kind": "cpp",
+              "reason": "reference is not in a class that owns/builds this page's XUI",
+              "file": "indra/newview/aluiperfselftest.cpp",
+              "line": 2754,
+              "class": null,
+              "function": null,
+              "wired_class": null,
+              "wired_function": null,
+              "pattern": null,
+              "wiring_only": false,
+              "text": "if (widget == \"gaze_cast_combo\")"
+            },
+            {
+              "kind": "cpp",
+              "reason": "reference is not in a class that owns/builds this page's XUI",
+              "file": "indra/newview/aluiperfselftest.cpp",
+              "line": 5916,
+              "class": null,
+              "function": null,
+              "wired_class": null,
+              "wired_function": null,
+              "pattern": null,
+              "wiring_only": false,
+              "text": "if (widget_name == \"gaze_cast_combo\")"
+            }
+          ],
           "unresolved": [],
           "other_writers": []
         },
@@ -96937,6 +97955,19 @@
               "pattern": null,
               "wiring_only": false,
               "text": "getChild<LLButton>(\"btn_stop\")->setClickedCallback(boost::bind(&ALPanelPropMover::onStop, this));"
+            },
+            {
+              "kind": "cpp",
+              "reason": "reference is not in a class that owns/builds this page's XUI",
+              "file": "indra/newview/aluiperfselftest.cpp",
+              "line": 2573,
+              "class": null,
+              "function": null,
+              "wired_class": null,
+              "wired_function": null,
+              "pattern": null,
+              "wiring_only": false,
+              "text": "if (widget == \"btn_stop\" || widget == \"btn_stop_all\")"
             }
           ],
           "unresolved": [],
@@ -98548,7 +99579,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 2158,
+              "line": 2165,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -98561,7 +99592,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 2161,
+              "line": 2168,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -98652,7 +99683,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 2158,
+              "line": 2165,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -98665,7 +99696,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 2161,
+              "line": 2168,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -99616,7 +100647,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 2158,
+              "line": 2165,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -99629,7 +100660,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 2161,
+              "line": 2168,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -100243,7 +101274,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 2158,
+              "line": 2165,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -100256,7 +101287,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 2161,
+              "line": 2168,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -104953,7 +105984,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 4611,
+              "line": 5053,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -104966,7 +105997,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 5396,
+              "line": 6037,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -111220,7 +112251,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 1809,
+              "line": 1816,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -111233,7 +112264,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 2492,
+              "line": 2809,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -111667,7 +112698,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 2861,
+              "line": 3178,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -111680,7 +112711,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 4386,
+              "line": 4828,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -111772,7 +112803,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 4390,
+              "line": 4832,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -111878,7 +112909,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 4391,
+              "line": 4833,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -111970,7 +113001,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 4392,
+              "line": 4834,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -112062,7 +113093,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 4393,
+              "line": 4835,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -114730,7 +115761,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 4615,
+              "line": 5057,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -114743,7 +115774,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 5405,
+              "line": 6046,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -121026,7 +122057,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 4521,
+              "line": 4963,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -142292,7 +143323,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 4657,
+              "line": 5099,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -142305,7 +143336,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 5519,
+              "line": 6160,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -143885,7 +144916,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 1840,
+              "line": 1847,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -143898,7 +144929,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 1909,
+              "line": 1916,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -143911,7 +144942,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 1999,
+              "line": 2006,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -148617,7 +149648,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 2158,
+              "line": 2165,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -148630,7 +149661,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 2161,
+              "line": 2168,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -148792,7 +149823,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 2158,
+              "line": 2165,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -148805,7 +149836,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 2161,
+              "line": 2168,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -148887,7 +149918,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 2480,
+              "line": 2797,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -148900,7 +149931,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 5253,
+              "line": 5750,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -150594,7 +151625,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 2158,
+              "line": 2165,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -150607,7 +151638,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 2161,
+              "line": 2168,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -150671,7 +151702,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 2158,
+              "line": 2165,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -150684,7 +151715,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 2161,
+              "line": 2168,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -150797,7 +151828,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 2158,
+              "line": 2165,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -150810,7 +151841,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 2161,
+              "line": 2168,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -150923,7 +151954,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 2158,
+              "line": 2165,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -150936,7 +151967,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 2161,
+              "line": 2168,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -151000,7 +152031,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 2158,
+              "line": 2165,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -151013,7 +152044,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 2161,
+              "line": 2168,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -151224,7 +152255,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 2158,
+              "line": 2165,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -151237,7 +152268,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/aluiperfselftest.cpp",
-              "line": 2161,
+              "line": 2168,
               "class": null,
               "function": null,
               "wired_class": null,

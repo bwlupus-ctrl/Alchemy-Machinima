@@ -235,6 +235,10 @@ void AnimationExplorer::onSelectAnimation()
     LLScrollListItem* item = mAnimationScrollList->getFirstSelected();
     if (!item)
     {
+        mCurrentAnimationID.setNull();
+        mCurrentObject.setNull();
+        if (mAnimUUIDEditor) mAnimUUIDEditor->setText(std::string());
+        if (mPreviewPanel) mPreviewPanel->clearPreview();
         return;
     }
 

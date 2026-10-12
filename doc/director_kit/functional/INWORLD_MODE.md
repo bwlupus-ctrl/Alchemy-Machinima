@@ -114,3 +114,7 @@ An in-viewer wall-clock watchdog defaults to 12 minutes (the wrapper passes
 the partial CSV, and requests normal logout. The wrapper timeout defaults to 18
 minutes, then allows a further 60-second normal-exit grace before reporting any
 last-resort hard kill explicitly.
+
+## Selection and Animation Explorer exclusions (10/12)
+
+Any `LLSelectMgr` selection, even of a viewer-only (`mIsLocalOnly`) object, broadcasts a PointAt ViewerEffect and `AGENT_STATE_EDITING` in AgentUpdate (llselectmgr.cpp:679, 8049; llhudeffectpointat.cpp:254; llagent.cpp:2312-2315), so other residents see the avatar's edit pose. `btn_enroll` (which reads the selection) is excluded in-world. `db_from_explorer` is excluded because Animation Explorer sends ObjectSelect/ObjectDeselect to name non-avatar animation sources (animationexplorer.cpp:540-556). Both are excluded in `functional_report.py` INWORLD_EXCLUDED_CONTROLS and in the C++ runner.

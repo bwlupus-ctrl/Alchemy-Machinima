@@ -28,8 +28,11 @@
 #include "aldiopterpresetbank.h"
 #include "allocalfogmanager.h"
 #include "alobjectpathmover.h"
+#include "alpanellensgaze.h"
 #include "alpanelpatheditor.h"
 #include "alghoststudio.h"
+#include "altoolghostedit.h"
+#include "animationexplorer.h"
 
 #include "llagent.h"
 #include "llappviewer.h"
@@ -41,6 +44,7 @@
 #include "llcheckboxctrl.h"
 #include "llcombobox.h"
 #include "llcolorswatch.h"
+#include "llclipboard.h"
 #include "lldir.h"
 #include "lldiriterator.h"
 #include "llerrorcontrol.h"
@@ -51,6 +55,7 @@
 #include "llfolderview.h"
 #include "llfolderviewitem.h"
 #include "llfolderviewmodel.h"
+#include "llflycamrecorder.h"
 #include "llfocusmgr.h"
 #include "lliconctrl.h"
 #include "llimage.h"
@@ -74,6 +79,7 @@
 #include "llrootview.h"
 #include "llscrollcontainer.h"
 #include "llscrolllistctrl.h"
+#include "llselectmgr.h"
 #include "llslider.h"
 #include "llsliderctrl.h"
 #include "llsdutil.h"
@@ -90,6 +96,7 @@
 #include "llversioninfo.h"
 #include "llview.h"
 #include "llvoavatarself.h"
+#include "llvolumemgr.h"
 #include "llvovolume.h"
 #include "pipeline.h"
 
@@ -2369,6 +2376,62 @@ private:
             mover.appendWaypointAt(mFunctionalActorMoverId,
                                    origin + LLVector3d(2.0, 0.0, 0.0));
             mover.setEditNode(0);
+            if (widget == "btn_edit_redo") mover.undoPath(mFunctionalActorMoverId);
+            if (widget == "node_cam_transition_combo" || widget == "btn_node_preview")
+                mover.setNodeCamera(mFunctionalActorMoverId, 0, origin + LLVector3d(0.0, 0.0, 2.0),
+                                    LLQuaternion(), 1.0f, 0);
+            if (widget == "sync_offset_spinner")
+            {
+                LLActorMover::Path& path = mover.editPath(mFunctionalActorMoverId);
+                path.mSyncToTake = true;
+                path.markDirty();
+            }
+            if (widget == "node_corner_radius_spinner")
+            {
+                LLActorMover::Path& path = mover.editPath(mFunctionalActorMoverId);
+                path.mEndMode = 1;
+                path.markDirty();
+            }
+            const bool primitive_control = widget == "btn_primitive_center" ||
+                widget == "primitive_radius_x" || widget == "primitive_radius_y" ||
+                widget == "primitive_start_deg" || widget == "primitive_sweep_deg" ||
+                widget == "primitive_rise" || widget == "primitive_yaw_deg" ||
+                widget == "primitive_pitch_deg" || widget == "primitive_roll_deg";
+            if (primitive_control)
+            {
+                const S32 shape = widget == "primitive_rise"
+                    ? ALPathGeometry::HELIX : ALPathGeometry::ELLIPSE_ARC;
+                mover.setPathShape(mFunctionalActorMoverId, shape);
+            }
+            LLScrollListCtrl* cast_list = mFloater.get()
+                ? mFloater.get()->findChild<LLScrollListCtrl>("cast_list", true) : nullptr;
+            if (cast_list)
+            {
+                mFunctionalCastList = cast_list->getDerivedHandle<LLScrollListCtrl>();
+                for (LLScrollListItem* item : cast_list->getAllSelected())
+                    if (item) mFunctionalCastSelectionBefore.push_back(item->getValue().asUUID());
+                mFunctionalPathActorWasCast = LLDirectorCast::instance().contains(mFunctionalActorMoverId);
+                if (!mFunctionalPathActorWasCast)
+                    LLDirectorCast::instance().add(mFunctionalActorMoverId);
+                mFunctionalPathLeaderId = LLUUID::generateNewID();
+                LLDirectorCast::instance().add(mFunctionalPathLeaderId);
+                if (widget == "follow_offset_spinner" || widget == "btn_stop_following")
+                    mover.setFollow(mFunctionalActorMoverId, mFunctionalPathLeaderId, 0, 3.f);
+                bool present = false;
+                for (LLScrollListItem* item : cast_list->getAllData())
+                    present = present || (item && item->getValue().asUUID() == mFunctionalActorMoverId);
+                if (!present)
+                {
+                    LLSD row;
+                    row["value"] = mFunctionalActorMoverId;
+                    row["columns"][0]["column"] = "name";
+                    row["columns"][0]["value"] = "Functional path actor";
+                    cast_list->addElement(row, ADD_BOTTOM);
+                }
+                cast_list->deselectAllItems();
+                cast_list->selectByID(mFunctionalActorMoverId);
+                cast_list->onCommit();
+            }
             if (ALPanelPathEditor* panel = findFirstView<ALPanelPathEditor>(mFunctionalPageRoot))
             {
                 mFunctionalPathPanel = panel->getDerivedHandle<ALPanelPathEditor>();
@@ -2379,7 +2442,7 @@ private:
                     mFunctionalPathEditCheck = edit->getDerivedHandle<LLCheckBoxCtrl>();
                     mFunctionalPathEditBefore = edit->getValue().asBoolean();
                 }
-                panel->setTargetActor(mFunctionalActorMoverId);
+                panel->revealFor(mFunctionalActorMoverId);
                 if (edit)
                 {
                     edit->setValue(true); // ui-draw-lint: allow(raw-write) test-only one-shot path fixture
@@ -2452,6 +2515,67 @@ private:
             LLScrollListCtrl* fixture_list = dynamic_cast<LLScrollListCtrl*>(control);
             ok = prop_list && fixture_list && fixture_list->getItemCount() >= 2 && ok;
         }
+        if (mInWorld && entry["probe"].asString() == "prop_owner" &&
+            widget != "prop_list" && widget != "node_list" && !mFunctionalPropObject)
+        {
+            LLViewerObject* object = gObjectList.createObjectViewer(LL_PCODE_VOLUME,
+                                                                    gAgent.getRegion());
+            LLVOVolume* volume = dynamic_cast<LLVOVolume*>(object);
+            if (volume)
+            {
+                volume->mbCanSelect = true;
+                volume->mIsLocalOnly = true;
+                volume->setFlagsWithoutUpdate(
+                    FLAGS_OBJECT_YOU_OWNER | FLAGS_OBJECT_MODIFY | FLAGS_OBJECT_MOVE |
+                    FLAGS_OBJECT_COPY | FLAGS_OBJECT_TRANSFER, true);
+                gPipeline.createObject(volume);
+                volume->setLOD(LLVolumeLODGroup::NUM_LODS - 1);
+                LLVolumeParams params;
+                params.setType(LL_PCODE_PROFILE_SQUARE, LL_PCODE_PATH_LINE);
+                params.setBeginAndEndS(0.f, 1.f);
+                params.setBeginAndEndT(0.f, 1.f);
+                params.setRatio(1.f, 1.f);
+                params.setShear(0.f, 0.f);
+                if (volume->setVolume(params, LLVolumeLODGroup::NUM_LODS - 1, true))
+                {
+                    volume->setScale(LLVector3(0.5f, 0.5f, 0.5f), false);
+                    volume->setPositionAgent(gAgent.getPositionAgent() + LLVector3(2.f, 0.f, 1.f));
+                    mFunctionalPropObject = volume;
+                }
+                else
+                    volume->markDead();
+            }
+            if (mFunctionalPropObject)
+            {
+                const LLUUID id = mFunctionalPropObject->getID();
+                // btn_enroll is excluded in-world (functional_report.py
+                // INWORLD_EXCLUDED_CONTROLS): any LLSelectMgr selection, even of
+                // a viewer-only object, broadcasts PointAt + AGENT_STATE_EDITING.
+                if (widget != "btn_enroll")
+                {
+                    ALObjectPathMover::toggleTarget(id);
+                    ALObjectPathMover::instance().appendWaypointHere(id);
+                    mFunctionalPropObject->setPositionAgent(
+                        mFunctionalPropObject->getPositionAgent() + LLVector3(2.f, 0.f, 0.f));
+                    ALObjectPathMover::instance().appendWaypointHere(id);
+                    LLScrollListCtrl* props = mFunctionalPageRoot->findChild<LLScrollListCtrl>(
+                        "prop_list", true);
+                    if (props)
+                    {
+                        LLSD row;
+                        row["value"] = id;
+                        row["columns"][0]["column"] = "name";
+                        row["columns"][0]["value"] = "Functional local prop";
+                        props->addElement(row, ADD_BOTTOM);
+                        props->setSelectedByValue(id, true);
+                        props->onCommit();
+                    }
+                    if (widget == "btn_stop" || widget == "btn_stop_all")
+                        ALObjectPathMover::instance().start(id);
+                }
+            }
+            ok = mFunctionalPropObject.notNull() && ok;
+        }
         if (mInWorld && widget == "db_playlist_list")
         {
             LLScrollListCtrl* list = dynamic_cast<LLScrollListCtrl*>(control);
@@ -2476,6 +2600,199 @@ private:
                 }
             }
             ok = list && list->getItemCount() >= 2 && ok;
+        }
+        if (mInWorld && entry["probe"].asString() == "dance_owner" &&
+            !mFunctionalDanceFixturePrepared)
+        {
+            mFunctionalDanceFixturePrepared = true;
+            ALDanceBall& ball = ALDanceBall::instance();
+            if (!mFunctionalDanceBefore.isMap())
+            {
+                mFunctionalDanceBefore = ball.exportSession();
+                mFunctionalDanceEnabledBefore = ball.enabled();
+                mFunctionalDanceFrozenBefore = ball.frozen();
+            }
+            if (ball.playlist().size() < 2)
+            {
+                ball.addAnimation(LLUUID::generateNewID(), "Functional dance A");
+                ball.addAnimation(LLUUID::generateNewID(), "Functional dance B");
+            }
+            if ((widget == "db_add_ghosts" || widget == "db_add_selected") &&
+                mFunctionalGhostFixture.isNull() && gAgentAvatarp)
+            {
+                mFunctionalGhostSelectionBefore = ALGhostStudio::instance().getSelected();
+                if (ALGhostStudio::Instance* instance = ALGhostStudio::instance().spawnEntityClone(
+                        gAgentAvatarp->getID(), "Functional dance ghost"))
+                    mFunctionalGhostFixture = instance->mId;
+            }
+            // No LLSelectMgr selection in-world: any selection broadcasts
+            // PointAt/AGENT_STATE_EDITING (INWORLD_MODE.md, selection exclusions).
+            if (widget == "db_include_me" || widget == "db_add_nearby")
+                ball.removeDancer(gAgentID);
+            if (widget == "db_add_nearby") ball.setIncludeSelf(true);
+            if (widget == "db_add_cast")
+            {
+                mFunctionalDanceActorWasCast = LLDirectorCast::instance().contains(gAgentID);
+                if (!mFunctionalDanceActorWasCast) LLDirectorCast::instance().add(gAgentID);
+                ball.setIncludeSelf(true);
+                ball.removeDancer(gAgentID);
+            }
+            if (widget == "db_play_selected" || widget == "db_play_all")
+            {
+                ball.setIncludeSelf(true);
+                ball.addDancer(gAgentID, ALDanceBall::DancerKind::SELF);
+            }
+            if (widget == "db_stop_all") ball.setEnabled(true);
+            // Never clobber the user's clipboard: only borrow it when it holds
+            // plain text (restored exactly); inventory items or non-text OS
+            // data leave the row without a fixture (it then FAILs honestly).
+            if (widget == "db_paste_uuid" && !LLClipboard::instance().hasContents() &&
+                LLClipboard::instance().isTextAvailable())
+            {
+                mFunctionalClipboardHadText = LLClipboard::instance().pasteFromClipboard(
+                    mFunctionalClipboardBefore);
+                const LLWString fixture = utf8string_to_wstring(LLUUID::generateNewID().asString());
+                LLClipboard::instance().copyToClipboard(fixture, 0,
+                    static_cast<S32>(fixture.size()));
+                mFunctionalClipboardPrepared = true;
+            }
+            // db_from_explorer is excluded in-world (INWORLD_EXCLUDED_CONTROLS):
+            // opening Animation Explorer or adding a source to it can send
+            // ObjectSelect/ObjectDeselect for real objects
+            // (animationexplorer.cpp:540-556). Never drive it on a live login.
+            if (widget == "db_from_explorer" && !mInWorld)
+            {
+                AnimationExplorer* explorer =
+                    LLFloaterReg::findTypedInstance<AnimationExplorer>("animation_explorer");
+                mFunctionalExplorerWasVisible = explorer && explorer->getVisible();
+                if (!explorer)
+                {
+                    LLFloaterReg::showInstance("animation_explorer");
+                    explorer = LLFloaterReg::findTypedInstance<AnimationExplorer>(
+                        "animation_explorer");
+                }
+                if (explorer)
+                {
+                    mFunctionalExplorer = explorer->getDerivedHandle<AnimationExplorer>();
+                    mFunctionalExplorerSelectionBefore = explorer->getSelectedAnimId();
+                    mFunctionalExplorerFixture = LLUUID::generateNewID();
+                    explorer->addAnimation(mFunctionalExplorerFixture,
+                        LLUUID::generateNewID(), LLTimer::getElapsedSeconds());
+                    if (LLScrollListCtrl* animations = explorer->findChild<LLScrollListCtrl>(
+                            "animation_list", true))
+                    {
+                        mFunctionalExplorerList =
+                            animations->getDerivedHandle<LLScrollListCtrl>();
+                        animations->selectFirstItem();
+                        animations->onCommit();
+                    }
+                }
+            }
+            if (widget == "db_exclude")
+            {
+                ball.setIncludeSelf(true);
+                ball.addDancer(gAgentID, ALDanceBall::DancerKind::SELF);
+                if (LLScrollListCtrl* dancers = mFunctionalPageRoot->findChild<LLScrollListCtrl>(
+                        "db_dancer_list", true))
+                {
+                    bool present = false;
+                    for (LLScrollListItem* item : dancers->getAllData())
+                        present = present || (item && item->getValue().asUUID() == gAgentID);
+                    if (!present)
+                    {
+                        LLSD row;
+                        row["value"] = gAgentID;
+                        row["columns"][0]["column"] = "name";
+                        row["columns"][0]["value"] = "You";
+                        dancers->addElement(row, ADD_BOTTOM);
+                    }
+                    dancers->setSelectedByValue(gAgentID, true);
+                }
+            }
+            if (LLScrollListCtrl* playlist = mFunctionalPageRoot->findChild<LLScrollListCtrl>(
+                    "db_playlist_list", true); playlist)
+            {
+                if (playlist->getItemCount() < 2)
+                {
+                    playlist->clearRows();
+                    const auto& entries = ball.playlist();
+                    for (S32 index = 0; index < static_cast<S32>(entries.size()); ++index)
+                    {
+                        LLSD row;
+                        row["value"] = index;
+                        row["columns"][0]["column"] = "name";
+                        row["columns"][0]["value"] = entries[index].mLabel;
+                        playlist->addElement(row, ADD_BOTTOM);
+                    }
+                }
+                const S32 index = widget == "db_pl_up" ? 1 : 0;
+                playlist->selectNthItem(index);
+                playlist->onCommit();
+            }
+        }
+        if (mInWorld && entry["probe"].asString() == "gaze_cast_target" && gAgentAvatarp &&
+            !mFunctionalHaveCastGazeBefore)
+        {
+            ALPanelLensGaze* panel = findFirstView<ALPanelLensGaze>(mFunctionalPageRoot);
+            LLComboBox* edit_actor = mFunctionalPageRoot->findChild<LLComboBox>(
+                "gaze_edit_actor", true);
+            if (panel && edit_actor)
+            {
+                mFunctionalGazeActor = gAgentAvatarp->getID();
+                mFunctionalGazeBefore = LLActorMover::instance().getGazeTargetConfig(
+                    mFunctionalGazeActor);
+                mFunctionalHaveGazeBefore = true;
+                mFunctionalCastGazeBefore = LLDirectorCast::instance().getGazeTarget(
+                    mFunctionalGazeActor);
+                mFunctionalCastLookBefore = LLDirectorCast::instance().isLookAtCamera(
+                    mFunctionalGazeActor);
+                mFunctionalHaveCastGazeBefore = true;
+                mFunctionalGazeEnabledBefore = LLActorMover::instance().isGazeEnabled(
+                    mFunctionalGazeActor);
+                mFunctionalGazeEditActorBefore = edit_actor->getValue();
+                mFunctionalGazeEditActor = edit_actor->getDerivedHandle<LLComboBox>();
+                if (widget == "gaze_cast_combo")
+                {
+                    mFunctionalGazeCastFixture = LLUUID::generateNewID();
+                    LLDirectorCast::instance().add(mFunctionalGazeCastFixture);
+                }
+                edit_actor->setValue(0);
+                edit_actor->onCommit();
+                LLActorMover::instance().setGazeEnabled(mFunctionalGazeActor, true);
+                LLDirectorCast::instance().setLookAtCamera(mFunctionalGazeActor, true);
+                LLActorMover::GazeTarget target = mFunctionalCastGazeBefore;
+                target.mMode = LLActorMover::GazeTarget::FIXED_POINT;
+                LLDirectorCast::instance().setGazeTarget(mFunctionalGazeActor, target);
+            }
+        }
+        if (mInWorld && entry["probe"].asString() == "gaze_slot" && gAgentAvatarp &&
+            !mFunctionalHaveCastLookBefore)
+        {
+            mFunctionalGazeActor = gAgentAvatarp->getID();
+            mFunctionalCastLookOnlyBefore = LLDirectorCast::instance().isLookAtCamera(
+                mFunctionalGazeActor);
+            mFunctionalHaveCastLookBefore = true;
+        }
+        if (mInWorld && entry["probe"].asString() == "ghost_owner" &&
+            !mFunctionalHaveGhostOwnerBefore)
+        {
+            mFunctionalGhostShowAllBefore = ALGhostStudio::instance().getShowAll();
+            ALToolGhostEdit* tool = ALToolGhostEdit::instanceExists()
+                ? ALToolGhostEdit::getInstance() : nullptr;
+            mFunctionalGhostEditingBefore = tool && tool->isEditModeActive();
+            if (tool) mFunctionalGhostEditOwnerBefore = tool->editOwner();
+            mFunctionalHaveGhostOwnerBefore = true;
+        }
+        if (mInWorld && entry["probe"].asString() == "flycam_stop" &&
+            !mFunctionalFlycamFixture)
+        {
+            LLFlycamRecorder& recorder = LLFlycamRecorder::instance();
+            if (recorder.getState() == LLFlycamRecorder::STATE_IDLE &&
+                recorder.getNumKeyframes() == 0)
+            {
+                recorder.startRecording();
+                mFunctionalFlycamFixture = true;
+            }
         }
         if (mInWorld && widget == "localfog_volume_list" &&
             !mFunctionalHaveLocalFogBefore)
@@ -2936,6 +3253,26 @@ private:
         mFunctionalPathEditCheck = LLHandle<LLCheckBoxCtrl>();
         mFunctionalPathTargetBefore.setNull();
         mFunctionalPathEditBefore = false;
+        if (!mFunctionalCastSelectionBefore.empty() || !mFunctionalPathActorWasCast ||
+            mFunctionalPathLeaderId.notNull())
+        {
+            if (LLScrollListCtrl* cast_list = mFunctionalCastList.get())
+            {
+                cast_list->deselectAllItems();
+                for (const LLUUID& id : mFunctionalCastSelectionBefore)
+                    cast_list->selectByID(id);
+                cast_list->onCommit();
+            }
+            if (!mFunctionalPathActorWasCast && mFunctionalActorMoverId.notNull())
+                LLDirectorCast::instance().remove(mFunctionalActorMoverId);
+            if (mFunctionalPathLeaderId.notNull())
+                LLDirectorCast::instance().remove(mFunctionalPathLeaderId);
+        }
+        mFunctionalCastSelectionBefore.clear();
+        mFunctionalCastList = LLHandle<LLScrollListCtrl>();
+        mFunctionalPathActorWasCast = true;
+        mFunctionalPathLeaderId.setNull();
+        mFunctionalDanceSelectedObject = nullptr;
         if (mFunctionalGhostFixture.notNull())
         {
             ALGhostStudio& studio = ALGhostStudio::instance();
@@ -2953,10 +3290,112 @@ private:
         for (const LLUUID& id : mFunctionalPropFixtures)
             if (ALObjectPathMover::isTarget(id)) ALObjectPathMover::toggleTarget(id);
         mFunctionalPropFixtures.clear();
+        if (mFunctionalPropObject.notNull())
+        {
+            const LLUUID id = mFunctionalPropObject->getID();
+            if (ALObjectPathMover::isTarget(id)) ALObjectPathMover::toggleTarget(id);
+            mFunctionalPropObject->markDead();
+            mFunctionalPropObject = nullptr;
+            mFunctionalPropSelectionAdded = false;
+        }
         if (mFunctionalDanceBefore.isMap())
         {
             ALDanceBall::instance().importSession(mFunctionalDanceBefore);
+            ALDanceBall::instance().setSpeed(
+                mFunctionalDanceBefore["timing"]["speed"].asReal());
+            ALDanceBall::instance().setFrozen(mFunctionalDanceFrozenBefore);
+            ALDanceBall::instance().setEnabled(mFunctionalDanceEnabledBefore);
             mFunctionalDanceBefore = LLSD();
+        }
+        if (mFunctionalClipboardPrepared)
+        {
+            const LLWString restore = mFunctionalClipboardHadText
+                ? mFunctionalClipboardBefore : LLWString();
+            LLClipboard::instance().copyToClipboard(restore, 0,
+                static_cast<S32>(restore.size()));
+            mFunctionalClipboardBefore.clear();
+            mFunctionalClipboardHadText = false;
+            mFunctionalClipboardPrepared = false;
+        }
+        if (AnimationExplorer* explorer = mFunctionalExplorer.get())
+        {
+            if (LLScrollListCtrl* animations = mFunctionalExplorerList.get())
+            {
+                const S32 animation_column = animations->getColumn("animation_id")->mIndex;
+                for (S32 index = animations->getItemCount() - 1; index >= 0; --index)
+                    if (LLScrollListItem* item = animations->getItemByIndex(index);
+                        item && item->getColumn(animation_column)->getValue().asUUID() ==
+                            mFunctionalExplorerFixture)
+                        animations->deleteSingleItem(index);
+                animations->deselectAllItems();
+                if (mFunctionalExplorerSelectionBefore.notNull())
+                    for (S32 index = 0; index < animations->getItemCount(); ++index)
+                        if (LLScrollListItem* item = animations->getItemByIndex(index);
+                            item && item->getColumn(animation_column)->getValue().asUUID() ==
+                                mFunctionalExplorerSelectionBefore)
+                        {
+                            animations->selectNthItem(index);
+                            break;
+                        }
+                animations->onCommit();
+            }
+            if (!mFunctionalExplorerWasVisible) explorer->closeFloater(false);
+        }
+        mFunctionalExplorer = LLHandle<AnimationExplorer>();
+        mFunctionalExplorerList = LLHandle<LLScrollListCtrl>();
+        mFunctionalExplorerFixture.setNull();
+        mFunctionalExplorerSelectionBefore.setNull();
+        mFunctionalExplorerWasVisible = false;
+        if (!mFunctionalDanceActorWasCast && gAgentID.notNull())
+            LLDirectorCast::instance().remove(gAgentID);
+        mFunctionalDanceActorWasCast = true;
+        mFunctionalDanceFixturePrepared = false;
+        if (mFunctionalHaveCastGazeBefore)
+        {
+            LLDirectorCast::instance().setGazeTarget(mFunctionalGazeActor,
+                                                      mFunctionalCastGazeBefore);
+            LLDirectorCast::instance().setLookAtCamera(mFunctionalGazeActor,
+                                                        mFunctionalCastLookBefore);
+            LLActorMover::instance().setGazeEnabled(mFunctionalGazeActor,
+                                                    mFunctionalGazeEnabledBefore);
+            if (LLComboBox* edit_actor = mFunctionalGazeEditActor.get())
+            {
+                edit_actor->setValue(mFunctionalGazeEditActorBefore);
+                edit_actor->onCommit();
+            }
+            mFunctionalGazeEditActor = LLHandle<LLComboBox>();
+            mFunctionalHaveCastGazeBefore = false;
+        }
+        if (mFunctionalGazeCastFixture.notNull())
+        {
+            LLDirectorCast::instance().remove(mFunctionalGazeCastFixture);
+            mFunctionalGazeCastFixture.setNull();
+        }
+        if (mFunctionalHaveCastLookBefore)
+        {
+            LLDirectorCast::instance().setLookAtCamera(mFunctionalGazeActor,
+                                                        mFunctionalCastLookOnlyBefore);
+            mFunctionalHaveCastLookBefore = false;
+        }
+        if (mFunctionalHaveGhostOwnerBefore)
+        {
+            ALGhostStudio::instance().setShowAll(mFunctionalGhostShowAllBefore);
+            ALToolGhostEdit* tool = ALToolGhostEdit::instanceExists()
+                ? ALToolGhostEdit::getInstance() : nullptr;
+            if (tool)
+            {
+                if (mFunctionalGhostEditingBefore)
+                    tool->beginEditFor(mFunctionalGhostEditOwnerBefore);
+                else if (tool->isEditModeActive())
+                    tool->stopEditMode();
+            }
+            mFunctionalHaveGhostOwnerBefore = false;
+        }
+        if (mFunctionalFlycamFixture)
+        {
+            if (LLFlycamRecorder::instance().getState() == LLFlycamRecorder::STATE_RECORDING)
+                LLFlycamRecorder::instance().stopRecording();
+            mFunctionalFlycamFixture = false;
         }
         if (mFunctionalHaveLocalFogBefore)
         {
@@ -3360,7 +3799,10 @@ private:
             // forbids everything; instead the resolved handler must never be inside it (below).
             mFunctionalLoginPanel = login->getHandle();
         }
-        if (!host || !host->calcScreenRect().pointInRect(mFunctionalScreenX, mFunctionalScreenY))
+        const bool popup_target = expected == dynamic_cast<LLView*>(mFunctionalAllowedCaptor) &&
+            expected->calcScreenRect().pointInRect(mFunctionalScreenX, mFunctionalScreenY);
+        if (!host || (!popup_target &&
+                      !host->calcScreenRect().pointInRect(mFunctionalScreenX, mFunctionalScreenY)))
         {
             reason = "not reachable: outside Director/redirect floater";
             return false;
@@ -4810,6 +5252,53 @@ private:
             }
         }
         mFunctionalControlBefore = control->getValue();
+        const std::string owner_probe = entry["probe"].asString();
+        if (owner_probe == "dance_owner")
+        {
+            mFunctionalOwnerModelBefore = ALDanceBall::instance().exportSession();
+            mFunctionalOwnerModelBefore["runtime"]["enabled"] =
+                ALDanceBall::instance().enabled();
+            mFunctionalOwnerModelBefore["runtime"]["frozen"] =
+                ALDanceBall::instance().frozen();
+            mFunctionalDanceRampBefore = ALDanceBall::instance().speedRampProgress();
+            mFunctionalDanceStatusRevisionBefore =
+                ALDanceBall::instance().statusRevision();
+        }
+        else if (owner_probe == "ghost_owner")
+        {
+            mFunctionalOwnerModelBefore = LLSD::emptyMap();
+            mFunctionalOwnerModelBefore["show_all"] = ALGhostStudio::instance().getShowAll();
+            ALToolGhostEdit* tool = ALToolGhostEdit::instanceExists()
+                ? ALToolGhostEdit::getInstance() : nullptr;
+            mFunctionalOwnerModelBefore["editing"] = tool && tool->isEditModeActive();
+        }
+        else if (owner_probe == "gaze_slot" && gAgentAvatarp)
+        {
+            mFunctionalGazeActor = gAgentAvatarp->getID();
+            mFunctionalOwnerModelBefore = LLDirectorCast::instance().isLookAtCamera(
+                mFunctionalGazeActor);
+        }
+        else if (owner_probe == "prop_owner")
+        {
+            mFunctionalOwnerModelBefore = LLSD::emptyMap();
+            mFunctionalOwnerModelBefore["roster"] = static_cast<S32>(
+                ALObjectPathMover::instance().getRoster().size());
+            S32 nodes = 0;
+            S32 driving = 0;
+            for (const LLUUID& id : ALObjectPathMover::instance().getRoster())
+            {
+                if (const LLActorMover::Path* path = LLActorMover::instance().getPath(id))
+                    nodes += static_cast<S32>(path->mNodes.size());
+                if (ALObjectPathMover::instance().isDriving(id)) ++driving;
+            }
+            mFunctionalOwnerModelBefore["nodes"] = nodes;
+            mFunctionalOwnerModelBefore["driving"] = driving;
+        }
+        else if (owner_probe == "flycam_stop")
+            mFunctionalOwnerModelBefore = static_cast<S32>(
+                LLFlycamRecorder::instance().getState());
+        else if (owner_probe == "path_selection")
+            mFunctionalOwnerModelBefore = LLActorMover::instance().getEditNode();
         const std::string& function_name = FunctionalControlAccess::functionName(control);
         mFunctionalHandlerName.clear();
         if (!function_name.empty() && LLUICtrl::CommitCallbackRegistry::getValue(function_name))
@@ -4979,7 +5468,15 @@ private:
                          // writes the account's asset_blocklist.
                          entry["widget_name"].asString() == "btn_anim_ex_stop" ||
                          entry["widget_name"].asString() == "btn_anim_ex_revoke" ||
-                         entry["widget_name"].asString() == "btn_anim_ex_blacklist"))
+                         entry["widget_name"].asString() == "btn_anim_ex_blacklist" ||
+                         // Any LLSelectMgr selection broadcasts PointAt/AGENT_STATE_EDITING;
+                         // Animation Explorer sends ObjectSelect for animation sources.
+                         entry["widget_name"].asString() == "btn_enroll" ||
+                         entry["widget_name"].asString() == "db_from_explorer" ||
+                         // Opens Animation Explorer (ObjectSelect for sources) /
+                         // ghost edit mode selects its proxy volume (PointAt).
+                         entry["widget_name"].asString() == "btn_open_animexp" ||
+                         entry["widget_name"].asString() == "edit_ghosts_check"))
         {
             addFunctionalResult(entry, "SKIP",
                 "in-world: not on the viewer-local allow-list");
@@ -5310,6 +5807,150 @@ private:
             expected_ok = expected_ok && owner_ok;
             if (!owner_ok) assertion_failure =
                 "list selection or its viewer-local owner oracle did not match the clicked row";
+        }
+        const std::string owner_probe = entry["probe"].asString();
+        if (owner_probe == "path_selection")
+        {
+            // The edit node must MOVE to the clicked row: a pre-state that
+            // already equals the target cannot prove the handler ran.
+            const bool selected = LLActorMover::instance().getEditNode() ==
+                    mFunctionalListExpected.asInteger() &&
+                mFunctionalOwnerModelBefore.asInteger() != mFunctionalListExpected.asInteger();
+            mFunctionalObserved["path"]["edit_node"] =
+                LLActorMover::instance().getEditNode();
+            observable = selected;
+            expected_ok = expected_ok && selected;
+            if (!selected) assertion_failure = "waypoint selection did not move LLActorMover edit-node state";
+        }
+        else if (owner_probe == "dance_owner" &&
+                 widget_name != "db_playlist_list")
+        {
+            const ALDanceBall& ball = ALDanceBall::instance();
+            LLSD dance_after = ball.exportSession();
+            dance_after["runtime"]["enabled"] = ball.enabled();
+            dance_after["runtime"]["frozen"] = ball.frozen();
+            bool owner_changed = dance_after != mFunctionalOwnerModelBefore;
+            if (widget_name == "db_ramp_go")
+                owner_changed = owner_changed ||
+                    ball.speedRampProgress() != mFunctionalDanceRampBefore;
+            if (widget_name == "db_reshuffle" || widget_name == "db_play_selected" ||
+                widget_name == "db_play_all" || widget_name == "db_ramp_go")
+                owner_changed = owner_changed ||
+                    ball.statusRevision() != mFunctionalDanceStatusRevisionBefore;
+            bool owner_ok = owner_changed;
+            if (widget_name == "db_on") owner_ok = ball.enabled() == control->getValue().asBoolean();
+            else if (widget_name == "db_header_desync")
+                owner_ok = std::fabs(ball.timing().mDesync - control->getValue().asReal()) < 0.001;
+            else if (widget_name == "db_focus")
+                owner_ok = static_cast<S32>(ball.autoJoinFocus()) == control->getValue().asInteger();
+            else if (widget_name == "db_autojoin") owner_ok = ball.autoJoin() == control->getValue().asBoolean();
+            else if (widget_name == "db_include_seated") owner_ok = ball.includeSeated() == control->getValue().asBoolean();
+            else if (widget_name == "db_include_me") owner_ok = ball.includeSelf() == control->getValue().asBoolean();
+            else if (widget_name == "db_adv_jitter")
+                owner_ok = std::fabs(ball.timing().mAdvanceJitterSeconds - control->getValue().asReal()) < 0.001;
+            else if (widget_name == "db_t_speed_jitter")
+                owner_ok = std::fabs(ball.timing().mSpeedJitter - control->getValue().asReal()) < 0.001;
+            else if (widget_name == "db_t_priority") owner_ok = ball.timing().mPriority == control->getValue().asInteger();
+            else if (widget_name == "db_t_dance_drives_face")
+                owner_ok = ball.timing().mDanceDrivesFace == control->getValue().asBoolean();
+            else if (widget_name == "db_wave_focus")
+                owner_ok = static_cast<S32>(ball.wave().mFocus) == control->getValue().asInteger();
+            else if (widget_name == "db_wave_speed")
+                owner_ok = std::fabs(ball.wave().mSpreadMetersPerSecond - control->getValue().asReal()) < 0.001;
+            else if (widget_name == "db_wave_dir")
+                owner_ok = static_cast<S32>(ball.wave().mDirection) == control->getValue().asInteger();
+            else if (widget_name == "db_wave_apply")
+                owner_ok = static_cast<S32>(ball.wave().mApply) == control->getValue().asInteger();
+            else if (widget_name == "db_freeze") owner_ok = ball.frozen() == control->getValue().asBoolean();
+            else if (widget_name == "db_stop_all") owner_ok = !ball.enabled();
+            else if (widget_name == "db_play_selected" || widget_name == "db_play_all")
+                owner_ok = ball.enabled() &&
+                    ball.statusRevision() != mFunctionalDanceStatusRevisionBefore;
+            else if (widget_name == "db_reshuffle")
+                owner_ok = ball.statusRevision() != mFunctionalDanceStatusRevisionBefore;
+            else if (widget_name == "db_ramp_go")
+                owner_ok = ball.speedRampProgress() < 1.0 &&
+                    ball.statusRevision() != mFunctionalDanceStatusRevisionBefore;
+            owner_ok = owner_changed && owner_ok;
+            mFunctionalObserved["dance"]["owner_changed"] =
+                owner_changed;
+            mFunctionalObserved["dance"]["owner_oracle"] = owner_ok;
+            observable = owner_ok;
+            expected_ok = expected_ok && owner_ok;
+            if (!owner_ok) assertion_failure = "dance control did not move its ALDanceBall owner state";
+        }
+        else if (owner_probe == "ghost_owner")
+        {
+            ALToolGhostEdit* tool = ALToolGhostEdit::instanceExists()
+                ? ALToolGhostEdit::getInstance() : nullptr;
+            // The owner must match the control AND have changed from its
+            // pre-click value (a panel re-sync alone cannot pass).
+            const bool show_all = widget_name == "show_all_check";
+            const bool owner_after = show_all
+                ? ALGhostStudio::instance().getShowAll()
+                : (tool && tool->isEditModeActive());
+            const bool owner_before = mFunctionalOwnerModelBefore[
+                show_all ? "show_all" : "editing"].asBoolean();
+            const bool owner_ok = owner_after == control->getValue().asBoolean() &&
+                owner_after != owner_before;
+            observable = owner_ok;
+            expected_ok = expected_ok && owner_ok;
+            if (!owner_ok) assertion_failure = "ghost control did not move its viewer-local owner state";
+        }
+        else if (owner_probe == "gaze_slot" && mFunctionalGazeActor.notNull())
+        {
+            const bool owner_after = LLDirectorCast::instance().isLookAtCamera(
+                mFunctionalGazeActor);
+            const bool owner_ok = owner_after == control->getValue().asBoolean() &&
+                owner_after != mFunctionalOwnerModelBefore.asBoolean();
+            observable = owner_ok;
+            expected_ok = expected_ok && owner_ok;
+            if (!owner_ok) assertion_failure = "gaze slot did not move LLDirectorCast look-at state";
+        }
+        else if (owner_probe == "gaze_cast_target" && mFunctionalGazeActor.notNull())
+        {
+            const LLActorMover::GazeTarget target =
+                LLDirectorCast::instance().getGazeTarget(mFunctionalGazeActor);
+            const S32 wanted = entry["gaze_cast_mode"].asInteger();
+            bool owner_ok = static_cast<S32>(target.mMode) == wanted;
+            if (widget_name == "gaze_cast_combo")
+                owner_ok = owner_ok && target.mCastRef == control->getValue().asUUID();
+            mFunctionalObserved["gaze"]["mode"] = static_cast<S32>(target.mMode);
+            mFunctionalObserved["gaze"]["cast_target"] = target.mCastRef;
+            observable = owner_ok;
+            expected_ok = expected_ok && owner_ok;
+            if (!owner_ok) assertion_failure = "gaze control did not move LLDirectorCast target state";
+        }
+        else if (owner_probe == "prop_owner" &&
+                 widget_name != "prop_list" && widget_name != "node_list")
+        {
+            LLSD after = LLSD::emptyMap();
+            after["roster"] = static_cast<S32>(ALObjectPathMover::instance().getRoster().size());
+            S32 nodes = 0;
+            S32 driving = 0;
+            for (const LLUUID& id : ALObjectPathMover::instance().getRoster())
+            {
+                if (const LLActorMover::Path* path = LLActorMover::instance().getPath(id))
+                    nodes += static_cast<S32>(path->mNodes.size());
+                if (ALObjectPathMover::instance().isDriving(id)) ++driving;
+            }
+            after["nodes"] = nodes;
+            after["driving"] = driving;
+            const bool owner_ok = after != mFunctionalOwnerModelBefore;
+            mFunctionalObserved["prop"]["before"] = mFunctionalOwnerModelBefore;
+            mFunctionalObserved["prop"]["after"] = after;
+            observable = owner_ok;
+            expected_ok = expected_ok && owner_ok;
+            if (!owner_ok) assertion_failure = "prop control did not move roster, node, or driving owner state";
+        }
+        else if (owner_probe == "flycam_stop")
+        {
+            const bool owner_ok = LLFlycamRecorder::instance().getState() ==
+                LLFlycamRecorder::STATE_IDLE &&
+                mFunctionalOwnerModelBefore.asInteger() != LLFlycamRecorder::STATE_IDLE;
+            observable = owner_ok;
+            expected_ok = expected_ok && owner_ok;
+            if (!owner_ok) assertion_failure = "Stop did not move LLFlycamRecorder transport to idle";
         }
         const LLSD consumer_after = functionalConsumerValue(entry);
         mFunctionalObserved["click"]["commits"] = mFunctionalCommitCount;
@@ -9057,6 +9698,10 @@ private:
     LLHandle<LLCheckBoxCtrl> mFunctionalPathEditCheck;
     LLUUID mFunctionalPathTargetBefore;
     bool mFunctionalPathEditBefore = false;
+    uuid_vec_t mFunctionalCastSelectionBefore;
+    LLHandle<LLScrollListCtrl> mFunctionalCastList;
+    bool mFunctionalPathActorWasCast = true;
+    LLUUID mFunctionalPathLeaderId;
     LLUUID mFunctionalGhostFixture;
     LLUUID mFunctionalGhostSelectionBefore;
     LLDirectorCast::ActorStyle mFunctionalActorStyleBefore;
@@ -9108,7 +9753,39 @@ private:
     LLSD mFunctionalRadioExpected;
     LLSD mFunctionalListExpected;
     LLSD mFunctionalDanceBefore;
+    bool mFunctionalDanceEnabledBefore = false;
+    bool mFunctionalDanceFrozenBefore = false;
+    F64 mFunctionalDanceRampBefore = 1.0;
+    U64 mFunctionalDanceStatusRevisionBefore = 0;
+    LLSD mFunctionalOwnerModelBefore;
+    LLActorMover::GazeTarget mFunctionalCastGazeBefore;
+    bool mFunctionalCastLookBefore = false;
+    bool mFunctionalHaveCastGazeBefore = false;
+    bool mFunctionalGazeEnabledBefore = false;
+    LLSD mFunctionalGazeEditActorBefore;
+    LLHandle<LLComboBox> mFunctionalGazeEditActor;
+    LLUUID mFunctionalGazeCastFixture;
+    bool mFunctionalCastLookOnlyBefore = false;
+    bool mFunctionalHaveCastLookBefore = false;
+    bool mFunctionalDanceActorWasCast = true;
+    bool mFunctionalDanceFixturePrepared = false;
+    LLPointer<LLViewerObject> mFunctionalDanceSelectedObject;
+    LLWString mFunctionalClipboardBefore;
+    bool mFunctionalClipboardHadText = false;
+    bool mFunctionalClipboardPrepared = false;
+    LLHandle<AnimationExplorer> mFunctionalExplorer;
+    LLHandle<LLScrollListCtrl> mFunctionalExplorerList;
+    LLUUID mFunctionalExplorerFixture;
+    LLUUID mFunctionalExplorerSelectionBefore;
+    bool mFunctionalExplorerWasVisible = false;
+    bool mFunctionalGhostShowAllBefore = true;
+    bool mFunctionalGhostEditingBefore = false;
+    bool mFunctionalHaveGhostOwnerBefore = false;
+    LLUUID mFunctionalGhostEditOwnerBefore;
+    bool mFunctionalFlycamFixture = false;
     std::vector<LLUUID> mFunctionalPropFixtures;
+    LLPointer<LLVOVolume> mFunctionalPropObject;
+    bool mFunctionalPropSelectionAdded = false;
     LLUUID mFunctionalRigProjectorCapture;
     LLSD mFunctionalOriginalControlValue;
     LLHandle<LLUICtrl> mFunctionalSecondaryControl;

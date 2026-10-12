@@ -467,7 +467,7 @@ None.
 
 ## Rejected out-of-scope same-name candidates
 
-5 candidates were rejected by the XUI-owner/class scope; exact records and reasons are in `page_sources.json`.
+7 candidates were rejected by the XUI-owner/class scope; exact records and reasons are in `page_sources.json`.
 
 ## New widget required
 
