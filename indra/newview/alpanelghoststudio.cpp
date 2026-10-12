@@ -686,10 +686,14 @@ void ALPanelGhostStudio::reshape(S32 width, S32 height, bool called_from_parent)
     LLPanel::reshape(width, height, called_from_parent);
     if (LLTabContainer* tabs = findChild<LLTabContainer>("ghost_studio_tabs"))
     {
-        constexpr S32 TABS_TOP = 214;
-        constexpr S32 STATUS_HEIGHT = 26;
-        tabs->reshape(width, llmax(1, height - TABS_TOP - STATUS_HEIGHT), true);
-        tabs->setOrigin(0, STATUS_HEIGHT);
+        // The tabs fill from the panel bottom up to the instances section
+        // (the status bar is at the top since 382b04b6faf). Derive the top
+        // from the XUI layout so the tabs never cover Duplicate/Delete/Refresh.
+        const LLView* instances = findChild<LLView>("instances_section", false);
+        const S32 tabs_top = instances ? instances->getRect().mBottom
+                                       : height - 242;
+        tabs->reshape(width, llmax(1, tabs_top), true);
+        tabs->setOrigin(0, 0);
     }
 }
 
@@ -2327,6 +2331,10 @@ void ALPanelGhostStudio::onChaosCommit()
     }
     if (ALGhostStudio::Instance* inst = studio.getInstance(id))
     {
+        // Enabling needs a non-zero amount (chaos is on iff amount > 0): the
+        // slider is disabled while off, so start it at 0.5 when it sits at 0.
+        if (mChaosCheck->get() && mChaosSlider->getValue().asReal() <= 0.0)
+            mChaosSlider->setValue(0.5);
         const F32 amount = mChaosCheck->get()
             ? (F32)mChaosSlider->getValue().asReal() : 0.f;
         studio.setInstanceChaos(inst->mId, amount);
