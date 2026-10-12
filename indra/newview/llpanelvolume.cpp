@@ -29,6 +29,8 @@
 // file include
 #include "llpanelvolume.h"
 
+#include "alvcampagemodel.h"
+
 // linden library includes
 #include "llclickaction.h"
 #include "llerror.h"
@@ -151,6 +153,9 @@ bool    LLPanelVolume::postBuild()
         mLightTextureCtrl->setOnCancelCallback(boost::bind(&LLPanelVolume::onLightCancelTexture, this, _2));
         mLightTextureCtrl->setOnSelectCallback(boost::bind(&LLPanelVolume::onLightSelectTexture, this, _2));
         mLightTextureCtrl->setCommitCallback(boost::bind(onCommitLight, boost::placeholders::_1, this));
+        mLightTextureCtrl->setVCamTarget(EVCamTextureTarget::PROJECTOR,
+            [this](LLTextureCtrl::ETexturePickOp, const LLUUID& capture_id)
+            { onVCamProjector(capture_id); });
 
         mLightIntensity = getChild<LLSpinCtrl>("Light Intensity");
         mLightIntensity->setValidateBeforeCommit(precommitValidate);
@@ -414,6 +419,8 @@ void LLPanelVolume::getState( )
         mLightFocus->setEnabled(false);
         mLightAmbiance->setEnabled(false);
     }
+
+    refreshVCamProjectorLabel(volobjp);
 
     // Reflection Probe
     bool is_probe = volobjp && volobjp->isReflectionProbe();
@@ -1047,6 +1054,79 @@ void LLPanelVolume::onLightSelectTexture(const LLSD& data)
 
     LLUUID id = mLightTextureCtrl->getImageAssetID();
     setLightTextureID(id, mLightTextureCtrl->getImageItemID(), volobjp);
+}
+
+void LLPanelVolume::onVCamProjector(const LLUUID& capture_id)
+{
+    LLViewerObject* object = mObject.get();
+    if (!object) return;
+    std::string reason;
+    if (capture_id.isNull())
+    {
+        const LLPrismLens::RegistrySnapshot snapshot = LLPrismLens::registrySnapshot();
+        bool removed = false;
+        for (U32 index = 0; index < snapshot.mProjectorCount; ++index)
+        {
+            const LLPrismLens::ProjectorDefinition& binding = snapshot.mProjectors[index];
+            if (binding.mTarget == LLPrismLens::EProjectorTarget::OBJECT &&
+                binding.mObjectId == object->getID())
+            {
+                removed = LLPrismLens::removeProjector(binding.mHandle, &reason);
+                break;
+            }
+        }
+        if (!removed && reason.empty()) reason = "This light has no VCam feed.";
+    }
+    else
+    {
+        bool already_bound = false;
+        const LLPrismLens::RegistrySnapshot snapshot = LLPrismLens::registrySnapshot();
+        for (U32 index = 0; index < snapshot.mProjectorCount; ++index)
+        {
+            const LLPrismLens::ProjectorDefinition& binding = snapshot.mProjectors[index];
+            if (binding.mTarget == LLPrismLens::EProjectorTarget::OBJECT &&
+                binding.mObjectId == object->getID() &&
+                binding.mCapture.mId == capture_id)
+            {
+                already_bound = true;
+                break;
+            }
+        }
+        if (!already_bound &&
+            ALVCamPageModel::dropOnProjector(capture_id, object, nullptr, &reason) !=
+                LLPrismLens::ERegistryResult::OK)
+        {
+            LLSD args;
+            args["MESSAGE"] = reason;
+            LLNotificationsUtil::add("GenericAlert", args);
+        }
+    }
+    refreshVCamProjectorLabel(object);
+}
+
+void LLPanelVolume::refreshVCamProjectorLabel(LLViewerObject* object)
+{
+    if (!mLightTextureCtrl) return;
+    LLUUID capture_id;
+    std::string label;
+    const LLPrismLens::RegistrySnapshot snapshot = LLPrismLens::registrySnapshot();
+    for (U32 index = 0; object && index < snapshot.mProjectorCount; ++index)
+    {
+        const LLPrismLens::ProjectorDefinition& binding = snapshot.mProjectors[index];
+        if (binding.mTarget == LLPrismLens::EProjectorTarget::OBJECT &&
+            binding.mObjectId == object->getID())
+        {
+            capture_id = binding.mCapture.mId;
+            break;
+        }
+    }
+    for (U32 index = 0; capture_id.notNull() && index < snapshot.mCaptureCount; ++index)
+        if (snapshot.mCaptures[index].mHandle.mId == capture_id)
+        {
+            label = llformat("VCam: Cam %u", snapshot.mCaptures[index].mSlot + 1);
+            break;
+        }
+    mLightTextureCtrl->setVCamOverride(capture_id, label);
 }
 
 void LLPanelVolume::onCopyFeatures()

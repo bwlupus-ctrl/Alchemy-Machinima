@@ -29,6 +29,8 @@
 // file include
 #include "llpanelface.h"
 
+#include "alvcampagemodel.h"
+
 // library includes
 #include "llcalc.h"
 #include "llerror.h"
@@ -442,6 +444,9 @@ bool LLPanelFace::postBuild()
     mTextureCtrl->setFollowsLeft();
     mTextureCtrl->setImmediateFilterPermMask(PERM_NONE);
     mTextureCtrl->setDnDFilterPermMask(PERM_COPY | PERM_TRANSFER);
+    mTextureCtrl->setVCamTarget(EVCamTextureTarget::FACE,
+        [this](LLTextureCtrl::ETexturePickOp, const LLUUID& capture_id)
+        { onVCamTexture(capture_id); });
 
     mShinyTextureCtrl = getChild<LLTextureCtrl>("shinytexture control");
     mShinyTextureCtrl->setDefaultImageAssetID(DEFAULT_OBJECT_SPECULAR);
@@ -1447,6 +1452,8 @@ void LLPanelFace::updateUI(bool force_set_values /*false*/)
                     mTextureCtrl->setImmediateFilterPermMask(PERM_NONE);
                 }
             }
+
+            refreshVCamTextureLabel();
 
             if (mShinyTextureCtrl)
             {
@@ -3375,6 +3382,71 @@ void LLPanelFace::onCommitTexture()
 {
     add(LLStatViewer::EDIT_TEXTURE, 1);
     sendTexture();
+}
+
+void LLPanelFace::onVCamTexture(const LLUUID& capture_id)
+{
+    std::string reason;
+    if (capture_id.isNull())
+    {
+        ALVCamPageModel::clearSelectedFaces(&reason);
+    }
+    else if (ALVCamPageModel::applyToSelectedFaces(
+                 capture_id, LLPrismLens::EFitMode::FIT, &reason) !=
+             LLPrismLens::ERegistryResult::OK)
+    {
+        LLSD args;
+        args["MESSAGE"] = reason;
+        LLNotificationsUtil::add("GenericAlert", args);
+    }
+    refreshVCamTextureLabel();
+}
+
+void LLPanelFace::refreshVCamTextureLabel()
+{
+    if (!mTextureCtrl) return;
+    const LLPrismLens::RegistrySnapshot snapshot = LLPrismLens::registrySnapshot();
+    struct BindingReader final : LLSelectedTEFunctor
+    {
+        const LLPrismLens::RegistrySnapshot& mSnapshot;
+        LLUUID mCapture;
+        bool mSawFace = false;
+        bool mAllSame = true;
+        explicit BindingReader(const LLPrismLens::RegistrySnapshot& snapshot)
+            : mSnapshot(snapshot) {}
+        bool apply(LLViewerObject* object, S32 te) override
+        {
+            LLUUID capture;
+            for (U32 index = 0; object && index < mSnapshot.mDisplayCount; ++index)
+            {
+                const LLPrismLens::DisplayDefinition& display = mSnapshot.mDisplays[index];
+                if (!display.mSettings.mVirtual &&
+                    display.mDisplayObjectId == object->getID() &&
+                    display.mDisplayTextureEntry == te)
+                {
+                    capture = display.mCapture.mId;
+                    break;
+                }
+            }
+            if (!mSawFace) mCapture = capture;
+            else if (mCapture != capture) mAllSame = false;
+            mSawFace = true;
+            return true;
+        }
+    } reader(snapshot);
+    LLSelectMgr::getInstance()->getSelection()->applyToTEs(&reader);
+    std::string label;
+    if (reader.mSawFace && !reader.mAllSame)
+        label = "VCam: Multiple";
+    else if (reader.mCapture.notNull())
+        for (U32 index = 0; index < snapshot.mCaptureCount; ++index)
+            if (snapshot.mCaptures[index].mHandle.mId == reader.mCapture)
+            {
+                label = llformat("VCam: Cam %u", snapshot.mCaptures[index].mSlot + 1);
+                break;
+            }
+    mTextureCtrl->setVCamOverride(reader.mAllSame ? reader.mCapture : LLUUID::null,
+                                  label);
 }
 
 void LLPanelFace::onCancelTexture()

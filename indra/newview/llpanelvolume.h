@@ -86,6 +86,8 @@ public:
 
     void        onLightCancelTexture(const LLSD& data);
     void        onLightSelectTexture(const LLSD& data);
+    void        onVCamProjector(const LLUUID& capture_id);
+    void        refreshVCamProjectorLabel(LLViewerObject* object);
 
     static void    setLightTextureID(const LLUUID &asset_id, const LLUUID &item_id, LLVOVolume* volobjp);
 

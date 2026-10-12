@@ -24,6 +24,14 @@ public:
         LLPrismLens::DisplayHandle mExistingDisplay;
         bool mReassignment = false;
     };
+    struct ProjectorDropStatus
+    {
+        LLPrismLens::ActionStatus mAction;
+        LLPrismLens::CaptureHandle mCapture;
+        LLPrismLens::ProjectorHandle mExistingProjector;
+        bool mReassignment = false;
+        bool mAlreadyBound = false;
+    };
 
     enum DirtyBits : U32
     {
@@ -86,6 +94,15 @@ public:
         const LLUUID& capture_id, LLViewerObject* object, S32 te,
         LLPrismLens::EFitMode fit, bool* reassigned = nullptr,
         std::string* reason = nullptr);
+    static LLPrismLens::ERegistryResult applyToSelectedFaces(
+        const LLUUID& capture_id, LLPrismLens::EFitMode fit,
+        std::string* reason = nullptr);
+    static bool clearSelectedFaces(std::string* reason = nullptr);
+    static ProjectorDropStatus projectorDropStatus(
+        const LLUUID& capture_id, LLViewerObject* object);
+    static LLPrismLens::ERegistryResult dropOnProjector(
+        const LLUUID& capture_id, LLViewerObject* object,
+        bool* reassigned = nullptr, std::string* reason = nullptr);
     LLPrismLens::ERegistryResult addVirtualScreen(
         const LLPrismLens::CaptureHandle& capture, const LLVector3& pos,
         const LLQuaternion& rot, F32 width, F32 height,

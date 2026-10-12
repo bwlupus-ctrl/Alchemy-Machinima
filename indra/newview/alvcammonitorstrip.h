@@ -203,4 +203,59 @@ private:
     LLColor4 mBorderColor;
 };
 
+class ALVCamTexturePickerList : public LLUICtrl
+{
+public:
+    struct Params : public LLInitParam::Block<Params, LLUICtrl::Params> { Params() = default; };
+    struct Item
+    {
+        LLPrismLens::CaptureHandle mCapture;
+        LLPrismPreviewService::TilePublication mPublication;
+        std::string mLabel;
+    };
+    void setItems(const std::array<Item, LLPrismLens::MAX_CAPTURES>& items,
+                  U32 count, const LLUUID& selected);
+    void draw() override;
+    bool handleMouseDown(S32 x, S32 y, MASK mask) override;
+protected:
+    friend class LLUICtrlFactory;
+    explicit ALVCamTexturePickerList(const Params& p);
+private:
+    S32 rowAt(S32 y) const;
+    std::array<Item, LLPrismLens::MAX_CAPTURES> mItems;
+    U32 mCount = 0;
+    LLUUID mSelected;
+    const LLFontGL* mFont = nullptr;
+    LLColor4 mBorderColor;
+    LLColor4 mTextColor;
+    LLColor4 mMutedColor;
+    LLColor4 mAccentColor;
+    LLPrismPreviewService* mPreviewService = nullptr;
+};
+
+class ALVCamProjectorList : public LLUICtrl
+{
+public:
+    struct Params : public LLInitParam::Block<Params, LLUICtrl::Params> { Params() = default; };
+    struct Item
+    {
+        LLPrismLens::ProjectorHandle mHandle;
+        std::string mName;
+        std::string mMeta;
+    };
+    void setItems(const std::vector<Item>& items);
+    void draw() override;
+    bool handleMouseDown(S32 x, S32 y, MASK mask) override;
+protected:
+    friend class LLUICtrlFactory;
+    explicit ALVCamProjectorList(const Params& p);
+private:
+    S32 rowAt(S32 y) const;
+    std::vector<Item> mItems;
+    const LLFontGL* mFont = nullptr;
+    LLColor4 mBorderColor;
+    LLColor4 mTextColor;
+    LLColor4 mMutedColor;
+};
+
 #endif

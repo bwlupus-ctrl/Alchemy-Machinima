@@ -102,6 +102,9 @@
       {"l": "Add virtual screen", "k": "button", "w": "vc_add_screen", "h": "Add a viewer-local virtual screen in front of your view.", "btn": "Add virtual screen", "bind": "code"},
       {"l": "Face capacity", "k": "readout", "w": "vc_face_count", "h": "Faces used across all cameras.", "bind": "code"}
     ]},
+    {"id": "projectors", "t": "Projectors", "k": "rows", "badge": "CAM n", "rows": [
+      {"l": "Projectors", "k": "custom", "w": "vc_projector_list", "h": "Projector lights using this camera. Remove clears only the viewer-local feed.", "custom_tag": "vcam_projector_list", "bind": "code", "row_height": 150}
+    ]},
     {"id": "face_mapping", "t": "Face mapping", "k": "rows", "badge": "THIS FACE", "rows": [
       {"l": "Feed from", "k": "segmented", "w": "vc_face_feed", "h": "Route this face to this camera or the Gate program feed.", "it": ["This camera", "Gate program"], "iv": [0,1], "bind": "code"},
       {"l": "Mapping", "k": "combo", "w": "vc_face_fit", "h": "Fit keeps the whole picture with bars; Fill crops by the anchor; Stretch maps the complete picture.", "it": ["Fit", "Fill", "Stretch"], "iv": [0,1,2], "bind": "code"},
@@ -169,7 +172,7 @@
     {"id": "source", "label": "1 Source", "cards": [0,1,2,3,4,5]},
     {"id": "lens", "label": "2 Lens", "cards": [0,1,2,6,7,8]},
     {"id": "look", "label": "3 Look", "cards": [0,1,2,9,10]},
-    {"id": "output", "label": "4 Output", "cards": [0,1,2,11,12,13,14,15]},
-    {"id": "rate", "label": "5 Rate & performance", "cards": [0,1,2,16,17]}
+    {"id": "output", "label": "4 Output", "cards": [0,1,2,11,12,13,14,15,16]},
+    {"id": "rate", "label": "5 Rate & performance", "cards": [0,1,2,17,18]}
   ]
 }

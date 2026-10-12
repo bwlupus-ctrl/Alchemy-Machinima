@@ -168,6 +168,8 @@ protected:
     void onCommitTexture();
     void onCancelTexture();
     void onSelectTexture();
+    void onVCamTexture(const LLUUID& capture_id);
+    void refreshVCamTextureLabel();
     void onCommitSpecularTexture(const LLSD& data);
     void onCancelSpecularTexture(const LLSD& data);
     void onSelectSpecularTexture(const LLSD& data);
@@ -725,4 +727,3 @@ public:
 };
 
 #endif
-

@@ -21,6 +21,7 @@ class ALVCamMonitorHeader;
 class ALVCamMonitorPager;
 class ALVCamCameraSelector;
 class ALVCamFaceList;
+class ALVCamProjectorList;
 class LLContextMenu;
 class LLUICtrl;
 
@@ -60,6 +61,7 @@ private:
     ALVCamMonitorPager* mMonitorPager = nullptr;
     ALVCamCameraSelector* mCameraSelector = nullptr;
     ALVCamFaceList* mFaceList = nullptr;
+    ALVCamProjectorList* mProjectorList = nullptr;
     std::unordered_map<std::string, LLUICtrl*> mControls;
     std::unordered_map<std::string, ALKitRow*> mRows;
     std::vector<boost::signals2::scoped_connection> mConnections;

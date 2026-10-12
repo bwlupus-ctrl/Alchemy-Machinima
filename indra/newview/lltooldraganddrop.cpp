@@ -61,6 +61,7 @@
 #include "lltooltip.h"
 #include "lltrans.h"
 #include "llviewerobjectlist.h"
+#include "llvovolume.h"
 #include "llviewerregion.h"
 #include "llviewerstats.h"
 #include "llviewerwindow.h"
@@ -2322,6 +2323,35 @@ EAcceptance LLToolDragAndDrop::dad3dVCamFeed(
     }
 
     const LLUUID& capture_id = mCargoIDs[mCurItemIndex];
+    LLVOVolume* volume = dynamic_cast<LLVOVolume*>(obj);
+    if (volume && volume->getIsLight() && volume->isLightSpotlight())
+    {
+        const ALVCamPageModel::ProjectorDropStatus projector =
+            ALVCamPageModel::projectorDropStatus(capture_id, obj);
+        if (!projector.mAction.allowed())
+        {
+            mCustomMsg = projector.mAction.mReason;
+            return ACCEPT_NO_CUSTOM;
+        }
+        const EAcceptance accepted = projector.mReassignment
+            ? ACCEPT_YES_SINGLE : ACCEPT_YES_COPY_SINGLE;
+        if (!drop)
+        {
+            mCustomMsg = "Drop to project this VCam feed through the light.";
+            return accepted;
+        }
+        bool reassigned = false;
+        std::string reason;
+        const LLPrismLens::ERegistryResult result =
+            ALVCamPageModel::dropOnProjector(capture_id, obj, &reassigned, &reason);
+        if (result != LLPrismLens::ERegistryResult::OK)
+        {
+            mCustomMsg = reason;
+            return ACCEPT_NO_CUSTOM;
+        }
+        mCustomMsg.clear();
+        return reassigned ? ACCEPT_YES_SINGLE : ACCEPT_YES_COPY_SINGLE;
+    }
     const ALVCamPageModel::FaceDropStatus status =
         ALVCamPageModel::faceDropStatus(capture_id, obj, face);
     if (!status.mAction.allowed())

@@ -168,6 +168,7 @@ bool ALPanelDirectorVCam::postBuild()
     mMonitorPager = findChild<ALVCamMonitorPager>("vc_monitor_pager");
     mCameraSelector = findChild<ALVCamCameraSelector>("vc_camera_selector");
     mFaceList = findChild<ALVCamFaceList>("vc_face_list");
+    mProjectorList = findChild<ALVCamProjectorList>("vc_projector_list");
 
     if (mKitPage)
     {
@@ -227,7 +228,8 @@ bool ALPanelDirectorVCam::postBuild()
             LLViewerMenuHolderGL::child_registry_t::instance()))
         mMonitorMenu = menu->getHandle();
 
-    return mKitPage && mMonitorHeader && mMonitorStrip && mCameraSelector && mFaceList;
+    return mKitPage && mMonitorHeader && mMonitorStrip && mCameraSelector &&
+           mFaceList && mProjectorList;
 }
 
 void ALPanelDirectorVCam::draw()
@@ -434,6 +436,22 @@ void ALPanelDirectorVCam::refresh(U32 dirty)
     }
     mFaceList->setItems(faces);
     mFaceList->setMovePick(mMoveTargetCapture.mId.notNull());
+    std::vector<ALVCamProjectorList::Item> projectors;
+    if (capture)
+        for (U32 index = 0; index < registry.mProjectorCount; ++index)
+        {
+            const LLPrismLens::ProjectorDefinition& projector = registry.mProjectors[index];
+            if (!sameCapture(projector.mCapture, capture->mHandle)) continue;
+            const std::string name = projector.mTarget == LLPrismLens::EProjectorTarget::OBJECT
+                ? ("Projector " + projector.mObjectId.asString().substr(0, 8))
+                : llformat("Rig %u light %u", projector.mRigSlot + 1,
+                           projector.mRigLight + 1);
+            projectors.push_back({projector.mHandle, name,
+                projector.mQuarantined ? projector.mQuarantineReason : "Viewer-local feed"});
+        }
+    mProjectorList->setItems(projectors);
+    if (ALKitCard* projector_card = mKitPage->findCard("projectors"))
+        projector_card->setCodeVisible(!projectors.empty());
     updateCardState(capture != nullptr, display != nullptr,
                     capture ? llformat("CAM %u · %s", capture->mSlot + 1,
                                        capture->mLabel.c_str()) : std::string());
@@ -817,6 +835,20 @@ void ALPanelDirectorVCam::onControl(LLUICtrl* source)
             return;
         }
         mModel.setSelectedDisplay(selected);
+    }
+    else if (name == "vc_projector_list")
+    {
+        const LLUUID id = value.asUUID();
+        for (U32 index = 0; index < mModel.registry().mProjectorCount; ++index)
+        {
+            const LLPrismLens::ProjectorDefinition& projector =
+                mModel.registry().mProjectors[index];
+            if (projector.mHandle.mId != id) continue;
+            std::string reason;
+            if (!mModel.removeProjector(projector.mHandle, &reason)) setStatus(reason);
+            else setStatus("Projector feed removed.", false);
+            break;
+        }
     }
     else if (name == "vc_add_camera")
     {

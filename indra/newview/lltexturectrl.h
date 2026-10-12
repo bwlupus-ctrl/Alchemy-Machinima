@@ -88,7 +88,15 @@ enum LLPickerSource
     PICKER_INVENTORY,
     PICKER_LOCAL,
     PICKER_BAKE,
+    PICKER_VCAM,
     PICKER_UNKNOWN, // on cancel, default ids
+};
+
+enum class EVCamTextureTarget : U8
+{
+    NONE,
+    FACE,
+    PROJECTOR
 };
 
 //////////////////////////////////////////////////////////////////////////////////////////
@@ -187,6 +195,10 @@ public:
 
     void            setAllowLocalTexture(bool b);
     bool            getAllowLocalTexture() const                    { return mAllowLocalTexture; }
+
+    using vcam_commit_callback_t = std::function<void(ETexturePickOp, const LLUUID&)>;
+    void setVCamTarget(EVCamTextureTarget target, vcam_commit_callback_t callback);
+    void setVCamOverride(const LLUUID& capture_id, const std::string& label);
 
     const LLUUID&   getImageItemID() { return mImageItemID; }
 
@@ -288,6 +300,11 @@ private:
     std::string                 mLabel;
     bool                        mAllowNoTexture; // If true, the user can select "none" as an option
     bool                        mAllowLocalTexture;
+    EVCamTextureTarget          mVCamTarget = EVCamTextureTarget::NONE;
+    vcam_commit_callback_t      mVCamCommitCallback;
+    std::string                 mVCamOverrideLabel;
+    LLUUID                      mVCamCaptureID;
+    bool                        mStandardEnabled = true;
     PermissionMask              mImmediateFilterPermMask;
     PermissionMask              mDnDFilterPermMask;
     bool                        mCanApplyImmediately;
@@ -391,10 +408,16 @@ public:
     static void     onBtnRemove(void* userdata);
     static void     onBtnUpload(void* userdata);
     static void     onLocalScrollCommit(LLUICtrl* ctrl, void* userdata);
+    void            onVCamCommit();
+    void            refreshVCamList();
+    void            updateVCamDemand();
+    void            setVCamSelection(const LLUUID& capture_id);
 
     static void     onBakeTextureSelect(LLUICtrl* ctrl, void *userdata);
 
     void            setLocalTextureEnabled(bool enabled);
+    void            setVCamEnabled(bool enabled);
+    void            setStandardSourcesEnabled(bool enabled);
     void            setBakeTextureEnabled(bool enabled);
 
     void setInventoryPickType(EPickInventoryType type);
@@ -445,6 +468,7 @@ protected:
 
     LLComboBox*         mModeSelector;
     LLScrollListCtrl*   mLocalScrollCtrl;
+    LLUICtrl*           mVCamList = nullptr;
     LLButton*           mDefaultBtn;
     LLButton*           mNoneBtn;
     LLButton*           mBlankBtn;
@@ -472,6 +496,11 @@ private:
 
     bool mBakeTextureEnabled;
     bool mLocalTextureEnabled;
+    bool mVCamEnabled = false;
+    bool mStandardSourcesEnabled = true;
+    LLUUID mVCamCaptureID;
+    boost::signals2::scoped_connection mVCamConfigurationConnection;
+    boost::signals2::scoped_connection mVCamPreviewConnection;
 
     // Keep the Local tab live as local units change anywhere -- the Local Assets
     // floater, a mesh import, live-reload, or another picker -- not just after this

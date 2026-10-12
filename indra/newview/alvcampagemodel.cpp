@@ -492,6 +492,188 @@ LLPrismLens::ERegistryResult ALVCamPageModel::dropOnFace(
         status.mCapture, object, te, fit, &display, reason);
 }
 
+LLPrismLens::ERegistryResult ALVCamPageModel::applyToSelectedFaces(
+    const LLUUID& capture_id, LLPrismLens::EFitMode fit, std::string* reason)
+{
+    struct Target { LLViewerObject* mObject; S32 mTE; };
+    struct Collector final : LLSelectedTEFunctor
+    {
+        std::vector<Target>& mTargets;
+        explicit Collector(std::vector<Target>& targets) : mTargets(targets) {}
+        bool apply(LLViewerObject* object, S32 te) override
+        {
+            if (object) mTargets.push_back({object, te});
+            return true;
+        }
+    };
+    std::vector<Target> targets;
+    Collector collector(targets);
+    LLSelectMgr::getInstance()->getSelection()->applyToTEs(&collector);
+    if (targets.empty())
+    {
+        if (reason) *reason = "Select at least one object face.";
+        return LLPrismLens::ERegistryResult::INVALID_SELECTION;
+    }
+
+    const LLPrismLens::RegistrySnapshot snapshot = LLPrismLens::registrySnapshot();
+    U32 additions = 0;
+    for (const Target& target : targets)
+    {
+        bool already_bound = false;
+        for (U32 index = 0; index < snapshot.mDisplayCount; ++index)
+        {
+            const LLPrismLens::DisplayDefinition& display = snapshot.mDisplays[index];
+            if (!display.mSettings.mVirtual &&
+                display.mDisplayObjectId == target.mObject->getID() &&
+                display.mDisplayTextureEntry == target.mTE &&
+                display.mCapture.mId == capture_id)
+            {
+                already_bound = true;
+                break;
+            }
+        }
+        if (already_bound) continue;
+        const FaceDropStatus status = faceDropStatus(capture_id, target.mObject, target.mTE);
+        if (!status.mAction.allowed())
+        {
+            if (reason) *reason = status.mAction.mReason;
+            return status.mAction.mResult;
+        }
+        if (!status.mReassignment) ++additions;
+    }
+    if (snapshot.mDisplayCount + additions > LLPrismLens::MAX_DISPLAY_BINDINGS)
+    {
+        if (reason) *reason = llformat(
+            "This selection needs %u new face bindings; VCam supports 16 total.", additions);
+        return LLPrismLens::ERegistryResult::AT_CAPACITY;
+    }
+    LLPrismLens::ScopedRevisionSignals signals;
+    for (const Target& target : targets)
+    {
+        bool already_bound = false;
+        for (U32 index = 0; index < snapshot.mDisplayCount; ++index)
+        {
+            const LLPrismLens::DisplayDefinition& display = snapshot.mDisplays[index];
+            if (!display.mSettings.mVirtual &&
+                display.mDisplayObjectId == target.mObject->getID() &&
+                display.mDisplayTextureEntry == target.mTE &&
+                display.mCapture.mId == capture_id)
+            {
+                already_bound = true;
+                break;
+            }
+        }
+        if (already_bound) continue;
+        const LLPrismLens::ERegistryResult result =
+            dropOnFace(capture_id, target.mObject, target.mTE, fit, nullptr, reason);
+        if (result != LLPrismLens::ERegistryResult::OK) return result;
+    }
+    return LLPrismLens::ERegistryResult::OK;
+}
+
+bool ALVCamPageModel::clearSelectedFaces(std::string* reason)
+{
+    struct Target { LLUUID mObject; S32 mTE; };
+    struct Collector final : LLSelectedTEFunctor
+    {
+        std::vector<Target>& mTargets;
+        explicit Collector(std::vector<Target>& targets) : mTargets(targets) {}
+        bool apply(LLViewerObject* object, S32 te) override
+        {
+            if (object) mTargets.push_back({object->getID(), te});
+            return true;
+        }
+    };
+    std::vector<Target> targets;
+    Collector collector(targets);
+    LLSelectMgr::getInstance()->getSelection()->applyToTEs(&collector);
+    const LLPrismLens::RegistrySnapshot snapshot = LLPrismLens::registrySnapshot();
+    bool removed = false;
+    LLPrismLens::ScopedRevisionSignals signals;
+    for (U32 index = 0; index < snapshot.mDisplayCount; ++index)
+    {
+        const LLPrismLens::DisplayDefinition& display = snapshot.mDisplays[index];
+        for (const Target& target : targets)
+        {
+            if (!display.mSettings.mVirtual && display.mDisplayObjectId == target.mObject &&
+                display.mDisplayTextureEntry == target.mTE)
+            {
+                removed = LLPrismLens::removeDisplay(display.mHandle, reason) || removed;
+                break;
+            }
+        }
+    }
+    if (!removed && reason) *reason = "The selected faces have no VCam feed.";
+    return removed;
+}
+
+ALVCamPageModel::ProjectorDropStatus ALVCamPageModel::projectorDropStatus(
+    const LLUUID& capture_id, LLViewerObject* object)
+{
+    ProjectorDropStatus result;
+    const LLPrismLens::RegistrySnapshot snapshot = LLPrismLens::registrySnapshot();
+    for (U32 index = 0; index < snapshot.mCaptureCount; ++index)
+        if (snapshot.mCaptures[index].mHandle.mId == capture_id)
+            result.mCapture = snapshot.mCaptures[index].mHandle;
+    if (result.mCapture.mId.isNull())
+    {
+        result.mAction.mResult = LLPrismLens::ERegistryResult::STALE_HANDLE;
+        result.mAction.mReason = "That capture no longer exists.";
+        return result;
+    }
+    if (object)
+        for (U32 index = 0; index < snapshot.mProjectorCount; ++index)
+        {
+            const LLPrismLens::ProjectorDefinition& binding = snapshot.mProjectors[index];
+            if (binding.mTarget == LLPrismLens::EProjectorTarget::OBJECT &&
+                binding.mObjectId == object->getID())
+            {
+                result.mExistingProjector = binding.mHandle;
+                result.mReassignment = true;
+                if (binding.mCapture.mId == capture_id)
+                {
+                    result.mAlreadyBound = true;
+                    result.mAction.mResult = LLPrismLens::ERegistryResult::OK;
+                    return result;
+                }
+                result.mAction = LLPrismLens::projectorTargetStatus(
+                    result.mCapture, object, &binding.mHandle);
+                return result;
+            }
+        }
+    result.mAction = LLPrismLens::projectorTargetStatus(result.mCapture, object);
+    return result;
+}
+
+LLPrismLens::ERegistryResult ALVCamPageModel::dropOnProjector(
+    const LLUUID& capture_id, LLViewerObject* object, bool* reassigned,
+    std::string* reason)
+{
+    if (reassigned) *reassigned = false;
+    const ProjectorDropStatus status = projectorDropStatus(capture_id, object);
+    if (!status.mAction.allowed())
+    {
+        if (reason) *reason = status.mAction.mReason;
+        return status.mAction.mResult;
+    }
+    if (status.mAlreadyBound)
+    {
+        if (reassigned) *reassigned = true;
+        return LLPrismLens::ERegistryResult::OK;
+    }
+    if (status.mReassignment)
+    {
+        const LLPrismLens::ERegistryResult result = LLPrismLens::reassignProjector(
+            status.mExistingProjector, status.mCapture, reason);
+        if (result == LLPrismLens::ERegistryResult::OK && reassigned) *reassigned = true;
+        return result;
+    }
+    LLPrismLens::ProjectorHandle binding;
+    return LLPrismLens::bindProjector(status.mCapture, object,
+                                      LLPrismLens::ProjectorSettings(),
+                                      &binding, reason);
+}
+
 LLPrismLens::ERegistryResult ALVCamPageModel::addVirtualScreen(
     const LLPrismLens::CaptureHandle& capture, const LLVector3& pos,
     const LLQuaternion& rot, F32 width, F32 height, std::string* reason)

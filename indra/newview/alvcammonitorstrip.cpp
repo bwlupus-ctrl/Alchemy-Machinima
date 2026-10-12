@@ -30,12 +30,18 @@ static LLDefaultChildRegistry::Register<ALVCamCameraSelector>
     r_vcam_camera_selector("vcam_camera_selector");
 static LLDefaultChildRegistry::Register<ALVCamFaceList>
     r_vcam_face_list("vcam_face_list");
+static LLDefaultChildRegistry::Register<ALVCamTexturePickerList>
+    r_vcam_texture_picker_list("vcam_texture_picker_list");
+static LLDefaultChildRegistry::Register<ALVCamProjectorList>
+    r_vcam_projector_list("vcam_projector_list");
 
 namespace
 {
 LLPrismLens::EFitMode sActiveDragFit = LLPrismLens::EFitMode::FIT;
 constexpr S32 FACE_ROW_HEIGHT = 32;
 constexpr S32 FACE_SCROLLBAR_WIDTH = 10;
+constexpr S32 PICKER_ROW_HEIGHT = 35;
+constexpr S32 PROJECTOR_ROW_HEIGHT = 36;
 
 struct MonitorHeaderLayout
 {
@@ -716,4 +722,144 @@ bool ALVCamFaceList::handleDragAndDrop(
     if (row < 0 || mItems[row].mRaw) return false;
     return ALVCamMonitorStrip::handleDisplayRowDrop(mItems[row].mHandle, drop, cargo_type,
                                 cargo_data, accept, tooltip_msg);
+}
+
+ALVCamTexturePickerList::ALVCamTexturePickerList(const Params& p)
+    : LLUICtrl(p),
+      mFont(LLFontGL::getFontSansSerifSmall()),
+      mBorderColor(ALKitStyle::color(ALKitStyle::CARD_BORDER).get()),
+      mTextColor(ALKitStyle::color(ALKitStyle::TEXT).get()),
+      mMutedColor(ALKitStyle::color(ALKitStyle::MUTED).get()),
+      mAccentColor(ALKitStyle::color(ALKitStyle::ACCENT).get()),
+      mPreviewService(&LLPrismPreviewService::instance())
+{
+    setMouseOpaque(true);
+}
+
+void ALVCamTexturePickerList::setItems(
+    const std::array<Item, LLPrismLens::MAX_CAPTURES>& items,
+    U32 count, const LLUUID& selected)
+{
+    mItems = items;
+    mCount = llmin(count, LLPrismLens::MAX_CAPTURES);
+    mSelected = selected;
+}
+
+S32 ALVCamTexturePickerList::rowAt(S32 y) const
+{
+    const S32 row = (getRect().getHeight() - y) / PICKER_ROW_HEIGHT;
+    return row >= 0 && row <= static_cast<S32>(mCount) ? row : -1;
+}
+
+void ALVCamTexturePickerList::draw()
+{
+    if (!mCount)
+    {
+        drawText(mFont, "No VCam cameras - add one in Director > Camera > VCam",
+                 8, getRect().getHeight() / 2 + 4, mMutedColor,
+                 getRect().getWidth() - 16);
+        LLUICtrl::draw();
+        return;
+    }
+    for (U32 row = 0; row <= mCount; ++row)
+    {
+        const S32 top = getRect().getHeight() - static_cast<S32>(row) * PICKER_ROW_HEIGHT;
+        const LLRect rect(0, top, getRect().getWidth(), top - PICKER_ROW_HEIGHT);
+        const bool remove = row == 0;
+        const bool selected = remove ? mSelected.isNull() :
+            mItems[row - 1].mCapture.mId == mSelected;
+        if (selected) gl_rect_2d(rect, LLColor4(mAccentColor.mV[0], mAccentColor.mV[1],
+                                                mAccentColor.mV[2], .18f), true);
+        gl_rect_2d(rect, mBorderColor, false);
+        if (remove)
+        {
+            drawText(mFont, "None / Remove VCam feed", 8, top - 22,
+                     selected ? mAccentColor : mTextColor,
+                     getRect().getWidth() - 16);
+            continue;
+        }
+        const Item& item = mItems[row - 1];
+        const LLRect picture(5, top - 3, 57, top - 32);
+        const LLRectf& uv = item.mPublication.mCellUV;
+        if (item.mPublication.mAtlas.mGeneration &&
+            mPreviewService->bindAtlas(item.mPublication.mAtlas))
+        {
+            gGL.color4f(1.f, 1.f, 1.f, 1.f);
+            gGL.begin(LLRender::TRIANGLES);
+            gGL.texCoord2f(uv.mLeft, uv.mTop); gGL.vertex2i(picture.mLeft, picture.mTop);
+            gGL.texCoord2f(uv.mLeft, uv.mBottom); gGL.vertex2i(picture.mLeft, picture.mBottom);
+            gGL.texCoord2f(uv.mRight, uv.mBottom); gGL.vertex2i(picture.mRight, picture.mBottom);
+            gGL.texCoord2f(uv.mLeft, uv.mTop); gGL.vertex2i(picture.mLeft, picture.mTop);
+            gGL.texCoord2f(uv.mRight, uv.mBottom); gGL.vertex2i(picture.mRight, picture.mBottom);
+            gGL.texCoord2f(uv.mRight, uv.mTop); gGL.vertex2i(picture.mRight, picture.mTop);
+            gGL.end();
+            gGL.getTexUnit(0)->unbind(LLTexUnit::TT_TEXTURE);
+        }
+        else
+            gl_rect_2d(picture, LLColor4(.08f, .09f, .11f, 1.f), true);
+        gl_rect_2d(picture, mBorderColor, false);
+        drawText(mFont, item.mLabel, 65, top - 22,
+                 selected ? mAccentColor : mTextColor,
+                 getRect().getWidth() - 73);
+    }
+    LLUICtrl::draw();
+}
+
+bool ALVCamTexturePickerList::handleMouseDown(S32, S32 y, MASK)
+{
+    const S32 row = rowAt(y);
+    if (row < 0 || !mCount) return false;
+    LLSD value;
+    value["action"] = row == 0 ? "remove" : "capture";
+    if (row > 0) value["capture"] = mItems[row - 1].mCapture.mId;
+    setValue(value);
+    onCommit();
+    return true;
+}
+
+ALVCamProjectorList::ALVCamProjectorList(const Params& p)
+    : LLUICtrl(p),
+      mFont(LLFontGL::getFontSansSerifSmall()),
+      mBorderColor(ALKitStyle::color(ALKitStyle::CARD_BORDER).get()),
+      mTextColor(ALKitStyle::color(ALKitStyle::TEXT).get()),
+      mMutedColor(ALKitStyle::color(ALKitStyle::MUTED).get())
+{
+    setMouseOpaque(true);
+}
+
+void ALVCamProjectorList::setItems(const std::vector<Item>& items)
+{
+    mItems = items;
+}
+
+S32 ALVCamProjectorList::rowAt(S32 y) const
+{
+    const S32 row = (getRect().getHeight() - y) / PROJECTOR_ROW_HEIGHT;
+    return row >= 0 && row < static_cast<S32>(mItems.size()) ? row : -1;
+}
+
+void ALVCamProjectorList::draw()
+{
+    for (U32 row = 0; row < mItems.size(); ++row)
+    {
+        const S32 top = getRect().getHeight() - static_cast<S32>(row) * PROJECTOR_ROW_HEIGHT;
+        const LLRect rect(0, top, getRect().getWidth(), top - PROJECTOR_ROW_HEIGHT);
+        gl_rect_2d(rect, mBorderColor, false);
+        drawText(mFont, mItems[row].mName, 7, top - 15, mTextColor,
+                 llmax(1, getRect().getWidth() - 78));
+        drawText(mFont, mItems[row].mMeta, 7, top - 29, mMutedColor,
+                 llmax(1, getRect().getWidth() - 78));
+        drawText(mFont, "Remove", getRect().getWidth() - 61, top - 22,
+                 mTextColor, 55);
+    }
+    LLUICtrl::draw();
+}
+
+bool ALVCamProjectorList::handleMouseDown(S32 x, S32 y, MASK)
+{
+    const S32 row = rowAt(y);
+    if (row < 0 || x < getRect().getWidth() - 70) return false;
+    setValue(mItems[row].mHandle.mId);
+    onCommit();
+    return true;
 }

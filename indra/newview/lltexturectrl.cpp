@@ -29,6 +29,8 @@
 
 #include "lltexturectrl.h"
 
+#include "alvcammonitorstrip.h"
+
 #include "llrender.h"
 #include "llagent.h"
 #include "llviewertexturelist.h"
@@ -76,6 +78,7 @@
 #include "lllocalbitmaps.h"
 #include "lllocalgltfmaterials.h"
 #include "llerror.h"
+#include "llprismpreview.h"
 
 #include "llavatarappearancedefines.h"
 
@@ -145,6 +148,11 @@ bool get_can_copy_texture(LLUUID asset_id)
 
 S32 LLFloaterTexturePicker::sLastPickerMode = 0;
 
+namespace
+{
+constexpr LLPrismPreviewService::VisibilityOwner TEXTURE_PICKER_PREVIEW_OWNER = 3;
+}
+
 LLFloaterTexturePicker::LLFloaterTexturePicker(
     LLView* owner,
     LLUUID image_asset_id,
@@ -201,6 +209,8 @@ LLFloaterTexturePicker::LLFloaterTexturePicker(
 
 LLFloaterTexturePicker::~LLFloaterTexturePicker()
 {
+    LLPrismPreviewService::instance().clearDemand(TEXTURE_PICKER_PREVIEW_OWNER);
+    LLPrismPreviewService::instance().releaseConsumer(TEXTURE_PICKER_PREVIEW_OWNER);
 }
 
 void LLFloaterTexturePicker::setImageID(const LLUUID& image_id, bool set_selection /*=true*/)
@@ -535,10 +545,9 @@ void LLFloaterTexturePicker::onOpen(const LLSD& key)
     if (sLastPickerMode != 0
         && (mLocalTextureEnabled || sLastPickerMode != 1)
         && (mBakeTextureEnabled || sLastPickerMode != 2)
-        && mModeSelector->selectByValue(sLastPickerMode))
-    {
-        changeMode();
-    }
+        && (mVCamEnabled || sLastPickerMode != PICKER_VCAM))
+        mModeSelector->selectByValue(sLastPickerMode);
+    changeMode();
 }
 
 void LLFloaterTexturePicker::onClose(bool app_quitting)
@@ -548,6 +557,9 @@ void LLFloaterTexturePicker::onClose(bool app_quitting)
         mOnFloaterCloseCallback();
     }
     stopUsingPipette();
+    LLPrismPreviewService::instance().clearDemand(TEXTURE_PICKER_PREVIEW_OWNER);
+    LLPrismPreviewService::instance().setConsumerVisible(
+        TEXTURE_PICKER_PREVIEW_OWNER, false);
     sLastPickerMode = mModeSelector->getValue().asInteger();
     // *NOTE: Vertex buffer for sphere preview is still cached
     mGLTFPreview = nullptr;
@@ -660,6 +672,14 @@ bool LLFloaterTexturePicker::postBuild()
     mLocalScrollCtrl->setCommitCallback(onLocalScrollCommit, this);
     refreshLocalList();
 
+    mVCamList = getChild<LLUICtrl>("vcam_texture_list");
+    mVCamList->setCommitCallback([this](LLUICtrl*, const LLSD&) { onVCamCommit(); });
+    mVCamConfigurationConnection = LLPrismLens::connectConfigurationChanged(
+        [this](U64) { updateVCamDemand(); refreshVCamList(); });
+    mVCamPreviewConnection = LLPrismPreview::connectChanged(
+        [this](U64) { refreshVCamList(); });
+    refreshVCamList();
+
     // React to local-unit changes from anywhere (this picker, another picker, the
     // Local Assets floater, a mesh import, or a live-reload) so the Local tab never
     // goes stale. refreshLocalList() reads the current pick type, so one handler per
@@ -701,7 +721,10 @@ void LLFloaterTexturePicker::draw()
     bool valid_dims = updateImageStats();
 
     // if we're inactive, gray out "apply immediate" checkbox
-    mSelectBtn->setEnabled(mActive && mCanApply && valid_dims && !getTentative());
+    const bool vcam_mode = mVCamEnabled &&
+        mModeSelector->getValue().asInteger() == PICKER_VCAM;
+    mSelectBtn->setEnabled((mActive || vcam_mode) && mCanApply &&
+                           (valid_dims || vcam_mode) && !getTentative());
     mPipetteBtn->setEnabled(mActive);
     mPipetteBtn->setValue(LLToolMgr::getInstance()->getCurrentTool() == LLToolPipette::getInstance());
 
@@ -1013,6 +1036,10 @@ void LLFloaterTexturePicker::commitCallback(LLTextureCtrl::ETexturePickOp op)
             }
         case PICKER_BAKE:
             break;
+        case PICKER_VCAM:
+            asset_id.setNull();
+            tracking_id = mVCamCaptureID;
+            break;
         default:
             mode = PICKER_UNKNOWN; // source of id unknown
             break;
@@ -1085,7 +1112,10 @@ void LLFloaterTexturePicker::onBtnCancel(void* userdata)
     self->setImageID( self->mOriginalImageAssetID );
     if (self->mOnFloaterCommitCallback)
     {
-        self->mOnFloaterCommitCallback(LLTextureCtrl::TEXTURE_CANCEL, PICKER_UNKNOWN, self->mOriginalImageAssetID, LLUUID::null, LLUUID::null);
+        const LLPickerSource source = self->mModeSelector->getValue().asInteger() == PICKER_VCAM
+            ? PICKER_VCAM : PICKER_UNKNOWN;
+        self->mOnFloaterCommitCallback(LLTextureCtrl::TEXTURE_CANCEL, source,
+            self->mOriginalImageAssetID, LLUUID::null, self->mVCamCaptureID);
     }
     self->mViewModel->resetDirty();
     self->closeFloater();
@@ -1320,6 +1350,62 @@ void LLFloaterTexturePicker::onLocalScrollCommit(LLUICtrl* ctrl, void* userdata)
     }
 }
 
+void LLFloaterTexturePicker::refreshVCamList()
+{
+    ALVCamTexturePickerList* list = dynamic_cast<ALVCamTexturePickerList*>(mVCamList);
+    if (!list) return;
+    std::array<ALVCamTexturePickerList::Item, LLPrismLens::MAX_CAPTURES> items;
+    const LLPrismLens::RegistrySnapshot snapshot = LLPrismLens::registrySnapshot();
+    LLPrismPreviewService& preview = LLPrismPreviewService::instance();
+    for (U32 index = 0; index < snapshot.mCaptureCount; ++index)
+    {
+        const LLPrismLens::CaptureDefinition& capture = snapshot.mCaptures[index];
+        items[index].mCapture = capture.mHandle;
+        items[index].mPublication = preview.tileState(capture.mHandle);
+        items[index].mLabel = llformat("Cam %u - %s", capture.mSlot + 1,
+                                      capture.mLabel.c_str());
+    }
+    list->setItems(items, snapshot.mCaptureCount, mVCamCaptureID);
+}
+
+void LLFloaterTexturePicker::updateVCamDemand()
+{
+    LLPrismPreviewService& preview = LLPrismPreviewService::instance();
+    const bool visible = mVCamEnabled && mModeSelector &&
+        mModeSelector->getValue().asInteger() == PICKER_VCAM && isInVisibleChain();
+    preview.setConsumerVisible(TEXTURE_PICKER_PREVIEW_OWNER, visible);
+    preview.clearDemand(TEXTURE_PICKER_PREVIEW_OWNER);
+    if (!visible) return;
+    const LLPrismLens::RegistrySnapshot snapshot = LLPrismLens::registrySnapshot();
+    for (U32 index = 0; index < snapshot.mCaptureCount; ++index)
+        preview.setDemand(TEXTURE_PICKER_PREVIEW_OWNER,
+                          snapshot.mCaptures[index].mHandle, true);
+}
+
+void LLFloaterTexturePicker::setVCamSelection(const LLUUID& capture_id)
+{
+    mVCamCaptureID = capture_id;
+    refreshVCamList();
+}
+
+void LLFloaterTexturePicker::onVCamCommit()
+{
+    if (!mVCamList) return;
+    const LLSD value = mVCamList->getValue();
+    mVCamCaptureID = value["action"].asString() == "capture"
+        ? value["capture"].asUUID() : LLUUID::null;
+    mViewModel->setDirty();
+    mCanApply = true;
+    setTentative(false);
+    refreshVCamList();
+    if (childGetValue("apply_immediate_check").asBoolean() &&
+        mOnFloaterCommitCallback)
+    {
+        mOnFloaterCommitCallback(LLTextureCtrl::TEXTURE_CHANGE, PICKER_VCAM,
+                                 LLUUID::null, LLUUID::null, mVCamCaptureID);
+    }
+}
+
 // static
 void LLFloaterTexturePicker::onApplyImmediateCheck(LLUICtrl* ctrl, void *user_data)
 {
@@ -1478,6 +1564,9 @@ void LLFloaterTexturePicker::changeMode()
     getChild<LLScrollListCtrl>("l_name_list")->setVisible(index == PICKER_LOCAL);
 
     getChild<LLComboBox>("l_bake_use_texture_combo_box")->setVisible(index == PICKER_BAKE);
+    mVCamList->setVisible(index == PICKER_VCAM);
+    getChildView("apply_immediate_check")->setEnabled(
+        mCanApplyImmediately || index == PICKER_VCAM);
 
     bool pipette_visible = (index == PICKER_INVENTORY)
         && (mInventoryPickType != PICK_MATERIAL);
@@ -1537,6 +1626,8 @@ void LLFloaterTexturePicker::changeMode()
 
         getChild<LLComboBox>("l_bake_use_texture_combo_box")->setSelectedByValue(val, true);
     }
+    updateVCamDemand();
+    refreshVCamList();
 }
 
 void LLFloaterTexturePicker::refreshLocalList()
@@ -1643,11 +1734,33 @@ void LLFloaterTexturePicker::refreshInventoryFilter()
 void LLFloaterTexturePicker::setLocalTextureEnabled(bool enabled)
 {
     mLocalTextureEnabled = enabled;
-    mModeSelector->setEnabledByValue(1, enabled);
+    mModeSelector->setEnabledByValue(PICKER_LOCAL, enabled && mStandardSourcesEnabled);
     if (!enabled && (mModeSelector->getValue().asInteger() == 2))
     {
         mModeSelector->selectByValue(0);
         onModeSelect(0, this);
+    }
+}
+
+void LLFloaterTexturePicker::setVCamEnabled(bool enabled)
+{
+    mVCamEnabled = enabled;
+    mModeSelector->setEnabledByValue(PICKER_VCAM, enabled);
+    if (!enabled && mModeSelector->getValue().asInteger() == PICKER_VCAM)
+        mModeSelector->selectByValue(PICKER_INVENTORY);
+    changeMode();
+}
+
+void LLFloaterTexturePicker::setStandardSourcesEnabled(bool enabled)
+{
+    mStandardSourcesEnabled = enabled;
+    mModeSelector->setEnabledByValue(PICKER_INVENTORY, enabled);
+    mModeSelector->setEnabledByValue(PICKER_LOCAL, enabled && mLocalTextureEnabled);
+    mModeSelector->setEnabledByValue(PICKER_BAKE, enabled && mBakeTextureEnabled);
+    if (!enabled && mVCamEnabled)
+    {
+        mModeSelector->selectByValue(PICKER_VCAM);
+        changeMode();
     }
 }
 
@@ -1656,7 +1769,7 @@ void LLFloaterTexturePicker::setBakeTextureEnabled(bool enabled)
     bool changed = (enabled != mBakeTextureEnabled);
 
     mBakeTextureEnabled = enabled;
-    mModeSelector->setEnabledByValue(2, enabled);
+    mModeSelector->setEnabledByValue(PICKER_BAKE, enabled && mStandardSourcesEnabled);
 
     if (!mBakeTextureEnabled && (mModeSelector->getValue().asInteger() == 2))
     {
@@ -1942,10 +2055,13 @@ void LLTextureCtrl::setVisible(bool visible )
 
 void LLTextureCtrl::setEnabled( bool enabled )
 {
+    mStandardEnabled = enabled;
+    const bool locally_enabled = mVCamTarget != EVCamTextureTarget::NONE;
     LLFloaterTexturePicker* floaterp = (LLFloaterTexturePicker*)mFloaterHandle.get();
     if( floaterp )
     {
-        floaterp->setActive(enabled);
+        floaterp->setActive(enabled || locally_enabled);
+        floaterp->setStandardSourcesEnabled(enabled);
     }
     if( enabled )
     {
@@ -1953,7 +2069,7 @@ void LLTextureCtrl::setEnabled( bool enabled )
         if (floaterp) tooltip = floaterp->getString("choose_picture");
         setToolTip( tooltip );
     }
-    else
+    else if (!locally_enabled)
     {
         setToolTip( std::string() );
         // *TODO: would be better to keep floater open and show
@@ -1961,9 +2077,9 @@ void LLTextureCtrl::setEnabled( bool enabled )
         closeDependentFloater();
     }
 
-    mCaption->setEnabled( enabled );
+    mCaption->setEnabled(enabled || locally_enabled);
 
-    LLView::setEnabled( enabled );
+    LLView::setEnabled(enabled || locally_enabled);
 }
 
 void LLTextureCtrl::setValid(bool valid )
@@ -2049,6 +2165,10 @@ void LLTextureCtrl::showPicker(bool take_focus)
 
             texture_floaterp->setLocalTextureEnabled(mAllowLocalTexture);
             texture_floaterp->setBakeTextureEnabled(mBakeTextureEnabled && mInventoryPickType != PICK_MATERIAL);
+            texture_floaterp->setVCamEnabled(mVCamTarget != EVCamTextureTarget::NONE &&
+                                             mInventoryPickType == PICK_TEXTURE);
+            texture_floaterp->setVCamSelection(mVCamCaptureID);
+            texture_floaterp->setStandardSourcesEnabled(mStandardEnabled);
         }
 
         LLFloater* root_floater = gFloaterView->getParentFloater(this);
@@ -2163,8 +2283,14 @@ void LLTextureCtrl::onFloaterCommit(ETexturePickOp op, LLPickerSource source, co
 {
     LLFloaterTexturePicker* floaterp = (LLFloaterTexturePicker*)mFloaterHandle.get();
 
-    if( floaterp && getEnabled())
+    if (floaterp && (mStandardEnabled || source == PICKER_VCAM))
     {
+        if (source == PICKER_VCAM)
+        {
+            if (op != TEXTURE_CANCEL && mVCamCommitCallback)
+                mVCamCommitCallback(op, tracking_id);
+            return;
+        }
         if (op == TEXTURE_CANCEL)
             mViewModel->resetDirty();
         // If the "no_commit_on_selection" parameter is set
@@ -2193,6 +2319,8 @@ void LLTextureCtrl::onFloaterCommit(ETexturePickOp op, LLPickerSource source, co
                     mImageItemID = LLUUID::null;
                     mImageAssetID = asset_id;
                     mLocalTrackingID = tracking_id;
+                    break;
+                case PICKER_VCAM:
                     break;
                 case PICKER_UNKNOWN:
                 default:
@@ -2244,6 +2372,30 @@ void LLTextureCtrl::setAllowLocalTexture(bool b)
     {
         picker_floater->setLocalTextureEnabled(mAllowLocalTexture);
     }
+}
+
+void LLTextureCtrl::setVCamTarget(EVCamTextureTarget target,
+                                  vcam_commit_callback_t callback)
+{
+    mVCamTarget = target;
+    mVCamCommitCallback = std::move(callback);
+    LLFloaterTexturePicker* picker =
+        dynamic_cast<LLFloaterTexturePicker*>(mFloaterHandle.get());
+    if (picker)
+        picker->setVCamEnabled(target != EVCamTextureTarget::NONE &&
+                               mInventoryPickType == PICK_TEXTURE);
+}
+
+void LLTextureCtrl::setVCamOverride(const LLUUID& capture_id,
+                                    const std::string& label)
+{
+    mVCamCaptureID = capture_id;
+    mVCamOverrideLabel = label;
+    LLFloaterTexturePicker* picker =
+        dynamic_cast<LLFloaterTexturePicker*>(mFloaterHandle.get());
+    if (!label.empty()) setToolTip(label + " (viewer-local)");
+    else if (!mStandardEnabled) setToolTip(LLStringExplicit("Choose a viewer-local VCam feed"));
+    else setToolTip(picker ? picker->getString("choose_picture") : std::string());
 }
 
 void LLTextureCtrl::setImageAssetName(const std::string& name)
@@ -2461,6 +2613,17 @@ void LLTextureCtrl::draw()
         gl_draw_x( interior, LLColor4::black );
     }
 
+    if (!mVCamOverrideLabel.empty())
+    {
+        gl_rect_2d(LLRect(interior.mLeft, interior.mBottom + 18,
+                          interior.mRight, interior.mBottom),
+                   LLColor4(0.f, 0.f, 0.f, .72f), true);
+        LLFontGL::getFontSansSerifSmall()->renderUTF8(
+            mVCamOverrideLabel, 0, (F32)(interior.mLeft + 3), (F32)(interior.mBottom + 4),
+            LLColor4::white, LLFontGL::LEFT, LLFontGL::BASELINE,
+            LLFontGL::NORMAL, LLFontGL::DROP_SHADOW, S32_MAX, interior.getWidth() - 6);
+    }
+
     mTentativeLabel->setVisible( getTentative() );
 
     // Show "Loading..." string on the top left corner while this texture is loading.
@@ -2603,8 +2766,3 @@ namespace LLInitParam
         declare("material", PICK_MATERIAL);
     }
 }
-
-
-
-
-
