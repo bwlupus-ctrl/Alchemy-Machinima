@@ -277,8 +277,42 @@ PICK: TEXTURE
      left="170"
      top="20"
      width="235"
-     height="320"
+     height="250"
      follows="left|top|right|bottom"
+     visible="false" />
+    <slider
+     name="vcam_projector_lamp_power"
+     label="Lamp power (EV)"
+     label_width="105"
+     left="170"
+     top="278"
+     width="235"
+     height="20"
+     follows="left|right|bottom"
+     min_val="-2"
+     max_val="8"
+     increment="0.1"
+     decimal_digits="1"
+     show_text="true"
+     can_edit_text="true"
+     tool_tip="Viewer-only boost of this projector's light; nothing is sent to the object"
+     visible="false" />
+    <slider
+     name="vcam_projector_picture_ev"
+     label="Picture (EV)"
+     label_width="105"
+     left="170"
+     top="305"
+     width="235"
+     height="20"
+     follows="left|right|bottom"
+     min_val="-6"
+     max_val="6"
+     increment="0.1"
+     decimal_digits="1"
+     show_text="true"
+     can_edit_text="true"
+     tool_tip="Brightens the picture itself"
      visible="false" />
 
 <!-- middle: bake mode -->

@@ -48,6 +48,7 @@
 class LLComboBox;
 class LLFloaterTexturePicker;
 class LLInventoryItem;
+class LLSliderCtrl;
 class LLViewerFetchedTexture;
 class LLFetchedGLTFMaterial;
 
@@ -198,8 +199,10 @@ public:
 
     using vcam_commit_callback_t = std::function<void(ETexturePickOp, const LLUUID&)>;
     using vcam_open_callback_t = std::function<void()>;
+    using vcam_target_object_callback_t = std::function<LLUUID()>;
     void setVCamTarget(EVCamTextureTarget target, vcam_commit_callback_t callback,
-                       vcam_open_callback_t open_callback = {});
+                       vcam_open_callback_t open_callback = {},
+                       vcam_target_object_callback_t target_object_callback = {});
     void setVCamOverride(const LLUUID& capture_id, const std::string& label);
 
     const LLUUID&   getImageItemID() { return mImageItemID; }
@@ -305,6 +308,7 @@ private:
     EVCamTextureTarget          mVCamTarget = EVCamTextureTarget::NONE;
     vcam_commit_callback_t      mVCamCommitCallback;
     vcam_open_callback_t        mVCamOpenCallback;
+    vcam_target_object_callback_t mVCamTargetObjectCallback;
     std::string                 mVCamOverrideLabel;
     LLUUID                      mVCamCaptureID;
     bool                        mStandardEnabled = true;
@@ -415,6 +419,9 @@ public:
     void            refreshVCamList();
     void            updateVCamDemand();
     void            setVCamSelection(const LLUUID& capture_id);
+    void            setVCamTarget(EVCamTextureTarget target, const LLUUID& object_id);
+    void            refreshVCamProjectorControls();
+    void            onVCamProjectorSettingsCommit(LLUICtrl* source);
 
     static void     onBakeTextureSelect(LLUICtrl* ctrl, void *userdata);
 
@@ -472,6 +479,8 @@ protected:
     LLComboBox*         mModeSelector;
     LLScrollListCtrl*   mLocalScrollCtrl;
     LLUICtrl*           mVCamList = nullptr;
+    LLSliderCtrl*       mVCamLampPower = nullptr;
+    LLSliderCtrl*       mVCamPictureEV = nullptr;
     LLButton*           mDefaultBtn;
     LLButton*           mNoneBtn;
     LLButton*           mBlankBtn;
@@ -503,6 +512,8 @@ private:
     bool mStandardSourcesEnabled = true;
     LLUUID mVCamCaptureID;
     LLUUID mOriginalVCamCaptureID;
+    EVCamTextureTarget mVCamTarget = EVCamTextureTarget::NONE;
+    LLUUID mVCamTargetObjectID;
     bool mVCamSelectionInitialized = false;
     bool mVCamLiveApplied = false;
     bool mPickerFinalized = false;

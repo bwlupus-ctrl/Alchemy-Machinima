@@ -59,6 +59,7 @@
 #include "lltextbox.h"
 #include "llresizehandle.h"
 #include "llscrollcontainer.h"
+#include "llsliderctrl.h"
 #include "lltoolmgr.h"
 #include "lltoolpipette.h"
 #include "llfiltereditor.h"
@@ -78,6 +79,7 @@
 #include "lllocalbitmaps.h"
 #include "lllocalgltfmaterials.h"
 #include "llerror.h"
+#include "llprismlens.h"
 #include "llprismpreview.h"
 
 #include "llavatarappearancedefines.h"
@@ -686,11 +688,23 @@ bool LLFloaterTexturePicker::postBuild()
 
     mVCamList = getChild<LLUICtrl>("vcam_texture_list");
     mVCamList->setCommitCallback([this](LLUICtrl*, const LLSD&) { onVCamCommit(); });
+    mVCamLampPower = getChild<LLSliderCtrl>("vcam_projector_lamp_power");
+    mVCamPictureEV = getChild<LLSliderCtrl>("vcam_projector_picture_ev");
+    mVCamLampPower->setCommitCallback(
+        [this](LLUICtrl* source, const LLSD&) { onVCamProjectorSettingsCommit(source); });
+    mVCamPictureEV->setCommitCallback(
+        [this](LLUICtrl* source, const LLSD&) { onVCamProjectorSettingsCommit(source); });
     mVCamConfigurationConnection = LLPrismLens::connectConfigurationChanged(
-        [this](U64) { updateVCamDemand(); refreshVCamList(); });
+        [this](U64)
+        {
+            updateVCamDemand();
+            refreshVCamList();
+            refreshVCamProjectorControls();
+        });
     mVCamPreviewConnection = LLPrismPreview::connectChanged(
         [this](U64) { refreshVCamList(); });
     refreshVCamList();
+    refreshVCamProjectorControls();
 
     // React to local-unit changes from anywhere (this picker, another picker, the
     // Local Assets floater, a mesh import, or a live-reload) so the Local tab never
@@ -1431,6 +1445,74 @@ void LLFloaterTexturePicker::onVCamCommit()
     }
 }
 
+void LLFloaterTexturePicker::setVCamTarget(EVCamTextureTarget target,
+                                            const LLUUID& object_id)
+{
+    mVCamTarget = target;
+    mVCamTargetObjectID = object_id;
+    refreshVCamProjectorControls();
+}
+
+void LLFloaterTexturePicker::refreshVCamProjectorControls()
+{
+    if (!mVCamLampPower || !mVCamPictureEV) return;
+    const bool projector_mode = mVCamTarget == EVCamTextureTarget::PROJECTOR &&
+        mModeSelector && mModeSelector->getValue().asInteger() == PICKER_VCAM;
+    mVCamLampPower->setVisible(projector_mode);
+    mVCamPictureEV->setVisible(projector_mode);
+
+    bool bound = false;
+    LLPrismLens::ProjectorSettings settings;
+    const LLPrismLens::RegistrySnapshot snapshot = LLPrismLens::registrySnapshot();
+    for (U32 index = 0; projector_mode && index < snapshot.mProjectorCount; ++index)
+    {
+        const LLPrismLens::ProjectorDefinition& projector = snapshot.mProjectors[index];
+        if (projector.mTarget == LLPrismLens::EProjectorTarget::OBJECT &&
+            projector.mObjectId == mVCamTargetObjectID)
+        {
+            settings = projector.mSettings;
+            bound = true;
+            break;
+        }
+    }
+    mVCamLampPower->setEnabled(bound);
+    mVCamPictureEV->setEnabled(bound);
+    if (bound)
+    {
+        mVCamLampPower->setValue(settings.mLampPowerEV);
+        mVCamPictureEV->setValue(settings.mFeedEV);
+    }
+}
+
+void LLFloaterTexturePicker::onVCamProjectorSettingsCommit(LLUICtrl* source)
+{
+    if (mVCamTarget != EVCamTextureTarget::PROJECTOR || mVCamTargetObjectID.isNull())
+        return;
+    const LLPrismLens::RegistrySnapshot snapshot = LLPrismLens::registrySnapshot();
+    for (U32 index = 0; index < snapshot.mProjectorCount; ++index)
+    {
+        const LLPrismLens::ProjectorDefinition& projector = snapshot.mProjectors[index];
+        if (projector.mTarget != LLPrismLens::EProjectorTarget::OBJECT ||
+            projector.mObjectId != mVCamTargetObjectID)
+        {
+            continue;
+        }
+        LLPrismLens::ProjectorSettings settings = projector.mSettings;
+        if (source == mVCamLampPower)
+            settings.mLampPowerEV = static_cast<F32>(source->getValue().asReal());
+        else if (source == mVCamPictureEV)
+            settings.mFeedEV = static_cast<F32>(source->getValue().asReal());
+        else
+            return;
+        std::string reason;
+        if (LLPrismLens::setProjectorSettings(projector.mHandle, settings, &reason))
+            mVCamLiveApplied = true;
+        refreshVCamProjectorControls();
+        return;
+    }
+    refreshVCamProjectorControls();
+}
+
 // static
 void LLFloaterTexturePicker::onApplyImmediateCheck(LLUICtrl* ctrl, void *user_data)
 {
@@ -1590,6 +1672,7 @@ void LLFloaterTexturePicker::changeMode()
 
     getChild<LLComboBox>("l_bake_use_texture_combo_box")->setVisible(index == PICKER_BAKE);
     mVCamList->setVisible(index == PICKER_VCAM);
+    refreshVCamProjectorControls();
     getChildView("apply_immediate_check")->setEnabled(
         mCanApplyImmediately || index == PICKER_VCAM);
 
@@ -2160,6 +2243,14 @@ void LLTextureCtrl::showPicker(bool take_focus)
     // Show the dialog
     if( floaterp )
     {
+        LLFloaterTexturePicker* texture_floaterp =
+            dynamic_cast<LLFloaterTexturePicker*>(floaterp);
+        if (texture_floaterp)
+        {
+            texture_floaterp->setVCamTarget(
+                mVCamTarget,
+                mVCamTargetObjectCallback ? mVCamTargetObjectCallback() : LLUUID::null);
+        }
         floaterp->openFloater();
     }
     else
@@ -2199,6 +2290,9 @@ void LLTextureCtrl::showPicker(bool take_focus)
             texture_floaterp->setVCamEnabled(mVCamTarget != EVCamTextureTarget::NONE &&
                                              mInventoryPickType == PICK_TEXTURE);
             texture_floaterp->setVCamSelection(mVCamCaptureID);
+            texture_floaterp->setVCamTarget(
+                mVCamTarget,
+                mVCamTargetObjectCallback ? mVCamTargetObjectCallback() : LLUUID::null);
             texture_floaterp->setStandardSourcesEnabled(mStandardEnabled);
         }
 
@@ -2405,18 +2499,24 @@ void LLTextureCtrl::setAllowLocalTexture(bool b)
     }
 }
 
-void LLTextureCtrl::setVCamTarget(EVCamTextureTarget target,
-                                  vcam_commit_callback_t callback,
-                                  vcam_open_callback_t open_callback)
+void LLTextureCtrl::setVCamTarget(
+    EVCamTextureTarget target, vcam_commit_callback_t callback,
+    vcam_open_callback_t open_callback,
+    vcam_target_object_callback_t target_object_callback)
 {
     mVCamTarget = target;
     mVCamCommitCallback = std::move(callback);
     mVCamOpenCallback = std::move(open_callback);
+    mVCamTargetObjectCallback = std::move(target_object_callback);
     LLFloaterTexturePicker* picker =
         dynamic_cast<LLFloaterTexturePicker*>(mFloaterHandle.get());
     if (picker)
+    {
         picker->setVCamEnabled(target != EVCamTextureTarget::NONE &&
                                mInventoryPickType == PICK_TEXTURE);
+        picker->setVCamTarget(
+            target, mVCamTargetObjectCallback ? mVCamTargetObjectCallback() : LLUUID::null);
+    }
 }
 
 void LLTextureCtrl::setVCamOverride(const LLUUID& capture_id,

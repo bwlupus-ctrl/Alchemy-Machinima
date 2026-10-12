@@ -157,7 +157,8 @@ bool    LLPanelVolume::postBuild()
         mLightTextureCtrl->setVCamTarget(EVCamTextureTarget::PROJECTOR,
             [this](LLTextureCtrl::ETexturePickOp op, const LLUUID& capture_id)
             { onVCamProjector(op == LLTextureCtrl::TEXTURE_CANCEL, capture_id); },
-            [this]() { snapshotVCamProjector(); });
+            [this]() { snapshotVCamProjector(); },
+            [this]() { return mVCamProjectorTarget; });
 
         mLightIntensity = getChild<LLSpinCtrl>("Light Intensity");
         mLightIntensity->setValidateBeforeCommit(precommitValidate);
