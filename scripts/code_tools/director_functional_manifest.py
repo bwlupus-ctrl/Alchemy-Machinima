@@ -966,7 +966,7 @@ def synthetic_entries(xi, settings, csv_pairs, page_meta, presets, preset_writte
     }
     kind_type = {"toggle": "toggle", "slider": "slider", "number": "spinner",
                  "combo": "combo", "segmented": "radio", "button": "button"}
-    custom_type = {"vcam_monitor_strip": "button", "vcam_monitor_pager": "button",
+    custom_type = {"vcam_monitor_header": "button", "vcam_monitor_strip": "button", "vcam_monitor_pager": "button",
                    "vcam_monitor_tile": "button", "vcam_camera_selector": "button",
                    "vcam_face_list": "list"}
     for card in vcam["cards"]:

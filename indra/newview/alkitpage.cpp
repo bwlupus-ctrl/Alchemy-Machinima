@@ -902,7 +902,7 @@ void ALKitPage::applyModeAndChip()
         if (filtered && !mSections.empty() && mChipIndex < (S32)mSections.size())
             section = std::find(mSections[mChipIndex].cards.begin(), mSections[mChipIndex].cards.end(), pair.first) !=
                       mSections[mChipIndex].cards.end();
-        pair.second->setVisible(mode && section);
+        pair.second->setVisible(mode && section && pair.second->codeVisible());
     }
 
     for (S32 i = 0; i < (S32)mSectionHeadings.size(); ++i)
@@ -912,7 +912,7 @@ void ALKitPage::applyModeAndChip()
             for (const std::string& id : mSections[i].cards)
             {
                 auto found = mCards.find(id);
-                if (found != mCards.end() && visibleInMode(id))
+                if (found != mCards.end() && visibleInMode(id) && found->second->codeVisible())
                 {
                     any = true;
                     break;

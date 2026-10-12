@@ -12,7 +12,7 @@
 ## Generator extensions
 
 - Added native `segmented`/`radio_group` output, explicit item values (`iv`) for value-typed combos and segments, custom XUI tags, initially-hidden conditional rows, explicit scope badges, and `no_history` pages (`scripts/code_tools/director_kit_gen.py:50`, `:442`, `:473`, `:516`, `:582`, `:592`, `:875`).
-- Added five custom row tags/defaults: monitor strip, monitor tile, monitor pager, camera selector, and face list (`indra/newview/skins/default/xui/en/widgets/vcam_*.xml`).
+- Added custom row tags/defaults for the monitor header/strip/tile/pager, camera selector, and face list (`indra/newview/skins/default/xui/en/widgets/vcam_*.xml`).
 - Generated `panel_dpage_camera_vcam.xml` and the 125 VCam index rows. Other generated page payloads are byte-identical; only their generated provenance comment changed.
 
 ## All 27 UNDEFINED IN SPEC decisions
@@ -56,3 +56,14 @@
 
 - No build was run. XML parsing (page, index, floater, menu, and five widget defaults), JSON parsing, and `git diff --check` pass.
 - The checked-in Python launcher is unavailable in this sandbox (`Access is denied`), so the Python `--check`, `ui_draw_lint`, `xui_layout_check`, and functional-manifest emit commands could not be executed here. The draw roots contain only profiling, cached rendering, and base draw calls; generated page content was independently emitted from the same JSON contract.
+
+## Fix round
+
+- Explicit-height/custom kit rows now preserve their declared height, restoring the full 170 px monitor strip and 150 px face-list hit area. Generated segmented radio items have explicit horizontal geometry and are also reflowed evenly at runtime.
+- Preview demand is owner-scoped and diffed by capture/selection. The VCam page releases only its own demand on hide/destruction; ordinary edits and selection/manipulator updates preserve publications and serials.
+- Large monitor mode keeps four tiles plus the 1–4/5–8 pager; Compact shows all eight. Tiles now use publication timestamps, PAUSED when previews are off, editing/rate badges, status dots, and a drag handle; dragging begins only after mouse slop.
+- Action feedback has its own six-second status row. Invalid surface binds and Surface Lens drag attempts show their reason, and the tile menu now has bind/move/cancel plus explicit raw/bound-face display choices at the clicked ellipsis.
+- Camera and face empty states hide inapplicable cards. Source is a real Object/Virtual/Skeleton POV selector, Bone POV has an enable control, and reset never enables attachment on a non-virtual camera.
+- Face selection is authoritative for the editors and list highlight, while monitor display choice remains independent. Face names use one global numbering scheme; aspect combos select presets by tolerance and fall back to Custom.
+- TV presets now match the full manager values. Dynamic card badges use the real camera slot/label, and the monitor menu is destroyed with its owning panel.
+- Added isolated migration coverage for qualified VCam names and `DirectorLastTabName`/legacy-index restoration. No build was run in this fix round, per request.

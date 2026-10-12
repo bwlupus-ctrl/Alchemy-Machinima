@@ -689,36 +689,87 @@ void LLPrismPreviewService::markChanged()
 }
 
 void LLPrismPreviewService::setDemand(const LLPrismLens::CaptureHandle& capture,
+                                       bool demanded)
+{
+    setDemand(PAGE_VISIBILITY_OWNER, capture, demanded);
+}
+
+void LLPrismPreviewService::setDemand(VisibilityOwner owner,
+                                      const LLPrismLens::CaptureHandle& capture,
                                       bool demanded)
 {
-    if (capture.mId.isNull()) return;
+    if (owner == 0 || capture.mId.isNull()) return;
     const U32 slot = LLPrismLens::captureSlot(capture);
     if (slot >= mDemand.size())
     {
         if (!demanded)
         {
             for (DemandEntry& stale : mDemand)
-                if (stale.mCapture.mId == capture.mId) stale = DemandEntry{};
+                if (stale.mCapture.mId == capture.mId)
+                {
+                    for (VisibilityOwner& demand_owner : stale.mOwners)
+                        if (demand_owner == owner) demand_owner = 0;
+                    stale.mDemanded = std::any_of(stale.mOwners.begin(), stale.mOwners.end(),
+                        [](VisibilityOwner candidate) { return candidate != 0; });
+                }
         }
         return;
     }
     DemandEntry& entry = mDemand[slot];
     const bool same_publication = entry.mCapture.mId == capture.mId &&
         entry.mCapture.mGeneration == capture.mGeneration;
-    const bool changed = !same_publication || entry.mDemanded != demanded;
+    if (!demanded && !same_publication)
+    {
+        for (U32 stale_slot = 0; stale_slot < mDemand.size(); ++stale_slot)
+        {
+            DemandEntry& stale = mDemand[stale_slot];
+            if (stale.mCapture.mId == capture.mId &&
+                stale.mCapture.mGeneration == capture.mGeneration)
+            {
+                for (VisibilityOwner& demand_owner : stale.mOwners)
+                    if (demand_owner == owner) demand_owner = 0;
+                stale.mDemanded = std::any_of(stale.mOwners.begin(), stale.mOwners.end(),
+                    [](VisibilityOwner candidate) { return candidate != 0; });
+                if (!stale.mDemanded)
+                {
+                    stale = DemandEntry{};
+                    mSelection[stale_slot] = LLPrismLens::DisplayHandle{};
+                    mTiles[stale_slot] = TilePublication{};
+                    mNextAtlasDue[stale_slot] = 0.0;
+                }
+                markChanged();
+                break;
+            }
+        }
+        return;
+    }
+    const bool was_demanded = entry.mDemanded;
     if (!same_publication)
     {
         mNextAtlasDue[slot] = 0.0;
         mSelection[slot] = LLPrismLens::DisplayHandle{};
         mTiles[slot] = TilePublication{};
+        entry = DemandEntry{};
     }
-    entry = demanded
-        ? DemandEntry{ capture, true,
-                       same_publication ? entry.mPublicationSerial : 0,
-                       same_publication ? entry.mAtlasSerial : 0,
-                       same_publication ? entry.mPreviewQuality : false }
-        : DemandEntry{};
-    if (changed) markChanged();
+    entry.mCapture = capture;
+    VisibilityOwner* empty_owner = nullptr;
+    bool owner_found = false;
+    for (VisibilityOwner& demand_owner : entry.mOwners)
+    {
+        if (demand_owner == owner)
+        {
+            owner_found = true;
+            if (!demanded) demand_owner = 0;
+            break;
+        }
+        if (!empty_owner && demand_owner == 0) empty_owner = &demand_owner;
+    }
+    if (demanded && !owner_found && empty_owner) *empty_owner = owner;
+    entry.mDemanded = std::any_of(entry.mOwners.begin(), entry.mOwners.end(),
+        [](VisibilityOwner candidate) { return candidate != 0; });
+    if (!entry.mDemanded) entry = DemandEntry{};
+    if (!same_publication || was_demanded != entry.mDemanded || owner_found != demanded)
+        markChanged();
 }
 
 void LLPrismPreviewService::clearDemand()
@@ -729,6 +780,32 @@ void LLPrismPreviewService::clearDemand()
     for (TilePublication& tile : mTiles) tile = TilePublication{};
     mNextAtlasDue.fill(0.0);
     markChanged();
+}
+
+void LLPrismPreviewService::clearDemand(VisibilityOwner owner)
+{
+    if (owner == 0) return;
+    bool changed = false;
+    for (U32 slot = 0; slot < mDemand.size(); ++slot)
+    {
+        DemandEntry& entry = mDemand[slot];
+        for (VisibilityOwner& demand_owner : entry.mOwners)
+            if (demand_owner == owner)
+            {
+                demand_owner = 0;
+                changed = true;
+            }
+        entry.mDemanded = std::any_of(entry.mOwners.begin(), entry.mOwners.end(),
+            [](VisibilityOwner candidate) { return candidate != 0; });
+        if (!entry.mDemanded)
+        {
+            entry = DemandEntry{};
+            mSelection[slot] = LLPrismLens::DisplayHandle{};
+            mTiles[slot] = TilePublication{};
+            mNextAtlasDue[slot] = 0.0;
+        }
+    }
+    if (changed) markChanged();
 }
 
 void LLPrismPreviewService::setPageVisible(bool visible)
@@ -779,6 +856,9 @@ void LLPrismPreviewService::setMonitorSelection(
     U32 capture_slot, const LLPrismLens::DisplayHandle& display)
 {
     if (capture_slot >= mSelection.size()) return;
+    const LLPrismLens::DisplayHandle& current = mSelection[capture_slot];
+    if (current.mId == display.mId && current.mGeneration == display.mGeneration)
+        return;
     mSelection[capture_slot] = display;
     DemandEntry& entry = mDemand[capture_slot];
     if (entry.mPublicationSerial > 0)

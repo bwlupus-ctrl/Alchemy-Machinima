@@ -16,6 +16,27 @@
 
 class LLFontGL;
 
+class ALVCamMonitorHeader : public LLUICtrl
+{
+public:
+    struct Params : public LLInitParam::Block<Params, LLUICtrl::Params> { Params() = default; };
+    void setState(bool compact, bool previews, F32 speed);
+    void draw() override;
+    bool handleMouseDown(S32 x, S32 y, MASK mask) override;
+protected:
+    friend class LLUICtrlFactory;
+    explicit ALVCamMonitorHeader(const Params& p);
+private:
+    bool mCompact = false;
+    bool mPreviews = true;
+    F32 mSpeed = 1.f;
+    const LLFontGL* mFont = nullptr;
+    LLColor4 mTextColor;
+    LLColor4 mMutedColor;
+    LLColor4 mAccentColor;
+    LLColor4 mBorderColor;
+};
+
 class ALVCamMonitorStrip : public LLUICtrl
 {
 public:
@@ -40,6 +61,8 @@ public:
     void setNewFaceFit(LLPrismLens::EFitMode fit) { mNewFaceFit = fit; }
     void draw() override;
     bool handleMouseDown(S32 x, S32 y, MASK mask) override;
+    bool handleHover(S32 x, S32 y, MASK mask) override;
+    bool handleMouseUp(S32 x, S32 y, MASK mask) override;
     bool handleRightMouseDown(S32 x, S32 y, MASK mask) override;
 
     static bool beginDragFromTile(
@@ -73,6 +96,9 @@ private:
     LLColor4 mTextColor;
     LLColor4 mMutedColor;
     LLPrismPreviewService* mPreviewService = nullptr;
+    S32 mMouseDownX = 0;
+    S32 mMouseDownY = 0;
+    S32 mMouseDownSlot = -1;
 };
 
 class ALVCamMonitorPager : public LLUICtrl

@@ -8,13 +8,12 @@
     {"id": "vcam_master", "t": "Virtual Cam", "k": "rows", "badge": "ALL CAMERAS", "rows": [
       {"l": "Status", "k": "readout", "w": "vc_summary", "h": "VCam camera, face and visible-face counts.", "bind": "code"},
       {"l": "Performance", "k": "readout", "w": "vc_perf", "h": "Presented FPS, render p95, scale, admitted attempts and Adaptive state.", "bind": "code"},
+      {"l": "Action", "k": "readout", "w": "vc_status", "h": "The latest action result or failure. Warnings remain visible long enough to read.", "bind": "code", "show_if": "status"},
       {"l": "Open full manager", "k": "button", "w": "vc_open_manager", "h": "Open the full Virtual Cam Manager.", "btn": "Open full manager", "bind": "code"}
     ]},
     {"id": "monitors", "t": "Monitors", "k": "rows", "badge": "ALL CAMERAS", "rows": [
-      {"l": "Size", "k": "segmented", "w": "vc_monitor_size", "h": "Large pages cameras 1-4 and 5-8. Compact shows up to eight in one row.", "it": ["Large", "Compact"], "iv": [0, 1], "bind": "code"},
+      {"l": "", "k": "custom", "w": "vc_monitor_header", "h": "Large shows four cameras with pages; Compact shows eight. Toggle previews and choose their refresh speed here.", "custom_tag": "vcam_monitor_header", "bind": "code", "row_height": 30},
       {"l": "Pages", "k": "custom", "w": "vc_monitor_pager", "h": "Show cameras 1-4 or 5-8 in Large mode.", "custom_tag": "vcam_monitor_pager", "bind": "code", "show_if": "large_and_more_than_four"},
-      {"l": "Previews", "k": "toggle", "w": "vc_previews", "h": "One switch for every monitor. Off stops all preview rendering, which saves FPS. Faces in-world keep updating.", "kw": "preview monitor render fps", "d": 1, "ty": "check", "bind": "code"},
-      {"l": "Speed", "k": "segmented", "w": "vc_preview_speed", "h": "Preview refresh rate shared by all monitors.", "kw": "preview fps speed", "d": 1.0, "it": ["0.5 fps", "1 fps", "2 fps", "5 fps"], "iv": [0.5, 1, 2, 5], "bind": "code"},
       {"l": "Monitors", "k": "custom", "w": "vc_monitor_strip", "h": "What each camera sends out. Drag a monitor onto a surface to show that camera there.", "custom_tag": "vcam_monitor_strip", "bind": "code", "row_height": 170},
       {"l": "Monitor tile", "k": "custom", "w": "vc_monitor_tile_manifest", "h": "Eight fixed atlas-backed PREVIEW, LIVE, PAUSED, THROTTLED, OFFLINE, or WARMING tile slots with timestamp, camera, Shows, status, drag handle, and menu.", "custom_tag": "vcam_monitor_tile", "bind": "code", "show_if": "never"},
       {"l": "Preview cost", "k": "readout", "w": "vc_monitor_footer", "h": "How monitor previews reuse retained pictures and consume the shared attempt budget.", "bind": "code"}
@@ -25,7 +24,7 @@
       {"l": "Remove capture", "k": "button", "w": "vc_remove_capture", "h": "Remove this camera and all of its face bindings.", "btn": "Remove capture", "bind": "code"}
     ]},
     {"id": "source", "t": "Source", "k": "rows", "badge": "CAM n", "rows": [
-      {"l": "Source", "k": "readout", "w": "vc_source_type", "h": "Object, Virtual, Skeleton POV, or Surface Lens. Add a camera to choose a different source type.", "bind": "code"},
+      {"l": "Source", "k": "segmented", "w": "vc_source_type", "h": "Choose Object, Virtual, or Skeleton POV. Surface Lens captures keep their fixed source.", "it": ["Object", "Virtual", "Skeleton POV"], "iv": [0,1,2], "bind": "code"},
       {"l": "Bound to", "k": "readout", "w": "vc_source_bound", "h": "The object, stored transform, or skeleton driver used by this camera.", "bind": "code"},
       {"l": "Object source note", "k": "readout", "w": "vc_source_note_object", "h": "Object cameras follow the selected camera object.", "bind": "code", "show_if": "object"},
       {"l": "Virtual source note", "k": "readout", "w": "vc_source_note_virtual", "h": "Virtual cameras store a position and rotation and need no prim.", "bind": "code", "show_if": "virtual"},
@@ -45,7 +44,8 @@
       {"l": "Snap to my view", "k": "button", "w": "vc_snap_view", "h": "Store your current camera position and orientation as this virtual camera's transform.", "btn": "Snap to my view", "bind": "code", "show_if": "virtual"},
       {"l": "Virtual placement note", "k": "readout", "w": "vc_virtual_note", "h": "Fly your view to the shot, then Snap. The eye offset does not apply to virtual cameras.", "bind": "code", "show_if": "virtual"}
     ]},
-    {"id": "skeleton", "t": "Skeleton POV", "k": "rows", "badge": "CAM n", "rows": [
+    {"id": "skeleton", "t": "Skeleton POV", "k": "rows", "badge": "CAM n", "show_if": "virtual", "rows": [
+      {"l": "Bone POV", "k": "toggle", "w": "vc_bone_enabled", "h": "Attach this virtual camera to a skeleton joint.", "bind": "code"},
       {"l": "Anchor subject", "k": "combo", "w": "vc_bone_anchor", "h": "Whose skeleton the camera follows.", "it": ["Me", "Subject A", "Subject B", "Subject C", "Subject D"], "iv": [0,1,2,3,4], "bind": "code"},
       {"l": "POV joint", "k": "combo", "w": "vc_bone_joint", "h": "Eyeline or any joint from the anchor skeleton. Off-spine joints default to Stabilized aim.", "it": ["Eyeline", "mHead", "mNeck", "mChest", "mPelvis", "mShoulderRight", "mElbowRight", "mWristRight", "mWristLeft", "mFootRight"], "iv": ["", "mHead", "mNeck", "mChest", "mPelvis", "mShoulderRight", "mElbowRight", "mWristRight", "mWristLeft", "mFootRight"], "bind": "code"},
       {"l": "Aim mode", "k": "combo", "w": "vc_bone_aim", "h": "Full-follow drives orientation; Stabilized drives position only and leaves your aim untouched.", "it": ["Full-follow", "Stabilized"], "iv": [0,1], "bind": "code"},

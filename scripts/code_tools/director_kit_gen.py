@@ -472,7 +472,14 @@ def control_for(row: dict, hosted: ET.Element | None, referenced: set[str], repo
             values = row.get("iv", [])
             value = values[index] if index < len(values) else index
             item_tag = "combo_box.item" if tag == "combo_box" else "radio_item"
-            ET.SubElement(child, item_tag, {"name": f"{widget}_item_{index}", "label": str(label), "value": scalar(value)})
+            item_attrs = {"name": f"{widget}_item_{index}", "label": str(label), "value": scalar(value)}
+            if tag == "radio_group":
+                # LLRadioGroup otherwise applies the default top-left layout to
+                # every geometry-less item and stacks the segments vertically.
+                # Kit rule: top + height (never bottom=).
+                item_attrs.update({"layout": "topleft", "left": str(index * 80), "top": "0",
+                                   "width": "80", "height": "24"})
+            ET.SubElement(child, item_tag, item_attrs)
     return kind, child, bind
 
 

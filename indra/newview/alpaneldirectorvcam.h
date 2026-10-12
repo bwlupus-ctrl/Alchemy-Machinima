@@ -8,6 +8,7 @@
 
 #include "alvcampagemodel.h"
 #include "llpanel.h"
+#include "llframetimer.h"
 
 #include <boost/signals2.hpp>
 #include <unordered_map>
@@ -16,6 +17,7 @@
 class ALKitPage;
 class ALKitRow;
 class ALVCamMonitorStrip;
+class ALVCamMonitorHeader;
 class ALVCamMonitorPager;
 class ALVCamCameraSelector;
 class ALVCamFaceList;
@@ -37,9 +39,13 @@ private:
     void refresh(U32 dirty = ALVCamPageModel::DIRTY_ALL);
     void refreshPreviewDemand();
     void onControl(LLUICtrl* control);
-    void onMonitorMenu(const std::string& action);
-    void showMonitorMenu(U32 slot);
-    void setStatus(const std::string& text);
+    void onMonitorMenu(const std::string& action, const LLSD& parameter = LLSD());
+    void showMonitorMenu(U32 slot, S32 x, S32 y);
+    void setStatus(const std::string& text, bool warning = true);
+    void clearStatus();
+    void setAspectValue(const std::string& name, F32 ratio);
+    void updateCardState(bool have_capture, bool have_display,
+                         const std::string& camera_label);
     LLUICtrl* control(const std::string& name) const;
     ALKitRow* row(const std::string& name) const;
     const LLPrismLens::CaptureDefinition* selectedCapture() const;
@@ -50,6 +56,7 @@ private:
     ALVCamPageModel mModel;
     ALKitPage* mKitPage = nullptr;
     ALVCamMonitorStrip* mMonitorStrip = nullptr;
+    ALVCamMonitorHeader* mMonitorHeader = nullptr;
     ALVCamMonitorPager* mMonitorPager = nullptr;
     ALVCamCameraSelector* mCameraSelector = nullptr;
     ALVCamFaceList* mFaceList = nullptr;
@@ -58,12 +65,17 @@ private:
     std::vector<boost::signals2::scoped_connection> mConnections;
     LLHandle<LLContextMenu> mMonitorMenu;
     LLPrismLens::CaptureHandle mMenuCapture;
+    std::vector<LLPrismLens::DisplayHandle> mMenuDisplays;
+    std::array<LLPrismLens::CaptureHandle, LLPrismLens::MAX_CAPTURES> mPreviewDemand;
     LLPrismLens::EFitMode mNewFaceFit = LLPrismLens::EFitMode::FIT;
     bool mCompact = false;
     U32 mLargePage = 0;
     bool mCustomAspect = false;
+    bool mCustomScreenAspect = false;
     bool mRefreshing = false;
     std::string mStatus;
+    LLFrameTimer mStatusTimer;
+    bool mStatusWarning = false;
 };
 
 #endif

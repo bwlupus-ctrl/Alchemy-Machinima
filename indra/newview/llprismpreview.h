@@ -226,7 +226,10 @@ public:
     // Future VC6 page contract. Visibility is owner-scoped so the inline page
     // and advanced manager cannot hide one another's previews.
     void setDemand(const LLPrismLens::CaptureHandle& capture, bool demanded);
+    void setDemand(VisibilityOwner owner,
+                   const LLPrismLens::CaptureHandle& capture, bool demanded);
     void clearDemand();
+    void clearDemand(VisibilityOwner owner);
     void setPageVisible(bool visible);
     void setConsumerVisible(VisibilityOwner owner, bool visible);
     void releaseConsumer(VisibilityOwner owner);
@@ -278,6 +281,7 @@ private:
         U64 mPublicationSerial = 0;
         U64 mAtlasSerial = 0;
         bool mPreviewQuality = false;
+        std::array<VisibilityOwner, 4> mOwners{};
     };
     struct VisibilityEntry
     {

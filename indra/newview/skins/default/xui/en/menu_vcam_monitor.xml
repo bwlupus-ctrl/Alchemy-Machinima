@@ -3,13 +3,32 @@
   <menu_item_call label="Edit settings" name="edit_settings">
     <menu_item_call.on_click function="VCam.Edit" />
   </menu_item_call>
-  <menu_item_call label="Send to surface..." name="send_to_surface">
-    <menu_item_call.on_click function="VCam.Send" />
-  </menu_item_call>
-  <menu_item_call label="Show raw output" name="show_raw">
-    <menu_item_call.on_click function="VCam.Raw" />
-  </menu_item_call>
-  <menu_item_call label="Next bound face" name="next_bound_face">
-    <menu_item_call.on_click function="VCam.NextDisplay" />
-  </menu_item_call>
+  <menu label="Send to surface..." name="send_to_surface">
+    <menu_item_call label="Bind selected face" name="bind_selected_face">
+      <menu_item_call.on_click function="VCam.Send" />
+    </menu_item_call>
+    <menu_item_call label="Move existing face..." name="move_existing_face">
+      <menu_item_call.on_click function="VCam.MoveFace" />
+    </menu_item_call>
+    <menu_item_call label="Cancel" name="cancel_send" />
+  </menu>
+  <menu label="Display" name="display_choice">
+    <menu_item_call label="Raw output" name="display_raw"><menu_item_call.on_click function="VCam.Display" parameter="raw" /></menu_item_call>
+    <menu_item_call label="Face 1" name="display_0"><menu_item_call.on_click function="VCam.Display" parameter="0" /></menu_item_call>
+    <menu_item_call label="Face 2" name="display_1"><menu_item_call.on_click function="VCam.Display" parameter="1" /></menu_item_call>
+    <menu_item_call label="Face 3" name="display_2"><menu_item_call.on_click function="VCam.Display" parameter="2" /></menu_item_call>
+    <menu_item_call label="Face 4" name="display_3"><menu_item_call.on_click function="VCam.Display" parameter="3" /></menu_item_call>
+    <menu_item_call label="Face 5" name="display_4"><menu_item_call.on_click function="VCam.Display" parameter="4" /></menu_item_call>
+    <menu_item_call label="Face 6" name="display_5"><menu_item_call.on_click function="VCam.Display" parameter="5" /></menu_item_call>
+    <menu_item_call label="Face 7" name="display_6"><menu_item_call.on_click function="VCam.Display" parameter="6" /></menu_item_call>
+    <menu_item_call label="Face 8" name="display_7"><menu_item_call.on_click function="VCam.Display" parameter="7" /></menu_item_call>
+    <menu_item_call label="Face 9" name="display_8"><menu_item_call.on_click function="VCam.Display" parameter="8" /></menu_item_call>
+    <menu_item_call label="Face 10" name="display_9"><menu_item_call.on_click function="VCam.Display" parameter="9" /></menu_item_call>
+    <menu_item_call label="Face 11" name="display_10"><menu_item_call.on_click function="VCam.Display" parameter="10" /></menu_item_call>
+    <menu_item_call label="Face 12" name="display_11"><menu_item_call.on_click function="VCam.Display" parameter="11" /></menu_item_call>
+    <menu_item_call label="Face 13" name="display_12"><menu_item_call.on_click function="VCam.Display" parameter="12" /></menu_item_call>
+    <menu_item_call label="Face 14" name="display_13"><menu_item_call.on_click function="VCam.Display" parameter="13" /></menu_item_call>
+    <menu_item_call label="Face 15" name="display_14"><menu_item_call.on_click function="VCam.Display" parameter="14" /></menu_item_call>
+    <menu_item_call label="Face 16" name="display_15"><menu_item_call.on_click function="VCam.Display" parameter="15" /></menu_item_call>
+  </menu>
 </context_menu>

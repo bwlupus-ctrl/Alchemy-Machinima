@@ -70,6 +70,9 @@ public:
     bool                          spansAllColumns() const override { return false; }
     const std::string&            id() const { return mId; }
     const std::string&            title() const { return mTitle; }
+    void                          setBadge(const std::string& badge) { mBadge = badge; }
+    void                          setCodeVisible(bool visible) { mCodeHidden = !visible; }
+    bool                          codeVisible() const { return !mCodeHidden; }
     const std::string&            helpText() const { return mHelp; }
     bool                          hasMore() const { return mMore != nullptr; }
     bool                          moreOpen() const { return mOptionMore.empty() ? mMoreOpen : mOptionMore[mActiveOption]; }
@@ -98,7 +101,8 @@ private:
     void        refreshSummary(S32);
     std::string mId, mTitle, mKind, mBadge, mEnableWidget, mEnableSetting, mEnableTooltip, mSelectorLabel, mSelectorSetting, mLinkTo,
         mLinkLabel, mTarget, mTargetTab, mButtonLabel, mHelp;
-    bool                                            mAdvanced = false, mMoreOpen = false, mLayoutPending = false, mBodyOpen = true;
+    bool                                            mAdvanced = false, mMoreOpen = false, mLayoutPending = false, mBodyOpen = true,
+                                                    mCodeHidden = false;
     S32                                             mMoreCount = 0;
     S32                                             mActiveOption = 0, mAmberCount = 0;
     ALKitSwitch*                                    mEnable        = nullptr;

@@ -77,6 +77,7 @@ private:
     ALKitRowMeta mMeta;
     std::string  mBind, mResetSettings, mDefaultValue, mLabelName;
     S32          mRowHeight  = 28;
+    bool         mExplicitRowHeight = false;
     bool         mCardPreset = false, mWhoPicker = false, mHidden = false, mAdded = false, mFilterVisible = true, mCodeHidden = false,
                  mHovered = false, mPointerInside = false, mFlashing = false, mAmber = false, mSyncingMirror = false;
     LLUICtrl*    mControl = nullptr;

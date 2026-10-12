@@ -21,7 +21,7 @@ Use the existing XUI control types as ordinary measured kit rows. No new canvas,
 
 | Card / row | Existing control evidence | Required binding | Other writable homes |
 |---|---|---|---|
-| `windows` / `polish_popout` (Open window) | `button` `indra/newview/skins/default/xui/en/floater_director.xml:920` | `ALPosePolishKitAdapter` command/model binding → wired in `LLFloaterDirector::postBuild()`; behavior `LLFloaterReg::showInstance()` (`indra/newview/llfloaterdirector.cpp:616`) | none |
+| `windows` / `polish_popout` (Open window) | `button` `indra/newview/skins/default/xui/en/floater_director.xml:920` | `ALPosePolishKitAdapter` command/model binding → wired in `LLFloaterDirector::postBuild()`; behavior `LLFloaterReg::showInstance()` (`indra/newview/llfloaterdirector.cpp:606`) | none |
 | `master_inertia` / `polish_master_note` (Note) | `text` `indra/newview/skins/default/xui/en/panel_pose_polish.xml:19` | kit readout ← approved static copy; no runtime writer | none |
 | `master_inertia` / `polish_inertia_check` (Inertia) | `check_box` `indra/newview/skins/default/xui/en/panel_pose_polish.xml:41` | kit `toggle` ↔ `ALPolishInertiaEnabled` `Boolean` | none |
 | `master_inertia` / `polish_inertia_spine_slider` (Spine settle) | `slider` `indra/newview/skins/default/xui/en/panel_pose_polish.xml:57` | kit `slider` ↔ `ALPolishInertiaHalfLifeSpine` `F32` | none |
@@ -41,7 +41,7 @@ Use the existing XUI control types as ordinary measured kit rows. No new canvas,
 
 | Existing function | Extraction contract |
 |---|---|
-| `LLFloaterReg::showInstance()` — `indra/newview/llfloaterdirector.cpp:616` | Move model-facing work into `ALPosePolishKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
+| `LLFloaterReg::showInstance()` — `indra/newview/llfloaterdirector.cpp:606` | Move model-facing work into `ALPosePolishKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
 
 ## Live state and refresh
 

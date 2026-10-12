@@ -8,6 +8,8 @@
  */
 
 #include "llviewerprecompiledheaders.h"
+
+#include "aldirectortabmigration.h"
 #include "alkitshell.h"
 #include "alkitbinding.h"
 #include "alkitbar.h"
@@ -98,19 +100,7 @@ constexpr const char* OLD_FLAT_TABS[] = {
 
 std::string migrate_tab_name(const std::string& name)
 {
-    if (name == "camera_tab") return "shot_tab";
-    // VCam moved from the v1 Lens group to the v2 Camera group.  Persisted
-    // leaf names remain canonical; also accept qualified names written by
-    // short-lived development builds.
-    if (name == "lens_group/vcam_tab" || name == "camera_group/vcam_tab")
-    {
-        return "vcam_tab";
-    }
-    if (name == "projector_volumetrics_tab" || name == "atmospheric_volumes_tab")
-    {
-        return "atmosphere_tab";
-    }
-    return name;
+    return ALDirectorTabMigration::migrateTabName(name);
 }
 
 std::string legacy_tab_name(const std::string& name)
@@ -1444,7 +1434,9 @@ void LLFloaterDirector::onOpen(const LLSD& key)
         // Restore both tab levels without fitting each commit separately;
         // once the leaf is known, fit exactly that newly visible page.
         mScrollFit.setCommitFitEnabled(false);
-        const std::string name = migrate_tab_name(gSavedSettings.getString("DirectorLastTabName"));
+        const std::string persisted_name = gSavedSettings.getString("DirectorLastTabName");
+        const std::string name = ALDirectorTabMigration::restoreTabName(
+            persisted_name, gSavedSettings.getS32("DirectorLastTab"));
         bool restored = !name.empty() && selectLeafTab(name);
         if (!restored)
         {

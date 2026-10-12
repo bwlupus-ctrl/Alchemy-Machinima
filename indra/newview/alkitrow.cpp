@@ -22,6 +22,9 @@
 #include "aluirefresh.h"
 #include "alcompassdial.h"
 #include "alkitswitch.h"
+
+#include <algorithm>
+#include <vector>
 static LLDefaultChildRegistry::Register<ALKitRow> r("kit_row");
 
 namespace
@@ -74,6 +77,7 @@ ALKitRow::ALKitRow(const Params& p) :
     mDefaultValue(p.default_value),
     mLabelName(p.label_name),
     mRowHeight(p.row_height),
+    mExplicitRowHeight(p.row_height.isProvided()),
     mCardPreset(p.card_preset),
     mWhoPicker(p.who_picker),
     mHidden(p.hidden),
@@ -302,14 +306,20 @@ void ALKitRow::layoutRow(S32 w)
     reshape(w, h, true);
     if (mLabel)
     {
+        const bool full_span_custom = mMeta.kind == "custom" && mMeta.label.empty();
         mLabel->reshape(ALKitStyle::LABEL_W, 20, true);
         mLabel->setOrigin(ALKitStyle::ROW_INSET, (h - 20) / 2);
+        mLabel->setVisible(!full_span_custom);
     }
 
-    const S32 x = ALKitStyle::ROW_INSET + ALKitStyle::LABEL_W + ALKitStyle::COL_GAP;
+    const bool full_span_custom = mMeta.kind == "custom" && mMeta.label.empty();
+    const S32 x = full_span_custom ? ALKitStyle::ROW_INSET
+                                   : ALKitStyle::ROW_INSET + ALKitStyle::LABEL_W + ALKitStyle::COL_GAP;
     const S32 cw =
-        llmax(1, w - 2 * ALKitStyle::ROW_INSET - ALKitStyle::LABEL_W - ALKitStyle::VALUE_W - ALKitStyle::RESET_W - 3 * ALKitStyle::COL_GAP);
-    const S32 span = cw + ALKitStyle::COL_GAP + ALKitStyle::VALUE_W;
+        full_span_custom
+            ? llmax(1, w - 2 * ALKitStyle::ROW_INSET)
+            : llmax(1, w - 2 * ALKitStyle::ROW_INSET - ALKitStyle::LABEL_W - ALKitStyle::VALUE_W - ALKitStyle::RESET_W - 3 * ALKitStyle::COL_GAP);
+    const S32 span = full_span_custom ? cw : cw + ALKitStyle::COL_GAP + ALKitStyle::VALUE_W;
 
     if (mVecCount)
     {
@@ -364,10 +374,31 @@ void ALKitRow::layoutRow(S32 w)
         else if (mMeta.kind == "slider" || mMeta.kind == "combo" || mMeta.kind == "text" || mMeta.kind == "readout" ||
                  mMeta.kind == "link" || mMeta.kind == "custom" || mMeta.kind == "segmented")
             width = span;
+        if (mExplicitRowHeight && (mMeta.kind == "custom" || mMeta.kind == "list" || mMeta.kind == "viewport"))
+            height = h;
         if (LLSpinCtrl* spinner = dynamic_cast<LLSpinCtrl*>(mControl); spinner && mMeta.kind == "number")
             spinner->setValueColumnLayout(width, height, true);
         else
             mControl->reshape(width, height, true);
+        if (mMeta.kind == "segmented")
+        {
+            std::vector<LLView*> segments(mControl->getChildList()->begin(),
+                                          mControl->getChildList()->end());
+            std::sort(segments.begin(), segments.end(),
+                [](const LLView* left, const LLView* right)
+                {
+                    return left->getRect().mLeft < right->getRect().mLeft;
+                });
+            const S32 count = static_cast<S32>(segments.size());
+            const S32 each = llmax(1, width / llmax(1, count));
+            S32 index = 0;
+            for (LLView* segment : segments)
+            {
+                segment->reshape(index + 1 == count ? width - index * each : each, height, true);
+                segment->setOrigin(index * each, 0);
+                ++index;
+            }
+        }
         const S32 control_x = mMeta.kind == "number" ? x + cw + ALKitStyle::COL_GAP : x;
         mControl->setOrigin(control_x, (h - height) / 2);
 
