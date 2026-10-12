@@ -7,6 +7,7 @@ import argparse
 import csv
 import json
 import itertools
+import functools
 import re
 from collections import Counter, defaultdict
 from pathlib import Path
@@ -41,6 +42,43 @@ INWORLD_VETTED_OWNER_PAGES = {
     },
     "LLFloaterDirector::sceneSettingsList": {"switchboard_tab"},
 }
+
+# Narrow false-positive exemptions for callbacks that persist viewer-local
+# configuration.  The key includes the source owner and page: a same-named
+# control elsewhere gets no exemption.  Only the four filesystem tags may be
+# removed; simulator/agent/world rules always remain active.
+INWORLD_LOCAL_HAZARD_EXEMPTIONS: dict[tuple[str, str, str], tuple[set[str], str]] = {}
+
+
+def _add_local_exemptions(owner: str, page: str, widgets: set[str], evidence: str) -> None:
+    for widget in widgets:
+        INWORLD_LOCAL_HAZARD_EXEMPTIONS[(owner, page, widget)] = (
+            {"save_disk", "rename", "file_picker", "export_import"}, evidence)
+
+
+_add_local_exemptions("LLFloaterDirector::postBuild", "move_tab",
+                      {"group_run_combo", "group_delay_spinner"},
+                      "llfloaterdirector.cpp:318-320,2670-2731")
+_add_local_exemptions("ALPanelDanceBall::postBuild", "dance_tab",
+                      {"db_radius", "db_mode", "db_adv_interval", "db_t_speed",
+                       "db_t_desync", "db_t_crossfade"},
+                      "alpaneldanceball.cpp:179-226")
+_add_local_exemptions("ALPanelDirectorAnimSwitcher::postBuild", "switchboard_tab",
+                      {"anim_slot_kind", "anim_slot_target", "anim_pose_name",
+                       "anim_pose_load_method", "anim_slot_priority", "anim_slot_speed",
+                       "anim_slot_loop", "anim_slot_snap", "anim_slot_enabled"},
+                      "alpaneldirectoranimswitcher.cpp:204-247,277-365")
+_add_local_exemptions("ALPanelDirectorSwitcher::postBuild", "shot_tab",
+                      {"switcher_slot_mode", "switcher_slot_enabled",
+                       "switcher_primary_subject", "switcher_secondary_subject",
+                       "switcher_custom_enabled"},
+                      "alpaneldirectorswitcher.cpp:314-425")
+_add_local_exemptions("ALPanelFlycamRecorder::postBuild", "takes_tab",
+                      {"FlycamWeightedWeight"}, "alpanelflycamrecorder.cpp:271-281")
+_add_local_exemptions("ALPanelAtmosphericVolumes::postBuild", "atmosphere_tab",
+                      {f"localfog_{kind}_{axis}" for kind in ("center", "size", "rotation")
+                       for axis in ("x", "y", "z")},
+                      "alpanelatmosphericvolumes.cpp:179-216")
 
 
 def _inworld_local_effect(row: dict[str, object]) -> tuple[bool, str]:
@@ -102,8 +140,11 @@ def load_setting_defaults(repo: Path) -> dict[str, object]:
     return result
 
 
+@functools.lru_cache(maxsize=None)
 def _function_body(text: str, qualified: str) -> str:
     """Return a conservative C++ function body for a qualified method."""
+    if not qualified or qualified not in text:
+        return ""
     match = re.search(r"\b" + re.escape(qualified) + r"\s*\([^;{}]*\)\s*(?:const\s*)?\{", text)
     if not match:
         return ""
@@ -119,59 +160,287 @@ def _function_body(text: str, qualified: str) -> str:
     return ""
 
 
-def _handler_hazards(row: dict[str, object], cpp_text: str,
-                     body_cache: dict[str, str]) -> tuple[set[str], bool]:
-    """Resolve a button's installed callback and scan it fail-closed."""
+def _matching_delimiter(text: str, start: int, opener: str = "(", closer: str = ")") -> int:
+    """Return the matching delimiter, ignoring C++ strings and comments."""
+    depth = 0
+    quote = ""
+    escaped = False
+    line_comment = False
+    block_comment = False
+    pos = start
+    while pos < len(text):
+        char = text[pos]
+        following = text[pos + 1] if pos + 1 < len(text) else ""
+        if line_comment:
+            if char == "\n":
+                line_comment = False
+        elif block_comment:
+            if char == "*" and following == "/":
+                block_comment = False
+                pos += 1
+        elif quote:
+            if escaped:
+                escaped = False
+            elif char == "\\":
+                escaped = True
+            elif char == quote:
+                quote = ""
+        elif char == "/" and following == "/":
+            line_comment = True
+            pos += 1
+        elif char == "/" and following == "*":
+            block_comment = True
+            pos += 1
+        elif char in {'"', "'"}:
+            quote = char
+        elif char == opener:
+            depth += 1
+        elif char == closer:
+            depth -= 1
+            if depth == 0:
+                return pos
+        pos += 1
+    return -1
+
+
+def _callback_call(text: str, match: re.Match[str]) -> str:
+    """Extract a complete set*Callback/childSet*/registrar.add call."""
+    opening = text.rfind("(", match.start(), match.end())
+    closing = _matching_delimiter(text, opening) if opening >= 0 else -1
+    return text[match.start():closing + 1] if closing >= 0 else ""
+
+
+def _source_body(sources: dict[Path, str], qualified: str,
+                 preferred: Path | None = None) -> tuple[str, Path | None]:
+    paths = ([preferred] if preferred in sources else []) + [p for p in sources if p != preferred]
+    for path in paths:
+        body = _function_body(sources[path], qualified)
+        if body:
+            return body, path
+    return "", None
+
+
+def _source_bodies_by_leaf(sources: dict[Path, str], leaf: str,
+                           preferred: Path | None = None,
+                           cache: dict[str, object] | None = None,
+                           restrict: frozenset | None = None) -> list[tuple[str, Path]]:
+    """Conservatively resolve member calls whose receiver type is not in text.
+
+    Unknown-receiver calls resolve only within the calling file and the known
+    owner files (restrict); searching every newview source by leaf name fans
+    out through unrelated get()/size()/find() definitions without bound.
+    """
+    cache_key = "@leaf:" + leaf + "@" + ",".join(sorted(str(p) for p in (restrict or ())))
+    if cache is not None and cache_key in cache:
+        return cache[cache_key]  # type: ignore[return-value]
+    paths = ([preferred] if preferred in sources else []) + [p for p in sources if p != preferred]
+    if restrict is not None:
+        paths = [p for p in paths if p in restrict]
+    found: list[tuple[str, Path]] = []
+    definition = re.compile(r"\b((?:[A-Za-z_]\w*::)*" + re.escape(leaf) +
+                            r")\s*\([^;{}]*\)\s*(?:const\s*)?\{")
+    for path in paths:
+        if leaf not in sources[path]:
+            continue
+        for qualified in definition.findall(sources[path]):
+            body = _function_body(sources[path], qualified)
+            if body:
+                found.append((body, path))
+    if cache is not None:
+        cache[cache_key] = found
+    return found
+
+
+def _expand_callback_calls(seed: list[tuple[str, Path | None]], owner_class: str,
+                           sources: dict[Path, str], body_cache: dict[str, object],
+                           depth_limit: int = 3) -> list[str]:
+    """Scan callback text and its same/known-owner-file callees to bounded depth."""
+    result: list[str] = []
+    queue = [(text, path, 0) for text, path in seed]
+    seen: set[tuple[str, str]] = set()
+    ignored = {
+        "if", "for", "while", "switch", "return", "sizeof", "decltype", "catch",
+        "getChild", "findChild", "setCommitCallback", "setClickedCallback",
+        "childSetAction", "childSetCommitCallback", "bind", "add",
+    }
+    owner_key = "@owner_files:" + owner_class
+    if owner_key not in body_cache:
+        marker = owner_class + "::" if owner_class else ""
+        body_cache[owner_key] = frozenset(
+            p for p, t in sources.items() if marker and marker in t)
+    owner_files: frozenset = body_cache[owner_key]  # type: ignore[assignment]
+    while queue:
+        text, source, depth = queue.pop(0)
+        result.append(text)
+        restrict = owner_files | frozenset(p for p in (source,) + tuple(
+            q for _, q in seed) if p is not None)
+        if depth >= depth_limit:
+            continue
+        calls = set(re.findall(r"(?<![.&>])\b((?:[A-Za-z_]\w*::)*[A-Za-z_]\w*)\s*\(", text))
+        calls.update(re.findall(r"&([A-Za-z_]\w*(?:::[A-Za-z_]\w*)+)", text))
+        member_calls = set(re.findall(r"(?:->|\.)\s*([A-Za-z_]\w*)\s*\(", text))
+        for called in calls:
+            leaf = called.rsplit("::", 1)[-1]
+            if leaf in ignored:
+                continue
+            candidates = [called] if "::" in called else ([owner_class + "::" + called] if owner_class else [])
+            for candidate in candidates:
+                body, body_source = _source_body(sources, candidate, source)
+                key = (candidate, str(body_source or ""))
+                if body and key not in seen:
+                    seen.add(key)
+                    queue.append((body, body_source, depth + 1))
+                    break
+            else:
+                for body, body_source in _source_bodies_by_leaf(
+                        sources, leaf, source, body_cache, restrict):
+                    key = (leaf + ":" + str(hash(body)), str(body_source))
+                    if key not in seen:
+                        seen.add(key)
+                        queue.append((body, body_source, depth + 1))
+        for leaf in member_calls - ignored:
+            preferred_name = owner_class + "::" + leaf if owner_class else ""
+            body, body_source = _source_body(sources, preferred_name, source) if preferred_name else ("", None)
+            candidates = [(body, body_source)] if body and body_source else \
+                _source_bodies_by_leaf(sources, leaf, source, body_cache, restrict)
+            for candidate_body, candidate_source in candidates:
+                key = (leaf + ":" + str(hash(candidate_body)), str(candidate_source))
+                if key not in seen:
+                    seen.add(key)
+                    queue.append((candidate_body, candidate_source, depth + 1))
+    return result
+
+
+def _handler_hazards(row: dict[str, object], cpp_sources: dict[Path, str],
+                     body_cache: dict[str, object]) -> tuple[set[str], bool]:
+    """Resolve this control's exact callback and scan it fail-closed."""
     owner = str(row.get("owner") or "")
     widget = str(row.get("widget_name") or "")
-    bodies: list[str] = []
+    bodies: list[tuple[str, Path | None]] = []
     resolved = False
-    def body_for(name: str) -> str:
-        if name not in body_cache:
-            body_cache[name] = _function_body(cpp_text, name)
-        return body_cache[name]
-
-    owner_body = body_for(owner) if owner else ""
-    if owner_body and (not widget or f'"{widget}"' in owner_body):
-        at = owner_body.find(f'"{widget}"')
-        direct_start = owner_body.rfind("getChild", 0, at + 1)
-        window = owner_body[max(0, direct_start if direct_start >= 0 else at - 160):at + 2000]
-        assignment_window = owner_body[max(0, at - 160):at + 120]
-        member_match = re.search(
-            r"([A-Za-z_]\w*)\s*=\s*getChild(?:<[^>]+>)?\s*\(\s*\"" +
-            re.escape(widget) + r"\"\s*\)", assignment_window)
-        if member_match:
-            callback_at = owner_body.find(member_match.group(1) + "->set", at)
-            if callback_at >= 0:
-                window = owner_body[callback_at:callback_at + 2000]
-        handlers = set(re.findall(r"&([A-Za-z_]\w*::[A-Za-z_]\w*)", window))
-        owner_class = owner.split("::", 1)[0] if "::" in owner else ""
-        if owner_class:
-            handlers.update(owner_class + "::" + name for name in
-                            re.findall(r"\b(on[A-Z][A-Za-z0-9_]*)\s*\(", window))
-        if handlers:
-            resolved = True
-            for handler in handlers:
-                body = body_for(handler)
-                if body:
-                    bodies.append(body)
-        elif "setCommitCallback" in window or "setClickedCallback" in window:
-            # Inline lambdas still have their complete call text in this window.
-            resolved = True
-            bodies.append(window)
     callback = str(row.get("callbacks") or "")
+    owner_body, owner_source = _source_body(cpp_sources, owner) if owner else ("", None)
+    if owner and owner_body:
+        body_cache.setdefault(owner, owner_body)
+    owner_class = owner.split("::", 1)[0] if "::" in owner else ""
+
+    registration_text = cpp_sources.get(owner_source, "") if owner_source else owner_body
+    if registration_text and (not widget or f'"{widget}"' in registration_text):
+        at = registration_text.find(f'"{widget}"')
+        direct_start = registration_text.rfind("getChild", 0, at + 1)
+        legacy_window = registration_text[
+            max(0, direct_start if direct_start >= 0 else at - 160):at + 2000]
+        registrations: list[str] = []
+
+        # Direct literal registration: getChild("this-control")->set*Callback(...).
+        direct_re = re.compile(
+            r"(?:getChild|findChild)(?:<[^>]+>)?\s*\(\s*\"" + re.escape(widget) +
+            r"\"\s*\)\s*->\s*set(?:Commit|Clicked)Callback\s*\(")
+        registrations.extend(filter(None, (_callback_call(registration_text, match)
+                                             for match in direct_re.finditer(registration_text))))
+
+        # Named/member control registration. Array members deliberately match by
+        # base name (mCenter[VX] -> mCenter[axis]); the callback is shared by the
+        # whole array, so this remains exact for the named control.
+        assignment_re = re.compile(
+            r"([A-Za-z_]\w*(?:\s*\[[^\]]+\])?)\s*=\s*(?:[^;{}]*?)"
+            r"(?:getChild|findChild)(?:<[^>]+>)?\s*\(\s*\"" + re.escape(widget) + r"\"\s*\)")
+        for assignment in assignment_re.finditer(registration_text):
+            member = assignment.group(1).strip()
+            base = re.match(r"[A-Za-z_]\w*", member).group(0)
+            member_scope = registration_text
+            if not re.match(r"m[A-Z_]", base):
+                # Locals such as `control` are routinely reused for adjacent
+                # widgets. Restrict them to their enclosing if-block or until
+                # the next assignment to that local.
+                brace = registration_text.find("{", assignment.end(), assignment.end() + 240)
+                semicolon = registration_text.find(";", assignment.end(), assignment.end() + 240)
+                if brace >= 0 and (semicolon < 0 or brace < semicolon):
+                    end = _matching_delimiter(registration_text, brace, "{", "}")
+                    member_scope = registration_text[assignment.end():end + 1] if end >= 0 else ""
+                else:
+                    next_assignment = re.search(
+                        r"\b" + re.escape(base) + r"\s*=\s*[^;{}]*"
+                        r"(?:getChild|findChild)", registration_text[assignment.end():])
+                    end = (assignment.end() + next_assignment.start()
+                           if next_assignment else min(len(registration_text), assignment.end() + 2000))
+                    member_scope = registration_text[assignment.end():end]
+            member_re = re.compile(
+                r"\b" + re.escape(base) + r"(?:\s*\[[^\]]+\])?\s*->\s*"
+                r"set(?:Commit|Clicked)Callback\s*\(")
+            registrations.extend(filter(None, (_callback_call(member_scope, match)
+                                                 for match in member_re.finditer(member_scope))))
+
+        # Legacy helper APIs bind the literal control name in the same call.
+        helper_re = re.compile(
+            r"\b(?:childSetAction|childSetCommitCallback)\s*\(\s*\"" +
+            re.escape(widget) + r"\"\s*,")
+        registrations.extend(filter(None, (_callback_call(registration_text, match)
+                                             for match in helper_re.finditer(registration_text))))
+
+        if registrations:
+            resolved = True
+            for registration in dict.fromkeys(registrations):
+                bodies.append((registration, owner_source))
+                if owner_source:
+                    offset = cpp_sources[owner_source].find(registration)
+                    if offset >= 0:
+                        row["inworld_callback_evidence"] = (
+                            f"{owner_source.name}:{cpp_sources[owner_source].count(chr(10), 0, offset) + 1}")
+                # A callback may be a previously declared local lambda.
+                argument = registration[registration.find("(") + 1:]
+                registration_offset = registration_text.find(registration)
+                for local in re.findall(r"\b([a-z_]\w*)\b", argument):
+                    declarations = list(re.finditer(
+                        r"\b" + re.escape(local) + r"\s*=\s*\[",
+                        registration_text[:registration_offset] if registration_offset >= 0
+                        else registration_text))
+                    declaration = declarations[-1] if declarations else None
+                    if declaration:
+                        brace = registration_text.find("{", declaration.start())
+                        end = _matching_delimiter(registration_text, brace, "{", "}")
+                        if end >= 0:
+                            bodies.append((registration_text[declaration.start():end + 1], owner_source))
+        elif row.get("setting") and not callback:
+            # A control_name XUI binding is itself the exact registration: the
+            # widget commits directly to this viewer setting and has no C++
+            # callback to borrow from a neighbouring control.
+            resolved = True
+        else:
+            # Exact resolution failed: retain the old conservative union of
+            # every handler in the whole window. Never select only the first.
+            handlers = set(re.findall(r"&([A-Za-z_]\w*(?:::[A-Za-z_]\w*)+)", legacy_window))
+            if owner_class:
+                handlers.update(owner_class + "::" + name for name in
+                                re.findall(r"\b(on[A-Z][A-Za-z0-9_]*)\s*\(", legacy_window))
+            bodies.append((legacy_window, owner_source))
+            for handler in handlers:
+                body, source = _source_body(cpp_sources, handler, owner_source)
+                if body:
+                    bodies.append((body, source))
     if callback:
-        body = body_for(callback)
+        body, source = _source_body(cpp_sources, callback, owner_source)
         if body:
             resolved = True
-            bodies.append(body)
+            bodies.append((body, source))
+        else:
+            # XUI commit_callback.function names resolve through the callback
+            # registry's exact string key.
+            registry_re = re.compile(r"\badd\s*\(\s*\"" + re.escape(callback) + r"\"\s*,")
+            for source_path, source_text in cpp_sources.items():
+                for match in registry_re.finditer(source_text):
+                    call = _callback_call(source_text, match)
+                    if call:
+                        resolved = True
+                        bodies.append((call, source_path))
     if (not resolved and row.get("setting") and not callback and not owner):
         # A plain control_name binding has no owner handler: LLUICtrl commits
         # directly to the viewer-local setting. This is a resolved local sink,
         # not an unknown callback.
         resolved = True
 
-    combined = "\n".join(bodies)
+    combined = "\n".join(_expand_callback_calls(
+        bodies, owner_class, cpp_sources, body_cache))
     hazards: set[str] = set()
     rules = {
         "file_picker": r"\b(?:LLFilePicker|LLFilePickerReplyThread|LLFloaterFilePicker|getOpenFile|getSaveFile)\b",
@@ -185,7 +454,7 @@ def _handler_hazards(row: dict[str, object], cpp_text: str,
         "save_disk": r"\b(?:llofstream|ofstream|save[A-Z]\w*|writePreset|write[A-Z]\w*File)\b",
         "logout": r"\b(?:requestQuit|forceDisconnect|logout|disconnectFromGrid)\b",
         "server_message": r"\b(?:gMessageSystem|sendReliable(?:Message)?|sendMessage)\b",
-        "agent_send": r"\b(?:gAgent|LLAgent\w*)\b[^;{}]{0,80}?\bsend[A-Z]\w*\b",
+        "agent_send": r"\b(?:sendAnimationRequest|(?:gAgent|LLAgent\w*)\b[^;{}]{0,80}?\bsend[A-Z]\w*)\b",
         "object_send": r"\bLLViewerObject\w*\b[^;{}]{0,80}?\bsend[A-Z]\w*\b",
         "selection_send": r"\bLLSelectMgr\w*\b[^;{}]{0,80}?\bsend[A-Z]\w*\b",
         "parcel_send": r"\bLLViewerParcel\w*\b[^;{}]{0,80}?\b(?:send|update|claim|deed|buy|release)[A-Z]\w*\b",
@@ -196,7 +465,25 @@ def _handler_hazards(row: dict[str, object], cpp_text: str,
     for tag, pattern in rules.items():
         if re.search(pattern, combined, re.I):
             hazards.add(tag)
+    # A virtual avatar call can dispatch gAgent.sendAnimationRequest when the
+    # self avatar's AO overrides the motion.  Qualified LLCharacter calls are
+    # deliberately not matched.
+    if re.search(r"->\s*(?:startMotion|stopMotion)\s*\(", combined):
+        hazards.add("agent_send")
+        row["motion_send_hazard"] = True
+    exemption = INWORLD_LOCAL_HAZARD_EXEMPTIONS.get((owner, str(row.get("page") or ""), widget))
+    if exemption:
+        allowed_tags, evidence = exemption
+        hazards.difference_update(allowed_tags)
+        row["inworld_hazard_exemption_evidence"] = evidence
     return hazards, resolved
+
+
+def _apply_inworld_hazard_policy(row: dict[str, object], hazards: set[str]) -> None:
+    if hazards:
+        row["inworld_allowed"] = False
+        row["inworld_allow_evidence"] = (
+            "resolved handler hazard: " + ", ".join(sorted(hazards)))
 
 
 def _owner_enable_index(cpp_sources: dict[Path, str]) -> dict[str, tuple[str, str]]:
@@ -241,6 +528,57 @@ def _merge_required_consumers(document: dict[str, object], repo: Path) -> int:
     return len(oracle.get("required", []))
 
 
+def _enforce_inworld_run1_baseline(document: dict[str, object], repo: Path) -> list[str]:
+    """Deny newly executable rows unless the locality table authorizes them."""
+    baseline_path = repo / "doc/director_kit/run_functional_20261012_093309/manifest_merged.json"
+    evidence_path = repo / "doc/director_kit/functional/INWORLD_NEW_ROWS.md"
+    if not baseline_path.exists():
+        document.setdefault("meta", {})["inworld_run1_diff"] = "baseline unavailable"
+        denied = []
+        for row in document.get("entries", []):
+            if row.get("inworld_allowed") is True and row.get("action") in {"RUN", "DEFER_INWORLD"}:
+                row["inworld_allowed"] = False
+                row["inworld_allow_evidence"] = "run-1 baseline unavailable; fail-closed denial"
+                denied.append(":".join((str(row.get("version") or ""),
+                                        str(row.get("page") or ""),
+                                        str(row.get("widget_name") or ""))))
+        document["meta"]["inworld_run1_new_rows_denied"] = denied
+        return denied
+
+    baseline = json.loads(baseline_path.read_text(encoding="utf-8"))
+    old = {(row.get("version"), row.get("page"), row.get("widget_name")): row
+           for row in baseline.get("entries", [])}
+    approved: dict[tuple[str, str, str], str] = {}
+    if evidence_path.exists():
+        for line in evidence_path.read_text(encoding="utf-8").splitlines():
+            cells = [cell.strip().strip("`") for cell in line.strip().strip("|").split("|")]
+            if len(cells) == 4 and cells[0] in {"v1", "v2"} and \
+                    re.fullmatch(r"[^:|]+:\d+(?:-\d+)?", cells[3]):
+                approved[(cells[0], cells[1], cells[2])] = cells[3]
+
+    executable = {"RUN", "DEFER_INWORLD"}
+    denied: list[str] = []
+    for row in document.get("entries", []):
+        key = (str(row.get("version") or ""), str(row.get("page") or ""),
+               str(row.get("widget_name") or ""))
+        before = old.get(key)
+        now_exec = row.get("inworld_allowed") is True and row.get("action") in executable
+        was_exec = bool(before and before.get("inworld_allowed") is True and
+                        before.get("action") in executable)
+        if not now_exec or was_exec:
+            continue
+        evidence = approved.get(key)
+        if evidence:
+            row["inworld_new_row_evidence"] = evidence
+            row["inworld_allow_evidence"] = "run-1 locality: " + evidence
+            continue
+        row["inworld_allowed"] = False
+        row["inworld_allow_evidence"] = "new since run 1; no documented file:line locality evidence"
+        denied.append(":".join(key))
+    document.setdefault("meta", {})["inworld_run1_new_rows_denied"] = denied
+    return denied
+
+
 def prepare_manifest(path: Path, repo: Path, output: Path) -> tuple[int, int, int, int]:
     """Enrich the generated plan from XUI and owner refresh patterns.
 
@@ -272,9 +610,10 @@ def prepare_manifest(path: Path, repo: Path, output: Path) -> tuple[int, int, in
     unresolved: list[str] = []
     unresolved_hazards: list[str] = []
     hazard_rows = 0
-    body_cache: dict[str, str] = {}
+    body_cache: dict[str, object] = {}
 
     gaze_targets = {
+        "target": ("gaze_target_combo", 0),
         "eye_target": ("gaze_eye_target_combo", -1),
         "intensity": ("gaze_intensity_slider", 1.0),
         "blend": ("gaze_blend_slider", 0.7), "torso": ("gaze_torso_slider", 0.25),
@@ -309,9 +648,29 @@ def prepare_manifest(path: Path, repo: Path, output: Path) -> tuple[int, int, in
     gaze_actor_override_resets = {
         "camera_roll", "ease_acquire", "ease_release", "deadzone", "priority",
         "anim_priority", "composition", "composition_mix", "chest_share",
-        "limit_mode", "limit_profile", "lean_curve", "lean_threshold",
+        "limit_mode", "limit_profile", "exaggerate", "lean_curve", "lean_threshold",
         "lean_softness", "lean_max", "microlife", "variation",
         "break_frequency",
+    }
+    gaze_reset_settings = {
+        "camera_roll": "DirectorGazeCameraRoll",
+        "ease_acquire": "DirectorGazeEaseAcquireSec",
+        "ease_release": "DirectorGazeEaseReleaseSec",
+        "deadzone": "BDMergeGazeDeadZone",
+        "priority": "DirectorGazePriority",
+        "anim_priority": "DirectorGazeAnimationPriority",
+        "composition": "DirectorGazeComposition",
+        "composition_mix": "DirectorGazeCompositionMix",
+        "chest_share": "DirectorGazeChestShare",
+        "limit_mode": "DirectorGazeLimitMode",
+        "exaggerate": "DirectorGazeExaggerate",
+        "lean_curve": "DirectorGazeLeanCurve",
+        "lean_threshold": "DirectorGazeLeanThresholdDeg",
+        "lean_softness": "DirectorGazeLeanSoftnessDeg",
+        "lean_max": "DirectorGazeLeanMaxDeg",
+        "microlife": "DirectorGazeMicroLife",
+        "variation": "DirectorGazeVariation",
+        "break_frequency": "DirectorGazeBreakFrequency",
     }
     # These controls write per-actor/crowd/dance model state. At login their
     # widgets can commit, but there is deliberately no entity model to provide
@@ -331,9 +690,32 @@ def prepare_manifest(path: Path, repo: Path, output: Path) -> tuple[int, int, in
         "db_block_keep_facing", "db_block_mode", "db_block_shape",
         "db_block_spacing", "db_block_centre", "db_wave_focus",
         "db_wave_speed", "db_wave_dir", "db_wave_apply", "db_ramp_target",
-        "db_ramp_seconds", "gaze_breakoff_check", "db_on",
+        "db_ramp_seconds", "db_on",
         "look_at_camera_torso", "look_at_camera_torso_amount",
     }
+    inworld_unprovisioned = {
+        "btn_drive_all": "in-world design: Drive all requires an enrolled prop path; the harness creates none",
+        "anim_list": "in-world design: animation selection requires a populated inventory animation list",
+        "cue_list": "in-world design: cue selection requires a saved cue; the harness creates none",
+        "btn_cue_delete": "in-world design: Delete is disabled until a saved cue is selected",
+        "actor_style_target": "in-world design: actor-style target requires a populated cast subject beyond the isolated self fixture",
+        "vc_monitor_strip": "in-world design: the monitor strip commits only named tile menu/drag hit zones, not its decorative centre",
+        "vc_monitor_tile_manifest": "in-world design: manifest-only monitor tile documentation has no standalone LLUICtrl",
+        "vc_source_type": "in-world design: Virtual at my view is already Virtual; the source selector has no safe alternate fixture",
+    }
+    for name in {
+            "facing_yaw_offset_spinner", "strip_count_spinner", "strip_interval_spinner",
+            "formation_motion_speed", "formation_motion_amplitude", "pose_rate_spinner",
+            "btn_group_unit", "btn_ungroup_unit", "btn_rig_diag_refresh"}:
+        inworld_unprovisioned[name] = \
+            "in-world design: ghost/crowd edits require a selected generated unit; the harness creates none"
+    for name in {
+            "db_prev", "db_next", "db_blocking_list", "db_block_toggle_rows",
+            "db_block_yaw_minus", "db_block_yaw", "db_block_yaw_plus", "db_block_face",
+            "db_block_pin", "db_block_release", "db_block_mode", "db_block_set_centre",
+            "db_block_apply_selected", "db_block_apply_all", "db_block_reset_selected"}:
+        inworld_unprovisioned[name] = \
+            "in-world design: dance transport/blocking requires a populated playlist or selected blocking row"
     launchers = {
         "btn_actor_gaze": "actor_gaze", "btn_pose_polish": "pose_polish",
         "btn_gaze_cues": "gaze_cues", "polish_popout": "pose_polish",
@@ -391,6 +773,53 @@ def prepare_manifest(path: Path, repo: Path, output: Path) -> tuple[int, int, in
         row["reveal"] = reveal
 
         widget = row.get("widget_name", "")
+        if widget in {"anim_switcher_armed", "anim_switcher_auto",
+                      "btn_anim_play", "btn_paste_play"}:
+            row.update(
+                action="SKIP", known_gap=False,
+                reason=("in-world: may send animation request via AO override "
+                        "(llvoavatar.cpp:7398-7413,7442-7457; "
+                        "aldirectoranimswitcher.cpp:414,418,565; "
+                        "llfloaterdirector.cpp:3726,3741)"))
+            row["hazards"] = sorted(set(row.get("hazards", [])) | {"agent_send"})
+        if widget in inworld_unprovisioned:
+            row["inworld_known_gap_reason"] = inworld_unprovisioned[widget]
+        if row.get("page") == "props_tab" and widget == "btn_stop":
+            row["inworld_known_gap_reason"] = \
+                "in-world design: prop Stop requires an enrolled prop path; the harness creates none"
+        if widget == "cine_fx_stop":
+            row.update(probe="cine_fx_stop", action="DEFER_INWORLD", known_gap=False)
+        elif widget == "cine_live_probe_refresh_now":
+            row.update(probe="cine_live_probe_refresh", action="DEFER_INWORLD", known_gap=False)
+            prereqs.append({"setting": "CineLightRigLiveProbeRefresh", "value": 4,
+                            "source": "LLReflectionMapManager::requestCinematicLiveProbeRefresh"})
+        elif widget == "vc_snap_view":
+            row.update(probe="vc_snap_view", action="DEFER_INWORLD", known_gap=False)
+        elif widget == "vc_face_list":
+            row.update(probe="vc_face_list", action="DEFER_INWORLD", known_gap=False)
+        elif widget == "vc_camera_selector":
+            row.update(probe="vc_camera_selector", action="DEFER_INWORLD", known_gap=False,
+                       exercise="select_item",
+                       test_value={"item_index": 1, "resolve": "runtime"})
+        elif row.get("page") == "move_tab" and widget in {"btn_walk", "btn_stop"}:
+            row.update(probe="actor_mover_active", action="DEFER_INWORLD", known_gap=False,
+                       actor_mover_expect_active=widget == "btn_walk")
+        elif widget == "gaze_breakoff_check":
+            # This callback writes a real global setting; use that independent
+            # setting oracle instead of treating the absent per-actor field as
+            # an in-world fixture gap.
+            row.update(action="RUN", known_gap=False,
+                       setting="BDMergeGazeBehindPolicy", setting_type="S32")
+            row["expect"] = {"setting": "BDMergeGazeBehindPolicy", "type": "S32",
+                             "value": 1}
+        elif widget == "actor_style_reset":
+            row.update(probe="actor_style_reset", action="DEFER_INWORLD", known_gap=False)
+        elif widget == "ir_enable_tag":
+            row.update(action="DEFER_INWORLD", known_gap=False,
+                       confirm_notification="EnableGBufferAvatarTagConfirm",
+                       oracle_pre_value=False, setting="RenderGBufferAvatarTag")
+            row["expect"] = {"setting": "RenderGBufferAvatarTag", "type": "Boolean",
+                             "value": True}
         if widget in entity_state_controls and row.get("action") == "RUN":
             row.update(action="DEFER_INWORLD", known_gap=False,
                        reason=f"{widget}: requires an active actor/crowd/dance model oracle",
@@ -405,6 +834,37 @@ def prepare_manifest(path: Path, repo: Path, output: Path) -> tuple[int, int, in
             prereqs.append({"setting": "DirectorSwitcherFreezeCurve", "value": 100,
                             "source": "ALPanelDirectorSwitcher::updateCurveControlsEnabled"})
             seen.add(("DirectorSwitcherFreezeCurve", 100))
+        localfog_fields = {
+            "localfog_center_x": "center_x", "localfog_center_y": "center_y",
+            "localfog_center_z": "center_z", "localfog_size_x": "size_x",
+            "localfog_size_y": "size_y", "localfog_size_z": "size_z",
+            "localfog_rotation_x": "rotation_x", "localfog_rotation_y": "rotation_y",
+            "localfog_rotation_z": "rotation_z",
+        }
+        if widget in localfog_fields:
+            row.update(consumer="localfog_selected_" + localfog_fields[widget],
+                       known_gap=False, snapshot_all=True)
+        anim_fields = {
+            "anim_slot_kind": "kind", "anim_slot_target": "target",
+            "anim_pose_name": "pose", "anim_pose_load_method": "pose_load",
+            "anim_slot_priority": "priority", "anim_slot_speed": "speed",
+            "anim_slot_loop": "loop", "anim_slot_snap": "snap",
+            "anim_slot_enabled": "enabled",
+        }
+        if widget in anim_fields:
+            row.update(consumer="anim_switcher_slot_" + anim_fields[widget],
+                       known_gap=False, snapshot_all=True)
+        if widget.startswith("auto_frame_settle_bezier_"):
+            for gate, value in (("CinematicAutoFrameEnabled", True),
+                                ("CinematicAutoFrameSettleCurve", 100)):
+                if (gate, value) not in seen:
+                    prereqs.append({"setting": gate, "value": value,
+                                    "source": "LLCinematicCamera::updateAutoFrameCurveControls"})
+                    seen.add((gate, value))
+        if widget == "exp_amd_exposure" and ("AlchemyRenderTonemapType", 7) not in seen:
+            prereqs.append({"setting": "AlchemyRenderTonemapType", "value": 7,
+                            "source": "ALPanelExposureHub::refreshToneMapAvailability"})
+            seen.add(("AlchemyRenderTonemapType", 7))
         if (widget.startswith("switcher_custom_") and widget != "switcher_custom_enabled") or \
                 widget.startswith("reset_switcher_custom_"):
             row["enable_widget"] = "switcher_custom_enabled"
@@ -559,21 +1019,36 @@ def prepare_manifest(path: Path, repo: Path, output: Path) -> tuple[int, int, in
             suffix = widget.removeprefix("reset_gaze_")
             if suffix in gaze_targets:
                 target, value = gaze_targets[suffix]
+                row.update(action="DEFER_INWORLD" if suffix in gaze_actor_override_resets else "RUN",
+                           reason=(f"{widget}: reset mutates the edited actor override; login has no actor"
+                                   if suffix in gaze_actor_override_resets else ""),
+                           known_gap=False, probe="gaze_reset", reset_widget=target,
+                           reset_value=value, reset_pre_value=(0 if value != 0 else 1),
+                           reset_type="S32" if isinstance(value, int) and not isinstance(value, bool) else "F32",
+                           owner="ALPanelLensGaze::postBuild")
                 if suffix in gaze_actor_override_resets:
-                    row.update(action="DEFER_INWORLD", known_gap=False,
-                               reason=f"{widget}: reset mutates the edited actor override; login has no actor",
-                               enable_when="ALPanelLensGaze::editActors() is non-empty",
-                               hazards=sorted(set(row.get("hazards", [])) | {"requires_world"}))
-                else:
-                    row.update(action="RUN", reason="", known_gap=False, probe="gaze_reset",
-                               reset_widget=target, reset_value=value,
-                               reset_pre_value=(0 if value != 0 else 1),
-                               reset_type="S32" if isinstance(value, int) and not isinstance(value, bool) else "F32",
-                               owner="ALPanelLensGaze::postBuild")
+                    row["enable_when"] = "ALPanelLensGaze::editActors() is non-empty"
+                    row["hazards"] = sorted(set(row.get("hazards", [])) | {"requires_world"})
+                    row["gaze_oracle_field"] = suffix
+                    row["gaze_oracle_value"] = -2 if suffix == "anim_priority" else -1
+                elif suffix in gaze_reset_settings:
+                    row["reset_setting"] = gaze_reset_settings[suffix]
+        if widget == "reset_look_at_camera_mode":
+            row.update(action="DEFER_INWORLD", known_gap=False,
+                       reason=f"{widget}: reset mutates the edited actor override; login has no actor",
+                       enable_when="ALPanelLensGaze::editActors() is non-empty",
+                       hazards=sorted(set(row.get("hazards", [])) | {"requires_world"}),
+                       probe="gaze_reset", reset_widget="look_at_camera_mode",
+                       reset_value=0, reset_pre_value=1, reset_type="S32",
+                       gaze_oracle_field="camera_mode", gaze_oracle_value=-1,
+                       owner="ALPanelLensGaze::postBuild")
         if widget in launchers:
             row.update(action="RUN", reason="", known_gap=False, probe="launcher",
                        launcher_floater=launchers[widget],
                        owner=row.get("owner") or "LLFloaterDirector::bindPage")
+        if widget == "vc_open_manager":
+            row.update(probe="launcher", launcher_floater="prism_manager",
+                       owner="ALPanelDirectorVCam::onControl")
         if widget == "am_reset_CineLightRigActorMaskBias":
             value = defaults.get("CineLightRigActorMaskBias", -8.0)
             row.update(action="RUN", reason="", known_gap=False,
@@ -650,13 +1125,24 @@ def prepare_manifest(path: Path, repo: Path, output: Path) -> tuple[int, int, in
             row["inworld_allow_evidence"] = inworld_evidence
             legacy_button_scan = (row.get("exercise") == "click" and
                                   row.get("widget_type") == "button")
-            hazards, handler_resolved = _handler_hazards(row, cpp_text, body_cache)
+            hazards, handler_resolved = _handler_hazards(row, cpp_sources, body_cache)
             if hazards:
                 row["hazards"] = sorted(set(row.get("hazards", [])) | hazards)
                 hazard_rows += 1
-                if row.get("action") == "RUN" and legacy_button_scan:
+                # Hazardous callbacks are never authorized in-world, including
+                # sliders/spinners and already-deferred rows. Login-screen
+                # coverage may remain executable for non-button controls.
+                _apply_inworld_hazard_policy(row, hazards)
+                if ((row.get("action") == "RUN" and legacy_button_scan) or
+                        row.get("motion_send_hazard")):
                     row["action"] = "SKIP"
-                    row["reason"] = "resolved handler hazard: " + ", ".join(sorted(hazards))
+                    row["reason"] = (
+                        "in-world: may send animation request via AO override "
+                        "(llvoavatar.cpp:7398-7413,7442-7457; "
+                        "aldirectoranimswitcher.cpp:414,418,565; "
+                        "llfloaterdirector.cpp:3726,3741)"
+                        if row.get("motion_send_hazard") else
+                        "resolved handler hazard: " + ", ".join(sorted(hazards)))
                     row["known_gap"] = False
             elif not handler_resolved and row.get("action") == "RUN" and legacy_button_scan:
                 row["action"] = "SKIP"
@@ -666,11 +1152,24 @@ def prepare_manifest(path: Path, repo: Path, output: Path) -> tuple[int, int, in
             elif not handler_resolved:
                 row["hazards"] = sorted(set(row.get("hazards", [])) | {"handler_unknown"})
                 unresolved_hazards.append(f"{row['version']}:{row['page']}:{widget}")
-            elif (handler_resolved and row.get("action") == "RUN" and
+            elif (handler_resolved and row.get("action") in {"RUN", "DEFER_INWORLD"} and
                   not row.get("setting") and not row.get("consumer") and
                   not row.get("reset_defaults") and
-                  row.get("probe") not in {"launcher", "exposure_history"}):
-                row["effect_kind"] = "side_effect_only"
+                  row.get("probe") not in {
+                      "selector_segment", "temporal_preset", "gaze_reset",
+                      "cine_fx_stop", "cine_live_probe_refresh", "vc_snap_view",
+                      "vc_face_list", "vc_camera_selector", "actor_mover_active",
+                      "actor_style_reset", "exposure_history", "launcher",
+                  }):
+                row["reason"] = f"{widget}: no independent state oracle"
+                if row.get("action") == "RUN":
+                    row["effect_kind"] = "side_effect_only"
+                    row["known_gap"] = True
+                else:
+                    # Deferred rows must still exercise real in-world refusals,
+                    # but a successful commit/visible change can never PASS.
+                    row["no_state_oracle"] = True
+                    row["known_gap"] = False
 
     document.setdefault("meta", {})["r4_enable_unresolved"] = sorted(set(unresolved))
     document["meta"]["r4_enabled_control_rows"] = sum(bool(r["enabled_control"]) for r in rows)
@@ -678,6 +1177,7 @@ def prepare_manifest(path: Path, repo: Path, output: Path) -> tuple[int, int, in
     document["meta"]["r5_total_consumers"] = sum(bool(r.get("consumer")) for r in rows)
     document["meta"]["r5_hazard_skip_rows"] = hazard_rows
     document["meta"]["r5_unresolved_handler_skips"] = sorted(set(unresolved_hazards))
+    _enforce_inworld_run1_baseline(document, repo)
     if document["meta"]["r5_total_consumers"] < required_consumers:
         raise SystemExit(f"consumer preflight failed: expected at least {required_consumers}, got {document['meta']['r5_total_consumers']}")
     output.parent.mkdir(parents=True, exist_ok=True)
@@ -901,6 +1401,73 @@ def annotate_failure_shots(rows: list[dict[str, str]], run_dir: Path) -> tuple[i
     return annotated, ""
 
 
+def self_test_handler_scanner() -> None:
+    """Regression fixtures for exact/local/transitive hazard resolution."""
+    source = r'''
+bool Fixture::postBuild()
+{
+    getChild<LLButton>("lambda_danger")->setCommitCallback(
+        [](LLUICtrl*, const LLSD&) {
+            gMessageSystem->sendReliable(host);
+            gAgent.sendReliableMessage();
+            sendAnimationRequest(id, true);
+        });
+    getChild<LLButton>("safe_neighbor")->setCommitCallback(
+        [this](LLUICtrl*, const LLSD&) { onSafe(); });
+    getChild<LLButton>("danger_neighbor")->setCommitCallback(
+        [this](LLUICtrl*, const LLSD&) { onClickShadowFixIt(); });
+    if (LLButton* control = findChild<LLButton>("local_safe"))
+    {
+        control->setCommitCallback([this](LLUICtrl*, const LLSD&) { onSafe(); });
+    }
+    if (LLButton* control = findChild<LLButton>("local_danger"))
+    {
+        control->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickShadowFixIt(); });
+    }
+    getChild<LLButton>("transitive_danger")->setCommitCallback(
+        [this](LLUICtrl*, const LLSD&) { adjustAim(); });
+    mCenter[VX] = getChild<LLSpinCtrl>("localfog_center_x");
+    const auto editor_commit = [this](LLUICtrl*, const LLSD&) { onEditorCommit(); };
+    for (S32 axis = 0; axis < 3; ++axis)
+        mCenter[axis]->setCommitCallback(editor_commit);
+    return true;
+}
+void Fixture::onSafe() {}
+void Fixture::onClickShadowFixIt() { gMessageSystem->sendReliable(host); }
+void Fixture::adjustAim() { gAgent.sendReliableMessage(); }
+void Fixture::onEditorCommit() { sendAnimationRequest(id, true); }
+'''
+    sources = {Path("fixture.cpp"): source}
+
+    def scan(widget: str) -> tuple[dict[str, object], set[str], bool]:
+        row: dict[str, object] = {
+            "owner": "Fixture::postBuild", "widget_name": widget,
+            "page": "fixture", "action": "RUN", "exercise": "click",
+            "widget_type": "button", "inworld_allowed": True,
+        }
+        hazards, resolved = _handler_hazards(row, sources, {})
+        _apply_inworld_hazard_policy(row, hazards)
+        return row, hazards, resolved
+
+    danger, hazards, resolved = scan("lambda_danger")
+    assert resolved and {"server_message", "agent_send"}.issubset(hazards)
+    assert danger["inworld_allowed"] is False, "hazardous lambda must be denied in-world"
+
+    safe, hazards, resolved = scan("safe_neighbor")
+    assert resolved and not hazards, "a neighbouring control's handler was attributed"
+    assert safe["inworld_allowed"] is True
+
+    local_safe, hazards, resolved = scan("local_safe")
+    assert resolved and not hazards, "a reused local control donated its neighbour's handler"
+    assert local_safe["inworld_allowed"] is True
+
+    transitive, hazards, resolved = scan("transitive_danger")
+    assert resolved and "agent_send" in hazards and transitive["inworld_allowed"] is False
+
+    localfog, hazards, resolved = scan("localfog_center_x")
+    assert resolved and "agent_send" in hazards and localfog["inworld_allowed"] is False
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("left", nargs="?", help="functional.csv or its run directory")
@@ -920,7 +1487,13 @@ def main() -> int:
                         help="write a proposed budget beside the report (never rewrites tracked inputs)")
     parser.add_argument("--dry-reveal", action="store_true",
                         help="report reveal-only results without enforcing the click PASS floor")
+    parser.add_argument("--self-test", action="store_true",
+                        help="run callback-scanner regression fixtures")
     args = parser.parse_args()
+    if args.self_test:
+        self_test_handler_scanner()
+        print("functional_report self-tests: PASS")
+        return 0
     if args.prepare_manifest:
         if not args.repo_root:
             parser.error("--prepare-manifest requires --repo-root")

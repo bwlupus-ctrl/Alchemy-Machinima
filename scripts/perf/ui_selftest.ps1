@@ -356,14 +356,21 @@ if ($Functional) {
   if ($DryReveal) { $reportArgs += '--dry-reveal' }
   & $python @reportArgs
   $reportExit = $LASTEXITCODE
-  $rows = @(Import-Csv -LiteralPath $destCsv)
-  $failures = @($rows | Where-Object { $_.'PASS/FAIL/SKIP' -in @('FAIL', 'KNOWN_GAP') })
-  $skipsWithoutReason = @($rows | Where-Object { $_.'PASS/FAIL/SKIP' -eq 'SKIP' -and -not $_.reason })
+  # PowerShell variable names are case-insensitive: `$rows` aliases the
+  # `-Rows` parameter. In filtered/in-world runs that made the summary and
+  # exit decision inspect the filter string instead of the fresh CSV.
+  $functionalResultRows = @(Import-Csv -LiteralPath $destCsv)
+  if (-not $functionalResultRows.Count) {
+    Write-Host 'Fresh functional.csv contained no result rows.' -ForegroundColor Red
+    exit 2
+  }
+  $failures = @($functionalResultRows | Where-Object { $_.'PASS/FAIL/SKIP' -in @('FAIL', 'KNOWN_GAP') })
+  $skipsWithoutReason = @($functionalResultRows | Where-Object { $_.'PASS/FAIL/SKIP' -eq 'SKIP' -and -not $_.reason })
   Write-Host "Functional results: $runDir"
   Write-Host ("PASS {0} / FAIL-or-GAP {1} / SKIP {2}" -f
-    @($rows | Where-Object { $_.'PASS/FAIL/SKIP' -eq 'PASS' }).Count,
+    @($functionalResultRows | Where-Object { $_.'PASS/FAIL/SKIP' -eq 'PASS' }).Count,
     $failures.Count,
-    @($rows | Where-Object { $_.'PASS/FAIL/SKIP' -eq 'SKIP' }).Count)
+    @($functionalResultRows | Where-Object { $_.'PASS/FAIL/SKIP' -eq 'SKIP' }).Count)
   if ($DryReveal) {
     Write-Host 'DRY REVEAL: NOT A FUNCTIONAL RESULT' -ForegroundColor Yellow
     exit 3
@@ -372,7 +379,7 @@ if ($Functional) {
     Write-Host "$($skipsWithoutReason.Count) SKIP row(s) lack a manifest reason." -ForegroundColor Red
     exit 1
   }
-  $sentinelFailures = @($rows | Where-Object {
+  $sentinelFailures = @($functionalResultRows | Where-Object {
     $_.control -eq 'real_dispatch_sentinel' -and $_.'PASS/FAIL/SKIP' -eq 'FAIL'
   })
   if ($sentinelFailures.Count) {

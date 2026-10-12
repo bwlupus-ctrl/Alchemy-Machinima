@@ -22,10 +22,13 @@
 #include "alvcampagemodel.h"
 #include "alcinerigrim.h"
 #include "alcinelightrigmanager.h"
+#include "aldirectoranimswitcher.h"
 #include "aldiopterpresetbank.h"
+#include "allocalfogmanager.h"
 
 #include "llagent.h"
 #include "llappviewer.h"
+#include "llactormover.h"
 #include "llaccordionctrl.h"
 #include "llaccordionctrltab.h"
 #include "llavatarnamecache.h"
@@ -56,10 +59,12 @@
 #include "llpanel.h"
 #include "llpanellogin.h"
 #include "llpresentationtime.h"
+#include "lldirectorcast.h"
 #include "llpopupview.h"
 #include "llprogressview.h"
 #include "llviewermenu.h"
 #include "llradiogroup.h"
+#include "llreflectionmapmanager.h"
 #include "llrender.h"
 #include "llrootview.h"
 #include "llscrollcontainer.h"
@@ -72,6 +77,7 @@
 #include "lltabcontainer.h"
 #include "lltextbox.h"
 #include "lltexteditor.h"
+#include "lltoast.h"
 #include "llviewercontrol.h"
 #include "llviewerobjectlist.h"
 #include "llviewershadermgr.h"
@@ -1496,6 +1502,72 @@ private:
         return actual == expected;
     }
 
+    static LLSD functionalGazeField(const LLActorMover::GazeTarget& target,
+                                    const std::string& field)
+    {
+        if (field == "microlife") return target.mMicroLifeOverride;
+        if (field == "variation") return target.mVariationOverride;
+        if (field == "break_frequency") return target.mBreakFrequencyOverride;
+        if (field == "ease_acquire") return target.mEaseAcquireOverride;
+        if (field == "ease_release") return target.mEaseReleaseOverride;
+        if (field == "deadzone") return target.mDeadZoneDegOverride;
+        if (field == "priority") return target.mGazePriorityOverride;
+        if (field == "anim_priority") return target.mAnimPriorityOverride;
+        if (field == "camera_roll") return target.mCameraRollOverride;
+        if (field == "exaggerate") return target.mExaggerateOverride;
+        if (field == "camera_mode") return target.mCameraModeOverride;
+        if (field == "composition") return target.mCompositionOverride;
+        if (field == "composition_mix") return target.mCompositionMixOverride;
+        if (field == "chest_share") return target.mChestShareOverride;
+        if (field == "limit_mode") return target.mLimitProfileModeOverride;
+        if (field == "lean_curve") return target.mLeanCurveOverride;
+        if (field == "lean_threshold") return target.mLeanThresholdDegOverride;
+        if (field == "lean_softness") return target.mLeanSoftnessDegOverride;
+        if (field == "lean_max") return target.mLeanMaxDegOverride;
+        if (field == "limit_profile")
+        {
+            const ALGazeMath::AnatomicalLimitProfile& p = target.mLimitProfile;
+            LLSD values = LLSD::emptyArray();
+            values.append(p.mEyeYawDeg); values.append(p.mEyePitchDeg);
+            values.append(p.mHeadYawDeg); values.append(p.mHeadPitchDeg);
+            values.append(p.mNeckYawDeg); values.append(p.mNeckPitchDeg);
+            values.append(p.mSpineYawDeg); values.append(p.mSpinePitchDeg);
+            values.append(p.mHipsYawDeg); values.append(p.mHipsPitchDeg);
+            values.append(p.mEyeApplyYawDeg); values.append(p.mEyeApplyPitchDeg);
+            values.append(p.mEyeRadialDeg); values.append(p.mEyePitchUpDeg);
+            values.append(p.mHeadPitchUpDeg); values.append(p.mNeckPitchUpDeg);
+            values.append(p.mSpinePitchUpDeg); values.append(p.mHipsPitchUpDeg);
+            values.append(p.mEyeApplyPitchUpDeg);
+            return values;
+        }
+        return LLSD();
+    }
+
+    static void functionalSetGazeField(LLActorMover::GazeTarget& target,
+                                       const std::string& field)
+    {
+        if (field == "microlife") target.mMicroLifeOverride = .25f;
+        else if (field == "variation") target.mVariationOverride = .25f;
+        else if (field == "break_frequency") target.mBreakFrequencyOverride = .25f;
+        else if (field == "ease_acquire") target.mEaseAcquireOverride = .25f;
+        else if (field == "ease_release") target.mEaseReleaseOverride = .25f;
+        else if (field == "deadzone") target.mDeadZoneDegOverride = 2.f;
+        else if (field == "priority") target.mGazePriorityOverride = 0;
+        else if (field == "anim_priority") target.mAnimPriorityOverride = 0;
+        else if (field == "camera_roll") target.mCameraRollOverride = 1.f;
+        else if (field == "exaggerate") target.mExaggerateOverride = 1.f;
+        else if (field == "camera_mode") target.mCameraModeOverride = 0;
+        else if (field == "composition") target.mCompositionOverride = 0;
+        else if (field == "composition_mix") target.mCompositionMixOverride = .25f;
+        else if (field == "chest_share") target.mChestShareOverride = .25f;
+        else if (field == "limit_mode") target.mLimitProfileModeOverride = 0;
+        else if (field == "lean_curve") target.mLeanCurveOverride = 0;
+        else if (field == "lean_threshold") target.mLeanThresholdDegOverride = 10.f;
+        else if (field == "lean_softness") target.mLeanSoftnessDegOverride = 10.f;
+        else if (field == "lean_max") target.mLeanMaxDegOverride = 10.f;
+        else if (field == "limit_profile") target.mLimitProfile.mEyeYawDeg += 1.f;
+    }
+
     static void functionalVisibleState(LLView* view, std::ostringstream& out,
                                        const LLView* excluded = nullptr,
                                        const ALKitRow* excluded_row = nullptr)
@@ -1859,6 +1931,45 @@ private:
             }
             return value;
         }
+        if (consumer.compare(0, 18, "localfog_selected_") == 0)
+        {
+            const ALLocalFogManager& manager = ALLocalFogManager::instance();
+            const S32 selected = manager.selectedVolume();
+            const ALLocalFogManager::Bank& bank = manager.volumes();
+            if (selected < 0 || selected >= static_cast<S32>(bank.size())) return LLSD();
+            const ALLocalFogManager::Volume& volume = bank[selected];
+            const std::string field = consumer.substr(18);
+            if (field == "center_x") return volume.mCenter.mV[VX];
+            if (field == "center_y") return volume.mCenter.mV[VY];
+            if (field == "center_z") return volume.mCenter.mV[VZ];
+            if (field == "size_x") return volume.mSize.mV[VX];
+            if (field == "size_y") return volume.mSize.mV[VY];
+            if (field == "size_z") return volume.mSize.mV[VZ];
+            F32 roll = 0.f, pitch = 0.f, yaw = 0.f;
+            volume.mRotation.getEulerAngles(&roll, &pitch, &yaw);
+            if (field == "rotation_x") return roll * RAD_TO_DEG;
+            if (field == "rotation_y") return pitch * RAD_TO_DEG;
+            if (field == "rotation_z") return yaw * RAD_TO_DEG;
+        }
+        if (consumer.compare(0, 19, "anim_switcher_slot_") == 0)
+        {
+            const std::vector<ALDirectorAnimSwitcher::Slot> bank =
+                ALDirectorAnimSwitcher::loadBank();
+            if (bank.empty()) return LLSD();
+            const S32 selected = llclamp(mFunctionalAnimSwitcherSlot, 0,
+                static_cast<S32>(bank.size()) - 1);
+            const ALDirectorAnimSwitcher::Slot& slot = bank[selected];
+            const std::string field = consumer.substr(19);
+            if (field == "kind") return slot.mKind;
+            if (field == "target") return slot.mTarget;
+            if (field == "pose") return slot.mPoseName;
+            if (field == "pose_load") return slot.mPoseLoadMethod;
+            if (field == "priority") return slot.mPriority;
+            if (field == "speed") return slot.mSpeed;
+            if (field == "loop") return slot.mLoop;
+            if (field == "snap") return slot.mSnapOnCut;
+            if (field == "enabled") return slot.mEnabled;
+        }
         return LLSD();
     }
 
@@ -1954,6 +2065,21 @@ private:
                    functionalEqual(wrap->getValue(), light.mRimWrap, "F32") &&
                    functionalEqual(bias->getValue(), light.mRimBackBias, "F32");
         }
+        if (consumer.compare(0, 18, "localfog_selected_") == 0 ||
+            consumer.compare(0, 19, "anim_switcher_slot_") == 0)
+        {
+            LLUICtrl* control = mFunctionalControl.get();
+            if (!control) return false;
+            std::string value_type = "S32";
+            if (dynamic_cast<LLCheckBoxCtrl*>(control)) value_type = "Boolean";
+            else if (dynamic_cast<LLSpinCtrl*>(control) ||
+                     dynamic_cast<LLSliderCtrl*>(control)) value_type = "F32";
+            else if (dynamic_cast<LLLineEditor*>(control) ||
+                     (dynamic_cast<LLComboBox*>(control) && value.isString()))
+                value_type = "String";
+            return functionalEqual(value, control->getValue(), value_type,
+                                   entry["increment"]);
+        }
         return false;
     }
 
@@ -1967,8 +2093,10 @@ private:
             if (ALKitLazyPage* lazy = dynamic_cast<ALKitLazyPage*>(child)) lazy->ensureBuilt();
             if (LLAccordionCtrlTab* accordion = dynamic_cast<LLAccordionCtrlTab*>(child))
             {
-                accordion->setDisplayChildren(true);
-                accordion->changeOpenClose(true);
+                // changeOpenClose() receives the current state and toggles it.
+                // Passing true after setDisplayChildren(true) closed every
+                // accordion the functional reveal had just opened.
+                if (!accordion->getDisplayChildren()) accordion->changeOpenClose(false);
             }
             if (LLTabContainer* tabs = dynamic_cast<LLTabContainer*>(child->getParent()))
                 if (LLPanel* panel = dynamic_cast<LLPanel*>(child)) tabs->selectTabPanel(panel);
@@ -2602,6 +2730,37 @@ private:
         }
         if (mFunctionalRigRowSnapshot.isMap())
             ALCineLightRigManager::instance().applySceneData(mFunctionalRigRowSnapshot);
+        if (mFunctionalHaveGazeBefore)
+        {
+            LLActorMover::instance().setGazeTargetConfig(mFunctionalGazeActor,
+                                                          mFunctionalGazeBefore);
+            mFunctionalHaveGazeBefore = false;
+        }
+        if (mFunctionalHaveActorPathBefore)
+        {
+            LLActorMover& mover = LLActorMover::instance();
+            mover.stop(mFunctionalActorMoverId);
+            if (mFunctionalActorPathBefore.isMap())
+                mover.applyPathSceneData(mFunctionalActorMoverId,
+                                         mFunctionalActorPathBefore);
+            else
+                mover.clearPath(mFunctionalActorMoverId);
+            mFunctionalHaveActorPathBefore = false;
+        }
+        if (mFunctionalHaveActorStyleBefore)
+        {
+            LLDirectorCast::instance().setActorStyle(LLUUID::null,
+                                                     mFunctionalActorStyleBefore);
+            mFunctionalHaveActorStyleBefore = false;
+        }
+        if (mFunctionalHaveLocalFogBefore)
+        {
+            ALLocalFogManager& manager = ALLocalFogManager::instance();
+            manager.volumes() = mFunctionalLocalFogBefore;
+            manager.setSelected(mFunctionalLocalFogSelectedBefore);
+            manager.touchBank();
+            mFunctionalHaveLocalFogBefore = false;
+        }
         if (gFloaterView && !mFunctionalFloatersBefore.empty())
         {
             std::set<LLFloater*> open;
@@ -2697,6 +2856,9 @@ private:
             if (LLSlider* track = findFirstView<LLSlider>(slider)) return track;
         if (LLRadioGroup* radio = dynamic_cast<LLRadioGroup*>(control))
         {
+            const LLSD original = radio->getValue();
+            const LLSD wanted = mFunctionalEntries[mFunctionalIndex]["test_value"]["value"];
+            if (!radio->setSelectedByValue(wanted, true)) return control;
             std::vector<LLCheckBoxCtrl*> items;
             std::function<void(LLView*)> collect = [&](LLView* view)
             {
@@ -2704,9 +2866,15 @@ private:
                 for (LLView* child : *view->getChildList()) collect(child);
             };
             collect(radio);
-            S32 index = mFunctionalEntries[mFunctionalIndex]["test_value"]["item_index"].asInteger();
-            if (index >= 0 && index < static_cast<S32>(items.size()))
-                return FunctionalCheckBoxAccess::button(items[index]);
+            LLView* target = nullptr;
+            for (LLCheckBoxCtrl* item : items)
+                if (item->getValue().asBoolean())
+                {
+                    target = FunctionalCheckBoxAccess::button(item);
+                    break;
+                }
+            radio->setValue(original);
+            if (target) return target;
         }
         return control;
     }
@@ -3164,6 +3332,16 @@ private:
         // Both calls are required: revealCard establishes mode/chip state and
         // revealRow establishes body/More/option state. Layout is idle-deferred.
         if (card && row) card->revealRow(row);
+        control->onUpdateScrollToChild(control);
+        for (LLView* parent = control->getParent(); parent; parent = parent->getParent())
+        {
+            LLScrollContainer* scroller = dynamic_cast<LLScrollContainer*>(parent);
+            if (!scroller || !scroller->getScrolledView()) continue;
+            LLRect document_rect;
+            if (control->localRectToOtherView(control->getLocalRect(), &document_rect,
+                                              scroller->getScrolledView()))
+                scroller->scrollToShowRect(document_rect);
+        }
         const LLSD& reveals = mFunctionalEntries[mFunctionalIndex]["reveal"];
         if (reveals.isArray())
         {
@@ -3308,6 +3486,27 @@ private:
         LLMouseHandler* stuck = gFocusMgr.getMouseCapture();
         if (stuck && stuck == mFunctionalAllowedCaptor)
             stuck = nullptr; // combo button handed capture to its own dropdown list (llcombobox.cpp:818-820)
+        if (LLNotificationsUI::LLToast* toast = dynamic_cast<LLNotificationsUI::LLToast*>(stuck))
+        {
+            const LLNotificationPtr note = toast->getNotification();
+            const std::string actual_name = note ? note->getName() : std::string();
+            const std::string expected_name =
+                mFunctionalEntries[mFunctionalIndex]["confirm_notification"].asString();
+            mFunctionalObserved["click"]["notification"] = actual_name;
+            if (note && !expected_name.empty() && actual_name == expected_name)
+            {
+                note->respondWithDefault();
+                gFocusMgr.setMouseCapture(nullptr);
+                stuck = nullptr;
+                mFunctionalObserved["click"]["notification_answered"] = true;
+            }
+            else
+            {
+                mFunctionalLastClickReason = "alert/refusal notification: " +
+                    (actual_name.empty() ? std::string("<unknown>") : actual_name);
+                return false;
+            }
+        }
         if (stuck)
         {
             LLView* stuck_view = dynamic_cast<LLView*>(stuck);
@@ -3778,12 +3977,16 @@ private:
     {
         const std::string exercise = entry["exercise"].asString();
         const LLSD& test = entry["test_value"];
+        if (entry["probe"].asString() == "vc_face_list")
+            return functionalPointerClick();
         if (exercise == "toggle" || exercise == "click")
         {
             if (!functionalPointerClick()) return false;
             const std::string confirm = entry["confirm_notification"].asString();
             if (!confirm.empty())
             {
+                if (mFunctionalObserved["click"]["notification_answered"].asBoolean())
+                    return true;
                 bool responded = false;
                 if (LLNotificationChannelPtr channel =
                         LLNotifications::instance().getChannel("Visible"))
@@ -3865,7 +4068,8 @@ private:
         }
         if (LLSlider* slider = dynamic_cast<LLSlider*>(control))
             return functionalPointerDrag(slider, test);
-        if (dynamic_cast<LLSpinCtrl*>(control))
+        if (dynamic_cast<LLSpinCtrl*>(control) && entry["min"].isDefined() &&
+            entry["max"].isDefined())
             return functionalPointerClick();
         const bool has_programmatic_oracle = !mFunctionalSettingName.empty() ||
             !entry["consumer"].asString().empty() || !mFunctionalHandlerName.empty();
@@ -4097,6 +4301,17 @@ private:
             ++mFunctionalIndex;
             return;
         }
+        const std::string gaze_field = entry["gaze_oracle_field"].asString();
+        if (mInWorld && !gaze_field.empty() && gAgentAvatarp)
+        {
+            mFunctionalGazeActor = gAgentAvatarp->getID();
+            mFunctionalGazeBefore =
+                LLActorMover::instance().getGazeTargetConfig(mFunctionalGazeActor);
+            mFunctionalHaveGazeBefore = true;
+            LLActorMover::GazeTarget target = mFunctionalGazeBefore;
+            functionalSetGazeField(target, gaze_field);
+            LLActorMover::instance().setGazeTargetConfig(mFunctionalGazeActor, target);
+        }
         const std::string reset_widget = entry["reset_widget"].asString();
         if (!reset_widget.empty())
         {
@@ -4112,6 +4327,70 @@ private:
             mFunctionalSecondaryBefore = target->getValue();
             target->setValue(entry["reset_pre_value"]);
             target->onCommit();
+        }
+        const std::string probe = entry["probe"].asString();
+        if (entry["consumer"].asString().compare(0, 18, "localfog_selected_") == 0)
+        {
+            mFunctionalLocalFogBefore = ALLocalFogManager::instance().volumes();
+            mFunctionalLocalFogSelectedBefore =
+                ALLocalFogManager::instance().selectedVolume();
+            mFunctionalHaveLocalFogBefore = true;
+        }
+        if (mInWorld && probe == "cine_fx_stop")
+        {
+            ALCineLightRigManager::instance().selected().startFX(0, 0.0);
+        }
+        else if (mInWorld && probe == "cine_live_probe_refresh")
+        {
+            mFunctionalProbeStatusBefore =
+                gPipeline.mReflectionMapManager.getCinematicRefreshStatus();
+        }
+        else if (mInWorld && probe == "vc_snap_view" && mFunctionalVCamModel)
+        {
+            ALVCamPageModel::currentViewTransform(mFunctionalVCamExpectedPos,
+                                                  mFunctionalVCamExpectedRot);
+            const LLPrismLens::CaptureHandle capture =
+                mFunctionalVCamModel->selectedCapture();
+            const LLPrismLens::CaptureDefinition* definition = nullptr;
+            for (const LLPrismLens::CaptureDefinition& candidate :
+                 mFunctionalVCamModel->registry().mCaptures)
+                if (candidate.mHandle.mId == capture.mId) { definition = &candidate; break; }
+            if (definition)
+            {
+                LLPrismLens::CameraSettings camera = definition->mCamera;
+                camera.mVirtualPos = mFunctionalVCamExpectedPos + LLVector3(3.f, 0.f, 0.f);
+                std::string reason;
+                mFunctionalVCamModel->setCamera(capture, camera, &reason);
+                mFunctionalVCamModel->refreshNow();
+            }
+        }
+        else if (mInWorld && probe == "actor_mover_active" && gAgentAvatarp)
+        {
+            LLActorMover& mover = LLActorMover::instance();
+            mFunctionalActorMoverId = gAgentAvatarp->getID();
+            mFunctionalActorPathBefore = mover.pathSceneData(mFunctionalActorMoverId);
+            mFunctionalHaveActorPathBefore = true;
+            mover.stop(mFunctionalActorMoverId);
+            mover.clearPath(mFunctionalActorMoverId);
+            const LLVector3d origin = gAgent.getPositionGlobal();
+            mover.appendWaypointAt(mFunctionalActorMoverId, origin);
+            mover.appendWaypointAt(mFunctionalActorMoverId,
+                                   origin + LLVector3d(2.0, 0.0, 0.0));
+            rememberFunctionalSetting("ActorMoverSync");
+            gSavedSettings.setBOOL("ActorMoverSync", true);
+            if (!entry["actor_mover_expect_active"].asBoolean())
+                mover.start(mFunctionalActorMoverId);
+        }
+        else if (mInWorld && probe == "actor_style_reset")
+        {
+            mFunctionalActorStyleBefore =
+                LLDirectorCast::instance().getActorStyle(LLUUID::null);
+            mFunctionalHaveActorStyleBefore = true;
+            LLDirectorCast::ActorStyle changed = mFunctionalActorStyleBefore;
+            changed.mEnabled = true;
+            changed.mAlpha = .25f;
+            changed.mBrightness = 2.f;
+            LLDirectorCast::instance().setActorStyle(LLUUID::null, changed);
         }
         if (entry["reset_prestate"].isMap())
         {
@@ -4324,6 +4603,38 @@ private:
         continueFunctionalEntry(entry, control);
     }
 
+    // ui-draw-lint: allow-function(lookup,raw-write) test-only VCam fixture selection
+    void prepareFunctionalVCamSelection(const LLSD& entry)
+    {
+        if (!mInWorld || !mFunctionalPageRoot || !mFunctionalVCamModel ||
+            entry["page"].asString() != "vcam_tab") return;
+        mFunctionalVCamModel->refreshNow();
+        const LLPrismLens::RegistrySnapshot& registry = mFunctionalVCamModel->registry();
+        if (!registry.mCaptureCount) return;
+        if (LLUICtrl* selector =
+                mFunctionalPageRoot->findChild<LLUICtrl>("vc_camera_selector", true))
+        {
+            selector->setValue(registry.mCaptures[0].mHandle.mId);
+            selector->onCommit();
+        }
+        const std::string card = entry["card"].asString();
+        if (card != "face_mapping" && card != "tv_effects" && card != "raw_output") return;
+        LLUICtrl* faces = mFunctionalPageRoot->findChild<LLUICtrl>("vc_face_list", true);
+        if (!faces) return;
+        if ((card == "face_mapping" || card == "tv_effects") && registry.mDisplayCount)
+        {
+            faces->setValue(registry.mDisplays[0].mHandle.mId);
+            if (entry["probe"].asString() == "vc_face_list")
+            {
+                mFunctionalVCamModel->setSelectedDisplay(LLPrismLens::DisplayHandle());
+                return;
+            }
+        }
+        else
+            faces->setValue(LLUUID::null);
+        faces->onCommit();
+    }
+
     // ui-draw-lint: allow-function(lookup,raw-write,setting-write) isolated login-only functional pre-state
     void beginFunctionalEntry()
     {
@@ -4337,11 +4648,32 @@ private:
             functionalBeginInputState();
         }
         const std::string action = entry["action"].asString();
+        if (mInWorld && !entry["inworld_skip_reason"].asString().empty())
+        {
+            addFunctionalResult(entry, "SKIP", entry["inworld_skip_reason"].asString());
+            ++mFunctionalIndex;
+            return;
+        }
+        if (mInWorld && !entry["inworld_known_gap_reason"].asString().empty())
+        {
+            addFunctionalResult(entry, "KNOWN_GAP",
+                                entry["inworld_known_gap_reason"].asString());
+            ++mFunctionalIndex;
+            return;
+        }
         if (action == "NO_EXERCISE")
         {
             const std::string reason = entry["reason"].asString();
             addFunctionalResult(entry, reason.empty() ? "FAIL" : "SKIP",
                 reason.empty() ? "NO_EXERCISE lacks an explicit manifest reason" : reason);
+            ++mFunctionalIndex;
+            return;
+        }
+        if (action == "SKIP")
+        {
+            std::string reason = entry["reason"].asString();
+            addFunctionalResult(entry, reason.empty() ? "FAIL" : "SKIP",
+                                reason.empty() ? "manifest SKIP lacks explicit reason" : reason);
             ++mFunctionalIndex;
             return;
         }
@@ -4356,14 +4688,6 @@ private:
         {
             addFunctionalResult(entry, "SKIP",
                 "in-world: not on the viewer-local allow-list");
-            ++mFunctionalIndex;
-            return;
-        }
-        if (action == "SKIP")
-        {
-            std::string reason = entry["reason"].asString();
-            addFunctionalResult(entry, reason.empty() ? "FAIL" : "SKIP",
-                                reason.empty() ? "manifest SKIP lacks explicit reason" : reason);
             ++mFunctionalIndex;
             return;
         }
@@ -4415,8 +4739,10 @@ private:
             return;
         }
         mFunctionalPageRoot = functionalPage(entry);
+        prepareFunctionalVCamSelection(entry);
         if (mInWorld && mFunctionalHaveProjector &&
             entry["page"].asString() == "vcam_tab" &&
+            entry["card"].asString().compare(0, 9, "projector") == 0 &&
             !mFunctionalProjectorSelected)
         {
             LLUICtrl* projector_list = mFunctionalPageRoot ?
@@ -4519,6 +4845,13 @@ private:
     void finishFunctionalEntry()
     {
         const LLSD& entry = mFunctionalEntries[mFunctionalIndex];
+        std::smatch anim_slot_match;
+        const std::string widget_name = entry["widget_name"].asString();
+        if (std::regex_match(widget_name, anim_slot_match,
+                             std::regex(R"(anim_slot_(\d{2}))")))
+            mFunctionalAnimSwitcherSlot = llclamp(
+                std::stoi(anim_slot_match[1].str()) - 1, 0,
+                ALDirectorAnimSwitcher::SLOT_COUNT - 1);
         LLUICtrl* control = mFunctionalControl.get();
         LLSD expected = entry["expect"]["value"];
         std::string type = entry["expect"]["type"].asString();
@@ -4538,8 +4871,18 @@ private:
             // reached through the real popup click.
             expected = control->getValue();
         else if (dynamic_cast<LLSpinCtrl*>(control) && entry["increment"].isDefined())
-            expected = mFunctionalControlBefore.asReal() + entry["increment"].asReal() *
-                (entry["test_value"].asReal() >= mFunctionalControlBefore.asReal() ? 1. : -1.);
+        {
+            const F64 minimum = entry["min"].asReal();
+            const F64 maximum = entry["max"].asReal();
+            const F64 increment = llabs(entry["increment"].asReal());
+            const F64 before = mFunctionalBefore.asReal();
+            const F64 direction = entry["test_value"].asReal() >= before ? 1.0 : -1.0;
+            const F64 stepped = before + direction * increment;
+            const F64 snapped = increment > 0.0
+                ? minimum + ll_round((stepped - minimum) / increment) * increment
+                : stepped;
+            expected = llclamp(snapped, minimum, maximum);
+        }
         const LLSD actual = mFunctionalSetting ? mFunctionalSetting->getValue() : LLSD();
         const bool changed = mFunctionalSetting &&
             !functionalEqual(actual, mFunctionalBefore, type, entry["increment"]);
@@ -4547,9 +4890,19 @@ private:
         bool owner_state_changed = false;
         bool expected_ok = true;
         std::string assertion_failure;
+        if (dynamic_cast<LLSpinCtrl*>(control))
+        {
+            const F64 before = mFunctionalBefore.asReal();
+            const bool default_in_range = before >= entry["min"].asReal() &&
+                before <= entry["max"].asReal();
+            mFunctionalObserved["spinner"]["default_in_range"] = default_in_range;
+            expected_ok = expected_ok && default_in_range;
+            if (!default_in_range)
+                assertion_failure = "spinner default is outside the manifest range";
+        }
         if (!mFunctionalSettingName.empty())
         {
-            expected_ok = mFunctionalSetting &&
+            expected_ok = expected_ok && mFunctionalSetting &&
                 functionalEqual(actual, expected, type, entry["increment"]);
             observable = changed;
         }
@@ -4610,13 +4963,133 @@ private:
         }
         if (entry["probe"].asString() == "gaze_reset")
         {
-            LLUICtrl* target = mFunctionalSecondaryControl.get();
-            const bool reset_ok = target && functionalEqual(
-                target->getValue(), entry["reset_value"],
-                entry["reset_type"].asString(), entry["increment"]);
+            const std::string gaze_field = entry["gaze_oracle_field"].asString();
+            bool reset_ok = false;
+            if (!gaze_field.empty() && mFunctionalGazeActor.notNull())
+            {
+                const LLActorMover::GazeTarget target =
+                    LLActorMover::instance().getGazeTargetConfig(mFunctionalGazeActor);
+                const LLSD actual_field = functionalGazeField(target, gaze_field);
+                LLSD expected_field = entry["gaze_oracle_value"];
+                std::string expected_type = expected_field.isInteger() ? "S32" : "F32";
+                if (gaze_field == "limit_profile")
+                {
+                    expected_field = functionalGazeField(LLActorMover::GazeTarget(), gaze_field);
+                    expected_type.clear();
+                }
+                reset_ok = functionalEqual(actual_field, expected_field, expected_type);
+                mFunctionalObserved["gaze"]["field"] = gaze_field;
+                mFunctionalObserved["gaze"]["actual"] = actual_field;
+                mFunctionalObserved["gaze"]["expected"] = expected_field;
+            }
+            else
+            {
+                LLUICtrl* target = mFunctionalSecondaryControl.get();
+                LLSD reset_value = entry["reset_value"];
+                const std::string reset_setting = entry["reset_setting"].asString();
+                if (!reset_setting.empty())
+                    if (LLControlVariable* setting = gSavedSettings.getControl(reset_setting).get())
+                        reset_value = setting->getValue();
+                reset_ok = target && functionalEqual(
+                    target->getValue(), reset_value,
+                    entry["reset_type"].asString(), entry["increment"]);
+            }
             observable = reset_ok;
             expected_ok = expected_ok && reset_ok;
             if (!reset_ok) assertion_failure = "reset did not restore the target control's default";
+        }
+        if (entry["probe"].asString() == "cine_fx_stop")
+        {
+            const S32 active = ALCineLightRigManager::instance().selected().activeFX();
+            const bool stopped = active == -1;
+            mFunctionalObserved["cine_fx"]["active_after"] = active;
+            observable = stopped;
+            expected_ok = expected_ok && stopped;
+            if (!stopped) assertion_failure = "cine FX remained active after Stop";
+        }
+        if (entry["probe"].asString() == "cine_live_probe_refresh")
+        {
+            const LLReflectionMapManager::CinematicRefreshStatus after =
+                gPipeline.mReflectionMapManager.getCinematicRefreshStatus();
+            const bool request_clock_restarted =
+                mFunctionalProbeStatusBefore.mReason != ALCineLiveProbeRefresh::Reason::MANUAL ||
+                mFunctionalProbeStatusBefore.mSecondsSinceReason < 0.f ||
+                after.mSecondsSinceReason < mFunctionalProbeStatusBefore.mSecondsSinceReason;
+            const bool requested = after.mStepping &&
+                after.mReason == ALCineLiveProbeRefresh::Reason::MANUAL &&
+                after.mSecondsSinceReason >= 0.f && request_clock_restarted;
+            mFunctionalObserved["live_probe"]["reason_after"] =
+                ALCineLiveProbeRefresh::reasonName(after.mReason);
+            mFunctionalObserved["live_probe"]["seconds_before"] =
+                mFunctionalProbeStatusBefore.mSecondsSinceReason;
+            mFunctionalObserved["live_probe"]["seconds_after"] = after.mSecondsSinceReason;
+            observable = requested;
+            expected_ok = expected_ok && requested;
+            if (!requested) assertion_failure = "live-probe refresh request produced no scheduler state transition";
+        }
+        if (entry["probe"].asString() == "vc_snap_view" && mFunctionalVCamModel)
+        {
+            mFunctionalVCamModel->refreshNow();
+            const LLPrismLens::CaptureHandle selected = mFunctionalVCamModel->selectedCapture();
+            const LLPrismLens::CaptureDefinition* capture = nullptr;
+            for (const LLPrismLens::CaptureDefinition& candidate :
+                 mFunctionalVCamModel->registry().mCaptures)
+                if (candidate.mHandle.mId == selected.mId) { capture = &candidate; break; }
+            const bool snapped = capture &&
+                (capture->mCamera.mVirtualPos - mFunctionalVCamExpectedPos).length() < .001f;
+            observable = snapped;
+            expected_ok = expected_ok && snapped;
+            if (!snapped) assertion_failure = "virtual capture camera did not snap to the current view";
+        }
+        if (entry["probe"].asString() == "vc_face_list" && mFunctionalVCamModel)
+        {
+            const LLUUID expected_display = control ? control->getValue().asUUID() : LLUUID::null;
+            const LLUUID selected_display = mFunctionalVCamModel->selectedDisplay().mId;
+            const bool selected = expected_display.notNull() && selected_display == expected_display;
+            observable = selected;
+            expected_ok = expected_ok && selected;
+            if (!selected) assertion_failure = "face list did not move the selected display handle";
+        }
+        if (entry["probe"].asString() == "vc_camera_selector" && mFunctionalVCamModel)
+        {
+            const LLUUID expected_capture = control ? control->getValue().asUUID() : LLUUID::null;
+            const LLUUID selected_capture = mFunctionalVCamModel->selectedCapture().mId;
+            const bool selected = expected_capture.notNull() && selected_capture == expected_capture;
+            observable = selected;
+            expected_ok = expected_ok && selected;
+            if (!selected) assertion_failure = "camera selector did not move the selected capture handle";
+        }
+        if (entry["probe"].asString() == "actor_mover_active")
+        {
+            const bool active = LLActorMover::instance().isMoving(mFunctionalActorMoverId);
+            const bool wanted = entry["actor_mover_expect_active"].asBoolean();
+            const bool mover_ok = active == wanted;
+            observable = mover_ok;
+            expected_ok = expected_ok && mover_ok;
+            if (!mover_ok) assertion_failure = "LLActorMover active state did not reach the expected value";
+        }
+        if (entry["probe"].asString() == "actor_style_reset")
+        {
+            const LLDirectorCast::ActorStyle& actual_style =
+                LLDirectorCast::instance().getActorStyle(LLUUID::null);
+            const LLDirectorCast::ActorStyle defaults;
+            const bool reset_ok = actual_style.mEnabled == defaults.mEnabled &&
+                actual_style.mMode == defaults.mMode && actual_style.mStyle == defaults.mStyle &&
+                actual_style.mUseActorHue == defaults.mUseActorHue &&
+                actual_style.mHue == defaults.mHue &&
+                actual_style.mAlpha == defaults.mAlpha &&
+                actual_style.mDissolveProgress == defaults.mDissolveProgress &&
+                actual_style.mPixelSize == defaults.mPixelSize &&
+                actual_style.mShimmerSpeed == defaults.mShimmerSpeed &&
+                actual_style.mShimmerAmount == defaults.mShimmerAmount &&
+                actual_style.mGlitch == defaults.mGlitch &&
+                actual_style.mDistortion == defaults.mDistortion &&
+                actual_style.mDistortionAmount == defaults.mDistortionAmount &&
+                actual_style.mBrightness == defaults.mBrightness &&
+                actual_style.mEffectFps == defaults.mEffectFps;
+            observable = reset_ok;
+            expected_ok = expected_ok && reset_ok;
+            if (!reset_ok) assertion_failure = "actor-style model fields were not reset to defaults";
         }
         if (entry["probe"].asString() == "exposure_history")
         {
@@ -4674,13 +5147,26 @@ private:
                     floater->closeFloater(false);
                 }
             mFunctionalObserved["effect"]["picker_opened"] = opened;
-            const bool setting_oracle = mFunctionalSetting &&
-                functionalEqual(actual, expected, type, entry["increment"]);
+            bool setting_oracle = mFunctionalSetting != nullptr;
+            if (setting_oracle && type == "Color3" && actual.isArray() && expected.isArray())
+            {
+                setting_oracle = actual.size() >= 3 && expected.size() >= 3;
+                for (S32 channel = 0; setting_oracle && channel < 3; ++channel)
+                    setting_oracle = functionalEqual(actual[channel], expected[channel], "F32");
+            }
+            else if (setting_oracle)
+                setting_oracle = functionalEqual(actual, expected, type, entry["increment"]);
             mFunctionalObserved["effect"]["setting_oracle"] = setting_oracle;
-            observable = observable && setting_oracle;
+            observable = opened && setting_oracle;
             expected_ok = expected_ok && opened && setting_oracle;
             if (!opened) assertion_failure = "color swatch click did not open a picker floater";
-            else if (!setting_oracle) assertion_failure = "color swatch programmatic commit lacks a matching setting oracle";
+            else if (!setting_oracle) assertion_failure =
+                "color swatch did not write the selected color to its bound setting";
+        }
+        if (entry["no_state_oracle"].asBoolean())
+        {
+            expected_ok = false;
+            assertion_failure = "no independent state oracle; commit/owner/UI state cannot PASS";
         }
         if (entry["probe"].asString() == "launcher")
         {
@@ -4776,14 +5262,6 @@ private:
             "; handler=" + mFunctionalHandlerName;
         std::string reason;
         mFunctionalObserved["effect"]["external_delta"] = observable;
-        if (!observable && mFunctionalCommitCount > 0 &&
-            entry["effect_kind"].asString() == "side_effect_only" &&
-            !mFunctionalHandlerName.empty() && mFunctionalHandlerRunCount > 0)
-        {
-            observable = true;
-            mFunctionalObserved["effect"]["category"] = "B";
-            mFunctionalObserved["effect"]["result"] = "owner_ran";
-        }
         if (!mFunctionalActionWorked) reason = mFunctionalLastClickReason.empty() ?
             "action could not be applied" : mFunctionalLastClickReason;
         else if (mFunctionalCommitCount == 0)
@@ -4922,6 +5400,7 @@ private:
         mFunctionalVCamModel.reset();
     }
 
+    // ui-draw-lint: allow-function(raw-write) one-shot isolated in-world fixture setup
     bool prepareFunctionalInWorld()
     {
         if (mFunctionalInWorldPrepared) return true;
@@ -4949,6 +5428,30 @@ private:
         const LLPrismLens::CaptureHandle capture =
             mFunctionalVCamModel->selectedCapture();
         mFunctionalVCamModel->setLabel(capture, "Virtual at my view", &reason); // ui-draw-lint: allow(raw-write) test-only one-shot in-world setup
+        LLVector3 display_pos;
+        LLQuaternion display_rot;
+        ALVCamPageModel::currentViewTransform(display_pos, display_rot);
+        display_pos += LLVector3(0.f, 0.f, -3.f) * display_rot;
+        if (mFunctionalVCamModel->addVirtualScreen(
+                capture, display_pos, display_rot, 1.6f, .9f, &reason) !=
+            LLPrismLens::ERegistryResult::OK)
+        {
+            LL_WARNS("UIFunctionalSelfTest") << "Unable to add test VCam display: "
+                << reason << LL_ENDL;
+            return false;
+        }
+        if (mFunctionalVCamModel->addVirtualAtView(&reason) !=
+            LLPrismLens::ERegistryResult::OK)
+        {
+            LL_WARNS("UIFunctionalSelfTest") << "Unable to add alternate test VCam: "
+                << reason << LL_ENDL;
+            return false;
+        }
+        const LLPrismLens::CaptureHandle alternate =
+            mFunctionalVCamModel->selectedCapture();
+        mFunctionalVCamModel->setLabel(alternate, "Alternate virtual camera", &reason);
+        mFunctionalVCamModel->setSelectedCapture(capture);
+        mFunctionalVCamModel->refreshNow();
 
         LLVOVolume* nearest = nullptr;
         F32 nearest_distance = 20.f;
@@ -8055,6 +8558,21 @@ private:
     LLFrameTimer mFunctionalWorldSettle;
     LLSD mFunctionalVCamSnapshot;
     std::unique_ptr<ALVCamPageModel> mFunctionalVCamModel;
+    LLVector3 mFunctionalVCamExpectedPos;
+    LLQuaternion mFunctionalVCamExpectedRot;
+    LLReflectionMapManager::CinematicRefreshStatus mFunctionalProbeStatusBefore;
+    LLUUID mFunctionalGazeActor;
+    LLActorMover::GazeTarget mFunctionalGazeBefore;
+    bool mFunctionalHaveGazeBefore = false;
+    LLUUID mFunctionalActorMoverId;
+    LLSD mFunctionalActorPathBefore;
+    bool mFunctionalHaveActorPathBefore = false;
+    LLDirectorCast::ActorStyle mFunctionalActorStyleBefore;
+    bool mFunctionalHaveActorStyleBefore = false;
+    S32 mFunctionalAnimSwitcherSlot = 0;
+    ALLocalFogManager::Bank mFunctionalLocalFogBefore;
+    S32 mFunctionalLocalFogSelectedBefore = 0;
+    bool mFunctionalHaveLocalFogBefore = false;
     bool mFunctionalLoaded = false;
     bool mFunctionalPending = false;
     bool mFunctionalActionWorked = false;
