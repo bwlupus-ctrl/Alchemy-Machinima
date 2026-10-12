@@ -2921,6 +2921,13 @@ if (BUILD_TESTING)
     "${test_project}"
   )
 
+  # Header-only VP1/VP2 projector schema and demand-policy contract.
+  LL_ADD_INTEGRATION_TEST(llprismprojector
+    ""
+    "${test_libs}"
+    "${test_project}"
+  )
+
   # [Ultimate Diopter] §2.3 relevance model: the 181-row sRelevance table,
   # its predicate helpers, and the S0-S8 sweep corpus asserted against the
   # committed consumed-set oracle (tests/aldiopterrelevance_oracle.llsd,

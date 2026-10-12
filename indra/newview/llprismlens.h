@@ -25,6 +25,7 @@ class LLFace;
 class LLPlane;
 class LLRenderTarget;
 class LLViewerObject;
+class LLVOVolume;
 namespace LLPrismLens
 {
 // A capture owns an auxiliary render target. A display binding owns only a
@@ -32,6 +33,7 @@ namespace LLPrismLens
 // limits separate is what makes one camera -> many faces inexpensive.
 constexpr U32 MAX_CAPTURES = 8;
 constexpr U32 MAX_DISPLAY_BINDINGS = 16;
+constexpr U32 MAX_PROJECTOR_BINDINGS = 8;
 constexpr U32 MAX_LENSES = MAX_CAPTURES; // Temporary source compatibility.
 
 enum class ERegistryResult : U8
@@ -97,6 +99,20 @@ enum class EDisplayVisibility : U8
     UNKNOWN,
     OFFSCREEN,
     VISIBLE
+};
+
+enum class EProjectorTarget : U8
+{
+    OBJECT,
+    RIG_LIGHT,
+    VIRTUAL
+};
+
+enum class ENoSignal : U8
+{
+    OWN_COOKIE,
+    BLACK,
+    WHITE
 };
 
 enum class EOutputState : U8
@@ -361,6 +377,12 @@ struct DisplayHandle
     U64 mGeneration = 0;
 };
 
+struct ProjectorHandle
+{
+    LLUUID mId;
+    U64 mGeneration = 0;
+};
+
 struct ActionStatus
 {
     ERegistryResult mResult = ERegistryResult::INVALID_SELECTION;
@@ -480,6 +502,26 @@ struct DisplaySettings
     F32          mHeight = 0.9f;   // metres
 };
 
+struct ProjectorSettings
+{
+    EFitMode mFitMode = EFitMode::FIT;
+    F32 mAnchor[2] = { 0.5f, 0.5f };
+    F32 mFeedEV = 0.f;
+    bool mFollowMainExposure = true;
+    U16 mResolution = 512;
+    ENoSignal mNoSignal = ENoSignal::OWN_COOKIE;
+    bool mKeepGobo = false;
+    ScreenEffects mEffects;
+};
+
+struct ProjectorRuntimeState
+{
+    EDisplayHealth mHealth = EDisplayHealth::OFFLINE;
+    std::string mReason;
+    U32 mLastConsumedFrame = 0;
+    bool mDemanded = false;
+};
+
 struct CaptureDefinition
 {
     U32 mSlot = MAX_CAPTURES;
@@ -491,6 +533,7 @@ struct CaptureDefinition
     CaptureRateSettings mRate;
     CaptureRuntimeState mRuntime;
     U32 mDisplayCount = 0;
+    U32 mProjectorCount = 0;
 };
 
 struct DisplayDefinition
@@ -505,6 +548,53 @@ struct DisplayDefinition
     bool mQuarantined = false;
     std::string mQuarantineReason;
 };
+
+struct ProjectorDefinition
+{
+    ProjectorHandle mHandle;
+    CaptureHandle mCapture;
+    EProjectorTarget mTarget = EProjectorTarget::OBJECT;
+    LLUUID mObjectId;
+    U8 mRigSlot = 0;
+    U8 mRigLight = 0;
+    ProjectorSettings mSettings;
+    ProjectorRuntimeState mRuntime;
+    bool mGateSubscribed = false;
+    bool mQuarantined = false;
+    std::string mQuarantineReason;
+};
+
+// VP1/VP2 intentionally expose the retained producer rather than a prepared
+// projector cookie. VP3 may convert it and VP4 may bind it without changing
+// registry callers or target identity.
+struct ProjectorFeed
+{
+    ProjectorHandle mProjector;
+    CaptureHandle mCapture;
+    LLRenderTarget* mOutput = nullptr; // Render-thread only; never retain.
+    U32 mOutputWidth = 0;
+    U32 mOutputHeight = 0;
+    F32 mUvScale[2] = { 1.f, 1.f };
+    F32 mUvOffset[2] = { 0.f, 0.f };
+    U64 mGeneration = 0;
+    ProjectorSettings mSettings;
+};
+
+namespace ProjectorDemandPolicy
+{
+constexpr U32 CONSUMED_FRAMES = 2;
+constexpr U32 BOOTSTRAP_FRAMES = 30;
+
+inline bool active(U32 frame, U32 last_consumed_frame, U32 bound_frame,
+                   bool target_ready)
+{
+    if (!target_ready) return false;
+    const bool consumed = last_consumed_frame != 0 &&
+        frame - last_consumed_frame <= CONSUMED_FRAMES;
+    const bool bootstrap = frame - bound_frame < BOOTSTRAP_FRAMES;
+    return consumed || bootstrap;
+}
+}
 
 struct SkippedBinding
 {
@@ -529,8 +619,10 @@ struct RegistrySnapshot
     U64 mGateRevision = 0;
     U32 mCaptureCount = 0;
     U32 mDisplayCount = 0;
+    U32 mProjectorCount = 0;
     std::array<CaptureDefinition, MAX_CAPTURES> mCaptures;
     std::array<DisplayDefinition, MAX_DISPLAY_BINDINGS> mDisplays;
+    std::array<ProjectorDefinition, MAX_PROJECTOR_BINDINGS> mProjectors;
 };
 
 // Coalesces nested registry mutations into one publication per revision kind.
@@ -652,6 +744,25 @@ ERegistryResult bindDisplayTarget(const CaptureHandle& capture,
 ERegistryResult reassignDisplay(const DisplayHandle& binding,
                                 const CaptureHandle& capture,
                                 std::string* reason = nullptr);
+ActionStatus projectorTargetStatus(const CaptureHandle& capture,
+                                   LLViewerObject* object,
+                                   const ProjectorHandle* reassigning = nullptr);
+ERegistryResult bindProjector(const CaptureHandle& capture,
+                              LLViewerObject* object,
+                              const ProjectorSettings& settings,
+                              ProjectorHandle* binding,
+                              std::string* reason = nullptr);
+ERegistryResult reassignProjector(const ProjectorHandle& binding,
+                                  const CaptureHandle& capture,
+                                  std::string* reason = nullptr);
+bool setProjectorSettings(const ProjectorHandle& binding,
+                          const ProjectorSettings& settings,
+                          std::string* reason = nullptr);
+ERegistryResult setProjectorGateSubscribed(
+    const ProjectorHandle& binding, bool subscribed,
+    std::string* reason = nullptr);
+bool removeProjector(const ProjectorHandle& binding,
+                     std::string* reason = nullptr);
 // Prim-free screen: allocate a faceless display bound to `capture`, drawn as a
 // viewer quad at the stored world transform (AGENT space; right = local +X, up =
 // local +Y) with width/height in metres, instead of a selected prim face. No
@@ -715,6 +826,11 @@ RegistrySnapshot registrySnapshot();
 PerformanceSnapshot performanceSnapshot();
 LLSD sceneData();
 ApplyReport applySceneData(const LLSD& data, std::string* reason = nullptr);
+
+// VP2 consumption/demand seam. The pipeline stamps only main-view projector
+// use; auxiliary and cube/probe renders never keep a camera alive.
+void markProjectorConsumed(const LLVOVolume* volume);
+bool getProjectorFeed(const ProjectorHandle& binding, ProjectorFeed& feed);
 
 using revision_connection_t = boost::signals2::connection;
 revision_connection_t connectConfigurationChanged(

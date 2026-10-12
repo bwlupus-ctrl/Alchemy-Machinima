@@ -524,6 +524,51 @@ bool ALVCamPageModel::setDisplay(
     return LLPrismLens::setDisplaySettings(display, settings, reason);
 }
 
+LLPrismLens::ActionStatus ALVCamPageModel::projectorStatus(
+    const LLPrismLens::CaptureHandle& capture, LLViewerObject* object,
+    const LLPrismLens::ProjectorHandle* reassigning) const
+{
+    return LLPrismLens::projectorTargetStatus(
+        capture, object, reassigning);
+}
+
+LLPrismLens::ERegistryResult ALVCamPageModel::bindProjector(
+    const LLPrismLens::CaptureHandle& capture, LLViewerObject* object,
+    const LLPrismLens::ProjectorSettings& settings,
+    LLPrismLens::ProjectorHandle* binding, std::string* reason)
+{
+    return LLPrismLens::bindProjector(
+        capture, object, settings, binding, reason);
+}
+
+LLPrismLens::ERegistryResult ALVCamPageModel::reassignProjector(
+    const LLPrismLens::ProjectorHandle& binding,
+    const LLPrismLens::CaptureHandle& capture, std::string* reason)
+{
+    return LLPrismLens::reassignProjector(binding, capture, reason);
+}
+
+bool ALVCamPageModel::setProjector(
+    const LLPrismLens::ProjectorHandle& binding,
+    const LLPrismLens::ProjectorSettings& settings, std::string* reason)
+{
+    return LLPrismLens::setProjectorSettings(binding, settings, reason);
+}
+
+LLPrismLens::ERegistryResult ALVCamPageModel::setProjectorGateSubscribed(
+    const LLPrismLens::ProjectorHandle& binding, bool subscribed,
+    std::string* reason)
+{
+    return LLPrismLens::setProjectorGateSubscribed(
+        binding, subscribed, reason);
+}
+
+bool ALVCamPageModel::removeProjector(
+    const LLPrismLens::ProjectorHandle& binding, std::string* reason)
+{
+    return LLPrismLens::removeProjector(binding, reason);
+}
+
 bool ALVCamPageModel::setLabel(const LLPrismLens::CaptureHandle& capture,
                                const std::string& label, std::string* reason)
 {

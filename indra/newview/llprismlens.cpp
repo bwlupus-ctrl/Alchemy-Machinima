@@ -43,6 +43,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstdlib>
 #include <cstring>
 #include <functional>
 #include <limits>
@@ -1792,6 +1793,7 @@ struct PrismInstance
     LLPrismLens::CaptureRuntimeState mRuntime;
     PrismFrame mFrame;
     U32 mDisplayCount = 0;
+    U32 mProjectorCount = 0;
     bool mAnyDisplayVisible = false;
     U32 mGateWatchFrames = 0;
     U32 mGateWatchW = 0;
@@ -1838,6 +1840,25 @@ struct PrismDisplay
     SurfaceGeometryCache mSurfaceCache;
 };
 
+struct PrismProjector
+{
+    bool mOccupied = false;
+    LLPrismLens::ProjectorHandle mHandle;
+    U32 mCaptureSlot = LLPrismLens::MAX_CAPTURES;
+    U64 mCaptureGeneration = 0;
+    LLPrismLens::EProjectorTarget mTarget =
+        LLPrismLens::EProjectorTarget::OBJECT;
+    LLUUID mObjectId;
+    U8 mRigSlot = 0;
+    U8 mRigLight = 0;
+    LLPrismLens::ProjectorSettings mSettings;
+    LLPrismLens::ProjectorRuntimeState mRuntime;
+    bool mGateSubscribed = false;
+    bool mQuarantined = false;
+    std::string mQuarantineReason;
+    U32 mBoundFrame = 0;
+};
+
 // Private, short-lived transaction state for the OTS replacement operation.
 // It is deliberately not an identity/history API: the snapshot exists only on
 // the buildOtsPairFromSubjects() stack and is consumed on immediate failure.
@@ -1846,10 +1867,16 @@ struct OtsDisplayRollback
     LLPrismLens::DisplayDefinition mDefinition;
 };
 
+struct OtsProjectorRollback
+{
+    LLPrismLens::ProjectorDefinition mDefinition;
+};
+
 struct OtsCaptureRollback
 {
     LLPrismLens::CaptureDefinition mCapture;
     std::vector<OtsDisplayRollback> mOwnedDisplays;
+    std::vector<OtsProjectorRollback> mOwnedProjectors;
 };
 
 struct PrismGateRuntime
@@ -2066,6 +2093,166 @@ public:
         status.mResult = LLPrismLens::ERegistryResult::OK;
         status.mReason.clear();
         return status;
+    }
+
+    LLPrismLens::ActionStatus projectorTargetStatus(
+        const LLPrismLens::CaptureHandle& capture, LLViewerObject* object,
+        const LLPrismLens::ProjectorHandle* reassigning) const
+    {
+        LLPrismLens::ActionStatus status;
+        const S32 capture_slot = findCapture(capture);
+        if (capture_slot < 0)
+        {
+            status.mResult = LLPrismLens::ERegistryResult::STALE_HANDLE;
+            status.mReason = "That capture no longer exists.";
+            return status;
+        }
+        if (mLenses[capture_slot].mMode !=
+            LLPrismLens::ECaptureMode::CAMERA_FEED)
+        {
+            status.mResult =
+                LLPrismLens::ERegistryResult::INVALID_CONFIGURATION;
+            status.mReason = "Only Camera Feed captures can feed a projector.";
+            return status;
+        }
+        const S32 reassign_slot = reassigning
+            ? findProjector(*reassigning) : -1;
+        if (reassigning && reassign_slot < 0)
+        {
+            status.mResult = LLPrismLens::ERegistryResult::STALE_HANDLE;
+            status.mReason = "That projector binding handle is stale.";
+            return status;
+        }
+        LLVOVolume* volume = object
+            ? dynamic_cast<LLVOVolume*>(object) : nullptr;
+        if (!object || object->isDead())
+        {
+            status.mResult = LLPrismLens::ERegistryResult::INVALID_SELECTION;
+            status.mReason = "Projector object is not currently available.";
+            return status;
+        }
+        if (!volume || object->isHUDAttachment())
+        {
+            status.mResult = LLPrismLens::ERegistryResult::INVALID_SELECTION;
+            status.mReason = "Projector target must be a live, non-HUD volume.";
+            return status;
+        }
+        if (!volume->getIsLight() || !volume->isLightSpotlight())
+        {
+            status.mResult = LLPrismLens::ERegistryResult::INVALID_SELECTION;
+            status.mReason =
+                "Target is not a projector light; assign a projector texture first.";
+            return status;
+        }
+        const S32 existing_slot = findProjectorIdentity(object->getID());
+        if (existing_slot >= 0 && existing_slot != reassign_slot)
+        {
+            status.mResult = LLPrismLens::ERegistryResult::DUPLICATE;
+            status.mReason = "That projector already has a VCam feed.";
+            return status;
+        }
+        if (!reassigning && projectorCount() >=
+                LLPrismLens::MAX_PROJECTOR_BINDINGS)
+        {
+            status.mResult = LLPrismLens::ERegistryResult::AT_CAPACITY;
+            status.mReason = "Maximum of 8 VCam projector bindings reached.";
+            return status;
+        }
+        status.mResult = LLPrismLens::ERegistryResult::OK;
+        status.mReason.clear();
+        return status;
+    }
+
+    LLPrismLens::ERegistryResult bindProjector(
+        const LLPrismLens::CaptureHandle& capture_handle,
+        LLViewerObject* object,
+        const LLPrismLens::ProjectorSettings& settings,
+        LLPrismLens::ProjectorHandle* handle, std::string* reason)
+    {
+        if (!validProjectorSettings(settings, reason))
+            return LLPrismLens::ERegistryResult::INVALID_CONFIGURATION;
+        const LLPrismLens::ActionStatus status = projectorTargetStatus(
+            capture_handle, object, nullptr);
+        if (!status.allowed())
+        {
+            if (reason) *reason = status.mReason;
+            return status.mResult;
+        }
+        const S32 capture_slot = findCapture(capture_handle);
+        const S32 projector_slot = freeProjectorSlot();
+        U64 generation = 0;
+        if (capture_slot < 0 || projector_slot < 0 ||
+            !allocateGeneration(generation))
+        {
+            if (reason)
+                *reason = "VCam projector capacity or handle generation exhausted.";
+            return LLPrismLens::ERegistryResult::AT_CAPACITY;
+        }
+        PrismProjector projector;
+        projector.mOccupied = true;
+        projector.mHandle.mId.generate();
+        projector.mHandle.mGeneration = generation;
+        projector.mCaptureSlot = static_cast<U32>(capture_slot);
+        projector.mCaptureGeneration =
+            mLenses[capture_slot].mHandle.mGeneration;
+        projector.mObjectId = object->getID();
+        projector.mSettings = settings;
+        projector.mSettings.mEffects.clampAndValidate();
+        projector.mRuntime.mHealth = LLPrismLens::EDisplayHealth::READY;
+        projector.mBoundFrame = gFrameCount;
+        mProjectors[projector_slot] = projector;
+        ++mLenses[capture_slot].mProjectorCount;
+        ++mRevision;
+        if (handle) *handle = projector.mHandle;
+        if (reason) reason->clear();
+        return LLPrismLens::ERegistryResult::OK;
+    }
+
+    LLPrismLens::ERegistryResult reassignProjector(
+        const LLPrismLens::ProjectorHandle& projector_handle,
+        const LLPrismLens::CaptureHandle& capture_handle,
+        std::string* reason)
+    {
+        const S32 projector_slot = findProjector(projector_handle);
+        const S32 capture_slot = findCapture(capture_handle);
+        if (projector_slot < 0 || capture_slot < 0)
+        {
+            if (reason) *reason = projector_slot < 0
+                ? "That projector binding handle is stale."
+                : "That capture no longer exists.";
+            return LLPrismLens::ERegistryResult::STALE_HANDLE;
+        }
+        PrismProjector& projector = mProjectors[projector_slot];
+        LLViewerObject* object = gObjectList.findObject(projector.mObjectId);
+        const LLPrismLens::ActionStatus status = projectorTargetStatus(
+            capture_handle, object, &projector_handle);
+        if (!status.allowed())
+        {
+            if (reason) *reason = status.mReason;
+            return status.mResult;
+        }
+        if (projector.mCaptureSlot == static_cast<U32>(capture_slot) &&
+            projector.mCaptureGeneration ==
+                mLenses[capture_slot].mHandle.mGeneration)
+        {
+            if (reason) *reason = "That projector already uses this capture.";
+            return LLPrismLens::ERegistryResult::DUPLICATE;
+        }
+        if (projector.mCaptureSlot < LLPrismLens::MAX_CAPTURES &&
+            mLenses[projector.mCaptureSlot].mOccupied &&
+            mLenses[projector.mCaptureSlot].mProjectorCount > 0)
+        {
+            --mLenses[projector.mCaptureSlot].mProjectorCount;
+        }
+        ++mLenses[capture_slot].mProjectorCount;
+        projector.mCaptureSlot = static_cast<U32>(capture_slot);
+        projector.mCaptureGeneration =
+            mLenses[capture_slot].mHandle.mGeneration;
+        projector.mBoundFrame = gFrameCount;
+        projector.mRuntime.mDemanded = false;
+        ++mRevision;
+        if (reason) reason->clear();
+        return LLPrismLens::ERegistryResult::OK;
     }
 
     LLPrismLens::ERegistryResult addCamera(LLPrismLens::CaptureHandle* handle,
@@ -2459,6 +2646,10 @@ public:
         {
             display = PrismDisplay();
         }
+        for (PrismProjector& projector : mProjectors)
+        {
+            projector = PrismProjector();
+        }
         mGateSettings = LLPrismLens::GateSettings();
         mGate = PrismGateRuntime();
         gPipeline.releasePrismLensBuffers();
@@ -2485,6 +2676,10 @@ public:
             lens.mRuntime.mActivity = LLPrismLens::EActivityState::PAUSED;
             lens.mRuntime.mObservedPublicationHz = 0.f;
             lens.mRuntime.mOutputAgeSeconds = 0.f;
+        }
+        for (PrismProjector& projector : mProjectors)
+        {
+            projector.mRuntime.mDemanded = false;
         }
         gPipeline.releasePrismLensBuffers();
         mLastRenderedSlot = -1;
@@ -3285,6 +3480,15 @@ public:
             capture.mAnyDisplayVisible = true;
             required_width = llmax(required_width, capture.mGateWatchW);
             required_height = llmax(required_height, capture.mGateWatchH);
+        }
+        // A recently consumed projector is a full-quality producer, exactly
+        // like a visible face or Gate watch. It must be resolved before the
+        // preview-only fallback so projector-only cameras never publish the
+        // pinned 192x108 preview-quality frame.
+        if (addProjectorDemand(slot, required_width, required_height))
+        {
+            capture.mAnyDisplayVisible = true;
+            capture.mRuntime.mActivity = LLPrismLens::EActivityState::WAITING;
         }
         if (!capture.mAnyDisplayVisible)
         {
@@ -4232,6 +4436,76 @@ public:
         return true;
     }
 
+    static bool validProjectorSettings(
+        const LLPrismLens::ProjectorSettings& settings, std::string* reason)
+    {
+        if (settings.mFitMode != LLPrismLens::EFitMode::FIT &&
+            settings.mFitMode != LLPrismLens::EFitMode::FILL &&
+            settings.mFitMode != LLPrismLens::EFitMode::STRETCH)
+        {
+            if (reason) *reason = "Unknown projector fit mode.";
+            return false;
+        }
+        if (!std::isfinite(settings.mAnchor[0]) ||
+            !std::isfinite(settings.mAnchor[1]) ||
+            settings.mAnchor[0] < 0.f || settings.mAnchor[0] > 1.f ||
+            settings.mAnchor[1] < 0.f || settings.mAnchor[1] > 1.f ||
+            !std::isfinite(settings.mFeedEV) ||
+            settings.mFeedEV < -4.f || settings.mFeedEV > 4.f ||
+            (settings.mResolution != 256 && settings.mResolution != 512 &&
+             settings.mResolution != 1024) ||
+            (settings.mNoSignal != LLPrismLens::ENoSignal::OWN_COOKIE &&
+             settings.mNoSignal != LLPrismLens::ENoSignal::BLACK &&
+             settings.mNoSignal != LLPrismLens::ENoSignal::WHITE))
+        {
+            if (reason)
+                *reason = "Projector settings require anchor 0-1, feed EV -4 to +4, and resolution 256, 512, or 1024.";
+            return false;
+        }
+        return true;
+    }
+
+    bool setProjectorSettings(
+        const LLPrismLens::ProjectorHandle& handle,
+        const LLPrismLens::ProjectorSettings& settings,
+        std::string* reason)
+    {
+        const S32 slot = findProjector(handle);
+        if (slot < 0)
+        {
+            if (reason) *reason = "That projector binding handle is stale.";
+            return false;
+        }
+        if (!validProjectorSettings(settings, reason)) return false;
+        mProjectors[slot].mSettings = settings;
+        mProjectors[slot].mSettings.mEffects.clampAndValidate();
+        ++mRevision;
+        if (reason) reason->clear();
+        return true;
+    }
+
+    LLPrismLens::ERegistryResult setProjectorGateSubscribed(
+        const LLPrismLens::ProjectorHandle& handle, bool subscribed,
+        std::string* reason)
+    {
+        const S32 slot = findProjector(handle);
+        if (slot < 0)
+        {
+            if (reason) *reason = "That projector binding handle is stale.";
+            return LLPrismLens::ERegistryResult::STALE_HANDLE;
+        }
+        if (mProjectors[slot].mGateSubscribed == subscribed)
+        {
+            if (reason) reason->clear();
+            return LLPrismLens::ERegistryResult::OK;
+        }
+        mProjectors[slot].mGateSubscribed = subscribed;
+        if (subscribed) routeGateDisplays();
+        ++mRevision;
+        if (reason) reason->clear();
+        return LLPrismLens::ERegistryResult::OK;
+    }
+
     bool setGateSettings(const LLPrismLens::GateSettings& settings,
                          std::string* reason)
     {
@@ -4964,7 +5238,7 @@ public:
         }
         if (capture.mDisplayCount > 0) --capture.mDisplayCount;
         display = PrismDisplay();
-        if (capture.mDisplayCount == 0)
+        if (capture.mDisplayCount == 0 && capture.mProjectorCount == 0)
         {
             gPipeline.releasePrismLensOutput(capture_slot);
             // Shared scratch packs remain live for unrelated captures.
@@ -4987,6 +5261,172 @@ public:
         }
         ++mRevision;
         if (reason) reason->clear();
+        return true;
+    }
+
+    bool removeProjector(const LLPrismLens::ProjectorHandle& handle,
+                         std::string* reason)
+    {
+        const S32 slot = findProjector(handle);
+        if (slot < 0)
+        {
+            if (reason) *reason = "That projector binding handle is stale.";
+            return false;
+        }
+        PrismProjector& projector = mProjectors[slot];
+        const U32 capture_slot = projector.mCaptureSlot;
+        projector = PrismProjector();
+        if (capture_slot < LLPrismLens::MAX_CAPTURES &&
+            mLenses[capture_slot].mOccupied)
+        {
+            PrismInstance& capture = mLenses[capture_slot];
+            if (capture.mProjectorCount > 0) --capture.mProjectorCount;
+            if (capture.mDisplayCount == 0 && capture.mProjectorCount == 0)
+            {
+                suppressOutput(capture_slot);
+                capture.mRuntime.mOutput = LLPrismLens::EOutputState::EMPTY;
+                capture.mRuntime.mActivity = LLPrismLens::EActivityState::IDLE;
+            }
+        }
+        ++mRevision;
+        if (reason) reason->clear();
+        return true;
+    }
+
+    void updateProjectorRuntime(PrismProjector& projector)
+    {
+        LLPrismLens::EDisplayHealth health = LLPrismLens::EDisplayHealth::READY;
+        const char* reason = "";
+        bool quarantined = false;
+        LLViewerObject* object = gObjectList.findObject(projector.mObjectId);
+        LLVOVolume* volume = object
+            ? dynamic_cast<LLVOVolume*>(object) : nullptr;
+        if (!object || object->isDead())
+        {
+            health = LLPrismLens::EDisplayHealth::OFFLINE;
+            reason = "Projector object is outside the local object list.";
+            quarantined = true;
+        }
+        else if (!volume || object->isHUDAttachment())
+        {
+            health = LLPrismLens::EDisplayHealth::INVALID;
+            reason = "Projector target must remain a live, non-HUD volume.";
+            quarantined = true;
+        }
+        else if (!volume->getIsLight() || !volume->isLightSpotlight())
+        {
+            health = LLPrismLens::EDisplayHealth::INVALID;
+            reason = "Target is not a projector light; assign a projector texture first.";
+            quarantined = true;
+        }
+        const bool changed = projector.mRuntime.mHealth != health ||
+            projector.mRuntime.mReason != reason ||
+            projector.mQuarantined != quarantined;
+        if (changed)
+        {
+            projector.mRuntime.mHealth = health;
+            projector.mRuntime.mReason = reason;
+            projector.mQuarantined = quarantined;
+            projector.mQuarantineReason = reason;
+            ++mRuntimeRevision;
+        }
+    }
+
+    bool addProjectorDemand(U32 capture_slot, U32& required_width,
+                            U32& required_height)
+    {
+        bool demanded = false;
+        for (PrismProjector& projector : mProjectors)
+        {
+            if (!projector.mOccupied ||
+                projector.mCaptureSlot != capture_slot ||
+                projector.mCaptureGeneration !=
+                    mLenses[capture_slot].mHandle.mGeneration)
+            {
+                continue;
+            }
+            updateProjectorRuntime(projector);
+            bool active = false;
+            if (!projector.mQuarantined)
+            {
+                active = LLPrismLens::ProjectorDemandPolicy::active(
+                    gFrameCount, projector.mRuntime.mLastConsumedFrame,
+                    projector.mBoundFrame, true);
+            }
+            if (projector.mRuntime.mDemanded != active)
+            {
+                projector.mRuntime.mDemanded = active;
+                ++mRuntimeRevision;
+            }
+            if (!active) continue;
+            demanded = true;
+            U32 width = projector.mSettings.mResolution;
+            U32 height = projector.mSettings.mResolution;
+            LLVOVolume* volume = dynamic_cast<LLVOVolume*>(
+                gObjectList.findObject(projector.mObjectId));
+            if (volume)
+            {
+                const LLVector3 scale = volume->getScale();
+                if (scale.mV[VX] > F_ALMOST_ZERO &&
+                    scale.mV[VY] > F_ALMOST_ZERO)
+                {
+                    const F32 aspect = scale.mV[VX] / scale.mV[VY];
+                    if (aspect > 1.f)
+                        height = llmax(1u, static_cast<U32>(ll_round(width / aspect)));
+                    else
+                        width = llmax(1u, static_cast<U32>(ll_round(height * aspect)));
+                }
+            }
+            required_width = llmax(required_width, width);
+            required_height = llmax(required_height, height);
+        }
+        return demanded;
+    }
+
+    void markProjectorConsumed(const LLVOVolume* volume)
+    {
+        if (!volume || !prismEnabled()) return;
+        const LLUUID& id = volume->getID();
+        for (PrismProjector& projector : mProjectors)
+        {
+            if (projector.mOccupied &&
+                projector.mTarget == LLPrismLens::EProjectorTarget::OBJECT &&
+                projector.mObjectId == id && !projector.mQuarantined)
+            {
+                projector.mRuntime.mLastConsumedFrame = gFrameCount;
+                return;
+            }
+        }
+    }
+
+    bool getProjectorFeed(const LLPrismLens::ProjectorHandle& handle,
+                          LLPrismLens::ProjectorFeed& feed)
+    {
+        feed = LLPrismLens::ProjectorFeed();
+        const S32 slot = findProjector(handle);
+        if (slot < 0) return false;
+        PrismProjector& projector = mProjectors[slot];
+        updateProjectorRuntime(projector);
+        if (projector.mQuarantined ||
+            projector.mCaptureSlot >= LLPrismLens::MAX_CAPTURES)
+            return false;
+        PrismInstance& capture = mLenses[projector.mCaptureSlot];
+        if (!capture.mOccupied ||
+            capture.mHandle.mGeneration != projector.mCaptureGeneration ||
+            !capture.mHasOutput || capture.mOutputPreviewQuality ||
+            !gPipeline.mPrismLensOutput[projector.mCaptureSlot].isComplete())
+            return false;
+        feed.mProjector = projector.mHandle;
+        feed.mCapture = capture.mHandle;
+        feed.mOutput = &gPipeline.mPrismLensOutput[projector.mCaptureSlot];
+        feed.mOutputWidth = capture.mOutputWidth;
+        feed.mOutputHeight = capture.mOutputHeight;
+        std::memcpy(feed.mUvScale, capture.mOutputUvScale,
+                    sizeof(feed.mUvScale));
+        std::memcpy(feed.mUvOffset, capture.mOutputUvOffset,
+                    sizeof(feed.mUvOffset));
+        feed.mGeneration = capture.mPublicationSerial;
+        feed.mSettings = projector.mSettings;
         return true;
     }
 
@@ -5040,6 +5480,27 @@ public:
             removed.mDefinition.mQuarantineReason = display.mQuarantineReason;
             record.mOwnedDisplays.push_back(removed);
         }
+        for (const PrismProjector& projector : mProjectors)
+        {
+            if (!projector.mOccupied ||
+                projector.mCaptureSlot != static_cast<U32>(slot) ||
+                projector.mCaptureGeneration != capture.mHandle.mGeneration)
+                continue;
+            OtsProjectorRollback removed;
+            removed.mDefinition.mHandle = projector.mHandle;
+            removed.mDefinition.mCapture = capture.mHandle;
+            removed.mDefinition.mTarget = projector.mTarget;
+            removed.mDefinition.mObjectId = projector.mObjectId;
+            removed.mDefinition.mRigSlot = projector.mRigSlot;
+            removed.mDefinition.mRigLight = projector.mRigLight;
+            removed.mDefinition.mSettings = projector.mSettings;
+            removed.mDefinition.mRuntime = projector.mRuntime;
+            removed.mDefinition.mGateSubscribed = projector.mGateSubscribed;
+            removed.mDefinition.mQuarantined = projector.mQuarantined;
+            removed.mDefinition.mQuarantineReason =
+                projector.mQuarantineReason;
+            record.mOwnedProjectors.push_back(removed);
+        }
         if (reason) reason->clear();
         return true;
     }
@@ -5069,6 +5530,13 @@ public:
             if (reason) *reason = "Not enough display capacity to restore this capture.";
             return false;
         }
+        const U32 free_projectors =
+            LLPrismLens::MAX_PROJECTOR_BINDINGS - projectorCount();
+        if (free_projectors < record.mOwnedProjectors.size())
+        {
+            if (reason) *reason = "Not enough projector capacity to restore this capture.";
+            return false;
+        }
         std::set<std::string> targets;
         for (const OtsDisplayRollback& removed : record.mOwnedDisplays)
         {
@@ -5096,6 +5564,19 @@ public:
             if (!display.mSettings.mVirtual && !targets.insert(key).second)
             {
                 if (reason) *reason = "The saved capture contains duplicate display targets.";
+                return false;
+            }
+        }
+        for (const OtsProjectorRollback& removed : record.mOwnedProjectors)
+        {
+            const LLPrismLens::ProjectorDefinition& projector =
+                removed.mDefinition;
+            if (findProjector(projector.mHandle) >= 0 ||
+                findProjectorIdentity(projector.mObjectId) >= 0 ||
+                !validProjectorSettings(projector.mSettings, reason))
+            {
+                if (reason && reason->empty())
+                    *reason = "A saved projector identity or target is unavailable.";
                 return false;
             }
         }
@@ -5164,6 +5645,31 @@ public:
                 mLenses[restore_slot].mTE = source.mDisplayTextureEntry;
             }
         }
+        for (const OtsProjectorRollback& removed : record.mOwnedProjectors)
+        {
+            const LLPrismLens::ProjectorDefinition& source =
+                removed.mDefinition;
+            PrismProjector projector;
+            projector.mOccupied = true;
+            projector.mHandle = source.mHandle;
+            projector.mCaptureSlot = restore_slot;
+            projector.mCaptureGeneration = definition.mHandle.mGeneration;
+            projector.mTarget = source.mTarget;
+            projector.mObjectId = source.mObjectId;
+            projector.mRigSlot = source.mRigSlot;
+            projector.mRigLight = source.mRigLight;
+            projector.mSettings = source.mSettings;
+            projector.mRuntime = source.mRuntime;
+            projector.mGateSubscribed = source.mGateSubscribed;
+            projector.mQuarantined = source.mQuarantined;
+            projector.mQuarantineReason = source.mQuarantineReason;
+            projector.mBoundFrame = gFrameCount;
+            updateProjectorRuntime(projector);
+            mProjectors[freeProjectorSlot()] = projector;
+            ++mLenses[restore_slot].mProjectorCount;
+            mNextGeneration = llmax(
+                mNextGeneration, source.mHandle.mGeneration + 1);
+        }
 
         ++mRevision;
         ++mRuntimeRevision;
@@ -5201,8 +5707,10 @@ public:
         return mRuntimeRevision;
     }
 
-    LLPrismLens::RegistrySnapshot snapshot() const
+    LLPrismLens::RegistrySnapshot snapshot()
     {
+        for (PrismProjector& projector : mProjectors)
+            if (projector.mOccupied) updateProjectorRuntime(projector);
         refreshRuntimeRevision();
         LLPrismLens::RegistrySnapshot result;
         result.mConfigurationRevision = mRevision;
@@ -5222,6 +5730,7 @@ public:
             out.mRate = capture.mRate;
             out.mRuntime = capture.mRuntime;
             out.mDisplayCount = capture.mDisplayCount;
+            out.mProjectorCount = capture.mProjectorCount;
         }
         for (const PrismDisplay& display : mDisplays)
         {
@@ -5246,6 +5755,30 @@ public:
             out.mGateSubscribed = display.mGateSubscribed;
             out.mQuarantined = display.mQuarantined;
             out.mQuarantineReason = display.mQuarantineReason;
+        }
+        for (const PrismProjector& projector : mProjectors)
+        {
+            if (!projector.mOccupied) continue;
+            const bool capture_valid =
+                projector.mCaptureSlot < LLPrismLens::MAX_CAPTURES &&
+                mLenses[projector.mCaptureSlot].mOccupied &&
+                projector.mCaptureGeneration ==
+                    mLenses[projector.mCaptureSlot].mHandle.mGeneration;
+            if (!capture_valid && !projector.mGateSubscribed) continue;
+            LLPrismLens::ProjectorDefinition& out =
+                result.mProjectors[result.mProjectorCount++];
+            out.mHandle = projector.mHandle;
+            if (capture_valid)
+                out.mCapture = mLenses[projector.mCaptureSlot].mHandle;
+            out.mTarget = projector.mTarget;
+            out.mObjectId = projector.mObjectId;
+            out.mRigSlot = projector.mRigSlot;
+            out.mRigLight = projector.mRigLight;
+            out.mSettings = projector.mSettings;
+            out.mRuntime = projector.mRuntime;
+            out.mGateSubscribed = projector.mGateSubscribed;
+            out.mQuarantined = projector.mQuarantined;
+            out.mQuarantineReason = projector.mQuarantineReason;
         }
         return result;
     }
@@ -5369,6 +5902,7 @@ public:
         LLSD result = LLSD::emptyMap();
         result["prism_captures"] = LLSD::emptyArray();
         result["prism_displays"] = LLSD::emptyArray();
+        result["prism_projectors"] = LLSD::emptyArray();
         result["prism_gates"] = LLSD::emptyArray();
         for (U32 slot = 0; slot < LLPrismLens::MAX_CAPTURES; ++slot)
         {
@@ -5563,6 +6097,80 @@ public:
             }
             result["prism_displays"].append(item);
         }
+        for (const PrismProjector& projector : mProjectors)
+        {
+            if (!projector.mOccupied) continue;
+            const bool fixed_capture_valid =
+                projector.mCaptureSlot < LLPrismLens::MAX_CAPTURES &&
+                mLenses[projector.mCaptureSlot].mOccupied &&
+                projector.mCaptureGeneration ==
+                    mLenses[projector.mCaptureSlot].mHandle.mGeneration;
+            if (!projector.mGateSubscribed && !fixed_capture_valid) continue;
+            LLSD item = LLSD::emptyMap();
+            item["binding_id"] = projector.mHandle.mId;
+            item["generation"] = llformat(
+                "%llu", static_cast<unsigned long long>(
+                    projector.mHandle.mGeneration));
+            item["capture_id"] = projector.mGateSubscribed
+                ? (gate_hint_slot >= 0
+                    ? mLenses[gate_hint_slot].mHandle.mId : LLUUID::null)
+                : mLenses[projector.mCaptureSlot].mHandle.mId;
+            item["target"] = "object";
+            item["object_id"] = projector.mObjectId;
+            item["gate_source"] = projector.mGateSubscribed;
+            LLSD settings = LLSD::emptyMap();
+            switch (projector.mSettings.mFitMode)
+            {
+                case LLPrismLens::EFitMode::FILL: settings["fit"] = "fill"; break;
+                case LLPrismLens::EFitMode::STRETCH: settings["fit"] = "stretch"; break;
+                default: settings["fit"] = "fit"; break;
+            }
+            LLSD anchor = LLSD::emptyArray();
+            anchor.append(projector.mSettings.mAnchor[0]);
+            anchor.append(projector.mSettings.mAnchor[1]);
+            settings["anchor"] = anchor;
+            settings["feed_ev"] = projector.mSettings.mFeedEV;
+            settings["follow_main_exposure"] =
+                projector.mSettings.mFollowMainExposure;
+            settings["resolution"] = projector.mSettings.mResolution;
+            switch (projector.mSettings.mNoSignal)
+            {
+                case LLPrismLens::ENoSignal::BLACK:
+                    settings["no_signal"] = "black"; break;
+                case LLPrismLens::ENoSignal::WHITE:
+                    settings["no_signal"] = "white"; break;
+                default: settings["no_signal"] = "own_cookie"; break;
+            }
+            settings["keep_gobo"] = projector.mSettings.mKeepGobo;
+            const LLPrismLens::ScreenEffects& fx =
+                projector.mSettings.mEffects;
+            LLSD effects = LLSD::emptyMap();
+            effects["scanlines"] = fx.mScanlines;
+            effects["scanline_count"] = fx.mScanlineCount;
+            effects["scanline_depth"] = fx.mScanlineDepth;
+            effects["scanline_sharpness"] = fx.mScanlineSharpness;
+            effects["scanline_thickness"] = fx.mScanlineThickness;
+            effects["pixelate"] = fx.mPixelate;
+            effects["grayscale"] = fx.mGrayscale;
+            effects["sepia"] = fx.mSepia;
+            effects["static"] = fx.mStatic;
+            effects["vertical_roll"] = fx.mVerticalRoll;
+            effects["roll_speed"] = fx.mRollSpeed;
+            effects["tracking"] = fx.mTracking;
+            effects["flicker"] = fx.mFlicker;
+            effects["chroma_bleed"] = fx.mChromaBleed;
+            effects["vignette"] = fx.mVignette;
+            effects["interlace"] = fx.mInterlace;
+            effects["dropout"] = fx.mDropout;
+            effects["brightness"] = fx.mBrightness;
+            effects["flip_h"] = fx.mFlipH;
+            effects["flip_v"] = fx.mFlipV;
+            effects["rotate90"] = fx.mRotate90;
+            effects["sheen"] = fx.mSheen;
+            settings["screen_effects"] = effects;
+            item["settings"] = settings;
+            result["prism_projectors"].append(item);
+        }
         LLPrismLens::GateSettings persisted_gate = mGateSettings;
         if (mGate.mOnAirArmIndex >= 0 &&
             mGate.mOnAirArmIndex <
@@ -5597,6 +6205,17 @@ public:
             LLUUID mObjectId;
             S32 mTE = -1;
             LLPrismLens::DisplaySettings mSettings;
+            bool mGateSubscribed = false;
+            bool mQuarantined = false;
+            std::string mQuarantineReason;
+        };
+        struct ParsedProjector
+        {
+            LLUUID mId;
+            U64 mGeneration = 0;
+            LLUUID mCaptureId;
+            LLUUID mObjectId;
+            LLPrismLens::ProjectorSettings mSettings;
             bool mGateSubscribed = false;
             bool mQuarantined = false;
             std::string mQuarantineReason;
@@ -5644,19 +6263,28 @@ public:
         }
         const LLSD& captures_data = data["prism_captures"];
         const LLSD& displays_data = data["prism_displays"];
+        const LLSD projectors_data = data.has("prism_projectors")
+            ? data["prism_projectors"] : LLSD::emptyArray();
+        if (!projectors_data.isArray())
+            return fail("Prism projector data must be an array.");
         if (captures_data.size() > LLPrismLens::MAX_CAPTURES ||
-            displays_data.size() > LLPrismLens::MAX_DISPLAY_BINDINGS)
+            displays_data.size() > LLPrismLens::MAX_DISPLAY_BINDINGS ||
+            projectors_data.size() > LLPrismLens::MAX_PROJECTOR_BINDINGS)
         {
             return fail(llformat(
-                "Prism scene exceeds the %u-capture or %u-display resource limit.",
-                LLPrismLens::MAX_CAPTURES, LLPrismLens::MAX_DISPLAY_BINDINGS));
+                "Prism scene exceeds the %u-capture, %u-display, or %u-projector resource limit.",
+                LLPrismLens::MAX_CAPTURES, LLPrismLens::MAX_DISPLAY_BINDINGS,
+                LLPrismLens::MAX_PROJECTOR_BINDINGS));
         }
 
         std::vector<ParsedCapture> parsed_captures;
         std::vector<ParsedDisplay> parsed_displays;
+        std::vector<ParsedProjector> parsed_projectors;
         std::set<LLUUID> capture_ids;
         std::set<LLUUID> binding_ids;
         std::set<std::string> display_identities;
+        std::set<LLUUID> projector_ids;
+        std::set<LLUUID> projector_objects;
         for (LLSD::array_const_iterator it = captures_data.beginArray();
              it != captures_data.endArray(); ++it)
         {
@@ -6170,6 +6798,158 @@ public:
             parsed_displays.push_back(parsed);
         }
 
+        for (LLSD::array_const_iterator it = projectors_data.beginArray();
+             it != projectors_data.endArray(); ++it)
+        {
+            const LLSD& item = *it;
+            if (!item.isMap() || !item.has("binding_id") ||
+                !item.has("generation") ||
+                (!item["generation"].isInteger() &&
+                 !item["generation"].isString()) ||
+                !item.has("capture_id") || !item.has("target") ||
+                !item.has("object_id") || !item.has("settings") ||
+                !item["settings"].isMap())
+            {
+                return fail("A Prism projector binding is missing required fields.");
+            }
+            ParsedProjector parsed;
+            parsed.mId = item["binding_id"].asUUID();
+            if (item["generation"].isInteger())
+            {
+                const S32 generation = item["generation"].asInteger();
+                parsed.mGeneration = generation > 0
+                    ? static_cast<U64>(generation) : 0;
+            }
+            else
+            {
+                const std::string generation_text =
+                    item["generation"].asString();
+                char* generation_end = nullptr;
+                const unsigned long long generation = std::strtoull(
+                    generation_text.c_str(), &generation_end, 10);
+                if (generation_end != generation_text.c_str() &&
+                    generation_end && *generation_end == '\0')
+                    parsed.mGeneration = static_cast<U64>(generation);
+            }
+            parsed.mCaptureId = item["capture_id"].asUUID();
+            parsed.mObjectId = item["object_id"].asUUID();
+            parsed.mGateSubscribed = item.has("gate_source") &&
+                item["gate_source"].asBoolean();
+            if (parsed.mId.isNull() || parsed.mGeneration == 0 ||
+                parsed.mGeneration == std::numeric_limits<U64>::max() ||
+                !projector_ids.insert(parsed.mId).second)
+                return fail("Prism projector IDs and generations must be nonnull and unique.");
+            const bool capture_resolves = parsed.mCaptureId.notNull() &&
+                capture_ids.count(parsed.mCaptureId) != 0;
+            if (!parsed.mGateSubscribed && !capture_resolves)
+                return fail("A Prism projector references an unknown capture.");
+            if (capture_resolves)
+            {
+                const auto capture = std::find_if(
+                    parsed_captures.begin(), parsed_captures.end(),
+                    [&parsed](const ParsedCapture& candidate)
+                    { return candidate.mId == parsed.mCaptureId; });
+                if (capture == parsed_captures.end() ||
+                    capture->mMode != LLPrismLens::ECaptureMode::CAMERA_FEED)
+                    return fail("Only Camera Feed captures can feed a projector.");
+            }
+            if (item["target"].asString() != "object" ||
+                parsed.mObjectId.isNull())
+                return fail("VP1 supports object projector targets only.");
+            if (!projector_objects.insert(parsed.mObjectId).second)
+                return fail("A projector light may have only one VCam feed.");
+
+            const LLSD& settings = item["settings"];
+            if (!settings.has("fit") || !settings.has("anchor") ||
+                !is_numeric_array(settings["anchor"], 2) ||
+                !settings.has("feed_ev") || !is_numeric(settings["feed_ev"]) ||
+                !settings.has("follow_main_exposure") ||
+                !settings.has("resolution") || !settings["resolution"].isInteger() ||
+                !settings.has("no_signal") || !settings.has("keep_gobo"))
+                return fail("A Prism projector settings block is incomplete.");
+            const std::string fit = settings["fit"].asString();
+            if (fit == "fit") parsed.mSettings.mFitMode = LLPrismLens::EFitMode::FIT;
+            else if (fit == "fill") parsed.mSettings.mFitMode = LLPrismLens::EFitMode::FILL;
+            else if (fit == "stretch") parsed.mSettings.mFitMode = LLPrismLens::EFitMode::STRETCH;
+            else return fail("Unknown Prism projector fit mode.");
+            parsed.mSettings.mAnchor[0] =
+                static_cast<F32>(settings["anchor"][0].asReal());
+            parsed.mSettings.mAnchor[1] =
+                static_cast<F32>(settings["anchor"][1].asReal());
+            parsed.mSettings.mFeedEV =
+                static_cast<F32>(settings["feed_ev"].asReal());
+            parsed.mSettings.mFollowMainExposure =
+                settings["follow_main_exposure"].asBoolean();
+            parsed.mSettings.mResolution =
+                static_cast<U16>(settings["resolution"].asInteger());
+            const std::string no_signal = settings["no_signal"].asString();
+            if (no_signal == "own_cookie")
+                parsed.mSettings.mNoSignal = LLPrismLens::ENoSignal::OWN_COOKIE;
+            else if (no_signal == "black")
+                parsed.mSettings.mNoSignal = LLPrismLens::ENoSignal::BLACK;
+            else if (no_signal == "white")
+                parsed.mSettings.mNoSignal = LLPrismLens::ENoSignal::WHITE;
+            else return fail("Unknown Prism projector no-signal policy.");
+            parsed.mSettings.mKeepGobo = settings["keep_gobo"].asBoolean();
+            if (settings.has("screen_effects") &&
+                settings["screen_effects"].isMap())
+            {
+                const LLSD& effects = settings["screen_effects"];
+                LLPrismLens::ScreenEffects& fx = parsed.mSettings.mEffects;
+                const auto read_effect = [&effects, &is_numeric](
+                    const char* key, F32& destination)
+                {
+                    if (effects.has(key) && is_numeric(effects[key]))
+                    {
+                        const F32 value = static_cast<F32>(effects[key].asReal());
+                        if (std::isfinite(value)) destination = value;
+                    }
+                };
+                read_effect("scanlines", fx.mScanlines);
+                read_effect("scanline_count", fx.mScanlineCount);
+                read_effect("scanline_depth", fx.mScanlineDepth);
+                read_effect("scanline_sharpness", fx.mScanlineSharpness);
+                read_effect("scanline_thickness", fx.mScanlineThickness);
+                read_effect("pixelate", fx.mPixelate);
+                read_effect("grayscale", fx.mGrayscale);
+                read_effect("sepia", fx.mSepia);
+                read_effect("static", fx.mStatic);
+                read_effect("vertical_roll", fx.mVerticalRoll);
+                read_effect("roll_speed", fx.mRollSpeed);
+                read_effect("tracking", fx.mTracking);
+                read_effect("flicker", fx.mFlicker);
+                read_effect("chroma_bleed", fx.mChromaBleed);
+                read_effect("vignette", fx.mVignette);
+                read_effect("interlace", fx.mInterlace);
+                read_effect("dropout", fx.mDropout);
+                read_effect("brightness", fx.mBrightness);
+                read_effect("sheen", fx.mSheen);
+                if (effects.has("flip_h")) fx.mFlipH = effects["flip_h"].asBoolean();
+                if (effects.has("flip_v")) fx.mFlipV = effects["flip_v"].asBoolean();
+                if (effects.has("rotate90")) fx.mRotate90 = effects["rotate90"].asBoolean();
+                fx.clampAndValidate();
+            }
+            std::string settings_reason;
+            if (!validProjectorSettings(parsed.mSettings, &settings_reason))
+                return fail(settings_reason);
+
+            LLViewerObject* object = gObjectList.findObject(parsed.mObjectId);
+            if (!object || object->isDead())
+            {
+                parsed.mQuarantined = true;
+                parsed.mQuarantineReason =
+                    "Offline scene projector; awaiting validation.";
+            }
+            else
+            {
+                LLVOVolume* volume = dynamic_cast<LLVOVolume*>(object);
+                if (!volume || object->isHUDAttachment() ||
+                    !volume->getIsLight() || !volume->isLightSpotlight())
+                    return fail("Scene projector target is not a live projector light.");
+            }
+            parsed_projectors.push_back(parsed);
+        }
+
         std::vector<LLUUID> gate_capture_ids;
         gate_capture_ids.reserve(parsed_captures.size());
         for (const ParsedCapture& capture : parsed_captures)
@@ -6268,6 +7048,8 @@ public:
         mGate = PrismGateRuntime();
         for (PrismInstance& capture : mLenses) capture = PrismInstance();
         for (PrismDisplay& display : mDisplays) display = PrismDisplay();
+        for (PrismProjector& projector : mProjectors)
+            projector = PrismProjector();
 
         for (U32 slot = 0; slot < parsed_captures.size(); ++slot)
         {
@@ -6315,6 +7097,37 @@ public:
                     capture.mTE = parsed.mTE;
                 }
             }
+        }
+        U32 projector_slot = 0;
+        for (const ParsedProjector& parsed : parsed_projectors)
+        {
+            PrismProjector& projector = mProjectors[projector_slot++];
+            projector.mOccupied = true;
+            projector.mHandle.mId = parsed.mId;
+            projector.mHandle.mGeneration = parsed.mGeneration;
+            projector.mObjectId = parsed.mObjectId;
+            projector.mSettings = parsed.mSettings;
+            projector.mGateSubscribed = parsed.mGateSubscribed;
+            projector.mQuarantined = parsed.mQuarantined;
+            projector.mQuarantineReason = parsed.mQuarantineReason;
+            projector.mRuntime.mHealth = parsed.mQuarantined
+                ? LLPrismLens::EDisplayHealth::OFFLINE
+                : LLPrismLens::EDisplayHealth::READY;
+            projector.mRuntime.mReason = parsed.mQuarantineReason;
+            projector.mBoundFrame = gFrameCount;
+            U32 capture_slot = 0;
+            while (capture_slot < parsed_captures.size() &&
+                   parsed_captures[capture_slot].mId != parsed.mCaptureId)
+                ++capture_slot;
+            if (capture_slot < parsed_captures.size())
+            {
+                projector.mCaptureSlot = capture_slot;
+                projector.mCaptureGeneration =
+                    mLenses[capture_slot].mHandle.mGeneration;
+                ++mLenses[capture_slot].mProjectorCount;
+            }
+            mNextGeneration = llmax(
+                mNextGeneration, projector.mHandle.mGeneration + 1);
         }
 
         if (have_parsed_gate)
@@ -6553,6 +7366,31 @@ private:
                 display.mCaptureSlot, display.mCaptureGeneration);
             if (target_slot >= 0) ++mLenses[target_slot].mDisplayCount;
         }
+        for (PrismProjector& projector : mProjectors)
+        {
+            if (!projector.mOccupied || !projector.mGateSubscribed) continue;
+            if ((target_slot >= 0 &&
+                 projector.mCaptureSlot == static_cast<U32>(target_slot) &&
+                 projector.mCaptureGeneration == target_generation) ||
+                (target_slot < 0 &&
+                 projector.mCaptureSlot == LLPrismLens::MAX_CAPTURES))
+                continue;
+            if (projector.mCaptureSlot < LLPrismLens::MAX_CAPTURES &&
+                mLenses[projector.mCaptureSlot].mOccupied &&
+                projector.mCaptureGeneration ==
+                    mLenses[projector.mCaptureSlot].mHandle.mGeneration &&
+                mLenses[projector.mCaptureSlot].mProjectorCount > 0)
+            {
+                --mLenses[projector.mCaptureSlot].mProjectorCount;
+            }
+            projector.mCaptureSlot = target_slot >= 0
+                ? static_cast<U32>(target_slot) : LLPrismLens::MAX_CAPTURES;
+            projector.mCaptureGeneration = target_generation;
+            projector.mBoundFrame = gFrameCount;
+            projector.mRuntime.mDemanded = false;
+            if (target_slot >= 0)
+                ++mLenses[target_slot].mProjectorCount;
+        }
     }
 
     static void hashRuntimeValue(U64& hash, U64 value)
@@ -6622,6 +7460,16 @@ private:
             hashRuntimeValue(hash, static_cast<U64>(display.mRuntime.mVisibility));
             hashRuntimeString(hash, display.mRuntime.mHealthReason);
             hashRuntimeString(hash, display.mRuntime.mVisibilityReason);
+        }
+        for (const PrismProjector& projector : mProjectors)
+        {
+            hashRuntimeValue(hash, projector.mOccupied ? 1u : 0u);
+            if (!projector.mOccupied) continue;
+            hashRuntimeValue(hash, projector.mHandle.mGeneration);
+            hashRuntimeValue(hash,
+                static_cast<U64>(projector.mRuntime.mHealth));
+            hashRuntimeValue(hash, projector.mRuntime.mDemanded ? 1u : 0u);
+            hashRuntimeString(hash, projector.mRuntime.mReason);
         }
         return hash;
     }
@@ -6708,6 +7556,32 @@ private:
         return -1;
     }
 
+    S32 findProjector(const LLPrismLens::ProjectorHandle& handle) const
+    {
+        if (handle.mId.isNull() || handle.mGeneration == 0) return -1;
+        for (U32 slot = 0; slot < LLPrismLens::MAX_PROJECTOR_BINDINGS; ++slot)
+        {
+            const PrismProjector& projector = mProjectors[slot];
+            if (projector.mOccupied && projector.mHandle.mId == handle.mId &&
+                projector.mHandle.mGeneration == handle.mGeneration)
+                return static_cast<S32>(slot);
+        }
+        return -1;
+    }
+
+    S32 findProjectorIdentity(const LLUUID& object_id) const
+    {
+        for (U32 slot = 0; slot < LLPrismLens::MAX_PROJECTOR_BINDINGS; ++slot)
+        {
+            const PrismProjector& projector = mProjectors[slot];
+            if (projector.mOccupied &&
+                projector.mTarget == LLPrismLens::EProjectorTarget::OBJECT &&
+                projector.mObjectId == object_id)
+                return static_cast<S32>(slot);
+        }
+        return -1;
+    }
+
     S32 findDisplayIdentity(const LLUUID& object_id, S32 te) const
     {
         for (U32 slot = 0; slot < LLPrismLens::MAX_DISPLAY_BINDINGS; ++slot)
@@ -6739,6 +7613,13 @@ private:
         return -1;
     }
 
+    S32 freeProjectorSlot() const
+    {
+        for (U32 slot = 0; slot < LLPrismLens::MAX_PROJECTOR_BINDINGS; ++slot)
+            if (!mProjectors[slot].mOccupied) return static_cast<S32>(slot);
+        return -1;
+    }
+
     U32 displayCount() const
     {
         U32 result = 0;
@@ -6746,6 +7627,14 @@ private:
         {
             result += display.mOccupied ? 1u : 0u;
         }
+        return result;
+    }
+
+    U32 projectorCount() const
+    {
+        U32 result = 0;
+        for (const PrismProjector& projector : mProjectors)
+            result += projector.mOccupied ? 1u : 0u;
         return result;
     }
 
@@ -6810,6 +7699,14 @@ private:
                 {
                     display = PrismDisplay();
                 }
+            }
+        }
+        for (PrismProjector& projector : mProjectors)
+        {
+            if (projector.mOccupied && projector.mCaptureSlot == slot &&
+                projector.mCaptureGeneration == removed_capture.mGeneration)
+            {
+                projector = PrismProjector();
             }
         }
         mLenses[slot] = PrismInstance();
@@ -6930,6 +7827,7 @@ private:
 
     PrismInstance mLenses[LLPrismLens::MAX_LENSES];
     PrismDisplay mDisplays[LLPrismLens::MAX_DISPLAY_BINDINGS];
+    PrismProjector mProjectors[LLPrismLens::MAX_PROJECTOR_BINDINGS];
     LLPrismLens::GateSettings mGateSettings;
     PrismGateRuntime mGate;
     mutable SurfaceGeometryCache mSelectionSurfaceCache;
@@ -7416,6 +8314,14 @@ ActionStatus displayTargetStatus(const CaptureHandle& capture,
         capture, object, te, reassigning);
 }
 
+ActionStatus projectorTargetStatus(const CaptureHandle& capture,
+                                   LLViewerObject* object,
+                                   const ProjectorHandle* reassigning)
+{
+    return PrismLensRegistry::instance().projectorTargetStatus(
+        capture, object, reassigning);
+}
+
 ActionStatus setCameraSelectionStatus(const CaptureHandle& capture)
 {
     return PrismLensRegistry::instance().cameraSelectionStatus(&capture);
@@ -7665,6 +8571,26 @@ ERegistryResult reassignDisplay(const DisplayHandle& binding,
         binding, capture, reason);
 }
 
+ERegistryResult bindProjector(const CaptureHandle& capture,
+                              LLViewerObject* object,
+                              const ProjectorSettings& settings,
+                              ProjectorHandle* binding,
+                              std::string* reason)
+{
+    ScopedPrismRevisionSignals signals;
+    return PrismLensRegistry::instance().bindProjector(
+        capture, object, settings, binding, reason);
+}
+
+ERegistryResult reassignProjector(const ProjectorHandle& binding,
+                                  const CaptureHandle& capture,
+                                  std::string* reason)
+{
+    ScopedPrismRevisionSignals signals;
+    return PrismLensRegistry::instance().reassignProjector(
+        binding, capture, reason);
+}
+
 ERegistryResult addVirtualDisplay(const CaptureHandle& capture,
                                   const LLVector3& pos, const LLQuaternion& rot,
                                   F32 width, F32 height, DisplayHandle* binding,
@@ -7729,6 +8655,23 @@ bool setDisplaySettings(const DisplayHandle& binding,
     return PrismLensRegistry::instance().setDisplaySettings(binding, settings, reason);
 }
 
+bool setProjectorSettings(const ProjectorHandle& binding,
+                          const ProjectorSettings& settings,
+                          std::string* reason)
+{
+    ScopedPrismRevisionSignals signals;
+    return PrismLensRegistry::instance().setProjectorSettings(
+        binding, settings, reason);
+}
+
+ERegistryResult setProjectorGateSubscribed(
+    const ProjectorHandle& binding, bool subscribed, std::string* reason)
+{
+    ScopedPrismRevisionSignals signals;
+    return PrismLensRegistry::instance().setProjectorGateSubscribed(
+        binding, subscribed, reason);
+}
+
 bool setGateSettings(const GateSettings& settings, std::string* reason)
 {
     ScopedPrismRevisionSignals signals;
@@ -7780,6 +8723,12 @@ bool removeDisplay(const DisplayHandle& binding, std::string* reason)
 {
     ScopedPrismRevisionSignals signals;
     return PrismLensRegistry::instance().removeDisplay(binding, reason);
+}
+
+bool removeProjector(const ProjectorHandle& binding, std::string* reason)
+{
+    ScopedPrismRevisionSignals signals;
+    return PrismLensRegistry::instance().removeProjector(binding, reason);
 }
 
 bool removeCapture(const CaptureHandle& capture)
@@ -8038,6 +8987,17 @@ ApplyReport applySceneData(const LLSD& data, std::string* reason)
 {
     ScopedPrismRevisionSignals signals;
     return PrismLensRegistry::instance().applySceneData(data, reason);
+}
+
+void markProjectorConsumed(const LLVOVolume* volume)
+{
+    PrismLensRegistry::instance().markProjectorConsumed(volume);
+}
+
+bool getProjectorFeed(const ProjectorHandle& binding, ProjectorFeed& feed)
+{
+    ScopedPrismRevisionSignals signals;
+    return PrismLensRegistry::instance().getProjectorFeed(binding, feed);
 }
 
 revision_connection_t connectConfigurationChanged(

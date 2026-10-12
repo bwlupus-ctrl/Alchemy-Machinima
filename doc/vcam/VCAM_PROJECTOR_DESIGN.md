@@ -1,5 +1,7 @@
 # VCam Projector — camera feed through a projector light
 
+> **SCOPE (user, 2026-10-12):** the goal is that a VCam output can be used **as a texture** wherever a texture is chosen, in particular the **Light (projector) texture slot** in the build floater's Features tab and the face **Texture** slot. **Primary UX = the standard texture picker** (PICK: TEXTURE): add a **"VCam" source** (alongside Inventory/Local) listing Cam 1-8 with live thumbnails; choosing one applies a **viewer-local override** (like Local textures: no object update is sent and the prim's real texture is untouched), so it works on any object regardless of permissions. Light slot -> projector binding (this doc); face slot -> the existing VCam display binding. Drag-and-drop / Send-to / the Output card remain shortcuts. No undo (user rule).
+
 Status: FEASIBILITY + DESIGN (read-only study, 2026-10-11, branch `feature/director-kit-p0` @ 5f624299d41).
 Request (10/11): "it would also be nice if we can project it, as a projector surface" — a VCam's live
 picture projected by a projector light, viewer-local, like a movie projector.

@@ -27358,6 +27358,10 @@ void LLPipeline::setupSpotLight(LLGLSLShader& shader, LLDrawable* drawablep)
 {
     //construct frustum
     LLVOVolume* volume = drawablep->getVOVolume();
+    if (!sPrismLensRender && !gCubeSnapshot)
+    {
+        LLPrismLens::markProjectorConsumed(volume);
+    }
     LLVector3 params = volume->getSpotLightParams();
 
     F32 fov = params.mV[0];

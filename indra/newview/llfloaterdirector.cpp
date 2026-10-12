@@ -2212,6 +2212,7 @@ bool LLFloaterDirector::saveScene(const std::string& name)
     const LLSD prism = LLPrismLens::sceneData();
     scene["prism_captures"] = prism["prism_captures"];
     scene["prism_displays"] = prism["prism_displays"];
+    scene["prism_projectors"] = prism["prism_projectors"];
     scene["prism_gates"] = prism["prism_gates"];
     scene["light_rig"] = ALCineLightRigManager::instance().sceneData();
 

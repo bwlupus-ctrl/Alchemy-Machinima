@@ -99,6 +99,27 @@ public:
     bool setDisplay(const LLPrismLens::DisplayHandle& display,
                     const LLPrismLens::DisplaySettings& settings,
                     std::string* reason = nullptr);
+    LLPrismLens::ActionStatus projectorStatus(
+        const LLPrismLens::CaptureHandle& capture, LLViewerObject* object,
+        const LLPrismLens::ProjectorHandle* reassigning = nullptr) const;
+    LLPrismLens::ERegistryResult bindProjector(
+        const LLPrismLens::CaptureHandle& capture, LLViewerObject* object,
+        const LLPrismLens::ProjectorSettings& settings,
+        LLPrismLens::ProjectorHandle* binding = nullptr,
+        std::string* reason = nullptr);
+    LLPrismLens::ERegistryResult reassignProjector(
+        const LLPrismLens::ProjectorHandle& binding,
+        const LLPrismLens::CaptureHandle& capture,
+        std::string* reason = nullptr);
+    bool setProjector(
+        const LLPrismLens::ProjectorHandle& binding,
+        const LLPrismLens::ProjectorSettings& settings,
+        std::string* reason = nullptr);
+    LLPrismLens::ERegistryResult setProjectorGateSubscribed(
+        const LLPrismLens::ProjectorHandle& binding, bool subscribed,
+        std::string* reason = nullptr);
+    bool removeProjector(const LLPrismLens::ProjectorHandle& binding,
+                         std::string* reason = nullptr);
     bool setLabel(const LLPrismLens::CaptureHandle& capture,
                   const std::string& label, std::string* reason = nullptr);
 
