@@ -6,6 +6,8 @@ param(
   [switch]$AB,
   [switch]$Layout,
   [switch]$Functional,
+  [switch]$InWorld,
+  [string]$Account = '',
   [switch]$DirectorV2,
   [switch]$Both,
   [ValidateSet('', 'v1', 'v2', 'both')][string]$Version = '',
@@ -44,6 +46,28 @@ if ($Version -and -not $Functional) {
   Write-Host '-Version is only valid with -Functional.' -ForegroundColor Red
   exit 2
 }
+if ($InWorld -and -not $Functional) {
+  Write-Host '-InWorld is only valid with -Functional.' -ForegroundColor Red
+  exit 2
+}
+if ($Account -and -not $InWorld) {
+  Write-Host '-Account is only valid with -Functional -InWorld.' -ForegroundColor Red
+  exit 2
+}
+if ($InWorld) {
+  if (-not $Account) { $Account = '5kvideoeye' }
+  if ($Account -ine '5kvideoeye') {
+    Write-Host '-InWorld is authorized only for the saved account 5kvideoeye.' -ForegroundColor Red
+    exit 2
+  }
+  if ($Both -or ($Version -and $Version -ne 'v2')) {
+    Write-Host '-InWorld supports Director v2 only.' -ForegroundColor Red
+    exit 2
+  }
+  $DirectorV2 = $true
+  $Both = $false
+  $Version = 'v2'
+}
 if ($Version) {
   $Both = $Version -eq 'both'
   $DirectorV2 = $Version -eq 'v2'
@@ -55,6 +79,7 @@ if ($Rows.Contains('|') -or $Pages.Contains('|')) {
 if ($Functional -and $TimeoutMin -eq 10) { $TimeoutMin = 5 }
 elseif ($DirectorV2 -and $TimeoutMin -eq 10) { $TimeoutMin = 75 }
 elseif ($Layout -and $TimeoutMin -eq 10) { $TimeoutMin = 25 }
+if ($InWorld -and $TimeoutMin -eq 5) { $TimeoutMin = 15 }
 
 # Keep in sync with all_targets in indra/newview/aluiperfselftest.cpp.
 $allTargets = @('director', 'lightbox', 'exposure_hub', 'dance_ball',
@@ -92,6 +117,13 @@ function New-FunctionalSettingsBackup {
   $appRoot = [System.IO.Path]::GetFullPath((Join-Path $env:APPDATA 'AlchemyMachinima'))
   $targets = [System.Collections.Generic.List[string]]::new()
   $targets.Add((Join-Path $appRoot 'user_settings'))
+  if ($InWorld) {
+    $accountFolder = Join-Path $appRoot '5kvideoeye_resident'
+    if (-not (Test-Path -LiteralPath $accountFolder -PathType Container)) {
+      throw "Authorized saved-account folder not found: $accountFolder"
+    }
+    $targets.Add($accountFolder)
+  }
   if (Test-Path -LiteralPath $appRoot -PathType Container) {
     foreach ($settingsFile in @(Get-ChildItem -LiteralPath $appRoot -File -Recurse -Force `
         -Filter 'settings_per_account.xml' -ErrorAction SilentlyContinue)) {
@@ -220,8 +252,12 @@ if ($Functional) {
       $requestFields.Add('version=' + $(if ($Both) { 'both' } elseif ($useV2) { 'v2' } else { 'v1' }))
       $requestFields.Add('shots=' + $(if ($Shots -or $Pages) { '1' } else { '0' }))
       $requestFields.Add('dry_reveal=' + $(if ($DryReveal) { '1' } else { '0' }))
+      if ($InWorld) {
+        $requestFields[0] = 'functional-inworld'
+        $requestFields.Add('account=5kvideoeye')
+      }
       $request = '"' + ($requestFields -join '|') + '"'
-      $viewerArgs = @('--set', 'UIPerfSelfTest', $request,
+      $viewerArgs = @('--set', 'UIPerfSelfTest', $(if ($InWorld) { '"inworld-bootstrap"' } else { $request }),
         '--set', 'UIPerfSelfTestFrames', 2,
         '--set', 'UIPerfInventoryStress', 0,
         '--set', 'UIPerfSelfTestAB', 'FALSE',
@@ -229,6 +265,12 @@ if ($Functional) {
         '--set', 'DirectorUIV2', $(if ($useV2) { 'TRUE' } else { 'FALSE' }),
         '--set', 'UIPerfDirectorV2', $(if ($useV2) { 'TRUE' } else { 'FALSE' }),
         '--set', 'BackgroundYieldTime', 0)
+      if ($InWorld) {
+        # --autologin asks the viewer credential store to use the last saved
+        # login. The harness never receives a password and verifies the avatar
+        # name after STATE_STARTED before it allows any functional interaction.
+        $viewerArgs += @('--autologin', '--set', 'UILayoutAuditSizes', $request)
+      }
       $process = Start-Process -FilePath $Exe -ArgumentList $viewerArgs `
         -WorkingDirectory (Split-Path -Parent $Exe) -PassThru
       $null = $process.Handle

@@ -13,7 +13,7 @@ from pathlib import Path
 import xml.etree.ElementTree as ET
 
 
-KEY = ("page", "control", "kind", "action", "expected")
+KEY = ("inworld", "page", "control", "kind", "action", "expected")
 FAIL_STATUSES = {"FAIL", "KNOWN_GAP"}
 
 
@@ -87,7 +87,7 @@ def _handler_hazards(row: dict[str, object], cpp_text: str,
     if owner_body and (not widget or f'"{widget}"' in owner_body):
         at = owner_body.find(f'"{widget}"')
         direct_start = owner_body.rfind("getChild", 0, at + 1)
-        window = owner_body[max(0, direct_start if direct_start >= 0 else at - 80):at + 500]
+        window = owner_body[max(0, direct_start if direct_start >= 0 else at - 160):at + 2000]
         assignment_window = owner_body[max(0, at - 160):at + 120]
         member_match = re.search(
             r"([A-Za-z_]\w*)\s*=\s*getChild(?:<[^>]+>)?\s*\(\s*\"" +
@@ -95,7 +95,7 @@ def _handler_hazards(row: dict[str, object], cpp_text: str,
         if member_match:
             callback_at = owner_body.find(member_match.group(1) + "->set", at)
             if callback_at >= 0:
-                window = owner_body[callback_at:callback_at + 500]
+                window = owner_body[callback_at:callback_at + 2000]
         handlers = set(re.findall(r"&([A-Za-z_]\w*::[A-Za-z_]\w*)", window))
         owner_class = owner.split("::", 1)[0] if "::" in owner else ""
         if owner_class:
@@ -117,6 +117,11 @@ def _handler_hazards(row: dict[str, object], cpp_text: str,
         if body:
             resolved = True
             bodies.append(body)
+    if (not resolved and row.get("setting") and not callback and not owner):
+        # A plain control_name binding has no owner handler: LLUICtrl commits
+        # directly to the viewer-local setting. This is a resolved local sink,
+        # not an unknown callback.
+        resolved = True
 
     combined = "\n".join(bodies)
     hazards: set[str] = set()
@@ -127,6 +132,14 @@ def _handler_hazards(row: dict[str, object], cpp_text: str,
         "export_import": r"\b(?:export\w*|import\w*)\s*\(",
         "save_disk": r"\b(?:llofstream|ofstream|save[A-Z]\w*|writePreset|write[A-Z]\w*File)\b",
         "logout": r"\b(?:requestQuit|forceDisconnect|logout|disconnectFromGrid)\b",
+        "server_message": r"\b(?:gMessageSystem|sendReliable(?:Message)?|sendMessage)\b",
+        "agent_send": r"\b(?:gAgent|LLAgent\w*)\b[^;{}]{0,80}?\bsend[A-Z]\w*\b",
+        "object_send": r"\bLLViewerObject\w*\b[^;{}]{0,80}?\bsend[A-Z]\w*\b",
+        "selection_send": r"\bLLSelectMgr\w*\b[^;{}]{0,80}?\bsend[A-Z]\w*\b",
+        "parcel_send": r"\bLLViewerParcel\w*\b[^;{}]{0,80}?\b(?:send|update|claim|deed|buy|release)[A-Z]\w*\b",
+        "chat_im_voice": r"\b(?:sendChat|sendIM|sendInstantMessage|send_chat_from_viewer|send_improved_im|startCall|startVoice|speak|shout)\w*\b",
+        "world_action": r"\b(?:rez|duplicate|delete|take|return|give|pay|buy|teleport|sit|stand|attach|detach|wear|takeOff|upload|invite|eject|ban|friend|estate|updateRegion|setRegion|updateParcel|setParcel|claimParcel|releaseParcel)\w*\s*\(",
+        "scripted_dialog": r"\b(?:ScriptDialog|ScriptQuestion|LLScriptFloater|scriptQuestion)\b",
     }
     for tag, pattern in rules.items():
         if re.search(pattern, combined, re.I):
@@ -578,19 +591,25 @@ def prepare_manifest(path: Path, repo: Path, output: Path) -> tuple[int, int, in
                         else:
                             unresolved.append(f"{row['version']}:{row['page']}:{widget}: owner setEnabled has no literal setting")
 
-        if row.get("exercise") == "click" and row.get("widget_type") == "button":
+        if row.get("exercise") not in {"", "none", None} and row.get("action") not in {
+                "SKIP", "NO_EXERCISE", "EXPECT_MISSING"}:
+            legacy_button_scan = (row.get("exercise") == "click" and
+                                  row.get("widget_type") == "button")
             hazards, handler_resolved = _handler_hazards(row, cpp_text, body_cache)
             if hazards:
                 row["hazards"] = sorted(set(row.get("hazards", [])) | hazards)
                 hazard_rows += 1
-                if row.get("action") == "RUN":
+                if row.get("action") == "RUN" and legacy_button_scan:
                     row["action"] = "SKIP"
                     row["reason"] = "resolved handler hazard: " + ", ".join(sorted(hazards))
                     row["known_gap"] = False
-            elif not handler_resolved and row.get("action") == "RUN":
+            elif not handler_resolved and row.get("action") == "RUN" and legacy_button_scan:
                 row["action"] = "SKIP"
                 row["reason"] = "unresolved handler: hazard unknown"
                 row["known_gap"] = False
+                unresolved_hazards.append(f"{row['version']}:{row['page']}:{widget}")
+            elif not handler_resolved:
+                row["hazards"] = sorted(set(row.get("hazards", [])) | {"handler_unknown"})
                 unresolved_hazards.append(f"{row['version']}:{row['page']}:{widget}")
             elif (handler_resolved and row.get("action") == "RUN" and
                   not row.get("setting") and not row.get("consumer") and
@@ -621,7 +640,7 @@ def load(value: str) -> list[dict[str, str]]:
     path = csv_path(value)
     with path.open(encoding="utf-8-sig", newline="") as stream:
         rows = list(csv.DictReader(stream))
-    required = {*KEY, "ui_version", "PASS/FAIL/SKIP", "reason"}
+    required = {*KEY, "ui_version", "inworld", "PASS/FAIL/SKIP", "reason"}
     missing = required.difference(rows[0] if rows else ())
     if missing:
         raise SystemExit(f"{path}: missing columns: {', '.join(sorted(missing))}")
@@ -633,6 +652,9 @@ def load(value: str) -> list[dict[str, str]]:
                      - {"PASS", "FAIL", "SKIP", "KNOWN_GAP"})
     if unknown:
         raise SystemExit(f"{path}: unknown status values: {', '.join(unknown)}")
+    unknown_modes = sorted({row["inworld"].lower() for row in rows} - {"true", "false"})
+    if unknown_modes:
+        raise SystemExit(f"{path}: unknown inworld values: {', '.join(unknown_modes)}")
     malformed = []
     for row in rows:
         try:
@@ -679,7 +701,9 @@ def compare(left: list[dict[str, str]], right: list[dict[str, str]],
 
 
 def render(rows: list[dict[str, str]], title: str) -> list[str]:
-    lines = [f"# Director functional self-test: {title}", "",
+    modes = sorted({row.get("inworld", "false").lower() for row in rows})
+    mode = "in-world" if modes == ["true"] else "login-screen" if modes == ["false"] else "mixed"
+    lines = [f"# Director functional self-test: {title}", "", f"Mode: {mode}.", "",
              "| UI | Page | PASS | EXPECT_MISSING | FAIL | GAP | SKIP |", "|---|---|---:|---:|---:|---:|---:|"]
     for (version, page), count in sorted(counts(rows).items()):
         page_rows = [row for row in rows if row["ui_version"] == version and row["page"] == page]

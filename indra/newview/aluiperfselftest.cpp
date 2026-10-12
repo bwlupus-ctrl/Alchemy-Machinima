@@ -19,13 +19,16 @@
 #include "aluirefresh.h"
 #include "alcompassdial.h"
 #include "alsettingsundohistory.h"
+#include "alvcampagemodel.h"
 #include "alcinerigrim.h"
 #include "alcinelightrigmanager.h"
 #include "aldiopterpresetbank.h"
 
+#include "llagent.h"
 #include "llappviewer.h"
 #include "llaccordionctrl.h"
 #include "llaccordionctrltab.h"
+#include "llavatarnamecache.h"
 #include "llbutton.h"
 #include "llcheckboxctrl.h"
 #include "llcombobox.h"
@@ -70,10 +73,13 @@
 #include "lltextbox.h"
 #include "lltexteditor.h"
 #include "llviewercontrol.h"
+#include "llviewerobjectlist.h"
 #include "llviewershadermgr.h"
 #include "llviewerwindow.h"
 #include "llversioninfo.h"
 #include "llview.h"
+#include "llvoavatarself.h"
+#include "llvovolume.h"
 #include "pipeline.h"
 
 #include <algorithm>
@@ -551,6 +557,7 @@ struct FunctionalResult
 {
     std::string mPage, mControl, mKind, mAction, mExpected, mObserved;
     std::string mStatus, mReason;
+    bool mInWorld = false;
 };
 
 struct LayoutFinding
@@ -1279,11 +1286,17 @@ public:
       mAuditSizes(parseAuditSizes(audit_sizes))
     {
         static const std::string functional_prefix = "functional|";
-        if (mRequest.compare(0, functional_prefix.size(), functional_prefix) == 0)
+        static const std::string inworld_prefix = "functional-inworld|";
+        const bool inworld_request =
+            mRequest.compare(0, inworld_prefix.size(), inworld_prefix) == 0;
+        if (inworld_request ||
+            mRequest.compare(0, functional_prefix.size(), functional_prefix) == 0)
         {
             mFunctional = true;
+            mInWorld = inworld_request;
             std::vector<std::string> fields;
-            LLStringUtil::getTokens(mRequest.substr(functional_prefix.size()), fields, "|");
+            LLStringUtil::getTokens(mRequest.substr(
+                inworld_request ? inworld_prefix.size() : functional_prefix.size()), fields, "|");
             if (!fields.empty()) mFunctionalManifestPath = fields.front();
             for (size_t i = 1; i < fields.size(); ++i)
             {
@@ -1299,6 +1312,7 @@ public:
                 else if (key == "version") mFunctionalVersionFilter = value;
                 else if (key == "shots") mFunctionalShots = value == "1";
                 else if (key == "dry_reveal") mFunctionalDryReveal = value == "1";
+                else if (key == "account") mFunctionalAccount = value;
             }
             mRequest = "director";
             captureFunctionalUserFiles();
@@ -1346,7 +1360,8 @@ public:
             }
         }
         mSettle.reset();
-        LL_INFOS("UIPerfSelfTest") << "UIPerfSelfTest waiting 3 seconds at login screen" << LL_ENDL;
+        LL_INFOS("UIPerfSelfTest") << "UIPerfSelfTest waiting 3 seconds "
+            << (mInWorld ? "for saved-credential login" : "at login screen") << LL_ENDL;
         if (mLayout)
         {
             mOverlapPolicy = loadOverlapPolicy();
@@ -1398,6 +1413,7 @@ public:
     }
 
     bool tick() { return mFunctional ? functionalStep() : step(); }
+    bool inWorld() const { return mInWorld; }
 
     void captureAfterRender()
     {
@@ -2326,6 +2342,7 @@ private:
         row.mObserved = LlsdToJson(diagnostics);
         row.mStatus = status;
         row.mReason = reason;
+        row.mInWorld = mInWorld;
         mFunctionalResults.push_back(std::move(row));
         if (status == "FAIL" && mFunctionalShots)
         {
@@ -4254,7 +4271,7 @@ private:
         // on the same final control rect instead of the shell beneath it.
         if (mFunctionalRevealFrames < 2) return;
         mFunctionalRevealPending = false;
-        if (entry["action"].asString() == "DEFER_INWORLD")
+        if (entry["action"].asString() == "DEFER_INWORLD" && !mInWorld)
         {
             const bool predicate = !entry["enable_when"].asString().empty() ||
                 !entry["visible_when"].asString().empty() ||
@@ -4305,13 +4322,37 @@ private:
             ++mFunctionalIndex;
             return;
         }
-        const bool dangerous = functionalHazard(entry, "file_picker") ||
+        if (mInWorld && entry["page"].asString() == "vcam_tab" &&
+            entry["card"].asString().compare(0, 9, "projector") == 0 &&
+            !mFunctionalHaveProjector)
+        {
+            addFunctionalResult(entry, "SKIP", "no projector light nearby");
+            ++mFunctionalIndex;
+            return;
+        }
+        if (mInWorld && functionalHazard(entry, "handler_unknown"))
+        {
+            addFunctionalResult(entry, "SKIP", "in-world: hazard unknown");
+            ++mFunctionalIndex;
+            return;
+        }
+        const bool server_dangerous = mInWorld && (
+            functionalHazard(entry, "server_message") ||
+            functionalHazard(entry, "agent_send") ||
+            functionalHazard(entry, "object_send") ||
+            functionalHazard(entry, "selection_send") ||
+            functionalHazard(entry, "parcel_send") ||
+            functionalHazard(entry, "chat_im_voice") ||
+            functionalHazard(entry, "world_action") ||
+            functionalHazard(entry, "scripted_dialog"));
+        const bool dangerous = server_dangerous || functionalHazard(entry, "file_picker") ||
             functionalHazard(entry, "destructive") || functionalHazard(entry, "logout") ||
             functionalHazard(entry, "delete") || functionalHazard(entry, "rename") ||
             functionalHazard(entry, "export_import") || functionalHazard(entry, "save_disk");
         if (dangerous)
         {
-            const std::string reason = entry["reason"].asString();
+            const std::string reason = server_dangerous ?
+                "in-world: server-side action denied" : entry["reason"].asString();
             addFunctionalResult(entry, reason.empty() ? "FAIL" : "SKIP",
                 reason.empty() ? "hazard requires an explicit manifest skip reason" : reason);
             ++mFunctionalIndex;
@@ -4329,6 +4370,43 @@ private:
             return;
         }
         mFunctionalPageRoot = functionalPage(entry);
+        if (mInWorld && mFunctionalHaveProjector &&
+            entry["page"].asString() == "vcam_tab" &&
+            !mFunctionalProjectorSelected)
+        {
+            LLUICtrl* projector_list = mFunctionalPageRoot ?
+                mFunctionalPageRoot->findChild<LLUICtrl>("vc_projector_list", true) : nullptr;
+            std::string selection_reason;
+            LLUICtrl* saved_control = mFunctionalControl.get();
+            if (projector_list)
+            {
+                revealFunctionalControl(projector_list);
+                mFunctionalControl = projector_list->getDerivedHandle<LLUICtrl>();
+            }
+            bool selected = projector_list &&
+                functionalReachable(projector_list, selection_reason);
+            if (selected)
+            {
+                const LLRect local = projector_list->getLocalRect();
+                projector_list->localPointToScreen(local.getCenterX(),
+                    local.mTop - llmin(10, llmax(1, local.getHeight() / 4)),
+                    &mFunctionalScreenX, &mFunctionalScreenY);
+                selected = functionalPointerClick();
+            }
+            mFunctionalControl = saved_control ? saved_control->getDerivedHandle<LLUICtrl>() :
+                LLHandle<LLUICtrl>();
+            if (!selected)
+            {
+                addFunctionalResult(entry, "FAIL", "projector binding selection failed: " +
+                    (mFunctionalLastClickReason.empty() ? selection_reason :
+                                                          mFunctionalLastClickReason));
+                mFunctionalHaveProjector = false;
+                restoreFunctionalAction();
+                ++mFunctionalIndex;
+                return;
+            }
+            mFunctionalProjectorSelected = true;
+        }
         // A page may contain both native controls and a Lightbox launcher
         // (Actors and Atmosphere do). Prefer the control on the selected
         // Director page; only follow the launcher for rows not hosted there.
@@ -4693,11 +4771,12 @@ private:
     {
         const std::string path = gDirUtilp->getExpandedFilename(LL_PATH_LOGS, "functional.csv");
         llofstream out(path.c_str(), std::ios::out | std::ios::trunc);
-        out << "build,ui_version,page,control,kind,action,expected,observed,PASS/FAIL/SKIP,reason\n";
+        out << "build,ui_version,inworld,page,control,kind,action,expected,observed,PASS/FAIL/SKIP,reason\n";
         const std::string build = LLVersionInfo::instance().getVersion();
         const std::string version = mDirectorV2 ? "v2" : "v1";
         for (const FunctionalResult& row : mFunctionalResults)
-            out << csv(build) << ',' << csv(version) << ',' << csv(row.mPage) << ','
+            out << csv(build) << ',' << csv(version) << ',' << (row.mInWorld ? "true" : "false")
+                << ',' << csv(row.mPage) << ','
                 << csv(row.mControl) << ',' << csv(row.mKind) << ',' << csv(row.mAction) << ','
                 << csv(row.mExpected) << ',' << csv(row.mObserved) << ',' << csv(row.mStatus) << ','
                 << csv(row.mReason) << '\n';
@@ -4759,10 +4838,173 @@ private:
         }
     }
 
+    static bool functionalAccountMatches(std::string value, std::string expected)
+    {
+        LLStringUtil::trim(value);
+        LLStringUtil::toLower(value);
+        LLStringUtil::trim(expected);
+        LLStringUtil::toLower(expected);
+        return value == expected || value == expected + " resident" ||
+            value == expected + ".resident";
+    }
+
+    void restoreFunctionalVCamState()
+    {
+        if (!mFunctionalVCamSnapshot.isMap() || mFunctionalVCamRestored) return;
+        mFunctionalVCamRestored = true;
+        std::string reason;
+        const LLPrismLens::ApplyReport applied =
+            LLPrismLens::applySceneData(mFunctionalVCamSnapshot, &reason);
+        if (!applied)
+            LL_WARNS("UIFunctionalSelfTest") << "VCam restore failed: "
+                << reason << LL_ENDL;
+        mFunctionalVCamModel.reset();
+    }
+
+    bool prepareFunctionalInWorld()
+    {
+        if (mFunctionalInWorldPrepared) return true;
+        mFunctionalVCamSnapshot = LLPrismLens::sceneData();
+        LLSD empty_vcam = LLSD::emptyMap();
+        empty_vcam["prism_captures"] = LLSD::emptyArray();
+        empty_vcam["prism_displays"] = LLSD::emptyArray();
+        empty_vcam["prism_projectors"] = LLSD::emptyArray();
+        empty_vcam["prism_gates"] = LLSD::emptyArray();
+        std::string reason;
+        if (!LLPrismLens::applySceneData(empty_vcam, &reason))
+        {
+            LL_WARNS("UIFunctionalSelfTest") << "Unable to isolate test VCam: "
+                << reason << LL_ENDL;
+            return false;
+        }
+        mFunctionalVCamModel = std::make_unique<ALVCamPageModel>();
+        if (mFunctionalVCamModel->addVirtualAtView(&reason) !=
+            LLPrismLens::ERegistryResult::OK)
+        {
+            LL_WARNS("UIFunctionalSelfTest") << "Unable to add test VCam: "
+                << reason << LL_ENDL;
+            return false;
+        }
+        const LLPrismLens::CaptureHandle capture =
+            mFunctionalVCamModel->selectedCapture();
+        mFunctionalVCamModel->setLabel(capture, "Virtual at my view", &reason);
+
+        LLVOVolume* nearest = nullptr;
+        F32 nearest_distance = 20.f;
+        for (S32 index = 0; index < gObjectList.getNumObjects(); ++index)
+        {
+            LLVOVolume* volume = dynamic_cast<LLVOVolume*>(
+                gObjectList.getObject(index));
+            if (!volume || volume->isDead() ||
+                volume->getRegion() != gAgent.getRegion() ||
+                !volume->getIsLight() || !volume->isLightSpotlight()) continue;
+            const F32 distance =
+                (volume->getPositionAgent() - gAgent.getPositionAgent()).length();
+            if (distance <= nearest_distance)
+            {
+                nearest = volume;
+                nearest_distance = distance;
+            }
+        }
+        if (nearest)
+        {
+            LLPrismLens::ProjectorHandle binding;
+            const ALVCamPageModel::ProjectorDropStatus status =
+                ALVCamPageModel::projectorDropStatus(capture.mId, nearest);
+            LLPrismLens::ERegistryResult result = status.mAction.mResult;
+            if (status.mAlreadyBound)
+            {
+                binding = status.mExistingProjector;
+                result = LLPrismLens::ERegistryResult::OK;
+            }
+            else if (status.mReassignment)
+            {
+                binding = status.mExistingProjector;
+                result = mFunctionalVCamModel->reassignProjector(
+                    binding, capture, &reason);
+            }
+            else
+            {
+                result = mFunctionalVCamModel->bindProjector(
+                    capture, nearest, LLPrismLens::ProjectorSettings(),
+                    &binding, &reason);
+            }
+            if (result == LLPrismLens::ERegistryResult::OK)
+            {
+                mFunctionalHaveProjector = true;
+                mFunctionalVCamModel->setSelectedProjector(binding);
+            }
+        }
+        mFunctionalInWorldPrepared = true;
+        return true;
+    }
+
+    bool finishFunctionalInWorldFailure(const std::string& reason)
+    {
+        LLSD failure;
+        failure["page"] = "login";
+        failure["widget_name"] = "inworld_account";
+        failure["widget_type"] = "state";
+        failure["exercise"] = "saved-credential auto-login";
+        addFunctionalResult(failure, "FAIL", reason);
+        restoreFunctionalAction();
+        restoreFunctionalVCamState();
+        restore();
+        restoreFunctionalRigState(false);
+        restoreFunctionalUserFiles();
+        writeFunctionalResults();
+        sActive = false;
+        sSuppressSettingsSave = false;
+        // Failure is required to be non-zero. fastQuit still sends the grid's
+        // logout request, but cannot leave a wrong account resident while the
+        // wrapper waits for a normal confirmation/timeout path.
+        LLAppViewer::instance()->fastQuit(1);
+        return true;
+    }
+
     bool functionalStep()
     {
         FrameSample ignored;
         takeFrame(ignored);
+        if (mInWorld && !mFunctionalWorldReady)
+        {
+            if (!mFunctionalAutoLoginStarted &&
+                LLStartUp::getStartupState() == STATE_LOGIN_WAIT)
+            {
+                mFunctionalAutoLoginStarted = true;
+                if (!gSavedSettings.getBOOL("AutoLogin"))
+                    return finishFunctionalInWorldFailure(
+                        "saved-credential auto-login was not enabled");
+                // LLStartUp already loaded the remembered credential. Resume
+                // its ordinary auto-login path without inspecting that object.
+                LLStartUp::setStartupState(STATE_LOGIN_CLEANUP);
+            }
+            if (mFunctionalLoginTimer.getElapsedTimeF32() >= 120.f)
+                return finishFunctionalInWorldFailure("login timeout (no retry)");
+            if (LLStartUp::getStartupState() != STATE_STARTED) return false;
+
+            LLAvatarName avatar_name;
+            if (!LLAvatarNameCache::get(gAgentID, &avatar_name)) return false;
+            if (!functionalAccountMatches(avatar_name.getUserName(), mFunctionalAccount) &&
+                !functionalAccountMatches(avatar_name.getLegacyName(), mFunctionalAccount))
+                return finishFunctionalInWorldFailure("wrong account");
+
+            const bool settled = gAgent.getRegion() && isAgentAvatarValid() &&
+                gAgentAvatarp->isFullyLoaded();
+            if (!settled)
+            {
+                mFunctionalWorldSettle.reset();
+                mFunctionalWorldFrames = 0;
+                return false;
+            }
+            ++mFunctionalWorldFrames;
+            if (mFunctionalWorldFrames < 120 ||
+                mFunctionalWorldSettle.getElapsedTimeF32() < 3.f) return false;
+            mFunctionalWorldReady = true;
+            mSettle.reset();
+            if (!prepareFunctionalInWorld())
+                return finishFunctionalInWorldFailure("in-world VCam setup failed");
+        }
         if (mSettle.getElapsedTimeF32() < 3.f) return false;
         if (mFunctionalFailureShotPending)
         {
@@ -4815,6 +5057,7 @@ private:
         {
             restoreFunctionalAction();
             finishFunctionalShaderBatch();
+            restoreFunctionalVCamState();
             restore();
             restoreFunctionalRigState(true);
             restoreFunctionalUserFiles();
@@ -7682,6 +7925,19 @@ private:
     bool mPriorCull;
     bool mDirectorV2 = false;
     bool mFunctional = false;
+    bool mInWorld = false;
+    bool mFunctionalAutoLoginStarted = false;
+    bool mFunctionalWorldReady = false;
+    bool mFunctionalInWorldPrepared = false;
+    bool mFunctionalHaveProjector = false;
+    bool mFunctionalProjectorSelected = false;
+    bool mFunctionalVCamRestored = false;
+    U32 mFunctionalWorldFrames = 0;
+    std::string mFunctionalAccount;
+    LLFrameTimer mFunctionalLoginTimer;
+    LLFrameTimer mFunctionalWorldSettle;
+    LLSD mFunctionalVCamSnapshot;
+    std::unique_ptr<ALVCamPageModel> mFunctionalVCamModel;
     bool mFunctionalLoaded = false;
     bool mFunctionalPending = false;
     bool mFunctionalActionWorked = false;
@@ -7822,21 +8078,25 @@ void ALUIPerfSelfTest::startIfRequested()
 {
     static LLCachedControl<std::string> request(
         gSavedSettings, "UIPerfSelfTest", std::string());
-    if (request().empty() || sActive)
+    static LLCachedControl<std::string> audit_sizes(
+        gSavedSettings, "UILayoutAuditSizes", std::string());
+    const bool inworld_carrier = audit_sizes().compare(
+        0, std::string("functional-inworld|").size(), "functional-inworld|") == 0;
+    const std::string effective_request = inworld_carrier ? audit_sizes() : request();
+    if (effective_request.empty() || sActive)
     {
         return;
     }
     static LLCachedControl<U32> frames(gSavedSettings, "UIPerfSelfTestFrames", 120);
     static LLCachedControl<bool> ab(gSavedSettings, "UIPerfSelfTestAB", false);
     static LLCachedControl<bool> layout(gSavedSettings, "UILayoutAudit", false);
-    static LLCachedControl<std::string> audit_sizes(
-        gSavedSettings, "UILayoutAuditSizes", std::string());
     static LLCachedControl<U32> inventory_items(gSavedSettings, "UIPerfInventoryStress", 0);
     sActive = true;
     sSuppressSettingsSave = true;
     sLayoutAuditActive = layout;
-    sRunner = std::make_unique<Runner>(request(), frames, ab, layout,
-                                       inventory_items, audit_sizes());
+    sRunner = std::make_unique<Runner>(effective_request, frames, ab, layout,
+                                       inventory_items,
+                                       inworld_carrier ? std::string() : audit_sizes());
 }
 
 void ALUIPerfSelfTest::tick()
@@ -7845,7 +8105,7 @@ void ALUIPerfSelfTest::tick()
     {
         return;
     }
-    if (LLStartUp::getStartupState() > STATE_LOGIN_WAIT)
+    if (LLStartUp::getStartupState() > STATE_LOGIN_WAIT && !sRunner->inWorld())
     {
         sRunner->abortForLogin();
         sRunner.reset();
