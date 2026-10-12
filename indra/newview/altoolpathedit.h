@@ -66,6 +66,7 @@ public:
     // builds a fresh 2-node straight path (actor -> click) and walks it, and the
     // tool hands the camera back. A sky-miss stays armed for another try.
     void armWalkTo() { mWalkToArmed = true; }
+    bool isWalkToArmed() const { return mWalkToArmed; }
 
     // node currently under the cursor (-1 = none); read by the path overlay in
     // render_ui_3d so the hovered node highlights while editing

@@ -3499,6 +3499,18 @@ bool LLActorMover::canRedoPath(const LLUUID& actor_id) const
     return it != mHistory.end() && !it->second.mRedo.empty();
 }
 
+S32 LLActorMover::undoDepth(const LLUUID& actor_id) const
+{
+    auto it = mHistory.find(path_key(actor_id));
+    return it == mHistory.end() ? 0 : static_cast<S32>(it->second.mUndo.size());
+}
+
+S32 LLActorMover::redoDepth(const LLUUID& actor_id) const
+{
+    auto it = mHistory.find(path_key(actor_id));
+    return it == mHistory.end() ? 0 : static_cast<S32>(it->second.mRedo.size());
+}
+
 bool LLActorMover::undoPath(const LLUUID& actor_id)
 {
     if (isPathWalking(actor_id))

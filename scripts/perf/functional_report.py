@@ -38,7 +38,7 @@ INWORLD_LOCAL_OWNERS = {
 # non-avatar animation sources (animationexplorer.cpp:540-556).
 INWORLD_EXCLUDED_CONTROLS = {"vc_lens_locate", "vc_face_locate",
                              "btn_anim_ex_stop", "btn_anim_ex_revoke", "btn_anim_ex_blacklist",
-                             "btn_enroll", "db_from_explorer",
+                             "btn_enroll", "db_add_selected", "db_from_explorer",
                              # opens Animation Explorer (ObjectSelect for sources);
                              # ghost edit mode selects its proxy volume (PointAt).
                              "btn_open_animexp", "edit_ghosts_check"}
@@ -790,6 +790,16 @@ def prepare_manifest(path: Path, repo: Path, output: Path) -> tuple[int, int, in
         row["reveal"] = reveal
 
         widget = row.get("widget_name", "")
+        path_owner_controls = {
+            "btn_wp_add", "btn_wp_insert", "btn_edit_undo", "btn_edit_redo",
+            "btn_edit_reverse", "btn_edit_mirror", "btn_edit_loopclose",
+            "btn_play_path", "btn_stop_path", "btn_walk_here", "btn_copy_to",
+            "node_height_spinner", "node_dwell_spinner", "node_speed_spinner",
+            "node_corner_radius_spinner", "btn_node_setcam",
+            "node_cam_transition_combo", "btn_node_preview",
+            "path_groundfollow_check", "path_pitch_check", "btn_primitive_center",
+            "btn_fit_half_arc", "btn_fit_sine", "btn_stop_following",
+        }
         if row.get("page") == "path_tab":
             row["prereq"] = "path_actor_edit_2_waypoints"
         elif widget == "animation_library_combo":
@@ -1175,13 +1185,17 @@ def prepare_manifest(path: Path, repo: Path, output: Path) -> tuple[int, int, in
         if widget == "db_on" and row.get("action") != "DEFER_INWORLD":
             row.update(action="RUN", reason="", known_gap=False, exercise="toggle",
                        owner="ALPanelDanceBall::postBuild")
-        if row.get("page") == "dance_tab" and row.get("action") == "DEFER_INWORLD":
+        if row.get("page") == "dance_tab" and (
+                row.get("action") == "DEFER_INWORLD" or widget == "db_t_speed"):
             row.update(probe="dance_owner", known_gap=False)
             row.pop("no_state_oracle", None)
         if row.get("page") == "props_tab" and widget in {
                 "btn_enroll", "prop_list", "node_list", "btn_node_add",
                 "btn_drive", "btn_stop", "btn_stop_all"}:
             row.update(probe="prop_owner", known_gap=False)
+            row.pop("no_state_oracle", None)
+        if row.get("page") == "path_tab" and widget in path_owner_controls:
+            row.update(probe="path_owner", known_gap=False)
             row.pop("no_state_oracle", None)
         if widget == "waypoint_list":
             row.update(probe="path_selection", known_gap=False)
@@ -1304,7 +1318,7 @@ def prepare_manifest(path: Path, repo: Path, output: Path) -> tuple[int, int, in
                       "cine_fx_stop", "cine_live_probe_refresh", "vc_snap_view",
                       "vc_face_list", "vc_camera_selector", "actor_mover_active",
                       "actor_style_reset", "exposure_history", "launcher",
-                      "dance_owner", "prop_owner", "path_selection", "ghost_owner",
+                      "dance_owner", "prop_owner", "path_owner", "path_selection", "ghost_owner",
                       "gaze_slot", "gaze_cast_target", "list_owner",
                       "flycam_stop",
                   }):

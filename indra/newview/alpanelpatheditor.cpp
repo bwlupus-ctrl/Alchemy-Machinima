@@ -1847,6 +1847,7 @@ void ALPanelPathEditor::onClickSetCam()
     {
         trans = mCamTransCombo ? mCamTransCombo->getValue().asInteger() : 1;
     }
+    LLActorMover::instance().snapshotForUndo(mActor);
     LLActorMover::instance().setNodeCamera(mActor, sel, pos_global, rot, fov,
                                            llclamp(trans, 0, 1));
 }
@@ -1860,6 +1861,7 @@ void ALPanelPathEditor::onClickClearCam()
     }
     // if we were previewing this shot, hand the camera back before removing it
     LLPathCamera::instance().stopPreview();
+    LLActorMover::instance().snapshotForUndo(mActor);
     LLActorMover::instance().clearNodeCamera(mActor, sel);
 }
 
@@ -1868,6 +1870,7 @@ void ALPanelPathEditor::onCamTransitionCommit()
     const S32 sel = listSelectedNode();
     if (mActor.notNull() && sel >= 0)
     {
+        LLActorMover::instance().snapshotForUndo(mActor);
         LLActorMover::instance().setNodeCamTransition(mActor, sel,
             mCamTransCombo->getValue().asInteger());
     }

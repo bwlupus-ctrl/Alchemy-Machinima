@@ -32,6 +32,7 @@
 #include "alpanelpatheditor.h"
 #include "alghoststudio.h"
 #include "altoolghostedit.h"
+#include "altoolpathedit.h"
 #include "animationexplorer.h"
 
 #include "llagent.h"
@@ -68,6 +69,7 @@
 #include "llnotifications.h"
 #include "llpanel.h"
 #include "llpanellogin.h"
+#include "llpathcamera.h"
 #include "llpresentationtime.h"
 #include "lldirectorcast.h"
 #include "llpopupview.h"
@@ -83,6 +85,7 @@
 #include "llslider.h"
 #include "llsliderctrl.h"
 #include "llsdutil.h"
+#include "llsdutil_math.h"
 #include "llspinctrl.h"
 #include "llstartup.h"
 #include "lltabcontainer.h"
@@ -608,6 +611,27 @@ struct SavedControlState
     LLSD mSaved;
     bool mUnsaved = false;
 };
+
+LLSD functionalPathOwnerState(const LLUUID& actor, const LLUUID& destination)
+{
+    LLActorMover& mover = LLActorMover::instance();
+    LLSD state = LLSD::emptyMap();
+    state["path"] = mover.pathSceneData(actor);
+    state["walking"] = mover.isPathWalking(actor);
+    state["following"] = mover.isFollowing(actor);
+    state["edit_node"] = mover.getEditNode();
+    state["undo_depth"] = mover.undoDepth(actor);
+    state["redo_depth"] = mover.redoDepth(actor);
+    state["previewing"] = LLPathCamera::instance().isPreviewing();
+    state["walk_to_armed"] = ALToolPathEdit::instanceExists() &&
+        ALToolPathEdit::getInstance()->isWalkToArmed();
+    state["render_camera_position"] = ll_sd_from_vector3d(
+        gAgent.getPosGlobalFromAgent(LLViewerCamera::getInstance()->getOrigin()));
+    state["render_camera_fov"] = LLViewerCamera::getInstance()->getView();
+    if (destination.notNull())
+        state["destination_path"] = mover.pathSceneData(destination);
+    return state;
+}
 
 struct FunctionalDiskSnapshot
 {
@@ -2375,10 +2399,23 @@ private:
             mover.appendWaypointAt(mFunctionalActorMoverId, origin);
             mover.appendWaypointAt(mFunctionalActorMoverId,
                                    origin + LLVector3d(2.0, 0.0, 0.0));
-            mover.setEditNode(0);
-            if (widget == "btn_edit_redo") mover.undoPath(mFunctionalActorMoverId);
+            mover.appendWaypointAt(mFunctionalActorMoverId,
+                                   origin + LLVector3d(4.0, 2.0, 1.0));
+            mover.setEditNode(1);
+            if (widget == "btn_edit_undo" || widget == "btn_edit_redo")
+            {
+                mFunctionalPathExpected = mover.pathSceneData(mFunctionalActorMoverId);
+                mover.snapshotForUndo(mFunctionalActorMoverId);
+                mover.appendWaypointAt(mFunctionalActorMoverId,
+                                       origin + LLVector3d(6.0, -1.0, 0.5));
+                if (widget == "btn_edit_redo")
+                {
+                    mFunctionalPathExpected = mover.pathSceneData(mFunctionalActorMoverId);
+                    mover.undoPath(mFunctionalActorMoverId);
+                }
+            }
             if (widget == "node_cam_transition_combo" || widget == "btn_node_preview")
-                mover.setNodeCamera(mFunctionalActorMoverId, 0, origin + LLVector3d(0.0, 0.0, 2.0),
+                mover.setNodeCamera(mFunctionalActorMoverId, 1, origin + LLVector3d(0.0, 0.0, 2.0),
                                     LLQuaternion(), 1.0f, 0);
             if (widget == "sync_offset_spinner")
             {
@@ -2627,6 +2664,7 @@ private:
             }
             // No LLSelectMgr selection in-world: any selection broadcasts
             // PointAt/AGENT_STATE_EDITING (INWORLD_MODE.md, selection exclusions).
+            // db_add_selected is excluded by both manifest and runner guards.
             if (widget == "db_include_me" || widget == "db_add_nearby")
                 ball.removeDancer(gAgentID);
             if (widget == "db_add_nearby") ball.setIncludeSelf(true);
@@ -2643,6 +2681,21 @@ private:
                 ball.addDancer(gAgentID, ALDanceBall::DancerKind::SELF);
             }
             if (widget == "db_stop_all") ball.setEnabled(true);
+            if (widget == "db_t_speed")
+            {
+                ALDanceBall::Timing timing = ball.timing();
+                timing.mSpeed = control->getValue().asReal();
+                ball.setTiming(timing);
+            }
+            if (widget == "db_ramp_go")
+            {
+                if (LLSpinCtrl* target = mFunctionalPageRoot->findChild<LLSpinCtrl>(
+                        "db_ramp_target", true))
+                    target->setValue(ball.timing().mSpeed < 3.0 ? 3.0 : 1.0);
+                if (LLSpinCtrl* seconds = mFunctionalPageRoot->findChild<LLSpinCtrl>(
+                        "db_ramp_seconds", true))
+                    seconds->setValue(30.0);
+            }
             // Never clobber the user's clipboard: only borrow it when it holds
             // plain text (restored exactly); inventory items or non-text OS
             // data leave the row without a fixture (it then FAILs honestly).
@@ -2754,7 +2807,9 @@ private:
                 if (widget == "gaze_cast_combo")
                 {
                     mFunctionalGazeCastFixture = LLUUID::generateNewID();
+                    mFunctionalGazeCastFixtureAlternate = LLUUID::generateNewID();
                     LLDirectorCast::instance().add(mFunctionalGazeCastFixture);
+                    LLDirectorCast::instance().add(mFunctionalGazeCastFixtureAlternate);
                 }
                 edit_actor->setValue(0);
                 edit_actor->onCommit();
@@ -3236,6 +3291,12 @@ private:
             mFunctionalHaveActorPathBefore = false;
             mFunctionalActorPathWalkingBefore = false;
         }
+        if (mFunctionalOwnerModelBefore.isMap() &&
+            mFunctionalOwnerModelBefore.has("previewing") &&
+            !mFunctionalOwnerModelBefore["previewing"].asBoolean())
+        {
+            LLPathCamera::instance().stopPreview();
+        }
         if (ALPanelPathEditor* panel = mFunctionalPathPanel.get())
         {
             panel->exitEditMode();
@@ -3272,6 +3333,7 @@ private:
         mFunctionalCastList = LLHandle<LLScrollListCtrl>();
         mFunctionalPathActorWasCast = true;
         mFunctionalPathLeaderId.setNull();
+        mFunctionalPathExpected = LLSD();
         mFunctionalDanceSelectedObject = nullptr;
         if (mFunctionalGhostFixture.notNull())
         {
@@ -3370,6 +3432,11 @@ private:
         {
             LLDirectorCast::instance().remove(mFunctionalGazeCastFixture);
             mFunctionalGazeCastFixture.setNull();
+        }
+        if (mFunctionalGazeCastFixtureAlternate.notNull())
+        {
+            LLDirectorCast::instance().remove(mFunctionalGazeCastFixtureAlternate);
+            mFunctionalGazeCastFixtureAlternate.setNull();
         }
         if (mFunctionalHaveCastLookBefore)
         {
@@ -4964,6 +5031,26 @@ private:
                     ALExposureSettingsHistory::undo();
             }
         }
+        if (entry["probe"].asString() == "path_owner")
+        {
+            const std::string widget = entry["widget_name"].asString();
+            const bool needs_node = widget == "btn_wp_insert" ||
+                widget.compare(0, 5, "node_") == 0 ||
+                widget == "btn_node_setcam" || widget == "btn_node_preview";
+            if (needs_node)
+            {
+                LLScrollListCtrl* waypoints = mFunctionalPageRoot
+                    ? mFunctionalPageRoot->findChild<LLScrollListCtrl>(
+                        "waypoint_list", true) : nullptr;
+                if (waypoints && waypoints->getItemCount() > 1)
+                {
+                    // Production selection path: the panel callback owns both
+                    // its list selection and LLActorMover's edit-node state.
+                    waypoints->selectNthItem(1);
+                    waypoints->onCommit();
+                }
+            }
+        }
         std::string reachability;
         if (!control->isInEnabledChain()) probeFunctionalEnable(control);
         if (!functionalReachable(control, reachability))
@@ -5299,6 +5386,11 @@ private:
                 LLFlycamRecorder::instance().getState());
         else if (owner_probe == "path_selection")
             mFunctionalOwnerModelBefore = LLActorMover::instance().getEditNode();
+        else if (owner_probe == "path_owner")
+            mFunctionalOwnerModelBefore = functionalPathOwnerState(
+                mFunctionalActorMoverId,
+                entry["widget_name"].asString() == "btn_copy_to"
+                    ? mFunctionalPathLeaderId : LLUUID::null);
         const std::string& function_name = FunctionalControlAccess::functionName(control);
         mFunctionalHandlerName.clear();
         if (!function_name.empty() && LLUICtrl::CommitCallbackRegistry::getValue(function_name))
@@ -5472,6 +5564,7 @@ private:
                          // Any LLSelectMgr selection broadcasts PointAt/AGENT_STATE_EDITING;
                          // Animation Explorer sends ObjectSelect for animation sources.
                          entry["widget_name"].asString() == "btn_enroll" ||
+                         entry["widget_name"].asString() == "db_add_selected" ||
                          entry["widget_name"].asString() == "db_from_explorer" ||
                          // Opens Animation Explorer (ObjectSelect for sources) /
                          // ghost edit mode selects its proxy volume (PointAt).
@@ -5822,6 +5915,155 @@ private:
             expected_ok = expected_ok && selected;
             if (!selected) assertion_failure = "waypoint selection did not move LLActorMover edit-node state";
         }
+        else if (owner_probe == "path_owner" && mFunctionalActorMoverId.notNull())
+        {
+            const LLUUID destination = widget_name == "btn_copy_to"
+                ? mFunctionalPathLeaderId : LLUUID::null;
+            const LLSD after = functionalPathOwnerState(
+                mFunctionalActorMoverId, destination);
+            const LLSD& before = mFunctionalOwnerModelBefore;
+            const LLSD& before_path = before["path"];
+            const LLSD& after_path = after["path"];
+            const LLSD& before_nodes = before_path["nodes"];
+            const LLSD& after_nodes = after_path["nodes"];
+            bool owner_ok = after != before;
+            if (widget_name == "btn_wp_add" || widget_name == "btn_wp_insert")
+                owner_ok = owner_ok && after_nodes.size() == before_nodes.size() + 1;
+            else if (widget_name == "btn_edit_undo")
+                owner_ok = after_path == mFunctionalPathExpected &&
+                    after["undo_depth"].asInteger() + 1 == before["undo_depth"].asInteger() &&
+                    after["redo_depth"].asInteger() == before["redo_depth"].asInteger() + 1;
+            else if (widget_name == "btn_edit_redo")
+                owner_ok = after_path == mFunctionalPathExpected &&
+                    after["undo_depth"].asInteger() == before["undo_depth"].asInteger() + 1 &&
+                    after["redo_depth"].asInteger() + 1 == before["redo_depth"].asInteger();
+            else if (widget_name == "btn_edit_reverse")
+            {
+                const S32 node_count = static_cast<S32>(before_nodes.size());
+                owner_ok = after_nodes.size() == before_nodes.size() &&
+                    after_path != before_path;
+                for (S32 i = 0; owner_ok && i < static_cast<S32>(after_nodes.size()); ++i)
+                    owner_ok = after_nodes[i] == before_nodes[node_count - 1 - i];
+            }
+            else if (widget_name == "btn_edit_mirror")
+            {
+                owner_ok = after_nodes.size() == before_nodes.size() &&
+                    after_path != before_path && before_nodes.size() >= 2;
+                LLVector3d centroid;
+                for (S32 i = 0; owner_ok && i < static_cast<S32>(before_nodes.size()); ++i)
+                    centroid += ll_vector3d_from_sd(before_nodes[i]["position"]);
+                if (owner_ok)
+                    centroid *= 1.0 / static_cast<F64>(before_nodes.size());
+                const S32 last = static_cast<S32>(before_nodes.size()) - 1;
+                LLVector3d direction = ll_vector3d_from_sd(
+                    before_nodes[last]["position"]) -
+                    ll_vector3d_from_sd(before_nodes[0]["position"]);
+                direction.mdV[VZ] = 0.0;
+                if (direction.length() < 1e-3)
+                    direction = LLVector3d(1.0, 0.0, 0.0);
+                else
+                    direction.normalize();
+                const LLVector3d normal(-direction.mdV[VY], direction.mdV[VX], 0.0);
+                for (S32 i = 0; owner_ok && i < static_cast<S32>(before_nodes.size()); ++i)
+                {
+                    const LLVector3d point = ll_vector3d_from_sd(before_nodes[i]["position"]);
+                    const LLVector3d delta = point - centroid;
+                    const F64 projection = delta.mdV[VX] * normal.mdV[VX] +
+                        delta.mdV[VY] * normal.mdV[VY];
+                    const LLVector3d expected_point(
+                        point.mdV[VX] - 2.0 * projection * normal.mdV[VX],
+                        point.mdV[VY] - 2.0 * projection * normal.mdV[VY],
+                        point.mdV[VZ]);
+                    owner_ok = (ll_vector3d_from_sd(after_nodes[i]["position"]) -
+                                expected_point).length() < 1e-6;
+                }
+            }
+            else if (widget_name == "btn_edit_loopclose")
+                owner_ok = after_path != before_path &&
+                    after_path["end_mode"].asInteger() == 1 &&
+                    after_nodes.size() >= 2 &&
+                    after_nodes[0]["position"] ==
+                        after_nodes[static_cast<S32>(after_nodes.size()) - 1]["position"];
+            else if (widget_name == "btn_play_path")
+                owner_ok = !before["walking"].asBoolean() && after["walking"].asBoolean();
+            else if (widget_name == "btn_stop_path")
+                owner_ok = before["walking"].asBoolean() && !after["walking"].asBoolean();
+            else if (widget_name == "btn_walk_here")
+                owner_ok = !before["walk_to_armed"].asBoolean() &&
+                    after["walk_to_armed"].asBoolean();
+            else if (widget_name == "btn_copy_to")
+                owner_ok = after["destination_path"] == after_path &&
+                    before["destination_path"] != after["destination_path"];
+            else if (widget_name == "path_groundfollow_check")
+                owner_ok = after_path["ground_follow"].asBoolean() ==
+                        control->getValue().asBoolean() &&
+                    before_path["ground_follow"] != after_path["ground_follow"];
+            else if (widget_name == "path_pitch_check")
+                owner_ok = after_path["pitch_to_slope"].asBoolean() ==
+                        control->getValue().asBoolean() &&
+                    before_path["pitch_to_slope"] != after_path["pitch_to_slope"];
+            else if (widget_name == "btn_primitive_center")
+            {
+                owner_ok = gAgentAvatarp && gAgentAvatarp->getRootJoint() &&
+                    after_path["primitive_center"] != before_path["primitive_center"];
+                if (owner_ok)
+                {
+                    LLVector3d expected_center = gAgent.getPosGlobalFromAgent(
+                        gAgentAvatarp->getBaseRootPosition());
+                    expected_center.mdV[VZ] -= llmax(0.f, gAgentAvatarp->getPelvisToFoot());
+                    owner_ok = (ll_vector3d_from_sd(after_path["primitive_center"]) -
+                                expected_center).length() < 1e-5;
+                }
+            }
+            else if (widget_name == "btn_fit_half_arc")
+                owner_ok = after_path != before_path &&
+                    after_path["shape"].asInteger() == ALPathGeometry::CIRCLE_ARC;
+            else if (widget_name == "btn_fit_sine")
+                owner_ok = after_path != before_path &&
+                    after_path["shape"].asInteger() == ALPathGeometry::SINE_WAVE;
+            else if (widget_name == "btn_stop_following")
+                owner_ok = before["following"].asBoolean() &&
+                    !after["following"].asBoolean();
+            else if (widget_name == "btn_node_setcam")
+            {
+                owner_ok = after_path != before_path && after_nodes.size() > 1 &&
+                    after_nodes[1]["has_camera"].asBoolean();
+                if (owner_ok)
+                {
+                    const LLVector3d expected_position = ll_vector3d_from_sd(
+                        before["render_camera_position"]);
+                    owner_ok = (ll_vector3d_from_sd(after_nodes[1]["camera_position"]) -
+                                expected_position).length() < 1e-5 &&
+                        std::fabs(after_nodes[1]["camera_fov"].asReal() -
+                                  before["render_camera_fov"].asReal()) < 1e-5;
+                }
+            }
+            else if (widget_name == "node_cam_transition_combo")
+                owner_ok = after_path != before_path && after_nodes.size() > 1 &&
+                    after_nodes[1]["camera_transition"].asInteger() ==
+                        control->getValue().asInteger();
+            else if (widget_name == "btn_node_preview")
+                owner_ok = !before["previewing"].asBoolean() &&
+                    after["previewing"].asBoolean();
+            else if (after_nodes.size() > 1 && before_nodes.size() > 1)
+            {
+                const char* field = widget_name == "node_height_spinner" ? "ground_offset" :
+                    widget_name == "node_dwell_spinner" ? "dwell" :
+                    widget_name == "node_speed_spinner" ? "speed_override" :
+                    widget_name == "node_corner_radius_spinner" ? "corner_radius" : nullptr;
+                if (field)
+                    owner_ok = after_nodes[1][field] != before_nodes[1][field] &&
+                        std::fabs(after_nodes[1][field].asReal() -
+                                  control->getValue().asReal()) < 0.001;
+            }
+            mFunctionalObserved["path"]["before"] = before;
+            mFunctionalObserved["path"]["after"] = after;
+            mFunctionalObserved["path"]["owner_oracle"] = owner_ok;
+            observable = owner_ok;
+            expected_ok = expected_ok && owner_ok;
+            if (!owner_ok)
+                assertion_failure = "path control did not move LLActorMover state to its expected value";
+        }
         else if (owner_probe == "dance_owner" &&
                  widget_name != "db_playlist_list")
         {
@@ -5841,6 +6083,8 @@ private:
             if (widget_name == "db_on") owner_ok = ball.enabled() == control->getValue().asBoolean();
             else if (widget_name == "db_header_desync")
                 owner_ok = std::fabs(ball.timing().mDesync - control->getValue().asReal()) < 0.001;
+            else if (widget_name == "db_t_speed")
+                owner_ok = std::fabs(ball.timing().mSpeed - control->getValue().asReal()) < 0.001;
             else if (widget_name == "db_focus")
                 owner_ok = static_cast<S32>(ball.autoJoinFocus()) == control->getValue().asInteger();
             else if (widget_name == "db_autojoin") owner_ok = ball.autoJoin() == control->getValue().asBoolean();
@@ -9692,6 +9936,7 @@ private:
     bool mFunctionalHaveGazeBefore = false;
     LLUUID mFunctionalActorMoverId;
     LLSD mFunctionalActorPathBefore;
+    LLSD mFunctionalPathExpected;
     bool mFunctionalHaveActorPathBefore = false;
     bool mFunctionalActorPathWalkingBefore = false;
     LLHandle<ALPanelPathEditor> mFunctionalPathPanel;
@@ -9765,6 +10010,7 @@ private:
     LLSD mFunctionalGazeEditActorBefore;
     LLHandle<LLComboBox> mFunctionalGazeEditActor;
     LLUUID mFunctionalGazeCastFixture;
+    LLUUID mFunctionalGazeCastFixtureAlternate;
     bool mFunctionalCastLookOnlyBefore = false;
     bool mFunctionalHaveCastLookBefore = false;
     bool mFunctionalDanceActorWasCast = true;

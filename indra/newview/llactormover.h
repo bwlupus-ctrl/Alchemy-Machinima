@@ -379,6 +379,8 @@ public:
     bool redoPath(const LLUUID& actor_id);
     bool canUndoPath(const LLUUID& actor_id) const;
     bool canRedoPath(const LLUUID& actor_id) const;
+    S32 undoDepth(const LLUUID& actor_id) const;
+    S32 redoDepth(const LLUUID& actor_id) const;
 
     // Structural ops (each keeps every node's per-node data attached and rebuilds
     // the arc table). Callers snapshotForUndo() first; these are no-ops (return
