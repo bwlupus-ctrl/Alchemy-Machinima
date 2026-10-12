@@ -88,11 +88,13 @@ PICK: TEXTURE
      type="string"
      length="1"
      follows="left|top"
-     height="14"
+     height="42"
      layout="topleft"
      left="8"
      name="size_lbl"
-     top_pad="4">
+     top_pad="4"
+     width="158"
+     word_wrap="true">
         [DIMENSIONS]
     </text>
     <text

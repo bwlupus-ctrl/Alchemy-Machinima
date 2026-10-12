@@ -1923,6 +1923,7 @@ struct PrismProjector
     LLUUID mObjectId;
     U8 mRigSlot = 0;
     U8 mRigLight = 0;
+    bool mLocalProjector = false;
     LLPrismLens::ProjectorSettings mSettings;
     LLPrismLens::ProjectorRuntimeState mRuntime;
     bool mGateSubscribed = false;
@@ -2223,11 +2224,10 @@ public:
             status.mReason = "Projector target must be a live, non-HUD volume.";
             return status;
         }
-        if (!volume->getIsLight() || !volume->isLightSpotlight())
+        if (!volume->getIsLight())
         {
             status.mResult = LLPrismLens::ERegistryResult::INVALID_SELECTION;
-            status.mReason =
-                "Target is not a projector light; assign a projector texture first.";
+            status.mReason = "Projector target must be a light.";
             return status;
         }
         const S32 existing_slot = findProjectorIdentity(object->getID());
@@ -2282,6 +2282,9 @@ public:
         projector.mCaptureGeneration =
             mLenses[capture_slot].mHandle.mGeneration;
         projector.mObjectId = object->getID();
+        LLPrismLens::updateLocalProjectorBindingState(
+            projector, true, true,
+            static_cast<LLVOVolume*>(object)->isLightSpotlight());
         projector.mSettings = settings;
         projector.mSettings.mEffects.clampAndValidate();
         projector.mRuntime.mHealth = LLPrismLens::EDisplayHealth::READY;
@@ -3632,13 +3635,14 @@ public:
             }
             if (capture.mCamera.mFovMode == LLPrismLens::EFovMode::FOLLOW_PROJECTOR)
             {
-                if (!source->isLightSpotlight())
+                LLVector3 render_spot_params;
+                if (!projectorRenderParams(source, render_spot_params))
                 {
                     capture.mRuntime.mHealth = LLPrismLens::ECaptureHealth::INVALID_SOURCE;
                     capture.mRuntime.mReason = "Follow Projector source is not a spotlight projector.";
                     return false;
                 }
-                vertical_fov = source->getSpotLightParams().mV[VX];
+                vertical_fov = render_spot_params.mV[VX];
                 if (!std::isfinite(vertical_fov) || vertical_fov < 5.f * DEG_TO_RAD ||
                     vertical_fov > 175.f * DEG_TO_RAD)
                 {
@@ -4210,6 +4214,13 @@ public:
         return width > 0 && height > 0;
     }
 
+    bool captureOutputSize(const LLPrismLens::CaptureHandle& handle,
+                           U32& width, U32& height) const
+    {
+        const S32 slot = findCapture(handle);
+        return slot >= 0 && getOutputRegion(static_cast<U32>(slot), width, height);
+    }
+
     bool getOutputOrientation(U32 slot, F32 scale[2], F32 offset[2]) const
     {
         if (slot >= LLPrismLens::MAX_LENSES || !mLenses[slot].mHasOutput)
@@ -4403,7 +4414,8 @@ public:
         {
             LLVOVolume* source = dynamic_cast<LLVOVolume*>(
                 gObjectList.findObject(capture.mCameraObjectId));
-            if (source && !source->isLightSpotlight())
+            LLVector3 render_spot_params;
+            if (source && !projectorRenderParams(source, render_spot_params))
             {
                 if (reason) *reason = "Follow Projector requires a spotlight projector source.";
                 return false;
@@ -5520,6 +5532,7 @@ public:
         const char* reason = "";
         bool quarantined = false;
         const bool was_quarantined = projector.mQuarantined;
+        bool local_projector = projector.mLocalProjector;
         LLViewerObject* object = projector.mTarget ==
                 LLPrismLens::EProjectorTarget::RIG_LIGHT
             ? resolveRigProjector(projector.mRigSlot, projector.mRigLight)
@@ -5553,15 +5566,20 @@ public:
             reason = "Projector target must remain a live, non-HUD volume.";
             quarantined = true;
         }
-        else if (!volume->getIsLight() || !volume->isLightSpotlight())
+        else if (!volume->getIsLight())
         {
             health = LLPrismLens::EDisplayHealth::INVALID;
-            reason = "Target is not a projector light; assign a projector texture first.";
+            reason = "Projector target must remain a light.";
             quarantined = true;
+        }
+        else
+        {
+            local_projector = !volume->isLightSpotlight();
         }
         const bool changed = projector.mRuntime.mHealth != health ||
             projector.mRuntime.mReason != reason ||
-            was_quarantined != quarantined || projector.mQuarantineReason != reason;
+            was_quarantined != quarantined || projector.mQuarantineReason != reason ||
+            projector.mLocalProjector != local_projector;
         if (changed)
         {
             if (quarantined)
@@ -5570,6 +5588,7 @@ public:
             projector.mRuntime.mReason = reason;
             projector.mQuarantined = quarantined;
             projector.mQuarantineReason = reason;
+            projector.mLocalProjector = local_projector;
             ++mRuntimeRevision;
         }
     }
@@ -5755,6 +5774,35 @@ public:
         return false;
     }
 
+    bool projectorRenderParams(const LLVOVolume* volume, LLVector3& params)
+    {
+        params.clear();
+        if (!volume || !volume->getIsLight()) return false;
+        if (volume->isLightSpotlight())
+        {
+            params = volume->getSpotLightParams();
+            return true;
+        }
+        if (!prismEnabled() || projectorCount() == 0) return false;
+        for (PrismProjector& projector : mProjectors)
+        {
+            if (!projector.mOccupied) continue;
+            const bool matches_object = projector.mTarget ==
+                    LLPrismLens::EProjectorTarget::OBJECT &&
+                projector.mObjectId == volume->getID();
+            LLVOVolume* rig_volume = projector.mTarget ==
+                    LLPrismLens::EProjectorTarget::RIG_LIGHT
+                ? resolveRigProjector(projector.mRigSlot, projector.mRigLight)
+                : nullptr;
+            if (!matches_object && rig_volume != volume) continue;
+            updateProjectorRuntime(projector);
+            if (projector.mQuarantined) return false;
+            params.set(F_PI / 3.f, 0.f, 0.f);
+            return true;
+        }
+        return false;
+    }
+
     bool removeCapture(const LLPrismLens::CaptureHandle& handle)
     {
         const S32 slot = findCapture(handle);
@@ -5818,6 +5866,7 @@ public:
             removed.mDefinition.mObjectId = projector.mObjectId;
             removed.mDefinition.mRigSlot = projector.mRigSlot;
             removed.mDefinition.mRigLight = projector.mRigLight;
+            removed.mDefinition.mLocalProjector = projector.mLocalProjector;
             removed.mDefinition.mSettings = projector.mSettings;
             removed.mDefinition.mRuntime = projector.mRuntime;
             removed.mDefinition.mGateSubscribed = projector.mGateSubscribed;
@@ -5983,6 +6032,7 @@ public:
             projector.mObjectId = source.mObjectId;
             projector.mRigSlot = source.mRigSlot;
             projector.mRigLight = source.mRigLight;
+            projector.mLocalProjector = source.mLocalProjector;
             projector.mSettings = source.mSettings;
             projector.mRuntime = source.mRuntime;
             projector.mGateSubscribed = source.mGateSubscribed;
@@ -6100,6 +6150,7 @@ public:
             out.mObjectId = projector.mObjectId;
             out.mRigSlot = projector.mRigSlot;
             out.mRigLight = projector.mRigLight;
+            out.mLocalProjector = projector.mLocalProjector;
             out.mSettings = projector.mSettings;
             out.mRuntime = projector.mRuntime;
             out.mGateSubscribed = projector.mGateSubscribed;
@@ -6445,6 +6496,7 @@ public:
             item["target"] = projector.mTarget ==
                 LLPrismLens::EProjectorTarget::RIG_LIGHT ? "rig" : "object";
             item["object_id"] = projector.mObjectId;
+            item["local_projector"] = projector.mLocalProjector;
             if (projector.mTarget == LLPrismLens::EProjectorTarget::RIG_LIGHT)
             {
                 item["rig_slot"] = projector.mRigSlot;
@@ -6558,6 +6610,7 @@ public:
                 LLPrismLens::EProjectorTarget::OBJECT;
             U8 mRigSlot = 0;
             U8 mRigLight = 0;
+            bool mLocalProjector = false;
             LLPrismLens::ProjectorSettings mSettings;
             bool mGateSubscribed = false;
             bool mQuarantined = false;
@@ -7203,6 +7256,8 @@ public:
                 ? item["object_id"].asUUID() : LLUUID::null;
             parsed.mGateSubscribed = item.has("gate_source") &&
                 item["gate_source"].asBoolean();
+            parsed.mLocalProjector =
+                LLPrismLens::localProjectorFromLLSD(item);
             if (parsed.mId.isNull() || parsed.mGeneration == 0 ||
                 parsed.mGeneration == std::numeric_limits<U64>::max() ||
                 !projector_ids.insert(parsed.mId).second)
@@ -7365,6 +7420,8 @@ public:
                     parsed, true, volume != nullptr, object->isHUDAttachment(),
                     volume && volume->getIsLight(),
                     volume && volume->isLightSpotlight());
+                if (volume && volume->getIsLight())
+                    parsed.mLocalProjector = !volume->isLightSpotlight();
             }
             LLPrismLens::appendLoadedProjector(parsed_projectors, target, parsed);
         }
@@ -7529,6 +7586,7 @@ public:
             projector.mTarget = parsed.mTarget;
             projector.mRigSlot = parsed.mRigSlot;
             projector.mRigLight = parsed.mRigLight;
+            projector.mLocalProjector = parsed.mLocalProjector;
             projector.mSettings = parsed.mSettings;
             projector.mGateSubscribed = parsed.mGateSubscribed;
             projector.mQuarantined = parsed.mQuarantined;
@@ -9457,6 +9515,25 @@ bool projectorFeedFor(const LLVOVolume* volume, ProjectorFeed& feed)
     }
     ScopedPrismRevisionSignals signals;
     return PrismLensRegistry::instance().projectorFeedFor(volume, feed);
+}
+
+bool captureOutputSize(const CaptureHandle& capture, U32& width, U32& height)
+{
+    return PrismLensRegistry::instance().captureOutputSize(capture, width, height);
+}
+
+bool projectorRenderParams(const LLVOVolume* volume, LLVector3& params)
+{
+    params.clear();
+    if (!volume || !volume->getIsLight()) return false;
+    if (volume->isLightSpotlight())
+    {
+        params = volume->getSpotLightParams();
+        return true;
+    }
+    if (!prismEnabled()) return false;
+    ScopedPrismRevisionSignals signals;
+    return PrismLensRegistry::instance().projectorRenderParams(volume, params);
 }
 
 revision_connection_t connectConfigurationChanged(

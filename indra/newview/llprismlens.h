@@ -759,6 +759,10 @@ struct ProjectorDefinition
     LLUUID mObjectId;
     U8 mRigSlot = 0;
     U8 mRigLight = 0;
+    // True when the binding was made to a point light. This is scene data, not
+    // an object mutation: rendering supplies a local cone while the simulator
+    // light and Build floater continue to expose the real point-light state.
+    bool mLocalProjector = false;
     ProjectorSettings mSettings;
     ProjectorRuntimeState mRuntime;
     bool mGateSubscribed = false;
@@ -812,10 +816,40 @@ void updateLoadedProjectorQuarantine(Projector& projector, bool object_present,
                                      bool live_volume, bool hud_attachment,
                                      bool light, bool spotlight)
 {
+    (void)spotlight;
     projector.mQuarantined = !object_present || !live_volume || hud_attachment ||
-        !light || !spotlight;
+        !light;
     projector.mQuarantineReason = projector.mQuarantined
-        ? "Scene projector target is no longer a projector light." : std::string();
+        ? "Scene projector target is no longer a light." : std::string();
+}
+
+inline bool usesLocalProjectorOverride(bool binding_present, bool light,
+                                       bool spotlight)
+{
+    return binding_present && light && !spotlight;
+}
+
+template<typename Projector>
+bool updateLocalProjectorBindingState(Projector& projector,
+                                      bool binding_present, bool light,
+                                      bool spotlight)
+{
+    projector.mLocalProjector = usesLocalProjectorOverride(
+        binding_present, light, spotlight);
+    return binding_present && light;
+}
+
+inline LLSD localProjectorToLLSD(bool local_projector)
+{
+    LLSD data = LLSD::emptyMap();
+    data["local_projector"] = local_projector;
+    return data;
+}
+
+inline bool localProjectorFromLLSD(const LLSD& data)
+{
+    return data.isMap() && data.has("local_projector") &&
+           data["local_projector"].asBoolean();
 }
 
 template<typename Projector>
@@ -847,7 +881,8 @@ inline bool captureOutputRequired(U32 display_count, U32 projector_count)
 inline bool removeProjectorWithCapture(bool owns_removed_capture,
                                        bool gate_subscribed)
 {
-    return owns_removed_capture && !gate_subscribed;
+    (void)gate_subscribed;
+    return owns_removed_capture;
 }
 
 inline bool quarantineLoadedProjectorTarget(bool object_present,
@@ -856,8 +891,9 @@ inline bool quarantineLoadedProjectorTarget(bool object_present,
                                             bool light,
                                             bool spotlight)
 {
+    (void)spotlight;
     return !object_present || !live_volume || hud_attachment ||
-           !light || !spotlight;
+           !light;
 }
 
 // Registry-facing description of the retained producer. VP3 converts this
@@ -1135,6 +1171,11 @@ ApplyReport applySceneData(const LLSD& data, std::string* reason = nullptr);
 void markProjectorConsumed(const LLVOVolume* volume);
 bool getProjectorFeed(const ProjectorHandle& binding, ProjectorFeed& feed);
 bool projectorFeedFor(const LLVOVolume* volume, ProjectorFeed& feed);
+bool captureOutputSize(const CaptureHandle& capture, U32& width, U32& height);
+// Canonical render-side query. Real spotlights return their object params;
+// bound point lights return a viewer-local 60-degree cone. UI/build code must
+// continue to query LLVOVolume directly so the object remains untouched.
+bool projectorRenderParams(const LLVOVolume* volume, LLVector3& params);
 
 using revision_connection_t = boost::signals2::connection;
 revision_connection_t connectConfigurationChanged(

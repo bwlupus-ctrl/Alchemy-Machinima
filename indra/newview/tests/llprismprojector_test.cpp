@@ -240,16 +240,16 @@ void prism_projector_object::test<14>()
 template<> template<>
 void prism_projector_object::test<15>()
 {
-    set_test_name("loaded point light transitions into quarantine");
+    set_test_name("loaded point light is a valid local projector target");
     LLPrismLens::ProjectorDefinition binding;
     LLPrismLens::updateLoadedProjectorQuarantine(
         binding, true, true, false, true, false);
-    ensure("point light binding is retained in quarantine",
-           binding.mQuarantined && !binding.mQuarantineReason.empty());
-    LLPrismLens::updateLoadedProjectorQuarantine(
-        binding, true, true, false, true, true);
-    ensure("restored spotlight leaves quarantine",
+    ensure("point light binding is active",
            !binding.mQuarantined && binding.mQuarantineReason.empty());
+    LLPrismLens::updateLoadedProjectorQuarantine(
+        binding, true, true, false, false, false);
+    ensure("non-light target is quarantined with a reason",
+           binding.mQuarantined && !binding.mQuarantineReason.empty());
 }
 
 template<> template<>
@@ -278,5 +278,48 @@ void prism_projector_object::test<16>()
     ensure("old scene without lamp power parses",
            LLPrismLens::projectorLampPowerFromLLSD(LLSD::emptyMap(), legacy));
     ensure_equals("old scene defaults lamp power", legacy.mLampPowerEV, 0.f);
+}
+
+template<> template<>
+void prism_projector_object::test<17>()
+{
+    set_test_name("binding a point light creates and removes a local projector");
+    LLPrismLens::ProjectorDefinition binding;
+    ensure("point light accepts a binding",
+           LLPrismLens::updateLocalProjectorBindingState(
+               binding, true, true, false));
+    ensure("bound point light has a local projector", binding.mLocalProjector);
+    LLPrismLens::updateLocalProjectorBindingState(
+        binding, false, true, false);
+    ensure("unbind restores the point light", !binding.mLocalProjector);
+    ensure("capture deletion removes even a Gate-subscribed binding",
+           LLPrismLens::removeProjectorWithCapture(true, true));
+    ensure("real spotlight needs no local override",
+           !LLPrismLens::usesLocalProjectorOverride(true, true, true));
+}
+
+template<> template<>
+void prism_projector_object::test<18>()
+{
+    set_test_name("non-light cannot become a local projector");
+    LLPrismLens::ProjectorDefinition binding;
+    ensure("non-light rejected",
+           !LLPrismLens::updateLocalProjectorBindingState(
+               binding, true, false, false));
+    ensure("non-light has no override", !binding.mLocalProjector);
+    ensure("loader rejects non-light with a reason",
+           LLPrismLens::quarantineLoadedProjectorTarget(
+               true, true, false, false, false));
+}
+
+template<> template<>
+void prism_projector_object::test<19>()
+{
+    set_test_name("local projector flag LLSD round trip");
+    const LLSD data = LLPrismLens::localProjectorToLLSD(true);
+    ensure("local projector survives round trip",
+           LLPrismLens::localProjectorFromLLSD(data));
+    ensure("old scenes default to a normal projector",
+           !LLPrismLens::localProjectorFromLLSD(LLSD::emptyMap()));
 }
 }

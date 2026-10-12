@@ -1286,8 +1286,9 @@ void probe_gather_light(LLDrawable* drawable, LLVOVolume* light, F32 light_scale
     s.mRadius = light->getLightRadius();
     s.mFalloff = light->getLightFalloff();
     probe_copy3(s.mScale, light->getScale().mV);
-    s.mSpot = light->isLightSpotlight();
-    probe_copy3(s.mSpotParams, light->getSpotLightParams().mV);
+    LLVector3 render_spot_params;
+    s.mSpot = LLPrismLens::projectorRenderParams(light, render_spot_params);
+    probe_copy3(s.mSpotParams, render_spot_params.mV);
     s.mTexId = light->getLightTextureID();
     LLPrismLens::ProjectorFeed projector_feed;
     if (LLPrismLens::projectorFeedFor(light, projector_feed))
@@ -1817,7 +1818,9 @@ void LLReflectionMapManager::flushLightDiff(F64 now, U64 serial, F32 dt, F32 rca
                               probe_box_overlap(lmn, lmx, umn, umx);
         const bool in_live = !ALProbeSched::boxIsEmpty(lmn_live, lmx_live) &&
                              probe_box_overlap(lmn, lmx, lmn_live, lmx_live);
-        if (!in_union && !in_live && !light->isLightSpotlight())
+        LLVector3 render_spot_params;
+        if (!in_union && !in_live &&
+            !LLPrismLens::projectorRenderParams(light, render_spot_params))
         {
             continue;
         }

@@ -10410,7 +10410,7 @@ static F32 calc_light_dist(LLVOVolume* light, const LLVector3& cam_pos, F32 max_
 // lights on/off) applied redundantly in calcNearbyLights/setupHWLights/renderDeferredLighting
 // -- that gate is left untouched and always applies first. BD has no dedicated projector
 // toggle; that fourth class is a novel addition here, reusing the existing
-// LLVOVolume::isLightSpotlight() gate that already distinguishes spot-vs-omni light state
+// LLPrismLens::projectorRenderParams() gate that distinguishes spot-vs-omni render state
 // (setupHWLights) and spot/fullscreen_spot light routing (renderDeferredLighting). When off,
 // a projector prim keeps illuminating as a plain omni light (falls back) instead of
 // disappearing -- it only loses the directional cone / projected image.
@@ -10612,7 +10612,9 @@ void LLPipeline::appendCinematicProbeLightSignature(
         const bool pinned =
             mReflectionMapManager.isCinematicLiveProbePinnedLight(
                 light->getID());
-        const bool is_spot = light->isLightSpotlight();
+        LLVector3 render_spot_params;
+        const bool is_spot = LLPrismLens::projectorRenderParams(
+            light, render_spot_params);
         const F32 dist = pinned ? -4096.f + static_cast<F32>(pinned_order++)
                                 : calc_light_dist(light, origin, max_dist);
         if (!(pinned || dist < max_dist || is_spot))
@@ -10649,9 +10651,11 @@ void LLPipeline::appendCinematicProbeLightSignature(
         const LLVector3 up = LLVector3(0.f, 1.f, 0.f) * rotation;
         sig.addAngle(forward.mV, 0.25f);
         sig.addAngle(up.mV, 0.25f);
-        sig.addExact(light->isLightSpotlight());
-        const LLVector3& spot = light->getSpotLightParams();
-        sig.addAbs3(spot.mV, 0.00436f); // FOV (rad), focus, ambiance
+        LLVector3 render_spot_params;
+        const bool render_spot = LLPrismLens::projectorRenderParams(
+            light, render_spot_params);
+        sig.addExact(render_spot);
+        sig.addAbs3(render_spot_params.mV, 0.00436f); // FOV (rad), focus, ambiance
         sig.addExact(light->getLightTextureID());
         LLPrismLens::ProjectorFeed projector_feed;
         if (LLPrismLens::projectorFeedFor(light, projector_feed))
@@ -10673,7 +10677,7 @@ void LLPipeline::appendCinematicProbeLightSignature(
         sig.addAbs(gobo.mPatternParams.mV[1], 1e-3f);
         sig.addAbs(gobo.mPatternParams.mV[2], 1e-3f);
         sig.addAbs(gobo.mPatternParams.mV[3], 1e-3f);
-        if (gobo.mAnimMode != 0 && light->isLightSpotlight())
+        if (gobo.mAnimMode != 0 && render_spot)
         {
             // GOBO_TIME-driven uniforms change every frame.
             mCineProbeLightsAnimating = true;
@@ -10788,7 +10792,9 @@ void LLPipeline::calcNearbyLights(LLCamera& camera)
             const bool pinned =
                 mReflectionMapManager.isCinematicLiveProbePinnedLight(
                     light->getID());
-            const bool is_spot = light->isLightSpotlight();
+            LLVector3 render_spot_params;
+            const bool is_spot = LLPrismLens::projectorRenderParams(
+                light, render_spot_params);
             if (!pinned && !is_spot &&
                 camera.AABBInFrustumNoFarClip(center, radius) == 0)
             {
@@ -10872,7 +10878,9 @@ void LLPipeline::calcNearbyLights(LLCamera& camera)
             radius.splat(light_radius);
 
             // Spotlights/projectors inside or near the auxiliary camera frustum must never be culled by eye-near clipping.
-            const bool is_spot = light->isLightSpotlight();
+            LLVector3 render_spot_params;
+            const bool is_spot = LLPrismLens::projectorRenderParams(
+                light, render_spot_params);
             if (!is_spot && camera.AABBInFrustumNoFarClip(center, radius) == 0)
             {
                 continue;
@@ -11484,7 +11492,8 @@ void LLPipeline::setupHWLights()
         }
 
 
-        if (light->isLightSpotlight() // directional (spot-)light
+        LLVector3 render_spot_params;
+        if (LLPrismLens::projectorRenderParams(light, render_spot_params) // directional (spot-)light
             && (LLPipeline::sRenderDeferred || RenderSpotLightsInNondeferred) // these are only rendered as GL spotlights if we're in deferred rendering mode *or* the setting forces them on
             // Rig projectors obey the rig controls, not the projector toggle.
             && (light->isCineRigEmitter() ||
@@ -11498,9 +11507,7 @@ void LLPipeline::setupHWLights()
             light_state->setSpotCutoff(90.f);
             light_state->setSpotExponent(2.f);
 
-            LLVector3 spotParams = light->getSpotLightParams();
-
-            const LLColor4 specular(0.f, 0.f, 0.f, spotParams[2]);
+            const LLColor4 specular(0.f, 0.f, 0.f, render_spot_params[2]);
             light_state->setSpecular(specular);
         }
         else // omnidirectional (point) light
@@ -26659,7 +26666,9 @@ void LLPipeline::renderDeferredLighting(ActorMaskViewSource source)
                         camera->getOrigin().mV[2] > c[2] + s + 0.2f || camera->getOrigin().mV[2] < c[2] - s - 0.2f)
                     {  // draw box if camera is outside box
                         // Rig projectors retain their cone/cookie when the world projector toggle is off.
-                        if (volume->isLightSpotlight() &&
+                        LLVector3 render_spot_params;
+                        if (LLPrismLens::projectorRenderParams(
+                                volume, render_spot_params) &&
                             (volume->isCineRigEmitter() ||
                              bdmerge_should_render_projector())) // [BDMerge A5.6] projector toggle: falls back to a regular box light below when off
                         {
@@ -26691,7 +26700,9 @@ void LLPipeline::renderDeferredLighting(ActorMaskViewSource source)
                     else
                     {
                         // Rig projectors retain their cone/cookie when the world projector toggle is off.
-                        if (volume->isLightSpotlight() &&
+                        LLVector3 render_spot_params;
+                        if (LLPrismLens::projectorRenderParams(
+                                volume, render_spot_params) &&
                             (volume->isCineRigEmitter() ||
                              bdmerge_should_render_projector())) // [BDMerge A5.6] projector toggle: falls back to a fullscreen point light below when off
                         {
@@ -26916,7 +26927,9 @@ void LLPipeline::renderDeferredLighting(ActorMaskViewSource source)
                         center.load3(drawable->getPositionAgent().mV);
                         extent.splat(size);
                         if (camera->AABBInFrustumNoFarClip(center, extent) == 0) continue;
-                        if (volume->isLightSpotlight() &&
+                        LLVector3 render_spot_params;
+                        if (LLPrismLens::projectorRenderParams(
+                                volume, render_spot_params) &&
                             (volume->isCineRigEmitter() || bdmerge_should_render_projector()))
                         {
                             if (!sPrismLensRender) volume->updateSpotLightPriority();
@@ -27790,7 +27803,9 @@ F32 LLPipeline::bindProjectorCookie(LLGLSLShader& shader,
         if (look.mThrowMode == LLPrismLens::EProjectorThrow::CAMERA_FOV &&
             feed.mCameraVerticalFovRad > 0.f && feed.mCameraAspect > 0.f)
         {
-            const F32 light_fov = volume->getSpotLightParams().mV[VX];
+            LLVector3 render_spot_params;
+            LLPrismLens::projectorRenderParams(volume, render_spot_params);
+            const F32 light_fov = render_spot_params.mV[VX];
             const LLVector3 light_scale = volume->getScale();
             const F32 light_aspect = light_scale.mV[VY] > F_ALMOST_ZERO
                 ? light_scale.mV[VX] / light_scale.mV[VY] : 1.f;
@@ -27844,7 +27859,12 @@ F32 LLPipeline::setupSpotLight(LLGLSLShader& shader, LLDrawable* drawablep)
     {
         LLPrismLens::markProjectorConsumed(volume);
     }
-    LLVector3 params = volume->getSpotLightParams();
+    LLVector3 params;
+    if (!LLPrismLens::projectorRenderParams(volume, params))
+    {
+        llassert(false);
+        return 1.f;
+    }
 
     F32 fov = params.mV[0];
     F32 focus = params.mV[1];
@@ -28021,7 +28041,12 @@ F32 LLPipeline::setupSpotLightVolumetric(LLGLSLShader& shader, LLDrawable* drawa
 {
     //construct frustum
     LLVOVolume* volume = drawablep->getVOVolume();
-    LLVector3 params = volume->getSpotLightParams();
+    LLVector3 params;
+    if (!LLPrismLens::projectorRenderParams(volume, params))
+    {
+        llassert(false);
+        return 1.f;
+    }
 
     F32 fov = params.mV[0];
     F32 focus = params.mV[1];
@@ -30683,7 +30708,12 @@ void LLPipeline::generateSunShadow(LLCamera& camera, bool clip_only)
 
             LLDrawable* drawable = mShadowSpotLight[i];
 
-            LLVector3 params = volume->getSpotLightParams();
+            LLVector3 params;
+            if (!LLPrismLens::projectorRenderParams(volume, params))
+            {
+                mShadowSpotLight[i] = NULL;
+                continue;
+            }
             F32 fov = params.mV[0];
 
             //get agent->light space matrix (modelview)
@@ -30885,7 +30915,8 @@ void LLPipeline::generatePrismSpotShadows(LLCamera& camera)
             {
                 continue;
             }
-            if (!light->isLightSpotlight())
+            LLVector3 render_spot_params;
+            if (!LLPrismLens::projectorRenderParams(light, render_spot_params))
             { // only projectors cast spot shadows
                 continue;
             }
@@ -31087,7 +31118,8 @@ void LLPipeline::generatePrismSpotShadows(LLCamera& camera)
         LLVOVolume* volume = drawable->getVOVolume(); // validated in selection
 
         // --- projector frustum: exact mirror of generateSunShadow's spot loop ---
-        LLVector3 params = volume->getSpotLightParams();
+        LLVector3 params;
+        if (!LLPrismLens::projectorRenderParams(volume, params)) continue;
         F32 fov = params.mV[0];
 
         //get agent->light space matrix (modelview)

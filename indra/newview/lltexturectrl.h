@@ -36,6 +36,7 @@
 #include "llstring.h"
 #include "lluictrl.h"
 #include "llpermissionsflags.h"
+#include "llprismpreview.h"
 #include "lltextbox.h" // for params
 #include "llviewerinventory.h"
 #include "llviewborder.h" // for params
@@ -514,6 +515,9 @@ private:
     LLUUID mOriginalVCamCaptureID;
     EVCamTextureTarget mVCamTarget = EVCamTextureTarget::NONE;
     LLUUID mVCamTargetObjectID;
+    LLPrismPreviewService::TilePublication mVCamPreviewPublication;
+    std::string mVCamPreviewLabel;
+    F32 mVCamPreviewAspect = 16.f / 9.f;
     bool mVCamSelectionInitialized = false;
     bool mVCamLiveApplied = false;
     bool mPickerFinalized = false;

@@ -2324,7 +2324,7 @@ EAcceptance LLToolDragAndDrop::dad3dVCamFeed(
 
     const LLUUID& capture_id = mCargoIDs[mCurItemIndex];
     LLVOVolume* volume = dynamic_cast<LLVOVolume*>(obj);
-    if (volume && volume->getIsLight() && volume->isLightSpotlight())
+    if (volume && volume->getIsLight())
     {
         const ALVCamPageModel::ProjectorDropStatus projector =
             ALVCamPageModel::projectorDropStatus(capture_id, obj);

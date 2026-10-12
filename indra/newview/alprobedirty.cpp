@@ -18,6 +18,7 @@
 #include "lldrawable.h"
 #include "llface.h"
 #include "llquaternion.h"
+#include "llprismlens.h"
 #include "llspatialpartition.h"
 #include "llviewerobject.h"
 #include "llviewertexture.h"
@@ -288,8 +289,11 @@ void fanoutLight(LLVOVolume* volume, U16 reason, U64 min_face_op)
     {
         return;
     }
+    LLVector3 render_spot_params;
+    const bool projector = LLPrismLens::projectorRenderParams(
+        volume, render_spot_params);
     sDiscrete.note(volume, mn, mx, reason, static_cast<U8>(sched::C_LIGHT), sSerial,
-                   min_face_op, volume->isLightSpotlight());
+                   min_face_op, projector);
 }
 
 } // namespace

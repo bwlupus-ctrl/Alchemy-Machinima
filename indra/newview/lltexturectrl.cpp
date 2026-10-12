@@ -744,11 +744,11 @@ void LLFloaterTexturePicker::draw()
 
     // This is going to spam mOnUpdateImageStatsCallback,
     // either move elsewhere or fix to cause update once per image
-    bool valid_dims = updateImageStats();
-
-    // if we're inactive, gray out "apply immediate" checkbox
     const bool vcam_mode = mVCamEnabled &&
         mModeSelector->getValue().asInteger() == PICKER_VCAM;
+    bool valid_dims = vcam_mode || updateImageStats();
+
+    // if we're inactive, gray out "apply immediate" checkbox
     mSelectBtn->setEnabled((mActive || vcam_mode) && mCanApply &&
                            (valid_dims || vcam_mode) && !getTentative());
     mPipetteBtn->setEnabled(mActive);
@@ -848,7 +848,55 @@ void LLFloaterTexturePicker::draw()
             preview = mTexturep.get();
         }
 
-        if( preview )
+        bool drew_vcam_preview = false;
+        if (vcam_mode && mVCamCaptureID.notNull())
+        {
+            gl_rect_2d(interior, LLColor4(.04f, .04f, .04f, 1.f) % alpha, true);
+            if (mVCamPreviewPublication.mAtlas.mGeneration &&
+                LLPrismPreviewService::instance().bindAtlas(
+                    mVCamPreviewPublication.mAtlas))
+            {
+                LLRect picture = interior;
+                const F32 interior_aspect = static_cast<F32>(interior.getWidth()) /
+                    static_cast<F32>(llmax(1, interior.getHeight()));
+                if (interior_aspect > mVCamPreviewAspect)
+                {
+                    const S32 width = llmax(1, ll_round(
+                        static_cast<F32>(interior.getHeight()) * mVCamPreviewAspect));
+                    picture.mLeft += (interior.getWidth() - width) / 2;
+                    picture.mRight = picture.mLeft + width;
+                }
+                else
+                {
+                    const S32 height = llmax(1, ll_round(
+                        static_cast<F32>(interior.getWidth()) / mVCamPreviewAspect));
+                    picture.mBottom += (interior.getHeight() - height) / 2;
+                    picture.mTop = picture.mBottom + height;
+                }
+                const LLRectf& uv = mVCamPreviewPublication.mCellUV;
+                gGL.color4f(1.f, 1.f, 1.f, alpha);
+                gGL.begin(LLRender::TRIANGLES);
+                gGL.texCoord2f(uv.mLeft, uv.mTop); gGL.vertex2i(picture.mLeft, picture.mTop);
+                gGL.texCoord2f(uv.mLeft, uv.mBottom); gGL.vertex2i(picture.mLeft, picture.mBottom);
+                gGL.texCoord2f(uv.mRight, uv.mBottom); gGL.vertex2i(picture.mRight, picture.mBottom);
+                gGL.texCoord2f(uv.mLeft, uv.mTop); gGL.vertex2i(picture.mLeft, picture.mTop);
+                gGL.texCoord2f(uv.mRight, uv.mBottom); gGL.vertex2i(picture.mRight, picture.mBottom);
+                gGL.texCoord2f(uv.mRight, uv.mTop); gGL.vertex2i(picture.mRight, picture.mTop);
+                gGL.end();
+                gGL.getTexUnit(0)->unbind(LLTexUnit::TT_TEXTURE);
+            }
+            drew_vcam_preview = true;
+        }
+        else if (vcam_mode && !preview)
+        {
+            // "None / Remove VCam feed" reveals the real light cookie. A
+            // point light has none, so show an empty frame rather than the
+            // texture control's generic white fallback image.
+            gl_rect_2d(interior, LLColor4(.04f, .04f, .04f, 1.f) % alpha, true);
+            drew_vcam_preview = true;
+        }
+
+        if (!drew_vcam_preview && preview)
         {
             preview->addTextureStats( (F32)(interior.getWidth() * interior.getHeight()) );
             if( preview->getComponents() == 4 )
@@ -858,11 +906,11 @@ void LLFloaterTexturePicker::draw()
 
             gl_draw_scaled_image( interior.mLeft, interior.mBottom, interior.getWidth(), interior.getHeight(), preview, UI_VERTEX_COLOR % alpha );
         }
-        else if (!mFallbackImage.isNull())
+        else if (!drew_vcam_preview && !mFallbackImage.isNull())
         {
             mFallbackImage->draw(interior, UI_VERTEX_COLOR % alpha);
         }
-        else
+        else if (!drew_vcam_preview)
         {
             gl_rect_2d( interior, LLColor4::grey % alpha, true );
 
@@ -1390,6 +1438,9 @@ void LLFloaterTexturePicker::refreshVCamList()
     std::array<ALVCamTexturePickerList::Item, LLPrismLens::MAX_CAPTURES> items;
     const LLPrismLens::RegistrySnapshot snapshot = LLPrismLens::registrySnapshot();
     LLPrismPreviewService& preview = LLPrismPreviewService::instance();
+    mVCamPreviewPublication = LLPrismPreviewService::TilePublication();
+    mVCamPreviewLabel.clear();
+    mVCamPreviewAspect = 16.f / 9.f;
     for (U32 index = 0; index < snapshot.mCaptureCount; ++index)
     {
         const LLPrismLens::CaptureDefinition& capture = snapshot.mCaptures[index];
@@ -1397,8 +1448,43 @@ void LLFloaterTexturePicker::refreshVCamList()
         items[index].mPublication = preview.tileState(capture.mHandle);
         items[index].mLabel = llformat("Cam %u - %s", capture.mSlot + 1,
                                       capture.mLabel.c_str());
+        if (capture.mHandle.mId == mVCamCaptureID)
+        {
+            mVCamPreviewPublication = items[index].mPublication;
+            U32 width = 0;
+            U32 height = 0;
+            LLPrismLens::captureOutputSize(capture.mHandle, width, height);
+            const char* state = "live";
+            switch (mVCamPreviewPublication.mState)
+            {
+                case LLPrismPreviewService::ETileState::EMPTY: state = "warming"; break;
+                case LLPrismPreviewService::ETileState::READY: state = "live"; break;
+                case LLPrismPreviewService::ETileState::HELD: state = "held"; break;
+                case LLPrismPreviewService::ETileState::PAUSED: state = "paused"; break;
+                case LLPrismPreviewService::ETileState::OFFLINE: state = "offline"; break;
+                case LLPrismPreviewService::ETileState::THROTTLED: state = "throttled"; break;
+                case LLPrismPreviewService::ETileState::WARMING: state = "warming"; break;
+                case LLPrismPreviewService::ETileState::FAILED: state = "failed"; break;
+                case LLPrismPreviewService::ETileState::SHADER_UNAVAILABLE:
+                    state = "shader unavailable"; break;
+                default: break;
+            }
+            const std::string dimensions = width > 0 && height > 0
+                ? llformat("%u x %u", width, height) : "? x ?";
+            mVCamPreviewLabel = llformat("Cam %u - %s - %s - %s",
+                capture.mSlot + 1, capture.mLabel.c_str(),
+                dimensions.c_str(), state);
+        }
     }
     list->setItems(items, snapshot.mCaptureCount, mVCamCaptureID);
+    if (mModeSelector &&
+        mModeSelector->getValue().asInteger() == PICKER_VCAM)
+    {
+        mResolutionWarning->setVisible(false);
+        mResolutionLabel->setVisible(true);
+        mResolutionLabel->setTextArg("[DIMENSIONS]", mVCamCaptureID.notNull()
+            ? mVCamPreviewLabel : std::string());
+    }
 }
 
 void LLFloaterTexturePicker::updateVCamDemand()
