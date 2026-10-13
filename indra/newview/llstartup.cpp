@@ -2648,10 +2648,10 @@ bool idle_startup()
         doOnIdleOneTime([]()
         {
             // List the logged-in avatar in the Director cast by default (no
-            // subject/actor role). Done BEFORE the recovery service takes its
-            // baseline so this doesn't mark the scene as unsaved.
+            // subject/actor role). This initialization is explicitly non-dirty
+            // because the floater may already have established its baseline.
             if (gAgentID.notNull())
-                LLDirectorCast::instance().add(gAgentID);
+                LLDirectorCast::instance().add(gAgentID, false);
             LLFloaterDirector::startRecoveryService();
         });
         // Startup feature recommendations and command-line graphics overrides

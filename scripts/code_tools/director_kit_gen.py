@@ -2,9 +2,9 @@
 """Generate the non-shippable Director Kit P0 XUI foundation.
 
 The input JSON is the design authority.  Existing Director leaf panels remain
-byte-independent semantic embeds; Rig and Rim are hosted kit pages, Bloom is a
-new pure-setting page, and Tron is the temporary P0 launcher described by the
-specification.  This tool intentionally uses only the Python standard library.
+byte-independent semantic embeds; Rig, Rim, Image, Roto Ink, Tron and Actor FX
+are hosted kit pages, and Bloom is a new pure-setting page.  This tool
+intentionally uses only the Python standard library.
 """
 
 from __future__ import annotations
@@ -43,6 +43,8 @@ EXPECTED_SHORTCUTS = {
     ("shot_tab", "CinematicCamArcHeightDrift", "moves_tab/hero_arc_height_drift"),
     ("cine_light_rig_tab", "cine_easy_cone_feather", "atmosphere_tab/ps_BDMergeProjectorVolumetricsFeather_slider"),
     ("cine_light_rig_tab", "cine_easy_shaft_length", "atmosphere_tab/ps_BDMergeProjectorVolumetricsMaxDistance_slider"),
+    # 10/13: the user approved 5 image_tab -> exposure_tab shortcuts; add them when
+    # exposure_tab becomes a kit page (see kit_pages.json image_tab omit_rows_note).
 }
 
 STRIP = {"left", "top", "bottom", "width", "height", "follows", "layout",
@@ -199,6 +201,10 @@ def validate_data(data: dict) -> None:
     # 2010: + 4 Light Rig 'Projector feed' combos (key/fill/rim/bg, VP6 10/12).
     # 2011: + 1 VCam Projector 'Lamp power' row.
     # 2013: + VCam camera Name and no-projector-selection hint rows (10/12 polish).
+    # 10/13 look-group conversion: the mockup source is unchanged (still 2013) except for explicit iv values
+    # on two combos (colour LUT filenames, Actor FX look ids) and five approved Image-to-Exposure shortcuts.
+    # Image, Roto Ink, Tron and Actor FX are generated kit pages. The three Rig Rim tint source rows are not
+    # generated on Tron because that page links to their Light > Rim home instead.
     # Quick favorites are runtime row proxies, so they intentionally do not change this source-data count.
     if len(pages) != 35 or row_count != 2013:
         raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 35/2013")
@@ -310,6 +316,19 @@ def apply_config(page: dict, cfg: dict) -> dict:
             target.insert(indexes[0] + 1, row)
         else:
             target.append(row)
+    # omit_rows: mockup rows that may not be generated on this page. Each name must match exactly
+    # one row and the page must provide a link to the rows' canonical home.
+    for name in cfg.get("omit_rows", []):
+        removed = 0
+        for card in page.get("cards", []):
+            for holder in [card] + list(card.get("opts", [])):
+                if "rows" not in holder:
+                    continue
+                before = len(holder["rows"])
+                holder["rows"] = [row for row in holder["rows"] if row.get("w") != name]
+                removed += before - len(holder["rows"])
+        if removed != 1:
+            raise GenError(f"omit_rows {name!r} matched {removed} rows on {page['name']}")
     return page
 
 
@@ -477,12 +496,18 @@ def control_for(row: dict, hosted: ET.Element | None, referenced: set[str], repo
         if src in row:
             attrs[dst] = scalar(row[src])
     child = ET.Element(tag, attrs)
+    if kind == "readout" and row.get("text") is not None:
+        child.text = str(row["text"])
     if tag in {"combo_box", "radio_group"}:
         for index, label in enumerate(row.get("it", [])):
             values = row.get("iv", [])
             value = values[index] if index < len(values) else index
             item_tag = "combo_box.item" if tag == "combo_box" else "radio_item"
             item_attrs = {"name": f"{widget}_item_{index}", "label": str(label), "value": scalar(value)}
+            if scalar(value) == "-1":
+                # A value of -1 is a divider label (e.g. Actor FX "-- Live Actor Exclusives --"),
+                # not a selectable enum; the v1 combo disables it the same way.
+                item_attrs["enabled"] = "false"
             if tag == "radio_group":
                 # LLRadioGroup otherwise applies the default top-left layout to
                 # every geometry-less item and stacks the segments vertically.
@@ -525,6 +550,11 @@ def row_element(row: dict, by_name: dict[str, ET.Element], by_control: dict[str,
     setting = hosted.get("control_name") if hosted is not None and hosted.get("control_name") else row.get("s")
     if setting:
         attrs["setting"] = str(setting)
+    if kind in {"vec2", "vec3"} and bind == "setting":
+        # Composite rows have no control child: ALKitRow builds its spinners and an
+        # ALKitVecBinding over the row's setting itself (alkitrow.cpp resolveBinding), so
+        # kit_lint's bind="setting" control-child rule cannot apply to them.
+        bind = "none"
     attrs["bind"] = bind
     mapping = (("h", "help"), ("kw", "keywords"), ("unit", "unit"), ("sub", "sub"),
                ("to", "link_to"), ("shortcut_of", "shortcut_of"), ("mirror_setting", "mirror_setting"))
@@ -535,7 +565,7 @@ def row_element(row: dict, by_name: dict[str, ET.Element], by_control: dict[str,
                      ("who_picker", "who_picker"), ("hidden", "hidden")):
         if row.get(src):
             attrs[dst] = "true"
-    for src, dst in (("mn", "min_val"), ("mx", "max_val"), ("dc", "decimals"),
+    for src, dst in (("mn", "min_val"), ("mx", "max_val"), ("st", "increment"), ("dc", "decimals"),
                       ("row_height", "row_height")):
         if src in row:
             attrs[dst] = scalar(row[src])
@@ -581,7 +611,10 @@ def page_attrs(group: dict, page: dict, cfg: dict) -> dict[str, str]:
     if master.get("w"):
         attrs["master_widget"] = str(master["w"])
         attrs["master_label"] = str(master.get("l", ""))
-        attrs["master_setting"] = str(master.get("s", ""))
+        # A master with no setting (Actor FX: per-actor state in llfloaterdirector) must not
+        # serialize Python's None as the setting name "None", nor an empty setting name.
+        if master.get("s"):
+            attrs["master_setting"] = str(master["s"])
     if page.get("who"):
         attrs["who_label"] = str(page["who"].get("label", ""))
         if page["who"].get("pickers"):
@@ -630,6 +663,10 @@ def kit_page(group: dict, raw_page: dict, cfg: dict, source_paths: list[Path],
         root_attrs["class"] = str(cfg["root_class"])
     root = ET.Element("panel", root_attrs)
     body = ET.SubElement(root, "kit_page", page_attrs(group, page, cfg))
+    if cfg.get("actor_target"):
+        # Same flag the retired legacy path emitted from page_features: the page styles the
+        # selected cast member through llfloaterdirector's bindActorStylePage.
+        body.set("actor_target", "true")
     modes = page.get("modes") or {}
     for mode in modes.get("options", []):
         ET.SubElement(body, "kit_page.mode", {"name": str(mode),
@@ -1073,9 +1110,11 @@ def generate(data_path: Path, config_path: Path, out_dir: Path) -> tuple[dict[Pa
     classes = {f"{g['name']}/{p['name']}": classify(g["name"], p, config, leaves)
                for g, p in flatten_pages(data)}
     expected = {"light_group/cine_light_rig_tab": "kit (P0)", "light_group/light_rim_tab": "kit (P0)",
-                "camera_group/vcam_tab": "kit (P0)",
-                "look_group/bloom_glow_tab": "pure kit (new)", "look_group/tron_tab": "launcher"}
-    if any(classes.get(key) != value for key, value in expected.items()) or Counter(classes.values()) != Counter({"kit (P0)": 3, "pure kit (new)": 1, "launcher": 1, "legacy": 30}):
+                "camera_group/vcam_tab": "kit (P0)", "look_group/stylize_tab": "kit (P0)",
+                "look_group/tron_tab": "kit (P0)", "look_group/image_tab": "kit (P0)",
+                "look_group/actor_style_tab": "kit (P0)",
+                "look_group/bloom_glow_tab": "pure kit (new)"}
+    if any(classes.get(key) != value for key, value in expected.items()) or Counter(classes.values()) != Counter({"kit (P0)": 7, "pure kit (new)": 1, "legacy": 27}):
         raise GenError(f"classification table drift: {Counter(classes.values())}, special={[(k, classes.get(k)) for k in expected]}")
     note = header(data_path, config_path)
     referenced = cpp_names(config_path)
@@ -1141,12 +1180,15 @@ def selftest(data_path: Path, config_path: Path, out_dir: Path) -> int:
     try:
         outputs, classes = generate(data_path, config_path, out_dir)
         checks = []
-        checks.append(("classification table", Counter(classes.values()) == Counter({"kit (P0)": 3, "pure kit (new)": 1, "launcher": 1, "legacy": 30})
+        checks.append(("classification table", Counter(classes.values()) == Counter({"kit (P0)": 7, "pure kit (new)": 1, "legacy": 27})
                        and classes["light_group/cine_light_rig_tab"] == "kit (P0)"
                        and classes["light_group/light_rim_tab"] == "kit (P0)"
                        and classes["camera_group/vcam_tab"] == "kit (P0)"
                        and classes["look_group/bloom_glow_tab"] == "pure kit (new)"
-                       and classes["look_group/tron_tab"] == "launcher"))
+                       and classes["look_group/stylize_tab"] == "kit (P0)"
+                       and classes["look_group/tron_tab"] == "kit (P0)"
+                       and classes["look_group/image_tab"] == "kit (P0)"
+                       and classes["look_group/actor_style_tab"] == "kit (P0)"))
         expected = {"slider": "slider", "number": "spinner", "toggle": "kit_switch", "combo": "combo_box",
                     "color": "color_swatch", "readout": "text", "button": "button", "text": "line_editor",
                     "list": "scroll_list", "dial": "compass_dial", "arc": "compass_dial",
@@ -1160,6 +1202,7 @@ def selftest(data_path: Path, config_path: Path, out_dir: Path) -> int:
         checks.append(("kind mapping", all(NATIVE_TAG.get(k) == v for k, v in expected.items())
                        and HOST_KIND == hosted and CUSTOM_KIND == custom))
         v1 = parse_xml(V1_FLOATER)
+        config = json.loads(config_path.read_text(encoding="utf-8"))
         legacy_ok = True
         legacy_count = 0
         for group, page in flatten_pages(json.loads(data_path.read_text(encoding="utf-8"))):
@@ -1169,10 +1212,11 @@ def selftest(data_path: Path, config_path: Path, out_dir: Path) -> int:
             legacy_count += 1
             generated = ET.fromstring(outputs[out_dir / page_filename(group["name"], page["name"])], parser=parser())
             expected_legacy = copy.deepcopy(find_named(v1, page["name"]))
-            apply_kit_xui_style(expected_legacy)
+            # Same order as generate(): page features first, then the kit style stamp.
             apply_page_features(expected_legacy, key, config.get("page_features", {}))
+            apply_kit_xui_style(expected_legacy)
             legacy_ok = legacy_ok and generated.tag == "kit_page" and children_canonical(generated) == children_canonical(expected_legacy)
-        checks.append(("30 serialized legacy pages copy v1 children", legacy_ok and legacy_count == 30))
+        checks.append(("27 serialized legacy pages copy v1 children", legacy_ok and legacy_count == 27))
         dials = [node for path, payload in outputs.items() if path.name.startswith("panel_dpage_")
                  for node in ET.fromstring(payload, parser=parser()).iter("compass_dial")]
         checks.append(("all compass dials use kit geometry without duplicate readout",
@@ -1188,9 +1232,9 @@ def selftest(data_path: Path, config_path: Path, out_dir: Path) -> int:
                            for row in rig_ev_rows)))
         tron = ET.fromstring(outputs[out_dir / "panel_dpage_look_tron.xml"], parser=parser())
         launcher_cards = [node for node in tron.iter("kit_card") if node.get("kind") == "launcher"]
-        checks.append(("launcher card owns exactly one runtime button",
-                       len(launcher_cards) == 1 and not list(tron.iter("kit_row"))
-                       and not list(tron.iter("button"))))
+        checks.append(("look Tron page is a generated kit page (no launcher)",
+                       not launcher_cards and len(list(tron.iter("kit_row"))) > 100
+                       and any(node.get("page") == "look_group/tron_tab" for node in tron.iter("kit_page"))))
         checks.append(("36 page files including runtime Quick host", sum(path.name.startswith("panel_dpage_") for path in outputs) == 36))
         synonyms = json.loads(SYNONYMS_DATA.read_text(encoding="utf-8")).get("groups", [])
         exposure_aliases = synonym_aliases("Exposure", synonyms).split()

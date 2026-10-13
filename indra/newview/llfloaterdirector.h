@@ -60,6 +60,8 @@ public:
     bool postBuild() override;
     void onOpen(const LLSD& key) override;
     void onClose(bool app_quitting) override;
+    void onFocusLost() override;
+    void setMinimized(bool minimized) override;
     void draw() override;
     // Esc = CUT while the transport is running or counting down; stock
     // floater behavior otherwise
@@ -94,6 +96,11 @@ private:
     void bindAnimatePage(LLView* root);
     void bindCameraPage(LLView* root);
     void bindLauncherPage(LLView* root);
+    // Look pages (generated kit pages): wire the code-bound buttons, palette side effects and
+    // Lightbox links to the same ALRotoInk / ALTron / ALPanelCineLightRig calls the Lightbox uses.
+    void bindRotoInkPage(LLView* root);
+    void bindTronPage(LLView* root);
+    void bindImagePage(LLView* root);
     // ---- transport ----
     void onClickAction();               // ACTION, or CUT while counting/running
     void onClickTakePlay();
@@ -106,6 +113,7 @@ private:
 
     // ---- scene files (transport bar) ----
     static std::string scenesDir();     // created on demand
+    static std::string sanitizeSceneName(std::string name);
     static std::string scenePath(const std::string& name);
     // every settings-backed value a scene captures besides the cast/subjects
     // (which LLDirectorCast::sceneData() owns) and the CineCam mode/preset
@@ -254,12 +262,14 @@ private:
     LLTextBox* mTransportToast = nullptr;
     ALKitBar* mTransportBar = nullptr;
     std::string mActionTooltip;
+    std::string mArmTooltip;
     bool mActionArmed = false;
     S32 mLastTransportActionState = -1;
     S64 mTimecodeFrame = -1;
     S32 mTimecodeFps = -1;
     bool mTimecodeHot = false;
     S32 mLastCastChipCount = -1;
+    S32 mTakeTooltipState = -1;
     LLFrameTimer mTransportToastTimer;
 
     // scene files (transport bar)
@@ -271,6 +281,8 @@ private:
     LLTextBox*    mSceneDirtyText = nullptr;
     LLTextBox*    mSceneMetadataText = nullptr;
     std::string   mSceneRenameSource;
+    std::string   mSceneWriteSource;
+    bool          mSceneSaveAs = false;
     struct SceneChangeStamp
     {
         U64 mSettings = 0;
@@ -293,6 +305,7 @@ private:
         U64 mSettingsRevision = 1;
         bool mHaveCleanSceneStamp = false;
         bool mSceneDirty = false;
+        std::string mCurrentSceneName;
         LLFrameTimer mAutosaveTimer;
         std::vector<boost::signals2::scoped_connection> mSettingConnections;
     };
@@ -505,6 +518,18 @@ private:
     LLTextBox* mStatusStrip = nullptr;
     LLTextBox* mRecIndicator = nullptr;
     S32        mRecState = -1;       // -1 unknown, 0 idle, 1 capturing (diffing)
+    S32        mStatusMoving = -1;
+    S32        mStatusQueued = -1;
+    S32        mStatusCamMode = -1;
+    S32        mStatusSwitcherSlot = -2;
+    U64        mStatusCastRevision = 0;
+    bool       mStatusCamEnabled = false;
+    bool       mStatusSwitching = false;
+    bool       mStatusOrbitEnabled = false;
+    bool       mStatusSelectionTarget = false;
+    LLUUID     mStatusTargetId;
+    std::string mRoutineStatus;
+    std::string mCastChipTooltip;
     ALKitShell* mShell = nullptr;
     bool mIsV2 = false;
     LLTextBox* mKitUIMs = nullptr;
@@ -512,6 +537,7 @@ private:
     F32 mKitDrawEMA = 0.f;
     ALLiveReadoutClock mKitDrawClock{2.f};
     boost::signals2::scoped_connection mPageBuiltConnection;
+    boost::signals2::scoped_connection mPageSelectedConnection;
     boost::signals2::scoped_connection mKitUIMsConnection;
     std::unordered_set<std::string> mBoundPages;
 };

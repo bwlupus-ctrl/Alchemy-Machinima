@@ -16,7 +16,7 @@ class ALKitCard;
 struct ALKitRowMeta
 {
     std::string kind, widget, label, help, keywords, setting, unit, sub, link_to, action, mirror_setting, default_value;
-    F32         min_val = 0, max_val = 0;
+    F32         min_val = 0, max_val = 0, increment = 0.f;
     S32         decimals = 3;
     bool        advanced = false, has_min = false, has_max = false;
     S32         option = -1;
@@ -32,7 +32,7 @@ public:
             action, mirror_setting;
         Optional<bool> advanced, card_preset, who_picker, hidden, added;
         Optional<S32>  row_height, decimals;
-        Optional<F32>  min_val, max_val;
+        Optional<F32>  min_val, max_val, increment;
         Params();
     };
     ~ALKitRow() override;

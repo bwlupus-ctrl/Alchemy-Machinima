@@ -258,7 +258,7 @@ public:
     static LLUUID canonicalActorId(const LLUUID& id);
 
     // ---- membership (ordered, session-only) ----
-    void add(const LLUUID& id);
+    void add(const LLUUID& id, bool touch_scene = true);
     void remove(const LLUUID& id);
     void toggle(const LLUUID& id);
     bool contains(const LLUUID& id) const;

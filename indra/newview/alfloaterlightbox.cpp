@@ -203,7 +203,8 @@ bool ALFloaterLightBox::postBuild()
             control->setValue(LLSD("custom"));
         });
 
-    populateLUTCombo();
+    ALColorGrade::populateLUTCombo(findChild<LLComboBox>("colorlut_combo"));
+    ALTron::initializeSettingSync();
     updateTonemapper();
     updateCAS();
 
@@ -432,6 +433,7 @@ bool ALFloaterLightBox::runReflowSelfTest()
 void ALFloaterLightBox::onOpen(const LLSD& key)
 {
     LLFloater::onOpen(key);
+    ALColorGrade::populateLUTCombo(findChild<LLComboBox>("colorlut_combo"));
     // Fit only the visible page: postBuild's installForTabs fitted every page once and
     // each tab commit refits the page it reveals, so a whole-tree fitAll on every open
     // (~84 ms measured by the UI self-test) only redid hidden pages.
@@ -986,10 +988,8 @@ void ALFloaterLightBox::onTronPreset(const LLSD& userdata)
 // values (id 0 Custom is a no-op, per ALTron::applyPalettePreset's contract).
 void ALFloaterLightBox::onTronPaletteSelected()
 {
-    if (LLComboBox* combo = findChild<LLComboBox>("tr_palette_combo"))
-    {
-        ALTron::applyPalettePreset(combo->getValue().asInteger());
-    }
+    // Kept as an XML callback compatibility shim. ALTron's setting signal
+    // applies the palette for commits, reset/paste, presets and undo alike.
 }
 
 // [TronT1] Any of the four tr_color_* swatches: a hand-edited swatch no
@@ -997,7 +997,8 @@ void ALFloaterLightBox::onTronPaletteSelected()
 // palette combo silently disagree with the actual colours.
 void ALFloaterLightBox::onTronColorEdited()
 {
-    gSavedSettings.setS32("TronPalette", 0);
+    // Kept as an XML callback compatibility shim. ALTron's colour-setting
+    // signals mark the palette Custom for every write path.
 }
 
 // [TronT1] Sets the grid/pulse lattice origin to the camera's current agent
@@ -1270,9 +1271,36 @@ void ALFloaterLightBox::updateTronVisibility()
     reflowVisibleRows("tron_settings_scroll");
 }
 
-void ALFloaterLightBox::populateLUTCombo()
+void ALColorGrade::populateLUTCombo(LLComboBox* lut_combo)
 {
-    LLComboBox* lut_combo = getChild<LLComboBox>("colorlut_combo");
+    if (!lut_combo)
+    {
+        return;
+    }
+
+    static const char* const builtins[][2] = {
+        { "None", "" }, { "Neutral", "NeutralLUT.png" },
+        { "CrossProcess - Warm", "CrossWarm.png" }, { "CrossProcess - Cool", "CrossCool.png" },
+        { "Acid Trip", "AcidTrip.png" }, { "Battleblue", "Battleblue.png" },
+        { "Crunchy", "Crunchy.png" }, { "Dreary", "Dreary.png" },
+        { "Fall Painty", "FallPainty.png" }, { "Harshness", "Harshness.png" },
+        { "Nuked", "Nuked.png" }, { "OG Boy", "OGBoy.png" },
+        { "Old Photo", "OldPhoto.png" }, { "Pastel Dreams", "PastelDreams.png" },
+        { "Purple Haze", "PurpleHaze.png" }, { "Sickly Blue", "SicklyBlue.png" },
+        { "Sinner 1", "Sinner.png" }, { "Sinner 2", "Sinner2.png" },
+        { "Tealness", "Tealness.png" }, { "Toonland", "Toonland.png" },
+        { "Warm", "Warm.png" }, { "A E S T H E T I C S  1", "AESTHETICS_1.png" },
+        { "A E S T H E T I C S  2", "AESTHETICS_2.png" },
+        { "A E S T H E T I C S  3", "AESTHETICS_3.png" },
+        { "A E S T H E T I C S  4", "AESTHETICS_4.png" },
+        { "A E S T H E T I C S  5", "AESTHETICS_5.png" }
+    };
+
+    lut_combo->clearRows();
+    for (const auto& builtin : builtins)
+    {
+        lut_combo->add(builtin[0], builtin[1]);
+    }
     const std::string& user_luts = gDirUtilp->getExpandedFilename(LL_PATH_USER_SETTINGS, "colorlut");
 
     std::error_code ec;
@@ -1309,9 +1337,9 @@ void ALFloaterLightBox::populateLUTCombo()
 #endif
             lut_combo->add(lut_stem, lut_filename);
         }
-        lut_combo->selectByValue(gSavedSettings.getString("RenderColorGradeLUT"));
-        lut_combo->resetDirty();
     }
+    lut_combo->selectByValue(gSavedSettings.getString("RenderColorGradeLUT"));
+    lut_combo->resetDirty();
 }
 
 void ALFloaterLightBox::onClickResetControlDefault(const LLSD& userdata)

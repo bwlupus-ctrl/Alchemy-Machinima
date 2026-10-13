@@ -28,6 +28,7 @@
 #include "pipeline.h"           // LLPipeline::RotoInkCandidate, collectRotoInkCandidates, mExposureMap, mRT/mMainRT
 
 #include <algorithm>
+#include <boost/signals2/connection.hpp>
 #include <cmath>
 #include <map>
 #include <set>
@@ -265,6 +266,36 @@ const char* const kDirectorExcluded[] = {
     "TronPresetAlsoRoto",
     "TronPresetAlsoRigRim",
 };
+
+// Exact direct-write set for applyPreset(), including colours written by
+// applyPalettePreset(). Optional linked Roto/Rig presets track themselves.
+const char* const kLookSettings[] = {
+    "TronPalette", "TronColorPrimary", "TronColorSecondary", "TronColorAccent", "TronColorPulse",
+    "TronPulseRate", "TronPulseShape", "TronPulseAmount",
+    "TronGradeStrength", "TronGradeDarkenEV", "TronGradeDesaturate", "TronGradeCrush",
+    "TronGradeTint", "TronGradeTintAmount", "TronGradeKeepBrightLo", "TronGradeKeepBrightHi",
+    "TronGradeKeepSubject", "TronGradeSkyDarken",
+    "TronGridEnabled", "TronGridIntensity", "TronGridSpacing", "TronGridWidth", "TronGridMinWidthPx",
+    "TronGridMajorEvery", "TronGridMajorWidth", "TronGridMajorIntensity", "TronGridFarFade",
+    "TronGridFloor", "TronGridWall", "TronGridCeiling", "TronGridSharpness", "TronGridNormalSource",
+    "TronGridGlow", "TronGridWaterMode", "TronGridWaterTolerance",
+    "TronPulseGridAmount", "TronPulseGridSpeed", "TronPulseGridLength", "TronPulseGridWavelength",
+    "TronPulseGridDensity", "TronPulseGridDirection", "TronPulseGridColorMode", "TronPulseSeed",
+    "TronTraceEnabled", "TronTraceIntensity", "TronTraceCell", "TronTraceWidth", "TronTraceDensity",
+    "TronTracePadRadius", "TronTraceDiagonal", "TronTraceWalls", "TronTraceFloors",
+    "TronTracePulseAmount", "TronTracePulseSpeed", "TronTracePulseLength", "TronTraceSeed",
+    "TronRimEnabled", "TronRimGain", "TronRimExponent", "TronRimSilhouetteGain",
+    "TronRimSilhouetteThreshold", "TronRimPulseAmount", "TronRimScanAmount", "TronRimScanSpeed",
+    "TronRimScanWidth", "TronRimColorMode", "TronRimRejectFloors",
+    "TronTrailEnabled", "TronTrailStyle", "TronTrailIntensity", "TronTrailColorMode",
+    "TronTrailHeight", "TronTrailWidth", "TronTrailScaleToAvatar", "TronTrailFadeTime",
+    "TronTrailFadeCurve", "TronTrailEdge", "TronTrailEdgeGain", "TronTrailBodyGain",
+    "TronTrailGlow", "TronTrailFog", "TronTrailFogDensity",
+    "CineRigRimTronMode", "CineRigRimTronMix", "CineRigRimTronColorSource"
+};
+
+bool sPaletteSettingWrite = false;
+std::vector<boost::signals2::connection> sPaletteSettingConnections;
 
 // [TronT1] One T1 "look" preset (section 8 of the T1 contract). Every row
 // writes the full common column plus its own overrides; PulseGridAmount and
@@ -665,6 +696,8 @@ void ALTron::applyPalettePreset(S32 id)
     {
         if (row.mId == id)
         {
+            const bool was_writing = sPaletteSettingWrite;
+            sPaletteSettingWrite = true;
             gSavedSettings.setUntypedValue("TronColorPrimary",
                 LLColor3(row.mPr, row.mPg, row.mPb).getValue());
             gSavedSettings.setUntypedValue("TronColorSecondary",
@@ -673,10 +706,47 @@ void ALTron::applyPalettePreset(S32 id)
                 LLColor3(row.mAr, row.mAg, row.mAb).getValue());
             gSavedSettings.setUntypedValue("TronColorPulse",
                 LLColor3(row.mUr, row.mUg, row.mUb).getValue());
+            sPaletteSettingWrite = was_writing;
             return;
         }
     }
     // id 0 (Custom) or an unknown id: leave the colour settings untouched.
+}
+
+void ALTron::initializeSettingSync()
+{
+    if (!sPaletteSettingConnections.empty())
+    {
+        return;
+    }
+    if (LLControlVariable* palette = gSavedSettings.getControl("TronPalette"))
+    {
+        sPaletteSettingConnections.emplace_back(palette->getSignal()->connect(
+            [](LLControlVariable*, const LLSD& value, const LLSD&)
+            {
+                if (!sPaletteSettingWrite)
+                {
+                    ALTron::applyPalettePreset(value.asInteger());
+                }
+            }));
+    }
+    for (const char* name : { "TronColorPrimary", "TronColorSecondary", "TronColorAccent", "TronColorPulse" })
+    {
+        if (LLControlVariable* color = gSavedSettings.getControl(name))
+        {
+            sPaletteSettingConnections.emplace_back(color->getSignal()->connect(
+                [](LLControlVariable*, const LLSD&, const LLSD&)
+                {
+                    if (!sPaletteSettingWrite && gSavedSettings.getS32("TronPalette") != 0)
+                    {
+                        const bool was_writing = sPaletteSettingWrite;
+                        sPaletteSettingWrite = true;
+                        gSavedSettings.setS32("TronPalette", 0);
+                        sPaletteSettingWrite = was_writing;
+                    }
+                }));
+        }
+    }
 }
 
 // [TronT1]
@@ -1836,9 +1906,17 @@ const std::vector<std::string>& ALTron::settings()
     return s_settings;
 }
 
+const std::vector<std::string>& ALTron::lookSettings()
+{
+    static const std::vector<std::string> s_settings(std::begin(kLookSettings), std::end(kLookSettings));
+    return s_settings;
+}
+
 // [TronT0]
 void ALTron::resetToDefaults()
 {
+    const bool was_writing = sPaletteSettingWrite;
+    sPaletteSettingWrite = true;
     for (const char* name : kAllSettings)
     {
         if (LLControlVariable* control = gSavedSettings.getControl(name))
@@ -1846,4 +1924,6 @@ void ALTron::resetToDefaults()
             control->resetToDefault(true);
         }
     }
+    sPaletteSettingWrite = was_writing;
+    applyPalettePreset(gSavedSettings.getS32("TronPalette"));
 }

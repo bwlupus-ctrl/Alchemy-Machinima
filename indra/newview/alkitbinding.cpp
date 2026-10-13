@@ -170,7 +170,9 @@ void ALKitVecBinding::commit()
         for (S32 i = 0; i < edited.size(); ++i)
             value[i] = edited[i];
 
-        control->set(value);
+        // Preserve the declared saved-setting type. In particular, Color3
+        // controls must receive an LLColor3-shaped LLSD array of three reals.
+        alKitSetTypedControl(gSavedSettings, mSetting, value);
     }
 }
 

@@ -66,6 +66,23 @@ bool baselineEditActive(const LLView* control)
         return false;
     return dynamic_cast<LLLineEditor*>(focus) || dynamic_cast<LLTextEditor*>(focus);
 }
+
+bool pointInLineEditor(LLView* view, S32 x, S32 y)
+{
+    if (!view || !view->getVisible())
+        return false;
+    if (dynamic_cast<LLLineEditor*>(view))
+        return view->pointInView(x, y);
+    for (LLView* child : *view->getChildList())
+    {
+        S32 child_x = 0;
+        S32 child_y = 0;
+        view->localPointToOtherView(x, y, &child_x, &child_y, child);
+        if (pointInLineEditor(child, child_x, child_y))
+            return true;
+    }
+    return false;
+}
 } // namespace
 
 ALKitRow::~ALKitRow()
@@ -101,7 +118,8 @@ ALKitRow::Params::Params() :
     row_height("row_height", 28),
     decimals("decimals", 3),
     min_val("min_val", 0.f),
-    max_val("max_val", 0.f)
+    max_val("max_val", 0.f),
+    increment("increment", 0.f)
 {
 }
 
@@ -135,6 +153,7 @@ ALKitRow::ALKitRow(const Params& p) :
     mMeta.decimals       = p.decimals.isProvided() ? p.decimals : (mMeta.kind == "dial" || mMeta.kind == "arc" ? 0 : 3);
     mMeta.min_val        = p.min_val;
     mMeta.max_val        = p.max_val;
+    mMeta.increment      = p.increment;
     mMeta.has_min        = p.min_val.isProvided();
     mMeta.has_max        = p.max_val.isProvided();
 }
@@ -166,13 +185,26 @@ bool ALKitRow::postBuild()
     {
         mVecCount          = mMeta.kind == "vec3" ? 3 : 2;
         const char* axis[] = { "_x", "_y", "_z" };
+        LLControlVariable* setting = gSavedSettings.getControl(mMeta.setting).get(); // isType() is non-const
+        const bool color_components = setting && setting->isType(TYPE_COL3);
+        const char* component_labels[] = { "R", "G", "B" };
         for (S32 i = 0; i < mVecCount; ++i)
         {
             LLSpinCtrl::Params p;
             p.name           = mMeta.widget + axis[i];
             p.rect           = LLRect(0, 22, 80, 0);
-            p.label_width    = 0;
+            if (color_components)
+            {
+                p.label       = component_labels[i];
+                p.label_width = 12;
+            }
+            else
+            {
+                p.label_width = 0;
+            }
             p.decimal_digits = mMeta.decimals;
+            if (mMeta.increment > 0.f)
+                p.increment = mMeta.increment;
             if (mMeta.has_min)
                 p.min_value = mMeta.min_val;
             if (mMeta.has_max)
@@ -204,6 +236,10 @@ bool ALKitRow::postBuild()
         mControl->setRightMouseDownCallback(
             [this](LLUICtrl* control, S32 x, S32 y, MASK)
             {
+                // Let an editor own clicks in its text field so its standard
+                // Cut/Copy/Paste menu is the only menu shown there.
+                if (pointInLineEditor(control, x, y))
+                    return;
                 S32 row_x = 0;
                 S32 row_y = 0;
                 control->localPointToOtherView(x, y, &row_x, &row_y, this);

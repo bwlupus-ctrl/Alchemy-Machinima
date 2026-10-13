@@ -24,7 +24,6 @@
   "panel_dpage_cast_path.xml|scroll-content-overflow|path_scroll: content path_scroll_content is smaller than its children on height (not auto-fit)",
   "panel_dpage_lens_filters.xml|no-scroller-overflow|filters_tab_content: children's union exceeds height without an enclosing scroll_container able to scroll that axis",
   "panel_dpage_lens_filters.xml|clipped|director_lens_looks_panel (0,4,400,824) extends outside filters_tab_content (0,0,711,525)",
-  "panel_dpage_look_actor_style.xml|scroll-content-overflow|actor_style_scroll: content actor_style_scroll_content is smaller than its children on height (not auto-fit)",
   "panel_dpage_performance_animate.xml|scroll-content-overflow|animate_scroll: content animate_scroll_content is smaller than its children on width and height (not auto-fit)",
   "panel_dpage_performance_gaze.xml|no-scroller-overflow|gaze_tab_content: children's union exceeds height without an enclosing scroll_container able to scroll that axis",
   "panel_dpage_performance_gaze.xml|clipped|director_gaze_panel (0,30,516,1910) extends outside gaze_tab_content (0,0,711,525)",

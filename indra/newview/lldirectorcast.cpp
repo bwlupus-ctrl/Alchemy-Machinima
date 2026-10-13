@@ -1070,22 +1070,26 @@ void LLDirectorCast::touchScene()
 // ---------------------------------------------------------------------------
 // membership
 // ---------------------------------------------------------------------------
-void LLDirectorCast::add(const LLUUID& id)
+void LLDirectorCast::add(const LLUUID& id, bool touch_scene)
 {
     const LLUUID actor_id = canonicalActorId(id);
     if (actor_id.isNull() || contains(actor_id))
     {
         return;
     }
+    // Resolve before insertion so seeding the cached name cannot call
+    // touchScene() through resolve()'s existing-member refresh path.
+    LLVOAvatar* avatar = resolve(actor_id);
     CastMember member;
     member.mId = actor_id;
+    if (avatar)
+        member.mLastName = avatar->getFullname();
     mCast.push_back(member);
     mIds.push_back(actor_id);
     mMemberIndex[actor_id] = mCast.size() - 1;
     ++mCastRevision; // [GhostPanelPerf] membership changed
-    touchScene();
-    // seed the cached name right away when the actor is in world
-    resolve(actor_id);
+    if (touch_scene)
+        touchScene();
     // [DirFix] D14: the effective roster changed (an empty cast's implicit self
     // gives way to explicit members): a path-editor edit actor that left it is
     // dropped here, synchronously, never from a draw-time list rebuild.

@@ -22,6 +22,7 @@
 #include "llsliderwheel.h"
 #include "llscrolllistitem.h"
 #include "llscrollcontainer.h"
+#include "llstring.h"
 #include "lltabcontainer.h"
 #include "lltextbox.h"
 #include "lluictrlfactory.h"
@@ -149,6 +150,23 @@ void pulseExternalTarget(LLFloater* floater, LLView* target)
     highlight->pulse(target);
 }
 
+std::string ellipsizeText(const LLFontGL* font, const std::string& text, S32 max_pixels)
+{
+    if (!font || text.empty() || max_pixels <= 0)
+        return std::string();
+    if (font->getWidth(text) <= max_pixels)
+        return text;
+    static const std::string ellipsis = "\xE2\x80\xA6";
+    const S32 ellipsis_width = font->getWidth(ellipsis);
+    if (ellipsis_width > max_pixels)
+        return std::string();
+    const S32 text_pixels = max_pixels - ellipsis_width;
+    const LLWString wide = utf8str_to_wstring(text);
+    const S32 chars = font->maxDrawableChars(wide.c_str(), (F32)text_pixels,
+                                              (S32)wide.size(), LLFontGL::ANYWHERE);
+    return wstring_to_utf8str(wide.substr(0, llmax(0, chars))) + ellipsis;
+}
+
 } // namespace
 
 class ALKitSearchResultRow final : public LLPanel
@@ -165,47 +183,44 @@ public:
           mCommit(std::move(commit))
     {
         setMouseOpaque(true);
-        const LLFontGL* font = ALKitStyle::sansFont("Kit12");
-        mLabelWidth = font ? font->getWidth(mLabel) : 0;
+        mLabelFont = ALKitStyle::sansFont("Kit12");
+        mDetailFont = ALKitStyle::monoFont("Kit11");
+        updateTextLayout(getRect().getWidth());
     }
 
     void setSelected(bool selected) { mSelected = selected; }
 
+    void reshape(S32 width, S32 height, bool called_from_parent = true) override
+    {
+        LLPanel::reshape(width, height, called_from_parent);
+        if (width != mLayoutWidth)
+            updateTextLayout(width);
+    }
+
     void draw() override
     {
         LL_PROFILE_ZONE_SCOPED_CATEGORY_UI;
-        const S32 width = getRect().getWidth();
         if (mHovered || mSelected)
             gl_rect_2d(getLocalRect(), ALKitStyle::color(ALKitStyle::ROW_HOVER).get(), true);
 
         constexpr S32 LEFT = 8;
-        constexpr S32 RIGHT = 8;
-        const S32 available = llmax(1, width - LEFT - RIGHT);
-        const LLFontGL* label_font = ALKitStyle::sansFont("Kit12");
-        const LLFontGL* detail_font = ALKitStyle::monoFont("Kit11");
-        if (label_font)
+        if (mLabelFont)
         {
-            const S32 context_width = label_font->getWidth(mContext);
-            const S32 label_limit = mContext.empty() ? available
-                : llmax(40, available - llmin(context_width, available / 2));
-            label_font->renderUTF8(mLabel, 0, (F32)LEFT, 25.f,
+            mLabelFont->renderUTF8(mDrawLabel, 0, (F32)LEFT, 25.f,
                                    ALKitStyle::color(ALKitStyle::TEXT).get(), LLFontGL::LEFT,
-                                   LLFontGL::VCENTER, LLFontGL::NORMAL, LLFontGL::NO_SHADOW,
-                                   S32_MAX, label_limit, nullptr, true);
-            if (!mContext.empty())
+                                   LLFontGL::VCENTER, LLFontGL::NORMAL, LLFontGL::NO_SHADOW);
+            if (!mDrawContext.empty())
             {
-                const S32 context_x = LEFT + llmin(mLabelWidth, label_limit) + 4;
-                label_font->renderUTF8(mContext, 0, (F32)context_x, 25.f,
+                const S32 context_x = LEFT + mLabelWidth + 4;
+                mLabelFont->renderUTF8(mDrawContext, 0, (F32)context_x, 25.f,
                                        ALKitStyle::color(ALKitStyle::MUTED).get(), LLFontGL::LEFT,
-                                       LLFontGL::VCENTER, LLFontGL::NORMAL, LLFontGL::NO_SHADOW,
-                                       S32_MAX, llmax(1, width - context_x - RIGHT), nullptr, true);
+                                       LLFontGL::VCENTER, LLFontGL::NORMAL, LLFontGL::NO_SHADOW);
             }
         }
-        if (detail_font && !mDetail.empty())
-            detail_font->renderUTF8(mDetail, 0, (F32)LEFT, 10.f,
+        if (mDetailFont && !mDrawDetail.empty())
+            mDetailFont->renderUTF8(mDrawDetail, 0, (F32)LEFT, 10.f,
                                     ALKitStyle::color(ALKitStyle::MUTED).get(), LLFontGL::LEFT,
-                                    LLFontGL::VCENTER, LLFontGL::NORMAL, LLFontGL::NO_SHADOW,
-                                    S32_MAX, available, nullptr, true);
+                                    LLFontGL::VCENTER, LLFontGL::NORMAL, LLFontGL::NO_SHADOW);
         LLPanel::draw();
     }
 
@@ -229,10 +244,32 @@ public:
     }
 
 private:
+    void updateTextLayout(S32 width)
+    {
+        constexpr S32 LEFT = 8;
+        constexpr S32 RIGHT = 8;
+        mLayoutWidth = width;
+        const S32 available = llmax(1, width - LEFT - RIGHT);
+        const S32 context_width = mLabelFont ? mLabelFont->getWidth(mContext) : 0;
+        const S32 label_limit = mContext.empty() ? available
+            : llmax(40, available - llmin(context_width, available / 2));
+        mDrawLabel = ellipsizeText(mLabelFont, mLabel, label_limit);
+        mLabelWidth = mLabelFont ? mLabelFont->getWidth(mDrawLabel) : 0;
+        const S32 context_limit = llmax(1, available - mLabelWidth - 4);
+        mDrawContext = ellipsizeText(mLabelFont, mContext, context_limit);
+        mDrawDetail = ellipsizeText(mDetailFont, mDetail, available);
+    }
+
     std::string mLabel;
     std::string mContext;
     std::string mDetail;
+    std::string mDrawLabel;
+    std::string mDrawContext;
+    std::string mDrawDetail;
     commit_fn_t mCommit;
+    const LLFontGL* mLabelFont = nullptr;
+    const LLFontGL* mDetailFont = nullptr;
+    S32         mLayoutWidth = -1;
     S32         mLabelWidth = 0;
     bool        mHovered = false;
     bool        mSelected = false;
@@ -406,15 +443,17 @@ void ALKitShell::buildChrome()
     mSearchPopover->setFocusLostCallback(
         [tab_handle](LLFocusableElement*)
         {
-            // Focus left the popup (e.g. a result row was focused, then the user
-            // clicked elsewhere): close it unless focus is still inside it.
-            ALKitShell* shell = tab_handle.get();
-            if (!shell || !shell->mSearchPopover)
-                return;
-            LLView* focus = dynamic_cast<LLView*>(gFocusMgr.getKeyboardFocus());
-            if (focus && focus->hasAncestor(shell->mSearchPopover))
-                return;
-            shell->setSearchPopupArmed(nullptr, false);
+            doOnIdleOneTime([tab_handle]()
+            {
+                ALKitShell* shell = tab_handle.get();
+                if (!shell || !shell->mSearchPopover)
+                    return;
+                LLView* focus = dynamic_cast<LLView*>(gFocusMgr.getKeyboardFocus());
+                if (focus && (focus->hasAncestor(shell->mSearchPopover) ||
+                              dynamic_cast<ALKitSearchEditor*>(focus)))
+                    return;
+                shell->setSearchPopupArmed(nullptr, false);
+            });
         });
     LLTextBox::Params text_params;
     text_params.name = "kit_search_header";
@@ -1046,7 +1085,10 @@ bool ALKitShell::selectPage(const std::string& page_name)
     if (built)
     {
         if (ALKitPage* selected = currentKitPage())
+        {
             selected->setChangedOnlyValue(mChangedOnly);
+            mPageSelected(selected->pageKey());
+        }
         if (mChangedOnly || !mSearch.queryText().empty())
             runSearch(mSearch.queryText());
     }
@@ -1193,16 +1235,26 @@ void ALKitShell::pageBuilt(const std::string&, LLPanel* panel)
             },
             nullptr);
         editor->setFocusLostCallback(
-            [handle](LLFocusableElement*)
+            [handle, editor_handle = editor->getHandle()](LLFocusableElement*)
             {
-                ALKitShell* shell = handle.get();
-                if (!shell || !shell->mSearchPopover)
-                    return;
-                // Focus moving into the popup (a result row) keeps it open.
-                LLView* focus = dynamic_cast<LLView*>(gFocusMgr.getKeyboardFocus());
-                if (focus && focus->hasAncestor(shell->mSearchPopover))
-                    return;
-                shell->setSearchPopupArmed(nullptr, false);
+                // Focus callbacks run during the transition, so inspect the
+                // settled destination on idle before deciding to disarm.
+                doOnIdleOneTime([handle, editor_handle]()
+                {
+                    ALKitShell* shell = handle.get();
+                    LLView* editor_view = editor_handle.get();
+                    if (!shell || !shell->mSearchPopover)
+                        return;
+                    if (!editor_view)
+                    {
+                        shell->setSearchPopupArmed(nullptr, false);
+                        return;
+                    }
+                    LLView* focus = dynamic_cast<LLView*>(gFocusMgr.getKeyboardFocus());
+                    if (focus == editor_view || (focus && focus->hasAncestor(shell->mSearchPopover)))
+                        return;
+                    shell->setSearchPopupArmed(nullptr, false);
+                });
             });
         if (mSearchPopover)
             mSearchPopover->bindAnchor(editor);
@@ -1502,15 +1554,13 @@ bool ALKitShell::handleSearchKey(KEY key)
     }
     if (key == KEY_RETURN && mHasTopSearchHit)
     {
-        if (mTopSearchHit.external)
-            return openExternalResult(mTopSearchHit);
-        ALKitTarget target;
-        target.page_key = mTopSearchHit.page_key;
-        target.card_id  = mTopSearchHit.card_id;
-        target.widget   = mTopSearchHit.widget;
-        target.setting  = mTopSearchHit.setting;
-        target.option   = mTopSearchHit.option;
-        navigateTo(target);
+        const ALKitSearch::Hit hit = mTopSearchHit;
+        LLHandle<ALKitShell> handle = getDerivedHandle<ALKitShell>();
+        doOnIdleOneTime([handle, hit]()
+        {
+            if (ALKitShell* shell = handle.get())
+                shell->activateSearchResult(hit);
+        });
         return true;
     }
     if (mSearchHits.empty())
@@ -1533,7 +1583,17 @@ void ALKitShell::activateSearchResult()
 {
     if (mSearchSelection < 0 || mSearchSelection >= (S32)mSearchHits.size())
         return;
-    const ALKitSearch::Hit& hit = mSearchHits[mSearchSelection];
+    const ALKitSearch::Hit hit = mSearchHits[mSearchSelection];
+    LLHandle<ALKitShell> handle = getDerivedHandle<ALKitShell>();
+    doOnIdleOneTime([handle, hit]()
+    {
+        if (ALKitShell* shell = handle.get())
+            shell->activateSearchResult(hit);
+    });
+}
+
+void ALKitShell::activateSearchResult(const ALKitSearch::Hit& hit)
+{
     if (hit.external)
     {
         openExternalResult(hit);

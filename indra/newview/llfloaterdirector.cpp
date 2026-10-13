@@ -37,6 +37,9 @@
 #include "alcinelightrigmanager.h"
 #include "alrotoink.h"
 #include "altron.h"
+#include "alkitpresets.h"
+#include "alpanelcinelightrig.h"
+#include "llviewercamera.h"
 #include "aldirectorswitcher.h"
 #include "llactormover.h"
 #include "llagent.h"                   // stable self id while avatar rebuilds
@@ -294,9 +297,173 @@ F32 default_locomotion_speed(S32 role)
 
 } // anonymous namespace
 
+namespace
+{
+// Kit preset providers for the two Look pages. The ids are the Lightbox combo values
+// (floater_lightbox_settings.xml ri_preset_combo / tr_preset_combo, 63 Roto Ink and 15 Tron looks),
+// and apply() calls the same ALRotoInk / ALTron entry point the Lightbox combo calls, so the kit
+// and the Lightbox write identical values. Separator items (value -1) are not looks and are skipped.
+const char* const kRotoLooks[][2] = {
+    {"comic", "Comic Ink"},
+    {"bold", "Bold Comic"},
+    {"manga", "Manga Fine Line"},
+    {"anime", "Anime Cel Line"},
+    {"pencil", "Pencil Sketch"},
+    {"charcoal", "Charcoal"},
+    {"boil", "Rotoscope Boil"},
+    {"storyboard", "Storyboard"},
+    {"chalk", "Chalk on Dark"},
+    {"neon", "Neon Line"},
+    {"tron", "Tron Glow"},
+    {"inkwash", "Ink Wash"},
+    {"blueprint", "Blueprint"},
+    {"stainedglass", "Stained Glass"},
+    {"holoscan", "Hologram Scan"},
+    {"chase", "Chase Light"},
+    {"matchglow", "Light-Matched Glow"},
+    {"wireshimmer", "Wire Shimmer"},
+    {"woodcut", "Woodcut"},
+    {"ballpoint", "Ballpoint Doodle"},
+    {"ants", "Marching Ants"},
+    {"dashblue", "Dashed Blueprint"},
+    {"doubleline", "Double-Line Cartoon"},
+    {"engraving", "Cross-hatch Engraving"},
+    {"pointillist", "Dotted Pointillist"},
+    {"candy", "Two-Tone Candy"},
+    {"brush", "Breathing Brush"},
+    {"speedlines", "Comic Speed Lines"},
+    {"heartbeat", "Neon Heartbeat"},
+    {"writeon", "Ink Write-On"},
+    {"ripple", "Ripple Pulse"},
+    {"shockwave", "Shockwave"},
+    {"painton", "Paint-On Bottom-Up"},
+    {"radial", "Radial Reveal"},
+    {"tempo120", "Tempo Pulse 120"},
+    {"electric", "Electric Arc"},
+    {"glitch", "Glitch Line"},
+    {"strobe", "Strobe Poster"},
+    {"neonbuzz", "Neon Tube Buzz"},
+    {"barber", "Barber Pole"},
+    {"lightning", "Lightning Storm"},
+    {"oldfilm", "Old Film Jitter"},
+    {"pixel8", "8-bit Pixel"},
+    {"morse", "Morse Code"},
+    {"dissolve", "Dissolve Sketch"},
+    {"fire", "Fire Lick"},
+    {"smoke", "Smoke Wisps"},
+    {"drip", "Ink Drip"},
+    {"heatshimmer", "Heat Shimmer"},
+    {"jelly", "Jelly Wobble"},
+    {"splatter", "Splatter Pop"},
+    {"sparkle", "Sparkle Trail"},
+    {"fireflies", "Orbit Fireflies"},
+    {"constellation", "Constellation"},
+    {"rainbow", "Rainbow Cycle"},
+    {"holoflicker", "Hologram Flicker"},
+    {"villain", "Villain Aura"},
+    {"waverunner", "Wave Runner"},
+    {"tron_legacy", "Tron Legacy Ink"},
+    {"tron_ares", "Tron Ares Ink"},
+    {"tron_1982", "Classic 1982 Ink"},
+    {"tron_recognizer", "Recognizer Ink"},
+    {"tron_uprising", "Uprising White Ink"},
+};
+
+const char* const kTronLooks[][2] = {
+    {"legacy", "Tron Legacy Cyan"},
+    {"ares", "Tron Ares Red"},
+    {"classic82", "Classic 1982"},
+    {"recognizer", "Recognizer Orange"},
+    {"uprising", "Uprising White"},
+    {"rinzler", "Rinzler"},
+    {"siren", "Siren White"},
+    {"quorra", "Quorra"},
+    {"clugold", "Clu Gold"},
+    {"seaofsim", "Sea of Simulation"},
+    {"circuit", "Circuit City"},
+    {"arena", "Disc Arena"},
+    {"gridonly", "Grid Only (no grade)"},
+    {"neonsuit", "Neon Suit Only"},
+    {"lightcycle", "Light-Cycle Run"},
+};
+
+template <size_t N>
+std::vector<ALKitPresetProvider::Entry> looksFrom(const char* const (&table)[N][2])
+{
+    std::vector<ALKitPresetProvider::Entry> out;
+    out.reserve(N);
+    for (size_t i = 0; i < N; ++i)
+    {
+        out.push_back({ table[i][0], table[i][1], true });
+    }
+    return out;
+}
+
+void applyRotoLook(const std::string& id) { ALRotoInk::applyPreset(id); }
+void applyTronLook(const std::string& id) { ALTron::applyPreset(id); }
+
+class ALLookPresetProvider final : public ALKitPresetProvider
+{
+public:
+    ALLookPresetProvider(std::string key, std::vector<Entry> looks, void (*apply)(const std::string&),
+                         std::vector<std::string> tracked) :
+        mKey(std::move(key)),
+        mLooks(std::move(looks)),
+        mApply(apply),
+        mTracked(std::move(tracked))
+    {}
+
+    const std::string& key() const override { return mKey; }
+
+    void list(std::vector<Entry>& out) const override
+    {
+        out.insert(out.end(), mLooks.begin(), mLooks.end());
+    }
+
+    bool apply(const std::string& id) override
+    {
+        for (const Entry& look : mLooks)
+        {
+            if (look.id == id)
+            {
+                mApply(id);
+                return true;
+            }
+        }
+        return false;
+    }
+
+    U64 revision() const override { return 0; }
+
+    const std::vector<std::string>& trackedSettings() const override { return mTracked; }
+
+private:
+    std::string                mKey;
+    std::vector<Entry>         mLooks;
+    void                       (*mApply)(const std::string&);
+    std::vector<std::string>   mTracked;
+};
+
+void registerLookPresetProviders()
+{
+    static bool registered = false;
+    if (registered)
+    {
+        return;
+    }
+    registered = true;
+    ALKitPresetRegistry::instance().add(std::make_unique<ALLookPresetProvider>(
+        "roto_ink", looksFrom(kRotoLooks), applyRotoLook, std::vector<std::string>(ALRotoInk::settings())));
+    ALKitPresetRegistry::instance().add(std::make_unique<ALLookPresetProvider>(
+        "tron_look", looksFrom(kTronLooks), applyTronLook, std::vector<std::string>(ALTron::lookSettings())));
+}
+} // anonymous namespace
+
 LLFloaterDirector::LLFloaterDirector(const LLSD& key)
 :   LLFloater(key)
 {
+    registerLookPresetProviders();
+    ALTron::initializeSettingSync();
     mBuildTimer.start();
 }
 
@@ -323,6 +490,8 @@ LLFloaterDirector::~LLFloaterDirector()
 
 void LLFloaterDirector::onClose(bool app_quitting)
 {
+    if (mShell)
+        mShell->setSearchPopupArmed(nullptr, false);
     if(mShell)if(ALKitPage* page=mShell->currentKitPage())page->saveState();
     // Closing can merely hide this reusable floater, so its child panel may
     // remain alive. Explicitly release a live bullet-time cut here as well.
@@ -332,6 +501,20 @@ void LLFloaterDirector::onClose(bool app_quitting)
         if (ALAvatarLightResponse::instanceExists())
             ALAvatarLightResponse::instance().saveIfPersist();
     }
+}
+
+void LLFloaterDirector::onFocusLost()
+{
+    if (mShell)
+        mShell->setSearchPopupArmed(nullptr, false);
+    LLFloater::onFocusLost();
+}
+
+void LLFloaterDirector::setMinimized(bool minimized)
+{
+    if (minimized && mShell)
+        mShell->setSearchPopupArmed(nullptr, false);
+    LLFloater::setMinimized(minimized);
 }
 
 bool LLFloaterDirector::postBuild()
@@ -730,23 +913,6 @@ bool LLFloaterDirector::postBuild()
             if (cues.mName.empty()) return llformat("%d cue%s", count, count == 1 ? "" : "s");
             return llformat("%d cue%s \xC2\xB7 %s", count, count == 1 ? "" : "s", cues.mName.c_str());
         });
-    addLauncherCard("image",
-        [] { ALFloaterLightBox::showTab("colortone_settings"); },
-        []
-        {
-            static LLCachedControl<S32> type(gSavedSettings, "AlchemyRenderTonemapType", 0);
-            static LLCachedControl<F32> exposure(gSavedSettings, "RenderExposure", 0.f);
-            static LLCachedControl<bool> lut(gSavedSettings, "RenderColorGrade", false);
-            static const char* labels[] = { "Khronos Neutral", "ACES", "ACES Boosted",
-                "Reinhard", "Filmic", "GT", "AgX", "AMD LPM", "S-Log3 Capture" };
-            const S32 index = llclamp((S32)type, 0, 8);
-            return llformat("%s \xC2\xB7 Exposure %.2f%s", labels[index], (F32)exposure,
-                            lut ? " \xC2\xB7 LUT" : "");
-        });
-    addLauncherCard("rotoink", [] { ALFloaterLightBox::showTab("rotoink_settings"); }, []
-        { static LLCachedControl<bool> on(gSavedSettings, "CineOutlineEnabled", false); return std::string(on ? "On" : "Off"); });
-    addLauncherCard("tron", [] { ALFloaterLightBox::showTab("tron_settings"); }, []
-        { static LLCachedControl<bool> on(gSavedSettings, "TronEnabled", false); return std::string(on ? "On" : "Off"); });
     addLauncherCard("haze", [] { ALFloaterLightBox::showTab("cinehaze_settings"); }, []
         { static LLCachedControl<bool> on(gSavedSettings, "CineHazeEnable", false); return std::string(on ? "On" : "Off"); });
     addLauncherCard("shadows_probes", [] { ALFloaterLightBox::showTab("shadow_settings"); }, []
@@ -806,6 +972,17 @@ bool LLFloaterDirector::postBuildV2()
             if (LLFloaterDirector* director = handle.get())
             {
                 director->bindPage(page, panel);
+            }
+        });
+    mPageSelectedConnection = mShell->setPageSelectedCallback(
+        [handle](const std::string& page)
+        {
+            if (page == "look_group/image_tab")
+            {
+                if (LLFloaterDirector* director = handle.get())
+                {
+                    ALColorGrade::populateLUTCombo(director->findChild<LLComboBox>("colorlut_combo"));
+                }
             }
         });
     mScrollFit.setUnwrappedPages(mShell->unwrappedPages());
@@ -1026,6 +1203,9 @@ void LLFloaterDirector::bindPage(const std::string& page, LLView* root)
         { "move_tab", &LLFloaterDirector::bindMovePage },
         { "path_tab", &LLFloaterDirector::bindPathPage },
         { "actor_style_tab", &LLFloaterDirector::bindActorStylePage },
+        { "stylize_tab", &LLFloaterDirector::bindRotoInkPage },
+        { "tron_tab", &LLFloaterDirector::bindTronPage },
+        { "image_tab", &LLFloaterDirector::bindImagePage },
         { "animate_tab", &LLFloaterDirector::bindAnimatePage },
         { "shot_tab", &LLFloaterDirector::bindCameraPage },
         { "moves_tab", &LLFloaterDirector::bindCameraPage },
@@ -1040,8 +1220,6 @@ void LLFloaterDirector::bindPage(const std::string& page, LLView* root)
         { "practicals_tab", &LLFloaterDirector::bindLauncherPage },
         { "actors_tab", &LLFloaterDirector::bindLauncherPage },
         { "light_cues_tab", &LLFloaterDirector::bindLauncherPage },
-        { "image_tab", &LLFloaterDirector::bindLauncherPage },
-        { "stylize_tab", &LLFloaterDirector::bindLauncherPage },
         { "atmosphere_tab", &LLFloaterDirector::bindLauncherPage },
         { "shadows_probes_tab", &LLFloaterDirector::bindLauncherPage },
     };
@@ -1050,6 +1228,122 @@ void LLFloaterDirector::bindPage(const std::string& page, LLView* root)
         if (page == binding.page)
         {
             (this->*binding.binder)(root);
+        }
+    }
+}
+
+// Look > Roto Ink (generated kit page). The look list is the kit preset strip (provider roto_ink);
+// these are the page's code-bound buttons, and each calls the Lightbox's own handler target.
+void LLFloaterDirector::bindRotoInkPage(LLView* root)
+{
+    if (LLButton* reset = root->findChild<LLButton>("ri_reset_all"))
+    {
+        // LightBox.RotoInkPreset "reset" -> ALRotoInk::resetToDefaults()
+        reset->setCommitCallback([](LLUICtrl*, const LLSD&) { ALRotoInk::resetToDefaults(); });
+    }
+    if (LLButton* open = root->findChild<LLButton>("open_lightbox_roto"))
+    {
+        open->setCommitCallback([](LLUICtrl*, const LLSD&) { ALFloaterLightBox::showTab("rotoink_settings"); });
+    }
+}
+
+// Look > Tron (generated kit page). The look list is the kit preset strip (provider tron_look).
+void LLFloaterDirector::bindTronPage(LLView* root)
+{
+    if (LLButton* reset = root->findChild<LLButton>("tr_reset_all"))
+    {
+        // LightBox.TronPreset "reset" -> ALTron::resetToDefaults()
+        reset->setCommitCallback([](LLUICtrl*, const LLSD&) { ALTron::resetToDefaults(); });
+    }
+    // Palette/colour side effects are setting-signal driven in ALTron so
+    // reset, paste, preset, undo and Lightbox writes behave identically.
+    if (LLButton* snap = root->findChild<LLButton>("tr_grid_origin_snap_btn"))
+    {
+        // LightBox.TronGridOriginSnap
+        snap->setCommitCallback([](LLUICtrl*, const LLSD&)
+        {
+            if (LLViewerCamera* camera = LLViewerCamera::getInstance())
+            {
+                gSavedSettings.setVector3d("TronGridOriginGlobal", gAgent.getPosGlobalFromAgent(camera->getOrigin()));
+            }
+        });
+    }
+    if (LLButton* clear = root->findChild<LLButton>("tr_grid_origin_clear_btn"))
+    {
+        // LightBox.TronGridOriginClear
+        clear->setCommitCallback([](LLUICtrl*, const LLSD&) { gSavedSettings.setVector3d("TronGridOriginGlobal", LLVector3d::zero); });
+    }
+    if (LLButton* trails = root->findChild<LLButton>("tr_trail_clear_btn"))
+    {
+        // LightBox.TronClearTrails
+        trails->setCommitCallback([](LLUICtrl*, const LLSD&) { ALTron::clearTrails(); });
+    }
+    if (LLButton* roto = root->findChild<LLButton>("tr_apply_roto_preset_btn"))
+    {
+        // LightBox.TronApplyRotoPreset
+        roto->setCommitCallback([](LLUICtrl*, const LLSD&)
+        {
+            const std::string& key = ALTron::lastPresetRotoKey();
+            if (!key.empty())
+            {
+                ALRotoInk::applyPreset(key);
+            }
+        });
+    }
+    if (LLButton* rim = root->findChild<LLButton>("tr_apply_rigrim_preset_btn"))
+    {
+        // LightBox.TronApplyRigRimPreset
+        rim->setCommitCallback([](LLUICtrl*, const LLSD&)
+        {
+            const std::string& label = ALTron::lastPresetRigRimLabel();
+            if (!label.empty() && ALPanelCineLightRig::applyRigRimPresetByName(label))
+            {
+                gSavedSettings.setS32("CineRigRimTronMode", ALTron::lastPresetRigRimTronMode());
+            }
+        });
+    }
+    if (LLButton* open = root->findChild<LLButton>("open_lightbox_tron"))
+    {
+        open->setCommitCallback([](LLUICtrl*, const LLSD&) { ALFloaterLightBox::showTab("tron_settings"); });
+    }
+}
+
+// Look > Image (generated kit page). The tone-mapper, grade, finish and operator rows are setting-bound
+// in the kit; only the reset and Lightbox links are code.
+void LLFloaterDirector::bindImagePage(LLView* root)
+{
+    ALColorGrade::populateLUTCombo(root->findChild<LLComboBox>("colorlut_combo"));
+    if (LLButton* reset = root->findChild<LLButton>("exposure_default_btn"))
+    {
+        // "Reset tone" resets the tone-operator sliders this page owns. The exposure, tonemapper type,
+        // legacy-skies and S-Log EV rows are homed on the Exposure page and are not reset here.
+        reset->setCommitCallback([](LLUICtrl*, const LLSD&)
+        {
+            static const char* const tone_settings[] = {
+                "AlchemyToneMapSaturation", "AlchemyToneMapContrast",
+                "AlchemyToneMapKhronosDesaturation", "AlchemyToneMapKhronosStartCompression",
+                "AlchemyToneMapAMDHDRMax", "AlchemyToneMapAMDContrast",
+                "AlchemyToneMapAMDSaturationR", "AlchemyToneMapAMDSaturationG", "AlchemyToneMapAMDSaturationB",
+                "AlchemyToneMapSLogCurve", "AlchemyToneMapSLogRange", "AlchemyToneMapSLogToe" };
+            for (const char* name : tone_settings)
+            {
+                if (LLControlVariable* control = gSavedSettings.getControl(name).get())
+                {
+                    control->resetToDefault(true);
+                }
+            }
+        });
+    }
+    if (LLButton* hub = root->findChild<LLButton>("exposure_hub_btn"))
+    {
+        hub->setCommitCallback([](LLUICtrl*, const LLSD&) { LLFloaterReg::showInstance("exposure_hub"); });
+    }
+    for (LLButton* link : { root->findChild<LLButton>("open_lightbox_image"),
+                            root->findChild<LLButton>("set_grade_lightbox_link") })
+    {
+        if (link)
+        {
+            link->setCommitCallback([](LLUICtrl*, const LLSD&) { ALFloaterLightBox::showTab("colortone_settings"); });
         }
     }
 }
@@ -1451,36 +1745,6 @@ void LLFloaterDirector::bindLauncherPage(LLView* root)
     if (LLButton* glow = root->findChild<LLButton>("open_lightbox_glow"))
         glow->setClickedCallback([](LLUICtrl*, const LLSD&)
             { ALFloaterLightBox::showTab("glow_settings"); });
-    if (root->findChild<LLButton>("card_image_open"))
-    {
-        addLauncherCard("image", [] { ALFloaterLightBox::showTab("colortone_settings"); }, []
-        {
-            static LLCachedControl<S32> type(gSavedSettings, "AlchemyRenderTonemapType", 0);
-            static LLCachedControl<F32> exposure(gSavedSettings, "RenderExposure", 0.f);
-            static LLCachedControl<bool> lut(gSavedSettings, "RenderColorGrade", false);
-            static const char* labels[] = { "Khronos Neutral", "ACES", "ACES Boosted",
-                "Reinhard", "Filmic", "GT", "AgX", "AMD LPM", "S-Log3 Capture" };
-            const S32 index = llclamp((S32)type, 0, 8);
-            return llformat("%s \xC2\xB7 Exposure %.2f%s", labels[index], (F32)exposure,
-                lut ? " \xC2\xB7 LUT" : "");
-        });
-    }
-    if (root->findChild<LLButton>("card_rotoink_open"))
-    {
-        addLauncherCard("rotoink", [] { ALFloaterLightBox::showTab("rotoink_settings"); }, []
-        {
-            static LLCachedControl<bool> on(gSavedSettings, "CineOutlineEnabled", false);
-            return std::string(on ? "On" : "Off");
-        });
-    }
-    if (root->findChild<LLButton>("card_tron_open"))
-    {
-        addLauncherCard("tron", [] { ALFloaterLightBox::showTab("tron_settings"); }, []
-        {
-            static LLCachedControl<bool> on(gSavedSettings, "TronEnabled", false);
-            return std::string(on ? "On" : "Off");
-        });
-    }
     if (root->findChild<LLButton>("card_haze_open"))
     {
         addLauncherCard("haze", [] { ALFloaterLightBox::showTab("cinehaze_settings"); }, []
@@ -1514,6 +1778,10 @@ void LLFloaterDirector::bindLauncherPage(LLView* root)
 void LLFloaterDirector::onOpen(const LLSD& key)
 {
     LL_PROFILE_ZONE_NAMED_CATEGORY_UI("Director onOpen");
+    if (mShell && mShell->currentPageKey() == "look_group/image_tab")
+    {
+        ALColorGrade::populateLUTCombo(findChild<LLComboBox>("colorlut_combo"));
+    }
     sRecoveryDirectorHandle = getHandle();
     if (mSceneDirtyText)
     {
@@ -1890,7 +2158,16 @@ ALKitHistory* LLFloaterDirector::kitHistory()
 
 bool LLFloaterDirector::handleMouseDown(S32 x,S32 y,MASK mask)
 {
-    if(mShell)mShell->history().beginGesture(ALKitHistory::MOUSE,pageKeyAt(x,y));
+    if(mShell)
+    {
+        mShell->history().beginGesture(ALKitHistory::MOUSE,pageKeyAt(x,y));
+        // A click on the floater chrome (title bar, drag handle) never reaches
+        // the shell and doesn't move keyboard focus, so close the search popup here.
+        S32 shell_x = 0, shell_y = 0;
+        localPointToOtherView(x, y, &shell_x, &shell_y, mShell);
+        if (!mShell->pointInView(shell_x, shell_y))
+            mShell->setSearchPopupArmed(nullptr, false);
+    }
     return LLFloater::handleMouseDown(x,y,mask);
 }
 
@@ -1981,11 +2258,13 @@ void LLFloaterDirector::updateTransportTooltipCache()
     if (!mActionArmed)
     {
         mActionTooltip = "Nothing armed: check at least one 'Action fires' box";
+        mArmTooltip = "Choose what ACTION starts. " + mActionTooltip;
         return;
     }
     mActionTooltip = "Fires: " + fires.substr(0, fires.size() - 2);
     if ((F32)delay > 0.01f)
         mActionTooltip += llformat(" after a %.1f s countdown", (F32)delay);
+    mArmTooltip = "Choose what ACTION starts. " + mActionTooltip;
 }
 
 void LLFloaterDirector::refreshTransport()
@@ -2021,7 +2300,7 @@ void LLFloaterDirector::refreshTransport()
 
     mActionBtn->setEnabled(mActionArmed);
     setToolTipIfChanged(mActionBtn, mActionTooltip);
-    setToolTipIfChanged(mArmBtn, "Choose what ACTION starts. " + mActionTooltip);
+    setToolTipIfChanged(mArmBtn, mArmTooltip);
 
     if (mIsV2)
     {
@@ -2037,10 +2316,16 @@ void LLFloaterDirector::refreshTransport()
         const bool have_take = recorder.getNumKeyframes() > 0;
         mTakePlayBtn->setEnabled(have_take && !recording);
         mTakeStopBtn->setEnabled(recording || recorder.isPlaybackActive());
-        setToolTipIfChanged(mTakePlayBtn, !have_take ? "Record or load a take first" :
-            (playing ? "Pause the current camera take" : "Play the current camera take"));
-        setToolTipIfChanged(mTakeStopBtn, recording ? "Stop recording the current camera take" :
-            "Stop playback and return the take to frame zero");
+        const S32 take_tooltip_state = (have_take ? 1 : 0) | (playing ? 2 : 0) |
+                                       (recording ? 4 : 0);
+        if (take_tooltip_state != mTakeTooltipState)
+        {
+            mTakeTooltipState = take_tooltip_state;
+            setToolTipIfChanged(mTakePlayBtn, !have_take ? "Record or load a take first" :
+                (playing ? "Pause the current camera take" : "Play the current camera take"));
+            setToolTipIfChanged(mTakeStopBtn, recording ? "Stop recording the current camera take" :
+                "Stop playback and return the take to frame zero");
+        }
 
         static LLCachedControl<F32> recorder_fps(gSavedSettings, "FlycamRecSampleRate", 30.f);
         const S32 fps = llclamp(ll_round((F32)recorder_fps), 1, 120);
@@ -2112,6 +2397,13 @@ std::string LLFloaterDirector::scenesDir()
         LLFile::mkdir(dir);
     }
     return dir;
+}
+
+//static
+std::string LLFloaterDirector::sanitizeSceneName(std::string name)
+{
+    LLStringUtil::trim(name);
+    return name;
 }
 
 //static
@@ -2413,9 +2705,14 @@ void LLFloaterDirector::onClickSceneSave()
     if (!mSceneNameEditor->getVisible())
     {
         mSceneRenameSource.clear();
+        mSceneSaveAs = false;
+        // Only the scene that is actually LOADED may be re-saved without a
+        // confirm; a combo selection is just a preview of another file.
+        const std::string& current = recoveryServiceState().mCurrentSceneName;
+        mSceneWriteSource = current;
         // reveal the inline name box in the combo's spot (usability rule 2:
         // no naming popups), preloaded so "tweak and re-save" is Save-Enter
-        mSceneNameEditor->setText(mSceneCombo->getSelectedItemLabel());
+        mSceneNameEditor->setText(current.empty() ? mSceneCombo->getSelectedItemLabel() : current);
         mSceneCombo->setVisible(false);
         mSceneNameEditor->setVisible(true);
         mSceneNameEditor->setFocus(true);
@@ -2431,6 +2728,8 @@ void LLFloaterDirector::onClickSceneSaveAs()
 {
     if (mShell) mShell->closePopover();
     mSceneRenameSource.clear();
+    mSceneSaveAs = true;
+    mSceneWriteSource.clear();
     mSceneNameEditor->setText(std::string());
     mSceneCombo->setVisible(false);
     mSceneNameEditor->setVisible(true);
@@ -2444,6 +2743,8 @@ void LLFloaterDirector::onClickSceneRename()
         return;
     if (mShell) mShell->closePopover();
     mSceneRenameSource = name;
+    mSceneSaveAs = false;
+    mSceneWriteSource.clear();
     mSceneNameEditor->setText(name);
     mSceneCombo->setVisible(false);
     mSceneNameEditor->setVisible(true);
@@ -2453,24 +2754,77 @@ void LLFloaterDirector::onClickSceneRename()
 
 void LLFloaterDirector::commitSceneName()
 {
-    std::string name = mSceneNameEditor->getText();
-    LLStringUtil::trim(name);
+    const std::string name = sanitizeSceneName(mSceneNameEditor->getText());
     mSceneNameEditor->setVisible(false);
     mSceneCombo->setVisible(true);
     if (name.empty())
     {
         mSceneRenameSource.clear();
+        mSceneWriteSource.clear();
+        mSceneSaveAs = false;
         return;     // empty name = cancel, nothing written
     }
-    if (saveScene(name))
+
+    if (!mSceneRenameSource.empty())
     {
-        if (!mSceneRenameSource.empty() && mSceneRenameSource != name)
-        {
-            LLFile::remove(scenePath(mSceneRenameSource));
-        }
+        const std::string source = mSceneRenameSource;
         mSceneRenameSource.clear();
+        mSceneSaveAs = false;
+        if (source == name)
+        {
+            refreshSceneList(name);
+            return;
+        }
+        const std::string target_path = scenePath(name);
+        // Case-only renames ("Foo" -> "foo") hit the same file on Windows; allow them.
+        const bool case_only = LLStringUtil::compareInsensitive(source, name) == 0;
+        if (!case_only && gDirUtilp->fileExists(target_path))
+        {
+            LLNotificationsUtil::add("SystemMessageTip",
+                LLSD().with("MESSAGE", "Scene was not renamed: '" + name + "' already exists."));
+            refreshSceneList(source);
+            return;
+        }
+        const std::string source_path = scenePath(source);
+        if (LLFile::rename(source_path, target_path) != 0)
+        {
+            LL_WARNS("Director") << "Cannot rename scene file " << source_path
+                                 << " to " << target_path << LL_ENDL;
+            LLNotificationsUtil::add("SystemMessageTip",
+                LLSD().with("MESSAGE", "Scene was not renamed because the file could not be moved."));
+            refreshSceneList(source);
+            return;
+        }
+        RecoveryServiceState& service = recoveryServiceState();
+        if (service.mCurrentSceneName == source)
+            service.mCurrentSceneName = name;
         refreshSceneList(name);
+        showTransportToast("Renamed: " + name);
+        return;
     }
+
+    const bool confirm_overwrite = gDirUtilp->fileExists(scenePath(name)) &&
+        (mSceneSaveAs || name != mSceneWriteSource);
+    mSceneWriteSource.clear();
+    mSceneSaveAs = false;
+    if (confirm_overwrite)
+    {
+        LLHandle<LLFloater> handle = getHandle();
+        LLSD args;
+        args["MESSAGE"] = "A Director scene named '" + name + "' already exists. Replace it?";
+        LLNotificationsUtil::add("GenericAlertYesCancel", args, LLSD(),
+            [handle, name](const LLSD& notification, const LLSD& response)
+            {
+                if (LLNotificationsUtil::getSelectedOption(notification, response) != 0)
+                    return;
+                if (LLFloaterDirector* self = static_cast<LLFloaterDirector*>(handle.get()))
+                    if (self->saveScene(name))
+                        self->refreshSceneList(name);
+            });
+        return;
+    }
+    if (saveScene(name))
+        refreshSceneList(name);
 }
 
 void LLFloaterDirector::onClickSceneDelete()
@@ -2492,12 +2846,16 @@ void LLFloaterDirector::onClickSceneDelete()
                 return;
             }
             const std::string path = scenePath(name);
-            if (LLFile::remove(path) != 0)
+            const bool removed = LLFile::remove(path) == 0;
+            if (!removed)
             {
                 LL_WARNS("Director") << "Cannot delete scene file " << path << LL_ENDL;
             }
             if (LLFloaterDirector* self = static_cast<LLFloaterDirector*>(handle.get()))
             {
+                RecoveryServiceState& service = recoveryServiceState();
+                if (removed && service.mCurrentSceneName == name)
+                    service.mCurrentSceneName.clear();
                 self->refreshSceneList();
                 self->showTransportToast("Deleted: " + name);
             }
@@ -2509,6 +2867,7 @@ LLSD LLFloaterDirector::captureSceneData()
     LLSD scene = LLDirectorCast::instanceExists()
         ? LLDirectorCast::instance().sceneData() : LLSD::emptyMap();
     scene["version"] = SCENE_VERSION;
+    scene["scene_name"] = recoveryServiceState().mCurrentSceneName;
     if (LLPrismLens::instanceExists())
     {
         const LLSD prism = LLPrismLens::sceneData();
@@ -2552,16 +2911,24 @@ LLSD LLFloaterDirector::captureSceneData()
 
 bool LLFloaterDirector::saveScene(const std::string& name)
 {
-    const bool saved = writeSceneFile(scenePath(name), name, true);
+    const std::string clean_name = sanitizeSceneName(name);
+    if (clean_name.empty())
+        return false;
+    RecoveryServiceState& service = recoveryServiceState();
+    const std::string previous_name = service.mCurrentSceneName;
+    service.mCurrentSceneName = clean_name;
+    const bool saved = writeSceneFile(scenePath(clean_name), clean_name, true);
     if (saved)
     {
         markSceneClean();
         recoveryServiceState().mAutosaveTimer.reset();
         LLFile::remove(recoveryPath(), ENOENT);
-        LL_INFOS("Director") << "Saved scene '" << name << "'" << LL_ENDL;
+        LL_INFOS("Director") << "Saved scene '" << clean_name << "'" << LL_ENDL;
         if (LLFloaterDirector* director = static_cast<LLFloaterDirector*>(sRecoveryDirectorHandle.get()))
-            director->showTransportToast("Saved: " + name);
+            director->showTransportToast("Saved: " + clean_name);
     }
+    else
+        service.mCurrentSceneName = previous_name;
     return saved;
 }
 
@@ -2891,10 +3258,15 @@ bool LLFloaterDirector::loadScene(const std::string& name, bool recovery)
     }
     LL_INFOS("Director") << "Loaded scene '" << name << "'" << LL_ENDL;
     if (!recovery)
+    {
+        recoveryServiceState().mCurrentSceneName = sanitizeSceneName(name);
         markSceneClean();
+    }
     else
     {
         RecoveryServiceState& service = recoveryServiceState();
+        service.mCurrentSceneName = scene["scene_name"].isString()
+            ? sanitizeSceneName(scene["scene_name"].asString()) : std::string();
         service.mCleanSceneStamp = SceneChangeStamp();
         service.mHaveCleanSceneStamp = true;
         service.mSceneDirty = true;
@@ -5137,53 +5509,69 @@ void LLFloaterDirector::refreshStatusStrip()
         }
     }
 
-    std::string cam;
     const ALDirectorSwitcher& switcher = ALDirectorSwitcher::instance();
     const bool switching = switcher.isDrivingCamera();
     const S32 effective_mode =
         switching ? switcher.activeMode() : (S32)cam_mode;
-    if (cam_enabled && effective_mode > 0)
+    const bool camera_active = cam_enabled && effective_mode > 0;
+    const S32 switcher_slot = switching ? switcher.activeSlot() : -1;
+    LLUUID target_id;
+    bool selection_target = false;
+    if (camera_active)
     {
         // Name the framing target. A live per-slot mark wins while switching;
         // an empty/dead mark mirrors CineCam's fallback to the legacy chain.
         static LLCachedControl<bool> use_selected(gSavedSettings, "CinematicCamUseSelected", false);
-        std::string target = "you";
         const LLUUID slot_subject = switching
             ? subject_mark_id(cast, switcher.activePrimarySubject())
             : LLUUID::null;
         if (slot_subject.notNull() && cast.resolve(slot_subject))
-        {
-            target = castMemberName(slot_subject);
-        }
+            target_id = slot_subject;
         else if (cast.getSubjectA().notNull())
-        {
-            target = castMemberName(cast.getSubjectA());
-        }
+            target_id = cast.getSubjectA();
         else if (use_selected)
         {
-            const LLUUID sel = avatarFromSelection();
-            target = sel.notNull() ? castMemberName(sel) : std::string("selection");
+            target_id = avatarFromSelection();
+            selection_target = target_id.isNull();
         }
-        cam = switching
-            ? llformat("Switcher %d: %s \xE2\x86\x92 %s",
-                       switcher.activeSlot() + 1,
-                       cinecam_mode_name(effective_mode), target.c_str())
-            : llformat("CineCam: %s \xE2\x86\x92 %s",
-                       cinecam_mode_name(effective_mode), target.c_str());
-    }
-    else
-    {
-        cam = "CineCam: off";
     }
 
-    // queued staggered starts surface here so a delayed wave is never invisible
-    std::string queued;
-    if (cast.hasPendingStarts())
+    const S32 queued_count = cast.hasPendingStarts() ? cast.pendingStartCount() : 0;
+    const U64 cast_revision = cast.getCastRevision();
+    if (moving != mStatusMoving || queued_count != mStatusQueued ||
+        effective_mode != mStatusCamMode || switcher_slot != mStatusSwitcherSlot ||
+        cast_revision != mStatusCastRevision || camera_active != mStatusCamEnabled ||
+        switching != mStatusSwitching || (bool)orbit_enabled != mStatusOrbitEnabled ||
+        selection_target != mStatusSelectionTarget || target_id != mStatusTargetId)
     {
-        queued = llformat(" \xC2\xB7 %d queued", cast.pendingStartCount());
+        mStatusMoving = moving;
+        mStatusQueued = queued_count;
+        mStatusCamMode = effective_mode;
+        mStatusSwitcherSlot = switcher_slot;
+        mStatusCastRevision = cast_revision;
+        mStatusCamEnabled = camera_active;
+        mStatusSwitching = switching;
+        mStatusOrbitEnabled = orbit_enabled;
+        mStatusSelectionTarget = selection_target;
+        mStatusTargetId = target_id;
+
+        std::string cam = "CineCam: off";
+        if (camera_active)
+        {
+            const std::string target = target_id.notNull()
+                ? castMemberName(target_id) : (selection_target ? "selection" : "you");
+            cam = switching
+                ? llformat("Switcher %d: %s \xE2\x86\x92 %s", switcher_slot + 1,
+                           cinecam_mode_name(effective_mode), target.c_str())
+                : llformat("CineCam: %s \xE2\x86\x92 %s",
+                           cinecam_mode_name(effective_mode), target.c_str());
+        }
+        const std::string queued = queued_count > 0
+            ? llformat(" \xC2\xB7 %d queued", queued_count) : std::string();
+        mRoutineStatus = llformat("%d moving%s \xC2\xB7 %s \xC2\xB7 Orbit %s",
+                                  moving, queued.c_str(), cam.c_str(), orbit_enabled ? "on" : "off");
+        mCastChipTooltip = mRoutineStatus + ". Open cast tools and member list.";
     }
-    const std::string routine_status = llformat("%d moving%s \xC2\xB7 %s \xC2\xB7 Orbit %s",
-                                                moving, queued.c_str(), cam.c_str(), orbit_enabled ? "on" : "off");
     const bool problem = mIsV2 && !mActionArmed;
     if (mIsV2 && problem)
     {
@@ -5199,8 +5587,8 @@ void LLFloaterDirector::refreshStatusStrip()
     }
     else
     {
-        setTextIfChanged(mStatusStrip, routine_status);
-        setToolTipIfChanged(mStatusStrip, routine_status);
+        setTextIfChanged(mStatusStrip, mRoutineStatus);
+        setToolTipIfChanged(mStatusStrip, mRoutineStatus);
     }
 
     if (mCastChip)
@@ -5211,7 +5599,7 @@ void LLFloaterDirector::refreshStatusStrip()
             mLastCastChipCount = cast_count;
             mCastChip->setLabel(LLStringExplicit(llformat("Cast %d  ^", cast_count)));
         }
-        setToolTipIfChanged(mCastChip, routine_status + ". Open cast tools and member list.");
+        setToolTipIfChanged(mCastChip, mCastChipTooltip);
     }
 
     // REC indicator: red danger dot while capturing, muted circle when idle
@@ -5230,7 +5618,7 @@ void LLFloaterDirector::refreshStatusStrip()
         mRecIndicator->setColor(rec_color);
         mRecIndicator->setReadOnlyColor(rec_color);
         if (mTransportBar) mTransportBar->setRecording(rec);
+        setToolTipIfChanged(mRecIndicator, rec ? "Recording the current camera take" :
+            "Recorder idle. Arm Recorder capture in ACTION starts, or use the Takes page.");
     }
-    setToolTipIfChanged(mRecIndicator, rec ? "Recording the current camera take" :
-        "Recorder idle. Arm Recorder capture in ACTION starts, or use the Takes page.");
 }

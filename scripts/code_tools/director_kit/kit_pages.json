@@ -5,8 +5,7 @@
   "cast_group/move_tab": {"actor_target": true, "actor_target_synthetic": true},
   "cast_group/path_tab": {"actor_target": true, "actor_target_synthetic": true},
   "performance_group/animate_tab": {"actor_target": true, "actor_target_synthetic": true},
-  "performance_group/gaze_tab": {"actor_target": true},
-  "look_group/actor_style_tab": {"actor_target": true}
+  "performance_group/gaze_tab": {"actor_target": true}
  },
  "p0_pages": {
   "camera_group/vcam_tab": {
@@ -55,10 +54,36 @@
    "label_names": {"cine_rig_rim_tron_mode": "cine_rig_rim_tron_label",
                    "cine_rig_rim_tron_mix": "cine_rig_rim_tron_mix_label",
                    "cine_rig_rim_tron_color": "cine_rig_rim_tron_color_label"}
+  },
+  "look_group/stylize_tab": {
+   "v1_sources": [],
+   "preset": {"mode": "provider", "provider": "roto_ink"},
+   "label_names": {}
+  },
+  "look_group/tron_tab": {
+   "v1_sources": [],
+   "preset": {"mode": "provider", "provider": "tron_look"},
+   "omit_rows": ["tr_rigrim_tron_mode_combo", "tr_rigrim_tron_mix_slider", "tr_rigrim_tron_color_combo"],
+   "omit_rows_note": "The three one-home Rig Rim tint rows are represented by tr_rigrim_link below.",
+   "add_rows": [
+    {"card": "integration", "row": {"k": "link", "w": "tr_rigrim_link", "l": "Rig Rim tint", "h": "Rim tint lives on Light › Rim.", "to": "light_group/light_rim_tab"}}
+   ],
+   "label_names": {}
+  },
+  "look_group/image_tab": {
+   "v1_sources": [],
+   "omit_rows": ["tonemap_type_combo", "exposure_slider", "tonemap_legacy_gamma_skies", "lpm_toneexp_slider", "slog_ev_slider"],
+   "omit_rows_note": "Homed on Light > Exposure, which is still a legacy (embedded v1) page, so kit_lint cannot see a home writer for a shortcut; the page's Exposure link row covers them. Re-add as shortcut_of rows (user-approved 10/13) when the Light batch converts exposure_tab.",
+   "label_names": {}
+  },
+  "look_group/actor_style_tab": {
+   "v1_sources": [],
+   "actor_target": true,
+   "label_names": {}
   }
  },
  "layout_overrides": {"look_group/bloom_glow_tab": {"row_overrides": {"set_RenderBloomMipCount": {"row_height": 32}}}},
- "launcher_targets": {"look_group/tron_tab": {"target": "lightbox", "target_tab": "tron_settings", "button_label": "Open Tron in Lightbox ›", "help": "Tron is edited in the Lightbox until its page is converted."}},
+ "launcher_targets": {},
  "parity_allow": {"cine_rig_rim_preset": "replaced by the kit preset strip (provider rig_rim)",
                   "card_snapshot_open": "retired Director launcher; Snapshot remains in its standalone floater",
                   "card_snapshot_summary": "retired Director launcher; Snapshot remains in its standalone floater",

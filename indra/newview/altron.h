@@ -105,6 +105,7 @@ namespace ALTron
     // (Custom) or an unknown id is a no-op: the existing colours are left
     // untouched.
     void applyPalettePreset(S32 id);
+    void initializeSettingSync();
 
     // Shared, unwrapped Tron clock. Latched exactly ONCE per main-loop
     // iteration (see latchFrame()) so every consumer within the same frame
@@ -258,6 +259,7 @@ namespace ALTron
     // ALRotoInk::resetToDefaults()). Grows as later phases add
     // grade/grid/trace/rim/trail/integration keys.
     const std::vector<std::string>& settings();
+    const std::vector<std::string>& lookSettings();
 
     // Resets every key in settings() to its settings.xml default.
     void resetToDefaults();

@@ -28,6 +28,7 @@ class ALKitShell : public LLPanel
 public:
     using uuid_vec_t          = std::vector<LLUUID>;
     using page_built_signal_t = boost::signals2::signal<void(const std::string&, LLPanel*)>;
+    using page_selected_signal_t = boost::signals2::signal<void(const std::string&)>;
     using cast_signal_t       = boost::signals2::signal<void(const uuid_vec_t&)>;
     struct RailItem : public LLInitParam::Block<RailItem>
     {
@@ -95,6 +96,7 @@ public:
     bool                        changedOnly() const { return mChangedOnly; }
     void                        setOpenPopover(ALKitPopover*);
     boost::signals2::connection setPageBuiltCallback(const page_built_signal_t::slot_type& s) { return mPageBuilt.connect(s); }
+    boost::signals2::connection setPageSelectedCallback(const page_selected_signal_t::slot_type& s) { return mPageSelected.connect(s); }
     boost::signals2::connection setCastSelectionCallback(const cast_signal_t::slot_type& s) { return mCastSelection.connect(s); }
     void                        emitPageBuilt(const std::string& name, LLPanel* p) { mPageBuilt(name, p); }
     void                        setCastSelection(const uuid_vec_t& ids) { mCurrentCastSelection = ids; mCastSelection(ids); }
@@ -126,6 +128,7 @@ private:
     void                                                 queueSearch(const std::string&);
     void                                                 updateSearchResults(const ALKitSearch::Hits&, ALKitPage*);
     void                                                 activateSearchResult();
+    void                                                 activateSearchResult(const ALKitSearch::Hit&);
     bool                                                 openExternalResult(const ALKitSearch::Hit&);
     void                                                 scheduleSearchBatch();
     void                                                 rebuildQuick();
@@ -151,6 +154,7 @@ private:
     ALScrollFit::Controller                              mScrollFit;
     ALScrollFit::Controller*                             mExternalScrollFit = nullptr;
     page_built_signal_t                                  mPageBuilt;
+    page_selected_signal_t                               mPageSelected;
     cast_signal_t                                        mCastSelection;
     uuid_vec_t                                           mCurrentCastSelection;
     LLTabContainer*                                      mDirectorTabs = nullptr;

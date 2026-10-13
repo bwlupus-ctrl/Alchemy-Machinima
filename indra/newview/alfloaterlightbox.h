@@ -45,6 +45,13 @@ class LLButton;
 class LLCheckBoxCtrl;
 class LLColorSwatchCtrl;
 class LLComboBox;
+
+namespace ALColorGrade
+{
+    // Rebuilds the complete LUT menu (built-ins plus user colorlut/ files)
+    // and restores the RenderColorGradeLUT selection.
+    void populateLUTCombo(LLComboBox* combo);
+}
 class LLPanel;
 class LLSliderCtrl;
 class LLTextBox;
@@ -81,7 +88,6 @@ public:
     void onClickResetGroupDefault(const LLSD& userdata);
     void updateTonemapper();
     void updateCAS();
-    void populateLUTCombo();
     // [BDMerge G3.3 Batch 3] Selected Light quick panel: live per-projector
     // controls that follow the currently-selected object.
     void updateSelectedLightPanel();

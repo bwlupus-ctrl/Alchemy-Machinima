@@ -1675,13 +1675,16 @@ def run_selftest(json_output: bool) -> int:
         for item in check_file(path, source_index)
     }
     runtime_ok = runtime_observed <= declared_baseline if baseline_ok else False
-    real_passed = real_ok and real_count == 30 and baseline_ok and runtime_ok
+    # Legacy (embedded v1) Director pages still pinned to v1 findings. Lower this as
+    # pages become real kit pages (user-approved 10/13, Look batch: 30 -> 27); never raise it.
+    LEGACY_PAGE_COUNT = 27
+    real_passed = real_ok and real_count == LEGACY_PAGE_COUNT and baseline_ok and runtime_ok
     passed = passed and real_passed
-    reports.append({"fixture": "real legacy pages", "expected": "30 pages match v1 leaf findings",
+    reports.append({"fixture": "real legacy pages", "expected": f"{LEGACY_PAGE_COUNT} pages match v1 leaf findings",
                     "count": real_count, "passed": real_passed})
     if not json_output:
         print(f"{'PASS' if real_passed else 'FAIL'} real legacy pages: "
-              f"{matching_count}/30 match v1 finding keys; strict baseline "
+              f"{matching_count}/{LEGACY_PAGE_COUNT} match v1 finding keys; strict baseline "
               f"{'matches' if baseline_ok else 'differs'}; transitive wiring "
               f"{'passes' if runtime_ok else 'differs'}")
     if json_output:

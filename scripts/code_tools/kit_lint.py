@@ -104,7 +104,10 @@ NO_CONTROL_KINDS = frozenset({"vec2", "vec3", "link"})
 KIND_TYPES: dict[str, tuple[str, ...]] = {
     "slider": NUMERIC, "number": NUMERIC, "dial": NUMERIC, "arc": NUMERIC,
     "toggle": BOOLEAN, "combo": COMBO, "color": COLOR, "text": ("String",),
-    "vec2": VECTOR, "vec3": VECTOR,
+    # vec3 also accepts Color3 (user-approved 10/13): ALKitVecBinding writes a
+    # 3-element LLSD array, which a Color3 control takes as-is (colour-grade
+    # curve rows Toe/Shoulder/Strength). Color4 and vec2 stay excluded.
+    "vec2": VECTOR, "vec3": VECTOR + ("Color3",),
 }
 # Setting types a control widget may bind through control_name.
 TAG_TYPES: dict[str, tuple[str, ...]] = {
