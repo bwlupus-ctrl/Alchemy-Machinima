@@ -1979,22 +1979,27 @@ public:
     std::string defaultLabel(LLPrismLens::ECaptureMode mode, bool is_virtual,
                              S32 existing_slot = -1) const
     {
-        U32 ordinal = 1;
+        // Lowest number not used by another capture's "<Prefix> N" label, so
+        // deleting a camera frees its number (no gaps, no duplicates).
+        const char* prefix = mode == LLPrismLens::ECaptureMode::SURFACE_LENS
+            ? "Surface Lens " : (is_virtual ? "Virtual " : "Camera ");
+        const size_t prefix_len = strlen(prefix);
+        bool used[LLPrismLens::MAX_CAPTURES + 2] = {};
         for (U32 slot = 0; slot < static_cast<U32>(std::size(mLenses)); ++slot)
         {
-            if (existing_slot >= 0 && slot >= static_cast<U32>(existing_slot))
-                break;
+            if (existing_slot >= 0 && slot == static_cast<U32>(existing_slot))
+                continue;
             const PrismInstance& capture = mLenses[slot];
-            if (!capture.mOccupied || capture.mMode != mode)
+            if (!capture.mOccupied) continue;
+            const std::string& label = capture.mLabel;
+            if (label.size() <= prefix_len || label.compare(0, prefix_len, prefix) != 0)
                 continue;
-            if (mode == LLPrismLens::ECaptureMode::CAMERA_FEED &&
-                capture.mCamera.mVirtual != is_virtual)
-                continue;
-            ++ordinal;
+            const U32 number = static_cast<U32>(atoi(label.c_str() + prefix_len));
+            if (number >= 1 && number < std::size(used)) used[number] = true;
         }
-        if (mode == LLPrismLens::ECaptureMode::SURFACE_LENS)
-            return llformat("Surface Lens %u", ordinal);
-        return llformat(is_virtual ? "Virtual %u" : "Camera %u", ordinal);
+        U32 ordinal = 1;
+        while (ordinal + 1 < std::size(used) && used[ordinal]) ++ordinal;
+        return llformat("%s%u", prefix, ordinal);
     }
 
     LLPrismLens::ActionStatus cameraSelectionStatus(
