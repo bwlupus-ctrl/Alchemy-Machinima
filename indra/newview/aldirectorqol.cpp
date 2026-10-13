@@ -36,7 +36,8 @@ S32 editDistance(const std::string& left, const std::string& right, S32 ceiling)
             return ceiling + 1;
         previous.swap(current);
     }
-    return previous.back();
+    // previous holds the last DP row; its live width is right.size() + 1.
+    return previous[right.size()];
 }
 
 bool isSubsequence(const std::string& needle, const std::string& haystack)
@@ -69,6 +70,26 @@ S32 ALDirectorQol::fuzzyTokenScore(const std::string& query_value,
     const S32 ceiling = query.size() < 5 ? 1 : 2;
     const S32 distance = editDistance(query, candidate, ceiling);
     return distance <= ceiling ? 58 - distance * 8 : 0;
+}
+
+S32 ALDirectorQol::searchTokenScore(const std::string& query,
+                                    const std::string& candidate,
+                                    SearchField field)
+{
+    static constexpr S32 WEIGHTS[] = { 80, 55, 45, 25, 90, 15, 5 };
+    const S32 fuzzy = fuzzyTokenScore(query, candidate);
+    return fuzzy ? WEIGHTS[static_cast<U32>(field)] + fuzzy : 0;
+}
+
+bool ALDirectorQol::searchResultBefore(S32 left_score, bool left_external,
+                                       U32 left_order, S32 right_score,
+                                       bool right_external, U32 right_order)
+{
+    if (left_score != right_score)
+        return left_score > right_score;
+    if (left_external != right_external)
+        return !left_external;
+    return left_order < right_order;
 }
 
 std::vector<LLUUID> ALDirectorQol::subjectAssignment(

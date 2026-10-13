@@ -23,11 +23,16 @@ public:
         std::string label;
         std::string label_lower;
         std::string path;
+        std::string external_floater;
+        std::string external_label;
+        std::string external_tab;
+        std::string external_tab_label;
         S32         option   = -1;
         S32         decimals = 3;
         S32         score    = 0;
         U32         order    = 0;
         bool        advanced = false;
+        bool        external = false;
         ALKitRow*   row      = nullptr;
     };
     using Hits = std::vector<Hit>;
@@ -57,12 +62,18 @@ private:
         S32              decimals = 3;
         U32              order    = 0;
         bool             advanced = false;
+        bool             external = false;
         std::vector<U32> label_tokens;
         std::vector<U32> card_tokens;
         std::vector<U32> keyword_tokens;
         std::vector<U32> help_tokens;
         std::vector<U32> setting_tokens;
         std::vector<U32> widget_tokens;
+        std::vector<U32> synonym_tokens;
+        std::string      external_floater;
+        std::string      external_label;
+        std::string      external_tab;
+        std::string      external_tab_label;
     };
 
     U32         intern(const std::string& token);

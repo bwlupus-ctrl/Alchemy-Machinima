@@ -960,7 +960,7 @@ void ALKitRow::draw()
         {
             LLColor4 c = ALKitStyle::color(ALKitStyle::FLASH).get();
             c.mV[VALPHA] *= 1.f - t / ALKitStyle::FLASH_SEC;
-            gl_rect_2d(getLocalRect(), c, true);
+            gl_rect_2d(getLocalRect(), c, false);
         }
     }
     LLPanel::draw();

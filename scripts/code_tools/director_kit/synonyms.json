@@ -1,0 +1,26 @@
+{
+  "groups": [
+    ["exposure", "ev", "brightness"],
+    ["brightness", "lamp", "power", "intensity", "picture ev"],
+    ["shadow", "shadows", "probe", "shadow map"],
+    ["fog", "haze", "atmosphere", "shafts", "volumetric"],
+    ["glow", "bloom", "halation"],
+    ["color", "colour", "tint", "gel", "hue"],
+    ["rim", "backlight", "edge light"],
+    ["camera", "cam", "vcam", "lens"],
+    ["speed", "rate", "fps"],
+    ["size", "scale", "radius"],
+    ["depth of field", "dof", "focus", "diopter"],
+    ["field of view", "fov", "zoom", "focal length"],
+    ["white balance", "temperature", "kelvin"],
+    ["saturation", "chroma", "vibrance"],
+    ["contrast", "curve", "gamma"],
+    ["motion blur", "shutter", "shutter angle"],
+    ["actor", "avatar", "subject", "cast"],
+    ["animation", "anim", "motion"],
+    ["light", "lamp", "fixture"],
+    ["projector", "gobo", "cookie"],
+    ["cue", "keyframe", "mark"],
+    ["look", "grade", "lut", "preset"]
+  ]
+}

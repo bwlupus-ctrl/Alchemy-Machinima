@@ -122,6 +122,7 @@ private:
     void                                                 queueSearch(const std::string&);
     void                                                 updateSearchResults(const ALKitSearch::Hits&, ALKitPage*);
     void                                                 activateSearchResult();
+    bool                                                 openExternalResult(const ALKitSearch::Hit&);
     void                                                 scheduleSearchBatch();
     void                                                 rebuildQuick();
     void                                                 buildChangedIndex();

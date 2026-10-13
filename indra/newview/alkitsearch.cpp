@@ -14,7 +14,7 @@
 
 namespace
 {
-constexpr S32 INDEX_FIELDS = 16;
+constexpr S32 INDEX_FIELDS = 22;
 
 std::string unescapeField(const std::string& value)
 {
@@ -78,7 +78,7 @@ bool ALKitSearch::load(const std::string& index_file)
     std::ostringstream bytes;
     bytes << input.rdbuf();
     const std::string xml = bytes.str();
-    if (xml.find("<director_kit_index version=\"2\" fields=\"16\">") == std::string::npos)
+    if (xml.find("<director_kit_index version=\"3\" fields=\"22\">") == std::string::npos)
     {
         LL_WARNS("DirectorKit") << "KitSearch rejected index header in " << filename << LL_ENDL;
         return false;
@@ -133,14 +133,21 @@ bool ALKitSearch::tokenizeBatch(U32 count)
         entry.setting  = fields[11];
         entry.decimals = atoi(fields[12].c_str());
         entry.advanced = fields[13].find('a') != std::string::npos;
+        entry.external = fields[13].find('e') != std::string::npos;
+        entry.external_floater   = fields[17];
+        entry.external_label     = fields[18];
+        entry.external_tab       = fields[19];
+        entry.external_tab_label = fields[20];
         entry.order    = mPendingIndex;
-        entry.path     = fields[3] + " \xE2\x80\xBA " + fields[2] + " \xE2\x80\xBA " + fields[6] + " \xC2\xB7 " + fields[9];
+        entry.path     = entry.external ? fields[9]
+                                        : fields[3] + " \xE2\x80\xBA " + fields[2] + " \xE2\x80\xBA " + fields[6] + " \xC2\xB7 " + fields[9];
         tokenize(fields[9], entry.label_tokens);
         tokenize(fields[6], entry.card_tokens);
         tokenize(fields[14], entry.keyword_tokens);
         tokenize(fields[15], entry.help_tokens);
         tokenize(fields[11], entry.setting_tokens);
         tokenize(fields[8], entry.widget_tokens);
+        tokenize(fields[16], entry.synonym_tokens);
         mEntries.push_back(std::move(entry));
     }
     if (mPendingIndex == mPending.size())
@@ -182,23 +189,24 @@ ALKitSearch::Hits ALKitSearch::query(const std::string& query_text) const
         for (const std::string& query_token : query_tokens)
         {
             S32  best  = 0;
-            auto score = [this, &query_token, &best](const std::vector<U32>& tokens, S32 value)
+            auto score = [this, &query_token, &best](const std::vector<U32>& tokens, ALDirectorQol::SearchField field)
             {
                 for (U32 id : tokens)
                 {
-                    const S32 token_score = ALDirectorQol::fuzzyTokenScore(query_token, mTokens[id]);
+                    const S32 token_score = ALDirectorQol::searchTokenScore(query_token, mTokens[id], field);
                     if (token_score)
-                        best = llmax(best, value + token_score);
+                        best = llmax(best, token_score);
                 }
             };
-            score(entry.label_tokens, 80);
-            score(entry.card_tokens, 55);
-            score(entry.keyword_tokens, 45);
+            score(entry.label_tokens, ALDirectorQol::SearchField::LABEL);
+            score(entry.card_tokens, ALDirectorQol::SearchField::CARD);
+            score(entry.keyword_tokens, ALDirectorQol::SearchField::KEYWORD);
             if (query_token.size() > 2)
             {
-                score(entry.help_tokens, 25);
-                score(entry.setting_tokens, 15);
-                score(entry.widget_tokens, 15);
+                score(entry.help_tokens, ALDirectorQol::SearchField::HELP);
+                score(entry.setting_tokens, ALDirectorQol::SearchField::SETTING);
+                score(entry.widget_tokens, ALDirectorQol::SearchField::WIDGET);
+                score(entry.synonym_tokens, ALDirectorQol::SearchField::SYNONYM);
             }
             const S32 full_label_score = ALDirectorQol::fuzzyTokenScore(query_token, entry.label_lower);
             if (full_label_score)
@@ -225,16 +233,20 @@ ALKitSearch::Hits ALKitSearch::query(const std::string& query_text) const
             hit.score     = total;
             hit.order     = entry.order;
             hit.advanced  = entry.advanced;
+            hit.external = entry.external;
+            hit.external_floater = entry.external_floater;
+            hit.external_label = entry.external_label;
+            hit.external_tab = entry.external_tab;
+            hit.external_tab_label = entry.external_tab_label;
             hits.push_back(std::move(hit));
         }
     }
     std::stable_sort(hits.begin(), hits.end(),
                      [this](const Hit& lhs, const Hit& rhs)
                      {
-                         if (lhs.score != rhs.score)
-                         {
-                             return lhs.score > rhs.score;
-                         }
+                         if (lhs.score != rhs.score || lhs.external != rhs.external)
+                             return ALDirectorQol::searchResultBefore(lhs.score, lhs.external, lhs.order,
+                                                                      rhs.score, rhs.external, rhs.order);
                          const bool lhs_current = lhs.page_key == mCurrentPage;
                          const bool rhs_current = rhs.page_key == mCurrentPage;
                          return lhs_current != rhs_current ? lhs_current : lhs.order < rhs.order;
@@ -265,6 +277,11 @@ ALKitSearch::Hits ALKitSearch::all() const
         hit.decimals = entry.decimals;
         hit.order = entry.order;
         hit.advanced = entry.advanced;
+        hit.external = entry.external;
+        hit.external_floater = entry.external_floater;
+        hit.external_label = entry.external_label;
+        hit.external_tab = entry.external_tab;
+        hit.external_tab_label = entry.external_tab_label;
         hits.push_back(std::move(hit));
     }
     return hits;

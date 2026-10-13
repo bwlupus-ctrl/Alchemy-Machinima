@@ -1,0 +1,17 @@
+{
+  "floaters": [
+    {"name": "lightbox", "label": "Lightbox", "xui": "floater_lightbox_settings.xml"},
+    {"name": "prism_manager", "label": "Virtual Cam Manager", "xui": "floater_prism_manager.xml"},
+    {"name": "ghost_studio", "label": "Ghost Studio", "xui": "floater_ghost_studio.xml"},
+    {"name": "cine_light_rig", "label": "Cinematic Light Rig", "xui": "floater_cine_light_rig.xml"},
+    {"name": "pose_polish", "label": "Pose Polish", "xui": "floater_pose_polish.xml"},
+    {"name": "gaze_cues", "label": "Gaze Cues", "xui": "floater_gaze_cues.xml"},
+    {"name": "cine_light_cues", "label": "Lighting Cue Stack", "xui": "floater_cine_light_cues.xml"},
+    {"name": "ultimate_diopter", "label": "Ultimate Diopter", "xui": "floater_ultimate_diopter.xml"},
+    {"name": "animation_explorer", "label": "Animation Explorer", "xui": "floater_animation_explorer.xml"},
+    {"name": "dance_ball", "label": "Dance Ball", "xui": "floater_dance_ball.xml"},
+    {"name": "exposure_hub", "label": "Exposure Hub", "xui": "floater_exposure_hub.xml"},
+    {"name": "avatar_light_response", "label": "Avatar Light Response", "xui": "floater_avatar_light_response.xml"},
+    {"name": "snapshot", "label": "Snapshot", "xui": "floater_snapshot.xml"}
+  ]
+}

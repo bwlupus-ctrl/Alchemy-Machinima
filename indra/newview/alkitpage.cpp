@@ -1241,7 +1241,11 @@ void ALKitPage::scrollToView(LLView* view)
             LLRect rect;
             if (target->localRectToOtherView(target->getLocalRect(), &rect, page->mDoc))
             {
-                page->mScroller->scrollToShowRect(rect);
+                const LLRect visible = page->mScroller->getVisibleContentRect();
+                const S32 center = visible.getHeight() / 2;
+                const S32 half = llmax(1, rect.getHeight() / 2);
+                page->mScroller->scrollToShowRect(
+                    rect, LLRect(0, center + half, visible.getWidth(), center - half));
             }
         });
 }
@@ -1363,7 +1367,10 @@ bool ALKitPage::revealRow(ALKitRow* r, bool flash_it)
                         break;
                     }
             c.second->revealRow(r);
-            return revealCard(c.second, flash_it);
+            const bool revealed = revealCard(c.second, flash_it);
+            if (revealed)
+                scrollToView(r);
+            return revealed;
         }
     return false;
 }
@@ -1404,7 +1411,12 @@ void ALKitPage::setSearchText(const std::string& q)
     if (mSearch && mSearch->getValue().asString() != q)
         mSearch->setValue(q);
     if (q.empty())
-        clearSearch();
+    {
+        if (mShell && mShell->changedOnly())
+            applyLocalFilter("", true);
+        else
+            clearSearch();
+    }
 }
 
 void ALKitPage::setChangedOnlyValue(bool enabled)

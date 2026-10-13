@@ -2717,7 +2717,8 @@ void LLFloaterDirector::refreshSceneRecovery()
         if (mSceneDirtyText)
             setTextIfChanged(mSceneDirtyText, dirty ? "*" : "");
     }
-    const S32 minutes = gSavedSettings.getS32("DirectorAutosaveMinutes");
+    static LLCachedControl<S32> autosave_minutes(gSavedSettings, "DirectorAutosaveMinutes", 5);
+    const S32 minutes = autosave_minutes;
     if (!dirty || minutes <= 0)
         return;
     if (mSceneAutosaveTimer.getElapsedTimeF32() >= (F32)minutes * 60.f)
@@ -4414,12 +4415,21 @@ void LLFloaterDirector::onClickSetSubjectFromSelection(S32 subject)
 void LLFloaterDirector::onClickAssignSubjects()
 {
     const uuid_vec_t selected = selectedCastIds();
+    if (selected.empty())
+    {
+        // Never wipe A-D on an empty selection.
+        LLSD args;
+        args["MESSAGE"] = "Select cast rows first (roster order fills A, B, C, D).";
+        LLNotificationsUtil::add("GenericAlert", args);
+        return;
+    }
     const std::vector<LLUUID> ordered = ALDirectorQol::subjectAssignment(selected);
     LLDirectorCast& cast = LLDirectorCast::instance();
     for (S32 subject = SUBJECT_A; subject <= SUBJECT_D; ++subject)
         clear_subject(cast, subject);
-    for (S32 index = 0; index < (S32)ordered.size(); ++index)
-        assign_subject(cast, index, ordered[index]);
+    // Subjects are 1-based (SUBJECT_A == 1); the ordered list is 0-based.
+    for (S32 index = 0; index < (S32)ordered.size() && SUBJECT_A + index <= SUBJECT_D; ++index)
+        assign_subject(cast, SUBJECT_A + index, ordered[index]);
     LLSD args;
     args["MESSAGE"] = selected.size() > 4
         ? "Assigned the first four selected cast rows to Subjects A-D; extra selections were ignored."

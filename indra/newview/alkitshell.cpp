@@ -11,8 +11,10 @@
 #include "alkitstyle.h"
 #include "llbutton.h"
 #include "llcallbacklist.h"
+#include "llaccordionctrltab.h"
 #include "lleventtimer.h"
 #include "llfloater.h"
+#include "llfloaterreg.h"
 #include "lllineeditor.h"
 #include "llrender.h"
 #include "llsliderwheel.h"
@@ -38,6 +40,108 @@ T* findFirst(LLView* root)
         if (T* result = findFirst<T>(child))
             return result;
     return nullptr;
+}
+
+bool selectTabRecursive(LLView* root, const std::string& tab_name)
+{
+    if (!root || tab_name.empty())
+        return false;
+    if (LLTabContainer* tabs = dynamic_cast<LLTabContainer*>(root))
+        if (tabs->selectTabByName(tab_name))
+            return true;
+    for (LLView* child : *root->getChildList())
+        if (selectTabRecursive(child, tab_name))
+            return true;
+    return false;
+}
+
+LLView* findExternalTarget(LLView* root, const std::string& widget,
+                           const std::string& setting)
+{
+    if (!root)
+        return nullptr;
+    if (!widget.empty())
+        if (LLView* named = root->findChild<LLView>(widget, true))
+            return named;
+    LLControlVariable* saved = setting.empty() ? nullptr : gSavedSettings.getControl(setting).get();
+    LLControlVariable* account = setting.empty() ? nullptr : gSavedPerAccountSettings.getControl(setting).get();
+    if (LLUICtrl* control = dynamic_cast<LLUICtrl*>(root))
+        if (control->getControlVariable() == saved || control->getControlVariable() == account)
+            return control;
+    for (LLView* child : *root->getChildList())
+        if (LLView* found = findExternalTarget(child, std::string(), setting))
+            return found;
+    return nullptr;
+}
+
+void centerInAncestorScroller(LLView* target)
+{
+    for (LLView* ancestor = target ? target->getParent() : nullptr; ancestor; ancestor = ancestor->getParent())
+        if (LLScrollContainer* scroller = dynamic_cast<LLScrollContainer*>(ancestor))
+        {
+            LLView* document = scroller->getScrolledView();
+            LLRect rect;
+            if (document && target->localRectToOtherView(target->getLocalRect(), &rect, document))
+            {
+                const LLRect visible = scroller->getVisibleContentRect();
+                const S32 center = visible.getHeight() / 2;
+                const S32 half = llmax(1, rect.getHeight() / 2);
+                scroller->scrollToShowRect(rect,
+                    LLRect(0, center + half, visible.getWidth(), center - half));
+            }
+            return;
+        }
+}
+
+class ALExternalSearchHighlight final : public LLPanel
+{
+public:
+    explicit ALExternalSearchHighlight(const LLPanel::Params& params) : LLPanel(params) {}
+    void pulse(LLView* target)
+    {
+        mTarget = target ? target->getHandle() : LLHandle<LLView>();
+        mTimer.reset();
+        setVisible(target != nullptr);
+    }
+    void draw() override
+    {
+        LLView* target = mTarget.get();
+        const F32 elapsed = mTimer.getElapsedTimeF32();
+        if (!target || elapsed >= ALKitStyle::FLASH_SEC)
+        {
+            setVisible(false);
+            return;
+        }
+        LLRect rect;
+        if (target->localRectToOtherView(target->getLocalRect(), &rect, this))
+        {
+            LLColor4 color = ALKitStyle::color(ALKitStyle::ACCENT).get();
+            color.mV[VALPHA] *= 1.f - elapsed / ALKitStyle::FLASH_SEC;
+            gl_rect_2d(rect, color, false);
+        }
+    }
+private:
+    LLHandle<LLView> mTarget;
+    LLFrameTimer     mTimer;
+};
+
+void pulseExternalTarget(LLFloater* floater, LLView* target)
+{
+    if (!floater || !target)
+        return;
+    ALExternalSearchHighlight* highlight = floater->findChild<ALExternalSearchHighlight>("director_search_highlight", false);
+    if (!highlight)
+    {
+        LLPanel::Params params;
+        params.name = "director_search_highlight";
+        params.rect = floater->getLocalRect();
+        params.follows.flags = FOLLOWS_ALL;
+        params.mouse_opaque = false;
+        highlight = new ALExternalSearchHighlight(params);
+        floater->addChild(highlight);
+    }
+    floater->sendChildToFront(highlight);
+    highlight->pulse(target);
 }
 
 } // namespace
@@ -666,8 +770,9 @@ void ALKitShell::draw()
         LLRect rect;
         if (view->localRectToOtherView(view->getLocalRect(), &rect, this))
         {
-            gGL.color4fv(ALKitStyle::color(ALKitStyle::ACCENT).get().mV);
-            gl_rect_2d(rect, false);
+            LLColor4 color = ALKitStyle::color(ALKitStyle::ACCENT).get();
+            color.mV[VALPHA] *= 1.f - mHighlightTimer.getElapsedTimeF32() / ALKitStyle::FLASH_SEC;
+            gl_rect_2d(rect, color, false);
         }
     }
 }
@@ -717,6 +822,9 @@ bool ALKitShell::navigateTo(const ALKitTarget& target)
     if (!target.widget.empty())
         if (LLView* view = panel->findChild<LLView>(target.widget))
         {
+            for (LLView* ancestor = view->getParent(); ancestor && ancestor != panel; ancestor = ancestor->getParent())
+                if (LLAccordionCtrlTab* accordion = dynamic_cast<LLAccordionCtrlTab*>(ancestor))
+                    accordion->setDisplayChildren(true);
             for (LLView* ancestor = view->getParent(); ancestor; ancestor = ancestor->getParent())
             {
                 if (LLScrollContainer* scroller = dynamic_cast<LLScrollContainer*>(ancestor))
@@ -725,7 +833,13 @@ bool ALKitShell::navigateTo(const ALKitTarget& target)
                     if (LLView* document = scroller->getScrolledView())
                     {
                         if (view->localRectToOtherView(view->getLocalRect(), &rect, document))
-                            scroller->scrollToShowRect(rect);
+                        {
+                            const LLRect visible = scroller->getVisibleContentRect();
+                            const S32 center = visible.getHeight() / 2;
+                            const S32 half = llmax(1, rect.getHeight() / 2);
+                            scroller->scrollToShowRect(rect,
+                                LLRect(0, center + half, visible.getWidth(), center - half));
+                        }
                     }
                     break;
                 }
@@ -1102,7 +1216,8 @@ void ALKitShell::updateSearchResults(const ALKitSearch::Hits& hits, ALKitPage* p
         });
         mSearchButtons.push_back(button);
     }
-    const S32 content_height = llmax(1, (S32)mSearchHits.size() * 25);
+    constexpr S32 RESULT_HEIGHT = 44;
+    const S32 content_height = llmax(1, (S32)mSearchHits.size() * RESULT_HEIGHT);
     if (mSearchResultsPanel)
         mSearchResultsPanel->reshape(390, content_height, true);
     std::string prior_page;
@@ -1114,11 +1229,24 @@ void ALKitShell::updateSearchResults(const ALKitSearch::Hits& hits, ALKitPage* p
         {
             const ALKitSearch::Hit& hit = mSearchHits[index];
             std::string label = hit.page_key != prior_page
-                ? "[" + hit.page_key + "]  " + hit.path : "    " + hit.path;
+                ? "[" + (hit.external ? hit.external_label : hit.page_key) + "]  " + hit.path
+                : "    " + hit.path;
             if (mSearchHits[index].advanced)
                 label += "  More";
+            std::string secondary = hit.setting;
+            if (hit.external)
+            {
+                if (!secondary.empty())
+                    secondary += "  \xC2\xB7  ";
+                secondary += "Opens in " + hit.external_label;
+                if (!hit.external_tab_label.empty())
+                    secondary += "  " + hit.external_tab_label;
+            }
+            if (!secondary.empty())
+                label += "\n    " + secondary;
             mSearchButtons[index]->setLabel(label);
-            mSearchButtons[index]->setOrigin(0, content_height - (index + 1) * 25);
+            mSearchButtons[index]->reshape(390, RESULT_HEIGHT, true);
+            mSearchButtons[index]->setOrigin(0, content_height - (index + 1) * RESULT_HEIGHT);
             prior_page = hit.page_key;
         }
     }
@@ -1142,6 +1270,8 @@ bool ALKitShell::handleSearchKey(KEY key)
     }
     if (key == KEY_RETURN && mHasTopSearchHit)
     {
+        if (mTopSearchHit.external)
+            return openExternalResult(mTopSearchHit);
         ALKitTarget target;
         target.page_key = mTopSearchHit.page_key;
         target.card_id  = mTopSearchHit.card_id;
@@ -1172,6 +1302,11 @@ void ALKitShell::activateSearchResult()
     if (mSearchSelection < 0 || mSearchSelection >= (S32)mSearchHits.size())
         return;
     const ALKitSearch::Hit& hit = mSearchHits[mSearchSelection];
+    if (hit.external)
+    {
+        openExternalResult(hit);
+        return;
+    }
     ALKitTarget             target;
     target.page_key = hit.page_key;
     target.card_id  = hit.card_id;
@@ -1179,6 +1314,37 @@ void ALKitShell::activateSearchResult()
     target.setting  = hit.setting;
     target.option   = hit.option;
     navigateTo(target);
+}
+
+bool ALKitShell::openExternalResult(const ALKitSearch::Hit& hit)
+{
+    LLFloater* floater = LLFloaterReg::showInstance(hit.external_floater);
+    if (!floater)
+        return false;
+    selectTabRecursive(floater, hit.external_tab);
+    LLView* target_root = hit.external_tab.empty()
+        ? static_cast<LLView*>(floater)
+        : floater->findChild<LLView>(hit.external_tab, true);
+    if (!target_root)
+        target_root = floater;
+    LLView* target = findExternalTarget(target_root, hit.widget, hit.setting);
+    if (!target)
+        return false;
+    for (LLView* ancestor = target->getParent(); ancestor && ancestor != floater; ancestor = ancestor->getParent())
+        if (LLAccordionCtrlTab* accordion = dynamic_cast<LLAccordionCtrlTab*>(ancestor))
+            accordion->setDisplayChildren(true);
+    LLHandle<LLFloater> floater_handle = floater->getHandle();
+    LLHandle<LLView> target_handle = target->getHandle();
+    doOnIdleOneTime([floater_handle, target_handle]()
+    {
+        LLFloater* opened = floater_handle.get();
+        LLView* control = target_handle.get();
+        if (!opened || !control)
+            return;
+        centerInAncestorScroller(control);
+        pulseExternalTarget(opened, control);
+    });
+    return true;
 }
 
 bool ALKitShell::cycleChip(S32 delta)
@@ -1250,7 +1416,7 @@ void ALKitShell::buildChangedIndex()
     mPageChangedCounts.clear();
     std::unordered_map<std::string, bool> watched;
     for (const ALKitSearch::Hit& hit : mSearch.all())
-        if (!hit.setting.empty())
+        if (!hit.external && !hit.setting.empty())
         {
             std::vector<ChangedEntry>& settings = mPageSettings[hit.page_key];
             const U32 index = static_cast<U32>(settings.size());
@@ -1297,7 +1463,7 @@ bool ALKitShell::isFavorite(const std::string& page, const std::string& widget) 
 
 void ALKitShell::toggleFavorite(const std::string& page, const std::string& widget)
 {
-    if (page.empty() || widget.empty())
+    if (!ALKitQol::isValidFavorite({ page, widget }))
         return;
     const ALKitQol::Favorite key{ page, widget };
     const auto found = std::find(mFavorites.begin(), mFavorites.end(), key);
@@ -1405,11 +1571,14 @@ void ALKitShell::refreshChangedMarkers(ALKitRow* changed_row)
     if (changed_row)
     {
         refreshPageMarker(changed_row->favoriteKey().page);
+        if (changed_row->sourceRow())
+            refreshPageMarker("quick_group/quick_tab");
         updatePips();
         if (mChangedOnly && currentKitPage())
         {
             ALKitPage* current = currentKitPage();
-            const bool owns_row = current->findRow(changed_row->meta().widget) == changed_row;
+            const bool owns_row = current->findRow(changed_row->meta().widget) == changed_row ||
+                                  (current->pageKey() == "quick_group/quick_tab" && changed_row->sourceRow());
             if (owns_row)
                 current->refreshChangedFilter(changed_row, mSearch.queryText());
         }

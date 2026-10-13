@@ -41,4 +41,22 @@ template<> template<> void director_qol_object::test<3>()
     ensure("valid recovery is offered", ALDirectorQol::recoveryAction(true, true) == Action::OFFER_RESTORE);
     ensure("corrupt recovery is discarded", ALDirectorQol::recoveryAction(true, false) == Action::DISCARD_CORRUPT);
 }
+
+template<> template<> void director_qol_object::test<4>()
+{
+    using Field = ALDirectorQol::SearchField;
+    ensure("setting-name fragment matches",
+           ALDirectorQol::searchTokenScore("render", "render", Field::SETTING) > 0);
+    ensure("setting name is a strong field",
+           ALDirectorQol::searchTokenScore("bloom", "bloom", Field::SETTING) >
+           ALDirectorQol::searchTokenScore("bloom", "bloom", Field::KEYWORD));
+    ensure("expanded synonym remains searchable but below a direct match",
+           ALDirectorQol::searchTokenScore("brightness", "brightness", Field::SYNONYM) > 0 &&
+           ALDirectorQol::searchTokenScore("brightness", "brightness", Field::SYNONYM) <
+           ALDirectorQol::searchTokenScore("brightness", "brightness", Field::LABEL));
+    ensure("Director wins an equal-score tie",
+           ALDirectorQol::searchResultBefore(200, false, 8, 200, true, 1));
+    ensure("external result does not win an equal-score tie",
+           !ALDirectorQol::searchResultBefore(200, true, 1, 200, false, 8));
+}
 } // namespace tut

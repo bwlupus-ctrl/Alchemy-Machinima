@@ -27,10 +27,13 @@ KIT = ROOT / "scripts/code_tools/director_kit"
 DEFAULT_DATA = KIT / "director_mockup_data.json"
 DEFAULT_CONFIG = KIT / "kit_pages.json"
 VCAM_DATA = KIT / "vcam_page.json"
+SYNONYMS_DATA = KIT / "synonyms.json"
+EXTERNAL_SEARCH_DATA = KIT / "external_search.json"
 DEFAULT_OUT = XUI
 V1_FLOATER = XUI / "floater_director.xml"
+DIRECTOR_CPP = ROOT / "indra/newview/llfloaterdirector.cpp"
 REPORT = KIT / "gen_report.txt"
-INDEX_FIELDS = 16
+INDEX_FIELDS = 22
 EXPECTED_SHORTCUTS = {
     ("shot_tab", "CinematicCamJoint", "frame_orbit_tab/CinematicCamJoint"),
     ("shot_tab", "CinematicCamVertigoDuration", "moves_tab/zolly_duration"),
@@ -86,7 +89,7 @@ def sha16(path: Path) -> str:
 
 def source_bundle_sha(config_path: Path) -> str:
     config = json.loads(config_path.read_text(encoding="utf-8"))
-    paths = [Path(__file__), V1_FLOATER]
+    paths = [Path(__file__), V1_FLOATER, DIRECTOR_CPP, SYNONYMS_DATA, EXTERNAL_SEARCH_DATA]
     paths += [XUI / name for page in config.get("p0_pages", {}).values()
               for name in page.get("v1_sources", [])]
     digest = hashlib.sha256()
@@ -783,9 +786,65 @@ def quick_page() -> ET.Element:
     return root
 
 
+def synonym_aliases(value: str, synonym_groups: list[list[str]]) -> str:
+    """Expand matching film/SL vocabulary into a low-priority index field."""
+    lowered = value.lower()
+    aliases: list[str] = []
+    for group in synonym_groups:
+        if any(re.search(r"(?<![a-z0-9])" + re.escape(term.lower()) + r"(?![a-z0-9])", lowered)
+               for term in group):
+            for term in group:
+                if term.lower() not in lowered and term not in aliases:
+                    aliases.append(term)
+    return " ".join(aliases)
+
+
+EXTERNAL_CONTROL_TAGS = {
+    "button", "check_box", "color_swatch", "combo_box", "filter_editor",
+    "flyout_button", "line_editor", "radio_group", "scroll_list", "slider",
+    "slider_bar", "spinner", "texture_picker"
+}
+
+
+def external_index_rows(spec: dict, synonym_groups: list[list[str]]) -> list[list[str]]:
+    rows: list[list[str]] = []
+
+    def visit(node: ET.Element, floater: dict, tab_name: str = "", tab_label: str = "") -> None:
+        name = node.get("name", "")
+        setting = node.get("control_name", "")
+        widget = name or setting
+        if isinstance(node.tag, str) and widget and (node.tag in EXTERNAL_CONTROL_TAGS or setting):
+            label = node.get("label", "").strip() or (node.text or "").strip() or widget.replace("_", " ")
+            help_text = node.get("tool_tip", "")
+            direct = " ".join((label, name, setting, help_text, tab_label, floater["label"]))
+            rows.append([
+                "external", floater["name"], floater["label"], "External",
+                tab_name, tab_name, tab_label, "", widget, label, str(node.tag), setting,
+                node.get("decimal_digits", "3"), "e", str(node.tag), help_text,
+                synonym_aliases(direct, synonym_groups), floater["name"], floater["label"],
+                tab_name, tab_label, "external"
+            ])
+        filename = node.get("filename", "")
+        if filename:
+            included = parse_xml(XUI / filename)
+            visit(included, floater, tab_name, tab_label)
+        for child in node:
+            child_tab_name = tab_name
+            child_tab_label = tab_label
+            if node.tag == "tab_container" and child.tag == "panel":
+                child_tab_name = child.get("name", "")
+                child_tab_label = child.get("label", "") or child_tab_name.replace("_", " ").title()
+            visit(child, floater, child_tab_name, child_tab_label)
+
+    for floater in spec.get("floaters", []):
+        visit(parse_xml(XUI / floater["xui"]), floater)
+    return rows
+
+
 def index_bytes(data: dict, config: dict, classes: dict[str, str], note: str,
                 generated_rows: dict[str, set[str]]) -> bytes:
     lines: list[str] = []
+    synonym_groups = json.loads(SYNONYMS_DATA.read_text(encoding="utf-8")).get("groups", [])
     def esc(value) -> str:
         return str(value or "").replace("\\", "\\\\").replace("\t", "\\t").replace("\n", "\\n")
     indexed_rows: dict[str, set[str]] = defaultdict(set)
@@ -815,12 +874,26 @@ def index_bytes(data: dict, config: dict, classes: dict[str, str], note: str,
                           row.get("s", ""), str(row.get("dc") if row.get("dc") is not None
                                                    else (0 if row.get("k") in ("dial", "arc") else 3)),
                           flags, row.get("kw", ""), row.get("h", "")]
+                direct = " ".join(str(value or "") for value in fields[8:16])
+                fields += [synonym_aliases(direct, synonym_groups), "", "", "", "", "director"]
                 if len(fields) != INDEX_FIELDS:
                     raise GenError("internal index field count error")
                 lines.append("\t".join(esc(value) for value in fields))
                 indexed_rows[key].add(str(row.get("w", "")))
                 if row.get("show_if") == "never":
                     manifest_only_rows[key].add(str(row.get("w", "")))
+    external_spec = json.loads(EXTERNAL_SEARCH_DATA.read_text(encoding="utf-8"))
+    indexed_floaters = {item["name"] for item in external_spec.get("floaters", [])}
+    launcher_floaters = set(re.findall(r'LLFloaterReg::showInstance\(\s*"([^"]+)"',
+                                       DIRECTOR_CPP.read_text(encoding="utf-8")))
+    launcher_floaters.update(target["target"] for target in config.get("launcher_targets", {}).values())
+    missing_floaters = launcher_floaters - indexed_floaters
+    if missing_floaters:
+        raise GenError(f"Director launcher floaters missing from external search: {sorted(missing_floaters)}")
+    for fields in external_index_rows(external_spec, synonym_groups):
+        if len(fields) != INDEX_FIELDS:
+            raise GenError("internal external index field count error")
+        lines.append("\t".join(esc(value) for value in fields))
     for key, widgets in generated_rows.items():
         runtime_indexed = indexed_rows.get(key, set()) - manifest_only_rows.get(key, set())
         if classes[key] != "legacy" and runtime_indexed != widgets:
@@ -829,7 +902,7 @@ def index_bytes(data: dict, config: dict, classes: dict[str, str], note: str,
                            f"page-only={sorted(widgets - runtime_indexed)}")
     payload = "\n".join(lines) + "\n"
     return (f'<?xml version="1.0" encoding="utf-8"?>\n<!-- {note} -->\n'
-            f'<director_kit_index version="2" fields="{INDEX_FIELDS}"><![CDATA[\n{payload}]]>'
+            f'<director_kit_index version="3" fields="{INDEX_FIELDS}"><![CDATA[\n{payload}]]>'
             '</director_kit_index>\n').encode("utf-8")
 
 
@@ -1092,6 +1165,16 @@ def selftest(data_path: Path, config_path: Path, out_dir: Path) -> int:
                        len(launcher_cards) == 1 and not list(tron.iter("kit_row"))
                        and not list(tron.iter("button"))))
         checks.append(("36 page files including runtime Quick host", sum(path.name.startswith("panel_dpage_") for path in outputs) == 36))
+        synonyms = json.loads(SYNONYMS_DATA.read_text(encoding="utf-8")).get("groups", [])
+        exposure_aliases = synonym_aliases("Exposure", synonyms).split()
+        checks.append(("synonym expansion is bidirectional and index-ready",
+                       "ev" in exposure_aliases and "brightness" in exposure_aliases and
+                       "exposure" in synonym_aliases("EV", synonyms).split()))
+        externals = external_index_rows(
+            json.loads(EXTERNAL_SEARCH_DATA.read_text(encoding="utf-8")), synonyms)
+        checks.append(("external controls carry lower-rank metadata",
+                       bool(externals) and all(row[13] == "e" and row[17] and row[18]
+                                               for row in externals)))
         for label, ok in checks:
             print(("ok: " if ok else "FAIL: ") + label)
         return 0 if all(ok for _, ok in checks) else 1
