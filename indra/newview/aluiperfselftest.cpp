@@ -28,6 +28,7 @@
 #include "aldiopterpresetbank.h"
 #include "allocalfogmanager.h"
 #include "alobjectpathmover.h"
+#include "alpaneldirectorvcam.h"
 #include "alpanellensgaze.h"
 #include "alpanelpatheditor.h"
 #include "alghoststudio.h"
@@ -1661,7 +1662,7 @@ private:
         static const std::set<std::string> local = {
             "file_picker", "destructive", "logout", "delete", "rename",
             "export_import", "save_disk", "clipboard_write",
-            "external_url_process", "persistent_setting"
+            "external_url_process", "persistent_setting", "modal"
         };
         return local.count(hazard) != 0;
     }
@@ -5966,6 +5967,13 @@ private:
             ++mFunctionalIndex;
             return;
         }
+        if (mInWorld && !local_hazards.empty())
+        {
+            addFunctionalResult(entry, "SKIP",
+                "in-world: local hazard denied: " + functionalJoin(local_hazards));
+            ++mFunctionalIndex;
+            return;
+        }
         if (!prepareFunctionalRimGate(entry)) return;
         if (!mFunctionalGatePrepared) prepareFunctionalRestore(entry);
         mFunctionalPageRoot = functionalPage(entry);
@@ -6093,6 +6101,25 @@ private:
             ++mFunctionalIndex;
             return;
         }
+        if (entry["exercise"].asString() == "readout")
+        {
+            if (mFunctionalVCamModel) mFunctionalVCamModel->refreshNow();
+            for (LLView* view = mFunctionalPageRoot; view; view = view->getParent())
+                if (ALPanelDirectorVCam* panel = dynamic_cast<ALPanelDirectorVCam*>(view))
+                {
+                    panel->onVisibilityChange(true);
+                    break;
+                }
+            std::string text = control->getValue().asString();
+            LLStringUtil::trim(text);
+            mFunctionalObserved["readout"]["text"] = text;
+            addFunctionalResult(entry, text.empty() ? "FAIL" : "PASS",
+                text.empty() ? "readout text was empty after page refresh" : "",
+                "text=" + text);
+            restoreFunctionalAction();
+            ++mFunctionalIndex;
+            return;
+        }
         revealFunctionalControl(control);
         if (!prepareFunctionalPrerequisite(entry, control))
         {
@@ -6118,6 +6145,9 @@ private:
                 std::stoi(anim_slot_match[1].str()) - 1, 0,
                 ALDirectorAnimSwitcher::SLOT_COUNT - 1);
         LLUICtrl* control = mFunctionalControl.get();
+        const bool vector_component_oracle = entry["vector_component"].isDefined();
+        const S32 vector_component = vector_component_oracle
+            ? entry["vector_component"].asInteger() : -1;
         LLSD expected = entry["expect"]["value"];
         std::string type = entry["expect"]["type"].asString();
         if (mFunctionalDynamicSetting)
@@ -6163,8 +6193,12 @@ private:
         std::string assertion_failure;
         if (LLSpinCtrl* spinner = dynamic_cast<LLSpinCtrl*>(control))
         {
-            const F64 before = mFunctionalSetting
-                ? mFunctionalBefore.asReal() : mFunctionalControlBefore.asReal();
+            const F64 before = vector_component_oracle &&
+                    mFunctionalBefore.isArray() &&
+                    vector_component < static_cast<S32>(mFunctionalBefore.size())
+                ? mFunctionalBefore[vector_component].asReal()
+                : (mFunctionalSetting
+                    ? mFunctionalBefore.asReal() : mFunctionalControlBefore.asReal());
             const bool default_in_range = before >= entry["min"].asReal() &&
                 before <= entry["max"].asReal();
             const F64 display_scale = std::pow(10.0, spinner->getPrecision());
@@ -6172,8 +6206,13 @@ private:
             const bool increment_representable =
                 std::fabs(scaled_increment - std::round(scaled_increment)) <= 1e-4;
             const bool display_matches_setting = !mFunctionalSetting ||
+                (vector_component_oracle && mFunctionalBefore.isArray() &&
+                 vector_component < static_cast<S32>(mFunctionalBefore.size()) &&
+                 std::round(mFunctionalControlBefore.asReal() * display_scale) ==
+                    std::round(mFunctionalBefore[vector_component].asReal() * display_scale)) ||
+                (!vector_component_oracle &&
                 std::round(mFunctionalControlBefore.asReal() * display_scale) ==
-                    std::round(mFunctionalBefore.asReal() * display_scale);
+                    std::round(mFunctionalBefore.asReal() * display_scale));
             mFunctionalObserved["spinner"]["default_in_range"] = default_in_range;
             mFunctionalObserved["spinner"]["increment_representable"] =
                 increment_representable;
@@ -6191,7 +6230,37 @@ private:
         if (!mFunctionalSettingName.empty())
         {
             bool setting_matches = mFunctionalSetting != nullptr;
-            if (setting_matches && dynamic_cast<LLColorSwatchCtrl*>(control) &&
+            if (setting_matches && vector_component_oracle)
+            {
+                const S32 required_size = entry["vector_setting_size"].asInteger();
+                setting_matches = actual.isArray() && mFunctionalBefore.isArray() &&
+                    required_size > vector_component &&
+                    static_cast<S32>(actual.size()) >= required_size &&
+                    static_cast<S32>(mFunctionalBefore.size()) >= required_size;
+                bool component_changed = setting_matches && !functionalEqual(
+                    actual[vector_component], mFunctionalBefore[vector_component], "F32",
+                    entry["increment"]);
+                bool other_components_unchanged = setting_matches;
+                for (S32 component = 0; component < required_size; ++component)
+                    if (component != vector_component)
+                        other_components_unchanged = other_components_unchanged &&
+                            functionalEqual(actual[component], mFunctionalBefore[component], "F32");
+                setting_matches = setting_matches && component_changed &&
+                    other_components_unchanged && functionalEqual(
+                        actual[vector_component], expected, "F32", entry["increment"]);
+                mFunctionalObserved["vector"]["component"] = vector_component;
+                mFunctionalObserved["vector"]["component_changed"] = component_changed;
+                mFunctionalObserved["vector"]["other_components_unchanged"] =
+                    other_components_unchanged;
+                observable = component_changed;
+                if (!other_components_unchanged)
+                    assertion_failure = "vector spinner changed a non-target component";
+                else if (!component_changed)
+                    assertion_failure = "vector spinner did not change its target component";
+                else if (!setting_matches)
+                    assertion_failure = "vector spinner target component did not reach the expected value";
+            }
+            else if (setting_matches && dynamic_cast<LLColorSwatchCtrl*>(control) &&
                 type == "Color3" && actual.isArray() && expected.isArray())
             {
                 setting_matches = actual.size() >= 3 && expected.size() >= 3;
@@ -6203,7 +6272,7 @@ private:
                 setting_matches = functionalEqual(actual, expected, type, entry["increment"]);
             }
             expected_ok = expected_ok && setting_matches;
-            observable = changed;
+            if (!vector_component_oracle) observable = changed;
         }
         else
         {

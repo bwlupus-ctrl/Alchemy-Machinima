@@ -378,6 +378,29 @@ if ($Functional) {
     Write-Host 'Functional manifest R4 prerequisite enrichment failed.' -ForegroundColor Red
     exit 2
   }
+  $preparedManifest = Get-Content -LiteralPath $manifestPath -Raw | ConvertFrom-Json
+  $expectedLoginRows = @($preparedManifest.entries | Where-Object {
+    $_.version -eq 'v2' -and
+    ($_.action -eq 'RUN' -or $_.login_policy_run -eq $true) -and
+    @($_.login_blocking_hazards | Where-Object { $_ }).Count -eq 0
+  })
+  $expectedVcamLogin = @($expectedLoginRows | Where-Object page -eq 'vcam_tab').Count
+  $expectedImageLogin = @($expectedLoginRows | Where-Object page -eq 'image_tab').Count
+  $vcamNonRun = @($preparedManifest.entries | Where-Object {
+    $_.version -eq 'v2' -and $_.page -eq 'vcam_tab' -and
+    -not (($_.action -eq 'RUN' -or $_.login_policy_run -eq $true) -and
+          @($_.login_blocking_hazards | Where-Object { $_ }).Count -eq 0)
+  })
+  Write-Host "Expected login RUN: vcam_tab=$expectedVcamLogin image_tab=$expectedImageLogin"
+  foreach ($entry in $vcamNonRun) {
+    Write-Host ("VCam non-run: {0}: {1}" -f $entry.widget_name,
+      $(if ($entry.reason) { $entry.reason } elseif ($entry.inworld_skip_reason) {
+          $entry.inworld_skip_reason } else { $entry.action }))
+  }
+  if ($expectedVcamLogin -lt 120 -or $expectedImageLogin -lt 64) {
+    Write-Host 'Functional manifest misses the Step 2 login coverage floor (VCam 120 / Image 64).' -ForegroundColor Red
+    exit 2
+  }
   $destCsv = Join-Path $runDir 'functional.csv'
   $summaryPath = Join-Path $runDir 'summary.md'
   $versions = if ($Both) { @($false, $true) } else { @([bool]$DirectorV2) }

@@ -25,7 +25,7 @@ NETWORK_HAZARDS = frozenset({
 LOCAL_HAZARDS = frozenset({
     "file_picker", "destructive", "logout", "delete", "rename",
     "export_import", "save_disk", "clipboard_write", "external_url_process",
-    "persistent_setting",
+    "persistent_setting", "modal",
 })
 LOGIN_BLOCKING_HAZARDS = frozenset({
     "file_picker", "destructive", "logout", "clipboard_write",
@@ -55,7 +55,8 @@ HAZARD_RULES = {
     "agent_send": (r"\b(?:sendAnimationRequests?|sendAgentUpdate|send_agent_update)\s*\("
                    r"|\b(?:gAgent|LLAgent\w*)\b[^;{}]{0,100}?\bsend[A-Z]\w*\s*\("
                    r"|\bLLAgent::set(?:LookAt|PointAt)\s*\("
-                   r"|\bgAgent\s*\.\s*set(?:LookAt|PointAt)\s*\("
+                   r"|\b(?:gAgent|gAgentCamera)\s*\.\s*set(?:LookAt|PointAt)\s*\("
+                   r"|\bgAgent\s*\.\s*set(?:Flying|AFK|DoNotDisturb|StartPosition)\s*\("
                    r"|\bLLHUDManager::(?:getInstance\s*\(\s*\)\s*->|instance\s*\(\s*\)\s*\.)?createViewerEffect\s*\("
                    r"|\bAOEngine\s*::\s*(?:(?:instance|getInstance)\s*\(\s*\)\s*(?:\.|->)\s*)?override\s*\("
                    r"|\bAOEngine\s*::\s*[A-Za-z_]\w*Request\s*\("),
@@ -77,12 +78,19 @@ HAZARD_RULES = {
                      r"|LLEnvironment::(?:updateParcel|updateRegion)"
                      r"|LLSelectMgr::getInstance\s*\(\s*\)\s*->\s*(?:selection\w*|send[A-Z]\w*|select\w*|deselect\w*)"
                      r"|gAgent\s*\.\s*(?:standUp|sitDown)"
+                     r"|gAgent\s*\.\s*startAutoPilot\w*"
+                     r"|startAutoPilot\w*"
+                     r"|handle_object_sit"
                      r"|LLAppearanceMgr::(?:instance|getInstance)\s*\(\s*\)\s*(?:\.|->)\s*(?:wear|remove|replace)\w*"
+                     r"|LLAppearanceMgr::(?:instance|getInstance)\s*\(\s*\)\s*(?:\.|->)\s*addCOFItemLink"
+                     r"|addCOFItemLink"
                      r"|LLAppearanceMgr::(?:wear|remove|replace)\w*"
                      r"|gInventory\s*\.\s*(?:remove|purge|changeItemParent|changeCategoryParent)\w*"
-                     r"|(?:create_inventory_item|update_inventory_item|copy_inventory_item|move_inventory_item|remove_inventory_\w*|purge_descendents_of|LLGiveInventory::\w+)"
+                     r"|(?:create_inventory_item|create_inventory_wearable|create_inventory_callingcard|update_inventory_item|update_inventory_category|copy_inventory_item|move_inventory_item|remove_inventory_\w*|purge_descendents_of|LLGiveInventory::\w+)"
                      r"|LLToolDragAndDrop::handleGiveDragAndDrop"
                      r"|LLViewerParcelMgr::getInstance\s*\(\s*\)\s*->\s*(?:sendParcel|buy|claim|release|deed)\w*"
+                     r"|LLViewerParcelMgr::getInstance\s*\(\s*\)\s*->\s*startBuyLand"
+                     r"|startBuyLand"
                      r"|LLViewerRegion::(?:set|update)\w*|send_ObjectDeRez|derez_objects(?:_separate)?"
                      r"|handle_object_take|handle_object_return)\s*\("
                      r"|\b(?:rez|duplicate|delete|take|give|pay|buy|teleport|sit|stand|attach|detach|wear|takeOff|upload|invite|eject|friend|estate|updateRegion|updateParcel|setRegion|setParcel|claimParcel|releaseParcel)\w*\s*\("
@@ -92,9 +100,11 @@ HAZARD_RULES = {
                     r"|\bgAgent\s*\.\s*getRegionCapability\s*\("
                     r"|\b(?:LLHTTPClient|LLCoreHttpUtil)\w*::[^;{}]{0,160}?\b(?:post|put)\w*\s*\("),
     "scripted_dialog": r"\b(?:ScriptDialog|ScriptQuestion|LLScriptFloater|scriptQuestion)\b",
-    "clipboard_write": r"\b(?:copyToClipboard|copyFromString)\s*\(",
-    "external_url_process": (r"\b(?:loadURLExternal|spawnWebBrowser|ShellExecute|"
-                             r"CreateProcess|system)\s*\("),
+    "clipboard_write": r"\b(?:copyToClipboard|copyTextToClipboard|copyFromString)\s*\(",
+    "external_url_process": (r"\b(?:loadURLExternal|spawnWebBrowser|openDir|ShellExecuteW?|"
+                             r"CreateProcessW?|system)\s*\("
+                             r"|\bLLProcess\s*::\s*create\s*\("),
+    "modal": r"\bOSMessageBox\s*\(",
     "persistent_setting": (r"\b(?:gSavedPerAccountSettings|gCrashSettings|"
                            r"gWarningSettings)\s*\.\s*(?:set[A-Z]\w*|"
                            r"getControl\s*\([^;\n]{0,120}?setValue)"),
@@ -527,9 +537,10 @@ def _expand_callback_calls(seed: list[tuple[str, Path | None]], owner_class: str
                            sources: dict[Path, str], body_cache: dict[str, object],
                            depth_limit: int = 3,
                            reached_paths: set[Path] | None = None,
-                           unresolved_member_calls: set[str] | None = None) -> list[str]:
+                           unresolved_member_calls: set[str] | None = None,
+                           dispatch_widget: str = "") -> list[str]:
     """Scan callback text and its same/known-owner-file callees to bounded depth."""
-    expansion_key = "@expand:" + owner_class + ":" + str(depth_limit) + ":" + repr(
+    expansion_key = "@expand:" + owner_class + ":" + dispatch_widget + ":" + str(depth_limit) + ":" + repr(
         sorted((str(path or ""), hash(text)) for text, path in seed))
     cached_expansion = body_cache.get(expansion_key)
     if cached_expansion is not None:
@@ -576,6 +587,13 @@ def _expand_callback_calls(seed: list[tuple[str, Path | None]], owner_class: str
             candidates = [called] if "::" in called else ([owner_class + "::" + called] if owner_class else [])
             for candidate in candidates:
                 body, body_source = _source_body(sources, candidate, source)
+                if (body and owner_class == "ALPanelDirectorVCam" and
+                        candidate.rsplit("::", 1)[-1] in {
+                            "onControl", "commitCamera", "commitDisplay", "commitProjector"}):
+                    body, branch_found = _vcam_dispatch_branch(body, dispatch_widget)
+                    if not branch_found and unresolved_member_calls is not None:
+                        unresolved_member_calls.add(
+                            candidate.rsplit("::", 1)[-1] + ":" + dispatch_widget)
                 key = (candidate, str(body_source or ""))
                 if body and key not in seen:
                     seen.add(key)
@@ -603,6 +621,11 @@ def _expand_callback_calls(seed: list[tuple[str, Path | None]], owner_class: str
                         reached_paths.add(body_source)
                 continue
             for body, body_source in candidates:
+                if owner_class == "ALPanelDirectorVCam" and leaf in {
+                        "onControl", "commitCamera", "commitDisplay", "commitProjector"}:
+                    body, branch_found = _vcam_dispatch_branch(body, dispatch_widget)
+                    if not branch_found and unresolved_member_calls is not None:
+                        unresolved_member_calls.add(leaf + ":" + dispatch_widget)
                 key = ("member:" + leaf + ":" + str(hash(body)), str(body_source))
                 if key not in seen:
                     seen.add(key)
@@ -771,9 +794,80 @@ def _setting_reachability(setting: str, sources: dict[Path, str],
     return result
 
 
+def _cpp_if_branches(text: str) -> list[tuple[str, str]]:
+    """Return condition/body pairs without admitting neighbouring else arms."""
+    branches: list[tuple[int, str, str]] = []
+    for match in re.finditer(r"\b(?:if|else\s+if)\s*\(", text):
+        opening = text.find("(", match.start(), match.end())
+        closing = _matching_delimiter(text, opening)
+        if closing < 0:
+            continue
+        start = closing + 1
+        while start < len(text) and text[start].isspace():
+            start += 1
+        if start >= len(text):
+            continue
+        if text[start] == "{":
+            end = _matching_delimiter(text, start, "{", "}")
+            if end < 0:
+                continue
+            body = text[start:end + 1]
+        else:
+            end = text.find(";", start)
+            if end < 0:
+                continue
+            body = text[start:end + 1]
+        depth = text.count("{", 0, match.start()) - text.count("}", 0, match.start())
+        branches.append((depth, text[opening + 1:closing], body))
+    if not branches:
+        return []
+    top_depth = min(depth for depth, _condition, _body in branches)
+    return [(condition, body) for depth, condition, body in branches
+            if depth == top_depth]
+
+
+def _vcam_dispatch_branch(body: str, widget: str,
+                          action: str = "") -> tuple[str, bool]:
+    """Select only one VCam name/action arm from an onControl-style body."""
+    name_literal = re.escape(widget)
+    named: list[tuple[str, str]] = []
+    for condition, branch in _cpp_if_branches(body):
+        if re.search(r'(?:\bname\s*==\s*"' + name_literal +
+                     r'"|"' + name_literal + r'"\s*==\s*\bname)', condition):
+            named.append((condition, branch))
+    if action:
+        action_literal = re.escape(action)
+        exact = [(condition, branch) for condition, branch in named
+                 if re.search(r'==\s*"' + action_literal + r'"', condition)]
+        if exact:
+            return exact[0][1], len(exact) == 1
+    if len(named) == 1:
+        selected = named[0][1]
+        if widget in {"vc_monitor_header", "vc_monitor_strip"}:
+            if not action:
+                return "", False
+            nested = [(condition, branch) for condition, branch in _cpp_if_branches(selected)
+                      if re.search(r'==\s*"' + re.escape(action) + r'"', condition)]
+            return (nested[0][1], True) if len(nested) == 1 else ("", False)
+        return selected, True
+    if len(named) > 1:
+        return "", False
+
+    # The tail of onControl routes families to a second exact name dispatch.
+    route = "commitCamera"
+    if widget.startswith("vc_proj_"):
+        route = "commitProjector"
+    elif widget.startswith(("vc_tv_", "vc_face_", "vc_anchor_", "vc_bar_", "vc_screen_")):
+        route = "commitDisplay"
+    route_match = re.search(r"\b" + route + r"\s*\(\s*name\s*,\s*value\s*\)\s*;", body)
+    return (route_match.group(0), True) if route_match else ("", False)
+
+
 def _handler_hazards(row: dict[str, object], cpp_sources: dict[Path, str],
                      body_cache: dict[str, object]) -> tuple[set[str], bool]:
     """Resolve this control's exact callback and scan it fail-closed."""
+    if row.get("exercise") == "readout":
+        return set(), True
     owner = str(row.get("owner") or "")
     widget = str(row.get("widget_name") or "")
     bodies: list[tuple[str, Path | None]] = []
@@ -784,8 +878,19 @@ def _handler_hazards(row: dict[str, object], cpp_sources: dict[Path, str],
         body_cache.setdefault(owner, owner_body)
     owner_class = owner.split("::", 1)[0] if "::" in owner else ""
 
+    if owner == "ALPanelDirectorVCam::onControl" and owner_body:
+        branch, resolved = _vcam_dispatch_branch(
+            owner_body, widget, str(row.get("dispatch_action") or ""))
+        if branch:
+            bodies.append((branch, owner_source))
+            if owner_source:
+                offset = cpp_sources[owner_source].find(branch)
+                if offset >= 0:
+                    row["inworld_callback_evidence"] = (
+                        f"{owner_source.name}:{cpp_sources[owner_source].count(chr(10), 0, offset) + 1}")
+
     registration_text = cpp_sources.get(owner_source, "") if owner_source else owner_body
-    if registration_text and (not widget or f'"{widget}"' in registration_text):
+    if not bodies and registration_text and (not widget or f'"{widget}"' in registration_text):
         at = registration_text.find(f'"{widget}"')
         direct_start = registration_text.rfind("getChild", 0, at + 1)
         legacy_window = registration_text[
@@ -908,6 +1013,17 @@ def _handler_hazards(row: dict[str, object], cpp_sources: dict[Path, str],
     if setting:
         setting_bodies, setting_listener_resolved, setting_listeners, setting_consumers = \
             _setting_reachability(setting, cpp_sources, body_cache)
+        if owner_class == "ALPanelDirectorVCam":
+            scoped_setting_bodies: list[tuple[str, Path]] = []
+            for setting_body, setting_path in setting_bodies:
+                if re.search(r"\b(?:const\s+)?std::string\s+name\b", setting_body):
+                    setting_branch, branch_found = _vcam_dispatch_branch(
+                        setting_body, widget, str(row.get("dispatch_action") or ""))
+                    if branch_found:
+                        scoped_setting_bodies.append((setting_branch, setting_path))
+                    else:
+                        setting_listener_resolved = False
+            setting_bodies = scoped_setting_bodies
         row["inworld_setting_listener_count"] = setting_listeners
         row["inworld_setting_consumer_count"] = setting_consumers
         row["inworld_setting_listener_resolved"] = setting_listener_resolved
@@ -926,7 +1042,8 @@ def _handler_hazards(row: dict[str, object], cpp_sources: dict[Path, str],
     callback_reachable = _expand_callback_calls(
         bodies + setting_bodies, owner_class, cpp_sources, body_cache,
         depth_limit=3, reached_paths=called_paths,
-        unresolved_member_calls=unresolved_member_calls)
+        unresolved_member_calls=unresolved_member_calls,
+        dispatch_widget=widget if owner_class == "ALPanelDirectorVCam" else "")
     if unresolved_member_calls:
         row["unresolved_member_calls"] = sorted(unresolved_member_calls)
         resolved = False
@@ -938,7 +1055,9 @@ def _handler_hazards(row: dict[str, object], cpp_sources: dict[Path, str],
 
     # NETWORK stays deliberately conservative in-world. Include the complete
     # comment-stripped translation units owning reachable code so a dynamic
-    # sender in that TU cannot silently pass the allowlist.
+    # sender in that TU cannot silently pass the allowlist. VCam is the one
+    # exception: its name/action router is resolved to an exact arm above, and
+    # sibling translation-unit branches must not donate hazards to that row.
     reachable_paths = {path for _body, path in reachable_seed if path is not None} | called_paths
     hazards: set[str] = set()
     direct_hazards: set[str] = set()
@@ -950,14 +1069,15 @@ def _handler_hazards(row: dict[str, object], cpp_sources: dict[Path, str],
     row["direct_login_blocking_hazards"] = sorted(
         tag for tag, pattern in LOGIN_ONLY_BLOCKER_RULES.items()
         if re.search(pattern, reachable))
-    for path in reachable_paths:
-        cache_key = "@network_tu_hazards:" + str(path)
-        if cache_key not in body_cache:
-            source = cpp_sources[path]
-            body_cache[cache_key] = frozenset(
-                tag for tag in NETWORK_HAZARDS
-                if tag in HAZARD_RULES and re.search(HAZARD_RULES[tag], source))
-        hazards.update(body_cache[cache_key])
+    if owner_class != "ALPanelDirectorVCam":
+        for path in reachable_paths:
+            cache_key = "@network_tu_hazards:" + str(path)
+            if cache_key not in body_cache:
+                source = cpp_sources[path]
+                body_cache[cache_key] = frozenset(
+                    tag for tag in NETWORK_HAZARDS
+                    if tag in HAZARD_RULES and re.search(HAZARD_RULES[tag], source))
+            hazards.update(body_cache[cache_key])
     # A virtual avatar call can dispatch gAgent.sendAnimationRequest when the
     # self avatar's AO overrides the motion.  Qualified LLCharacter calls are
     # deliberately not matched.
@@ -979,6 +1099,23 @@ def _apply_inworld_hazard_policy(row: dict[str, object], hazards: set[str]) -> N
             "setting referenced from a table/initializer outside a function"
             if row.get("setting_reference_outside_function") else
             "resolved handler hazard: " + ", ".join(sorted(hazards)))
+
+
+def _apply_unresolved_handler_policy(row: dict[str, object], hazards: set[str]) -> None:
+    """Round-8 classifier: login may run; in-world always denies unresolved."""
+    row["handler_scan_resolved"] = False
+    row["inworld_allowed"] = False
+    row["inworld_allow_evidence"] = "unresolved handler reachability"
+    row["inworld_skip_reason"] = "local reachability unresolved"
+    login_blockers = _login_blocking_hazards(row, hazards)
+    row["login_blocking_hazards"] = sorted(login_blockers)
+    if login_blockers:
+        row["action"] = "SKIP"
+        row["reason"] = _login_block_reason(login_blockers)
+    elif row.get("action") == "RUN":
+        row["login_policy_run"] = True
+        row["reason"] = ""
+    row["known_gap"] = False
 
 
 def _owner_enable_index(cpp_sources: dict[Path, str]) -> dict[str, tuple[str, str]]:
@@ -1834,14 +1971,7 @@ def prepare_manifest(path: Path, repo: Path, output: Path) -> tuple[int, int, in
                 # coverage may remain executable for non-button controls.
                 _apply_inworld_hazard_policy(row, hazards)
                 if not handler_resolved:
-                    row["inworld_skip_reason"] = "local reachability unresolved"
-                    if login_blockers:
-                        row["action"] = "SKIP"
-                        row["reason"] = _login_block_reason(login_blockers)
-                    elif row.get("action") == "RUN":
-                        row["login_policy_run"] = True
-                        row["reason"] = ""
-                    row["known_gap"] = False
+                    _apply_unresolved_handler_policy(row, set(row["hazards"]))
                     unresolved_hazards.append(f"{row['version']}:{row['page']}:{widget}")
                 elif ((row.get("action") == "RUN" and legacy_button_scan) or
                         row.get("motion_send_hazard")):
@@ -1861,13 +1991,7 @@ def prepare_manifest(path: Path, repo: Path, output: Path) -> tuple[int, int, in
                         row["reason"] = ""
                     row["known_gap"] = False
             elif not handler_resolved:
-                row["inworld_allowed"] = False
-                row["inworld_allow_evidence"] = "unresolved handler reachability"
-                row["inworld_skip_reason"] = "local reachability unresolved"
-                if row.get("action") == "RUN":
-                    row["login_policy_run"] = True
-                    row["reason"] = ""
-                row["known_gap"] = False
+                _apply_unresolved_handler_policy(row, set(row.get("hazards", [])))
                 unresolved_hazards.append(f"{row['version']}:{row['page']}:{widget}")
             if login_destructive_candidate:
                 policy_hazards = set(row.get("hazards", []))
@@ -1884,6 +2008,7 @@ def prepare_manifest(path: Path, repo: Path, output: Path) -> tuple[int, int, in
                     row["reason"] = ""
                     row["login_policy_run"] = True
             elif (handler_resolved and row.get("action") in {"RUN", "DEFER_INWORLD"} and
+                  row.get("exercise") != "readout" and
                   not row.get("setting") and not row.get("consumer") and
                   not row.get("reset_defaults") and
                   row.get("probe") not in {
@@ -2197,9 +2322,22 @@ def self_test_handler_scanner() -> None:
             "remove_inventory_item(item_id);",
             "purge_descendents_of(category_id);",
             "LLGiveInventory::doGiveInventoryItem(avatar_id, item, session_id);",
+            "gAgent.startAutoPilotGlobal(pos_global);",  # llfloaterworldmap.cpp:1630
+            "handle_object_sit(obj->getID());",  # alfloatersceneexplorer.cpp:2967
+            "LLAppearanceMgr::instance().addCOFItemLink(item);",  # llpaneloutfitedit.cpp:1229
+            "create_inventory_wearable(gAgent.getID(), session, parent, transaction, type, subtype, name, desc, cb);",  # llagentwearables.cpp:852
+            "create_inventory_callingcard(avatar_id, folder_id, cb);",  # llfriendcard.cpp:618
+            "update_inventory_category(category_id, updates, NULL);",  # llfloaterchangeitemthumbnail.cpp:1088
+            "LLViewerParcelMgr::getInstance()->startBuyLand();",  # llpanelland.cpp:247
         ],
         "agent_send": [
             "gAgent.setLookAt(LOOKAT_TARGET_SELECT, object, position);",
+            "gAgentCamera.setPointAt(POINTAT_TARGET_SELECT, object, position);",  # llselectmgr.cpp:8043
+            "gAgentCamera.setLookAt(LOOKAT_TARGET_SELECT, object, position);",  # llselectmgr.cpp:8044
+            "gAgent.setFlying(true);",  # llviewerinput.cpp:112
+            "gAgent.setAFK();",  # llappviewer.cpp:561
+            "gAgent.setDoNotDisturb(false);",  # llavataractions.cpp:1545
+            "gAgent.setStartPosition(START_LOCATION_ID_HOME);",  # alchatcommand.cpp:198
             "LLAgent::setPointAt(POINTAT_TARGET_SELECT, object, position);",
             "LLHUDManager::getInstance()->createViewerEffect(LLHUDObject::LL_HUD_EFFECT_POINTAT);",
             "sendAgentUpdate(true, true);",
@@ -2233,6 +2371,17 @@ def self_test_handler_scanner() -> None:
             "LLSDSerialize::toXML(data, output);",
         ],
         "logout": ["requestQuit();"],
+        "clipboard_write": [
+            "getWindow()->copyTextToClipboard(text);",  # alfloaterparticleeditor.cpp:534
+        ],
+        "external_url_process": [
+            "gDirUtilp->openDir(path);",  # alfloaterexploresounds.cpp:591
+            "ShellExecuteW(window, operation, file, params, directory, show);",
+            "ShellExecute(window, operation, file, params, directory, show);",
+            "CreateProcessW(app, command, attrs, thread, false, flags, env, cwd, startup, process);",
+            "LLProcess::create(params);",  # llexternaleditor.cpp:120
+        ],
+        "modal": ["OSMessageBox(message, title, OSMB_OK);"],  # llappviewer.cpp:2435
     }
     for tag, fixtures in positive_calls.items():
         for fixture in fixtures:
@@ -2327,9 +2476,10 @@ void Fixture::onPickProp() { LLSelectMgr::getInstance()->selectObjectOnly(prop);
         _mode_denies_hazards(hazards, True, True), \
         "NETWORK row must run only at proved-no-circuit login and remain denied in-world"
     login_unresolved_fixture = {
-        "action": "RUN", "login_policy_run": True,
-        "handler_scan_resolved": False, "inworld_allowed": False,
+        "action": "RUN", "reason": "", "known_gap": True,
+        "direct_hazards": [],
     }
+    _apply_unresolved_handler_policy(login_unresolved_fixture, set())
     assert login_unresolved_fixture["action"] == "RUN" and \
         login_unresolved_fixture["inworld_allowed"] is False, \
         "unresolved row must run under login policy and remain denied in-world"
@@ -2361,6 +2511,45 @@ void Fixture::onPickProp() { LLSelectMgr::getInstance()->selectObjectOnly(prop);
 
     explorer, hazards, resolved = scan("explorer_danger")
     assert resolved and "selection_broadcast" in hazards and explorer["inworld_allowed"] is False
+
+    vcam_source = r'''
+void ALPanelDirectorVCam::onControl(LLUICtrl* source)
+{
+    const std::string name = source->getName();
+    const LLSD value = source->getValue();
+    if (name == "vc_correct") onCorrect();
+    else if (name == "vc_sibling") LLFile::remove(path);
+    else if (name == "vc_monitor_header")
+    {
+        const std::string action = value["action"].asString();
+        if (action == "safe") onCorrect();
+        else if (action == "danger") OSMessageBox(message, title, OSMB_OK);
+    }
+}
+void ALPanelDirectorVCam::onCorrect() { savePreset(name); }
+'''
+    vcam_sources = {Path("alpaneldirectorvcam.cpp"): vcam_source}
+
+    def scan_vcam(widget: str, action: str = "") -> tuple[set[str], bool]:
+        row: dict[str, object] = {
+            "owner": "ALPanelDirectorVCam::onControl", "widget_name": widget,
+            "page": "vcam_tab", "action": "RUN", "exercise": "click",
+        }
+        if action:
+            row["dispatch_action"] = action
+        return _handler_hazards(row, vcam_sources, {})
+
+    hazards, resolved = scan_vcam("vc_correct")
+    assert resolved and "save_disk" in hazards, \
+        "VCam row did not select its own branch/callee"
+    assert "delete" not in hazards, \
+        "VCam sibling branch hazard leaked into the selected row"
+    hazards, resolved = scan_vcam("vc_sibling")
+    assert resolved and "delete" in hazards, \
+        "VCam hazard in the selected branch was missed"
+    hazards, resolved = scan_vcam("vc_monitor_header", "safe")
+    assert resolved and "save_disk" in hazards and "modal" not in hazards, \
+        "VCam action sub-dispatch selected the wrong branch"
 
     setting_source = r'''
 bool SettingFixture::postBuild()

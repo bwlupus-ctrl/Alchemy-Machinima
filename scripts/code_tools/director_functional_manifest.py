@@ -20,6 +20,7 @@ Stdlib only. Run as:  python -I scripts/code_tools/director_functional_manifest.
 
 import argparse
 import collections
+import copy
 import csv
 import hashlib
 import json
@@ -104,7 +105,7 @@ KIND_TO_TYPE = {
     "slider": "slider", "number": "spinner", "dial": "dial", "arc": "dial",
     "combo": "combo", "toggle": "toggle", "button": "button", "link": "button",
     "color": "color", "list": "list", "text": "text", "vec2": "vec2",
-    "vec3": "vec3", "custom": "custom", "viewport": "viewport", "gobo": "gobo",
+    "vec3": "vec3", "readout": "readout", "custom": "custom", "viewport": "viewport", "gobo": "gobo",
 }
 # widget type -> exercise verb.
 EXERCISE = {
@@ -112,6 +113,7 @@ EXERCISE = {
     "dial": "set_value", "vec2": "set_value", "vec3": "set_value",
     "color": "set_value", "text": "set_value", "combo": "select_item",
     "radio": "select_item", "list": "select_item", "button": "click",
+    "readout": "readout",
 }
 # Pages whose actions operate on an in-world avatar/object/selection.
 WORLD_PAGES = {"move_tab", "path_tab", "props_tab", "ghosts_tab", "dance_tab",
@@ -577,6 +579,8 @@ def build_kit_entries(kit_pages, rows, settings, page_meta):
 
             owner = ""
             callbacks = ""
+            if page == "vcam_tab" and kind != "readout":
+                owner = "ALPanelDirectorVCam::onControl"
             if binding == "code":
                 if row.get("action") or row.get("link_to") or kind == "link":
                     owner = "ALKitRow::postBuild"
@@ -603,6 +607,8 @@ def build_kit_entries(kit_pages, rows, settings, page_meta):
                  "callbacks": callbacks, "owner": owner, "known_gap": False,
                  "hazards": hazards}
             expect = build_expect(c, test_resolved)
+            if exercise == "readout":
+                expect = {"ui": "non-empty text after page refresh"}
             if row.get("link_to"):
                 expect = {"ui": "navigates to " + row.get("link_to")}
             restore = ({"setting": setting, "value": default}
@@ -631,7 +637,33 @@ def build_kit_entries(kit_pages, rows, settings, page_meta):
                 "callbacks": callbacks or None, "owner": owner or None,
                 "evidence": rel(path),
             })
-            out.append(entry)
+            if kind in ("vec2", "vec3"):
+                component_count = 2 if kind == "vec2" else 3
+                setting_size = len(default) if isinstance(default, list) else component_count
+                for component in range(component_count):
+                    component_entry = copy.deepcopy(entry)
+                    axis = "xyz"[component]
+                    component_default = (default[component]
+                                         if isinstance(default, list) and component < len(default)
+                                         else 0.0)
+                    component_test = number_test(component_default, lo, hi, step, "F32")
+                    component_entry.update({
+                        "id": "%s:%s" % (entry["id"], axis),
+                        "widget_name": "%s_%s" % (widget, axis),
+                        "widget_type": "spinner",
+                        "row_label": "%s %s" % (row.get("label", ""), axis.upper()),
+                        "exercise": "set_value",
+                        "test_value": component_test,
+                        "expect": {"setting": setting, "type": "F32",
+                                   "value": component_test},
+                        "vector_component": component,
+                        "vector_size": component_count,
+                        "vector_setting_size": setting_size,
+                        "default": component_default,
+                    })
+                    out.append(component_entry)
+            else:
+                out.append(entry)
     return out
 
 
@@ -970,6 +1002,8 @@ def synthetic_entries(xi, settings, csv_pairs, page_meta, presets, preset_writte
         stype = sinfo.get("type", "")
         default = sinfo.get("default")
         e = base_entry(page_meta, page, version, "synthetic:" + family)
+        owner = ("ALPanelDirectorVCam::onControl"
+                 if version == "v2" and page == "vcam_tab" else None)
         e.update({"id": "%s:%s:%s:synthetic" % (version, page, widget),
                   "csv_index": None, "card": page_card, "card_title": title,
                   "row_label": title, "xui_file": rel(xi.path_of(base)) if base else "",
@@ -978,7 +1012,7 @@ def synthetic_entries(xi, settings, csv_pairs, page_meta, presets, preset_writte
                   "exercise": "toggle", "setting": setting, "setting_source": "probe",
                   "setting_type": stype or None, "default": default,
                   "min": None, "max": None, "increment": None, "callbacks": None,
-                  "owner": None, "evidence": None, "probe": family})
+                  "owner": owner, "evidence": None, "probe": family})
         hz = []
         if family in {"weather_master", "rain_gate"}:
             hz.append("requires_deferred_rendering")
@@ -1457,8 +1491,16 @@ def main():
     if stale:
         sys.exit("kit coverage check failed: launcher/legacy entries remain for generated kit pages: " +
                  ", ".join(stale[:20]))
-    expected_kit_rows = [(page, row.get("widget", "")) for page, xml_rows in kit_pages.items()
-                         for _base, _path, _kit, _card, row in xml_rows]
+    expected_kit_rows = []
+    for page, xml_rows in kit_pages.items():
+        for _base, _path, _kit, _card, row in xml_rows:
+            widget = row.get("widget", "")
+            if row.get("kind") in ("vec2", "vec3"):
+                count = 2 if row.get("kind") == "vec2" else 3
+                expected_kit_rows.extend((page, widget + "_" + "xyz"[component])
+                                         for component in range(count))
+            else:
+                expected_kit_rows.append((page, widget))
     expected_kit = set(expected_kit_rows)
     got_kit_rows = [(e["page"], e["widget_name"]) for e in entries
                     if e.get("version") == "v2" and
