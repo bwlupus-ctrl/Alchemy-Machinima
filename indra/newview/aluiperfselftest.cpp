@@ -34,6 +34,7 @@
 #include "altoolghostedit.h"
 #include "altoolpathedit.h"
 #include "animationexplorer.h"
+#include "aoengine.h"
 
 #include "llagent.h"
 #include "llappviewer.h"
@@ -2844,10 +2845,19 @@ private:
                 // the panel's public combo path refreshes all actor-owned gates.
                 edit_actor->setValue(0);
                 edit_actor->onCommit();
+                // SELF must never acquire camera-facing body rotation during a
+                // real-account run.  The per-row setting snapshot restores the
+                // global, while the actor/cast snapshots restore this override.
+                rememberFunctionalSetting("DirectorLookAtCameraMode");
+                if (LLControlVariable* camera_mode =
+                        gSavedSettings.getControl("DirectorLookAtCameraMode").get())
+                    camera_mode->setValue(0, false); // ui-draw-lint: allow(setting-write) in-world gaze safety fixture
                 LLActorMover::instance().setGazeEnabled(mFunctionalGazeActor, true);
                 LLDirectorCast::instance().setLookAtCamera(mFunctionalGazeActor, true);
                 LLActorMover::GazeTarget target = mFunctionalCastGazeBefore;
                 target.mMode = LLActorMover::GazeTarget::FIXED_POINT;
+                target.mCameraModeOverride = 0;
+                LLActorMover::instance().setGazeTargetConfig(mFunctionalGazeActor, target);
                 LLDirectorCast::instance().setGazeTarget(mFunctionalGazeActor, target);
             }
         }
@@ -3217,6 +3227,8 @@ private:
                 rememberFunctionalSetting((*it)["selector"].asString());
         if (entry["page"].asString() == "weather_tab")
             rememberFunctionalSetting("AlchemyWeatherEnabled");
+        if (entry["page"].asString() == "gaze_tab")
+            rememberFunctionalSetting("DirectorLookAtCameraMode");
         const LLSD& settings = entry["restore"]["snapshot_settings"];
         if (settings.isArray())
             for (LLSD::array_const_iterator it = settings.beginArray(); it != settings.endArray(); ++it)
@@ -6998,19 +7010,29 @@ private:
                 recordFunctionalAccountResult(
                     avatar_name, "PASS", "authorized account verified");
                 mFunctionalAccountVerified = true;
-                // The wrapper forces these values in its byte-backed-up account
-                // settings before launch. Never toggle AOEngine after login:
-                // disabling an already-live AO can itself send animation stops.
+                // The wrapper disables the persisted AO master before launch.
+                // These two controls are Persist=0 and therefore must be set in
+                // memory after login; with the master already off, their AO
+                // listeners cannot stop a live override.
+                const bool have_ao_enable =
+                    gSavedPerAccountSettings.controlExists("AlchemyAOEnable");
+                const bool have_ao_stands =
+                    gSavedPerAccountSettings.controlExists("UseAOStands");
+                const bool have_ao_pause =
+                    gSavedPerAccountSettings.controlExists("PauseAO");
+                if (have_ao_stands)
+                    gSavedPerAccountSettings.setBOOL("UseAOStands", false); // ui-draw-lint: allow(setting-write) pre-row AO safety gate
+                if (have_ao_pause)
+                    gSavedPerAccountSettings.setBOOL("PauseAO", true); // ui-draw-lint: allow(setting-write) pre-row AO safety gate
                 const bool ao_safe =
-                    gSavedPerAccountSettings.controlExists("AlchemyAOEnable") &&
-                    gSavedPerAccountSettings.controlExists("UseAOStands") &&
-                    gSavedPerAccountSettings.controlExists("PauseAO") &&
+                    have_ao_enable && have_ao_stands && have_ao_pause &&
                     !gSavedPerAccountSettings.getBOOL("AlchemyAOEnable") && // ui-draw-lint: allow(setting) pre-row AO safety gate
                     !gSavedPerAccountSettings.getBOOL("UseAOStands") && // ui-draw-lint: allow(setting) pre-row AO safety gate
-                    gSavedPerAccountSettings.getBOOL("PauseAO"); // ui-draw-lint: allow(setting) belt-and-braces AO safety gate
+                    gSavedPerAccountSettings.getBOOL("PauseAO") && // ui-draw-lint: allow(setting) belt-and-braces AO safety gate
+                    !AOEngine::instance().isEnabled();
                 if (!ao_safe)
                     return finishFunctionalInWorldFailure(
-                        "AO safety settings were not inactive before row execution",
+                        "AO safety gate failed: expected AlchemyAOEnable=0, UseAOStands=0, PauseAO=1, and inactive AOEngine",
                         "inworld_ao_safety", "pre-launch AO inhibit");
             }
 

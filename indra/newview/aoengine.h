@@ -99,6 +99,7 @@ class AOEngine
 
         void enable(bool enable);
         void enableStands(bool enable_stands);
+        bool isEnabled() const { return mEnabled; }
         const LLUUID override(const LLUUID& motion, bool start);
         // Resolve the AO asset currently selected for a stock motion without
         // cycling state, stopping animations, changing timers, or sending a

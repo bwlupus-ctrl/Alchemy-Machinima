@@ -1324,7 +1324,7 @@ def write_md(entries, meta, skip_rows, page_order, page_meta, synth):
 
 
 def enforce_hazard_skip_run_guard(entries):
-    """Require a reviewed allow entry before a hazardous SKIP becomes RUN."""
+    """Require review for new in-world rows and hazardous SKIP promotions."""
     if not os.path.exists(JSON_PATH):
         return
     with open(JSON_PATH, encoding="utf-8") as stream:
@@ -1346,14 +1346,24 @@ def enforce_hazard_skip_run_guard(entries):
     violations = []
     for row in entries:
         before = old.get(key(row))
-        if not before or before.get("action") != "SKIP" or row.get("action") != "RUN":
-            continue
-        reason = str(before.get("reason") or "").lower()
-        hazard_skip = bool(before.get("hazards")) or any(token in reason for token in (
-            "hazard", "destructive", "file picker", "server", "simulator",
-            "animation request", "world action", "send", "delete", "remove"))
-        if hazard_skip and key(row) not in allowed:
-            violations.append(key(row) + " (was SKIP: " + str(before.get("reason") or "hazard") + ")")
+        row_key = key(row)
+        now_inworld = row.get("inworld_allowed") is True and \
+            row.get("action") in {"RUN", "DEFER_INWORLD"}
+        was_inworld = bool(before and before.get("inworld_allowed") is True and
+                           before.get("action") in {"RUN", "DEFER_INWORLD"})
+        needs_review = now_inworld and not was_inworld
+        detail = "new in-world-allowed row"
+        if before and before.get("action") == "SKIP" and \
+                row.get("action") in {"RUN", "DEFER_INWORLD"}:
+            reason = str(before.get("reason") or "").lower()
+            hazard_skip = bool(before.get("hazards")) or any(token in reason for token in (
+                "hazard", "destructive", "file picker", "server", "simulator",
+                "animation request", "world action", "send", "delete", "remove"))
+            if hazard_skip:
+                needs_review = True
+                detail = "was hazardous SKIP: " + str(before.get("reason") or "hazard")
+        if needs_review and row_key not in allowed:
+            violations.append(row_key + " (" + detail + ")")
     if violations:
         sys.exit("hazard SKIP->RUN guard failed; add reviewed entries to %s: %s" %
                  (rel(HAZARD_RUN_ALLOW_PATH), ", ".join(violations)))

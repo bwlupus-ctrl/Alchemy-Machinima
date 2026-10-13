@@ -97,6 +97,8 @@ def _inworld_local_effect(row: dict[str, object]) -> tuple[bool, str]:
         return False, "object selection is sent to the simulator"
 
     if row.get("binding") == "setting" and row.get("setting"):
+        if row.get("setting_reference_outside_function"):
+            return False, "setting referenced from a table/initializer outside a function"
         if row.get("setting_listener_unknown") or not row.get("handler_scan_resolved"):
             return False, "setting callback/listener scan unresolved"
         if row.get("setting_sole_sink"):
@@ -217,6 +219,80 @@ def _matching_delimiter(text: str, start: int, opener: str = "(", closer: str = 
                 return pos
         pos += 1
     return -1
+
+
+def _split_cpp_args(text: str) -> list[str]:
+    """Split a C++ argument list without splitting nested calls/templates."""
+    result: list[str] = []
+    start = 0
+    depths = {"(": 0, "[": 0, "{": 0, "<": 0}
+    pairs = {")": "(", "]": "[", "}": "{", ">": "<"}
+    quote = ""
+    escaped = False
+    for pos, char in enumerate(text):
+        if quote:
+            if escaped:
+                escaped = False
+            elif char == "\\":
+                escaped = True
+            elif char == quote:
+                quote = ""
+            continue
+        if char in {'"', "'"}:
+            quote = char
+        elif char in depths:
+            depths[char] += 1
+        elif char in pairs and depths[pairs[char]]:
+            depths[pairs[char]] -= 1
+        elif char == "," and not any(depths.values()):
+            result.append(text[start:pos].strip())
+            start = pos + 1
+    result.append(text[start:].strip())
+    return result
+
+
+def _cpp_without_comments(text: str) -> str:
+    """Blank C++ comments while retaining offsets and string literals."""
+    chars = list(text)
+    quote = ""
+    escaped = False
+    line_comment = False
+    block_comment = False
+    pos = 0
+    while pos < len(text):
+        char = text[pos]
+        following = text[pos + 1] if pos + 1 < len(text) else ""
+        if line_comment:
+            if char == "\n":
+                line_comment = False
+            else:
+                chars[pos] = " "
+        elif block_comment:
+            if char == "*" and following == "/":
+                chars[pos] = chars[pos + 1] = " "
+                block_comment = False
+                pos += 1
+            elif char != "\n":
+                chars[pos] = " "
+        elif quote:
+            if escaped:
+                escaped = False
+            elif char == "\\":
+                escaped = True
+            elif char == quote:
+                quote = ""
+        elif char == "/" and following == "/":
+            chars[pos] = chars[pos + 1] = " "
+            line_comment = True
+            pos += 1
+        elif char == "/" and following == "*":
+            chars[pos] = chars[pos + 1] = " "
+            block_comment = True
+            pos += 1
+        elif char in {'"', "'"}:
+            quote = char
+        pos += 1
+    return "".join(chars)
 
 
 def _callback_call(text: str, match: re.Match[str]) -> str:
@@ -345,21 +421,40 @@ def _setting_reachability(setting: str, sources: dict[Path, str],
             r"^[^\n;{}]*\b(?:[A-Za-z_]\w*::)*[A-Za-z_]\w*\s*"
             r"\([^;{}]*\)\s*(?:const\s*)?\{", re.M)
         index: dict[str, list[tuple[str, Path]]] = defaultdict(list)
+        outside: dict[str, set[Path]] = defaultdict(set)
+        definitions: list[tuple[str, list[str], str, Path]] = []
         for path, text in sources.items():
+            spans: list[tuple[int, int]] = []
             for match in definition.finditer(text):
                 start = text.find("{", match.start())
                 end = _matching_delimiter(text, start, "{", "}")
                 if end < 0:
                     continue
+                spans.append((match.start(), end + 1))
                 body = text[start:end + 1]
+                signature = text[match.start():start]
+                name_match = re.search(r"((?:[A-Za-z_]\w*::)*[A-Za-z_]\w*)\s*\(", signature)
+                open_paren = signature.find("(", name_match.start() if name_match else 0)
+                close_paren = _matching_delimiter(signature, open_paren) if open_paren >= 0 else -1
+                if name_match and close_paren >= 0:
+                    definitions.append((name_match.group(1), _split_cpp_args(
+                        signature[open_paren + 1:close_paren]), body, path))
                 for value in set(re.findall(r'"([A-Za-z_][A-Za-z0-9_]*)"', body)):
                     index[value].append((body, path))
+            uncommented = _cpp_without_comments(text)
+            for literal_match in re.finditer(r'"([A-Za-z_][A-Za-z0-9_]*)"', uncommented):
+                if not any(start <= literal_match.start() < end for start, end in spans):
+                    outside[literal_match.group(1)].add(path)
         body_cache[index_key] = index
+        body_cache["@literal_outside_function"] = outside
+        body_cache["@function_definitions"] = definitions
     literal_index: dict[str, list[tuple[str, Path]]] = body_cache[index_key]  # type: ignore[assignment]
+    outside_index: dict[str, set[Path]] = body_cache["@literal_outside_function"]  # type: ignore[assignment]
+    definitions = body_cache["@function_definitions"]
     bodies: list[tuple[str, Path]] = []
     listeners = 0
     consumers = 0
-    resolved = True
+    resolved = not bool(outside_index.get(setting))
     for body, path in literal_index.get(setting, []):
         consumers += 1
         bodies.append((body, path))
@@ -381,6 +476,61 @@ def _setting_reachability(setting: str, sources: dict[Path, str],
         # It may include this setting, so fail closed.
         if re.search(r"get(?:Commit)?Signal\s*\(\s*\)\s*->\s*connect\s*\(", body) and not exact:
             resolved = False
+    # Listener helpers accept a setting name, connect its signal internally,
+    # and receive the callback at the call site.  Attribute the literal call to
+    # the helper and scan the bound callback; unresolved callbacks deny.
+    helper_key = "@setting_listener_helpers"
+    if helper_key not in body_cache:
+        helper_index: dict[str, list[tuple[int, list[int], str, Path]]] = defaultdict(list)
+        for qualified, params, helper_body, helper_path in definitions:
+            if not re.search(r"get(?:Commit)?Signal\s*\(\s*\)\s*->\s*connect\s*\(", helper_body):
+                continue
+            param_names = [next(iter(re.findall(r"([A-Za-z_]\w*)\s*(?:[=&*]\s*)?$", p)), "")
+                           for p in params]
+            for setting_index, param in enumerate(param_names):
+                if param and re.search(r"(?:getControl|setting_get_control)\s*\([^;{}]*\b" +
+                                       re.escape(param) + r"\b", helper_body):
+                    callback_indices = [i for i, p in enumerate(params)
+                                        if i != setting_index and re.search(r"callback|slot|function", p, re.I)]
+                    helper_index[qualified.rsplit("::", 1)[-1]].append(
+                        (setting_index, callback_indices, helper_body, helper_path))
+        body_cache[helper_key] = helper_index
+    helper_defs = body_cache[helper_key]
+    for caller_body, caller_path in list(bodies):
+        for helper, variants in helper_defs.items():
+            for call_match in re.finditer(r"\b" + re.escape(helper) + r"\s*\(", caller_body):
+                opening = caller_body.find("(", call_match.start())
+                closing = _matching_delimiter(caller_body, opening)
+                if closing < 0:
+                    resolved = False
+                    continue
+                args = _split_cpp_args(caller_body[opening + 1:closing])
+                for setting_index, callback_indices, helper_body, helper_path in variants:
+                    if setting_index >= len(args) or args[setting_index].strip() != literal:
+                        continue
+                    listeners += 1
+                    bodies.append((helper_body, helper_path))
+                    for callback_index in callback_indices:
+                        if callback_index >= len(args):
+                            resolved = False
+                            continue
+                        callback_arg = args[callback_index]
+                        candidates = re.findall(
+                            r"&?((?:[A-Za-z_]\w*::)*[A-Za-z_]\w*)", callback_arg)
+                        ignored = {"boost", "bind", "std", "function", "this", "true", "false"}
+                        callback_bodies = []
+                        for candidate in reversed(candidates):
+                            if candidate in ignored:
+                                continue
+                            callback_body, callback_path = _source_body(
+                                sources, candidate, caller_path)
+                            if callback_body:
+                                callback_bodies.append((callback_body, callback_path or caller_path))
+                                break
+                        if callback_bodies:
+                            bodies.extend(callback_bodies)
+                        elif not callback_arg.lstrip().startswith("["):
+                            resolved = False
     result = (bodies, resolved, listeners, consumers)
     body_cache[cache_key] = result
     return result
@@ -551,11 +701,17 @@ def _handler_hazards(row: dict[str, object], cpp_sources: dict[Path, str],
         row["inworld_setting_listener_count"] = setting_listeners
         row["inworld_setting_consumer_count"] = setting_consumers
         row["inworld_setting_listener_resolved"] = setting_listener_resolved
+        outside_index = body_cache.get("@literal_outside_function", {})
+        outside_paths = outside_index.get(setting, set()) if isinstance(outside_index, dict) else set()
+        if outside_paths:
+            row["setting_reference_outside_function"] = True
+            row["setting_reference_outside_function_files"] = sorted(
+                path.name for path in outside_paths)
         if not setting_listener_resolved:
             row["setting_listener_unknown"] = True
         resolved = resolved and setting_listener_resolved
         row["setting_sole_sink"] = bool(
-            resolved and setting_listeners == 0 and setting_consumers == 0 and
+            resolved and not outside_paths and setting_listeners == 0 and setting_consumers == 0 and
             not callback and "setCommitCallback" not in owner_body and
             "setClickedCallback" not in owner_body)
 
@@ -575,7 +731,7 @@ def _handler_hazards(row: dict[str, object], cpp_sources: dict[Path, str],
         "logout": r"\b(?:requestQuit|forceDisconnect|logout|disconnectFromGrid)\b",
         "server_message": r"\b(?:gMessageSystem|sendReliable(?:Message)?|sendMessage)\b",
         "agent_send": (r"\b(?:sendAnimationRequests?|(?:gAgent|LLAgent\w*)\b[^;{}]{0,80}?\bsend[A-Z]\w*)\b"
-                       r"|\bAOEngine\s*::\s*(?:instance\s*\(\s*\)\s*\.\s*)?override\s*\("
+                       r"|\bAOEngine\s*::\s*(?:(?:instance|getInstance)\s*\(\s*\)\s*(?:\.|->)\s*)?override\s*\("
                        r"|\bAOEngine\s*::\s*[A-Za-z_]\w*Request\s*\("),
         "object_send": r"\bLLViewerObject\w*\b[^;{}]{0,80}?\bsend[A-Z]\w*\b",
         "selection_send": r"\bLLSelectMgr\w*\b[^;{}]{0,80}?\bsend[A-Z]\w*\b",
@@ -613,6 +769,8 @@ def _apply_inworld_hazard_policy(row: dict[str, object], hazards: set[str]) -> N
     if hazards:
         row["inworld_allowed"] = False
         row["inworld_allow_evidence"] = (
+            "setting referenced from a table/initializer outside a function"
+            if row.get("setting_reference_outside_function") else
             "resolved handler hazard: " + ", ".join(sorted(hazards)))
 
 
@@ -1400,7 +1558,10 @@ def prepare_manifest(path: Path, repo: Path, output: Path) -> tuple[int, int, in
             row["inworld_allow_evidence"] = inworld_evidence
             if row.get("setting") and not handler_resolved:
                 row["inworld_allowed"] = False
-                row["inworld_allow_evidence"] = "setting callback/listener scan unresolved"
+                row["inworld_allow_evidence"] = (
+                    "setting referenced from a table/initializer outside a function"
+                    if row.get("setting_reference_outside_function") else
+                    "setting callback/listener scan unresolved")
             if hazards:
                 row["hazards"] = sorted(set(row.get("hazards", [])) | hazards)
                 hazard_rows += 1
@@ -1765,6 +1926,8 @@ void Fixture::onPickProp() { LLSelectMgr::getInstance()->selectObjectOnly(prop);
 bool SettingFixture::postBuild()
 {
     getChild<LLUICtrl>("setting_danger");
+    getChild<LLUICtrl>("setting_helper");
+    getChild<LLUICtrl>("setting_table");
     return true;
 }
 void SettingFixture::connectSetting()
@@ -1774,7 +1937,20 @@ void SettingFixture::connectSetting()
 }
 void SettingFixture::onSetting()
 {
-    AOEngine::instance().override(id, true);
+    AOEngine::getInstance()->override(id, true);
+}
+void setting_setup_signal_listener(LLControlGroup& group, const std::string& setting,
+                                   std::function<void()> callback)
+{
+    setting_get_control(group, setting)->getSignal()->connect([callback]() { callback(); });
+}
+void SettingFixture::connectHelper()
+{
+    setting_setup_signal_listener(gSavedSettings, "HelperSetting", handleHelperSetting);
+}
+void handleHelperSetting()
+{
+    gAgent.sendAnimationRequest(id, ANIM_REQUEST_START);
 }
 void SettingFixture::connectUnknown()
 {
@@ -1782,6 +1958,10 @@ void SettingFixture::connectUnknown()
     for (const char* name : settings)
         gSavedSettings.getControl(name)->getSignal()->connect(onUnknown);
 }
+struct SettingTable
+{
+    LLCachedControl<bool> value{gSavedSettings, "TableSetting", false};
+};
 '''
     setting_sources = {Path("setting_fixture.cpp"): setting_source}
     setting_row: dict[str, object] = {
@@ -1797,6 +1977,17 @@ void SettingFixture::connectUnknown()
     _hazards, resolved = _handler_hazards(unknown_row, setting_sources, {})
     assert not resolved and unknown_row.get("setting_listener_unknown"), \
         "dynamic setting listener must fail closed"
+
+    helper_row = dict(setting_row, widget_name="setting_helper", setting="HelperSetting")
+    hazards, resolved = _handler_hazards(helper_row, setting_sources, {})
+    assert resolved and helper_row["inworld_setting_listener_count"] == 1
+    assert "agent_send" in hazards, "helper-mediated setting listener callback was missed"
+
+    table_row = dict(setting_row, widget_name="setting_table", setting="TableSetting")
+    _hazards, resolved = _handler_hazards(table_row, setting_sources, {})
+    assert not resolved and table_row.get("setting_reference_outside_function")
+    assert not table_row.get("setting_sole_sink"), \
+        "out-of-function setting reference was incorrectly proven a sole sink"
 
 
 def main() -> int:

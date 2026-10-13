@@ -224,9 +224,9 @@ function Restore-FunctionalSettingsBackup($Backup) {
 }
 
 function Set-InWorldAOSafetySettings($Backup) {
-  # This must happen before the viewer starts. AOEngine::enable(false) can send
-  # animation stops when an AO set is already live, so changing these controls
-  # after login is itself forbidden for the real-account harness.
+  # The persisted master must be off before the viewer starts.  UseAOStands and
+  # PauseAO are Persist=0, so llcontrol intentionally ignores file values for
+  # them; the viewer establishes those two runtime-only guards after login.
   $accountFolder = [System.IO.Path]::GetFullPath((Join-Path $Backup.AppRoot '5kvideoeye_resident'))
   $appPrefix = $Backup.AppRoot.TrimEnd('\') + '\'
   if (-not $accountFolder.StartsWith($appPrefix, [System.StringComparison]::OrdinalIgnoreCase)) {
@@ -240,11 +240,7 @@ function Set-InWorldAOSafetySettings($Backup) {
   [xml]$document = Get-Content -LiteralPath $paths[0].FullName -Raw
   $map = $document.SelectSingleNode('/llsd/map')
   if (-not $map) { throw "Invalid LLSD settings map: $($paths[0].FullName)" }
-  $forced = [ordered]@{
-    AlchemyAOEnable = '0'
-    UseAOStands = '0'
-    PauseAO = '1'
-  }
+  $forced = [ordered]@{ AlchemyAOEnable = '0' }
   foreach ($name in $forced.Keys) {
     $key = $null
     foreach ($candidate in @($map.ChildNodes | Where-Object { $_.Name -eq 'key' })) {
@@ -282,7 +278,7 @@ function Set-InWorldAOSafetySettings($Backup) {
     }
   }
   $document.Save($paths[0].FullName)
-  Write-Host 'In-world AO safety: AlchemyAOEnable=0, UseAOStands=0, PauseAO=1 (pre-launch).'
+  Write-Host 'In-world AO safety: persisted AlchemyAOEnable=0 (runtime-only guards are set after login).'
 }
 
 function Wait-NormalExitBeforeHardKill($Process, [string]$Description, [int]$GraceSeconds = 60) {
