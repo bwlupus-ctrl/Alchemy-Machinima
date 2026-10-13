@@ -36,6 +36,7 @@ SETTINGS_DIR = os.path.join(REPO, "indra", "newview", "app_settings")
 SETTINGS_FILES = ("settings.xml", "settings_alchemy.xml",
                   "settings_per_account.xml", "settings_per_account_alchemy.xml")
 RIM_PRESET_CPP = os.path.join(REPO, "indra", "newview", "alrigrimcontroller.cpp")
+DIRECTOR_CPP = os.path.join(REPO, "indra", "newview", "llfloaterdirector.cpp")
 VCAM_PAGE_JSON = os.path.join(HERE, "director_kit", "vcam_page.json")
 KIT_INDEX_PATH = os.path.join(XUI_DIR, "director_kit_index.xml")
 OUT_DIR = os.path.join(REPO, "doc", "director_kit", "functional")
@@ -529,7 +530,16 @@ def load_generated_kit_pages(xi):
 
 def build_kit_entries(kit_pages, rows, settings, page_meta):
     """Build the converted-page v2 inventory solely from generated kit XML."""
-    evidence = {(row["page"], row["widget"]): row for row in rows}
+    with open(DIRECTOR_CPP, encoding="utf-8") as source:
+        director_cpp = source.read()
+    binder_by_page = dict(re.findall(
+        r'\{\s*"([^"]+)"\s*,\s*&LLFloaterDirector::(bind[A-Za-z0-9_]+Page)\s*\}',
+        director_cpp))
+    binder_by_page.update({
+        "cine_light_rig_tab": "ALPanelCineLightRig::postBuild",
+        "light_rim_tab": "ALRigRimController::attach",
+        "vcam_tab": "ALPanelDirectorVCam::postBuild",
+    })
     out = []
     for page, xml_rows in kit_pages.items():
         for ordinal, (_base, path, _kit_page, card, row) in enumerate(xml_rows):
@@ -565,9 +575,19 @@ def build_kit_entries(kit_pages, rows, settings, page_meta):
             elif exercise == "select_item":
                 test_value, test_resolved = combo_test(default, items, stype)
 
-            old = evidence.get((page, widget), {})
-            owner = owner_from_evidence(old.get("v2_evidence", ""))
-            callbacks = old.get("v2_callbacks", "")
+            owner = ""
+            callbacks = ""
+            if binding == "code":
+                if row.get("action") or row.get("link_to") or kind == "link":
+                    owner = "ALKitRow::postBuild"
+                else:
+                    binder = binder_by_page.get(page, "")
+                    if binder.startswith("bind"):
+                        binder = "LLFloaterDirector::" + binder
+                    owner = binder
+                if exercise != "none" and not owner:
+                    sys.exit("kit coverage check failed: no code binder for %s/%s" %
+                             (page, widget))
             action, reason, hazards = classify({
                 "status": "GENERATED_KIT", "exercise": exercise, "etype": etype,
                 "name": widget, "label": row.get("label", ""), "page": page,
@@ -609,7 +629,7 @@ def build_kit_entries(kit_pages, rows, settings, page_meta):
                 "binding": binding, "link_to": row.get("link_to") or None,
                 "shortcut_of": row.get("shortcut_of") or None,
                 "callbacks": callbacks or None, "owner": owner or None,
-                "evidence": old.get("v2_evidence") or rel(path),
+                "evidence": rel(path),
             })
             out.append(entry)
     return out
@@ -1449,6 +1469,13 @@ def main():
     if got_kit != expected_kit or len(got_kit_rows) != len(expected_kit_rows):
         sys.exit("kit coverage check failed: expected %d generated rows, got %d" %
                  (len(expected_kit_rows), len(got_kit_rows)))
+    legacy_owned_kit = [e["id"] for e in entries
+                        if e.get("resolution") == "generated_kit_xml" and
+                        e.get("binding") == "setting" and
+                        (e.get("owner") or e.get("callbacks"))]
+    if legacy_owned_kit:
+        sys.exit("kit coverage check failed: bind=setting row carries a legacy-owner callback: " +
+                 ", ".join(legacy_owned_kit[:20]))
 
     skip_map = collections.OrderedDict()
     for e in entries:

@@ -17,6 +17,75 @@ import xml.etree.ElementTree as ET
 KEY = ("inworld", "page", "control", "kind", "action", "expected")
 FAIL_STATUSES = {"FAIL", "KNOWN_GAP"}
 
+NETWORK_HAZARDS = frozenset({
+    "server_message", "agent_send", "object_send", "selection_send",
+    "selection_broadcast", "parcel_send", "chat_im_voice", "world_action",
+    "scripted_dialog",
+})
+LOCAL_HAZARDS = frozenset({
+    "file_picker", "destructive", "logout", "delete", "rename",
+    "export_import", "save_disk", "clipboard_write", "external_url_process",
+    "persistent_setting",
+})
+
+HAZARD_RULES = {
+    "file_picker": r"\b(?:LLFilePicker|LLFilePickerReplyThread|LLFloaterFilePicker|getOpenFile|getSaveFile)\b",
+    "delete": (r"\b(?:LLFile::remove|remove_all|DeleteFile|removeItem|removeCategory|purgeObject|purgeDescendents"
+               r"|deleteItem|deleteObject|deletePreset|removePreset|deleteScene|removeScene|deleteTake|removeTake"
+               r"|deleteGhost|removeGhost|deleteNode|removeNode|deleteCue|removeCue|deleteSlot|clearSlot)\s*\("),
+    "rename": r"\b(?:LLFile::rename|std::filesystem::rename|rename[A-Z]\w*)\s*\(",
+    "export_import": r"\b(?:export\w*|import\w*)\s*\(",
+    "save_disk": r"\b(?:llofstream|ofstream)\b|\b(?:save[A-Z]\w*|writePreset|write[A-Z]\w*File)\s*\(",
+    "logout": r"\b(?:requestQuit|forceDisconnect|logout|disconnectFromGrid)\s*\(",
+    "server_message": r"\b(?:gMessageSystem|sendReliable(?:Message)?|sendMessage)\b",
+    "agent_send": (r"\b(?:sendAnimationRequests?|(?:gAgent|LLAgent\w*)\b[^;{}]{0,80}?\bsend[A-Z]\w*)\b"
+                   r"|\bAOEngine\s*::\s*(?:(?:instance|getInstance)\s*\(\s*\)\s*(?:\.|->)\s*)?override\s*\("
+                   r"|\bAOEngine\s*::\s*[A-Za-z_]\w*Request\s*\("),
+    "object_send": r"\bLLViewerObject\w*\b[^;{}]{0,80}?\bsend[A-Z]\w*\b",
+    "selection_send": r"\bLLSelectMgr\w*\b[^;{}]{0,80}?\bsend[A-Z]\w*\b",
+    "selection_broadcast": (r"\b(?:selectObjectOnly|selectObjectAndFamily|selectProxy"
+                            r"|selectHighlightedObjects|selectionSetObject\w*)\s*\("
+                            r"|\bLLSelectMgr\w*\b[^;{}]{0,80}?\bselect[A-Z]\w*\s*\("
+                            r"|\"animation_explorer\""
+                            r"|\bALToolGhostEdit\w*\b[^;{}]{0,80}?\bsetEdit\w*\s*\("),
+    "parcel_send": r"\bLLViewerParcel\w*\b[^;{}]{0,80}?\b(?:send|update|claim|deed|buy|release)[A-Z]\w*\s*\(",
+    "chat_im_voice": r"\b(?:sendChat|sendIM|sendInstantMessage|send_chat_from_viewer|send_improved_im|startCall|startVoice|speak|shout)\w*\s*\(",
+    # Concrete viewer APIs only. Bare English words such as return/bank/take
+    # are not evidence of a world write.
+    "world_action": (r"\b(?:LLSelectMgr::getInstance\s*\(\s*\)\s*->\s*(?:derezObject|sendDelete|sendTake|sendReturn)"
+                     r"|LLToolDragAndDrop::handleGiveDragAndDrop|LLAgent::teleportViaLocation|gAgent\.teleportViaLocation"
+                     r"|LLViewerParcelMgr::getInstance\s*\(\s*\)\s*->\s*(?:sendParcel|buy|claim|release|deed)\w*"
+                     r"|LLEnvironment::(?:instance|getInstance)\s*\(\s*\)\s*\.\s*(?:updateRegion|resetRegion)"
+                     r"|LLViewerRegion::(?:set|update)\w*|send_ObjectDeRez|derez_objects(?:_separate)?"
+                     r"|handle_object_take|handle_object_return)\s*\("),
+    "scripted_dialog": r"\b(?:ScriptDialog|ScriptQuestion|LLScriptFloater|scriptQuestion)\b",
+    "clipboard_write": r"\b(?:copyToClipboard|copyFromString)\s*\(",
+    "external_url_process": (r"\b(?:loadURLExternal|spawnWebBrowser|ShellExecute|"
+                             r"CreateProcess|system)\s*\("),
+    "persistent_setting": (r"\b(?:gSavedPerAccountSettings|gCrashSettings|"
+                           r"gWarningSettings)\s*\.\s*(?:set[A-Z]\w*|"
+                           r"getControl\s*\([^;\n]{0,120}?setValue)"),
+}
+
+
+def _hazard_classes(hazards: set[str]) -> list[str]:
+    classes = []
+    if hazards & NETWORK_HAZARDS:
+        classes.append("NETWORK")
+    if hazards & LOCAL_HAZARDS:
+        classes.append("LOCAL")
+    return classes
+
+
+def _mode_denies_hazards(hazards: set[str], inworld: bool,
+                         login_no_circuit_proved: bool) -> bool:
+    """Pure policy fixture shared by scanner tests and manifest metadata."""
+    if hazards & LOCAL_HAZARDS:
+        return True
+    if hazards & NETWORK_HAZARDS:
+        return inworld or not login_no_circuit_proved
+    return False
+
 # In-world execution is allow-listed by source owner. Generated bind=setting
 # rows qualify only after their C++ callbacks, listeners, and consumers scan
 # resolves completely and finds no hazard.
@@ -370,7 +439,6 @@ def _expand_callback_calls(seed: list[tuple[str, Path | None]], owner_class: str
             continue
         calls = set(re.findall(r"(?<![.&>])\b((?:[A-Za-z_]\w*::)*[A-Za-z_]\w*)\s*\(", text))
         calls.update(re.findall(r"&([A-Za-z_]\w*(?:::[A-Za-z_]\w*)+)", text))
-        member_calls = set(re.findall(r"(?:->|\.)\s*([A-Za-z_]\w*)\s*\(", text))
         for called in calls:
             leaf = called.rsplit("::", 1)[-1]
             if leaf in ignored:
@@ -390,16 +458,6 @@ def _expand_callback_calls(seed: list[tuple[str, Path | None]], owner_class: str
                     if key not in seen:
                         seen.add(key)
                         queue.append((body, body_source, depth + 1))
-        for leaf in member_calls - ignored:
-            preferred_name = owner_class + "::" + leaf if owner_class else ""
-            body, body_source = _source_body(sources, preferred_name, source) if preferred_name else ("", None)
-            candidates = [(body, body_source)] if body and body_source else \
-                _source_bodies_by_leaf(sources, leaf, source, body_cache, restrict)
-            for candidate_body, candidate_source in candidates:
-                key = (leaf + ":" + str(hash(candidate_body)), str(candidate_source))
-                if key not in seen:
-                    seen.add(key)
-                    queue.append((candidate_body, candidate_source, depth + 1))
     return result
 
 
@@ -449,33 +507,56 @@ def _setting_reachability(setting: str, sources: dict[Path, str],
         body_cache["@literal_outside_function"] = outside
         body_cache["@function_definitions"] = definitions
     literal_index: dict[str, list[tuple[str, Path]]] = body_cache[index_key]  # type: ignore[assignment]
-    outside_index: dict[str, set[Path]] = body_cache["@literal_outside_function"]  # type: ignore[assignment]
     definitions = body_cache["@function_definitions"]
     bodies: list[tuple[str, Path]] = []
     listeners = 0
     consumers = 0
-    resolved = not bool(outside_index.get(setting))
-    for body, path in literal_index.get(setting, []):
+    dynamic_listener_seen = False
+    # Static tables/member initializers are not executable setting callbacks.
+    # Reachability is defined by function bodies that read the setting; only an
+    # unresolved signal connection in such a body fails this scan closed.
+    resolved = True
+    literal_callers = literal_index.get(setting, [])
+    for body, path in literal_callers:
+        # The function body is the conservative consumer unit. This includes
+        # table-driven reads whose typed getter is selected from the literal at
+        # runtime; comments have already been stripped from all source text.
         consumers += 1
         bodies.append((body, path))
-        exact = 0
+        listener_matches: list[re.Match[str]] = []
         direct = re.compile(
             r"getControl\s*\(\s*" + re.escape(literal) +
             r"\s*\)\s*->\s*get(?:Commit)?Signal\s*\(\s*\)\s*->\s*connect\s*\(")
-        exact += sum(1 for _ in direct.finditer(body))
+        listener_matches.extend(direct.finditer(body))
         aliases = set(re.findall(
             r"\b([A-Za-z_]\w*)\s*=\s*[^;{}]*getControl\s*\(\s*" +
             re.escape(literal) + r"\s*\)", body))
         for alias in aliases:
-            exact += len(re.findall(
+            listener_matches.extend(re.finditer(
                 r"\b" + re.escape(alias) +
                 r"\s*->\s*get(?:Commit)?Signal\s*\(\s*\)\s*->\s*connect\s*\(", body))
+        exact = len(listener_matches)
         listeners += exact
+        for listener_match in listener_matches:
+            call = _callback_call(body, listener_match)
+            if not call:
+                resolved = False
+                continue
+            bodies.append((call, path))
+            for candidate in reversed(re.findall(
+                    r"&?((?:[A-Za-z_]\w*::)*[A-Za-z_]\w*)", call)):
+                if candidate in {"boost", "bind", "std", "connect", "getSignal",
+                                 "getCommitSignal", "getControl", "this", "true", "false"}:
+                    continue
+                callback_body, callback_path = _source_body(sources, candidate, path)
+                if callback_body:
+                    bodies.append((callback_body, callback_path or path))
+                    break
         # A function containing this setting and a signal connection that
         # cannot be tied to the literal/alias is a dynamic listener table.
         # It may include this setting, so fail closed.
         if re.search(r"get(?:Commit)?Signal\s*\(\s*\)\s*->\s*connect\s*\(", body) and not exact:
-            resolved = False
+            dynamic_listener_seen = True
     # Listener helpers accept a setting name, connect its signal internally,
     # and receive the callback at the call site.  Attribute the literal call to
     # the helper and scan the bound callback; unresolved callbacks deny.
@@ -496,7 +577,7 @@ def _setting_reachability(setting: str, sources: dict[Path, str],
                         (setting_index, callback_indices, helper_body, helper_path))
         body_cache[helper_key] = helper_index
     helper_defs = body_cache[helper_key]
-    for caller_body, caller_path in list(bodies):
+    for caller_body, caller_path in literal_callers:
         for helper, variants in helper_defs.items():
             for call_match in re.finditer(r"\b" + re.escape(helper) + r"\s*\(", caller_body):
                 opening = caller_body.find("(", call_match.start())
@@ -531,6 +612,8 @@ def _setting_reachability(setting: str, sources: dict[Path, str],
                             bodies.extend(callback_bodies)
                         elif not callback_arg.lstrip().startswith("["):
                             resolved = False
+    if dynamic_listener_seen and listeners == 0:
+        resolved = False
     result = (bodies, resolved, listeners, consumers)
     body_cache[cache_key] = result
     return result
@@ -669,92 +752,52 @@ def _handler_hazards(row: dict[str, object], cpp_sources: dict[Path, str],
     setting_listener_resolved = True
     setting_listeners = 0
     setting_consumers = 0
-    setting_combined = ""
+    setting_bodies: list[tuple[str, Path]] = []
     if setting:
         setting_bodies, setting_listener_resolved, setting_listeners, setting_consumers = \
             _setting_reachability(setting, cpp_sources, body_cache)
-        expanded_key = "@setting_expanded:" + setting
-        if expanded_key not in body_cache:
-            # Scan the exact consumer/listener bodies plus their containing
-            # translation units' hazard-bearing lines. The latter is
-            # intentionally conservative: a dynamic receiver/callback that
-            # cannot be proven unrelated must deny the in-world row, never
-            # silently auto-allow it.
-            source_paths = {path for _body, path in setting_bodies}
-            hazard_words = re.compile(
-                r"AOEngine|sendAnimationRequests?|gMessageSystem|sendReliable|"
-                r"LLFile::remove|remove_all|DeleteFile|requestQuit|forceDisconnect|"
-                r"sendChat|sendIM|sendInstantMessage|selectObject|selectionSetObject|"
-                r"LLFilePicker|FloaterFilePicker", re.I)
-            source_hazard_lines = []
-            for path in source_paths:
-                lines_key = "@source_hazard_lines:" + str(path)
-                if lines_key not in body_cache:
-                    body_cache[lines_key] = "\n".join(
-                        line for line in cpp_sources[path].splitlines()
-                        if hazard_words.search(line))
-                source_hazard_lines.append(str(body_cache[lines_key]))
-            body_cache[expanded_key] = "\n".join(
-                [body for body, _path in setting_bodies] +
-                source_hazard_lines)
-        setting_combined = str(body_cache[expanded_key])
         row["inworld_setting_listener_count"] = setting_listeners
         row["inworld_setting_consumer_count"] = setting_consumers
         row["inworld_setting_listener_resolved"] = setting_listener_resolved
-        outside_index = body_cache.get("@literal_outside_function", {})
-        outside_paths = outside_index.get(setting, set()) if isinstance(outside_index, dict) else set()
-        if outside_paths:
-            row["setting_reference_outside_function"] = True
-            row["setting_reference_outside_function_files"] = sorted(
-                path.name for path in outside_paths)
         if not setting_listener_resolved:
             row["setting_listener_unknown"] = True
         resolved = resolved and setting_listener_resolved
         row["setting_sole_sink"] = bool(
-            resolved and not outside_paths and setting_listeners == 0 and setting_consumers == 0 and
+            resolved and setting_listeners == 0 and setting_consumers == 0 and
             not callback and "setCommitCallback" not in owner_body and
             "setClickedCallback" not in owner_body)
 
-    combined = "\n".join(_expand_callback_calls(
-        bodies, owner_class, cpp_sources, body_cache)) + "\n" + setting_combined
+    # LOCAL hazards belong only to code reachable from this row: its exact
+    # callback/binder or setting consumers, plus one level of direct calls.
+    callback_reachable = _expand_callback_calls(
+        bodies, owner_class, cpp_sources, body_cache, depth_limit=1)
+    # Setting consumers are already complete function bodies. Listener callback
+    # bodies are added by _setting_reachability; do not fan their incidental
+    # calls out through unrelated same-name helpers.
+    reachable_seed = bodies + setting_bodies
+    reachable = "\n".join(callback_reachable +
+                          [body for body, _path in setting_bodies])
+
+    # NETWORK stays deliberately conservative in-world. Include the complete
+    # comment-stripped translation units owning reachable code so a dynamic
+    # sender in that TU cannot silently pass the allowlist.
+    reachable_paths = {path for _body, path in reachable_seed if path is not None}
     hazards: set[str] = set()
-    rules = {
-        "file_picker": r"\b(?:LLFilePicker|LLFilePickerReplyThread|LLFloaterFilePicker|getOpenFile|getSaveFile)\b",
-        # Explicit user-data deletes only: the old delete[A-Z]\w* / remove[A-Z]\w* (matched
-        # case-insensitively) flagged removeChild/removeObserver etc. and failed good controls.
-        "delete": r"\b(?:LLFile::remove|remove_all|DeleteFile|removeItem|removeCategory|purgeObject|purgeDescendents"
-                  r"|deleteItem|deleteObject|deletePreset|removePreset|deleteScene|removeScene|deleteTake|removeTake"
-                  r"|deleteGhost|removeGhost|deleteNode|removeNode|deleteCue|removeCue|deleteSlot|clearSlot)\b",
-        "rename": r"\b(?:LLFile::rename|std::filesystem::rename|rename[A-Z]\w*)\b",
-        "export_import": r"\b(?:export\w*|import\w*)\s*\(",
-        "save_disk": r"\b(?:llofstream|ofstream|save[A-Z]\w*|writePreset|write[A-Z]\w*File)\b",
-        "logout": r"\b(?:requestQuit|forceDisconnect|logout|disconnectFromGrid)\b",
-        "server_message": r"\b(?:gMessageSystem|sendReliable(?:Message)?|sendMessage)\b",
-        "agent_send": (r"\b(?:sendAnimationRequests?|(?:gAgent|LLAgent\w*)\b[^;{}]{0,80}?\bsend[A-Z]\w*)\b"
-                       r"|\bAOEngine\s*::\s*(?:(?:instance|getInstance)\s*\(\s*\)\s*(?:\.|->)\s*)?override\s*\("
-                       r"|\bAOEngine\s*::\s*[A-Za-z_]\w*Request\s*\("),
-        "object_send": r"\bLLViewerObject\w*\b[^;{}]{0,80}?\bsend[A-Z]\w*\b",
-        "selection_send": r"\bLLSelectMgr\w*\b[^;{}]{0,80}?\bsend[A-Z]\w*\b",
-        # Any selection (even of a viewer-only object) broadcasts PointAt +
-        # AGENT_STATE_EDITING; Animation Explorer sends ObjectSelect to name
-        # animation sources; ghost edit mode selects its proxy volume.
-        "selection_broadcast": (r"\b(?:selectObjectOnly|selectObjectAndFamily|selectProxy"
-                                r"|selectHighlightedObjects|selectionSetObject\w*)\b"
-                                r"|\bLLSelectMgr\w*\b[^;{}]{0,80}?\bselect[A-Z]\w*\b"
-                                r"|\"animation_explorer\""
-                                r"|\bALToolGhostEdit\w*\b[^;{}]{0,80}?\bsetEdit\w*"),
-        "parcel_send": r"\bLLViewerParcel\w*\b[^;{}]{0,80}?\b(?:send|update|claim|deed|buy|release)[A-Z]\w*\b",
-        "chat_im_voice": r"\b(?:sendChat|sendIM|sendInstantMessage|send_chat_from_viewer|send_improved_im|startCall|startVoice|speak|shout)\w*\b",
-        "world_action": r"\b(?:rez|duplicate|delete|take|return|give|pay|buy|teleport|sit|stand|attach|detach|wear|takeOff|upload|invite|eject|ban|friend|estate|updateRegion|setRegion|updateParcel|setParcel|claimParcel|releaseParcel)\w*\s*\(",
-        "scripted_dialog": r"\b(?:ScriptDialog|ScriptQuestion|LLScriptFloater|scriptQuestion)\b",
-    }
-    for tag, pattern in rules.items():
-        if re.search(pattern, combined, re.I):
+    for tag, pattern in HAZARD_RULES.items():
+        if re.search(pattern, reachable):
             hazards.add(tag)
+    for path in reachable_paths:
+        cache_key = "@network_tu_hazards:" + str(path)
+        if cache_key not in body_cache:
+            source = cpp_sources[path]
+            body_cache[cache_key] = frozenset(
+                tag for tag in NETWORK_HAZARDS
+                if tag in HAZARD_RULES and re.search(HAZARD_RULES[tag], source))
+        hazards.update(body_cache[cache_key])
     # A virtual avatar call can dispatch gAgent.sendAnimationRequest when the
     # self avatar's AO overrides the motion.  Qualified LLCharacter calls are
     # deliberately not matched.
-    if re.search(r"->\s*(?:startMotion|stopMotion)\s*\(", combined):
+    if re.search(r"->\s*(?:startMotion|stopMotion)\s*\(", reachable):
         hazards.add("agent_send")
         row["motion_send_hazard"] = True
     exemption = INWORLD_LOCAL_HAZARD_EXEMPTIONS.get((owner, str(row.get("page") or ""), widget))
@@ -879,7 +922,7 @@ def prepare_manifest(path: Path, repo: Path, output: Path) -> tuple[int, int, in
     required_consumers = _merge_required_consumers(document, repo)
     defaults = load_setting_defaults(repo)
     xui_cache: dict[Path, tuple[ET.Element, dict[ET.Element, ET.Element]]] = {}
-    cpp_sources = {p: p.read_text(encoding="utf-8", errors="replace")
+    cpp_sources = {p: _cpp_without_comments(p.read_text(encoding="utf-8", errors="replace"))
                    for p in (repo / "indra/newview").glob("*.cpp")}
     cpp_text = "\n".join(cpp_sources.values())
     owner_enable = _owner_enable_index(cpp_sources)
@@ -1019,6 +1062,9 @@ def prepare_manifest(path: Path, repo: Path, output: Path) -> tuple[int, int, in
     }
 
     for row in rows:
+        kit_row = row.get("resolution") == "generated_kit_xml"
+        kit_owner = row.get("owner")
+        kit_callbacks = row.get("callbacks")
         prereqs: list[dict[str, object]] = []
         seen: set[tuple[str, object]] = set()
         xui_name = row.get("xui_file", "")
@@ -1158,6 +1204,47 @@ def prepare_manifest(path: Path, repo: Path, output: Path) -> tuple[int, int, in
             row["reveal"].append({"selector": "array_formation_combo", "value": 2})
         elif widget == "animation_library_combo":
             row["reveal"].append({"selector": "drive_mode_combo", "value": 1})
+        elif widget in {"brigade_columns_spinner", "brigade_rows_spinner",
+                        "brigade_file_spacing_spinner", "brigade_rank_spacing_spinner"}:
+            row["reveal"].append({"selector": "array_formation_combo", "value": 31})
+        code_settings = {
+            "vc_main_fps": "PrismProtectedMainFPS",
+            "vc_capture_budget": "PrismCaptureRefreshCeilingHz",
+            "dof_res_combo": "CameraDoFResScale",
+        }
+        if widget in code_settings:
+            setting = code_settings[widget]
+            expected_value = row.get("test_value_resolved")
+            if expected_value is None:
+                test_value = row.get("test_value")
+                expected_value = (test_value.get("value")
+                                  if isinstance(test_value, dict) else test_value)
+            row["setting"] = setting
+            row["setting_type"] = "F32"
+            row["expect"] = {
+                "setting": setting, "type": "F32",
+                "value": expected_value,
+                "callback": ("ALPanelDirectorVCam::onControl"
+                             if widget.startswith("vc_") else
+                             "LLFloaterDirector::bindFocusPage"),
+                "commit": True,
+            }
+            row["owner"] = row["expect"]["callback"]
+        if widget == "vc_camera_name":
+            row.update(owner="ALPanelDirectorVCam::onControl",
+                       probe="vcam_camera_name", known_gap=False)
+            row.pop("effect_kind", None)
+        if widget.startswith("switcher_custom_") and widget != "switcher_custom_enabled":
+            row.update(probe="switcher_bank", known_gap=False)
+            row.pop("effect_kind", None)
+        if widget == "cine_easy_flare_preset":
+            row["test_value"] = {"item_index": 2, "resolve": "runtime"}
+            row["setting"] = "RenderCineLensFlarePreset"
+            row["setting_type"] = "S32"
+            row["expect"] = {"setting": "RenderCineLensFlarePreset", "type": "S32",
+                             "value": 1, "callback": "ALPanelCineLightRig::postBuild",
+                             "commit": True}
+            row["oracle_pre_value"] = 0
         if widget in {"anim_switcher_armed", "anim_switcher_auto",
                       "btn_anim_play", "btn_paste_play"}:
             row.update(
@@ -1549,6 +1636,11 @@ def prepare_manifest(path: Path, repo: Path, output: Path) -> tuple[int, int, in
 
         if row.get("exercise") not in {"", "none", None} and row.get("action") not in {
                 "SKIP", "NO_EXERCISE", "EXPECT_MISSING"}:
+            if kit_row:
+                # Functional probes may add oracles/settings, but generated kit
+                # ownership is immutable: never re-import legacy CSV evidence.
+                row["owner"] = kit_owner
+                row["callbacks"] = kit_callbacks
             legacy_button_scan = (row.get("exercise") == "click" and
                                   row.get("widget_type") == "button")
             hazards, handler_resolved = _handler_hazards(row, cpp_sources, body_cache)
@@ -1564,12 +1656,18 @@ def prepare_manifest(path: Path, repo: Path, output: Path) -> tuple[int, int, in
                     "setting callback/listener scan unresolved")
             if hazards:
                 row["hazards"] = sorted(set(row.get("hazards", [])) | hazards)
+                row["hazard_classes"] = _hazard_classes(set(row["hazards"]))
                 hazard_rows += 1
                 # Hazardous callbacks are never authorized in-world, including
                 # sliders/spinners and already-deferred rows. Login-screen
                 # coverage may remain executable for non-button controls.
                 _apply_inworld_hazard_policy(row, hazards)
-                if ((row.get("action") == "RUN" and legacy_button_scan) or
+                if not handler_resolved:
+                    row["action"] = "SKIP"
+                    row["reason"] = "local reachability unresolved"
+                    row["known_gap"] = False
+                    unresolved_hazards.append(f"{row['version']}:{row['page']}:{widget}")
+                elif ((row.get("action") == "RUN" and legacy_button_scan) or
                         row.get("motion_send_hazard")):
                     row["action"] = "SKIP"
                     row["reason"] = (
@@ -1580,13 +1678,10 @@ def prepare_manifest(path: Path, repo: Path, output: Path) -> tuple[int, int, in
                         if row.get("motion_send_hazard") else
                         "resolved handler hazard: " + ", ".join(sorted(hazards)))
                     row["known_gap"] = False
-            elif not handler_resolved and row.get("action") == "RUN" and legacy_button_scan:
-                row["action"] = "SKIP"
-                row["reason"] = "unresolved handler: hazard unknown"
-                row["known_gap"] = False
-                unresolved_hazards.append(f"{row['version']}:{row['page']}:{widget}")
             elif not handler_resolved:
-                row["hazards"] = sorted(set(row.get("hazards", [])) | {"handler_unknown"})
+                row["action"] = "SKIP"
+                row["reason"] = "local reachability unresolved"
+                row["known_gap"] = False
                 unresolved_hazards.append(f"{row['version']}:{row['page']}:{widget}")
             elif (handler_resolved and row.get("action") in {"RUN", "DEFER_INWORLD"} and
                   not row.get("setting") and not row.get("consumer") and
@@ -1847,6 +1942,40 @@ def annotate_failure_shots(rows: list[dict[str, str]], run_dir: Path) -> tuple[i
 
 def self_test_handler_scanner() -> None:
     """Regression fixtures for exact/local/transitive hazard resolution."""
+    positive = {
+        "file_picker": "LLFilePicker::instance().getOpenFile();",
+        "delete": "LLFile::remove(path);",
+        "rename": "std::filesystem::rename(old_path, new_path);",
+        "export_import": "exportScene(scene);",
+        "save_disk": "savePreset(name);",
+        "logout": "requestQuit();",
+        "server_message": "gMessageSystem->sendReliable(host);",
+        "agent_send": "gAgent.sendAnimationRequest(id, ANIM_REQUEST_START);",
+        "object_send": "LLViewerObject::sendShapeUpdate();",
+        "selection_send": "LLSelectMgr::sendMultipleUpdate();",
+        "selection_broadcast": "LLSelectMgr::getInstance()->selectObjectOnly(object);",
+        "parcel_send": "LLViewerParcelMgr::sendParcelPropertiesUpdate();",
+        "chat_im_voice": "sendChat(text);",
+        "world_action": "LLSelectMgr::getInstance()->sendTake();",
+        "scripted_dialog": "LLScriptFloater::show(script);",
+        "clipboard_write": "copyToClipboard(value);",
+        "external_url_process": "loadURLExternal(url);",
+        "persistent_setting": "gSavedPerAccountSettings.setBOOL(\"Flag\", true);",
+    }
+    for tag, fixture in positive.items():
+        assert re.search(HAZARD_RULES[tag], _cpp_without_comments(fixture)), \
+            "positive fixture missed hazard rule: " + tag
+    negative = _cpp_without_comments(r'''
+// requestQuit(); LLFile::remove(path); gAgent.sendAnimationRequest(id, true);
+/* savePreset(name); logout(); */
+saved_projection = true;
+log << "saved into cache";
+return (x >= 0);
+bank (account);
+''')
+    assert not any(re.search(pattern, negative) for pattern in HAZARD_RULES.values()), \
+        "comments or loose English identifiers produced a hazard"
+
     source = r'''
 bool Fixture::postBuild()
 {
@@ -1901,14 +2030,23 @@ void Fixture::onPickProp() { LLSelectMgr::getInstance()->selectObjectOnly(prop);
     danger, hazards, resolved = scan("lambda_danger")
     assert resolved and {"server_message", "agent_send"}.issubset(hazards)
     assert danger["inworld_allowed"] is False, "hazardous lambda must be denied in-world"
+    assert _mode_denies_hazards(hazards, True, False), \
+        "in-world mode must fail closed for every NETWORK hazard"
+    assert not _mode_denies_hazards(hazards, False, True), \
+        "proved no-circuit login mode must run NETWORK-only rows"
+    assert _mode_denies_hazards(hazards, False, False), \
+        "login mode must abort when the no-circuit proof is absent"
 
     safe, hazards, resolved = scan("safe_neighbor")
-    assert resolved and not hazards, "a neighbouring control's handler was attributed"
-    assert safe["inworld_allowed"] is True
+    assert resolved and not (hazards & LOCAL_HAZARDS), \
+        "a neighbouring control's LOCAL handler was attributed"
+    assert "agent_send" in hazards, "NETWORK TU union was unexpectedly relaxed"
+    assert safe["inworld_allowed"] is False
 
     local_safe, hazards, resolved = scan("local_safe")
-    assert resolved and not hazards, "a reused local control donated its neighbour's handler"
-    assert local_safe["inworld_allowed"] is True
+    assert resolved and not (hazards & LOCAL_HAZARDS), \
+        "a reused local control donated its neighbour's LOCAL handler"
+    assert "agent_send" in hazards and local_safe["inworld_allowed"] is False
 
     transitive, hazards, resolved = scan("transitive_danger")
     assert resolved and "agent_send" in hazards and transitive["inworld_allowed"] is False
@@ -1958,6 +2096,15 @@ void SettingFixture::connectUnknown()
     for (const char* name : settings)
         gSavedSettings.getControl(name)->getSignal()->connect(onUnknown);
 }
+void SettingFixture::readSafeSetting()
+{
+    LLCachedControl<bool> safe(gSavedSettings, "SafeSetting", false);
+    consumeLocally(safe);
+}
+void SettingFixture::unrelatedNetworkSender()
+{
+    gAgent.sendAnimationRequest(id, ANIM_REQUEST_START);
+}
 struct SettingTable
 {
     LLCachedControl<bool> value{gSavedSettings, "TableSetting", false};
@@ -1983,11 +2130,18 @@ struct SettingTable
     assert resolved and helper_row["inworld_setting_listener_count"] == 1
     assert "agent_send" in hazards, "helper-mediated setting listener callback was missed"
 
+    safe_network_row = dict(setting_row, owner="", widget_name="setting_safe", setting="SafeSetting")
+    hazards, resolved = _handler_hazards(safe_network_row, setting_sources, {})
+    assert resolved and "agent_send" in hazards, (
+        "in-world NETWORK TU union missed gAgent.sendAnimationRequest for a setting consumer: "
+        f"resolved={resolved}, hazards={sorted(hazards)}, row={safe_network_row}")
+    assert _mode_denies_hazards(hazards, True, False), \
+        "in-world setting row with a TU NETWORK sender must deny"
+
     table_row = dict(setting_row, widget_name="setting_table", setting="TableSetting")
     _hazards, resolved = _handler_hazards(table_row, setting_sources, {})
-    assert not resolved and table_row.get("setting_reference_outside_function")
-    assert not table_row.get("setting_sole_sink"), \
-        "out-of-function setting reference was incorrectly proven a sole sink"
+    assert resolved and table_row.get("setting_sole_sink"), \
+        "non-executable static setting declaration blocked the direct setting sink"
 
 
 def main() -> int:

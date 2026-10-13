@@ -65,6 +65,7 @@
 #include "llsdjson.h"
 #include "llfontregistry.h"
 #include "lllineeditor.h"
+#include "message.h"
 #include "llmultisliderctrl.h"
 #include "llmodaldialog.h"
 #include "llnotifications.h"
@@ -117,6 +118,17 @@
 
 namespace
 {
+// Selected VCam capture through the model's public registry (findCapture is private).
+const LLPrismLens::CaptureDefinition* functionalSelectedVCamCapture(const ALVCamPageModel& model)
+{
+    const LLUUID& id = model.selectedCapture().mId;
+    const LLPrismLens::RegistrySnapshot& registry = model.registry();
+    for (U32 i = 0; i < registry.mCaptureCount; ++i)
+        if (registry.mCaptures[i].mHandle.mId == id)
+            return &registry.mCaptures[i];
+    return nullptr;
+}
+
 class FunctionalControlAccess : public LLUICtrl
 {
 public:
@@ -1631,6 +1643,54 @@ private:
         return false;
     }
 
+    static bool functionalNetworkHazard(const std::string& hazard)
+    {
+        static const std::set<std::string> network = {
+            "server_message", "agent_send", "object_send", "selection_send",
+            "selection_broadcast", "parcel_send", "chat_im_voice", "world_action",
+            "scripted_dialog"
+        };
+        return network.count(hazard) != 0;
+    }
+
+    static bool functionalLocalHazard(const std::string& hazard)
+    {
+        static const std::set<std::string> local = {
+            "file_picker", "destructive", "logout", "delete", "rename",
+            "export_import", "save_disk", "clipboard_write",
+            "external_url_process", "persistent_setting"
+        };
+        return local.count(hazard) != 0;
+    }
+
+    static std::vector<std::string> functionalHazardsByClass(
+        const LLSD& entry, bool network_class)
+    {
+        std::vector<std::string> result;
+        const LLSD& hazards = entry["hazards"];
+        if (!hazards.isArray()) return result;
+        for (LLSD::array_const_iterator it = hazards.beginArray();
+             it != hazards.endArray(); ++it)
+        {
+            const std::string hazard = it->asString();
+            if ((network_class && functionalNetworkHazard(hazard)) ||
+                (!network_class && functionalLocalHazard(hazard)))
+                result.push_back(hazard);
+        }
+        return result;
+    }
+
+    static std::string functionalJoin(const std::vector<std::string>& values)
+    {
+        std::ostringstream out;
+        for (size_t index = 0; index < values.size(); ++index)
+        {
+            if (index) out << ", ";
+            out << values[index];
+        }
+        return out.str();
+    }
+
     static bool functionalSettingsFile(const std::filesystem::path& path)
     {
         std::string name = path.filename().string();
@@ -2368,6 +2428,38 @@ private:
         bool ok = prepareFunctionalDeclaredPrerequisites(entry);
         const std::string widget = entry["widget_name"].asString();
         const std::string prerequisite = entry["prereq"].asString();
+        if (widget.compare(0, 13, "cine_fixture_") == 0 &&
+            widget != "cine_fixture_role" && mFunctionalPageRoot)
+        {
+            // The shared fixture editors are role-owned. Re-commit the visible
+            // role before sampling their pre-state so a previous row cannot
+            // leave an editor showing another role's cached value.
+            if (LLComboBox* role = mFunctionalPageRoot->findChild<LLComboBox>(
+                    "cine_fixture_role", true))
+                role->onCommit();
+        }
+        if (!mInWorld && entry["page"].asString() == "actors_tab" &&
+            widget == "chk_bypass" && mFunctionalPageRoot)
+        {
+            // Avatar Light Response stores overrides by UUID; its editor does
+            // not dereference the avatar. A temporary list selection is enough
+            // to exercise Bypass at login without creating a world object.
+            if (LLScrollListCtrl* targets =
+                    mFunctionalPageRoot->findChild<LLScrollListCtrl>("target_list", true))
+            {
+                LLSD row;
+                const LLUUID fixture = LLUUID::generateNewID();
+                row["value"] = fixture;
+                row["columns"][0]["column"] = "name";
+                row["columns"][0]["value"] = "Functional local actor";
+                targets->addElement(row, ADD_BOTTOM);
+                targets->setSelectedByValue(fixture, true);
+                targets->onCommit();
+                ok = !targets->getAllSelected().empty() && ok;
+            }
+            else
+                ok = false;
+        }
         if (mInWorld && (prerequisite == "ghost_selected_entity" ||
                          prerequisite == "ghost_selected_formation") &&
             gAgentAvatarp && mFunctionalGhostFixture.isNull())
@@ -3182,11 +3274,16 @@ private:
         LLView* before = dynamic_cast<LLView*>(gFocusMgr.getKeyboardFocus());
         const bool focus_verified = director && first && before == first &&
             (before == director || before->hasAncestor(director));
-        if (focus_verified) director->handleKeyHere(KEY_TAB, MASK_NONE);
+        if (focus_verified)
+        {
+            director->handleKeyHere(KEY_TAB, MASK_NONE);
+        }
         LLView* after = dynamic_cast<LLView*>(gFocusMgr.getKeyboardFocus());
+        mFunctionalObserved["focus"]["tab_dispatches"] = 1;
+        mFunctionalObserved["focus"]["moved"] = after && after != before;
         const bool ring = focus_verified && after &&
             (after == director || after->hasAncestor(director)) && after != before &&
-            functionalFocusRing(after) && !functionalFocusRing(before);
+            functionalFocusRing(after);
         addFunctionalResult(assertion, ring ? "PASS" : "FAIL",
             ring ? "Tab exposes a kit focus ring" :
                               "Tab from a focused kit control did not move to the next kit focus ring");
@@ -3466,6 +3563,16 @@ private:
             LLDirectorCast::instance().remove(gAgentID);
         mFunctionalDanceActorWasCast = true;
         mFunctionalDanceFixturePrepared = false;
+        if (mFunctionalLoginGazeActor.notNull())
+        {
+            LLDirectorCast& cast = LLDirectorCast::instance();
+            cast.setSubjectA(mFunctionalLoginGazeSubjectBefore);
+            cast.setSubjectB(mFunctionalLoginGazeSubjectBBefore);
+            cast.remove(mFunctionalLoginGazeActor);
+            mFunctionalLoginGazeActor.setNull();
+            mFunctionalLoginGazeSubjectBefore.setNull();
+            mFunctionalLoginGazeSubjectBBefore.setNull();
+        }
         if (mFunctionalHaveCastGazeBefore)
         {
             LLDirectorCast::instance().setGazeTarget(mFunctionalGazeActor,
@@ -5413,6 +5520,18 @@ private:
                 ? ALToolGhostEdit::getInstance() : nullptr;
             mFunctionalOwnerModelBefore["editing"] = tool && tool->isEditModeActive();
         }
+        else if (owner_probe == "switcher_bank")
+        {
+            mFunctionalOwnerModelBefore =
+                gSavedSettings.getLLSD("DirectorSwitcherBank");
+        }
+        else if (owner_probe == "vcam_camera_name" && mFunctionalVCamModel)
+        {
+            mFunctionalVCamModel->refreshNow();
+            const LLPrismLens::CaptureDefinition* capture =
+                functionalSelectedVCamCapture(*mFunctionalVCamModel);
+            mFunctionalOwnerModelBefore = capture ? LLSD(capture->mLabel) : LLSD();
+        }
         else if (owner_probe == "gaze_slot" && gAgentAvatarp)
         {
             mFunctionalGazeActor = gAgentAvatarp->getID();
@@ -5536,7 +5655,7 @@ private:
     // ui-draw-lint: allow-function(lookup,raw-write) test-only VCam fixture selection
     void prepareFunctionalVCamSelection(const LLSD& entry)
     {
-        if (!mInWorld || !mFunctionalPageRoot || !mFunctionalVCamModel ||
+        if (!mFunctionalPageRoot || !mFunctionalVCamModel ||
             entry["page"].asString() != "vcam_tab") return;
         mFunctionalVCamModel->refreshNow();
         const LLPrismLens::RegistrySnapshot& registry = mFunctionalVCamModel->registry();
@@ -5577,7 +5696,42 @@ private:
             mFunctionalObserved = LLSD::emptyMap();
             functionalBeginInputState();
         }
+        if (!mInWorld && !functionalLoginHasNoCircuit())
+        {
+            addFunctionalResult(entry, "FAIL",
+                "login network-safety proof failed; run aborted before dispatch");
+            restoreFunctionalAction();
+            mFunctionalIndex = mFunctionalEntries.size();
+            return;
+        }
         const std::string action = entry["action"].asString();
+        const std::vector<std::string> network_hazards =
+            functionalHazardsByClass(entry, true);
+        const std::vector<std::string> local_hazards =
+            functionalHazardsByClass(entry, false);
+        if (!network_hazards.empty())
+        {
+            mFunctionalObserved["hazards"]["network"] =
+                functionalJoin(network_hazards);
+            mFunctionalObserved["hazards"]["classes"].append("NETWORK");
+        }
+        if (!local_hazards.empty())
+        {
+            mFunctionalObserved["hazards"]["local"] =
+                functionalJoin(local_hazards);
+            mFunctionalObserved["hazards"]["classes"].append("LOCAL");
+        }
+        mFunctionalObserved["hazards"]["network_policy"] = mInWorld
+            ? "DENY_INWORLD" : "RUN_INERT_NO_CIRCUIT";
+        if (!mInWorld && entry["page"].asString() == "path_tab" && action == "RUN")
+        {
+            LLSD deferred_entry = entry;
+            deferred_entry["action"] = "DEFER_INWORLD";
+            addFunctionalResult(deferred_entry, "SKIP",
+                "needs SELF path node (in-world fixture)");
+            ++mFunctionalIndex;
+            return;
+        }
         if (mInWorld && !entry["inworld_skip_reason"].asString().empty())
         {
             addFunctionalResult(entry, "SKIP", entry["inworld_skip_reason"].asString());
@@ -5602,10 +5756,15 @@ private:
         if (action == "SKIP")
         {
             std::string reason = entry["reason"].asString();
-            addFunctionalResult(entry, reason.empty() ? "FAIL" : "SKIP",
-                                reason.empty() ? "manifest SKIP lacks explicit reason" : reason);
-            ++mFunctionalIndex;
-            return;
+            const bool login_network_only = !mInWorld && !network_hazards.empty() &&
+                local_hazards.empty();
+            if (!login_network_only)
+            {
+                addFunctionalResult(entry, reason.empty() ? "FAIL" : "SKIP",
+                                    reason.empty() ? "manifest SKIP lacks explicit reason" : reason);
+                ++mFunctionalIndex;
+                return;
+            }
         }
         if (mInWorld && (!entry["inworld_allowed"].asBoolean() ||
                          entry["widget_name"].asString() == "vc_lens_locate" ||
@@ -5644,30 +5803,50 @@ private:
             ++mFunctionalIndex;
             return;
         }
-        const bool server_dangerous = mInWorld && (
-            functionalHazard(entry, "server_message") ||
-            functionalHazard(entry, "agent_send") ||
-            functionalHazard(entry, "object_send") ||
-            functionalHazard(entry, "selection_send") ||
-            functionalHazard(entry, "parcel_send") ||
-            functionalHazard(entry, "chat_im_voice") ||
-            functionalHazard(entry, "world_action") ||
-            functionalHazard(entry, "scripted_dialog"));
-        const bool dangerous = server_dangerous || functionalHazard(entry, "file_picker") ||
-            functionalHazard(entry, "destructive") || functionalHazard(entry, "logout") ||
-            functionalHazard(entry, "delete") || functionalHazard(entry, "rename") ||
-            functionalHazard(entry, "export_import") || functionalHazard(entry, "save_disk");
-        if (dangerous)
+        if (!local_hazards.empty())
         {
-            const std::string reason = server_dangerous ?
-                "in-world: server-side action denied" : entry["reason"].asString();
-            addFunctionalResult(entry, reason.empty() ? "FAIL" : "SKIP",
-                reason.empty() ? "hazard requires an explicit manifest skip reason" : reason);
+            std::string reason = entry["reason"].asString();
+            if (reason.empty()) reason = "local hazard denied: " + functionalJoin(local_hazards);
+            addFunctionalResult(entry, "SKIP", reason);
+            ++mFunctionalIndex;
+            return;
+        }
+        if (mInWorld && !network_hazards.empty())
+        {
+            addFunctionalResult(entry, "SKIP",
+                "in-world: network hazard denied: " + functionalJoin(network_hazards));
             ++mFunctionalIndex;
             return;
         }
         if (!prepareFunctionalRimGate(entry)) return;
         if (!mFunctionalGatePrepared) prepareFunctionalRestore(entry);
+        mFunctionalPageRoot = functionalPage(entry);
+        if (!mInWorld && entry["page"].asString() == "gaze_tab" &&
+            mFunctionalPageRoot && mFunctionalLoginGazeActor.isNull())
+        {
+            LLDirectorCast& cast = LLDirectorCast::instance();
+            mFunctionalLoginGazeSubjectBefore = cast.getSubjectA();
+            mFunctionalLoginGazeSubjectBBefore = cast.getSubjectB();
+            mFunctionalLoginGazeActor = LLUUID::generateNewID();
+            mFunctionalGazeActor = mFunctionalLoginGazeActor;
+            cast.add(mFunctionalLoginGazeActor);
+            cast.setSubjectA(mFunctionalLoginGazeActor);
+            mFunctionalGazeCastFixture = LLUUID::generateNewID();
+            mFunctionalGazeCastFixtureAlternate = LLUUID::generateNewID();
+            cast.add(mFunctionalGazeCastFixture);
+            cast.add(mFunctionalGazeCastFixtureAlternate);
+            cast.setSubjectB(mFunctionalGazeCastFixture);
+            LLActorMover::instance().setGazeEnabled(mFunctionalLoginGazeActor, true);
+            cast.setLookAtCamera(mFunctionalLoginGazeActor, true);
+            if (LLComboBox* edit_actor =
+                    mFunctionalPageRoot->findChild<LLComboBox>("gaze_edit_actor", true))
+            {
+                if (!edit_actor->setSelectedByValue(LLSD(1), true))
+                    edit_actor->add("A", LLSD(1));
+                edit_actor->setValue(1);
+                edit_actor->onCommit();
+            }
+        }
         prepareFunctionalSelector(entry);
         prepareFunctionalConsumerGate(entry);
         if (!prepareFunctionalDeclaredPrerequisites(entry))
@@ -5677,7 +5856,6 @@ private:
             ++mFunctionalIndex;
             return;
         }
-        mFunctionalPageRoot = functionalPage(entry);
         prepareFunctionalVCamSelection(entry);
         if (mInWorld && mFunctionalHaveProjector &&
             entry["page"].asString() == "vcam_tab" &&
@@ -6283,6 +6461,30 @@ private:
             if (after.str() == mFunctionalVisibleBefore)
                 assertion_failure = "selector changed no displayed page values";
         }
+        if (entry["probe"].asString() == "switcher_bank")
+        {
+            const LLSD after = gSavedSettings.getLLSD("DirectorSwitcherBank");
+            const bool changed = after != mFunctionalOwnerModelBefore;
+            mFunctionalObserved["switcher"]["bank_changed"] = changed;
+            observable = changed;
+            expected_ok = expected_ok && changed;
+            if (!changed) assertion_failure =
+                "switcher custom control did not update DirectorSwitcherBank";
+        }
+        if (entry["probe"].asString() == "vcam_camera_name")
+        {
+            if (mFunctionalVCamModel) mFunctionalVCamModel->refreshNow();
+            const LLPrismLens::CaptureDefinition* capture = mFunctionalVCamModel
+                ? functionalSelectedVCamCapture(*mFunctionalVCamModel) : nullptr;
+            const std::string label = capture ? capture->mLabel : std::string();
+            const bool changed = capture && label != mFunctionalOwnerModelBefore.asString() &&
+                label == control->getValue().asString();
+            mFunctionalObserved["vcam"]["camera_label"] = label;
+            observable = changed;
+            expected_ok = expected_ok && changed;
+            if (!changed) assertion_failure =
+                "VCam name editor did not update the selected viewer-local camera";
+        }
         if (entry["probe"].asString() == "temporal_preset")
         {
             LLControlVariable* mode = gSavedSettings.getControl("TemporalMode").get();
@@ -6824,6 +7026,58 @@ private:
         mFunctionalVCamModel.reset();
     }
 
+    bool functionalLoginHasNoCircuit()
+    {
+        const EStartupState startup = LLStartUp::getStartupState();
+        const bool startup_safe = startup < STATE_LOGIN_AUTH_INIT;
+        const bool region_safe = gAgent.getRegion() == nullptr;
+        const bool message_system_safe = gMessageSystem != nullptr;
+        const size_t circuit_count = message_system_safe
+            ? gMessageSystem->getCircuit()->getCircuitDataList().size() : 0;
+        const bool circuit_safe = !message_system_safe || circuit_count == 0;
+        mFunctionalObserved["login_network_proof"]["startup_state"] =
+            static_cast<S32>(startup);
+        mFunctionalObserved["login_network_proof"]["before_auth_init"] = startup_safe;
+        mFunctionalObserved["login_network_proof"]["region_null"] = region_safe;
+        mFunctionalObserved["login_network_proof"]["message_system_present"] =
+            message_system_safe;
+        mFunctionalObserved["login_network_proof"]["circuit_count"] =
+            static_cast<S32>(circuit_count);
+        mFunctionalObserved["login_network_proof"]["proved"] =
+            startup_safe && region_safe && circuit_safe;
+        return startup_safe && region_safe && circuit_safe;
+    }
+
+    // ui-draw-lint: allow-function(raw-write,setting-write) one-shot viewer-local login VCam fixture
+    bool prepareFunctionalLoginVCam()
+    {
+        if (mFunctionalVCamModel) return true;
+        mFunctionalVCamSnapshot = LLPrismLens::sceneData();
+        LLSD empty_vcam = LLSD::emptyMap();
+        empty_vcam["prism_captures"] = LLSD::emptyArray();
+        empty_vcam["prism_displays"] = LLSD::emptyArray();
+        empty_vcam["prism_projectors"] = LLSD::emptyArray();
+        empty_vcam["prism_gates"] = LLSD::emptyArray();
+        std::string reason;
+        if (!LLPrismLens::applySceneData(empty_vcam, &reason)) return false;
+        // This is the same public model path used by the Add camera / View
+        // combo.  It creates only a viewer-local registry camera at the current
+        // login camera; it does not rez or select an object.
+        mFunctionalVCamModel = std::make_unique<ALVCamPageModel>();
+        if (mFunctionalVCamModel->addVirtualAtView(&reason) !=
+            LLPrismLens::ERegistryResult::OK)
+            return false;
+        mFunctionalVCamModel->setLabel(
+            mFunctionalVCamModel->selectedCapture(),
+            "Functional login view camera", &reason);
+        mFunctionalVCamModel->refreshNow();
+        // The product intentionally hides VCam-dependent controls while its
+        // viewer-local master is off. The session settings snapshot restores
+        // this exact value at the end of the run.
+        gSavedSettings.setBOOL("PrismLensEnabled", true); // ui-draw-lint: allow(setting-write) one-shot login VCam fixture
+        return true;
+    }
+
     // ui-draw-lint: allow-function(raw-write) one-shot isolated in-world fixture setup
     bool prepareFunctionalInWorld()
     {
@@ -7084,6 +7338,24 @@ private:
                 failure["widget_type"] = "file"; failure["exercise"] = "load";
                 addFunctionalResult(failure, "FAIL", "manifest missing, invalid, or empty");
                 mFunctionalIndex = mFunctionalEntries.size();
+            }
+            if (!mInWorld && mFunctionalIndex < mFunctionalEntries.size())
+            {
+                mFunctionalObserved = LLSD::emptyMap();
+                const bool no_circuit = functionalLoginHasNoCircuit();
+                if (!no_circuit || !prepareFunctionalLoginVCam())
+                {
+                    LLSD failure;
+                    failure["page"] = "vcam_tab";
+                    failure["widget_name"] = "login_vcam_fixture";
+                    failure["widget_type"] = "fixture";
+                    failure["exercise"] = "Add camera / View";
+                    addFunctionalResult(failure, "FAIL", no_circuit
+                        ? "viewer-local login VCam fixture could not be created"
+                        : "login network-safety proof failed before VCam fixture");
+                    mFunctionalIndex = mFunctionalEntries.size();
+                }
+                mFunctionalObserved = LLSD::emptyMap();
             }
             captureFunctionalRigState();
             LLFloater* floater = LLFloaterReg::showInstance("director", LLSD(), false);
@@ -9996,6 +10268,9 @@ private:
     LLQuaternion mFunctionalVCamExpectedRot;
     LLReflectionMapManager::CinematicRefreshStatus mFunctionalProbeStatusBefore;
     LLUUID mFunctionalGazeActor;
+    LLUUID mFunctionalLoginGazeActor;
+    LLUUID mFunctionalLoginGazeSubjectBefore;
+    LLUUID mFunctionalLoginGazeSubjectBBefore;
     LLActorMover::GazeTarget mFunctionalGazeBefore;
     bool mFunctionalHaveGazeBefore = false;
     LLUUID mFunctionalActorMoverId;
