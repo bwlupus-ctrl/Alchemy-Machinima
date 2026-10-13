@@ -24,6 +24,7 @@ public:
         std::string label_lower;
         std::string path;
         S32         option   = -1;
+        S32         decimals = 3;
         S32         score    = 0;
         U32         order    = 0;
         bool        advanced = false;
@@ -53,6 +54,7 @@ private:
         std::string      label_lower;
         std::string      path;
         S32              option   = -1;
+        S32              decimals = 3;
         U32              order    = 0;
         bool             advanced = false;
         std::vector<U32> label_tokens;

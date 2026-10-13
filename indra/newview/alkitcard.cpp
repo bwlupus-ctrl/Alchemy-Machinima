@@ -583,11 +583,23 @@ void ALKitCard::pasteSettings()
             page = owner->pageKey();
             break;
         }
-    if (ALKitShell* shell = ALKitShell::find(this))
-        shell->history().beginGesture(ALKitHistory::MOUSE, page, "Paste " + mTitle);
-    std::unique_ptr<LLPrismLens::ScopedRevisionSignals> prism_signals;
-    if (mCopyType.compare(0, 5, "vcam_") == 0)
-        prism_signals = std::make_unique<LLPrismLens::ScopedRevisionSignals>();
+    const bool vcam = mCopyType.compare(0, 5, "vcam_") == 0;
+    if (!vcam)
+    {
+        if (ALKitShell* shell = ALKitShell::find(this))
+            shell->history().beginGesture(ALKitHistory::MOUSE, page, "Paste " + mTitle);
+    }
+    if (vcam)
+        for (LLView* view = getParent(); view; view = view->getParent())
+            if (ALKitPage* owner = dynamic_cast<ALKitPage*>(view))
+            {
+                if (!owner->pasteCardValues(mId, sCardClipboard.values))
+                    return;
+                LLNotificationsUtil::add("SystemMessageTip",
+                    LLSD().with("MESSAGE", "Pasted from " + sCardClipboard.source));
+                return;
+            }
+    bool pasted = false;
     for (ALKitRow* row : mRows)
     {
         if (!row || !rowBranchVisible(row, this) || !row->control())
@@ -596,10 +608,12 @@ void ALKitCard::pasteSettings()
             if ((*it)["key"].asString() == (mCopyType == "light_role" ? row->meta().label : row->meta().widget) &&
                 ALKitQol::pasteTypesCompatible((*it)["value"], row->boundValue()))
             {
-                row->setBoundValue((*it)["value"]);
+                pasted = row->setBoundValue((*it)["value"]) || pasted;
                 break;
             }
     }
+    if (!pasted)
+        return;
     LLNotificationsUtil::add("SystemMessageTip",
         LLSD().with("MESSAGE", "Pasted from " + sCardClipboard.source));
 }
@@ -938,11 +952,17 @@ void ALKitCard::reshape(S32 w, S32 h, bool parent)
 
 void ALKitCard::setQuickRows(std::vector<ALKitRow*> rows)
 {
+    ALKitPage* owner = nullptr;
+    for (LLView* view = getParent(); view && !owner; view = view->getParent())
+        owner = dynamic_cast<ALKitPage*>(view);
+    mQuickAmberConnections.clear();
     for (ALKitRow* row : mQuickRows)
     {
         if (row->amber())
             --mAmberCount;
         mRows.erase(std::remove(mRows.begin(), mRows.end(), row), mRows.end());
+        if (owner)
+            owner->unregisterDynamicRow(row);
         removeChild(row);
         delete row;
     }
@@ -954,9 +974,12 @@ void ALKitCard::setQuickRows(std::vector<ALKitRow*> rows)
         addChild(row);
         mRows.push_back(row);
         mQuickRows.push_back(row);
+        row->refreshFavorite();
+        if (owner)
+            owner->registerDynamicRow(row);
         if (row->amber())
             ++mAmberCount;
-        mAmberConnections.emplace_back(row->setAmberCallback(
+        mQuickAmberConnections.emplace_back(row->setAmberCallback(
             [this](bool on)
             {
                 mAmberCount += on ? 1 : -1;

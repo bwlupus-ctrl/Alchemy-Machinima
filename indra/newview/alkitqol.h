@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <cmath>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace ALKitQol
@@ -46,7 +47,33 @@ inline bool valuesEqual(const LLSD& left, const LLSD& right, S32 decimals)
 
 inline bool pasteTypesCompatible(const LLSD& source, const LLSD& destination)
 {
-    return source.isDefined() && destination.isDefined() && source.type() == destination.type();
+    if (!source.isDefined() || !destination.isDefined())
+        return false;
+    const bool source_numeric = source.isInteger() || source.isReal();
+    const bool destination_numeric = destination.isInteger() || destination.isReal();
+    return source.type() == destination.type() || (source_numeric && destination_numeric);
+}
+
+inline LLSD coercePasteValue(const LLSD& source, const LLSD& destination)
+{
+    if (!pasteTypesCompatible(source, destination))
+        return LLSD();
+    if (destination.isInteger())
+        return LLSD(static_cast<LLSD::Integer>(llround(source.asReal())));
+    if (destination.isReal())
+        return LLSD(source.asReal());
+    return source;
+}
+
+inline Favorite sourceFavorite(const Favorite& row, const Favorite& source)
+{
+    return source.page.empty() || source.widget.empty() ? row : source;
+}
+
+inline bool isValidFavorite(const Favorite& favorite)
+{
+    return !favorite.page.empty() && !favorite.widget.empty() &&
+           favorite.widget.rfind("quick_proxy_", 0) != 0;
 }
 
 inline std::vector<Favorite> favoritesFromLLSD(const LLSD& value)
@@ -57,7 +84,7 @@ inline std::vector<Favorite> favoritesFromLLSD(const LLSD& value)
     for (LLSD::array_const_iterator it = value.beginArray(); it != value.endArray(); ++it)
     {
         Favorite favorite{ (*it)["page"].asString(), (*it)["widget"].asString() };
-        if (!favorite.page.empty() && !favorite.widget.empty() &&
+        if (isValidFavorite(favorite) &&
             std::find(result.begin(), result.end(), favorite) == result.end())
             result.push_back(std::move(favorite));
     }

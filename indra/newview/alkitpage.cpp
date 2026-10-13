@@ -1235,6 +1235,57 @@ bool ALKitPage::changed() const
     return false;
 }
 
+void ALKitPage::registerDynamicRow(ALKitRow* row)
+{
+    if (row)
+        mRows[row->meta().widget] = row;
+}
+
+void ALKitPage::unregisterDynamicRow(ALKitRow* row)
+{
+    if (!row)
+        return;
+    const auto found = mRows.find(row->meta().widget);
+    if (found != mRows.end() && found->second == row)
+        mRows.erase(found);
+}
+
+void ALKitPage::applyLocalFilter(const std::string& query, bool changed_only)
+{
+    std::string lowered = query;
+    LLStringUtil::toLower(lowered);
+    const std::vector<std::string> tokens = LLStringUtil::getTokens(lowered, " ");
+    mSearching = !tokens.empty() || changed_only;
+    for (auto& entry : mRows)
+    {
+        ALKitRow* row = entry.second;
+        if (!row || entry.first != row->meta().widget)
+            continue;
+        std::string haystack = row->meta().label + " " + row->meta().help + " " + row->meta().keywords;
+        LLStringUtil::toLower(haystack);
+        bool visible = !changed_only || row->amber();
+        for (const std::string& token : tokens)
+            visible = visible && haystack.find(token) != std::string::npos;
+        row->setFilterVisible(visible);
+    }
+    applyModeAndChip();
+}
+
+void ALKitPage::refreshChangedFilter(ALKitRow* row, const std::string& query)
+{
+    if (!row)
+        return;
+    std::string lowered = query;
+    LLStringUtil::toLower(lowered);
+    std::string haystack = row->meta().label + " " + row->meta().help + " " + row->meta().keywords;
+    LLStringUtil::toLower(haystack);
+    bool visible = row->amber();
+    for (const std::string& token : LLStringUtil::getTokens(lowered, " "))
+        visible = visible && haystack.find(token) != std::string::npos;
+    row->setFilterVisible(visible);
+    applyModeAndChip();
+}
+
 void ALKitPage::applySearch(const ALKitSearch::Hits& hits)
 {
     mSearching = true;

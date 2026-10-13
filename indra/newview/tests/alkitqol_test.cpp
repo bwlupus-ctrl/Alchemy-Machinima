@@ -11,10 +11,10 @@ alkitqol_group gAlKitQol("alkitqol");
 
 template<> template<> void alkitqol_object::test<1>()
 {
-    ensure("float tolerance accepts display-equivalent values",
-           ALKitQol::valuesEqual(LLSD(1.0004), LLSD(1.0), 3));
-    ensure("float tolerance rejects visible changes",
-           !ALKitQol::valuesEqual(LLSD(1.002), LLSD(1.0), 3));
+    ensure("shared precision accepts a value hidden at two decimals",
+           ALKitQol::valuesEqual(LLSD(1.004), LLSD(1.0), 2));
+    ensure("shared precision rejects the same value at three decimals",
+           !ALKitQol::valuesEqual(LLSD(1.004), LLSD(1.0), 3));
 }
 
 template<> template<> void alkitqol_object::test<2>()
@@ -30,7 +30,29 @@ template<> template<> void alkitqol_object::test<2>()
 template<> template<> void alkitqol_object::test<3>()
 {
     ensure("same clipboard types paste", ALKitQol::pasteTypesCompatible(LLSD(3), LLSD(1)));
-    ensure("different clipboard types do not paste", !ALKitQol::pasteTypesCompatible(LLSD(3), LLSD(1.0)));
+    ensure("numeric clipboard types can be coerced", ALKitQol::pasteTypesCompatible(LLSD(3.6), LLSD(1)));
+    ensure_equals("real paste rounds to integer", ALKitQol::coercePasteValue(LLSD(3.6), LLSD(1)).asInteger(), 4);
+    ensure("non-numeric clipboard types do not paste", !ALKitQol::pasteTypesCompatible(LLSD("3"), LLSD(1.0)));
     ensure("undefined clipboard does not paste", !ALKitQol::pasteTypesCompatible(LLSD(), LLSD(false)));
+}
+
+template<> template<> void alkitqol_object::test<4>()
+{
+    const ALKitQol::Favorite proxy{ "quick_group/quick_tab", "quick_proxy_0_control" };
+    const ALKitQol::Favorite source{ "camera_group/vcam_tab", "vc_exposure" };
+    ensure("proxy favorite key is its source key",
+           ALKitQol::sourceFavorite(proxy, source) == source);
+}
+
+template<> template<> void alkitqol_object::test<5>()
+{
+    LLSD stored = LLSD::emptyArray();
+    stored.append(LLSD().with("page", "quick_group/quick_tab")
+                        .with("widget", "quick_proxy_2_control"));
+    stored.append(LLSD().with("page", "camera_group/vcam_tab")
+                        .with("widget", "vc_exposure"));
+    const std::vector<ALKitQol::Favorite> cleaned = ALKitQol::favoritesFromLLSD(stored);
+    ensure_equals("junk Quick favorites are removed", cleaned.size(), size_t(1));
+    ensure_equals("valid favorite survives cleanup", cleaned[0].widget, std::string("vc_exposure"));
 }
 } // namespace tut

@@ -3,6 +3,7 @@
 #include "llpanel.h"
 #include "llframetimer.h"
 #include "alkitbinding.h"
+#include "alkitqol.h"
 #include <boost/signals2.hpp>
 #include <array>
 #include <memory>
@@ -82,6 +83,9 @@ public:
     LLSD boundValue() const;
     LLSD boundDefault() const;
     bool setBoundValue(const LLSD&);
+    bool canPasteValue(const LLSD&) const;
+    ALKitQol::Favorite favoriteKey() const;
+    ALKitRow* sourceRow() const { return mSourceRow.get(); }
     void refreshFavorite();
     static ALKitRow* createProxy(ALKitRow*, const std::string&);
 
@@ -113,6 +117,7 @@ private:
     boost::signals2::scoped_connection mBindingConnection, mFocusConnection, mFocusLostConnection, mMirrorConnection,
         mMirrorCommitConnection, mHistoryConnection, mValueConnection;
     LLHandle<LLContextMenu> mContextMenu;
+    LLHandle<ALKitRow> mSourceRow;
     amber_signal_t mAmberSignal;
     value_signal_t mValueSignal;
     LLFrameTimer   mFlashTimer;

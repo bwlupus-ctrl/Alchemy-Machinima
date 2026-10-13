@@ -13,7 +13,7 @@
 
 namespace
 {
-constexpr S32 INDEX_FIELDS = 15;
+constexpr S32 INDEX_FIELDS = 16;
 
 std::string unescapeField(const std::string& value)
 {
@@ -77,7 +77,7 @@ bool ALKitSearch::load(const std::string& index_file)
     std::ostringstream bytes;
     bytes << input.rdbuf();
     const std::string xml = bytes.str();
-    if (xml.find("<director_kit_index version=\"2\" fields=\"15\">") == std::string::npos)
+    if (xml.find("<director_kit_index version=\"2\" fields=\"16\">") == std::string::npos)
     {
         LL_WARNS("DirectorKit") << "KitSearch rejected index header in " << filename << LL_ENDL;
         return false;
@@ -130,13 +130,14 @@ bool ALKitSearch::tokenizeBatch(U32 count)
         entry.label_lower = entry.label;
         LLStringUtil::toLower(entry.label_lower);
         entry.setting  = fields[11];
-        entry.advanced = fields[12].find('a') != std::string::npos;
+        entry.decimals = atoi(fields[12].c_str());
+        entry.advanced = fields[13].find('a') != std::string::npos;
         entry.order    = mPendingIndex;
         entry.path     = fields[3] + " \xE2\x80\xBA " + fields[2] + " \xE2\x80\xBA " + fields[6] + " \xC2\xB7 " + fields[9];
         tokenize(fields[9], entry.label_tokens);
         tokenize(fields[6], entry.card_tokens);
-        tokenize(fields[13], entry.keyword_tokens);
-        tokenize(fields[14], entry.help_tokens);
+        tokenize(fields[14], entry.keyword_tokens);
+        tokenize(fields[15], entry.help_tokens);
         tokenize(fields[11], entry.setting_tokens);
         tokenize(fields[8], entry.widget_tokens);
         mEntries.push_back(std::move(entry));
@@ -222,6 +223,7 @@ ALKitSearch::Hits ALKitSearch::query(const std::string& query_text) const
             hit.label     = entry.label;
             hit.path      = entry.path;
             hit.option    = entry.option;
+            hit.decimals  = entry.decimals;
             hit.score     = total;
             hit.order     = entry.order;
             hit.advanced  = entry.advanced;
@@ -262,6 +264,7 @@ ALKitSearch::Hits ALKitSearch::all() const
         hit.label = entry.label;
         hit.path = entry.path;
         hit.option = entry.option;
+        hit.decimals = entry.decimals;
         hit.order = entry.order;
         hit.advanced = entry.advanced;
         hits.push_back(std::move(hit));

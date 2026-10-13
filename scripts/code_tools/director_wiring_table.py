@@ -527,7 +527,7 @@ def build_catalog(mock, ps_pages):
 
 
 def parse_kit_index(text):
-    """Cross-check table from director_kit_index.xml (TSV inside CDATA, 15 fields).
+    """Cross-check table from director_kit_index.xml (TSV inside CDATA, 16 fields).
 
     Returns {(page, widget, label): (setting, kind)} and {(page, widget): (setting, kind)} (first)."""
     full, pw = {}, {}

@@ -22,6 +22,7 @@ public:
     virtual LLSD                        get() const        = 0;
     virtual LLSD                        getDefault() const = 0;
     virtual void                        set(const LLSD&)   = 0;
+    virtual bool                        canSet() const { return true; }
     virtual bool                        hasDefault() const { return true; }
     virtual bool                        isDefault(S32 decimals) const;
     virtual boost::signals2::connection connectChanged(std::function<void()> cb) = 0;
@@ -35,6 +36,7 @@ public:
     LLSD                        get() const override;
     LLSD                        getDefault() const override;
     void                        set(const LLSD&) override;
+    void                        reset() override;
     boost::signals2::connection connectChanged(std::function<void()>) override;
     std::string                 describe() const override { return mName; }
 
@@ -63,6 +65,7 @@ public:
     LLSD                        get() const override;
     LLSD                        getDefault() const override;
     void                        set(const LLSD&) override {}
+    bool                        canSet() const override { return false; }
     void                        reset() override;
     boost::signals2::connection connectChanged(std::function<void()>) override;
     std::string                 describe() const override { return "Settings"; }
@@ -85,6 +88,7 @@ public:
 
 private:
     void                                            commit();
+    void                                            syncControls(const LLSD&);
     std::string                                     mSetting;
     LLUICtrl*                                       mX;
     LLUICtrl*                                       mY;

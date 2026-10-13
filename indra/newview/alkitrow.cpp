@@ -39,16 +39,19 @@ LLSD sRowClipboard;
 class ALKitProxyBinding final : public ALKitBinding
 {
 public:
-    explicit ALKitProxyBinding(ALKitRow* source) : mSource(source->getDerivedHandle<ALKitRow>()) {}
+    ALKitProxyBinding(ALKitRow* source, bool writable) :
+        mSource(source->getDerivedHandle<ALKitRow>()), mWritable(writable) {}
     LLSD get() const override { return mSource.get() ? mSource.get()->boundValue() : LLSD(); }
     LLSD getDefault() const override { return mSource.get() ? mSource.get()->boundDefault() : LLSD(); }
-    bool hasDefault() const override { return mSource.get() && mSource.get()->boundDefault().isDefined(); }
-    void set(const LLSD& value) override { if (mSource.get()) mSource.get()->setBoundValue(value); }
+    void set(const LLSD& value) override { if (mWritable && mSource.get()) mSource.get()->setBoundValue(value); }
+    bool canSet() const override { return mWritable; }
+    bool hasDefault() const override { return mWritable && mSource.get() && mSource.get()->boundDefault().isDefined(); }
     boost::signals2::connection connectChanged(std::function<void()> callback) override
     { return mSource.get() ? mSource.get()->setValueCallback(std::move(callback)) : boost::signals2::connection(); }
     std::string describe() const override { return "Quick proxy"; }
 private:
     LLHandle<ALKitRow> mSource;
+    bool mWritable = false;
 };
 
 bool baselineEditActive(const LLView* control)
@@ -321,12 +324,15 @@ bool ALKitRow::postBuild()
     mFavorite      = LLUICtrlFactory::create<LLButton>(favorite);
     mFavorite->setToolTip(LLStringExplicit("Add to Quick"));
     mFavorite->setCommitCallback(
-        [this](LLUICtrl*, const LLSD&)
-        {
-            if (ALKitShell* shell = ALKitShell::find(this))
-                shell->toggleFavorite(mMeta.page_key, mMeta.widget);
-            refreshFavorite();
-        });
+            [this](LLUICtrl*, const LLSD&)
+            {
+                if (ALKitShell* shell = ALKitShell::find(this))
+                {
+                    const ALKitQol::Favorite key = favoriteKey();
+                    shell->toggleFavorite(key.page, key.widget);
+                }
+                refreshFavorite();
+            });
     addChild(mFavorite);
     refreshFavorite();
 
@@ -626,7 +632,7 @@ void ALKitRow::bindingChanged()
     }
     refreshValue();
     if (ALKitShell* shell = ALKitShell::find(this))
-        shell->refreshChangedMarkers();
+        shell->refreshChangedMarkers(this);
     if (mControl && !baselineEditActive(mControl))
         mLastValue = mControl->getValue();
     mValueSignal();
@@ -689,19 +695,36 @@ LLSD ALKitRow::boundDefault() const
 
 bool ALKitRow::setBoundValue(const LLSD& value)
 {
-    if (!ALKitQol::pasteTypesCompatible(value, boundValue()))
+    const LLSD coerced = ALKitQol::coercePasteValue(value, boundValue());
+    if (!coerced.isDefined() || (mBinding && !mBinding->canSet()))
         return false;
     if (mBinding)
-        mBinding->set(value);
+        mBinding->set(coerced);
     else if (mControl)
     {
-        mControl->setValue(value);
+        mControl->setValue(coerced);
         mControl->onCommit();
     }
     else
         return false;
     bindingChanged();
     return true;
+}
+
+bool ALKitRow::canPasteValue(const LLSD& value) const
+{
+    return mControl && (!mBinding || mBinding->canSet()) &&
+           ALKitQol::pasteTypesCompatible(value, boundValue());
+}
+
+ALKitQol::Favorite ALKitRow::favoriteKey() const
+{
+    const ALKitQol::Favorite row{ mMeta.page_key, mMeta.widget };
+    ALKitRow* source = mSourceRow.get();
+    const ALKitQol::Favorite source_key = source
+        ? ALKitQol::Favorite{ source->mMeta.page_key, source->mMeta.widget }
+        : ALKitQol::Favorite{};
+    return ALKitQol::sourceFavorite(row, source_key);
 }
 
 ALKitRow* ALKitRow::createProxy(ALKitRow* source, const std::string& name)
@@ -712,14 +735,28 @@ ALKitRow* ALKitRow::createProxy(ALKitRow* source, const std::string& name)
     Params params;
     params.name = name;
     params.rect = LLRect(0, ALKitStyle::ROW_H, 400, 0);
-    params.kind = value.isBoolean() ? "toggle" : (value.isInteger() || value.isReal() ? "number" : "text");
+    const bool open_on_page = value.isMap() || value.isArray();
+    params.kind = open_on_page ? "link" :
+        (value.isBoolean() ? "toggle" : (value.isInteger() || value.isReal() ? "number" : "text"));
     params.widget = name + "_control";
-    params.label = source->mMeta.label;
+    params.label = open_on_page ? source->mMeta.label + " — Open on its page" : source->mMeta.label;
     params.help = source->mMeta.help;
+    params.link_to = source->mMeta.page_key + "/" + source->mMeta.widget;
     params.decimals = source->mMeta.decimals;
     params.min_val = source->mMeta.has_min ? source->mMeta.min_val : -1000000.f;
     params.max_val = source->mMeta.has_max ? source->mMeta.max_val : 1000000.f;
     ALKitRow* proxy = new ALKitRow(params);
+    proxy->mSourceRow = source->getDerivedHandle<ALKitRow>();
+    if (open_on_page)
+    {
+        proxy->mBinding = std::make_unique<ALKitProxyBinding>(source, false);
+        proxy->mMeta.page_key = source->mMeta.page_key;
+        proxy->mMeta.card_id = source->mMeta.card_id;
+        proxy->postBuild();
+        proxy->mBindingConnection = proxy->mBinding->connectChanged([proxy]() { proxy->bindingChanged(); });
+        proxy->bindingChanged();
+        return proxy;
+    }
     LLUICtrl* control = nullptr;
     if (value.isBoolean())
     {
@@ -751,7 +788,7 @@ ALKitRow* ALKitRow::createProxy(ALKitRow* source, const std::string& name)
         return nullptr;
     }
     proxy->addChild(control);
-    proxy->mBinding = std::make_unique<ALKitProxyBinding>(source);
+    proxy->mBinding = std::make_unique<ALKitProxyBinding>(source, true);
     proxy->mMeta.page_key = source->mMeta.page_key;
     proxy->mMeta.card_id = source->mMeta.card_id;
     proxy->postBuild();
@@ -764,7 +801,8 @@ ALKitRow* ALKitRow::createProxy(ALKitRow* source, const std::string& name)
 void ALKitRow::refreshFavorite()
 {
     const ALKitShell* shell = ALKitShell::find(this);
-    const bool favorite = shell && shell->isFavorite(mMeta.page_key, mMeta.widget);
+    const ALKitQol::Favorite key = favoriteKey();
+    const bool favorite = shell && shell->isFavorite(key.page, key.widget);
     if (mFavorite)
     {
         mFavorite->setLabel(favorite ? "\xE2\x98\x85" : "\xE2\x98\x86");
@@ -842,7 +880,10 @@ void ALKitRow::showContextMenu(S32 x, S32 y)
         add_item("favorite", "Add to Quick", [this]()
         {
             if (ALKitShell* shell = ALKitShell::find(this))
-                shell->toggleFavorite(mMeta.page_key, mMeta.widget);
+            {
+                const ALKitQol::Favorite key = favoriteKey();
+                shell->toggleFavorite(key.page, key.widget);
+            }
             refreshFavorite();
         });
         add_item("search", "Show in search", [this]()
@@ -858,10 +899,13 @@ void ALKitRow::showContextMenu(S32 x, S32 y)
     if (LLMenuItemGL* item = menu->findChild<LLMenuItemGL>("reset"))
         item->setVisible(resettable());
     if (LLMenuItemGL* item = menu->findChild<LLMenuItemGL>("paste"))
-        item->setEnabled(mControl && ALKitQol::pasteTypesCompatible(sRowClipboard, boundValue()));
+        item->setEnabled(canPasteValue(sRowClipboard));
     if (LLMenuItemGL* item = menu->findChild<LLMenuItemGL>("favorite"))
+    {
+        const ALKitQol::Favorite key = favoriteKey();
         item->setLabel(LLStringExplicit(ALKitShell::find(this) &&
-            ALKitShell::find(this)->isFavorite(mMeta.page_key, mMeta.widget) ? "Remove from Quick" : "Add to Quick"));
+            ALKitShell::find(this)->isFavorite(key.page, key.widget) ? "Remove from Quick" : "Add to Quick"));
+    }
     menu->buildDrawLabels();
     LLMenuGL::showPopup(this, menu, x, y);
 }

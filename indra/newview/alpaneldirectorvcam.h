@@ -9,6 +9,7 @@
 #include "alvcampagemodel.h"
 #include "llpanel.h"
 #include "llframetimer.h"
+#include "llsd.h"
 
 #include <array>
 #include <boost/signals2.hpp>
@@ -79,6 +80,11 @@ private:
     void commitCamera(const std::string& name, const LLSD& value);
     void commitDisplay(const std::string& name, const LLSD& value);
     void commitProjector(const std::string& name, const LLSD& value);
+    bool pasteCardValues(const std::string& card, const LLSD& values);
+    static bool applyCameraPasteValue(const std::string&, const LLSD&,
+                                      LLPrismLens::CameraSettings&);
+    static bool applyProjectorPasteValue(const std::string&, const LLSD&,
+                                         LLPrismLens::ProjectorSettings&);
 
     ALVCamPageModel mModel;
     ALKitPage* mKitPage = nullptr;

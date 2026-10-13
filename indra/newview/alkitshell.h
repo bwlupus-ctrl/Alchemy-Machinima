@@ -85,7 +85,7 @@ public:
     bool                        isFavorite(const std::string&, const std::string&) const;
     void                        toggleFavorite(const std::string&, const std::string&);
     void                        showRowInSearch(ALKitRow*);
-    void                        refreshChangedMarkers();
+    void                        refreshChangedMarkers(ALKitRow* changed_row = nullptr);
     void                        setChangedOnly(bool);
     bool                        changedOnly() const { return mChangedOnly; }
     void                        setOpenPopover(ALKitPopover*);
@@ -123,6 +123,19 @@ private:
     void                                                 scheduleSearchBatch();
     void                                                 rebuildQuick();
     void                                                 buildChangedIndex();
+    void                                                 refreshChangedSetting(const std::string&);
+    void                                                 refreshPageMarker(const std::string&);
+    struct ChangedEntry
+    {
+        std::string setting;
+        S32         decimals = 3;
+        bool        changed = false;
+    };
+    struct ChangedLocation
+    {
+        std::string page;
+        U32         index = 0;
+    };
     std::string                                          mIndexFile;
     std::vector<RailData>                                mRailData;
     ALKitHistory                                         mHistory;
@@ -171,7 +184,9 @@ private:
     std::vector<boost::signals2::scoped_connection>      mConnections;
     std::vector<ALKitQol::Favorite>                      mFavorites;
     std::unordered_map<std::string, bool>                mPageChanged;
-    std::unordered_map<std::string, std::vector<std::string>> mPageSettings;
+    std::unordered_map<std::string, std::vector<ChangedEntry>> mPageSettings;
+    std::unordered_map<std::string, std::vector<ChangedLocation>> mSettingLocations;
+    std::unordered_map<std::string, S32>                 mPageChangedCounts;
     bool                                                 mChangedOnly = false;
     bool                                                 mRebuildingQuick = false;
 };

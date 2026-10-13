@@ -78,6 +78,12 @@ void ALKitSettingBinding::set(const LLSD& v)
     alKitSetTypedControl(gSavedSettings, mName, v);
 }
 
+void ALKitSettingBinding::reset()
+{
+    if (LLControlVariable* setting = control())
+        setting->resetToDefault(true);
+}
+
 boost::signals2::connection ALKitSettingBinding::connectChanged(std::function<void()> cb)
 {
     return ALKitSettingWatch::instance().watch(mName, [cb](const LLSD&, const LLSD&) { cb(); });
@@ -147,7 +153,7 @@ ALKitVecBinding::ALKitVecBinding(std::string setting, LLUICtrl* x, LLUICtrl* y, 
         if (c)
             mCommits.emplace_back(c->setCommitCallback([this](LLUICtrl*, const LLSD&) { commit(); }));
     if (LLControlVariable* c = gSavedSettings.getControl(mSetting).get())
-        set(c->get());
+        syncControls(c->get());
 }
 
 void ALKitVecBinding::commit()
@@ -190,21 +196,20 @@ LLSD ALKitVecBinding::getDefault() const
 bool ALKitVecBinding::isDefault(S32 decimals) const
 {
     const LLSD value = get();
-
-    const LLSD defaults = getDefault();
-
-    const F64 scale = pow(10., decimals);
-
+    const LLSD all_defaults = getDefault();
+    LLSD defaults = LLSD::emptyArray();
     for (S32 i = 0; i < value.size(); ++i)
-    {
-        if (llround(value[i].asReal() * scale) != llround(defaults[i].asReal() * scale))
-            return false;
-    }
-
-    return true;
+        defaults.append(all_defaults[i]);
+    return ALKitQol::valuesEqual(value, defaults, decimals);
 }
 
 void ALKitVecBinding::set(const LLSD& v)
+{
+    syncControls(v);
+    commit();
+}
+
+void ALKitVecBinding::syncControls(const LLSD& v)
 {
     mSyncing = true;
     if (mX && v.size() > 0)
@@ -221,7 +226,7 @@ boost::signals2::connection ALKitVecBinding::connectChanged(std::function<void()
     return ALKitSettingWatch::instance().watch(mSetting,
                                                [this, cb](const LLSD& v, const LLSD&)
                                                {
-                                                   set(v);
+                                                   syncControls(v);
                                                    cb();
                                                });
 }

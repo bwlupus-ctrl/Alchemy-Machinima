@@ -39218,7 +39218,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/alkitshell.cpp",
-              "line": 538,
+              "line": 542,
               "class": "ALKitShell",
               "function": "layoutRoster",
               "wired_class": "ALKitShell",

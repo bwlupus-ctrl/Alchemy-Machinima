@@ -7,6 +7,8 @@
 #include "alkitsearch.h"
 #include "aluirefresh.h"
 #include <boost/signals2.hpp>
+#include <functional>
+#include <utility>
 #include <unordered_map>
 #include <vector>
 class ALFlowGrid;
@@ -132,6 +134,14 @@ public:
     void               restoreState();
     bool               legacy() const { return mLegacy; }
     bool               changed() const;
+    void               registerDynamicRow(ALKitRow*);
+    void               unregisterDynamicRow(ALKitRow*);
+    void               applyLocalFilter(const std::string&, bool);
+    void               refreshChangedFilter(ALKitRow*, const std::string&);
+    using card_paste_handler_t = std::function<bool(const std::string&, const LLSD&)>;
+    void               setCardPasteHandler(card_paste_handler_t handler) { mCardPasteHandler = std::move(handler); }
+    bool               pasteCardValues(const std::string& card, const LLSD& values)
+                       { return mCardPasteHandler && mCardPasteHandler(card, values); }
     ALKitScroller*     scroller() const { return mScroller; }
     LLPanel*           legacyHost() const { return mLegacyHost; }
     LLPanel*           pageBar() const { return mBar; }
@@ -212,5 +222,6 @@ private:
     std::unordered_map<std::string, ALKitRow*>      mRows;
     std::unordered_map<std::string, ALKitCard*>     mCards;
     std::vector<boost::signals2::scoped_connection> mConnections;
+    card_paste_handler_t                             mCardPasteHandler;
 };
 #endif

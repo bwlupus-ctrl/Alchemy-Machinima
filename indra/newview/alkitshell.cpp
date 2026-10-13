@@ -64,7 +64,11 @@ bool ALKitShell::postBuild()
     mRoster       = findChild<LLPanel>("kit_cast_roster");
     mTransport    = findChild<LLPanel>("kit_transport");
     mRosterOpen   = gSavedSettings.getBOOL("DirectorV2CastRosterOpen");
-    mFavorites    = ALKitQol::favoritesFromLLSD(gSavedSettings.getLLSD("DirectorFavorites"));
+    const LLSD stored_favorites = gSavedSettings.getLLSD("DirectorFavorites");
+    mFavorites = ALKitQol::favoritesFromLLSD(stored_favorites);
+    const LLSD cleaned_favorites = ALKitQol::favoritesToLLSD(mFavorites);
+    if (!llsd_equals(stored_favorites, cleaned_favorites))
+        gSavedSettings.setLLSD("DirectorFavorites", cleaned_favorites);
     buildChrome();
     mConnections.emplace_back(setPageBuiltCallback([this](const std::string& name, LLPanel* panel) { pageBuilt(name, panel); }));
     layoutChrome();
@@ -702,6 +706,8 @@ bool ALKitShell::navigateTo(const std::string& path)
 bool ALKitShell::navigateTo(const ALKitTarget& target)
 {
     ALKitHistory::ScopedSuspend suspend;
+    if (mChangedOnly)
+        setChangedOnly(false);
     clearSearch();
     LLPanel* panel = ensurePageBuilt(target.page_key);
     if (!panel)
@@ -752,6 +758,13 @@ bool ALKitShell::selectPage(const std::string& page_name)
         inner->selectTabByName(page_name);
     const bool built = page->ensureBuilt() != nullptr;
     syncSelection();
+    if (built)
+    {
+        if (ALKitPage* selected = currentKitPage())
+            selected->setChangedOnlyValue(mChangedOnly);
+        if (mChangedOnly || !mSearch.queryText().empty())
+            runSearch(mSearch.queryText());
+    }
     return built;
 }
 
@@ -987,6 +1000,13 @@ void ALKitShell::runSearch(const std::string& query)
     ALKitPage* page = currentKitPage();
     if (!page)
         return;
+    if (page->pageKey() == "quick_group/quick_tab")
+    {
+        page->applyLocalFilter(query, mChangedOnly);
+        ALKitSearch::Hits hits = query.empty() ? ALKitSearch::Hits() : mSearch.query(query);
+        updateSearchResults(hits, page);
+        return;
+    }
     if (query.empty() && !mChangedOnly)
     {
         page->clearSearch();
@@ -1006,7 +1026,7 @@ void ALKitShell::runSearch(const std::string& query)
                     if (ALKitRow* row = !hit.widget.empty() ? built->findRow(hit.widget) : built->findRowBySetting(hit.setting))
                         return !row->amber();
                 LLControlVariable* control = hit.setting.empty() ? nullptr : gSavedSettings.getControl(hit.setting).get();
-                return !control || ALKitQol::valuesEqual(control->get(), control->getDefault(), 3);
+                return !control || ALKitQol::valuesEqual(control->get(), control->getDefault(), hit.decimals);
             }), hits.end());
     ALKitSearch::Hits local;
     for (ALKitSearch::Hit hit : hits)
@@ -1196,21 +1216,25 @@ void ALKitShell::scheduleSearchBatch()
 
 void ALKitShell::buildChangedIndex()
 {
+    mPageSettings.clear();
+    mSettingLocations.clear();
+    mPageChangedCounts.clear();
     std::unordered_map<std::string, bool> watched;
     for (const ALKitSearch::Hit& hit : mSearch.all())
         if (!hit.setting.empty())
         {
-            std::vector<std::string>& settings = mPageSettings[hit.page_key];
-            if (std::find(settings.begin(), settings.end(), hit.setting) == settings.end())
-                settings.push_back(hit.setting);
+            std::vector<ChangedEntry>& settings = mPageSettings[hit.page_key];
+            const U32 index = static_cast<U32>(settings.size());
+            settings.push_back({ hit.setting, hit.decimals, false });
+            mSettingLocations[hit.setting].push_back({ hit.page_key, index });
             if (!watched[hit.setting])
             {
                 watched[hit.setting] = true;
                 mConnections.emplace_back(ALKitSettingWatch::instance().watch(hit.setting,
-                    [handle = getDerivedHandle<ALKitShell>()](const LLSD&, const LLSD&)
+                    [handle = getDerivedHandle<ALKitShell>(), setting = hit.setting](const LLSD&, const LLSD&)
                     {
                         if (ALKitShell* shell = handle.get())
-                            shell->refreshChangedMarkers();
+                            shell->refreshChangedSetting(setting);
                     }));
             }
         }
@@ -1226,7 +1250,10 @@ void ALKitShell::clearSearch()
     if (ALKitPage* page = currentKitPage())
     {
         page->setSearchText("");
-        page->clearSearch();
+        if (mChangedOnly)
+            page->applyLocalFilter("", true);
+        else
+            page->clearSearch();
     }
     mSearchHits.clear();
     mHasTopSearchHit = false;
@@ -1290,6 +1317,8 @@ void ALKitShell::rebuildQuick()
             proxies.push_back(proxy);
     }
     card->setQuickRows(std::move(proxies));
+    if (mChangedOnly || !mSearch.queryText().empty())
+        quick->applyLocalFilter(mSearch.queryText(), mChangedOnly);
     quick->requestLayout();
     mRebuildingQuick = false;
 }
@@ -1298,6 +1327,8 @@ void ALKitShell::showRowInSearch(ALKitRow* row)
 {
     if (!row)
         return;
+    if (ALKitRow* source = row->sourceRow())
+        row = source;
     const ALKitRowMeta meta = row->meta();
     navigateTo(meta.page_key + "/" + meta.widget);
     if (ALKitPage* page = currentKitPage())
@@ -1307,23 +1338,69 @@ void ALKitShell::showRowInSearch(ALKitRow* row)
     }
 }
 
-void ALKitShell::refreshChangedMarkers()
+void ALKitShell::refreshPageMarker(const std::string& page_key)
 {
-    for (const auto& entry : mPageSettings)
+    bool changed = mPageChangedCounts[page_key] > 0;
+    if (ALKitPage* page = findBuiltPage(page_key))
+        changed = changed || page->changed();
+    mPageChanged[page_key] = changed;
+}
+
+void ALKitShell::refreshChangedSetting(const std::string& setting)
+{
+    const auto found = mSettingLocations.find(setting);
+    if (found == mSettingLocations.end())
+        return;
+    LLControlVariable* control = gSavedSettings.getControl(setting).get();
+    std::vector<std::string> touched;
+    for (const ChangedLocation& location : found->second)
     {
-        bool changed = false;
-        for (const std::string& setting : entry.second)
-            if (LLControlVariable* control = gSavedSettings.getControl(setting).get())
-                if (!ALKitQol::valuesEqual(control->get(), control->getDefault(), 3))
-                {
-                    changed = true;
-                    break;
-                }
-        mPageChanged[entry.first] = changed;
+        ChangedEntry& entry = mPageSettings[location.page][location.index];
+        const bool changed = control && !ALKitQol::valuesEqual(
+            control->get(), control->getDefault(), entry.decimals);
+        if (changed != entry.changed)
+        {
+            mPageChangedCounts[location.page] += changed ? 1 : -1;
+            entry.changed = changed;
+        }
+        if (std::find(touched.begin(), touched.end(), location.page) == touched.end())
+            touched.push_back(location.page);
     }
-    for (const auto& entry : mBuiltPages)
-        if (ALKitPage* page = entry.second.get())
-            mPageChanged[entry.first] = mPageChanged[entry.first] || page->changed();
+    for (const std::string& page : touched)
+        refreshPageMarker(page);
+    updatePips();
+}
+
+void ALKitShell::refreshChangedMarkers(ALKitRow* changed_row)
+{
+    if (changed_row)
+    {
+        refreshPageMarker(changed_row->favoriteKey().page);
+        updatePips();
+        if (mChangedOnly && currentKitPage())
+        {
+            ALKitPage* current = currentKitPage();
+            const bool owns_row = current->findRow(changed_row->meta().widget) == changed_row;
+            if (owns_row)
+                current->refreshChangedFilter(changed_row, mSearch.queryText());
+        }
+        return;
+    }
+    mPageChanged.clear();
+    mPageChangedCounts.clear();
+    for (auto& page : mPageSettings)
+        for (ChangedEntry& entry : page.second)
+        {
+            LLControlVariable* control = gSavedSettings.getControl(entry.setting).get();
+            entry.changed = control && !ALKitQol::valuesEqual(
+                control->get(), control->getDefault(), entry.decimals);
+            if (entry.changed)
+                ++mPageChangedCounts[page.first];
+        }
+    for (const auto& page : mPageSettings)
+        refreshPageMarker(page.first);
+    for (const auto& page : mBuiltPages)
+        refreshPageMarker(page.first);
     updatePips();
 }
 

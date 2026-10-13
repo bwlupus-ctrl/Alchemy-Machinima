@@ -30,7 +30,7 @@ VCAM_DATA = KIT / "vcam_page.json"
 DEFAULT_OUT = XUI
 V1_FLOATER = XUI / "floater_director.xml"
 REPORT = KIT / "gen_report.txt"
-INDEX_FIELDS = 15
+INDEX_FIELDS = 16
 EXPECTED_SHORTCUTS = {
     ("shot_tab", "CinematicCamJoint", "frame_orbit_tab/CinematicCamJoint"),
     ("shot_tab", "CinematicCamVertigoDuration", "moves_tab/zolly_duration"),
@@ -789,7 +789,9 @@ def index_bytes(data: dict, config: dict, classes: dict[str, str], note: str,
                 fields = [group["name"], page["name"], page.get("label", ""), group.get("label", ""),
                           section_for.get(ci, ""), card.get("id", ""), card.get("t", ""),
                           "" if oi is None else oi, row.get("w", ""), row.get("l", ""), row.get("k", ""),
-                          row.get("s", ""), flags, row.get("kw", ""), row.get("h", "")]
+                          row.get("s", ""), str(row.get("dc") if row.get("dc") is not None
+                                                   else (0 if row.get("k") in ("dial", "arc") else 3)),
+                          flags, row.get("kw", ""), row.get("h", "")]
                 if len(fields) != INDEX_FIELDS:
                     raise GenError("internal index field count error")
                 lines.append("\t".join(esc(value) for value in fields))

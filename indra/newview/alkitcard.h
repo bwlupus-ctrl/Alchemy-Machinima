@@ -137,6 +137,7 @@ private:
     std::vector<SummaryData>                        mSummaries;
     std::vector<bool>                               mVisibility, mOptionMore;
     std::vector<boost::signals2::scoped_connection> mAmberConnections;
+    std::vector<boost::signals2::scoped_connection> mQuickAmberConnections;
     boost::signals2::scoped_connection              mSelectorConnection;
 };
 #endif
