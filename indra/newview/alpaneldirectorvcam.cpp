@@ -31,7 +31,6 @@
 
 #include <algorithm>
 #include <cmath>
-#include <ctime>
 
 static LLPanelInjector<ALPanelDirectorVCam>
     t_panel_director_vcam("panel_director_vcam");
@@ -62,40 +61,6 @@ bool sameProjector(const LLPrismLens::ProjectorHandle& a,
     return a.mId == b.mId && a.mGeneration == b.mGeneration;
 }
 
-const char* tileBadge(LLPrismPreviewService::ETileState state)
-{
-    using State = LLPrismPreviewService::ETileState;
-    switch (state)
-    {
-        case State::LIVE: return "LIVE";
-        case State::PREVIEW: return "PREVIEW";
-        case State::PAUSED:
-        case State::HELD: return "PAUSED";
-        case State::THROTTLED: return "THROTTLED";
-        case State::OFFLINE:
-        case State::FAILED:
-        case State::SHADER_UNAVAILABLE: return "OFFLINE";
-        case State::EMPTY:
-        case State::WARMING: return "WARMING";
-        case State::READY: return "PREVIEW";
-    }
-    return "OFFLINE";
-}
-
-const char* activityText(LLPrismLens::EActivityState state)
-{
-    using State = LLPrismLens::EActivityState;
-    switch (state)
-    {
-        case State::LIVE: return "Live";
-        case State::WAITING: return "Preview only";
-        case State::PAUSED: return "Paused";
-        case State::THROTTLED: return "Throttled";
-        case State::IDLE: return "Idle";
-    }
-    return "Idle";
-}
-
 const char* performanceText(LLPrismLens::EPerformanceState state)
 {
     using State = LLPrismLens::EPerformanceState;
@@ -124,20 +89,6 @@ F32 ratioFromValue(const LLSD& value, F32 fallback)
     return ratio > 0.f ? ratio : fallback;
 }
 
-std::string clockText(F64 publication_time)
-{
-    const F64 age = llmax(0.0, (F64)LLTimer::getTotalSeconds() - publication_time);
-    const std::time_t now = std::time(nullptr) - static_cast<std::time_t>(age);
-    std::tm local{};
-#if LL_WINDOWS
-    localtime_s(&local, &now);
-#else
-    localtime_r(&now, &local);
-#endif
-    char value[16]{};
-    std::strftime(value, sizeof(value), "%I:%M:%S %p", &local);
-    return value;
-}
 }
 
 ALPanelDirectorVCam::ALPanelDirectorVCam() = default;
@@ -231,7 +182,7 @@ bool ALPanelDirectorVCam::postBuild()
     mConnections.emplace_back(mModel.connectChanged(
         [this](U32 dirty) { onModelChanged(dirty); }));
     const char* settings[] = {
-        "PrismLensEnabled", "PrismMonitorPreviewsEnabled",
+        "PrismLensEnabled", "PrismMonitorPreviewsEnabled", "PrismMonitorInfoOverlay",
         "PrismMonitorPreviewFPS", "PrismLensZoom",
         "PrismAdaptivePerformance", "PrismProtectedMainFPS",
         "PrismCaptureRefreshCeilingHz", "PrismLensResolutionScale"
@@ -399,55 +350,32 @@ void ALPanelDirectorVCam::refresh(U32 dirty)
         ALVCamMonitorStrip::Tile& tile = tiles[item.mSlot];
         tile.mCapture = item.mHandle;
         tile.mPublication = LLPrismPreviewService::instance().tileState(item.mHandle);
-        const bool editing = sameCapture(item.mHandle, mModel.selectedCapture());
-        if (item.mRuntime.mActivity == LLPrismLens::EActivityState::IDLE)
-            tile.mBadge = std::string(editing ? "EDITING - " : "") + "OFFLINE";
-        else if (item.mRuntime.mActivity == LLPrismLens::EActivityState::LIVE)
-            tile.mBadge = llformat("%sLIVE %.1f/%.1f fps", editing ? "EDITING · " : "",
-                item.mRuntime.mObservedPublicationHz,
-                item.mRate.mMode == LLPrismLens::EOutputRateMode::TARGET_FPS
-                    ? item.mRate.mTargetFps : item.mRuntime.mCadenceEntitlementHz);
-        else if (tile.mPublication.mState == LLPrismPreviewService::ETileState::PREVIEW ||
-                 tile.mPublication.mState == LLPrismPreviewService::ETileState::READY)
-            tile.mBadge = llformat("%sPREVIEW %.1f fps", editing ? "EDITING · " : "",
-                gSavedSettings.getF32("PrismMonitorPreviewFPS"));
-        else
-            tile.mBadge = std::string(editing ? "EDITING · " : "") + tileBadge(tile.mPublication.mState);
-        if (!gSavedSettings.getBOOL("PrismMonitorPreviewsEnabled") &&
-            item.mRuntime.mActivity != LLPrismLens::EActivityState::IDLE)
-            tile.mBadge = std::string(editing ? "EDITING · " : "") + "PAUSED";
-        tile.mTimestamp = tile.mPublication.mTimestamp > 0.0
-            ? clockText(tile.mPublication.mTimestamp) : "--:--";
-        tile.mName = llformat("Cam %u - %s", item.mSlot + 1, item.mLabel.c_str());
+        tile.mLabel = item.mLabel;
+        tile.mActivity = item.mRuntime.mActivity;
+        tile.mObservedFps = item.mRuntime.mObservedPublicationHz;
+        tile.mTargetFps = item.mRate.mMode == LLPrismLens::EOutputRateMode::TARGET_FPS
+            ? item.mRate.mTargetFps : item.mRuntime.mCadenceEntitlementHz;
+        tile.mPreviewFps = gSavedSettings.getF32("PrismMonitorPreviewFPS");
+        tile.mFaceCount = item.mDisplayCount;
+        tile.mEditing = sameCapture(item.mHandle, mModel.selectedCapture());
+        tile.mMasterEnabled = gSavedSettings.getBOOL("PrismLensEnabled");
+        tile.mPreviewsEnabled = gSavedSettings.getBOOL("PrismMonitorPreviewsEnabled");
         const LLPrismLens::DisplayHandle monitor = mModel.monitorDisplay(item.mSlot);
-        tile.mShows = "Shows: camera output (raw)";
         if (monitor.mId.notNull())
             for (U32 di = 0; di < registry.mDisplayCount; ++di)
                 if (sameDisplay(registry.mDisplays[di].mHandle, monitor))
                 {
-                    tile.mShows = "Shows: " + displayName(registry.mDisplays[di], di);
+                    tile.mMonitorShowsDisplay = true;
+                    tile.mMonitorDisplayVirtual = registry.mDisplays[di].mSettings.mVirtual;
+                    tile.mMonitorDisplayIndex = di;
                     break;
                 }
-        if (!gSavedSettings.getBOOL("PrismLensEnabled"))
-            tile.mStatus = "Paused · Virtual Cam off";
-        else if (item.mRuntime.mActivity == LLPrismLens::EActivityState::LIVE)
-            tile.mStatus = llformat("Live %.1f/%.1f fps · %u face%s",
-                item.mRuntime.mObservedPublicationHz,
-                item.mRate.mMode == LLPrismLens::EOutputRateMode::TARGET_FPS
-                    ? item.mRate.mTargetFps : item.mRuntime.mCadenceEntitlementHz,
-                item.mDisplayCount, item.mDisplayCount == 1 ? "" : "s");
-        else if (item.mRuntime.mActivity == LLPrismLens::EActivityState::WAITING)
-            tile.mStatus = "Preview only · no visible face";
-        else if (item.mRuntime.mActivity == LLPrismLens::EActivityState::IDLE)
-            tile.mStatus = "Offline - not producing";
-        else
-            tile.mStatus = std::string(activityText(item.mRuntime.mActivity)) +
-                " · no visible face";
         tile.mVisible = true;
     }
     mCameraSelector->setItems(cameras, mModel.selectedCapture());
     mCameraSelector->setActionsEnabled(registry.mCaptureCount < 8, capture != nullptr);
-    mMonitorStrip->setTiles(tiles, monitor_slot_span, mCompact, mLargePage);
+    const bool info_overlay = gSavedSettings.getBOOL("PrismMonitorInfoOverlay");
+    mMonitorStrip->setTiles(tiles, monitor_slot_span, mCompact, info_overlay, mLargePage);
     mMonitorStrip->setNewFaceFit(mNewFaceFit);
     if (mMonitorPager)
     {
@@ -751,6 +679,7 @@ void ALPanelDirectorVCam::refresh(U32 dirty)
 
     mMonitorHeader->setState(mCompact,
         gSavedSettings.getBOOL("PrismMonitorPreviewsEnabled"),
+        info_overlay,
         gSavedSettings.getF32("PrismMonitorPreviewFPS"));
     setValueIfChanged(control("vc_lens_zoom"), gSavedSettings.getF32("PrismLensZoom"));
     setValueIfChanged(control("vc_protect"), gSavedSettings.getBOOL("PrismAdaptivePerformance"));
@@ -759,9 +688,9 @@ void ALPanelDirectorVCam::refresh(U32 dirty)
     setValueIfChanged(control("vc_quality_ceiling"), gSavedSettings.getF32("PrismLensResolutionScale"));
     setValueIfChanged(control("vc_admitted"), llformat("%.1f of %.0f attempts/s",
         perf.mAdmittedGlobalAttemptRateHz, perf.mEffectiveTotalCaptureBudgetHz));
-    setValueIfChanged(control("vc_preview_cost"), gSavedSettings.getBOOL("PrismMonitorPreviewsEnabled")
-        ? llformat("On - %.1f fps", gSavedSettings.getF32("PrismMonitorPreviewFPS"))
-        : std::string("Off (no cost)"));
+    setValueIfChanged(control("vc_preview_cost"), mMonitorStrip->previewCostText(
+        gSavedSettings.getBOOL("PrismMonitorPreviewsEnabled"),
+        gSavedSettings.getF32("PrismMonitorPreviewFPS")));
     U32 preview_only = 0;
     for (U32 ci = 0; ci < registry.mCaptureCount; ++ci)
     {
@@ -777,22 +706,9 @@ void ALPanelDirectorVCam::refresh(U32 dirty)
     }
     const bool master_enabled = gSavedSettings.getBOOL("PrismLensEnabled");
     const bool previews_enabled = gSavedSettings.getBOOL("PrismMonitorPreviewsEnabled");
-    if (!master_enabled)
-        setValueIfChanged(control("vc_monitor_footer"),
-            "Virtual Cam is off, so monitors and faces are paused.");
-    else if (!previews_enabled)
-        setValueIfChanged(control("vc_monitor_footer"), llformat(
-            "Previews are off: 0 of %u monitors render. Faces in-world keep updating at their own picture rate.",
-            registry.mCaptureCount));
-    else if (!preview_only)
-        setValueIfChanged(control("vc_monitor_footer"), llformat(
-            "%u monitors at %.1f fps, all reusing their camera's last picture: no extra renders. Drag a monitor onto a surface to show it there.",
-            registry.mCaptureCount, gSavedSettings.getF32("PrismMonitorPreviewFPS")));
-    else
-        setValueIfChanged(control("vc_monitor_footer"), llformat(
-            "%u monitors at %.1f fps. %u preview-only camera%s use the shared capture budget. Drag a monitor onto a surface to show it there.",
-            registry.mCaptureCount, gSavedSettings.getF32("PrismMonitorPreviewFPS"),
-            preview_only, preview_only == 1 ? "" : "s"));
+    setValueIfChanged(control("vc_monitor_footer"), mMonitorStrip->monitorFooterText(
+        master_enabled, previews_enabled, registry.mCaptureCount, preview_only,
+        gSavedSettings.getF32("PrismMonitorPreviewFPS")));
 
     if (dirty & (ALVCamPageModel::DIRTY_CONFIGURATION |
                  ALVCamPageModel::DIRTY_SELECTION))
@@ -890,6 +806,8 @@ void ALPanelDirectorVCam::onControl(LLUICtrl* source)
         }
         else if (action == "previews")
             gSavedSettings.setBOOL("PrismMonitorPreviewsEnabled", value["value"].asBoolean());
+        else if (action == "info")
+            gSavedSettings.setBOOL("PrismMonitorInfoOverlay", value["value"].asBoolean());
         else if (action == "speed")
             gSavedSettings.setF32("PrismMonitorPreviewFPS", static_cast<F32>(value["value"].asReal()));
     }

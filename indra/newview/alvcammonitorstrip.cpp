@@ -13,11 +13,13 @@
 #include "llrender.h"
 #include "llrender2dutils.h"
 #include "llsliderwheel.h"
+#include "lltimer.h"
 #include "lltooldraganddrop.h"
 #include "lluictrlfactory.h"
 #include "llwindow.h"
 
 #include <algorithm>
+#include <ctime>
 
 static LLDefaultChildRegistry::Register<ALVCamMonitorStrip>
     r_vcam_monitor_strip("vcam_monitor_strip");
@@ -52,6 +54,8 @@ struct MonitorHeaderLayout
     S32 mSizeRight;
     S32 mPreviewLeft;
     S32 mPreviewRight;
+    S32 mInfoLeft;
+    S32 mInfoRight;
     S32 mSpeedLabelLeft;
     S32 mSpeedLeft;
 };
@@ -65,13 +69,70 @@ MonitorHeaderLayout monitorHeaderLayout(S32 width)
     constexpr S32 size_controls_width = 130;
     const S32 speed_left = llmax(1, width - speed_controls_width);
     const S32 speed_label_left = llmax(1, speed_left - 42);
-    const S32 preview_right = llmax(1, speed_label_left - 10);
+    const S32 info_right = llmax(1, speed_label_left - 10);
+    const S32 info_left = llmax(1, info_right - 72);
+    const S32 preview_right = llmax(1, info_left - 10);
     const S32 preview_left = llmax(1, preview_right - 100);
     const S32 size_right = llmax(1, preview_left - 10);
     const S32 size_left = llmax(1, size_right - size_controls_width);
     const S32 size_label_left = llmax(1, size_left - 34);
     return {size_label_left, size_left, size_right, preview_left, preview_right,
+            info_left, info_right,
             speed_label_left, speed_left};
+}
+
+S32 displayTenths(F32 value)
+{
+    return ll_round(value * 10.f);
+}
+
+const char* tileBadge(LLPrismPreviewService::ETileState state)
+{
+    using State = LLPrismPreviewService::ETileState;
+    switch (state)
+    {
+        case State::LIVE: return "LIVE";
+        case State::PREVIEW:
+        case State::READY: return "PREVIEW";
+        case State::PAUSED:
+        case State::HELD: return "PAUSED";
+        case State::THROTTLED: return "THROTTLED";
+        case State::EMPTY:
+        case State::WARMING: return "WARMING";
+        case State::OFFLINE:
+        case State::FAILED:
+        case State::SHADER_UNAVAILABLE: return "OFFLINE";
+    }
+    return "OFFLINE";
+}
+
+const char* activityText(LLPrismLens::EActivityState state)
+{
+    using State = LLPrismLens::EActivityState;
+    switch (state)
+    {
+        case State::LIVE: return "Live";
+        case State::WAITING: return "Preview only";
+        case State::PAUSED: return "Paused";
+        case State::THROTTLED: return "Throttled";
+        case State::IDLE: return "Idle";
+    }
+    return "Idle";
+}
+
+std::string clockText(F64 publication_time)
+{
+    const F64 age = llmax(0.0, static_cast<F64>(LLTimer::getTotalSeconds()) - publication_time);
+    const std::time_t now = std::time(nullptr) - static_cast<std::time_t>(age);
+    std::tm local{};
+#if LL_WINDOWS
+    localtime_s(&local, &now);
+#else
+    localtime_r(&now, &local);
+#endif
+    char value[16]{};
+    std::strftime(value, sizeof(value), "%I:%M:%S %p", &local);
+    return value;
 }
 
 bool sameCapture(const LLPrismLens::CaptureHandle& left,
@@ -116,10 +177,11 @@ ALVCamMonitorHeader::ALVCamMonitorHeader(const Params& p)
     setMouseOpaque(true);
 }
 
-void ALVCamMonitorHeader::setState(bool compact, bool previews, F32 speed)
+void ALVCamMonitorHeader::setState(bool compact, bool previews, bool info_overlay, F32 speed)
 {
     mCompact = compact;
     mPreviews = previews;
+    mInfoOverlay = info_overlay;
     mSpeed = speed;
 }
 
@@ -154,6 +216,20 @@ void ALVCamMonitorHeader::draw()
     gGL.color4fv(preview_knob.mV);
     gl_circle_2d(static_cast<F32>(preview_switch_left + (mPreviews ? 25 : 9)),
                  12.f, 7.f, 20, true);
+    const S32 info_switch_left = layout.mInfoRight - ALKitStyle::SWITCH_W;
+    drawText(mFont, "Info", layout.mInfoLeft, 8, mTextColor,
+             info_switch_left - layout.mInfoLeft - 4);
+    const LLColor4 info_track = (mInfoOverlay ? mAccentColor :
+        ALKitStyle::color(ALKitStyle::SWITCH_OFF).get());
+    const LLColor4 info_knob = ALKitStyle::color(mInfoOverlay ? ALKitStyle::KNOB_ON :
+        ALKitStyle::KNOB_OFF).get();
+    gGL.color4fv(info_track.mV);
+    gl_rect_2d(info_switch_left + 9, 21, info_switch_left + 25, 3, info_track, true);
+    gl_circle_2d(static_cast<F32>(info_switch_left + 9), 12.f, 9.f, 20, true);
+    gl_circle_2d(static_cast<F32>(info_switch_left + 25), 12.f, 9.f, 20, true);
+    gGL.color4fv(info_knob.mV);
+    gl_circle_2d(static_cast<F32>(info_switch_left + (mInfoOverlay ? 25 : 9)),
+                 12.f, 7.f, 20, true);
     drawText(mFont, "Speed", layout.mSpeedLabelLeft, 8, mMutedColor);
     const F32 speeds[] = { .5f, 1.f, 2.f, 5.f };
     const char* labels[] = { "0.5 fps", "1 fps", "2 fps", "5 fps" };
@@ -185,6 +261,11 @@ bool ALVCamMonitorHeader::handleMouseDown(S32 x, S32, MASK)
         action["action"] = "previews";
         action["value"] = !mPreviews;
     }
+    else if (x >= layout.mInfoLeft && x < layout.mInfoRight)
+    {
+        action["action"] = "info";
+        action["value"] = !mInfoOverlay;
+    }
     else
     {
         const F32 speeds[] = { .5f, 1.f, 2.f, 5.f };
@@ -212,12 +293,152 @@ ALVCamMonitorStrip::ALVCamMonitorStrip(const Params& p)
 
 void ALVCamMonitorStrip::setTiles(
     const std::array<Tile, LLPrismLens::MAX_CAPTURES>& tiles,
-    U32 count, bool compact, U32 large_page)
+    U32 count, bool compact, bool info_overlay, U32 large_page)
 {
+    const bool force_info = info_overlay && !mInfoOverlay;
+    for (U32 slot = 0; slot < LLPrismLens::MAX_CAPTURES; ++slot)
+        if (tiles[slot].mVisible)
+            updateTileText(slot, tiles[slot], info_overlay, force_info);
     mTiles = tiles;
     mCount = llmin(count, LLPrismLens::MAX_CAPTURES);
     mCompact = compact;
+    mInfoOverlay = info_overlay;
     mLargePage = llmin(large_page, 1u);
+}
+
+void ALVCamMonitorStrip::updateTileText(
+    U32 slot, const Tile& tile, bool info_overlay, bool force_info)
+{
+    TileTextCache& cache = mTileText[slot];
+    const S32 observed_tenths = displayTenths(tile.mObservedFps);
+    const S32 target_tenths = displayTenths(tile.mTargetFps);
+    const S32 preview_tenths = displayTenths(tile.mPreviewFps);
+    const S64 timestamp_second = static_cast<S64>(tile.mPublication.mTimestamp);
+    const bool name_changed = !cache.mValid || cache.mLabelInput != tile.mLabel;
+    const bool info_changed = force_info || !cache.mValid ||
+        cache.mActivity != tile.mActivity || cache.mPreviewState != tile.mPublication.mState ||
+        cache.mObservedTenths != observed_tenths || cache.mTargetTenths != target_tenths ||
+        cache.mPreviewTenths != preview_tenths || cache.mTimestampSecond != timestamp_second ||
+        cache.mFaceCount != tile.mFaceCount || cache.mMonitorDisplayIndex != tile.mMonitorDisplayIndex ||
+        cache.mEditing != tile.mEditing || cache.mMasterEnabled != tile.mMasterEnabled ||
+        cache.mPreviewsEnabled != tile.mPreviewsEnabled ||
+        cache.mMonitorShowsDisplay != tile.mMonitorShowsDisplay ||
+        cache.mMonitorDisplayVirtual != tile.mMonitorDisplayVirtual;
+
+    if (name_changed)
+        cache.mName = llformat("Cam %u - %s", slot + 1, tile.mLabel.c_str());
+    if (info_overlay)
+    {
+        if (info_changed)
+        {
+            const char* prefix = tile.mEditing ? "EDITING \xC2\xB7 " : "";
+            if (!tile.mPreviewsEnabled && tile.mActivity != LLPrismLens::EActivityState::IDLE)
+                cache.mBadge = std::string(prefix) + "PAUSED";
+            else if (tile.mActivity == LLPrismLens::EActivityState::IDLE)
+                cache.mBadge = std::string(prefix) + "OFFLINE";
+            else if (tile.mActivity == LLPrismLens::EActivityState::LIVE)
+                cache.mBadge = llformat("%sLIVE %.1f/%.1f fps", prefix,
+                    observed_tenths / 10.f, target_tenths / 10.f);
+            else if (tile.mPublication.mState == LLPrismPreviewService::ETileState::PREVIEW ||
+                     tile.mPublication.mState == LLPrismPreviewService::ETileState::READY)
+                cache.mBadge = llformat("%sPREVIEW %.1f fps", prefix, preview_tenths / 10.f);
+            else
+                cache.mBadge = std::string(prefix) + tileBadge(tile.mPublication.mState);
+
+            cache.mTimestamp = tile.mPublication.mTimestamp > 0.0
+                ? clockText(tile.mPublication.mTimestamp) : "--:--";
+            cache.mShows = tile.mMonitorShowsDisplay
+                ? llformat("Shows: %s %u", tile.mMonitorDisplayVirtual ? "Virtual screen" : "Prim face",
+                           tile.mMonitorDisplayIndex + 1)
+                : "Shows: camera output (raw)";
+            if (!tile.mMasterEnabled)
+                cache.mStatus = "Paused \xC2\xB7 Virtual Cam off";
+            else if (tile.mActivity == LLPrismLens::EActivityState::LIVE)
+                cache.mStatus = llformat("Live %.1f/%.1f fps \xC2\xB7 %u face%s",
+                    observed_tenths / 10.f, target_tenths / 10.f,
+                    tile.mFaceCount, tile.mFaceCount == 1 ? "" : "s");
+            else if (tile.mActivity == LLPrismLens::EActivityState::WAITING)
+                cache.mStatus = "Preview only \xC2\xB7 no visible face";
+            else if (tile.mActivity == LLPrismLens::EActivityState::IDLE)
+                cache.mStatus = "Offline - not producing";
+            else
+                cache.mStatus = std::string(activityText(tile.mActivity)) +
+                    " \xC2\xB7 no visible face";
+        }
+    }
+    else if (mInfoOverlay)
+    {
+        cache.mBadge.clear();
+        cache.mTimestamp.clear();
+        cache.mShows.clear();
+        cache.mStatus.clear();
+    }
+
+    cache.mLabelInput = tile.mLabel;
+    cache.mActivity = tile.mActivity;
+    cache.mPreviewState = tile.mPublication.mState;
+    cache.mObservedTenths = observed_tenths;
+    cache.mTargetTenths = target_tenths;
+    cache.mPreviewTenths = preview_tenths;
+    cache.mTimestampSecond = timestamp_second;
+    cache.mFaceCount = tile.mFaceCount;
+    cache.mMonitorDisplayIndex = tile.mMonitorDisplayIndex;
+    cache.mEditing = tile.mEditing;
+    cache.mMasterEnabled = tile.mMasterEnabled;
+    cache.mPreviewsEnabled = tile.mPreviewsEnabled;
+    cache.mMonitorShowsDisplay = tile.mMonitorShowsDisplay;
+    cache.mMonitorDisplayVirtual = tile.mMonitorDisplayVirtual;
+    cache.mValid = true;
+}
+
+const std::string& ALVCamMonitorStrip::previewCostText(bool previews_enabled, F32 preview_fps)
+{
+    const S32 preview_tenths = displayTenths(preview_fps);
+    if (mPreviewCostText.empty() || mPreviewCostEnabled != previews_enabled ||
+        mPreviewCostTenths != preview_tenths)
+    {
+        mPreviewCostText = previews_enabled
+            ? llformat("On - %.1f fps", preview_tenths / 10.f)
+            : "Off (no cost)";
+        mPreviewCostEnabled = previews_enabled;
+        mPreviewCostTenths = preview_tenths;
+    }
+    return mPreviewCostText;
+}
+
+const std::string& ALVCamMonitorStrip::monitorFooterText(
+    bool master_enabled, bool previews_enabled, U32 monitor_count,
+    U32 preview_only, F32 preview_fps)
+{
+    const S32 preview_tenths = displayTenths(preview_fps);
+    if (mMonitorFooterText.empty() || mMonitorFooterMasterEnabled != master_enabled ||
+        mMonitorFooterPreviewsEnabled != previews_enabled ||
+        mMonitorFooterCount != monitor_count ||
+        mMonitorFooterPreviewOnly != preview_only ||
+        mMonitorFooterTenths != preview_tenths)
+    {
+        if (!master_enabled)
+            mMonitorFooterText = "Virtual Cam is off, so monitors and faces are paused.";
+        else if (!previews_enabled)
+            mMonitorFooterText = llformat(
+                "Previews are off: 0 of %u monitors render. Faces in-world keep updating at their own picture rate.",
+                monitor_count);
+        else if (!preview_only)
+            mMonitorFooterText = llformat(
+                "%u monitors at %.1f fps, all reusing their camera's last picture: no extra renders. Drag a monitor onto a surface to show it there.",
+                monitor_count, preview_tenths / 10.f);
+        else
+            mMonitorFooterText = llformat(
+                "%u monitors at %.1f fps. %u preview-only camera%s use the shared capture budget. Drag a monitor onto a surface to show it there.",
+                monitor_count, preview_tenths / 10.f, preview_only,
+                preview_only == 1 ? "" : "s");
+        mMonitorFooterMasterEnabled = master_enabled;
+        mMonitorFooterPreviewsEnabled = previews_enabled;
+        mMonitorFooterCount = monitor_count;
+        mMonitorFooterPreviewOnly = preview_only;
+        mMonitorFooterTenths = preview_tenths;
+    }
+    return mMonitorFooterText;
 }
 
 LLRect ALVCamMonitorStrip::tileRect(S32 visible_index) const
@@ -255,10 +476,11 @@ void ALVCamMonitorStrip::draw()
     for (U32 slot = start; slot < end; ++slot)
     {
         const Tile& tile = mTiles[slot];
+        const TileTextCache& text_cache = mTileText[slot];
         if (!tile.mVisible) continue;
         const LLRect rect = tileRect(static_cast<S32>(slot - start));
         const S32 picture_width = llmax(1, rect.getWidth() - 4);
-        const S32 caption_height = mCompact ? 24 : 54;
+        const S32 caption_height = (mCompact || !mInfoOverlay) ? 24 : 54;
         const S32 picture_height = llmin(llmax(1, rect.getHeight() - caption_height),
                                          llmax(1, picture_width * 9 / 16));
         const LLRect picture(rect.mLeft + 2, rect.mTop - 2, rect.mRight - 2,
@@ -282,8 +504,9 @@ void ALVCamMonitorStrip::draw()
             gl_rect_2d(picture, LLColor4(0.08f, 0.09f, 0.11f, 1.f), true);
         gl_rect_2d(picture, mBorderColor, false);
         LLColor4 status_dot(0.56f, 0.85f, 0.66f, 1.f);
-        if (tile.mBadge.find("PAUSED") != std::string::npos ||
-            tile.mPublication.mState == LLPrismPreviewService::ETileState::PAUSED ||
+        if (!tile.mPreviewsEnabled && tile.mActivity != LLPrismLens::EActivityState::IDLE)
+            status_dot = mMutedColor;
+        else if (tile.mPublication.mState == LLPrismPreviewService::ETileState::PAUSED ||
             tile.mPublication.mState == LLPrismPreviewService::ETileState::HELD)
             status_dot = mMutedColor;
         else if (tile.mPublication.mState == LLPrismPreviewService::ETileState::WARMING ||
@@ -293,14 +516,14 @@ void ALVCamMonitorStrip::draw()
                  tile.mPublication.mState == LLPrismPreviewService::ETileState::FAILED ||
                  tile.mPublication.mState == LLPrismPreviewService::ETileState::SHADER_UNAVAILABLE)
             status_dot = LLColor4(0.90f, 0.28f, 0.24f, 1.f);
-        if (!mCompact)
+        if (!mCompact && mInfoOverlay)
         {
-            drawText(mFont, tile.mBadge, picture.mLeft + 4, picture.mTop - 13,
+            drawText(mFont, text_cache.mBadge, picture.mLeft + 4, picture.mTop - 13,
                      LLColor4(0.56f, 0.85f, 0.66f, 1.f), picture.getWidth() - 8);
-            drawText(mFont, tile.mTimestamp, picture.mRight - 70,
+            drawText(mFont, text_cache.mTimestamp, picture.mRight - 70,
                      picture.mBottom + 4, mTextColor, 66);
         }
-        else
+        else if (mCompact)
         {
             gGL.color4fv(status_dot.mV);
             gl_circle_2d(static_cast<F32>(picture.mLeft + 6),
@@ -313,14 +536,14 @@ void ALVCamMonitorStrip::draw()
                          2.5f, 10, true);
         drawText(mFont, "::::", rect.mLeft + 4, name_y, mMutedColor, 18);
         const S32 name_left = rect.mLeft + (mCompact ? 24 : 30);
-        drawText(mFont, tile.mName, name_left, name_y, mTextColor,
+        drawText(mFont, text_cache.mName, name_left, name_y, mTextColor,
                  llmax(1, rect.mRight - 22 - name_left));
         drawText(mFont, "...", rect.mRight - 18, name_y, mMutedColor, 16);
-        if (!mCompact)
+        if (!mCompact && mInfoOverlay)
         {
-            drawText(mFont, tile.mShows, rect.mLeft + 12, picture.mBottom - 28,
+            drawText(mFont, text_cache.mShows, rect.mLeft + 12, picture.mBottom - 28,
                      mMutedColor, rect.getWidth() - 16);
-            drawText(mFont, tile.mStatus, rect.mLeft + 12, picture.mBottom - 43,
+            drawText(mFont, text_cache.mStatus, rect.mLeft + 12, picture.mBottom - 43,
                      status_dot, rect.getWidth() - 16);
         }
     }
@@ -333,7 +556,7 @@ bool ALVCamMonitorStrip::handleMouseDown(S32 x, S32 y, MASK)
     if (slot < 0) return false;
     const LLRect rect = tileRect(mCompact ? slot : slot - static_cast<S32>(mLargePage * 4));
     const S32 picture_width = llmax(1, rect.getWidth() - 4);
-    const S32 caption_height = mCompact ? 24 : 54;
+    const S32 caption_height = (mCompact || !mInfoOverlay) ? 24 : 54;
     const S32 picture_height = llmin(llmax(1, rect.getHeight() - caption_height),
                                      llmax(1, picture_width * 9 / 16));
     const S32 name_y = rect.mTop - 2 - picture_height - 13;

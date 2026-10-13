@@ -22,7 +22,7 @@ class ALVCamMonitorHeader : public LLUICtrl
 {
 public:
     struct Params : public LLInitParam::Block<Params, LLUICtrl::Params> { Params() = default; };
-    void setState(bool compact, bool previews, F32 speed);
+    void setState(bool compact, bool previews, bool info_overlay, F32 speed);
     void draw() override;
     bool handleMouseDown(S32 x, S32 y, MASK mask) override;
 protected:
@@ -31,6 +31,7 @@ protected:
 private:
     bool mCompact = false;
     bool mPreviews = true;
+    bool mInfoOverlay = false;
     F32 mSpeed = 1.f;
     const LLFontGL* mFont = nullptr;
     LLColor4 mTextColor;
@@ -62,16 +63,27 @@ public:
     {
         LLPrismLens::CaptureHandle mCapture;
         LLPrismPreviewService::TilePublication mPublication;
-        std::string mBadge;
-        std::string mTimestamp;
-        std::string mName;
-        std::string mShows;
-        std::string mStatus;
+        std::string mLabel;
+        LLPrismLens::EActivityState mActivity = LLPrismLens::EActivityState::IDLE;
+        F32 mObservedFps = 0.f;
+        F32 mTargetFps = 0.f;
+        F32 mPreviewFps = 0.f;
+        U32 mFaceCount = 0;
+        U32 mMonitorDisplayIndex = 0;
+        bool mEditing = false;
+        bool mMasterEnabled = false;
+        bool mPreviewsEnabled = false;
+        bool mMonitorShowsDisplay = false;
+        bool mMonitorDisplayVirtual = false;
         bool mVisible = false;
     };
 
     void setTiles(const std::array<Tile, LLPrismLens::MAX_CAPTURES>& tiles,
-                  U32 count, bool compact, U32 large_page);
+                  U32 count, bool compact, bool info_overlay, U32 large_page);
+    const std::string& previewCostText(bool previews_enabled, F32 preview_fps);
+    const std::string& monitorFooterText(bool master_enabled, bool previews_enabled,
+                                         U32 monitor_count, U32 preview_only,
+                                         F32 preview_fps);
     void setNewFaceFit(LLPrismLens::EFitMode fit) { mNewFaceFit = fit; }
     void draw() override;
     bool handleMouseDown(S32 x, S32 y, MASK mask) override;
@@ -98,12 +110,38 @@ protected:
     explicit ALVCamMonitorStrip(const Params& p);
 
 private:
+    struct TileTextCache
+    {
+        std::string mBadge;
+        std::string mTimestamp;
+        std::string mName;
+        std::string mShows;
+        std::string mStatus;
+        std::string mLabelInput;
+        LLPrismLens::EActivityState mActivity = LLPrismLens::EActivityState::IDLE;
+        LLPrismPreviewService::ETileState mPreviewState = LLPrismPreviewService::ETileState::EMPTY;
+        S32 mObservedTenths = 0;
+        S32 mTargetTenths = 0;
+        S32 mPreviewTenths = 0;
+        S64 mTimestampSecond = 0;
+        U32 mFaceCount = 0;
+        U32 mMonitorDisplayIndex = 0;
+        bool mEditing = false;
+        bool mMasterEnabled = false;
+        bool mPreviewsEnabled = false;
+        bool mMonitorShowsDisplay = false;
+        bool mMonitorDisplayVirtual = false;
+        bool mValid = false;
+    };
+    void updateTileText(U32 slot, const Tile& tile, bool info_overlay, bool force_info);
     S32 tileAt(S32 x, S32 y) const;
     LLRect tileRect(S32 visible_index) const;
     std::array<Tile, LLPrismLens::MAX_CAPTURES> mTiles;
+    std::array<TileTextCache, LLPrismLens::MAX_CAPTURES> mTileText;
     U32 mCount = 0;
     U32 mLargePage = 0;
     bool mCompact = false;
+    bool mInfoOverlay = false;
     LLPrismLens::EFitMode mNewFaceFit = LLPrismLens::EFitMode::FIT;
     const LLFontGL* mFont = nullptr;
     LLColor4 mBorderColor;
@@ -111,6 +149,15 @@ private:
     LLColor4 mMutedColor;
     LLPrismPreviewService* mPreviewService = nullptr;
     S32 mMouseDownSlot = -1;
+    std::string mPreviewCostText;
+    std::string mMonitorFooterText;
+    S32 mPreviewCostTenths = -1;
+    S32 mMonitorFooterTenths = -1;
+    U32 mMonitorFooterCount = 0;
+    U32 mMonitorFooterPreviewOnly = 0;
+    bool mPreviewCostEnabled = false;
+    bool mMonitorFooterMasterEnabled = false;
+    bool mMonitorFooterPreviewsEnabled = false;
 };
 
 class ALVCamMonitorPager : public LLUICtrl

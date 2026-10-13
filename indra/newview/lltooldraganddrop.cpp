@@ -26,6 +26,7 @@
 
 #include "llviewerprecompiledheaders.h"
 #include "lltooldraganddrop.h"
+#include "llkeyboard.h"
 
 #include "alvcampagemodel.h"
 #include "alvcammonitorstrip.h"
@@ -2324,7 +2325,12 @@ EAcceptance LLToolDragAndDrop::dad3dVCamFeed(
 
     const LLUUID& capture_id = mCargoIDs[mCurItemIndex];
     LLVOVolume* volume = dynamic_cast<LLVOVolume*>(obj);
-    if (volume && volume->getIsLight())
+    // Real projectors take the projector path. A plain (point) light only
+    // does with Shift held, so a glowing TV/screen prim still accepts a
+    // normal face/display drop.
+    const bool shift_held = gKeyboard && (gKeyboard->currentMask(true) & MASK_SHIFT);
+    if (volume && volume->getIsLight() &&
+        (volume->isLightSpotlight() || shift_held))
     {
         const ALVCamPageModel::ProjectorDropStatus projector =
             ALVCamPageModel::projectorDropStatus(capture_id, obj);

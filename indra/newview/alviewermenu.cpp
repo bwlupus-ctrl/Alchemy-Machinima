@@ -59,6 +59,7 @@
 #include "llvoavatarself.h"
 #include "llvovolume.h"
 #include "pipeline.h"
+#include "llprismlens.h"
 
 // llviewermenu.cpp
 LLVOAvatar* find_avatar_from_object(LLViewerObject* object);
@@ -632,14 +633,16 @@ namespace
                 continue;
 
             LLVOVolume* pVol = dynamic_cast<LLVOVolume*>(pObj);
-            if (pVol && pVol->isLightSpotlight())
+            // Real spotlights and viewer-local VCam projectors alike.
+            LLVector3 spot_params;
+            if (pVol && LLPrismLens::projectorRenderParams(pVol, spot_params))
                 return pVol;
 
             // Children too, in case only the root node is in the selection.
             for (const LLPointer<LLViewerObject>& pChildPtr : pObj->getChildren())
             {
                 LLVOVolume* pChildVol = dynamic_cast<LLVOVolume*>(pChildPtr.get());
-                if (pChildVol && pChildVol->isLightSpotlight())
+                if (pChildVol && LLPrismLens::projectorRenderParams(pChildVol, spot_params))
                     return pChildVol;
             }
         }

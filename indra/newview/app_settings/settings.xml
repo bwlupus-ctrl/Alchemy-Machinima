@@ -29487,6 +29487,13 @@
     <key>Type</key><string>Boolean</string>
     <key>Value</key><integer>1</integer>
   </map>
+  <key>PrismMonitorInfoOverlay</key>
+  <map>
+    <key>Comment</key><string>Show cached status, timestamp, source, and performance text on Director VCam monitor tiles.</string>
+    <key>Persist</key><integer>1</integer>
+    <key>Type</key><string>Boolean</string>
+    <key>Value</key><integer>0</integer>
+  </map>
   <key>PrismMonitorPreviewFPS</key>
   <map>
     <key>Comment</key><string>Shared Director VCam monitor preview rate. UI/API values are restricted to 0.5, 1, 2, or 5 fps.</string>

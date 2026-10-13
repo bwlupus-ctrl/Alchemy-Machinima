@@ -5774,6 +5774,9 @@ public:
         return false;
     }
 
+    // Cheap public probe for the per-light render early-out.
+    bool hasProjectorBindings() const { return projectorCount() != 0; }
+
     bool projectorRenderParams(const LLVOVolume* volume, LLVector3& params)
     {
         params.clear();
@@ -9532,6 +9535,8 @@ bool projectorRenderParams(const LLVOVolume* volume, LLVector3& params)
         return true;
     }
     if (!prismEnabled()) return false;
+    // Cheap early-out per point light: no bindings -> no revision scope.
+    if (!PrismLensRegistry::instance().hasProjectorBindings()) return false;
     ScopedPrismRevisionSignals signals;
     return PrismLensRegistry::instance().projectorRenderParams(volume, params);
 }
