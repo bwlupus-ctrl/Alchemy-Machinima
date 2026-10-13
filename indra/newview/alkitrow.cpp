@@ -24,6 +24,9 @@
 #include "aluirefresh.h"
 #include "alcompassdial.h"
 #include "alkitswitch.h"
+#include "alkitqol.h"
+#include "llmenugl.h"
+#include "llviewermenu.h"
 
 #include <algorithm>
 #include <vector>
@@ -31,6 +34,23 @@ static LLDefaultChildRegistry::Register<ALKitRow> r("kit_row");
 
 namespace
 {
+LLSD sRowClipboard;
+
+class ALKitProxyBinding final : public ALKitBinding
+{
+public:
+    explicit ALKitProxyBinding(ALKitRow* source) : mSource(source->getDerivedHandle<ALKitRow>()) {}
+    LLSD get() const override { return mSource.get() ? mSource.get()->boundValue() : LLSD(); }
+    LLSD getDefault() const override { return mSource.get() ? mSource.get()->boundDefault() : LLSD(); }
+    bool hasDefault() const override { return mSource.get() && mSource.get()->boundDefault().isDefined(); }
+    void set(const LLSD& value) override { if (mSource.get()) mSource.get()->setBoundValue(value); }
+    boost::signals2::connection connectChanged(std::function<void()> callback) override
+    { return mSource.get() ? mSource.get()->setValueCallback(std::move(callback)) : boost::signals2::connection(); }
+    std::string describe() const override { return "Quick proxy"; }
+private:
+    LLHandle<ALKitRow> mSource;
+};
+
 bool baselineEditActive(const LLView* control)
 {
     if (!control)
@@ -43,6 +63,15 @@ bool baselineEditActive(const LLView* control)
     return dynamic_cast<LLLineEditor*>(focus) || dynamic_cast<LLTextEditor*>(focus);
 }
 } // namespace
+
+ALKitRow::~ALKitRow()
+{
+    if (LLContextMenu* menu = mContextMenu.get())
+    {
+        menu->die();
+        mContextMenu.markDead();
+    }
+}
 
 ALKitRow::Params::Params() :
     kind("kind"),
@@ -168,6 +197,8 @@ bool ALKitRow::postBuild()
 
     if (mControl)
     {
+        mControl->setRightMouseDownCallback(
+            [this](LLUICtrl*, S32 x, S32 y, MASK) { showContextMenu(x, y); });
         mLastValue = mShownValue = mControl->getValue();
 
         if (mBind == "code" && mMeta.kind != "button" && mMeta.kind != "readout" && mMeta.mirror_setting.empty())
@@ -283,7 +314,23 @@ bool ALKitRow::postBuild()
 
     refreshValue();
 
-    if (mBinding && !mReset)
+    LLButton::Params favorite;
+    favorite.name  = mMeta.widget + "_favorite";
+    favorite.rect  = LLRect(0, 18, 18, 0);
+    favorite.label = "\xE2\x98\x86";
+    mFavorite      = LLUICtrlFactory::create<LLButton>(favorite);
+    mFavorite->setToolTip(LLStringExplicit("Add to Quick"));
+    mFavorite->setCommitCallback(
+        [this](LLUICtrl*, const LLSD&)
+        {
+            if (ALKitShell* shell = ALKitShell::find(this))
+                shell->toggleFavorite(mMeta.page_key, mMeta.widget);
+            refreshFavorite();
+        });
+    addChild(mFavorite);
+    refreshFavorite();
+
+    if (mBinding && mBinding->hasDefault() && !mReset)
     {
         LLButton::Params reset;
         reset.name  = mMeta.widget + "_reset";
@@ -327,8 +374,8 @@ void ALKitRow::layoutRow(S32 w)
     if (mLabel)
     {
         const bool full_span_custom = mMeta.kind == "custom" && mMeta.label.empty();
-        mLabel->reshape(ALKitStyle::LABEL_W, 20, true);
-        mLabel->setOrigin(ALKitStyle::ROW_INSET, (h - 20) / 2);
+        mLabel->reshape(ALKitStyle::LABEL_W - 18, 20, true);
+        mLabel->setOrigin(ALKitStyle::ROW_INSET + 18, (h - 20) / 2);
         mLabel->setVisible(!full_span_custom);
     }
 
@@ -453,6 +500,8 @@ void ALKitRow::layoutRow(S32 w)
         mReset->reshape(ALKitStyle::RESET_W, 20, true);
         mReset->setOrigin(w - ALKitStyle::ROW_INSET - ALKitStyle::RESET_W, (h - 20) / 2);
     }
+    if (mFavorite)
+        mFavorite->setOrigin(ALKitStyle::ROW_INSET, (h - 18) / 2);
 }
 
 void ALKitRow::layoutDialCell(S32 w)
@@ -559,6 +608,12 @@ void ALKitRow::pollLiveValue()
 
 void ALKitRow::bindingChanged()
 {
+    if (mBinding && mControl && !baselineEditActive(mControl))
+    {
+        const LLSD value = mBinding->get();
+        if (!alSameValue(value, mControl->getValue()))
+            mControl->setValue(value);
+    }
     const bool now = amber();
     if (mReset)
         mReset->setImageOverlay("KitIcon_reset_row_16",
@@ -570,8 +625,11 @@ void ALKitRow::bindingChanged()
         mAmberSignal(now);
     }
     refreshValue();
+    if (ALKitShell* shell = ALKitShell::find(this))
+        shell->refreshChangedMarkers();
     if (mControl && !baselineEditActive(mControl))
         mLastValue = mControl->getValue();
+    mValueSignal();
 }
 
 void ALKitRow::resolveBinding()
@@ -600,7 +658,7 @@ void ALKitRow::resolveBinding()
     if (mBinding)
     {
         mBindingConnection = mBinding->connectChanged([this]() { bindingChanged(); });
-        if (!mReset)
+        if (mBinding->hasDefault() && !mReset)
         {
             LLButton::Params reset;
             reset.name  = mMeta.widget + "_reset";
@@ -623,10 +681,103 @@ void ALKitRow::resolveBinding()
 bool ALKitRow::amber() const
 { return mBinding && !mBinding->isDefault(mMeta.decimals); }
 
+LLSD ALKitRow::boundValue() const
+{ return mBinding ? mBinding->get() : (mControl ? mControl->getValue() : LLSD()); }
+
+LLSD ALKitRow::boundDefault() const
+{ return mBinding ? mBinding->getDefault() : LLSD(); }
+
+bool ALKitRow::setBoundValue(const LLSD& value)
+{
+    if (!ALKitQol::pasteTypesCompatible(value, boundValue()))
+        return false;
+    if (mBinding)
+        mBinding->set(value);
+    else if (mControl)
+    {
+        mControl->setValue(value);
+        mControl->onCommit();
+    }
+    else
+        return false;
+    bindingChanged();
+    return true;
+}
+
+ALKitRow* ALKitRow::createProxy(ALKitRow* source, const std::string& name)
+{
+    if (!source || !source->mControl)
+        return nullptr;
+    const LLSD value = source->boundValue();
+    Params params;
+    params.name = name;
+    params.rect = LLRect(0, ALKitStyle::ROW_H, 400, 0);
+    params.kind = value.isBoolean() ? "toggle" : (value.isInteger() || value.isReal() ? "number" : "text");
+    params.widget = name + "_control";
+    params.label = source->mMeta.label;
+    params.help = source->mMeta.help;
+    params.decimals = source->mMeta.decimals;
+    params.min_val = source->mMeta.has_min ? source->mMeta.min_val : -1000000.f;
+    params.max_val = source->mMeta.has_max ? source->mMeta.max_val : 1000000.f;
+    ALKitRow* proxy = new ALKitRow(params);
+    LLUICtrl* control = nullptr;
+    if (value.isBoolean())
+    {
+        ALKitSwitch::Params control_params;
+        control_params.name = params.widget;
+        control_params.rect = LLRect(0, ALKitStyle::SWITCH_H, ALKitStyle::SWITCH_W, 0);
+        control = LLUICtrlFactory::create<ALKitSwitch>(control_params);
+    }
+    else if (value.isInteger() || value.isReal())
+    {
+        LLSpinCtrl::Params control_params;
+        control_params.name = params.widget;
+        control_params.rect = LLRect(0, 24, 120, 0);
+        control_params.min_value = source->mMeta.has_min ? source->mMeta.min_val : -1000000.f;
+        control_params.max_value = source->mMeta.has_max ? source->mMeta.max_val : 1000000.f;
+        control_params.decimal_digits = source->mMeta.decimals;
+        control = LLUICtrlFactory::create<LLSpinCtrl>(control_params);
+    }
+    else if (value.isString())
+    {
+        LLLineEditor::Params control_params;
+        control_params.name = params.widget;
+        control_params.rect = LLRect(0, 24, 180, 0);
+        control = LLUICtrlFactory::create<LLLineEditor>(control_params);
+    }
+    else
+    {
+        delete proxy;
+        return nullptr;
+    }
+    proxy->addChild(control);
+    proxy->mBinding = std::make_unique<ALKitProxyBinding>(source);
+    proxy->mMeta.page_key = source->mMeta.page_key;
+    proxy->mMeta.card_id = source->mMeta.card_id;
+    proxy->postBuild();
+    proxy->mBindingConnection = proxy->mBinding->connectChanged([proxy]() { proxy->bindingChanged(); });
+    control->setCommitCallback([proxy](LLUICtrl* edited, const LLSD&) { proxy->setBoundValue(edited->getValue()); });
+    proxy->bindingChanged();
+    return proxy;
+}
+
+void ALKitRow::refreshFavorite()
+{
+    const ALKitShell* shell = ALKitShell::find(this);
+    const bool favorite = shell && shell->isFavorite(mMeta.page_key, mMeta.widget);
+    if (mFavorite)
+    {
+        mFavorite->setLabel(favorite ? "\xE2\x98\x85" : "\xE2\x98\x86");
+        mFavorite->setToolTip(LLStringExplicit(favorite ? "Remove from Quick" : "Add to Quick"));
+        mFavorite->setVisible(mHovered || favorite);
+    }
+}
+
 void ALKitRow::onMouseEnter(S32 x, S32 y, MASK m)
 {
     mPointerInside = true;
     mHovered       = true;
+    refreshFavorite();
     styleValueEditor(true);
     if (ALKitShell* shell = ALKitShell::find(this))
         shell->help().showRow(this);
@@ -636,6 +787,7 @@ void ALKitRow::onMouseLeave(S32 x, S32 y, MASK m)
 {
     mPointerInside = false;
     mHovered       = baselineEditActive(mControl);
+    refreshFavorite();
     styleValueEditor(mHovered);
     LLPanel::onMouseLeave(x, y, m);
 }
@@ -658,6 +810,60 @@ bool ALKitRow::handleMouseDown(S32 x, S32 y, MASK mask)
         }
     }
     return LLPanel::handleMouseDown(x, y, mask);
+}
+
+bool ALKitRow::handleRightMouseDown(S32 x, S32 y, MASK)
+{
+    showContextMenu(x, y);
+    return true;
+}
+
+void ALKitRow::showContextMenu(S32 x, S32 y)
+{
+    if (!mContextMenu.get())
+    {
+        LLContextMenu::Params params;
+        params.name = mMeta.widget + "_row_menu";
+        params.visible = false;
+        LLContextMenu* menu = LLUICtrlFactory::create<LLContextMenu>(params);
+        mContextMenu = menu->getHandle();
+        auto add_item = [menu](const std::string& name, const std::string& label,
+                               const std::function<void()>& action)
+        {
+            LLMenuItemCallGL::Params item;
+            item.name = name;
+            item.label = label;
+            item.on_click.function = [action](LLUICtrl*, const LLSD&) { action(); };
+            menu->addChild(LLUICtrlFactory::create<LLMenuItemCallGL>(item));
+        };
+        add_item("reset", "Reset to default", [this]() { reset(); });
+        add_item("copy", "Copy value", [this]() { sRowClipboard = boundValue(); });
+        add_item("paste", "Paste value", [this]() { setBoundValue(sRowClipboard); });
+        add_item("favorite", "Add to Quick", [this]()
+        {
+            if (ALKitShell* shell = ALKitShell::find(this))
+                shell->toggleFavorite(mMeta.page_key, mMeta.widget);
+            refreshFavorite();
+        });
+        add_item("search", "Show in search", [this]()
+        {
+            if (ALKitShell* shell = ALKitShell::find(this))
+                shell->showRowInSearch(this);
+        });
+        gMenuHolder->addChild(menu);
+    }
+    LLContextMenu* menu = mContextMenu.get();
+    if (!menu)
+        return;
+    if (LLMenuItemGL* item = menu->findChild<LLMenuItemGL>("reset"))
+        item->setVisible(resettable());
+    if (LLMenuItemGL* item = menu->findChild<LLMenuItemGL>("paste"))
+        item->setEnabled(mControl && ALKitQol::pasteTypesCompatible(sRowClipboard, boundValue()));
+    if (LLMenuItemGL* item = menu->findChild<LLMenuItemGL>("favorite"))
+        item->setLabel(LLStringExplicit(ALKitShell::find(this) &&
+            ALKitShell::find(this)->isFavorite(mMeta.page_key, mMeta.widget) ? "Remove from Quick" : "Add to Quick"));
+    menu->buildDrawLabels();
+    LLMenuGL::showPopup(this, menu, x, y);
 }
 
 void ALKitRow::styleValueEditor(bool active)

@@ -38,6 +38,7 @@ public:
     void               setQuery(const std::string& query);
     const std::string& queryText() const;
     Hits               query(const std::string& query) const;
+    Hits               all() const;
     void               clear();
 
 private:

@@ -59,7 +59,7 @@
       {"l": "Clone-scale aware", "k": "toggle", "w": "vc_bone_scale", "h": "Scale the joint point about the avatar foot and the local offset by the clone's uniform scale.", "bind": "code", "a": 1},
       {"l": "Reset attach", "k": "button", "w": "vc_bone_reset", "h": "Restore every skeleton attachment option to its default.", "btn": "Reset attach", "bind": "code", "a": 1}
     ]},
-    {"id": "optics", "t": "Optics", "k": "rows", "badge": "CAM n", "rows": [
+    {"id": "optics", "t": "Optics", "k": "rows", "badge": "CAM n", "copy_type": "vcam_optics", "rows": [
       {"l": "Lens equiv.", "k": "readout", "w": "vc_lens_equiv", "h": "Full-frame equivalent focal length from the vertical field of view (24 mm sensor height).", "bind": "code"},
       {"l": "Field of view", "k": "combo", "w": "vc_fov_mode", "h": "Fixed uses Degrees below; Follow projector takes it from the projector.", "it": ["Fixed vertical FOV", "Follow projector"], "iv": [0,1], "bind": "code", "show_if": "not_skeleton"},
       {"l": "Degrees", "k": "slider", "w": "vc_fov_deg", "h": "Vertical field of view in degrees.", "mn": 5, "mx": 175, "st": 0.5, "dc": 1, "unit": "deg", "bind": "code", "show_if": "fixed_fov"},
@@ -80,7 +80,7 @@
       {"l": "Clip range markers", "k": "toggle", "w": "vc_guide_clip", "h": "Draw the near-clip rectangle so the depth range reads.", "bind": "code", "show_if": "guide_on"},
       {"l": "Guide note", "k": "readout", "w": "vc_guide_note", "h": "Shows where this camera is and what its lens covers, so you can place it in the world.", "bind": "code", "show_if": "guide_off"}
     ]},
-    {"id": "camera_look", "t": "Camera look", "k": "rows", "badge": "CAM n", "rows": [
+    {"id": "camera_look", "t": "Camera look", "k": "rows", "badge": "CAM n", "copy_type": "vcam_look", "rows": [
       {"l": "Exposure EV", "k": "slider", "w": "vc_exposure", "h": "Exposure offset for this camera's picture, separate from any face brightness.", "mn": -4, "mx": 4, "st": 0.1, "dc": 1, "unit": "EV", "bind": "code"},
       {"l": "Film grain", "k": "slider", "w": "vc_grain", "h": "Animated film grain over the picture.", "mn": 0, "mx": 1, "st": 0.01, "dc": 2, "bind": "code"},
       {"l": "Chromatic ab.", "k": "slider", "w": "vc_chromatic", "h": "Colour fringing toward the frame edges.", "mn": 0, "mx": 1, "st": 0.01, "dc": 2, "bind": "code"},
@@ -91,7 +91,7 @@
       {"l": "Look note", "k": "readout", "w": "vc_look_note", "h": "These change the camera's picture itself. Per-screen TV effects belong to one face in 4 Output.", "bind": "code"},
       {"l": "Go to Output", "k": "button", "w": "vc_go_output", "h": "Open the Output section.", "btn": "Go to Output", "bind": "code"}
     ]},
-    {"id": "output_frame", "t": "Output frame", "k": "rows", "badge": "CAM n", "rows": [
+    {"id": "output_frame", "t": "Output frame", "k": "rows", "badge": "CAM n", "copy_type": "vcam_output", "rows": [
       {"l": "Output aspect", "k": "combo", "w": "vc_output_aspect", "h": "Shape of the picture this camera renders.", "it": ["16:9", "4:3", "1:1", "Custom"], "iv": [1.7777778, 1.3333333, 1, -1], "bind": "code"},
       {"l": "Custom W/H", "k": "slider", "w": "vc_output_custom", "h": "Width over height.", "mn": 0.25, "mx": 4, "st": 0.01, "dc": 3, "bind": "code", "show_if": "custom_aspect"},
       {"l": "Picture", "k": "readout", "w": "vc_output_picture", "h": "Logical axes are capped at 1024 px; Quality ceiling and Adaptive scale it.", "bind": "code"}
@@ -107,7 +107,7 @@
       {"l": "", "k": "custom", "w": "vc_projector_list", "h": "Projector lights using this camera. Select a row to edit it; Remove clears only the viewer-local feed.", "custom_tag": "vcam_projector_list", "bind": "code", "row_height": 150},
       {"l": "Tip", "k": "readout", "w": "vc_projector_hint", "h": "Select a projector row to reveal its look controls.", "bind": "code", "show_if": "no_selected_projector"}
     ]},
-    {"id": "projector", "t": "Projector", "k": "rows", "badge": "PROJECTOR n", "show_if": "selected_projector", "rows": [
+    {"id": "projector", "t": "Projector", "k": "rows", "badge": "PROJECTOR n", "copy_type": "vcam_projector", "show_if": "selected_projector", "rows": [
       {"l": "Look preset", "k": "combo", "w": "vc_proj_look", "h": "Apply only the projector look fields. Editing any look field makes this Custom.", "it": ["Custom", "Clean digital", "Cinema xenon", "16mm home movie", "Old slide projector", "Worn film reel"], "iv": [-1,0,1,2,3,4], "bind": "code"},
       {"l": "Framing", "k": "segmented", "w": "vc_proj_fit", "h": "Fit keeps the whole picture, Fill crops by the anchor, and Stretch maps the complete picture.", "it": ["Fit", "Fill", "Stretch"], "iv": [0,1,2], "bind": "code"},
       {"l": "Anchor X", "k": "slider", "w": "vc_proj_anchor_x", "h": "Horizontal crop anchor for the projected feed.", "mn": 0, "mx": 1, "st": 0.05, "dc": 2, "bind": "code"},
@@ -136,7 +136,7 @@
       {"l": "When camera is off", "k": "combo", "w": "vc_proj_no_signal", "h": "Choose the no-signal picture used while the camera is unavailable.", "it": ["Projector's own cookie", "Black", "White"], "iv": [0,1,2], "bind": "code"},
       {"l": "Keep the light's gobo", "k": "toggle", "w": "vc_proj_keep_gobo", "h": "Keep the projector light's existing gobo while the VCam feed is attached.", "bind": "code"}
     ]},
-    {"id": "projector_tv", "t": "More effects (TV)", "k": "rows", "badge": "PROJECTOR n", "show_if": "selected_projector", "rows": [
+    {"id": "projector_tv", "t": "More effects (TV)", "k": "rows", "badge": "PROJECTOR n", "copy_type": "vcam_projector_tv", "show_if": "selected_projector", "rows": [
       {"l": "Presets", "k": "combo", "w": "vc_proj_tv_preset", "h": "Apply Clean, Old CRT, Broken TV, VHS Tape, or Security Feed to this projector.", "it": ["Pick...", "Clean", "Old CRT", "Broken TV", "VHS Tape", "Security Feed"], "iv": ["", "clean", "crt", "broken", "vhs", "security"], "bind": "code"},
       {"l": "Scanlines", "k": "slider", "w": "vc_proj_tv_scan", "h": "Scanline strength on this projector.", "mn": 0, "mx": 1, "st": 0.05, "dc": 2, "bind": "code"},
       {"l": "Grayscale", "k": "slider", "w": "vc_proj_tv_gray", "h": "Desaturate toward monochrome.", "mn": 0, "mx": 1, "st": 0.05, "dc": 2, "bind": "code"},

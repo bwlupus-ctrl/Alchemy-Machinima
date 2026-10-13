@@ -14,6 +14,7 @@
 #include "llbutton.h"
 #include "llcallbacklist.h"
 #include "llcombobox.h"
+#include "llcheckboxctrl.h"
 #include "llcontrol.h"
 #include "llfontgl.h"
 #include "lllineeditor.h"
@@ -539,6 +540,19 @@ bool ALKitPage::postBuild()
     mSearch  = LLUICtrlFactory::create<ALKitSearchEditor>(lp);
     mSearch->setCommitCallback([this](LLUICtrl* c, const LLSD&) { setSearchText(c->getValue().asString()); });
     mBar->addChild(mSearch);
+    LLCheckBoxCtrl::Params changed;
+    changed.name = pre + "_changed_only";
+    changed.rect = LLRect(0, 24, 100, 0);
+    changed.label = "Changed only";
+    mChangedOnly = LLUICtrlFactory::create<LLCheckBoxCtrl>(changed);
+    mChangedOnly->setValue(mShell && mShell->changedOnly());
+    mChangedOnly->setCommitCallback(
+        [this](LLUICtrl* control, const LLSD&)
+        {
+            if (mShell)
+                mShell->setChangedOnly(control->getValue().asBoolean());
+        });
+    mBar->addChild(mChangedOnly);
 
     mBanner = makePanel(pre + "_banner", ALKitStyle::BANNER_H, page_width);
     mBanner->setBackgroundVisible(true);
@@ -762,6 +776,8 @@ bool ALKitPage::postBuild()
         mCards[card->id()] = card;
         for (ALKitRow* row : card->rows())
         {
+            row->setOwnerIdentity(mPage, card->id());
+            row->refreshFavorite();
             mRows[row->meta().widget] = row;
             if (!row->meta().setting.empty())
             {
@@ -1071,7 +1087,8 @@ void ALKitPage::reshape(S32 w, S32 h, bool p)
         const S32  right          = w - ALKitStyle::PAGE_PAD_LR;
         const bool master_fits    = mMasterBox && master_x + 150 <= w - ALKitStyle::PAGE_PAD_LR;
         const S32  occupied_right = master_fits ? master_x + 150 : mBarLeftEnd;
-        const S32  search_w       = llmin(ALKitStyle::SEARCH_W, llmax(0, right - occupied_right - ALKitStyle::COL_GAP));
+        const S32  changed_w      = 100;
+        const S32  search_w       = llmin(ALKitStyle::SEARCH_W, llmax(0, right - occupied_right - changed_w - 2 * ALKitStyle::COL_GAP));
         const S32  search_x       = right - search_w;
         const bool search_fits    = mSearch && search_w >= 120;
         if (mMasterBox)
@@ -1093,6 +1110,12 @@ void ALKitPage::reshape(S32 w, S32 h, bool p)
             mSearch->reshape(search_w, 24, true);
             mSearch->setOrigin(search_x, 10);
             setVisibleIfChanged(mSearch, search_fits);
+        }
+        if (mChangedOnly)
+        {
+            mChangedOnly->reshape(changed_w, 24, true);
+            mChangedOnly->setOrigin(search_x - changed_w - ALKitStyle::COL_GAP, 10);
+            setVisibleIfChanged(mChangedOnly, search_fits);
         }
     }
     updateMaster();
@@ -1204,6 +1227,14 @@ ALKitCard* ALKitPage::findCard(const std::string& k) const
     return i == mCards.end() ? nullptr : i->second;
 }
 
+bool ALKitPage::changed() const
+{
+    for (const auto& entry : mCards)
+        if (entry.second && entry.second->changed())
+            return true;
+    return false;
+}
+
 void ALKitPage::applySearch(const ALKitSearch::Hits& hits)
 {
     mSearching = true;
@@ -1291,6 +1322,11 @@ void ALKitPage::setSearchText(const std::string& q)
         mSearch->setValue(q);
     if (q.empty())
         clearSearch();
+}
+
+void ALKitPage::setChangedOnlyValue(bool enabled)
+{
+    setValueIfChanged(mChangedOnly, LLSD(enabled), true);
 }
 
 void ALKitPage::resetPage()

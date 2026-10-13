@@ -10,6 +10,7 @@
 class LLUICtrl;
 class LLTextBox;
 class LLButton;
+class LLContextMenu;
 class ALKitCard;
 struct ALKitRowMeta
 {
@@ -33,11 +34,13 @@ public:
         Optional<F32>  min_val, max_val;
         Params();
     };
+    ~ALKitRow() override;
     bool        postBuild() override;
     void        draw() override;
     void        onMouseEnter(S32, S32, MASK) override;
     void        onMouseLeave(S32, S32, MASK) override;
     bool        handleMouseDown(S32, S32, MASK) override;
+    bool        handleRightMouseDown(S32, S32, MASK) override;
     S32         heightForWidth(S32) const;
     void        layoutRow(S32);
     void        layoutDialCell(S32);
@@ -48,6 +51,7 @@ public:
     void        refreshValue();
     void        pollLiveValue();
     using amber_signal_t = boost::signals2::signal<void(bool)>;
+    using value_signal_t = boost::signals2::signal<void()>;
     const ALKitRowMeta& meta() const { return mMeta; }
     LLUICtrl*           control() const { return mControl; }
     void                setFilterVisible(bool v) { mFilterVisible = v; }
@@ -59,7 +63,8 @@ public:
     }
     bool                        amber() const;
     boost::signals2::connection setAmberCallback(const amber_signal_t::slot_type& s) { return mAmberSignal.connect(s); }
-    bool                        resettable() const { return !!mBinding; }
+    boost::signals2::connection setValueCallback(const value_signal_t::slot_type& s) { return mValueSignal.connect(s); }
+    bool                        resettable() const { return mBinding && mBinding->hasDefault(); }
     LLTextBox*                  valueView() const { return mValueText; }
     void                        refreshValueEditorStyle() { styleValueEditor(mHovered); }
     void                        reset()
@@ -69,6 +74,16 @@ public:
     }
     bool cardPreset() const { return mCardPreset; }
     bool whoPicker() const { return mWhoPicker; }
+    void setOwnerIdentity(const std::string& page, const std::string& card)
+    {
+        mMeta.page_key = page;
+        mMeta.card_id = card;
+    }
+    LLSD boundValue() const;
+    LLSD boundDefault() const;
+    bool setBoundValue(const LLSD&);
+    void refreshFavorite();
+    static ALKitRow* createProxy(ALKitRow*, const std::string&);
 
 protected:
     friend class LLUICtrlFactory;
@@ -77,6 +92,7 @@ protected:
 private:
     void         styleValueEditor(bool active);
     void         bindingChanged();
+    void         showContextMenu(S32, S32);
     ALKitCard*   card() const;
     ALKitRowMeta mMeta;
     std::string  mBind, mResetSettings, mDefaultValue, mLabelName;
@@ -91,11 +107,14 @@ private:
     LLTextBox*                         mLabel     = nullptr;
     LLTextBox*                         mValueText = nullptr;
     LLButton*                          mReset     = nullptr;
+    LLButton*                          mFavorite  = nullptr;
     ALKitCard*                         mCard      = nullptr;
     std::unique_ptr<ALKitBinding>      mBinding;
     boost::signals2::scoped_connection mBindingConnection, mFocusConnection, mFocusLostConnection, mMirrorConnection,
         mMirrorCommitConnection, mHistoryConnection, mValueConnection;
+    LLHandle<LLContextMenu> mContextMenu;
     amber_signal_t mAmberSignal;
+    value_signal_t mValueSignal;
     LLFrameTimer   mFlashTimer;
     LLSD           mLastValue, mShownValue;
 };

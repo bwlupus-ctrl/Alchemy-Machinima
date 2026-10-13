@@ -1,5 +1,6 @@
 #include "llviewerprecompiledheaders.h"
 #include "alkitbinding.h"
+#include "alkitqol.h"
 #include "alkitpage.h"
 #include "llcontrol.h"
 #include "lluictrl.h"
@@ -7,43 +8,6 @@
 #include "lltimer.h"
 #include "v3color.h"
 #include "v4color.h"
-
-namespace
-{
-
-bool valuesEqual(const LLSD& a, const LLSD& b, F64 scale)
-{
-    if (a.type() == LLSD::TypeReal || b.type() == LLSD::TypeReal)
-    {
-        return llround(a.asReal() * scale) == llround(b.asReal() * scale);
-    }
-
-    if (a.isArray() && b.isArray() && a.size() == b.size())
-    {
-        for (S32 i = 0; i < a.size(); ++i)
-        {
-            if (!valuesEqual(a[i], b[i], scale))
-                return false;
-        }
-
-        return true;
-    }
-
-    if (a.isMap() && b.isMap() && a.size() == b.size())
-    {
-        for (LLSD::map_const_iterator it = a.beginMap(); it != a.endMap(); ++it)
-        {
-            if (!b.has(it->first) || !valuesEqual(it->second, b[it->first], scale))
-                return false;
-        }
-
-        return true;
-    }
-
-    return a == b;
-}
-
-} // namespace
 
 bool alKitSetTypedControl(LLControlGroup& group, const std::string& name, const LLSD& value)
 {
@@ -94,7 +58,7 @@ bool alKitSetTypedControl(LLControlGroup& group, const std::string& name, const 
 }
 
 bool ALKitBinding::isDefault(S32 decimals) const
-{ return valuesEqual(get(), getDefault(), pow(10., decimals)); }
+{ return ALKitQol::valuesEqual(get(), getDefault(), decimals); }
 
 ALKitSettingBinding::ALKitSettingBinding(std::string name) : mName(std::move(name))
 {

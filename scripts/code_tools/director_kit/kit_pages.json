@@ -13,6 +13,7 @@
    "undo_context": "cine_rig_slot", "who_adapter": "cine_rig_slot", "mode_adapter": "cine_rig_easy", "mode_on": "Easy", "chip_mode": "filter",
    "preset": {"mode": "widgets", "combo": "cine_setup_combo", "save": "cine_setup_save", "delete": "cine_setup_delete"},
    "selector_settings": {"lights": "DirectorV2SelectedLight"},
+   "card_copy_types": {"lights": "light_role"},
    "card_enables": {"easy_probe": "cine_easy_probe_enable", "light_group": "cine_group_enable",
                     "rig_catchlight": "cine_catchlight", "live_probe": "cine_live_probe_enable",
                     "night_mask": "cine_night_mask_enable"},

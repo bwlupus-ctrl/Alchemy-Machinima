@@ -21,6 +21,7 @@
 #include "lltextbox.h"
 #include "lluictrlfactory.h"
 #include "llviewercontrol.h"
+#include <algorithm>
 static LLDefaultChildRegistry::Register<ALKitShell> r("kit_shell");
 
 namespace
@@ -63,6 +64,7 @@ bool ALKitShell::postBuild()
     mRoster       = findChild<LLPanel>("kit_cast_roster");
     mTransport    = findChild<LLPanel>("kit_transport");
     mRosterOpen   = gSavedSettings.getBOOL("DirectorV2CastRosterOpen");
+    mFavorites    = ALKitQol::favoritesFromLLSD(gSavedSettings.getLLSD("DirectorFavorites"));
     buildChrome();
     mConnections.emplace_back(setPageBuiltCallback([this](const std::string& name, LLPanel* panel) { pageBuilt(name, panel); }));
     layoutChrome();
@@ -324,7 +326,12 @@ void ALKitShell::updatePips()
             if (gSavedSettings.controlExists(setting) && !gSavedSettings.getBOOL(setting))
                 off = true;
         }
-        const std::string label = mRailLabels ? mRailData[index].label + (off ? "  \xE2\x97\x8B" : "") : std::string();
+        bool changed = false;
+        for (const TabData& tab : mTabs)
+            if (tab.group == mRailData[index].group && mPageChanged[tab.group + "/" + tab.page])
+                changed = true;
+        const std::string label = mRailLabels ? mRailData[index].label + (changed ? "  \xE2\x80\xA2" : "") +
+                                                (off ? "  \xE2\x97\x8B" : "") : std::string();
         if (mRailButtons[index]->getLabelUnselected() != label)
             mRailButtons[index]->setLabelUnselected(label);
         if (mRailButtons[index]->getLabelSelected() != label)
@@ -336,7 +343,8 @@ void ALKitShell::updatePips()
     {
         const bool off =
             !tab.master_setting.empty() && gSavedSettings.controlExists(tab.master_setting) && !gSavedSettings.getBOOL(tab.master_setting);
-        const std::string label = tab.label + (off ? "  \xE2\x97\x8B" : "");
+        const bool changed = mPageChanged[tab.group + "/" + tab.page];
+        const std::string label = tab.label + (changed ? "  \xE2\x80\xA2" : "") + (off ? "  \xE2\x97\x8B" : "");
         if (tab.button->getLabelSelected() != label)
             tab.button->setLabel(label);
     }
@@ -851,6 +859,7 @@ void ALKitShell::pageBuilt(const std::string&, LLPanel* panel)
     if (!page)
         return;
     mBuiltPages[page->pageKey()] = page->getDerivedHandle<ALKitPage>();
+    refreshChangedMarkers();
     layoutChrome();
     if (page == currentKitPage())
         mHelp.showPage(page);
@@ -969,6 +978,7 @@ void ALKitShell::pageBuilt(const std::string&, LLPanel* panel)
         }
     }
     startSearchLoad();
+    rebuildQuick();
 }
 
 void ALKitShell::runSearch(const std::string& query)
@@ -977,7 +987,7 @@ void ALKitShell::runSearch(const std::string& query)
     ALKitPage* page = currentKitPage();
     if (!page)
         return;
-    if (query.empty())
+    if (query.empty() && !mChangedOnly)
     {
         page->clearSearch();
         if (mSearchPopover)
@@ -987,7 +997,17 @@ void ALKitShell::runSearch(const std::string& query)
         return;
     }
     mSearch.setCurrentPage(page->pageKey());
-    ALKitSearch::Hits hits = mSearch.query(query);
+    ALKitSearch::Hits hits = query.empty() ? mSearch.all() : mSearch.query(query);
+    if (mChangedOnly)
+        hits.erase(std::remove_if(hits.begin(), hits.end(),
+            [this](const ALKitSearch::Hit& hit)
+            {
+                if (ALKitPage* built = findBuiltPage(hit.page_key))
+                    if (ALKitRow* row = !hit.widget.empty() ? built->findRow(hit.widget) : built->findRowBySetting(hit.setting))
+                        return !row->amber();
+                LLControlVariable* control = hit.setting.empty() ? nullptr : gSavedSettings.getControl(hit.setting).get();
+                return !control || ALKitQol::valuesEqual(control->get(), control->getDefault(), 3);
+            }), hits.end());
     ALKitSearch::Hits local;
     for (ALKitSearch::Hit hit : hits)
         if (hit.page_key == page->pageKey())
@@ -1169,7 +1189,32 @@ void ALKitShell::scheduleSearchBatch()
             if (ALKitShell* shell = handle.get())
                 if (shell->mSearch.tokenizeBatch())
                     shell->scheduleSearchBatch();
+                else
+                    shell->buildChangedIndex();
         });
+}
+
+void ALKitShell::buildChangedIndex()
+{
+    std::unordered_map<std::string, bool> watched;
+    for (const ALKitSearch::Hit& hit : mSearch.all())
+        if (!hit.setting.empty())
+        {
+            std::vector<std::string>& settings = mPageSettings[hit.page_key];
+            if (std::find(settings.begin(), settings.end(), hit.setting) == settings.end())
+                settings.push_back(hit.setting);
+            if (!watched[hit.setting])
+            {
+                watched[hit.setting] = true;
+                mConnections.emplace_back(ALKitSettingWatch::instance().watch(hit.setting,
+                    [handle = getDerivedHandle<ALKitShell>()](const LLSD&, const LLSD&)
+                    {
+                        if (ALKitShell* shell = handle.get())
+                            shell->refreshChangedMarkers();
+                    }));
+            }
+        }
+    refreshChangedMarkers();
 }
 
 void ALKitShell::clearSearch()
@@ -1187,6 +1232,111 @@ void ALKitShell::clearSearch()
     mHasTopSearchHit = false;
     if (mSearchPopover)
         mSearchPopover->hide();
+}
+
+bool ALKitShell::isFavorite(const std::string& page, const std::string& widget) const
+{
+    return std::find(mFavorites.begin(), mFavorites.end(), ALKitQol::Favorite{ page, widget }) != mFavorites.end();
+}
+
+void ALKitShell::toggleFavorite(const std::string& page, const std::string& widget)
+{
+    if (page.empty() || widget.empty())
+        return;
+    const ALKitQol::Favorite key{ page, widget };
+    const auto found = std::find(mFavorites.begin(), mFavorites.end(), key);
+    if (found == mFavorites.end())
+        mFavorites.push_back(key);
+    else
+        mFavorites.erase(found);
+    gSavedSettings.setLLSD("DirectorFavorites", ALKitQol::favoritesToLLSD(mFavorites));
+    for (const auto& entry : mBuiltPages)
+        if (ALKitPage* built = entry.second.get())
+            if (ALKitRow* row = built->findRow(widget); row && built->pageKey() == page)
+                row->refreshFavorite();
+    LLHandle<ALKitShell> handle = getDerivedHandle<ALKitShell>();
+    doOnIdleOneTime([handle]() { if (ALKitShell* shell = handle.get()) shell->rebuildQuick(); });
+}
+
+void ALKitShell::rebuildQuick()
+{
+    if (mRebuildingQuick)
+        return;
+    ALKitPage* quick = findBuiltPage("quick_group/quick_tab");
+    if (!quick)
+        return;
+    ALKitCard* card = quick->findCard("quick");
+    if (!card)
+        return;
+    mRebuildingQuick = true;
+    std::vector<ALKitRow*> proxies;
+    proxies.reserve(mFavorites.size());
+    S32 index = 0;
+    for (const ALKitQol::Favorite& favorite : mFavorites)
+    {
+        ALKitPage* source_page = findBuiltPage(favorite.page);
+        if (!source_page)
+        {
+            std::string leaf = favorite.page;
+            const size_t slash = leaf.rfind('/');
+            if (slash != std::string::npos)
+                leaf = leaf.substr(slash + 1);
+            if (ALKitLazyPage* lazy = findChild<ALKitLazyPage>(leaf))
+                lazy->ensureBuilt();
+            source_page = findBuiltPage(favorite.page);
+        }
+        ALKitRow* source = source_page ? source_page->findRow(favorite.widget) : nullptr;
+        if (ALKitRow* proxy = ALKitRow::createProxy(source, "quick_proxy_" + llformat("%d", index++)))
+            proxies.push_back(proxy);
+    }
+    card->setQuickRows(std::move(proxies));
+    quick->requestLayout();
+    mRebuildingQuick = false;
+}
+
+void ALKitShell::showRowInSearch(ALKitRow* row)
+{
+    if (!row)
+        return;
+    const ALKitRowMeta meta = row->meta();
+    navigateTo(meta.page_key + "/" + meta.widget);
+    if (ALKitPage* page = currentKitPage())
+    {
+        page->setSearchText(meta.label);
+        queueSearch(meta.label);
+    }
+}
+
+void ALKitShell::refreshChangedMarkers()
+{
+    for (const auto& entry : mPageSettings)
+    {
+        bool changed = false;
+        for (const std::string& setting : entry.second)
+            if (LLControlVariable* control = gSavedSettings.getControl(setting).get())
+                if (!ALKitQol::valuesEqual(control->get(), control->getDefault(), 3))
+                {
+                    changed = true;
+                    break;
+                }
+        mPageChanged[entry.first] = changed;
+    }
+    for (const auto& entry : mBuiltPages)
+        if (ALKitPage* page = entry.second.get())
+            mPageChanged[entry.first] = mPageChanged[entry.first] || page->changed();
+    updatePips();
+}
+
+void ALKitShell::setChangedOnly(bool enabled)
+{
+    if (mChangedOnly == enabled)
+        return;
+    mChangedOnly = enabled;
+    for (const auto& entry : mBuiltPages)
+        if (ALKitPage* page = entry.second.get())
+            page->setChangedOnlyValue(enabled);
+    const std::string query = mSearch.queryText();
+    runSearch(query);
 }
 
 bool ALKitShell::closePopover()

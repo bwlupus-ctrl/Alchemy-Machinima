@@ -18,6 +18,7 @@ class ALKitPresetStrip;
 class ALKitPopover;
 class LLButton;
 class LLComboBox;
+class LLCheckBoxCtrl;
 class LLLineEditor;
 class LLTextBox;
 class ALKitScroller : public LLScrollContainer
@@ -115,6 +116,7 @@ public:
     bool               revealRow(ALKitRow*, bool);
     bool               revealCard(ALKitCard*, bool);
     void               setSearchText(const std::string&);
+    void               setChangedOnlyValue(bool);
     void               resetPage();
     bool               cycleChip(S32);
     S32                chipIndex() const { return mChipIndex; }
@@ -129,6 +131,7 @@ public:
     void               saveState();
     void               restoreState();
     bool               legacy() const { return mLegacy; }
+    bool               changed() const;
     ALKitScroller*     scroller() const { return mScroller; }
     LLPanel*           legacyHost() const { return mLegacyHost; }
     LLPanel*           pageBar() const { return mBar; }
@@ -204,6 +207,7 @@ private:
     LLButton*                                       mGateButton     = nullptr;
     LLButton*                                       mWhoChip        = nullptr;
     LLLineEditor*                                   mSearch         = nullptr;
+    LLCheckBoxCtrl*                                 mChangedOnly    = nullptr;
     LLComboBox*                                     mWhoCombo       = nullptr;
     std::unordered_map<std::string, ALKitRow*>      mRows;
     std::unordered_map<std::string, ALKitCard*>     mCards;

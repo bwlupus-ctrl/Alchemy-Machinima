@@ -4,6 +4,7 @@
 #include "alkithistory.h"
 #include "alkithelp.h"
 #include "alkitsearch.h"
+#include "alkitqol.h"
 #include "alscrollfit.h"
 #include "llframetimer.h"
 #include "lleventtimer.h"
@@ -81,6 +82,12 @@ public:
     bool                        cyclePage(S32 delta);
     bool                        cycleGroup(S32 delta);
     bool                        closePopover();
+    bool                        isFavorite(const std::string&, const std::string&) const;
+    void                        toggleFavorite(const std::string&, const std::string&);
+    void                        showRowInSearch(ALKitRow*);
+    void                        refreshChangedMarkers();
+    void                        setChangedOnly(bool);
+    bool                        changedOnly() const { return mChangedOnly; }
     void                        setOpenPopover(ALKitPopover*);
     boost::signals2::connection setPageBuiltCallback(const page_built_signal_t::slot_type& s) { return mPageBuilt.connect(s); }
     boost::signals2::connection setCastSelectionCallback(const cast_signal_t::slot_type& s) { return mCastSelection.connect(s); }
@@ -114,6 +121,8 @@ private:
     void                                                 updateSearchResults(const ALKitSearch::Hits&, ALKitPage*);
     void                                                 activateSearchResult();
     void                                                 scheduleSearchBatch();
+    void                                                 rebuildQuick();
+    void                                                 buildChangedIndex();
     std::string                                          mIndexFile;
     std::vector<RailData>                                mRailData;
     ALKitHistory                                         mHistory;
@@ -160,5 +169,10 @@ private:
     LLHandle<LLView>                                     mCurrentPage;
     std::unordered_map<std::string, LLHandle<ALKitPage>> mBuiltPages;
     std::vector<boost::signals2::scoped_connection>      mConnections;
+    std::vector<ALKitQol::Favorite>                      mFavorites;
+    std::unordered_map<std::string, bool>                mPageChanged;
+    std::unordered_map<std::string, std::vector<std::string>> mPageSettings;
+    bool                                                 mChangedOnly = false;
+    bool                                                 mRebuildingQuick = false;
 };
 #endif

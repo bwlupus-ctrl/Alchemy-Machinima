@@ -58,7 +58,7 @@ public:
     {
         Mandatory<std::string> id;
         Optional<std::string>  title, kind, badge, help, enable_widget, enable_setting, enable_tooltip, sel_label, sel_setting, link_to,
-            link_label, target, target_tab, button_label;
+            link_label, target, target_tab, button_label, copy_type;
         Optional<bool>    advanced;
         Multiple<Summary> summary;
         Params();
@@ -85,6 +85,8 @@ public:
     void                          requestLayout();
     bool                          revealRow(ALKitRow*);
     const std::vector<ALKitRow*>& rows() const { return mRows; }
+    bool                          changed() const { return mAmberCount > 0; }
+    void                          setQuickRows(std::vector<ALKitRow*> rows);
 
 protected:
     friend class LLUICtrlFactory;
@@ -102,8 +104,11 @@ private:
     void        syncSelector();
     void        updateResetColor();
     void        refreshSummary(S32);
+    void        copySettings();
+    void        pasteSettings();
+    std::string copySourceName() const;
     std::string mId, mTitle, mKind, mBadge, mBadgeTemplate, mEnableWidget, mEnableSetting, mEnableTooltip, mSelectorLabel, mSelectorSetting, mLinkTo,
-        mLinkLabel, mTarget, mTargetTab, mButtonLabel, mHelp;
+        mLinkLabel, mTarget, mTargetTab, mButtonLabel, mHelp, mCopyType;
     std::unordered_map<std::string, std::string> mBadgeSubstitutions;
     bool                                            mAdvanced = false, mMoreOpen = false, mLayoutPending = false, mBodyOpen = true,
                                                     mCodeHidden = false;
@@ -115,9 +120,11 @@ private:
     LLButton*                                       mMore          = nullptr;
     LLButton*                                       mOpen          = nullptr;
     LLButton*                                       mAction        = nullptr;
+    LLButton*                                       mMenuButton    = nullptr;
     LLComboBox*                                     mSelectorCombo = nullptr;
     LLTextBox*                                      mBodyText      = nullptr;
     LLHandle<LLContextMenu>                         mResetMenuHandle;
+    LLHandle<LLContextMenu>                         mCardMenuHandle;
     LLUIImagePtr                                    mOuterImage, mInnerImage;
     std::vector<LLButton*>                          mSegments, mViewSegments;
     std::vector<ALKitSwitch*>                       mOptionSwitches;
@@ -125,6 +132,7 @@ private:
     std::vector<std::pair<ALKitRow*, LLUICtrl*>>    mSubPresets;
     std::vector<std::pair<ALKitRow*, LLTextBox*>>   mHeadings;
     std::vector<ALKitRow*>                          mRows;
+    std::vector<ALKitRow*>                          mQuickRows;
     std::vector<ALKitOption*>                       mOptions;
     std::vector<SummaryData>                        mSummaries;
     std::vector<bool>                               mVisibility, mOptionMore;

@@ -1121,6 +1121,7 @@ set(viewer_HEADER_FILES
     alkitpage.h
     alkitpopover.h
     alkitpresets.h
+    alkitqol.h
     alkitrow.h
     alkitsearch.h
     alkitshell.h
@@ -2830,6 +2831,7 @@ if (BUILD_TESTING)
   LL_ADD_INTEGRATION_TEST(alflycamweighted "alflycamweighted.cpp;alflycamclassic.cpp" "${test_libs}" "${test_project}")
   LL_ADD_INTEGRATION_TEST(alxinputmath "" "${test_libs}" "${test_project}")
   LL_ADD_INTEGRATION_TEST(alkitmath "" "${test_libs}" "${test_project}")
+  LL_ADD_INTEGRATION_TEST(alkitqol "" "${test_libs}" "${test_project}")
 
   # ALGazeMath is deliberately header-only, so register its TUT directly
   # instead of inventing a production .cpp solely for the per-source macro.

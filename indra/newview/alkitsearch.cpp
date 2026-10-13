@@ -122,7 +122,7 @@ bool ALKitSearch::tokenizeBatch(U32 count)
         const std::vector<std::string>& fields = mPending[mPendingIndex];
         Entry                           entry;
         entry.group_key   = fields[0];
-        entry.page_key    = fields[1];
+        entry.page_key    = fields[0] + "/" + fields[1];
         entry.card_id     = fields[5];
         entry.option      = fields[7].empty() ? -1 : atoi(fields[7].c_str());
         entry.widget      = fields[8];
@@ -243,6 +243,28 @@ ALKitSearch::Hits ALKitSearch::query(const std::string& query_text) const
     {
         LL_INFOS("DirectorKit") << "KitSearch query \"" << query_text << "\" " << query_timer.getElapsedTimeF64() * 1000. << " ms "
                                 << hits.size() << LL_ENDL;
+    }
+    return hits;
+}
+
+ALKitSearch::Hits ALKitSearch::all() const
+{
+    Hits hits;
+    hits.reserve(mEntries.size());
+    for (const Entry& entry : mEntries)
+    {
+        Hit hit;
+        hit.group_key = entry.group_key;
+        hit.page_key = entry.page_key;
+        hit.card_id = entry.card_id;
+        hit.widget = entry.widget;
+        hit.setting = entry.setting;
+        hit.label = entry.label;
+        hit.path = entry.path;
+        hit.option = entry.option;
+        hit.order = entry.order;
+        hit.advanced = entry.advanced;
+        hits.push_back(std::move(hit));
     }
     return hits;
 }

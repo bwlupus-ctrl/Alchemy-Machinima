@@ -196,6 +196,7 @@ def validate_data(data: dict) -> None:
     # 2010: + 4 Light Rig 'Projector feed' combos (key/fill/rim/bg, VP6 10/12).
     # 2011: + 1 VCam Projector 'Lamp power' row.
     # 2013: + VCam camera Name and no-projector-selection hint rows (10/12 polish).
+    # Quick favorites are runtime row proxies, so they intentionally do not change this source-data count.
     if len(pages) != 35 or row_count != 2013:
         raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 35/2013")
     shortcuts: set[tuple[str, str, str]] = set()
@@ -637,6 +638,9 @@ def kit_page(group: dict, raw_page: dict, cfg: dict, source_paths: list[Path],
     for card in page.get("cards", []):
         attrs = {"name": "kc_" + str(card["id"]), "id": str(card["id"]),
                  "title": str(card.get("t", "")), "kind": str(card.get("k", "rows"))}
+        copy_type = card.get("copy_type") or cfg.get("card_copy_types", {}).get(card["id"])
+        if copy_type:
+            attrs["copy_type"] = str(copy_type)
         for src, dst in (("a", "advanced"), ("new", "badge"), ("help", "help"),
                          ("sel_label", "sel_label"), ("to", "link_to")):
             if card.get(src):
@@ -744,6 +748,16 @@ def launcher_page(group: dict, page: dict, target: dict) -> tuple[ET.Element, se
     # ALKitCard creates kc_open_launch for kind=launcher.  A serialized row
     # here would draw a second, identical button.
     return root, {"kc_open", "kc_open_launch"}
+
+
+def quick_page() -> ET.Element:
+    """Quick rows are runtime proxies; this generated shell owns their layout host."""
+    root = ET.Element("panel", {"follows": "all", "name": "quick_tab_logic"})
+    body = ET.SubElement(root, "kit_page", {"name": "quick_kit", "page": "quick_group/quick_tab",
+                         "summary": "Live shortcuts to starred Director controls."})
+    ET.SubElement(body, "kit_page.section", {"id": "quick", "label": "Quick", "cards": "quick"})
+    ET.SubElement(body, "kit_card", {"name": "kc_quick", "id": "quick", "title": "Quick", "kind": "quick"})
+    return root
 
 
 def index_bytes(data: dict, config: dict, classes: dict[str, str], note: str,
@@ -973,7 +987,14 @@ def generate(data_path: Path, config_path: Path, out_dir: Path) -> tuple[dict[Pa
         runtime_names = names if classification != "legacy" else set()
         names_text = ", ".join(sorted(runtime_names))
         report_lines.append(f"KITNAMES {raw_page['name']}:" + (" " + names_text if names_text else ""))
-    floater = floater_tree(data, page_files, v1)
+    quick = quick_page()
+    apply_kit_xui_style(quick)
+    page_files["quick_group/quick_tab"] = "panel_dpage_quick.xml"
+    outputs[out_dir / "panel_dpage_quick.xml"] = xml_bytes(quick, note)
+    floater_data = copy.deepcopy(data)
+    floater_data["groups"].insert(0, {"name": "quick_group", "label": "Quick", "icon": "camera",
+                                      "pages": [{"name": "quick_tab", "label": "Quick"}]})
+    floater = floater_tree(floater_data, page_files, v1)
     apply_kit_xui_style(floater)
     outputs[out_dir / "floater_director_v2.xml"] = xml_bytes(floater, note)
     outputs[out_dir / "director_kit_index.xml"] = index_bytes(data, config, classes, note, generated_rows)
@@ -1038,7 +1059,7 @@ def selftest(data_path: Path, config_path: Path, out_dir: Path) -> int:
         checks.append(("launcher card owns exactly one runtime button",
                        len(launcher_cards) == 1 and not list(tron.iter("kit_row"))
                        and not list(tron.iter("button"))))
-        checks.append(("35 page files", sum(path.name.startswith("panel_dpage_") for path in outputs) == 35))
+        checks.append(("36 page files including runtime Quick host", sum(path.name.startswith("panel_dpage_") for path in outputs) == 36))
         for label, ok in checks:
             print(("ok: " if ok else "FAIL: ") + label)
         return 0 if all(ok for _, ok in checks) else 1

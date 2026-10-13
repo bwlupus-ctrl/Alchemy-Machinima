@@ -23,12 +23,23 @@
 #include "lluictrlfactory.h"
 #include "llui.h"
 #include "llviewermenu.h"
+#include "llnotificationsutil.h"
+#include "llprismlens.h"
+#include "alkitqol.h"
 #include <algorithm>
 static LLDefaultChildRegistry::Register<ALKitCard>   r("kit_card");
 static LLDefaultChildRegistry::Register<ALKitOption> ro("kit_option");
 
 namespace
 {
+struct CardClipboard
+{
+    std::string type;
+    std::string source;
+    LLSD values;
+};
+CardClipboard sCardClipboard;
+
 bool rowBranchVisible(const ALKitRow* row, const ALKitCard* card)
 {
     for (const LLView* p = row->getParent(); p && p != card; p = p->getParent())
@@ -82,6 +93,7 @@ ALKitCard::Params::Params() :
     target("target", ""),
     target_tab("target_tab", ""),
     button_label("button_label", "Open"),
+    copy_type("copy_type", ""),
     advanced("advanced", false),
     summary("summary")
 {
@@ -105,6 +117,7 @@ ALKitCard::ALKitCard(const Params& p) :
     mTargetTab(p.target_tab),
     mButtonLabel(p.button_label),
     mHelp(p.help),
+    mCopyType(p.copy_type),
     mAdvanced(p.advanced),
     mOuterImage(LLUI::getUIImage("Kit_RoundRect6")),
     mInnerImage(LLUI::getUIImage("Kit_RoundRect4"))
@@ -131,6 +144,11 @@ ALKitCard::~ALKitCard()
     {
         menu->die();
         mResetMenuHandle.markDead();
+    }
+    if (LLContextMenu* menu = mCardMenuHandle.get())
+    {
+        menu->die();
+        mCardMenuHandle.markDead();
     }
 }
 
@@ -250,12 +268,13 @@ bool ALKitCard::postBuild()
         }
     }
 
-    if (mKind == "link" || mKind == "launcher")
+    if (mKind == "link" || mKind == "launcher" || mKind == "quick")
     {
         LLTextBox::Params tp;
         tp.name          = "kc_" + mId + "_body_text";
         tp.rect          = LLRect(0, 22, 200, 0);
-        tp.initial_value = mKind == "link" ? "Lives on " + mLinkLabel : mHelp;
+        tp.initial_value = mKind == "link" ? "Lives on " + mLinkLabel :
+                           mKind == "quick" ? "Star a row or use its right-click menu to add live controls here." : mHelp;
         tp.text_color    = ALKitStyle::color(ALKitStyle::MUTED);
         mBodyText        = LLUICtrlFactory::create<LLTextBox>(tp);
         addChild(mBodyText);
@@ -314,6 +333,40 @@ bool ALKitCard::postBuild()
                     row->reset();
         });
     addChild(mReset);
+
+    if (!mCopyType.empty())
+    {
+        bp.name = "kc_" + mId + "_menu";
+        bp.label = "...";
+        mMenuButton = LLUICtrlFactory::create<LLButton>(bp);
+        addChild(mMenuButton);
+        LLContextMenu::Params menu_params;
+        menu_params.name = "kc_" + mId + "_copy_menu";
+        menu_params.visible = false;
+        LLContextMenu* menu = LLUICtrlFactory::create<LLContextMenu>(menu_params);
+        mCardMenuHandle = menu->getHandle();
+        LLMenuItemCallGL::Params item;
+        item.name = "copy_settings";
+        item.label = "Copy settings";
+        item.on_click.function = [this](LLUICtrl*, const LLSD&) { copySettings(); };
+        menu->addChild(LLUICtrlFactory::create<LLMenuItemCallGL>(item));
+        item.name = "paste_settings";
+        item.label = "Paste settings";
+        item.on_click.function = [this](LLUICtrl*, const LLSD&) { pasteSettings(); };
+        menu->addChild(LLUICtrlFactory::create<LLMenuItemCallGL>(item));
+        gMenuHolder->addChild(menu);
+        mMenuButton->setCommitCallback(
+            [this](LLUICtrl* control, const LLSD&)
+            {
+                if (LLContextMenu* popup = mCardMenuHandle.get())
+                {
+                    if (LLMenuItemGL* paste = popup->findChild<LLMenuItemGL>("paste_settings"))
+                        paste->setEnabled(sCardClipboard.type == mCopyType && sCardClipboard.values.isArray());
+                    popup->buildDrawLabels();
+                    LLMenuGL::showPopup(control, popup, 0, 0);
+                }
+            });
+    }
 
     if (mKind == "selector")
     {
@@ -496,6 +549,61 @@ void ALKitCard::updateResetColor()
                                 (mAmberCount > 0 ? ALKitStyle::color(ALKitStyle::ACCENT) : ALKitStyle::color(ALKitStyle::FAINT)).get());
 }
 
+std::string ALKitCard::copySourceName() const
+{
+    if (mActiveOption >= 0 && mActiveOption < (S32)mOptions.size())
+        return mOptions[mActiveOption]->optionLabel();
+    return mBadge.empty() ? mTitle : mBadge;
+}
+
+void ALKitCard::copySettings()
+{
+    LLSD values = LLSD::emptyArray();
+    for (ALKitRow* row : mRows)
+    {
+        if (!row || !rowBranchVisible(row, this) || !row->control() ||
+            row->meta().kind == "readout" || row->meta().kind == "button")
+            continue;
+        LLSD entry = LLSD::emptyMap();
+        entry["key"] = mCopyType == "light_role" ? row->meta().label : row->meta().widget;
+        entry["value"] = row->boundValue();
+        values.append(entry);
+    }
+    sCardClipboard = { mCopyType, copySourceName(), values };
+}
+
+void ALKitCard::pasteSettings()
+{
+    if (sCardClipboard.type != mCopyType || !sCardClipboard.values.isArray())
+        return;
+    std::string page;
+    for (LLView* view = getParent(); view; view = view->getParent())
+        if (ALKitPage* owner = dynamic_cast<ALKitPage*>(view))
+        {
+            page = owner->pageKey();
+            break;
+        }
+    if (ALKitShell* shell = ALKitShell::find(this))
+        shell->history().beginGesture(ALKitHistory::MOUSE, page, "Paste " + mTitle);
+    std::unique_ptr<LLPrismLens::ScopedRevisionSignals> prism_signals;
+    if (mCopyType.compare(0, 5, "vcam_") == 0)
+        prism_signals = std::make_unique<LLPrismLens::ScopedRevisionSignals>();
+    for (ALKitRow* row : mRows)
+    {
+        if (!row || !rowBranchVisible(row, this) || !row->control())
+            continue;
+        for (LLSD::array_const_iterator it = sCardClipboard.values.beginArray(); it != sCardClipboard.values.endArray(); ++it)
+            if ((*it)["key"].asString() == (mCopyType == "light_role" ? row->meta().label : row->meta().widget) &&
+                ALKitQol::pasteTypesCompatible((*it)["value"], row->boundValue()))
+            {
+                row->setBoundValue((*it)["value"]);
+                break;
+            }
+    }
+    LLNotificationsUtil::add("SystemMessageTip",
+        LLSD().with("MESSAGE", "Pasted from " + sCardClipboard.source));
+}
+
 void ALKitCard::refreshSummary(S32 index)
 {
     if (index < 0 || index >= (S32)mSummaries.size())
@@ -577,6 +685,8 @@ S32 ALKitCard::heightForWidth(S32 w) const
         h += (S32)mSummaries.size() * ALKitStyle::ROW_H + ALKitStyle::ROW_H;
     if (mKind == "launcher")
         h += ALKitStyle::ROW_H;
+    if (mKind == "quick" && mRows.empty())
+        h += 2 * ALKitStyle::ROW_H;
     if (mAction)
         h += ALKitStyle::MORE_H;
     if (mRigMap)
@@ -637,6 +747,12 @@ void ALKitCard::layoutBody(S32 w)
         mReset->setOrigin(header_x, getRect().getHeight() - 30);
         header_x -= 24 + ALKitStyle::COL_GAP;
     }
+    if (mMenuButton)
+    {
+        mMenuButton->reshape(28, 22, true);
+        mMenuButton->setOrigin(header_x - 28, getRect().getHeight() - 29);
+        header_x -= 28 + ALKitStyle::COL_GAP;
+    }
     for (ALKitSwitch* sw : mOptionSwitches)
         if (sw)
             sw->setVisible(sw == mEnable);
@@ -672,7 +788,7 @@ void ALKitCard::layoutBody(S32 w)
         sum.valueView->setVisible(mBodyOpen);
     }
     if (mBodyText)
-        mBodyText->setVisible(mBodyOpen);
+        mBodyText->setVisible(mBodyOpen && (mKind != "quick" || mRows.empty()));
     if (mAction)
         mAction->setVisible(mBodyOpen);
     if (mRigMap)
@@ -740,7 +856,7 @@ void ALKitCard::layoutBody(S32 w)
         top -= ALKitStyle::ROW_H;
     }
 
-    if (mBodyText)
+    if (mBodyText && mBodyText->getVisible())
     {
         mBodyText->reshape(body_w, 22, true);
         mBodyText->setOrigin(ALKitStyle::CARD_PAD_L, top - 24);
@@ -818,6 +934,39 @@ void ALKitCard::reshape(S32 w, S32 h, bool parent)
 {
     LLPanel::reshape(w, h, parent);
     layoutBody(w);
+}
+
+void ALKitCard::setQuickRows(std::vector<ALKitRow*> rows)
+{
+    for (ALKitRow* row : mQuickRows)
+    {
+        if (row->amber())
+            --mAmberCount;
+        mRows.erase(std::remove(mRows.begin(), mRows.end(), row), mRows.end());
+        removeChild(row);
+        delete row;
+    }
+    mQuickRows.clear();
+    for (ALKitRow* row : rows)
+    {
+        if (!row)
+            continue;
+        addChild(row);
+        mRows.push_back(row);
+        mQuickRows.push_back(row);
+        if (row->amber())
+            ++mAmberCount;
+        mAmberConnections.emplace_back(row->setAmberCallback(
+            [this](bool on)
+            {
+                mAmberCount += on ? 1 : -1;
+                updateResetColor();
+            }));
+    }
+    if (mBodyText)
+        mBodyText->setVisible(rows.empty());
+    mVisibility.assign(mRows.size(), true);
+    requestLayout();
 }
 
 void ALKitCard::requestLayout()
@@ -963,6 +1112,12 @@ void ALKitCard::draw()
         gl_line_2d(0, getRect().getHeight() - ALKitStyle::CARD_HDR_H, getRect().getWidth(), getRect().getHeight() - ALKitStyle::CARD_HDR_H,
                    ALKitStyle::color(ALKitStyle::DIVIDER).get());
     }
+    if (mAmberCount > 0)
+    {
+        gGL.color4fv(ALKitStyle::color(ALKitStyle::ACCENT).get().mV);
+        gl_circle_2d((F32)ALKitStyle::CARD_PAD_L * .5f,
+                     (F32)getRect().getHeight() - 8.f, 3.f, 12, true);
+    }
     if (const LLFontGL* f = ALKitStyle::sansFont("Kit13", true))
     {
         const S32 title_width = llmax(20, getRect().getWidth() / 2 - ALKitStyle::CARD_PAD_L);
@@ -1005,7 +1160,7 @@ void ALKitCard::draw()
     for (child_list_const_reverse_iter_t it = getChildList()->rbegin(); it != getChildList()->rend(); ++it)
     {
         LLView*    child  = *it;
-        const bool header = child == mReset || child == mEnable || child == mOpen ||
+        const bool header = child == mReset || child == mMenuButton || child == mEnable || child == mOpen ||
                             std::find(mHeaderPresets.begin(), mHeaderPresets.end(), child) != mHeaderPresets.end() ||
                             std::find(mOptionSwitches.begin(), mOptionSwitches.end(), child) != mOptionSwitches.end() ||
                             std::find(mViewSegments.begin(), mViewSegments.end(), child) != mViewSegments.end();

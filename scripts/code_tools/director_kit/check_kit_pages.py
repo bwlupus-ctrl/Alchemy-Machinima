@@ -33,7 +33,7 @@ TOP_KEYS = {"version", "p0_pages", "launcher_targets", "parity_allow"}
 PAGE_REQUIRED = {"v1_sources", "root_class", "root_name", "preset",
                  "selector_settings", "card_enables", "add_rows", "label_names"}
 PAGE_OPTIONAL = {"undo_context", "who_adapter", "mode_adapter", "mode_on",
-                 "option_enables", "row_overrides", "chip_mode"}
+                 "option_enables", "row_overrides", "chip_mode", "card_copy_types"}
 LAUNCHER_REQUIRED = {"target", "target_tab", "button_label", "help"}
 
 
@@ -240,6 +240,14 @@ def check_page(chk, key, entry, data_pages, data_names, ps_names, pages_src_cfg)
                    "card_enables '%s' -> '%s' does not resolve" % (cid, widget))
             if c is not None and c.get("ew") and c.get("ew") != widget:
                 chk.err(where, "card_enables '%s' conflicts with data ew '%s'" % (cid, c["ew"]))
+
+    # card_copy_types: repeated-item cards that expose the shared copy/paste menu
+    copy_types = entry.get("card_copy_types", {})
+    if chk.ok(isinstance(copy_types, dict), where, "card_copy_types must be an object"):
+        for cid, copy_type in copy_types.items():
+            chk.ok(cid in cards, where, "card_copy_types card '%s' not in page" % cid)
+            chk.ok(isinstance(copy_type, str) and copy_type, where,
+                   "card_copy_types['%s'] must be a non-empty string" % cid)
 
     # option_enables: keyed by selector card, then option label
     oe = entry.get("option_enables", {})
