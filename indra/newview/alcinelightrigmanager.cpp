@@ -371,6 +371,8 @@ void ALCineLightRigParamBlob::applyRigState(ALCineLightRig& rig) const
     rig.updateProjectorFlags();
 }
 
+static ALCineLightRigManager* sCineLightRigManagerInstance = nullptr;
+
 ALCineLightRigManager::ALCineLightRigManager()
   : mInstances{
         {SLOT_SELF}, {SLOT_A}, {SLOT_B}, {SLOT_C}, {SLOT_D}}
@@ -397,11 +399,23 @@ ALCineLightRigManager::ALCineLightRigManager()
     }
 }
 
+ALCineLightRigManager::~ALCineLightRigManager()
+{
+    sCineLightRigManagerInstance = nullptr;
+}
+
 //static
 ALCineLightRigManager& ALCineLightRigManager::instance()
 {
     static ALCineLightRigManager manager;
+    sCineLightRigManagerInstance = &manager;
     return manager;
+}
+
+//static
+bool ALCineLightRigManager::instanceExists()
+{
+    return sCineLightRigManagerInstance != nullptr;
 }
 
 //static

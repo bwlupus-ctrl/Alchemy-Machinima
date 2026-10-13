@@ -1967,9 +1967,14 @@ struct PrismGateRuntime
     std::string mReason;
 };
 
+bool sPrismLensRegistryExists = false;
+
 class PrismLensRegistry
 {
 public:
+    PrismLensRegistry() { sPrismLensRegistryExists = true; }
+    ~PrismLensRegistry() { sPrismLensRegistryExists = false; }
+
     static PrismLensRegistry& instance()
     {
         static PrismLensRegistry registry;
@@ -9264,6 +9269,11 @@ bool removeCapture(const CaptureHandle& capture)
 U64 configurationRevision()
 {
     return PrismLensRegistry::instance().configurationRevision();
+}
+
+bool instanceExists()
+{
+    return sPrismLensRegistryExists;
 }
 
 U64 runtimeRevision()

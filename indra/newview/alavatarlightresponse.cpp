@@ -61,12 +61,19 @@ ALAvatarLightResponse::EKind kindFromString(const std::string& str)
 
 bool ALAvatarLightResponse::sEverActive = false;
 U32 ALAvatarLightResponse::sSilFrameMask = 0;
+static ALAvatarLightResponse* sAvatarLightResponseInstance = nullptr;
 
 // static
 ALAvatarLightResponse& ALAvatarLightResponse::instance()
 {
     static ALAvatarLightResponse sInstance;
+    sAvatarLightResponseInstance = &sInstance;
     return sInstance;
+}
+
+bool ALAvatarLightResponse::instanceExists()
+{
+    return sAvatarLightResponseInstance != nullptr;
 }
 
 ALAvatarLightResponse::ALAvatarLightResponse()
@@ -84,6 +91,11 @@ ALAvatarLightResponse::ALAvatarLightResponse()
                 mChangeSignal();
             });
     }
+}
+
+ALAvatarLightResponse::~ALAvatarLightResponse()
+{
+    sAvatarLightResponseInstance = nullptr;
 }
 
 // static

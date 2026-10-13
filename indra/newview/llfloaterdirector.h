@@ -114,14 +114,14 @@ private:
     void onClickSceneDelete();
     bool saveScene(const std::string& name);
     bool loadScene(const std::string& name, bool recovery = false);
-    LLSD captureSceneData() const;
-    bool writeSceneFile(const std::string& path, const std::string& label, bool notify_failure);
-    void initializeSceneRecovery();
-    void idleSceneRecovery(bool force_write = false);
-    void updateSceneDirty();
-    void markSceneClean();
+    static LLSD captureSceneData();
+    static bool writeSceneFile(const std::string& path, const std::string& label, bool notify_failure);
+    static void initializeSceneRecovery();
+    static void idleSceneRecovery(bool force_write = false);
+    static void updateSceneDirty();
+    static void markSceneClean();
     void retargetPathFromCastSelection();
-    void offerSceneRecovery();
+    static void offerSceneRecovery();
     static std::string recoveryPath();
     static void sceneRecoveryIdle(void*);
 
@@ -253,11 +253,11 @@ private:
     struct SceneChangeStamp
     {
         U64 mSettings = 0;
-        U64 mCast = 0;
-        U64 mPaths = 0;
-        U64 mPrism = 0;
-        U64 mRig = 0;
-        U64 mLightResponse = 0;
+        U64 mCast = 1;
+        U64 mPaths = 1;
+        U64 mPrism = 1;
+        U64 mRig = 1;
+        U64 mLightResponse = 1;
         bool operator==(const SceneChangeStamp& other) const
         {
             return mSettings == other.mSettings && mCast == other.mCast &&
@@ -266,15 +266,18 @@ private:
         }
         bool operator!=(const SceneChangeStamp& other) const { return !(*this == other); }
     };
-    SceneChangeStamp currentSceneStamp() const;
-    SceneChangeStamp mCleanSceneStamp;
-    U64           mSceneSettingsRevision = 1;
-    bool          mHaveCleanSceneStamp = false;
-    bool          mSceneDirty = false;
-    bool          mRecoveryOffered = false;
+    struct RecoveryServiceState
+    {
+        SceneChangeStamp mCleanSceneStamp;
+        U64 mSettingsRevision = 1;
+        bool mHaveCleanSceneStamp = false;
+        bool mSceneDirty = false;
+        LLFrameTimer mAutosaveTimer;
+        std::vector<boost::signals2::scoped_connection> mSettingConnections;
+    };
+    static RecoveryServiceState& recoveryServiceState();
+    static SceneChangeStamp currentSceneStamp();
     std::string   mSceneMetadataTooltip;
-    LLFrameTimer  mSceneAutosaveTimer;
-    std::vector<boost::signals2::scoped_connection> mSceneSettingConnections;
     ALPanelCineCamParams* mCineCamPanel = nullptr;  // embedded shared params panel
 
     // left-rail tabs + legend popover
@@ -389,7 +392,9 @@ private:
     LLUUID           mActorStyleRosterSelfId;
     std::string      mActorStyleSnapshot;
     LLUUID           mActorStyleShownFor;
+    LLUUID           mActorStyleLastCastSelection;
     bool             mActorStyleHadTarget = false;
+    bool             mActorStyleHaveLastCastSelection = false;
     bool             mRefreshingActorStyle = false;
 
     // Camera tab

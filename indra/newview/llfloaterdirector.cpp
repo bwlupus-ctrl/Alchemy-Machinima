@@ -97,6 +97,14 @@ constexpr char ICON_MARK[]     = "Flag";
 
 constexpr F32 PRISM_SNAPSHOT_POLL_SECONDS = 0.25f;
 
+LLHandle<LLFloater> sRecoveryDirectorHandle;
+bool sRecoveryServiceStarted = false;
+bool sRecoveryOfferActive = false;
+bool sRecoveryOfferPending = false;
+bool sRecoveryShutdownPrepared = false;
+U8 sRecoveryOfferCount = 0;
+U8 sRecoveryIdleCountdown = 0;
+
 constexpr const char* OLD_FLAT_TABS[] = {
     "move_tab", "path_tab", "ghosts_tab", "props_tab", "animate_tab", "camera_tab",
     "takes_tab", "projector_volumetrics_tab", "cine_light_rig_tab", "weather_tab",
@@ -291,6 +299,10 @@ LLFloaterDirector::LLFloaterDirector(const LLSD& key)
 
 LLFloaterDirector::~LLFloaterDirector()
 {
+    if (sRecoveryDirectorHandle.get() == this)
+    {
+        sRecoveryDirectorHandle.markDead();
+    }
     // the embedded ALPanelAnimPreview owns and releases its own dummy
 
     // AnimationExplorer idiom: menus were parented to gMenuHolder, not us
@@ -311,9 +323,12 @@ void LLFloaterDirector::onClose(bool app_quitting)
     if(mShell)if(ALKitPage* page=mShell->currentKitPage())page->saveState();
     // Closing can merely hide this reusable floater, so its child panel may
     // remain alive. Explicitly release a live bullet-time cut here as well.
-    ALDirectorSwitcher::instance().cancelEaseWorldTime();
-    ALAvatarLightResponse::instance().saveIfPersist();
-    (void)app_quitting;
+    if (!app_quitting)
+    {
+        ALDirectorSwitcher::instance().cancelEaseWorldTime();
+        if (ALAvatarLightResponse::instanceExists())
+            ALAvatarLightResponse::instance().saveIfPersist();
+    }
 }
 
 bool LLFloaterDirector::postBuild()
@@ -1474,6 +1489,12 @@ void LLFloaterDirector::bindLauncherPage(LLView* root)
 void LLFloaterDirector::onOpen(const LLSD& key)
 {
     LL_PROFILE_ZONE_NAMED_CATEGORY_UI("Director onOpen");
+    sRecoveryDirectorHandle = getHandle();
+    if (mSceneDirtyText)
+    {
+        setTextIfChanged(mSceneDirtyText,
+            recoveryServiceState().mSceneDirty ? "*" : "");
+    }
     if(mIsV2&&!gSavedSettings.getBOOL("DirectorV2RectBumped")&&
        (getRect().getWidth()<ALKitStyle::FLOATER_DEFAULT_W||getRect().getHeight()<ALKitStyle::FLOATER_DEFAULT_H))
     {
@@ -1491,7 +1512,6 @@ void LLFloaterDirector::onOpen(const LLSD& key)
         gSavedSettings.setBOOL("DirectorV2RectBumped",true);
     }
     if(mShell)mShell->startSearchLoad();
-    offerSceneRecovery();
     mLauncherClock.forceDue();
     // pick up scenes saved by an earlier session without losing the current
     // combo selection
@@ -1958,7 +1978,7 @@ void LLFloaterDirector::refreshTransport()
     {
         mSceneLoadBtn->setEnabled(!scene_sel.empty() && !naming);
         setToolTipIfChanged(mSceneLoadBtn, scene_sel.empty() ? TOOLTIP_SCENE_SELECT :
-            (mSceneDirty ? TOOLTIP_SCENE_LOAD_DIRTY : TOOLTIP_SCENE_LOAD));
+            (recoveryServiceState().mSceneDirty ? TOOLTIP_SCENE_LOAD_DIRTY : TOOLTIP_SCENE_LOAD));
     }
     mSceneDeleteBtn->setEnabled(!scene_sel.empty() && !naming);
     setToolTipIfChanged(mSceneDeleteBtn, scene_sel.empty() ? TOOLTIP_SCENE_SELECT :
@@ -2257,7 +2277,7 @@ void LLFloaterDirector::onClickSceneLoad()
     if (name.empty())
         return;
     updateSceneDirty();
-    if (!mSceneDirty)
+    if (!recoveryServiceState().mSceneDirty)
     {
         loadScene(name);
         return;
@@ -2337,16 +2357,21 @@ void LLFloaterDirector::onClickSceneDelete()
         });
 }
 
-LLSD LLFloaterDirector::captureSceneData() const
+LLSD LLFloaterDirector::captureSceneData()
 {
-    LLSD scene = LLDirectorCast::instance().sceneData();
+    LLSD scene = LLDirectorCast::instanceExists()
+        ? LLDirectorCast::instance().sceneData() : LLSD::emptyMap();
     scene["version"] = SCENE_VERSION;
-    const LLSD prism = LLPrismLens::sceneData();
-    scene["prism_captures"] = prism["prism_captures"];
-    scene["prism_displays"] = prism["prism_displays"];
-    scene["prism_projectors"] = prism["prism_projectors"];
-    scene["prism_gates"] = prism["prism_gates"];
-    scene["light_rig"] = ALCineLightRigManager::instance().sceneData();
+    if (LLPrismLens::instanceExists())
+    {
+        const LLSD prism = LLPrismLens::sceneData();
+        scene["prism_captures"] = prism["prism_captures"];
+        scene["prism_displays"] = prism["prism_displays"];
+        scene["prism_projectors"] = prism["prism_projectors"];
+        scene["prism_gates"] = prism["prism_gates"];
+    }
+    if (ALCineLightRigManager::instanceExists())
+        scene["light_rig"] = ALCineLightRigManager::instance().sceneData();
 
     // ... plus everything settings-backed
     LLSD settings = LLSD::emptyMap();
@@ -2366,9 +2391,10 @@ LLSD LLFloaterDirector::captureSceneData() const
     // in the shared params panel (stored by name; applied via the panel on load)
     static LLCachedControl<S32> cinecam_mode(gSavedSettings, "CinematicCamMode", 0);
     scene["cinecam_mode"] = (S32)cinecam_mode;
-    if (mCineCamPanel)
+    LLFloaterDirector* director = static_cast<LLFloaterDirector*>(sRecoveryDirectorHandle.get());
+    if (director && director->mCineCamPanel)
     {
-        const std::string preset = mCineCamPanel->getSelectedPresetName();
+        const std::string preset = director->mCineCamPanel->getSelectedPresetName();
         if (!preset.empty())
         {
             scene["cinecam_preset"] = preset;
@@ -2383,7 +2409,7 @@ bool LLFloaterDirector::saveScene(const std::string& name)
     if (saved)
     {
         markSceneClean();
-        mSceneAutosaveTimer.reset();
+        recoveryServiceState().mAutosaveTimer.reset();
         LLFile::remove(recoveryPath(), ENOENT);
         LL_INFOS("Director") << "Saved scene '" << name << "'" << LL_ENDL;
     }
@@ -2445,6 +2471,7 @@ bool LLFloaterDirector::writeSceneFile(const std::string& path,
     return true;
 }
 
+// ui-draw-lint: allow-function(setting-write) loadScene runs only from the Load button and the recovery Restore alert callback, never per frame
 bool LLFloaterDirector::loadScene(const std::string& name, bool recovery)
 {
     const std::string path = recovery ? recoveryPath() : scenePath(name);
@@ -2718,137 +2745,168 @@ bool LLFloaterDirector::loadScene(const std::string& name, bool recovery)
         markSceneClean();
     else
     {
-        mCleanSceneStamp = SceneChangeStamp();
-        mHaveCleanSceneStamp = true;
-        mSceneDirty = true;
+        RecoveryServiceState& service = recoveryServiceState();
+        service.mCleanSceneStamp = SceneChangeStamp();
+        service.mHaveCleanSceneStamp = true;
+        service.mSceneDirty = true;
     }
     if (mSceneDirtyText)
         setTextIfChanged(mSceneDirtyText, recovery ? "*" : "");
-    mSceneAutosaveTimer.reset();
+    recoveryServiceState().mAutosaveTimer.reset();
     if (recovery)
         LLFile::remove(recoveryPath(), ENOENT);
     return true;
 }
 
-LLFloaterDirector::SceneChangeStamp LLFloaterDirector::currentSceneStamp() const
+LLFloaterDirector::RecoveryServiceState& LLFloaterDirector::recoveryServiceState()
+{
+    static RecoveryServiceState service;
+    return service;
+}
+
+LLFloaterDirector::SceneChangeStamp LLFloaterDirector::currentSceneStamp()
 {
     SceneChangeStamp stamp;
-    stamp.mSettings = mSceneSettingsRevision;
-    stamp.mCast = LLDirectorCast::instance().getSceneRevision();
-    stamp.mPaths = LLActorMover::instance().getPathRevision();
-    stamp.mPrism = LLPrismLens::configurationRevision();
-    stamp.mRig = ALCineLightRigManager::instance().configurationRevision();
-    stamp.mLightResponse = ALAvatarLightResponse::instance().revision();
+    stamp.mSettings = recoveryServiceState().mSettingsRevision;
+    if (LLDirectorCast::instanceExists())
+        stamp.mCast = LLDirectorCast::instance().getSceneRevision();
+    if (LLActorMover::instanceExists())
+        stamp.mPaths = LLActorMover::instance().getPathRevision();
+    if (LLPrismLens::instanceExists())
+        stamp.mPrism = LLPrismLens::configurationRevision();
+    if (ALCineLightRigManager::instanceExists())
+        stamp.mRig = ALCineLightRigManager::instance().configurationRevision();
+    if (ALAvatarLightResponse::instanceExists())
+        stamp.mLightResponse = ALAvatarLightResponse::instance().revision();
     return stamp;
 }
 
 void LLFloaterDirector::initializeSceneRecovery()
 {
-    if (!mSceneSettingConnections.empty())
+    RecoveryServiceState& service = recoveryServiceState();
+    if (!service.mSettingConnections.empty())
         return;
     for (const std::string& setting : sceneSettingsList())
     {
         if (LLControlVariable* control = gSavedSettings.getControl(setting))
         {
-            mSceneSettingConnections.emplace_back(control->getSignal()->connect(
-                [this](LLControlVariable*, const LLSD&, const LLSD&)
+            service.mSettingConnections.emplace_back(control->getSignal()->connect(
+                [](LLControlVariable*, const LLSD&, const LLSD&)
                 {
-                    ++mSceneSettingsRevision;
-                    updateTransportTooltipCache();
+                    ++recoveryServiceState().mSettingsRevision;
+                    if (LLFloater* floater = sRecoveryDirectorHandle.get())
+                    {
+                        static_cast<LLFloaterDirector*>(floater)->updateTransportTooltipCache();
+                    }
                 }));
         }
     }
     if (LLControlVariable* control = gSavedSettings.getControl("CinematicCamMode"))
     {
-        mSceneSettingConnections.emplace_back(control->getSignal()->connect(
-            [this](LLControlVariable*, const LLSD&, const LLSD&)
+        service.mSettingConnections.emplace_back(control->getSignal()->connect(
+            [](LLControlVariable*, const LLSD&, const LLSD&)
             {
-                ++mSceneSettingsRevision;
+                ++recoveryServiceState().mSettingsRevision;
             }));
     }
-    updateTransportTooltipCache();
     markSceneClean();
 }
 
 void LLFloaterDirector::markSceneClean()
 {
-    mCleanSceneStamp = currentSceneStamp();
-    mHaveCleanSceneStamp = true;
-    mSceneDirty = false;
-    if (mSceneDirtyText)
-        setTextIfChanged(mSceneDirtyText, "");
+    RecoveryServiceState& service = recoveryServiceState();
+    service.mCleanSceneStamp = currentSceneStamp();
+    service.mHaveCleanSceneStamp = true;
+    service.mSceneDirty = false;
+    if (LLFloater* floater = sRecoveryDirectorHandle.get())
+    {
+        LLFloaterDirector* director = static_cast<LLFloaterDirector*>(floater);
+        if (director->mSceneDirtyText)
+            setTextIfChanged(director->mSceneDirtyText, "");
+    }
 }
 
 void LLFloaterDirector::updateSceneDirty()
 {
-    if (!mHaveCleanSceneStamp)
+    RecoveryServiceState& service = recoveryServiceState();
+    if (!service.mHaveCleanSceneStamp)
     {
         markSceneClean();
         return;
     }
-    const bool dirty = currentSceneStamp() != mCleanSceneStamp;
-    if (dirty == mSceneDirty)
+    const bool dirty = currentSceneStamp() != service.mCleanSceneStamp;
+    if (dirty == service.mSceneDirty)
         return;
-    mSceneDirty = dirty;
+    service.mSceneDirty = dirty;
     if (dirty)
-        mSceneAutosaveTimer.reset();
-    if (mSceneDirtyText)
-        setTextIfChanged(mSceneDirtyText, dirty ? "*" : "");
+        service.mAutosaveTimer.reset();
+    if (LLFloater* floater = sRecoveryDirectorHandle.get())
+    {
+        LLFloaterDirector* director = static_cast<LLFloaterDirector*>(floater);
+        if (director->mSceneDirtyText)
+            setTextIfChanged(director->mSceneDirtyText, dirty ? "*" : "");
+    }
 }
 
 void LLFloaterDirector::idleSceneRecovery(bool force_write)
 {
     updateSceneDirty();
+    RecoveryServiceState& service = recoveryServiceState();
     static LLCachedControl<S32> autosave_minutes(gSavedSettings, "DirectorAutosaveMinutes", 5);
     const S32 minutes = autosave_minutes;
-    if (!mSceneDirty || (!force_write && (minutes <= 0 ||
-        mSceneAutosaveTimer.getElapsedTimeF32() < (F32)minutes * 60.f)))
+    if (!service.mSceneDirty || (!force_write && (minutes <= 0 ||
+        service.mAutosaveTimer.getElapsedTimeF32() < (F32)minutes * 60.f)))
     {
         return;
     }
     if (writeSceneFile(recoveryPath(), "recovery", false))
         LL_INFOS("Director") << "Updated Director recovery snapshot" << LL_ENDL;
-    mSceneAutosaveTimer.reset();
+    service.mAutosaveTimer.reset();
 }
 
 void LLFloaterDirector::sceneRecoveryIdle(void*)
 {
-    if (LLFloaterDirector* director = dynamic_cast<LLFloaterDirector*>(
-            LLFloaterReg::findInstance("director")))
+    if (sRecoveryOfferPending)
     {
-        director->idleSceneRecovery();
+        sRecoveryOfferPending = false;
+        offerSceneRecovery();
     }
+
+    // Dirty-stamp polling does not need display-frame precision. Keep the
+    // permanent login callback to two integer operations on ordinary frames.
+    if (++sRecoveryIdleCountdown < 60)
+        return;
+    sRecoveryIdleCountdown = 0;
+    idleSceneRecovery();
 }
 
 void LLFloaterDirector::startRecoveryService()
 {
-    static bool started = false;
-    if (started)
+    if (sRecoveryServiceStarted)
         return;
-    LLFloaterDirector* director = dynamic_cast<LLFloaterDirector*>(
-        LLFloaterReg::getInstance("director"));
-    if (!director)
-        return;
-    started = true;
-    director->initializeSceneRecovery();
-    director->offerSceneRecovery();
+    sRecoveryServiceStarted = true;
+    initializeSceneRecovery();
+    sRecoveryOfferPending = true;
     gIdleCallbacks.addFunction(&LLFloaterDirector::sceneRecoveryIdle, nullptr);
 }
 
 void LLFloaterDirector::prepareRecoveryForShutdown()
 {
-    if (LLFloaterDirector* director = dynamic_cast<LLFloaterDirector*>(
-            LLFloaterReg::findInstance("director")))
-    {
-        director->idleSceneRecovery(true);
-    }
+    if (!sRecoveryServiceStarted || sRecoveryShutdownPrepared)
+        return;
+    sRecoveryShutdownPrepared = true;
+
+    updateSceneDirty();
+    if (recoveryServiceState().mSceneDirty)
+        idleSceneRecovery(true);
+    else
+        removeRecoveryFile();
 }
 
 void LLFloaterDirector::offerSceneRecovery()
 {
-    if (mRecoveryOffered)
+    if (sRecoveryOfferActive || sRecoveryOfferCount >= 2)
         return;
-    mRecoveryOffered = true;
     const std::string path = recoveryPath();
     if (!gDirUtilp->fileExists(path))
         return;
@@ -2885,25 +2943,28 @@ void LLFloaterDirector::offerSceneRecovery()
     }
     LLSD args;
     args["TIME"] = saved;
-    LLHandle<LLFloater> handle = getHandle();
+    sRecoveryOfferActive = true;
+    ++sRecoveryOfferCount;
     LLNotificationsUtil::add("DirectorRestoreRecovery", args, LLSD(),
-        [handle, path](const LLSD& notification, const LLSD& response)
+        [path](const LLSD& notification, const LLSD& response)
         {
+            sRecoveryOfferActive = false;
             const S32 option = LLNotificationsUtil::getSelectedOption(notification, response);
             if (option == 0)
             {
-                if (LLFloaterDirector* self = static_cast<LLFloaterDirector*>(handle.get()))
+                if (LLFloaterDirector* self =
+                        LLFloaterReg::showTypedInstance<LLFloaterDirector>("director"))
                     self->loadScene("recovery", true);
             }
             else if (option == 1)
             {
                 LLFile::remove(path, ENOENT);
             }
-            else if (LLFloaterDirector* self = static_cast<LLFloaterDirector*>(handle.get()))
+            else if (sRecoveryOfferCount < 2)
             {
-                // Window close is neither Restore nor Discard. Leave the file
-                // intact and permit a later Director open to offer it again.
-                self->mRecoveryOffered = false;
+                // Window close is neither Restore nor Discard. Re-offer once
+                // on the next idle, even when Director has never been opened.
+                sRecoveryOfferPending = true;
             }
         });
 }
@@ -3138,8 +3199,8 @@ void LLFloaterDirector::retargetPathFromCastSelection()
         return;
     if (mShell)
     {
-        ALKitPage* page = mShell->currentKitPage();
-        if (page && page->pageKey() == "cast_group/path_tab" && page->whoPinned())
+        ALKitPage* page = mShell->findBuiltPage("cast_group/path_tab");
+        if (page && page->whoPinned())
             return;
     }
     mPathPanel->revealFor(firstSelectedCastId());
@@ -3667,6 +3728,8 @@ LLUUID LLFloaterDirector::actorStyleTargetId() const
 
 void LLFloaterDirector::onActorStyleTargetChanged()
 {
+    if (mRefreshingActorStyle)
+        return;
     // Null is both a legitimate target (You) and LLUUID's empty value, so the
     // separate mActorStyleHadTarget flag distinguishes it from no combo row.
     mActorStyleHadTarget = false;
@@ -3847,12 +3910,27 @@ void LLFloaterDirector::refreshActorStyleTab()
         ALKitPage* page = mShell->currentKitPage();
         if (page && page->pageKey() == "look_group/actor_style_tab")
         {
-            const LLUUID desired = page->whoPinned()
-                ? page->actorTarget() : firstSelectedCastId();
-            if (mActorStyleTarget->getSelectedValue().asUUID() != desired)
+            const bool pinned = page->whoPinned();
+            const LLUUID cast_selection = firstSelectedCastId();
+            const bool selection_changed = !mActorStyleHaveLastCastSelection ||
+                cast_selection != mActorStyleLastCastSelection;
+            if (!pinned && selection_changed)
+            {
+                mActorStyleHaveLastCastSelection = true;
+                mActorStyleLastCastSelection = cast_selection;
+                mRefreshingActorStyle = true;
+                if (mActorStyleTarget->setSelectedByValue(LLSD(cast_selection), true))
+                {
+                    mActorStyleHadTarget = false;
+                    mActorStyleSnapshot.clear();
+                }
+                mRefreshingActorStyle = false;
+            }
+            else if (pinned &&
+                     mActorStyleTarget->getSelectedValue().asUUID() != page->actorTarget())
             {
                 mRefreshingActorStyle = true;
-                if (mActorStyleTarget->setSelectedByValue(LLSD(desired), true))
+                if (mActorStyleTarget->setSelectedByValue(LLSD(page->actorTarget()), true))
                 {
                     mActorStyleHadTarget = false;
                     mActorStyleSnapshot.clear();

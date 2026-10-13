@@ -1012,10 +1012,18 @@ LLDirectorCast::GazeInfluenceKeyList readGazeInfluenceKeys(const LLSD& array)
 } // anonymous namespace
 
 // ---------------------------------------------------------------------------
+static LLDirectorCast* sDirectorCastInstance = nullptr;
+
 LLDirectorCast& LLDirectorCast::instance()
 {
     static LLDirectorCast sInstance;
+    sDirectorCastInstance = &sInstance;
     return sInstance;
+}
+
+bool LLDirectorCast::instanceExists()
+{
+    return sDirectorCastInstance != nullptr;
 }
 
 // static
@@ -1046,6 +1054,11 @@ LLUUID LLDirectorCast::canonicalActorId(const LLUUID& id)
 LLDirectorCast::LLDirectorCast()
 {
     mSelfGazeTarget.mMode = LLActorMover::GazeTarget::CAMERA;
+}
+
+LLDirectorCast::~LLDirectorCast()
+{
+    sDirectorCastInstance = nullptr;
 }
 
 void LLDirectorCast::touchScene()

@@ -1283,6 +1283,7 @@ public:
     };
 
     static ALCineLightRigManager& instance();
+    static bool instanceExists();
 
     // [ActorMask] Frozen renderer/diagnostics API. Consumers skip dead avatars.
     struct ActorOnlyRecipient
@@ -1342,6 +1343,7 @@ public:
 
 private:
     ALCineLightRigManager();
+    ~ALCineLightRigManager();
 
     // [ActorMask] Rebuilt after rig evaluation, before the Live probe update.
     void rebuildActorOnlyRegistry();

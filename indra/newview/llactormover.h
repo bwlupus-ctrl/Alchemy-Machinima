@@ -59,6 +59,7 @@ class LLActorMover
 {
 public:
     static LLActorMover& instance();
+    static bool instanceExists();
 
     // Public model-side witness for Director functional consumers.  This is
     // the configured bearing read by start() and the heading-preview renderer,
@@ -1105,6 +1106,7 @@ public:
 
 private:
     LLActorMover() = default;
+    ~LLActorMover();
 
     struct LocalMotionHandle
     {

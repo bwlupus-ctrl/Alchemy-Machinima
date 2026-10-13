@@ -1678,10 +1678,23 @@ void LLActorMover::Path::evalAtDistance(F32 d, LLVector3d& pos, LLVector3d& tang
 }
 
 // ---------------------------------------------------------------------------
+static LLActorMover* sActorMoverInstance = nullptr;
+
 LLActorMover& LLActorMover::instance()
 {
     static LLActorMover sInstance;
+    sActorMoverInstance = &sInstance;
     return sInstance;
+}
+
+bool LLActorMover::instanceExists()
+{
+    return sActorMoverInstance != nullptr;
+}
+
+LLActorMover::~LLActorMover()
+{
+    sActorMoverInstance = nullptr;
 }
 
 // ---------------------------------------------------------------------------

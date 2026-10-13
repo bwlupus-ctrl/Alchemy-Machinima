@@ -1840,8 +1840,6 @@ void LLAppViewer::flushLFSIO()
 
 bool LLAppViewer::cleanup()
 {
-    if (!isError())
-        LLFloaterDirector::prepareRecoveryForShutdown();
     // [XInputRumble] The main loop no longer advances patterns; stop the pad now,
     // not when the joystick is terminated much later in cleanup.
     if (LLViewerJoystick::instanceExists()) LLViewerJoystick::getInstance()->stopRumble(true);
@@ -4456,11 +4454,15 @@ void LLAppViewer::removeDumpDir()
 
 void LLAppViewer::forceQuit()
 {
+    if (!isError())
+        LLFloaterDirector::prepareRecoveryForShutdown();
     LLApp::setQuitting();
 }
 
 void LLAppViewer::fastQuit(S32 error_code)
 {
+    if (!isError())
+        LLFloaterDirector::prepareRecoveryForShutdown();
     // [XInputRumble] _exit below skips LLViewerJoystick::terminate.
     if (LLViewerJoystick::instanceExists()) LLViewerJoystick::getInstance()->stopRumble(true);
     // finish pending transfers
@@ -4480,6 +4482,10 @@ void LLAppViewer::fastQuit(S32 error_code)
 void LLAppViewer::requestQuit()
 {
     LL_INFOS() << "requestQuit" << LL_ENDL;
+
+    // Final recovery capture belongs before closeAllChildren() and the logout
+    // teardown, while Director's model/UI dependencies are known to be alive.
+    LLFloaterDirector::prepareRecoveryForShutdown();
 
     LLViewerRegion* region = gAgent.getRegion();
 

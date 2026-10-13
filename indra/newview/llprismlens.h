@@ -1175,6 +1175,7 @@ bool removeDisplay(const DisplayHandle& binding,
                    std::string* reason = nullptr);
 bool removeCapture(const CaptureHandle& capture);
 U64 configurationRevision();
+bool instanceExists();
 U64 runtimeRevision();
 U64 performanceRevision();
 RegistrySnapshot registrySnapshot();

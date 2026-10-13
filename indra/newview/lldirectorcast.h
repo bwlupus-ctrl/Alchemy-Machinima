@@ -50,6 +50,7 @@ class LLEventTimer;
 class LLDirectorCast
 {
 public:
+    static bool instanceExists();
     enum EGazeCueStyle : S32
     {
         GAZE_CUE_STYLE_DEFAULT = 0,
@@ -438,6 +439,7 @@ public:
 
 private:
     LLDirectorCast();
+    ~LLDirectorCast();
 
     void fireAction();
     void cancelCountdown();

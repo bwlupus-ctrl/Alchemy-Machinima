@@ -77,6 +77,7 @@ public:
     static U32 sSilFrameMask;
 
     static ALAvatarLightResponse& instance();
+    static bool instanceExists();
 
     // ---- target identity (design section 3) ----
     // self -> gAgentID; ghost -> Studio instance id; control avatar -> actor owner id; else getID().
@@ -140,6 +141,7 @@ public:
 
 private:
     ALAvatarLightResponse();
+    ~ALAvatarLightResponse();
     ALAvatarLightResponse(const ALAvatarLightResponse&) = delete;
     ALAvatarLightResponse& operator=(const ALAvatarLightResponse&) = delete;
 
