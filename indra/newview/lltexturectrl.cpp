@@ -1446,8 +1446,7 @@ void LLFloaterTexturePicker::refreshVCamList()
         const LLPrismLens::CaptureDefinition& capture = snapshot.mCaptures[index];
         items[index].mCapture = capture.mHandle;
         items[index].mPublication = preview.tileState(capture.mHandle);
-        items[index].mLabel = llformat("Cam %u - %s", capture.mSlot + 1,
-                                      capture.mLabel.c_str());
+        items[index].mLabel = LLPrismLens::captureDisplayLabel(capture);
         if (capture.mHandle.mId == mVCamCaptureID)
         {
             mVCamPreviewPublication = items[index].mPublication;
@@ -1471,8 +1470,8 @@ void LLFloaterTexturePicker::refreshVCamList()
             }
             const std::string dimensions = width > 0 && height > 0
                 ? llformat("%u x %u", width, height) : "? x ?";
-            mVCamPreviewLabel = llformat("Cam %u - %s - %s - %s",
-                capture.mSlot + 1, capture.mLabel.c_str(),
+            mVCamPreviewLabel = llformat("%s - %s - %s",
+                LLPrismLens::captureDisplayLabel(capture).c_str(),
                 dimensions.c_str(), state);
         }
     }

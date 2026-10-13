@@ -15,6 +15,7 @@
 #include <unordered_map>
 #include <vector>
 
+class ALKitCard;
 class ALKitPage;
 class ALKitRow;
 class ALVCamMonitorStrip;
@@ -24,6 +25,7 @@ class ALVCamCameraSelector;
 class ALVCamFaceList;
 class ALVCamProjectorList;
 class LLContextMenu;
+class LLLineEditor;
 class LLUICtrl;
 
 class ALPanelDirectorVCam final : public LLPanel
@@ -86,9 +88,13 @@ private:
     ALVCamCameraSelector* mCameraSelector = nullptr;
     ALVCamFaceList* mFaceList = nullptr;
     ALVCamProjectorList* mProjectorList = nullptr;
+    LLLineEditor* mCameraName = nullptr;
     std::unordered_map<std::string, LLUICtrl*> mControls;
+    std::vector<ALKitCard*> mCards;
     std::array<LLUICtrl*, PROJ_CONTROL_COUNT> mProjectorControls{};
     std::unordered_map<std::string, ALKitRow*> mRows;
+    std::unordered_map<LLUUID, std::string> mProjectorNames;
+    std::array<std::string, LLPrismLens::MAX_CAPTURES> mCameraLabels;
     std::vector<boost::signals2::scoped_connection> mConnections;
     LLHandle<LLContextMenu> mMonitorMenu;
     LLPrismLens::CaptureHandle mMenuCapture;
@@ -98,6 +104,7 @@ private:
     LLPrismLens::EFitMode mNewFaceFit = LLPrismLens::EFitMode::FIT;
     bool mCompact = false;
     U32 mLargePage = 0;
+    U64 mCameraLabelRevision = 0;
     bool mCustomAspect = false;
     bool mCustomScreenAspect = false;
     bool mRefreshing = false;

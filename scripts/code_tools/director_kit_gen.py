@@ -195,8 +195,9 @@ def validate_data(data: dict) -> None:
     # 2006: + 46 VCam Projector card rows (framing/light/film/signal/TV, 10/12).
     # 2010: + 4 Light Rig 'Projector feed' combos (key/fill/rim/bg, VP6 10/12).
     # 2011: + 1 VCam Projector 'Lamp power' row.
-    if len(pages) != 35 or row_count != 2011:
-        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 35/2011")
+    # 2013: + VCam camera Name and no-projector-selection hint rows (10/12 polish).
+    if len(pages) != 35 or row_count != 2013:
+        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 35/2013")
     shortcuts: set[tuple[str, str, str]] = set()
     for _group, page in pages:
         for card in page.get("cards", []):

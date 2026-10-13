@@ -326,7 +326,7 @@ void ALVCamMonitorStrip::updateTileText(
         cache.mMonitorDisplayVirtual != tile.mMonitorDisplayVirtual;
 
     if (name_changed)
-        cache.mName = llformat("Cam %u - %s", slot + 1, tile.mLabel.c_str());
+        cache.mName = llformat("CAM %u - %s", slot + 1, tile.mLabel.c_str());
     if (info_overlay)
     {
         if (info_changed)
@@ -834,7 +834,8 @@ void ALVCamCameraSelector::draw()
         const bool selected = sameCapture(mItems[i].mHandle, mSelected);
         LLRect rect(i * width, getRect().getHeight(), (i + 1) * width - 3, 0);
         gl_rect_2d(rect, selected ? mAccentColor : mBorderColor, false);
-        drawText(mFont, mItems[i].mLabel, rect.mLeft + 5, 8, mTextColor);
+        drawText(mFont, mItems[i].mLabel, rect.mLeft + 5, 8, mTextColor,
+                 llmax(1, rect.getWidth() - 10));
     }
     LLUICtrl::draw();
 }

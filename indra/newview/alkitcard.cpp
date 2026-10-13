@@ -93,6 +93,7 @@ ALKitCard::ALKitCard(const Params& p) :
     mTitle(p.title),
     mKind(p.kind),
     mBadge(p.badge),
+    mBadgeTemplate(p.badge),
     mEnableWidget(p.enable_widget),
     mEnableSetting(p.enable_setting),
     mEnableTooltip(p.enable_tooltip),
@@ -850,6 +851,25 @@ bool ALKitCard::setBadge(const std::string& badge)
     mBadge = badge;
     requestLayout();
     return true;
+}
+
+bool ALKitCard::setBadgePlaceholder(const std::string& placeholder,
+                                    const std::string& value)
+{
+    mBadgeSubstitutions[placeholder] = value;
+    std::string badge = mBadgeTemplate;
+    for (const auto& substitution : mBadgeSubstitutions)
+    {
+        std::string::size_type offset = 0;
+        while ((offset = badge.find(substitution.first, offset)) !=
+               std::string::npos)
+        {
+            badge.replace(offset, substitution.first.size(),
+                          substitution.second);
+            offset += substitution.second.size();
+        }
+    }
+    return setBadge(badge);
 }
 
 bool ALKitCard::setCodeVisible(bool visible)

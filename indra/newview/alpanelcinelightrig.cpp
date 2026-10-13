@@ -1198,13 +1198,12 @@ void ALPanelCineLightRig::syncProjectorFeeds(bool force)
         ALKitRow::setControlVisible(combo, camera_count != 0);
         combo->removeall();
         combo->add("None", LLUUID::null);
-        U32 camera_ordinal = 0;
         for (U32 index = 0; index < snapshot.mCaptureCount; ++index)
         {
             const LLPrismLens::CaptureDefinition& capture =
                 snapshot.mCaptures[index];
             if (capture.mMode == LLPrismLens::ECaptureMode::CAMERA_FEED)
-                combo->add(llformat("Cam %u", ++camera_ordinal),
+                combo->add(LLPrismLens::captureDisplayLabel(capture),
                            capture.mHandle.mId);
         }
         LLUUID selected;

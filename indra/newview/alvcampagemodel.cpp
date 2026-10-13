@@ -129,9 +129,25 @@ void ALVCamPageModel::onIdleRefresh(const std::weak_ptr<bool>& alive)
 
 void ALVCamPageModel::refreshNow(U32 dirty)
 {
+    LLPrismLens::ProjectorHandle added_projector;
     if (dirty & (DIRTY_CONFIGURATION | DIRTY_RUNTIME))
     {
-        mRegistry = LLPrismLens::registrySnapshot();
+        const LLPrismLens::RegistrySnapshot fresh = LLPrismLens::registrySnapshot();
+        if (dirty & DIRTY_CONFIGURATION)
+            for (U32 index = 0; index < fresh.mProjectorCount; ++index)
+            {
+                bool known = false;
+                for (U32 old_index = 0; old_index < mRegistry.mProjectorCount;
+                     ++old_index)
+                    if (sameProjector(fresh.mProjectors[index].mHandle,
+                                      mRegistry.mProjectors[old_index].mHandle))
+                    {
+                        known = true;
+                        break;
+                    }
+                if (!known) added_projector = fresh.mProjectors[index].mHandle;
+            }
+        mRegistry = fresh;
         mGate = LLPrismLens::gateSnapshot();
     }
     if (dirty & DIRTY_PERFORMANCE)
@@ -157,6 +173,26 @@ void ALVCamPageModel::refreshNow(U32 dirty)
         if (!projector || (mSelectedCapture.mId.notNull() &&
                            !sameCapture(projector->mCapture, mSelectedCapture)))
             mSelectedProjector = LLPrismLens::ProjectorHandle();
+    }
+    if (added_projector.mId.notNull())
+    {
+        const LLPrismLens::ProjectorDefinition* added = findProjector(added_projector);
+        if (added && mSelectedCapture.mId.notNull() &&
+            sameCapture(added->mCapture, mSelectedCapture))
+            mSelectedProjector = added_projector;
+    }
+    if (mSelectedProjector.mId.isNull() && mSelectedCapture.mId.notNull())
+    {
+        U32 projector_count = 0;
+        LLPrismLens::ProjectorHandle only_projector;
+        for (U32 index = 0; index < mRegistry.mProjectorCount; ++index)
+            if (sameCapture(mRegistry.mProjectors[index].mCapture,
+                            mSelectedCapture))
+            {
+                only_projector = mRegistry.mProjectors[index].mHandle;
+                ++projector_count;
+            }
+        if (projector_count == 1) mSelectedProjector = only_projector;
     }
     for (U32 slot = 0; slot < LLPrismLens::MAX_CAPTURES; ++slot)
     {
@@ -212,6 +248,15 @@ void ALVCamPageModel::setSelectedCapture(
     mSelectedCapture = capture;
     mSelectedDisplay = LLPrismLens::DisplayHandle();
     mSelectedProjector = LLPrismLens::ProjectorHandle();
+    U32 projector_count = 0;
+    LLPrismLens::ProjectorHandle only_projector;
+    for (U32 index = 0; index < mRegistry.mProjectorCount; ++index)
+        if (sameCapture(mRegistry.mProjectors[index].mCapture, capture))
+        {
+            only_projector = mRegistry.mProjectors[index].mHandle;
+            ++projector_count;
+        }
+    if (projector_count == 1) mSelectedProjector = only_projector;
     markDirty(DIRTY_SELECTION);
 }
 

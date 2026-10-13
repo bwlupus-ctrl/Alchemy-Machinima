@@ -10,10 +10,12 @@
 #include "llmath.h"
 #include "llquaternion.h"
 #include "llsd.h"
+#include "llstring.h"
 #include "lluuid.h"
 #include "v3color.h"
 #include "v3math.h"
 
+#include <algorithm>
 #include <array>
 #include <boost/signals2/connection.hpp>
 #include <cmath>
@@ -737,6 +739,20 @@ struct CaptureDefinition
     U32 mDisplayCount = 0;
     U32 mProjectorCount = 0;
 };
+
+std::string captureDisplayLabel(const CaptureDefinition& capture);
+inline std::string normalizeCaptureLabel(const std::string& value,
+                                         const std::string& default_label)
+{
+    std::string label = wstring_to_utf8str(utf8str_to_wstring(value));
+    label.erase(std::remove_if(label.begin(), label.end(), [](unsigned char c)
+    {
+        return c < 0x20 || c == 0x7f;
+    }), label.end());
+    label = utf8str_trim(label);
+    label = utf8str_symbol_truncate(label, 32);
+    return label.empty() ? default_label : label;
+}
 
 struct DisplayDefinition
 {

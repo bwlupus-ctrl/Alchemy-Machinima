@@ -322,4 +322,19 @@ void prism_projector_object::test<19>()
     ensure("old scenes default to a normal projector",
            !LLPrismLens::localProjectorFromLLSD(LLSD::emptyMap()));
 }
+
+template<> template<>
+void prism_projector_object::test<20>()
+{
+    set_test_name("camera label normalization supports scene-safe renames");
+    ensure_equals("surrounding whitespace is trimmed",
+        LLPrismLens::normalizeCaptureLabel("  Close Up  ", "Virtual 1"),
+        std::string("Close Up"));
+    ensure_equals("empty input restores the supplied scene default",
+        LLPrismLens::normalizeCaptureLabel(" \t ", "Virtual 1"),
+        std::string("Virtual 1"));
+    ensure_equals("names are capped at 32 characters",
+        LLPrismLens::normalizeCaptureLabel(std::string(40, 'x'), "Virtual 1"),
+        std::string(32, 'x'));
+}
 }

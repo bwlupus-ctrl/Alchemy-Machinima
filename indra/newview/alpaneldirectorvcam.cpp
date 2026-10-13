@@ -11,6 +11,7 @@
 #include "alkitpage.h"
 #include "alkitrow.h"
 #include "alkitswitch.h"
+#include "alobjectproperties.h"
 #include "aluirefresh.h"
 #include "alvcambonepov.h"
 #include "alvcammonitorstrip.h"
@@ -19,6 +20,8 @@
 #include "llcombobox.h"
 #include "llcontrol.h"
 #include "llfloaterreg.h"
+#include "llfocusmgr.h"
+#include "lllineeditor.h"
 #include "llmenugl.h"
 #include "llnotificationsutil.h"
 #include "llradiogroup.h"
@@ -27,6 +30,7 @@
 #include "lluictrlfactory.h"
 #include "llviewermenu.h"
 #include "llviewercontrol.h"
+#include "llviewerobject.h"
 #include "llviewerobjectlist.h"
 
 #include <algorithm>
@@ -83,6 +87,35 @@ std::string displayName(const LLPrismLens::DisplayDefinition& display, U32 index
         : llformat("Prim face %u", index + 1);
 }
 
+std::string projectorName(const LLPrismLens::ProjectorDefinition& projector)
+{
+    static const char* const RIG_ROLES[] = { "Key", "Fill", "Rim", "BG" };
+    if (projector.mTarget == LLPrismLens::EProjectorTarget::RIG_LIGHT)
+    {
+        const char* role = projector.mRigLight < 4
+            ? RIG_ROLES[projector.mRigLight] : "Light";
+        return llformat("Rig %u %s", projector.mRigSlot + 1, role);
+    }
+
+    LLViewerObject* object = gObjectList.findObject(projector.mObjectId);
+    if (!object) return "Light (waiting)";
+    const ALObjectPropertiesCache::ServerProps* properties =
+        ALObjectPropertiesCache::instance().get(projector.mObjectId);
+    if (properties && !properties->mName.empty()) return properties->mName;
+    LLSelectNode* node = LLSelectMgr::getInstance()->getSelection()->findNode(object);
+    if (node && !node->mName.empty()) return node->mName;
+    const LLVector3 position = object->getPositionRegion();
+    return llformat("Light at %.1f, %.1f, %.1f", position.mV[VX],
+                    position.mV[VY], position.mV[VZ]);
+}
+
+const char* projectorState(const LLPrismLens::ProjectorDefinition& projector)
+{
+    if (projector.mRuntime.mHealth != LLPrismLens::EDisplayHealth::READY)
+        return "Waiting";
+    return projector.mLocalProjector ? "Local projector" : "Live";
+}
+
 F32 ratioFromValue(const LLSD& value, F32 fallback)
 {
     const F32 ratio = static_cast<F32>(value.asReal());
@@ -103,6 +136,8 @@ ALPanelDirectorVCam::~ALPanelDirectorVCam()
 void ALPanelDirectorVCam::collectControls(LLView* root)
 {
     if (!root) return;
+    if (ALKitCard* card = dynamic_cast<ALKitCard*>(root))
+        mCards.push_back(card);
     if (ALKitRow* kit_row = dynamic_cast<ALKitRow*>(root))
         mRows[kit_row->meta().widget] = kit_row;
     if (LLUICtrl* control_ptr = dynamic_cast<LLUICtrl*>(root))
@@ -146,6 +181,9 @@ bool ALPanelDirectorVCam::postBuild()
     mCameraSelector = findChild<ALVCamCameraSelector>("vc_camera_selector");
     mFaceList = findChild<ALVCamFaceList>("vc_face_list");
     mProjectorList = findChild<ALVCamProjectorList>("vc_projector_list");
+    mCameraName = dynamic_cast<LLLineEditor*>(control("vc_camera_name"));
+    if (mCameraName)
+        mCameraName->setMaxTextLength(128); // Core normalization caps at 32 Unicode characters.
 
     if (mKitPage)
     {
@@ -172,6 +210,7 @@ bool ALPanelDirectorVCam::postBuild()
         {"vc_gate_note", "Gate program follows the Director switcher."},
         {"vc_raw_note", "Raw camera output is shown before face mapping."},
         {"vc_rate_note", "Lower picture FPS saves auxiliary scene renders."},
+        {"vc_projector_hint", "Select a projector to edit its look"},
         {"vc_performance_note_1", "Adaptive protects the main view and fairly shares the capture budget."},
         {"vc_performance_note_2", "Presented FPS is measured output; the target is not a guarantee."},
         {"vc_performance_note_3", "One camera feeding many faces still renders its scene once."}
@@ -181,6 +220,19 @@ bool ALPanelDirectorVCam::postBuild()
 
     mConnections.emplace_back(mModel.connectChanged(
         [this](U32 dirty) { onModelChanged(dirty); }));
+    mConnections.emplace_back(
+        ALObjectPropertiesCache::instance().setChangeCallback(
+            [this](const LLUUID& object_id)
+            {
+                if (!mModel.pageVisible()) return;
+                for (U32 index = 0; index < mModel.registry().mProjectorCount;
+                     ++index)
+                    if (mModel.registry().mProjectors[index].mObjectId == object_id)
+                    {
+                        refresh(ALVCamPageModel::DIRTY_SELECTION);
+                        break;
+                    }
+            }));
     const char* settings[] = {
         "PrismLensEnabled", "PrismMonitorPreviewsEnabled", "PrismMonitorInfoOverlay",
         "PrismMonitorPreviewFPS", "PrismLensZoom",
@@ -317,6 +369,16 @@ void ALPanelDirectorVCam::refresh(U32 dirty)
     const LLPrismLens::DisplayDefinition* display = selectedDisplay();
     const LLPrismLens::ProjectorDefinition* selected_projector = selectedProjector();
     const LLPrismLens::PerformanceSnapshot& perf = mModel.performance();
+    if (mCameraLabelRevision != registry.mConfigurationRevision)
+    {
+        mCameraLabels.fill(std::string());
+        for (U32 index = 0; index < registry.mCaptureCount; ++index)
+        {
+            const LLPrismLens::CaptureDefinition& item = registry.mCaptures[index];
+            mCameraLabels[item.mSlot] = LLPrismLens::captureDisplayLabel(item);
+        }
+        mCameraLabelRevision = registry.mConfigurationRevision;
+    }
 
     U32 visible_faces = 0;
     for (U32 i = 0; i < registry.mDisplayCount; ++i)
@@ -343,9 +405,7 @@ void ALPanelDirectorVCam::refresh(U32 dirty)
     {
         const LLPrismLens::CaptureDefinition& item = registry.mCaptures[i];
         monitor_slot_span = llmax(monitor_slot_span, item.mSlot + 1);
-        cameras.push_back({item.mHandle, llformat("%s Cam %u",
-                           item.mRuntime.mActivity == LLPrismLens::EActivityState::LIVE ? "*" : "o",
-                           item.mSlot + 1),
+        cameras.push_back({item.mHandle, mCameraLabels[item.mSlot],
                            item.mRuntime.mActivity == LLPrismLens::EActivityState::LIVE});
         ALVCamMonitorStrip::Tile& tile = tiles[item.mSlot];
         tile.mCapture = item.mHandle;
@@ -400,38 +460,44 @@ void ALPanelDirectorVCam::refresh(U32 dirty)
     }
     mFaceList->setItems(faces);
     mFaceList->setMovePick(mMoveTargetCapture.mId.notNull());
+    if (dirty & (ALVCamPageModel::DIRTY_CONFIGURATION |
+                 ALVCamPageModel::DIRTY_SELECTION))
+        mProjectorNames.clear();
     std::vector<ALVCamProjectorList::Item> projectors;
-    U32 selected_projector_number = 0;
+    std::string selected_projector_name;
     if (capture)
         for (U32 index = 0; index < registry.mProjectorCount; ++index)
         {
             const LLPrismLens::ProjectorDefinition& projector = registry.mProjectors[index];
             if (!sameCapture(projector.mCapture, capture->mHandle)) continue;
-            const std::string name = projector.mTarget == LLPrismLens::EProjectorTarget::OBJECT
-                ? ("Projector " + projector.mObjectId.asString().substr(0, 8))
-                : llformat("Rig %u light %u", projector.mRigSlot + 1,
-                           projector.mRigLight + 1);
+            auto cached_name = mProjectorNames.find(projector.mHandle.mId);
+            if (cached_name == mProjectorNames.end())
+                cached_name = mProjectorNames.emplace(
+                    projector.mHandle.mId, projectorName(projector)).first;
+            const std::string& name = cached_name->second;
             const bool selected = sameProjector(projector.mHandle,
                                                 mModel.selectedProjector());
             projectors.push_back({projector.mHandle, name,
-                projector.mQuarantined ? projector.mQuarantineReason : "Viewer-local feed",
+                projectorState(projector),
                 selected});
-            if (selected) selected_projector_number = static_cast<U32>(projectors.size());
+            if (selected) selected_projector_name = name;
         }
     mProjectorList->setItems(projectors);
     if (ALKitCard* projector_card = mKitPage->findCard("projectors"))
         projector_card->setCodeVisible(!projectors.empty());
-    const std::string projector_badge = selected_projector_number
-        ? llformat("PROJECTOR %u", selected_projector_number) : "PROJECTOR";
+    setRowControlVisible(row("vc_projector_hint"),
+                         !projectors.empty() && selected_projector == nullptr);
+    const std::string projector_badge = selected_projector_name.empty()
+        ? "PROJECTOR" : selected_projector_name;
     for (const char* id : { "projector", "projector_tv" })
         if (ALKitCard* projector_card = mKitPage->findCard(id))
         {
-            projector_card->setBadge(projector_badge);
+            projector_card->setBadgePlaceholder("PROJECTOR n", projector_badge);
             projector_card->setCodeVisible(selected_projector != nullptr);
         }
     updateCardState(capture != nullptr, display != nullptr,
-                    capture ? llformat("CAM %u · %s", capture->mSlot + 1,
-                                       capture->mLabel.c_str()) : std::string());
+                    capture ? mCameraLabels[capture->mSlot]
+                            : std::string());
 
     if (selected_projector)
     {
@@ -491,6 +557,10 @@ void ALPanelDirectorVCam::refresh(U32 dirty)
 
     setEnabledIfChanged(control("vc_remove_face"), display && capture &&
         capture->mMode != LLPrismLens::ECaptureMode::SURFACE_LENS);
+    setEnabledIfChanged(mCameraName, capture != nullptr);
+    if (mCameraName && !gFocusMgr.childHasKeyboardFocus(mCameraName))
+        setValueIfChanged(mCameraName,
+                          capture ? LLSD(capture->mLabel) : LLSD());
     setEnabledIfChanged(control("vc_face_locate"), display && !display->mSettings.mVirtual);
     if (LLUICtrl* count = control("vc_face_count"))
         setValueIfChanged(count, llformat("%u of 16 faces used (all cameras)",
@@ -765,17 +835,17 @@ void ALPanelDirectorVCam::updateCardState(bool have_capture, bool have_display,
     const char* camera_cards[] = { "source", "placement", "optics", "guide",
         "camera_look", "look_goes", "output_frame", "faces", "picture_rate" };
     const std::string badge = camera_label.empty() ? "CAMERA" : camera_label;
+    for (ALKitCard* card : mCards)
+        card->setBadgePlaceholder("CAM n", badge);
     for (const char* id : camera_cards)
         if (ALKitCard* card = mKitPage->findCard(id))
         {
-            card->setBadge(badge);
             card->setCodeVisible(have_capture);
         }
     // The skeleton card's visibility depends on the camera type and is set once per refresh in
     // refresh(); only force it hidden here when there is no camera (avoids a show/hide flip).
     if (ALKitCard* skeleton = mKitPage->findCard("skeleton"))
     {
-        skeleton->setBadge(badge);
         if (!have_capture) skeleton->setCodeVisible(false);
     }
     for (const char* id : { "face_mapping", "tv_effects" })
@@ -906,8 +976,9 @@ void ALPanelDirectorVCam::onControl(LLUICtrl* source)
     else if (name == "vc_remove_capture" && capture)
     {
         LLSD args;
-        args["MESSAGE"] = llformat("Remove Cam %u and all %u of its face bindings?",
-                                    capture->mSlot + 1, capture->mDisplayCount);
+        args["MESSAGE"] = llformat("Remove %s and all %u of its face bindings?",
+                                    mCameraLabels[capture->mSlot].c_str(),
+                                    capture->mDisplayCount);
         const LLPrismLens::CaptureHandle handle = capture->mHandle;
         LLHandle<LLPanel> panel_handle = getHandle();
         LLNotificationsUtil::add("GenericAlertYesCancel", args, LLSD(),
@@ -1062,6 +1133,19 @@ void ALPanelDirectorVCam::commitCamera(const std::string& name, const LLSD& valu
 {
     const LLPrismLens::CaptureDefinition* capture = selectedCapture();
     if (!capture) return;
+    if (name == "vc_camera_name")
+    {
+        std::string reason;
+        if (!mModel.setLabel(capture->mHandle, value.asString(), &reason))
+            setStatus(reason);
+        else
+        {
+            mModel.refreshNow(ALVCamPageModel::DIRTY_CONFIGURATION);
+            if (const LLPrismLens::CaptureDefinition* renamed = selectedCapture())
+                setValueIfChanged(mCameraName, renamed->mLabel);
+        }
+        return;
+    }
     LLPrismLens::CameraSettings settings = capture->mCamera;
     LLPrismLens::CaptureRateSettings rate = capture->mRate;
     bool camera_changed = true;

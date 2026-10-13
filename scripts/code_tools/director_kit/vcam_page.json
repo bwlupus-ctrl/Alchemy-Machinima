@@ -18,8 +18,9 @@
       {"l": "Monitor tile", "k": "custom", "w": "vc_monitor_tile_manifest", "h": "Eight fixed atlas-backed PREVIEW, LIVE, PAUSED, THROTTLED, OFFLINE, or WARMING tile slots with timestamp, camera, Shows, status, drag handle, and menu.", "custom_tag": "vcam_monitor_tile", "bind": "code", "show_if": "never"},
       {"l": "Preview cost", "k": "readout", "w": "vc_monitor_footer", "h": "How monitor previews reuse retained pictures and consume the shared attempt budget.", "bind": "code"}
     ]},
-    {"id": "camera_selector", "t": "Settings for", "k": "rows", "badge": "CAMERA", "rows": [
-      {"l": "", "k": "custom", "w": "vc_camera_selector", "h": "Choose the camera edited below, add a camera, or remove the selected capture in one row. Monitor clicks never change this selection.", "custom_tag": "vcam_camera_selector", "bind": "code", "row_height": 36}
+    {"id": "camera_selector", "t": "Settings for", "k": "rows", "badge": "CAM n", "rows": [
+      {"l": "", "k": "custom", "w": "vc_camera_selector", "h": "Choose the camera edited below, add a camera, or remove the selected capture in one row. Monitor clicks never change this selection.", "custom_tag": "vcam_camera_selector", "bind": "code", "row_height": 36},
+      {"l": "Name", "k": "text", "w": "vc_camera_name", "h": "A short camera name saved with the Prism scene. Empty restores the default name.", "bind": "code"}
     ]},
     {"id": "source", "t": "Source", "k": "rows", "badge": "CAM n", "rows": [
       {"l": "Source", "k": "segmented", "w": "vc_source_type", "h": "Choose Object, Virtual, Skeleton POV, or the local 512 px test pattern. Surface Lens captures keep their fixed source.", "it": ["Object", "Virtual", "Skeleton POV", "Test pattern"], "iv": [0,1,2,3], "bind": "code"},
@@ -96,14 +97,15 @@
       {"l": "Picture", "k": "readout", "w": "vc_output_picture", "h": "Logical axes are capped at 1024 px; Quality ceiling and Adaptive scale it.", "bind": "code"}
     ]},
     {"id": "faces", "t": "Faces this camera feeds", "k": "rows", "badge": "CAM n", "rows": [
-      {"l": "Faces", "k": "custom", "w": "vc_face_list", "h": "Choose raw camera output or a bound face. Drop another camera's monitor on a face row to move it.", "custom_tag": "vcam_face_list", "bind": "code", "row_height": 150},
+      {"l": "", "k": "custom", "w": "vc_face_list", "h": "Choose raw camera output or a bound face. Drop another camera's monitor on a face row to move it.", "custom_tag": "vcam_face_list", "bind": "code", "row_height": 150},
       {"l": "Add selected face", "k": "button", "w": "vc_add_face", "h": "Bind the selected in-world prim face to this camera.", "btn": "Add selected face", "bind": "code"},
       {"l": "Mapping for new face", "k": "combo", "w": "vc_new_face_fit", "h": "Default mapping used for a newly bound face.", "it": ["Fit", "Fill", "Stretch"], "iv": [0,1,2], "bind": "code"},
       {"l": "Add virtual screen", "k": "button", "w": "vc_add_screen", "h": "Add a viewer-local virtual screen in front of your view.", "btn": "Add virtual screen", "bind": "code"},
       {"l": "Face capacity", "k": "readout", "w": "vc_face_count", "h": "Faces used across all cameras.", "bind": "code"}
     ]},
     {"id": "projectors", "t": "Projectors", "k": "rows", "badge": "CAM n", "rows": [
-      {"l": "Projectors", "k": "custom", "w": "vc_projector_list", "h": "Projector lights using this camera. Select a row to edit it; Remove clears only the viewer-local feed.", "custom_tag": "vcam_projector_list", "bind": "code", "row_height": 150}
+      {"l": "", "k": "custom", "w": "vc_projector_list", "h": "Projector lights using this camera. Select a row to edit it; Remove clears only the viewer-local feed.", "custom_tag": "vcam_projector_list", "bind": "code", "row_height": 150},
+      {"l": "Tip", "k": "readout", "w": "vc_projector_hint", "h": "Select a projector row to reveal its look controls.", "bind": "code", "show_if": "no_selected_projector"}
     ]},
     {"id": "projector", "t": "Projector", "k": "rows", "badge": "PROJECTOR n", "show_if": "selected_projector", "rows": [
       {"l": "Look preset", "k": "combo", "w": "vc_proj_look", "h": "Apply only the projector look fields. Editing any look field makes this Custom.", "it": ["Custom", "Clean digital", "Cinema xenon", "16mm home movie", "Old slide projector", "Worn film reel"], "iv": [-1,0,1,2,3,4], "bind": "code"},

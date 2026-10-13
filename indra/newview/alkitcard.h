@@ -4,6 +4,7 @@
 #include "llpanel.h"
 #include "lluiimage.h"
 #include <boost/signals2.hpp>
+#include <unordered_map>
 #include <vector>
 class ALKitRow;
 class LLContextMenu;
@@ -71,6 +72,8 @@ public:
     const std::string&            id() const { return mId; }
     const std::string&            title() const { return mTitle; }
     bool                          setBadge(const std::string& badge);
+    bool                          setBadgePlaceholder(const std::string& placeholder,
+                                                      const std::string& value);
     bool                          setCodeVisible(bool visible);
     bool                          codeVisible() const { return !mCodeHidden; }
     const std::string&            helpText() const { return mHelp; }
@@ -99,8 +102,9 @@ private:
     void        syncSelector();
     void        updateResetColor();
     void        refreshSummary(S32);
-    std::string mId, mTitle, mKind, mBadge, mEnableWidget, mEnableSetting, mEnableTooltip, mSelectorLabel, mSelectorSetting, mLinkTo,
+    std::string mId, mTitle, mKind, mBadge, mBadgeTemplate, mEnableWidget, mEnableSetting, mEnableTooltip, mSelectorLabel, mSelectorSetting, mLinkTo,
         mLinkLabel, mTarget, mTargetTab, mButtonLabel, mHelp;
+    std::unordered_map<std::string, std::string> mBadgeSubstitutions;
     bool                                            mAdvanced = false, mMoreOpen = false, mLayoutPending = false, mBodyOpen = true,
                                                     mCodeHidden = false;
     S32                                             mMoreCount = 0;

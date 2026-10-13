@@ -113937,7 +113937,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelcinelightrig.cpp",
-              "line": 1432,
+              "line": 1431,
               "class": "ALPanelCineLightRig",
               "function": "syncGoboLibrary",
               "wired_class": "ALPanelCineLightRig",

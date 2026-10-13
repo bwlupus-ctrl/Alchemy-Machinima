@@ -65,18 +65,6 @@ RevisionSignal sPrismConfigurationChanged;
 RevisionSignal sPrismRuntimeChanged;
 RevisionSignal sPrismPerformanceChanged;
 
-std::string sanitizeCaptureLabel(const std::string& value)
-{
-    // The wide-string round trip replaces malformed UTF-8 before byte-bounding.
-    std::string label = wstring_to_utf8str(utf8str_to_wstring(value));
-    label.erase(std::remove_if(label.begin(), label.end(), [](unsigned char c)
-    {
-        return c < 0x20 || c == 0x7f;
-    }), label.end());
-    label = utf8str_trim(label);
-    return utf8str_truncate(label, 64);
-}
-
 void emitRevision(RevisionSignal& signal, U64 revision)
 {
     assert_main_thread();
@@ -1988,11 +1976,15 @@ public:
         return registry;
     }
 
-    std::string defaultLabel(LLPrismLens::ECaptureMode mode, bool is_virtual) const
+    std::string defaultLabel(LLPrismLens::ECaptureMode mode, bool is_virtual,
+                             S32 existing_slot = -1) const
     {
         U32 ordinal = 1;
-        for (const PrismInstance& capture : mLenses)
+        for (U32 slot = 0; slot < static_cast<U32>(std::size(mLenses)); ++slot)
         {
+            if (existing_slot >= 0 && slot >= static_cast<U32>(existing_slot))
+                break;
+            const PrismInstance& capture = mLenses[slot];
             if (!capture.mOccupied || capture.mMode != mode)
                 continue;
             if (mode == LLPrismLens::ECaptureMode::CAMERA_FEED &&
@@ -4548,12 +4540,9 @@ public:
             if (reason) *reason = "That capture handle is stale.";
             return false;
         }
-        const std::string label = sanitizeCaptureLabel(value);
-        if (label.empty())
-        {
-            if (reason) *reason = "Capture label cannot be empty.";
-            return false;
-        }
+        const std::string label = LLPrismLens::normalizeCaptureLabel(
+            value, defaultLabel(mLenses[slot].mMode,
+                                mLenses[slot].mCamera.mVirtual, slot));
         if (mLenses[slot].mLabel == label)
         {
             if (reason) reason->clear();
@@ -6969,7 +6958,8 @@ public:
             if (item.has("label") && !item["label"].isString())
                 return fail("Prism capture label must be a string.");
             parsed.mLabel = item.has("label")
-                ? sanitizeCaptureLabel(item["label"].asString()) : std::string();
+                ? LLPrismLens::normalizeCaptureLabel(
+                    item["label"].asString(), std::string()) : std::string();
             if (parsed.mLabel.empty())
             {
                 if (have_parsed_gate)
@@ -9152,6 +9142,11 @@ bool setCaptureLabel(const CaptureHandle& capture, const std::string& label,
 {
     ScopedPrismRevisionSignals signals;
     return PrismLensRegistry::instance().setLabel(capture, label, reason);
+}
+
+std::string captureDisplayLabel(const CaptureDefinition& capture)
+{
+    return llformat("CAM %u - %s", capture.mSlot + 1, capture.mLabel.c_str());
 }
 
 bool setDisplaySettings(const DisplayHandle& binding,
