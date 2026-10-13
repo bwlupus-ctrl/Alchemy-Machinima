@@ -16,7 +16,9 @@ public:
     struct Hit
     {
         std::string group_key;
+        std::string group_label;
         std::string page_key;
+        std::string page_label;
         std::string card_id;
         std::string widget;
         std::string setting;
@@ -51,7 +53,9 @@ private:
     struct Entry
     {
         std::string      group_key;
+        std::string      group_label;
         std::string      page_key;
+        std::string      page_label;
         std::string      card_id;
         std::string      widget;
         std::string      setting;
@@ -78,7 +82,8 @@ private:
 
     U32         intern(const std::string& token);
     void        tokenize(const std::string& value, std::vector<U32>& out);
-    static void splitTokens(const std::string& value, std::vector<std::string>& out);
+    static void splitTokens(const std::string& value, std::vector<std::string>& out,
+                            bool lowercase_tokens = true);
 
     std::string                           mQuery;
     std::string                           mCurrentPage;

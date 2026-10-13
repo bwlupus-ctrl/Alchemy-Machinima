@@ -1311,6 +1311,7 @@ public:
     void renderGizmo() const;
     LLSD sceneData() const;
     void applySceneData(const LLSD& data);
+    U64 configurationRevision() const { return mConfigurationRevision; }
 
     ALCineLightRig& selected();
     const ALCineLightRig& selected() const;
@@ -1371,6 +1372,7 @@ private:
     ALCineLightRig mInstances[SLOT_COUNT];
     mutable ParamBlob mBlobs[SLOT_COUNT];
     Slot mSelected = SLOT_SELF;
+    U64 mConfigurationRevision = 1;
     ALCineLightRigManagerModel::FocusFilterState mFocusState;
     ALCineLightRigManagerModel::AutoShadowSlotState mAutoShadowSlotState;
     U32 mLastAutoShadowRequest = 0;

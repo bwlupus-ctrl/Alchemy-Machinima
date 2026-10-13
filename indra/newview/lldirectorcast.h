@@ -39,6 +39,7 @@
 #include "v3math.h"
 
 #include <set>
+#include <boost/signals2.hpp>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -275,7 +276,12 @@ public:
     // compares this instead of rebuilding id+name signature strings per frame.
     // Code that writes mLastName directly must call touchCast() afterwards.
     U64 getCastRevision() const { return mCastRevision; }
-    void touchCast() { ++mCastRevision; }
+    void touchCast() { ++mCastRevision; touchScene(); }
+    U64 getSceneRevision() const { return mSceneRevision; }
+    void touchScene();
+    boost::signals2::connection addChangedCallback(
+        const boost::signals2::signal<void()>::slot_type& callback)
+        { return mChangedSignal.connect(callback); }
     // parallel id list, kept in membership order; this is what
     // LLActorMover::getRoster() hands out (empty = "my avatar")
     const uuid_vec_t& getIds() const { return mIds; }
@@ -463,6 +469,8 @@ private:
     U64 mGazeCueRevision = 0;
     U64 mGazeConfigRevision = 1;
     U64 mCastRevision = 1;      // [GhostPanelPerf] membership + cached names
+    U64 mSceneRevision = 1;     // every authored value captured by sceneData()
+    boost::signals2::signal<void()> mChangedSignal;
 
     // transport state: what THIS action() run started, so cut() undoes
     // only that

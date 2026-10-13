@@ -42,6 +42,7 @@
 #include "llagent.h"                   // stable self id while avatar rebuilds
 #include "llavatarnamecache.h"
 #include "llbutton.h"
+#include "llcallbacklist.h"
 #include "llcheckboxctrl.h"
 #include "llclipboard.h"
 #include "llcombobox.h"
@@ -69,6 +70,7 @@
 #include "lltabcontainer.h"
 #include "lltextbox.h"
 #include "lltexteditor.h"
+#include "lltooldraganddrop.h"
 #include "lluictrlfactory.h"
 #include "lluri.h"                  // LLURI::escape scene filenames
 #include "llviewercontrol.h"        // gSavedSettings, LLCachedControl
@@ -134,6 +136,27 @@ bool can_start_manual_subject_shot(std::string* reason)
 constexpr char SCENE_SUBDIR[]  = "director_scenes";
 constexpr char RECOVERY_FILE[] = ".director_recovery.xml";
 constexpr S32  SCENE_VERSION   = 6;
+
+const std::string TOOLTIP_COUNTDOWN("Counting down. Click to cancel");
+const std::string TOOLTIP_CUT("Stop everything ACTION started");
+const std::string TOOLTIP_SET_MARKS("Snapshot every cast member's current position as their mark");
+const std::string TOOLTIP_ADD_CAST("Add cast members first");
+const std::string TOOLTIP_RESET_MARKS("Snap every marked cast member back to their mark (local only)");
+const std::string TOOLTIP_SET_MARKS_FIRST("Set marks first");
+const std::string TOOLTIP_SCENE_SAVE("Save the whole setup as a scene: cast, marks, loco anims, subjects, arming, camera and move parameters. Opens an inline name box; re-saving the selected scene keeps its name");
+const std::string TOOLTIP_SCENE_WRITE("Write the scene file (Enter in the name box saves too; an empty name cancels)");
+const std::string TOOLTIP_SCENE_CHOOSE("Choose a scene to preview it; press Load to apply it");
+const std::string TOOLTIP_SCENE_EMPTY("No saved scenes yet. Save one first");
+const std::string TOOLTIP_SCENE_SELECT("Select a scene first");
+const std::string TOOLTIP_SCENE_LOAD("Load the selected scene");
+const std::string TOOLTIP_SCENE_LOAD_DIRTY("Load the selected scene; unsaved changes require confirmation");
+const std::string TOOLTIP_SCENE_DELETE("Delete the selected scene file (asks to confirm)");
+const std::string TOOLTIP_SCENE_NAMING("Finish naming first");
+constexpr const char* COUNTDOWN_LABELS[] = {
+    "0\xE2\x80\xA6", "1\xE2\x80\xA6", "2\xE2\x80\xA6", "3\xE2\x80\xA6",
+    "4\xE2\x80\xA6", "5\xE2\x80\xA6", "6\xE2\x80\xA6", "7\xE2\x80\xA6",
+    "8\xE2\x80\xA6", "9\xE2\x80\xA6", "10\xE2\x80\xA6"
+};
 
 // the assign combo's explicit "ungroup" row: discoverable equivalent of
 // committing an empty name (which still works)
@@ -290,8 +313,7 @@ void LLFloaterDirector::onClose(bool app_quitting)
     // remain alive. Explicitly release a live bullet-time cut here as well.
     ALDirectorSwitcher::instance().cancelEaseWorldTime();
     ALAvatarLightResponse::instance().saveIfPersist();
-    if (app_quitting)
-        LLFile::remove(recoveryPath(), ENOENT);
+    (void)app_quitting;
 }
 
 bool LLFloaterDirector::postBuild()
@@ -362,7 +384,7 @@ bool LLFloaterDirector::postBuild()
     // re-claims here (revealFor stores only while another tab is current).
     setMinimizeCallback([this](LLUICtrl*, const LLSD& minimized)
     {
-        if (!minimized.asBoolean() && mPathPanel) mPathPanel->revealFor(firstSelectedCastId());
+        if (!minimized.asBoolean() && mPathPanel) retargetPathFromCastSelection();
     });
     // ---- legend popover ----
     mHelpBtn = getChild<LLButton>("btn_help");
@@ -400,7 +422,7 @@ bool LLFloaterDirector::postBuild()
     // refreshPathTab stays ownership-neutral (setTargetActor).
     mCastList->setCommitCallback([this](LLUICtrl*, const LLSD&)
     {
-        if (mPathPanel) mPathPanel->revealFor(firstSelectedCastId());
+        if (mPathPanel) retargetPathFromCastSelection();
         if(mShell)mShell->setCastSelection(selectedCastIds());
     });
     {
@@ -752,6 +774,7 @@ bool LLFloaterDirector::postBuild()
     LL_INFOS("Director") << "Director build " << build_ms << " ms "
                          << (build_ms < 250.f ? "PASS" : "LAZY-NEEDED") << LL_ENDL;
 
+    initializeSceneRecovery();
     return true;
 }
 
@@ -771,6 +794,7 @@ bool LLFloaterDirector::postBuildV2()
     mScrollFit.installForTabs(mTabContainer, this);
     mShell->setScrollFit(&mScrollFit);
     mShell->setReady();
+    initializeSceneRecovery();
     const F32 build_ms = mBuildTimer.getElapsedTimeF32() * 1000.f;
     LL_INFOS("Director") << "Director v2 chrome build " << build_ms << " ms" << LL_ENDL;
     return true;
@@ -795,6 +819,7 @@ void LLFloaterDirector::bindChrome(LLView* root)
     mSceneNameEditor = root->getChild<LLLineEditor>("scene_name_editor");
     mSceneLoadBtn = root->getChild<LLButton>("btn_scene_load");
     mSceneDirtyText = root->findChild<LLTextBox>("scene_dirty_indicator");
+    mSceneMetadataText = root->findChild<LLTextBox>("scene_metadata_text");
     mSceneLoadBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickSceneLoad(); });
     mSceneSaveBtn = root->getChild<LLButton>("btn_scene_save");
     mSceneDeleteBtn = root->getChild<LLButton>("btn_scene_delete");
@@ -832,7 +857,7 @@ void LLFloaterDirector::bindChrome(LLView* root)
     {
         if (!minimized.asBoolean() && mPathPanel)
         {
-            mPathPanel->revealFor(firstSelectedCastId());
+            retargetPathFromCastSelection();
         }
     });
 
@@ -865,7 +890,7 @@ void LLFloaterDirector::bindChrome(LLView* root)
     {
         if (mPathPanel)
         {
-            mPathPanel->revealFor(firstSelectedCastId());
+            retargetPathFromCastSelection();
         }
         mShell->setCastSelection(selectedCastIds());
     });
@@ -1018,7 +1043,7 @@ void LLFloaterDirector::bindPathPage(LLView* root)
     mPathPanel = root->findChild<ALPanelPathEditor>("path_editor");
     if (mPathPanel)
     {
-        mPathPanel->revealFor(firstSelectedCastId());
+        retargetPathFromCastSelection();
     }
 }
 
@@ -1216,10 +1241,21 @@ void LLFloaterDirector::bindCameraPage(LLView* root)
                                 *accept = ACCEPT_NO;
                                 return false;
                             }
-                            *accept = ACCEPT_YES_SINGLE;
+                            LLToolDragAndDrop* tool = LLToolDragAndDrop::getInstance();
+                            const bool batch = subject == SUBJECT_A && tool &&
+                                tool->getCargoCount() > 1;
+                            *accept = batch ? ACCEPT_YES_MULTI : ACCEPT_YES_SINGLE;
                             if (commit)
-                                assign_subject(LLDirectorCast::instance(), subject,
-                                               *static_cast<LLUUID*>(cargo));
+                            {
+                                LLDirectorCast& cast = LLDirectorCast::instance();
+                                const S32 index = batch ? tool->getCargoIndex() : 0;
+                                if (batch && index == 0)
+                                    for (S32 mark = SUBJECT_A; mark <= SUBJECT_D; ++mark)
+                                        clear_subject(cast, mark);
+                                if (!batch || index < 4)
+                                    assign_subject(cast, subject + index,
+                                                   *static_cast<LLUUID*>(cargo));
+                            }
                             return true;
                         });
         }
@@ -1455,8 +1491,6 @@ void LLFloaterDirector::onOpen(const LLSD& key)
         gSavedSettings.setBOOL("DirectorV2RectBumped",true);
     }
     if(mShell)mShell->startSearchLoad();
-    if (mCleanSceneSnapshot.isUndefined())
-        mCleanSceneSnapshot = captureSceneData();
     offerSceneRecovery();
     mLauncherClock.forceDue();
     // pick up scenes saved by an earlier session without losing the current
@@ -1516,7 +1550,7 @@ void LLFloaterDirector::onOpen(const LLSD& key)
     // Path tab: revealFor only stores the actor.
     if (mPathPanel)
     {
-        mPathPanel->revealFor(firstSelectedCastId());
+        retargetPathFromCastSelection();
     }
 
     // a reopened console never resurfaces the legend
@@ -1611,7 +1645,7 @@ void LLFloaterDirector::onTabChanged()
     // (no-op store when another tab is now current).
     if (mPathPanel)
     {
-        mPathPanel->revealFor(firstSelectedCastId());
+        retargetPathFromCastSelection();
     }
 }
 
@@ -1673,7 +1707,6 @@ void LLFloaterDirector::draw()
     refreshPrismDependents();
     refreshLauncherCards();
     refreshStatusStrip();
-    refreshSceneRecovery();
     LLFloater::draw();
     if(mIsV2&&mKitUIMs)
     {
@@ -1853,14 +1886,32 @@ void LLFloaterDirector::onClickResetMarks()
     LLDirectorCast::instance().resetToMarks();
 }
 
-void LLFloaterDirector::refreshTransport()
+void LLFloaterDirector::updateTransportTooltipCache()
 {
-    LL_PROFILE_ZONE_NAMED_CATEGORY_UI("Director refreshTransport"); // [DirFix] D9
     static LLCachedControl<bool> arm_moves(gSavedSettings, "DirectorArmMoves", true);
     static LLCachedControl<bool> arm_camera(gSavedSettings, "DirectorArmCamera", true);
     static LLCachedControl<bool> arm_play(gSavedSettings, "DirectorArmRecorderPlay", false);
     static LLCachedControl<bool> arm_capture(gSavedSettings, "DirectorArmRecorderCapture", false);
+    static LLCachedControl<F32> delay(gSavedSettings, "DirectorActionDelay", 0.f);
+    std::string fires;
+    if (arm_moves) fires += "actor moves, ";
+    if (arm_camera) fires += "cinematic camera, ";
+    if (arm_capture) fires += "recorder capture, ";
+    else if (arm_play) fires += "recorder playback, ";
+    mActionArmed = !fires.empty();
+    if (!mActionArmed)
+    {
+        mActionTooltip = "Nothing armed: check at least one 'Action fires' box";
+        return;
+    }
+    mActionTooltip = "Fires: " + fires.substr(0, fires.size() - 2);
+    if ((F32)delay > 0.01f)
+        mActionTooltip += llformat(" after a %.1f s countdown", (F32)delay);
+}
 
+void LLFloaterDirector::refreshTransport()
+{
+    LL_PROFILE_ZONE_NAMED_CATEGORY_UI("Director refreshTransport"); // [DirFix] D9
     LLDirectorCast& cast = LLDirectorCast::instance();
     const bool counting = cast.isCountingDown();
     const bool running = cast.isRunning();
@@ -1871,38 +1922,18 @@ void LLFloaterDirector::refreshTransport()
     mCutBtn->setVisible(counting || running);
     if (counting)
     {
-        mCutBtn->setLabel(LLStringExplicit(
-            llformat("%d\xE2\x80\xA6", (S32)ceilf(cast.countdownRemaining()))));
-        setToolTipIfChanged(mCutBtn, "Counting down. Click to cancel");
+        const S32 seconds = llclamp((S32)ceilf(cast.countdownRemaining()), 0, 10);
+        mCutBtn->setLabel(LLStringExplicit(COUNTDOWN_LABELS[seconds])); // ui-draw-lint: allow(raw-write) bounded cached label
+        setToolTipIfChanged(mCutBtn, TOOLTIP_COUNTDOWN);
     }
     else if (running)
     {
         mCutBtn->setLabel(LLStringExplicit("CUT"));
-        setToolTipIfChanged(mCutBtn, "Stop everything ACTION started");
+        setToolTipIfChanged(mCutBtn, TOOLTIP_CUT);
     }
 
-    // the ACTION tooltip lists exactly what will fire (usability rule 3)
-    std::string fires;
-    if (arm_moves)   fires += "actor moves, ";
-    if (arm_camera)  fires += "cinematic camera, ";
-    if (arm_capture) fires += "recorder capture, ";
-    else if (arm_play) fires += "recorder playback, ";
-    if (fires.empty())
-    {
-        fires = "Nothing armed: check at least one 'Action fires' box";
-        mActionBtn->setEnabled(false);
-    }
-    else
-    {
-        fires = "Fires: " + fires.substr(0, fires.size() - 2);
-        static LLCachedControl<F32> delay(gSavedSettings, "DirectorActionDelay", 0.f);
-        if ((F32)delay > 0.01f)
-        {
-            fires += llformat(" after a %.1f s countdown", (F32)delay);
-        }
-        mActionBtn->setEnabled(true);
-    }
-    setToolTipIfChanged(mActionBtn, fires);
+    mActionBtn->setEnabled(mActionArmed);
+    setToolTipIfChanged(mActionBtn, mActionTooltip);
 
     // marks
     const bool have_cast = !cast.getCast().empty();
@@ -1912,36 +1943,26 @@ void LLFloaterDirector::refreshTransport()
         if (m.mHasMark) { any_marked = true; break; }
     }
     mSetMarksBtn->setEnabled(have_cast);
-    setToolTipIfChanged(mSetMarksBtn, have_cast
-        ? std::string("Snapshot every cast member's current position as their mark")
-        : std::string("Add cast members first"));
+    setToolTipIfChanged(mSetMarksBtn, have_cast ? TOOLTIP_SET_MARKS : TOOLTIP_ADD_CAST);
     mResetMarksBtn->setEnabled(any_marked);
-    setToolTipIfChanged(mResetMarksBtn, any_marked
-        ? std::string("Snap every marked cast member back to their mark (local only)")
-        : std::string("Set marks first"));
+    setToolTipIfChanged(mResetMarksBtn, any_marked ? TOOLTIP_RESET_MARKS : TOOLTIP_SET_MARKS_FIRST);
 
     // scene controls
     const bool naming = mSceneNameEditor->getVisible();
     const std::string scene_sel = mSceneCombo->getSelectedItemLabel();
-    setToolTipIfChanged(mSceneSaveBtn, naming
-        ? std::string("Write the scene file (Enter in the name box saves too; an empty name cancels)")
-        : std::string("Save the whole setup as a scene: cast, marks, loco anims, subjects, arming, camera and move parameters. Opens an inline name box; re-saving the selected scene keeps its name"));
+    setToolTipIfChanged(mSceneSaveBtn, naming ? TOOLTIP_SCENE_WRITE : TOOLTIP_SCENE_SAVE);
     setToolTipIfChanged(mSceneCombo, !mSceneMetadataTooltip.empty() ? mSceneMetadataTooltip :
         (mSceneCombo->getItemCount() > 0
-            ? std::string("Choose a scene to preview it; press Load to apply it")
-            : std::string("No saved scenes yet. Save one first")));
+            ? TOOLTIP_SCENE_CHOOSE : TOOLTIP_SCENE_EMPTY));
     if (mSceneLoadBtn)
     {
         mSceneLoadBtn->setEnabled(!scene_sel.empty() && !naming);
-        setToolTipIfChanged(mSceneLoadBtn, scene_sel.empty() ? "Select a scene first" :
-            (mSceneDirty ? "Load the selected scene; unsaved changes require confirmation"
-                         : "Load the selected scene"));
+        setToolTipIfChanged(mSceneLoadBtn, scene_sel.empty() ? TOOLTIP_SCENE_SELECT :
+            (mSceneDirty ? TOOLTIP_SCENE_LOAD_DIRTY : TOOLTIP_SCENE_LOAD));
     }
     mSceneDeleteBtn->setEnabled(!scene_sel.empty() && !naming);
-    setToolTipIfChanged(mSceneDeleteBtn, scene_sel.empty()
-        ? std::string("Select a scene first")
-        : naming ? std::string("Finish naming first")
-                 : std::string("Delete the selected scene file (asks to confirm)"));
+    setToolTipIfChanged(mSceneDeleteBtn, scene_sel.empty() ? TOOLTIP_SCENE_SELECT :
+        naming ? TOOLTIP_SCENE_NAMING : TOOLTIP_SCENE_DELETE);
 }
 
 // ---------------------------------------------------------------------------
@@ -2191,9 +2212,13 @@ void LLFloaterDirector::refreshSceneList(const std::string& select_name)
 
     if (!select_name.empty() && mSceneCombo->setSelectedByValue(select_name, true))
     {
+        onSceneSelected();
         return;
     }
     mSceneCombo->setLabel(LLStringExplicit("Scenes"));
+    mSceneMetadataTooltip.clear();
+    if (mSceneMetadataText)
+        setTextIfChanged(mSceneMetadataText, "Select a scene");
 }
 
 void LLFloaterDirector::onSceneSelected()
@@ -2221,6 +2246,8 @@ void LLFloaterDirector::onSceneSelected()
     }
     mSceneMetadataTooltip = name + "\nSaved " + saved +
         "\nContains cast, marks, subjects, camera, Prism, rig, and scene settings.\nSelect previews only; press Load to apply.";
+    if (mSceneMetadataText)
+        setTextIfChanged(mSceneMetadataText, name + " \xC2\xB7 " + saved);
     setToolTipIfChanged(mSceneCombo, mSceneMetadataTooltip);
 }
 
@@ -2229,8 +2256,7 @@ void LLFloaterDirector::onClickSceneLoad()
     const std::string name = mSceneCombo->getSelectedItemLabel();
     if (name.empty())
         return;
-    if (!mCleanSceneSnapshot.isUndefined())
-        mSceneDirty = !llsd_equals(captureSceneData(), mCleanSceneSnapshot);
+    updateSceneDirty();
     if (!mSceneDirty)
     {
         loadScene(name);
@@ -2338,7 +2364,8 @@ LLSD LLFloaterDirector::captureSceneData() const
 
     // CineCam: active mode, and the ACTIVE named preset when one is selected
     // in the shared params panel (stored by name; applied via the panel on load)
-    scene["cinecam_mode"] = gSavedSettings.getS32("CinematicCamMode");
+    static LLCachedControl<S32> cinecam_mode(gSavedSettings, "CinematicCamMode", 0);
+    scene["cinecam_mode"] = (S32)cinecam_mode;
     if (mCineCamPanel)
     {
         const std::string preset = mCineCamPanel->getSelectedPresetName();
@@ -2355,10 +2382,7 @@ bool LLFloaterDirector::saveScene(const std::string& name)
     const bool saved = writeSceneFile(scenePath(name), name, true);
     if (saved)
     {
-        mCleanSceneSnapshot = captureSceneData();
-        mSceneDirty = false;
-        if (mSceneDirtyText)
-            setTextIfChanged(mSceneDirtyText, "");
+        markSceneClean();
         mSceneAutosaveTimer.reset();
         LLFile::remove(recoveryPath(), ENOENT);
         LL_INFOS("Director") << "Saved scene '" << name << "'" << LL_ENDL;
@@ -2691,8 +2715,13 @@ bool LLFloaterDirector::loadScene(const std::string& name, bool recovery)
     }
     LL_INFOS("Director") << "Loaded scene '" << name << "'" << LL_ENDL;
     if (!recovery)
-        mCleanSceneSnapshot = captureSceneData();
-    mSceneDirty = recovery;
+        markSceneClean();
+    else
+    {
+        mCleanSceneStamp = SceneChangeStamp();
+        mHaveCleanSceneStamp = true;
+        mSceneDirty = true;
+    }
     if (mSceneDirtyText)
         setTextIfChanged(mSceneDirtyText, recovery ? "*" : "");
     mSceneAutosaveTimer.reset();
@@ -2701,31 +2730,117 @@ bool LLFloaterDirector::loadScene(const std::string& name, bool recovery)
     return true;
 }
 
-void LLFloaterDirector::refreshSceneRecovery()
+LLFloaterDirector::SceneChangeStamp LLFloaterDirector::currentSceneStamp() const
 {
-    if (!mSceneDirtyClock.due())
+    SceneChangeStamp stamp;
+    stamp.mSettings = mSceneSettingsRevision;
+    stamp.mCast = LLDirectorCast::instance().getSceneRevision();
+    stamp.mPaths = LLActorMover::instance().getPathRevision();
+    stamp.mPrism = LLPrismLens::configurationRevision();
+    stamp.mRig = ALCineLightRigManager::instance().configurationRevision();
+    stamp.mLightResponse = ALAvatarLightResponse::instance().revision();
+    return stamp;
+}
+
+void LLFloaterDirector::initializeSceneRecovery()
+{
+    if (!mSceneSettingConnections.empty())
         return;
-    const LLSD current = captureSceneData();
-    if (mCleanSceneSnapshot.isUndefined())
-        mCleanSceneSnapshot = current;
-    const bool dirty = !llsd_equals(current, mCleanSceneSnapshot);
-    if (dirty != mSceneDirty)
+    for (const std::string& setting : sceneSettingsList())
     {
-        mSceneDirty = dirty;
-        if (dirty)
-            mSceneAutosaveTimer.reset();
-        if (mSceneDirtyText)
-            setTextIfChanged(mSceneDirtyText, dirty ? "*" : "");
+        if (LLControlVariable* control = gSavedSettings.getControl(setting))
+        {
+            mSceneSettingConnections.emplace_back(control->getSignal()->connect(
+                [this](LLControlVariable*, const LLSD&, const LLSD&)
+                {
+                    ++mSceneSettingsRevision;
+                    updateTransportTooltipCache();
+                }));
+        }
     }
+    if (LLControlVariable* control = gSavedSettings.getControl("CinematicCamMode"))
+    {
+        mSceneSettingConnections.emplace_back(control->getSignal()->connect(
+            [this](LLControlVariable*, const LLSD&, const LLSD&)
+            {
+                ++mSceneSettingsRevision;
+            }));
+    }
+    updateTransportTooltipCache();
+    markSceneClean();
+}
+
+void LLFloaterDirector::markSceneClean()
+{
+    mCleanSceneStamp = currentSceneStamp();
+    mHaveCleanSceneStamp = true;
+    mSceneDirty = false;
+    if (mSceneDirtyText)
+        setTextIfChanged(mSceneDirtyText, "");
+}
+
+void LLFloaterDirector::updateSceneDirty()
+{
+    if (!mHaveCleanSceneStamp)
+    {
+        markSceneClean();
+        return;
+    }
+    const bool dirty = currentSceneStamp() != mCleanSceneStamp;
+    if (dirty == mSceneDirty)
+        return;
+    mSceneDirty = dirty;
+    if (dirty)
+        mSceneAutosaveTimer.reset();
+    if (mSceneDirtyText)
+        setTextIfChanged(mSceneDirtyText, dirty ? "*" : "");
+}
+
+void LLFloaterDirector::idleSceneRecovery(bool force_write)
+{
+    updateSceneDirty();
     static LLCachedControl<S32> autosave_minutes(gSavedSettings, "DirectorAutosaveMinutes", 5);
     const S32 minutes = autosave_minutes;
-    if (!dirty || minutes <= 0)
-        return;
-    if (mSceneAutosaveTimer.getElapsedTimeF32() >= (F32)minutes * 60.f)
+    if (!mSceneDirty || (!force_write && (minutes <= 0 ||
+        mSceneAutosaveTimer.getElapsedTimeF32() < (F32)minutes * 60.f)))
     {
-        if (writeSceneFile(recoveryPath(), "recovery", false))
-            LL_INFOS("Director") << "Updated Director recovery snapshot" << LL_ENDL;
-        mSceneAutosaveTimer.reset();
+        return;
+    }
+    if (writeSceneFile(recoveryPath(), "recovery", false))
+        LL_INFOS("Director") << "Updated Director recovery snapshot" << LL_ENDL;
+    mSceneAutosaveTimer.reset();
+}
+
+void LLFloaterDirector::sceneRecoveryIdle(void*)
+{
+    if (LLFloaterDirector* director = dynamic_cast<LLFloaterDirector*>(
+            LLFloaterReg::findInstance("director")))
+    {
+        director->idleSceneRecovery();
+    }
+}
+
+void LLFloaterDirector::startRecoveryService()
+{
+    static bool started = false;
+    if (started)
+        return;
+    LLFloaterDirector* director = dynamic_cast<LLFloaterDirector*>(
+        LLFloaterReg::getInstance("director"));
+    if (!director)
+        return;
+    started = true;
+    director->initializeSceneRecovery();
+    director->offerSceneRecovery();
+    gIdleCallbacks.addFunction(&LLFloaterDirector::sceneRecoveryIdle, nullptr);
+}
+
+void LLFloaterDirector::prepareRecoveryForShutdown()
+{
+    if (LLFloaterDirector* director = dynamic_cast<LLFloaterDirector*>(
+            LLFloaterReg::findInstance("director")))
+    {
+        director->idleSceneRecovery(true);
     }
 }
 
@@ -2780,9 +2895,15 @@ void LLFloaterDirector::offerSceneRecovery()
                 if (LLFloaterDirector* self = static_cast<LLFloaterDirector*>(handle.get()))
                     self->loadScene("recovery", true);
             }
-            else
+            else if (option == 1)
             {
                 LLFile::remove(path, ENOENT);
+            }
+            else if (LLFloaterDirector* self = static_cast<LLFloaterDirector*>(handle.get()))
+            {
+                // Window close is neither Restore nor Discard. Leave the file
+                // intact and permit a later Director open to offer it again.
+                self->mRecoveryOffered = false;
             }
         });
 }
@@ -3011,6 +3132,19 @@ LLUUID LLFloaterDirector::firstSelectedCastId() const
     return item ? item->getValue().asUUID() : LLUUID::null;
 }
 
+void LLFloaterDirector::retargetPathFromCastSelection()
+{
+    if (!mPathPanel)
+        return;
+    if (mShell)
+    {
+        ALKitPage* page = mShell->currentKitPage();
+        if (page && page->pageKey() == "cast_group/path_tab" && page->whoPinned())
+            return;
+    }
+    mPathPanel->revealFor(firstSelectedCastId());
+}
+
 const uuid_vec_t& LLFloaterDirector::actorTargetsForPage(const std::string& page,
                                                           const uuid_vec_t& selected)
 {
@@ -3047,7 +3181,7 @@ void LLFloaterDirector::onCastRightClick(LLUICtrl* ctrl, S32 x, S32 y)
                 mCastList->selectNthItem(index);
                 // [DirFix] D14: programmatic select (no list commit) on a user
                 // right-click -> feed + claim the Path host synchronously
-                if (mPathPanel) mPathPanel->revealFor(firstSelectedCastId());
+                if (mPathPanel) retargetPathFromCastSelection();
             }
         }
         menu->buildDrawLabels();
@@ -3129,16 +3263,7 @@ void LLFloaterDirector::onCastSetMarkHere()
 {
     LLDirectorCast& cast = LLDirectorCast::instance();
     for (const LLUUID& id : selectedCastIds())
-    {
-        LLVOAvatar* av = cast.resolve(id);
-        LLDirectorCast::CastMember* m = cast.getMember(id);
-        if (av && av->getRootJoint() && m)
-        {
-            // current RENDERED root, same convention as setMarks()
-            m->mMark = av->getBaseRootPosition();   // [ClientHeight] marks are BASE space
-            m->mHasMark = true;
-        }
-    }
+        cast.setMark(id);
 }
 
 void LLFloaterDirector::onCastResetToMark()
@@ -3162,6 +3287,7 @@ void LLFloaterDirector::onCastClearLocoAnim()
         {
             m->mLocoAnim.setNull();
             m->mLocomotionSet.mRoles.erase(LLDirectorCast::LOCO_WALK_FORWARD);
+            cast.touchScene();
         }
     }
 }
@@ -3285,7 +3411,7 @@ void LLFloaterDirector::onGroupsListSelect()
     mCastList->selectMultiple(cast.membersInGroup(name));
     // [DirFix] D14: programmatic cast selection (no list commit) on a user click
     // in the groups list -> feed + claim the Path host synchronously
-    if (mPathPanel) mPathPanel->revealFor(firstSelectedCastId());
+    if (mPathPanel) retargetPathFromCastSelection();
     // load the delay spinner + prefill the rename editor with the current name
     mGroupDelayShownFor = name;
     mGroupDelaySpinner->setValue(cast.getGroupDelay(name));
@@ -3716,6 +3842,26 @@ void LLFloaterDirector::refreshActorStyleTab()
         mActorStyleSnapshot.clear();
     }
 
+    if (mShell)
+    {
+        ALKitPage* page = mShell->currentKitPage();
+        if (page && page->pageKey() == "look_group/actor_style_tab")
+        {
+            const LLUUID desired = page->whoPinned()
+                ? page->actorTarget() : firstSelectedCastId();
+            if (mActorStyleTarget->getSelectedValue().asUUID() != desired)
+            {
+                mRefreshingActorStyle = true;
+                if (mActorStyleTarget->setSelectedByValue(LLSD(desired), true))
+                {
+                    mActorStyleHadTarget = false;
+                    mActorStyleSnapshot.clear();
+                }
+                mRefreshingActorStyle = false;
+            }
+        }
+    }
+
     const bool have_target = hasActorStyleTarget();
     // [DirFix] D4: pure early-out helpers (same end state, no widget touch when unchanged)
     setEnabledIfChanged(mActorStyleTarget, mActorStyleTarget->getItemCount() > 0);
@@ -3933,6 +4079,7 @@ void LLFloaterDirector::applySelectedLocomotion(const LLUUID& anim)
     {
         m->mLocoAnim = anim;
     }
+    LLDirectorCast::instance().touchScene();
     mLocomotionEditorLoaded = false;
 }
 
@@ -4009,6 +4156,7 @@ void LLFloaterDirector::onClickClearLoco()
         {
             m->mLocoAnim.setNull();
         }
+        LLDirectorCast::instance().touchScene();
         mLocomotionEditorLoaded = false;
     }
 }
@@ -4034,6 +4182,7 @@ void LLFloaterDirector::onLocomotionMetadataCommit()
     entry.mManualLeftPlantPhase = llclamp(
         (F32)mLocomotionPhase->getValue().asReal(), -1.f, 1.f);
     entry.mAllowAO = mLocomotionAllowAO->get();
+    LLDirectorCast::instance().touchScene();
     mLocomotionEditorLoaded = false;
 }
 

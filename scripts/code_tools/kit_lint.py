@@ -355,7 +355,9 @@ def source_bundle_sha(kit_dir: Path) -> str | None:
     if not all(path.is_file() for path in (config_path, generator, v1)):
         return None
     config = json.loads(config_path.read_text(encoding="utf-8"))
-    paths = [generator, v1]
+    # Must mirror director_kit_gen.source_bundle_sha exactly (same inputs).
+    paths = [generator, v1, ROOT / "indra/newview/llfloaterdirector.cpp",
+             kit_dir / "synonyms.json", kit_dir / "external_search.json"]
     paths += [XUI_DIR / name for page in config.get("p0_pages", {}).values()
               for name in page.get("v1_sources", [])]
     if not all(path.is_file() for path in paths):

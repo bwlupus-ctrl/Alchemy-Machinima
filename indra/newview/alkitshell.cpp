@@ -105,6 +105,7 @@ public:
     }
     void draw() override
     {
+        LL_PROFILE_ZONE_SCOPED_CATEGORY_UI;
         LLView* target = mTarget.get();
         const F32 elapsed = mTimer.getElapsedTimeF32();
         if (!target || elapsed >= ALKitStyle::FLASH_SEC)
@@ -1229,7 +1230,8 @@ void ALKitShell::updateSearchResults(const ALKitSearch::Hits& hits, ALKitPage* p
         {
             const ALKitSearch::Hit& hit = mSearchHits[index];
             std::string label = hit.page_key != prior_page
-                ? "[" + (hit.external ? hit.external_label : hit.page_key) + "]  " + hit.path
+                ? "[" + (hit.external ? hit.external_label :
+                    hit.group_label + " > " + hit.page_label) + "]  " + hit.path
                 : "    " + hit.path;
             if (mSearchHits[index].advanced)
                 label += "  More";

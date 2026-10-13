@@ -703,12 +703,14 @@ void ALCineLightRigManager::setSelectedSlot(Slot slot)
     }
     mBlobs[slotIndex(mSelected)] = captureSelected();
     mSelected = slot;
+    ++mConfigurationRevision;
     mBlobs[slotIndex(mSelected)].toSettings();
     persist();
 }
 
 void ALCineLightRigManager::resetAllToSelf()
 {
+    ++mConfigurationRevision;
     // The panel has already reset every live key. Omitting the rig keeps
     // every session-only field at its shipped default as well.
     destroyLiveProbe();
@@ -1621,6 +1623,7 @@ LLSD ALCineLightRigManager::sceneData() const
 
 void ALCineLightRigManager::applySceneData(const LLSD& data)
 {
+    ++mConfigurationRevision;
     // This call owns the frozen no-block / unknown-version / v1 split. All
     // multi-instance reads remain additive and happen only after it returns.
     selected().applySceneData(data);

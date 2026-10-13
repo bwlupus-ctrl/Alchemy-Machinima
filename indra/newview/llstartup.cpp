@@ -199,6 +199,7 @@
 #include "pipeline.h"
 #include "llappviewer.h"
 #include "llfloatermap.h"
+#include "llfloaterdirector.h"
 #include "alpanellensgaze.h"     // [Machinima] register gaze random-perf idle tick
 #include "llweb.h"
 #include "llvoiceclient.h"
@@ -2643,6 +2644,7 @@ bool idle_startup()
         // LLUserAuth::getInstance()->reset();
 
         LLStartUp::setStartupState( STATE_STARTED );
+        doOnIdleOneTime(&LLFloaterDirector::startRecoveryService);
         // Startup feature recommendations and command-line graphics overrides
         // are initialization, not user edits in the newly logged-in session.
         ALExposureSettingsHistory::clear();

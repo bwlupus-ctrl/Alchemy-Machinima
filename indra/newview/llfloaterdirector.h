@@ -69,6 +69,8 @@ public:
     bool handleRightMouseDown(S32 x,S32 y,MASK mask) override;
     bool handleScrollWheel(S32 x,S32 y,LLScrollDelta delta) override;
     ALKitHistory* kitHistory();
+    static void startRecoveryService();
+    static void prepareRecoveryForShutdown();
     static void removeRecoveryFile();
     // [SliderWheel] [DirFix] D1's wheel overrides are retired: the scroll-through guard is global
     // in llui (indra/llui/llsliderwheel.h).
@@ -95,6 +97,7 @@ private:
     void onClickSetMarks();
     void onClickResetMarks();
     void refreshTransport();
+    void updateTransportTooltipCache();
 
     // ---- scene files (transport bar) ----
     static std::string scenesDir();     // created on demand
@@ -113,9 +116,14 @@ private:
     bool loadScene(const std::string& name, bool recovery = false);
     LLSD captureSceneData() const;
     bool writeSceneFile(const std::string& path, const std::string& label, bool notify_failure);
-    void refreshSceneRecovery();
+    void initializeSceneRecovery();
+    void idleSceneRecovery(bool force_write = false);
+    void updateSceneDirty();
+    void markSceneClean();
+    void retargetPathFromCastSelection();
     void offerSceneRecovery();
     static std::string recoveryPath();
+    static void sceneRecoveryIdle(void*);
 
     // ---- tabs ----
     void onTabChanged();                // remember the active tab (DirectorLastTabName + DirectorLastTab)
@@ -231,6 +239,8 @@ private:
     LLButton* mCutBtn = nullptr;
     LLButton* mSetMarksBtn = nullptr;
     LLButton* mResetMarksBtn = nullptr;
+    std::string mActionTooltip;
+    bool mActionArmed = false;
 
     // scene files (transport bar)
     LLComboBox*   mSceneCombo = nullptr;
@@ -239,12 +249,32 @@ private:
     LLButton*     mSceneDeleteBtn = nullptr;
     LLButton*     mSceneLoadBtn = nullptr;
     LLTextBox*    mSceneDirtyText = nullptr;
-    LLSD          mCleanSceneSnapshot;
+    LLTextBox*    mSceneMetadataText = nullptr;
+    struct SceneChangeStamp
+    {
+        U64 mSettings = 0;
+        U64 mCast = 0;
+        U64 mPaths = 0;
+        U64 mPrism = 0;
+        U64 mRig = 0;
+        U64 mLightResponse = 0;
+        bool operator==(const SceneChangeStamp& other) const
+        {
+            return mSettings == other.mSettings && mCast == other.mCast &&
+                   mPaths == other.mPaths && mPrism == other.mPrism &&
+                   mRig == other.mRig && mLightResponse == other.mLightResponse;
+        }
+        bool operator!=(const SceneChangeStamp& other) const { return !(*this == other); }
+    };
+    SceneChangeStamp currentSceneStamp() const;
+    SceneChangeStamp mCleanSceneStamp;
+    U64           mSceneSettingsRevision = 1;
+    bool          mHaveCleanSceneStamp = false;
     bool          mSceneDirty = false;
     bool          mRecoveryOffered = false;
     std::string   mSceneMetadataTooltip;
-    ALLiveReadoutClock mSceneDirtyClock{1.f};
     LLFrameTimer  mSceneAutosaveTimer;
+    std::vector<boost::signals2::scoped_connection> mSceneSettingConnections;
     ALPanelCineCamParams* mCineCamPanel = nullptr;  // embedded shared params panel
 
     // left-rail tabs + legend popover

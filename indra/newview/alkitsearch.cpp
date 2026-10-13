@@ -123,7 +123,9 @@ bool ALKitSearch::tokenizeBatch(U32 count)
         const std::vector<std::string>& fields = mPending[mPendingIndex];
         Entry                           entry;
         entry.group_key   = fields[0];
+        entry.group_label = fields[3];
         entry.page_key    = fields[0] + "/" + fields[1];
+        entry.page_label  = fields[2];
         entry.card_id     = fields[5];
         entry.option      = fields[7].empty() ? -1 : atoi(fields[7].c_str());
         entry.widget      = fields[8];
@@ -176,7 +178,9 @@ ALKitSearch::Hits ALKitSearch::query(const std::string& query_text) const
 {
     LLTimer                  query_timer;
     std::vector<std::string> query_tokens;
-    splitTokens(query_text, query_tokens);
+    std::string lowered_query = query_text;
+    LLStringUtil::toLower(lowered_query);
+    splitTokens(lowered_query, query_tokens, false);
     Hits hits;
     if (query_tokens.empty())
     {
@@ -222,7 +226,9 @@ ALKitSearch::Hits ALKitSearch::query(const std::string& query_text) const
         {
             Hit hit;
             hit.group_key = entry.group_key;
+            hit.group_label = entry.group_label;
             hit.page_key  = entry.page_key;
+            hit.page_label = entry.page_label;
             hit.card_id   = entry.card_id;
             hit.widget    = entry.widget;
             hit.setting   = entry.setting;
@@ -267,7 +273,9 @@ ALKitSearch::Hits ALKitSearch::all() const
     {
         Hit hit;
         hit.group_key = entry.group_key;
+        hit.group_label = entry.group_label;
         hit.page_key = entry.page_key;
+        hit.page_label = entry.page_label;
         hit.card_id = entry.card_id;
         hit.widget = entry.widget;
         hit.setting = entry.setting;
@@ -320,7 +328,8 @@ void ALKitSearch::tokenize(const std::string& value, std::vector<U32>& out)
     }
 }
 
-void ALKitSearch::splitTokens(const std::string& value, std::vector<std::string>& out)
+void ALKitSearch::splitTokens(const std::string& value, std::vector<std::string>& out,
+                              bool lowercase_tokens)
 {
     std::string token;
     char        previous = 0;
@@ -331,7 +340,8 @@ void ALKitSearch::splitTokens(const std::string& value, std::vector<std::string>
         {
             if (!token.empty() && std::isupper(byte) && std::islower((unsigned char)previous))
             {
-                LLStringUtil::toLower(token);
+                if (lowercase_tokens)
+                    LLStringUtil::toLower(token);
                 out.push_back(token);
                 token.clear();
             }
@@ -339,7 +349,8 @@ void ALKitSearch::splitTokens(const std::string& value, std::vector<std::string>
         }
         else if (!token.empty())
         {
-            LLStringUtil::toLower(token);
+            if (lowercase_tokens)
+                LLStringUtil::toLower(token);
             out.push_back(token);
             token.clear();
         }
@@ -347,7 +358,8 @@ void ALKitSearch::splitTokens(const std::string& value, std::vector<std::string>
     }
     if (!token.empty())
     {
-        LLStringUtil::toLower(token);
+        if (lowercase_tokens)
+            LLStringUtil::toLower(token);
         out.push_back(token);
     }
 }

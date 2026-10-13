@@ -1841,7 +1841,7 @@ void LLAppViewer::flushLFSIO()
 bool LLAppViewer::cleanup()
 {
     if (!isError())
-        LLFloaterDirector::removeRecoveryFile();
+        LLFloaterDirector::prepareRecoveryForShutdown();
     // [XInputRumble] The main loop no longer advances patterns; stop the pad now,
     // not when the joystick is terminated much later in cleanup.
     if (LLViewerJoystick::instanceExists()) LLViewerJoystick::getInstance()->stopRumble(true);

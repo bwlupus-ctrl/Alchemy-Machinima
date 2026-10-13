@@ -2083,6 +2083,7 @@ bool LLActorMover::applyPathSceneData(const LLUUID& actor_id, const LLSD& data)
     }
     mPaths[key] = loaded;
     mHistory.erase(key);
+    ++mPathRevision;
     return true;
 }
 
@@ -3473,10 +3474,12 @@ void LLActorMover::applyState(const LLUUID& key, const PathState& st)
             mEditNode = cnt > 0 ? cnt - 1 : -1;
         }
     }
+    ++mPathRevision;
 }
 
 void LLActorMover::snapshotForUndo(const LLUUID& actor_id)
 {
+    ++mPathRevision;
     const LLUUID key = path_key(actor_id);
     EditHistory& h = mHistory[key];
     h.mUndo.push_back(captureState(key));

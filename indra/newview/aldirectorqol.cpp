@@ -2,8 +2,6 @@
 
 #include "aldirectorqol.h"
 
-#include "llstring.h"
-
 #include <algorithm>
 #include <array>
 #include <cstdlib>
@@ -53,10 +51,8 @@ bool isSubsequence(const std::string& needle, const std::string& haystack)
 S32 ALDirectorQol::fuzzyTokenScore(const std::string& query_value,
                                    const std::string& candidate_value)
 {
-    std::string query = query_value;
-    std::string candidate = candidate_value;
-    LLStringUtil::toLower(query);
-    LLStringUtil::toLower(candidate);
+    const std::string& query = query_value;
+    const std::string& candidate = candidate_value;
     if (query.empty() || candidate.empty())
         return 0;
     if (query == candidate)

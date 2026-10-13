@@ -1048,6 +1048,12 @@ LLDirectorCast::LLDirectorCast()
     mSelfGazeTarget.mMode = LLActorMover::GazeTarget::CAMERA;
 }
 
+void LLDirectorCast::touchScene()
+{
+    ++mSceneRevision;
+    mChangedSignal();
+}
+
 // ---------------------------------------------------------------------------
 // membership
 // ---------------------------------------------------------------------------
@@ -1064,6 +1070,7 @@ void LLDirectorCast::add(const LLUUID& id)
     mIds.push_back(actor_id);
     mMemberIndex[actor_id] = mCast.size() - 1;
     ++mCastRevision; // [GhostPanelPerf] membership changed
+    touchScene();
     // seed the cached name right away when the actor is in world
     resolve(actor_id);
     // [DirFix] D14: the effective roster changed (an empty cast's implicit self
@@ -1086,6 +1093,7 @@ void LLDirectorCast::remove(const LLUUID& id)
     mCast.erase(it);
     ++mGazeCueRevision;
     ++mCastRevision; // [GhostPanelPerf] membership changed
+    touchScene();
     mIds.erase(std::find(mIds.begin(), mIds.end(), actor_id));
     rebuildMemberIndex();
     // [DirFix] D14: a removed member can no longer be the path-editor edit actor;
@@ -1214,11 +1222,13 @@ void LLDirectorCast::setActorStyle(const LLUUID& id, const ActorStyle& input)
     if (id.isNull() || (gAgentID.notNull() && id == gAgentID))
     {
         mSelfActorStyle = style;
+        touchScene();
         return;
     }
     if (CastMember* member = getMember(canonicalActorId(id)))
     {
         member->mActorStyle = style;
+        touchScene();
     }
 }
 
@@ -1228,6 +1238,7 @@ void LLDirectorCast::setLookAtCamera(const LLUUID& id, bool selected)
     {
         mSelfLookAtCamera = selected;
         ++mGazeConfigRevision;
+        touchScene();
         return;
     }
     if (!contains(id))
@@ -1243,6 +1254,7 @@ void LLDirectorCast::setLookAtCamera(const LLUUID& id, bool selected)
         mLookAtCameraIds.erase(id);
     }
     ++mGazeConfigRevision;
+    touchScene();
 }
 
 bool LLDirectorCast::isLookAtCamera(const LLUUID& id) const
@@ -1270,6 +1282,7 @@ void LLDirectorCast::setGazeTarget(const LLUUID& id, const LLActorMover::GazeTar
         mSelfGazeTarget = target;
         LLActorMover::instance().setGazeTargetConfig(LLUUID::null, target);
         ++mGazeConfigRevision;
+        touchScene();
         return;
     }
     if (CastMember* m = getMember(id))
@@ -1277,6 +1290,7 @@ void LLDirectorCast::setGazeTarget(const LLUUID& id, const LLActorMover::GazeTar
         m->mGazeTarget = target;
         LLActorMover::instance().setGazeTargetConfig(id, target);
         ++mGazeConfigRevision;
+        touchScene();
     }
 }
 
@@ -1311,6 +1325,7 @@ void LLDirectorCast::setEyeGazeTarget(
         mSelfEyeGazeTarget = target;
         mSelfEyeGazeTargetEnabled = true;
         ++mGazeConfigRevision;
+        touchScene();
         return;
     }
     if (CastMember* m = getMember(id))
@@ -1318,6 +1333,7 @@ void LLDirectorCast::setEyeGazeTarget(
         m->mEyeGazeTarget = target;
         m->mEyeGazeTargetEnabled = true;
         ++mGazeConfigRevision;
+        touchScene();
     }
 }
 
@@ -1328,6 +1344,7 @@ void LLDirectorCast::clearEyeGazeTarget(const LLUUID& id)
         mSelfEyeGazeTarget = LLActorMover::GazeTarget();
         mSelfEyeGazeTargetEnabled = false;
         ++mGazeConfigRevision;
+        touchScene();
         return;
     }
     if (CastMember* m = getMember(id))
@@ -1335,6 +1352,7 @@ void LLDirectorCast::clearEyeGazeTarget(const LLUUID& id)
         m->mEyeGazeTarget = LLActorMover::GazeTarget();
         m->mEyeGazeTargetEnabled = false;
         ++mGazeConfigRevision;
+        touchScene();
     }
 }
 
@@ -1394,6 +1412,7 @@ void LLDirectorCast::setGazeCues(const LLUUID& id, const GazeCueList& input)
 
     ++mGazeCueRevision;
     ++mGazeConfigRevision;
+    touchScene();
     LLActorMover::instance().clearDirectorLookAtRuntime(runtime_id);
 }
 
@@ -1445,6 +1464,7 @@ void LLDirectorCast::setGazeInfluenceKeys(const LLUUID& id,
     }
 
     ++mGazeCueRevision;
+    touchScene();
     LLActorMover::instance().clearDirectorLookAtRuntime(runtime_id);
 }
 
@@ -1724,6 +1744,7 @@ LLVOAvatar* LLDirectorCast::resolve(const LLUUID& id)
         {
             m->mLastName = name;
             ++mCastRevision; // [GhostPanelPerf] cached display name changed
+            touchScene();
         }
     }
     return av;
@@ -1732,22 +1753,22 @@ LLVOAvatar* LLDirectorCast::resolve(const LLUUID& id)
 void LLDirectorCast::setSubjectA(const LLUUID& id)
 {
     const LLUUID value = canonicalActorId(id);
-    if (mSubjectA != value) { mSubjectA = value; ++mGazeConfigRevision; }
+    if (mSubjectA != value) { mSubjectA = value; ++mGazeConfigRevision; touchScene(); }
 }
 void LLDirectorCast::setSubjectB(const LLUUID& id)
 {
     const LLUUID value = canonicalActorId(id);
-    if (mSubjectB != value) { mSubjectB = value; ++mGazeConfigRevision; }
+    if (mSubjectB != value) { mSubjectB = value; ++mGazeConfigRevision; touchScene(); }
 }
 void LLDirectorCast::setSubjectC(const LLUUID& id)
 {
     const LLUUID value = canonicalActorId(id);
-    if (mSubjectC != value) { mSubjectC = value; ++mGazeConfigRevision; }
+    if (mSubjectC != value) { mSubjectC = value; ++mGazeConfigRevision; touchScene(); }
 }
 void LLDirectorCast::setSubjectD(const LLUUID& id)
 {
     const LLUUID value = canonicalActorId(id);
-    if (mSubjectD != value) { mSubjectD = value; ++mGazeConfigRevision; }
+    if (mSubjectD != value) { mSubjectD = value; ++mGazeConfigRevision; touchScene(); }
 }
 
 LLVOAvatar* LLDirectorCast::resolveSubjectA()
@@ -1782,6 +1803,7 @@ void LLDirectorCast::setGroup(const LLUUID& id, const std::string& name)
         if (old != name)
         {
             pruneGroupDelay(old);   // retagging the last member retires the group
+            touchScene();
         }
     }
 }
@@ -1857,6 +1879,7 @@ bool LLDirectorCast::renameGroup(const std::string& old_name, const std::string&
         }
         mGroupDelays.erase(old_name);
     }
+    touchScene();
     return true;
 }
 
@@ -1876,6 +1899,8 @@ bool LLDirectorCast::dissolveGroup(const std::string& name)
         }
     }
     mGroupDelays.erase(name);
+    if (any)
+        touchScene();
     return any;
 }
 
@@ -1885,6 +1910,7 @@ void LLDirectorCast::setGroupDelay(const std::string& name, F32 seconds)
     {
         return;
     }
+    const F32 old_seconds = getGroupDelay(name);
     if (seconds > 0.01f)
     {
         mGroupDelays[name] = seconds;
@@ -1893,6 +1919,8 @@ void LLDirectorCast::setGroupDelay(const std::string& name, F32 seconds)
     {
         mGroupDelays.erase(name);   // 0 = no entry, so the map never bloats
     }
+    if (!is_approx_equal(old_seconds, getGroupDelay(name)))
+        touchScene();
 }
 
 F32 LLDirectorCast::getGroupDelay(const std::string& name) const
@@ -2018,6 +2046,7 @@ void LLDirectorCast::cancelPendingStart(const LLUUID& id)
 // ---------------------------------------------------------------------------
 void LLDirectorCast::setMarks()
 {
+    bool changed = false;
     for (CastMember& m : mCast)
     {
         LLVOAvatar* av = resolve(m.mId);
@@ -2027,8 +2056,11 @@ void LLDirectorCast::setMarks()
             // a posed actor) captures what the camera actually sees
             m.mMark = av->getBaseRootPosition();   // [ClientHeight] marks are BASE space
             m.mHasMark = true;
+            changed = true;
         }
     }
+    if (changed)
+        touchScene();
 }
 
 void LLDirectorCast::resetToMarks()
@@ -2060,6 +2092,7 @@ bool LLDirectorCast::setMark(const LLUUID& id)
     // same capture as setMarks(): the current RENDERED root
     m->mMark = av->getBaseRootPosition();   // [ClientHeight] marks are BASE space
     m->mHasMark = true;
+    touchScene();
     return true;
 }
 
@@ -2221,6 +2254,7 @@ void LLDirectorCast::applySceneData(const LLSD& data)
     mGroupDelays.clear();
     mCast.clear();
     ++mCastRevision; // [GhostPanelPerf] wholesale membership replace (also bumped per loaded member)
+    touchScene();
     mIds.clear();
     mMemberIndex.clear();
     mLookAtCameraIds.clear();

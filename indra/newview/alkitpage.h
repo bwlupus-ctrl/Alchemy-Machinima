@@ -180,6 +180,7 @@ private:
     bool        updateGateStatus();
     void        scrollToView(LLView*);
     void        performPageReset();
+    void        refreshActorTargetAvailability();
     std::string prefix() const;
     std::string mPage, mSummary, mWatchSettings, mMasterWidget, mMasterSetting, mMasterLabel, mMasterTooltip, mModes, mModeSetting,
         mModeWidget, mModeOn, mModeAdapter, mWhoLabel, mWhoPicker, mWhoAdapter, mPresetMode, mPresetProvider, mChipMode;

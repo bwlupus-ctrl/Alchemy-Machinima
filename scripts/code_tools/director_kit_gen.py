@@ -931,6 +931,8 @@ def floater_tree(data: dict, page_files: dict[str, str], v1: ET.Element) -> ET.E
     for name in ("cast_list", "cast_hint", "group_assign_combo", "btn_add_you", "btn_add_animesh", "btn_focus", "btn_remove"):
         node = copy_chrome(name, v1)
         if name == "cast_list":
+            # Intentional: agent cargo exposes ordered multi-row DAD_PERSON drops,
+            # which Subject A consumes to fill A-D. A plain scroll_list cannot.
             node.tag = "radar_list"
             node.set("content_type", "Agents")
         if name == "cast_hint":
@@ -955,7 +957,7 @@ def floater_tree(data: dict, page_files: dict[str, str], v1: ET.Element) -> ET.E
                 attrs["master_setting"] = str(master["s"])
             ET.SubElement(tc, "kit_lazy_page", attrs)
     bar = ET.SubElement(shell, "kit_bar", {"name": "kit_transport", "flex": "status_strip",
-                        "collapse_order": "kit_ui_ms,btn_reset_marks,btn_scene_delete,status_strip,"
+                        "collapse_order": "kit_ui_ms,btn_reset_marks,btn_scene_delete,status_strip,scene_metadata_text,"
                                           "btn_help,btn_set_marks,show_paths_global_check"})
     widths = {"btn_action": 92, "btn_cut": 92, "btn_arm": 22, "btn_take_play": 28, "btn_take_stop": 28,
               "take_timecode": 90, "scene_combo": 130, "scene_name_editor": 130, "btn_scene_load": 44,
@@ -981,6 +983,10 @@ def floater_tree(data: dict, page_files: dict[str, str], v1: ET.Element) -> ET.E
     dirty = ET.SubElement(bar, "text", {"name": "scene_dirty_indicator", "width": "10", "height": "28",
                                          "halign": "center", "tool_tip": "Unsaved Director scene changes"})
     dirty.text = ""
+    metadata = ET.SubElement(bar, "text", {"name": "scene_metadata_text", "width": "150", "height": "28",
+                                             "use_ellipses": "true", "text_color": "KitMuted",
+                                             "tool_tip": "Selected scene name and saved time"})
+    metadata.text = "Select a scene"
     ET.SubElement(bar, "button", {"name": "btn_scene_load", "label": "Load",
                                    "tool_tip": "Load the selected scene", "width": str(widths["btn_scene_load"]),
                                    "height": "28"})

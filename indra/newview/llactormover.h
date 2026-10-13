@@ -278,6 +278,7 @@ public:
     // to rebuild, never two).
     bool setNodeOrient(const LLUUID& actor_id, S32 index, const LLQuaternion& orient);
     bool clearNodeOrient(const LLUUID& actor_id, S32 index);
+    U64 getPathRevision() const { return mPathRevision; }
 
     // [ObjectPath] evaluation helpers shared with the object path mover, so an
     // object drive uses the EXACT speed math the avatar walk uses (per-node
@@ -1674,6 +1675,7 @@ private:
     // Written/claimed/forgotten only by onActorRuntimeReplaced().
     std::map<LLUUID, LLUUID> mParkedWalkKeys;
     std::map<LLUUID, Path> mPaths;      // authored path per actor (session-only)
+    U64 mPathRevision = 1;
     std::map<LLUUID, EditHistory> mHistory;   // per-actor bounded undo/redo stacks
     std::map<LLUUID, Follow> mFollows;  // follower key -> leader relationship (session-only)
     std::map<LLUUID, Gaze> mGazes;      // per-actor look-at config + runtime (session-only)

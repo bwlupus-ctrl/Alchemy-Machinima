@@ -18,6 +18,9 @@ template<> template<> void director_qol_object::test<1>()
                                 ALDirectorQol::fuzzyTokenScore("expsoure", "exposure"));
     ensure("transposition typo matches", ALDirectorQol::fuzzyTokenScore("expsoure", "exposure") > 0);
     ensure("subsequence matches", ALDirectorQol::fuzzyTokenScore("shdw", "shadow") > 0);
+    ensure("closer typo ranks higher",
+           ALDirectorQol::fuzzyTokenScore("exposore", "exposure") >
+           ALDirectorQol::fuzzyTokenScore("expasore", "exposure"));
     ensure_equals("noise rejected", ALDirectorQol::fuzzyTokenScore("zzz", "exposure"), 0);
 }
 

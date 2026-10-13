@@ -12,7 +12,8 @@
 
 namespace ALDirectorQol
 {
-// 0 means no match. Exact and prefix matches deliberately outrank fuzzy ones.
+// Inputs are pre-lowercased by the search index/query boundary. 0 means no
+// match. Exact and prefix matches deliberately outrank fuzzy ones.
 S32 fuzzyTokenScore(const std::string& query, const std::string& candidate);
 
 enum class SearchField
