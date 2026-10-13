@@ -53,6 +53,19 @@ inline F32 requestedHz(F32 shared_hz, LLPrismLens::EOutputRateMode mode,
         : bounded_shared;
 }
 
+inline bool demandActive(bool previews_enabled, bool consumer_visible,
+                         bool capture_demanded)
+{
+    return previews_enabled && consumer_visible && capture_demanded;
+}
+
+inline bool captureWorkRequired(bool preview_demanded, U32 display_count,
+                                U32 projector_count, bool gate_watched)
+{
+    return preview_demanded || display_count > 0 || projector_count > 0 ||
+           gate_watched;
+}
+
 inline F64 advanceDeadline(F64 now, F32 entitlement_hz)
 {
     return now + 1.0 / static_cast<F64>(llmax(0.01f, entitlement_hz));

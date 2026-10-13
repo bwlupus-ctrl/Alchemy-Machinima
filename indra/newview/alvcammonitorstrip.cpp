@@ -332,8 +332,8 @@ void ALVCamMonitorStrip::updateTileText(
         if (info_changed)
         {
             const char* prefix = tile.mEditing ? "EDITING \xC2\xB7 " : "";
-            if (!tile.mPreviewsEnabled && tile.mActivity != LLPrismLens::EActivityState::IDLE)
-                cache.mBadge = std::string(prefix) + "PAUSED";
+            if (!tile.mPreviewsEnabled)
+                cache.mBadge = "PREVIEWS OFF";
             else if (tile.mActivity == LLPrismLens::EActivityState::IDLE)
                 cache.mBadge = std::string(prefix) + "OFFLINE";
             else if (tile.mActivity == LLPrismLens::EActivityState::LIVE)
@@ -345,7 +345,7 @@ void ALVCamMonitorStrip::updateTileText(
             else
                 cache.mBadge = std::string(prefix) + tileBadge(tile.mPublication.mState);
 
-            cache.mTimestamp = tile.mPublication.mTimestamp > 0.0
+            cache.mTimestamp = tile.mPreviewsEnabled && tile.mPublication.mTimestamp > 0.0
                 ? clockText(tile.mPublication.mTimestamp) : "--:--";
             cache.mShows = tile.mMonitorShowsDisplay
                 ? llformat("Shows: %s %u", tile.mMonitorDisplayVirtual ? "Virtual screen" : "Prim face",
@@ -353,6 +353,8 @@ void ALVCamMonitorStrip::updateTileText(
                 : "Shows: camera output (raw)";
             if (!tile.mMasterEnabled)
                 cache.mStatus = "Paused \xC2\xB7 Virtual Cam off";
+            else if (!tile.mPreviewsEnabled)
+                cache.mStatus = "Previews off";
             else if (tile.mActivity == LLPrismLens::EActivityState::LIVE)
                 cache.mStatus = llformat("Live %.1f/%.1f fps \xC2\xB7 %u face%s",
                     observed_tenths / 10.f, target_tenths / 10.f,

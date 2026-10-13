@@ -1,5 +1,20 @@
 # VC6 — Director v2 Camera > VCam
 
+## Preview master switch fix
+
+`PrismMonitorPreviewsEnabled` previously stopped `prepareFrame()` globally, but
+`isDemanded()` still exposed retained owner demand and preview-only runtime kept
+its last publication window/activity until a later cadence refresh. That allowed
+the monitor UI to format the selected tile as `EDITING - LIVE x/y fps` after the
+switch was off. Effective service demand now requires the master switch, a
+visible consumer, and capture demand; disabling previews immediately clears
+preview-only observed-rate sampling and activity without touching cameras that
+serve visible faces, Gate/main-view use, or projectors. Monitor info now shows
+`PREVIEWS OFF` / `Previews off` and never formats live FPS or a live timestamp
+while disabled. A camera with no display, projector, Gate watch, or effective
+preview demand now skips capture preparation as well as render admission.
+Preview-policy tests 11-12 cover effective demand and work eligibility.
+
 ## Implemented
 
 - The generated v2 VCam page is now a native kit page with 126 inventory items (the page master plus 125 indexed rows), five signal-chain steps, scope badges, conditional rows, typed combos/segments, search/help/chips, and no history bindings (`scripts/code_tools/director_kit/vcam_page.json:1`, `scripts/code_tools/director_kit/kit_pages.json:4`, `scripts/code_tools/director_kit_gen.py:395`).

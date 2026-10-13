@@ -2978,6 +2978,7 @@ public:
     {
         LLPrismPreviewService& previews = LLPrismPreviewService::instance();
         const F64 now = LLTimer::getTotalSeconds();
+        bool runtime_changed = false;
         for (PrismInstance& capture : mLenses)
         {
             if (!capture.mOccupied) continue;
@@ -2996,9 +2997,21 @@ public:
                 capture.mRuntime.mPreviewEntitlementHz = 0.f;
                 capture.mPreviewOnly = false;
                 capture.mRuntime.mPreviewOnly = false;
+                // Preview-only production has no samples once the master switch
+                // is off. Close the window immediately instead of reporting a
+                // decaying stale rate until the next one-second cadence update.
+                if (!capture.mAnyDisplayVisible)
+                {
+                    capture.mPublicationSamples = 0;
+                    capture.mPublicationWindowStart = 0.0;
+                    capture.mRuntime.mObservedPublicationHz = 0.f;
+                    capture.mRuntime.mActivity = LLPrismLens::EActivityState::IDLE;
+                }
+                runtime_changed = true;
             }
             capture.mPreviewDemanded = demanded;
         }
+        if (runtime_changed) ++mRuntimeRevision;
     }
 
     bool prepare(U32 slot, const S32 viewport[4], const glm::mat4& main_projection,
@@ -3011,6 +3024,13 @@ public:
 
         if (mLenses[slot].mMode == LLPrismLens::ECaptureMode::CAMERA_FEED)
         {
+            const PrismInstance& capture = mLenses[slot];
+            if (!LLPrismPreviewPolicy::captureWorkRequired(
+                    capture.mPreviewDemanded, capture.mDisplayCount,
+                    capture.mProjectorCount, capture.mGateWatchFrames > 0))
+            {
+                return false;
+            }
             return prepareCameraCapture(slot, viewport, main_projection,
                                         main_modelview, main_camera);
         }

@@ -980,7 +980,8 @@ bool LLPrismPreviewService::prepareFrame()
         }
         markChanged();
     }
-    if (!enabled || !anyVisibleConsumer() || !anyDemand() ||
+    if (!LLPrismPreviewPolicy::demandActive(
+            enabled, anyVisibleConsumer(), anyDemand()) ||
         mSelfTestPhase == ESelfTestPhase::BASELINE || !mBudget.canAttempt())
     {
         return false;
@@ -1015,6 +1016,9 @@ bool LLPrismPreviewService::ensureScratchReady()
 bool LLPrismPreviewService::isDemanded(
     const LLPrismLens::CaptureHandle& capture) const
 {
+    static LLCachedControl<bool> previews_enabled(
+        gSavedSettings, "PrismMonitorPreviewsEnabled", true);
+    if (!previews_enabled || !anyVisibleConsumer()) return false;
     for (const DemandEntry& entry : mDemand)
     {
         if (entry.mDemanded && entry.mCapture.mId == capture.mId &&

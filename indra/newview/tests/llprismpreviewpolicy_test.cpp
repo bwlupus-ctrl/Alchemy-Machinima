@@ -240,4 +240,35 @@ void prism_preview_policy_object::test<10>()
            budget.reserve(PrismPreviewBudgetController::EOperation::AUXILIARY,
                           reservation));
 }
+
+template<> template<>
+void prism_preview_policy_object::test<11>()
+{
+    set_test_name("preview master switch removes effective capture demand");
+    ensure("visible demanded preview is active",
+           LLPrismPreviewPolicy::demandActive(true, true, true));
+    ensure("master off suppresses demand",
+           !LLPrismPreviewPolicy::demandActive(false, true, true));
+    ensure("hidden consumer suppresses demand",
+           !LLPrismPreviewPolicy::demandActive(true, false, true));
+    ensure("undemanded capture stays inactive",
+           !LLPrismPreviewPolicy::demandActive(true, true, false));
+}
+
+
+template<> template<>
+void prism_preview_policy_object::test<12>()
+{
+    set_test_name("unconsumed camera skips all capture preparation");
+    ensure("preview demand requires work",
+           LLPrismPreviewPolicy::captureWorkRequired(true, 0, 0, false));
+    ensure("display requires work",
+           LLPrismPreviewPolicy::captureWorkRequired(false, 1, 0, false));
+    ensure("projector requires work",
+           LLPrismPreviewPolicy::captureWorkRequired(false, 0, 1, false));
+    ensure("Gate/main-view watch requires work",
+           LLPrismPreviewPolicy::captureWorkRequired(false, 0, 0, true));
+    ensure("preview-only camera with previews off has no work",
+           !LLPrismPreviewPolicy::captureWorkRequired(false, 0, 0, false));
+}
 } // namespace tut
