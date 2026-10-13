@@ -1305,29 +1305,23 @@ void ALColorGrade::populateLUTCombo(LLComboBox* lut_combo)
 
     std::error_code ec;
     std::filesystem::path user_luts_path = fsyspath(user_luts);
-    if(std::filesystem::is_directory(user_luts_path, ec))
+    // A folder error only skips the user LUTs; the built-ins and the reselect below
+    // must still run, or the combo reads back blank.
+    const bool have_dir = std::filesystem::is_directory(user_luts_path, ec) && !ec;
+    if (ec)
+        LL_WARNS() << "Error checking user LUTs directory: " << ec.message() << LL_ENDL;
+    if (have_dir)
     {
-        if(ec)
-        {
-            LL_WARNS() << "Error checking user LUTs directory: " << ec.message() << LL_ENDL;
-            return;
-        }
-        if(!std::filesystem::is_empty(user_luts_path, ec) && !ec)
-        {
-            if(ec)
-            {
-                LL_WARNS() << "Error checking contents of user LUTs directory: " << ec.message() << LL_ENDL;
-                return;
-            }
+        const bool empty = std::filesystem::is_empty(user_luts_path, ec);
+        if (ec)
+            LL_WARNS() << "Error checking contents of user LUTs directory: " << ec.message() << LL_ENDL;
+        else if (!empty)
             lut_combo->addSeparator();
-        }
-        for (std::filesystem::directory_iterator lut(user_luts_path, ec); lut != std::filesystem::directory_iterator(); ++lut)
+        std::filesystem::directory_iterator lut(user_luts_path, ec);
+        if (ec)
+            LL_WARNS() << "Error reading user LUTs directory: " << ec.message() << LL_ENDL;
+        for (; !ec && lut != std::filesystem::directory_iterator(); lut.increment(ec))
         {
-            if(ec)
-            {
-                LL_WARNS() << "Error reading user LUT file: " << ec.message() << LL_ENDL;
-                continue;
-            }
 #if LL_WINDOWS
             std::string lut_stem = ll_convert_wide_to_string(lut->path().stem().native());
             std::string lut_filename = ll_convert_wide_to_string(lut->path().filename().native());

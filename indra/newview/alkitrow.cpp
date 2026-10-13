@@ -657,7 +657,10 @@ void ALKitRow::pollLiveValue()
 
 void ALKitRow::bindingChanged()
 {
-    if (mBinding && mControl && !baselineEditActive(mControl))
+    // Vec rows: ALKitVecBinding::syncControls already pushed each component into
+    // its own spinner; mControl is only the X spinner and must never get the array
+    // (an array's asReal() is 0, which would then be committed as X).
+    if (mBinding && mControl && !mVecCount && !baselineEditActive(mControl))
     {
         const LLSD value = mBinding->get();
         if (!alSameValue(value, mControl->getValue()))

@@ -130035,7 +130035,7 @@
           "cpp": [
             {
               "file": "indra/newview/alfloaterlightbox.cpp",
-              "line": 1560,
+              "line": 1554,
               "class": "ALFloaterLightBox",
               "function": "updateTonemapper",
               "wired_class": "ALFloaterLightBox",
@@ -130137,7 +130137,7 @@
           "cpp": [
             {
               "file": "indra/newview/alfloaterlightbox.cpp",
-              "line": 1561,
+              "line": 1555,
               "class": "ALFloaterLightBox",
               "function": "updateTonemapper",
               "wired_class": "ALFloaterLightBox",
@@ -133847,7 +133847,7 @@
           "cpp": [
             {
               "file": "indra/newview/alfloaterlightbox.cpp",
-              "line": 1562,
+              "line": 1556,
               "class": "ALFloaterLightBox",
               "function": "updateTonemapper",
               "wired_class": "ALFloaterLightBox",
@@ -133949,7 +133949,7 @@
           "cpp": [
             {
               "file": "indra/newview/alfloaterlightbox.cpp",
-              "line": 1563,
+              "line": 1557,
               "class": "ALFloaterLightBox",
               "function": "updateTonemapper",
               "wired_class": "ALFloaterLightBox",
@@ -134051,7 +134051,7 @@
           "cpp": [
             {
               "file": "indra/newview/alfloaterlightbox.cpp",
-              "line": 1540,
+              "line": 1534,
               "class": "ALFloaterLightBox",
               "function": "updateTonemapper",
               "wired_class": "ALFloaterLightBox",
@@ -134153,7 +134153,7 @@
           "cpp": [
             {
               "file": "indra/newview/alfloaterlightbox.cpp",
-              "line": 1541,
+              "line": 1535,
               "class": "ALFloaterLightBox",
               "function": "updateTonemapper",
               "wired_class": "ALFloaterLightBox",
@@ -134243,7 +134243,7 @@
           "cpp": [
             {
               "file": "indra/newview/alfloaterlightbox.cpp",
-              "line": 1542,
+              "line": 1536,
               "class": "ALFloaterLightBox",
               "function": "updateTonemapper",
               "wired_class": "ALFloaterLightBox",
@@ -134345,7 +134345,7 @@
           "cpp": [
             {
               "file": "indra/newview/alfloaterlightbox.cpp",
-              "line": 1543,
+              "line": 1537,
               "class": "ALFloaterLightBox",
               "function": "updateTonemapper",
               "wired_class": "ALFloaterLightBox",
@@ -134447,7 +134447,7 @@
           "cpp": [
             {
               "file": "indra/newview/alfloaterlightbox.cpp",
-              "line": 1544,
+              "line": 1538,
               "class": "ALFloaterLightBox",
               "function": "updateTonemapper",
               "wired_class": "ALFloaterLightBox",
@@ -134549,7 +134549,7 @@
           "cpp": [
             {
               "file": "indra/newview/alfloaterlightbox.cpp",
-              "line": 1545,
+              "line": 1539,
               "class": "ALFloaterLightBox",
               "function": "updateTonemapper",
               "wired_class": "ALFloaterLightBox",
@@ -134656,7 +134656,7 @@
           "cpp": [
             {
               "file": "indra/newview/alfloaterlightbox.cpp",
-              "line": 1578,
+              "line": 1572,
               "class": "ALFloaterLightBox",
               "function": "updateTonemapper",
               "wired_class": "ALFloaterLightBox",
@@ -134749,7 +134749,7 @@
           "cpp": [
             {
               "file": "indra/newview/alfloaterlightbox.cpp",
-              "line": 1579,
+              "line": 1573,
               "class": "ALFloaterLightBox",
               "function": "updateTonemapper",
               "wired_class": "ALFloaterLightBox",
@@ -134839,7 +134839,7 @@
           "cpp": [
             {
               "file": "indra/newview/alfloaterlightbox.cpp",
-              "line": 1581,
+              "line": 1575,
               "class": "ALFloaterLightBox",
               "function": "updateTonemapper",
               "wired_class": "ALFloaterLightBox",
@@ -134929,7 +134929,7 @@
           "cpp": [
             {
               "file": "indra/newview/alfloaterlightbox.cpp",
-              "line": 1580,
+              "line": 1574,
               "class": "ALFloaterLightBox",
               "function": "updateTonemapper",
               "wired_class": "ALFloaterLightBox",
