@@ -71,6 +71,7 @@ public:
     ALKitHistory* kitHistory();
     static void startRecoveryService();
     static void prepareRecoveryForShutdown();
+    static void cancelRecoveryShutdown();
     static void removeRecoveryFile();
     // [SliderWheel] [DirFix] D1's wheel overrides are retired: the scroll-through guard is global
     // in llui (indra/llui/llsliderwheel.h).

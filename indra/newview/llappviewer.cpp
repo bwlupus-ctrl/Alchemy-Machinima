@@ -4594,6 +4594,7 @@ void LLAppViewer::earlyExitNoNotify()
 
 void LLAppViewer::abortQuit()
 {
+    LLFloaterDirector::cancelRecoveryShutdown();
     LL_INFOS() << "abortQuit()" << LL_ENDL;
     mQuitRequested = false;
     mClosingFloaters = false;
@@ -6201,6 +6202,10 @@ void LLAppViewer::idleNetwork()
 
 void LLAppViewer::disconnectViewer()
 {
+    // Write/clean the Director recovery BEFORE Prism/rig/world teardown below
+    // (a forced disconnect would otherwise save a stripped scene). Latched.
+    if (!isError())
+        LLFloaterDirector::prepareRecoveryForShutdown();
     if (gDisconnected)
     {
         return;

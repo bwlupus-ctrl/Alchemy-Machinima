@@ -102,6 +102,9 @@ bool sRecoveryServiceStarted = false;
 bool sRecoveryOfferActive = false;
 bool sRecoveryOfferPending = false;
 bool sRecoveryShutdownPrepared = false;
+// A recovery file from a previous crashed session that the user has not yet
+// answered (Restore/Discard). While set it is never deleted or overwritten.
+bool sRecoveryUnresolved = false;
 U8 sRecoveryOfferCount = 0;
 U8 sRecoveryIdleCountdown = 0;
 
@@ -2850,6 +2853,9 @@ void LLFloaterDirector::updateSceneDirty()
 
 void LLFloaterDirector::idleSceneRecovery(bool force_write)
 {
+    // Don't overwrite an unanswered crash backup with this session's state.
+    if (sRecoveryUnresolved)
+        return;
     updateSceneDirty();
     RecoveryServiceState& service = recoveryServiceState();
     static LLCachedControl<S32> autosave_minutes(gSavedSettings, "DirectorAutosaveMinutes", 5);
@@ -2866,6 +2872,9 @@ void LLFloaterDirector::idleSceneRecovery(bool force_write)
 
 void LLFloaterDirector::sceneRecoveryIdle(void*)
 {
+    // Stop once shutdown/disconnect has begun: no autosave or re-offer then.
+    if (sRecoveryShutdownPrepared || gDisconnected)
+        return;
     if (sRecoveryOfferPending)
     {
         sRecoveryOfferPending = false;
@@ -2886,6 +2895,7 @@ void LLFloaterDirector::startRecoveryService()
         return;
     sRecoveryServiceStarted = true;
     initializeSceneRecovery();
+    sRecoveryUnresolved = gDirUtilp->fileExists(recoveryPath());
     sRecoveryOfferPending = true;
     gIdleCallbacks.addFunction(&LLFloaterDirector::sceneRecoveryIdle, nullptr);
 }
@@ -2896,11 +2906,21 @@ void LLFloaterDirector::prepareRecoveryForShutdown()
         return;
     sRecoveryShutdownPrepared = true;
 
+    // Never touch an unanswered crash backup on the way out.
+    if (sRecoveryUnresolved)
+        return;
     updateSceneDirty();
     if (recoveryServiceState().mSceneDirty)
         idleSceneRecovery(true);
     else
         removeRecoveryFile();
+}
+
+void LLFloaterDirector::cancelRecoveryShutdown()
+{
+    // A quit was aborted (unsaved notecard/script prompt): the real quit must
+    // run the final recovery write/delete again.
+    sRecoveryShutdownPrepared = false;
 }
 
 void LLFloaterDirector::offerSceneRecovery()
@@ -2950,6 +2970,8 @@ void LLFloaterDirector::offerSceneRecovery()
         {
             sRecoveryOfferActive = false;
             const S32 option = LLNotificationsUtil::getSelectedOption(notification, response);
+            if (option == 0 || option == 1)
+                sRecoveryUnresolved = false;
             if (option == 0)
             {
                 if (LLFloaterDirector* self =
