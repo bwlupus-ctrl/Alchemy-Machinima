@@ -482,13 +482,9 @@ LLPrismLens::ActionStatus ALVCamPageModel::reassignDisplayStatus(
             break;
         }
     }
-    if (!old_capture)
-    {
-        status.mResult = LLPrismLens::ERegistryResult::STALE_HANDLE;
-        status.mReason = "The display's capture is no longer valid.";
-        return status;
-    }
-    if (old_capture->mMode == LLPrismLens::ECaptureMode::SURFACE_LENS)
+    // An orphaned display (its capture was removed) may be re-pointed at any
+    // valid capture; the registry re-attaches it.
+    if (old_capture && old_capture->mMode == LLPrismLens::ECaptureMode::SURFACE_LENS)
     {
         status.mResult = LLPrismLens::ERegistryResult::INVALID_CONFIGURATION;
         status.mReason =

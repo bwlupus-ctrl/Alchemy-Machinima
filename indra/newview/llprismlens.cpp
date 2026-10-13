@@ -2669,19 +2669,20 @@ public:
             return LLPrismLens::ERegistryResult::INVALID_CONFIGURATION;
         }
         const U32 old_capture_slot = display.mCaptureSlot;
-        if (old_capture_slot >= LLPrismLens::MAX_CAPTURES ||
-            !mLenses[old_capture_slot].mOccupied)
+        // An orphaned display (its capture is gone) is simply re-attached to
+        // the new capture; only a live old capture needs its count released.
+        const bool old_capture_live = old_capture_slot < LLPrismLens::MAX_CAPTURES &&
+            mLenses[old_capture_slot].mOccupied;
+        if (old_capture_live)
         {
-            if (reason) *reason = "The display's capture is no longer valid.";
-            return LLPrismLens::ERegistryResult::STALE_HANDLE;
-        }
-        if (mLenses[old_capture_slot].mDisplayCount > 0)
-            --mLenses[old_capture_slot].mDisplayCount;
-        if (!LLPrismLens::captureOutputRequired(
-                mLenses[old_capture_slot].mDisplayCount,
-                mLenses[old_capture_slot].mProjectorCount))
-        {
-            suppressOutput(old_capture_slot);
+            if (mLenses[old_capture_slot].mDisplayCount > 0)
+                --mLenses[old_capture_slot].mDisplayCount;
+            if (!LLPrismLens::captureOutputRequired(
+                    mLenses[old_capture_slot].mDisplayCount,
+                    mLenses[old_capture_slot].mProjectorCount))
+            {
+                suppressOutput(old_capture_slot);
+            }
         }
         ++mLenses[new_capture_slot].mDisplayCount;
         display.mCaptureSlot = static_cast<U32>(new_capture_slot);
@@ -5460,15 +5461,12 @@ public:
         if (display.mCaptureSlot >= LLPrismLens::MAX_CAPTURES ||
             !mLenses[display.mCaptureSlot].mOccupied)
         {
-            if (display.mGateSubscribed)
-            {
-                display = PrismDisplay();
-                ++mRevision;
-                if (reason) reason->clear();
-                return true;
-            }
-            if (reason) *reason = "The display's capture is no longer valid.";
-            return false;
+            // Orphaned display (its capture is gone): always removable, or
+            // the user is stuck with a face they cannot clear.
+            display = PrismDisplay();
+            ++mRevision;
+            if (reason) reason->clear();
+            return true;
         }
         const U32 capture_slot = display.mCaptureSlot;
         PrismInstance& capture = mLenses[capture_slot];
