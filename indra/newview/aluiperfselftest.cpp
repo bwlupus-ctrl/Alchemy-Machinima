@@ -7010,29 +7010,19 @@ private:
                 recordFunctionalAccountResult(
                     avatar_name, "PASS", "authorized account verified");
                 mFunctionalAccountVerified = true;
-                // The wrapper disables the persisted AO master before launch.
-                // These two controls are Persist=0 and therefore must be set in
-                // memory after login; with the master already off, their AO
-                // listeners cannot stop a live override.
-                const bool have_ao_enable =
-                    gSavedPerAccountSettings.controlExists("AlchemyAOEnable");
-                const bool have_ao_stands =
-                    gSavedPerAccountSettings.controlExists("UseAOStands");
-                const bool have_ao_pause =
-                    gSavedPerAccountSettings.controlExists("PauseAO");
-                if (have_ao_stands)
-                    gSavedPerAccountSettings.setBOOL("UseAOStands", false); // ui-draw-lint: allow(setting-write) pre-row AO safety gate
-                if (have_ao_pause)
-                    gSavedPerAccountSettings.setBOOL("PauseAO", true); // ui-draw-lint: allow(setting-write) pre-row AO safety gate
+                // The wrapper disables the persisted AO master (AlchemyAOEnable)
+                // before launch. That alone inhibits the AO: AOEngine::override()
+                // returns null while disabled. Do NOT write UseAOStands/PauseAO
+                // here: their commit listeners (aoengine.cpp:62-63) call
+                // AOEngine::enable(), which with a loaded set sends
+                // ANIM_REQUEST_STOP/START to the simulator (aoengine.cpp:394-468).
                 const bool ao_safe =
-                    have_ao_enable && have_ao_stands && have_ao_pause &&
+                    gSavedPerAccountSettings.controlExists("AlchemyAOEnable") &&
                     !gSavedPerAccountSettings.getBOOL("AlchemyAOEnable") && // ui-draw-lint: allow(setting) pre-row AO safety gate
-                    !gSavedPerAccountSettings.getBOOL("UseAOStands") && // ui-draw-lint: allow(setting) pre-row AO safety gate
-                    gSavedPerAccountSettings.getBOOL("PauseAO") && // ui-draw-lint: allow(setting) belt-and-braces AO safety gate
                     !AOEngine::instance().isEnabled();
                 if (!ao_safe)
                     return finishFunctionalInWorldFailure(
-                        "AO safety gate failed: expected AlchemyAOEnable=0, UseAOStands=0, PauseAO=1, and inactive AOEngine",
+                        "AO safety gate failed: expected AlchemyAOEnable=0 and an inactive AOEngine",
                         "inworld_ao_safety", "pre-launch AO inhibit");
             }
 

@@ -224,9 +224,11 @@ function Restore-FunctionalSettingsBackup($Backup) {
 }
 
 function Set-InWorldAOSafetySettings($Backup) {
-  # The persisted master must be off before the viewer starts.  UseAOStands and
-  # PauseAO are Persist=0, so llcontrol intentionally ignores file values for
-  # them; the viewer establishes those two runtime-only guards after login.
+  # The persisted master must be off before the viewer starts; that alone
+  # inhibits the AO (AOEngine::override returns null while disabled). The
+  # viewer only VERIFIES it after login. It must not write UseAOStands/PauseAO
+  # at runtime: their listeners call AOEngine::enable(), which can send
+  # animation requests to the simulator.
   $accountFolder = [System.IO.Path]::GetFullPath((Join-Path $Backup.AppRoot '5kvideoeye_resident'))
   $appPrefix = $Backup.AppRoot.TrimEnd('\') + '\'
   if (-not $accountFolder.StartsWith($appPrefix, [System.StringComparison]::OrdinalIgnoreCase)) {
@@ -278,7 +280,7 @@ function Set-InWorldAOSafetySettings($Backup) {
     }
   }
   $document.Save($paths[0].FullName)
-  Write-Host 'In-world AO safety: persisted AlchemyAOEnable=0 (runtime-only guards are set after login).'
+  Write-Host 'In-world AO safety: persisted AlchemyAOEnable=0 (verified in-viewer after login; nothing else is written).'
 }
 
 function Wait-NormalExitBeforeHardKill($Process, [string]$Description, [int]$GraceSeconds = 60) {
