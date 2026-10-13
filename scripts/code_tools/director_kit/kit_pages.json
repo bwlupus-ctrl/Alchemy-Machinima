@@ -1,5 +1,13 @@
 {
  "version": 1,
+ "page_features": {
+  "camera_group/shot_tab": {"bulk_subject_assignment": true},
+  "cast_group/move_tab": {"actor_target": true, "actor_target_synthetic": true},
+  "cast_group/path_tab": {"actor_target": true, "actor_target_synthetic": true},
+  "performance_group/animate_tab": {"actor_target": true, "actor_target_synthetic": true},
+  "performance_group/gaze_tab": {"actor_target": true},
+  "look_group/actor_style_tab": {"actor_target": true}
+ },
  "p0_pages": {
   "camera_group/vcam_tab": {
    "v1_sources": [],

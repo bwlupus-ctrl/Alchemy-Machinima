@@ -719,10 +719,31 @@ def kit_page(group: dict, raw_page: dict, cfg: dict, source_paths: list[Path],
     return root, names
 
 
-def legacy_page(group: dict, page: dict, leaf: ET.Element) -> tuple[ET.Element, set[str]]:
+def apply_page_features(root: ET.Element, key: str, features: dict) -> None:
+    feature = features.get(key, {})
+    if feature.get("bulk_subject_assignment"):
+        card = next((node for node in root.iter() if node.get("name") == "shot_subjects_card"), None)
+        if card is None:
+            raise GenError("bulk subject assignment requires shot_subjects_card")
+        ET.SubElement(card, "button", {"name": "btn_assign_subjects_ad", "label": "Assign A-D from selection",
+                      "tool_tip": "Assign the selected roster rows to A, B, C and D in roster order",
+                      "follows": "left|top", "layout": "topleft", "left": "10", "top": "108",
+                      "width": "318", "height": "20"})
+        for subject in "abcd":
+            setter = next((node for node in card.iter() if node.get("name") == f"btn_set_{subject}"), None)
+            if setter is None:
+                raise GenError(f"bulk subject assignment requires btn_set_{subject}")
+            setter.tag = "dnd_button"
+
+
+def legacy_page(group: dict, page: dict, leaf: ET.Element, features: dict) -> tuple[ET.Element, set[str]]:
     attrs = {"name": page["name"] + "_content", "page": f"{group['name']}/{page['name']}",
              "legacy": "true", "summary": str(page.get("sum", "")),
              "width": leaf.get("width", "711"), "height": leaf.get("height", "525")}
+    if features.get(f"{group['name']}/{page['name']}", {}).get("actor_target"):
+        attrs["actor_target"] = "true"
+    if features.get(f"{group['name']}/{page['name']}", {}).get("actor_target_synthetic"):
+        attrs["actor_target_synthetic"] = "true"
     settings = sorted({str(row["s"]) for row in all_rows(page) if row.get("s")})
     if settings:
         attrs["watch_settings"] = ",".join(settings)
@@ -731,7 +752,9 @@ def legacy_page(group: dict, page: dict, leaf: ET.Element) -> tuple[ET.Element, 
     originals = children_canonical(leaf)
     for child in leaf:
         body.append(copy.deepcopy(child))
-    if children_canonical(body) != originals:
+    key = f"{group['name']}/{page['name']}"
+    apply_page_features(body, key, features)
+    if not features.get(key) and children_canonical(body) != originals:
         raise GenError(f"canonical v1 children copy failed for {page['name']}")
     names = {node.get("name") for node in body.iter() if node.get("name")}
     return root, {str(x) for x in names}
@@ -834,6 +857,9 @@ def floater_tree(data: dict, page_files: dict[str, str], v1: ET.Element) -> ET.E
     header.text = "CAST"
     for name in ("cast_list", "cast_hint", "group_assign_combo", "btn_add_you", "btn_add_animesh", "btn_focus", "btn_remove"):
         node = copy_chrome(name, v1)
+        if name == "cast_list":
+            node.tag = "radar_list"
+            node.set("content_type", "Agents")
         if name == "cast_hint":
             node.set("clip", "true")
         tool_icons = {"btn_add_you": "KitIcon_cast_tool_you_16", "btn_add_animesh": "KitIcon_cast_tool_animesh_16",
@@ -879,6 +905,9 @@ def floater_tree(data: dict, page_files: dict[str, str], v1: ET.Element) -> ET.E
     timecode.text = "00:00:00"
     for name in ("scene_combo", "scene_name_editor"):
         node = copy_chrome(name, v1); node.set("width", str(widths[name])); node.set("height", "28"); bar.append(node)
+    dirty = ET.SubElement(bar, "text", {"name": "scene_dirty_indicator", "width": "10", "height": "28",
+                                         "halign": "center", "tool_tip": "Unsaved Director scene changes"})
+    dirty.text = ""
     ET.SubElement(bar, "button", {"name": "btn_scene_load", "label": "Load",
                                    "tool_tip": "Load the selected scene", "width": str(widths["btn_scene_load"]),
                                    "height": "28"})
@@ -959,7 +988,7 @@ def generate(data_path: Path, config_path: Path, out_dir: Path) -> tuple[dict[Pa
         classification = classes[key]
         details: list[str] = []
         if classification == "legacy":
-            root, names = legacy_page(group, raw_page, leaves[raw_page["name"]])
+            root, names = legacy_page(group, raw_page, leaves[raw_page["name"]], config.get("page_features", {}))
             hosted = len(list(leaves[raw_page["name"]]))
             kit_rows = 0
         elif classification in {"kit (P0)", "pure kit (new)"}:
@@ -1041,6 +1070,7 @@ def selftest(data_path: Path, config_path: Path, out_dir: Path) -> int:
             generated = ET.fromstring(outputs[out_dir / page_filename(group["name"], page["name"])], parser=parser())
             expected_legacy = copy.deepcopy(find_named(v1, page["name"]))
             apply_kit_xui_style(expected_legacy)
+            apply_page_features(expected_legacy, key, config.get("page_features", {}))
             legacy_ok = legacy_ok and generated.tag == "kit_page" and children_canonical(generated) == children_canonical(expected_legacy)
         checks.append(("30 serialized legacy pages copy v1 children", legacy_ok and legacy_count == 30))
         dials = [node for path, payload in outputs.items() if path.name.startswith("panel_dpage_")

@@ -1,6 +1,7 @@
 #include "llviewerprecompiledheaders.h"
 
 #include "alkitsearch.h"
+#include "aldirectorqol.h"
 
 #include "lldir.h"
 #include "llfile.h"
@@ -185,26 +186,23 @@ ALKitSearch::Hits ALKitSearch::query(const std::string& query_text) const
             {
                 for (U32 id : tokens)
                 {
-                    if (mTokens[id].compare(0, query_token.size(), query_token) == 0)
-                    {
-                        best = llmax(best, value);
-                        break;
-                    }
+                    const S32 token_score = ALDirectorQol::fuzzyTokenScore(query_token, mTokens[id]);
+                    if (token_score)
+                        best = llmax(best, value + token_score);
                 }
             };
             score(entry.label_tokens, 80);
-            score(entry.card_tokens, 60);
-            score(entry.keyword_tokens, 50);
+            score(entry.card_tokens, 55);
+            score(entry.keyword_tokens, 45);
             if (query_token.size() > 2)
             {
-                score(entry.help_tokens, 30);
-                score(entry.setting_tokens, 20);
-                score(entry.widget_tokens, 20);
+                score(entry.help_tokens, 25);
+                score(entry.setting_tokens, 15);
+                score(entry.widget_tokens, 15);
             }
-            if (entry.label_lower.compare(0, query_token.size(), query_token) == 0)
-            {
-                best = 100;
-            }
+            const S32 full_label_score = ALDirectorQol::fuzzyTokenScore(query_token, entry.label_lower);
+            if (full_label_score)
+                best = llmax(best, 100 + full_label_score);
             if (!best)
             {
                 matches = false;

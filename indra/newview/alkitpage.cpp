@@ -21,6 +21,7 @@
 #include "llstring.h"
 #include "lltextbox.h"
 #include "lluictrlfactory.h"
+#include "lldirectorcast.h"
 #include "llviewercontrol.h"
 #include "pipeline.h"
 #include "aluirefresh.h"
@@ -180,6 +181,8 @@ ALKitPage::Params::Params() :
     watch_settings("watch_settings", ""),
     chip_mode("chip_mode", "auto"),
     legacy("legacy", false),
+    actor_target("actor_target", false),
+    actor_target_synthetic("actor_target_synthetic", false),
     section("section"),
     mode("mode")
 {
@@ -205,7 +208,9 @@ ALKitPage::ALKitPage(const Params& p) :
     mPresetMode(p.preset_mode),
     mPresetProvider(p.preset_provider),
     mChipMode(p.chip_mode),
-    mLegacy(p.legacy)
+    mLegacy(p.legacy),
+    mActorTargetPage(p.actor_target),
+    mActorTargetSynthetic(p.actor_target_synthetic)
 {
     for (const Section& s : p.section)
     {
@@ -611,7 +616,7 @@ bool ALKitPage::postBuild()
         addChild(mGateBanner);
     }
 
-    if (!mWhoPicker.empty())
+    if (!mWhoPicker.empty() || mActorTargetPage)
     {
         mWhoContainer->setVisible(true);
         LLTextBox::Params who_hint;
@@ -629,7 +634,7 @@ bool ALKitPage::postBuild()
         who_hint.font          = ALKitStyle::sansFont("Kit10", true);
         mWhoLabelText          = LLUICtrlFactory::create<LLTextBox>(who_hint);
         mWhoContainer->addChild(mWhoLabelText);
-        mWhoCombo = findChild<LLComboBox>(mWhoPicker);
+        mWhoCombo = (mWhoPicker.empty() || mActorTargetSynthetic) ? nullptr : findChild<LLComboBox>(mWhoPicker);
         mWhoChip  = makeButton(pre + "_who_chip", mWhoLabel);
         mWhoChip->setImageOverlay("KitIcon_who_person_16", LLFontGL::LEFT);
         mWhoChip->setHAlign(LLFontGL::LEFT);
@@ -661,11 +666,32 @@ bool ALKitPage::postBuild()
                 });
             mWhoChip->setLabel(whoChipLabel(mWhoCombo, !mWhoPinned));
         }
+        else
+        {
+            mWhoChip->setLabel("Actor: follow selection");
+            mWhoChip->setCommitCallback([this](LLUICtrl*, const LLSD&)
+            {
+                mWhoPinned = !mWhoPinned && mActorTarget.notNull();
+                mWhoChip->setLabel(mWhoPinned ? "Actor: locked" : "Actor: follow selection");
+                saveState();
+            });
+        }
         if (ALKitShell* shell = ALKitShell::find(this))
+        {
             mConnections.emplace_back(shell->setCastSelectionCallback(
                 [this](const ALKitShell::uuid_vec_t& ids)
                 {
-                    if (!mWhoCombo || mWhoPinned)
+                    if (mWhoPinned)
+                        return;
+                    if (mActorTargetPage && !mWhoCombo)
+                    {
+                        mActorTarget = ids.empty() ? LLUUID::null : ids.front();
+                        mWhoError = ids.empty();
+                        if (mWhoChip)
+                            mWhoChip->setLabel(ids.empty() ? "Actor: none" : "Actor: follows cast");
+                        return;
+                    }
+                    if (!mWhoCombo)
                         return;
                     if (!ids.empty())
                         if (ALKitWhoAdapters::Adapter adapter = ALKitWhoAdapters::get(mWhoAdapter))
@@ -682,6 +708,12 @@ bool ALKitPage::postBuild()
                     if (mWhoChip)
                         mWhoChip->setLabel("That subject isn't selectable here");
                 }));
+            if (mActorTargetSynthetic && !shell->castSelection().empty())
+            {
+                mActorTarget = shell->castSelection().front();
+                mWhoChip->setLabel("Actor: follows cast");
+            }
+        }
     }
 
     if (mLegacy)
@@ -1453,6 +1485,10 @@ void ALKitPage::saveState()
     {
         page["who_pin"] = mWhoCombo->getValue().asString();
     }
+    else if (mWhoPinned && mActorTargetPage)
+    {
+        page["who_pin"] = mActorTarget.asString();
+    }
     for (const auto& card : mCards)
     {
         page["cards"][card.first]["body"] = card.second->bodyOpen();
@@ -1465,12 +1501,19 @@ void ALKitPage::saveState()
 void ALKitPage::setWhoPin(const LLSD& value)
 {
     mWhoPinned = value.isDefined() && !value.asString().empty();
+    if (mActorTargetPage && mWhoPinned)
+        mActorTarget = value.asUUID();
     if (mWhoChip && mWhoCombo)
     {
         mWhoChip->setLabel(whoChipLabel(mWhoCombo, !mWhoPinned));
         reshape(getRect().getWidth(), getRect().getHeight(), false);
     }
     saveState();
+}
+
+LLUUID ALKitPage::actorTarget() const
+{
+    return mWhoCombo ? mWhoCombo->getValue().asUUID() : mActorTarget;
 }
 
 void ALKitPage::restoreState()
@@ -1491,6 +1534,8 @@ void ALKitPage::restoreState()
     if (page.has("chip"))
         mChipIndex = llclamp(page["chip"].asInteger(), 0, llmax(0, (S32)mSections.size() - 1));
     mWhoPinned = page.has("who_pin") && !page["who_pin"].asString().empty();
+    if (mActorTargetPage && mWhoPinned)
+        mActorTarget = page["who_pin"].asUUID();
     if (page.has("cards"))
         for (auto& card : mCards)
             if (page["cards"].has(card.first))
@@ -1520,6 +1565,30 @@ void ALKitPage::draw()
                 mWhoChip->setLabel(label); // ui-draw-lint: allow(raw-write) change-gated on label, readout clock throttled
                 reshape(getRect().getWidth(), getRect().getHeight(), false);
             }
+        }
+        if (mActorTargetPage && mWhoChip)
+        {
+            const LLUUID target = actorTarget();
+            const bool explicit_you = mWhoCombo && mWhoCombo->getCurrentIndex() >= 0 && target.isNull();
+            LLDirectorCast& cast = LLDirectorCast::instance();
+            const bool present = explicit_you || (target.notNull() &&
+                cast.getMember(target) && cast.resolve(target));
+            mActorTargetAway = (target.notNull() || explicit_you) && !present;
+            if (mActorTargetAway)
+            {
+                const std::string label = "Actor: Away";
+                if (!whoChipHasLabel(mWhoChip, label))
+                    mWhoChip->setLabel(label); // ui-draw-lint: allow(raw-write) change-gated, readout clock throttled
+            }
+            else if (!mWhoCombo)
+            {
+                const std::string label = mWhoPinned ? "Actor: locked" :
+                    (target.notNull() ? "Actor: follows cast" : "Actor: none");
+                if (!whoChipHasLabel(mWhoChip, label))
+                    mWhoChip->setLabel(label); // ui-draw-lint: allow(raw-write) change-gated, readout clock throttled
+            }
+            if (mLegacyHost)
+                mLegacyHost->setEnabled(!mActorTargetAway && (target.notNull() || explicit_you));
         }
     }
     if (mShell)

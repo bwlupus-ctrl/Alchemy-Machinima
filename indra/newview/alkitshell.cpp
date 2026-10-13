@@ -17,6 +17,7 @@
 #include "llrender.h"
 #include "llsliderwheel.h"
 #include "llscrolllistitem.h"
+#include "llscrollcontainer.h"
 #include "lltabcontainer.h"
 #include "lltextbox.h"
 #include "lluictrlfactory.h"
@@ -163,26 +164,19 @@ void ALKitShell::buildChrome()
     text_params.rect = LLRect(10, 380, 420, 358);
     mSearchHeader    = LLUICtrlFactory::create<LLTextBox>(text_params);
     mSearchPopover->addChild(mSearchHeader);
-    for (S32 index = 0; index < 12; ++index)
-    {
-        LLButton::Params result_params;
-        result_params.name  = "kit_search_result_" + llformat("%d", index);
-        result_params.rect  = LLRect(10, 354 - index * 25, 420, 331 - index * 25);
-        result_params.label = "";
-        LLButton* button    = LLUICtrlFactory::create<LLButton>(result_params);
-        mSearchPopover->addChild(button);
-        LLHandle<ALKitShell> handle = getDerivedHandle<ALKitShell>();
-        button->setCommitCallback(
-            [handle, index](LLUICtrl*, const LLSD&)
-            {
-                if (ALKitShell* shell = handle.get())
-                {
-                    shell->mSearchSelection = index;
-                    shell->activateSearchResult();
-                }
-            });
-        mSearchButtons.push_back(button);
-    }
+    LLScrollContainer::Params scroll_params;
+    scroll_params.name = "kit_search_scroller";
+    scroll_params.rect = LLRect(10, 354, 420, 54);
+    scroll_params.is_opaque = false;
+    scroll_params.reserve_scroll_corner = false;
+    mSearchScroller = LLUICtrlFactory::create<LLScrollContainer>(scroll_params);
+    mSearchPopover->addChild(mSearchScroller);
+    LLPanel::Params results_params;
+    results_params.name = "kit_search_results_panel";
+    results_params.rect = LLRect(0, 1, 390, 0);
+    results_params.background_visible = false;
+    mSearchResultsPanel = LLUICtrlFactory::create<LLPanel>(results_params);
+    mSearchScroller->addChild(mSearchResultsPanel);
     text_params.name         = "kit_search_footer";
     text_params.rect         = LLRect(10, 48, 420, 20);
     text_params.use_ellipses = true;
@@ -1068,35 +1062,68 @@ void ALKitShell::updateSearchResults(const ALKitSearch::Hits& hits, ALKitPage* p
     S32        local_count = 0;
     S32        elsewhere   = 0;
     const bool global      = gSavedSettings.getBOOL("KitSearchGlobal");
+    std::vector<std::string> page_order;
+    std::unordered_map<std::string, ALKitSearch::Hits> page_hits;
     for (const ALKitSearch::Hit& hit : hits)
     {
         if (hit.page_key == page->pageKey())
             ++local_count;
-        else if (global)
-        {
+        else
             ++elsewhere;
-            if (mSearchHits.size() < 12)
-                mSearchHits.push_back(hit);
+        if (global)
+        {
+            if (page_hits.emplace(hit.page_key, ALKitSearch::Hits()).second)
+                page_order.push_back(hit.page_key);
+            page_hits[hit.page_key].push_back(hit);
         }
     }
+    for (const std::string& page_key : page_order)
+        mSearchHits.insert(mSearchHits.end(), page_hits[page_key].begin(), page_hits[page_key].end());
     mSearchSelection      = 0;
     mSearchSelectionMoved = false;
     if (mSearchHeader)
         mSearchHeader->setText(llformat("%d on this page \xC2\xB7 %d elsewhere", local_count, elsewhere));
+    while (mSearchButtons.size() < mSearchHits.size())
+    {
+        const S32 index = (S32)mSearchButtons.size();
+        LLButton::Params params;
+        params.name = "kit_search_result_" + llformat("%d", index);
+        params.rect = LLRect(0, 25, 390, 2);
+        LLButton* button = LLUICtrlFactory::create<LLButton>(params);
+        mSearchResultsPanel->addChild(button);
+        LLHandle<ALKitShell> handle = getDerivedHandle<ALKitShell>();
+        button->setCommitCallback([handle, index](LLUICtrl*, const LLSD&)
+        {
+            if (ALKitShell* shell = handle.get())
+            {
+                shell->mSearchSelection = index;
+                shell->activateSearchResult();
+            }
+        });
+        mSearchButtons.push_back(button);
+    }
+    const S32 content_height = llmax(1, (S32)mSearchHits.size() * 25);
+    if (mSearchResultsPanel)
+        mSearchResultsPanel->reshape(390, content_height, true);
+    std::string prior_page;
     for (S32 index = 0; index < (S32)mSearchButtons.size(); ++index)
     {
         const bool visible = index < (S32)mSearchHits.size();
         mSearchButtons[index]->setVisible(visible);
         if (visible)
         {
-            std::string label = mSearchHits[index].path;
+            const ALKitSearch::Hit& hit = mSearchHits[index];
+            std::string label = hit.page_key != prior_page
+                ? "[" + hit.page_key + "]  " + hit.path : "    " + hit.path;
             if (mSearchHits[index].advanced)
                 label += "  More";
             mSearchButtons[index]->setLabel(label);
+            mSearchButtons[index]->setOrigin(0, content_height - (index + 1) * 25);
+            prior_page = hit.page_key;
         }
     }
     if (mSearchFooter)
-        mSearchFooter->setText(llformat("Showing the best %d of %d. Add a word to narrow it down.", (S32)mSearchHits.size(), elsewhere));
+        mSearchFooter->setText(llformat("All %d matches, grouped by page.", (S32)mSearchHits.size()));
     if (mSearchPopover)
     {
         if (global && !mSearchHits.empty())
@@ -1135,6 +1162,8 @@ bool ALKitShell::handleSearchKey(KEY key)
     mSearchSelectionMoved = true;
     for (S32 index = 0; index < (S32)mSearchButtons.size(); ++index)
         mSearchButtons[index]->setToggleState(index == mSearchSelection);
+    if (mSearchScroller && mSearchSelection < (S32)mSearchButtons.size())
+        mSearchScroller->scrollToShowRect(mSearchButtons[mSearchSelection]->getRect());
     return true;
 }
 

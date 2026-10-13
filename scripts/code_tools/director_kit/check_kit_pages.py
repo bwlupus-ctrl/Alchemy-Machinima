@@ -29,7 +29,7 @@ V1_XUI_DIR = os.path.join(REPO, "indra", "newview", "skins", "default", "xui", "
 ROW_KINDS = {"slider", "number", "toggle", "combo", "color", "dial", "arc",
              "vec2", "vec3", "readout", "button", "text", "list", "link"}
 PRESET_MODES = {"widgets", "provider"}
-TOP_KEYS = {"version", "p0_pages", "launcher_targets", "parity_allow"}
+TOP_KEYS = {"version", "page_features", "p0_pages", "launcher_targets", "parity_allow"}
 PAGE_REQUIRED = {"v1_sources", "root_class", "root_name", "preset",
                  "selector_settings", "card_enables", "add_rows", "label_names"}
 PAGE_OPTIONAL = {"undo_context", "who_adapter", "mode_adapter", "mode_on",

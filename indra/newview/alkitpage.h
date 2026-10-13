@@ -98,7 +98,7 @@ public:
         Optional<std::string>  summary, master_widget, master_setting, master_label, master_tooltip, modes, mode_setting, mode_widget,
             mode_on, mode_tooltip, mode_adapter, who_label, who_picker, who_adapter, preset_mode, preset_provider, undo_context,
             watch_settings, chip_mode;
-        Optional<bool>    legacy;
+        Optional<bool>    legacy, actor_target, actor_target_synthetic;
         Multiple<Section> section;
         Multiple<Mode>    mode;
         Params();
@@ -157,6 +157,8 @@ public:
     LLComboBox*        whoCombo() const { return mWhoCombo; }
     bool               whoPinned() const { return mWhoPinned; }
     void               setWhoPin(const LLSD& value);
+    LLUUID             actorTarget() const;
+    bool               actorTargetAway() const { return mActorTargetAway; }
 
 protected:
     friend class LLUICtrlFactory;
@@ -181,8 +183,9 @@ private:
     std::string prefix() const;
     std::string mPage, mSummary, mWatchSettings, mMasterWidget, mMasterSetting, mMasterLabel, mMasterTooltip, mModes, mModeSetting,
         mModeWidget, mModeOn, mModeAdapter, mWhoLabel, mWhoPicker, mWhoAdapter, mPresetMode, mPresetProvider, mChipMode;
-    bool mLegacy = false, mLayoutPending = false, mSearching = false, mWhoError = false, mWhoPinned = false, mRestoringState = true,
+    bool mLegacy = false, mActorTargetPage = false, mActorTargetSynthetic = false, mActorTargetAway = false, mLayoutPending = false, mSearching = false, mWhoError = false, mWhoPinned = false, mRestoringState = true,
          mUpdatingModeSwitch = false;
+    LLUUID mActorTarget;
     S32  mModeIndex = 0, mChipIndex = 0, mBarLeftEnd = 0;
     U64  mHistoryRevision = ~U64(0);
     ALLiveReadoutClock                              mReadoutClock{ 10.f };

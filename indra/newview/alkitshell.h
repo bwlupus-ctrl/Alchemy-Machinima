@@ -19,6 +19,7 @@ class ALKitPopover;
 class LLButton;
 class LLLineEditor;
 class LLPanel;
+class LLScrollContainer;
 class LLTabContainer;
 class LLTextBox;
 class ALKitShell : public LLPanel
@@ -92,7 +93,8 @@ public:
     boost::signals2::connection setPageBuiltCallback(const page_built_signal_t::slot_type& s) { return mPageBuilt.connect(s); }
     boost::signals2::connection setCastSelectionCallback(const cast_signal_t::slot_type& s) { return mCastSelection.connect(s); }
     void                        emitPageBuilt(const std::string& name, LLPanel* p) { mPageBuilt(name, p); }
-    void                        setCastSelection(const uuid_vec_t& ids) { mCastSelection(ids); }
+    void                        setCastSelection(const uuid_vec_t& ids) { mCurrentCastSelection = ids; mCastSelection(ids); }
+    const uuid_vec_t&           castSelection() const { return mCurrentCastSelection; }
     ALScrollFit::Controller&    scrollFit() { return mExternalScrollFit ? *mExternalScrollFit : mScrollFit; }
     void                        setScrollFit(ALScrollFit::Controller* controller) { mExternalScrollFit = controller; }
 
@@ -145,6 +147,7 @@ private:
     ALScrollFit::Controller*                             mExternalScrollFit = nullptr;
     page_built_signal_t                                  mPageBuilt;
     cast_signal_t                                        mCastSelection;
+    uuid_vec_t                                           mCurrentCastSelection;
     LLTabContainer*                                      mDirectorTabs = nullptr;
     LLPanel*                                             mRoster       = nullptr;
     LLPanel*                                             mRail         = nullptr;
@@ -164,6 +167,8 @@ private:
     ALKitPopover*                                        mSearchPopover = nullptr;
     LLTextBox*                                           mSearchHeader  = nullptr;
     LLTextBox*                                           mSearchFooter  = nullptr;
+    LLScrollContainer*                                   mSearchScroller = nullptr;
+    LLPanel*                                             mSearchResultsPanel = nullptr;
     std::vector<LLButton*>                               mSearchButtons;
     ALKitSearch::Hits                                    mSearchHits;
     ALKitSearch::Hit                                     mTopSearchHit;

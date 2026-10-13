@@ -69,6 +69,7 @@ public:
     bool handleRightMouseDown(S32 x,S32 y,MASK mask) override;
     bool handleScrollWheel(S32 x,S32 y,LLScrollDelta delta) override;
     ALKitHistory* kitHistory();
+    static void removeRecoveryFile();
     // [SliderWheel] [DirFix] D1's wheel overrides are retired: the scroll-through guard is global
     // in llui (indra/llui/llsliderwheel.h).
 
@@ -103,12 +104,18 @@ private:
     // (which get special ordering on load)
     static const std::vector<std::string>& sceneSettingsList();
     void refreshSceneList(const std::string& select_name = std::string());
-    void onSceneSelected();             // combo commit = load
+    void onSceneSelected();             // combo commit = metadata preview only
+    void onClickSceneLoad();
     void onClickSceneSave();            // reveal the inline name editor / commit
     void commitSceneName();             // editor commit (Enter) or second Save
     void onClickSceneDelete();
     bool saveScene(const std::string& name);
-    void loadScene(const std::string& name);
+    bool loadScene(const std::string& name, bool recovery = false);
+    LLSD captureSceneData() const;
+    bool writeSceneFile(const std::string& path, const std::string& label, bool notify_failure);
+    void refreshSceneRecovery();
+    void offerSceneRecovery();
+    static std::string recoveryPath();
 
     // ---- tabs ----
     void onTabChanged();                // remember the active tab (DirectorLastTabName + DirectorLastTab)
@@ -128,6 +135,7 @@ private:
     void onClickFocusActor();           // frame the selected member in the camera
     uuid_vec_t selectedCastIds() const;
     LLUUID     firstSelectedCastId() const;
+    const uuid_vec_t& actorTargetsForPage(const std::string& page, const uuid_vec_t& selected);
     // context-menu / button ops (act on the list selection)
     void onCastSetSubject(S32 subject);
     void onCastSetMarkHere();
@@ -167,7 +175,7 @@ private:
     LLUUID actorStyleTargetId() const;   // null is the explicit "You" row
 
     // ---- Animate tab ----
-    void refreshAnimateTab();
+    void refreshAnimateTab(const uuid_vec_t& selected);
     void onAnimRightClick(LLUICtrl* ctrl, S32 x, S32 y);
     LLUUID selectedAnimId() const;      // selected row's anim asset id
     LLUUID pasteAnimId() const;         // validated paste-row UUID (null = invalid)
@@ -189,6 +197,7 @@ private:
     // ---- Camera tab ----
     static LLUUID avatarFromSelection();
     void onClickSetSubjectFromSelection(S32 subject);
+    void onClickAssignSubjects();
     void onClickClearSubject(S32 subject);
     void onOpenActorGaze();
     void onClickManagePrism();
@@ -228,6 +237,14 @@ private:
     LLLineEditor* mSceneNameEditor = nullptr;   // revealed in the combo's spot
     LLButton*     mSceneSaveBtn = nullptr;
     LLButton*     mSceneDeleteBtn = nullptr;
+    LLButton*     mSceneLoadBtn = nullptr;
+    LLTextBox*    mSceneDirtyText = nullptr;
+    LLSD          mCleanSceneSnapshot;
+    bool          mSceneDirty = false;
+    bool          mRecoveryOffered = false;
+    std::string   mSceneMetadataTooltip;
+    ALLiveReadoutClock mSceneDirtyClock{1.f};
+    LLFrameTimer  mSceneAutosaveTimer;
     ALPanelCineCamParams* mCineCamPanel = nullptr;  // embedded shared params panel
 
     // left-rail tabs + legend popover
@@ -271,6 +288,7 @@ private:
         bool        mInWorld = true;
     };
     std::vector<CastRowState> mRowStates;
+    uuid_vec_t mPinnedActorTarget;
     // [DirFix] D7: scroll-list column indices, resolved once in postBuild (XML-declared columns)
     S32 mCastStatusCol = 0;
     S32 mCastNameCol = 0;
@@ -357,6 +375,7 @@ private:
     LLButton*  mClearBBtn = nullptr;
     LLButton*  mClearCBtn = nullptr;
     LLButton*  mClearDBtn = nullptr;
+    LLButton*  mAssignSubjectsBtn = nullptr;
     LLTextBox* mPrismSummaryText = nullptr;
     LLButton*  mPrismManageBtn = nullptr;
     LLButton*  mOtsPairBtn = nullptr;

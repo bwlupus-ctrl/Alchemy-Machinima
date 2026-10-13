@@ -195,6 +195,7 @@ set(viewer_SOURCE_FILES
     aldirectorhotkeys.cpp
     aldirectorswitcher.cpp
     aldirectorswitchermodel.cpp
+    aldirectorqol.cpp
     aldirectortabmigration.cpp
     aldroptarget.cpp
     alflowgrid.cpp
@@ -1108,6 +1109,7 @@ set(viewer_HEADER_FILES
     aldirectorhotkeys.h
     aldirectorswitcher.h
     aldirectorswitchermodel.h
+    aldirectorqol.h
     aldirectortabmigration.h
     aldroptarget.h
     alflowgrid.h
@@ -2743,6 +2745,7 @@ if (BUILD_TESTING)
     alcinelightrigmodel.cpp
     alavatarlightresponsemodel.cpp # [AvatarLightResponse]
     aldirectorswitchermodel.cpp
+    aldirectorqol.cpp
     aldirectortabmigration.cpp
     aldanceballmodel.cpp
     alavatarstagingmodel.cpp

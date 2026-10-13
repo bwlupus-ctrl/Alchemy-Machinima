@@ -13680,6 +13680,20 @@ Please note that &quot;Shared Environment&quot; and &quot;Day cycle based&quot; 
      yestext="Delete"/>
   </notification>
 
+  <notification icon="alertmodal.tga" name="DirectorConfirmLoadScene" type="alertmodal">
+    <unique/>
+    Load &quot;[NAME]&quot;? Unsaved changes will be lost.
+    <tag>confirm</tag>
+    <usetemplate name="okcancelbuttons" notext="Cancel" yestext="Load"/>
+  </notification>
+
+  <notification icon="alertmodal.tga" name="DirectorRestoreRecovery" type="alertmodal">
+    <unique/>
+    Restore unsaved Director scene from [TIME]?
+    <tag>confirm</tag>
+    <usetemplate name="okcancelbuttons" notext="Discard" yestext="Restore"/>
+  </notification>
+
   <notification
    icon="alertmodal.tga"
    name="CinematicCamConfirmResetAll"

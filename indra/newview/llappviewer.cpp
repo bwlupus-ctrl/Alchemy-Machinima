@@ -143,6 +143,7 @@
 #include "llweb.h"
 // [SL:KB] - Patch: Build-AssetRecovery | Checked: 2011-11-24 (Catznip-3.2)
 #include "llfloaterassetrecovery.h"
+#include "llfloaterdirector.h"
 // [/SL:KB]
 #include "llspellcheck.h"
 #include "llscenemonitor.h"
@@ -1839,6 +1840,8 @@ void LLAppViewer::flushLFSIO()
 
 bool LLAppViewer::cleanup()
 {
+    if (!isError())
+        LLFloaterDirector::removeRecoveryFile();
     // [XInputRumble] The main loop no longer advances patterns; stop the pad now,
     // not when the joystick is terminated much later in cleanup.
     if (LLViewerJoystick::instanceExists()) LLViewerJoystick::getInstance()->stopRumble(true);
