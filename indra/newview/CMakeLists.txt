@@ -202,6 +202,7 @@ set(viewer_SOURCE_FILES
     alkitbar.cpp
     alkitbinding.cpp
     alkitcard.cpp
+    alkitmenu.cpp
     alkithelp.cpp
     alkithistory.cpp
     alkitlazypage.cpp
@@ -1116,6 +1117,7 @@ set(viewer_HEADER_FILES
     alkitbar.h
     alkitbinding.h
     alkitcard.h
+    alkitmenu.h
     alkithelp.h
     alkithistory.h
     alkitlazypage.h

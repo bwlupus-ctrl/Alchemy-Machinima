@@ -2,7 +2,10 @@
 
 #include "alkitbar.h"
 
+#include "alkitstyle.h"
+#include "llrender.h"
 #include "llstring.h"
+#include "llui.h"
 #include "lluictrlfactory.h"
 
 #include <algorithm>
@@ -50,6 +53,54 @@ void ALKitBar::reshape(S32 width, S32 height, bool called_from_parent)
     layoutChildren();
 }
 
+void ALKitBar::draw()
+{
+    LL_PROFILE_ZONE_SCOPED_CATEGORY_UI;
+    static LLPointer<LLUIImage> pill = LLUI::getUIImage("Kit_Pill9");
+    for (LLView* child : mChildren)
+    {
+        if (!child || !child->getVisible())
+            continue;
+        const LLRect& rect = child->getRect();
+        const std::string& name = child->getName();
+        if (name.rfind("transport_divider_", 0) == 0)
+        {
+            gl_rect_2d(rect, ALKitStyle::color(ALKitStyle::ARC_TRACK).get(), true);
+        }
+        else if (name == "rec_indicator" && pill)
+        {
+            if (mRecording)
+            {
+                pill->draw(rect, ALKitStyle::color(ALKitStyle::RECORD).get());
+            }
+            else
+            {
+                pill->draw(rect, ALKitStyle::color(ALKitStyle::INPUT_BORDER).get());
+                LLRect inner(rect.mLeft + 1, rect.mTop - 1, rect.mRight - 1, rect.mBottom + 1);
+                pill->draw(inner, ALKitStyle::color(ALKitStyle::RAIL_BG).get());
+            }
+            gGL.color4fv((mRecording ? LLColor4::white : ALKitStyle::color(ALKitStyle::FAINT).get()).mV);
+            gl_circle_2d((F32)rect.mLeft + 9.f, (F32)(rect.mBottom + rect.mTop) * .5f, 3.f, 12, true);
+        }
+        else if ((name == "btn_scene_load" || name == "btn_scene_save" || name == "btn_scene_menu") && child->getVisible())
+        {
+            gl_rect_2d(rect, ALKitStyle::color(ALKitStyle::INPUT_BORDER).get(), false);
+        }
+        else if (name == "status_strip")
+        {
+            gGL.color4fv(ALKitStyle::color(ALKitStyle::RECORD).get().mV);
+            gl_circle_2d((F32)rect.mLeft + 5.f, (F32)(rect.mBottom + rect.mTop) * .5f, 3.5f, 12, true);
+        }
+        else if (name == "transport_toast" && pill)
+        {
+            pill->draw(rect, ALKitStyle::color(ALKitStyle::ACCENT).get());
+            LLRect inner(rect.mLeft + 1, rect.mTop - 1, rect.mRight - 1, rect.mBottom + 1);
+            pill->draw(inner, ALKitStyle::color(ALKitStyle::CONTROL_BG).get());
+        }
+    }
+    LLPanel::draw();
+}
+
 void ALKitBar::setCollapsibleVisible(LLView* child, bool visible)
 {
     if (!child)
@@ -71,9 +122,9 @@ void ALKitBar::setCollapsibleVisible(LLView* child, bool visible)
 
 void ALKitBar::layoutChildren()
 {
-    constexpr S32 PAD = 8;
-    constexpr S32 GAP = 6;
-    constexpr S32 FLEX_MIN = 120;
+    constexpr S32 PAD = 10;
+    constexpr S32 GAP = 8;
+    constexpr S32 FLEX_MIN = 0;
     for (S32 index = 0; index < (S32)mCollapse.size(); ++index)
     {
         if (!mCollapsed[index])

@@ -8020,11 +8020,11 @@ private:
         LLView*     status         = nullptr;
         for (LLView* child : *bar->getChildList())
         {
-            if (child->getName() == "btn_action") action = dynamic_cast<LLButton*>(child);
-            if (child->getName() == "btn_cut") cut = dynamic_cast<LLButton*>(child);
             if (child->getName() == "take_timecode") timecode = child;
             if (child->getName() == "status_strip") status = child;
         }
+        action = bar->findChild<LLButton>("btn_action");
+        cut = bar->findChild<LLButton>("btn_cut");
         if (!timecode || !timecode->getVisible())
             addFinding("TRANSPORT_FLEX_MIN", semanticLeaf(timecode ? timecode : bar, floater), nullptr,
                        "timecode must remain visible at every approved size");
@@ -8047,16 +8047,17 @@ private:
             std::sort(direct.begin(), direct.end(), [](LLView* a, LLView* b) { return a->getRect().mLeft < b->getRect().mLeft; });
             S32                                     previous_right   = bar->getLocalRect().mLeft;
             S32                                     previous_rank    = -1;
-            static const std::map<std::string, S32> declaration_rank = { { "btn_action", 0 },     { "btn_cut", 0 },
-                                                                         { "btn_arm", 1 },        { "btn_take_play", 2 },
-                                                                         { "btn_take_stop", 3 },  { "take_timecode", 4 },
-                                                                         { "scene_combo", 5 },    { "scene_name_editor", 5 },
-                                                                         { "btn_scene_load", 6 }, { "btn_scene_save", 7 },
-                                                                         { "btn_scene_delete", 8 }, { "btn_set_marks", 9 },
-                                                                         { "btn_reset_marks", 10 }, { "rec_indicator", 11 },
-                                                                         { "show_paths_global_check", 12 }, { "btn_help", 13 },
-                                                                         { "status_strip", 14 }, { "btn_cast_chip", 15 },
-                                                                         { "kit_ui_ms", 16 }, { "btn_hotkeys", 17 } };
+            static const std::map<std::string, S32> declaration_rank = { { "transport_action_group", 0 },
+                                                                         { "btn_take_play", 1 }, { "btn_take_stop", 2 },
+                                                                         { "take_timecode", 3 }, { "transport_divider_timecode", 4 },
+                                                                         { "scene_combo", 5 }, { "scene_name_editor", 5 },
+                                                                         { "scene_dirty_indicator", 6 }, { "btn_scene_load", 7 },
+                                                                         { "btn_scene_save", 8 }, { "btn_scene_menu", 9 },
+                                                                         { "transport_divider_scene", 10 }, { "btn_set_marks", 11 },
+                                                                         { "btn_reset_marks", 12 }, { "rec_indicator", 13 },
+                                                                         { "show_paths_global_check", 14 }, { "btn_help", 15 },
+                                                                         { "status_strip", 16 }, { "transport_spacer", 17 },
+                                                                         { "transport_toast", 18 }, { "btn_cast_chip", 19 } };
             for (LLView* child : direct)
             {
                 AuditLeaf item = semanticLeaf(child, floater);

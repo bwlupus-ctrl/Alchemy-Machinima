@@ -1,6 +1,7 @@
 #include "llviewerprecompiledheaders.h"
 #include "alkitcard.h"
 #include "alkitbinding.h"
+#include "alkitmenu.h"
 #include "alkitrow.h"
 #include "alkitpage.h"
 #include "alkitstyle.h"
@@ -339,6 +340,7 @@ bool ALKitCard::postBuild()
         bp.name = "kc_" + mId + "_menu";
         bp.label = "...";
         mMenuButton = LLUICtrlFactory::create<LLButton>(bp);
+        mMenuButton->setToolTip(std::string("Copy / paste this card's settings"));
         addChild(mMenuButton);
         LLContextMenu::Params menu_params;
         menu_params.name = "kc_" + mId + "_copy_menu";
@@ -363,7 +365,7 @@ bool ALKitCard::postBuild()
                     if (LLMenuItemGL* paste = popup->findChild<LLMenuItemGL>("paste_settings"))
                         paste->setEnabled(sCardClipboard.type == mCopyType && sCardClipboard.values.isArray());
                     popup->buildDrawLabels();
-                    LLMenuGL::showPopup(control, popup, 0, 0);
+                    ALKitMenu::showContextMenu(control, popup, 0, 0);
                 }
             });
     }
@@ -399,7 +401,7 @@ bool ALKitCard::postBuild()
             [this](LLUICtrl* c, S32 x, S32 y, MASK)
             {
                 if (LLContextMenu* menu = mResetMenuHandle.get())
-                    LLMenuGL::showPopup(c, menu, x, y);
+                    ALKitMenu::showContextMenu(c, menu, x, y);
             });
     }
 

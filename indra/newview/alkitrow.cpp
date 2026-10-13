@@ -1,6 +1,7 @@
 #include "llviewerprecompiledheaders.h"
 #include "alkitrow.h"
 #include "alkitbinding.h"
+#include "alkitmenu.h"
 #include "alkitstyle.h"
 #include "alkitshell.h"
 #include "llbutton.h"
@@ -201,7 +202,13 @@ bool ALKitRow::postBuild()
     if (mControl)
     {
         mControl->setRightMouseDownCallback(
-            [this](LLUICtrl*, S32 x, S32 y, MASK) { showContextMenu(x, y); });
+            [this](LLUICtrl* control, S32 x, S32 y, MASK)
+            {
+                S32 row_x = 0;
+                S32 row_y = 0;
+                control->localPointToOtherView(x, y, &row_x, &row_y, this);
+                showContextMenu(row_x, row_y);
+            });
         mLastValue = mShownValue = mControl->getValue();
 
         if (mBind == "code" && mMeta.kind != "button" && mMeta.kind != "readout" && mMeta.mirror_setting.empty())
@@ -907,7 +914,7 @@ void ALKitRow::showContextMenu(S32 x, S32 y)
             ALKitShell::find(this)->isFavorite(key.page, key.widget) ? "Remove from Quick" : "Add to Quick"));
     }
     menu->buildDrawLabels();
-    LLMenuGL::showPopup(this, menu, x, y);
+    ALKitMenu::showContextMenu(this, menu, x, y);
 }
 
 void ALKitRow::styleValueEditor(bool active)

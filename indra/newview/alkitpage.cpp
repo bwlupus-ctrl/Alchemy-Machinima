@@ -262,7 +262,7 @@ bool ALKitSearchEditor::handleKeyHere(KEY key, MASK mask)
 {
     if (key == KEY_PAGE_UP || key == KEY_PAGE_DOWN)
         return false;
-    if (mask == MASK_NONE && (key == KEY_UP || key == KEY_DOWN || key == KEY_RETURN))
+    if (mask == MASK_NONE && (key == KEY_UP || key == KEY_DOWN || key == KEY_RETURN || key == KEY_ESCAPE))
     {
         if (ALKitShell* shell = ALKitShell::find(this))
         {
@@ -271,6 +271,16 @@ bool ALKitSearchEditor::handleKeyHere(KEY key, MASK mask)
         }
     }
     return LLLineEditor::handleKeyHere(key, mask);
+}
+
+bool ALKitSearchEditor::handleMouseDown(S32 x, S32 y, MASK mask)
+{
+    const bool handled = LLLineEditor::handleMouseDown(x, y, mask);
+    // Clicking back into a non-empty box re-shows its results popup.
+    if (!getText().empty())
+        if (ALKitShell* shell = ALKitShell::find(this))
+            shell->setSearchPopupArmed(this, true);
+    return handled;
 }
 
 void ALKitDoc::draw()

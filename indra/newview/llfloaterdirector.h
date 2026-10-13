@@ -38,6 +38,7 @@ class ALPanelLensGaze;
 class ALPanelPathEditor;
 class ALKitShell;
 class ALKitHistory;
+class ALKitBar;
 class LLButton;
 class LLCheckBoxCtrl;
 class LLComboBox;
@@ -95,10 +96,13 @@ private:
     void bindLauncherPage(LLView* root);
     // ---- transport ----
     void onClickAction();               // ACTION, or CUT while counting/running
+    void onClickTakePlay();
+    void onClickTakeStop();
     void onClickSetMarks();
     void onClickResetMarks();
     void refreshTransport();
     void updateTransportTooltipCache();
+    void showTransportToast(const std::string& text);
 
     // ---- scene files (transport bar) ----
     static std::string scenesDir();     // created on demand
@@ -111,6 +115,8 @@ private:
     void onSceneSelected();             // combo commit = metadata preview only
     void onClickSceneLoad();
     void onClickSceneSave();            // reveal the inline name editor / commit
+    void onClickSceneSaveAs();
+    void onClickSceneRename();
     void commitSceneName();             // editor commit (Enter) or second Save
     void onClickSceneDelete();
     bool saveScene(const std::string& name);
@@ -240,8 +246,21 @@ private:
     LLButton* mCutBtn = nullptr;
     LLButton* mSetMarksBtn = nullptr;
     LLButton* mResetMarksBtn = nullptr;
+    LLButton* mArmBtn = nullptr;
+    LLButton* mTakePlayBtn = nullptr;
+    LLButton* mTakeStopBtn = nullptr;
+    LLTextBox* mTakeTimecode = nullptr;
+    LLButton* mCastChip = nullptr;
+    LLTextBox* mTransportToast = nullptr;
+    ALKitBar* mTransportBar = nullptr;
     std::string mActionTooltip;
     bool mActionArmed = false;
+    S32 mLastTransportActionState = -1;
+    S64 mTimecodeFrame = -1;
+    S32 mTimecodeFps = -1;
+    bool mTimecodeHot = false;
+    S32 mLastCastChipCount = -1;
+    LLFrameTimer mTransportToastTimer;
 
     // scene files (transport bar)
     LLComboBox*   mSceneCombo = nullptr;
@@ -251,6 +270,7 @@ private:
     LLButton*     mSceneLoadBtn = nullptr;
     LLTextBox*    mSceneDirtyText = nullptr;
     LLTextBox*    mSceneMetadataText = nullptr;
+    std::string   mSceneRenameSource;
     struct SceneChangeStamp
     {
         U64 mSettings = 0;
@@ -302,6 +322,7 @@ private:
     ALPanelLensGaze* mGazePanel = nullptr;
     LLButton*       mHelpBtn = nullptr;
     LLPanel*        mLegendPanel = nullptr;
+    LLPanel*        mHotkeysPanel = nullptr;
 
     // cast column
     LLScrollListCtrl* mCastList = nullptr;

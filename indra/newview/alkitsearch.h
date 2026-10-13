@@ -20,6 +20,7 @@ public:
         std::string page_key;
         std::string page_label;
         std::string card_id;
+        std::string card_label;
         std::string widget;
         std::string setting;
         std::string label;
@@ -57,6 +58,7 @@ private:
         std::string      page_key;
         std::string      page_label;
         std::string      card_id;
+        std::string      card_label;
         std::string      widget;
         std::string      setting;
         std::string      label;

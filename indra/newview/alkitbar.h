@@ -18,8 +18,10 @@ public:
     };
 
     bool postBuild() override;
+    void draw() override;
     void reshape(S32 width, S32 height, bool called_from_parent = true) override;
     void setCollapsibleVisible(LLView* child, bool visible);
+    void setRecording(bool recording) { mRecording = recording; }
 
 protected:
     friend class LLUICtrlFactory;
@@ -35,6 +37,7 @@ private:
     std::vector<LLView*>     mCollapse;
     std::vector<bool>        mNaturalVisible;
     std::vector<bool>        mCollapsed;
+    bool                     mRecording = false;
 };
 
 #endif

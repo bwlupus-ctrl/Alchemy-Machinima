@@ -44,6 +44,7 @@ public:
         Params() = default;
     };
     bool handleKeyHere(KEY key, MASK mask) override;
+    bool handleMouseDown(S32 x, S32 y, MASK mask) override;
     void draw() override;
 
 protected:

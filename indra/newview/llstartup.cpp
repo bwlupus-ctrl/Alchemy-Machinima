@@ -200,6 +200,7 @@
 #include "llappviewer.h"
 #include "llfloatermap.h"
 #include "llfloaterdirector.h"
+#include "lldirectorcast.h"
 #include "alpanellensgaze.h"     // [Machinima] register gaze random-perf idle tick
 #include "llweb.h"
 #include "llvoiceclient.h"
@@ -2644,7 +2645,15 @@ bool idle_startup()
         // LLUserAuth::getInstance()->reset();
 
         LLStartUp::setStartupState( STATE_STARTED );
-        doOnIdleOneTime(&LLFloaterDirector::startRecoveryService);
+        doOnIdleOneTime([]()
+        {
+            // List the logged-in avatar in the Director cast by default (no
+            // subject/actor role). Done BEFORE the recovery service takes its
+            // baseline so this doesn't mark the scene as unsaved.
+            if (gAgentID.notNull())
+                LLDirectorCast::instance().add(gAgentID);
+            LLFloaterDirector::startRecoveryService();
+        });
         // Startup feature recommendations and command-line graphics overrides
         // are initialization, not user edits in the newly logged-in session.
         ALExposureSettingsHistory::clear();

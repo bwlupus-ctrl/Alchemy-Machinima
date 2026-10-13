@@ -50,9 +50,9 @@ const LLFontGL* sansFont(const std::string& size, bool bold)
     return font ? font : LLFontGL::getFontSansSerifSmall();
 }
 
-const LLFontGL* monoFont()
+const LLFontGL* monoFont(const std::string& size, bool bold)
 {
-    const LLFontGL* font = LLFontGL::getFont(LLFontDescriptor("IBMPlexMono", "Kit12", 0));
+    const LLFontGL* font = LLFontGL::getFont(LLFontDescriptor("IBMPlexMono", size, bold ? LLFontGL::BOLD : 0));
     return font ? font : LLFontGL::getFontMonospace();
 }
 
@@ -98,6 +98,26 @@ void stylePill(LLButton* button)
     button->setImagePressed(pill);
     button->setImageDisabled(pill);
     button->setImageDisabledSelected(pill);
+}
+
+void styleTransportAction(LLButton* action, LLButton* cut, LLButton* arm, bool running)
+{
+    const LLUIColor& fill = color(running ? RECORD : ACCENT);
+    const LLUIColor foreground = running ? LLUIColor(LLColor4::white) : color(KNOB_ON);
+    for (LLButton* button : { action, cut, arm })
+    {
+        if (!button)
+            continue;
+        styleButton(button, false);
+        button->setImageColor(fill);
+        button->setSelectedImageColor(fill);
+        button->setHoverImageColor(fill);
+        button->setPressedImageColor(fill);
+        button->setUnselectedLabelColor(foreground);
+        button->setSelectedLabelColor(foreground);
+    }
+    if (action) action->setFont(sansFont("Kit12", true));
+    if (cut) cut->setFont(sansFont("Kit12", true));
 }
 
 void styleEditor(LLLineEditor* editor, bool mono)
@@ -221,6 +241,17 @@ void styleTree(LLView* root)
                 button->setSelectedLabelColor(LLUIColor(LLColor4::white));
                 button->setFont(sansFont("Kit12", true));
             }
+            else if (name == "btn_arm")
+            {
+                button->setImageColor(color(ACCENT));
+                button->setSelectedImageColor(color(ACCENT));
+                button->setHoverImageColor(color(ACCENT));
+                button->setPressedImageColor(color(ACCENT));
+            }
+            else if (name == "btn_scene_load" || name == "btn_scene_save" || name == "btn_scene_menu")
+            {
+                styleButton(button, true);
+            }
             else if (name.find("_more") != std::string::npos)
             {
                 styleButton(button, true);
@@ -234,7 +265,8 @@ void styleTree(LLView* root)
             const bool compact_who = name.find("_who_rail_text") != std::string::npos || name.find("_who_caret") != std::string::npos;
             const bool mono = name.find("timecode") != std::string::npos || name.find("rec_indicator") != std::string::npos ||
                               name.find("_value") != std::string::npos;
-            text->setFont(mono ? monoFont() : sansFont(compact_who ? "Kit10" : "Kit12"));
+            text->setFont(mono ? monoFont(name.find("timecode") != std::string::npos ? "Kit13" : "Kit12")
+                               : sansFont(compact_who ? "Kit10" : "Kit12"));
         }
         else if (LLLineEditor* editor = dynamic_cast<LLLineEditor*>(view))
             styleEditor(editor, name.find("_value") != std::string::npos || name.find("timecode") != std::string::npos);

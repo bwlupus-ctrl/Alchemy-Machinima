@@ -5,6 +5,7 @@
 #include "alkitshell.h"
 #include "alkitrow.h"
 #include "alkitstyle.h"
+#include "llbutton.h"
 #include "lluictrl.h"
 #include "lluictrlfactory.h"
 #include "llui.h"
@@ -43,6 +44,11 @@ bool ALKitPopover::postBuild()
             width  = 520;
             height = 420;
         }
+        else if (getName() == "kit_scene_popover")
+        {
+            width  = 180;
+            height = 100;
+        }
         else if (getName() == "kit_hotkeys_popover")
         {
             width  = 340;
@@ -57,8 +63,8 @@ bool ALKitPopover::postBuild()
             {
                 if (dynamic_cast<ALKitRow*>(child))
                     child_height = 28;
-                else if (child->getName() == "btn_legend_close")
-                    child_height = 24;
+                else if (dynamic_cast<LLButton*>(child))
+                    child_height = 24; // menu/command buttons: one standard kit button height
                 else
                     child_height = height - 50;
             }

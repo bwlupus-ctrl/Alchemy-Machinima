@@ -16,6 +16,7 @@
 class ALKitPage;
 class ALKitLazyPage;
 class ALKitPopover;
+class ALKitSearchResultRow;
 class LLButton;
 class LLLineEditor;
 class LLPanel;
@@ -79,6 +80,9 @@ public:
     void                        startSearchLoad();
     void                        clearSearch();
     bool                        handleSearchKey(KEY key);
+    // Results popup gate: opens only while the user is typing in (or clicks
+    // back into) a non-empty search box; anything else closes it.
+    void                        setSearchPopupArmed(LLLineEditor* editor, bool armed);
     bool                        cycleChip(S32 delta);
     bool                        cyclePage(S32 delta);
     bool                        cycleGroup(S32 delta);
@@ -165,12 +169,14 @@ private:
     std::vector<TabData>                                 mTabs;
     ALKitPopover*                                        mOpenPopover   = nullptr;
     ALKitPopover*                                        mCastPopover   = nullptr;
+    LLButton*                                            mTransportCut  = nullptr;
+    LLButton*                                            mTransportArm  = nullptr;
     ALKitPopover*                                        mSearchPopover = nullptr;
     LLTextBox*                                           mSearchHeader  = nullptr;
     LLTextBox*                                           mSearchFooter  = nullptr;
     LLScrollContainer*                                   mSearchScroller = nullptr;
     LLPanel*                                             mSearchResultsPanel = nullptr;
-    std::vector<LLButton*>                               mSearchButtons;
+    std::vector<ALKitSearchResultRow*>                   mSearchRows;
     ALKitSearch::Hits                                    mSearchHits;
     ALKitSearch::Hit                                     mTopSearchHit;
     bool                                                 mHasTopSearchHit      = false;
@@ -181,6 +187,7 @@ private:
     bool                                                 mRailLabels    = true;
     bool                                                 mWideHelp      = true;
     bool                                                 mSearchStarted = false;
+    bool                                                 mSearchPopupArmed = false;
     bool                                                 mRosterOpen    = true;
     bool                                                 mReady         = false;
     LLFrameTimer                                         mHighlightTimer;

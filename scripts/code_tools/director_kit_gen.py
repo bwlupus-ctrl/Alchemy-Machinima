@@ -956,58 +956,73 @@ def floater_tree(data: dict, page_files: dict[str, str], v1: ET.Element) -> ET.E
             if master.get("s"):
                 attrs["master_setting"] = str(master["s"])
             ET.SubElement(tc, "kit_lazy_page", attrs)
-    bar = ET.SubElement(shell, "kit_bar", {"name": "kit_transport", "flex": "status_strip",
-                        "collapse_order": "kit_ui_ms,btn_reset_marks,btn_scene_delete,status_strip,scene_metadata_text,"
-                                          "btn_help,btn_set_marks,show_paths_global_check"})
+    bar = ET.SubElement(shell, "kit_bar", {"name": "kit_transport", "flex": "transport_spacer",
+                        "collapse_order": "transport_toast,btn_reset_marks,btn_scene_menu,btn_scene_save,"
+                                          "btn_scene_load,btn_set_marks,show_paths_global_check,btn_help,status_strip"})
     widths = {"btn_action": 92, "btn_cut": 92, "btn_arm": 22, "btn_take_play": 28, "btn_take_stop": 28,
-              "take_timecode": 90, "scene_combo": 130, "scene_name_editor": 130, "btn_scene_load": 44,
-              "btn_scene_save": 50,
-              "btn_scene_delete": 28, "btn_set_marks": 28, "btn_reset_marks": 28, "show_paths_global_check": 28,
-              "btn_help": 28}
+              "take_timecode": 100, "scene_combo": 130, "scene_name_editor": 130, "btn_scene_load": 44,
+              "btn_scene_save": 50, "btn_scene_menu": 28, "btn_set_marks": 28, "btn_reset_marks": 28,
+              "show_paths_global_check": 28, "btn_help": 28}
+    action_group = ET.SubElement(bar, "panel", {"name": "transport_action_group", "width": "114", "height": "26",
+                                                 "background_visible": "false"})
     for name in ("btn_action", "btn_cut"):
         node = copy_chrome(name, v1)
         node.set("image_color", "KitAccent" if name == "btn_action" else "KitRecord")
         node.set("label_color", "Black" if name == "btn_action" else "White")
         node.set("image_overlay", "KitIcon_transport_action_play_16" if name == "btn_action" else
                  "KitIcon_transport_action_stop_16")
-        node.set("width", str(widths[name])); node.set("height", "26"); bar.append(node)
-    for name, image in (("btn_arm", "KitIcon_armed_chevron_up_16"), ("btn_take_play", "KitIcon_transport_play_16"),
-                        ("btn_take_stop", "KitIcon_transport_stop_16")):
+        node.set("width", str(widths[name])); node.set("height", "26")
+        node.set("left", "0"); node.set("top", "0"); action_group.append(node)
+    ET.SubElement(action_group, "button", {"name": "btn_arm", "label": "", "image_overlay": "KitIcon_armed_chevron_up_16",
+                                            "left": "92", "top": "0", "width": "22", "height": "26",
+                                            "tool_tip": "Choose what ACTION starts"})
+    for name, image, tip in (("btn_take_play", "KitIcon_transport_play_16", "Play or pause the current camera take"),
+                             ("btn_take_stop", "KitIcon_transport_stop_16", "Stop the current camera take")):
         ET.SubElement(bar, "button", {"name": name, "label": "", "image_overlay": image,
-                                      "width": str(widths[name]), "height": "26"})
+                                      "width": str(widths[name]), "height": "26", "tool_tip": tip})
     timecode = ET.SubElement(bar, "text", {"name": "take_timecode", "width": str(widths["take_timecode"]),
-                                           "height": "28"})
-    timecode.text = "00:00:00"
+                                           "height": "26", "halign": "center", "text_color": "KitTextStrong",
+                                           "tool_tip": "Camera-take timecode"})
+    timecode.text = "00:00:00:00"
+    ET.SubElement(bar, "panel", {"name": "transport_divider_timecode", "width": "1", "height": "18",
+                                  "background_visible": "false"})
     for name in ("scene_combo", "scene_name_editor"):
-        node = copy_chrome(name, v1); node.set("width", str(widths[name])); node.set("height", "28"); bar.append(node)
+        node = copy_chrome(name, v1); node.set("width", str(widths[name])); node.set("height", "24"); bar.append(node)
     dirty = ET.SubElement(bar, "text", {"name": "scene_dirty_indicator", "width": "10", "height": "28",
-                                         "halign": "center", "tool_tip": "Unsaved Director scene changes"})
+                                         "halign": "center", "text_color": "KitAccent",
+                                         "tool_tip": "Unsaved Director scene changes"})
     dirty.text = ""
-    metadata = ET.SubElement(bar, "text", {"name": "scene_metadata_text", "width": "150", "height": "28",
-                                             "use_ellipses": "true", "text_color": "KitMuted",
-                                             "tool_tip": "Selected scene name and saved time"})
-    metadata.text = "Select a scene"
     ET.SubElement(bar, "button", {"name": "btn_scene_load", "label": "Load",
                                    "tool_tip": "Load the selected scene", "width": str(widths["btn_scene_load"]),
-                                   "height": "28"})
-    for name in ("btn_scene_save", "btn_scene_delete", "btn_set_marks", "btn_reset_marks"):
-        node = copy_chrome(name, v1); node.set("width", str(widths[name])); node.set("height", "28"); bar.append(node)
-        if name == "btn_scene_delete":
-            node.set("label", "...")
+                                   "height": "24"})
+    save = copy_chrome("btn_scene_save", v1); save.set("width", str(widths["btn_scene_save"])); save.set("height", "24"); bar.append(save)
+    ET.SubElement(bar, "button", {"name": "btn_scene_menu", "label": "...", "width": str(widths["btn_scene_menu"]),
+                                   "height": "24", "tool_tip": "Save as, Rename, or Delete the selected scene"})
+    ET.SubElement(bar, "panel", {"name": "transport_divider_scene", "width": "1", "height": "18",
+                                  "background_visible": "false"})
+    for name in ("btn_set_marks", "btn_reset_marks"):
+        node = copy_chrome(name, v1); node.set("width", str(widths[name])); node.set("height", "26"); bar.append(node)
         if name in {"btn_set_marks", "btn_reset_marks"}:
             node.set("label", "")
             node.set("image_overlay", "KitIcon_transport_marks_set_16" if name == "btn_set_marks" else
                      "KitIcon_transport_marks_reset_16")
     rec = copy_chrome("rec_indicator", v1)
-    rec.set("width", "44"); rec.set("height", "28"); rec.set("halign", "center")
+    rec.set("width", "48"); rec.set("height", "20"); rec.set("halign", "right"); rec.set("h_pad", "7")
+    rec.set("text_color", "KitFaint")
+    rec.text = "REC"
     bar.append(rec)
-    show = copy_chrome("show_paths_global_check", v1); show.tag = "kit_switch"; show.set("label", ""); show.set("width", "28"); show.set("height", "28"); bar.append(show)
-    help_button = copy_chrome("btn_help", v1); help_button.set("label", ""); help_button.set("image_overlay", "KitIcon_transport_legend_16"); help_button.set("width", "28"); help_button.set("height", "28"); bar.append(help_button)
+    show = copy_chrome("show_paths_global_check", v1); show.tag = "button"; show.set("label", ""); show.set("is_toggle", "true")
+    show.set("image_overlay", "KitIcon_transport_paths_16"); show.set("width", "28"); show.set("height", "26"); bar.append(show)
+    help_button = copy_chrome("btn_help", v1); help_button.set("label", ""); help_button.set("image_overlay", "KitIcon_transport_legend_16"); help_button.set("width", "28"); help_button.set("height", "26"); bar.append(help_button)
     ET.SubElement(bar, "text", {"name": "status_strip", "use_ellipses": "true",
-                                "width": "320", "height": "28"})
-    ET.SubElement(bar, "button", {"name": "btn_cast_chip", "label": "Cast", "width": "70", "height": "28"})
-    ET.SubElement(bar, "text", {"name": "kit_ui_ms", "width": "70", "height": "28"}).text = "UI -- ms"
-    ET.SubElement(bar, "button", {"name": "btn_hotkeys", "label": "?", "width": "28", "height": "28"})
+                                "width": "190", "height": "24", "h_pad": "14", "text_color": "KitRecordText",
+                                "visible": "false"})
+    ET.SubElement(bar, "panel", {"name": "transport_spacer", "width": "1", "height": "1",
+                                  "background_visible": "false"})
+    ET.SubElement(bar, "text", {"name": "transport_toast", "width": "180", "height": "22", "halign": "center",
+                                "use_ellipses": "true", "visible": "false"})
+    ET.SubElement(bar, "button", {"name": "btn_cast_chip", "label": "Cast 0  ^", "width": "82", "height": "24",
+                                   "tool_tip": "Open the cast tools and member list"})
     arm = ET.SubElement(shell, "kit_popover", {"name": "kit_arm_popover", "anchor": "btn_arm", "side": "above", "visible": "false"})
     for name in ("arm_moves_check", "arm_camera_check", "arm_play_check", "arm_capture_check", "delay_spinner"):
         src = find_named(v1, name)
@@ -1022,9 +1037,15 @@ def floater_tree(data: dict, page_files: dict[str, str], v1: ET.Element) -> ET.E
     legend = ET.SubElement(shell, "kit_popover", {"name": "legend_panel", "anchor": "btn_help", "side": "above", "visible": "false"})
     legend_body = copy_chrome("legend_body", v1)
     if legend_body.text:
-        legend_body.text = legend_body.text.replace("Capture > Scene options", "the ? transport menu")
-    legend.append(legend_body); legend.append(copy_chrome("btn_legend_close", v1))
-    hot = ET.SubElement(shell, "kit_popover", {"name": "kit_hotkeys_popover", "anchor": "btn_hotkeys", "side": "above", "visible": "false"})
+        legend_body.text = legend_body.text.replace("see Capture > Scene options", "use F1 or ?, or choose Hotkeys below")
+    legend.append(legend_body)
+    ET.SubElement(legend, "button", {"name": "btn_legend_hotkeys", "label": "Hotkeys (F1 / ?)"})
+    legend.append(copy_chrome("btn_legend_close", v1))
+    scene_menu = ET.SubElement(shell, "kit_popover", {"name": "kit_scene_popover", "anchor": "btn_scene_menu", "side": "above", "visible": "false"})
+    for name, label in (("btn_scene_save_as", "Save as..."), ("btn_scene_rename", "Rename..."),
+                        ("btn_scene_delete", "Delete...")):
+        ET.SubElement(scene_menu, "button", {"name": name, "label": label})
+    hot = ET.SubElement(shell, "kit_popover", {"name": "kit_hotkeys_popover", "anchor": "btn_help", "side": "above", "visible": "false"})
     ET.SubElement(hot, "text", {"name": "kit_hotkeys_text", "word_wrap": "true"}).text = (
         "Enter: ACTION\nEsc: close, clear or CUT\nF8 / F5\n/: search\nCtrl+Z/Y: undo / redo\n"
         "PgUp/PgDn: chip\nShift+PgUp/PgDn: page\nAlt+PgUp/PgDn: group\nArrows: adjust\n"

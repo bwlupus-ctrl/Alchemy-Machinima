@@ -825,10 +825,19 @@ void LLFloaterDirector::bindChrome(LLView* root)
     // its original statement order for parity.
     mActionBtn = root->getChild<LLButton>("btn_action");
     mCutBtn = root->getChild<LLButton>("btn_cut");
+    mArmBtn = root->getChild<LLButton>("btn_arm");
+    mTakePlayBtn = root->getChild<LLButton>("btn_take_play");
+    mTakeStopBtn = root->getChild<LLButton>("btn_take_stop");
+    mTakeTimecode = root->getChild<LLTextBox>("take_timecode");
+    mCastChip = root->getChild<LLButton>("btn_cast_chip");
+    mTransportToast = root->getChild<LLTextBox>("transport_toast");
+    mTransportBar = dynamic_cast<ALKitBar*>(root->getChild<LLView>("kit_transport"));
     mSetMarksBtn = root->getChild<LLButton>("btn_set_marks");
     mResetMarksBtn = root->getChild<LLButton>("btn_reset_marks");
     mActionBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickAction(); });
     mCutBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickAction(); });
+    mTakePlayBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickTakePlay(); });
+    mTakeStopBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickTakeStop(); });
     mSetMarksBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickSetMarks(); });
     mResetMarksBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickResetMarks(); });
     setDefaultBtn(mActionBtn);
@@ -845,7 +854,12 @@ void LLFloaterDirector::bindChrome(LLView* root)
     mSceneNameEditor->setCommitCallback([this](LLUICtrl*, const LLSD&) { commitSceneName(); });
     mSceneSaveBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickSceneSave(); });
     mSceneDeleteBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickSceneDelete(); });
+    root->getChild<LLButton>("btn_scene_save_as")->setCommitCallback(
+        [this](LLUICtrl*, const LLSD&) { onClickSceneSaveAs(); });
+    root->getChild<LLButton>("btn_scene_rename")->setCommitCallback(
+        [this](LLUICtrl*, const LLSD&) { onClickSceneRename(); });
     refreshSceneList();
+    updateTransportTooltipCache();
 
     mTabContainer = root->getChild<LLTabContainer>("director_tabs");
     mTabContainer->setCommitCallback([this](LLUICtrl*, const LLSD&) { onTabChanged(); });
@@ -881,9 +895,17 @@ void LLFloaterDirector::bindChrome(LLView* root)
 
     mHelpBtn = root->getChild<LLButton>("btn_help");
     mLegendPanel = root->getChild<LLPanel>("legend_panel");
+    mHotkeysPanel = root->getChild<LLPanel>("kit_hotkeys_popover");
     mHelpBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onToggleLegend(); });
     mLegendPanel->getChild<LLButton>("btn_legend_close")->setCommitCallback(
         [this](LLUICtrl*, const LLSD&) { mLegendPanel->setVisible(false); });
+    mLegendPanel->getChild<LLButton>("btn_legend_hotkeys")->setCommitCallback(
+        [this](LLUICtrl*, const LLSD&)
+        {
+            mLegendPanel->setVisible(false);
+            if (ALKitPopover* popover = dynamic_cast<ALKitPopover*>(mHotkeysPanel))
+                popover->show();
+        });
 
     mCastList = root->getChild<LLScrollListCtrl>("cast_list");
     mCastRosterHeader = root->findChild<LLTextBox>("cast_roster_header");
@@ -1781,6 +1803,11 @@ bool LLFloaterDirector::handleKeyHere(KEY key, MASK mask)
                 }
             }
         }
+        if(key==KEY_F1&&mask==MASK_NONE&&!text_focus)
+        {
+            if(ALKitPopover* popover=dynamic_cast<ALKitPopover*>(mHotkeysPanel))popover->toggle();
+            return true;
+        }
         if((key==KEY_PAGE_UP||key==KEY_PAGE_DOWN)&&!(mask&MASK_CONTROL))
         {
             const S32 delta=key==KEY_PAGE_UP?-1:1;
@@ -1827,6 +1854,11 @@ bool LLFloaterDirector::handleKeyHere(KEY key, MASK mask)
 
 bool LLFloaterDirector::handleUnicodeCharHere(llwchar uni_char)
 {
+    if(mIsV2&&uni_char=='?'&&!isTextEntryFocus())
+    {
+        if(ALKitPopover* popover=dynamic_cast<ALKitPopover*>(mHotkeysPanel))popover->toggle();
+        return true;
+    }
     if(mIsV2&&uni_char=='/')
     {
         if(isTextEntryFocus())return LLFloater::handleUnicodeCharHere(uni_char);
@@ -1899,6 +1931,30 @@ void LLFloaterDirector::onClickAction()
     }
 }
 
+void LLFloaterDirector::onClickTakePlay()
+{
+    LLFlycamRecorder::instance().togglePlayback();
+}
+
+void LLFloaterDirector::onClickTakeStop()
+{
+    LLFlycamRecorder& recorder = LLFlycamRecorder::instance();
+    if (recorder.getState() == LLFlycamRecorder::STATE_RECORDING)
+        recorder.stopRecording();
+    else
+        recorder.stopPlayback();
+}
+
+void LLFloaterDirector::showTransportToast(const std::string& text)
+{
+    if (!mTransportToast || !mTransportBar)
+        return;
+    setTextIfChanged(mTransportToast, text);
+    mTransportToastTimer.reset();
+    if (!mTransportToast->getVisible())
+        mTransportBar->setCollapsibleVisible(mTransportToast, true);
+}
+
 void LLFloaterDirector::onClickSetMarks()
 {
     LLDirectorCast::instance().setMarks();
@@ -1938,6 +1994,14 @@ void LLFloaterDirector::refreshTransport()
     LLDirectorCast& cast = LLDirectorCast::instance();
     const bool counting = cast.isCountingDown();
     const bool running = cast.isRunning();
+    const bool transport_live = counting || running;
+
+    const S32 action_state = transport_live ? 1 : 0;
+    if (mIsV2 && mLastTransportActionState != action_state)
+    {
+        mLastTransportActionState = action_state;
+        ALKitStyle::styleTransportAction(mActionBtn, mCutBtn, mArmBtn, transport_live);
+    }
 
     // ACTION morphs to CUT (danger styling from XML) while counting/running;
     // the countdown shows on the button itself
@@ -1957,6 +2021,53 @@ void LLFloaterDirector::refreshTransport()
 
     mActionBtn->setEnabled(mActionArmed);
     setToolTipIfChanged(mActionBtn, mActionTooltip);
+    setToolTipIfChanged(mArmBtn, "Choose what ACTION starts. " + mActionTooltip);
+
+    if (mIsV2)
+    {
+        if (mTransportToast && mTransportToast->getVisible() &&
+            mTransportToastTimer.getElapsedTimeF32() >= 2.5f)
+        {
+            mTransportBar->setCollapsibleVisible(mTransportToast, false);
+        }
+        LLFlycamRecorder& recorder = LLFlycamRecorder::instance();
+        const LLFlycamRecorder::EState recorder_state = recorder.getState();
+        const bool recording = recorder_state == LLFlycamRecorder::STATE_RECORDING;
+        const bool playing = recorder_state == LLFlycamRecorder::STATE_PLAYING;
+        const bool have_take = recorder.getNumKeyframes() > 0;
+        mTakePlayBtn->setEnabled(have_take && !recording);
+        mTakeStopBtn->setEnabled(recording || recorder.isPlaybackActive());
+        setToolTipIfChanged(mTakePlayBtn, !have_take ? "Record or load a take first" :
+            (playing ? "Pause the current camera take" : "Play the current camera take"));
+        setToolTipIfChanged(mTakeStopBtn, recording ? "Stop recording the current camera take" :
+            "Stop playback and return the take to frame zero");
+
+        static LLCachedControl<F32> recorder_fps(gSavedSettings, "FlycamRecSampleRate", 30.f);
+        const S32 fps = llclamp(ll_round((F32)recorder_fps), 1, 120);
+        const F32 seconds = recording ? recorder.getDuration() : recorder.getPlayhead();
+        const S64 frame = llmax((S64)0, (S64)floorf(llmax(0.f, seconds) * (F32)fps));
+        const bool fps_changed = fps != mTimecodeFps;
+        if (frame != mTimecodeFrame || fps_changed)
+        {
+            mTimecodeFrame = frame;
+            mTimecodeFps = fps;
+            const S64 total_seconds = frame / fps;
+            const S32 frames = (S32)(frame % fps);
+            const S32 hours = (S32)(total_seconds / 3600);
+            const S32 minutes = (S32)((total_seconds / 60) % 60);
+            const S32 secs = (S32)(total_seconds % 60);
+            setTextIfChanged(mTakeTimecode, llformat("%02d:%02d:%02d:%02d", hours, minutes, secs, frames));
+        }
+        if (fps_changed)
+            setToolTipIfChanged(mTakeTimecode, llformat("Camera-take timecode at %d fps", fps));
+        if (mTimecodeHot != transport_live)
+        {
+            mTimecodeHot = transport_live;
+            const LLUIColor& color = ALKitStyle::color(transport_live ? ALKitStyle::RECORD_TEXT : ALKitStyle::TEXT_STRONG);
+            mTakeTimecode->setColor(color);
+            mTakeTimecode->setReadOnlyColor(color);
+        }
+    }
 
     // marks
     const bool have_cast = !cast.getCast().empty();
@@ -2301,6 +2412,7 @@ void LLFloaterDirector::onClickSceneSave()
 {
     if (!mSceneNameEditor->getVisible())
     {
+        mSceneRenameSource.clear();
         // reveal the inline name box in the combo's spot (usability rule 2:
         // no naming popups), preloaded so "tweak and re-save" is Save-Enter
         mSceneNameEditor->setText(mSceneCombo->getSelectedItemLabel());
@@ -2315,6 +2427,30 @@ void LLFloaterDirector::onClickSceneSave()
     }
 }
 
+void LLFloaterDirector::onClickSceneSaveAs()
+{
+    if (mShell) mShell->closePopover();
+    mSceneRenameSource.clear();
+    mSceneNameEditor->setText(std::string());
+    mSceneCombo->setVisible(false);
+    mSceneNameEditor->setVisible(true);
+    mSceneNameEditor->setFocus(true);
+}
+
+void LLFloaterDirector::onClickSceneRename()
+{
+    const std::string name = mSceneCombo->getSelectedItemLabel();
+    if (name.empty())
+        return;
+    if (mShell) mShell->closePopover();
+    mSceneRenameSource = name;
+    mSceneNameEditor->setText(name);
+    mSceneCombo->setVisible(false);
+    mSceneNameEditor->setVisible(true);
+    mSceneNameEditor->setFocus(true);
+    mSceneNameEditor->selectAll();
+}
+
 void LLFloaterDirector::commitSceneName()
 {
     std::string name = mSceneNameEditor->getText();
@@ -2323,16 +2459,23 @@ void LLFloaterDirector::commitSceneName()
     mSceneCombo->setVisible(true);
     if (name.empty())
     {
+        mSceneRenameSource.clear();
         return;     // empty name = cancel, nothing written
     }
     if (saveScene(name))
     {
+        if (!mSceneRenameSource.empty() && mSceneRenameSource != name)
+        {
+            LLFile::remove(scenePath(mSceneRenameSource));
+        }
+        mSceneRenameSource.clear();
         refreshSceneList(name);
     }
 }
 
 void LLFloaterDirector::onClickSceneDelete()
 {
+    if (mShell) mShell->closePopover();
     const std::string name = mSceneCombo->getSelectedItemLabel();
     if (name.empty())
     {
@@ -2356,6 +2499,7 @@ void LLFloaterDirector::onClickSceneDelete()
             if (LLFloaterDirector* self = static_cast<LLFloaterDirector*>(handle.get()))
             {
                 self->refreshSceneList();
+                self->showTransportToast("Deleted: " + name);
             }
         });
 }
@@ -2415,6 +2559,8 @@ bool LLFloaterDirector::saveScene(const std::string& name)
         recoveryServiceState().mAutosaveTimer.reset();
         LLFile::remove(recoveryPath(), ENOENT);
         LL_INFOS("Director") << "Saved scene '" << name << "'" << LL_ENDL;
+        if (LLFloaterDirector* director = static_cast<LLFloaterDirector*>(sRecoveryDirectorHandle.get()))
+            director->showTransportToast("Saved: " + name);
     }
     return saved;
 }
@@ -2758,6 +2904,8 @@ bool LLFloaterDirector::loadScene(const std::string& name, bool recovery)
     recoveryServiceState().mAutosaveTimer.reset();
     if (recovery)
         LLFile::remove(recoveryPath(), ENOENT);
+    else
+        showTransportToast("Loaded: " + name);
     return true;
 }
 
@@ -5034,10 +5182,37 @@ void LLFloaterDirector::refreshStatusStrip()
     {
         queued = llformat(" \xC2\xB7 %d queued", cast.pendingStartCount());
     }
-    const std::string status = llformat("%d moving%s \xC2\xB7 %s \xC2\xB7 Orbit %s",
-                                        moving, queued.c_str(), cam.c_str(), orbit_enabled ? "on" : "off");
-    setTextIfChanged(mStatusStrip, status); // [UIPerfC1]
-    setToolTipIfChanged(mStatusStrip, status);
+    const std::string routine_status = llformat("%d moving%s \xC2\xB7 %s \xC2\xB7 Orbit %s",
+                                                moving, queued.c_str(), cam.c_str(), orbit_enabled ? "on" : "off");
+    const bool problem = mIsV2 && !mActionArmed;
+    if (mIsV2 && problem)
+    {
+        setTextIfChanged(mStatusStrip, "ACTION has nothing armed");
+        setToolTipIfChanged(mStatusStrip, "Open ACTION starts and arm at least one item");
+    }
+    if (mIsV2)
+    {
+        if (mTransportBar && mStatusStrip->getVisible() != problem)
+            mTransportBar->setCollapsibleVisible(mStatusStrip, problem);
+        else if (!mTransportBar)
+            mStatusStrip->setVisible(problem);
+    }
+    else
+    {
+        setTextIfChanged(mStatusStrip, routine_status);
+        setToolTipIfChanged(mStatusStrip, routine_status);
+    }
+
+    if (mCastChip)
+    {
+        const S32 cast_count = (S32)cast.getCast().size();
+        if (mLastCastChipCount != cast_count)
+        {
+            mLastCastChipCount = cast_count;
+            mCastChip->setLabel(LLStringExplicit(llformat("Cast %d  ^", cast_count)));
+        }
+        setToolTipIfChanged(mCastChip, routine_status + ". Open cast tools and member list.");
+    }
 
     // REC indicator: red danger dot while capturing, muted circle when idle
     // (diffed so the color/text are only re-set on a state change)
@@ -5046,11 +5221,16 @@ void LLFloaterDirector::refreshStatusStrip()
     if (mRecState != rec_state)
     {
         mRecState = rec_state;
-        const LLColor4 rec_color = rec ? LLColor4(0.85f, 0.25f, 0.25f, 1.f)
-                                       : LLColor4(0.5f, 0.5f, 0.5f, 1.f);
-        mRecIndicator->setText(rec ? std::string("REC \xE2\x97\x8F")
-                                   : std::string("REC \xE2\x97\x8B"));
+        const LLColor4 rec_color = mIsV2
+            ? (rec ? LLColor4::white : ALKitStyle::color(ALKitStyle::FAINT).get())
+            : (rec ? LLColor4(0.85f, 0.25f, 0.25f, 1.f) : LLColor4(0.5f, 0.5f, 0.5f, 1.f));
+        if (!mIsV2)
+            mRecIndicator->setText(rec ? std::string("REC \xE2\x97\x8F")
+                                       : std::string("REC \xE2\x97\x8B"));
         mRecIndicator->setColor(rec_color);
         mRecIndicator->setReadOnlyColor(rec_color);
+        if (mTransportBar) mTransportBar->setRecording(rec);
     }
+    setToolTipIfChanged(mRecIndicator, rec ? "Recording the current camera take" :
+        "Recorder idle. Arm Recorder capture in ACTION starts, or use the Takes page.");
 }

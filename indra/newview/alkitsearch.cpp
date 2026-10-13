@@ -127,6 +127,7 @@ bool ALKitSearch::tokenizeBatch(U32 count)
         entry.page_key    = fields[0] + "/" + fields[1];
         entry.page_label  = fields[2];
         entry.card_id     = fields[5];
+        entry.card_label  = fields[6];
         entry.option      = fields[7].empty() ? -1 : atoi(fields[7].c_str());
         entry.widget      = fields[8];
         entry.label       = fields[9];
@@ -230,6 +231,7 @@ ALKitSearch::Hits ALKitSearch::query(const std::string& query_text) const
             hit.page_key  = entry.page_key;
             hit.page_label = entry.page_label;
             hit.card_id   = entry.card_id;
+            hit.card_label = entry.card_label;
             hit.widget    = entry.widget;
             hit.setting   = entry.setting;
             hit.label     = entry.label;
@@ -277,6 +279,7 @@ ALKitSearch::Hits ALKitSearch::all() const
         hit.page_key = entry.page_key;
         hit.page_label = entry.page_label;
         hit.card_id = entry.card_id;
+        hit.card_label = entry.card_label;
         hit.widget = entry.widget;
         hit.setting = entry.setting;
         hit.label = entry.label;

@@ -15,6 +15,8 @@
 #include "lleventtimer.h"
 #include "llfloater.h"
 #include "llfloaterreg.h"
+#include "llfocusmgr.h"
+#include "llfontgl.h"
 #include "lllineeditor.h"
 #include "llrender.h"
 #include "llsliderwheel.h"
@@ -25,6 +27,8 @@
 #include "lluictrlfactory.h"
 #include "llviewercontrol.h"
 #include <algorithm>
+#include <functional>
+#include <utility>
 static LLDefaultChildRegistry::Register<ALKitShell> r("kit_shell");
 
 namespace
@@ -147,6 +151,134 @@ void pulseExternalTarget(LLFloater* floater, LLView* target)
 
 } // namespace
 
+class ALKitSearchResultRow final : public LLPanel
+{
+public:
+    using commit_fn_t = std::function<void()>;
+
+    ALKitSearchResultRow(const LLPanel::Params& params, std::string label,
+                         std::string context, std::string detail, commit_fn_t commit)
+        : LLPanel(params),
+          mLabel(std::move(label)),
+          mContext(std::move(context)),
+          mDetail(std::move(detail)),
+          mCommit(std::move(commit))
+    {
+        setMouseOpaque(true);
+        const LLFontGL* font = ALKitStyle::sansFont("Kit12");
+        mLabelWidth = font ? font->getWidth(mLabel) : 0;
+    }
+
+    void setSelected(bool selected) { mSelected = selected; }
+
+    void draw() override
+    {
+        LL_PROFILE_ZONE_SCOPED_CATEGORY_UI;
+        const S32 width = getRect().getWidth();
+        if (mHovered || mSelected)
+            gl_rect_2d(getLocalRect(), ALKitStyle::color(ALKitStyle::ROW_HOVER).get(), true);
+
+        constexpr S32 LEFT = 8;
+        constexpr S32 RIGHT = 8;
+        const S32 available = llmax(1, width - LEFT - RIGHT);
+        const LLFontGL* label_font = ALKitStyle::sansFont("Kit12");
+        const LLFontGL* detail_font = ALKitStyle::monoFont("Kit11");
+        if (label_font)
+        {
+            const S32 context_width = label_font->getWidth(mContext);
+            const S32 label_limit = mContext.empty() ? available
+                : llmax(40, available - llmin(context_width, available / 2));
+            label_font->renderUTF8(mLabel, 0, (F32)LEFT, 25.f,
+                                   ALKitStyle::color(ALKitStyle::TEXT).get(), LLFontGL::LEFT,
+                                   LLFontGL::VCENTER, LLFontGL::NORMAL, LLFontGL::NO_SHADOW,
+                                   S32_MAX, label_limit, nullptr, true);
+            if (!mContext.empty())
+            {
+                const S32 context_x = LEFT + llmin(mLabelWidth, label_limit) + 4;
+                label_font->renderUTF8(mContext, 0, (F32)context_x, 25.f,
+                                       ALKitStyle::color(ALKitStyle::MUTED).get(), LLFontGL::LEFT,
+                                       LLFontGL::VCENTER, LLFontGL::NORMAL, LLFontGL::NO_SHADOW,
+                                       S32_MAX, llmax(1, width - context_x - RIGHT), nullptr, true);
+            }
+        }
+        if (detail_font && !mDetail.empty())
+            detail_font->renderUTF8(mDetail, 0, (F32)LEFT, 10.f,
+                                    ALKitStyle::color(ALKitStyle::MUTED).get(), LLFontGL::LEFT,
+                                    LLFontGL::VCENTER, LLFontGL::NORMAL, LLFontGL::NO_SHADOW,
+                                    S32_MAX, available, nullptr, true);
+        LLPanel::draw();
+    }
+
+    bool handleMouseDown(S32, S32, MASK) override
+    {
+        if (mCommit)
+            mCommit();
+        return true;
+    }
+
+    void onMouseEnter(S32 x, S32 y, MASK mask) override
+    {
+        mHovered = true;
+        LLPanel::onMouseEnter(x, y, mask);
+    }
+
+    void onMouseLeave(S32 x, S32 y, MASK mask) override
+    {
+        mHovered = false;
+        LLPanel::onMouseLeave(x, y, mask);
+    }
+
+private:
+    std::string mLabel;
+    std::string mContext;
+    std::string mDetail;
+    commit_fn_t mCommit;
+    S32         mLabelWidth = 0;
+    bool        mHovered = false;
+    bool        mSelected = false;
+};
+
+namespace
+{
+std::string searchDisplayText(std::string value)
+{
+    std::replace_if(value.begin(), value.end(),
+                    [](unsigned char ch) { return ch < 0x20 || ch == 0x7f; }, ' ');
+    static const char* unsupported_spaces[] = {
+        "\xE2\x80\x80", "\xE2\x80\x81", "\xE2\x80\x82", "\xE2\x80\x83",
+        "\xE2\x80\x84", "\xE2\x80\x85", "\xE2\x80\x86", "\xE2\x80\x87",
+        "\xE2\x80\x88", "\xE2\x80\x89", "\xE2\x80\x8A", "\xE2\x80\x8B"
+    };
+    for (const char* separator : unsupported_spaces)
+        LLStringUtil::replaceString(value, separator, " ");
+    return value;
+}
+
+class ALKitSearchGroupRow final : public LLPanel
+{
+public:
+    ALKitSearchGroupRow(const LLPanel::Params& params, std::string label)
+        : LLPanel(params), mLabel(std::move(label))
+    {
+        setMouseOpaque(false);
+    }
+
+    void draw() override
+    {
+        LL_PROFILE_ZONE_SCOPED_CATEGORY_UI;
+        if (const LLFontGL* font = ALKitStyle::sansFont("Kit10", true))
+            font->renderUTF8(mLabel, 0, 8.f, 9.f, ALKitStyle::color(ALKitStyle::MUTED).get(),
+                             LLFontGL::LEFT, LLFontGL::VCENTER, LLFontGL::NORMAL,
+                             LLFontGL::NO_SHADOW, S32_MAX, llmax(1, getRect().getWidth() - 16),
+                             nullptr, true);
+        LLPanel::draw();
+    }
+
+private:
+    std::string mLabel;
+};
+} // namespace
+
 ALKitShell::ALKitShell(const Params& p) : LLPanel(p), mIndexFile(p.index_file)
 {
     for (const RailItem& item : p.rail_item)
@@ -169,6 +301,8 @@ bool ALKitShell::postBuild()
     mDirectorTabs = findChild<LLTabContainer>("director_tabs");
     mRoster       = findChild<LLPanel>("kit_cast_roster");
     mTransport    = findChild<LLPanel>("kit_transport");
+    mTransportCut = findChild<LLButton>("btn_cut");
+    mTransportArm = findChild<LLButton>("btn_arm");
     mRosterOpen   = gSavedSettings.getBOOL("DirectorV2CastRosterOpen");
     const LLSD stored_favorites = gSavedSettings.getLLSD("DirectorFavorites");
     mFavorites = ALKitQol::favoritesFromLLSD(stored_favorites);
@@ -179,7 +313,12 @@ bool ALKitShell::postBuild()
     mConnections.emplace_back(setPageBuiltCallback([this](const std::string& name, LLPanel* panel) { pageBuilt(name, panel); }));
     layoutChrome();
     ALKitStyle::styleTree(this);
-    ALKitStyle::stylePill(findChild<LLButton>("btn_cast_chip"));
+    if (LLButton* cast_chip = findChild<LLButton>("btn_cast_chip"))
+    {
+        ALKitStyle::stylePill(cast_chip);
+        cast_chip->setFont(ALKitStyle::sansFont("Kit12", true));
+        cast_chip->setUnselectedLabelColor(ALKitStyle::color(ALKitStyle::TEXT_STRONG));
+    }
     for (LLButton* button : mRailButtons)
         button->setSelectedLabelColor(ALKitStyle::color(ALKitStyle::ACCENT));
     for (LLButton* button : mTabButtons)
@@ -264,6 +403,19 @@ void ALKitShell::buildChrome()
     search_params.visible = false;
     mSearchPopover        = LLUICtrlFactory::create<ALKitPopover>(search_params);
     addChild(mSearchPopover);
+    mSearchPopover->setFocusLostCallback(
+        [tab_handle](LLFocusableElement*)
+        {
+            // Focus left the popup (e.g. a result row was focused, then the user
+            // clicked elsewhere): close it unless focus is still inside it.
+            ALKitShell* shell = tab_handle.get();
+            if (!shell || !shell->mSearchPopover)
+                return;
+            LLView* focus = dynamic_cast<LLView*>(gFocusMgr.getKeyboardFocus());
+            if (focus && focus->hasAncestor(shell->mSearchPopover))
+                return;
+            shell->setSearchPopupArmed(nullptr, false);
+        });
     LLTextBox::Params text_params;
     text_params.name = "kit_search_header";
     text_params.rect = LLRect(10, 380, 420, 358);
@@ -312,7 +464,8 @@ void ALKitShell::buildChrome()
         const char* button;
         const char* popover;
     };
-    static const PopoverButton popover_buttons[] = { { "btn_arm", "kit_arm_popover" }, { "btn_hotkeys", "kit_hotkeys_popover" } };
+    static const PopoverButton popover_buttons[] = { { "btn_arm", "kit_arm_popover" },
+                                                      { "btn_scene_menu", "kit_scene_popover" } };
     for (const PopoverButton& binding : popover_buttons)
     {
         LLButton*     button  = findChild<LLButton>(binding.button);
@@ -742,7 +895,7 @@ void ALKitShell::draw()
                    mHelpPanel->getRect().mTop, ALKitStyle::color(ALKitStyle::DIVIDER2).get());
     if (mTransport)
         gl_line_2d(mTransport->getRect().mLeft, mTransport->getRect().mTop - 1, mTransport->getRect().mRight,
-                   mTransport->getRect().mTop - 1, ALKitStyle::color(ALKitStyle::DIVIDER2).get());
+                   mTransport->getRect().mTop - 1, ALKitStyle::color(ALKitStyle::DIVIDER).get());
     for (LLButton* button : mRailButtons)
     {
         if (!button || !button->getVisible() || !button->getToggleState())
@@ -765,6 +918,29 @@ void ALKitShell::draw()
                        ALKitStyle::color(ALKitStyle::ACCENT).get(), true);
     }
     LLPanel::draw();
+    if (mTransportCut && mTransportCut->getVisible())
+    {
+        LLRect rect;
+        if (mTransportCut->localRectToOtherView(mTransportCut->getLocalRect(), &rect, this))
+        {
+            for (S32 inset = 1; inset <= 3; ++inset)
+            {
+                LLColor4 ring = ALKitStyle::color(ALKitStyle::RECORD).get();
+                ring.mV[VALPHA] = (4 - inset) * .07f;
+                LLRect expanded(rect.mLeft - inset, rect.mTop + inset,
+                                (mTransportArm && mTransportArm->getVisible() ? mTransportArm->getRect().mRight - mTransportArm->getRect().mLeft : 0) + rect.mRight + inset,
+                                rect.mBottom - inset);
+                gl_rect_2d(expanded, ring, false);
+            }
+        }
+    }
+    if (mTransportArm && mTransportArm->getVisible())
+    {
+        LLRect rect;
+        if (mTransportArm->localRectToOtherView(mTransportArm->getLocalRect(), &rect, this))
+            gl_line_2d(rect.mLeft, rect.mBottom + 3, rect.mLeft, rect.mTop - 3,
+                       LLColor4(0.078f, 0.078f, 0.075f, .3f));
+    }
     LLView* view = mHighlight.get();
     if (view && mHighlightTimer.getElapsedTimeF32() < ALKitStyle::FLASH_SEC)
     {
@@ -879,6 +1055,9 @@ bool ALKitShell::selectPage(const std::string& page_name)
 
 void ALKitShell::syncSelection()
 {
+    // Page/group navigation always closes the results popup and never reopens
+    // it; only typing (or clicking back into a non-empty box) re-arms it.
+    setSearchPopupArmed(nullptr, false);
     layoutChrome();
     if (ALKitPage* page = currentKitPage())
         mHelp.showPage(page);
@@ -998,9 +1177,33 @@ void ALKitShell::pageBuilt(const std::string&, LLPanel* panel)
             [handle](LLLineEditor* line, void*)
             {
                 if (ALKitShell* shell = handle.get())
+                {
+                    // Typing is the only thing that arms the results popup;
+                    // emptying the box closes it.
+                    shell->mSearchPopupArmed = line->hasFocus() && !line->getText().empty();
+                    if (shell->mSearchPopover)
+                    {
+                        if (shell->mSearchPopupArmed)
+                            shell->mSearchPopover->bindAnchor(line);
+                        else
+                            shell->mSearchPopover->hide();
+                    }
                     shell->queueSearch(line->getText());
+                }
             },
             nullptr);
+        editor->setFocusLostCallback(
+            [handle](LLFocusableElement*)
+            {
+                ALKitShell* shell = handle.get();
+                if (!shell || !shell->mSearchPopover)
+                    return;
+                // Focus moving into the popup (a result row) keeps it open.
+                LLView* focus = dynamic_cast<LLView*>(gFocusMgr.getKeyboardFocus());
+                if (focus && focus->hasAncestor(shell->mSearchPopover))
+                    return;
+                shell->setSearchPopupArmed(nullptr, false);
+            });
         if (mSearchPopover)
             mSearchPopover->bindAnchor(editor);
     }
@@ -1198,65 +1401,83 @@ void ALKitShell::updateSearchResults(const ALKitSearch::Hits& hits, ALKitPage* p
     mSearchSelectionMoved = false;
     if (mSearchHeader)
         mSearchHeader->setText(llformat("%d on this page \xC2\xB7 %d elsewhere", local_count, elsewhere));
-    while (mSearchButtons.size() < mSearchHits.size())
+    mSearchRows.clear();
+    if (mSearchResultsPanel)
+        mSearchResultsPanel->deleteAllChildren();
+    constexpr S32 RESULT_HEIGHT = 36;
+    constexpr S32 GROUP_HEIGHT  = 22;
+    S32 content_height = 0;
+    std::string prior_page;
+    for (S32 index = 0; index < (S32)mSearchHits.size(); ++index)
     {
-        const S32 index = (S32)mSearchButtons.size();
-        LLButton::Params params;
-        params.name = "kit_search_result_" + llformat("%d", index);
-        params.rect = LLRect(0, 25, 390, 2);
-        LLButton* button = LLUICtrlFactory::create<LLButton>(params);
-        mSearchResultsPanel->addChild(button);
-        LLHandle<ALKitShell> handle = getDerivedHandle<ALKitShell>();
-        button->setCommitCallback([handle, index](LLUICtrl*, const LLSD&)
+        const ALKitSearch::Hit& hit = mSearchHits[index];
+        if (hit.page_key != prior_page)
         {
-            if (ALKitShell* shell = handle.get())
+            std::string group = hit.external ? hit.external_label : hit.group_label;
+            const std::string page_label = hit.external ? hit.external_tab_label : hit.page_label;
+            if (!page_label.empty())
+                group += " \xE2\x80\xBA " + page_label;
+            group = searchDisplayText(group);
+            LLStringUtil::toUpper(group);
+            LLPanel::Params params;
+            params.name = "kit_search_group_" + llformat("%d", index);
+            params.rect = LLRect(0, GROUP_HEIGHT, 390, 0);
+            params.background_visible = false;
+            ALKitSearchGroupRow* header = new ALKitSearchGroupRow(params, std::move(group));
+            mSearchResultsPanel->addChildInBack(header);
+            content_height += GROUP_HEIGHT;
+        }
+
+        std::string context;
+        if (!hit.card_label.empty())
+            context = "\xC2\xB7  " + searchDisplayText(hit.card_label);
+        if (hit.advanced)
+            context += (context.empty() ? std::string() : "  \xC2\xB7  ") + std::string("More");
+
+        std::string detail = searchDisplayText(hit.setting);
+        if (hit.external)
+        {
+            detail = "Opens in " + searchDisplayText(hit.external_label);
+            if (!hit.external_tab_label.empty())
+                detail += " \xE2\x80\xBA " + searchDisplayText(hit.external_tab_label);
+        }
+
+        LLPanel::Params params;
+        params.name = "kit_search_result_" + llformat("%d", index);
+        params.rect = LLRect(0, RESULT_HEIGHT, 390, 0);
+        params.background_visible = false;
+        LLHandle<ALKitShell> handle = getDerivedHandle<ALKitShell>();
+        ALKitSearchResultRow* row = new ALKitSearchResultRow(
+            params, searchDisplayText(hit.label), std::move(context), std::move(detail),
+            [handle, index]()
             {
-                shell->mSearchSelection = index;
-                shell->activateSearchResult();
-            }
-        });
-        mSearchButtons.push_back(button);
+                if (ALKitShell* shell = handle.get())
+                {
+                    shell->mSearchSelection = index;
+                    shell->activateSearchResult();
+                }
+            });
+        mSearchResultsPanel->addChildInBack(row);
+        mSearchRows.push_back(row);
+        content_height += RESULT_HEIGHT;
+        prior_page = hit.page_key;
     }
-    constexpr S32 RESULT_HEIGHT = 44;
-    const S32 content_height = llmax(1, (S32)mSearchHits.size() * RESULT_HEIGHT);
+    content_height = llmax(1, content_height);
     if (mSearchResultsPanel)
         mSearchResultsPanel->reshape(390, content_height, true);
-    std::string prior_page;
-    for (S32 index = 0; index < (S32)mSearchButtons.size(); ++index)
+    S32 y = content_height;
+    for (LLView* child : *mSearchResultsPanel->getChildList())
     {
-        const bool visible = index < (S32)mSearchHits.size();
-        mSearchButtons[index]->setVisible(visible);
-        if (visible)
-        {
-            const ALKitSearch::Hit& hit = mSearchHits[index];
-            std::string label = hit.page_key != prior_page
-                ? "[" + (hit.external ? hit.external_label :
-                    hit.group_label + " > " + hit.page_label) + "]  " + hit.path
-                : "    " + hit.path;
-            if (mSearchHits[index].advanced)
-                label += "  More";
-            std::string secondary = hit.setting;
-            if (hit.external)
-            {
-                if (!secondary.empty())
-                    secondary += "  \xC2\xB7  ";
-                secondary += "Opens in " + hit.external_label;
-                if (!hit.external_tab_label.empty())
-                    secondary += "  " + hit.external_tab_label;
-            }
-            if (!secondary.empty())
-                label += "\n    " + secondary;
-            mSearchButtons[index]->setLabel(label);
-            mSearchButtons[index]->reshape(390, RESULT_HEIGHT, true);
-            mSearchButtons[index]->setOrigin(0, content_height - (index + 1) * RESULT_HEIGHT);
-            prior_page = hit.page_key;
-        }
+        y -= child->getRect().getHeight();
+        child->setOrigin(0, y);
     }
     if (mSearchFooter)
         mSearchFooter->setText(llformat("All %d matches, grouped by page.", (S32)mSearchHits.size()));
     if (mSearchPopover)
     {
-        if (global && !mSearchHits.empty())
+        // Recomputing results (page change, Changed-only toggle, refresh) never
+        // opens the popup by itself; only an armed, non-empty search box does.
+        if (global && !mSearchHits.empty() && mSearchPopupArmed && !mSearch.queryText().empty())
             mSearchPopover->show();
         else
             mSearchPopover->hide();
@@ -1265,6 +1486,15 @@ void ALKitShell::updateSearchResults(const ALKitSearch::Hits& hits, ALKitPage* p
 
 bool ALKitShell::handleSearchKey(KEY key)
 {
+    if (key == KEY_ESCAPE)
+    {
+        // Esc closes an open results popup (text and filters are kept); with no
+        // popup open it falls through to the floater's Esc handling.
+        if (!mSearchPopover || !mSearchPopover->getVisible())
+            return false;
+        setSearchPopupArmed(nullptr, false);
+        return true;
+    }
     if (key == KEY_RETURN && mSearchSelectionMoved && !mSearchHits.empty())
     {
         activateSearchResult();
@@ -1292,10 +1522,10 @@ bool ALKitShell::handleSearchKey(KEY key)
     else
         return false;
     mSearchSelectionMoved = true;
-    for (S32 index = 0; index < (S32)mSearchButtons.size(); ++index)
-        mSearchButtons[index]->setToggleState(index == mSearchSelection);
-    if (mSearchScroller && mSearchSelection < (S32)mSearchButtons.size())
-        mSearchScroller->scrollToShowRect(mSearchButtons[mSearchSelection]->getRect());
+    for (S32 index = 0; index < (S32)mSearchRows.size(); ++index)
+        mSearchRows[index]->setSelected(index == mSearchSelection);
+    if (mSearchScroller && mSearchSelection < (S32)mSearchRows.size())
+        mSearchScroller->scrollToShowRect(mSearchRows[mSearchSelection]->getRect());
     return true;
 }
 
@@ -1320,6 +1550,7 @@ void ALKitShell::activateSearchResult()
 
 bool ALKitShell::openExternalResult(const ALKitSearch::Hit& hit)
 {
+    setSearchPopupArmed(nullptr, false);
     LLFloater* floater = LLFloaterReg::showInstance(hit.external_floater);
     if (!floater)
         return false;
@@ -1454,8 +1685,24 @@ void ALKitShell::clearSearch()
     }
     mSearchHits.clear();
     mHasTopSearchHit = false;
-    if (mSearchPopover)
-        mSearchPopover->hide();
+    setSearchPopupArmed(nullptr, false);
+}
+
+void ALKitShell::setSearchPopupArmed(LLLineEditor* editor, bool armed)
+{
+    mSearchPopupArmed = armed && editor && editor->hasFocus() && !editor->getText().empty();
+    if (!mSearchPopupArmed)
+    {
+        if (mSearchPopover)
+            mSearchPopover->hide();
+        return;
+    }
+    if (!mSearchPopover)
+        return;
+    mSearchPopover->bindAnchor(editor);
+    // Re-show for a click back into a non-empty box (one search, on click only).
+    if (!mSearchPopover->getVisible())
+        runSearch(editor->getText());
 }
 
 bool ALKitShell::isFavorite(const std::string& page, const std::string& widget) const
@@ -1636,7 +1883,13 @@ bool ALKitShell::handleMouseDown(S32 x, S32 y, MASK mask)
         S32 local_y = 0;
         localPointToOtherView(x, y, &local_x, &local_y, mOpenPopover);
         if (!mOpenPopover->pointInView(local_x, local_y))
+        {
+            // A click outside the results popup disarms it so a pending debounced
+            // search cannot reopen it; clicking into the box re-arms it.
+            if (mOpenPopover == mSearchPopover)
+                mSearchPopupArmed = false;
             closePopover();
+        }
     }
     return LLPanel::handleMouseDown(x, y, mask);
 }

@@ -76,9 +76,10 @@ enum EColor
 };
 const LLUIColor& color(EColor color);
 const LLFontGL*  sansFont(const std::string& size = "Kit12", bool bold = false);
-const LLFontGL*  monoFont();
+const LLFontGL*  monoFont(const std::string& size = "Kit12", bool bold = false);
 void             styleButton(LLButton* button, bool transparent = false);
 void             stylePill(LLButton* button);
+void             styleTransportAction(LLButton* action, LLButton* cut, LLButton* arm, bool running);
 void             styleCombo(LLComboBox* combo);
 void             styleEditor(LLLineEditor* editor, bool mono = false);
 void             styleScroller(LLScrollContainer* scroller);
