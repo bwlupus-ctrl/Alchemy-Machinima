@@ -3413,6 +3413,15 @@ void LLFloaterDirector::startRecoveryService()
 {
     if (sRecoveryServiceStarted)
         return;
+    // UI self-test runs (UIPerfSelfTest, non-persistent) must never prompt, autosave
+    // or delete the user's crash backup: the modal blocks the harness and the
+    // test session's scene isn't the user's. Leave the service off entirely.
+    static LLCachedControl<std::string> self_test(gSavedSettings, "UIPerfSelfTest", "");
+    if (!self_test().empty())
+    {
+        LL_INFOS("Director") << "UI self-test run: Director scene recovery service disabled" << LL_ENDL;
+        return;
+    }
     sRecoveryServiceStarted = true;
     initializeSceneRecovery();
     sRecoveryUnresolved = gDirUtilp->fileExists(recoveryPath());
