@@ -508,8 +508,10 @@ void ALVCamMonitorStrip::draw()
         LLColor4 status_dot(0.56f, 0.85f, 0.66f, 1.f);
         if (!tile.mPreviewsEnabled && tile.mActivity != LLPrismLens::EActivityState::IDLE)
             status_dot = mMutedColor;
-        else if (tile.mPublication.mState == LLPrismPreviewService::ETileState::PAUSED ||
-            tile.mPublication.mState == LLPrismPreviewService::ETileState::HELD)
+        // HELD = reusing the camera's last picture between preview refreshes
+        // (e.g. 1 fps). That is still a running camera: keep the steady live
+        // colour, otherwise the dot flashes once per preview publish.
+        else if (tile.mPublication.mState == LLPrismPreviewService::ETileState::PAUSED)
             status_dot = mMutedColor;
         else if (tile.mPublication.mState == LLPrismPreviewService::ETileState::WARMING ||
                  tile.mPublication.mState == LLPrismPreviewService::ETileState::THROTTLED)
