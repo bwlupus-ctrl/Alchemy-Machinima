@@ -55874,7 +55874,7 @@
       "owner_classes": [
         {
           "class": "ALPanelDanceBall",
-          "reference_count": 154
+          "reference_count": 155
         },
         {
           "class": "LLFloaterReg",
@@ -59740,7 +59740,7 @@
             },
             {
               "file": "indra/newview/alpaneldanceball.cpp",
-              "line": 399,
+              "line": 400,
               "class": "ALPanelDanceBall",
               "function": "onBlockingPin",
               "wired_class": "ALPanelDanceBall",
@@ -59803,7 +59803,7 @@
             },
             {
               "file": "indra/newview/alpaneldanceball.cpp",
-              "line": 400,
+              "line": 401,
               "class": "ALPanelDanceBall",
               "function": "onBlockingPin",
               "wired_class": "ALPanelDanceBall",
@@ -59863,6 +59863,17 @@
               "pattern": null,
               "wiring_only": true,
               "text": "mBlockKeepFacing = getChild<LLCheckBoxCtrl>(\"db_block_keep_facing\");"
+            },
+            {
+              "file": "indra/newview/alpaneldanceball.cpp",
+              "line": 399,
+              "class": "ALPanelDanceBall",
+              "function": "onBlockingFace",
+              "wired_class": "ALPanelDanceBall",
+              "wired_function": "postBuild",
+              "pattern": null,
+              "wiring_only": false,
+              "text": "mBlockKeepFacing->setCommitCallback([this](LLUICtrl*, const LLSD&) { onBlockingFace(); });"
             },
             {
               "file": "indra/newview/alpaneldanceball.cpp",
@@ -60612,7 +60623,7 @@
             },
             {
               "file": "indra/newview/alpaneldanceball.cpp",
-              "line": 406,
+              "line": 407,
               "class": "ALPanelDanceBall",
               "function": "onBlockingSetCentre",
               "wired_class": "ALPanelDanceBall",
@@ -60675,7 +60686,7 @@
             },
             {
               "file": "indra/newview/alpaneldanceball.cpp",
-              "line": 407,
+              "line": 408,
               "class": "ALPanelDanceBall",
               "function": "onBlockingClearCentre",
               "wired_class": "ALPanelDanceBall",
@@ -60790,7 +60801,7 @@
             },
             {
               "file": "indra/newview/alpaneldanceball.cpp",
-              "line": 408,
+              "line": 409,
               "class": "ALPanelDanceBall",
               "function": "onBlockingFormation",
               "wired_class": "ALPanelDanceBall",
@@ -60853,7 +60864,7 @@
             },
             {
               "file": "indra/newview/alpaneldanceball.cpp",
-              "line": 409,
+              "line": 410,
               "class": "ALPanelDanceBall",
               "function": "onBlockingFormation",
               "wired_class": "ALPanelDanceBall",
@@ -60916,7 +60927,7 @@
             },
             {
               "file": "indra/newview/alpaneldanceball.cpp",
-              "line": 410,
+              "line": 411,
               "class": "ALPanelDanceBall",
               "function": "onBlockingReset",
               "wired_class": "ALPanelDanceBall",
@@ -60979,7 +60990,7 @@
             },
             {
               "file": "indra/newview/alpaneldanceball.cpp",
-              "line": 411,
+              "line": 412,
               "class": "ALPanelDanceBall",
               "function": "onBlockingReset",
               "wired_class": "ALPanelDanceBall",
@@ -118856,7 +118867,7 @@
               "file": "indra/newview/alpanelcinelightrig.cpp",
               "line": 803,
               "class": "ALPanelCineLightRig",
-              "function": "adjustAim",
+              "function": "adjustSelectedLightAim",
               "wired_class": "ALPanelCineLightRig",
               "wired_function": "postBuild",
               "pattern": null,
@@ -118924,7 +118935,7 @@
               "file": "indra/newview/alpanelcinelightrig.cpp",
               "line": 806,
               "class": "ALPanelCineLightRig",
-              "function": "adjustAim",
+              "function": "adjustSelectedLightAim",
               "wired_class": "ALPanelCineLightRig",
               "wired_function": "postBuild",
               "pattern": null,
@@ -118992,7 +119003,7 @@
               "file": "indra/newview/alpanelcinelightrig.cpp",
               "line": 809,
               "class": "ALPanelCineLightRig",
-              "function": "adjustAim",
+              "function": "adjustSelectedLightAim",
               "wired_class": "ALPanelCineLightRig",
               "wired_function": "postBuild",
               "pattern": null,
@@ -119060,7 +119071,7 @@
               "file": "indra/newview/alpanelcinelightrig.cpp",
               "line": 812,
               "class": "ALPanelCineLightRig",
-              "function": "adjustAim",
+              "function": "adjustSelectedLightAim",
               "wired_class": "ALPanelCineLightRig",
               "wired_function": "postBuild",
               "pattern": null,

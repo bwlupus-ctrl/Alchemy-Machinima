@@ -802,16 +802,16 @@ bool ALPanelCineLightRig::postBuild()
         { ALCineLightRigManager::instance().selected().stopFX(); });
     getChild<LLButton>("cine_aim_yaw_minus")->setCommitCallback(
         [this](LLUICtrl*, const LLSD&)
-        { adjustAim("CineLightRigOrbitYaw", -15.f); });
+        { adjustSelectedLightAim("Yaw", -1.f); });
     getChild<LLButton>("cine_aim_yaw_plus")->setCommitCallback(
         [this](LLUICtrl*, const LLSD&)
-        { adjustAim("CineLightRigOrbitYaw", 15.f); });
+        { adjustSelectedLightAim("Yaw", 1.f); });
     getChild<LLButton>("cine_aim_pitch_minus")->setCommitCallback(
         [this](LLUICtrl*, const LLSD&)
-        { adjustAim("CineLightRigOrbitPitch", -5.f); });
+        { adjustSelectedLightAim("Pitch", -1.f); });
     getChild<LLButton>("cine_aim_pitch_plus")->setCommitCallback(
         [this](LLUICtrl*, const LLSD&)
-        { adjustAim("CineLightRigOrbitPitch", 5.f); });
+        { adjustSelectedLightAim("Pitch", 1.f); });
     getChild<LLButton>("cine_aim_reset")->setCommitCallback(
         [this](LLUICtrl*, const LLSD&) { resetAim(); });
     getChild<LLButton>("cine_reset_all")->setCommitCallback(
@@ -1740,10 +1740,11 @@ void ALPanelCineLightRig::syncGroupControls()
     mDisplayedGroupObjectTarget = object_target;
 }
 
-void ALPanelCineLightRig::adjustAim(const std::string& setting, F32 delta)
+void ALPanelCineLightRig::adjustSelectedLightAim(const char* axis, F32 delta)
 {
+    const std::string setting = fixtureSettingPrefix() + axis;
     F32 value = gSavedSettings.getF32(setting) + delta;
-    if (setting == "CineLightRigOrbitYaw")
+    if (std::string(axis) == "Yaw")
     {
         value = ALCineLightRigModel::wrap180(value);
     }

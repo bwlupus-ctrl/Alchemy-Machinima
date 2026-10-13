@@ -114,7 +114,7 @@ private:
     void onClearObjectTarget();
     void onGroupEnabledCommit();
     void onGroupSlotsCommit();
-    void adjustAim(const std::string& setting, F32 delta);
+    void adjustSelectedLightAim(const char* axis, F32 delta);
     void resetAim();
     void onSetupSelected();
     void onFlarePresetSelected(LLComboBox* source);

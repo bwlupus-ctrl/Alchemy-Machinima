@@ -396,6 +396,7 @@ bool ALPanelDanceBall::postBuild()
     mBlockYawPlus->setCommitCallback([this](LLUICtrl*, const LLSD&) { onBlockingNudgeYaw(1.f); });
     mBlockMode->setCommitCallback([this](LLUICtrl*, const LLSD&) { onBlockingMode(); });
     mBlockFace->setCommitCallback([this](LLUICtrl*, const LLSD&) { onBlockingFace(); });
+    mBlockKeepFacing->setCommitCallback([this](LLUICtrl*, const LLSD&) { onBlockingFace(); });
     mBlockPin->setCommitCallback([this](LLUICtrl*, const LLSD&) { onBlockingPin(true); });
     mBlockRelease->setCommitCallback([this](LLUICtrl*, const LLSD&) { onBlockingPin(false); });
     const LLVector3 nudges[] = { LLVector3(.25f,0,0), LLVector3(-.25f,0,0),
@@ -1447,6 +1448,26 @@ void ALPanelDanceBall::refreshBlockingControls(const ALDanceBall& ball)
     }
     setValueIfChanged(mBlockCentreStatus, LLSD(centre_status));
     const std::vector<LLUUID> ids = selectedBlockingIds();
+    const bool have_selection = !ids.empty();
+    for (LLUICtrl* control :
+         { static_cast<LLUICtrl*>(mBlockToggleRows),
+           static_cast<LLUICtrl*>(mBlockYawMinus),
+           static_cast<LLUICtrl*>(mBlockYaw),
+           static_cast<LLUICtrl*>(mBlockYawPlus),
+           static_cast<LLUICtrl*>(mBlockMode),
+           static_cast<LLUICtrl*>(mBlockFace),
+           static_cast<LLUICtrl*>(mBlockKeepFacing),
+           static_cast<LLUICtrl*>(mBlockPin),
+           static_cast<LLUICtrl*>(mBlockRelease),
+           static_cast<LLUICtrl*>(mBlockApplySelected),
+           static_cast<LLUICtrl*>(mBlockResetSelected) })
+    {
+        setEnabledIfChanged(control, have_selection);
+    }
+    for (LLButton* control : mBlockNudge)
+    {
+        setEnabledIfChanged(control, have_selection);
+    }
     if (ids.empty()) return;
     if (const ALAvatarStaging::Entry* entry = ball.blockingEntry(ids.front()))
     {
