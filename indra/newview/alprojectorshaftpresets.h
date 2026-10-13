@@ -8,6 +8,9 @@
 
 #include "stdtypes.h"
 
+#include <string>
+#include <vector>
+
 namespace ALProjectorShaftPresets
 {
 enum Preset : S32
@@ -24,6 +27,7 @@ enum Preset : S32
 };
 
 void apply(S32 preset);
+const std::vector<std::string>& trackedSettings();
 }
 
 #endif // AL_PROJECTOR_SHAFT_PRESETS_H

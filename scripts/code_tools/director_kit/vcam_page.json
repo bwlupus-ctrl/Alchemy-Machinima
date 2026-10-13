@@ -69,7 +69,7 @@
       {"l": "Far clip", "k": "slider", "w": "vc_far_clip", "h": "Far clipping plane distance.", "mn": 0.2, "mx": 512, "st": 0.1, "dc": 1, "unit": "m", "bind": "code"}
     ]},
     {"id": "surface_lens", "t": "Surface lens", "k": "rows", "badge": "ALL CAMERAS", "rows": [
-      {"l": "Lens zoom", "k": "slider", "w": "vc_lens_zoom", "h": "Magnification shared by every Surface Lens (PrismLensZoom).", "kw": "surface lens zoom magnify", "d": 2.0, "mn": 1, "mx": 8, "st": 0.1, "dc": 2, "unit": "x", "bind": "code"},
+      {"l": "Lens zoom", "k": "slider", "w": "vc_lens_zoom", "h": "Magnification shared by every Surface Lens (PrismLensZoom).", "kw": "surface lens zoom magnify", "s": "PrismLensZoom", "d": 2.0, "mn": 1, "mx": 8, "st": 0.1, "dc": 2, "unit": "x", "bind": "setting"},
       {"l": "Lens zoom note", "k": "readout", "w": "vc_lens_zoom_note", "h": "Lens zoom applies to all lenses, not just this one.", "bind": "code"}
     ]},
     {"id": "guide", "t": "In-world guide", "k": "rows", "badge": "CAM n", "rows": [
@@ -210,10 +210,10 @@
       {"l": "Rate note", "k": "readout", "w": "vc_rate_note", "h": "Lower picture FPS saves auxiliary scene renders. Faces still composite the retained picture every main frame.", "bind": "code"}
     ]},
     {"id": "performance", "t": "Performance", "k": "rows", "badge": "ALL CAMERAS", "rows": [
-      {"l": "Protect main view", "k": "toggle", "w": "vc_protect", "h": "Reduce Prism scale or cadence, or suspend captures, to protect the main-view target.", "d": 1, "bind": "code"},
+      {"l": "Protect main view", "k": "toggle", "w": "vc_protect", "h": "Reduce Prism scale or cadence, or suspend captures, to protect the main-view target.", "s": "PrismAdaptivePerformance", "d": 1, "bind": "setting"},
       {"l": "Main-view target", "k": "combo", "w": "vc_main_fps", "h": "Presented main-view FPS that Adaptive protects.", "d": 30, "it": ["30 FPS", "45 FPS", "60 FPS"], "iv": [30,45,60], "bind": "code"},
       {"l": "Capture budget", "k": "combo", "w": "vc_capture_budget", "h": "Total capture budget: attempts per second shared by all cameras. Not a camera's picture FPS.", "d": 30, "it": ["Adaptive 30 / Manual every frame", "5 attempts/s", "10 attempts/s", "15 attempts/s", "20 attempts/s", "30 attempts/s"], "iv": [0,5,10,15,20,30], "bind": "code"},
-      {"l": "Quality ceiling", "k": "slider", "w": "vc_quality_ceiling", "h": "Resolution scale ceiling for every capture.", "d": 1.0, "mn": 0.25, "mx": 2, "st": 0.25, "dc": 2, "unit": "x", "bind": "code"},
+      {"l": "Quality ceiling", "k": "slider", "w": "vc_quality_ceiling", "h": "Resolution scale ceiling for every capture.", "s": "PrismLensResolutionScale", "d": 1.0, "mn": 0.25, "mx": 2, "st": 0.25, "dc": 2, "unit": "x", "bind": "setting"},
       {"l": "Admitted", "k": "readout", "w": "vc_admitted", "h": "Attempts the scheduler is admitting across all cameras right now.", "bind": "code"},
       {"l": "Previews", "k": "readout", "w": "vc_preview_cost", "h": "Monitors only cost renders for cameras with no visible face.", "bind": "code"},
       {"l": "Adaptive note", "k": "readout", "w": "vc_performance_note_1", "h": "Adaptive protects presented main-view FPS and fairly shares the total budget across cameras.", "bind": "code", "a": 1},

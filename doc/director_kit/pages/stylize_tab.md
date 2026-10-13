@@ -303,7 +303,7 @@ None.
 
 ## Rejected out-of-scope same-name candidates
 
-82 candidates were rejected by the XUI-owner/class scope; exact records and reasons are in `page_sources.json`.
+81 candidates were rejected by the XUI-owner/class scope; exact records and reasons are in `page_sources.json`.
 
 ## New widget required
 

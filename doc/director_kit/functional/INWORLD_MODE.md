@@ -43,10 +43,13 @@ consecutive frames, and at least three settled seconds before opening Director.
 
 ## Fail-closed interaction safety
 
-Manifest preparation sets `inworld_allowed` only for a pure setting binding
-with no owner/callback, or for one of the explicit source-owner families below.
-Handler scanning remains defense in depth, but the absence of a detected hazard
-never grants permission. Every other executable row is skipped as
+Manifest preparation automatically sets `inworld_allowed` for a generated kit
+row only when its XML declares `bind="setting"` and names a saved setting; that
+declaration makes `gSavedSettings` the sole write sink. Code-bound rows still
+require an explicit source-owner authorization and the unchanged callback
+scanner. The run-1 baseline cannot deny a newly generated setting-only row, but
+all scanner hazards still override its allowance. The absence of a detected
+hazard never grants a code-bound row permission. Every other row is skipped as
 `in-world: not on the viewer-local allow-list`.
 
 The scanner resolves the registration for the exact control name (direct or

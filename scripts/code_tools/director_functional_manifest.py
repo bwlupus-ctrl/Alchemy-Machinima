@@ -5,7 +5,8 @@ Builds the machine-readable test plan that a login-screen C++ self-test uses to
 click every Director control (v1 and v2) and assert that it works.
 
 Inputs (read only):
-  doc/director_kit/wiring/wiring_table.csv   per page x control, ORIG/V1/V2 status
+  generated panel_dpage_*.xml kit_rows       authoritative converted-page inventory
+  doc/director_kit/wiring/wiring_table.csv   v1/legacy inventory and owner evidence
   indra/newview/app_settings/settings*.xml   setting type and default
   indra/newview/skins/default/xui/en/*.xml   widget tags, min/max/increment, items
   indra/newview/alrigrimcontroller.cpp       Rig Rim built-in preset table
@@ -36,10 +37,13 @@ SETTINGS_FILES = ("settings.xml", "settings_alchemy.xml",
                   "settings_per_account.xml", "settings_per_account_alchemy.xml")
 RIM_PRESET_CPP = os.path.join(REPO, "indra", "newview", "alrigrimcontroller.cpp")
 VCAM_PAGE_JSON = os.path.join(HERE, "director_kit", "vcam_page.json")
+KIT_INDEX_PATH = os.path.join(XUI_DIR, "director_kit_index.xml")
 OUT_DIR = os.path.join(REPO, "doc", "director_kit", "functional")
+HAZARD_RUN_ALLOW_PATH = os.path.join(OUT_DIR, "hazard_skip_run_allow.json")
 JSON_PATH = os.path.join(OUT_DIR, "functional_manifest.json")
 MD_PATH = os.path.join(OUT_DIR, "FUNCTIONAL_MANIFEST.md")
 VERSIONS = ("v1", "v2")
+GENERATED_KIT_PAGES = set()
 
 # The row host is explicit so the viewer never guesses from a page name.  The
 # launcher records mirror LLFloaterDirector::bindPage launchers.
@@ -67,6 +71,8 @@ LIGHTBOX_TAB_BY_XUI = {
 
 
 def host_for(version, page):
+    if version == "v2" and page in GENERATED_KIT_PAGES:
+        return {"floater": "director", "page_view": page, "via": "tab"}
     if version == "v1" and page == "light_rim_tab":
         return {"floater": "director", "page_view": "cine_light_rig_tab",
                 "via": "tab", "alias_of": "light_rim_tab"}
@@ -160,6 +166,17 @@ POINTER_SLIDER_ENDPOINT_TESTS = {
 TRANSFORMED_VALUE_TESTS = {
     ("v2", "cine_light_rig_tab", "cine_easy_night_mask_darkness"): (1.0, 0.99),
     ("v2", "cine_light_rig_tab", "cine_night_mask_darkness"): (1.0, 0.99),
+}
+
+FORCED_SAFE_SKIPS = {
+    "btn_load": ("opens a native file picker that cannot be safely automated at login",
+                 ["file_picker"]),
+    "look_at_camera_mode": ("body-turn on SELF can drive the AO (aoengine.cpp:654)",
+                            ["agent_send"]),
+}
+
+V2_LEGACY_OPERATOR_ROWS = {
+    "FlycamOperatorModeBlendTime", "FlycamOperatorSimulationHz",
 }
 
 
@@ -481,6 +498,123 @@ def load_csv():
         return list(csv.DictReader(f))
 
 
+def load_generated_kit_pages(xi):
+    """Return non-legacy kit pages and their generated ``kit_row`` elements."""
+    index_root = ET.parse(KIT_INDEX_PATH).getroot()
+    index_pages = set()
+    for line in (index_root.text or "").splitlines():
+        fields = line.split("\t")
+        if len(fields) > 1 and fields[1]:
+            index_pages.add(fields[1])
+
+    pages = collections.OrderedDict()
+    for base in sorted(name for name in xi.paths if name.startswith("panel_dpage_")):
+        path, root, _names, _any_names, _controls = xi.load(base)
+        if root is None:
+            continue
+        kit_page = next(root.iter("kit_page"), None)
+        if kit_page is None or kit_page.get("legacy") == "true":
+            continue
+        page = (kit_page.get("page") or "").rsplit("/", 1)[-1]
+        # Shell-only Quick has no indexed rows and is not a functional page.
+        if not page or page not in index_pages:
+            continue
+        xml_rows = []
+        for card in kit_page.iter("kit_card"):
+            for row in card.iter("kit_row"):
+                xml_rows.append((base, path, kit_page, card, row))
+        pages[page] = xml_rows
+    return pages
+
+
+def build_kit_entries(kit_pages, rows, settings, page_meta):
+    """Build the converted-page v2 inventory solely from generated kit XML."""
+    evidence = {(row["page"], row["widget"]): row for row in rows}
+    out = []
+    for page, xml_rows in kit_pages.items():
+        for ordinal, (_base, path, _kit_page, card, row) in enumerate(xml_rows):
+            widget = row.get("widget", "")
+            kind = row.get("kind", "")
+            binding = row.get("bind", "")
+            if not widget:
+                sys.exit("kit coverage check failed: %s has a kit_row without widget" % page)
+            etype = KIND_TO_TYPE.get(kind, kind)
+            child = next((child for child in row if child.get("name") == widget), None)
+            if child is not None and child.tag in CONTROL_TYPE:
+                etype = CONTROL_TYPE[child.tag]
+            exercise = EXERCISE.get(etype, "none")
+            setting = row.get("setting", "")
+            sinfo = settings.get(setting, {}) if setting else {}
+            stype = sinfo.get("type", "")
+            default = sinfo.get("default")
+            lo = fnum(row.get("min_val"))
+            hi = fnum(row.get("max_val"))
+            step = fnum(row.get("increment"))
+            items = xui_items(child) if etype in ("combo", "radio") else []
+            test_value = test_resolved = None
+            if exercise == "toggle":
+                test_value = test_resolved = bool_test(default)
+            elif exercise == "set_value" and etype in ("slider", "spinner", "dial"):
+                test_value = test_resolved = number_test(default, lo, hi, step, stype)
+            elif exercise == "set_value" and etype == "color":
+                test_value = test_resolved = color_test(default, stype)
+            elif exercise == "set_value" and etype == "text":
+                test_value = test_resolved = (number_test(default, lo, hi, step, stype)
+                                              if stype in ("S32", "U32", "F32")
+                                              else text_test(default))
+            elif exercise == "select_item":
+                test_value, test_resolved = combo_test(default, items, stype)
+
+            old = evidence.get((page, widget), {})
+            owner = owner_from_evidence(old.get("v2_evidence", ""))
+            callbacks = old.get("v2_callbacks", "")
+            action, reason, hazards = classify({
+                "status": "GENERATED_KIT", "exercise": exercise, "etype": etype,
+                "name": widget, "label": row.get("label", ""), "page": page,
+                "reset_of": None, "version": "v2",
+            })
+            if exercise == "none":
+                action = "NO_EXERCISE"
+                reason = "no generic exercise for generated kit kind '%s'" % kind
+            c = {"status": "GENERATED_KIT", "exercise": exercise, "etype": etype,
+                 "name": widget, "label": row.get("label", ""), "page": page,
+                 "version": "v2", "action": action, "setting": setting,
+                 "setting_type": stype, "default": default, "reset_of": None,
+                 "callbacks": callbacks, "owner": owner, "known_gap": False,
+                 "hazards": hazards}
+            expect = build_expect(c, test_resolved)
+            if row.get("link_to"):
+                expect = {"ui": "navigates to " + row.get("link_to")}
+            restore = ({"setting": setting, "value": default}
+                       if setting and exercise in ("toggle", "set_value", "select_item")
+                       else {"ui": "restore the widget's pre-test value"}
+                       if exercise in ("toggle", "set_value", "select_item")
+                       else {"note": "restore any viewer-local action state"}
+                       if exercise == "click" else None)
+            entry = base_entry(page_meta, page, "v2", "generated_kit_xml")
+            entry.update({
+                "id": "v2:%s:%s:kit:%d" % (page, widget, ordinal),
+                "csv_index": None, "card": card.get("id", card.get("name", "")),
+                "card_title": card.get("title", ""), "row_label": row.get("label", ""),
+                "xui_file": rel(path), "xui_line": None, "widget_name": widget,
+                "widget_type": etype, "csv_kind": kind, "wiring_status": "GENERATED_KIT",
+                "resolution": "generated_kit_xml", "action": action, "reason": reason,
+                "known_gap": False, "suspect": False, "hazards": sorted(set(hazards)),
+                "exercise": exercise, "test_value": test_value, "expect": expect,
+                "restore": restore, "setting": setting or None,
+                "setting_source": "kit_row setting" if setting else None,
+                "setting_type": stype or None, "default": default,
+                "min": lo, "max": hi, "increment": step,
+                "combo_items": [{"label": label, "value": value} for label, value in items],
+                "binding": binding, "link_to": row.get("link_to") or None,
+                "shortcut_of": row.get("shortcut_of") or None,
+                "callbacks": callbacks or None, "owner": owner or None,
+                "evidence": old.get("v2_evidence") or rel(path),
+            })
+            out.append(entry)
+    return out
+
+
 # ---------------------------------------------------------------- classify
 
 def classify(c):
@@ -564,9 +698,10 @@ def build_expect(c, test_resolved):
 
 
 def build_csv_entry(idx, r, v, xi, settings, page_meta):
-    status = r[v + "_status"]
-    base, line = parse_xui_field(r[v + "_xui"])
     name = r["widget"]
+    source_version = "v1" if v == "v2" and name in V2_LEGACY_OPERATOR_ROWS else v
+    status = r[source_version + "_status"]
+    base, line = parse_xui_field(r[source_version + "_xui"])
     label = r["label"]
     el = None if status == "MISSING" else xi.find(base, name)
     if status != "MISSING" and el is None:
@@ -575,8 +710,8 @@ def build_csv_entry(idx, r, v, xi, settings, page_meta):
     setting, setting_src = "", ""
     if el is not None and el.get("control_name"):
         setting, setting_src = el.get("control_name"), "xui control_name"
-    if not setting and r[v + "_bound"]:
-        setting, setting_src = r[v + "_bound"], "csv bound"
+    if not setting and r[source_version + "_bound"]:
+        setting, setting_src = r[source_version + "_bound"], "csv bound"
     if not setting and status != "MISSING" and r["mockup_setting"] in settings:
         setting, setting_src = r["mockup_setting"], "csv mockup_setting"
 
@@ -620,8 +755,8 @@ def build_csv_entry(idx, r, v, xi, settings, page_meta):
     if transformed is not None:
         test_value, test_resolved = transformed
 
-    cb = r[v + "_callbacks"]
-    owner = owner_from_evidence(r[v + "_evidence"])
+    cb = r[source_version + "_callbacks"]
+    owner = owner_from_evidence(r[source_version + "_evidence"])
     action, reason, hazards = classify({
         "status": status, "exercise": exercise, "etype": etype, "name": name,
         "label": label, "page": r["page"], "reset_of": reset_of, "version": v,
@@ -648,6 +783,12 @@ def build_csv_entry(idx, r, v, xi, settings, page_meta):
         action = "NO_EXERCISE"
         reason = "no generic exercise for widget type '%s'" % etype
         test_value = test_resolved = None
+    if name in FORCED_SAFE_SKIPS:
+        reason, hazards = FORCED_SAFE_SKIPS[name]
+        action = "SKIP"
+        test_value = test_resolved = None
+    if v == "v1" and name == "btn_prism_manage":
+        action, reason, hazards = "RUN", "", ["modal"]
 
     c = {"status": status, "exercise": exercise, "etype": etype, "name": name,
          "label": label, "page": r["page"], "version": v, "action": action,
@@ -693,7 +834,7 @@ def build_csv_entry(idx, r, v, xi, settings, page_meta):
         "widget_type": etype,
         "csv_kind": r["kind"],
         "wiring_status": status,
-        "resolution": r[v + "_source"],
+        "resolution": r[source_version + "_source"],
         "action": action,
         "reason": reason,
         "known_gap": known_gap,
@@ -710,8 +851,10 @@ def build_csv_entry(idx, r, v, xi, settings, page_meta):
         "min": lo, "max": hi, "increment": step,
         "callbacks": cb or None,
         "owner": owner or None,
-        "evidence": r[v + "_evidence"] or None,
+        "evidence": r[source_version + "_evidence"] or None,
     })
+    if name == "btn_load":
+        entry["expect"] = {"callback": owner, "commit": True}
     temporal_oracle = TEMPORAL_PRESET_ORACLES.get((v, r["page"], name))
     if temporal_oracle:
         scale, mode, pre_scale = temporal_oracle
@@ -771,8 +914,11 @@ def build_csv_entry(idx, r, v, xi, settings, page_meta):
             # proves onFixtureRoleCommit updated the panel's selected fixture.
             entry["reset_prestate"] = {"CineLightRigFillKelvin": 6500.0}
             entry["probe"] = "fixture_role"
-    if name in ("FlycamOperatorModeBlendTime", "FlycamOperatorSimulationHz") and v == "v2":
-        entry["probe"] = "operator_v2_missing"
+    if name in V2_LEGACY_OPERATOR_ROWS and v == "v2":
+        entry["setting_source"] = (entry.get("setting_source") or "setting") + \
+            " (v2 embedded legacy operator panel)"
+        entry.setdefault("notes", []).append(
+            "The v2 Operator orchestrator embeds the legacy operator panel; exercise its shared setting here.")
     if suspect:
         entry.setdefault("notes", []).append("V2_SUSPECT_FLOATER_SCOPED: run and confirm in-world")
     if known_gap:
@@ -814,10 +960,13 @@ def synthetic_entries(xi, settings, csv_pairs, page_meta, presets, preset_writte
                   "min": None, "max": None, "increment": None, "callbacks": None,
                   "owner": None, "evidence": None, "probe": family})
         hz = []
-        if family == "weather_master":
+        if family in {"weather_master", "rain_gate"}:
             hz.append("requires_deferred_rendering")
+        expect = {"setting": setting, "type": stype, "value": bool_test(default)}
+        if family == "rain_gate" and bool_test(default) is False:
+            expect["state"] = "effective rain intensity = 0"
         finish_synthetic(e, "RUN", "", hz, bool_test(default),
-                         {"setting": setting, "type": stype, "value": bool_test(default)},
+                         expect,
                          {"setting": setting, "value": default})
         out.append(e)
 
@@ -949,12 +1098,13 @@ def synthetic_entries(xi, settings, csv_pairs, page_meta, presets, preset_writte
                              {"snapshot_settings": preset_written})
             e["oracle_pre_value"] = default_master if default_master != pick[1] else (pick[1] + 0.25)
             out.append(e)
-    # VCam is a code-bound, no-history kit page whose complete row inventory is
-    # generated from vcam_page.json rather than the legacy wiring CSV.  Import
-    # that same source here so every interactive row and every signal-chain chip
-    # remains part of the functional click plan as the page evolves.
-    with open(VCAM_PAGE_JSON, encoding="utf-8") as f:
-        vcam = json.load(f)
+    # Compatibility path for old trees without a generated VCam kit page.  A
+    # converted page is always inventoried later from its generated XML.
+    if "vcam_tab" in GENERATED_KIT_PAGES:
+        vcam = {"cards": [], "sections": []}
+    else:
+        with open(VCAM_PAGE_JSON, encoding="utf-8") as f:
+            vcam = json.load(f)
     vcam_settings = {
         "vc_previews": "PrismMonitorPreviewsEnabled",
         "vc_preview_speed": "PrismMonitorPreviewFPS",
@@ -1168,9 +1318,45 @@ def write_md(entries, meta, skip_rows, page_order, page_meta, synth):
     w("- Setting min, max and increment come from the XUI element only. Settings XML carries no range.")
     w("- v2 launcher stubs (`v2_launcher_redirect`) host their controls in the v1 owner floater that they open; test them through the launcher.")
     w("- XUI lookup warnings: %d (widgets whose CSV name has no named XUI element, usually unnamed `check_box`/`slider` rows, or settings-only names). The setting still comes from the CSV; the full list is in `meta.warnings` of the JSON." % meta["warning_count"])
-    w("- Coverage check: every interactive CSV row yields one entry per version, except v2 VCam whose complete generated JSON inventory replaces its three legacy CSV rows (verified by the script before writing).")
+    w("- Coverage check: every interactive legacy CSV row yields one entry per applicable version; every converted v2 page is instead inventoried from its generated `panel_dpage_*.xml` `kit_row` metadata.")
     w("")
-    return "\n".join(lines) + "\n"
+    return "\n".join(lines).rstrip() + "\n"
+
+
+def enforce_hazard_skip_run_guard(entries):
+    """Require a reviewed allow entry before a hazardous SKIP becomes RUN."""
+    if not os.path.exists(JSON_PATH):
+        return
+    with open(JSON_PATH, encoding="utf-8") as stream:
+        previous = json.load(stream)
+    if not os.path.exists(HAZARD_RUN_ALLOW_PATH):
+        sys.exit("hazard SKIP->RUN guard failed: missing " + rel(HAZARD_RUN_ALLOW_PATH))
+    with open(HAZARD_RUN_ALLOW_PATH, encoding="utf-8") as stream:
+        allow_doc = json.load(stream)
+    allowed = allow_doc.get("allow", {})
+    if not isinstance(allowed, dict) or any(not isinstance(reason, str) or not reason.strip()
+                                            for reason in allowed.values()):
+        sys.exit("hazard SKIP->RUN guard failed: allow must map row keys to reviewed reasons")
+
+    def key(row):
+        return ":".join(str(row.get(field) or "")
+                        for field in ("version", "page", "widget_name"))
+
+    old = {key(row): row for row in previous.get("entries", [])}
+    violations = []
+    for row in entries:
+        before = old.get(key(row))
+        if not before or before.get("action") != "SKIP" or row.get("action") != "RUN":
+            continue
+        reason = str(before.get("reason") or "").lower()
+        hazard_skip = bool(before.get("hazards")) or any(token in reason for token in (
+            "hazard", "destructive", "file picker", "server", "simulator",
+            "animation request", "world action", "send", "delete", "remove"))
+        if hazard_skip and key(row) not in allowed:
+            violations.append(key(row) + " (was SKIP: " + str(before.get("reason") or "hazard") + ")")
+    if violations:
+        sys.exit("hazard SKIP->RUN guard failed; add reviewed entries to %s: %s" %
+                 (rel(HAZARD_RUN_ALLOW_PATH), ", ".join(violations)))
 
 
 # ---------------------------------------------------------------- main
@@ -1187,6 +1373,8 @@ def main():
     rows = load_csv()
     settings = load_settings()
     xi = XuiIndex()
+    kit_pages = load_generated_kit_pages(xi)
+    GENERATED_KIT_PAGES.update(kit_pages)
     presets, preset_written = load_rim_presets()
 
     page_meta, page_order = {}, []
@@ -1194,6 +1382,10 @@ def main():
         if r["page"] not in page_meta:
             page_meta[r["page"]] = (r["page_label"], r["group"])
             page_order.append(r["page"])
+    for page in kit_pages:
+        if page not in page_meta:
+            page_meta[page] = (page, "")
+            page_order.append(page)
 
     csv_pairs = set()
     for r in rows:
@@ -1205,21 +1397,48 @@ def main():
         if r["interactive"] != "Y":
             continue
         for v in VERSIONS:
-            if r["page"] == "vcam_tab" and v == "v2":
-                continue  # complete v2 coverage comes from vcam_page.json below
+            if v == "v2" and r["page"] in kit_pages:
+                continue  # converted coverage comes from generated kit XML
             entries.append(build_csv_entry(idx, r, v, xi, settings, page_meta))
 
     synth = synthetic_entries(xi, settings, csv_pairs, page_meta, presets, preset_written)
+    kit_widgets = {(page, row.get("widget", "")) for page, xml_rows in kit_pages.items()
+                   for _base, _path, _kit, _card, row in xml_rows}
+    synth = [entry for entry in synth
+             if not (entry.get("version") == "v2" and entry.get("page") in kit_pages and
+                     ((entry.get("page"), entry.get("widget_name")) in kit_widgets or
+                      str(entry.get("source", "")).startswith("vcam_page.json")))]
     entries.extend(synth)
+    entries.extend(build_kit_entries(kit_pages, rows, settings, page_meta))
 
     # Coverage check: every interactive CSV row must appear once per version.
     expected = {(i, v) for i, r in enumerate(rows) if r["interactive"] == "Y" for v in VERSIONS
-                if not (r["page"] == "vcam_tab" and v == "v2")}
+                if not (v == "v2" and r["page"] in kit_pages)}
     got = [(e["csv_index"], e["version"]) for e in entries if e.get("csv_index") is not None]
     if len(got) != len(set(got)) or set(got) != expected:
         sys.exit("coverage check failed: expected %d csv entries, got %d" % (len(expected), len(got)))
     if len(set(e["page"] for e in entries)) != len(page_order):
         sys.exit("coverage check failed: page count mismatch")
+    stale = [e["id"] for e in entries
+             if e.get("version") == "v2" and e.get("page") in kit_pages and
+             (e.get("host", {}).get("via") == "launcher" or
+              str(e.get("source", "")).startswith("csv:") or
+              str(e.get("resolution", "")).startswith("redirect"))]
+    if stale:
+        sys.exit("kit coverage check failed: launcher/legacy entries remain for generated kit pages: " +
+                 ", ".join(stale[:20]))
+    expected_kit_rows = [(page, row.get("widget", "")) for page, xml_rows in kit_pages.items()
+                         for _base, _path, _kit, _card, row in xml_rows]
+    expected_kit = set(expected_kit_rows)
+    got_kit_rows = [(e["page"], e["widget_name"]) for e in entries
+                    if e.get("version") == "v2" and
+                    e.get("resolution") == "generated_kit_xml"]
+    got_kit = set(got_kit_rows)
+    if len(expected_kit_rows) != len(expected_kit):
+        sys.exit("kit coverage check failed: duplicate page/widget in generated kit XML")
+    if got_kit != expected_kit or len(got_kit_rows) != len(expected_kit_rows):
+        sys.exit("kit coverage check failed: expected %d generated rows, got %d" %
+                 (len(expected_kit_rows), len(got_kit_rows)))
 
     skip_map = collections.OrderedDict()
     for e in entries:
@@ -1237,6 +1456,8 @@ def main():
         "csv": rel(CSV_PATH),
         "csv_sha256": sha256_file(CSV_PATH),
         "interactive_rows": sum(1 for r in rows if r["interactive"] == "Y"),
+        "generated_kit_pages": list(kit_pages),
+        "generated_kit_rows": len(expected_kit),
         "entries": len(entries),
         "pages": len(page_order),
         "settings_declared": len(settings),
@@ -1250,6 +1471,8 @@ def main():
         "unknown_control_tags": dict(xi.unknown_tags),
     }
     doc = {"meta": meta, "entries": entries}
+
+    enforce_hazard_skip_run_guard(entries)
 
     os.makedirs(os.path.dirname(json_path), exist_ok=True)
     os.makedirs(os.path.dirname(markdown_path), exist_ok=True)

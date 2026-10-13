@@ -61,7 +61,7 @@ ALPanelWeatherSettings::ALPanelWeatherSettings()
     registerWeatherResetControl();
 }
 
-const std::vector<std::string>& ALPanelWeatherSettings::settings()
+const std::vector<std::string>& ALPanelWeatherSettings::trackedSettings()
 {
     // Complete persistent weather state. The three Debug-only values are also
     // captured/reset so a named look has no hidden color or seed dependency.
@@ -228,7 +228,7 @@ void ALPanelWeatherSettings::updateDeferredAvailability()
     }
 }
 
-void ALPanelWeatherSettings::onTriggerStrike()
+void ALPanelWeatherSettings::strikeLightningNow()
 {
     if (LLPipeline::sRenderDeferred &&
         gSavedSettings.getBOOL("AlchemyWeatherEnabled") &&
@@ -238,29 +238,33 @@ void ALPanelWeatherSettings::onTriggerStrike()
     }
 }
 
-void ALPanelWeatherSettings::onClickResetAll()
+void ALPanelWeatherSettings::onTriggerStrike()
 {
-    LLHandle<ALPanelWeatherSettings> handle =
-        getDerivedHandle<ALPanelWeatherSettings>();
+    strikeLightningNow();
+}
+
+void ALPanelWeatherSettings::confirmResetAll()
+{
     LLNotificationsUtil::add(
         "WeatherConfirmResetAll", LLSD(), LLSD(),
-        [handle](const LLSD& notification, const LLSD& response)
+        [](const LLSD& notification, const LLSD& response)
         {
-            if (ALPanelWeatherSettings* self = handle.get())
+            if (LLNotificationsUtil::getSelectedOption(notification, response) == 0)
             {
-                self->resetAllCallback(notification, response);
+                resetAllSettingsToDefaults();
             }
+            return false;
         });
 }
 
-bool ALPanelWeatherSettings::resetAllCallback(
-    const LLSD& notification, const LLSD& response)
+void ALPanelWeatherSettings::onClickResetAll()
 {
-    if (LLNotificationsUtil::getSelectedOption(notification, response) != 0)
-    {
-        return false;
-    }
-    for (const std::string& name : settings())
+    confirmResetAll();
+}
+
+void ALPanelWeatherSettings::resetAllSettingsToDefaults()
+{
+    for (const std::string& name : trackedSettings())
     {
         if (LLControlVariable* control = gSavedSettings.getControl(name))
         {
@@ -270,7 +274,6 @@ bool ALPanelWeatherSettings::resetAllCallback(
     // The one-shot is an action rather than preset state, but Reset All must
     // also cancel any request that has not yet been consumed by the renderer.
     gSavedSettings.setBOOL("AlchemyWeatherLightningTrigger", false);
-    return false;
 }
 
 std::string ALPanelWeatherSettings::presetsDir()
@@ -297,15 +300,7 @@ void ALPanelWeatherSettings::refreshPresetList(
         return;
     }
     mPresetCombo->clearRows();
-    std::vector<std::string> names;
-    LLDirIterator iterator(presetsDir(), "*.xml");
-    std::string file;
-    while (iterator.next(file))
-    {
-        names.emplace_back(LLURI::unescape(
-            gDirUtilp->getBaseFileName(file, true)));
-    }
-    std::sort(names.begin(), names.end());
+    const std::vector<std::string> names = presetNames();
     for (const std::string& name : names)
     {
         mPresetCombo->add(name);
@@ -316,6 +311,20 @@ void ALPanelWeatherSettings::refreshPresetList(
         return;
     }
     mPresetCombo->setLabel(getString("no_preset_label"));
+}
+
+std::vector<std::string> ALPanelWeatherSettings::presetNames()
+{
+    std::vector<std::string> names;
+    LLDirIterator iterator(presetsDir(), "*.xml");
+    std::string file;
+    while (iterator.next(file))
+    {
+        names.emplace_back(LLURI::unescape(
+            gDirUtilp->getBaseFileName(file, true)));
+    }
+    std::sort(names.begin(), names.end());
+    return names;
 }
 
 void ALPanelWeatherSettings::onClickSavePreset()
@@ -348,16 +357,20 @@ bool ALPanelWeatherSettings::savePresetCallback(
     LLStringUtil::trim(name);
     if (!name.empty())
     {
-        writePreset(name);
+        saveNamedPreset(name);
         refreshPresetList(name);
     }
     return false;
 }
 
-void ALPanelWeatherSettings::writePreset(const std::string& name)
+bool ALPanelWeatherSettings::saveNamedPreset(const std::string& name)
 {
+    if (name.empty())
+    {
+        return false;
+    }
     LLSD values = LLSD::emptyMap();
-    for (const std::string& setting : settings())
+    for (const std::string& setting : trackedSettings())
     {
         if (LLControlVariable* control = gSavedSettings.getControl(setting))
         {
@@ -372,10 +385,11 @@ void ALPanelWeatherSettings::writePreset(const std::string& name)
     if (!output.is_open())
     {
         LL_WARNS("Weather") << "Cannot write preset file " << path << LL_ENDL;
-        return;
+        return false;
     }
-    LLSDSerialize::toPrettyXML(preset, output);
+    const S32 serialized = LLSDSerialize::toPrettyXML(preset, output);
     output.close();
+    return serialized > 0 && !output.fail();
 }
 
 void ALPanelWeatherSettings::onPresetSelected()
@@ -385,19 +399,19 @@ void ALPanelWeatherSettings::onPresetSelected()
         const std::string name = mPresetCombo->getSelectedItemLabel();
         if (!name.empty())
         {
-            applyPreset(name);
+            applyNamedPreset(name);
         }
     }
 }
 
-void ALPanelWeatherSettings::applyPreset(const std::string& name)
+bool ALPanelWeatherSettings::applyNamedPreset(const std::string& name)
 {
     const std::string path = presetPath(name);
     llifstream input(path.c_str());
     if (!input.is_open())
     {
         LL_WARNS("Weather") << "Cannot open preset file " << path << LL_ENDL;
-        return;
+        return false;
     }
     LLSD preset;
     LLSDSerialize::fromXML(preset, input);
@@ -405,12 +419,12 @@ void ALPanelWeatherSettings::applyPreset(const std::string& name)
     if (!preset.isMap() || !preset["settings"].isMap())
     {
         LL_WARNS("Weather") << "Malformed preset file " << path << LL_ENDL;
-        return;
+        return false;
     }
 
     // Apply only this panel's allowlisted settings; preset data cannot name an
     // arbitrary viewer control.
-    for (const std::string& setting : settings())
+    for (const std::string& setting : trackedSettings())
     {
         if (preset["settings"].has(setting))
         {
@@ -421,6 +435,22 @@ void ALPanelWeatherSettings::applyPreset(const std::string& name)
             }
         }
     }
+    return true;
+}
+
+bool ALPanelWeatherSettings::deleteNamedPreset(const std::string& name)
+{
+    if (name.empty())
+    {
+        return false;
+    }
+    const std::string path = presetPath(name);
+    if (LLFile::remove(path) != 0)
+    {
+        LL_WARNS("Weather") << "Cannot delete preset file " << path << LL_ENDL;
+        return false;
+    }
+    return true;
 }
 
 void ALPanelWeatherSettings::onClickDeletePreset()
@@ -456,11 +486,7 @@ bool ALPanelWeatherSettings::deletePresetCallback(
     {
         return false;
     }
-    const std::string path = presetPath(name);
-    if (LLFile::remove(path) != 0)
-    {
-        LL_WARNS("Weather") << "Cannot delete preset file " << path << LL_ENDL;
-    }
+    deleteNamedPreset(name);
     refreshPresetList();
     return false;
 }

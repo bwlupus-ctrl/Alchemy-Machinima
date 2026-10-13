@@ -17,9 +17,9 @@ import xml.etree.ElementTree as ET
 KEY = ("inworld", "page", "control", "kind", "action", "expected")
 FAIL_STATUSES = {"FAIL", "KNOWN_GAP"}
 
-# In-world execution is allow-listed by source owner, never inferred from the
-# absence of a hazard. These owners are limited to viewer-local Director
-# models/controllers documented in functional/INWORLD_MODE.md.
+# In-world execution is allow-listed by source owner. Generated bind=setting
+# rows qualify only after their C++ callbacks, listeners, and consumers scan
+# resolves completely and finds no hazard.
 INWORLD_LOCAL_OWNERS = {
     "ALPanelCineLightRig", "ALRigRimController", "ALPanelRigRim",
     "ALFloaterLightBox", "ALPanelLensLooks", "ALPanelExposureHub",
@@ -95,6 +95,13 @@ def _inworld_local_effect(row: dict[str, object]) -> tuple[bool, str]:
     widget = str(row.get("widget_name") or "")
     if widget in INWORLD_EXCLUDED_CONTROLS:
         return False, "object selection is sent to the simulator"
+
+    if row.get("binding") == "setting" and row.get("setting"):
+        if row.get("setting_listener_unknown") or not row.get("handler_scan_resolved"):
+            return False, "setting callback/listener scan unresolved"
+        if row.get("setting_sole_sink"):
+            return True, "generated kit bind=setting; sole sink is gSavedSettings"
+        return True, "generated kit bind=setting; C++ callbacks/listeners resolved hazard-free"
 
     owner = str(row.get("owner") or "")
     callback = str(row.get("callbacks") or "")
@@ -320,6 +327,65 @@ def _expand_callback_calls(seed: list[tuple[str, Path | None]], owner_class: str
     return result
 
 
+def _setting_reachability(setting: str, sources: dict[Path, str],
+                          body_cache: dict[str, object]) -> tuple[list[tuple[str, Path]], bool, int, int]:
+    """Return every literal C++ setting consumer and exact signal listener.
+
+    LLCachedControl reads are consumers, not listeners. They are still scanned
+    for reachable hazards, but do not make listener resolution fail.
+    """
+    cache_key = "@setting:" + setting
+    cached = body_cache.get(cache_key)
+    if cached is not None:
+        return cached  # type: ignore[return-value]
+    literal = '"' + setting + '"'
+    index_key = "@literal_function_index"
+    if index_key not in body_cache:
+        definition = re.compile(
+            r"^[^\n;{}]*\b(?:[A-Za-z_]\w*::)*[A-Za-z_]\w*\s*"
+            r"\([^;{}]*\)\s*(?:const\s*)?\{", re.M)
+        index: dict[str, list[tuple[str, Path]]] = defaultdict(list)
+        for path, text in sources.items():
+            for match in definition.finditer(text):
+                start = text.find("{", match.start())
+                end = _matching_delimiter(text, start, "{", "}")
+                if end < 0:
+                    continue
+                body = text[start:end + 1]
+                for value in set(re.findall(r'"([A-Za-z_][A-Za-z0-9_]*)"', body)):
+                    index[value].append((body, path))
+        body_cache[index_key] = index
+    literal_index: dict[str, list[tuple[str, Path]]] = body_cache[index_key]  # type: ignore[assignment]
+    bodies: list[tuple[str, Path]] = []
+    listeners = 0
+    consumers = 0
+    resolved = True
+    for body, path in literal_index.get(setting, []):
+        consumers += 1
+        bodies.append((body, path))
+        exact = 0
+        direct = re.compile(
+            r"getControl\s*\(\s*" + re.escape(literal) +
+            r"\s*\)\s*->\s*get(?:Commit)?Signal\s*\(\s*\)\s*->\s*connect\s*\(")
+        exact += sum(1 for _ in direct.finditer(body))
+        aliases = set(re.findall(
+            r"\b([A-Za-z_]\w*)\s*=\s*[^;{}]*getControl\s*\(\s*" +
+            re.escape(literal) + r"\s*\)", body))
+        for alias in aliases:
+            exact += len(re.findall(
+                r"\b" + re.escape(alias) +
+                r"\s*->\s*get(?:Commit)?Signal\s*\(\s*\)\s*->\s*connect\s*\(", body))
+        listeners += exact
+        # A function containing this setting and a signal connection that
+        # cannot be tied to the literal/alias is a dynamic listener table.
+        # It may include this setting, so fail closed.
+        if re.search(r"get(?:Commit)?Signal\s*\(\s*\)\s*->\s*connect\s*\(", body) and not exact:
+            resolved = False
+    result = (bodies, resolved, listeners, consumers)
+    body_cache[cache_key] = result
+    return result
+
+
 def _handler_hazards(row: dict[str, object], cpp_sources: dict[Path, str],
                      body_cache: dict[str, object]) -> tuple[set[str], bool]:
     """Resolve this control's exact callback and scan it fail-closed."""
@@ -411,10 +477,11 @@ def _handler_hazards(row: dict[str, object], cpp_sources: dict[Path, str],
                         if end >= 0:
                             bodies.append((registration_text[declaration.start():end + 1], owner_source))
         elif row.get("setting") and not callback:
-            # A control_name XUI binding is itself the exact registration: the
-            # widget commits directly to this viewer setting and has no C++
-            # callback to borrow from a neighbouring control.
-            resolved = True
+            # control_name proves the setting write, but not the absence of a
+            # second C++ commit callback. Any owner callback we cannot attach
+            # exactly to this widget keeps the row out of the in-world allowlist.
+            resolved = "setCommitCallback" not in owner_body and \
+                "setClickedCallback" not in owner_body
         else:
             # Exact resolution failed: retain the old conservative union of
             # every handler in the whole window. Never select only the first.
@@ -448,8 +515,52 @@ def _handler_hazards(row: dict[str, object], cpp_sources: dict[Path, str],
         # not an unknown callback.
         resolved = True
 
+    setting = str(row.get("setting") or "")
+    setting_listener_resolved = True
+    setting_listeners = 0
+    setting_consumers = 0
+    setting_combined = ""
+    if setting:
+        setting_bodies, setting_listener_resolved, setting_listeners, setting_consumers = \
+            _setting_reachability(setting, cpp_sources, body_cache)
+        expanded_key = "@setting_expanded:" + setting
+        if expanded_key not in body_cache:
+            # Scan the exact consumer/listener bodies plus their containing
+            # translation units' hazard-bearing lines. The latter is
+            # intentionally conservative: a dynamic receiver/callback that
+            # cannot be proven unrelated must deny the in-world row, never
+            # silently auto-allow it.
+            source_paths = {path for _body, path in setting_bodies}
+            hazard_words = re.compile(
+                r"AOEngine|sendAnimationRequests?|gMessageSystem|sendReliable|"
+                r"LLFile::remove|remove_all|DeleteFile|requestQuit|forceDisconnect|"
+                r"sendChat|sendIM|sendInstantMessage|selectObject|selectionSetObject|"
+                r"LLFilePicker|FloaterFilePicker", re.I)
+            source_hazard_lines = []
+            for path in source_paths:
+                lines_key = "@source_hazard_lines:" + str(path)
+                if lines_key not in body_cache:
+                    body_cache[lines_key] = "\n".join(
+                        line for line in cpp_sources[path].splitlines()
+                        if hazard_words.search(line))
+                source_hazard_lines.append(str(body_cache[lines_key]))
+            body_cache[expanded_key] = "\n".join(
+                [body for body, _path in setting_bodies] +
+                source_hazard_lines)
+        setting_combined = str(body_cache[expanded_key])
+        row["inworld_setting_listener_count"] = setting_listeners
+        row["inworld_setting_consumer_count"] = setting_consumers
+        row["inworld_setting_listener_resolved"] = setting_listener_resolved
+        if not setting_listener_resolved:
+            row["setting_listener_unknown"] = True
+        resolved = resolved and setting_listener_resolved
+        row["setting_sole_sink"] = bool(
+            resolved and setting_listeners == 0 and setting_consumers == 0 and
+            not callback and "setCommitCallback" not in owner_body and
+            "setClickedCallback" not in owner_body)
+
     combined = "\n".join(_expand_callback_calls(
-        bodies, owner_class, cpp_sources, body_cache))
+        bodies, owner_class, cpp_sources, body_cache)) + "\n" + setting_combined
     hazards: set[str] = set()
     rules = {
         "file_picker": r"\b(?:LLFilePicker|LLFilePickerReplyThread|LLFloaterFilePicker|getOpenFile|getSaveFile)\b",
@@ -463,7 +574,9 @@ def _handler_hazards(row: dict[str, object], cpp_sources: dict[Path, str],
         "save_disk": r"\b(?:llofstream|ofstream|save[A-Z]\w*|writePreset|write[A-Z]\w*File)\b",
         "logout": r"\b(?:requestQuit|forceDisconnect|logout|disconnectFromGrid)\b",
         "server_message": r"\b(?:gMessageSystem|sendReliable(?:Message)?|sendMessage)\b",
-        "agent_send": r"\b(?:sendAnimationRequest|(?:gAgent|LLAgent\w*)\b[^;{}]{0,80}?\bsend[A-Z]\w*)\b",
+        "agent_send": (r"\b(?:sendAnimationRequests?|(?:gAgent|LLAgent\w*)\b[^;{}]{0,80}?\bsend[A-Z]\w*)\b"
+                       r"|\bAOEngine\s*::\s*(?:instance\s*\(\s*\)\s*\.\s*)?override\s*\("
+                       r"|\bAOEngine\s*::\s*[A-Za-z_]\w*Request\s*\("),
         "object_send": r"\bLLViewerObject\w*\b[^;{}]{0,80}?\bsend[A-Z]\w*\b",
         "selection_send": r"\bLLSelectMgr\w*\b[^;{}]{0,80}?\bsend[A-Z]\w*\b",
         # Any selection (even of a viewer-only object) broadcasts PointAt +
@@ -1278,12 +1391,16 @@ def prepare_manifest(path: Path, repo: Path, output: Path) -> tuple[int, int, in
 
         if row.get("exercise") not in {"", "none", None} and row.get("action") not in {
                 "SKIP", "NO_EXERCISE", "EXPECT_MISSING"}:
-            inworld_allowed, inworld_evidence = _inworld_local_effect(row)
-            row["inworld_allowed"] = inworld_allowed
-            row["inworld_allow_evidence"] = inworld_evidence
             legacy_button_scan = (row.get("exercise") == "click" and
                                   row.get("widget_type") == "button")
             hazards, handler_resolved = _handler_hazards(row, cpp_sources, body_cache)
+            row["handler_scan_resolved"] = handler_resolved
+            inworld_allowed, inworld_evidence = _inworld_local_effect(row)
+            row["inworld_allowed"] = inworld_allowed
+            row["inworld_allow_evidence"] = inworld_evidence
+            if row.get("setting") and not handler_resolved:
+                row["inworld_allowed"] = False
+                row["inworld_allow_evidence"] = "setting callback/listener scan unresolved"
             if hazards:
                 row["hazards"] = sorted(set(row.get("hazards", [])) | hazards)
                 hazard_rows += 1
@@ -1643,6 +1760,43 @@ void Fixture::onPickProp() { LLSelectMgr::getInstance()->selectObjectOnly(prop);
 
     explorer, hazards, resolved = scan("explorer_danger")
     assert resolved and "selection_broadcast" in hazards and explorer["inworld_allowed"] is False
+
+    setting_source = r'''
+bool SettingFixture::postBuild()
+{
+    getChild<LLUICtrl>("setting_danger");
+    return true;
+}
+void SettingFixture::connectSetting()
+{
+    gSavedSettings.getControl("DangerSetting")->getSignal()->connect(
+        boost::bind(&SettingFixture::onSetting, this));
+}
+void SettingFixture::onSetting()
+{
+    AOEngine::instance().override(id, true);
+}
+void SettingFixture::connectUnknown()
+{
+    const char* settings[] = { "UnknownSetting" };
+    for (const char* name : settings)
+        gSavedSettings.getControl(name)->getSignal()->connect(onUnknown);
+}
+'''
+    setting_sources = {Path("setting_fixture.cpp"): setting_source}
+    setting_row: dict[str, object] = {
+        "owner": "SettingFixture::postBuild", "widget_name": "setting_danger",
+        "page": "fixture", "action": "RUN", "exercise": "toggle",
+        "widget_type": "toggle", "binding": "setting", "setting": "DangerSetting",
+    }
+    hazards, resolved = _handler_hazards(setting_row, setting_sources, {})
+    assert resolved and setting_row["inworld_setting_listener_count"] == 1
+    assert "agent_send" in hazards, "AO override reachable from a setting listener was missed"
+
+    unknown_row = dict(setting_row, widget_name="setting_unknown", setting="UnknownSetting")
+    _hazards, resolved = _handler_hazards(unknown_row, setting_sources, {})
+    assert not resolved and unknown_row.get("setting_listener_unknown"), \
+        "dynamic setting listener must fail closed"
 
 
 def main() -> int:

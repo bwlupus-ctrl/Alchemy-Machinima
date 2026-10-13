@@ -223,6 +223,68 @@ function Restore-FunctionalSettingsBackup($Backup) {
   }
 }
 
+function Set-InWorldAOSafetySettings($Backup) {
+  # This must happen before the viewer starts. AOEngine::enable(false) can send
+  # animation stops when an AO set is already live, so changing these controls
+  # after login is itself forbidden for the real-account harness.
+  $accountFolder = [System.IO.Path]::GetFullPath((Join-Path $Backup.AppRoot '5kvideoeye_resident'))
+  $appPrefix = $Backup.AppRoot.TrimEnd('\') + '\'
+  if (-not $accountFolder.StartsWith($appPrefix, [System.StringComparison]::OrdinalIgnoreCase)) {
+    throw "Refusing to edit AO settings outside $($Backup.AppRoot): $accountFolder"
+  }
+  $paths = @(Get-ChildItem -LiteralPath $accountFolder -File -Recurse -Force `
+      -Filter 'settings_per_account.xml' -ErrorAction SilentlyContinue)
+  if ($paths.Count -ne 1) {
+    throw "Expected exactly one authorized-account settings_per_account.xml, found $($paths.Count)."
+  }
+  [xml]$document = Get-Content -LiteralPath $paths[0].FullName -Raw
+  $map = $document.SelectSingleNode('/llsd/map')
+  if (-not $map) { throw "Invalid LLSD settings map: $($paths[0].FullName)" }
+  $forced = [ordered]@{
+    AlchemyAOEnable = '0'
+    UseAOStands = '0'
+    PauseAO = '1'
+  }
+  foreach ($name in $forced.Keys) {
+    $key = $null
+    foreach ($candidate in @($map.ChildNodes | Where-Object { $_.Name -eq 'key' })) {
+      if ($candidate.InnerText -ceq $name) { $key = $candidate; break }
+    }
+    $value = if ($key) { $key.NextSibling } else { $null }
+    while ($value -and $value.NodeType -ne [System.Xml.XmlNodeType]::Element) {
+      $value = $value.NextSibling
+    }
+    if (-not $key) {
+      $key = $document.CreateElement('key')
+      $key.InnerText = $name
+      $map.AppendChild($key) | Out-Null
+      $value = $document.CreateElement('boolean')
+      $map.AppendChild($value) | Out-Null
+    } elseif (-not $value -or $value.Name -eq 'key') {
+      throw "Malformed value for $name in $($paths[0].FullName)"
+    }
+    # Saved settings files contain direct LLSD values. If a hand-authored
+    # metadata map is ever encountered, update its Value field instead.
+    if ($value.Name -eq 'map') {
+      $valueKey = @($value.ChildNodes | Where-Object { $_.Name -eq 'key' -and $_.InnerText -ceq 'Value' })[0]
+      $metadataValue = if ($valueKey) { $valueKey.NextSibling } else { $null }
+      while ($metadataValue -and $metadataValue.NodeType -ne [System.Xml.XmlNodeType]::Element) {
+        $metadataValue = $metadataValue.NextSibling
+      }
+      if (-not $valueKey -or -not $metadataValue) {
+        throw "Malformed metadata value for $name in $($paths[0].FullName)"
+      }
+      $metadataValue.InnerText = $forced[$name]
+    } else {
+      $replacement = $document.CreateElement('boolean')
+      $replacement.InnerText = $forced[$name]
+      $map.ReplaceChild($replacement, $value) | Out-Null
+    }
+  }
+  $document.Save($paths[0].FullName)
+  Write-Host 'In-world AO safety: AlchemyAOEnable=0, UseAOStands=0, PauseAO=1 (pre-launch).'
+}
+
 function Wait-NormalExitBeforeHardKill($Process, [string]$Description, [int]$GraceSeconds = 60) {
   Write-Host "$Description; waiting $GraceSeconds seconds for normal logout/exit." -ForegroundColor Yellow
   $graceDeadline = [DateTime]::UtcNow.AddSeconds($GraceSeconds)
@@ -285,6 +347,7 @@ if ($Functional) {
     $process = $null
     $settingsBackup = New-FunctionalSettingsBackup
     try {
+      if ($InWorld) { Set-InWorldAOSafetySettings $settingsBackup }
       Remove-Item -LiteralPath $functionalCsvPath -Force -ErrorAction SilentlyContinue
       $requestFields = [System.Collections.Generic.List[string]]::new()
       $requestFields.Add('functional')

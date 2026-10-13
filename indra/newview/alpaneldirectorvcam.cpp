@@ -195,8 +195,15 @@ bool ALPanelDirectorVCam::postBuild()
             { return pasteCardValues(card, values); });
     }
     for (auto& entry : mControls)
+    {
+        // A generated bind="setting" control commits directly to
+        // gSavedSettings.  Do not also install the code router: this keeps the
+        // row's sole write sink explicit for the fail-closed functional run.
+        if (entry.second->getControlVariable())
+            continue;
         entry.second->setCommitCallback(
             [this](LLUICtrl* control_ptr, const LLSD&) { onControl(control_ptr); });
+    }
 
     const std::pair<const char*, const char*> info_rows[] = {
         {"vc_source_note_object", "Object cameras follow the selected camera object."},
@@ -247,6 +254,7 @@ bool ALPanelDirectorVCam::postBuild()
             mConnections.emplace_back(setting->getSignal()->connect(
                 [this](LLControlVariable*, const LLSD&, const LLSD&)
                 {
+                    clearStatus();
                     if (mModel.pageVisible()) refresh(ALVCamPageModel::DIRTY_ALL);
                 }));
 

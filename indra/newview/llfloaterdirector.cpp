@@ -39,6 +39,12 @@
 #include "altron.h"
 #include "alkitpresets.h"
 #include "alpanelcinelightrig.h"
+#include "alcinehaze.h"                // Atmosphere > Depth Haze reset and reference height
+#include "allenslooks.h"               // Lens > Filters infrared and soft-edge preset actions
+#include "alpanelweathersettings.h"    // World > Weather strike and reset-all
+#include "alprojectorshaftpresets.h"   // Atmosphere projector-shaft presets
+#include <boost/signals2.hpp>
+#include <cmath>
 #include "llviewercamera.h"
 #include "aldirectorswitcher.h"
 #include "llactormover.h"
@@ -84,6 +90,7 @@
 #include "llvoavatar.h"
 #include "llvoavatarself.h"         // gAgentAvatarp, isAgentAvatarValid()
 #include "llvovolume.h"
+#include "pipeline.h"
 
 #include <algorithm>
 #include <ctime>
@@ -444,6 +451,83 @@ private:
     std::vector<std::string>   mTracked;
 };
 
+class ALWeatherPresetProvider final : public ALKitPresetProvider
+{
+public:
+    const std::string& key() const override { return mKey; }
+    void list(std::vector<Entry>& out) const override
+    {
+        for (const std::string& name : ALPanelWeatherSettings::presetNames())
+        {
+            out.push_back({ "u:" + name, name, false });
+        }
+    }
+    bool apply(const std::string& id) override
+    {
+        return id.compare(0, 2, "u:") == 0 && ALPanelWeatherSettings::applyNamedPreset(id.substr(2));
+    }
+    bool canSaveUser() const override { return true; }
+    bool saveUser(const std::string& name) override { return ALPanelWeatherSettings::saveNamedPreset(name); }
+    bool canDelete(const std::string& id) const override { return id.compare(0, 2, "u:") == 0; }
+    bool deleteUser(const std::string& id) override
+    {
+        return canDelete(id) && ALPanelWeatherSettings::deleteNamedPreset(id.substr(2));
+    }
+    U64 revision() const override { return 0; }
+    const std::vector<std::string>& trackedSettings() const override
+    {
+        return ALPanelWeatherSettings::trackedSettings();
+    }
+
+private:
+    std::string mKey = "weather";
+};
+
+class ALProjectorShaftPresetProvider final : public ALKitPresetProvider
+{
+public:
+    ALProjectorShaftPresetProvider() : mStore("projector_shafts", ALProjectorShaftPresets::trackedSettings()) {}
+    const std::string& key() const override { return mKey; }
+    void list(std::vector<Entry>& out) const override
+    {
+        static const char* const labels[] = {
+            "Fast Preview", "Balanced", "Cinematic", "Hazy Stage",
+            "Clear Air", "Searchlight", "Dust Storm", "Dream Mist"
+        };
+        for (S32 preset = ALProjectorShaftPresets::FAST_PREVIEW;
+             preset <= ALProjectorShaftPresets::DREAM_MIST; ++preset)
+        {
+            out.push_back({ llformat("%d", preset), labels[preset], true });
+        }
+        for (const std::string& name : mStore.names())
+        {
+            out.push_back({ "u:" + name, name, false });
+        }
+    }
+    bool apply(const std::string& id) override
+    {
+        if (id.size() == 1 && id[0] >= '0' && id[0] <= '7')
+        {
+            ALProjectorShaftPresets::apply(id[0] - '0');
+            return true;
+        }
+        return id.compare(0, 2, "u:") == 0 && mStore.load(id.substr(2));
+    }
+    bool canSaveUser() const override { return true; }
+    bool saveUser(const std::string& name) override { return mStore.save(name); }
+    bool canDelete(const std::string& id) const override { return id.compare(0, 2, "u:") == 0; }
+    bool deleteUser(const std::string& id) override { return canDelete(id) && mStore.remove(id.substr(2)); }
+    U64 revision() const override { return mStore.revision(); }
+    const std::vector<std::string>& trackedSettings() const override
+    {
+        return ALProjectorShaftPresets::trackedSettings();
+    }
+
+private:
+    std::string                mKey = "projector_shafts";
+    mutable ALKitSnapshotStore mStore;
+};
+
 void registerLookPresetProviders()
 {
     static bool registered = false;
@@ -456,6 +540,8 @@ void registerLookPresetProviders()
         "roto_ink", looksFrom(kRotoLooks), applyRotoLook, std::vector<std::string>(ALRotoInk::settings())));
     ALKitPresetRegistry::instance().add(std::make_unique<ALLookPresetProvider>(
         "tron_look", looksFrom(kTronLooks), applyTronLook, std::vector<std::string>(ALTron::lookSettings())));
+    ALKitPresetRegistry::instance().add(std::make_unique<ALWeatherPresetProvider>());
+    ALKitPresetRegistry::instance().add(std::make_unique<ALProjectorShaftPresetProvider>());
 }
 } // anonymous namespace
 
@@ -977,13 +1063,16 @@ bool LLFloaterDirector::postBuildV2()
     mPageSelectedConnection = mShell->setPageSelectedCallback(
         [handle](const std::string& page)
         {
+            LLFloaterDirector* director = handle.get();
+            if (!director)
+            {
+                return;
+            }
             if (page == "look_group/image_tab")
             {
-                if (LLFloaterDirector* director = handle.get())
-                {
-                    ALColorGrade::populateLUTCombo(director->findChild<LLComboBox>("colorlut_combo"));
-                }
+                ALColorGrade::populateLUTCombo(director->findChild<LLComboBox>("colorlut_combo"));
             }
+            director->refreshWorldLensReadouts(page);
         });
     mScrollFit.setUnwrappedPages(mShell->unwrappedPages());
     mScrollFit.installForTabs(mTabContainer, this);
@@ -1216,12 +1305,13 @@ void LLFloaterDirector::bindPage(const std::string& page, LLView* root)
         { "exposure_tab", &LLFloaterDirector::bindCameraPage },
         { "actors_tab", &LLFloaterDirector::bindCameraPage },
         { "gaze_cues_tab", &LLFloaterDirector::bindLauncherPage },
-        { "diopter_tab", &LLFloaterDirector::bindLauncherPage },
         { "practicals_tab", &LLFloaterDirector::bindLauncherPage },
         { "actors_tab", &LLFloaterDirector::bindLauncherPage },
         { "light_cues_tab", &LLFloaterDirector::bindLauncherPage },
-        { "atmosphere_tab", &LLFloaterDirector::bindLauncherPage },
-        { "shadows_probes_tab", &LLFloaterDirector::bindLauncherPage },
+        { "focus_tab", &LLFloaterDirector::bindLensFocusPage },
+        { "filters_tab", &LLFloaterDirector::bindLensFiltersPage },
+        { "weather_tab", &LLFloaterDirector::bindWeatherPage },
+        { "atmosphere_tab", &LLFloaterDirector::bindAtmospherePage },
     };
     for (const Binding& binding : bindings)
     {
@@ -1240,10 +1330,6 @@ void LLFloaterDirector::bindRotoInkPage(LLView* root)
     {
         // LightBox.RotoInkPreset "reset" -> ALRotoInk::resetToDefaults()
         reset->setCommitCallback([](LLUICtrl*, const LLSD&) { ALRotoInk::resetToDefaults(); });
-    }
-    if (LLButton* open = root->findChild<LLButton>("open_lightbox_roto"))
-    {
-        open->setCommitCallback([](LLUICtrl*, const LLSD&) { ALFloaterLightBox::showTab("rotoink_settings"); });
     }
 }
 
@@ -1302,10 +1388,6 @@ void LLFloaterDirector::bindTronPage(LLView* root)
             }
         });
     }
-    if (LLButton* open = root->findChild<LLButton>("open_lightbox_tron"))
-    {
-        open->setCommitCallback([](LLUICtrl*, const LLSD&) { ALFloaterLightBox::showTab("tron_settings"); });
-    }
 }
 
 // Look > Image (generated kit page). The tone-mapper, grade, finish and operator rows are setting-bound
@@ -1334,16 +1416,160 @@ void LLFloaterDirector::bindImagePage(LLView* root)
             }
         });
     }
-    if (LLButton* hub = root->findChild<LLButton>("exposure_hub_btn"))
+}
+
+// Lens > Filters (generated kit page). The infrared and soft-edge preset actions and the avatar tag
+// mirror ALPanelLensLooks::postBuild (alpanellenslooks.cpp:47-70): apply the preset, then snap the
+// action combo back to its "Choose preset..." entry (value 0).
+void LLFloaterDirector::bindLensFiltersPage(LLView* root)
+{
+    if (LLComboBox* ir = root->findChild<LLComboBox>("ir_preset_action"))
     {
-        hub->setCommitCallback([](LLUICtrl*, const LLSD&) { LLFloaterReg::showInstance("exposure_hub"); });
-    }
-    for (LLButton* link : { root->findChild<LLButton>("open_lightbox_image"),
-                            root->findChild<LLButton>("set_grade_lightbox_link") })
-    {
-        if (link)
+        ir->setCommitCallback([](LLUICtrl* control, const LLSD&)
         {
-            link->setCommitCallback([](LLUICtrl*, const LLSD&) { ALFloaterLightBox::showTab("colortone_settings"); });
+            ALLensLooks::applyInfraredPreset(control->getValue().asInteger());
+            control->setValue(LLSD("0"));
+        });
+    }
+    if (LLComboBox* soft = root->findChild<LLComboBox>("softedge_preset_action"))
+    {
+        soft->setCommitCallback([](LLUICtrl* control, const LLSD&)
+        {
+            ALLensLooks::applySoftEdgePreset(control->getValue().asInteger());
+            control->setValue(LLSD("0"));
+        });
+    }
+    if (LLButton* tag = root->findChild<LLButton>("ir_enable_tag"))
+    {
+        tag->setCommitCallback([](LLUICtrl*, const LLSD&)
+        {
+            LLNotificationsUtil::add("EnableGBufferAvatarTagConfirm", LLSD(), LLSD(),
+                [](const LLSD& notification, const LLSD& response)
+                {
+                    if (LLNotificationsUtil::getSelectedOption(notification, response) == 0)
+                    {
+                        gSavedSettings.setBOOL("RenderGBufferAvatarTag", true);
+                    }
+                    return false;
+                });
+        });
+        LLHandle<LLButton> handle = tag->getDerivedHandle<LLButton>();
+        const auto refresh_tag = [handle]
+        {
+            if (LLButton* button = handle.get())
+            {
+                button->setVisible(!gSavedSettings.getBOOL("RenderGBufferAvatarTag"));
+            }
+        };
+        refresh_tag();
+        mWorldLensConnections.emplace_back(ALKitSettingWatch::instance().watch(
+            "RenderGBufferAvatarTag", [refresh_tag](const LLSD&, const LLSD&) { refresh_tag(); }));
+    }
+}
+
+// Lens > Focus (generated kit page). CameraDoFResScale is an F32 and kit combos bind only S32/U32/String,
+// so the Quality combo is code-bound: the commit writes the F32 and the setting signal keeps the combo in
+// step (Lightbox and preset writes included). The item values are the generator iv list in order.
+void LLFloaterDirector::bindLensFocusPage(LLView* root)
+{
+    LLComboBox* combo = root->findChild<LLComboBox>("dof_res_combo");
+    if (!combo)
+    {
+        return;
+    }
+    combo->setCommitCallback([](LLUICtrl* control, const LLSD&)
+    {
+        gSavedSettings.setF32("CameraDoFResScale", (F32)control->getValue().asReal());
+    });
+    static const F32 kScales[] = { 0.25f, 0.5f, 0.7f, 1.0f };
+    static const char* const kItems[] = { "0.25", "0.5", "0.7", "1.0" };
+    auto select_scale = [](LLComboBox* box, F32 scale)
+    {
+        for (size_t i = 0; i < LL_ARRAY_SIZE(kScales); ++i)
+        {
+            if (std::fabs(kScales[i] - scale) < 1e-4f)
+            {
+                box->setValue(LLSD(kItems[i]));
+                return;
+            }
+        }
+    };
+    LLHandle<LLComboBox> handle = combo->getDerivedHandle<LLComboBox>();
+    select_scale(combo, gSavedSettings.getF32("CameraDoFResScale"));
+    if (LLControlVariable* setting = gSavedSettings.getControl("CameraDoFResScale").get())
+    {
+        mWorldLensConnections.emplace_back(setting->getSignal()->connect(
+            [handle, select_scale](LLControlVariable*, const LLSD& value, const LLSD&)
+            {
+                if (LLComboBox* box = handle.get())
+                {
+                    select_scale(box, (F32)value.asReal());
+                }
+            }));
+    }
+}
+
+// World > Weather (generated kit page). Strike and Reset All are the same ALPanelWeatherSettings calls
+// the v1 panel makes (alpanelweathersettings.cpp:135-138).
+void LLFloaterDirector::bindWeatherPage(LLView* root)
+{
+    refreshWorldLensReadouts("world_group/weather_tab");
+    LLHandle<LLFloaterDirector> handle = getDerivedHandle<LLFloaterDirector>();
+    mWorldLensConnections.emplace_back(ALKitSettingWatch::instance().watch(
+        "RenderDeferred", [handle](const LLSD&, const LLSD&)
+        {
+            if (LLFloaterDirector* director = handle.get())
+            {
+                director->refreshWorldLensReadouts("world_group/weather_tab");
+            }
+        }));
+    if (LLButton* trigger = root->findChild<LLButton>("weather_trigger"))
+    {
+        trigger->setCommitCallback([](LLUICtrl*, const LLSD&) { ALPanelWeatherSettings::strikeLightningNow(); });
+    }
+    if (LLButton* reset = root->findChild<LLButton>("weather_reset_all"))
+    {
+        reset->setCommitCallback([](LLUICtrl*, const LLSD&) { ALPanelWeatherSettings::confirmResetAll(); });
+    }
+}
+
+// Atmosphere > Depth Haze (generated kit page). The From-camera and Reset-all buttons call the same
+// ALCineHaze helpers the Lightbox haze tab uses (alcinehaze.cpp:289-301). The Lightbox tab link is a
+// kit button action (target lightbox, target_tab cinehaze_settings).
+void LLFloaterDirector::bindAtmospherePage(LLView* root)
+{
+    refreshWorldLensReadouts("world_group/atmosphere_tab");
+    if (LLButton* from_camera = root->findChild<LLButton>("ch_ref_from_camera"))
+    {
+        from_camera->setCommitCallback([](LLUICtrl*, const LLSD&) { ALCineHaze::setReferenceHeightFromCamera(); });
+    }
+    if (LLButton* reset = root->findChild<LLButton>("ch_reset_all"))
+    {
+        reset->setCommitCallback([](LLUICtrl*, const LLSD&) { ALCineHaze::resetToDefaults(); });
+    }
+}
+
+void LLFloaterDirector::refreshWorldLensReadouts(const std::string& page)
+{
+    if (page == "world_group/weather_tab")
+    {
+        if (LLTextBox* note = findChild<LLTextBox>("weather_deferred_note"))
+        {
+            setTextIfChanged(note, "Weather requires Advanced Lighting Model (deferred rendering).");
+            setVisibleIfChanged(note, !LLPipeline::sRenderDeferred);
+        }
+    }
+    else if (page == "world_group/atmosphere_tab")
+    {
+        if (LLTextBox* requirement = findChild<LLTextBox>("localfog_froxel_requirement"))
+        {
+            setTextIfChanged(requirement, "Requires Froxel Air (Lightbox > Froxel Air).");
+            setVisibleIfChanged(requirement, true);
+        }
+        if (LLTextBox* hint = findChild<LLTextBox>("localfog_hint"))
+        {
+            setTextIfChanged(hint, "Numeric placement and the in-world cage are local render tools. No volume is rezzed or sent to the simulator.");
+            setVisibleIfChanged(hint, true);
         }
     }
 }
@@ -1740,11 +1966,6 @@ void LLFloaterDirector::bindLauncherPage(LLView* root)
             return llformat("%d cue%s \xC2\xB7 %s", count, count == 1 ? "" : "s", cues.mName.c_str());
         });
     }
-    // Bloom/Glow page "Open Lightbox glow settings" row (kit action
-    // lightbox:glow_settings): kit_row action metadata is not dispatched.
-    if (LLButton* glow = root->findChild<LLButton>("open_lightbox_glow"))
-        glow->setClickedCallback([](LLUICtrl*, const LLSD&)
-            { ALFloaterLightBox::showTab("glow_settings"); });
     if (root->findChild<LLButton>("card_haze_open"))
     {
         addLauncherCard("haze", [] { ALFloaterLightBox::showTab("cinehaze_settings"); }, []

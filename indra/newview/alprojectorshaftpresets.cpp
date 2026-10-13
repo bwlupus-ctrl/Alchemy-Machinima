@@ -80,6 +80,18 @@ void resetToKnownBase()
 
 namespace ALProjectorShaftPresets
 {
+const std::vector<std::string>& trackedSettings()
+{
+    static const std::vector<std::string> settings = []
+    {
+        std::vector<std::string> result(
+            SHAFT_SETTINGS, SHAFT_SETTINGS + LL_ARRAY_SIZE(SHAFT_SETTINGS));
+        result.emplace_back("BDMergeProjectorVolumetricsDust");
+        return result;
+    }();
+    return settings;
+}
+
 void apply(S32 preset)
 {
     if (preset < FAST_PREVIEW || preset > DREAM_MIST)

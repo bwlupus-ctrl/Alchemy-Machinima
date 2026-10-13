@@ -29,8 +29,17 @@ public:
     void draw() override;
     void onVisibilityChange(bool new_visibility) override;
 
+    // Shared with the Director weather kit page (llfloaterdirector.cpp bindWeatherPage).
+    static void strikeLightningNow();
+    static void confirmResetAll();
+    static const std::vector<std::string>& trackedSettings();
+    static std::vector<std::string> presetNames();
+    static bool saveNamedPreset(const std::string& name);
+    static bool applyNamedPreset(const std::string& name);
+    static bool deleteNamedPreset(const std::string& name);
+
 private:
-    static const std::vector<std::string>& settings();
+    static void resetAllSettingsToDefaults();
     static std::string presetsDir();
     static std::string presetPath(const std::string& name);
 
@@ -38,14 +47,11 @@ private:
     void updateControlGroup();
     void onTriggerStrike();
     void onClickResetAll();
-    bool resetAllCallback(const LLSD& notification, const LLSD& response);
 
     void refreshPresetList(const std::string& select_name = std::string());
     void onClickSavePreset();
     bool savePresetCallback(const LLSD& notification, const LLSD& response);
-    void writePreset(const std::string& name);
     void onPresetSelected();
-    void applyPreset(const std::string& name);
     void onClickDeletePreset();
     bool deletePresetCallback(const LLSD& notification, const LLSD& response,
                               const std::string name);

@@ -192,6 +192,19 @@ def flatten_pages(data: dict) -> list[tuple[dict, dict]]:
     return [(group, page) for group in data.get("groups", []) for page in group.get("pages", [])]
 
 
+def validate_action_rows(page: dict) -> None:
+    for row in all_rows(page):
+        target = row.get("target")
+        if not target:
+            continue
+        action = (f"lightbox:{row.get('target_tab', '')}" if target == "lightbox"
+                  else f"floater:{target}")
+        prefix, separator, name = action.partition(":")
+        if (not separator or prefix not in {"lightbox", "floater"}
+                or not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", name)):
+            raise GenError(f"invalid action target {action!r} on {page['name']}/{row.get('w')}")
+
+
 def validate_data(data: dict) -> None:
     pages = flatten_pages(data)
     row_count = sum(1 for _group, page in pages for _row in all_rows(page))
@@ -219,6 +232,8 @@ def validate_data(data: dict) -> None:
                     shortcuts.add((page["name"], str(row.get("w", "")), str(row["shortcut_of"])))
     if shortcuts != EXPECTED_SHORTCUTS:
         raise GenError(f"shortcut contract drift: {sorted(shortcuts ^ EXPECTED_SHORTCUTS)}")
+    for _group, page in pages:
+        validate_action_rows(page)
 
 
 def normalize_shortcuts(data: dict) -> None:
@@ -329,6 +344,10 @@ def apply_config(page: dict, cfg: dict) -> dict:
                 removed += before - len(holder["rows"])
         if removed != 1:
             raise GenError(f"omit_rows {name!r} matched {removed} rows on {page['name']}")
+    for card_id in cfg.get("omit_empty_cards", []):
+        card = cards.get(card_id)
+        if card is None or any(rows_of(card)):
+            raise GenError(f"omit_empty_cards {card_id!r} is missing or non-empty on {page['name']}")
     return page
 
 
@@ -465,6 +484,8 @@ def control_for(row: dict, hosted: ET.Element | None, referenced: set[str], repo
                          ("st", "increment"), ("dc", "decimal_digits")):
             if src in row:
                 child.set(dst, scalar(row[src]))
+        if row.get("enabled_control"):
+            child.set("enabled_control", str(row["enabled_control"]))
         return kind, child, "setting" if hosted.get("control_name") else "code"
     kind, _ = data_kind(row)
     if kind in {"vec2", "vec3", "link"}:
@@ -495,6 +516,8 @@ def control_for(row: dict, hosted: ET.Element | None, referenced: set[str], repo
     for src, dst in (("mn", "min_val"), ("mx", "max_val"), ("st", "increment"), ("dc", "decimal_digits")):
         if src in row:
             attrs[dst] = scalar(row[src])
+    if row.get("enabled_control"):
+        attrs["enabled_control"] = str(row["enabled_control"])
     child = ET.Element(tag, attrs)
     if kind == "readout" and row.get("text") is not None:
         child.text = str(row["text"])
@@ -579,7 +602,7 @@ def row_element(row: dict, by_name: dict[str, ET.Element], by_control: dict[str,
     if kind == "button" and row.get("target"):
         attrs["action"] = (f"lightbox:{row.get('target_tab', '')}" if row["target"] == "lightbox"
                            else f"floater:{row['target']}")
-    reset = reset_setting(widget, by_name, str(setting) if setting and bind == "setting" else None)
+    reset = row.get("reset_settings") or reset_setting(widget, by_name, str(setting) if setting and bind == "setting" else None)
     if reset:
         attrs["reset_settings"] = reset
     if hosted is not None and row.get("s") and hosted.get("control_name") != row.get("s"):
@@ -653,6 +676,7 @@ def page_attrs(group: dict, page: dict, cfg: dict) -> dict[str, str]:
 def kit_page(group: dict, raw_page: dict, cfg: dict, source_paths: list[Path],
              referenced: set[str], report: list[str]) -> tuple[ET.Element, set[str]]:
     page = apply_config(raw_page, cfg)
+    validate_action_rows(page)
     if cfg.get("no_history"):
         for row in all_rows(page):
             row["bind"] = "none"
@@ -663,6 +687,7 @@ def kit_page(group: dict, raw_page: dict, cfg: dict, source_paths: list[Path],
         root_attrs["class"] = str(cfg["root_class"])
     root = ET.Element("panel", root_attrs)
     body = ET.SubElement(root, "kit_page", page_attrs(group, page, cfg))
+    omitted_cards = set(cfg.get("omit_empty_cards", []))
     if cfg.get("actor_target"):
         # Same flag the retired legacy path emitted from page_features: the page styles the
         # selected cast member through llfloaterdirector's bindActorStylePage.
@@ -672,10 +697,13 @@ def kit_page(group: dict, raw_page: dict, cfg: dict, source_paths: list[Path],
         ET.SubElement(body, "kit_page.mode", {"name": str(mode),
                       "cards": ",".join(str(x) for x in modes.get(mode, []))})
     for section in page.get("sections", []):
-        ids = [page["cards"][int(i)]["id"] for i in section.get("cards", [])]
+        ids = [page["cards"][int(i)]["id"] for i in section.get("cards", [])
+               if page["cards"][int(i)]["id"] not in omitted_cards]
         ET.SubElement(body, "kit_page.section", {"id": str(section["id"]),
                       "label": str(section.get("label", "")), "cards": ",".join(ids)})
     for card in page.get("cards", []):
+        if card["id"] in omitted_cards:
+            continue
         attrs = {"name": "kc_" + str(card["id"]), "id": str(card["id"]),
                  "title": str(card.get("t", "")), "kind": str(card.get("k", "rows"))}
         copy_type = card.get("copy_type") or cfg.get("card_copy_types", {}).get(card["id"])
@@ -1113,8 +1141,13 @@ def generate(data_path: Path, config_path: Path, out_dir: Path) -> tuple[dict[Pa
                 "camera_group/vcam_tab": "kit (P0)", "look_group/stylize_tab": "kit (P0)",
                 "look_group/tron_tab": "kit (P0)", "look_group/image_tab": "kit (P0)",
                 "look_group/actor_style_tab": "kit (P0)",
+                "lens_group/focus_tab": "kit (P0)", "lens_group/filters_tab": "kit (P0)",
+                "lens_group/diopter_tab": "kit (P0)", "world_group/weather_tab": "kit (P0)",
+                "world_group/atmosphere_tab": "kit (P0)", "world_group/shadows_probes_tab": "kit (P0)",
                 "look_group/bloom_glow_tab": "pure kit (new)"}
-    if any(classes.get(key) != value for key, value in expected.items()) or Counter(classes.values()) != Counter({"kit (P0)": 7, "pure kit (new)": 1, "legacy": 27}):
+    # Pinned per conversion batch (user-approved 10/13: lower as pages convert, never raise).
+    # World/Lens batch: kit 7 -> 13, legacy 27 -> 21.
+    if any(classes.get(key) != value for key, value in expected.items()) or Counter(classes.values()) != Counter({"kit (P0)": 13, "pure kit (new)": 1, "legacy": 21}):
         raise GenError(f"classification table drift: {Counter(classes.values())}, special={[(k, classes.get(k)) for k in expected]}")
     note = header(data_path, config_path)
     referenced = cpp_names(config_path)
@@ -1180,7 +1213,7 @@ def selftest(data_path: Path, config_path: Path, out_dir: Path) -> int:
     try:
         outputs, classes = generate(data_path, config_path, out_dir)
         checks = []
-        checks.append(("classification table", Counter(classes.values()) == Counter({"kit (P0)": 7, "pure kit (new)": 1, "legacy": 27})
+        checks.append(("classification table", Counter(classes.values()) == Counter({"kit (P0)": 13, "pure kit (new)": 1, "legacy": 21})
                        and classes["light_group/cine_light_rig_tab"] == "kit (P0)"
                        and classes["light_group/light_rim_tab"] == "kit (P0)"
                        and classes["camera_group/vcam_tab"] == "kit (P0)"
@@ -1216,7 +1249,7 @@ def selftest(data_path: Path, config_path: Path, out_dir: Path) -> int:
             apply_page_features(expected_legacy, key, config.get("page_features", {}))
             apply_kit_xui_style(expected_legacy)
             legacy_ok = legacy_ok and generated.tag == "kit_page" and children_canonical(generated) == children_canonical(expected_legacy)
-        checks.append(("27 serialized legacy pages copy v1 children", legacy_ok and legacy_count == 27))
+        checks.append(("21 serialized legacy pages copy v1 children", legacy_ok and legacy_count == 21))
         dials = [node for path, payload in outputs.items() if path.name.startswith("panel_dpage_")
                  for node in ET.fromstring(payload, parser=parser()).iter("compass_dial")]
         checks.append(("all compass dials use kit geometry without duplicate readout",

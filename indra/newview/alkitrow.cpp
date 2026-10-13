@@ -1,5 +1,6 @@
 #include "llviewerprecompiledheaders.h"
 #include "alkitrow.h"
+#include "alfloaterlightbox.h"
 #include "alkitbinding.h"
 #include "alkitmenu.h"
 #include "alkitstyle.h"
@@ -10,6 +11,7 @@
 #include "alkithistory.h"
 #include "alkitpage.h"
 #include "llfontgl.h"
+#include "llfloaterreg.h"
 #include "lllineeditor.h"
 #include "llrender2dutils.h"
 #include "llstring.h"
@@ -30,12 +32,37 @@
 #include "llviewermenu.h"
 
 #include <algorithm>
+#include <unordered_set>
 #include <vector>
 static LLDefaultChildRegistry::Register<ALKitRow> r("kit_row");
 
 namespace
 {
 LLSD sRowClipboard;
+
+void dispatchAction(const std::string& action)
+{
+    const size_t separator = action.find(':');
+    const std::string prefix = action.substr(0, separator);
+    const std::string target = separator == std::string::npos ? std::string() : action.substr(separator + 1);
+    if (prefix == "lightbox" && !target.empty())
+    {
+        ALFloaterLightBox::showTab(target);
+        return;
+    }
+    if (prefix == "floater" && !target.empty())
+    {
+        LLFloaterReg::showInstance(target);
+        return;
+    }
+
+    static std::unordered_set<std::string> warned_prefixes;
+    if (warned_prefixes.insert(prefix).second)
+    {
+        LL_WARNS("DirectorKit") << "Unknown kit row action prefix '" << prefix
+                                 << "' in action '" << action << "'" << LL_ENDL;
+    }
+}
 
 class ALKitProxyBinding final : public ALKitBinding
 {
@@ -246,6 +273,12 @@ bool ALKitRow::postBuild()
                 showContextMenu(row_x, row_y);
             });
         mLastValue = mShownValue = mControl->getValue();
+
+        if (!mMeta.action.empty())
+        {
+            mActionConnection = mControl->setCommitCallback(
+                [action = mMeta.action](LLUICtrl*, const LLSD&) { dispatchAction(action); });
+        }
 
         if (mBind == "code" && mMeta.kind != "button" && mMeta.kind != "readout" && mMeta.mirror_setting.empty())
             mHistoryConnection = mControl->setCommitCallback(
@@ -660,7 +693,11 @@ void ALKitRow::bindingChanged()
     // Vec rows: ALKitVecBinding::syncControls already pushed each component into
     // its own spinner; mControl is only the X spinner and must never get the array
     // (an array's asReal() is 0, which would then be committed as X).
-    if (mBinding && mControl && !mVecCount && !baselineEditActive(mControl))
+    // A code-bound row may use reset_settings only to own a multi-setting reset.
+    // Its list binding returns an LLSD map, which is not the widget's value and
+    // must not be pushed into the control (the page binder owns that sync).
+    if (mBinding && mControl && !mVecCount && (mBind != "code" || mResetSettings.empty()) &&
+        !baselineEditActive(mControl))
     {
         const LLSD value = mBinding->get();
         if (!alSameValue(value, mControl->getValue()))

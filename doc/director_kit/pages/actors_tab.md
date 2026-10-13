@@ -69,7 +69,7 @@ Use the existing XUI control types as ordinary measured kit rows. No new canvas,
 | `ALPanelAvatarLightResponse::onSilFillPreset()` — `indra/newview/alpanelavatarlightresponse.cpp:149` | Move model-facing work into `ALActorLightKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
 | `ALPanelAvatarLightResponse::onSliderCommit()` — `indra/newview/alpanelavatarlightresponse.cpp:128, 129, 130, 131, 132` | Move model-facing work into `ALActorLightKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
 | `ALPanelAvatarLightResponse::refreshRows()` — `indra/newview/alpanelavatarlightresponse.cpp:115` | Move model-facing work into `ALActorLightKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
-| `LLFloaterReg::showInstance()` — `indra/newview/llfloaterdirector.cpp:842, 1631` | Move model-facing work into `ALActorLightKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
+| `LLFloaterReg::showInstance()` — `indra/newview/llfloaterdirector.cpp:928, 1857` | Move model-facing work into `ALActorLightKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
 
 ## Live state and refresh
 

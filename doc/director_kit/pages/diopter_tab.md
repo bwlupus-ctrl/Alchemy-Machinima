@@ -21,10 +21,10 @@ Keep only the everyday controls (on/off, preset, strength, focus split) plus Ope
 
 | Card / row | Existing control evidence | Required binding | Other writable homes |
 |---|---|---|---|
-| `diopter_summary` / `diopter_enabled` (On / off) | `check_box` `indra/newview/skins/default/xui/en/floater_ultimate_diopter.xml:67` | kit `toggle` ↔ `CineDiopterEnabled` `Boolean` | none |
-| `diopter_summary` / `diopter_preset` (Preset) | `combo_box` `indra/newview/skins/default/xui/en/floater_ultimate_diopter.xml:73` | kit `combo` ↔ `CineDiopterPreset` `U32` | none |
-| `diopter_summary` / `diopter_blend` (Strength) | `slider` `indra/newview/skins/default/xui/en/floater_ultimate_diopter.xml:106` | kit `slider` ↔ `CineDiopterBlend` `F32` | none |
-| `diopter_summary` / `diopter_power` (Focus split) | `slider` `indra/newview/skins/default/xui/en/floater_ultimate_diopter.xml:290` | kit `slider` ↔ `CineDiopterPower` `F32` | none |
+| `diopter_summary` / `diopter_enabled` (On / off) | `check_box` `indra/newview/skins/default/xui/en/floater_ultimate_diopter.xml:67` | kit `toggle` ↔ `CineDiopterEnabled` `Boolean` | `indra/newview/skins/default/xui/en/panel_dpage_lens_diopter.xml:8` `diopter_enabled` |
+| `diopter_summary` / `diopter_preset` (Preset) | `combo_box` `indra/newview/skins/default/xui/en/floater_ultimate_diopter.xml:73` | kit `combo` ↔ `CineDiopterPreset` `U32` | `indra/newview/skins/default/xui/en/panel_dpage_lens_diopter.xml:11` `diopter_preset` |
+| `diopter_summary` / `diopter_blend` (Strength) | `slider` `indra/newview/skins/default/xui/en/floater_ultimate_diopter.xml:106` | kit `slider` ↔ `CineDiopterBlend` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_lens_diopter.xml:38` `diopter_blend` |
+| `diopter_summary` / `diopter_power` (Focus split) | `slider` `indra/newview/skins/default/xui/en/floater_ultimate_diopter.xml:290` | kit `slider` ↔ `CineDiopterPower` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_lens_diopter.xml:43` `diopter_power` |
 | `diopter_summary` / `diopter_open_editor` (Full editor) | none | kit-native action `floater:ultimate_diopter`; no duplicate widget is required | none |
 
 ## User-decision control contract
@@ -110,7 +110,7 @@ None.
 
 ## Rejected out-of-scope same-name candidates
 
-5 candidates were rejected by the XUI-owner/class scope; exact records and reasons are in `page_sources.json`.
+10 candidates were rejected by the XUI-owner/class scope; exact records and reasons are in `page_sources.json`.
 
 ## New widget required
 

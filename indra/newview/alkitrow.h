@@ -115,7 +115,7 @@ private:
     ALKitCard*                         mCard      = nullptr;
     std::unique_ptr<ALKitBinding>      mBinding;
     boost::signals2::scoped_connection mBindingConnection, mFocusConnection, mFocusLostConnection, mMirrorConnection,
-        mMirrorCommitConnection, mHistoryConnection, mValueConnection;
+        mMirrorCommitConnection, mHistoryConnection, mValueConnection, mActionConnection;
     LLHandle<LLContextMenu> mContextMenu;
     LLHandle<ALKitRow> mSourceRow;
     amber_signal_t mAmberSignal;

@@ -55,6 +55,59 @@
                    "cine_rig_rim_tron_mix": "cine_rig_rim_tron_mix_label",
                    "cine_rig_rim_tron_color": "cine_rig_rim_tron_color_label"}
   },
+  "lens_group/focus_tab": {
+   "v1_sources": [],
+   "row_overrides": {"dof_res_combo": {"reset_settings": "CameraDoFResScale"}},
+   "label_names": {}
+  },
+  "lens_group/filters_tab": {
+   "v1_sources": [],
+   "label_names": {}
+  },
+  "lens_group/diopter_tab": {
+   "v1_sources": [],
+   "label_names": {}
+  },
+  "world_group/weather_tab": {
+   "v1_sources": [],
+   "preset": {"mode": "provider", "provider": "weather"},
+   "label_names": {}
+  },
+  "world_group/atmosphere_tab": {
+   "v1_sources": [],
+   "preset": {"mode": "provider", "provider": "projector_shafts"},
+   "omit_rows": ["localfog_volume_list", "localfog_add", "localfog_duplicate", "localfog_delete", "localfog_enabled", "localfog_label",
+                 "localfog_shape", "localfog_move_camera", "localfog_center_x", "localfog_center_y", "localfog_center_z",
+                 "localfog_size_x", "localfog_size_y", "localfog_size_z", "localfog_rotation_x", "localfog_rotation_y", "localfog_rotation_z",
+                 "localfog_density", "localfog_feather", "localfog_height_falloff", "localfog_noise_scale", "localfog_noise_speed", "localfog_tint"],
+   "omit_empty_cards": ["fog_size_turn", "fog_look"],
+   "omit_rows_note": "The 23 fog-volume list and per-volume rows have no setting: they write the LocalFogBank slot through the v1 ALPanelAtmosphericVolumes (list fill, add, duplicate, delete, move-to-camera). Hosting that panel is not done in this batch, so they are represented by the Lightbox link row below (tab atmospheric_volumes_settings, floater_lightbox_settings.xml:5259).",
+   "add_rows": [
+    {"card": "local_fog_volumes", "row": {"k": "button", "w": "open_lightbox_fog", "l": "Fog volumes", "btn": "Open fog volumes in Lightbox", "target": "lightbox", "target_tab": "atmospheric_volumes_settings", "h": "Add, duplicate, delete and edit fog volumes in the full Lightbox Atmos Volumes tab."}}
+   ],
+   "row_overrides": {
+    "ch_CineHazeStrength_slider": {"enabled_control": "CineHazeEnable"},
+    "ch_CineHazeDensity_slider": {"enabled_control": "CineHazeEnable"},
+    "ch_CineHazeStartDistance_slider": {"enabled_control": "CineHazeEnable"},
+    "ch_CineHazeMaxOpacity_slider": {"enabled_control": "CineHazeEnable"},
+    "ch_color_mode_combo": {"enabled_control": "CineHazeEnable"},
+    "ch_color_swatch": {"enabled_control": "CineHazeEnable"},
+    "ch_CineHazeColorIntensity_slider": {"enabled_control": "CineHazeEnable"},
+    "set_CineHazeHeightEnable": {"enabled_control": "CineHazeEnable"},
+    "ch_CineHazeReferenceHeight_slider": {"enabled_control": "CineHazeHeightEnable"},
+    "ch_ref_from_camera": {"enabled_control": "CineHazeHeightEnable"},
+    "ch_CineHazeHeightFalloff_slider": {"enabled_control": "CineHazeHeightEnable"},
+    "ch_sun_tint_swatch": {"enabled_control": "CineHazeEnable"},
+    "ch_CineHazeSunStrength_slider": {"enabled_control": "CineHazeEnable"},
+    "ch_CineHazeSunLobeWidth_slider": {"enabled_control": "CineHazeEnable"},
+    "ch_debug_combo": {"enabled_control": "CineHazeEnable"}
+   },
+   "label_names": {}
+  },
+  "world_group/shadows_probes_tab": {
+   "v1_sources": [],
+   "label_names": {}
+  },
   "look_group/stylize_tab": {
    "v1_sources": [],
    "preset": {"mode": "provider", "provider": "roto_ink"},

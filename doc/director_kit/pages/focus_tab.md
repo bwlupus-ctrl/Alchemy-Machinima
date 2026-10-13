@@ -6,7 +6,7 @@ Computed class: **pure-setting** (14/14 setting-bound rows; 0 C++-referenced row
 ## Real owners
 
 - `panel_dof` / `panel` at `indra/newview/skins/default/xui/en/panel_dof.xml:2` (12 matching rows).
-- `floater_phototools` / `floater` at `indra/newview/skins/default/xui/en/floater_phototools.xml:25` (7 matching rows).
+- `floater_phototools` / `floater` at `indra/newview/skins/default/xui/en/floater_phototools.xml:25` (5 matching rows).
 
 Name collisions in secondary XUI files are evidence candidates, not automatic ownership. The implementation must retain only occurrences whose root and class agree with the row's behavior.
 
@@ -20,20 +20,20 @@ Use the existing XUI control types as ordinary measured kit rows. No new canvas,
 
 | Card / row | Existing control evidence | Required binding | Other writable homes |
 |---|---|---|---|
-| `dof` / `dof_fstop_slider` (Aperture) | `slider_bar` `indra/newview/skins/default/xui/en/panel_dof.xml:179` | kit `slider` ↔ `CameraFNumber` `F32` | `indra/newview/skins/default/xui/en/panel_dof.xml:195` `dof_fstop_spinner` |
-| `dof` / `dof_length_slider` (Focal length) | `slider_bar` `indra/newview/skins/default/xui/en/panel_dof.xml:236` | kit `slider` ↔ `CameraFocalLength` `F32` | `indra/newview/skins/default/xui/en/panel_dof.xml:252` `dof_length_spinner` |
-| `dof` / `dof_coc_slider` (Max blur) | `slider_bar` `indra/newview/skins/default/xui/en/panel_dof.xml:294` | kit `slider` ↔ `CameraMaxCoF` `F32` | `indra/newview/skins/default/xui/en/panel_dof.xml:310` `dof_coc_spinner` |
+| `dof` / `dof_fstop_slider` (Aperture) | `slider_bar` `indra/newview/skins/default/xui/en/panel_dof.xml:179` | kit `slider` ↔ `CameraFNumber` `F32` | `indra/newview/skins/default/xui/en/panel_dof.xml:195` `dof_fstop_spinner`, `indra/newview/skins/default/xui/en/panel_dpage_lens_focus.xml:9` `dof_fstop_slider` |
+| `dof` / `dof_length_slider` (Focal length) | `slider_bar` `indra/newview/skins/default/xui/en/panel_dof.xml:236` | kit `slider` ↔ `CameraFocalLength` `F32` | `indra/newview/skins/default/xui/en/panel_dof.xml:252` `dof_length_spinner`, `indra/newview/skins/default/xui/en/panel_dpage_lens_focus.xml:14` `dof_length_slider` |
+| `dof` / `dof_coc_slider` (Max blur) | `slider_bar` `indra/newview/skins/default/xui/en/panel_dof.xml:294` | kit `slider` ↔ `CameraMaxCoF` `F32` | `indra/newview/skins/default/xui/en/panel_dof.xml:310` `dof_coc_spinner`, `indra/newview/skins/default/xui/en/panel_dpage_lens_focus.xml:19` `dof_coc_slider` |
 | `dof` / `dof_res_combo` (Quality) | `combo_box` `indra/newview/skins/default/xui/en/panel_dof.xml:82` | kit `combo` ↔ `CameraDoFResScale` `F32` | none |
-| `dof` / `RenderDepthOfFieldFront` (Near blur) | `check_box` `indra/newview/skins/default/xui/en/panel_dof.xml:53` | kit `toggle` ↔ `RenderDepthOfFieldNearBlur` `Boolean` | none |
-| `dof` / `dof_focaltime_slider` (Focus speed) | `slider_bar` `indra/newview/skins/default/xui/en/panel_dof.xml:351` | kit `slider` ↔ `CameraFocusTransitionTime` `F32` | `indra/newview/skins/default/xui/en/panel_dof.xml:367` `dof_focaltime_spinner` |
-| `dof` / `dof_fov_slider` (Field of view) | `slider_bar` `indra/newview/skins/default/xui/en/panel_dof.xml:123` | kit `slider` ↔ `CameraFieldOfView` `F32` | `indra/newview/skins/default/xui/en/panel_dof.xml:139` `dof_fov_spinner` |
-| `focus_point` / `check_box` (Lock focus) | `check_box` `indra/newview/skins/default/xui/en/floater_phototools.xml:196` | kit `toggle` ↔ `RenderFocusPointLocked` `Boolean`. Contract note: generic data name resolved by control_name `RenderFocusPointLocked` | `indra/newview/skins/default/xui/en/floater_ultimate_diopter.xml:282` `diopter_focus_locked` |
-| `focus_point` / `check_box` (Follow mouse) | `check_box` `indra/newview/skins/default/xui/en/floater_phototools.xml:207` | kit `toggle` ↔ `RenderFocusPointFollowsPointer` `Boolean`. Contract note: generic data name resolved by control_name `RenderFocusPointFollowsPointer` | none |
-| `focus_point` / `FocusCrosshair` (Show crosshair) | `check_box` `indra/newview/skins/default/xui/en/floater_phototools.xml:218`, `check_box` `indra/newview/skins/default/xui/en/panel_dof.xml:38` | kit `toggle` ↔ `RenderFocusPointCrosshair` `Boolean` | `indra/newview/skins/default/xui/en/floater_ultimate_diopter.xml:280` `diopter_focus_crosshair` |
-| `guide` / `GuideStyle` (Style) | `combo_box` `indra/newview/skins/default/xui/en/floater_phototools.xml:252`, `combo_box` `indra/newview/skins/default/xui/en/panel_dof.xml:409` | kit `combo` ↔ `RenderCompositionGuideStyle` `String` | none |
-| `guide` / `GuideColor` (Colour) | `color_swatch` `indra/newview/skins/default/xui/en/floater_phototools.xml:286`, `color_swatch` `indra/newview/skins/default/xui/en/panel_dof.xml:443` | kit `color` ↔ `RenderCompositionGuideColor` `Color3` | none |
-| `guide` / `GuideThickness` (Thickness) | `spinner` `indra/newview/skins/default/xui/en/floater_phototools.xml:308`, `spinner` `indra/newview/skins/default/xui/en/panel_dof.xml:466` | kit `number` ↔ `RenderCompositionGuideWidth` `F32` | none |
-| `guide` / `GuideOpacity` (Opacity) | `slider` `indra/newview/skins/default/xui/en/floater_phototools.xml:332`, `slider` `indra/newview/skins/default/xui/en/panel_dof.xml:490` | kit `slider` ↔ `RenderCompositionGuideVisibility` `F32` | none |
+| `dof` / `RenderDepthOfFieldFront` (Near blur) | `check_box` `indra/newview/skins/default/xui/en/panel_dof.xml:53` | kit `toggle` ↔ `RenderDepthOfFieldNearBlur` `Boolean` | `indra/newview/skins/default/xui/en/panel_dpage_lens_focus.xml:34` `RenderDepthOfFieldFront` |
+| `dof` / `dof_focaltime_slider` (Focus speed) | `slider_bar` `indra/newview/skins/default/xui/en/panel_dof.xml:351` | kit `slider` ↔ `CameraFocusTransitionTime` `F32` | `indra/newview/skins/default/xui/en/panel_dof.xml:367` `dof_focaltime_spinner`, `indra/newview/skins/default/xui/en/panel_dpage_lens_focus.xml:37` `dof_focaltime_slider` |
+| `dof` / `dof_fov_slider` (Field of view) | `slider_bar` `indra/newview/skins/default/xui/en/panel_dof.xml:123` | kit `slider` ↔ `CameraFieldOfView` `F32` | `indra/newview/skins/default/xui/en/panel_dof.xml:139` `dof_fov_spinner`, `indra/newview/skins/default/xui/en/panel_dpage_lens_focus.xml:42` `dof_fov_slider` |
+| `focus_point` / `focus_point_locked_check` (Lock focus) | none | kit `toggle` ↔ `RenderFocusPointLocked` `Boolean` | `indra/newview/skins/default/xui/en/floater_phototools.xml:196` `FocusLock`, `indra/newview/skins/default/xui/en/floater_ultimate_diopter.xml:282` `diopter_focus_locked`, `indra/newview/skins/default/xui/en/panel_dpage_lens_focus.xml:49` `focus_point_locked_check` |
+| `focus_point` / `focus_point_follows_pointer_check` (Follow mouse) | none | kit `toggle` ↔ `RenderFocusPointFollowsPointer` `Boolean` | `indra/newview/skins/default/xui/en/floater_phototools.xml:207` `FocusFollowsPointer`, `indra/newview/skins/default/xui/en/panel_dpage_lens_focus.xml:52` `focus_point_follows_pointer_check` |
+| `focus_point` / `FocusCrosshair` (Show crosshair) | `check_box` `indra/newview/skins/default/xui/en/floater_phototools.xml:218`, `check_box` `indra/newview/skins/default/xui/en/panel_dof.xml:38` | kit `toggle` ↔ `RenderFocusPointCrosshair` `Boolean` | `indra/newview/skins/default/xui/en/floater_ultimate_diopter.xml:280` `diopter_focus_crosshair`, `indra/newview/skins/default/xui/en/panel_dpage_lens_focus.xml:55` `FocusCrosshair` |
+| `comp_guide` / `GuideStyle` (Style) | `combo_box` `indra/newview/skins/default/xui/en/floater_phototools.xml:252`, `combo_box` `indra/newview/skins/default/xui/en/panel_dof.xml:409` | kit `combo` ↔ `RenderCompositionGuideStyle` `String` | `indra/newview/skins/default/xui/en/panel_dpage_lens_focus.xml:60` `GuideStyle` |
+| `comp_guide` / `GuideColor` (Colour) | `color_swatch` `indra/newview/skins/default/xui/en/floater_phototools.xml:286`, `color_swatch` `indra/newview/skins/default/xui/en/panel_dof.xml:443` | kit `color` ↔ `RenderCompositionGuideColor` `Color3` | `indra/newview/skins/default/xui/en/panel_dpage_lens_focus.xml:72` `GuideColor` |
+| `comp_guide` / `GuideThickness` (Thickness) | `spinner` `indra/newview/skins/default/xui/en/floater_phototools.xml:308`, `spinner` `indra/newview/skins/default/xui/en/panel_dof.xml:466` | kit `number` ↔ `RenderCompositionGuideWidth` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_lens_focus.xml:75` `GuideThickness` |
+| `comp_guide` / `GuideOpacity` (Opacity) | `slider` `indra/newview/skins/default/xui/en/floater_phototools.xml:332`, `slider` `indra/newview/skins/default/xui/en/panel_dof.xml:490` | kit `slider` ↔ `RenderCompositionGuideVisibility` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_lens_focus.xml:78` `GuideOpacity` |
 
 ## Adapter extraction
 
@@ -48,7 +48,7 @@ No approved widget has a C++ literal reference. `ALFocusKitAdapter` owns only ex
 
 ## Bounded non-default audit states
 
-Manifest size: **22 states**, hard cap 256, page runtime budget 2 minutes. Each row below is applied independently from the default snapshot; there is no Cartesian product.
+Manifest size: **23 states**, hard cap 256, page runtime budget 2 minutes. Each row below is applied independently from the default snapshot; there is no Cartesian product.
 
 | State key | Exact scenario |
 |---|---|
@@ -64,10 +64,11 @@ Manifest size: **22 states**, hard cap 256, page runtime budget 2 minutes. Each 
 | `RenderDepthOfFieldFront-on` | Only `RenderDepthOfFieldFront` is on; dependent visibility is measured. |
 | `card-focus_point-tallest-850` | Only `focus_point` is put in its tallest local state at 850 px; all other cards stay default. |
 | `card-focus_point-tallest-1160` | Only `focus_point` is put in its tallest local state at 1160 px; all other cards stay default. |
-| `check_box-on` | Only `check_box` is on; dependent visibility is measured. |
+| `focus_point_locked_check-on` | Only `focus_point_locked_check` is on; dependent visibility is measured. |
+| `focus_point_follows_pointer_check-on` | Only `focus_point_follows_pointer_check` is on; dependent visibility is measured. |
 | `FocusCrosshair-on` | Only `FocusCrosshair` is on; dependent visibility is measured. |
-| `card-guide-tallest-850` | Only `guide` is put in its tallest local state at 850 px; all other cards stay default. |
-| `card-guide-tallest-1160` | Only `guide` is put in its tallest local state at 1160 px; all other cards stay default. |
+| `card-comp_guide-tallest-850` | Only `comp_guide` is put in its tallest local state at 850 px; all other cards stay default. |
+| `card-comp_guide-tallest-1160` | Only `comp_guide` is put in its tallest local state at 1160 px; all other cards stay default. |
 | `GuideStyle-option-0` | Only `GuideStyle` selects `Rule of Thirds`; other selectors remain default. |
 | `GuideStyle-option-1` | Only `GuideStyle` selects `Golden Ratio (Top Left)`; other selectors remain default. |
 | `GuideStyle-option-2` | Only `GuideStyle` selects `Golden Ratio (Top Right)`; other selectors remain default. |
@@ -88,7 +89,7 @@ None.
 
 ## Rejected out-of-scope same-name candidates
 
-7 candidates were rejected by the XUI-owner/class scope; exact records and reasons are in `page_sources.json`.
+15 candidates were rejected by the XUI-owner/class scope; exact records and reasons are in `page_sources.json`.
 
 ## New widget required
 

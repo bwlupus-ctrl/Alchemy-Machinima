@@ -101,6 +101,13 @@ private:
     void bindRotoInkPage(LLView* root);
     void bindTronPage(LLView* root);
     void bindImagePage(LLView* root);
+    // Lens, World and Look-adjacent generated kit pages: code-bound buttons and preset actions
+    // only; the setting-bound rows need no binder. Same calls as the v1 panels.
+    void bindLensFocusPage(LLView* root);
+    void bindLensFiltersPage(LLView* root);
+    void bindWeatherPage(LLView* root);
+    void bindAtmospherePage(LLView* root);
+    void refreshWorldLensReadouts(const std::string& page);
     // ---- transport ----
     void onClickAction();               // ACTION, or CUT while counting/running
     void onClickTakePlay();
@@ -539,6 +546,7 @@ private:
     boost::signals2::scoped_connection mPageBuiltConnection;
     boost::signals2::scoped_connection mPageSelectedConnection;
     boost::signals2::scoped_connection mKitUIMsConnection;
+    std::vector<boost::signals2::scoped_connection> mWorldLensConnections;
     std::unordered_set<std::string> mBoundPages;
 };
 

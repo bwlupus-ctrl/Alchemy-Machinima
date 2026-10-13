@@ -2488,6 +2488,33 @@ private:
             }
             if (widget == "btn_stop_path") mover.start(mFunctionalActorMoverId);
         }
+        if (mInWorld && prerequisite == "path_actor_edit_2_waypoints" &&
+            gAgentAvatarp && mFunctionalHaveActorPathBefore)
+        {
+            // Every row gets the same public editor precondition.  Earlier
+            // rows legitimately toggle edit mode or change the selected node;
+            // a one-shot page fixture therefore cannot keep later rows enabled.
+            LLActorMover& mover = LLActorMover::instance();
+            mover.stop(mFunctionalActorMoverId);
+            mover.setEditNode(1);
+            if (widget == "node_cam_transition_combo" || widget == "btn_node_preview")
+            {
+                const LLVector3d origin = gAgent.getPositionGlobal();
+                mover.setNodeCamera(mFunctionalActorMoverId, 1,
+                                    origin + LLVector3d(0.0, 0.0, 2.0),
+                                    LLQuaternion(), 1.0f, 0);
+            }
+            if (ALPanelPathEditor* panel = findFirstView<ALPanelPathEditor>(mFunctionalPageRoot))
+            {
+                panel->revealFor(mFunctionalActorMoverId);
+                if (LLCheckBoxCtrl* edit = panel->findChild<LLCheckBoxCtrl>(
+                        "edit_mode_check", true))
+                {
+                    edit->setValue(true); // ui-draw-lint: allow(raw-write) per-row path fixture
+                    edit->onCommit();
+                }
+            }
+        }
         if (mInWorld && (widget == "prop_list" || widget == "node_list"))
         {
             LLScrollListCtrl* prop_list = mFunctionalPageRoot
@@ -2783,8 +2810,7 @@ private:
                 playlist->onCommit();
             }
         }
-        if (mInWorld && entry["probe"].asString() == "gaze_cast_target" && gAgentAvatarp &&
-            !mFunctionalHaveCastGazeBefore)
+        if (mInWorld && entry["page"].asString() == "gaze_tab" && gAgentAvatarp)
         {
             ALPanelLensGaze* panel = findFirstView<ALPanelLensGaze>(mFunctionalPageRoot);
             LLComboBox* edit_actor = mFunctionalPageRoot->findChild<LLComboBox>(
@@ -2792,25 +2818,30 @@ private:
             if (panel && edit_actor)
             {
                 mFunctionalGazeActor = gAgentAvatarp->getID();
-                mFunctionalGazeBefore = LLActorMover::instance().getGazeTargetConfig(
-                    mFunctionalGazeActor);
-                mFunctionalHaveGazeBefore = true;
-                mFunctionalCastGazeBefore = LLDirectorCast::instance().getGazeTarget(
-                    mFunctionalGazeActor);
-                mFunctionalCastLookBefore = LLDirectorCast::instance().isLookAtCamera(
-                    mFunctionalGazeActor);
-                mFunctionalHaveCastGazeBefore = true;
-                mFunctionalGazeEnabledBefore = LLActorMover::instance().isGazeEnabled(
-                    mFunctionalGazeActor);
-                mFunctionalGazeEditActorBefore = edit_actor->getValue();
-                mFunctionalGazeEditActor = edit_actor->getDerivedHandle<LLComboBox>();
-                if (widget == "gaze_cast_combo")
+                if (!mFunctionalHaveCastGazeBefore)
+                {
+                    mFunctionalGazeBefore = LLActorMover::instance().getGazeTargetConfig(
+                        mFunctionalGazeActor);
+                    mFunctionalHaveGazeBefore = true;
+                    mFunctionalCastGazeBefore = LLDirectorCast::instance().getGazeTarget(
+                        mFunctionalGazeActor);
+                    mFunctionalCastLookBefore = LLDirectorCast::instance().isLookAtCamera(
+                        mFunctionalGazeActor);
+                    mFunctionalHaveCastGazeBefore = true;
+                    mFunctionalGazeEnabledBefore = LLActorMover::instance().isGazeEnabled(
+                        mFunctionalGazeActor);
+                    mFunctionalGazeEditActorBefore = edit_actor->getValue();
+                    mFunctionalGazeEditActor = edit_actor->getDerivedHandle<LLComboBox>();
+                }
+                if (widget == "gaze_cast_combo" && mFunctionalGazeCastFixture.isNull())
                 {
                     mFunctionalGazeCastFixture = LLUUID::generateNewID();
                     mFunctionalGazeCastFixtureAlternate = LLUUID::generateNewID();
                     LLDirectorCast::instance().add(mFunctionalGazeCastFixture);
                     LLDirectorCast::instance().add(mFunctionalGazeCastFixtureAlternate);
                 }
+                // SELF is a real cast member after login.  Selecting it through
+                // the panel's public combo path refreshes all actor-owned gates.
                 edit_actor->setValue(0);
                 edit_actor->onCommit();
                 LLActorMover::instance().setGazeEnabled(mFunctionalGazeActor, true);
@@ -2818,6 +2849,17 @@ private:
                 LLActorMover::GazeTarget target = mFunctionalCastGazeBefore;
                 target.mMode = LLActorMover::GazeTarget::FIXED_POINT;
                 LLDirectorCast::instance().setGazeTarget(mFunctionalGazeActor, target);
+            }
+        }
+        if (widget == "cine_fill_ev" && mFunctionalPageRoot)
+        {
+            // Ratio lock intentionally disables the direct Fill EV editor.
+            // Exercise the public lock control so its owner refreshes the gate.
+            if (LLUICtrl* ratio_lock = mFunctionalPageRoot->findChild<LLUICtrl>(
+                    "cine_ratio_lock", true); ratio_lock && ratio_lock->getValue().asBoolean())
+            {
+                ratio_lock->setValue(false); // ui-draw-lint: allow(raw-write) test-only public prerequisite
+                ratio_lock->onCommit();
             }
         }
         if (mInWorld && entry["probe"].asString() == "gaze_slot" && gAgentAvatarp &&
@@ -6956,11 +6998,20 @@ private:
                 recordFunctionalAccountResult(
                     avatar_name, "PASS", "authorized account verified");
                 mFunctionalAccountVerified = true;
-                // AO off for the run: gaze turns can make the AO send simulator requests
-                // (llactormover.cpp ~6317). Per-account settings files are byte-restored by
-                // the wrapper after the viewer exits, so the user's AO setting comes back.
-                if (gSavedPerAccountSettings.controlExists("AlchemyAOEnable")) // ui-draw-lint: allow(setting) test-only one-shot in-world setup
-                    gSavedPerAccountSettings.setBOOL("AlchemyAOEnable", false); // ui-draw-lint: allow(setting-write) test-only one-shot in-world setup
+                // The wrapper forces these values in its byte-backed-up account
+                // settings before launch. Never toggle AOEngine after login:
+                // disabling an already-live AO can itself send animation stops.
+                const bool ao_safe =
+                    gSavedPerAccountSettings.controlExists("AlchemyAOEnable") &&
+                    gSavedPerAccountSettings.controlExists("UseAOStands") &&
+                    gSavedPerAccountSettings.controlExists("PauseAO") &&
+                    !gSavedPerAccountSettings.getBOOL("AlchemyAOEnable") && // ui-draw-lint: allow(setting) pre-row AO safety gate
+                    !gSavedPerAccountSettings.getBOOL("UseAOStands") && // ui-draw-lint: allow(setting) pre-row AO safety gate
+                    gSavedPerAccountSettings.getBOOL("PauseAO"); // ui-draw-lint: allow(setting) belt-and-braces AO safety gate
+                if (!ao_safe)
+                    return finishFunctionalInWorldFailure(
+                        "AO safety settings were not inactive before row execution",
+                        "inworld_ao_safety", "pre-launch AO inhibit");
             }
 
             if (mFunctionalWatchdog.getElapsedTimeF32() >=
