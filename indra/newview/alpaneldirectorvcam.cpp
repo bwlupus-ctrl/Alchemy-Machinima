@@ -470,11 +470,22 @@ void ALPanelDirectorVCam::refresh(U32 dirty)
         {
             const LLPrismLens::ProjectorDefinition& projector = registry.mProjectors[index];
             if (!sameCapture(projector.mCapture, capture->mHandle)) continue;
+            // Cache only final names (rig role or the object's real name); a
+            // fallback ("Light (waiting)", "Light at x,y,z") is re-resolved
+            // on later refreshes so the real name appears once it's known.
             auto cached_name = mProjectorNames.find(projector.mHandle.mId);
+            std::string fallback_name;
             if (cached_name == mProjectorNames.end())
-                cached_name = mProjectorNames.emplace(
-                    projector.mHandle.mId, projectorName(projector)).first;
-            const std::string& name = cached_name->second;
+            {
+                std::string resolved = projectorName(projector);
+                if (resolved.rfind("Light at ", 0) == 0 || resolved == "Light (waiting)")
+                    fallback_name = std::move(resolved);
+                else
+                    cached_name = mProjectorNames.emplace(
+                        projector.mHandle.mId, std::move(resolved)).first;
+            }
+            const std::string& name = fallback_name.empty()
+                ? cached_name->second : fallback_name;
             const bool selected = sameProjector(projector.mHandle,
                                                 mModel.selectedProjector());
             projectors.push_back({projector.mHandle, name,
